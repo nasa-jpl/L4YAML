@@ -4228,6 +4228,62 @@ theorem seqWindowFacts_false_window
   rw [hfloor] at hd
   omega
 
+/-- **The seq sorry GOAL `FlowSubrangesOk tokens` is itself FALSE on real emitted output** —
+    `(i'-b-B2c-(d)-flowSubrangesOk-false-window)`, R435, the machine-checked refutation that the R433
+    cross-matched window reaches the GOAL `FlowSubrangesOk`, not merely the intermediate `h_seq_rec`.
+    `FlowSubrangesOk` (`ParserGrammableBase.lean`, the parser contract) is the conjunct the two sorry sites
+    `have h_subranges : FlowSubrangesOk tokens := sorry` (`NonemptyStructure.lean:8043`/`:8341`) owe.  Its
+    `.seq` field quantifies over EVERY window `[lo, hi)` with FIVE bracket-shape guards (`lo ≤ hi`,
+    `hi < size`, `tokens[hi] = .flowSequenceEnd`, `flowBracketBalance lo hi = 0`,
+    `tokens[lo-1] = .flowSequenceStart`) — and NO interior floor — demanding `SeqBodyProps tokens lo hi`,
+    whose `content_start` field forces `lo < hi → isFlowContentStart tokens[lo]`.
+
+    On `[[],[a]]` the cross-matched window `[3, 7)` ([[ref-bracket-guards-admit-cross-matched-window]])
+    satisfies all five `.seq` guards, but `tokens[3] = .flowSequenceEnd` (the first element's close), so
+    `content_start` forces `isFlowContentStart .flowSequenceEnd` — FALSE.  Hence `FlowSubrangesOk tokens` is
+    FALSE, and the sorry goal is unachievable AS STATED.  No amount of producer machinery (the R389–R434
+    `h_seq_rec`/`windowFacts` chain) can close a false goal.
+
+    **The redirect** ([[ref-probe-the-goal-not-the-intermediate]]): the floor guard must be added at the
+    DEFINITION — `FlowSubrangesOk.seq`/`.map` (and `SeqBodyProps`/`MapBodyProps`) in `ParserGrammableBase`
+    need the interior Dyck floor `∀ i ∈ [lo, hi], flowBracketBalance tokens lo i ≥ 0` as a guard, EXCLUDING
+    cross-matched windows — and the parser CONSUMER `flow_parser_ok_of_structure` must be re-proven to
+    supply the floor at each `.seq`/`.map` query (the parser only descends into genuine matched-pair
+    windows, where the floor holds).  The R434 producer-floor on `seqRec_of_carrier_and_windowFacts_seq`
+    was the right SHAPE but on a downstream layer; this finding moves the fix to its true root (the parser
+    contract definition).  Contains the `ofReduceBool` axiom (`native_decide`), off the
+    `universal_roundtrip` path. -/
+theorem flowSubrangesOk_false_window
+    (tokens : Array (Positioned YamlToken))
+    (h : Scanner.scanFiltered
+        ("[" ++ emit.emitList
+          [YamlValue.sequence .flow #[],
+           YamlValue.sequence .flow #[YamlValue.scalar { content := "a", style := .plain }]]
+        ++ "]") = .ok tokens) :
+    ¬ FlowSubrangesOk tokens := by
+  have key : ∀ {α : Type} (g : Array (Positioned YamlToken) → α) (a : α),
+      (Scanner.scanFiltered
+          ("[" ++ emit.emitList
+            [YamlValue.sequence .flow #[],
+             YamlValue.sequence .flow #[YamlValue.scalar { content := "a", style := .plain }]]
+          ++ "]")).toOption.map g = some a →
+        g tokens = a := by
+    intro α g a e; rw [h] at e; exact Option.some.inj e
+  have hsz : tokens.size = 10 := key (fun t => t.size) 10 (by native_decide)
+  have h7 : tokens[7]!.val = .flowSequenceEnd :=
+    key (fun t => t[7]!.val) .flowSequenceEnd (by native_decide)
+  have h2 : tokens[3 - 1]!.val = .flowSequenceStart :=
+    key (fun t => t[3 - 1]!.val) .flowSequenceStart (by native_decide)
+  have hbal : flowBracketBalance tokens 3 7 = 0 :=
+    key (fun t => flowBracketBalance t 3 7) 0 (by native_decide)
+  have h3 : tokens[3]!.val = .flowSequenceEnd :=
+    key (fun t => t[3]!.val) .flowSequenceEnd (by native_decide)
+  intro hfso
+  have hsb := hfso.seq 3 7 (by omega) (by omega) h7 hbal h2
+  have hcs := hsb.content_start (by omega)
+  rw [h3] at hcs
+  simp [isFlowContentStart] at hcs
+
 /-- **The SEQ-head CONS three-arm dispatch of the locator's per-window step `h_step`** —
     `(i'-b-B2c-nested-fbc-emission-locator-skeleton-brick-d-seq-cons)`, R378, BRICK D (carved).  This is
     the maximal-risk slice of `h_step` the blueprint flagged ("the four-way `cases h_e` × HEAD/CONS

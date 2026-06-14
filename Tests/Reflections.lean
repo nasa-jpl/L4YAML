@@ -137,6 +137,7 @@ import Tests.Reflections.FloorEncodesNonemptiness
 import Tests.Reflections.ProviderFieldFromSiblingOutput
 import Tests.Reflections.BracketGuardsAdmitCrossMatched
 import Tests.Reflections.ContravariantGuardStrengthening
+import Tests.Reflections.ProbeTheGoal
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
