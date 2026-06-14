@@ -115,14 +115,20 @@ theorem emitList_body_filtered_characterization
     --     `OpenerAdj block` the SafeBody producer now supplies (R405; the body block is `drop old_sz`
     --     of the filtered list).  This is the opener-adjacency field the `FlowSubrangesOk` consumer
     --     needs but cannot project off the flat bracket facts (the severed-edge `OpenerAdj`, R403).
-    ∧ OpenerAdj ((s'.tokens.filter p).toList.drop old_sz) := by
+    ∧ OpenerAdj ((s'.tokens.filter p).toList.drop old_sz)
+    -- (8) [NEW] The body block satisfies `SepAdj` — every `.flowEntry` separator whose successor is
+    --     not a `.key` is immediately followed by a flow content start.  Threaded from the `SepAdj
+    --     block` the SafeBody producer now supplies (R426; the body block is `drop old_sz` of the
+    --     filtered list).  The `.flowEntry`/`≠ .key` mirror of Part 7's `OpenerAdj` — the
+    --     separator-adjacency field the `FlowBodyContentDeepSeq.feContentStart` consumer needs.
+    ∧ SepAdj ((s'.tokens.filter p).toList.drop old_sz) := by
   -- Scan the body via the `.bridge.assemble` SafeBody producer.  The returned
   -- `SafeBody ContentStartTok block` subsumes BOTH parts of the characterization:
   -- `SafeBody.head_Q` gives the first-filtered-token content-start (Part 1), and
   -- `SafeBody_array_flowEntry` gives the post-`.flowEntry` content-start (Part 2).
   -- No `SavedKeyDoesntResolve` substrate and no two-chain reconciliation are needed.
   obtain ⟨n, s', block, h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
-          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, h_block_eq, h_wb, h_wt, h_sb, h_sbu, h_oa, _h_lns⟩ :=
+          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, h_block_eq, h_wb, h_wt, h_sb, h_sbu, h_oa, _h_lns, h_sa⟩ :=
     emitList_scans_safebody items h_ne h_all_block s rest h_corr h_flow h_fl h_indent h_col
       h_ek h_atol h_endline h_sync
   -- The body block is exactly the `drop old_sz` of the final filtered token list.
@@ -135,7 +141,7 @@ theorem emitList_body_filtered_characterization
       List.drop_append_of_le_length (Nat.le_refl _), List.drop_length, List.nil_append]
   refine ⟨n, s', h_chain.toScanChain, h_corr', h_fl', h_dp', h_ids', h_ek',
           h_col', h_inflow', h_indent', h_line', h_atol', h_endline',
-          h_stack', h_fmc, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+          h_stack', h_fmc, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · -- Part 1: first new filtered token is a content start (`SafeBody.head_Q`)
     obtain ⟨hl, hQ⟩ := h_sb.head_Q
     have h_size : (s'.tokens.filter (fun t => t.val != .placeholder)).size
@@ -198,6 +204,9 @@ theorem emitList_body_filtered_characterization
   · -- Part 7 [NEW]: `OpenerAdj` of the body block, re-projected from the safebody producer's
     -- now-output `OpenerAdj block` (R405) via the same `h_drop` re-basing as Part 5's `WellTyped`.
     rw [h_drop]; exact h_oa
+  · -- Part 8 [NEW]: `SepAdj` of the body block, re-projected from the safebody producer's
+    -- now-output `SepAdj block` (R426) via the same `h_drop` re-basing as Part 7's `OpenerAdj`.
+    rw [h_drop]; exact h_sa
 
 /-- Body token characterization for `emitPairList` in flow context:
     (1) The chain has ≥ 3 steps (key handling + value indicator + value content).
@@ -277,7 +286,13 @@ theorem emitPairList_body_filtered_characterization
     -- (8) [NEW] The body block is `OpenerAdj` (after a `[`-opener the next token starts content,
     --     not `]`).  R406 step (b)-map: threaded from the `OpenerAdj block` the map SafeBody
     --     producer now co-produces; re-projected through `h_drop` exactly like Part 7.
-    ∧ OpenerAdj ((s'.tokens.filter p).toList.drop old_sz) := by
+    ∧ OpenerAdj ((s'.tokens.filter p).toList.drop old_sz)
+    -- (9) [NEW] The body block satisfies `SepAdj` — every `.flowEntry` separator whose successor is
+    --     not a `.key` is followed by a flow content start.  Threaded from the `SepAdj block` the map
+    --     SafeBody producer now co-produces (R426).  In the map body the separators ARE followed by
+    --     `.key`, so `SepAdj` holds VACUOUSLY here, but the conjunct is carried for the seq-mirror
+    --     structure shape (a nested seq inside the map can place a content separator).
+    ∧ SepAdj ((s'.tokens.filter p).toList.drop old_sz) := by
   -- Scan the body via the `.bridge.assemble.map` SafeBody producer.  The returned
   -- `SafeBody (· = .key) block` subsumes BOTH non-trivial parts of the characterization:
   -- `SafeBody.head_Q` gives the first-filtered-token `.key` (Part 2) and
@@ -285,7 +300,7 @@ theorem emitPairList_body_filtered_characterization
   -- `3 ≤ n` chain-length floor (Part 1) is carried alongside.  No `keyshape` producer
   -- and no two-chain reconciliation are needed.
   obtain ⟨n, s', block, h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
-          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, h_block_eq, h_wb, h_wt, h_sb, h_oa, h_n_ge_3, _h_lns⟩ :=
+          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, h_block_eq, h_wb, h_wt, h_sb, h_oa, h_n_ge_3, _h_lns, h_sa⟩ :=
     emitPairList_scans_safebody pairs h_ne h_all_k_block h_all_v_block s rest h_corr h_flow h_fl
       h_indent h_col h_ek h_atol h_endline h_ska h_sync
   -- The body block is exactly the `drop old_sz` of the final filtered token list.
@@ -298,7 +313,7 @@ theorem emitPairList_body_filtered_characterization
       List.drop_append_of_le_length (Nat.le_refl _), List.drop_length, List.nil_append]
   refine ⟨n, s', h_chain.toScanChain, h_corr', h_fl', h_dp', h_ids', h_ek',
           h_col', h_inflow', h_indent', h_line', h_atol', h_endline',
-          h_stack', h_fmc, h_n_ge_3, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+          h_stack', h_fmc, h_n_ge_3, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · -- Part 2: first new filtered token is `.key` (`SafeBody.head_Q`)
     obtain ⟨hl, hQ⟩ := h_sb.head_Q
     have h_size : (s'.tokens.filter (fun t => t.val != .placeholder)).size
@@ -355,6 +370,9 @@ theorem emitPairList_body_filtered_characterization
   · -- Part 8 [NEW]: OpenerAdj, threaded from `OpenerAdj block` (R406 step (b)-map); same `h_drop`
     -- re-projection as Part 7.
     rw [h_drop]; exact h_oa
+  · -- Part 9 [NEW]: SepAdj, threaded from `SepAdj block` (R426, vacuous in the map body — separators
+    -- are followed by `.key`); same `h_drop` re-projection as Part 8's `OpenerAdj`.
+    rw [h_drop]; exact h_sa
 
 /-- **Parametric `SeqBodyProps` assembler** (Phase J seed).  Given an arbitrary balanced
     flow-sequence subrange `[lo, hi)` — `tokens[hi]! = .flowSequenceEnd`, total balance `0`, Dyck
@@ -7748,6 +7766,16 @@ theorem scanFiltered_emitSeq_nonempty_structure
     (∀ k, 2 ≤ k → k + 1 < tokens.size - 2 →
         tokens[k]!.val = .flowSequenceStart →
         tokens[k+1]!.val ≠ .flowSequenceEnd →
+        isFlowContentStart tokens[k+1]!.val) ∧
+    -- [NEW] (step 3) The all-depth seq-SEPARATOR adjacency field over the body window
+    -- `[2, tokens.size-2)`: every `.flowEntry` separator with a non-`.key` successor is followed by a
+    -- flow-content-start.  Re-projection of the R426 body characterization Part `SepAdj block` (now
+    -- carried by both flat producers) through this lemma's window/slice via `SepAdj_array` — the
+    -- `.flowEntry`/`≠ .key` mirror of the opener field above; the separator-adjacency field the
+    -- downstream `FlowBodyContentDeepSeq.feContentStart` provider consumes.
+    (∀ k, 2 ≤ k → k + 1 < tokens.size - 2 →
+        tokens[k]!.val = .flowEntry →
+        tokens[k+1]!.val ≠ .key →
         isFlowContentStart tokens[k+1]!.val) := by
   -- Step 1: Boundary tokens from scanFiltered_boundary_tokens
   obtain ⟨h_sz2, h_t0, h_tlast⟩ := scanFiltered_boundary_tokens _ _ h_scan
@@ -7765,7 +7793,7 @@ theorem scanFiltered_emitSeq_nonempty_structure
   obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂,
           h_ek₂, h_col₂, h_inflow₂, h_indent₂, _, _, _, h_stack₂, h_fmc₂,
           ⟨h_body_sz_raw, h_body_cs_raw⟩, h_body_fe_next_raw,
-          h_body_outer_bal_raw, h_body_dyck_raw, h_body_wt_raw, h_body_succ_raw, h_body_oa_raw⟩ :=
+          h_body_outer_bal_raw, h_body_dyck_raw, h_body_wt_raw, h_body_succ_raw, h_body_oa_raw, h_body_sa_raw⟩ :=
     emitList_body_filtered_characterization items.toList h_ne
       (fun w hw => h_all_block w hw) s₁ [']']
       h_corr₁ h_inflow₁ (by rw [h_fl₁]; omega) h_indent₁ (by rw [h_col₁]; omega)
@@ -7903,7 +7931,7 @@ theorem scanFiltered_emitSeq_nonempty_structure
   -- Rename _raw variables to match expected names
   have h_body_sz := h_body_sz_raw; have h_body_cs := h_body_cs_raw
   have h_body_fe_next := h_body_fe_next_raw
-  rw [h_filt₁_sz] at h_body_sz h_body_cs h_body_fe_next h_body_outer_bal_raw h_body_dyck_raw h_body_wt_raw h_body_succ_raw h_body_oa_raw
+  rw [h_filt₁_sz] at h_body_sz h_body_cs h_body_fe_next h_body_outer_bal_raw h_body_dyck_raw h_body_wt_raw h_body_succ_raw h_body_oa_raw h_body_sa_raw
   -- Helper: tokens[k]! for k < tokens.size - 2 equals (s₂.filter p)[k]
   have h_tokens_sz_eq : tokens.size - 2 = (s₂.tokens.filter p).size := by
     rw [h_tokens_decomp]; simp [Array.size_push]
@@ -8037,8 +8065,27 @@ theorem scanFiltered_emitSeq_nonempty_structure
     have key := OpenerAdj_array (s₂.tokens.filter p) 2 h_body_oa_raw k hk2 hk1'
       (by rw [← e_k]; exact hopen) (by rw [← e_k1]; exact hne)
     rw [e_k1]; exact key
+  -- [NEW] (step 3) Re-project the body characterization Part `SepAdj block`
+  -- (`h_body_sa_raw : SepAdj ((s₂.filter p).toList.drop 2)`) into the array-`getElem!` body
+  -- separator field over `[2, tokens.size-2)`.  `SepAdj_array` does the slice→array bridge in the
+  -- `(s₂.filter p)` index space (the `.flowEntry`/`≠ .key` mirror of `OpenerAdj_array`); `h_tok_body`
+  -- + `getElem!_pos` re-base each index to the outer `tokens`, exactly as `h_body_opener` above.
+  have h_body_separator : ∀ k, 2 ≤ k → k + 1 < tokens.size - 2 →
+      tokens[k]!.val = .flowEntry →
+      tokens[k+1]!.val ≠ .key →
+      isFlowContentStart tokens[k+1]!.val := by
+    intro k hk2 hk1 hsep hne
+    have hk1' : k + 1 < (s₂.tokens.filter p).size := by rw [← h_tokens_sz_eq]; exact hk1
+    have hk0' : k < (s₂.tokens.filter p).size := by omega
+    have e_k : tokens[k]! = (s₂.tokens.filter p)[k]! := by
+      rw [h_tok_body k hk0', getElem!_pos (s₂.tokens.filter p) k hk0']
+    have e_k1 : tokens[k+1]! = (s₂.tokens.filter p)[k+1]! := by
+      rw [h_tok_body (k+1) hk1', getElem!_pos (s₂.tokens.filter p) (k+1) hk1']
+    have key := SepAdj_array (s₂.tokens.filter p) 2 h_body_sa_raw k hk2 hk1'
+      (by rw [← e_k]; exact hsep) (by rw [← e_k1]; exact hne)
+    rw [e_k1]; exact key
   exact ⟨h_sz5, h_t0, h_tlast, h_t1, h_tpe, h_content0, h_fe_pattern,
-         h_outer_bal, h_dyck, h_wt_interior, h_pnok, h_body_opener⟩
+         h_outer_bal, h_dyck, h_wt_interior, h_pnok, h_body_opener, h_body_separator⟩
 
 /-- Token structure of `scanFiltered ("{" ++ emitPairList pairs ++ "}")` for non-empty pairs.
     Establishes boundary tokens, body token patterns, and `parseExplicitKey`/`parseFlowMappingValue`
@@ -8078,6 +8125,15 @@ theorem scanFiltered_emitMap_nonempty_structure
     (∀ k, 2 ≤ k → k + 1 < tokens.size - 2 →
         tokens[k]!.val = .flowSequenceStart →
         tokens[k+1]!.val ≠ .flowSequenceEnd →
+        isFlowContentStart tokens[k+1]!.val) ∧
+    -- [NEW] (step 3) The all-depth seq-SEPARATOR adjacency field over the map body window
+    -- `[2, tokens.size-2)`: every `.flowEntry` separator with a non-`.key` successor is followed by a
+    -- flow-content-start.  Re-projection of the R426 map body characterization Part `SepAdj block`
+    -- through this lemma's window/slice via `SepAdj_array` (the seq-mirror; vacuous at the map's OWN
+    -- separators, which are followed by `.key`, but live for a nested seq's content separators).
+    (∀ k, 2 ≤ k → k + 1 < tokens.size - 2 →
+        tokens[k]!.val = .flowEntry →
+        tokens[k+1]!.val ≠ .key →
         isFlowContentStart tokens[k+1]!.val) := by
   -- Step 1: Boundary tokens from scanFiltered_boundary_tokens
   obtain ⟨h_sz2, h_t0, h_tlast⟩ := scanFiltered_boundary_tokens _ _ h_scan
@@ -8095,7 +8151,7 @@ theorem scanFiltered_emitMap_nonempty_structure
   obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂,
           h_ek₂, h_col₂, h_inflow₂, h_indent₂, _, _, _, h_stack₂, h_fmc₂,
           h_n₂_ge3, ⟨h_body_sz_raw, h_body_key_raw⟩, h_body_fe_next_raw, h_body_grow,
-          h_body_outer_bal_raw, h_body_dyck_raw, h_body_wt_raw, h_body_oa_raw⟩ :=
+          h_body_outer_bal_raw, h_body_dyck_raw, h_body_wt_raw, h_body_oa_raw, h_body_sa_raw⟩ :=
     emitPairList_body_filtered_characterization pairs.toList h_ne
       (fun p hp => h_all_k_block p hp) (fun p hp => h_all_v_block p hp)
       s₁ ['}']
@@ -8212,7 +8268,7 @@ theorem scanFiltered_emitMap_nonempty_structure
   -- Rename _raw variables to match expected names
   have h_body_sz := h_body_sz_raw; have h_body_key := h_body_key_raw
   have h_body_fe_next := h_body_fe_next_raw
-  rw [h_filt₁_sz] at h_body_sz h_body_key h_body_fe_next h_body_outer_bal_raw h_body_dyck_raw h_body_wt_raw h_body_oa_raw
+  rw [h_filt₁_sz] at h_body_sz h_body_key h_body_fe_next h_body_outer_bal_raw h_body_dyck_raw h_body_wt_raw h_body_oa_raw h_body_sa_raw
   -- tokens.size - 2 = (s₂.filter p).size
   have h_tokens_sz_eq : tokens.size - 2 = (s₂.tokens.filter p).size := by
     rw [h_tokens_decomp]; simp [Array.size_push]
@@ -8306,8 +8362,26 @@ theorem scanFiltered_emitMap_nonempty_structure
     have key := OpenerAdj_array (s₂.tokens.filter p) 2 h_body_oa_raw k hk2 hk1'
       (by rw [← e_k]; exact hopen) (by rw [← e_k1]; exact hne)
     rw [e_k1]; exact key
+  -- [NEW] (step 3) Re-project the map body characterization Part `SepAdj block`
+  -- (`h_body_sa_raw : SepAdj ((s₂.filter p).toList.drop 2)`) into the array-`getElem!` body
+  -- separator field over `[2, tokens.size-2)` via `SepAdj_array` — the seq mirror (vacuous at the
+  -- map's own `.flowEntry` separators, which precede `.key`; live for a nested seq's separators).
+  have h_body_separator : ∀ k, 2 ≤ k → k + 1 < tokens.size - 2 →
+      tokens[k]!.val = .flowEntry →
+      tokens[k+1]!.val ≠ .key →
+      isFlowContentStart tokens[k+1]!.val := by
+    intro k hk2 hk1 hsep hne
+    have hk1' : k + 1 < (s₂.tokens.filter p).size := by rw [← h_tokens_sz_eq]; exact hk1
+    have hk0' : k < (s₂.tokens.filter p).size := by omega
+    have e_k : tokens[k]! = (s₂.tokens.filter p)[k]! := by
+      rw [h_tok_body k hk0', getElem!_pos (s₂.tokens.filter p) k hk0']
+    have e_k1 : tokens[k+1]! = (s₂.tokens.filter p)[k+1]! := by
+      rw [h_tok_body (k+1) hk1', getElem!_pos (s₂.tokens.filter p) (k+1) hk1']
+    have key := SepAdj_array (s₂.tokens.filter p) 2 h_body_sa_raw k hk2 hk1'
+      (by rw [← e_k]; exact hsep) (by rw [← e_k1]; exact hne)
+    rw [e_k1]; exact key
   exact ⟨h_sz7, h_t0, h_tlast, h_t1, h_tpe, h_t2_key, h_fe_pattern,
-         h_outer_bal, h_dyck, h_wt_interior, h_pnok, h_body_opener⟩
+         h_outer_bal, h_dyck, h_wt_interior, h_pnok, h_body_opener, h_body_separator⟩
 
 
 end L4YAML.Proofs.EmitterScannability

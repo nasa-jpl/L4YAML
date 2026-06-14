@@ -3404,7 +3404,7 @@ theorem seqGlobalFlowSeqOpenerAdj_of_emit
     (h_all_block : ∀ w, w ∈ items.toList → EmitScansInFlowBlock w) :
     GlobalFlowSeqOpenerAdj tokens := by
   obtain ⟨h_sz5, h_t0, _h_tend, _h_t1, h_close, h_head, _h_fe_pattern,
-          _h_outer_bal, _h_dyck, _h_wt_interior, _h_pnok, h_body_opener⟩ :=
+          _h_outer_bal, _h_dyck, _h_wt_interior, _h_pnok, h_body_opener, _h_body_separator⟩ :=
     scanFiltered_emitSeq_nonempty_structure items tokens h_scan h_ne h_all_block
   exact globalFlowSeqOpenerAdj_of_structure tokens (by omega) h_t0 h_close h_head h_body_opener
 
@@ -3495,7 +3495,7 @@ theorem mapGlobalFlowSeqOpenerAdj_of_emit
     (h_all_v_block : ∀ p, p ∈ pairs.toList → EmitScansInFlowBlock p.2) :
     GlobalFlowSeqOpenerAdj tokens := by
   obtain ⟨h_sz7, h_t0, _h_tend, h_t1, h_close, _h_key, _h_fe_pattern,
-          h_outer_bal, h_dyck, _h_wt_interior, _h_pnok, h_body_opener⟩ :=
+          h_outer_bal, h_dyck, _h_wt_interior, _h_pnok, h_body_opener, _h_body_separator⟩ :=
     scanFiltered_emitMap_nonempty_structure pairs tokens h_scan h_ne h_all_k_block h_all_v_block
   exact globalFlowSeqOpenerAdj_of_map_structure tokens (by omega) h_t0 h_t1 h_close
     h_outer_bal h_dyck h_body_opener
@@ -4299,7 +4299,7 @@ theorem seqRoot_flowBodyWindow
   have h_all_block : ∀ w, w ∈ items.toList → EmitScansInFlowBlock w :=
     fun w hw => emitScansInFlowBlock_of_flowRecEntry w (h_all w hw)
   obtain ⟨h_sz5, _h_t0, _h_tlast, _h_t1, _h_tpe, _h_content0, _h_fe_pattern,
-          h_outer_bal, h_dyck, h_wt_interior, _h_pnok, _h_body_opener⟩ :=
+          h_outer_bal, h_dyck, h_wt_interior, _h_pnok, _h_body_opener, _h_body_separator⟩ :=
     scanFiltered_emitSeq_nonempty_structure items tokens h_scan h_ne h_all_block
   exact ⟨Nat.le_refl 2, by omega, Nat.le_refl _, by omega, h_outer_bal, h_dyck, h_wt_interior⟩
 
@@ -4321,7 +4321,7 @@ theorem seqRoot_seqPathAllSeq
   have h_all_block : ∀ w, w ∈ items.toList → EmitScansInFlowBlock w :=
     fun w hw => emitScansInFlowBlock_of_flowRecEntry w (h_all w hw)
   obtain ⟨h_sz5, h_t0, _h_tlast, h_t1, _h_tpe, _h_content0, _h_fe_pattern,
-          _h_outer_bal, _h_dyck, _h_wt_interior, _h_pnok, _h_body_opener⟩ :=
+          _h_outer_bal, _h_dyck, _h_wt_interior, _h_pnok, _h_body_opener, _h_body_separator⟩ :=
     scanFiltered_emitSeq_nonempty_structure items tokens h_scan h_ne h_all_block
   have h0 : 0 < tokens.toList.length := by rw [Array.length_toList]; omega
   have h1 : 1 < tokens.toList.length := by rw [Array.length_toList]; omega
