@@ -141,7 +141,17 @@ abbrev adjB (l : List Tok) : Prop := adj Tok.sep Tok.key l
 def adjA_append := adj_append Tok.opn Tok.cls
 def adjB_append := adj_append Tok.sep Tok.key
 
+-- `#guard_msgs` pins each ascribed signature as checked documentation AND keeps it out of the
+-- build log; a match is swallowed silently, any drift in the type fails the build with an error.
+/-- info: adjA_append : ∀ (a b : List Tok),
+  adj Tok.opn Tok.cls a →
+    adj Tok.opn Tok.cls b → (∀ (hla : 0 < a.length), a[a.length - 1] ≠ Tok.opn) → adj Tok.opn Tok.cls (a ++ b) -/
+#guard_msgs in
 #check (adjA_append : ∀ (a b : List Tok), adjA a → adjA b → _ → adjA (a ++ b))
+/-- info: adjB_append : ∀ (a b : List Tok),
+  adj Tok.sep Tok.key a →
+    adj Tok.sep Tok.key b → (∀ (hla : 0 < a.length), a[a.length - 1] ≠ Tok.sep) → adj Tok.sep Tok.key (a ++ b) -/
+#guard_msgs in
 #check (adjB_append : ∀ (a b : List Tok), adjB a → adjB b → _ → adjB (a ++ b))
 
 /-! ## The layer where the corner BITES — a global-style boundary discharge inspects a CONCRETE token. -/
