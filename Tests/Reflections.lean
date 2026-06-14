@@ -122,6 +122,7 @@ import Tests.Reflections.GatedFieldResourcedViaNarrow
 import Tests.Reflections.MirroredGateReprobeWitness
 import Tests.Reflections.BoundaryDischargeGateTriggerTyped
 import Tests.Reflections.NoncloningCornerEndDualOfCarrier
+import Tests.Reflections.AdjacencyMirrorCornerIsLayerScoped
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
