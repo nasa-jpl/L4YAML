@@ -4168,6 +4168,115 @@ theorem seqRec_of_carrier_and_windowFacts_seq (tokens : Array (Positioned YamlTo
   obtain ⟨h_win, h_deep, h_enc⟩ := windowFacts lo hi h2 hlt hhi hsz hclose hbal hopen hfloor
   exact seqWindowRecSeqBody_seq tokens h_root_carrier lo hi h_win h_deep h_enc hclose
 
+/-- **The floored `windowFacts` provider's per-window fold-totality primitive is SATISFIABLE on real
+    output** — `(i'-b-B2c-(d)-seqFoldTotal-satisfiable)`, R441, the SMALLEST-FIRST de-risk that
+    `seqHRec_of_root_and_context` (below) does not thread a VACUOUS hypothesis.  Docking
+    `seqRec_of_carrier_and_windowFacts_seq` retires the producer's CONCLUSION de-risk by importing the
+    already-proven assembler `seqWindowFacts_of_emit_and_primitives` (the floored 8-guard → 3-fact
+    triple is a theorem, so the floored provider is satisfiable BY CONSTRUCTION — no fresh witness for
+    `FlowBodyWindow`/`FlowBodyContentDeepSeq`/`SeqEnclosed`, which are DERIVED from the guards, not owed).
+    But the dock RELOCATES the unsatisfiability risk from the conclusion onto the residual HYPOTHESES it
+    threads — exactly the R433 trap one layer up ([[ref-bracket-guards-admit-cross-matched-window]]): a
+    `lemma H → C` with unsatisfiable `H` type-checks yet is vacuous.  The window guards and `h_wt_outer`
+    are bracket facts available at the consume site; the one threaded primitive whose truth is NOT
+    self-evident is the per-window fold-totality `∀ m, ∃ s, btFold (some []) (tokens.toList.take m) =
+    some s` (`seqWindowFacts_of_emit_and_primitives`'s `h_fold_pre`, instantiated at `m := lo - 1`).
+
+    This lemma PROVES it TRUE on the genuine witness `[[],[a]]` — and proves the strong GENERAL `∀ m`
+    form, not a single prefix: the whole scanned stream is `WellTyped` (`btFold (some []) tokens.toList
+    = some []`, machine-checked — `btStep` is the identity on the non-bracket `streamStart`/`streamEnd`
+    and every interior prefix is balanced), and `WellTyped_prefix_some` turns whole-stream
+    well-typedness into fold-totality at EVERY prefix.  So the probe also NAMES the future discharge
+    route for `h_fold_total`: a whole-stream `WellTyped tokens.toList` fact (none exists yet — `h_wt_outer`
+    covers only the interior `(take (size-2)).drop 2`) fed through `WellTyped_prefix_some`.  Contains the
+    `ofReduceBool` axiom (`native_decide`), off the `universal_roundtrip` path. -/
+theorem seqFoldTotal_satisfiable_on_real_output
+    (tokens : Array (Positioned YamlToken))
+    (h : Scanner.scanFiltered
+        ("[" ++ emit.emitList
+          [YamlValue.sequence .flow #[],
+           YamlValue.sequence .flow #[YamlValue.scalar { content := "a", style := .plain }]]
+        ++ "]") = .ok tokens) :
+    WellTyped tokens.toList ∧
+    ∀ m, ∃ s, btFold (some []) (tokens.toList.take m) = some s := by
+  have key : ∀ {α : Type} (g : Array (Positioned YamlToken) → α) (a : α),
+      (Scanner.scanFiltered
+          ("[" ++ emit.emitList
+            [YamlValue.sequence .flow #[],
+             YamlValue.sequence .flow #[YamlValue.scalar { content := "a", style := .plain }]]
+          ++ "]")).toOption.map g = some a →
+        g tokens = a := by
+    intro α g a e; rw [h] at e; exact Option.some.inj e
+  have hwt : btFold (some []) tokens.toList = some [] :=
+    key (fun t => btFold (some []) t.toList) (some []) (by native_decide)
+  refine ⟨hwt, fun m => ?_⟩
+  apply WellTyped_prefix_some (tokens.toList.take m) (tokens.toList.drop m)
+  rw [List.take_append_drop]
+  exact hwt
+
+/-- **The floored `windowFacts` provider, assembled from emission context** —
+    `(i'-b-B2c-(d)-seqWindowFacts-provider-of-context)`, R441.  Curries the proven R432 brick
+    `seqWindowFacts_of_emit_and_primitives` into EXACTLY the `windowFacts` hypothesis shape that
+    `seqRec_of_carrier_and_windowFacts_seq` consumes (its 8-guard → `FlowBodyWindow ∧
+    FlowBodyContentDeepSeq ∧ SeqEnclosed` universal).  The producer's window shape additionally binds the
+    close guard `tokens[hi]!.val = .flowSequenceEnd` — the assembler RECEIVES and DROPS it (`_hclose`);
+    the three facts come entirely from the bracket/balance/floor guards + the emit context.  The floor
+    (`hfloor`) IS `seqWindowFacts_of_emit_and_primitives`'s `h_win_dyck` — so after R440's conduit
+    flooring the two shapes are textually identical and this is pure currying.  The per-window
+    `h_fold_pre` is supplied from the threaded whole-stream fold-totality `h_fold_total` at `m := lo - 1`
+    (its satisfiability is `seqFoldTotal_satisfiable_on_real_output` above).
+    Verified-but-unconsumed until `h_fold_total` is sourced; references no sorry site, frontier sorry
+    count unchanged at 4. -/
+theorem seqWindowFacts_provider_of_context
+    (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
+    (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
+    (h_ne : items.toList ≠ [])
+    (h_all_block : ∀ w, w ∈ items.toList → EmitScansInFlowBlock w)
+    (h_wt_outer : WellTyped ((tokens.toList.take (tokens.size - 2)).drop 2))
+    (h_fold_total : ∀ m, ∃ s, btFold (some []) (tokens.toList.take m) = some s) :
+    ∀ lo hi, 2 ≤ lo → lo < hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+      tokens[hi]!.val = .flowSequenceEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowSequenceStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
+      FlowBodyWindow tokens lo hi ∧ FlowBodyContentDeepSeq tokens lo hi ∧ SeqEnclosed tokens lo :=
+  fun lo hi h2 hlt hhi hsz _hclose hbal hopen hfloor =>
+    seqWindowFacts_of_emit_and_primitives items tokens h_scan h_ne h_all_block h_wt_outer
+      lo hi h2 hlt hhi hsz hbal hopen hfloor (h_fold_total (lo - 1))
+
+/-- **The floored seq `h_seq_rec` producer, DOCKED to its root carrier + emission context** —
+    `(i'-b-B2c-(d)-seqHRec-of-root-and-context)`, R441, the PAYOFF of R440's conduit flooring.  Composes
+    the floored producer `seqRec_of_carrier_and_windowFacts_seq` (whose conclusion R440 made textually
+    identical to `flowSubrangesOk_of_window_producers`'s `h_seq_rec` slot) with the windowFacts provider
+    `seqWindowFacts_provider_of_context` just assembled.  Its conclusion IS that `h_seq_rec` slot
+    verbatim — so wiring it into `flowSubrangesOk_of_window_producers` is a direct substitution, no
+    adapter.
+
+    This reduces the entire seq-side `h_seq_rec` obligation to FOUR named residuals: **(1)** the ROOT
+    CARRIER `SeqInteriorSeparators tokens 2 (tokens.size - 2)` — itself reducing (via
+    `seqRoot_seqInteriorSeparators`) to the `desc` descent provider, the hard B2 brick; **(2)** the
+    whole-stream fold-totality `h_fold_total` (TRUE — `seqFoldTotal_satisfiable_on_real_output`; future
+    route: a `WellTyped tokens.toList` fact via `WellTyped_prefix_some`); **(3)** `h_wt_outer` (available
+    at the consume site as the interior `WellTyped`); **(4)** the emit context (`h_scan`/`h_ne`/
+    `h_all_block`).  Verified-but-unconsumed until the root carrier + fold-totality land; references no
+    sorry site, frontier sorry count unchanged at 4. -/
+theorem seqHRec_of_root_and_context
+    (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
+    (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
+    (h_ne : items.toList ≠ [])
+    (h_all_block : ∀ w, w ∈ items.toList → EmitScansInFlowBlock w)
+    (h_wt_outer : WellTyped ((tokens.toList.take (tokens.size - 2)).drop 2))
+    (h_fold_total : ∀ m, ∃ s, btFold (some []) (tokens.toList.take m) = some s)
+    (h_root_carrier : SeqInteriorSeparators tokens 2 (tokens.size - 2)) :
+    ∀ lo hi, 2 ≤ lo → lo < hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+      tokens[hi]!.val = .flowSequenceEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowSequenceStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
+      RecSeqBody ((tokens.toList.take hi).drop lo) :=
+  seqRec_of_carrier_and_windowFacts_seq tokens h_root_carrier
+    (seqWindowFacts_provider_of_context items tokens h_scan h_ne h_all_block h_wt_outer h_fold_total)
+
 /-- **The 7-guard `windowFacts`/`h_seq_rec` universal is UNSATISFIABLE — a cross-matched false window** —
     `(i'-b-B2c-(d)-windowFacts-false-window)`, R433, the machine-checked refutation that REDIRECTS the
     "discharge the three `windowFacts` primitives" plan ([[ref-probe-deferred-universal-before-producing]] /
