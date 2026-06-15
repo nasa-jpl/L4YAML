@@ -299,8 +299,11 @@ jobs:
       - name: Generate PDF documentation
         if: steps.weasyprint.outputs.has_weasyprint == 'true'
         run: |
+          # Render from the self-contained single page (emitted by l4yaml-doc), so the
+          # document and its PDF bookmark outline are in true document order — not the
+          # alphabetical, lossy order a multi-page directory merge produces.
           python3 scripts/html-to-pdf.py \
-            docs \
+            doc/_out/html-single/index.html \
             docs/L4YAML.pdf
           echo "PDF generated: docs/L4YAML.pdf"
 

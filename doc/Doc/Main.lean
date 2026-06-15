@@ -12,7 +12,10 @@ open Verso.Genre Manual
 
 def config : RenderConfig where
   emitTeX := false
-  emitHtmlSingle := .no
+  -- Also emit the self-contained single page; the PDF is rendered from it so the
+  -- document (and its bookmark outline) come out in true document order, instead of
+  -- the alphabetical, lossy merge a multi-page directory would produce.
+  emitHtmlSingle := .immediately
   emitHtmlMulti := .immediately
   htmlDepth := 2
   extraFilesHtml := [
