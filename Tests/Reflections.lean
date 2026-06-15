@@ -154,6 +154,7 @@ import Tests.Reflections.SeveranceRecursesByNestingDepth
 import Tests.Reflections.AdditiveFieldForcesProducerMutualRecursion
 import Tests.Reflections.ConjunctionMotiveBreaksProducerCycle
 import Tests.Reflections.ConjunctionMergeCostIsCitationEdges
+import Tests.Reflections.TwoRoleDeliverableBlocksSharedField
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
