@@ -609,7 +609,7 @@ theorem seqChild_safeBodyUnit (tokens : Array (Positioned YamlToken)) (p hi j : 
     (h_content : FlowBodyContent tokens p hi)
     (h_open : tokens[p]!.val = .flowSequenceStart)
     (Q : Nat → Prop) (h_q_succ : Q (p + 1))
-    (h_ih : ∀ lo' hi', hi' - lo' < hi - p →
+    (h_ih : ∀ lo' hi', hi' - lo' < hi - p → p ≤ lo' → hi' ≤ hi →
         FlowBodyWindow tokens lo' hi' → FlowBodyContentDeep tokens lo' hi' → Q lo' →
         tokens[hi']!.val = .flowSequenceEnd →
         RecSeqBody ((tokens.toList.take hi').drop lo'))
@@ -649,7 +649,7 @@ theorem flowBodyContent_descend (tokens : Array (Positioned YamlToken)) (p hi j 
     (h_content : FlowBodyContent tokens p hi)
     (h_open : tokens[p]!.val = .flowSequenceStart)
     (Q : Nat → Prop) (h_q_succ : Q (p + 1))
-    (h_ih : ∀ lo' hi', hi' - lo' < hi - p →
+    (h_ih : ∀ lo' hi', hi' - lo' < hi - p → p ≤ lo' → hi' ≤ hi →
         FlowBodyWindow tokens lo' hi' → FlowBodyContentDeep tokens lo' hi' → Q lo' →
         tokens[hi']!.val = .flowSequenceEnd →
         RecSeqBody ((tokens.toList.take hi').drop lo'))
@@ -736,7 +736,7 @@ theorem seqDescent_provider_of_located
     (h_deep : FlowBodyContentDeep tokens p hi)
     (h_content : FlowBodyContent tokens p hi)
     (Q : Nat → Prop) (h_q_succ : Q (p + 1))
-    (h_ih : ∀ lo' hi', hi' - lo' < hi - p →
+    (h_ih : ∀ lo' hi', hi' - lo' < hi - p → p ≤ lo' → hi' ≤ hi →
         FlowBodyWindow tokens lo' hi' → FlowBodyContentDeep tokens lo' hi' → Q lo' →
         tokens[hi']!.val = .flowSequenceEnd →
         RecSeqBody ((tokens.toList.take hi').drop lo')) :
@@ -848,7 +848,7 @@ theorem seqDescent_provider_of_gate
         (∀ i, p + 1 ≤ i → i ≤ a → flowBracketBalance tokens (p + 1) i ≥ 0) →
         FlowBodyWindow tokens p hi ∧ FlowBodyContentDeep tokens p hi ∧
         FlowBodyContent tokens p hi ∧ Q (p + 1) ∧
-        (∀ lo' hi', hi' - lo' < hi - p →
+        (∀ lo' hi', hi' - lo' < hi - p → p ≤ lo' → hi' ≤ hi →
           FlowBodyWindow tokens lo' hi' → FlowBodyContentDeep tokens lo' hi' →
           Q lo' → tokens[hi']!.val = .flowSequenceEnd →
           RecSeqBody ((tokens.toList.take hi').drop lo'))) :
@@ -2589,7 +2589,7 @@ theorem seqRoot_carrier_of_widthEnc
         ∃ hi, b ≤ hi ∧ hi ≤ tokens.size ∧
           FlowBodyWindow tokens p hi ∧ FlowBodyContentDeep tokens p hi ∧
           FlowBodyContent tokens p hi ∧
-          (∀ lo' hi', hi' - lo' < hi - p →
+          (∀ lo' hi', hi' - lo' < hi - p → p ≤ lo' → hi' ≤ hi →
             FlowBodyWindow tokens lo' hi' → FlowBodyContentDeep tokens lo' hi' →
             SeqEnclosed tokens lo' → tokens[hi']!.val = .flowSequenceEnd →
             RecSeqBody ((tokens.toList.take hi').drop lo'))) :
@@ -2825,30 +2825,34 @@ theorem seqRoot_flowBodyContent
     Verified-but-unconsumed until `seqRoot_seqInteriorSeparators`'s `desc` lands and
     `flowSubrangesOk_of_window_producers` is wired (R225): references no sorry site, frontier sorry
     count unchanged at 4; axiom-clean. -/
-theorem seqWindowRecSeqBody (tokens : Array (Positioned YamlToken))
-    (h_root_carrier : SeqInteriorSeparators tokens 2 (tokens.size - 2))
+theorem seqWindowRecSeqBody_general (tokens : Array (Positioned YamlToken))
+    (lo0 hi0 : Nat)
+    (h_carrier : SeqInteriorSeparators tokens lo0 hi0)
     (lo hi : Nat)
     (h_win0 : FlowBodyWindow tokens lo hi) (h_deep0 : FlowBodyContentDeep tokens lo hi)
-    (h_enc0 : SeqEnclosed tokens lo) (h_close0 : tokens[hi]!.val = .flowSequenceEnd) :
+    (h_enc0 : SeqEnclosed tokens lo) (h_close0 : tokens[hi]!.val = .flowSequenceEnd)
+    (h_lo0 : lo0 ≤ lo) (h_hi0 : hi ≤ hi0) :
     RecSeqBody ((tokens.toList.take hi).drop lo) := by
   have key := windowWidth_strongRecOn
     (P := fun lo hi => RecSeqBody ((tokens.toList.take hi).drop lo))
     (G := fun lo hi => FlowBodyWindow tokens lo hi ∧ FlowBodyContentDeep tokens lo hi
-      ∧ SeqEnclosed tokens lo ∧ tokens[hi]!.val = .flowSequenceEnd)
+      ∧ SeqEnclosed tokens lo ∧ tokens[hi]!.val = .flowSequenceEnd ∧ lo0 ≤ lo ∧ hi ≤ hi0)
     (step := ?step)
   case step =>
     intro lo hi h_g ih
-    obtain ⟨h_win, h_deep, h_enc, h_close_hi⟩ := h_g
+    obtain ⟨h_win, h_deep, h_enc, h_close_hi, h_lo0_lo, h_hi_hi0⟩ := h_g
     have h_hi_sz : hi < tokens.size := h_win.hi_lt
     have h_lo_sz : lo < tokens.size := by
       have := h_win.lo_lt_hi; omega
     have h_content : FlowBodyContent tokens lo hi :=
-      seqWindow_flowBodyContent tokens lo hi h_win h_deep h_enc h_root_carrier
+      seqWindow_flowBodyContent_general tokens lo0 hi0 lo hi h_win h_deep h_enc h_carrier h_lo0_lo h_hi_hi0
     obtain ⟨m, h_lo_m, h_m_hi, h_bal_m, h_marker, h_min, h_entry⟩ :=
       recseqentry_window_dispatch tokens lo hi h_win h_deep h_content
         (SeqEnclosed tokens)
         (fun h_open => seqEnclosed_descend tokens lo h_enc h_lo_sz h_open)
-        (fun lo' hi' h_lt h_w h_d h_q h_c => ih lo' hi' h_lt ⟨h_w, h_d, h_q, h_c⟩)
+        (fun lo' hi' h_lt h_cont_lo h_cont_hi h_w h_d h_q h_c =>
+          ih lo' hi' h_lt ⟨h_w, h_d, h_q, h_c,
+            Nat.le_trans h_lo0_lo h_cont_lo, Nat.le_trans h_cont_hi h_hi_hi0⟩)
     refine recseqbody_window_assemble tokens lo m hi h_lo_m h_m_hi h_win.hi_lt h_marker h_entry ?_
     intro h_m_lt_hi
     have h_sep : tokens[m]!.val = .flowEntry := h_marker.resolve_left (by omega)
@@ -2885,8 +2889,23 @@ theorem seqWindowRecSeqBody (tokens : Array (Positioned YamlToken))
       flowBodyContentDeep_advance tokens lo m hi h_deep (Nat.le_of_lt h_lo_m) h_sep h_m1_hi
     have h_enc' : SeqEnclosed tokens (m + 1) :=
       seqEnclosed_advance tokens lo (m + 1) h_enc (by omega) h_wt_seg
-    exact ih (m + 1) hi (by omega) ⟨h_win', h_deep', h_enc', h_close_hi⟩
-  exact key lo hi ⟨h_win0, h_deep0, h_enc0, h_close0⟩
+    exact ih (m + 1) hi (by omega) ⟨h_win', h_deep', h_enc', h_close_hi, by omega, h_hi_hi0⟩
+  exact key lo hi ⟨h_win0, h_deep0, h_enc0, h_close0, h_lo0, h_hi0⟩
+
+/-- **The root-span instance of `seqWindowRecSeqBody_general`** — `lo0 := 2`, `hi0 := size-2`, bounds
+    read off `FlowBodyWindow.lo_ge`/`hi_le`.  Signature-preserving so the existing `seqWindowRecSeqBody`
+    consumers (which thread the root carrier `SeqInteriorSeparators tokens 2 (size-2)`) are untouched.
+    ROUTE A (R445): the carrier-span generalization now rides the recursion — its descend edge narrows
+    the parametric carrier `[lo0, hi0]` using the containment `lo ≤ lo' ∧ hi' ≤ hi` exposed through the
+    dispatch's `h_ih`. -/
+theorem seqWindowRecSeqBody (tokens : Array (Positioned YamlToken))
+    (h_root_carrier : SeqInteriorSeparators tokens 2 (tokens.size - 2))
+    (lo hi : Nat)
+    (h_win0 : FlowBodyWindow tokens lo hi) (h_deep0 : FlowBodyContentDeep tokens lo hi)
+    (h_enc0 : SeqEnclosed tokens lo) (h_close0 : tokens[hi]!.val = .flowSequenceEnd) :
+    RecSeqBody ((tokens.toList.take hi).drop lo) :=
+  seqWindowRecSeqBody_general tokens 2 (tokens.size - 2) h_root_carrier lo hi
+    h_win0 h_deep0 h_enc0 h_close0 h_win0.lo_ge h_win0.hi_le
 
 /-- **The RE-SCOPED combined `RecSeqBody` producer** — `(i'-b-B2c-(d)-seq-rec)`, the `_seq` twin of
     `seqWindowRecSeqBody` (R323) threading R393's root-TRUE `FlowBodyContentDeepSeq` in place of the
@@ -2915,30 +2934,34 @@ theorem seqWindowRecSeqBody (tokens : Array (Positioned YamlToken))
     Verified-but-unconsumed until `seqRoot_seqInteriorSeparators`'s `desc` lands and
     `flowSubrangesOk_of_window_producers` is wired (R225): references no sorry site, frontier sorry count
     unchanged at 4; axiom-clean. -/
-theorem seqWindowRecSeqBody_seq (tokens : Array (Positioned YamlToken))
-    (h_root_carrier : SeqInteriorSeparators tokens 2 (tokens.size - 2))
+theorem seqWindowRecSeqBody_seq_general (tokens : Array (Positioned YamlToken))
+    (lo0 hi0 : Nat)
+    (h_carrier : SeqInteriorSeparators tokens lo0 hi0)
     (lo hi : Nat)
     (h_win0 : FlowBodyWindow tokens lo hi) (h_deep0 : FlowBodyContentDeepSeq tokens lo hi)
-    (h_enc0 : SeqEnclosed tokens lo) (h_close0 : tokens[hi]!.val = .flowSequenceEnd) :
+    (h_enc0 : SeqEnclosed tokens lo) (h_close0 : tokens[hi]!.val = .flowSequenceEnd)
+    (h_lo0 : lo0 ≤ lo) (h_hi0 : hi ≤ hi0) :
     RecSeqBody ((tokens.toList.take hi).drop lo) := by
   have key := windowWidth_strongRecOn
     (P := fun lo hi => RecSeqBody ((tokens.toList.take hi).drop lo))
     (G := fun lo hi => FlowBodyWindow tokens lo hi ∧ FlowBodyContentDeepSeq tokens lo hi
-      ∧ SeqEnclosed tokens lo ∧ tokens[hi]!.val = .flowSequenceEnd)
+      ∧ SeqEnclosed tokens lo ∧ tokens[hi]!.val = .flowSequenceEnd ∧ lo0 ≤ lo ∧ hi ≤ hi0)
     (step := ?step)
   case step =>
     intro lo hi h_g ih
-    obtain ⟨h_win, h_deep, h_enc, h_close_hi⟩ := h_g
+    obtain ⟨h_win, h_deep, h_enc, h_close_hi, h_lo0_lo, h_hi_hi0⟩ := h_g
     have h_hi_sz : hi < tokens.size := h_win.hi_lt
     have h_lo_sz : lo < tokens.size := by
       have := h_win.lo_lt_hi; omega
     have h_content : FlowBodyContent tokens lo hi :=
-      seqWindow_flowBodyContent_seq tokens lo hi h_win h_deep h_enc h_root_carrier
+      seqWindow_flowBodyContent_seq_general tokens lo0 hi0 lo hi h_win h_deep h_enc h_carrier h_lo0_lo h_hi_hi0
     obtain ⟨m, h_lo_m, h_m_hi, h_bal_m, h_marker, h_min, h_entry⟩ :=
       recseqentry_window_dispatch_seq tokens lo hi h_win h_deep h_content
         (SeqEnclosed tokens)
         (fun h_open => seqEnclosed_descend tokens lo h_enc h_lo_sz h_open)
-        (fun lo' hi' h_lt h_w h_d h_q h_c => ih lo' hi' h_lt ⟨h_w, h_d, h_q, h_c⟩)
+        (fun lo' hi' h_lt h_cont_lo h_cont_hi h_w h_d h_q h_c =>
+          ih lo' hi' h_lt ⟨h_w, h_d, h_q, h_c,
+            Nat.le_trans h_lo0_lo h_cont_lo, Nat.le_trans h_cont_hi h_hi_hi0⟩)
     refine recseqbody_window_assemble tokens lo m hi h_lo_m h_m_hi h_win.hi_lt h_marker h_entry ?_
     intro h_m_lt_hi
     have h_sep : tokens[m]!.val = .flowEntry := h_marker.resolve_left (by omega)
@@ -2981,8 +3004,21 @@ theorem seqWindowRecSeqBody_seq (tokens : Array (Positioned YamlToken))
       flowBodyContentDeepSeq_advance tokens lo m hi h_deep (Nat.le_of_lt h_lo_m) h_sep h_m1_ne_key h_m1_hi
     have h_enc' : SeqEnclosed tokens (m + 1) :=
       seqEnclosed_advance tokens lo (m + 1) h_enc (by omega) h_wt_seg
-    exact ih (m + 1) hi (by omega) ⟨h_win', h_deep', h_enc', h_close_hi⟩
-  exact key lo hi ⟨h_win0, h_deep0, h_enc0, h_close0⟩
+    exact ih (m + 1) hi (by omega) ⟨h_win', h_deep', h_enc', h_close_hi, by omega, h_hi_hi0⟩
+  exact key lo hi ⟨h_win0, h_deep0, h_enc0, h_close0, h_lo0, h_hi0⟩
+
+/-- **The root-span instance of `seqWindowRecSeqBody_seq_general`** — `lo0 := 2`, `hi0 := size-2`,
+    bounds read off `FlowBodyWindow.lo_ge`/`hi_le`.  Signature-preserving so `seqWindowRecSeqBody_seq`'s
+    consumers are untouched (ROUTE A, R445 — the parametric carrier rides the recursion via the
+    containment exposed through `recseqentry_window_dispatch_seq`'s `h_ih`). -/
+theorem seqWindowRecSeqBody_seq (tokens : Array (Positioned YamlToken))
+    (h_root_carrier : SeqInteriorSeparators tokens 2 (tokens.size - 2))
+    (lo hi : Nat)
+    (h_win0 : FlowBodyWindow tokens lo hi) (h_deep0 : FlowBodyContentDeepSeq tokens lo hi)
+    (h_enc0 : SeqEnclosed tokens lo) (h_close0 : tokens[hi]!.val = .flowSequenceEnd) :
+    RecSeqBody ((tokens.toList.take hi).drop lo) :=
+  seqWindowRecSeqBody_seq_general tokens 2 (tokens.size - 2) h_root_carrier lo hi
+    h_win0 h_deep0 h_enc0 h_close0 h_win0.lo_ge h_win0.hi_le
 
 /-- **The domain-restricted nested `RecSeqBody` provider** — `(i'-b-B2c-nested-project)`, the navigator
     R335–R337 set up, now LANDED.  At every body window `[lo, hi)` on the **all-seq PATH** domain

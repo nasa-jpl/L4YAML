@@ -5074,7 +5074,7 @@ theorem recseqentry_seqbracket_oracle (tokens : Array (Positioned YamlToken)) (l
     (h_content : FlowBodyContent tokens lo hi)
     (h_open : tokens[lo]!.val = .flowSequenceStart)
     (Q : Nat → Prop) (h_q_succ : Q (lo + 1))
-    (h_ih : ∀ lo' hi', hi' - lo' < hi - lo →
+    (h_ih : ∀ lo' hi', hi' - lo' < hi - lo → lo ≤ lo' → hi' ≤ hi →
         FlowBodyWindow tokens lo' hi' → FlowBodyContentDeep tokens lo' hi' → Q lo' →
         tokens[hi']!.val = .flowSequenceEnd →
         RecSeqBody ((tokens.toList.take hi').drop lo')) :
@@ -5125,7 +5125,7 @@ theorem recseqentry_seqbracket_oracle (tokens : Array (Positioned YamlToken)) (l
     flowBodyContentDeep_descend tokens lo lo j hi h_deep (Nat.le_refl lo) h_open_delta h_lo1_j
       (Nat.le_of_lt h_j_hi)
   have h_rec : RecSeqBody ((tokens.toList.take j).drop (lo + 1)) :=
-    h_ih (lo + 1) j (by omega) h_win' h_deep' h_q_succ h_close
+    h_ih (lo + 1) j (by omega) (by omega) (Nat.le_of_lt h_j_hi) h_win' h_deep' h_q_succ h_close
   -- Trailing-separator successor at the close `j` from the content guard's `bodySucc`.
   have h_j_sz : j < tokens.size := by omega
   have h_j_len : j < tokens.toList.length := by rw [Array.length_toList]; exact h_j_sz
@@ -5171,7 +5171,7 @@ theorem recseqentry_seqbracket_oracle_seq (tokens : Array (Positioned YamlToken)
     (h_open : tokens[lo]!.val = .flowSequenceStart)
     (h_ne : tokens[lo + 1]!.val ≠ .flowSequenceEnd)
     (Q : Nat → Prop) (h_q_succ : Q (lo + 1))
-    (h_ih : ∀ lo' hi', hi' - lo' < hi - lo →
+    (h_ih : ∀ lo' hi', hi' - lo' < hi - lo → lo ≤ lo' → hi' ≤ hi →
         FlowBodyWindow tokens lo' hi' → FlowBodyContentDeepSeq tokens lo' hi' → Q lo' →
         tokens[hi']!.val = .flowSequenceEnd →
         RecSeqBody ((tokens.toList.take hi').drop lo')) :
@@ -5215,7 +5215,7 @@ theorem recseqentry_seqbracket_oracle_seq (tokens : Array (Positioned YamlToken)
     flowBodyContentDeepSeq_descend tokens lo lo j hi h_deep (Nat.le_refl lo) h_open h_ne h_lo1_j
       (Nat.le_of_lt h_j_hi)
   have h_rec : RecSeqBody ((tokens.toList.take j).drop (lo + 1)) :=
-    h_ih (lo + 1) j (by omega) h_win' h_deep' h_q_succ h_close
+    h_ih (lo + 1) j (by omega) (by omega) (Nat.le_of_lt h_j_hi) h_win' h_deep' h_q_succ h_close
   have h_j_sz : j < tokens.size := by omega
   have h_j_len : j < tokens.toList.length := by rw [Array.length_toList]; exact h_j_sz
   have h_close_val : tokens[j]! = tokens.toList[j]'h_j_len := by
@@ -6309,7 +6309,7 @@ theorem recseqentry_window_dispatch (tokens : Array (Positioned YamlToken)) (lo 
     (h_deep : FlowBodyContentDeep tokens lo hi)
     (h_content : FlowBodyContent tokens lo hi)
     (Q : Nat → Prop) (h_q_descend : tokens[lo]!.val = .flowSequenceStart → Q (lo + 1))
-    (h_ih : ∀ lo' hi', hi' - lo' < hi - lo →
+    (h_ih : ∀ lo' hi', hi' - lo' < hi - lo → lo ≤ lo' → hi' ≤ hi →
         FlowBodyWindow tokens lo' hi' → FlowBodyContentDeep tokens lo' hi' → Q lo' →
         tokens[hi']!.val = .flowSequenceEnd →
         RecSeqBody ((tokens.toList.take hi').drop lo')) :
@@ -6383,7 +6383,7 @@ theorem recseqentry_window_dispatch_seq (tokens : Array (Positioned YamlToken)) 
     (h_deep : FlowBodyContentDeepSeq tokens lo hi)
     (h_content : FlowBodyContent tokens lo hi)
     (Q : Nat → Prop) (h_q_descend : tokens[lo]!.val = .flowSequenceStart → Q (lo + 1))
-    (h_ih : ∀ lo' hi', hi' - lo' < hi - lo →
+    (h_ih : ∀ lo' hi', hi' - lo' < hi - lo → lo ≤ lo' → hi' ≤ hi →
         FlowBodyWindow tokens lo' hi' → FlowBodyContentDeepSeq tokens lo' hi' → Q lo' →
         tokens[hi']!.val = .flowSequenceEnd →
         RecSeqBody ((tokens.toList.take hi').drop lo')) :
