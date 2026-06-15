@@ -149,6 +149,7 @@ import Tests.Reflections.GeneralizationHidesDescendObstruction
 import Tests.Reflections.InterfaceExposureAsymmetricRipple
 import Tests.Reflections.RootToWindowBaseAssemblerSwap
 import Tests.Reflections.TopFrameGuardVsSpineGate
+import Tests.Reflections.CarrierDomainWiderThanNavigatorReach
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
