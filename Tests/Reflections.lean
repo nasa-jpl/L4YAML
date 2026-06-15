@@ -153,6 +153,7 @@ import Tests.Reflections.CarrierDomainWiderThanNavigatorReach
 import Tests.Reflections.SeveranceRecursesByNestingDepth
 import Tests.Reflections.AdditiveFieldForcesProducerMutualRecursion
 import Tests.Reflections.ConjunctionMotiveBreaksProducerCycle
+import Tests.Reflections.ConjunctionMergeCostIsCitationEdges
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
