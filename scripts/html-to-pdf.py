@@ -48,6 +48,41 @@ def _resolve_page(from_index: Path, href: str, root: Path) -> Path | None:
     return dest if dest.is_file() else None
 
 
+def _renumber_headings(body: str) -> str:
+    """Renormalize the heading levels of the merged body so the outline is a proper
+    tree with no level skips — which is what gives a correct PDF bookmark hierarchy in
+    *every* reader (some are unforgiving of out-of-order levels and show the wrong
+    nesting).
+
+    After the chrome / declaration-body / dashboard subtrees have been pruned (see
+    `BodyExtractor` below), the surviving headings — the title, chapters, sections and
+    subsections — are reassigned the smallest levels consistent with their nesting:
+    each `<hN>` becomes one level deeper than its nearest shallower ancestor heading,
+    so a heading whose level jumped is pulled back to its appropriate level. In the
+    common (already-clean) case this is a no-op; it is the general fix for any
+    remaining mis-levelled `<h1>`.
+    """
+    ctx: list = []            # original levels of the still-open ancestor headings
+    open_assigned: list = []  # assigned level for each currently-open <hN>
+
+    def repl(m) -> str:
+        if m.group(1):  # closing tag </hN>
+            a = open_assigned.pop() if open_assigned else int(m.group(3))
+            return f"</h{a}"
+        lvl = int(m.group(3))  # opening tag <hN ...>
+        while ctx and ctx[-1] >= lvl:
+            ctx.pop()
+        ctx.append(lvl)
+        a = len(ctx)
+        open_assigned.append(a)
+        return f"<h{a}"
+
+    # Headings never nest inside one another, so a single left-to-right pass pairs
+    # each opening tag with its close. Only the `<hN`/`</hN` prefix is rewritten; the
+    # element's attributes (notably its `id` anchor) are preserved verbatim.
+    return re.sub(r"<(/?)(h)([1-6])\b", repl, body, flags=re.I)
+
+
 def find_all_pages(html_input: Path) -> list[Path]:
     """Return the ordered list of HTML pages to render.
 
@@ -98,24 +133,61 @@ def merge_html(pages: list[Path]) -> str:
     from html.parser import HTMLParser
 
     class BodyExtractor(HTMLParser):
+        # Subtrees dropped *structurally* (not merely CSS-hidden) while extracting the
+        # body, because WeasyPrint still emits PDF bookmarks for `display:none`
+        # headings — and those phantom bookmarks are what corrupt the outline in many
+        # readers. Removing the element removes its bookmark in every reader:
+        #   • <header> / <nav id="toc">   — the page banner and sidebar, each of which
+        #     repeats the book title as its own <h1> (a VersoManual template choice);
+        #   • .bp_external_decl_body      — the embedded Lean-declaration body, which
+        #     VersoBlueprint renders with stray top-level <h1>Fields/Constructors/
+        #     Methods</h1> regardless of the node's depth, and which also duplicates
+        #     the already-rendered statement;
+        #   • the dependency-graph / blueprint-summary dashboards (their <h2> heading
+        #     carries an id ending in --Dependency-Graph / --Blueprint-Summary, and
+        #     their content carries a bp_graph* / bp_summary* class with further
+        #     sub-headings) — web-only interactive views, not print content;
+        #   • <script> / <template>       — never rendered.
         def __init__(self):
             super().__init__()
             self.in_body = False
-            self.depth = 0
             self.body_content = []
             self.head_content = []
             self.in_head = False
+            self.drop_tag = None   # tag name of the subtree being dropped, or None
+            self.drop_count = 0    # nesting count of that tag within the dropped subtree
+
+        @staticmethod
+        def _should_drop(tag, attrs):
+            a = dict(attrs)
+            cls = a.get("class") or ""
+            idv = a.get("id") or ""
+            if tag in ("script", "template", "header"):
+                return True
+            if tag == "nav" and idv == "toc":
+                return True
+            if "bp_external_decl_body" in cls or "bp_graph" in cls or "bp_summary" in cls:
+                return True
+            if idv.endswith("--Dependency-Graph") or idv.endswith("--Blueprint-Summary"):
+                return True
+            return False
 
         def handle_starttag(self, tag, attrs):
             if tag == "body":
                 self.in_body = True
-                self.depth = 0
                 return
             if tag == "head":
                 self.in_head = True
                 return
             if self.in_body:
-                self.depth += 1
+                if self.drop_tag is not None:
+                    if tag == self.drop_tag:
+                        self.drop_count += 1
+                    return
+                if self._should_drop(tag, attrs):
+                    self.drop_tag = tag
+                    self.drop_count = 1
+                    return
                 attr_str = "".join(f' {k}="{v}"' for k, v in attrs)
                 self.body_content.append(f"<{tag}{attr_str}>")
             if self.in_head:
@@ -123,6 +195,8 @@ def merge_html(pages: list[Path]) -> str:
                 self.head_content.append(f"<{tag}{attr_str}>")
 
         def handle_startendtag(self, tag, attrs):
+            if self.in_body and self.drop_tag is not None:
+                return
             attr_str = "".join(f' {k}="{v}"' for k, v in attrs)
             if self.in_body:
                 self.body_content.append(f"<{tag}{attr_str}/>")
@@ -136,13 +210,20 @@ def merge_html(pages: list[Path]) -> str:
             if tag == "head":
                 self.in_head = False
                 return
+            if self.in_body and self.drop_tag is not None:
+                if tag == self.drop_tag:
+                    self.drop_count -= 1
+                    if self.drop_count == 0:
+                        self.drop_tag = None
+                return
             if self.in_body:
                 self.body_content.append(f"</{tag}>")
-                self.depth -= 1
             if self.in_head:
                 self.head_content.append(f"</{tag}>")
 
         def handle_data(self, data):
+            if self.in_body and self.drop_tag is not None:
+                return
             if self.in_body:
                 self.body_content.append(data)
             if self.in_head:
@@ -163,6 +244,11 @@ def merge_html(pages: list[Path]) -> str:
             body_parts.append('<div style="page-break-before: always;"></div>')
         body_parts.append(f'<section class="chapter">{content}</section>')
 
+    # Post-process the merged body: the chrome/declaration/dashboard subtrees were
+    # already pruned during extraction (so they emit no PDF bookmarks); now renormalize
+    # the surviving heading levels so the outline is a proper, skip-free tree.
+    body_html = _renumber_headings("".join(body_parts))
+
     pdf_css = """
     <style>
       @page {
@@ -171,7 +257,14 @@ def merge_html(pages: list[Path]) -> str:
         @bottom-center { content: counter(page); font-size: 9pt; color: #666; }
       }
 
-      /* ── Hide web-only chrome ── */
+      /* ── Hide web-only chrome ──
+         The chrome / declaration-body / dashboard subtrees that pollute the outline
+         are removed *structurally* by the Python post-processor (BodyExtractor); the
+         rules below are a visual fallback for anything left in the body that should
+         not print but carries no heading (so it never reaches the bookmark outline).
+         Note: CSS display:none alone does NOT suffice for the outline — WeasyPrint
+         still emits PDF bookmarks for hidden headings, which is why the offending
+         elements are pruned from the DOM rather than only hidden here. */
       header,
       nav#toc,
       nav.toc,
@@ -187,18 +280,8 @@ def merge_html(pages: list[Path]) -> str:
       .bp_inline_preview_panel,
       script,
       template,
-      /* The embedded Lean-declaration body (the raw docstring, plus the
-         auto-generated Fields / Constructors / Methods breakdown that Verso emits
-         for a *structure* as stray top-level <h1>s) duplicates the rendered
-         statement and corrupts the outline — drop the whole body, keeping the
-         rendered statement and the declaration signature. */
       .bp_external_decl_body,
       pre.docstring,
-      /* The interactive blueprint dashboards — the dependency graph and the status
-         summary ("By parent groups", "Missing owner", "Untagged", with their
-         embedded per-declaration Fields/Constructors panels) — are web-only views,
-         not print content. Hiding them also removes their headings from the PDF
-         outline (display:none generates no bookmarks) and trims the bloat. */
       [class*="bp_graph"],
       [class*="bp_summary"],
       [id$="--Dependency-Graph"],
@@ -261,7 +344,7 @@ def merge_html(pages: list[Path]) -> str:
         "<!DOCTYPE html>\n"
         f'<html lang="en"><head><meta charset="utf-8">\n'
         f"{head_html}\n{pdf_css}\n</head>\n"
-        f'<body>\n{"".join(body_parts)}\n</body></html>'
+        f"<body>\n{body_html}\n</body></html>"
     )
 
 
