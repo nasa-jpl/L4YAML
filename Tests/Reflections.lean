@@ -147,6 +147,7 @@ import Tests.Reflections.RelocateSorryToStrongerPredicateSite
 import Tests.Reflections.StaleResidualFramingCoConstruction
 import Tests.Reflections.GeneralizationHidesDescendObstruction
 import Tests.Reflections.InterfaceExposureAsymmetricRipple
+import Tests.Reflections.RootToWindowBaseAssemblerSwap
 
 /-!
 # Reflections — runnable proof-engineering demonstrations

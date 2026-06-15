@@ -2545,10 +2545,83 @@ theorem seqEnclosed_succ_of_located_opener
   -- the opener pushes `true`, so the post-opener stack top is `true` = `SeqEnclosed (p+1)`.
   exact enclosingMark_true_of_opener tokens p h_p_sz s hs h_open
 
+/-- **The WINDOW-LOCAL seq carrier reduced to the width supplier** — `(i'-b-B2c-(d) — STEP D)`, R446:
+    the window-parametric generalization of `seqRoot_carrier_of_widthEnc` (below).  Produces
+    `SeqInteriorSeparators tokens lo hi` at an ARBITRARY seq window `[lo, hi)` — not just the root span
+    `[2, size - 2)` — from a window-local `SafeBodyUnit` `h_safe` and a width supplier `h_widthEnc`
+    re-based to `[lo, hi)`.  This is the LOCAL-CARRIER half (part (a)) of the R447 carrier↔recursion
+    co-construction.
+
+    **What was root-specific, and the one swap that generalizes it.**  `seqRoot_carrier_of_widthEnc`
+    drove its `desc` through `seqRoot_seqInteriorSeparators`, which bakes in BOTH the literal span
+    `lo = 2`, `hi = size - 2` AND the FLAT root `SafeBodyUnit` (`seqRoot_safeBodyUnit`, scanned straight
+    off emission, no recursion).  That flat-`SafeBodyUnit` assembly is the ONLY root-specific part: the
+    descent route it threads (`seqEnclosingOpener_of_gate` → `h_widthEnc` →
+    `seqEnclosed_succ_of_located_opener` → `seqDescent_provider_of_located`) is ALREADY
+    window-parametric — every lemma in it takes the window bounds `a`/`b`/`p`/`hi` as arguments and
+    none reads the literal `2`/`size - 2`.  So the generalization is exactly one swap: replace the root
+    assembler `seqRoot_seqInteriorSeparators` with the window-parametric
+    `seqInteriorSeparators_of_safebody_and_descent`, LIFTING the window's `SafeBodyUnit` as the
+    hypothesis `h_safe` ([[ref-parametric-assembler-extraction]] /
+    [[ref-additive-parallel-type-over-shared-edit]]), and re-base `h_widthEnc`'s bounds from
+    `[2, size - 2)` to `[lo, hi)`.  The proof body is otherwise term-for-term
+    `seqRoot_carrier_of_widthEnc`'s — and `seqRoot_carrier_of_widthEnc` becomes the thin `lo := 2`,
+    `hi := size - 2` instance, fed `seqRoot_safeBodyUnit` for `h_safe`.
+
+    **Why it is the co-construction's part (a).**  The R447 joint width induction (the last seq
+    residual) produces, per seq window `[lo, hi)`, the pair
+    `SeqInteriorSeparators tokens lo hi ∧ RecSeqBody ((take hi).drop lo)`.  This brick is its local
+    carrier half: it builds `SeqInteriorSeparators tokens lo hi` given (i) that window's own
+    `SafeBodyUnit` — from `RecSeqBody.toSafeBodyUnit` of the window's own body, the recursion's output
+    at `[lo, hi)` — and (ii) `h_widthEnc`, the enclosing-facts + strictly-narrower `RecSeqBody`-IH
+    supplier the joint IH discharges.  Every gated sub-window `[a, b) ⊂ [lo, hi)` the carrier descends
+    into is STRICTLY narrower than `[lo, hi)` (`#guard`-backed, `SeqLocalCarrierWidthProbe`): the only
+    place a `RecSeqBody`-IH is genuinely consumed is `seqChild_safeBodyUnit`, at the located genuine
+    seq child body `[p + 1, j) ⊂ [lo, hi)`, gated `hi' - lo' < hi_E - p` — and even on `[[1, 2], 9]`,
+    where the enclosing window `[p, hi_E) = [2, 9) = [lo, hi)` itself (the self-instantiation the task
+    flagged), the IH callee `[3, 6)` has width `3 < 7`, so the joint width IH covers it with no
+    circular self-call.
+
+    Verified-but-unconsumed until R447's joint induction discharges `h_widthEnc`: composes only landed
+    lemmas, references no sorry site, frontier sorry count unchanged at 4; axiom-clean. -/
+theorem seqLocalCarrier_of_widthEnc
+    (tokens : Array (Positioned YamlToken)) (lo hi : Nat) (h_hi : hi ≤ tokens.size)
+    (h_safe : SafeBodyUnit ContentStartTok ((tokens.toList.take hi).drop lo))
+    (h_widthEnc : ∀ a b p, lo ≤ a → a ≤ b → b ≤ hi →
+        SeqTypedInterior tokens a b →
+        p < a → flowBracketDelta tokens[p]!.val = 1 →
+        flowBracketBalance tokens (p + 1) a = 0 →
+        (∀ i, p + 1 ≤ i → i ≤ a → flowBracketBalance tokens (p + 1) i ≥ 0) →
+        ∃ hiE, b ≤ hiE ∧ hiE ≤ tokens.size ∧
+          FlowBodyWindow tokens p hiE ∧ FlowBodyContentDeep tokens p hiE ∧
+          FlowBodyContent tokens p hiE ∧
+          (∀ lo' hi', hi' - lo' < hiE - p → p ≤ lo' → hi' ≤ hiE →
+            FlowBodyWindow tokens lo' hi' → FlowBodyContentDeep tokens lo' hi' →
+            SeqEnclosed tokens lo' → tokens[hi']!.val = .flowSequenceEnd →
+            RecSeqBody ((tokens.toList.take hi').drop lo'))) :
+    SeqInteriorSeparators tokens lo hi := by
+  apply seqInteriorSeparators_of_safebody_and_descent tokens lo hi h_hi h_safe
+  intro a b ha hab hb _hbal hgate
+  have h_a_sz : a ≤ tokens.size := Nat.le_trans (Nat.le_trans hab hb) h_hi
+  obtain ⟨p, h_pa, h_delta, h_body_bal, h_loc_floor⟩ :=
+    seqEnclosingOpener_of_gate tokens a b h_a_sz hgate
+  obtain ⟨hiE, h_b_hi, h_hiE_sz, h_window, h_deep, h_content, h_ih⟩ :=
+    h_widthEnc a b p ha hab hb hgate h_pa h_delta h_body_bal h_loc_floor
+  have h_q_succ : SeqEnclosed tokens (p + 1) :=
+    seqEnclosed_succ_of_located_opener tokens a p h_pa h_a_sz h_delta h_body_bal h_loc_floor hgate.2.1
+  exact seqDescent_provider_of_located tokens a b p hiE h_pa hab h_b_hi h_delta h_body_bal
+    h_loc_floor hgate h_window h_deep h_content (SeqEnclosed tokens) h_q_succ h_ih
+
 /-- **The seq ROOT CARRIER reduced to the width CO-CONSTRUCTION** — `(i'-b-B2c-(d) — STEP D)`, R443.
     Produces `SeqInteriorSeparators tokens 2 (tokens.size - 2)` (the root carrier
     `seqRoot_seqInteriorSeparators` builds from its `desc` argument) from a SINGLE residual hypothesis
     `h_widthEnc` — the per-window enclosing-facts + width-recursion IH supplier.
+
+    **As of R446 this is the thin `lo := 2`, `hi := size - 2` instance of the window-parametric
+    `seqLocalCarrier_of_widthEnc`** (above), fed the flat root `SafeBodyUnit` `seqRoot_safeBodyUnit`
+    for the lifted `h_safe`.  The narrative below records the original standalone construction; the
+    body now delegates, keeping this signature stable for its consumers
+    ([[ref-additive-parallel-type-over-shared-edit]]).
 
     **This brick CORRECTS the stale "residual = LOCATE half" framing.**  The R442 blueprint Next step
     scoped `desc`'s genuine residual as the backward enclosing-opener LOCATE; reading the landed code
@@ -2593,18 +2666,9 @@ theorem seqRoot_carrier_of_widthEnc
             FlowBodyWindow tokens lo' hi' → FlowBodyContentDeep tokens lo' hi' →
             SeqEnclosed tokens lo' → tokens[hi']!.val = .flowSequenceEnd →
             RecSeqBody ((tokens.toList.take hi').drop lo'))) :
-    SeqInteriorSeparators tokens 2 (tokens.size - 2) := by
-  apply seqRoot_seqInteriorSeparators items tokens h_scan h_ne h_all
-  intro a b h2a hab hb _hbal hgate
-  have h_a_sz : a ≤ tokens.size := by omega
-  obtain ⟨p, h_pa, h_delta, h_body_bal, h_loc_floor⟩ :=
-    seqEnclosingOpener_of_gate tokens a b h_a_sz hgate
-  obtain ⟨hi, h_b_hi, h_hi_sz, h_window, h_deep, h_content, h_ih⟩ :=
-    h_widthEnc a b p h2a hab hb hgate h_pa h_delta h_body_bal h_loc_floor
-  have h_q_succ : SeqEnclosed tokens (p + 1) :=
-    seqEnclosed_succ_of_located_opener tokens a p h_pa h_a_sz h_delta h_body_bal h_loc_floor hgate.2.1
-  exact seqDescent_provider_of_located tokens a b p hi h_pa hab h_b_hi h_delta h_body_bal
-    h_loc_floor hgate h_window h_deep h_content (SeqEnclosed tokens) h_q_succ h_ih
+    SeqInteriorSeparators tokens 2 (tokens.size - 2) :=
+  seqLocalCarrier_of_widthEnc tokens 2 (tokens.size - 2) (Nat.sub_le tokens.size 2)
+    (seqRoot_safeBodyUnit items tokens h_scan h_ne h_all) h_widthEnc
 
 /-- **The per-window carrier→content consumer joint** — `(i'-b-B3-content-joint)`, the joint between
     the threaded separator carrier and the `RecSeqBody` recursion's per-window dispatch.  This is the
