@@ -7372,14 +7372,14 @@ theorem flowSubrangesOk_of_locators (tokens : Array (Positioned YamlToken))
   -- producers behind them — are only ever asked for the strictly non-empty window `lo < hi`.  This
   -- is what makes those producer hypotheses *satisfiable*: `RecSeqBody`/`RecMapBody` has no empty
   -- constructor, so a `lo ≤ hi`-typed producer would demand `RecSeqBody []` at the empty window.
-  seq := fun lo hi h_lo_hi h_hi_sz h_tpe h_bal h_open =>
+  seq := fun lo hi h_lo_hi h_hi_sz h_tpe h_bal h_open _h_floor =>
     (Nat.eq_or_lt_of_le h_lo_hi).elim
       (fun h_eq => seqBodyProps_empty tokens lo hi h_eq)
       (fun h_lt =>
         let L := h_seq lo hi h_lt h_hi_sz h_tpe h_bal h_open
         seqBodyProps_of_located_entry tokens lo hi L.pos h_lo_hi h_hi_sz h_tpe h_bal L.dyck L.wt
           h_open L.entry)
-  map := fun lo hi h_lo_hi h_hi_sz h_tpe h_bal h_open =>
+  map := fun lo hi h_lo_hi h_hi_sz h_tpe h_bal h_open _h_floor =>
     (Nat.eq_or_lt_of_le h_lo_hi).elim
       (fun h_eq => mapBodyProps_empty tokens lo hi h_eq)
       (fun h_lt =>
@@ -8047,7 +8047,7 @@ theorem scanFiltered_emitSeq_nonempty_structure
       tokens (tokens.size - 2) (4 * tokens.size + 4) 2 :=
     (L4YAML.Proofs.ParserWellBehaved.flow_parser_ok_of_structure
         tokens (4 * tokens.size + 4) h_subranges).1
-      2 (tokens.size - 2) (by omega) (by omega) h_tpe h_outer_bal h_t1
+      2 (tokens.size - 2) (by omega) (by omega) h_tpe h_outer_bal h_t1 h_dyck
   -- [NEW] (i'-b-B2c step c) Re-project the body characterization Part `OpenerAdj block`
   -- (`h_body_oa_raw : OpenerAdj ((s₂.filter p).toList.drop 2)`) into the array-`getElem!` body
   -- opener field over `[2, tokens.size-2)`.  `OpenerAdj_array` does the slice→array bridge in the
@@ -8345,7 +8345,7 @@ theorem scanFiltered_emitMap_nonempty_structure
       tokens (tokens.size - 2) (4 * tokens.size + 4) 2 :=
     (L4YAML.Proofs.ParserWellBehaved.flow_parser_ok_of_structure
         tokens (4 * tokens.size + 4) h_subranges).2
-      2 (tokens.size - 2) (by omega) (by omega) h_tpe h_outer_bal h_t1
+      2 (tokens.size - 2) (by omega) (by omega) h_tpe h_outer_bal h_t1 h_dyck
   -- [NEW] (i'-b-B2c step c) Re-project the map body characterization Part `OpenerAdj block`
   -- (`h_body_oa_raw : OpenerAdj ((s₂.filter p).toList.drop 2)`) into the array-`getElem!` body
   -- opener field over `[2, tokens.size-2)` — the seq mirror, identical bridge (`.flowSequenceStart`

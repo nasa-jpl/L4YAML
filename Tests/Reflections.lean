@@ -140,6 +140,7 @@ import Tests.Reflections.ContravariantGuardStrengthening
 import Tests.Reflections.ProbeTheGoal
 import Tests.Reflections.SelfPropagatingGuardDescent
 import Tests.Reflections.DelegationTreeCollapsesFieldRipple
+import Tests.Reflections.GuardFixBreaksItsCounterexample
 
 /-!
 # Reflections — runnable proof-engineering demonstrations

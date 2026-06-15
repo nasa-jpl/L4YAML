@@ -1199,11 +1199,13 @@ structure FlowSubrangesOk (tokens : Array (Positioned YamlToken)) : Prop where
     tokens[hi]!.val = .flowSequenceEnd →
     flowBracketBalance tokens lo hi = 0 →
     tokens[lo - 1]!.val = .flowSequenceStart →
+    (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
     SeqBodyProps tokens lo hi
   map : ∀ lo hi, lo ≤ hi → hi < tokens.size →
     tokens[hi]!.val = .flowMappingEnd →
     flowBracketBalance tokens lo hi = 0 →
     tokens[lo - 1]!.val = .flowMappingStart →
+    (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
     MapBodyProps tokens lo hi
 
 end L4YAML.Proofs.ParserGrammable

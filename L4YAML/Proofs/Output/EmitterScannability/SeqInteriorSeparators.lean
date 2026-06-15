@@ -4228,39 +4228,41 @@ theorem seqWindowFacts_false_window
   rw [hfloor] at hd
   omega
 
-/-- **The seq sorry GOAL `FlowSubrangesOk tokens` is itself FALSE on real emitted output** —
-    `(i'-b-B2c-(d)-flowSubrangesOk-false-window)`, R435, the machine-checked refutation that the R433
-    cross-matched window reaches the GOAL `FlowSubrangesOk`, not merely the intermediate `h_seq_rec`.
-    `FlowSubrangesOk` (`ParserGrammableBase.lean`, the parser contract) is the conjunct the two sorry sites
-    `have h_subranges : FlowSubrangesOk tokens := sorry` (`NonemptyStructure.lean:8043`/`:8341`) owe.  Its
-    `.seq` field quantifies over EVERY window `[lo, hi)` with FIVE bracket-shape guards (`lo ≤ hi`,
+/-- **The floor guard on `FlowSubrangesOk.seq` is the load-bearing fix: it REJECTS the cross-matched
+    window the un-floored contract wrongly admitted** — `(i'-b-B2c-(d)-flowSubrangesOk-floor-rejects)`,
+    R439 (STEP C), the machine-checked confirmation that the floor lands the repair at the parser contract.
+    Until R435–R439 this lemma proved the OPPOSITE conclusion `¬ FlowSubrangesOk tokens`: the un-floored
+    `.seq` field quantified over EVERY window `[lo, hi)` with only FIVE bracket-shape guards (`lo ≤ hi`,
     `hi < size`, `tokens[hi] = .flowSequenceEnd`, `flowBracketBalance lo hi = 0`,
-    `tokens[lo-1] = .flowSequenceStart`) — and NO interior floor — demanding `SeqBodyProps tokens lo hi`,
-    whose `content_start` field forces `lo < hi → isFlowContentStart tokens[lo]`.
+    `tokens[lo-1] = .flowSequenceStart`) and NO interior floor, so on `[[],[a]]` the cross-matched window
+    `[3, 7)` ([[ref-bracket-guards-admit-cross-matched-window]]) satisfied all five, `.seq` fired, and
+    `SeqBodyProps.content_start` forced `isFlowContentStart .flowSequenceEnd` — FALSE.  The un-floored
+    contract was therefore itself FALSE on real emitted output, and the two sorry sites
+    `have h_subranges : FlowSubrangesOk tokens := sorry` owed an unachievable goal.
 
-    On `[[],[a]]` the cross-matched window `[3, 7)` ([[ref-bracket-guards-admit-cross-matched-window]])
-    satisfies all five `.seq` guards, but `tokens[3] = .flowSequenceEnd` (the first element's close), so
-    `content_start` forces `isFlowContentStart .flowSequenceEnd` — FALSE.  Hence `FlowSubrangesOk tokens` is
-    FALSE, and the sorry goal is unachievable AS STATED.  No amount of producer machinery (the R389–R434
-    `h_seq_rec`/`windowFacts` chain) can close a false goal.
-
-    **The redirect** ([[ref-probe-the-goal-not-the-intermediate]]): the floor guard must be added at the
-    DEFINITION — `FlowSubrangesOk.seq`/`.map` (and `SeqBodyProps`/`MapBodyProps`) in `ParserGrammableBase`
-    need the interior Dyck floor `∀ i ∈ [lo, hi], flowBracketBalance tokens lo i ≥ 0` as a guard, EXCLUDING
-    cross-matched windows — and the parser CONSUMER `flow_parser_ok_of_structure` must be re-proven to
-    supply the floor at each `.seq`/`.map` query (the parser only descends into genuine matched-pair
-    windows, where the floor holds).  The R434 producer-floor on `seqRec_of_carrier_and_windowFacts_seq`
-    was the right SHAPE but on a downstream layer; this finding moves the fix to its true root (the parser
-    contract definition).  Contains the `ofReduceBool` axiom (`native_decide`), off the
-    `universal_roundtrip` path. -/
-theorem flowSubrangesOk_false_window
+    STEP C added the interior Dyck floor `∀ i ∈ [lo, hi], flowBracketBalance tokens lo i ≥ 0` as a SIXTH
+    guard on `FlowSubrangesOk.seq` (and `.map`).  The cross-matched window `[3, 7)` now FAILS that guard:
+    its head `tokens[3]` is the first element's CLOSE `]` (delta `-1`), so `flowBracketBalance tokens 3 4 =
+    -1 < 0` — the floor UNDERFLOWS at `i = 4`.  `.seq` can no longer be invoked on `[3, 7)`, so the
+    contradiction route is severed and `FlowSubrangesOk tokens` is once more SATISFIABLE (TRUE) for the
+    well-formed `[[],[a]]`.  This lemma proves exactly that: the window passes all five boundary/balance
+    guards yet the floor guard is FALSE on it — the floor is the discriminator that fences out the
+    mis-nested pairing.  It is the `FlowSubrangesOk`-contract-level analogue of the producer-layer
+    `seqWindowFacts_false_window` (which rejects the same window via `FlowBodyWindow.dyck`); the
+    [[ref-end-free-gate-underdetermines-close]] / [[ref-probe-provider-head-blind-gate]] discriminator now
+    lives at the parser contract's own `.seq` guard.  Contains the `ofReduceBool` axiom (`native_decide`),
+    off the `universal_roundtrip` path. -/
+theorem flowSubrangesOk_seq_floor_rejects_crossMatched_window
     (tokens : Array (Positioned YamlToken))
     (h : Scanner.scanFiltered
         ("[" ++ emit.emitList
           [YamlValue.sequence .flow #[],
            YamlValue.sequence .flow #[YamlValue.scalar { content := "a", style := .plain }]]
         ++ "]") = .ok tokens) :
-    ¬ FlowSubrangesOk tokens := by
+    ((3 : Nat) ≤ 7 ∧ (7 : Nat) < tokens.size ∧
+      tokens[7]!.val = .flowSequenceEnd ∧ flowBracketBalance tokens 3 7 = 0 ∧
+      tokens[3 - 1]!.val = .flowSequenceStart) ∧
+    ¬ (∀ i, 3 ≤ i → i ≤ 7 → flowBracketBalance tokens 3 i ≥ 0) := by
   have key : ∀ {α : Type} (g : Array (Positioned YamlToken) → α) (a : α),
       (Scanner.scanFiltered
           ("[" ++ emit.emitList
@@ -4276,13 +4278,13 @@ theorem flowSubrangesOk_false_window
     key (fun t => t[3 - 1]!.val) .flowSequenceStart (by native_decide)
   have hbal : flowBracketBalance tokens 3 7 = 0 :=
     key (fun t => flowBracketBalance t 3 7) 0 (by native_decide)
-  have h3 : tokens[3]!.val = .flowSequenceEnd :=
-    key (fun t => t[3]!.val) .flowSequenceEnd (by native_decide)
-  intro hfso
-  have hsb := hfso.seq 3 7 (by omega) (by omega) h7 hbal h2
-  have hcs := hsb.content_start (by omega)
-  rw [h3] at hcs
-  simp [isFlowContentStart] at hcs
+  have hfloor : flowBracketBalance tokens 3 4 = -1 :=
+    key (fun t => flowBracketBalance t 3 4) (-1) (by native_decide)
+  refine ⟨⟨by omega, by omega, h7, hbal, h2⟩, ?_⟩
+  intro hw
+  have hd := hw 4 (by omega) (by omega)
+  rw [hfloor] at hd
+  omega
 
 /-- **The SEQ-head CONS three-arm dispatch of the locator's per-window step `h_step`** —
     `(i'-b-B2c-nested-fbc-emission-locator-skeleton-brick-d-seq-cons)`, R378, BRICK D (carved).  This is
