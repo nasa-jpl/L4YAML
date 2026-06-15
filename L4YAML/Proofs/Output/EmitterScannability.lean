@@ -348,8 +348,20 @@ theorem parseStream_emitSequence (style : CollectionStyle) (items : Array YamlVa
       have h_sz : i < items.size := by rwa [Array.length_toList] at hi
       exact h_eq ▸ emit_scans_in_flow_block _ (h_items ⟨i, h_sz⟩)
     obtain ⟨h_sz5, h_t0, h_tlast, h_t1, h_tpe, h_content0, h_fe_pattern,
-            _h_outer_bal, _h_dyck, _h_wt_interior, h_pnok, _h_body_opener, _h_body_separator⟩ :=
+            h_outer_bal, h_dyck, _h_wt_interior, _h_body_opener, _h_body_separator⟩ :=
       scanFiltered_emitSeq_nonempty_structure items tokens h_scan (by simp [h_list]) h_all_block
+    -- [RELOCATED — R442] `h_pnok` (`ParseNodeFlowSeqOk`) and the `FlowSubrangesOk tokens` residual it
+    -- depends on were MOVED here out of the Block-keyed `scanFiltered_emitSeq_nonempty_structure`: that
+    -- lemma threads only `EmitScansInFlowBlock`, but the seq root carrier behind `FlowSubrangesOk` needs
+    -- the stronger per-item `EmitScansInFlowRecEntry`.  THIS site has `h_items : Grammable …`, so the
+    -- stronger predicate is available via `emit_scans_in_flow_rec_entry` — the next step wires
+    -- `seqHRec_of_root_and_context` + the root carrier here, discharging the relocated sorry.
+    have h_subranges : FlowSubrangesOk tokens := sorry
+    have h_pnok : L4YAML.Proofs.ParserWellBehaved.ParseNodeFlowSeqOk
+        tokens (tokens.size - 2) (4 * tokens.size + 4) 2 :=
+      (L4YAML.Proofs.ParserWellBehaved.flow_parser_ok_of_structure
+          tokens (4 * tokens.size + 4) h_subranges).1
+        2 (tokens.size - 2) (by omega) (by omega) h_tpe h_outer_bal h_t1 h_dyck
     -- Step 1: Unfold parseStream, dispatch expect .streamStart
     unfold parseStream
     simp only [bind, Except.bind]

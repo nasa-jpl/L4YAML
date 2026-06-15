@@ -143,6 +143,7 @@ import Tests.Reflections.DelegationTreeCollapsesFieldRipple
 import Tests.Reflections.GuardFixBreaksItsCounterexample
 import Tests.Reflections.GuardConduitThroughProducerChain
 import Tests.Reflections.DockImportsConclusionProbesThreadedHyps
+import Tests.Reflections.RelocateSorryToStrongerPredicateSite
 
 /-!
 # Reflections — runnable proof-engineering demonstrations

@@ -7766,7 +7766,6 @@ theorem scanFiltered_emitSeq_nonempty_structure
     -- every `}` pops a `{`) — threaded from `WellTyped block`.  The type half the untyped
     -- balance above discarded; the typed locator (next brick) consumes it for `bracket_seq`.
     WellTyped ((tokens.toList.take (tokens.size - 2)).drop 2) ∧
-    L4YAML.Proofs.ParserWellBehaved.ParseNodeFlowSeqOk tokens (tokens.size - 2) (4 * tokens.size + 4) 2 ∧
     -- [NEW] (i'-b-B2c step c) The all-depth seq-opener adjacency field over the body window
     -- `[2, tokens.size-2)`: every `.flowSequenceStart` opener with a non-close successor is followed
     -- by a flow-content-start.  This re-projects the R406/R407 body characterization Part
@@ -8027,35 +8026,14 @@ theorem scanFiltered_emitSeq_nonempty_structure
     · right
       refine ⟨by rw [h_tokens_sz_eq]; exact h', ?_⟩
       rw [h_tok_body (k + 1) h']; exact h_fe
-  -- [NEW] Assemble the outer `SeqBodyProps tokens 2 (tokens.size - 2)` via the parametric assembler
-  -- `seqBodyProps_assemble`: the outer span is the `lo = 2, hi = tokens.size - 2` instance of the
-  -- universal `FlowSubrangesOk.seq`.  Every field is a projection the assembler performs off the
-  -- in-scope primitives — content-start (`h_content0`, definitionally `isFlowContentStart`), the
-  -- value-end successor (`_h_body_succ`), and the post-`.flowEntry` content-start (`h_fe_pattern`) —
-  -- plus the bracket facts (`h_outer_bal`/`h_dyck`/`h_wt_interior`).  The value-close-guarded
-  -- successor the bracket conjuncts need is re-derived inside the assembler from `_h_body_succ` +
-  -- `h_tpe`.  The full Phase-J producer lifts those three primitives to every nested balanced
-  -- subrange; here they hold at the outer span, so this stands as the seed/witness that the outer
-  -- span itself meets the structural shape `flow_parser_ok_of_structure` consumes.
-  have _h_seq_body_props : SeqBodyProps tokens 2 (tokens.size - 2) :=
-    seqBodyProps_assemble tokens 2 (tokens.size - 2) (by omega) h_tpe h_outer_bal h_dyck
-      h_wt_interior h_content0 _h_body_succ h_fe_pattern
-  -- ═══ [NEW] Dispatcher wiring: parser-acceptance ← structural `FlowSubrangesOk` ═══
-  -- `flow_parser_ok_of_structure` (the span strong-induction dispatcher in `FlowParserAcceptance`,
-  -- previously a verified-but-unconsumed leaf module) turns the universal structural fact
-  -- `FlowSubrangesOk tokens` — every nested balanced subrange has `SeqBodyProps`/`MapBodyProps` —
-  -- into `ParseNodeFlowSeqOk`/`ParseEntryFlowMapOk` at every subrange.  Instantiating its seq half at
-  -- the outer span `(2, tokens.size - 2)` discharges `h_pnok` directly from `h_subranges`, so the
-  -- seq sorry no longer states a parser-EXECUTION obligation: it is now the pure STRUCTURAL residual
-  -- `FlowSubrangesOk tokens` (Phase J — generalize `_h_seq_body_props` above to all subranges via the
-  -- typed-locator + `WellTyped_subrange` infrastructure).  `_h_seq_body_props` is exactly its
-  -- `(2, tokens.size - 2)` seq instance; the bridge from structure to parse is now fully proven.
-  have h_subranges : FlowSubrangesOk tokens := sorry
-  have h_pnok : L4YAML.Proofs.ParserWellBehaved.ParseNodeFlowSeqOk
-      tokens (tokens.size - 2) (4 * tokens.size + 4) 2 :=
-    (L4YAML.Proofs.ParserWellBehaved.flow_parser_ok_of_structure
-        tokens (4 * tokens.size + 4) h_subranges).1
-      2 (tokens.size - 2) (by omega) (by omega) h_tpe h_outer_bal h_t1 h_dyck
+  -- [RELOCATED — R442] The `ParseNodeFlowSeqOk` (`h_pnok`) conjunct, and the `FlowSubrangesOk tokens`
+  -- residual it depends on (`flow_parser_ok_of_structure`'s seq half), have been MOVED OUT of this
+  -- Block-keyed structure lemma into the caller `parseStream_emitSequence` (the only consumer of
+  -- `h_pnok`; every other destructure underscored it).  Rationale: `FlowSubrangesOk tokens` needs the
+  -- seq root carrier, which requires the STRONGER per-item predicate `EmitScansInFlowRecEntry`, while
+  -- this lemma threads only `EmitScansInFlowBlock`; the caller has `Grammable` and can supply the
+  -- stronger predicate via `emit_scans_in_flow_rec_entry`.  This lemma is now Block-only and (seq side)
+  -- sorry-free; the `FlowSubrangesOk` sorry lives where the predicate strength it needs is available.
   -- [NEW] (i'-b-B2c step c) Re-project the body characterization Part `OpenerAdj block`
   -- (`h_body_oa_raw : OpenerAdj ((s₂.filter p).toList.drop 2)`) into the array-`getElem!` body
   -- opener field over `[2, tokens.size-2)`.  `OpenerAdj_array` does the slice→array bridge in the
@@ -8095,7 +8073,7 @@ theorem scanFiltered_emitSeq_nonempty_structure
       (by rw [← e_k]; exact hsep) (by rw [← e_k1]; exact hne)
     rw [e_k1]; exact key
   exact ⟨h_sz5, h_t0, h_tlast, h_t1, h_tpe, h_content0, h_fe_pattern,
-         h_outer_bal, h_dyck, h_wt_interior, h_pnok, h_body_opener, h_body_separator⟩
+         h_outer_bal, h_dyck, h_wt_interior, h_body_opener, h_body_separator⟩
 
 /-- Token structure of `scanFiltered ("{" ++ emitPairList pairs ++ "}")` for non-empty pairs.
     Establishes boundary tokens, body token patterns, and `parseExplicitKey`/`parseFlowMappingValue`
