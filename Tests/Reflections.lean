@@ -141,6 +141,7 @@ import Tests.Reflections.ProbeTheGoal
 import Tests.Reflections.SelfPropagatingGuardDescent
 import Tests.Reflections.DelegationTreeCollapsesFieldRipple
 import Tests.Reflections.GuardFixBreaksItsCounterexample
+import Tests.Reflections.GuardConduitThroughProducerChain
 
 /-!
 # Reflections — runnable proof-engineering demonstrations

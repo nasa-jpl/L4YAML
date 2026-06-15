@@ -7360,11 +7360,13 @@ theorem flowSubrangesOk_of_locators (tokens : Array (Positioned YamlToken))
       tokens[hi]!.val = .flowSequenceEnd →
       flowBracketBalance tokens lo hi = 0 →
       tokens[lo - 1]!.val = .flowSequenceStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
       SeqLocated tokens lo hi)
     (h_map : ∀ lo hi, lo < hi → hi < tokens.size →
       tokens[hi]!.val = .flowMappingEnd →
       flowBracketBalance tokens lo hi = 0 →
       tokens[lo - 1]!.val = .flowMappingStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
       MapLocated tokens lo hi) :
     FlowSubrangesOk tokens where
   -- The empty window (`lo = hi`, a nested `[]`/`{}`) is peeled to the vacuous body leaf
@@ -7372,18 +7374,18 @@ theorem flowSubrangesOk_of_locators (tokens : Array (Positioned YamlToken))
   -- producers behind them — are only ever asked for the strictly non-empty window `lo < hi`.  This
   -- is what makes those producer hypotheses *satisfiable*: `RecSeqBody`/`RecMapBody` has no empty
   -- constructor, so a `lo ≤ hi`-typed producer would demand `RecSeqBody []` at the empty window.
-  seq := fun lo hi h_lo_hi h_hi_sz h_tpe h_bal h_open _h_floor =>
+  seq := fun lo hi h_lo_hi h_hi_sz h_tpe h_bal h_open h_floor =>
     (Nat.eq_or_lt_of_le h_lo_hi).elim
       (fun h_eq => seqBodyProps_empty tokens lo hi h_eq)
       (fun h_lt =>
-        let L := h_seq lo hi h_lt h_hi_sz h_tpe h_bal h_open
+        let L := h_seq lo hi h_lt h_hi_sz h_tpe h_bal h_open h_floor
         seqBodyProps_of_located_entry tokens lo hi L.pos h_lo_hi h_hi_sz h_tpe h_bal L.dyck L.wt
           h_open L.entry)
-  map := fun lo hi h_lo_hi h_hi_sz h_tpe h_bal h_open _h_floor =>
+  map := fun lo hi h_lo_hi h_hi_sz h_tpe h_bal h_open h_floor =>
     (Nat.eq_or_lt_of_le h_lo_hi).elim
       (fun h_eq => mapBodyProps_empty tokens lo hi h_eq)
       (fun h_lt =>
-        let L := h_map lo hi h_lt h_hi_sz h_tpe h_bal h_open
+        let L := h_map lo hi h_lt h_hi_sz h_tpe h_bal h_open h_floor
         mapBodyProps_of_located_entry tokens lo hi L.pos h_lo_hi h_hi_sz h_tpe h_bal L.dyck L.wt
           L.entry L.key_content L.key_scalar_value L.value_content L.value_scalar_succ
           L.key_bracket_succ L.value_bracket_succ)
@@ -7412,13 +7414,15 @@ theorem seqLocator_of_window_recseqbody (tokens : Array (Positioned YamlToken))
       tokens[hi]!.val = .flowSequenceEnd →
       flowBracketBalance tokens lo hi = 0 →
       tokens[lo - 1]!.val = .flowSequenceStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
       RecSeqBody ((tokens.toList.take hi).drop lo)) :
     ∀ lo hi, lo < hi → hi < tokens.size →
       tokens[hi]!.val = .flowSequenceEnd →
       flowBracketBalance tokens lo hi = 0 →
       tokens[lo - 1]!.val = .flowSequenceStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
       SeqLocated tokens lo hi := by
-  intro lo hi h_lo_lt h_hi_sz h_close h_bal h_open
+  intro lo hi h_lo_lt h_hi_sz h_close h_bal h_open h_floor
   -- `h_seq_rec` is now keyed on the strict `lo < hi`; the empty window (`lo = hi`, a nested `[]`)
   -- is peeled at `flowSubrangesOk_of_locators` via `seqBodyProps_empty`, so it never reaches here.
   -- Everything downstream of this point consumes the `≤` form, recovered once.
@@ -7441,7 +7445,7 @@ theorem seqLocator_of_window_recseqbody (tokens : Array (Positioned YamlToken))
       exact absurd h_close (by decide)
   exact seqLocated_of_recseqbody_outer tokens 2 (tokens.size - 2) lo hi
     h_lo2 (by omega) h_lo_hi h_hi2 (by omega) h_hi_sz h_open h_close h_wt_outer
-    (h_seq_rec lo hi h_lo2 h_lo_lt h_hi2 h_hi_sz h_close h_bal h_open)
+    (h_seq_rec lo hi h_lo2 h_lo_lt h_hi2 h_hi_sz h_close h_bal h_open h_floor)
 
 /-- **Map-side boundary-anchoring locator joint** (Phase J — the verbatim mirror of
     `seqLocator_of_window_recseqbody` over the `.flowMapping{Start,End}` boundary tokens, completing
@@ -7470,6 +7474,7 @@ theorem mapLocator_of_window_recmapbody (tokens : Array (Positioned YamlToken))
       tokens[hi]!.val = .flowMappingEnd →
       flowBracketBalance tokens lo hi = 0 →
       tokens[lo - 1]!.val = .flowMappingStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
       RecMapBody ((tokens.toList.take hi).drop lo))
     (h_key_content : ∀ lo hi, 2 ≤ lo → lo ≤ hi → hi ≤ tokens.size - 2 → hi < tokens.size →
       tokens[hi]!.val = .flowMappingEnd →
@@ -7535,8 +7540,9 @@ theorem mapLocator_of_window_recmapbody (tokens : Array (Positioned YamlToken))
       tokens[hi]!.val = .flowMappingEnd →
       flowBracketBalance tokens lo hi = 0 →
       tokens[lo - 1]!.val = .flowMappingStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
       MapLocated tokens lo hi := by
-  intro lo hi h_lo_lt h_hi_sz h_close h_bal h_open
+  intro lo hi h_lo_lt h_hi_sz h_close h_bal h_open h_floor
   -- `h_map_rec` is now keyed on the strict `lo < hi`; the empty window (`lo = hi`, a nested `{}`)
   -- is peeled at `flowSubrangesOk_of_locators` via `mapBodyProps_empty`, so it never reaches here.
   have h_lo_hi : lo ≤ hi := Nat.le_of_lt h_lo_lt
@@ -7558,7 +7564,7 @@ theorem mapLocator_of_window_recmapbody (tokens : Array (Positioned YamlToken))
       exact absurd h_close (by decide)
   exact mapLocated_of_recmapbody_outer tokens 2 (tokens.size - 2) lo hi
     h_lo2 (by omega) h_lo_hi h_hi2 (by omega) h_hi_sz h_open h_close h_wt_outer
-    (h_map_rec lo hi h_lo2 h_lo_lt h_hi2 h_hi_sz h_close h_bal h_open)
+    (h_map_rec lo hi h_lo2 h_lo_lt h_hi2 h_hi_sz h_close h_bal h_open h_floor)
     (h_key_content lo hi h_lo2 h_lo_hi h_hi2 h_hi_sz h_close h_bal h_open)
     (h_key_scalar_value lo hi h_lo2 h_lo_hi h_hi2 h_hi_sz h_close h_bal h_open)
     (h_value_content lo hi h_lo2 h_lo_hi h_hi2 h_hi_sz h_close h_bal h_open)
@@ -7596,11 +7602,13 @@ theorem flowSubrangesOk_of_window_producers (tokens : Array (Positioned YamlToke
       tokens[hi]!.val = .flowSequenceEnd →
       flowBracketBalance tokens lo hi = 0 →
       tokens[lo - 1]!.val = .flowSequenceStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
       RecSeqBody ((tokens.toList.take hi).drop lo))
     (h_map_rec : ∀ lo hi, 2 ≤ lo → lo < hi → hi ≤ tokens.size - 2 → hi < tokens.size →
       tokens[hi]!.val = .flowMappingEnd →
       flowBracketBalance tokens lo hi = 0 →
       tokens[lo - 1]!.val = .flowMappingStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
       RecMapBody ((tokens.toList.take hi).drop lo))
     (h_key_content : ∀ lo hi, 2 ≤ lo → lo ≤ hi → hi ≤ tokens.size - 2 → hi < tokens.size →
       tokens[hi]!.val = .flowMappingEnd →
