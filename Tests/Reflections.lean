@@ -152,6 +152,7 @@ import Tests.Reflections.TopFrameGuardVsSpineGate
 import Tests.Reflections.CarrierDomainWiderThanNavigatorReach
 import Tests.Reflections.SeveranceRecursesByNestingDepth
 import Tests.Reflections.AdditiveFieldForcesProducerMutualRecursion
+import Tests.Reflections.ConjunctionMotiveBreaksProducerCycle
 
 /-!
 # Reflections — runnable proof-engineering demonstrations

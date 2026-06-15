@@ -30,6 +30,7 @@ import Tests.Guards.Proofs.SchemaDump
 import Tests.Guards.Proofs.SchemaResolution
 import Tests.Guards.Proofs.MapPathLocatorMoveProbe
 import Tests.Guards.Proofs.MapProducerRecursionDepthProbe
+import Tests.Guards.Proofs.MapProducerMutualResolutionProbe
 import Tests.Guards.Proofs.SeqCarrierMapNestedDomainProbe
 import Tests.Guards.Proofs.SeqChildSafeBodyProbe
 import Tests.Guards.Proofs.SeqCloseLocateProbe
