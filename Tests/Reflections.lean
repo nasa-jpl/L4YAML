@@ -151,6 +151,7 @@ import Tests.Reflections.RootToWindowBaseAssemblerSwap
 import Tests.Reflections.TopFrameGuardVsSpineGate
 import Tests.Reflections.CarrierDomainWiderThanNavigatorReach
 import Tests.Reflections.SeveranceRecursesByNestingDepth
+import Tests.Reflections.AdditiveFieldForcesProducerMutualRecursion
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
