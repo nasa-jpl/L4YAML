@@ -145,6 +145,7 @@ import Tests.Reflections.GuardConduitThroughProducerChain
 import Tests.Reflections.DockImportsConclusionProbesThreadedHyps
 import Tests.Reflections.RelocateSorryToStrongerPredicateSite
 import Tests.Reflections.StaleResidualFramingCoConstruction
+import Tests.Reflections.GeneralizationHidesDescendObstruction
 
 /-!
 # Reflections — runnable proof-engineering demonstrations

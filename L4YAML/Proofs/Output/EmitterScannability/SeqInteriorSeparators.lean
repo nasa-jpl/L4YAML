@@ -2648,22 +2648,37 @@ theorem seqRoot_carrier_of_widthEnc
     Verified-but-unconsumed until the B3 fixpoint instantiates `windowWidth_strongRecOn` and threads
     `h_enclosed` (R225 discipline): composes only landed lemmas, references no sorry site, frontier
     sorry count unchanged at 4; axiom-clean. -/
+theorem seqWindow_flowBodyContent_general (tokens : Array (Positioned YamlToken))
+    (lo0 hi0 lo hi : Nat)
+    (h_win : FlowBodyWindow tokens lo hi)
+    (h_deep : FlowBodyContentDeep tokens lo hi)
+    (h_enclosed : SeqEnclosed tokens lo)
+    (h_carrier0 : SeqInteriorSeparators tokens lo0 hi0)
+    (h_lo0 : lo0 ≤ lo) (h_hi0 : hi ≤ hi0) :
+    FlowBodyContent tokens lo hi := by
+  -- The gate: balance + Dyck come from the window guard; only the enclosing-`[` btFold-top is owed.
+  have h_gate : SeqTypedInterior tokens lo hi :=
+    ⟨h_win.balanced, h_enclosed, h_win.dyck⟩
+  -- The enclosing carrier narrows to `[lo, hi) ⊆ [lo0, hi0)` by the SUPPLIED bounds (window-absolute body).
+  have h_carrier : SeqInteriorSeparators tokens lo hi :=
+    SeqInteriorSeparators_narrow h_lo0 h_hi0 h_carrier0
+  -- Instantiate at the window itself; the two facts are exactly `flowBodyContent_of_deep`'s premises.
+  obtain ⟨h_bs, h_nts⟩ :=
+    h_carrier lo hi (Nat.le_refl lo) (Nat.le_of_lt h_win.lo_lt_hi) (Nat.le_refl hi) h_gate
+  exact flowBodyContent_of_deep tokens lo hi h_deep h_bs h_nts
+
+/-- **The root-span instance of `seqWindow_flowBodyContent_general`** — `lo0 := 2`, `hi0 := size-2`,
+    bounds read off `FlowBodyWindow.lo_ge`/`hi_le`.  Signature-preserving so the existing
+    `seqWindowRecSeqBody` consumers (which thread the root carrier `SeqInteriorSeparators tokens 2 (size-2)`)
+    are untouched. -/
 theorem seqWindow_flowBodyContent (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (h_win : FlowBodyWindow tokens lo hi)
     (h_deep : FlowBodyContentDeep tokens lo hi)
     (h_enclosed : SeqEnclosed tokens lo)
     (h_root_carrier : SeqInteriorSeparators tokens 2 (tokens.size - 2)) :
-    FlowBodyContent tokens lo hi := by
-  -- The gate: balance + Dyck come from the window guard; only the enclosing-`[` btFold-top is owed.
-  have h_gate : SeqTypedInterior tokens lo hi :=
-    ⟨h_win.balanced, h_enclosed, h_win.dyck⟩
-  -- The root carrier narrows to `[lo, hi) ⊆ [2, size - 2)` by the guard's `lo_ge`/`hi_le` frame fields.
-  have h_carrier : SeqInteriorSeparators tokens lo hi :=
-    SeqInteriorSeparators_narrow h_win.lo_ge h_win.hi_le h_root_carrier
-  -- Instantiate at the window itself; the two facts are exactly `flowBodyContent_of_deep`'s premises.
-  obtain ⟨h_bs, h_nts⟩ :=
-    h_carrier lo hi (Nat.le_refl lo) (Nat.le_of_lt h_win.lo_lt_hi) (Nat.le_refl hi) h_gate
-  exact flowBodyContent_of_deep tokens lo hi h_deep h_bs h_nts
+    FlowBodyContent tokens lo hi :=
+  seqWindow_flowBodyContent_general tokens 2 (tokens.size - 2) lo hi
+    h_win h_deep h_enclosed h_root_carrier h_win.lo_ge h_win.hi_le
 
 /-- **The RE-SCOPED `FlowBodyContent` window projector** — `(i'-b-B2c-(d)-seq-rec)`, the `_seq` twin of
     `seqWindow_flowBodyContent` (just above) consuming `FlowBodyContentDeepSeq` (R393's root-TRUE guard) in
@@ -2685,15 +2700,17 @@ theorem seqWindow_flowBodyContent (tokens : Array (Positioned YamlToken)) (lo hi
 
     Verified-but-unconsumed until `seqWindowRecSeqBody_seq` threads it (R225): composes only landed lemmas,
     references no sorry site, frontier sorry count unchanged at 4; axiom-clean. -/
-theorem seqWindow_flowBodyContent_seq (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+theorem seqWindow_flowBodyContent_seq_general (tokens : Array (Positioned YamlToken))
+    (lo0 hi0 lo hi : Nat)
     (h_win : FlowBodyWindow tokens lo hi)
     (h_deep : FlowBodyContentDeepSeq tokens lo hi)
     (h_enclosed : SeqEnclosed tokens lo)
-    (h_root_carrier : SeqInteriorSeparators tokens 2 (tokens.size - 2)) :
+    (h_carrier0 : SeqInteriorSeparators tokens lo0 hi0)
+    (h_lo0 : lo0 ≤ lo) (h_hi0 : hi ≤ hi0) :
     FlowBodyContent tokens lo hi := by
-  -- The root carrier narrows to `[lo, hi) ⊆ [2, size - 2)` by the guard's `lo_ge`/`hi_le` frame fields.
+  -- The enclosing carrier narrows to `[lo, hi) ⊆ [lo0, hi0)` by the SUPPLIED bounds (window-absolute body).
   have h_carrier : SeqInteriorSeparators tokens lo hi :=
-    SeqInteriorSeparators_narrow h_win.lo_ge h_win.hi_le h_root_carrier
+    SeqInteriorSeparators_narrow h_lo0 h_hi0 h_carrier0
   -- bodySucc at the whole window: gate from balance (window) + enclosure mark + floor (window).
   have h_gate : SeqTypedInterior tokens lo hi :=
     ⟨h_win.balanced, h_enclosed, h_win.dyck⟩
@@ -2724,6 +2741,18 @@ theorem seqWindow_flowBodyContent_seq (tokens : Array (Positioned YamlToken)) (l
       (h_carrier lo (k + 1) (Nat.le_refl lo) (by omega) (by omega) h_gate_k).2
     exact h_nts k hk1 rfl hfe hbal
   exact flowBodyContent_of_deepSeq tokens lo hi h_deep h_bodySucc h_feContent
+
+/-- **The root-span instance of `seqWindow_flowBodyContent_seq_general`** — `lo0 := 2`, `hi0 := size-2`,
+    bounds read off `FlowBodyWindow.lo_ge`/`hi_le`.  Signature-preserving so `seqWindowRecSeqBody_seq` is
+    untouched. -/
+theorem seqWindow_flowBodyContent_seq (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_win : FlowBodyWindow tokens lo hi)
+    (h_deep : FlowBodyContentDeepSeq tokens lo hi)
+    (h_enclosed : SeqEnclosed tokens lo)
+    (h_root_carrier : SeqInteriorSeparators tokens 2 (tokens.size - 2)) :
+    FlowBodyContent tokens lo hi :=
+  seqWindow_flowBodyContent_seq_general tokens 2 (tokens.size - 2) lo hi
+    h_win h_deep h_enclosed h_root_carrier h_win.lo_ge h_win.hi_le
 
 /-- **The CARRIER-FREE root seed for `FlowBodyContent`** — `(i'-b-B2c-desc-fixpoint)`, the base case of
     the `FlowBodyContent` thread that BREAKS the carrier↔recursion co-construction circularity (R318/R340).
