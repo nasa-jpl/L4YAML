@@ -2545,6 +2545,67 @@ theorem seqEnclosed_succ_of_located_opener
   -- the opener pushes `true`, so the post-opener stack top is `true` = `SeqEnclosed (p+1)`.
   exact enclosingMark_true_of_opener tokens p h_p_sz s hs h_open
 
+/-- **The seq ROOT CARRIER reduced to the width CO-CONSTRUCTION** — `(i'-b-B2c-(d) — STEP D)`, R443.
+    Produces `SeqInteriorSeparators tokens 2 (tokens.size - 2)` (the root carrier
+    `seqRoot_seqInteriorSeparators` builds from its `desc` argument) from a SINGLE residual hypothesis
+    `h_widthEnc` — the per-window enclosing-facts + width-recursion IH supplier.
+
+    **This brick CORRECTS the stale "residual = LOCATE half" framing.**  The R442 blueprint Next step
+    scoped `desc`'s genuine residual as the backward enclosing-opener LOCATE; reading the landed code
+    shows the locate is ALREADY DONE (`seqEnclosingOpener_of_gate`, R319, term-for-term) and the assemble
+    too (`seqDescent_provider_of_located`, the ASSEMBLE half).  This bridge composes both into the `desc`
+    shape directly ([[ref-reduction-by-import]] / [[ref-fold-consumer-chain-to-producer-contract]]) — for
+    each gated window `[a,b)` it (1) LOCATES the enclosing opener `p` from the gate
+    (`seqEnclosingOpener_of_gate`), (2) DISCHARGES the descent IH seed `SeqEnclosed (p+1)` from the gate's
+    own mark + the located-opener type (`seqEnclosed_succ_of_located_opener`, so `h_widthEnc` need NOT
+    supply it — [[ref-conjunct-of-projection-is-free-field]]), (3) DRAWS the enclosing window `[p, hi)`'s
+    `FlowBodyWindow`/`Deep`/`Content` and the width IH from `h_widthEnc`, and (4) ASSEMBLES via
+    `seqDescent_provider_of_located`.  So the genuine residual is `h_widthEnc`, NOT the locate; the
+    `flowBracketBalance tokens 2 a ≠ 0` failed-root discriminator `desc` carries is UNUSED on the gate
+    route (the gate alone gives positivity via `flowBracketBalance_pos_of_seqTypedInterior`).
+
+    **`h_widthEnc`'s IH is term-for-term `seqWindowRecSeqBody` minus the root carrier, bounded by width.**
+    Its body `FlowBodyWindow lo' hi' → FlowBodyContentDeep lo' hi' → SeqEnclosed lo' →
+    tokens[hi']! = .flowSequenceEnd → RecSeqBody ((take hi').drop lo')` is EXACTLY
+    `seqWindowRecSeqBody`'s signature (R323), gated by `hi' - lo' < hi - p`.  But `seqWindowRecSeqBody`
+    consumes `h_root_carrier : SeqInteriorSeparators tokens 2 (size-2)` — the very carrier this brick is
+    BUILDING.  So discharging `h_widthEnc` is the carrier↔recursion CO-CONSTRUCTION: a strong induction on
+    window width producing the local carrier and `RecSeqBody` jointly, where the descent's enclosing
+    window `[p, hi)` lies within the span and the IH covers its strictly-smaller sub-windows.  That
+    co-construction — NOT the locate — is the last seq residual; this bridge names its exact interface.
+
+    Verified-but-unconsumed until the co-construction discharges `h_widthEnc`: composes only landed
+    lemmas, references no sorry site, frontier sorry count unchanged at 4; axiom-clean. -/
+theorem seqRoot_carrier_of_widthEnc
+    (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
+    (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
+    (h_ne : items.toList ≠ [])
+    (h_all : ∀ v ∈ items.toList, EmitScansInFlowRecEntry v)
+    (h_widthEnc : ∀ a b p, 2 ≤ a → a ≤ b → b ≤ tokens.size - 2 →
+        SeqTypedInterior tokens a b →
+        p < a → flowBracketDelta tokens[p]!.val = 1 →
+        flowBracketBalance tokens (p + 1) a = 0 →
+        (∀ i, p + 1 ≤ i → i ≤ a → flowBracketBalance tokens (p + 1) i ≥ 0) →
+        ∃ hi, b ≤ hi ∧ hi ≤ tokens.size ∧
+          FlowBodyWindow tokens p hi ∧ FlowBodyContentDeep tokens p hi ∧
+          FlowBodyContent tokens p hi ∧
+          (∀ lo' hi', hi' - lo' < hi - p →
+            FlowBodyWindow tokens lo' hi' → FlowBodyContentDeep tokens lo' hi' →
+            SeqEnclosed tokens lo' → tokens[hi']!.val = .flowSequenceEnd →
+            RecSeqBody ((tokens.toList.take hi').drop lo'))) :
+    SeqInteriorSeparators tokens 2 (tokens.size - 2) := by
+  apply seqRoot_seqInteriorSeparators items tokens h_scan h_ne h_all
+  intro a b h2a hab hb _hbal hgate
+  have h_a_sz : a ≤ tokens.size := by omega
+  obtain ⟨p, h_pa, h_delta, h_body_bal, h_loc_floor⟩ :=
+    seqEnclosingOpener_of_gate tokens a b h_a_sz hgate
+  obtain ⟨hi, h_b_hi, h_hi_sz, h_window, h_deep, h_content, h_ih⟩ :=
+    h_widthEnc a b p h2a hab hb hgate h_pa h_delta h_body_bal h_loc_floor
+  have h_q_succ : SeqEnclosed tokens (p + 1) :=
+    seqEnclosed_succ_of_located_opener tokens a p h_pa h_a_sz h_delta h_body_bal h_loc_floor hgate.2.1
+  exact seqDescent_provider_of_located tokens a b p hi h_pa hab h_b_hi h_delta h_body_bal
+    h_loc_floor hgate h_window h_deep h_content (SeqEnclosed tokens) h_q_succ h_ih
+
 /-- **The per-window carrier→content consumer joint** — `(i'-b-B3-content-joint)`, the joint between
     the threaded separator carrier and the `RecSeqBody` recursion's per-window dispatch.  This is the
     de-risk finding for B3 (the `windowWidth_strongRecOn` `RecSeqBody` producer) made into a proof
