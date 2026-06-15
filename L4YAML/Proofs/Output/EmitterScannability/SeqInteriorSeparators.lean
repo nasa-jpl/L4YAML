@@ -5392,4 +5392,54 @@ theorem nestedSeq_safeBodyUnit_of_locator
   (nestedSeq_recseqbody_of_locator items tokens a b h_scan h_ne h_all h_typed h_close
     h_opener h_path h_win_lo h_win_ab h_win_hi).toSafeBodyUnit
 
+/-- **The per-window `SafeBodyUnit` source — ROOT-vs-NESTED dispatch** —
+    `(i'-b-B2c-(d) — STEP D: the within-window circularity `h_safe` source)`, R447.  The unified,
+    carrier-FREE producer of the per-window `h_safe : SafeBodyUnit ContentStartTok ((take hi).drop lo)`
+    that `seqLocalCarrier_of_widthEnc` (R446) consumes — the half of the carrier↔recursion
+    co-construction that breaks the within-window circularity.
+
+    **Why a dispatch.**  The carrier(lo,hi) needs `h_safe(lo,hi)`, and body(lo,hi) needs carrier(lo,hi);
+    if `h_safe` came from body it would be circular.  It must be sourced INDEPENDENTLY from emission.
+    Reading the landed code (R447), there are exactly two carrier-free emission sources, split by whether
+    the window IS the root span:
+
+    * **ROOT** (`lo = 2 ∧ hi = tokens.size - 2`): the FLAT `seqRoot_safeBodyUnit` (`NonemptyStructure`),
+      `RecSeqBody.toSafeBodyUnit` of the whole-body `seqRoot_recseqbody` — NO locate, NO `SeqPathAllSeq`.
+    * **NESTED** (`3 ≤ lo`): `nestedSeq_safeBodyUnit_of_locator`, which LOCATES the stored `RecSeqEntry`
+      whose interior is `[lo,hi)` by walking an all-seq bracket SPINE — so it carries the locator's
+      `h_path : SeqPathAllSeq tokens (lo - 1)` (EVERY enclosing frame is `[`-typed).
+
+    **The `SeqPathAllSeq` gate is a NEW guard conjunct, not a projection.**  `SeqPathAllSeq tokens (lo-1)`
+    is STRICTLY STRONGER than the joint-induction guard's `SeqEnclosed tokens lo` (top frame only) — a seq
+    reached through a map (`[{a:[b]}]`'s `[b]`) is `SeqEnclosed` but NOT `SeqPathAllSeq` (a `false` sits
+    deeper in the stack), proven by `SeqPathAllSeqGateProbe` (`#guard`: same TOP `some true`, different
+    `s.all`).  So the joint induction CANNOT derive it from `FlowBodyWindow`/`FlowBodyContentDeep`/
+    `SeqEnclosed`; it must THREAD `SeqPathAllSeq tokens (lo-1)` through its guard for nested windows.  This
+    is sound — the seq recursion only ever descends `[`→`[` (the `{` branch is the near-leaf map oracle, no
+    seq IH, line 2709), so every window it visits is all-seq-path — but it is a genuine descend-edge
+    obligation (the btFold-push preservation of `SeqPathAllSeq` across a located `[`), the next residual.
+    The root is the SOLE exception: `SeqPathAllSeq tokens 1` FAILS (empty stack before the outer `[`,
+    `SeqPathAllSeqGateProbe`), which is exactly why the root arm uses the flat producer
+    ([[ref-root-seed-discriminator-not-from-gate]]).
+
+    This wrapper NAMES the exact `h_safe` interface the joint induction consumes and isolates the
+    `SeqPathAllSeq`-threading as the nested arm's lone non-emission hypothesis
+    ([[ref-consumer-joint-before-producer]] / [[ref-parametric-assembler-extraction]]).  Composes only
+    landed lemmas, references no sorry site, frontier sorry count unchanged at 4; axiom-clean. -/
+theorem seqWindow_safeBodyUnit
+    (items : Array YamlValue) (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
+    (h_ne : items.toList ≠ [])
+    (h_all : ∀ v ∈ items.toList, EmitScansInFlowRecEntry v)
+    (h_disp : (lo = 2 ∧ hi = tokens.size - 2)
+              ∨ (SeqTypedInterior tokens lo hi ∧ tokens[hi]!.val = .flowSequenceEnd
+                 ∧ flowBracketBalance tokens (lo - 1) lo = 1 ∧ SeqPathAllSeq tokens (lo - 1)
+                 ∧ 2 + 1 ≤ lo ∧ lo < hi ∧ hi < tokens.size - 2)) :
+    SafeBodyUnit ContentStartTok ((tokens.toList.take hi).drop lo) := by
+  rcases h_disp with ⟨hlo, hhi⟩ | ⟨h_typed, h_close, h_opener, h_path, h_win_lo, h_win_ab, h_win_hi⟩
+  · subst hlo; subst hhi
+    exact seqRoot_safeBodyUnit items tokens h_scan h_ne h_all
+  · exact nestedSeq_safeBodyUnit_of_locator items tokens lo hi h_scan h_ne h_all
+      h_typed h_close h_opener h_path h_win_lo h_win_ab h_win_hi
+
 end L4YAML.Proofs.EmitterScannability
