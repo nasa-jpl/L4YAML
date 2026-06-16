@@ -161,6 +161,7 @@ import Tests.Reflections.StrengthenSeveredPredicateMirrorsSibling
 import Tests.Reflections.DownstreamProjectionRebuildFromConstituents
 import Tests.Reflections.OpaqueWholeMovesProjectionConstituentsRebuild
 import Tests.Reflections.TokenIndistinguishableSeveranceThreadsRecursionFromProducer
+import Tests.Reflections.SeveranceRecursesThroughPairValue
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
