@@ -157,6 +157,7 @@ import Tests.Reflections.ConjunctionMergeCostIsCitationEdges
 import Tests.Reflections.TwoRoleDeliverableBlocksSharedField
 import Tests.Reflections.ConstructorFieldForcesMutualGroupMerge
 import Tests.Reflections.SeveredConstructorBoundaryProjectsInteriorDoesnt
+import Tests.Reflections.StrengthenSeveredPredicateMirrorsSibling
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
