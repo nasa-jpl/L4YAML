@@ -164,6 +164,7 @@ import Tests.Reflections.TokenIndistinguishableSeveranceThreadsRecursionFromProd
 import Tests.Reflections.SeveranceRecursesThroughPairValue
 import Tests.Reflections.DeepFamilyMirrorsFullMutualGroup
 import Tests.Reflections.ParallelFamilyShedsOrthogonalField
+import Tests.Reflections.DeliverableContractBeforeProducerBody
 
 /-!
 # Reflections — runnable proof-engineering demonstrations

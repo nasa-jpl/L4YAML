@@ -2267,6 +2267,131 @@ theorem RecSeqBodyDeep.toSafeBody {l : List (Positioned YamlToken)}
 theorem RecMapBodyDeep.toSafeBody {l : List (Positioned YamlToken)}
     (h : RecMapBodyDeep l) : SafeBody (fun t => t = .key) l := (RecMapBodyDeep.toFlat h).toSafeBody
 
+/-! ## The DEEP producer's deliverable contract — the parallel per-entry predicates the deep producer
+    will deliver, and their strong→weak coercions to the flat per-entry predicates.
+
+    `EmitScansInFlowRecEntryDeep` / `EmitScansInFlowSavedKeyRecEntryDeep` are VERBATIM copies of the
+    flat `EmitScansInFlowRecEntry` (`:1625`) / `EmitScansInFlowSavedKeyRecEntry` (`:2410`) with the lone
+    structural conjunct `RecSeqEntry block` REPLACED by the severance-free `RecEntryDeep block` — every
+    scan-state invariant is identical (the deep family is purely structural, carrying no scan facts), so
+    the deep per-item hypothesis still threads the inter-item scanner state the body producers' induction
+    needs.  This is the additive parallel predicate the future deep body/entry producers consume — keyed
+    on the SAME internal `block`, so one scanner run supplies both the deep structure and the invariants.
+
+    The two coercions are the STRONG→WEAK bridge: since `RecEntryDeep.toFlat` projects the deep entry to
+    the flat `RecSeqEntry`, the deep predicate IMPLIES the flat predicate (apply the projection to the one
+    structural conjunct, pass every other conjunct through verbatim).  So once the producer delivers the
+    DEEP predicate, EVERY existing consumer of the flat predicate (`emitList_scans_recseqbody`,
+    `emitPairList_scans_recmapbody`, the map-arm producer) still fires unchanged via the coercion — the
+    deep deliverable is a genuine refinement that loses nothing.  Verified-but-unconsumed: the deep
+    producer that PROVES these predicates is the next brick; references no sorry site, frontier
+    sorry count unchanged. -/
+def EmitScansInFlowRecEntryDeep (v : YamlValue) : Prop :=
+  ∀ (s : ScannerState) (rest : List Char),
+    ScannerSurfCorr s ⟨(emit v).toList ++ rest, s.col⟩ →
+    s.inFlow = true →
+    s.flowLevel > 0 →
+    s.currentIndent < 0 →
+    s.col > 0 →
+    s.explicitKeyLine = none →
+    AllTokensOnLine s s.line →
+    EndLineOnLine s →
+    s.simpleKeyStack.size = s.flowLevel →
+    ∃ n s' block,
+      ScanChainGrew (fun t => t.val != .placeholder) s n s'
+      ∧ ScannerSurfCorr s' ⟨rest, s'.col⟩
+      ∧ s'.flowLevel = s.flowLevel
+      ∧ s'.directivesPresent = s.directivesPresent
+      ∧ s'.indents = s.indents
+      ∧ s'.explicitKeyLine = s.explicitKeyLine
+      ∧ s'.col > 0
+      ∧ s'.inFlow = true
+      ∧ s'.currentIndent < 0
+      ∧ s'.line = s.line
+      ∧ s'.simpleKeyAllowed = false
+      ∧ (∀ t, lastRealTokenVal? s'.tokens = some t →
+          t ≠ .flowSequenceStart ∧ t ≠ .flowMappingStart ∧ t ≠ .flowEntry)
+      ∧ AllTokensOnLine s' s'.line
+      ∧ EndLineOnLine s'
+      ∧ s'.simpleKeyStack = s.simpleKeyStack
+      ∧ FlowMonoChain s.flowLevel s n s'
+      ∧ (s'.tokens.filter (fun t => t.val != .placeholder)).toList
+          = (s.tokens.filter (fun t => t.val != .placeholder)).toList ++ block
+      ∧ WellBracketed block
+      ∧ WellTyped block
+      ∧ EntrySafe block
+      ∧ EntryUnit block
+      ∧ RecEntryDeep block
+      ∧ (∃ (h : block ≠ []), ContentStartTok (block.head h).val)
+      ∧ OpenerAdj block
+      ∧ SepAdj block
+
+def EmitScansInFlowSavedKeyRecEntryDeep (v : YamlValue) : Prop :=
+  ∀ (s : ScannerState) (rest : List Char),
+    ScannerSurfCorr s ⟨(emit v).toList ++ rest, s.col⟩ →
+    s.inFlow = true →
+    s.flowLevel > 0 →
+    s.currentIndent < 0 →
+    s.col > 0 →
+    s.explicitKeyLine = none →
+    AllTokensOnLine s s.line →
+    EndLineOnLine s →
+    s.simpleKeyAllowed = true →
+    s.simpleKeyStack.size = s.flowLevel →
+    ∃ n s' block,
+      ScanChainGrew (fun t => t.val != .placeholder) s n s'
+      ∧ ScannerSurfCorr s' ⟨rest, s'.col⟩
+      ∧ s'.flowLevel = s.flowLevel
+      ∧ s'.directivesPresent = s.directivesPresent
+      ∧ s'.indents = s.indents
+      ∧ s'.explicitKeyLine = s.explicitKeyLine
+      ∧ s'.col > 0
+      ∧ s'.inFlow = true
+      ∧ s'.currentIndent < 0
+      ∧ s'.line = s.line
+      ∧ AllTokensOnLine s' s'.line
+      ∧ EndLineOnLine s'
+      ∧ s'.simpleKeyStack = s.simpleKeyStack
+      ∧ FlowMonoChain s.flowLevel s n s'
+      ∧ s'.simpleKeyAllowed = false
+      ∧ s'.simpleKey.possible = true
+      ∧ s'.simpleKey.tokenIndex = s.tokens.size
+      ∧ s.tokens.size + 1 < s'.tokens.size
+      ∧ (∀ (h : s.tokens.size < s'.tokens.size),
+          (s'.tokens[s.tokens.size]'h).val = .placeholder)
+      ∧ (∀ (h : s.tokens.size + 1 < s'.tokens.size),
+          (s'.tokens[s.tokens.size + 1]'h).val = .placeholder)
+      ∧ (s'.tokens.filter (fun t => t.val != .placeholder)).toList
+          = (s.tokens.filter (fun t => t.val != .placeholder)).toList ++ block
+      ∧ (s'.tokens.toList.take (s.tokens.size + 1)).filter (fun t => t.val != .placeholder)
+          = (s.tokens.filter (fun t => t.val != .placeholder)).toList
+      ∧ WellBracketed block
+      ∧ WellTyped block
+      ∧ EntrySafe block
+      ∧ RecEntryDeep block
+      ∧ (∀ (hla : 0 < block.length),
+          (block[block.length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowSequenceStart)
+      ∧ OpenerAdj block
+      ∧ (∀ (hla : 0 < block.length),
+          (block[block.length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowEntry)
+      ∧ SepAdj block
+
+/-- **Strong→weak coercion (value side).**  The deep per-entry predicate implies the flat one: project
+    the lone structural conjunct `RecEntryDeep block` to `RecSeqEntry block` via `RecEntryDeep.toFlat`,
+    pass every scan-state invariant through verbatim.  So a deep producer's output is consumable
+    everywhere the flat `EmitScansInFlowRecEntry` is — the future deep producer threads only the
+    recursion, never re-deriving the flat structure. -/
+theorem EmitScansInFlowRecEntryDeep.toFlat {v : YamlValue}
+    (h : EmitScansInFlowRecEntryDeep v) : EmitScansInFlowRecEntry v := by
+  intro s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sync
+  obtain ⟨n, s', block, h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow',
+          h_indent', h_line, h_ska, h_last, h_atol', h_endline', h_stack', h_fmc,
+          h_block_eq, h_wb, h_wt, h_es, h_eu, h_deep, h_cs, h_oa, h_sa⟩ :=
+    h s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sync
+  exact ⟨n, s', block, h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow',
+    h_indent', h_line, h_ska, h_last, h_atol', h_endline', h_stack', h_fmc,
+    h_block_eq, h_wb, h_wt, h_es, h_eu, RecEntryDeep.toFlat h_deep, h_cs, h_oa, h_sa⟩
+
 /-- **A recursive seq entry is non-empty.**  Every `RecSeqEntry` constructor produces a `cons` list
     (`[t]` = `t :: []`, or `op :: …`), so the entry is never `[]`.  The `h_ne` field the body-level
     `RecSeqBody.cons`/`.single` constructors demand, supplied here as a structural projection (cf.
@@ -2456,6 +2581,26 @@ def EmitScansInFlowSavedKeyRecEntry (v : YamlValue) : Prop :=
       ∧ (∀ (hla : 0 < block.length),
           (block[block.length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowEntry)
       ∧ SepAdj block
+
+/-- **Strong→weak coercion (saved-key side).**  Companion to `EmitScansInFlowRecEntryDeep.toFlat` (placed
+    here, after the flat `EmitScansInFlowSavedKeyRecEntry` it targets is in scope).  The deep saved-key
+    predicate implies the flat one: only the lone structural conjunct `RecEntryDeep block` → `RecSeqEntry
+    block` changes (via `RecEntryDeep.toFlat`), every other conjunct (the `simpleKey` / placeholder /
+    take-prefix bookkeeping) passes through verbatim.  So a deep saved-key producer's output is consumable
+    everywhere the flat `EmitScansInFlowSavedKeyRecEntry` is — e.g. `emitPairList_scans_recmapbody`'s
+    per-key hypothesis fires unchanged on the deep deliverable.  Verified-but-unconsumed. -/
+theorem EmitScansInFlowSavedKeyRecEntryDeep.toFlat {v : YamlValue}
+    (h : EmitScansInFlowSavedKeyRecEntryDeep v) : EmitScansInFlowSavedKeyRecEntry v := by
+  intro s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska_pre h_sync
+  obtain ⟨n, s', block, h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow',
+          h_indent', h_line, h_atol', h_endline', h_stack', h_fmc, h_ska, h_skp, h_skt,
+          h_szlt, h_ph1, h_ph2, h_block_eq, h_take, h_wb, h_wt, h_es, h_deep, h_notss,
+          h_oa, h_notfe, h_sa⟩ :=
+    h s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska_pre h_sync
+  exact ⟨n, s', block, h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow',
+    h_indent', h_line, h_atol', h_endline', h_stack', h_fmc, h_ska, h_skp, h_skt,
+    h_szlt, h_ph1, h_ph2, h_block_eq, h_take, h_wb, h_wt, h_es, RecEntryDeep.toFlat h_deep, h_notss,
+    h_oa, h_notfe, h_sa⟩
 
 /-- **Map-body recursive-deliverable assembler** (Phase J — the `RecMapBody` strengthening of
     `emitPairList_scans_safebody`).  Given that each pair's key `emit` block is a recursive
