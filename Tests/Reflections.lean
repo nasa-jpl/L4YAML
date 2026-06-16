@@ -162,6 +162,7 @@ import Tests.Reflections.DownstreamProjectionRebuildFromConstituents
 import Tests.Reflections.OpaqueWholeMovesProjectionConstituentsRebuild
 import Tests.Reflections.TokenIndistinguishableSeveranceThreadsRecursionFromProducer
 import Tests.Reflections.SeveranceRecursesThroughPairValue
+import Tests.Reflections.DeepFamilyMirrorsFullMutualGroup
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
