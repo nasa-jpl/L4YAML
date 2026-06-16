@@ -2142,6 +2142,131 @@ theorem RecMapBody.toWellBracketed : {l : List (Positioned YamlToken)} →
         (WellBracketed_cons_delta_zero fe rest (h_fe ▸ flowBracketDelta_flowEntry)
           h_rest.toWellBracketed)
 
+/-! ### Severance-free DEEP recursive deliverable family (Phase J, STEP D — the recursive-map carrier)
+
+The merged 4-inductive group (`RecSeqBody`/`RecSeqEntry`/`RecMapPair`/`RecMapBody` `:481-528`) carries a
+**token-indistinguishable severance**: a flow-mapping entry has BOTH a flat `RecSeqEntry.map` (stores only
+`WellBracketed`) and a recursive `RecSeqEntry.mapRec` (stores `RecMapBody`), producing the SAME
+`op :: (interior ++ [cl])` index — so a `cases` on a bare `RecSeqEntry` cannot tell a flat map from a
+recursive one, and the recursion cannot be recovered by descent (R459/R460).  Worse, the severance
+RECURSES: `RecMapPair.mk` stores its value/key as a **bare `RecSeqEntry`**, and `RecSeqBody.single`/`.cons`
+store their entries as a **bare `RecSeqEntry`** too — so a map-value-that-is-a-map AND a seq-entry-that-is-a-map
+both re-hit the same `cases` (R460/R461).  The fix is a parallel **DEEP** family that mirrors the FULL mutual
+group MINUS the flat-`.map` constructor, so every sub-value/key/entry it stores is itself severance-free,
+on BOTH axes, to any depth — the navigator only ever `cases` a severance-free type.  The recursion is
+producer-threaded (the producer applies the seq→map / value bridge at every sub-position), never
+descent-recovered.
+
+`RecEntryDeep` is the universal severance-free entry: `scalar`/`seqEmpty`/`seq (RecSeqBodyDeep)`/
+`mapEmpty`/`mapRec (RecMapBodyDeep)`.  There is no flat `.map`; the empty `{ }` is carried by the separate
+`mapEmpty` constructor (the no-`nil` `RecMapBodyDeep` cannot hold an empty body, mirror
+`RecMapEntry.mapEmpty`).  Unlike the flat group, the deep `seq`/`mapRec` carry NO `WellBracketed` field —
+it is orthogonal to the recursion and is re-derived on projection from the *projected* body (via the
+existing `RecSeqBody.toWellBracketed`/`RecMapBody.toWellBracketed`), keeping the deep family a minimal
+recursion carrier.  Per `[[ref-recursive-deliverable-project-to-flat-first]]` the FIRST brick is the
+deep→flat projection (`RecEntryDeep.toFlat` + the three siblings) below; it validates the family shape (it
+MUST project) and keeps every existing flat consumer firing on the projected output.  Verified-but-unconsumed
+this round: the producer thread and the recursive navigator over the deep family are subsequent bricks. -/
+mutual
+  inductive RecSeqBodyDeep : List (Positioned YamlToken) → Prop where
+    | single (e : List (Positioned YamlToken)) (h_ne : e ≠ [])
+        (h_e : RecEntryDeep e) (h_head : ContentStartTok (e.head h_ne).val) : RecSeqBodyDeep e
+    | cons (e : List (Positioned YamlToken)) (fe : Positioned YamlToken)
+        (rest : List (Positioned YamlToken)) (h_ne : e ≠ [])
+        (h_e : RecEntryDeep e) (h_head : ContentStartTok (e.head h_ne).val)
+        (h_fe : fe.val = .flowEntry) (h_rest : RecSeqBodyDeep rest) :
+        RecSeqBodyDeep (e ++ fe :: rest)
+  inductive RecEntryDeep : List (Positioned YamlToken) → Prop where
+    | scalar (t : Positioned YamlToken) (c : String) (s : ScalarStyle)
+        (h : t.val = .scalar c s) : RecEntryDeep [t]
+    | seqEmpty (op cl : Positioned YamlToken)
+        (h_op : op.val = .flowSequenceStart) (h_cl : cl.val = .flowSequenceEnd) :
+        RecEntryDeep (op :: ([] ++ [cl]))
+    | seq (op cl : Positioned YamlToken) (interior : List (Positioned YamlToken))
+        (h_op : op.val = .flowSequenceStart) (h_cl : cl.val = .flowSequenceEnd)
+        (h_rec : RecSeqBodyDeep interior) :
+        RecEntryDeep (op :: (interior ++ [cl]))
+    | mapEmpty (op cl : Positioned YamlToken)
+        (h_op : op.val = .flowMappingStart) (h_cl : cl.val = .flowMappingEnd) :
+        RecEntryDeep (op :: ([] ++ [cl]))
+    | mapRec (op cl : Positioned YamlToken) (interior : List (Positioned YamlToken))
+        (h_op : op.val = .flowMappingStart) (h_cl : cl.val = .flowMappingEnd)
+        (h_rec : RecMapBodyDeep interior) :
+        RecEntryDeep (op :: (interior ++ [cl]))
+  /-- One key/value pair of a DEEP flow-mapping body: `key :: (block_k ++ value :: block_v)`, with the
+      key and value each a severance-free `RecEntryDeep` (mirror `RecMapPair.mk`'s bare `RecSeqEntry`
+      value/key — the field that made the flat severance RECURSE). -/
+  inductive RecMapPairDeep : List (Positioned YamlToken) → Prop where
+    | mk (kt : Positioned YamlToken) (block_k : List (Positioned YamlToken))
+        (vt : Positioned YamlToken) (block_v : List (Positioned YamlToken))
+        (h_kt : kt.val = .key) (h_ke : RecEntryDeep block_k)
+        (h_vt : vt.val = .value) (h_ve : RecEntryDeep block_v) :
+        RecMapPairDeep (kt :: (block_k ++ vt :: block_v))
+  inductive RecMapBodyDeep : List (Positioned YamlToken) → Prop where
+    | single (p : List (Positioned YamlToken)) (h_ne : p ≠ [])
+        (h_p : RecMapPairDeep p) (h_head : (p.head h_ne).val = .key) : RecMapBodyDeep p
+    | cons (p : List (Positioned YamlToken)) (fe : Positioned YamlToken)
+        (rest : List (Positioned YamlToken)) (h_ne : p ≠ [])
+        (h_p : RecMapPairDeep p) (h_head : (p.head h_ne).val = .key)
+        (h_fe : fe.val = .flowEntry) (h_rest : RecMapBodyDeep rest) :
+        RecMapBodyDeep (p ++ fe :: rest)
+end
+
+/-! **The deep→flat PROJECTION** (`[[ref-recursive-deliverable-project-to-flat-first]]`, the FIRST brick).
+    A mutual theorem block mirroring the mutual inductive structure, projecting the deep family onto the
+    flat one.  The deep `seq` → flat `RecSeqEntry.seq` and the deep `mapRec` → flat `RecSeqEntry.mapRec`
+    (RECURSION PRESERVED — every flat consumer reading the recursive body still gets it); the deep
+    `mapEmpty` → flat `RecSeqEntry.map []` (the degenerate `{ }` the no-`nil` `RecMapBody` cannot represent
+    — the producer's R458 empty-map dispatch).  `scalar`/`seqEmpty` map verbatim.  The flat `seq`/`.mapRec`
+    constructors ALSO store a `WellBracketed interior` field the deep family does not carry; it is SUPPLIED
+    from `RecSeqBody.toWellBracketed`/`RecMapBody.toWellBracketed` of the *projected* body (both above), and
+    `WellBracketed_nil` for the empty-map leaf.  Authoring the projection first validates the family shape
+    and keeps `RecSeqEntry.toEntrySafe` (`:531`), `RecMapBody.toSafeBody` (`:2106`), and the `toWellBracketed`
+    family firing on the projected output (the corollaries below). -/
+mutual
+  theorem RecEntryDeep.toFlat : {e : List (Positioned YamlToken)} →
+      RecEntryDeep e → RecSeqEntry e
+    | _, .scalar t c s h => RecSeqEntry.scalar t c s h
+    | _, .seqEmpty op cl h_op h_cl => RecSeqEntry.seqEmpty op cl h_op h_cl
+    | _, .seq op cl interior h_op h_cl h_rec =>
+        RecSeqEntry.seq op cl interior h_op h_cl
+          (RecSeqBody.toWellBracketed (RecSeqBodyDeep.toFlat h_rec)) (RecSeqBodyDeep.toFlat h_rec)
+    | _, .mapEmpty op cl h_op h_cl =>
+        RecSeqEntry.map op cl [] h_op h_cl WellBracketed_nil
+    | _, .mapRec op cl interior h_op h_cl h_rec =>
+        RecSeqEntry.mapRec op cl interior h_op h_cl
+          (RecMapBody.toWellBracketed (RecMapBodyDeep.toFlat h_rec)) (RecMapBodyDeep.toFlat h_rec)
+  theorem RecSeqBodyDeep.toFlat : {l : List (Positioned YamlToken)} →
+      RecSeqBodyDeep l → RecSeqBody l
+    | _, .single e h_ne h_e h_head => RecSeqBody.single e h_ne (RecEntryDeep.toFlat h_e) h_head
+    | _, .cons e fe rest h_ne h_e h_head h_fe h_rest =>
+        RecSeqBody.cons e fe rest h_ne (RecEntryDeep.toFlat h_e) h_head h_fe
+          (RecSeqBodyDeep.toFlat h_rest)
+  theorem RecMapPairDeep.toFlat : {p : List (Positioned YamlToken)} →
+      RecMapPairDeep p → RecMapPair p
+    | _, .mk kt block_k vt block_v h_kt h_ke h_vt h_ve =>
+        RecMapPair.mk kt block_k vt block_v h_kt (RecEntryDeep.toFlat h_ke) h_vt
+          (RecEntryDeep.toFlat h_ve)
+  theorem RecMapBodyDeep.toFlat : {l : List (Positioned YamlToken)} →
+      RecMapBodyDeep l → RecMapBody l
+    | _, .single p h_ne h_p h_head => RecMapBody.single p h_ne (RecMapPairDeep.toFlat h_p) h_head
+    | _, .cons p fe rest h_ne h_p h_head h_fe h_rest =>
+        RecMapBody.cons p fe rest h_ne (RecMapPairDeep.toFlat h_p) h_head h_fe
+          (RecMapBodyDeep.toFlat h_rest)
+end
+
+/-- **The projected flat seq consumer still fires.**  A `RecSeqBodyDeep` projects to a flat `RecSeqBody`,
+    which is in particular the flat `SafeBody ContentStartTok` that `seqBodyProps_of_windowed_safebody`
+    consumes — so wiring the deep family as the producer's output loses nothing the seq descent needs.
+    Verified-but-unconsumed (the navigator over the deep family is a later brick). -/
+theorem RecSeqBodyDeep.toSafeBody {l : List (Positioned YamlToken)}
+    (h : RecSeqBodyDeep l) : SafeBody ContentStartTok l := (RecSeqBodyDeep.toFlat h).toSafeBody
+
+/-- **The projected flat map consumer still fires.**  A `RecMapBodyDeep` projects to a flat `RecMapBody`,
+    hence the flat `SafeBody (· = .key)` that `mapBodyProps_of_windowed_safebody` consumes. -/
+theorem RecMapBodyDeep.toSafeBody {l : List (Positioned YamlToken)}
+    (h : RecMapBodyDeep l) : SafeBody (fun t => t = .key) l := (RecMapBodyDeep.toFlat h).toSafeBody
+
 /-- **A recursive seq entry is non-empty.**  Every `RecSeqEntry` constructor produces a `cons` list
     (`[t]` = `t :: []`, or `op :: …`), so the entry is never `[]`.  The `h_ne` field the body-level
     `RecSeqBody.cons`/`.single` constructors demand, supplied here as a structural projection (cf.

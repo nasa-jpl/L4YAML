@@ -163,6 +163,7 @@ import Tests.Reflections.OpaqueWholeMovesProjectionConstituentsRebuild
 import Tests.Reflections.TokenIndistinguishableSeveranceThreadsRecursionFromProducer
 import Tests.Reflections.SeveranceRecursesThroughPairValue
 import Tests.Reflections.DeepFamilyMirrorsFullMutualGroup
+import Tests.Reflections.ParallelFamilyShedsOrthogonalField
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
