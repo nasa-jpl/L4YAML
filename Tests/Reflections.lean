@@ -155,6 +155,7 @@ import Tests.Reflections.AdditiveFieldForcesProducerMutualRecursion
 import Tests.Reflections.ConjunctionMotiveBreaksProducerCycle
 import Tests.Reflections.ConjunctionMergeCostIsCitationEdges
 import Tests.Reflections.TwoRoleDeliverableBlocksSharedField
+import Tests.Reflections.ConstructorFieldForcesMutualGroupMerge
 
 /-!
 # Reflections — runnable proof-engineering demonstrations

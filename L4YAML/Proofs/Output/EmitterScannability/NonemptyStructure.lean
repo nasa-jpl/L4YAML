@@ -501,6 +501,30 @@ mutual
         (h_op : op.val = .flowMappingStart) (h_cl : cl.val = .flowMappingEnd)
         (h_wb : WellBracketed interior) :
         RecSeqEntry (op :: (interior ++ [cl]))
+    | mapRec (op cl : Positioned YamlToken) (interior : List (Positioned YamlToken))
+        (h_op : op.val = .flowMappingStart) (h_cl : cl.val = .flowMappingEnd)
+        (h_wb : WellBracketed interior) (h_rec : RecMapBody interior) :
+        RecSeqEntry (op :: (interior ++ [cl]))
+  /-- One key/value pair of a flow-mapping body: `key :: (block_k ++ value :: block_v)`, with the key
+      and value each a recursive `emit` entry (`RecSeqEntry`). -/
+  inductive RecMapPair : List (Positioned YamlToken) → Prop where
+    | mk (kt : Positioned YamlToken) (block_k : List (Positioned YamlToken))
+        (vt : Positioned YamlToken) (block_v : List (Positioned YamlToken))
+        (h_kt : kt.val = .key) (h_ke : RecSeqEntry block_k)
+        (h_vt : vt.val = .value) (h_ve : RecSeqEntry block_v) :
+        RecMapPair (kt :: (block_k ++ vt :: block_v))
+  /-- A flow-mapping body: one or more `RecMapPair`s separated by single depth-`0` `.flowEntry`
+      tokens.  The map mirror of `RecSeqBody`; `.single`/`.cons` store the head-`.key` and non-empty
+      facts (uniformly derivable from the pair, but stored to mirror `RecSeqBody` so the flat
+      projection is a verbatim mirror — and the future producer supplies them trivially). -/
+  inductive RecMapBody : List (Positioned YamlToken) → Prop where
+    | single (p : List (Positioned YamlToken)) (h_ne : p ≠ [])
+        (h_p : RecMapPair p) (h_head : (p.head h_ne).val = .key) : RecMapBody p
+    | cons (p : List (Positioned YamlToken)) (fe : Positioned YamlToken)
+        (rest : List (Positioned YamlToken)) (h_ne : p ≠ [])
+        (h_p : RecMapPair p) (h_head : (p.head h_ne).val = .key)
+        (h_fe : fe.val = .flowEntry) (h_rest : RecMapBody rest) :
+        RecMapBody (p ++ fe :: rest)
 end
 
 /-- A recursive seq entry is `EntrySafe` (the flat per-entry obligation `SafeBody` consumes). -/
@@ -511,6 +535,7 @@ theorem RecSeqEntry.toEntrySafe {e : List (Positioned YamlToken)}
   | seqEmpty op cl h_op h_cl => exact (wrap_seq_block op cl [] h_op h_cl WellBracketed_nil).2
   | seq op cl interior h_op h_cl h_wb _ => exact (wrap_seq_block op cl interior h_op h_cl h_wb).2
   | map op cl interior h_op h_cl h_wb => exact (wrap_map_block op cl interior h_op h_cl h_wb).2
+  | mapRec op cl interior h_op h_cl h_wb _ => exact (wrap_map_block op cl interior h_op h_cl h_wb).2
 
 /-- A recursive seq entry is `EntryUnit` (the unit refinement — one `emit v` is one unit). -/
 theorem RecSeqEntry.toEntryUnit {e : List (Positioned YamlToken)}
@@ -524,6 +549,9 @@ theorem RecSeqEntry.toEntryUnit {e : List (Positioned YamlToken)}
       exact EntryUnit_wrap op cl interior (h_op ▸ flowBracketDelta_flowSequenceStart)
         (h_cl ▸ flowBracketDelta_flowSequenceEnd) h_wb
   | map op cl interior h_op h_cl h_wb =>
+      exact EntryUnit_wrap op cl interior (h_op ▸ flowBracketDelta_flowMappingStart)
+        (h_cl ▸ flowBracketDelta_flowMappingEnd) h_wb
+  | mapRec op cl interior h_op h_cl h_wb _ =>
       exact EntryUnit_wrap op cl interior (h_op ▸ flowBracketDelta_flowMappingStart)
         (h_cl ▸ flowBracketDelta_flowMappingEnd) h_wb
 
@@ -563,6 +591,7 @@ theorem RecSeqEntry.toWellBracketed {e : List (Positioned YamlToken)}
   | seqEmpty op cl h_op h_cl => exact (wrap_seq_block op cl [] h_op h_cl WellBracketed_nil).1
   | seq op cl interior h_op h_cl h_wb _ => exact (wrap_seq_block op cl interior h_op h_cl h_wb).1
   | map op cl interior h_op h_cl h_wb => exact (wrap_map_block op cl interior h_op h_cl h_wb).1
+  | mapRec op cl interior h_op h_cl h_wb _ => exact (wrap_map_block op cl interior h_op h_cl h_wb).1
 
 /-- **Balance projection (seq side, body level).**  A `RecSeqBody` is in particular
     `WellBracketed`: each entry is `WellBracketed` (`RecSeqEntry.toWellBracketed`) and the
@@ -624,6 +653,12 @@ theorem recseqentry_seq_extract {e : List (Positioned YamlToken)}
       have h_int : interior = int' := (List.reverse_inj.mp (List.cons.inj hr).2).symm
       rw [h_int]; exact h_rec'
   | map op' cl' int' h_op' h_cl' h_wb' =>
+      -- The opener would be `.flowMappingStart`, contradicting `h_open`.
+      exfalso
+      have h_op_eq : op' = op := (List.cons.inj h_shape).1
+      rw [← h_op_eq, h_op'] at h_open
+      exact absurd h_open (by simp)
+  | mapRec op' cl' int' h_op' h_cl' h_wb' _ =>
       -- The opener would be `.flowMappingStart`, contradicting `h_open`.
       exfalso
       have h_op_eq : op' = op := (List.cons.inj h_shape).1
@@ -783,6 +818,15 @@ theorem recseqentry_opener_interior_floor {e : List (Positioned YamlToken)}
       have := h_wb.2 m'
       omega
   | map op cl interior h_op h_cl h_wb =>
+      intro m h1 h2
+      obtain ⟨m', rfl⟩ : ∃ m', m = m' + 1 := ⟨m - 1, by omega⟩
+      have hm' : m' ≤ interior.length := by
+        simp only [List.length_cons, List.length_append, List.length_nil] at h2; omega
+      rw [List.take_succ_cons, pbalance_cons, h_op, flowBracketDelta_flowMappingStart,
+          List.take_append_of_le_length hm']
+      have := h_wb.2 m'
+      omega
+  | mapRec op cl interior h_op h_cl h_wb _ =>
       intro m h1 h2
       obtain ⟨m', rfl⟩ : ∃ m', m = m' + 1 := ⟨m - 1, by omega⟩
       have hm' : m' ≤ interior.length := by
@@ -991,6 +1035,14 @@ theorem recseqbody_head_seq_project
       have h_op_eq : op = tokens.toList[lo]'h_lo_len := (List.cons.inj h_eslice).1
       have h_val : tokens[lo]!.val = .flowMappingStart := by rw [h_lo_val, ← h_op_eq, h_op]
       rw [h_open] at h_val; exact absurd h_val (by simp)
+  | mapRec op cl interior h_op h_cl h_wb _ =>
+      exfalso
+      have hlen : (op :: (interior ++ [cl])).length = interior.length + 1 + 1 := by
+        simp [List.length_append]
+      rw [hlen, List.drop_eq_getElem_cons h_lo_len, List.take_succ_cons] at h_eslice
+      have h_op_eq : op = tokens.toList[lo]'h_lo_len := (List.cons.inj h_eslice).1
+      have h_val : tokens[lo]!.val = .flowMappingStart := by rw [h_lo_val, ← h_op_eq, h_op]
+      rw [h_open] at h_val; exact absurd h_val (by simp)
   | seq op cl interior h_op h_cl h_wb h_rec =>
       have hlen : (op :: (interior ++ [cl])).length = interior.length + 1 + 1 := by
         simp [List.length_append]
@@ -1108,6 +1160,14 @@ theorem recseqentry_close_pin
       exfalso
       simp only [List.nil_append, List.length_cons, List.length_nil] at h_uniq; omega
   | map op cl interior h_op h_cl h_wb =>
+      exfalso
+      have hlen : (op :: (interior ++ [cl])).length = interior.length + 1 + 1 := by
+        simp [List.length_append]
+      rw [hlen, List.drop_eq_getElem_cons h_lo_len, List.take_succ_cons] at h_eslice
+      have h_op_eq : op = tokens.toList[lo]'h_lo_len := (List.cons.inj h_eslice).1
+      have h_val : tokens[lo]!.val = .flowMappingStart := by rw [h_lo_val, ← h_op_eq, h_op]
+      rw [h_open] at h_val; exact absurd h_val (by simp)
+  | mapRec op cl interior h_op h_cl h_wb _ =>
       exfalso
       have hlen : (op :: (interior ++ [cl])).length = interior.length + 1 + 1 := by
         simp [List.length_append]
@@ -1483,6 +1543,15 @@ theorem recseqbody_descend (tokens : Array (Positioned YamlToken)) (lo H p : Nat
       rw [hp1, h_close_val] at h_p_open
       simp at h_p_open
   | map op cl interior h_op h_cl h_wb =>
+      exfalso
+      have hlen : (op :: (interior ++ [cl])).length = interior.length + 1 + 1 := by
+        simp [List.length_append]
+      rw [hlen] at h_eslice
+      rw [List.drop_eq_getElem_cons h_lo_len, List.take_succ_cons] at h_eslice
+      have h_op_eq : op = tokens.toList[lo]'h_lo_len := (List.cons.inj h_eslice).1
+      have h_val : tokens[lo]!.val = .flowMappingStart := by rw [h_lo_val, ← h_op_eq, h_op]
+      rw [h_lo_open] at h_val; exact absurd h_val (by simp)
+  | mapRec op cl interior h_op h_cl h_wb _ =>
       exfalso
       have hlen : (op :: (interior ++ [cl])).length = interior.length + 1 + 1 := by
         simp [List.length_append]
@@ -1997,35 +2066,16 @@ pair carries **two `RecSeqEntry`s** (key and value).  This is what lets the map-
 reach into a key's or value's nested flow-sequence interior: that interior's `RecSeqBody` is recorded
 inside the `RecSeqEntry.seq` of `block_k`/`block_v`.
 
-`RecMapPair` depends only on the already-defined `RecSeqEntry` (its key/value blocks), and `RecMapBody`
-recurses only on itself — so, unlike the seq side, **no `mutual` block is needed** (avoiding the
-`mutual`-doc-comment / `induction` / `Or`-nesting gotchas of Reflection 234 entirely): define
-`RecMapPair` first, then `RecMapBody`.  As on the seq side, the deeper key/value-of-a-nested-*mapping*
-recursion still bottoms out at the `RecSeqEntry.map` `WellBracketed` (a fully-recursive map interior is
-a later refinement); this deliverable resolves nested *sequences* inside map keys/values, which is what
-the seq locate already in hand needs. -/
-
-/-- One key/value pair of a flow-mapping body: `key :: (block_k ++ value :: block_v)`, with the key
-    and value each a recursive `emit` entry (`RecSeqEntry`). -/
-inductive RecMapPair : List (Positioned YamlToken) → Prop where
-  | mk (kt : Positioned YamlToken) (block_k : List (Positioned YamlToken))
-      (vt : Positioned YamlToken) (block_v : List (Positioned YamlToken))
-      (h_kt : kt.val = .key) (h_ke : RecSeqEntry block_k)
-      (h_vt : vt.val = .value) (h_ve : RecSeqEntry block_v) :
-      RecMapPair (kt :: (block_k ++ vt :: block_v))
-
-/-- A flow-mapping body: one or more `RecMapPair`s separated by single depth-`0` `.flowEntry`
-    tokens.  The map mirror of `RecSeqBody`; `.single`/`.cons` store the head-`.key` and non-empty
-    facts (uniformly derivable from the pair, but stored to mirror `RecSeqBody` so the flat
-    projection is a verbatim mirror — and the future producer supplies them trivially). -/
-inductive RecMapBody : List (Positioned YamlToken) → Prop where
-  | single (p : List (Positioned YamlToken)) (h_ne : p ≠ [])
-      (h_p : RecMapPair p) (h_head : (p.head h_ne).val = .key) : RecMapBody p
-  | cons (p : List (Positioned YamlToken)) (fe : Positioned YamlToken)
-      (rest : List (Positioned YamlToken)) (h_ne : p ≠ [])
-      (h_p : RecMapPair p) (h_head : (p.head h_ne).val = .key)
-      (h_fe : fe.val = .flowEntry) (h_rest : RecMapBody rest) :
-      RecMapBody (p ++ fe :: rest)
+**`RecMapPair` / `RecMapBody` are now declared in the `RecSeqEntry` `mutual` block above** (R454).
+The original design comment here noted "no `mutual` block is needed" because `RecMapPair` depended
+only on `RecSeqEntry` (one-directional) — true while a nested *mapping* inside a seq entry bottomed
+out at the flat `RecSeqEntry.map`'s `WellBracketed`.  Making nested maps *fully recursive* added the
+new `RecSeqEntry.mapRec` constructor carrying `h_rec : RecMapBody interior`, so `RecSeqEntry` now
+references `RecMapBody` and the dependency became a genuine cycle
+`RecSeqEntry → RecMapBody → RecMapPair → RecSeqEntry`.  A cycle must be co-declared, so the four
+inductives (`RecSeqBody`, `RecSeqEntry`, `RecMapPair`, `RecMapBody`) merged into one `mutual` block.
+The flat `RecSeqEntry.map` stays (the seq navigator builds it from balance, severing); `mapRec` is
+built only by the producer (which has the recursive body).  The projections below are unchanged. -/
 
 /-- **Flat projection (map side, pair level).**  A `RecMapPair` is `EntrySafe`: the key block is
     `EntrySafe` (`RecSeqEntry.toEntrySafe`), the value block is `EntrySafe`, and the delta-`0`
@@ -3573,6 +3623,12 @@ theorem RecSeqEntry.seq_interior {e interior : List (Positioned YamlToken)}
       injection h_eq with h1 _h2
       rw [h1, h_op] at h_op'
       exact absurd h_op' (by decide)
+  | mapRec op' cl' interior' h_op' h_cl' h_wb _ =>
+      -- `op'.val = .flowMappingStart` clashes with the `.flowSequenceStart` head.
+      exfalso
+      injection h_eq with h1 _h2
+      rw [h1, h_op] at h_op'
+      exact absurd h_op' (by decide)
 
 /-- **Single-level map descent** (Phase J, seq side — descent-locator core, map entries).  A nested
     flow-MAPPING entry `op :: (interior ++ [cl])` recorded inside the recursive deliverable (its
@@ -3600,6 +3656,9 @@ theorem RecSeqEntry.map_interior {e interior : List (Positioned YamlToken)}
       rw [h1, h_op] at h_op'
       exact absurd h_op' (by decide)
   | map op' cl' interior' h_op' h_cl' h_wb =>
+      injection h_eq with _h1 h2
+      exact (append_singleton_inj h2).1 ▸ h_wb
+  | mapRec op' cl' interior' h_op' h_cl' h_wb _ =>
       injection h_eq with _h1 h2
       exact (append_singleton_inj h2).1 ▸ h_wb
 
@@ -4040,6 +4099,7 @@ theorem RecSeqEntry.head_contentStart {e : List (Positioned YamlToken)}
   | seqEmpty op cl h_op _ => rw [List.head_cons]; exact Or.inr (Or.inl h_op)
   | seq op cl interior h_op _ _ _ => rw [List.head_cons]; exact Or.inr (Or.inl h_op)
   | map op cl interior h_op _ _ => rw [List.head_cons]; exact Or.inr (Or.inr h_op)
+  | mapRec op cl interior h_op _ _ _ => rw [List.head_cons]; exact Or.inr (Or.inr h_op)
 
 /-- **Body-cons window assembler** (Phase J, seq side — the navigation recursion's *advance* step).
     The third positional move of the locate recursion, the structural complement to the two already

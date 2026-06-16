@@ -5087,6 +5087,9 @@ theorem nestedSeq_recseqentry_locate_hstep
     | map op cl interior h_op h_cl h_wb =>
         exact nestedSeq_recseqentry_locate_map_head_step tokens a b off H body interior op cl
           g h_eq h_op h_cl h_wb
+    | mapRec op cl interior h_op h_cl h_wb _ =>
+        exact nestedSeq_recseqentry_locate_map_head_step tokens a b off H body interior op cl
+          g h_eq h_op h_cl h_wb
   · -- CONS branch (body = e ++ fe :: rest): each head's three-arm dispatch into the carved CONS cells
     cases h_e with
     | scalar t c s ht =>
@@ -5099,6 +5102,9 @@ theorem nestedSeq_recseqentry_locate_hstep
         exact nestedSeq_recseqentry_locate_seq_cons_step tokens a b off H body rest interior op cl fe
           g h_eq h_op h_cl h_wb h_rec h_fe h_rest
     | map op cl interior h_op h_cl h_wb =>
+        exact nestedSeq_recseqentry_locate_map_cons_step tokens a b off H body rest interior op cl fe
+          g h_eq h_op h_cl h_wb h_fe h_rest
+    | mapRec op cl interior h_op h_cl h_wb _ =>
         exact nestedSeq_recseqentry_locate_map_cons_step tokens a b off H body rest interior op cl fe
           g h_eq h_op h_cl h_wb h_fe h_rest
 
