@@ -4101,6 +4101,84 @@ theorem RecSeqEntry.head_contentStart {e : List (Positioned YamlToken)}
   | map op cl interior h_op _ _ => rw [List.head_cons]; exact Or.inr (Or.inr h_op)
   | mapRec op cl interior h_op _ _ _ => rw [List.head_cons]; exact Or.inr (Or.inr h_op)
 
+/-! ### Map-body last-token projections — completing the `RecMapBody` projection family
+
+The map mirror of `RecSeqBody.getLast?_not_opener`/`lastNonOpener` (and the `SepAdj` twins).  A
+`RecMapBody` ends in its last pair's value block, whose last token is a value-end (a scalar / `]` /
+`}`) — never a seq-opener `[` nor a `.flowEntry` separator.  Both facts are read off the value
+entry's `EntryUnit` (balance-based, so they hold for ANY value entry — including a flat `.map`
+entry, which severs the *recursive* structure but not the *last token*: `lastNonOpener`/`lastNonSep`
+are structure-blind at the boundary).  This is exactly why these projections ARE derivable from
+`RecMapBody` while `OpenerAdj`/`SepAdj` are NOT: the adjacency facts inspect every interior `[`/`,`
+seat and so need each entry's interior structure, which a flat `.map` (storing only `WellBracketed`)
+does not carry — `WellBracketed` does not imply `OpenerAdj`.  So the body's `OpenerAdj`/`SepAdj` stay
+scan-threaded; only the last-token facts come from the deliverable.  These feed the map wrap
+`OpenerAdj_wrap_map`/`SepAdj_wrap_map`, whose `h_tail` side-inputs are exactly these (and which need
+NO body-head fact — the `{` opener is inert for both adjacency triggers). -/
+
+/-- Tail-not-opener (`getLast?` form) for a `RecMapBody` — the map mirror of
+    `RecSeqBody.getLast?_not_opener`.  `single`: the pair's last is its value block's last, not an
+    opener (`lastNonOpener_of_entryUnit` via the value's `EntryUnit`); `cons`: the recursive tail's
+    last (the IH). -/
+theorem RecMapBody.getLast?_not_opener : {l : List (Positioned YamlToken)} →
+    RecMapBody l → ∃ t, l.getLast? = some t ∧ t.val ≠ .flowSequenceStart
+  | _, .single _p _h_ne h_p _h_head => by
+      cases h_p with
+      | mk kt block_k vt block_v _h_kt _h_ke _h_vt h_ve =>
+        have h_bv_ne : block_v ≠ [] := h_ve.ne_nil
+        obtain ⟨t, h_gl, h_t⟩ := getLast?_not_opener_of_lastNonOpener block_v h_bv_ne
+          (lastNonOpener_of_entryUnit block_v h_ve.toEntryUnit)
+        refine ⟨t, ?_, h_t⟩
+        rw [List.getLast?_cons_of_ne_nil (by simp), List.getLast?_append,
+            List.getLast?_cons_of_ne_nil h_bv_ne, h_gl]
+        rfl
+  | _, .cons _p fe rest _h_ne _h_p _h_head _h_fe h_rest => by
+      obtain ⟨t, h_gl, h_t⟩ := h_rest.getLast?_not_opener
+      have h_rest_ne : rest ≠ [] := by intro h; rw [h] at h_gl; simp at h_gl
+      refine ⟨t, ?_, h_t⟩
+      rw [List.getLast?_append, List.getLast?_cons_of_ne_nil h_rest_ne, h_gl]
+      rfl
+
+/-- Tail-not-opener (getElem form) for a `RecMapBody` — the `OpenerAdj_wrap_map` boundary bridge
+    `h_tail` shape, derived from the `getLast?` witness.  Mirror of `RecSeqBody.lastNonOpener`. -/
+theorem RecMapBody.lastNonOpener {l : List (Positioned YamlToken)} (h : RecMapBody l) :
+    ∀ (hla : 0 < l.length),
+      (l[l.length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowSequenceStart := by
+  obtain ⟨t, h_gl, h_t⟩ := h.getLast?_not_opener
+  exact lastNonOpener_of_getLast? l t h_gl h_t
+
+/-- Tail-not-separator (`getLast?` form) for a `RecMapBody` — the `SepAdj` mirror of
+    `RecMapBody.getLast?_not_opener`.  `single`: the value block's last is never a `.flowEntry`
+    (`lastNonSep_of_entryUnit_contentHead` off the value's `EntryUnit` + content-start head);
+    `cons`: the recursive tail's last (the IH). -/
+theorem RecMapBody.getLast?_not_sep : {l : List (Positioned YamlToken)} →
+    RecMapBody l → ∃ t, l.getLast? = some t ∧ t.val ≠ .flowEntry
+  | _, .single _p _h_ne h_p _h_head => by
+      cases h_p with
+      | mk kt block_k vt block_v _h_kt _h_ke _h_vt h_ve =>
+        have h_bv_ne : block_v ≠ [] := h_ve.ne_nil
+        obtain ⟨t, h_gl, h_t⟩ := getLast?_not_sep_of_lastNonSep block_v h_bv_ne
+          (lastNonSep_of_entryUnit_contentHead block_v h_ve.toEntryUnit
+            ⟨h_bv_ne, h_ve.head_contentStart h_bv_ne⟩)
+        refine ⟨t, ?_, h_t⟩
+        rw [List.getLast?_cons_of_ne_nil (by simp), List.getLast?_append,
+            List.getLast?_cons_of_ne_nil h_bv_ne, h_gl]
+        rfl
+  | _, .cons _p fe rest _h_ne _h_p _h_head _h_fe h_rest => by
+      obtain ⟨t, h_gl, h_t⟩ := h_rest.getLast?_not_sep
+      have h_rest_ne : rest ≠ [] := by intro h; rw [h] at h_gl; simp at h_gl
+      refine ⟨t, ?_, h_t⟩
+      rw [List.getLast?_append, List.getLast?_cons_of_ne_nil h_rest_ne, h_gl]
+      rfl
+
+/-- Tail-not-separator (getElem form) for a `RecMapBody` — the `SepAdj_wrap_map` boundary bridge
+    `h_tail` shape (`≠ .flowEntry`).  Mirror of `RecSeqBody.lastNonSep`. -/
+theorem RecMapBody.lastNonSep {l : List (Positioned YamlToken)} (h : RecMapBody l) :
+    ∀ (hla : 0 < l.length),
+      (l[l.length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowEntry := by
+  obtain ⟨t, h_gl, h_t⟩ := h.getLast?_not_sep
+  exact lastNonSep_of_getLast? l t h_gl h_t
+
 /-- **Body-cons window assembler** (Phase J, seq side — the navigation recursion's *advance* step).
     The third positional move of the locate recursion, the structural complement to the two already
     landed: `recseqbody_window_of_located_entry` *descends* into a nested entry's interior, and
