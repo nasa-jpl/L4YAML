@@ -2142,6 +2142,116 @@ theorem RecMapBody.toWellBracketed : {l : List (Positioned YamlToken)} →
         (WellBracketed_cons_delta_zero fe rest (h_fe ▸ flowBracketDelta_flowEntry)
           h_rest.toWellBracketed)
 
+/-- **A recursive seq entry is non-empty.**  Every `RecSeqEntry` constructor produces a `cons` list
+    (`[t]` = `t :: []`, or `op :: …`), so the entry is never `[]`.  The `h_ne` field the body-level
+    `RecSeqBody.cons`/`.single` constructors demand, supplied here as a structural projection (cf.
+    `RecSeqEntry.toEntrySafe`/`toWellBracketed`).  (Moved up here — ahead of the map-arm producer and
+    the map-body assembler — so the `RecMapBody` last-token projections below, which read the value
+    entry's `ne_nil`/`head_contentStart`, are in scope at every upstream producer site too.) -/
+theorem RecSeqEntry.ne_nil {e : List (Positioned YamlToken)} (h : RecSeqEntry e) : e ≠ [] := by
+  cases h <;> simp
+
+/-- **A recursive seq entry's head is a content-start token.**  Each constructor's first token is a
+    scalar (`scalar`), a `.flowSequenceStart` (`seqEmpty`/`seq`), or a `.flowMappingStart` (`map`) —
+    exactly the three `ContentStartTok` cases.  The `h_head` field `RecSeqBody.cons`/`.single` demand,
+    supplied as a structural projection so the body-level assemblers need not re-derive it from the
+    per-entry token shape.  (The `h_ne` argument is threaded through to `List.head`; by proof
+    irrelevance any `e ≠ []` witness gives the same head.) -/
+theorem RecSeqEntry.head_contentStart {e : List (Positioned YamlToken)}
+    (h : RecSeqEntry e) (h_ne : e ≠ []) : ContentStartTok (e.head h_ne).val := by
+  cases h with
+  | scalar t c s ht => rw [List.head_cons]; exact Or.inl ⟨c, s, ht⟩
+  | seqEmpty op cl h_op _ => rw [List.head_cons]; exact Or.inr (Or.inl h_op)
+  | seq op cl interior h_op _ _ _ => rw [List.head_cons]; exact Or.inr (Or.inl h_op)
+  | map op cl interior h_op _ _ => rw [List.head_cons]; exact Or.inr (Or.inr h_op)
+  | mapRec op cl interior h_op _ _ _ => rw [List.head_cons]; exact Or.inr (Or.inr h_op)
+
+/-! ### Map-body last-token projections — completing the `RecMapBody` projection family
+
+The map mirror of `RecSeqBody.getLast?_not_opener`/`lastNonOpener` (and the `SepAdj` twins).  A
+`RecMapBody` ends in its last pair's value block, whose last token is a value-end (a scalar / `]` /
+`}`) — never a seq-opener `[` nor a `.flowEntry` separator.  Both facts are read off the value
+entry's `EntryUnit` (balance-based, so they hold for ANY value entry — including a flat `.map`
+entry, which severs the *recursive* structure but not the *last token*: `lastNonOpener`/`lastNonSep`
+are structure-blind at the boundary).  This is exactly why these projections ARE derivable from
+`RecMapBody` while `OpenerAdj`/`SepAdj` are NOT: the adjacency facts inspect every interior `[`/`,`
+seat and so need each entry's interior structure, which a flat `.map` (storing only `WellBracketed`)
+does not carry — `WellBracketed` does not imply `OpenerAdj`.  So the body's `OpenerAdj`/`SepAdj` stay
+scan-threaded; only the last-token facts come from the deliverable.  These feed the map wrap
+`OpenerAdj_wrap_map`/`SepAdj_wrap_map`, whose `h_tail` side-inputs are exactly these (and which need
+NO body-head fact — the `{` opener is inert for both adjacency triggers).
+
+Placed here (ahead of the map-arm producer `emit_scans_in_flow_rec_entry_both` and the map-body
+assembler `emitPairList_scans_recmapbody`) so the producer can read the wrapped block's tail facts
+off `RecMapBody.lastNonOpener`/`.lastNonSep` directly when it builds `RecSeqEntry.mapRec`, rather
+than rebuild them from constituents (cf. [[ref-downstream-projection-unavailable-rebuild-from-constituents]]
+— with MANY upstream sites needing the projection, the dependency-correct fix is to move it up, a
+move safe by the earlier-declaration ordering check since it references only the constructors and the
+`ne_nil`/`head_contentStart`/`toEntryUnit` helpers above). -/
+
+/-- Tail-not-opener (`getLast?` form) for a `RecMapBody` — the map mirror of
+    `RecSeqBody.getLast?_not_opener`.  `single`: the pair's last is its value block's last, not an
+    opener (`lastNonOpener_of_entryUnit` via the value's `EntryUnit`); `cons`: the recursive tail's
+    last (the IH). -/
+theorem RecMapBody.getLast?_not_opener : {l : List (Positioned YamlToken)} →
+    RecMapBody l → ∃ t, l.getLast? = some t ∧ t.val ≠ .flowSequenceStart
+  | _, .single _p _h_ne h_p _h_head => by
+      cases h_p with
+      | mk kt block_k vt block_v _h_kt _h_ke _h_vt h_ve =>
+        have h_bv_ne : block_v ≠ [] := h_ve.ne_nil
+        obtain ⟨t, h_gl, h_t⟩ := getLast?_not_opener_of_lastNonOpener block_v h_bv_ne
+          (lastNonOpener_of_entryUnit block_v h_ve.toEntryUnit)
+        refine ⟨t, ?_, h_t⟩
+        rw [List.getLast?_cons_of_ne_nil (by simp), List.getLast?_append,
+            List.getLast?_cons_of_ne_nil h_bv_ne, h_gl]
+        rfl
+  | _, .cons _p fe rest _h_ne _h_p _h_head _h_fe h_rest => by
+      obtain ⟨t, h_gl, h_t⟩ := h_rest.getLast?_not_opener
+      have h_rest_ne : rest ≠ [] := by intro h; rw [h] at h_gl; simp at h_gl
+      refine ⟨t, ?_, h_t⟩
+      rw [List.getLast?_append, List.getLast?_cons_of_ne_nil h_rest_ne, h_gl]
+      rfl
+
+/-- Tail-not-opener (getElem form) for a `RecMapBody` — the `OpenerAdj_wrap_map` boundary bridge
+    `h_tail` shape, derived from the `getLast?` witness.  Mirror of `RecSeqBody.lastNonOpener`. -/
+theorem RecMapBody.lastNonOpener {l : List (Positioned YamlToken)} (h : RecMapBody l) :
+    ∀ (hla : 0 < l.length),
+      (l[l.length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowSequenceStart := by
+  obtain ⟨t, h_gl, h_t⟩ := h.getLast?_not_opener
+  exact lastNonOpener_of_getLast? l t h_gl h_t
+
+/-- Tail-not-separator (`getLast?` form) for a `RecMapBody` — the `SepAdj` mirror of
+    `RecMapBody.getLast?_not_opener`.  `single`: the value block's last is never a `.flowEntry`
+    (`lastNonSep_of_entryUnit_contentHead` off the value's `EntryUnit` + content-start head);
+    `cons`: the recursive tail's last (the IH). -/
+theorem RecMapBody.getLast?_not_sep : {l : List (Positioned YamlToken)} →
+    RecMapBody l → ∃ t, l.getLast? = some t ∧ t.val ≠ .flowEntry
+  | _, .single _p _h_ne h_p _h_head => by
+      cases h_p with
+      | mk kt block_k vt block_v _h_kt _h_ke _h_vt h_ve =>
+        have h_bv_ne : block_v ≠ [] := h_ve.ne_nil
+        obtain ⟨t, h_gl, h_t⟩ := getLast?_not_sep_of_lastNonSep block_v h_bv_ne
+          (lastNonSep_of_entryUnit_contentHead block_v h_ve.toEntryUnit
+            ⟨h_bv_ne, h_ve.head_contentStart h_bv_ne⟩)
+        refine ⟨t, ?_, h_t⟩
+        rw [List.getLast?_cons_of_ne_nil (by simp), List.getLast?_append,
+            List.getLast?_cons_of_ne_nil h_bv_ne, h_gl]
+        rfl
+  | _, .cons _p fe rest _h_ne _h_p _h_head _h_fe h_rest => by
+      obtain ⟨t, h_gl, h_t⟩ := h_rest.getLast?_not_sep
+      have h_rest_ne : rest ≠ [] := by intro h; rw [h] at h_gl; simp at h_gl
+      refine ⟨t, ?_, h_t⟩
+      rw [List.getLast?_append, List.getLast?_cons_of_ne_nil h_rest_ne, h_gl]
+      rfl
+
+/-- Tail-not-separator (getElem form) for a `RecMapBody` — the `SepAdj_wrap_map` boundary bridge
+    `h_tail` shape (`≠ .flowEntry`).  Mirror of `RecSeqBody.lastNonSep`. -/
+theorem RecMapBody.lastNonSep {l : List (Positioned YamlToken)} (h : RecMapBody l) :
+    ∀ (hla : 0 < l.length),
+      (l[l.length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowEntry := by
+  obtain ⟨t, h_gl, h_t⟩ := h.getLast?_not_sep
+  exact lastNonSep_of_getLast? l t h_gl h_t
+
 /-! ### Emit-producer strengthening — map-body recursive deliverable (Phase J feed)
 
 The map-side mirror of `emitList_scans_recseqbody` (Reflection 249): the `RecMapBody` strengthening
@@ -3338,7 +3448,7 @@ theorem emit_scans_in_flow_rec_entry_both (v : YamlValue) {inFlow : Bool}
           have h_some : s₃.tokens[s_state.tokens.size + 1]? = some (s₃.tokens[s_state.tokens.size + 1]'hh) :=
             Array.getElem?_eq_getElem hh
           have := Option.some.inj (h_some.symm.trans h_s3_rawN1?); rw [this]
-  | mapping style pairs tag anchor _ hk hv _ihk _ihv =>
+  | mapping style pairs tag anchor _ _hk _hv ihk ihv =>
       refine ⟨?_, ?_⟩
       · intro s_state rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sync
         have h_chars : (emit (.mapping style pairs tag anchor)).toList ++ rest =
@@ -3371,25 +3481,77 @@ theorem emit_scans_in_flow_rec_entry_both (v : YamlValue) {inFlow : Bool}
           scanNextToken_flow_open_map_filtered_push s_state
             ((emit.emitPairList pairs.toList).toList ++ ['}'] ++ rest)
             h_corr_state_cons h_flow h_indent h_col h_snt₁
-        have h_pair_scan : EmitPairListScansInFlowBlock pairs.toList := by
-          match h_list : pairs.toList with
-          | [] => exact emitPairList_scans_block_empty
-          | _ :: _ =>
-            exact emitPairList_scans_block_nonempty _ (by simp) (fun p hp => by
-              have hp' : p ∈ pairs.toList := h_list ▸ hp
-              have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hp'
-              have h_sz : i < pairs.size := by rwa [Array.length_toList] at hi
-              exact h_eq ▸ emit_scans_in_flow_saved_key_block _ (hk ⟨i, h_sz⟩)) (fun p hp => by
-              have hp' : p ∈ pairs.toList := h_list ▸ hp
-              have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hp'
-              have h_sz : i < pairs.size := by rwa [Array.length_toList] at hi
-              exact h_eq ▸ emit_scans_in_flow_block _ (hv ⟨i, h_sz⟩))
         have h_corr₁_assoc : ScannerSurfCorr s₁
             ⟨(emit.emitPairList pairs.toList).toList ++ (['}'] ++ rest), s₁.col⟩ := by
           rw [List.append_assoc] at h_corr₁; exact h_corr₁
-        obtain ⟨n₂, s₂, bodyBlock, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, h_s2_inflow, h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂, h_body_append, h_body_wb, h_body_wt, h_body_tail, h_body_oa, h_body_lns, _h_body_keyhead, h_body_sa⟩ :=
-          h_pair_scan s₁ (['}'] ++ rest) h_corr₁_assoc h_s1_inflow (by rw [h_fl₁]; omega) h_s1_indent h_s1_col
-            (by rw [h_ek₁]; exact h_ek) h_atol₁ h_endline₁ h_s1_ska h_s1_sync
+        -- STEP D wiring (value arm): scan the body with the *recursive* assembler
+        -- `emitPairList_scans_recmapbody` (non-empty) so the entry builder is `RecSeqEntry.mapRec`
+        -- carrying `RecMapBody bodyBlock`; the empty `{}` body stays a flat `RecSeqEntry.map`.  The
+        -- body tail-not-`[`/`,` facts the map wrap consumes are read off `RecMapBody.lastNonOpener`/
+        -- `.lastNonSep` (in scope after the step-2c move).
+        obtain ⟨n₂, s₂, bodyBlock, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂,
+                h_s2_inflow, h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂,
+                h_body_append, h_body_wb, h_body_wt, h_entry_builder, h_body_oa, h_body_tail, h_body_sa, h_body_lns⟩ :
+            (∃ n₂ s₂ bodyBlock,
+              ScanChainGrew (fun t => t.val != .placeholder) s₁ n₂ s₂
+              ∧ ScannerSurfCorr s₂ ⟨['}'] ++ rest, s₂.col⟩
+              ∧ s₂.flowLevel = s₁.flowLevel
+              ∧ s₂.directivesPresent = s₁.directivesPresent
+              ∧ s₂.indents = s₁.indents
+              ∧ s₂.explicitKeyLine = s₁.explicitKeyLine
+              ∧ s₂.col > 0
+              ∧ s₂.inFlow = true
+              ∧ s₂.currentIndent < 0
+              ∧ s₂.line = s₁.line
+              ∧ AllTokensOnLine s₂ s₂.line
+              ∧ EndLineOnLine s₂
+              ∧ s₂.simpleKeyStack = s₁.simpleKeyStack
+              ∧ FlowMonoChain s₁.flowLevel s₁ n₂ s₂
+              ∧ (s₂.tokens.filter (fun t => t.val != .placeholder)).toList
+                  = (s₁.tokens.filter (fun t => t.val != .placeholder)).toList ++ bodyBlock
+              ∧ WellBracketed bodyBlock
+              ∧ WellTyped bodyBlock
+              ∧ (∀ fms fme : Positioned YamlToken, fms.val = .flowMappingStart → fme.val = .flowMappingEnd →
+                   RecSeqEntry (fms :: (bodyBlock ++ [fme])))
+              ∧ OpenerAdj bodyBlock
+              ∧ (∀ (hla : 0 < bodyBlock.length),
+                  (bodyBlock[bodyBlock.length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowSequenceStart)
+              ∧ SepAdj bodyBlock
+              ∧ (∀ (hla : 0 < bodyBlock.length),
+                  (bodyBlock[bodyBlock.length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowEntry)) := by
+          match h_list : pairs.toList with
+          | [] =>
+            refine ⟨0, s₁, [], .zero, ?_, rfl, rfl, rfl, rfl, h_s1_col, h_s1_inflow, h_s1_indent, rfl,
+                    h_atol₁, h_endline₁, rfl, .zero (Nat.le.refl), ?_, WellBracketed_nil, WellTyped_nil,
+                    (fun fms fme hf1 hf2 => RecSeqEntry.map fms fme [] hf1 hf2 WellBracketed_nil),
+                    OpenerAdj_nil, (by intro hla; simp at hla), SepAdj_nil,
+                    (by intro hla; simp at hla)⟩
+            · have h_e : (emit.emitPairList pairs.toList).toList ++ (['}'] ++ rest) = ['}'] ++ rest := by
+                rw [h_list]; simp only [emit.emitPairList]; rfl
+              rw [h_e] at h_corr₁_assoc; exact h_corr₁_assoc
+            · simp
+          | p :: ps =>
+            have h_all_k : ∀ q ∈ (p :: ps), EmitScansInFlowSavedKeyRecEntry q.1 := fun q hq => by
+              have hq' : q ∈ pairs.toList := h_list ▸ hq
+              have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hq'
+              have h_sz : i < pairs.size := by rwa [Array.length_toList] at hi
+              exact h_eq ▸ (ihk ⟨i, h_sz⟩).2
+            have h_all_v : ∀ q ∈ (p :: ps), EmitScansInFlowRecEntry q.2 := fun q hq => by
+              have hq' : q ∈ pairs.toList := h_list ▸ hq
+              have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hq'
+              have h_sz : i < pairs.size := by rwa [Array.length_toList] at hi
+              exact h_eq ▸ (ihv ⟨i, h_sz⟩).1
+            obtain ⟨n₂, s₂, bodyBlock, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂,
+                    h_s2_inflow, h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂,
+                    h_body_append, h_body_wb, h_body_wt, h_body_rec, h_body_oa, h_body_sa, _h_n_ge3⟩ :=
+              emitPairList_scans_recmapbody (p :: ps) (by simp) h_all_k h_all_v s₁ (['}'] ++ rest)
+                (h_list ▸ h_corr₁_assoc) h_s1_inflow (by rw [h_fl₁]; omega) h_s1_indent h_s1_col
+                (by rw [h_ek₁]; exact h_ek) h_atol₁ h_endline₁ h_s1_ska h_s1_sync
+            exact ⟨n₂, s₂, bodyBlock, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂,
+                   h_s2_inflow, h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂,
+                   h_body_append, h_body_wb, h_body_wt,
+                   (fun fms fme hf1 hf2 => RecSeqEntry.mapRec fms fme bodyBlock hf1 hf2 h_body_wb h_body_rec),
+                   h_body_oa, RecMapBody.lastNonOpener h_body_rec, h_body_sa, RecMapBody.lastNonSep h_body_rec⟩
         have h_fl₂_ge2 : s₂.flowLevel ≥ 2 := by rw [h_fl₂, h_fl₁]; omega
         have h_stack_endline₂ : StackEndLineOnLine s₂ s₂.line := by
           unfold StackEndLineOnLine at h_stack_endline₁ ⊢
@@ -3434,7 +3596,7 @@ theorem emit_scans_in_flow_rec_entry_both (v : YamlValue) {inFlow : Bool}
           h_corr₃, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, h_ska₃, h_tok₃, ?_, ?_, ?_, h_fmc_all,
           h_block_eq, h_wrap.1, h_wrap_t, h_wrap.2,
           EntryUnit_wrap fmsTok fmeTok bodyBlock (h_fms_val ▸ flowBracketDelta_flowMappingStart)
-            (h_fme_val ▸ flowBracketDelta_flowMappingEnd) h_body_wb, RecSeqEntry.map fmsTok fmeTok bodyBlock h_fms_val h_fme_val h_body_wb, ?_,
+            (h_fme_val ▸ flowBracketDelta_flowMappingEnd) h_body_wb, h_entry_builder fmsTok fmeTok h_fms_val h_fme_val, ?_,
           OpenerAdj_wrap_map fmsTok fmeTok bodyBlock h_fms_val h_body_oa h_body_tail,
           SepAdj_wrap_map fmsTok fmeTok bodyBlock h_fms_val h_body_sa h_body_lns⟩
         · rw [h_fl₃, h_fl₂, h_fl₁]; omega
@@ -3483,25 +3645,74 @@ theorem emit_scans_in_flow_rec_entry_both (v : YamlValue) {inFlow : Bool}
           scanNextToken_flow_open_map_filtered_push s_state
             ((emit.emitPairList pairs.toList).toList ++ ['}'] ++ rest)
             h_corr_state_cons h_flow h_indent h_col h_snt₁
-        have h_pair_scan : EmitPairListScansInFlowBlock pairs.toList := by
-          match h_list : pairs.toList with
-          | [] => exact emitPairList_scans_block_empty
-          | _ :: _ =>
-            exact emitPairList_scans_block_nonempty _ (by simp) (fun p hp => by
-              have hp' : p ∈ pairs.toList := h_list ▸ hp
-              have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hp'
-              have h_sz : i < pairs.size := by rwa [Array.length_toList] at hi
-              exact h_eq ▸ emit_scans_in_flow_saved_key_block _ (hk ⟨i, h_sz⟩)) (fun p hp => by
-              have hp' : p ∈ pairs.toList := h_list ▸ hp
-              have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hp'
-              have h_sz : i < pairs.size := by rwa [Array.length_toList] at hi
-              exact h_eq ▸ emit_scans_in_flow_block _ (hv ⟨i, h_sz⟩))
         have h_corr₁_assoc : ScannerSurfCorr s₁
             ⟨(emit.emitPairList pairs.toList).toList ++ (['}'] ++ rest), s₁.col⟩ := by
           rw [List.append_assoc] at h_corr₁; exact h_corr₁
-        obtain ⟨n₂, s₂, bodyBlock, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, h_s2_inflow, h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂, h_body_append, h_body_wb, h_body_wt, h_body_tail, h_body_oa, h_body_lns, _h_body_keyhead, h_body_sa⟩ :=
-          h_pair_scan s₁ (['}'] ++ rest) h_corr₁_assoc h_s1_inflow (by rw [h_fl₁]; omega) h_s1_indent h_s1_col
-            (by rw [h_ek₁]; exact h_ek) h_atol₁ h_endline₁ h_s1_ska h_stack_size₁
+        -- STEP D wiring (saved-key arm): mirror of the value arm — recursive `emitPairList_scans_recmapbody`
+        -- (non-empty) builds `RecSeqEntry.mapRec`; the empty body stays a flat `RecSeqEntry.map`.
+        obtain ⟨n₂, s₂, bodyBlock, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂,
+                h_s2_inflow, h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂,
+                h_body_append, h_body_wb, h_body_wt, h_entry_builder, h_body_oa, h_body_tail, h_body_sa, h_body_lns⟩ :
+            (∃ n₂ s₂ bodyBlock,
+              ScanChainGrew (fun t => t.val != .placeholder) s₁ n₂ s₂
+              ∧ ScannerSurfCorr s₂ ⟨['}'] ++ rest, s₂.col⟩
+              ∧ s₂.flowLevel = s₁.flowLevel
+              ∧ s₂.directivesPresent = s₁.directivesPresent
+              ∧ s₂.indents = s₁.indents
+              ∧ s₂.explicitKeyLine = s₁.explicitKeyLine
+              ∧ s₂.col > 0
+              ∧ s₂.inFlow = true
+              ∧ s₂.currentIndent < 0
+              ∧ s₂.line = s₁.line
+              ∧ AllTokensOnLine s₂ s₂.line
+              ∧ EndLineOnLine s₂
+              ∧ s₂.simpleKeyStack = s₁.simpleKeyStack
+              ∧ FlowMonoChain s₁.flowLevel s₁ n₂ s₂
+              ∧ (s₂.tokens.filter (fun t => t.val != .placeholder)).toList
+                  = (s₁.tokens.filter (fun t => t.val != .placeholder)).toList ++ bodyBlock
+              ∧ WellBracketed bodyBlock
+              ∧ WellTyped bodyBlock
+              ∧ (∀ fms fme : Positioned YamlToken, fms.val = .flowMappingStart → fme.val = .flowMappingEnd →
+                   RecSeqEntry (fms :: (bodyBlock ++ [fme])))
+              ∧ OpenerAdj bodyBlock
+              ∧ (∀ (hla : 0 < bodyBlock.length),
+                  (bodyBlock[bodyBlock.length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowSequenceStart)
+              ∧ SepAdj bodyBlock
+              ∧ (∀ (hla : 0 < bodyBlock.length),
+                  (bodyBlock[bodyBlock.length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowEntry)) := by
+          match h_list : pairs.toList with
+          | [] =>
+            refine ⟨0, s₁, [], .zero, ?_, rfl, rfl, rfl, rfl, h_s1_col, h_s1_inflow, h_s1_indent, rfl,
+                    h_atol₁, h_endline₁, rfl, .zero (Nat.le.refl), ?_, WellBracketed_nil, WellTyped_nil,
+                    (fun fms fme hf1 hf2 => RecSeqEntry.map fms fme [] hf1 hf2 WellBracketed_nil),
+                    OpenerAdj_nil, (by intro hla; simp at hla), SepAdj_nil,
+                    (by intro hla; simp at hla)⟩
+            · have h_e : (emit.emitPairList pairs.toList).toList ++ (['}'] ++ rest) = ['}'] ++ rest := by
+                rw [h_list]; simp only [emit.emitPairList]; rfl
+              rw [h_e] at h_corr₁_assoc; exact h_corr₁_assoc
+            · simp
+          | p :: ps =>
+            have h_all_k : ∀ q ∈ (p :: ps), EmitScansInFlowSavedKeyRecEntry q.1 := fun q hq => by
+              have hq' : q ∈ pairs.toList := h_list ▸ hq
+              have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hq'
+              have h_sz : i < pairs.size := by rwa [Array.length_toList] at hi
+              exact h_eq ▸ (ihk ⟨i, h_sz⟩).2
+            have h_all_v : ∀ q ∈ (p :: ps), EmitScansInFlowRecEntry q.2 := fun q hq => by
+              have hq' : q ∈ pairs.toList := h_list ▸ hq
+              have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hq'
+              have h_sz : i < pairs.size := by rwa [Array.length_toList] at hi
+              exact h_eq ▸ (ihv ⟨i, h_sz⟩).1
+            obtain ⟨n₂, s₂, bodyBlock, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂,
+                    h_s2_inflow, h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂,
+                    h_body_append, h_body_wb, h_body_wt, h_body_rec, h_body_oa, h_body_sa, _h_n_ge3⟩ :=
+              emitPairList_scans_recmapbody (p :: ps) (by simp) h_all_k h_all_v s₁ (['}'] ++ rest)
+                (h_list ▸ h_corr₁_assoc) h_s1_inflow (by rw [h_fl₁]; omega) h_s1_indent h_s1_col
+                (by rw [h_ek₁]; exact h_ek) h_atol₁ h_endline₁ h_s1_ska h_stack_size₁
+            exact ⟨n₂, s₂, bodyBlock, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂,
+                   h_s2_inflow, h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂,
+                   h_body_append, h_body_wb, h_body_wt,
+                   (fun fms fme hf1 hf2 => RecSeqEntry.mapRec fms fme bodyBlock hf1 hf2 h_body_wb h_body_rec),
+                   h_body_oa, RecMapBody.lastNonOpener h_body_rec, h_body_sa, RecMapBody.lastNonSep h_body_rec⟩
         have h_skaf_N : SimpleKeyAboveFloor s₁ s_state.tokens.size s₁.flowLevel := by
           refine ⟨fun hp => by rw [h_sk_poss₁] at hp; exact absurd hp (by decide),
             fun j hj hjb _ => by exfalso; omega, by omega⟩
@@ -3597,7 +3808,7 @@ theorem emit_scans_in_flow_rec_entry_both (v : YamlValue) {inFlow : Bool}
           (ScanChainGrew.single h_snt₁ h_grew₁).trans (h_chain₂.trans (ScanChainGrew.single h_snt₃ h_grew₃)),
           h_corr₃, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, h_atol₃, h_endline₃, ?_, h_fmc_all,
           h_ska₃, ?_, ?_, ?_, ?_, ?_, h_block_eq, h_take, h_wrap.1, h_wrap_t, h_wrap.2,
-          RecSeqEntry.map fmsTok fmeTok bodyBlock h_fms_val h_fme_val h_body_wb,
+          h_entry_builder fmsTok fmeTok h_fms_val h_fme_val,
           lastNonOpener_wrap fmsTok fmeTok bodyBlock (by rw [h_fme_val]; decide),
           OpenerAdj_wrap_map fmsTok fmeTok bodyBlock h_fms_val h_body_oa h_body_tail,
           lastNonSep_wrap fmsTok fmeTok bodyBlock (by rw [h_fme_val]; decide),
@@ -4138,106 +4349,6 @@ theorem located_entry_of_recseqbody (tokens : Array (Positioned YamlToken)) (lo 
       rw [getElem!_pos tokens hi h_hi_sz, Array.getElem_toList]
     rw [← hb]; exact h_close
   exact RecSeqEntry.seq _ _ _ h_op_val h_cl_val h_rec.toWellBracketed h_rec
-
-/-- **A recursive seq entry is non-empty.**  Every `RecSeqEntry` constructor produces a `cons` list
-    (`[t]` = `t :: []`, or `op :: …`), so the entry is never `[]`.  The `h_ne` field the body-level
-    `RecSeqBody.cons`/`.single` constructors demand, supplied here as a structural projection (cf.
-    `RecSeqEntry.toEntrySafe`/`toWellBracketed`). -/
-theorem RecSeqEntry.ne_nil {e : List (Positioned YamlToken)} (h : RecSeqEntry e) : e ≠ [] := by
-  cases h <;> simp
-
-/-- **A recursive seq entry's head is a content-start token.**  Each constructor's first token is a
-    scalar (`scalar`), a `.flowSequenceStart` (`seqEmpty`/`seq`), or a `.flowMappingStart` (`map`) —
-    exactly the three `ContentStartTok` cases.  The `h_head` field `RecSeqBody.cons`/`.single` demand,
-    supplied as a structural projection so the body-level assemblers need not re-derive it from the
-    per-entry token shape.  (The `h_ne` argument is threaded through to `List.head`; by proof
-    irrelevance any `e ≠ []` witness gives the same head.) -/
-theorem RecSeqEntry.head_contentStart {e : List (Positioned YamlToken)}
-    (h : RecSeqEntry e) (h_ne : e ≠ []) : ContentStartTok (e.head h_ne).val := by
-  cases h with
-  | scalar t c s ht => rw [List.head_cons]; exact Or.inl ⟨c, s, ht⟩
-  | seqEmpty op cl h_op _ => rw [List.head_cons]; exact Or.inr (Or.inl h_op)
-  | seq op cl interior h_op _ _ _ => rw [List.head_cons]; exact Or.inr (Or.inl h_op)
-  | map op cl interior h_op _ _ => rw [List.head_cons]; exact Or.inr (Or.inr h_op)
-  | mapRec op cl interior h_op _ _ _ => rw [List.head_cons]; exact Or.inr (Or.inr h_op)
-
-/-! ### Map-body last-token projections — completing the `RecMapBody` projection family
-
-The map mirror of `RecSeqBody.getLast?_not_opener`/`lastNonOpener` (and the `SepAdj` twins).  A
-`RecMapBody` ends in its last pair's value block, whose last token is a value-end (a scalar / `]` /
-`}`) — never a seq-opener `[` nor a `.flowEntry` separator.  Both facts are read off the value
-entry's `EntryUnit` (balance-based, so they hold for ANY value entry — including a flat `.map`
-entry, which severs the *recursive* structure but not the *last token*: `lastNonOpener`/`lastNonSep`
-are structure-blind at the boundary).  This is exactly why these projections ARE derivable from
-`RecMapBody` while `OpenerAdj`/`SepAdj` are NOT: the adjacency facts inspect every interior `[`/`,`
-seat and so need each entry's interior structure, which a flat `.map` (storing only `WellBracketed`)
-does not carry — `WellBracketed` does not imply `OpenerAdj`.  So the body's `OpenerAdj`/`SepAdj` stay
-scan-threaded; only the last-token facts come from the deliverable.  These feed the map wrap
-`OpenerAdj_wrap_map`/`SepAdj_wrap_map`, whose `h_tail` side-inputs are exactly these (and which need
-NO body-head fact — the `{` opener is inert for both adjacency triggers). -/
-
-/-- Tail-not-opener (`getLast?` form) for a `RecMapBody` — the map mirror of
-    `RecSeqBody.getLast?_not_opener`.  `single`: the pair's last is its value block's last, not an
-    opener (`lastNonOpener_of_entryUnit` via the value's `EntryUnit`); `cons`: the recursive tail's
-    last (the IH). -/
-theorem RecMapBody.getLast?_not_opener : {l : List (Positioned YamlToken)} →
-    RecMapBody l → ∃ t, l.getLast? = some t ∧ t.val ≠ .flowSequenceStart
-  | _, .single _p _h_ne h_p _h_head => by
-      cases h_p with
-      | mk kt block_k vt block_v _h_kt _h_ke _h_vt h_ve =>
-        have h_bv_ne : block_v ≠ [] := h_ve.ne_nil
-        obtain ⟨t, h_gl, h_t⟩ := getLast?_not_opener_of_lastNonOpener block_v h_bv_ne
-          (lastNonOpener_of_entryUnit block_v h_ve.toEntryUnit)
-        refine ⟨t, ?_, h_t⟩
-        rw [List.getLast?_cons_of_ne_nil (by simp), List.getLast?_append,
-            List.getLast?_cons_of_ne_nil h_bv_ne, h_gl]
-        rfl
-  | _, .cons _p fe rest _h_ne _h_p _h_head _h_fe h_rest => by
-      obtain ⟨t, h_gl, h_t⟩ := h_rest.getLast?_not_opener
-      have h_rest_ne : rest ≠ [] := by intro h; rw [h] at h_gl; simp at h_gl
-      refine ⟨t, ?_, h_t⟩
-      rw [List.getLast?_append, List.getLast?_cons_of_ne_nil h_rest_ne, h_gl]
-      rfl
-
-/-- Tail-not-opener (getElem form) for a `RecMapBody` — the `OpenerAdj_wrap_map` boundary bridge
-    `h_tail` shape, derived from the `getLast?` witness.  Mirror of `RecSeqBody.lastNonOpener`. -/
-theorem RecMapBody.lastNonOpener {l : List (Positioned YamlToken)} (h : RecMapBody l) :
-    ∀ (hla : 0 < l.length),
-      (l[l.length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowSequenceStart := by
-  obtain ⟨t, h_gl, h_t⟩ := h.getLast?_not_opener
-  exact lastNonOpener_of_getLast? l t h_gl h_t
-
-/-- Tail-not-separator (`getLast?` form) for a `RecMapBody` — the `SepAdj` mirror of
-    `RecMapBody.getLast?_not_opener`.  `single`: the value block's last is never a `.flowEntry`
-    (`lastNonSep_of_entryUnit_contentHead` off the value's `EntryUnit` + content-start head);
-    `cons`: the recursive tail's last (the IH). -/
-theorem RecMapBody.getLast?_not_sep : {l : List (Positioned YamlToken)} →
-    RecMapBody l → ∃ t, l.getLast? = some t ∧ t.val ≠ .flowEntry
-  | _, .single _p _h_ne h_p _h_head => by
-      cases h_p with
-      | mk kt block_k vt block_v _h_kt _h_ke _h_vt h_ve =>
-        have h_bv_ne : block_v ≠ [] := h_ve.ne_nil
-        obtain ⟨t, h_gl, h_t⟩ := getLast?_not_sep_of_lastNonSep block_v h_bv_ne
-          (lastNonSep_of_entryUnit_contentHead block_v h_ve.toEntryUnit
-            ⟨h_bv_ne, h_ve.head_contentStart h_bv_ne⟩)
-        refine ⟨t, ?_, h_t⟩
-        rw [List.getLast?_cons_of_ne_nil (by simp), List.getLast?_append,
-            List.getLast?_cons_of_ne_nil h_bv_ne, h_gl]
-        rfl
-  | _, .cons _p fe rest _h_ne _h_p _h_head _h_fe h_rest => by
-      obtain ⟨t, h_gl, h_t⟩ := h_rest.getLast?_not_sep
-      have h_rest_ne : rest ≠ [] := by intro h; rw [h] at h_gl; simp at h_gl
-      refine ⟨t, ?_, h_t⟩
-      rw [List.getLast?_append, List.getLast?_cons_of_ne_nil h_rest_ne, h_gl]
-      rfl
-
-/-- Tail-not-separator (getElem form) for a `RecMapBody` — the `SepAdj_wrap_map` boundary bridge
-    `h_tail` shape (`≠ .flowEntry`).  Mirror of `RecSeqBody.lastNonSep`. -/
-theorem RecMapBody.lastNonSep {l : List (Positioned YamlToken)} (h : RecMapBody l) :
-    ∀ (hla : 0 < l.length),
-      (l[l.length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowEntry := by
-  obtain ⟨t, h_gl, h_t⟩ := h.getLast?_not_sep
-  exact lastNonSep_of_getLast? l t h_gl h_t
 
 /-- **Body-cons window assembler** (Phase J, seq side — the navigation recursion's *advance* step).
     The third positional move of the locate recursion, the structural complement to the two already
