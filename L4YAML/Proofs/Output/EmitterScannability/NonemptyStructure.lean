@@ -3995,6 +3995,60 @@ theorem RecMapEntry.toWellBracketed {e : List (Positioned YamlToken)}
   | map op cl interior h_op h_cl h_rec =>
       exact (wrap_map_block op cl interior h_op h_cl h_rec.toWellBracketed).1
 
+/-- **Producer→navigator map bridge** (Phase J, map side — STEP D step 4).  A map-headed
+    `RecSeqEntry (op :: (interior ++ [cl]))` lifts to the *recursive* `RecMapEntry` of the same window,
+    **given the inner body the flat `.map` constructor severs** (`h_body : RecMapBody interior ∨
+    interior = []`).
+
+    **Why this is NOT a `cases`-projection like `RecSeqEntry.seq_interior`.**  `seq_interior` recovers
+    `RecSeqBody interior` by a plain `cases`, because `RecSeqEntry` has **no flat seq severance** — every
+    flow-SEQUENCE entry is either `.seqEmpty` (empty) or `.seq` (which *stores* its `RecSeqBody`).  The
+    map side is asymmetric: alongside the recursive `.mapRec` (which stores `RecMapBody interior`) there
+    is the flat `.map` (which stores *only* `WellBracketed interior`), built by the seq-navigator
+    near-leaf `recseqentry_map_window` (`:~5764`, left UNCHANGED — it severs by design).  Crucially
+    `.map interior` and `.mapRec interior` are **token-indistinguishable**: both index the SAME
+    `op :: (interior ++ [cl])` and carry the SAME tokens, so no `cases` on a bare `RecSeqEntry` can tell
+    them apart.  And the flat `.map` admits interiors that are `WellBracketed` but NOT a `RecMapBody`,
+    so `RecMapBody interior` is a fact about `interior` the type genuinely does not determine — any
+    hypothesis strong enough to conclude it is *equivalent to the conclusion*.  Hence the recursive body
+    cannot be RECOVERED by the descent; it must be THREADED from the PRODUCER, which holds `h_rec`
+    (non-empty) / emptiness (empty `{}`) at build time.  `h_body` is that producer debt.
+
+    **What the `cases h` still does (real work).**  It rules out the non-map heads `scalar`/`seqEmpty`/
+    `seq` by the `.flowMappingStart` head `h_op`, and reads the closer `cl.val = .flowMappingEnd` off
+    whichever map constructor (`.map`/`.mapRec`) actually built `e` — so the caller supplies only the
+    located entry and the body, not the closer.  `h_body`'s emptiness disjunct selects
+    `RecMapEntry.mapEmpty` vs `.map`.  On the emit feed the off-feed flat-non-empty `.map` never arises
+    (the producer builds `.mapRec` for non-empty maps, `.map []` for `{}`), so the debt is the
+    producer's `h_rec`/empty verbatim, never a vacuous patch.
+
+    Verified-but-unconsumed: references no sorry site, frontier sorry count unchanged.  Composing with
+    `RecMapEntry.map_interior` recovers the planned `RecMapBody interior ∨ interior = []` descent, so
+    this bridge SUBSUMES the originally-planned `RecSeqEntry.mapRec_interior`, plugging the producer's
+    `.mapRec` output straight into the existing `recmapbody_window_of_located_entry` map descent. -/
+theorem RecSeqEntry.toRecMapEntry {e interior : List (Positioned YamlToken)}
+    {op cl : Positioned YamlToken}
+    (h : RecSeqEntry e) (h_eq : e = op :: (interior ++ [cl]))
+    (h_op : op.val = .flowMappingStart)
+    (h_body : RecMapBody interior ∨ interior = []) :
+    RecMapEntry e := by
+  -- Read the closer off `h`; the non-map heads are ruled out by `h_op`.
+  have h_cl : cl.val = .flowMappingEnd := by
+    cases h with
+    | scalar t c s ht => injection h_eq with _h1 h2; simp at h2
+    | seqEmpty op' cl' h_op' h_cl' =>
+        exfalso; injection h_eq with h1 _h2; rw [h1, h_op] at h_op'; exact absurd h_op' (by decide)
+    | seq op' cl' interior' h_op' h_cl' h_wb h_rec =>
+        exfalso; injection h_eq with h1 _h2; rw [h1, h_op] at h_op'; exact absurd h_op' (by decide)
+    | map op' cl' interior' h_op' h_cl' h_wb =>
+        injection h_eq with _h1 h2; exact (append_singleton_inj h2).2 ▸ h_cl'
+    | mapRec op' cl' interior' h_op' h_cl' h_wb _h_rec =>
+        injection h_eq with _h1 h2; exact (append_singleton_inj h2).2 ▸ h_cl'
+  subst h_eq
+  cases h_body with
+  | inl h_rec => exact RecMapEntry.map op cl interior h_op h_cl h_rec
+  | inr h_emp => subst h_emp; exact RecMapEntry.mapEmpty op cl h_op h_cl
+
 /-- **Empty-body leaf** (Phase J, seq side).  An empty nested flow-SEQUENCE body — `lo = hi`, the
     shape `emit (.sequence … #[]) = "[]"` scans to (`[` immediately followed by `]`, so the interior
     `[lo, hi)` is empty) — satisfies `SeqBodyProps` *vacuously*: `content_start` is guarded by
