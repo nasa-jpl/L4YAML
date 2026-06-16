@@ -158,6 +158,7 @@ import Tests.Reflections.TwoRoleDeliverableBlocksSharedField
 import Tests.Reflections.ConstructorFieldForcesMutualGroupMerge
 import Tests.Reflections.SeveredConstructorBoundaryProjectsInteriorDoesnt
 import Tests.Reflections.StrengthenSeveredPredicateMirrorsSibling
+import Tests.Reflections.DownstreamProjectionRebuildFromConstituents
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
