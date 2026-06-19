@@ -38,12 +38,12 @@ defaultTargets = [
 [[require]]
 name = "importGraph"
 git = "https://github.com/leanprover-community/import-graph"
-rev = "v4.30.0"
+rev = "v4.31.0"
 
 [[require]]
 name = "DocGen4"
 git = "https://github.com/leanprover/doc-gen4.git"
-rev = "v4.30.0"
+rev = "v4.31.0"
 
 [[lean_lib]]
 name = "L4YAML"

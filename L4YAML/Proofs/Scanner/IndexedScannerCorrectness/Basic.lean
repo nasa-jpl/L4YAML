@@ -271,7 +271,8 @@ theorem filter_preserves_PlainScalarsValidIx
     have hi_list2 : i < (all_tokens.tokens.filter p).toList.length := by
       rwa [show (all_tokens.tokens.filter p).toList.length =
         (all_tokens.tokens.filter p).size from rfl]
-    have hj_list2 : j < all_tokens.tokens.toList.length := by simpa using hj_arr
+    have hj_list2 : j < all_tokens.tokens.toList.length := by
+      simpa [Indexed.TokenStream.size] using hj_arr
     show (all_tokens.tokens.filter p).toList[i]'hi_list2 = all_tokens.tokens.toList[j]'hj_list2
     simp only [Array.toList_filter]; exact val_eq
   exact val_eq_arr ▸ h_psv j hj_arr
@@ -303,7 +304,8 @@ theorem filter_preserves_FlowContextPSVIx
     have hi_list2 : i < (all_tokens.tokens.filter p).toList.length := by
       rwa [show (all_tokens.tokens.filter p).toList.length =
         (all_tokens.tokens.filter p).size from rfl]
-    have hj_list2 : j < all_tokens.tokens.toList.length := by simpa using hj_arr
+    have hj_list2 : j < all_tokens.tokens.toList.length := by
+      simpa [Indexed.TokenStream.size] using hj_arr
     show (all_tokens.tokens.filter p).toList[i]'hi_list2 = all_tokens.tokens.toList[j]'hj_list2
     simp only [Array.toList_filter]; exact val_eq
   have h_nest_eq : flowNestingIx filtered i = flowNestingIx all_tokens j := by

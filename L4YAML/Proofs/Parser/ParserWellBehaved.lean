@@ -3392,9 +3392,11 @@ theorem parseBlockMappingEntryValue_pos_mono (fuel : Nat)
     all_goals (try {
       split at h_ok
       · contradiction
-      · have h_pn := parseNodePosMono_apply h_ih h_ok; simp only [] at h_pn; omega })
+      · have h_pn := parseNodePosMono_apply h_ih h_ok; try simp only [] at h_pn
+        omega })
     -- Direct parseNode branch
-    all_goals (try { have h_pn := parseNodePosMono_apply h_ih h_ok; simp only [] at h_pn; omega })
+    all_goals (try { have h_pn := parseNodePosMono_apply h_ih h_ok; try simp only [] at h_pn
+                     omega })
   · -- consumed = false → emptyNode
     simp only [Except.ok.injEq] at h_ok; subst h_ok; simp only []; omega
 

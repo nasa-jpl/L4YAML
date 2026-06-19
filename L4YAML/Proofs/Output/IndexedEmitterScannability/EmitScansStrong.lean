@@ -1067,25 +1067,78 @@ theorem scanNextTokenIx_dispatchContent_maintains_NoOverwriteAtIx {input : Strin
     (m : Nat) (_h_m : m < s.tokens.size)
     (h_inv : NoOverwriteAtIx s m) :
     NoOverwriteAtIx s' m := by
+  -- Peel the 7-way content dispatch one `if` at a time with `by_cases`/`rw` (splitting the whole
+  -- dispatch at once exceeds the internal simp step budget under Lean 4.31.0); anchor/alias/tag use
+  -- the explicit `_preserves_simpleKey`/`_preserves_simpleKeyStack` lemmas, the scalar branches
+  -- (block/quoted/plain) are cursor-only updates so SK / stack are preserved structurally (`rfl`).
   unfold scanNextTokenIx_dispatchContent at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
-  repeat (any_goals (split at h))
-  all_goals (try contradiction)
-  all_goals (try simp only [Except.ok.injEq] at h)
-  all_goals (try contradiction)
-  all_goals (try subst_vars)
-  all_goals first
-    | (rename_i h_eq; exact NoOverwriteAtIx_of_preserved _ s m
-        (scanAnchorOrAliasIx_preserves_simpleKey s true _ h_eq)
-        (scanAnchorOrAliasIx_preserves_simpleKeyStack s true _ h_eq) h_inv)
-    | (rename_i h_eq; exact NoOverwriteAtIx_of_preserved _ s m
-        (scanAnchorOrAliasIx_preserves_simpleKey s false _ h_eq)
-        (scanAnchorOrAliasIx_preserves_simpleKeyStack s false _ h_eq) h_inv)
-    | (rename_i h_eq; exact NoOverwriteAtIx_of_preserved _ s m
-        (scanTagIx_preserves_simpleKey s _ h_eq)
-        (scanTagIx_preserves_simpleKeyStack s _ h_eq) h_inv)
-    | exact NoOverwriteAtIx_of_preserved _ s m rfl rfl h_inv
-    | (simp_all; done)
+  by_cases hg1 : (c == '&') = true
+  · -- '&' anchor
+    rw [if_pos hg1] at h
+    simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+    cases hA : scanAnchorOrAliasIx s true with
+    | error e => rw [hA] at h; cases h
+    | ok v =>
+      rw [hA] at h
+      simp only [Except.ok.injEq] at h; subst h
+      exact NoOverwriteAtIx_of_preserved _ s m
+        (scanAnchorOrAliasIx_preserves_simpleKey s true v hA)
+        (scanAnchorOrAliasIx_preserves_simpleKeyStack s true v hA) h_inv
+  · rw [if_neg hg1] at h
+    simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+    by_cases hg2 : (c == '*') = true
+    · -- '*' alias
+      rw [if_pos hg2] at h
+      cases hA : scanAnchorOrAliasIx s false with
+      | error e => rw [hA] at h; cases h
+      | ok v =>
+        rw [hA] at h
+        simp only [Except.ok.injEq] at h; subst h
+        exact NoOverwriteAtIx_of_preserved _ s m
+          (scanAnchorOrAliasIx_preserves_simpleKey s false v hA)
+          (scanAnchorOrAliasIx_preserves_simpleKeyStack s false v hA) h_inv
+    · rw [if_neg hg2] at h
+      by_cases hg3 : (c == '!') = true
+      · -- '!' tag
+        rw [if_pos hg3] at h
+        cases hT : scanTagIx s with
+        | error e => rw [hT] at h; cases h
+        | ok v =>
+          rw [hT] at h
+          simp only [Except.ok.injEq] at h; subst h
+          exact NoOverwriteAtIx_of_preserved _ s m
+            (scanTagIx_preserves_simpleKey s v hT)
+            (scanTagIx_preserves_simpleKeyStack s v hT) h_inv
+      · rw [if_neg hg3] at h
+        by_cases hg4 : (c == '|' || c == '>') = true
+        · -- block scalar
+          rw [if_pos hg4] at h
+          split at h
+          · simp only [Except.ok.injEq] at h; subst h
+            exact NoOverwriteAtIx_of_preserved _ s m rfl rfl h_inv
+          · cases h
+        · rw [if_neg hg4] at h
+          by_cases hg5 : (c == '"') = true
+          · -- double-quoted
+            rw [if_pos hg5] at h
+            split at h
+            · simp only [Except.ok.injEq] at h; subst h
+              exact NoOverwriteAtIx_of_preserved _ s m rfl rfl h_inv
+            · cases h
+          · rw [if_neg hg5] at h
+            by_cases hg6 : (c == '\'') = true
+            · -- single-quoted
+              rw [if_pos hg6] at h
+              split at h
+              · simp only [Except.ok.injEq] at h; subst h
+                exact NoOverwriteAtIx_of_preserved _ s m rfl rfl h_inv
+              · cases h
+            · rw [if_neg hg6] at h
+              -- plain scalar (success) vs error: one small inner `if`
+              split at h
+              · simp only [Except.ok.injEq] at h; subst h
+                exact NoOverwriteAtIx_of_preserved _ s m rfl rfl h_inv
+              · cases h
 
 /-! ### §5.4  scanNextTokenIx capstone for NoOverwriteAtIx -/
 

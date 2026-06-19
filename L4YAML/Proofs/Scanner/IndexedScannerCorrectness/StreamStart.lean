@@ -338,71 +338,83 @@ theorem scanNextTokenIx_dispatchContent_maintains_SimpleKeyAboveIx {input : Stri
     (h_inv : SimpleKeyAboveIx s n)
     (h_ok : scanNextTokenIx_dispatchContent s c = .ok s') :
     SimpleKeyAboveIx s' n := by
+  -- Peel the 7-way content dispatch one `if` at a time with `by_cases`/`rw` (a single `split`
+  -- over the whole dispatch exceeds `split`'s internal simp step budget under Lean 4.31.0).
   unfold scanNextTokenIx_dispatchContent at h_ok
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h_ok
-  split at h_ok
+  by_cases hg1 : (c == '&') = true
   · -- c == '&': anchor
-    generalize h_anch : scanAnchorOrAliasIx s true = anch_result at h_ok
-    cases anch_result with
-    | error e => simp at h_ok
-    | ok s_anch =>
-      dsimp only [] at h_ok
+    rw [if_pos hg1] at h_ok
+    simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h_ok
+    cases hA : scanAnchorOrAliasIx s true with
+    | error e => rw [hA] at h_ok; cases h_ok
+    | ok v =>
+      rw [hA] at h_ok
       simp only [Except.ok.injEq] at h_ok
       subst h_ok
-      exact SimpleKeyAboveIx_mono s s_anch n h_inv
-        (scanAnchorOrAliasIx_preserves_simpleKey s true s_anch h_anch)
-        (scanAnchorOrAliasIx_preserves_simpleKeyStack s true s_anch h_anch)
-  · split at h_ok
+      exact SimpleKeyAboveIx_mono s v n h_inv
+        (scanAnchorOrAliasIx_preserves_simpleKey s true v hA)
+        (scanAnchorOrAliasIx_preserves_simpleKeyStack s true v hA)
+  · rw [if_neg hg1] at h_ok
+    simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h_ok
+    by_cases hg2 : (c == '*') = true
     · -- c == '*': alias
-      generalize h_anch : scanAnchorOrAliasIx s false = anch_result at h_ok
-      cases anch_result with
-      | error e => simp at h_ok
-      | ok s_anch =>
-        dsimp only [] at h_ok
+      rw [if_pos hg2] at h_ok
+      cases hA : scanAnchorOrAliasIx s false with
+      | error e => rw [hA] at h_ok; cases h_ok
+      | ok v =>
+        rw [hA] at h_ok
         simp only [Except.ok.injEq] at h_ok
         subst h_ok
-        exact SimpleKeyAboveIx_mono s s_anch n h_inv
-          (scanAnchorOrAliasIx_preserves_simpleKey s false s_anch h_anch)
-          (scanAnchorOrAliasIx_preserves_simpleKeyStack s false s_anch h_anch)
-    · split at h_ok
+        exact SimpleKeyAboveIx_mono s v n h_inv
+          (scanAnchorOrAliasIx_preserves_simpleKey s false v hA)
+          (scanAnchorOrAliasIx_preserves_simpleKeyStack s false v hA)
+    · rw [if_neg hg2] at h_ok
+      by_cases hg3 : (c == '!') = true
       · -- c == '!': tag
-        generalize h_tag : scanTagIx s = tag_result at h_ok
-        cases tag_result with
-        | error e => simp at h_ok
-        | ok s_tag =>
-          dsimp only [] at h_ok
+        rw [if_pos hg3] at h_ok
+        cases hT : scanTagIx s with
+        | error e => rw [hT] at h_ok; cases h_ok
+        | ok v =>
+          rw [hT] at h_ok
           simp only [Except.ok.injEq] at h_ok
           subst h_ok
-          exact SimpleKeyAboveIx_mono s s_tag n h_inv
-            (scanTagIx_preserves_simpleKey s s_tag h_tag)
-            (scanTagIx_preserves_simpleKeyStack s s_tag h_tag)
-      · split at h_ok
+          exact SimpleKeyAboveIx_mono s v n h_inv
+            (scanTagIx_preserves_simpleKey s v hT)
+            (scanTagIx_preserves_simpleKeyStack s v hT)
+      · rw [if_neg hg3] at h_ok
+        by_cases hg4 : (c == '|' || c == '>') = true
         · -- c == '|' || c == '>': block scalar (inline)
+          rw [if_pos hg4] at h_ok
           split at h_ok
           · simp only [Except.ok.injEq] at h_ok
             subst h_ok
             exact SimpleKeyAboveIx_mono s _ n h_inv (by simp) (by simp)
-          · simp at h_ok
-        · split at h_ok
+          · cases h_ok
+        · rw [if_neg hg4] at h_ok
+          by_cases hg5 : (c == '"') = true
           · -- c == '"': double quoted
+            rw [if_pos hg5] at h_ok
             split at h_ok
             · simp only [Except.ok.injEq] at h_ok
               subst h_ok
               exact SimpleKeyAboveIx_mono s _ n h_inv (by simp) (by simp)
-            · simp at h_ok
-          · split at h_ok
+            · cases h_ok
+          · rw [if_neg hg5] at h_ok
+            by_cases hg6 : (c == '\'') = true
             · -- c == '\'': single quoted
+              rw [if_pos hg6] at h_ok
               split at h_ok
               · simp only [Except.ok.injEq] at h_ok
                 subst h_ok
                 exact SimpleKeyAboveIx_mono s _ n h_inv (by simp) (by simp)
-              · simp at h_ok
-            · split at h_ok
-              · -- plain scalar
-                simp only [Except.ok.injEq] at h_ok
+              · cases h_ok
+            · rw [if_neg hg6] at h_ok
+              -- plain scalar (success) vs error: one small inner `if`, so `split` is cheap here
+              split at h_ok
+              · simp only [Except.ok.injEq] at h_ok
                 subst h_ok
                 exact SimpleKeyAboveIx_mono s _ n h_inv (by simp) (by simp)
-              · simp at h_ok
+              · cases h_ok
 
 /-! ### §7.6  `scanNextTokenIx` maintains `SimpleKeyAboveIx`
 
@@ -531,65 +543,77 @@ theorem scanNextTokenIx_dispatchContent_preserves_prefix {input : String}
     s'.tokens[i]'(by
       have := scanNextTokenIx_dispatchContent_tokens_size_le h_ok; omega) =
     s.tokens[i]'h_bound := by
+  -- Peel the 7-way content dispatch one `if` at a time with `by_cases`/`rw` (a single `split`
+  -- over the whole dispatch exceeds `split`'s internal simp step budget under Lean 4.31.0).
   unfold scanNextTokenIx_dispatchContent at h_ok
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h_ok
-  split at h_ok
+  by_cases hg1 : (c == '&') = true
   · -- c == '&'
-    generalize h_anch : scanAnchorOrAliasIx s true = anch_result at h_ok
-    cases anch_result with
-    | error e => simp at h_ok
-    | ok s_anch =>
-      dsimp only [] at h_ok
+    rw [if_pos hg1] at h_ok
+    simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h_ok
+    cases hA : scanAnchorOrAliasIx s true with
+    | error e => rw [hA] at h_ok; cases h_ok
+    | ok v =>
+      rw [hA] at h_ok
       simp only [Except.ok.injEq] at h_ok
       subst h_ok
-      exact scanAnchorOrAliasIx_preserves_prefix s true s_anch h_anch i h_bound
-  · split at h_ok
+      exact scanAnchorOrAliasIx_preserves_prefix s true v hA i h_bound
+  · rw [if_neg hg1] at h_ok
+    simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h_ok
+    by_cases hg2 : (c == '*') = true
     · -- c == '*'
-      generalize h_anch : scanAnchorOrAliasIx s false = anch_result at h_ok
-      cases anch_result with
-      | error e => simp at h_ok
-      | ok s_anch =>
-        dsimp only [] at h_ok
+      rw [if_pos hg2] at h_ok
+      cases hA : scanAnchorOrAliasIx s false with
+      | error e => rw [hA] at h_ok; cases h_ok
+      | ok v =>
+        rw [hA] at h_ok
         simp only [Except.ok.injEq] at h_ok
         subst h_ok
-        exact scanAnchorOrAliasIx_preserves_prefix s false s_anch h_anch i h_bound
-    · split at h_ok
+        exact scanAnchorOrAliasIx_preserves_prefix s false v hA i h_bound
+    · rw [if_neg hg2] at h_ok
+      by_cases hg3 : (c == '!') = true
       · -- c == '!'
-        generalize h_tag : scanTagIx s = tag_result at h_ok
-        cases tag_result with
-        | error e => simp at h_ok
-        | ok s_tag =>
-          dsimp only [] at h_ok
+        rw [if_pos hg3] at h_ok
+        cases hT : scanTagIx s with
+        | error e => rw [hT] at h_ok; cases h_ok
+        | ok v =>
+          rw [hT] at h_ok
           simp only [Except.ok.injEq] at h_ok
           subst h_ok
-          exact scanTagIx_preserves_prefix s s_tag h_tag i h_bound
-      · split at h_ok
+          exact scanTagIx_preserves_prefix s v hT i h_bound
+      · rw [if_neg hg3] at h_ok
+        by_cases hg4 : (c == '|' || c == '>') = true
         · -- block scalar
+          rw [if_pos hg4] at h_ok
           split at h_ok
           · simp only [Except.ok.injEq] at h_ok
             subst h_ok
             exact _inline_scalar_preserves_prefix s _ _ _ _ i h_bound
-          · simp at h_ok
-        · split at h_ok
+          · cases h_ok
+        · rw [if_neg hg4] at h_ok
+          by_cases hg5 : (c == '"') = true
           · -- double quoted
+            rw [if_pos hg5] at h_ok
             split at h_ok
             · simp only [Except.ok.injEq] at h_ok
               subst h_ok
               exact _inline_scalar_preserves_prefix s _ _ _ _ i h_bound
-            · simp at h_ok
-          · split at h_ok
+            · cases h_ok
+          · rw [if_neg hg5] at h_ok
+            by_cases hg6 : (c == '\'') = true
             · -- single quoted
+              rw [if_pos hg6] at h_ok
               split at h_ok
               · simp only [Except.ok.injEq] at h_ok
                 subst h_ok
                 exact _inline_scalar_preserves_prefix s _ _ _ _ i h_bound
-              · simp at h_ok
-            · split at h_ok
-              · -- plain scalar
-                simp only [Except.ok.injEq] at h_ok
+              · cases h_ok
+            · rw [if_neg hg6] at h_ok
+              -- plain scalar (success) vs error: one small inner `if`, so `split` is cheap here
+              split at h_ok
+              · simp only [Except.ok.injEq] at h_ok
                 subst h_ok
                 exact _inline_scalar_preserves_prefix s _ _ _ _ i h_bound
-              · simp at h_ok
+              · cases h_ok
 
 /-! ### §7.7'  `scanNextTokenIx_preserves_prefix` (composed)
 

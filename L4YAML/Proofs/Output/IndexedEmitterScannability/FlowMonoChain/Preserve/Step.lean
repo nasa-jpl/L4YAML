@@ -309,36 +309,132 @@ theorem scanNextTokenIx_dispatchContent_preserves_flowLevel
     (s : ScannerStateIx input) (c : Char) (s' : ScannerStateIx input)
     (h : scanNextTokenIx_dispatchContent s c = .ok s') :
     s'.flowLevel = s.flowLevel := by
+  -- Peel the 7-way content dispatch one `if` at a time with `by_cases`/`rw` (splitting the whole
+  -- dispatch at once exceeds the internal simp step budget under Lean 4.31.0); anchor/alias/tag use
+  -- the explicit `_preserves_flowLevel` lemmas, scalar branches preserve `flowLevel` structurally.
   unfold scanNextTokenIx_dispatchContent at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
-  repeat (any_goals (split at h))
-  all_goals (try contradiction)
-  all_goals (try simp only [Except.ok.injEq] at h)
-  all_goals (try contradiction)
-  all_goals (try subst_vars)
-  all_goals first
-    | (rename_i h_eq; exact scanAnchorOrAliasIx_preserves_flowLevel s true _ h_eq)
-    | (rename_i h_eq; exact scanAnchorOrAliasIx_preserves_flowLevel s false _ h_eq)
-    | (rename_i h_eq; exact scanTagIx_preserves_flowLevel s _ h_eq)
-    | rfl
-    | (simp_all; done)
+  by_cases hg1 : (c == '&') = true
+  · -- '&' anchor
+    rw [if_pos hg1] at h
+    simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+    cases hA : scanAnchorOrAliasIx s true with
+    | error e => rw [hA] at h; cases h
+    | ok v =>
+      rw [hA] at h
+      simp only [Except.ok.injEq] at h; subst h
+      exact scanAnchorOrAliasIx_preserves_flowLevel s true v hA
+  · rw [if_neg hg1] at h
+    simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+    by_cases hg2 : (c == '*') = true
+    · -- '*' alias
+      rw [if_pos hg2] at h
+      cases hA : scanAnchorOrAliasIx s false with
+      | error e => rw [hA] at h; cases h
+      | ok v =>
+        rw [hA] at h
+        simp only [Except.ok.injEq] at h; subst h
+        exact scanAnchorOrAliasIx_preserves_flowLevel s false v hA
+    · rw [if_neg hg2] at h
+      by_cases hg3 : (c == '!') = true
+      · -- '!' tag
+        rw [if_pos hg3] at h
+        cases hT : scanTagIx s with
+        | error e => rw [hT] at h; cases h
+        | ok v =>
+          rw [hT] at h
+          simp only [Except.ok.injEq] at h; subst h
+          exact scanTagIx_preserves_flowLevel s v hT
+      · rw [if_neg hg3] at h
+        by_cases hg4 : (c == '|' || c == '>') = true
+        · -- block scalar
+          rw [if_pos hg4] at h
+          split at h
+          · simp only [Except.ok.injEq] at h; subst h; rfl
+          · cases h
+        · rw [if_neg hg4] at h
+          by_cases hg5 : (c == '"') = true
+          · -- double-quoted
+            rw [if_pos hg5] at h
+            split at h
+            · simp only [Except.ok.injEq] at h; subst h; rfl
+            · cases h
+          · rw [if_neg hg5] at h
+            by_cases hg6 : (c == '\'') = true
+            · -- single-quoted
+              rw [if_pos hg6] at h
+              split at h
+              · simp only [Except.ok.injEq] at h; subst h; rfl
+              · cases h
+            · rw [if_neg hg6] at h
+              -- plain scalar (success) vs error: one small inner `if`
+              split at h
+              · simp only [Except.ok.injEq] at h; subst h; rfl
+              · cases h
 
 theorem scanNextTokenIx_dispatchContent_preserves_simpleKeyStack
     (s : ScannerStateIx input) (c : Char) (s' : ScannerStateIx input)
     (h : scanNextTokenIx_dispatchContent s c = .ok s') :
     s'.simpleKeyStack = s.simpleKeyStack := by
+  -- Peel the 7-way content dispatch one `if` at a time with `by_cases`/`rw` (splitting the whole
+  -- dispatch at once exceeds the internal simp step budget under Lean 4.31.0); anchor/alias/tag use
+  -- the explicit `_preserves_simpleKeyStack` lemmas, scalar branches preserve it structurally.
   unfold scanNextTokenIx_dispatchContent at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
-  repeat (any_goals (split at h))
-  all_goals (try contradiction)
-  all_goals (try simp only [Except.ok.injEq] at h)
-  all_goals (try contradiction)
-  all_goals (try subst_vars)
-  all_goals first
-    | (rename_i h_eq; exact scanAnchorOrAliasIx_preserves_simpleKeyStack s true _ h_eq)
-    | (rename_i h_eq; exact scanAnchorOrAliasIx_preserves_simpleKeyStack s false _ h_eq)
-    | (rename_i h_eq; exact scanTagIx_preserves_simpleKeyStack s _ h_eq)
-    | rfl
-    | (simp_all; done)
+  by_cases hg1 : (c == '&') = true
+  · -- '&' anchor
+    rw [if_pos hg1] at h
+    simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+    cases hA : scanAnchorOrAliasIx s true with
+    | error e => rw [hA] at h; cases h
+    | ok v =>
+      rw [hA] at h
+      simp only [Except.ok.injEq] at h; subst h
+      exact scanAnchorOrAliasIx_preserves_simpleKeyStack s true v hA
+  · rw [if_neg hg1] at h
+    simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+    by_cases hg2 : (c == '*') = true
+    · -- '*' alias
+      rw [if_pos hg2] at h
+      cases hA : scanAnchorOrAliasIx s false with
+      | error e => rw [hA] at h; cases h
+      | ok v =>
+        rw [hA] at h
+        simp only [Except.ok.injEq] at h; subst h
+        exact scanAnchorOrAliasIx_preserves_simpleKeyStack s false v hA
+    · rw [if_neg hg2] at h
+      by_cases hg3 : (c == '!') = true
+      · -- '!' tag
+        rw [if_pos hg3] at h
+        cases hT : scanTagIx s with
+        | error e => rw [hT] at h; cases h
+        | ok v =>
+          rw [hT] at h
+          simp only [Except.ok.injEq] at h; subst h
+          exact scanTagIx_preserves_simpleKeyStack s v hT
+      · rw [if_neg hg3] at h
+        by_cases hg4 : (c == '|' || c == '>') = true
+        · -- block scalar
+          rw [if_pos hg4] at h
+          split at h
+          · simp only [Except.ok.injEq] at h; subst h; rfl
+          · cases h
+        · rw [if_neg hg4] at h
+          by_cases hg5 : (c == '"') = true
+          · -- double-quoted
+            rw [if_pos hg5] at h
+            split at h
+            · simp only [Except.ok.injEq] at h; subst h; rfl
+            · cases h
+          · rw [if_neg hg5] at h
+            by_cases hg6 : (c == '\'') = true
+            · -- single-quoted
+              rw [if_pos hg6] at h
+              split at h
+              · simp only [Except.ok.injEq] at h; subst h; rfl
+              · cases h
+            · rw [if_neg hg6] at h
+              -- plain scalar (success) vs error: one small inner `if`
+              split at h
+              · simp only [Except.ok.injEq] at h; subst h; rfl
+              · cases h
 
 end L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain

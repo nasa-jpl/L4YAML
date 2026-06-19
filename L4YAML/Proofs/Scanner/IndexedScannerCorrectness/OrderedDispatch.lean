@@ -1130,120 +1130,153 @@ helper above. -/
 theorem scanNextTokenIx_dispatchContent_preserves_ScanInvIx {input : String}
     {s s' : ScannerStateIx input} {c : Char} (h : ScanInvIx s)
     (h_ok : scanNextTokenIx_dispatchContent s c = .ok s') : ScanInvIx s' := by
+  -- Peel the 7-way content dispatch one `if` at a time with `by_cases`/`rw` (a single `split`
+  -- over the whole dispatch exceeds `split`'s internal simp step budget under Lean 4.31.0);
+  -- the inner `split` on a scalar production's `Except` match stays cheap.
   unfold scanNextTokenIx_dispatchContent at h_ok
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h_ok
-  split at h_ok
+  by_cases hg1 : (c == '&') = true
   · -- '&' anchor
-    generalize h_anch : scanAnchorOrAliasIx s true = anch_result at h_ok
-    cases anch_result with
-    | error e => simp at h_ok
-    | ok s_anch =>
-      dsimp only [] at h_ok
+    rw [if_pos hg1] at h_ok
+    simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h_ok
+    cases hA : scanAnchorOrAliasIx s true with
+    | error e => rw [hA] at h_ok; cases h_ok
+    | ok v =>
+      rw [hA] at h_ok
       simp only [Except.ok.injEq] at h_ok; subst h_ok
-      exact scanAnchorOrAliasIx_preserves_ScanInvIx s s_anch true h h_anch
-  · split at h_ok
+      exact scanAnchorOrAliasIx_preserves_ScanInvIx s v true h hA
+  · rw [if_neg hg1] at h_ok
+    simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h_ok
+    by_cases hg2 : (c == '*') = true
     · -- '*' alias
-      generalize h_anch : scanAnchorOrAliasIx s false = anch_result at h_ok
-      cases anch_result with
-      | error e => simp at h_ok
-      | ok s_anch =>
-        dsimp only [] at h_ok
+      rw [if_pos hg2] at h_ok
+      cases hA : scanAnchorOrAliasIx s false with
+      | error e => rw [hA] at h_ok; cases h_ok
+      | ok v =>
+        rw [hA] at h_ok
         simp only [Except.ok.injEq] at h_ok; subst h_ok
-        exact scanAnchorOrAliasIx_preserves_ScanInvIx s s_anch false h h_anch
-    · split at h_ok
+        exact scanAnchorOrAliasIx_preserves_ScanInvIx s v false h hA
+    · rw [if_neg hg2] at h_ok
+      by_cases hg3 : (c == '!') = true
       · -- '!' tag
-        generalize h_tag : scanTagIx s = tag_result at h_ok
-        cases tag_result with
-        | error e => simp at h_ok
-        | ok s_tag =>
-          dsimp only [] at h_ok
+        rw [if_pos hg3] at h_ok
+        cases hT : scanTagIx s with
+        | error e => rw [hT] at h_ok; cases h_ok
+        | ok v =>
+          rw [hT] at h_ok
           simp only [Except.ok.injEq] at h_ok; subst h_ok
-          exact scanTagIx_preserves_ScanInvIx s s_tag h h_tag
-      · split at h_ok
+          exact scanTagIx_preserves_ScanInvIx s v h hT
+      · rw [if_neg hg3] at h_ok
+        by_cases hg4 : (c == '|' || c == '>') = true
         · -- block scalar
+          rw [if_pos hg4] at h_ok
           split at h_ok
           · rename_i r hBS
             simp only [Except.ok.injEq] at h_ok; subst h_ok
             exact _scalar_emitAt_preserves_ScanInvIx s _ _
               (scanBlockScalarIx_offset_monotonic s.cursor _ hBS) h
-          · simp at h_ok
-        · split at h_ok
+          · cases h_ok
+        · rw [if_neg hg4] at h_ok
+          by_cases hg5 : (c == '"') = true
           · -- double-quoted
+            rw [if_pos hg5] at h_ok
             split at h_ok
             · rename_i r hDQ
               simp only [Except.ok.injEq] at h_ok; subst h_ok
               exact _scalar_emitAt_preserves_ScanInvIx s _ _
                 (Nat.le_of_lt (scanDoubleQuotedIx_offset_lt s.cursor hDQ)) h
-            · simp at h_ok
-          · split at h_ok
+            · cases h_ok
+          · rw [if_neg hg5] at h_ok
+            by_cases hg6 : (c == '\'') = true
             · -- single-quoted
+              rw [if_pos hg6] at h_ok
               split at h_ok
               · rename_i r hSQ
                 simp only [Except.ok.injEq] at h_ok; subst h_ok
                 exact _scalar_emitAt_preserves_ScanInvIx s _ _
                   (Nat.le_of_lt (scanSingleQuotedIx_offset_lt s.cursor hSQ)) h
-              · simp at h_ok
-            · split at h_ok
-              · -- plain scalar
-                simp only [Except.ok.injEq] at h_ok; subst h_ok
+              · cases h_ok
+            · rw [if_neg hg6] at h_ok
+              -- plain scalar (success) vs error: one small inner `if`
+              split at h_ok
+              · simp only [Except.ok.injEq] at h_ok; subst h_ok
                 exact _scalar_emitAt_preserves_ScanInvIx s _ _
                   (scanPlainScalarIx_offset_monotonic s.cursor _ _) h
-              · simp at h_ok
+              · cases h_ok
 
 theorem scanNextTokenIx_dispatchContent_preserves_AllKeysValidIx {input : String}
     {s s' : ScannerStateIx input} {c : Char} (h_akv : AllKeysValidIx s)
     (h_ok : scanNextTokenIx_dispatchContent s c = .ok s') : AllKeysValidIx s' := by
+  -- Peel the 7-way content dispatch one `if` at a time with `by_cases`/`rw` (a single `split`
+  -- over the whole dispatch exceeds `split`'s internal simp step budget under Lean 4.31.0);
+  -- the inner `split` on a scalar production's `Except` match stays cheap.
   unfold scanNextTokenIx_dispatchContent at h_ok
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h_ok
-  split at h_ok
-  · generalize h_anch : scanAnchorOrAliasIx s true = anch_result at h_ok
-    cases anch_result with
-    | error e => simp at h_ok
-    | ok s_anch =>
-      dsimp only [] at h_ok
+  by_cases hg1 : (c == '&') = true
+  · -- '&' anchor
+    rw [if_pos hg1] at h_ok
+    simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h_ok
+    cases hA : scanAnchorOrAliasIx s true with
+    | error e => rw [hA] at h_ok; cases h_ok
+    | ok v =>
+      rw [hA] at h_ok
       simp only [Except.ok.injEq] at h_ok; subst h_ok
-      exact scanAnchorOrAliasIx_preserves_AllKeysValidIx s s_anch true h_akv h_anch
-  · split at h_ok
-    · generalize h_anch : scanAnchorOrAliasIx s false = anch_result at h_ok
-      cases anch_result with
-      | error e => simp at h_ok
-      | ok s_anch =>
-        dsimp only [] at h_ok
+      exact scanAnchorOrAliasIx_preserves_AllKeysValidIx s v true h_akv hA
+  · rw [if_neg hg1] at h_ok
+    simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h_ok
+    by_cases hg2 : (c == '*') = true
+    · -- '*' alias
+      rw [if_pos hg2] at h_ok
+      cases hA : scanAnchorOrAliasIx s false with
+      | error e => rw [hA] at h_ok; cases h_ok
+      | ok v =>
+        rw [hA] at h_ok
         simp only [Except.ok.injEq] at h_ok; subst h_ok
-        exact scanAnchorOrAliasIx_preserves_AllKeysValidIx s s_anch false h_akv h_anch
-    · split at h_ok
-      · generalize h_tag : scanTagIx s = tag_result at h_ok
-        cases tag_result with
-        | error e => simp at h_ok
-        | ok s_tag =>
-          dsimp only [] at h_ok
+        exact scanAnchorOrAliasIx_preserves_AllKeysValidIx s v false h_akv hA
+    · rw [if_neg hg2] at h_ok
+      by_cases hg3 : (c == '!') = true
+      · -- '!' tag
+        rw [if_pos hg3] at h_ok
+        cases hT : scanTagIx s with
+        | error e => rw [hT] at h_ok; cases h_ok
+        | ok v =>
+          rw [hT] at h_ok
           simp only [Except.ok.injEq] at h_ok; subst h_ok
-          exact scanTagIx_preserves_AllKeysValidIx s s_tag h_akv h_tag
-      · split at h_ok
-        · split at h_ok
+          exact scanTagIx_preserves_AllKeysValidIx s v h_akv hT
+      · rw [if_neg hg3] at h_ok
+        by_cases hg4 : (c == '|' || c == '>') = true
+        · -- block scalar
+          rw [if_pos hg4] at h_ok
+          split at h_ok
           · rename_i r hBS
             simp only [Except.ok.injEq] at h_ok; subst h_ok
             exact _scalar_emitAt_preserves_AllKeysValidIx s _ _
               (scanBlockScalarIx_offset_monotonic s.cursor _ hBS) h_akv
-          · simp at h_ok
-        · split at h_ok
-          · split at h_ok
+          · cases h_ok
+        · rw [if_neg hg4] at h_ok
+          by_cases hg5 : (c == '"') = true
+          · -- double-quoted
+            rw [if_pos hg5] at h_ok
+            split at h_ok
             · rename_i r hDQ
               simp only [Except.ok.injEq] at h_ok; subst h_ok
               exact _scalar_emitAt_preserves_AllKeysValidIx s _ _
                 (Nat.le_of_lt (scanDoubleQuotedIx_offset_lt s.cursor hDQ)) h_akv
-            · simp at h_ok
-          · split at h_ok
-            · split at h_ok
+            · cases h_ok
+          · rw [if_neg hg5] at h_ok
+            by_cases hg6 : (c == '\'') = true
+            · -- single-quoted
+              rw [if_pos hg6] at h_ok
+              split at h_ok
               · rename_i r hSQ
                 simp only [Except.ok.injEq] at h_ok; subst h_ok
                 exact _scalar_emitAt_preserves_AllKeysValidIx s _ _
                   (Nat.le_of_lt (scanSingleQuotedIx_offset_lt s.cursor hSQ)) h_akv
-              · simp at h_ok
-            · split at h_ok
+              · cases h_ok
+            · rw [if_neg hg6] at h_ok
+              -- plain scalar (success) vs error: one small inner `if`
+              split at h_ok
               · simp only [Except.ok.injEq] at h_ok; subst h_ok
                 exact _scalar_emitAt_preserves_AllKeysValidIx s _ _
                   (scanPlainScalarIx_offset_monotonic s.cursor _ _) h_akv
-              · simp at h_ok
+              · cases h_ok
 
 end L4YAML.Proofs.Indexed.ScannerCorrectness
