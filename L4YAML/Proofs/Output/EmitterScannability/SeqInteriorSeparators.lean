@@ -4467,6 +4467,147 @@ theorem seqHRec_of_root_and_context
   seqRec_of_carrier_and_windowFacts_seq tokens h_root_carrier
     (seqWindowFacts_provider_of_context items tokens h_scan h_ne h_all_block h_wt_outer h_fold_total)
 
+/-- **Whole-stream well-typedness from the emit context** —
+    `(i'-b-B2c-(d)-seqWholeStreamWellTyped)`, the GENERAL, axiom-clean producer of `WellTyped
+    tokens.toList` that the satisfiability probe `seqFoldTotal_satisfiable_on_real_output` (R441)
+    proved only on a CONCRETE witness by `native_decide`.  That probe's own docstring NAMED this
+    discharge route — "a whole-stream `WellTyped tokens.toList` fact (none exists yet — `h_wt_outer`
+    covers only the interior `(take (size-2)).drop 2`) fed through `WellTyped_prefix_some`" — and its
+    proof factored as `general_reduction (concrete_fact)`: the `∀ m` fold-totality form fell out of
+    `WellTyped_prefix_some` GENERICALLY, with ONLY the whole-stream `WellTyped tokens.toList` leaf
+    example-specific.  So promoting the probe is replacing that one `native_decide` leaf with a
+    STRUCTURAL derivation of the single fact it localized, reusing the generic tail verbatim
+    (`seqFoldTotal_of_context` below).
+
+    The structural derivation reads the emitted+filtered stream off `scanFiltered_emitSeq_nonempty_structure`
+    as `streamStart :: .flowSequenceStart :: interior ++ [.flowSequenceEnd, streamEnd]` (the four boundary
+    tokens + `size ≥ 5` + the interior `WellTyped`), and folds piecewise the SAME way `seqRoot_seqPathAllSeq`
+    (R386) computes the depth-2 prefix: `btStep` is the identity on `streamStart`/`streamEnd` (non-bracket),
+    pushes `true` on `[`, and the interior returns the stack to `[true]` by `WellTyped_frame` of `h_wt_interior`,
+    then `]` pops back to `[]`.  No `native_decide`; axiom-clean.  References no sorry site, frontier sorry
+    count unchanged at 4. -/
+theorem seqWholeStreamWellTyped
+    (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
+    (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
+    (h_ne : items.toList ≠ [])
+    (h_all_block : ∀ w, w ∈ items.toList → EmitScansInFlowBlock w) :
+    WellTyped tokens.toList := by
+  obtain ⟨h_sz5, h_t0, h_tlast, h_t1, h_tpe, _h_content0, _h_fe_pattern,
+          _h_outer_bal, _h_dyck, h_wt_interior, _h_body_opener, _h_body_separator⟩ :=
+    scanFiltered_emitSeq_nonempty_structure items tokens h_scan h_ne h_all_block
+  have h_len : tokens.toList.length = tokens.size := Array.length_toList
+  -- the four boundary indices are in range
+  have hb0 : 0 < tokens.toList.length := by rw [h_len]; omega
+  have hb1 : 1 < tokens.toList.length := by rw [h_len]; omega
+  have hbe : tokens.size - 2 < tokens.toList.length := by rw [h_len]; omega
+  have hbl : tokens.size - 1 < tokens.toList.length := by rw [h_len]; omega
+  -- their token VALUES (bridged from the `tokens[_]!` boundary facts)
+  have e0 : (tokens.toList[0]'hb0).val = .streamStart := by
+    have hb : tokens.toList[0]'hb0 = tokens[0]! := by
+      rw [Array.getElem_toList, getElem!_pos tokens 0 (by omega)]
+    rw [hb]; exact h_t0
+  have e1 : (tokens.toList[1]'hb1).val = .flowSequenceStart := by
+    have hb : tokens.toList[1]'hb1 = tokens[1]! := by
+      rw [Array.getElem_toList, getElem!_pos tokens 1 (by omega)]
+    rw [hb]; exact h_t1
+  have ee : (tokens.toList[tokens.size - 2]'hbe).val = .flowSequenceEnd := by
+    have hb : tokens.toList[tokens.size - 2]'hbe = tokens[tokens.size - 2]! := by
+      rw [Array.getElem_toList, getElem!_pos tokens (tokens.size - 2) (by omega)]
+    rw [hb]; exact h_tpe
+  have el : (tokens.toList[tokens.size - 1]'hbl).val = .streamEnd := by
+    have hb : tokens.toList[tokens.size - 1]'hbl = tokens[tokens.size - 1]! := by
+      rw [Array.getElem_toList, getElem!_pos tokens (tokens.size - 1) (by omega)]
+    rw [hb]; exact h_tlast
+  -- prefix `take 2` = [streamStart, `[`]
+  have h_take2 : tokens.toList.take 2 = [tokens.toList[0]'hb0, tokens.toList[1]'hb1] := by
+    have step1 : tokens.toList.take 2 = tokens.toList.take 1 ++ [tokens.toList[1]'hb1] :=
+      List.take_succ_eq_append_getElem hb1
+    have step0 : tokens.toList.take 1 = tokens.toList.take 0 ++ [tokens.toList[0]'hb0] :=
+      List.take_succ_eq_append_getElem hb0
+    rw [step1, step0]; rfl
+  -- suffix `drop (size-2)` = [`]`, streamEnd]
+  have h_suf : tokens.toList.drop (tokens.size - 2)
+      = [tokens.toList[tokens.size - 2]'hbe, tokens.toList[tokens.size - 1]'hbl] := by
+    have d1 : tokens.toList.drop (tokens.size - 2)
+        = tokens.toList[tokens.size - 2]'hbe :: tokens.toList.drop (tokens.size - 2 + 1) :=
+      List.drop_eq_getElem_cons hbe
+    have hidx : tokens.size - 2 + 1 = tokens.size - 1 := by omega
+    rw [hidx] at d1
+    have d2 : tokens.toList.drop (tokens.size - 1)
+        = tokens.toList[tokens.size - 1]'hbl :: tokens.toList.drop (tokens.size - 1 + 1) :=
+      List.drop_eq_getElem_cons hbl
+    have hidx2 : tokens.size - 1 + 1 = tokens.size := by omega
+    rw [hidx2] at d2
+    have d3 : tokens.toList.drop tokens.size = [] := by rw [← h_len, List.drop_length]
+    rw [d1, d2, d3]
+  -- the body window `take (size-2)` splits as `take 2 ++ interior`
+  have h_take2_eq : (tokens.toList.take (tokens.size - 2)).take 2 = tokens.toList.take 2 := by
+    rw [List.take_take]; congr 1; omega
+  have h_interior_decomp : tokens.toList.take (tokens.size - 2)
+      = tokens.toList.take 2 ++ (tokens.toList.take (tokens.size - 2)).drop 2 := by
+    rw [← h_take2_eq, List.take_append_drop]
+  -- the whole list = (take 2 ++ interior) ++ suffix
+  have h_whole : tokens.toList
+      = (tokens.toList.take 2 ++ (tokens.toList.take (tokens.size - 2)).drop 2)
+        ++ tokens.toList.drop (tokens.size - 2) := by
+    rw [← h_interior_decomp, List.take_append_drop]
+  -- fold piecewise: `[` pushes `true`, interior frames back to `[true]`, `]` pops to `[]`
+  show btFold (some []) tokens.toList = some []
+  rw [h_whole, btFold_append, btFold_append]
+  have hf2 : btFold (some []) (tokens.toList.take 2) = some [true] := by
+    rw [h_take2]
+    have hs0 : btStep (tokens.toList[0]'hb0) [] = some [] := by simp only [btStep, e0]
+    have hs1 : btStep (tokens.toList[1]'hb1) [] = some [true] := by simp only [btStep, e1]
+    rw [btFold_cons_some, hs0, btFold_cons_some, hs1]; rfl
+  rw [hf2, WellTyped_frame _ [true] h_wt_interior, h_suf]
+  have hse : btStep (tokens.toList[tokens.size - 2]'hbe) [true] = some [] := by simp only [btStep, ee]
+  have hss : btStep (tokens.toList[tokens.size - 1]'hbl) [] = some [] := by simp only [btStep, el]
+  rw [btFold_cons_some, hse, btFold_cons_some, hss]; rfl
+
+/-- **The whole-stream fold-totality `h_fold_total`, discharged GENERALLY from the emit context** —
+    `(i'-b-B2c-(d)-seqFoldTotal-of-context)`, retiring residual **(2)** of `seqHRec_of_root_and_context`
+    (R441) — the `h_fold_total : ∀ m, ∃ s, btFold (some []) (tokens.toList.take m) = some s` slot.  This
+    is the generic tail the satisfiability probe `seqFoldTotal_satisfiable_on_real_output` already had:
+    `WellTyped_prefix_some` turns whole-stream `WellTyped tokens.toList` (now produced GENERALLY by
+    `seqWholeStreamWellTyped`, axiom-clean) into fold-totality at EVERY prefix, since every prefix of a
+    `WellTyped` list folds to `some` (never underflows).  Axiom-clean (no `native_decide`); references no
+    sorry site, frontier sorry count unchanged at 4. -/
+theorem seqFoldTotal_of_context
+    (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
+    (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
+    (h_ne : items.toList ≠ [])
+    (h_all_block : ∀ w, w ∈ items.toList → EmitScansInFlowBlock w) :
+    ∀ m, ∃ s, btFold (some []) (tokens.toList.take m) = some s := by
+  have h_wt := seqWholeStreamWellTyped items tokens h_scan h_ne h_all_block
+  intro m
+  exact WellTyped_prefix_some (tokens.toList.take m) (tokens.toList.drop m)
+    (by rw [List.take_append_drop]; exact h_wt)
+
+/-- **The floored seq `h_seq_rec` producer over the EMIT context — residual (2) now discharged** —
+    `(i'-b-B2c-(d)-seqHRec-of-root-and-emit)`.  `seqHRec_of_root_and_context` (R441) reduced the
+    seq-side `h_seq_rec` to FOUR named residuals; this wires `seqFoldTotal_of_context` into its
+    `h_fold_total` slot ([[ref-reduction-by-import]] — the import RETYPES the residual from owed to
+    discharged), so the seq producer now needs only THREE: **(1)** the hard root carrier
+    `SeqInteriorSeparators tokens 2 (size-2)` (the `desc` descent provider), **(3)** `h_wt_outer`
+    (available at the consume site as the interior `WellTyped`), **(4)** the emit context
+    (`h_scan`/`h_ne`/`h_all_block`).  Verified-but-unconsumed until the root carrier lands; references
+    no sorry site, frontier sorry count unchanged at 4. -/
+theorem seqHRec_of_root_and_emit
+    (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
+    (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
+    (h_ne : items.toList ≠ [])
+    (h_all_block : ∀ w, w ∈ items.toList → EmitScansInFlowBlock w)
+    (h_wt_outer : WellTyped ((tokens.toList.take (tokens.size - 2)).drop 2))
+    (h_root_carrier : SeqInteriorSeparators tokens 2 (tokens.size - 2)) :
+    ∀ lo hi, 2 ≤ lo → lo < hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+      tokens[hi]!.val = .flowSequenceEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowSequenceStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
+      RecSeqBody ((tokens.toList.take hi).drop lo) :=
+  seqHRec_of_root_and_context items tokens h_scan h_ne h_all_block h_wt_outer
+    (seqFoldTotal_of_context items tokens h_scan h_ne h_all_block) h_root_carrier
+
 /-- **The 7-guard `windowFacts`/`h_seq_rec` universal is UNSATISFIABLE — a cross-matched false window** —
     `(i'-b-B2c-(d)-windowFacts-false-window)`, R433, the machine-checked refutation that REDIRECTS the
     "discharge the three `windowFacts` primitives" plan ([[ref-probe-deferred-universal-before-producing]] /
