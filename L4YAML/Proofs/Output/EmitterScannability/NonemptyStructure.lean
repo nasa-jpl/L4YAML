@@ -7119,6 +7119,55 @@ theorem flowBodyContentDeep_descend (tokens : Array (Positioned YamlToken)) (lo 
     intro k' hk1 hk2 hfe
     exact h_fe k' (by omega) (by omega) hfe
 
+/-- **OPENER-INCLUSIVE deep-content sibling** (Phase J — the deep-content companion of
+    `flowBodyWindow_child_bracket` (R470), the second opener-inclusive sibling the seq carrier↔recursion
+    co-construction's `h_widthEnc` deliverable owes).  Where `flowBodyContentDeep_descend` delivers the
+    INTERIOR `[k+1, j)` deep-content guard (opener-EXCLUSIVE — what the body recursion's IH consumes a
+    nesting level DOWN), the `h_widthEnc` consumer (`seqDescent_provider_of_located` →
+    `seqChild_safeBodyUnit`) needs the deep-content guard on the FULL bracket window `[k, j+1)`
+    (opener-INCLUSIVE — the same window `flowBodyWindow_child_bracket` delivers, so it can descend ONCE
+    at the opener `k` to reach the interior).  As with the window sibling, the interior producer cannot
+    be COERCED UP — it threw away the opener and closer — so this is a NEW sibling
+    ([[ref-boundary-inclusive-needs-sibling-not-coercion]] / the dual of
+    [[ref-coerce-to-weaker-reuse-wrapper]]).
+
+    **It is STRICTLY SIMPLER than `flowBodyContentDeep_descend`, on two counts.**
+    * `headContentStart` comes from the OPENER ITSELF, not the parent.  `tokens[k]` has
+      `flowBracketDelta = 1`, so it is `.flowSequenceStart` or `.flowMappingStart`
+      (`flowBracketDelta_eq_one_iff`) — and BOTH are `isFlowContentStart` (a flow collection IS content).
+      The descend sibling had to read its interior head `tokens[k+1]` off the parent's
+      `openerContentStart` at `k`; the opener-inclusive window's head IS the opener, content-start by
+      definition, needing only the opener delta the locator already supplies.
+    * `openerContentStart` / `feContentStart` are PURE RESTRICTIONS of the parent's (balance-FREE,
+      window-ABSOLUTE — keyed only on `tokens[k']`, never an origin), domain `[k, j+1) ⊆ [lo, hi)` via
+      `lo ≤ k` and `j + 1 ≤ hi`.  Same restriction the descend sibling does, one bracket wider.
+
+    And — like `flowBodyWindow_child_bracket` — keeping the boundary SHEDS the descend sibling's
+    interior-non-emptiness guard `k + 1 < j` (the `[k+1, j)` empty-bracket peel): `[k, j+1)` is never
+    empty, and the head no longer reads an interior position, so only `j + 1 ≤ hi` is needed.  The
+    depth-`0` `FlowBodyContent tokens k (j+1)` then follows from THIS via `flowBodyContent_of_deep`, whose
+    two named residuals (`h_bodySucc`, `h_noTrailingSep`) discharge VACUOUSLY against the window's
+    interior floor (the only child-origin balance-`0` positions in `[k, j+1)` are the opener `k` — where
+    the `.flowEntry` premise fails — and the close `j` — where `k+1 = j+1` takes `bodySucc`'s left
+    disjunct).  Names no deliverable type, so it serves both axes.  Axiom-clean, no `sorryAx`. -/
+theorem flowBodyContentDeep_child_bracket (tokens : Array (Positioned YamlToken)) (lo k j hi : Nat)
+    (h_deep : FlowBodyContentDeep tokens lo hi)
+    (h_lo_k : lo ≤ k) (h_k_open : flowBracketDelta tokens[k]!.val = 1)
+    (h_j_hi : j + 1 ≤ hi) :
+    FlowBodyContentDeep tokens k (j + 1) := by
+  obtain ⟨_h_head, h_op, h_fe⟩ := h_deep
+  refine ⟨?_, ?_, ?_⟩
+  · -- head: the opener `k` (delta `1`) is `.flowSequenceStart`/`.flowMappingStart`, both content-start.
+    rcases (flowBracketDelta_eq_one_iff tokens[k]!.val).mp h_k_open with h | h
+    · exact Or.inr (Or.inl h)
+    · exact Or.inr (Or.inr h)
+  · -- child openerContentStart: the parent's, restricted to `[k, j+1) ⊆ [lo, hi)`.
+    intro k' hk1 hk2 hopen
+    exact h_op k' (by omega) (by omega) hopen
+  · -- child feContentStart: the parent's, restricted to `[k, j+1) ⊆ [lo, hi)`.
+    intro k' hk1 hk2 hfe
+    exact h_fe k' (by omega) (by omega) hfe
+
 /-- **ADVANCE deep-content-preservation** (Phase J — the trivial ADVANCE twin of
     `flowBodyContentDeep_descend`, the last remaining content-guard edge per the 138th-revision map).
     When the body recursion consumes the first entry at a `.flowEntry` separator `m` and advances to the
