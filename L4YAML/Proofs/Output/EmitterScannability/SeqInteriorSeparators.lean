@@ -2710,6 +2710,81 @@ theorem seqRoot_carrier_of_widthEnc
   seqLocalCarrier_of_widthEnc tokens 2 (tokens.size - 2) (Nat.sub_le tokens.size 2)
     (seqRoot_safeBodyUnit items tokens h_scan h_ne h_all) h_widthEnc
 
+/-- **`h_widthEnc` ASSEMBLED from the enclosing-locate residual + the joint width IH** —
+    `(i'-b-B2c-(d)-seq-widthEnc-assemble)`, R475: the per-step ASSEMBLE that the eventual body-width
+    joint induction invokes to discharge `seqLocalCarrier_of_widthEnc`'s `h_widthEnc` hypothesis at
+    one body window `[lo, hi)`.  It composes the two genuine residuals into the exact `h_widthEnc`
+    shape, PROVING the width-descent wiring (the arithmetic R473
+    [[ref-dropped-branch-guard-mis-measures-recursion]] flagged) and ISOLATING the enclosing-locate as
+    the single remaining residual ([[ref-parametric-assembler-extraction]] /
+    [[ref-probe-provider-satisfiable-before-assembler]]).
+
+    **What `h_widthEnc`'s deliverable actually is** (read off `seqLocalCarrier_of_widthEnc`'s
+    hypothesis, above): for each gated window `[a, b)` whose enclosing opener is `p`, the
+    ENCLOSING-WINDOW facts of `[p, hiE)` (`FlowBodyWindow` / `FlowBodyContentDeep` / `FlowBodyContent`)
+    PLUS a width-gated `RecSeqBody` IH for the sub-windows of `[p, hiE)` (gate `hi' - lo' < hiE - p`).
+    So the deliverable splits cleanly into a LOCATE part and an IH part, and this lemma supplies each
+    from one hypothesis:
+
+    * `enclosingLocate` — the LOCATE residual.  Given the gate + located-opener facts it returns the
+      enclosing window `[p, hiE)`'s three content facts, the bound `b ≤ hiE ≤ tokens.size`, AND the two
+      containments `lo ≤ p` and `hiE ≤ hi` (the enclosing window lies WITHIN the body `[lo, hi)`).
+      Those two containments are what make the descent well-founded — they are the genuine residual the
+      backward enclosing-opener locator + `seqClose_of_located_and_enclosing` produce (the body is the
+      recursion window, the enclosing seq a contained sub-bracket).
+    * `recIH` — the joint width IH.  A `RecSeqBody` producer for every body window STRICTLY NARROWER
+      than `[lo, hi)` (gate `hi' - lo' < hi - lo`, containment `lo ≤ lo'`, `hi' ≤ hi`), exactly the IH a
+      `windowWidth_strongRecOn` over the body width hands its step (cf. `seqWindowRecSeqBody_general`'s
+      `G`-guard `lo0 ≤ lo ∧ hi ≤ hi0`).
+
+    **The one piece of real content — the width bridge** (`body_ih_covers_frame_ih`, R473).  The
+    deliverable's inner IH is gated `hi' - lo' < hiE - p`; the joint IH `recIH` is gated
+    `hi' - lo' < hi - lo`.  The two containments `lo ≤ p` and `hiE ≤ hi` give
+    `hiE - p ≤ hi - lo`, so the inner gate IMPLIES the joint gate
+    (`hi' - lo' < hiE - p ≤ hi - lo`) — `omega` from the four facts.  The same containments lift the
+    inner quantifier's `p ≤ lo'` / `hi' ≤ hiE` to `recIH`'s `lo ≤ lo'` / `hi' ≤ hi`.  No `SafeBodyUnit`
+    is touched here: this assemble is exactly the half of the joint induction that sidesteps the
+    `SafeBodyUnit` ↔ carrier ↔ `RecSeqBody` circularity (the carrier construction, which needs
+    `h_safe`, is the SEPARATE `seqLocalCarrier_of_widthEnc` step).
+
+    Verified-but-unconsumed until the joint induction supplies `enclosingLocate` + `recIH` and feeds
+    the result to `seqLocalCarrier_of_widthEnc`: composes only landed lemmas + `omega`, references no
+    sorry site, frontier sorry count unchanged at 4; axiom-clean. -/
+theorem seqWidthEnc_of_enclosingLocate_and_recIH
+    (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (enclosingLocate : ∀ a b p, lo ≤ a → a ≤ b → b ≤ hi →
+        flowBracketBalance tokens lo a ≠ 0 →
+        SeqTypedInterior tokens a b →
+        p < a → flowBracketDelta tokens[p]!.val = 1 →
+        flowBracketBalance tokens (p + 1) a = 0 →
+        (∀ i, p + 1 ≤ i → i ≤ a → flowBracketBalance tokens (p + 1) i ≥ 0) →
+        lo ≤ p ∧ ∃ hiE, b ≤ hiE ∧ hiE ≤ tokens.size ∧ hiE ≤ hi ∧
+          FlowBodyWindow tokens p hiE ∧ FlowBodyContentDeep tokens p hiE ∧
+          FlowBodyContent tokens p hiE)
+    (recIH : ∀ lo' hi', hi' - lo' < hi - lo → lo ≤ lo' → hi' ≤ hi →
+        FlowBodyWindow tokens lo' hi' → FlowBodyContentDeep tokens lo' hi' →
+        SeqEnclosed tokens lo' → tokens[hi']!.val = .flowSequenceEnd →
+        RecSeqBody ((tokens.toList.take hi').drop lo')) :
+    ∀ a b p, lo ≤ a → a ≤ b → b ≤ hi →
+        flowBracketBalance tokens lo a ≠ 0 →
+        SeqTypedInterior tokens a b →
+        p < a → flowBracketDelta tokens[p]!.val = 1 →
+        flowBracketBalance tokens (p + 1) a = 0 →
+        (∀ i, p + 1 ≤ i → i ≤ a → flowBracketBalance tokens (p + 1) i ≥ 0) →
+        ∃ hiE, b ≤ hiE ∧ hiE ≤ tokens.size ∧
+          FlowBodyWindow tokens p hiE ∧ FlowBodyContentDeep tokens p hiE ∧
+          FlowBodyContent tokens p hiE ∧
+          (∀ lo' hi', hi' - lo' < hiE - p → p ≤ lo' → hi' ≤ hiE →
+            FlowBodyWindow tokens lo' hi' → FlowBodyContentDeep tokens lo' hi' →
+            SeqEnclosed tokens lo' → tokens[hi']!.val = .flowSequenceEnd →
+            RecSeqBody ((tokens.toList.take hi').drop lo')) := by
+  intro a b p ha hab hb hbal hgate hpa h_delta h_body_bal h_loc_floor
+  obtain ⟨h_lo_p, hiE, h_b_hiE, h_hiE_sz, h_hiE_hi, h_win, h_deep, h_content⟩ :=
+    enclosingLocate a b p ha hab hb hbal hgate hpa h_delta h_body_bal h_loc_floor
+  refine ⟨hiE, h_b_hiE, h_hiE_sz, h_win, h_deep, h_content, ?_⟩
+  intro lo' hi' h_width h_p_lo' h_hi'_hiE h_w h_d h_q h_c
+  exact recIH lo' hi' (by omega) (by omega) (by omega) h_w h_d h_q h_c
+
 /-- **The per-window carrier→content consumer joint** — `(i'-b-B3-content-joint)`, the joint between
     the threaded separator carrier and the `RecSeqBody` recursion's per-window dispatch.  This is the
     de-risk finding for B3 (the `windowWidth_strongRecOn` `RecSeqBody` producer) made into a proof
