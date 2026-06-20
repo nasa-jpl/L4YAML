@@ -1488,6 +1488,44 @@ theorem seqPathAllSeq_advance (tokens : Array (Positioned YamlToken)) (lo n : Na
     exact h.symm
   rw [h_split, btFold_append, h_fold, WellTyped_frame _ s h_wt_seg]
 
+/-- **The carrier co-construction's `SeqPathAllSeq` descend edge — PUSH ∘ FRAME, NOT a new edge** —
+    `(i'-b-B2c-(d) — STEP D: the joint induction's nested-arm path thread)`.  The carrier↔recursion
+    co-construction (`seqRoot_carrier_of_widthEnc`'s `h_widthEnc`, the last seq residual) sources each
+    NESTED window's `h_safe` from `seqWindow_safeBodyUnit`'s nested arm, whose lone non-emission
+    hypothesis is `SeqPathAllSeq tokens (lo - 1)` (every enclosing frame `[`-typed).  When the joint
+    induction descends from a bracket body into a CHILD bracket body, it must re-establish that path
+    fact at the child opener — the residual `seqWindow_safeBodyUnit`'s docstring named "the btFold-push
+    preservation of `SeqPathAllSeq` across a located `[`".
+
+    **The de-risk finding: that residual is NOT a new edge.**  Reaching the child opener `n` from the
+    parent's path key is a PUSH followed by a FRAME, both already landed:
+
+    * **PUSH** — `seqPathAllSeq_descend` (R337): crossing the located opener `[` at `k` pushes a `true`,
+      carrying `SeqPathAllSeq tokens k` to `SeqPathAllSeq tokens (k + 1)` (inside the bracket);
+    * **FRAME** — `seqPathAllSeq_advance` (R357): the child opener need NOT be the FIRST entry — earlier
+      sibling entries `[k+1, n)` may precede it.  That run is `WellTyped` (a depth-`0` balanced sequence
+      of complete entries + separators), so it FRAMES the stack back unchanged, carrying
+      `SeqPathAllSeq tokens (k + 1)` to `SeqPathAllSeq tokens n` at the child opener.
+
+    The "single located `[`" framing in the residual description hid the FRAME-to-reach component: the
+    located position `n` is not adjacent to the crossed opener `k`.  Both component edges exist AND are
+    already composed for the NAVIGATOR (`nestedSeq_recseqentry_locate_descend_step` /
+    `_advance_step`, R361/R362) — so the joint CARRIER induction's descend edge is the SAME composition,
+    keyed for the carrier rather than the spine walk.  No new `SeqPathAllSeq` edge is owed; this brick is
+    the one-line fusion ([[ref-compose-arm-seam-before-skeleton]]).
+
+    Verified-but-unconsumed until the carrier co-construction threads it (R225): composes only the two
+    landed path edges, references no sorry site, frontier sorry count unchanged at 4; axiom-clean. -/
+theorem seqPathAllSeq_into_child (tokens : Array (Positioned YamlToken)) (k n : Nat)
+    (h_path : SeqPathAllSeq tokens k)
+    (h_k_sz : k < tokens.size)
+    (h_open : tokens[k]!.val = .flowSequenceStart)
+    (h_kn : k + 1 ≤ n)
+    (h_seg_wt : WellTyped ((tokens.toList.take n).drop (k + 1))) :
+    SeqPathAllSeq tokens n :=
+  seqPathAllSeq_advance tokens (k + 1) n
+    (seqPathAllSeq_descend tokens k h_path h_k_sz h_open) h_kn h_seg_wt
+
 /-- **The seq-head DESCEND seam of the emission-spine-walk locator** — `(i'-b-B2c-nested-fbc-emission-
     locator-descend-seam)`, R361.  The standalone arm-callable the `Nat.strongRecOn` wrapper
     `nestedSeq_recseqentry_locate` invokes in its DESCEND case when the head entry is a *seq* block
