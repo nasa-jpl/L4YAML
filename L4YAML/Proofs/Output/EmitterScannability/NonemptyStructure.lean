@@ -6867,6 +6867,95 @@ theorem flowBodyWindow_descend (tokens : Array (Positioned YamlToken)) (lo k hi 
   exact WellTyped_subrange tokens lo (k + 1) j hi (by omega) (Nat.le_of_lt h_ne)
     (Nat.le_of_lt hjhi) (Nat.le_of_lt h_hi_sz) h_wt hinner h_dyck'
 
+/-- **The OPENER-INCLUSIVE child-bracket window** (Phase J — the descend sibling that delivers the FULL
+    child bracket `[k, j+1)`, not the interior `[k+1, j)`).  When a depth-`0` opener `[`/`{` sits at `k`
+    inside the body window `[lo, hi)`, this produces its matching closer `j` together with the window
+    STARTING AT the opener — `FlowBodyWindow tokens k (j+1)` — whose balance is `0` at the opener `k`
+    (`flowBracketBalance tokens k (j+1) = 0`), not one position past it.
+
+    **Why a NEW sibling and not `flowBodyWindow_descend`** ([[ref-coerce-to-weaker-reuse-wrapper]]'s
+    dual — here the CONSUMER wants the STRONGER opener-inclusive window, so the interior producer cannot
+    be coerced up to it).  `flowBodyWindow_descend` delivers `FlowBodyWindow tokens (k+1) j` — the
+    interior, balance `(k+1) j = 0`, opener-EXCLUSIVE — guarded on non-emptiness `k+1 < j` (the empty
+    bracket `[]`/`{}` has no interior window).  But the seq carrier↔recursion co-construction's
+    `h_widthEnc` residual (`seqRoot_carrier_of_widthEnc` / `seqLocalCarrier_of_widthEnc`,
+    `SeqInteriorSeparators.lean`) must hand the enclosing opener `p`'s window to
+    `seqDescent_provider_of_located`, which consumes `FlowBodyWindow tokens p hiE` solely to drive
+    `flowBracketBalance_matching_close tokens p p hiE` — and that scan needs the window to START AT `p`
+    (`balance p hiE = 0`, opener-INCLUSIVE), exactly what the interior window does NOT give.  So the
+    de-risk's answer is: the enclosing-window facts DO re-base from the parent's `FlowBodyWindow`, but
+    through THIS producer, the opener-inclusive companion of `flowBodyWindow_descend`.
+
+    **The re-basing.**  Same machinery as the interior sibling (`flowBracketBalance_matching_close` for
+    the closer `j` + the depth floor, `WellTyped_subrange` for the typed segment), only the delivered
+    window keeps the opener and closer: balance `k (j+1) = (+1) + 0 + (-1) = 0` (opener push, balanced
+    interior, closer pop); the dyck floor is `≥ 0` everywhere on `[k, j+1]` — `0` at the two endpoints
+    `k` and `j+1`, and `= flowBracketBalance tokens lo i ≥ 1` on the strict interior `(k, j]` (re-based
+    through `balance lo k = 0`); `WellTyped` transports from the parent over `[k, j+1) ⊆ [lo, hi)`.
+    Unlike the interior sibling there is NO non-emptiness guard: `[k, j+1)` is never empty (`k < j+1`),
+    so the empty-bracket degenerate case the R285 peel deferred simply does not arise here.
+
+    Like its siblings it names no collection-specific deliverable type, so it serves BOTH axes (`[`
+    discharges the opener premise by `flowSequenceStart`, `{` by `flowMappingStart`).
+
+    Verified-but-unconsumed until the seq carrier↔recursion co-construction discharges `h_widthEnc`
+    (the last seq residual): composes only landed lemmas, references no sorry site, frontier sorry count
+    unchanged at 4. -/
+theorem flowBodyWindow_child_bracket (tokens : Array (Positioned YamlToken)) (lo k hi : Nat)
+    (h_win : FlowBodyWindow tokens lo hi)
+    (h_lo_k : lo ≤ k) (h_k_hi : k < hi)
+    (h_k_depth : flowBracketBalance tokens lo k = 0)
+    (h_k_open : flowBracketDelta tokens[k]!.val = 1) :
+    ∃ j, k < j ∧ j < hi ∧ flowBracketDelta tokens[j]!.val = -1 ∧
+      FlowBodyWindow tokens k (j + 1) := by
+  obtain ⟨h_lo2, h_lo_hi, h_hi_sz2, h_hi_sz, h_bal, h_dyck, h_wt⟩ := h_win
+  -- Locate the matching closer `j` with interior balance and the depth floor (the shared position lemma).
+  obtain ⟨j, hkj, hjhi, hjdelta, hinner, hfloor⟩ :=
+    flowBracketBalance_matching_close tokens lo k hi h_lo_k h_k_hi (Nat.le_of_lt h_hi_sz)
+      h_k_depth h_k_open h_bal h_dyck
+  -- A single-step balance helper bridging `tokens.toList[i]` to the panic index `tokens[i]!`.
+  have single : ∀ i, i < tokens.size →
+      flowBracketBalance tokens i (i + 1) = flowBracketDelta tokens[i]!.val := by
+    intro i h_sz
+    have hlen : i < tokens.toList.length := by rw [Array.length_toList]; exact h_sz
+    rw [flowBracketBalance_single tokens i hlen]
+    have h1 : tokens.toList[i]'hlen = tokens[i] := Array.getElem_toList h_sz
+    have h2 : tokens[i] = tokens[i]! := (getElem!_pos tokens i h_sz).symm
+    rw [h1, h2]
+  have h_k_sz : k < tokens.size := by omega
+  have h_j_sz : j < tokens.size := by omega
+  -- balance `k j = (+1 at the opener) + (0 interior) = 1`.
+  have h_k_j : flowBracketBalance tokens k j = 1 := by
+    have hc := flowBracketBalance_compose tokens k (k + 1) j (Nat.le_succ k) (by omega)
+    rw [single k h_k_sz, h_k_open, hinner] at hc; omega
+  -- balance `k (j+1) = 1 + (-1 at the closer) = 0` — the opener-inclusive window is balanced.
+  have h_bal_kj1 : flowBracketBalance tokens k (j + 1) = 0 := by
+    have hc := flowBracketBalance_compose tokens k j (j + 1) (Nat.le_of_lt hkj) (Nat.le_succ j)
+    rw [h_k_j, single j h_j_sz, hjdelta] at hc; omega
+  -- dyck floor `≥ 0` over `[k, j+1]`: `0` at the endpoints, `≥ 1` on the strict interior `(k, j]`.
+  have h_dyck' : ∀ i, k ≤ i → i ≤ j + 1 → flowBracketBalance tokens k i ≥ 0 := by
+    intro i hi1 hi2
+    rcases Nat.lt_or_ge k i with hki | hki
+    · rcases Nat.lt_or_ge i (j + 1) with hij | hij
+      · -- `k < i ≤ j`: re-base the floor through `balance lo k = 0`.
+        have hc := flowBracketBalance_compose tokens lo k i h_lo_k (Nat.le_of_lt hki)
+        rw [h_k_depth] at hc
+        have hf := hfloor i hki (by omega)
+        omega
+      · -- `i = j + 1`: the window is balanced.
+        have hij' : i = j + 1 := by omega
+        subst hij'; omega
+    · -- `i = k`: the empty prefix is balanced.
+      have hik : i = k := by omega
+      rw [hik]
+      have : flowBracketBalance tokens k k = 0 := by simp [flowBracketBalance]
+      omega
+  refine ⟨j, hkj, hjhi, hjdelta, ?_, by omega, by omega, by omega, h_bal_kj1, h_dyck', ?_⟩
+  · omega
+  · -- WellTyped on `[k, j+1) ⊆ [lo, hi)` via the balanced-subrange transporter.
+    exact WellTyped_subrange tokens lo k (j + 1) hi h_lo_k (by omega) (by omega)
+      (Nat.le_of_lt h_hi_sz) h_wt h_bal_kj1 h_dyck'
+
 /-- **The flow body-window CONTENT guard** (Phase J — the content-half companion of `FlowBodyWindow`,
     the substrate the head-shape grammar dispatches on).  `FlowBodyWindow` carries only the *bracket*
     facts (balance / dyck / WellTyped), and those are provably INSUFFICIENT to read the head shape: a
