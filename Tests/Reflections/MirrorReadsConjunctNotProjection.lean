@@ -7,8 +7,9 @@
 # precisely because the strengthened family cannot reproject it).  So the mirror cost is QUANTIFIED
 # BEFORE writing it: (text swaps) + (one reroute per `.toX`-projection read in the flat proof).
 
-Self-contained (core Lean, no `L4YAML` import) toy executing STEP D step 8's seq-body brick and
-PREDICTING the map-body brick's cost.  Context: the deep four-inductive family
+Self-contained (core Lean, no `L4YAML` import) toy modelling STEP D step 8's seq-body AND map-body
+bricks — the map-body brick's pre-write cost prediction (4 swaps + 2 reroutes) now REALIZED off-by-zero
+(R465).  Context: the deep four-inductive family
 (`[[ref-deep-family-mirrors-full-mutual-group]]`) is MINIMAL — it sheds the orthogonal
 `WellBracketed`/`EntrySafe`/`EntryUnit` projections (`[[ref-parallel-family-sheds-orthogonal-field]]`),
 carrying only the recursive body + `RecEntryDeep.toFlat`.  The deep body assemblers are verbatim
@@ -17,11 +18,20 @@ swapping the per-item predicate and the leaf constructors.  But the mirror is *p
 where the flat proof read per-item facts the right way:
 
 * The seq-body assembler reads `EntryUnit`/`ContentStartTok` from the predicate's STANDALONE conjuncts
-  (`h_eu₁`, `h_cs₁`) — so its deep mirror is two global text swaps, ZERO reroutes (LANDED clean).
+  (`h_eu₁`, `h_cs₁`) — so its deep mirror is two global text swaps, ZERO reroutes (R464, LANDED clean).
 * The map-body assembler reads `h_ve.toEntryUnit` — a PROJECTION off the per-item `RecSeqEntry`.  Its
   deep mirror gives `h_ve : RecEntryDeep`, and `RecEntryDeep.toEntryUnit` DOES NOT EXIST (shed).  So the
   map mirror needs a reroute per such read — to the value predicate's standalone `EntryUnit` conjunct
-  (`_h_eu_v`, currently bound-but-unused).  Cost predicted before writing: 4 swaps + exactly 2 reroutes.
+  (`_h_eu_v`, bound-but-unused).  Cost predicted before writing: 4 swaps + exactly 2 reroutes.  **R465:
+  REALIZED off-by-zero** — `emitPairList_scans_recmapbodyDeep` LANDED with exactly those 4 swaps + 2
+  reroutes, no new helper, axioms identical to the flat producer; pre-write quantification was exact.
+
+COROLLARY (composite items).  A map item is a `key ++ value` PAIR; the deep mirror's reroutes landed
+ONLY on the value side, not the key side.  Reason: the consumer projects only BOUNDARY facts
+(last-token-not-opener-or-sep), and the pair's boundary IS the value tail — so the END-most sub-block
+carries every projection read.  Predicting a composite mirror's cost, grep the end-most sub-structure
+first.  Illustrated below by `pair_clean_key` (key side, pure swap) vs `pair_proj_value_rerouted`
+(value side, the lone reroute).
 
 This toy mirrors that exactly, scaled down:
 
@@ -34,12 +44,19 @@ This toy mirrors that exactly, scaled down:
   conjunct beside `RecSeqEntry`/`RecEntryDeep`).
 * `clean_flat` / `clean_deep` — the CONJUNCT-reading assembler: identical proof, swap only the
   predicate.  Pure text-swap (the seq-body case).
-* `proj_flat` — the PROJECTION-reading assembler (`he.toExtra`).  `naive_deep_swap_fails` witnesses
-  that the text-swap `he.toExtra` with `he : DEntry _` does NOT elaborate (the shed projection).
-* `proj_deep_rerouted` — the FIX: reroute the projection read to the standalone `Extra` conjunct.
+* `proj_flat` — the PROJECTION-reading assembler (`he.toExtra`).  Its naive text-swap `he.toExtra`
+  with `he : DEntry _` does NOT elaborate: the minimal deep family shed `.toExtra` (evident from the
+  two-constructor `DEntry` definition below, which declares only `.toF`).
+* `proj_deep_rerouted` — FIX 1: reroute the projection read to the standalone `Extra` conjunct (the
+  map-body brick, R464/R465).
+* `proj_deep_coerced` — FIX 2: COERCE to the weaker flat type and project there, `he.toF.toExtra`
+  (`[[ref-coerce-to-weaker-reuse-wrapper]]`) — exactly how the deep per-entry PRODUCER reads its
+  boundary facts, `(RecSeqBodyDeep.toFlat h_body_rec).openerAdjHead` (R466, the recursion-closing
+  `emit_scans_in_flow_rec_entry_both_deep` LANDED this round).
 * `mirror_cost_is_conjunct_vs_projection` — the finding in one proposition.
 
-All sorry-free; the `#check_failure` is the negative witness that the build re-checks on every change.
+All sorry-free AND diagnostic-free; every route is a machine-checked theorem the build re-checks on
+every change.
 -/
 
 set_option autoImplicit false
@@ -114,30 +131,45 @@ theorem clean_deep (h : PDeep) : ∃ out, Extra out := by
 
 /-! ## CASE 2 — the assembler reads `Extra` via a PROJECTION off the entry ⇒ the naive text-swap
     BREAKS, because the deep family shed that projection; the fix is a REROUTE to the standalone
-    conjunct (this is the map-body assembler's `h_ve.toEntryUnit`, the next brick). -/
+    conjunct (the map-body assembler's `h_ve.toEntryUnit`, R464/R465) OR a coerce-then-project where the
+    deep⟹flat coercion exists (the per-entry producer's boundary reads, R466 — both LANDED). -/
 
 /-- Flat assembler reading `Extra` via the projection `he.toExtra` (mirror `h_ve.toEntryUnit`). -/
 theorem proj_flat (h : PFlat) : ∃ out, Extra out := by
   obtain ⟨out, _hx, he⟩ := h
   exact ⟨out, he.toExtra⟩
 
-/-! **The negative witness.**  The naive text-swap of `proj_flat` — `he.toExtra` where `he : DEntry _`
-    — does NOT elaborate: the minimal deep family carries no `.toExtra` projection.  `#check_failure`
-    succeeds exactly when its term fails to elaborate, so a green build certifies the gap is real. -/
-#check_failure (fun (he : DEntry [Tok.a]) => he.toExtra)
+/-! **The gap.**  The naive text-swap of `proj_flat` — `he.toExtra` where `he : DEntry _` — does NOT
+    elaborate: the minimal deep family carries no `.toExtra` projection (evident from the `DEntry`
+    definition above, which declares only `.toF`).  There are TWO zero-cost fixes, both machine-checked
+    below — reroute to the standalone conjunct, or coerce-then-project — so no noisy `#check_failure`
+    negative witness is needed. -/
 
-/-- **The reroute (the fix).**  Read `Extra` from the predicate's STANDALONE conjunct `hx` instead of
+/-- **The reroute (FIX 1).**  Read `Extra` from the predicate's STANDALONE conjunct `hx` instead of
     projecting it off the entry.  This is why the strengthened predicate KEEPS the standalone `Extra`
-    conjunct: it is the reroute target the deep family's shed projection forces. -/
+    conjunct: it is the reroute target the deep family's shed projection forces.  (The map-body brick
+    R464/R465.) -/
 theorem proj_deep_rerouted (h : PDeep) : ∃ out, Extra out := by
   obtain ⟨out, hx, _he⟩ := h
   exact ⟨out, hx⟩
 
+/-- **The coerce-then-project alternative (FIX 2, `[[ref-coerce-to-weaker-reuse-wrapper]]`).**  When the
+    deep⟹flat coercion `DEntry.toF` is available, the shed projection is recovered by COERCING to the
+    weaker flat type and projecting there: `he.toF.toExtra` (two hops, since a direct `he.toExtra` does
+    not exist).  This is precisely how the deep per-entry PRODUCER reads its boundary facts —
+    `(RecSeqBodyDeep.toFlat h_body_rec).openerAdjHead` / `RecMapBody.lastNonSep (RecMapBodyDeep.toFlat …)`
+    — in `emit_scans_in_flow_rec_entry_both_deep` (R466, the recursion-closing brick).  The producer
+    keeps ONE substrate (the deep family) and weakens on demand at the read site. -/
+theorem proj_deep_coerced (h : PDeep) : ∃ out, Extra out := by
+  obtain ⟨out, _hx, he⟩ := h
+  exact ⟨out, he.toF.toExtra⟩
+
 /-- **The finding in one proposition.**  (1) when the flat proof reads a per-item fact from the
     STANDALONE conjunct, flat and deep assemblers have the SAME proof (`clean_flat`/`clean_deep`) — a
     pure text-swap; (2) when it reads via a PROJECTION off the entry, the deep mirror needs a reroute to
-    the standalone conjunct (`proj_deep_rerouted`), because the minimal deep family shed the projection
-    (the `#check_failure` above).  So the mirror's cost is QUANTIFIED before writing it: (text swaps) +
+    the standalone conjunct (`proj_deep_rerouted`) — or, where the deep⟹flat coercion exists, a
+    coerce-then-project (`proj_deep_coerced`) — because the minimal deep family shed the projection.  So
+    the mirror's cost is QUANTIFIED before writing it: (text swaps) +
     (one reroute per `.toX`-projection read).  Sharpens
     `[[ref-recursive-producer-mirrors-flat-over-shared-induction]]` (when is the mirror truly verbatim)
     via `[[ref-parallel-family-sheds-orthogonal-field]]` (the shed projections are exactly the
@@ -149,5 +181,35 @@ theorem mirror_cost_is_conjunct_vs_projection :
     ∧ (PFlat → ∃ out, Extra out)      -- projection read, flat
     ∧ (PDeep → ∃ out, Extra out) :=   -- projection read, deep — REROUTED to the conjunct
   ⟨clean_flat, clean_deep, proj_flat, proj_deep_rerouted⟩
+
+/-! ## COROLLARY — composite (key ++ value) items: the reroute lands on the END-most sub-block only.
+    A map item is a PAIR; its predicate carries a standalone `Extra` for EACH side.  But the consumer
+    only ever projects the BOUNDARY fact (last-token-not-opener-or-sep), and the pair's boundary is the
+    VALUE tail — so the value side is the projection read that must reroute, while the key side (interior,
+    never the boundary) stays a pure conjunct read.  This is exactly why `emitPairList_scans_recmapbody`
+    reads `h_ve.toEntryUnit` (value) but no key projection: 2 reroutes, value side only. -/
+
+/-- A flat pair deliverable: key entry then value entry, each with its standalone `Extra` conjunct. -/
+def PFlatPair : Prop := ∃ kb vb, Extra kb ∧ FEntry kb ∧ Extra vb ∧ FEntry vb
+/-- The deep parallel — both entries deep. -/
+def PDeepPair : Prop := ∃ kb vb, Extra kb ∧ DEntry kb ∧ Extra vb ∧ DEntry vb
+
+/-- KEY side — the consumer reads no projection off the key (interior, never the boundary), so flat and
+    deep are the SAME proof, a pure swap.  (Mirror: the map-body key arm — zero reroutes.) -/
+theorem pair_clean_key (h : PDeepPair) : ∃ kb, Extra kb := by
+  obtain ⟨kb, _vb, hxk, _hk, _hxv, _hv⟩ := h
+  exact ⟨kb, hxk⟩
+
+/-- VALUE side, FLAT — the boundary fact is the value tail, read here via the projection `hv.toExtra`
+    (mirror `h_ve.toEntryUnit`). -/
+theorem pair_proj_value_flat (h : PFlatPair) : ∃ vb, Extra vb := by
+  obtain ⟨_kb, vb, _hxk, _hk, _hxv, hv⟩ := h
+  exact ⟨vb, hv.toExtra⟩
+
+/-- VALUE side, DEEP — the lone reroute: `hv : DEntry vb` sheds `.toExtra`, so read the standalone value
+    `Extra` conjunct `hxv` instead.  This is the whole key/value asymmetry: reroute, value side only. -/
+theorem pair_proj_value_rerouted (h : PDeepPair) : ∃ vb, Extra vb := by
+  obtain ⟨_kb, vb, _hxk, _hk, hxv, _hv⟩ := h
+  exact ⟨vb, hxv⟩
 
 end Tests.Reflections.MirrorReadsConjunctNotProjection
