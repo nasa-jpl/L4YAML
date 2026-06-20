@@ -54,6 +54,12 @@ This toy mirrors that exactly, scaled down:
   boundary facts, `(RecSeqBodyDeep.toFlat h_body_rec).openerAdjHead` (R466, the recursion-closing
   `emit_scans_in_flow_rec_entry_both_deep` LANDED this round).
 * `mirror_cost_is_conjunct_vs_projection` — the finding in one proposition.
+* `combined_split_is_zero_delta_mirror` — R467: the delta-ZERO FLOOR.  A combined producer delivering a
+  conjunction `value ∧ saved-key`, re-exposed as its `.1`/`.2` halves, mirrors flat→deep with the proof
+  body UNTOUCHED — the split reads `And.left`/`And.right` off the conjunction, blind to HOW it was
+  proved, so it is producer-complexity-INVARIANT (only the producer reference changes).  Every symbol of
+  the 4-symbol mirror-cost alphabet (`[[ref-mirror-cost-delta-alphabet]]`) is a proof-BODY edit, so a
+  projection with no proof body has the EMPTY delta.
 
 All sorry-free AND diagnostic-free; every route is a machine-checked theorem the build re-checks on
 every change.
@@ -211,5 +217,29 @@ theorem pair_proj_value_flat (h : PFlatPair) : ∃ vb, Extra vb := by
 theorem pair_proj_value_rerouted (h : PDeepPair) : ∃ vb, Extra vb := by
   obtain ⟨_kb, vb, _hxk, _hk, hxv, _hv⟩ := h
   exact ⟨vb, hxv⟩
+
+/-! ## CASE 3 (R467) — the delta-ZERO FLOOR: a combined producer's `.1`/`.2` conjunction-split.
+    The real entry producer `emit_scans_in_flow_rec_entry_both{,_deep}` proves a CONJUNCTION
+    `value-side ∧ saved-key-side`, then re-exposes each half as a trivial `.1`/`.2` projection
+    (`emit_scans_in_flow_rec_entry{,_deep}` etc.).  Unlike the body/entry producers, the split lives
+    OUTSIDE any induction — it is `And.left`/`And.right`, blind to HOW the conjunction was proved.  So
+    the flat→deep mirror of the split changes only the producer reference (`_both`→`_both_deep`); the
+    projection body is UNTOUCHED.  Every symbol of the mirror-cost alphabet
+    (`[[ref-mirror-cost-delta-alphabet]]`) is a proof-BODY edit, so a projection with no proof body has
+    the EMPTY delta — the alphabet's zero floor. -/
+
+/-- **The delta-ZERO floor (R467).**  The `.1`/`.2` split is producer-complexity-INVARIANT: ONE pair of
+    projections `And.left`/`And.right` serves a combined producer of ANY two conjuncts, so instantiating
+    at the flat combined deliverable `PFlat ∧ PFlat` (value ∧ saved-key) vs the deep `PDeep ∧ PDeep`
+    reuses the SAME proof term — the mirror touches nothing but the type.  Contrast the inductive
+    producers above, whose mirror draws on the 4-symbol delta alphabet; the split's delta is empty. -/
+theorem combined_split_is_zero_delta_mirror :
+    -- the split is parametric in the conjuncts: `And.left`/`And.right`, blind to the proof
+    (∀ {A B : Prop}, A ∧ B → A) ∧ (∀ {A B : Prop}, A ∧ B → B)
+    -- the FLAT combined producer `PFlat ∧ PFlat`, split to its halves
+    ∧ (PFlat ∧ PFlat → PFlat) ∧ (PFlat ∧ PFlat → PFlat)
+    -- the DEEP combined producer `PDeep ∧ PDeep` — SAME projection body, only the type swapped
+    ∧ (PDeep ∧ PDeep → PDeep) ∧ (PDeep ∧ PDeep → PDeep) :=
+  ⟨And.left, And.right, And.left, And.right, And.left, And.right⟩
 
 end Tests.Reflections.MirrorReadsConjunctNotProjection

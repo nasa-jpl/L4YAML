@@ -5757,6 +5757,21 @@ theorem emit_scans_in_flow_saved_key_rec_entry (v : YamlValue) {inFlow : Bool}
     (hg : Grammable v inFlow) : EmitScansInFlowSavedKeyRecEntry v :=
   (emit_scans_in_flow_rec_entry_both v hg).2
 
+/-- Deep value-side projection (R467) — `emit_scans_in_flow_rec_entry_deep` re-exposed as the `.1` of the
+    combined DEEP producer `emit_scans_in_flow_rec_entry_both_deep` (R466).  Trivial one-liner mirroring
+    the flat `emit_scans_in_flow_rec_entry`; the only delta is the `_both`→`_both_deep` producer swap.
+    Verified-but-unconsumed: references no sorry site. -/
+theorem emit_scans_in_flow_rec_entry_deep (v : YamlValue) {inFlow : Bool}
+    (hg : Grammable v inFlow) : EmitScansInFlowRecEntryDeep v :=
+  (emit_scans_in_flow_rec_entry_both_deep v hg).1
+
+/-- Deep saved-key-side projection (R467) — `emit_scans_in_flow_saved_key_rec_entry_deep` re-exposed as
+    the `.2` of the combined DEEP producer.  Trivial one-liner mirroring the flat
+    `emit_scans_in_flow_saved_key_rec_entry`; only the `_both`→`_both_deep` producer swap. -/
+theorem emit_scans_in_flow_saved_key_rec_entry_deep (v : YamlValue) {inFlow : Bool}
+    (hg : Grammable v inFlow) : EmitScansInFlowSavedKeyRecEntryDeep v :=
+  (emit_scans_in_flow_rec_entry_both_deep v hg).2
+
 /-- Append-singleton injectivity (core Lean, no Mathlib): from `a ++ [x] = b ++ [y]` recover both
     `a = b` and `x = y`.  Used to read a bracket entry's interior off the constructor index when the
     descent matches a `seq`/`map` entry's `op :: (interior ++ [cl])` shape against `RecSeqEntry`. -/
