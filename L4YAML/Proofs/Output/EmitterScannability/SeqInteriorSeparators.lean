@@ -2785,6 +2785,59 @@ theorem seqWidthEnc_of_enclosingLocate_and_recIH
   intro lo' hi' h_width h_p_lo' h_hi'_hiE h_w h_d h_q h_c
   exact recIH lo' hi' (by omega) (by omega) (by omega) h_w h_d h_q h_c
 
+/-- **The load-bearing containment `lo ≤ p` of the `enclosingLocate` residual** — the FIRST sub-piece of
+    the (α) locate boundary that `seqWidthEnc_of_enclosingLocate_and_recIH` lifts.  Per R475 the
+    assemble's whole well-foundedness rides on the located enclosing frame `[p, hiE)` being CONTAINED in
+    the body window `[lo, hi)` (`lo ≤ p`, `hiE ≤ hi`); this brick discharges the LOWER containment
+    purely from balance arithmetic — no content structure, no close location.
+
+    The argument is a balance-additivity contradiction.  Suppose `p < lo` (i.e. `p + 1 ≤ lo`).  The
+    body window's Dyck floor gives `flowBracketBalance tokens lo a ≥ 0` at the nested start `a`, and the
+    gate's `≠ 0` lifts it to `≥ 1` (the window `[a,b)` is genuinely nested, so `a` sits at depth ≥ 1
+    relative to `lo`).  Composing the located body balance across `lo`
+    (`flowBracketBalance_compose tokens (p+1) lo a`):
+    `0 = flowBracketBalance tokens (p+1) a = flowBracketBalance tokens (p+1) lo + flowBracketBalance tokens lo a`,
+    so `flowBracketBalance tokens (p+1) lo = -(flowBracketBalance tokens lo a) ≤ -1 < 0`.  But the
+    locator's own Dyck floor `h_loc_floor` instantiated at `lo` (which sits in `[p+1, a]` under the
+    `p + 1 ≤ lo ≤ a` assumption) says `flowBracketBalance tokens (p+1) lo ≥ 0` — contradiction.  Hence
+    `lo ≤ p`: the enclosing opener cannot lie before the body window's start, because doing so would
+    force the locator's interior to dip below its own floor at `lo`.
+
+    The body Dyck floor (`h_dyck`, supplied by `FlowBodyWindow tokens lo hi` in the eventual joint
+    induction) and the locator floor (`h_loc_floor`, delivered alongside `p` by
+    `seqEnclosingOpener_of_gate`) are the only structural inputs; everything else is `omega` over `Int`.
+    The containment is LOAD-BEARING, not bookkeeping ([[ref-contained-frame-ih-from-outer-ih]]): it is
+    one of the two facts that make the assemble's inner frame-width IH dischargeable from the outer
+    body-width IH.
+
+    Verified-but-unconsumed until the `enclosingLocate` builder wires it together with the close locator
+    (`seqClose_of_located_and_enclosing`) and the three content-structure constructions; composes only
+    `flowBracketBalance_compose` + `omega`, references no sorry site, frontier sorry count unchanged at
+    4; axiom-clean. -/
+theorem seqLocatedOpener_within_body
+    (tokens : Array (Positioned YamlToken)) (lo hi a p : Nat)
+    (h_lo_a : lo ≤ a) (h_a_hi : a ≤ hi)
+    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
+    (h_bal_ne : flowBracketBalance tokens lo a ≠ 0)
+    (_h_pa : p < a)
+    (h_body_bal : flowBracketBalance tokens (p + 1) a = 0)
+    (h_loc_floor : ∀ i, p + 1 ≤ i → i ≤ a → flowBracketBalance tokens (p + 1) i ≥ 0) :
+    lo ≤ p := by
+  rcases Nat.lt_or_ge p lo with h_lt | h_ge
+  · -- `p < lo`, i.e. `p + 1 ≤ lo`, is the case to refute.
+    have h_p1_lo : p + 1 ≤ lo := by omega
+    -- `a` sits at depth ≥ 1 relative to `lo`: Dyck floor ≥ 0, plus the gate's `≠ 0`.
+    have h_floor_a : flowBracketBalance tokens lo a ≥ 0 := h_dyck a h_lo_a h_a_hi
+    -- Split the located body balance across `lo`.
+    have h_comp : flowBracketBalance tokens (p + 1) a
+        = flowBracketBalance tokens (p + 1) lo + flowBracketBalance tokens lo a :=
+      flowBracketBalance_compose tokens (p + 1) lo a h_p1_lo h_lo_a
+    -- The locator's own floor at `lo` forbids the negative segment forced above.
+    have h_floor_lo : flowBracketBalance tokens (p + 1) lo ≥ 0 :=
+      h_loc_floor lo h_p1_lo h_lo_a
+    omega
+  · exact h_ge
+
 /-- **The per-window carrier→content consumer joint** — `(i'-b-B3-content-joint)`, the joint between
     the threaded separator carrier and the `RecSeqBody` recursion's per-window dispatch.  This is the
     de-risk finding for B3 (the `windowWidth_strongRecOn` `RecSeqBody` producer) made into a proof
