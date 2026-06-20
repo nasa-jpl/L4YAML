@@ -2626,6 +2626,7 @@ theorem seqLocalCarrier_of_widthEnc
     (tokens : Array (Positioned YamlToken)) (lo hi : Nat) (h_hi : hi ≤ tokens.size)
     (h_safe : SafeBodyUnit ContentStartTok ((tokens.toList.take hi).drop lo))
     (h_widthEnc : ∀ a b p, lo ≤ a → a ≤ b → b ≤ hi →
+        flowBracketBalance tokens lo a ≠ 0 →
         SeqTypedInterior tokens a b →
         p < a → flowBracketDelta tokens[p]!.val = 1 →
         flowBracketBalance tokens (p + 1) a = 0 →
@@ -2644,7 +2645,7 @@ theorem seqLocalCarrier_of_widthEnc
   obtain ⟨p, h_pa, h_delta, h_body_bal, h_loc_floor⟩ :=
     seqEnclosingOpener_of_gate tokens a b h_a_sz hgate
   obtain ⟨hiE, h_b_hi, h_hiE_sz, h_window, h_deep, h_content, h_ih⟩ :=
-    h_widthEnc a b p ha hab hb hgate h_pa h_delta h_body_bal h_loc_floor
+    h_widthEnc a b p ha hab hb _hbal hgate h_pa h_delta h_body_bal h_loc_floor
   have h_q_succ : SeqEnclosed tokens (p + 1) :=
     seqEnclosed_succ_of_located_opener tokens a p h_pa h_a_sz h_delta h_body_bal h_loc_floor hgate.2.1
   exact seqDescent_provider_of_located tokens a b p hiE h_pa hab h_b_hi h_delta h_body_bal
@@ -2693,6 +2694,7 @@ theorem seqRoot_carrier_of_widthEnc
     (h_ne : items.toList ≠ [])
     (h_all : ∀ v ∈ items.toList, EmitScansInFlowRecEntry v)
     (h_widthEnc : ∀ a b p, 2 ≤ a → a ≤ b → b ≤ tokens.size - 2 →
+        flowBracketBalance tokens 2 a ≠ 0 →
         SeqTypedInterior tokens a b →
         p < a → flowBracketDelta tokens[p]!.val = 1 →
         flowBracketBalance tokens (p + 1) a = 0 →
