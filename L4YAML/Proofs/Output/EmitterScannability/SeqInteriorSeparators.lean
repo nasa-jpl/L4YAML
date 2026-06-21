@@ -2997,6 +2997,93 @@ theorem seqClose_of_located_and_enclosing_within
       h_open_bal h_floor
   exact ⟨j, h_a_j, h_b_j, h_j_hi, by omega, h_inner, h_jclose, h_floor⟩
 
+/-- **Depth-general twin of `seqClose_of_located_and_enclosing_within`** —
+    `(i'-b-locator-glue-close-within-nested)`, the R478 close-within locator with its sole depth
+    obligation `h_p_depth : flowBracketBalance tokens lo p = 0` DROPPED.  Identical to R478 except the
+    matching-close call swaps the depth-0 `flowBracketBalance_matching_close_seq` for R483's
+    depth-general `flowBracketBalance_matching_close_seq_nested` (WellBracketed.lean:2498) — which frames
+    the typed close over the enclosing opener's base stack rather than re-deriving against a depth-0
+    baseline ([[ref-nested-typed-locator-is-a-frame]]).
+
+    **Nothing else in the proof touched `h_p_depth`.**  The three positional facts (`a ≤ j`,
+    `balance a j = 0`, `b ≤ j`) come from the locator/gate floors; the upper containment `j ≤ hi` comes
+    from R477 `seqLocatedClose_within_body`, which reads `hiE ≤ hi` off the enclosing Dyck floor
+    (`balance lo p ≥ 0`, NOT `= 0`) + the opener delta + the re-exported interior floor.  So `h_p_depth`
+    was load-bearing at EXACTLY one call site, and removing it leaves the rest of the proof byte-identical.
+    This is the [[ref-reduction-by-import]] consume of R483's verified-but-unconsumed
+    `flowBracketBalance_matching_close_seq_nested`: wiring it retypes the close-within residual from
+    depth-0-keyed to depth-general (the retype is the progress).
+
+    Per [[ref-additive-parallel-type-over-shared-edit]] this is a NEW parallel locator, not an in-place
+    edit of R478 (still consumed by R481 `seqEnclosingLocate_of_seqOpener_at_depth`, which passes
+    `h_p_depth`); the next brick rewires R481 to call THIS twin and drops `h_p_depth` there (its step-(4)
+    `hiS < hi` re-derives from `balance lo p ≥ 0` instead of `= 0`).  Verified-but-unconsumed: composes
+    only landed lemmas (R483 nested close + R477 + `flowBracketBalance_compose`/`_single`) + `omega`,
+    references no sorry site, frontier sorry count unchanged at 4; axiom-clean. -/
+theorem seqClose_of_located_and_enclosing_within_nested
+    (tokens : Array (Positioned YamlToken)) (a b lo p hi : Nat)
+    (h_lo_p : lo ≤ p) (h_pa : p < a) (h_ab : a ≤ b) (h_b_hi : b ≤ hi)
+    (h_hi_sz : hi ≤ tokens.size)
+    (h_total : flowBracketBalance tokens lo hi = 0)
+    (h_win_floor : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
+    (h_open : tokens[p]!.val = .flowSequenceStart)
+    (h_body_bal : flowBracketBalance tokens (p + 1) a = 0)
+    (h_loc_floor : ∀ i, p + 1 ≤ i → i ≤ a → flowBracketBalance tokens (p + 1) i ≥ 0)
+    (h_gate_floor : ∀ i, a ≤ i → i ≤ b → flowBracketBalance tokens a i ≥ 0)
+    (h_wt : WellTyped ((tokens.toList.take hi).drop lo)) :
+    ∃ hiS, a ≤ hiS ∧ b ≤ hiS ∧ hiS ≤ hi ∧ hiS ≤ tokens.size ∧
+      flowBracketBalance tokens (p + 1) hiS = 0 ∧
+      tokens[hiS]!.val = .flowSequenceEnd ∧
+      (∀ i, p + 1 ≤ i → i ≤ hiS → flowBracketBalance tokens (p + 1) i ≥ 0) := by
+  have h_p_hi : p < hi := by omega
+  -- Matching close + typed close + interior floor, at depth ≥ 0 (R483 nested locator; no `h_p_depth`).
+  obtain ⟨j, h_pj, h_jhi, h_jclose, h_inner, h_floor⟩ :=
+    flowBracketBalance_matching_close_seq_nested tokens lo p hi h_lo_p h_p_hi h_hi_sz
+      h_open h_total h_win_floor h_wt
+  have h_jdelta : flowBracketDelta tokens[j]!.val = -1 := by rw [h_jclose]; rfl
+  -- One-step balance recurrence at `j` over any base `≤ j` (verbatim from R478).
+  have step : ∀ base, base ≤ j →
+      flowBracketBalance tokens base (j + 1)
+        = flowBracketBalance tokens base j + flowBracketDelta tokens[j]!.val := by
+    intro base hbase
+    have h_j_sz : j < tokens.size := by omega
+    have hlen : j < tokens.toList.length := by rw [Array.length_toList]; exact h_j_sz
+    rw [flowBracketBalance_compose tokens base j (j + 1) hbase (by omega),
+        flowBracketBalance_single tokens j hlen]
+    have h1 : tokens.toList[j]'hlen = tokens[j] := Array.getElem_toList h_j_sz
+    have h2 : tokens[j] = tokens[j]! := (getElem!_pos tokens j h_j_sz).symm
+    rw [h1, h2]
+  -- (1) `a ≤ j` from the locator floor at `j + 1`.
+  have h_a_j : a ≤ j := by
+    rcases Nat.lt_or_ge j a with h | h
+    · have h_floor' := h_loc_floor (j + 1) (by omega) (by omega)
+      rw [step (p + 1) (by omega), h_inner, h_jdelta] at h_floor'
+      omega
+    · exact h
+  -- (2) `balance a j = 0` by composition over `[p+1, a, j]`.
+  have h_aj_bal : flowBracketBalance tokens a j = 0 := by
+    have hc := flowBracketBalance_compose tokens (p + 1) a j (by omega) h_a_j
+    rw [h_inner, h_body_bal] at hc; omega
+  -- (3) `b ≤ j` from the GATE floor at `j + 1`.
+  have h_b_j : b ≤ j := by
+    rcases Nat.lt_or_ge j b with h | h
+    · have h_floor' := h_gate_floor (j + 1) (by omega) (by omega)
+      rw [step a h_a_j, h_aj_bal, h_jdelta] at h_floor'
+      omega
+    · exact h
+  -- (4) the UPPER containment `j ≤ hi` via R477, from the re-exported interior floor `h_floor`.
+  have h_open_bal : flowBracketBalance tokens p (p + 1) = 1 := by
+    have h_p_sz : p < tokens.size := by omega
+    have hlen : p < tokens.toList.length := by rw [Array.length_toList]; exact h_p_sz
+    have h_delta : flowBracketDelta tokens[p]!.val = 1 := by rw [h_open]; rfl
+    have h1 : tokens.toList[p]'hlen = tokens[p] := Array.getElem_toList h_p_sz
+    have h2 : tokens[p] = tokens[p]! := (getElem!_pos tokens p h_p_sz).symm
+    rw [flowBracketBalance_single tokens p hlen, h1, h2, h_delta]
+  have h_j_hi : j ≤ hi :=
+    seqLocatedClose_within_body tokens lo hi p j h_lo_p h_p_hi h_win_floor h_total
+      h_open_bal h_floor
+  exact ⟨j, h_a_j, h_b_j, h_j_hi, by omega, h_inner, h_jclose, h_floor⟩
+
 /-- **The (α) `enclosingLocate` assemble — seq child, given the two discriminators** —
     `(i'-b-enclosingLocate-assemble-seq)`.  Assembles the FULL `enclosingLocate` residual that
     `seqWidthEnc_of_enclosingLocate_and_recIH` (R475) consumes: from a located enclosing seq opener `p`
