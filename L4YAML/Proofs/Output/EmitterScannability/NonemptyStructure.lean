@@ -7424,6 +7424,53 @@ theorem flowBodyContentDeepSeq_advance (tokens : Array (Positioned YamlToken)) (
     intro k' hk1 hk2 hfe hne
     exact h_fe k' (by omega) (by omega) hfe hne
 
+/-- **OPENER-INCLUSIVE re-scoped-deep-content sibling** (Phase J — sub-brick (i'-b-B2c), the `_seq` twin
+    of `flowBodyContentDeep_child_bracket` (R470) over the root-TRUE `FlowBodyContentDeepSeq` (R393).  The
+    foundational primitive the `_seq` re-thread of the `enclosingLocate` chain
+    (`seqEnclosingLocate_of_seqOpener_nested`, R485) consumes at its first `h_deep` read: where R485
+    instantiates `flowBodyContentDeep_child_bracket` on the located enclosing opener `p` to deliver the
+    enclosing window's `FlowBodyContentDeep tokens p hiE`, the `_seq` re-thread — keyed on the root-true
+    guard so the recursion can be SEEDED at the root ([[ref-root-seed-needs-root-true-guard]]) — must
+    deliver `FlowBodyContentDeepSeq tokens p hiE` from a `FlowBodyContentDeepSeq tokens lo hi` parent.
+
+    **Why the re-scoped child cannot be coerced UP to the strong `FlowBodyContentDeep`.**  The child
+    window `[p, hiE) = [p, j+1)` IS a nested `[ … ]` where `FlowBodyContentDeep` genuinely HOLDS, but it
+    is NOT derivable by RESTRICTION from a `FlowBodyContentDeepSeq` parent: the strong guard's
+    `openerContentStart` fires at EVERY `flowBracketDelta = 1` opener (including `{` and empty `[]`), facts
+    the re-scoped parent simply does not carry (it is gated to non-empty `.flowSequenceStart`).  So the
+    child stays re-scoped — exactly matching `seqWindowRecSeqBody_seq`'s `FlowBodyContentDeepSeq`
+    recursion conjunct, which the produced child feeds.
+
+    **Strictly SIMPLER than `flowBodyContentDeepSeq_descend`, on the same two counts as the strong twin.**
+    * `headContentStart` comes from the OPENER ITSELF: the located `p` is given as `.flowSequenceStart`
+      (the re-scoped opener type the gate already disambiguated, `seqOpenerType_of_located_and_gate`), and
+      a flow-sequence opener IS content-start — no parent read, and (unlike the strong sibling) no
+      `flowBracketDelta_eq_one_iff` `[`-vs-`{` split, because the type is already pinned to `[`.
+    * `openerContentStart` / `feContentStart` are PURE RESTRICTIONS of the parent's, domain
+      `[p, j+1) ⊆ [lo, hi)` via `lo ≤ p` and `j + 1 ≤ hi`; the re-scoped guard's extra window-ABSOLUTE
+      premises (`≠ .flowSequenceEnd`, `≠ .key`) thread through verbatim
+      ([[ref-window-absolute-gate-subset-restriction]]).
+
+    Like the strong sibling, keeping the boundary SHEDS the descend sibling's interior-non-emptiness peel
+    `k + 1 < j`; only `j + 1 ≤ hi` is needed.  Names no deliverable type, so it serves both axes.
+    Verified-but-unconsumed (R225) until the `_seq` R485 re-thread consumes it: references no sorry site,
+    frontier sorry count unchanged at 4; axiom-clean. -/
+theorem flowBodyContentDeepSeq_child_bracket (tokens : Array (Positioned YamlToken)) (lo k j hi : Nat)
+    (h_deep : FlowBodyContentDeepSeq tokens lo hi)
+    (h_lo_k : lo ≤ k) (h_k_open : tokens[k]!.val = .flowSequenceStart)
+    (h_j_hi : j + 1 ≤ hi) :
+    FlowBodyContentDeepSeq tokens k (j + 1) := by
+  obtain ⟨_h_head, h_op, h_fe⟩ := h_deep
+  refine ⟨?_, ?_, ?_⟩
+  · -- head: the opener `k` is `.flowSequenceStart` (a flow sequence), which is content-start.
+    rw [h_k_open]; exact Or.inr (Or.inl rfl)
+  · -- child openerContentStart: the parent's, restricted to `[k, j+1) ⊆ [lo, hi)` (premises thread).
+    intro k' hk1 hk2 hopen hne
+    exact h_op k' (by omega) (by omega) hopen hne
+  · -- child feContentStart: the parent's, restricted to `[k, j+1) ⊆ [lo, hi)` (premises thread).
+    intro k' hk1 hk2 hfe hne
+    exact h_fe k' (by omega) (by omega) hfe hne
+
 /-- **`FlowBodyContent` assembler from the threaded deep guard** (Phase J — sub-brick (i'-a), the
     `bodySucc`-provenance factoring).  Every head-shape dispatch branch and both bracket oracles consume
     `FlowBodyContent tokens lo hi`, but the body recursion's combined guard only threads
