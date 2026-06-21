@@ -2838,6 +2838,66 @@ theorem seqLocatedOpener_within_body
     omega
   · exact h_ge
 
+/-- **The load-bearing containment `hiE ≤ hi` of the `enclosingLocate` residual** — the END-DUAL of
+    `seqLocatedOpener_within_body`, and the SECOND of the two containments R475 needs.  Where the LOWER
+    containment `lo ≤ p` falls out of the OPENER-locator's interior floor (over `[p+1, a]`), the UPPER
+    containment `hiE ≤ hi` falls out of the CLOSE-locator's interior floor (over `[p+1, hiE]`) against
+    the SAME enclosing window facts — same floor-conflict shape, mirrored to the other end.  No content
+    structure, no separate close arithmetic — purely balance.
+
+    The argument is the symmetric balance-additivity contradiction.  Suppose `hi < hiE` (i.e.
+    `p + 1 ≤ hi ≤ hiE`).  The close-locator's own interior floor `h_inner_floor` instantiated at `hi`
+    (which sits in `[p+1, hiE]`) gives `flowBracketBalance tokens (p+1) hi ≥ 0`.  But the enclosing
+    window forces it negative: split the enclosing total across `p` and `p+1`
+    (`flowBracketBalance_compose tokens lo p hi`, then `… tokens p (p+1) hi`):
+    `0 = flowBracketBalance tokens lo hi = flowBracketBalance tokens lo p + 1 + flowBracketBalance tokens (p+1) hi`,
+    so `flowBracketBalance tokens (p+1) hi = -1 - flowBracketBalance tokens lo p ≤ -1 < 0` (using the
+    enclosing Dyck floor `h_dyck` at `p` for `flowBracketBalance tokens lo p ≥ 0`, and the opener delta
+    `h_open` for the `+1`).  Contradiction.  Hence `hiE ≤ hi`: the enclosing opener at `p` is matched
+    BEFORE the window ends, because the located frame's interior cannot dip below its own floor while
+    the enclosing window is already paying back the opener's `+1` by `hi`.
+
+    **The inner floor `h_inner_floor` is the close-locator's SILENTLY-DROPPED output.**
+    `flowBracketBalance_matching_close_seq` (WellBracketed.lean:2107) computes BOTH `j < hi` and the
+    interior floor `∀ p', p+1 ≤ p' → p' ≤ j → flowBracketBalance tokens (p+1) p' ≥ 0`, but
+    `seqClose_of_located_and_enclosing`'s return type (SeqInteriorSeparators.lean:538) erases both — it
+    re-exports only `a ≤ hiS`, `b ≤ hiS`, `hiS ≤ size`, `balance (p+1) hiS = 0`, the typed close.  So
+    the UPPER containment needs NO new machinery: re-thread the dropped floor (strengthen the
+    close-locator's return, or call `flowBracketBalance_matching_close_seq` directly) and this brick
+    closes it.  (In fact the dropped `j < hi` gives `hiE ≤ hi` outright; this brick is the route that
+    survives even when the close is located relative to the opener's OWN frame at arbitrary nesting
+    depth, where the `lo`-relative `j < hi` is not directly in hand — see the depth caveat on
+    `seqClose_of_located_and_enclosing`'s `h_p_depth : balance lo p = 0`.)
+
+    Verified-but-unconsumed until the `enclosingLocate` builder wires it with the close locator and the
+    three content-structure constructions; composes only `flowBracketBalance_compose` + `omega`,
+    references no sorry site, frontier sorry count unchanged at 4; axiom-clean. -/
+theorem seqLocatedClose_within_body
+    (tokens : Array (Positioned YamlToken)) (lo hi p hiE : Nat)
+    (h_lo_p : lo ≤ p) (h_p_hi : p < hi)
+    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
+    (h_total : flowBracketBalance tokens lo hi = 0)
+    (h_open : flowBracketBalance tokens p (p + 1) = 1)
+    (h_inner_floor : ∀ i, p + 1 ≤ i → i ≤ hiE → flowBracketBalance tokens (p + 1) i ≥ 0) :
+    hiE ≤ hi := by
+  rcases Nat.lt_or_ge hi hiE with h_gt | h_ge
+  · -- `hi < hiE`, i.e. `p + 1 ≤ hi ≤ hiE`, is the case to refute.
+    have h_p1_hi : p + 1 ≤ hi := by omega
+    -- The close-locator's interior floor at `hi` (which lies in `[p+1, hiE]`).
+    have h_floor_hi : flowBracketBalance tokens (p + 1) hi ≥ 0 :=
+      h_inner_floor hi h_p1_hi (by omega)
+    -- The enclosing window's Dyck floor at `p`.
+    have h_floor_p : flowBracketBalance tokens lo p ≥ 0 := h_dyck p h_lo_p (by omega)
+    -- Split the enclosing total across `p`, then across `p + 1`.
+    have h_comp1 : flowBracketBalance tokens lo hi
+        = flowBracketBalance tokens lo p + flowBracketBalance tokens p hi :=
+      flowBracketBalance_compose tokens lo p hi h_lo_p (by omega)
+    have h_comp2 : flowBracketBalance tokens p hi
+        = flowBracketBalance tokens p (p + 1) + flowBracketBalance tokens (p + 1) hi :=
+      flowBracketBalance_compose tokens p (p + 1) hi (by omega) h_p1_hi
+    omega
+  · exact h_ge
+
 /-- **The per-window carrier→content consumer joint** — `(i'-b-B3-content-joint)`, the joint between
     the threaded separator carrier and the `RecSeqBody` recursion's per-window dispatch.  This is the
     de-risk finding for B3 (the `windowWidth_strongRecOn` `RecSeqBody` producer) made into a proof

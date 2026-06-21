@@ -97,4 +97,82 @@ example : (2 : Nat) ≤ 3 :=
     (by omega)
     (by intro i h1 h2; omega)
 
+/-! ## The END-dual — the UPPER containment `hiE ≤ hi`
+
+The second of R475's two load-bearing containments mirrors the first to the window's END.  Where the
+LOWER containment `lo ≤ p` (`opener_within_window`) conflicts the OPENER-locator's interior floor
+(over `[p+1, a]`) with the body window's depth at the nested start, the UPPER containment `hiE ≤ hi`
+conflicts the CLOSE-locator's interior floor (over `[p+1, hiE]`) with the enclosing window's balance:
+the enclosing window has already paid back the opener's `+1` by `hi`, so the located frame's interior
+cannot still be ≥ 0 there unless its close `hiE` came first.  Same floor-conflict shape, other end.
+
+The reusable sub-lesson: this inner floor is the close-locator's SILENTLY-DROPPED output.
+`flowBracketBalance_matching_close_seq` computes both `j < hi` and the interior floor, but
+`seqClose_of_located_and_enclosing`'s return type erases both — so the UPPER containment needs no new
+machinery, only the re-threaded floor.  Mirrors `seqLocatedClose_within_body`. -/
+
+/-- **The END-dual heart** — the upper containment `hiE ≤ hi` from the close-locator's interior floor
+    against the enclosing window's balance + Dyck floor + opener delta.  One composition pair +
+    `omega`; no content structure, no separate close arithmetic.  Mirrors `seqLocatedClose_within_body`. -/
+theorem close_within_window
+    (bal : Nat → Nat → Int)
+    (bal_compose : ∀ lo mid hi, lo ≤ mid → mid ≤ hi → bal lo hi = bal lo mid + bal mid hi)
+    (lo hi p hiE : Nat)
+    (h_lo_p : lo ≤ p)
+    (h_p_hi : p < hi)
+    (h_win_floor : ∀ i, lo ≤ i → i ≤ hi → bal lo i ≥ 0)
+    (h_total : bal lo hi = 0)
+    (h_open : bal p (p + 1) = 1)
+    (h_inner_floor : ∀ i, p + 1 ≤ i → i ≤ hiE → bal (p + 1) i ≥ 0) :
+    hiE ≤ hi := by
+  cases Nat.lt_or_ge hi hiE with
+  | inl h_gt =>
+    -- `hi < hiE`, i.e. `p + 1 ≤ hi ≤ hiE`, is the case to refute.
+    have h_p1_hi : p + 1 ≤ hi := by omega
+    -- The close-locator's interior floor at `hi` (which lies in `[p+1, hiE]`).
+    have h_floor_hi : bal (p + 1) hi ≥ 0 := h_inner_floor hi h_p1_hi (by omega)
+    -- The enclosing window's Dyck floor at `p`.
+    have h_floor_p : bal lo p ≥ 0 := h_win_floor p h_lo_p (by omega)
+    -- Split the enclosing total across `p`, then across `p + 1`.
+    have h_comp1 : bal lo hi = bal lo p + bal p hi := bal_compose lo p hi h_lo_p (by omega)
+    have h_comp2 : bal p hi = bal p (p + 1) + bal (p + 1) hi :=
+      bal_compose p (p + 1) hi (by omega) h_p1_hi
+    omega
+  | inr h_ge => exact h_ge
+
+/-- **The inner floor is LOAD-BEARING** — drop it and the upper containment is FALSE.  Without
+    `bal (p+1) i ≥ 0`, the matching close `hiE` can sit past `hi`: a `bal` representing the window
+    `[ ]` (`bal 0 1 = 1`, `bal 0 2 = 0`) admits `lo = 0`, `hi = 2`, `p = 0`, `hiE = 3` with `lo ≤ p`,
+    `p < hi`, `bal lo hi = 0`, `bal p (p+1) = 1` all true yet `hiE ≤ hi` (`3 ≤ 2`) false.  (Such a
+    `bal` necessarily lacks the close-locator's interior floor past the real close at index 1.)  So the
+    interior floor is what pins the close inside the enclosing window. -/
+theorem needs_inner_floor :
+    ¬ (∀ (bal : Nat → Nat → Int) (lo hi p hiE : Nat),
+        lo ≤ p → p < hi → bal lo hi = 0 → bal p (p + 1) = 1 → hiE ≤ hi) := by
+  intro h
+  have key : (3 : Nat) ≤ 2 :=
+    h (fun i j => if i = 0 ∧ j = 1 then (1 : Int) else 0) 0 2 0 3
+      (by omega) (by omega) (by decide) (by decide)
+  omega
+
+/-- CONCRETE, non-vacuous — the END-dual heart runs end-to-end on a genuine balanced bracket window
+    `[ ]` modelled by an abstract depth `g` (`g 0 = 0`, `g 1 = 1`, `g 2 = 0`, so `bal i j = g j - g i`
+    is automatically additive), with the matching close CONTAINED at `hiE = 1 ≤ hi = 2`.  All premises
+    are simultaneously satisfiable with the conclusion true, so the heart is not vacuous. -/
+example (g : Nat → Int) (hg0 : g 0 = 0) (hg1 : g 1 = 1) (hg2 : g 2 = 0) :
+    (1 : Nat) ≤ 2 :=
+  close_within_window (fun i j => g j - g i)
+    (by intro a b c _ _; omega)
+    0 2 0 1
+    (by omega)
+    (by omega)
+    (by intro i _ h2
+        have hcase : i = 0 ∨ i = 1 ∨ i = 2 := by omega
+        rcases hcase with rfl | rfl | rfl <;> omega)
+    (by omega)
+    (by show g 1 - g 0 = 1; omega)
+    (by intro i h1 h2
+        have : i = 1 := by omega
+        subst this; show g 1 - g 1 ≥ 0; omega)
+
 end ContainmentFromFloorConflict
