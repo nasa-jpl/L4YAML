@@ -7611,6 +7611,66 @@ theorem flowBodyContent_of_deepSeq (tokens : Array (Positioned YamlToken)) (lo h
   intro k hk1 hk2 hfe hbal
   exact ⟨by omega, h_feContent k hk1 hk2 hfe hbal⟩
 
+/-- **OPENER-INCLUSIVE child-bracket CONTENT guard, RE-SCOPED twin** (Phase J — sub-brick (i'-b-B2c), the
+    `_seq` twin of `flowBodyContent_child_bracket` (R479) over the root-TRUE `FlowBodyContentDeepSeq` (R393).
+    The content half of the `_seq` re-thread of the `enclosingLocate` chain
+    (`seqEnclosingLocate_of_seqOpener_nested`, R485) consumes at its SECOND `h_deep` read: where R485
+    instantiates `flowBodyContent_child_bracket` on the located enclosing opener `p` to deliver the depth-`0`
+    `FlowBodyContent tokens p (hiS+1)`, the `_seq` re-thread — keyed on the root-true guard so the recursion
+    can be SEEDED at the root ([[ref-root-seed-needs-root-true-guard]],
+    [[ref-rethread-stays-in-weaker-twin-family]]) — must deliver the SAME `FlowBodyContent` from a
+    `FlowBodyContentDeepSeq tokens lo hi` parent.
+
+    Mirrors `flowBodyContent_child_bracket`'s body — `flowBodyContentDeepSeq_child_bracket` (R489) delivers the
+    re-scoped `FlowBodyContentDeepSeq tokens p (hiS+1)`, then `flowBodyContent_of_deepSeq` (R393) PROJECTS it
+    down to the depth-`0` `FlowBodyContent` — BUT the re-scope SIMPLIFIES the residual discharge, shedding a
+    hypothesis ([[ref-unified-residual-routes-through-one-invariant]]):
+
+    * `bodySucc` — VERBATIM the strong twin's: the only child-origin balance-`0` prefix end in `[p, hiS+1)` is
+      the close `hiS` (interior `≥ 1` by `h_floor1`), where the left disjunct `k'+1 = hiS+1` holds outright.
+    * `feContent` — where the strong `flowBodyContent_of_deep` SPLIT the separator obligation into an INTERIOR
+      branch (guard-projected off `feContentStart`) and a BOUNDARY branch (`noTrailingSep`, discharged at the
+      close `h_jclose`), the re-scoped `flowBodyContent_of_deepSeq` UNIFIES both into one `h_feContent` residual
+      (its `≠ .key`-gated `feContentStart` is unprojectable by the consumer).  The unified residual routes
+      through ONE invariant the consumer ALREADY holds: the child-bracket floor `h_floor1` makes EVERY balance-`0`
+      separator with `k' > p` impossible (`≥ 1`), and the typed opener `tokens[p] = .flowSequenceStart` kills
+      `k' = p`.  So the boundary close-contradiction the strong twin needed is SUBSUMED by the floor — `h_jclose`
+      is REDUNDANT here and DROPPED from the signature.
+
+    The re-scope's apparent cost (an unprojectable interior residual) is paid by the floor the consumer holds
+    anyway, and the payment is CHEAPER than the strong split: one uniform floor+opener argument replaces
+    guard-projection + close-marker.  Like its siblings it names no collection-specific deliverable type, so it
+    serves both axes (`[` ↦ `.flowSequenceEnd` close for the seq, the map mirror swaps the opener type).
+
+    Verified-but-unconsumed until the `_seq` R485 re-thread (`seqEnclosingLocate_of_seqOpener_nested_seq`) wires
+    the three child-bracket producers (the (α.2) content half of the seq locate boundary): composes only landed
+    lemmas + `omega`, references no sorry site, frontier sorry count unchanged at 4; axiom-clean. -/
+theorem flowBodyContent_child_bracket_seq (tokens : Array (Positioned YamlToken)) (lo k j hi : Nat)
+    (h_deep : FlowBodyContentDeepSeq tokens lo hi)
+    (h_lo_k : lo ≤ k) (h_j_hi : j + 1 ≤ hi)
+    (h_k_open : tokens[k]!.val = .flowSequenceStart)
+    (h_floor1 : ∀ i, k + 1 ≤ i → i ≤ j → flowBracketBalance tokens k i ≥ 1) :
+    FlowBodyContent tokens k (j + 1) := by
+  -- The re-scoped deep guard on the full child window, via the R489 `_seq` sibling.
+  have h_childDeepSeq : FlowBodyContentDeepSeq tokens k (j + 1) :=
+    flowBodyContentDeepSeq_child_bracket tokens lo k j hi h_deep h_lo_k h_k_open h_j_hi
+  refine flowBodyContent_of_deepSeq tokens k (j + 1) h_childDeepSeq ?_ ?_
+  · -- bodySucc: VERBATIM the strong twin — interior `≥ 1` by the floor, the close gives the left disjunct.
+    intro k' hk1 hk2 hbal _hnfe
+    rcases Nat.lt_or_ge k' j with h | h
+    · have hf := h_floor1 (k' + 1) (by omega) (by omega)
+      exfalso; omega
+    · left; omega
+  · -- feContent: the UNIFIED residual, discharged VACUOUSLY through ONE invariant — interior by the floor,
+    -- `k' = k` by the typed opener; the strong twin's `h_jclose` boundary route is subsumed (no close read).
+    intro k' hk1 hk2 hfe hbal
+    rcases Nat.lt_or_ge k k' with h | h
+    · have hf := h_floor1 k' (by omega) (by omega)
+      exfalso; omega
+    · have hkk' : k' = k := by omega
+      subst hkk'
+      exact absurd hfe (by rw [h_k_open]; simp)
+
 /-- **`bodySucc` ROOT-SEED bridge** (Phase J — sub-brick (i'-b), the CERTAIN half of the seq separator
     facts at the root window, and the producer's first landable brick per
     [[ref-universal-producer-root-seed-first]]).  `emitList_body_filtered_characterization` Part 6
