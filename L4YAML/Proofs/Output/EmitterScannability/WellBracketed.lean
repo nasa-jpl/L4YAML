@@ -2313,6 +2313,228 @@ theorem WellTyped_subrange (tokens : Array (Positioned YamlToken)) (LO lo hi HI 
   rw [List.drop_take]
   exact hres
 
+/-! #### Typed locator, part 5.5 — depth-general (nested) typed locators (R482)
+
+The depth-0 typed locators (`matching_close_typed_{generic,core}`,
+`flowBracketBalance_matching_close_{seq,map}`) demand `h_k_depth : flowBracketBalance tokens lo k = 0`
+— the opener sits at the bottom of an empty stack.  R482 found that this premise is genuinely
+FALSE when the opener is the INNERMOST encloser of a deeply-nested gated window
+(`seqEnclosingOpener_of_gate` returns a depth-≥1 opener).  The balance core
+`flowBracketBalance_matching_close_nested` already drops the depth premise; this part lifts the
+TYPED layer the same way.
+
+The opener at `k` now sits over an arbitrary base stack `s_k` (length `d = balance lo k`).  The
+proof FRAMES the depth-0 argument by `s_k`: the opener pushes `b :: s_k` (`btStep_frame`), the
+balanced `WellTyped` interior `[k+1, j)` (`WellTyped_infix_balanced`) folds from `b :: s_k` back to
+`b :: s_k` (`WellTyped_frame`), and `btStep_frame_inv` strips `s_k` off the close — collapsing the
+nested `btStep tokens[j]! (b :: s_k) = some s_k` to the SAME depth-0 conclusion
+`btStep tokens[j]! [b] = some []`, so the close-type readers `btStep_pop_eq_{seqEnd,mapEnd}` apply
+verbatim.  The relative interior floor `flowBracketBalance tokens (k+1) i ≥ 0` is exactly the balance
+core's output, so the `{seq,map}` wrappers are even simpler than their depth-0 originals (no
+`flowBracketBalance_interior_dyck` re-derivation).  Unconsumed until the (α) seq assemble drops
+`h_p_depth` and wires into R475. -/
+
+/-- **Typed matching-close — generic core, depth-general (R482).**  The nested generalization of
+    `matching_close_typed_generic`: the opener at `k` may sit at ANY depth
+    `d = flowBracketBalance tokens lo k ≥ 0` (not just `0`), so the stack just before it is an
+    arbitrary base stack `s_k` (length `d`) rather than `[]`.  The matching close still pops the
+    SAME singleton the opener pushed — framing by `s_k` reduces the nested close step
+    `btStep tokens[j]! (b :: s_k) = some s_k` back to the depth-0 conclusion
+    `btStep tokens[j]! [b] = some []`.
+
+    Drops `h_k_depth` (the depth-0 premise, genuinely FALSE for a nested opener — R482) and takes
+    the RELATIVE interior floor `flowBracketBalance tokens (k+1) i ≥ 0` — exactly what the
+    depth-general balance core `flowBracketBalance_matching_close_nested` outputs — in place of the
+    absolute `flowBracketBalance tokens lo i ≥ 1`.  The interior `[k+1, j)` is recovered `WellTyped`
+    via `WellTyped_infix_balanced`, so its fold from `b :: s_k` returns to `b :: s_k`
+    (`WellTyped_frame`); `btStep_frame_inv` then strips the frame `s_k` off the close. -/
+theorem matching_close_typed_generic_nested
+    (B : List (Positioned YamlToken)) (tokens : Array (Positioned YamlToken))
+    (lo k j hi : Nat) (b : Bool)
+    (hlenB : B.length = hi - lo)
+    (hbal : ∀ t, lo ≤ t → t ≤ hi → pbalance (B.take (t - lo)) = flowBracketBalance tokens lo t)
+    (hval : ∀ t, lo ≤ t → t < hi → ∀ (hb : t - lo < B.length),
+      (B[t - lo]'hb).val = tokens[t]!.val)
+    (h_wt : WellTyped B)
+    (h_lo_k : lo ≤ k) (h_kj : k < j) (h_j_hi : j < hi) (h_hi_sz : hi ≤ tokens.size)
+    (h_k_push : btStep tokens[k]! [] = some [b])
+    (h_inner : flowBracketBalance tokens (k+1) j = 0)
+    (h_j_close : flowBracketDelta tokens[j]!.val = -1)
+    (h_floor : ∀ i, k < i → i ≤ j → flowBracketBalance tokens (k+1) i ≥ 0) :
+    btStep tokens[j]! [b] = some [] := by
+  have hstep : ∀ t, lo ≤ t → t < tokens.size →
+      flowBracketBalance tokens lo (t+1) =
+        flowBracketBalance tokens lo t + flowBracketDelta tokens[t]!.val := by
+    intro t ht1 ht2
+    have hszL : tokens.toList.length = tokens.size := rfl
+    rw [flowBracketBalance_compose tokens lo t (t+1) ht1 (by omega),
+        flowBracketBalance_single tokens t (by rw [hszL]; exact ht2),
+        Array.getElem_toList ht2, ← getElem!_pos tokens t ht2]
+  have h_kdelta : flowBracketDelta tokens[k]!.val = 1 := btStep_emptypush_delta _ _ h_k_push
+  have h_lo_j1 : flowBracketBalance tokens lo (j+1) = flowBracketBalance tokens lo k := by
+    have hk1 : flowBracketBalance tokens lo (k+1) =
+        flowBracketBalance tokens lo k + 1 := by
+      have e := hstep k h_lo_k (by omega); omega
+    have hlj : flowBracketBalance tokens lo j = flowBracketBalance tokens lo k + 1 := by
+      have e := flowBracketBalance_compose tokens lo (k+1) j (by omega) (by omega); omega
+    have e := hstep j (by omega) (by omega); omega
+  have hKlt : k - lo < B.length := by rw [hlenB]; omega
+  have hJlt : j - lo < B.length := by rw [hlenB]; omega
+  -- Base stack at the opener prefix `[lo, k)` — length `d = balance lo k`, NOT necessarily `[]`.
+  obtain ⟨s_k, hs_k, hs_k_len⟩ := WellTyped_take_stack B (k - lo) h_wt
+  have hs_k_len' : (s_k.length : Int) = flowBracketBalance tokens lo k := by
+    rw [hs_k_len, hbal k h_lo_k (by omega)]
+  -- Stack after the opener is `b :: s_k` (frame the empty-stack push by `s_k`).
+  have hopen : btFold (some []) (B.take (k - lo + 1)) = some (b :: s_k) := by
+    rw [List.take_succ_eq_append_getElem hKlt, btFold_append, hs_k]
+    have hsingle : btFold (some s_k) [B[k - lo]'hKlt] = btStep (B[k - lo]'hKlt) s_k := by
+      simp [btFold, List.foldl]
+    rw [hsingle, btStep_val_congr (B[k - lo]'hKlt) tokens[k]! s_k (hval k h_lo_k (by omega) hKlt)]
+    have hfr := btStep_frame tokens[k]! [] [b] s_k h_k_push
+    simpa using hfr
+  -- The interior `[k+1, j)` is a balanced, Dyck infix of `B`, hence `WellTyped`.
+  obtain ⟨m, hm_def⟩ :
+      ∃ m, m = (B.drop (k - lo + 1)).take ((j - lo) - (k - lo + 1)) := ⟨_, rfl⟩
+  have hpm : B.take (k - lo + 1) ++ m = B.take (j - lo) := by
+    rw [hm_def, ← List.take_add]; congr 1; omega
+  have hk1pb : pbalance (B.take (k - lo + 1)) = flowBracketBalance tokens lo (k+1) := by
+    rw [show k - lo + 1 = (k+1) - lo from by omega, hbal (k+1) (by omega) (by omega)]
+  have hm_bal : pbalance m = 0 := by
+    have happ : pbalance (B.take (k - lo + 1)) + pbalance m = pbalance (B.take (j - lo)) := by
+      rw [← pbalance_append, hpm]
+    have hjb : pbalance (B.take (j - lo)) = flowBracketBalance tokens lo j := by
+      rw [hbal j (by omega) (by omega)]
+    have hcomp := flowBracketBalance_compose tokens lo (k+1) j (by omega) (by omega)
+    omega
+  have hm_dyck : ∀ i, i ≤ m.length → pbalance (m.take i) ≥ 0 := by
+    intro i hi
+    rw [hm_def, List.length_take] at hi
+    have hmtake : m.take i = (B.drop (k - lo + 1)).take i := by
+      rw [hm_def, List.take_take]; congr 1; omega
+    rw [hmtake]
+    have hcat : B.take (k - lo + 1) ++ (B.drop (k - lo + 1)).take i = B.take (k - lo + 1 + i) := by
+      rw [← List.take_add]
+    have key : pbalance (B.take (k - lo + 1)) + pbalance ((B.drop (k - lo + 1)).take i)
+        = flowBracketBalance tokens lo (k + 1 + i) := by
+      rw [← pbalance_append, hcat, show k - lo + 1 + i = (k + 1 + i) - lo from by omega,
+          hbal (k + 1 + i) (by omega) (by omega)]
+    have hcomp := flowBracketBalance_compose tokens lo (k+1) (k+1+i) (by omega) (by omega)
+    have hfl := h_floor (k + 1 + i) (by omega) (by omega)
+    omega
+  have h_infix_eq : B.take (k - lo + 1) ++ m ++ B.drop (j - lo) = B := by
+    rw [hpm, List.take_append_drop]
+  have h_m_wt : WellTyped m :=
+    WellTyped_infix_balanced (B.take (k - lo + 1)) m (B.drop (j - lo))
+      (by rw [h_infix_eq]; exact h_wt) hm_bal hm_dyck
+  -- Stack just before the close is still `b :: s_k` (a `WellTyped` body returns to its prefix).
+  have hbefore : btFold (some []) (B.take (j - lo)) = some (b :: s_k) := by
+    rw [← hpm, btFold_append, hopen]
+    exact WellTyped_frame m (b :: s_k) h_m_wt
+  -- The close step over `b :: s_k`, read off the global fold at `j+1`.
+  have hclose_fold :
+      btFold (some []) (B.take (j - lo + 1)) = btStep (B[j - lo]'hJlt) (b :: s_k) := by
+    rw [List.take_succ_eq_append_getElem hJlt, btFold_append, hbefore]
+    simp [btFold, List.foldl]
+  obtain ⟨s', hs', hs'_len⟩ := WellTyped_take_stack B (j - lo + 1) h_wt
+  rw [hclose_fold] at hs'
+  rw [btStep_val_congr (B[j - lo]'hJlt) tokens[j]! (b :: s_k) (hval j (by omega) h_j_hi hJlt)] at hs'
+  have hs'_len' : (s'.length : Int) = flowBracketBalance tokens lo k := by
+    rw [hs'_len, show j - lo + 1 = (j+1) - lo from by omega,
+        hbal (j+1) (by omega) (by omega), h_lo_j1]
+  -- Strip the frame `s_k` off the close: the bare close pops `[b]` to `[]`.
+  have h_nopop : 0 ≤ (([b] : List Bool).length : Int) + flowBracketDelta tokens[j]!.val := by
+    rw [h_j_close]; simp
+  obtain ⟨n, hn, hs'eq⟩ := btStep_frame_inv tokens[j]! [b] s_k s' h_nopop hs'
+  have hn_len : (n.length : Int) = 0 := by
+    have h1 : s'.length = n.length + s_k.length := by rw [hs'eq, List.length_append]
+    omega
+  have hn_nil : n = [] := List.eq_nil_of_length_eq_zero (by exact_mod_cast hn_len)
+  rw [hn_nil] at hn
+  exact hn
+
+/-- **Typed matching-close — array core, depth-general (R482).**  Specializes
+    `matching_close_typed_generic_nested` to the interior slice `[lo, hi)` of the token array,
+    proving the `length`/`balance`/`value` bridges for that concrete `B` (verbatim from
+    `matching_close_typed_core`, dropping `h_k_depth` and swapping `h_pos` for the relative
+    `h_floor`). -/
+theorem matching_close_typed_core_nested
+    (tokens : Array (Positioned YamlToken)) (lo k j hi : Nat) (b : Bool)
+    (h_lo_k : lo ≤ k) (h_kj : k < j) (h_j_hi : j < hi) (h_hi_sz : hi ≤ tokens.size)
+    (h_k_push : btStep tokens[k]! [] = some [b])
+    (h_inner : flowBracketBalance tokens (k+1) j = 0)
+    (h_j_close : flowBracketDelta tokens[j]!.val = -1)
+    (h_floor : ∀ i, k < i → i ≤ j → flowBracketBalance tokens (k+1) i ≥ 0)
+    (h_wt : WellTyped ((tokens.toList.take hi).drop lo)) :
+    btStep tokens[j]! [b] = some [] := by
+  rw [List.drop_take] at h_wt
+  have hszL : tokens.toList.length = tokens.size := rfl
+  have hlenB : ((tokens.toList.drop lo).take (hi - lo)).length = hi - lo := by
+    rw [List.length_take, List.length_drop, hszL]; omega
+  have hbal : ∀ t, lo ≤ t → t ≤ hi →
+      pbalance (((tokens.toList.drop lo).take (hi - lo)).take (t - lo))
+        = flowBracketBalance tokens lo t := by
+    intro t ht1 ht2
+    rw [List.take_take, show min (t - lo) (hi - lo) = t - lo from by omega,
+        ← flowBracketBalance_eq_pbalance tokens lo t ht1]
+  have hval : ∀ t, lo ≤ t → t < hi → ∀ (hb : t - lo < ((tokens.toList.drop lo).take (hi - lo)).length),
+      (((tokens.toList.drop lo).take (hi - lo))[t - lo]'hb).val = tokens[t]!.val := by
+    intro t ht1 ht2 hb
+    have h1 : ((tokens.toList.drop lo).take (hi - lo))[t - lo]'hb = tokens[t]! := by
+      rw [List.getElem_take, List.getElem_drop,
+          Array.getElem_toList (show lo + (t - lo) < tokens.size from by omega),
+          ← getElem!_pos tokens (lo + (t - lo)) (by omega)]
+      congr 1; omega
+    rw [h1]
+  exact matching_close_typed_generic_nested ((tokens.toList.drop lo).take (hi - lo)) tokens
+    lo k j hi b hlenB hbal hval h_wt h_lo_k h_kj h_j_hi h_hi_sz h_k_push h_inner h_j_close h_floor
+
+/-- **Depth-general typed locator (sequence).**  The nested twin of
+    `flowBracketBalance_matching_close_seq`, with `h_k_depth` DROPPED: a `[` opener at ANY depth in
+    a well-bracketed, `WellTyped` interior `[lo, hi)` has a matching `]` at `j` with balanced
+    interior.  Locates `j` via the depth-general balance core `flowBracketBalance_matching_close_nested`
+    and reads the close type via `matching_close_typed_core_nested` + `btStep_pop_eq_seqEnd`.  The
+    relative interior floor is the balance core's own output — no `flowBracketBalance_interior_dyck`
+    re-derivation. -/
+theorem flowBracketBalance_matching_close_seq_nested
+    (tokens : Array (Positioned YamlToken)) (lo k hi : Nat)
+    (h_lo_k : lo ≤ k) (h_k_hi : k < hi) (h_hi_sz : hi ≤ tokens.size)
+    (h_k_open : tokens[k]!.val = .flowSequenceStart)
+    (h_total : flowBracketBalance tokens lo hi = 0)
+    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
+    (h_wt : WellTyped ((tokens.toList.take hi).drop lo)) :
+    ∃ j, k < j ∧ j < hi ∧ tokens[j]!.val = .flowSequenceEnd ∧
+      flowBracketBalance tokens (k+1) j = 0 ∧
+      (∀ p, k + 1 ≤ p → p ≤ j → flowBracketBalance tokens (k+1) p ≥ 0) := by
+  have h_k_open_delta : flowBracketDelta tokens[k]!.val = 1 := by rw [h_k_open]; rfl
+  obtain ⟨j, hkj, hjhi, hjdelta, hinner, hfloor⟩ :=
+    flowBracketBalance_matching_close_nested tokens lo k hi h_lo_k h_k_hi h_hi_sz
+      h_k_open_delta h_total h_dyck
+  have h_k_push : btStep tokens[k]! [] = some [true] := by unfold btStep; rw [h_k_open]
+  have hpop := matching_close_typed_core_nested tokens lo k j hi true h_lo_k hkj hjhi h_hi_sz
+    h_k_push hinner hjdelta hfloor h_wt
+  exact ⟨j, hkj, hjhi, btStep_pop_eq_seqEnd _ hpop, hinner, hfloor⟩
+
+/-- **Depth-general typed locator (mapping).**  The nested twin of
+    `flowBracketBalance_matching_close_map`, with `h_k_depth` DROPPED (see the seq analogue). -/
+theorem flowBracketBalance_matching_close_map_nested
+    (tokens : Array (Positioned YamlToken)) (lo k hi : Nat)
+    (h_lo_k : lo ≤ k) (h_k_hi : k < hi) (h_hi_sz : hi ≤ tokens.size)
+    (h_k_open : tokens[k]!.val = .flowMappingStart)
+    (h_total : flowBracketBalance tokens lo hi = 0)
+    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
+    (h_wt : WellTyped ((tokens.toList.take hi).drop lo)) :
+    ∃ j, k < j ∧ j < hi ∧ tokens[j]!.val = .flowMappingEnd ∧
+      flowBracketBalance tokens (k+1) j = 0 ∧
+      (∀ p, k + 1 ≤ p → p ≤ j → flowBracketBalance tokens (k+1) p ≥ 0) := by
+  have h_k_open_delta : flowBracketDelta tokens[k]!.val = 1 := by rw [h_k_open]; rfl
+  obtain ⟨j, hkj, hjhi, hjdelta, hinner, hfloor⟩ :=
+    flowBracketBalance_matching_close_nested tokens lo k hi h_lo_k h_k_hi h_hi_sz
+      h_k_open_delta h_total h_dyck
+  have h_k_push : btStep tokens[k]! [] = some [false] := by unfold btStep; rw [h_k_open]
+  have hpop := matching_close_typed_core_nested tokens lo k j hi false h_lo_k hkj hjhi h_hi_sz
+    h_k_push hinner hjdelta hfloor h_wt
+  exact ⟨j, hkj, hjhi, btStep_pop_eq_mapEnd _ hpop, hinner, hfloor⟩
+
 /-! #### Typed locator, part 6 — bracket-conjunct assembly (`.body2.discharge.typedlocator.assemble`)
 
 Parts 1–5 deliver the two halves of a nested-bracket conjunct: the typed locator
