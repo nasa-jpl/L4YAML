@@ -857,6 +857,151 @@ theorem seqDescent_provider_of_located
   exact seqEnclosingFacts_provider_of_located tokens a b (p + 1) j
     (by omega) h_b_j (by omega) h_body_bal h_safe
 
+/-- **The descent provider, `FlowBodyContentDeepSeq`-keyed** — `(i'-b-B2c-desc-assembly-seq)`, R495:
+    the `_seq`-family twin of `seqDescent_provider_of_located` (above), the next consumer-chain link of
+    the `_seq` re-thread ([[ref-rethread-stays-in-weaker-twin-family]]) above the leaf lift
+    `seqChild_safeBodyUnit_seq` (R494).  It transports `h_deep : FlowBodyContentDeepSeq tokens p hi`
+    straight to the child lift — the ENTIRE preamble (window projections, located opener type, generic
+    matching close `j`, typed close, the two-floor relay `a ≤ j`, `b ≤ j`) reads NO deep field, so it is
+    character-identical to the strong parent ([[ref-transporting-lemma-twin-zero-body-edits]]).
+
+    **The climbing dropped-derivation premise (R494) terminates here at a CASE SPLIT, not a discharge.**
+    [[ref-dropped-derivation-premise-climbs-lift-chain]] (R494) showed the leaf twin
+    `recseqentry_seqbracket_oracle_seq` takes interior non-emptiness `h_ne` as a SUPPLIED premise (the
+    strong `FlowBodyContentDeep.openerContentStart` self-derived it; the weaker
+    `FlowBodyContentDeepSeq.openerContentStart` is GUARDED by it), and that `seqChild_safeBodyUnit_seq`
+    FORWARDS it.  The climbing premise was predicted to be SOURCED by this ancestor.  It is — but the
+    actual structure is richer: because the weaker guard ADMITS the degenerate input the strong guard's
+    unconditional field excluded (an empty enclosing seq `[ … [] … ]`, where the inner empty seq's gated
+    window `[p+1, p+1)` has `j = p+1` and `tokens[p+1]! = .flowSequenceEnd` ⇒ `h_ne` is FALSE), that
+    input reaches THIS ancestor too (the dispatcher hands `desc` windows with `a ≤ b`, NOT `a < b`).  So
+    the premise cannot be sourced UNCONDITIONALLY; it terminates at a CASE SPLIT on the discriminator the
+    strong guard had ENCODED — `p + 1 < j` (the enclosing seq is non-empty):
+
+    * `p + 1 < j` — NON-EMPTY enclosing seq.  SOURCE `h_ne` from the interior floor `h_pos`: if
+      `tokens[p+1]! = .flowSequenceEnd` then `balance p (p+2) = 1 + (-1) = 0`, contradicting the
+      matched-bracket floor `balance p (p+2) ≥ 1` (valid since `p+2 ≤ j`).  Then the body is genuine and
+      the leaf twin `seqChild_safeBodyUnit_seq` produces the child `SafeBodyUnit`; assemble as the strong
+      parent does.  Cost over the strong call = ONE guard-keyed name swap
+      (`seqChild_safeBodyUnit ↦ _seq`) + the SOURCED `h_ne`.
+    * `¬ (p + 1 < j)` (so `j = p+1`) — EMPTY enclosing seq.  The gated window collapses to `a = b = p+1`
+      (`p < a ≤ b ≤ j = p+1`); both separator facts are VACUOUS, so produce the existential `⟨p+1, p+1, …⟩`
+      DIRECTLY — `flowBracketBalance loS a = 0` is `h_body_bal` verbatim, the body/no-trailing/entry facts
+      close by `omega` on contradictory bounds.  The leaf oracle is BYPASSED — it could not be fed here
+      (`h_ne` is false), which is exactly why the premise had to climb.
+
+    So the dropped-derivation premise's terminus is the first ancestor that can DISTINGUISH the degenerate
+    case, and distinguishing means HANDLING BOTH branches (source-in-non-degenerate + vacuous-in-degenerate),
+    not a single discharge.  This sharpens [[ref-dropped-derivation-premise-climbs-lift-chain]]:
+    `cost(terminating ancestor) = #(guard-keyed child names) + (source the premise on the re-discovered
+    discriminator) + (produce the deliverable vacuously on the degenerate branch the weaker guard admits)`.
+
+    Verified-but-unconsumed until `seqLocalCarrier_of_widthEnc_seq` (next) consumes it: composes only
+    landed lemmas (the R494 child lift twin), references no sorry site, frontier sorry count unchanged at 4. -/
+theorem seqDescent_provider_of_located_seq
+    (tokens : Array (Positioned YamlToken)) (a b p hi : Nat)
+    (h_pa : p < a) (h_ab : a ≤ b) (h_b_hi : b ≤ hi)
+    (h_delta : flowBracketDelta tokens[p]!.val = 1)
+    (h_body_bal : flowBracketBalance tokens (p + 1) a = 0)
+    (h_loc_floor : ∀ i, p + 1 ≤ i → i ≤ a → flowBracketBalance tokens (p + 1) i ≥ 0)
+    (h_gate : SeqTypedInterior tokens a b)
+    (h_window : FlowBodyWindow tokens p hi)
+    (h_deep : FlowBodyContentDeepSeq tokens p hi)
+    (h_content : FlowBodyContent tokens p hi)
+    (Q : Nat → Prop) (h_q_succ : Q (p + 1))
+    (h_ih : ∀ lo' hi', hi' - lo' < hi - p → p ≤ lo' → hi' ≤ hi →
+        FlowBodyWindow tokens lo' hi' → FlowBodyContentDeepSeq tokens lo' hi' → Q lo' →
+        tokens[hi']!.val = .flowSequenceEnd →
+        RecSeqBody ((tokens.toList.take hi').drop lo')) :
+    ∃ loS hiS, loS ≤ a ∧ b ≤ hiS ∧ flowBracketBalance tokens loS a = 0 ∧
+      bodySuccFact tokens loS hiS ∧
+      (∀ k, loS ≤ k → k + 1 < hiS →
+        tokens[k]!.val = .flowEntry → flowBracketBalance tokens loS k = 0 →
+        isFlowContentStart tokens[k + 1]!.val) ∧
+      noTrailingSepFact tokens loS hiS := by
+  -- Window projections (the parent recursion's well-bracketedness) — identical to the strong parent.
+  have h_p_hi : p < hi := h_window.lo_lt_hi
+  have h_hi_sz : hi ≤ tokens.size := Nat.le_of_lt h_window.hi_lt
+  have h_total : flowBracketBalance tokens p hi = 0 := h_window.balanced
+  have h_dyck : ∀ i, p ≤ i → i ≤ hi → flowBracketBalance tokens p i ≥ 0 := h_window.dyck
+  have h_wt : WellTyped ((tokens.toList.take hi).drop p) := h_window.wellTyped
+  have h_a_sz : a ≤ tokens.size := Nat.le_trans (Nat.le_trans h_ab h_b_hi) h_hi_sz
+  -- (1) the located opener is a `.flowSequenceStart` (from the gate's mark + the locator floor).
+  have h_open : tokens[p]!.val = .flowSequenceStart :=
+    seqOpenerType_of_located_and_gate tokens a p h_pa h_a_sz h_delta h_body_bal h_loc_floor h_gate.2.1
+  -- (2) the GENERIC matching-close at `p` over `[p, hi)` — KEEPS the interior floor `≥ 1`.
+  have h_pp : flowBracketBalance tokens p p = 0 := by simp [flowBracketBalance]
+  obtain ⟨j, h_pj, h_jhi, h_jdelta, h_inner, h_pos⟩ :=
+    flowBracketBalance_matching_close tokens p p hi (Nat.le_refl p) h_p_hi h_hi_sz
+      h_pp h_delta h_total h_dyck
+  -- (3) the typed close `tokens[j]! = .flowSequenceEnd`.
+  have h_k_push : btStep tokens[p]! [] = some [true] := by unfold btStep; rw [h_open]
+  have h_jclose : tokens[j]!.val = .flowSequenceEnd :=
+    btStep_pop_eq_seqEnd _ (matching_close_typed_core tokens p p j hi true (Nat.le_refl p)
+      h_pj h_jhi h_hi_sz h_pp h_k_push h_inner h_jdelta h_pos h_wt)
+  -- (4) the containment bounds `a ≤ j`, `b ≤ j` — the two-floor relay at `j + 1`.
+  have step : ∀ base, base ≤ j →
+      flowBracketBalance tokens base (j + 1)
+        = flowBracketBalance tokens base j + flowBracketDelta tokens[j]!.val := by
+    intro base hbase
+    have h_j_sz : j < tokens.size := by omega
+    have hlen : j < tokens.toList.length := by rw [Array.length_toList]; exact h_j_sz
+    rw [flowBracketBalance_compose tokens base j (j + 1) hbase (by omega),
+        flowBracketBalance_single tokens j hlen]
+    have h1 : tokens.toList[j]'hlen = tokens[j] := Array.getElem_toList h_j_sz
+    have h2 : tokens[j] = tokens[j]! := (getElem!_pos tokens j h_j_sz).symm
+    rw [h1, h2]
+  have h_a_j : a ≤ j := by
+    rcases Nat.lt_or_ge j a with h | h
+    · have h_floor := h_loc_floor (j + 1) (by omega) (by omega)
+      rw [step (p + 1) (by omega), h_inner, h_jdelta] at h_floor
+      omega
+    · exact h
+  have h_aj_bal : flowBracketBalance tokens a j = 0 := by
+    have hc := flowBracketBalance_compose tokens (p + 1) a j (by omega) h_a_j
+    rw [h_inner, h_body_bal] at hc; omega
+  have h_b_j : b ≤ j := by
+    rcases Nat.lt_or_ge j b with h | h
+    · have h_floor := h_gate.2.2 (j + 1) (by omega) (by omega)
+      rw [step a h_a_j, h_aj_bal, h_jdelta] at h_floor
+      omega
+    · exact h
+  -- A single-position balance helper (mirrors `step`, at an arbitrary in-bounds position).
+  have one_step : ∀ pos, pos < tokens.size →
+      flowBracketBalance tokens pos (pos + 1) = flowBracketDelta tokens[pos]!.val := by
+    intro pos h_pos_sz
+    have hlen : pos < tokens.toList.length := by rw [Array.length_toList]; exact h_pos_sz
+    rw [flowBracketBalance_single tokens pos hlen]
+    have h1 : tokens.toList[pos]'hlen = tokens[pos] := Array.getElem_toList h_pos_sz
+    have h2 : tokens[pos] = tokens[pos]! := (getElem!_pos tokens pos h_pos_sz).symm
+    rw [h1, h2]
+  -- CASE SPLIT on `p + 1 < j` (the discriminator the strong `FlowBodyContentDeep` encoded; the weaker
+  -- `FlowBodyContentDeepSeq` admits the EMPTY enclosing seq `j = p+1`, so the climbing `h_ne` premise
+  -- terminates here at a case split, not an unconditional discharge — R495).
+  by_cases h_pj1 : p + 1 < j
+  · -- NON-EMPTY enclosing seq: SOURCE the dropped-derivation premise `h_ne` from the interior floor.
+    have h_ne : tokens[p + 1]!.val ≠ .flowSequenceEnd := by
+      intro h_end
+      have h_floor2 := h_pos (p + 2) (by omega) (by omega)
+      have e_comp := flowBracketBalance_compose tokens p (p + 1) (p + 2) (by omega) (by omega)
+      have e0 := one_step p (by omega)
+      have e1 := one_step (p + 1) (by omega)
+      rw [e0, h_delta] at e_comp
+      rw [e1, h_end, flowBracketDelta_flowSequenceEnd] at e_comp
+      omega
+    -- the child `SafeBodyUnit` at the located genuine seq body `[p+1, j)` (the R494 `_seq` oracle twin).
+    have h_safe : SafeBodyUnit ContentStartTok ((tokens.toList.take j).drop (p + 1)) :=
+      seqChild_safeBodyUnit_seq tokens p hi j h_window h_deep h_content h_open h_ne
+        Q h_q_succ h_ih h_pj h_jhi h_jclose h_inner h_pos
+    exact seqEnclosingFacts_provider_of_located tokens a b (p + 1) j
+      (by omega) h_b_j (by omega) h_body_bal h_safe
+  · -- EMPTY enclosing seq (`j = p+1`): the gated window collapses to `a = b = p+1`; both separator
+    -- facts are VACUOUS, produced directly (`balance loS a = 0` is `h_body_bal`), BYPASSING the leaf.
+    refine ⟨p + 1, p + 1, by omega, by omega, h_body_bal, ?_, ?_, ?_⟩
+    · intro k hk1 hk2 _ _; omega
+    · intro k hk1 hk2 _ _; omega
+    · intro k hk1 hk2 _ _; omega
+
 /-- **The descent provider WITH the locator internalized** — `(i'-b-B2c-desc-fold)`, the FROM-LOCATED
     fold that turns the `desc` driver's residual into the `windowWidth_strongRecOn` fixpoint's exact
     contract ([[ref-from-located-assembler-direction]]: factor the descent's locate boundary at the
