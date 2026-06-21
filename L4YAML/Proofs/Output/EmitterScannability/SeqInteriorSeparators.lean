@@ -2785,6 +2785,76 @@ theorem seqWidthEnc_of_enclosingLocate_and_recIH
   intro lo' hi' h_width h_p_lo' h_hi'_hiE h_w h_d h_q h_c
   exact recIH lo' hi' (by omega) (by omega) (by omega) h_w h_d h_q h_c
 
+/-- **The `_seq` twin of the width-enc ASSEMBLE — a TRANSPORTING lemma re-threads with ZERO body edits.**
+    `(i'-b-B2c-(d)-seq-widthEnc-assemble-seq)`, R492: the `FlowBodyContentDeepSeq`-keyed twin of R475
+    `seqWidthEnc_of_enclosingLocate_and_recIH`, re-keyed off the root-FALSE strong content guard onto its
+    root-TRUE weaker twin ([[ref-root-seed-needs-root-true-guard]] R488, [[ref-rethread-stays-in-weaker-twin-family]]
+    R489).  This is the next link of the `_seq` re-thread after the leaf assemble
+    `seqEnclosingLocate_of_seqOpener_nested_seq` (R491): it takes a `_seq`-keyed `enclosingLocate` residual
+    plus a `_seq`-keyed body-width `recIH` and lifts them into the `_seq`-keyed `widthEnc` deliverable.
+
+    **The find — a TRANSPORTING lemma's twin is a SIGNATURE-ONLY swap, even cheaper than a constructing
+    one.**  R491's leaf assemble had TWO body edits because it CONSTRUCTS the deliverable's guard conjuncts
+    at the child-bracket constructors — the guard hypothesis is READ wherever a conjunct is built
+    ([[ref-rescope-assemble-cost-is-guard-read-sites]]).  R475 is different in kind: it never CONSTRUCTS the
+    guard, it only TRANSPORTS one — `obtain`s `h_deep : FlowBodyContentDeep tokens p hiE` from the
+    `enclosingLocate` hypothesis, `refine`s it straight into the conclusion's matching slot, and threads
+    the conclusion's IH premise `h_d` straight into `recIH`.  The guard is never matched, destructured, or
+    inspected.  Grep `FlowBodyContentDeep` in R475's BODY: ZERO hits — every occurrence is in the
+    SIGNATURE (the `enclosingLocate` deliverable, the `recIH` premise, the conclusion deliverable, the
+    conclusion IH premise — 4 positions, all transported).  So:
+
+      cost(re-scope a TRANSPORTING lemma) = swap the guard TYPE at its signature positions,
+        BODY copies byte-identical (0 edits).
+
+    The body below is character-for-character R475's; only the four `FlowBodyContentDeep` in the signature
+    became `FlowBodyContentDeepSeq`.  This is the FLOOR of the grep-bounded cost
+    ([[ref-rescope-assemble-cost-is-guard-read-sites]]): a constructing assemble pays (read sites) body
+    swaps; a transporting plumbing lemma pays ZERO — its read-site count is literally 0 because the guard
+    is carried, not consumed.  The transport/construct distinction is WHY a whole re-thread chain is cheap:
+    its cost concentrates in the few CONSTRUCTING leaves (R489/R490/R491), while every PLUMBING link
+    (R475→R492) re-keys for free.
+
+    Verified-but-unconsumed until `seqWidthEnc_of_recIH_seq` (the R486-twin) feeds it: that twin
+    reconstructs the typed opener via `seqOpenerType_of_located_and_gate` (unchanged from R486) and supplies
+    THIS lemma's `enclosingLocate` residual from `seqEnclosingLocate_of_seqOpener_nested_seq` (R491).
+    Composes nothing but transports its two hypotheses (pure plumbing), references no sorry site, frontier
+    sorry count unchanged at 4; axioms identical to R475 (the body is byte-identical). -/
+theorem seqWidthEnc_of_enclosingLocate_and_recIH_seq
+    (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (enclosingLocate : ∀ a b p, lo ≤ a → a ≤ b → b ≤ hi →
+        flowBracketBalance tokens lo a ≠ 0 →
+        SeqTypedInterior tokens a b →
+        p < a → flowBracketDelta tokens[p]!.val = 1 →
+        flowBracketBalance tokens (p + 1) a = 0 →
+        (∀ i, p + 1 ≤ i → i ≤ a → flowBracketBalance tokens (p + 1) i ≥ 0) →
+        lo ≤ p ∧ ∃ hiE, b ≤ hiE ∧ hiE ≤ tokens.size ∧ hiE ≤ hi ∧
+          FlowBodyWindow tokens p hiE ∧ FlowBodyContentDeepSeq tokens p hiE ∧
+          FlowBodyContent tokens p hiE)
+    (recIH : ∀ lo' hi', hi' - lo' < hi - lo → lo ≤ lo' → hi' ≤ hi →
+        FlowBodyWindow tokens lo' hi' → FlowBodyContentDeepSeq tokens lo' hi' →
+        SeqEnclosed tokens lo' → tokens[hi']!.val = .flowSequenceEnd →
+        RecSeqBody ((tokens.toList.take hi').drop lo')) :
+    ∀ a b p, lo ≤ a → a ≤ b → b ≤ hi →
+        flowBracketBalance tokens lo a ≠ 0 →
+        SeqTypedInterior tokens a b →
+        p < a → flowBracketDelta tokens[p]!.val = 1 →
+        flowBracketBalance tokens (p + 1) a = 0 →
+        (∀ i, p + 1 ≤ i → i ≤ a → flowBracketBalance tokens (p + 1) i ≥ 0) →
+        ∃ hiE, b ≤ hiE ∧ hiE ≤ tokens.size ∧
+          FlowBodyWindow tokens p hiE ∧ FlowBodyContentDeepSeq tokens p hiE ∧
+          FlowBodyContent tokens p hiE ∧
+          (∀ lo' hi', hi' - lo' < hiE - p → p ≤ lo' → hi' ≤ hiE →
+            FlowBodyWindow tokens lo' hi' → FlowBodyContentDeepSeq tokens lo' hi' →
+            SeqEnclosed tokens lo' → tokens[hi']!.val = .flowSequenceEnd →
+            RecSeqBody ((tokens.toList.take hi').drop lo')) := by
+  intro a b p ha hab hb hbal hgate hpa h_delta h_body_bal h_loc_floor
+  obtain ⟨h_lo_p, hiE, h_b_hiE, h_hiE_sz, h_hiE_hi, h_win, h_deep, h_content⟩ :=
+    enclosingLocate a b p ha hab hb hbal hgate hpa h_delta h_body_bal h_loc_floor
+  refine ⟨hiE, h_b_hiE, h_hiE_sz, h_win, h_deep, h_content, ?_⟩
+  intro lo' hi' h_width h_p_lo' h_hi'_hiE h_w h_d h_q h_c
+  exact recIH lo' hi' (by omega) (by omega) (by omega) h_w h_d h_q h_c
+
 /-- **The load-bearing containment `lo ≤ p` of the `enclosingLocate` residual** — the FIRST sub-piece of
     the (α) locate boundary that `seqWidthEnc_of_enclosingLocate_and_recIH` lifts.  Per R475 the
     assemble's whole well-foundedness rides on the located enclosing frame `[p, hiE)` being CONTAINED in
