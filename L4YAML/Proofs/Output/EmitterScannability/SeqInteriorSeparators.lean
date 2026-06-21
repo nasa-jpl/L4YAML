@@ -2970,6 +2970,61 @@ theorem seqRoot_carrier_of_widthEnc
   seqLocalCarrier_of_widthEnc tokens 2 (tokens.size - 2) (Nat.sub_le tokens.size 2)
     (seqRoot_safeBodyUnit items tokens h_scan h_ne h_all) h_widthEnc
 
+/-- **The seq ROOT CARRIER, `FlowBodyContentDeepSeq`-keyed — the producer/consumer MEET** —
+    `(i'-b-B2c-(d)-seq-root)`, R497: the `_seq`-family twin of `seqRoot_carrier_of_widthEnc` (above),
+    the thin `lo := 2`, `hi := tokens.size - 2` instance of the now-re-keyed window-parametric
+    `seqLocalCarrier_of_widthEnc_seq` (R496), fed the FLAT root `SafeBodyUnit` `seqRoot_safeBodyUnit`
+    for `h_safe`.  Produces the SAME root carrier `SeqInteriorSeparators tokens 2 (tokens.size - 2)`
+    from a single residual `h_widthEnc`, but with `h_widthEnc`'s enclosing-window + IH deep facts
+    re-keyed onto the root-TRUE `FlowBodyContentDeepSeq` ([[ref-root-seed-needs-root-true-guard]] R488).
+
+    **This brick is the MEET — where the re-threaded producer and consumer become ONE type.**  The
+    whole `_seq` re-thread (R488→R496) existed to reconcile a TYPE MISMATCH at this very interface: the
+    producer side (`seqWidthEnc_of_enclosingLocate_and_recIH_seq`, R492→R493) delivers an `h_widthEnc`
+    whose enclosing-window + IH facts are keyed on `FlowBodyContentDeepSeq`, but the OLD consumer root
+    carrier `seqRoot_carrier_of_widthEnc` (above) demanded an `h_widthEnc` keyed on the root-FALSE
+    `FlowBodyContentDeep` — so the producer's deliverable could NOT plug into the consumer's slot.  This
+    twin re-keys the consumer's hypothesis to `FlowBodyContentDeepSeq`, so the producer's `h_widthEnc`
+    type and the consumer's `h_widthEnc` type now COINCIDE.  The re-thread's purpose was this
+    reconciliation; the root seed is where the two types meet.
+
+    **A thin-instance lift is the CHEAPEST link in a re-thread — it has no proof BODY.**  Unlike the
+    window-parametric carrier (R496) or the descent provider (R495), the root carrier carries NO proof
+    logic: its body is a SINGLE application of the window-parametric parent at `lo := 2`,
+    `hi := size - 2`.  So its `_seq` cost is the degenerate floor of [[ref-lift-rekeys-by-guard-keyed-child-names]]
+    (R493) / [[ref-transporting-lemma-twin-zero-body-edits]] (R492): exactly ONE guard-keyed child-name
+    swap (`seqLocalCarrier_of_widthEnc ↦ seqLocalCarrier_of_widthEnc_seq`) and the guard re-key of the
+    forwarded residual hypothesis `h_widthEnc` (its two `FlowBodyContentDeep` ⤳ `FlowBodyContentDeepSeq`).
+    The guard-NEUTRAL instantiation arguments transport verbatim: the width bound `Nat.sub_le`, and the
+    flat root `SafeBodyUnit` `seqRoot_safeBodyUnit` (content-guard-agnostic — it scans straight off
+    emission, no `RecSeqBody`, so it is the SAME for either content guard).  There is nothing else to
+    port; the body is term-for-term `seqRoot_carrier_of_widthEnc` with the single parent-name swap.
+
+    Verified-but-unconsumed until the carrier↔recursion co-construction (`windowWidth_strongRecOn` over
+    body width) supplies `h_widthEnc` for the `_seq` side: composes only landed lemmas (R496's
+    re-keyed parent), references no sorry site, frontier sorry count unchanged at 4; axiom-clean. -/
+theorem seqRoot_carrier_of_widthEnc_seq
+    (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
+    (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
+    (h_ne : items.toList ≠ [])
+    (h_all : ∀ v ∈ items.toList, EmitScansInFlowRecEntry v)
+    (h_widthEnc : ∀ a b p, 2 ≤ a → a ≤ b → b ≤ tokens.size - 2 →
+        flowBracketBalance tokens 2 a ≠ 0 →
+        SeqTypedInterior tokens a b →
+        p < a → flowBracketDelta tokens[p]!.val = 1 →
+        flowBracketBalance tokens (p + 1) a = 0 →
+        (∀ i, p + 1 ≤ i → i ≤ a → flowBracketBalance tokens (p + 1) i ≥ 0) →
+        ∃ hi, b ≤ hi ∧ hi ≤ tokens.size ∧
+          FlowBodyWindow tokens p hi ∧ FlowBodyContentDeepSeq tokens p hi ∧
+          FlowBodyContent tokens p hi ∧
+          (∀ lo' hi', hi' - lo' < hi - p → p ≤ lo' → hi' ≤ hi →
+            FlowBodyWindow tokens lo' hi' → FlowBodyContentDeepSeq tokens lo' hi' →
+            SeqEnclosed tokens lo' → tokens[hi']!.val = .flowSequenceEnd →
+            RecSeqBody ((tokens.toList.take hi').drop lo'))) :
+    SeqInteriorSeparators tokens 2 (tokens.size - 2) :=
+  seqLocalCarrier_of_widthEnc_seq tokens 2 (tokens.size - 2) (Nat.sub_le tokens.size 2)
+    (seqRoot_safeBodyUnit items tokens h_scan h_ne h_all) h_widthEnc
+
 /-- **`h_widthEnc` ASSEMBLED from the enclosing-locate residual + the joint width IH** —
     `(i'-b-B2c-(d)-seq-widthEnc-assemble)`, R475: the per-step ASSEMBLE that the eventual body-width
     joint induction invokes to discharge `seqLocalCarrier_of_widthEnc`'s `h_widthEnc` hypothesis at
