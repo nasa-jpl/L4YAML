@@ -2852,6 +2852,65 @@ theorem seqLocalCarrier_of_widthEnc
   exact seqDescent_provider_of_located tokens a b p hiE h_pa hab h_b_hi h_delta h_body_bal
     h_loc_floor hgate h_window h_deep h_content (SeqEnclosed tokens) h_q_succ h_ih
 
+/-- **The window-local seq carrier, `FlowBodyContentDeepSeq`-keyed** — `(i'-b-B2c-(d)-seq)`, R496:
+    the `_seq`-family twin of `seqLocalCarrier_of_widthEnc` (above), the consumer-chain link ABOVE the
+    descent provider in the `_seq` re-thread ([[ref-rethread-stays-in-weaker-twin-family]]).  It produces
+    the SAME local carrier `SeqInteriorSeparators tokens lo hi` from a window-local `SafeBodyUnit` and a
+    width supplier `h_widthEnc` whose enclosing-window + IH deep facts are re-keyed onto the root-TRUE
+    `FlowBodyContentDeepSeq`.
+
+    **A CLEAN lift — the climb has been ABSORBED below.**  By [[ref-lift-rekeys-by-guard-keyed-child-names]]
+    (R493) a transporting LIFT's re-key cost is one NAME swap per guard-KEYED child it invokes.  Here the
+    descent route threads three children: `seqEnclosingOpener_of_gate` (LOCATE — reads only the gate, no
+    deep field, guard-NEUTRAL), `seqEnclosed_succ_of_located_opener` (the `SeqEnclosed (p+1)` IH seed —
+    gate + opener-type only, guard-NEUTRAL), and `seqDescent_provider_of_located` (the lone guard-KEYED
+    child).  So the body is a single swap `seqDescent_provider_of_located ↦ _seq`, and the signature
+    re-keys `h_widthEnc`'s two `FlowBodyContentDeep` occurrences (the enclosing-window fact and the inner
+    IH premise) to `FlowBodyContentDeepSeq` — supplied by the producer side (R493) re-keyed to match.
+
+    **The climbing premise does NOT re-emerge here.**  R494 ([[ref-dropped-derivation-premise-climbs-lift-chain]])
+    showed the non-emptiness premise `h_ne` CLIMBED the lift chain because the leaf could not source it,
+    and R495 ([[ref-climbing-premise-terminates-at-case-split]]) showed it TERMINATED one level below — at
+    `seqDescent_provider_of_located_seq`, which case-splits on `p + 1 < j` and self-handles the degenerate
+    empty-seq window the weaker guard admits.  That terminus is an ABSORPTION boundary: its conclusion is
+    premise-FREE (it produces the descent existential UNCONDITIONALLY, having internalised the case split),
+    so THIS lift sees a clean premise-free interface — NO `h_ne` to forward, NO case split to restore.  The
+    lift reverts to the pure R493 form, confirming R495's "Next step" prediction that the terminus restores
+    a clean interface upward.  The whole proof body is therefore term-for-term `seqLocalCarrier_of_widthEnc`
+    with the single descent-name swap ([[ref-transporting-lemma-twin-zero-body-edits]]).
+
+    Verified-but-unconsumed until R447's joint induction (the `_seq` side) discharges `h_widthEnc`:
+    composes only landed lemmas (the R495 descent twin), references no sorry site, frontier sorry count
+    unchanged at 4; axiom-clean. -/
+theorem seqLocalCarrier_of_widthEnc_seq
+    (tokens : Array (Positioned YamlToken)) (lo hi : Nat) (h_hi : hi ≤ tokens.size)
+    (h_safe : SafeBodyUnit ContentStartTok ((tokens.toList.take hi).drop lo))
+    (h_widthEnc : ∀ a b p, lo ≤ a → a ≤ b → b ≤ hi →
+        flowBracketBalance tokens lo a ≠ 0 →
+        SeqTypedInterior tokens a b →
+        p < a → flowBracketDelta tokens[p]!.val = 1 →
+        flowBracketBalance tokens (p + 1) a = 0 →
+        (∀ i, p + 1 ≤ i → i ≤ a → flowBracketBalance tokens (p + 1) i ≥ 0) →
+        ∃ hiE, b ≤ hiE ∧ hiE ≤ tokens.size ∧
+          FlowBodyWindow tokens p hiE ∧ FlowBodyContentDeepSeq tokens p hiE ∧
+          FlowBodyContent tokens p hiE ∧
+          (∀ lo' hi', hi' - lo' < hiE - p → p ≤ lo' → hi' ≤ hiE →
+            FlowBodyWindow tokens lo' hi' → FlowBodyContentDeepSeq tokens lo' hi' →
+            SeqEnclosed tokens lo' → tokens[hi']!.val = .flowSequenceEnd →
+            RecSeqBody ((tokens.toList.take hi').drop lo'))) :
+    SeqInteriorSeparators tokens lo hi := by
+  apply seqInteriorSeparators_of_safebody_and_descent tokens lo hi h_hi h_safe
+  intro a b ha hab hb _hbal hgate
+  have h_a_sz : a ≤ tokens.size := Nat.le_trans (Nat.le_trans hab hb) h_hi
+  obtain ⟨p, h_pa, h_delta, h_body_bal, h_loc_floor⟩ :=
+    seqEnclosingOpener_of_gate tokens a b h_a_sz hgate
+  obtain ⟨hiE, h_b_hi, h_hiE_sz, h_window, h_deep, h_content, h_ih⟩ :=
+    h_widthEnc a b p ha hab hb _hbal hgate h_pa h_delta h_body_bal h_loc_floor
+  have h_q_succ : SeqEnclosed tokens (p + 1) :=
+    seqEnclosed_succ_of_located_opener tokens a p h_pa h_a_sz h_delta h_body_bal h_loc_floor hgate.2.1
+  exact seqDescent_provider_of_located_seq tokens a b p hiE h_pa hab h_b_hi h_delta h_body_bal
+    h_loc_floor hgate h_window h_deep h_content (SeqEnclosed tokens) h_q_succ h_ih
+
 /-- **The seq ROOT CARRIER reduced to the width CO-CONSTRUCTION** — `(i'-b-B2c-(d) — STEP D)`, R443.
     Produces `SeqInteriorSeparators tokens 2 (tokens.size - 2)` (the root carrier
     `seqRoot_seqInteriorSeparators` builds from its `desc` argument) from a SINGLE residual hypothesis
