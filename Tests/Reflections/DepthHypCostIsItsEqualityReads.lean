@@ -29,6 +29,16 @@ is actually *read*.  Two kinds of read, two different costs:
   such read — step (4)'s `rw [h_p_depth] at hc1` computing `balance lo hiS = 0 + 1 = 1`; dropping
   `h_p_depth` there costs swapping that to `balance lo hiS = d + 1 ≥ 1 > 0` from `d ≥ 0`.
 
+**R485 — the prediction realized, off-by-zero.**  The R481 assemble was generalized to
+`seqEnclosingLocate_of_seqOpener_nested` (same file) by dropping `h_p_depth`.  `grep` showed EXACTLY
+the two predicted sites and no more: (1) the matching-close call — a pure SWAP to the R484 `_nested`
+close (whose three containments are all floor reads), and (2) step (4)'s single `rw [h_p_depth]`
+equality read, re-derived in one `omega` from the enclosing Dyck floor `h_dyck p : balance lo p ≥ 0`
+(witness `= 1 ↦ ≥ 1`).  So the assemble is the first L4YAML consumer to exercise BOTH read kinds in
+ONE proof — it is literally `consumerAN` (the swap) composed with `consumerBN` (the re-derivation)
+below.  Moreover the assemble CONSUMES R484's `_nested` close, so this turn also retyped that
+verified-but-unconsumed primitive into a consumed one ([[ref-reduction-by-import]]).
+
 **The rule:**  cost(drop a base-depth hypothesis) = (locator call → pure swap to the depth-general
 twin) + (one re-derivation per `=0`-equality read).  Both are countable by `grep`-ing the hypothesis
 before touching the proof.  The tell of a free read vs a costly one: does the fact come from a floor
@@ -100,8 +110,9 @@ theorem consumerBN (d inner : Int) (hinner : inner = 0) (h : 0 ≤ d) : d + 1 + 
 `consumerA0 → consumerAN` is a pure swap (zero re-derivations: all reads are floor reads).
 `consumerB0 → consumerBN` costs one re-derivation (one equality read: the `rw [h]`).
 So `cost(drop the base-depth hypothesis) = number of `=0`-equality reads`, countable by grep before
-editing.  In L4YAML R484: the close-within locator has 0 equality reads (pure swap, landed); R481 has
-exactly 1 (the next brick). -/
+editing.  In L4YAML R484: the close-within locator has 0 equality reads (pure swap, landed).  R485:
+the assemble `seqEnclosingLocate_of_seqOpener_nested` has exactly 1 (LANDED) — `consumerAN ∘ consumerBN`,
+the prediction off-by-zero. -/
 
 /-- The pure-swap pair really do prove the same statement up to the hypothesis weakening: the general
     consumer, fed `0 ≤ d` recovered from `d = 0`, reproduces the depth-0 one. -/
