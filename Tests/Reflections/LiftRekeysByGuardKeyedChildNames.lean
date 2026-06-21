@@ -107,4 +107,50 @@ example (n : Nat) (hg : Weak n) (hc : Content n) (k : Weak n → Rec n) :
     (Weak n ∧ (Weak n → Rec n)) ∧ Disc n ∧ (Weak n ∧ Content n) :=
   lift_seq n hg hc k
 
+/-! ### R498 extension — the CONVERGENCE NODE: a funnel composing TWO lifts is still `#children` swaps.
+
+Reflection 498 confirms the cost law on a CONVERGENCE NODE — `seqLocalCarrier_of_recIH`, where the
+PRODUCER sub-chain (`recIH ↦ h_widthEnc`, the `lift` above = toy `seqWidthEnc_of_recIH`) JOINS the
+CONSUMER sub-chain (`h_widthEnc + h_safe ↦ carrier`, the `consumer` below = toy
+`seqLocalCarrier_of_widthEnc`).  The funnel feeds the producer's bundle straight into the consumer, so the
+producer/consumer MEET happens INSIDE the funnel.  Its twin is again exactly `#(guard-keyed children) = 2`
+named swaps, and the guard-NEUTRAL `h_safe` is an EXPLICIT pass-through hypothesis — NOT an internal
+projection (this corrects R493's NEXT, which guessed a `RecSeqBody.toSafeBodyUnit` projection; the
+projection lives in the joint induction's recursion half, not in this funnel).  A convergence-node twin can
+only land once BOTH child twins exist (`lift_seq`, `consumer_seq`) — the bottom-up twinning order. -/
+
+/-- Toy `SeqInteriorSeparators` — the carrier the funnel returns. -/
+abbrev Carrier (n : Nat) : Prop := 0 < n
+/-- Toy `SafeBodyUnit` — guard-NEUTRAL plumbing the funnel passes straight through (NOT projected). -/
+abbrev Safe (n : Nat) : Prop := n = n
+
+/-- **Consumer lift** (toy `seqLocalCarrier_of_widthEnc`, R446/R496).  Takes the producer's `h_widthEnc`
+    bundle plus the guard-neutral `Safe`, returns the carrier — reading only the neutral `Content` conjunct,
+    so it TRANSPORTS the guard (its twin's body is byte-identical). -/
+theorem consumer_strong (n : Nat) (_h_safe : Safe n)
+    (h : (Strong n ∧ (Strong n → Rec n)) ∧ Disc n ∧ (Strong n ∧ Content n)) : Carrier n := h.2.2.2
+theorem consumer_seq (n : Nat) (_h_safe : Safe n)
+    (h : (Weak n ∧ (Weak n → Rec n)) ∧ Disc n ∧ (Weak n ∧ Content n)) : Carrier n := h.2.2.2
+
+/-- **The strong CONVERGENCE FUNNEL** (toy `seqLocalCarrier_of_recIH`, R487).  Composes the producer lift
+    and the consumer lift, threading the producer's bundle into the consumer; `h_safe` is passed through. -/
+theorem funnel_strong (n : Nat) (hg : Strong n) (hc : Content n) (k : Strong n → Rec n) (h_safe : Safe n) :
+    Carrier n :=
+  consumer_strong n h_safe (lift_strong n hg hc k)
+
+/-- **THE R498 BRICK** (toy `seqLocalCarrier_of_recIH_seq`, R498).  The `_seq` re-key of the convergence
+    funnel: signature swaps the guard (`Strong ↦ Weak`); the BODY swaps exactly the TWO guard-keyed child
+    NAMES (`consumer_strong ↦ consumer_seq`, `lift_strong ↦ lift_seq`).  `h_safe` (guard-neutral) is passed
+    straight through, byte-identical — confirming `#(guard-keyed children) = 2` even when the children are
+    themselves lifts, and that the plumbing transports verbatim. -/
+theorem funnel_seq (n : Nat) (hg : Weak n) (hc : Content n) (k : Weak n → Rec n) (h_safe : Safe n) :
+    Carrier n :=
+  consumer_seq n h_safe (lift_seq n hg hc k)
+
+/-- The convergence-node count made explicit: `funnel_strong ↦ funnel_seq` swapped TWO child names and
+    nothing else; `h_safe` transported verbatim.  `#(guard-keyed children) = 2`, the same law as the
+    primitive lift — the funnel-twin cost is COMPOSITIONAL. -/
+example (n : Nat) (hg : Weak n) (hc : Content n) (k : Weak n → Rec n) (h_safe : Safe n) : Carrier n :=
+  funnel_seq n hg hc k h_safe
+
 end LiftRekeysByGuardKeyedChildNames

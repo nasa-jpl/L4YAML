@@ -3967,6 +3967,58 @@ theorem seqLocalCarrier_of_recIH
   seqLocalCarrier_of_widthEnc tokens lo hi (Nat.le_of_lt h_win.hi_lt) h_safe
     (seqWidthEnc_of_recIH tokens lo hi h_win h_deep recIH)
 
+/-- **The `_seq` twin of the carrier-from-recIH funnel — the CONVERGENCE NODE where the two re-threaded
+    sub-chains JOIN, priced by the funnel-twin cost law (two named swaps).**
+    `(i'-b-B2c-(d)-seq-localCarrier-of-recIH-seq)`, R498: the `FlowBodyContentDeepSeq`-keyed twin of R487
+    `seqLocalCarrier_of_recIH`, re-keyed off the root-FALSE strong content guard onto its root-TRUE weaker
+    twin ([[ref-root-seed-needs-root-true-guard]] R488, [[ref-rethread-stays-in-weaker-twin-family]] R489).
+    This is the consume-ready entry point the eventual joint width induction CALLS at each window: given the
+    step's own facts (`FlowBodyWindow` / `FlowBodyContentDeepSeq tokens lo hi`), that window's own
+    `SafeBodyUnit` (the sibling `RecSeqBody` half's projection), and the body-width `recIH`, it returns the
+    local carrier `SeqInteriorSeparators tokens lo hi` — folding the WHOLE `_seq` carrier sub-chain into one
+    signature whose hypotheses are exactly what the joint step holds
+    ([[ref-fold-consumer-chain-to-producer-contract]]).
+
+    **The find — this is the CONVERGENCE NODE, and a convergence-node twin confirms the funnel cost law.**
+    R487 is where the two `_seq` sub-chains MEET window-parametrically: the PRODUCER sub-chain
+    (`recIH ↦ h_widthEnc`, R493 `seqWidthEnc_of_recIH_seq`) and the CONSUMER sub-chain
+    (`h_widthEnc + h_safe ↦ carrier`, R496 `seqLocalCarrier_of_widthEnc_seq`).  R487's body composes exactly
+    those two guard-keyed children, feeding R493's output straight into R496's input — so the producer/consumer
+    MEET happens INSIDE this funnel (the window-parametric INTERNAL dual of R497's root-instance EXTERNAL meet
+    [[ref-thin-instance-twin-is-producer-consumer-meet]], which specializes R496 alone and takes `h_widthEnc`
+    from outside).  By the funnel-twin cost law ([[ref-lift-rekeys-by-guard-keyed-child-names]] R493) the twin
+    is exactly #(guard-keyed children) = TWO named swaps:
+      1. `seqLocalCarrier_of_widthEnc ↦ seqLocalCarrier_of_widthEnc_seq` (R496, the consumer half),
+      2. `seqWidthEnc_of_recIH ↦ seqWidthEnc_of_recIH_seq` (R493, the producer half).
+    The guard-NEUTRAL plumbing transports verbatim: the width bound `Nat.le_of_lt h_win.hi_lt` and — note,
+    correcting R493's NEXT — `h_safe` is an EXPLICIT pass-through hypothesis, NOT an internal
+    `RecSeqBody.toSafeBodyUnit` projection (the projection lives in the joint induction's recursion half, not
+    here).  Signature re-keys the guard at its two positions (`h_deep`, the `recIH` premise).
+
+    **A convergence-node twin can ONLY land after BOTH incoming sub-chains are twinned** — the bottom-up
+    order the whole re-thread followed: constructing leaves first (R489/R490/R491, priced by guard read
+    sites), then plumbing/funnels (R492/R493), then this JOIN, then the thin root instance (R497).  With this
+    brick the ENTIRE `_seq` carrier-from-recIH funnel is twinned at both levels — window-parametric (this) and
+    root-instance (R497) — so the carrier side of the seq co-construction is complete; the single remaining
+    seq residual is the joint `windowWidth_strongRecOn` that supplies `h_safe` (recursion half) + `recIH`
+    (width IH).
+
+    Verified-but-unconsumed until that joint induction feeds it: composes only landed lemmas (R496 + R493),
+    references no sorry site, frontier sorry count unchanged at 4; axioms identical to its strong R487 parent
+    (the two swapped children share R446/R485's footprint). -/
+theorem seqLocalCarrier_of_recIH_seq
+    (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_win : FlowBodyWindow tokens lo hi)
+    (h_deep : FlowBodyContentDeepSeq tokens lo hi)
+    (h_safe : SafeBodyUnit ContentStartTok ((tokens.toList.take hi).drop lo))
+    (recIH : ∀ lo' hi', hi' - lo' < hi - lo → lo ≤ lo' → hi' ≤ hi →
+        FlowBodyWindow tokens lo' hi' → FlowBodyContentDeepSeq tokens lo' hi' →
+        SeqEnclosed tokens lo' → tokens[hi']!.val = .flowSequenceEnd →
+        RecSeqBody ((tokens.toList.take hi').drop lo')) :
+    SeqInteriorSeparators tokens lo hi :=
+  seqLocalCarrier_of_widthEnc_seq tokens lo hi (Nat.le_of_lt h_win.hi_lt) h_safe
+    (seqWidthEnc_of_recIH_seq tokens lo hi h_win h_deep recIH)
+
 /-- **The per-window carrier→content consumer joint** — `(i'-b-B3-content-joint)`, the joint between
     the threaded separator carrier and the `RecSeqBody` recursion's per-window dispatch.  This is the
     de-risk finding for B3 (the `windowWidth_strongRecOn` `RecSeqBody` producer) made into a proof
