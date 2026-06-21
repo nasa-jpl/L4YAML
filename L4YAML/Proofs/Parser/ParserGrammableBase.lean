@@ -694,6 +694,114 @@ theorem flowBracketBalance_matching_close (tokens : Array (Positioned YamlToken)
       have : flowBracketBalance tokens lo i = 1 := hi_eq ▸ h_f_k1
       omega)
 
+/-- **Matching close of a NESTED opener (depth-general)** — R482.  Generalizes
+    `flowBracketBalance_matching_close` from a DEPTH-0 opener (`flowBracketBalance tokens lo k = 0`)
+    to an opener `k` at ARBITRARY depth `d = flowBracketBalance tokens lo k ≥ 0` inside the balanced,
+    Dyck-floored window `[lo, hi)`.  The `h_k_depth : balance lo k = 0` hypothesis is DROPPED; the
+    located close `j` and the interior floor are stated RELATIVE TO the opener
+    (`flowBracketBalance tokens (k+1) j = 0`, `flowBracketBalance tokens (k+1) i ≥ 0`), so the
+    statement is itself depth-free.
+
+    **Why this is the missing primitive (R482 discovery).**  The seq carrier
+    `seqLocalCarrier_of_widthEnc` locates, at every gated window `[a, b)`, its INNERMOST enclosing
+    opener `p` (`seqEnclosingOpener_of_gate`) and asks `enclosingLocate`/`h_widthEnc` for `p`'s full
+    bracket span `[p, hiE)`.  For a DEEPLY-NESTED gated window the innermost encloser `p` sits at depth
+    ≥ 1 in the body window, so `seqClose_of_located_and_enclosing_within`'s `h_p_depth : balance lo p =
+    0` (and `flowBracketBalance_matching_close_seq`'s `h_k_depth`) is FALSE — the depth-0 close locator
+    cannot find a nested opener's close.  This is the depth-general BALANCE core that unblocks it: the
+    matching-close scan is purely RELATIVE to the opener's own depth, so threading the interior floor
+    against `flowBracketBalance tokens lo k` (rather than the literal `0`) generalizes the proof
+    mechanically — the return level becomes `balance lo k`, the just-after-opener level
+    `balance lo k + 1`, and the global Dyck floor `≥ 0` is now needed ONLY to pin the opener's own
+    depth `d ≥ 0` (the recurse step uses the threaded interior invariant, not the global floor).
+
+    Verified-but-unconsumed until the typed seq/map close locators are re-based onto it; references no
+    sorry site, frontier sorry count unchanged at 4; axiom-clean. -/
+theorem flowBracketBalance_matching_close_nested (tokens : Array (Positioned YamlToken))
+    (lo k hi : Nat) (h_lo_k : lo ≤ k) (h_k_hi : k < hi) (h_hi_sz : hi ≤ tokens.size)
+    (h_k_open : flowBracketDelta tokens[k]!.val = 1)
+    (h_total : flowBracketBalance tokens lo hi = 0)
+    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) :
+    ∃ j, k < j ∧ j < hi ∧
+      flowBracketDelta tokens[j]!.val = -1 ∧
+      flowBracketBalance tokens (k+1) j = 0 ∧
+      (∀ i, k < i → i ≤ j → flowBracketBalance tokens (k+1) i ≥ 0) := by
+  -- The opener's own depth is `≥ 0` (it is a position of the Dyck-floored window).
+  have h_d_ge : flowBracketBalance tokens lo k ≥ 0 := h_dyck k h_lo_k (by omega)
+  -- One-step recurrence for the running balance.
+  have step : ∀ i, lo ≤ i → i < tokens.size →
+      flowBracketBalance tokens lo (i+1) =
+        flowBracketBalance tokens lo i + flowBracketDelta tokens[i]!.val := by
+    intro i h_lo_i h_sz
+    rw [flowBracketBalance_compose tokens lo i (i+1) h_lo_i (by omega)]
+    have hlen : i < tokens.toList.length := by rw [Array.length_toList]; exact h_sz
+    rw [flowBracketBalance_single tokens i hlen]
+    have h1 : tokens.toList[i]'hlen = tokens[i] := Array.getElem_toList h_sz
+    have h2 : tokens[i] = tokens[i]! := (getElem!_pos tokens i h_sz).symm
+    rw [h1, h2]
+  -- Balance just after the opener is one ABOVE the opener's own depth.
+  have h_f_k1 : flowBracketBalance tokens lo (k+1) = flowBracketBalance tokens lo k + 1 := by
+    have hs := step k h_lo_k (by omega)
+    rw [h_k_open] at hs; omega
+  -- Scan forward from `start` (kept STRICTLY above the opener's depth) for the first RETURN to it.
+  -- The threaded invariant `∀ i ∈ (k, start], balance lo i ≥ balance lo k + 1` (the depth never drops
+  -- back to the opener's level strictly inside) is handed back for the whole interior `(k, j]`.
+  have find : ∀ (f start : Nat), start + f = hi → k < start →
+      flowBracketBalance tokens lo start ≥ flowBracketBalance tokens lo k + 1 →
+      (∀ i, k < i → i ≤ start →
+        flowBracketBalance tokens lo i ≥ flowBracketBalance tokens lo k + 1) →
+      ∃ j, k < j ∧ j < hi ∧
+        flowBracketDelta tokens[j]!.val = -1 ∧
+        flowBracketBalance tokens (k+1) j = 0 ∧
+        (∀ i, k < i → i ≤ j →
+          flowBracketBalance tokens lo i ≥ flowBracketBalance tokens lo k + 1) := by
+    intro f
+    induction f with
+    | zero =>
+      intro start h_sf h_ks h_bal _
+      have h_eq : start = hi := by omega
+      rw [h_eq, h_total] at h_bal; omega
+    | succ f ih =>
+      intro start h_sf h_ks h_bal hinv
+      have h_start_lt : start < hi := by omega
+      have h_start_sz : start < tokens.size := by omega
+      have hs := step start (by omega) h_start_sz
+      by_cases h0 : flowBracketBalance tokens lo (start+1) = flowBracketBalance tokens lo k
+      · -- `start` is the matching close; `j = start`, and `hinv` is the interior floor.
+        rw [h0] at hs
+        have h_delta_ge := flowBracketDelta_ge_neg_one tokens[start]!.val
+        have h_bs1 : flowBracketBalance tokens lo start = flowBracketBalance tokens lo k + 1 := by omega
+        have h_d : flowBracketDelta tokens[start]!.val = -1 := by omega
+        refine ⟨start, h_ks, h_start_lt, h_d, ?_, hinv⟩
+        have hcomp := flowBracketBalance_compose tokens lo (k+1) start (by omega) (by omega)
+        rw [h_bs1, h_f_k1] at hcomp; omega
+      · -- Still inside the bracket: recurse, extending the interior floor to `start+1`.
+        have h_next_ge1 :
+            flowBracketBalance tokens lo (start+1) ≥ flowBracketBalance tokens lo k + 1 := by
+          have h_delta_ge := flowBracketDelta_ge_neg_one tokens[start]!.val
+          omega
+        refine ih (start+1) (by omega) (by omega) h_next_ge1 ?_
+        intro i h_ki h_i_s1
+        rcases Nat.lt_or_ge i (start+1) with h | h
+        · exact hinv i h_ki (by omega)
+        · have : i = start + 1 := by omega
+          rw [this]; exact h_next_ge1
+  obtain ⟨j, hkj, hjhi, hjdelta, hinner, hfloor_abs⟩ :=
+    find (hi - (k+1)) (k+1) (by omega) (by omega) (by omega)
+      (by
+        intro i h_ki h_i
+        have hi_eq : i = k + 1 := by omega
+        have hb : flowBracketBalance tokens lo i = flowBracketBalance tokens lo k + 1 := hi_eq ▸ h_f_k1
+        omega)
+  -- Re-base the absolute interior floor `balance lo i ≥ balance lo k + 1` onto the opener
+  -- (`balance (k+1) i ≥ 0`), the depth-free form the child-bracket constructors consume.
+  refine ⟨j, hkj, hjhi, hjdelta, hinner, ?_⟩
+  intro i h_ki h_ij
+  have hcomp := flowBracketBalance_compose tokens lo (k+1) i (by omega) (by omega)
+  have hf := hfloor_abs i h_ki h_ij
+  rw [h_f_k1] at hcomp
+  omega
+
 /-- **Dyck origin shift (local Dyck of a depth-floor subrange).**  The local Dyck of a subrange
     `[s, hi)` whose start `s` is a *depth-floor* — the running balance from `lo` never drops below
     its value `d` at `s` — is exactly the global Dyck re-based at `s`.  By additivity
