@@ -6956,6 +6956,89 @@ theorem flowBodyWindow_child_bracket (tokens : Array (Positioned YamlToken)) (lo
     exact WellTyped_subrange tokens lo k (j + 1) hi h_lo_k (by omega) (by omega)
       (Nat.le_of_lt h_hi_sz) h_wt h_bal_kj1 h_dyck'
 
+/-- **The OPENER-INCLUSIVE child-bracket window, GIVEN its located close** (Phase J — the depth-AGNOSTIC
+    companion of `flowBodyWindow_child_bracket`, and the WINDOW member of the "given close" child-bracket
+    trio the (α) `enclosingLocate` assemble feeds uniformly).  `flowBodyWindow_child_bracket` LOCATES the
+    matching close `j` itself via `flowBracketBalance_matching_close`, and **that scan is the sole reason
+    it needs the depth-`0` discriminator `balance lo k = 0`** — the scan reads the matching close off the
+    `lo`-keyed running balance returning to depth `0`.  But the `enclosingLocate` assemble already HAS the
+    close located (R478 `seqClose_of_located_and_enclosing_within` hands back `hiS` with its interior
+    balance `balance (p+1) hiS = 0` and floor), and the two content siblings
+    (`flowBodyContentDeep_child_bracket`, R479 `flowBodyContent_child_bracket`) already take the close as
+    INPUT and are depth-agnostic.  This brick makes the WINDOW member match: it takes the close `j`, the
+    interior balance `h_inner`, the closer delta `h_jclose`, and the CHILD-ORIGIN floor `h_floor`
+    (`balance k i ≥ 1` on the strict interior, keyed on `k` — never an outer origin) and constructs
+    `FlowBodyWindow tokens k (j+1)` with **NO `balance lo k = 0`**.
+
+    **The lesson — the SCAN owns the depth debt** ([[ref-weak-family-member-projects-depth-free]],
+    sharpened).  R479 showed the PROJECTED content member is depth-free; this shows the directly-CONSTRUCTED
+    window member is too.  The depth-`0` premise was never a property of the window's CONTENT — it was a
+    precondition of the matching-close SCAN that located the boundary.  Remove the scan (take the close as
+    input) and the construction is depth-agnostic: every family member is depth-free once the close is an
+    input, and the family's whole depth obligation concentrates in the single LOCATOR
+    (`flowBracketBalance_matching_close`/R478).  The trio is now uniform: ONE depth-needing locator + three
+    depth-free "given close" constructors, all keyed on the child origin `k`.
+
+    Same re-basing as `flowBodyWindow_child_bracket` MINUS the scan: `balanced` is `(+1) + 0 + (-1) = 0`
+    (opener push, balanced interior `h_inner`, closer pop `h_jclose`); the `dyck` floor is `≥ 0` on
+    `[k, j+1]` — `0` at the two endpoints, `≥ 1` on the strict interior `(k, j]` DIRECTLY from the
+    child-origin floor `h_floor` (no re-base through `balance lo k`, the step the scan version needed);
+    `WellTyped` transports from the parent over `[k, j+1) ⊆ [lo, hi)` by `WellTyped_subrange`.  Like its
+    siblings it names no collection-specific deliverable type, so it serves BOTH axes.
+
+    Verified-but-unconsumed until the `enclosingLocate` assemble feeds it the located close (with the
+    child-origin floor recovered from R478's `(p+1)`-keyed floor by one composition through the opener):
+    composes only landed lemmas + `omega`, references no sorry site, frontier sorry count unchanged at 4;
+    axiom-clean. -/
+theorem flowBodyWindow_child_bracket_at (tokens : Array (Positioned YamlToken)) (lo k j hi : Nat)
+    (h_win : FlowBodyWindow tokens lo hi)
+    (h_lo_k : lo ≤ k) (h_k_j : k < j) (h_j_hi : j + 1 ≤ hi)
+    (h_k_open : flowBracketDelta tokens[k]!.val = 1)
+    (h_jclose : flowBracketDelta tokens[j]!.val = -1)
+    (h_inner : flowBracketBalance tokens (k + 1) j = 0)
+    (h_floor : ∀ i, k + 1 ≤ i → i ≤ j → flowBracketBalance tokens k i ≥ 1) :
+    FlowBodyWindow tokens k (j + 1) := by
+  obtain ⟨h_lo2, h_lo_hi, h_hi_sz2, h_hi_sz, h_bal, h_dyck, h_wt⟩ := h_win
+  -- A single-step balance helper bridging `tokens.toList[i]` to the panic index `tokens[i]!`.
+  have single : ∀ i, i < tokens.size →
+      flowBracketBalance tokens i (i + 1) = flowBracketDelta tokens[i]!.val := by
+    intro i h_sz
+    have hlen : i < tokens.toList.length := by rw [Array.length_toList]; exact h_sz
+    rw [flowBracketBalance_single tokens i hlen]
+    have h1 : tokens.toList[i]'hlen = tokens[i] := Array.getElem_toList h_sz
+    have h2 : tokens[i] = tokens[i]! := (getElem!_pos tokens i h_sz).symm
+    rw [h1, h2]
+  have h_k_sz : k < tokens.size := by omega
+  have h_j_sz : j < tokens.size := by omega
+  -- balance `k j = (+1 at the opener) + (0 interior) = 1`.
+  have h_k_j_bal : flowBracketBalance tokens k j = 1 := by
+    have hc := flowBracketBalance_compose tokens k (k + 1) j (Nat.le_succ k) (by omega)
+    rw [single k h_k_sz, h_k_open, h_inner] at hc; omega
+  -- balance `k (j+1) = 1 + (-1 at the closer) = 0` — the opener-inclusive window is balanced.
+  have h_bal_kj1 : flowBracketBalance tokens k (j + 1) = 0 := by
+    have hc := flowBracketBalance_compose tokens k j (j + 1) (Nat.le_of_lt h_k_j) (Nat.le_succ j)
+    rw [h_k_j_bal, single j h_j_sz, h_jclose] at hc; omega
+  -- dyck floor `≥ 0` over `[k, j+1]`: `0` at the endpoints, `≥ 1` on the strict interior `(k, j]`.
+  have h_dyck' : ∀ i, k ≤ i → i ≤ j + 1 → flowBracketBalance tokens k i ≥ 0 := by
+    intro i hi1 hi2
+    rcases Nat.lt_or_ge k i with hki | hki
+    · rcases Nat.lt_or_ge i (j + 1) with hij | hij
+      · -- `k < i ≤ j`: the child-origin floor gives `≥ 1` directly (no re-base through `balance lo k`).
+        have hf := h_floor i (by omega) (by omega)
+        omega
+      · -- `i = j + 1`: the window is balanced.
+        have hij' : i = j + 1 := by omega
+        subst hij'; omega
+    · -- `i = k`: the empty prefix is balanced.
+      have hik : i = k := by omega
+      rw [hik]
+      have : flowBracketBalance tokens k k = 0 := by simp [flowBracketBalance]
+      omega
+  refine ⟨by omega, by omega, by omega, by omega, h_bal_kj1, h_dyck', ?_⟩
+  -- WellTyped on `[k, j+1) ⊆ [lo, hi)` via the balanced-subrange transporter.
+  exact WellTyped_subrange tokens lo k (j + 1) hi h_lo_k (by omega) (by omega)
+    (Nat.le_of_lt h_hi_sz) h_wt h_bal_kj1 h_dyck'
+
 /-- **The flow body-window CONTENT guard** (Phase J — the content-half companion of `FlowBodyWindow`,
     the substrate the head-shape grammar dispatches on).  `FlowBodyWindow` carries only the *bracket*
     facts (balance / dyck / WellTyped), and those are provably INSUFFICIENT to read the head shape: a
