@@ -620,6 +620,62 @@ theorem seqChild_safeBodyUnit (tokens : Array (Positioned YamlToken)) (p hi j : 
   ((recseqentry_seqbracket_oracle tokens p hi h_window h_deep h_content h_open Q h_q_succ h_ih)
     j h_pj h_jhi h_jclose h_inner h_floor).1.toSafeBodyUnit
 
+/-- **The seq child `SafeBodyUnit`, `FlowBodyContentDeepSeq`-keyed** — `(i'-b-B2c-(d)-seq-child)`, R494:
+    the `_seq`-family twin of `seqChild_safeBodyUnit` (above), the next consumer-chain link of the
+    `_seq` re-thread ([[ref-rethread-stays-in-weaker-twin-family]]) below the width-enc LIFT
+    `seqWidthEnc_of_recIH_seq` (R493).  Once the producer side delivers `h_widthEnc` keyed on the
+    root-TRUE `FlowBodyContentDeepSeq` ([[ref-root-seed-needs-root-true-guard]]), the consumer
+    `seqLocalCarrier_of_widthEnc` extracts the weaker `h_deep : FlowBodyContentDeepSeq tokens p hiE` and
+    must feed it down `seqDescent_provider_of_located → seqChild_safeBodyUnit → recseqentry_seqbracket_oracle`.
+    The strong chain is strong-keyed at the bottom (`seqChild_safeBodyUnit` transports `h_deep` into
+    `recseqentry_seqbracket_oracle`, whose `_seq` twin R415 already landed), so every link needs a `_seq`
+    twin; this is the bottom-most missing one.
+
+    **A transporting LIFT, but its re-key cost is #(guard-keyed child names) PLUS the child twin's
+    DROPPED-DERIVATION premise** — the sharpening of [[ref-lift-rekeys-by-guard-keyed-child-names]]
+    (R493: `cost = #guard-keyed child names`).  `seqChild_safeBodyUnit`'s body reads NO deep field — it is
+    one call to `recseqentry_seqbracket_oracle` then `.1.toSafeBodyUnit`, a pure transport
+    ([[ref-transporting-lemma-twin-zero-body-edits]]).  So the body cost is the ONE guard-keyed child name
+    swapped to its twin (`recseqentry_seqbracket_oracle ↦ recseqentry_seqbracket_oracle_seq`).  But the
+    LEAF twin has a STRICTLY LARGER signature: it takes an extra `h_ne : tokens[lo+1]! ≠ .flowSequenceEnd`
+    because the strong `FlowBodyContentDeep.openerContentStart` (firing at EVERY delta-`1` opener)
+    SELF-DERIVED interior non-emptiness, whereas the weaker `FlowBodyContentDeepSeq.openerContentStart` is
+    GUARDED by that very non-emptiness ([[ref-window-absolute-gate-subset-restriction]]) so it cannot.
+    That dropped self-derivation becomes a THREADED premise the lift must FORWARD — `h_ne` here is a new
+    hypothesis of this twin, passed straight to the oracle twin.
+
+    **The leaf cannot SOURCE `h_ne`; it climbs.**  The empty seq `[]` (`j = p+1`,
+    `tokens[p+1]! = .flowSequenceEnd`) satisfies EVERY hypothesis of `seqChild_safeBodyUnit` — `h_pj`
+    (`p < p+1`), `h_jclose`, `h_inner` (`balance (p+1) (p+1) = 0`), `h_floor`
+    (`balance p (p+1) = 1 ≥ 1`).  So no local fact refutes it; `h_ne` is genuinely un-derivable at the leaf
+    and must be supplied by an ancestor that knows the body is a GENUINE (gated, non-empty) seq — the
+    [[ref-prefix-gate-reconstructed-from-boundary]] / [[ref-restored-arm-already-in-classify]] pattern:
+    the dropped-derivation premise propagates up the lift chain until sourced.
+
+    cost(re-key a LIFT) = #(guard-keyed child names) + #(child-twin premises the weaker guard FORCED
+                          that this lift must forward).            [R494: 1 keyed name + 1 forwarded `h_ne`]
+
+    Verified-but-unconsumed until `seqDescent_provider_of_located_seq` (next) consumes it: composes only
+    landed lemmas (the R415 oracle twin), references no sorry site, frontier sorry count unchanged at 4. -/
+theorem seqChild_safeBodyUnit_seq (tokens : Array (Positioned YamlToken)) (p hi j : Nat)
+    (h_window : FlowBodyWindow tokens p hi)
+    (h_deep : FlowBodyContentDeepSeq tokens p hi)
+    (h_content : FlowBodyContent tokens p hi)
+    (h_open : tokens[p]!.val = .flowSequenceStart)
+    (h_ne : tokens[p + 1]!.val ≠ .flowSequenceEnd)
+    (Q : Nat → Prop) (h_q_succ : Q (p + 1))
+    (h_ih : ∀ lo' hi', hi' - lo' < hi - p → p ≤ lo' → hi' ≤ hi →
+        FlowBodyWindow tokens lo' hi' → FlowBodyContentDeepSeq tokens lo' hi' → Q lo' →
+        tokens[hi']!.val = .flowSequenceEnd →
+        RecSeqBody ((tokens.toList.take hi').drop lo'))
+    (h_pj : p < j) (h_jhi : j < hi) (h_jclose : tokens[j]!.val = .flowSequenceEnd)
+    (h_inner : flowBracketBalance tokens (p + 1) j = 0)
+    (h_floor : ∀ i, p < i → i ≤ j → flowBracketBalance tokens p i ≥ 1) :
+    SafeBodyUnit ContentStartTok ((tokens.toList.take j).drop (p + 1)) :=
+  ((recseqentry_seqbracket_oracle_seq tokens p hi h_window h_deep h_content h_open h_ne
+      Q h_q_succ h_ih)
+    j h_pj h_jhi h_jclose h_inner h_floor).1.toSafeBodyUnit
+
 /-- **The DESCEND edge for `FlowBodyContent`** — `(i'-b-B2b-desc-merge)`, the load-bearing brick of the
     carrier-elimination merge and the descend twin of `flowBodyContent_advance` (NonemptyStructure).
     `seqWindow_flowBodyContent`'s doc records that there is "deliberately no `flowBodyContent_descend`":
