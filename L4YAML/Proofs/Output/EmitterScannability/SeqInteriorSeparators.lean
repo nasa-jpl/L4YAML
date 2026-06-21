@@ -3291,6 +3291,73 @@ theorem seqEnclosingLocate_of_seqOpener_nested
   · exact flowBodyContent_child_bracket tokens lo p hiS hi h_deep h_lo_p h_hiS1_hi h_delta
       h_hiSclose h_childfloor
 
+/-- **The `enclosingLocate` boundary WIRED into the width-enc lift** —
+    `(i'-b-enclosingLocate-wired-seq)`, R475 `seqWidthEnc_of_enclosingLocate_and_recIH` with its
+    abstracted `enclosingLocate` hypothesis DISCHARGED by the now-landed depth-general assemble
+    `seqEnclosingLocate_of_seqOpener_nested` (R485).  This is the (α) locate boundary's final seq
+    closure: from just the body-window facts (`FlowBodyWindow`/`FlowBodyContentDeep tokens lo hi`) and
+    the outer body-width `recIH`, it produces the full width-enc conclusion — no abstracted locator
+    hypothesis, no depth-`0` fact, no typed-opener discriminator left to supply.
+
+    **Two discharges, both free.**
+    1. **The depth obligation** — R485's `_nested` assemble already shed `h_p_depth`
+       ([[ref-depth-hyp-cost-is-its-equality-reads]]); descending the seq recursion lands the enclosing
+       opener `p` at depth `d := balance lo p ≥ 0`, and the assemble re-derived every depth-`0` read
+       from the enclosing Dyck floor.  So there is NO depth-`0` fact for this wiring to provide.
+    2. **The typed-opener discriminator** — R485 takes `h_open : tokens[p]!.val = .flowSequenceStart`,
+       but R475's `enclosingLocate` slot only offers the weaker delta
+       `flowBracketDelta tokens[p]!.val = 1`.  The gap is closed FOR FREE by
+       `seqOpenerType_of_located_and_gate` ([[ref-prefix-gate-reconstructed-from-boundary]]): the gate's
+       `btFold`-top marker `hgate.2.1` (`SeqTypedInterior`'s middle conjunct,
+       `(btFold (some []) (take a)).bind head? = some true`) plus the four locator facts force the
+       located opener to a `[` — a `{` would push `false` and the interior floor cannot pop it back,
+       contradicting the `= some true` head.  The delta `= 1` alone can't decide `[` vs `{`; the gate's
+       enclosing-type mark is what disambiguates.
+
+    So the residual the assemble owed (`h_open`) is RECONSTRUCTED in place from the gate, not threaded
+    ([[ref-reconstruct-in-place-over-relocate]]).  **This CONSUMES R485** (the verified-but-unconsumed
+    `_nested` assemble retypes into a consumed one — [[ref-reduction-by-import]], the retype is the
+    progress) and applies R475 to it, eliminating the `enclosingLocate` abstraction.  Per
+    [[ref-fold-consumer-chain-to-producer-contract]] the result reads off the (α) boundary's whole spec
+    as one signature whose ONLY inputs are the producer's contract (the body-window facts + the
+    width-recursion IH).
+
+    Verified-but-unconsumed until the `desc`/`seqWindowRecSeqBody` driver consumes it: composes only
+    landed lemmas (R475 + R485 + `seqOpenerType_of_located_and_gate`), references no sorry site, frontier
+    sorry count unchanged at 4; axiom-clean. -/
+theorem seqWidthEnc_of_recIH
+    (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_win : FlowBodyWindow tokens lo hi)
+    (h_deep : FlowBodyContentDeep tokens lo hi)
+    (recIH : ∀ lo' hi', hi' - lo' < hi - lo → lo ≤ lo' → hi' ≤ hi →
+        FlowBodyWindow tokens lo' hi' → FlowBodyContentDeep tokens lo' hi' →
+        SeqEnclosed tokens lo' → tokens[hi']!.val = .flowSequenceEnd →
+        RecSeqBody ((tokens.toList.take hi').drop lo')) :
+    ∀ a b p, lo ≤ a → a ≤ b → b ≤ hi →
+        flowBracketBalance tokens lo a ≠ 0 →
+        SeqTypedInterior tokens a b →
+        p < a → flowBracketDelta tokens[p]!.val = 1 →
+        flowBracketBalance tokens (p + 1) a = 0 →
+        (∀ i, p + 1 ≤ i → i ≤ a → flowBracketBalance tokens (p + 1) i ≥ 0) →
+        ∃ hiE, b ≤ hiE ∧ hiE ≤ tokens.size ∧
+          FlowBodyWindow tokens p hiE ∧ FlowBodyContentDeep tokens p hiE ∧
+          FlowBodyContent tokens p hiE ∧
+          (∀ lo' hi', hi' - lo' < hiE - p → p ≤ lo' → hi' ≤ hiE →
+            FlowBodyWindow tokens lo' hi' → FlowBodyContentDeep tokens lo' hi' →
+            SeqEnclosed tokens lo' → tokens[hi']!.val = .flowSequenceEnd →
+            RecSeqBody ((tokens.toList.take hi').drop lo')) := by
+  have h_hi_lt := h_win.hi_lt
+  refine seqWidthEnc_of_enclosingLocate_and_recIH tokens lo hi ?_ recIH
+  intro a b p ha hab hb hbal hgate hpa h_delta h_body_bal h_loc_floor
+  -- the typed opener `[` is RECONSTRUCTED from the gate's mark (`hgate.2.1`) + the four locator facts;
+  -- the weaker delta `= 1` alone cannot decide `[` vs `{`.
+  have h_a_sz : a ≤ tokens.size := by omega
+  have h_open : tokens[p]!.val = .flowSequenceStart :=
+    seqOpenerType_of_located_and_gate tokens a p hpa h_a_sz h_delta h_body_bal h_loc_floor hgate.2.1
+  -- R485's depth-general assemble: no `h_p_depth` to supply.
+  exact seqEnclosingLocate_of_seqOpener_nested tokens lo hi h_win h_deep a b p
+    ha hab hb hbal hgate hpa h_open h_body_bal h_loc_floor
+
 /-- **The per-window carrier→content consumer joint** — `(i'-b-B3-content-joint)`, the joint between
     the threaded separator carrier and the `RecSeqBody` recursion's per-window dispatch.  This is the
     de-risk finding for B3 (the `windowWidth_strongRecOn` `RecSeqBody` producer) made into a proof
