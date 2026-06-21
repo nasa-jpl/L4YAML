@@ -2997,6 +2997,111 @@ theorem seqClose_of_located_and_enclosing_within
       h_open_bal h_floor
   exact ⟨j, h_a_j, h_b_j, h_j_hi, by omega, h_inner, h_jclose, h_floor⟩
 
+/-- **The (α) `enclosingLocate` assemble — seq child, given the two discriminators** —
+    `(i'-b-enclosingLocate-assemble-seq)`.  Assembles the FULL `enclosingLocate` residual that
+    `seqWidthEnc_of_enclosingLocate_and_recIH` (R475) consumes: from a located enclosing seq opener `p`
+    of the typed interior `[a, b)` inside the body window `[lo, hi)`, it delivers
+    `lo ≤ p ∧ ∃ hiE, b ≤ hiE ∧ hiE ≤ size ∧ hiE ≤ hi ∧ FlowBodyWindow/Deep/Content tokens p hiE`,
+    feeding ONE located close UNIFORMLY to all three "given close" child-bracket constructors.
+
+    **The assembly (five moves).**
+    1. `lo ≤ p` from R476 `seqLocatedOpener_within_body` (the opener cannot precede the window start —
+       a balance-additivity contradiction against the locator floor at `lo`).
+    2. The matching close `hiS` from R478 `seqClose_of_located_and_enclosing_within`, which re-exports the
+       interior balance `balance (p+1) hiS = 0`, the typed close `tokens[hiS]! = .flowSequenceEnd`, and
+       the `(p+1)`-keyed interior floor `≥ 0` (R478 owns the family's sole depth obligation, `h_p_depth`).
+    3. The CHILD-keyed floor `balance p i ≥ 1` on `[p+1, hiS]` by ONE `flowBracketBalance_compose`
+       through the opener (`balance p (p+1) = 1`, so `balance p i = 1 + balance (p+1) i ≥ 1`).
+    4. `hiS < hi` (so `hiE := hiS + 1 ≤ hi`): the located close sits at depth `1` relative to `lo`
+       (`balance lo hiS = balance lo p + balance p (p+1) + balance (p+1) hiS = 0 + 1 + 0 = 1`), yet the
+       window is balanced (`balance lo hi = 0`), so `hiS ≠ hi`.
+    5. The three constructors at `k := p`, `j := hiS`, `hiE := hiS + 1` —
+       `flowBodyWindow_child_bracket_at` (R480), `flowBodyContentDeep_child_bracket`,
+       `flowBodyContent_child_bracket` (R479) — all DEPTH-FREE, fed the one located boundary
+       ([[ref-scan-owns-the-depth-debt]]).  The trio's whole depth caveat is paid ONCE at R478's locator.
+
+    **The two discriminators ARE the consume-side residual.**  `enclosingLocate`'s premise gives only
+    `flowBracketDelta tokens[p]!.val = 1` (a generic opener) and carries no depth.  The SEQ assemble needs
+    both strengthenings — `h_open : tokens[p]!.val = .flowSequenceStart` (R478 and the seq close require a
+    `[`, not a `{`; the `{` child is the separate map-side producer) and
+    `h_p_depth : flowBracketBalance tokens lo p = 0` (the family's sole depth sink).  In the consume
+    context the located `p` is a top-level `[` at depth `0`, so both hold; here they are explicit
+    hypotheses, isolating EXACTLY what the `enclosingLocate` wiring must still supply (the residual after
+    this brick is purely "discharge the seq-opener type + depth-0 at the located `p`", no more structure).
+
+    Verified-but-unconsumed until `seqWidthEnc_of_enclosingLocate_and_recIH` is wired with the depth +
+    seq-opener discriminators: composes only landed lemmas (R476/R478 + the child-bracket trio) +
+    `flowBracketBalance_compose` + `omega`, references no sorry site, frontier sorry count unchanged at 4;
+    axiom-clean. -/
+theorem seqEnclosingLocate_of_seqOpener_at_depth
+    (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_win : FlowBodyWindow tokens lo hi)
+    (h_deep : FlowBodyContentDeep tokens lo hi)
+    (a b p : Nat)
+    (ha : lo ≤ a) (hab : a ≤ b) (hb : b ≤ hi)
+    (hbal : flowBracketBalance tokens lo a ≠ 0)
+    (hgate : SeqTypedInterior tokens a b)
+    (hpa : p < a)
+    (h_open : tokens[p]!.val = .flowSequenceStart)
+    (h_body_bal : flowBracketBalance tokens (p + 1) a = 0)
+    (h_loc_floor : ∀ i, p + 1 ≤ i → i ≤ a → flowBracketBalance tokens (p + 1) i ≥ 0)
+    (h_p_depth : flowBracketBalance tokens lo p = 0) :
+    lo ≤ p ∧ ∃ hiE, b ≤ hiE ∧ hiE ≤ tokens.size ∧ hiE ≤ hi ∧
+      FlowBodyWindow tokens p hiE ∧ FlowBodyContentDeep tokens p hiE ∧
+      FlowBodyContent tokens p hiE := by
+  have h_dyck := h_win.dyck
+  have h_bal := h_win.balanced
+  have h_wt := h_win.wellTyped
+  have h_hi_lt := h_win.hi_lt
+  obtain ⟨_h_gbal, _h_gtop, h_gate_floor⟩ := hgate
+  have h_a_hi : a ≤ hi := by omega
+  have h_hi_sz : hi ≤ tokens.size := Nat.le_of_lt h_hi_lt
+  -- (1) `lo ≤ p` — the opener cannot precede the window start.
+  have h_lo_p : lo ≤ p :=
+    seqLocatedOpener_within_body tokens lo hi a p ha h_a_hi h_dyck hbal hpa h_body_bal h_loc_floor
+  -- (2) locate the matching close `hiS`, re-exporting the interior balance / typed close / floor.
+  obtain ⟨hiS, h_a_hiS, h_b_hiS, h_hiS_hi, h_hiS_sz, h_inner, h_hiSclose, h_floor⟩ :=
+    seqClose_of_located_and_enclosing_within tokens a b lo p hi h_lo_p hpa hab hb h_hi_sz
+      h_p_depth h_bal h_dyck h_open h_body_bal h_loc_floor h_gate_floor h_wt
+  -- opener delta + single-step balance `balance p (p+1) = 1`.
+  have h_p_sz : p < tokens.size := by omega
+  have h_delta : flowBracketDelta tokens[p]!.val = 1 := by rw [h_open]; rfl
+  have h_open_bal : flowBracketBalance tokens p (p + 1) = 1 := by
+    have hlen : p < tokens.toList.length := by rw [Array.length_toList]; exact h_p_sz
+    have h1 : tokens.toList[p]'hlen = tokens[p] := Array.getElem_toList h_p_sz
+    have h2 : tokens[p] = tokens[p]! := (getElem!_pos tokens p h_p_sz).symm
+    rw [flowBracketBalance_single tokens p hlen, h1, h2, h_delta]
+  -- (3) child-keyed floor `balance p i ≥ 1` via one compose through the opener.
+  have h_childfloor : ∀ i, p + 1 ≤ i → i ≤ hiS → flowBracketBalance tokens p i ≥ 1 := by
+    intro i hi1 hi2
+    have hc := flowBracketBalance_compose tokens p (p + 1) i (by omega) hi1
+    have hf := h_floor i hi1 hi2
+    rw [h_open_bal] at hc
+    omega
+  -- closer delta from the typed close.
+  have h_jdelta : flowBracketDelta tokens[hiS]!.val = -1 := by rw [h_hiSclose]; rfl
+  -- (4) `hiS < hi` from `balance lo hiS = 1 ≠ 0 = balance lo hi`.
+  have h_lo_hiS_bal : flowBracketBalance tokens lo hiS = 1 := by
+    have hc1 := flowBracketBalance_compose tokens lo p hiS h_lo_p (by omega)
+    have hc2 := flowBracketBalance_compose tokens p (p + 1) hiS (by omega) (by omega)
+    rw [h_p_depth] at hc1
+    rw [h_open_bal, h_inner] at hc2
+    omega
+  have h_hiS_lt_hi : hiS < hi := by
+    rcases Nat.lt_or_ge hiS hi with h | h
+    · exact h
+    · have heq : hiS = hi := by omega
+      rw [heq] at h_lo_hiS_bal
+      omega
+  have h_hiS1_hi : hiS + 1 ≤ hi := h_hiS_lt_hi
+  -- (5) the three depth-free constructors at `k := p`, `j := hiS`, `hiE := hiS + 1`.
+  refine ⟨h_lo_p, hiS + 1, by omega, by omega, by omega, ?_, ?_, ?_⟩
+  · exact flowBodyWindow_child_bracket_at tokens lo p hiS hi h_win h_lo_p
+      (by omega) h_hiS1_hi h_delta h_jdelta h_inner h_childfloor
+  · exact flowBodyContentDeep_child_bracket tokens lo p hiS hi h_deep h_lo_p h_delta h_hiS1_hi
+  · exact flowBodyContent_child_bracket tokens lo p hiS hi h_deep h_lo_p h_hiS1_hi h_delta
+      h_hiSclose h_childfloor
+
 /-- **The per-window carrier→content consumer joint** — `(i'-b-B3-content-joint)`, the joint between
     the threaded separator carrier and the `RecSeqBody` recursion's per-window dispatch.  This is the
     de-risk finding for B3 (the `windowWidth_strongRecOn` `RecSeqBody` producer) made into a proof
