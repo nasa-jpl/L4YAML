@@ -3536,6 +3536,77 @@ theorem seqWidthEnc_of_recIH
   exact seqEnclosingLocate_of_seqOpener_nested tokens lo hi h_win h_deep a b p
     ha hab hb hbal hgate hpa h_open h_body_bal h_loc_floor
 
+/-- **The `_seq` twin of the wired width-enc lift — a TRANSPORT+CONSTRUCT link re-keys via two NAMED
+    swaps to its already-landed children.** `(i'-b-B2c-(d)-seq-carrier-of-recIH-seq)`, R493: the
+    `FlowBodyContentDeepSeq`-keyed twin of R486 `seqWidthEnc_of_recIH`, re-keyed off the root-FALSE strong
+    content guard onto its root-TRUE weaker twin ([[ref-root-seed-needs-root-true-guard]] R488,
+    [[ref-rethread-stays-in-weaker-twin-family]] R489).  This is the next link of the `_seq` re-thread
+    after the per-step ASSEMBLE `seqWidthEnc_of_enclosingLocate_and_recIH_seq` (R492): from just the
+    body-window facts (`FlowBodyWindow` / `FlowBodyContentDeepSeq tokens lo hi`) and the outer body-width
+    `recIH`, it produces the full `_seq`-keyed width-enc conclusion — no abstracted locator hypothesis,
+    no depth-`0` fact, no typed-opener discriminator left to supply.
+
+    **The find — R486 is a TRANSPORT+CONSTRUCT link, so its twin is exactly TWO named swaps.**  Classify
+    R486's body by what each of its three composition sites does with the guard
+    ([[ref-transporting-lemma-twin-zero-body-edits]] R492):
+    1. `refine seqWidthEnc_of_enclosingLocate_and_recIH tokens lo hi ?_ recIH` — the per-step assemble
+       lift.  It TRANSPORTS the guard (threads the strong `recIH` straight in, refines the deliverable),
+       so it never reads the guard — but its NAME is guard-keyed, so the twin swaps the call to the
+       transporting twin `seqWidthEnc_of_enclosingLocate_and_recIH_seq` (R492, now in place).
+    2. `seqOpenerType_of_located_and_gate …` — the typed-opener reconstruction
+       ([[ref-prefix-gate-reconstructed-from-boundary]]).  Guard-NEUTRAL (it names no content guard at
+       all), so it is unchanged, character-for-character from R486.
+    3. `exact seqEnclosingLocate_of_seqOpener_nested tokens lo hi h_win h_deep …` — the leaf locate.  It
+       CONSTRUCTS the `_seq` deliverable from the `_seq` `h_deep`, so the twin swaps the call to the
+       constructing leaf twin `seqEnclosingLocate_of_seqOpener_nested_seq` (R491).
+
+    So the body cost is exactly TWO name swaps — one to the transporting twin (R492), one to the
+    constructing twin (R491) — both pointing at children landed in prior turns; the guard-neutral opener
+    reconstruction is untouched.  The signature swaps the guard type at its four positions (`h_deep`, the
+    `recIH` premise, the conclusion deliverable, the conclusion IH premise).  This is the chain's
+    front-loading made concrete ([[ref-transporting-lemma-twin-zero-body-edits]]): every per-turn child
+    twin lands first, then a lift like this one is a mechanical re-point to those twins — no proof content
+    re-derived, the locate/assemble/reconstruct logic all consumed from the already-verified siblings
+    ([[ref-reduction-by-import]], the retype is the progress; [[ref-fold-consumer-chain-to-producer-contract]],
+    the result reads off the (α) boundary's whole seq spec as one signature).
+
+    Verified-but-unconsumed until the seq carrier consumer (`seqLocalCarrier_of_widthEnc`'s twin) feeds
+    it: composes only landed lemmas (R492 + R491 + the guard-neutral `seqOpenerType_of_located_and_gate`),
+    references no sorry site, frontier sorry count unchanged at 4; axioms identical to R486 (the two swapped
+    children share R485/R484's footprint). -/
+theorem seqWidthEnc_of_recIH_seq
+    (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_win : FlowBodyWindow tokens lo hi)
+    (h_deep : FlowBodyContentDeepSeq tokens lo hi)
+    (recIH : ∀ lo' hi', hi' - lo' < hi - lo → lo ≤ lo' → hi' ≤ hi →
+        FlowBodyWindow tokens lo' hi' → FlowBodyContentDeepSeq tokens lo' hi' →
+        SeqEnclosed tokens lo' → tokens[hi']!.val = .flowSequenceEnd →
+        RecSeqBody ((tokens.toList.take hi').drop lo')) :
+    ∀ a b p, lo ≤ a → a ≤ b → b ≤ hi →
+        flowBracketBalance tokens lo a ≠ 0 →
+        SeqTypedInterior tokens a b →
+        p < a → flowBracketDelta tokens[p]!.val = 1 →
+        flowBracketBalance tokens (p + 1) a = 0 →
+        (∀ i, p + 1 ≤ i → i ≤ a → flowBracketBalance tokens (p + 1) i ≥ 0) →
+        ∃ hiE, b ≤ hiE ∧ hiE ≤ tokens.size ∧
+          FlowBodyWindow tokens p hiE ∧ FlowBodyContentDeepSeq tokens p hiE ∧
+          FlowBodyContent tokens p hiE ∧
+          (∀ lo' hi', hi' - lo' < hiE - p → p ≤ lo' → hi' ≤ hiE →
+            FlowBodyWindow tokens lo' hi' → FlowBodyContentDeepSeq tokens lo' hi' →
+            SeqEnclosed tokens lo' → tokens[hi']!.val = .flowSequenceEnd →
+            RecSeqBody ((tokens.toList.take hi').drop lo')) := by
+  have h_hi_lt := h_win.hi_lt
+  refine seqWidthEnc_of_enclosingLocate_and_recIH_seq tokens lo hi ?_ recIH
+  intro a b p ha hab hb hbal hgate hpa h_delta h_body_bal h_loc_floor
+  -- the typed opener `[` is RECONSTRUCTED from the gate's mark (`hgate.2.1`) + the four locator facts;
+  -- the weaker delta `= 1` alone cannot decide `[` vs `{`.  Guard-NEUTRAL: unchanged from R486.
+  have h_a_sz : a ≤ tokens.size := by omega
+  have h_open : tokens[p]!.val = .flowSequenceStart :=
+    seqOpenerType_of_located_and_gate tokens a p hpa h_a_sz h_delta h_body_bal h_loc_floor hgate.2.1
+  -- R491's `_seq` leaf assemble: the constructing swap (builds the `_seq` deliverable from `_seq` `h_deep`).
+  exact seqEnclosingLocate_of_seqOpener_nested_seq tokens lo hi h_win h_deep a b p
+    ha hab hb hbal hgate hpa h_open h_body_bal h_loc_floor
+
 /-- **The seq local CARRIER from the body-width `recIH`** — `(i'-b-B2c-(d)-seq-carrier-of-recIH)`,
     R487: the carrier ↔ `SafeBodyUnit` half of the width co-construction, now reduced to its THREE
     genuine inputs.  Given one body window `[lo, hi)`'s own facts (`FlowBodyWindow` /
