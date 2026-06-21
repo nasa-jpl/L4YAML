@@ -3291,6 +3291,114 @@ theorem seqEnclosingLocate_of_seqOpener_nested
   · exact flowBodyContent_child_bracket tokens lo p hiS hi h_deep h_lo_p h_hiS1_hi h_delta
       h_hiSclose h_childfloor
 
+/-- **`_seq` re-thread of the `enclosingLocate` assemble** —
+    `(i'-b-enclosingLocate-assemble-seq-nested-rethread)`, the additive-parallel twin of
+    `seqEnclosingLocate_of_seqOpener_nested` (R485) keyed on the root-TRUE weaker guard
+    `FlowBodyContentDeepSeq` instead of `FlowBodyContentDeep`.  This is the assemble the `_seq` carrier
+    chain actually consumes: the seq recursion is SEEDED at the root window, where `FlowBodyContentDeep`
+    is provably FALSE (`flowBodyContentDeep_root_seed_false`, R488) but the re-scoped
+    `FlowBodyContentDeepSeq` is TRUE ([[ref-root-seed-needs-root-true-guard]]) — so the whole
+    `enclosingLocate` chain must be re-threaded onto the weaker twin family
+    ([[ref-rethread-stays-in-weaker-twin-family]], R489), and a RESTRICTION producer cannot upgrade the
+    guard back, so every child producer keyed on the strong guard needs its `_seq` sibling.
+
+    **The cost was exactly the two `h_deep`-reading constructor sites, countable by grep before editing.**
+    `h_deep` funnels to precisely the two child-bracket constructors at the assemble's tail (sites 1 + 2);
+    EVERYTHING ELSE — the `FlowBodyWindow` projections, the located opener `p`, the matching-close locator,
+    the child-keyed floor, the `hiS < hi` re-derivation, site 0's `flowBodyWindow_child_bracket_at`
+    (guard-NEUTRAL) — is byte-identical to R485 (none of it reads the content guard).  The two edits:
+
+    1. **Site 1** — swap `flowBodyContentDeep_child_bracket` ↦ `flowBodyContentDeepSeq_child_bracket`
+       (R489).  The `_seq` deep child producer takes the LOCATED TYPED opener
+       `h_open : tokens[p]!.val = .flowSequenceStart` (which R485 already establishes and consumes for the
+       close locator) in place of the weaker delta `flowBracketDelta tokens[p]!.val = 1` — strictly more
+       information, freely in scope ([[ref-additive-parallel-type-over-shared-edit]]).  Produces
+       `FlowBodyContentDeepSeq tokens p (hiS+1)`, the re-scoped guard at the child.
+    2. **Site 2** — swap `flowBodyContent_child_bracket` ↦ `flowBodyContent_child_bracket_seq` (R490),
+       which DROPS the close argument `h_hiSclose` the strong site-2 passed: the re-scope's unified residual
+       routes through the child-bracket floor `h_childfloor` (whose range reaches the close `hiS`), so the
+       boundary close-marker is SUBSUMED ([[ref-unified-residual-routes-through-one-invariant]]).  The
+       typed `h_open` again replaces the delta.  Produces the SAME depth-`0` `FlowBodyContent tokens p (hiS+1)`.
+
+    So the seq twin's signature swaps `FlowBodyContentDeep ↦ FlowBodyContentDeepSeq` at the `h_deep`
+    hypothesis AND the conclusion's middle conjunct; the body changes exactly two `exact` lines.  **This
+    CONSUMES R489 + R490** (both verified-but-unconsumed `_seq` child twins retype into consumed ones —
+    [[ref-reduction-by-import]], the retype is the progress) and re-uses R485's whole locate/floor skeleton
+    unchanged ([[ref-root-seed-recursive-producer-swap]]: the slice/window framing is guard-agnostic, the
+    body producer is swapped in).
+
+    Verified-but-unconsumed until `seqWidthEnc_of_recIH_seq` (the R486-twin) wires it into the
+    family-NEUTRAL R475 `seqWidthEnc_of_enclosingLocate_and_recIH` to close the seq root carrier: composes
+    only landed lemmas (R485's skeleton + R489 + R490 + the neutral site 0) + `omega`, references no sorry
+    site, frontier sorry count unchanged at 4; axiom-clean. -/
+theorem seqEnclosingLocate_of_seqOpener_nested_seq
+    (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_win : FlowBodyWindow tokens lo hi)
+    (h_deep : FlowBodyContentDeepSeq tokens lo hi)
+    (a b p : Nat)
+    (ha : lo ≤ a) (hab : a ≤ b) (hb : b ≤ hi)
+    (hbal : flowBracketBalance tokens lo a ≠ 0)
+    (hgate : SeqTypedInterior tokens a b)
+    (hpa : p < a)
+    (h_open : tokens[p]!.val = .flowSequenceStart)
+    (h_body_bal : flowBracketBalance tokens (p + 1) a = 0)
+    (h_loc_floor : ∀ i, p + 1 ≤ i → i ≤ a → flowBracketBalance tokens (p + 1) i ≥ 0) :
+    lo ≤ p ∧ ∃ hiE, b ≤ hiE ∧ hiE ≤ tokens.size ∧ hiE ≤ hi ∧
+      FlowBodyWindow tokens p hiE ∧ FlowBodyContentDeepSeq tokens p hiE ∧
+      FlowBodyContent tokens p hiE := by
+  have h_dyck := h_win.dyck
+  have h_bal := h_win.balanced
+  have h_wt := h_win.wellTyped
+  have h_hi_lt := h_win.hi_lt
+  obtain ⟨_h_gbal, _h_gtop, h_gate_floor⟩ := hgate
+  have h_a_hi : a ≤ hi := by omega
+  have h_hi_sz : hi ≤ tokens.size := Nat.le_of_lt h_hi_lt
+  -- (1) `lo ≤ p` — the opener cannot precede the window start (FLOOR read, depth-free).
+  have h_lo_p : lo ≤ p :=
+    seqLocatedOpener_within_body tokens lo hi a p ha h_a_hi h_dyck hbal hpa h_body_bal h_loc_floor
+  -- (2) locate the matching close `hiS` — the R484 depth-general `_nested` close (pure SWAP: no `h_p_depth`).
+  obtain ⟨hiS, h_a_hiS, h_b_hiS, h_hiS_hi, h_hiS_sz, h_inner, h_hiSclose, h_floor⟩ :=
+    seqClose_of_located_and_enclosing_within_nested tokens a b lo p hi h_lo_p hpa hab hb h_hi_sz
+      h_bal h_dyck h_open h_body_bal h_loc_floor h_gate_floor h_wt
+  -- opener delta + single-step balance `balance p (p+1) = 1`.
+  have h_p_sz : p < tokens.size := by omega
+  have h_delta : flowBracketDelta tokens[p]!.val = 1 := by rw [h_open]; rfl
+  have h_open_bal : flowBracketBalance tokens p (p + 1) = 1 := by
+    have hlen : p < tokens.toList.length := by rw [Array.length_toList]; exact h_p_sz
+    have h1 : tokens.toList[p]'hlen = tokens[p] := Array.getElem_toList h_p_sz
+    have h2 : tokens[p] = tokens[p]! := (getElem!_pos tokens p h_p_sz).symm
+    rw [flowBracketBalance_single tokens p hlen, h1, h2, h_delta]
+  -- (3) child-keyed floor `balance p i ≥ 1` via one compose through the opener.
+  have h_childfloor : ∀ i, p + 1 ≤ i → i ≤ hiS → flowBracketBalance tokens p i ≥ 1 := by
+    intro i hi1 hi2
+    have hc := flowBracketBalance_compose tokens p (p + 1) i (by omega) hi1
+    have hf := h_floor i hi1 hi2
+    rw [h_open_bal] at hc
+    omega
+  -- closer delta from the typed close.
+  have h_jdelta : flowBracketDelta tokens[hiS]!.val = -1 := by rw [h_hiSclose]; rfl
+  -- (4) `hiS < hi` — re-derived from the enclosing Dyck floor `d := balance lo p ≥ 0`.
+  have h_d : flowBracketBalance tokens lo p ≥ 0 := h_dyck p h_lo_p (by omega)
+  have h_lo_hiS_bal : flowBracketBalance tokens lo hiS ≥ 1 := by
+    have hc1 := flowBracketBalance_compose tokens lo p hiS h_lo_p (by omega)
+    have hc2 := flowBracketBalance_compose tokens p (p + 1) hiS (by omega) (by omega)
+    rw [h_open_bal, h_inner] at hc2
+    omega
+  have h_hiS_lt_hi : hiS < hi := by
+    rcases Nat.lt_or_ge hiS hi with h | h
+    · exact h
+    · have heq : hiS = hi := by omega
+      rw [heq] at h_lo_hiS_bal
+      omega
+  have h_hiS1_hi : hiS + 1 ≤ hi := h_hiS_lt_hi
+  -- (5) the three constructors at `k := p`, `j := hiS`, `hiE := hiS + 1` — sites 1 + 2 are the `_seq` twins.
+  refine ⟨h_lo_p, hiS + 1, by omega, by omega, by omega, ?_, ?_, ?_⟩
+  · exact flowBodyWindow_child_bracket_at tokens lo p hiS hi h_win h_lo_p
+      (by omega) h_hiS1_hi h_delta h_jdelta h_inner h_childfloor
+  · exact flowBodyContentDeepSeq_child_bracket tokens lo p hiS hi h_deep h_lo_p h_open h_hiS1_hi
+  · exact flowBodyContent_child_bracket_seq tokens lo p hiS hi h_deep h_lo_p h_hiS1_hi h_open
+      h_childfloor
+
 /-- **The `enclosingLocate` boundary WIRED into the width-enc lift** —
     `(i'-b-enclosingLocate-wired-seq)`, R475 `seqWidthEnc_of_enclosingLocate_and_recIH` with its
     abstracted `enclosingLocate` hypothesis DISCHARGED by the now-landed depth-general assemble
