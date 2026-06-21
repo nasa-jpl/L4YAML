@@ -3358,6 +3358,51 @@ theorem seqWidthEnc_of_recIH
   exact seqEnclosingLocate_of_seqOpener_nested tokens lo hi h_win h_deep a b p
     ha hab hb hbal hgate hpa h_open h_body_bal h_loc_floor
 
+/-- **The seq local CARRIER from the body-width `recIH`** — `(i'-b-B2c-(d)-seq-carrier-of-recIH)`,
+    R487: the carrier ↔ `SafeBodyUnit` half of the width co-construction, now reduced to its THREE
+    genuine inputs.  Given one body window `[lo, hi)`'s own facts (`FlowBodyWindow` /
+    `FlowBodyContentDeep`), that window's own `SafeBodyUnit ContentStartTok ((take hi).drop lo)`, and
+    the body-width `RecSeqBody`-IH for every STRICTLY-NARROWER window, it builds the local carrier
+    `SeqInteriorSeparators tokens lo hi`.
+
+    **This CONSUMES `seqWidthEnc_of_recIH` (R486)** — the verified-but-unconsumed wired `enclosingLocate`
+    boundary retypes into a consumed one ([[ref-reduction-by-import]], retype-is-progress).  The body is
+    a two-step funnel that folds the whole `widthEnc` chain into one signature
+    ([[ref-fold-consumer-chain-to-producer-contract]]):
+
+    1. `seqWidthEnc_of_recIH tokens lo hi h_win h_deep recIH` turns the body-width `recIH` into the
+       `h_widthEnc` deliverable — its conclusion is TERM-FOR-TERM `seqLocalCarrier_of_widthEnc`'s
+       `h_widthEnc` hypothesis (the per-window enclosing-facts + narrower-`RecSeqBody`-IH supplier).
+    2. `seqLocalCarrier_of_widthEnc tokens lo hi (Nat.le_of_lt h_win.hi_lt) h_safe …` consumes that plus
+       the window's own `SafeBodyUnit` to assemble the carrier.
+
+    **Why the `SafeBodyUnit` input is sibling-supplied, not external.**  Of the three inputs, the
+    body-window facts and the `recIH` are genuine externals the joint induction's STEP already holds,
+    but `h_safe` is the projection (`RecSeqBody.toSafeBodyUnit`) of the SIBLING half's output — the
+    window's OWN `RecSeqBody ((take hi).drop lo)`, the recursion conjunct the same joint step produces.
+    So this lemma names the CARRIER half of the carrier↔`RecSeqBody` co-construction whose two halves
+    share ONE width measure: the recursion half produces this window's `RecSeqBody` (consuming the
+    carrier only at sub-windows, gated `< hi - lo`), and THIS half projects that `RecSeqBody` to
+    `h_safe` and returns the carrier.  No circularity — the sibling consumes the width-narrower IH, not
+    this window's carrier ([[ref-consumer-joint-before-producer]] / [[ref-producer-dual-of-consumer-joint]]).
+
+    Verified-but-unconsumed until the joint `windowWidth_strongRecOn` co-construction supplies `h_safe`
+    (from the recursion half) + `recIH` (from the width IH) and pairs the result with the window's
+    `RecSeqBody`: composes only landed lemmas (R486 + R446), references no sorry site, frontier sorry
+    count unchanged at 4; axiom-clean. -/
+theorem seqLocalCarrier_of_recIH
+    (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_win : FlowBodyWindow tokens lo hi)
+    (h_deep : FlowBodyContentDeep tokens lo hi)
+    (h_safe : SafeBodyUnit ContentStartTok ((tokens.toList.take hi).drop lo))
+    (recIH : ∀ lo' hi', hi' - lo' < hi - lo → lo ≤ lo' → hi' ≤ hi →
+        FlowBodyWindow tokens lo' hi' → FlowBodyContentDeep tokens lo' hi' →
+        SeqEnclosed tokens lo' → tokens[hi']!.val = .flowSequenceEnd →
+        RecSeqBody ((tokens.toList.take hi').drop lo')) :
+    SeqInteriorSeparators tokens lo hi :=
+  seqLocalCarrier_of_widthEnc tokens lo hi (Nat.le_of_lt h_win.hi_lt) h_safe
+    (seqWidthEnc_of_recIH tokens lo hi h_win h_deep recIH)
+
 /-- **The per-window carrier→content consumer joint** — `(i'-b-B3-content-joint)`, the joint between
     the threaded separator carrier and the `RecSeqBody` recursion's per-window dispatch.  This is the
     de-risk finding for B3 (the `windowWidth_strongRecOn` `RecSeqBody` producer) made into a proof
