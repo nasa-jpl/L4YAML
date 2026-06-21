@@ -7392,6 +7392,59 @@ theorem flowBodyContent_of_deep (tokens : Array (Positioned YamlToken)) (lo hi :
   · -- boundary separator `k + 1 = hi`: the no-trailing-comma residual.
     exact h_noTrailingSep k hk1 (by omega) hfe hbal
 
+/-- **The OPENER-INCLUSIVE child-bracket CONTENT guard** (Phase J — the THIRD and final opener-inclusive
+    child-bracket sibling, completing the trio with `flowBodyWindow_child_bracket` (R470) and
+    `flowBodyContentDeep_child_bracket`).  When a bracket `[`/`{` opens at `k` inside the body window
+    `[lo, hi)` and its matching close sits at `j`, the seq carrier↔recursion co-construction's
+    `h_widthEnc` residual (`enclosingLocate`) owes the depth-`0` `FlowBodyContent tokens k (j+1)` on the
+    FULL child window — the head-shape dispatch (`recseqentry_window_dispatch`) consumes it.
+
+    `flowBodyContentDeep_child_bracket` already delivers the recursion-stable
+    `FlowBodyContentDeep tokens k (j+1)` (all-depth, balance-FREE); this brick PROJECTS it down to the
+    depth-`0` `FlowBodyContent` via `flowBodyContent_of_deep`, realizing the projection that
+    `flowBodyContentDeep_child_bracket`'s own doc only PROMISED — its two named residuals discharge
+    VACUOUSLY against the bracket's strict interior floor `h_floor1`:
+
+    * `bodySucc` — the only child-origin balance-`0` prefix end in `[k, j+1)` is the close `j` (every
+      interior prefix `[k+1, j]` sits at balance `≥ 1` by the floor, so the `balance k (k'+1) = 0` premise
+      fails there); at `k' = j` the left disjunct `k'+1 = j+1` holds outright.  No opener-balance fact is
+      needed — the floor at `i = k+1` already rules out the head.
+    * `noTrailingSep` — fires only at `k' = j` (`k'+1 = j+1`), where its premise
+      `tokens[j]!.val = .flowEntry` contradicts the close `h_jclose : tokens[j]!.val = .flowSequenceEnd`.
+
+    **DEPTH-AGNOSTIC.**  The strict floor is keyed on the CHILD origin `k` (`balance k i ≥ 1`), so this
+    brick needs NO `flowBracketBalance tokens lo k = 0` discriminator — it sidesteps the depth caveat that
+    `flowBodyWindow_child_bracket`'s internal `flowBracketBalance_matching_close` scan carries (the
+    re-base of [[ref-rebase-fact-from-enclosing-window]] is the caller's burden, paid once when the close
+    is located).  Like its two siblings it names no collection-specific deliverable type, so it serves
+    BOTH axes (`[` ↦ `.flowSequenceEnd` close, `{` ↦ `.flowMappingEnd` for the map mirror).
+
+    Verified-but-unconsumed until the `enclosingLocate` builder wires the three child-bracket producers
+    together (the (α.2) content half of the seq locate boundary): composes only landed lemmas + `omega`,
+    references no sorry site, frontier sorry count unchanged at 4; axiom-clean. -/
+theorem flowBodyContent_child_bracket (tokens : Array (Positioned YamlToken)) (lo k j hi : Nat)
+    (h_deep : FlowBodyContentDeep tokens lo hi)
+    (h_lo_k : lo ≤ k) (h_j_hi : j + 1 ≤ hi)
+    (h_k_open : flowBracketDelta tokens[k]!.val = 1)
+    (h_jclose : tokens[j]!.val = .flowSequenceEnd)
+    (h_floor1 : ∀ i, k + 1 ≤ i → i ≤ j → flowBracketBalance tokens k i ≥ 1) :
+    FlowBodyContent tokens k (j + 1) := by
+  -- The recursion-stable deep guard on the full child window, via the all-depth sibling.
+  have h_childDeep : FlowBodyContentDeep tokens k (j + 1) :=
+    flowBodyContentDeep_child_bracket tokens lo k j hi h_deep h_lo_k h_k_open h_j_hi
+  refine flowBodyContent_of_deep tokens k (j + 1) h_childDeep ?_ ?_
+  · -- bodySucc: the only balance-`0` prefix end is the close `j`; the interior is `≥ 1`.
+    intro k' hk1 hk2 hbal _hnfe
+    rcases Nat.lt_or_ge k' j with h | h
+    · have hf := h_floor1 (k' + 1) (by omega) (by omega)
+      exfalso; omega
+    · left; omega
+  · -- noTrailingSep: fires only at `k' = j`, where `.flowEntry` contradicts the close.
+    intro k' hk1 hk2 hfe _hbal
+    have hkj' : k' = j := by omega
+    subst hkj'
+    exact absurd hfe (by rw [h_jclose]; simp)
+
 /-- **`FlowBodyContent` assembler from the RE-SCOPED deep guard** (Phase J — sub-brick (i'-b-B2c), the
     `_seq` twin of `flowBodyContent_of_deep` consuming `FlowBodyContentDeepSeq`).  The additive-parallel
     clone ([[ref-additive-parallel-type-over-shared-edit]]) the (R2) consumer re-thread needs: the body
