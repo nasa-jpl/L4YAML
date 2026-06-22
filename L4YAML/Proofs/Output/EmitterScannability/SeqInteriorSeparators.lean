@@ -788,6 +788,91 @@ theorem flowBodyContent_descend (tokens : Array (Positioned YamlToken)) (p hi j 
       (Nat.le_of_lt h_jhi)
   exact flowBodyContent_of_deep tokens (p + 1) j h_deep' h_bs h_nts
 
+/-- **The DESCEND edge for `FlowBodyContent`, `FlowBodyContentDeepSeq`-keyed** —
+    `(i'-b-B2b-desc-merge-seq)`, R500: the `_seq` twin of `flowBodyContent_descend` (above), threading
+    `FlowBodyContent` as a CARRIER-FREE `G`-conjunct down the descend edge over the root-TRUE weak guard
+    ([[ref-rethread-stays-in-weaker-twin-family]], [[ref-root-seed-needs-root-true-guard]]).  At a
+    descended seq window `[p+1, j)` it produces the child `FlowBodyContent` from (i) the child's own
+    carrier-free `SafeBodyUnit` (R494 `seqChild_safeBodyUnit_seq`, the seq oracle drawing its interior
+    `RecSeqBody` from the `windowWidth_strongRecOn` IH) and (ii) the child's `FlowBodyContentDeepSeq`
+    (`flowBodyContentDeepSeq_descend`), assembled by the UNIFIED `flowBodyContent_of_deepSeq` (R393).
+    Two `_seq`-family differences from the strong twin, exactly as predicted:
+
+    * **`h_ne` is FORWARDED, not derived.**  The strong twin reads interior non-emptiness
+      `tokens[p+1] ≠ .flowSequenceEnd` off `FlowBodyContentDeep.openerContentStart` (the all-depth field).
+      The weak guard's same field is non-emptiness-gated and cannot self-derive it
+      ([[ref-window-absolute-gate-subset-restriction]]), so `h_ne` is a forwarded hypothesis
+      ([[ref-lift-forwards-dropped-derivation-premise]]) — passed straight to `seqChild_safeBodyUnit_seq`
+      and `flowBodyContentDeepSeq_descend`, and used locally to refute the empty close `j = p+1`.
+    * **The assembler UNIFIES** where the strong one SPLIT.  `flowBodyContent_of_deepSeq` demands one
+      `h_feContent` over EVERY interior `k < j` (the weak `feContentStart` is `≠ .key`-gated, unprojectable
+      at the descend site, [[ref-unified-residual-routes-through-one-invariant]]).
+
+    **The R499 prediction OVER-FIRED: the unit projection alone serves the unified residual.**  R499 read
+    the unification and predicted a SECOND, fuller projection of the child `RecSeqBody`
+    (`seqChild_safeBody_seq`, `.toSafeBody`) was FORCED, reasoning that `SafeBody_array_flowEntry_window`
+    delivers the interior `feContentStart` only off the full `SafeBody`.  Building the edge refutes that:
+    the unified `h_feContent` splits into INTERIOR (`k+1 < j`) and BOUNDARY (`k+1 = j`), and BOTH come from
+    the ONE windowed `SafeBodyUnit` via the EXISTING `seqEnclosingFacts_of_windowed_safebodyunit` —
+    interior through `seqInteriorFeContentStart_of_windowed_safebodyunit`, which already COERCES
+    `SafeBodyUnit → SafeBody` internally (`SafeBodyUnit_safeBody ContentStartTok_ne_flowEntry`) before
+    calling `SafeBody_array_flowEntry_window`, and boundary through `noTrailingSepFact` VACUOUSLY.  So the
+    "fuller projection" R499 thought was forced is recovered from the unit projection by a head-conditioned
+    COERCION already packaged in the consumer — a *forced second projection dissolves when the weaker
+    projection coerces to the fuller one* ([[ref-coercion-dissolves-forced-projection]]).  R499's
+    minimal-pair demo (`unitProj [true,false]` holds, `GoalAll` fails) modeled the WRONG regime: its
+    abstract `unitProj` was deliberately NON-coercible to `fullProj`, whereas the real `SafeBodyUnit` IS
+    coercible to `SafeBody` given the `ContentStartTok` head.  `seqChild_safeBody_seq` (R499) therefore
+    stays a valid verified-but-unconsumed sibling, but is NOT on this edge's critical path.
+
+    Consumes only landed lemmas (R494 + the windowed-`SafeBodyUnit` enclosing-facts bundle + the R393
+    assembler + `flowBodyContentDeepSeq_descend`); references no sorry site, frontier sorry count unchanged
+    at 4; axiom-clean.  Threaded alongside the `_seq` root seed and advance edge, this is the descend half
+    of the carrier-free `FlowBodyContent` `G`-conjunct the JOINT `windowWidth_strongRecOn` co-construction
+    consumes ([[ref-recursive-producer-mirrors-flat-over-shared-induction]] consume-side dual). -/
+theorem flowBodyContent_descend_seq (tokens : Array (Positioned YamlToken)) (p hi j : Nat)
+    (h_window : FlowBodyWindow tokens p hi)
+    (h_deep : FlowBodyContentDeepSeq tokens p hi)
+    (h_content : FlowBodyContent tokens p hi)
+    (h_open : tokens[p]!.val = .flowSequenceStart)
+    (h_ne : tokens[p + 1]!.val ≠ .flowSequenceEnd)
+    (Q : Nat → Prop) (h_q_succ : Q (p + 1))
+    (h_ih : ∀ lo' hi', hi' - lo' < hi - p → p ≤ lo' → hi' ≤ hi →
+        FlowBodyWindow tokens lo' hi' → FlowBodyContentDeepSeq tokens lo' hi' → Q lo' →
+        tokens[hi']!.val = .flowSequenceEnd →
+        RecSeqBody ((tokens.toList.take hi').drop lo'))
+    (h_pj : p < j) (h_jhi : j < hi) (h_jclose : tokens[j]!.val = .flowSequenceEnd)
+    (h_inner : flowBracketBalance tokens (p + 1) j = 0)
+    (h_floor : ∀ i, p < i → i ≤ j → flowBracketBalance tokens p i ≥ 1) :
+    FlowBodyContent tokens (p + 1) j := by
+  have h_hi_sz : hi < tokens.size := h_window.hi_lt
+  -- Interior non-emptiness `p + 1 < j` from the SUPPLIED `h_ne` (the weak guard can't self-derive it).
+  have h_p1_j : p + 1 < j := by
+    rcases Nat.lt_or_ge (p + 1) j with h | h
+    · exact h
+    · exfalso; have h_eq : j = p + 1 := by omega
+      rw [h_eq] at h_jclose; exact h_ne h_jclose
+  -- The child `SafeBodyUnit` (carrier-free, from the seq oracle's IH — R494 unit projection).
+  have h_safe : SafeBodyUnit ContentStartTok ((tokens.toList.take j).drop (p + 1)) :=
+    seqChild_safeBodyUnit_seq tokens p hi j h_window h_deep h_content h_open h_ne Q h_q_succ h_ih
+      h_pj h_jhi h_jclose h_inner h_floor
+  -- The THREE enclosing facts from the ONE windowed `SafeBodyUnit`: `bodySucc`, the INTERIOR
+  -- `feContentStart` (`SafeBodyUnit → SafeBody` coerced internally), and `noTrailingSep`.
+  obtain ⟨h_bs, h_fe_int, h_nts⟩ :=
+    seqEnclosingFacts_of_windowed_safebodyunit tokens (p + 1) j
+      (Nat.le_of_lt (by omega : j < tokens.size)) h_safe
+  -- The child `FlowBodyContentDeepSeq` (the parent's restricted to `[p+1, j)`), fed the forwarded `h_ne`.
+  have h_deep' : FlowBodyContentDeepSeq tokens (p + 1) j :=
+    flowBodyContentDeepSeq_descend tokens p p j hi h_deep (Nat.le_refl p) h_open h_ne h_p1_j
+      (Nat.le_of_lt h_jhi)
+  -- Assemble via the UNIFIED `_seq` assembler.  `h_feContent` = INTERIOR (`k+1<j`) ∪ BOUNDARY (`k+1=j`):
+  -- the unit projection serves BOTH, so R499's `.toSafeBody` second projection is not needed here.
+  refine flowBodyContent_of_deepSeq tokens (p + 1) j h_deep' h_bs ?_
+  intro k hk1 hk2 hfe hbal
+  rcases Nat.lt_or_ge (k + 1) j with h | h
+  · exact h_fe_int k hk1 h hfe hbal
+  · exact h_nts k hk1 (by omega) hfe hbal
+
 /-- **The descent `provider` at a located enclosing seq** — `(i'-b-descent-assembly)`, brick (5), the
     LAST seq residual of the R303 direct-discharge route.  At a NESTED gated window `[a, b)` (the root
     discriminator `flowBracketBalance tokens lo a = 0` FAILS, so the root seed
