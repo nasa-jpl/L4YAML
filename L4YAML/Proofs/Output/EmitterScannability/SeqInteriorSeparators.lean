@@ -676,6 +676,54 @@ theorem seqChild_safeBodyUnit_seq (tokens : Array (Positioned YamlToken)) (p hi 
       Q h_q_succ h_ih)
     j h_pj h_jhi h_jclose h_inner h_floor).1.toSafeBodyUnit
 
+/-- **The seq child `SafeBody` (full, not unit), `FlowBodyContentDeepSeq`-keyed** —
+    `(i'-b-B2c-(d)-seq-child-body)`, R499: the `SafeBody`-projecting SIBLING of `seqChild_safeBodyUnit_seq`
+    (R494).  Same located child `[p+1, j)`, same oracle call, but projects the child's `RecSeqBody` through
+    `.toSafeBody` instead of `.toSafeBodyUnit`.
+
+    **Why a SECOND projection is needed — the weaker guard's UNIFIED consumer residual forces it.**  The
+    `_seq` `FlowBodyContent` assembler `flowBodyContent_of_deepSeq` (R393) demands the separator obligation
+    as ONE field `h_feContent : ∀ k, lo ≤ k → k < hi → tokens[k]! = .flowEntry → balance lo k = 0 →
+    isFlowContentStart tokens[k+1]!` — EVERY interior depth-`0` separator is followed by content.  The strong
+    `flowBodyContent_of_deep` SPLIT that obligation, sourcing the interior from
+    `FlowBodyContentDeep.feContentStart` (the all-depth field) and only the BOUNDARY (last position) as a
+    `noTrailingSepFact`.  But the weaker `FlowBodyContentDeepSeq.feContentStart` is GUARDED by a `≠ .key`
+    premise the descend site cannot discharge locally, so R393 UNIFIED both grains into the single
+    `h_feContent` ([[ref-unified-residual-routes-through-one-invariant]]).
+
+    That unification re-prices the producer's projection demand.  The unit projection (`.toSafeBodyUnit`,
+    R494) supplies only `bodySuccFact` + `noTrailingSepFact` — and `noTrailingSepFact` covers the LAST
+    position ONLY (`k + 1 = b`), discharged vacuously (`seqSeparatorFacts_of_windowed_safebodyunit`).  The
+    UNIFIED `h_feContent` ranges over EVERY interior `k`, which `SafeBody_array_flowEntry_window` delivers —
+    it fires content-start after every depth-`0` `.flowEntry` — but only off the FULL `SafeBody`, not the
+    unit form.  So the SAME child `RecSeqBody` must be projected BOTH ways: `bodySucc` off `.toSafeBodyUnit`
+    (R494), the all-interior `feContent` off `.toSafeBody` (here).  This lemma is the second projection the
+    weaker-guard's unified residual forced — the strong `flowBodyContent_descend`, whose split residual asked
+    only `noTrailingSepFact`, never needed it.  Proof-irrelevant: `RecSeqBody` is a `Prop`, so re-invoking the
+    oracle for the second projection costs only proof-term size, nothing semantic ([[ref-complete-projection-family-for-new-member]]).
+
+    Verified-but-unconsumed until `flowBodyContent_descend_seq` (the `_seq` `FlowBodyContent` descend edge)
+    consumes it alongside R494: composes only landed lemmas (the R415 oracle twin + `RecSeqBody.toSafeBody`),
+    references no sorry site, frontier sorry count unchanged at 4; axiom-clean. -/
+theorem seqChild_safeBody_seq (tokens : Array (Positioned YamlToken)) (p hi j : Nat)
+    (h_window : FlowBodyWindow tokens p hi)
+    (h_deep : FlowBodyContentDeepSeq tokens p hi)
+    (h_content : FlowBodyContent tokens p hi)
+    (h_open : tokens[p]!.val = .flowSequenceStart)
+    (h_ne : tokens[p + 1]!.val ≠ .flowSequenceEnd)
+    (Q : Nat → Prop) (h_q_succ : Q (p + 1))
+    (h_ih : ∀ lo' hi', hi' - lo' < hi - p → p ≤ lo' → hi' ≤ hi →
+        FlowBodyWindow tokens lo' hi' → FlowBodyContentDeepSeq tokens lo' hi' → Q lo' →
+        tokens[hi']!.val = .flowSequenceEnd →
+        RecSeqBody ((tokens.toList.take hi').drop lo'))
+    (h_pj : p < j) (h_jhi : j < hi) (h_jclose : tokens[j]!.val = .flowSequenceEnd)
+    (h_inner : flowBracketBalance tokens (p + 1) j = 0)
+    (h_floor : ∀ i, p < i → i ≤ j → flowBracketBalance tokens p i ≥ 1) :
+    SafeBody ContentStartTok ((tokens.toList.take j).drop (p + 1)) :=
+  ((recseqentry_seqbracket_oracle_seq tokens p hi h_window h_deep h_content h_open h_ne
+      Q h_q_succ h_ih)
+    j h_pj h_jhi h_jclose h_inner h_floor).1.toSafeBody
+
 /-- **The DESCEND edge for `FlowBodyContent`** — `(i'-b-B2b-desc-merge)`, the load-bearing brick of the
     carrier-elimination merge and the descend twin of `flowBodyContent_advance` (NonemptyStructure).
     `seqWindow_flowBodyContent`'s doc records that there is "deliberately no `flowBodyContent_descend`":
