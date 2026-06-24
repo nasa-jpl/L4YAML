@@ -4816,6 +4816,65 @@ theorem seqWindowRecSeqBody_seq_of_provider (tokens : Array (Positioned YamlToke
     exact ih (m + 1) hi (by omega) ⟨h_win', h_deep', h_enc', h_close_hi, by omega, h_hi_hi0⟩
   exact key lo hi ⟨h_win0, h_deep0, h_enc0, h_close0, h_lo0, h_hi0⟩
 
+/-- **Located-entry → content bridge** — `(i'-b-B2c-desc-fixpoint-navigator-read)`, R506: the consume
+    side of the carrier-free PROVIDER route ([[ref-width-recursion-cannot-thread-topdown-fact]] /
+    [[ref-edges-unify-as-deliverable-projection]]).  R505 (`seqWindowRecSeqBody_seq_of_provider`)
+    reduced the carrier-free `RecSeqBody` recursion to one obligation: a per-window content provider
+    `∀ lo hi, <guards> → FlowBodyContent tokens lo hi`.  The fixpoint-free way to discharge it is the
+    NAVIGATOR — navigate the root `RecSeqBody` (known off emission, `seqRoot_recseqbody`) down to each
+    window and READ its content off the body it already holds, never PRODUCING the body from content
+    (which needs content for its own dispatch — the same-window self-cycle).
+
+    This brick is the navigator's terminal READ, and it pins the navigator's deliverable precisely:
+    the emission-spine-walk navigator (R350–R359, the slice-keyed LEAF/DESCEND/ADVANCE arms, awaiting
+    only the `Nat.strongRecOn` wrapper) LOCATES the enclosing seq ENTRY at the target window — output
+    `RecSeqEntry (op :: (interior ++ [cl]))` + opener + nonempty interior + the window-identity slice
+    `(take (hi+1)).drop lo_e = op :: (interior ++ [cl])` with `lo_e + 1 = lo`.  THIS lemma turns that
+    located entry into `FlowBodyContent tokens lo hi` with NO carrier, composing three landed lemmas:
+    `recseqentry_seq_extract` (the seq-opener entry stores `RecSeqBody interior`),
+    `nestedSeq_recseqentry_locate_descend` (R353, the interior re-slices to `(take hi).drop lo` — the
+    pure drop-algebra, here run with `rest = []` so the entry IS the whole window), and R502
+    `flowBodyContent_of_recseqbody_seq` (the interior body projects to content).
+
+    **The architectural payoff** (sharpens [[ref-edges-unify-as-deliverable-projection]]).  The
+    carrier-free provider does NOT need to PRODUCE a sub-`RecSeqBody` at every window (that would re-pose
+    R505's own recursion).  It needs only to LOCATE the enclosing seq entry — which the spine-walk
+    navigator's three arms already step — because the entry's stored interior `RecSeqBody` IS the window
+    body, and R502 reads its content.  So the navigator's deliverable is the located ENTRY (the
+    `RecSeqEntry`), not the body; content is a free projection off it.  This collapses "navigator
+    produces window bodies" to "navigator locates window entries + this 3-lemma read."
+
+    Verified-but-unconsumed until the spine-walk `Nat.strongRecOn` wrapper produces the located entry and
+    feeds it here, yielding `h_provider` for R505 (R225): composes only landed lemmas, references no sorry
+    site, frontier sorry count unchanged at 4; axiom-clean. -/
+theorem flowBodyContent_of_located_seq_entry (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_hi_sz : hi < tokens.size)
+    (h_deep : FlowBodyContentDeepSeq tokens lo hi)
+    (lo_e : Nat) (op cl : Positioned YamlToken) (interior : List (Positioned YamlToken))
+    (h_a : lo_e + 1 = lo)
+    (h_entry : RecSeqEntry (op :: (interior ++ [cl])))
+    (h_open : op.val = .flowSequenceStart) (h_int_ne : interior ≠ [])
+    (h_window_id : (tokens.toList.take (hi + 1)).drop lo_e = op :: (interior ++ [cl])) :
+    FlowBodyContent tokens lo hi := by
+  -- 1. The seq-opener entry stores its interior `RecSeqBody` (the three non-`seq` shapes are excluded).
+  have h_rec : RecSeqBody interior :=
+    recseqentry_seq_extract h_entry op cl interior rfl h_open h_int_ne
+  -- 2. The interior re-slices to the window `[lo, hi)` — pure drop-algebra, run with `rest = []`.
+  have h_elen : (op :: (interior ++ [cl])).length = interior.length + 2 := by
+    simp [List.length_append]
+  have h_len : lo_e + (op :: (interior ++ [cl])).length = hi + 1 := by
+    have hc := congrArg List.length h_window_id
+    rw [List.length_drop, List.length_take, Array.length_toList,
+        Nat.min_eq_left (by omega : hi + 1 ≤ tokens.size)] at hc
+    omega
+  have h_slice : interior = (tokens.toList.take (lo_e + 1 + interior.length)).drop (lo_e + 1) :=
+    nestedSeq_recseqentry_locate_descend tokens (op :: (interior ++ [cl])) [] interior op cl lo_e (hi + 1)
+      h_window_id.symm (Nat.le_of_eq h_len) (List.append_nil _).symm
+  have h_bplus : lo_e + 1 + interior.length = hi := by omega
+  rw [h_bplus, h_a] at h_slice
+  -- 3. The window body projects to content (R502) — no carrier.
+  exact flowBodyContent_of_recseqbody_seq tokens lo hi (Nat.le_of_lt h_hi_sz) h_deep (h_slice ▸ h_rec)
+
 /-- **The RE-SCOPED combined `RecSeqBody` producer** — `(i'-b-B2c-(d)-seq-rec)`, the `_seq` twin of
     `seqWindowRecSeqBody` (R323) threading R393's root-TRUE `FlowBodyContentDeepSeq` in place of the
     false-rooted `FlowBodyContentDeep`.  The CONSUMER half of the (R2) re-thread (its dispatch CORE landed
