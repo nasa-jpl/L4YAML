@@ -4717,6 +4717,105 @@ theorem seqWindowRecSeqBody (tokens : Array (Positioned YamlToken))
   seqWindowRecSeqBody_general tokens 2 (tokens.size - 2) h_root_carrier lo hi
     h_win0 h_deep0 h_enc0 h_close0 h_win0.lo_ge h_win0.hi_le
 
+/-- **Carrier-PARAMETRIC `_seq` recursion** — `(i'-b-B2c-desc-fixpoint-provider)`, R505: the
+    `seqWindowRecSeqBody_seq_general` recursion (below) with its SOLE carrier use lifted into an abstract
+    per-window content PROVIDER hypothesis `h_provider`.  [[ref-parametric-assembler-extraction]] at the
+    recursion level.
+
+    Reading `seqWindowRecSeqBody_seq_general` against `seqChild_safeBodyUnit_seq`, the carrier
+    `SeqInteriorSeparators` is consumed in EXACTLY ONE place — sourcing the CURRENT window's
+    `FlowBodyContent` (`seqWindow_flowBodyContent_seq_general … h_carrier`).  Everything else is already
+    carrier-free: the DESCEND draws the child `RecSeqBody` off the content-free width IH (the seq oracle,
+    `seqChild_safeBodyUnit_seq`), and the ADVANCE edge `flowBodyContentDeepSeq_advance`'s `≠ .key` premise
+    is paid in-place from the content guard's own `feContentStart` separator fact.  So the recursion is
+    carrier-free MODULO a per-window content provider, and this lemma states exactly that: ANY `h_provider`
+    that supplies each window's `FlowBodyContent` from its guard (`FlowBodyWindow` + `FlowBodyContentDeepSeq`
+    + `SeqEnclosed` + the `[lo0, hi0]` containment bounds) drives the recursion.  The carrier is one such
+    provider: `seqWindowRecSeqBody_seq_general` below is the carrier INSTANCE of this lemma, fed
+    `h_provider := fun lo hi … => seqWindow_flowBodyContent_seq_general … h_carrier` (kept as the standalone
+    carrier recursion so its existing consumers are untouched — [[ref-additive-parallel-type-over-shared-edit]]).
+
+    **What it isolates** (the single remaining carrier-free obligation).  Producing `h_provider` without the
+    carrier IS the fixpoint ([[ref-width-recursion-cannot-thread-topdown-fact]]).  Per R502
+    ([[ref-edges-unify-as-deliverable-projection]], `flowBodyContent_of_recseqbody_seq`) the provider for
+    the CHILDREN is free off the body the IH already produced; only the CURRENT window's content is the
+    genuine TOP-DOWN seed — its `bodySucc` (the depth-`0` separator-successor fact) has NO descend-stable,
+    balance-free form (unlike `FlowBodyContentDeepSeq`'s opener/separator fields), so it cannot be sourced
+    bottom-up from the window's own guard and must be threaded from the parent (root R501 +
+    descend/advance) or read off a navigated body.  This brick does NOT close that — it NAMES it as the one
+    hypothesis a carrier-free driver must still discharge, and proves the rest of the recursion needs
+    nothing else.  Verified: the recursion body is the landed
+    `seqWindowRecSeqBody_seq_general`'s verbatim, references no sorry site, frontier sorry count unchanged
+    at 4; axiom-clean. -/
+theorem seqWindowRecSeqBody_seq_of_provider (tokens : Array (Positioned YamlToken))
+    (lo0 hi0 : Nat)
+    (h_provider : ∀ lo hi, FlowBodyWindow tokens lo hi → FlowBodyContentDeepSeq tokens lo hi →
+        SeqEnclosed tokens lo → lo0 ≤ lo → hi ≤ hi0 → FlowBodyContent tokens lo hi)
+    (lo hi : Nat)
+    (h_win0 : FlowBodyWindow tokens lo hi) (h_deep0 : FlowBodyContentDeepSeq tokens lo hi)
+    (h_enc0 : SeqEnclosed tokens lo) (h_close0 : tokens[hi]!.val = .flowSequenceEnd)
+    (h_lo0 : lo0 ≤ lo) (h_hi0 : hi ≤ hi0) :
+    RecSeqBody ((tokens.toList.take hi).drop lo) := by
+  have key := windowWidth_strongRecOn
+    (P := fun lo hi => RecSeqBody ((tokens.toList.take hi).drop lo))
+    (G := fun lo hi => FlowBodyWindow tokens lo hi ∧ FlowBodyContentDeepSeq tokens lo hi
+      ∧ SeqEnclosed tokens lo ∧ tokens[hi]!.val = .flowSequenceEnd ∧ lo0 ≤ lo ∧ hi ≤ hi0)
+    (step := ?step)
+  case step =>
+    intro lo hi h_g ih
+    obtain ⟨h_win, h_deep, h_enc, h_close_hi, h_lo0_lo, h_hi_hi0⟩ := h_g
+    have h_hi_sz : hi < tokens.size := h_win.hi_lt
+    have h_lo_sz : lo < tokens.size := by
+      have := h_win.lo_lt_hi; omega
+    have h_content : FlowBodyContent tokens lo hi :=
+      h_provider lo hi h_win h_deep h_enc h_lo0_lo h_hi_hi0
+    obtain ⟨m, h_lo_m, h_m_hi, h_bal_m, h_marker, h_min, h_entry⟩ :=
+      recseqentry_window_dispatch_seq tokens lo hi h_win h_deep h_content
+        (SeqEnclosed tokens)
+        (fun h_open => seqEnclosed_descend tokens lo h_enc h_lo_sz h_open)
+        (fun lo' hi' h_lt h_cont_lo h_cont_hi h_w h_d h_q h_c =>
+          ih lo' hi' h_lt ⟨h_w, h_d, h_q, h_c,
+            Nat.le_trans h_lo0_lo h_cont_lo, Nat.le_trans h_cont_hi h_hi_hi0⟩)
+    refine recseqbody_window_assemble tokens lo m hi h_lo_m h_m_hi h_win.hi_lt h_marker h_entry ?_
+    intro h_m_lt_hi
+    have h_sep : tokens[m]!.val = .flowEntry := h_marker.resolve_left (by omega)
+    have h_m_len : m < tokens.toList.length := by rw [Array.length_toList]; omega
+    have h_m_val : tokens[m]! = tokens.toList[m]'h_m_len := by
+      rw [getElem!_pos tokens m (by omega), Array.getElem_toList]
+    have h_delta_m : flowBracketDelta tokens[m]!.val = 0 := by
+      rw [h_sep]; exact flowBracketDelta_flowEntry
+    have h_single_m : flowBracketBalance tokens m (m + 1) = flowBracketDelta tokens[m]!.val := by
+      rw [flowBracketBalance_single tokens m h_m_len, ← h_m_val]
+    have h_bal_m1 : flowBracketBalance tokens lo (m + 1) = 0 := by
+      have hc := flowBracketBalance_compose tokens lo m (m + 1) (by omega) (Nat.le_succ m)
+      rw [h_bal_m, h_single_m, h_delta_m] at hc; omega
+    have h_m1_hi : m + 1 < hi := by
+      rcases Nat.lt_or_ge (m + 1) hi with h | h
+      · exact h
+      · exfalso
+        have h_eq : m + 1 = hi := by omega
+        obtain ⟨_, h_cs⟩ :=
+          h_content.feContentStart m (Nat.le_of_lt h_lo_m) h_m_lt_hi h_sep h_bal_m
+        rw [h_eq, h_close_hi] at h_cs
+        simp [isFlowContentStart] at h_cs
+    have h_wt_seg : WellTyped ((tokens.toList.take (m + 1)).drop lo) :=
+      WellTyped_subrange tokens lo lo (m + 1) hi (Nat.le_refl lo) (by omega) (by omega)
+        (Nat.le_of_lt h_win.hi_lt) h_win.wellTyped h_bal_m1
+        (fun p hp1 hp2 => h_win.dyck p hp1 (by omega))
+    have h_win' : FlowBodyWindow tokens (m + 1) hi :=
+      flowBodyWindow_advance tokens lo m hi h_win (Nat.le_of_lt h_lo_m) h_m1_hi h_bal_m h_sep
+    have h_m1_content : isFlowContentStart tokens[m + 1]!.val :=
+      (h_content.feContentStart m (Nat.le_of_lt h_lo_m) h_m_lt_hi h_sep h_bal_m).2
+    have h_m1_ne_key : tokens[m + 1]!.val ≠ .key := by
+      unfold isFlowContentStart at h_m1_content
+      rcases h_m1_content with ⟨c, s, h⟩ | h | h <;> simp [h]
+    have h_deep' : FlowBodyContentDeepSeq tokens (m + 1) hi :=
+      flowBodyContentDeepSeq_advance tokens lo m hi h_deep (Nat.le_of_lt h_lo_m) h_sep h_m1_ne_key h_m1_hi
+    have h_enc' : SeqEnclosed tokens (m + 1) :=
+      seqEnclosed_advance tokens lo (m + 1) h_enc (by omega) h_wt_seg
+    exact ih (m + 1) hi (by omega) ⟨h_win', h_deep', h_enc', h_close_hi, by omega, h_hi_hi0⟩
+  exact key lo hi ⟨h_win0, h_deep0, h_enc0, h_close0, h_lo0, h_hi0⟩
+
 /-- **The RE-SCOPED combined `RecSeqBody` producer** — `(i'-b-B2c-(d)-seq-rec)`, the `_seq` twin of
     `seqWindowRecSeqBody` (R323) threading R393's root-TRUE `FlowBodyContentDeepSeq` in place of the
     false-rooted `FlowBodyContentDeep`.  The CONSUMER half of the (R2) re-thread (its dispatch CORE landed
