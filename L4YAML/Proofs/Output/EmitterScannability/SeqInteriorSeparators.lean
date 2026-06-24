@@ -4464,6 +4464,76 @@ theorem flowBodyContent_of_recseqbody_seq
   · exact h_fe_int k hk1 h hfe hbal
   · exact h_nts k hk1 (by omega) hfe hbal
 
+/-- **The CONTENT-EMITTING seq oracle** — `(i'-b-B2c-desc-fixpoint-oracle-content)`, R503: the consume-side
+    of R502's free projection ([[ref-edges-unify-as-deliverable-projection]]) realized AT the seq oracle's
+    own descend site.  Where `recseqentry_seqbracket_oracle_seq` (R415) returns only the child `RecSeqBody`
+    `((take j).drop (lo+1))` and the trailing separator, this twin ALSO returns the descended child's
+    `FlowBodyContent tokens (lo+1) j` — the third deliverable a content-threading dispatch needs for the
+    descend child's `FlowBodyContent` `G`-conjunct.
+
+    **The child content is FREE — it is a projection of the `RecSeqBody` the oracle ALREADY produced.**  The
+    oracle draws the child `RecSeqBody` off the CONTENT-FREE width IH `h_ih` (via `seqChild_safeBodyUnit_seq`,
+    R494) and internally builds the child deep guard `h_deep'` (`flowBodyContentDeepSeq_descend`).  R502's
+    `flowBodyContent_of_recseqbody_seq` turns exactly those two — `RecSeqBody (lo+1) j` + the child's
+    `FlowBodyContentDeepSeq` — into the child `FlowBodyContent` with NO second IH call and NO re-run of the
+    R500 descend edge `flowBodyContent_descend_seq` (which would re-derive the child `SafeBodyUnit` from the
+    content-free IH all over again).  So this twin reuses the oracle's `h_rec` for double duty: the
+    `RecSeqEntry`-assembly deliverable AND the descend child's content `G`-conjunct.  This is the concrete
+    instance of [[ref-producer-dual-of-consumer-joint]] — the recursion PRODUCES the body, and reading it
+    back as content is one map, the deliverable's WRITE reversed to a READ — at the seq oracle's recursion
+    site, not as a standalone lemma.
+
+    **What it does NOT close (the same-window coupling, [[ref-edges-unify-as-deliverable-projection]]).**  The
+    child content here is the CHILDREN's free projection; the CURRENT window's content (`h_content`) is still
+    consumed by the oracle's own dispatch BEFORE the current body deliverable exists, so it remains the
+    top-down `G`-seed (root R501 + descend/advance threaded through `G`).  And the oracle's IH stays
+    CONTENT-FREE: producing child content here is downstream of `h_rec`, so it cannot be fed back as the
+    content the IH would consume — the content-free width IH the descend edge needs is unchanged.  This brick
+    moves the descend child's content from a SEPARATE R500 derivation onto the oracle's existing `h_rec`; the
+    OUTER carrier-free bridge (sourcing that content-free width IH without the carrier) is the next brick.
+
+    Verified-but-unconsumed until the content-threading dispatch reuses the emitted child content (R225):
+    composes only landed lemmas (`recseqentry_seqbracket_oracle_seq` + `flowBodyContentDeepSeq_descend` +
+    R502 `flowBodyContent_of_recseqbody_seq`), references no sorry site, frontier sorry count unchanged at 4;
+    axiom-clean. -/
+theorem recseqentry_seqbracket_oracle_seq_content (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_window : FlowBodyWindow tokens lo hi)
+    (h_deep : FlowBodyContentDeepSeq tokens lo hi)
+    (h_content : FlowBodyContent tokens lo hi)
+    (h_open : tokens[lo]!.val = .flowSequenceStart)
+    (h_ne : tokens[lo + 1]!.val ≠ .flowSequenceEnd)
+    (Q : Nat → Prop) (h_q_succ : Q (lo + 1))
+    (h_ih : ∀ lo' hi', hi' - lo' < hi - lo → lo ≤ lo' → hi' ≤ hi →
+        FlowBodyWindow tokens lo' hi' → FlowBodyContentDeepSeq tokens lo' hi' → Q lo' →
+        tokens[hi']!.val = .flowSequenceEnd →
+        RecSeqBody ((tokens.toList.take hi').drop lo')) :
+    ∀ j, lo < j → j < hi → tokens[j]!.val = .flowSequenceEnd →
+        flowBracketBalance tokens (lo + 1) j = 0 →
+        (∀ i, lo < i → i ≤ j → flowBracketBalance tokens lo i ≥ 1) →
+        RecSeqBody ((tokens.toList.take j).drop (lo + 1)) ∧
+        FlowBodyContent tokens (lo + 1) j ∧
+        (j + 1 = hi ∨ tokens[j + 1]!.val = .flowEntry) := by
+  intro j h_lo_j h_j_hi h_close h_inner h_floor
+  -- The existing seq oracle delivers the child `RecSeqBody` (off the CONTENT-FREE IH) + trailing separator.
+  obtain ⟨h_rec, h_sep⟩ :=
+    recseqentry_seqbracket_oracle_seq tokens lo hi h_window h_deep h_content h_open h_ne Q h_q_succ h_ih
+      j h_lo_j h_j_hi h_close h_inner h_floor
+  -- Interior non-emptiness `lo + 1 < j` from the supplied `h_ne` (refutes the empty close `j = lo + 1`).
+  have h_lo1_j : lo + 1 < j := by
+    rcases Nat.lt_or_ge (lo + 1) j with h | h
+    · exact h
+    · exfalso; have h_eq : j = lo + 1 := by omega
+      rw [h_eq] at h_close; exact h_ne h_close
+  -- The child deep guard `[lo+1, j)` (the parent's, restricted) — exactly the oracle's internal `h_deep'`.
+  have h_deep' : FlowBodyContentDeepSeq tokens (lo + 1) j :=
+    flowBodyContentDeepSeq_descend tokens lo lo j hi h_deep (Nat.le_refl lo) h_open h_ne h_lo1_j
+      (Nat.le_of_lt h_j_hi)
+  -- R502 free projection: the child content is a PROJECTION of the child `RecSeqBody` already in hand —
+  -- no second IH call, no re-run of `seqChild_safeBodyUnit_seq` (R500's descend-edge machinery).
+  have h_child_content : FlowBodyContent tokens (lo + 1) j :=
+    flowBodyContent_of_recseqbody_seq tokens (lo + 1) j (by have := h_window.hi_lt; omega) h_deep' h_rec
+  exact ⟨h_rec, h_child_content, h_sep⟩
+
 /-- **The combined `windowWidth_strongRecOn` `RecSeqBody` producer** — `(i'-b-B3-fixpoint)`, the LAST
     seq brick and the convergence point of all the landed descent/edge bricks.  At every body window
     `[lo, hi)` that is a `FlowBodyWindow ∧ FlowBodyContentDeep ∧ SeqEnclosed lo` whose `hi` is the
