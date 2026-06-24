@@ -4343,6 +4343,69 @@ theorem seqRoot_flowBodyContent
       (Nat.sub_le tokens.size 2) h_safe
   exact flowBodyContent_of_deep tokens 2 (tokens.size - 2) h_deep h_bs h_nts
 
+/-- **The CARRIER-FREE root seed for `FlowBodyContent`, RE-SCOPED twin** — `(i'-b-B2c-desc-fixpoint-seq)`,
+    the `_seq` twin of `seqRoot_flowBodyContent` (just above) over the root-TRUE `FlowBodyContentDeepSeq`
+    (R393), and the BASE case that — together with the descend edge `flowBodyContent_descend_seq` (R500)
+    and the guard-NEUTRAL advance edge `flowBodyContent_advance` — COMPLETES the carrier-free
+    `FlowBodyContent` thread for the seq axis.
+
+    Where `seqRoot_flowBodyContent` takes the strong `FlowBodyContentDeep tokens 2 (size-2)` as its root
+    hypothesis — a guard R392 proved FALSE on real emitter output ([[ref-restriction-hides-root-falsity]]),
+    so that root seed is never actually instantiable — this `_seq` twin takes the root-TRUE
+    `FlowBodyContentDeepSeq tokens 2 (size-2)` ([[ref-root-seed-needs-root-true-guard]], satisfiability
+    machine-checked by `flowBodyContentDeepSeq_root_holds_nested_scalar`), the guard the JOINT
+    `windowWidth_strongRecOn` co-construction's recursion conjunct actually threads.
+
+    **Two swaps off the strong twin, both already validated at the descend edge (R500).**
+    * The enclosing facts come from `seqEnclosingFacts_of_windowed_safebodyunit` (THREE facts:
+      `bodySucc` + the INTERIOR `feContentStart` + `noTrailingSep`) in place of
+      `seqSeparatorFacts_of_windowed_safebodyunit` (TWO: `bodySucc` + `noTrailingSep`), because the
+      weak guard's `≠ .key`-gated `feContentStart` cannot supply the interior locally.
+    * The assembler is the UNIFIED `flowBodyContent_of_deepSeq` (R393) in place of the SPLIT
+      `flowBodyContent_of_deep`: its single `h_feContent` over EVERY interior `k < hi` is served by the
+      unit projection's facts — INTERIOR (`k+1 < hi`) by the helper's middle conjunct (which COERCES
+      `SafeBodyUnit → SafeBody` internally, [[ref-coercion-dissolves-forced-projection]] R500), BOUNDARY
+      (`k+1 = hi`) VACUOUSLY by `noTrailingSepFact`.  No second, fuller projection of the deliverable is
+      forced; R499's `seqChild_safeBody_seq` stays off the critical path here too.
+
+    **This is the producer's ROOT-LEAF: it SHEDS all the descend edge's recursion machinery**
+    ([[ref-near-leaf-mirror-sheds-machinery]]).  No `h_ne` forwarding, no `flowBodyContentDeepSeq_descend`,
+    no width IH, no interior floor — the child `SafeBodyUnit` is the FLAT `seqRoot_safeBodyUnit` (scanned
+    straight off emission, no `RecSeqBody`), and the root guard is a hypothesis, not produced.
+
+    **Milestone — the advance edge needs NO `_seq` twin.**  `flowBodyContent_advance` (NonemptyStructure)
+    operates purely on the PROJECTION `FlowBodyContent`, re-basing the depth-`0` balance; it never READS
+    the deep guard, so it is GUARD-NEUTRAL and reused VERBATIM across the strong and `_seq` threads.  Only
+    the guard-READING moves (DESCEND, which produces the child off the guard; ROOT, which consumes the
+    root-true guard) needed `_seq` twins; the projection-re-basing move did not
+    ([[ref-guard-reading-edges-need-twins]]).  So root (here) + descend (R500) + advance (verbatim) thread
+    `FlowBodyContent` as a carrier-free `G`-conjunct the co-construction consumes to produce per-window
+    `RecSeqBody` — discharging `recIH`, breaking the carrier↔producer circularity.
+
+    Verified-but-unconsumed until the carrier-free `windowWidth_strongRecOn` threads `FlowBodyContent` as a
+    `G`-conjunct (R225): composes only landed lemmas, references no sorry site, frontier sorry count
+    unchanged at 4; axiom-clean (identical footprint to its strong twin). -/
+theorem seqRoot_flowBodyContent_seq
+    (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
+    (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
+    (h_ne : items.toList ≠ [])
+    (h_all : ∀ v ∈ items.toList, EmitScansInFlowRecEntry v)
+    (h_deep : FlowBodyContentDeepSeq tokens 2 (tokens.size - 2)) :
+    FlowBodyContent tokens 2 (tokens.size - 2) := by
+  -- The flat root `SafeBodyUnit` (off emission, NO `RecSeqBody`) yields the three enclosing facts.
+  have h_safe : SafeBodyUnit ContentStartTok ((tokens.toList.take (tokens.size - 2)).drop 2) :=
+    seqRoot_safeBodyUnit items tokens h_scan h_ne h_all
+  obtain ⟨h_bs, h_fe_int, h_nts⟩ :=
+    seqEnclosingFacts_of_windowed_safebodyunit tokens 2 (tokens.size - 2)
+      (Nat.sub_le tokens.size 2) h_safe
+  -- The UNIFIED assembler: the one `h_feContent` splits INTERIOR (helper's middle conjunct, coerced)
+  -- ∪ BOUNDARY (`noTrailingSepFact`, vacuous) — the R500 dissolution, no fuller projection forced.
+  refine flowBodyContent_of_deepSeq tokens 2 (tokens.size - 2) h_deep h_bs ?_
+  intro k hk1 hk2 hfe hbal
+  rcases Nat.lt_or_ge (k + 1) (tokens.size - 2) with h | h
+  · exact h_fe_int k hk1 h hfe hbal
+  · exact h_nts k hk1 (by omega) hfe hbal
+
 /-- **The combined `windowWidth_strongRecOn` `RecSeqBody` producer** — `(i'-b-B3-fixpoint)`, the LAST
     seq brick and the convergence point of all the landed descent/edge bricks.  At every body window
     `[lo, hi)` that is a `FlowBodyWindow ∧ FlowBodyContentDeep ∧ SeqEnclosed lo` whose `hi` is the
