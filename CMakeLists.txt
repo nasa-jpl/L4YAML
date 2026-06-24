@@ -259,6 +259,11 @@ endif()
 
 unset(_l4yaml_py_mode)
 
+# ── ROS2 packaging ──────────────────────────────────────────────────
+# Must be called after all install() commands to generate local_setup.*
+find_package(ament_cmake REQUIRED)
+ament_package()
+
 # Note: no CTest integration here.  The test/spec runners aren't built
 # from this CMake (see L4YAML_EXES); run `lake test` from the source
 # tree for the developer test loop.
