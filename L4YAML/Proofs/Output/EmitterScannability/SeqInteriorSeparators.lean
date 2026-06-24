@@ -4534,6 +4534,79 @@ theorem recseqentry_seqbracket_oracle_seq_content (tokens : Array (Positioned Ya
     flowBodyContent_of_recseqbody_seq tokens (lo + 1) j (by have := h_window.hi_lt; omega) h_deep' h_rec
   exact ⟨h_rec, h_child_content, h_sep⟩
 
+/-- **The CONTENT-SURFACING located seq entry** — `(i'-b-B2c-desc-fixpoint-located-content)`, R504: the
+    located-level companion of R503's content-emitting oracle (`recseqentry_seqbracket_oracle_seq_content`),
+    lifting it through the close-locator `matchingClose_full_seq` so the descend close `j` — which
+    `recseqentry_seqbracket_located` (R283) BURIES inside its `∃ m` (the entry END, not the descend
+    close) — is EXPOSED alongside the descended child's free `FlowBodyContent tokens (lo+1) j`.
+
+    Where `recseqentry_seqbracket_located` returns only `∃ m, … RecSeqEntry ((take m).drop lo)` (the first
+    located entry, `m` its trailing boundary), this twin returns that SAME entry AND a second existential
+    `∃ j, lo+1 < j ∧ j < hi ∧ tokens[j]! = .flowSequenceEnd ∧ balance (lo+1) j = 0 ∧
+    FlowBodyContent tokens (lo+1) j` — the located bracket close `j` with the child window's content.  The
+    child content is FREE (R503 reads it off the oracle's already-produced child `RecSeqBody` via R502); this
+    brick merely propagates it past the close-locator, surfacing the `j` the entry-shaped output hides.  The
+    interior non-emptiness `lo+1 < j` is recovered from the forwarded `h_ne` (the empty close `j = lo+1`
+    would make `tokens[j]! = .flowSequenceEnd` contradict `h_ne`).
+
+    **Honest scope — this does NOT advance the carrier-free recursion's descend.**  Reading the carrier-based
+    `_seq` recursion (`seqWindowRecSeqBody_seq_general`) against `seqChild_safeBodyUnit_seq` settles the
+    architecture precisely: that recursion's guard `G` is ALREADY content-free
+    (`FlowBodyWindow ∧ FlowBodyContentDeepSeq ∧ SeqEnclosed ∧ close ∧ bounds`), and the carrier
+    `SeqInteriorSeparators` is consumed in EXACTLY ONE place — sourcing the CURRENT window's
+    `FlowBodyContent` (`seqWindow_flowBodyContent_seq_general`).  The descend itself is content-FREE: the seq
+    oracle draws the child `RecSeqBody` from the content-free width IH (`seqChild_safeBodyUnit_seq` calls the
+    oracle ONCE on `(lo+1, j)`), so the descended child needs NO content.  Hence R503's — and this brick's —
+    surfaced child content is genuinely free but is NOT consumed by the descend recursive call.
+
+    The ONE real obstacle is therefore isolated: the CURRENT window's content, the carrier's sole job.  It is
+    intrinsically TOP-DOWN / path-dependent — R500 `flowBodyContent_descend_seq` produces a child's content
+    from the PARENT's content (`h_content : FlowBodyContent tokens p hi`) plus a content-free body IH — so a
+    pure `windowWidth_strongRecOn` (bottom-up by WIDTH, no parent in scope) cannot thread it.  Closing it
+    carrier-free needs either `P := FlowBodyContent → RecSeqBody` (content as ANTECEDENT) with a nested
+    content-free body IH that itself carries parent content down the descent, or a custom recursor on the
+    descent that carries parent content — a JOINT/mutual construction (content top-down, body bottom-up), not
+    single-theorem wiring.  This brick is the seq-branch unit a content-threading dispatch twin will consume
+    to surface the child content; it is NOT itself the bridge.
+
+    Verified-but-unconsumed until that content-threading dispatch consumes the surfaced child content (R225):
+    composes only landed lemmas (`matchingClose_full_seq` + R503's content-emitting oracle +
+    `recseqentry_classify`), references no sorry site, frontier sorry count unchanged at 4; axiom-clean. -/
+theorem recseqentry_seqbracket_located_content (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_lo_hi : lo < hi) (h_hi_sz : hi ≤ tokens.size)
+    (h_open : tokens[lo]!.val = .flowSequenceStart)
+    (h_ne : tokens[lo + 1]!.val ≠ .flowSequenceEnd)
+    (h_total : flowBracketBalance tokens lo hi = 0)
+    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
+    (h_wt : WellTyped ((tokens.toList.take hi).drop lo))
+    (h_oracle : ∀ j, lo < j → j < hi → tokens[j]!.val = .flowSequenceEnd →
+        flowBracketBalance tokens (lo + 1) j = 0 →
+        (∀ i, lo < i → i ≤ j → flowBracketBalance tokens lo i ≥ 1) →
+        RecSeqBody ((tokens.toList.take j).drop (lo + 1)) ∧
+        FlowBodyContent tokens (lo + 1) j ∧
+        (j + 1 = hi ∨ tokens[j + 1]!.val = .flowEntry)) :
+    (∃ m, lo < m ∧ m ≤ hi ∧
+      flowBracketBalance tokens lo m = 0 ∧
+      (m = hi ∨ tokens[m]!.val = .flowEntry) ∧
+      (∀ k, lo < k → k < m →
+        ¬ (flowBracketBalance tokens lo k = 0 ∧ (k = hi ∨ tokens[k]!.val = .flowEntry))) ∧
+      RecSeqEntry ((tokens.toList.take m).drop lo)) ∧
+    (∃ j, lo + 1 < j ∧ j < hi ∧ tokens[j]!.val = .flowSequenceEnd ∧
+      flowBracketBalance tokens (lo + 1) j = 0 ∧
+      FlowBodyContent tokens (lo + 1) j) := by
+  obtain ⟨j, h_lo_j, h_j_hi, h_close, h_inner, h_pos⟩ :=
+    matchingClose_full_seq tokens lo hi h_lo_hi h_hi_sz h_open h_total h_dyck h_wt
+  obtain ⟨h_rec, h_child_content, h_succ⟩ := h_oracle j h_lo_j h_j_hi h_close h_inner h_pos
+  -- Interior non-emptiness `lo + 1 < j` from the forwarded `h_ne` (refutes the empty close `j = lo + 1`).
+  have h_lo1_j : lo + 1 < j := by
+    rcases Nat.lt_or_ge (lo + 1) j with h | h
+    · exact h
+    · exfalso; have h_eq : j = lo + 1 := by omega
+      rw [h_eq] at h_close; exact h_ne h_close
+  refine ⟨?_, ⟨j, h_lo1_j, h_j_hi, h_close, h_inner, h_child_content⟩⟩
+  exact recseqentry_classify tokens lo hi h_lo_hi h_hi_sz h_total
+    (Or.inr (Or.inr (Or.inr ⟨j, h_open, h_lo_j, h_j_hi, h_close, h_inner, h_pos, h_rec, h_succ⟩)))
+
 /-- **The combined `windowWidth_strongRecOn` `RecSeqBody` producer** — `(i'-b-B3-fixpoint)`, the LAST
     seq brick and the convergence point of all the landed descent/edge bricks.  At every body window
     `[lo, hi)` that is a `FlowBodyWindow ∧ FlowBodyContentDeep ∧ SeqEnclosed lo` whose `hi` is the
