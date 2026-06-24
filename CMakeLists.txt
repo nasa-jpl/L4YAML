@@ -62,7 +62,10 @@ set(L4YAML_EXES
 # rather than relying on lakefile's defaultTargets so the build set
 # matches the install set.
 add_custom_target(lake-build ALL
-  COMMAND "${LAKE_EXECUTABLE}" build ${L4YAML_EXES}
+  COMMAND ${CMAKE_COMMAND} -E env
+          "HOME=$ENV{HOME}"
+          "ELAN_HOME=$ENV{HOME}/.elan"
+          "${LAKE_EXECUTABLE}" build ${L4YAML_EXES}
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   COMMENT "lake build ${L4YAML_EXES} (incremental)"
   USES_TERMINAL
@@ -103,8 +106,31 @@ if(L4YAML_BUILD_FFI)
   message(STATUS "Bootstrapping Lake IR for ffi/ (lake build L4YAML)…")
   message(STATUS "  HOME=$ENV{HOME}")
   message(STATUS "  cwd=${CMAKE_CURRENT_SOURCE_DIR}")
+
+  # Ensure elan's user-writable directory exists and is initialized.
+  # In containers with system-wide elan installs (e.g., /opt/elan), Lake
+  # still needs ~/.elan/ for caches and temp files. `elan show` ensures
+  # the directory structure exists without modifying the toolchain.
   execute_process(
-    COMMAND "${LAKE_EXECUTABLE}" --verbose build L4YAML
+    COMMAND ${CMAKE_COMMAND} -E env
+            "HOME=$ENV{HOME}"
+            "ELAN_HOME=$ENV{HOME}/.elan"
+            elan show
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    OUTPUT_QUIET ERROR_QUIET
+    RESULT_VARIABLE _elan_init_rc)
+  if(NOT _elan_init_rc EQUAL 0)
+    message(WARNING
+      "elan show failed (exit ${_elan_init_rc}). "
+      "Lake may fail if ~/.elan/ isn't writable. "
+      "In containers, ensure the build user owns $HOME and ~/.elan/.")
+  endif()
+
+  execute_process(
+    COMMAND ${CMAKE_COMMAND} -E env
+            "HOME=$ENV{HOME}"
+            "ELAN_HOME=$ENV{HOME}/.elan"
+            "${LAKE_EXECUTABLE}" --verbose build L4YAML
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     RESULT_VARIABLE _lake_bootstrap_rc
     OUTPUT_VARIABLE _lake_bootstrap_out
