@@ -7409,6 +7409,58 @@ theorem nestedSeq_recseqbody_of_locator
   rw [h_islice] at h_recbody
   exact h_recbody
 
+/-- **The located nested seq's per-window `FlowBodyContent`** —
+    `(i'-b-B2c-desc-fixpoint-navigator-read-CONSUME)`, R507: the CONSUME side of R506
+    (`flowBodyContent_of_located_seq_entry`), the `FlowBodyContent` twin of `nestedSeq_recseqbody_of_locator`
+    (R388, the `RecSeqBody` projection).  Feeds the now-landed, hypothesis-free-over-emission navigator
+    `nestedSeq_recseqentry_locate` (R385/R386) — which LOCATES the enclosing seq entry from emission + the
+    seven target discriminators — straight into R506's terminal READ, yielding the per-window content
+    `FlowBodyContent tokens a b` carrier-free.  This RETYPES R506's residual from execution to structural
+    ([[ref-reduction-by-import]]): R506 was verified-but-unconsumed pending "the wrapper that produces the
+    located entry"; that wrapper already exists, so R506 is now load-bearing under a real producer.
+
+    **The decisive scope finding this brick records (the architectural correction).**  The summary/blueprint
+    Next step said to "build the spine-walk recursion wrapper" — but reading the code, that wrapper was
+    ALREADY assembled (R384 `nestedSeq_recseqentry_locate_hstep` + R385 `nestedSeq_recseqentry_locate` over
+    `seqLocateRecDriver`), so this turn consumes it rather than building it.  More importantly, the navigator
+    — and the WHOLE R350–R388/R447 seq-locator infrastructure — carries `h_path : SeqPathAllSeq tokens (a-1)`
+    (EVERY enclosing frame `[`-typed), so it serves ONLY all-seq-path windows.  But the frontier consumer
+    `h_seq_rec` (of `flowSubrangesOk_of_window_producers`, via `seqLocator_of_window_recseqbody`) fires on
+    EVERY balanced seq-bracket window — INCLUDING a map-nested seq like `[{a: [b]}]`'s inner `[b]`, where
+    `SeqPathAllSeq` is FALSE (a `false` from the `{` sits below the top, though `SeqEnclosed` — the TOP
+    frame — still holds).  So neither this brick nor R388 can discharge `h_seq_rec` in general: they cover
+    the all-seq-path fragment only.
+
+    **Why this still matters, and where it points.**  The R505 recursion route's per-window provider gate is
+    `FlowBodyWindow ∧ FlowBodyContentDeepSeq ∧ SeqEnclosed` — the path-FREE `SeqEnclosed` (immediate `[`),
+    NOT the global `SeqPathAllSeq` — so the R505 route is the architecture that CAN reach the map-nested
+    seqs the navigator cannot ([[ref-stored-vs-projected-severs-recursion-edge]]: the recursion threads
+    descent structurally through its own IH, never the global spine).  Its open residual is a path-FREE (or
+    joint seq+map) per-window `FlowBodyContent` source for `bodySucc`; this all-seq-path provider is the
+    discharged ARM of the eventual dispatch.  Composes only landed lemmas (navigator + R506), references no
+    sorry site, frontier sorry count unchanged; axiom-clean. -/
+theorem nestedSeq_flowBodyContent_of_locator
+    (items : Array YamlValue) (tokens : Array (Positioned YamlToken)) (a b : Nat)
+    (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
+    (h_ne : items.toList ≠ [])
+    (h_all : ∀ v ∈ items.toList, EmitScansInFlowRecEntry v)
+    (h_deep : FlowBodyContentDeepSeq tokens a b)
+    (h_typed : SeqTypedInterior tokens a b)
+    (h_close : tokens[b]!.val = .flowSequenceEnd)
+    (h_opener : flowBracketBalance tokens (a - 1) a = 1)
+    (h_path : SeqPathAllSeq tokens (a - 1))
+    (h_win_lo : 2 + 1 ≤ a)
+    (h_win_ab : a < b)
+    (h_win_hi : b < tokens.size - 2) :
+    FlowBodyContent tokens a b := by
+  -- The navigator LOCATES the enclosing seq entry from emission + the seven discriminators.
+  obtain ⟨lo, op', cl', interior', h_lo, _h_ab, h_entry, h_open, h_int_ne, h_slice⟩ :=
+    nestedSeq_recseqentry_locate items tokens a b h_scan h_ne h_all h_typed h_close
+      h_opener h_path h_win_lo h_win_ab h_win_hi
+  -- R506 reads the content off the located entry — carrier-free, no production.
+  exact flowBodyContent_of_located_seq_entry tokens a b (by omega) h_deep
+    lo op' cl' interior' h_lo h_entry h_open h_int_ne h_slice
+
 /-- **The located nested seq's windowed `SafeBodyUnit`** —
     `(i'-b-B2c-nested-fbc-emission-locator-CONSUME-safebodyunit)`, R387 (R388: now a thin
     `.toSafeBodyUnit` wrapper of `nestedSeq_recseqbody_of_locator`).  At any all-seq-path nested seq
