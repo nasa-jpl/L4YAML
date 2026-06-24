@@ -4406,6 +4406,64 @@ theorem seqRoot_flowBodyContent_seq
   · exact h_fe_int k hk1 h hfe hbal
   · exact h_nts k hk1 (by omega) hfe hbal
 
+/-- **`FlowBodyContent` is a PROJECTION of the window's OWN `RecSeqBody`** — `(i'-b-B2c-desc-fixpoint-proj)`,
+    R502: the brick that UNIFIES the three carrier-free `FlowBodyContent` edges (root R501, descend R500,
+    advance reused) into ONE `RecSeqBody`-keyed projection, and the consume-side dual the JOINT
+    `windowWidth_strongRecOn` co-construction reads.
+
+    **The find — every `_seq` edge factors through the SAME projection.**  Read the two guard-READING edges
+    side by side ([[ref-guard-reading-edges-need-twins]]): `seqRoot_flowBodyContent_seq` (R501) sources its
+    windowed `SafeBodyUnit ContentStartTok ((take (size-2)).drop 2)` from the FLAT `seqRoot_safeBodyUnit`
+    (emission), then runs `seqEnclosingFacts_of_windowed_safebodyunit ▸ flowBodyContent_of_deepSeq`;
+    `flowBodyContent_descend_seq` (R500) sources the SAME windowed `SafeBodyUnit ((take j).drop (p+1))` from
+    the child oracle (`seqChild_safeBodyUnit_seq`, IH-fed), then runs the IDENTICAL
+    `seqEnclosingFacts_of_windowed_safebodyunit ▸ flowBodyContent_of_deepSeq` tail.  The two edges differ
+    ONLY in HOW the windowed `SafeBodyUnit` is obtained; the content-assembly tail is byte-identical.  And
+    that `SafeBodyUnit` is, in both cases, a window's `RecSeqBody.toSafeBodyUnit` (the root's `RecSeqBody`
+    off emission, the child's off the IH).  So both edges are the SAME function of the window's own
+    `RecSeqBody` — exactly the [[ref-producer-dual-of-consumer-joint]] shape: the recursion PRODUCES
+    `RecSeqBody`, and reading it back as `FlowBodyContent` is one projection, reversed.
+
+    This lemma names that projection ONCE, keyed on the window's `RecSeqBody` directly (the same composition
+    `seqSeparatorFacts_of_recseqbody` already does for the TWO-fact separator bundle, here lifted to the
+    full content via the THREE-fact `seqEnclosingFacts_of_windowed_safebodyunit` + the UNIFIED
+    `flowBodyContent_of_deepSeq`, [[ref-coercion-dissolves-forced-projection]] R500: the interior
+    `feContentStart` is recovered from the unit projection by the internal `SafeBodyUnit → SafeBody`
+    coercion, the boundary vacuously by `noTrailingSepFact`).  With it, `seqRoot_flowBodyContent_seq` IS
+    this lemma fed `(seqRoot_recseqbody …)` and `flowBodyContent_descend_seq` IS this lemma fed the child
+    oracle's `RecSeqBody` — the windowed `SafeBodyUnit` source is the only delta, and it is the
+    deliverable's own projection in BOTH ([[ref-recursive-producer-mirrors-flat-over-shared-induction]]
+    consume-side dual).
+
+    **What it buys the JOINT consume step.**  The `windowWidth_strongRecOn` IH yields, for any sub-window,
+    `RecSeqBody ((take hi').drop lo')`; this lemma turns that deliverable into the sub-window's
+    `FlowBodyContent` with NO second IH call and NO oracle re-entry — content is FREE wherever the
+    recursion has already produced the body.  (The residual it does NOT close is the SAME-window coupling
+    the dispatch still needs: producing `RecSeqBody lo hi` consumes `h_content : FlowBodyContent lo hi` for
+    the head dispatch, so the CURRENT window's content is the top-down `G`-seed (root R501 + descend/advance
+    edges), while the CHILDREN's content is this free projection — the two are not the same window, so no
+    cycle. This is what splits the co-construction into a top-down content thread and a bottom-up body
+    deliverable.)
+
+    Verified-but-unconsumed until the JOINT carrier-free recursion projects the IH's `RecSeqBody` through
+    it (R225): composes only landed lemmas (`RecSeqBody.toSafeBodyUnit` +
+    `seqEnclosingFacts_of_windowed_safebodyunit` + `flowBodyContent_of_deepSeq`), references no sorry site,
+    frontier sorry count unchanged at 4; axiom-clean. -/
+theorem flowBodyContent_of_recseqbody_seq
+    (tokens : Array (Positioned YamlToken)) (a b : Nat) (h_b : b ≤ tokens.size)
+    (h_deep : FlowBodyContentDeepSeq tokens a b)
+    (h_rec : RecSeqBody ((tokens.toList.take b).drop a)) :
+    FlowBodyContent tokens a b := by
+  -- The window's own `RecSeqBody` projects to its windowed `SafeBodyUnit`; the three enclosing facts
+  -- follow, and the UNIFIED `_seq` assembler merges interior (coerced) ∪ boundary (vacuous).
+  obtain ⟨h_bs, h_fe_int, h_nts⟩ :=
+    seqEnclosingFacts_of_windowed_safebodyunit tokens a b h_b h_rec.toSafeBodyUnit
+  refine flowBodyContent_of_deepSeq tokens a b h_deep h_bs ?_
+  intro k hk1 hk2 hfe hbal
+  rcases Nat.lt_or_ge (k + 1) b with h | h
+  · exact h_fe_int k hk1 h hfe hbal
+  · exact h_nts k hk1 (by omega) hfe hbal
+
 /-- **The combined `windowWidth_strongRecOn` `RecSeqBody` producer** — `(i'-b-B3-fixpoint)`, the LAST
     seq brick and the convergence point of all the landed descent/edge bricks.  At every body window
     `[lo, hi)` that is a `FlowBodyWindow ∧ FlowBodyContentDeep ∧ SeqEnclosed lo` whose `hi` is the
