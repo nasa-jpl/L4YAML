@@ -6473,6 +6473,57 @@ theorem RecMapPair.head_key {p : List (Positioned YamlToken)}
   cases h with
   | mk kt block_k vt block_v h_kt _ _ _ => rw [List.head_cons]; exact h_kt
 
+/-- **Map-pair structural descent — the map→seq cross-frame navigator primitive.**
+    `(i'-b-B2c-desc-fixpoint-structural-navigator-mapframe)`, R508.
+
+    The R507 finding ([[ref-producer-gate-covers-only-fragment]]) isolated the genuine seq-side
+    residual: the per-window `RecSeqBody` producer is owed PATH-FREE, for the map-nested seqs the
+    spine-walk navigator (gated `SeqPathAllSeq`) provably cannot reach (`[{a: [b]}]`'s inner `[b]`,
+    `btFold` stack `[true, false, true]`).  The path-FREE architecture is a STRUCTURAL navigator over
+    the root `RecSeqBody` (known off emission, `seqRoot_recseqbody`): the inductive ALREADY STORES every
+    nested window's body as a subterm (`RecSeqEntry.seq` stores `RecSeqBody interior`,
+    `RecSeqEntry.mapRec` stores `RecMapBody interior`, and a `RecMapPair` stores its key/value blocks as
+    `RecSeqEntry`s), so descending the inductive reaches every window regardless of the bracket PATH —
+    the `SeqPathAllSeq` gate is an artifact of TOKEN-SPINE walking, not of the deliverable.
+
+    The descent crosses frames at three structural edges; two existed
+    (`recseqentry_seq_extract` — seq entry → nested seq body; the `.mapRec` field — seq entry → nested
+    map body), and the THIRD — the map→seq edge, descending from a `RecMapPair` into a key/value block
+    that is itself a nested seq — was MISSING (the spine-walk navigators stop at `{`; no joint navigator
+    crosses it).  This brick is exactly that edge, as a single bundle: a `RecMapPair p` exposes its
+    `kt :: (block_k ++ vt :: block_v)` shape, the `.key`/`.value` separators, both blocks as
+    `RecSeqEntry`s (`RecMapPair.mk` stores them), AND — the cross-frame payoff — when EITHER block is a
+    non-empty flow-seq `op :: (interior ++ [cl])`, its nested `RecSeqBody interior` read off by
+    `recseqentry_seq_extract` applied to the pair's OWN stored entry (sound: the inner `∀` quantifies
+    over the pair's own `block_k`/`block_v`, so `recseqentry_seq_extract` matches the supplied seq-shape
+    against the stored entry internally and refutes the four non-seq shapes — no external split to
+    align, which an `interior`-keyed standalone extract could not do soundly off the ambiguous
+    `block_k ++ vt :: block_v` append).
+
+    The map mirror of `recseqentry_seq_extract` for the map-pair level, co-located with the other
+    `RecMapPair` structural projections (`ne_nil`, `head_key`).  Reusable by either candidate path-free
+    architecture: a structural navigator over the root body, or a joint seq+map spine navigator that
+    descends through `{` frames.  Verified-but-unconsumed until that navigator wires it; references no
+    sorry site, frontier sorry count unchanged at 4; pure `cases` over the single constructor plus
+    `recseqentry_seq_extract`, so axiom-identical to the latter, no `sorryAx`. -/
+theorem recmappair_block_descent {p : List (Positioned YamlToken)} (h : RecMapPair p) :
+    ∃ (kt : Positioned YamlToken) (block_k : List (Positioned YamlToken))
+      (vt : Positioned YamlToken) (block_v : List (Positioned YamlToken)),
+      p = kt :: (block_k ++ vt :: block_v)
+      ∧ kt.val = .key ∧ vt.val = .value
+      ∧ RecSeqEntry block_k ∧ RecSeqEntry block_v
+      ∧ (∀ op cl interior, block_k = op :: (interior ++ [cl]) →
+           op.val = .flowSequenceStart → interior ≠ [] → RecSeqBody interior)
+      ∧ (∀ op cl interior, block_v = op :: (interior ++ [cl]) →
+           op.val = .flowSequenceStart → interior ≠ [] → RecSeqBody interior) := by
+  cases h with
+  | mk kt block_k vt block_v h_kt h_ke h_vt h_ve =>
+      exact ⟨kt, block_k, vt, block_v, rfl, h_kt, h_vt, h_ke, h_ve,
+        fun op cl interior h_shape h_open h_ne =>
+          recseqentry_seq_extract h_ke op cl interior h_shape h_open h_ne,
+        fun op cl interior h_shape h_open h_ne =>
+          recseqentry_seq_extract h_ve op cl interior h_shape h_open h_ne⟩
+
 /-- **Body-cons window assembler** (Phase J, map side — the navigation recursion's *advance* step).
     The map mirror of `recseqbody_cons_window`, completing the *advance* structural move on the map
     axis as well (the seq→map mirror per the R260→R261 / R255→R256 rhythm): given the window splits at
