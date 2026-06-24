@@ -6524,6 +6524,109 @@ theorem recmappair_block_descent {p : List (Positioned YamlToken)} (h : RecMapPa
         fun op cl interior h_shape h_open h_ne =>
           recseqentry_seq_extract h_ve op cl interior h_shape h_open h_ne⟩
 
+/-- **Positional map-pair window descent** (Phase J, map side — the navigation recursion's map-pair
+    *descend* step; the POSITIONAL inverse of `recmappair_window`, and the first CONSUMER of the
+    structural map→seq edge `recmappair_block_descent`).
+
+    `recmappair_window` (the *build-UP* direction) takes positional key/value `RecSeqEntry`s and
+    *assembles* a `RecMapPair` over `[lo, m)`; this is the *descend* dual the structural navigator
+    needs: given a `RecMapPair` over the positional window `[lo, m)`, it *recovers* the pair's own
+    value-separator position `kv` and the two key/value sub-windows as `RecSeqEntry`s —
+    `(take kv).drop (lo+1)` for the key block, `(take m).drop (kv+1)` for the value block — exactly the
+    two `RecSeqEntry`s the navigator recurses into (either may itself be a nested seq, whose interior
+    the seq→seq positional descent `recseqbody_window_of_located_entry` then reads off).
+
+    The proof is the structural→positional bridge run in the descend direction.  R508's
+    `recmappair_block_descent` gives the LIST-level decomposition `W = kt :: (block_k ++ vt :: block_v)`
+    with `RecSeqEntry block_k`/`RecSeqEntry block_v`; the value position is then *determined* (not
+    located by minimality) as `kv = lo + 1 + block_k.length`, because the key block is a single balanced
+    `RecSeqEntry` carrying no depth-`0` value separator.  The positional slice identities
+    `(take kv).drop (lo+1) = block_k` and `(take m).drop (kv+1) = block_v` follow from the window length
+    `m - lo = |W|` (`Nat.min_eq_left` with `m ≤ size`) plus `List.drop_take`/`List.take_take`/
+    `List.drop_drop`/`List.take_left`/`List.drop_left` — the same bracket- and collection-agnostic
+    slicing `recmappair_window` uses forward.  The `.key`/`.value` head facts read off the opener/value
+    peels (`List.getElem_cons_drop` + `List.getElem_take`) via cons-injectivity against the structural
+    decomposition.  No external split point is supplied (which would be unsound — the
+    `block_k ++ vt :: block_v` append does not split uniquely; cf. `recmappair_block_descent`'s
+    soundness note): `kv` is *read off* the recovered `block_k`.
+
+    Verified-but-unconsumed until the structural navigator wires it: references no sorry site, frontier
+    sorry count unchanged at 4; consumes only `recmappair_block_descent` + core list slicing, so
+    axiom-identical to the sibling positional descents `[propext, Classical.choice, Quot.sound]`, no
+    `sorryAx`.  Classification `(i'-b-B2c-desc-positional-mappair-descent)`, R509. -/
+theorem recmappair_window_descent (tokens : Array (Positioned YamlToken)) (lo m : Nat)
+    (h_lo_m : lo < m) (h_m_sz : m ≤ tokens.size)
+    (h_pair : RecMapPair ((tokens.toList.take m).drop lo)) :
+    ∃ kv, lo < kv ∧ kv < m ∧
+      tokens[lo]!.val = .key ∧
+      tokens[kv]!.val = .value ∧
+      RecSeqEntry ((tokens.toList.take kv).drop (lo + 1)) ∧
+      RecSeqEntry ((tokens.toList.take m).drop (kv + 1)) := by
+  obtain ⟨kt, block_k, vt, block_v, hW, h_kt, h_vt, h_ke, h_ve, _, _⟩ :=
+    recmappair_block_descent h_pair
+  -- window length facts
+  have h_tl_len : tokens.toList.length = tokens.size := Array.length_toList
+  have h_lo_sz : lo < tokens.size := by omega
+  have h_lo_len : lo < tokens.toList.length := by rw [h_tl_len]; exact h_lo_sz
+  have h_W_len : ((tokens.toList.take m).drop lo).length = m - lo := by
+    rw [List.length_drop, List.length_take, h_tl_len, Nat.min_eq_left (by omega : m ≤ tokens.size)]
+  have h_cons_len : m - lo = 1 + block_k.length + 1 + block_v.length := by
+    have hc := congrArg List.length hW
+    rw [h_W_len] at hc
+    simp only [List.length_cons, List.length_append] at hc
+    omega
+  obtain ⟨kv, hkv_def⟩ : ∃ kv, kv = lo + 1 + block_k.length := ⟨_, rfl⟩
+  have h_lo_kv : lo < kv := by omega
+  have h_kv_m : kv < m := by omega
+  have h_kv_sz : kv < tokens.size := by omega
+  have h_kv_len : kv < tokens.toList.length := by rw [h_tl_len]; exact h_kv_sz
+  -- opener peel: `(take m).drop lo = tokens[lo] :: (take m).drop (lo+1)`
+  have h_peel_lo : (tokens.toList.take m).drop lo
+      = tokens.toList[lo]'h_lo_len :: (tokens.toList.take m).drop (lo + 1) := by
+    have hlen : lo < (tokens.toList.take m).length := by
+      rw [List.length_take, Nat.min_eq_left (by rw [h_tl_len]; omega : m ≤ tokens.toList.length)]
+      omega
+    have h := (List.getElem_cons_drop hlen).symm
+    rw [List.getElem_take] at h
+    exact h
+  rw [h_peel_lo] at hW
+  obtain ⟨h_lo_eq, hT⟩ := List.cons.inj hW
+  -- `tokens[lo]!.val = .key`
+  have h_tok_lo : tokens[lo]! = kt := by
+    rw [getElem!_pos tokens lo h_lo_sz, ← Array.getElem_toList]; exact h_lo_eq
+  have h_key : tokens[lo]!.val = .key := by rw [h_tok_lo]; exact h_kt
+  -- value peel: `(take m).drop kv = vt :: block_v`
+  have h_drop_kv : (tokens.toList.take m).drop kv = vt :: block_v := by
+    rw [show kv = (lo + 1) + block_k.length from by omega, ← List.drop_drop, hT, List.drop_left]
+  have h_peel_kv : (tokens.toList.take m).drop kv
+      = tokens.toList[kv]'h_kv_len :: (tokens.toList.take m).drop (kv + 1) := by
+    have hlen : kv < (tokens.toList.take m).length := by
+      rw [List.length_take, Nat.min_eq_left (by rw [h_tl_len]; omega : m ≤ tokens.toList.length)]
+      omega
+    have h := (List.getElem_cons_drop hlen).symm
+    rw [List.getElem_take] at h
+    exact h
+  rw [h_peel_kv] at h_drop_kv
+  obtain ⟨h_kv_eq, h_bv⟩ := List.cons.inj h_drop_kv
+  -- `tokens[kv]!.val = .value`
+  have h_tok_kv : tokens[kv]! = vt := by
+    rw [getElem!_pos tokens kv h_kv_sz, ← Array.getElem_toList]; exact h_kv_eq
+  have h_value : tokens[kv]!.val = .value := by rw [h_tok_kv]; exact h_vt
+  -- block_k slice: `(take kv).drop (lo+1) = block_k`
+  have h_bk : (tokens.toList.take kv).drop (lo + 1) = block_k := by
+    have e1 : (tokens.toList.take kv).drop (lo + 1)
+        = (tokens.toList.drop (lo + 1)).take block_k.length := by
+      rw [List.drop_take]; congr 1; omega
+    have e2 : ((tokens.toList.take m).drop (lo + 1)).take block_k.length
+        = (tokens.toList.drop (lo + 1)).take block_k.length := by
+      rw [List.drop_take, List.take_take, Nat.min_eq_left (by omega : block_k.length ≤ m - (lo + 1))]
+    have e3 : ((tokens.toList.take m).drop (lo + 1)).take block_k.length = block_k := by
+      rw [hT, List.take_left]
+    rw [e1, ← e2, e3]
+  refine ⟨kv, h_lo_kv, h_kv_m, h_key, h_value, ?_, ?_⟩
+  · rw [h_bk]; exact h_ke
+  · rw [h_bv]; exact h_ve
+
 /-- **Body-cons window assembler** (Phase J, map side — the navigation recursion's *advance* step).
     The map mirror of `recseqbody_cons_window`, completing the *advance* structural move on the map
     axis as well (the seq→map mirror per the R260→R261 / R255→R256 rhythm): given the window splits at
