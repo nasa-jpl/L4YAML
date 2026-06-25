@@ -1,7 +1,8 @@
 /-!
-# Reflection 433 — endpoint+balance bracket guards admit cross-matched false windows
+# Reflection 433 / 519 — endpoint+balance bracket guards admit cross-matched false windows
 
-Self-contained (core Lean, no `L4YAML` import) toy of the R433 finding.
+Self-contained (core Lean, no `L4YAML` import) toy of the R433 finding, extended (R519) with the MAP
+twin and the **Dyck-dependence SPLIT** among a producer's per-window facts.
 
 Context.  The flat per-window provider (`windowFacts`) and the consumer's `h_seq_rec` both quantify over
 every window `[lo, hi)` gated by SEVEN bracket-shape facts: `2 ≤ lo`, `lo < hi`, `hi ≤ size-2`,
@@ -67,5 +68,68 @@ theorem false_window_fails_floor : ¬ Floor toks 1 5 := by
   intro hF
   have hd := hF 2 (by omega) (by omega)   -- bal toks 1 2 ≥ 0
   exact absurd hd (by decide)             -- but bal toks 1 2 = -1
+
+/-! ## R519 — the MAP twin, and the Dyck-dependence SPLIT among the producer's facts
+
+The same cross-matched defect breaks the MAP grammar producers (`flowSubrangesOk_of_window_producers`'s
+six `h_key_content` … `h_value_bracket_succ`), which carry the SEVEN guards but NOT the Dyck floor.  But
+the breakage is NOT uniform — it SPLITS by fact kind:
+
+* the CONTENT-START successor facts (`h_key_content`/`h_value_content`) are Dyck-INDEPENDENT — they hold
+  even on a cross-matched window (their conclusion is an emitter-global property of every `.key`/`.value`,
+  and `k+1 < hi` is forced by the `.flowMappingEnd` closer);
+* the BOUNDARY-referencing successor facts (`h_value_scalar_succ`, …, which name `hi` via `k+2 = hi`) are
+  Dyck-DEPENDENT — they are FALSE on a cross-matched window, because the next token is an INNER close `}`
+  that is not THIS window's `hi`.
+
+Machine-checked in the library by `mapGrammarFacts_false_window` (`native_decide` on
+`{a: {b: c}, d: {e: f}}`, window `[6, 20)`).  The toy below reproduces that window: at the depth-`0`
+value `k = 8`, the content-start fact HOLDS but the value-scalar-successor fact FAILS, and the Floor guard
+rejects the window — so the single fix (add the Dyck floor as a guard) is what restores ALL six facts. -/
+
+/-- The filtered scan of `{a: {b: c}, d: {e: f}}` as toy codes
+    (`0`=stream, `1`=`{`, `2`=`}`, `3`=KEY, `4`=VAL, `5`=scalar, `6`=`,`):
+
+      0:SS 1:{ 2:KEY 3:a 4:VAL 5:{ 6:KEY 7:b 8:VAL 9:c 10:} 11:, 12:KEY 13:d 14:VAL 15:{ 16:KEY 17:e 18:VAL 19:f 20:} 21:} 22:SE -/
+def toks2 : List Nat :=
+  [0, 1, 3, 5, 4, 1, 3, 5, 4, 5, 2, 6, 3, 5, 4, 1, 3, 5, 4, 5, 2, 2, 0]
+
+def isVal (c : Nat) : Bool := c == 4
+def isScalar (c : Nat) : Bool := c == 5
+def isComma (c : Nat) : Bool := c == 6
+def isMapClose (c : Nat) : Bool := c == 2
+def isContentStart (c : Nat) : Bool := c == 5 || c == 1   -- scalar or `{`
+
+/-- Dyck-INDEPENDENT fact (`h_value_content`-shaped): a depth-`0` value has an in-window content-start
+    successor.  No reference to the window's close `hi` beyond the forced `k+1 < hi`. -/
+def csFact (lo hi k : Nat) : Bool :=
+  !(bal toks2 lo k == 0 && isVal toks2[k]!)
+    || (decide (k + 1 < hi) && isContentStart toks2[k+1]!)
+
+/-- Dyck-DEPENDENT fact (`h_value_scalar_succ`-shaped): a depth-`0` scalar-valued position is followed by
+    a `,` separator OR the window's OWN close (`k+2 = hi`) — it NAMES the boundary `hi`. -/
+def vsFact (lo hi k : Nat) : Bool :=
+  !(bal toks2 lo k == 0 && isVal toks2[k]! && isScalar toks2[k+1]!)
+    || (decide (k + 2 ≤ hi)
+        && (isComma toks2[k+2]! || (isMapClose toks2[k+2]! && decide (k + 2 = hi))))
+
+-- the cross-matched window `[6, 20)`: opener at 5, closer at 20, balances, floor underflows at i=11
+#guard toks2[5]! == 1
+#guard toks2[20]! == 2
+#guard bal toks2 6 20 == 0
+#guard bal toks2 6 11 == -1
+#guard csFact 6 20 8        -- Dyck-independent: HOLDS on the cross-matched window
+#guard !vsFact 6 20 8       -- Dyck-dependent: FAILS on the cross-matched window
+
+/-- **The Dyck-dependence SPLIT** — at the depth-`0` value `k = 8` of the cross-matched window `[6, 20)`,
+    the content-start fact HOLDS but the value-scalar-successor fact FAILS. -/
+theorem split_at_crossmatched :
+    csFact 6 20 8 = true ∧ vsFact 6 20 8 = false := by decide
+
+/-- The Floor guard rejects the cross-matched MAP window — so adding it restores ALL six facts at once. -/
+theorem map_false_window_fails_floor : ¬ Floor toks2 6 20 := by
+  intro hF
+  have hd := hF 11 (by omega) (by omega)   -- bal toks2 6 11 ≥ 0
+  exact absurd hd (by decide)              -- but bal toks2 6 11 = -1
 
 end Tests.Reflections.BracketGuardsAdmitCrossMatched

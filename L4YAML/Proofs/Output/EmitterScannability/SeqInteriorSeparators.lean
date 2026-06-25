@@ -7272,6 +7272,103 @@ theorem flowSubrangesOk_seq_floor_rejects_crossMatched_window
   rw [hfloor] at hd
   omega
 
+/-- **The Dyck-FREE MAP grammar producers are FALSE at a cross-matched window — they too need the
+    interior Dyck floor** — `(i'-b-B2c-(d)-map-grammar-false-window)`, the MAP twin of
+    `seqWindowFacts_false_window` (`:7183`) and the probe that REDIRECTS brick (3).  The next critical-path
+    brick `flowSubrangesOk_of_seqRoot_and_mapRoot` (the map twin of R512's `flowSubrangesOk_of_seqRoot_and_map_producers`)
+    aims to discharge the six `flowSubrangesOk_of_window_producers` MAP grammar producers
+    (`h_key_content` … `h_value_bracket_succ`, `NonemptyStructure.lean:10434+`) from the single map root
+    carrier `MapInteriorSeparators tokens 2 (size-2)`.  But those six slots carry only the SEVEN
+    bracket-shape guards (`2 ≤ lo`, `lo ≤ hi`, `hi ≤ size-2`, `hi < size`, `tokens[hi] = .flowMappingEnd`,
+    `flowBracketBalance lo hi = 0`, `tokens[lo-1] = .flowMappingStart`) — and NOT the interior Dyck floor.
+    Exactly as R433 found for `h_seq_rec` ([[ref-bracket-guards-admit-cross-matched-window]]), those seven
+    do NOT pin a MATCHED `{`…`}` pair, so a CROSS-MATCHED window passes them while the carrier's
+    `MapTypedInterior` gate (which needs Dyck) does not hold — the carrier cannot fire there, and the
+    R515/R518 projections (`mapGrammarFacts_of_mapRoot` / `mapWindow_grammarFacts_general`) are inapplicable.
+
+    **Machine-checked witness** (`native_decide` on real scanned output).  `{a: {b: c}, d: {e: f}}` scans
+    to (filtered, size 23):
+
+        0:SS 1:{ 2:KEY 3:a 4:VAL 5:{ 6:KEY 7:b 8:VAL 9:c 10:} 11:, 12:KEY 13:d 14:VAL 15:{ 16:KEY 17:e 18:VAL 19:f 20:} 21:} 22:SE
+
+    The window `[6, 20)` satisfies all SEVEN guards — `tokens[5] = .flowMappingStart` (the FIRST inner map's
+    opener), `tokens[20] = .flowMappingEnd` (the SECOND inner map's closer), `flowBracketBalance 6 20 = 0` —
+    yet it is CROSS-MATCHED: `{` at 5 truly matches `}` at 10, `}` at 20 truly matches `{` at 15.  Its
+    interior Dyck floor UNDERFLOWS at `i = 11` (`flowBracketBalance 6 11 = -1`, the head `tokens[6..10]`
+    closes the inner `{b: c}`).  And the producer fact is not merely Dyck-unprovable but FALSE: at the
+    depth-`0` value `tokens[8] = .value` (`flowBracketBalance 6 8 = 0`) with scalar successor `tokens[9] = c`,
+    the `h_value_scalar_succ` conclusion demands `tokens[10]` be `.flowEntry` or `.flowMappingEnd` AT `hi = 20`,
+    but `tokens[10] = .flowMappingEnd` with `10 ≠ 20` — it is the INNER map's close, not a separator and not
+    THIS window's close.  So the Dyck-free `h_value_scalar_succ` universal is UNSATISFIABLE.
+
+    **The redirect** (the genuine remaining work for brick (3), [[ref-minimal-pair-extracts-the-gate]]).  The
+    six grammar producers must gain the interior Dyck floor `∀ i, lo ≤ i → i ≤ hi → flowBracketBalance lo i ≥ 0`
+    as an EIGHTH guard — the same fix R433 applied to `h_seq_rec` and R439 to `FlowSubrangesOk.{seq,map}`.
+    With it, cross-matched windows are excluded, `MapTypedInterior` becomes satisfiable, and the carrier
+    projections fire.  The split is SHARP: the two CONTENT-START facts (`h_key_content`/`h_value_content`) are
+    Dyck-INDEPENDENT (their `isFlowContentStart tokens[k+1]` conjunct is an emitter-global property of every
+    `.key`/`.value`, and `k+1 < hi` is forced by the `.flowMappingEnd` closer) so they survive cross-matching;
+    only the four BOUNDARY-referencing facts (the scalar/bracket successors, which name `hi` via `k+2 = hi` /
+    `j+1 = hi` or pin an interior separator) genuinely need Dyck.  Contains the `ofReduceBool` axiom
+    (`native_decide`), off the `universal_roundtrip` path; references no sorry site, frontier sorry count
+    unchanged at 4. -/
+theorem mapGrammarFacts_false_window
+    (tokens : Array (Positioned YamlToken))
+    (h : Scanner.scanFiltered
+        ("{" ++ emit.emitPairList
+          [(YamlValue.scalar { content := "a", style := .plain },
+            YamlValue.mapping .flow #[(YamlValue.scalar { content := "b", style := .plain },
+                                       YamlValue.scalar { content := "c", style := .plain })]),
+           (YamlValue.scalar { content := "d", style := .plain },
+            YamlValue.mapping .flow #[(YamlValue.scalar { content := "e", style := .plain },
+                                       YamlValue.scalar { content := "f", style := .plain })])]
+        ++ "}") = .ok tokens) :
+    (2 ≤ 6 ∧ (6 : Nat) ≤ 20 ∧ 20 ≤ tokens.size - 2 ∧ 20 < tokens.size ∧
+      tokens[20]!.val = .flowMappingEnd ∧ flowBracketBalance tokens 6 20 = 0 ∧
+      tokens[6 - 1]!.val = .flowMappingStart) ∧
+    (flowBracketBalance tokens 6 8 = 0 ∧ tokens[8]!.val = .value) ∧
+    ¬ ((8 : Nat) + 2 ≤ 20 ∧
+        (tokens[8 + 2]!.val = .flowEntry ∨
+         (tokens[8 + 2]!.val = .flowMappingEnd ∧ (8 : Nat) + 2 = 20))) ∧
+    ¬ (∀ i, 6 ≤ i → i ≤ 20 → flowBracketBalance tokens 6 i ≥ 0) := by
+  have key : ∀ {α : Type} (g : Array (Positioned YamlToken) → α) (a : α),
+      (Scanner.scanFiltered
+          ("{" ++ emit.emitPairList
+            [(YamlValue.scalar { content := "a", style := .plain },
+              YamlValue.mapping .flow #[(YamlValue.scalar { content := "b", style := .plain },
+                                         YamlValue.scalar { content := "c", style := .plain })]),
+             (YamlValue.scalar { content := "d", style := .plain },
+              YamlValue.mapping .flow #[(YamlValue.scalar { content := "e", style := .plain },
+                                         YamlValue.scalar { content := "f", style := .plain })])]
+          ++ "}")).toOption.map g = some a →
+        g tokens = a := by
+    intro α g a e; rw [h] at e; exact Option.some.inj e
+  have h20 : tokens[20]!.val = .flowMappingEnd :=
+    key (fun t => t[20]!.val) .flowMappingEnd (by native_decide)
+  have h5 : tokens[6 - 1]!.val = .flowMappingStart :=
+    key (fun t => t[6 - 1]!.val) .flowMappingStart (by native_decide)
+  have hsz : tokens.size = 23 := key (fun t => t.size) 23 (by native_decide)
+  have hbal : flowBracketBalance tokens 6 20 = 0 :=
+    key (fun t => flowBracketBalance t 6 20) 0 (by native_decide)
+  have hbal8 : flowBracketBalance tokens 6 8 = 0 :=
+    key (fun t => flowBracketBalance t 6 8) 0 (by native_decide)
+  have h8 : tokens[8]!.val = .value :=
+    key (fun t => t[8]!.val) .value (by native_decide)
+  have h10 : tokens[8 + 2]!.val = .flowMappingEnd :=
+    key (fun t => t[8 + 2]!.val) .flowMappingEnd (by native_decide)
+  have hfloor : flowBracketBalance tokens 6 11 = -1 :=
+    key (fun t => flowBracketBalance t 6 11) (-1) (by native_decide)
+  refine ⟨⟨by omega, by omega, by omega, by omega, h20, hbal, h5⟩, ⟨hbal8, h8⟩, ?_, ?_⟩
+  · rw [h10]
+    rintro ⟨-, hc⟩
+    rcases hc with hc | ⟨-, hc⟩
+    · simp at hc
+    · omega
+  · intro hd
+    have hneg := hd 11 (by omega) (by omega)
+    rw [hfloor] at hneg
+    omega
+
 /-- **The SEQ-head CONS three-arm dispatch of the locator's per-window step `h_step`** —
     `(i'-b-B2c-nested-fbc-emission-locator-skeleton-brick-d-seq-cons)`, R378, BRICK D (carved).  This is
     the maximal-risk slice of `h_step` the blueprint flagged ("the four-way `cases h_e` × HEAD/CONS
