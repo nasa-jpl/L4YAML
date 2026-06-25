@@ -9398,6 +9398,63 @@ theorem recseqentry_window_dispatch_seq (tokens : Array (Positioned YamlToken)) 
     exact recseqentry_mapbracket_located tokens lo hi h_lo_hi h_hi_sz h_open h_total h_dyck h_wt
       (recseqentry_mapbracket_oracle tokens lo hi h_window h_content h_open)
 
+/-- **Whole-window single-entry producer** (Phase J — the map pair's sub-block need, derived from the
+    seq entry DISPATCH).  `recseqentry_window_dispatch_seq` locates the *first* entry of a body window
+    `[lo, hi)`, returning its boundary `m` and `RecSeqEntry ((take m).drop lo)`.  For a window that is
+    *itself one entry* — no depth-`0` `.flowEntry` separator strictly inside — the located boundary is
+    forced to the window END, so the first entry IS the whole window: `RecSeqEntry ((take hi).drop lo)`.
+
+    **Why the map driver needs exactly this.**  A map pair `.key K .value V` splits into a key
+    sub-block `[lo+1, kv)` and a value sub-block `[kv+1, e)`, and `recmapentry_pair_located`'s two
+    sub-block oracles each owe a *single* `RecSeqEntry` for the whole sub-block — not the first entry of
+    a body, the WHOLE sub-block.  A map key/value carries no top-level comma (its only depth-`0`
+    structure is the one value), so each sub-block has no interior depth-`0` boundary, and the dispatch's
+    located `m` coincides with the sub-block end.  This lemma is the bridge that converts the seq body
+    DISPATCH into that single-entry producer.
+
+    **The certificate that pins `m = hi`.**  The added hypothesis `h_noInterior` — no depth-`0`
+    `.flowEntry` strictly between `lo` and `hi` — is exactly what the *enclosing* recursion's pair-end
+    minimality supplies: `mapPairSkeleton_locate` returns the pair end `e` as the LEAST depth-`0`
+    boundary after `lo`, so any depth-`0` separator inside a sub-block would be an earlier boundary,
+    contradicting that minimality.  The proof reads the dispatch's marker disjunct `m = hi ∨
+    tokens[m] = .flowEntry`: the first horn is the goal; the second, with `m < hi`, is refuted by
+    `h_noInterior` at `k = m`, and with `m ≥ hi` collapses to `m = hi` against the dispatch's `m ≤ hi`.
+
+    **The reusable shape** ([[ref-dispatch-firstentry-to-wholewindow-via-noboundary]]).  A
+    body-recursion's *first-entry* dispatch becomes a *whole-window single-item* producer by adjoining a
+    no-interior-boundary certificate that pins the located boundary to the window end — the SAME
+    dispatch, the SAME IH, with one extra hypothesis collapsing the existential.  The IH the dispatch
+    carries (delivering `RecSeqBody` for narrower windows) is threaded through UNTOUCHED, so this lemma
+    is silent on the map driver's cross-deliverable knot (the map width-IH delivers `RecMapBody`, not the
+    `RecSeqBody` this dispatch wants): it isolates the boundary-pinning brick from the IH-sourcing brick.
+
+    Verified-but-unconsumed until the map width-recursion driver threads it: consumes only
+    `recseqentry_window_dispatch_seq` plus a two-line marker-disjunct argument, references no sorry site,
+    frontier sorry count unchanged at 4.  `sorryAx`-free — inherits the dispatch's
+    `[propext, Classical.choice, Quot.sound]` profile, never the tainted structure lemma
+    ([[ref-mirror-inherits-dependency-axioms]]). -/
+theorem recseqentry_whole_window_seq (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_window : FlowBodyWindow tokens lo hi)
+    (h_deep : FlowBodyContentDeepSeq tokens lo hi)
+    (h_content : FlowBodyContent tokens lo hi)
+    (Q : Nat → Prop) (h_q_descend : tokens[lo]!.val = .flowSequenceStart → Q (lo + 1))
+    (h_ih : ∀ lo' hi', hi' - lo' < hi - lo → lo ≤ lo' → hi' ≤ hi →
+        FlowBodyWindow tokens lo' hi' → FlowBodyContentDeepSeq tokens lo' hi' → Q lo' →
+        tokens[hi']!.val = .flowSequenceEnd →
+        RecSeqBody ((tokens.toList.take hi').drop lo'))
+    (h_noInterior : ∀ k, lo < k → k < hi →
+        ¬ (flowBracketBalance tokens lo k = 0 ∧ tokens[k]!.val = .flowEntry)) :
+    RecSeqEntry ((tokens.toList.take hi).drop lo) := by
+  obtain ⟨m, h_lo_m, h_m_hi, h_bal_m, h_marker, _h_min, h_entry⟩ :=
+    recseqentry_window_dispatch_seq tokens lo hi h_window h_deep h_content Q h_q_descend h_ih
+  have h_m_eq : m = hi := by
+    rcases h_marker with h | h
+    · exact h
+    · rcases Nat.lt_or_ge m hi with h_lt | h_ge
+      · exact absurd ⟨h_bal_m, h⟩ (h_noInterior m h_lo_m h_lt)
+      · omega
+  rw [← h_m_eq]; exact h_entry
+
 /-- **Head-derived map-pair classify** (Phase J — the map locate DRIVER's pair classify with its two
     `RecSeqEntry` sub-blocks DERIVED from per-sub-window oracles rather than assumed whole).  The map
     mirror of `recseqentry_seqbracket_located` (R283), and the mirror is *asymmetric* in a way that
