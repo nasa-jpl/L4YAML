@@ -108,6 +108,9 @@ theorem demo :
 
 end MapGateBridge
 
--- Axiom audit: `[propext, Quot.sound]`, faithfully matching the real lemmas (`Quot.sound` via
--- `List.foldl_append`).
+-- Axiom audit (machine-checked: `#guard_msgs` pins the profile and fails the build if it ever drifts;
+-- it also CONSUMES the info output, so the audit no longer pollutes the build log).
+-- `[propext, Quot.sound]`, faithfully matching the real lemmas (`Quot.sound` via `List.foldl_append`).
+/-- info: 'MapGateBridge.demo' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
 #print axioms MapGateBridge.demo

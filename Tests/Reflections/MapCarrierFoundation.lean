@@ -129,6 +129,13 @@ theorem demo :
 
 end MapCarrierFoundation
 
--- Axiom audit: the toy sheds even `propext` (the real edges carry `[propext]`).
+-- Axiom audit (machine-checked: `#guard_msgs` pins the profile and fails the build if it ever drifts;
+-- it also CONSUMES the info output, so the audit no longer pollutes the build log).
+-- The toy sheds even `propext` (the real edges carry `[propext]`).
+/-- info: 'MapCarrierFoundation.demo' does not depend on any axioms -/
+#guard_msgs in
 #print axioms MapCarrierFoundation.demo
+
+/-- info: 'MapCarrierFoundation.run' does not depend on any axioms -/
+#guard_msgs in
 #print axioms MapCarrierFoundation.run

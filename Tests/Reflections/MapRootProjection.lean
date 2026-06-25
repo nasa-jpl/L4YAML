@@ -118,6 +118,10 @@ theorem demo : MapGrammarFacts 2 5 :=
 
 end MapRootProjection
 
--- Axiom audit: `[propext, Quot.sound]`, faithfully matching the real lemma (`Quot.sound` via
--- `List.foldl_append`, inherited through the R514 gate bridge).
+-- Axiom audit (machine-checked: `#guard_msgs` pins the profile and fails the build if it ever drifts;
+-- it also CONSUMES the info output, so the audit no longer pollutes the build log).
+-- `[propext, Quot.sound]`, faithfully matching the real lemma (`Quot.sound` via `List.foldl_append`,
+-- inherited through the R514 gate bridge).
+/-- info: 'MapRootProjection.demo' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
 #print axioms MapRootProjection.demo
