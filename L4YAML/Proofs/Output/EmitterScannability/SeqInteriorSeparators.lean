@@ -2095,6 +2095,84 @@ theorem mapWindow_grammarFacts (tokens : Array (Positioned YamlToken)) (lo hi : 
   mapWindow_grammarFacts_general tokens 2 (tokens.size - 2) lo hi
     h_win h_enclosed h_root_carrier h_win.lo_ge h_win.hi_le
 
+/-- **The per-window MAP `MapBodyProps` provider** — the map analog of
+    `seqWindow_flowBodyContent_seq_general`, one structural layer UP from `mapWindow_grammarFacts_general`.
+    Where the grammar-facts provider stops at the carrier's six adjacency facts, this assembles the full
+    ten-field `MapBodyProps tokens lo hi` the map pair-boundary locate consumes (it needs M9/M10 bracket
+    matching to place the value separator `kv` when the key is a nested `[ … ]`/`{ … }`, not just a
+    scalar).  It composes `mapWindow_grammarFacts_general` (the six carrier facts → M3 `key_content`, M4
+    `key_scalar_value`, M6 `value_content`, M7 `value_scalar_succ`, and the M5/M8 bracket-successor
+    feeders) with `mapBodyProps_assemble` (which builds M5/M8/M9/M10 from the window's own balance/Dyck/
+    `WellTyped` via the typed locators), reading M1 `key_start` off the deep guard's `headKey`
+    (`FlowBodyContentDeepMap.headKey`, the map head is a `.key`).
+
+    **The lone non-carrier, non-guard input is M2 `after_fe` — the recorded seq/map carrier ASYMMETRY,
+    here pinned to its exact entry point.**  The SEQ carrier `SeqInteriorSeparators` bundles TWO facts
+    (`bodySuccFact` *and* `noTrailingSepFact`), so the seq bridge `seqWindow_flowBodyContent_seq_general`
+    self-sources its comma-successor fact (`feContent`: every depth-`0` `,` is followed by content) by
+    instantiating `noTrailingSepFact` on the narrowed window `[lo, k+1)`.  The MAP carrier
+    `MapInteriorSeparators` bundles only the six `MapGrammarFacts` — it has NO comma-successor fact — so
+    the map's dual (`after_fe`: every depth-`0` `,` is followed by a `.key`) cannot be re-sourced from
+    the carrier and is taken here as a SUPPLIED hypothesis.  This is NOT the same shape as the deep
+    guard's `feKey` (`FlowBodyContentDeepMap.feKey`): `feKey` is the *threading* form the recursion
+    advances (`,` whose successor is *not* content ⟹ `.key`, the dual-axis gate that lets the advance
+    edge re-establish the next window's `headKey` from a supplied successor without proving the
+    content-exclusion), whereas `after_fe` is the *assemble* form (an unconditional universal, M2).
+    The two do not interconvert without re-proving the very content-exclusion `feKey`'s premise assumes,
+    so M2 is genuinely the driver/root-supplied fact ([[ref-additive-field-cost-by-keying]] — the cost
+    a parallel field pays depends on which side internalizes it; here the seq carrier pays it and the
+    map carrier defers it).  M1 (`headKey`) likewise comes from the deep guard on BOTH axes; only the
+    comma-successor split asymmetrically.
+
+    **Axiom profile.**  `mapWindow_grammarFacts_general` and `headKey` are clean
+    ([[ref-mirror-inherits-dependency-axioms]] R517–R518: a consumer of an *assumed* carrier stays
+    `[propext]`-only); `mapBodyProps_assemble`'s typed-locator machinery contributes the heavier
+    `Classical.choice`/`Quot.sound` but NEVER the tainted `scanFiltered_emitMap_nonempty_structure`, so
+    no `sorryAx` — the produced `MapBodyProps` is structure-lemma-free.
+
+    Verified-but-unconsumed until the map pair-boundary locate + driver
+    (`mapWindowRecMapBody_map_general`, the R415 analog) land: references no sorry site, frontier sorry
+    count unchanged at 4. -/
+theorem mapWindow_mapBodyProps_general (tokens : Array (Positioned YamlToken))
+    (lo0 hi0 lo hi : Nat)
+    (h_win : FlowBodyWindow tokens lo hi)
+    (h_deep : FlowBodyContentDeepMap tokens lo hi)
+    (h_enclosed : MapEnclosed tokens lo)
+    (h_close : tokens[hi]!.val = .flowMappingEnd)
+    (h_after_fe : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .flowEntry →
+      k + 1 ≤ hi ∧ tokens[k + 1]!.val = .key)
+    (h_carrier0 : MapInteriorSeparators tokens lo0 hi0)
+    (h_lo0 : lo0 ≤ lo) (h_hi0 : hi ≤ hi0) :
+    MapBodyProps tokens lo hi := by
+  -- the six adjacency facts, from the narrowed carrier instantiated at the window
+  have h_facts : MapGrammarFacts tokens lo hi :=
+    mapWindow_grammarFacts_general tokens lo0 hi0 lo hi h_win h_enclosed h_carrier0 h_lo0 h_hi0
+  obtain ⟨h_kc, h_ksv, h_vc, h_vss, h_kbs, h_vbs⟩ := h_facts
+  -- assemble: M1 from the deep guard's head-`.key`, M2 supplied, M3–M8 from the carrier facts,
+  -- M5/M8/M9/M10 built inside `mapBodyProps_assemble` from the window's balance/Dyck/`WellTyped`.
+  exact mapBodyProps_assemble tokens lo hi
+    (Nat.le_of_lt h_win.hi_lt) h_close h_win.balanced h_win.dyck h_win.wellTyped
+    (fun _ => h_deep.headKey) h_after_fe
+    h_kc h_ksv h_vc h_vss h_kbs h_vbs
+
+/-- **The root-span instance of `mapWindow_mapBodyProps_general`** — `lo0 := 2`, `hi0 := size-2`,
+    bounds read off `FlowBodyWindow.lo_ge`/`hi_le`; the map mirror of `seqWindow_flowBodyContent_seq`. -/
+theorem mapWindow_mapBodyProps (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_win : FlowBodyWindow tokens lo hi)
+    (h_deep : FlowBodyContentDeepMap tokens lo hi)
+    (h_enclosed : MapEnclosed tokens lo)
+    (h_close : tokens[hi]!.val = .flowMappingEnd)
+    (h_after_fe : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .flowEntry →
+      k + 1 ≤ hi ∧ tokens[k + 1]!.val = .key)
+    (h_root_carrier : MapInteriorSeparators tokens 2 (tokens.size - 2)) :
+    MapBodyProps tokens lo hi :=
+  mapWindow_mapBodyProps_general tokens 2 (tokens.size - 2) lo hi
+    h_win h_deep h_enclosed h_close h_after_fe h_root_carrier h_win.lo_ge h_win.hi_le
+
 /-- **The all-seq-PATH domain predicate** — `(i'-b-B2c-nested-project, the domain hypothesis)`, the
     proof-side Prop form of `pathAllSeq` (R336, `SeqPathDispatchProbe`).  Where `SeqEnclosed tokens lo`
     reads only the TOP of the typed bracket stack after `[0, lo)` (the window's IMMEDIATE enclosure),
