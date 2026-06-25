@@ -269,6 +269,49 @@ theorem mapTypedInterior_of_opener
     MapTypedInterior tokens (q + 1) hi :=
   ⟨h_bal, enclosingMark_false_of_opener tokens q h_q s h_pre h_open, h_floor⟩
 
+/-! ### The map root projection — carrier ⊕ gate bridge ⇒ the six grammar facts (R515)
+
+`mapGrammarFacts_of_mapRoot` is the map twin of the seq root projection (the
+`seqInteriorSeparators_of_safebody_provider` / `seqSeparatorFacts_of_recseqbody` direction): it CLOSES
+the carrier→facts step for the map axis.  Given the root carrier `MapInteriorSeparators tokens lo' hi'`
+(R513) it instantiates at one map window `[q+1, hi) ⊆ [lo', hi')` whose opener is the `.flowMappingStart`
+at `q`, discharges the gate `MapTypedInterior tokens (q+1) hi` through R514's `mapTypedInterior_of_opener`,
+and projects out `MapGrammarFacts tokens (q+1) hi` — exactly the six adjacency facts the final consumer
+`flowSubrangesOk_of_window_producers` (`NonemptyStructure.lean:10434+`) wants as `h_key_content` …
+`h_value_bracket_succ`, re-keyed `lo→q+1`.
+
+Per [[ref-fold-consumer-chain-to-producer-contract]] / [[ref-guarded-universal-fold-relocates-guard]] the
+TWO inputs the gate bridge still needs beyond the consumer's own premises — the pre-opener prefix witness
+`btFold (some []) (take q) = some s` and the body FLOOR `∀ i, q+1 ≤ i → i ≤ hi → flowBracketBalance .. ≥ 0`
+— are folded as HYPOTHESES, naming the producer's remaining contract precisely.  At the consume site they
+come from, respectively, `WellTyped_prefix_some` (`WellBracketed.lean:1790`, the same source the seq path
+uses) and a `flowBracketBalance_interior_dyck` re-base (`WellBracketed.lean:2118/2142`, exactly the floor
+`flowBracketBalance_matching_close_map` already extracts at a located map interior).  The opener premise
+`tokens[q]!.val = .flowMappingStart` and the body balance are the consumer's OWN premises (its
+`tokens[lo-1]!.val = .flowMappingStart` with `lo = q+1`).
+
+Verified-but-unconsumed (R515): its consumer — a future `flowSubrangesOk_of_seqRoot_and_mapRoot`
+reconciliation (the map twin of R512) — does not exist yet; references no sorry site; frontier sorry count
+unchanged at 4; axioms `[propext, Quot.sound]`, inherited verbatim through the R514 gate bridge. -/
+
+/-- **The map root projection**: from the root carrier `MapInteriorSeparators tokens lo' hi'` and the
+    window opener at `q` (`.flowMappingStart`), the six `MapGrammarFacts tokens (q+1) hi` at the map body
+    window `[q+1, hi)`.  A one-step composition: the gate bridge `mapTypedInterior_of_opener` (R514)
+    supplies the carrier's `MapTypedInterior` premise; the carrier delivers the facts.  The prefix witness
+    `h_pre` and body floor `h_floor` are the producer's remaining contract (folded as hypotheses). -/
+theorem mapGrammarFacts_of_mapRoot
+    (tokens : Array (Positioned YamlToken)) (lo' hi' q hi : Nat)
+    (h_carrier : MapInteriorSeparators tokens lo' hi')
+    (h_q : q < tokens.size)
+    (h_lo' : lo' ≤ q + 1) (h_qhi : q + 1 ≤ hi) (h_hi' : hi ≤ hi')
+    (s : List Bool) (h_pre : btFold (some []) (tokens.toList.take q) = some s)
+    (h_open : tokens[q]!.val = .flowMappingStart)
+    (h_bal : flowBracketBalance tokens (q + 1) hi = 0)
+    (h_floor : ∀ i, q + 1 ≤ i → i ≤ hi → flowBracketBalance tokens (q + 1) i ≥ 0) :
+    MapGrammarFacts tokens (q + 1) hi :=
+  h_carrier (q + 1) hi h_lo' h_qhi h_hi'
+    (mapTypedInterior_of_opener tokens q hi h_q s h_pre h_open h_bal h_floor)
+
 /-- `ContentStartTok` (the head predicate of a seq body's unit entries) never holds of a `.flowEntry`:
     it is a scalar / `[` / `{`, never the separator `,`.  This is the `hQ` the no-trailing-comma
     substrate lemma needs to refute a lone-separator unit. -/
