@@ -123,6 +123,96 @@ theorem SeqInteriorSeparators_advance {tokens : Array (Positioned YamlToken)} {l
     SeqInteriorSeparators tokens (m + 1) hi :=
   SeqInteriorSeparators_narrow h_lo (Nat.le_refl hi) h
 
+/-! ## The MAP separator carrier — the `some false` mirror of the seq carrier (R513)
+
+The seq axis above is one root carrier away from done: `seqHRec_of_root_and_emit` (`:6582`) folds the
+whole discharged seq chain into `flowSubrangesOk_of_window_producers`'s `h_seq_rec` slot from the
+single carrier `SeqInteriorSeparators tokens 2 (size-2)` (R512). The MAP axis has had NO analog — its
+`h_map_rec` and the SIX map-grammar facts ride into the consumer as seven RAW per-window producers
+(the recorded seq/map ASYMMETRY). This block lands the FOUNDATION of the map mirror: the gate, the
+bundled grammar facts, the carrier, and its three subset-restriction edges.
+
+Design is the faithful `some true → some false` dual of `SeqTypedInterior`/`SeqInteriorSeparators`
+([[ref-window-absolute-gate-subset-restriction]]): the gate `MapTypedInterior` reads the `btFold`-top
+`= some false` (an enclosing `{`, by the `btStep` convention `true = [`, `false = {`,
+`WellBracketed.lean:1536`), and every one of the six asserted facts (`MapGrammarFacts`) is the
+`lo→a`, `hi→b` re-key of the corresponding hypothesis in `flowSubrangesOk_of_window_producers`
+(`NonemptyStructure.lean:10434+`), keyed window-ABSOLUTELY on `a`. The outer-origin `lo`/`hi` enters
+only through the domain bounds `lo ≤ a`, `b ≤ hi`, so narrowing is a pure subset restriction whose
+proof is byte-identical to the seq one regardless of how many facts are bundled — `_narrow` never
+inspects the body. Marker-FREE by design: the consumer's `flowMappingEnd`/`flowMappingStart` boundary
+premises are dropped (the gate's `= some false` enclosure identifies the map interior instead), so the
+carrier is STRICTLY STRONGER and re-projects to each marker-bearing consumer hypothesis for free at
+`a := lo, b := hi` (the next brick, `mapGrammarFacts_of_mapRoot`).
+
+Verified-but-unconsumed: its consumer — a future `mapHRec_of_root_and_emit` map fold + a
+`flowSubrangesOk_of_seqRoot_and_mapRoot` reconciliation — does not exist yet; references no sorry site;
+frontier sorry count unchanged at 4; axioms `[propext]` only (the structural edges shed even
+`Classical.choice`/`Quot.sound`). -/
+
+/-- **Map-typed interior gate** — the `some false` dual of `SeqTypedInterior` (`:66`): a depth-`0`-
+    balanced bracket interior `[a,b)` whose innermost enclosing opener is a `{` (`btFold`-top
+    `= some false`) and whose every prefix stays balanced-or-deeper. -/
+def MapTypedInterior (tokens : Array (Positioned YamlToken)) (a b : Nat) : Prop :=
+  flowBracketBalance tokens a b = 0 ∧
+  (btFold (some []) (tokens.toList.take a)).bind (·.head?) = some false ∧
+  (∀ i, a ≤ i → i ≤ b → flowBracketBalance tokens a i ≥ 0)
+
+/-- **The six map-grammar adjacency facts, relativised to a window `[a,b)`** — the `lo→a`, `hi→b`
+    re-key of `flowSubrangesOk_of_window_producers`'s `h_key_content`, `h_key_scalar_value`,
+    `h_value_content`, `h_value_scalar_succ`, `h_key_bracket_succ`, `h_value_bracket_succ`
+    (`NonemptyStructure.lean:10434+`), each keyed window-absolutely on `a` (the map analog of the seq
+    carrier's two-fact `bodySuccFact`/`noTrailingSepFact` bundle). -/
+def MapGrammarFacts (tokens : Array (Positioned YamlToken)) (a b : Nat) : Prop :=
+  (∀ k, a ≤ k → k < b → flowBracketBalance tokens a k = 0 → tokens[k]!.val = .key →
+      k + 1 < b ∧ isFlowContentStart tokens[k + 1]!.val) ∧
+  (∀ k, a ≤ k → k < b → flowBracketBalance tokens a k = 0 → tokens[k]!.val = .key →
+      (∃ c s, tokens[k + 1]!.val = .scalar c s) → k + 2 < b ∧ tokens[k + 2]!.val = .value) ∧
+  (∀ k, a ≤ k → k < b → flowBracketBalance tokens a k = 0 → tokens[k]!.val = .value →
+      k + 1 < b ∧ isFlowContentStart tokens[k + 1]!.val) ∧
+  (∀ k, a ≤ k → k < b → flowBracketBalance tokens a k = 0 → tokens[k]!.val = .value →
+      (∃ c s, tokens[k + 1]!.val = .scalar c s) →
+      k + 2 ≤ b ∧ (tokens[k + 2]!.val = .flowEntry ∨ (tokens[k + 2]!.val = .flowMappingEnd ∧ k + 2 = b))) ∧
+  (∀ k j, a ≤ k → k < b → flowBracketBalance tokens a k = 0 → tokens[k]!.val = .key →
+      k + 1 < j → j < b → flowBracketDelta tokens[j]!.val = -1 → flowBracketBalance tokens a (j + 1) = 0 →
+      j + 1 < b ∧ tokens[j + 1]!.val = .value) ∧
+  (∀ k j, a ≤ k → k < b → flowBracketBalance tokens a k = 0 → tokens[k]!.val = .value →
+      k + 1 < j → j < b → flowBracketDelta tokens[j]!.val = -1 → flowBracketBalance tokens a (j + 1) = 0 →
+      j + 1 ≤ b ∧ (tokens[j + 1]!.val = .flowEntry ∨ (tokens[j + 1]!.val = .flowMappingEnd ∧ j + 1 = b)))
+
+/-- **The map separator carrier** — the `some false` mirror of `SeqInteriorSeparators` (`:96`). Over
+    `[lo,hi)`: every map-typed depth-`0`-balanced bracket-interior sub-window `[a,b) ⊆ [lo,hi)`
+    satisfies all six `MapGrammarFacts`. The body is `lo`/`hi`-free except through the domain bounds, so
+    it restricts to sub-windows for free (the descend/advance edges below). -/
+def MapInteriorSeparators (tokens : Array (Positioned YamlToken)) (lo hi : Nat) : Prop :=
+  ∀ a b, lo ≤ a → a ≤ b → b ≤ hi → MapTypedInterior tokens a b → MapGrammarFacts tokens a b
+
+/-- **Subset restriction (the descend/advance edge, generic form).** The exact mirror of
+    `SeqInteriorSeparators_narrow` (`:103`) — the quantifier body is reused verbatim, only the domain
+    shrinks; `_narrow` never inspects the bundled facts, so the proof is byte-identical to the seq one. -/
+theorem MapInteriorSeparators_narrow {tokens : Array (Positioned YamlToken)} {lo hi lo' hi' : Nat}
+    (h_lo : lo ≤ lo') (h_hi : hi' ≤ hi)
+    (h : MapInteriorSeparators tokens lo hi) :
+    MapInteriorSeparators tokens lo' hi' := by
+  intro a b ha hab hb hgate
+  exact h a b (Nat.le_trans h_lo ha) hab (Nat.le_trans hb h_hi) hgate
+
+/-- **The DESCEND edge.** Descending into a nested bracket interior `[lo',hi') ⊆ [lo,hi)` preserves the
+    carrier by subset restriction (mirror of `SeqInteriorSeparators_descend`, `:112`). -/
+theorem MapInteriorSeparators_descend {tokens : Array (Positioned YamlToken)} {lo hi lo' hi' : Nat}
+    (h_lo : lo ≤ lo') (h_hi : hi' ≤ hi)
+    (h : MapInteriorSeparators tokens lo hi) :
+    MapInteriorSeparators tokens lo' hi' :=
+  MapInteriorSeparators_narrow h_lo h_hi h
+
+/-- **The ADVANCE edge.** Advancing past a separator at `m` to the tail `[m+1, hi)` preserves the
+    carrier by subset restriction, `hi` unchanged (mirror of `SeqInteriorSeparators_advance`, `:120`). -/
+theorem MapInteriorSeparators_advance {tokens : Array (Positioned YamlToken)} {lo hi m : Nat}
+    (h_lo : lo ≤ m + 1)
+    (h : MapInteriorSeparators tokens lo hi) :
+    MapInteriorSeparators tokens (m + 1) hi :=
+  MapInteriorSeparators_narrow h_lo (Nat.le_refl hi) h
+
 /-- `ContentStartTok` (the head predicate of a seq body's unit entries) never holds of a `.flowEntry`:
     it is a scalar / `[` / `{`, never the separator `,`.  This is the `hQ` the no-trailing-comma
     substrate lemma needs to refute a lone-separator unit. -/
