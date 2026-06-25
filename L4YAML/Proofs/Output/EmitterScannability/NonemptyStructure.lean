@@ -10552,6 +10552,64 @@ theorem windowWidth_strongRecOn {P : Nat → Nat → Prop} (G : Nat → Nat → 
   intro lo hi h_g
   exact key (hi - lo) lo hi (Nat.le_refl _) h_g
 
+/-- **The seq locate DRIVER** (Phase J, seq side — `(i'-b-B2c-desc-seq-navigator-driver)`, R510).
+    The structural moves are complete (DESCEND `recseqbody_window_of_located_entry`, ADVANCE
+    `recseqbody_cons_window`, TERMINATE `recseqbody_single_window`, and their ADVANCE/TERMINATE
+    selector `recseqbody_window_assemble`), and the abstract width-recursion plumbing is carved off
+    as `windowWidth_strongRecOn`.  This brick is the **stitch** between them: it instantiates the
+    combinator at `P := fun lo hi => RecSeqBody ((tokens.toList.take hi).drop lo)`, bakes in the
+    `recseqbody_window_assemble` consumer, and re-expresses the resulting per-window step as the
+    navigator's *contract* — so the whole seq navigator now reduces to **exactly two named
+    obligations**:
+
+    * `locate` — the per-window first-entry *classify*: given the guard `G lo hi` and the recursion's
+      own width-oracle (for nested descent), locate the first entry's depth-`0` extent `m`, the marker
+      `m = hi ∨ tokens[m] = .flowEntry`, and the entry `RecSeqEntry ((take m).drop lo)`.  This is
+      *nearly* `recseqentry_window_dispatch_seq` already (the four head-dispatch branches over a
+      `FlowBodyWindow`/`FlowBodyContentDeepSeq`/`FlowBodyContent` guard); the only gap is adapting its
+      richer `h_ih` premise-list to the combinator's plain `G`-keyed oracle, which is where the
+      concrete `G` is *pinned down* (define `G` so the dispatch's per-narrow-window hypotheses imply
+      `G`).
+    * `descend_tail` — the guard descends from `[lo, hi)` to the *suffix* window `[m+1, hi)` past a
+      depth-`0` `.flowEntry` separator.  This is the guard-threading skeleton
+      ([[ref-guard-threading-skeleton-before-grammar]]): the producer's GIFT / consumer's DEBT
+      ([[ref-guarded-universal-fold-relocates-guard]]), and the genuine remaining analytical brick.
+
+    The guard `G` is left **abstract** here — the driver is agnostic to its definition, which is
+    deliberate: it makes visible that the hard guard-reconciliation (matching the dispatch's
+    `FlowBodyWindow ∧ FlowBodyContentDeepSeq ∧ …` interface against the combinator's oracle) reduces
+    to `locate` + `descend_tail` and nothing else.  This is
+    [[ref-fold-consumer-chain-to-producer-contract]] at the *recursion-driver* layer — the dual of
+    `windowWidth_strongRecOn`'s [[ref-consumer-joint-before-producer]]: where the combinator pinned the
+    per-window step's IH *interface*, this driver pins the navigator's per-window *contract* to the two
+    obligations above, both bounded.
+
+    By the R264 mirror discriminator ([[ref-entry-boundary-input-shape-split]]) it names a
+    collection-specific deliverable type (`RecSeqEntry`/`RecSeqBody`, via `recseqbody_window_assemble`),
+    so it re-splits the map axis: `recmapbody_navigator_driver` is the symmetric next brick.
+    Verified-but-unconsumed until the concrete `G`/`locate`/`descend_tail` are supplied (R510): composes
+    only `windowWidth_strongRecOn` + `recseqbody_window_assemble`, references no sorry site, frontier
+    sorry count unchanged at 4; axioms `[propext, Classical.choice, Quot.sound]` (Classical via the
+    reused `recseqbody_window_assemble` segment-split plumbing), identical to the seq assembler family. -/
+theorem recseqbody_navigator_driver (tokens : Array (Positioned YamlToken))
+    (G : Nat → Nat → Prop)
+    (h_hi_sz : ∀ lo hi, G lo hi → hi < tokens.size)
+    (locate : ∀ lo hi, G lo hi →
+        (∀ lo' hi', hi' - lo' < hi - lo → G lo' hi' →
+          RecSeqBody ((tokens.toList.take hi').drop lo')) →
+        ∃ m, lo < m ∧ m ≤ hi ∧
+          (m = hi ∨ tokens[m]!.val = .flowEntry) ∧
+          RecSeqEntry ((tokens.toList.take m).drop lo))
+    (descend_tail : ∀ lo hi m, G lo hi → lo < m → m < hi →
+        tokens[m]!.val = .flowEntry → G (m + 1) hi) :
+    ∀ lo hi, G lo hi → RecSeqBody ((tokens.toList.take hi).drop lo) := by
+  refine windowWidth_strongRecOn G (fun lo hi h_g oracle => ?_)
+  obtain ⟨m, h_lo_m, h_m_hi, h_marker, h_entry⟩ := locate lo hi h_g oracle
+  refine recseqbody_window_assemble tokens lo m hi h_lo_m h_m_hi (h_hi_sz lo hi h_g)
+    h_marker h_entry (fun h_lt => ?_)
+  have h_fe : tokens[m]!.val = .flowEntry := h_marker.resolve_left (by omega)
+  exact oracle (m + 1) hi (by omega) (descend_tail lo hi m h_g h_lo_m h_lt h_fe)
+
 /-- Token structure of `scanFiltered ("[" ++ emitList items ++ "]")` for non-empty items.
     Establishes boundary tokens, body token patterns, and `parseNode` success within
     the flow sequence body.
