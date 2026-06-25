@@ -9466,6 +9466,136 @@ theorem recmapentry_pair_located (tokens : Array (Positioned YamlToken)) (lo hi 
   exact recmapentry_classify tokens lo hi h_lo_hi h_hi_sz h_total
     ⟨h_key, kv, e, h_lo_kv, h_kv_e, h_e_hi, h_value, h_ke, h_ve, h_e_bal, h_e_marker, h_e_least⟩
 
+/-- **Map pair-boundary skeleton locator** (Phase J — the map DRIVER's shape-INPUT for a pair, the
+    analog of `matchingClose_full_seq` but for the value separator `kv`).  This is the brick that
+    *produces* the `h_skeleton` hypothesis `recmapentry_pair_located` (R282/R284) had to take as
+    SUPPLIED: from the per-window grammar bundle `MapBodyProps tokens lo hi` (which the carrier→props
+    bridge `mapWindow_mapBodyProps_general`, R522, now delivers per window) plus the total balance, it
+    locates *both* split points of the first pair — the depth-`0` value separator `kv` and the pair end
+    `e` — with the full minimality the skeleton demands.
+
+    The deliverable splits along the entry-boundary INPUT/SHAPE axis ([[ref-entry-boundary-input-shape-split]])
+    in a way that sharpens that lesson on the map side.  The pair end `e` is the **shared** half: it is
+    the least depth-`0` boundary marker after `lo`, located by the axis-agnostic `firstEntryBoundary`
+    (the same brick the seq body uses), and it carries the three facts the skeleton's tail needs —
+    `balance lo e = 0`, the marker disjunct, and the minimality clause — verbatim from that locator.
+    The value separator `kv` is the **grammar** half, and here the map axis is forced down a different
+    route than a balance locator: a pair `.key K .value V` returns balance to `0` at the depth-`0`
+    `.value` separator, but ALSO at every nested-entry end inside `K` and `V`, so the `.value` position
+    is *balance-invisible* (R282) — there is no balance-pure `kv` locator.  Instead `kv` is read off the
+    grammar: M1's `.key` head, then M3's content-start at `lo+1`, dispatched by shape into M4 (scalar
+    key ⟹ `kv = lo+2`) or M5 (bracket key ⟹ `kv = j+1` for the matching close `j`).
+
+    The crux is `kv < e` — that the value separator precedes the first boundary — exactly the
+    no-interior-boundary fact the classify unifier `recmapentry_classify` flagged as un-derivable from
+    a single balance invariant and took as the substrate's last conjunct.  Here it is DERIVED, and its
+    derivation BIFURCATES by key shape, which is the new content: for a **scalar** key the two interior
+    positions (`lo+1` the scalar, `kv = lo+2` the value) are ruled out as markers by *token identity
+    alone* (neither is a `.flowEntry`, neither is `hi`) — no balance reasoning at all.  For a
+    **bracket** key the bracket's interior is genuinely depth-positive, so `lo+2 ≤ k ≤ j` is ruled out
+    by the M5 positivity invariant lifted through `lo` (`balance lo k = 1 + balance (lo+2) k ≥ 1 ≠ 0`),
+    while the two endpoints (`lo+1` the opener, `kv = j+1` the value) again fall to token identity.  So
+    the balance-invisibility that BLOCKS a balance locator does not block the location — it routes it
+    through the typed grammar — and the proof cost of `kv < e` is exactly the head-shape's interior
+    depth profile: zero for a flat scalar key, one positivity lift for a bracketed key.
+
+    With this, every input the pair dispatch needs except the two `RecSeqEntry` sub-block oracles is
+    head-only: `recmapentry_pair_located`'s `h_skeleton` is now a consequence of `MapBodyProps`, not a
+    parameter.  Verified-but-unconsumed until the map width-recursion driver threads it: references no
+    sorry site, frontier sorry count unchanged at 4.  `sorryAx`-free — it consumes only
+    `firstEntryBoundary`, the `MapBodyProps` projections, and pure bracket-balance algebra, never the
+    tainted structure lemma ([[ref-mirror-inherits-dependency-axioms]]). -/
+theorem mapPairSkeleton_locate (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_lo_hi : lo < hi) (h_hi_sz : hi ≤ tokens.size)
+    (h_props : MapBodyProps tokens lo hi)
+    (h_total : flowBracketBalance tokens lo hi = 0) :
+    ∃ kv e, lo < kv ∧ kv < e ∧ e ≤ hi ∧
+      tokens[kv]!.val = .value ∧
+      flowBracketBalance tokens lo e = 0 ∧
+      (e = hi ∨ tokens[e]!.val = .flowEntry) ∧
+      (∀ k, lo < k → k < e →
+        ¬ (flowBracketBalance tokens lo k = 0 ∧ (k = hi ∨ tokens[k]!.val = .flowEntry))) := by
+  -- `e`: the pair end — the least depth-`0` marker after `lo` (the SHARED, axis-agnostic half).
+  obtain ⟨e, h_lo_e, h_e_hi, h_e_bal, h_e_marker, h_e_least⟩ :=
+    firstEntryBoundary tokens lo hi h_lo_hi h_total
+  -- the head is a `.key` (M1), and the empty-range balance at `lo` is `0`.
+  have h_key : tokens[lo]!.val = .key := h_props.key_start h_lo_hi
+  have h_lo_depth : flowBracketBalance tokens lo lo = 0 := by
+    unfold flowBracketBalance; rw [if_pos (Nat.le_refl lo)]
+  -- the key's content-start at `lo+1` (M3), then dispatch by shape.
+  obtain ⟨_h_lo1_hi, h_content⟩ :=
+    h_props.key_content lo (Nat.le_refl _) h_lo_hi h_lo_depth h_key
+  unfold isFlowContentStart at h_content
+  rcases h_content with ⟨c, s, h_scalar⟩ | h_brk
+  · -- SCALAR key: `kv = lo+2` (M4).  No marker lies in `(lo, lo+2]` by token identity alone.
+    obtain ⟨h_lo2_hi, h_value⟩ :=
+      h_props.key_scalar_value lo (Nat.le_refl _) h_lo_hi h_lo_depth h_key ⟨c, s, h_scalar⟩
+    have h_clean : ∀ k, lo < k → k ≤ lo + 2 →
+        ¬ (flowBracketBalance tokens lo k = 0 ∧ (k = hi ∨ tokens[k]!.val = .flowEntry)) := by
+      rintro k hk1 hk2 ⟨_, hmark⟩
+      rcases hmark with h | h
+      · omega
+      · rcases Nat.lt_or_ge k (lo + 2) with hlt | hge
+        · have hk_eq : k = lo + 1 := by omega
+          subst hk_eq; rw [h_scalar] at h; cases h
+        · have hk_eq : k = lo + 2 := by omega
+          subst hk_eq; rw [h_value] at h; cases h
+    refine ⟨lo + 2, e, by omega, ?_, h_e_hi, h_value, h_e_bal, h_e_marker, h_e_least⟩
+    rcases Nat.lt_or_ge (lo + 2) e with h | h
+    · exact h
+    · exact absurd ⟨h_e_bal, h_e_marker⟩ (h_clean e h_lo_e h)
+  · -- BRACKET key: `kv = j+1` (M5).  Endpoints fall to token identity; the bracket interior
+    -- `[lo+2, j]` is ruled out by the M5 positivity invariant lifted through `lo`.
+    obtain ⟨j, h_lo1_j, h_j_hi, _h_close, _h_inner_bal, h_jval_hi, h_value, h_j_pos⟩ :=
+      h_props.key_bracket_value lo (Nat.le_refl _) h_lo_hi h_lo_depth h_key h_brk
+    have h_lo_sz : lo < tokens.size := by omega
+    have h_lo_len : lo < tokens.toList.length := by rw [Array.length_toList]; exact h_lo_sz
+    have h_lo1_sz : lo + 1 < tokens.size := by omega
+    have h_lo1_len : lo + 1 < tokens.toList.length := by rw [Array.length_toList]; exact h_lo1_sz
+    have h_key_tl : (tokens.toList[lo]'h_lo_len).val = .key := by
+      have hb : tokens[lo]! = tokens.toList[lo]'h_lo_len := by
+        rw [getElem!_pos tokens lo h_lo_sz, Array.getElem_toList]
+      rw [← hb]; exact h_key
+    have h_open_tl : (tokens.toList[lo + 1]'h_lo1_len).val = .flowSequenceStart ∨
+        (tokens.toList[lo + 1]'h_lo1_len).val = .flowMappingStart := by
+      have hb : tokens[lo + 1]! = tokens.toList[lo + 1]'h_lo1_len := by
+        rw [getElem!_pos tokens (lo + 1) h_lo1_sz, Array.getElem_toList]
+      rw [← hb]; exact h_brk
+    have h_bal_lo_lo1 : flowBracketBalance tokens lo (lo + 1) = 0 := by
+      rw [flowBracketBalance_single tokens lo h_lo_len, h_key_tl, flowBracketDelta_key]
+    have h_bal_lo1_lo2 : flowBracketBalance tokens (lo + 1) (lo + 2) = 1 := by
+      have heq : lo + 2 = (lo + 1) + 1 := by omega
+      rw [heq, flowBracketBalance_single tokens (lo + 1) h_lo1_len]
+      rcases h_open_tl with h | h
+      · rw [h]; exact flowBracketDelta_flowSequenceStart
+      · rw [h]; exact flowBracketDelta_flowMappingStart
+    have h_bal_lo_lo2 : flowBracketBalance tokens lo (lo + 2) = 1 := by
+      have hc := flowBracketBalance_compose tokens lo (lo + 1) (lo + 2) (by omega) (by omega)
+      rw [h_bal_lo_lo1, h_bal_lo1_lo2] at hc; omega
+    have h_interior_pos : ∀ k, lo + 2 ≤ k → k ≤ j → flowBracketBalance tokens lo k ≥ 1 := by
+      intro k hk1 hk2
+      have hc := flowBracketBalance_compose tokens lo (lo + 2) k (by omega) hk1
+      have hpos := h_j_pos k hk1 hk2
+      rw [h_bal_lo_lo2] at hc; omega
+    have h_clean : ∀ k, lo < k → k ≤ j + 1 →
+        ¬ (flowBracketBalance tokens lo k = 0 ∧ (k = hi ∨ tokens[k]!.val = .flowEntry)) := by
+      rintro k hk1 hk2 ⟨hbal, hmark⟩
+      rcases hmark with h | h
+      · omega
+      · rcases Nat.lt_or_ge k (lo + 2) with hlt | hge
+        · have hk_eq : k = lo + 1 := by omega
+          subst hk_eq
+          rcases h_brk with hb | hb <;> rw [hb] at h <;> cases h
+        · rcases Nat.lt_or_ge k (j + 1) with hltj | hgej
+          · have hp := h_interior_pos k hge (by omega)
+            omega
+          · have hk_eq : k = j + 1 := by omega
+            subst hk_eq; rw [h_value] at h; cases h
+    refine ⟨j + 1, e, by omega, ?_, h_e_hi, h_value, h_e_bal, h_e_marker, h_e_least⟩
+    rcases Nat.lt_or_ge (j + 1) e with h | h
+    · exact h
+    · exact absurd ⟨h_e_bal, h_e_marker⟩ (h_clean e h_lo_e h)
+
 /-- **Parametric `MapBodyProps` assembler** (Phase J seed, map side).  The map-side mirror of
     `seqBodyProps_assemble`: given an arbitrary balanced flow-MAPPING subrange `[lo, hi)` —
     `tokens[hi]! = .flowMappingEnd`, total balance `0`, Dyck prefixes, interior `WellTyped` — together
