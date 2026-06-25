@@ -9596,6 +9596,121 @@ theorem mapPairSkeleton_locate (tokens : Array (Positioned YamlToken)) (lo hi : 
     · exact h
     · exact absurd ⟨h_e_bal, h_e_marker⟩ (h_clean e h_lo_e h)
 
+/-- **Map pair sub-block window narrowing** (Phase J — the map DRIVER's descend-into-pair brick).  A map
+    pair `.key K .value V` occupying the window prefix `[lo, e)` splits at the depth-`0` value separator
+    `kv` into a key sub-block `[lo+1, kv)` (the node `K`) and a value sub-block `[kv+1, e)` (the node `V`).
+    The map width-recursion driver feeds each sub-block to a `RecSeqEntry` oracle, and each oracle needs
+    that sub-block packaged as a `FlowBodyWindow`.  This lemma produces BOTH from the outer body window,
+    the per-window grammar bundle `MapBodyProps`, and the located split points — every input it consumes
+    is a `mapPairSkeleton_locate` (R523) output EXCEPT the one head-dispatched fact `h_kv_depth :
+    flowBracketBalance tokens lo kv = 0` (the value separator sits at depth `0`), which the head dispatch
+    that locates `kv` produces and which `MapBodyProps` does not assert (M6/M7/M8 take it as a guard, so
+    it cannot be bootstrapped from them).  Isolating it as the lone hypothesis keeps this brick fully
+    head-shape-FREE: nothing here case-splits on whether `K`/`V` are scalar or bracketed.
+
+    **Two reusable moves, both head-shape-FREE** (this is what isolating `h_kv_depth` buys):
+
+    * **Re-base the outer Dyck floor through the depth-`0` splits.**  The `.key` and `.value` separators
+      have bracket-delta `0`, so `balance lo (lo+1) = 0` and `balance lo (kv+1) = 0`; with `h_kv_depth`
+      and `balance lo e = 0` these pin each sub-block balanced (`balance (lo+1) kv = 0`,
+      `balance (kv+1) e = 0`) by composition, and each sub-block's `dyck` is the outer `dyck` re-based to
+      the SAME origin (`balance a i = balance lo i` because `balance lo a = 0` at both split origins
+      `a ∈ {lo+1, kv+1}`), so it transports verbatim; `WellTyped` transports by `WellTyped_subrange`.  No
+      head shape enters — the deltas of `.key`/`.value` are `0` regardless of what `K`/`V` are.
+
+    * **Each sub-block's NON-emptiness is a token-CLASS collision off a grammar successor field, not a
+      balance fact.**  The key block is non-empty (`lo+1 < kv`) because M3 (`key_content`) puts a
+      *content-start* at `lo+1` while `kv` holds a `.value` — and a content-start is never a `.value` — so
+      `lo+1 = kv` is impossible.  Symmetrically the value block is non-empty (`kv+1 < e`) because M6
+      (`value_content`) puts a content-start at `kv+1` while `e` is a `.flowEntry`-or-window-end marker —
+      and a content-start is neither — so `kv+1 = e` is impossible (the `e = hi` horn is closed by M6's own
+      `kv+1 < hi`, the `tokens[e] = .flowEntry` horn by the class disjointness).  The collapse is refuted
+      by the disjointness of the token CLASSES the two grammar fields assert, with no measurement of depth.
+
+    Verified-but-unconsumed until the map width-recursion driver `mapWindowRecMapBody_map_general` threads
+    it (feeding each window to a `recseqentry_window_dispatch`-style oracle): references no sorry site,
+    frontier sorry count unchanged at 4.  `sorryAx`-free — composes only `MapBodyProps` projections,
+    bracket-balance algebra, and `WellTyped_subrange`, never the tainted structure lemma
+    ([[ref-mirror-inherits-dependency-axioms]]). -/
+theorem mapPairSubblocks_flowBodyWindow (tokens : Array (Positioned YamlToken)) (lo hi kv e : Nat)
+    (h_win : FlowBodyWindow tokens lo hi)
+    (h_props : MapBodyProps tokens lo hi)
+    (h_lo_kv : lo < kv) (h_kv_e : kv < e) (h_e_hi : e ≤ hi)
+    (h_value : tokens[kv]!.val = .value)
+    (h_kv_depth : flowBracketBalance tokens lo kv = 0)
+    (h_e_bal : flowBracketBalance tokens lo e = 0)
+    (h_e_marker : e = hi ∨ tokens[e]!.val = .flowEntry) :
+    FlowBodyWindow tokens (lo + 1) kv ∧ FlowBodyWindow tokens (kv + 1) e := by
+  obtain ⟨h_lo2, h_lo_hi, h_hi_sz2, h_hi_sz, _h_bal, h_dyck, h_wt⟩ := h_win
+  -- size / toList-length bridges
+  have h_lo_sz : lo < tokens.size := by omega
+  have h_lo_len : lo < tokens.toList.length := by rw [Array.length_toList]; exact h_lo_sz
+  have h_kv_sz : kv < tokens.size := by omega
+  have h_kv_len : kv < tokens.toList.length := by rw [Array.length_toList]; exact h_kv_sz
+  -- The two separators carry bracket-delta `0`: `balance lo (lo+1) = 0` (.key), `balance kv (kv+1) = 0` (.value).
+  have h_key : tokens[lo]!.val = .key := h_props.key_start h_lo_hi
+  have h_key_tl : (tokens.toList[lo]'h_lo_len).val = .key := by
+    have hb : tokens[lo]! = tokens.toList[lo]'h_lo_len := by
+      rw [getElem!_pos tokens lo h_lo_sz, Array.getElem_toList]
+    rw [← hb]; exact h_key
+  have h_value_tl : (tokens.toList[kv]'h_kv_len).val = .value := by
+    have hb : tokens[kv]! = tokens.toList[kv]'h_kv_len := by
+      rw [getElem!_pos tokens kv h_kv_sz, Array.getElem_toList]
+    rw [← hb]; exact h_value
+  have h_bal_lo_lo1 : flowBracketBalance tokens lo (lo + 1) = 0 := by
+    rw [flowBracketBalance_single tokens lo h_lo_len, h_key_tl, flowBracketDelta_key]
+  have hd_value : flowBracketDelta (YamlToken.value) = 0 := rfl
+  have h_bal_kv_kv1 : flowBracketBalance tokens kv (kv + 1) = 0 := by
+    rw [flowBracketBalance_single tokens kv h_kv_len, h_value_tl, hd_value]
+  -- Depth-`0` facts re-based through the splits: `balance lo (kv+1) = 0`, hence the two sub-block balances.
+  have h_bal_lo_kv1 : flowBracketBalance tokens lo (kv + 1) = 0 := by
+    have hc := flowBracketBalance_compose tokens lo kv (kv + 1) (by omega) (by omega)
+    rw [h_kv_depth, h_bal_kv_kv1] at hc; omega
+  have h_bal_lo1_kv : flowBracketBalance tokens (lo + 1) kv = 0 := by
+    have hc := flowBracketBalance_compose tokens lo (lo + 1) kv (by omega) (by omega)
+    rw [h_bal_lo_lo1, h_kv_depth] at hc; omega
+  have h_bal_kv1_e : flowBracketBalance tokens (kv + 1) e = 0 := by
+    have hc := flowBracketBalance_compose tokens lo (kv + 1) e (by omega) (by omega)
+    rw [h_bal_lo_kv1, h_e_bal] at hc; omega
+  -- KEY block non-empty: M3 puts a content-start at `lo+1`; `kv` holds a `.value`; classes disjoint.
+  have h_lo_depth : flowBracketBalance tokens lo lo = 0 := by
+    unfold flowBracketBalance; rw [if_pos (Nat.le_refl lo)]
+  obtain ⟨_h_lo1_hi, h_lo1_cs⟩ := h_props.key_content lo (Nat.le_refl _) h_lo_hi h_lo_depth h_key
+  have h_lo1_kv : lo + 1 < kv := by
+    rcases Nat.lt_or_ge (lo + 1) kv with h | h
+    · exact h
+    · have h_eq : lo + 1 = kv := by omega
+      rw [h_eq, h_value] at h_lo1_cs
+      simp [isFlowContentStart] at h_lo1_cs
+  -- VALUE block non-empty: M6 puts a content-start at `kv+1`; `e` is a `.flowEntry`/end marker; disjoint.
+  obtain ⟨h_kv1_hi, h_kv1_cs⟩ := h_props.value_content kv (by omega) (by omega) h_kv_depth h_value
+  have h_kv1_e : kv + 1 < e := by
+    rcases Nat.lt_or_ge (kv + 1) e with h | h
+    · exact h
+    · have h_eq : kv + 1 = e := by omega
+      rcases h_e_marker with hm | hm
+      · omega
+      · rw [h_eq, hm] at h_kv1_cs; simp [isFlowContentStart] at h_kv1_cs
+  -- Each sub-block's `dyck` is the outer `dyck` re-based to its own (depth-`0`) origin.
+  have h_dyck_key : ∀ i, lo + 1 ≤ i → i ≤ kv → flowBracketBalance tokens (lo + 1) i ≥ 0 := by
+    intro i hi1 hi2
+    have hc := flowBracketBalance_compose tokens lo (lo + 1) i (by omega) (by omega)
+    rw [h_bal_lo_lo1] at hc
+    have := h_dyck i (by omega) (by omega); omega
+  have h_dyck_val : ∀ i, kv + 1 ≤ i → i ≤ e → flowBracketBalance tokens (kv + 1) i ≥ 0 := by
+    intro i hi1 hi2
+    have hc := flowBracketBalance_compose tokens lo (kv + 1) i (by omega) (by omega)
+    rw [h_bal_lo_kv1] at hc
+    have := h_dyck i (by omega) (by omega); omega
+  have h_wt_key : WellTyped ((tokens.toList.take kv).drop (lo + 1)) :=
+    WellTyped_subrange tokens lo (lo + 1) kv hi (by omega) (by omega) (by omega)
+      (Nat.le_of_lt h_hi_sz) h_wt h_bal_lo1_kv h_dyck_key
+  have h_wt_val : WellTyped ((tokens.toList.take e).drop (kv + 1)) :=
+    WellTyped_subrange tokens lo (kv + 1) e hi (by omega) (by omega) (by omega)
+      (Nat.le_of_lt h_hi_sz) h_wt h_bal_kv1_e h_dyck_val
+  exact ⟨⟨by omega, h_lo1_kv, by omega, by omega, h_bal_lo1_kv, h_dyck_key, h_wt_key⟩,
+         ⟨by omega, h_kv1_e, by omega, by omega, h_bal_kv1_e, h_dyck_val, h_wt_val⟩⟩
+
 /-- **Parametric `MapBodyProps` assembler** (Phase J seed, map side).  The map-side mirror of
     `seqBodyProps_assemble`: given an arbitrary balanced flow-MAPPING subrange `[lo, hi)` —
     `tokens[hi]! = .flowMappingEnd`, total balance `0`, Dyck prefixes, interior `WellTyped` — together
