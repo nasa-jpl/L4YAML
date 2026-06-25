@@ -23560,6 +23560,69 @@ abstracts over `_a` whose type the bound depends on).
 
 ## Phase 3 — Stage C: EmitterScannability discharge — `.flowmono` / `.body` / `.bridge` (Reflections 153–192)
 
+### Frontier status — the 4 remaining `sorry`s and the path to close them (snapshot 2026-06-25)
+
+The reflections in this section all discharge a single end goal: the well-bracketing
+certificate `FlowSubrangesOk tokens` that lets the flow-collection parser provably
+accept emitted output. As of R515 the frontier stands at **exactly four `sorry`s**,
+which fall into **two unrelated families**:
+
+| # | Site | Goal | Family |
+|---|------|------|--------|
+| 1 | `EmitterScannability.lean:359` | `FlowSubrangesOk tokens` | A — bracketing certificate |
+| 2 | `NonemptyStructure.lean:11208` | `FlowSubrangesOk tokens` (same prop) | A |
+| 3 | `EmitterScannability.lean:845` | seq non-empty `contentEq` | B — content fidelity |
+| 4 | `EmitterScannability.lean:885` | mapping non-empty `contentEq` | B |
+
+Sorries 1 and 2 are *literally the same proposition* — one lemma closes both. So the
+real count is **two distinct obligations + one duplicate**.
+
+**Family A (`FlowSubrangesOk`) — where essentially all recent work has gone.** The
+landed assembler `flowSubrangesOk_of_seqRoot_and_map_producers` (R512) shows the goal
+now reduces to: boundary facts (already in scope at the sorry) **+ one seq root
+carrier + the map producer family**. R512–R515 collapsed the seq/map asymmetry toward
+two symmetric root carriers:
+
+- R512 — folded the seq half onto the single carrier `SeqInteriorSeparators tokens 2 (size-2)`.
+- R513 — the map carrier `MapInteriorSeparators` + gate `MapTypedInterior` + `MapGrammarFacts` + the three subset-restriction edges.
+- R514 — the gate bridge `mapTypedInterior_of_opener` (reconstructs the enclosing-`{` conjunct in place from the window opener).
+- R515 — `mapGrammarFacts_of_mapRoot`, the one-step projection carrier ⊕ gate bridge ⇒ the six grammar facts.
+
+So the map carrier→facts pipeline is **complete** (all verified-but-unconsumed). What
+remains to close 1 + 2:
+
+1. **`mapHRec_of_root_and_emit`** — the map fold producing the `h_map_rec`
+   (`RecMapBody`) slot, mirror of `seqHRec_of_root_and_emit` (`:6771`). **Brick (2),
+   in progress** — its first sub-brick `mapWholeStreamWellTyped` /
+   `mapFoldTotal_of_context` lands the `h_fold_total` residual (the `some false`/`{`
+   mirror of `seqWholeStreamWellTyped` / `seqFoldTotal_of_context`).
+2. **`flowSubrangesOk_of_seqRoot_and_mapRoot`** — the R512 map twin: feed
+   `mapGrammarFacts_of_mapRoot` into the six grammar-fact slots so the seven raw map
+   producers collapse to the single carrier `MapInteriorSeparators tokens 2 (size-2)`.
+3. **The two root carriers** — the genuine open math: `SeqInteriorSeparators tokens 2
+   (size-2)` (the "hard B2 brick": `seqEnclosingOpener_of_gate` LOCATE +
+   `seqDescent_provider_of_gate` ASSEMBLE, carrier riding the recursion via ROUTE A)
+   and its map mirror.
+4. **Substitute at both sorry sites** — once (2) exists and (3) is produced, sorries 1
+   and 2 are one `exact` each.
+
+Bricks 1–2 are mechanical glue; **brick 3 (the root carriers) is the only real
+remaining proof obligation for Family A**, now symmetric across seq/map thanks to
+R513–R515.
+
+**Family B (content fidelity) — orthogonal, untouched by this section.** Sorries 3 and
+4 are the non-empty cases of `emit_roundtrip_sequence_content_eq` /
+`emit_roundtrip_mapping_content_eq`. They already *assume* parsing succeeded (`h_raw`,
+`h_size` are hypotheses); the `sorry` is purely "the recovered tree is `contentEq` to
+the original," which needs a parser-output structural trace — orthogonal machinery
+from the bracketing carrier.
+
+**Relation to Phase 6.** Both families feed `universal_roundtrip` on the **current**
+(non-indexed) foundation. Phase 6 item (ii) is a *separate* obligation: re-deriving the
+same guarantee on the **indexed** types of the new foundation. "Finish the current
+proof" (this section) and "re-attack Tier-2 emitter-scannability from the new
+foundation" (Phase 6) are two different things, on two different substrates.
+
 ### Reflection 153 (new): `scanFlowEntryIx` and `scanValuePrepareIx` micro-discoveries — refined no-overwrite design, partial-substrate landing
 
 **Triggering event**: during `.body1.tokenshape.substrate` execution

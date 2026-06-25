@@ -6893,6 +6893,143 @@ theorem flowSubrangesOk_of_seqRoot_and_map_producers
     h_map_rec h_key_content h_key_scalar_value h_value_content h_value_scalar_succ
     h_key_bracket_succ h_value_bracket_succ
 
+/-! ### The MAP fold cluster — toward `mapHRec_of_root_and_emit` (brick (2))
+
+The seq half of `FlowSubrangesOk` now rides on the single carrier
+`SeqInteriorSeparators tokens 2 (size-2)` via `seqHRec_of_root_and_emit` (`:6771`), whose context
+inputs are discharged by `seqWholeStreamWellTyped` (`:6665`) + `seqFoldTotal_of_context` (`:6751`).
+The MAP half still rides into the consumer as its seven raw per-window producers (the recorded
+asymmetry).  Brick (2) builds the map fold `mapHRec_of_root_and_emit` that will collapse the
+`h_map_rec` (`RecMapBody`) slot onto the map root carrier, mirroring the seq fold cluster.
+
+This first sub-brick lands the fold cluster's CONTEXT residual — the `h_fold_total` slot every
+windowFacts provider needs — as the `some false`/`{`/`}` dual of the seq context pair.  Both proofs
+are collection-agnostic below the boundary: `mapFoldTotal_of_context` reuses `WellTyped_prefix_some`
+verbatim (fold-totality at every prefix follows from whole-stream `WellTyped`), and
+`mapWholeStreamWellTyped` is the seq whole-stream fold with `btStep`'s `[`-push-`true` swapped for the
+`{`-push-`false` convention (`WellBracketed.lean:1540-1541`): the four boundary tokens are
+`streamStart :: .flowMappingStart :: interior ++ [.flowMappingEnd, streamEnd]`, the interior frames
+back to `[false]` by `WellTyped_frame`, and `.flowMappingEnd` pops the matching `false`.
+
+AXIOM NOTE — the seq/map asymmetry reaches the axiom layer.  Unlike `seqWholeStreamWellTyped`
+(`[propext, Classical.choice, Quot.sound]`, clean), both map lemmas carry `sorryAx` —
+`[propext, sorryAx, Classical.choice, Quot.sound]` — inherited via
+`scanFiltered_emitMap_nonempty_structure`, whose `ParseEntryFlowMapOk` conjunct still discharges the
+frontier residual `FlowSubrangesOk tokens := sorry` (`NonemptyStructure.lean:11208`, sorry #4) INLINE.
+The seq structure lemma sheds this only because R442 RELOCATED its twin sorry out to
+`parseStream_emitSequence`; the map structure lemma never got that relocation, so the WHOLE map
+context-provider family (`mapWindowOpenerAdj_of_emit`, …, and now these) carries `sorryAx`.  This adds
+NO NEW sorry — it routes through the existing #4 — and the `sorryAx` vanishes the moment the root
+carriers close #4.  Frontier sorry count unchanged at 4. -/
+
+/-- **Whole-stream well-typedness from the MAP emit context** — the `some false`/`{`/`}` dual of
+    `seqWholeStreamWellTyped` (`:6665`).  Reads the emitted+filtered stream off
+    `scanFiltered_emitMap_nonempty_structure` as `streamStart :: .flowMappingStart :: interior ++
+    [.flowMappingEnd, streamEnd]` (four boundary tokens + `size ≥ 7` + the interior `WellTyped`), and
+    folds piecewise: `btStep` is the identity on `streamStart`/`streamEnd`, pushes `false` on `{`, the
+    interior returns the stack to `[false]` by `WellTyped_frame` of `h_wt_interior`, then `}` pops the
+    matching `false` back to `[]`.  No `native_decide`.  Carries `sorryAx` (`[propext, sorryAx,
+    Classical.choice, Quot.sound]`) inherited from `scanFiltered_emitMap_nonempty_structure`'s inline
+    sorry #4 — see the cluster AXIOM NOTE above; adds no NEW sorry.  Verified-but-unconsumed until the
+    map fold lands; frontier sorry count unchanged at 4. -/
+theorem mapWholeStreamWellTyped
+    (pairs : Array (YamlValue × YamlValue)) (tokens : Array (Positioned YamlToken))
+    (h_scan : Scanner.scanFiltered ("{" ++ emit.emitPairList pairs.toList ++ "}") = .ok tokens)
+    (h_ne : pairs.toList ≠ [])
+    (h_all_k_block : ∀ p, p ∈ pairs.toList → EmitScansInFlowSavedKeyBlock p.1)
+    (h_all_v_block : ∀ p, p ∈ pairs.toList → EmitScansInFlowBlock p.2) :
+    WellTyped tokens.toList := by
+  obtain ⟨h_sz7, h_t0, h_tlast, h_t1, h_close, _h_key, _h_fe_pattern,
+          _h_outer_bal, _h_dyck, h_wt_interior, _h_pnok, _h_body_opener, _h_body_separator⟩ :=
+    scanFiltered_emitMap_nonempty_structure pairs tokens h_scan h_ne h_all_k_block h_all_v_block
+  have h_len : tokens.toList.length = tokens.size := Array.length_toList
+  -- the four boundary indices are in range
+  have hb0 : 0 < tokens.toList.length := by rw [h_len]; omega
+  have hb1 : 1 < tokens.toList.length := by rw [h_len]; omega
+  have hbe : tokens.size - 2 < tokens.toList.length := by rw [h_len]; omega
+  have hbl : tokens.size - 1 < tokens.toList.length := by rw [h_len]; omega
+  -- their token VALUES (bridged from the `tokens[_]!` boundary facts)
+  have e0 : (tokens.toList[0]'hb0).val = .streamStart := by
+    have hb : tokens.toList[0]'hb0 = tokens[0]! := by
+      rw [Array.getElem_toList, getElem!_pos tokens 0 (by omega)]
+    rw [hb]; exact h_t0
+  have e1 : (tokens.toList[1]'hb1).val = .flowMappingStart := by
+    have hb : tokens.toList[1]'hb1 = tokens[1]! := by
+      rw [Array.getElem_toList, getElem!_pos tokens 1 (by omega)]
+    rw [hb]; exact h_t1
+  have ee : (tokens.toList[tokens.size - 2]'hbe).val = .flowMappingEnd := by
+    have hb : tokens.toList[tokens.size - 2]'hbe = tokens[tokens.size - 2]! := by
+      rw [Array.getElem_toList, getElem!_pos tokens (tokens.size - 2) (by omega)]
+    rw [hb]; exact h_close
+  have el : (tokens.toList[tokens.size - 1]'hbl).val = .streamEnd := by
+    have hb : tokens.toList[tokens.size - 1]'hbl = tokens[tokens.size - 1]! := by
+      rw [Array.getElem_toList, getElem!_pos tokens (tokens.size - 1) (by omega)]
+    rw [hb]; exact h_tlast
+  -- prefix `take 2` = [streamStart, `{`]
+  have h_take2 : tokens.toList.take 2 = [tokens.toList[0]'hb0, tokens.toList[1]'hb1] := by
+    have step1 : tokens.toList.take 2 = tokens.toList.take 1 ++ [tokens.toList[1]'hb1] :=
+      List.take_succ_eq_append_getElem hb1
+    have step0 : tokens.toList.take 1 = tokens.toList.take 0 ++ [tokens.toList[0]'hb0] :=
+      List.take_succ_eq_append_getElem hb0
+    rw [step1, step0]; rfl
+  -- suffix `drop (size-2)` = [`}`, streamEnd]
+  have h_suf : tokens.toList.drop (tokens.size - 2)
+      = [tokens.toList[tokens.size - 2]'hbe, tokens.toList[tokens.size - 1]'hbl] := by
+    have d1 : tokens.toList.drop (tokens.size - 2)
+        = tokens.toList[tokens.size - 2]'hbe :: tokens.toList.drop (tokens.size - 2 + 1) :=
+      List.drop_eq_getElem_cons hbe
+    have hidx : tokens.size - 2 + 1 = tokens.size - 1 := by omega
+    rw [hidx] at d1
+    have d2 : tokens.toList.drop (tokens.size - 1)
+        = tokens.toList[tokens.size - 1]'hbl :: tokens.toList.drop (tokens.size - 1 + 1) :=
+      List.drop_eq_getElem_cons hbl
+    have hidx2 : tokens.size - 1 + 1 = tokens.size := by omega
+    rw [hidx2] at d2
+    have d3 : tokens.toList.drop tokens.size = [] := by rw [← h_len, List.drop_length]
+    rw [d1, d2, d3]
+  -- the body window `take (size-2)` splits as `take 2 ++ interior`
+  have h_take2_eq : (tokens.toList.take (tokens.size - 2)).take 2 = tokens.toList.take 2 := by
+    rw [List.take_take]; congr 1; omega
+  have h_interior_decomp : tokens.toList.take (tokens.size - 2)
+      = tokens.toList.take 2 ++ (tokens.toList.take (tokens.size - 2)).drop 2 := by
+    rw [← h_take2_eq, List.take_append_drop]
+  -- the whole list = (take 2 ++ interior) ++ suffix
+  have h_whole : tokens.toList
+      = (tokens.toList.take 2 ++ (tokens.toList.take (tokens.size - 2)).drop 2)
+        ++ tokens.toList.drop (tokens.size - 2) := by
+    rw [← h_interior_decomp, List.take_append_drop]
+  -- fold piecewise: `{` pushes `false`, interior frames back to `[false]`, `}` pops to `[]`
+  show btFold (some []) tokens.toList = some []
+  rw [h_whole, btFold_append, btFold_append]
+  have hf2 : btFold (some []) (tokens.toList.take 2) = some [false] := by
+    rw [h_take2]
+    have hs0 : btStep (tokens.toList[0]'hb0) [] = some [] := by simp only [btStep, e0]
+    have hs1 : btStep (tokens.toList[1]'hb1) [] = some [false] := by simp only [btStep, e1]
+    rw [btFold_cons_some, hs0, btFold_cons_some, hs1]; rfl
+  rw [hf2, WellTyped_frame _ [false] h_wt_interior, h_suf]
+  have hse : btStep (tokens.toList[tokens.size - 2]'hbe) [false] = some [] := by simp only [btStep, ee]
+  have hss : btStep (tokens.toList[tokens.size - 1]'hbl) [] = some [] := by simp only [btStep, el]
+  rw [btFold_cons_some, hse, btFold_cons_some, hss]; rfl
+
+/-- **The whole-stream fold-totality `h_fold_total`, discharged from the MAP emit context** — the dual
+    of `seqFoldTotal_of_context` (`:6751`).  Fold-totality is collection-AGNOSTIC: `WellTyped_prefix_some`
+    turns whole-stream `WellTyped tokens.toList` (now produced by `mapWholeStreamWellTyped`) into
+    fold-totality at EVERY prefix, since every prefix of a `WellTyped` list folds to `some` (never
+    underflows).  The proof body is byte-identical to the seq twin — only the whole-stream producer it
+    calls differs.  Carries `sorryAx` via `mapWholeStreamWellTyped` (the map structure lemma's inline
+    sorry #4 — see the cluster AXIOM NOTE above); adds no NEW sorry, frontier count unchanged at 4. -/
+theorem mapFoldTotal_of_context
+    (pairs : Array (YamlValue × YamlValue)) (tokens : Array (Positioned YamlToken))
+    (h_scan : Scanner.scanFiltered ("{" ++ emit.emitPairList pairs.toList ++ "}") = .ok tokens)
+    (h_ne : pairs.toList ≠ [])
+    (h_all_k_block : ∀ p, p ∈ pairs.toList → EmitScansInFlowSavedKeyBlock p.1)
+    (h_all_v_block : ∀ p, p ∈ pairs.toList → EmitScansInFlowBlock p.2) :
+    ∀ m, ∃ s, btFold (some []) (tokens.toList.take m) = some s := by
+  have h_wt := mapWholeStreamWellTyped pairs tokens h_scan h_ne h_all_k_block h_all_v_block
+  intro m
+  exact WellTyped_prefix_some (tokens.toList.take m) (tokens.toList.drop m)
+    (by rw [List.take_append_drop]; exact h_wt)
+
 /-- **The 7-guard `windowFacts`/`h_seq_rec` universal is UNSATISFIABLE — a cross-matched false window** —
     `(i'-b-B2c-(d)-windowFacts-false-window)`, R433, the machine-checked refutation that REDIRECTS the
     "discharge the three `windowFacts` primitives" plan ([[ref-probe-deferred-universal-before-producing]] /
