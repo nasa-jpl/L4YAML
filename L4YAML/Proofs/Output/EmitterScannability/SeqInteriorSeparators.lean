@@ -213,6 +213,62 @@ theorem MapInteriorSeparators_advance {tokens : Array (Positioned YamlToken)} {l
     MapInteriorSeparators tokens (m + 1) hi :=
   MapInteriorSeparators_narrow h_lo (Nat.le_refl hi) h
 
+/-! ### The map gate, reconstructed in place from the window opener (R514)
+
+The map carrier `MapInteriorSeparators tokens lo hi` (`:187`) carries the gate `MapTypedInterior` as a
+PREMISE.  Its eventual consumer — `mapGrammarFacts_of_mapRoot`, the map twin of the seq projection —
+will instantiate the carrier at `a := lo, b := hi` and must therefore SUPPLY that gate.  The gate's
+`btFold`-top conjunct (`(btFold (some []) (tokens.toList.take a)).bind (·.head?) = some false`) is a
+fact about the PREFIX `[0,a)`, not the window interior, so it is not a projection of any interior
+predicate — it must be RECONSTRUCTED at the window from its boundary opener
+([[ref-reconstruct-in-place-over-relocate]] / [[ref-prefix-gate-reconstructed-from-boundary]]).
+
+These two lemmas are the `some false`/`.flowMappingStart` DUAL of the seq pair
+`enclosingMark_true_of_opener` (`:1310`) / `seqTypedInterior_of_opener` (`:1335`).  They are the
+genuine "real work" the R513 brick named for `mapGrammarFacts_of_mapRoot`.  The mirror sheds NO
+machinery — it is a pure two-symbol text-swap (`.flowSequenceStart → .flowMappingStart`,
+`some true → some false`) resting on the single `btStep` fact that a `{` pushes `false` where a `[`
+pushes `true` (`WellBracketed.lean:1540-1541`).  Verified-but-unconsumed (R514): the consumer
+`mapGrammarFacts_of_mapRoot` does not exist yet; references no sorry site, frontier sorry count
+unchanged at 4; axioms `[propext, Quot.sound]`, byte-identical to the seq pair. -/
+
+/-- MAP mirror of `enclosingMark_true_of_opener` (`:1310`): a `.flowMappingStart` opener at `q` pushes
+    `false` onto the typed bracket stack (`btStep`, `WellBracketed.lean:1541`), so the stack top after
+    the opener prefix `[0, q+1)` is `some false` — the gate's enclosing-`{` conjunct, reconstructed
+    from the boundary. -/
+theorem enclosingMark_false_of_opener
+    (tokens : Array (Positioned YamlToken)) (q : Nat) (h_q : q < tokens.size)
+    (s : List Bool) (h_pre : btFold (some []) (tokens.toList.take q) = some s)
+    (h_open : tokens[q]!.val = .flowMappingStart) :
+    (btFold (some []) (tokens.toList.take (q + 1))).bind (·.head?) = some false := by
+  have h_q' : q < tokens.toList.length := by rwa [Array.length_toList]
+  have h_split : tokens.toList.take (q + 1)
+      = tokens.toList.take q ++ [tokens.toList[q]'h_q'] := by
+    rw [List.take_add_one, List.getElem?_eq_getElem h_q']; rfl
+  have h_val : (tokens.toList[q]'h_q').val = .flowMappingStart := by
+    have hb : tokens.toList[q]'h_q' = tokens[q]! := by
+      rw [Array.getElem_toList, getElem!_pos tokens q h_q]
+    rw [hb]; exact h_open
+  have hstep : btStep (tokens.toList[q]'h_q') s = some (false :: s) := by
+    simp only [btStep, h_val]
+  have hfold : btFold (some s) [tokens.toList[q]'h_q'] = btStep (tokens.toList[q]'h_q') s := rfl
+  rw [h_split, btFold_append, h_pre, hfold, hstep]; rfl
+
+/-- **The full map-typed gate, discharged from the window opener** — the consume-site corollary
+    `mapGrammarFacts_of_mapRoot` will feed `MapInteriorSeparators`.  The `some false` mirror of
+    `seqTypedInterior_of_opener` (`:1335`): given the opener at `q` is a `.flowMappingStart`, the
+    pre-opener prefix folds to `some s`, the body `[q+1, hi)` is depth-`0`-balanced and locally floored,
+    the gate `MapTypedInterior tokens (q+1) hi` holds — so the carrier's body is extractable at this
+    window with no second guard. -/
+theorem mapTypedInterior_of_opener
+    (tokens : Array (Positioned YamlToken)) (q hi : Nat) (h_q : q < tokens.size)
+    (s : List Bool) (h_pre : btFold (some []) (tokens.toList.take q) = some s)
+    (h_open : tokens[q]!.val = .flowMappingStart)
+    (h_bal : flowBracketBalance tokens (q + 1) hi = 0)
+    (h_floor : ∀ i, q + 1 ≤ i → i ≤ hi → flowBracketBalance tokens (q + 1) i ≥ 0) :
+    MapTypedInterior tokens (q + 1) hi :=
+  ⟨h_bal, enclosingMark_false_of_opener tokens q h_q s h_pre h_open, h_floor⟩
+
 /-- `ContentStartTok` (the head predicate of a seq body's unit entries) never holds of a `.flowEntry`:
     it is a scalar / `[` / `{`, never the separator `,`.  This is the `hQ` the no-trailing-comma
     substrate lemma needs to refute a lone-separator unit. -/
