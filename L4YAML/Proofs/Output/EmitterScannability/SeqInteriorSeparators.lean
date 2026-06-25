@@ -1825,6 +1825,77 @@ theorem seqEnclosed_advance (tokens : Array (Positioned YamlToken)) (lo n : Nat)
     rw [WellTyped_frame _ s h_wt_seg]
     exact h_enc
 
+/-- **The MAP enclosure predicate** — the `{`-pushes-`false` mirror of `SeqEnclosed` (`:1765`).
+    `MapEnclosed tokens lo` reads the TOP of the typed bracket stack after the prefix `[0, lo)` and
+    asserts it is `false` — i.e. the window's IMMEDIATE enclosing opener is a flow MAPPING `{`, not a
+    sequence `[` (`btStep`'s `{`-push-`false` convention, `WellBracketed.lean:1540-1541`).  This is the
+    enclosure guard the future map width-recursion `mapWindowRecMapBody_map_general` (the `RecMapBody`
+    analog of `seqWindowRecSeqBody_seq_general`, R415) will thread in its per-window guard `G`, exactly
+    where the seq recursion threads `SeqEnclosed`.  Additive parallel primitive
+    ([[ref-additive-parallel-type-over-shared-edit]]); no edit to any shared type.  Unlike the map
+    context pair `mapWholeStreamWellTyped`/`mapFoldTotal_of_context` (`:6935`/`:7021`), this reads NO
+    structure lemma, so it is axiom-CLEAN (`[propext, Quot.sound]` — no `sorryAx`, and not even the
+    `Classical.choice` the seq `WellTyped`-plumbing edges carry).
+    Verified-but-unconsumed until the map recursion lands; references no sorry site, frontier sorry count
+    unchanged at 4. -/
+def MapEnclosed (tokens : Array (Positioned YamlToken)) (lo : Nat) : Prop :=
+  (btFold (some []) (tokens.toList.take lo)).bind (·.head?) = some false
+
+/-- **DESCEND enclosure-preservation, MAP** — the `false`/`{` mirror of `seqEnclosed_descend` (`:1781`).
+    When the window head `tokens[lo]` is a flow-mapping opener `{`, the recursion descends into the
+    interior `[lo+1, j)`; this re-establishes `MapEnclosed` at the descended start `lo+1`.  A single
+    PUSH: `take (lo+1) = take lo ++ [tokens[lo]]`, the opener `{` pushes `false` onto whatever stack the
+    parent fold reached, so the new top is `false` — the parent's top is NEVER read, only its
+    DEFINEDNESS (`MapEnclosed lo ⟹ the fold is `some s`); the push overwrites the head.  So this edge
+    would hold from the weaker "parent fold defined", but `MapEnclosed lo` is what the producer threads.
+    References no sorry site, frontier sorry count unchanged at 4. -/
+theorem mapEnclosed_descend (tokens : Array (Positioned YamlToken)) (lo : Nat)
+    (h_enc : MapEnclosed tokens lo)
+    (h_lo_sz : lo < tokens.size)
+    (h_open : tokens[lo]!.val = .flowMappingStart) :
+    MapEnclosed tokens (lo + 1) := by
+  unfold MapEnclosed at h_enc ⊢
+  have h_lo_len : lo < tokens.toList.length := by rw [Array.length_toList]; exact h_lo_sz
+  have h_lo_val : (tokens.toList[lo]'h_lo_len).val = .flowMappingStart := by
+    rw [Array.getElem_toList, ← getElem!_pos tokens lo h_lo_sz]; exact h_open
+  rw [List.take_succ_eq_append_getElem h_lo_len, btFold_append]
+  cases hf : btFold (some []) (tokens.toList.take lo) with
+  | none => rw [hf] at h_enc; simp at h_enc
+  | some s =>
+    -- PUSH the opener: `btStep` prepends `false`, so the head is `false` independent of `s`.
+    rw [btFold_cons_some]
+    simp only [btFold, List.foldl_nil, btStep, h_lo_val, Option.bind_some, List.head?_cons]
+
+/-- **ADVANCE enclosure-preservation, MAP** — the `false`/`{` mirror of `seqEnclosed_advance` (`:1808`).
+    After the body recursion consumes the first pair, the tail recurses at a new start `n` reached
+    across a `WellTyped` segment `[lo, n)` (the pair plus its depth-`0` `.flowEntry` separator); this
+    transports `MapEnclosed` from `lo` to `n`.  A FRAME, not a push: `take n = take lo ++ (take n).drop
+    lo`, and the segment is `WellTyped`, so `WellTyped_frame` returns the fold to the SAME stack — the
+    top `false` is PRESERVED.  Unlike DESCEND this DOES read the parent's top (`MapEnclosed lo`'s
+    `false`), since the frame preserves rather than overwrites.  The `WellTyped` segment is supplied as a
+    hypothesis ([[ref-parametric-assembler-extraction]]); the producer discharges it at the depth-`0`
+    separator.  This is the DOMINANT edge of the map recursion's ADVANCE (every `.flowEntry`-separated
+    pair stays inside the SAME `{ … }`).  References no sorry site, frontier sorry count unchanged at 4. -/
+theorem mapEnclosed_advance (tokens : Array (Positioned YamlToken)) (lo n : Nat)
+    (h_enc : MapEnclosed tokens lo)
+    (h_lo_n : lo ≤ n)
+    (h_wt_seg : WellTyped ((tokens.toList.take n).drop lo)) :
+    MapEnclosed tokens n := by
+  unfold MapEnclosed at h_enc ⊢
+  have h_split : tokens.toList.take n
+      = tokens.toList.take lo ++ (tokens.toList.take n).drop lo := by
+    have h := List.take_append_drop lo (tokens.toList.take n)
+    rw [List.take_take, Nat.min_eq_left h_lo_n] at h
+    exact h.symm
+  rw [h_split, btFold_append]
+  cases hf : btFold (some []) (tokens.toList.take lo) with
+  | none => rw [hf] at h_enc; simp at h_enc
+  | some s =>
+    -- FRAME: the `WellTyped` segment returns the fold to `s`, so the head `false` is preserved.
+    rw [hf] at h_enc
+    rw [WellTyped_frame _ s h_wt_seg]
+    exact h_enc
+
 /-- **The all-seq-PATH domain predicate** — `(i'-b-B2c-nested-project, the domain hypothesis)`, the
     proof-side Prop form of `pathAllSeq` (R336, `SeqPathDispatchProbe`).  Where `SeqEnclosed tokens lo`
     reads only the TOP of the typed bracket stack after `[0, lo)` (the window's IMMEDIATE enclosure),

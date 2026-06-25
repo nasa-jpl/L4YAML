@@ -35,7 +35,23 @@ in for the real `sorryAx`: a `Struct` whose hard conjunct is proved via the axio
 sibling but `trivial`-y in the CLEAN one, and two "whole-stream" readers with BYTE-IDENTICAL bodies
 (`·.boundary`) — one reading the clean struct, one the tainted.  `#guard_msgs` pins that the clean
 reader sheds the axiom while the tainted reader inherits it, even though neither touches the hard
-field.  `demo` (which touches the tainted half) carries `[relocated_residual]`. -/
+field.  `demo` (which touches the tainted half) carries `[relocated_residual]`.
+
+## R517 — the COMPLEMENT: a map-axis mirror over a CLEAN dependency stays clean
+
+R516 showed a map-axis mirror INHERITS `sorryAx` by reading the tainted map structure lemma.  R517
+lands the map enclosure primitive `MapEnclosed` + `mapEnclosed_descend`/`mapEnclosed_advance` (the
+`{`-pushes-`false` mirror of `SeqEnclosed` + its two edges), and its axiom audit comes out
+`[propext, Quot.sound]` — axiom-CLEAN, no `sorryAx`, not even the `Classical.choice` the seq
+`WellTyped`-plumbing carries.  It is the SAME map axis as the tainted context pair, yet clean —
+because its dependency closure reads only pure `btFold`/`WellTyped` plumbing, NEVER the structure
+lemma.
+
+So the sharpening: **axiom taint tracks the DEPENDENCY CLOSURE, not the axis.**  "Map-axis ⇒ tainted"
+is false; a map-axis brick is clean iff its closure avoids the sorry-bearing structure lemma — which
+makes the dependency-closure principle PREDICTIVE, not just diagnostic.  The model below adds a SECOND
+clean dependency `btFoldPlumbing` and a map-axis reader `mapEnclosedReader` over it: same map framing
+as the tainted `mapWhole`, but axiom-free, because the dependency it reads is clean. -/
 
 namespace MirrorInheritsDependencyAxioms
 
@@ -80,6 +96,22 @@ theorem demo : seqWhole = 7 ∧ mapWhole = 7 ∧ seqWhole = mapWhole :=
 /-- A RUN: the inherited axiom does not change the VALUE — both readers deliver `7`. -/
 theorem run : seqWhole = mapWhole := rfl
 
+-- ── R517 complement: a map-axis reader over a CLEAN dependency stays clean ──
+
+/-- **A CLEAN map-axis dependency** (mirror of the pure `btFold`/`WellTyped` plumbing the map enclosure
+    primitive reads): a map-side constant with NO residual in its closure.  `MapEnclosed`/
+    `mapEnclosed_*` depend on plumbing like THIS, not on the tainted map structure lemma. -/
+def btFoldPlumbing : Struct := ⟨7, trivial⟩
+
+/-- **Map-axis reader over the CLEAN plumbing** (mirror of `MapEnclosed`/`mapEnclosed_*`).  Same
+    map-axis framing as `mapWhole` and a BYTE-IDENTICAL body (`·.boundary`), but its dependency closure
+    avoids the tainted struct — so it is axiom-free.  Taint tracks the DEPENDENCY, not the axis. -/
+def mapEnclosedReader : Nat := btFoldPlumbing.boundary
+
+/-- The map-axis enclosure reader's fact — axiom-FREE, though `mapWhole` (same axis, tainted
+    dependency) carries `[relocated_residual]`.  The contrast IS the R517 lesson. -/
+theorem mapEnclosed_clean : mapEnclosedReader = 7 := rfl
+
 end MirrorInheritsDependencyAxioms
 
 -- Axiom audit (machine-checked: `#guard_msgs` pins the profile and fails the build if it ever drifts;
@@ -97,3 +129,11 @@ end MirrorInheritsDependencyAxioms
 /-- info: 'MirrorInheritsDependencyAxioms.demo' depends on axioms: [MirrorInheritsDependencyAxioms.relocated_residual] -/
 #guard_msgs in
 #print axioms MirrorInheritsDependencyAxioms.demo
+
+-- R517 complement: the map-axis reader over the CLEAN dependency sheds the axiom — same axis as the
+-- tainted `mapWhole`, but clean, because the dependency it reads is clean.  Taint tracks the
+-- DEPENDENCY, not the axis: exactly why `MapEnclosed` is `[propext, Quot.sound]` while the map context
+-- pair `mapWholeStreamWellTyped`/`mapFoldTotal_of_context` carry `sorryAx`.
+/-- info: 'MirrorInheritsDependencyAxioms.mapEnclosed_clean' does not depend on any axioms -/
+#guard_msgs in
+#print axioms MirrorInheritsDependencyAxioms.mapEnclosed_clean
