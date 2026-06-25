@@ -4975,6 +4975,89 @@ theorem seqWindowRecSeqBody_seq_general (tokens : Array (Positioned YamlToken))
     exact ih (m + 1) hi (by omega) ⟨h_win', h_deep', h_enc', h_close_hi, by omega, h_hi_hi0⟩
   exact key lo hi ⟨h_win0, h_deep0, h_enc0, h_close0, h_lo0, h_hi0⟩
 
+/-- **The seq navigator's DESCEND-TAIL edge, extracted** — `(γ‴, R511)`: the per-window guard descent
+    past a depth-`0` separator, lifted out of `seqWindowRecSeqBody_seq_general`'s (R415) inline ADVANCE
+    block as a standalone, reusable lemma.  This is the guard-threading skeleton
+    ([[ref-guard-threading-skeleton-before-grammar]]) — the genuine analytical brick that
+    `recseqbody_navigator_driver` (R510) named as `descend_tail`.
+
+    **What it discharges.**  The R510 driver reduces the whole seq navigator to two obligations,
+    `locate` + `descend_tail`.  THIS is `descend_tail`: given the per-window seq guard at `[lo, hi)`
+    and a depth-`0` separator located at `m` (`flowBracketBalance tokens lo m = 0`,
+    `tokens[m] = .flowEntry`), it narrows the three structural guards (`FlowBodyWindow`,
+    `FlowBodyContentDeepSeq`, `SeqEnclosed`) to the SUFFIX `[m+1, hi)` and proves the suffix is
+    non-degenerate (`m + 1 < hi`).  It composes only landed advance edges — `flowBodyWindow_advance`,
+    `flowBodyContentDeepSeq_advance`, `seqEnclosed_advance` — over the depth-`0` re-basing
+    (`flowBracketBalance_compose` on the delta-`0` comma) verbatim from the inline block.
+
+    **The finding it records** (sharpens the R510 reflection,
+    [[ref-probe-deferred-universal-before-producing]]).  `descend_tail` is NOT keyed on
+    `tokens[m] = .flowEntry` alone — as the R510 driver's signature naively typed it.  A `.flowEntry`
+    can sit at any bracket depth, so the descend genuinely CONSUMES two extra facts the bare marker
+    doesn't carry: `h_bal_m` (the depth-`0` balance, which `locate`/the dispatch DOES emit) and
+    `h_content` (the CURRENT window's `FlowBodyContent`, used twice — to rule out the trailing comma
+    `m + 1 = hi` via `feContentStart` + `tokens[hi] = .flowSequenceEnd`, and to discharge the
+    re-scoped advance edge's `tokens[m+1] ≠ .key` premise).  So the driver's `descend_tail` must be
+    re-typed to receive the located-separator balance, and the per-window guard `G` it threads must
+    carry the window's content provider — exactly the carrier-free top-down-content obstacle of
+    [[ref-width-recursion-cannot-thread-topdown-fact]], here pinned to its precise entry point.
+    Note `h_content` is CONSUMED, not reproduced: the next window's content is re-sourced from the
+    carrier/navigator, so the descend need not output `FlowBodyContent (m+1) hi`.
+
+    Verified-but-unconsumed until the driver is re-typed and wired: composes only landed lemmas,
+    references no sorry site, frontier sorry count unchanged at 4; axioms
+    `[propext, Classical.choice, Quot.sound]` (seq-family profile, Classical inherited from the
+    advance edges' WellTyped plumbing), no `sorryAx`. -/
+theorem recseqbody_seq_descend_tail (tokens : Array (Positioned YamlToken)) (lo hi m : Nat)
+    (h_win : FlowBodyWindow tokens lo hi)
+    (h_deep : FlowBodyContentDeepSeq tokens lo hi)
+    (h_enc : SeqEnclosed tokens lo)
+    (h_content : FlowBodyContent tokens lo hi)
+    (h_close : tokens[hi]!.val = .flowSequenceEnd)
+    (h_lo_m : lo < m) (h_m_hi : m < hi)
+    (h_bal_m : flowBracketBalance tokens lo m = 0)
+    (h_sep : tokens[m]!.val = .flowEntry) :
+    m + 1 < hi
+      ∧ FlowBodyWindow tokens (m + 1) hi
+      ∧ FlowBodyContentDeepSeq tokens (m + 1) hi
+      ∧ SeqEnclosed tokens (m + 1) := by
+  have h_hi_sz : hi < tokens.size := h_win.hi_lt
+  have h_m_len : m < tokens.toList.length := by rw [Array.length_toList]; omega
+  have h_m_val : tokens[m]! = tokens.toList[m]'h_m_len := by
+    rw [getElem!_pos tokens m (by omega), Array.getElem_toList]
+  have h_delta_m : flowBracketDelta tokens[m]!.val = 0 := by
+    rw [h_sep]; exact flowBracketDelta_flowEntry
+  have h_single_m : flowBracketBalance tokens m (m + 1) = flowBracketDelta tokens[m]!.val := by
+    rw [flowBracketBalance_single tokens m h_m_len, ← h_m_val]
+  have h_bal_m1 : flowBracketBalance tokens lo (m + 1) = 0 := by
+    have hc := flowBracketBalance_compose tokens lo m (m + 1) (by omega) (Nat.le_succ m)
+    rw [h_bal_m, h_single_m, h_delta_m] at hc; omega
+  have h_m1_hi : m + 1 < hi := by
+    rcases Nat.lt_or_ge (m + 1) hi with h | h
+    · exact h
+    · exfalso
+      have h_eq : m + 1 = hi := by omega
+      obtain ⟨_, h_cs⟩ :=
+        h_content.feContentStart m (Nat.le_of_lt h_lo_m) h_m_hi h_sep h_bal_m
+      rw [h_eq, h_close] at h_cs
+      simp [isFlowContentStart] at h_cs
+  have h_wt_seg : WellTyped ((tokens.toList.take (m + 1)).drop lo) :=
+    WellTyped_subrange tokens lo lo (m + 1) hi (Nat.le_refl lo) (by omega) (by omega)
+      (Nat.le_of_lt h_win.hi_lt) h_win.wellTyped h_bal_m1
+      (fun p hp1 hp2 => h_win.dyck p hp1 (by omega))
+  have h_win' : FlowBodyWindow tokens (m + 1) hi :=
+    flowBodyWindow_advance tokens lo m hi h_win (Nat.le_of_lt h_lo_m) h_m1_hi h_bal_m h_sep
+  have h_m1_content : isFlowContentStart tokens[m + 1]!.val :=
+    (h_content.feContentStart m (Nat.le_of_lt h_lo_m) h_m_hi h_sep h_bal_m).2
+  have h_m1_ne_key : tokens[m + 1]!.val ≠ .key := by
+    unfold isFlowContentStart at h_m1_content
+    rcases h_m1_content with ⟨c, s, h⟩ | h | h <;> simp [h]
+  have h_deep' : FlowBodyContentDeepSeq tokens (m + 1) hi :=
+    flowBodyContentDeepSeq_advance tokens lo m hi h_deep (Nat.le_of_lt h_lo_m) h_sep h_m1_ne_key h_m1_hi
+  have h_enc' : SeqEnclosed tokens (m + 1) :=
+    seqEnclosed_advance tokens lo (m + 1) h_enc (by omega) h_wt_seg
+  exact ⟨h_m1_hi, h_win', h_deep', h_enc'⟩
+
 /-- **The root-span instance of `seqWindowRecSeqBody_seq_general`** — `lo0 := 2`, `hi0 := size-2`,
     bounds read off `FlowBodyWindow.lo_ge`/`hi_le`.  Signature-preserving so `seqWindowRecSeqBody_seq`'s
     consumers are untouched (ROUTE A, R445 — the parametric carrier rides the recursion via the
