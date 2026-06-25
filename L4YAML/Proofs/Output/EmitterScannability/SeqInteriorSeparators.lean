@@ -6595,6 +6595,115 @@ theorem seqHRec_of_root_and_emit
   seqHRec_of_root_and_context items tokens h_scan h_ne h_all_block h_wt_outer
     (seqFoldTotal_of_context items tokens h_scan h_ne h_all_block) h_root_carrier
 
+/-- **The SEQ half of `FlowSubrangesOk` collapses to the SINGLE root carrier** —
+    `(i'-b-B2c-(d)-flowSubrangesOk-of-seqRoot-and-map)`, R512, the critical-path RECONCILIATION that
+    fixes the position of the genuine remaining work.  It folds the entire discharged seq chain into the
+    actual `FlowSubrangesOk` consumer ([[ref-fold-consumer-chain-to-producer-contract]] at the
+    contract level): it composes `flowSubrangesOk_of_window_producers` (the locator-pair assembler) with
+    `seqHRec_of_root_and_emit` in its `h_seq_rec` slot — a DIRECT substitution, since R440 made the two
+    universals textually identical.  So the whole seq side of the `FlowSubrangesOk tokens` residual
+    (`NonemptyStructure.lean:11208`) is now discharged from **the single hypothesis `h_root_carrier`**
+    (`SeqInteriorSeparators tokens 2 (size-2)`) plus the emit context + boundary facts already in scope
+    at the sorry site.  The map side is left as its seven raw per-window producers (`h_map_rec` + the six
+    grammar facts) — it is NOT yet reduced to a root carrier, so this brick records the seq/map ASYMMETRY:
+    the seq axis is one carrier away from done; the map axis still owes its whole producer family.
+
+    **The finding it pins** (the reason this is the right brick now, not the R510/R511 driver line).
+    Tracing the actual critical path shows the carrier-based recursion `seqWindowRecSeqBody_seq_general`
+    (R415) + the R432–R441 emit/fold-totality chain ALREADY close the seq navigator end-to-end — given
+    the root carrier.  The width-recursion DRIVER `recseqbody_navigator_driver` (R510) and its extracted
+    `recseqbody_seq_descend_tail` (R511) are a *parallel* modular re-derivation of R415's inlined `step`;
+    correct, but OFF this critical path — building `locate` and re-typing the driver would re-prove what
+    R415 already delivers.  So the sole genuine open seq residual is the root carrier
+    `SeqInteriorSeparators tokens 2 (size-2)` = `seqRoot_seqInteriorSeparators` fed its `desc` descent
+    provider (the hard B2 brick: `seqEnclosingOpener_of_gate` LOCATE + `seqDescent_provider_of_gate`
+    ASSEMBLE, the carrier riding the recursion via ROUTE A).  This brick makes that precise by exhibiting
+    the one statement in which `h_root_carrier` is the ONLY seq-side hypothesis left.
+
+    Verified-but-unconsumed until the root carrier + the map producers land: pure composition of landed
+    lemmas (`flowSubrangesOk_of_window_producers` ∘ `seqHRec_of_root_and_emit`), references no sorry site,
+    frontier sorry count unchanged at 4; axioms `[propext, Classical.choice, Quot.sound]`, no `sorryAx`. -/
+theorem flowSubrangesOk_of_seqRoot_and_map_producers
+    (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
+    (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
+    (h_ne : items.toList ≠ [])
+    (h_all_block : ∀ w, w ∈ items.toList → EmitScansInFlowBlock w)
+    (h_t0 : tokens[0]!.val = .streamStart)
+    (h_tlast : tokens[tokens.size - 1]!.val = .streamEnd)
+    (h_wt_outer : WellTyped ((tokens.toList.take (tokens.size - 2)).drop 2))
+    (h_root_carrier : SeqInteriorSeparators tokens 2 (tokens.size - 2))
+    (h_map_rec : ∀ lo hi, 2 ≤ lo → lo < hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+      tokens[hi]!.val = .flowMappingEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowMappingStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
+      RecMapBody ((tokens.toList.take hi).drop lo))
+    (h_key_content : ∀ lo hi, 2 ≤ lo → lo ≤ hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+      tokens[hi]!.val = .flowMappingEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowMappingStart →
+      ∀ k, lo ≤ k → k < hi →
+        flowBracketBalance tokens lo k = 0 →
+        tokens[k]!.val = .key →
+        k + 1 < hi ∧ isFlowContentStart tokens[k + 1]!.val)
+    (h_key_scalar_value : ∀ lo hi, 2 ≤ lo → lo ≤ hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+      tokens[hi]!.val = .flowMappingEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowMappingStart →
+      ∀ k, lo ≤ k → k < hi →
+        flowBracketBalance tokens lo k = 0 →
+        tokens[k]!.val = .key →
+        (∃ c s, tokens[k + 1]!.val = .scalar c s) →
+        k + 2 < hi ∧ tokens[k + 2]!.val = .value)
+    (h_value_content : ∀ lo hi, 2 ≤ lo → lo ≤ hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+      tokens[hi]!.val = .flowMappingEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowMappingStart →
+      ∀ k, lo ≤ k → k < hi →
+        flowBracketBalance tokens lo k = 0 →
+        tokens[k]!.val = .value →
+        k + 1 < hi ∧ isFlowContentStart tokens[k + 1]!.val)
+    (h_value_scalar_succ : ∀ lo hi, 2 ≤ lo → lo ≤ hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+      tokens[hi]!.val = .flowMappingEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowMappingStart →
+      ∀ k, lo ≤ k → k < hi →
+        flowBracketBalance tokens lo k = 0 →
+        tokens[k]!.val = .value →
+        (∃ c s, tokens[k + 1]!.val = .scalar c s) →
+        k + 2 ≤ hi ∧
+        (tokens[k + 2]!.val = .flowEntry ∨
+         (tokens[k + 2]!.val = .flowMappingEnd ∧ k + 2 = hi)))
+    (h_key_bracket_succ : ∀ lo hi, 2 ≤ lo → lo ≤ hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+      tokens[hi]!.val = .flowMappingEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowMappingStart →
+      ∀ k j, lo ≤ k → k < hi →
+        flowBracketBalance tokens lo k = 0 →
+        tokens[k]!.val = .key →
+        k + 1 < j → j < hi →
+        flowBracketDelta tokens[j]!.val = -1 →
+        flowBracketBalance tokens lo (j + 1) = 0 →
+        j + 1 < hi ∧ tokens[j + 1]!.val = .value)
+    (h_value_bracket_succ : ∀ lo hi, 2 ≤ lo → lo ≤ hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+      tokens[hi]!.val = .flowMappingEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowMappingStart →
+      ∀ k j, lo ≤ k → k < hi →
+        flowBracketBalance tokens lo k = 0 →
+        tokens[k]!.val = .value →
+        k + 1 < j → j < hi →
+        flowBracketDelta tokens[j]!.val = -1 →
+        flowBracketBalance tokens lo (j + 1) = 0 →
+        j + 1 ≤ hi ∧
+        (tokens[j + 1]!.val = .flowEntry ∨
+         (tokens[j + 1]!.val = .flowMappingEnd ∧ j + 1 = hi))) :
+    FlowSubrangesOk tokens :=
+  flowSubrangesOk_of_window_producers tokens h_t0 h_tlast h_wt_outer
+    (seqHRec_of_root_and_emit items tokens h_scan h_ne h_all_block h_wt_outer h_root_carrier)
+    h_map_rec h_key_content h_key_scalar_value h_value_content h_value_scalar_succ
+    h_key_bracket_succ h_value_bracket_succ
+
 /-- **The 7-guard `windowFacts`/`h_seq_rec` universal is UNSATISFIABLE — a cross-matched false window** —
     `(i'-b-B2c-(d)-windowFacts-false-window)`, R433, the machine-checked refutation that REDIRECTS the
     "discharge the three `windowFacts` primitives" plan ([[ref-probe-deferred-universal-before-producing]] /
