@@ -1896,6 +1896,59 @@ theorem mapEnclosed_advance (tokens : Array (Positioned YamlToken)) (lo n : Nat)
     rw [WellTyped_frame _ s h_wt_seg]
     exact h_enc
 
+/-- **The per-window MAP grammar-facts provider** — the map analog of `seqWindow_flowBodyContent_general`.
+    Given the root map carrier `MapInteriorSeparators tokens lo0 hi0` and the window's structural guard,
+    it narrows the carrier to the window `[lo, hi) ⊆ [lo0, hi0)` (window-absolute body,
+    [[ref-window-absolute-gate-subset-restriction]]) and instantiates it at the window itself, yielding the
+    six `MapGrammarFacts tokens lo hi` the final consumer wants as `h_key_content` … `h_value_bracket_succ`.
+
+    **Strictly simpler than the seq twin.**  The seq provider reads the carrier's two-fact bundle and then
+    runs `flowBodyContent_of_deep` to PROJECT a `FlowBodyContent` from a deep-content guard; the map carrier
+    already delivers the six adjacency facts directly, so there is NO projection step — the carrier
+    instantiation IS the deliverable.  The gate `MapTypedInterior tokens lo hi` is assembled from the
+    window's own `balanced`/`dyck` plus the enclosure `MapEnclosed tokens lo` (R517), whose `btFold`-top
+    `= some false` IS the gate's middle conjunct definitionally (mirroring how `SeqEnclosed` supplies the
+    seq gate's enclosing-`[` mark).
+
+    **Axiom-CLEAN** ([[ref-mirror-inherits-dependency-axioms]] R517 complement, sharpened to a CONSUMER of
+    the carrier).  Its dependency closure reads only the carrier hypothesis (a pure `def` over
+    `MapGrammarFacts`), `MapInteriorSeparators_narrow`, the `FlowBodyWindow` projections, and `MapEnclosed`
+    — NEVER `scanFiltered_emitMap_nonempty_structure` — so it audits `[propext]` ALONE (cleaner even than
+    the R517 `MapEnclosed` edges' `[propext, Quot.sound]`: a pure restriction over a `def` carrier carries
+    no `Quot.sound`), no `sorryAx`, even though it is a map-axis provider.  The map producer family inherits
+    `sorryAx` only once the carrier is itself PRODUCED from the structure lemma; this consumer of an
+    *assumed* carrier stays clean, exactly
+    as R517 predicts: taint tracks the dependency, not the axis.
+
+    Verified-but-unconsumed (R225) until its consumers land — the map recursion's per-window step
+    (`mapWindowRecMapBody_map_general`, the R415 analog) and the `flowSubrangesOk_of_seqRoot_and_mapRoot`
+    reconciliation (R512's map twin, which projects these six facts into the consumer's six grammar-fact
+    slots).  References no sorry site, frontier sorry count unchanged at 4. -/
+theorem mapWindow_grammarFacts_general (tokens : Array (Positioned YamlToken))
+    (lo0 hi0 lo hi : Nat)
+    (h_win : FlowBodyWindow tokens lo hi)
+    (h_enclosed : MapEnclosed tokens lo)
+    (h_carrier0 : MapInteriorSeparators tokens lo0 hi0)
+    (h_lo0 : lo0 ≤ lo) (h_hi0 : hi ≤ hi0) :
+    MapGrammarFacts tokens lo hi := by
+  -- The enclosing carrier narrows to `[lo, hi) ⊆ [lo0, hi0)` (window-absolute body).
+  have h_carrier : MapInteriorSeparators tokens lo hi :=
+    MapInteriorSeparators_narrow h_lo0 h_hi0 h_carrier0
+  -- The gate: balance + Dyck floor come from the window guard; the enclosing-`{` btFold-top is `MapEnclosed`.
+  have h_gate : MapTypedInterior tokens lo hi :=
+    ⟨h_win.balanced, h_enclosed, h_win.dyck⟩
+  exact h_carrier lo hi (Nat.le_refl lo) (Nat.le_of_lt h_win.lo_lt_hi) (Nat.le_refl hi) h_gate
+
+/-- **The root-span instance** — `lo0 := 2`, `hi0 := size-2`, bounds read off
+    `FlowBodyWindow.lo_ge`/`hi_le`; the map mirror of `seqWindow_flowBodyContent`. -/
+theorem mapWindow_grammarFacts (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_win : FlowBodyWindow tokens lo hi)
+    (h_enclosed : MapEnclosed tokens lo)
+    (h_root_carrier : MapInteriorSeparators tokens 2 (tokens.size - 2)) :
+    MapGrammarFacts tokens lo hi :=
+  mapWindow_grammarFacts_general tokens 2 (tokens.size - 2) lo hi
+    h_win h_enclosed h_root_carrier h_win.lo_ge h_win.hi_le
+
 /-- **The all-seq-PATH domain predicate** — `(i'-b-B2c-nested-project, the domain hypothesis)`, the
     proof-side Prop form of `pathAllSeq` (R336, `SeqPathDispatchProbe`).  Where `SeqEnclosed tokens lo`
     reads only the TOP of the typed bracket stack after `[0, lo)` (the window's IMMEDIATE enclosure),

@@ -51,7 +51,29 @@ So the sharpening: **axiom taint tracks the DEPENDENCY CLOSURE, not the axis.** 
 is false; a map-axis brick is clean iff its closure avoids the sorry-bearing structure lemma — which
 makes the dependency-closure principle PREDICTIVE, not just diagnostic.  The model below adds a SECOND
 clean dependency `btFoldPlumbing` and a map-axis reader `mapEnclosedReader` over it: same map framing
-as the tainted `mapWhole`, but axiom-free, because the dependency it reads is clean. -/
+as the tainted `mapWhole`, but axiom-free, because the dependency it reads is clean.
+
+## R518 — the sharpening: a CONSUMER of an ASSUMED carrier inherits nothing; only PRODUCING it taints
+
+R517 located the taint at a DEPENDENCY.  R518 localises it further: the map per-window grammar provider
+`mapWindow_grammarFacts_general` takes the map root carrier `MapInteriorSeparators tokens lo0 hi0` as a
+HYPOTHESIS (a bound parameter, a pure `def` over `MapGrammarFacts`) and projects the six grammar facts at
+the window.  Its audit is `[propext]` ALONE — cleaner than R517's `MapEnclosed` edges (`[propext,
+Quot.sound]`), because a pure restriction over a `def` carrier carries no `Quot.sound` either.
+
+The crux: a lemma that CONSUMES the carrier as a hypothesis cannot mention whatever axiom the carrier's
+eventual PRODUCER will carry — the producer is not in its dependency closure.  The map root carrier will
+itself be produced from `scanFiltered_emitMap_nonempty_structure` (the `sorryAx` source), so the carrier
+PRODUCER is tainted; but every consumer that threads the carrier as a premise — the provider, the
+recursion step, the `flowSubrangesOk_of_seqRoot_and_mapRoot` reconciliation — stays clean.  `sorryAx`
+appears only at the FINAL substitution where the produced carrier is supplied.  So the taint is a single
+localised event, not a property smeared across the whole map chain.
+
+The model below adds `producedCarrier` (built FROM the tainted struct, mirroring the carrier produced from
+the structure lemma) and `gramFactsOfCarrier` (a provider over an ASSUMED carrier parameter): the provider
+fact `provider_assumed_clean` is axiom-FREE, while instantiating it at the produced carrier
+(`provider_at_produced`) inherits the taint.  Same lemma, clean or tainted by whether the carrier is
+ASSUMED or PRODUCED. -/
 
 namespace MirrorInheritsDependencyAxioms
 
@@ -112,6 +134,27 @@ def mapEnclosedReader : Nat := btFoldPlumbing.boundary
     dependency) carries `[relocated_residual]`.  The contrast IS the R517 lesson. -/
 theorem mapEnclosed_clean : mapEnclosedReader = 7 := rfl
 
+-- ── R518: a CONSUMER of an ASSUMED carrier is clean; only PRODUCING the carrier inherits the taint ──
+
+/-- **The carrier, PRODUCED from the tainted structure lemma** (mirror of the future map root carrier
+    `MapInteriorSeparators tokens 2 (size-2)`, produced from `scanFiltered_emitMap_nonempty_structure`).
+    It carries `relocated_residual` because its construction routes through the tainted struct. -/
+def producedCarrier : Struct := taintedStruct
+
+/-- **A provider over an ASSUMED carrier** (mirror of `mapWindow_grammarFacts_general`, which takes
+    `MapInteriorSeparators` as a HYPOTHESIS).  Reads only the bound parameter `c`; its closure cannot
+    mention whatever axiom the carrier's eventual PRODUCER carries, so it is clean regardless. -/
+def gramFactsOfCarrier (c : Struct) : Nat := c.boundary
+
+/-- The provider's fact over an ASSUMED carrier — axiom-FREE: `c` is a parameter, so no specific
+    (possibly tainted) carrier is in the closure.  Mirror of `mapWindow_grammarFacts_general` = `[propext]`. -/
+theorem provider_assumed_clean (c : Struct) : gramFactsOfCarrier c = c.boundary := rfl
+
+/-- The SAME provider, instantiated at the PRODUCED (tainted) carrier — now it inherits
+    `relocated_residual`.  The taint enters ONLY at the substitution of the produced carrier, never in the
+    provider itself: exactly where the real map chain's `sorryAx` appears (the final root-carrier supply). -/
+theorem provider_at_produced : gramFactsOfCarrier producedCarrier = 7 := rfl
+
 end MirrorInheritsDependencyAxioms
 
 -- Axiom audit (machine-checked: `#guard_msgs` pins the profile and fails the build if it ever drifts;
@@ -137,3 +180,15 @@ end MirrorInheritsDependencyAxioms
 /-- info: 'MirrorInheritsDependencyAxioms.mapEnclosed_clean' does not depend on any axioms -/
 #guard_msgs in
 #print axioms MirrorInheritsDependencyAxioms.mapEnclosed_clean
+
+-- R518: the provider over an ASSUMED carrier is clean; only INSTANTIATING it at the PRODUCED (tainted)
+-- carrier inherits the axiom — the taint is localised to the carrier supply, never the consumer chain.
+-- This is why `mapWindow_grammarFacts_general` audits `[propext]` though the carrier it threads will be
+-- produced from the `sorryAx`-bearing map structure lemma.
+/-- info: 'MirrorInheritsDependencyAxioms.provider_assumed_clean' does not depend on any axioms -/
+#guard_msgs in
+#print axioms MirrorInheritsDependencyAxioms.provider_assumed_clean
+
+/-- info: 'MirrorInheritsDependencyAxioms.provider_at_produced' depends on axioms: [MirrorInheritsDependencyAxioms.relocated_residual] -/
+#guard_msgs in
+#print axioms MirrorInheritsDependencyAxioms.provider_at_produced
