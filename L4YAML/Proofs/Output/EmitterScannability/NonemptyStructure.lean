@@ -9501,16 +9501,32 @@ theorem recmapentry_pair_located (tokens : Array (Positioned YamlToken)) (lo hi 
 
     With this, every input the pair dispatch needs except the two `RecSeqEntry` sub-block oracles is
     head-only: `recmapentry_pair_located`'s `h_skeleton` is now a consequence of `MapBodyProps`, not a
-    parameter.  Verified-but-unconsumed until the map width-recursion driver threads it: references no
-    sorry site, frontier sorry count unchanged at 4.  `sorryAx`-free — it consumes only
-    `firstEntryBoundary`, the `MapBodyProps` projections, and pure bracket-balance algebra, never the
-    tainted structure lemma ([[ref-mirror-inherits-dependency-axioms]]). -/
+    parameter.
+
+    **The output now also bundles the value-separator depth fact `balance lo kv = 0`** — the one
+    head-shape-dependent hypothesis the sub-block narrower `mapPairSubblocks_flowBodyWindow` (R524)
+    isolated as `h_kv_depth` and which `MapBodyProps` does NOT assert (M6/M7/M8 guard on it).  It is
+    FREE in each dispatch branch because the same head dispatch that LOCATES `kv` already pins its
+    depth: for a **scalar** key `kv = lo+2`, and `balance lo (lo+2) = 0` since the `.key` and the
+    scalar both carry bracket-delta `0`; for a **bracket** key `kv = j+1`, and
+    `balance lo (j+1) = balance lo (lo+2) + balance (lo+2) j + balance j (j+1) = 1 + 0 + (-1) = 0`,
+    the opener's `+1` cancelled by the matching close's `-1` and the interior balanced by M5's own
+    `flowBracketBalance (k+2) j = 0` (the `h_inner_bal`/`h_close` conjuncts this proof previously
+    discarded).  So the driver `obtain`s `⟨kv, e, …, h_kv_depth, …⟩` from this single locator and
+    feeds `h_kv_depth` straight to the sub-block narrower while re-packaging the remaining seven
+    conjuncts as `recmapentry_pair_located`'s `h_skeleton`.
+
+    Verified-but-unconsumed until the map width-recursion driver threads it: references no sorry site,
+    frontier sorry count unchanged at 4.  `sorryAx`-free — it consumes only `firstEntryBoundary`, the
+    `MapBodyProps` projections, and pure bracket-balance algebra, never the tainted structure lemma
+    ([[ref-mirror-inherits-dependency-axioms]]). -/
 theorem mapPairSkeleton_locate (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (h_lo_hi : lo < hi) (h_hi_sz : hi ≤ tokens.size)
     (h_props : MapBodyProps tokens lo hi)
     (h_total : flowBracketBalance tokens lo hi = 0) :
     ∃ kv e, lo < kv ∧ kv < e ∧ e ≤ hi ∧
       tokens[kv]!.val = .value ∧
+      flowBracketBalance tokens lo kv = 0 ∧
       flowBracketBalance tokens lo e = 0 ∧
       (e = hi ∨ tokens[e]!.val = .flowEntry) ∧
       (∀ k, lo < k → k < e →
@@ -9530,6 +9546,28 @@ theorem mapPairSkeleton_locate (tokens : Array (Positioned YamlToken)) (lo hi : 
   · -- SCALAR key: `kv = lo+2` (M4).  No marker lies in `(lo, lo+2]` by token identity alone.
     obtain ⟨h_lo2_hi, h_value⟩ :=
       h_props.key_scalar_value lo (Nat.le_refl _) h_lo_hi h_lo_depth h_key ⟨c, s, h_scalar⟩
+    -- `kv = lo+2` sits at depth `0`: the `.key` and the scalar both carry bracket-delta `0`.
+    have h_lo_sz : lo < tokens.size := by omega
+    have h_lo_len : lo < tokens.toList.length := by rw [Array.length_toList]; exact h_lo_sz
+    have h_lo1_sz : lo + 1 < tokens.size := by omega
+    have h_lo1_len : lo + 1 < tokens.toList.length := by rw [Array.length_toList]; exact h_lo1_sz
+    have h_key_tl : (tokens.toList[lo]'h_lo_len).val = .key := by
+      have hb : tokens[lo]! = tokens.toList[lo]'h_lo_len := by
+        rw [getElem!_pos tokens lo h_lo_sz, Array.getElem_toList]
+      rw [← hb]; exact h_key
+    have h_scalar_tl : (tokens.toList[lo + 1]'h_lo1_len).val = .scalar c s := by
+      have hb : tokens[lo + 1]! = tokens.toList[lo + 1]'h_lo1_len := by
+        rw [getElem!_pos tokens (lo + 1) h_lo1_sz, Array.getElem_toList]
+      rw [← hb]; exact h_scalar
+    have h_bal_lo_lo1 : flowBracketBalance tokens lo (lo + 1) = 0 := by
+      rw [flowBracketBalance_single tokens lo h_lo_len, h_key_tl, flowBracketDelta_key]
+    have h_bal_lo1_lo2 : flowBracketBalance tokens (lo + 1) (lo + 2) = 0 := by
+      have heq : lo + 2 = (lo + 1) + 1 := by omega
+      rw [heq, flowBracketBalance_single tokens (lo + 1) h_lo1_len, h_scalar_tl,
+        flowBracketDelta_scalar]
+    have h_kv_depth : flowBracketBalance tokens lo (lo + 2) = 0 := by
+      have hc := flowBracketBalance_compose tokens lo (lo + 1) (lo + 2) (by omega) (by omega)
+      rw [h_bal_lo_lo1, h_bal_lo1_lo2] at hc; omega
     have h_clean : ∀ k, lo < k → k ≤ lo + 2 →
         ¬ (flowBracketBalance tokens lo k = 0 ∧ (k = hi ∨ tokens[k]!.val = .flowEntry)) := by
       rintro k hk1 hk2 ⟨_, hmark⟩
@@ -9540,13 +9578,13 @@ theorem mapPairSkeleton_locate (tokens : Array (Positioned YamlToken)) (lo hi : 
           subst hk_eq; rw [h_scalar] at h; cases h
         · have hk_eq : k = lo + 2 := by omega
           subst hk_eq; rw [h_value] at h; cases h
-    refine ⟨lo + 2, e, by omega, ?_, h_e_hi, h_value, h_e_bal, h_e_marker, h_e_least⟩
+    refine ⟨lo + 2, e, by omega, ?_, h_e_hi, h_value, h_kv_depth, h_e_bal, h_e_marker, h_e_least⟩
     rcases Nat.lt_or_ge (lo + 2) e with h | h
     · exact h
     · exact absurd ⟨h_e_bal, h_e_marker⟩ (h_clean e h_lo_e h)
   · -- BRACKET key: `kv = j+1` (M5).  Endpoints fall to token identity; the bracket interior
     -- `[lo+2, j]` is ruled out by the M5 positivity invariant lifted through `lo`.
-    obtain ⟨j, h_lo1_j, h_j_hi, _h_close, _h_inner_bal, h_jval_hi, h_value, h_j_pos⟩ :=
+    obtain ⟨j, h_lo1_j, h_j_hi, h_close, h_inner_bal, h_jval_hi, h_value, h_j_pos⟩ :=
       h_props.key_bracket_value lo (Nat.le_refl _) h_lo_hi h_lo_depth h_key h_brk
     have h_lo_sz : lo < tokens.size := by omega
     have h_lo_len : lo < tokens.toList.length := by rw [Array.length_toList]; exact h_lo_sz
@@ -9591,7 +9629,29 @@ theorem mapPairSkeleton_locate (tokens : Array (Positioned YamlToken)) (lo hi : 
             omega
           · have hk_eq : k = j + 1 := by omega
             subst hk_eq; rw [h_value] at h; cases h
-    refine ⟨j + 1, e, by omega, ?_, h_e_hi, h_value, h_e_bal, h_e_marker, h_e_least⟩
+    -- `kv = j+1` sits at depth `0`: `balance lo (j+1) = balance lo (lo+2) + balance (lo+2) j +
+    -- balance j (j+1) = 1 + 0 + (-1) = 0` (the opener `+1` cancelled by the matching close `-1`,
+    -- the bracket interior balanced by M5's own `h_inner_bal`).
+    have h_j_sz : j < tokens.size := by omega
+    have h_j_len : j < tokens.toList.length := by rw [Array.length_toList]; exact h_j_sz
+    have h_close_tl : (tokens.toList[j]'h_j_len).val = .flowSequenceEnd ∨
+        (tokens.toList[j]'h_j_len).val = .flowMappingEnd := by
+      have hb : tokens[j]! = tokens.toList[j]'h_j_len := by
+        rw [getElem!_pos tokens j h_j_sz, Array.getElem_toList]
+      rcases h_close with ⟨_, hc⟩ | ⟨_, hc⟩
+      · left; rw [← hb]; exact hc
+      · right; rw [← hb]; exact hc
+    have h_bal_j_j1 : flowBracketBalance tokens j (j + 1) = -1 := by
+      rw [flowBracketBalance_single tokens j h_j_len]
+      rcases h_close_tl with h | h
+      · rw [h]; exact flowBracketDelta_flowSequenceEnd
+      · rw [h]; exact flowBracketDelta_flowMappingEnd
+    have h_kv_depth : flowBracketBalance tokens lo (j + 1) = 0 := by
+      have hc1 := flowBracketBalance_compose tokens lo (lo + 2) j (by omega) (by omega)
+      have hc2 := flowBracketBalance_compose tokens lo j (j + 1) (by omega) (by omega)
+      rw [h_bal_lo_lo2, h_inner_bal] at hc1
+      rw [hc1, h_bal_j_j1] at hc2; omega
+    refine ⟨j + 1, e, by omega, ?_, h_e_hi, h_value, h_kv_depth, h_e_bal, h_e_marker, h_e_least⟩
     rcases Nat.lt_or_ge (j + 1) e with h | h
     · exact h
     · exact absurd ⟨h_e_bal, h_e_marker⟩ (h_clean e h_lo_e h)
