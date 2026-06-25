@@ -312,6 +312,152 @@ theorem mapGrammarFacts_of_mapRoot
   h_carrier (q + 1) hi h_lo' h_qhi h_hi'
     (mapTypedInterior_of_opener tokens q hi h_q s h_pre h_open h_bal h_floor)
 
+/-! ### The carrier → six grammar producers collapse (R520, brick (3) core)
+
+`flowSubrangesOk_of_window_producers` (`NonemptyStructure.lean:10434+`) demands the six MAP grammar
+producers as `h_key_content` … `h_value_bracket_succ`, each a per-window universal `∀ lo hi, <8 guards>
+→ <inner body>`.  R519 (`mapGrammarFacts_false_window`) showed the original SEVEN-guard slots are FALSE
+on a cross-matched window, so the Dyck-gated map root carrier `MapInteriorSeparators` cannot fire on
+them; the redirect was to add the interior Dyck floor `∀ i ∈ [lo,hi], balance lo i ≥ 0` as the EIGHTH
+guard to those six slots (now landed — they match `h_seq_rec`/`h_map_rec`).  These two lemmas are the
+map twin of the seq carrier→producer collapse `seqHRec_of_root_and_emit` does for `h_seq_rec`: they
+turn the single carrier (plus whole-stream fold-totality) into all six producers.
+
+`mapGrammarFacts_window_of_root` is the per-window step.  It re-keys R515's `mapGrammarFacts_of_mapRoot`
+from the opener position `q` to the producer's window start `lo` (`q := lo - 1`, so `q + 1 = lo` via
+`Nat.sub_add_cancel` since `2 ≤ lo`), supplies the pre-opener prefix witness from `h_fold_total`, and
+projects `MapGrammarFacts tokens lo hi`.  It uses the producer's `h_open`/`h_bal`/`h_floor` directly and
+DISCARDS the `.flowMappingEnd` closer guard — the marker-free carrier identifies the interior by its
+`some false` enclosure, not the closer (the R513 finding).  Crucially the producer slot's NON-strict
+`lo ≤ hi` is honoured (the empty nested `{}` window `lo = hi` makes the six universals vacuous, and the
+R515 route needs only `q + 1 ≤ hi`, no `lo < hi` — unlike the `FlowBodyWindow`-keyed
+`mapWindow_grammarFacts` route which would demand strict).
+
+`mapProducers_of_mapRoot` bundles the six producers by projecting the matching `MapGrammarFacts`
+conjunct (`.1` … `.2.2.2.2.2`) at every guarded window.  This is exactly the carrier mirror of R512's
+seq asymmetry: feeding these six into `flowSubrangesOk_of_window_producers` collapses six of the seven
+map slots onto the root carrier, leaving only `h_map_rec` (the `RecMapBody` recursion, brick (2)) raw.
+
+Verified-but-unconsumed (R225): the consumer — a future `flowSubrangesOk_of_seqRoot_and_mapRoot`
+reconciliation (R512's map twin) — does not exist yet; references no sorry site; frontier sorry count
+unchanged at 4.  Axioms inherit through R515's `mapGrammarFacts_of_mapRoot` (`[propext, Quot.sound]`):
+the carrier is taken as a hypothesis, so no `sorryAx` enters here ([[ref-mirror-inherits-dependency-axioms]]
+R518 — taint tracks the dependency, and an ASSUMED carrier is clean). -/
+
+/-- **The per-window carrier→facts projection at a producer window** (R520).  From the map root carrier
+    and whole-stream fold-totality, the six `MapGrammarFacts tokens lo hi` at a producer window `[lo,hi)`,
+    given the producer's own structural guards (opener `tokens[lo-1] = .flowMappingStart`, body balance,
+    interior Dyck floor) and `2 ≤ lo`.  A re-key of `mapGrammarFacts_of_mapRoot` (R515) from `q` to
+    `q + 1 = lo`; the closer guard is not needed. -/
+theorem mapGrammarFacts_window_of_root
+    (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_carrier : MapInteriorSeparators tokens 2 (tokens.size - 2))
+    (h_fold_total : ∀ m, ∃ s, btFold (some []) (tokens.toList.take m) = some s)
+    (h_lo2 : 2 ≤ lo) (h_lo_hi : lo ≤ hi)
+    (h_hi2 : hi ≤ tokens.size - 2) (h_hi_sz : hi < tokens.size)
+    (h_open : tokens[lo - 1]!.val = .flowMappingStart)
+    (h_bal : flowBracketBalance tokens lo hi = 0)
+    (h_floor : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) :
+    MapGrammarFacts tokens lo hi := by
+  obtain ⟨s, h_pre⟩ := h_fold_total (lo - 1)
+  have h_lo_eq : lo - 1 + 1 = lo := Nat.sub_add_cancel (by omega)
+  have h := mapGrammarFacts_of_mapRoot tokens 2 (tokens.size - 2) (lo - 1) hi
+    h_carrier (by omega) (by omega) (by omega) h_hi2 s h_pre h_open
+    (by rw [h_lo_eq]; exact h_bal)
+    (by rw [h_lo_eq]; exact h_floor)
+  rwa [h_lo_eq] at h
+
+/-- **The six MAP grammar producers, collapsed onto the root carrier** (R520, brick (3) core).  Given
+    the map root carrier `MapInteriorSeparators tokens 2 (size-2)` and whole-stream fold-totality,
+    delivers all six floor-bearing per-window producers `flowSubrangesOk_of_window_producers` demands —
+    the map mirror of `seqHRec_of_root_and_emit`'s `h_seq_rec`.  Each producer projects the matching
+    `MapGrammarFacts` conjunct of `mapGrammarFacts_window_of_root`; the `.flowMappingEnd` closer guard is
+    discarded at every slot. -/
+theorem mapProducers_of_mapRoot
+    (tokens : Array (Positioned YamlToken))
+    (h_carrier : MapInteriorSeparators tokens 2 (tokens.size - 2))
+    (h_fold_total : ∀ m, ∃ s, btFold (some []) (tokens.toList.take m) = some s) :
+    (∀ lo hi, 2 ≤ lo → lo ≤ hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+      tokens[hi]!.val = .flowMappingEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowMappingStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
+      ∀ k, lo ≤ k → k < hi →
+        flowBracketBalance tokens lo k = 0 →
+        tokens[k]!.val = .key →
+        k + 1 < hi ∧ isFlowContentStart tokens[k + 1]!.val) ∧
+    (∀ lo hi, 2 ≤ lo → lo ≤ hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+      tokens[hi]!.val = .flowMappingEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowMappingStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
+      ∀ k, lo ≤ k → k < hi →
+        flowBracketBalance tokens lo k = 0 →
+        tokens[k]!.val = .key →
+        (∃ c s, tokens[k + 1]!.val = .scalar c s) →
+        k + 2 < hi ∧ tokens[k + 2]!.val = .value) ∧
+    (∀ lo hi, 2 ≤ lo → lo ≤ hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+      tokens[hi]!.val = .flowMappingEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowMappingStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
+      ∀ k, lo ≤ k → k < hi →
+        flowBracketBalance tokens lo k = 0 →
+        tokens[k]!.val = .value →
+        k + 1 < hi ∧ isFlowContentStart tokens[k + 1]!.val) ∧
+    (∀ lo hi, 2 ≤ lo → lo ≤ hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+      tokens[hi]!.val = .flowMappingEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowMappingStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
+      ∀ k, lo ≤ k → k < hi →
+        flowBracketBalance tokens lo k = 0 →
+        tokens[k]!.val = .value →
+        (∃ c s, tokens[k + 1]!.val = .scalar c s) →
+        k + 2 ≤ hi ∧
+        (tokens[k + 2]!.val = .flowEntry ∨
+         (tokens[k + 2]!.val = .flowMappingEnd ∧ k + 2 = hi))) ∧
+    (∀ lo hi, 2 ≤ lo → lo ≤ hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+      tokens[hi]!.val = .flowMappingEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowMappingStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
+      ∀ k j, lo ≤ k → k < hi →
+        flowBracketBalance tokens lo k = 0 →
+        tokens[k]!.val = .key →
+        k + 1 < j → j < hi →
+        flowBracketDelta tokens[j]!.val = -1 →
+        flowBracketBalance tokens lo (j + 1) = 0 →
+        j + 1 < hi ∧ tokens[j + 1]!.val = .value) ∧
+    (∀ lo hi, 2 ≤ lo → lo ≤ hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+      tokens[hi]!.val = .flowMappingEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowMappingStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
+      ∀ k j, lo ≤ k → k < hi →
+        flowBracketBalance tokens lo k = 0 →
+        tokens[k]!.val = .value →
+        k + 1 < j → j < hi →
+        flowBracketDelta tokens[j]!.val = -1 →
+        flowBracketBalance tokens lo (j + 1) = 0 →
+        j + 1 ≤ hi ∧
+        (tokens[j + 1]!.val = .flowEntry ∨
+         (tokens[j + 1]!.val = .flowMappingEnd ∧ j + 1 = hi))) := by
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩ <;>
+    intro lo hi h_lo2 h_lo_hi h_hi2 h_hi_sz _h_close h_bal h_open h_floor
+  · exact (mapGrammarFacts_window_of_root tokens lo hi h_carrier h_fold_total
+      h_lo2 h_lo_hi h_hi2 h_hi_sz h_open h_bal h_floor).1
+  · exact (mapGrammarFacts_window_of_root tokens lo hi h_carrier h_fold_total
+      h_lo2 h_lo_hi h_hi2 h_hi_sz h_open h_bal h_floor).2.1
+  · exact (mapGrammarFacts_window_of_root tokens lo hi h_carrier h_fold_total
+      h_lo2 h_lo_hi h_hi2 h_hi_sz h_open h_bal h_floor).2.2.1
+  · exact (mapGrammarFacts_window_of_root tokens lo hi h_carrier h_fold_total
+      h_lo2 h_lo_hi h_hi2 h_hi_sz h_open h_bal h_floor).2.2.2.1
+  · exact (mapGrammarFacts_window_of_root tokens lo hi h_carrier h_fold_total
+      h_lo2 h_lo_hi h_hi2 h_hi_sz h_open h_bal h_floor).2.2.2.2.1
+  · exact (mapGrammarFacts_window_of_root tokens lo hi h_carrier h_fold_total
+      h_lo2 h_lo_hi h_hi2 h_hi_sz h_open h_bal h_floor).2.2.2.2.2
+
 /-- `ContentStartTok` (the head predicate of a seq body's unit entries) never holds of a `.flowEntry`:
     it is a scalar / `[` / `{`, never the separator `,`.  This is the `hQ` the no-trailing-comma
     substrate lemma needs to refute a lone-separator unit. -/
@@ -6955,6 +7101,7 @@ theorem flowSubrangesOk_of_seqRoot_and_map_producers
       tokens[hi]!.val = .flowMappingEnd →
       flowBracketBalance tokens lo hi = 0 →
       tokens[lo - 1]!.val = .flowMappingStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
       ∀ k, lo ≤ k → k < hi →
         flowBracketBalance tokens lo k = 0 →
         tokens[k]!.val = .key →
@@ -6963,6 +7110,7 @@ theorem flowSubrangesOk_of_seqRoot_and_map_producers
       tokens[hi]!.val = .flowMappingEnd →
       flowBracketBalance tokens lo hi = 0 →
       tokens[lo - 1]!.val = .flowMappingStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
       ∀ k, lo ≤ k → k < hi →
         flowBracketBalance tokens lo k = 0 →
         tokens[k]!.val = .key →
@@ -6972,6 +7120,7 @@ theorem flowSubrangesOk_of_seqRoot_and_map_producers
       tokens[hi]!.val = .flowMappingEnd →
       flowBracketBalance tokens lo hi = 0 →
       tokens[lo - 1]!.val = .flowMappingStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
       ∀ k, lo ≤ k → k < hi →
         flowBracketBalance tokens lo k = 0 →
         tokens[k]!.val = .value →
@@ -6980,6 +7129,7 @@ theorem flowSubrangesOk_of_seqRoot_and_map_producers
       tokens[hi]!.val = .flowMappingEnd →
       flowBracketBalance tokens lo hi = 0 →
       tokens[lo - 1]!.val = .flowMappingStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
       ∀ k, lo ≤ k → k < hi →
         flowBracketBalance tokens lo k = 0 →
         tokens[k]!.val = .value →
@@ -6991,6 +7141,7 @@ theorem flowSubrangesOk_of_seqRoot_and_map_producers
       tokens[hi]!.val = .flowMappingEnd →
       flowBracketBalance tokens lo hi = 0 →
       tokens[lo - 1]!.val = .flowMappingStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
       ∀ k j, lo ≤ k → k < hi →
         flowBracketBalance tokens lo k = 0 →
         tokens[k]!.val = .key →
@@ -7002,6 +7153,7 @@ theorem flowSubrangesOk_of_seqRoot_and_map_producers
       tokens[hi]!.val = .flowMappingEnd →
       flowBracketBalance tokens lo hi = 0 →
       tokens[lo - 1]!.val = .flowMappingStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
       ∀ k j, lo ≤ k → k < hi →
         flowBracketBalance tokens lo k = 0 →
         tokens[k]!.val = .value →

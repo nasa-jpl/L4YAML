@@ -10301,6 +10301,7 @@ theorem mapLocator_of_window_recmapbody (tokens : Array (Positioned YamlToken))
       tokens[hi]!.val = .flowMappingEnd →
       flowBracketBalance tokens lo hi = 0 →
       tokens[lo - 1]!.val = .flowMappingStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
       ∀ k, lo ≤ k → k < hi →
         flowBracketBalance tokens lo k = 0 →
         tokens[k]!.val = .key →
@@ -10309,6 +10310,7 @@ theorem mapLocator_of_window_recmapbody (tokens : Array (Positioned YamlToken))
       tokens[hi]!.val = .flowMappingEnd →
       flowBracketBalance tokens lo hi = 0 →
       tokens[lo - 1]!.val = .flowMappingStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
       ∀ k, lo ≤ k → k < hi →
         flowBracketBalance tokens lo k = 0 →
         tokens[k]!.val = .key →
@@ -10318,6 +10320,7 @@ theorem mapLocator_of_window_recmapbody (tokens : Array (Positioned YamlToken))
       tokens[hi]!.val = .flowMappingEnd →
       flowBracketBalance tokens lo hi = 0 →
       tokens[lo - 1]!.val = .flowMappingStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
       ∀ k, lo ≤ k → k < hi →
         flowBracketBalance tokens lo k = 0 →
         tokens[k]!.val = .value →
@@ -10326,6 +10329,7 @@ theorem mapLocator_of_window_recmapbody (tokens : Array (Positioned YamlToken))
       tokens[hi]!.val = .flowMappingEnd →
       flowBracketBalance tokens lo hi = 0 →
       tokens[lo - 1]!.val = .flowMappingStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
       ∀ k, lo ≤ k → k < hi →
         flowBracketBalance tokens lo k = 0 →
         tokens[k]!.val = .value →
@@ -10337,6 +10341,7 @@ theorem mapLocator_of_window_recmapbody (tokens : Array (Positioned YamlToken))
       tokens[hi]!.val = .flowMappingEnd →
       flowBracketBalance tokens lo hi = 0 →
       tokens[lo - 1]!.val = .flowMappingStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
       ∀ k j, lo ≤ k → k < hi →
         flowBracketBalance tokens lo k = 0 →
         tokens[k]!.val = .key →
@@ -10348,6 +10353,7 @@ theorem mapLocator_of_window_recmapbody (tokens : Array (Positioned YamlToken))
       tokens[hi]!.val = .flowMappingEnd →
       flowBracketBalance tokens lo hi = 0 →
       tokens[lo - 1]!.val = .flowMappingStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
       ∀ k j, lo ≤ k → k < hi →
         flowBracketBalance tokens lo k = 0 →
         tokens[k]!.val = .value →
@@ -10386,12 +10392,12 @@ theorem mapLocator_of_window_recmapbody (tokens : Array (Positioned YamlToken))
   exact mapLocated_of_recmapbody_outer tokens 2 (tokens.size - 2) lo hi
     h_lo2 (by omega) h_lo_hi h_hi2 (by omega) h_hi_sz h_open h_close h_wt_outer
     (h_map_rec lo hi h_lo2 h_lo_lt h_hi2 h_hi_sz h_close h_bal h_open h_floor)
-    (h_key_content lo hi h_lo2 h_lo_hi h_hi2 h_hi_sz h_close h_bal h_open)
-    (h_key_scalar_value lo hi h_lo2 h_lo_hi h_hi2 h_hi_sz h_close h_bal h_open)
-    (h_value_content lo hi h_lo2 h_lo_hi h_hi2 h_hi_sz h_close h_bal h_open)
-    (h_value_scalar_succ lo hi h_lo2 h_lo_hi h_hi2 h_hi_sz h_close h_bal h_open)
-    (h_key_bracket_succ lo hi h_lo2 h_lo_hi h_hi2 h_hi_sz h_close h_bal h_open)
-    (h_value_bracket_succ lo hi h_lo2 h_lo_hi h_hi2 h_hi_sz h_close h_bal h_open)
+    (h_key_content lo hi h_lo2 h_lo_hi h_hi2 h_hi_sz h_close h_bal h_open h_floor)
+    (h_key_scalar_value lo hi h_lo2 h_lo_hi h_hi2 h_hi_sz h_close h_bal h_open h_floor)
+    (h_value_content lo hi h_lo2 h_lo_hi h_hi2 h_hi_sz h_close h_bal h_open h_floor)
+    (h_value_scalar_succ lo hi h_lo2 h_lo_hi h_hi2 h_hi_sz h_close h_bal h_open h_floor)
+    (h_key_bracket_succ lo hi h_lo2 h_lo_hi h_hi2 h_hi_sz h_close h_bal h_open h_floor)
+    (h_value_bracket_succ lo hi h_lo2 h_lo_hi h_hi2 h_hi_sz h_close h_bal h_open h_floor)
 
 /-- **`FlowSubrangesOk` from the per-window `Rec…Body` producers** (Phase J — the locate's whole
     consumer chain folded into one boundary).  This packages the three landed locate-consumer joints —
@@ -10435,6 +10441,7 @@ theorem flowSubrangesOk_of_window_producers (tokens : Array (Positioned YamlToke
       tokens[hi]!.val = .flowMappingEnd →
       flowBracketBalance tokens lo hi = 0 →
       tokens[lo - 1]!.val = .flowMappingStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
       ∀ k, lo ≤ k → k < hi →
         flowBracketBalance tokens lo k = 0 →
         tokens[k]!.val = .key →
@@ -10443,6 +10450,7 @@ theorem flowSubrangesOk_of_window_producers (tokens : Array (Positioned YamlToke
       tokens[hi]!.val = .flowMappingEnd →
       flowBracketBalance tokens lo hi = 0 →
       tokens[lo - 1]!.val = .flowMappingStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
       ∀ k, lo ≤ k → k < hi →
         flowBracketBalance tokens lo k = 0 →
         tokens[k]!.val = .key →
@@ -10452,6 +10460,7 @@ theorem flowSubrangesOk_of_window_producers (tokens : Array (Positioned YamlToke
       tokens[hi]!.val = .flowMappingEnd →
       flowBracketBalance tokens lo hi = 0 →
       tokens[lo - 1]!.val = .flowMappingStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
       ∀ k, lo ≤ k → k < hi →
         flowBracketBalance tokens lo k = 0 →
         tokens[k]!.val = .value →
@@ -10460,6 +10469,7 @@ theorem flowSubrangesOk_of_window_producers (tokens : Array (Positioned YamlToke
       tokens[hi]!.val = .flowMappingEnd →
       flowBracketBalance tokens lo hi = 0 →
       tokens[lo - 1]!.val = .flowMappingStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
       ∀ k, lo ≤ k → k < hi →
         flowBracketBalance tokens lo k = 0 →
         tokens[k]!.val = .value →
@@ -10471,6 +10481,7 @@ theorem flowSubrangesOk_of_window_producers (tokens : Array (Positioned YamlToke
       tokens[hi]!.val = .flowMappingEnd →
       flowBracketBalance tokens lo hi = 0 →
       tokens[lo - 1]!.val = .flowMappingStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
       ∀ k j, lo ≤ k → k < hi →
         flowBracketBalance tokens lo k = 0 →
         tokens[k]!.val = .key →
@@ -10482,6 +10493,7 @@ theorem flowSubrangesOk_of_window_producers (tokens : Array (Positioned YamlToke
       tokens[hi]!.val = .flowMappingEnd →
       flowBracketBalance tokens lo hi = 0 →
       tokens[lo - 1]!.val = .flowMappingStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
       ∀ k j, lo ≤ k → k < hi →
         flowBracketBalance tokens lo k = 0 →
         tokens[k]!.val = .value →
