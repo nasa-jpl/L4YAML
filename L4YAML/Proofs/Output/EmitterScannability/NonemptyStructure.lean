@@ -7578,6 +7578,124 @@ theorem flowBodyContentDeepSeq_advance (tokens : Array (Positioned YamlToken)) (
     intro k' hk1 hk2 hfe hne
     exact h_fe k' (by omega) (by omega) hfe hne
 
+/-- **The MAP body content-navigation guard** — the `FlowBodyContentDeepSeq` twin for a flow-MAPPING
+    body `[lo, hi)`, brick (2)'s pivot and the "hard design decision" the map width-recursion
+    `mapWindowRecMapBody_map_general` (the R415 analog) pivots on.  It is the non-balance-gated,
+    cleanly-RESTRICTABLE invariant the driver threads as its `G`-conjunct — the map mirror of the role
+    `FlowBodyContentDeepSeq` plays in `seqWindowRecSeqBody_seq_general`.
+
+    **The asymmetry — strictly SIMPLER than the seq guard, two fields not three, advance-only.**  A seq
+    body IS its own item navigator: `RecSeqEntry` inlines the seq item shapes, so the seq recursion
+    DESCENDS into every nested `[ … ]` directly, and its deep guard carries `openerContentStart` (the
+    nested-opener→content fact the descend edge reads) plus a `descend` edge.  A map body DELEGATES all
+    nesting: `RecMapBody → RecMapPair → RecSeqEntry` (key/value blocks), and the map driver locates pair
+    boundaries by BALANCE — `recmapentry_pair_located`'s key/value ORACLES (the seq-entry machinery)
+    navigate the nested windows, never the map body itself.  So the map body navigation is
+    opener-AGNOSTIC: it only ADVANCES past depth-`0` `.flowEntry` separators (no descend), and needs
+    only the head + the separator-successor.  Hence two fields, and only an `advance` edge.
+
+    * `headKey` — the body head is the `.key` marker (`RecMapBody.{single,cons}`'s `h_head`, and the
+      carrier's `MapBodyProps.key_start`), where the seq head is `isFlowContentStart`.
+    * `feKey` — the map-depth gate, the DUAL of `FlowBodyContentDeepSeq.feContentStart`.  The seq field
+      reads `.flowEntry → tokens[k+1] ≠ .key → isFlowContentStart tokens[k+1]` (a seq `,` is followed by
+      content, and the `≠ .key` premise EXCLUDES map-internal `,`s, which are followed by `.key`).  The
+      map dual swaps the roles: `.flowEntry → ¬ isFlowContentStart tokens[k+1] → tokens[k+1] = .key` (a
+      map `,` is followed by `.key`, and the `¬ content` premise EXCLUDES seq-internal `,`s, which are
+      followed by content-start).  The discriminator is the OTHER axis's separator-successor in each
+      case — `.key` for seq, `content-start` for map — so the two fields are exact mirrors modulo that
+      swap ([[ref-mirror-reads-conjunct-not-projection]] at the field level; the gate is read off the
+      `MapBodyProps.after_fe` fact the driver supplies at the advance, [[ref-minimal-pair-extracts-the-gate]]:
+      the seq-context `,` is the failing sibling the `¬ content` premise separates out).
+
+    Additive parallel guard ([[ref-additive-parallel-type-over-shared-edit]]) beside
+    `FlowBodyContentDeepSeq`, never an edit to it.  Verified-but-unconsumed until the map driver threads
+    it; references no sorry site, frontier sorry count unchanged at 4. -/
+structure FlowBodyContentDeepMap (tokens : Array (Positioned YamlToken)) (lo hi : Nat) : Prop where
+  headKey : tokens[lo]!.val = .key
+  feKey : ∀ k, lo ≤ k → k + 1 < hi →
+    tokens[k]!.val = .flowEntry →
+    ¬ isFlowContentStart tokens[k + 1]!.val →
+    tokens[k + 1]!.val = .key
+
+/-- **ADVANCE restriction of the map body guard** — the map twin of `flowBodyContentDeepSeq_advance`.
+    The child head `tokens[m+1] = .key` is the depth-`0` separator-successor the DRIVER supplies (from
+    `MapBodyProps.after_fe` at the located pair-end `.flowEntry` `m`), exactly as the seq advance takes
+    the `tokens[m+1] ≠ .key` premise the seq driver derives from the plain content guard.  Pure
+    restriction otherwise — the `feKey` field is window-ABSOLUTE so it threads to `[m+1, hi) ⊆ [lo, hi)`
+    verbatim ([[ref-window-absolute-gate-subset-restriction]]).  There is no `descend` twin: the map
+    body never descends (its nesting is the oracles' job), so this single edge is the whole restriction
+    interface.  Verified-but-unconsumed until the map driver is wired; references no sorry site,
+    frontier sorry count unchanged at 4. -/
+theorem flowBodyContentDeepMap_advance (tokens : Array (Positioned YamlToken)) (lo m hi : Nat)
+    (h_deep : FlowBodyContentDeepMap tokens lo hi)
+    (h_lo_m : lo ≤ m) (_h_sep : tokens[m]!.val = .flowEntry)
+    (h_m1_key : tokens[m + 1]!.val = .key)
+    (_h_m1_hi : m + 1 < hi) :
+    FlowBodyContentDeepMap tokens (m + 1) hi := by
+  obtain ⟨_h_head, h_fe⟩ := h_deep
+  refine ⟨h_m1_key, ?_⟩
+  -- child feKey: the parent's, restricted to `[m+1, hi) ⊆ [lo, hi)`.
+  intro k' hk1 hk2 hfe hncs
+  exact h_fe k' (by omega) (by omega) hfe hncs
+
+/-- **POSITIVE root satisfiability of the map body guard** — the map mirror of
+    `flowBodyContentDeepSeq_root_holds_nested_scalar`.  On the scanned output of `{a: b, c: d}` (a
+    two-pair flow mapping, the host lemma's window shape), `FlowBodyContentDeepMap tokens 2 (size-2)`
+    HOLDS — and NON-vacuously: `feKey` fires at the depth-`0` `.flowEntry` separating the two pairs
+    (`tokens[6] = .flowEntry`, `tokens[7] = .key`), the position the seq guard's root probe could not
+    exercise (it had no depth-`0` `,`).  Establishes the guard's root is INHABITED before any
+    consumer/restriction is built on it ([[ref-probe-provider-satisfiable-before-assembler]]).  The
+    layout is `streamStart {.key a .value b .flowEntry .key c .value d} streamEnd` (size 13, window
+    `[2, 11)`).  `native_decide` leaf — the `ofReduceBool` axiom is contained here, off the
+    `universal_roundtrip` path; references no sorry site, frontier sorry count unchanged at 4. -/
+theorem flowBodyContentDeepMap_root_holds_two_pairs
+    (tokens : Array (Positioned YamlToken))
+    (h : Scanner.scanFiltered
+        ("{" ++ emit.emitPairList
+          [(YamlValue.scalar { content := "a", style := .plain },
+            YamlValue.scalar { content := "b", style := .plain }),
+           (YamlValue.scalar { content := "c", style := .plain },
+            YamlValue.scalar { content := "d", style := .plain })] ++ "}")
+        = .ok tokens) :
+    FlowBodyContentDeepMap tokens 2 (tokens.size - 2) := by
+  have key : ∀ {α : Type} (g : Array (Positioned YamlToken) → α) (a : α),
+      (Scanner.scanFiltered
+          ("{" ++ emit.emitPairList
+            [(YamlValue.scalar { content := "a", style := .plain },
+              YamlValue.scalar { content := "b", style := .plain }),
+             (YamlValue.scalar { content := "c", style := .plain },
+              YamlValue.scalar { content := "d", style := .plain })] ++ "}")).toOption.map g
+          = some a →
+        g tokens = a := by
+    intro α g a e; rw [h] at e; exact Option.some.inj e
+  have hsz : tokens.size = 13 := key (fun t => t.size) 13 (by native_decide)
+  have h2 : tokens[2]!.val = .key := key (fun t => t[2]!.val) .key (by native_decide)
+  have h3 : tokens[3]!.val = .scalar "a" .doubleQuoted :=
+    key (fun t => t[3]!.val) (.scalar "a" .doubleQuoted) (by native_decide)
+  have h4 : tokens[4]!.val = .value := key (fun t => t[4]!.val) .value (by native_decide)
+  have h5 : tokens[5]!.val = .scalar "b" .doubleQuoted :=
+    key (fun t => t[5]!.val) (.scalar "b" .doubleQuoted) (by native_decide)
+  have h7 : tokens[7]!.val = .key := key (fun t => t[7]!.val) .key (by native_decide)
+  have h8 : tokens[8]!.val = .scalar "c" .doubleQuoted :=
+    key (fun t => t[8]!.val) (.scalar "c" .doubleQuoted) (by native_decide)
+  have h9 : tokens[9]!.val = .value := key (fun t => t[9]!.val) .value (by native_decide)
+  refine ⟨?_, ?_⟩
+  · -- headKey: tokens[2] = .key.
+    show tokens[2]!.val = .key
+    exact h2
+  · -- feKey: the only depth-`0` `.flowEntry` in `[2, 11)` is at k = 6, followed by `.key` at 7.
+    intro k hk1 hk2 hfe _hncs
+    have hk : k = 2 ∨ k = 3 ∨ k = 4 ∨ k = 5 ∨ k = 6 ∨ k = 7 ∨ k = 8 ∨ k = 9 := by omega
+    rcases hk with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl
+    · rw [h2] at hfe; exact absurd hfe (by decide)
+    · rw [h3] at hfe; exact absurd hfe (by decide)
+    · rw [h4] at hfe; exact absurd hfe (by decide)
+    · rw [h5] at hfe; exact absurd hfe (by decide)
+    · exact h7
+    · rw [h7] at hfe; exact absurd hfe (by decide)
+    · rw [h8] at hfe; exact absurd hfe (by decide)
+    · rw [h9] at hfe; exact absurd hfe (by decide)
+
 /-- **OPENER-INCLUSIVE re-scoped-deep-content sibling** (Phase J — sub-brick (i'-b-B2c), the `_seq` twin
     of `flowBodyContentDeep_child_bracket` (R470) over the root-TRUE `FlowBodyContentDeepSeq` (R393).  The
     foundational primitive the `_seq` re-thread of the `enclosingLocate` chain
