@@ -116,8 +116,33 @@ theorem mapInteriorSeparators'_of_enclosing_provider_unit
           · have hEq : a = b := by omega
             rw [← hEq]; exact mapGrammarFacts'_empty tokens a⟩)
 
+/-- **De-risk for the R543 provider ASSEMBLE half** — `mapEnclosingFacts'_provider_of_located` is
+    NON-VACUOUS, and the R542 assembler's `provider` is reachable THROUGH it.  Where R542's
+    `mapInteriorSeparators'_of_enclosing_provider_unit` built the per-window existential inline
+    (`⟨a, b, …⟩`), this routes it through the named `mapEnclosingFacts'_provider_of_located` assembler:
+    at each gated sub-window `[a,b)` of the unit span `[lo, lo+1)`, feed the IDENTITY enclosing window
+    (`loS = a`, `hiS = b`, re-seat `flowBracketBalance tokens a a = 0`) with its robust facts (width
+    `b - a ≤ 1`, so `mapGrammarFacts'_empty` / `mapGrammarFacts'_degenerate`), and the assembler packages
+    the provider existential.  Driving that provider through the R542 assembler reproduces the inhabited
+    carrier — confirming the lifted `MapGrammarFacts'` hypothesis the parametric-assembler split
+    introduces is satisfiable (the assembler aims at a reachable producer, not a trap), via the real
+    LOCATE-output→provider-of-located path rather than an inline tuple. -/
+theorem mapInteriorSeparators'_via_provider_of_located_unit
+    (tokens : Array (Positioned YamlToken)) (lo : Nat) :
+    MapInteriorSeparators' tokens lo (lo + 1) :=
+  mapInteriorSeparators'_of_enclosing_provider tokens lo (lo + 1)
+    (fun a b _ha _hab _hb _hgate =>
+      mapEnclosingFacts'_provider_of_located tokens a b a b
+        (Nat.le_refl a) (Nat.le_refl b) (by simp [flowBracketBalance])
+        (by
+          rcases Nat.lt_or_ge a b with hLt | hGe
+          · have hb1 : b = a + 1 := by omega
+            rw [hb1]; exact mapGrammarFacts'_degenerate tokens a
+          · have hEq : a = b := by omega
+            rw [← hEq]; exact mapGrammarFacts'_empty tokens a))
+
 -- Axiom audit — the carrier inhabitation and the boundary-survival probe lean only on core; the
--- ASSEMBLE non-vacuity check also pulls in `Classical.choice` through the rebase's
+-- ASSEMBLE non-vacuity checks also pull in `Classical.choice` through the rebase's
 -- `flowBracketBalance_compose`.
 /-- info: 'MapCarrierRobustInhabitation.mapInteriorSeparators'_unit' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in
@@ -128,6 +153,12 @@ theorem mapInteriorSeparators'_of_enclosing_provider_unit
  Quot.sound] -/
 #guard_msgs in
 #print axioms mapInteriorSeparators'_of_enclosing_provider_unit
+
+/-- info: 'MapCarrierRobustInhabitation.mapInteriorSeparators'_via_provider_of_located_unit' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs in
+#print axioms mapInteriorSeparators'_via_provider_of_located_unit
 
 /-- info: 'MapCarrierRobustInhabitation.mapGrammarFacts'_degenerate' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in

@@ -440,6 +440,46 @@ theorem mapInteriorSeparators'_of_enclosing_provider
   obtain ⟨loS, hiS, h_loS_a, h_b_hiS, h_bal0, h_enc⟩ := provider a b ha hab hb hgate
   exact mapGrammarFacts_rebase' tokens loS a b hiS h_loS_a h_b_hiS h_bal0 h_enc
 
+/-- **The map enclosing-facts `provider`, ASSEMBLED from a LOCATED enclosing map** — the
+    [[ref-parametric-assembler-extraction]] split of the R542 provider's locate boundary, the
+    boundary-robust map twin of `seqEnclosingFacts_provider_of_located` (`:1121`).  Lift the locator's
+    eventual output as hypotheses — a located enclosing map body `[loS, hiS)` with the gated window
+    re-seated at its top level (`flowBracketBalance tokens loS a = 0`), enclosing the window
+    (`loS ≤ a`, `b ≤ hiS`), and its bundled robust facts `MapGrammarFacts' tokens loS hiS` — and the
+    provider's existential is discharged in ONE step: package the witnesses.  No locate analysis here:
+    that is isolated as the residual.
+
+    This factors the whole `provider` into ASSEMBLE (here, trivial packaging) vs LOCATE+leaf (the
+    residual), and is where the landed LOCATE half plugs in: R538's `mapEnclosingOpener_of_gate`
+    (`:749`) supplies the enclosing opener `p` (so `loS = p + 1`) with `flowBracketBalance tokens loS a = 0`,
+    and R539's `mapClose_of_located_and_enclosing` (`:886`) supplies the matching close `hiS` with the
+    containment bounds `a ≤ hiS` / `b ≤ hiS` — exactly `loS ≤ a` (via `loS = p + 1 ≤ a` from `p < a`),
+    `b ≤ hiS`, and the re-seat.  So after this brick the ONLY residual on the balance-`0` branch is the
+    LEAF `MapGrammarFacts' loS hiS` from the located complete enclosing map body — the map analog of
+    `seqEnclosingFacts_of_windowed_safebodyunit` (`:1082`) — with the LOCATE wiring fully landed.
+
+    Unlike the seq twin (which takes a windowed `SafeBodyUnit` and CONVERTS it to the three facts via
+    `seqEnclosingFacts_of_windowed_safebodyunit`), this map version takes the bundled `MapGrammarFacts'`
+    directly: the robust carrier needs the SIX bundled facts, and the conversion-from-body-structure is
+    precisely the leaf residual, kept out of the assembler.
+
+    Non-vacuity (inhabitation-debt rule 3, [[ref-inhabitation-debt-validate-target-defs]]): the lifted
+    `MapGrammarFacts'` hypothesis IS satisfiable — `Tests/Reflections/MapCarrierRobustInhabitation.lean`'s
+    `mapInteriorSeparators'_via_provider_of_located_unit` builds the R542 provider on a unit span by
+    calling THIS assembler with the identity enclosing window (`loS = a`, `hiS = b`, robust facts via
+    `mapGrammarFacts'_degenerate`/`_empty`) and recovers the inhabited carrier through the real
+    ASSEMBLE→provider-of-located path.  Verified-but-unconsumed (its consumers — a future
+    `mapRoot_mapInteriorSeparators'` root seed and the descent provider — do not exist yet); references
+    no sorry site; frontier sorry count unchanged at 4. -/
+theorem mapEnclosingFacts'_provider_of_located
+    (tokens : Array (Positioned YamlToken)) (a b loS hiS : Nat)
+    (h_loS_a : loS ≤ a) (h_b_hiS : b ≤ hiS)
+    (h_bal0 : flowBracketBalance tokens loS a = 0)
+    (h_facts : MapGrammarFacts' tokens loS hiS) :
+    ∃ loS hiS, loS ≤ a ∧ b ≤ hiS ∧ flowBracketBalance tokens loS a = 0 ∧
+      MapGrammarFacts' tokens loS hiS :=
+  ⟨loS, hiS, h_loS_a, h_b_hiS, h_bal0, h_facts⟩
+
 /-! ### The map gate, reconstructed in place from the window opener (R514)
 
 The map carrier `MapInteriorSeparators tokens lo hi` (`:187`) carries the gate `MapTypedInterior` as a
