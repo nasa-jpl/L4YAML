@@ -141,6 +141,40 @@ theorem mapInteriorSeparators'_via_provider_of_located_unit
           · have hEq : a = b := by omega
             rw [← hEq]; exact mapGrammarFacts'_empty tokens a))
 
+/-- **De-risk for the map DISPATCHER** — `mapInteriorSeparators'_of_safebody_and_descent` is
+    NON-VACUOUS, and its NEW `desc` hypothesis is satisfiable (inhabitation-debt rule 3).  The
+    dispatcher is the `dite` that routes each gated sub-window to one of two suppliers: the window's
+    OWN robust facts `h_facts` (the `flowBracketBalance tokens lo a = 0` branch) or the descent
+    provider `desc` (the `≠ 0` branch).  On the unit span `[lo, lo+1)` we feed it BOTH concretely:
+
+    * `h_facts := mapGrammarFacts'_degenerate tokens lo : MapGrammarFacts' tokens lo (lo+1)` — the
+      window's own robust facts, surviving the window-close boundary;
+    * a concrete IDENTITY `desc`: at each nested gated sub-window `[a,b)` (width `b - a ≤ 1` here),
+      hand back `[a,b)` as its own enclosing window (`loS = a`, `hiS = b`, re-seat
+      `flowBracketBalance tokens a a = 0`) with robust facts via `mapGrammarFacts'_degenerate` /
+      `mapGrammarFacts'_empty`, routed through the R543 `mapEnclosingFacts'_provider_of_located`.
+
+    The dispatcher drives the R542 assembler and recovers `mapInteriorSeparators'_unit` — the same
+    inhabited carrier, now through the real DISPATCH path with BOTH `dite` branches type-checked
+    (the `= 0` branch fires at `a = lo`, the `≠ 0` branch is available at `a = lo+1` when the window
+    opener carries depth).  Confirms the dispatcher aims at reachable suppliers, not a trap, before
+    the root seed `mapRoot_mapInteriorSeparators'` and the map descent locator that produce them
+    exist. -/
+theorem mapInteriorSeparators'_via_dispatcher_unit
+    (tokens : Array (Positioned YamlToken)) (lo : Nat) :
+    MapInteriorSeparators' tokens lo (lo + 1) :=
+  mapInteriorSeparators'_of_safebody_and_descent tokens lo (lo + 1)
+    (mapGrammarFacts'_degenerate tokens lo)
+    (fun a b _ha _hab _hb _hbal _hgate =>
+      mapEnclosingFacts'_provider_of_located tokens a b a b
+        (Nat.le_refl a) (Nat.le_refl b) (by simp [flowBracketBalance])
+        (by
+          rcases Nat.lt_or_ge a b with hLt | hGe
+          · have hb1 : b = a + 1 := by omega
+            rw [hb1]; exact mapGrammarFacts'_degenerate tokens a
+          · have hEq : a = b := by omega
+            rw [← hEq]; exact mapGrammarFacts'_empty tokens a))
+
 -- Axiom audit — the carrier inhabitation and the boundary-survival probe lean only on core; the
 -- ASSEMBLE non-vacuity checks also pull in `Classical.choice` through the rebase's
 -- `flowBracketBalance_compose`.
@@ -159,6 +193,12 @@ theorem mapInteriorSeparators'_via_provider_of_located_unit
  Quot.sound] -/
 #guard_msgs in
 #print axioms mapInteriorSeparators'_via_provider_of_located_unit
+
+/-- info: 'MapCarrierRobustInhabitation.mapInteriorSeparators'_via_dispatcher_unit' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs in
+#print axioms mapInteriorSeparators'_via_dispatcher_unit
 
 /-- info: 'MapCarrierRobustInhabitation.mapGrammarFacts'_degenerate' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in

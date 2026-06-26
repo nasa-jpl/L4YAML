@@ -480,6 +480,62 @@ theorem mapEnclosingFacts'_provider_of_located
       MapGrammarFacts' tokens loS hiS :=
   ⟨loS, hiS, h_loS_a, h_b_hiS, h_bal0, h_facts⟩
 
+/-- **The per-window map DISPATCHER** — the boundary-robust map twin of
+    `seqInteriorSeparators_of_safebody_and_descent` (`:2343`): the `dite` case-split that reduces ONE
+    map window's `MapInteriorSeparators' tokens lo hi` to two suppliers — the window's OWN robust facts
+    `MapGrammarFacts' tokens lo hi` and a DESCENT provider `desc` for its strictly-nested gated
+    sub-windows.
+
+    The R542 assembler `mapInteriorSeparators'_of_enclosing_provider` (`:433`) demands, at every gated
+    sub-window `[a,b)`, an enclosing map body `[loS,hiS) ⊇ [a,b)` re-seated at `a`'s depth.  Those
+    windows split on the **top-level discriminator** `flowBracketBalance tokens lo a = 0`:
+
+    * `= 0` — `a` is at `[lo,hi)`'s OWN top level, so its enclosing map IS `[lo,hi)` itself; the
+      provider is satisfied by `⟨lo, hi, …⟩` directly from the window's robust facts via R543's
+      `mapEnclosingFacts'_provider_of_located` (`:474`) at `loS = lo`, `hiS = hi`.  This is the
+      abstract, recursion-window form of the (still-owed) `mapRoot_mapInteriorSeparators'` root seed.
+    * `≠ 0` — `a` is nested strictly deeper; the enclosing map is an inner bracket the recursion must
+      locate, supplied by the `desc` hypothesis (the map twin of the seq driver's
+      `seqDescent_provider_of_located`, the backward enclosing-opener locator consuming the
+      width-recursion IH).
+
+    **Two structural simplifications over the seq twin.**  Where seq passes a windowed `SafeBodyUnit`
+    substrate `h_safe` and CONVERTS it to its three facts inside the located provider, the map located
+    provider R543 takes the bundled `MapGrammarFacts'` *directly* — so (a) `h_facts` is the window's
+    robust facts, not a substrate, and (b) the seq twin's `h_hi : hi ≤ tokens.size` hypothesis is GONE
+    (the facts-direct provider needs no size bound).  The substrate→facts conversion is precisely the
+    deferred leaf (`mapEnclosingFacts'_of_windowed_X`), kept out of the dispatcher.
+
+    The split is exhaustive and decidable (`Int` equality on the balance), so the dispatch is a pure
+    `dite` — the INVERSE of the classify unifier ([[ref-fold-consumer-chain-to-producer-contract]] at
+    the dispatch layer): it folds the per-window provider into the two typed residuals the driver must
+    source — the window's own robust facts (the leaf / `mapRoot_mapGrammarFacts'` at the root) and the
+    `desc` locator — leaving only the strong-width fixpoint that threads them across the window edges.
+
+    Non-vacuity (inhabitation-debt rule 3, [[ref-inhabitation-debt-validate-target-defs]]): the NEW
+    `desc` hypothesis shape IS satisfiable and the dispatcher is non-vacuous —
+    `Tests/Reflections/MapCarrierRobustInhabitation.lean`'s `mapInteriorSeparators'_via_dispatcher_unit`
+    feeds it `h_facts := mapGrammarFacts'_degenerate` and a concrete identity `desc` on a unit span
+    `[lo, lo+1)`, exercises BOTH branches of the `dite` (the `= 0` branch via `h_facts`, the `≠ 0`
+    branch via `desc`), and recovers the inhabited carrier through the real dispatch path.
+
+    Verified-but-unconsumed: its consumer `mapRoot_mapInteriorSeparators'` (the root seed) and the
+    `desc` producer (the map descent locator) do not exist yet; references no sorry site; frontier
+    sorry count unchanged at 4. -/
+theorem mapInteriorSeparators'_of_safebody_and_descent
+    (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_facts : MapGrammarFacts' tokens lo hi)
+    (desc : ∀ a b, lo ≤ a → a ≤ b → b ≤ hi → flowBracketBalance tokens lo a ≠ 0 →
+      MapTypedInterior tokens a b →
+      ∃ loS hiS, loS ≤ a ∧ b ≤ hiS ∧ flowBracketBalance tokens loS a = 0 ∧
+        MapGrammarFacts' tokens loS hiS) :
+    MapInteriorSeparators' tokens lo hi :=
+  mapInteriorSeparators'_of_enclosing_provider tokens lo hi (fun a b ha hab hb hgate =>
+    if h : flowBracketBalance tokens lo a = 0 then
+      mapEnclosingFacts'_provider_of_located tokens a b lo hi ha hb h h_facts
+    else
+      desc a b ha hab hb h hgate)
+
 /-! ### The map gate, reconstructed in place from the window opener (R514)
 
 The map carrier `MapInteriorSeparators tokens lo hi` (`:187`) carries the gate `MapTypedInterior` as a
