@@ -5949,6 +5949,83 @@ theorem recbody_joint_guard_descend_tail (tokens : Array (Positioned YamlToken))
       h_close h_seq_carrier h_map_carrier h_after_fe h_lo0 h_hi0 h_lo_m h_m_hi h_bal_m h_sep
   exact ⟨by omega, h_hi0, h_win', h_seq_guard', h_map_guard', h_close'⟩
 
+/-- **The CARRIER-specialised JOINT body navigator driver** — `(i'-b-B2c-desc-joint-navigator-carrier)`,
+    R534.  The concrete instantiation of `recbody_joint_navigator_driver` (R529) at the named guard
+    `G := RecBodyJointGuard tokens lo0 hi0`, with the `descend_tail` slot DISCHARGED by R533
+    `recbody_joint_guard_descend_tail` and the two root carriers + the map-deferred `h_after_fe` (M2)
+    threaded as fixed inputs.
+
+    **What collapses.**  Where the abstract driver R529 left `G`, `locate_seq`, `locate_map`, AND
+    `descend_tail` all open, this brick fixes `G` to the folded guard and supplies `descend_tail` from
+    R533 — so the remaining obligations shrink to exactly the two collection-`locate`s.  Each is now
+    STRENGTHENED to emit the located separator's depth-`0` balance `flowBracketBalance tokens lo m = 0`
+    (the extra `∃`-conjunct), because R533's `h_bal_m` consumes that balance to narrow the carrier.  The
+    driver ROUTES the balance straight from the locate output into the guard descend
+    ([[ref-route-producer-fact-to-consumer-slot-through-recursion]]): the recursion combinator is
+    agnostic to it, so a producer-side fact (the locate knows where `m` sits and at what depth) reaches a
+    consumer-side premise (the descend narrows the carrier there) purely by widening the locate's `∃` and
+    the descend's premise in lockstep — the body merely carries it across the `oracle`/`assemble` stitch.
+
+    **What is threaded vs deferred.**  The two carriers are keyed at the fixed outer span `lo0 hi0` and
+    narrowed per window by the guard's frame bounds (R533).  `h_after_fe` (M2) is taken per-window-keyed
+    ON the guard, deferring the global→per-window narrowing (the `flowBracketBalance tokens lo k`
+    re-basing across windows) to a later brick.  `h_hi_sz` is no longer a separate input — it is the
+    trivial projection `(·.2.2.1.hi_lt)` off the guard's window invariant.
+
+    Verified-but-unconsumed until the two strengthened `locate`s are supplied (R527-fed seq dispatch +
+    the map pair locator, each emitting the balance) and M2 is narrowed from the global field: composes
+    `windowWidth_strongRecOn` + both window assemblers + `recbody_joint_guard_descend_tail`, references no
+    sorry site, frontier sorry count unchanged at 4; axioms `[propext, Classical.choice, Quot.sound]`
+    (inherited from R532/R533 and the assemblers). -/
+theorem recbody_joint_navigator_driver_carrier (tokens : Array (Positioned YamlToken))
+    (lo0 hi0 : Nat)
+    (h_seq_carrier : SeqInteriorSeparators tokens lo0 hi0)
+    (h_map_carrier : MapInteriorSeparators tokens lo0 hi0)
+    (h_after_fe : ∀ lo hi, RecBodyJointGuard tokens lo0 hi0 lo hi →
+        ∀ k, lo ≤ k → k < hi →
+          flowBracketBalance tokens lo k = 0 →
+          tokens[k]!.val = .flowEntry →
+          k + 1 ≤ hi ∧ tokens[k + 1]!.val = .key)
+    (locate_seq : ∀ lo hi, RecBodyJointGuard tokens lo0 hi0 lo hi →
+        tokens[hi]!.val = .flowSequenceEnd →
+        (∀ lo' hi', hi' - lo' < hi - lo → RecBodyJointGuard tokens lo0 hi0 lo' hi' →
+          (tokens[hi']!.val = .flowSequenceEnd → RecSeqBody ((tokens.toList.take hi').drop lo')) ∧
+          (tokens[hi']!.val = .flowMappingEnd → RecMapBody ((tokens.toList.take hi').drop lo'))) →
+        ∃ m, lo < m ∧ m ≤ hi ∧
+          (m = hi ∨ tokens[m]!.val = .flowEntry) ∧
+          flowBracketBalance tokens lo m = 0 ∧
+          RecSeqEntry ((tokens.toList.take m).drop lo))
+    (locate_map : ∀ lo hi, RecBodyJointGuard tokens lo0 hi0 lo hi →
+        tokens[hi]!.val = .flowMappingEnd →
+        (∀ lo' hi', hi' - lo' < hi - lo → RecBodyJointGuard tokens lo0 hi0 lo' hi' →
+          (tokens[hi']!.val = .flowSequenceEnd → RecSeqBody ((tokens.toList.take hi').drop lo')) ∧
+          (tokens[hi']!.val = .flowMappingEnd → RecMapBody ((tokens.toList.take hi').drop lo'))) →
+        ∃ m, lo < m ∧ m ≤ hi ∧
+          (m = hi ∨ tokens[m]!.val = .flowEntry) ∧
+          flowBracketBalance tokens lo m = 0 ∧
+          RecMapPair ((tokens.toList.take m).drop lo)) :
+    ∀ lo hi, RecBodyJointGuard tokens lo0 hi0 lo hi →
+      (tokens[hi]!.val = .flowSequenceEnd → RecSeqBody ((tokens.toList.take hi).drop lo)) ∧
+      (tokens[hi]!.val = .flowMappingEnd → RecMapBody ((tokens.toList.take hi).drop lo)) := by
+  refine windowWidth_strongRecOn (RecBodyJointGuard tokens lo0 hi0) (fun lo hi h_g oracle => ?_)
+  refine ⟨fun h_seqEnd => ?_, fun h_mapEnd => ?_⟩
+  · -- seq-closing window: locate first ENTRY (carrying its balance), assemble, descend via R533.
+    obtain ⟨m, h_lo_m, h_m_hi, h_marker, h_bal, h_entry⟩ := locate_seq lo hi h_g h_seqEnd oracle
+    refine recseqbody_window_assemble tokens lo m hi h_lo_m h_m_hi h_g.2.2.1.hi_lt
+      h_marker h_entry (fun h_lt => ?_)
+    have h_fe : tokens[m]!.val = .flowEntry := h_marker.resolve_left (by omega)
+    exact (oracle (m + 1) hi (by omega)
+      (recbody_joint_guard_descend_tail tokens lo0 hi0 lo hi m h_seq_carrier h_map_carrier
+        (h_after_fe lo hi h_g) h_g h_lo_m h_lt h_bal h_fe)).1 h_seqEnd
+  · -- map-closing window: locate first PAIR (carrying its balance), assemble, descend via R533.
+    obtain ⟨m, h_lo_m, h_m_hi, h_marker, h_bal, h_pair⟩ := locate_map lo hi h_g h_mapEnd oracle
+    refine recmapbody_window_assemble tokens lo m hi h_lo_m h_m_hi h_g.2.2.1.hi_lt
+      h_marker h_pair (fun h_lt => ?_)
+    have h_fe : tokens[m]!.val = .flowEntry := h_marker.resolve_left (by omega)
+    exact (oracle (m + 1) hi (by omega)
+      (recbody_joint_guard_descend_tail tokens lo0 hi0 lo hi m h_seq_carrier h_map_carrier
+        (h_after_fe lo hi h_g) h_g h_lo_m h_lt h_bal h_fe)).2 h_mapEnd
+
 /-- **The root-span instance of `seqWindowRecSeqBody_seq_general`** — `lo0 := 2`, `hi0 := size-2`,
     bounds read off `FlowBodyWindow.lo_ge`/`hi_le`.  Signature-preserving so `seqWindowRecSeqBody_seq`'s
     consumers are untouched (ROUTE A, R445 — the parametric carrier rides the recursion via the
