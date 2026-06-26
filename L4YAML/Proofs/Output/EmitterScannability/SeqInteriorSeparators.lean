@@ -536,6 +536,41 @@ theorem mapInteriorSeparators'_of_safebody_and_descent
     else
       desc a b ha hab hb h hgate)
 
+/-- **Strict → robust map-facts weakening (R545)** — the first sub-brick of the still-deferred leaf
+    `mapEnclosingFacts'_of_windowed_X`.  Every window where the STRICT `MapGrammarFacts` holds (a
+    GENUINE complete map body, where each marker's content is truly interior) also satisfies the
+    boundary-ROBUST `MapGrammarFacts'`: the robust form only ever *adds* a window-close escape disjunct
+    `b ≤ <position>` to each fragile conjunct, so a strict witness lands in the strict-interior arm
+    (`Or.inr`) of conjuncts 1/2/3/4/5, and conjunct 6 is verbatim-identical (already robust, reused as
+    `e6`).  The plan is: the windowed-map separator lemmas (the leaf proper) produce STRICT facts at a
+    complete body — where strict is genuinely TRUE — and this connector weakens them to robust just
+    before handing them to the R543 `mapEnclosingFacts'_provider_of_located` assembler.
+
+    INHABITATION-DEBT discipline ([[ref-inhabitation-debt-validate-target-defs]], rule 2): this
+    connector was DEFERRED at R543 because its INPUT type `MapGrammarFacts` is boundary-FRAGILE — R540
+    refuted it at the window-close cut, and a connector whose domain is only ever empty is a vacuous
+    function.  It lands now, paired (in `Tests/Reflections/MapCarrierRobustInhabitation.lean`) with the
+    FIRST non-degenerate `MapGrammarFacts` witness — a concrete `{a:1}` complete-window body where
+    conjuncts 1–4 genuinely FIRE — so the connector is probed on a real inhabitant of its domain
+    (`Or.inr`, not the empty-domain trap), and the produced robust fact is read back through the
+    strict-interior arm (the escape disjunct refuted), confirming non-vacuity.  Pure ∧/∨ plumbing;
+    axiom-clean.  Verified-but-unconsumed until the windowed-map separator lemmas feed it; frontier
+    sorry count unchanged at 4. -/
+theorem mapGrammarFacts'_of_mapGrammarFacts (tokens : Array (Positioned YamlToken)) (a b : Nat)
+    (h : MapGrammarFacts tokens a b) : MapGrammarFacts' tokens a b := by
+  obtain ⟨e1, e2, e3, e4, e5, e6⟩ := h
+  refine ⟨?_, ?_, ?_, ?_, ?_, e6⟩
+  · intro k hak hkb hbal htok
+    exact Or.inr (e1 k hak hkb hbal htok)
+  · intro k hak hkb hbal htok hsc
+    exact Or.inr (e2 k hak hkb hbal htok hsc)
+  · intro k hak hkb hbal htok
+    exact Or.inr (e3 k hak hkb hbal htok)
+  · intro k hak hkb hbal htok hsc
+    exact Or.inr (e4 k hak hkb hbal htok hsc)
+  · intro k j hak hkb hbal htok hkj hjb hdelta hbalj
+    exact Or.inr (e5 k j hak hkb hbal htok hkj hjb hdelta hbalj)
+
 /-! ### The map gate, reconstructed in place from the window opener (R514)
 
 The map carrier `MapInteriorSeparators tokens lo hi` (`:187`) carries the gate `MapTypedInterior` as a

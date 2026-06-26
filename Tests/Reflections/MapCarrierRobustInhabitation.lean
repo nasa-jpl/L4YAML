@@ -175,6 +175,96 @@ theorem mapInteriorSeparators'_via_dispatcher_unit
           · have hEq : a = b := by omega
             rw [← hEq]; exact mapGrammarFacts'_empty tokens a))
 
+/-! ## R545 — the FIRST non-degenerate `MapGrammarFacts` witness + the strict→robust connector probed
+
+R540 refuted the STRICT `MapGrammarFacts` at the window-close CUT (`[1,2)`), establishing one pole of
+its boundary-fragility. This is the OTHER pole: the strict facts are genuinely TRUE on a COMPLETE map
+body, where every marker's content sits truly interior. Together the two poles fully characterise the
+fragility — and this complete-window witness is the non-degenerate inhabitant that inhabitation-debt
+rule 2 demanded BEFORE the strict→robust connector `mapGrammarFacts'_of_mapGrammarFacts` could land
+(a connector whose input type were only ever empty would be a vacuous function). The witness exercises
+conjuncts 1–4 FIRING (not vacuously), and the connector is then read back through the strict-interior
+arm to confirm the robust output it produces is genuine, not the window-close escape. -/
+
+/-- Positioned-token helper: wrap a `YamlToken` with a `default` position (the position is irrelevant
+    to `MapGrammarFacts`, which inspects only `.val`). -/
+private def pt (t : YamlToken) : Positioned YamlToken := { pos := default, val := t }
+
+/-- The canonical `{a: 1}` flow-map token stream — `{`, `.key`, `scalar "a"`, `.value`, `scalar "1"`,
+    `}` (indices 0–5). The complete map BODY is the window `[1, 5)` (strictly between the braces);
+    index 5 (`}`) is read by conjunct 4 at the window edge. This is the dual pole to R540's degenerate
+    refutation on the cut window `[1, 2)`. -/
+def fixtureMapA1 : Array (Positioned YamlToken) :=
+  #[pt .flowMappingStart, pt .key, pt (.scalar "a" .plain),
+    pt .value, pt (.scalar "1" .plain), pt .flowMappingEnd]
+
+/-- **The FIRST non-degenerate `MapGrammarFacts` witness** — the strict facts hold on the complete
+    `{a:1}` map body `[1, 5)`, with conjuncts 1–4 genuinely FIRING: at the key `k = 1` content sits at
+    index 2 and the `.value` at index 3 (conjuncts 1, 2); at the value `k = 3` content sits at index 4
+    and the closing `}` at index 5 (conjuncts 3, 4). Conjuncts 5/6 are vacuous — the only interior
+    positions `j ∈ {3,4}` carry `flowBracketDelta = 0`, not `-1`. The dual of R540's
+    `mapGrammarFacts_degenerate_key_false`: strict FALSE at the cut, strict TRUE here. -/
+theorem mapGrammarFacts_complete_window : MapGrammarFacts fixtureMapA1 1 5 := by
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
+  -- conjunct 1: key → content-start at k+1 (fires at k = 1)
+  · intro k hak hkb _hbal htok
+    have hk : k = 1 ∨ k = 2 ∨ k = 3 ∨ k = 4 := by omega
+    rcases hk with rfl | rfl | rfl | rfl
+    · exact ⟨by omega, Or.inl ⟨"a", .plain, by rfl⟩⟩
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+  -- conjunct 2: key + scalar → .value at k+2 (fires at k = 1)
+  · intro k hak hkb _hbal htok _hsc
+    have hk : k = 1 ∨ k = 2 ∨ k = 3 ∨ k = 4 := by omega
+    rcases hk with rfl | rfl | rfl | rfl
+    · exact ⟨by omega, by rfl⟩
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+  -- conjunct 3: value → content-start at k+1 (fires at k = 3)
+  · intro k hak hkb _hbal htok
+    have hk : k = 1 ∨ k = 2 ∨ k = 3 ∨ k = 4 := by omega
+    rcases hk with rfl | rfl | rfl | rfl
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact ⟨by omega, Or.inl ⟨"1", .plain, by rfl⟩⟩
+    · exact absurd htok (by decide)
+  -- conjunct 4: value + scalar → flowEntry / (mappingEnd ∧ k+2=b) at k+2 (fires at k = 3, mappingEnd arm)
+  · intro k hak hkb _hbal htok _hsc
+    have hk : k = 1 ∨ k = 2 ∨ k = 3 ∨ k = 4 := by omega
+    rcases hk with rfl | rfl | rfl | rfl
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact ⟨by omega, Or.inr ⟨by rfl, by omega⟩⟩
+    · exact absurd htok (by decide)
+  -- conjunct 5: key + interior closer j → .value at j+1 — vacuous (no delta = -1 inside [1,5))
+  · intro k j hak _hkb _hbal _htok hkj hjb hdelta _hbalj
+    have hj : j = 3 ∨ j = 4 := by omega
+    rcases hj with rfl | rfl
+    · exact absurd hdelta (by decide)
+    · exact absurd hdelta (by decide)
+  -- conjunct 6: value + interior closer j → flowEntry/mappingEnd at j+1 — vacuous likewise
+  · intro k j hak _hkb _hbal _htok hkj hjb hdelta _hbalj
+    have hj : j = 3 ∨ j = 4 := by omega
+    rcases hj with rfl | rfl
+    · exact absurd hdelta (by decide)
+    · exact absurd hdelta (by decide)
+
+/-- **Non-vacuity probe for the R545 connector** `mapGrammarFacts'_of_mapGrammarFacts`. Fed the
+    complete-window witness, the connector produces robust facts whose conjunct 1 at the key position
+    `k = 1` lands in the GENUINE strict-interior arm (`Or.inr`), NOT the window-close escape `b ≤ k+1`
+    (here `5 ≤ 2`, refuted by `omega`). Reading the connector's output back through the disjunction
+    confirms it carries a real interior content fact — the connector is exercised on a real inhabitant
+    of its fragile domain, not vacuously (inhabitation-debt rule 2/3). -/
+theorem mapGrammarFacts'_complete_window_fires :
+    isFlowContentStart fixtureMapA1[2]!.val := by
+  have hrobust : MapGrammarFacts' fixtureMapA1 1 5 :=
+    mapGrammarFacts'_of_mapGrammarFacts fixtureMapA1 1 5 mapGrammarFacts_complete_window
+  rcases hrobust.1 1 (by omega) (by omega) (by decide) (by decide) with hesc | ⟨_, hc⟩
+  · exact absurd hesc (by omega)
+  · exact hc
+
 -- Axiom audit — the carrier inhabitation and the boundary-survival probe lean only on core; the
 -- ASSEMBLE non-vacuity checks also pull in `Classical.choice` through the rebase's
 -- `flowBracketBalance_compose`.
@@ -203,5 +293,13 @@ theorem mapInteriorSeparators'_via_dispatcher_unit
 /-- info: 'MapCarrierRobustInhabitation.mapGrammarFacts'_degenerate' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in
 #print axioms mapGrammarFacts'_degenerate
+
+/-- info: 'MapCarrierRobustInhabitation.mapGrammarFacts_complete_window' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
+#print axioms mapGrammarFacts_complete_window
+
+/-- info: 'MapCarrierRobustInhabitation.mapGrammarFacts'_complete_window_fires' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
+#print axioms mapGrammarFacts'_complete_window_fires
 
 end MapCarrierRobustInhabitation

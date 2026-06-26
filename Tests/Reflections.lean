@@ -232,6 +232,7 @@ import Tests.Reflections.LocateHoleIsDispatchRepacked
 import Tests.Reflections.AxisDualFromTypeAgnosticCore
 import Tests.Reflections.BoundaryRobustVsFragileFact
 import Tests.Reflections.MapCarrierRobustInhabitation
+import Tests.Reflections.OmegaNonArithGoalPullsClassical
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
