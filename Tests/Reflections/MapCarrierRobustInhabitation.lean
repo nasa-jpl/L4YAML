@@ -1,4 +1,6 @@
 import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+import L4YAML.Output.Emitter
+import L4YAML.Scanner.Scanner
 
 /-!
 # Reflection 541 — INHABITATION PROBE for the boundary-robust map carrier `MapInteriorSeparators'`
@@ -307,6 +309,96 @@ theorem mapGrammarFacts_strict_roundtrip : MapGrammarFacts fixtureMapA1 1 5 := b
   · intro k j hak hkb _ _htok hkj hjb hdelta _
     rcases (show j = 3 ∨ j = 4 by omega) with rfl | rfl <;> exact absurd hdelta (by decide)
 
+/-! ## R547 — the BRACKET-VALUED boundary catches the carrier's DEEPER falsity (rule 2, untested edge)
+
+Every probe above (R541–R546) used the SCALAR-ONLY fixture `{a:1}`, where conjuncts 5/6 — keyed on an
+interior bracket closer `j` with `flowBracketDelta = -1` — are VACUOUS (no body position carries
+`-1`). So conjuncts 5/6 of `MapGrammarFacts'` (and the identical `MapLocated.h_key_bracket_succ`
+consumer field, `NonemptyStructure.lean:10531`) had been validated by NOBODY on a real bracket-bearing
+map. This is exactly inhabitation-debt rule 2: *probe the boundary, not the middle* — and the
+untested boundary here is not the window CLOSE (which R541 made robust) but a bracket-VALUED entry.
+
+Probing that boundary against REAL emission refutes the robust carrier. Conjunct 5 is keyed on a
+`.key` and a GENERIC depth-0-returning closer `j` with NO guard that `tokens[k+1]` is a bracket-start
+(unlike `MapBodyProps.key_bracket_value`, M5, `ParserGrammableBase.lean:1240`, which IS so guarded).
+So on `{a: [1], b: 2}` the FIRST key (index 2) sees the FIRST VALUE's `]` closer (index 7, balance
+back to 0 at 8) and conjunct 5 demands `.value` at index 8 — but index 8 is `.flowEntry` (the pair
+separator). FALSE. And robustness cannot save it: the window-close escape `b ≤ j+1` is `13 ≤ 8`,
+refuted, because the false firing is at an INTERIOR closer, a fragility orthogonal to the window-close
+one R541 fixed (rule 4 — the robust dual inherited the strict conjunct-5 SHAPE, and that shape was
+itself wrong, not merely boundary-fragile). The salvage is a refactor not a teardown
+([[ref-additive-parallel-type-over-shared-edit]]): re-key conjuncts 5/6 to the M5/M8 bracket-start
+guard (fire only on a COMPLEX KEY whose `j` is its own bracket's matching close), landed as a new
+additive `MapGrammarFacts''` and re-probed on BOTH fixtures — the next brick, NOT a strict-def edit
+(whose R513–R546 consumers depend on the exact shape).
+
+The fixture is GROUNDED in real emission (rule 5 — probe real data, not a hand-built guess that might
+not correspond to any emitted map): the `#guard` proves `fixtureMapSeqVal`'s val-stream IS
+`scanFiltered (emit {a:[1], b:2})`. Lives under `Tests/` as a build-time regression that the bug
+stays caught until the guarded conjuncts land. -/
+
+/-- Plain scalar value helper. -/
+private def sc (s : String) : YamlValue := .scalar { content := s, style := .plain }
+
+/-- `{a: [1], b: 2}` — the smallest map exercising conjunct 5 at an interior (non-window-close) closer:
+    a bracket-valued FIRST entry followed by a second entry, so the value's `]` closer has `j + 1 ≠ b`. -/
+def valMapSeqVal : YamlValue :=
+  .mapping .flow #[(sc "a", .sequence .flow #[sc "1"]), (sc "b", sc "2")]
+
+/-- The REAL `scanFiltered (emit valMapSeqVal)` filtered token stream, hand-mirrored for `decide`.
+    Indices: 0 `streamStart`, 1 `{`, 2 `.key`, 3 `"a"`, 4 `.value`, 5 `[`, 6 `"1"`, 7 `]`,
+    8 `.flowEntry`, 9 `.key`, 10 `"b"`, 11 `.value`, 12 `"2"`, 13 `}`, 14 `streamEnd`.  The map BODY is
+    the window `[2, 13)` (= `[2, size - 2)`, the root convention `seqRoot_seqInteriorSeparators` uses).
+    Plain scalars emit double-quoted (`emit {a:1}` ⇒ `{"a": "1"}`), irrelevant to the grammar facts
+    (which inspect only token TAGS, not scalar content/style). -/
+def fixtureMapSeqVal : Array (Positioned YamlToken) :=
+  #[pt .streamStart, pt .flowMappingStart, pt .key, pt (.scalar "a" .doubleQuoted),
+    pt .value, pt .flowSequenceStart, pt (.scalar "1" .doubleQuoted), pt .flowSequenceEnd,
+    pt .flowEntry, pt .key, pt (.scalar "b" .doubleQuoted), pt .value,
+    pt (.scalar "2" .doubleQuoted), pt .flowMappingEnd, pt .streamEnd]
+
+-- **Grounding (rule 5).** The fixture's val-stream IS the real scanner output for `emit valMapSeqVal`
+-- — so the falsity below is a falsity on a GENUINELY EMITTED map, not a hand-built artifact.
+#guard (L4YAML.Scanner.scanFiltered (L4YAML.Emit.emit valMapSeqVal)).toOption.map
+          (fun toks => toks.toList.map (fun t => t.val))
+        = some (fixtureMapSeqVal.toList.map (fun t => t.val))
+
+/-- **The gate FIRES on the genuine body window** `[2, 13)` — it is balanced, `{`-enclosed, and Dyck
+    (every prefix balance `≥ 0`). So the carrier `MapInteriorSeparators'` genuinely must cover this
+    window: there is no gate technicality excusing it from asserting the per-window fact. -/
+theorem mapTypedInterior_bracketVal : MapTypedInterior fixtureMapSeqVal 2 13 := by
+  refine ⟨by decide, by decide, ?_⟩
+  intro i h2 h13
+  rcases (show i = 2 ∨ i = 3 ∨ i = 4 ∨ i = 5 ∨ i = 6 ∨ i = 7 ∨ i = 8 ∨ i = 9 ∨ i = 10 ∨ i = 11 ∨ i = 12 ∨ i = 13 by omega)
+    with rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl <;> decide
+
+/-- **The ROBUST per-window fact is FALSE on this gated body window.** Conjunct 5 fires at the `.key`
+    (index 2) and the VALUE's `]` closer (index 7, `flowBracketBalance … 8 = 0`) and demands `.value`
+    at index 8 — but index 8 is `.flowEntry`. The window-close escape `13 ≤ 8` is refuted (`omega`):
+    the firing is at an INTERIOR closer, which robustness does not protect. This is the one-line probe
+    that — owed when conjuncts 5/6 were FIRST written — would have caught the bug before the R542–R546
+    assembler/connector/bridge chain was built on top. -/
+theorem mapGrammarFacts'_bracketVal_false : ¬ MapGrammarFacts' fixtureMapSeqVal 2 13 := by
+  intro h
+  obtain ⟨_, _, _, _, c5, _⟩ := h
+  have hb_k : flowBracketBalance fixtureMapSeqVal 2 2 = 0 := by decide
+  have hb_j : flowBracketBalance fixtureMapSeqVal 2 8 = 0 := by decide
+  rcases c5 2 7 (by omega) (by omega) hb_k (by decide) (by omega) (by omega) (by decide) hb_j with
+    hesc | ⟨_, hval⟩
+  · omega
+  · exact absurd hval (by decide)
+
+/-- **THE INHABITATION BUG, made a theorem.** The boundary-robust carrier `MapInteriorSeparators'` —
+    the R541–R546 target — is REFUTED on `{a:[1], b:2}`, a genuine flow map. Instantiated at its own
+    gated body window `[2, 13)` it would assert the per-window fact that `mapGrammarFacts'_bracketVal_false`
+    refutes. So NO producer (`mapRoot_mapInteriorSeparators'`, the planned next brick) can build this
+    carrier off emission as currently defined — the conjuncts 5/6 must gain the M5/M8 bracket-start
+    guard first. -/
+theorem mapInteriorSeparators'_bracketVal_false : ¬ MapInteriorSeparators' fixtureMapSeqVal 2 13 := by
+  intro h
+  exact mapGrammarFacts'_bracketVal_false
+    (h 2 13 (Nat.le_refl 2) (by omega) (Nat.le_refl 13) mapTypedInterior_bracketVal)
+
 -- Axiom audit — the carrier inhabitation and the boundary-survival probe lean only on core; the
 -- ASSEMBLE non-vacuity checks also pull in `Classical.choice` through the rebase's
 -- `flowBracketBalance_compose`.
@@ -347,5 +439,17 @@ theorem mapGrammarFacts_strict_roundtrip : MapGrammarFacts fixtureMapA1 1 5 := b
 /-- info: 'MapCarrierRobustInhabitation.mapGrammarFacts_strict_roundtrip' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in
 #print axioms mapGrammarFacts_strict_roundtrip
+
+/-- info: 'MapCarrierRobustInhabitation.mapTypedInterior_bracketVal' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
+#print axioms mapTypedInterior_bracketVal
+
+/-- info: 'MapCarrierRobustInhabitation.mapGrammarFacts'_bracketVal_false' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
+#print axioms mapGrammarFacts'_bracketVal_false
+
+/-- info: 'MapCarrierRobustInhabitation.mapInteriorSeparators'_bracketVal_false' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
+#print axioms mapInteriorSeparators'_bracketVal_false
 
 end MapCarrierRobustInhabitation

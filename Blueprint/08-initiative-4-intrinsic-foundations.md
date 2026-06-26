@@ -23560,7 +23560,7 @@ abstracts over `_a` whose type the bound depends on).
 
 ## Phase 3 — Stage C: EmitterScannability discharge — `.flowmono` / `.body` / `.bridge` (Reflections 153–192)
 
-### Frontier status — the 4 remaining `sorry`s and the path to close them (snapshot 2026-06-26, R546)
+### Frontier status — the 4 remaining `sorry`s and the path to close them (snapshot 2026-06-26, R547)
 
 The reflections in this section all discharge a single end goal: the well-bracketing
 certificate `FlowSubrangesOk tokens` that lets the flow-collection parser provably
@@ -23685,13 +23685,37 @@ shared recursion** rather than two mirrored ones:
      direction is now fully wired modulo the leaf: once a windowed-map producer yields strict (or robust)
      `MapGrammarFacts` at the located body, R545 weakens it for the dispatcher's `h_facts` and R546 re-strengthens
      it for the strict consumer — the close-structure refuters being the remaining named residual the leaf owes.
+     **R547 then PROBED the leaf's target at the bracket-valued boundary and REFUTED the robust carrier itself**
+     — inhabitation-debt ([[ref-inhabitation-debt-validate-target-defs]]) one level deeper than R540. Every
+     R541–R546 probe used the SCALAR-only `{a:1}` body, where conjuncts 5/6 (keyed on an interior closer `j` with
+     `flowBracketDelta = -1`) are VACUOUS — no `{a:1}` body position carries `-1` — so they had been validated by
+     NOBODY. Probing `{a: [1], b: 2}` (the smallest map with a bracket-valued NON-terminal entry, GROUNDED via
+     `#guard` against `scanFiltered (emit ·)`) refutes `MapGrammarFacts'` on the genuine gated body window `[2,13)`:
+     conjunct 5 fires at the first `.key` (index 2) and the first VALUE's `]` closer (index 7, balance back to 0 at
+     8), demanding `.value` at index 8 — but index 8 is the pair `.flowEntry`. FALSE, and robustness cannot save it
+     (`b ≤ j+1` is `13 ≤ 8`): the false firing is at an INTERIOR closer, a fragility axis ORTHOGONAL to the
+     window-close one R541 made robust (rule 4 — the robust dual inherited the strict conjunct-5 SHAPE, and that
+     shape was itself wrong, not merely boundary-fragile). So the robust CARRIER `MapInteriorSeparators'` is itself
+     UNINHABITABLE on bracket-valued maps (`mapInteriorSeparators'_bracketVal_false`), and NO `mapRoot_mapGrammarFacts'`
+     producer can build it as defined. Root cause: conjuncts 5/6 lack the bracket-start guard
+     `tokens[k+1] ∈ {.flowSequenceStart, .flowMappingStart}` that `MapBodyProps.key_bracket_value`/`value_bracket_succ`
+     (M5/M8, `ParserGrammableBase.lean:1240/1264`) DO carry — they must fire only on a COMPLEX KEY whose `j` is its
+     OWN bracket's matching close, never on a later value-bracket closer. The same unguarded flaw sits in the
+     consumer field `MapLocated.h_key_bracket_succ` (`NonemptyStructure.lean:10531`). **Redirect (salvage = refactor,
+     [[ref-additive-parallel-type-over-shared-edit]]):** re-key conjuncts 5/6 to the M5/M8 guard as a NEW additive
+     `MapGrammarFacts''`, re-probe on BOTH `{a:1}` AND `{a:[1],b:2}`, and reconcile the consumer field — BEFORE any
+     root/descent producer work, which would otherwise target a false predicate. The refutation + the gate-fires
+     witness + the carrier-refuted theorem landed `Tests/Reflections/MapCarrierRobustInhabitation.lean`, axiom-clean
+     `[propext, Quot.sound]`. **This is the immediate next brick, displacing `mapRoot_mapGrammarFacts'`.**
 
 **Once `locate_map`, the M2 narrowing, and the two root carriers exist, the driver runs
 at the root and sorries 1 + 2 are one `exact` each** (same `FlowSubrangesOk tokens`
 proposition, both fed by the assembler over the driver's two projections). The remaining
-REAL obligations for Family A are: `locate_map` (mechanical — R537's recipe mirrored to
-the map dispatch), the M2 narrowing, and the two descent/root-carrier providers (the only
-genuinely open math, symmetric across seq/map thanks to R513–R515).
+REAL obligations for Family A are: the **conjunct-5/6 bracket-start guard fix** (R547 — a new
+additive `MapGrammarFacts''` re-probed on `{a:[1],b:2}`, which the map root/descent providers
+must target *instead* of the currently-false `MapGrammarFacts'`), `locate_map` (mechanical —
+R537's recipe mirrored to the map dispatch), the M2 narrowing, and the two descent/root-carrier
+providers (the only genuinely open math, symmetric across seq/map thanks to R513–R515).
 
 **Family B (content fidelity) — orthogonal, untouched by this section.** Sorries 3 and
 4 are the non-empty cases of `emit_roundtrip_sequence_content_eq` /
