@@ -5677,6 +5677,77 @@ theorem recmapbody_map_descend_tail (tokens : Array (Positioned YamlToken)) (lo 
     mapEnclosed_advance tokens lo (m + 1) h_enc (by omega) h_wt_seg
   exact ⟨h_m1_hi, h_win', h_deep', h_enc'⟩
 
+/-- **The JOINT navigator DESCEND-TAIL edge** — `(i'-b-B2c-desc-joint-descend-tail)`, R530.  The
+    `descend_tail` companion of `recbody_joint_navigator_driver` (R529): the seq edge
+    `recseqbody_seq_descend_tail` (R511) and the map edge `recmapbody_map_descend_tail` (R526) folded
+    into ONE descend, **dispatched on the window close token** — the analytical core the joint driver's
+    `descend_tail` slot consumes.
+
+    **What it produces.**  The joint guard's REPRODUCED part at the suffix `[m+1, hi)`: the shared
+    `FlowBodyWindow`, the close-token-dispatched deep-content + enclosure pair
+    (`FlowBodyContentDeepSeq ∧ SeqEnclosed` on the seq close, `FlowBodyContentDeepMap ∧ MapEnclosed` on
+    the map close), and the close-token disjunction itself (preserved verbatim — the suffix shares the
+    window's close `hi`).  Each half is exactly what its single edge reproduces; the conjunctive shape
+    is the joint guard of [[ref-joint-navigator-cross-deliverable]] viewed at the descend layer.
+
+    **What it CONSUMES but does NOT reproduce — the two visible debts.**  The single edges read facts
+    the recursion cannot thread top-down ([[ref-width-recursion-cannot-thread-topdown-fact]]), so they
+    appear here as *explicit hypotheses*, not stored in the reproduced guard:
+    * `h_bal_m` — the located separator's depth-`0` balance.  The bare marker `tokens[m] = .flowEntry`
+      does NOT pin depth `0` (a comma can sit inside a nested collection), so both single edges genuinely
+      consume it ([[ref-probe-deferred-universal-before-producing]], the R511 finding).  Wiring this into
+      the driver requires the driver's `locate` marker to carry the balance and its `descend_tail` slot
+      to receive it — the marker-strengthening brick.
+    * `h_seq_pack` / `h_map_pack` — the per-window content provider (`FlowBodyContent` on the seq close,
+      `MapBodyProps` on the map close), which the single edges consume to rule out the trailing separator
+      and to discharge the deep-advance child-head premise, but which they CANNOT reproduce at the suffix
+      (the carrier-free obstacle).  Here they are close-token-GATED inputs; the future concrete
+      `descend_tail` sources them from the fixed outer carrier per-window (via
+      `seqWindow_flowBodyContent_seq_general` and its map twin), exactly as the inline R415 recursions do.
+
+    **The dispatch.**  `rcases` the close disjunction; in each branch unpack the matching content pack,
+    call the matching single edge, and reassemble.  The OFF-branch implication is discharged *vacuously*
+    by close-token disjointness: in the seq branch a `tokens[hi] = .flowMappingEnd` premise contradicts
+    `tokens[hi] = .flowSequenceEnd` (`by decide` on the constructor equality), so the map half holds for
+    any goal, and symmetrically.  No new analytical content beyond the two landed single edges — this is
+    [[ref-navigator-driver-stitch-two-obligations]] applied to `descend_tail`: one obligation, two
+    collection-keyed halves, stitched by the discriminator.
+
+    Verified-but-unconsumed until the driver is re-typed (marker carries `h_bal_m`) and the carrier feeds
+    the content packs: composes only `recseqbody_seq_descend_tail` + `recmapbody_map_descend_tail`,
+    references no sorry site, frontier sorry count unchanged at 4; axioms
+    `[propext, Classical.choice, Quot.sound]` (inherited from the two single edges' WellTyped plumbing),
+    no `sorryAx`.  Demo `Tests/Reflections/JointDescendTailDispatch.lean`. -/
+theorem recbody_joint_descend_tail (tokens : Array (Positioned YamlToken)) (lo hi m : Nat)
+    (h_win : FlowBodyWindow tokens lo hi)
+    (h_close : tokens[hi]!.val = .flowSequenceEnd ∨ tokens[hi]!.val = .flowMappingEnd)
+    (h_seq_pack : tokens[hi]!.val = .flowSequenceEnd →
+        FlowBodyContentDeepSeq tokens lo hi ∧ SeqEnclosed tokens lo ∧ FlowBodyContent tokens lo hi)
+    (h_map_pack : tokens[hi]!.val = .flowMappingEnd →
+        FlowBodyContentDeepMap tokens lo hi ∧ MapEnclosed tokens lo ∧ MapBodyProps tokens lo hi)
+    (h_lo_m : lo < m) (h_m_hi : m < hi)
+    (h_bal_m : flowBracketBalance tokens lo m = 0)
+    (h_sep : tokens[m]!.val = .flowEntry) :
+    FlowBodyWindow tokens (m + 1) hi
+      ∧ (tokens[hi]!.val = .flowSequenceEnd →
+          FlowBodyContentDeepSeq tokens (m + 1) hi ∧ SeqEnclosed tokens (m + 1))
+      ∧ (tokens[hi]!.val = .flowMappingEnd →
+          FlowBodyContentDeepMap tokens (m + 1) hi ∧ MapEnclosed tokens (m + 1))
+      ∧ (tokens[hi]!.val = .flowSequenceEnd ∨ tokens[hi]!.val = .flowMappingEnd) := by
+  rcases h_close with h_seqEnd | h_mapEnd
+  · obtain ⟨h_deep, h_enc, h_content⟩ := h_seq_pack h_seqEnd
+    obtain ⟨_, h_win', h_deep', h_enc'⟩ :=
+      recseqbody_seq_descend_tail tokens lo hi m h_win h_deep h_enc h_content h_seqEnd
+        h_lo_m h_m_hi h_bal_m h_sep
+    exact ⟨h_win', fun _ => ⟨h_deep', h_enc'⟩,
+      fun h_mapEnd => absurd (h_mapEnd.symm.trans h_seqEnd) (by decide), Or.inl h_seqEnd⟩
+  · obtain ⟨h_deep, h_enc, h_props⟩ := h_map_pack h_mapEnd
+    obtain ⟨_, h_win', h_deep', h_enc'⟩ :=
+      recmapbody_map_descend_tail tokens lo hi m h_win h_deep h_enc h_props h_mapEnd
+        h_lo_m h_m_hi h_bal_m h_sep
+    exact ⟨h_win', fun h_seqEnd => absurd (h_seqEnd.symm.trans h_mapEnd) (by decide),
+      fun _ => ⟨h_deep', h_enc'⟩, Or.inr h_mapEnd⟩
+
 /-- **The root-span instance of `seqWindowRecSeqBody_seq_general`** — `lo0 := 2`, `hi0 := size-2`,
     bounds read off `FlowBodyWindow.lo_ge`/`hi_le`.  Signature-preserving so `seqWindowRecSeqBody_seq`'s
     consumers are untouched (ROUTE A, R445 — the parametric carrier rides the recursion via the
