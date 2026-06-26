@@ -695,6 +695,111 @@ theorem mapConjunct6GuardOnly_mixed_false : ¬ MapConjunct6GuardOnly fixtureMapM
     (by omega) (by omega) (by decide) (by decide)
   rcases hbad.2 with h1 | ⟨h1, _⟩ <;> exact absurd h1 (by decide)
 
+/-! ## R549 — the PRODUCER `mapGrammarFacts''_of_mapBodyProps`, routed through a concrete witness
+
+The R548 birth-probes establish `MapGrammarFacts''` is TRUE on real fixtures. R549 lands the SOURCE
+producer that GROUNDS the corrected target in what emission actually yields: `MapGrammarFacts''` is a
+structural weakening of `MapBodyProps` (M5/M8 are the existential matching-close facts conjuncts 5/6
+were re-keyed to), and `mapWindow_mapBodyProps_general` already produces `MapBodyProps` off emission.
+
+Inhabitation-debt rule 3 (a hypothesis with no producer is the alarm) applies to the producer's
+DOMAIN: `MapBodyProps tokens lo hi`.  Rather than ASSUME it, this probe EXHIBITS it — a concrete
+`MapBodyProps fixtureMapSeqVal 2 13` (`{a:[1], b:2}`, `#guard`-grounded = real emission), built
+INDEPENDENTLY field-by-field, with M8 `value_bracket_succ` FIRING at the value's bracket `k=4` and
+supplying the INTERIOR matching close `j=7` (`j+1 = 8 < 13` — the exact arm R547 refuted the old
+`MapGrammarFacts'` on, and the arm the producer's conjunct 6 must route correctly).  Routing the
+witness through `mapGrammarFacts''_of_mapBodyProps` recovers the same `MapGrammarFacts''` the R548
+birth-probe proved directly — a genuine, non-vacuous read-back through the producer (R545 discipline),
+not a projection. -/
+
+/-- **The FIRST concrete `MapBodyProps` witness in the suite** — every M-field of the structural bundle
+    proved by hand on the real `{a:[1], b:2}` body `[2, 13)`.  M2/M5/M8/M9/M10 fire or stay vacuous on
+    genuine positions: M8 `value_bracket_succ` fires at the value `k=4` with the bracket's own close
+    `j=7` (Dyck-floored), M9 `bracket_seq` at the `[` `k=5` with the same `j=7`; M5 is vacuous (no
+    complex key), M10 vacuous (no inner `{`).  Built INDEPENDENTLY so it can ground the producer
+    round-trip below without circularity. -/
+theorem mapBodyProps_bracketVal : MapBodyProps fixtureMapSeqVal 2 13 := by
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  -- M1 key_start: tokens[2] = .key
+  · intro _; decide
+  -- M2 after_fe: the only depth-0 `.flowEntry` is index 8, whose successor (9) is `.key`
+  · intro k h1 h2 _hbal htok
+    rcases (show k=2∨k=3∨k=4∨k=5∨k=6∨k=7∨k=8∨k=9∨k=10∨k=11∨k=12 by omega)
+      with rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl <;>
+      first | exact absurd htok (by decide) | exact ⟨by omega, by decide⟩
+  -- M3 key_content: keys at 2, 9; successors 3 ("a"), 10 ("b") are content-starts
+  · intro k h1 h2 _hbal htok
+    rcases (show k=2∨k=3∨k=4∨k=5∨k=6∨k=7∨k=8∨k=9∨k=10∨k=11∨k=12 by omega)
+      with rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl <;>
+      first | exact absurd htok (by decide) | exact ⟨by omega, by ifcs⟩
+  -- M4 key_scalar_value: keys at 2, 9 with scalar successors; `.value` at 4, 11
+  · intro k h1 h2 _hbal htok _hsc
+    rcases (show k=2∨k=3∨k=4∨k=5∨k=6∨k=7∨k=8∨k=9∨k=10∨k=11∨k=12 by omega)
+      with rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl <;>
+      first | exact absurd htok (by decide) | exact ⟨by omega, by decide⟩
+  -- M5 key_bracket_value: VACUOUS — both keys (2, 9) have SCALAR successors, so the bracket guard fails
+  · intro k h1 h2 _hbal htok hg
+    rcases (show k=2∨k=3∨k=4∨k=5∨k=6∨k=7∨k=8∨k=9∨k=10∨k=11∨k=12 by omega)
+      with rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl <;>
+      first | exact absurd htok (by decide) | (rcases hg with h|h <;> exact absurd h (by decide))
+  -- M6 value_content: values at 4, 11; successors 5 (`[`), 12 ("2") are content-starts
+  · intro k h1 h2 _hbal htok
+    rcases (show k=2∨k=3∨k=4∨k=5∨k=6∨k=7∨k=8∨k=9∨k=10∨k=11∨k=12 by omega)
+      with rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl <;>
+      first | exact absurd htok (by decide) | exact ⟨by omega, by ifcs⟩
+  -- M7 value_scalar_succ: at value k=4 the successor is `[` (scalar premise FALSE); at k=11 it is "2",
+  -- after which the close `}` at 13 = hi satisfies the mapEnd arm
+  · intro k h1 h2 _hbal htok hsc
+    rcases (show k=2∨k=3∨k=4∨k=5∨k=6∨k=7∨k=8∨k=9∨k=10∨k=11∨k=12 by omega)
+      with rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · obtain ⟨c, s, hcs⟩ := hsc
+      rw [show fixtureMapSeqVal[4 + 1]!.val = .flowSequenceStart from by decide] at hcs; cases hcs
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact ⟨by omega, Or.inr ⟨by decide, by omega⟩⟩
+    · exact absurd htok (by decide)
+  -- M8 value_bracket_succ: FIRES at value k=4, bracket-start at 5, OWN matching close j=7 (`]`),
+  -- successor 8 = `.flowEntry`; Dyck floor on [6,7]
+  · intro k h1 h2 _hbal htok hg
+    rcases (show k=2∨k=3∨k=4∨k=5∨k=6∨k=7∨k=8∨k=9∨k=10∨k=11∨k=12 by omega)
+      with rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact ⟨7, by omega, by omega, Or.inl ⟨by decide, by decide⟩, by decide, by omega,
+        Or.inl (by decide),
+        (by intro p hp1 hp2; rcases (show p = 6 ∨ p = 7 by omega) with rfl|rfl <;> decide)⟩
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · rcases hg with h|h <;> exact absurd h (by decide)
+    · exact absurd htok (by decide)
+  -- M9 bracket_seq: the only depth-0 `[` is index 5, matched by `]` at 7
+  · intro k h1 h2 _hbal htok
+    rcases (show k=2∨k=3∨k=4∨k=5∨k=6∨k=7∨k=8∨k=9∨k=10∨k=11∨k=12 by omega)
+      with rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl <;>
+      first | exact absurd htok (by decide) | exact ⟨7, by omega, by omega, by decide, by decide⟩
+  -- M10 bracket_map: VACUOUS — no `{` inside the body `[2,13)`
+  · intro k h1 h2 _hbal htok
+    rcases (show k=2∨k=3∨k=4∨k=5∨k=6∨k=7∨k=8∨k=9∨k=10∨k=11∨k=12 by omega)
+      with rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl <;> exact absurd htok (by decide)
+
+/-- **The producer ROUND-TRIP** — routing the concrete `MapBodyProps` witness through
+    `mapGrammarFacts''_of_mapBodyProps` recovers the corrected facts on the bracket body, identical in
+    type to the R548 birth-probe `mapGrammarFacts''_bracketVal`.  This confirms the producer is
+    non-vacuous (its domain `MapBodyProps` is reachable at a real bracket window) AND correctly routes
+    M8 into conjunct 6's interior arm — the arm where R547/R548 found the bug. -/
+theorem mapGrammarFacts''_of_mapBodyProps_bracketVal : MapGrammarFacts'' fixtureMapSeqVal 2 13 :=
+  mapGrammarFacts''_of_mapBodyProps fixtureMapSeqVal 2 13 mapBodyProps_bracketVal
+
 -- Axiom audit — the carrier inhabitation and the boundary-survival probe lean only on core; the
 -- ASSEMBLE non-vacuity checks also pull in `Classical.choice` through the rebase's
 -- `flowBracketBalance_compose`.
@@ -768,5 +873,14 @@ theorem mapConjunct6GuardOnly_mixed_false : ¬ MapConjunct6GuardOnly fixtureMapM
 /-- info: 'MapCarrierRobustInhabitation.mapConjunct6GuardOnly_mixed_false' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in
 #print axioms mapConjunct6GuardOnly_mixed_false
+
+-- R549 — the hand-built `MapBodyProps` witness and the producer round-trip are core-clean.
+/-- info: 'MapCarrierRobustInhabitation.mapBodyProps_bracketVal' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
+#print axioms mapBodyProps_bracketVal
+
+/-- info: 'MapCarrierRobustInhabitation.mapGrammarFacts''_of_mapBodyProps_bracketVal' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
+#print axioms mapGrammarFacts''_of_mapBodyProps_bracketVal
 
 end MapCarrierRobustInhabitation

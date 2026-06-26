@@ -398,6 +398,63 @@ theorem MapInteriorSeparators''_narrow {tokens : Array (Positioned YamlToken)} {
   intro a b ha hab hb hgate
   exact h a b (Nat.le_trans h_lo ha) hab (Nat.le_trans hb h_hi) hgate
 
+/-- **The PRODUCER of the corrected facts off emission's structural bundle** — `MapGrammarFacts''` is a
+    structural WEAKENING of `MapBodyProps` (`ParserGrammableBase.lean:1220`), so it follows from it on
+    the SAME window `[lo,hi)`.  This is the artifact that GROUNDS the R548 corrected target in what
+    real emission actually yields: `MapBodyProps`'s M5/M8 (`key_bracket_value`/`value_bracket_succ`) are
+    the existential matching-close-pinned facts that conjuncts 5/6 were re-keyed to, and M3/M4/M6/M7
+    feed conjuncts 1–4.  The mapping is exact:
+
+      * conjunct 1 ← M3 `key_content`        (`k+1 < hi ∧ isFlowContentStart` ⟹ the interior arm)
+      * conjunct 2 ← M4 `key_scalar_value`   (`k+2 < hi ∧ .value`)
+      * conjunct 3 ← M6 `value_content`
+      * conjunct 4 ← M7 `value_scalar_succ`  (`k+2 ≤ hi ∧ (.flowEntry ∨ (.flowMappingEnd ∧ k+2=hi))`)
+      * conjunct 5 ← M5 `key_bracket_value`  (`∃ j` matching close + `j+1 < hi ∧ .value` ⟹ interior arm)
+      * conjunct 6 ← M8 `value_bracket_succ` (`∃ j` matching close + `j+1 ≤ hi ∧ (.flowEntry ∨ …)`)
+
+    Every conjunct takes the INTERIOR (`Or.inr`) arm; the `MapGrammarFacts''` window-close escapes
+    (`b ≤ k+1`, `b ≤ j+1`) are slack `MapBodyProps` never needs (it is the stronger, escape-free form on
+    a genuine body window).  So `MapGrammarFacts''` is strictly WEAKER than `MapBodyProps`, and this
+    producer is correct-by-construction (a pure repackaging of the M-fields).  Since
+    `mapWindow_mapBodyProps_general` (`:2912`) already produces `MapBodyProps` off emission, the eventual
+    `mapRoot_mapGrammarFacts''` derives from this composition — the inhabitation of `MapGrammarFacts''`
+    at real emission, not just on fixtures, lands HERE ([[ref-inhabitation-debt-validate-target-defs]],
+    R545 "produce the witness first").
+
+    INHABITATION-DEBT discipline: probed in `Tests/Reflections/MapCarrierRobustInhabitation.lean` (R549)
+    by ROUTING a hand-built concrete `MapBodyProps fixtureMapSeqVal 2 13` (`{a:[1], b:2}`, the
+    `#guard`-grounded emission where M8 FIRES at the value's bracket with an INTERIOR close `j=7`,
+    `j+1 = 8 < 13` — the exact arm R547/R548 found buggy) through this producer, recovering the same
+    `MapGrammarFacts''` the R548 birth-probe proved directly.  The witness is built INDEPENDENTLY (not
+    projected), so the round-trip is a genuine non-vacuous reachability check of the producer's domain
+    (rule 3).  Verified-but-unconsumed: references no sorry site; frontier sorry count unchanged at 4. -/
+theorem mapGrammarFacts''_of_mapBodyProps (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h : MapBodyProps tokens lo hi) :
+    MapGrammarFacts'' tokens lo hi := by
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
+  -- conjunct 1: key → content-start  (M3)
+  · intro k hlo hhi hbal htok
+    exact Or.inr (h.key_content k hlo hhi hbal htok)
+  -- conjunct 2: key + scalar → value  (M4)
+  · intro k hlo hhi hbal htok hsc
+    exact Or.inr (h.key_scalar_value k hlo hhi hbal htok hsc)
+  -- conjunct 3: value → content-start  (M6)
+  · intro k hlo hhi hbal htok
+    exact Or.inr (h.value_content k hlo hhi hbal htok)
+  -- conjunct 4: value + scalar → FE/mapEnd  (M7)
+  · intro k hlo hhi hbal htok hsc
+    exact Or.inr (h.value_scalar_succ k hlo hhi hbal htok hsc)
+  -- conjunct 5: key + bracket → ∃ j matching close, value successor  (M5)
+  · intro k hlo hhi hbal htok hbr
+    obtain ⟨j, hj1, hj2, hmatch, hbalj, hj3, hval, hdyck⟩ :=
+      h.key_bracket_value k hlo hhi hbal htok hbr
+    exact Or.inr ⟨j, hj1, hj2, hmatch, hbalj, Or.inr ⟨hj3, hval⟩, hdyck⟩
+  -- conjunct 6: value + bracket → ∃ j matching close, FE/mapEnd successor  (M8)
+  · intro k hlo hhi hbal htok hbr
+    obtain ⟨j, hj1, hj2, hmatch, hbalj, hj3, hsucc, hdyck⟩ :=
+      h.value_bracket_succ k hlo hhi hbal htok hbr
+    exact Or.inr ⟨j, hj1, hj2, hmatch, hbalj, Or.inr ⟨hj3, hsucc⟩, hdyck⟩
+
 /-- **`MapGrammarFacts'` RE-BASING** — the robust analog of `bodySuccFact_rebase` (`:1940`), bundled
     over all six conjuncts. On a sub-window `[a,b) ⊆ [loS,hiS)` re-seated to the enclosing map's top
     level (`flowBracketBalance tokens loS a = 0`), the robust facts follow from the ENCLOSING window's
