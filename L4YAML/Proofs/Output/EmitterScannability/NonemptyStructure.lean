@@ -11162,6 +11162,80 @@ theorem recmapbody_navigator_driver (tokens : Array (Positioned YamlToken))
   have h_fe : tokens[m]!.val = .flowEntry := h_marker.resolve_left (by omega)
   exact oracle (m + 1) hi (by omega) (descend_tail lo hi m h_g h_lo_m h_lt h_fe)
 
+/-- **The JOINT map+seq body navigator driver** (Phase J — `(i'-b-B2c-desc-joint-navigator-driver)`,
+    R529), the brick that resolves the cross-deliverable IH knot the two single drivers
+    (`recseqbody_navigator_driver` / `recmapbody_navigator_driver`, R510/R528) left open.
+
+    Each single driver runs `windowWidth_strongRecOn` at a deliverable `P` fixed to ONE collection
+    (`RecSeqBody` or `RecMapBody`), so its width-oracle delivers only that one shape.  But the genuine
+    recursion is cross-deliverable: a map pair's key/value sub-block is itself one `RecSeqEntry`, and a
+    `RecSeqEntry.seq` stores `RecSeqBody interior` while a `RecSeqEntry.mapRec` stores `RecMapBody
+    interior` — so descending into a nested *sequence* under a map pair (or a nested *map* under a seq
+    entry) needs the OTHER body deliverable than the one the single oracle carries.  A single-collection
+    oracle cannot supply it; that is the knot.
+
+    The resolution is to run ONE width-recursion at a **close-token-dispatched JOINT deliverable**
+    `P lo hi := (tokens[hi] = .flowSequenceEnd → RecSeqBody …) ∧ (tokens[hi] = .flowMappingEnd →
+    RecMapBody …)` — the window's close bracket selects which body it is, and the conjunction carries
+    both implications so the oracle delivers WHICHEVER a narrower window needs.  Each per-window step
+    dispatches on the actual close token (`h_seqEnd` / `h_mapEnd`), locates the first item with the
+    matching collection-specific `locate` (`locate_seq` → `RecSeqEntry`, `locate_map` → `RecMapPair`),
+    and folds it with the matching assembler; the tail is drawn from the SAME joint oracle and projected
+    by the SAME close token (the suffix `[m+1, hi)` shares the window's close `tokens[hi]`, so its
+    dispatch agrees — `.1 h_seqEnd` / `.2 h_mapEnd`).  This is [[ref-consumer-joint-before-producer]] at
+    the deliverable layer: bundling the two close-keyed bodies into one conjunctive `P` is precisely the
+    joint that lets a single recursion feed both halves.
+
+    Both single drivers are now PROJECTIONS of this one: `recseqbody_navigator_driver` is the `.1`
+    component (windows that close with `.flowSequenceEnd`), `recmapbody_navigator_driver` the `.2`.  The
+    proof is the two single-driver bodies run side by side under one `refine ⟨…, …⟩`, sharing the single
+    `windowWidth_strongRecOn` refine and the single joint oracle — no new analytical content, the marker
+    collapse (`resolve_left ∘ omega`) and `descend_tail` advance are the verbatim collection-agnostic
+    stitch ([[ref-navigator-driver-stitch-two-obligations]]).
+
+    Verified-but-unconsumed until the concrete `G` / `locate_seq` / `locate_map` / `descend_tail` are
+    supplied (the locate's first-item classify is the remaining analytical work — but it now receives the
+    joint oracle, so its key/value sub-blocks draw `RecSeqBody`/`RecMapBody` from one source): composes
+    only `windowWidth_strongRecOn` + both window assemblers, references no sorry site, frontier sorry
+    count unchanged at 4; axioms `[propext, Classical.choice, Quot.sound]` (Classical via the reused
+    assemblers' segment-split), identical to both single drivers. -/
+theorem recbody_joint_navigator_driver (tokens : Array (Positioned YamlToken))
+    (G : Nat → Nat → Prop)
+    (h_hi_sz : ∀ lo hi, G lo hi → hi < tokens.size)
+    (locate_seq : ∀ lo hi, G lo hi → tokens[hi]!.val = .flowSequenceEnd →
+        (∀ lo' hi', hi' - lo' < hi - lo → G lo' hi' →
+          (tokens[hi']!.val = .flowSequenceEnd → RecSeqBody ((tokens.toList.take hi').drop lo')) ∧
+          (tokens[hi']!.val = .flowMappingEnd → RecMapBody ((tokens.toList.take hi').drop lo'))) →
+        ∃ m, lo < m ∧ m ≤ hi ∧
+          (m = hi ∨ tokens[m]!.val = .flowEntry) ∧
+          RecSeqEntry ((tokens.toList.take m).drop lo))
+    (locate_map : ∀ lo hi, G lo hi → tokens[hi]!.val = .flowMappingEnd →
+        (∀ lo' hi', hi' - lo' < hi - lo → G lo' hi' →
+          (tokens[hi']!.val = .flowSequenceEnd → RecSeqBody ((tokens.toList.take hi').drop lo')) ∧
+          (tokens[hi']!.val = .flowMappingEnd → RecMapBody ((tokens.toList.take hi').drop lo'))) →
+        ∃ m, lo < m ∧ m ≤ hi ∧
+          (m = hi ∨ tokens[m]!.val = .flowEntry) ∧
+          RecMapPair ((tokens.toList.take m).drop lo))
+    (descend_tail : ∀ lo hi m, G lo hi → lo < m → m < hi →
+        tokens[m]!.val = .flowEntry → G (m + 1) hi) :
+    ∀ lo hi, G lo hi →
+      (tokens[hi]!.val = .flowSequenceEnd → RecSeqBody ((tokens.toList.take hi).drop lo)) ∧
+      (tokens[hi]!.val = .flowMappingEnd → RecMapBody ((tokens.toList.take hi).drop lo)) := by
+  refine windowWidth_strongRecOn G (fun lo hi h_g oracle => ?_)
+  refine ⟨fun h_seqEnd => ?_, fun h_mapEnd => ?_⟩
+  · -- seq-closing window: locate first ENTRY, assemble, draw the tail's seq half from the joint oracle.
+    obtain ⟨m, h_lo_m, h_m_hi, h_marker, h_entry⟩ := locate_seq lo hi h_g h_seqEnd oracle
+    refine recseqbody_window_assemble tokens lo m hi h_lo_m h_m_hi (h_hi_sz lo hi h_g)
+      h_marker h_entry (fun h_lt => ?_)
+    have h_fe : tokens[m]!.val = .flowEntry := h_marker.resolve_left (by omega)
+    exact (oracle (m + 1) hi (by omega) (descend_tail lo hi m h_g h_lo_m h_lt h_fe)).1 h_seqEnd
+  · -- map-closing window: locate first PAIR, assemble, draw the tail's map half from the joint oracle.
+    obtain ⟨m, h_lo_m, h_m_hi, h_marker, h_pair⟩ := locate_map lo hi h_g h_mapEnd oracle
+    refine recmapbody_window_assemble tokens lo m hi h_lo_m h_m_hi (h_hi_sz lo hi h_g)
+      h_marker h_pair (fun h_lt => ?_)
+    have h_fe : tokens[m]!.val = .flowEntry := h_marker.resolve_left (by omega)
+    exact (oracle (m + 1) hi (by omega) (descend_tail lo hi m h_g h_lo_m h_lt h_fe)).2 h_mapEnd
+
 /-- Token structure of `scanFiltered ("[" ++ emitList items ++ "]")` for non-empty items.
     Establishes boundary tokens, body token patterns, and `parseNode` success within
     the flow sequence body.
