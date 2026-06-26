@@ -308,6 +308,96 @@ theorem MapInteriorSeparators'_advance {tokens : Array (Positioned YamlToken)} {
     MapInteriorSeparators' tokens (m + 1) hi :=
   MapInteriorSeparators'_narrow h_lo (Nat.le_refl hi) h
 
+/-! ### The MATCHING-CLOSE-pinned map separator carrier — the SECOND fragility axis (R548)
+
+R547 refuted the robust carrier `MapInteriorSeparators'` (`:280`) on the bracket-VALUED map
+`{a:[1], b:2}`: its `MapGrammarFacts'` conjuncts 5/6 fire on a GENERIC interior closer `j` with no
+guard that the trigger's successor `tokens[k+1]` is a bracket-start. R548 PROBES the obvious fix —
+adding the `MapBodyProps` M5/M8 bracket-start guard `tokens[k+1] ∈ {.flowSequenceStart, .flowMappingStart}`
+— and finds it INSUFFICIENT (inhabitation-debt rule 2: probe the fix on a fixture where the conjunct
+fires NON-vacuously, BEFORE building on it). On `{a:[1], [2]:3}` the value marker `k = 4` has a
+bracket-start at `k+1` (guard fires), but a GENERIC closer `j = 12` — the matching close of the *next
+entry's complex KEY* `[2]` — also returns the window-relative balance to `0`, and conjunct 6 then
+demands `.flowEntry` at `j+1 = 13` where the stream has `.value`. FALSE. So conjuncts 5/6 have TWO
+orthogonal fragility axes: (i) the trigger guard (R547's diagnosis), and (ii) the CLOSER must be
+pinned to the trigger's OWN matching close, not any later depth-0-returning closer.
+
+This block lands the corrected predicate as a NEW ADDITIVE PARALLEL TYPE `MapGrammarFacts''`
+([[ref-additive-parallel-type-over-shared-edit]] — never an edit to the shared `MapGrammarFacts'`,
+whose R542–R546 assembler/connector/bridge consumers depend on its exact shape). Conjuncts 1–4 are the
+robust `MapGrammarFacts'` conjuncts verbatim; conjuncts 5/6 are re-keyed to the FULL `MapBodyProps`
+M5/M8 EXISTENTIAL form — guard on `tokens[k+1]`, then `∃ j` that is the bracket's OWN matching close
+(`flowBracketBalance tokens (k+2) j = 0` with the Dyck floor `∀ p ∈ [k+2,j], flowBracketBalance (k+2) p ≥ 0`,
+which together pin `j` to the *first* return to depth 0 and so EXCLUDE the spurious `j = 12`) — and
+KEEP the R541 window-close escape on both the trigger (`b ≤ k+1`) and the successor
+(`b ≤ j+1 ∨ …`) so the carrier still survives the degenerate cut windows R541 made robust. The
+existential matching-close form is exactly what `mapWindow_mapBodyProps_general` already PRODUCES off
+emission (M5/M8), so the eventual `mapRoot_mapGrammarFacts''` producer derives from it; `MapGrammarFacts''`
+is strictly WEAKER than M5/M8 (the escapes only add disjuncts), so the producer takes the genuine arm.
+
+INHABITATION-DEBT discipline ([[ref-inhabitation-debt-validate-target-defs]]): probed AT BIRTH in
+`Tests/Reflections/MapCarrierRobustInhabitation.lean` (R548) on FOUR fixtures — `{a:1}` (5/6 vacuous),
+`{a:[1], b:2}` (the EXACT fixture R547 refuted `MapGrammarFacts'` on, now TRUE — conjunct 6 fires
+existentially picking the value's own close `j=7`), `{[1]:2}` (conjunct 5 fires at a complex key), and
+`{a:[1], [2]:3}` (BOTH fire; the existential picks the right `j`, where the generic-guard form is
+refuted) — all grounded against real `scanFiltered (emit ·)`. Verified-but-unconsumed: the rebase,
+assembler, producer, and consumer-field reconciliation against this corrected target are later bricks;
+references no sorry site; frontier sorry count unchanged at 4. -/
+
+/-- **The six map-grammar facts with conjuncts 5/6 MATCHING-CLOSE-pinned** — the `''` variant of
+    `MapGrammarFacts'` (`:256`). Conjuncts 1–4 are the robust `MapGrammarFacts'` conjuncts verbatim.
+    Conjuncts 5/6 are re-keyed to the `MapBodyProps` M5/M8 form (`ParserGrammableBase.lean:1240`/`:1264`):
+    a bracket-start GUARD on `tokens[k+1]`, an EXISTENTIAL `j` pinned to that bracket's own matching
+    close (balance-from-`k+2` zero + Dyck floor), and the R541 window-close escapes on trigger and
+    successor. This fires only on a COMPLEX KEY / BRACKET VALUE whose `j` is its OWN close — never on a
+    later unrelated closer (the R548 fix for the second fragility axis). -/
+def MapGrammarFacts'' (tokens : Array (Positioned YamlToken)) (a b : Nat) : Prop :=
+  (∀ k, a ≤ k → k < b → flowBracketBalance tokens a k = 0 → tokens[k]!.val = .key →
+      b ≤ k + 1 ∨ (k + 1 < b ∧ isFlowContentStart tokens[k + 1]!.val)) ∧
+  (∀ k, a ≤ k → k < b → flowBracketBalance tokens a k = 0 → tokens[k]!.val = .key →
+      (∃ c s, tokens[k + 1]!.val = .scalar c s) →
+      b ≤ k + 2 ∨ (k + 2 < b ∧ tokens[k + 2]!.val = .value)) ∧
+  (∀ k, a ≤ k → k < b → flowBracketBalance tokens a k = 0 → tokens[k]!.val = .value →
+      b ≤ k + 1 ∨ (k + 1 < b ∧ isFlowContentStart tokens[k + 1]!.val)) ∧
+  (∀ k, a ≤ k → k < b → flowBracketBalance tokens a k = 0 → tokens[k]!.val = .value →
+      (∃ c s, tokens[k + 1]!.val = .scalar c s) →
+      b ≤ k + 1 ∨ (k + 2 ≤ b ∧ (tokens[k + 2]!.val = .flowEntry ∨ (tokens[k + 2]!.val = .flowMappingEnd ∧ k + 2 = b)))) ∧
+  (∀ k, a ≤ k → k < b → flowBracketBalance tokens a k = 0 → tokens[k]!.val = .key →
+      (tokens[k + 1]!.val = .flowSequenceStart ∨ tokens[k + 1]!.val = .flowMappingStart) →
+      b ≤ k + 1 ∨ (∃ j, k + 1 < j ∧ j < b ∧
+        ((tokens[k + 1]!.val = .flowSequenceStart ∧ tokens[j]!.val = .flowSequenceEnd) ∨
+         (tokens[k + 1]!.val = .flowMappingStart ∧ tokens[j]!.val = .flowMappingEnd)) ∧
+        flowBracketBalance tokens (k + 2) j = 0 ∧
+        (b ≤ j + 1 ∨ (j + 1 < b ∧ tokens[j + 1]!.val = .value)) ∧
+        (∀ p, k + 2 ≤ p → p ≤ j → flowBracketBalance tokens (k + 2) p ≥ 0))) ∧
+  (∀ k, a ≤ k → k < b → flowBracketBalance tokens a k = 0 → tokens[k]!.val = .value →
+      (tokens[k + 1]!.val = .flowSequenceStart ∨ tokens[k + 1]!.val = .flowMappingStart) →
+      b ≤ k + 1 ∨ (∃ j, k + 1 < j ∧ j < b ∧
+        ((tokens[k + 1]!.val = .flowSequenceStart ∧ tokens[j]!.val = .flowSequenceEnd) ∨
+         (tokens[k + 1]!.val = .flowMappingStart ∧ tokens[j]!.val = .flowMappingEnd)) ∧
+        flowBracketBalance tokens (k + 2) j = 0 ∧
+        (b ≤ j + 1 ∨ (j + 1 ≤ b ∧ (tokens[j + 1]!.val = .flowEntry ∨ (tokens[j + 1]!.val = .flowMappingEnd ∧ j + 1 = b)))) ∧
+        (∀ p, k + 2 ≤ p → p ≤ j → flowBracketBalance tokens (k + 2) p ≥ 0)))
+
+/-- **The matching-close-pinned map separator carrier** — the `''` variant of `MapInteriorSeparators'`
+    (`:280`), threading the corrected `MapGrammarFacts''`. Over `[lo,hi)`: every map-typed
+    depth-`0`-balanced bracket-interior sub-window `[a,b) ⊆ [lo,hi)` satisfies the corrected facts.
+    Unlike `MapInteriorSeparators'`, this one is INHABITED on bracket-bearing maps (the `Tests/` probe
+    holds on `{a:[1],b:2}`, `{[1]:2}`, `{a:[1],[2]:3}`, where `MapInteriorSeparators'` is refuted). -/
+def MapInteriorSeparators'' (tokens : Array (Positioned YamlToken)) (lo hi : Nat) : Prop :=
+  ∀ a b, lo ≤ a → a ≤ b → b ≤ hi → MapTypedInterior tokens a b → MapGrammarFacts'' tokens a b
+
+/-- **Subset restriction (the descend/advance edge, matching-close-pinned form).** The exact mirror of
+    `MapInteriorSeparators'_narrow` (`:287`) — the quantifier body is reused verbatim, only the domain
+    shrinks; `_narrow` never inspects the bundled facts, so the proof is byte-identical regardless of
+    payload. -/
+theorem MapInteriorSeparators''_narrow {tokens : Array (Positioned YamlToken)} {lo hi lo' hi' : Nat}
+    (h_lo : lo ≤ lo') (h_hi : hi' ≤ hi)
+    (h : MapInteriorSeparators'' tokens lo hi) :
+    MapInteriorSeparators'' tokens lo' hi' := by
+  intro a b ha hab hb hgate
+  exact h a b (Nat.le_trans h_lo ha) hab (Nat.le_trans hb h_hi) hgate
+
 /-- **`MapGrammarFacts'` RE-BASING** — the robust analog of `bodySuccFact_rebase` (`:1940`), bundled
     over all six conjuncts. On a sub-window `[a,b) ⊆ [loS,hiS)` re-seated to the enclosing map's top
     level (`flowBracketBalance tokens loS a = 0`), the robust facts follow from the ENCLOSING window's

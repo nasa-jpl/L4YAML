@@ -23560,7 +23560,7 @@ abstracts over `_a` whose type the bound depends on).
 
 ## Phase 3 — Stage C: EmitterScannability discharge — `.flowmono` / `.body` / `.bridge` (Reflections 153–192)
 
-### Frontier status — the 4 remaining `sorry`s and the path to close them (snapshot 2026-06-26, R547)
+### Frontier status — the 4 remaining `sorry`s and the path to close them (snapshot 2026-06-26, R548)
 
 The reflections in this section all discharge a single end goal: the well-bracketing
 certificate `FlowSubrangesOk tokens` that lets the flow-collection parser provably
@@ -23706,14 +23706,35 @@ shared recursion** rather than two mirrored ones:
      `MapGrammarFacts''`, re-probe on BOTH `{a:1}` AND `{a:[1],b:2}`, and reconcile the consumer field — BEFORE any
      root/descent producer work, which would otherwise target a false predicate. The refutation + the gate-fires
      witness + the carrier-refuted theorem landed `Tests/Reflections/MapCarrierRobustInhabitation.lean`, axiom-clean
-     `[propext, Quot.sound]`. **This is the immediate next brick, displacing `mapRoot_mapGrammarFacts'`.**
+     `[propext, Quot.sound]`.
+   - **R548 corrected the redirect itself: the M5/M8 guard is necessary but NOT sufficient — conjuncts 5/6 carry a
+     SECOND fragility axis.** Inhabitation-debt says the *predicted fix* is a to-be-built `def` like any other —
+     probe it at birth before building producers on it. Probing the guard-only form on `{a: [1], [2]: 3}` (a map
+     with TWO bracket entries, `#guard`ed = real emission) REFUTES it: at the value marker `k = 4` the bracket-start
+     guard fires, but a GENERIC closer `j = 12` — the matching close of the *next entry's complex key* `[2]` — also
+     returns the window balance to 0, and the guard-only conjunct 6 demands `.flowEntry` at `13` where the stream has
+     `.value` (`mapConjunct6GuardOnly_mixed_false`). So besides the trigger guard, the closer `j` must be pinned to
+     the trigger's OWN matching close: the full `MapBodyProps` M5/M8 EXISTENTIAL form (`∃ j` with
+     `flowBracketBalance (k+2) j = 0` AND the Dyck floor `flowBracketBalance (k+2) p ≥ 0`, which excludes the decoy
+     whose balance dips below 0). R547's `{a:[1],b:2}` had conjunct 5 vacuous and conjunct 6 firing once with NO
+     decoy — it would have BLESSED the guard-only form; the decoy needs a SECOND bracket entry. **R548 LANDED the
+     corrected target**: the new additive `MapGrammarFacts''` / `MapInteriorSeparators''` (full M5/M8 existential
+     conjuncts 5/6 keeping the R541 window-close escapes) in `SeqInteriorSeparators.lean`, PROBED AT BIRTH on four
+     scanner-grounded fixtures — `mapGrammarFacts''_scalarVal` (`{a:1}`, 5/6 vacuous), `mapGrammarFacts''_bracketVal`
+     (`{a:[1],b:2}`, the EXACT window R547 refuted, now TRUE with conjunct 6 picking the value's own close `j=7`),
+     `mapGrammarFacts''_mixed` (`{a:[1],[2]:3}`, BOTH conjuncts fire), plus `mapConjunct6GuardOnly_mixed_false` and
+     the `_empty`/`_degenerate`/`mapInteriorSeparators''_unit` window-close survival — all axiom-clean
+     `[propext, Quot.sound]`, frontier held at 4. **The immediate next brick is now reconciling the consumer field
+     `MapLocated.h_key_bracket_succ` (and the rebase/assembler/connector/bridge chain) onto `MapGrammarFacts''`, then
+     building `mapRoot_mapGrammarFacts''` off emission (derivable from the M5/M8 producer `mapWindow_mapBodyProps_general`).**
 
 **Once `locate_map`, the M2 narrowing, and the two root carriers exist, the driver runs
 at the root and sorries 1 + 2 are one `exact` each** (same `FlowSubrangesOk tokens`
 proposition, both fed by the assembler over the driver's two projections). The remaining
-REAL obligations for Family A are: the **conjunct-5/6 bracket-start guard fix** (R547 — a new
-additive `MapGrammarFacts''` re-probed on `{a:[1],b:2}`, which the map root/descent providers
-must target *instead* of the currently-false `MapGrammarFacts'`), `locate_map` (mechanical —
+REAL obligations for Family A are: **reconciling the existing rebase/assembler/connector/bridge chain
+and the consumer field `MapLocated.h_key_bracket_succ` onto the corrected `MapGrammarFacts''`** (R548 —
+the full M5/M8 existential conjuncts 5/6 LANDED and birth-probed; the map root/descent providers now
+target it *instead* of the false `MapGrammarFacts'`), `locate_map` (mechanical —
 R537's recipe mirrored to the map dispatch), the M2 narrowing, and the two descent/root-carrier
 providers (the only genuinely open math, symmetric across seq/map thanks to R513–R515).
 
@@ -31425,6 +31446,16 @@ The window's close bracket selects which body it is, and the *conjunction* carri
 **LANDED (R531 — `SeqInteriorSeparators.lean`):** build green at exactly 4 frontier sorries (`NonemptyStructure:11586` + `EmitterScannability:315/809/848`), full `L4YAML` + `Tests.Reflections` (410 jobs). New demo `Tests/Reflections/JointContentPackFromCarrier.lean` (proves the abstract `joint_content_pack` once — parametric in `close, Win, DeepS, DeepM, ContentS, ContentM, CarrierS, CarrierM, M2, EncS, EncM, provideS, provideM`, the dual-pack assembly where the map provider alone consumes the close token and the deferred `M2`; instantiates at toy guards and RUNS both packs — `hi = 3 → seqEnd`, `hi = 4 → mapEnd`; `demo` depends on no axioms), new memory `ref-content-pack-passthrough-manufacture`, `MEMORY.md` index updated.
 
 **Next step.** With R530's debt (b) discharged, brick (2) reduces to: (i) re-type the joint driver's `locate` marker to carry the depth-`0` balance `flowBracketBalance tokens lo m = 0`, and fold the two outer carriers + the deferred map fact + the frame bounds into the guard `G`, so the descend's `h_seq_pack`/`h_map_pack` come from `recbody_joint_content_pack` per-window and its `h_bal_m` from the strengthened marker; (iii) construct the concrete `locate_seq` (R527-fed dispatch + R510's route) and `locate_map` (R522 → R523/R525 → R524 → R527 → `recmapentry_pair_located`), each passed the JOINT oracle. Then `recbody_joint_navigator_driver`'s `.2` is the raw `h_map_rec` `flowSubrangesOk_of_window_producers` consumes (closing brick (2)), its `.1` the seq `h_seq_rec`. *[Acted on by Reflection 532: piece (i)'s descend-assembly part — "so the descend's `h_seq_pack`/`h_map_pack` come from `recbody_joint_content_pack` per-window" — is now LANDED as `recbody_joint_descend_tail_carrier`, the composition R531 ∘ R530 that feeds R531's output into R530's opaque content slot, producing the concrete `descend_tail` (= the suffix guard `G (m+1) hi`). The content debt is gone from the descend's interface; what remains for piece (i) is the driver-marker strengthening for `h_bal_m` and folding the carriers/M2/bounds into `G` so the driver's `descend_tail` slot is this lemma. Piece (iii) (the two concrete `locate`s) is untouched.]*
+
+### Reflection 548 — the redirect's redirect: the M5/M8 guard is necessary but NOT sufficient, so the corrected `MapGrammarFacts''` adopts the FULL existential matching-close form. **R547 refuted the robust carrier `MapInteriorSeparators'` on the bracket-valued map `{a:[1], b:2}` and prescribed the cure: add the `MapBodyProps` M5/M8 bracket-start guard `tokens[k+1] ∈ {.flowSequenceStart, .flowMappingStart}` to the generic-`j` conjuncts 5/6. Inhabitation-debt ([[ref-inhabitation-debt-validate-target-defs]]) says the *predicted fix* is itself a to-be-built `def` — probe it at birth BEFORE building producers on it. R548 did, and the guard-only fix is REFUTED.**
+
+**The second fragility axis.** Probing the guard-only conjunct 6 on `{a: [1], [2]: 3}` — the smallest map with TWO bracket entries, `#guard`ed against real `scanFiltered (emit ·)` — refutes it. At the value marker `k = 4` the bracket-start guard fires, but a GENERIC closer `j = 12` (the matching close of the *next entry's complex key* `[2]`) also returns the window-relative balance to 0, and conjunct 6 then demands `.flowEntry` at index 13 where the stream has `.value` (`mapConjunct6GuardOnly_mixed_false`). So conjuncts 5/6 are fragile on TWO orthogonal axes: (i) the trigger guard (R547's diagnosis), and (ii) the closer `j` must be pinned to the trigger's OWN matching close, not any later depth-0-returning closer. The window-close escape (R541) addressed neither; the guard addresses only (i). This is the per-axis lesson ([[ref-boundary-robust-vs-fragile-separator-fact]]) sharpened: a SINGLE conjunct can carry multiple fragility axes, and a robustness/guard transform is keyed to exactly one.
+
+**The decoy is why R547's fixture was insufficient.** `{a:[1], b:2}` has conjunct 5 vacuous and conjunct 6 firing exactly once with no rival closer — it would have BLESSED the guard-only form. Catching axis (ii) requires a fixture where the guarded conjunct FIRES *and* a DECOY closer competes — hence a SECOND bracket entry. The cure for (ii) is the full `MapBodyProps` M5/M8 EXISTENTIAL form: `∃ j` pinned by `flowBracketBalance (k+2) j = 0` AND the Dyck floor `flowBracketBalance (k+2) p ≥ 0` (which EXCLUDES the decoy, whose balance dips below 0). That is exactly what `mapWindow_mapBodyProps_general` already PRODUCES off emission, so the eventual `mapRoot_mapGrammarFacts''` derives from it; `MapGrammarFacts''` is strictly WEAKER than M5/M8 (the R541 escapes only add disjuncts), so the producer takes the genuine arm.
+
+**What landed.** The new additive `MapGrammarFacts''` / `MapInteriorSeparators''` (conjuncts 1–4 = the robust `MapGrammarFacts'` verbatim; conjuncts 5/6 = the M5/M8 existential matching-close form with the R541 window-close escapes on trigger and successor) in `SeqInteriorSeparators.lean` — an ADDITIVE PARALLEL TYPE ([[ref-additive-parallel-type-over-shared-edit]]), never an edit to the shared `MapGrammarFacts'` whose R542–R546 consumers depend on its shape. PROBED AT BIRTH in `Tests/Reflections/MapCarrierRobustInhabitation.lean` on four scanner-grounded fixtures: `mapGrammarFacts''_scalarVal` (`{a:1}`, 5/6 vacuous), `mapGrammarFacts''_bracketVal` (`{a:[1],b:2}`, the EXACT window R547 refuted `MapGrammarFacts'` on — now TRUE, conjunct 6 picking the value's own close `j=7`), `mapGrammarFacts''_mixed` (`{a:[1],[2]:3}`, BOTH conjuncts fire, each picking the trigger's own close), the decoy refutation `mapConjunct6GuardOnly_mixed_false`, and `_empty`/`_degenerate`/`mapInteriorSeparators''_unit` confirming the existential re-keying preserves the R541 window-close robustness. All axiom-clean `[propext, Quot.sound]`; full build green at exactly 4 frontier sorries (782 jobs). Verified-but-unconsumed: no source `sorry` site referenced.
+
+**Next step.** Reconcile the existing rebase/assembler/connector/bridge chain and the consumer field `MapLocated.h_key_bracket_succ` (`NonemptyStructure.lean:10531`, the same unguarded generic-closer shape) onto `MapGrammarFacts''`; then build `mapRoot_mapGrammarFacts''` off emission via `mapWindow_mapBodyProps_general` (M5/M8), which the dispatcher's `h_facts` and the root seed `mapRoot_mapInteriorSeparators''` consume. Family B (sorries 3/4, contentEq) remains a separate untouched effort.
 
 ### Reflection 546 — the robust→strict bridge `mapGrammarFacts_of_mapGrammarFacts'` lands: the genuine INVERSE of R545's connector, the `b = hi` strengthening the strict consumer demands. **R545 landed the FREE direction (strict→robust): the robust form only *adds* a window-close escape `b ≤ <position>` to each fragile conjunct, so any strict witness weakens unconditionally. R546 lands the converse — robust→strict — which is BOUNDARY-FRAGILE: it holds only where each escape can be REFUTED, i.e. on a GENUINE complete map body where no `.key`/`.value` marker immediately precedes the close. Those refutations are the genuine emission leaf, lifted here as five hypotheses `hk1`/`hk2`/`hv1`/`hv2`/`hk5` ([[ref-parametric-assembler-extraction]]) — each asserting a marker's required successor lands STRICTLY inside the window. Given them the bridge is pure: each robust conjunct's INTERIOR arm IS the strict conclusion verbatim (`MapGrammarFacts'` vs `MapGrammarFacts`), so the proof `rcases`-es each escape-vs-interior disjunct, refutes the escape via its lifted bound, and returns the interior arm. Conjunct 6 is already robust `=` strict and needs no refuter. Axiom-clean `[propext, Quot.sound]`.**
 

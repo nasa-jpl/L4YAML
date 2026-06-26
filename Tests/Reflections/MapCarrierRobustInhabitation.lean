@@ -399,6 +399,302 @@ theorem mapInteriorSeparators'_bracketVal_false : ¬ MapInteriorSeparators' fixt
   exact mapGrammarFacts'_bracketVal_false
     (h 2 13 (Nat.le_refl 2) (by omega) (Nat.le_refl 13) mapTypedInterior_bracketVal)
 
+/-! ## R548 — the matching-close-pinned carrier `MapGrammarFacts''` probed AT BIRTH on FOUR fixtures
+
+R547 refuted `MapGrammarFacts'` on `{a:[1], b:2}`. The obvious fix — add the `MapBodyProps` M5/M8
+bracket-start guard `tokens[k+1] ∈ {.flowSequenceStart, .flowMappingStart}` to the generic-`j`
+conjuncts 5/6 — is PROBED HERE before being built on (inhabitation-debt rule 2), and found
+INSUFFICIENT: on `{a:[1], [2]:3}` the value marker `k = 4` has a bracket-start at `k+1` (guard fires),
+but a GENERIC closer `j = 12` — the matching close of the *next entry's complex KEY* `[2]` — also
+returns the window balance to `0`, and the guard-only conjunct 6 then demands `.flowEntry` at `13`
+where the stream has `.value` (`mapConjunct6GuardOnly_mixed_false` below). So conjuncts 5/6 have TWO
+orthogonal fragility axes — the trigger GUARD (R547) and the closer must be the trigger's OWN matching
+close. The corrected `MapGrammarFacts''` (`SeqInteriorSeparators.lean`) adopts the full M5/M8
+EXISTENTIAL form (guard + `∃ j` pinned by `flowBracketBalance (k+2) j = 0` and the Dyck floor) while
+keeping the R541 window-close escapes.
+
+These probes are the at-birth inhabitation owed on `MapGrammarFacts''` (the discipline its fragile
+predecessors taught): proved TRUE on `{a:1}` (5/6 vacuous), on `{a:[1], b:2}` (the EXACT window R547
+refuted `MapGrammarFacts'` on — now TRUE, conjunct 6 firing existentially with the value's OWN close
+`j=7`), and on `{a:[1], [2]:3}` (BOTH conjuncts fire, picking the right `j` where the generic-guard
+form is refuted). Each fixture is grounded against real `scanFiltered (emit ·)`. The window-close
+survival probes (`_empty`/`_degenerate`/`_unit`) confirm the new existential conjuncts do not break the
+R541 robustness axis. -/
+
+/-- Discharge `isFlowContentStart <concrete fixture token>` — the def is
+    `(∃ c s, t = .scalar c s) ∨ t = .flowSequenceStart ∨ t = .flowMappingStart`, a Prop with no
+    `Decidable` instance, so it cannot be `decide`d. Try the two bracket arms (`decide`-cheap), then the
+    scalar arm with each content/style appearing in the R548 fixtures. -/
+local macro "ifcs" : tactic =>
+  `(tactic| first
+    | exact Or.inr (Or.inl (by decide))
+    | exact Or.inr (Or.inr (by decide))
+    | exact Or.inl ⟨"a", .doubleQuoted, by decide⟩
+    | exact Or.inl ⟨"b", .doubleQuoted, by decide⟩
+    | exact Or.inl ⟨"1", .doubleQuoted, by decide⟩
+    | exact Or.inl ⟨"2", .doubleQuoted, by decide⟩
+    | exact Or.inl ⟨"3", .doubleQuoted, by decide⟩
+    | exact Or.inl ⟨"a", .plain, by decide⟩
+    | exact Or.inl ⟨"1", .plain, by decide⟩)
+
+/-- The corrected facts hold on the EMPTY window `[a,a)` — every conjunct's `a ≤ k → k < a` is
+    contradictory, so all six are vacuous (the existential conjuncts 5/6 included). -/
+theorem mapGrammarFacts''_empty (tokens : Array (Positioned YamlToken)) (a : Nat) :
+    MapGrammarFacts'' tokens a a := by
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩ <;> intro k h1 h2 <;> exact absurd h2 (by omega)
+
+/-- **The corrected facts SURVIVE the window-close boundary** `[k, k+1)` for EVERY stream — exactly as
+    the R541 robust facts did. The only trigger is `k` itself; conjuncts 1/3/5/6 escape via `b ≤ k+1`
+    and 2 via `b ≤ k+2` (the existential conjuncts 5/6 take the same window-close LEFT disjunct, never
+    needing to exhibit a `j`). Confirms the M5/M8 existential re-keying did not cost the R541
+    robustness. -/
+theorem mapGrammarFacts''_degenerate (tokens : Array (Positioned YamlToken)) (k : Nat) :
+    MapGrammarFacts'' tokens k (k + 1) := by
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
+  · intro k' h1 h2 _ _; exact Or.inl (by omega)
+  · intro k' h1 h2 _ _ _; exact Or.inl (by omega)
+  · intro k' h1 h2 _ _; exact Or.inl (by omega)
+  · intro k' h1 h2 _ _ _; exact Or.inl (by omega)
+  · intro k' h1 h2 _ _ _; exact Or.inl (by omega)
+  · intro k' h1 h2 _ _ _; exact Or.inl (by omega)
+
+/-- **The corrected CARRIER is inhabited on a unit span** `[lo, lo+1)` for EVERY stream — mirror of the
+    R541 `mapInteriorSeparators'_unit`. Every gated sub-window has width `≤ 1`, so it is empty or
+    window-close. The R541 carrier survived the window-close axis; this confirms `''` still does, now
+    with the matching-close-pinned conjuncts. -/
+theorem mapInteriorSeparators''_unit (tokens : Array (Positioned YamlToken)) (lo : Nat) :
+    MapInteriorSeparators'' tokens lo (lo + 1) := by
+  intro a b ha hab hb _hgate
+  rcases Nat.lt_or_ge a b with hLt | hGe
+  · have hb1 : b = a + 1 := by omega
+    rw [hb1]; exact mapGrammarFacts''_degenerate tokens a
+  · have hEq : a = b := by omega
+    rw [← hEq]; exact mapGrammarFacts''_empty tokens a
+
+/-- **`{a:1}` — conjuncts 5/6 VACUOUS** (no complex key, no bracket value, so the bracket-start guard
+    never fires) and 1–4 fire just as the robust form did. The sanity pole: the existential re-keying
+    leaves the scalar-only body still inhabited. -/
+theorem mapGrammarFacts''_scalarVal : MapGrammarFacts'' fixtureMapA1 1 5 := by
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
+  · intro k h1 h2 _ htok
+    rcases (show k = 1 ∨ k = 2 ∨ k = 3 ∨ k = 4 by omega) with rfl|rfl|rfl|rfl <;>
+      first | exact absurd htok (by decide) | exact Or.inr ⟨by omega, by ifcs⟩
+  · intro k h1 h2 _ htok _hsc
+    rcases (show k = 1 ∨ k = 2 ∨ k = 3 ∨ k = 4 by omega) with rfl|rfl|rfl|rfl <;>
+      first | exact absurd htok (by decide) | exact Or.inr ⟨by omega, by decide⟩
+  · intro k h1 h2 _ htok
+    rcases (show k = 1 ∨ k = 2 ∨ k = 3 ∨ k = 4 by omega) with rfl|rfl|rfl|rfl <;>
+      first | exact absurd htok (by decide) | exact Or.inr ⟨by omega, by ifcs⟩
+  · intro k h1 h2 _ htok _hsc
+    rcases (show k = 1 ∨ k = 2 ∨ k = 3 ∨ k = 4 by omega) with rfl|rfl|rfl|rfl <;>
+      first | exact absurd htok (by decide) | exact Or.inr ⟨by omega, Or.inr ⟨by decide, by omega⟩⟩
+  · intro k h1 h2 _ htok hg
+    rcases (show k = 1 ∨ k = 2 ∨ k = 3 ∨ k = 4 by omega) with rfl|rfl|rfl|rfl <;>
+      first | exact absurd htok (by decide) | exact absurd hg (by decide)
+  · intro k h1 h2 _ htok hg
+    rcases (show k = 1 ∨ k = 2 ∨ k = 3 ∨ k = 4 by omega) with rfl|rfl|rfl|rfl <;>
+      first | exact absurd htok (by decide) | exact absurd hg (by decide)
+
+/-- **`{a:[1], b:2}` body `[2,13)` — the EXACT window R547 refuted `MapGrammarFacts'` on, now TRUE for
+    `MapGrammarFacts''`.** Conjunct 6 FIRES at the value marker `k = 4` (bracket-start at `5`) and the
+    existential supplies the value's OWN matching close `j = 7` (`]`), after which `.flowEntry` at `8`
+    satisfies the successor — the generic closer that killed the robust form is never reached.
+    Conjunct 5 is vacuous (no complex key). The before/after pole of R547→R548. -/
+theorem mapGrammarFacts''_bracketVal : MapGrammarFacts'' fixtureMapSeqVal 2 13 := by
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
+  -- 1: key → content-start
+  · intro k h1 h2 _ htok
+    rcases (show k=2∨k=3∨k=4∨k=5∨k=6∨k=7∨k=8∨k=9∨k=10∨k=11∨k=12 by omega)
+      with rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl <;>
+      first | exact absurd htok (by decide) | exact Or.inr ⟨by omega, by ifcs⟩
+  -- 2: key + scalar → value
+  · intro k h1 h2 _ htok _hsc
+    rcases (show k=2∨k=3∨k=4∨k=5∨k=6∨k=7∨k=8∨k=9∨k=10∨k=11∨k=12 by omega)
+      with rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl <;>
+      first | exact absurd htok (by decide) | exact Or.inr ⟨by omega, by decide⟩
+  -- 3: value → content-start
+  · intro k h1 h2 _ htok
+    rcases (show k=2∨k=3∨k=4∨k=5∨k=6∨k=7∨k=8∨k=9∨k=10∨k=11∨k=12 by omega)
+      with rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl <;>
+      first | exact absurd htok (by decide) | exact Or.inr ⟨by omega, by ifcs⟩
+  -- 4: value + scalar → flowEntry/end (k=4 has a bracket value, so its scalar premise is FALSE)
+  · intro k h1 h2 _ htok hsc
+    rcases (show k=2∨k=3∨k=4∨k=5∨k=6∨k=7∨k=8∨k=9∨k=10∨k=11∨k=12 by omega)
+      with rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · obtain ⟨c, s, hcs⟩ := hsc
+      rw [show fixtureMapSeqVal[4 + 1]!.val = .flowSequenceStart from by decide] at hcs; cases hcs
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact Or.inr ⟨by omega, Or.inr ⟨by decide, by omega⟩⟩
+    · exact absurd htok (by decide)
+  -- 5: key + bracket-start → ∃ matching close (VACUOUS: no key has a bracket successor here)
+  · intro k h1 h2 _ htok hg
+    rcases (show k=2∨k=3∨k=4∨k=5∨k=6∨k=7∨k=8∨k=9∨k=10∨k=11∨k=12 by omega)
+      with rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl <;>
+      first | exact absurd htok (by decide) | exact absurd hg (by decide)
+  -- 6: value + bracket-start → ∃ matching close (FIRES at k=4, picking j=7, NOT a generic later closer)
+  · intro k h1 h2 _ htok hg
+    rcases (show k=2∨k=3∨k=4∨k=5∨k=6∨k=7∨k=8∨k=9∨k=10∨k=11∨k=12 by omega)
+      with rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact Or.inr ⟨7, by omega, by omega, Or.inl ⟨by decide, by decide⟩, by decide,
+        Or.inr ⟨by omega, Or.inl (by decide)⟩,
+        (by intro p hp1 hp2; rcases (show p = 6 ∨ p = 7 by omega) with rfl|rfl <;> decide)⟩
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd hg (by decide)
+    · exact absurd htok (by decide)
+
+/-- `{a: [1], [2]: 3}` — the smallest map firing BOTH existential conjuncts and exposing the
+    second fragility axis: entry 1 scalar-key/bracket-value (conjunct 6 fires at value `k=4`), entry 2
+    complex bracket-key/scalar-value (conjunct 5 fires at key `k=9`). -/
+def valMapMixed : YamlValue :=
+  .mapping .flow #[(sc "a", .sequence .flow #[sc "1"]), (.sequence .flow #[sc "2"], sc "3")]
+
+/-- The REAL `scanFiltered (emit valMapMixed)` filtered stream. Indices: 0 `streamStart`, 1 `{`,
+    2 `.key`, 3 `"a"`, 4 `.value`, 5 `[`, 6 `"1"`, 7 `]`, 8 `.flowEntry`, 9 `.key`, 10 `[`, 11 `"2"`,
+    12 `]`, 13 `.value`, 14 `"3"`, 15 `}`, 16 `streamEnd`. Map BODY window `[2, 15)`. -/
+def fixtureMapMixed : Array (Positioned YamlToken) :=
+  #[pt .streamStart, pt .flowMappingStart, pt .key, pt (.scalar "a" .doubleQuoted),
+    pt .value, pt .flowSequenceStart, pt (.scalar "1" .doubleQuoted), pt .flowSequenceEnd,
+    pt .flowEntry, pt .key, pt .flowSequenceStart, pt (.scalar "2" .doubleQuoted),
+    pt .flowSequenceEnd, pt .value, pt (.scalar "3" .doubleQuoted), pt .flowMappingEnd, pt .streamEnd]
+
+-- **Grounding (rule 5).** The mixed fixture's val-stream IS the real scanner output for `emit valMapMixed`.
+#guard (L4YAML.Scanner.scanFiltered (L4YAML.Emit.emit valMapMixed)).toOption.map
+          (fun toks => toks.toList.map (fun t => t.val))
+        = some (fixtureMapMixed.toList.map (fun t => t.val))
+
+/-- The gate FIRES on the mixed body window `[2,15)`. -/
+theorem mapTypedInterior_mixed : MapTypedInterior fixtureMapMixed 2 15 := by
+  refine ⟨by decide, by decide, ?_⟩
+  intro i h2 h15
+  rcases (show i=2∨i=3∨i=4∨i=5∨i=6∨i=7∨i=8∨i=9∨i=10∨i=11∨i=12∨i=13∨i=14∨i=15 by omega)
+    with rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl <;> decide
+
+/-- **`{a:[1], [2]:3}` body `[2,15)` — BOTH existential conjuncts fire, each picking the trigger's OWN
+    matching close.** Conjunct 6 at value `k=4` picks `j=7` (value `[1]`'s close, `.flowEntry` after);
+    conjunct 5 at the complex key `k=9` picks `j=12` (key `[2]`'s close, `.value` after). The generic
+    closer `j=12` that refutes the guard-only form (next theorem) is never selected — the Dyck floor
+    `flowBracketBalance (k+2) p ≥ 0` excludes it. The decisive non-vacuous probe for both conjuncts. -/
+theorem mapGrammarFacts''_mixed : MapGrammarFacts'' fixtureMapMixed 2 15 := by
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
+  -- 1: key → content-start
+  · intro k h1 h2 _ htok
+    rcases (show k=2∨k=3∨k=4∨k=5∨k=6∨k=7∨k=8∨k=9∨k=10∨k=11∨k=12∨k=13∨k=14 by omega)
+      with rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl <;>
+      first | exact absurd htok (by decide) | exact Or.inr ⟨by omega, by ifcs⟩
+  -- 2: key + scalar → value (k=9 has a bracket KEY, so its scalar premise is FALSE)
+  · intro k h1 h2 _ htok hsc
+    rcases (show k=2∨k=3∨k=4∨k=5∨k=6∨k=7∨k=8∨k=9∨k=10∨k=11∨k=12∨k=13∨k=14 by omega)
+      with rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl
+    · exact Or.inr ⟨by omega, by decide⟩
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · obtain ⟨c, s, hcs⟩ := hsc
+      rw [show fixtureMapMixed[9 + 1]!.val = .flowSequenceStart from by decide] at hcs; cases hcs
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+  -- 3: value → content-start
+  · intro k h1 h2 _ htok
+    rcases (show k=2∨k=3∨k=4∨k=5∨k=6∨k=7∨k=8∨k=9∨k=10∨k=11∨k=12∨k=13∨k=14 by omega)
+      with rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl <;>
+      first | exact absurd htok (by decide) | exact Or.inr ⟨by omega, by ifcs⟩
+  -- 4: value + scalar → flowEntry/end (k=4 has a bracket value, scalar premise FALSE)
+  · intro k h1 h2 _ htok hsc
+    rcases (show k=2∨k=3∨k=4∨k=5∨k=6∨k=7∨k=8∨k=9∨k=10∨k=11∨k=12∨k=13∨k=14 by omega)
+      with rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · obtain ⟨c, s, hcs⟩ := hsc
+      rw [show fixtureMapMixed[4 + 1]!.val = .flowSequenceStart from by decide] at hcs; cases hcs
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact Or.inr ⟨by omega, Or.inr ⟨by decide, by omega⟩⟩
+    · exact absurd htok (by decide)
+  -- 5: key + bracket-start → ∃ matching close (FIRES at the complex key k=9, picking j=12)
+  · intro k h1 h2 _ htok hg
+    rcases (show k=2∨k=3∨k=4∨k=5∨k=6∨k=7∨k=8∨k=9∨k=10∨k=11∨k=12∨k=13∨k=14 by omega)
+      with rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl
+    · exact absurd hg (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact Or.inr ⟨12, by omega, by omega, Or.inl ⟨by decide, by decide⟩, by decide,
+        Or.inr ⟨by omega, by decide⟩,
+        (by intro p hp1 hp2; rcases (show p = 11 ∨ p = 12 by omega) with rfl|rfl <;> decide)⟩
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+    · exact absurd htok (by decide)
+  -- 6: value + bracket-start → ∃ matching close (FIRES at value k=4, picking j=7)
+  · intro k h1 h2 _ htok hg
+    rcases (show k=2∨k=3∨k=4∨k=5∨k=6∨k=7∨k=8∨k=9∨k=10∨k=11∨k=12∨k=13∨k=14 by omega)
+      with rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl
+    · exact absurd htok (by decide)   -- k=2 key
+    · exact absurd htok (by decide)   -- k=3 "a"
+    · exact Or.inr ⟨7, by omega, by omega, Or.inl ⟨by decide, by decide⟩, by decide,
+        Or.inr ⟨by omega, Or.inl (by decide)⟩,
+        (by intro p hp1 hp2; rcases (show p = 6 ∨ p = 7 by omega) with rfl|rfl <;> decide)⟩  -- k=4 value [
+    · exact absurd htok (by decide)   -- k=5 [
+    · exact absurd htok (by decide)   -- k=6 "1"
+    · exact absurd htok (by decide)   -- k=7 ]
+    · exact absurd htok (by decide)   -- k=8 .flowEntry
+    · exact absurd htok (by decide)   -- k=9 key
+    · exact absurd htok (by decide)   -- k=10 [
+    · exact absurd htok (by decide)   -- k=11 "2"
+    · exact absurd htok (by decide)   -- k=12 ]
+    · exact absurd hg (by decide)     -- k=13 value "3", guard false
+    · exact absurd htok (by decide)   -- k=14 "3"
+
+/-- **The NAIVE guard-only fix for conjunct 6** — the generic-`j` universal with ONLY the M5/M8
+    bracket-start guard added, but `j` left UNPINNED (no `flowBracketBalance (k+2) j = 0` / Dyck floor).
+    Stated locally (NOT in the library) precisely to refute it. -/
+def MapConjunct6GuardOnly (tokens : Array (Positioned YamlToken)) (a b : Nat) : Prop :=
+  ∀ k j, a ≤ k → k < b → flowBracketBalance tokens a k = 0 → tokens[k]!.val = .value →
+    (tokens[k + 1]!.val = .flowSequenceStart ∨ tokens[k + 1]!.val = .flowMappingStart) →
+    k + 1 < j → j < b → flowBracketDelta tokens[j]!.val = -1 → flowBracketBalance tokens a (j + 1) = 0 →
+    j + 1 ≤ b ∧ (tokens[j + 1]!.val = .flowEntry ∨ (tokens[j + 1]!.val = .flowMappingEnd ∧ j + 1 = b))
+
+/-- **THE SECOND FRAGILITY AXIS, made a theorem.** The guard-only conjunct 6 is FALSE on `{a:[1], [2]:3}`:
+    at the value marker `k=4` (bracket-start guard fires) the GENERIC closer `j=12` — the matching close
+    of the *next entry's complex key* `[2]`, with `flowBracketBalance fixtureMapMixed 2 13 = 0` — forces
+    `.flowEntry` at `13`, but the stream has `.value`. This is why the M5/M8 EXISTENTIAL form (which pins
+    `j` to the value's own close `j=7` via the Dyck floor) is required, not merely the guard. -/
+theorem mapConjunct6GuardOnly_mixed_false : ¬ MapConjunct6GuardOnly fixtureMapMixed 2 15 := by
+  intro h
+  have hbad := h 4 12 (by omega) (by omega) (by decide) (by decide) (by decide)
+    (by omega) (by omega) (by decide) (by decide)
+  rcases hbad.2 with h1 | ⟨h1, _⟩ <;> exact absurd h1 (by decide)
+
 -- Axiom audit — the carrier inhabitation and the boundary-survival probe lean only on core; the
 -- ASSEMBLE non-vacuity checks also pull in `Classical.choice` through the rebase's
 -- `flowBracketBalance_compose`.
@@ -451,5 +747,26 @@ theorem mapInteriorSeparators'_bracketVal_false : ¬ MapInteriorSeparators' fixt
 /-- info: 'MapCarrierRobustInhabitation.mapInteriorSeparators'_bracketVal_false' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in
 #print axioms mapInteriorSeparators'_bracketVal_false
+
+-- R548 — the matching-close-pinned carrier probes are all core-clean `[propext, Quot.sound]`.
+/-- info: 'MapCarrierRobustInhabitation.mapInteriorSeparators''_unit' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
+#print axioms mapInteriorSeparators''_unit
+
+/-- info: 'MapCarrierRobustInhabitation.mapGrammarFacts''_scalarVal' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
+#print axioms mapGrammarFacts''_scalarVal
+
+/-- info: 'MapCarrierRobustInhabitation.mapGrammarFacts''_bracketVal' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
+#print axioms mapGrammarFacts''_bracketVal
+
+/-- info: 'MapCarrierRobustInhabitation.mapGrammarFacts''_mixed' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
+#print axioms mapGrammarFacts''_mixed
+
+/-- info: 'MapCarrierRobustInhabitation.mapConjunct6GuardOnly_mixed_false' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
+#print axioms mapConjunct6GuardOnly_mixed_false
 
 end MapCarrierRobustInhabitation
