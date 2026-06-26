@@ -6026,6 +6026,58 @@ theorem recbody_joint_navigator_driver_carrier (tokens : Array (Positioned YamlT
       (recbody_joint_guard_descend_tail tokens lo0 hi0 lo hi m h_seq_carrier h_map_carrier
         (h_after_fe lo hi h_g) h_g h_lo_m h_lt h_bal h_fe)).2 h_mapEnd
 
+/-- **The joint oracle → seq-only IH adapter** (Phase J — the cross-deliverable knot's SEQ half, the
+    first concrete brick of the two `locate`s `recbody_joint_navigator_driver_carrier` (R534) still
+    takes as inputs).  The carrier-specialised driver hands its per-window step a JOINT `oracle` — at
+    every strictly-narrower sub-window `[lo', hi')` it delivers BOTH deliverables, keyed on the close
+    marker: `(seqEnd → RecSeqBody) ∧ (mapEnd → RecMapBody)`.  But the seq first-entry dispatch
+    `recseqentry_window_dispatch_seq` (R527) — and the map locate's single-entry sub-block producer
+    `recseqentry_whole_window_seq` — consume a SEQ-ONLY induction hypothesis `h_ih` that delivers a bare
+    `RecSeqBody` from window facts and an enclosure predicate `Q lo'`.  This lemma is the adapter between
+    the two: instantiate the dispatch's `Q := SeqEnclosed tokens`, and this produces its exact `h_ih`
+    from the joint `oracle`.
+
+    **The move is guard RECONSTRUCTION + seq-side PROJECTION** ([[ref-reduction-by-import]] read at the
+    oracle interface).  The joint oracle wants a `RecBodyJointGuard tokens lo0 hi0 lo' hi'` at the
+    sub-window; the dispatch's `h_ih` hands over the loose pieces — `FlowBodyWindow tokens lo' hi'`,
+    `FlowBodyContentDeepSeq tokens lo' hi'`, `SeqEnclosed tokens lo'` (the `Q lo'` choice), the close
+    `tokens[hi']!.val = .flowSequenceEnd`, and the span/bound facts — so the proof FOLDS them back into
+    the guard: the two outer bounds compose (`lo0 ≤ lo ≤ lo'`, `hi' ≤ hi ≤ hi0`); the window is verbatim;
+    the seq conditional is discharged by `⟨h_deep, h_encl⟩` exactly because we are in the seq-close case;
+    the map conditional is VACUOUS — its `tokens[hi']!.val = .flowMappingEnd` premise contradicts the
+    seq close, so the marker disjointness collapses it ([[ref-converse-forward-invariant-asymmetry]]
+    read as marker exclusivity); and the disjunct is `Or.inl` the seq close.  Folding done, the joint
+    deliverable's `.1` applied to the seq close is the `RecSeqBody` the IH owes.
+
+    **Why this is the seq half of the cross-deliverable knot.**  `seqWindowRecSeqBody_seq_general`
+    already produces `RecSeqBody` for a window's seq IH — but only on the **all-seq PATH** domain
+    (`SeqPathAllSeq`, every enclosing frame a `[`), because it sources nested deliverables from the seq
+    carrier alone and a carrier cannot speak for a `{`-enclosed frame.  Drawing the IH from the JOINT
+    oracle instead lifts that path restriction: the oracle delivers `RecSeqBody`/`RecMapBody` at EVERY
+    narrower window regardless of enclosing-bracket type, so the dispatch threaded through this adapter
+    is path-agnostic.  The map deliverable the oracle also carries is not consumed HERE — it flows on to
+    the dispatch's `{`-bracket branch (the nested-map entry), the symmetric brick.
+
+    Verified-but-unconsumed until `locate_seq`/`locate_map` are assembled (each = its dispatch at
+    `Q := SeqEnclosed` fed this adapter, plus the per-window `FlowBodyContent` source): references no
+    sorry site, frontier sorry count unchanged at 4.  `sorryAx`-free — pure guard folding over
+    `RecBodyJointGuard` plus the oracle, no structure lemma and no choice, so it audits to the minimal
+    `[propext, Quot.sound]`.  Demo `Tests/Reflections/JointOracleSeqIh.lean`. -/
+theorem recbody_joint_oracle_seq_ih (tokens : Array (Positioned YamlToken))
+    (lo0 hi0 lo hi : Nat) (h_lo0_lo : lo0 ≤ lo) (h_hi_hi0 : hi ≤ hi0)
+    (oracle : ∀ lo' hi', hi' - lo' < hi - lo → RecBodyJointGuard tokens lo0 hi0 lo' hi' →
+      (tokens[hi']!.val = .flowSequenceEnd → RecSeqBody ((tokens.toList.take hi').drop lo')) ∧
+      (tokens[hi']!.val = .flowMappingEnd → RecMapBody ((tokens.toList.take hi').drop lo'))) :
+    ∀ lo' hi', hi' - lo' < hi - lo → lo ≤ lo' → hi' ≤ hi →
+      FlowBodyWindow tokens lo' hi' → FlowBodyContentDeepSeq tokens lo' hi' →
+      SeqEnclosed tokens lo' → tokens[hi']!.val = .flowSequenceEnd →
+      RecSeqBody ((tokens.toList.take hi').drop lo') := by
+  intro lo' hi' h_span h_lo_lo' h_hi'_hi h_win h_deep h_encl h_seqEnd
+  refine (oracle lo' hi' h_span ?_).1 h_seqEnd
+  refine ⟨by omega, by omega, h_win, fun _ => ⟨h_deep, h_encl⟩, fun h_mapEnd => ?_, Or.inl h_seqEnd⟩
+  rw [h_seqEnd] at h_mapEnd
+  exact absurd h_mapEnd (by decide)
+
 /-- **The root-span instance of `seqWindowRecSeqBody_seq_general`** — `lo0 := 2`, `hi0 := size-2`,
     bounds read off `FlowBodyWindow.lo_ge`/`hi_le`.  Signature-preserving so `seqWindowRecSeqBody_seq`'s
     consumers are untouched (ROUTE A, R445 — the parametric carrier rides the recursion via the
