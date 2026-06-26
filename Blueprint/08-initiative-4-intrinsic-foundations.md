@@ -23560,55 +23560,77 @@ abstracts over `_a` whose type the bound depends on).
 
 ## Phase 3 — Stage C: EmitterScannability discharge — `.flowmono` / `.body` / `.bridge` (Reflections 153–192)
 
-### Frontier status — the 4 remaining `sorry`s and the path to close them (snapshot 2026-06-25)
+### Frontier status — the 4 remaining `sorry`s and the path to close them (snapshot 2026-06-26, R538)
 
 The reflections in this section all discharge a single end goal: the well-bracketing
 certificate `FlowSubrangesOk tokens` that lets the flow-collection parser provably
-accept emitted output. As of R515 the frontier stands at **exactly four `sorry`s**,
-which fall into **two unrelated families**:
+accept emitted output. The frontier stands at **exactly four `sorry`s**, in **two
+unrelated families**. The build reports each warning at the *declaration* line; the
+actual `sorry` body sits deeper, so both are listed:
 
-| # | Site | Goal | Family |
-|---|------|------|--------|
-| 1 | `EmitterScannability.lean:359` | `FlowSubrangesOk tokens` | A — bracketing certificate |
-| 2 | `NonemptyStructure.lean:11208` | `FlowSubrangesOk tokens` (same prop) | A |
-| 3 | `EmitterScannability.lean:845` | seq non-empty `contentEq` | B — content fidelity |
-| 4 | `EmitterScannability.lean:885` | mapping non-empty `contentEq` | B |
+| # | Declaration (build warning) | `sorry` body | Goal | Family |
+|---|------|------|------|--------|
+| 1 | `EmitterScannability.lean:315` `parseStream_emitSequence` | `:359` | `FlowSubrangesOk tokens` | A — bracketing certificate |
+| 2 | `NonemptyStructure.lean:11586` `scanFiltered_emitMap_nonempty_structure` | `:11834` | `FlowSubrangesOk tokens` (same prop) | A |
+| 3 | `EmitterScannability.lean:809` `emit_roundtrip_sequence_content_eq` | `:845` | seq non-empty `contentEq` | B — content fidelity |
+| 4 | `EmitterScannability.lean:848` `emit_roundtrip_mapping_content_eq` | `:885` | mapping non-empty `contentEq` | B |
 
-Sorries 1 and 2 are *literally the same proposition* — one lemma closes both. So the
-real count is **two distinct obligations + one duplicate**.
+Sorries 1 and 2 are *literally the same proposition* `FlowSubrangesOk tokens` — one
+producer family closes both. So the real count is **two distinct obligations + one
+duplicate**.
 
-**Family A (`FlowSubrangesOk`) — where essentially all recent work has gone.** The
-landed assembler `flowSubrangesOk_of_seqRoot_and_map_producers` (R512) shows the goal
-now reduces to: boundary facts (already in scope at the sorry) **+ one seq root
-carrier + the map producer family**. R512–R515 collapsed the seq/map asymmetry toward
-two symmetric root carriers:
+**Family A (`FlowSubrangesOk`) — where essentially all recent work (R512–R538) has gone.**
+The landed assembler `flowSubrangesOk_of_window_producers` (`NonemptyStructure.lean:10904`)
+shows the goal reduces to: the boundary facts already in scope at each sorry **+ a seq
+window producer `h_seq_rec` (per-subrange `RecSeqBody`, keyed on a `.flowSequenceEnd`
+close) + a map window producer `h_map_rec` (per-subrange `RecMapBody`, `.flowMappingEnd`)
++ the six map grammar facts**. The map carrier→facts pipeline that supplies those six
+facts is **complete** (R513 `MapInteriorSeparators` + gate + edges; R514
+`mapTypedInterior_of_opener`; R515 `mapGrammarFacts_of_mapRoot`). The whole post-R515
+effort (R516–R538) builds the two window producers `h_seq_rec` / `h_map_rec` from **one
+shared recursion** rather than two mirrored ones:
 
-- R512 — folded the seq half onto the single carrier `SeqInteriorSeparators tokens 2 (size-2)`.
-- R513 — the map carrier `MapInteriorSeparators` + gate `MapTypedInterior` + `MapGrammarFacts` + the three subset-restriction edges.
-- R514 — the gate bridge `mapTypedInterior_of_opener` (reconstructs the enclosing-`{` conjunct in place from the window opener).
-- R515 — `mapGrammarFacts_of_mapRoot`, the one-step projection carrier ⊕ gate bridge ⇒ the six grammar facts.
+- **The JOINT navigator driver** `recbody_joint_navigator_driver_carrier` (R534,
+  `SeqInteriorSeparators.lean:5980`) runs ONE `windowWidth_strongRecOn` over the folded
+  guard `RecBodyJointGuard` and, at every window, delivers BOTH bodies keyed on the close
+  marker — `(seqEnd → RecSeqBody) ∧ (mapEnd → RecMapBody)`. Instantiated per subrange it
+  *is* `h_seq_rec` (its `.1`) and `h_map_rec` (its `.2`). Driving it closes brick (2).
+- The driver takes **four inputs**, two now landed, two remaining:
+  1. `locate_seq` — **LANDED R537** (`recbody_locate_seq_carrier`): the seq first-entry
+     locate, a pure WIRE of the already-landed per-window content source
+     (`seqWindow_flowBodyContent_seq_general`) + the joint-oracle→seq-IH adapter (R535) +
+     the R527 dispatch, capped by an existential re-pack.
+  2. `locate_map` — **the next brick**: the map first-entry locate. NOT a mirror of
+     `locate_seq` — a map window's head is a `.key`, which is not `isFlowContentStart`,
+     so its source is `MapBodyProps` (R522), not `FlowBodyContent`; its dispatch is
+     `recmapentry_pair_located` (skeleton from `mapPairSkeleton_locate`), with its two
+     sub-block oracles fed `recseqentry_whole_window_seq` (seq IH, R535) and
+     `recbody_joint_oracle_map_ih` (map IH, R536).
+  3. `h_after_fe` (M2) — narrow the per-window "depth-`0` separator → `.key` successor"
+     fact from the global field (the `flowBracketBalance` re-basing across windows is the
+     subtlety).
+  4. **The two root carriers** `SeqInteriorSeparators` / `MapInteriorSeparators tokens 2
+     (size-2)`, threaded as fixed inputs and narrowed per window — **the genuine open
+     math**. The seq carrier `seqRoot_seqInteriorSeparators` (`:1875`) is landed but
+     parametric on its descent provider `desc` (the "hard B2 brick":
+     `seqEnclosingOpener_of_gate` LOCATE + `seqDescent_provider_of_gate` ASSEMBLE, the
+     carrier riding the recursion via ROUTE A). The map root carrier had **no** descent
+     machinery — only the gate/carrier `def`s and the R513–R520 foundation. **R538 landed
+     its LOCATE half** (`flowBracketBalance_pos_of_mapTypedInterior` +
+     `mapEnclosingOpener_of_gate` + `mapOpenerType_of_located_and_gate`), the `some false`/`{`
+     dual of the seq locate trio (type-agnostic backward scan + a single branch-vacuity
+     flip). The map ASSEMBLE half — `mapDescent_provider_of_located` (child sub-block via the
+     map pair dispatch `recmapentry_pair_located`, close via
+     `flowBracketBalance_matching_close_map`/`btStep_pop_eq_mapEnd`) →
+     `mapDescent_provider_of_gate` → `mapInteriorSeparators_of_safebody_and_descent` →
+     `mapRoot_mapInteriorSeparators` — is the remaining map descent work.
 
-So the map carrier→facts pipeline is **complete** (all verified-but-unconsumed). What
-remains to close 1 + 2:
-
-1. **`mapHRec_of_root_and_emit`** — the map fold producing the `h_map_rec`
-   (`RecMapBody`) slot, mirror of `seqHRec_of_root_and_emit` (`:6771`). **Brick (2),
-   in progress** — its first sub-brick `mapWholeStreamWellTyped` /
-   `mapFoldTotal_of_context` lands the `h_fold_total` residual (the `some false`/`{`
-   mirror of `seqWholeStreamWellTyped` / `seqFoldTotal_of_context`).
-2. **`flowSubrangesOk_of_seqRoot_and_mapRoot`** — the R512 map twin: feed
-   `mapGrammarFacts_of_mapRoot` into the six grammar-fact slots so the seven raw map
-   producers collapse to the single carrier `MapInteriorSeparators tokens 2 (size-2)`.
-3. **The two root carriers** — the genuine open math: `SeqInteriorSeparators tokens 2
-   (size-2)` (the "hard B2 brick": `seqEnclosingOpener_of_gate` LOCATE +
-   `seqDescent_provider_of_gate` ASSEMBLE, carrier riding the recursion via ROUTE A)
-   and its map mirror.
-4. **Substitute at both sorry sites** — once (2) exists and (3) is produced, sorries 1
-   and 2 are one `exact` each.
-
-Bricks 1–2 are mechanical glue; **brick 3 (the root carriers) is the only real
-remaining proof obligation for Family A**, now symmetric across seq/map thanks to
-R513–R515.
+**Once `locate_map`, the M2 narrowing, and the two root carriers exist, the driver runs
+at the root and sorries 1 + 2 are one `exact` each** (same `FlowSubrangesOk tokens`
+proposition, both fed by the assembler over the driver's two projections). The remaining
+REAL obligations for Family A are: `locate_map` (mechanical — R537's recipe mirrored to
+the map dispatch), the M2 narrowing, and the two descent/root-carrier providers (the only
+genuinely open math, symmetric across seq/map thanks to R513–R515).
 
 **Family B (content fidelity) — orthogonal, untouched by this section.** Sorries 3 and
 4 are the non-empty cases of `emit_roundtrip_sequence_content_eq` /
@@ -31319,6 +31341,34 @@ The window's close bracket selects which body it is, and the *conjunction* carri
 
 **Next step.** With R530's debt (b) discharged, brick (2) reduces to: (i) re-type the joint driver's `locate` marker to carry the depth-`0` balance `flowBracketBalance tokens lo m = 0`, and fold the two outer carriers + the deferred map fact + the frame bounds into the guard `G`, so the descend's `h_seq_pack`/`h_map_pack` come from `recbody_joint_content_pack` per-window and its `h_bal_m` from the strengthened marker; (iii) construct the concrete `locate_seq` (R527-fed dispatch + R510's route) and `locate_map` (R522 → R523/R525 → R524 → R527 → `recmapentry_pair_located`), each passed the JOINT oracle. Then `recbody_joint_navigator_driver`'s `.2` is the raw `h_map_rec` `flowSubrangesOk_of_window_producers` consumes (closing brick (2)), its `.1` the seq `h_seq_rec`. *[Acted on by Reflection 532: piece (i)'s descend-assembly part — "so the descend's `h_seq_pack`/`h_map_pack` come from `recbody_joint_content_pack` per-window" — is now LANDED as `recbody_joint_descend_tail_carrier`, the composition R531 ∘ R530 that feeds R531's output into R530's opaque content slot, producing the concrete `descend_tail` (= the suffix guard `G (m+1) hi`). The content debt is gone from the descend's interface; what remains for piece (i) is the driver-marker strengthening for `h_bal_m` and folding the carriers/M2/bounds into `G` so the driver's `descend_tail` slot is this lemma. Piece (iii) (the two concrete `locate`s) is untouched.]*
 
+### Reflection 538 — the map root-carrier `desc` provider's LOCATE half, the `some false`/`{` dual of the seq locate: `flowBracketBalance_pos_of_mapTypedInterior` + `mapEnclosingOpener_of_gate` + `mapOpenerType_of_located_and_gate`. **An AXIS DUAL of a lemma chain over a single tag bit (seq `[` ↦ `true`, map `{` ↦ `false`) is near-FREE to build precisely when the chain's primitives do not branch on the bit. Two ways a primitive earns this: TYPE-AGNOSTIC — it reads only bit-blind facts (the backward balance scan locates the enclosing opener from balance alone, never inspecting which bracket), so the dual reuses it VERBATIM; or GENERIC in the bit — it takes the bit as a PARAMETER (the head-positivity lemma takes `hd : Bool`), so the dual instantiates the OTHER bit, a one-symbol swap with zero proof difference. The ONLY proof content of the whole dual lives at the ONE site where the bit is CONSUMED to pick a constructor — the opener-type dispatch — and there a decidable two-constructor split (`delta = 1`: the opener is `[` OR `{`) is resolved by the gate's head bit: one case discharges the typed conclusion, the OTHER is killed ABSURD. The seq and map proofs are the SAME skeleton with the two branches' live/absurd roles SWAPPED — that BRANCH-VACUITY FLIP is the entire cost.**
+
+**The setup.** The seq root carrier `seqRoot_seqInteriorSeparators` (`SeqInteriorSeparators.lean:1875`) is one of the driver's two fixed inputs, and its descent provider `desc` rides a fully-built seq chain — seven theorems (`seqEnclosingFacts_provider_of_located`, `seqEnclosingOpener_of_gate`, `seqDescent_provider_of_located`(`+_seq`), `seqDescent_provider_of_gate`, `seqInteriorSeparators_of_enclosing_provider`, `seqInteriorSeparators_of_safebody_and_descent`, `seqRoot_seqInteriorSeparators`), all parametric on the width-recursion fixpoint `h_enc`. The MAP root carrier had only the two `def`s `MapTypedInterior` / `MapInteriorSeparators` and the R513–R520 foundation (gate reconstruction, carrier→facts, six-producer collapse) — **no descent machinery at all**. So the map `desc` provider is the second of the two root-carrier descent providers the frontier-status names as the genuine open math, and this reflection lands its first concrete brick: the LOCATE half.
+
+**Why almost the whole locate is free.** The seq locate trio reads off a `SeqTypedInterior` gate whose enclosure conjunct is a `btFold`-top `= some true`; the map gate `MapTypedInterior` carries `= some false`. Walking the three bricks:
+
+1. `flowBracketBalance_pos_of_mapTypedInterior` (gate ⟹ `balance 0 a ≥ 1`) — the positivity core `flowBracketBalance_pos_of_btFold_head` is GENERIC in `hd : Bool`. The seq dual instantiates `true`, the map dual `false`. One-symbol swap.
+2. `mapEnclosingOpener_of_gate` (gate ⟹ located opener `p` with `delta = 1`, body balance, interior floor) — the backward scan `flowBracketBalance_backward_open_locate` is TYPE-AGNOSTIC (reads only balance), so this is `seqEnclosingOpener_of_gate` term-for-term with only the positivity source swapped in.
+3. `mapOpenerType_of_located_and_gate` (located opener + gate `= some false` ⟹ `tokens[p] = .flowMappingStart`) — the **only** brick with proof content. The `flowBracketDelta = 1` dispatch case-splits the opener into `[` ∨ `{`; in the seq proof the seq case discharges and the map case is absurd, in the map proof the two SWAP (the gate head `false` forces the pushed bit `false`, pinning a `{`; the `[`-pushes-`true` case is `true = false`, absurd by `decide`). Every other line — the frame-inverse `btFold_frame_inv`, the balance-zero ⇒ empty residual stack, the prefix-fold witness — is byte-identical because none of it touches the bit.
+
+The axioms are byte-identical to the seq twins (verified by `#print axioms`): brick (1) `[propext, Quot.sound]`; bricks (2)/(3) `[propext, Classical.choice, Quot.sound]` (the backward locator and the frame-inverse thread `Classical.choice`) — the dual threads the same dependency closure, so it inherits the same profile. The three bricks are sorry-free and verified-but-unconsumed: their consumer `mapDescent_provider_of_located` does not exist yet; references no sorry site, frontier sorry count unchanged at 4 (416 jobs). The runnable companion is `Tests/Reflections/AxisDualFromTypeAgnosticCore.lean` (`pos_generic`/`pos_seq`/`pos_map` the generic-in-bit instantiation swap, `locate_any` the type-agnostic locate, `openerType_seq`/`openerType_map` the branch-vacuity flip — same skeleton, branches swapped; both `#print axioms` audited axiom-free).
+
+**Next step.** The map ASSEMBLE half. `mapDescent_provider_of_located` mirrors `seqDescent_provider_of_located` (`:1252`) but is NOT a pure dual: the child sub-block of a located map interior is a `key: value` pair, produced by the map pair dispatch `recmapentry_pair_located` (skeleton from `mapPairSkeleton_locate`), not `seqChild_safeBodyUnit`; the matching close uses `flowBracketBalance_matching_close_map` + `btStep_pop_eq_mapEnd` (both landed) to read the typed `.flowMappingEnd`. Then `mapDescent_provider_of_gate` composes locate + assemble (parametric on the width fixpoint `h_enc`, exactly as the seq one), `mapInteriorSeparators_of_safebody_and_descent` is the dispatcher, and `mapRoot_mapInteriorSeparators` the root seed. With both root carriers in hand, `recbody_joint_navigator_driver_carrier` runs at the root `[2, size-2)` and its `.2` is the raw `h_map_rec` that `flowSubrangesOk_of_window_producers` consumes — closing brick (2), sorries 1 + 2. (The driver's own map `locate` slot, `recbody_locate_map_carrier`, R537's separate NEXT, remains the other open driver input.)
+
+### Reflection 537 — brick (2)'s locate piece (iii), the SEQ `locate` ASSEMBLED: `recbody_locate_seq_carrier`, the driver's `locate_seq` hole as a pure WIRE + existential re-pack. **A width-recursion DRIVER leaves an abstract per-window `locate` hole whose deliverable is a LEAN existential (located boundary `m` + balance + marker + the sub-block). The concrete first-entry DISPATCH that fills it returns a strictly RICHER existential over the SAME witness — it additionally pins an interior-MINIMALITY conjunct it needs for ITS own first-entry induction (the driver never reads it), and orders the shared conjuncts differently. So filling the hole is NOT new proof: WIRE the dispatch's two already-landed inputs (the per-window content source + the joint-oracle → axis-IH adapter), then RE-PACK its output — destructure, DROP the surplus conjunct, re-tuple into the hole's order. And the "sole surviving brick" the R535/R536 plan named (a per-window `FlowBodyContent` source the guard doesn't carry) turned out to ALREADY be a landed standalone lemma for the seq axis — grep before building.**
+
+**The setup.** `recbody_joint_navigator_driver_carrier` (R534) takes `locate_seq` and `locate_map` as abstract inputs; its seq branch consumes `locate_seq lo hi h_g h_seqEnd oracle : ∃ m, lo < m ∧ m ≤ hi ∧ (m = hi ∨ tokens[m]!.val = .flowEntry) ∧ flowBracketBalance tokens lo m = 0 ∧ RecSeqEntry ((tokens.toList.take m).drop lo)`. The workhorse that locates a first seq entry is `recseqentry_window_dispatch_seq` (R527), but it returns the SAME six-tuple PLUS an interior-minimality conjunct `(∀ k, lo < k → k < m → ¬ (balance lo k = 0 ∧ (k = hi ∨ tokens[k]!.val = .flowEntry)))` (which IT needs to recurse on the first entry, and the driver does not), with `balance`/`marker` in the opposite order. The shapes don't unify directly — but the gap is purely a re-pack, not a proof.
+
+**The finding — three bricks were already landed; the hole is a wire + re-pack.** Filling `locate_seq` needs three inputs to `recseqentry_window_dispatch_seq`, each of which already exists: (1) `FlowBodyWindow` + `FlowBodyContentDeepSeq` + `SeqEnclosed` come straight off `RecBodyJointGuard`'s seq-close branch; (2) the per-window non-deep `FlowBodyContent` — the brick R535/R536 flagged as the "sole survivor" — is produced by the ALREADY-LANDED `seqWindow_flowBodyContent_seq_general`, which narrows the threaded root carrier `SeqInteriorSeparators tokens lo0 hi0` to `[lo, hi)` using the guard's own frame bounds; (3) the dispatch's seq-only `h_ih` is `recbody_joint_oracle_seq_ih` (R535) at `Q := SeqEnclosed tokens`, fed the driver's joint oracle, with `seqEnclosed_descend` discharging the dispatch's `h_q_descend`. Call the dispatch, then `obtain ⟨m, h_lo_m, h_m_hi, h_bal_m, h_marker, _h_min, h_entry⟩` and `exact ⟨m, h_lo_m, h_m_hi, h_marker, h_bal_m, h_entry⟩` — drop minimality, swap balance/marker. This is [[ref-reduction-by-import]] sharpened to a specific retype (the `locate` residual becomes `holeOfDispatch ∘ dispatch ⟨contentSource, ihAdapter⟩`), and [[ref-mirror-reads-conjunct-not-projection]] at the existential level (read the conjuncts you need, re-tuple, drop the rest). The corollary discipline is its own lesson: a multi-session "sole surviving brick" pointer is a HYPOTHESIS to test by grep, not a verdict to build against.
+
+**The map locate is NOT a mirror.** A symmetric reflex would assume `locate_map` is `locate_seq` with seq↔map swapped, but the content sources differ in KIND: a map window's head is a `.key` token, and `.key` is not `isFlowContentStart` (which admits only scalar / `[` / `{`), so `FlowBodyContent` is FALSE for a map window. The map locate consumes `MapBodyProps` (R522, via `mapWindow_mapBodyProps_general`) and `recmapentry_pair_located` (whose `h_skeleton` is produced by `mapPairSkeleton_locate` off `MapBodyProps`), with its two sub-block oracles fed `recseqentry_whole_window_seq` (a seq IH, via R535) and the map IH (R536). It is a separate assembly — landed next.
+
+**What landed.** `theorem recbody_locate_seq_carrier` (`SeqInteriorSeparators.lean`, after `recbody_joint_oracle_map_ih`): takes `lo0 hi0` + the root seq carrier, produces the driver's exact `locate_seq` shape at every seq-closing window. Composes only landed lemmas (`seqWindow_flowBodyContent_seq_general` + `recbody_joint_oracle_seq_ih` + `recseqentry_window_dispatch_seq` + `seqEnclosed_descend`); CONSUMES R535 (no longer verified-but-unconsumed on the seq side). Inherits the seq dispatch's `[propext, Classical.choice, Quot.sound]` (the choice-tainted classify; the oracle adapter and the re-pack are clean), `sorryAx`-free.
+
+**LANDED (R537 — `SeqInteriorSeparators.lean`):** build green at exactly 4 frontier sorries (`NonemptyStructure:11586` + `EmitterScannability:315/809/848`), full `L4YAML` + `Tests.Reflections` (415 jobs). New demo `Tests/Reflections/LocateHoleIsDispatchRepacked.lean` (`DispatchOut`/`LocateHole` the rich/lean toy existentials; `holeOfDispatch` the audited RE-PACK — depends on no axioms; `locateOfBricks` the three-brick WIRING — depends on no axioms; toy instances RUN both end-to-end), new memory `ref-locate-hole-is-dispatch-repacked`, `ref-joint-oracle-to-axis-specific-ih-by-guard-reconstruction` updated (seq twin now consumed), `MEMORY.md` brick-(2) master line + index updated.
+
+**Next step.** Assemble the MAP `locate` — `recbody_locate_map_carrier`: from `RecBodyJointGuard`'s map-close branch (`FlowBodyContentDeepMap` + `MapEnclosed`), source the per-window `MapBodyProps` via `mapWindow_mapBodyProps_general` (R522), run `mapPairSkeleton_locate` to produce `recmapentry_pair_located`'s `h_skeleton`, and feed its key/value sub-block oracles `recseqentry_whole_window_seq` (seq IH via R535) and `recbody_joint_oracle_map_ih` (R536), then re-pack `recmapentry_pair_located`'s output (a `RecMapPair`, with its own minimality conjunct) into the driver's `locate_map` shape. With both locates assembled and the per-window `h_after_fe` (M2) narrowed from the global field, `recbody_joint_navigator_driver_carrier` at the root `[2, size-2)` closes brick (2): its `.2` is the raw `h_map_rec` `flowSubrangesOk_of_window_producers` consumes, its `.1` the seq `h_seq_rec`.
+
 ### Reflection 536 — brick (2)'s locate piece (iii), the MAP half of the cross-deliverable knot: `recbody_joint_oracle_map_ih`, the symmetric joint-oracle → map-only-IH adapter. **The dispatch is two-branched: a `[`-nested sub-window wants a `RecSeqBody` IH (met by R535), a `{`-nested sub-window wants a `RecMapBody` IH. The SAME joint oracle serves both — adapt it twice, once per axis, by the identical guard-reconstruction move with the projection and the vacuous conditional SWAPPED. The map adapter projects the oracle pair's `.2` and makes the SEQ guard conditional vacuous by marker exclusivity. Landing both halves makes BOTH dispatch branches path-general off the single path-agnostic oracle; nothing about the recursion or the oracle changed — only which side each adapter reads and which side it refutes.**
 
 **The setup.** R535's `recbody_joint_oracle_seq_ih` met the `[`-nested branch of each `locate`'s first-entry dispatch: it adapts the driver's joint `oracle : ∀ lo' hi', hi'-lo' < hi-lo → RecBodyJointGuard tokens lo0 hi0 lo' hi' → (seqEnd → RecSeqBody …) ∧ (mapEnd → RecMapBody …)` into the seq-only `h_ih` the seq dispatch (R527) and the map locate's single-entry sub-block producer (`recseqentry_whole_window_seq`) consume. But the dispatch's OTHER branch — a nested non-empty `{ … }` — wants a MAP-only IH delivering `RecMapBody` from `FlowBodyWindow … → FlowBodyContentDeepMap … → MapEnclosed lo' → tokens[hi']!.val = .flowMappingEnd`. That branch was previously routed a near-leaf oracle (no IH) and so could only handle a leaf map; to be path-general it must draw the joint oracle's map side.
@@ -31329,7 +31379,7 @@ The window's close bracket selects which body it is, and the *conjunction* carri
 
 **LANDED (R536 — `SeqInteriorSeparators.lean`):** build green at exactly 4 frontier sorries (`NonemptyStructure:11586` + `EmitterScannability:315/809/848`), full `L4YAML` + `Tests.Reflections` (414 jobs). Demo `Tests/Reflections/JointOracleSeqIh.lean` extended with the symmetric `mapIhOfOracle` (audited `[propext, Quot.sound]`) and a map-side toy oracle + end-to-end RUN, so the file now exercises BOTH adapter halves; the `ref-joint-oracle-to-axis-specific-ih-by-guard-reconstruction` memory + `MEMORY.md` brick-(2) master line note both halves now landed.
 
-**Next step.** Brick (1) is now the SOLE remaining piece to assemble each `locate`: a per-window `FlowBodyContent tokens lo hi` source (fields `headContentStart` / `bodySucc` / `feContentStart`), which `RecBodyJointGuard` does NOT carry (it carries only the DEEP `FlowBodyContentDeepSeq` / `FlowBodyContentDeepMap`). Derive it per-window from the seq/map carrier `SeqInteriorSeparators`/`MapInteriorSeparators tokens lo0 hi0` narrowed to `[lo, hi)` (the narrowing edges already exist for the deep variants — `MapInteriorSeparators_narrow` and kin), OR thread `FlowBodyContent` as an additional guard conjunct in `RecBodyJointGuard` and re-discharge it in the R533 descend (one more pass-through field). With that source, `locate_seq` = `recseqentry_window_dispatch_seq` (R527) at `Q := SeqEnclosed` fed `recbody_joint_oracle_seq_ih` (and the `{`-branch fed `recbody_joint_oracle_map_ih`); `locate_map` = `recmapentry_pair_located` over the same machinery; then `recbody_joint_navigator_driver_carrier` at the root `[2, size-2)` closes brick (2). Independently, narrow the per-window `h_after_fe` (M2) from the global field (the `flowBracketBalance tokens lo k` re-basing across windows is the subtlety).
+**Next step.** Brick (1) is now the SOLE remaining piece to assemble each `locate`: a per-window `FlowBodyContent tokens lo hi` source (fields `headContentStart` / `bodySucc` / `feContentStart`), which `RecBodyJointGuard` does NOT carry (it carries only the DEEP `FlowBodyContentDeepSeq` / `FlowBodyContentDeepMap`). Derive it per-window from the seq/map carrier `SeqInteriorSeparators`/`MapInteriorSeparators tokens lo0 hi0` narrowed to `[lo, hi)` (the narrowing edges already exist for the deep variants — `MapInteriorSeparators_narrow` and kin), OR thread `FlowBodyContent` as an additional guard conjunct in `RecBodyJointGuard` and re-discharge it in the R533 descend (one more pass-through field). With that source, `locate_seq` = `recseqentry_window_dispatch_seq` (R527) at `Q := SeqEnclosed` fed `recbody_joint_oracle_seq_ih` (and the `{`-branch fed `recbody_joint_oracle_map_ih`); `locate_map` = `recmapentry_pair_located` over the same machinery; then `recbody_joint_navigator_driver_carrier` at the root `[2, size-2)` closes brick (2). Independently, narrow the per-window `h_after_fe` (M2) from the global field (the `flowBracketBalance tokens lo k` re-basing across windows is the subtlety). *[Acted on by Reflection 537: the SEQ `locate` is now ASSEMBLED — `recbody_locate_seq_carrier`. Brick (1) for the seq axis was NOT new work: the per-window `FlowBodyContent` source was already a landed standalone lemma (`seqWindow_flowBodyContent_seq_general`, the carrier narrowed to `[lo, hi)`), so the seq `locate` reduced to a pure WIRE (content source + `recbody_joint_oracle_seq_ih` at `Q := SeqEnclosed` + the R527 dispatch) capped by an existential RE-PACK. The MAP `locate` is the surviving piece, and it is NOT a mirror — its content source is `MapBodyProps` (R522), not `FlowBodyContent` (a map head is `.key`, which is not `isFlowContentStart`), and its dispatch is `recmapentry_pair_located`.]*
 
 ### Reflection 535 — brick (2)'s locate piece (iii), the SEQ half of the cross-deliverable knot: `recbody_joint_oracle_seq_ih`, the joint-oracle → seq-only-IH adapter. **A width-recursion driver over a JOINT guard hands its per-window step an oracle that delivers BOTH deliverables at every narrower sub-window, keyed on the close marker — `(seqEnd → RecSeqBody) ∧ (mapEnd → RecMapBody)`. But the concrete first-entry dispatch you want to run consumes a SINGLE-AXIS induction hypothesis (a bare `RecSeqBody` from loose window facts plus a choosable enclosure predicate). Don't widen the oracle: write an ADAPTER that RECONSTRUCTS the joint guard for the sub-window from the dispatch's loose facts and PROJECTS the one side; the OFF-axis guard conditional is VACUOUS by marker exclusivity. Drawing the IH from the joint oracle instead of an axis-only carrier LIFTS the carrier's all-one-path domain restriction — the oracle is path-agnostic.**
 

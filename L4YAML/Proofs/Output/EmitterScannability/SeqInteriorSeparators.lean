@@ -458,6 +458,172 @@ theorem mapProducers_of_mapRoot
   · exact (mapGrammarFacts_window_of_root tokens lo hi h_carrier h_fold_total
       h_lo2 h_lo_hi h_hi2 h_hi_sz h_open h_bal h_floor).2.2.2.2.2
 
+/-! ### The map descent LOCATE half — the `some false`/`{` dual of the seq locate (R538)
+
+The seq root-carrier descent provider's LOCATE half is fully landed (`flowBracketBalance_pos_of_seqTypedInterior`
+`:697`, `seqEnclosingOpener_of_gate` `:726`, `seqOpenerType_of_located_and_gate` `:754`).  The map root
+carrier has the FOUNDATION (gate `MapTypedInterior`, `MapGrammarFacts`, the carrier, its edges, and the
+carrier→facts projection `mapGrammarFacts_of_mapRoot` R515) but NO descent chain at all — its `desc`
+provider is the still-open mirror the frontier-status names as the genuine open math alongside the seq
+`desc`.  This block lands the map descent's LOCATE half, the recursion-FREE entry point any future
+`mapDescent_provider_of_located` / `mapDescent_provider_of_gate` consumes wholesale.
+
+The three bricks are the FAITHFUL `some true → some false` / `.flowSequenceStart → .flowMappingStart` dual
+of the seq trio, exactly as the seq docstrings PROMISED ("Type-agnostic core: the map mirror reads the
+gate's `= some false` top, gets `balance 0 a ≥ 1` from the same `flowBracketBalance_pos_of_btFold_head`,
+and calls the identical backward locator"; "the map mirror reads the gate's `= some false` and concludes
+`.flowMappingStart` by the identical argument with `b = false`").  The mirror sheds NO machinery — the
+backward scan `flowBracketBalance_backward_open_locate` is BRACKET-TYPE-AGNOSTIC (it reads only the
+balance), and `flowBracketBalance_pos_of_btFold_head` is already GENERIC in the head bit `hd : Bool`, so
+bricks (1)/(2) are a one-symbol swap (`true → false`).  Brick (3) is the only one with proof content
+beyond a swap, and even there the cost is exactly the [[ref-mirror-reads-conjunct-not-projection]]
+two-symbol delta plus a single BRANCH-VACUITY FLIP: the `flowBracketDelta = 1` dispatch's seq-opener and
+map-opener cases swap which one discharges the typed-conclusion implication and which one is killed as
+absurd ([[ref-converse-forward-invariant-asymmetry]] read as opener-bit exclusivity) — the located
+opener's pushed bit `b` is forced `= false` by the gate's `some false` head, pinning `tokens[p]` to a `{`.
+
+Verified-but-unconsumed (R538): its consumer — `mapDescent_provider_of_located` / `mapDescent_provider_of_gate`
+/ `mapRoot_mapInteriorSeparators` — does not exist yet; references no sorry site; frontier sorry count
+unchanged at 4.  Axioms are byte-identical to the seq twins (verified): brick (1)
+`flowBracketBalance_pos_of_mapTypedInterior` `[propext, Quot.sound]`; bricks (2)/(3) `mapEnclosingOpener_of_gate`
+/ `mapOpenerType_of_located_and_gate` `[propext, Classical.choice, Quot.sound]` (the backward locator and
+the frame-inverse thread `Classical.choice`) — [[ref-mirror-inherits-dependency-axioms]]. -/
+
+/-- **The gate makes the map backward locator INVOKABLE** — the `some false` dual of
+    `flowBracketBalance_pos_of_seqTypedInterior` (`:697`).  At any gated window `[a,b)` the gate
+    `MapTypedInterior tokens a b` carries a `btFold`-top `= some false` after the prefix `[0,a)` (its
+    second conjunct: the enclosing bracket is a MAPPING).  A non-empty typed stack forces
+    `flowBracketBalance tokens 0 a ≥ 1` (`flowBracketBalance_pos_of_btFold_head`, GENERIC in the head bit
+    — here instantiated at `false`) — exactly the hypothesis of `flowBracketBalance_backward_open_locate`.
+    So the same pure-balance backward enclosing-opener locator the seq path uses is invokable at every
+    nested gated map window. -/
+theorem flowBracketBalance_pos_of_mapTypedInterior
+    (tokens : Array (Positioned YamlToken)) (a b : Nat)
+    (h : MapTypedInterior tokens a b) :
+    flowBracketBalance tokens 0 a ≥ 1 :=
+  flowBracketBalance_pos_of_btFold_head tokens a false h.2.1
+
+/-- **The map gate LOCATES the enclosing opener with the exact facts the descent assembler reads** — the
+    `some false` dual of `seqEnclosingOpener_of_gate` (`:726`), the LOCATE half of the map `desc` descent
+    driver ([[ref-from-located-assembler-direction]]: the LOCATE; a future `mapDescent_provider_of_located`
+    is the assemble).
+
+    At any nested gated map window `[a, b)` the gate `MapTypedInterior tokens a b` carries
+    `flowBracketBalance tokens 0 a ≥ 1` (`flowBracketBalance_pos_of_mapTypedInterior` — its `btFold`-top
+    `= some false` forces a non-empty typed stack), exactly the hypothesis that makes the pure-balance
+    backward scan `flowBracketBalance_backward_open_locate` invokable.  That scan returns the innermost
+    unmatched opener `p < a` together with the THREE locator facts — `flowBracketDelta tokens[p]! = 1`,
+    `flowBracketBalance tokens (p+1) a = 0`, and the interior floor `∀ i ∈ [p+1, a], balance (p+1) i ≥ 0`.
+    Those four outputs are *definitionally* the four opener hypotheses a `mapDescent_provider_of_located`
+    will consume — the descent's LOCATE half needs **no fresh backward fixpoint**, the backward scan runs
+    its own `Nat.strongRecOn` internally ([[ref-backward-locator-mirrors-forward]]).  The backward scan is
+    BRACKET-TYPE-AGNOSTIC, so this is term-for-term the seq locator with the `some false` positivity
+    source swapped in. -/
+theorem mapEnclosingOpener_of_gate
+    (tokens : Array (Positioned YamlToken)) (a b : Nat) (h_a_sz : a ≤ tokens.size)
+    (h_gate : MapTypedInterior tokens a b) :
+    ∃ p, p < a ∧ flowBracketDelta tokens[p]!.val = 1 ∧
+      flowBracketBalance tokens (p + 1) a = 0 ∧
+      (∀ i, p + 1 ≤ i → i ≤ a → flowBracketBalance tokens (p + 1) i ≥ 0) :=
+  flowBracketBalance_backward_open_locate tokens a h_a_sz
+    (flowBracketBalance_pos_of_mapTypedInterior tokens a b h_gate)
+
+/-- **The located map opener is a `{`** — the `some false` dual of `seqOpenerType_of_located_and_gate`
+    (`:754`).  Given the backward locator's full output at the gated window start `a` — an opener `p` with
+    `flowBracketDelta tokens[p]! = 1` (so `tokens[p]` is `[` or `{`), the body balance
+    `flowBracketBalance tokens (p+1) a = 0`, and the interior floor over `(p, a]` — PLUS the gate's
+    `btFold`-top `= some false` after the prefix `[0,a)`, the located opener `tokens[p]` is a
+    `.flowMappingStart`.
+
+    The proof is the seq argument with `b = false`: the typed stack after `[0,p+1)` is `b :: s_p` where
+    `b` is the bit `tokens[p]` pushes (`b = true ↔ seqStart`, `b = false ↔ mapStart`).  The interior body
+    `(take a).drop (p+1)` has relative balance `0` and floor `≥ 0`, so it NEVER pops `b` and returns the
+    stack to `b :: s_p` at `a` (`btFold_frame_inv`).  Its head is `b`, which the gate fixes to `false`,
+    forcing `tokens[p]` to be the map opener.  The `flowBracketDelta = 1` dispatch's two cases SWAP roles
+    versus the seq proof: the map-opener case now discharges the conclusion (`b = false → mapStart`) and
+    the seq-opener case is killed as absurd (`true = false`) — opener-bit exclusivity
+    ([[ref-converse-forward-invariant-asymmetry]]).  Every other line is byte-identical to the seq twin. -/
+theorem mapOpenerType_of_located_and_gate
+    (tokens : Array (Positioned YamlToken)) (a p : Nat)
+    (h_pa : p < a) (h_a_sz : a ≤ tokens.size)
+    (h_delta : flowBracketDelta tokens[p]!.val = 1)
+    (h_bal : flowBracketBalance tokens (p + 1) a = 0)
+    (h_floor : ∀ i, p + 1 ≤ i → i ≤ a → flowBracketBalance tokens (p + 1) i ≥ 0)
+    (h_mark : (btFold (some []) (tokens.toList.take a)).bind (·.head?) = some false) :
+    tokens[p]!.val = .flowMappingStart := by
+  have h_p_sz : p < tokens.size := by omega
+  have h_p_T : p < tokens.toList.length := by rw [Array.length_toList]; exact h_p_sz
+  -- (1) the gate forces the whole `take a` fold to `some S` with head `false`.
+  obtain ⟨S, hS⟩ : ∃ S, btFold (some []) (tokens.toList.take a) = some S := by
+    cases hc : btFold (some []) (tokens.toList.take a) with
+    | none => rw [hc] at h_mark; simp at h_mark
+    | some S => exact ⟨S, rfl⟩
+  rw [hS] at h_mark
+  -- (2) `take a = take (p+1) ++ interior`, interior the body slice.
+  obtain ⟨interior, hint⟩ :
+      ∃ I, I = (tokens.toList.drop (p + 1)).take (a - (p + 1)) := ⟨_, rfl⟩
+  have h_split : tokens.toList.take a = tokens.toList.take (p + 1) ++ interior := by
+    rw [hint, ← List.take_add]; congr 1; omega
+  -- (3) the prefix `take p` folds to `some s_p`.
+  have h_split_p : tokens.toList.take (p + 1)
+      = tokens.toList.take p ++ [tokens.toList[p]'h_p_T] := by
+    rw [List.take_add_one, List.getElem?_eq_getElem h_p_T]; rfl
+  obtain ⟨s_p, hsp⟩ : ∃ s_p, btFold (some []) (tokens.toList.take p) = some s_p :=
+    btFold_some_prefix (tokens.toList.take p) ([tokens.toList[p]'h_p_T] ++ interior) S (by
+      rw [← List.append_assoc, ← h_split_p, ← h_split]; exact hS)
+  -- (4) the stack just after the opener is `b :: s_p`.
+  have hTp : tokens.toList[p]'h_p_T = tokens[p]! := by
+    rw [Array.getElem_toList, getElem!_pos tokens p h_p_sz]
+  have h_after : btFold (some []) (tokens.toList.take (p + 1)) = btStep tokens[p]! s_p := by
+    rw [h_split_p, btFold_append, hsp]
+    have : btFold (some s_p) [tokens.toList[p]'h_p_T] = btStep (tokens.toList[p]'h_p_T) s_p := rfl
+    rw [this, hTp]
+  -- (5) the opener is a `[` or `{` (delta = 1); get the pushed bit `b`.  The map case discharges the
+  --     conclusion; the seq case is absurd (the gate head is `false`, so `b` will be forced `false`).
+  obtain ⟨b, hbpush, hb_map⟩ :
+      ∃ b, btStep tokens[p]! s_p = some (b :: s_p) ∧
+        (b = false → tokens[p]!.val = .flowMappingStart) := by
+    rcases (flowBracketDelta_eq_one_iff _).mp h_delta with hseq | hmap
+    · exact ⟨true, by simp [btStep, hseq], fun h => absurd h (by decide)⟩
+    · exact ⟨false, by simp [btStep, hmap], fun _ => hmap⟩
+  -- (6) the whole `take a` fold equals the interior fold from `b :: s_p`.
+  have hfold : btFold (some (b :: s_p)) interior = some S := by
+    have h1 : btFold (some []) (tokens.toList.take (p + 1)) = some (b :: s_p) := by
+      rw [h_after, hbpush]
+    rw [h_split, btFold_append, h1] at hS; exact hS
+  -- (7) frame-inverse over `interior` with base `[]`, extra `b :: s_p`.
+  have h_int_len : interior.length = a - (p + 1) := by
+    rw [hint, List.length_take, List.length_drop, Array.length_toList]; omega
+  have hfloor' : ∀ k, k ≤ interior.length →
+      0 ≤ (([] : List Bool).length : Int) + pbalance (interior.take k) := by
+    intro k hk
+    have hk' : k ≤ a - (p + 1) := by rw [h_int_len] at hk; exact hk
+    have htk : interior.take k = (tokens.toList.drop (p + 1)).take k := by
+      rw [hint, List.take_take]; congr 1; omega
+    have hbridge : flowBracketBalance tokens (p + 1) (p + 1 + k)
+        = pbalance ((tokens.toList.drop (p + 1)).take k) := by
+      rw [flowBracketBalance_eq_pbalance tokens (p + 1) (p + 1 + k) (by omega)]; congr 2; omega
+    have hfl : (0 : Int) ≤ pbalance ((tokens.toList.drop (p + 1)).take k) := by
+      rw [← hbridge]; exact h_floor (p + 1 + k) (by omega) (by omega)
+    rw [htk]; simpa using hfl
+  obtain ⟨m, hm, hSm⟩ := btFold_frame_inv interior [] (b :: s_p) S hfloor'
+    (by rw [List.nil_append]; exact hfold)
+  -- (8) interior balance 0 ⟹ m = [].
+  have hint_bal : pbalance interior = 0 := by
+    have he : flowBracketBalance tokens (p + 1) a = pbalance interior := by
+      rw [hint, flowBracketBalance_eq_pbalance tokens (p + 1) a (by omega)]
+    rw [← he]; exact h_bal
+  have hm_len : (m.length : Int) = 0 := by
+    have hl := btFold_length interior [] m hm
+    simp only [List.length_nil] at hl
+    rw [hl]; simpa using hint_bal
+  have hm_nil : m = [] := List.eq_nil_of_length_eq_zero (by exact_mod_cast hm_len)
+  rw [hm_nil, List.nil_append] at hSm
+  -- (9) S = b :: s_p ⟹ head = b; gate head = false ⟹ b = false ⟹ mapStart.
+  rw [hSm] at h_mark
+  simp only [List.head?_cons, Option.bind_some] at h_mark
+  exact hb_map (Option.some.inj h_mark)
+
 /-- `ContentStartTok` (the head predicate of a seq body's unit entries) never holds of a `.flowEntry`:
     it is a scalar / `[` / `{`, never the separator `,`.  This is the `hQ` the no-trailing-comma
     substrate lemma needs to refute a lone-separator unit. -/
@@ -6127,6 +6293,69 @@ theorem recbody_joint_oracle_map_ih (tokens : Array (Positioned YamlToken))
   refine ⟨by omega, by omega, h_win, fun h_seqEnd => ?_, fun _ => ⟨h_deep, h_encl⟩, Or.inr h_mapEnd⟩
   rw [h_mapEnd] at h_seqEnd
   exact absurd h_seqEnd (by decide)
+
+/-- **The SEQ `locate` for the joint navigator driver** — `(i'-b-B2c-desc-joint-locate-seq)`, Phase J:
+    the FIRST of the two `locate` holes `recbody_joint_navigator_driver_carrier` (R534) takes as inputs,
+    now ASSEMBLED from three landed bricks.  Given the root seq separator carrier
+    `SeqInteriorSeparators tokens lo0 hi0`, this produces — at every seq-closing window the driver
+    visits — the first-entry boundary `m` with its depth-`0` balance and a `RecSeqEntry` for the prefix,
+    exactly the shape the driver's seq branch consumes (`obtain ⟨m, …, h_entry⟩ := locate_seq …`).
+
+    **Nothing new is proved here — it is a three-brick WIRING** ([[ref-reduction-by-import]] /
+    [[ref-consumer-joint-before-producer]] resolved):
+
+    1. **Unpack `RecBodyJointGuard tokens lo0 hi0 lo hi`** (R533): the frame bounds `lo0 ≤ lo` / `hi ≤ hi0`,
+       the shared `FlowBodyWindow tokens lo hi`, and — gated by the seq close `tokens[hi]!.val =
+       .flowSequenceEnd` we are handed — the deep+enclosure half `FlowBodyContentDeepSeq ∧ SeqEnclosed`.
+    2. **Source the per-window non-deep `FlowBodyContent`** the dispatch needs but the guard does NOT
+       carry, via the landed `seqWindow_flowBodyContent_seq_general`: the guard's `FlowBodyWindow` /
+       `FlowBodyContentDeepSeq` / `SeqEnclosed` plus the threaded root carrier narrowed to `[lo, hi)` by
+       the guard's own frame bounds ([[ref-narrow-from-root-breaks-rederivation-cycle]]) — the brick the
+       R536 next step named as the SOLE survivor, here discharged for the seq axis with no new lemma.
+    3. **Supply the dispatch's seq-only `h_ih` from the joint `oracle`** via `recbody_joint_oracle_seq_ih`
+       (R535): pick `Q := SeqEnclosed tokens`, and the adapter folds the joint guard and projects the
+       seq side at every narrower window — path-AGNOSTIC where a carrier-only IH would restrict to the
+       all-seq path.
+
+    `recseqentry_window_dispatch_seq` (R527) then locates the first entry; its output is the driver's
+    `locate_seq` shape modulo a pure RE-PACK — the dispatch carries an extra interior-minimality conjunct
+    `(∀ k, …)` the driver drops, and orders `balance`/`marker` the other way ([[ref-mirror-reads-conjunct-not-projection]]
+    at the existential level: read the conjuncts, re-tuple).  The off-axis `RecMapBody` the oracle also
+    carries is untouched here — it flows to `locate_map`, the symmetric brick still to assemble.
+
+    Verified-but-unconsumed until the driver is instantiated at the root `[2, size-2)` with this `locate_seq`,
+    the symmetric `locate_map`, and the per-window M2 narrowing: composes only landed lemmas, references
+    no sorry site, frontier sorry count unchanged at 4.  Inherits the dispatch's
+    `[propext, Classical.choice, Quot.sound]` (the seq dispatch threads the choice-tainted classify; the
+    oracle adapter is clean — [[ref-mirror-inherits-dependency-axioms]]). -/
+theorem recbody_locate_seq_carrier (tokens : Array (Positioned YamlToken)) (lo0 hi0 : Nat)
+    (h_seq_carrier : SeqInteriorSeparators tokens lo0 hi0) :
+    ∀ lo hi, RecBodyJointGuard tokens lo0 hi0 lo hi →
+      tokens[hi]!.val = .flowSequenceEnd →
+      (∀ lo' hi', hi' - lo' < hi - lo → RecBodyJointGuard tokens lo0 hi0 lo' hi' →
+        (tokens[hi']!.val = .flowSequenceEnd → RecSeqBody ((tokens.toList.take hi').drop lo')) ∧
+        (tokens[hi']!.val = .flowMappingEnd → RecMapBody ((tokens.toList.take hi').drop lo'))) →
+      ∃ m, lo < m ∧ m ≤ hi ∧
+        (m = hi ∨ tokens[m]!.val = .flowEntry) ∧
+        flowBracketBalance tokens lo m = 0 ∧
+        RecSeqEntry ((tokens.toList.take m).drop lo) := by
+  intro lo hi h_g h_seqEnd oracle
+  obtain ⟨h_lo0_lo, h_hi_hi0, h_win, h_seqHalf, _h_mapHalf, _h_close⟩ := h_g
+  obtain ⟨h_deep, h_enc⟩ := h_seqHalf h_seqEnd
+  have h_lo_sz : lo < tokens.size := by
+    have := h_win.lo_lt_hi; have := h_win.hi_lt; omega
+  -- Brick (2): per-window non-deep `FlowBodyContent` from the carrier narrowed by the guard's frame bounds.
+  have h_content : FlowBodyContent tokens lo hi :=
+    seqWindow_flowBodyContent_seq_general tokens lo0 hi0 lo hi h_win h_deep h_enc
+      h_seq_carrier h_lo0_lo h_hi_hi0
+  -- Dispatch the first entry; the seq-only `h_ih` is the joint oracle projected to the seq side (R535).
+  obtain ⟨m, h_lo_m, h_m_hi, h_bal_m, h_marker, _h_min, h_entry⟩ :=
+    recseqentry_window_dispatch_seq tokens lo hi h_win h_deep h_content
+      (SeqEnclosed tokens)
+      (fun h_open => seqEnclosed_descend tokens lo h_enc h_lo_sz h_open)
+      (recbody_joint_oracle_seq_ih tokens lo0 hi0 lo hi h_lo0_lo h_hi_hi0 oracle)
+  -- Re-pack into the driver's `locate_seq` shape (drop minimality, swap balance/marker order).
+  exact ⟨m, h_lo_m, h_m_hi, h_marker, h_bal_m, h_entry⟩
 
 /-- **The root-span instance of `seqWindowRecSeqBody_seq_general`** — `lo0 := 2`, `hi0 := size-2`,
     bounds read off `FlowBodyWindow.lo_ge`/`hi_le`.  Signature-preserving so `seqWindowRecSeqBody_seq`'s

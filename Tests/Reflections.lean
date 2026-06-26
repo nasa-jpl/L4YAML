@@ -228,6 +228,8 @@ import Tests.Reflections.JointDescendTailCarrier
 import Tests.Reflections.JointGuardDescendTail
 import Tests.Reflections.JointNavigatorDriverCarrier
 import Tests.Reflections.JointOracleSeqIh
+import Tests.Reflections.LocateHoleIsDispatchRepacked
+import Tests.Reflections.AxisDualFromTypeAgnosticCore
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
