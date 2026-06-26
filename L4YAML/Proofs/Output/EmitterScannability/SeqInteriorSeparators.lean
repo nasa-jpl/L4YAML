@@ -2999,6 +2999,73 @@ theorem mapWindow_mapBodyProps (tokens : Array (Positioned YamlToken)) (lo hi : 
   mapWindow_mapBodyProps_general tokens 2 (tokens.size - 2) lo hi
     h_win h_deep h_enclosed h_close h_after_fe h_root_carrier h_win.lo_ge h_win.hi_le
 
+/-- **The corrected per-window facts bridge — the LIVE carrier→`MapGrammarFacts''` producer that
+    REPLACES the dead strict-carrier route.**  This is the `''` mirror of `mapWindow_grammarFacts_general`
+    (`:2895`): narrow the enclosing carrier to `[lo, hi) ⊆ [lo0, hi0)`, assemble the gate
+    `MapTypedInterior` from the window's own `balanced`/`dyck` plus the `{`-enclosure `MapEnclosed tokens lo`,
+    and instantiate the carrier at the window.
+
+    **Why this exists — an inhabitation-debt course-correction (R550, [[ref-inhabitation-debt-validate-target-defs]]).**
+    The R549 redirect named the next brick "`mapRoot_mapGrammarFacts''` off emission, composing
+    `mapGrammarFacts''_of_mapBodyProps` with `mapWindow_mapBodyProps`."  Probing BEFORE building (rule 3 —
+    a hypothesis with no producer is the alarm) shows that composition is a TRAP one level up:
+    `mapWindow_mapBodyProps`/`mapWindow_mapBodyProps_general` (`:2962`) — and the whole strict producer
+    family `mapWindow_grammarFacts_general` (`:2895`), `mapBodyProps_assemble`'s carrier feeders, and the
+    R531 joint content-pack's map half — consume `h_carrier0 : MapInteriorSeparators tokens lo0 hi0`, the
+    STRICT carrier threaded through strict `MapGrammarFacts`.  But strict `MapGrammarFacts` is STRONGER than
+    the robust `MapGrammarFacts'` that R547 REFUTED on the genuine bracket body `{a:[1], b:2}` window
+    `[2,13)` (`mapGrammarFacts'_bracketVal_false`), so via the R545 connector `mapGrammarFacts'_of_mapGrammarFacts`
+    (`:706`) the strict carrier is ALSO false there — `MapInteriorSeparators tokens 2 (size-2)` is
+    UNSATISFIABLE for any input carrying a bracket-valued entry (and on the window-close axis even without
+    brackets, R540).  A producer whose hypothesis no emission can supply is exactly the inhabitation-debt
+    trap: it would type-check (it is verified-but-unconsumed), it would compose, and it could be discharged
+    by NOBODY.  So `mapWindow_mapBodyProps` is dead as an off-emission route, and the `MapBodyProps` it
+    produces is reachable only through it — meaning R549's `mapGrammarFacts''_of_mapBodyProps`, while a
+    correct transform, is itself on the dead branch.
+
+    The LIVE path bypasses `MapBodyProps` entirely: the corrected carrier `MapInteriorSeparators''`
+    (`:387`) already bundles the matching-close-pinned `MapGrammarFacts''` per gated sub-window, and unlike
+    the strict carrier it is NOT refuted — it is inhabited on a unit span (`mapInteriorSeparators''_unit`)
+    and proved on the very bracket fixtures the strict/robust forms fail (R548 `mapGrammarFacts''_bracketVal`/
+    `_mixed`).  So this bridge instantiates the inhabited corrected carrier directly, the way
+    `mapWindow_grammarFacts_general` instantiated the strict one — same narrow+gate+instantiate shape, a LIVE
+    hypothesis in place of a dead one.  The eventual `mapRoot_mapInteriorSeparators''` (the recursion's root
+    seed) feeds `h_carrier0` here; this bridge is what every per-window consumer calls once that seed lands.
+
+    INHABITATION-DEBT discipline: the trap is proved in `Tests/Reflections/MapCarrierRobustInhabitation.lean`
+    (R550) by `mapInteriorSeparators_bracketVal_false : ¬ MapInteriorSeparators fixtureMapSeqVal 2 13` (the
+    strict carrier — `mapWindow_mapBodyProps`'s `h_root_carrier` — is unproducible on real bracket emission);
+    the bridge's reachability is probed by routing the inhabited unit carrier through it
+    (`mapWindow_mapGrammarFacts''_general_unit`), discharging the rule-3 carrier hypothesis with a real
+    inhabitant and leaving only the standard `FlowBodyWindow`/`MapEnclosed` guards (the landed
+    guard-preservation infra, not this brick's debt) as legible hypotheses.  Verified-but-unconsumed:
+    references no sorry site; frontier sorry count unchanged at 4. -/
+theorem mapWindow_mapGrammarFacts''_general (tokens : Array (Positioned YamlToken))
+    (lo0 hi0 lo hi : Nat)
+    (h_win : FlowBodyWindow tokens lo hi)
+    (h_enclosed : MapEnclosed tokens lo)
+    (h_carrier0 : MapInteriorSeparators'' tokens lo0 hi0)
+    (h_lo0 : lo0 ≤ lo) (h_hi0 : hi ≤ hi0) :
+    MapGrammarFacts'' tokens lo hi := by
+  -- the enclosing CORRECTED carrier narrows to `[lo, hi) ⊆ [lo0, hi0)` (window-absolute body)
+  have h_carrier : MapInteriorSeparators'' tokens lo hi :=
+    MapInteriorSeparators''_narrow h_lo0 h_hi0 h_carrier0
+  -- the gate: balance + Dyck floor from the window guard; the enclosing-`{` btFold-top is `MapEnclosed`
+  have h_gate : MapTypedInterior tokens lo hi :=
+    ⟨h_win.balanced, h_enclosed, h_win.dyck⟩
+  exact h_carrier lo hi (Nat.le_refl lo) (Nat.le_of_lt h_win.lo_lt_hi) (Nat.le_refl hi) h_gate
+
+/-- **The root-span instance of `mapWindow_mapGrammarFacts''_general`** — `lo0 := 2`, `hi0 := size-2`,
+    bounds read off `FlowBodyWindow.lo_ge`/`hi_le`; the corrected-carrier mirror of
+    `mapWindow_grammarFacts` (`:2916`). -/
+theorem mapWindow_mapGrammarFacts'' (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_win : FlowBodyWindow tokens lo hi)
+    (h_enclosed : MapEnclosed tokens lo)
+    (h_root_carrier : MapInteriorSeparators'' tokens 2 (tokens.size - 2)) :
+    MapGrammarFacts'' tokens lo hi :=
+  mapWindow_mapGrammarFacts''_general tokens 2 (tokens.size - 2) lo hi
+    h_win h_enclosed h_root_carrier h_win.lo_ge h_win.hi_le
+
 /-- **The all-seq-PATH domain predicate** — `(i'-b-B2c-nested-project, the domain hypothesis)`, the
     proof-side Prop form of `pathAllSeq` (R336, `SeqPathDispatchProbe`).  Where `SeqEnclosed tokens lo`
     reads only the TOP of the typed bracket stack after `[0, lo)` (the window's IMMEDIATE enclosure),

@@ -800,6 +800,59 @@ theorem mapBodyProps_bracketVal : MapBodyProps fixtureMapSeqVal 2 13 := by
 theorem mapGrammarFacts''_of_mapBodyProps_bracketVal : MapGrammarFacts'' fixtureMapSeqVal 2 13 :=
   mapGrammarFacts''_of_mapBodyProps fixtureMapSeqVal 2 13 mapBodyProps_bracketVal
 
+/-! ## R550 — the TRAP under the R549 redirect, and the LIVE corrected-carrier bridge
+
+The R549 redirect named the next brick "`mapRoot_mapGrammarFacts''` off emission, composing
+`mapGrammarFacts''_of_mapBodyProps` with `mapWindow_mapBodyProps`."  Inhabitation-debt rule 3 (a
+hypothesis with no producer is the alarm) says probe BEFORE building on it — and the probe kills the
+route: `mapWindow_mapBodyProps`/`mapWindow_mapBodyProps_general` (and the whole strict producer family
+`mapWindow_grammarFacts_general`, `mapBodyProps_assemble`'s carrier feeders, the R531 joint
+content-pack's map half) consume `h_carrier0 : MapInteriorSeparators` — the STRICT carrier, threaded
+through strict `MapGrammarFacts`.  Strict is STRONGER than the robust `MapGrammarFacts'` that R547
+REFUTED on `{a:[1], b:2}` window `[2,13)`, so via the R545 connector `mapGrammarFacts'_of_mapGrammarFacts`
+the strict carrier is ALSO false there.  `mapInteriorSeparators_bracketVal_false` makes that a theorem:
+the strict root carrier `mapWindow_mapBodyProps` demands is UNSATISFIABLE on real bracket emission.  A
+producer whose hypothesis no emission supplies is the inhabitation-debt trap one level up — it
+type-checks, it composes, and NOBODY can discharge it.  So the redirect's composition is dead, and
+R549's `mapGrammarFacts''_of_mapBodyProps` (a correct transform) sits on the dead branch with it,
+because its domain `MapBodyProps` is reachable only through the strict carrier.
+
+The LIVE replacement (`mapWindow_mapGrammarFacts''_general`/`mapWindow_mapGrammarFacts''`, source
+`SeqInteriorSeparators.lean`) bypasses `MapBodyProps`: it instantiates the CORRECTED carrier
+`MapInteriorSeparators''` directly — which, unlike the strict one, is inhabited (`mapInteriorSeparators''_unit`
++ the R548 bracket birth-probes).  `mapWindow_mapGrammarFacts''_general_unit` routes that inhabited unit
+carrier through the bridge, discharging the rule-3 carrier hypothesis with a real inhabitant and leaving
+only the standard `FlowBodyWindow`/`MapEnclosed` guards (the landed guard-preservation infra) as legible
+hypotheses — the R542-style non-vacuity check adapted to the bridge. -/
+
+/-- **THE TRAP, made a theorem.** The STRICT carrier `MapInteriorSeparators` — exactly
+    `mapWindow_mapBodyProps`'s `h_root_carrier` — is REFUTED on `{a:[1], b:2}` at its own gated body
+    window `[2,13)`: instantiated there it yields strict `MapGrammarFacts`, the R545 connector weakens
+    that to robust `MapGrammarFacts'`, and `mapGrammarFacts'_bracketVal_false` refutes it.  So no
+    emission can supply `MapInteriorSeparators fixtureMapSeqVal 2 13`, and the R549-redirect composition
+    `mapGrammarFacts''_of_mapBodyProps ∘ mapWindow_mapBodyProps` is a producer with an unproducible
+    hypothesis — the inhabitation-debt trap one level up.  (Mirror of `mapInteriorSeparators'_bracketVal_false`,
+    one rung stronger: it kills the STRICT carrier, the actual `mapWindow_mapBodyProps` input.) -/
+theorem mapInteriorSeparators_bracketVal_false : ¬ MapInteriorSeparators fixtureMapSeqVal 2 13 := by
+  intro h
+  exact mapGrammarFacts'_bracketVal_false
+    (mapGrammarFacts'_of_mapGrammarFacts fixtureMapSeqVal 2 13
+      (h 2 13 (Nat.le_refl 2) (by omega) (Nat.le_refl 13) mapTypedInterior_bracketVal))
+
+/-- **The LIVE bridge is reachable** — routing the inhabited unit carrier `mapInteriorSeparators''_unit`
+    through `mapWindow_mapGrammarFacts''_general` recovers `MapGrammarFacts''` on the unit window, the
+    rule-3 carrier hypothesis discharged by a REAL inhabitant (not assumed).  The residual
+    `FlowBodyWindow`/`MapEnclosed` guards are kept as explicit hypotheses — the standard
+    guard-preservation infra (`advanceTail_invariant`, `mapEnclosed_descend`, …), NOT this brick's debt
+    — making the only-remaining obligations legible.  Contrast `mapInteriorSeparators_bracketVal_false`
+    above: the STRICT bridge has NO such reachable inhabitant. -/
+theorem mapWindow_mapGrammarFacts''_general_unit (tokens : Array (Positioned YamlToken)) (lo : Nat)
+    (h_win : FlowBodyWindow tokens lo (lo + 1))
+    (h_enc : MapEnclosed tokens lo) :
+    MapGrammarFacts'' tokens lo (lo + 1) :=
+  mapWindow_mapGrammarFacts''_general tokens lo (lo + 1) lo (lo + 1)
+    h_win h_enc (mapInteriorSeparators''_unit tokens lo) (Nat.le_refl lo) (Nat.le_refl (lo + 1))
+
 -- Axiom audit — the carrier inhabitation and the boundary-survival probe lean only on core; the
 -- ASSEMBLE non-vacuity checks also pull in `Classical.choice` through the rebase's
 -- `flowBracketBalance_compose`.
@@ -882,5 +935,14 @@ theorem mapGrammarFacts''_of_mapBodyProps_bracketVal : MapGrammarFacts'' fixture
 /-- info: 'MapCarrierRobustInhabitation.mapGrammarFacts''_of_mapBodyProps_bracketVal' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in
 #print axioms mapGrammarFacts''_of_mapBodyProps_bracketVal
+
+-- R550 — the strict-carrier trap refutation and the live-bridge reachability probe are core-clean.
+/-- info: 'MapCarrierRobustInhabitation.mapInteriorSeparators_bracketVal_false' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
+#print axioms mapInteriorSeparators_bracketVal_false
+
+/-- info: 'MapCarrierRobustInhabitation.mapWindow_mapGrammarFacts''_general_unit' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
+#print axioms mapWindow_mapGrammarFacts''_general_unit
 
 end MapCarrierRobustInhabitation

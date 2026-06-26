@@ -23560,7 +23560,7 @@ abstracts over `_a` whose type the bound depends on).
 
 ## Phase 3 — Stage C: EmitterScannability discharge — `.flowmono` / `.body` / `.bridge` (Reflections 153–192)
 
-### Frontier status — the 4 remaining `sorry`s and the path to close them (snapshot 2026-06-26, R549)
+### Frontier status — the 4 remaining `sorry`s and the path to close them (snapshot 2026-06-26, R550)
 
 The reflections in this section all discharge a single end goal: the well-bracketing
 certificate `FlowSubrangesOk tokens` that lets the flow-collection parser provably
@@ -23735,13 +23735,24 @@ shared recursion** rather than two mirrored ones:
      concrete `mapBodyProps_bracketVal : MapBodyProps fixtureMapSeqVal 2 13` (hand-built, M8 FIRING at the value's
      bracket with its OWN interior close `j=7`, `j+1 = 8 < 13` — the arm R547 refuted) routed through the producer
      to recover the birth-probed facts (`mapGrammarFacts''_of_mapBodyProps_bracketVal`), a non-vacuous read-back
-     not a projection. Axiom-clean `[propext, Quot.sound]`, frontier held at 4 (782 jobs). **The immediate next
-     brick is now `mapRoot_mapGrammarFacts''` off emission — compose this producer with `mapWindow_mapBodyProps`
-     and the root window facts — and reconciling the consumer field `MapLocated.h_key_bracket_succ`
-     (`NonemptyStructure.lean:10531`) onto `MapGrammarFacts''`. NB the rebase `mapGrammarFacts_rebase''` does NOT
-     mirror cleanly: the existential conjuncts 5/6 must relocate `j < hiS` to `j < b`, which needs `[a,b)` GATED
-     (balanced) — the rebase signature carries no gate, so `rebase''` will need an added hypothesis (or the
-     assembler routes the same-window producer directly).**
+     not a projection. Axiom-clean `[propext, Quot.sound]`, frontier held at 4 (782 jobs).
+   - **R550 caught the R549 redirect's named brick as a TRAP and landed the LIVE bridge instead.** The redirect
+     said "compose `mapGrammarFacts''_of_mapBodyProps` with `mapWindow_mapBodyProps`." Probing BEFORE building
+     (inhabitation-debt rule 3) kills it: `mapWindow_mapBodyProps` — and the whole pre-R540 strict producer family
+     (`mapWindow_grammarFacts_general`, `mapBodyProps_assemble`'s carrier feeders, the R531 joint content-pack's
+     map half) — consumes the STRICT carrier `MapInteriorSeparators`, which R540/R547 proved FALSE. Strict ⊃
+     robust, so via the R545 connector the strict carrier is UNSATISFIABLE on `{a:[1],b:2}` `[2,13)`
+     (`mapInteriorSeparators_bracketVal_false`, axiom-clean — one rung stronger than the robust refutation, it
+     kills the actual `mapWindow_mapBodyProps` input). A producer with an unproducible hypothesis is the trap one
+     level up; R549's correct transform sits on that dead branch too (its `MapBodyProps` domain reaches only via
+     the strict carrier). The LIVE replacement bypasses `MapBodyProps`: `mapWindow_mapGrammarFacts''_general` /
+     `mapWindow_mapGrammarFacts''` (the `''` mirror of `mapWindow_grammarFacts_general`, narrow+gate+instantiate)
+     threads the INHABITED corrected carrier `MapInteriorSeparators''` directly, probed by
+     `mapWindow_mapGrammarFacts''_general_unit` (unit carrier routed through, `FlowBodyWindow`/`MapEnclosed` guards
+     left legible). Axiom-clean `[propext, Quot.sound]`, frontier held at 4 (782 jobs). **The immediate next brick
+     is the root seed `mapRoot_mapInteriorSeparators''` (the recursion that produces the corrected carrier off
+     emission, feeding `h_carrier0` here), then reconciling the consumer field `MapLocated.h_key_bracket_succ`
+     (`NonemptyStructure.lean:10531`) onto `MapGrammarFacts''`.**
 
 **Once `locate_map`, the M2 narrowing, and the two root carriers exist, the driver runs
 at the root and sorries 1 + 2 are one `exact` each** (same `FlowSubrangesOk tokens`
@@ -23749,8 +23760,11 @@ proposition, both fed by the assembler over the driver's two projections). The r
 REAL obligations for Family A are: **reconciling the existing rebase/assembler/connector/bridge chain
 and the consumer field `MapLocated.h_key_bracket_succ` onto the corrected `MapGrammarFacts''`** (R548 —
 the full M5/M8 existential conjuncts 5/6 LANDED and birth-probed; R549 — the producer
-`mapGrammarFacts''_of_mapBodyProps` GROUNDED the target in real emission off `MapBodyProps`, so the map
-root/descent providers now target it *instead* of the false `MapGrammarFacts'`), `locate_map` (mechanical —
+`mapGrammarFacts''_of_mapBodyProps` GROUNDED the target in real emission off `MapBodyProps`; R550 — found
+that `MapBodyProps`-off-emission route DEAD (it needs the strict carrier R540/R547 refuted) and landed the LIVE
+`mapWindow_mapGrammarFacts''_general` threading the corrected carrier directly, so the map root/descent providers
+now target `MapGrammarFacts''` via the inhabited `MapInteriorSeparators''`, *not* the false strict chain),
+`locate_map` (mechanical —
 R537's recipe mirrored to the map dispatch), the M2 narrowing, and the two descent/root-carrier
 providers (the only genuinely open math, symmetric across seq/map thanks to R513–R515).
 
@@ -31462,6 +31476,18 @@ The window's close bracket selects which body it is, and the *conjunction* carri
 **LANDED (R531 — `SeqInteriorSeparators.lean`):** build green at exactly 4 frontier sorries (`NonemptyStructure:11586` + `EmitterScannability:315/809/848`), full `L4YAML` + `Tests.Reflections` (410 jobs). New demo `Tests/Reflections/JointContentPackFromCarrier.lean` (proves the abstract `joint_content_pack` once — parametric in `close, Win, DeepS, DeepM, ContentS, ContentM, CarrierS, CarrierM, M2, EncS, EncM, provideS, provideM`, the dual-pack assembly where the map provider alone consumes the close token and the deferred `M2`; instantiates at toy guards and RUNS both packs — `hi = 3 → seqEnd`, `hi = 4 → mapEnd`; `demo` depends on no axioms), new memory `ref-content-pack-passthrough-manufacture`, `MEMORY.md` index updated.
 
 **Next step.** With R530's debt (b) discharged, brick (2) reduces to: (i) re-type the joint driver's `locate` marker to carry the depth-`0` balance `flowBracketBalance tokens lo m = 0`, and fold the two outer carriers + the deferred map fact + the frame bounds into the guard `G`, so the descend's `h_seq_pack`/`h_map_pack` come from `recbody_joint_content_pack` per-window and its `h_bal_m` from the strengthened marker; (iii) construct the concrete `locate_seq` (R527-fed dispatch + R510's route) and `locate_map` (R522 → R523/R525 → R524 → R527 → `recmapentry_pair_located`), each passed the JOINT oracle. Then `recbody_joint_navigator_driver`'s `.2` is the raw `h_map_rec` `flowSubrangesOk_of_window_producers` consumes (closing brick (2)), its `.1` the seq `h_seq_rec`. *[Acted on by Reflection 532: piece (i)'s descend-assembly part — "so the descend's `h_seq_pack`/`h_map_pack` come from `recbody_joint_content_pack` per-window" — is now LANDED as `recbody_joint_descend_tail_carrier`, the composition R531 ∘ R530 that feeds R531's output into R530's opaque content slot, producing the concrete `descend_tail` (= the suffix guard `G (m+1) hi`). The content debt is gone from the descend's interface; what remains for piece (i) is the driver-marker strengthening for `h_bal_m` and folding the carriers/M2/bounds into `G` so the driver's `descend_tail` slot is this lemma. Piece (iii) (the two concrete `locate`s) is untouched.]*
+
+### Reflection 550 — the R549 redirect's named brick was a TRAP: `mapWindow_mapBodyProps` needs the STRICT carrier R540/R547 proved false, so the live route threads the corrected carrier directly via `mapWindow_mapGrammarFacts''_general`. **R549 ended by naming the next brick "`mapRoot_mapGrammarFacts''` off emission — compose `mapGrammarFacts''_of_mapBodyProps` with `mapWindow_mapBodyProps`." Inhabitation-debt ([[ref-inhabitation-debt-validate-target-defs]]) rule 3 — a hypothesis with no producer is the alarm — says probe BEFORE building on it. The probe kills the route, and the kill is the reflection.**
+
+**The trap: a verified producer whose hypothesis no emission can supply.** `mapWindow_mapBodyProps` / `mapWindow_mapBodyProps_general` (R522) — and the entire pre-R540 strict producer family: `mapWindow_grammarFacts_general` (R520), `mapBodyProps_assemble`'s carrier feeders, the R531 joint content-pack's map half — consume `h_carrier0 : MapInteriorSeparators`, the STRICT carrier threaded through strict `MapGrammarFacts`. But strict `MapGrammarFacts` is STRONGER than the robust `MapGrammarFacts'` that R547 REFUTED on the genuine bracket body `{a:[1], b:2}` window `[2,13)` (`mapGrammarFacts'_bracketVal_false`), so via the R545 connector `mapGrammarFacts'_of_mapGrammarFacts` the STRICT carrier is ALSO false there. `mapInteriorSeparators_bracketVal_false` makes it a theorem: `MapInteriorSeparators fixtureMapSeqVal 2 13` — exactly `mapWindow_mapBodyProps`'s `h_root_carrier` — is UNSATISFIABLE on real bracket emission (one rung stronger than the robust refutation, killing the actual input). A producer with an unproducible hypothesis is the inhabitation-debt trap ONE LEVEL UP: it type-checks, it composes, it stays "verified-but-unconsumed" forever, and it can be discharged by NOBODY. So the redirect's composition is dead — and R549's `mapGrammarFacts''_of_mapBodyProps`, a correct transform, sits on the dead branch with it, because its domain `MapBodyProps` is reachable only through the strict carrier.
+
+**"Verified-but-unconsumed" is a RED FLAG to re-probe the foundation, not a neutral parking state.** When R540/R547 found the strict/robust carriers false, a whole sub-tree of verified-but-unconsumed strict-carrier producers silently died with them — and the R549 redirect, written one reflection earlier, walked straight back into it. Rule 3 ("0 producers is the alarm") applies to the HYPOTHESES of the existing lemmas you plan to compose ONTO ([[ref-reduction-by-import]]), not only to your own new `def`s. When a foundational def is found false, AUDIT its downstream consumers for the now-dead hypothesis before composing onto any of them.
+
+**The LIVE replacement bypasses `MapBodyProps`.** The corrected carrier `MapInteriorSeparators''` (`:387`) already bundles the matching-close-pinned `MapGrammarFacts''` per gated sub-window, and unlike the strict carrier it is NOT refuted — inhabited on a unit span (`mapInteriorSeparators''_unit`) and proved on the very bracket fixtures the strict/robust forms fail (R548 `mapGrammarFacts''_bracketVal`/`_mixed`). So `mapWindow_mapGrammarFacts''_general` / `mapWindow_mapGrammarFacts''` (`SeqInteriorSeparators.lean`) — the `''` mirror of `mapWindow_grammarFacts_general`, the SAME narrow+gate+instantiate shape — threads the inhabited corrected carrier directly, a LIVE hypothesis in place of a dead one. Its reachability is probed by `mapWindow_mapGrammarFacts''_general_unit`: route the inhabited unit carrier through the bridge, discharging the rule-3 carrier hypothesis with a REAL inhabitant and leaving only the standard `FlowBodyWindow`/`MapEnclosed` guards (the landed guard-preservation infra — `advanceTail_invariant`, `mapEnclosed_descend` — NOT this brick's debt) as legible residual hypotheses. The R542-style non-vacuity check, adapted to the bridge. Both artifacts axiom-clean `[propext, Quot.sound]`, full build green at exactly 4 frontier sorries (782 jobs).
+
+**What landed.** `mapWindow_mapGrammarFacts''_general` + root-span `mapWindow_mapGrammarFacts''` in `SeqInteriorSeparators.lean` (immediately after `mapWindow_mapBodyProps`); the trap refutation `mapInteriorSeparators_bracketVal_false` and the live-bridge reachability `mapWindow_mapGrammarFacts''_general_unit` in `Tests/Reflections/MapCarrierRobustInhabitation.lean` (R550 section), both axiom-clean with guarded `#print axioms`. Memory `feedback_inhabitation_debt_validate_target_defs` + `MEMORY.md` index extended with the composition-target rule.
+
+**Next step.** Build the root seed `mapRoot_mapInteriorSeparators''` — the recursion that PRODUCES the corrected carrier `MapInteriorSeparators''` off emission (the descent/advance fixedpoint over `windowWidth_strongRecOn`, seeded at the root window), which feeds `h_carrier0` of `mapWindow_mapGrammarFacts''_general`. Then reconcile the consumer field `MapLocated.h_key_bracket_succ` (`NonemptyStructure.lean:10531`, the same unguarded generic-closer shape) onto `MapGrammarFacts''`. Family B (sorries 3/4, contentEq) remains a separate untouched effort.
 
 ### Reflection 549 — the FIRST producer of the corrected target: `mapGrammarFacts''_of_mapBodyProps` grounds `MapGrammarFacts''` in real emission. **R548 LANDED `MapGrammarFacts''` and probed it TRUE at birth on four fixtures, but a birth-probe certifies the target on hand-built witnesses; it does not yet show the target is REACHABLE from what emission actually produces. R549 lands that grounding: `MapGrammarFacts''` is a structural WEAKENING of `MapBodyProps` (`ParserGrammableBase.lean:1220`, the M1–M10 bundle the structure lemmas already produce off emission), so it follows from `MapBodyProps` on the SAME window by a pure repackaging.**
 
