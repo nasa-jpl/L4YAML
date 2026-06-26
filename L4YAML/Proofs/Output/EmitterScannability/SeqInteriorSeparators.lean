@@ -624,6 +624,92 @@ theorem mapOpenerType_of_located_and_gate
   simp only [List.head?_cons, Option.bind_some] at h_mark
   exact hb_map (Option.some.inj h_mark)
 
+/-- **The forward CLOSE of the located enclosing map** — the `some false`/`{` axis-dual of
+    `seqClose_of_located_and_enclosing` (`:1027`), the matching-close brick of the MAP descent.  Given
+    the located enclosing opener `p` — now PROVEN a `.flowMappingStart` (`mapOpenerType_of_located_and_gate`,
+    R538) at depth `0` of the enclosing recursion window `[lo, hi)` (the discriminator
+    `flowBracketBalance tokens lo p = 0`, [[ref-root-seed-discriminator-not-from-gate]]) — locate its
+    matching close `hiS = j` and deliver the bounds the map enclosing-facts provider needs.
+
+    Per [[ref-axis-dual-from-typeagnostic-core]] this dual is a near-verbatim text-swap of the seq twin.
+    The matching-close locator is GENERIC in the bracket type: the `_map` specialisation
+    `flowBracketBalance_matching_close_map` (`WellBracketed.lean:2122`) bundles the typed `.flowMappingEnd`
+    exactly as the `_seq` one bundles `.flowSequenceEnd` (both push `[true]`/`[false]` internally and pop
+    via `btStep_pop_eq_{seq,map}End`).  The entire two-floor relay that recovers the containment bounds
+    `a ≤ j`, `b ≤ j` is TYPE-AGNOSTIC — it reads only `flowBracketDelta tokens[j]!.val = -1` (true of
+    `.flowMappingEnd` as of `.flowSequenceEnd`, `ParserGrammableBase.lean:508`) and balances, never the
+    bracket type.  So the ONLY proof-text difference from the seq twin is the THREE tokens
+    (`flowBracketBalance_matching_close_seq → _map`, `.flowSequenceStart → .flowMappingStart`,
+    `.flowSequenceEnd → .flowMappingEnd`); the proof body is byte-identical (no branch-vacuity flip here —
+    that was spent at R538's opener-type dispatch; the close has no bit-consuming dispatch of its own).
+
+    Delivered as the shape the map enclosing-facts provider consumes: `hiS = j` with `a ≤ hiS`,
+    `b ≤ hiS`, `hiS ≤ tokens.size`, `flowBracketBalance tokens (p+1) hiS = 0` (the body `[p+1, j)`
+    balances — feeds the map child's window) and the typed close `.flowMappingEnd`.
+
+    The two containment bounds come for free from the two floors (this is why R514's gate floor was
+    load-bearing): the close at `j` makes the next step underflow, refuted by the **locator floor**
+    (`h_loc_floor` over `[p+1, a]`) for `a ≤ j`, then by the **gate floor** (`h_gate_floor` over `[a, b]`)
+    for `b ≤ j` — the [[ref-two-floor-relay-close-bound]] relay, type-agnostic.
+
+    Verified-but-unconsumed (R539): its consumer — `mapDescent_provider_of_located` /
+    `mapEnclosingFacts_provider_of_located` — does not exist yet; references no sorry site; frontier sorry
+    count holds at 4.  Axioms byte-identical to the seq twin (the dual threads the same dependencies via
+    `flowBracketBalance_matching_close_map`, [[ref-mirror-inherits-dependency-axioms]]). -/
+theorem mapClose_of_located_and_enclosing
+    (tokens : Array (Positioned YamlToken)) (a b lo p hi : Nat)
+    (h_lo_p : lo ≤ p) (h_pa : p < a) (h_ab : a ≤ b) (h_b_hi : b ≤ hi)
+    (h_hi_sz : hi ≤ tokens.size)
+    (h_p_depth : flowBracketBalance tokens lo p = 0)
+    (h_total : flowBracketBalance tokens lo hi = 0)
+    (h_win_floor : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
+    (h_open : tokens[p]!.val = .flowMappingStart)
+    (h_body_bal : flowBracketBalance tokens (p + 1) a = 0)
+    (h_loc_floor : ∀ i, p + 1 ≤ i → i ≤ a → flowBracketBalance tokens (p + 1) i ≥ 0)
+    (h_gate_floor : ∀ i, a ≤ i → i ≤ b → flowBracketBalance tokens a i ≥ 0)
+    (h_wt : WellTyped ((tokens.toList.take hi).drop lo)) :
+    ∃ hiS, a ≤ hiS ∧ b ≤ hiS ∧ hiS ≤ tokens.size ∧
+      flowBracketBalance tokens (p + 1) hiS = 0 ∧
+      tokens[hiS]!.val = .flowMappingEnd := by
+  have h_p_hi : p < hi := by omega
+  -- Matching close + typed close in one call (base `lo`, opener `k := p`).  The `_map` locator is the
+  -- only token that differs from the seq close brick.
+  obtain ⟨j, h_pj, h_jhi, h_jclose, h_inner, _⟩ :=
+    flowBracketBalance_matching_close_map tokens lo p hi h_lo_p h_p_hi h_hi_sz
+      h_p_depth h_open h_total h_win_floor h_wt
+  have h_jdelta : flowBracketDelta tokens[j]!.val = -1 := by rw [h_jclose]; rfl
+  -- One-step balance recurrence at `j` over any base `≤ j` (type-agnostic, verbatim from the seq twin).
+  have step : ∀ base, base ≤ j →
+      flowBracketBalance tokens base (j + 1)
+        = flowBracketBalance tokens base j + flowBracketDelta tokens[j]!.val := by
+    intro base hbase
+    have h_j_sz : j < tokens.size := by omega
+    have hlen : j < tokens.toList.length := by rw [Array.length_toList]; exact h_j_sz
+    rw [flowBracketBalance_compose tokens base j (j + 1) hbase (by omega),
+        flowBracketBalance_single tokens j hlen]
+    have h1 : tokens.toList[j]'hlen = tokens[j] := Array.getElem_toList h_j_sz
+    have h2 : tokens[j] = tokens[j]! := (getElem!_pos tokens j h_j_sz).symm
+    rw [h1, h2]
+  -- (1) `a ≤ j` from the locator floor at `j + 1`.
+  have h_a_j : a ≤ j := by
+    rcases Nat.lt_or_ge j a with h | h
+    · have h_floor := h_loc_floor (j + 1) (by omega) (by omega)
+      rw [step (p + 1) (by omega), h_inner, h_jdelta] at h_floor
+      omega
+    · exact h
+  -- (2) `balance a j = 0` by composition over `[p+1, a, j]`.
+  have h_aj_bal : flowBracketBalance tokens a j = 0 := by
+    have hc := flowBracketBalance_compose tokens (p + 1) a j (by omega) h_a_j
+    rw [h_inner, h_body_bal] at hc; omega
+  -- (3) `b ≤ j` from the GATE floor at `j + 1`.
+  have h_b_j : b ≤ j := by
+    rcases Nat.lt_or_ge j b with h | h
+    · have h_floor := h_gate_floor (j + 1) (by omega) (by omega)
+      rw [step a h_a_j, h_aj_bal, h_jdelta] at h_floor
+      omega
+    · exact h
+  exact ⟨j, h_a_j, h_b_j, by omega, h_inner, h_jclose⟩
+
 /-- `ContentStartTok` (the head predicate of a seq body's unit entries) never holds of a `.flowEntry`:
     it is a scalar / `[` / `{`, never the separator `,`.  This is the `hQ` the no-trailing-comma
     substrate lemma needs to refute a lone-separator unit. -/
