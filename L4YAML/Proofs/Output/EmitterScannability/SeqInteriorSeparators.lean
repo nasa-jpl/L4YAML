@@ -213,6 +213,199 @@ theorem MapInteriorSeparators_advance {tokens : Array (Positioned YamlToken)} {l
     MapInteriorSeparators tokens (m + 1) hi :=
   MapInteriorSeparators_narrow h_lo (Nat.le_refl hi) h
 
+/-! ### The boundary-ROBUST map separator carrier — the inhabited replacement (R541)
+
+R540 PROBED the strict carrier `MapInteriorSeparators` (`:187`) at the boundary of its universal and
+found it UNPROVABLE as defined: `MapGrammarFacts` (`:166`) is boundary-FRAGILE — conjuncts 1/2/3
+conclude `k + 1 < b`, conjunct 5 concludes `j + 1 < b`, and conjuncts 2/4 require `k + 2 < b` /
+`k + 2 ≤ b` (the marker's content must sit STRICTLY inside the window). Because
+`flowBracketDelta .key = .value = 0` (`ParserGrammableBase.lean:506`), a gated `MapTypedInterior`
+window can END one past a `.key`/`.value` marker at balance `0`, where those strict requirements
+become `b < b` / `b + 1 ≤ b` — FALSE. Verified against the real defs on `{a: 1}`: the cut window
+`[1,2)` is `MapTypedInterior` yet refutes `MapGrammarFacts` (R540, commit `1bfc4df0`).
+
+This block lands the FIX as a NEW ADDITIVE PARALLEL TYPE
+([[ref-additive-parallel-type-over-shared-edit]] — NEVER an edit to the strict shared
+`MapGrammarFacts`, whose R513–R520 consumers depend on its exact strict shape): every genuinely
+boundary-fragile conjunct (1/2/3/4/5) gains a window-CLOSE escape disjunct `b ≤ <asserted position>`
+— exactly the `k + 1 = b ∨ …` shape that makes the seq `bodySuccFact` (`:75`) boundary-robust.
+Conjunct 6 is already robust (`j < b` gives `j + 1 ≤ b` for free) and is reused verbatim. The escape
+fires precisely at the cut window that killed the strict form; on a GENUINE map body (`b = hi`, the
+only window the `mapGrammarFacts_of_mapRoot` consumer queries) the marker's content is genuinely
+interior, so the strict form is recovered there for the existing consumers (the `b = hi` bridge, a
+later brick).
+
+INHABITATION-DEBT discipline ([[ref-inhabitation-debt-validate-target-defs]]): unlike the strict
+carrier — which was surrounded by ~8 consumers before anyone checked it was inhabited — this one is
+PROBED AT BIRTH. `Tests/Reflections/MapCarrierRobustInhabitation.lean` proves the robust facts
+SURVIVE the window-close boundary (`b = a + 1`) for EVERY stream, while the strict facts are refuted
+there. The probe lives under `Tests/` (not inline) so the carrier's inhabitation is a build-time
+regression test, kept separate from the library definition.
+
+Verified-but-unconsumed: the descent-provider chain that CONSTRUCTS this carrier, the rebase that
+makes the robustness pay off, and the `b = hi` bridge back to `MapGrammarFacts`, are later bricks;
+references no sorry site; frontier sorry count unchanged at 4. -/
+
+/-- **The six map-grammar facts, made BOUNDARY-ROBUST** — the `'` variant of `MapGrammarFacts`
+    (`:166`). Each conjunct whose strict form requires the asserted position to lie STRICTLY inside
+    `[a,b)` (conjuncts 1/2/3/4/5) gains a window-close escape `b ≤ <position>` (the map analog of
+    `bodySuccFact`'s `k + 1 = b` disjunct, `:75`); conjunct 6 is already robust and is the verbatim
+    strict conjunct. The escape is what lets the carrier survive a window that ends one past a
+    delta-`0` `.key`/`.value` marker — exactly the cut that makes the strict `MapGrammarFacts`
+    unprovable (R540). -/
+def MapGrammarFacts' (tokens : Array (Positioned YamlToken)) (a b : Nat) : Prop :=
+  (∀ k, a ≤ k → k < b → flowBracketBalance tokens a k = 0 → tokens[k]!.val = .key →
+      b ≤ k + 1 ∨ (k + 1 < b ∧ isFlowContentStart tokens[k + 1]!.val)) ∧
+  (∀ k, a ≤ k → k < b → flowBracketBalance tokens a k = 0 → tokens[k]!.val = .key →
+      (∃ c s, tokens[k + 1]!.val = .scalar c s) →
+      b ≤ k + 2 ∨ (k + 2 < b ∧ tokens[k + 2]!.val = .value)) ∧
+  (∀ k, a ≤ k → k < b → flowBracketBalance tokens a k = 0 → tokens[k]!.val = .value →
+      b ≤ k + 1 ∨ (k + 1 < b ∧ isFlowContentStart tokens[k + 1]!.val)) ∧
+  (∀ k, a ≤ k → k < b → flowBracketBalance tokens a k = 0 → tokens[k]!.val = .value →
+      (∃ c s, tokens[k + 1]!.val = .scalar c s) →
+      b ≤ k + 1 ∨ (k + 2 ≤ b ∧ (tokens[k + 2]!.val = .flowEntry ∨ (tokens[k + 2]!.val = .flowMappingEnd ∧ k + 2 = b)))) ∧
+  (∀ k j, a ≤ k → k < b → flowBracketBalance tokens a k = 0 → tokens[k]!.val = .key →
+      k + 1 < j → j < b → flowBracketDelta tokens[j]!.val = -1 → flowBracketBalance tokens a (j + 1) = 0 →
+      b ≤ j + 1 ∨ (j + 1 < b ∧ tokens[j + 1]!.val = .value)) ∧
+  (∀ k j, a ≤ k → k < b → flowBracketBalance tokens a k = 0 → tokens[k]!.val = .value →
+      k + 1 < j → j < b → flowBracketDelta tokens[j]!.val = -1 → flowBracketBalance tokens a (j + 1) = 0 →
+      j + 1 ≤ b ∧ (tokens[j + 1]!.val = .flowEntry ∨ (tokens[j + 1]!.val = .flowMappingEnd ∧ j + 1 = b)))
+
+/-- **The boundary-robust map separator carrier** — the `'` variant of `MapInteriorSeparators`
+    (`:187`), identical except it threads the robust `MapGrammarFacts'`. Over `[lo,hi)`: every
+    map-typed depth-`0`-balanced bracket-interior sub-window `[a,b) ⊆ [lo,hi)` satisfies the robust
+    facts. The body is `lo`/`hi`-free except through the domain bounds, so it restricts to sub-windows
+    for free (the descend/advance edges below). Unlike the strict carrier, this one is INHABITED (the
+    `Tests/` probe survives the window-close boundary the strict carrier could not). -/
+def MapInteriorSeparators' (tokens : Array (Positioned YamlToken)) (lo hi : Nat) : Prop :=
+  ∀ a b, lo ≤ a → a ≤ b → b ≤ hi → MapTypedInterior tokens a b → MapGrammarFacts' tokens a b
+
+/-- **Subset restriction (the descend/advance edge, robust form).** The exact mirror of
+    `MapInteriorSeparators_narrow` (`:193`) — the quantifier body is reused verbatim, only the domain
+    shrinks; `_narrow` never inspects the bundled facts, so the proof is byte-identical regardless of
+    fragile-vs-robust payload. -/
+theorem MapInteriorSeparators'_narrow {tokens : Array (Positioned YamlToken)} {lo hi lo' hi' : Nat}
+    (h_lo : lo ≤ lo') (h_hi : hi' ≤ hi)
+    (h : MapInteriorSeparators' tokens lo hi) :
+    MapInteriorSeparators' tokens lo' hi' := by
+  intro a b ha hab hb hgate
+  exact h a b (Nat.le_trans h_lo ha) hab (Nat.le_trans hb h_hi) hgate
+
+/-- **The DESCEND edge (robust form).** Descending into a nested bracket interior `[lo',hi') ⊆ [lo,hi)`
+    preserves the carrier by subset restriction (mirror of `MapInteriorSeparators_descend`, `:202`). -/
+theorem MapInteriorSeparators'_descend {tokens : Array (Positioned YamlToken)} {lo hi lo' hi' : Nat}
+    (h_lo : lo ≤ lo') (h_hi : hi' ≤ hi)
+    (h : MapInteriorSeparators' tokens lo hi) :
+    MapInteriorSeparators' tokens lo' hi' :=
+  MapInteriorSeparators'_narrow h_lo h_hi h
+
+/-- **The ADVANCE edge (robust form).** Advancing past a separator at `m` to the tail `[m+1, hi)`
+    preserves the carrier by subset restriction, `hi` unchanged (mirror of
+    `MapInteriorSeparators_advance`, `:210`). -/
+theorem MapInteriorSeparators'_advance {tokens : Array (Positioned YamlToken)} {lo hi m : Nat}
+    (h_lo : lo ≤ m + 1)
+    (h : MapInteriorSeparators' tokens lo hi) :
+    MapInteriorSeparators' tokens (m + 1) hi :=
+  MapInteriorSeparators'_narrow h_lo (Nat.le_refl hi) h
+
+/-- **`MapGrammarFacts'` RE-BASING** — the robust analog of `bodySuccFact_rebase` (`:1940`), bundled
+    over all six conjuncts. On a sub-window `[a,b) ⊆ [loS,hiS)` re-seated to the enclosing map's top
+    level (`flowBracketBalance tokens loS a = 0`), the robust facts follow from the ENCLOSING window's
+    robust facts: each conjunct re-bases its depth premise by balance composition
+    (`flowBracketBalance_compose`), fires the enclosing conjunct, and collapses its window-close escape
+    `hiS ≤ p` down to `b ≤ p` (because `b ≤ hiS`), relocating the strict bound to `b` exactly as
+    `bodySuccFact_rebase` does. This is the mechanism the strict `MapGrammarFacts` could NOT support —
+    there is no fragile analog (the fragile rebase is concretely refuted, R540) — and it is precisely
+    what the boundary-robust escape BUYS. This is the map twin of the seq carrier's
+    `bodySuccFact_rebase`/`noTrailingSepFact_rebase` pair, in a single bundled lemma; it is the
+    pre-condition for the eventual `mapInteriorSeparators'_of_enclosing_provider` assembler. -/
+theorem mapGrammarFacts_rebase' (tokens : Array (Positioned YamlToken)) (loS a b hiS : Nat)
+    (h_loS_a : loS ≤ a) (h_b_hiS : b ≤ hiS)
+    (h_bal0 : flowBracketBalance tokens loS a = 0)
+    (h_enc : MapGrammarFacts' tokens loS hiS) :
+    MapGrammarFacts' tokens a b := by
+  obtain ⟨e1, e2, e3, e4, e5, e6⟩ := h_enc
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
+  -- conjunct 1: key → content at k+1
+  · intro k hak hkb hbalk htok
+    have hk_hiS : k < hiS := Nat.lt_of_lt_of_le hkb h_b_hiS
+    have hbal_enc : flowBracketBalance tokens loS k = 0 := by
+      have hc := flowBracketBalance_compose tokens loS a k h_loS_a (by omega)
+      rw [h_bal0, hbalk] at hc; omega
+    rcases e1 k (Nat.le_trans h_loS_a hak) hk_hiS hbal_enc htok with h | ⟨_, hQ⟩
+    · exact Or.inl (by omega)
+    · rcases Nat.lt_or_ge (k + 1) b with hb | hb
+      · exact Or.inr ⟨hb, hQ⟩
+      · exact Or.inl (by omega)
+  -- conjunct 2: key + scalar → value at k+2
+  · intro k hak hkb hbalk htok hsc
+    have hk_hiS : k < hiS := Nat.lt_of_lt_of_le hkb h_b_hiS
+    have hbal_enc : flowBracketBalance tokens loS k = 0 := by
+      have hc := flowBracketBalance_compose tokens loS a k h_loS_a (by omega)
+      rw [h_bal0, hbalk] at hc; omega
+    rcases e2 k (Nat.le_trans h_loS_a hak) hk_hiS hbal_enc htok hsc with h | ⟨_, hQ⟩
+    · exact Or.inl (by omega)
+    · rcases Nat.lt_or_ge (k + 2) b with hb | hb
+      · exact Or.inr ⟨hb, hQ⟩
+      · exact Or.inl (by omega)
+  -- conjunct 3: value → content at k+1
+  · intro k hak hkb hbalk htok
+    have hk_hiS : k < hiS := Nat.lt_of_lt_of_le hkb h_b_hiS
+    have hbal_enc : flowBracketBalance tokens loS k = 0 := by
+      have hc := flowBracketBalance_compose tokens loS a k h_loS_a (by omega)
+      rw [h_bal0, hbalk] at hc; omega
+    rcases e3 k (Nat.le_trans h_loS_a hak) hk_hiS hbal_enc htok with h | ⟨_, hQ⟩
+    · exact Or.inl (by omega)
+    · rcases Nat.lt_or_ge (k + 1) b with hb | hb
+      · exact Or.inr ⟨hb, hQ⟩
+      · exact Or.inl (by omega)
+  -- conjunct 4: value + scalar → flowEntry/mapEnd at k+2
+  · intro k hak hkb hbalk htok hsc
+    have hk_hiS : k < hiS := Nat.lt_of_lt_of_le hkb h_b_hiS
+    have hbal_enc : flowBracketBalance tokens loS k = 0 := by
+      have hc := flowBracketBalance_compose tokens loS a k h_loS_a (by omega)
+      rw [h_bal0, hbalk] at hc; omega
+    rcases e4 k (Nat.le_trans h_loS_a hak) hk_hiS hbal_enc htok hsc with h | ⟨_, hinner⟩
+    · exact Or.inl (by omega)
+    · rcases Nat.lt_or_ge (k + 1) b with hb | hb
+      · refine Or.inr ⟨by omega, ?_⟩
+        rcases hinner with hfe | ⟨hme, heq⟩
+        · exact Or.inl hfe
+        · exact Or.inr ⟨hme, by omega⟩
+      · exact Or.inl (by omega)
+  -- conjunct 5: key, closer at j → value at j+1
+  · intro k j hak hkb hbalk htok hkj hjb hdelta hbalj
+    have hk_hiS : k < hiS := Nat.lt_of_lt_of_le hkb h_b_hiS
+    have hj_hiS : j < hiS := Nat.lt_of_lt_of_le hjb h_b_hiS
+    have hbal_enc_k : flowBracketBalance tokens loS k = 0 := by
+      have hc := flowBracketBalance_compose tokens loS a k h_loS_a (by omega)
+      rw [h_bal0, hbalk] at hc; omega
+    have hbal_enc_j : flowBracketBalance tokens loS (j + 1) = 0 := by
+      have hc := flowBracketBalance_compose tokens loS a (j + 1) h_loS_a (by omega)
+      rw [h_bal0, hbalj] at hc; omega
+    rcases e5 k j (Nat.le_trans h_loS_a hak) hk_hiS hbal_enc_k htok hkj hj_hiS hdelta hbal_enc_j with
+      h | ⟨_, hQ⟩
+    · exact Or.inl (by omega)
+    · rcases Nat.lt_or_ge (j + 1) b with hb | hb
+      · exact Or.inr ⟨hb, hQ⟩
+      · exact Or.inl (by omega)
+  -- conjunct 6: value, closer at j → flowEntry/mapEnd at j+1 (already robust; reused verbatim)
+  · intro k j hak hkb hbalk htok hkj hjb hdelta hbalj
+    have hk_hiS : k < hiS := Nat.lt_of_lt_of_le hkb h_b_hiS
+    have hj_hiS : j < hiS := Nat.lt_of_lt_of_le hjb h_b_hiS
+    have hbal_enc_k : flowBracketBalance tokens loS k = 0 := by
+      have hc := flowBracketBalance_compose tokens loS a k h_loS_a (by omega)
+      rw [h_bal0, hbalk] at hc; omega
+    have hbal_enc_j : flowBracketBalance tokens loS (j + 1) = 0 := by
+      have hc := flowBracketBalance_compose tokens loS a (j + 1) h_loS_a (by omega)
+      rw [h_bal0, hbalj] at hc; omega
+    obtain ⟨_, hinner⟩ :=
+      e6 k j (Nat.le_trans h_loS_a hak) hk_hiS hbal_enc_k htok hkj hj_hiS hdelta hbal_enc_j
+    refine ⟨by omega, ?_⟩
+    rcases hinner with hfe | ⟨hme, heq⟩
+    · exact Or.inl hfe
+    · exact Or.inr ⟨hme, by omega⟩
+
 /-! ### The map gate, reconstructed in place from the window opener (R514)
 
 The map carrier `MapInteriorSeparators tokens lo hi` (`:187`) carries the gate `MapTypedInterior` as a

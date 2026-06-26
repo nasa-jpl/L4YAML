@@ -231,6 +231,7 @@ import Tests.Reflections.JointOracleSeqIh
 import Tests.Reflections.LocateHoleIsDispatchRepacked
 import Tests.Reflections.AxisDualFromTypeAgnosticCore
 import Tests.Reflections.BoundaryRobustVsFragileFact
+import Tests.Reflections.MapCarrierRobustInhabitation
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
