@@ -406,6 +406,40 @@ theorem mapGrammarFacts_rebase' (tokens : Array (Positioned YamlToken)) (loS a b
     · exact Or.inl hfe
     · exact Or.inr ⟨hme, by omega⟩
 
+/-- **The map ASSEMBLE half — `MapInteriorSeparators'` from a `provider`** (the boundary-robust map
+    twin of `seqInteriorSeparators_of_enclosing_provider`, `:2224`). The FIRST consumer of
+    `mapGrammarFacts_rebase'` (`:322`): it reduces the robust carrier — with NO further grammar
+    analysis — to a `provider` that, at every gated sub-window `[a,b)`, hands back the *enclosing* map
+    body `[loS,hiS) ⊇ [a,b)` re-seated at `a`'s depth (`flowBracketBalance tokens loS a = 0`), together
+    with the enclosing window's bundled robust facts `MapGrammarFacts' tokens loS hiS`. The single
+    bundled rebase replaces the seq side's two separate rebases (`bodySuccFact_rebase` /
+    `noTrailingSepFact_rebase`) — the window-close escape is exactly what makes the rebase, and hence
+    this assembler, possible (the strict `MapGrammarFacts` could NOT support it, R540).
+
+    This is the parametric-assembler-extraction move ([[ref-parametric-assembler-extraction]]) on the
+    map axis: lift the locate-the-enclosing-window reasoning into a `∀ window, gate → ∃ enclosing, …`
+    hypothesis and discharge the *assemble* now (one `obtain` + one bundled rebase), splitting the map
+    residual into ASSEMBLE (done, here) vs PRODUCE the `provider` (the map locator — the next brick,
+    `mapEnclosingFacts'_provider_of_located` for the balance-`0` branch + a descent locator, mirroring
+    `seqEnclosingFacts_provider_of_located` / `seqDescent_provider_of_located`).
+
+    The provider HYPOTHESIS shape is satisfiable, not a trap
+    ([[ref-inhabitation-debt-validate-target-defs]] rule 3 — a hypothesis with no producer is the
+    alarm): `Tests/Reflections/MapCarrierRobustInhabitation.lean`'s
+    `mapInteriorSeparators'_of_enclosing_provider_unit` feeds the assembler a concrete (identity)
+    provider on the unit span and recovers the inhabited carrier, so the assembler is non-vacuous.
+    Verified-but-unconsumed until the map `provider` lands: composes only `mapGrammarFacts_rebase'`,
+    references no sorry site, frontier sorry count unchanged at 4. -/
+theorem mapInteriorSeparators'_of_enclosing_provider
+    (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (provider : ∀ a b, lo ≤ a → a ≤ b → b ≤ hi → MapTypedInterior tokens a b →
+      ∃ loS hiS, loS ≤ a ∧ b ≤ hiS ∧ flowBracketBalance tokens loS a = 0 ∧
+        MapGrammarFacts' tokens loS hiS) :
+    MapInteriorSeparators' tokens lo hi := by
+  intro a b ha hab hb hgate
+  obtain ⟨loS, hiS, h_loS_a, h_b_hiS, h_bal0, h_enc⟩ := provider a b ha hab hb hgate
+  exact mapGrammarFacts_rebase' tokens loS a b hiS h_loS_a h_b_hiS h_bal0 h_enc
+
 /-! ### The map gate, reconstructed in place from the window opener (R514)
 
 The map carrier `MapInteriorSeparators tokens lo hi` (`:187`) carries the gate `MapTypedInterior` as a

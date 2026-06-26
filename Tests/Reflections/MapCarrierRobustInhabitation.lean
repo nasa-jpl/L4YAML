@@ -92,10 +92,42 @@ theorem mapInteriorSeparators'_unit (tokens : Array (Positioned YamlToken)) (lo 
   · have hEq : a = b := by omega
     rw [← hEq]; exact mapGrammarFacts'_empty tokens a
 
--- Axiom audit — the carrier inhabitation and the boundary-survival probe lean only on core.
+/-- **De-risk for the R542 ASSEMBLE half** — `mapInteriorSeparators'_of_enclosing_provider` is
+    NON-VACUOUS. Fed a concrete provider it yields an inhabited carrier, so its NEW `provider`
+    HYPOTHESIS shape (`∀ window, gate → ∃ enclosing, … ∧ MapGrammarFacts' loS hiS`) is satisfiable —
+    the inhabitation-debt rule-3 check on the assembler (a hypothesis with no producer is the alarm).
+
+    On the unit span `[lo, lo+1)` the IDENTITY provider works: each gated sub-window `[a,b)` is its own
+    enclosing window, re-seated trivially (`loS = a`, `hiS = b`, `flowBracketBalance tokens a a = 0`),
+    with its facts supplied by `mapGrammarFacts'_empty` / `mapGrammarFacts'_degenerate` (every such
+    window has width `b - a ≤ 1`). The assembler drives that provider through `mapGrammarFacts_rebase'`
+    and reproduces `mapInteriorSeparators'_unit` — the same inhabited carrier, now via the real
+    ASSEMBLE path rather than directly. -/
+theorem mapInteriorSeparators'_of_enclosing_provider_unit
+    (tokens : Array (Positioned YamlToken)) (lo : Nat) :
+    MapInteriorSeparators' tokens lo (lo + 1) :=
+  mapInteriorSeparators'_of_enclosing_provider tokens lo (lo + 1)
+    (fun a b ha hab hb _hgate =>
+      ⟨a, b, Nat.le_refl a, Nat.le_refl b, by simp [flowBracketBalance],
+        by
+          rcases Nat.lt_or_ge a b with hLt | hGe
+          · have hb1 : b = a + 1 := by omega
+            rw [hb1]; exact mapGrammarFacts'_degenerate tokens a
+          · have hEq : a = b := by omega
+            rw [← hEq]; exact mapGrammarFacts'_empty tokens a⟩)
+
+-- Axiom audit — the carrier inhabitation and the boundary-survival probe lean only on core; the
+-- ASSEMBLE non-vacuity check also pulls in `Classical.choice` through the rebase's
+-- `flowBracketBalance_compose`.
 /-- info: 'MapCarrierRobustInhabitation.mapInteriorSeparators'_unit' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in
 #print axioms mapInteriorSeparators'_unit
+
+/-- info: 'MapCarrierRobustInhabitation.mapInteriorSeparators'_of_enclosing_provider_unit' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs in
+#print axioms mapInteriorSeparators'_of_enclosing_provider_unit
 
 /-- info: 'MapCarrierRobustInhabitation.mapGrammarFacts'_degenerate' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in
