@@ -5812,6 +5812,75 @@ theorem recbody_joint_content_pack (tokens : Array (Positioned YamlToken))
       mapWindow_mapBodyProps_general tokens lo0 hi0 lo hi h_win h_deep h_enc h_mapEnd
         h_after_fe h_map_carrier h_lo0 h_hi0⟩
 
+/-- **The carrier-fed concrete JOINT descend-tail** — `(i'-b-B2c-desc-joint-carrier)`, R532.  The
+    composition of the two landed joint bricks: `recbody_joint_content_pack` (R531) feeds its output
+    into `recbody_joint_descend_tail` (R530)'s OPAQUE content slot, yielding the concrete `descend_tail`
+    the strengthened joint driver (R529) needs — no longer asking for the irreproducible top-down content
+    fact, but for the root carriers (reproducible by narrowing in place).
+
+    **Why this is the next brick.**  R530 takes its content packs `h_seq_pack` / `h_map_pack`
+    (`Deep* ∧ *Enc ∧ Content*`) as opaque close-gated inputs because the width recursion cannot reproduce
+    `FlowBodyContent` / `MapBodyProps` at a descended suffix
+    ([[ref-width-recursion-cannot-thread-topdown-fact]]).  R531 manufactures EXACTLY those packs from the
+    guard's close-gated deep/enclosure halves plus the two fixed outer carriers
+    ([[ref-content-pack-passthrough-manufacture]]).  Because R531's OUTPUT type is, conjunct for conjunct,
+    R530's pack INPUT type, the two compose with no glue: `obtain ⟨h_seq_pack, h_map_pack⟩ := R531 …; exact
+    R530 … h_seq_pack h_map_pack …`.
+
+    **What the composition BUYS — the interface retype** ([[ref-reduction-by-import]]).  Importing the
+    provider into the consumer's opaque slot does not shrink the sorry count; it RETYPES the descend's
+    interface.  R530 stated bare took two debts: the content packs (top-down, irreproducible) and the
+    marker's depth-`0` balance `h_bal_m`.  This lemma DISCHARGES the content debt by importing R531, so the
+    surviving inputs are the carrier interface — the two outer carriers
+    `SeqInteriorSeparators` / `MapInteriorSeparators tokens lo0 hi0` (root-seeded, narrowed per window via
+    the frame bounds `lo0 ≤ lo ∧ hi ≤ hi0`, [[ref-narrow-from-root-breaks-rederivation-cycle]]), the
+    map-carrier-deferred fact `h_after_fe` (M2, the asymmetric input the map carrier defers,
+    [[ref-additive-field-cost-by-keying]]), and the still-explicit `h_bal_m`.  The descend now asks only
+    for facts the recursion CAN supply: the carrier is reproducible top-down, and `h_bal_m` is what the
+    driver's strengthened `locate` marker will carry.  That retype — top-down content → root carrier — is
+    the progress.
+
+    **What it produces.**  Exactly R530's deliverable at the suffix `[m+1, hi)`: the shared
+    `FlowBodyWindow`, the close-token-dispatched deep+enclosure pair, and the close disjunction — i.e. the
+    suffix value of the joint guard `G (m+1) hi` of [[ref-joint-navigator-cross-deliverable]].  So this is
+    the concrete `descend_tail` slot for the strengthened driver once `G` projects to the close-gated
+    halves and threads the carriers + M2 + the marker balance.
+
+    Verified-but-unconsumed until the driver's `locate` markers carry `h_bal_m` and `G` is folded:
+    composes only `recbody_joint_content_pack` + `recbody_joint_descend_tail`, references no sorry site,
+    frontier sorry count unchanged at 4; axioms `[propext, Classical.choice, Quot.sound]` (inherited from
+    R530/R531's typed-locator plumbing), no `sorryAx`.  Demo
+    `Tests/Reflections/JointDescendTailCarrier.lean`. -/
+theorem recbody_joint_descend_tail_carrier (tokens : Array (Positioned YamlToken))
+    (lo0 hi0 lo hi m : Nat)
+    (h_win : FlowBodyWindow tokens lo hi)
+    (h_seq_guard : tokens[hi]!.val = .flowSequenceEnd →
+        FlowBodyContentDeepSeq tokens lo hi ∧ SeqEnclosed tokens lo)
+    (h_map_guard : tokens[hi]!.val = .flowMappingEnd →
+        FlowBodyContentDeepMap tokens lo hi ∧ MapEnclosed tokens lo)
+    (h_close : tokens[hi]!.val = .flowSequenceEnd ∨ tokens[hi]!.val = .flowMappingEnd)
+    (h_seq_carrier : SeqInteriorSeparators tokens lo0 hi0)
+    (h_map_carrier : MapInteriorSeparators tokens lo0 hi0)
+    (h_after_fe : ∀ k, lo ≤ k → k < hi →
+        flowBracketBalance tokens lo k = 0 →
+        tokens[k]!.val = .flowEntry →
+        k + 1 ≤ hi ∧ tokens[k + 1]!.val = .key)
+    (h_lo0 : lo0 ≤ lo) (h_hi0 : hi ≤ hi0)
+    (h_lo_m : lo < m) (h_m_hi : m < hi)
+    (h_bal_m : flowBracketBalance tokens lo m = 0)
+    (h_sep : tokens[m]!.val = .flowEntry) :
+    FlowBodyWindow tokens (m + 1) hi
+      ∧ (tokens[hi]!.val = .flowSequenceEnd →
+          FlowBodyContentDeepSeq tokens (m + 1) hi ∧ SeqEnclosed tokens (m + 1))
+      ∧ (tokens[hi]!.val = .flowMappingEnd →
+          FlowBodyContentDeepMap tokens (m + 1) hi ∧ MapEnclosed tokens (m + 1))
+      ∧ (tokens[hi]!.val = .flowSequenceEnd ∨ tokens[hi]!.val = .flowMappingEnd) := by
+  obtain ⟨h_seq_pack, h_map_pack⟩ :=
+    recbody_joint_content_pack tokens lo0 hi0 lo hi h_win h_seq_guard h_map_guard
+      h_seq_carrier h_map_carrier h_after_fe h_lo0 h_hi0
+  exact recbody_joint_descend_tail tokens lo hi m h_win h_close h_seq_pack h_map_pack
+    h_lo_m h_m_hi h_bal_m h_sep
+
 /-- **The root-span instance of `seqWindowRecSeqBody_seq_general`** — `lo0 := 2`, `hi0 := size-2`,
     bounds read off `FlowBodyWindow.lo_ge`/`hi_le`.  Signature-preserving so `seqWindowRecSeqBody_seq`'s
     consumers are untouched (ROUTE A, R445 — the parametric carrier rides the recursion via the
