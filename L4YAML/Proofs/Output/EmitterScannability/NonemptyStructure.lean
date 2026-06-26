@@ -11102,6 +11102,66 @@ theorem recseqbody_navigator_driver (tokens : Array (Positioned YamlToken))
   have h_fe : tokens[m]!.val = .flowEntry := h_marker.resolve_left (by omega)
   exact oracle (m + 1) hi (by omega) (descend_tail lo hi m h_g h_lo_m h_lt h_fe)
 
+/-- **The map locate DRIVER** (Phase J, map side — `(i'-b-B2c-desc-map-navigator-driver)`, R528).
+    The symmetric mirror of `recseqbody_navigator_driver` (the R264 entry-boundary-input-shape split
+    [[ref-entry-boundary-input-shape-split]] across the map axis): the seq driver named a
+    collection-specific deliverable type (`RecSeqEntry`/`RecSeqBody`, via `recseqbody_window_assemble`),
+    so by that discriminator the map axis re-splits and owes this brick.  The map structural moves are
+    complete (DESCEND `recmapbody_window_of_located_entry`, ADVANCE `recmapbody_cons_window`, TERMINATE
+    `recmapbody_single_window`, and their selector `recmapbody_window_assemble`), and the abstract
+    width-recursion plumbing is the shared `windowWidth_strongRecOn`.  This brick **stitches** them: it
+    instantiates the combinator at `P := fun lo hi => RecMapBody ((tokens.toList.take hi).drop lo)`,
+    bakes in the `recmapbody_window_assemble` consumer, and re-expresses the per-window step as the
+    navigator's *contract* — so the whole map navigator now reduces to **exactly two named
+    obligations**:
+
+    * `locate` — the per-window first-PAIR *classify*: given the guard `G lo hi` and the recursion's
+      own width-oracle (delivering `RecMapBody` for nested descent), locate the first pair's depth-`0`
+      extent `m`, the marker `m = hi ∨ tokens[m] = .flowEntry`, and the pair
+      `RecMapPair ((take m).drop lo)`.  The pair's interior splits into a key and a value sub-block, each
+      owing a single `RecSeqEntry` — supplied by `recseqentry_whole_window_seq` (R527) on the R524
+      sub-block windows (the seq dispatch reused under a no-interior-boundary certificate).  The genuine
+      remaining knot is the cross-deliverable IH source: the width-oracle here delivers `RecMapBody`,
+      but a nested *sequence* inside a key/value needs `RecSeqBody` — resolved by a joint `P` dispatched
+      on the window close token (`recseqbody_navigator_driver` consumes the seq half).
+    * `descend_tail` — the guard descends from `[lo, hi)` to the *suffix* window `[m+1, hi)` past a
+      depth-`0` `.flowEntry` separator ([[ref-guard-threading-skeleton-before-grammar]], the
+      producer's GIFT / consumer's DEBT [[ref-guarded-universal-fold-relocates-guard]]); `RecMapBody`'s
+      separator is the same `.flowEntry` as `RecSeqBody`'s, so this obligation is collection-agnostic and
+      its skeleton is the seq side's verbatim.
+
+    The guard `G` is left **abstract**, exactly as on the seq side: the driver is agnostic to its
+    definition, making visible that the hard guard-reconciliation reduces to `locate` + `descend_tail`
+    and nothing else.  This is [[ref-fold-consumer-chain-to-producer-contract]] at the recursion-driver
+    layer, the dual of `windowWidth_strongRecOn`'s [[ref-consumer-joint-before-producer]].  The proof is
+    the seq driver transported verbatim — same `windowWidth_strongRecOn` refine, same `locate`/oracle
+    destructure, same `recmapbody_window_assemble` selector, same `resolve_left`/`descend_tail` advance —
+    swapping only the deliverable types (`RecMapBody`/`RecMapPair` for `RecSeqBody`/`RecSeqEntry`) and
+    the assembler (`recmapbody_window_assemble` for `recseqbody_window_assemble`); the marker token and
+    tail-oracle guard are shared, so this is a pure mirror with no new analytical content.
+    Verified-but-unconsumed until the concrete `G`/`locate`/`descend_tail` are supplied (R528): composes
+    only `windowWidth_strongRecOn` + `recmapbody_window_assemble`, references no sorry site, frontier
+    sorry count unchanged at 4; axioms `[propext, Classical.choice, Quot.sound]` (Classical via the
+    reused `recmapbody_window_assemble` segment-split plumbing), identical to the seq driver. -/
+theorem recmapbody_navigator_driver (tokens : Array (Positioned YamlToken))
+    (G : Nat → Nat → Prop)
+    (h_hi_sz : ∀ lo hi, G lo hi → hi < tokens.size)
+    (locate : ∀ lo hi, G lo hi →
+        (∀ lo' hi', hi' - lo' < hi - lo → G lo' hi' →
+          RecMapBody ((tokens.toList.take hi').drop lo')) →
+        ∃ m, lo < m ∧ m ≤ hi ∧
+          (m = hi ∨ tokens[m]!.val = .flowEntry) ∧
+          RecMapPair ((tokens.toList.take m).drop lo))
+    (descend_tail : ∀ lo hi m, G lo hi → lo < m → m < hi →
+        tokens[m]!.val = .flowEntry → G (m + 1) hi) :
+    ∀ lo hi, G lo hi → RecMapBody ((tokens.toList.take hi).drop lo) := by
+  refine windowWidth_strongRecOn G (fun lo hi h_g oracle => ?_)
+  obtain ⟨m, h_lo_m, h_m_hi, h_marker, h_pair⟩ := locate lo hi h_g oracle
+  refine recmapbody_window_assemble tokens lo m hi h_lo_m h_m_hi (h_hi_sz lo hi h_g)
+    h_marker h_pair (fun h_lt => ?_)
+  have h_fe : tokens[m]!.val = .flowEntry := h_marker.resolve_left (by omega)
+  exact oracle (m + 1) hi (by omega) (descend_tail lo hi m h_g h_lo_m h_lt h_fe)
+
 /-- Token structure of `scanFiltered ("[" ++ emitList items ++ "]")` for non-empty items.
     Establishes boundary tokens, body token patterns, and `parseNode` success within
     the flow sequence body.
