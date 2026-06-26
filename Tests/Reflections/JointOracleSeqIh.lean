@@ -32,9 +32,12 @@ What this file does:
   ∧ the close disjunction, parametric in the predicates.
 * `seqIhOfOracle` — the adapter (the audited artifact): joint oracle → seq-only IH, by guard
   reconstruction + `.1` projection, the map conditional vacuous.
+* `mapIhOfOracle` — the SYMMETRIC twin (R536): joint oracle → map-only IH, by the SAME guard
+  reconstruction + `.2` projection, the SEQ conditional now the vacuous one.  Both halves let each
+  dispatch branch (`[`-nested seq, `{`-nested map) draw a path-general IH from the one joint oracle.
 * `reconstructGuard` — the guard reconstruction in ISOLATION (one sub-window, no oracle), the move's
   core: fold the loose pieces into the guard, the off-axis conditional discharged by marker exclusivity.
-* a toy instance RUN end-to-end through `seqIhOfOracle`.
+* toy instances RUN end-to-end through BOTH `seqIhOfOracle` and `mapIhOfOracle`.
 -/
 
 namespace JointOracleSeqIh
@@ -90,6 +93,29 @@ theorem seqIhOfOracle (mark : Nat → Marker)
   rw [h_seqEnd] at h_mapEnd
   exact absurd h_mapEnd (by decide)
 
+/-- **The SYMMETRIC twin — joint oracle → MAP-only IH.**  Same adapter, opposite axis: from the loose
+    pieces `Win lo' hi'`, `DeepMap lo' hi'`, `EncMap lo'`, a MAP close `mark hi' = .mapEnd`, and the
+    span/bounds, deliver `MapBody lo' hi'`.  The proof folds the SAME joint guard and projects `.2`
+    applied to the map close; this time the SEQ conditional is the vacuous one — its premise
+    `mark hi' = .seqEnd` contradicts the map close, refuted by `decide` on `Marker.mapEnd = .seqEnd`; the
+    map conditional is `fun _ => ⟨h_deep, h_enc⟩`; the disjunct is `Or.inr` the map close.  The real
+    `recbody_joint_oracle_map_ih` is this verbatim, both halves auditing the minimal `[propext,
+    Quot.sound]`. -/
+theorem mapIhOfOracle (mark : Nat → Marker)
+    (Win DeepSeq DeepMap SeqBody MapBody : Nat → Nat → Prop) (EncSeq EncMap : Nat → Prop)
+    (lo0 hi0 lo hi : Nat) (h_lo0_lo : lo0 ≤ lo) (h_hi_hi0 : hi ≤ hi0)
+    (oracle : ∀ lo' hi', hi' - lo' < hi - lo →
+        JointGuard mark Win DeepSeq DeepMap EncSeq EncMap lo0 hi0 lo' hi' →
+        (mark hi' = .seqEnd → SeqBody lo' hi') ∧ (mark hi' = .mapEnd → MapBody lo' hi')) :
+    ∀ lo' hi', hi' - lo' < hi - lo → lo ≤ lo' → hi' ≤ hi →
+      Win lo' hi' → DeepMap lo' hi' → EncMap lo' → mark hi' = .mapEnd → MapBody lo' hi' := by
+  intro lo' hi' h_span h_lo_lo' h_hi'_hi h_win h_deep h_enc h_mapEnd
+  refine (oracle lo' hi' h_span ?_).2 h_mapEnd
+  -- fold the loose pieces back into the joint guard; the seq conditional is now the vacuous one.
+  refine ⟨by omega, by omega, h_win, fun h_seqEnd => ?_, fun _ => ⟨h_deep, h_enc⟩, Or.inr h_mapEnd⟩
+  rw [h_mapEnd] at h_seqEnd
+  exact absurd h_seqEnd (by decide)
+
 /-! ## The guard reconstruction in ISOLATION — one sub-window, no oracle. -/
 
 /-- **Folding the loose pieces into the joint guard at a single window** (no oracle, no recursion).
@@ -124,8 +150,26 @@ example : R2 1 2 :=
   seqIhOfOracle markToy R2 R2 R2 R2 R2 R1 R1 0 3 0 3 (Nat.le_refl 0) (Nat.le_refl 3) oracleToy
     1 2 (by omega) (by omega) (by omega) trivial trivial trivial rfl
 
+/-- Every window closes with a MAP marker; predicates trivial — the map-side toy oracle. -/
+def markMapToy (_ : Nat) : Marker := .mapEnd
+
+theorem oracleMapToy : ∀ lo' hi', hi' - lo' < 3 - 0 →
+    JointGuard markMapToy R2 R2 R2 R1 R1 0 3 lo' hi' →
+    (markMapToy hi' = .seqEnd → R2 lo' hi') ∧ (markMapToy hi' = .mapEnd → R2 lo' hi') :=
+  fun _ _ _ _ => ⟨fun _ => trivial, fun _ => trivial⟩
+
+/-- The MAP twin RUN: the map-IH drawn from `oracleMapToy`, at the sub-window `[1, 2)` of `[0, 3)`,
+    delivering `R2 1 2`.  Elaborates to a closed value — the symmetric brick runs end-to-end too. -/
+example : R2 1 2 :=
+  mapIhOfOracle markMapToy R2 R2 R2 R2 R2 R1 R1 0 3 0 3 (Nat.le_refl 0) (Nat.le_refl 3) oracleMapToy
+    1 2 (by omega) (by omega) (by omega) trivial trivial trivial rfl
+
 end JointOracleSeqIh
 
 /-- info: 'JointOracleSeqIh.seqIhOfOracle' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in
 #print axioms JointOracleSeqIh.seqIhOfOracle
+
+/-- info: 'JointOracleSeqIh.mapIhOfOracle' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
+#print axioms JointOracleSeqIh.mapIhOfOracle
