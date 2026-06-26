@@ -571,6 +571,75 @@ theorem mapGrammarFacts'_of_mapGrammarFacts (tokens : Array (Positioned YamlToke
   · intro k j hak hkb hbal htok hkj hjb hdelta hbalj
     exact Or.inr (e5 k j hak hkb hbal htok hkj hjb hdelta hbalj)
 
+/-- **Robust → strict map-facts STRENGTHENING at a complete body (R546)** — the genuine INVERSE of the
+    R545 connector `mapGrammarFacts'_of_mapGrammarFacts` (`:559`), and the `b = hi` bridge the R513 block
+    named (`:235`).  Where strict → robust is FREE (the robust form only *adds* an escape disjunct, so
+    every strict witness weakens unconditionally), the converse robust → strict is BOUNDARY-FRAGILE: it
+    holds only where each fragile conjunct's window-close escape `b ≤ <position>` can be REFUTED — i.e. on
+    a GENUINE complete map body, where no marker hugs the close.  Those refutations are the genuine leaf,
+    lifted here as the five `hk1`/`hk2`/`hv1`/`hv2`/`hk5` hypotheses
+    ([[ref-parametric-assembler-extraction]]): each asserts that a marker's required successor lands
+    STRICTLY inside the window (the "no `.key`/`.value` marker immediately precedes the close" emission
+    fact).  Given them, the bridge is pure: each robust conjunct's INTERIOR arm IS the strict conclusion
+    verbatim (read off `MapGrammarFacts'` `:256` vs `MapGrammarFacts` `:166`), so the proof `rcases`-es
+    each escape-vs-interior disjunct, refutes the escape via its lifted bound (`absurd … (by omega)`,
+    axiom-clean per [[ref-omega-nonarith-goal-pulls-classical]] — `omega` proves only the arithmetic
+    negation, `False.elim` fills the strict goal), and returns the interior arm.  Conjunct 6 is already
+    robust `=` strict and needs no refuter.
+
+    On the CRITICAL PATH: the existing strict-facts consumer (`mapProducers_of_mapRoot` `:734`, feeding
+    `flowSubrangesOk_of_window_producers`) queries genuine-close producer windows where the strict facts
+    hold; the R542–R545 chain produces the boundary-ROBUST carrier (the strict carrier being
+    uninhabitable, R540); this bridge re-strengthens robust facts to strict precisely at those genuine
+    closes, leaving the close-structure refuters as the named residual (the emission leaf still owed).
+
+    INHABITATION-DEBT discipline ([[ref-inhabitation-debt-validate-target-defs]]):
+    `Tests/Reflections/MapCarrierRobustInhabitation.lean`'s `mapGrammarFacts_strict_roundtrip` PROBES this
+    non-vacuously by a full strict → robust → strict ROUND-TRIP on the `{a:1}` complete body `[1,5)`: it
+    feeds the R545 connector's robust output back through this bridge, supplying the five refuters proved
+    INDEPENDENTLY off the concrete fixture (rule 3 — the lifted hypotheses have a real producer at the
+    genuine close, not a trap), and recovers the strict witness `mapGrammarFacts_complete_window`.
+    Verified-but-unconsumed until the windowed-map separator leaf produces the refuters off emission;
+    frontier sorry count unchanged at 4; pure ∧/∨ plumbing, axiom-clean. -/
+theorem mapGrammarFacts_of_mapGrammarFacts' (tokens : Array (Positioned YamlToken)) (a b : Nat)
+    (h_rob : MapGrammarFacts' tokens a b)
+    (hk1 : ∀ k, a ≤ k → k < b → flowBracketBalance tokens a k = 0 → tokens[k]!.val = .key →
+      k + 1 < b)
+    (hk2 : ∀ k, a ≤ k → k < b → flowBracketBalance tokens a k = 0 → tokens[k]!.val = .key →
+      (∃ c s, tokens[k + 1]!.val = .scalar c s) → k + 2 < b)
+    (hv1 : ∀ k, a ≤ k → k < b → flowBracketBalance tokens a k = 0 → tokens[k]!.val = .value →
+      k + 1 < b)
+    (hv2 : ∀ k, a ≤ k → k < b → flowBracketBalance tokens a k = 0 → tokens[k]!.val = .value →
+      (∃ c s, tokens[k + 1]!.val = .scalar c s) → k + 2 ≤ b)
+    (hk5 : ∀ k j, a ≤ k → k < b → flowBracketBalance tokens a k = 0 → tokens[k]!.val = .key →
+      k + 1 < j → j < b → flowBracketDelta tokens[j]!.val = -1 →
+      flowBracketBalance tokens a (j + 1) = 0 → j + 1 < b) :
+    MapGrammarFacts tokens a b := by
+  obtain ⟨c1, c2, c3, c4, c5, c6⟩ := h_rob
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
+  · intro k hak hkb hbalk htok
+    rcases c1 k hak hkb hbalk htok with hesc | hint
+    · exact absurd (hk1 k hak hkb hbalk htok) (by omega)
+    · exact hint
+  · intro k hak hkb hbalk htok hsc
+    rcases c2 k hak hkb hbalk htok hsc with hesc | hint
+    · exact absurd (hk2 k hak hkb hbalk htok hsc) (by omega)
+    · exact hint
+  · intro k hak hkb hbalk htok
+    rcases c3 k hak hkb hbalk htok with hesc | hint
+    · exact absurd (hv1 k hak hkb hbalk htok) (by omega)
+    · exact hint
+  · intro k hak hkb hbalk htok hsc
+    rcases c4 k hak hkb hbalk htok hsc with hesc | hint
+    · exact absurd (hv2 k hak hkb hbalk htok hsc) (by omega)
+    · exact hint
+  · intro k j hak hkb hbalk htok hkj hjb hdelta hbalj
+    rcases c5 k j hak hkb hbalk htok hkj hjb hdelta hbalj with hesc | hint
+    · exact absurd (hk5 k j hak hkb hbalk htok hkj hjb hdelta hbalj) (by omega)
+    · exact hint
+  · intro k j hak hkb hbalk htok hkj hjb hdelta hbalj
+    exact c6 k j hak hkb hbalk htok hkj hjb hdelta hbalj
+
 /-! ### The map gate, reconstructed in place from the window opener (R514)
 
 The map carrier `MapInteriorSeparators tokens lo hi` (`:187`) carries the gate `MapTypedInterior` as a

@@ -265,6 +265,48 @@ theorem mapGrammarFacts'_complete_window_fires :
   · exact absurd hesc (by omega)
   · exact hc
 
+/-! ## R546 — the robust → strict bridge probed by a strict → robust → strict ROUND-TRIP
+
+R545 landed the FREE direction (strict → robust, `mapGrammarFacts'_of_mapGrammarFacts`). R546 lands the
+genuine INVERSE (`mapGrammarFacts_of_mapGrammarFacts'`, robust → strict), which is boundary-FRAGILE: it
+holds only at a complete body where each window-close escape can be REFUTED, with the refuters (the "no
+marker hugs the close" emission facts) lifted as hypotheses. This probe closes the loop on the `{a:1}`
+body `[1,5)`: weaken the strict witness to robust (R545 connector), then re-strengthen it back to strict
+through the bridge, supplying the five refuters proved INDEPENDENTLY off the concrete fixture — NOT
+projected out of the strict witness (inhabitation-debt rule 3: the lifted refuter hypotheses have a real
+producer at the genuine close, so the bridge's domain is genuinely inhabited, not a trap). Recovering the
+strict witness confirms the bridge is the connector's true inverse on a complete body. -/
+
+/-- **The robust → strict bridge probed by a full ROUND-TRIP** on the `{a:1}` complete body `[1, 5)`:
+    `mapGrammarFacts_complete_window` (strict) ──connector──▶ robust ──bridge──▶ strict, recovering
+    `MapGrammarFacts fixtureMapA1 1 5`. The five refuters are proved INDEPENDENTLY here (case-split on the
+    concrete index, fire the in-window bound via `omega`, kill the off-window position via
+    `absurd … (by decide)`) — the genuine close-structure facts the windowed-map separator leaf must
+    eventually produce off emission, exhibited at the fixture to show they are reachable, not vacuous. -/
+theorem mapGrammarFacts_strict_roundtrip : MapGrammarFacts fixtureMapA1 1 5 := by
+  have hrobust : MapGrammarFacts' fixtureMapA1 1 5 :=
+    mapGrammarFacts'_of_mapGrammarFacts fixtureMapA1 1 5 mapGrammarFacts_complete_window
+  refine mapGrammarFacts_of_mapGrammarFacts' fixtureMapA1 1 5 hrobust ?_ ?_ ?_ ?_ ?_
+  -- hk1: every `.key` in the body has its content successor strictly inside (no key at index 4)
+  · intro k hak hkb _ htok
+    rcases (show k = 1 ∨ k = 2 ∨ k = 3 ∨ k = 4 by omega) with rfl | rfl | rfl | rfl <;>
+      first | omega | exact absurd htok (by decide)
+  -- hk2: every `.key` with a scalar successor has its `.value` strictly inside
+  · intro k hak hkb _ htok _hsc
+    rcases (show k = 1 ∨ k = 2 ∨ k = 3 ∨ k = 4 by omega) with rfl | rfl | rfl | rfl <;>
+      first | omega | exact absurd htok (by decide)
+  -- hv1: every `.value` in the body has its content successor strictly inside (no value at index 4)
+  · intro k hak hkb _ htok
+    rcases (show k = 1 ∨ k = 2 ∨ k = 3 ∨ k = 4 by omega) with rfl | rfl | rfl | rfl <;>
+      first | omega | exact absurd htok (by decide)
+  -- hv2: every `.value` with a scalar successor has its separator/close at most at the boundary
+  · intro k hak hkb _ htok _hsc
+    rcases (show k = 1 ∨ k = 2 ∨ k = 3 ∨ k = 4 by omega) with rfl | rfl | rfl | rfl <;>
+      first | omega | exact absurd htok (by decide)
+  -- hk5: no interior closer `j` (every body position carries `flowBracketDelta = 0`, not `-1`)
+  · intro k j hak hkb _ _htok hkj hjb hdelta _
+    rcases (show j = 3 ∨ j = 4 by omega) with rfl | rfl <;> exact absurd hdelta (by decide)
+
 -- Axiom audit — the carrier inhabitation and the boundary-survival probe lean only on core; the
 -- ASSEMBLE non-vacuity checks also pull in `Classical.choice` through the rebase's
 -- `flowBracketBalance_compose`.
@@ -301,5 +343,9 @@ theorem mapGrammarFacts'_complete_window_fires :
 /-- info: 'MapCarrierRobustInhabitation.mapGrammarFacts'_complete_window_fires' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in
 #print axioms mapGrammarFacts'_complete_window_fires
+
+/-- info: 'MapCarrierRobustInhabitation.mapGrammarFacts_strict_roundtrip' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
+#print axioms mapGrammarFacts_strict_roundtrip
 
 end MapCarrierRobustInhabitation
