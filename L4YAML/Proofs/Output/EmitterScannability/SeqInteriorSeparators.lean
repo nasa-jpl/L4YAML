@@ -5881,6 +5881,74 @@ theorem recbody_joint_descend_tail_carrier (tokens : Array (Positioned YamlToken
   exact recbody_joint_descend_tail tokens lo hi m h_win h_close h_seq_pack h_map_pack
     h_lo_m h_m_hi h_bal_m h_sep
 
+/-- **The concrete JOINT navigator guard** — `(i'-b-B2c-desc-joint-guard)`, R533.  The named predicate
+    `recbody_joint_navigator_driver`'s abstract `G : Nat → Nat → Prop` is instantiated to, folding the
+    REPRODUCIBLE part of the joint recursion into one window-keyed conjunction: the frame bounds
+    `lo0 ≤ lo ∧ hi ≤ hi0` (the per-window narrowing witnesses for the two root carriers,
+    [[ref-narrow-from-root-breaks-rederivation-cycle]]), the shared `FlowBodyWindow`, the two
+    close-token-gated deep+enclosure halves, and the close-token disjunction itself.
+
+    Each conjunct is exactly what `recbody_joint_descend_tail_carrier` (R532) consumes from / produces at
+    a window: bundling them into one named `G` is [[ref-consumer-joint-before-producer]] at the guard
+    layer — the conjunctive guard that lets ONE `windowWidth_strongRecOn` feed both close-keyed bodies.
+    The two outer carriers + the map-deferred M2 (`h_after_fe`) are NOT folded in: they are fixed-at-root
+    and reproduced top-down by narrowing, so they stay the driver's outer inputs, not the per-window
+    guard. -/
+def RecBodyJointGuard (tokens : Array (Positioned YamlToken)) (lo0 hi0 lo hi : Nat) : Prop :=
+  lo0 ≤ lo ∧ hi ≤ hi0
+    ∧ FlowBodyWindow tokens lo hi
+    ∧ (tokens[hi]!.val = .flowSequenceEnd →
+        FlowBodyContentDeepSeq tokens lo hi ∧ SeqEnclosed tokens lo)
+    ∧ (tokens[hi]!.val = .flowMappingEnd →
+        FlowBodyContentDeepMap tokens lo hi ∧ MapEnclosed tokens lo)
+    ∧ (tokens[hi]!.val = .flowSequenceEnd ∨ tokens[hi]!.val = .flowMappingEnd)
+
+/-- **The descend-tail at the concrete guard** — `(i'-b-B2c-desc-joint-guard-descend)`, R533.  Lifts the
+    carrier-fed concrete descend `recbody_joint_descend_tail_carrier` (R532) from the UNPACKED window
+    halves to the PACKED named guard `RecBodyJointGuard` — the shape
+    `recbody_joint_navigator_driver`'s `descend_tail` slot demands (`G lo hi → … → G (m+1) hi`).
+
+    **What it does.**  Project `G lo hi` to its six conjuncts (frame bounds + window + the two close-gated
+    halves + close disjunction), feed window + halves + close + the two fixed outer carriers + M2 +
+    marker facts into R532, and re-pack R532's four-way suffix deliverable as `G (m+1) hi`.  The only
+    non-pass-through is the suffix frame LOWER bound `lo0 ≤ m+1`, re-established by `omega` from
+    `lo0 ≤ lo` and `lo < m`; the UPPER bound `hi ≤ hi0` is shared with the window's close `hi` and carries
+    verbatim.  So the guard's frame half narrows exactly as the carriers need at the descended window.
+
+    **What it RETYPES, not discharges** ([[ref-reduction-by-import]], [[ref-opaque-edge-imports-provider]]).
+    This is the guard-fold half of the driver re-type (brick (2) piece (i)).  R532 already retyped the
+    descend from "needs top-down content" to "needs the root carriers"; this lemma packages that retyped
+    edge against the named `G`, so the surviving inputs beyond the driver's bare `descend_tail` signature
+    are precisely the still-explicit plumbing the driver must thread: the two carriers (fixed at root),
+    the map-deferred `h_after_fe` (M2, [[ref-additive-field-cost-by-keying]]), and the marker balance
+    `h_bal_m` (what the driver's strengthened `locate` will carry, [[ref-joint-navigator-cross-deliverable]]).
+    Everything the recursion CAN reproduce is now inside `G`; everything it cannot is a named outer input.
+
+    Verified-but-unconsumed until the driver's `locate` markers carry `h_bal_m`, the carriers are threaded
+    per-window, and `h_after_fe` is narrowed from a global M2: composes only
+    `recbody_joint_descend_tail_carrier`, references no sorry site, frontier sorry count unchanged at 4;
+    axioms `[propext, Classical.choice, Quot.sound]` (inherited from R532), no `sorryAx`.  Demo
+    `Tests/Reflections/JointGuardDescendTail.lean`. -/
+theorem recbody_joint_guard_descend_tail (tokens : Array (Positioned YamlToken))
+    (lo0 hi0 lo hi m : Nat)
+    (h_seq_carrier : SeqInteriorSeparators tokens lo0 hi0)
+    (h_map_carrier : MapInteriorSeparators tokens lo0 hi0)
+    (h_after_fe : ∀ k, lo ≤ k → k < hi →
+        flowBracketBalance tokens lo k = 0 →
+        tokens[k]!.val = .flowEntry →
+        k + 1 ≤ hi ∧ tokens[k + 1]!.val = .key)
+    (h_g : RecBodyJointGuard tokens lo0 hi0 lo hi)
+    (h_lo_m : lo < m) (h_m_hi : m < hi)
+    (h_bal_m : flowBracketBalance tokens lo m = 0)
+    (h_sep : tokens[m]!.val = .flowEntry) :
+    RecBodyJointGuard tokens lo0 hi0 (m + 1) hi := by
+  unfold RecBodyJointGuard at h_g ⊢
+  obtain ⟨h_lo0, h_hi0, h_win, h_seq_guard, h_map_guard, h_close⟩ := h_g
+  obtain ⟨h_win', h_seq_guard', h_map_guard', h_close'⟩ :=
+    recbody_joint_descend_tail_carrier tokens lo0 hi0 lo hi m h_win h_seq_guard h_map_guard
+      h_close h_seq_carrier h_map_carrier h_after_fe h_lo0 h_hi0 h_lo_m h_m_hi h_bal_m h_sep
+  exact ⟨by omega, h_hi0, h_win', h_seq_guard', h_map_guard', h_close'⟩
+
 /-- **The root-span instance of `seqWindowRecSeqBody_seq_general`** — `lo0 := 2`, `hi0 := size-2`,
     bounds read off `FlowBodyWindow.lo_ge`/`hi_le`.  Signature-preserving so `seqWindowRecSeqBody_seq`'s
     consumers are untouched (ROUTE A, R445 — the parametric carrier rides the recursion via the
