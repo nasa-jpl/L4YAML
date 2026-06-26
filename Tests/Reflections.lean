@@ -230,6 +230,7 @@ import Tests.Reflections.JointNavigatorDriverCarrier
 import Tests.Reflections.JointOracleSeqIh
 import Tests.Reflections.LocateHoleIsDispatchRepacked
 import Tests.Reflections.AxisDualFromTypeAgnosticCore
+import Tests.Reflections.BoundaryRobustVsFragileFact
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
