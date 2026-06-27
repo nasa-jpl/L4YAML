@@ -519,6 +519,91 @@ theorem mapGrammarFacts''_of_recmapbody_window_guarded (tokens : Array (Position
       h_key_content h_key_scalar_value h_value_content h_value_scalar_succ
       h_key_bracket_succ h_value_bracket_succ)
 
+/-- **Window-identity skeleton** (R560) — the general list fact that splits the `[lo, hi+1)` window
+    into the `[lo, hi)` interior plus the boundary element `L[hi]!`:
+    `(L.take (hi+1)).drop lo = (L.take hi).drop lo ++ [L[hi]!]`.  This is the bridge from a producer
+    that delivers a structure at the positional DROP-form `(L.take hi).drop lo` (the shape
+    `emitPairList_body_recmapbody`'s `RecMapBody ((s'.filter).toList.drop old_sz)` re-projects to) into
+    the BOUNDED `interior ++ [cl]` window identity `mapGrammarFacts''_of_recmapbody_window_guarded`
+    demands.  Pure `List.take_add_one` + `List.drop_append_of_le_length`; no project deps. -/
+theorem take_succ_drop_eq_drop_append_getElem {α} [Inhabited α] (L : List α) (lo hi : Nat)
+    (h_lo : lo ≤ hi) (h_hi : hi < L.length) :
+    (L.take (hi + 1)).drop lo = (L.take hi).drop lo ++ [L[hi]!] := by
+  have e1 : L.take (hi + 1) = L.take hi ++ [L[hi]!] := by
+    rw [List.take_add_one]
+    congr 1
+    rw [List.getElem?_eq_getElem h_hi, getElem!_pos L hi h_hi]
+    rfl
+  rw [e1, List.drop_append_of_le_length (by rw [List.length_take]; omega)]
+
+/-- **(i-a) narrowed-interface root-facts producer** (R560) — `mapGrammarFacts''_of_recmapbody_window_guarded`
+    with the explicit `interior`/`cl`/`h_window` triple ELIMINATED.  The caller supplies a single
+    `RecMapBody ((tokens.toList.take hi).drop lo)` at the canonical POSITIONAL drop-form — exactly the
+    shape the emission producer `emitPairList_body_recmapbody` delivers (`RecMapBody`
+    `((s'.tokens.filter p).toList.drop old_sz)`, transported to the root `tokens` via the root seed's
+    `h_take_eq`).  The window identity is discharged internally by `take_succ_drop_eq_drop_append_getElem`
+    instantiating `interior := (tokens.toList.take hi).drop lo` and `cl := tokens.toList[hi]!`, so the
+    interface now matches the producer's output verbatim — the (i-a) "package at the root span with its
+    window identity" obligation, minus the geometry + six primitives the root seed still owes.
+    Verified-but-unconsumed: the root seed does not call it yet; references no sorry site, frontier sorry
+    count unchanged.  Probed end-to-end on the `{a:[1],b:2}` fixture in
+    `Tests/Reflections/MapCarrierRobustInhabitation.lean` (R560). -/
+theorem mapGrammarFacts''_of_recmapbody_at_window (tokens : Array (Positioned YamlToken))
+    (lo hi : Nat)
+    (h_lo_hi : lo ≤ hi) (h_hi_sz : hi < tokens.size)
+    (h_tpe : tokens[hi]!.val = .flowMappingEnd)
+    (h_outer_bal : flowBracketBalance tokens lo hi = 0)
+    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
+    (h_wt_interior : WellTyped ((tokens.toList.take hi).drop lo))
+    (h_rec : RecMapBody ((tokens.toList.take hi).drop lo))
+    (h_key_content : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .key →
+      k + 1 < hi ∧ isFlowContentStart tokens[k + 1]!.val)
+    (h_key_scalar_value : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .key →
+      (∃ c s, tokens[k + 1]!.val = .scalar c s) →
+      k + 2 < hi ∧ tokens[k + 2]!.val = .value)
+    (h_value_content : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .value →
+      k + 1 < hi ∧ isFlowContentStart tokens[k + 1]!.val)
+    (h_value_scalar_succ : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .value →
+      (∃ c s, tokens[k + 1]!.val = .scalar c s) →
+      k + 2 ≤ hi ∧
+      (tokens[k + 2]!.val = .flowEntry ∨
+       (tokens[k + 2]!.val = .flowMappingEnd ∧ k + 2 = hi)))
+    (h_key_bracket_succ : ∀ k j, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .key →
+      (tokens[k + 1]!.val = .flowSequenceStart ∨ tokens[k + 1]!.val = .flowMappingStart) →
+      k + 1 < j → j < hi →
+      flowBracketDelta tokens[j]!.val = -1 →
+      flowBracketBalance tokens lo (j + 1) = 0 →
+      j + 1 < hi ∧ tokens[j + 1]!.val = .value)
+    (h_value_bracket_succ : ∀ k j, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .value →
+      (tokens[k + 1]!.val = .flowSequenceStart ∨ tokens[k + 1]!.val = .flowMappingStart) →
+      k + 1 < j → j < hi →
+      flowBracketDelta tokens[j]!.val = -1 →
+      flowBracketBalance tokens lo (j + 1) = 0 →
+      j + 1 ≤ hi ∧
+      (tokens[j + 1]!.val = .flowEntry ∨
+       (tokens[j + 1]!.val = .flowMappingEnd ∧ j + 1 = hi))) :
+    MapGrammarFacts'' tokens lo hi :=
+  mapGrammarFacts''_of_recmapbody_window_guarded tokens lo hi
+    ((tokens.toList.take hi).drop lo) (tokens.toList[hi]!)
+    h_lo_hi h_hi_sz h_tpe h_outer_bal h_dyck h_wt_interior
+    (take_succ_drop_eq_drop_append_getElem tokens.toList lo hi h_lo_hi
+      (by rw [Array.length_toList]; exact h_hi_sz))
+    h_rec
+    h_key_content h_key_scalar_value h_value_content h_value_scalar_succ
+    h_key_bracket_succ h_value_bracket_succ
+
 /-- **`MapGrammarFacts'` RE-BASING** — the robust analog of `bodySuccFact_rebase` (`:1940`), bundled
     over all six conjuncts. On a sub-window `[a,b) ⊆ [loS,hiS)` re-seated to the enclosing map's top
     level (`flowBracketBalance tokens loS a = 0`), the robust facts follow from the ENCLOSING window's

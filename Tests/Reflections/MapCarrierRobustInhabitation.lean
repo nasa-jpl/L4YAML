@@ -1300,6 +1300,89 @@ theorem mapGrammarFacts''_via_recmapbody_window_guarded_bracketVal :
 #guard_msgs in
 #print axioms mapGrammarFacts''_via_recmapbody_window_guarded_bracketVal
 
+/-! ## R560 — the (i-a) narrowed-interface root-facts producer, PROBED on real emission
+
+R559 drove the guarded producer with the explicit `interior`/`cl`/`h_window` triple supplied by hand.
+R560 lands `mapGrammarFacts''_of_recmapbody_at_window` (`SeqInteriorSeparators.lean`), which ELIMINATES
+that triple: the caller supplies a single `RecMapBody ((tokens.toList.take hi).drop lo)` at the canonical
+POSITIONAL drop-form — exactly the shape `emitPairList_body_recmapbody` delivers off emission
+(`RecMapBody ((s'.tokens.filter p).toList.drop old_sz)`).  The window identity is discharged internally by
+the general list lemma `take_succ_drop_eq_drop_append_getElem`
+(`(L.take (hi+1)).drop lo = (L.take hi).drop lo ++ [L[hi]!]`).
+
+Per [[ref-inhabitation-debt-validate-target-defs]]: the narrowed producer's OUTPUT type is the same
+inhabited `MapGrammarFacts''` (R549); the open question the narrowing raises is whether its narrowed
+DOMAIN is reachable — i.e. whether a real inhabitant can supply `RecMapBody ((take hi).drop lo)` directly.
+The two probes below answer YES on `{a:[1],b:2}`: the window-identity skeleton splits the real `[2,14)`
+window into `interiorMapSeqVal ++ [.flowMappingEnd]` (so internalizing `h_window` loses nothing), and the
+end-to-end run feeds the positional drop-form `RecMapBody` (transported from R559's hand-built one) and
+recovers `MapGrammarFacts'' fixtureMapSeqVal 2 13` — the SAME carrier, now through the narrowed interface
+that matches the emission producer's output verbatim. -/
+
+/-- The window-identity skeleton on REAL fixture data (rule 5): the `[2,14).drop 2` window splits into
+    the `[2,13)` interior `(= interiorMapSeqVal)` plus the boundary closer `fixtureMapSeqVal[13]!`
+    `(= .flowMappingEnd)`.  Grounds `take_succ_drop_eq_drop_append_getElem` on `Positioned YamlToken`
+    data, not just an abstract `Nat` list. -/
+theorem window_identity_skeleton_bracketVal :
+    (fixtureMapSeqVal.toList.take (13 + 1)).drop 2
+      = interiorMapSeqVal ++ [pt .flowMappingEnd] :=
+  take_succ_drop_eq_drop_append_getElem fixtureMapSeqVal.toList 2 13 (by decide) (by decide)
+
+/-- **End-to-end: the (i-a) narrowed interface is LIVE on real emission.**  Drives the positional
+    drop-form `RecMapBody ((fixtureMapSeqVal.toList.take 13).drop 2)` — transported from R559's hand-built
+    `RecMapBody interiorMapSeqVal` by the definitional slice identity — through
+    `mapGrammarFacts''_of_recmapbody_at_window` (NO explicit `interior`/`cl`/`h_window`), recovering
+    `MapGrammarFacts'' fixtureMapSeqVal 2 13`.  This is the emission-output shape the next sub-brick's
+    `emitPairList_body_recmapbody` feeds, so the narrowed producer aims at a reachable deliverable. -/
+theorem mapGrammarFacts''_via_recmapbody_at_window_bracketVal :
+    MapGrammarFacts'' fixtureMapSeqVal 2 13 := by
+  have h_dyck : ∀ i, 2 ≤ i → i ≤ 13 → flowBracketBalance fixtureMapSeqVal 2 i ≥ 0 := by
+    intro i hi1 hi2
+    rcases (show i = 2 ∨ i = 3 ∨ i = 4 ∨ i = 5 ∨ i = 6 ∨ i = 7 ∨ i = 8 ∨ i = 9 ∨
+        i = 10 ∨ i = 11 ∨ i = 12 ∨ i = 13 by omega)
+      with rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl <;> decide
+  -- R559's hand-built root `RecMapBody`, rebuilt self-contained (the demo convention).
+  have h_rec : RecMapBody interiorMapSeqVal :=
+    RecMapBody.cons _ _ _ (List.cons_ne_nil _ _)
+      (RecMapPair.mk _ _ _ _ rfl
+        (RecSeqEntry.scalar _ "a" .doubleQuoted rfl)
+        rfl
+        (RecSeqEntry.seq _ _ _ rfl rfl
+          (WellBracketed_singleton_delta_zero _ (by decide))
+          (RecSeqBody.single _ (List.cons_ne_nil _ _)
+            (RecSeqEntry.scalar _ "1" .doubleQuoted rfl)
+            (Or.inl ⟨"1", .doubleQuoted, rfl⟩))))
+      rfl rfl
+      (RecMapBody.single _ (List.cons_ne_nil _ _)
+        (RecMapPair.mk _ _ _ _ rfl
+          (RecSeqEntry.scalar _ "b" .doubleQuoted rfl)
+          rfl
+          (RecSeqEntry.scalar _ "2" .doubleQuoted rfl))
+        rfl)
+  -- Transport to the canonical positional drop-form: the slice IS `interiorMapSeqVal` definitionally.
+  have h_rec_pos : RecMapBody ((fixtureMapSeqVal.toList.take 13).drop 2) := h_rec
+  exact mapGrammarFacts''_of_recmapbody_at_window fixtureMapSeqVal 2 13
+    (by decide) (by decide) (by decide) (by decide) h_dyck (by rfl) h_rec_pos
+    mapBodyProps_bracketVal.key_content
+    mapBodyProps_bracketVal.key_scalar_value
+    mapBodyProps_bracketVal.value_content
+    mapBodyProps_bracketVal.value_scalar_succ
+    key_bracket_succ_guarded_vacuous_bracketVal
+    value_bracket_succ_guarded_fires_bracketVal
+
+-- R560 — the window-identity skeleton is pure `List.take_add_one`/`drop_append`, core-clean; the
+-- end-to-end run pulls `Classical.choice` through the same matching-close locators as R559's run.  The
+-- narrowed interface fires on real data, so internalizing `h_window` did not strand the domain.
+/-- info: 'MapCarrierRobustInhabitation.window_identity_skeleton_bracketVal' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
+#print axioms window_identity_skeleton_bracketVal
+
+/-- info: 'MapCarrierRobustInhabitation.mapGrammarFacts''_via_recmapbody_at_window_bracketVal' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs in
+#print axioms mapGrammarFacts''_via_recmapbody_at_window_bracketVal
+
 -- Axiom audit — the carrier inhabitation and the boundary-survival probe lean only on core; the
 -- ASSEMBLE non-vacuity checks also pull in `Classical.choice` through the rebase's
 -- `flowBracketBalance_compose`.

@@ -23578,7 +23578,7 @@ Sorries 1 and 2 are *literally the same proposition* `FlowSubrangesOk tokens` �
 producer family closes both. So the real count is **two distinct obligations + one
 duplicate**.
 
-**Current state (post-R559).** The map-carrier track is the active Family-A front. The
+**Current state (post-R560).** The map-carrier track is the active Family-A front. The
 `MapInteriorSeparators'` provider/leaf path narrated below (R538–R546) was found in R547 to
 rest on a REFUTED carrier — its `MapGrammarFacts'` conjuncts 5/6 are false on a bracket-valued
 map — and redirected to the corrected `MapInteriorSeparators''` (R547–R549). As of **R553 the
@@ -23615,17 +23615,28 @@ composed with R549 as `mapGrammarFacts''_of_recmapbody_window_guarded`, the genu
 content primitives (projected from `mapBodyProps_bracketVal`) + BOTH guarded bracket-`succ` arms (R558
 key-vacuous, R559 value-side FIRING at `k=4` where the guard fires non-vacuously and the conclusion holds at
 the value-seq close `j=7`) drive the producer to `MapGrammarFacts'' fixtureMapSeqVal 2 13` — the same carrier
-R549's round-trip proved, now reached through the corrected route the R557 trap could not. So what remains
-under (i-a) is JUST a root `RecMapBody` off emission (`emitPairList_scans_recmapbody`) — its deliverable
-exhibited reachable on the fixture, so the producer aims at a real target (survey the leaf before the
-scaffold). (i-b) the map descent provider for the `≠ 0` branch;
+R549's round-trip proved, now reached through the corrected route the R557 trap could not. **R560 then
+NARROWED that producer's interface to match the emission output shape**: `mapGrammarFacts''_of_recmapbody_at_window`
+eliminates the explicit `interior`/`cl`/`h_window` triple — the caller now supplies a single
+`RecMapBody ((tokens.toList.take hi).drop lo)` at the canonical POSITIONAL drop-form, exactly the shape
+`emitPairList_body_recmapbody` delivers off emission (`RecMapBody ((s'.tokens.filter p).toList.drop old_sz)`).
+The window identity is discharged internally by the general list lemma `take_succ_drop_eq_drop_append_getElem`
+(`(L.take (hi+1)).drop lo = (L.take hi).drop lo ++ [L[hi]!]`), grounded on the real fixture and re-run
+end-to-end through the narrowed interface (`mapGrammarFacts''_via_recmapbody_at_window_bracketVal`,
+recovering the same `MapGrammarFacts'' fixtureMapSeqVal 2 13`) to confirm internalizing `h_window` did not
+strand the domain (the inhabitation-debt risk of a narrowing: the codomain stays inhabited regardless, so
+the DOMAIN must be probed). So what remains under (i-a) is now pure PLUMBING: instantiate
+`emitPairList_body_recmapbody` at the root and transport its `drop old_sz` `RecMapBody` onto the final
+`tokens` via the root seed's own `h_take_eq` (`tokens.toList.take (size-2) = (s₂.filter p).toList`),
+yielding `RecMapBody ((tokens.toList.take (size-2)).drop 2)` — the narrowed producer's sole structural input.
+(i-b) the map descent provider for the `≠ 0` branch;
 (ii) the seq-side descent provider (the "hard B2 brick"); (iii) `locate_map`; (iv) the M2 narrowing.
 With those, the JOINT driver (R534) runs at the root and sorries 1 + 2 are one `exact` each — plus
 reconciling the consumer field `MapLocated.h_key_bracket_succ` (`NonemptyStructure.lean:10531`) onto
 `MapGrammarFacts''`. Family B (sorries 3/4, content fidelity) is untouched. The chronological narrative
 below records how each piece was reached.
 
-**Family A (`FlowSubrangesOk`) — where essentially all recent work (R512–R559) has gone.**
+**Family A (`FlowSubrangesOk`) — where essentially all recent work (R512–R560) has gone.**
 The landed assembler `flowSubrangesOk_of_window_producers` (`NonemptyStructure.lean:10904`)
 shows the goal reduces to: the boundary facts already in scope at each sorry **+ a seq
 window producer `h_seq_rec` (per-subrange `RecSeqBody`, keyed on a `.flowSequenceEnd`
@@ -31572,6 +31583,14 @@ The window's close bracket selects which body it is, and the *conjunction* carri
 **LANDED (R531 — `SeqInteriorSeparators.lean`):** build green at exactly 4 frontier sorries (`NonemptyStructure:11586` + `EmitterScannability:315/809/848`), full `L4YAML` + `Tests.Reflections` (410 jobs). New demo `Tests/Reflections/JointContentPackFromCarrier.lean` (proves the abstract `joint_content_pack` once — parametric in `close, Win, DeepS, DeepM, ContentS, ContentM, CarrierS, CarrierM, M2, EncS, EncM, provideS, provideM`, the dual-pack assembly where the map provider alone consumes the close token and the deferred `M2`; instantiates at toy guards and RUNS both packs — `hi = 3 → seqEnd`, `hi = 4 → mapEnd`; `demo` depends on no axioms), new memory `ref-content-pack-passthrough-manufacture`, `MEMORY.md` index updated.
 
 **Next step.** With R530's debt (b) discharged, brick (2) reduces to: (i) re-type the joint driver's `locate` marker to carry the depth-`0` balance `flowBracketBalance tokens lo m = 0`, and fold the two outer carriers + the deferred map fact + the frame bounds into the guard `G`, so the descend's `h_seq_pack`/`h_map_pack` come from `recbody_joint_content_pack` per-window and its `h_bal_m` from the strengthened marker; (iii) construct the concrete `locate_seq` (R527-fed dispatch + R510's route) and `locate_map` (R522 → R523/R525 → R524 → R527 → `recmapentry_pair_located`), each passed the JOINT oracle. Then `recbody_joint_navigator_driver`'s `.2` is the raw `h_map_rec` `flowSubrangesOk_of_window_producers` consumes (closing brick (2)), its `.1` the seq `h_seq_rec`. *[Acted on by Reflection 532: piece (i)'s descend-assembly part — "so the descend's `h_seq_pack`/`h_map_pack` come from `recbody_joint_content_pack` per-window" — is now LANDED as `recbody_joint_descend_tail_carrier`, the composition R531 ∘ R530 that feeds R531's output into R530's opaque content slot, producing the concrete `descend_tail` (= the suffix guard `G (m+1) hi`). The content debt is gone from the descend's interface; what remains for piece (i) is the driver-marker strengthening for `h_bal_m` and folding the carriers/M2/bounds into `G` so the driver's `descend_tail` slot is this lemma. Piece (iii) (the two concrete `locate`s) is untouched.]*
+
+### Reflection 560 — narrow the root-facts producer's interface to MATCH the emission output shape, and probe that the narrowing didn't strand the domain. **A consumer interface and its producer's output should meet at the SAME shape. `mapGrammarFacts''_of_recmapbody_window_guarded` (R559) demanded an explicit `interior`/`cl`/`h_window` triple; the emission producer `emitPairList_body_recmapbody` natively delivers a `RecMapBody` at the POSITIONAL drop-form `((s'.filter p).toList.drop old_sz)`. R560 closes the impedance mismatch by internalizing the bridge: a general list lemma `take_succ_drop_eq_drop_append_getElem` discharges `h_window` from the drop-form alone, so the narrowed producer `mapGrammarFacts''_of_recmapbody_at_window` takes exactly one structural input — the drop-form `RecMapBody` — matching the producer verbatim. The inhabitation-debt twist: a narrowing leaves the CODOMAIN inhabited no matter what (it's the same `MapGrammarFacts''`), so codomain-inhabitation proves nothing about whether the narrowed DOMAIN is reachable — the new input must itself be probed on real data.**
+
+**What landed (source).** Two artifacts in `SeqInteriorSeparators.lean`. The keystone is `take_succ_drop_eq_drop_append_getElem` — a general, project-free list lemma `(L.take (hi+1)).drop lo = (L.take hi).drop lo ++ [L[hi]!]` (pure `List.take_add_one` + `List.drop_append_of_le_length` + `List.length_take`), the window-identity skeleton that splits a `[lo, hi+1)` window into its `[lo, hi)` interior plus the boundary element. On top of it, `mapGrammarFacts''_of_recmapbody_at_window` wraps `mapGrammarFacts''_of_recmapbody_window_guarded` with `interior := (tokens.toList.take hi).drop lo`, `cl := tokens.toList[hi]!`, and `h_window` discharged by the keystone — eliminating the explicit `interior`/`cl`/`h_window` from the interface. The caller now supplies only `RecMapBody ((tokens.toList.take hi).drop lo)`. Verified-but-unconsumed; full build green at exactly 4 frontier sorries (782 jobs).
+
+**The probes (`Tests/Reflections/`).** Two, both on `#guard`-real `{a:[1],b:2}`. `window_identity_skeleton_bracketVal` grounds the general lemma on `Positioned YamlToken` data (rule 5 — not just an abstract `Nat` list): the real `[2,14).drop 2` window splits into `interiorMapSeqVal ++ [.flowMappingEnd]`, core-clean `[propext, Quot.sound]`. `mapGrammarFacts''_via_recmapbody_at_window_bracketVal` is the end-to-end run through the NARROWED interface: it transports R559's hand-built `RecMapBody interiorMapSeqVal` to the positional drop-form `RecMapBody ((fixtureMapSeqVal.toList.take 13).drop 2)` (a definitional slice identity — the slice IS `interiorMapSeqVal`), feeds it plus the four content primitives and both guarded bracket-`succ` probes to `mapGrammarFacts''_of_recmapbody_at_window`, and recovers `MapGrammarFacts'' fixtureMapSeqVal 2 13` — the SAME carrier, now through the interface that matches the emission producer's output. Internalizing `h_window` stranded nothing.
+
+**Next step.** Brick (i-a) is now pure PLUMBING — no new math. Instantiate `emitPairList_body_recmapbody` at the root (its preconditions are the root seed's own emission hypotheses) to get `RecMapBody ((s'.tokens.filter p).toList.drop old_sz)`, then transport it onto the final `tokens` via the root seed's existing `h_take_eq` (`tokens.toList.take (size-2) = (s₂.filter p).toList`) so it reads `RecMapBody ((tokens.toList.take (size-2)).drop 2)` — exactly `mapGrammarFacts''_of_recmapbody_at_window`'s sole structural input. With the geometry (already derived in the root seed: `h_outer_bal`, `h_dyck`, `h_wt_interior`) and the six primitives (four off emission's `MapBodyProps`, two guarded), the root seed PRODUCES `h_facts : MapGrammarFacts'' tokens 2 (size-2)` and lifts only `desc`. Then (i-b) the map descent provider for the `≠ 0` branch. Family B (sorries 3/4, content fidelity) remains a separate untouched effort.
 
 ### Reflection 559 — land the guarded delegation chain on R558's fix, and PROBE the route END-TO-END on real emission instead of branding it "LIVE". **The R558 discipline made concrete: R557 was burned by *switching upstream and asserting LIVE*; R559 does not repeat it. It runs a REAL inhabitant of every input — a hand-built root `RecMapBody`, the four content primitives off the fixture, and BOTH guarded bracket-`succ` arms (including the value-side one that FIRES non-vacuously) — through the corrected producer and recovers the carrier. A route is LIVE only once its full premise bundle is exhibited jointly satisfiable on `#guard`-real data; type-checking the delegation chain proves only that it is well-formed.**
 
