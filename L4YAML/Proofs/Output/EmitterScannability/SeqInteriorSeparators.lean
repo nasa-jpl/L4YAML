@@ -671,6 +671,158 @@ theorem mapBracketOpen_balance_one (tokens : Array (Positioned YamlToken)) (a k 
   rw [h_open_delta] at h_k2
   omega
 
+/-- **`MapGrammarFacts''` RE-BASING under a GATE (R553)** — the matching-close-pinned analog of
+    `mapGrammarFacts_rebase'` (`:469`), and the artifact the two R551/R552 kernels were built to
+    serve.  On a sub-window `[a,b) ⊆ [loS,hiS)` re-seated to the enclosing map's top level
+    (`flowBracketBalance tokens loS a = 0`), the corrected facts follow from the ENCLOSING window's
+    corrected facts — BUT only with two hypotheses the single-prime rebase did not need:
+
+      * **a GATE** `h_gate : MapTypedInterior tokens a b` (R549/R551 predicted).  The single-prime
+        conjuncts 5/6 are FLAT (`∀ k j, … → j < b → …`): the close `j` arrives as a parameter with
+        `j < b` GIVEN, so `rebase'` never LOCATES the close.  The `''` conjuncts 5/6 (`:365`) are
+        EXISTENTIAL — they must PRODUCE `∃ j, … ∧ j < b ∧ …`, relocating the enclosing witness
+        `j < hiS` down to `j < b`.  That relocation is FALSE without a gate (a bracket opened in
+        `[a,b)` could close past `b`); `mapBracketClose_lt_of_gate` (`:595`) confines it using the
+        gate's balance `flowBracketBalance tokens a b = 0` (`h_gate.1`) and the enclosing
+        existential's own Dyck floor.
+      * **a SIZE bound** `h_hiS_size : hiS ≤ tokens.size` (R552).  Producing the depth-`1` opener
+        fact `h_open : flowBracketBalance tokens a (k+2) = 1` reads the trigger's δ`0` and the
+        bracket-start's δ`+1` individually via `mapBracketOpen_balance_one` (`:647`), which needs
+        `k + 1 < tokens.size` — sourced HERE from `k + 1 < j < hiS ≤ tokens.size`.
+
+    **Structure.**  Conjuncts 1–4 are the `mapGrammarFacts_rebase'` conjuncts VERBATIM (the `''`
+    conjuncts 1–4 are byte-identical to the robust ones — escapes + balance-rebase by
+    `flowBracketBalance_compose`, no gate, no size).  Conjuncts 5/6: re-base the trigger balance to
+    `loS`, fire the enclosing existential conjunct, and — on the genuine `k + 1 < b` arm — derive the
+    δ facts from `htok`/`hbr` (`tokens[k]!.val = .key`/`.value` ⟹ δ`0`; `tokens[k+1]!.val =
+    seqStart/mapStart` ⟹ δ`+1`), call `mapBracketOpen_balance_one` for `h_open`, then
+    `mapBracketClose_lt_of_gate` for the relocated `j < b`, reusing the enclosing existential's
+    matching-close witness / close-balance / Dyck floor verbatim and collapsing the successor escape
+    `hiS ≤ j+1` down to `b ≤ j+1` exactly as `rebase'` does.
+
+    This is the map twin of the seq carrier's `bodySuccFact_rebase`/`noTrailingSepFact_rebase` pair
+    for the CORRECTED existential facts, and the pre-condition for the eventual
+    `mapInteriorSeparators''_of_enclosing_provider` assembler (the `''` mirror of `:698`).  It is the
+    mechanism the strict `MapGrammarFacts` could never support (R540) and the single-prime
+    `MapGrammarFacts'` supported only because its 5/6 were the wrong, flat shape (R547).
+
+    INHABITATION-DEBT discipline ([[ref-inhabitation-debt-validate-target-defs]], rule 3 — probe the
+    composition's HYPOTHESES are PRODUCIBLE on real data before consumers build on it): probed in
+    `Tests/Reflections/MapCarrierRobustInhabitation.lean` (R553) by `mapGrammarFacts_rebase''_bracketVal`
+    and `mapGrammarFacts_rebase''_mixed`, which route the GENUINE map bodies of `{a:[1],b:2}` and
+    `{a:[1],[2]:3}` — gate (`mapTypedInterior_bracketVal`/`_mixed`), size bound (`decide`), and
+    enclosing facts (`mapGrammarFacts''_bracketVal`/`_mixed`) all producible off real emission —
+    through this rebase, recovering the corrected facts with conjunct 6 (bracketVal) and BOTH
+    conjuncts 5 and 6 (mixed) firing the kernel composition (close-relocation `7 < 13`, then the
+    mixed pair).  The probes are the identity rebase (`loS = a`, `hiS = b`) — the only map-typed
+    window these single-level fixtures admit — but the conjunct-5/6 close-relocation still routes
+    fully through both kernels; a strictly-narrowing rebase would need a nested-map fixture (a deeper
+    future probe).  Verified-but-unconsumed (the `''` provider/assembler it feeds does not exist yet);
+    references no sorry site; frontier sorry count unchanged at 4. -/
+theorem mapGrammarFacts_rebase'' (tokens : Array (Positioned YamlToken)) (loS a b hiS : Nat)
+    (h_loS_a : loS ≤ a) (h_b_hiS : b ≤ hiS)
+    (h_hiS_size : hiS ≤ tokens.size)
+    (h_bal0 : flowBracketBalance tokens loS a = 0)
+    (h_gate : MapTypedInterior tokens a b)
+    (h_enc : MapGrammarFacts'' tokens loS hiS) :
+    MapGrammarFacts'' tokens a b := by
+  obtain ⟨e1, e2, e3, e4, e5, e6⟩ := h_enc
+  have h_gate_bal : flowBracketBalance tokens a b = 0 := h_gate.1
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
+  -- conjunct 1: key → content at k+1  (verbatim from `mapGrammarFacts_rebase'`)
+  · intro k hak hkb hbalk htok
+    have hk_hiS : k < hiS := Nat.lt_of_lt_of_le hkb h_b_hiS
+    have hbal_enc : flowBracketBalance tokens loS k = 0 := by
+      have hc := flowBracketBalance_compose tokens loS a k h_loS_a (by omega)
+      rw [h_bal0, hbalk] at hc; omega
+    rcases e1 k (Nat.le_trans h_loS_a hak) hk_hiS hbal_enc htok with h | ⟨_, hQ⟩
+    · exact Or.inl (by omega)
+    · rcases Nat.lt_or_ge (k + 1) b with hb | hb
+      · exact Or.inr ⟨hb, hQ⟩
+      · exact Or.inl (by omega)
+  -- conjunct 2: key + scalar → value at k+2  (verbatim)
+  · intro k hak hkb hbalk htok hsc
+    have hk_hiS : k < hiS := Nat.lt_of_lt_of_le hkb h_b_hiS
+    have hbal_enc : flowBracketBalance tokens loS k = 0 := by
+      have hc := flowBracketBalance_compose tokens loS a k h_loS_a (by omega)
+      rw [h_bal0, hbalk] at hc; omega
+    rcases e2 k (Nat.le_trans h_loS_a hak) hk_hiS hbal_enc htok hsc with h | ⟨_, hQ⟩
+    · exact Or.inl (by omega)
+    · rcases Nat.lt_or_ge (k + 2) b with hb | hb
+      · exact Or.inr ⟨hb, hQ⟩
+      · exact Or.inl (by omega)
+  -- conjunct 3: value → content at k+1  (verbatim)
+  · intro k hak hkb hbalk htok
+    have hk_hiS : k < hiS := Nat.lt_of_lt_of_le hkb h_b_hiS
+    have hbal_enc : flowBracketBalance tokens loS k = 0 := by
+      have hc := flowBracketBalance_compose tokens loS a k h_loS_a (by omega)
+      rw [h_bal0, hbalk] at hc; omega
+    rcases e3 k (Nat.le_trans h_loS_a hak) hk_hiS hbal_enc htok with h | ⟨_, hQ⟩
+    · exact Or.inl (by omega)
+    · rcases Nat.lt_or_ge (k + 1) b with hb | hb
+      · exact Or.inr ⟨hb, hQ⟩
+      · exact Or.inl (by omega)
+  -- conjunct 4: value + scalar → flowEntry/mapEnd at k+2  (verbatim)
+  · intro k hak hkb hbalk htok hsc
+    have hk_hiS : k < hiS := Nat.lt_of_lt_of_le hkb h_b_hiS
+    have hbal_enc : flowBracketBalance tokens loS k = 0 := by
+      have hc := flowBracketBalance_compose tokens loS a k h_loS_a (by omega)
+      rw [h_bal0, hbalk] at hc; omega
+    rcases e4 k (Nat.le_trans h_loS_a hak) hk_hiS hbal_enc htok hsc with h | ⟨_, hinner⟩
+    · exact Or.inl (by omega)
+    · rcases Nat.lt_or_ge (k + 1) b with hb | hb
+      · refine Or.inr ⟨by omega, ?_⟩
+        rcases hinner with hfe | ⟨hme, heq⟩
+        · exact Or.inl hfe
+        · exact Or.inr ⟨hme, by omega⟩
+      · exact Or.inl (by omega)
+  -- conjunct 5: key + bracket-start → ∃ j matching close, value successor  (NEW: opener+close kernels)
+  · intro k hak hkb hbalk htok hbr
+    have hk_hiS : k < hiS := Nat.lt_of_lt_of_le hkb h_b_hiS
+    have hbal_enc : flowBracketBalance tokens loS k = 0 := by
+      have hc := flowBracketBalance_compose tokens loS a k h_loS_a (by omega)
+      rw [h_bal0, hbalk] at hc; omega
+    rcases e5 k (Nat.le_trans h_loS_a hak) hk_hiS hbal_enc htok hbr with
+      hesc | ⟨j, hj1, hj2, hmatch, hbalj, hsucc, hdyck⟩
+    · exact Or.inl (by omega)
+    · rcases Nat.lt_or_ge (k + 1) b with hkb_lt | hkb_ge
+      · -- k+1 < b: PRODUCE the existential via the opener then the close kernel
+        have h_open : flowBracketBalance tokens a (k + 2) = 1 :=
+          mapBracketOpen_balance_one tokens a k hak (by omega) hbalk
+            (by rw [htok]; decide) (by rcases hbr with h | h <;> rw [h] <;> decide)
+        have h_jb : j < b :=
+          mapBracketClose_lt_of_gate tokens a b k j hak (by omega) h_gate_bal h_open hdyck
+        refine Or.inr ⟨j, hj1, h_jb, hmatch, hbalj, ?_, hdyck⟩
+        rcases hsucc with h | ⟨_, hval⟩
+        · exact Or.inl (by omega)
+        · rcases Nat.lt_or_ge (j + 1) b with hjb_lt | hjb_ge
+          · exact Or.inr ⟨hjb_lt, hval⟩
+          · exact Or.inl (by omega)
+      · exact Or.inl hkb_ge
+  -- conjunct 6: value + bracket-start → ∃ j matching close, flowEntry/mapEnd successor  (NEW)
+  · intro k hak hkb hbalk htok hbr
+    have hk_hiS : k < hiS := Nat.lt_of_lt_of_le hkb h_b_hiS
+    have hbal_enc : flowBracketBalance tokens loS k = 0 := by
+      have hc := flowBracketBalance_compose tokens loS a k h_loS_a (by omega)
+      rw [h_bal0, hbalk] at hc; omega
+    rcases e6 k (Nat.le_trans h_loS_a hak) hk_hiS hbal_enc htok hbr with
+      hesc | ⟨j, hj1, hj2, hmatch, hbalj, hsucc, hdyck⟩
+    · exact Or.inl (by omega)
+    · rcases Nat.lt_or_ge (k + 1) b with hkb_lt | hkb_ge
+      · have h_open : flowBracketBalance tokens a (k + 2) = 1 :=
+          mapBracketOpen_balance_one tokens a k hak (by omega) hbalk
+            (by rw [htok]; decide) (by rcases hbr with h | h <;> rw [h] <;> decide)
+        have h_jb : j < b :=
+          mapBracketClose_lt_of_gate tokens a b k j hak (by omega) h_gate_bal h_open hdyck
+        refine Or.inr ⟨j, hj1, h_jb, hmatch, hbalj, ?_, hdyck⟩
+        rcases hsucc with h | ⟨_, hinner⟩
+        · exact Or.inl (by omega)
+        · refine Or.inr ⟨by omega, ?_⟩
+          rcases hinner with hfe | ⟨hme, heq⟩
+          · exact Or.inl hfe
+          · exact Or.inr ⟨hme, by omega⟩
+      · exact Or.inl hkb_ge
+
 /-- **The map ASSEMBLE half — `MapInteriorSeparators'` from a `provider`** (the boundary-robust map
     twin of `seqInteriorSeparators_of_enclosing_provider`, `:2224`). The FIRST consumer of
     `mapGrammarFacts_rebase'` (`:322`): it reduces the robust carrier — with NO further grammar

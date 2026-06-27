@@ -908,6 +908,39 @@ theorem mapBracketOpen_balance_one_bracketVal :
   mapBracketOpen_balance_one fixtureMapSeqVal 2 4
     (by omega) (by decide) (by decide) (by decide) (by decide)
 
+/-! ## R553 — the gated rebase composes both kernels on real emission
+
+R551/R552 landed the close-containment kernel `mapBracketClose_lt_of_gate` and its opener-balance
+producer `mapBracketOpen_balance_one`; R553 lands `mapGrammarFacts_rebase''`, the gated
+matching-close-pinned rebase that COMPOSES them inside conjuncts 5/6.  Per inhabitation-debt rule 3,
+probe that the rebase's two NEW hypotheses — the GATE `MapTypedInterior tokens a b` and the SIZE bound
+`hiS ≤ tokens.size` — are PRODUCIBLE on real emission, by routing the genuine map bodies through the
+rebase and recovering the corrected `MapGrammarFacts''`.  These are the identity rebase (`loS = a`,
+`hiS = b`) — the only map-typed window these single-level fixtures admit — but the conjunct-5/6
+close-relocation still routes fully through BOTH kernels (conjunct 6 on `{a:[1],b:2}`; conjuncts 5 AND 6
+on `{a:[1],[2]:3}`); a strictly-narrowing rebase would need a nested-map fixture (a deeper future probe). -/
+
+/-- **The gated rebase recovers the corrected facts on `{a:[1],b:2}`.** Routes the genuine value-bracket
+    map body through `mapGrammarFacts_rebase''`: gate `mapTypedInterior_bracketVal`, size bound
+    `13 ≤ 15`, enclosing facts `mapGrammarFacts''_bracketVal` — all producible off real emission.
+    Conjunct 6 fires (`.value` at `k=4`, bracket-start `[` at `5`), driving the opener+close kernel
+    composition that relocates the close `j=7 < 13`.  Confirms the rebase's GATE and SIZE hypotheses are
+    satisfiable where the bracket genuinely fires (inhabitation-debt rule 3). -/
+theorem mapGrammarFacts_rebase''_bracketVal : MapGrammarFacts'' fixtureMapSeqVal 2 13 :=
+  mapGrammarFacts_rebase'' fixtureMapSeqVal 2 2 13 13
+    (Nat.le_refl 2) (Nat.le_refl 13) (by decide) (by decide)
+    mapTypedInterior_bracketVal mapGrammarFacts''_bracketVal
+
+/-- **The gated rebase fires BOTH existential conjuncts on `{a:[1],[2]:3}`.** The mixed fixture has a
+    complex KEY `[2]` (conjunct 5) and a bracket VALUE `[1]` (conjunct 6); routing it through
+    `mapGrammarFacts_rebase''` (gate `mapTypedInterior_mixed`, size `15 ≤ size`, enclosing
+    `mapGrammarFacts''_mixed`) drives the opener+close kernel composition for BOTH conjuncts' close
+    relocations — the strongest single reachability probe of the gated rebase. -/
+theorem mapGrammarFacts_rebase''_mixed : MapGrammarFacts'' fixtureMapMixed 2 15 :=
+  mapGrammarFacts_rebase'' fixtureMapMixed 2 2 15 15
+    (Nat.le_refl 2) (Nat.le_refl 15) (by decide) (by decide)
+    mapTypedInterior_mixed mapGrammarFacts''_mixed
+
 -- Axiom audit — the carrier inhabitation and the boundary-survival probe lean only on core; the
 -- ASSEMBLE non-vacuity checks also pull in `Classical.choice` through the rebase's
 -- `flowBracketBalance_compose`.
@@ -1015,5 +1048,17 @@ theorem mapBracketOpen_balance_one_bracketVal :
  Quot.sound] -/
 #guard_msgs in
 #print axioms mapBracketOpen_balance_one_bracketVal
+
+-- R553 — the gated rebase probes pull `Classical.choice` through the kernels'
+-- `flowBracketBalance_compose`/`flowBracketBalance_single` (same as the close/opener-kernel probes).
+/-- info: 'MapCarrierRobustInhabitation.mapGrammarFacts_rebase''_bracketVal' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs in
+#print axioms mapGrammarFacts_rebase''_bracketVal
+
+/-- info: 'MapCarrierRobustInhabitation.mapGrammarFacts_rebase''_mixed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms mapGrammarFacts_rebase''_mixed
 
 end MapCarrierRobustInhabitation

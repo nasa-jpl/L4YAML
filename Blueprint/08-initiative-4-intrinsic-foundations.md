@@ -23560,7 +23560,7 @@ abstracts over `_a` whose type the bound depends on).
 
 ## Phase 3 — Stage C: EmitterScannability discharge — `.flowmono` / `.body` / `.bridge` (Reflections 153–192)
 
-### Frontier status — the 4 remaining `sorry`s and the path to close them (snapshot 2026-06-26, R552)
+### Frontier status — the 4 remaining `sorry`s and the path to close them (snapshot 2026-06-26, R553)
 
 The reflections in this section all discharge a single end goal: the well-bracketing
 certificate `FlowSubrangesOk tokens` that lets the flow-collection parser provably
@@ -23773,12 +23773,24 @@ shared recursion** rather than two mirrored ones:
      the delta-reading primitive keeps the rest of the rebase chain size-free. Probed (rule 3 on the new size hyp)
      on the GENUINE `{a:[1],b:2}` value-bracket (`k=4`, `k+1=5 < 15`) by `mapBracketOpen_balance_one_bracketVal`,
      RECOVERING `flowBracketBalance 2 6 = 1` from the deltas — the exact `h_open` the R551 probe asserted by
-     `decide` — closing the producer→consumer loop on real emission. Frontier held at 4 (782 jobs). **The two
-     kernels are now the complete arithmetic foundation of rebase''. The immediate next brick is
-     `mapGrammarFacts_rebase''` itself — conjuncts 1–4 mirror `mapGrammarFacts_rebase'` near-verbatim; conjuncts
-     5/6 call `mapBracketOpen_balance_one` (deriving its δ facts from `htok`/`hbr`) then `mapBracketClose_lt_of_gate`
-     for the existential `j < b` relocation — then the `''` `provider`/dispatcher/root seed
-     `mapRoot_mapInteriorSeparators''`, then reconciling the consumer field `MapLocated.h_key_bracket_succ`
+     `decide` — closing the producer→consumer loop on real emission. Frontier held at 4 (782 jobs). The two
+     kernels are now the complete arithmetic foundation of rebase''.
+   - **R553 — composed the two kernels into the gated rebase `mapGrammarFacts_rebase''`.** The `''` analog of
+     `mapGrammarFacts_rebase'`, with two hypotheses the single-prime rebase did not need: a GATE
+     `MapTypedInterior tokens a b` (R551, confining the existential close to `j < b` via `mapBracketClose_lt_of_gate`)
+     and a SIZE bound `hiS ≤ tokens.size` (R552, feeding `mapBracketOpen_balance_one`). Conjuncts 1–4 are the
+     `mapGrammarFacts_rebase'` proofs VERBATIM; conjuncts 5/6 derive the δ facts from `htok`/`hbr`, produce
+     `h_open` via the opener kernel, then relocate `j < b` via the close kernel, reusing the enclosing existential's
+     matching-close witness / close-balance / Dyck floor and collapsing the successor escape `hiS ≤ p ⟹ b ≤ p`.
+     A near-mechanical port (compiled first try modulo one δ-fact closer — `by rw [htok]; decide`, since `rw`'s
+     post-rewrite `rfl` is reducible-only and `flowBracketDelta` is not `@[reducible]`). Probed (rule 3 on the
+     COMPOSITION's gate+size hypotheses) by `mapGrammarFacts_rebase''_bracketVal` (conjunct 6 on `{a:[1],b:2}`) and
+     `mapGrammarFacts_rebase''_mixed` (conjuncts 5 AND 6 on `{a:[1],[2]:3}`), each routing the genuine
+     gate/size/enclosing-facts through the rebase to recover `MapGrammarFacts''`. Frontier held at 4 (782 jobs).
+     **The immediate next brick is the `''` `provider`/dispatcher/root seed — `mapInteriorSeparators''_of_enclosing_provider`,
+     `mapEnclosingFacts''_provider_of_located`, `mapInteriorSeparators''_of_safebody_and_descent`,
+     `mapRoot_mapInteriorSeparators''` — each the `''` mirror of the landed single-prime lemmas (the rebase they
+     consume now exists), then reconciling the consumer field `MapLocated.h_key_bracket_succ`
      (`NonemptyStructure.lean:10531`) onto `MapGrammarFacts''`.**
 
 **Once `locate_map`, the M2 narrowing, and the two root carriers exist, the driver runs
@@ -23796,7 +23808,10 @@ assembler chain, and landed the gated rebase's arithmetic kernel `mapBracketClos
 close confined inside the window by the gate the EXISTENTIAL conjuncts 5/6 require, R549's predicted gate
 realized; R552 — landed the gated rebase's other half, the opener-balance produce-primitive
 `mapBracketOpen_balance_one` that produces that kernel's `h_open` from the token deltas, so the two kernels now
-form the complete arithmetic foundation of `mapGrammarFacts_rebase''`),
+form the complete arithmetic foundation of `mapGrammarFacts_rebase''`; R553 — COMPOSED the two kernels into the
+gated rebase `mapGrammarFacts_rebase''` itself, under the gate + size hypotheses, conjuncts 1–4 verbatim from the
+single-prime rebase and 5/6 gluing the kernels — so the immediate next brick is the `''` `provider`/dispatcher/root-seed
+chain that consumes this rebase),
 `locate_map` (mechanical —
 R537's recipe mirrored to the map dispatch), the M2 narrowing, and the two descent/root-carrier
 providers (the only genuinely open math, symmetric across seq/map thanks to R513–R515).
@@ -31509,6 +31524,20 @@ The window's close bracket selects which body it is, and the *conjunction* carri
 **LANDED (R531 — `SeqInteriorSeparators.lean`):** build green at exactly 4 frontier sorries (`NonemptyStructure:11586` + `EmitterScannability:315/809/848`), full `L4YAML` + `Tests.Reflections` (410 jobs). New demo `Tests/Reflections/JointContentPackFromCarrier.lean` (proves the abstract `joint_content_pack` once — parametric in `close, Win, DeepS, DeepM, ContentS, ContentM, CarrierS, CarrierM, M2, EncS, EncM, provideS, provideM`, the dual-pack assembly where the map provider alone consumes the close token and the deferred `M2`; instantiates at toy guards and RUNS both packs — `hi = 3 → seqEnd`, `hi = 4 → mapEnd`; `demo` depends on no axioms), new memory `ref-content-pack-passthrough-manufacture`, `MEMORY.md` index updated.
 
 **Next step.** With R530's debt (b) discharged, brick (2) reduces to: (i) re-type the joint driver's `locate` marker to carry the depth-`0` balance `flowBracketBalance tokens lo m = 0`, and fold the two outer carriers + the deferred map fact + the frame bounds into the guard `G`, so the descend's `h_seq_pack`/`h_map_pack` come from `recbody_joint_content_pack` per-window and its `h_bal_m` from the strengthened marker; (iii) construct the concrete `locate_seq` (R527-fed dispatch + R510's route) and `locate_map` (R522 → R523/R525 → R524 → R527 → `recmapentry_pair_located`), each passed the JOINT oracle. Then `recbody_joint_navigator_driver`'s `.2` is the raw `h_map_rec` `flowSubrangesOk_of_window_producers` consumes (closing brick (2)), its `.1` the seq `h_seq_rec`. *[Acted on by Reflection 532: piece (i)'s descend-assembly part — "so the descend's `h_seq_pack`/`h_map_pack` come from `recbody_joint_content_pack` per-window" — is now LANDED as `recbody_joint_descend_tail_carrier`, the composition R531 ∘ R530 that feeds R531's output into R530's opaque content slot, producing the concrete `descend_tail` (= the suffix guard `G (m+1) hi`). The content debt is gone from the descend's interface; what remains for piece (i) is the driver-marker strengthening for `h_bal_m` and folding the carriers/M2/bounds into `G` so the driver's `descend_tail` slot is this lemma. Piece (iii) (the two concrete `locate`s) is untouched.]*
+
+### Reflection 553 — COMPOSED the two kernels into the gated rebase `mapGrammarFacts_rebase''`, the artifact the whole R549→R552 arc was building toward. **R551 isolated the close kernel, R552 the opener; this turn glues them into the `''` rebase. The reflection IS the methodology the arc demonstrates: when a corrected parallel type's transform needs strictly stronger hypotheses than the original's, ENUMERATE each extra obligation, LOCALIZE each in its own probed kernel, then COMPOSE with the original's plumbing ported verbatim — and the composition is near-mechanical precisely because the hard parts were extracted and probed FIRST.**
+
+**The rebase (`mapGrammarFacts_rebase''`, `SeqInteriorSeparators.lean`).** The `''` analog of `mapGrammarFacts_rebase'`, re-seating an enclosing window's corrected facts `MapGrammarFacts'' tokens loS hiS` down to a gated sub-window `MapGrammarFacts'' tokens a b` (`loS ≤ a`, `b ≤ hiS`, `flowBracketBalance tokens loS a = 0`). It carries two hypotheses the single-prime rebase did not need: (1) a GATE `h_gate : MapTypedInterior tokens a b` — the single-prime conjuncts 5/6 are FLAT (`j < b` is a GIVEN parameter), but the `''` conjuncts are EXISTENTIAL and must PRODUCE `∃ j, … ∧ j < b ∧ …`, relocating the enclosing witness `j < hiS` down to `j < b`, which `mapBracketClose_lt_of_gate` does using the gate's balance `h_gate.1`; (2) a SIZE bound `h_hiS_size : hiS ≤ tokens.size` — producing the opener fact `h_open` reads the trigger/bracket deltas via `mapBracketOpen_balance_one`, needing `k + 1 < tokens.size`, sourced here from `k + 1 < j < hiS ≤ tokens.size`.
+
+**Structure — verbatim 1–4, kernel-glue 5/6.** Conjuncts 1–4 are the `mapGrammarFacts_rebase'` proofs BYTE-IDENTICAL (the `''` conjuncts 1–4 equal the robust ones — escapes + balance-rebase by `flowBracketBalance_compose`, no gate, no size). Conjuncts 5/6: re-base the trigger balance to `loS`, fire the enclosing existential, and on the genuine `k + 1 < b` arm derive the δ facts from `htok`/`hbr` (`.key`/`.value` ⟹ δ`0`; `seqStart`/`mapStart` ⟹ δ`+1`), call `mapBracketOpen_balance_one` for `h_open`, then `mapBracketClose_lt_of_gate` for the relocated `j < b`, reusing the enclosing existential's matching-close witness / close-balance / Dyck floor VERBATIM and collapsing the successor escape `hiS ≤ p ⟹ b ≤ p` exactly as `rebase'` does.
+
+**One craft snag — the δ-fact closer.** `flowBracketDelta tokens[k]!.val = 0` from `htok : tokens[k]!.val = .key` by `by rw [htok]` FAILS ("unsolved goals"): `rw`'s post-rewrite auto-`rfl` runs at REDUCIBLE transparency and `flowBracketDelta` is a plain `def` (not `@[reducible]`), so the match `flowBracketDelta .key ↝ 0` does not fire. Closed with `by rw [htok]; decide` (full kernel reduction, axiom-free). The IDE flagged it at edit time; trusting the BUILD (not the stale language-server `sorryAx`/unknown-identifier noise that appeared while the source olean lagged) localized it to the one spot.
+
+**Probe (rule 3 on the COMPOSITION's gate+size hypotheses — JOINTLY producible).** `mapGrammarFacts_rebase''_bracketVal` and `mapGrammarFacts_rebase''_mixed` (`Tests/Reflections/MapCarrierRobustInhabitation.lean`, R553) route the GENUINE map bodies of `{a:[1],b:2}` and `{a:[1],[2]:3}` — gate (`mapTypedInterior_bracketVal`/`_mixed`), size bound (`decide`), enclosing facts (`mapGrammarFacts''_bracketVal`/`_mixed`), all producible off real emission — through the rebase, recovering `MapGrammarFacts''` with conjunct 6 (bracketVal) and BOTH conjuncts 5 and 6 (mixed) driving the opener+close kernel composition (close-relocation `7 < 13`, then the mixed pair). Rule-2 HONESTY: these are the IDENTITY rebase (`loS = a`, `hiS = b`) — the only map-typed window these single-level fixtures admit — so the kernel close-relocation fires but NOT a strictly-tighter `j < b < hiS` bound; a strictly-narrowing probe is deferred to a nested-map fixture, and that gap is stated rather than letting "identity rebase passes" read as "narrowing rebase verified". Axiom set `[propext, Classical.choice, Quot.sound]` (Classical via the kernels' `flowBracketBalance_compose`/`flowBracketBalance_single`), guarded with `#guard_msgs`.
+
+**What landed (verified-but-unconsumed, no sorry site referenced).** `mapGrammarFacts_rebase''` in `SeqInteriorSeparators.lean` (after `mapBracketOpen_balance_one`); the two probes + guarded axiom audits in `Tests/Reflections/MapCarrierRobustInhabitation.lean`. Full build green at exactly 4 frontier sorries (782 jobs).
+
+**Next step.** With the gated rebase landed, build the `''` `provider`/dispatcher/root-seed chain — each the `''` mirror of the landed single-prime lemmas, now that the rebase they consume exists: `mapInteriorSeparators''_of_enclosing_provider` (one `obtain` + this rebase, mirror of `:698`), `mapEnclosingFacts''_provider_of_located` (package the located enclosing map, mirror of `:739`), `mapInteriorSeparators''_of_safebody_and_descent` (the `dite` dispatcher, mirror of `:748`), and `mapRoot_mapInteriorSeparators''` (the root seed). Note the `''` assembler/dispatcher must thread the GATE and SIZE the rebase now requires (the carrier's `MapTypedInterior` hypothesis supplies the gate; `hi ≤ tokens.size` rides along as the seq twin's dispatcher already carried). Then reconcile the consumer field `MapLocated.h_key_bracket_succ` (`NonemptyStructure.lean:10531`) onto `MapGrammarFacts''`. Family B (sorries 3/4, contentEq) remains a separate untouched effort.
 
 ### Reflection 552 — landed the gated rebase's OTHER half: the opener-balance produce-primitive `mapBracketOpen_balance_one`, which PRODUCES the `h_open` the R551 close kernel consumes. **R551 isolated the close kernel and deferred the depth-`1` opener fact `flowBracketBalance a (k+2) = 1` to the produce-primitive ([[ref-parametric-assembler-extraction]]). This turn lands that primitive — and the loop it closes (producer→consumer, both on the real value-bracket) IS the reflection: the two kernels are now the complete arithmetic foundation of `mapGrammarFacts_rebase''`.**
 
