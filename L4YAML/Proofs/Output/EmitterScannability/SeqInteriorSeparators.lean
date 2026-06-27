@@ -7731,40 +7731,54 @@ theorem recbody_locate_seq_carrier (tokens : Array (Positioned YamlToken)) (lo0 
 
     **What is already wired (the assemble half, DONE).**  Unpack `RecBodyJointGuard tokens lo0 hi0 lo hi`
     (R533) and, gated by the map close `tokens[hi]!.val = .flowMappingEnd` the driver hands us, project the
-    map half `FlowBodyContentDeepMap tokens lo hi ∧ MapEnclosed tokens lo`.  Draw the dispatch's map-only
-    induction hypothesis from the joint `oracle` via the LANDED adapter `recbody_joint_oracle_map_ih`
-    (R536) — path-agnostic, delivering `RecMapBody` at every strictly-narrower window regardless of
-    enclosing bracket.  Feed `dispatch_map` the window facts + that IH; re-pack its output (drop nothing,
-    swap balance/marker into the driver's order) into the `locate_map` shape verbatim as the seq twin does.
+    map half `FlowBodyContentDeepMap tokens lo hi ∧ MapEnclosed tokens lo`.  Draw the dispatch's induction
+    hypothesis from the joint `oracle` via the LANDED adapter `recbody_joint_oracle_seq_ih` (R535) — the
+    SEQ side, NOT the map side (the R562 correction below) — path-agnostic, delivering `RecSeqBody` at
+    every strictly-narrower seq-closing window regardless of enclosing bracket.  Feed `dispatch_map` the
+    window facts + that IH; re-pack its output (swap balance/marker into the driver's order) into the
+    `locate_map` shape verbatim as the seq twin does.
+
+    **The R562 inhabitation-debt correction — the lifted IH was the WRONG DELIVERABLE.**  R561 first lifted
+    `dispatch_map` with a MAP induction hypothesis (`recbody_joint_oracle_map_ih`, delivering `RecMapBody`),
+    reasoning by surface symmetry "map locate ⟹ map IH".  But the producer that will discharge `dispatch_map`
+    does NOT consume `RecMapBody`: a map pair `key K value V` splits into two sub-blocks `[lo+1, kv)` /
+    `[kv+1, e)`, each a SINGLE flow node, and the only tool that turns a sub-window into a sub-block
+    `RecSeqEntry` is `recseqentry_whole_window_seq` (R527), whose `h_ih` is a `RecSeqBody` (a SEQ IH).
+    Nested maps INSIDE a sub-block are near-leaf `RecSeqEntry.map` (`WellBracketed` only, via
+    `recseqentry_mapbracket_oracle`), never `.mapRec`/`RecMapBody` — so a map IH is consumed NOWHERE in
+    first-pair production.  The map deliverable flows instead to the DRIVER's cons step (assembling
+    `RecMapBody` from this first pair + the rest), not to `dispatch_map`.  So `dispatch_map` takes the SAME
+    seq IH the seq twin `recbody_locate_seq_carrier` (R537) threads — `recbody_joint_oracle_seq_ih`.
+    [[ref-inhabitation-debt-validate-target-defs]]: the R561 codomain probe passed (the `RecMapPair` exists)
+    yet the lift was still defective, because codomain inhabitation says nothing about WHICH IH the producer
+    consumes — the honest birth-check on a lifted `∀`-premise is its DELIVERABLE TYPE against the producer's
+    actual consumption, not just that its output is reachable.
 
     **What is lifted (the produce half, the residual).**  `dispatch_map` has the EXACT shape the eventual
-    `recmappair_window_dispatch_map` will satisfy — the map mirror of `recseqentry_window_dispatch_seq`'s
-    signature (`FlowBodyWindow` + `FlowBodyContentDeepMap` + `MapEnclosed` head-enclosure + a window IH
-    matching `recbody_joint_oracle_map_ih`'s output) → `∃ m`, first-pair extent + marker + balance +
-    `RecMapPair`.  Its content source (the map `FlowBodyContent`) is folded INTO it, so the one hypothesis
-    carries both the still-owed content source and the first-pair dispatch.
+    `recmappair_window_dispatch_map` will satisfy — `FlowBodyWindow` + `FlowBodyContentDeepMap` +
+    `MapEnclosed` head-enclosure + a SEQ window IH (matching `recbody_joint_oracle_seq_ih`'s output,
+    `Q := SeqEnclosed`) → `∃ m`, first-pair extent + marker + balance + `RecMapPair`.
 
-    INHABITATION-DEBT discipline ([[ref-inhabitation-debt-validate-target-defs]], R560 sharpening —
-    probe the lifted DOMAIN, not the codomain): refactoring the locate into an assembler cannot change
-    whether its codomain is inhabited, so the honest check is that `dispatch_map`'s OUTPUT is REACHABLE on
-    real emission.  `Tests/Reflections/MapCarrierRobustInhabitation.lean` proves
-    `dispatch_map_output_firstWindow_bracketVal`: at the genuine `{a:[1], b:2}` root window `[2,13)` the
-    first pair `key "a" : [1]` is located at `m = 8` (the depth-`0` `.flowEntry` separator), balance `0`,
-    with a concrete `RecMapPair ((take 8).drop 2)` — so the lifted hypothesis is satisfiable, not a vacuous
-    universal.
+    INHABITATION-DEBT discipline ([[ref-inhabitation-debt-validate-target-defs]], R560/R562 sharpening):
+    `Tests/Reflections/MapCarrierRobustInhabitation.lean` proves `dispatch_map_output_firstWindow_bracketVal`
+    (codomain reachable: at the genuine `{a:[1], b:2}` root window `[2,13)` the first pair `key "a" : [1]`
+    is located at `m = 8`, balance `0`, with a concrete `RecMapPair ((take 8).drop 2)`) AND
+    `subblock_recseqentry_needs_recseqbody` (R562: the value sub-block `[1]` is a `RecSeqEntry.seq` whose
+    interior `["1"]` is supplied as a `RecSeqBody` — the SEQ deliverable the corrected IH provides, with no
+    `RecMapBody` anywhere).
 
     Verified-but-unconsumed until `recmappair_window_dispatch_map` is supplied (then the driver is
     instantiated at the root `[2, size-2)` with `recbody_locate_seq_carrier` + this + the per-window M2):
-    composes only `recbody_joint_oracle_map_ih` + the guard unpack, references no sorry site, frontier
+    composes only `recbody_joint_oracle_seq_ih` + the guard unpack, references no sorry site, frontier
     sorry count unchanged at 4; axioms `[propext, Quot.sound]` (no `Classical.choice` — pure guard folding
     plus the choice-free oracle adapter, exactly as the seq twin's content-free core). -/
 theorem recbody_locate_map_carrier (tokens : Array (Positioned YamlToken)) (lo0 hi0 : Nat)
     (dispatch_map : ∀ lo hi, FlowBodyWindow tokens lo hi → FlowBodyContentDeepMap tokens lo hi →
         MapEnclosed tokens lo →
         (∀ lo' hi', hi' - lo' < hi - lo → lo ≤ lo' → hi' ≤ hi →
-            FlowBodyWindow tokens lo' hi' → FlowBodyContentDeepMap tokens lo' hi' → MapEnclosed tokens lo' →
-            tokens[hi']!.val = .flowMappingEnd →
-            RecMapBody ((tokens.toList.take hi').drop lo')) →
+            FlowBodyWindow tokens lo' hi' → FlowBodyContentDeepSeq tokens lo' hi' → SeqEnclosed tokens lo' →
+            tokens[hi']!.val = .flowSequenceEnd →
+            RecSeqBody ((tokens.toList.take hi').drop lo')) →
         ∃ m, lo < m ∧ m ≤ hi ∧
           flowBracketBalance tokens lo m = 0 ∧
           (m = hi ∨ tokens[m]!.val = .flowEntry) ∧
@@ -7779,12 +7793,16 @@ theorem recbody_locate_map_carrier (tokens : Array (Positioned YamlToken)) (lo0 
         flowBracketBalance tokens lo m = 0 ∧
         RecMapPair ((tokens.toList.take m).drop lo) := by
   intro lo hi h_g h_mapEnd oracle
-  obtain ⟨h_lo0_lo, h_hi_hi0, _h_win, _h_seqHalf, h_mapHalf, _h_close⟩ := h_g
+  obtain ⟨h_lo0_lo, h_hi_hi0, h_win, _h_seqHalf, h_mapHalf, _h_close⟩ := h_g
   obtain ⟨h_deep, h_enc⟩ := h_mapHalf h_mapEnd
-  -- Dispatch the first PAIR; the map-only `h_ih` is the joint oracle projected to the map side (R536).
+  -- Dispatch the first PAIR; the sub-block `h_ih` is the joint oracle projected to the SEQ side (R535),
+  -- NOT the map side.  A map pair's key/value sub-blocks are single flow nodes built by
+  -- `recseqentry_whole_window_seq`, which consumes a `RecSeqBody` IH; nested maps in a sub-block are
+  -- near-leaf `RecSeqEntry.map`/`WellBracketed`, never `.mapRec`/`RecMapBody`, so the SEQ deliverable is
+  -- the one consumed here -- exactly as the seq twin `recbody_locate_seq_carrier` (R537).
   obtain ⟨m, h_lo_m, h_m_hi, h_bal_m, h_marker, h_pair⟩ :=
-    dispatch_map lo hi _h_win h_deep h_enc
-      (recbody_joint_oracle_map_ih tokens lo0 hi0 lo hi h_lo0_lo h_hi_hi0 oracle)
+    dispatch_map lo hi h_win h_deep h_enc
+      (recbody_joint_oracle_seq_ih tokens lo0 hi0 lo hi h_lo0_lo h_hi_hi0 oracle)
   -- Re-pack into the driver's `locate_map` shape (swap balance/marker order).
   exact ⟨m, h_lo_m, h_m_hi, h_marker, h_bal_m, h_pair⟩
 

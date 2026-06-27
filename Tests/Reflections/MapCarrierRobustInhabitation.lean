@@ -1394,7 +1394,13 @@ honest check is the lifted DOMAIN's reachability — a concrete first-pair dispa
 emission — not the assembler's codomain (inhabited regardless of how the assemble is factored).
 `recMapPair_firstWindow_bracketVal` builds the first pair `key "a" : [1]` of `{a:[1], b:2}`, and
 `dispatch_map_output_firstWindow_bracketVal` packages it as exactly one witness of the lifted dispatch's
-`∃ m, … RecMapPair` codomain, so the assembler aims at a reachable deliverable. -/
+`∃ m, … RecMapPair` codomain, so the assembler aims at a reachable deliverable.
+
+**Superseded by R562 (below).**  The R561 prose above lifted `dispatch_map` with the *map* IH (the R536
+adapter, delivering `RecMapBody`).  R562 corrects this: the first-pair producer consumes the *seq*
+deliverable (`RecSeqBody`, via the R535 adapter), NOT the map one — the codomain probe here passed yet
+missed it, because codomain inhabitation says nothing about which IH the producer consumes.  See
+`subblock_recseqentry_needs_recseqbody`. -/
 
 /-- The first key/value pair of `{a:[1], b:2}` is a genuine `RecMapPair` — in the body window `[2,13)` the
     first pair occupies `[2,8)` (`key "a"` then `value [1]`), bounded by the depth-`0` `.flowEntry` at 8. -/
@@ -1424,8 +1430,9 @@ theorem dispatch_map_output_firstWindow_bracketVal :
   ⟨8, by decide, by decide, by decide, Or.inr (by decide), recMapPair_firstWindow_bracketVal⟩
 
 -- R561 — the first-pair witness and the dispatch-output reachability are pure structural/`decide` core;
--- the assembler itself folds the guard plus the choice-free R536 oracle adapter, so it audits to the
--- minimal core too (no `Classical.choice`, unlike the matching-close runs R559/R560 pull through).
+-- the assembler itself folds the guard plus the choice-free SEQ oracle adapter (R535, the R562
+-- correction — was R536), so it audits to the minimal core too (no `Classical.choice`, unlike the
+-- matching-close runs R559/R560 pull through).
 /-- info: 'MapCarrierRobustInhabitation.recMapPair_firstWindow_bracketVal' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in
 #print axioms recMapPair_firstWindow_bracketVal
@@ -1437,6 +1444,73 @@ theorem dispatch_map_output_firstWindow_bracketVal :
 /-- info: 'L4YAML.Proofs.EmitterScannability.recbody_locate_map_carrier' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in
 #print axioms recbody_locate_map_carrier
+
+/-! ## R562 — the lifted `dispatch_map` IH was the WRONG DELIVERABLE; probe which IH the producer consumes
+
+R561 lifted `recbody_locate_map_carrier`'s `dispatch_map` with a MAP induction hypothesis
+(`recbody_joint_oracle_map_ih`, delivering `RecMapBody`), reasoning by surface symmetry "map locate ⟹ map
+IH", and validated it with the codomain probe `dispatch_map_output_firstWindow_bracketVal` above — which
+PASSED.  Yet the lift was defective: the producer that will discharge `dispatch_map`
+(`recmappair_window_dispatch_map`) does NOT consume `RecMapBody`.
+
+A map pair `key K value V` splits into two sub-blocks `[lo+1, kv)` / `[kv+1, e)`, each a SINGLE flow node.
+The only tool that turns such a sub-window into a sub-block `RecSeqEntry` is `recseqentry_whole_window_seq`
+(R527), whose `h_ih` is a `RecSeqBody` — a SEQ deliverable.  Nested maps inside a sub-block are near-leaf
+`RecSeqEntry.map` (`WellBracketed` only), never `.mapRec`/`RecMapBody`, so a map IH is consumed NOWHERE in
+first-pair production; the map deliverable flows to the DRIVER's cons step instead.  R562 reroutes
+`dispatch_map`'s IH to the SEQ adapter (R535), exactly as the seq twin `recbody_locate_seq_carrier` (R537).
+
+The lesson ([[ref-inhabitation-debt-validate-target-defs]] sharpened): the honest birth-check on a lifted
+`∀`-premise is its DELIVERABLE TYPE measured against the producer's ACTUAL consumption — not merely that
+its codomain is reachable.  Codomain inhabitation (the `RecMapPair` exists) is silent on which IH the
+producer needs.  The two probes below witness the corrected consumption on real `{a:[1], b:2}` data: the
+seq deliverable IS consumed, the map deliverable is NOT. -/
+
+/-- **R562 — the sub-block producer consumes the SEQ deliverable (`RecSeqBody`), grounded abstractly.**
+    Given a `RecSeqBody interior` (precisely what `recbody_joint_oracle_seq_ih` delivers at the narrower
+    window) plus its `WellBracketed` companion, the value sub-block `RecSeqEntry` is built by
+    `RecSeqEntry.seq` — no `RecMapBody` anywhere.  This is the exact IH-consumption point inside
+    `recseqentry_whole_window_seq` that the corrected `dispatch_map` seq IH feeds. -/
+theorem subblock_recseqentry_needs_recseqbody
+    (interior : List (Positioned YamlToken))
+    (h_wb : WellBracketed interior) (h_inner : RecSeqBody interior) :
+    RecSeqEntry (pt .flowSequenceStart :: (interior ++ [pt .flowSequenceEnd])) :=
+  RecSeqEntry.seq (pt .flowSequenceStart) (pt .flowSequenceEnd) interior rfl rfl h_wb h_inner
+
+/-- **R562 — the same consumption GROUNDED on the real `[1]` value of `{a:[1], b:2}`.**  The seq deliverable
+    `RecSeqBody ["1"]` (the corrected IH's output at the narrower window) yields the value sub-block
+    `RecSeqEntry [flowSequenceStart, "1", flowSequenceEnd]` — the literal value block of the first pair. -/
+theorem subblock_recseqentry_real_valBlock :
+    RecSeqEntry (pt .flowSequenceStart ::
+      ([pt (.scalar "1" .doubleQuoted)] ++ [pt .flowSequenceEnd])) :=
+  subblock_recseqentry_needs_recseqbody [pt (.scalar "1" .doubleQuoted)]
+    (WellBracketed_singleton_delta_zero _ (by decide))
+    (RecSeqBody.single _ (List.cons_ne_nil _ _)
+      (RecSeqEntry.scalar _ "1" .doubleQuoted rfl)
+      (Or.inl ⟨"1", .doubleQuoted, rfl⟩))
+
+/-- **R562 — the contrast that pins the correction: a nested-MAP sub-block is a near-leaf needing only
+    `WellBracketed`, NO `RecMapBody`.**  So even a map-valued key/value consumes no map IH — the map
+    deliverable is genuinely unused in first-pair production, confirming the seq IH is the right one. -/
+theorem subblock_nested_map_is_near_leaf
+    (interior : List (Positioned YamlToken)) (h_wb : WellBracketed interior) :
+    RecSeqEntry (pt .flowMappingStart :: (interior ++ [pt .flowMappingEnd])) :=
+  RecSeqEntry.map (pt .flowMappingStart) (pt .flowMappingEnd) interior rfl rfl h_wb
+
+-- R562 — the sub-block consumption witnesses are pure structural core.  The abstract producer and the
+-- near-leaf contrast are bare inductive constructors (`[propext]` only); the grounded instance pulls in
+-- `Quot.sound` through `WellBracketed_singleton_delta_zero`'s `decide`.  None touch `Classical.choice`.
+/-- info: 'MapCarrierRobustInhabitation.subblock_recseqentry_needs_recseqbody' depends on axioms: [propext] -/
+#guard_msgs in
+#print axioms subblock_recseqentry_needs_recseqbody
+
+/-- info: 'MapCarrierRobustInhabitation.subblock_recseqentry_real_valBlock' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
+#print axioms subblock_recseqentry_real_valBlock
+
+/-- info: 'MapCarrierRobustInhabitation.subblock_nested_map_is_near_leaf' depends on axioms: [propext] -/
+#guard_msgs in
+#print axioms subblock_nested_map_is_near_leaf
 
 -- Axiom audit — the carrier inhabitation and the boundary-survival probe lean only on core; the
 -- ASSEMBLE non-vacuity checks also pull in `Classical.choice` through the rebase's
