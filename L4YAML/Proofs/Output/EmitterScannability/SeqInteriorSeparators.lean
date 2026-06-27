@@ -553,6 +553,61 @@ theorem mapGrammarFacts_rebase' (tokens : Array (Positioned YamlToken)) (loS a b
     · exact Or.inl hfe
     · exact Or.inr ⟨hme, by omega⟩
 
+/-- **Gated close-containment — a depth-`0` bracket-open's matching close lands INSIDE the gated window
+    (R551).** The genuinely-NEW arithmetic kernel the `''` carrier's rebase needs, and the realization
+    of the gate hypothesis R549 predicted (`[[ref-inhabitation-debt-validate-target-defs]]`, R549 rule-4
+    note: "the `rebase''` will need an added gate hypothesis").
+
+    **Why the `''` rebase needs this and `mapGrammarFacts_rebase'` (`:469`) did not.** The single-prime
+    conjuncts 5/6 are FLAT (`∀ k j, … → j < b → …`): the close `j` arrives as a parameter with `j < b`
+    GIVEN, so rebase' just re-fires the enclosing fact and never has to LOCATE the close. The corrected
+    `''` conjuncts 5/6 (`:365`) are EXISTENTIAL — they must PRODUCE `∃ j, … ∧ j < b ∧ …`. Rebasing the
+    enclosing window's witness `j < hiS` down to `j < b` is exactly the locate the flat form skipped,
+    and it is FALSE without a gate: a bracket opened inside `[a,b)` could close past `b` if `[a,b)`
+    were not itself balanced. The gate `flowBracketBalance tokens a b = 0` is what confines it.
+
+    **The argument (pure `flowBracketBalance_compose` + `omega`, no per-token reasoning).** At `k+2` the
+    open bracket has driven the absolute balance to `1` (`h_open`); the enclosing existential's Dyck floor
+    `h_dyck` keeps the balance from `k+2` at `≥ 0` everywhere up to `j`.  If the close `j` were at or past
+    `b` (`b ≤ j`), then `b ∈ [k+2, j]`, so `flowBracketBalance tokens (k+2) b ≥ 0`, hence
+    `flowBracketBalance tokens a b = flowBracketBalance tokens a (k+2) + flowBracketBalance tokens (k+2) b
+    = 1 + (≥0) ≥ 1`, contradicting the gate `= 0`.  So `j < b`.  (Notably this needs NEITHER the close's
+    own balance `flowBracketBalance (k+2) j = 0` NOR `k+1 < j` — only that the region stays `≥ 0` and the
+    window balances to `0`; the gate is the sole load-bearing extra over rebase'.)
+
+    **The [[ref-parametric-assembler-extraction]] split.**  This is the ASSEMBLE/kernel half — the
+    arithmetic confinement — taking the depth-`1` opener fact `h_open : flowBracketBalance tokens a (k+2)
+    = 1` as a hypothesis.  The PRODUCE-primitive half (deriving `h_open` from `htok : tokens[k]!.val ∈
+    {.key,.value}` ⟹ δ`0` and `hbr : tokens[k+1]!.val ∈ {seqStart,mapStart}` ⟹ δ`+1` via
+    `flowBracketBalance_single`, with the `k+1 < size` bound) is the residual the eventual
+    `mapGrammarFacts_rebase''` discharges inside conjuncts 5/6 before calling this.  Kept separate so this
+    kernel stays pure arithmetic, lands high-confidence, and is probe-able by itself.
+
+    INHABITATION-DEBT discipline (`[[ref-inhabitation-debt-validate-target-defs]]`, rule 3 — probe a
+    lemma's HYPOTHESES are PRODUCIBLE before consumers build on it): probed in
+    `Tests/Reflections/MapCarrierRobustInhabitation.lean` (R551) by
+    `mapBracketClose_lt_of_gate_bracketVal`, which routes the GENUINE value-bracket of `{a:[1],b:2}`
+    (`k=4`, `k+2=6`, `j=7`, gate window `[2,13)`, all facts `decide`-grounded against real emission) and
+    recovers `7 < 13` — confirming every hypothesis (`h_open`, `h_dyck`, the gate) is satisfiable on real
+    data where the bracket genuinely FIRES, so this is not the dead-hypothesis trap R550 caught one level
+    up.  Verified-but-unconsumed (its consumer `mapGrammarFacts_rebase''` does not exist yet); references
+    no sorry site; frontier sorry count unchanged at 4. -/
+theorem mapBracketClose_lt_of_gate (tokens : Array (Positioned YamlToken)) (a b k j : Nat)
+    (h_ak : a ≤ k) (h_k2_b : k + 2 ≤ b)
+    (h_gate_bal : flowBracketBalance tokens a b = 0)
+    (h_open : flowBracketBalance tokens a (k + 2) = 1)
+    (h_dyck : ∀ p, k + 2 ≤ p → p ≤ j → flowBracketBalance tokens (k + 2) p ≥ 0) :
+    j < b := by
+  rcases Nat.lt_or_ge j b with hjb | hbj
+  · exact hjb
+  · -- b ≤ j: the open bracket is still open at b, so the window cannot balance to 0
+    have h_dyck_b : flowBracketBalance tokens (k + 2) b ≥ 0 := h_dyck b h_k2_b hbj
+    have h_comp : flowBracketBalance tokens a b
+        = flowBracketBalance tokens a (k + 2) + flowBracketBalance tokens (k + 2) b :=
+      flowBracketBalance_compose tokens a (k + 2) b (by omega) h_k2_b
+    rw [h_open, h_gate_bal] at h_comp
+    omega
+
 /-- **The map ASSEMBLE half — `MapInteriorSeparators'` from a `provider`** (the boundary-robust map
     twin of `seqInteriorSeparators_of_enclosing_provider`, `:2224`). The FIRST consumer of
     `mapGrammarFacts_rebase'` (`:322`): it reduces the robust carrier — with NO further grammar

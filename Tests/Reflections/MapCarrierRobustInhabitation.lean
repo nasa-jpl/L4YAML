@@ -853,6 +853,36 @@ theorem mapWindow_mapGrammarFacts''_general_unit (tokens : Array (Positioned Yam
   mapWindow_mapGrammarFacts''_general tokens lo (lo + 1) lo (lo + 1)
     h_win h_enc (mapInteriorSeparators''_unit tokens lo) (Nat.le_refl lo) (Nat.le_refl (lo + 1))
 
+/-! ## R551 — the gated close-containment kernel for the corrected carrier's rebase
+
+R550's reroute landed `mapWindow_mapGrammarFacts''_general`, which CONSUMES the corrected carrier
+`MapInteriorSeparators''`.  Surveying the `''` chain for what PRODUCES that carrier exposed the next
+gap: there is NO per-window producer of `MapGrammarFacts''` off emission — the three that exist consume
+the dead strict carrier (`mapGrammarFacts''_of_mapBodyProps` ← `MapBodyProps` ← strict carrier, R550) or
+the `MapInteriorSeparators''` carrier ITSELF (circular).  So building the carrier needs the assembler
+chain the single-prime path uses (`provider` + REBASE), whose foundation is a `''` analog of
+`mapGrammarFacts_rebase'`.  Unlike the single-prime rebase — whose FLAT conjuncts 5/6 receive `j < b` as
+a GIVEN parameter — the corrected EXISTENTIAL conjuncts must PRODUCE `j < b`, which is FALSE without a
+gate (R549 predicted "the `rebase''` will need an added gate hypothesis").  `mapBracketClose_lt_of_gate`
+(source `SeqInteriorSeparators.lean`) is that kernel: the gate `flowBracketBalance a b = 0` confines a
+depth-`0` bracket-open's matching close to inside the window.  Probed here on the GENUINE value-bracket
+of `{a:[1],b:2}`. -/
+
+/-- **The close-containment kernel FIRES on real bracket emission.** The value-bracket of `{a:[1],b:2}`
+    — `k = 4` (`.value`), open `[` at index `5`, so `flowBracketBalance 2 6 = 1`, matching `]` at `j = 7`
+    — sits in the gated body window `[2,13)`.  Routed through `mapBracketClose_lt_of_gate` with EVERY
+    hypothesis `decide`-grounded against the real scanner output (the gate balance `flowBracketBalance
+    2 13 = 0`, the depth-`1` opener `flowBracketBalance 2 6 = 1`, the `[6,7]` Dyck floor `≥ 0`), it
+    recovers `7 < 13` — the close lands interior, not at/past the window end.  Confirms the kernel's
+    hypotheses are PRODUCIBLE on a fixture where the bracket genuinely fires (inhabitation-debt rule 3:
+    this is not the dead-hypothesis trap R550 caught one level up), and exercises the gate that makes the
+    `''`-rebase's existential `j` relocation sound. -/
+theorem mapBracketClose_lt_of_gate_bracketVal : (7 : Nat) < 13 :=
+  mapBracketClose_lt_of_gate fixtureMapSeqVal 2 13 4 7
+    (by omega) (by omega) (by decide) (by decide)
+    (by intro p hp1 hp2
+        rcases (show p = 6 ∨ p = 7 by omega) with rfl | rfl <;> decide)
+
 -- Axiom audit — the carrier inhabitation and the boundary-survival probe lean only on core; the
 -- ASSEMBLE non-vacuity checks also pull in `Classical.choice` through the rebase's
 -- `flowBracketBalance_compose`.
@@ -944,5 +974,13 @@ theorem mapWindow_mapGrammarFacts''_general_unit (tokens : Array (Positioned Yam
 /-- info: 'MapCarrierRobustInhabitation.mapWindow_mapGrammarFacts''_general_unit' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in
 #print axioms mapWindow_mapGrammarFacts''_general_unit
+
+-- R551 — the close-containment kernel probe pulls `Classical.choice` through the kernel's
+-- `flowBracketBalance_compose` (same as the ASSEMBLE/rebase probes above); the arithmetic is otherwise core.
+/-- info: 'MapCarrierRobustInhabitation.mapBracketClose_lt_of_gate_bracketVal' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs in
+#print axioms mapBracketClose_lt_of_gate_bracketVal
 
 end MapCarrierRobustInhabitation

@@ -23560,7 +23560,7 @@ abstracts over `_a` whose type the bound depends on).
 
 ## Phase 3 — Stage C: EmitterScannability discharge — `.flowmono` / `.body` / `.bridge` (Reflections 153–192)
 
-### Frontier status — the 4 remaining `sorry`s and the path to close them (snapshot 2026-06-26, R550)
+### Frontier status — the 4 remaining `sorry`s and the path to close them (snapshot 2026-06-26, R551)
 
 The reflections in this section all discharge a single end goal: the well-bracketing
 certificate `FlowSubrangesOk tokens` that lets the flow-collection parser provably
@@ -23749,10 +23749,24 @@ shared recursion** rather than two mirrored ones:
      `mapWindow_mapGrammarFacts''` (the `''` mirror of `mapWindow_grammarFacts_general`, narrow+gate+instantiate)
      threads the INHABITED corrected carrier `MapInteriorSeparators''` directly, probed by
      `mapWindow_mapGrammarFacts''_general_unit` (unit carrier routed through, `FlowBodyWindow`/`MapEnclosed` guards
-     left legible). Axiom-clean `[propext, Quot.sound]`, frontier held at 4 (782 jobs). **The immediate next brick
-     is the root seed `mapRoot_mapInteriorSeparators''` (the recursion that produces the corrected carrier off
-     emission, feeding `h_carrier0` here), then reconciling the consumer field `MapLocated.h_key_bracket_succ`
-     (`NonemptyStructure.lean:10531`) onto `MapGrammarFacts''`.**
+     left legible). Axiom-clean `[propext, Quot.sound]`, frontier held at 4 (782 jobs).
+   - **R551 — surveying what PRODUCES that corrected carrier exposed the `''` chain's next gap and landed its
+     foundation.** The carrier `MapInteriorSeparators''` has NO per-window producer of `MapGrammarFacts''` off
+     emission: the three that exist consume the dead strict carrier (via `MapBodyProps`, R550) or the carrier
+     ITSELF (circular). So building it needs the single-prime path's assembler chain (`provider` + REBASE), whose
+     foundation is a `''` analog of `mapGrammarFacts_rebase'`. Unlike the single-prime rebase — whose FLAT
+     conjuncts 5/6 take `j < b` as a GIVEN parameter — the corrected EXISTENTIAL conjuncts must PRODUCE `j < b`,
+     FALSE without a gate (R549 predicted "the `rebase''` will need an added gate hypothesis"). Landed that gate's
+     kernel `mapBracketClose_lt_of_gate`: under `flowBracketBalance a b = 0`, a depth-`0` bracket-open's matching
+     close lands inside `[a,b)` (`j < b`) — pure `flowBracketBalance_compose` + `omega`, probed on the GENUINE
+     `{a:[1],b:2}` value-bracket (`k=4,j=7,[2,13)`) by `mapBracketClose_lt_of_gate_bracketVal`. The
+     [[ref-parametric-assembler-extraction]] split: the kernel takes the depth-`1` opener fact `flowBracketBalance
+     a (k+2) = 1` as a hypothesis; deriving it from the token deltas is the residual the eventual
+     `mapGrammarFacts_rebase''` discharges. Frontier held at 4 (782 jobs). **The immediate next brick is
+     `mapGrammarFacts_rebase''` (the gated `''` rebase, consuming this kernel for the conjunct-5/6 `j`
+     relocation), then the `''` `provider`/dispatcher/root seed `mapRoot_mapInteriorSeparators''`, then
+     reconciling the consumer field `MapLocated.h_key_bracket_succ` (`NonemptyStructure.lean:10531`) onto
+     `MapGrammarFacts''`.**
 
 **Once `locate_map`, the M2 narrowing, and the two root carriers exist, the driver runs
 at the root and sorries 1 + 2 are one `exact` each** (same `FlowSubrangesOk tokens`
@@ -23763,7 +23777,11 @@ the full M5/M8 existential conjuncts 5/6 LANDED and birth-probed; R549 — the p
 `mapGrammarFacts''_of_mapBodyProps` GROUNDED the target in real emission off `MapBodyProps`; R550 — found
 that `MapBodyProps`-off-emission route DEAD (it needs the strict carrier R540/R547 refuted) and landed the LIVE
 `mapWindow_mapGrammarFacts''_general` threading the corrected carrier directly, so the map root/descent providers
-now target `MapGrammarFacts''` via the inhabited `MapInteriorSeparators''`, *not* the false strict chain),
+now target `MapGrammarFacts''` via the inhabited `MapInteriorSeparators''`, *not* the false strict chain;
+R551 — found the corrected carrier has no off-emission per-window producer, so it needs the `provider`+REBASE
+assembler chain, and landed the gated rebase's arithmetic kernel `mapBracketClose_lt_of_gate` — the matching
+close confined inside the window by the gate the EXISTENTIAL conjuncts 5/6 require, R549's predicted gate
+realized),
 `locate_map` (mechanical —
 R537's recipe mirrored to the map dispatch), the M2 narrowing, and the two descent/root-carrier
 providers (the only genuinely open math, symmetric across seq/map thanks to R513–R515).
@@ -31476,6 +31494,20 @@ The window's close bracket selects which body it is, and the *conjunction* carri
 **LANDED (R531 — `SeqInteriorSeparators.lean`):** build green at exactly 4 frontier sorries (`NonemptyStructure:11586` + `EmitterScannability:315/809/848`), full `L4YAML` + `Tests.Reflections` (410 jobs). New demo `Tests/Reflections/JointContentPackFromCarrier.lean` (proves the abstract `joint_content_pack` once — parametric in `close, Win, DeepS, DeepM, ContentS, ContentM, CarrierS, CarrierM, M2, EncS, EncM, provideS, provideM`, the dual-pack assembly where the map provider alone consumes the close token and the deferred `M2`; instantiates at toy guards and RUNS both packs — `hi = 3 → seqEnd`, `hi = 4 → mapEnd`; `demo` depends on no axioms), new memory `ref-content-pack-passthrough-manufacture`, `MEMORY.md` index updated.
 
 **Next step.** With R530's debt (b) discharged, brick (2) reduces to: (i) re-type the joint driver's `locate` marker to carry the depth-`0` balance `flowBracketBalance tokens lo m = 0`, and fold the two outer carriers + the deferred map fact + the frame bounds into the guard `G`, so the descend's `h_seq_pack`/`h_map_pack` come from `recbody_joint_content_pack` per-window and its `h_bal_m` from the strengthened marker; (iii) construct the concrete `locate_seq` (R527-fed dispatch + R510's route) and `locate_map` (R522 → R523/R525 → R524 → R527 → `recmapentry_pair_located`), each passed the JOINT oracle. Then `recbody_joint_navigator_driver`'s `.2` is the raw `h_map_rec` `flowSubrangesOk_of_window_producers` consumes (closing brick (2)), its `.1` the seq `h_seq_rec`. *[Acted on by Reflection 532: piece (i)'s descend-assembly part — "so the descend's `h_seq_pack`/`h_map_pack` come from `recbody_joint_content_pack` per-window" — is now LANDED as `recbody_joint_descend_tail_carrier`, the composition R531 ∘ R530 that feeds R531's output into R530's opaque content slot, producing the concrete `descend_tail` (= the suffix guard `G (m+1) hi`). The content debt is gone from the descend's interface; what remains for piece (i) is the driver-marker strengthening for `h_bal_m` and folding the carriers/M2/bounds into `G` so the driver's `descend_tail` slot is this lemma. Piece (iii) (the two concrete `locate`s) is untouched.]*
+
+### Reflection 551 — the corrected carrier has no off-emission per-window producer, so it needs the `provider`+REBASE chain; landed the gated rebase's arithmetic kernel `mapBracketClose_lt_of_gate`. **R550 rerouted to threading the corrected carrier `MapInteriorSeparators''` directly (`mapWindow_mapGrammarFacts''_general` CONSUMES it). The next brick is the thing that PRODUCES it. Surveying for that producer — before scaffolding it — is the same inhabitation-debt move that paid off in R550, applied one step earlier.**
+
+**The survey finding (the `''` chain's leaf gap).** A root seed `mapRoot_mapInteriorSeparators''` would, mirroring `seqRoot_seqInteriorSeparators`, need at each gated sub-window a per-window LEAF producer of `MapGrammarFacts'' tokens a b` off emission. There is NONE: the three producers of `MapGrammarFacts''` that exist consume either `MapBodyProps` (`mapGrammarFacts''_of_mapBodyProps`, R549 — and `MapBodyProps` is reachable only via the dead strict carrier, R550) or the `MapInteriorSeparators''` carrier ITSELF (`mapWindow_mapGrammarFacts''_general`/`''`, circular for building it). So the naive scaffold walls at the leaf — exactly the rule-3 alarm, caught by surveying instead of building. The carrier must instead be built the way the single-prime path builds `MapInteriorSeparators'`: an assembler `mapInteriorSeparators'_of_safebody_and_descent` over a `provider` + a per-window REBASE (`mapGrammarFacts_rebase'`), no per-window emission leaf required.
+
+**Why the `''` rebase is genuinely harder, and the gate R549 predicted.** `mapGrammarFacts_rebase'`'s conjuncts 5/6 are FLAT (`∀ k j, … → j < b → …`): the close `j` arrives as a parameter with `j < b` GIVEN, so the rebase never LOCATES a close. The corrected `''` conjuncts 5/6 are EXISTENTIAL — they must PRODUCE `∃ j, … ∧ j < b ∧ …`. Rebasing the enclosing window's witness `j < hiS` down to `j < b` is the locate the flat form skipped, and it is FALSE without a gate: a bracket opened inside `[a,b)` could close past `b` if `[a,b)` were not itself balanced. R549's rule-4 note predicted exactly this — "the `rebase''` will need an added gate hypothesis."
+
+**The kernel (`mapBracketClose_lt_of_gate`, `SeqInteriorSeparators.lean`).** The genuinely-new arithmetic, isolated by [[ref-parametric-assembler-extraction]]: under the gate `flowBracketBalance a b = 0`, a depth-`0` bracket-open whose absolute balance reaches `1` at `k+2` (`h_open`) and whose interior never dips below that (the enclosing existential's Dyck floor) has its matching close `j` confined to `j < b`. Proof by contradiction in pure `flowBracketBalance_compose` + `omega`: if `b ≤ j` then `flowBracketBalance (k+2) b ≥ 0`, so `flowBracketBalance a b = flowBracketBalance a (k+2) + flowBracketBalance (k+2) b = 1 + (≥0) ≥ 1 ≠ 0` — the gate is the sole load-bearing extra over `rebase'`. The kernel takes the depth-`1` opener fact `flowBracketBalance a (k+2) = 1` as a hypothesis; the PRODUCE-primitive (deriving it from `htok`'s `.key`/`.value` δ`0` and `hbr`'s bracket-start δ`+1` via `flowBracketBalance_single`, with the `k+1 < size` bound) is the residual the eventual `mapGrammarFacts_rebase''` discharges — kept separate so this kernel stays pure arithmetic and lands high-confidence.
+
+**Probe (rule 3 — hypotheses PRODUCIBLE, not the dead-hypothesis trap).** `mapBracketClose_lt_of_gate_bracketVal` (`Tests/Reflections/MapCarrierRobustInhabitation.lean`, R551) routes the GENUINE value-bracket of `{a:[1],b:2}` (`k=4` `.value`, open `[` at `5` so `flowBracketBalance 2 6 = 1`, matching `]` at `j=7`, gate window `[2,13)`) through the kernel with every hypothesis `decide`-grounded against real emission, recovering `7 < 13`. So unlike the strict carrier R550 refuted, the kernel's hypotheses are all satisfiable where the bracket genuinely fires. Axiom set `[propext, Classical.choice, Quot.sound]` (Classical via `flowBracketBalance_compose`, same as the rebase/assemble probes), guarded with `#guard_msgs`.
+
+**What landed (verified-but-unconsumed, no sorry site referenced).** `mapBracketClose_lt_of_gate` in `SeqInteriorSeparators.lean` (after `mapGrammarFacts_rebase'`); the probe + guarded axiom audit in `Tests/Reflections/MapCarrierRobustInhabitation.lean`. Full build green at exactly 4 frontier sorries (782 jobs).
+
+**Next step.** Build `mapGrammarFacts_rebase''` — the `''` analog of `mapGrammarFacts_rebase'` WITH the gate hypothesis `MapTypedInterior a b`: conjuncts 1–4 mirror `rebase'` near-verbatim; conjuncts 5/6 derive the depth-`1` opener fact `flowBracketBalance a (k+2) = 1` from the token deltas (the deferred produce-primitive) and call `mapBracketClose_lt_of_gate` for the `j < b` relocation. Then the `''` `provider` assembler (`mapInteriorSeparators''_of_enclosing_provider`), the dispatcher (`mapInteriorSeparators''_of_safebody_and_descent`), and the root seed `mapRoot_mapInteriorSeparators''` — each the `''` mirror of the landed single-prime lemmas. Then reconcile the consumer field `MapLocated.h_key_bracket_succ` (`NonemptyStructure.lean:10531`) onto `MapGrammarFacts''`. Family B (sorries 3/4, contentEq) remains a separate untouched effort.
 
 ### Reflection 550 — the R549 redirect's named brick was a TRAP: `mapWindow_mapBodyProps` needs the STRICT carrier R540/R547 proved false, so the live route threads the corrected carrier directly via `mapWindow_mapGrammarFacts''_general`. **R549 ended by naming the next brick "`mapRoot_mapGrammarFacts''` off emission — compose `mapGrammarFacts''_of_mapBodyProps` with `mapWindow_mapBodyProps`." Inhabitation-debt ([[ref-inhabitation-debt-validate-target-defs]]) rule 3 — a hypothesis with no producer is the alarm — says probe BEFORE building on it. The probe kills the route, and the kill is the reflection.**
 
