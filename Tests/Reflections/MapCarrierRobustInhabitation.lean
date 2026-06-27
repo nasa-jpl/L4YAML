@@ -1979,6 +1979,64 @@ theorem flowSubblock_noInterior_real_fires :
 #guard_msgs in
 #print axioms flowSubblock_noInterior_real_fires
 
+/-! ## R569 — the SCALAR (single-node) arm of the per-sub-block content+noInterior shape family
+
+R568 delivered the two BRACKET arms (`[`-seq and `{`-map), each running the
+`firstEntryBoundary_bracket_resolve` two-sided squeeze to pin single-node tightness `j+1 = hi`.  A
+map-pair key or value sub-block has a THIRD shape — a plain SCALAR — whose carved window is a single
+token `[lo, lo+1)` with no opener, no matching close, and no interior.  `flowSubblock_content_and_noInterior_scalar`
+is that third arm: both per-sub-block inputs `recseqentry_whole_window_seq` demands fall out VACUOUSLY
+(R564's interior floor over the empty interval `(lo, lo+1)`; `h_noInterior` over the empty interval),
+so the family's hardest input (R568's tightness discharge) degenerates to `subst` + `omega`.
+
+Inhabitation-debt discipline ([[ref-derisk-consumer-blindspot-vs-contract]]): the scalar arm is the
+DEGENERATE single-token case the bracket-squeeze machinery cannot even represent (there is no `j` to
+locate).  It is sound AND free precisely because its two outputs are vacuous over an empty interior — so
+the probe must confirm the CONTENT conjunct (`.1`) is a genuine `FlowBodyContent` on real emission, while
+the `h_noInterior` conjunct (`.2`) is honestly vacuous.  The genuine `{a:[1], b:2}` emission carries TWO
+scalar sub-blocks: the key `"a"` at `[3, 4)` and the value `"2"` at `[12, 13)`.  Probing BOTH shows the
+deliverable-agnostic arm serves a scalar KEY block and a scalar VALUE block identically. -/
+
+/-- **R569 — the scalar arm FIRED on the real single-scalar KEY sub-block** `[3, 4)` (the key `"a"`).  The
+    sub-block's `FlowBodyContentDeepSeq` is built inline (head `tokens[3]` a scalar content-start by
+    `decide`; the two opener/fe fields vacuous over the empty interior by `omega`), and the arm projects
+    the genuine `FlowBodyContent fixtureMapSeqVal 3 4` + vacuous `h_noInterior`. -/
+theorem flowSubblock_content_and_noInterior_real_scalarKey :
+    FlowBodyContent fixtureMapSeqVal 3 4 ∧
+      (∀ k, 3 < k → k < 4 →
+        ¬ (flowBracketBalance fixtureMapSeqVal 3 k = 0 ∧ fixtureMapSeqVal[k]!.val = .flowEntry)) :=
+  flowSubblock_content_and_noInterior_scalar fixtureMapSeqVal 3 4 rfl
+    ⟨by ifcs, by intro k h1 h2; omega, by intro k h1 h2; omega⟩
+
+/-- **R569 — the same scalar arm FIRED on the real single-scalar VALUE sub-block** `[12, 13)` (the value
+    `"2"` of key `"b"`).  Deliverable-agnostic: the identical lemma, no opener/close/tightness fact, serves
+    a VALUE block exactly as it served the KEY block above — the inhabitation-debt confirmation that the
+    single-node degeneracy is shape-uniform across the map pair. -/
+theorem flowSubblock_content_and_noInterior_real_scalarVal :
+    FlowBodyContent fixtureMapSeqVal 12 13 ∧
+      (∀ k, 12 < k → k < 13 →
+        ¬ (flowBracketBalance fixtureMapSeqVal 12 k = 0 ∧ fixtureMapSeqVal[k]!.val = .flowEntry)) :=
+  flowSubblock_content_and_noInterior_scalar fixtureMapSeqVal 12 13 rfl
+    ⟨by ifcs, by intro k h1 h2; omega, by intro k h1 h2; omega⟩
+
+-- R569 audits — the scalar arm composes ONLY R564 (`flowBodyContent_subblock_of_deepSeq_floor`) + `omega`,
+-- never the choice-tainted resolve/locator the bracket arms pull, so it audits CLEANER: no `Classical.choice`.
+/-- info: 'L4YAML.Proofs.EmitterScannability.flowSubblock_content_and_noInterior_scalar' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
+#print axioms flowSubblock_content_and_noInterior_scalar
+
+/-- info: 'MapCarrierRobustInhabitation.flowSubblock_content_and_noInterior_real_scalarKey' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs in
+#print axioms flowSubblock_content_and_noInterior_real_scalarKey
+
+/-- info: 'MapCarrierRobustInhabitation.flowSubblock_content_and_noInterior_real_scalarVal' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs in
+#print axioms flowSubblock_content_and_noInterior_real_scalarVal
+
 -- Axiom audit — the carrier inhabitation and the boundary-survival probe lean only on core; the
 -- ASSEMBLE non-vacuity checks also pull in `Classical.choice` through the rebase's
 -- `flowBracketBalance_compose`.

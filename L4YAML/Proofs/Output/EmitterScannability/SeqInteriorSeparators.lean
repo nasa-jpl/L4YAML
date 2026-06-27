@@ -9475,6 +9475,46 @@ theorem flowSubblock_content_and_noInterior_map
   have := h_floor_full k hk1 hk2
   omega
 
+/-- **The sub-block's FULL-window `FlowBodyContent` AND `h_noInterior` -- SCALAR (single-node) arm**
+    (Phase J -- the THIRD member of the per-sub-block content+noInterior shape family, completing the two
+    bracket arms `flowSubblock_content_and_noInterior_seq` / `_map` (R568).  A map-pair key or value
+    sub-block is exactly one flow node; when that node is a plain SCALAR the carved window is a single
+    token `[lo, lo+1)` -- no opener, no matching close, no interior.  Both per-sub-block data inputs
+    `recseqentry_whole_window_seq` (`NonemptyStructure.lean:9436`) demands then fall out VACUOUSLY rather
+    than via the two-sided squeeze the bracket arms run:
+
+    * `h_content : FlowBodyContent tokens lo (lo+1)` -- R564 `flowBodyContent_subblock_of_deepSeq_floor`
+      projects it off the sub-block's `FlowBodyContentDeepSeq` (R563) given the single-node interior floor
+      `forall i, lo < i -> i < lo+1 -> balance lo i >= 1`, which is VACUOUS (the open interval `(lo, lo+1)`
+      is empty) -- exactly the scalar escape R565's docstring flagged ("on a SCALAR sub-block the floor is
+      VACUOUS, discharged directly"), here realized.
+    * `h_noInterior` -- likewise vacuous: no `k` satisfies `lo < k < lo+1`, so the conjunction is refuted
+      before its balance/`.flowEntry` content is ever read.
+
+    So where the bracket arms LIFT two grammar residuals (`h_least` / `h_succ`) and CONSUME the squeeze
+    `firstEntryBoundary_bracket_resolve` to pin the single-node tightness `j+1 = hi`, the scalar arm needs
+    NO tightness fact at all -- the window IS the single token by construction (`h_single : hi = lo + 1`),
+    so the family's hardest input (R568's tightness discharge) degenerates to `subst` + `omega`.  This is
+    the inhabitation-debt dual of the bracket arms ([[ref-derisk-consumer-blindspot-vs-contract]]): the
+    DEGENERATE single-token case the squeeze machinery cannot even represent (no `j` to locate) is sound
+    AND free, because its two outputs are vacuous over an empty interior.  Reuses R564 verbatim and names
+    no deliverable type, so it serves a scalar KEY block and a scalar VALUE block identically.
+    Verified-but-unconsumed until `recmappair_window_dispatch_map` dispatches the scalar sub-block shape
+    onto it; composes only R564 + `omega`, references no sorry site, frontier sorry count unchanged at 4;
+    axiom-clean -- it never touches the choice-tainted resolve/locator the bracket arms pull
+    ([[ref-mirror-inherits-dependency-axioms]]). -/
+theorem flowSubblock_content_and_noInterior_scalar
+    (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_single : hi = lo + 1)
+    (h_deep : FlowBodyContentDeepSeq tokens lo hi) :
+    FlowBodyContent tokens lo hi ∧
+      (∀ k, lo < k → k < hi →
+        ¬ (flowBracketBalance tokens lo k = 0 ∧ tokens[k]!.val = .flowEntry)) := by
+  subst h_single
+  refine ⟨flowBodyContent_subblock_of_deepSeq_floor tokens lo (lo + 1) h_deep ?_, ?_⟩
+  · intro i hi1 hi2; omega
+  · intro k hk1 hk2; omega
+
 /-- **The FULL `windowFacts` triple from emission, SEQ source** —
     `(i'-b-B2c-(d)-seqWindowFacts-of-emit-seq)`, R432, the brick that completes the CONTENT of the flat
     per-window provider `seqRec_of_carrier_and_windowFacts_seq` consumes: at every seq window it produces
