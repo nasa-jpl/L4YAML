@@ -23560,8 +23560,7 @@ abstracts over `_a` whose type the bound depends on).
 
 ## Phase 3 — Stage C: EmitterScannability discharge — `.flowmono` / `.body` / `.bridge` (Reflections 153–192)
 
-### Frontier status — the 4 remaining `sorry`s and the path to close them (snapshot 2026-06-26, R558)
-
+=
 The reflections in this section all discharge a single end goal: the well-bracketing
 certificate `FlowSubrangesOk tokens` that lets the flow-collection parser provably
 accept emitted output. The frontier stands at **exactly four `sorry`s**, in **two
@@ -23579,7 +23578,7 @@ Sorries 1 and 2 are *literally the same proposition* `FlowSubrangesOk tokens` �
 producer family closes both. So the real count is **two distinct obligations + one
 duplicate**.
 
-**Current state (post-R558).** The map-carrier track is the active Family-A front. The
+**Current state (post-R559).** The map-carrier track is the active Family-A front. The
 `MapInteriorSeparators'` provider/leaf path narrated below (R538–R546) was found in R547 to
 rest on a REFUTED carrier — its `MapGrammarFacts'` conjuncts 5/6 are false on a bracket-valued
 map — and redirected to the corrected `MapInteriorSeparators''` (R547–R549). As of **R553 the
@@ -23609,16 +23608,24 @@ chain) demands its bracket-`succ` primitives UNGUARDED, and the unguarded `key_b
 where emission has `.flowEntry`) — so that route is ALSO a trap, two corrections deep (R550 strict→carrier-free,
 R557 reaffirmed "LIVE", neither probing the primitive). The fix LANDED R558: `mapBodyProps_assemble_guarded`
 carries each bracket-`succ` premise with the same bracket-start guard the proof already holds at the call
-site (the unguarded strength is never used), restoring a LIVE route; what remains under (i-a) is to stack the
-guarded `_of_windowed_safebody`/`_of_recmapbody_window` variants on it plus a root `RecMapBody` + the six
-pair-interior primitives off emission. (i-b) the map descent provider for the `≠ 0` branch;
+site (the unguarded strength is never used), restoring a LIVE route. **R559 then LANDED the guarded
+delegation chain** — `mapBodyProps_of_windowed_safebody_guarded` → `mapBodyProps_of_recmapbody_window_guarded`,
+composed with R549 as `mapGrammarFacts''_of_recmapbody_window_guarded`, the genuine LIVE root-facts producer —
+**and PROBED it end-to-end on real `{a:[1], b:2}` emission**: a hand-built root `RecMapBody` + the four
+content primitives (projected from `mapBodyProps_bracketVal`) + BOTH guarded bracket-`succ` arms (R558
+key-vacuous, R559 value-side FIRING at `k=4` where the guard fires non-vacuously and the conclusion holds at
+the value-seq close `j=7`) drive the producer to `MapGrammarFacts'' fixtureMapSeqVal 2 13` — the same carrier
+R549's round-trip proved, now reached through the corrected route the R557 trap could not. So what remains
+under (i-a) is JUST a root `RecMapBody` off emission (`emitPairList_scans_recmapbody`) — its deliverable
+exhibited reachable on the fixture, so the producer aims at a real target (survey the leaf before the
+scaffold). (i-b) the map descent provider for the `≠ 0` branch;
 (ii) the seq-side descent provider (the "hard B2 brick"); (iii) `locate_map`; (iv) the M2 narrowing.
 With those, the JOINT driver (R534) runs at the root and sorries 1 + 2 are one `exact` each — plus
 reconciling the consumer field `MapLocated.h_key_bracket_succ` (`NonemptyStructure.lean:10531`) onto
 `MapGrammarFacts''`. Family B (sorries 3/4, content fidelity) is untouched. The chronological narrative
 below records how each piece was reached.
 
-**Family A (`FlowSubrangesOk`) — where essentially all recent work (R512–R558) has gone.**
+**Family A (`FlowSubrangesOk`) — where essentially all recent work (R512–R559) has gone.**
 The landed assembler `flowSubrangesOk_of_window_producers` (`NonemptyStructure.lean:10904`)
 shows the goal reduces to: the boundary facts already in scope at each sorry **+ a seq
 window producer `h_seq_rec` (per-subrange `RecSeqBody`, keyed on a `.flowSequenceEnd`
@@ -31565,6 +31572,16 @@ The window's close bracket selects which body it is, and the *conjunction* carri
 **LANDED (R531 — `SeqInteriorSeparators.lean`):** build green at exactly 4 frontier sorries (`NonemptyStructure:11586` + `EmitterScannability:315/809/848`), full `L4YAML` + `Tests.Reflections` (410 jobs). New demo `Tests/Reflections/JointContentPackFromCarrier.lean` (proves the abstract `joint_content_pack` once — parametric in `close, Win, DeepS, DeepM, ContentS, ContentM, CarrierS, CarrierM, M2, EncS, EncM, provideS, provideM`, the dual-pack assembly where the map provider alone consumes the close token and the deferred `M2`; instantiates at toy guards and RUNS both packs — `hi = 3 → seqEnd`, `hi = 4 → mapEnd`; `demo` depends on no axioms), new memory `ref-content-pack-passthrough-manufacture`, `MEMORY.md` index updated.
 
 **Next step.** With R530's debt (b) discharged, brick (2) reduces to: (i) re-type the joint driver's `locate` marker to carry the depth-`0` balance `flowBracketBalance tokens lo m = 0`, and fold the two outer carriers + the deferred map fact + the frame bounds into the guard `G`, so the descend's `h_seq_pack`/`h_map_pack` come from `recbody_joint_content_pack` per-window and its `h_bal_m` from the strengthened marker; (iii) construct the concrete `locate_seq` (R527-fed dispatch + R510's route) and `locate_map` (R522 → R523/R525 → R524 → R527 → `recmapentry_pair_located`), each passed the JOINT oracle. Then `recbody_joint_navigator_driver`'s `.2` is the raw `h_map_rec` `flowSubrangesOk_of_window_producers` consumes (closing brick (2)), its `.1` the seq `h_seq_rec`. *[Acted on by Reflection 532: piece (i)'s descend-assembly part — "so the descend's `h_seq_pack`/`h_map_pack` come from `recbody_joint_content_pack` per-window" — is now LANDED as `recbody_joint_descend_tail_carrier`, the composition R531 ∘ R530 that feeds R531's output into R530's opaque content slot, producing the concrete `descend_tail` (= the suffix guard `G (m+1) hi`). The content debt is gone from the descend's interface; what remains for piece (i) is the driver-marker strengthening for `h_bal_m` and folding the carriers/M2/bounds into `G` so the driver's `descend_tail` slot is this lemma. Piece (iii) (the two concrete `locate`s) is untouched.]*
+
+### Reflection 559 — land the guarded delegation chain on R558's fix, and PROBE the route END-TO-END on real emission instead of branding it "LIVE". **The R558 discipline made concrete: R557 was burned by *switching upstream and asserting LIVE*; R559 does not repeat it. It runs a REAL inhabitant of every input — a hand-built root `RecMapBody`, the four content primitives off the fixture, and BOTH guarded bracket-`succ` arms (including the value-side one that FIRES non-vacuously) — through the corrected producer and recovers the carrier. A route is LIVE only once its full premise bundle is exhibited jointly satisfiable on `#guard`-real data; type-checking the delegation chain proves only that it is well-formed.**
+
+**What landed (source).** Three guarded artifacts stacking on R558's `mapBodyProps_assemble_guarded`: `mapBodyProps_of_windowed_safebody_guarded` and `mapBodyProps_of_recmapbody_window_guarded` (`NonemptyStructure.lean`, verbatim copies of the R557-trapped originals with the two bracket-`succ` inputs carrying the bracket-start guard and delegating to the guarded assembler — M1/M2 byte-identical), and their composition with R549, `mapGrammarFacts''_of_recmapbody_window_guarded` (`SeqInteriorSeparators.lean`) — the genuine LIVE root-facts producer the map root seed's `h_facts` residual now has behind it. All verified-but-unconsumed (the root seed does not call them yet); full build green at exactly 4 frontier sorries (782 jobs).
+
+**What the probe exercises that R558's did not.** R558 proved the *key*-side guarded primitive holds VACUOUSLY (`{a:[1],b:2}` has only scalar keys), but never drove the *value* side, where the guard FIRES: at `k=4` the value's successor `tokens[5]` IS a `.flowSequenceStart`, so the guard is non-vacuous and the conclusion must genuinely hold at the value-seq close `j=7` (`j+1=8 ≤ 13`, `tokens[8] = .flowEntry` — the pair separator). `value_bracket_succ_guarded_fires_bracketVal` (`Tests/Reflections/`) discharges exactly that arm; a probe that only checks the vacuous side would bless a producer that fails wherever the guard actually fires (the R547 "conjunct vacuous on your fixture is validated by nobody" lesson, now applied to the *fix's* probe, not the def's).
+
+**The end-to-end run, and a free de-risk of the NEXT brick.** `mapGrammarFacts''_via_recmapbody_window_guarded_bracketVal` builds a root `RecMapBody` for the fixture body by hand (two pairs, the first value a `RecSeqEntry.seq`), projects the four content primitives off `mapBodyProps_bracketVal`, supplies both guarded bracket-`succ` probes, and drives `mapGrammarFacts''_of_recmapbody_window_guarded` to `MapGrammarFacts'' fixtureMapSeqVal 2 13` — the SAME carrier R549's round-trip proved (R549), now reached through the corrected guarded route the R557 trap could not. Building that `RecMapBody` by hand doubles as the inhabitation proof that the (i-a) residual's deliverable — "a root `RecMapBody` off emission" — is REACHABLE on real data, so the producer `emitPairList_scans_recmapbody` aims at a real target (survey the leaf before the scaffold, R551). Axioms: the value-firing probe is core-clean `[propext, Quot.sound]`; the end-to-end run pulls `Classical.choice` through the matching-close locators — decided/constructed, not assumed (`#guard_msgs`-audited).
+
+**Next step.** Brick (i-a) collapses to ONE obligation: the root `RecMapBody` off emission (`emitPairList_scans_recmapbody`, the map-arm producer, already a landed strengthening) packaged at the root span `[2, size-2)` with its window identity — the six pair-interior primitives are now PROVEN reachable (four projected from emission's `MapBodyProps`, two guarded and exhibited firing/vacuous). Then (i-b) the map descent provider for the `≠ 0` branch (the map twin of the seq descent locator). With (i-a)+(i-b) the root seed PRODUCES `h_facts` and lifts only `desc`. Family B (sorries 3/4, content fidelity) remains a separate untouched effort.
 
 ### Reflection 558 — the R557 "LIVE" root-facts route is itself an inhabitation-debt TRAP; the fix is the bracket-start-GUARDED assembler `mapBodyProps_assemble_guarded`. **The cleanest [[ref-inhabitation-debt-validate-target-defs]] catch yet: a producer that type-checks, is *named* the live route in a landed commit (R557), and whose domain is nonetheless UNREACHABLE on real emission — because it over-ASKS. `mapBodyProps_of_recmapbody_window` and the whole `mapBodyProps_assemble` chain demand the bracket-`succ` primitives UNGUARDED, yet their proof only ever calls them UNDER the complex-key/complex-value bracket-start guard. The unguarded strength is dead weight that happens to be FALSE on `{a:[1], b:2}`. Probing the primitive on `#guard`-real data (rule 5) — not the route's output type, which IS inhabited — is what exposes it. Lesson: "LIVE" must be a property of the (producer ∘ upstream) pair PROBED AT THE PRIMITIVE LEVEL, not a verdict inherited by switching upstreams.**
 

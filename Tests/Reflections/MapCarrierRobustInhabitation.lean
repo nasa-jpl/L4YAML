@@ -1172,6 +1172,109 @@ theorem key_bracket_succ_guarded_vacuous_bracketVal :
     | exact absurd hkey (by decide)
     | (rcases hopen with h | h <;> exact absurd h (by decide))
 
+/-! ## R559 — the guarded route, landed and PROBED END-TO-END on real emission
+
+R558 fixed the over-ask (`mapBodyProps_assemble_guarded`); R559 stacks the guarded delegation chain
+(`mapBodyProps_of_windowed_safebody_guarded` → `mapBodyProps_of_recmapbody_window_guarded`, composed
+with R549 as `mapGrammarFacts''_of_recmapbody_window_guarded` — the genuine LIVE root-facts producer)
+and PROBES that route on the genuine `{a:[1],b:2}` emission, the R558 discipline made concrete: don't
+brand a route LIVE by switching upstream — run a REAL inhabitant of every input through it.
+
+Two probes.  First the dangerous NON-vacuous arm R558's key-side vacuous probe never exercised: the
+value-side guarded bracket-`succ` FIRES at `k=4` (the value whose successor `tokens[5]` IS a bracket
+start), and the conclusion must genuinely hold at the value-seq close `j=7`.  Then the END-TO-END run:
+a hand-built root `RecMapBody` off the fixture body (the "root `RecMapBody` off emission" residual,
+EXHIBITED on real data so the next brick's producer aims at a reachable deliverable — survey the leaf
+before the scaffold) + the four content primitives projected from `mapBodyProps_bracketVal` + the two
+guarded bracket-`succ`
+probes, driven through the guarded producer to recover `MapGrammarFacts'' fixtureMapSeqVal 2 13` — the
+same carrier R549's round-trip proved, now reached through the CORRECTED guarded route. -/
+
+/-- The value-side guarded bracket-`succ` FIRES on real emission (the arm R558's key-side vacuous probe
+    did NOT exercise).  At the value `k=4` whose successor `tokens[5]` is `.flowSequenceStart` the guard
+    fires NON-vacuously, and the conclusion must hold at the genuine value-seq close `j=7`: `j+1=8 ≤ 13`
+    and `tokens[8] = .flowEntry` (the pair separator).  The other value `k=11` ("2") has a scalar
+    successor (guard vacuous); every non-value `k` dies on `hval`.  With
+    `key_bracket_succ_guarded_vacuous_bracketVal` (R558) this shows BOTH guarded bracket-`succ` inputs
+    are reachable on `{a:[1],b:2}`. -/
+theorem value_bracket_succ_guarded_fires_bracketVal :
+    ∀ k j, 2 ≤ k → k < 13 →
+      flowBracketBalance fixtureMapSeqVal 2 k = 0 →
+      fixtureMapSeqVal[k]!.val = .value →
+      (fixtureMapSeqVal[k + 1]!.val = .flowSequenceStart ∨
+       fixtureMapSeqVal[k + 1]!.val = .flowMappingStart) →
+      k + 1 < j → j < 13 →
+      flowBracketDelta fixtureMapSeqVal[j]!.val = -1 →
+      flowBracketBalance fixtureMapSeqVal 2 (j + 1) = 0 →
+      j + 1 ≤ 13 ∧
+      (fixtureMapSeqVal[j + 1]!.val = .flowEntry ∨
+       (fixtureMapSeqVal[j + 1]!.val = .flowMappingEnd ∧ j + 1 = 13)) := by
+  intro k j hk1 hk2 _hbal hval hopen hkj hjhi hd _hb
+  rcases (show k = 2 ∨ k = 3 ∨ k = 4 ∨ k = 5 ∨ k = 6 ∨ k = 7 ∨ k = 8 ∨ k = 9 ∨
+      k = 10 ∨ k = 11 ∨ k = 12 by omega)
+    with rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl
+  all_goals first
+    | exact absurd hval (by decide)
+    | (rcases hopen with h | h <;> exact absurd h (by decide))
+    | (rcases (show j = 6 ∨ j = 7 ∨ j = 8 ∨ j = 9 ∨ j = 10 ∨ j = 11 ∨ j = 12 by omega)
+        with rfl|rfl|rfl|rfl|rfl|rfl|rfl <;>
+        first
+        | exact absurd hd (by decide)
+        | exact ⟨by decide, Or.inl (by decide)⟩)
+
+/-- The fixture body's recursive structure as an explicit `RecMapBody` shape: two pairs
+    (`"a":["1"]`, `"b":"2"`) separated by the depth-0 `.flowEntry`, the first value a `RecSeqEntry.seq`.
+    `abbrev` (reducible) so the constructor `apply`s and the window `decide` see the `++`/`::` spine. -/
+private abbrev interiorMapSeqVal : List (Positioned YamlToken) :=
+  (pt .key :: ([pt (.scalar "a" .doubleQuoted)] ++ pt .value ::
+      (pt .flowSequenceStart :: ([pt (.scalar "1" .doubleQuoted)] ++ [pt .flowSequenceEnd]))))
+    ++ pt .flowEntry ::
+    (pt .key :: ([pt (.scalar "b" .doubleQuoted)] ++ pt .value :: [pt (.scalar "2" .doubleQuoted)]))
+
+/-- **End-to-end: the guarded route is LIVE on real emission.**  Drives a hand-built root `RecMapBody`
+    (the genuine "root `RecMapBody` off emission" residual, exhibited here so the next brick's producer
+    `emitPairList_scans_recmapbody` aims at a reachable deliverable) + the four content primitives
+    (projected from `mapBodyProps_bracketVal`) + the two guarded bracket-`succ` probes (R558 key-vacuous,
+    R559 value-firing) through `mapGrammarFacts''_of_recmapbody_window_guarded`, recovering
+    `MapGrammarFacts'' fixtureMapSeqVal 2 13` — the SAME carrier R549's round-trip proved, now reached
+    through the CORRECTED guarded route the R557 trap could not. -/
+theorem mapGrammarFacts''_via_recmapbody_window_guarded_bracketVal :
+    MapGrammarFacts'' fixtureMapSeqVal 2 13 := by
+  have h_dyck : ∀ i, 2 ≤ i → i ≤ 13 → flowBracketBalance fixtureMapSeqVal 2 i ≥ 0 := by
+    intro i hi1 hi2
+    rcases (show i = 2 ∨ i = 3 ∨ i = 4 ∨ i = 5 ∨ i = 6 ∨ i = 7 ∨ i = 8 ∨ i = 9 ∨
+        i = 10 ∨ i = 11 ∨ i = 12 ∨ i = 13 by omega)
+      with rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl <;> decide
+  -- Built as a TERM (argument order fixed by the constructor signatures — robust to `apply`'s goal
+  -- reordering when `h_head` depends on `h_ne`).  The list-slice metavars are inferred from the explicit
+  -- `++`/`::` spine of `interiorMapSeqVal`.
+  have h_rec : RecMapBody interiorMapSeqVal :=
+    RecMapBody.cons _ _ _ (List.cons_ne_nil _ _)
+      (RecMapPair.mk _ _ _ _ rfl
+        (RecSeqEntry.scalar _ "a" .doubleQuoted rfl)
+        rfl
+        (RecSeqEntry.seq _ _ _ rfl rfl
+          (WellBracketed_singleton_delta_zero _ (by decide))
+          (RecSeqBody.single _ (List.cons_ne_nil _ _)
+            (RecSeqEntry.scalar _ "1" .doubleQuoted rfl)
+            (Or.inl ⟨"1", .doubleQuoted, rfl⟩))))
+      rfl rfl
+      (RecMapBody.single _ (List.cons_ne_nil _ _)
+        (RecMapPair.mk _ _ _ _ rfl
+          (RecSeqEntry.scalar _ "b" .doubleQuoted rfl)
+          rfl
+          (RecSeqEntry.scalar _ "2" .doubleQuoted rfl))
+        rfl)
+  exact mapGrammarFacts''_of_recmapbody_window_guarded fixtureMapSeqVal 2 13
+    interiorMapSeqVal (pt .flowMappingEnd)
+    (by decide) (by decide) (by decide) (by decide) h_dyck (by rfl) (by rfl) h_rec
+    mapBodyProps_bracketVal.key_content
+    mapBodyProps_bracketVal.key_scalar_value
+    mapBodyProps_bracketVal.value_content
+    mapBodyProps_bracketVal.value_scalar_succ
+    key_bracket_succ_guarded_vacuous_bracketVal
+    value_bracket_succ_guarded_fires_bracketVal
+
 -- R558 — both probes are pure `decide`/`omega`/`absurd` over `#guard`-real data: the refutation needs
 -- only `propext`; the vacuous guarded primitive additionally pulls `Quot.sound` (the bounded list
 -- case-split).  Neither touches `sorryAx` or `Classical.choice` — the trap and its fix are decided, not
@@ -1183,6 +1286,19 @@ theorem key_bracket_succ_guarded_vacuous_bracketVal :
 /-- info: 'MapCarrierRobustInhabitation.key_bracket_succ_guarded_vacuous_bracketVal' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in
 #print axioms key_bracket_succ_guarded_vacuous_bracketVal
+
+-- R559 — the value-firing probe is pure `decide`/`omega`/`absurd`/`rcases` (core, `[propext, Quot.sound]`);
+-- the END-TO-END run drives a real `RecMapBody` through the guarded producer, whose matching-close
+-- locators pull `Classical.choice` — the route is genuinely reachable on real emission, decided not assumed.
+/-- info: 'MapCarrierRobustInhabitation.value_bracket_succ_guarded_fires_bracketVal' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
+#print axioms value_bracket_succ_guarded_fires_bracketVal
+
+/-- info: 'MapCarrierRobustInhabitation.mapGrammarFacts''_via_recmapbody_window_guarded_bracketVal' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs in
+#print axioms mapGrammarFacts''_via_recmapbody_window_guarded_bracketVal
 
 -- Axiom audit — the carrier inhabitation and the boundary-survival probe lean only on core; the
 -- ASSEMBLE non-vacuity checks also pull in `Classical.choice` through the rebase's

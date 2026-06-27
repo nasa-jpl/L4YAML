@@ -10255,6 +10255,148 @@ theorem mapBodyProps_of_recmapbody_window (tokens : Array (Positioned YamlToken)
     h_key_content h_key_scalar_value h_value_content h_value_scalar_succ
     h_key_bracket_succ h_value_bracket_succ
 
+/-- **Guarded windowed-`SafeBody` → `MapBodyProps`** (R559, map side).  The bracket-start-GUARDED
+    parallel of `mapBodyProps_of_windowed_safebody`, stacking on `mapBodyProps_assemble_guarded`
+    (R558).  Its two bracket-`succ` primitives carry the `tokens[k+1] ∈ {.flowSequenceStart,
+    .flowMappingStart}` guard, matching the guarded assembler's signature, so the windowed route is
+    LIVE where the unguarded original is the R558 inhabitation-debt TRAP (the unguarded
+    `h_key_bracket_succ` is FALSE on the genuine `{a:[1],b:2}` body `[2,13)`: at the scalar key `k=2`
+    the value-seq close `j=7` accidentally fires every unguarded premise but emission puts `.flowEntry`
+    at `j+1=8`, not the demanded `.value`).  M1 `key_start` (`SafeBody.head_Q`) and M2 `after_fe`
+    (`SafeBody_array_flowEntry_window`) are byte-identical to the original — the guard touches only the
+    two bracket-`succ` inputs, forwarded verbatim into the guarded assembler. -/
+theorem mapBodyProps_of_windowed_safebody_guarded (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_hi_sz : hi ≤ tokens.size)
+    (h_tpe : tokens[hi]!.val = .flowMappingEnd)
+    (h_outer_bal : flowBracketBalance tokens lo hi = 0)
+    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
+    (h_wt_interior : WellTyped ((tokens.toList.take hi).drop lo))
+    (h_safe : SafeBody (fun t => t = .key) ((tokens.toList.take hi).drop lo))
+    (h_key_content : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .key →
+      k + 1 < hi ∧ isFlowContentStart tokens[k + 1]!.val)
+    (h_key_scalar_value : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .key →
+      (∃ c s, tokens[k + 1]!.val = .scalar c s) →
+      k + 2 < hi ∧ tokens[k + 2]!.val = .value)
+    (h_value_content : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .value →
+      k + 1 < hi ∧ isFlowContentStart tokens[k + 1]!.val)
+    (h_value_scalar_succ : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .value →
+      (∃ c s, tokens[k + 1]!.val = .scalar c s) →
+      k + 2 ≤ hi ∧
+      (tokens[k + 2]!.val = .flowEntry ∨
+       (tokens[k + 2]!.val = .flowMappingEnd ∧ k + 2 = hi)))
+    (h_key_bracket_succ : ∀ k j, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .key →
+      (tokens[k + 1]!.val = .flowSequenceStart ∨ tokens[k + 1]!.val = .flowMappingStart) →
+      k + 1 < j → j < hi →
+      flowBracketDelta tokens[j]!.val = -1 →
+      flowBracketBalance tokens lo (j + 1) = 0 →
+      j + 1 < hi ∧ tokens[j + 1]!.val = .value)
+    (h_value_bracket_succ : ∀ k j, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .value →
+      (tokens[k + 1]!.val = .flowSequenceStart ∨ tokens[k + 1]!.val = .flowMappingStart) →
+      k + 1 < j → j < hi →
+      flowBracketDelta tokens[j]!.val = -1 →
+      flowBracketBalance tokens lo (j + 1) = 0 →
+      j + 1 ≤ hi ∧
+      (tokens[j + 1]!.val = .flowEntry ∨
+       (tokens[j + 1]!.val = .flowMappingEnd ∧ j + 1 = hi))) :
+    MapBodyProps tokens lo hi := by
+  refine mapBodyProps_assemble_guarded tokens lo hi h_hi_sz h_tpe h_outer_bal h_dyck h_wt_interior
+    ?_ ?_ h_key_content h_key_scalar_value h_value_content h_value_scalar_succ
+    h_key_bracket_succ h_value_bracket_succ
+  · -- M1 `key_start` ← `SafeBody.head_Q` (the windowed body's head is a `.key`)
+    intro h_lo_hi
+    have h_lo_sz : lo < tokens.size := Nat.lt_of_lt_of_le h_lo_hi h_hi_sz
+    obtain ⟨hl, hQ⟩ := h_safe.head_Q
+    rw [getElem!_pos tokens lo h_lo_sz]
+    have h_get : (((tokens.toList.take hi).drop lo)[0]'hl).val = (tokens[lo]'h_lo_sz).val := by
+      rw [List.getElem_drop, List.getElem_take, Array.getElem_toList]
+      congr 2
+    rw [← h_get]; exact hQ
+  · -- M2 `after_fe` ← `SafeBody_array_flowEntry_window` at `Q := (· = .key)`
+    intro k h_lo h_klt h_bal h_fe
+    have hk_sz : k < tokens.size := Nat.lt_of_lt_of_le h_klt h_hi_sz
+    rw [getElem!_pos tokens k hk_sz] at h_fe
+    obtain ⟨hk1, hQ⟩ :=
+      SafeBody_array_flowEntry_window tokens lo hi h_hi_sz h_safe k h_lo h_klt h_fe h_bal
+    have hk1_sz : k + 1 < tokens.size := Nat.lt_of_lt_of_le hk1 h_hi_sz
+    refine ⟨Nat.le_of_lt hk1, ?_⟩
+    rw [getElem!_pos tokens (k + 1) hk1_sz]
+    exact hQ
+
+/-- **Guarded located-`RecMapBody` → `MapBodyProps`** (R559, map side).  The bracket-start-GUARDED
+    parallel of `mapBodyProps_of_recmapbody_window`, delegating to
+    `mapBodyProps_of_windowed_safebody_guarded`.  Identical to the original (window identity rewrites
+    `interior` to the positional window, `RecMapBody.toSafeBody` delivers the `.key`-headed
+    `SafeBody`) except the two bracket-`succ` inputs are the GUARDED form — the LIVE root-facts route
+    `mapGrammarFacts''_of_recmapbody_window_guarded` (R549 ∘ this) the map root seed consumes, with the
+    R558 over-ask removed.  Its honest residual is one root `RecMapBody` (off `emitPairList_scans_recmapbody`)
+    plus the six pair-interior primitives in their guarded form. -/
+theorem mapBodyProps_of_recmapbody_window_guarded (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (interior : List (Positioned YamlToken)) (cl : Positioned YamlToken)
+    (h_lo_hi : lo ≤ hi) (h_hi_sz : hi < tokens.size)
+    (h_tpe : tokens[hi]!.val = .flowMappingEnd)
+    (h_outer_bal : flowBracketBalance tokens lo hi = 0)
+    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
+    (h_wt_interior : WellTyped ((tokens.toList.take hi).drop lo))
+    (h_window : (tokens.toList.take (hi + 1)).drop lo = interior ++ [cl])
+    (h_rec : RecMapBody interior)
+    (h_key_content : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .key →
+      k + 1 < hi ∧ isFlowContentStart tokens[k + 1]!.val)
+    (h_key_scalar_value : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .key →
+      (∃ c s, tokens[k + 1]!.val = .scalar c s) →
+      k + 2 < hi ∧ tokens[k + 2]!.val = .value)
+    (h_value_content : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .value →
+      k + 1 < hi ∧ isFlowContentStart tokens[k + 1]!.val)
+    (h_value_scalar_succ : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .value →
+      (∃ c s, tokens[k + 1]!.val = .scalar c s) →
+      k + 2 ≤ hi ∧
+      (tokens[k + 2]!.val = .flowEntry ∨
+       (tokens[k + 2]!.val = .flowMappingEnd ∧ k + 2 = hi)))
+    (h_key_bracket_succ : ∀ k j, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .key →
+      (tokens[k + 1]!.val = .flowSequenceStart ∨ tokens[k + 1]!.val = .flowMappingStart) →
+      k + 1 < j → j < hi →
+      flowBracketDelta tokens[j]!.val = -1 →
+      flowBracketBalance tokens lo (j + 1) = 0 →
+      j + 1 < hi ∧ tokens[j + 1]!.val = .value)
+    (h_value_bracket_succ : ∀ k j, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .value →
+      (tokens[k + 1]!.val = .flowSequenceStart ∨ tokens[k + 1]!.val = .flowMappingStart) →
+      k + 1 < j → j < hi →
+      flowBracketDelta tokens[j]!.val = -1 →
+      flowBracketBalance tokens lo (j + 1) = 0 →
+      j + 1 ≤ hi ∧
+      (tokens[j + 1]!.val = .flowEntry ∨
+       (tokens[j + 1]!.val = .flowMappingEnd ∧ j + 1 = hi))) :
+    MapBodyProps tokens lo hi := by
+  have h_eq : interior = (tokens.toList.take hi).drop lo :=
+    interior_window_eq tokens lo hi interior cl h_lo_hi h_hi_sz h_window
+  exact mapBodyProps_of_windowed_safebody_guarded tokens lo hi (Nat.le_of_lt h_hi_sz) h_tpe
+    h_outer_bal h_dyck h_wt_interior (h_eq ▸ h_rec.toSafeBody)
+    h_key_content h_key_scalar_value h_value_content h_value_scalar_succ
+    h_key_bracket_succ h_value_bracket_succ
+
 /-- **Located-entry → `MapBodyProps` consumer joint** (Phase J, map side — the descent-locator's
     FRONT-END consumer).  The map mirror of `seqBodyProps_of_located_entry` (Reflection 237): it
     consumes the descent-locator's raw, earliest output — `RecMapEntry` of the absolute opener-window

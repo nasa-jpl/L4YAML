@@ -455,6 +455,70 @@ theorem mapGrammarFacts''_of_mapBodyProps (tokens : Array (Positioned YamlToken)
       h.value_bracket_succ k hlo hhi hbal htok hbr
     exact Or.inr ⟨j, hj1, hj2, hmatch, hbalj, Or.inr ⟨hj3, hsucc⟩, hdyck⟩
 
+/-- **The genuine LIVE root-facts producer** (R559) — `mapGrammarFacts''_of_mapBodyProps` (R549) ∘
+    `mapBodyProps_of_recmapbody_window_guarded` (R559).  This is the corrected replacement for the route
+    R557 branded "LIVE" and R558 refuted as a TRAP: the original `mapGrammarFacts''_of_mapBodyProps ∘
+    mapBodyProps_of_recmapbody_window` over-asked an UNGUARDED bracket-`succ` primitive that is FALSE on
+    real `{a:[1],b:2}` emission.  Stacking on the bracket-start-GUARDED delegation removes the over-ask,
+    so this produces `MapGrammarFacts''` from a root `RecMapBody` off emission
+    (`emitPairList_scans_recmapbody`) plus the six pair-interior primitives in their GUARDED form — the
+    `h_facts` supplier the map root seed `mapRoot_mapInteriorSeparators''` (R557) lifts as a residual,
+    now with a LIVE producer behind it.  Probed end-to-end on the genuine fixture in
+    `Tests/Reflections/MapCarrierRobustInhabitation.lean` (R559). -/
+theorem mapGrammarFacts''_of_recmapbody_window_guarded (tokens : Array (Positioned YamlToken))
+    (lo hi : Nat) (interior : List (Positioned YamlToken)) (cl : Positioned YamlToken)
+    (h_lo_hi : lo ≤ hi) (h_hi_sz : hi < tokens.size)
+    (h_tpe : tokens[hi]!.val = .flowMappingEnd)
+    (h_outer_bal : flowBracketBalance tokens lo hi = 0)
+    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
+    (h_wt_interior : WellTyped ((tokens.toList.take hi).drop lo))
+    (h_window : (tokens.toList.take (hi + 1)).drop lo = interior ++ [cl])
+    (h_rec : RecMapBody interior)
+    (h_key_content : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .key →
+      k + 1 < hi ∧ isFlowContentStart tokens[k + 1]!.val)
+    (h_key_scalar_value : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .key →
+      (∃ c s, tokens[k + 1]!.val = .scalar c s) →
+      k + 2 < hi ∧ tokens[k + 2]!.val = .value)
+    (h_value_content : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .value →
+      k + 1 < hi ∧ isFlowContentStart tokens[k + 1]!.val)
+    (h_value_scalar_succ : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .value →
+      (∃ c s, tokens[k + 1]!.val = .scalar c s) →
+      k + 2 ≤ hi ∧
+      (tokens[k + 2]!.val = .flowEntry ∨
+       (tokens[k + 2]!.val = .flowMappingEnd ∧ k + 2 = hi)))
+    (h_key_bracket_succ : ∀ k j, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .key →
+      (tokens[k + 1]!.val = .flowSequenceStart ∨ tokens[k + 1]!.val = .flowMappingStart) →
+      k + 1 < j → j < hi →
+      flowBracketDelta tokens[j]!.val = -1 →
+      flowBracketBalance tokens lo (j + 1) = 0 →
+      j + 1 < hi ∧ tokens[j + 1]!.val = .value)
+    (h_value_bracket_succ : ∀ k j, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .value →
+      (tokens[k + 1]!.val = .flowSequenceStart ∨ tokens[k + 1]!.val = .flowMappingStart) →
+      k + 1 < j → j < hi →
+      flowBracketDelta tokens[j]!.val = -1 →
+      flowBracketBalance tokens lo (j + 1) = 0 →
+      j + 1 ≤ hi ∧
+      (tokens[j + 1]!.val = .flowEntry ∨
+       (tokens[j + 1]!.val = .flowMappingEnd ∧ j + 1 = hi))) :
+    MapGrammarFacts'' tokens lo hi :=
+  mapGrammarFacts''_of_mapBodyProps tokens lo hi
+    (mapBodyProps_of_recmapbody_window_guarded tokens lo hi interior cl h_lo_hi h_hi_sz h_tpe
+      h_outer_bal h_dyck h_wt_interior h_window h_rec
+      h_key_content h_key_scalar_value h_value_content h_value_scalar_succ
+      h_key_bracket_succ h_value_bracket_succ)
+
 /-- **`MapGrammarFacts'` RE-BASING** — the robust analog of `bodySuccFact_rebase` (`:1940`), bundled
     over all six conjuncts. On a sub-window `[a,b) ⊆ [loS,hiS)` re-seated to the enclosing map's top
     level (`flowBracketBalance tokens loS a = 0`), the robust facts follow from the ENCLOSING window's
