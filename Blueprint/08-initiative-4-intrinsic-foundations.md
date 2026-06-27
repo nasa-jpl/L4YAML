@@ -23560,7 +23560,7 @@ abstracts over `_a` whose type the bound depends on).
 
 ## Phase 3 — Stage C: EmitterScannability discharge — `.flowmono` / `.body` / `.bridge` (Reflections 153–192)
 
-### Frontier status — the 4 remaining `sorry`s and the path to close them (snapshot 2026-06-26, R556)
+### Frontier status — the 4 remaining `sorry`s and the path to close them (snapshot 2026-06-26, R557)
 
 The reflections in this section all discharge a single end goal: the well-bracketing
 certificate `FlowSubrangesOk tokens` that lets the flow-collection parser provably
@@ -23579,36 +23579,39 @@ Sorries 1 and 2 are *literally the same proposition* `FlowSubrangesOk tokens` �
 producer family closes both. So the real count is **two distinct obligations + one
 duplicate**.
 
-**Current state (post-R556).** The map-carrier track is the active Family-A front. The
+**Current state (post-R557).** The map-carrier track is the active Family-A front. The
 `MapInteriorSeparators'` provider/leaf path narrated below (R538–R546) was found in R547 to
 rest on a REFUTED carrier — its `MapGrammarFacts'` conjuncts 5/6 are false on a bracket-valued
 map — and redirected to the corrected `MapInteriorSeparators''` (R547–R549). As of **R553 the
 corrected carrier's full arithmetic foundation is COMPLETE**: the gated rebase
 `mapGrammarFacts_rebase''` and its two kernels (`mapBracketClose_lt_of_gate` R551,
 `mapBracketOpen_balance_one` R552) all landed and probed, alongside the live per-window bridge
-`mapWindow_mapGrammarFacts''` (R550). **R554–R556 CONSUME that foundation**: the first three `''`
-carrier-chain bricks are now landed — the ASSEMBLE half `mapInteriorSeparators''_of_enclosing_provider`
-(R554, one `obtain` + the gated rebase), the provider-of-located packaging
-`mapEnclosingFacts''_provider_of_located` (R555, the located enclosing window → the provider
-existential, now also forwarding the `hiS ≤ tokens.size` bound), and the DISPATCHER
+`mapWindow_mapGrammarFacts''` (R550). **R554–R557 CONSUME that foundation, and brick (i) — the `''`
+carrier chain — is now COMPLETE (all four links landed)**: the ASSEMBLE half
+`mapInteriorSeparators''_of_enclosing_provider` (R554, one `obtain` + the gated rebase), the
+provider-of-located packaging `mapEnclosingFacts''_provider_of_located` (R555, the located enclosing
+window → the provider existential, forwarding the `hiS ≤ tokens.size` bound), the DISPATCHER
 `mapInteriorSeparators''_of_safebody_and_descent` (R556, the `dite` composing the two — the `= 0`
 branch sourcing the size bound from a new `h_hi_size : hi ≤ tokens.size` hypothesis, the `≠ 0` branch
-from `desc`'s existential). The genuinely-open Family-A math
-is now **four bricks**: (i) the `''` carrier chain — `mapInteriorSeparators''_of_enclosing_provider`
+from `desc`'s existential), and now the ROOT SEED `mapRoot_mapInteriorSeparators''` (R557, the
+dispatcher specialised to `[2, size-2)` with `h_hi_size` discharged by `Nat.sub_le` and both suppliers
+lifted as residuals, probed on REAL `{a:[1], b:2}` emission). The genuinely-open Family-A math is now
+**four bricks**: (i) the `''` carrier chain — `mapInteriorSeparators''_of_enclosing_provider`
 (**LANDED R554**), `mapEnclosingFacts''_provider_of_located` (**LANDED R555**),
 `mapInteriorSeparators''_of_safebody_and_descent` (**LANDED R556**), `mapRoot_mapInteriorSeparators''`
-(each the `''`
-mirror of a landed single-prime lemma, now that the rebase they consume exists; the `''` provider
-existential additionally carries `hiS ≤ tokens.size`, threaded from the recursion root's array
-bound — the dispatcher's `= 0` branch sources it from the window's own `hi ≤ tokens.size`, the `≠ 0`
-branch from the descent locator); (ii) the seq-side descent provider (the "hard B2 brick");
-(iii) `locate_map`; (iv) the M2 narrowing. With those, the JOINT driver (R534) runs at the root and
-sorries 1 + 2 are one `exact` each — plus reconciling the consumer field
-`MapLocated.h_key_bracket_succ` (`NonemptyStructure.lean:10531`) onto `MapGrammarFacts''`. Family B
-(sorries 3/4, content fidelity) is untouched. The chronological narrative below records how each
-piece was reached.
+(**LANDED R557**) — **all four links landed**; what remains under (i) is the root seed's two LIFTED
+suppliers, now legible as their own residuals: (i-a) the root window's own corrected facts
+`MapGrammarFacts'' tokens 2 (size-2)` off emission, which R557 established must come via the LIVE
+carrier-free route `mapGrammarFacts''_of_mapBodyProps` (R549) ∘ `mapBodyProps_of_recmapbody_window`
+(a root `RecMapBody` + the six pair-interior primitives, NEVER the strict carrier R550 proved
+unsatisfiable on bracket emission), and (i-b) the map descent provider for the `≠ 0` branch;
+(ii) the seq-side descent provider (the "hard B2 brick"); (iii) `locate_map`; (iv) the M2 narrowing.
+With those, the JOINT driver (R534) runs at the root and sorries 1 + 2 are one `exact` each — plus
+reconciling the consumer field `MapLocated.h_key_bracket_succ` (`NonemptyStructure.lean:10531`) onto
+`MapGrammarFacts''`. Family B (sorries 3/4, content fidelity) is untouched. The chronological narrative
+below records how each piece was reached.
 
-**Family A (`FlowSubrangesOk`) — where essentially all recent work (R512–R556) has gone.**
+**Family A (`FlowSubrangesOk`) — where essentially all recent work (R512–R557) has gone.**
 The landed assembler `flowSubrangesOk_of_window_producers` (`NonemptyStructure.lean:10904`)
 shows the goal reduces to: the boundary facts already in scope at each sorry **+ a seq
 window producer `h_seq_rec` (per-subrange `RecSeqBody`, keyed on a `.flowSequenceEnd`
@@ -31555,6 +31558,16 @@ The window's close bracket selects which body it is, and the *conjunction* carri
 **LANDED (R531 — `SeqInteriorSeparators.lean`):** build green at exactly 4 frontier sorries (`NonemptyStructure:11586` + `EmitterScannability:315/809/848`), full `L4YAML` + `Tests.Reflections` (410 jobs). New demo `Tests/Reflections/JointContentPackFromCarrier.lean` (proves the abstract `joint_content_pack` once — parametric in `close, Win, DeepS, DeepM, ContentS, ContentM, CarrierS, CarrierM, M2, EncS, EncM, provideS, provideM`, the dual-pack assembly where the map provider alone consumes the close token and the deferred `M2`; instantiates at toy guards and RUNS both packs — `hi = 3 → seqEnd`, `hi = 4 → mapEnd`; `demo` depends on no axioms), new memory `ref-content-pack-passthrough-manufacture`, `MEMORY.md` index updated.
 
 **Next step.** With R530's debt (b) discharged, brick (2) reduces to: (i) re-type the joint driver's `locate` marker to carry the depth-`0` balance `flowBracketBalance tokens lo m = 0`, and fold the two outer carriers + the deferred map fact + the frame bounds into the guard `G`, so the descend's `h_seq_pack`/`h_map_pack` come from `recbody_joint_content_pack` per-window and its `h_bal_m` from the strengthened marker; (iii) construct the concrete `locate_seq` (R527-fed dispatch + R510's route) and `locate_map` (R522 → R523/R525 → R524 → R527 → `recmapentry_pair_located`), each passed the JOINT oracle. Then `recbody_joint_navigator_driver`'s `.2` is the raw `h_map_rec` `flowSubrangesOk_of_window_producers` consumes (closing brick (2)), its `.1` the seq `h_seq_rec`. *[Acted on by Reflection 532: piece (i)'s descend-assembly part — "so the descend's `h_seq_pack`/`h_map_pack` come from `recbody_joint_content_pack` per-window" — is now LANDED as `recbody_joint_descend_tail_carrier`, the composition R531 ∘ R530 that feeds R531's output into R530's opaque content slot, producing the concrete `descend_tail` (= the suffix guard `G (m+1) hi`). The content debt is gone from the descend's interface; what remains for piece (i) is the driver-marker strengthening for `h_bal_m` and folding the carriers/M2/bounds into `G` so the driver's `descend_tail` slot is this lemma. Piece (iii) (the two concrete `locate`s) is untouched.]*
+
+### Reflection 557 — the FOURTH and LAST `''` carrier-chain brick: the ROOT SEED `mapRoot_mapInteriorSeparators''`. **Brick (i) of the open Family-A math is now COMPLETE — all four `''` chain links landed. The root seed is the R556 dispatcher specialised to `[2, size-2)`, with the dispatcher's new `h_hi_size : hi ≤ tokens.size` discharged from the recursion-root array bound `Nat.sub_le`, and BOTH per-window suppliers (`h_facts`, `desc`) lifted as [[ref-parametric-assembler-extraction]] residuals (vs the seq root seed, which PRODUCES `h_safe` and lifts only `desc` — the extra lift IS the map's extra residual). The inhabitation-debt payload: probed on REAL `{a:[1], b:2}` emission (rule 5), routing the genuine R549 corrected facts through the `= 0` branch — and the discovery that the lifted `h_facts`'s eventual producer is the LIVE carrier-free route R549 ∘ `mapBodyProps_of_recmapbody_window`, NOT the dead strict-carrier route R550 refuted.**
+
+**The lemma.** `mapRoot_mapInteriorSeparators'' tokens (h_facts : MapGrammarFacts'' tokens 2 (size-2)) (desc : …) : MapInteriorSeparators'' tokens 2 (size-2)` is a three-argument call of the R556 dispatcher at `lo := 2`, `hi := tokens.size - 2`: `mapInteriorSeparators''_of_safebody_and_descent tokens 2 (size-2) (Nat.sub_le tokens.size 2) h_facts desc`. The body is trivial — the *value* is in two places. First, it is the recursion's base case: the corrected per-window facts bridge `mapWindow_mapGrammarFacts''_general` (R550) funnels its `h_carrier0 : MapInteriorSeparators'' tokens 2 (size-2)` — the inhabited corrected carrier it instantiates at every gated sub-window — through exactly this seed, so this is the single point the whole `''` per-window pipeline bottoms out. Second, it is where the dispatcher's owed `h_hi_size` is discharged: `Nat.sub_le tokens.size 2 : size - 2 ≤ size` is the recursion-root array bound the R556 cost note flagged the `= 0` branch's window-absolute size field would need here.
+
+**Two lifted residuals — and which route is LIVE.** The seq root seed lifts only `desc` because `seqRoot_safeBodyUnit = (seqRoot_recseqbody …).toSafeBodyUnit` produces `h_safe` flat off emission, carrier-free, straight from the recursive deliverable `RecSeqBody`. The map root seed lifts BOTH because its `h_facts` producer is not yet built — and probing rule 3 BEFORE building it surfaced *why this matters*: the obvious composition `mapGrammarFacts''_of_mapBodyProps` (R549) ∘ `mapWindow_mapBodyProps` is the inhabitation-debt TRAP R550 already proved (the strict carrier `MapInteriorSeparators tokens 2 (size-2)` it consumes is UNSATISFIABLE on any bracket-valued emission, so R549 sits on a dead branch *through that producer*). But R549 is NOT intrinsically dead: composed instead with the CARRIER-FREE producer `mapBodyProps_of_recmapbody_window` (`NonemptyStructure.lean:10069` — it consumes a root `RecMapBody` plus the six pair-interior primitives, never a carrier, the map mirror of how the seq facts flow from `RecSeqBody`), it is the LIVE off-emission route for `MapGrammarFacts''`. So the residual this lift isolates is precise: a root `RecMapBody` off emission (`emitPairList_scans_recmapbody`) + the six pair-interior primitives — the map's standing extra residual the seq side never had.
+
+**The probe — REAL emission, not a degenerate stand-in.** `mapRoot_mapInteriorSeparators''_bracketVal` instantiates the seed at the genuine emission `fixtureMapSeqVal` (`{a:[1], b:2}`, `#guard`-grounded, `size = 15` so `[2, size-2) = [2, 13)` IS the real body window). `h_facts` is the REAL R549 witness `mapGrammarFacts''_of_mapBodyProps_bracketVal` — the corrected facts the R548/R549 bricks proved on the very bracket body the strict and robust forms FAIL, retyped `13 = size - 2`. `desc` (the `≠ 0` branch) is genuinely UNREACHABLE here and discharged by a bounded case-split: the only balance-`≠ 0` interior positions are `a ∈ {6,7}` inside the `[1]` value, which are SEQ-enclosed and so fail the `{`-enclosure conjunct of `MapTypedInterior` (`hgate.2.1` refuted by `decide`); every other `a ∈ [2,13]` has balance `0`, contradicting `hbal` (`decide`). So the `= 0` branch routes the real corrected facts through R555, recovering `MapInteriorSeparators'' fixtureMapSeqVal 2 (size-2)` off real emission — both dispatcher branches and the `Nat.sub_le` size discharge exercised. This is the first `''` probe that drives the carrier on a non-degenerate, genuinely-emitted body rather than a unit/degenerate span: rule 3 satisfied with rule-5 data. Axioms `[propext, Classical.choice, Quot.sound]` (Classical via the rebase + the R549 typed-locator machinery, no `sorryAx`), guarded with `#guard_msgs`. Green at exactly 4 frontier sorries (782 jobs).
+
+**Next step.** Brick (i) is link-complete; what remains under it are the root seed's two lifted suppliers, now legible as their own residuals. The cleaner next brick is **(i-a) the LIVE root-facts producer** — land `mapGrammarFacts''_of_recmapbody_window` (or its `SafeBody`-keyed twin), the R549 ∘ `mapBodyProps_of_recmapbody_window` composition, so the root seed can produce `h_facts` and lift only `desc` (the true seq-mirror shape); its honest residual is then a root `RecMapBody` off emission + the six pair-interior primitives. Then **(i-b) the map descent provider** (the map twin of the seq descent locator, the "hard B2 brick" on the seq side too). With (i-a)+(i-b) the root seed is supplier-complete; then `locate_map`, the M2 narrowing, and the `MapLocated.h_key_bracket_succ` reconciliation (`NonemptyStructure.lean:10531`) onto `MapGrammarFacts''` let the JOINT driver (R534) run at the root, closing sorries 1 + 2 with one `exact` each. Family B (sorries 3/4, content fidelity) remains a separate untouched effort.
 
 ### Reflection 556 — the THIRD `''` carrier-chain brick: the DISPATCHER `mapInteriorSeparators''_of_safebody_and_descent`, the `dite` composing the R554 ASSEMBLE half with the R555 provider-of-located. **The sharpest [[ref-additive-field-cost-by-keying]] case yet: ONE additive field (`hiS ≤ tokens.size`) shows TWO different keyings inside ONE lemma — the `= 0` branch CONSTRUCTS via R555 where the field is WINDOW-ABSOLUTE (sourced from a new dispatcher hypothesis, forwarded verbatim), the `≠ 0` branch FORWARDS `desc` where the field lives inside `desc`'s existential (the descent locator's burden). The whole cost over the `'` dispatcher is +1 dispatcher hypothesis and +1 conjunct in `desc`'s type; the body is the byte-identical assembler-driven `dite`. Tabulate the cost delta PER-ROLE, not as one uniform field cost.**
 

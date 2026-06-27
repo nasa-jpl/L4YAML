@@ -1113,6 +1113,62 @@ theorem mapInteriorSeparators''_of_safebody_and_descent
     else
       desc a b ha hab hb h hgate)
 
+/-- **The ROOT SEED — `MapInteriorSeparators''` at the outer map span `[2, size-2)`** (Phase J, the map
+    mirror of `seqRoot_seqInteriorSeparators` (`:3131`), per [[ref-universal-producer-root-seed-first]]:
+    the producer's root-seed brick).  This is the FOURTH and LAST link of the matching-close-pinned `''`
+    carrier chain — the recursion's base case that the corrected per-window facts bridge
+    `mapWindow_mapGrammarFacts''_general` (R550) funnels its `h_carrier0 : MapInteriorSeparators'' tokens
+    2 (size-2)` through (instantiating the inhabited corrected carrier at every gated sub-window).
+
+    It specialises the R556 dispatcher `mapInteriorSeparators''_of_safebody_and_descent` to `lo := 2`,
+    `hi := tokens.size - 2`, discharging the dispatcher's NEW `h_hi_size : hi ≤ tokens.size` directly from
+    the recursion-root array bound `Nat.sub_le tokens.size 2` (`size - 2 ≤ size`) — the exact discharge
+    the R556 cost note flagged this root seed owes for the `= 0` branch's window-absolute size field.
+
+    **Two lifted residuals (`[[ref-parametric-assembler-extraction]]`).**  Unlike the seq root seed, which
+    PRODUCES its `h_safe` flat off emission (`seqRoot_safeBodyUnit = RecSeqBody.toSafeBodyUnit`) and lifts
+    only `desc`, the map root seed lifts BOTH suppliers — the extra lift is the map's extra residual:
+
+    * `h_facts : MapGrammarFacts'' tokens 2 (size-2)` — the root window's OWN corrected facts.  Its
+      eventual off-emission producer is NOT the dead strict-carrier route (R550 proved
+      `MapInteriorSeparators tokens 2 (size-2)` — `mapWindow_mapBodyProps`'s `h_root_carrier` — is
+      UNSATISFIABLE on bracket emission, so `mapGrammarFacts''_of_mapBodyProps ∘ mapWindow_mapBodyProps` is
+      an inhabitation-debt trap), but the LIVE CARRIER-FREE route `mapGrammarFacts''_of_mapBodyProps`
+      (R549) ∘ `mapBodyProps_of_recmapbody_window` (`NonemptyStructure.lean:10069`, carrier-FREE: it
+      consumes a root `RecMapBody` plus the six pair-interior primitives, never a carrier) — the map twin
+      of how the seq separator facts flow from `RecSeqBody`, not from any carrier.  That producer (a root
+      `RecMapBody` off emission + the six primitives) is the residual this lift isolates.
+    * `desc` — the map descent provider for the strictly-nested gated sub-windows (the dispatcher's `≠ 0`
+      branch), lifted exactly as the seq root seed lifts its `desc`; the descent-locator residual.
+
+    **Inhabitation-debt probe (rule 3 + rule 5 — REAL emission, not a degenerate stand-in).**
+    `mapRoot_mapInteriorSeparators''_bracketVal` (`Tests/Reflections/MapCarrierRobustInhabitation.lean`,
+    R557) instantiates this at the GENUINE emission `fixtureMapSeqVal` (`{a:[1], b:2}`, `#guard`-grounded,
+    `size = 15` so the root span `[2, size-2) = [2, 13)` IS the real body window): `h_facts` is the REAL
+    R549 emission witness `mapGrammarFacts''_of_mapBodyProps_bracketVal` (the corrected facts the R548/R549
+    bricks proved on the very bracket body the strict/robust forms FAIL — not the unit-span
+    `mapGrammarFacts''_degenerate` the R556 probe used), and `desc` is discharged by the genuine fact that
+    the only balance-`≠ 0` positions (`a ∈ {6,7}`, inside the `[1]` value) are seq-enclosed, FAILING the
+    `{`-enclosure conjunct of `MapTypedInterior` — so the `≠ 0` branch's premises are contradictory there.
+    The `= 0` branch thus routes the real R549 facts through R555, recovering
+    `MapInteriorSeparators'' fixtureMapSeqVal 2 (size-2)` off real emission, BOTH dispatcher branches and
+    the `Nat.sub_le` size discharge exercised.
+
+    Verified-but-unconsumed: its two producers (the live-route root `MapGrammarFacts''` and the map
+    descent provider) do not exist yet; references no sorry site; frontier sorry count unchanged at 4. -/
+theorem mapRoot_mapInteriorSeparators''
+    (tokens : Array (Positioned YamlToken))
+    (h_facts : MapGrammarFacts'' tokens 2 (tokens.size - 2))
+    (desc : ∀ a b, 2 ≤ a → a ≤ b → b ≤ tokens.size - 2 →
+        flowBracketBalance tokens 2 a ≠ 0 → MapTypedInterior tokens a b →
+        ∃ loS hiS, loS ≤ a ∧ b ≤ hiS ∧ hiS ≤ tokens.size ∧ flowBracketBalance tokens loS a = 0 ∧
+          MapGrammarFacts'' tokens loS hiS) :
+    MapInteriorSeparators'' tokens 2 (tokens.size - 2) :=
+  mapInteriorSeparators''_of_safebody_and_descent tokens 2 (tokens.size - 2)
+    (Nat.sub_le tokens.size 2)
+    h_facts
+    desc
+
 /-- **Strict → robust map-facts weakening (R545)** — the first sub-brick of the still-deferred leaf
     `mapEnclosingFacts'_of_windowed_X`.  Every window where the STRICT `MapGrammarFacts` holds (a
     GENUINE complete map body, where each marker's content is truly interior) also satisfies the

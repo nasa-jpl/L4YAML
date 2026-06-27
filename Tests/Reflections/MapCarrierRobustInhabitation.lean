@@ -1063,6 +1063,47 @@ theorem mapInteriorSeparators''_via_dispatcher_unit
           · have hEq : a = b := by omega
             rw [← hEq]; exact mapGrammarFacts''_empty tokens a))
 
+/-! ## R557 — the `''` map ROOT SEED probed on REAL emission, both branches and the size discharge
+
+`mapRoot_mapInteriorSeparators''` (`SeqInteriorSeparators.lean`) is the FOURTH and last link of the
+matching-close-pinned `''` carrier chain: the R556 dispatcher specialised to the outer map span
+`[2, size-2)`, with the dispatcher's new `h_hi_size : hi ≤ tokens.size` discharged from the
+recursion-root array bound `Nat.sub_le` and BOTH per-window suppliers (`h_facts`, `desc`) lifted as
+parametric-assembler-extraction residuals (the map root seed lifts both, vs the seq root seed which
+PRODUCES `h_safe` and lifts only `desc` — the map's extra residual).
+
+Unlike the R556 unit-span dispatcher probe (degenerate `h_facts`, identity `desc` on `[lo, lo+1)`),
+this probes the root seed on the GENUINE bracket emission `fixtureMapSeqVal` (`{a:[1], b:2}`,
+`size = 15`, so `[2, size-2) = [2, 13)` IS the real body window, rule 5): `h_facts` is the REAL R549
+emission witness `mapGrammarFacts''_of_mapBodyProps_bracketVal` — the corrected facts proved on the very
+bracket body the strict/robust forms fail — routed through the dispatcher's `= 0` branch via R555.  The
+`desc` (`≠ 0`) branch is genuinely UNREACHABLE here: the only balance-`≠ 0` positions are `a ∈ {6,7}`
+inside the `[1]` value, which are SEQ-enclosed and so fail the `{`-enclosure conjunct of
+`MapTypedInterior`; every other interior `a` has balance `0`, contradicting `hbal`.  So `desc` is
+discharged by a bounded case-split, exhibiting the root seed as NON-VACUOUS on real emission with the
+real corrected facts flowing — rule 3 satisfied with rule-5 data, not a stand-in. -/
+
+/-- **De-risk for the R557 `''` ROOT SEED** — `mapRoot_mapInteriorSeparators''` is NON-VACUOUS on real
+    `{a:[1], b:2}` emission: its lifted `h_facts` is dischargeable by the REAL R549 corrected-facts
+    witness and its lifted `desc` is dischargeable (the `≠ 0` branch is unreachable — the only nested
+    positions fail `MapTypedInterior`'s `{`-enclosure).  Recovers `MapInteriorSeparators''` at the genuine
+    root span `[2, fixtureMapSeqVal.size - 2)` off emission. -/
+theorem mapRoot_mapInteriorSeparators''_bracketVal :
+    MapInteriorSeparators'' fixtureMapSeqVal 2 (fixtureMapSeqVal.size - 2) :=
+  mapRoot_mapInteriorSeparators'' fixtureMapSeqVal
+    (by
+      have hsz : fixtureMapSeqVal.size - 2 = 13 := by decide
+      rw [hsz]; exact mapGrammarFacts''_of_mapBodyProps_bracketVal)
+    (fun a b ha hab hb hbal hgate => by
+      have hsz : fixtureMapSeqVal.size - 2 = 13 := by decide
+      rw [hsz] at hb
+      have hcases : a = 2 ∨ a = 3 ∨ a = 4 ∨ a = 5 ∨ a = 6 ∨ a = 7 ∨
+          a = 8 ∨ a = 9 ∨ a = 10 ∨ a = 11 ∨ a = 12 ∨ a = 13 := by omega
+      rcases hcases with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
+        first
+        | exact absurd (by decide) hbal
+        | exact absurd hgate.2.1 (by decide))
+
 -- Axiom audit — the carrier inhabitation and the boundary-survival probe lean only on core; the
 -- ASSEMBLE non-vacuity checks also pull in `Classical.choice` through the rebase's
 -- `flowBracketBalance_compose`.
@@ -1206,5 +1247,14 @@ theorem mapInteriorSeparators''_via_dispatcher_unit
  Quot.sound] -/
 #guard_msgs in
 #print axioms mapInteriorSeparators''_via_dispatcher_unit
+
+-- R557 — the `''` root-seed probe routes the REAL R549 corrected facts through the dispatcher's `= 0`
+-- branch, so it pulls `Classical.choice`/`Quot.sound` through the rebase + the R549 typed-locator
+-- machinery (`mapBodyProps_assemble`), never the tainted structure lemma — no `sorryAx`.
+/-- info: 'MapCarrierRobustInhabitation.mapRoot_mapInteriorSeparators''_bracketVal' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs in
+#print axioms mapRoot_mapInteriorSeparators''_bracketVal
 
 end MapCarrierRobustInhabitation
