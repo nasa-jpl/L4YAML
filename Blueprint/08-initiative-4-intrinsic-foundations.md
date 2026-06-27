@@ -23560,7 +23560,6 @@ abstracts over `_a` whose type the bound depends on).
 
 ## Phase 3 — Stage C: EmitterScannability discharge — `.flowmono` / `.body` / `.bridge` (Reflections 153–192)
 
-=
 The reflections in this section all discharge a single end goal: the well-bracketing
 certificate `FlowSubrangesOk tokens` that lets the flow-collection parser provably
 accept emitted output. The frontier stands at **exactly four `sorry`s**, in **two
@@ -23570,7 +23569,7 @@ actual `sorry` body sits deeper, so both are listed:
 | # | Declaration (build warning) | `sorry` body | Goal | Family |
 |---|------|------|------|--------|
 | 1 | `EmitterScannability.lean:315` `parseStream_emitSequence` | `:359` | `FlowSubrangesOk tokens` | A — bracketing certificate |
-| 2 | `NonemptyStructure.lean:11586` `scanFiltered_emitMap_nonempty_structure` | `:11834` | `FlowSubrangesOk tokens` (same prop) | A |
+| 2 | `NonemptyStructure.lean:11864` `scanFiltered_emitMap_nonempty_structure` | `:12112` | `FlowSubrangesOk tokens` (same prop) | A |
 | 3 | `EmitterScannability.lean:809` `emit_roundtrip_sequence_content_eq` | `:845` | seq non-empty `contentEq` | B — content fidelity |
 | 4 | `EmitterScannability.lean:848` `emit_roundtrip_mapping_content_eq` | `:885` | mapping non-empty `contentEq` | B |
 
