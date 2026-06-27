@@ -9365,6 +9365,116 @@ theorem flowBodyContent_subblock_located_map
     flowBodyContent_child_bracket_seq_map tokens lo lo j hi h_deep (Nat.le_refl lo) (by omega) h_open
       (fun i hi1 hi2 => h_floor i (by omega) (by omega))⟩
 
+/-- **The sub-block's FULL-window `FlowBodyContent` AND `h_noInterior`, single-node tightness INTERNALIZED
+    -- SEQ-opener axis** (Phase J -- sub-brick (i'-d), the brick that delivers BOTH per-sub-block data
+    inputs `recseqentry_whole_window_seq` (`NonemptyStructure.lean:9436`) demands beyond the window/IH:
+    `h_content : FlowBodyContent tokens lo hi` over the CARVED window end `hi` (not the located span
+    `j+1`), and the SEPARATE `h_noInterior` (no depth-`0` `.flowEntry` strictly inside).
+
+    R567's `flowBodyContent_subblock_located_seq` sourced content only over the LOCATED span `[lo, j+1)`,
+    leaving the single-node tightness `j + 1 = hi` (the located bracket close is the LAST token of the
+    carved sub-block window) as the deferred fact.  This brick DISCHARGES that tightness and lifts the
+    content to the full window.  The tightness is NOT derivable from balance alone (the window Dyck floor
+    `>= 0` permits a depth-`0` touch mid-window -- two nodes); it is the GRAMMAR guarantee that the carved
+    value sub-block is a SINGLE node.  The shared two-sided squeeze `firstEntryBoundary_bracket_resolve`
+    (`NonemptyStructure.lean:8681`) supplies it: with `m := hi` (the carved end as a depth-`0` marker via
+    `h_total` + `Or.inl rfl`), the located close `j`'s positivity floor (R566, the LOWER bound) and the
+    grammar successor `h_succ` (the UPPER bound) pin `hi = j + 1`.  Then R566's located-span strict floor
+    `forall i, lo < i -> i < j+1 -> balance lo i >= 1` becomes the FULL-window floor by rewriting
+    `hi = j+1`, which (a) feeds R564 `flowBodyContent_subblock_of_deepSeq_floor` for `FlowBodyContent`
+    and (b) refutes any interior depth-`0` `.flowEntry` (`balance lo k >= 1 /= 0`) for `h_noInterior` --
+    the two outputs the dispatch wants, from ONE floor (the R563 brick already flagged the floor does
+    double duty).
+
+    Two residuals are LIFTED, both genuine GRAMMAR facts with named producers (so neither is an
+    inhabitation-debt trap, [[ref-inhabitation-debt-validate-target-defs]] rule 3): `h_least` (the carved
+    end `hi` is the LEAST depth-`0` boundary marker after `lo` -- the skeleton's minimality
+    `mapPairSkeleton_locate` produces, rebased to the value-block frame via `balance lo_map (kv+1) = 0`)
+    and `h_succ` (after a complete bracket value the next token is `.flowEntry` or the body close,
+    `mapPairSubblocks_flowBodyWindow`'s `h_value_bracket_succ` / `WellBracketed.lean`'s
+    `map_value_bracket_succ_reduce` produce, in the resolve's `j+1 = hi or .flowEntry` shape).  `h_succ`
+    is a producer-GUARDED universal over the internally-located `j` ([[ref-producer-guarded-quantifier]]),
+    guarded by the close facts so it ranges only over value-END positions (a bare universal would also
+    fire at every interior separator and be undischargeable).  CONSUMES R566
+    `flowSubblock_matchingClose_floor_seq` (its first content consumer beyond R567), R564
+    `flowBodyContent_subblock_of_deepSeq_floor`, and `firstEntryBoundary_bracket_resolve` (its first
+    consumer -- discharging that long-verified-but-unconsumed resolve's inhabitation-debt ALARM).
+    Verified-but-unconsumed until `recmappair_window_dispatch_map` threads it; references no sorry site,
+    frontier sorry count unchanged at 4. -/
+theorem flowSubblock_content_and_noInterior_seq
+    (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_lo_hi : lo < hi) (h_hi_sz : hi ≤ tokens.size)
+    (h_deep : FlowBodyContentDeepSeq tokens lo hi)
+    (h_open : tokens[lo]!.val = .flowSequenceStart)
+    (h_total : flowBracketBalance tokens lo hi = 0)
+    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
+    (h_wt : WellTyped ((tokens.toList.take hi).drop lo))
+    (h_least : ∀ k, lo < k → k < hi →
+      ¬ (flowBracketBalance tokens lo k = 0 ∧ (k = hi ∨ tokens[k]!.val = .flowEntry)))
+    (h_succ : ∀ j, lo < j → j < hi → tokens[j]!.val = .flowSequenceEnd →
+      flowBracketBalance tokens (lo + 1) j = 0 →
+      (j + 1 = hi ∨ tokens[j + 1]!.val = .flowEntry)) :
+    FlowBodyContent tokens lo hi ∧
+      (∀ k, lo < k → k < hi →
+        ¬ (flowBracketBalance tokens lo k = 0 ∧ tokens[k]!.val = .flowEntry)) := by
+  obtain ⟨j, h_lo_j, h_j_hi, h_jclose, h_inner, h_floor⟩ :=
+    flowSubblock_matchingClose_floor_seq tokens lo hi h_lo_hi h_hi_sz h_open h_total h_dyck h_wt
+  -- single-node tightness `hi = j+1`, via the shared bracket resolve (marker `m := hi`).
+  have h_open_delta : flowBracketDelta tokens[lo]!.val = 1 := by rw [h_open]; rfl
+  have h_close_delta : flowBracketDelta tokens[j]!.val = -1 := by rw [h_jclose]; rfl
+  have h_tight : hi = j + 1 :=
+    firstEntryBoundary_bracket_resolve tokens lo hi hi j h_hi_sz h_lo_hi (Nat.le_refl hi)
+      ⟨h_total, Or.inl rfl⟩ h_least h_open_delta h_lo_j h_j_hi h_close_delta h_inner
+      (fun i hi1 hi2 => h_floor i hi1 (by omega)) (h_succ j h_lo_j h_j_hi h_jclose h_inner)
+  -- the FULL-window strict floor falls out by rewriting `hi = j+1`.
+  have h_floor_full : ∀ i, lo < i → i < hi → flowBracketBalance tokens lo i ≥ 1 := by
+    intro i hi1 hi2; exact h_floor i hi1 (by omega)
+  refine ⟨flowBodyContent_subblock_of_deepSeq_floor tokens lo hi h_deep h_floor_full, ?_⟩
+  intro k hk1 hk2
+  rintro ⟨hbal, _hfe⟩
+  have := h_floor_full k hk1 hk2
+  omega
+
+/-- **The sub-block's FULL-window `FlowBodyContent` AND `h_noInterior` -- MAP-opener axis.**  The
+    orthogonal mirror of `flowSubblock_content_and_noInterior_seq` for a `{`-opened value (or key)
+    sub-block: located via R566's `flowSubblock_matchingClose_floor_map` (close `.flowMappingEnd`), with
+    the AXIS-AGNOSTIC `firstEntryBoundary_bracket_resolve` (reads only `flowBracketDelta tokens[j] = -1`,
+    which both `]` and `}` satisfy) and the AXIS-FREE R564 content bridge (its `FlowBodyContentDeepSeq` is
+    the same -- the value is consumed as a SEQ-entry).  Only the head-open token, the locator, and the
+    `h_succ` close token swap `[`->`{`.  CONSUMES R566's `_map` locator + R564 + the resolve.
+    Verified-but-unconsumed; references no sorry site, frontier sorry count unchanged at 4. -/
+theorem flowSubblock_content_and_noInterior_map
+    (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_lo_hi : lo < hi) (h_hi_sz : hi ≤ tokens.size)
+    (h_deep : FlowBodyContentDeepSeq tokens lo hi)
+    (h_open : tokens[lo]!.val = .flowMappingStart)
+    (h_total : flowBracketBalance tokens lo hi = 0)
+    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
+    (h_wt : WellTyped ((tokens.toList.take hi).drop lo))
+    (h_least : ∀ k, lo < k → k < hi →
+      ¬ (flowBracketBalance tokens lo k = 0 ∧ (k = hi ∨ tokens[k]!.val = .flowEntry)))
+    (h_succ : ∀ j, lo < j → j < hi → tokens[j]!.val = .flowMappingEnd →
+      flowBracketBalance tokens (lo + 1) j = 0 →
+      (j + 1 = hi ∨ tokens[j + 1]!.val = .flowEntry)) :
+    FlowBodyContent tokens lo hi ∧
+      (∀ k, lo < k → k < hi →
+        ¬ (flowBracketBalance tokens lo k = 0 ∧ tokens[k]!.val = .flowEntry)) := by
+  obtain ⟨j, h_lo_j, h_j_hi, h_jclose, h_inner, h_floor⟩ :=
+    flowSubblock_matchingClose_floor_map tokens lo hi h_lo_hi h_hi_sz h_open h_total h_dyck h_wt
+  have h_open_delta : flowBracketDelta tokens[lo]!.val = 1 := by rw [h_open]; rfl
+  have h_close_delta : flowBracketDelta tokens[j]!.val = -1 := by rw [h_jclose]; rfl
+  have h_tight : hi = j + 1 :=
+    firstEntryBoundary_bracket_resolve tokens lo hi hi j h_hi_sz h_lo_hi (Nat.le_refl hi)
+      ⟨h_total, Or.inl rfl⟩ h_least h_open_delta h_lo_j h_j_hi h_close_delta h_inner
+      (fun i hi1 hi2 => h_floor i hi1 (by omega)) (h_succ j h_lo_j h_j_hi h_jclose h_inner)
+  have h_floor_full : ∀ i, lo < i → i < hi → flowBracketBalance tokens lo i ≥ 1 := by
+    intro i hi1 hi2; exact h_floor i hi1 (by omega)
+  refine ⟨flowBodyContent_subblock_of_deepSeq_floor tokens lo hi h_deep h_floor_full, ?_⟩
+  intro k hk1 hk2
+  rintro ⟨hbal, _hfe⟩
+  have := h_floor_full k hk1 hk2
+  omega
+
 /-- **The FULL `windowFacts` triple from emission, SEQ source** —
     `(i'-b-B2c-(d)-seqWindowFacts-of-emit-seq)`, R432, the brick that completes the CONTENT of the flat
     per-window provider `seqRec_of_carrier_and_windowFacts_seq` consumes: at every seq window it produces

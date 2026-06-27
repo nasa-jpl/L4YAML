@@ -1908,6 +1908,77 @@ theorem flowBodyContent_via_located_content_real_valBlock :
 #guard_msgs in
 #print axioms flowBodyContent_via_located_content_real_valBlock
 
+/-! ## R568 — single-node tightness INTERNALIZED: the full-window content + `h_noInterior` from window facts
+
+R567 sourced `FlowBodyContent` only over the LOCATED span `[5, j+1)`, leaving single-node tightness
+`j + 1 = e` (the carved sub-block window end) as the deferred fact.  R568 discharges it via the shared
+`firstEntryBoundary_bracket_resolve` two-sided squeeze and delivers BOTH per-sub-block inputs
+`recseqentry_whole_window_seq` demands over the CARVED end `hi`: `FlowBodyContent tokens lo hi` AND the
+separate `h_noInterior` — from ONE floor.
+
+Inhabitation-debt discipline (rule 3, a lifted hypothesis with no producer is the alarm): the two LIFTED
+grammar residuals `h_least` (minimality of the carved end) and `h_succ` (the value-end successor) are NOT
+left untested — both are `decide`-grounded on the genuine `{a:[1], b:2}` value sub-block `[5, 8)`, where
+`j = 7` (the `]`), `j + 1 = 8 = e`, and the successor fires the `j + 1 = hi` disjunct.
+`flowSubblock_content_and_noInterior_real_valBlock` FIRES the whole locate→tighten→content chain (all eight
+domain inputs grounded); `flowSubblock_noInterior_real_fires` reads the SECOND output (`h_noInterior`) at
+the genuine interior `]` index 7, confirming the no-interior-separator guarantee is a usable fact on real
+emission.  Only the seq twin is probeable (`{a:[1], b:2}` has a SEQ value `[1]`, no nested map value);
+`flowSubblock_content_and_noInterior_map` lands audited-but-unprobed as R566/R567's `_map` did. -/
+
+/-- **R568 — the locate→tighten→content chain FIRED on the real value sub-block.**  All eight domain inputs
+    are `decide`-grounded on genuine `{a:[1], b:2}` emission — including the two lifted grammar facts
+    `h_least` (the carved end `8` is the least depth-`0` marker after `5`) and `h_succ` (after the value's
+    `]` at `7` the successor `8 = e` fires) — so the resolve pins `8 = j + 1` and the FULL-window
+    `FlowBodyContent fixtureMapSeqVal 5 8` + `h_noInterior` fall out together. -/
+theorem flowSubblock_content_and_noInterior_real_valBlock :
+    FlowBodyContent fixtureMapSeqVal 5 8 ∧
+      (∀ k, 5 < k → k < 8 →
+        ¬ (flowBracketBalance fixtureMapSeqVal 5 k = 0 ∧ fixtureMapSeqVal[k]!.val = .flowEntry)) :=
+  flowSubblock_content_and_noInterior_seq fixtureMapSeqVal 5 8 (by decide) (by decide)
+    subblock_deepSeq_real_valBlock (by decide) (by decide)
+    (by intro i h1 h2; rcases (show i = 5 ∨ i = 6 ∨ i = 7 ∨ i = 8 by omega) with rfl | rfl | rfl | rfl <;> decide)
+    (by unfold WellTyped; decide)
+    (by intro k h1 h2; rcases (show k = 6 ∨ k = 7 by omega) with rfl | rfl <;> decide)
+    (by intro j h1 h2 hclose hinner
+        rcases (show j = 6 ∨ j = 7 by omega) with rfl | rfl
+        · exact absurd hclose (by decide)
+        · exact Or.inl rfl)
+
+/-- **R568 — the SECOND output (`h_noInterior`) read at the genuine interior `]`.**  Extracts the
+    no-depth-`0`-`.flowEntry` guarantee at index `7` (the value's `]`) — the fact
+    `recseqentry_whole_window_seq` consumes separately from the content — confirming it is delivered as a
+    usable refutation on real emission, not merely well-typed. -/
+theorem flowSubblock_noInterior_real_fires :
+    ¬ (flowBracketBalance fixtureMapSeqVal 5 7 = 0 ∧ fixtureMapSeqVal[7]!.val = .flowEntry) :=
+  flowSubblock_content_and_noInterior_real_valBlock.2 7 (by decide) (by decide)
+
+-- R568 audits — the full-window producer composes R566's locator + `firstEntryBoundary_bracket_resolve`
+-- (both pulling `Classical.choice` via `flowBracketBalance_compose`) with the axis-free R564 content bridge.
+/-- info: 'L4YAML.Proofs.EmitterScannability.flowSubblock_content_and_noInterior_seq' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs in
+#print axioms flowSubblock_content_and_noInterior_seq
+
+/-- info: 'L4YAML.Proofs.EmitterScannability.flowSubblock_content_and_noInterior_map' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs in
+#print axioms flowSubblock_content_and_noInterior_map
+
+/-- info: 'MapCarrierRobustInhabitation.flowSubblock_content_and_noInterior_real_valBlock' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs in
+#print axioms flowSubblock_content_and_noInterior_real_valBlock
+
+/-- info: 'MapCarrierRobustInhabitation.flowSubblock_noInterior_real_fires' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs in
+#print axioms flowSubblock_noInterior_real_fires
+
 -- Axiom audit — the carrier inhabitation and the boundary-survival probe lean only on core; the
 -- ASSEMBLE non-vacuity checks also pull in `Classical.choice` through the rebase's
 -- `flowBracketBalance_compose`.
