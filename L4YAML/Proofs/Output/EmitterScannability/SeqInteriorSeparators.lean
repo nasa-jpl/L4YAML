@@ -947,6 +947,49 @@ theorem mapEnclosingFacts'_provider_of_located
       MapGrammarFacts' tokens loS hiS :=
   ⟨loS, hiS, h_loS_a, h_b_hiS, h_bal0, h_facts⟩
 
+/-- **The `''` map enclosing-facts `provider`, ASSEMBLED from a LOCATED enclosing map (R555)** — the
+    `''` mirror of `mapEnclosingFacts'_provider_of_located` (`:941`) and the SECOND link of the
+    matching-close-pinned carrier chain, feeding the R554 ASSEMBLE half
+    `mapInteriorSeparators''_of_enclosing_provider` (`:900`).  Lift the locator's eventual output as
+    hypotheses — a located enclosing map body `[loS, hiS)` with the gated window re-seated at its top
+    level (`flowBracketBalance tokens loS a = 0`), enclosing the window (`loS ≤ a`, `b ≤ hiS`), bounded
+    by the array (`hiS ≤ tokens.size`), and its bundled corrected facts `MapGrammarFacts'' tokens loS hiS`
+    — and the provider's existential is discharged in ONE step: package the witnesses.  No locate
+    analysis here: that is isolated as the residual.
+
+    **The SIZE conjunct is the ONLY shape-difference from the `'` twin**
+    ([[ref-additive-field-cost-by-keying]] — an additive carrier field's per-arm cost is arm ROLE ×
+    field KEYING).  This is a CONSTRUCTING arm packaging a WINDOW-ABSOLUTE field: the `hiS ≤ tokens.size`
+    bound the R554 ASSEMBLE half added to the provider existential (forced by the gated rebase's
+    `mapBracketOpen_balance_one` size need) is here lifted verbatim as the new hypothesis `h_hiS_size`
+    and forwarded into the tuple unchanged — NO re-establishment, because `hiS` is the located window's
+    absolute right edge, not a walking cursor.  Everything else — `loS ≤ a`, `b ≤ hiS`, the re-seat, the
+    facts — transports byte-for-byte from the `'` packaging.  So the brick's whole cost is +1 lifted
+    hypothesis, +1 existential conjunct: the SIZE burden the chain must now thread, stated at exactly the
+    link that packages it (and which the still-owed dispatcher/root-seed must each source — at the root
+    from `hi ≤ tokens.size`, down the descent from the locator).
+
+    INHABITATION-DEBT discipline ([[ref-inhabitation-debt-validate-target-defs]] rule 3 — a hypothesis
+    with no producer is the alarm; here BOTH the lifted `MapGrammarFacts''` facts AND the NEW size bound):
+    `Tests/Reflections/MapCarrierRobustInhabitation.lean`'s
+    `mapInteriorSeparators''_via_provider_of_located_unit` builds the R554 provider on a unit span by
+    calling THIS assembler with the identity enclosing window (`loS = a`, `hiS = b`, corrected facts via
+    `mapGrammarFacts''_degenerate`/`_empty`, size bound from `b ≤ lo+1 ≤ tokens.size` under the explicit
+    `lo+1 ≤ tokens.size` precondition) and recovers the inhabited `''` carrier through the real
+    ASSEMBLE→provider-of-located path — confirming the lifted facts AND the size bound are JOINTLY
+    satisfiable, not a trap.  The explicit precondition is the honest record of the one new obligation
+    (absent from the `'` twin's all-`tokens` probe), not a vacuous generalization.  Verified-but-unconsumed
+    (its consumers — the `''` dispatcher and root seed — do not exist yet); references no sorry site;
+    frontier sorry count unchanged at 4. -/
+theorem mapEnclosingFacts''_provider_of_located
+    (tokens : Array (Positioned YamlToken)) (a b loS hiS : Nat)
+    (h_loS_a : loS ≤ a) (h_b_hiS : b ≤ hiS) (h_hiS_size : hiS ≤ tokens.size)
+    (h_bal0 : flowBracketBalance tokens loS a = 0)
+    (h_facts : MapGrammarFacts'' tokens loS hiS) :
+    ∃ loS hiS, loS ≤ a ∧ b ≤ hiS ∧ hiS ≤ tokens.size ∧ flowBracketBalance tokens loS a = 0 ∧
+      MapGrammarFacts'' tokens loS hiS :=
+  ⟨loS, hiS, h_loS_a, h_b_hiS, h_hiS_size, h_bal0, h_facts⟩
+
 /-- **The per-window map DISPATCHER** — the boundary-robust map twin of
     `seqInteriorSeparators_of_safebody_and_descent` (`:2343`): the `dite` case-split that reduces ONE
     map window's `MapInteriorSeparators' tokens lo hi` to two suppliers — the window's OWN robust facts

@@ -23560,7 +23560,7 @@ abstracts over `_a` whose type the bound depends on).
 
 ## Phase 3 — Stage C: EmitterScannability discharge — `.flowmono` / `.body` / `.bridge` (Reflections 153–192)
 
-### Frontier status — the 4 remaining `sorry`s and the path to close them (snapshot 2026-06-26, R554)
+### Frontier status — the 4 remaining `sorry`s and the path to close them (snapshot 2026-06-26, R555)
 
 The reflections in this section all discharge a single end goal: the well-bracketing
 certificate `FlowSubrangesOk tokens` that lets the flow-collection parser provably
@@ -23579,28 +23579,32 @@ Sorries 1 and 2 are *literally the same proposition* `FlowSubrangesOk tokens` �
 producer family closes both. So the real count is **two distinct obligations + one
 duplicate**.
 
-**Current state (post-R554).** The map-carrier track is the active Family-A front. The
+**Current state (post-R555).** The map-carrier track is the active Family-A front. The
 `MapInteriorSeparators'` provider/leaf path narrated below (R538–R546) was found in R547 to
 rest on a REFUTED carrier — its `MapGrammarFacts'` conjuncts 5/6 are false on a bracket-valued
 map — and redirected to the corrected `MapInteriorSeparators''` (R547–R549). As of **R553 the
 corrected carrier's full arithmetic foundation is COMPLETE**: the gated rebase
 `mapGrammarFacts_rebase''` and its two kernels (`mapBracketClose_lt_of_gate` R551,
 `mapBracketOpen_balance_one` R552) all landed and probed, alongside the live per-window bridge
-`mapWindow_mapGrammarFacts''` (R550). **R554 starts CONSUMING that foundation**: the first `''`
-carrier-chain brick, the ASSEMBLE half `mapInteriorSeparators''_of_enclosing_provider`, is now
-landed (one `obtain` + the gated rebase). The genuinely-open Family-A math is now **four bricks**:
-(i) the `''` carrier chain — `mapInteriorSeparators''_of_enclosing_provider` (**LANDED R554**),
-`mapEnclosingFacts''_provider_of_located`, `mapInteriorSeparators''_of_safebody_and_descent`,
-`mapRoot_mapInteriorSeparators''` (each the `''` mirror of a landed single-prime lemma, now that
-the rebase they consume exists; the `''` provider existential additionally carries
-`hiS ≤ tokens.size`, threaded from the recursion root's array bound); (ii) the seq-side descent
-provider (the "hard B2 brick"); (iii) `locate_map`; (iv) the M2 narrowing. With those, the JOINT
-driver (R534) runs at the root and sorries 1 + 2 are one `exact` each — plus reconciling the
-consumer field `MapLocated.h_key_bracket_succ` (`NonemptyStructure.lean:10531`) onto
-`MapGrammarFacts''`. Family B (sorries 3/4, content fidelity) is untouched. The chronological
-narrative below records how each piece was reached.
+`mapWindow_mapGrammarFacts''` (R550). **R554–R555 CONSUME that foundation**: the first two `''`
+carrier-chain bricks are now landed — the ASSEMBLE half `mapInteriorSeparators''_of_enclosing_provider`
+(R554, one `obtain` + the gated rebase) and the provider-of-located packaging
+`mapEnclosingFacts''_provider_of_located` (R555, the located enclosing window → the provider
+existential, now also forwarding the `hiS ≤ tokens.size` bound). The genuinely-open Family-A math
+is now **four bricks**: (i) the `''` carrier chain — `mapInteriorSeparators''_of_enclosing_provider`
+(**LANDED R554**), `mapEnclosingFacts''_provider_of_located` (**LANDED R555**),
+`mapInteriorSeparators''_of_safebody_and_descent`, `mapRoot_mapInteriorSeparators''` (each the `''`
+mirror of a landed single-prime lemma, now that the rebase they consume exists; the `''` provider
+existential additionally carries `hiS ≤ tokens.size`, threaded from the recursion root's array
+bound — the dispatcher's `= 0` branch sources it from the window's own `hi ≤ tokens.size`, the `≠ 0`
+branch from the descent locator); (ii) the seq-side descent provider (the "hard B2 brick");
+(iii) `locate_map`; (iv) the M2 narrowing. With those, the JOINT driver (R534) runs at the root and
+sorries 1 + 2 are one `exact` each — plus reconciling the consumer field
+`MapLocated.h_key_bracket_succ` (`NonemptyStructure.lean:10531`) onto `MapGrammarFacts''`. Family B
+(sorries 3/4, content fidelity) is untouched. The chronological narrative below records how each
+piece was reached.
 
-**Family A (`FlowSubrangesOk`) — where essentially all recent work (R512–R554) has gone.**
+**Family A (`FlowSubrangesOk`) — where essentially all recent work (R512–R555) has gone.**
 The landed assembler `flowSubrangesOk_of_window_producers` (`NonemptyStructure.lean:10904`)
 shows the goal reduces to: the boundary facts already in scope at each sorry **+ a seq
 window producer `h_seq_rec` (per-subrange `RecSeqBody`, keyed on a `.flowSequenceEnd`
@@ -31547,6 +31551,18 @@ The window's close bracket selects which body it is, and the *conjunction* carri
 **LANDED (R531 — `SeqInteriorSeparators.lean`):** build green at exactly 4 frontier sorries (`NonemptyStructure:11586` + `EmitterScannability:315/809/848`), full `L4YAML` + `Tests.Reflections` (410 jobs). New demo `Tests/Reflections/JointContentPackFromCarrier.lean` (proves the abstract `joint_content_pack` once — parametric in `close, Win, DeepS, DeepM, ContentS, ContentM, CarrierS, CarrierM, M2, EncS, EncM, provideS, provideM`, the dual-pack assembly where the map provider alone consumes the close token and the deferred `M2`; instantiates at toy guards and RUNS both packs — `hi = 3 → seqEnd`, `hi = 4 → mapEnd`; `demo` depends on no axioms), new memory `ref-content-pack-passthrough-manufacture`, `MEMORY.md` index updated.
 
 **Next step.** With R530's debt (b) discharged, brick (2) reduces to: (i) re-type the joint driver's `locate` marker to carry the depth-`0` balance `flowBracketBalance tokens lo m = 0`, and fold the two outer carriers + the deferred map fact + the frame bounds into the guard `G`, so the descend's `h_seq_pack`/`h_map_pack` come from `recbody_joint_content_pack` per-window and its `h_bal_m` from the strengthened marker; (iii) construct the concrete `locate_seq` (R527-fed dispatch + R510's route) and `locate_map` (R522 → R523/R525 → R524 → R527 → `recmapentry_pair_located`), each passed the JOINT oracle. Then `recbody_joint_navigator_driver`'s `.2` is the raw `h_map_rec` `flowSubrangesOk_of_window_producers` consumes (closing brick (2)), its `.1` the seq `h_seq_rec`. *[Acted on by Reflection 532: piece (i)'s descend-assembly part — "so the descend's `h_seq_pack`/`h_map_pack` come from `recbody_joint_content_pack` per-window" — is now LANDED as `recbody_joint_descend_tail_carrier`, the composition R531 ∘ R530 that feeds R531's output into R530's opaque content slot, producing the concrete `descend_tail` (= the suffix guard `G (m+1) hi`). The content debt is gone from the descend's interface; what remains for piece (i) is the driver-marker strengthening for `h_bal_m` and folding the carriers/M2/bounds into `G` so the driver's `descend_tail` slot is this lemma. Piece (iii) (the two concrete `locate`s) is untouched.]*
+
+### Reflection 555 — the SECOND `''` carrier-chain brick: `mapEnclosingFacts''_provider_of_located` packages a LOCATED enclosing window into the R554 ASSEMBLE half's `provider` existential. **A trivial one-`obtain`-of-nothing packaging lemma — pure existential intro — but the reflection is what its triviality MEASURES: the whole cost of mirroring the `'` provider-of-located to `''` is +1 lifted hypothesis (`hiS ≤ tokens.size`) and +1 existential conjunct, because the new SIZE field is WINDOW-ABSOLUTE and the arm is CONSTRUCTING, so it is forwarded VERBATIM, not re-established. The [[ref-additive-field-cost-by-keying]] cost law, read off a packaging lemma where it is starkest.**
+
+**The packaging lemma (`mapEnclosingFacts''_provider_of_located`, `SeqInteriorSeparators.lean`, immediately after the `'` twin `mapEnclosingFacts'_provider_of_located`).** The `''` mirror of the single-prime provider-of-located and the SECOND link of the matching-close-pinned carrier chain, feeding the R554 ASSEMBLE half. It lifts the locator's eventual output as hypotheses — a located enclosing map body `[loS,hiS)` re-seated at `a`'s depth (`flowBracketBalance tokens loS a = 0`), enclosing the window (`loS ≤ a`, `b ≤ hiS`), bounded by the array (`hiS ≤ tokens.size`), with bundled corrected facts `MapGrammarFacts'' tokens loS hiS` — and discharges the provider's existential in ONE step by packaging the witnesses (`⟨loS, hiS, h_loS_a, h_b_hiS, h_hiS_size, h_bal0, h_facts⟩`). No locate analysis here: that is isolated as the residual, exactly as the `'` twin isolated it.
+
+**What the triviality measures — the [[ref-additive-field-cost-by-keying]] cost law.** The single shape-difference from the `'` packaging is the `hiS ≤ tokens.size` SIZE bound the R554 ASSEMBLE half added to the provider existential (forced by the gated rebase's `mapBracketOpen_balance_one` size need). This lemma is a CONSTRUCTING arm — it builds the provider tuple — and the SIZE field is WINDOW-ABSOLUTE: `hiS` is the located window's absolute right edge, not a walking cursor. So the cost law says the field is forwarded VERBATIM (`h_hiS_size` lifted as a hypothesis, dropped straight into the tuple), with NO re-establishment — and every other field (`loS ≤ a`, `b ≤ hiS`, the re-seat, the facts) transports byte-for-byte from the `'` proof. The whole brick is therefore +1 hypothesis, +1 conjunct: the SIZE burden, stated at exactly the link that packages it. It propagates one more hop — the still-owed dispatcher sources it (`= 0` branch from the window's own `hi ≤ tokens.size`, `≠ 0` branch from the descent locator), and the root seed from the recursion root's array bound.
+
+**Probe (rule 3 — lifted facts AND the new size bound, jointly).** `mapInteriorSeparators''_via_provider_of_located_unit` (`Tests/Reflections/MapCarrierRobustInhabitation.lean`, R555) is the `''` mirror of the single-prime `_via_provider_of_located_unit`: where R554's probe built the per-window existential inline, this routes it through the NAMED `mapEnclosingFacts''_provider_of_located`. At each gated sub-window `[a,b)` of the unit span `[lo, lo+1)`, feed the IDENTITY enclosing window (`loS = a`, `hiS = b`, re-seat `flowBracketBalance tokens a a = 0`) with corrected facts via `mapGrammarFacts''_degenerate`/`_empty` (width `≤ 1`) AND the new size bound (`hiS = b ≤ lo+1 ≤ tokens.size`, discharged from the explicit `lo+1 ≤ tokens.size` precondition), and the assembler packages the provider; driving it through the R554 ASSEMBLE half reproduces the inhabited `''` carrier. This confirms the lifted `MapGrammarFacts''` hypothesis AND the new size conjunct are JOINTLY satisfiable through the real LOCATE-output→provider-of-located path, not a trap. **Inhabitation-debt honesty:** the `lo+1 ≤ tokens.size` precondition is ABSENT from the single-prime `_via_provider_of_located_unit` (which held for ALL `tokens`) — the one new obligation the `''` provider-of-located carries, stated rather than papered over. Axiom set `[propext, Classical.choice, Quot.sound]` (Classical via the rebase the ASSEMBLE half drives), guarded with `#guard_msgs`.
+
+**What landed (verified-but-unconsumed, no sorry site referenced).** `mapEnclosingFacts''_provider_of_located` in `SeqInteriorSeparators.lean` (after the `'` twin); the probe + guarded axiom audit in `Tests/Reflections/MapCarrierRobustInhabitation.lean`. Full build green at exactly 4 frontier sorries (782 jobs).
+
+**Next step.** Continue the `''` chain. The next brick is the DISPATCHER `mapInteriorSeparators''_of_safebody_and_descent` — the `dite` case-split that reduces ONE map window's `MapInteriorSeparators'' tokens lo hi` to two suppliers: the window's OWN corrected facts `MapGrammarFacts'' tokens lo hi` (the `flowBracketBalance tokens lo a = 0` branch, satisfied by THIS R555 provider-of-located at `loS = lo, hiS = hi` — where the SIZE bound is the window's own `hi ≤ tokens.size`) and a DESCENT provider `desc` for the strictly-nested gated sub-windows (the `≠ 0` branch). Both branches now carry the SIZE conjunct. Then `mapRoot_mapInteriorSeparators''` (the root seed, discharging `hi ≤ tokens.size` from the recursion root). Then reconcile the consumer field `MapLocated.h_key_bracket_succ` (`NonemptyStructure.lean:10531`) onto `MapGrammarFacts''`. Family B (sorries 3/4, contentEq) remains a separate untouched effort.
 
 ### Reflection 554 — started CONSUMING the gated rebase: landed the first `''` carrier-chain brick, the ASSEMBLE half `mapInteriorSeparators''_of_enclosing_provider`. **R549→R553 BUILT the corrected carrier's arithmetic foundation (the rebase + its two kernels); R554 turns the corner from build to consume. The reflection is the ONE shape-difference the corrected provider carries over the single-prime one — a `hiS ≤ tokens.size` conjunct forced by the rebase's opener-size need — and the inhabitation-debt honesty of surfacing it as an explicit probe precondition rather than hiding it behind a vacuous generalization.**
 

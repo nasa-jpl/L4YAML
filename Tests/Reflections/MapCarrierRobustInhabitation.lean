@@ -974,6 +974,45 @@ theorem mapInteriorSeparators''_of_enclosing_provider_unit
           · have hEq : a = b := by omega
             rw [← hEq]; exact mapGrammarFacts''_empty tokens a⟩)
 
+/-! ## R555 — the `''` provider-of-located, probed with its NEW size conjunct
+
+`mapEnclosingFacts''_provider_of_located` (`SeqInteriorSeparators.lean`) is the `''` mirror of the
+single-prime provider-of-located and the SECOND link of the matching-close-pinned carrier chain.  It
+packages a LOCATED enclosing map body into the R554 ASSEMBLE half's `provider` existential.  Over the
+`'` twin it carries ONE extra hypothesis — the `hiS ≤ tokens.size` SIZE bound the gated rebase forced —
+lifted verbatim into the tuple.  Rule 3 (a hypothesis with no producer is the alarm) says: PROBE that
+the provider-of-located — lifted facts AND size bound together — is satisfiable, through the real
+ASSEMBLE→provider-of-located path. -/
+
+/-- **De-risk for the R555 `''` provider-of-located** — `mapEnclosingFacts''_provider_of_located` is
+    NON-VACUOUS, and the R554 ASSEMBLE half's `provider` is reachable THROUGH it.  Where R554's
+    `mapInteriorSeparators''_of_enclosing_provider_unit` built the per-window existential inline
+    (`⟨a, b, …⟩`), this routes it through the named `mapEnclosingFacts''_provider_of_located` assembler:
+    at each gated sub-window `[a,b)` of the unit span `[lo, lo+1)`, feed the IDENTITY enclosing window
+    (`loS = a`, `hiS = b`, re-seat `flowBracketBalance tokens a a = 0`) with its corrected facts (width
+    `b - a ≤ 1`, so `mapGrammarFacts''_degenerate`/`_empty`) AND the new size bound (`hiS = b ≤ lo+1 ≤
+    tokens.size`, discharged from the explicit `lo+1 ≤ tokens.size` precondition), and the assembler
+    packages the provider existential.  Driving that provider through the R554 ASSEMBLE half reproduces
+    the inhabited `''` carrier — confirming the lifted `MapGrammarFacts''` hypothesis AND the new size
+    conjunct the parametric-assembler split introduces are JOINTLY satisfiable (the assembler aims at a
+    reachable producer, not a trap), via the real LOCATE-output→provider-of-located path rather than an
+    inline tuple.  The `lo+1 ≤ tokens.size` precondition — absent from the single-prime
+    `mapInteriorSeparators'_via_provider_of_located_unit` (which held for ALL `tokens`) — is the honest
+    record of the one new obligation the `''` provider-of-located carries. -/
+theorem mapInteriorSeparators''_via_provider_of_located_unit
+    (tokens : Array (Positioned YamlToken)) (lo : Nat) (h_size : lo + 1 ≤ tokens.size) :
+    MapInteriorSeparators'' tokens lo (lo + 1) :=
+  mapInteriorSeparators''_of_enclosing_provider tokens lo (lo + 1)
+    (fun a b _ha _hab hb _hgate =>
+      mapEnclosingFacts''_provider_of_located tokens a b a b
+        (Nat.le_refl a) (Nat.le_refl b) (Nat.le_trans hb h_size) (by simp [flowBracketBalance])
+        (by
+          rcases Nat.lt_or_ge a b with hLt | hGe
+          · have hb1 : b = a + 1 := by omega
+            rw [hb1]; exact mapGrammarFacts''_degenerate tokens a
+          · have hEq : a = b := by omega
+            rw [← hEq]; exact mapGrammarFacts''_empty tokens a))
+
 -- Axiom audit — the carrier inhabitation and the boundary-survival probe lean only on core; the
 -- ASSEMBLE non-vacuity checks also pull in `Classical.choice` through the rebase's
 -- `flowBracketBalance_compose`.
@@ -1101,5 +1140,13 @@ theorem mapInteriorSeparators''_of_enclosing_provider_unit
  Quot.sound] -/
 #guard_msgs in
 #print axioms mapInteriorSeparators''_of_enclosing_provider_unit
+
+-- R555 — the `''` provider-of-located non-vacuity probe pulls `Classical.choice` through the gated
+-- rebase's `flowBracketBalance_compose`/`flowBracketBalance_single` (same as the R554 ASSEMBLE probe).
+/-- info: 'MapCarrierRobustInhabitation.mapInteriorSeparators''_via_provider_of_located_unit' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs in
+#print axioms mapInteriorSeparators''_via_provider_of_located_unit
 
 end MapCarrierRobustInhabitation
