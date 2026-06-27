@@ -1512,6 +1512,97 @@ theorem subblock_nested_map_is_near_leaf
 #guard_msgs in
 #print axioms subblock_nested_map_is_near_leaf
 
+/-! ## R563 — the surveyed sub-block content gap, quantified to EXACTLY one missing field
+
+R562 fixed which IH `dispatch_map` delivers (the SEQ `RecSeqBody`, not the map one).  The next survey
+asks what ELSE the first-pair producer needs to feed `recseqentry_whole_window_seq` (R527) per sub-block:
+that producer's `h_deep` is a `FlowBodyContentDeepSeq` over the sub-window, and
+`mapPairSubblocks_flowBodyWindow` (R524) supplies only the `FlowBodyWindow`, never the deep-seq content.
+
+Tracing the producer's CONSUMPTION (the inhabitation-debt discipline, not the lemma's name) measures the
+slim `FlowBodyContentDeepMap` that `dispatch_map` already carries against the deep-seq's three fields:
+
+  * `headContentStart` — sub-block-specific, re-established from `MapBodyProps` M3/M6 (passed as `h_head`);
+  * `feContentStart` — the EXACT contrapositive of the map guard's `feKey`, so the slim guard ALREADY
+    supplies it (`mapGuard_yields_feContentStart` below isolates this: a `FlowBodyContentDeepMap` yields
+    the `feContentStart` field for any sub-window with NO extra hypothesis);
+  * `openerContentStart` — supplied by NEITHER guard field; the map guard is silent on seq openers, yet a
+    sub-block can be (or nest) a flow sequence.  This is the LONE residual the dispatch interface must grow.
+
+So the gap is EXACTLY one window-absolute field (the seq-opener successors), the map-axis twin of the
+`feKey` the slim guard keeps.  `flowBodyContentDeepSeq_subblock_of_mapGuard` (`SeqInteriorSeparators.lean`)
+closes it; `subblock_deepSeq_real_valBlock` probes it AT BIRTH on the genuine `{a:[1], b:2}` value
+sub-block `[5, 8)` (rule 5: real `#guard`-grounded data) — the three inputs hold and the brick produces the
+deep-seq, exercising both the `feKey`-contrapositive direction and the lone `h_opener` field on real
+emission (the value's `[` opener at index 5 → content-start `"1"` at 6).  The brick's codomain IS exactly
+`recseqentry_whole_window_seq`'s `h_deep` slot, so the gap it closes lies on the producer's consumption
+path. -/
+
+/-- **R563 — `feContentStart` is FREE from the slim map guard.**  The map guard's `feKey`
+    (`flowEntry → ¬content-start → key`) read in its content-start direction (`flowEntry → ¬key →
+    content-start`) IS the deep-seq `feContentStart` field, for any sub-window `[lo', hi') ⊆ [lo, hi)`, with
+    no extra hypothesis.  Isolating this pins the residual: of the deep-seq's three fields, the dispatch's
+    `FlowBodyContentDeepMap` already covers two (head from `MapBodyProps`, this from `feKey`), so only the
+    seq-`openerContentStart` is genuinely new.  Constructive (`isFlowContentStart_em`), no `Classical.choice`. -/
+theorem mapGuard_yields_feContentStart
+    (tokens : Array (Positioned YamlToken)) (lo hi lo' hi' : Nat)
+    (h_lo : lo ≤ lo') (h_hi : hi' ≤ hi)
+    (h_map : FlowBodyContentDeepMap tokens lo hi) :
+    ∀ k, lo' ≤ k → k + 1 < hi' →
+      tokens[k]!.val = .flowEntry → tokens[k + 1]!.val ≠ .key →
+      isFlowContentStart tokens[k + 1]!.val := by
+  intro k hk1 hk2 h_fe h_ne_key
+  rcases isFlowContentStart_em tokens[k + 1]!.val with h | h
+  · exact h
+  · exact absurd (h_map.feKey k (by omega) (by omega) h_fe h) h_ne_key
+
+/-- **R563 — the content-source brick PROBED AT BIRTH on the real `{a:[1], b:2}` value sub-block.**  The
+    first pair `key "a" : [1]` occupies `[2, 8)`; its value sub-block `[1]` is the window `[5, 8)`
+    (`flowSequenceStart` at 5, `"1"` at 6, `flowSequenceEnd` at 7).  Feeding the brick the slim map guard
+    `FlowBodyContentDeepMap fixtureMapSeqVal 2 13`, the lone seq-opener field over `[2, 13)`, and the
+    re-established head `isFlowContentStart fixtureMapSeqVal[5]` produces the sub-block's
+    `FlowBodyContentDeepSeq` — exactly `recseqentry_whole_window_seq`'s `h_deep` for this block.  Both the
+    `feKey`-contrapositive (at the depth-`0` `.flowEntry` index 8 → `.key` at 9) and the lone `h_opener`
+    field (the `[` at 5 → content-start `"1"` at 6) fire on genuine emission. -/
+theorem subblock_deepSeq_real_valBlock :
+    FlowBodyContentDeepSeq fixtureMapSeqVal 5 8 := by
+  refine flowBodyContentDeepSeq_subblock_of_mapGuard fixtureMapSeqVal 2 13 5 8
+    (by omega) (by omega) ?_ ?_ ?_
+  · -- h_map : FlowBodyContentDeepMap fixtureMapSeqVal 2 13 (headKey at 2; feKey fires only at FE index 8)
+    refine ⟨by decide, ?_⟩
+    intro k hk1 hk2 h_fe _h_ncs
+    rcases (show k = 2 ∨ k = 3 ∨ k = 4 ∨ k = 5 ∨ k = 6 ∨ k = 7 ∨ k = 8 ∨ k = 9 ∨ k = 10 ∨ k = 11 by omega)
+      with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
+      first | exact absurd h_fe (by decide) | decide
+  · -- h_opener : the lone seq-opener field over [2,13) (fires only at the `[` index 5 → content-start at 6)
+    intro k hk1 hk2 h_open _h_ne
+    rcases (show k = 2 ∨ k = 3 ∨ k = 4 ∨ k = 5 ∨ k = 6 ∨ k = 7 ∨ k = 8 ∨ k = 9 ∨ k = 10 ∨ k = 11 by omega)
+      with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
+      first | exact absurd h_open (by decide) | ifcs
+  · -- h_head : isFlowContentStart fixtureMapSeqVal[5]!.val  (= .flowSequenceStart)
+    ifcs
+
+-- R563 — the content-source brick and its `feContentStart`-from-`feKey` isolation are constructive
+-- (`isFlowContentStart_em` avoids `Classical.choice`); the grounded probe adds only `decide`-core token
+-- reads on the fixture.  All audit to the minimal `[propext, Quot.sound]` — the `simp [isFlowContentStart]`
+-- refutation in `isFlowContentStart_em` reduces through `Quot.sound`, propagating to every consumer; NONE
+-- touch `Classical.choice`.
+/-- info: 'L4YAML.Proofs.EmitterScannability.isFlowContentStart_em' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
+#print axioms isFlowContentStart_em
+
+/-- info: 'L4YAML.Proofs.EmitterScannability.flowBodyContentDeepSeq_subblock_of_mapGuard' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
+#print axioms flowBodyContentDeepSeq_subblock_of_mapGuard
+
+/-- info: 'MapCarrierRobustInhabitation.mapGuard_yields_feContentStart' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
+#print axioms mapGuard_yields_feContentStart
+
+/-- info: 'MapCarrierRobustInhabitation.subblock_deepSeq_real_valBlock' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
+#print axioms subblock_deepSeq_real_valBlock
+
 -- Axiom audit — the carrier inhabitation and the boundary-survival probe lean only on core; the
 -- ASSEMBLE non-vacuity checks also pull in `Classical.choice` through the rebase's
 -- `flowBracketBalance_compose`.

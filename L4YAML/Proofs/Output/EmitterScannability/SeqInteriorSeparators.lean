@@ -8997,6 +8997,76 @@ theorem flowBodyContentDeepSeq_of_emit_and_window_map
     h_all_v_block (by have := h_win.lo_ge; omega) h_win.lo_lt_hi (Nat.le_of_lt h_win.hi_lt) h_open
     (flowBodyWindow_head_ne_close tokens lo hi h_win)
 
+/-- **Excluded middle for the content-start predicate, constructively** — `isFlowContentStart t` is a
+    disjunction `(∃ c s, t = .scalar c s) ∨ t = .flowSequenceStart ∨ t = .flowMappingStart` with no
+    `Decidable` instance (the `∃` ranges over `String`), so `by_cases` on it would pull `Classical.choice`.
+    But it is decidable BY CASES on the finitely-many token constructors: three constructors satisfy it,
+    every other refutes it by `noConfusion`.  Proving the `∨ ¬` form once keeps every downstream
+    contrapositive (`¬ content-start → …`) off the classical axiom.  Used by
+    `flowBodyContentDeepSeq_subblock_of_mapGuard` to read `FlowBodyContentDeepMap.feKey` in its
+    content-start direction without `Classical.choice`. -/
+theorem isFlowContentStart_em (t : YamlToken) :
+    isFlowContentStart t ∨ ¬ isFlowContentStart t := by
+  cases t <;>
+    first
+    | exact Or.inl (Or.inl ⟨_, _, rfl⟩)
+    | exact Or.inl (Or.inr (Or.inl rfl))
+    | exact Or.inl (Or.inr (Or.inr rfl))
+    | exact Or.inr (by simp [isFlowContentStart])
+
+/-- **A map-pair sub-block's `FlowBodyContentDeepSeq`, sourced from the slim map guard + ONE extra field**
+    (Phase J — the surveyed content-source gap for `recmappair_window_dispatch_map`, R563).  The first-pair
+    producer must feed each sub-block window `[lo', hi') ⊆ [lo, hi)` (a key block `[lo+1, kv)` or value block
+    `[kv+1, e)`) to `recseqentry_whole_window_seq` (R527), whose `h_deep` is a `FlowBodyContentDeepSeq` over
+    that sub-window.  `mapPairSubblocks_flowBodyWindow` (R524) supplies the sub-block `FlowBodyWindow`, but
+    NOTHING yet supplied its `FlowBodyContentDeepSeq` — this brick closes exactly that gap, and in doing so
+    QUANTIFIES it.
+
+    **The inhabitation-debt finding the survey forced** ([[ref-inhabitation-debt-validate-target-defs]],
+    R562/R563 sharpening).  Tracing what the producer consumes (not what the lemma is named) shows the map
+    locate's `dispatch_map` currently carries only the SLIM `FlowBodyContentDeepMap tokens lo hi`
+    (`headKey` + `feKey`).  Measuring that against a sub-block `FlowBodyContentDeepSeq`'s three fields:
+
+    * `headContentStart` is sub-block-specific (`tokens[lo']` a content-start) — re-established per block from
+      `MapBodyProps` M3 `key_content` / M6 `value_content`; passed here as `h_head`.
+    * `feContentStart` (`flowEntry → ¬key → content-start`) is the EXACT contrapositive of the map guard's
+      `feKey` (`flowEntry → ¬content-start → key`) — so the slim guard ALREADY supplies it, window-absolute,
+      restricted to `[lo', hi') ⊆ [lo, hi)` verbatim ([[ref-window-absolute-gate-subset-restriction]]).
+    * `openerContentStart` (`flowSequenceStart → ¬seqEnd → content-start`) is supplied by NEITHER guard
+      field: the map guard says nothing about seq openers, because a top-level map's own body has no
+      depth-`0` `[`, yet a sub-block CAN be (or nest) a flow sequence whose interior `[`-successors this
+      field governs.  So this is the LONE missing fact — lifted here as the hypothesis `h_opener`.
+
+    The payoff of building this now: it pins the residual `dispatch_map`'s interface must grow to exactly
+    ONE window-absolute field (the seq-opener successors), the map-axis twin of the `feKey` the slim guard
+    keeps — not a whole re-derivation of per-sub-block content.  Probed at birth in
+    `Tests/Reflections/MapCarrierRobustInhabitation.lean` (R563): the output type is EXACTLY
+    `recseqentry_whole_window_seq`'s `h_deep`, and on the genuine `{a:[1], b:2}` value sub-block `[5, 8)` the
+    three inputs hold and the brick produces its `FlowBodyContentDeepSeq` (the `feKey`-contrapositive
+    direction and the lone `h_opener` field both exercised on real emission, the value's `[1]` opener at
+    index 5 → content-start `"1"` at 6).  Verified-but-unconsumed until `recmappair_window_dispatch_map`
+    threads it; references no sorry site, frontier sorry count unchanged at 4.  `Classical.choice`-free via
+    `isFlowContentStart_em`. -/
+theorem flowBodyContentDeepSeq_subblock_of_mapGuard
+    (tokens : Array (Positioned YamlToken)) (lo hi lo' hi' : Nat)
+    (h_lo : lo ≤ lo') (h_hi : hi' ≤ hi)
+    (h_map : FlowBodyContentDeepMap tokens lo hi)
+    (h_opener : ∀ k, lo ≤ k → k + 1 < hi →
+        tokens[k]!.val = .flowSequenceStart →
+        tokens[k + 1]!.val ≠ .flowSequenceEnd →
+        isFlowContentStart tokens[k + 1]!.val)
+    (h_head : isFlowContentStart tokens[lo']!.val) :
+    FlowBodyContentDeepSeq tokens lo' hi' := by
+  refine ⟨h_head, ?_, ?_⟩
+  · -- openerContentStart: the lone extra field, window-absolute restricted to `[lo', hi') ⊆ [lo, hi)`.
+    intro k hk1 hk2 h_open h_ne
+    exact h_opener k (by omega) (by omega) h_open h_ne
+  · -- feContentStart: the map guard's `feKey`, read in its content-start direction (constructive em).
+    intro k hk1 hk2 h_fe h_ne_key
+    rcases isFlowContentStart_em tokens[k + 1]!.val with h | h
+    · exact h
+    · exact absurd (h_map.feKey k (by omega) (by omega) h_fe h) h_ne_key
+
 /-- **The FULL `windowFacts` triple from emission, SEQ source** —
     `(i'-b-B2c-(d)-seqWindowFacts-of-emit-seq)`, R432, the brick that completes the CONTENT of the flat
     per-window provider `seqRec_of_carrier_and_windowFacts_seq` consumes: at every seq window it produces
