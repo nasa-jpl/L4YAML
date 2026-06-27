@@ -941,6 +941,39 @@ theorem mapGrammarFacts_rebase''_mixed : MapGrammarFacts'' fixtureMapMixed 2 15 
     (Nat.le_refl 2) (Nat.le_refl 15) (by decide) (by decide)
     mapTypedInterior_mixed mapGrammarFacts''_mixed
 
+/-! ## R554 — the `''` ASSEMBLE half is non-vacuous, with the NEW size conjunct discharged
+
+`mapInteriorSeparators''_of_enclosing_provider` (`SeqInteriorSeparators.lean`) is the `''` mirror of the
+single-prime assembler and the FIRST consumer of the gated rebase `mapGrammarFacts_rebase''`.  Its provider
+hypothesis carries one shape-difference from the `'` provider: a `hiS ≤ tokens.size` conjunct, forced by the
+rebase's `mapBracketOpen_balance_one` size need.  Rule 3 (a hypothesis with no producer is the alarm) says:
+PROBE that the provider — size conjunct included — is satisfiable. -/
+
+/-- **De-risk for the R554 `''` ASSEMBLE half** — `mapInteriorSeparators''_of_enclosing_provider` is
+    NON-VACUOUS, and its provider hypothesis — now carrying the NEW `hiS ≤ tokens.size` conjunct the
+    gated rebase forces — is satisfiable.  On the unit span `[lo, lo+1)`, under the precondition
+    `lo+1 ≤ tokens.size`, the IDENTITY provider works: each gated sub-window `[a,b)` is its own enclosing
+    window (`loS = a`, `hiS = b`, re-seat `flowBracketBalance tokens a a = 0`), its facts supplied by
+    `mapGrammarFacts''_degenerate`/`_empty` (width `b - a ≤ 1`), and the new size conjunct discharged by
+    `hiS = b ≤ lo+1 ≤ tokens.size`.  The assembler drives that provider through `mapGrammarFacts_rebase''`
+    and reproduces `mapInteriorSeparators''_unit` — the inhabited `''` carrier, now via the real ASSEMBLE
+    path.  The explicit `lo+1 ≤ tokens.size` precondition is ABSENT from the single-prime
+    `mapInteriorSeparators'_of_enclosing_provider_unit`: it is the ONE new obligation the `''` provider
+    carries, stated rather than hidden behind a vacuous generalization (its real-data producibility is the
+    `13 ≤ 15` size bound `mapGrammarFacts_rebase''_bracketVal` already routes off emission). -/
+theorem mapInteriorSeparators''_of_enclosing_provider_unit
+    (tokens : Array (Positioned YamlToken)) (lo : Nat) (h_size : lo + 1 ≤ tokens.size) :
+    MapInteriorSeparators'' tokens lo (lo + 1) :=
+  mapInteriorSeparators''_of_enclosing_provider tokens lo (lo + 1)
+    (fun a b _ha _hab hb _hgate =>
+      ⟨a, b, Nat.le_refl a, Nat.le_refl b, Nat.le_trans hb h_size, by simp [flowBracketBalance],
+        by
+          rcases Nat.lt_or_ge a b with hLt | hGe
+          · have hb1 : b = a + 1 := by omega
+            rw [hb1]; exact mapGrammarFacts''_degenerate tokens a
+          · have hEq : a = b := by omega
+            rw [← hEq]; exact mapGrammarFacts''_empty tokens a⟩)
+
 -- Axiom audit — the carrier inhabitation and the boundary-survival probe lean only on core; the
 -- ASSEMBLE non-vacuity checks also pull in `Classical.choice` through the rebase's
 -- `flowBracketBalance_compose`.
@@ -1060,5 +1093,13 @@ theorem mapGrammarFacts_rebase''_mixed : MapGrammarFacts'' fixtureMapMixed 2 15 
 /-- info: 'MapCarrierRobustInhabitation.mapGrammarFacts_rebase''_mixed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms mapGrammarFacts_rebase''_mixed
+
+-- R554 — the `''` ASSEMBLE non-vacuity probe pulls `Classical.choice` through the gated rebase's
+-- `flowBracketBalance_compose`/`flowBracketBalance_single` (same as the rebase/kernel probes above).
+/-- info: 'MapCarrierRobustInhabitation.mapInteriorSeparators''_of_enclosing_provider_unit' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs in
+#print axioms mapInteriorSeparators''_of_enclosing_provider_unit
 
 end MapCarrierRobustInhabitation

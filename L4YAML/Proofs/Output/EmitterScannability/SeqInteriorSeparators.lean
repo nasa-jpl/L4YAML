@@ -857,6 +857,56 @@ theorem mapInteriorSeparators'_of_enclosing_provider
   obtain ⟨loS, hiS, h_loS_a, h_b_hiS, h_bal0, h_enc⟩ := provider a b ha hab hb hgate
   exact mapGrammarFacts_rebase' tokens loS a b hiS h_loS_a h_b_hiS h_bal0 h_enc
 
+/-- **The map ASSEMBLE half, matching-close-pinned — `MapInteriorSeparators''` from a `provider` (R554)**
+    — the `''` mirror of `mapInteriorSeparators'_of_enclosing_provider` (`:850`) and the FIRST consumer
+    of the gated rebase `mapGrammarFacts_rebase''` (`:722`).  It reduces the corrected carrier — with NO
+    further grammar analysis — to a `provider` that, at every gated sub-window `[a,b)`, hands back the
+    *enclosing* map body `[loS,hiS) ⊇ [a,b)` re-seated at `a`'s depth
+    (`flowBracketBalance tokens loS a = 0`) together with the enclosing window's corrected facts
+    `MapGrammarFacts'' tokens loS hiS`.
+
+    **Two new burdens the `''` provider carries over the single-prime one**, both forced by the gated
+    rebase's extra hypotheses (R553):
+
+      * a **SIZE conjunct** `hiS ≤ tokens.size` ADDED to the provider's existential.  The rebase'' reads
+        the depth-`1` opener fact via `mapBracketOpen_balance_one`, which needs `k+1 < tokens.size`,
+        sourced from `k+1 < j < hiS ≤ tokens.size`.  So the located enclosing window must be bounded by
+        the array — which it always is at the recursion root (`hi ≤ tokens.size`), and the descent
+        locator threads down.  This is the ONE shape-difference from the `'` provider, and it is exactly
+        why the single-prime probe held for ALL `tokens` while the `''` probe needs the window inside the
+        array (see the de-risk below).
+      * the **GATE** `MapTypedInterior tokens a b`, which the rebase'' also requires — but this is FREE:
+        it is the carrier's OWN domain hypothesis (`hgate`), already in scope at the assemble site, NOT
+        an extra provider burden.  The assembler simply forwards it.
+
+    Discharge is the same single `obtain` + single bundled rebase as the `'` assembler — the rebase'' does
+    all the conjunct-5/6 close-relocation work internally.  This is the parametric-assembler-extraction
+    move ([[ref-parametric-assembler-extraction]]) on the `''` axis: ASSEMBLE is DONE here; PRODUCE the
+    `provider` (now also obliged to bound `hiS` by the array) is the next brick
+    (`mapEnclosingFacts''_provider_of_located` + the descent locator).
+
+    INHABITATION-DEBT discipline ([[ref-inhabitation-debt-validate-target-defs]] rule 3 — a hypothesis
+    with no producer is the alarm; here the provider hypothesis with its NEW size conjunct):
+    `Tests/Reflections/MapCarrierRobustInhabitation.lean`'s
+    `mapInteriorSeparators''_of_enclosing_provider_unit` feeds the assembler a concrete IDENTITY provider
+    on a unit span `[lo, lo+1)` under the precondition `lo+1 ≤ tokens.size` — which is precisely what
+    discharges the new `hiS ≤ tokens.size` conjunct (`hiS = b ≤ lo+1 ≤ tokens.size`) — and recovers the
+    inhabited `''` carrier, so the provider shape (size conjunct included) is satisfiable, not a trap.
+    The real-data producibility of that size bound is already grounded one level down by the R553 rebase
+    probes (`mapGrammarFacts_rebase''_bracketVal`, `13 ≤ 15` off real emission).  The explicit `lo+1 ≤
+    tokens.size` precondition — absent from the single-prime probe — is the honest record of the one new
+    obligation, NOT hidden behind a vacuous generalization.  Verified-but-unconsumed (its `''`
+    provider/dispatcher do not exist yet); references no sorry site; frontier sorry count unchanged at 4. -/
+theorem mapInteriorSeparators''_of_enclosing_provider
+    (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (provider : ∀ a b, lo ≤ a → a ≤ b → b ≤ hi → MapTypedInterior tokens a b →
+      ∃ loS hiS, loS ≤ a ∧ b ≤ hiS ∧ hiS ≤ tokens.size ∧ flowBracketBalance tokens loS a = 0 ∧
+        MapGrammarFacts'' tokens loS hiS) :
+    MapInteriorSeparators'' tokens lo hi := by
+  intro a b ha hab hb hgate
+  obtain ⟨loS, hiS, h_loS_a, h_b_hiS, h_hiS_size, h_bal0, h_enc⟩ := provider a b ha hab hb hgate
+  exact mapGrammarFacts_rebase'' tokens loS a b hiS h_loS_a h_b_hiS h_hiS_size h_bal0 hgate h_enc
+
 /-- **The map enclosing-facts `provider`, ASSEMBLED from a LOCATED enclosing map** — the
     [[ref-parametric-assembler-extraction]] split of the R542 provider's locate boundary, the
     boundary-robust map twin of `seqEnclosingFacts_provider_of_located` (`:1121`).  Lift the locator's
