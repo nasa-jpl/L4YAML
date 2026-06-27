@@ -9067,6 +9067,57 @@ theorem flowBodyContentDeepSeq_subblock_of_mapGuard
     · exact h
     · exact absurd (h_map.feKey k (by omega) (by omega) h_fe h) h_ne_key
 
+/-- **A map-pair sub-block's `FlowBodyContent`, sourced from its `FlowBodyContentDeepSeq` + the single-node
+    interior floor** (Phase J — sub-brick (i-c), the LAST per-sub-block data input the first-pair producer
+    `recmappair_window_dispatch_map` consumes that R563's deep-seq alone does NOT supply).  Continues the
+    R561 -> R563 consumption trace: past the IH (R562) and the deep-seq content (R563), the remaining input
+    `recseqentry_whole_window_seq` (R527) demands per sub-block is `h_content : FlowBodyContent`.  The bridge
+    `flowBodyContent_of_deepSeq` (R393) projects `FlowBodyContentDeepSeq -> FlowBodyContent` modulo two
+    residuals -- `bodySucc` (a depth-`0` non-separator at balance `0` is the last token or precedes a
+    `.flowEntry`) and `feContent` (a depth-`0` `.flowEntry` precedes a content-start).  Measuring those two
+    residuals field-by-field against what a map-pair sub-block actually IS -- a SINGLE flow node (a scalar, or
+    one bracketed `[ ... ]` / `{ ... }`), whose interior never returns to depth `0` until the window end --
+    collapses BOTH to ONE structural fact: the single-node interior floor
+    `forall i, lo < i -> i < hi -> flowBracketBalance tokens lo i >= 1`.
+
+    * `bodySucc`: if `balance lo (k+1) = 0` with `k+1 < hi`, the floor forces `balance lo (k+1) >= 1` -- a
+      contradiction; so the only balance-`0` prefix-end is `k+1 = hi`, the left disjunct, ALWAYS.  No
+      separator successor is ever produced.
+    * `feContent`: a depth-`0` `.flowEntry` would need `balance lo k = 0` with `lo <= k < hi`; at `k = lo`
+      the head is a content-start (`headContentStart`), never a `.flowEntry`; at `lo < k` the floor forces
+      `balance lo k >= 1`, refuting `= 0`.  So `feContent` is VACUOUS -- a single node has no interior
+      depth-`0` separator.
+
+    So the `FlowBodyContent` input the dispatch needs is FREE given the deep-seq and the ONE floor fact; the
+    floor is the map-axis twin of the seq locate's `h_floor1` (the bracket-interior positivity
+    `flowBodyContent_child_bracket_seq` already consumes), and it ALSO discharges
+    `recseqentry_whole_window_seq`'s SEPARATE `h_noInterior` input (`balance lo k = 0` is impossible in the
+    open interval).  Quantifying the residual to this single floor (vs re-deriving content from emission) pins
+    exactly what the dispatch interface must supply per sub-block: one positivity floor, sourced downstream
+    from the sub-block's opener + matching close.
+
+    Names no deliverable type, so it serves the key block and value block identically.  Verified-but-unconsumed
+    until `recmappair_window_dispatch_map` threads it; composes `flowBodyContent_of_deepSeq` + `omega` + the
+    constructive `isFlowContentStart` refutation, references no sorry site, frontier sorry count unchanged at
+    4. -/
+theorem flowBodyContent_subblock_of_deepSeq_floor
+    (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_deep : FlowBodyContentDeepSeq tokens lo hi)
+    (h_floor : ∀ i, lo < i → i < hi → flowBracketBalance tokens lo i ≥ 1) :
+    FlowBodyContent tokens lo hi := by
+  apply flowBodyContent_of_deepSeq tokens lo hi h_deep
+  · -- bodySucc: the only balance-`0` prefix-end of a single node is the window end.
+    intro k hk1 hk2 hbal _hne
+    rcases Nat.lt_or_ge (k + 1) hi with h | h
+    · exfalso; have := h_floor (k + 1) (by omega) h; omega
+    · left; omega
+  · -- feContent: VACUOUS -- no interior depth-`0` separator in a single node.
+    intro k hk1 hk2 hfe hbal
+    rcases Nat.eq_or_lt_of_le hk1 with heq | hlt
+    · rw [← heq] at hfe
+      exact absurd h_deep.headContentStart (by rw [hfe]; simp [isFlowContentStart])
+    · exfalso; have := h_floor k hlt hk2; omega
+
 /-- **The FULL `windowFacts` triple from emission, SEQ source** —
     `(i'-b-B2c-(d)-seqWindowFacts-of-emit-seq)`, R432, the brick that completes the CONTENT of the flat
     per-window provider `seqRec_of_carrier_and_windowFacts_seq` consumes: at every seq window it produces

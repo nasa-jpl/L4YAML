@@ -1603,6 +1603,71 @@ theorem subblock_deepSeq_real_valBlock :
 #guard_msgs in
 #print axioms subblock_deepSeq_real_valBlock
 
+/-! ## R564 — the LAST sub-block data input (`FlowBodyContent`) sourced from the deep-seq + ONE floor fact
+
+Continuing the consumption trace past the IH (R562) and the deep-seq content (R563):
+`recseqentry_whole_window_seq` (R527) wants `h_content : FlowBodyContent` per sub-block, which
+`flowBodyContent_of_deepSeq` projects from the R563 deep-seq modulo two residuals (`bodySucc` + `feContent`).
+Measured field-by-field against what a map-pair sub-block IS — a SINGLE flow node — BOTH residuals collapse to
+the single-node interior floor `∀ i, lo < i → i < hi → balance lo i ≥ 1`: `bodySucc` because a single node
+returns to depth `0` only at its end, `feContent` VACUOUSLY because a single node has no interior depth-`0`
+separator.  So the `FlowBodyContent` input is FREE given the deep-seq + ONE floor, and the SAME floor
+discharges the consumer's SEPARATE `h_noInterior` input (`floor_yields_noInterior`).  Probed at birth on the
+real `{a:[1], b:2}` value sub-block `[5, 8)`. -/
+
+/-- **R564 — the single-node interior floor discharges `h_noInterior` for free** (abstract isolation).  A
+    positivity floor on the open interval makes `balance lo k = 0` impossible there, so the consumer's separate
+    no-interior-separator certificate needs no extra source — the one floor unlocks BOTH data inputs the
+    dispatch must supply per sub-block. -/
+theorem floor_yields_noInterior
+    (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_floor : ∀ i, lo < i → i < hi → flowBracketBalance tokens lo i ≥ 1) :
+    ∀ k, lo < k → k < hi →
+      ¬ (flowBracketBalance tokens lo k = 0 ∧ tokens[k]!.val = .flowEntry) := by
+  intro k hk1 hk2 hconj
+  have := h_floor k hk1 hk2
+  omega
+
+/-- **R564 — the single-node interior floor on the real `{a:[1], b:2}` value sub-block `[5, 8)`.**  Inside the
+    flow sequence `[1]` the depth (relative to the `[` at 5) stays `≥ 1` until the matching `]` at 7; the only
+    interior positions are 6 (`"1"`, balance `1`) and 7 (pre-`]`, balance `1`).  This is exactly the floor the
+    content brick consumes — the map-axis twin of the seq locate's `h_floor1`. -/
+theorem subblock_floor_real_valBlock :
+    ∀ i, 5 < i → i < 8 → flowBracketBalance fixtureMapSeqVal 5 i ≥ 1 := by
+  intro i h1 h2
+  rcases (show i = 6 ∨ i = 7 by omega) with rfl | rfl <;> decide
+
+/-- **R564 — the content brick PROBED AT BIRTH on the real value sub-block.**  Feeding the brick R563's
+    `subblock_deepSeq_real_valBlock` (the deep-seq) and the lone `subblock_floor_real_valBlock` (the floor)
+    produces `FlowBodyContent fixtureMapSeqVal 5 8` — exactly `recseqentry_whole_window_seq`'s `h_content` slot
+    for this sub-block, on genuine emission.  Both residuals are exercised: `bodySucc` collapses to the window
+    end (the floor refutes every interior balance-`0`), `feContent` is vacuous (no interior depth-`0`
+    separator). -/
+theorem flowBodyContent_real_valBlock :
+    FlowBodyContent fixtureMapSeqVal 5 8 :=
+  flowBodyContent_subblock_of_deepSeq_floor fixtureMapSeqVal 5 8
+    subblock_deepSeq_real_valBlock subblock_floor_real_valBlock
+
+-- R564 audits — the content brick composes `flowBodyContent_of_deepSeq` (axiom-clean) with `omega` and the
+-- constructive `isFlowContentStart` refutation; the grounded run adds only `decide`-core balance reads on the
+-- fixture.  Predicted `[propext, Quot.sound]` (the `simp [isFlowContentStart]` refutation reduces through
+-- `Quot.sound`); NONE touch `Classical.choice`.
+/-- info: 'L4YAML.Proofs.EmitterScannability.flowBodyContent_subblock_of_deepSeq_floor' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
+#print axioms flowBodyContent_subblock_of_deepSeq_floor
+
+/-- info: 'MapCarrierRobustInhabitation.floor_yields_noInterior' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
+#print axioms floor_yields_noInterior
+
+/-- info: 'MapCarrierRobustInhabitation.subblock_floor_real_valBlock' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
+#print axioms subblock_floor_real_valBlock
+
+/-- info: 'MapCarrierRobustInhabitation.flowBodyContent_real_valBlock' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
+#print axioms flowBodyContent_real_valBlock
+
 -- Axiom audit — the carrier inhabitation and the boundary-survival probe lean only on core; the
 -- ASSEMBLE non-vacuity checks also pull in `Classical.choice` through the rebase's
 -- `flowBracketBalance_compose`.
