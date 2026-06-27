@@ -7719,6 +7719,75 @@ theorem recbody_locate_seq_carrier (tokens : Array (Positioned YamlToken)) (lo0 
   -- Re-pack into the driver's `locate_seq` shape (drop minimality, swap balance/marker order).
   exact ⟨m, h_lo_m, h_m_hi, h_marker, h_bal_m, h_entry⟩
 
+/-- **The MAP `locate` for the joint navigator driver** — `(i'-b-B2c-desc-joint-locate-map)`, the SECOND
+    of the two `locate` holes `recbody_joint_navigator_driver_carrier` (R534) takes as inputs, and the
+    symmetric twin of the assembled seq locate `recbody_locate_seq_carrier` (R537).  Where the seq locate
+    wired three LANDED bricks (guard unpack + `seqWindow_flowBodyContent_seq_general` content source +
+    `recseqentry_window_dispatch_seq` fed `recbody_joint_oracle_seq_ih`), the map axis's first-PAIR
+    classify `recmappair_window_dispatch_map` — the analytical brick that locates the first key/value pair
+    `RecMapPair ((take m).drop lo)` and its depth-`0` extent — does **not** exist yet.  So this is the
+    [[ref-parametric-assembler-extraction]] form: it ASSEMBLES the driver's `locate_map` shape now,
+    lifting that one missing dispatch as the hypothesis `dispatch_map`, which precisely names the residual.
+
+    **What is already wired (the assemble half, DONE).**  Unpack `RecBodyJointGuard tokens lo0 hi0 lo hi`
+    (R533) and, gated by the map close `tokens[hi]!.val = .flowMappingEnd` the driver hands us, project the
+    map half `FlowBodyContentDeepMap tokens lo hi ∧ MapEnclosed tokens lo`.  Draw the dispatch's map-only
+    induction hypothesis from the joint `oracle` via the LANDED adapter `recbody_joint_oracle_map_ih`
+    (R536) — path-agnostic, delivering `RecMapBody` at every strictly-narrower window regardless of
+    enclosing bracket.  Feed `dispatch_map` the window facts + that IH; re-pack its output (drop nothing,
+    swap balance/marker into the driver's order) into the `locate_map` shape verbatim as the seq twin does.
+
+    **What is lifted (the produce half, the residual).**  `dispatch_map` has the EXACT shape the eventual
+    `recmappair_window_dispatch_map` will satisfy — the map mirror of `recseqentry_window_dispatch_seq`'s
+    signature (`FlowBodyWindow` + `FlowBodyContentDeepMap` + `MapEnclosed` head-enclosure + a window IH
+    matching `recbody_joint_oracle_map_ih`'s output) → `∃ m`, first-pair extent + marker + balance +
+    `RecMapPair`.  Its content source (the map `FlowBodyContent`) is folded INTO it, so the one hypothesis
+    carries both the still-owed content source and the first-pair dispatch.
+
+    INHABITATION-DEBT discipline ([[ref-inhabitation-debt-validate-target-defs]], R560 sharpening —
+    probe the lifted DOMAIN, not the codomain): refactoring the locate into an assembler cannot change
+    whether its codomain is inhabited, so the honest check is that `dispatch_map`'s OUTPUT is REACHABLE on
+    real emission.  `Tests/Reflections/MapCarrierRobustInhabitation.lean` proves
+    `dispatch_map_output_firstWindow_bracketVal`: at the genuine `{a:[1], b:2}` root window `[2,13)` the
+    first pair `key "a" : [1]` is located at `m = 8` (the depth-`0` `.flowEntry` separator), balance `0`,
+    with a concrete `RecMapPair ((take 8).drop 2)` — so the lifted hypothesis is satisfiable, not a vacuous
+    universal.
+
+    Verified-but-unconsumed until `recmappair_window_dispatch_map` is supplied (then the driver is
+    instantiated at the root `[2, size-2)` with `recbody_locate_seq_carrier` + this + the per-window M2):
+    composes only `recbody_joint_oracle_map_ih` + the guard unpack, references no sorry site, frontier
+    sorry count unchanged at 4; axioms `[propext, Quot.sound]` (no `Classical.choice` — pure guard folding
+    plus the choice-free oracle adapter, exactly as the seq twin's content-free core). -/
+theorem recbody_locate_map_carrier (tokens : Array (Positioned YamlToken)) (lo0 hi0 : Nat)
+    (dispatch_map : ∀ lo hi, FlowBodyWindow tokens lo hi → FlowBodyContentDeepMap tokens lo hi →
+        MapEnclosed tokens lo →
+        (∀ lo' hi', hi' - lo' < hi - lo → lo ≤ lo' → hi' ≤ hi →
+            FlowBodyWindow tokens lo' hi' → FlowBodyContentDeepMap tokens lo' hi' → MapEnclosed tokens lo' →
+            tokens[hi']!.val = .flowMappingEnd →
+            RecMapBody ((tokens.toList.take hi').drop lo')) →
+        ∃ m, lo < m ∧ m ≤ hi ∧
+          flowBracketBalance tokens lo m = 0 ∧
+          (m = hi ∨ tokens[m]!.val = .flowEntry) ∧
+          RecMapPair ((tokens.toList.take m).drop lo)) :
+    ∀ lo hi, RecBodyJointGuard tokens lo0 hi0 lo hi →
+      tokens[hi]!.val = .flowMappingEnd →
+      (∀ lo' hi', hi' - lo' < hi - lo → RecBodyJointGuard tokens lo0 hi0 lo' hi' →
+        (tokens[hi']!.val = .flowSequenceEnd → RecSeqBody ((tokens.toList.take hi').drop lo')) ∧
+        (tokens[hi']!.val = .flowMappingEnd → RecMapBody ((tokens.toList.take hi').drop lo'))) →
+      ∃ m, lo < m ∧ m ≤ hi ∧
+        (m = hi ∨ tokens[m]!.val = .flowEntry) ∧
+        flowBracketBalance tokens lo m = 0 ∧
+        RecMapPair ((tokens.toList.take m).drop lo) := by
+  intro lo hi h_g h_mapEnd oracle
+  obtain ⟨h_lo0_lo, h_hi_hi0, _h_win, _h_seqHalf, h_mapHalf, _h_close⟩ := h_g
+  obtain ⟨h_deep, h_enc⟩ := h_mapHalf h_mapEnd
+  -- Dispatch the first PAIR; the map-only `h_ih` is the joint oracle projected to the map side (R536).
+  obtain ⟨m, h_lo_m, h_m_hi, h_bal_m, h_marker, h_pair⟩ :=
+    dispatch_map lo hi _h_win h_deep h_enc
+      (recbody_joint_oracle_map_ih tokens lo0 hi0 lo hi h_lo0_lo h_hi_hi0 oracle)
+  -- Re-pack into the driver's `locate_map` shape (swap balance/marker order).
+  exact ⟨m, h_lo_m, h_m_hi, h_marker, h_bal_m, h_pair⟩
+
 /-- **The root-span instance of `seqWindowRecSeqBody_seq_general`** — `lo0 := 2`, `hi0 := size-2`,
     bounds read off `FlowBodyWindow.lo_ge`/`hi_le`.  Signature-preserving so `seqWindowRecSeqBody_seq`'s
     consumers are untouched (ROUTE A, R445 — the parametric carrier rides the recursion via the

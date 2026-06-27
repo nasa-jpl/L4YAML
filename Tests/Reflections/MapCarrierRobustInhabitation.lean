@@ -1383,6 +1383,61 @@ theorem mapGrammarFacts''_via_recmapbody_at_window_bracketVal :
 #guard_msgs in
 #print axioms mapGrammarFacts''_via_recmapbody_at_window_bracketVal
 
+/-! ## R561 — the map `locate` parametric assembler, probed on real emission
+
+`recbody_locate_map_carrier` (`SeqInteriorSeparators.lean`) ASSEMBLES the joint driver's `locate_map`
+slot — the symmetric twin of the assembled seq locate `recbody_locate_seq_carrier` (R537) — by unpacking
+the `RecBodyJointGuard` map half, drawing the dispatch's map-only IH from the joint oracle via the LANDED
+R536 adapter, and lifting the still-unwritten first-pair dispatch `recmappair_window_dispatch_map` as a
+single hypothesis `dispatch_map` ([[ref-parametric-assembler-extraction]]).  Per the R560 sharpening, the
+honest check is the lifted DOMAIN's reachability — a concrete first-pair dispatch CAN fire on real
+emission — not the assembler's codomain (inhabited regardless of how the assemble is factored).
+`recMapPair_firstWindow_bracketVal` builds the first pair `key "a" : [1]` of `{a:[1], b:2}`, and
+`dispatch_map_output_firstWindow_bracketVal` packages it as exactly one witness of the lifted dispatch's
+`∃ m, … RecMapPair` codomain, so the assembler aims at a reachable deliverable. -/
+
+/-- The first key/value pair of `{a:[1], b:2}` is a genuine `RecMapPair` — in the body window `[2,13)` the
+    first pair occupies `[2,8)` (`key "a"` then `value [1]`), bounded by the depth-`0` `.flowEntry` at 8. -/
+theorem recMapPair_firstWindow_bracketVal :
+    RecMapPair ((fixtureMapSeqVal.toList.take 8).drop 2) :=
+  RecMapPair.mk (pt .key) [pt (.scalar "a" .doubleQuoted)] (pt .value)
+      [pt .flowSequenceStart, pt (.scalar "1" .doubleQuoted), pt .flowSequenceEnd]
+    rfl
+    (RecSeqEntry.scalar _ "a" .doubleQuoted rfl)
+    rfl
+    (RecSeqEntry.seq _ _ _ rfl rfl
+      (WellBracketed_singleton_delta_zero _ (by decide))
+      (RecSeqBody.single _ (List.cons_ne_nil _ _)
+        (RecSeqEntry.scalar _ "1" .doubleQuoted rfl)
+        (Or.inl ⟨"1", .doubleQuoted, rfl⟩)))
+
+/-- **Domain reachability of the lifted `dispatch_map`** (R560-disciplined: probe the lifted DOMAIN, not
+    the assembler's codomain).  One witness of the `∃ m, lo < m ∧ … ∧ RecMapPair ((take m).drop lo)`
+    codomain `recbody_locate_map_carrier`'s `dispatch_map` hypothesis must produce, at the genuine
+    `{a:[1], b:2}` root window `[2,13)`: extent `m = 8`, depth-`0` balance `0`, marker `.flowEntry`,
+    a real `RecMapPair`.  So the lifted hypothesis is satisfiable, not a vacuous universal. -/
+theorem dispatch_map_output_firstWindow_bracketVal :
+    ∃ m, 2 < m ∧ m ≤ 13 ∧
+      flowBracketBalance fixtureMapSeqVal 2 m = 0 ∧
+      (m = 13 ∨ fixtureMapSeqVal[m]!.val = .flowEntry) ∧
+      RecMapPair ((fixtureMapSeqVal.toList.take m).drop 2) :=
+  ⟨8, by decide, by decide, by decide, Or.inr (by decide), recMapPair_firstWindow_bracketVal⟩
+
+-- R561 — the first-pair witness and the dispatch-output reachability are pure structural/`decide` core;
+-- the assembler itself folds the guard plus the choice-free R536 oracle adapter, so it audits to the
+-- minimal core too (no `Classical.choice`, unlike the matching-close runs R559/R560 pull through).
+/-- info: 'MapCarrierRobustInhabitation.recMapPair_firstWindow_bracketVal' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
+#print axioms recMapPair_firstWindow_bracketVal
+
+/-- info: 'MapCarrierRobustInhabitation.dispatch_map_output_firstWindow_bracketVal' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
+#print axioms dispatch_map_output_firstWindow_bracketVal
+
+/-- info: 'L4YAML.Proofs.EmitterScannability.recbody_locate_map_carrier' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
+#print axioms recbody_locate_map_carrier
+
 -- Axiom audit — the carrier inhabitation and the boundary-survival probe lean only on core; the
 -- ASSEMBLE non-vacuity checks also pull in `Classical.choice` through the rebase's
 -- `flowBracketBalance_compose`.
