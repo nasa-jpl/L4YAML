@@ -1104,6 +1104,86 @@ theorem mapRoot_mapInteriorSeparators''_bracketVal :
         | exact absurd (by decide) hbal
         | exact absurd hgate.2.1 (by decide))
 
+/-! ## R558 — the `''` root-facts route R557 branded "LIVE" is itself an inhabitation-debt TRAP
+
+R557 lifted the root seed's `h_facts : MapGrammarFacts'' tokens 2 (size-2)` as a residual, naming the
+carrier-FREE composition `mapGrammarFacts''_of_mapBodyProps ∘ mapBodyProps_of_recmapbody_window` (R549 ∘
+`NonemptyStructure.lean:10069`) the LIVE off-emission route that REPLACES the dead strict-carrier one.
+But that verdict was never PROBED at the primitive level on real nested emission (rule 5).  This section
+does, and refutes it.
+
+`mapBodyProps_of_recmapbody_window` — and the whole `mapBodyProps_assemble` chain it delegates to —
+demands the bracket-`succ` primitive `h_key_bracket_succ` in UNGUARDED form (`∀ k j, … tokens[k]=.key →
+k+1<j → delta tokens[j] = -1 → balance lo (j+1) = 0 → tokens[j+1] = .value`).  On the genuine
+`{a:[1], b:2}` body `[2, 13)` this is FALSE: at the SIMPLE key `k=2` whose VALUE is the flow-seq `[1]`,
+the value-seq close `]` at `j=7` satisfies every premise (`balance 2 2 = 0`, `tokens[2]=.key`, `3<7<13`,
+`delta tokens[7] = -1`, `balance 2 8 = 0`), yet emission puts the pair-separator `.flowEntry` at index 8,
+not the `.value` the conclusion demands — the close belongs to the VALUE's content, not a complex KEY's.
+The producer's proof never USES the unguarded strength (M5/M8 call the primitive only after `intro`-ing
+the complex-key/complex-value guard `tokens[k+1] ∈ {flowSeqStart, flowMapStart}`); it just over-ASKS.
+So the route's domain is UNREACHABLE on real emission — a textbook inhabitation-debt trap, two
+upstream-corrections deep (R550 strict→carrier-free, R557 reaffirmed "LIVE"), each switching the upstream
+but never probing the new route's own primitive (rules 3 + 5).
+
+The fix landed in source (R558) is `mapBodyProps_assemble_guarded`: each bracket-`succ` premise carries
+the SAME bracket-start guard the proof already holds at the call site.  These two probes ground both
+halves of the finding on the `#guard`-real fixture: the unguarded primitive is REFUTED, the guarded one
+holds (vacuously — no key/value of the fixture has a bracket-start successor), so the corrected
+assembler IS feedable where the original is not. -/
+
+/-- **The REFUTATION (rule 5).** The UNGUARDED `key_bracket_succ` primitive — exactly what
+    `mapBodyProps_assemble` / `mapBodyProps_of_recmapbody_window` demand — is FALSE on the real
+    `{a:[1], b:2}` body `[2, 13)`.  Witnessed at `k=2` (the scalar key), `j=7` (the value-seq close `]`):
+    all eight premises `decide`, but the conclusion `tokens[8] = .value` contradicts emission's
+    `tokens[8] = .flowEntry`.  This is why the R557 "LIVE" route is a trap. -/
+theorem key_bracket_succ_unguarded_false_bracketVal :
+    ¬ (∀ k j, 2 ≤ k → k < 13 →
+        flowBracketBalance fixtureMapSeqVal 2 k = 0 →
+        fixtureMapSeqVal[k]!.val = .key →
+        k + 1 < j → j < 13 →
+        flowBracketDelta fixtureMapSeqVal[j]!.val = -1 →
+        flowBracketBalance fixtureMapSeqVal 2 (j + 1) = 0 →
+        j + 1 < 13 ∧ fixtureMapSeqVal[j + 1]!.val = .value) := by
+  intro h
+  have hconcl := h 2 7 (by decide) (by decide) (by decide) (by decide)
+    (by decide) (by decide) (by decide) (by decide)
+  exact absurd hconcl.2 (by decide)
+
+/-- **The VACUITY (rule 2 / the fix's payoff).** The BRACKET-START-GUARDED `key_bracket_succ` primitive —
+    what `mapBodyProps_assemble_guarded` demands instead — HOLDS on the same body, vacuously: each key of
+    the fixture (`k ∈ {2, 9}`) has a SCALAR successor, so the bracket-start guard is FALSE and the
+    primitive never fires; non-key positions fail the `.key` premise.  So the corrected assembler's domain
+    IS reachable on real emission exactly where the original's is not — the trap was the missing guard. -/
+theorem key_bracket_succ_guarded_vacuous_bracketVal :
+    ∀ k j, 2 ≤ k → k < 13 →
+      flowBracketBalance fixtureMapSeqVal 2 k = 0 →
+      fixtureMapSeqVal[k]!.val = .key →
+      (fixtureMapSeqVal[k + 1]!.val = .flowSequenceStart ∨
+       fixtureMapSeqVal[k + 1]!.val = .flowMappingStart) →
+      k + 1 < j → j < 13 →
+      flowBracketDelta fixtureMapSeqVal[j]!.val = -1 →
+      flowBracketBalance fixtureMapSeqVal 2 (j + 1) = 0 →
+      j + 1 < 13 ∧ fixtureMapSeqVal[j + 1]!.val = .value := by
+  intro k j hk1 hk2 _hbal hkey hopen _ _ _ _
+  rcases (show k = 2 ∨ k = 3 ∨ k = 4 ∨ k = 5 ∨ k = 6 ∨ k = 7 ∨ k = 8 ∨ k = 9 ∨
+      k = 10 ∨ k = 11 ∨ k = 12 by omega)
+    with rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl|rfl <;>
+    first
+    | exact absurd hkey (by decide)
+    | (rcases hopen with h | h <;> exact absurd h (by decide))
+
+-- R558 — both probes are pure `decide`/`omega`/`absurd` over `#guard`-real data: the refutation needs
+-- only `propext`; the vacuous guarded primitive additionally pulls `Quot.sound` (the bounded list
+-- case-split).  Neither touches `sorryAx` or `Classical.choice` — the trap and its fix are decided, not
+-- assumed.
+/-- info: 'MapCarrierRobustInhabitation.key_bracket_succ_unguarded_false_bracketVal' depends on axioms: [propext] -/
+#guard_msgs in
+#print axioms key_bracket_succ_unguarded_false_bracketVal
+
+/-- info: 'MapCarrierRobustInhabitation.key_bracket_succ_guarded_vacuous_bracketVal' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
+#print axioms key_bracket_succ_guarded_vacuous_bracketVal
+
 -- Axiom audit — the carrier inhabitation and the boundary-survival probe lean only on core; the
 -- ASSEMBLE non-vacuity checks also pull in `Classical.choice` through the rebase's
 -- `flowBracketBalance_compose`.

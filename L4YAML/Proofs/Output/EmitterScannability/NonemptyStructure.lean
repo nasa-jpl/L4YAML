@@ -9959,6 +9959,142 @@ theorem mapBodyProps_assemble (tokens : Array (Positioned YamlToken)) (lo hi : N
       h_hi_sz h_bal h_open h_outer_bal h_dyck h_wt_interior
     exact ⟨j, h1, h2, h3, h4⟩
 
+/-- **`mapBodyProps_assemble`, with the bracket-`succ` primitives BRACKET-START-GUARDED — the
+    inhabitation-debt correction (R558, [[ref-inhabitation-debt-validate-target-defs]]).**
+
+    `mapBodyProps_assemble` (`:9853`) demands its two bracket-`succ` primitives in UNGUARDED form
+    (`∀ k j, … tokens[k]!.val = .key → k+1 < j → …`), but its proof only ever *calls* them inside M5/M8,
+    after `intro`-ing the complex-key / complex-value guard `h_open : tokens[k+1]!.val ∈ {flowSeqStart,
+    flowMapStart}` (`:9934`, `:9945`).  The unguarded strength is never used — and it is precisely what
+    makes the hypothesis FALSE on real emission: at a SIMPLE key whose VALUE is a flow collection (e.g.
+    `{a:[1], b:2}`, key `k=2`, the value-seq close `]` at `j=7`), the unguarded `h_key_bracket_succ`
+    premise fires (`balance lo k = 0`, `tokens[k]=.key`, `k+1<j`, `delta tokens[j] = -1`,
+    `balance lo (j+1) = 0` all hold) yet its conclusion demands `tokens[j+1] = .value`, while emission
+    puts the pair-separator `.flowEntry` there — the close belongs to the VALUE's content, not a complex
+    KEY's.  So `mapBodyProps_assemble`'s domain is UNREACHABLE on genuine complex-value emission, and
+    every route through it — the strict-carrier `mapWindow_mapBodyProps_general` (dead, R550) AND the
+    carrier-free `mapBodyProps_of_recmapbody_window` (R557 branded it the "LIVE" root-facts route, but it
+    inherits the same unguarded primitive, so it is ALSO a trap) — cannot produce root facts off emission.
+
+    This variant carries each bracket-`succ` premise with the SAME bracket-start guard the proof already
+    holds at the call site, so it is exactly as strong as the proof needs and no stronger.  Under the
+    guard the primitive is VACUOUSLY TRUE wherever no key/value has a bracket-start successor (every
+    scalar-keyed/scalar-valued pair), which is what restores a LIVE route to `MapBodyProps` — and hence,
+    via `mapGrammarFacts''_of_mapBodyProps` (R549), to the robust `MapGrammarFacts''` the map dispatcher
+    consumes.  The proof body is `mapBodyProps_assemble` verbatim, threading the in-scope `h_open` into
+    the two closures (`:9939`, `:9950`); nothing else changes.  Probed on real emission in
+    `Tests/Reflections/MapCarrierRobustInhabitation.lean` (R558): the unguarded primitive is REFUTED on
+    the fixture, the guarded one holds vacuously. -/
+theorem mapBodyProps_assemble_guarded (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_hi_sz : hi ≤ tokens.size)
+    (h_tpe : tokens[hi]!.val = .flowMappingEnd)
+    (h_outer_bal : flowBracketBalance tokens lo hi = 0)
+    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
+    (h_wt_interior : WellTyped ((tokens.toList.take hi).drop lo))
+    (h_key_start : lo < hi → tokens[lo]!.val = .key)
+    (h_after_fe : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .flowEntry →
+      k + 1 ≤ hi ∧ tokens[k + 1]!.val = .key)
+    (h_key_content : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .key →
+      k + 1 < hi ∧ isFlowContentStart tokens[k + 1]!.val)
+    (h_key_scalar_value : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .key →
+      (∃ c s, tokens[k + 1]!.val = .scalar c s) →
+      k + 2 < hi ∧ tokens[k + 2]!.val = .value)
+    (h_value_content : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .value →
+      k + 1 < hi ∧ isFlowContentStart tokens[k + 1]!.val)
+    (h_value_scalar_succ : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .value →
+      (∃ c s, tokens[k + 1]!.val = .scalar c s) →
+      k + 2 ≤ hi ∧
+      (tokens[k + 2]!.val = .flowEntry ∨
+       (tokens[k + 2]!.val = .flowMappingEnd ∧ k + 2 = hi)))
+    (h_key_bracket_succ : ∀ k j, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .key →
+      (tokens[k + 1]!.val = .flowSequenceStart ∨ tokens[k + 1]!.val = .flowMappingStart) →
+      k + 1 < j → j < hi →
+      flowBracketDelta tokens[j]!.val = -1 →
+      flowBracketBalance tokens lo (j + 1) = 0 →
+      j + 1 < hi ∧ tokens[j + 1]!.val = .value)
+    (h_value_bracket_succ : ∀ k j, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .value →
+      (tokens[k + 1]!.val = .flowSequenceStart ∨ tokens[k + 1]!.val = .flowMappingStart) →
+      k + 1 < j → j < hi →
+      flowBracketDelta tokens[j]!.val = -1 →
+      flowBracketBalance tokens lo (j + 1) = 0 →
+      j + 1 ≤ hi ∧
+      (tokens[j + 1]!.val = .flowEntry ∨
+       (tokens[j + 1]!.val = .flowMappingEnd ∧ j + 1 = hi))) :
+    MapBodyProps tokens lo hi := by
+  -- Identical to `mapBodyProps_assemble`, threading the in-scope bracket-start guard `h_open` into the
+  -- two bracket-`succ` closures (M5, M8).
+  have h_step : ∀ k, lo ≤ k → k < hi → flowBracketBalance tokens lo k = 0 →
+      flowBracketDelta tokens[k]!.val = 0 →
+      (tokens[k + 1]!.val = .flowSequenceStart ∨ tokens[k + 1]!.val = .flowMappingStart) →
+      flowBracketBalance tokens lo (k + 1) = 0 ∧ k + 1 < hi := by
+    intro k h_lo h_hi h_bal h_delta h_open
+    have h_k_sz : k < tokens.size := by omega
+    have h_k_lt_list : k < tokens.toList.length := by rw [Array.length_toList]; exact h_k_sz
+    have h_delta0 : flowBracketDelta tokens.toList[k].val = 0 := by
+      have h_eq : tokens.toList[k]'h_k_lt_list = tokens[k]! := by
+        rw [getElem!_pos tokens k h_k_sz, Array.getElem_toList]
+      rw [h_eq]; exact h_delta
+    have h_bal1 : flowBracketBalance tokens lo (k + 1) = 0 := by
+      have hc := flowBracketBalance_compose tokens lo k (k + 1) h_lo (by omega)
+      rw [flowBracketBalance_single tokens k h_k_lt_list, h_delta0] at hc
+      omega
+    refine ⟨h_bal1, ?_⟩
+    have h_ne : k + 1 ≠ hi := by
+      intro h; rw [h, h_tpe] at h_open
+      rcases h_open with h1 | h1 <;> exact absurd h1 (by decide)
+    omega
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · -- M1 key_start
+    exact h_key_start
+  · -- M2 after_fe
+    exact h_after_fe
+  · -- M3 key_content
+    exact h_key_content
+  · -- M4 key_scalar_value
+    exact h_key_scalar_value
+  · -- M5 key_bracket_value — depth-shift + `map_key_bracket_conjunct`, guard `h_open` threaded
+    intro k h_lo h_hi h_bal h_key h_open
+    have h_delta : flowBracketDelta tokens[k]!.val = 0 := by rw [h_key]; rfl
+    obtain ⟨h_k1_depth, h_k1_hi⟩ := h_step k h_lo h_hi h_bal h_delta h_open
+    exact map_key_bracket_conjunct tokens lo hi k (by omega) h_k1_hi h_hi_sz
+      h_k1_depth h_open h_outer_bal h_dyck h_wt_interior
+      (fun j hkj hjhi hd hb => h_key_bracket_succ k j h_lo h_hi h_bal h_key h_open hkj hjhi hd hb)
+  · -- M6 value_content
+    exact h_value_content
+  · -- M7 value_scalar_succ
+    exact h_value_scalar_succ
+  · -- M8 value_bracket_succ — depth-shift + `map_value_bracket_conjunct`, guard `h_open` threaded
+    intro k h_lo h_hi h_bal h_val h_open
+    have h_delta : flowBracketDelta tokens[k]!.val = 0 := by rw [h_val]; rfl
+    obtain ⟨h_k1_depth, h_k1_hi⟩ := h_step k h_lo h_hi h_bal h_delta h_open
+    exact map_value_bracket_conjunct tokens lo hi k (by omega) h_k1_hi h_hi_sz
+      h_k1_depth h_open h_outer_bal h_dyck h_wt_interior
+      (fun j hkj hjhi hd hb => h_value_bracket_succ k j h_lo h_hi h_bal h_val h_open hkj hjhi hd hb)
+  · -- M9 bracket_seq — typed locator (the floor it now also exposes is unused here)
+    intro k h_lo h_hi h_bal h_open
+    obtain ⟨j, h1, h2, h3, h4, _⟩ := flowBracketBalance_matching_close_seq tokens lo k hi h_lo h_hi
+      h_hi_sz h_bal h_open h_outer_bal h_dyck h_wt_interior
+    exact ⟨j, h1, h2, h3, h4⟩
+  · -- M10 bracket_map — typed locator (floor unused here)
+    intro k h_lo h_hi h_bal h_open
+    obtain ⟨j, h1, h2, h3, h4, _⟩ := flowBracketBalance_matching_close_map tokens lo k hi h_lo h_hi
+      h_hi_sz h_bal h_open h_outer_bal h_dyck h_wt_interior
+    exact ⟨j, h1, h2, h3, h4⟩
+
 /-- **Windowed-`SafeBody` → `MapBodyProps` consumer joint** (Phase J, map side).  The map-side
     analog of `seqBodyProps_of_windowed_safebody`.  Given a guarded balanced flow-MAPPING subrange
     `[lo, hi)` (close `.flowMappingEnd`, total balance `0`, Dyck prefixes, interior `WellTyped`)
