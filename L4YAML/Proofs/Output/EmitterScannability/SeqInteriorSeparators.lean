@@ -9118,6 +9118,54 @@ theorem flowBodyContent_subblock_of_deepSeq_floor
       exact absurd h_deep.headContentStart (by rw [hfe]; simp [isFlowContentStart])
     · exfalso; have := h_floor k hlt hk2; omega
 
+/-- **The single-node interior floor PRODUCED from the head opener + the interior Dyck floor** (Phase J --
+    sub-brick (i-d), the downstream producer of R564's `h_floor`).  R564
+    (`flowBodyContent_subblock_of_deepSeq_floor`) consumes the strict floor
+    `forall i, lo < i -> i < hi -> flowBracketBalance tokens lo i >= 1` (balance relative to the window
+    start `lo`) and leaves it as a residual to source.  This is that source -- the map-axis twin of the
+    SEQ locate's `h_floor1`, which `flowBodyContent_child_bracket_seq` (`:7920`) consumes on the seq side.
+    It is the missing REBASE link: the bracket machinery `flowBracketBalance_matching_close_seq`
+    (`WellBracketed.lean:2097`) delivers the INTERIOR Dyck floor `>= 0` relative to `lo+1` (its last
+    conjunct), but R564 needs the STRICT floor `>= 1` relative to `lo`.  The gap is exactly the head
+    opener's `+1`:
+
+      `flowBracketBalance tokens lo i = flowBracketBalance tokens lo (lo+1) + flowBracketBalance tokens (lo+1) i`
+
+    by `flowBracketBalance_compose`; the first summand is `1` because the head `tokens[lo]` is a flow
+    opener (`flowBracketDelta = 1`, `flowBracketBalance_single`); the second is `>= 0` by the interior
+    Dyck floor.  So `1 + (>= 0) >= 1` -- the strict floor falls out by `omega`, no bracket-location here
+    (the matching close is found downstream, in `matching_close_seq`, which is what SUPPLIES `h_idyck`).
+
+    The interior Dyck floor `h_idyck` ranges over the CLOSED interior `[lo+1, hi-1]`; when the sub-block is
+    a single flow node `[ ... ]` / `{ ... }` filling `[lo, hi)` its matching close is `hi-1`, so
+    `matching_close_seq`'s floor (over `[lo+1, j]` with `j = hi-1`) is exactly `h_idyck`.  On a SCALAR
+    sub-block (no opener) the head `flowBracketDelta` is `0` not `1`, so this producer does not apply --
+    but there the floor is VACUOUS (`hi = lo+1`, the open interval `(lo, hi)` is empty), discharged
+    directly.  Reads only `tokens[lo]` in bounds (`h_lo_sz`); the `toList <-> !` index bridge mirrors
+    `mapBracketOpen_balance_one`'s `step` (`Array.getElem_toList` + `getElem!_pos`).
+    Verified-but-unconsumed until `recmappair_window_dispatch_map` threads it; composes
+    `flowBracketBalance_compose` + `flowBracketBalance_single` + `omega`, references no sorry site,
+    frontier sorry count unchanged at 4. -/
+theorem flowSubblock_interior_floor_of_opener
+    (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_lo_sz : lo < tokens.size)
+    (h_open : flowBracketDelta tokens[lo]!.val = 1)
+    (h_idyck : ∀ p, lo + 1 ≤ p → p ≤ hi - 1 → flowBracketBalance tokens (lo + 1) p ≥ 0) :
+    ∀ i, lo < i → i < hi → flowBracketBalance tokens lo i ≥ 1 := by
+  -- balance lo (lo+1) = flowBracketDelta tokens[lo]!.val = 1
+  have h_one : flowBracketBalance tokens lo (lo + 1) = 1 := by
+    have hlen : lo < tokens.toList.length := by rw [Array.length_toList]; exact h_lo_sz
+    rw [flowBracketBalance_single tokens lo hlen]
+    have h1 : tokens.toList[lo]'hlen = tokens[lo] := Array.getElem_toList h_lo_sz
+    have h2 : tokens[lo] = tokens[lo]! := (getElem!_pos tokens lo h_lo_sz).symm
+    rw [h1, h2]; exact h_open
+  intro i h1 h2
+  have hcomp : flowBracketBalance tokens lo i
+      = flowBracketBalance tokens lo (lo + 1) + flowBracketBalance tokens (lo + 1) i :=
+    flowBracketBalance_compose tokens lo (lo + 1) i (by omega) (by omega)
+  have hge : flowBracketBalance tokens (lo + 1) i ≥ 0 := h_idyck i (by omega) (by omega)
+  rw [hcomp, h_one]; omega
+
 /-- **The FULL `windowFacts` triple from emission, SEQ source** —
     `(i'-b-B2c-(d)-seqWindowFacts-of-emit-seq)`, R432, the brick that completes the CONTENT of the flat
     per-window provider `seqRec_of_carrier_and_windowFacts_seq` consumes: at every seq window it produces

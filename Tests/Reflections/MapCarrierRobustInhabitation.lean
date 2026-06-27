@@ -1668,6 +1668,89 @@ theorem flowBodyContent_real_valBlock :
 #guard_msgs in
 #print axioms flowBodyContent_real_valBlock
 
+/-! ## R565 — the single-node interior floor PRODUCED downstream from the head opener + interior Dyck floor
+
+R564 left `h_floor : ∀ i, lo < i → i < hi → balance lo i ≥ 1` (relative to `lo`) as the lone residual the
+dispatch must SOURCE per sub-block.  R565 produces it.  The bracket machinery `flowBracketBalance_matching_close_seq`
+delivers the INTERIOR Dyck floor `≥ 0` relative to `lo+1`; the consumer needs the STRICT floor `≥ 1` relative
+to `lo`.  The gap is exactly the head opener's `+1`:
+`balance lo i = balance lo (lo+1) + balance (lo+1) i = 1 + (≥0) ≥ 1`.  `flowSubblock_interior_floor_of_opener`
+is that rebase.
+
+Inhabitation-debt discipline on a TRANSFORM (R549/R561): the codomain (the floor) is trivially inhabited
+however factored, so a codomain probe proves nothing — instead exhibit the DOMAIN reachable on real data and
+READ BACK through the consumer.  Both inputs are driven on the genuine `{a:[1], b:2}` value sub-block `[5, 8)`,
+where the FIRING arm is exercised: the opener at 5 is a real `.flowSequenceStart` (`subblock_open_real_valBlock`),
+and the interior Dyck floor over `[6, 7]` is non-vacuous (two interior positions, both at the tight `= 0`
+floor — `subblock_idyck_real_valBlock`).  Driving the producer recovers EXACTLY R564's `subblock_floor_real_valBlock`
+type (`subblock_floor_via_opener_real_valBlock`), and composing with R564's consumer recovers the SAME
+`FlowBodyContent fixtureMapSeqVal 5 8` R564 proved — now through the genuine opener→floor→content producer chain
+(`flowBodyContent_via_opener_real_valBlock`), the airtight end-to-end read-back. -/
+
+/-- **R565 — the head opener of the real value sub-block is a flow `[` with `flowBracketDelta = 1`.**  The first
+    of the producer's two inputs, on genuine emission: `fixtureMapSeqVal[5]` is the `.flowSequenceStart` opening
+    the value `[1]`. -/
+theorem subblock_open_real_valBlock :
+    flowBracketDelta fixtureMapSeqVal[5]!.val = 1 := by decide
+
+/-- **R565 — the interior Dyck floor of the real value sub-block, relative to `lo+1 = 6`.**  The producer's
+    second input: `∀ p ∈ [6, 7], balance 6 p ≥ 0`.  Non-vacuous — both interior positions are present (6 is the
+    empty range `= 0`, 7 is `"1"` at `= 0`), exercising the tight `≥ 0` floor exactly where it could fail.  This
+    is what `flowBracketBalance_matching_close_seq` supplies downstream (its last conjunct, with `j = hi-1 = 7`). -/
+theorem subblock_idyck_real_valBlock :
+    ∀ p, 6 ≤ p → p ≤ 7 → flowBracketBalance fixtureMapSeqVal 6 p ≥ 0 := by
+  intro p h1 h2
+  rcases (show p = 6 ∨ p = 7 by omega) with rfl | rfl <;> decide
+
+/-- **R565 — the producer DRIVEN on real data: opener + interior Dyck floor → the strict floor.**  Feeding the
+    rebase brick the two real inputs recovers EXACTLY R564's `subblock_floor_real_valBlock` type — the floor R564's
+    content brick consumes — now PRODUCED (the rebase `1 + (≥0) ≥ 1`), not asserted by `decide`.  Confirms the
+    producer's domain is reachable on genuine emission and its output is the consumed floor verbatim. -/
+theorem subblock_floor_via_opener_real_valBlock :
+    ∀ i, 5 < i → i < 8 → flowBracketBalance fixtureMapSeqVal 5 i ≥ 1 :=
+  flowSubblock_interior_floor_of_opener fixtureMapSeqVal 5 8 (by decide)
+    subblock_open_real_valBlock subblock_idyck_real_valBlock
+
+/-- **R565 — the END-TO-END read-back: opener + interior Dyck floor → floor → `FlowBodyContent`.**  Composing the
+    R565 producer with R564's consumer recovers the SAME `FlowBodyContent fixtureMapSeqVal 5 8` R564 proved
+    (`flowBodyContent_real_valBlock`) — but now the floor flows from the genuine PRODUCER chain, not a `decide`
+    stand-in.  This is the airtight inhabitation probe ([[ref-reduction-by-import]] read-back): the whole
+    opener→floor→content path runs on real `[1]` emission, closing the gap on `recseqentry_whole_window_seq`'s
+    `h_content` slot through producible inputs. -/
+theorem flowBodyContent_via_opener_real_valBlock :
+    FlowBodyContent fixtureMapSeqVal 5 8 :=
+  flowBodyContent_subblock_of_deepSeq_floor fixtureMapSeqVal 5 8
+    subblock_deepSeq_real_valBlock subblock_floor_via_opener_real_valBlock
+
+-- R565 audits — the rebase brick pulls `Classical.choice` through `flowBracketBalance_compose` (same as the
+-- ASSEMBLE non-vacuity checks below); the two real inputs are `decide`-core; the driven floor and the end-to-end
+-- read-back inherit the brick's `Classical.choice`.
+/-- info: 'L4YAML.Proofs.EmitterScannability.flowSubblock_interior_floor_of_opener' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs in
+#print axioms flowSubblock_interior_floor_of_opener
+
+/-- info: 'MapCarrierRobustInhabitation.subblock_open_real_valBlock' depends on axioms: [propext] -/
+#guard_msgs in
+#print axioms subblock_open_real_valBlock
+
+/-- info: 'MapCarrierRobustInhabitation.subblock_idyck_real_valBlock' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
+#print axioms subblock_idyck_real_valBlock
+
+/-- info: 'MapCarrierRobustInhabitation.subblock_floor_via_opener_real_valBlock' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs in
+#print axioms subblock_floor_via_opener_real_valBlock
+
+/-- info: 'MapCarrierRobustInhabitation.flowBodyContent_via_opener_real_valBlock' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs in
+#print axioms flowBodyContent_via_opener_real_valBlock
+
 -- Axiom audit — the carrier inhabitation and the boundary-survival probe lean only on core; the
 -- ASSEMBLE non-vacuity checks also pull in `Classical.choice` through the rebase's
 -- `flowBracketBalance_compose`.
