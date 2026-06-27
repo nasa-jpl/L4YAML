@@ -883,6 +883,31 @@ theorem mapBracketClose_lt_of_gate_bracketVal : (7 : Nat) < 13 :=
     (by intro p hp1 hp2
         rcases (show p = 6 ∨ p = 7 by omega) with rfl | rfl <;> decide)
 
+/-! ## R552 — the opener-balance PRODUCE-primitive closes the producer→consumer loop
+
+R551 landed `mapBracketClose_lt_of_gate`, which CONSUMES `h_open : flowBracketBalance a (k+2) = 1` (and
+the R551 close-kernel probe above just ASSERTED that fact by `decide`).  R552 lands the PRODUCER of that
+fact off the token deltas — `mapBracketOpen_balance_one` — the produce-half the R551 split deferred.  The
+key new requirement it surfaces: reading a token's individual delta (via `flowBracketBalance_single`)
+needs an in-bounds SIZE witness `k + 1 < tokens.size`, a hypothesis the close kernel and
+`mapGrammarFacts_rebase'` — which compose GIVEN balances and so are size-free — never carried.  This
+probe RECOVERS `flowBracketBalance 2 6 = 1` from the deltas on the GENUINE value-bracket of `{a:[1],b:2}`,
+i.e. it produces exactly the `h_open` the close-kernel probe asserted, composing the two kernels on real
+emission. -/
+
+/-- **The opener-balance kernel PRODUCES `h_open` on real bracket emission.** The value-bracket of
+    `{a:[1],b:2}` — trigger `.value` at `k = 4` (δ`0`), bracket-start `[` at `k+1 = 5` (δ`+1`), prefix
+    `flowBracketBalance 2 4 = 0`, size bound `5 < 15` — routed through `mapBracketOpen_balance_one` with
+    every hypothesis `decide`-grounded against the real scanner output, RECOVERS `flowBracketBalance 2 6 =
+    1`: the depth-`1` opener fact the R551 close-kernel probe `mapBracketClose_lt_of_gate_bracketVal`
+    asserted by `decide` is here PRODUCED from the token deltas.  Confirms the produce-primitive's new
+    SIZE hypothesis is PRODUCIBLE on a fixture where the bracket genuinely fires (inhabitation-debt rule 3),
+    and closes the producer→consumer loop the R551 extraction split opened. -/
+theorem mapBracketOpen_balance_one_bracketVal :
+    flowBracketBalance fixtureMapSeqVal 2 6 = 1 :=
+  mapBracketOpen_balance_one fixtureMapSeqVal 2 4
+    (by omega) (by decide) (by decide) (by decide) (by decide)
+
 -- Axiom audit — the carrier inhabitation and the boundary-survival probe lean only on core; the
 -- ASSEMBLE non-vacuity checks also pull in `Classical.choice` through the rebase's
 -- `flowBracketBalance_compose`.
@@ -982,5 +1007,13 @@ theorem mapBracketClose_lt_of_gate_bracketVal : (7 : Nat) < 13 :=
  Quot.sound] -/
 #guard_msgs in
 #print axioms mapBracketClose_lt_of_gate_bracketVal
+
+-- R552 — the opener-balance produce-primitive probe pulls `Classical.choice` through
+-- `flowBracketBalance_compose`/`flowBracketBalance_single` (same as the close-kernel probe).
+/-- info: 'MapCarrierRobustInhabitation.mapBracketOpen_balance_one_bracketVal' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs in
+#print axioms mapBracketOpen_balance_one_bracketVal
 
 end MapCarrierRobustInhabitation

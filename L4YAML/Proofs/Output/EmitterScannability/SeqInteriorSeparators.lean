@@ -608,6 +608,69 @@ theorem mapBracketClose_lt_of_gate (tokens : Array (Positioned YamlToken)) (a b 
     rw [h_open, h_gate_bal] at h_comp
     omega
 
+/-- **The depth-`1` opener-balance PRODUCE-primitive (R552)** — derives the very `h_open :
+    flowBracketBalance tokens a (k+2) = 1` that `mapBracketClose_lt_of_gate` (`:595`) CONSUMES, from the
+    token deltas at `k` and `k+1`.  This is the produce-half the R551 split deferred
+    (`[[ref-parametric-assembler-extraction]]`): the close kernel took `h_open` as a hypothesis to stay
+    pure arithmetic; THIS kernel is what `mapGrammarFacts_rebase''` calls inside conjuncts 5/6 to
+    discharge it before invoking the close kernel — the two compose into the existential `j < b`
+    relocation.
+
+    **The argument (the one-step balance recurrence, mirroring `flowBracketBalance_matching_close`'s
+    `step`, `ParserGrammableBase.lean:635`).** Stepping the absolute balance one token at a time,
+    `flowBracketBalance a (i+1) = flowBracketBalance a i + flowBracketDelta tokens[i]!.val` (by
+    `flowBracketBalance_compose` + `flowBracketBalance_single`, bridging `tokens.toList[i] ↔ tokens[i]!`
+    via `Array.getElem_toList`/`getElem!_pos`).  Applied at `k` then `k+1`: from `flowBracketBalance a k
+    = 0` (`h_balk`), the trigger's δ`0` (`h_key` — a `.key` OR `.value` marker, both non-brackets, so
+    this single kernel serves BOTH conjuncts 5 and 6), and the bracket-start's δ`+1` (`h_open_delta` —
+    `flowSequenceStart`/`flowMappingStart`), the balance reaches `0 + 0 + 1 = 1` at `k+2`.
+
+    **The NEW requirement-class the close kernel and `rebase'` did NOT carry: a SIZE bound.**
+    `mapBracketClose_lt_of_gate` and `mapGrammarFacts_rebase'` reason purely by `flowBracketBalance_compose`
+    over GIVEN endpoints, which is size-free.  Reading a token's individual contribution (`flowBracketDelta
+    tokens[i]!.val` via `flowBracketBalance_single`) needs an IN-BOUNDS witness `i < tokens.size` — so this
+    primitive, and only this primitive, takes `h_k1_size : k + 1 < tokens.size`.  Localizing the size
+    obligation HERE keeps the close kernel and the conjunct-1–4 rebase plumbing size-free; the eventual
+    `mapGrammarFacts_rebase''` sources `k + 1 < tokens.size` from `k + 1 < j < hiS ≤ tokens.size`
+    (`hiS ≤ tokens.size` being the genuine-emission bound the root window `[2, size-2)` trivially meets —
+    the seq twin's dispatcher carried exactly this `hi ≤ tokens.size`, `:707`).
+
+    INHABITATION-DEBT discipline (`[[ref-inhabitation-debt-validate-target-defs]]`, rule 3 — probe the
+    new hypothesis is PRODUCIBLE, not a dead gate): probed in
+    `Tests/Reflections/MapCarrierRobustInhabitation.lean` (R552) by `mapBracketOpen_balance_one_bracketVal`,
+    which routes the GENUINE value-bracket of `{a:[1],b:2}` (`k=4` `.value` δ`0`, `[` at index `5` δ`+1`,
+    `flowBracketBalance 2 4 = 0`, size bound `5 < 15`) through this kernel and RECOVERS `flowBracketBalance
+    2 6 = 1` — the exact `h_open` the R551 close-kernel probe asserted by `decide`, now PRODUCED from the
+    deltas, closing the producer→consumer loop on real emission.  Verified-but-unconsumed (its consumer
+    `mapGrammarFacts_rebase''` does not exist yet); references no sorry site; frontier sorry count
+    unchanged at 4. -/
+theorem mapBracketOpen_balance_one (tokens : Array (Positioned YamlToken)) (a k : Nat)
+    (h_ak : a ≤ k) (h_k1_size : k + 1 < tokens.size)
+    (h_balk : flowBracketBalance tokens a k = 0)
+    (h_key : flowBracketDelta tokens[k]!.val = 0)
+    (h_open_delta : flowBracketDelta tokens[k + 1]!.val = 1) :
+    flowBracketBalance tokens a (k + 2) = 1 := by
+  -- One-step balance recurrence (mirrors `flowBracketBalance_matching_close`'s `step`).
+  have step : ∀ i, a ≤ i → i < tokens.size →
+      flowBracketBalance tokens a (i + 1) =
+        flowBracketBalance tokens a i + flowBracketDelta tokens[i]!.val := by
+    intro i h_ai h_sz
+    rw [flowBracketBalance_compose tokens a i (i + 1) h_ai (by omega)]
+    have hlen : i < tokens.toList.length := by rw [Array.length_toList]; exact h_sz
+    rw [flowBracketBalance_single tokens i hlen]
+    have h1 : tokens.toList[i]'hlen = tokens[i] := Array.getElem_toList h_sz
+    have h2 : tokens[i] = tokens[i]! := (getElem!_pos tokens i h_sz).symm
+    rw [h1, h2]
+  have h_k1 : flowBracketBalance tokens a (k + 1)
+      = flowBracketBalance tokens a k + flowBracketDelta tokens[k]!.val :=
+    step k h_ak (by omega)
+  have h_k2 : flowBracketBalance tokens a (k + 2)
+      = flowBracketBalance tokens a (k + 1) + flowBracketDelta tokens[k + 1]!.val :=
+    step (k + 1) (by omega) h_k1_size
+  rw [h_balk, h_key] at h_k1
+  rw [h_open_delta] at h_k2
+  omega
+
 /-- **The map ASSEMBLE half — `MapInteriorSeparators'` from a `provider`** (the boundary-robust map
     twin of `seqInteriorSeparators_of_enclosing_provider`, `:2224`). The FIRST consumer of
     `mapGrammarFacts_rebase'` (`:322`): it reduces the robust carrier — with NO further grammar
