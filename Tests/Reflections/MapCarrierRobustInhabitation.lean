@@ -1013,6 +1013,56 @@ theorem mapInteriorSeparators''_via_provider_of_located_unit
           · have hEq : a = b := by omega
             rw [← hEq]; exact mapGrammarFacts''_empty tokens a))
 
+/-! ## R556 — the `''` map DISPATCHER probed, BOTH `dite` branches and the new size hypothesis
+
+`mapInteriorSeparators''_of_safebody_and_descent` (`SeqInteriorSeparators.lean`) is the `''` mirror of
+the single-prime dispatcher and the THIRD link of the matching-close-pinned carrier chain.  It is the
+`dite` case-split that routes each gated sub-window to one of two suppliers — the window's OWN corrected
+facts `h_facts` (the `flowBracketBalance tokens lo a = 0` branch, via the R555 provider-of-located at
+`loS = lo`, `hiS = hi`) or the descent provider `desc` (the `≠ 0` branch).  Over the `'` dispatcher it
+gains EXACTLY the size field at two keyings: a NEW `h_hi_size : hi ≤ tokens.size` hypothesis the `= 0`
+branch forwards into R555 (window-absolute), and a +1 `hiS ≤ tokens.size` conjunct in `desc`'s
+existential the `≠ 0` branch sources from the descent locator.  Rule 3 (a hypothesis with no producer is
+the alarm) says: PROBE that BOTH suppliers — own facts, identity `desc` with its size conjunct, and the
+new `h_hi_size` — are satisfiable, with BOTH branches type-checked through the real dispatch path. -/
+
+/-- **De-risk for the R556 `''` DISPATCHER** — `mapInteriorSeparators''_of_safebody_and_descent` is
+    NON-VACUOUS, its NEW `desc` hypothesis (with the size conjunct) is satisfiable, and its new
+    `h_hi_size` is dischargeable (inhabitation-debt rule 3).  On the unit span `[lo, lo+1)` we feed it
+    BOTH suppliers concretely under the precondition `lo+1 ≤ tokens.size`:
+
+    * `h_hi_size := h_size : lo+1 ≤ tokens.size` — the window's own size bound (`hi = lo+1`);
+    * `h_facts := mapGrammarFacts''_degenerate tokens lo : MapGrammarFacts'' tokens lo (lo+1)` — the
+      window's own corrected facts, surviving the window-close boundary;
+    * a concrete IDENTITY `desc`: at each nested gated sub-window `[a,b)` (width `b - a ≤ 1` here), hand
+      back `[a,b)` as its own enclosing window (`loS = a`, `hiS = b`, re-seat
+      `flowBracketBalance tokens a a = 0`) with corrected facts via
+      `mapGrammarFacts''_degenerate`/`_empty` AND the size conjunct discharged from `b ≤ lo+1 ≤
+      tokens.size`, routed through the R555 `mapEnclosingFacts''_provider_of_located`.
+
+    The dispatcher drives the R554 ASSEMBLE half and recovers `mapInteriorSeparators''_unit` — the same
+    inhabited `''` carrier, now through the real DISPATCH path with BOTH `dite` branches type-checked
+    (the `= 0` branch via `h_facts`+`h_hi_size`, the `≠ 0` branch via `desc`).  Confirms the dispatcher
+    aims at reachable suppliers, not a trap, before the root seed `mapRoot_mapInteriorSeparators''` and
+    the map descent locator that produce them exist.  The `lo+1 ≤ tokens.size` precondition — absent from
+    the single-prime `mapInteriorSeparators'_via_dispatcher_unit` (which held for ALL `tokens`) — is the
+    honest record of the one new dispatcher obligation. -/
+theorem mapInteriorSeparators''_via_dispatcher_unit
+    (tokens : Array (Positioned YamlToken)) (lo : Nat) (h_size : lo + 1 ≤ tokens.size) :
+    MapInteriorSeparators'' tokens lo (lo + 1) :=
+  mapInteriorSeparators''_of_safebody_and_descent tokens lo (lo + 1)
+    h_size
+    (mapGrammarFacts''_degenerate tokens lo)
+    (fun a b _ha _hab hb _hbal _hgate =>
+      mapEnclosingFacts''_provider_of_located tokens a b a b
+        (Nat.le_refl a) (Nat.le_refl b) (Nat.le_trans hb h_size) (by simp [flowBracketBalance])
+        (by
+          rcases Nat.lt_or_ge a b with hLt | hGe
+          · have hb1 : b = a + 1 := by omega
+            rw [hb1]; exact mapGrammarFacts''_degenerate tokens a
+          · have hEq : a = b := by omega
+            rw [← hEq]; exact mapGrammarFacts''_empty tokens a))
+
 -- Axiom audit — the carrier inhabitation and the boundary-survival probe lean only on core; the
 -- ASSEMBLE non-vacuity checks also pull in `Classical.choice` through the rebase's
 -- `flowBracketBalance_compose`.
@@ -1148,5 +1198,13 @@ theorem mapInteriorSeparators''_via_provider_of_located_unit
  Quot.sound] -/
 #guard_msgs in
 #print axioms mapInteriorSeparators''_via_provider_of_located_unit
+
+-- R556 — the `''` dispatcher non-vacuity probe pulls `Classical.choice` through the gated rebase's
+-- `flowBracketBalance_compose`/`flowBracketBalance_single` (same as the R554/R555 ASSEMBLE probes).
+/-- info: 'MapCarrierRobustInhabitation.mapInteriorSeparators''_via_dispatcher_unit' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs in
+#print axioms mapInteriorSeparators''_via_dispatcher_unit
 
 end MapCarrierRobustInhabitation

@@ -1046,6 +1046,73 @@ theorem mapInteriorSeparators'_of_safebody_and_descent
     else
       desc a b ha hab hb h hgate)
 
+/-- **The per-window map DISPATCHER, matching-close-pinned (R556)** — the `''` mirror of
+    `mapInteriorSeparators'_of_safebody_and_descent` (`:1035`) and the THIRD link of the
+    matching-close-pinned carrier chain, composing the R554 ASSEMBLE half
+    `mapInteriorSeparators''_of_enclosing_provider` (`:900`) with the R555 provider-of-located
+    `mapEnclosingFacts''_provider_of_located` (`:984`).  The `dite` case-split that reduces ONE map
+    window's `MapInteriorSeparators'' tokens lo hi` to two suppliers — the window's OWN corrected facts
+    `MapGrammarFacts'' tokens lo hi` and a DESCENT provider `desc` for its strictly-nested gated
+    sub-windows.
+
+    The R554 assembler demands, at every gated sub-window `[a,b)`, an enclosing map body
+    `[loS,hiS) ⊇ [a,b)` re-seated at `a`'s depth AND bounded by the array (`hiS ≤ tokens.size`).  Those
+    windows split on the top-level discriminator `flowBracketBalance tokens lo a = 0`:
+
+    * `= 0` — `a` is at `[lo,hi)`'s OWN top level, so its enclosing map IS `[lo,hi)` itself; the
+      provider is satisfied by `⟨lo, hi, …⟩` directly from the window's corrected facts via the R555
+      `mapEnclosingFacts''_provider_of_located` at `loS = lo`, `hiS = hi`.  This is the abstract,
+      recursion-window form of the (still-owed) `mapRoot_mapInteriorSeparators''` root seed.
+    * `≠ 0` — `a` is nested strictly deeper; the enclosing map is an inner bracket the recursion must
+      locate, supplied by the `desc` hypothesis (the map twin of the seq descent locator).
+
+    **The cost over the `'` dispatcher is exactly the SIZE field's keying at each branch**
+    ([[ref-additive-field-cost-by-keying]] — an additive carrier field's per-arm cost is arm ROLE ×
+    field KEYING; [[ref-mirror-cost-delta-alphabet]] — the delta is pre-countable off the signatures):
+
+    * the `= 0` branch CONSTRUCTS the provider tuple via the R555 packaging, whose `hiS = hi` is the
+      window's OWN absolute right edge — a WINDOW-ABSOLUTE field — so the dispatcher SOURCES it from a
+      single NEW hypothesis `h_hi_size : hi ≤ tokens.size` (the window's own size bound), forwarded
+      verbatim into the R555 call.  At the recursion root this is `hi ≤ tokens.size`; the recursion
+      threads it down each sub-window.
+    * the `≠ 0` branch FORWARDS `desc`'s output unchanged, so the SIZE conjunct is sourced INSIDE
+      `desc`'s existential (`∃ loS hiS, … ∧ hiS ≤ tokens.size ∧ …`) — the descent locator's burden, not
+      the dispatcher's.  The dispatcher's only `desc`-side change is the +1 conjunct in `desc`'s type.
+
+    So the whole brick is +1 dispatcher hypothesis (window-absolute, the `= 0` branch's size bound) and
+    +1 conjunct in `desc`'s existential (the `≠ 0` branch's, sourced by the descent locator) — every
+    other field transports byte-for-byte from the `'` dispatcher, and the body is the SAME single
+    assembler-driven `dite`.  The split is exhaustive and decidable (`Int` equality on the balance), so
+    the dispatch stays a pure `dite`.
+
+    INHABITATION-DEBT discipline ([[ref-inhabitation-debt-validate-target-defs]] rule 3 — a hypothesis
+    with no producer is the alarm; here the `desc` hypothesis with its NEW size conjunct AND the new
+    `h_hi_size`): `Tests/Reflections/MapCarrierRobustInhabitation.lean`'s
+    `mapInteriorSeparators''_via_dispatcher_unit` feeds it BOTH suppliers concretely on the unit span
+    `[lo, lo+1)` under the precondition `lo+1 ≤ tokens.size` — own facts via
+    `mapGrammarFacts''_degenerate`, an identity `desc` whose size conjunct is discharged from
+    `b ≤ lo+1 ≤ tokens.size` (routed through the R555 provider-of-located) — exercises BOTH `dite`
+    branches, and recovers the inhabited `''` carrier through the real dispatch path.  The explicit
+    `lo+1 ≤ tokens.size` precondition (absent from the single-prime dispatcher probe, which held for ALL
+    `tokens`) is the honest record of the one new dispatcher obligation, not a vacuous generalization.
+    Verified-but-unconsumed: its consumer `mapRoot_mapInteriorSeparators''` (the root seed) and the
+    `desc` producer (the map descent locator) do not exist yet; references no sorry site; frontier
+    sorry count unchanged at 4. -/
+theorem mapInteriorSeparators''_of_safebody_and_descent
+    (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_hi_size : hi ≤ tokens.size)
+    (h_facts : MapGrammarFacts'' tokens lo hi)
+    (desc : ∀ a b, lo ≤ a → a ≤ b → b ≤ hi → flowBracketBalance tokens lo a ≠ 0 →
+      MapTypedInterior tokens a b →
+      ∃ loS hiS, loS ≤ a ∧ b ≤ hiS ∧ hiS ≤ tokens.size ∧ flowBracketBalance tokens loS a = 0 ∧
+        MapGrammarFacts'' tokens loS hiS) :
+    MapInteriorSeparators'' tokens lo hi :=
+  mapInteriorSeparators''_of_enclosing_provider tokens lo hi (fun a b ha hab hb hgate =>
+    if h : flowBracketBalance tokens lo a = 0 then
+      mapEnclosingFacts''_provider_of_located tokens a b lo hi ha hb h_hi_size h h_facts
+    else
+      desc a b ha hab hb h hgate)
+
 /-- **Strict → robust map-facts weakening (R545)** — the first sub-brick of the still-deferred leaf
     `mapEnclosingFacts'_of_windowed_X`.  Every window where the STRICT `MapGrammarFacts` holds (a
     GENUINE complete map body, where each marker's content is truly interior) also satisfies the
