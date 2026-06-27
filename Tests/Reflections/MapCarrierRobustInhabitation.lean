@@ -1828,6 +1828,86 @@ theorem flowBodyContent_via_located_real_valBlock :
 #guard_msgs in
 #print axioms flowBodyContent_via_located_real_valBlock
 
+/-! ## R567 — the LOCATED `FlowBodyContent` SOURCED from pure window facts, CONSUMING R566
+
+R566 surfaced the located strict floor but still left the floor→content step to R564 at the consume site.
+R567 (`flowBodyContent_subblock_located_seq`) FOLDS the floor into the existing child-bracket content
+producer `flowBodyContent_child_bracket_seq`: from a bracket sub-block's window facts ALONE (head opener,
+balance, Dyck floor, interior `WellTyped`) it LOCATES the matching close `j` (R566) and delivers depth-`0`
+`FlowBodyContent tokens lo (j+1)` over the located span — with NO floor hypothesis exposed (the floor is
+produced AND consumed inside the brick).  The map twin `flowBodyContent_subblock_located_map` handles a
+`{`-opened value via the mirrored child-bracket producers (`flowBodyContentDeepSeq_child_bracket_map`,
+`flowBodyContent_child_bracket_seq_map`); only the seq twin is probeable on this fixture — `{a:[1], b:2}`
+has a SEQ value `[1]`, no nested map value.
+
+Inhabitation-debt discipline on a TRANSFORM (R560): the codomain (the located-content existential) is
+inhabited however factored, so probe the DOMAIN's reachability on real data with the FIRING arm driven, then
+READ BACK through the consumer.  `flowBodyContent_subblock_located_real_valBlock` FIRES the whole
+locate→floor→content fold on the genuine value sub-block `[5, 8)` — every domain input `decide`-grounded.
+`flowBodyContent_via_located_content_real_valBlock` reads back the located `j = 7` and recovers the SAME
+`FlowBodyContent fixtureMapSeqVal 5 8` R564/R565/R566 proved — now with the floor entirely internal to the
+brick, leaving only the content at the boundary (`j + 1 = 8`). -/
+
+/-- **R567 — the locate→floor→content fold FIRED on the real value sub-block.**  All six domain inputs are
+    `decide`-grounded on genuine `{a:[1], b:2}` emission, so the locate→floor→content chain runs over the
+    real `[1]` bracket and delivers `FlowBodyContent` on the located span `[5, j+1)` — no floor exposed. -/
+theorem flowBodyContent_subblock_located_real_valBlock :
+    ∃ j, 5 < j ∧ j < 8 ∧ fixtureMapSeqVal[j]!.val = .flowSequenceEnd ∧
+      flowBracketBalance fixtureMapSeqVal 6 j = 0 ∧
+      FlowBodyContent fixtureMapSeqVal 5 (j + 1) :=
+  flowBodyContent_subblock_located_seq fixtureMapSeqVal 5 8 (by decide) (by decide)
+    subblock_deepSeq_real_valBlock (by decide) (by decide)
+    (by intro i h1 h2; rcases (show i = 5 ∨ i = 6 ∨ i = 7 ∨ i = 8 by omega) with rfl | rfl | rfl | rfl <;> decide)
+    (by unfold WellTyped; decide)
+
+/-- **R567 — the END-TO-END read-back through the FOLDED producer.**  Extracts the located close `j = 7`
+    (index 6 is the scalar `"1"`, not `.flowSequenceEnd`) and recovers the SAME `FlowBodyContent
+    fixtureMapSeqVal 5 8` — now the floor is produced AND consumed entirely inside
+    `flowBodyContent_subblock_located_seq`, not threaded to a separate R564 call. -/
+theorem flowBodyContent_via_located_content_real_valBlock :
+    FlowBodyContent fixtureMapSeqVal 5 8 := by
+  obtain ⟨j, _hlo, hhi, hclose, _hinner, hcontent⟩ := flowBodyContent_subblock_located_real_valBlock
+  have hj : j = 7 := by
+    rcases (show j = 6 ∨ j = 7 by omega) with rfl | rfl
+    · exact absurd hclose (by decide)
+    · rfl
+  subst hj
+  exact hcontent
+
+-- R567 audits — the located-content fold composes R566's locator (pulling `Classical.choice`) with the
+-- child-bracket content producer; the child-bracket mirrors are guard-projection + `omega` only.
+/-- info: 'L4YAML.Proofs.EmitterScannability.flowBodyContentDeepSeq_child_bracket_map' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
+#print axioms flowBodyContentDeepSeq_child_bracket_map
+
+/-- info: 'L4YAML.Proofs.EmitterScannability.flowBodyContent_child_bracket_seq_map' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
+#print axioms flowBodyContent_child_bracket_seq_map
+
+/-- info: 'L4YAML.Proofs.EmitterScannability.flowBodyContent_subblock_located_seq' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs in
+#print axioms flowBodyContent_subblock_located_seq
+
+/-- info: 'L4YAML.Proofs.EmitterScannability.flowBodyContent_subblock_located_map' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs in
+#print axioms flowBodyContent_subblock_located_map
+
+/-- info: 'MapCarrierRobustInhabitation.flowBodyContent_subblock_located_real_valBlock' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs in
+#print axioms flowBodyContent_subblock_located_real_valBlock
+
+/-- info: 'MapCarrierRobustInhabitation.flowBodyContent_via_located_content_real_valBlock' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs in
+#print axioms flowBodyContent_via_located_content_real_valBlock
+
 -- Axiom audit — the carrier inhabitation and the boundary-survival probe lean only on core; the
 -- ASSEMBLE non-vacuity checks also pull in `Classical.choice` through the rebase's
 -- `flowBracketBalance_compose`.

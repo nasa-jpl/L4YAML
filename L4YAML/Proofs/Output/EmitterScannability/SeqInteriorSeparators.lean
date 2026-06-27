@@ -9242,6 +9242,129 @@ theorem flowSubblock_matchingClose_floor_map
   exact flowSubblock_interior_floor_of_opener tokens lo (j + 1) (by omega) h_open_delta
     (fun p hp1 hp2 => h_idyck p hp1 (by omega))
 
+/-- **Re-scoped child-bracket DEEP guard, MAP-opener twin** (Phase J -- sub-brick (i'-b-B2c-map), the
+    `.flowMappingStart` mirror of `flowBodyContentDeepSeq_child_bracket` (`NonemptyStructure.lean:7730`).
+    A map-pair value (or key) sub-block can ITSELF open with `{` (a nested flow mapping), so the located
+    child-bracket content producer needs the deep guard re-scoped onto a `{`-opened child window, exactly
+    as the seq-opener sibling does for `[`.  The ONLY axis-dependent line is the head field: a `{` head is
+    a content start via the THIRD `isFlowContentStart` disjunct (`tok = .flowMappingStart`) rather than the
+    second (`tok = .flowSequenceStart`); the two restriction fields (`openerContentStart` / `feContentStart`,
+    both all-depth and balance-free) thread VERBATIM from the parent because they never read the head type.
+    So this is the pure opener-token swap of the seq sibling -- the deep guard family stays
+    `FlowBodyContentDeepSeq` (the value is consumed as a SEQ-entry by the map dispatch's seq IH; only the
+    child's bracket KIND swaps, not the content axis).  Verified-but-unconsumed until
+    `flowBodyContent_child_bracket_seq_map` and downstream `recmappair_window_dispatch_map` thread it;
+    references no sorry site, frontier sorry count unchanged at 4; axiom-clean. -/
+theorem flowBodyContentDeepSeq_child_bracket_map (tokens : Array (Positioned YamlToken)) (lo k j hi : Nat)
+    (h_deep : FlowBodyContentDeepSeq tokens lo hi)
+    (h_lo_k : lo ≤ k) (h_k_open : tokens[k]!.val = .flowMappingStart)
+    (h_j_hi : j + 1 ≤ hi) :
+    FlowBodyContentDeepSeq tokens k (j + 1) := by
+  obtain ⟨_h_head, h_op, h_fe⟩ := h_deep
+  refine ⟨?_, ?_, ?_⟩
+  · -- head: the opener `k` is `.flowMappingStart` (a flow mapping), which is content-start (3rd disjunct).
+    rw [h_k_open]; exact Or.inr (Or.inr rfl)
+  · -- child openerContentStart: the parent's, restricted to `[k, j+1) ⊆ [lo, hi)` (premises thread).
+    intro k' hk1 hk2 hopen hne
+    exact h_op k' (by omega) (by omega) hopen hne
+  · -- child feContentStart: the parent's, restricted to `[k, j+1) ⊆ [lo, hi)` (premises thread).
+    intro k' hk1 hk2 hfe hne
+    exact h_fe k' (by omega) (by omega) hfe hne
+
+/-- **Opener-inclusive child-bracket CONTENT guard, MAP-opener twin** (Phase J -- sub-brick (i'-b-B2c-map),
+    the `.flowMappingStart` mirror of `flowBodyContent_child_bracket_seq` (`NonemptyStructure.lean:7920`).
+    Where the seq sibling delivers depth-`0` `FlowBodyContent tokens k (j+1)` for a `[`-opened child, this
+    delivers it for a `{`-opened child, off the SAME `FlowBodyContentDeepSeq` parent guard and the SAME
+    strict interior floor `h_floor1`.  Body is the seq sibling's verbatim, with two opener-token swaps:
+    (1) the re-scoped deep guard comes from `flowBodyContentDeepSeq_child_bracket_map` (the `{` head),
+    (2) the `feContent` head refutation `tokens[k] = .flowEntry` is killed by `h_k_open : tokens[k] =
+    .flowMappingStart` (`.flowMappingStart /= .flowEntry`, by `simp`) exactly as `{` ... `[` did for the
+    seq sibling.  The `bodySucc` arm is axis-free (pure floor `omega`).  Verified-but-unconsumed until
+    `flowBodyContent_subblock_located_map` and downstream `recmappair_window_dispatch_map` thread it;
+    references no sorry site, frontier sorry count unchanged at 4; axiom-clean. -/
+theorem flowBodyContent_child_bracket_seq_map (tokens : Array (Positioned YamlToken)) (lo k j hi : Nat)
+    (h_deep : FlowBodyContentDeepSeq tokens lo hi)
+    (h_lo_k : lo ≤ k) (h_j_hi : j + 1 ≤ hi)
+    (h_k_open : tokens[k]!.val = .flowMappingStart)
+    (h_floor1 : ∀ i, k + 1 ≤ i → i ≤ j → flowBracketBalance tokens k i ≥ 1) :
+    FlowBodyContent tokens k (j + 1) := by
+  have h_childDeepSeq : FlowBodyContentDeepSeq tokens k (j + 1) :=
+    flowBodyContentDeepSeq_child_bracket_map tokens lo k j hi h_deep h_lo_k h_k_open h_j_hi
+  refine flowBodyContent_of_deepSeq tokens k (j + 1) h_childDeepSeq ?_ ?_
+  · -- bodySucc: interior `≥ 1` by the floor, the close gives the left disjunct.
+    intro k' hk1 hk2 hbal _hnfe
+    rcases Nat.lt_or_ge k' j with h | h
+    · have hf := h_floor1 (k' + 1) (by omega) (by omega)
+      exfalso; omega
+    · left; omega
+  · -- feContent: interior killed by the floor, `k' = k` killed by the typed `{` opener.
+    intro k' hk1 hk2 hfe hbal
+    rcases Nat.lt_or_ge k k' with h | h
+    · have hf := h_floor1 k' (by omega) (by omega)
+      exfalso; omega
+    · have hkk' : k' = k := by omega
+      subst hkk'
+      exact absurd hfe (by rw [h_k_open]; simp)
+
+/-- **The sub-block's depth-`0` `FlowBodyContent` over the LOCATED bracket span, from PURE window facts --
+    SEQ-opener axis** (Phase J -- sub-brick (i'-c), the brick that SOURCES the floor the child-bracket
+    content producer demanded).  `flowBodyContent_child_bracket_seq` (`NonemptyStructure.lean:7920`)
+    consumes the strict interior floor `h_floor1` as a HYPOTHESIS; R566's
+    `flowSubblock_matchingClose_floor_seq` PRODUCES exactly that floor (over the located span `(lo, j]`)
+    from a bracket sub-block's window facts.  Composing them retires the floor hypothesis: from the head
+    opener `tokens[lo] = .flowSequenceStart`, the window balance, Dyck floor, and interior `WellTyped`, this
+    LOCATES the matching close `j` and delivers depth-`0` `FlowBodyContent tokens lo (j+1)` on the located
+    span -- NO floor hypothesis required.  The shape `(lo, j]` of R566's floor is precisely
+    `h_floor1`'s `[lo+1, j]` (`lo < i <-> lo+1 <= i`, `i < j+1 <-> i <= j`), so the wiring is a pure
+    omega coercion.  It surfaces `j`, the typed close, and `balance (lo+1) j = 0` -- the anchor the
+    downstream `recmappair_window_dispatch_map` reads to rebase the located `[lo, j+1)` content onto the
+    carved sub-block window `[lo, e)` (single-node tightness `j + 1 = e`, the deferred fact).  CONSUMES
+    R566's `flowSubblock_matchingClose_floor_seq` (giving that verified-but-unconsumed brick its first
+    SOURCE consumer, discharging its inhabitation-debt ALARM) + `flowBodyContent_child_bracket_seq`.
+    Verified-but-unconsumed until `recmappair_window_dispatch_map` threads it; references no sorry site,
+    frontier sorry count unchanged at 4; axiom-clean. -/
+theorem flowBodyContent_subblock_located_seq
+    (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_lo_hi : lo < hi) (h_hi_sz : hi ≤ tokens.size)
+    (h_deep : FlowBodyContentDeepSeq tokens lo hi)
+    (h_open : tokens[lo]!.val = .flowSequenceStart)
+    (h_total : flowBracketBalance tokens lo hi = 0)
+    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
+    (h_wt : WellTyped ((tokens.toList.take hi).drop lo)) :
+    ∃ j, lo < j ∧ j < hi ∧ tokens[j]!.val = .flowSequenceEnd ∧
+      flowBracketBalance tokens (lo + 1) j = 0 ∧
+      FlowBodyContent tokens lo (j + 1) := by
+  obtain ⟨j, h_lo_j, h_j_hi, h_jclose, h_inner, h_floor⟩ :=
+    flowSubblock_matchingClose_floor_seq tokens lo hi h_lo_hi h_hi_sz h_open h_total h_dyck h_wt
+  exact ⟨j, h_lo_j, h_j_hi, h_jclose, h_inner,
+    flowBodyContent_child_bracket_seq tokens lo lo j hi h_deep (Nat.le_refl lo) (by omega) h_open
+      (fun i hi1 hi2 => h_floor i (by omega) (by omega))⟩
+
+/-- **The sub-block's depth-`0` `FlowBodyContent` over the LOCATED bracket span, from PURE window facts --
+    MAP-opener axis.**  The orthogonal mirror of `flowBodyContent_subblock_located_seq`: a `{`-opened value
+    (or key) sub-block, located via R566's `flowSubblock_matchingClose_floor_map` (whose close is
+    `.flowMappingEnd`) and fed into the MAP-opener child-bracket content producer
+    `flowBodyContent_child_bracket_seq_map`.  The content guard family stays `FlowBodyContentDeepSeq` --
+    the value is consumed as a SEQ-entry, only the child's bracket KIND swaps `[` -> `{`.  CONSUMES R566's
+    `flowSubblock_matchingClose_floor_map`.  Verified-but-unconsumed until `recmappair_window_dispatch_map`
+    threads it; references no sorry site, frontier sorry count unchanged at 4; axiom-clean. -/
+theorem flowBodyContent_subblock_located_map
+    (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_lo_hi : lo < hi) (h_hi_sz : hi ≤ tokens.size)
+    (h_deep : FlowBodyContentDeepSeq tokens lo hi)
+    (h_open : tokens[lo]!.val = .flowMappingStart)
+    (h_total : flowBracketBalance tokens lo hi = 0)
+    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
+    (h_wt : WellTyped ((tokens.toList.take hi).drop lo)) :
+    ∃ j, lo < j ∧ j < hi ∧ tokens[j]!.val = .flowMappingEnd ∧
+      flowBracketBalance tokens (lo + 1) j = 0 ∧
+      FlowBodyContent tokens lo (j + 1) := by
+  obtain ⟨j, h_lo_j, h_j_hi, h_jclose, h_inner, h_floor⟩ :=
+    flowSubblock_matchingClose_floor_map tokens lo hi h_lo_hi h_hi_sz h_open h_total h_dyck h_wt
+  exact ⟨j, h_lo_j, h_j_hi, h_jclose, h_inner,
+    flowBodyContent_child_bracket_seq_map tokens lo lo j hi h_deep (Nat.le_refl lo) (by omega) h_open
+      (fun i hi1 hi2 => h_floor i (by omega) (by omega))⟩
+
 /-- **The FULL `windowFacts` triple from emission, SEQ source** —
     `(i'-b-B2c-(d)-seqWindowFacts-of-emit-seq)`, R432, the brick that completes the CONTENT of the flat
     per-window provider `seqRec_of_carrier_and_windowFacts_seq` consumes: at every seq window it produces
