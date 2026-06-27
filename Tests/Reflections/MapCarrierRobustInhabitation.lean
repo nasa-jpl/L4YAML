@@ -1751,6 +1751,83 @@ theorem flowBodyContent_via_opener_real_valBlock :
 #guard_msgs in
 #print axioms flowBodyContent_via_opener_real_valBlock
 
+/-! ## R566 — the interior Dyck floor `h_idyck` SOURCED by locating the matching close, CONSUMING R565
+
+R565 left `h_idyck : ∀ p, lo+1 ≤ p → p ≤ hi-1 → balance (lo+1) p ≥ 0` (the interior Dyck floor) as the
+lone residual to source.  R566 (`flowSubblock_matchingClose_floor_seq`) sources it: it LOCATES the
+sub-block's matching close `j` via `flowBracketBalance_matching_close_seq` (whose last conjunct IS the
+Dyck floor over `[lo+1, j]`) and feeds that into R565 — but instantiated at the WINDOW END `hi := j+1`,
+so R565's `hi-1` becomes exactly `j` and NO single-node `j = hi-1` fact is needed.  The output is the
+strict floor over the LOCATED span `(lo, j]` (`i < j+1`), R564's floor SHAPE for the child window
+`[lo, j+1)`.  This turns R565 from a verified-but-unconsumed brick into a CONSUMED one and wires
+`matching_close_seq → h_idyck → flowSubblock_interior_floor_of_opener` end-to-end.
+
+Inhabitation-debt discipline on a TRANSFORM (R560): the codomain (the located-floor existential) is
+inhabited however factored, so probe the DOMAIN's reachability on real data with the FIRING arm driven,
+then READ BACK through the consumer.  `subblock_located_floor_real_valBlock` FIRES the whole transform on
+the genuine `{a:[1], b:2}` value sub-block `[5, 8)` — every domain input (`5 < 8`, `8 ≤ size`, the `[` at
+5, balance `= 0`, the window Dyck floor, and `WellTyped` of the real slice `[`/`"1"`/`]`) is `decide`-
+grounded, so the matching-close LOCATOR genuinely runs over the real `[1]` bracket.
+`flowBodyContent_via_located_real_valBlock` is the airtight read-back: it extracts the located `j` (forced
+to `7` — index 6 is the scalar `"1"`, not `.flowSequenceEnd`), and feeds the located floor through R564's
+`flowBodyContent_subblock_of_deepSeq_floor` to recover the SAME `FlowBodyContent fixtureMapSeqVal 5 8` —
+now through the genuine opener→locate→floor→content chain. -/
+
+/-- **R566 — the located-floor transform FIRED on the real value sub-block.**  Driving
+    `flowSubblock_matchingClose_floor_seq` on `{a:[1], b:2}`'s value sub-block `[5, 8)`: all six domain
+    inputs are `decide`-grounded on genuine emission, so the matching-close locator runs over the real
+    `[1]` bracket and the rebase (through R565) produces the strict floor over the located span. -/
+theorem subblock_located_floor_real_valBlock :
+    ∃ j, 5 < j ∧ j < 8 ∧ fixtureMapSeqVal[j]!.val = .flowSequenceEnd ∧
+      flowBracketBalance fixtureMapSeqVal 6 j = 0 ∧
+      (∀ i, 5 < i → i < j + 1 → flowBracketBalance fixtureMapSeqVal 5 i ≥ 1) :=
+  flowSubblock_matchingClose_floor_seq fixtureMapSeqVal 5 8 (by decide) (by decide) (by decide)
+    (by decide)
+    (by intro i h1 h2; rcases (show i = 5 ∨ i = 6 ∨ i = 7 ∨ i = 8 by omega) with rfl | rfl | rfl | rfl <;> decide)
+    (by unfold WellTyped; decide)
+
+/-- **R566 — the END-TO-END read-back through the LOCATOR.**  Extracts the located matching close `j`
+    (pinned to `7`: the only interior `.flowSequenceEnd`) and feeds the located strict floor through
+    R564's content brick, recovering the SAME `FlowBodyContent fixtureMapSeqVal 5 8` R564/R565 proved —
+    now sourced from the genuine opener→matching-close→floor→content path on real `[1]` emission, with the
+    floor PRODUCED by locating the bracket (not `decide`'d, not rebased from a hand-supplied Dyck floor). -/
+theorem flowBodyContent_via_located_real_valBlock :
+    FlowBodyContent fixtureMapSeqVal 5 8 := by
+  obtain ⟨j, _hlo, hhi, hclose, _hinner, hfloor⟩ := subblock_located_floor_real_valBlock
+  have hj : j = 7 := by
+    rcases (show j = 6 ∨ j = 7 by omega) with rfl | rfl
+    · exact absurd hclose (by decide)
+    · rfl
+  subst hj
+  exact flowBodyContent_subblock_of_deepSeq_floor fixtureMapSeqVal 5 8
+    subblock_deepSeq_real_valBlock (fun i h1 h2 => hfloor i h1 (by omega))
+
+-- R566 audits — the located-floor brick composes `flowBracketBalance_matching_close_seq` (the bracket
+-- locator) with R565's rebase, both pulling `Classical.choice`; the grounded probes inherit it.
+/-- info: 'L4YAML.Proofs.EmitterScannability.flowSubblock_matchingClose_floor_seq' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs in
+#print axioms flowSubblock_matchingClose_floor_seq
+
+/-- info: 'L4YAML.Proofs.EmitterScannability.flowSubblock_matchingClose_floor_map' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs in
+#print axioms flowSubblock_matchingClose_floor_map
+
+/-- info: 'MapCarrierRobustInhabitation.subblock_located_floor_real_valBlock' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs in
+#print axioms subblock_located_floor_real_valBlock
+
+/-- info: 'MapCarrierRobustInhabitation.flowBodyContent_via_located_real_valBlock' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs in
+#print axioms flowBodyContent_via_located_real_valBlock
+
 -- Axiom audit — the carrier inhabitation and the boundary-survival probe lean only on core; the
 -- ASSEMBLE non-vacuity checks also pull in `Classical.choice` through the rebase's
 -- `flowBracketBalance_compose`.

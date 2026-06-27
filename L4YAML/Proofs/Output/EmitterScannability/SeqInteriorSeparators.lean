@@ -9166,6 +9166,82 @@ theorem flowSubblock_interior_floor_of_opener
   have hge : flowBracketBalance tokens (lo + 1) i ≥ 0 := h_idyck i (by omega) (by omega)
   rw [hcomp, h_one]; omega
 
+/-- **The sub-block's strict interior floor, LOCATED then REBASED from the head opener -- SEQ axis**
+    (Phase J -- sub-brick (i-e), the producer of R565's `h_idyck` that CONSUMES R565's rebase brick).
+    R564 (`flowBodyContent_subblock_of_deepSeq_floor`) wants the strict floor
+    `forall i, lo < i -> i < hi -> flowBracketBalance tokens lo i >= 1`; R565
+    (`flowSubblock_interior_floor_of_opener`) rebases an interior Dyck floor `>= 0` (relative to `lo+1`)
+    into that strict floor, but left the Dyck floor `h_idyck` ITSELF as the residual to source.  This is
+    that source.
+
+    The Dyck floor is exactly the LAST conjunct of `flowBracketBalance_matching_close_seq`
+    (`WellBracketed.lean:2097`): given the sub-block's head opener `tokens[lo] = .flowSequenceStart`, the
+    window balance `flowBracketBalance tokens lo hi = 0`, the window Dyck floor, and `WellTyped` of the
+    interior, it LOCATES the matching close `j` (`lo < j < hi`, `tokens[j] = .flowSequenceEnd`,
+    `balance (lo+1) j = 0`) and delivers `forall p, lo+1 <= p -> p <= j -> balance (lo+1) p >= 0`.
+
+    The key move: feed that straight into R565 -- but instantiated at the WINDOW END `hi := j + 1`, so
+    R565's `hi - 1` becomes exactly `j` and NO single-node `j = hi - 1` fact is needed.  The strict floor
+    falls out over the LOCATED bracket span `(lo, j]` (`i < j + 1`), which is R564's floor SHAPE for the
+    child window `[lo, j+1)`.  This mirrors what the seq side already runs inline (`:5537` locate ->
+    `:5955` rebase): the difference is only the axis-agnostic rebase being FACTORED through R565.
+
+    The remaining gap to R564's FULL-window floor is `j + 1 = hi` (the sub-block window IS the bracket
+    span -- single-node tightness), threaded downstream from the emitter when
+    `recmappair_window_dispatch_map` carves the sub-block windows; surfacing `j`, the typed close, and
+    `balance (lo+1) j = 0` here gives that downstream step its anchor.  CONSUMES R565's
+    `flowSubblock_interior_floor_of_opener` (turning a verified-but-unconsumed brick into a consumed one)
+    + `flowBracketBalance_matching_close_seq`.  Verified-but-unconsumed until
+    `recmappair_window_dispatch_map` threads it; references no sorry site, frontier sorry count unchanged
+    at 4. -/
+theorem flowSubblock_matchingClose_floor_seq
+    (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_lo_hi : lo < hi) (h_hi_sz : hi ≤ tokens.size)
+    (h_open : tokens[lo]!.val = .flowSequenceStart)
+    (h_total : flowBracketBalance tokens lo hi = 0)
+    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
+    (h_wt : WellTyped ((tokens.toList.take hi).drop lo)) :
+    ∃ j, lo < j ∧ j < hi ∧ tokens[j]!.val = .flowSequenceEnd ∧
+      flowBracketBalance tokens (lo + 1) j = 0 ∧
+      (∀ i, lo < i → i < j + 1 → flowBracketBalance tokens lo i ≥ 1) := by
+  have h_lo_depth : flowBracketBalance tokens lo lo = 0 := by simp [flowBracketBalance]
+  obtain ⟨j, h_lo_j, h_j_hi, h_jclose, h_inner, h_idyck⟩ :=
+    flowBracketBalance_matching_close_seq tokens lo lo hi (Nat.le_refl lo) h_lo_hi h_hi_sz
+      h_lo_depth h_open h_total h_dyck h_wt
+  refine ⟨j, h_lo_j, h_j_hi, h_jclose, h_inner, ?_⟩
+  -- Rebase the interior Dyck floor (over `[lo+1, j]`) to the strict floor (over `(lo, j]`) via R565,
+  -- instantiated at the LOCATED window end `hi := j + 1` so no single-node `j = hi-1` fact is required.
+  have h_open_delta : flowBracketDelta tokens[lo]!.val = 1 := by rw [h_open]; rfl
+  exact flowSubblock_interior_floor_of_opener tokens lo (j + 1) (by omega) h_open_delta
+    (fun p hp1 hp2 => h_idyck p hp1 (by omega))
+
+/-- **The sub-block's strict interior floor, LOCATED then REBASED from the head opener -- MAP axis.**
+    The orthogonal-axis mirror of `flowSubblock_matchingClose_floor_seq`: a map-pair value (or key)
+    sub-block can itself be a flow MAPPING `{ ... }`, whose head is `.flowMappingStart` and whose matching
+    close `flowBracketBalance_matching_close_map` (`WellBracketed.lean:2122`) locates as `.flowMappingEnd`.
+    The rebase is AXIS-AGNOSTIC -- `flowSubblock_interior_floor_of_opener` reads only
+    `flowBracketDelta tokens[lo] = 1`, which both `[` and `{` satisfy -- so the SAME R565 brick is reused,
+    confirming its axis-neutrality (only the locator and the close token swap seq -> map).
+    Verified-but-unconsumed; references no sorry site, frontier sorry count unchanged at 4. -/
+theorem flowSubblock_matchingClose_floor_map
+    (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_lo_hi : lo < hi) (h_hi_sz : hi ≤ tokens.size)
+    (h_open : tokens[lo]!.val = .flowMappingStart)
+    (h_total : flowBracketBalance tokens lo hi = 0)
+    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
+    (h_wt : WellTyped ((tokens.toList.take hi).drop lo)) :
+    ∃ j, lo < j ∧ j < hi ∧ tokens[j]!.val = .flowMappingEnd ∧
+      flowBracketBalance tokens (lo + 1) j = 0 ∧
+      (∀ i, lo < i → i < j + 1 → flowBracketBalance tokens lo i ≥ 1) := by
+  have h_lo_depth : flowBracketBalance tokens lo lo = 0 := by simp [flowBracketBalance]
+  obtain ⟨j, h_lo_j, h_j_hi, h_jclose, h_inner, h_idyck⟩ :=
+    flowBracketBalance_matching_close_map tokens lo lo hi (Nat.le_refl lo) h_lo_hi h_hi_sz
+      h_lo_depth h_open h_total h_dyck h_wt
+  refine ⟨j, h_lo_j, h_j_hi, h_jclose, h_inner, ?_⟩
+  have h_open_delta : flowBracketDelta tokens[lo]!.val = 1 := by rw [h_open]; rfl
+  exact flowSubblock_interior_floor_of_opener tokens lo (j + 1) (by omega) h_open_delta
+    (fun p hp1 hp2 => h_idyck p hp1 (by omega))
+
 /-- **The FULL `windowFacts` triple from emission, SEQ source** —
     `(i'-b-B2c-(d)-seqWindowFacts-of-emit-seq)`, R432, the brick that completes the CONTENT of the flat
     per-window provider `seqRec_of_carrier_and_windowFacts_seq` consumes: at every seq window it produces
