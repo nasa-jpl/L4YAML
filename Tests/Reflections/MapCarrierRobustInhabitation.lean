@@ -2037,6 +2037,90 @@ theorem flowSubblock_content_and_noInterior_real_scalarVal :
 #guard_msgs in
 #print axioms flowSubblock_content_and_noInterior_real_scalarVal
 
+/-! ## R570 — the per-sub-block HEAD-SHAPE DISPATCH fired on real emission, both branches
+
+R568 (`[`-seq / `{`-map) and R569 (scalar) completed the three-member per-sub-block content+`noInterior`
+shape family.  `flowSubblock_content_and_noInterior_dispatch` is the router that unifies them behind one
+interface keyed on `FlowBodyContentDeepSeq.headContentStart` (the three-way disjunction scalar / `[` / `{`),
+taking the `FlowBodyWindow` the consumer `mapPairSubblocks_flowBodyWindow` (R524) already carves.  These two
+probes fire the WHOLE dispatch on the genuine `{a:[1], b:2}` emission's two real sub-block shapes, so the
+router is exercised end-to-end through BOTH live branches it can reach on this fixture:
+
+* `dispatch_real_scalarKey` routes the scalar key `[3, 4)` to the R569 arm.
+* `dispatch_real_seqVal` routes the seq value `[5, 8)` to the R568 `[`-arm.
+
+Inhabitation-debt discipline on the NEW `h_scalar_single` interface field
+([[feedback-inhabitation-debt-validate-target-defs]]): the field is probed at birth in BOTH modes.  On the
+scalar key it is GENUINE -- its antecedent `tokens[3]` IS a scalar and its consequent `4 = 3 + 1` holds, so
+it is supplied as `fun _ => rfl`, NOT a vacuous discharge; the dispatch then actually consumes it in the
+scalar branch.  On the seq value it is correctly VACUOUS -- the head is `[`, refuting the antecedent.  This
+confirms the field is dischargeable and genuinely-true on real data (not a silent-false trap), and that the
+router selects the correct arm per head token. -/
+
+/-- **R570 — the dispatch routes the real scalar KEY sub-block** `[3, 4)` to the scalar arm.  The
+    `FlowBodyWindow` and `FlowBodyContentDeepSeq` are built inline on genuine emission; `h_least` /
+    `h_succ_seq` / `h_succ_map` are vacuous over the empty interior; and `h_scalar_single` fires GENUINELY
+    (`fun _ => rfl`: `tokens[3]` is a scalar and `4 = 3 + 1`).  The same `FlowBodyContent fixtureMapSeqVal 3 4`
+    + vacuous `h_noInterior` the R569 arm produced now come out THROUGH the router. -/
+theorem flowSubblock_content_and_noInterior_dispatch_real_scalarKey :
+    FlowBodyContent fixtureMapSeqVal 3 4 ∧
+      (∀ k, 3 < k → k < 4 →
+        ¬ (flowBracketBalance fixtureMapSeqVal 3 k = 0 ∧ fixtureMapSeqVal[k]!.val = .flowEntry)) :=
+  flowSubblock_content_and_noInterior_dispatch fixtureMapSeqVal 3 4
+    ⟨by decide, by decide, by decide, by decide, by decide,
+      by intro i h1 h2; rcases (show i = 3 ∨ i = 4 by omega) with rfl | rfl <;> decide,
+      by unfold WellTyped; decide⟩
+    ⟨by ifcs, by intro k h1 h2; omega, by intro k h1 h2; omega⟩
+    (by intro k h1 h2; omega)
+    (by intro j h1 h2 hclose hinner; omega)
+    (by intro j h1 h2 hclose hinner; omega)
+    (fun _ => rfl)
+
+/-- **R570 — the same dispatch routes the real seq VALUE sub-block** `[5, 8)` (the value `[1]`) to the
+    `[`-bracket arm.  The eight bracket inputs are `decide`-grounded exactly as
+    `flowSubblock_content_and_noInterior_real_valBlock` (R568) supplied them; `h_scalar_single` is correctly
+    VACUOUS (head `tokens[5]` is `.flowSequenceStart`, refuting the scalar antecedent).  The router selects
+    the seq arm and recovers the SAME `FlowBodyContent fixtureMapSeqVal 5 8` + `h_noInterior` R568 proved. -/
+theorem flowSubblock_content_and_noInterior_dispatch_real_seqVal :
+    FlowBodyContent fixtureMapSeqVal 5 8 ∧
+      (∀ k, 5 < k → k < 8 →
+        ¬ (flowBracketBalance fixtureMapSeqVal 5 k = 0 ∧ fixtureMapSeqVal[k]!.val = .flowEntry)) :=
+  flowSubblock_content_and_noInterior_dispatch fixtureMapSeqVal 5 8
+    ⟨by decide, by decide, by decide, by decide, by decide,
+      by intro i h1 h2; rcases (show i = 5 ∨ i = 6 ∨ i = 7 ∨ i = 8 by omega) with rfl | rfl | rfl | rfl <;> decide,
+      by unfold WellTyped; decide⟩
+    subblock_deepSeq_real_valBlock
+    (by intro k h1 h2; rcases (show k = 6 ∨ k = 7 by omega) with rfl | rfl <;> decide)
+    (by intro j h1 h2 hclose hinner
+        rcases (show j = 6 ∨ j = 7 by omega) with rfl | rfl
+        · exact absurd hclose (by decide)
+        · exact Or.inl rfl)
+    (by intro j h1 h2 hclose hinner
+        rcases (show j = 6 ∨ j = 7 by omega) with rfl | rfl <;> exact absurd hclose (by decide))
+    (by rintro ⟨c, s, h⟩
+        rw [show fixtureMapSeqVal[5]!.val = .flowSequenceStart from by decide] at h; cases h)
+
+-- R570 audits — the dispatch term references the two bracket arms (which pull `Classical.choice` via the
+-- resolve/locator), so the router and both real-data probes inherit `[propext, Classical.choice, Quot.sound]`
+-- regardless of which arm a given input takes ([[ref-mirror-inherits-dependency-axioms]]).
+/-- info: 'L4YAML.Proofs.EmitterScannability.flowSubblock_content_and_noInterior_dispatch' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs in
+#print axioms flowSubblock_content_and_noInterior_dispatch
+
+/-- info: 'MapCarrierRobustInhabitation.flowSubblock_content_and_noInterior_dispatch_real_scalarKey' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs in
+#print axioms flowSubblock_content_and_noInterior_dispatch_real_scalarKey
+
+/-- info: 'MapCarrierRobustInhabitation.flowSubblock_content_and_noInterior_dispatch_real_seqVal' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs in
+#print axioms flowSubblock_content_and_noInterior_dispatch_real_seqVal
+
 -- Axiom audit — the carrier inhabitation and the boundary-survival probe lean only on core; the
 -- ASSEMBLE non-vacuity checks also pull in `Classical.choice` through the rebase's
 -- `flowBracketBalance_compose`.

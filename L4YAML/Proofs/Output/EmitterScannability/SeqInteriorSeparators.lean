@@ -9515,6 +9515,69 @@ theorem flowSubblock_content_and_noInterior_scalar
   · intro i hi1 hi2; omega
   · intro k hk1 hk2; omega
 
+/-- **The per-sub-block content+`noInterior` HEAD-SHAPE DISPATCH** (Phase J -- the router that unifies
+    the now-complete three-member shape family behind ONE interface keyed on the sub-block head token).
+    Given a sub-block window `[lo, hi)` -- exactly the `FlowBodyWindow` `mapPairSubblocks_flowBodyWindow`
+    (R524) carves for a map-pair key or value -- plus its `FlowBodyContentDeepSeq` (R563), this reads the
+    head shape off the deep guard's `headContentStart` field (`isFlowContentStart tokens[lo]`, the
+    three-way disjunction scalar / `[` / `{`) and routes to the matching arm:
+
+    * SCALAR (`tokens[lo] = .scalar c s`) -> `flowSubblock_content_and_noInterior_scalar` (R569), fed the
+      single-node tightness `hi = lo + 1` from the `h_scalar_single` interface field.
+    * `[`-seq (`.flowSequenceStart`) -> `flowSubblock_content_and_noInterior_seq` (R568).
+    * `{`-map (`.flowMappingStart`) -> `flowSubblock_content_and_noInterior_map` (R568).
+
+    The `FlowBodyWindow` bundles the five facts the bracket arms share -- `lo < hi`, `hi <= tokens.size`,
+    `flowBracketBalance = 0`, the `dyck` floor, and `WellTyped` -- exactly as the existing
+    `recseqentry_window_dispatch_seq` (`NonemptyStructure.lean`) reads them off its window, so the
+    dispatch's signature MATCHES what the consumer `recmappair_window_dispatch_map` will already hold.
+    Only three residuals remain explicit hypotheses, each a genuine per-sub-block datum the carrier
+    supplies: the boundary-minimality `h_least`, the two close-successor facts `h_succ_seq` / `h_succ_map`
+    (one per bracket axis), and the scalar tightness `h_scalar_single`.
+
+    Inhabitation-debt note on `h_scalar_single` ([[feedback-inhabitation-debt-validate-target-defs]]): it is
+    a NEW lifted hypothesis, so it is probed at birth on real emission in BOTH modes -- GENUINE on the
+    scalar key `[3, 4)` (its antecedent `tokens[3]` IS a scalar and its consequent `4 = 3 + 1` holds, so it
+    fires as `fun _ => rfl`, not vacuously), and VACUOUS on the seq value `[5, 8)` (head is `[`, so the
+    antecedent is refuted).  It is sound and dischargeable: a carved scalar key/value node occupies exactly
+    one token, so `hi = lo + 1` follows from the skeleton minimality the consumer already holds -- the same
+    deferral the bracket arms make for `h_least` / `h_succ`.  Verified-but-unconsumed until
+    `recmappair_window_dispatch_map` calls it per sub-block; references no sorry site, frontier sorry count
+    unchanged at 4.  Axioms `[propext, Classical.choice, Quot.sound]` -- the dispatch term references the
+    two bracket arms (which pull `Classical.choice` via the resolve/locator), so it inherits their axioms
+    regardless of the branch taken ([[ref-mirror-inherits-dependency-axioms]]); the scalar branch alone
+    would audit cleaner, but a router carries every arm's dependencies. -/
+theorem flowSubblock_content_and_noInterior_dispatch
+    (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_window : FlowBodyWindow tokens lo hi)
+    (h_deep : FlowBodyContentDeepSeq tokens lo hi)
+    (h_least : ∀ k, lo < k → k < hi →
+      ¬ (flowBracketBalance tokens lo k = 0 ∧ (k = hi ∨ tokens[k]!.val = .flowEntry)))
+    (h_succ_seq : ∀ j, lo < j → j < hi → tokens[j]!.val = .flowSequenceEnd →
+      flowBracketBalance tokens (lo + 1) j = 0 →
+      (j + 1 = hi ∨ tokens[j + 1]!.val = .flowEntry))
+    (h_succ_map : ∀ j, lo < j → j < hi → tokens[j]!.val = .flowMappingEnd →
+      flowBracketBalance tokens (lo + 1) j = 0 →
+      (j + 1 = hi ∨ tokens[j + 1]!.val = .flowEntry))
+    (h_scalar_single : (∃ c s, tokens[lo]!.val = .scalar c s) → hi = lo + 1) :
+    FlowBodyContent tokens lo hi ∧
+      (∀ k, lo < k → k < hi →
+        ¬ (flowBracketBalance tokens lo k = 0 ∧ tokens[k]!.val = .flowEntry)) := by
+  have h_lo_hi : lo < hi := h_window.lo_lt_hi
+  have h_total : flowBracketBalance tokens lo hi = 0 := h_window.balanced
+  have h_dyck := h_window.dyck
+  have h_wt := h_window.wellTyped
+  have h_hi_sz : hi ≤ tokens.size := Nat.le_of_lt h_window.hi_lt
+  have h_head_cs : isFlowContentStart tokens[lo]!.val := h_deep.headContentStart
+  unfold isFlowContentStart at h_head_cs
+  rcases h_head_cs with ⟨c, s, hcs⟩ | h_open | h_open
+  · exact flowSubblock_content_and_noInterior_scalar tokens lo hi
+      (h_scalar_single ⟨c, s, hcs⟩) h_deep
+  · exact flowSubblock_content_and_noInterior_seq tokens lo hi h_lo_hi h_hi_sz h_deep
+      h_open h_total h_dyck h_wt h_least h_succ_seq
+  · exact flowSubblock_content_and_noInterior_map tokens lo hi h_lo_hi h_hi_sz h_deep
+      h_open h_total h_dyck h_wt h_least h_succ_map
+
 /-- **The FULL `windowFacts` triple from emission, SEQ source** —
     `(i'-b-B2c-(d)-seqWindowFacts-of-emit-seq)`, R432, the brick that completes the CONTENT of the flat
     per-window provider `seqRec_of_carrier_and_windowFacts_seq` consumes: at every seq window it produces
