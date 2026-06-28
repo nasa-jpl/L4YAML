@@ -987,4 +987,90 @@ theorem contentEqPairList_of_pointwise (l₁ l₂ : List (YamlValue × YamlValue
         exact ⟨by simpa [List.getElem_cons_succ] using hi.1,
                by simpa [List.getElem_cons_succ] using hi.2⟩
 
+/-! ### §5.12  Front B — value-recovery trace, brick 3 producer prep: emission-string decomposition
+
+§5.9–§5.11 supplied the *consumer* side of brick 3's content half: the step algebra (§5.9), the
+loop-result append scaffold (§5.10), and the pointwise → fold assembly joint (§5.11). What remains is
+the genuinely *hard* PRODUCER — the span-locality / compositionality bridge that supplies, for each `k`,
+`contentEq items[k] extra[k] = true`, by showing the loop's `k`-th `parseNode` consumes exactly the
+sub-span `emit items[k]` of the whole emitted stream. **This section lands that producer's FIRST
+sub-link**: the purely *emission-structural* fact that the body string `emit.emitList items` IS the
+per-element emissions `emit items[k]` glued by the literal separator `", "` — i.e.
+
+  `emit.emitList l = ", ".intercalate (l.map emit)`
+
+and the bracketed whole-`emit` corollary `emit (.sequence …) = "[" ++ ", ".intercalate … ++ "]"`. The
+scanner-side token-span decomposition the producer ultimately needs (each inter-`flowEntry` segment of
+`scanFiltered (emit …)` equals `scanFiltered (emit items[k])`) cannot even be *stated* until the
+emitted string is known to be literally that per-element concatenation. This closed form is exactly the
+char-list split currently *inlined ad-hoc* inside `emitList_scans_nonempty`
+(`ScanChainGrowth.lean:222`, `(emit.emitList (v :: v' :: vs)).toList ++ rest = (emit v).toList ++ …`),
+finally factored as a reusable lemma.
+
+Proved by structural induction over the list — emission-independent, no scanner/parser machinery — the
+three `emit.emitList` cases (`[]`, `[v]`, `v :: w :: ws`) matching `String.intercalate`'s
+`intercalate_nil` / `intercalate_singleton` / `intercalate_cons_cons` one-for-one. Verified-but-unconsumed
+until the scanner-side span decomposition (the producer's next sub-link) consumes it. -/
+
+/-- **Emission-string decomposition (sequence body).** The comma-separated flow-sequence body emitted by
+    `emit.emitList` is the `", "`-intercalation of the per-element emissions: `emit.emitList l =
+    ", ".intercalate (l.map emit)`. The closed form on which the producer's span-locality rests — the
+    body string IS `emit items[0] ++ ", " ++ emit items[1] ++ …`. Pure structural induction; the three
+    `emitList` cases match `String.intercalate`'s `nil` / `singleton` / `cons_cons`. -/
+theorem emitList_eq_intercalate (l : List YamlValue) :
+    emit.emitList l = ", ".intercalate (l.map emit) := by
+  induction l with
+  | nil => rfl
+  | cons v vs ih =>
+    cases vs with
+    | nil => rfl
+    | cons w ws =>
+      have h : emit.emitList (v :: w :: ws) = emit v ++ ", " ++ emit.emitList (w :: ws) := rfl
+      rw [h, ih]
+      simp only [List.map_cons, String.intercalate_cons_cons]
+
+/-- **Emission-string decomposition (mapping body).** Mirror for key/value entries: the flow-mapping body
+    emitted by `emit.emitPairList` is the `", "`-intercalation of the per-entry emissions `emit k ++ ": "
+    ++ emit v`. Same structural induction, destructuring each head pair so the `emitPairList` equations
+    fire. -/
+theorem emitPairList_eq_intercalate (l : List (YamlValue × YamlValue)) :
+    emit.emitPairList l
+      = ", ".intercalate (l.map (fun p => emit p.1 ++ ": " ++ emit p.2)) := by
+  induction l with
+  | nil => rfl
+  | cons p rest ih =>
+    cases rest with
+    | nil => obtain ⟨k, v⟩ := p; rfl
+    | cons q qs =>
+      obtain ⟨k, v⟩ := p
+      have h : emit.emitPairList ((k, v) :: q :: qs)
+             = emit k ++ ": " ++ emit v ++ ", " ++ emit.emitPairList (q :: qs) := rfl
+      rw [h, ih]
+      simp only [List.map_cons, String.intercalate_cons_cons]
+
+/-- **Whole-`emit` bracketed form (sequence).** A flow sequence emits as its bracketed body intercalation:
+    `emit (.sequence …) = "[" ++ ", ".intercalate (items.toList.map emit) ++ "]"`. The producer-facing
+    statement — the WHOLE emitted stream, expressed per-element. Immediate from `emitList_eq_intercalate`
+    (the `style`/`tag`/`anchor` fields are irrelevant to the body). -/
+theorem emit_sequence_eq_bracket_intercalate
+    (style : CollectionStyle) (items : Array YamlValue)
+    (tag anchor : Option String) :
+    emit (.sequence style items tag anchor)
+      = "[" ++ ", ".intercalate (items.toList.map emit) ++ "]" := by
+  show "[" ++ emit.emitList items.toList ++ "]"
+      = "[" ++ ", ".intercalate (items.toList.map emit) ++ "]"
+  rw [emitList_eq_intercalate]
+
+/-- **Whole-`emit` bracketed form (mapping).** Mirror: `emit (.mapping …) = "{" ++ ", ".intercalate
+    (pairs.toList.map (fun p => emit p.1 ++ ": " ++ emit p.2)) ++ "}"`. Immediate from
+    `emitPairList_eq_intercalate`. -/
+theorem emit_mapping_eq_bracket_intercalate
+    (style : CollectionStyle) (pairs : Array (YamlValue × YamlValue))
+    (tag anchor : Option String) :
+    emit (.mapping style pairs tag anchor)
+      = "{" ++ ", ".intercalate (pairs.toList.map (fun p => emit p.1 ++ ": " ++ emit p.2)) ++ "}" := by
+  show "{" ++ emit.emitPairList pairs.toList ++ "}"
+      = "{" ++ ", ".intercalate (pairs.toList.map (fun p => emit p.1 ++ ": " ++ emit p.2)) ++ "}"
+  rw [emitPairList_eq_intercalate]
+
 end L4YAML.Proofs.EmitterScannability

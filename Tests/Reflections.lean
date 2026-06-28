@@ -243,6 +243,7 @@ import Tests.Reflections.ValueRecoveryContentResidual
 import Tests.Reflections.ContentListStepAlgebra
 import Tests.Reflections.LoopResultAppend
 import Tests.Reflections.PointwiseFoldAssembly
+import Tests.Reflections.EmissionIntercalate
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
