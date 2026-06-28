@@ -916,4 +916,75 @@ theorem parseFlowMappingLoop_result_append
         | (obtain ⟨e, he⟩ := ih _ _ h_ok
            rw [he, Array.toList_push, List.append_assoc]; exact ⟨_, rfl⟩))
 
+/-! ### §5.11  Front B — value-recovery trace, brick 3 content half: pointwise → fold assembly
+
+§5.9 supplied the *incremental* step (extend two content-equal lists by one content-equal element);
+§5.10 supplied the *structural* scaffold (the loop only appends, so `items''.toList = extra`). This
+section supplies the **consumer joint** for brick 3's content half: the assembly that packages the
+per-element producer's eventual deliverable — *pointwise* content-equality plus equal length — into the
+fold `contentEqList` / `contentEqPairList` the retyped residual demands.
+
+It is the dual decomposition to §5.9. §5.9 threads one element per loop iteration (the producer that
+accumulates inductively); §5.11 instead lets the producer collect ALL its per-element facts first —
+`∀ i, contentEq items[i] extra[i]` (one application of the per-element round-trip IH at each index) plus
+`items.size = extra.length` — and assembles them in one shot. Landing it now RETYPES brick 3's content
+residual from "prove the fold `contentEqList items.toList extra`" to "prove pointwise
+`contentEq items[i] extra[i]` for every `i`, and the length", which is the genuine producer contract the
+remaining (hard) span-locality / compositionality bridge owes. Pure list structural induction —
+emission-independent, no parser machinery — so it stands in isolation now and is verified-but-unconsumed
+until that producer lands ([[ref-consumer-joint-before-producer]], [[ref-universal-packaging-is-its-own-joint]]). -/
+
+/-- **Pointwise → fold (sequence).** Two equal-length value lists that are pointwise content-equal are
+    `contentEqList`-equal. The consumer joint for brick 3's content half: it packages the per-element
+    deliverable (`∀ i, contentEq l₁[i] l₂[i]`, supplied index-by-index by the per-element round-trip IH)
+    + the length into the fold. Pure structural recursion on the first list; the head fact comes from
+    index `0`, the tail from the IH at shifted indices. -/
+theorem contentEqList_of_pointwise (l₁ l₂ : List YamlValue)
+    (h_len : l₁.length = l₂.length)
+    (h_pt : ∀ (i : Nat) (h₁ : i < l₁.length) (h₂ : i < l₂.length),
+              contentEq l₁[i] l₂[i] = true) :
+    contentEq.contentEqList l₁ l₂ = true := by
+  match l₁, l₂ with
+  | [], [] => rfl
+  | [], _ :: _ => simp at h_len
+  | _ :: _, [] => simp at h_len
+  | x :: xs, y :: ys =>
+      simp only [contentEq.contentEqList, Bool.and_eq_true]
+      refine ⟨?_, ?_⟩
+      · have h0 := h_pt 0 (by simp) (by simp)
+        simpa [List.getElem_cons_zero] using h0
+      · refine contentEqList_of_pointwise xs ys (by simpa using h_len) ?_
+        intro i h₁ h₂
+        have hi := h_pt (i + 1) (by simp only [List.length_cons]; omega)
+                                (by simp only [List.length_cons]; omega)
+        simpa [List.getElem_cons_succ] using hi
+
+/-- **Pointwise → fold (mapping).** Mirror for key/value pair lists: two equal-length pair lists whose
+    keys and values are pointwise content-equal are `contentEqPairList`-equal. The consumer joint for
+    the mapping side of brick 3's content half; the per-element deliverable here is the pair
+    `contentEq l₁[i].1 l₂[i].1 ∧ contentEq l₁[i].2 l₂[i].2` (the IHs `ihk`/`ihv`), assembled into the
+    fold. -/
+theorem contentEqPairList_of_pointwise (l₁ l₂ : List (YamlValue × YamlValue))
+    (h_len : l₁.length = l₂.length)
+    (h_pt : ∀ (i : Nat) (h₁ : i < l₁.length) (h₂ : i < l₂.length),
+              contentEq l₁[i].1 l₂[i].1 = true ∧ contentEq l₁[i].2 l₂[i].2 = true) :
+    contentEq.contentEqPairList l₁ l₂ = true := by
+  match l₁, l₂ with
+  | [], [] => rfl
+  | [], _ :: _ => simp at h_len
+  | _ :: _, [] => simp at h_len
+  | (k₁, v₁) :: xs, (k₂, v₂) :: ys =>
+      simp only [contentEq.contentEqPairList, Bool.and_eq_true]
+      refine ⟨⟨?_, ?_⟩, ?_⟩
+      · have h0 := (h_pt 0 (by simp) (by simp)).1
+        simpa [List.getElem_cons_zero] using h0
+      · have h0 := (h_pt 0 (by simp) (by simp)).2
+        simpa [List.getElem_cons_zero] using h0
+      · refine contentEqPairList_of_pointwise xs ys (by simpa using h_len) ?_
+        intro i h₁ h₂
+        have hi := h_pt (i + 1) (by simp only [List.length_cons]; omega)
+                                (by simp only [List.length_cons]; omega)
+        exact ⟨by simpa [List.getElem_cons_succ] using hi.1,
+               by simpa [List.getElem_cons_succ] using hi.2⟩
+
 end L4YAML.Proofs.EmitterScannability

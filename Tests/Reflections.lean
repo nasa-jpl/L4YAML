@@ -242,6 +242,7 @@ import Tests.Reflections.ValueRecoveryOuterShapeAssembled
 import Tests.Reflections.ValueRecoveryContentResidual
 import Tests.Reflections.ContentListStepAlgebra
 import Tests.Reflections.LoopResultAppend
+import Tests.Reflections.PointwiseFoldAssembly
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
