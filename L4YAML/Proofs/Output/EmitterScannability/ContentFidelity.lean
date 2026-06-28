@@ -1073,4 +1073,89 @@ theorem emit_mapping_eq_bracket_intercalate
       = "{" ++ ", ".intercalate (pairs.toList.map (fun p => emit p.1 ++ ": " ++ emit p.2)) ++ "}"
   rw [emitPairList_eq_intercalate]
 
+/-! ### §5.13  Front B — value-recovery trace, brick 3 producer prep: char-list segment peel
+
+§5.12 gave the *string* closed form `emit.emitList l = ", ".intercalate (l.map emit)`. But the
+scanner does not consume strings — every scanner predicate in the `EmitListScansInFlow` family
+(`ScanChainGrowth.lean:166`) is stated over the **char list** `(emit.emitList items).toList ++ rest`,
+and the per-element scan recursion (`emitList_scans_nonempty`, `ScanChainGrowth.lean:203`) peels one
+element off the FRONT of that char list at a time: `(emit v).toList ++ [',', ' '] ++ …`. That peel is
+currently an *ad-hoc inline* (`ScanChainGrowth.lean:222`, `simp [emit.emitList, String.toList_append,
+List.append_assoc]`). This section factors it as a reusable lemma — the `toList`-level bridge from
+§5.12's string form to the `toList ++ rest` shape the scanner producer's span-locality recursion
+peels.
+
+Two shapes, both pure emission/string facts (no scanner/parser machinery, so they stand in isolation
+and cannot perturb the 4-sorry frontier):
+* the **single-step head peel** `(emit.emitList (v :: tail)).toList = (emit v).toList ++ [',', ' '] ++
+  (emit.emitList tail).toList` (`tail ≠ []`) — the exact step the scanner recursion takes, exposing the
+  first element's emission chars as a prefix and the literal `[',', ' ']` separator the comma/space
+  scan steps consume; and
+* the **whole-stream bracket char form** `(emit (.sequence …)).toList = '[' :: (body.toList ++ [']'])`
+  — the framing the producer enters the body scan with (`'['` is the `flowSequenceStart`, the trailing
+  `']'` the `flowSequenceEnd`).
+
+This is the LAST emission-only prerequisite: the next sub-link must cross into scanner machinery — the
+span-locality identity that each peeled `(emit v).toList` segment scans to the standalone
+`scanFiltered (emit v)` token run. Verified-but-unconsumed until that consumes it
+([[ref-consumer-joint-before-producer]]). -/
+
+/-- **Char-list head peel (sequence body).** For a non-empty tail, the char list the scanner consumes
+    for `emit.emitList (v :: tail)` is the head element's emission chars, the literal `[',', ' ']`
+    separator, then the tail body's chars: `(emit.emitList (v :: tail)).toList = (emit v).toList ++
+    [',', ' '] ++ (emit.emitList tail).toList`. The single peel step the flow-sequence scan recursion
+    takes (`ScanChainGrowth.lean:222`), now reusable. (`tail = []` is excluded — there the separator is
+    absent and `emit.emitList [v] = emit v`, the singleton scan base case.) -/
+theorem emitList_toList_cons_of_ne_nil (v : YamlValue) (tail : List YamlValue) (h : tail ≠ []) :
+    (emit.emitList (v :: tail)).toList
+      = (emit v).toList ++ [',', ' '] ++ (emit.emitList tail).toList := by
+  cases tail with
+  | nil => exact absurd rfl h
+  | cons w ws =>
+    have hs : emit.emitList (v :: w :: ws) = emit v ++ ", " ++ emit.emitList (w :: ws) := rfl
+    rw [hs]
+    simp [String.toList_append]
+
+/-- **Char-list head peel (mapping body).** Mirror for key/value entries: for a non-empty tail,
+    `(emit.emitPairList ((k, val) :: tail)).toList = (emit k).toList ++ [':', ' '] ++ (emit val).toList
+    ++ [',', ' '] ++ (emit.emitPairList tail).toList`. The head ENTRY emits as `emit k ++ ": " ++ emit
+    val` (the inner `[':', ' ']` joins key to value), then the `[',', ' ']` entry separator, then the
+    tail. The single peel step the flow-mapping scan recursion takes. -/
+theorem emitPairList_toList_cons_of_ne_nil
+    (k val : YamlValue) (tail : List (YamlValue × YamlValue)) (h : tail ≠ []) :
+    (emit.emitPairList ((k, val) :: tail)).toList
+      = (emit k).toList ++ [':', ' '] ++ (emit val).toList ++ [',', ' ']
+        ++ (emit.emitPairList tail).toList := by
+  cases tail with
+  | nil => exact absurd rfl h
+  | cons q qs =>
+    have hs : emit.emitPairList ((k, val) :: q :: qs)
+            = emit k ++ ": " ++ emit val ++ ", " ++ emit.emitPairList (q :: qs) := rfl
+    rw [hs]
+    simp [String.toList_append]
+
+/-- **Whole-stream bracket char form (sequence).** A flow sequence's emitted char list is the
+    `flowSequenceStart` char `'['`, then the body chars, then the `flowSequenceEnd` char `']'`:
+    `(emit (.sequence …)).toList = '[' :: ((emit.emitList items.toList).toList ++ [']'])`. The framing
+    the producer enters the body scan with — `'['` opens the flow level, the trailing `']'` closes it,
+    and everything between is the §5.12/§5.13 per-element body. -/
+theorem emit_sequence_toList_bracket
+    (style : CollectionStyle) (items : Array YamlValue) (tag anchor : Option String) :
+    (emit (.sequence style items tag anchor)).toList
+      = '[' :: ((emit.emitList items.toList).toList ++ [']']) := by
+  show ("[" ++ emit.emitList items.toList ++ "]").toList
+      = '[' :: ((emit.emitList items.toList).toList ++ [']'])
+  simp [String.toList_append]
+
+/-- **Whole-stream bracket char form (mapping).** Mirror: `(emit (.mapping …)).toList = '{' ::
+    ((emit.emitPairList pairs.toList).toList ++ ['}'])`. `'{'` opens the flow level, the trailing `'}'`
+    closes it. -/
+theorem emit_mapping_toList_bracket
+    (style : CollectionStyle) (pairs : Array (YamlValue × YamlValue)) (tag anchor : Option String) :
+    (emit (.mapping style pairs tag anchor)).toList
+      = '{' :: ((emit.emitPairList pairs.toList).toList ++ ['}']) := by
+  show ("{" ++ emit.emitPairList pairs.toList ++ "}").toList
+      = '{' :: ((emit.emitPairList pairs.toList).toList ++ ['}'])
+  simp [String.toList_append]
+
 end L4YAML.Proofs.EmitterScannability

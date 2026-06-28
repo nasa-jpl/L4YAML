@@ -244,6 +244,7 @@ import Tests.Reflections.ContentListStepAlgebra
 import Tests.Reflections.LoopResultAppend
 import Tests.Reflections.PointwiseFoldAssembly
 import Tests.Reflections.EmissionIntercalate
+import Tests.Reflections.CharListSegmentPeel
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
