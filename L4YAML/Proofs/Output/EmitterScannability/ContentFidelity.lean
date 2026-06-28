@@ -388,4 +388,48 @@ theorem parseNode_flowMapStart_produces_mapping (ps : ParseState) (fuel : Nat)
       simp only [applyNodeFinalization] at h1
       exact h1.symm
 
+/-! ### §5.5  Front B — value-recovery trace, brick 2 sub-link (b): `compose` preserves outer shape
+
+Brick 2 sub-link (a) (§5.4) pinned the outer constructor through `parseNode`; the parsed
+serialization tree's head is `.sequence .flow _ none none` / `.mapping .flow _ none none`. But the
+content-fidelity sorries compare against `(raw_docs.map YamlDocument.compose)[0]!.value` — the
+*composed* representation graph, not the raw parse. `compose` (YAML 1.2.2 §3.1) is
+`resolveAliases` then `stripAnchors` on the value field. Both walk the tree and **recurse into the
+children**, but on a collection head they pass `style` and `tag` through verbatim, and `stripAnchors`
+forces `anchor := none` — so a `.sequence .flow _ none none` / `.mapping .flow _ none none` head
+survives `compose` with the *same outer constructor* (only the items/pairs arrays are rewritten by
+the recursive child-walk, which is brick 3's concern). This closes the outer-shape half of the trace:
+the composed value is still a flow collection with default tag/anchor, exactly what
+`contentEq_{seq,map}_style_irrel` need before the per-element comparison. Verified-but-unconsumed
+until the `parseStream`/`parseDocument` wrapping (which feeds a real `doc.value` into these) and
+brick 3 (the per-element induction) land. -/
+
+/-- **`compose` preserves outer shape (sequence).** If a document's value is a flow sequence with
+    default tag/anchor, then so is its `compose`d value: `compose` runs `resolveAliases` then
+    `stripAnchors` on the value, and both preserve the `.sequence .flow _ none none` head (passing
+    `style`/`tag` through, and `stripAnchors` clearing the anchor slot to the `none` it already
+    held). The recursive child-walk rewrites only the items array. Brick 2 sub-link (b), lifting the
+    outer shape across `compose`. -/
+theorem compose_preserves_flow_sequence (doc : YamlDocument) (items' : Array YamlValue)
+    (h : doc.value = .sequence .flow items' none none) :
+    ∃ items'', (doc.compose).value = .sequence .flow items'' none none := by
+  have hv : (doc.compose).value
+      = (doc.value.resolveAliases doc.anchors).stripAnchors := rfl
+  rw [hv, h]
+  unfold YamlValue.resolveAliases YamlValue.stripAnchors
+  exact ⟨_, rfl⟩
+
+/-- **`compose` preserves outer shape (mapping).** Mirror of `compose_preserves_flow_sequence`: a
+    flow mapping with default tag/anchor stays a flow mapping with default tag/anchor across
+    `compose`, by the same `resolveAliases`/`stripAnchors` pass-through and the recursive child-walk
+    touching only the pairs array. -/
+theorem compose_preserves_flow_mapping (doc : YamlDocument) (pairs' : Array (YamlValue × YamlValue))
+    (h : doc.value = .mapping .flow pairs' none none) :
+    ∃ pairs'', (doc.compose).value = .mapping .flow pairs'' none none := by
+  have hv : (doc.compose).value
+      = (doc.value.resolveAliases doc.anchors).stripAnchors := rfl
+  rw [hv, h]
+  unfold YamlValue.resolveAliases YamlValue.stripAnchors
+  exact ⟨_, rfl⟩
+
 end L4YAML.Proofs.EmitterScannability
