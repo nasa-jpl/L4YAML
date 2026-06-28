@@ -1337,4 +1337,99 @@ theorem scanFiltered_vals_stream_framing (input : String) (ft : Array (Positione
   rw [hdec]
   simp only [List.map_cons, List.map_append, List.map_cons, List.map_nil, h_t0, h_tlast]
 
+/-! ### §5.15  Front B — value-recovery trace, brick 3 content half: per-element re-parse consumer joint
+
+§5.9–§5.11 supplied the consumer side of brick 3's content half — the step algebra (§5.9), the
+loop-result append scaffold (§5.10), and the pointwise → fold assembly joint (§5.11). §5.11 already
+retyped the residual from "prove the fold `contentEqList items.toList items''.toList`" to "prove
+pointwise `contentEq items[i] items''[i]` plus the length". But the per-element round-trip IH the
+`emit_roundtrip_{sequence,mapping}_content_eq` proofs carry does NOT speak in `contentEq items[i]
+items''[i]` directly — it speaks in *re-parse* terms:
+
+  `ih i rd : parseYamlRaw (emit items[i]) = .ok rd → rd.size = 1 → contentEq items[i] (rd.map compose)[0]!.value`
+
+So one more consumer layer sits between §5.11 and the actual sorry sites: compose that IH with §5.11.
+§5.15 is that layer. It takes the genuine **producer deliverable** — for each element index, the
+re-parse fact `∃ rd, parseYamlRaw (emit items[i]) = .ok rd ∧ rd.size = 1 ∧ (rd.map compose)[0]!.value
+= items''[i]!` (the scanner-span-locality + parser-locality round-trip the §5.10–§5.14 chain is
+building toward), plus the size equality `items.size = items''.size` — and discharges the whole
+brick-3 conjunction `(items.size == items''.size && contentEqList items.toList items''.toList) = true`
+by feeding each re-parse fact through the IH (re-parse → pointwise `contentEq`) and the result through
+§5.11's `contentEqList_of_pointwise` (pointwise → fold). The deliverable is stated with bang-indexing
+(`items''[i]!`) so it is *non-dependent* on `h_size` — i.e. the two halves bundle into one
+`h_size ∧ h_rep`, the single typed obligation the retyped frontier sorry now states.
+
+Consuming §5.15 at the two `emit_roundtrip_*_content_eq` sorry sites RETYPES each frontier sorry from
+the opaque content goal to exactly that bundled producer contract — collapsing the scattered residual
+to one boundary ([[ref-consumer-joint-before-producer]], [[ref-reduction-by-import]]): "produce, for the
+recovered `items''`/`pairs''`, the size equality and the per-element re-parse facts." Pure plumbing
+(IH application + §5.11), emission-independent, no scanner/parser machinery — the deliverable's TRUTH is
+grounded against real emission in the paired `Tests/Reflections` probe before the retype. -/
+
+/-- **Per-element re-parse → brick-3 conjunction (sequence).** Composes the per-element round-trip IH
+    with §5.11 (`contentEqList_of_pointwise`): given the size equality and, for each index `i`, the
+    re-parse fact that `items''[i]!` is the composed value of `parseYamlRaw (emit items[i])` (the
+    producer deliverable), discharge the full brick-3 sequence conjunction. Bang-indexed deliverable so
+    `h_size ∧ h_rep` is one non-dependent obligation. -/
+theorem contentEqList_of_reparse
+    (items items'' : Array YamlValue)
+    (h_size : items.size = items''.size)
+    (ih : ∀ (i : Fin items.size) (rd : Array YamlDocument),
+            parseYamlRaw (emit items[i]) = .ok rd → rd.size = 1 →
+            contentEq items[i] (rd.map YamlDocument.compose)[0]!.value = true)
+    (h_rep : ∀ (i : Fin items.size), ∃ rd : Array YamlDocument,
+              parseYamlRaw (emit items[i]) = .ok rd ∧ rd.size = 1 ∧
+              (rd.map YamlDocument.compose)[0]!.value = items''[i.val]!) :
+    (items.size == items''.size && contentEq.contentEqList items.toList items''.toList) = true := by
+  rw [Bool.and_eq_true]
+  refine ⟨by simp [h_size], ?_⟩
+  apply contentEqList_of_pointwise
+  · rw [Array.length_toList, Array.length_toList]; exact h_size
+  · intro i h₁ h₂
+    rw [Array.length_toList] at h₁ h₂
+    obtain ⟨rd, h_parse_rd, h_sz_rd, h_val_eq⟩ := h_rep ⟨i, h₁⟩
+    have h_content := ih ⟨i, h₁⟩ rd h_parse_rd h_sz_rd
+    rw [h_val_eq] at h_content
+    have h_bang : items''[i]! = items''[i]'h₂ := getElem!_pos items'' i h₂
+    rw [h_bang] at h_content
+    rw [Array.getElem_toList, Array.getElem_toList]
+    exact h_content
+
+/-- **Per-element re-parse → brick-3 conjunction (mapping).** Mirror of `contentEqList_of_reparse`:
+    composes the key/value round-trip IHs (`ihk`/`ihv`) with §5.11's `contentEqPairList_of_pointwise`.
+    The per-entry deliverable is a CONJUNCTION — both the key and the value re-parse to `pairs''[i]!`'s
+    `.fst`/`.snd` — assembled into the brick-3 mapping conjunction. -/
+theorem contentEqPairList_of_reparse
+    (pairs pairs'' : Array (YamlValue × YamlValue))
+    (h_size : pairs.size = pairs''.size)
+    (ihk : ∀ (i : Fin pairs.size) (rd : Array YamlDocument),
+            parseYamlRaw (emit pairs[i].fst) = .ok rd → rd.size = 1 →
+            contentEq pairs[i].fst (rd.map YamlDocument.compose)[0]!.value = true)
+    (ihv : ∀ (i : Fin pairs.size) (rd : Array YamlDocument),
+            parseYamlRaw (emit pairs[i].snd) = .ok rd → rd.size = 1 →
+            contentEq pairs[i].snd (rd.map YamlDocument.compose)[0]!.value = true)
+    (h_rep : ∀ (i : Fin pairs.size),
+              (∃ rdk : Array YamlDocument,
+                parseYamlRaw (emit pairs[i].fst) = .ok rdk ∧ rdk.size = 1 ∧
+                (rdk.map YamlDocument.compose)[0]!.value = (pairs''[i.val]!).fst) ∧
+              (∃ rdv : Array YamlDocument,
+                parseYamlRaw (emit pairs[i].snd) = .ok rdv ∧ rdv.size = 1 ∧
+                (rdv.map YamlDocument.compose)[0]!.value = (pairs''[i.val]!).snd)) :
+    (pairs.size == pairs''.size && contentEq.contentEqPairList pairs.toList pairs''.toList) = true := by
+  rw [Bool.and_eq_true]
+  refine ⟨by simp [h_size], ?_⟩
+  apply contentEqPairList_of_pointwise
+  · rw [Array.length_toList, Array.length_toList]; exact h_size
+  · intro i h₁ h₂
+    rw [Array.length_toList] at h₁ h₂
+    obtain ⟨⟨rdk, h_pk, h_szk, h_vk⟩, ⟨rdv, h_pv, h_szv, h_vv⟩⟩ := h_rep ⟨i, h₁⟩
+    have h_ck := ihk ⟨i, h₁⟩ rdk h_pk h_szk
+    have h_cv := ihv ⟨i, h₁⟩ rdv h_pv h_szv
+    have h_bang : pairs''[i]! = pairs''[i]'h₂ := getElem!_pos pairs'' i h₂
+    rw [h_bang] at h_vk h_vv
+    rw [h_vk] at h_ck
+    rw [h_vv] at h_cv
+    rw [Array.getElem_toList, Array.getElem_toList]
+    exact ⟨h_ck, h_cv⟩
+
 end L4YAML.Proofs.EmitterScannability

@@ -858,9 +858,17 @@ theorem emit_roundtrip_sequence_content_eq {inFlow : Bool} (style : CollectionSt
     obtain ⟨items'', h_shape⟩ :=
       parseStream_flowSeqStart_recovers_outer_shape tokens raw_docs h_parse (by omega) (by omega) h_t1
     rw [h_shape, contentEq_sequence_items]
-    -- Residual = brick 3: the per-element `parseFlowSequenceLoop` induction relating `items''`
-    -- to `items` (size equality + `contentEqList items.toList items''.toList`) through the IH.
-    exact sorry
+    -- Residual = brick 3, retyped by CONSUMING §5.15's `contentEqList_of_reparse` (R585): the
+    -- opaque conjunction collapses to the single typed PRODUCER deliverable — the size equality plus
+    -- the per-element re-parse facts (`items''[i]!` is the composed value of `parseYamlRaw (emit
+    -- items[i])`), the scanner-span-locality + parser-locality round-trip the §5.10–§5.14 chain
+    -- builds toward.  Grounded TRUE on concrete witnesses in `Tests/Reflections/ReparseConsumerJoint`.
+    obtain ⟨h_size, h_rep⟩ :
+        items.size = items''.size ∧
+        (∀ (i : Fin items.size), ∃ rd : Array YamlDocument,
+          parseYamlRaw (emit items[i]) = .ok rd ∧ rd.size = 1 ∧
+          (rd.map YamlDocument.compose)[0]!.value = items''[i.val]!) := sorry
+    exact contentEqList_of_reparse items items'' h_size ih h_rep
 
 /-- Proves that parsing the emitted tokens for a flow mapping recovers a content-equivalent mapping. -/
 theorem emit_roundtrip_mapping_content_eq {inFlow : Bool} (style : CollectionStyle) (pairs : Array (YamlValue × YamlValue))
@@ -922,9 +930,21 @@ theorem emit_roundtrip_mapping_content_eq {inFlow : Bool} (style : CollectionSty
     obtain ⟨pairs'', h_shape⟩ :=
       parseStream_flowMapStart_recovers_outer_shape tokens raw_docs h_parse (by omega) (by omega) h_t1
     rw [h_shape, contentEq_mapping_pairs]
-    -- Residual = brick 3: the per-element `parseFlowMappingLoop` induction relating `pairs''`
-    -- to `pairs` (size equality + `contentEqPairList pairs.toList pairs''.toList`) through the IHs.
-    exact sorry
+    -- Residual = brick 3, retyped by CONSUMING §5.15's `contentEqPairList_of_reparse` (R585): the
+    -- opaque conjunction collapses to the single typed PRODUCER deliverable — the size equality plus
+    -- the per-entry re-parse facts (both key and value of `pairs''[i]!` are the composed values of
+    -- `parseYamlRaw (emit pairs[i].fst/.snd)`).  Grounded TRUE on a concrete `{a:b}` witness in
+    -- `Tests/Reflections/ReparseConsumerJoint`.
+    obtain ⟨h_size, h_rep⟩ :
+        pairs.size = pairs''.size ∧
+        (∀ (i : Fin pairs.size),
+          (∃ rdk : Array YamlDocument,
+            parseYamlRaw (emit pairs[i].fst) = .ok rdk ∧ rdk.size = 1 ∧
+            (rdk.map YamlDocument.compose)[0]!.value = (pairs''[i.val]!).fst) ∧
+          (∃ rdv : Array YamlDocument,
+            parseYamlRaw (emit pairs[i].snd) = .ok rdv ∧ rdv.size = 1 ∧
+            (rdv.map YamlDocument.compose)[0]!.value = (pairs''[i.val]!).snd)) := sorry
+    exact contentEqPairList_of_reparse pairs pairs'' h_size ihk ihv h_rep
 
 /-- **Content fidelity**: Parsing canonical emitter output recovers content
     equivalent to the original value.
