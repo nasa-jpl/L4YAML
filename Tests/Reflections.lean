@@ -238,6 +238,7 @@ import Tests.Reflections.ValueRecoveryNodeDispatch
 import Tests.Reflections.ValueRecoveryCompose
 import Tests.Reflections.ValueRecoveryParseDocument
 import Tests.Reflections.ValueRecoveryPosition
+import Tests.Reflections.ValueRecoveryOuterShapeAssembled
 
 /-!
 # Reflections — runnable proof-engineering demonstrations

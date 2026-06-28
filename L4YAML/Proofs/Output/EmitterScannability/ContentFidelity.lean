@@ -665,4 +665,79 @@ theorem parseStream_first_doc_at_pos_one
       parseStreamLoop_first_doc_from_entry ps_start .initial tokens.size docs h_parse h_ne
     exact ⟨ps_start, ps', h_tok, h_pos, h_pd⟩
 
+/-! ### §5.8  Front B — value-recovery trace, brick 2 assembled: outer-shape recovery end-to-end
+
+§5.3–§5.7 supplied the individual links of Front B's value-recovery trace; this section composes them
+into the **outer-shape half**, end-to-end on the parse side. Given a successful `parseStream` whose
+first token after `streamStart` (position 1) is the flow opener `.flowSequenceStart` /
+`.flowMappingStart`, the **composed** first document's value is a flow collection with default
+tag/anchor:
+
+  `parseStream_first_doc_at_pos_one` (§5.7) — the first doc came from `parseDocument` run at pos 1;
+  `parseDocument_flow{Seq,Map}Start_produces_{sequence,mapping}` (§5.6) — that doc's value is the flow shape;
+  `compose_preserves_flow_{sequence,mapping}` (§5.5) — the shape survives `compose`;
+  + a `getElem!`/`Array.map` bridge landing it on `(raw_docs.map compose)[0]!.value`.
+
+The two head-token hypotheses (`1 < tokens.size`, `tokens[1]!.val = .flowSequenceStart` /
+`.flowMappingStart`) are exactly what `scanFiltered_emit{Seq,Map}_nonempty_structure`
+(`NonemptyStructure`) already delivers for emitted flow collections (it gives `tokens.size ≥ 5` and the
+position-1 opener as conjuncts). So the consumer (`emit_roundtrip_{sequence,mapping}_content_eq`,
+`EmitterScannability.lean:845`/`:885`) discharges them from the scan, then this lemma +
+`contentEq_{seq,map}_style_irrel` + `contentEq_{sequence_items,mapping_pairs}` reduce the
+content-fidelity goal to the per-element comparison `contentEqList` / `contentEqPairList` — **brick 3**,
+the per-element flow-loop induction. Kept parameterized on the head-token facts (rather than importing
+the scan-side structure lemma here) so this section owns exactly the parse-side links. Verified-but-
+unconsumed until brick 3 lands and the two content-fidelity sorries close. -/
+
+/-- **Outer-shape recovery, assembled (sequence).** A successful `parseStream` whose position-1
+    lookahead is `.flowSequenceStart` recovers a composed first document whose value is a flow sequence
+    with default tag/anchor. Composes §5.7 (position-pinning) → §5.6 (`parseDocument` dispatch) → §5.5
+    (`compose` preserves the head), then bridges `(raw_docs.map compose)[0]!`. The full outer-shape half
+    of Front B's value-recovery trace; only the per-element body (brick 3) remains. -/
+theorem parseStream_flowSeqStart_recovers_outer_shape
+    (tokens : Array (Positioned YamlToken)) (raw_docs : Array YamlDocument)
+    (h_parse : parseStream tokens = .ok raw_docs)
+    (h_ne : 0 < raw_docs.size)
+    (h_lt : 1 < tokens.size)
+    (h_head : tokens[1]!.val = .flowSequenceStart) :
+    ∃ items'', (raw_docs.map YamlDocument.compose)[0]!.value = .sequence .flow items'' none none := by
+  obtain ⟨ps, ps', h_ps_tok, h_ps_pos, h_pd⟩ :=
+    parseStream_first_doc_at_pos_one tokens raw_docs h_parse h_ne
+  have h_peek : ps.peek? = some .flowSequenceStart := by
+    unfold ParseState.peek?
+    rw [h_ps_pos, h_ps_tok, if_pos h_lt, h_head]
+  obtain ⟨items', h_doc_val⟩ :=
+    parseDocument_flowSeqStart_produces_sequence ps raw_docs[0]! ps' h_peek h_pd
+  obtain ⟨items'', h_comp⟩ := compose_preserves_flow_sequence raw_docs[0]! items' h_doc_val
+  refine ⟨items'', ?_⟩
+  have h_map : (raw_docs.map YamlDocument.compose)[0]! = (raw_docs[0]!).compose := by
+    have h0' : 0 < (raw_docs.map YamlDocument.compose).size := by rw [Array.size_map]; omega
+    rw [getElem!_pos _ 0 h0', getElem!_pos raw_docs 0 h_ne, Array.getElem_map]
+  rw [h_map]; exact h_comp
+
+/-- **Outer-shape recovery, assembled (mapping).** Mirror of `parseStream_flowSeqStart_recovers_outer_shape`:
+    a successful `parseStream` whose position-1 lookahead is `.flowMappingStart` recovers a composed
+    first document whose value is a flow mapping with default tag/anchor, by the same §5.7 → §5.6 → §5.5
+    composition over the mapping-side links and the same `getElem!`/`Array.map` bridge. -/
+theorem parseStream_flowMapStart_recovers_outer_shape
+    (tokens : Array (Positioned YamlToken)) (raw_docs : Array YamlDocument)
+    (h_parse : parseStream tokens = .ok raw_docs)
+    (h_ne : 0 < raw_docs.size)
+    (h_lt : 1 < tokens.size)
+    (h_head : tokens[1]!.val = .flowMappingStart) :
+    ∃ pairs'', (raw_docs.map YamlDocument.compose)[0]!.value = .mapping .flow pairs'' none none := by
+  obtain ⟨ps, ps', h_ps_tok, h_ps_pos, h_pd⟩ :=
+    parseStream_first_doc_at_pos_one tokens raw_docs h_parse h_ne
+  have h_peek : ps.peek? = some .flowMappingStart := by
+    unfold ParseState.peek?
+    rw [h_ps_pos, h_ps_tok, if_pos h_lt, h_head]
+  obtain ⟨pairs', h_doc_val⟩ :=
+    parseDocument_flowMapStart_produces_mapping ps raw_docs[0]! ps' h_peek h_pd
+  obtain ⟨pairs'', h_comp⟩ := compose_preserves_flow_mapping raw_docs[0]! pairs' h_doc_val
+  refine ⟨pairs'', ?_⟩
+  have h_map : (raw_docs.map YamlDocument.compose)[0]! = (raw_docs[0]!).compose := by
+    have h0' : 0 < (raw_docs.map YamlDocument.compose).size := by rw [Array.size_map]; omega
+    rw [getElem!_pos _ 0 h0', getElem!_pos raw_docs 0 h_ne, Array.getElem_map]
+  rw [h_map]; exact h_comp
+
 end L4YAML.Proofs.EmitterScannability
