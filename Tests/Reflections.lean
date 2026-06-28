@@ -245,6 +245,7 @@ import Tests.Reflections.LoopResultAppend
 import Tests.Reflections.PointwiseFoldAssembly
 import Tests.Reflections.EmissionIntercalate
 import Tests.Reflections.CharListSegmentPeel
+import Tests.Reflections.StreamMarkerFraming
 
 /-!
 # Reflections — runnable proof-engineering demonstrations

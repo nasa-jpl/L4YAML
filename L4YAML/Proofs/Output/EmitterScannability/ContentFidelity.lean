@@ -1096,9 +1096,11 @@ and cannot perturb the 4-sorry frontier):
   `']'` the `flowSequenceEnd`).
 
 This is the LAST emission-only prerequisite: the next sub-link must cross into scanner machinery — the
-span-locality identity that each peeled `(emit v).toList` segment scans to the standalone
-`scanFiltered (emit v)` token run. Verified-but-unconsumed until that consumes it
-([[ref-consumer-joint-before-producer]]). -/
+span-locality identity relating each peeled `(emit v).toList` segment to the standalone
+`scanFiltered (emit v)` token run.  §5.14 takes that first scanner step and lands its first
+*correction*: the in-stream segment is NOT literally `scanFiltered (emit v)` (which carries the
+`.streamStart`/`.streamEnd` stream markers a mid-stream segment cannot), but its marker-stripped
+*core*.  Verified-but-unconsumed until that consumes it ([[ref-consumer-joint-before-producer]]). -/
 
 /-- **Char-list head peel (sequence body).** For a non-empty tail, the char list the scanner consumes
     for `emit.emitList (v :: tail)` is the head element's emission chars, the literal `[',', ' ']`
@@ -1157,5 +1159,182 @@ theorem emit_mapping_toList_bracket
   show ("{" ++ emit.emitPairList pairs.toList ++ "}").toList
       = '{' :: ((emit.emitPairList pairs.toList).toList ++ ['}'])
   simp [String.toList_append]
+
+/-! ### §5.14  Front B — value-recovery trace, brick 3 producer prep: standalone-scan stream framing
+
+§5.13 ended the emission-only prerequisites; the span-locality producer's next sub-link crosses into
+scanner machinery.  R583's stated target was that each in-stream `(emit v).toList` segment scans to
+"the standalone `scanFiltered (emit v)` token run".  Before producing anything against that target,
+the inhabitation-debt discipline ([[ref-probe-deferred-universal-before-producing]]) demands checking
+it is even TRUE — and an `#eval` probe of the real token stream shows it is **literally false**:
+
+  `scanFiltered (emit (.scalar {content := "a", ..}))` vals = `[.streamStart, .scalar "a" .., .streamEnd]`
+  in-stream segment for that same element = `[.scalar "a" ..]`   (NO stream markers)
+
+`scan` opens every run with `.streamStart` and closes it with `.streamEnd` (`scanLoop`), and BOTH pass
+the `.placeholder` filter, so a *standalone* `scanFiltered` is bracketed by stream markers that a
+*mid-stream* segment can never carry.  The true producer contract is therefore "segment = the
+**marker-stripped core** of `scanFiltered (emit v)`", not the whole token run.  This section lands that
+correction as the stream-marker framing of any successful `scanFiltered`:
+
+* `scanFiltered_first_is_streamStart` / `scanFiltered_last_is_streamEnd` — the first/last filtered
+  token is `.streamStart`/`.streamEnd` (the filter keeps both; lifted from `scan_first_is_streamStart`
+  / `scan_last_is_streamEnd` through `Array.filter`'s order-preservation via the `List.filter`
+  head/last surgery `filter_cons_of_pos` / `filter_reverse`); and
+* `scanFiltered_stream_framing` / `scanFiltered_vals_stream_framing` — the decomposition
+  `ft.toList = t0 :: (core ++ [tlast])` (resp. its `.val`-map `.streamStart :: coreVals ++ [.streamEnd]`)
+  exposing the marker-free `core`/`coreVals` the eventual segment-equality targets.
+
+Emission-independent (stated for ANY input whose `scanFiltered` succeeds with `≥ 2` tokens — the caller
+discharges that for `emit v`), so it stands in isolation and cannot perturb the 4-sorry frontier.
+Verified-but-unconsumed until the segment-equality producer consumes it. -/
+
+/-- **List head/middle/last split.** Any list of length `≥ 2` decomposes as `a :: (core ++ [b])` — a
+    distinct head `a`, middle `core`, and last `b`.  Pure structural fact (`dropLast_concat_getLast`);
+    the shape the stream framing hangs the `.streamStart` head and `.streamEnd` last on. -/
+theorem list_split_head_mid_last {α : Type _} (L : List α) (h : 2 ≤ L.length) :
+    ∃ a core b, L = a :: (core ++ [b]) := by
+  cases L with
+  | nil => simp at h
+  | cons a t =>
+    have ht : t ≠ [] := by intro hc; rw [hc] at h; simp at h
+    exact ⟨a, t.dropLast, t.getLast ht, by rw [List.dropLast_concat_getLast ht]⟩
+
+/-- **First filtered token is `.streamStart`.** For any input whose `scanFiltered` succeeds with a
+    non-empty token array, the first token is `.streamStart`.  Lifted from `scan_first_is_streamStart`
+    (the raw `scan`'s `tokens[0]`) through the `.placeholder` filter: `.streamStart` passes the filter,
+    and `Array.filter` preserves order, so the raw head survives as the filtered head
+    (`List.filter_cons_of_pos`). -/
+theorem scanFiltered_first_is_streamStart (input : String) (ft : Array (Positioned YamlToken))
+    (h : scanFiltered input = .ok ft) (h_size : ft.size > 0) :
+    (ft[0]'h_size).val = YamlToken.streamStart := by
+  unfold scanFiltered at h
+  split at h
+  · rename_i raw h_scan
+    have h_ft : ft = raw.filter (fun t => t.val != .placeholder) := (Except.ok.inj h).symm
+    have h_le : ft.size ≤ raw.size := by rw [h_ft]; exact Array.size_filter_le
+    have h_raw_pos : raw.size > 0 := by omega
+    have h_ss : (raw[0]'h_raw_pos).val = YamlToken.streamStart :=
+      ScannerCorrectness.scan_first_is_streamStart input raw h_scan h_raw_pos
+    have h_p0 : (fun t : Positioned YamlToken => t.val != .placeholder) (raw[0]'h_raw_pos) = true := by
+      simp only [h_ss]; rfl
+    have h_tl_len : raw.toList.length = raw.size := Array.length_toList
+    obtain ⟨x, xs, hx⟩ : ∃ x xs, raw.toList = x :: xs := by
+      match hl : raw.toList with
+      | [] => rw [hl] at h_tl_len; simp only [List.length_nil] at h_tl_len; omega
+      | x :: xs => exact ⟨x, xs, rfl⟩
+    have hx0 : x = raw[0]'h_raw_pos := by
+      have e1 : raw.toList[0]? = some x := by rw [hx]; rfl
+      have e2 : raw.toList[0]? = some (raw[0]'h_raw_pos) := by
+        rw [List.getElem?_eq_getElem (by rw [h_tl_len]; exact h_raw_pos),
+            Array.getElem_toList h_raw_pos]
+      rw [e1] at e2; exact (Option.some.inj e2)
+    have h_ft_tl : ft.toList = raw.toList.filter (fun t => t.val != .placeholder) := by
+      rw [h_ft, Array.toList_filter]
+    rw [hx, List.filter_cons_of_pos (hx0 ▸ h_p0)] at h_ft_tl
+    have h_ft0 : ft[0]'h_size = x := by
+      have e : ft.toList[0]? = some (ft[0]'h_size) := by
+        rw [List.getElem?_eq_getElem (by rw [Array.length_toList]; exact h_size),
+            Array.getElem_toList h_size]
+      rw [h_ft_tl] at e; simp only [List.getElem?_cons_zero] at e
+      exact (Option.some.inj e).symm
+    rw [h_ft0, hx0, h_ss]
+  · exact absurd h (by simp)
+
+/-- **Last filtered token is `.streamEnd`.** Mirror of `scanFiltered_first_is_streamStart` for the
+    array's end: lifted from `scan_last_is_streamEnd` through the filter via the `List.filter_reverse`
+    + `filter_cons_of_pos` surgery (the raw last token `.streamEnd` passes the filter and stays last,
+    since reversing-then-filtering keeps the head). -/
+theorem scanFiltered_last_is_streamEnd (input : String) (ft : Array (Positioned YamlToken))
+    (h : scanFiltered input = .ok ft) (h_size : ft.size > 0) :
+    (ft[ft.size - 1]'(by omega)).val = YamlToken.streamEnd := by
+  unfold scanFiltered at h
+  split at h
+  · rename_i raw h_scan
+    have h_ft : ft = raw.filter (fun t => t.val != .placeholder) := (Except.ok.inj h).symm
+    have h_le : ft.size ≤ raw.size := by rw [h_ft]; exact Array.size_filter_le
+    have h_raw_pos : raw.size > 0 := by omega
+    have h_se : (raw[raw.size - 1]'(by omega)).val = YamlToken.streamEnd :=
+      ScannerCorrectness.scan_last_is_streamEnd input raw h_scan h_raw_pos
+    have h_tl_len : raw.toList.length = raw.size := Array.length_toList
+    have h_ftl : ft.toList.length = ft.size := Array.length_toList
+    have h_ft_tl : ft.toList = raw.toList.filter (fun t => t.val != .placeholder) := by
+      rw [h_ft, Array.toList_filter]
+    have h_last_raw : raw.toList.getLast? = some (raw[raw.size - 1]'(by omega)) := by
+      rw [List.getLast?_eq_getElem?, h_tl_len,
+          List.getElem?_eq_getElem (by omega), Array.getElem_toList]
+    have h_rev_ne : raw.toList.reverse ≠ [] := by
+      intro hc
+      have hl := List.length_reverse (as := raw.toList)
+      rw [hc, List.length_nil, h_tl_len] at hl; omega
+    obtain ⟨z, zs, hz⟩ : ∃ z zs, raw.toList.reverse = z :: zs := by
+      match hl : raw.toList.reverse with
+      | [] => exact absurd hl h_rev_ne
+      | z :: zs => exact ⟨z, zs, rfl⟩
+    have hz_eq : z = raw[raw.size - 1]'(by omega) := by
+      have e : raw.toList.reverse.head? = some z := by rw [hz]; rfl
+      rw [List.head?_reverse, h_last_raw] at e
+      exact (Option.some.inj e).symm
+    have h_pz' : (fun t : Positioned YamlToken => t.val != .placeholder) z = true := by
+      rw [hz_eq]; simp only [h_se]; rfl
+    have h_filter_rev :
+        raw.toList.reverse.filter (fun t => t.val != .placeholder)
+          = z :: zs.filter (fun t => t.val != .placeholder) := by
+      rw [hz]; exact List.filter_cons_of_pos h_pz'
+    have h_ft_getlast : ft.toList.getLast? = some z := by
+      rw [h_ft_tl, ← List.head?_reverse, ← List.filter_reverse, h_filter_rev]; rfl
+    have h_ftlast : ft[ft.size - 1]'(by omega) = z := by
+      have e : ft.toList.getLast? = some (ft[ft.size - 1]'(by omega)) := by
+        rw [List.getLast?_eq_getElem?, Array.length_toList,
+            List.getElem?_eq_getElem (by omega), Array.getElem_toList]
+      rw [h_ft_getlast] at e
+      exact (Option.some.inj e).symm
+    rw [h_ftlast, hz_eq, h_se]
+  · exact absurd h (by simp)
+
+/-- **Stream-marker framing (token level).** Any successful `scanFiltered` with `≥ 2` tokens decomposes
+    as `t0 :: (core ++ [tlast])` where `t0.val = .streamStart` and `tlast.val = .streamEnd` — the
+    stream markers bracket a marker-free `core`.  The producer's CORRECTED contract: an in-stream
+    segment equals `core`, never the whole `scanFiltered (emit v)`.  Assembled from the head/last
+    framing and the structural `list_split_head_mid_last`. -/
+theorem scanFiltered_stream_framing (input : String) (ft : Array (Positioned YamlToken))
+    (h : scanFiltered input = .ok ft) (h_size : 2 ≤ ft.size) :
+    ∃ (t0 tlast : Positioned YamlToken) (core : List (Positioned YamlToken)),
+      ft.toList = t0 :: (core ++ [tlast])
+      ∧ t0.val = YamlToken.streamStart ∧ tlast.val = YamlToken.streamEnd := by
+  have h_pos : ft.size > 0 := by omega
+  have h_ftl : ft.toList.length = ft.size := Array.length_toList
+  have h_first := scanFiltered_first_is_streamStart input ft h h_pos
+  have h_last := scanFiltered_last_is_streamEnd input ft h h_pos
+  obtain ⟨t0, core, tlast, hdec⟩ :=
+    list_split_head_mid_last ft.toList (by rw [Array.length_toList]; omega)
+  refine ⟨t0, tlast, core, hdec, ?_, ?_⟩
+  · have ht0_eq : ft[0]'h_pos = t0 := by
+      have e : ft.toList[0]? = some (ft[0]'h_pos) := by
+        rw [List.getElem?_eq_getElem (by rw [Array.length_toList]; exact h_pos),
+            Array.getElem_toList]
+      rw [hdec] at e; simp only [List.getElem?_cons_zero] at e
+      exact (Option.some.inj e).symm
+    rw [← ht0_eq]; exact h_first
+  · have htlast_eq : ft[ft.size - 1]'(by omega) = tlast := by
+      have e : ft.toList.getLast? = some (ft[ft.size - 1]'(by omega)) := by
+        rw [List.getLast?_eq_getElem?, Array.length_toList,
+            List.getElem?_eq_getElem (by omega), Array.getElem_toList]
+      rw [hdec, List.getLast?_cons_of_ne_nil (by simp), List.getLast?_concat] at e
+      exact (Option.some.inj e).symm
+    rw [← htlast_eq]; exact h_last
+
+/-- **Stream-marker framing (value level).** The `.val`-projection of `scanFiltered_stream_framing`:
+    the token VALUES are `.streamStart :: (coreVals ++ [.streamEnd])`.  This is the form the
+    segment-equality producer reads — `coreVals` is exactly the marker-free token-value run the
+    in-stream segment must equal (the parser consumes token values, not positions). -/
+theorem scanFiltered_vals_stream_framing (input : String) (ft : Array (Positioned YamlToken))
+    (h : scanFiltered input = .ok ft) (h_size : 2 ≤ ft.size) :
+    ∃ coreVals, ft.toList.map (·.val)
+      = YamlToken.streamStart :: (coreVals ++ [YamlToken.streamEnd]) := by
+  obtain ⟨t0, tlast, core, hdec, h_t0, h_tlast⟩ := scanFiltered_stream_framing input ft h h_size
+  refine ⟨core.map (·.val), ?_⟩
+  rw [hdec]
+  simp only [List.map_cons, List.map_append, List.map_cons, List.map_nil, h_t0, h_tlast]
 
 end L4YAML.Proofs.EmitterScannability
