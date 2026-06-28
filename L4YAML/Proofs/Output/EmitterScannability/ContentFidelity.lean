@@ -530,4 +530,139 @@ theorem parseDocument_flowMapStart_produces_mapping (ps : ParseState)
     obtain ⟨rfl, -⟩ := h
     exact ⟨pairs', hval⟩
 
+/-! ### §5.7  Front B — value-recovery trace, brick 2 last link (part 2): first-document position-pinning
+
+§5.6 lifts the outer shape through `parseDocument`, but `parseDocument_flowSeqStart_produces_sequence`
+needs the lookahead `ps.peek? = some .flowSequenceStart`, which holds only at **position 1** — the
+emitter's leading `[`. `parseStream_doc_from_parseDocument` (`ParserWellBehaved`) exposes that EVERY
+document came from SOME `parseDocument` with the same tokens, but loses the position. This section pins
+it for the FIRST document: `parseStream` runs `expect .streamStart` (advancing pos 0 → 1) then enters
+`parseStreamLoop` with an EMPTY accumulator, so the first document it produces is the `parseDocument`
+output of the loop's entry state — which is at pos 1.
+
+This link is shape-agnostic (no seq/map split): the position fact is identical for any first document.
+It joins §5.6 to the head-token scanner facts (`scanFiltered_emit{Seq,Map}_nonempty_structure` give
+`tokens[1]!.val = .flowSequenceStart` / `.flowMappingStart`) so that the value-recovery trace's outer
+half fires end-to-end on `(raw_docs.map compose)[0]!.value`. Verified-but-unconsumed until §5.8
+assembles those into the outer-shape recovery lemma and discharges the per-element body (brick 3). -/
+
+/-- `expect` advances the position by exactly one on success (it returns `ps.advance` whenever the
+    lookahead matches). The position half of `expect_tokens`. -/
+theorem expect_pos_succ (ps ps' : ParseState) (tok : YamlToken) (desc : String)
+    (h : ps.expect tok desc = .ok ps') : ps'.pos = ps.pos + 1 := by
+  unfold ParseState.expect at h
+  split at h
+  · split at h
+    · simp only [Except.ok.injEq] at h; subst h; rfl
+    · simp only [reduceCtorEq] at h
+  · simp only [reduceCtorEq] at h
+
+/-- `parseStreamLoop` only ever appends to its accumulator (never reorders or drops), so once the
+    accumulator is non-empty its head element is preserved verbatim into the result, and the result
+    stays non-empty. The structural invariant behind first-document recovery. -/
+theorem parseStreamLoop_preserves_head
+    (ps : ParseState) (docs : Array YamlDocument) (streamState : StreamState) (fuel : Nat)
+    (result : Array YamlDocument)
+    (h_ne : 0 < docs.size)
+    (h_ok : parseStreamLoop ps docs streamState fuel = .ok result) :
+    0 < result.size ∧ result[0]! = docs[0]! := by
+  induction fuel generalizing ps docs streamState with
+  | zero =>
+    simp only [parseStreamLoop, Except.ok.injEq] at h_ok
+    subst h_ok; exact ⟨h_ne, rfl⟩
+  | succ fuel ih =>
+    unfold parseStreamLoop at h_ok
+    split at h_ok
+    · -- streamEnd → result = docs
+      simp only [Except.ok.injEq] at h_ok; subst h_ok; exact ⟨h_ne, rfl⟩
+    · -- none → result = docs
+      simp only [Except.ok.injEq] at h_ok; subst h_ok; exact ⟨h_ne, rfl⟩
+    · rename_i tok
+      split at h_ok
+      · simp at h_ok  -- validation failure → error, contradiction
+      · dsimp only [] at h_ok
+        generalize h_pd : parseDocument ps = pd_result at h_ok
+        cases pd_result with
+        | error e => simp at h_ok
+        | ok val =>
+          obtain ⟨doc_new, ps'⟩ := val
+          dsimp only [] at h_ok
+          have h_ne' : 0 < (docs.push doc_new).size := by rw [Array.size_push]; omega
+          have h_push_head : (docs.push doc_new)[0]! = docs[0]! := by
+            rw [getElem!_pos (docs.push doc_new) 0 h_ne', getElem!_pos docs 0 h_ne]
+            exact Array.getElem_push_lt h_ne
+          split at h_ok
+          · -- stuck → result = docs.push doc_new
+            simp only [Except.ok.injEq] at h_ok; subst h_ok; exact ⟨h_ne', h_push_head⟩
+          · -- recurse: head still preserved through the deeper call
+            obtain ⟨h_rs, h_rh⟩ := ih _ _ _ h_ne' h_ok
+            exact ⟨h_rs, h_rh.trans h_push_head⟩
+
+/-- The FIRST document `parseStreamLoop` produces from an EMPTY accumulator came from `parseDocument`
+    run on the loop's ENTRY state. A non-empty result forces the productive branch (peek is not
+    `streamEnd`/`none`, validation passes, `parseDocument` succeeds), and `parseStreamLoop_preserves_head`
+    carries the freshly-pushed doc through any deeper recursion as `result[0]!`. -/
+theorem parseStreamLoop_first_doc_from_entry
+    (ps : ParseState) (streamState : StreamState) (fuel : Nat)
+    (result : Array YamlDocument)
+    (h_ok : parseStreamLoop ps #[] streamState fuel = .ok result)
+    (h_ne : 0 < result.size) :
+    ∃ ps', parseDocument ps = .ok (result[0]!, ps') := by
+  cases fuel with
+  | zero =>
+    simp only [parseStreamLoop, Except.ok.injEq] at h_ok
+    subst h_ok; simp at h_ne
+  | succ fuel =>
+    unfold parseStreamLoop at h_ok
+    split at h_ok
+    · simp only [Except.ok.injEq] at h_ok; subst h_ok; simp at h_ne  -- streamEnd → empty, ⊥
+    · simp only [Except.ok.injEq] at h_ok; subst h_ok; simp at h_ne  -- none → empty, ⊥
+    · rename_i tok
+      split at h_ok
+      · simp at h_ok  -- validation failure
+      · dsimp only [] at h_ok
+        generalize h_pd : parseDocument ps = pd_result at h_ok
+        cases pd_result with
+        | error e => simp at h_ok
+        | ok val =>
+          obtain ⟨doc_new, ps'⟩ := val
+          dsimp only [] at h_ok
+          have h_head : result[0]! = doc_new := by
+            have h_one : 0 < (#[].push doc_new : Array YamlDocument).size := by
+              rw [Array.size_push]; simp
+            split at h_ok
+            · -- stuck → result = #[].push doc_new
+              simp only [Except.ok.injEq] at h_ok; subst h_ok
+              rw [getElem!_pos _ 0 h_one]; simp
+            · -- recurse: head preserved
+              obtain ⟨_, h_rh⟩ :=
+                parseStreamLoop_preserves_head _ _ _ fuel _ h_one h_ok
+              rw [h_rh, getElem!_pos _ 0 h_one]; simp
+          -- Plugging the witness `ps'` collapses `parseDocument ps` to `h_pd`'s RHS, so the goal is
+          -- `Except.ok (doc_new, ps') = Except.ok (result[0]!, ps')`; `h_head` rewrites it to `rfl`.
+          exact ⟨ps', by rw [h_head]⟩
+
+/-- **First-document position-pinning.** When `parseStream` succeeds with a non-empty document array,
+    its first document came from a `parseDocument` run on a state at position 1 — just past
+    `streamStart` — over the same token array. Joins §5.6's `parseDocument` dispatch to the head-token
+    scanner facts: at pos 1 the lookahead is `tokens[1]`, which for emitted flow collections is the
+    leading `[` / `{`. The position-dependent half of brick 2's wrapping. -/
+theorem parseStream_first_doc_at_pos_one
+    (tokens : Array (Positioned YamlToken)) (docs : Array YamlDocument)
+    (h_parse : parseStream tokens = .ok docs)
+    (h_ne : 0 < docs.size) :
+    ∃ ps ps', ps.tokens = tokens ∧ ps.pos = 1 ∧ parseDocument ps = .ok (docs[0]!, ps') := by
+  unfold parseStream at h_parse
+  simp only [bind, Except.bind] at h_parse
+  split at h_parse
+  · simp at h_parse
+  · rename_i ps_start h_expect
+    have h_tok : ps_start.tokens = tokens :=
+      (expect_tokens _ _ _ _ h_expect).trans (by simp)
+    have h_pos : ps_start.pos = 1 := by
+      rw [expect_pos_succ _ _ _ _ h_expect]
+    obtain ⟨ps', h_pd⟩ :=
+      parseStreamLoop_first_doc_from_entry ps_start .initial tokens.size docs h_parse h_ne
+    exact ⟨ps_start, ps', h_tok, h_pos, h_pd⟩
+
 end L4YAML.Proofs.EmitterScannability
