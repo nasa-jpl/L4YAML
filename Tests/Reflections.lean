@@ -234,6 +234,7 @@ import Tests.Reflections.BoundaryRobustVsFragileFact
 import Tests.Reflections.MapCarrierRobustInhabitation
 import Tests.Reflections.OmegaNonArithGoalPullsClassical
 import Tests.Reflections.ValueRecoveryOuterShape
+import Tests.Reflections.ValueRecoveryNodeDispatch
 
 /-!
 # Reflections — runnable proof-engineering demonstrations

@@ -295,4 +295,97 @@ theorem parseFlowMapping_produces_mapping (ps : ParseState) (fuel : Nat)
           exact ⟨pairs, h.1.symm⟩
         | _ => rw [hp] at h; simp only [reduceCtorEq] at h
 
+/-! ### §5.4  Front B — value-recovery trace, brick 2 sub-link (a): `parseNode` dispatch
+
+Brick 1 (§5.3) pinned the *outer constructor* of `parseFlowSequence` / `parseFlowMapping`. Brick 2
+lifts that one level up the parser stack: when `parseNode` faces a `.flowSequenceStart` /
+`.flowMappingStart` lookahead it dispatches — through `parseNodeProperties` (a no-op here, since the
+token is neither anchor nor tag, by `parseNodeProperties_skip`) and `parseNodeContent` (which routes
+a `.flowSequenceStart`/`.flowMappingStart` peek straight to the flow parser) — to `parseFlowSequence`
+/ `parseFlowMapping`, then runs `applyNodeFinalization`. With **empty** node properties
+(`({} : NodeProperties).tag = .anchor = none` — exactly the emitter's output, which never emits
+anchors or tags) finalization rewrites the flow collection's `none none` tag/anchor slots to
+`props.tag` / `props.anchor`, i.e. back to `none none`: the outer shape survives the lift verbatim.
+
+This is the `parseNode` analogue of the scalar dispatch packaged in `parseStream_three_tokens_scalar`
+(`EmitterScannability.lean:186`, whose `h_parseNode`/`h_finalize` steps do the same threading for a
+scalar peek). Verified-but-unconsumed until brick 2 sub-link (b) (`compose` preserving the outer
+constructor) and the `parseStream`/`parseDocument` wrapping land. -/
+
+/-- **`parseNode` dispatch (sequence).** A successful `parseNode` whose lookahead is
+    `.flowSequenceStart` produces a flow sequence with default (`none`) tag/anchor: the token is
+    neither anchor nor tag so `parseNodeProperties` skips (empty props), `validateNodeProps` passes
+    (no block-collection / duplicate-anchor trigger), content dispatch routes to `parseFlowSequence`
+    (whose outer shape `parseFlowSequence_produces_sequence` pins to `.sequence .flow _ none none`),
+    and `applyNodeFinalization` leaves that head untouched because the empty props supply `none`
+    tag/anchor. Brick 2's dispatch link, lifting brick 1 through `parseNode`. -/
+theorem parseNode_flowSeqStart_produces_sequence (ps : ParseState) (fuel : Nat)
+    (v : YamlValue) (ps' : ParseState)
+    (h_peek : ps.peek? = some .flowSequenceStart)
+    (h : parseNode ps fuel = .ok (v, ps')) :
+    ∃ items', v = .sequence .flow items' none none := by
+  cases fuel with
+  | zero => simp only [parseNode, reduceCtorEq] at h
+  | succ n =>
+    -- properties skip (flowSequenceStart is neither anchor nor tag)
+    have h_np : parseNodeProperties ps = .ok ({}, ps) :=
+      parseNodeProperties_skip ps (by rw [h_peek]; trivial)
+    -- validation passes for any prePropPos (the block-start / dup-anchor triggers don't fire)
+    have h_vnp : ∀ p, validateNodeProps ps p ({} : NodeProperties) = .ok () := by
+      intro p; unfold validateNodeProps
+      simp only [h_peek, bind, Except.bind, pure, Except.pure]
+      rfl
+    -- content dispatch routes a flowSequenceStart peek to parseFlowSequence (at decremented fuel)
+    have h_pnc : parseNodeContent ps n ({} : NodeProperties) = parseFlowSequence ps n := by
+      unfold parseNodeContent; rw [h_peek]
+    unfold parseNode at h
+    simp only [h_peek, bind, Except.bind, pure, Except.pure, h_np, h_vnp, h_pnc] at h
+    cases hfs : parseFlowSequence ps n with
+    | error e => rw [hfs] at h; simp only [reduceCtorEq] at h
+    | ok r =>
+      obtain ⟨val, ps_c⟩ := r
+      obtain ⟨items', hval⟩ := parseFlowSequence_produces_sequence ps n val ps_c hfs
+      rw [hfs] at h
+      simp only [Except.ok.injEq] at h
+      subst hval
+      refine ⟨items', ?_⟩
+      have h1 := congrArg Prod.fst h
+      simp only [applyNodeFinalization] at h1
+      exact h1.symm
+
+/-- **`parseNode` dispatch (mapping).** Mirror of `parseNode_flowSeqStart_produces_sequence`: a
+    successful `parseNode` whose lookahead is `.flowMappingStart` produces a flow mapping with
+    default tag/anchor, by the same skip / dispatch / finalization-is-identity argument over
+    `parseFlowMapping_produces_mapping`. -/
+theorem parseNode_flowMapStart_produces_mapping (ps : ParseState) (fuel : Nat)
+    (v : YamlValue) (ps' : ParseState)
+    (h_peek : ps.peek? = some .flowMappingStart)
+    (h : parseNode ps fuel = .ok (v, ps')) :
+    ∃ pairs', v = .mapping .flow pairs' none none := by
+  cases fuel with
+  | zero => simp only [parseNode, reduceCtorEq] at h
+  | succ n =>
+    have h_np : parseNodeProperties ps = .ok ({}, ps) :=
+      parseNodeProperties_skip ps (by rw [h_peek]; trivial)
+    have h_vnp : ∀ p, validateNodeProps ps p ({} : NodeProperties) = .ok () := by
+      intro p; unfold validateNodeProps
+      simp only [h_peek, bind, Except.bind, pure, Except.pure]
+      rfl
+    have h_pnc : parseNodeContent ps n ({} : NodeProperties) = parseFlowMapping ps n := by
+      unfold parseNodeContent; rw [h_peek]
+    unfold parseNode at h
+    simp only [h_peek, bind, Except.bind, pure, Except.pure, h_np, h_vnp, h_pnc] at h
+    cases hfm : parseFlowMapping ps n with
+    | error e => rw [hfm] at h; simp only [reduceCtorEq] at h
+    | ok r =>
+      obtain ⟨val, ps_c⟩ := r
+      obtain ⟨pairs', hval⟩ := parseFlowMapping_produces_mapping ps n val ps_c hfm
+      rw [hfm] at h
+      simp only [Except.ok.injEq] at h
+      subst hval
+      refine ⟨pairs', ?_⟩
+      have h1 := congrArg Prod.fst h
+      simp only [applyNodeFinalization] at h1
+      exact h1.symm
+
 end L4YAML.Proofs.EmitterScannability
