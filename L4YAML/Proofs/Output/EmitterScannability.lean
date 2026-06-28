@@ -805,6 +805,102 @@ theorem emit_parseYaml_succeeds (v : YamlValue) (hg : Grammable v false) :
   obtain ⟨raw_docs, h_raw⟩ := emit_parse_succeeds v hg
   exact ⟨raw_docs.map YamlDocument.compose, by simp only [parseYaml, h_raw]⟩
 
+/-! ### §5.16  Front B — value-recovery trace, brick 3 producer prep: locality-reduction consumer joint
+
+§5.15 retyped each Front-B frontier sorry to the bundled producer deliverable `h_size ∧ h_rep`, where
+`h_rep i : ∃ rd, parseYamlRaw (emit items[i]) = .ok rd ∧ rd.size = 1 ∧ (rd.map compose)[0]!.value =
+items''[i]!`.  That deliverable still bundles three things per element: parse-SUCCESS (`= .ok rd`),
+single-DOCUMENT (`rd.size = 1`), and the genuinely-hard LOCALITY equation (`(rd.map compose)[0]!.value
+= items''[i]!` — re-parsing element `i` standalone recovers exactly what parsing the WHOLE structure
+recovered for it).  But parse-success and single-document are NOT part of the hard producer: they are
+already proven for every grammable value by `emit_parse_succeeds` and `emit_produces_single_document`.
+
+§5.16 discharges those two, reducing the deliverable to the pure locality equation.  The
+`reparse_deliverable_of_locality_{seq,pair}` joints take only (a) block-context grammability of each
+element and (b) the per-element locality equation, and produce the full `h_rep` existential — invoking
+`emit_parse_succeeds` to get `rd`, `emit_produces_single_document` to get `rd.size = 1`, and the supplied
+locality for the value.  Grammability arrives at the sorry site in FLOW context
+(`Grammable items[i] (inFlow || style == .flow)`); `grammable_to_block` weakens it to the block context
+`emit_parse_succeeds`/`emit_produces_single_document` require — a clean structural weakening, since the
+`inFlow` flag only ever TIGHTENS the scalar leaf (`ScalarScannable_any_implies_false`).
+
+Consuming these at the two sorry sites RETYPES each frontier sorry once more — from "the existential
+re-parse bundle" to "the size equality + the pure locality equation".  The round-trip-success plumbing
+is gone; the hard scanner-span-locality + parser-locality producer now owes ONLY the equation (and the
+size).  This is the §5.15 move one layer deeper ([[ref-consumer-joint-before-producer]],
+[[ref-reduction-by-import]]): land the consumer that names the producer's exact residual, in isolation,
+before writing the producer.  The locality target was grounded TRUE on real emission in
+`Tests/Reflections/LocalityReductionJoint` BEFORE the retype. -/
+
+/-- **Flow-context weakening.** A value grammable in ANY flow context is grammable in block context.
+    The `inFlow` flag only ever ADDS constraints to the scalar leaf (forbidding flow indicators), so
+    dropping to `false` is a structural weakening: scalars via `ScalarScannable_any_implies_false`,
+    collections by recursion (flow-styled collections keep their children's flag `true`; block-styled
+    collections weaken theirs along with the parent). -/
+theorem grammable_to_block {v : YamlValue} {b : Bool} (hg : Grammable v b) :
+    Grammable v false := by
+  induction hg with
+  | scalar s b h_ss =>
+    exact .scalar s false (L4YAML.Proofs.ScannerPlainScalarValid.ScalarScannable_any_implies_false s b h_ss)
+  | sequence style items tag anchor b h ih =>
+    refine .sequence style items tag anchor false (fun i => ?_)
+    cases hs : (style == CollectionStyle.flow) with
+    | true => simpa [hs] using h i
+    | false => simpa [hs] using ih i
+  | mapping style pairs tag anchor b hk hv ihk ihv =>
+    refine .mapping style pairs tag anchor false (fun i => ?_) (fun i => ?_)
+    · cases hs : (style == CollectionStyle.flow) with
+      | true => simpa [hs] using hk i
+      | false => simpa [hs] using ihk i
+    · cases hs : (style == CollectionStyle.flow) with
+      | true => simpa [hs] using hv i
+      | false => simpa [hs] using ihv i
+
+/-- **Sequence locality-reduction joint.** The per-element re-parse deliverable (`h_rep`) reduces to
+    the pure locality equation, discharging parse-success and single-document from the proven
+    `emit_parse_succeeds` / `emit_produces_single_document`.  The hard producer is left owing only the
+    locality (`(rd.map compose)[0]!.value = items''[i]!`). -/
+theorem reparse_deliverable_of_locality_seq
+    (items items'' : Array YamlValue)
+    (h_gram : ∀ (i : Fin items.size), Grammable items[i] false)
+    (h_loc : ∀ (i : Fin items.size) (rd : Array YamlDocument),
+              parseYamlRaw (emit items[i]) = .ok rd → rd.size = 1 →
+              (rd.map YamlDocument.compose)[0]!.value = items''[i.val]!) :
+    ∀ (i : Fin items.size), ∃ rd : Array YamlDocument,
+      parseYamlRaw (emit items[i]) = .ok rd ∧ rd.size = 1 ∧
+      (rd.map YamlDocument.compose)[0]!.value = items''[i.val]! := by
+  intro i
+  obtain ⟨rd, h_rd⟩ := emit_parse_succeeds items[i] (h_gram i)
+  have h_sz := emit_produces_single_document items[i] (h_gram i) rd h_rd
+  exact ⟨rd, h_rd, h_sz, h_loc i rd h_rd h_sz⟩
+
+/-- **Mapping locality-reduction joint** (key + value mirror of `reparse_deliverable_of_locality_seq`). -/
+theorem reparse_deliverable_of_locality_pair
+    (pairs pairs'' : Array (YamlValue × YamlValue))
+    (h_gram_k : ∀ (i : Fin pairs.size), Grammable pairs[i].fst false)
+    (h_gram_v : ∀ (i : Fin pairs.size), Grammable pairs[i].snd false)
+    (h_loc_k : ∀ (i : Fin pairs.size) (rd : Array YamlDocument),
+              parseYamlRaw (emit pairs[i].fst) = .ok rd → rd.size = 1 →
+              (rd.map YamlDocument.compose)[0]!.value = (pairs''[i.val]!).fst)
+    (h_loc_v : ∀ (i : Fin pairs.size) (rd : Array YamlDocument),
+              parseYamlRaw (emit pairs[i].snd) = .ok rd → rd.size = 1 →
+              (rd.map YamlDocument.compose)[0]!.value = (pairs''[i.val]!).snd) :
+    ∀ (i : Fin pairs.size),
+      (∃ rdk : Array YamlDocument,
+        parseYamlRaw (emit pairs[i].fst) = .ok rdk ∧ rdk.size = 1 ∧
+        (rdk.map YamlDocument.compose)[0]!.value = (pairs''[i.val]!).fst) ∧
+      (∃ rdv : Array YamlDocument,
+        parseYamlRaw (emit pairs[i].snd) = .ok rdv ∧ rdv.size = 1 ∧
+        (rdv.map YamlDocument.compose)[0]!.value = (pairs''[i.val]!).snd) := by
+  intro i
+  refine ⟨?_, ?_⟩
+  · obtain ⟨rdk, h_rdk⟩ := emit_parse_succeeds pairs[i].fst (h_gram_k i)
+    have h_szk := emit_produces_single_document pairs[i].fst (h_gram_k i) rdk h_rdk
+    exact ⟨rdk, h_rdk, h_szk, h_loc_k i rdk h_rdk h_szk⟩
+  · obtain ⟨rdv, h_rdv⟩ := emit_parse_succeeds pairs[i].snd (h_gram_v i)
+    have h_szv := emit_produces_single_document pairs[i].snd (h_gram_v i) rdv h_rdv
+    exact ⟨rdv, h_rdv, h_szv, h_loc_v i rdv h_rdv h_szv⟩
+
 /-- Proves that parsing the emitted tokens for a flow sequence recovers a content-equivalent sequence. -/
 theorem emit_roundtrip_sequence_content_eq {inFlow : Bool} (style : CollectionStyle) (items : Array YamlValue)
     (tag anchor : Option String) (raw_docs : Array YamlDocument)
@@ -863,12 +959,19 @@ theorem emit_roundtrip_sequence_content_eq {inFlow : Bool} (style : CollectionSt
     -- the per-element re-parse facts (`items''[i]!` is the composed value of `parseYamlRaw (emit
     -- items[i])`), the scanner-span-locality + parser-locality round-trip the §5.10–§5.14 chain
     -- builds toward.  Grounded TRUE on concrete witnesses in `Tests/Reflections/ReparseConsumerJoint`.
-    obtain ⟨h_size, h_rep⟩ :
+    -- CONSUME §5.16's `reparse_deliverable_of_locality_seq` (R586): the existential re-parse bundle
+    -- collapses to the size equality plus the PURE LOCALITY equation (parse-success + single-document
+    -- discharged by `emit_parse_succeeds` / `emit_produces_single_document`; flow→block grammability by
+    -- `grammable_to_block`).  The hard scanner-span-locality + parser-locality producer now owes ONLY
+    -- the equation `(rd.map compose)[0]!.value = items''[i]!`.  Grounded TRUE in `LocalityReductionJoint`.
+    obtain ⟨h_size, h_loc⟩ :
         items.size = items''.size ∧
-        (∀ (i : Fin items.size), ∃ rd : Array YamlDocument,
-          parseYamlRaw (emit items[i]) = .ok rd ∧ rd.size = 1 ∧
+        (∀ (i : Fin items.size) (rd : Array YamlDocument),
+          parseYamlRaw (emit items[i]) = .ok rd → rd.size = 1 →
           (rd.map YamlDocument.compose)[0]!.value = items''[i.val]!) := sorry
-    exact contentEqList_of_reparse items items'' h_size ih h_rep
+    exact contentEqList_of_reparse items items'' h_size ih
+      (reparse_deliverable_of_locality_seq items items''
+        (fun i => grammable_to_block (h_items i)) h_loc)
 
 /-- Proves that parsing the emitted tokens for a flow mapping recovers a content-equivalent mapping. -/
 theorem emit_roundtrip_mapping_content_eq {inFlow : Bool} (style : CollectionStyle) (pairs : Array (YamlValue × YamlValue))
@@ -935,16 +1038,22 @@ theorem emit_roundtrip_mapping_content_eq {inFlow : Bool} (style : CollectionSty
     -- the per-entry re-parse facts (both key and value of `pairs''[i]!` are the composed values of
     -- `parseYamlRaw (emit pairs[i].fst/.snd)`).  Grounded TRUE on a concrete `{a:b}` witness in
     -- `Tests/Reflections/ReparseConsumerJoint`.
-    obtain ⟨h_size, h_rep⟩ :
+    -- CONSUME §5.16's `reparse_deliverable_of_locality_pair` (R586): the per-entry existential bundle
+    -- (key + value) collapses to the size equality plus the two PURE LOCALITY equations (parse-success +
+    -- single-document discharged for each side; flow→block grammability via `grammable_to_block`).  The
+    -- hard producer now owes ONLY the key/value locality equations.  Grounded in `LocalityReductionJoint`.
+    obtain ⟨h_size, h_loc_k, h_loc_v⟩ :
         pairs.size = pairs''.size ∧
-        (∀ (i : Fin pairs.size),
-          (∃ rdk : Array YamlDocument,
-            parseYamlRaw (emit pairs[i].fst) = .ok rdk ∧ rdk.size = 1 ∧
-            (rdk.map YamlDocument.compose)[0]!.value = (pairs''[i.val]!).fst) ∧
-          (∃ rdv : Array YamlDocument,
-            parseYamlRaw (emit pairs[i].snd) = .ok rdv ∧ rdv.size = 1 ∧
-            (rdv.map YamlDocument.compose)[0]!.value = (pairs''[i.val]!).snd)) := sorry
-    exact contentEqPairList_of_reparse pairs pairs'' h_size ihk ihv h_rep
+        (∀ (i : Fin pairs.size) (rd : Array YamlDocument),
+          parseYamlRaw (emit pairs[i].fst) = .ok rd → rd.size = 1 →
+          (rd.map YamlDocument.compose)[0]!.value = (pairs''[i.val]!).fst) ∧
+        (∀ (i : Fin pairs.size) (rd : Array YamlDocument),
+          parseYamlRaw (emit pairs[i].snd) = .ok rd → rd.size = 1 →
+          (rd.map YamlDocument.compose)[0]!.value = (pairs''[i.val]!).snd) := sorry
+    exact contentEqPairList_of_reparse pairs pairs'' h_size ihk ihv
+      (reparse_deliverable_of_locality_pair pairs pairs''
+        (fun i => grammable_to_block (hk i)) (fun i => grammable_to_block (hv i))
+        h_loc_k h_loc_v)
 
 /-- **Content fidelity**: Parsing canonical emitter output recovers content
     equivalent to the original value.

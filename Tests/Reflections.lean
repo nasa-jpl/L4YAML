@@ -247,6 +247,7 @@ import Tests.Reflections.EmissionIntercalate
 import Tests.Reflections.CharListSegmentPeel
 import Tests.Reflections.StreamMarkerFraming
 import Tests.Reflections.ReparseConsumerJoint
+import Tests.Reflections.LocalityReductionJoint
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
