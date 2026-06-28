@@ -9573,6 +9573,21 @@ theorem recmapentry_pair_located (tokens : Array (Positioned YamlToken)) (lo hi 
     feeds `h_kv_depth` straight to the sub-block narrower while re-packaging the remaining seven
     conjuncts as `recmapentry_pair_located`'s `h_skeleton`.
 
+    **The output ALSO bundles the scalar-key single-node tightness
+    `(∃ c s, tokens[lo+1]!.val = .scalar c s) → kv = lo + 2`** — the per-sub-block `h_scalar_single`
+    field the head-shape dispatch `flowSubblock_content_and_noInterior_dispatch` (R570) lifts for the
+    KEY sub-block `[lo+1, kv)`: when the key head is a scalar, the key block is the single token
+    `[lo+1, lo+2)`, so the dispatch's scalar arm fires with `kv = (lo+1)+1`.  A scalar HEAD does not by
+    itself force this width (the opaque located `kv` could be wider for all the downstream consumer
+    knows — there is no balance-pure uniqueness of the `.value` separator, R282), but the locator
+    KNOWS it by shape: in the scalar-key branch `kv` is DEFINED as `lo+2`, so the conjunct is `rfl`; in
+    the bracket-key branch the antecedent is vacuous (`tokens[lo+1]` is a `.flowSequenceStart`/
+    `.flowMappingStart`, never a scalar).  Exposing it here is what lets the eventual dispatch consume a
+    drop-in `h_scalar_single` for the key block rather than re-deriving the value separator's position.
+    (The VALUE sub-block's twin `(∃ c s, tokens[kv+1]!.val = .scalar c s) → e = kv + 2` is NOT bundled
+    here: it is consumer-LOCAL, dischargeable at the call site from `MapBodyProps.value_scalar_succ`
+    (M7) + this locator's own leastness `h_e_least` + `kv+1 < e`, with no producer needed.)
+
     Verified-but-unconsumed until the map width-recursion driver threads it: references no sorry site,
     frontier sorry count unchanged at 4.  `sorryAx`-free — it consumes only `firstEntryBoundary`, the
     `MapBodyProps` projections, and pure bracket-balance algebra, never the tainted structure lemma
@@ -9587,7 +9602,8 @@ theorem mapPairSkeleton_locate (tokens : Array (Positioned YamlToken)) (lo hi : 
       flowBracketBalance tokens lo e = 0 ∧
       (e = hi ∨ tokens[e]!.val = .flowEntry) ∧
       (∀ k, lo < k → k < e →
-        ¬ (flowBracketBalance tokens lo k = 0 ∧ (k = hi ∨ tokens[k]!.val = .flowEntry))) := by
+        ¬ (flowBracketBalance tokens lo k = 0 ∧ (k = hi ∨ tokens[k]!.val = .flowEntry))) ∧
+      ((∃ c s, tokens[lo + 1]!.val = .scalar c s) → kv = lo + 2) := by
   -- `e`: the pair end — the least depth-`0` marker after `lo` (the SHARED, axis-agnostic half).
   obtain ⟨e, h_lo_e, h_e_hi, h_e_bal, h_e_marker, h_e_least⟩ :=
     firstEntryBoundary tokens lo hi h_lo_hi h_total
@@ -9635,7 +9651,8 @@ theorem mapPairSkeleton_locate (tokens : Array (Positioned YamlToken)) (lo hi : 
           subst hk_eq; rw [h_scalar] at h; cases h
         · have hk_eq : k = lo + 2 := by omega
           subst hk_eq; rw [h_value] at h; cases h
-    refine ⟨lo + 2, e, by omega, ?_, h_e_hi, h_value, h_kv_depth, h_e_bal, h_e_marker, h_e_least⟩
+    refine ⟨lo + 2, e, by omega, ?_, h_e_hi, h_value, h_kv_depth, h_e_bal, h_e_marker, h_e_least,
+      fun _ => rfl⟩
     rcases Nat.lt_or_ge (lo + 2) e with h | h
     · exact h
     · exact absurd ⟨h_e_bal, h_e_marker⟩ (h_clean e h_lo_e h)
@@ -9708,7 +9725,9 @@ theorem mapPairSkeleton_locate (tokens : Array (Positioned YamlToken)) (lo hi : 
       have hc2 := flowBracketBalance_compose tokens lo j (j + 1) (by omega) (by omega)
       rw [h_bal_lo_lo2, h_inner_bal] at hc1
       rw [hc1, h_bal_j_j1] at hc2; omega
-    refine ⟨j + 1, e, by omega, ?_, h_e_hi, h_value, h_kv_depth, h_e_bal, h_e_marker, h_e_least⟩
+    refine ⟨j + 1, e, by omega, ?_, h_e_hi, h_value, h_kv_depth, h_e_bal, h_e_marker, h_e_least,
+      fun h => absurd h (fun ⟨c, s, hsc⟩ => by
+        rcases h_brk with hb | hb <;> rw [hb] at hsc <;> cases hsc)⟩
     rcases Nat.lt_or_ge (j + 1) e with h | h
     · exact h
     · exact absurd ⟨h_e_bal, h_e_marker⟩ (h_clean e h_lo_e h)

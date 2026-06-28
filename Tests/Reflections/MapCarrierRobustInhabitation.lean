@@ -2121,6 +2121,52 @@ theorem flowSubblock_content_and_noInterior_dispatch_real_seqVal :
 #guard_msgs in
 #print axioms flowSubblock_content_and_noInterior_dispatch_real_seqVal
 
+/-! ## R571 — the skeleton locator now SOURCES the scalar-key sub-block tightness `h_scalar_single`
+
+The R570 dispatch lifts `h_scalar_single : (∃ c s, tokens[lo] = .scalar c s) → hi = lo + 1` per sub-block.
+The de-risk of where each per-sub-block residual comes from at the eventual consumer
+(`recmappair_window_dispatch_map`) splits `h_scalar_single` two ways:
+
+* the VALUE sub-block's `(∃ c s, tokens[kv+1] = .scalar c s) → e = kv + 2` is consumer-LOCAL — dischargeable
+  at the call site from `MapBodyProps.value_scalar_succ` (M7) + the locator's own leastness `h_e_least` +
+  `kv+1 < e`, so it needs NO producer;
+* the KEY sub-block's `(∃ c s, tokens[lo+1] = .scalar c s) → kv = lo + 2` is NOT carrier-derivable from the
+  opaque located `kv` (there is no balance-pure uniqueness of the `.value` separator, R282) — the locator
+  KNOWS it by shape but did not EXPOSE it.
+
+So `mapPairSkeleton_locate` is strengthened to bundle that KEY-side tightness as a final output conjunct,
+FREE to prove (its scalar-key branch defines `kv = lo+2`; its bracket-key branch has a vacuous antecedent).
+This probe fires the strengthened locator on the genuine `{a:[1], b:2}` body `[2, 13)` (the `#guard`-real
+`mapBodyProps_bracketVal`) and reads the new conjunct on the REAL scalar key `"a"` — the GENUINE mode. -/
+
+/-- **R571 — the strengthened locator exposes the scalar-key tightness, and on the real key `"a"` it
+    FIRES** (`tokens[3]` is `.scalar "a" .doubleQuoted`, an antecedent reachable on real emission), pinning
+    the located value separator `kv = 4`.  Not a vacuous discharge: the consequent genuinely holds.  Only
+    the genuine mode is exercisable on this fixture (both keys are scalar); the vacuous bracket-key mode is
+    discharged inside the locator's own bracket branch. -/
+theorem mapPairSkeleton_locate_real_scalarKey_tight :
+    ∃ kv e, flowBracketBalance fixtureMapSeqVal 2 kv = 0 ∧
+      fixtureMapSeqVal[kv]!.val = .value ∧ e ≤ 13 ∧ kv = 4 := by
+  obtain ⟨kv, e, _, _, h_e_hi, h_value, h_kv_depth, _, _, _, h_st⟩ :=
+    mapPairSkeleton_locate fixtureMapSeqVal 2 13 (by decide) (by decide)
+      mapBodyProps_bracketVal (by decide)
+  refine ⟨kv, e, h_kv_depth, h_value, h_e_hi, ?_⟩
+  have := h_st ⟨"a", .doubleQuoted, by decide⟩
+  omega
+
+-- R571 audits — the strengthened locator routes `firstEntryBoundary` + `MapBodyProps` projections +
+-- bracket-balance algebra (which pulls `Classical.choice` via `flowBracketBalance_compose`); the new
+-- conjunct's proof is choice-free (`rfl` / constructor-mismatch), so the profile is unchanged.
+/-- info: 'L4YAML.Proofs.EmitterScannability.mapPairSkeleton_locate' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms mapPairSkeleton_locate
+
+/-- info: 'MapCarrierRobustInhabitation.mapPairSkeleton_locate_real_scalarKey_tight' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs in
+#print axioms mapPairSkeleton_locate_real_scalarKey_tight
+
 -- Axiom audit — the carrier inhabitation and the boundary-survival probe lean only on core; the
 -- ASSEMBLE non-vacuity checks also pull in `Classical.choice` through the rebase's
 -- `flowBracketBalance_compose`.
