@@ -233,6 +233,7 @@ import Tests.Reflections.AxisDualFromTypeAgnosticCore
 import Tests.Reflections.BoundaryRobustVsFragileFact
 import Tests.Reflections.MapCarrierRobustInhabitation
 import Tests.Reflections.OmegaNonArithGoalPullsClassical
+import Tests.Reflections.ValueRecoveryOuterShape
 
 /-!
 # Reflections — runnable proof-engineering demonstrations

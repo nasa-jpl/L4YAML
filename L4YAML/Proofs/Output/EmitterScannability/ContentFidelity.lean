@@ -225,5 +225,74 @@ theorem contentEq_map_style_irrel (style : CollectionStyle) (pairs : Array (Yaml
     rw [contentEq_mapping_pairs, contentEq_mapping_pairs]
   | _ => unfold contentEq; rfl
 
+/-! ### §5.3  Front B — value-recovery trace, brick 1: outer-shape recovery
+
+The two non-empty content-fidelity sorries (`emit_roundtrip_{sequence,mapping}_content_eq`)
+owe "the exact parsed value structure from parser trace": that re-parsing emitted flow output
+recovers a `.sequence` / `.mapping` whose children are the per-element parses. The *first* link
+of that trace is purely structural and emission-independent: the flow-collection parsers
+**always** wrap their accumulated items/pairs in `.sequence .flow _ none none` /
+`.mapping .flow _ none none` on success (the lone `.ok` branch of `parseFlowSequence` /
+`parseFlowMapping` literally constructs that head; every other path is an `.error`). So before
+any per-element recovery, the parsed value's *outer constructor* is pinned. These are the parser
+primitives the later trace lifts (through `parseNode`/`parseDocument`/`parseStream` and
+`compose`) to `(raw_docs.map YamlDocument.compose)[0]!.value`; verified-but-unconsumed until that
+lift lands. -/
+
+/-- **Outer-shape recovery (sequence).** A successful `parseFlowSequence` yields a flow sequence
+    value with default (`none`) tag/anchor — structurally, regardless of fuel or contents: the
+    only `.ok` branch constructs `YamlValue.sequence .flow items` (and `.sequence .flow items`
+    *is* `.sequence .flow items none none` by the constructor defaults). The first link of Front
+    B's value-recovery trace. -/
+theorem parseFlowSequence_produces_sequence (ps : ParseState) (fuel : Nat)
+    (v : YamlValue) (ps' : ParseState)
+    (h : parseFlowSequence ps fuel = .ok (v, ps')) :
+    ∃ items', v = .sequence .flow items' none none := by
+  cases fuel with
+  | zero => simp only [parseFlowSequence, reduceCtorEq] at h
+  | succ n =>
+    simp only [parseFlowSequence, bind, Except.bind] at h
+    cases hl : parseFlowSequenceLoop ps.advance n #[] with
+    | error e => rw [hl] at h; simp only [reduceCtorEq] at h
+    | ok r =>
+      obtain ⟨items, ps2⟩ := r
+      rw [hl] at h
+      simp only [] at h
+      cases hp : ps2.peek? with
+      | none => rw [hp] at h; simp only [reduceCtorEq] at h
+      | some tok =>
+        cases tok with
+        | flowSequenceEnd =>
+          rw [hp] at h
+          simp only [Except.ok.injEq, Prod.mk.injEq] at h
+          exact ⟨items, h.1.symm⟩
+        | _ => rw [hp] at h; simp only [reduceCtorEq] at h
+
+/-- **Outer-shape recovery (mapping).** Mirror of `parseFlowSequence_produces_sequence`: a
+    successful `parseFlowMapping` yields a flow mapping value with default tag/anchor — the only
+    `.ok` branch constructs `YamlValue.mapping .flow pairs`. -/
+theorem parseFlowMapping_produces_mapping (ps : ParseState) (fuel : Nat)
+    (v : YamlValue) (ps' : ParseState)
+    (h : parseFlowMapping ps fuel = .ok (v, ps')) :
+    ∃ pairs', v = .mapping .flow pairs' none none := by
+  cases fuel with
+  | zero => simp only [parseFlowMapping, reduceCtorEq] at h
+  | succ n =>
+    simp only [parseFlowMapping, bind, Except.bind] at h
+    cases hl : parseFlowMappingLoop ps.advance n #[] with
+    | error e => rw [hl] at h; simp only [reduceCtorEq] at h
+    | ok r =>
+      obtain ⟨pairs, ps2⟩ := r
+      rw [hl] at h
+      simp only [] at h
+      cases hp : ps2.peek? with
+      | none => rw [hp] at h; simp only [reduceCtorEq] at h
+      | some tok =>
+        cases tok with
+        | flowMappingEnd =>
+          rw [hp] at h
+          simp only [Except.ok.injEq, Prod.mk.injEq] at h
+          exact ⟨pairs, h.1.symm⟩
+        | _ => rw [hp] at h; simp only [reduceCtorEq] at h
 
 end L4YAML.Proofs.EmitterScannability

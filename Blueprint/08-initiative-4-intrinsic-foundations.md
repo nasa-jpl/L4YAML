@@ -23569,15 +23569,28 @@ actual `sorry` body sits deeper, so both are listed:
 | # | Declaration (build warning) | `sorry` body | Goal | Family |
 |---|------|------|------|--------|
 | 1 | `EmitterScannability.lean:315` `parseStream_emitSequence` | `:359` | `FlowSubrangesOk tokens` | A — bracketing certificate |
-| 2 | `NonemptyStructure.lean:11864` `scanFiltered_emitMap_nonempty_structure` | `:12112` | `FlowSubrangesOk tokens` (same prop) | A |
+| 2 | `NonemptyStructure.lean:11883` `scanFiltered_emitMap_nonempty_structure` | `:12131` | `FlowSubrangesOk tokens` (same prop) | A |
 | 3 | `EmitterScannability.lean:809` `emit_roundtrip_sequence_content_eq` | `:845` | seq non-empty `contentEq` | B — content fidelity |
 | 4 | `EmitterScannability.lean:848` `emit_roundtrip_mapping_content_eq` | `:885` | mapping non-empty `contentEq` | B |
 
 Sorries 1 and 2 are *literally the same proposition* `FlowSubrangesOk tokens` — one
-producer family closes both. So the real count is **two distinct obligations + one
-duplicate**.
+producer family closes both. Sorries 3 and 4 are *different* propositions (seq vs
+mapping `contentEq`) but share a single route — a parser-trace value recovery feeding the
+per-element IH — and the seq/map mirror makes the second nearly free once the first lands.
+So the four warnings collapse to **two genuine, mutually independent fronts**:
 
-**Current state (post-R571).** The map-carrier track is the active Family-A front. The
+- **Front A — the bracketing certificate** (`FlowSubrangesOk tokens`): one producer family
+  closes sorries 1 + 2. This is where essentially all recent work (R512–R571) has gone; its
+  remaining bricks are enumerated under *Current state* below.
+- **Front B — the value-recovery trace** (content fidelity): one mirror-able parser trace
+  closes sorries 3 + 4. Un-started, but its route is named and its landing pads
+  (`contentEq_{sequence_items,mapping_pairs}`, the per-element IHs) already exist.
+
+The two fronts can be closed in either order — Front B's sorries hold parse-success as a
+*hypothesis*, so they do not depend on Front A discharging it.
+
+**Current state (post-R572).** The map-carrier track is the active Family-A front; **R572 opened
+Family B with brick 1** (outer-shape recovery — see the Family-B paragraph below and Reflection 572). The
 `MapInteriorSeparators'` provider/leaf path narrated below (R538–R546) was found in R547 to
 rest on a REFUTED carrier — its `MapGrammarFacts'` conjuncts 5/6 are false on a bracket-valued
 map — and redirected to the corrected `MapInteriorSeparators''` (R547–R549). As of **R553 the
@@ -23701,12 +23714,39 @@ ASSEMBLE of `recmappair_window_dispatch_map` no longer has any unsourced per-sub
 (skeleton-locate + carve + the two `recseqentry_whole_window_seq` oracles into `recmapentry_pair_located`),
 the value-side local discharge, and `h_opener` remain.
 With those, the JOINT driver (R534) runs at the root and sorries 1 + 2 are one `exact` each — plus
-reconciling the consumer field `MapLocated.h_key_bracket_succ` (`NonemptyStructure.lean:10531`) onto
-`MapGrammarFacts''`. Family B (sorries 3/4, content fidelity) is untouched. The chronological narrative
-below records how each piece was reached.
+reconciling the consumer field `MapLocated.key_bracket_succ` (`NonemptyStructure.lean:10714`) onto
+`MapGrammarFacts''`.
+
+**Family B (sorries 3/4, content fidelity) — INDEPENDENT of Family A, route named, brick 1 (outer shape) LANDED (R572).**
+The two content-equivalence sorries — `emit_roundtrip_sequence_content_eq` (`EmitterScannability.lean:809`,
+`sorry` body `:845`) and `emit_roundtrip_mapping_content_eq` (`:848`, body `:885`) — take parse *success*
+(`parseYamlRaw (emit …) = .ok raw_docs`) and `raw_docs.size = 1` as **hypotheses**, not obligations. So
+they do NOT wait on the `FlowSubrangesOk` certificate Family A builds: acceptance is *given*, content
+fidelity is the question. They are therefore dischargeable in either order relative to sorries 1/2 (and the
+empty cases of both are already proven via `native_decide`). What each non-empty case owes is the comment's
+"exact parsed value structure from parser trace": characterize the recovered value as `.sequence _ items' _ _`
+/ `.mapping _ pairs' _ _` with `items'` / `pairs'` recovered element-wise by tracing
+`parseFlowSequenceLoop` / `parseFlowMappingLoop` (`Parser/TokenParser.lean:400`/`:495` — the SAME loop
+substrate `parseStream_emitSequence` / `parseStream_emitMapping` walk for sorries 1/2, so the trace lemmas
+are shared work, not a second front), then discharge `contentEq` element-by-element through the
+already-landed `contentEq_sequence_items` / `contentEq_mapping_pairs` (`ContentFidelity.lean:191`/`:200`)
+fed by the per-element induction hypotheses (`ih` for the sequence; `ihk` + `ihv` for the mapping), under
+the style-irrelevance bridges (`contentEq_{seq,map}_style_irrel`, `:209`/`:219`) already rewritten at each
+lemma's head. So Family B's route is fully named and its landing pads exist. **R572 landed the trace's
+first brick** — the OUTER-SHAPE recovery `parseFlowSequence_produces_sequence` /
+`parseFlowMapping_produces_mapping` (`ContentFidelity.lean` §5.3): the flow-collection parsers' lone `.ok`
+branch pins the recovered value's outer constructor (`.sequence` / `.mapping .flow … none none`)
+*structurally*, before any child is examined — the parser analogue of Family A's window producers'
+innermost primitive, and emission-independent (no token structure, no `FlowSubrangesOk` needed). What
+remains is **brick 2** (lift the outer shape through `parseNode` / `parseDocument` / `parseStream` +
+`compose` to `(raw_docs.map YamlDocument.compose)[0]!.value`) and **brick 3** (the per-element loop
+recovery relating `items'` / `pairs'` to the input element-wise via the `parseFlow…Loop` induction, then
+the per-element IH through `contentEq_{sequence_items,mapping_pairs}`). Mirror seq/map: land the seq chain
+first. The chronological narrative below records how each Family-A piece was reached; Reflection 572 (in
+the ascending cluster above the Family-A descending block) records brick 1.
 
 **Family A (`FlowSubrangesOk`) — where essentially all recent work (R512–R571) has gone.**
-The landed assembler `flowSubrangesOk_of_window_producers` (`NonemptyStructure.lean:10904`)
+The landed assembler `flowSubrangesOk_of_window_producers` (`NonemptyStructure.lean:11201`)
 shows the goal reduces to: the boundary facts already in scope at each sorry **+ a seq
 window producer `h_seq_rec` (per-subrange `RecSeqBody`, keyed on a `.flowSequenceEnd`
 close) + a map window producer `h_map_rec` (per-subrange `RecMapBody`, `.flowMappingEnd`)
@@ -31719,7 +31759,15 @@ The window's close bracket selects which body it is, and the *conjunction* carri
 
 **The probe (`Tests/Reflections/`).** `mapPairSkeleton_locate_real_scalarKey_tight` in `MapCarrierRobustInhabitation.lean` runs the strengthened locator on the genuine `{a:[1], b:2}` body `[2, 13)` (the `#guard`-real `mapBodyProps_bracketVal`) and reads the new conjunct on the real scalar key `"a"` (`tokens[3] = .scalar "a" .doubleQuoted` — a reachable antecedent), recovering `kv = 4` — the GENUINE mode (antecedent real, consequent holds), not a vacuous discharge. The new conjunct is a CONCLUSION (Lean proves it true, not merely well-formed), but the inhabitation-debt discipline still demands a real-data firing: this fixture has only scalar keys, so the vacuous bracket-key mode is exercised only inside the locator's own bracket branch. Audits `[propext, Classical.choice, Quot.sound]`; the source `mapPairSkeleton_locate` is `#print axioms`-checked in-suite at the same profile.
 
-**Next step.** Every per-sub-block datum the dispatch needs is now sourced: key-side `h_scalar_single` from the strengthened locator, value-side `h_scalar_single` consumer-locally (M7 + leastness), `h_least` by rebasing the locator minimality to each sub-block frame, `h_succ_{seq,map}` from `mapPairSubblocks_flowBodyWindow` / `WellBracketed`. So ASSEMBLE `recmappair_window_dispatch_map`: source `MapBodyProps` + the total balance from the dispatch's `FlowBodyContentDeepMap` + `MapEnclosed` carrier → `mapPairSkeleton_locate` (R526) → `⟨kv, e, …⟩`; carve via `mapPairSubblocks_flowBodyWindow` (R524); dispatch each sub-block via `flowSubblock_content_and_noInterior_dispatch` (R570); feed each `FlowBodyContent` + `h_noInterior` + the SEQ IH into `recseqentry_whole_window_seq` (R527); glue via `recmapentry_pair_located` (`NonemptyStructure.lean:9492`). Still owing `h_opener` (sub-gap (a), R563). The next smallest right-sized brick is likely the value-side local discharge written as a reusable lemma (`scalar value ⟹ e = kv+2` from M7 + leastness), or the `h_least` sub-block-frame rebase — both are pure carrier-algebra with no new structural content. With the assembly landed, both `locate`s feed the JOINT driver (R534) at `[2, size-2)` and sorries 1 + 2 close (modulo (iv) M2 narrowing). Family B (sorries 3/4) untouched.
+**Next step.** Every per-sub-block datum the dispatch needs is now sourced: key-side `h_scalar_single` from the strengthened locator, value-side `h_scalar_single` consumer-locally (M7 + leastness), `h_least` by rebasing the locator minimality to each sub-block frame, `h_succ_{seq,map}` from `mapPairSubblocks_flowBodyWindow` / `WellBracketed`. So ASSEMBLE `recmappair_window_dispatch_map`: source `MapBodyProps` + the total balance from the dispatch's `FlowBodyContentDeepMap` + `MapEnclosed` carrier → `mapPairSkeleton_locate` (R526) → `⟨kv, e, …⟩`; carve via `mapPairSubblocks_flowBodyWindow` (R524); dispatch each sub-block via `flowSubblock_content_and_noInterior_dispatch` (R570); feed each `FlowBodyContent` + `h_noInterior` + the SEQ IH into `recseqentry_whole_window_seq` (R527); glue via `recmapentry_pair_located` (`NonemptyStructure.lean:9492`). Still owing `h_opener` (sub-gap (a), R563). The next smallest right-sized brick is likely the value-side local discharge written as a reusable lemma (`scalar value ⟹ e = kv+2` from M7 + leastness), or the `h_least` sub-block-frame rebase — both are pure carrier-algebra with no new structural content. With the assembly landed, both `locate`s feed the JOINT driver (R534) at `[2, size-2)` and sorries 1 + 2 close (modulo (iv) M2 narrowing). Family B (sorries 3/4) untouched. *[Acted on by Reflection 572: Front B is no longer untouched — its trace's first brick (outer-shape recovery) is landed; the user redirected to Front B this turn rather than continuing the Front-A `recmappair_window_dispatch_map` assembly, which remains the Front-A next step.]*
+
+### Reflection 572 — Front B's first brick is the OUTER SHAPE, and it is purely structural and emission-independent: the flow-collection parsers always wrap their accumulated children in `.sequence .flow _` / `.mapping .flow _`, so the recovered value's outer constructor is pinned before any child is examined. **The two content-fidelity sorries (`emit_roundtrip_{sequence,mapping}_content_eq`) owe "the exact parsed value structure from parser trace". The trace's first link needs neither the per-element recovery, nor the token structure, nor the `FlowSubrangesOk` certificate Front A builds: `parseFlowSequence` / `parseFlowMapping` have exactly ONE `.ok` branch and it constructs `YamlValue.sequence .flow items` / `YamlValue.mapping .flow pairs` (default `none none` tag/anchor) — every other path is an `.error`. So on ANY successful parse the outer constructor is fixed. This is the parser analogue of Front A's window producers: the innermost structural primitive the later trace lifts. Lesson for the inhabitation-debt discipline ([[feedback-inhabitation-debt-validate-target-defs]]): for a CONCLUSION lemma of the form `(antecedent) → (shape)`, the genuine probe targets the ANTECEDENT'S SATISFIABILITY on real data — a conclusion that is vacuously true because its antecedent is never reachable is the debt-equivalent of an uninhabited def.**
+
+**What landed (source).** `parseFlowSequence_produces_sequence` and `parseFlowMapping_produces_mapping` (`ContentFidelity.lean` §5.3): `parseFlow… ps fuel = .ok (v, ps') → ∃ items'/pairs', v = .sequence/.mapping .flow … none none`. Each proof is `cases fuel` (the `0` arm is `.error`, refuted by `reduceCtorEq`), then `cases` on the loop result and on `ps2.peek?`, with the lone surviving `.flowSequenceEnd` / `.flowMappingEnd` arm yielding the head via `Except.ok.injEq` + `Prod.mk.injEq` and every other arm a `.error = .ok` contradiction. Verified-but-unconsumed until the trace lifts them through `parseNode` / `parseDocument` / `parseStream` + `compose` to `(raw_docs.map YamlDocument.compose)[0]!.value`; they live in `ContentFidelity.lean`, which is imported at BOTH sorry sites. Axioms `[propext, Classical.choice, Quot.sound]` (Classical inherited from the `Except`-monad simp the unfold pulls in, not from a choice principle). Full build green at exactly 4 frontier sorries (783 jobs — the +1 over 782 is the new demo).
+
+**The probe (`Tests/Reflections/`).** `ValueRecoveryOuterShape.lean` grounds the lemmas on REAL emitted bytes — `emit`ting `["x"]` / `{"a":"b"}`, scanning, and positioning a `ParseState` at the opener. The inhabitation-debt risk for a CONCLUSION lemma is a never-satisfiable antecedent (vacuous truth, unreachable), so `seqOuterShape_fires` / `mapOuterShape_fires` (`native_decide`) confirm the real parse IS `.ok` of a flow collection (the antecedent fires NON-vacuously), and `seqPS_recovers_sequence` / `mapPS_recovers_mapping` apply the actual lemmas to that real scan-derived state. Axiom audits on the two source lemmas are `#print axioms`-checked in-suite (`[propext, Classical.choice, Quot.sound]`); the `native_decide` firing probes carry `Lean.ofReduceBool` on top, intentionally kept separate from the source lemmas.
+
+**Next step.** Brick 2: lift the outer shape from `parseFlowSequence` / `parseFlowMapping` UP to `(raw_docs.map YamlDocument.compose)[0]!.value`, in two sub-links. (a) the parser dispatch — `parseStream tokens → parseStreamLoop → parseDocument → parseNode`, which on a `.flowSequenceStart` / `.flowMappingStart` peek calls `parseFlowSequence` / `parseFlowMapping` (modulo `applyNodeFinalization`, which the scalar trace at `EmitterScannability.lean:240` shows is identity on the value when node-props are empty — as they are for emitted output). (b) `compose` (`resolveAliases` + `stripAnchors`) on `.sequence .flow items' none none`, which recurses into items but preserves the outer `.sequence` constructor. With the outer shape lifted, `contentEq_seq_style_irrel` + `contentEq_sequence_items` reduce the goal to the per-element `contentEqList`. Then **brick 3** (the genuinely hard one): the per-element recovery — a `parseFlowSequenceLoop` / `parseFlowMappingLoop` induction relating the accumulated `items'` / `pairs'` to the input element-wise, each discharged by the per-element IH (`ih`; `ihk` + `ihv`). SMALLEST-FIRST: land brick 2's dispatch sub-link (a) first as a verified-but-unconsumed `parseNode`-produces-sequence lemma, mirroring the scalar `parseStream_three_tokens_scalar` template. Mirror seq/map throughout: land the seq chain, the map follows by the symmetric structure. Front A (sorries 1/2) untouched — the two fronts are independent.
 
 
 ### Reflection 564 — the consumption-trace reaches the LAST data input; two residuals measured against the DOMAIN'S structural identity collapse to one floor. **R563 closed the deep-seq content gap; the same trace continues to the LAST per-sub-block input `recseqentry_whole_window_seq` (R527) demands — `h_content : FlowBodyContent`. The bridge `flowBodyContent_of_deepSeq` (R393) projects the R563 deep-seq down to `FlowBodyContent` modulo two residuals (`bodySucc` — a depth-`0` non-separator at balance `0` is the last token or precedes a `.flowEntry`; `feContent` — a depth-`0` `.flowEntry` precedes a content-start), each of which LOOKS like a separate content fact to source from emission. But a map-pair sub-block IS a SINGLE flow node — a scalar, or one bracketed `[ … ]` / `{ … }` — so its interior never returns to depth `0` until the window end. Measuring both residuals against that structural identity collapses them, AND the consumer's SEPARATE `h_noInterior` input, to ONE interior positivity floor `∀ i, lo < i → i < hi → flowBracketBalance tokens lo i ≥ 1`.**
