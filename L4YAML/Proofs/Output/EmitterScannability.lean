@@ -841,7 +841,25 @@ theorem emit_roundtrip_sequence_content_eq {inFlow : Bool} (style : CollectionSt
     rw [h_sz_beq, Bool.true_and] at h_check
     exact h_check
   | _ :: _ =>
-    -- Non-empty: requires exact parsed value structure from parser trace.
+    -- Non-empty: CONSUME §5.8's assembled outer-shape recovery to RETYPE the residual.
+    -- Decompose the pipeline into scan + parseStream, run the nonempty-structure lemma to
+    -- discharge §5.8's head-token hypotheses (`1 < tokens.size` from `tokens.size ≥ 5`;
+    -- `tokens[1]!.val = .flowSequenceStart`), recover the outer flow-sequence shape of the
+    -- composed first document, and reduce the goal to the per-element `contentEqList` — brick 3.
+    rw [h_emit] at h_raw
+    obtain ⟨tokens, h_scan, h_parse⟩ := Composition.parseYamlRaw_ok_decompose _ _ h_raw
+    have h_all_block : ∀ w, w ∈ items.toList → EmitScansInFlowBlock w := by
+      intro w hw
+      have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hw
+      have h_sz : i < items.size := by rwa [Array.length_toList] at hi
+      exact h_eq ▸ emit_scans_in_flow_block _ (h_items ⟨i, h_sz⟩)
+    obtain ⟨h_sz5, _, _, h_t1, _⟩ :=
+      scanFiltered_emitSeq_nonempty_structure items tokens h_scan (by simp [h_list]) h_all_block
+    obtain ⟨items'', h_shape⟩ :=
+      parseStream_flowSeqStart_recovers_outer_shape tokens raw_docs h_parse (by omega) (by omega) h_t1
+    rw [h_shape, contentEq_sequence_items]
+    -- Residual = brick 3: the per-element `parseFlowSequenceLoop` induction relating `items''`
+    -- to `items` (size equality + `contentEqList items.toList items''.toList`) through the IH.
     exact sorry
 
 /-- Proves that parsing the emitted tokens for a flow mapping recovers a content-equivalent mapping. -/
@@ -881,7 +899,31 @@ theorem emit_roundtrip_mapping_content_eq {inFlow : Bool} (style : CollectionSty
     rw [h_sz_beq, Bool.true_and] at h_check
     exact h_check
   | _ :: _ =>
-    -- Non-empty: requires exact parsed value structure from parser trace.
+    -- Non-empty: CONSUME §5.8's assembled outer-shape recovery (mapping mirror) to RETYPE
+    -- the residual: decompose into scan + parseStream, run the nonempty-structure lemma to
+    -- discharge §5.8's head-token hypotheses (`1 < tokens.size` from `tokens.size ≥ 7`;
+    -- `tokens[1]!.val = .flowMappingStart`), recover the outer flow-mapping shape of the
+    -- composed first document, and reduce the goal to the per-element `contentEqPairList` — brick 3.
+    rw [h_emit] at h_raw
+    obtain ⟨tokens, h_scan, h_parse⟩ := Composition.parseYamlRaw_ok_decompose _ _ h_raw
+    have h_all_k_block : ∀ p, p ∈ pairs.toList → EmitScansInFlowSavedKeyBlock p.1 := by
+      intro p hp
+      have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hp
+      have h_sz : i < pairs.size := by rwa [Array.length_toList] at hi
+      exact h_eq ▸ emit_scans_in_flow_saved_key_block _ (hk ⟨i, h_sz⟩)
+    have h_all_v_block : ∀ p, p ∈ pairs.toList → EmitScansInFlowBlock p.2 := by
+      intro p hp
+      have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hp
+      have h_sz : i < pairs.size := by rwa [Array.length_toList] at hi
+      exact h_eq ▸ emit_scans_in_flow_block _ (hv ⟨i, h_sz⟩)
+    obtain ⟨h_sz7, _, _, h_t1, _⟩ :=
+      scanFiltered_emitMap_nonempty_structure pairs tokens h_scan (by simp [h_list])
+        h_all_k_block h_all_v_block
+    obtain ⟨pairs'', h_shape⟩ :=
+      parseStream_flowMapStart_recovers_outer_shape tokens raw_docs h_parse (by omega) (by omega) h_t1
+    rw [h_shape, contentEq_mapping_pairs]
+    -- Residual = brick 3: the per-element `parseFlowMappingLoop` induction relating `pairs''`
+    -- to `pairs` (size equality + `contentEqPairList pairs.toList pairs''.toList`) through the IHs.
     exact sorry
 
 /-- **Content fidelity**: Parsing canonical emitter output recovers content
