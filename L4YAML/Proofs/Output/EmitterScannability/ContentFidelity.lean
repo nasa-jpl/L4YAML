@@ -821,4 +821,99 @@ theorem contentEqPairList_push (A B : Array (YamlValue × YamlValue))
   rw [Array.toList_push, Array.toList_push]
   exact contentEqPairList_append_singleton A.toList B.toList ka va kb vb h hk hv
 
+/-! ### §5.10  Front B — value-recovery trace, brick 3 link (b) scaffold: loop-result list decomposition
+
+§5.9 supplied the *step* algebra (extend two content-equal lists by one content-equal element). Link
+(b) — the content-tracking loop induction relating the parser's recovered `items''` / `pairs''` (the
+§5.8 existential) element-wise to the original `items` / `pairs` — first needs the purely *structural*
+fact that the loop only ever APPENDS to its accumulator: a successful `parseFlowSequenceLoop ps fuel
+acc` returns an array whose `toList` is `acc.toList ++ extra`, where `extra` is the (existentially
+quantified) list of elements parsed in this call.
+
+This is emission-independent and proved by fuel induction over the loop definition ALONE — no bracket
+balance, fuel adequacy, or `ParseNodeFlowSeqOk` machinery (contrast `parseFlowSequenceLoop_emitter_ok`,
+`ParserWellBehaved.lean:4184`, which needs all of it to prove the loop SUCCEEDS): every branch either
+returns the accumulator verbatim (`extra := []`) or recurses on `acc.push v` (`extra := v :: extra'`,
+via `Array.toList_push`). The mapping lemma is the list refinement of `parseFlowMappingLoop_pairs_grow`
+(`ParserWellBehaved.lean:2107`, which tracks only the SIZE `≥`).
+
+Instantiated at the loop's entry accumulator `acc := #[]` (where §5.8's trace enters the loop), this
+gives `items''.toList = extra` — the scaffold on which brick 3's two residual conjuncts hang: the size
+half (`items.size = extra.length`) and the content half (`contentEqList items.toList extra`, via §5.9's
+step algebra, once each `extra` element is characterized by the per-element round-trip IH).
+Verified-but-unconsumed until that per-element characterization (the remaining hard part of link (b))
+lands. -/
+
+/-- **Loop-result list decomposition (sequence).** A successful `parseFlowSequenceLoop` returns an
+    array whose `toList` extends the accumulator's `toList` by the list of elements parsed in this
+    call. Pure structural fact: fuel induction over the loop, every branch either returns the
+    accumulator (`extra := []`) or recurses on `acc.push v` (`extra := v :: …`, via `Array.toList_push`). -/
+theorem parseFlowSequenceLoop_result_append
+    (ps : ParseState) (fuel : Nat) (acc : Array YamlValue)
+    (result : Array YamlValue × ParseState)
+    (h_ok : parseFlowSequenceLoop ps fuel acc = .ok result) :
+    ∃ extra, result.1.toList = acc.toList ++ extra := by
+  induction fuel generalizing ps acc with
+  | zero =>
+    unfold parseFlowSequenceLoop at h_ok
+    simp only [Except.ok.injEq] at h_ok
+    cases h_ok
+    exact ⟨[], by simp⟩
+  | succ k ih =>
+    unfold parseFlowSequenceLoop at h_ok
+    simp only [bind, Except.bind, pure, Except.pure] at h_ok
+    split at h_ok
+    · simp only [Except.ok.injEq] at h_ok; cases h_ok; exact ⟨[], by simp⟩
+    · all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try contradiction)
+      all_goals (try (simp at h_ok))
+      all_goals (first
+        | (cases h_ok; exact ⟨[], by simp⟩)
+        | (obtain ⟨e, he⟩ := ih _ _ h_ok
+           rw [he, Array.toList_push, List.append_assoc]; exact ⟨_, rfl⟩))
+
+/-- **Loop-result list decomposition (mapping).** Mirror of `parseFlowSequenceLoop_result_append`: a
+    successful `parseFlowMappingLoop` returns a pair array whose `toList` extends the accumulator's by
+    the entries parsed in this call. The list refinement of `parseFlowMappingLoop_pairs_grow`
+    (`ParserWellBehaved.lean:2107`), same fuel induction with `pairs.push (key, val)`. -/
+theorem parseFlowMappingLoop_result_append
+    (ps : ParseState) (fuel : Nat) (acc : Array (YamlValue × YamlValue))
+    (result : Array (YamlValue × YamlValue) × ParseState)
+    (h_ok : parseFlowMappingLoop ps fuel acc = .ok result) :
+    ∃ extra, result.1.toList = acc.toList ++ extra := by
+  induction fuel generalizing ps acc with
+  | zero =>
+    unfold parseFlowMappingLoop at h_ok
+    simp only [Except.ok.injEq] at h_ok
+    cases h_ok
+    exact ⟨[], by simp⟩
+  | succ k ih =>
+    unfold parseFlowMappingLoop at h_ok
+    simp only [bind, Except.bind, pure, Except.pure] at h_ok
+    split at h_ok
+    · simp only [Except.ok.injEq] at h_ok; cases h_ok; exact ⟨[], by simp⟩
+    · all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try contradiction)
+      all_goals (try (simp at h_ok))
+      all_goals (first
+        | (cases h_ok; exact ⟨[], by simp⟩)
+        | (obtain ⟨e, he⟩ := ih _ _ h_ok
+           rw [he, Array.toList_push, List.append_assoc]; exact ⟨_, rfl⟩))
+
 end L4YAML.Proofs.EmitterScannability

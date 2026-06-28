@@ -241,6 +241,7 @@ import Tests.Reflections.ValueRecoveryPosition
 import Tests.Reflections.ValueRecoveryOuterShapeAssembled
 import Tests.Reflections.ValueRecoveryContentResidual
 import Tests.Reflections.ContentListStepAlgebra
+import Tests.Reflections.LoopResultAppend
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
