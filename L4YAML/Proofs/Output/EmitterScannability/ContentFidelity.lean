@@ -388,6 +388,69 @@ theorem parseNode_flowMapStart_produces_mapping (ps : ParseState) (fuel : Nat)
       simp only [applyNodeFinalization] at h1
       exact h1.symm
 
+/-! ### §5.4.1  Front B — value-recovery trace, brick 3 producer prep: `parseNode` scalar dispatch leaf
+
+The §5.4 dispatch family pins the *constructor* a successful `parseNode` produces from its lookahead,
+**position-generically** (for ANY `ps`, not just the whole-stream start): `parseNode_flowSeqStart_produces_sequence`
+and `parseNode_flowMapStart_produces_mapping` cover the two collection peeks.  The family was missing its
+**scalar** member: a `.scalar content style` lookahead was only pinned *inside* the whole-stream
+`parseStream_three_tokens_scalar` (`EmitterScannability.lean:186`) — fixed to position `1`, not reusable
+mid-stream.
+
+§5.4.1 lands that member.  `parseNode_scalar_produces_scalar` proves a scalar lookahead recovers exactly
+`.scalar (Scalar.mk content style none none none)` — by the same skip / dispatch / finalization-is-identity
+argument as the collection twins, with two scalar-specific simplifications: content dispatch routes a scalar
+peek *directly* to the value (`parseNodeContent`'s first arm), and `applyNodeFinalization` leaves a scalar head
+untouched (only `.sequence`/`.mapping … none none` heads get the props rewrite — a scalar takes the `other`
+arm), so the empty props (`{}.tag = .anchor = none`) survive verbatim.
+
+This is the **parser-side leaf** of the per-element span-locality the §5.10–§5.14 producer-prep chain builds
+toward: when the `parseFlowSequenceLoop` / `parseFlowMappingLoop` induction reaches a *scalar* element span
+mid-stream, this lemma pins the recovered value position-generically — the parser half of "`items''[k]` =
+standalone parse of `emit items[k]`" for the leaf case, INDEPENDENT of the (harder, cross-state) scanner
+segment-equality.  It matches the standalone scalar parse (`parseYamlRaw_emitScalar_value` recovers the same
+`.scalar … .doubleQuoted`), so the bridge target holds at the leaf with both halves pinned.  Verified-but-
+unconsumed until the loop-locality producer consumes it; position-generic, so it stands in isolation and cannot
+perturb the 4-sorry frontier. -/
+
+/-- **`parseNode` dispatch (scalar).** Completing member of the §5.4 dispatch family: a successful
+    `parseNode` whose lookahead is `.scalar content style` produces exactly
+    `.scalar (Scalar.mk content style none none none)`.  The scalar token is neither alias nor anchor/tag,
+    so the alias check skips and `parseNodeProperties` returns empty props; `validateNodeProps` passes (no
+    block-collection / duplicate-anchor trigger); content dispatch routes the scalar peek straight to the
+    value `{ content, style, tag := props.tag, anchor := props.anchor }`; and `applyNodeFinalization` leaves
+    a scalar head untouched (the `other` arm — only flow/block collection heads with `none none` get the
+    props rewrite).  Empty props ⇒ `tag = anchor = none`; `blockMeta` defaults `none`.  Position-generic
+    (no constraint on `ps.pos`), so it pins the recovered value for a scalar element span anywhere
+    mid-stream — the parser-locality leaf the loop-locality producer consumes. -/
+theorem parseNode_scalar_produces_scalar (ps : ParseState) (fuel : Nat)
+    (content : String) (style : ScalarStyle) (v : YamlValue) (ps' : ParseState)
+    (h_peek : ps.peek? = some (.scalar content style))
+    (h : parseNode ps fuel = .ok (v, ps')) :
+    v = .scalar (Scalar.mk content style none none none) := by
+  cases fuel with
+  | zero => simp only [parseNode, reduceCtorEq] at h
+  | succ n =>
+    -- properties skip (a scalar token is neither anchor nor tag)
+    have h_np : parseNodeProperties ps = .ok ({}, ps) :=
+      parseNodeProperties_skip ps (by rw [h_peek]; trivial)
+    -- validation passes for any prePropPos (the block-start / dup-anchor triggers don't fire)
+    have h_vnp : ∀ p, validateNodeProps ps p ({} : NodeProperties) = .ok () := by
+      intro p; unfold validateNodeProps
+      simp only [h_peek, bind, Except.bind, pure, Except.pure]
+      rfl
+    -- content dispatch routes a scalar peek straight to the scalar value (empty-prop tag/anchor)
+    have h_pnc : parseNodeContent ps n ({} : NodeProperties)
+        = .ok (YamlValue.scalar { content := content, style := style }, ps.advance) := by
+      unfold parseNodeContent; rw [h_peek]
+    unfold parseNode at h
+    simp only [h_peek, bind, Except.bind, pure, Except.pure, h_np, h_vnp, h_pnc] at h
+    -- finalization is identity on a scalar head (the `other` arm); read off the first component
+    have h2 := Except.ok.inj h
+    have h1 := congrArg Prod.fst h2
+    simp only [applyNodeFinalization] at h1
+    exact h1.symm
+
 /-! ### §5.5  Front B — value-recovery trace, brick 2 sub-link (b): `compose` preserves outer shape
 
 Brick 2 sub-link (a) (§5.4) pinned the outer constructor through `parseNode`; the parsed

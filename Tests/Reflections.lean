@@ -248,6 +248,7 @@ import Tests.Reflections.CharListSegmentPeel
 import Tests.Reflections.StreamMarkerFraming
 import Tests.Reflections.ReparseConsumerJoint
 import Tests.Reflections.LocalityReductionJoint
+import Tests.Reflections.ParseNodeScalarDispatchLeaf
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
