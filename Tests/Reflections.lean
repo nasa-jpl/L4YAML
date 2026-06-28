@@ -240,6 +240,7 @@ import Tests.Reflections.ValueRecoveryParseDocument
 import Tests.Reflections.ValueRecoveryPosition
 import Tests.Reflections.ValueRecoveryOuterShapeAssembled
 import Tests.Reflections.ValueRecoveryContentResidual
+import Tests.Reflections.ContentListStepAlgebra
 
 /-!
 # Reflections — runnable proof-engineering demonstrations

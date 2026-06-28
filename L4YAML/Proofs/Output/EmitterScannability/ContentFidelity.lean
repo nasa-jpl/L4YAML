@@ -740,4 +740,85 @@ theorem parseStream_flowMapStart_recovers_outer_shape
     rw [getElem!_pos _ 0 h0', getElem!_pos raw_docs 0 h_ne, Array.getElem_map]
   rw [h_map]; exact h_comp
 
+/-! ### §5.9  Front B — value-recovery trace, brick 3 prep: content-list step algebra
+
+Brick 1–2 (§5.3–§5.8) recovered the *outer shape* of the re-parsed value: the composed first
+document is a flow `.sequence` / `.mapping` whose body is the parser's existential `items''` /
+`pairs''`. Consuming that into `emit_roundtrip_{sequence,mapping}_content_eq` (R578) retyped each
+content-fidelity sorry to its **brick-3 residual** — the per-element comparison
+
+  `(items.size == items''.size && contentEq.contentEqList items.toList items''.toList) = true`
+  `(pairs.size == pairs''.size && contentEq.contentEqPairList pairs.toList pairs''.toList) = true`
+
+Brick 3 discharges that by an induction over `parseFlowSequenceLoop` / `parseFlowMappingLoop`
+carrying a *content invariant*: after parsing `k` entries the accumulator (raw items, then composed)
+is pairwise content-equal to the original's first `k`. Each loop iteration `parseNode`s one entry and
+`Array.push`es it; the per-element round-trip IH supplies one fresh content-equal element. The
+invariant therefore extends **one element at a time** — and that extension is exactly the algebra
+below: appending content-equal elements to content-equal lists preserves `contentEqList` /
+`contentEqPairList` (and the `Array.push` corollaries the loop accumulator extends by). These are the
+emission-independent, decidable list-fold *steps* the brick-3 loop invariant consumes; the parse-side
+loop induction (relating the accumulator to `emitList`'s spans) is the remaining work. The base case
+(`contentEqList [] [] = true`) and the size half are immediate. Verified-but-unconsumed until that
+induction lands. -/
+
+/-- **Content-list step (sequence, lists).** Appending one content-equal element to each of two
+    content-equal value lists keeps them content-equal: the `contentEqList` inductive step the
+    brick-3 flow-sequence loop invariant extends by, one parsed item per iteration. (Length-mismatch
+    cases are vacuous — `contentEqList` is already `false` there, so `h` is unsatisfiable.) -/
+theorem contentEqList_append_singleton (l₁ l₂ : List YamlValue) (a b : YamlValue)
+    (h : contentEq.contentEqList l₁ l₂ = true) (hab : contentEq a b = true) :
+    contentEq.contentEqList (l₁ ++ [a]) (l₂ ++ [b]) = true := by
+  match l₁, l₂ with
+  | [], [] =>
+      simp only [List.nil_append, contentEq.contentEqList, Bool.and_true]; exact hab
+  | [], _ :: _ => simp [contentEq.contentEqList] at h
+  | _ :: _, [] => simp [contentEq.contentEqList] at h
+  | x :: xs, y :: ys =>
+      simp only [contentEq.contentEqList, Bool.and_eq_true] at h
+      simp only [List.cons_append, contentEq.contentEqList, Bool.and_eq_true]
+      exact ⟨h.1, contentEqList_append_singleton xs ys a b h.2 hab⟩
+
+/-- **Content-list step (sequence, accumulator).** `Array.push` corollary of
+    `contentEqList_append_singleton`: pushing content-equal elements onto two content-equal arrays
+    keeps their `toList`s content-equal. This is the exact shape the brick-3 sequence loop invariant
+    extends by (the loop accumulator is an `Array YamlValue` grown via `items_acc.push val`). -/
+theorem contentEqList_push (A B : Array YamlValue) (a b : YamlValue)
+    (h : contentEq.contentEqList A.toList B.toList = true) (hab : contentEq a b = true) :
+    contentEq.contentEqList (A.push a).toList (B.push b).toList = true := by
+  rw [Array.toList_push, Array.toList_push]
+  exact contentEqList_append_singleton A.toList B.toList a b h hab
+
+/-- **Content-pair-list step (mapping, lists).** Mirror of `contentEqList_append_singleton` for
+    key/value pair lists: appending one content-equal pair to each of two content-equal pair lists
+    keeps them content-equal. The `contentEqPairList` inductive step the brick-3 flow-mapping loop
+    invariant extends by, one parsed entry per iteration. -/
+theorem contentEqPairList_append_singleton (l₁ l₂ : List (YamlValue × YamlValue))
+    (ka va kb vb : YamlValue)
+    (h : contentEq.contentEqPairList l₁ l₂ = true)
+    (hk : contentEq ka kb = true) (hv : contentEq va vb = true) :
+    contentEq.contentEqPairList (l₁ ++ [(ka, va)]) (l₂ ++ [(kb, vb)]) = true := by
+  match l₁, l₂ with
+  | [], [] =>
+      simp only [List.nil_append, contentEq.contentEqPairList, Bool.and_true, Bool.and_eq_true]
+      exact ⟨hk, hv⟩
+  | [], _ :: _ => simp [contentEq.contentEqPairList] at h
+  | _ :: _, [] => simp [contentEq.contentEqPairList] at h
+  | (k₁, v₁) :: rest₁, (k₂, v₂) :: rest₂ =>
+      simp only [contentEq.contentEqPairList, Bool.and_eq_true] at h
+      simp only [List.cons_append, contentEq.contentEqPairList, Bool.and_eq_true]
+      exact ⟨⟨h.1.1, h.1.2⟩,
+             contentEqPairList_append_singleton rest₁ rest₂ ka va kb vb h.2 hk hv⟩
+
+/-- **Content-pair-list step (mapping, accumulator).** `Array.push` corollary of
+    `contentEqPairList_append_singleton`: the exact shape the brick-3 mapping loop invariant extends
+    by (the loop accumulator is an `Array (YamlValue × YamlValue)` grown via `pairs_acc.push (k, v)`). -/
+theorem contentEqPairList_push (A B : Array (YamlValue × YamlValue))
+    (ka va kb vb : YamlValue)
+    (h : contentEq.contentEqPairList A.toList B.toList = true)
+    (hk : contentEq ka kb = true) (hv : contentEq va vb = true) :
+    contentEq.contentEqPairList (A.push (ka, va)).toList (B.push (kb, vb)).toList = true := by
+  rw [Array.toList_push, Array.toList_push]
+  exact contentEqPairList_append_singleton A.toList B.toList ka va kb vb h hk hv
+
 end L4YAML.Proofs.EmitterScannability
