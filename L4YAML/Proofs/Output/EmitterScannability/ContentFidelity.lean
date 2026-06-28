@@ -432,4 +432,102 @@ theorem compose_preserves_flow_mapping (doc : YamlDocument) (pairs' : Array (Yam
   unfold YamlValue.resolveAliases YamlValue.stripAnchors
   exact ⟨_, rfl⟩
 
+/-! ### §5.6  Front B — value-recovery trace, brick 2 last link (part 1): `parseDocument` dispatch
+
+Brick 2 sub-link (a) (§5.4) pinned the outer constructor through `parseNode`; sub-link (b) (§5.5)
+lifted it across `compose`. The remaining wrapping is `parseStream` → `parseStreamLoop` →
+`parseDocument` → `parseNode`. `parseStream_doc_from_parseDocument` (`ParserWellBehaved`) already
+bridges the loop: every document `parseStream` emits came from a `parseDocument` on a state with the
+same token array. This section supplies the next link up — `parseDocument` itself preserves the
+flow-collection outer shape.
+
+On a `.flowSequenceStart` / `.flowMappingStart` lookahead, `prepareDocumentState` skips directives
+(the token is no directive, by `parseDirectives_skip`), sets `tagHandles := #[]` and consumes no
+`---` (the peek is not `.documentStart`), leaving the lookahead intact; the root-node dispatch — since
+the peek is neither `.documentEnd`/`.streamEnd`/`none` — routes to `parseNode`, whose output (by brick
+2(a)) is `.sequence .flow _ none none` / `.mapping .flow _ none none`; `parseDocument` then stores that
+verbatim in the document's `value` field. Verified-but-unconsumed until the first-document
+position-pinning (that the first emitted doc's `parseDocument` runs at pos 1, peeking the emitter's
+leading `[` / `{`) joins it to `parseStream_doc_from_parseDocument` and brick 2(b). -/
+
+/-- **`parseDocument` dispatch (sequence).** A successful `parseDocument` whose lookahead is
+    `.flowSequenceStart` produces a document whose value is a flow sequence with default tag/anchor:
+    `prepareDocumentState` skips the (non-directive) token leaving the peek intact, the root-node
+    dispatch routes the peek to `parseNode` (not the empty-node branch), and brick 2(a)
+    (`parseNode_flowSeqStart_produces_sequence`) pins that node's shape, which `parseDocument` stores
+    verbatim. The `parseDocument` link of brick 2's wrapping. -/
+theorem parseDocument_flowSeqStart_produces_sequence (ps : ParseState)
+    (doc : YamlDocument) (ps' : ParseState)
+    (h_peek : ps.peek? = some .flowSequenceStart)
+    (h : parseDocument ps = .ok (doc, ps')) :
+    ∃ items', doc.value = .sequence .flow items' none none := by
+  -- prepareDocumentState skips the (non-directive) flowSequenceStart, leaving the peek intact
+  have h_pd : parseDirectives ps = (#[], ps) :=
+    parseDirectives_skip ps (by rw [h_peek]; trivial)
+  have h_peek_a : ({ ps with tagHandles := #[] } : ParseState).peek? = some .flowSequenceStart := by
+    rw [show ({ ps with tagHandles := #[] } : ParseState).peek? = ps.peek? from rfl]; exact h_peek
+  have h_prep : prepareDocumentState ps = .ok (#[], { ps with tagHandles := #[] }) := by
+    unfold prepareDocumentState
+    rw [h_pd]
+    simp only [Array.filterMap_empty]
+    rw [show (({ ps with tagHandles := #[] } : ParseState).peek? == some YamlToken.documentStart)
+          = false from by rw [h_peek_a]; decide]
+    simp only [Bool.false_eq_true, ↓reduceIte]
+    unfold ParseState.tryConsume
+    rw [h_peek_a]
+    simp only [show (BEq.beq YamlToken.flowSequenceStart YamlToken.documentStart) = false from by decide,
+               Bool.false_eq_true, ↓reduceIte, pure, Except.pure, bind, Except.bind]
+  -- root-node dispatch: flowSequenceStart routes to parseNode (not the empty-node branch)
+  unfold parseDocument at h
+  simp only [bind, Except.bind, h_prep, h_peek_a] at h
+  cases h_pn : parseNode ({ ps with tagHandles := #[] } : ParseState)
+      (4 * ({ ps with tagHandles := #[] } : ParseState).tokens.size + 4) with
+  | error e => rw [h_pn] at h; simp only [reduceCtorEq] at h
+  | ok r =>
+    obtain ⟨val, ps_b⟩ := r
+    obtain ⟨items', hval⟩ :=
+      parseNode_flowSeqStart_produces_sequence _ _ val ps_b h_peek_a h_pn
+    rw [h_pn] at h
+    simp only [Except.ok.injEq, Prod.mk.injEq] at h
+    obtain ⟨rfl, -⟩ := h
+    exact ⟨items', hval⟩
+
+/-- **`parseDocument` dispatch (mapping).** Mirror of `parseDocument_flowSeqStart_produces_sequence`:
+    a successful `parseDocument` whose lookahead is `.flowMappingStart` produces a document whose
+    value is a flow mapping with default tag/anchor, by the same directive-skip / root dispatch /
+    `parseNode`-shape (`parseNode_flowMapStart_produces_mapping`) argument. -/
+theorem parseDocument_flowMapStart_produces_mapping (ps : ParseState)
+    (doc : YamlDocument) (ps' : ParseState)
+    (h_peek : ps.peek? = some .flowMappingStart)
+    (h : parseDocument ps = .ok (doc, ps')) :
+    ∃ pairs', doc.value = .mapping .flow pairs' none none := by
+  have h_pd : parseDirectives ps = (#[], ps) :=
+    parseDirectives_skip ps (by rw [h_peek]; trivial)
+  have h_peek_a : ({ ps with tagHandles := #[] } : ParseState).peek? = some .flowMappingStart := by
+    rw [show ({ ps with tagHandles := #[] } : ParseState).peek? = ps.peek? from rfl]; exact h_peek
+  have h_prep : prepareDocumentState ps = .ok (#[], { ps with tagHandles := #[] }) := by
+    unfold prepareDocumentState
+    rw [h_pd]
+    simp only [Array.filterMap_empty]
+    rw [show (({ ps with tagHandles := #[] } : ParseState).peek? == some YamlToken.documentStart)
+          = false from by rw [h_peek_a]; decide]
+    simp only [Bool.false_eq_true, ↓reduceIte]
+    unfold ParseState.tryConsume
+    rw [h_peek_a]
+    simp only [show (BEq.beq YamlToken.flowMappingStart YamlToken.documentStart) = false from by decide,
+               Bool.false_eq_true, ↓reduceIte, pure, Except.pure, bind, Except.bind]
+  unfold parseDocument at h
+  simp only [bind, Except.bind, h_prep, h_peek_a] at h
+  cases h_pn : parseNode ({ ps with tagHandles := #[] } : ParseState)
+      (4 * ({ ps with tagHandles := #[] } : ParseState).tokens.size + 4) with
+  | error e => rw [h_pn] at h; simp only [reduceCtorEq] at h
+  | ok r =>
+    obtain ⟨val, ps_b⟩ := r
+    obtain ⟨pairs', hval⟩ :=
+      parseNode_flowMapStart_produces_mapping _ _ val ps_b h_peek_a h_pn
+    rw [h_pn] at h
+    simp only [Except.ok.injEq, Prod.mk.injEq] at h
+    obtain ⟨rfl, -⟩ := h
+    exact ⟨pairs', hval⟩
+
 end L4YAML.Proofs.EmitterScannability

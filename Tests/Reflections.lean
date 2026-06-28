@@ -236,6 +236,7 @@ import Tests.Reflections.OmegaNonArithGoalPullsClassical
 import Tests.Reflections.ValueRecoveryOuterShape
 import Tests.Reflections.ValueRecoveryNodeDispatch
 import Tests.Reflections.ValueRecoveryCompose
+import Tests.Reflections.ValueRecoveryParseDocument
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
