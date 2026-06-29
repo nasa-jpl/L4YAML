@@ -302,6 +302,37 @@ theorem parseYamlRaw_emitScalar_value (content : String)
   subst h_eq
   exact ⟨Scalar.mk content .doubleQuoted none none none, h_dv, rfl⟩
 
+/-- **Standalone scalar parse, composed value pin**: parsing `emitScalar content`
+    gives a composed first document whose value is exactly
+    `.scalar (Scalar.mk content .doubleQuoted none none none)`.
+    Combines `scanFiltered_emitScalar_vals` (3-token structure),
+    `parseStream_three_tokens_scalar` (raw doc value), and
+    `compose_scalar_content` (compose leaves an anchor-free scalar unchanged).
+    RIGHT SIDE of the per-element locality equation for scalar elements;
+    verified-but-unconsumed until the outer-parse half (R595) lands. -/
+theorem parseYamlRaw_emitScalar_compose_value (content : String)
+    (rd : Array YamlDocument)
+    (h_raw : parseYamlRaw (emitScalar content) = .ok rd)
+    (h_sz : rd.size = 1) :
+    (rd.map YamlDocument.compose)[0]!.value =
+      .scalar (Scalar.mk content .doubleQuoted none none none) := by
+  obtain ⟨tokens, h_scan, h_parse⟩ := Composition.parseYamlRaw_ok_decompose _ _ h_raw
+  obtain ⟨h_sz3, h_t0, h_t1, h_t2⟩ := scanFiltered_emitScalar_vals content tokens h_scan
+  obtain ⟨docs, h_ps, h_docs_sz, h_dv⟩ :=
+    parseStream_three_tokens_scalar content tokens h_sz3 h_t0 h_t1 h_t2
+  have h_eq : rd = docs := Except.ok.inj (h_parse.symm.trans h_ps)
+  subst h_eq
+  -- subst eliminates docs (newer variable); rd and h_dv : rd[0]!.value = ... remain
+  have h0 : (0 : Nat) < rd.size := by omega
+  have h0' : (0 : Nat) < (rd.map YamlDocument.compose).size := by
+    rw [Array.size_map]; omega
+  rw [show (rd.map YamlDocument.compose)[0]!.value = (rd[0]!.compose).value from by
+    show (if h : 0 < (rd.map YamlDocument.compose).size
+          then (rd.map YamlDocument.compose)[0] else default).value =
+         (if h : 0 < rd.size then rd[0] else default).compose.value
+    rw [dif_pos h0', dif_pos h0, Array.getElem_map]]
+  exact compose_scalar_content rd[0]! (Scalar.mk content .doubleQuoted none none none) h_dv
+
 /-- Combined scanner characterization and parser acceptance for flow sequences.
     Given that scanning the emitted sequence succeeds, the parser pipeline
     produces exactly one document.
