@@ -258,6 +258,7 @@ import Tests.Reflections.ScalarTokenPinned
 import Tests.Reflections.ScalarComposeValue
 import Tests.Reflections.ComposeSeqItemsPointwise
 import Tests.Reflections.ScannerSpanLocality
+import Tests.Reflections.ScalarLocalityBridge
 
 /-!
 # Reflections — runnable proof-engineering demonstrations

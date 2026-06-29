@@ -335,6 +335,25 @@ theorem parseYamlRaw_emitScalar_compose_value (content : String)
     rw [dif_pos h0', dif_pos h0, Array.getElem_map]]
   exact compose_scalar_content rd[0]! (Scalar.mk content .doubleQuoted none none none) h_dv
 
+/-- **Scalar locality bridge at the leaf (R599).** The mid-stream `parseNode` value for a
+    `.scalar content .doubleQuoted` lookahead equals the standalone `parseYamlRaw (emitScalar content)`
+    composed value.  Both sides reduce to `.scalar (Scalar.mk content .doubleQuoted none none none)`:
+    `parseNode_scalar_produces_scalar` pins the mid-stream result; `parseYamlRaw_emitScalar_compose_value`
+    pins the standalone result.  Position-generic (no constraint on `ps.pos`): the parser-side LEAF of
+    the per-element span-locality.  Verified-but-unconsumed until the loop-locality producer threads it
+    through `parseFlowSequenceLoop_push_pointwise` to close the Front-B sequence sorry. -/
+theorem parseNode_scalar_dq_eq_standalone
+    (ps : ParseState) (fuel : Nat)
+    (content : String) (v : YamlValue) (ps' : ParseState)
+    (h_peek : ps.peek? = some (.scalar content .doubleQuoted))
+    (h_parse : parseNode ps fuel = .ok (v, ps'))
+    (rd : Array YamlDocument)
+    (h_raw : parseYamlRaw (emitScalar content) = .ok rd)
+    (h_sz : rd.size = 1) :
+    v = (rd.map YamlDocument.compose)[0]!.value := by
+  rw [parseNode_scalar_produces_scalar ps fuel content .doubleQuoted v ps' h_peek h_parse]
+  exact (parseYamlRaw_emitScalar_compose_value content rd h_raw h_sz).symm
+
 /-- Combined scanner characterization and parser acceptance for flow sequences.
     Given that scanning the emitted sequence succeeds, the parser pipeline
     produces exactly one document.

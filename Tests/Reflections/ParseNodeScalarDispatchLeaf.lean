@@ -153,10 +153,40 @@ theorem dispatch_family_scalar_generic (ps : ParseState) (fuel : Nat)
     v = .scalar (Scalar.mk content style none none none) :=
   parseNode_scalar_produces_scalar ps fuel content style v ps' h_peek h
 
+/-! ## R600: `parseNode_scalar_advances_by_one` -- position-advance at the scalar leaf
+
+Companion to `parseNode_scalar_produces_scalar` (R587): same dispatch path, extracts the
+SECOND pair component (the post-parse state) instead of the first (the parsed value).
+Proved by the same unfolding: `parseNodeProperties_skip` returns `ps` unchanged (no tag/anchor);
+`parseNodeContent` returns `ps.advance` (increments `pos` by 1); `applyNodeFinalization_pos`
+shows finalization preserves position.
+
+Verified-but-unconsumed: the loop-locality position-tracking producer threads this through
+`parseFlowSequenceLoop_push_pointwise` to prove `ps_j.pos = 2 + 2*j` for each element `j`
+of the all-scalar flow sequence parse loop.
+-/
+
+theorem advance_by_one_generic (ps : ParseState) (fuel : Nat)
+    (content : String) (style : ScalarStyle) (v : YamlValue) (ps' : ParseState)
+    (h_peek : ps.peek? = some (.scalar content style))
+    (h : parseNode ps fuel = .ok (v, ps')) :
+    ps'.pos = ps.pos + 1 :=
+  parseNode_scalar_advances_by_one ps fuel content style v ps' h_peek h
+
+/-- Inhabitation: R600 fires concretely on the mid-stream scalar position.
+    Extract `.pos` as a `Nat` before comparing (avoids `Decidable YamlValue × ParseState`). -/
+theorem advance_by_one_fires_concrete :
+    (((parseNode psSeq0 200).map (·.2.pos)).toOption == some (psSeq0.pos + 1)) = true := by
+  native_decide
+
 /-! ## Axiom audit: the dispatch leaf is choice-clean (no `sorryAx`). -/
 
 /-- info: 'L4YAML.Proofs.EmitterScannability.parseNode_scalar_produces_scalar' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms parseNode_scalar_produces_scalar
+
+/-- info: 'L4YAML.Proofs.EmitterScannability.parseNode_scalar_advances_by_one' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms parseNode_scalar_advances_by_one
 
 end ParseNodeScalarDispatchLeaf

@@ -451,6 +451,43 @@ theorem parseNode_scalar_produces_scalar (ps : ParseState) (fuel : Nat)
     simp only [applyNodeFinalization] at h1
     exact h1.symm
 
+/-- **`parseNode` position advance (scalar, R600).** A successful `parseNode` whose lookahead is
+    `.scalar content style` advances position by exactly 1.  The scalar token is neither alias nor
+    anchor/tag, so `parseNodeProperties` returns empty props and the SAME parse state (no position
+    change); `parseNodeContent` returns `ps.advance` (position +1); and `applyNodeFinalization_pos`
+    shows finalization preserves position.  Proof mirrors `parseNode_scalar_produces_scalar` but
+    extracts the SECOND pair component.  Position-generic, no constraint on `ps.pos`.  Verified-but-
+    unconsumed until the loop-locality position-tracking producer threads it through
+    `parseFlowSequenceLoop_push_pointwise` to prove `ps_j.pos = 2 + 2*j`. -/
+theorem parseNode_scalar_advances_by_one
+    (ps : ParseState) (fuel : Nat)
+    (content : String) (style : ScalarStyle) (v : YamlValue) (ps' : ParseState)
+    (h_peek : ps.peek? = some (.scalar content style))
+    (h_parse : parseNode ps fuel = .ok (v, ps')) :
+    ps'.pos = ps.pos + 1 := by
+  cases fuel with
+  | zero => simp only [parseNode, reduceCtorEq] at h_parse
+  | succ n =>
+    have h_np : parseNodeProperties ps = .ok ({}, ps) :=
+      parseNodeProperties_skip ps (by rw [h_peek]; trivial)
+    have h_vnp : ∀ p, validateNodeProps ps p ({} : NodeProperties) = .ok () := by
+      intro p; unfold validateNodeProps
+      simp only [h_peek, bind, Except.bind, pure, Except.pure]
+      rfl
+    have h_pnc : parseNodeContent ps n ({} : NodeProperties)
+        = .ok (YamlValue.scalar { content := content, style := style }, ps.advance) := by
+      unfold parseNodeContent; rw [h_peek]
+    unfold parseNode at h_parse
+    simp only [h_peek, bind, Except.bind, pure, Except.pure, h_np, h_vnp, h_pnc] at h_parse
+    have h2 := Except.ok.inj h_parse
+    -- (applyNodeFinalization ...).2 = ps' via the second pair component
+    have h_ps'_eq : ps' = (applyNodeFinalization
+        (YamlValue.scalar { content := content, style := style }) ps.advance {}
+        (ps.peekPos?.getD { offset := 0, line := 0, col := 0 })).2 :=
+      (congrArg Prod.snd h2).symm
+    rw [h_ps'_eq, applyNodeFinalization_pos]
+    simp [ParseState.advance]
+
 /-! ### §5.5  Front B — value-recovery trace, brick 2 sub-link (b): `compose` preserves outer shape
 
 Brick 2 sub-link (a) (§5.4) pinned the outer constructor through `parseNode`; the parsed
