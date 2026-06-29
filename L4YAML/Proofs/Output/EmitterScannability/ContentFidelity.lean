@@ -488,6 +488,34 @@ theorem parseNode_scalar_advances_by_one
     rw [h_ps'_eq, applyNodeFinalization_pos]
     simp [ParseState.advance]
 
+/-- `parseNode` for a scalar lookahead preserves the token array. -/
+theorem parseNode_scalar_tokens_preserved (ps : ParseState) (fuel : Nat)
+    (content : String) (style : ScalarStyle) (v : YamlValue) (ps' : ParseState)
+    (h_peek : ps.peek? = some (.scalar content style))
+    (h_parse : parseNode ps fuel = .ok (v, ps')) :
+    ps'.tokens = ps.tokens := by
+  cases fuel with
+  | zero => simp only [parseNode, reduceCtorEq] at h_parse
+  | succ n =>
+    have h_np : parseNodeProperties ps = .ok ({}, ps) :=
+      parseNodeProperties_skip ps (by rw [h_peek]; trivial)
+    have h_vnp : ∀ p, validateNodeProps ps p ({} : NodeProperties) = .ok () := by
+      intro p; unfold validateNodeProps
+      simp only [h_peek, bind, Except.bind, pure, Except.pure]
+      rfl
+    have h_pnc : parseNodeContent ps n ({} : NodeProperties)
+        = .ok (YamlValue.scalar { content := content, style := style }, ps.advance) := by
+      unfold parseNodeContent; rw [h_peek]
+    unfold parseNode at h_parse
+    simp only [h_peek, bind, Except.bind, pure, Except.pure, h_np, h_vnp, h_pnc] at h_parse
+    have h2 := Except.ok.inj h_parse
+    have h_ps'_eq : ps' = (applyNodeFinalization
+        (YamlValue.scalar { content := content, style := style }) ps.advance {}
+        (ps.peekPos?.getD { offset := 0, line := 0, col := 0 })).2 :=
+      (congrArg Prod.snd h2).symm
+    rw [h_ps'_eq, applyNodeFinalization_tokens]
+    simp [ParseState.advance]
+
 /-! ### §5.5  Front B — value-recovery trace, brick 2 sub-link (b): `compose` preserves outer shape
 
 Brick 2 sub-link (a) (§5.4) pinned the outer constructor through `parseNode`; the parsed
@@ -1298,6 +1326,227 @@ theorem parseFlowMappingLoop_step_index
   rw [List.getElem?_eq_getElem hsize'] at hopt
   simp only [Option.some.injEq] at hopt
   simpa only [Array.getElem_toList] using hopt
+
+/-! ### §5.18  Front B — loop value pin for all-scalar flow sequences (R601)
+
+`parseFlowSeqLoop_allScalar_value_at` combines the scanner token-array facts (R597: every
+scalar slot carries `.scalar sc.content .doubleQuoted` and every separator slot carries
+`.flowEntry`) with the parser position tracking to pin EVERY element of the loop result.
+
+Given a token array of the form
+
+  `[fss, body..., fse]`  (size = 2*items.length + 3)
+  `tokens[2 + 2*j]! = .scalar sc_j.content .doubleQuoted`
+  `tokens[2*j+1]! = .flowEntry` for j > 0
+
+and a parser state pointing at position 2 (after the `flowSequenceStart`), the loop
+produces a result satisfying
+
+  `result.1.size = items.length`
+  `result.1[j]! = .scalar (Scalar.mk sc_j.content .doubleQuoted none none none)`.
+
+Proof strategy: fuel induction.  Position invariant: at step k the parser is at position
+`if k = 0 then 2 else 2*k+1`.
+`parseNode_scalar_produces_scalar` pins the value; `parseNode_scalar_advances_by_one` and
+`parseNode_scalar_tokens_preserved` track position+tokens for the IH; and
+`parseFlowSequenceLoop_step_index` converts the recursive-call witness into the
+`result.1[k]! = val` equation. -/
+
+private theorem parseFlowSeqLoop_allScalar_value_at_aux
+    {tokens : Array (Positioned YamlToken)}
+    {items : List YamlValue}
+    (h_ne : items ≠ [])
+    (h_all : ∀ v ∈ items, ∃ sc : Scalar, v = .scalar sc)
+    (h_scalar_tok : ∀ j : Nat, j < items.length → ∀ sc : Scalar, items[j]? = some (.scalar sc) →
+        tokens[2 + 2 * j]!.val = .scalar sc.content .doubleQuoted)
+    (h_fe_tok : ∀ j : Nat, 0 < j → j < items.length → tokens[2 * j + 1]!.val = .flowEntry)
+    (h_fse_tok : tokens[2 * items.length + 1]!.val = .flowSequenceEnd)
+    (h_sz : tokens.size = 2 * items.length + 3)
+    {k : Nat} (h_kle : k ≤ items.length)
+    {acc : Array YamlValue} (h_acc : acc.size = k)
+    {ps : ParseState} (h_toks : ps.tokens = tokens)
+    (h_pos : ps.pos = if k = 0 then 2 else 2 * k + 1)
+    {fuel : Nat} (h_fuel : items.length - k + 1 ≤ fuel)
+    {result : Array YamlValue × ParseState}
+    (h_ok : parseFlowSequenceLoop ps fuel acc = .ok result) :
+    result.1.size = items.length ∧
+    ∀ j : Nat, k ≤ j → j < items.length →
+        ∃ sc : Scalar, items[j]? = some (.scalar sc) ∧
+        result.1[j]! = .scalar (Scalar.mk sc.content .doubleQuoted none none none) := by
+  induction fuel generalizing k acc ps with
+  | zero => omega
+  | succ n ih =>
+    have h_ne_len : items.length ≠ 0 := by
+      intro h; cases items with
+      | nil => exact absurd rfl h_ne
+      | cons _ _ => simp at h
+    by_cases h_keq : k = items.length
+    · -- EXIT: k = items.length, loop sees flowSequenceEnd
+      subst h_keq
+      have h_pos_val : ps.pos = 2 * items.length + 1 := by
+        rw [h_pos, if_neg h_ne_len]
+      have h_peek_fse : ps.peek? = some .flowSequenceEnd :=
+        peek_of_pos_val h_pos_val (by rw [h_toks, h_sz]; omega)
+          (by rw [h_toks]; exact h_fse_tok)
+      simp only [parseFlowSequenceLoop, h_peek_fse, Except.ok.injEq] at h_ok
+      exact ⟨h_ok ▸ h_acc, fun j _ h_lt => absurd h_lt (by omega)⟩
+    · -- STEP: k < items.length
+      have h_klt : k < items.length := Nat.lt_of_le_of_ne h_kle h_keq
+      obtain ⟨sc_k, h_val_k⟩ := h_all _ (List.getElem_mem h_klt)
+      have h_item_k : items[k]? = some (.scalar sc_k) :=
+        (List.getElem?_eq_getElem h_klt).trans (congrArg some h_val_k)
+      have h_tok_k := h_scalar_tok k h_klt sc_k h_item_k
+      have h_ok_orig := h_ok
+      by_cases h_k0 : k = 0
+      · -- k = 0: ps.pos = 2, peek? = scalar
+        subst h_k0
+        simp only [ite_true] at h_pos
+        have h_peek : ps.peek? = some (.scalar sc_k.content .doubleQuoted) :=
+          peek_of_pos_val h_pos (by rw [h_toks, h_sz]; omega)
+            (by rw [h_toks]; exact h_tok_k)
+        -- struct update of currentPath is transparent to peek?
+        have h_path_peek :
+            ({ ps with currentPath := ps.currentPath.push (.index acc.size) } : ParseState).peek?
+              = some (.scalar sc_k.content .doubleQuoted) := h_peek
+        unfold parseFlowSequenceLoop at h_ok
+        simp only [bind, Except.bind, pure, Except.pure] at h_ok
+        split at h_ok  -- outer: fse vs wildcard
+        · simp [h_peek] at *
+        · simp only [if_neg (show ¬ (acc.size > 0) from by omega)] at h_ok
+          split at h_ok  -- inner: key | fse | wildcard
+          · simp [h_peek] at *
+          · simp [h_peek] at *
+          · split at h_ok  -- parseNode: error | ok
+            · simp at h_ok
+            · rename_i pair h_pn; obtain ⟨val, ps_node⟩ := pair
+              have h_val : val = .scalar (Scalar.mk sc_k.content .doubleQuoted none none none) :=
+                parseNode_scalar_produces_scalar _ n sc_k.content .doubleQuoted val ps_node
+                  h_path_peek h_pn
+              have h_node_pos : ps_node.pos = 3 := by
+                have h_ip : ({ ps with currentPath := ps.currentPath.push (.index acc.size) }
+                              : ParseState).pos = ps.pos := rfl
+                have := parseNode_scalar_advances_by_one _ n sc_k.content .doubleQuoted val ps_node
+                  h_path_peek h_pn
+                omega
+              have h_node_toks : ps_node.tokens = tokens := by
+                have h_it : ({ ps with currentPath := ps.currentPath.push (.index acc.size) }
+                              : ParseState).tokens = ps.tokens := rfl
+                have := parseNode_scalar_tokens_preserved _ n sc_k.content .doubleQuoted val ps_node
+                  h_path_peek h_pn
+                rw [h_it, h_toks] at this; exact this
+              have h_kle1 : 1 ≤ items.length := by omega
+              have h_acc1 : (acc.push val).size = 1 := by simp [h_acc]
+              have h_pos1 :
+                  ({ ps_node with currentPath := ps.currentPath } : ParseState).pos =
+                  if 1 = 0 then 2 else 2 * 1 + 1 := by
+                simp [h_node_pos]
+              have h_fuel1 : items.length - 1 + 1 ≤ n := by omega
+              obtain ⟨h_sz_r, h_vals_r⟩ := ih h_kle1 h_acc1
+                (show ({ ps_node with currentPath := ps.currentPath } : ParseState).tokens = tokens
+                  from h_node_toks)
+                h_pos1 h_fuel1 h_ok
+              obtain ⟨h_idx_h, h_idx_eq⟩ :=
+                parseFlowSequenceLoop_step_index ps n acc result h_ok_orig val
+                  { ps_node with currentPath := ps.currentPath } h_ok
+              exact ⟨h_sz_r, fun j h_ge h_lt => by
+                rcases Nat.eq_or_lt_of_le h_ge with rfl | h_jpos
+                · exact ⟨sc_k, h_item_k, by
+                    rw [← h_acc, getElem!_pos result.1 acc.size h_idx_h, h_idx_eq, h_val]⟩
+                · exact h_vals_r j h_jpos h_lt⟩
+      · -- k > 0: ps.pos = 2k+1, peek? = .flowEntry
+        have h_kpos : 0 < k := by omega
+        simp only [if_neg h_k0] at h_pos
+        have h_peek_fe : ps.peek? = some .flowEntry :=
+          peek_of_pos_val h_pos (by rw [h_toks, h_sz]; omega)
+            (by rw [h_toks]; exact h_fe_tok k h_kpos h_klt)
+        have h_adv_pos : ps.advance.pos = 2 + 2 * k := by
+          simp only [ParseState.advance, h_pos]; omega
+        have h_adv_toks : ps.advance.tokens = tokens := by simp [ParseState.advance, h_toks]
+        have h_adv_peek : ps.advance.peek? = some (.scalar sc_k.content .doubleQuoted) :=
+          peek_of_pos_val h_adv_pos (by rw [h_adv_toks, h_sz]; omega)
+            (by rw [h_adv_toks]; exact h_tok_k)
+        have h_adv_path_peek :
+            ({ ps.advance with currentPath := ps.currentPath.push (.index acc.size) } : ParseState).peek?
+              = some (.scalar sc_k.content .doubleQuoted) := h_adv_peek
+        unfold parseFlowSequenceLoop at h_ok
+        simp only [bind, Except.bind, pure, Except.pure] at h_ok
+        split at h_ok  -- outer: fse vs wildcard
+        · simp [h_peek_fe] at *
+        · simp only [if_pos (show acc.size > 0 from by rw [h_acc]; exact h_kpos)] at h_ok
+          split at h_ok  -- flowEntry match: .flowEntry | wildcard
+          · split at h_ok  -- inner (post-advance): key | fse | wildcard
+            · simp [h_adv_peek] at *
+            · simp [h_adv_peek] at *
+            · split at h_ok  -- parseNode: error | ok
+              · simp at h_ok
+              · rename_i pair h_pn; obtain ⟨val, ps_node⟩ := pair
+                have h_val : val = .scalar (Scalar.mk sc_k.content .doubleQuoted none none none) :=
+                  parseNode_scalar_produces_scalar _ n sc_k.content .doubleQuoted val ps_node
+                    h_adv_path_peek h_pn
+                have h_node_pos : ps_node.pos = 2 * (k + 1) + 1 := by
+                  have h_ip : ({ ps.advance with currentPath := ps.currentPath.push (.index acc.size) }
+                                : ParseState).pos = ps.advance.pos := rfl
+                  have := parseNode_scalar_advances_by_one _ n sc_k.content .doubleQuoted val ps_node
+                    h_adv_path_peek h_pn
+                  omega
+                have h_node_toks : ps_node.tokens = tokens := by
+                  have h_it : ({ ps.advance with currentPath := ps.currentPath.push (.index acc.size) }
+                                : ParseState).tokens = ps.advance.tokens := rfl
+                  have := parseNode_scalar_tokens_preserved _ n sc_k.content .doubleQuoted val ps_node
+                    h_adv_path_peek h_pn
+                  rw [h_it, h_adv_toks] at this; exact this
+                have h_kle' : k + 1 ≤ items.length := h_klt
+                have h_acc' : (acc.push val).size = k + 1 := by simp [h_acc]
+                have h_pos' :
+                    ({ ps_node with currentPath := ps.currentPath } : ParseState).pos =
+                    if k + 1 = 0 then 2 else 2 * (k + 1) + 1 := by
+                  have : ({ ps_node with currentPath := ps.currentPath } : ParseState).pos
+                      = ps_node.pos := rfl
+                  rw [this, h_node_pos, if_neg (Nat.succ_ne_zero k)]
+                have h_fuel' : items.length - (k + 1) + 1 ≤ n := by omega
+                obtain ⟨h_sz_r, h_vals_r⟩ := ih h_kle' h_acc'
+                  (show ({ ps_node with currentPath := ps.currentPath } : ParseState).tokens = tokens
+                    from h_node_toks)
+                  h_pos' h_fuel' h_ok
+                obtain ⟨h_idx_h, h_idx_eq⟩ :=
+                  parseFlowSequenceLoop_step_index ps n acc result h_ok_orig val
+                    { ps_node with currentPath := ps.currentPath } h_ok
+                exact ⟨h_sz_r, fun j h_ge h_lt => by
+                  rcases Nat.eq_or_lt_of_le h_ge with rfl | h_jgt
+                  · exact ⟨sc_k, h_item_k, by
+                      rw [← h_acc, getElem!_pos result.1 acc.size h_idx_h, h_idx_eq, h_val]⟩
+                  · exact h_vals_r j h_jgt h_lt⟩
+          · simp [h_peek_fe] at *
+
+/-- **Loop value pin for all-scalar flow sequences (R601).**  Given a token array whose
+    scalar slots satisfy `tokens[2 + 2*j]! = .scalar sc_j.content .doubleQuoted` and whose
+    separator slots satisfy `tokens[2*j+1]! = .flowEntry` (j > 0), together with
+    `tokens[2*items.length+1]! = .flowSequenceEnd`, a `parseFlowSequenceLoop` call starting
+    at position 2 with empty accumulator produces a result whose size equals `items.length`
+    and whose j-th element is `.scalar (Scalar.mk sc_j.content .doubleQuoted none none none)`.
+    Verified-but-unconsumed until threaded into the Front-B sequence locality sorry. -/
+theorem parseFlowSeqLoop_allScalar_value_at
+    {tokens : Array (Positioned YamlToken)}
+    {items : List YamlValue}
+    (h_ne : items ≠ [])
+    (h_all : ∀ v ∈ items, ∃ sc : Scalar, v = .scalar sc)
+    (h_scalar_tok : ∀ j : Nat, j < items.length → ∀ sc : Scalar, items[j]? = some (.scalar sc) →
+        tokens[2 + 2 * j]!.val = .scalar sc.content .doubleQuoted)
+    (h_fe_tok : ∀ j : Nat, 0 < j → j < items.length → tokens[2 * j + 1]!.val = .flowEntry)
+    (h_fse_tok : tokens[2 * items.length + 1]!.val = .flowSequenceEnd)
+    (h_sz : tokens.size = 2 * items.length + 3)
+    {ps : ParseState} (h_toks : ps.tokens = tokens) (h_pos : ps.pos = 2)
+    {fuel : Nat} (h_fuel : items.length + 1 ≤ fuel)
+    {result : Array YamlValue × ParseState}
+    (h_ok : parseFlowSequenceLoop ps fuel #[] = .ok result) :
+    result.1.size = items.length ∧
+    ∀ j : Nat, j < items.length →
+        ∃ sc : Scalar, items[j]? = some (.scalar sc) ∧
+        result.1[j]! = .scalar (Scalar.mk sc.content .doubleQuoted none none none) := by
+  obtain ⟨h_size, h_vals⟩ := parseFlowSeqLoop_allScalar_value_at_aux h_ne h_all h_scalar_tok
+    h_fe_tok h_fse_tok h_sz (Nat.zero_le _) (by simp) h_toks
+    (by simp only [ite_true, h_pos]) (by omega) h_ok
+  exact ⟨h_size, fun j h_lt => h_vals j (Nat.zero_le j) h_lt⟩
 
 /-! ### §5.10.4  Front B — value-recovery trace, brick 3 link (b) indexed sub-call witnesses
 

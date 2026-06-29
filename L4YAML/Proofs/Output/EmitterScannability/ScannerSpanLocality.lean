@@ -65,8 +65,10 @@ theorem emitList_allScalar_body_content_at :
       s'.simpleKeyStack = s.simpleKeyStack ∧
       (s'.tokens.filter filt).toList = (s.tokens.filter filt).toList ++ block ∧
       block.length = 2 * items.length - 1 ∧
-      ∀ j : Nat, j < items.length → ∀ sc : Scalar, items[j]? = some (.scalar sc) →
-          2 * j < block.length ∧ block[2 * j]!.val = .scalar sc.content .doubleQuoted := by
+      (∀ j : Nat, j < items.length → ∀ sc : Scalar, items[j]? = some (.scalar sc) →
+          2 * j < block.length ∧ block[2 * j]!.val = .scalar sc.content .doubleQuoted) ∧
+      ∀ j : Nat, j + 1 < items.length →
+          2 * j + 1 < block.length ∧ block[2 * j + 1]!.val = .flowEntry := by
   intro items
   induction items with
   | nil => intro h; exact absurd rfl h
@@ -94,7 +96,7 @@ theorem emitList_allScalar_body_content_at :
               h_corr', h_fl', h_dp', h_ids', h_ek', h_col',
               by unfold ScannerState.inFlow; exact decide_eq_true (by rw [h_fl']; omega),
               by unfold ScannerState.currentIndent; rw [h_ids']; exact h_indent,
-              h_line', h_atol', h_endline', h_stack', ?_, ?_, ?_⟩
+              h_line', h_atol', h_endline', h_stack', ?_, ?_, ?_, ?_⟩
       · rw [h_push, Array.toList_push]
       · simp
       · intro j hj sc' h_item
@@ -103,6 +105,8 @@ theorem emitList_allScalar_body_content_at :
         simp only [List.getElem?_cons_zero, Option.some.injEq] at h_item
         obtain rfl : sc = sc' := YamlValue.scalar.inj h_item
         exact ⟨by simp, by simp only [Nat.mul_zero, List.getElem!_cons_zero]; exact h_tok_val⟩
+      · -- flowEntry: j+1 < [sc].length = 1 → j+1 < 1, impossible
+        intro j hj; simp only [List.length_singleton] at hj; omega
     | cons v' vs =>
       -- ── MULTI-ELEMENT CASE: items = .scalar sc :: v' :: vs ──────────────────
       obtain ⟨sc', rfl⟩ : ∃ sc' : Scalar, v' = .scalar sc' := h_all v' (.tail _ (.head _))
@@ -132,7 +136,7 @@ theorem emitList_allScalar_body_content_at :
               h_atol₂, h_endline₂, h_stack₂⟩ :=
         scanNextToken_flow_comma s₁ (' ' :: (emit.emitList (.scalar sc' :: vs)).toList ++ rest)
           h_corr₁ h_s1_flow h_s1_indent (by omega) h_last₁ h_atol₁ h_endline₁
-      obtain ⟨feTok, _h_feTok_val, h_push₂⟩ :=
+      obtain ⟨feTok, h_feTok_val, h_push₂⟩ :=
         scanNextToken_flow_comma_filtered_push s₁
           (' ' :: (emit.emitList (.scalar sc' :: vs)).toList ++ rest)
           h_corr₁ h_s1_flow h_s1_indent (by omega) h_last₁ h_snt₂
@@ -163,7 +167,7 @@ theorem emitList_allScalar_body_content_at :
         fun w hw => h_all w (.tail _ hw)
       obtain ⟨n₃, s_end, block_rest, h_chain₃, h_corr_end, h_fl_end, h_dp_end, h_ids_end,
               h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, h_atol_end,
-              h_endline_end, h_stack_end, h_block_eq₃, h_len₃, h_pointwise₃⟩ :=
+              h_endline_end, h_stack_end, h_block_eq₃, h_len₃, h_pointwise₃, h_block_fe_tail⟩ :=
         ih h_tail_ne h_tail_all s₃ rest h_corr₃'
           h_s3_flow (by rw [h_fl₃, h_fl₂, h_fl₁]; exact h_fl)
           (by omega)
@@ -237,6 +241,26 @@ theorem emitList_allScalar_body_content_at :
             rw [show 2 * (j' + 1) = 2 * j' + 2 from by omega]
             rw [List.getElem!_cons_succ, List.getElem!_cons_succ]
             exact h_val_r
+      -- flowEntry at odd block positions
+      have h_block_fe : ∀ j : Nat, j + 1 < (.scalar sc :: .scalar sc' :: vs).length →
+          2 * j + 1 < (tok₁ :: feTok :: block_rest).length ∧
+          (tok₁ :: feTok :: block_rest)[2 * j + 1]!.val = .flowEntry := by
+        intro j hj
+        cases j with
+        | zero =>
+          refine ⟨by simp only [h_len, List.length_cons]; omega, ?_⟩
+          simp only [Nat.mul_zero, Nat.zero_add, List.getElem!_cons_succ,
+                     List.getElem!_cons_zero]
+          exact h_feTok_val
+        | succ j' =>
+          simp only [List.length_cons] at hj
+          have hj' : j' + 1 < (.scalar sc' :: vs).length := by
+            simp only [List.length_cons]; omega
+          obtain ⟨h_bound_r, h_val_r⟩ := h_block_fe_tail j' hj'
+          refine ⟨by simp only [List.length_cons]; omega, ?_⟩
+          rw [show 2 * (j' + 1) + 1 = 2 * j' + 1 + 2 from by omega]
+          rw [List.getElem!_cons_succ, List.getElem!_cons_succ]
+          exact h_val_r
       exact ⟨1 + (1 + (m₃ + 1)), s_end, tok₁ :: feTok :: block_rest,
              h_chain_all, h_corr_end,
              by rw [h_fl_end, h_fl₃, h_fl₂, h_fl₁],
@@ -247,7 +271,7 @@ theorem emitList_allScalar_body_content_at :
              by rw [h_line_end, h_line₃, h_line₂, h_line₁],
              h_atol_end, h_endline_end,
              by rw [h_stack_end, h_stack₃, h_stack₂, h_stack₁],
-             h_filter_end, h_len, h_pointwise⟩
+             h_filter_end, h_len, h_pointwise, h_block_fe⟩
 
 /-- **R597. All-scalar token-array content pin.**
 
@@ -269,8 +293,10 @@ theorem scanFiltered_emitSeq_allScalar_token_at
     (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items ++ "]") = .ok tokens) :
     tokens.size = 2 * items.length + 3 ∧
     tokens[1]!.val = .flowSequenceStart ∧
-    ∀ j : Nat, j < items.length → ∀ sc : Scalar, items[j]? = some (.scalar sc) →
-        tokens[2 + 2 * j]!.val = .scalar sc.content .doubleQuoted := by
+    (∀ j : Nat, j < items.length → ∀ sc : Scalar, items[j]? = some (.scalar sc) →
+        tokens[2 + 2 * j]!.val = .scalar sc.content .doubleQuoted) ∧
+    (∀ j : Nat, 0 < j → j < items.length → tokens[2 * j + 1]!.val = .flowEntry) ∧
+    tokens[2 * items.length + 1]!.val = .flowSequenceEnd := by
   let input := "[" ++ emit.emitList items ++ "]"
   have h_toList : input.toList = '[' :: (emit.emitList items).toList ++ [']'] := by
     simp only [input, String.toList_append]; rfl
@@ -281,7 +307,8 @@ theorem scanFiltered_emitSeq_allScalar_token_at
     scanNextToken_flow_open_init input ((emit.emitList items).toList ++ [']']) h_toList
   -- ═══ Step 2: body scan via R596 → s₂ and body block ═══
   obtain ⟨_n₂, s₂, block, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, h_inflow₂,
-          h_indent₂, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_block_eq₂, h_block_len, h_block_content⟩ :=
+          h_indent₂, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_block_eq₂, h_block_len,
+          h_block_content, h_block_fe_content⟩ :=
     emitList_allScalar_body_content_at items h_ne h_all s₁ [']']
       h_corr₁ h_inflow₁ (by rw [h_fl₁]; omega) h_indent₁ (by rw [h_col₁]; omega)
       h_ek₁ (h_line₁ ▸ h_atol₁) h_endline₁ h_sync₁
@@ -360,31 +387,72 @@ theorem scanFiltered_emitSeq_allScalar_token_at
     calc ((s₂.tokens.filter filt)[1]'h1_lt_s2).val
         = ((s₁.tokens.filter filt)[1]'h1_lt_s1).val := congrArg Positioned.val h_eq
       _ = .flowSequenceStart := h_filt₁_val1
-  -- ═══ Step 11: pointwise content pin ═══
-  refine ⟨h_tokens_sz, h_t1, fun j hj sc h_item => ?_⟩
-  obtain ⟨h_2j_lt_block, h_block_val⟩ := h_block_content j hj sc h_item
-  have h_2j_lt_s2 : 2 + 2 * j < (s₂.tokens.filter filt).size := by
-    rw [h_s2_filt_sz]; omega
-  rw [h_tokens_decomp, getElem!_pos _ _ (by simp only [Array.size_push]; omega)]
-  rw [Array.getElem_push_lt (by simp only [Array.size_push]; omega)]
-  rw [Array.getElem_push_lt h_2j_lt_s2]
-  -- Goal: ((s₂.tokens.filter filt)[2+2*j]'h_2j_lt_s2).val = .scalar sc.content .doubleQuoted
-  have h_at_2j : (s₂.tokens.filter filt)[2 + 2 * j]'h_2j_lt_s2 =
-      block[2 * j]'h_2j_lt_block := by
-    -- Work at the List.getElem? level to avoid dependent proof-bound issues
-    have h_lhs_lt : 2 + 2 * j < (s₂.tokens.filter filt).toList.length := by
-      rw [Array.length_toList]; exact h_2j_lt_s2
-    have h_opt : (s₂.tokens.filter filt).toList[2 + 2 * j]? = block[2 * j]? := by
-      rw [h_block_eq₂, List.getElem?_append_right (by rw [h_s1_filt_len]; omega)]
-      have h_sub : 2 + 2 * j - (s₁.tokens.filter filt).toList.length = 2 * j := by
-        rw [h_s1_filt_len]; omega
-      rw [h_sub]
-    rw [List.getElem?_eq_getElem h_lhs_lt, List.getElem?_eq_getElem h_2j_lt_block] at h_opt
-    have h_list_eq := Option.some.inj h_opt
-    rwa [Array.getElem_toList] at h_list_eq
-  rw [h_at_2j]
-  -- Goal: (block[2*j]'h_2j_lt_block).val = .scalar sc.content .doubleQuoted
-  rw [(getElem!_pos block (2 * j) h_2j_lt_block).symm]
-  exact h_block_val
+  -- ═══ Step 11: all three conclusions ═══
+  refine ⟨h_tokens_sz, h_t1, ?_, ?_, ?_⟩
+  · -- Scalar pointwise: tokens[2+2*j]!.val = .scalar sc.content .doubleQuoted
+    intro j hj sc h_item
+    obtain ⟨h_2j_lt_block, h_block_val⟩ := h_block_content j hj sc h_item
+    have h_2j_lt_s2 : 2 + 2 * j < (s₂.tokens.filter filt).size := by
+      rw [h_s2_filt_sz]; omega
+    rw [h_tokens_decomp, getElem!_pos _ _ (by simp only [Array.size_push]; omega)]
+    rw [Array.getElem_push_lt (by simp only [Array.size_push]; omega)]
+    rw [Array.getElem_push_lt h_2j_lt_s2]
+    have h_at_2j : (s₂.tokens.filter filt)[2 + 2 * j]'h_2j_lt_s2 =
+        block[2 * j]'h_2j_lt_block := by
+      have h_lhs_lt : 2 + 2 * j < (s₂.tokens.filter filt).toList.length := by
+        rw [Array.length_toList]; exact h_2j_lt_s2
+      have h_opt : (s₂.tokens.filter filt).toList[2 + 2 * j]? = block[2 * j]? := by
+        rw [h_block_eq₂, List.getElem?_append_right (by rw [h_s1_filt_len]; omega)]
+        have h_sub : 2 + 2 * j - (s₁.tokens.filter filt).toList.length = 2 * j := by
+          rw [h_s1_filt_len]; omega
+        rw [h_sub]
+      rw [List.getElem?_eq_getElem h_lhs_lt, List.getElem?_eq_getElem h_2j_lt_block] at h_opt
+      have h_list_eq := Option.some.inj h_opt
+      rwa [Array.getElem_toList] at h_list_eq
+    rw [h_at_2j, (getElem!_pos block (2 * j) h_2j_lt_block).symm]
+    exact h_block_val
+  · -- flowEntry: tokens[2*j+1]!.val = .flowEntry for 0 < j < items.length
+    intro j hj_pos hj_lt
+    obtain ⟨h_2jm1_lt_block, h_block_fe_val⟩ := h_block_fe_content (j - 1) (by omega)
+    have h_2j1_lt_s2 : 2 * j + 1 < (s₂.tokens.filter filt).size := by
+      rw [h_s2_filt_sz, h_block_len]; omega
+    rw [h_tokens_decomp, getElem!_pos _ _ (by simp only [Array.size_push]; omega)]
+    rw [Array.getElem_push_lt (by simp only [Array.size_push]; omega)]
+    rw [Array.getElem_push_lt h_2j1_lt_s2]
+    have h_at_fe : (s₂.tokens.filter filt)[2 * j + 1]'h_2j1_lt_s2 =
+        block[2 * (j - 1) + 1]'h_2jm1_lt_block := by
+      have h_lhs_lt : 2 * j + 1 < (s₂.tokens.filter filt).toList.length := by
+        rw [Array.length_toList]; exact h_2j1_lt_s2
+      have h_opt : (s₂.tokens.filter filt).toList[2 * j + 1]? = block[2 * (j - 1) + 1]? := by
+        rw [h_block_eq₂, List.getElem?_append_right (by rw [h_s1_filt_len]; omega)]
+        congr 1; rw [h_s1_filt_len]; omega
+      rw [List.getElem?_eq_getElem h_lhs_lt,
+          List.getElem?_eq_getElem h_2jm1_lt_block] at h_opt
+      have h_list_eq := Option.some.inj h_opt
+      rwa [Array.getElem_toList] at h_list_eq
+    rw [h_at_fe, (getElem!_pos block _ h_2jm1_lt_block).symm]
+    exact h_block_fe_val
+  · -- flowSequenceEnd: tokens[2*items.length+1]!.val = .flowSequenceEnd
+    have h_idx : (s₂.tokens.filter filt).size = 2 * items.length + 1 := by
+      rw [h_s2_filt_sz, h_block_len]; omega
+    have h_idx_list : (s₂.tokens.filter filt).toList.length = 2 * items.length + 1 := by
+      rw [Array.length_toList]; exact h_idx
+    have h_lt : 2 * items.length + 1 < tokens.size := by rw [h_tokens_sz]; omega
+    have h_lt2 : 2 * items.length + 1 < tokens.toList.length := by
+      rw [Array.length_toList]; exact h_lt
+    have h_tlist : tokens.toList = (s₂.tokens.filter filt).toList ++
+        [tok_fse, { pos := s₃.currentPos, val := .streamEnd }] := by
+      rw [h_tokens_decomp]; simp [Array.toList_push]
+    have h_opt : tokens.toList[2 * items.length + 1]? = some tok_fse := by
+      rw [h_tlist, List.getElem?_append_right (by rw [h_idx_list]; omega)]
+      simp only [h_idx_list, Nat.sub_self, List.getElem?_cons_zero]
+    rw [List.getElem?_eq_getElem h_lt2] at h_opt
+    have h_elem : tokens.toList[2 * items.length + 1]'h_lt2 = tok_fse :=
+      Option.some.inj h_opt
+    have h_tok_eq : tokens[2 * items.length + 1]! = tok_fse := by
+      rw [getElem!_pos tokens (2 * items.length + 1) h_lt]
+      have h_rw := h_elem
+      rwa [Array.getElem_toList] at h_rw
+    rw [h_tok_eq]; exact h_tok_fse_val
 
 end L4YAML.Proofs.EmitterScannability

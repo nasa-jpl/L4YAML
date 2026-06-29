@@ -85,7 +85,7 @@ theorem r596_singleton_fires
   obtain ⟨_n, s', block,
           _h_chain, h_corr',                            -- A1, A2
           _, _, _, _, _, _, _, _, _, _, _,              -- A3-A13 (11 fields)
-          _h_filt, h_len, h_pw⟩ :=                     -- A14, A15, A16
+          _h_filt, h_len, h_pw, _h_fe⟩ :=             -- A14, A15, A16, A17
     emitList_allScalar_body_content_at [.scalar sc]
       (List.cons_ne_nil _ _)
       (fun v hv => by simp only [List.mem_singleton] at hv; exact ⟨sc, hv⟩)
@@ -113,7 +113,7 @@ theorem r596_two_elem_fires
   obtain ⟨_n, s', block,
           _h_chain, h_corr',                            -- A1, A2
           _, _, _, _, _, _, _, _, _, _, _,              -- A3-A13 (11 fields)
-          _h_filt, h_len, h_pw⟩ :=                     -- A14, A15, A16
+          _h_filt, h_len, h_pw, _h_fe⟩ :=             -- A14, A15, A16, A17
     emitList_allScalar_body_content_at [.scalar sca, .scalar scb]
       (List.cons_ne_nil _ _)
       (fun v hv => by
@@ -155,7 +155,7 @@ theorem r597_singleton_fires
     tokens.size = 5 ∧
     tokens[1]!.val = .flowSequenceStart ∧
     tokens[2]!.val = .scalar sc.content .doubleQuoted := by
-  obtain ⟨h_sz, h_t1, h_content⟩ :=
+  obtain ⟨h_sz, h_t1, h_content, _, _⟩ :=
     scanFiltered_emitSeq_allScalar_token_at [.scalar sc]
       (List.cons_ne_nil _ _)
       (fun v hv => by simp only [List.mem_singleton] at hv; exact ⟨sc, hv⟩)
@@ -175,7 +175,7 @@ theorem r597_two_elem_fires
     tokens.size = 7 ∧
     tokens[2]!.val = .scalar sca.content .doubleQuoted ∧
     tokens[4]!.val = .scalar scb.content .doubleQuoted := by
-  obtain ⟨h_sz, _h_t1, h_content⟩ :=
+  obtain ⟨h_sz, _h_t1, h_content, _, _⟩ :=
     scanFiltered_emitSeq_allScalar_token_at [.scalar sca, .scalar scb]
       (List.cons_ne_nil _ _)
       (fun v hv => by
