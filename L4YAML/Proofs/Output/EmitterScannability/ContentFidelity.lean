@@ -1187,6 +1187,81 @@ theorem parseFlowMappingLoop_step_push
       | (cases h_ok; exact Or.inl rfl)
       | (exact Or.inr ⟨_, _, _, h_ok⟩))
 
+/-! ### §5.10.3  Front B — value-recovery trace, brick 3 link (b) positional index: `result.1[acc.size] = v`
+
+§5.10.2 supplied the *structural step*: a successful `parseFlowSequenceLoop ps (fuel+1) acc` either
+terminates (`result.1 = acc`) or reduces to a tail call `parseFlowSequenceLoop ps'' fuel (acc.push v)`.
+This section supplies the **positional index** fact: in the `Or.inr` case, the element at position
+`acc.size` in the final result is exactly `v`. This is the per-step positional fact the positional
+induction iterates: at each fuel step `acc.size` increases by 1, so repeatedly applying `step_push` +
+`step_index` recovers each element at its correct index.
+
+Proof: apply `parseFlowSequenceLoop_result_append` (§5.10) to `h_push` — the tail call has
+`(acc.push v)` as accumulator, so `result.1.toList = (acc.push v).toList ++ extra`. Expanding via
+`Array.toList_push` and `List.append_assoc` gives `result.1.toList = acc.toList ++ ([v] ++ extra)`.
+The index fact goes via `getElem?` (no dependent bound) to avoid a Lean motive issue when rewriting
+`result.1.toList` under a dependent `List.getElem` bound: (a) evaluate `result.1.toList[acc.size]?`
+using `conv => lhs; rw [he]` + `List.getElem?_append_right` + `List.getElem?_cons_zero` to get
+`result.1.toList[acc.size]? = some v`; (b) convert via `List.getElem?_eq_getElem`; (c) lift to
+`result.1[acc.size]` via `Array.getElem_toList`. No fuel induction, no emission machinery. Note:
+`_h_ok` is the outer call's hypothesis, included for context; only `h_push` is used in the proof.
+Verified-but-unconsumed until the fuel induction that iterates `step_push` + `step_index` lands. -/
+
+/-- **Positional index (sequence).** Given `h_push`, the `Or.inr` witness from §5.10.2's
+    `parseFlowSequenceLoop_step_push`, the element at position `acc.size` in the final result is `v`.
+    Proof: `result_append` on `h_push` gives `result.1.toList = acc.toList ++ [v] ++ extra`; index
+    `acc.size` falls in the `[v]` slot, recovered by `List.getElem_append_right`. -/
+theorem parseFlowSequenceLoop_step_index
+    (ps : ParseState) (fuel : Nat) (acc : Array YamlValue)
+    (result : Array YamlValue × ParseState)
+    (_h_ok : parseFlowSequenceLoop ps (fuel+1) acc = .ok result)
+    (v : YamlValue) (ps'' : ParseState)
+    (h_push : parseFlowSequenceLoop ps'' fuel (acc.push v) = .ok result) :
+    ∃ h : acc.size < result.1.size, result.1[acc.size]'h = v := by
+  obtain ⟨extra, he⟩ := parseFlowSequenceLoop_result_append ps'' fuel (acc.push v) result h_push
+  rw [Array.toList_push, List.append_assoc] at he
+  have hsize : acc.size < result.1.size := by
+    have hlen := congrArg List.length he
+    simp only [List.length_append, List.length_cons, List.length_nil, Array.length_toList] at hlen
+    omega
+  refine ⟨hsize, ?_⟩
+  have hsize' : acc.size < result.1.toList.length := by rwa [Array.length_toList]
+  -- Use getElem? (no dependent bound) to avoid motive issue when rewriting he
+  have hle : acc.toList.length ≤ acc.size := by simp [Array.length_toList]
+  have hopt : result.1.toList[acc.size]? = some v := by
+    conv => lhs; rw [he]
+    rw [List.getElem?_append_right hle]
+    simp [Array.length_toList]
+  rw [List.getElem?_eq_getElem hsize'] at hopt
+  simp only [Option.some.injEq] at hopt
+  simpa only [Array.getElem_toList] using hopt
+
+/-- **Positional index (mapping).** Mirror of `parseFlowSequenceLoop_step_index` for
+    `parseFlowMappingLoop`: given `h_push`, the element at position `acc.size` is `(k, v)`. -/
+theorem parseFlowMappingLoop_step_index
+    (ps : ParseState) (fuel : Nat) (acc : Array (YamlValue × YamlValue))
+    (result : Array (YamlValue × YamlValue) × ParseState)
+    (_h_ok : parseFlowMappingLoop ps (fuel+1) acc = .ok result)
+    (k v : YamlValue) (ps'' : ParseState)
+    (h_push : parseFlowMappingLoop ps'' fuel (acc.push (k, v)) = .ok result) :
+    ∃ h : acc.size < result.1.size, result.1[acc.size]'h = (k, v) := by
+  obtain ⟨extra, he⟩ := parseFlowMappingLoop_result_append ps'' fuel (acc.push (k, v)) result h_push
+  rw [Array.toList_push, List.append_assoc] at he
+  have hsize : acc.size < result.1.size := by
+    have hlen := congrArg List.length he
+    simp only [List.length_append, List.length_cons, List.length_nil, Array.length_toList] at hlen
+    omega
+  refine ⟨hsize, ?_⟩
+  have hsize' : acc.size < result.1.toList.length := by rwa [Array.length_toList]
+  have hle : acc.toList.length ≤ acc.size := by simp [Array.length_toList]
+  have hopt : result.1.toList[acc.size]? = some (k, v) := by
+    conv => lhs; rw [he]
+    rw [List.getElem?_append_right hle]
+    simp [Array.length_toList]
+  rw [List.getElem?_eq_getElem hsize'] at hopt
+  simp only [Option.some.injEq] at hopt
+  simpa only [Array.getElem_toList] using hopt
+
 /-! ### §5.11  Front B — value-recovery trace, brick 3 content half: pointwise → fold assembly
 
 §5.9 supplied the *incremental* step (extend two content-equal lists by one content-equal element);

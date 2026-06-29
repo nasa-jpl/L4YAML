@@ -251,6 +251,7 @@ import Tests.Reflections.LocalityReductionJoint
 import Tests.Reflections.ParseNodeScalarDispatchLeaf
 import Tests.Reflections.LoopElementInvariant
 import Tests.Reflections.LoopStructuralStep
+import Tests.Reflections.LoopPositionalIndex
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
