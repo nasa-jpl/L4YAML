@@ -78,11 +78,11 @@ theorem r596_singleton_fires
     (h_col : s.col > 0) (h_ek : s.explicitKeyLine = none)
     (h_atol : AllTokensOnLine s s.line) (h_endline : EndLineOnLine s)
     (h_sync : s.simpleKeyStack.size = s.flowLevel) :
-    ∃ (n : Nat) (s' : ScannerState) (block : List (Positioned YamlToken)),
+    ∃ (_n : Nat) (s' : ScannerState) (block : List (Positioned YamlToken)),
       ScannerSurfCorr s' ⟨rest, s'.col⟩ ∧
       block.length = 1 ∧
       block[0]!.val = .scalar sc.content .doubleQuoted := by
-  obtain ⟨n, s', block,
+  obtain ⟨_n, s', block,
           _h_chain, h_corr',                            -- A1, A2
           _, _, _, _, _, _, _, _, _, _, _,              -- A3-A13 (11 fields)
           _h_filt, h_len, h_pw⟩ :=                     -- A14, A15, A16
@@ -91,7 +91,7 @@ theorem r596_singleton_fires
       (fun v hv => by simp only [List.mem_singleton] at hv; exact ⟨sc, hv⟩)
       s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sync
   obtain ⟨_, h_val⟩ := h_pw 0 (by simp) sc (by simp)
-  exact ⟨n, s', block, h_corr', by simp only [List.length_singleton] at h_len ⊢; omega, h_val⟩
+  exact ⟨_n, s', block, h_corr', by simp only [List.length_singleton] at h_len ⊢; omega, h_val⟩
 
 /-- R596 fires on a two-element all-scalar list: the scanner fact yields a
     three-token block (`scalar a`, `flowEntry`, `scalar b`) with the two
@@ -105,12 +105,12 @@ theorem r596_two_elem_fires
     (h_col : s.col > 0) (h_ek : s.explicitKeyLine = none)
     (h_atol : AllTokensOnLine s s.line) (h_endline : EndLineOnLine s)
     (h_sync : s.simpleKeyStack.size = s.flowLevel) :
-    ∃ (n : Nat) (s' : ScannerState) (block : List (Positioned YamlToken)),
+    ∃ (_n : Nat) (s' : ScannerState) (block : List (Positioned YamlToken)),
       ScannerSurfCorr s' ⟨rest, s'.col⟩ ∧
       block.length = 3 ∧
       block[0]!.val = .scalar sca.content .doubleQuoted ∧
       block[2]!.val = .scalar scb.content .doubleQuoted := by
-  obtain ⟨n, s', block,
+  obtain ⟨_n, s', block,
           _h_chain, h_corr',                            -- A1, A2
           _, _, _, _, _, _, _, _, _, _, _,              -- A3-A13 (11 fields)
           _h_filt, h_len, h_pw⟩ :=                     -- A14, A15, A16
@@ -124,9 +124,70 @@ theorem r596_two_elem_fires
       s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sync
   obtain ⟨_, h_val0⟩ := h_pw 0 (by simp) sca (by simp)
   obtain ⟨_, h_val2⟩ := h_pw 1 (by simp) scb (by simp)
-  exact ⟨n, s', block, h_corr',
-         by simp only [List.length_cons, List.length_singleton, List.length_nil] at h_len ⊢; omega,
+  exact ⟨_n, s', block, h_corr',
+         by simp only [List.length_cons, List.length_nil] at h_len ⊢; omega,
          h_val0, by simpa using h_val2⟩
+
+/-! ## R597: `scanFiltered_emitSeq_allScalar_token_at` -- token-array content pin
+
+R597 bridges R596's body block to the **full filtered token array**: given
+`scanFiltered ("[" ++ emitList items ++ "]") = .ok tokens` with items a
+non-empty all-scalar list, R597 gives:
+
+  `tokens.size = 2 * items.length + 3`
+  `tokens[1]!.val = .flowSequenceStart`
+  `tokens[2 + 2*j]!.val = .scalar (items[j] as Scalar).content .doubleQuoted`
+
+**Inhabitation-debt check**:
+- Rule 1 (antecedents reachable): the scanner-state precondition is implicit --
+  we drive it via `scanFiltered` directly, so no flow-context precondition.
+  `h_ne` and `h_all` hold on any concrete all-scalar list.
+- Rule 2 (conclusion non-vacuous): `r597_singleton_fires` instantiates on a
+  single-element list; `r597_two_elem_fires` on a two-element list.
+-/
+
+/-- R597 fires on a singleton all-scalar list: the scanner returns a token
+    array of size 5 with `tokens[2]!.val = .scalar sc.content .doubleQuoted`. -/
+theorem r597_singleton_fires
+    (sc : Scalar)
+    (tokens : Array (Positioned YamlToken))
+    (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList [.scalar sc] ++ "]") = .ok tokens) :
+    tokens.size = 5 ∧
+    tokens[1]!.val = .flowSequenceStart ∧
+    tokens[2]!.val = .scalar sc.content .doubleQuoted := by
+  obtain ⟨h_sz, h_t1, h_content⟩ :=
+    scanFiltered_emitSeq_allScalar_token_at [.scalar sc]
+      (List.cons_ne_nil _ _)
+      (fun v hv => by simp only [List.mem_singleton] at hv; exact ⟨sc, hv⟩)
+      tokens h_scan
+  refine ⟨by simp only [List.length_singleton] at h_sz; exact h_sz, h_t1, ?_⟩
+  have h := h_content 0 (by simp) sc (by simp)
+  simpa using h
+
+/-- R597 fires on a two-element all-scalar list: token array has size 7 and
+    `tokens[2]!.val = .scalar sca.content .doubleQuoted`,
+    `tokens[4]!.val = .scalar scb.content .doubleQuoted`. -/
+theorem r597_two_elem_fires
+    (sca scb : Scalar)
+    (tokens : Array (Positioned YamlToken))
+    (h_scan : Scanner.scanFiltered
+        ("[" ++ emit.emitList [.scalar sca, .scalar scb] ++ "]") = .ok tokens) :
+    tokens.size = 7 ∧
+    tokens[2]!.val = .scalar sca.content .doubleQuoted ∧
+    tokens[4]!.val = .scalar scb.content .doubleQuoted := by
+  obtain ⟨h_sz, _h_t1, h_content⟩ :=
+    scanFiltered_emitSeq_allScalar_token_at [.scalar sca, .scalar scb]
+      (List.cons_ne_nil _ _)
+      (fun v hv => by
+        simp only [List.mem_cons, List.mem_nil_iff, or_false] at hv
+        rcases hv with rfl | rfl
+        · exact ⟨sca, rfl⟩
+        · exact ⟨scb, rfl⟩)
+      tokens h_scan
+  simp only [List.length_cons, List.length_nil] at h_sz
+  refine ⟨by omega, ?_, ?_⟩
+  · have h := h_content 0 (by simp) sca (by simp); simpa using h
+  · have h := h_content 1 (by simp) scb (by simp); simpa using h
 
 /-! ## Axiom audit: R596 depends on propext, Classical.choice, Quot.sound, and
     the native_decide axioms from the double-quoted scanner and escape functions. -/
