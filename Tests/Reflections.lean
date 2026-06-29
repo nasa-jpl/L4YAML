@@ -253,6 +253,7 @@ import Tests.Reflections.LoopElementInvariant
 import Tests.Reflections.LoopStructuralStep
 import Tests.Reflections.LoopPositionalIndex
 import Tests.Reflections.LoopPushSubwit
+import Tests.Reflections.LoopPushPointwise
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
