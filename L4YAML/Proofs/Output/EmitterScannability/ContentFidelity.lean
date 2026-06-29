@@ -979,6 +979,214 @@ theorem parseFlowMappingLoop_result_append
         | (obtain ⟨e, he⟩ := ih _ _ h_ok
            rw [he, Array.toList_push, List.append_assoc]; exact ⟨_, rfl⟩))
 
+/-! ### §5.10.1  Front B — value-recovery trace, brick 3 link (b) value-half spine: per-element invariant
+
+§5.10 supplied the purely *structural* scaffold (the loop only APPENDS, so `items''.toList = extra`);
+its `extra` is existential and carries no information about the elements. Brick 3's content half needs
+to characterize each recovered element, so the next loop fact is the **value-half spine**: any property
+`P` that holds of the accumulator AND of every value a successful `parseNode` /
+`parseSinglePairMapping` produces, holds of every element of the loop result. This is the parametric
+loop *invariant* — the parser-side analogue of the block loop's `Scannable`-tracking induction
+(`parseBlockSequenceLoop_wb`, `ParserWellBehaved.lean:855`, which carries `Scannable · false` element-
+wise through the same shape), here generalized over an arbitrary `P` so the locality producer can
+specialize it.
+
+Like §5.10 this is proved by the *same* fuel induction over the loop alone — emission-independent, no
+bracket balance, fuel adequacy, or grammability machinery — so it is the **smallest-first** value-half
+spine: parametric in `P`, scanner-free. Every branch either returns the accumulator verbatim (`P`
+holds by `h_acc`) or recurses on `acc.push w` where `w` is a `parseNode` / `parseSinglePairMapping`
+output (`P w` from `h_node` / `h_pair`, lifted over the push by `Array.mem_push`). The
+locality producer consumes it by taking `P v := v` is the standalone re-parse of the corresponding
+emitted element — but the membership invariant is index-blind, so the producer still owes the
+positional bookkeeping (which `parseNode` call recovered element `i`); this lemma discharges the
+"every recovered element came from a value-preserving parse" half. Verified-but-unconsumed until that
+positional join lands. -/
+
+/-- **Per-element invariant (sequence).** Any `P` closed under the loop's two value-producing branches
+    (`parseNode` for plain entries, `parseSinglePairMapping` for the implicit-mapping `.key` branch)
+    and holding of the accumulator, holds of every element of a successful `parseFlowSequenceLoop`
+    result. Parametric value-half spine; same fuel induction as `parseFlowSequenceLoop_result_append`,
+    lifting `P` over each `acc.push w` via `Array.mem_push`. -/
+theorem parseFlowSequenceLoop_all (P : YamlValue → Prop)
+    (h_node : ∀ ps f v ps', parseNode ps f = .ok (v, ps') → P v)
+    (h_pair : ∀ ps f v ps', parseSinglePairMapping ps f = .ok (v, ps') → P v)
+    (ps : ParseState) (fuel : Nat) (acc : Array YamlValue)
+    (result : Array YamlValue × ParseState)
+    (h_acc : ∀ v ∈ acc, P v)
+    (h_ok : parseFlowSequenceLoop ps fuel acc = .ok result) :
+    ∀ v ∈ result.1, P v := by
+  induction fuel generalizing ps acc with
+  | zero =>
+    unfold parseFlowSequenceLoop at h_ok
+    simp only [Except.ok.injEq] at h_ok
+    cases h_ok
+    exact h_acc
+  | succ k ih =>
+    unfold parseFlowSequenceLoop at h_ok
+    simp only [bind, Except.bind, pure, Except.pure] at h_ok
+    split at h_ok
+    · -- peek = flowSequenceEnd → return acc verbatim
+      simp only [Except.ok.injEq] at h_ok; cases h_ok; exact h_acc
+    · -- separator ite, then key / end / parseNode dispatch
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try contradiction)
+      all_goals (try (simp only [Except.ok.injEq] at h_ok))
+      all_goals (first
+        | (cases h_ok; exact h_acc)
+        | (refine ih _ _ ?_ h_ok
+           intro v hv
+           rcases Array.mem_push.mp hv with h | h
+           · exact h_acc v h
+           · subst h
+             first
+               | exact h_node _ _ _ _ (by assumption)
+               | exact h_pair _ _ _ _ (by assumption)))
+
+/-- **Per-element invariant (mapping).** Mirror of `parseFlowSequenceLoop_all`: the loop pushes
+    `(key, val)` pairs, the key from `parseNode` (implicit-key branch) or `parseExplicitKey`
+    (explicit-`.key` branch) and the value from `parseFlowMappingValue`, so a pair property `P` closed
+    under both production paths and holding of the accumulator holds of every recovered pair. -/
+theorem parseFlowMappingLoop_all (P : (YamlValue × YamlValue) → Prop)
+    (h_implicit : ∀ ps f k ps' ps2 sp kc v ps3,
+      parseNode ps f = .ok (k, ps') →
+      parseFlowMappingValue ps2 f sp kc = .ok (v, ps3) → P (k, v))
+    (h_explicit : ∀ ps f k ps' ps2 sp kc v ps3,
+      parseExplicitKey ps f = .ok (k, ps') →
+      parseFlowMappingValue ps2 f sp kc = .ok (v, ps3) → P (k, v))
+    (ps : ParseState) (fuel : Nat) (acc : Array (YamlValue × YamlValue))
+    (result : Array (YamlValue × YamlValue) × ParseState)
+    (h_acc : ∀ v ∈ acc, P v)
+    (h_ok : parseFlowMappingLoop ps fuel acc = .ok result) :
+    ∀ v ∈ result.1, P v := by
+  induction fuel generalizing ps acc with
+  | zero =>
+    unfold parseFlowMappingLoop at h_ok
+    simp only [Except.ok.injEq] at h_ok
+    cases h_ok
+    exact h_acc
+  | succ k ih =>
+    unfold parseFlowMappingLoop at h_ok
+    simp only [bind, Except.bind, pure, Except.pure] at h_ok
+    split at h_ok
+    · simp only [Except.ok.injEq] at h_ok; cases h_ok; exact h_acc
+    · all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try contradiction)
+      all_goals (try (simp only [Except.ok.injEq] at h_ok))
+      all_goals (first
+        | (cases h_ok; exact h_acc)
+        | (refine ih _ _ ?_ h_ok
+           intro v hv
+           rcases Array.mem_push.mp hv with h | h
+           · exact h_acc v h
+           · subst h
+             first
+               | exact h_implicit _ _ _ _ _ _ _ _ _ (by assumption) (by assumption)
+               | exact h_explicit _ _ _ _ _ _ _ _ _ (by assumption) (by assumption)))
+
+/-! ### §5.10.2  Front B — value-recovery trace, brick 3 link (b) structural step: one-step loop reduction
+
+§5.10.1 supplied the *value-half spine*: any property `P` closed under the loop's parse branches
+and holding of the accumulator holds of every element of the result (membership invariant; index-blind).
+The positional join — which parse call recovered element `i` — needs to peel the loop ONE STEP at a time.
+This section supplies that step: a successful `parseFlowSequenceLoop ps (fuel+1) acc` either **terminates**
+at this step (returning `acc` unchanged, when a terminal token fires or a separator is missing) or
+**reduces** to a tail call `parseFlowSequenceLoop ps'' fuel (acc.push v)` for some `v` and successor
+state `ps''`.
+
+The provenance of `v` — that it came from `parseNode` (plain entry) or `parseSinglePairMapping`
+(implicit-mapping `.key` entry) — is already captured by §5.10.1's `_all` invariant for any `P` closed
+under those branches. The step lemma adds the STRUCTURAL complement: the recursive call uses `acc.push v`
+as the new accumulator, so `result.1[acc.size] = v` follows by §5.10's `result_append` from the
+recursive call's append scaffold. Together the two halves pin element `acc.size` without needing to know
+the separator positions or path bookkeeping, which are isolated entirely inside this proof.
+
+Like §5.10–§5.10.1, proved by `unfold` + the `split`-cascade over the `(fuel+1)` branches alone — no
+fuel induction, no emission machinery. Seq before map; the mapping mirror uses the same pattern with
+`∃ k v`. Verified-but-unconsumed until the positional induction that assembles `∀ i, result.1[i] = extra[i]`
+from repeated step applications lands. -/
+
+/-- **One-step loop reduction (sequence).** A successful `parseFlowSequenceLoop ps (fuel+1) acc` either
+    terminates returning `acc` unchanged (some terminal token fired or the separator was absent), or
+    reduces to the tail call `parseFlowSequenceLoop ps'' fuel (acc.push v)`. The separator-advance and
+    path bookkeeping are isolated here; the provenance of `v` (that it came from `parseNode` or
+    `parseSinglePairMapping`) follows from §5.10.1's `parseFlowSequenceLoop_all`. The step that the
+    positional induction iterates: combined with §5.10's `result_append`, it pins `result.1[acc.size] = v`
+    without scanner-side reasoning. -/
+theorem parseFlowSequenceLoop_step_push
+    (ps : ParseState) (fuel : Nat) (acc : Array YamlValue)
+    (result : Array YamlValue × ParseState)
+    (h_ok : parseFlowSequenceLoop ps (fuel+1) acc = .ok result) :
+    result.1 = acc ∨
+    ∃ v ps'', parseFlowSequenceLoop ps'' fuel (acc.push v) = .ok result := by
+  unfold parseFlowSequenceLoop at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  split at h_ok
+  · simp only [Except.ok.injEq] at h_ok; cases h_ok; exact Or.inl rfl
+  · all_goals (try (split at h_ok))
+    all_goals (try (split at h_ok))
+    all_goals (try (split at h_ok))
+    all_goals (try (split at h_ok))
+    all_goals (try (split at h_ok))
+    all_goals (try (split at h_ok))
+    all_goals (try (split at h_ok))
+    all_goals (try (split at h_ok))
+    all_goals (try contradiction)
+    all_goals (try (simp only [Except.ok.injEq] at h_ok))
+    all_goals (first
+      | (cases h_ok; exact Or.inl rfl)
+      | (exact Or.inr ⟨_, _, h_ok⟩))
+
+/-- **One-step loop reduction (mapping).** Mirror of `parseFlowSequenceLoop_step_push` for
+    `parseFlowMappingLoop`: a successful `(fuel+1)` call either terminates returning `acc`, or reduces
+    to `parseFlowMappingLoop ps'' fuel (acc.push (k, v))`. Separator and path bookkeeping isolated here;
+    key provenance (`parseNode` vs `parseExplicitKey`) and value provenance (`parseFlowMappingValue`)
+    follow from `parseFlowMappingLoop_all`. -/
+theorem parseFlowMappingLoop_step_push
+    (ps : ParseState) (fuel : Nat) (acc : Array (YamlValue × YamlValue))
+    (result : Array (YamlValue × YamlValue) × ParseState)
+    (h_ok : parseFlowMappingLoop ps (fuel+1) acc = .ok result) :
+    result.1 = acc ∨
+    ∃ k v ps'', parseFlowMappingLoop ps'' fuel (acc.push (k, v)) = .ok result := by
+  unfold parseFlowMappingLoop at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  split at h_ok
+  · simp only [Except.ok.injEq] at h_ok; cases h_ok; exact Or.inl rfl
+  · all_goals (try (split at h_ok))
+    all_goals (try (split at h_ok))
+    all_goals (try (split at h_ok))
+    all_goals (try (split at h_ok))
+    all_goals (try (split at h_ok))
+    all_goals (try (split at h_ok))
+    all_goals (try (split at h_ok))
+    all_goals (try (split at h_ok))
+    all_goals (try (split at h_ok))
+    all_goals (try (split at h_ok))
+    all_goals (try (split at h_ok))
+    all_goals (try (split at h_ok))
+    all_goals (try contradiction)
+    all_goals (try (simp only [Except.ok.injEq] at h_ok))
+    all_goals (first
+      | (cases h_ok; exact Or.inl rfl)
+      | (exact Or.inr ⟨_, _, _, h_ok⟩))
+
 /-! ### §5.11  Front B — value-recovery trace, brick 3 content half: pointwise → fold assembly
 
 §5.9 supplied the *incremental* step (extend two content-equal lists by one content-equal element);

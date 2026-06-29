@@ -249,6 +249,8 @@ import Tests.Reflections.StreamMarkerFraming
 import Tests.Reflections.ReparseConsumerJoint
 import Tests.Reflections.LocalityReductionJoint
 import Tests.Reflections.ParseNodeScalarDispatchLeaf
+import Tests.Reflections.LoopElementInvariant
+import Tests.Reflections.LoopStructuralStep
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
