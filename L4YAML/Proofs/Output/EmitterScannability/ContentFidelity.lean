@@ -1262,6 +1262,154 @@ theorem parseFlowMappingLoop_step_index
   simp only [Option.some.injEq] at hopt
   simpa only [Array.getElem_toList] using hopt
 
+/-! ### §5.10.4  Front B — value-recovery trace, brick 3 link (b) indexed sub-call witnesses
+
+§5.10.3 supplied the *per-step positional index*: given `h_push`, `result.1[acc.size] = v`. This
+section supplies the **fuel-induction step** — iterating `step_push` + `step_index` to extract, for
+EVERY index `j ≥ acc.size` in `result.1`, a sub-loop call whose accumulator covers exactly
+`result.1[:j+1]`.
+
+Two sub-theorems per variant:
+* `parseFlowSequenceLoop_pushcount_le_fuel` — `result.1.size ≤ acc.size + fuel`: the loop pushes at
+  most `fuel` elements. Proved by fuel induction + `step_push`: each `Or.inr` push step decrements
+  `fuel` by 1; `Or.inl` or base pushes nothing.
+* `parseFlowSequenceLoop_push_subwit` — for each `j` with `acc.size ≤ j < result.1.size`, there
+  exist a sub-call witness `(ps_j, acc_j)` with `parseFlowSequenceLoop ps_j (fuel - (j - acc.size) - 1)
+  acc_j = .ok result` and `acc_j.toList = result.1.toList.take (j + 1)` (the accumulator IS the first
+  `j+1` elements of the final result). Proved by fuel induction + `step_push` + `step_index`:
+  - `Or.inl` (`result.1 = acc`): no `j ≥ acc.size` in `[acc.size, result.1.size)`.
+  - `Or.inr` (`v, ps'', h_push`):
+    - `j = acc.size`: witness `(ps'', acc.push v)`. The accumulator content follows from
+      `result_append` on `h_push` + `List.take_append` (with `n = (acc.push v).toList.length`,
+      `(l₁ ++ l₂).take l₁.length = l₁.take l₁.length = l₁`). Fuel: `(k+1) - 0 - 1 = k`. ✓
+    - `j > acc.size`: IH on `(ps'', k, acc.push v)`, then `convert ... using 2; omega` for
+      fuel arithmetic (`(k+1) - (j - acc.size) - 1 = k - (j - (acc.size + 1)) - 1`).
+
+The mapping mirror replaces `(k, v)` pairs and uses `parseFlowMappingLoop_step_push` + `_step_index`.
+
+Verified-but-unconsumed until the scanner-span-locality bridge (§5.14) connects `ps_j.tokens[ps_j.pos]`
+to the i-th flow-entry segment of `scanFiltered (emit (.sequence ...))`, supplying the bridge between
+the sub-call's parse state and the emitted span of `items[j]`. -/
+
+/-- **Push count ≤ fuel (sequence).** The loop pushes at most `fuel` elements:
+    `result.1.size ≤ acc.size + fuel`. Proved by fuel induction + `step_push`. -/
+theorem parseFlowSequenceLoop_pushcount_le_fuel
+    (ps : ParseState) (fuel : Nat) (acc : Array YamlValue)
+    (result : Array YamlValue × ParseState)
+    (h_ok : parseFlowSequenceLoop ps fuel acc = .ok result) :
+    result.1.size ≤ acc.size + fuel := by
+  induction fuel generalizing ps acc with
+  | zero =>
+    unfold parseFlowSequenceLoop at h_ok
+    simp only [Except.ok.injEq] at h_ok; cases h_ok; simp
+  | succ k ih =>
+    rcases parseFlowSequenceLoop_step_push ps k acc result h_ok with h_term | ⟨v, ps'', h_push⟩
+    · rw [h_term]; omega
+    · have h := ih ps'' (acc.push v) h_push
+      simp only [Array.size_push] at h; omega
+
+/-- **Push count ≤ fuel (mapping).** Mirror of `parseFlowSequenceLoop_pushcount_le_fuel`:
+    `result.1.size ≤ acc.size + fuel` for `parseFlowMappingLoop`. -/
+theorem parseFlowMappingLoop_pushcount_le_fuel
+    (ps : ParseState) (fuel : Nat) (acc : Array (YamlValue × YamlValue))
+    (result : Array (YamlValue × YamlValue) × ParseState)
+    (h_ok : parseFlowMappingLoop ps fuel acc = .ok result) :
+    result.1.size ≤ acc.size + fuel := by
+  induction fuel generalizing ps acc with
+  | zero =>
+    unfold parseFlowMappingLoop at h_ok
+    simp only [Except.ok.injEq] at h_ok; cases h_ok; simp
+  | succ k ih =>
+    rcases parseFlowMappingLoop_step_push ps k acc result h_ok with h_term | ⟨kv, v, ps'', h_push⟩
+    · rw [h_term]; omega
+    · have h := ih ps'' (acc.push (kv, v)) h_push
+      simp only [Array.size_push] at h; omega
+
+/-- **Indexed sub-call witness (sequence).** For each `j` with `acc.size ≤ j < result.1.size`,
+    there exist `ps_j` and `acc_j` such that `parseFlowSequenceLoop ps_j (fuel - (j - acc.size) - 1)
+    acc_j = .ok result` and `acc_j.toList = result.1.toList.take (j + 1)`. The accumulator `acc_j`
+    is exactly the first `j+1` elements of the final result — the sub-call that produced element `j`.
+    Proved by fuel induction + `step_push`: `j = acc.size` uses `acc.push v` as witness (content from
+    `result_append` + `List.take_append`); `j > acc.size` recurses on the `acc.push v` sub-call. -/
+theorem parseFlowSequenceLoop_push_subwit
+    (ps : ParseState) (fuel : Nat) (acc : Array YamlValue)
+    (result : Array YamlValue × ParseState)
+    (h_ok : parseFlowSequenceLoop ps fuel acc = .ok result) :
+    ∀ j : Nat, acc.size ≤ j → j < result.1.size →
+      ∃ (ps_j : ParseState) (acc_j : Array YamlValue),
+        parseFlowSequenceLoop ps_j (fuel - (j - acc.size) - 1) acc_j = .ok result ∧
+        acc_j.toList = result.1.toList.take (j + 1) := by
+  induction fuel generalizing ps acc with
+  | zero =>
+    unfold parseFlowSequenceLoop at h_ok
+    simp only [Except.ok.injEq] at h_ok; cases h_ok
+    intro j _ h; simp only [] at h; omega
+  | succ k ih =>
+    intro j hj_ge hj_lt
+    rcases parseFlowSequenceLoop_step_push ps k acc result h_ok with h_term | ⟨v, ps'', h_push⟩
+    · rw [h_term] at hj_lt; omega
+    · by_cases hj_eq : j = acc.size
+      · -- j = acc.size: witness is (ps'', acc.push v)
+        subst hj_eq
+        obtain ⟨extra, he⟩ := parseFlowSequenceLoop_result_append ps'' k (acc.push v) result h_push
+        have hlen : (acc.push v).toList.length = acc.size + 1 := by
+          simp only [Array.toList_push, List.length_append, List.length_singleton, Array.length_toList]
+        refine ⟨ps'', acc.push v, ?_, ?_⟩
+        · -- fuel: (k+1) - (acc.size - acc.size) - 1 = k
+          have hfuel : k + 1 - (acc.size - acc.size) - 1 = k := by omega
+          rw [hfuel]; exact h_push
+        · -- acc_j.toList = result.1.toList.take (acc.size + 1)
+          rw [he, ← hlen]; exact List.take_left.symm
+      · -- j > acc.size: IH on h_push with acc := acc.push v
+        have hj_gt : acc.size < j := Nat.lt_of_le_of_ne hj_ge (Ne.symm hj_eq)
+        have hj_ge' : (acc.push v).size ≤ j := by simp only [Array.size_push]; omega
+        obtain ⟨ps_j, acc_j, h_sub, h_tl⟩ := ih ps'' (acc.push v) h_push j hj_ge' hj_lt
+        refine ⟨ps_j, acc_j, ?_, h_tl⟩
+        have hfuel' : k + 1 - (j - acc.size) - 1 = k - (j - (acc.push v).size) - 1 := by
+          simp only [Array.size_push]; omega
+        rw [hfuel']; exact h_sub
+
+/-- **Indexed sub-call witness (mapping).** Mirror of `parseFlowSequenceLoop_push_subwit` for
+    `parseFlowMappingLoop`: for each `j` with `acc.size ≤ j < result.1.size`, there exist `ps_j`
+    and `acc_j` with `parseFlowMappingLoop ps_j (fuel - (j - acc.size) - 1) acc_j = .ok result`
+    and `acc_j.toList = result.1.toList.take (j + 1)`. Same fuel induction structure with pairs. -/
+theorem parseFlowMappingLoop_push_subwit
+    (ps : ParseState) (fuel : Nat) (acc : Array (YamlValue × YamlValue))
+    (result : Array (YamlValue × YamlValue) × ParseState)
+    (h_ok : parseFlowMappingLoop ps fuel acc = .ok result) :
+    ∀ j : Nat, acc.size ≤ j → j < result.1.size →
+      ∃ (ps_j : ParseState) (acc_j : Array (YamlValue × YamlValue)),
+        parseFlowMappingLoop ps_j (fuel - (j - acc.size) - 1) acc_j = .ok result ∧
+        acc_j.toList = result.1.toList.take (j + 1) := by
+  induction fuel generalizing ps acc with
+  | zero =>
+    unfold parseFlowMappingLoop at h_ok
+    simp only [Except.ok.injEq] at h_ok; cases h_ok
+    intro j _ h; simp only [] at h; omega
+  | succ k ih =>
+    intro j hj_ge hj_lt
+    rcases parseFlowMappingLoop_step_push ps k acc result h_ok with h_term | ⟨kv, v, ps'', h_push⟩
+    · rw [h_term] at hj_lt; omega
+    · by_cases hj_eq : j = acc.size
+      · -- j = acc.size: witness is (ps'', acc.push (kv, v))
+        subst hj_eq
+        obtain ⟨extra, he⟩ :=
+          parseFlowMappingLoop_result_append ps'' k (acc.push (kv, v)) result h_push
+        have hlen : (acc.push (kv, v)).toList.length = acc.size + 1 := by
+          simp only [Array.toList_push, List.length_append, List.length_singleton, Array.length_toList]
+        refine ⟨ps'', acc.push (kv, v), ?_, ?_⟩
+        · have hfuel : k + 1 - (acc.size - acc.size) - 1 = k := by omega
+          rw [hfuel]; exact h_push
+        · rw [he, ← hlen]; exact List.take_left.symm
+      · -- j > acc.size: IH on h_push
+        have hj_gt : acc.size < j := Nat.lt_of_le_of_ne hj_ge (Ne.symm hj_eq)
+        have hj_ge' : (acc.push (kv, v)).size ≤ j := by simp only [Array.size_push]; omega
+        obtain ⟨ps_j, acc_j, h_sub, h_tl⟩ := ih ps'' (acc.push (kv, v)) h_push j hj_ge' hj_lt
+        refine ⟨ps_j, acc_j, ?_, h_tl⟩
+        have hfuel' : k + 1 - (j - acc.size) - 1 = k - (j - (acc.push (kv, v)).size) - 1 := by
+          simp only [Array.size_push]; omega
+        rw [hfuel']; exact h_sub
+
 /-! ### §5.11  Front B — value-recovery trace, brick 3 content half: pointwise → fold assembly
 
 §5.9 supplied the *incremental* step (extend two content-equal lists by one content-equal element);
