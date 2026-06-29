@@ -3023,6 +3023,90 @@ theorem scanNextToken_flow_scalar_filtered_push (s : ScannerState) (rest : List 
                    != YamlToken.placeholder) = true from rfl, ite_true]
   rw [h_ad_filter]
 
+/-- **Double-quoted scalar push, content pinned (§5.12).** When the scanner input is
+    `'"' :: escapeString content ++ '"' :: rest` in flow context, `scanNextToken`
+    produces a single filtered-token push of exactly `.scalar content .doubleQuoted`.
+    Strengthens `scanNextToken_flow_scalar_filtered_push` (which gives only `∃ str st`). -/
+theorem scanNextToken_flow_scalar_filtered_push_content (s : ScannerState)
+    (content : String) (rest : List Char)
+    (hcorr : ScannerSurfCorr s ⟨'"' :: (escapeString content).toList ++ ['"'] ++ rest, s.col⟩)
+    (h_flow : s.inFlow = true) (h_indent : s.currentIndent < 0) (h_col : s.col > 0)
+    {s' : ScannerState} (h_snt : scanNextToken s = .ok (some s')) :
+    ∃ tok : Positioned YamlToken,
+      tok.val = .scalar content .doubleQuoted ∧
+      s'.tokens.filter (fun t => t.val != .placeholder)
+        = (s.tokens.filter (fun t => t.val != .placeholder)).push tok := by
+  have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, '"')) :=
+    scanNextToken_preprocess_flow s '"' ((escapeString content).toList ++ ['"'] ++ rest)
+      s.col hcorr h_flow (by decide) (by decide) (by decide)
+  have h_sk_flow : (saveSimpleKey s).inFlow = s.inFlow := saveSimpleKey_preserves_inFlow s
+  have h_sk_col : (saveSimpleKey s).col = s.col := saveSimpleKey_preserves_col s
+  have h_sk_indent : (saveSimpleKey s).currentIndent = s.currentIndent := by
+    unfold ScannerState.currentIndent; rw [saveSimpleKey_preserves_indents]
+  have h_struct : scanNextToken_dispatchStructural (saveSimpleKey s) '"' = .ok none :=
+    dispatchStructural_none_flow _ _ (h_sk_flow ▸ h_flow) (h_sk_indent ▸ h_indent) (h_sk_col ▸ h_col)
+  let s_ad := if (saveSimpleKey s).allowDirectives then
+    { saveSimpleKey s with allowDirectives := false, documentEverStarted := true }
+  else saveSimpleKey s
+  have h_ad_flow : s_ad.inFlow = s.inFlow := by simp only [s_ad]; split <;> exact h_sk_flow
+  have h_ad_flow_true : s_ad.inFlow = true := h_ad_flow ▸ h_flow
+  have h_check := checkBlockFlowIndent_ok_flow s_ad '"' h_ad_flow_true
+  have h_flow_none : scanNextToken_dispatchFlowIndicators s_ad '"' = .ok none :=
+    dispatchFlowIndicators_none _ _ (by decide) (by decide) (by decide) (by decide) (by decide)
+  have h_block_none : scanNextToken_dispatchBlockIndicators s_ad '"' = .ok none :=
+    dispatchBlockIndicators_none_quote _
+  have h_dc : scanNextToken_dispatchContent s_ad '"' = Except.ok s' := by
+    cases h_dc_eq : scanNextToken_dispatchContent s_ad '"' with
+    | error e =>
+      exfalso
+      have h_snt_err := scanNextToken_via_content_dispatch_error
+        _ _ _ _ _ h_pp h_struct rfl h_check h_flow_none h_block_none h_dc_eq
+      rw [h_snt_err] at h_snt; exact absurd h_snt (by simp)
+    | ok s_dc =>
+      have h_snt_eq : scanNextToken s = Except.ok (some s_dc) :=
+        scanNextToken_via_content_dispatch _ _ _ _ _ h_pp h_struct rfl h_check
+          h_flow_none h_block_none h_dc_eq
+      have h_eq2 : s' = s_dc := Option.some.inj (Except.ok.inj (h_snt.symm.trans h_snt_eq))
+      subst h_eq2; rfl
+  have h_ad_col : s_ad.col = s.col := by simp only [s_ad]; split <;> exact h_sk_col
+  have h_ad_corr : ScannerSurfCorr s_ad
+      ⟨['"'] ++ (escapeString content).toList ++ ['"'] ++ rest, s_ad.col⟩ := by
+    rw [h_ad_col]
+    have hcorr' : ScannerSurfCorr s ⟨['"'] ++ (escapeString content).toList ++ ['"'] ++ rest, s.col⟩ := by
+      simpa [List.cons_append, List.nil_append] using hcorr
+    exact ScannerSurfCorr_transfer hcorr'
+      (by simp only [s_ad]; split <;> exact saveSimpleKey_preserves_input s)
+      (by simp only [s_ad]; split <;> exact saveSimpleKey_preserves_offset s)
+      (by simp only [s_ad]; split <;> exact saveSimpleKey_preserves_inputEnd s)
+      h_ad_col
+      (by simp only [s_ad]; split <;> exact saveSimpleKey_preserves_indents s)
+  have h_tokens_push : s'.tokens
+      = s_ad.tokens.push ⟨s_ad.currentPos, .scalar content .doubleQuoted, s_ad.currentPos⟩ := by
+    cases h_dq_eq : scanDoubleQuoted s_ad with
+    | error e =>
+      exfalso
+      have h_dc_err : scanNextToken_dispatchContent s_ad '"' = Except.error e := by
+        unfold scanNextToken_dispatchContent
+        simp [bind, Except.bind, pure, Except.pure, h_dq_eq]
+      rw [h_dc_err] at h_dc; exact absurd h_dc (by simp)
+    | ok s_dq =>
+      have h_s'_tokens : s'.tokens = s_dq.tokens := by
+        unfold scanNextToken_dispatchContent at h_dc
+        simp [bind, Except.bind, pure, Except.pure, h_dq_eq] at h_dc
+        split at h_dc
+        · rw [← h_dc]
+        · rw [← h_dc]
+      rw [h_s'_tokens]
+      exact scanDoubleQuoted_tokens_push_content content rest h_ad_corr h_ad_flow_true h_dq_eq
+  have h_ad_filter : s_ad.tokens.filter (fun t => t.val != .placeholder)
+      = s.tokens.filter (fun t => t.val != .placeholder) := by
+    simp only [s_ad]; split <;> exact saveSimpleKey_filter_placeholder s
+  refine ⟨⟨s_ad.currentPos, .scalar content .doubleQuoted, s_ad.currentPos⟩, rfl, ?_⟩
+  rw [h_tokens_push, Array.filter_push]
+  simp only [show ((⟨s_ad.currentPos, .scalar content .doubleQuoted, s_ad.currentPos⟩ :
+    Positioned YamlToken).val != YamlToken.placeholder) = true from rfl, ite_true]
+  rw [h_ad_filter]
+
 /-- `,` dispatch (flow separator): the new filtered token is exactly one `.flowEntry`.
     Companion to the five `.blockwb.dispatch` push lemmas above — the separator
     leaf the *body* of `EmitListScansInFlowBlock` / `EmitPairListScansInFlowBlock`

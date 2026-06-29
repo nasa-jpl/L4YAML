@@ -184,6 +184,30 @@ theorem scanDoubleQuoted_tokens_push {s s' : ScannerState}
     unfold ScannerState.emitAt; simp only [Array.push]
     rw [h_collect, h_adv]
 
+/-- **Double-quoted scalar push, content pinned (§5.12).** When the scanner input is
+    `'"' :: escapeString content ++ '"' :: rest` in flow context, `scanDoubleQuoted`
+    produces a token push of exactly `.scalar content .doubleQuoted`.
+    Strengthens `scanDoubleQuoted_tokens_push` (which gives only `∃ c`). -/
+theorem scanDoubleQuoted_tokens_push_content {s s' : ScannerState}
+    (content : String) (rest : List Char)
+    (hcorr : ScannerSurfCorr s ⟨['"'] ++ (escapeString content).toList ++ ['"'] ++ rest, s.col⟩)
+    (h_flow : s.inFlow = true)
+    (h : scanDoubleQuoted s = .ok s') :
+    s'.tokens = s.tokens.push ⟨s.currentPos, .scalar content .doubleQuoted, s.currentPos⟩ := by
+  have h_last : lastRealTokenVal? s'.tokens = some (.scalar content .doubleQuoted) := by
+    obtain ⟨s_ok, h_dq_ok, _, _, _, _, _, _, h_last_ok, _, _⟩ :=
+      scanDoubleQuoted_flow_ok s content rest hcorr h_flow
+    rwa [Except.ok.inj (h_dq_ok.symm.trans h)] at h_last_ok
+  obtain ⟨c, h_tok⟩ := scanDoubleQuoted_tokens_push h
+  have h_c_eq : c = content := by
+    have h_last_c : lastRealTokenVal? s'.tokens = some (.scalar c .doubleQuoted) := by
+      rw [h_tok]
+      exact lastRealTokenVal_push_non_ph' s.tokens
+        ⟨s.currentPos, .scalar c .doubleQuoted, s.currentPos⟩
+        (fun h_abs => YamlToken.noConfusion h_abs)
+    exact (YamlToken.scalar.inj (Option.some.inj (h_last_c.symm.trans h_last))).1
+  rw [h_tok, h_c_eq]
+
 /-- After `scanNextToken` with leading `"` in flow context, the first new
     filtered token is some `.scalar` token (the doubleQuoted scalar emitted
     by `scanDoubleQuoted`).  Content and subType are existentially
