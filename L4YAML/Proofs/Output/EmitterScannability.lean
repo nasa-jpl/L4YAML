@@ -22,6 +22,8 @@ import L4YAML.Proofs.Output.EmitterScannability.ScanChainGrowth
 import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
 import L4YAML.Proofs.Output.EmitterScannability.FilteredTracking
 import L4YAML.Proofs.Output.EmitterScannability.WellBracketed
+import L4YAML.Proofs.Output.EmitterScannability.BlockProducers
+import L4YAML.Proofs.Output.EmitterScannability.ScannerSpanLocality
 import L4YAML.Proofs.Output.EmitterScannability.NonemptyStructure
 import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
 
