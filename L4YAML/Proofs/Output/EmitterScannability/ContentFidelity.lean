@@ -2038,4 +2038,83 @@ theorem contentEqPairList_of_reparse
     rw [Array.getElem_toList, Array.getElem_toList]
     exact ⟨h_ck, h_cv⟩
 
+/-! ### §5.17  Compose sequence items element-wise (R595)
+
+The `items''` array that `parseStream_flowSeqStart_recovers_outer_shape` hands back is the
+compose-image of the raw parser output `items'`: each `items''[j]!` equals
+`(items'[j]!.resolveAliases doc.anchors).stripAnchors`.
+
+Two theorems:
+* `compose_seq_items_pointwise` — the general element-wise equation:
+  `items'' = items'.map (fun v => (v.resolveAliases doc.anchors).stripAnchors)`.
+* `compose_seq_scalar_item` — the scalar corollary: if `items'[j]! = .scalar s` with
+  anchor = none, then `items''[j]! = .scalar s` (compose is identity on anchor-free scalars).
+
+These are VERIFIED-BUT-UNCONSUMED: they will be combined with the scanner-span-locality
+leaf (to be landed as a future brick) to fill the sorry at
+`emit_roundtrip_sequence_content_eq` (EmitterScannability.lean:1002). -/
+
+/-- **Compose sequence items element-wise (outer-parse half, R595).** If `doc.value` is a flow
+    sequence with items `items'` and `doc.compose.value` is the same shape with items `items''`,
+    then `items'' = items'.map (fun v => (v.resolveAliases doc.anchors).stripAnchors)`.
+
+    This characterizes the OUTER-PARSE items as the element-wise compose-image of the raw parser
+    items. Combined with the scanner-span-locality leaf (scanner-level identification of each
+    `items'[j]!`), it closes the per-element locality equation:
+    `(rd.map compose)[0]!.value = items''[j]!` for scalar elements. -/
+theorem compose_seq_items_pointwise
+    (doc : YamlDocument) (items' items'' : Array YamlValue)
+    (h_val : doc.value = .sequence .flow items' none none)
+    (h_comp : (doc.compose).value = .sequence .flow items'' none none) :
+    items'' = items'.map (fun v => (v.resolveAliases doc.anchors).stripAnchors) := by
+  -- Step A: resolveAliases on sequence maps items' element-wise
+  have h_step2 : (YamlValue.sequence .flow items' none none).resolveAliases doc.anchors =
+      .sequence .flow (items'.toList.map (fun v => v.resolveAliases doc.anchors)).toArray none none := by
+    simp only [YamlValue.resolveAliases]
+    congr 1
+    exact congrArg List.toArray (resolveList_eq_map items'.toList doc.anchors)
+  -- Step B: stripAnchors on the resolved sequence maps items' element-wise, then collapses
+  --         the two maps into one via List.map_map + Array.toArray_toList round-trip
+  have h_step3 :
+      (YamlValue.sequence .flow (items'.toList.map (fun v => v.resolveAliases doc.anchors)).toArray none none).stripAnchors =
+      .sequence .flow (items'.map (fun v => (v.resolveAliases doc.anchors).stripAnchors)) none none := by
+    simp only [YamlValue.stripAnchors]
+    congr 1
+    rw [List.toList_toArray, stripList_eq_map, List.map_map, ← Array.toList_map, Array.toArray_toList]
+    simp [Function.comp]
+  -- Assemble: doc.compose.value = .sequence .flow (items'.map f)
+  have h_assembled : (doc.compose).value =
+      .sequence .flow (items'.map (fun v => (v.resolveAliases doc.anchors).stripAnchors)) none none := by
+    show (doc.value.resolveAliases doc.anchors).stripAnchors = _
+    rw [h_val, h_step2, h_step3]
+  -- Extract items'' = items'.map f by injectivity of the sequence constructor
+  have h_eq := h_comp.symm.trans h_assembled
+  simp only [YamlValue.sequence.injEq] at h_eq
+  exact h_eq.2.1
+
+/-- **Scalar item identity under compose (R595 corollary).** If `items'[j]! = .scalar s` with
+    anchor = none (as emitter output always is), then `items''[j]! = .scalar s`.
+
+    Proof: `compose_seq_items_pointwise` gives `items'' = items'.map f`;
+    `resolveAliases_scalar` gives `(scalar s).resolveAliases anchors = scalar s`;
+    `stripAnchors_scalar` gives `(scalar s).stripAnchors = scalar { s with anchor := none }`;
+    `anchor = none` gives `{ s with anchor := none } = s`. So compose is identity here. -/
+theorem compose_seq_scalar_item
+    (doc : YamlDocument) (items' items'' : Array YamlValue)
+    (h_val : doc.value = .sequence .flow items' none none)
+    (h_comp : (doc.compose).value = .sequence .flow items'' none none)
+    (j : Nat) (hj : j < items'.size)
+    (content : String) (style : ScalarStyle)
+    (h_item : items'[j]! = .scalar (Scalar.mk content style none none none)) :
+    items''[j]! = .scalar (Scalar.mk content style none none none) := by
+  have h_eq := compose_seq_items_pointwise doc items' items'' h_val h_comp
+  subst h_eq
+  have h_sz : j < (items'.map (fun v => (v.resolveAliases doc.anchors).stripAnchors)).size :=
+    by rwa [Array.size_map]
+  have step1 := getElem!_pos (items'.map (fun v => (v.resolveAliases doc.anchors).stripAnchors)) j h_sz
+  have step2 := @Array.getElem_map YamlValue YamlValue
+      (fun v => (v.resolveAliases doc.anchors).stripAnchors) items' j h_sz
+  have step3 := getElem!_pos items' j hj
+  rw [step1, step2, ← step3, h_item, resolveAliases_scalar, stripAnchors_scalar]
+
 end L4YAML.Proofs.EmitterScannability
