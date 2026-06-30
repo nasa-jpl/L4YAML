@@ -2549,4 +2549,104 @@ theorem compose_seq_scalar_item
   have step3 := getElem!_pos items' j hj
   rw [step1, step2, ← step3, h_item, resolveAliases_scalar, stripAnchors_scalar]
 
+/-! ### §5.18  Compose mapping pairs element-wise (R604)
+
+Mirror of §5.17 for the mapping case.  If `doc.value` is a flow mapping with pairs `pairs'`
+and `doc.compose.value` is the same shape with pairs `pairs''`, then
+
+  `pairs'' = pairs'.map (fun ⟨k, v⟩ => ((k.resolveAliases doc.anchors).stripAnchors,
+                                         (v.resolveAliases doc.anchors).stripAnchors))`
+
+Two theorems:
+* `compose_map_pairs_pointwise` — the element-wise equation (R604).
+* `compose_map_scalar_pair` — the scalar corollary: anchor-free scalar pairs are identity
+  under compose.  The map analog of `compose_seq_scalar_item` (§5.17).
+
+Verified-but-unconsumed: will be combined with the scanner-span-locality leaf (to land as
+a future brick) to fill the mapping locality sorry at `emit_roundtrip_mapping_content_eq`
+(`EmitterScannability.lean:1147`): once scanner-span-locality gives `pairs'[j]! = (.scalar sk,
+.scalar sv)`, `compose_map_scalar_pair` immediately closes `(pairs''[j]!).fst/snd = ...`,
+matching `parseYamlRaw_emitScalar_compose_value` on each side. -/
+
+/-- **Compose mapping pairs element-wise (outer-parse half, R604).** If `doc.value` is a flow
+    mapping with pairs `pairs'` and `doc.compose.value` is the same shape with pairs `pairs''`,
+    then `pairs'' = pairs'.map (fun ⟨k, v⟩ => ((k.resolveAliases doc.anchors).stripAnchors,
+    (v.resolveAliases doc.anchors).stripAnchors))`.
+
+    Mirror of `compose_seq_items_pointwise` (§5.17) for the key/value pair array.  Proof
+    parallels the sequence case: `resolveAliases` maps over each `(k, v)` pair via
+    `resolvePairs_eq_map`; `stripAnchors` maps over the resolved pair list via
+    `stripPairs_eq_map`; the two maps collapse via `List.map_map`; `← Array.toList_map` +
+    `Array.toArray_toList` converts back to an Array.map; and `YamlValue.mapping.injEq`
+    extracts `pairs''`. -/
+theorem compose_map_pairs_pointwise
+    (doc : YamlDocument) (pairs' pairs'' : Array (YamlValue × YamlValue))
+    (h_val : doc.value = .mapping .flow pairs' none none)
+    (h_comp : (doc.compose).value = .mapping .flow pairs'' none none) :
+    pairs'' = pairs'.map (fun ⟨k, v⟩ => ((k.resolveAliases doc.anchors).stripAnchors,
+                                          (v.resolveAliases doc.anchors).stripAnchors)) := by
+  -- Step A: resolveAliases on mapping maps pairs' element-wise (resolvePairs_eq_map)
+  have h_step2 : (YamlValue.mapping .flow pairs' none none).resolveAliases doc.anchors =
+      .mapping .flow (pairs'.toList.map (fun p => (p.1.resolveAliases doc.anchors,
+                                                    p.2.resolveAliases doc.anchors))).toArray none none := by
+    simp only [YamlValue.resolveAliases]
+    congr 1
+    exact congrArg List.toArray (resolvePairs_eq_map pairs'.toList doc.anchors)
+  -- Step B: stripAnchors on the resolved mapping maps pairs element-wise (stripPairs_eq_map)
+  have h_step3 :
+      (YamlValue.mapping .flow
+          (pairs'.toList.map (fun p => (p.1.resolveAliases doc.anchors,
+                                        p.2.resolveAliases doc.anchors))).toArray none none).stripAnchors =
+      .mapping .flow (pairs'.map (fun ⟨k, v⟩ => ((k.resolveAliases doc.anchors).stripAnchors,
+                                                  (v.resolveAliases doc.anchors).stripAnchors))) none none := by
+    simp only [YamlValue.stripAnchors]
+    congr 1
+    rw [List.toList_toArray, stripPairs_eq_map, List.map_map, ← Array.toList_map, Array.toArray_toList]
+    simp [Function.comp]
+  -- Assemble: doc.compose.value = .mapping .flow (pairs'.map f)
+  have h_assembled : (doc.compose).value =
+      .mapping .flow (pairs'.map (fun ⟨k, v⟩ => ((k.resolveAliases doc.anchors).stripAnchors,
+                                                  (v.resolveAliases doc.anchors).stripAnchors))) none none := by
+    show (doc.value.resolveAliases doc.anchors).stripAnchors = _
+    rw [h_val, h_step2, h_step3]
+  -- Extract pairs'' = pairs'.map f by injectivity of the mapping constructor
+  have h_eq := h_comp.symm.trans h_assembled
+  simp only [YamlValue.mapping.injEq] at h_eq
+  exact h_eq.2.1
+
+/-- **Scalar pair identity under compose (R604 corollary).** If `pairs'[j]! = (.scalar sk,
+    .scalar sv)` with anchor `= none` in both (as emitter output always is), then
+    `pairs''[j]! = (.scalar sk, .scalar sv)`.
+
+    Proof: `compose_map_pairs_pointwise` gives `pairs'' = pairs'.map f`;
+    `resolveAliases_scalar` gives `(scalar s).resolveAliases anchors = scalar s`;
+    `stripAnchors_scalar` gives `(scalar s).stripAnchors = scalar { s with anchor := none }`;
+    `anchor = none` means `{ s with anchor := none } = s`.  So compose is identity on
+    anchor-free scalar pairs.  The key/value analog of `compose_seq_scalar_item`. -/
+theorem compose_map_scalar_pair
+    (doc : YamlDocument) (pairs' pairs'' : Array (YamlValue × YamlValue))
+    (h_val : doc.value = .mapping .flow pairs' none none)
+    (h_comp : (doc.compose).value = .mapping .flow pairs'' none none)
+    (j : Nat) (hj : j < pairs'.size)
+    (ck vk : String) (cs vs : ScalarStyle)
+    (h_pair : pairs'[j]! = (.scalar (Scalar.mk ck cs none none none),
+                             .scalar (Scalar.mk vk vs none none none))) :
+    pairs''[j]! = (.scalar (Scalar.mk ck cs none none none),
+                   .scalar (Scalar.mk vk vs none none none)) := by
+  have h_eq := compose_map_pairs_pointwise doc pairs' pairs'' h_val h_comp
+  subst h_eq
+  have h_sz : j < (pairs'.map (fun ⟨k, v⟩ => ((k.resolveAliases doc.anchors).stripAnchors,
+                                               (v.resolveAliases doc.anchors).stripAnchors))).size :=
+    by rwa [Array.size_map]
+  have step1 := getElem!_pos
+      (pairs'.map (fun ⟨k, v⟩ => ((k.resolveAliases doc.anchors).stripAnchors,
+                                    (v.resolveAliases doc.anchors).stripAnchors))) j h_sz
+  have step2 := @Array.getElem_map (YamlValue × YamlValue) (YamlValue × YamlValue)
+      (fun ⟨k, v⟩ => ((k.resolveAliases doc.anchors).stripAnchors,
+                       (v.resolveAliases doc.anchors).stripAnchors))
+      pairs' j h_sz
+  have step3 := getElem!_pos pairs' j hj
+  rw [step1, step2, ← step3, h_pair]
+  simp [resolveAliases_scalar]
+
 end L4YAML.Proofs.EmitterScannability
