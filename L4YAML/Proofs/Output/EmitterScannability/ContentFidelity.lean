@@ -989,6 +989,100 @@ theorem parseStream_flowSeqStart_recovers_outer_shape
     rw [getElem!_pos _ 0 h0', getElem!_pos raw_docs 0 h_ne, Array.getElem_map]
   rw [h_map]; exact h_comp
 
+/-! ### §5.8b  Loop witness for mapping outer-shape recovery (R605)
+
+R605 strengthens `parseStream_flowMapStart_recovers_outer_shape` by also exposing the specific
+`parseFlowMappingLoop` call (at `pos = 2`, fuel `4·tokens.size+2`) whose result IS `pairs'`.
+This enables the all-scalar mapping branch of `emit_roundtrip_mapping_content_eq` to pin
+per-pair values without going through `FlowSubrangesOk` / `ParseEntryFlowMapOk` — only the
+parse-success hypothesis `h_parse` is needed. Mirror of R602 for the mapping axis. -/
+
+/-- **Loop witness for outer-shape recovery (mapping), R605.** Exposes the specific
+    `parseFlowMappingLoop` call (tokens preserved, `pos = 2`, fuel `4·tokens.size+2`) whose
+    result array IS the first document's raw pair array `pairs'`. Enables the all-scalar mapping
+    branch to pin pair values given only `h_parse : parseStream tokens = .ok raw_docs`. Proved
+    by tracing `parseStream_first_doc_at_pos_one` → `prepareDocumentState` → `parseNode` →
+    `parseFlowMapping` → `parseFlowMappingLoop`. Mirror of `parseStream_flowSeqStart_loop_witness`
+    (R602) with `.flowSequenceStart`/`parseFlowSequenceLoop` swapped for
+    `.flowMappingStart`/`parseFlowMappingLoop`. -/
+theorem parseStream_flowMapStart_loop_witness
+    (tokens : Array (Positioned YamlToken)) (raw_docs : Array YamlDocument)
+    (h_parse : parseStream tokens = .ok raw_docs)
+    (h_ne : 0 < raw_docs.size)
+    (h_lt : 1 < tokens.size)
+    (h_t1 : tokens[1]!.val = .flowMappingStart) :
+    ∃ (pairs' : Array (YamlValue × YamlValue)) (ps_loop ps_doc : ParseState),
+      ps_doc.tokens = tokens ∧ ps_doc.pos = 2 ∧
+      parseFlowMappingLoop ps_doc (4 * tokens.size + 2) #[] = .ok (pairs', ps_loop) ∧
+      raw_docs[0]!.value = .mapping .flow pairs' none none := by
+  obtain ⟨ps_1, ps_1', h_tok, h_pos, h_pd⟩ :=
+    parseStream_first_doc_at_pos_one tokens raw_docs h_parse h_ne
+  let ps_th : ParseState := { ps_1 with tagHandles := #[] }
+  have h_th_tok : ps_th.tokens = tokens := by simp [ps_th, h_tok]
+  have h_th_pos : ps_th.pos = 1 := by simp [ps_th, h_pos]
+  have h_ps1_peek : ps_1.peek? = some .flowMappingStart := by
+    unfold ParseState.peek?; rw [h_pos, h_tok, if_pos h_lt, h_t1]
+  have h_th_peek : ps_th.peek? = some .flowMappingStart := by
+    simp only [ps_th]; exact h_ps1_peek
+  have h_pd_dir : parseDirectives ps_1 = (#[], ps_1) :=
+    parseDirectives_skip ps_1 (by rw [h_ps1_peek]; trivial)
+  have h_prep : prepareDocumentState ps_1 = .ok (#[], ({ ps_1 with tagHandles := #[] } : ParseState)) := by
+    unfold prepareDocumentState; rw [h_pd_dir]; simp only [Array.filterMap_empty]
+    rw [show (ps_th.peek? == some YamlToken.documentStart) = false from by rw [h_th_peek]; decide]
+    simp only [Bool.false_eq_true, ↓reduceIte]
+    unfold ParseState.tryConsume; rw [h_th_peek]
+    simp only [show (BEq.beq YamlToken.flowMappingStart YamlToken.documentStart) = false from by decide,
+               Bool.false_eq_true, ↓reduceIte, pure, Except.pure, bind, Except.bind]
+  have h_fold : ({ ps_1 with tagHandles := #[] } : ParseState) = ps_th := rfl
+  unfold parseDocument at h_pd
+  simp only [bind, Except.bind, h_prep, h_fold, h_th_peek, h_th_tok] at h_pd
+  have h_np : parseNodeProperties ps_th = .ok ({}, ps_th) :=
+    parseNodeProperties_skip ps_th (by rw [h_th_peek]; trivial)
+  have h_vnp : ∀ p, validateNodeProps ps_th p ({} : NodeProperties) = .ok () := by
+    intro p; unfold validateNodeProps; simp [h_th_peek, bind, Except.bind, pure, Except.pure]
+  have h_pnc : parseNodeContent ps_th (4 * tokens.size + 3) ({} : NodeProperties) =
+      parseFlowMapping ps_th (4 * tokens.size + 3) := by
+    unfold parseNodeContent; rw [h_th_peek]
+  cases h_pn : parseNode ps_th (4 * tokens.size + 4) with
+  | error e => rw [h_pn] at h_pd; simp only [reduceCtorEq] at h_pd
+  | ok r_pn =>
+    obtain ⟨val_pn, ps_pn⟩ := r_pn
+    rw [h_pn] at h_pd
+    simp only [Except.ok.injEq, Prod.mk.injEq] at h_pd
+    obtain ⟨h_doc, -⟩ := h_pd
+    unfold parseNode at h_pn
+    simp only [h_th_peek, bind, Except.bind, pure, Except.pure, h_np, h_vnp, h_pnc] at h_pn
+    cases h_fm : parseFlowMapping ps_th (4 * tokens.size + 3) with
+    | error e => rw [h_fm] at h_pn; simp only [reduceCtorEq] at h_pn
+    | ok r_fm =>
+      obtain ⟨val_fm, ps_fm⟩ := r_fm
+      rw [h_fm] at h_pn
+      simp only [Except.ok.injEq] at h_pn
+      simp only [parseFlowMapping, bind, Except.bind] at h_fm
+      cases h_loop : parseFlowMappingLoop ps_th.advance (4 * tokens.size + 2) #[] with
+      | error e => rw [h_loop] at h_fm; simp only [reduceCtorEq] at h_fm
+      | ok r_loop =>
+        obtain ⟨pairs', ps_loop⟩ := r_loop
+        rw [h_loop] at h_fm
+        simp only [] at h_fm
+        cases h_fme : ps_loop.peek? with
+        | none => rw [h_fme] at h_fm; simp only [reduceCtorEq] at h_fm
+        | some tok =>
+          cases tok with
+          | flowMappingEnd =>
+            rw [h_fme] at h_fm
+            simp only [Except.ok.injEq, Prod.mk.injEq] at h_fm
+            have h_val_pn : val_pn = .mapping .flow pairs' none none := by
+              have h1 := congrArg Prod.fst h_pn
+              simp only [applyNodeFinalization, ← h_fm.1] at h1
+              exact h1.symm
+            exact ⟨pairs', ps_loop, ps_th.advance,
+              by simp [ps_th, ParseState.advance, h_tok],
+              by simp [ps_th, ParseState.advance, h_pos],
+              h_loop,
+              (congrArg YamlDocument.value h_doc).symm.trans h_val_pn⟩
+          | _ => rw [h_fme] at h_fm; simp at h_fm
+
 /-- **Outer-shape recovery, assembled (mapping).** Mirror of `parseStream_flowSeqStart_recovers_outer_shape`:
     a successful `parseStream` whose position-1 lookahead is `.flowMappingStart` recovers a composed
     first document whose value is a flow mapping with default tag/anchor, by the same §5.7 → §5.6 → §5.5
