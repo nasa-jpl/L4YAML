@@ -101,7 +101,7 @@ theorem r607_singleton_fires
     tokens[3]!.val = .scalar sk.content .doubleQuoted ∧
     tokens[5]!.val = .scalar sv.content .doubleQuoted ∧
     tokens[6]!.val = .flowMappingEnd := by
-  obtain ⟨h_sz, h_t1, h_content, _h_fe, h_fme⟩ :=
+  obtain ⟨h_sz, h_t1, h_content, _h_fe, h_fme, _h_key, _h_mv⟩ :=
     scanFiltered_emitMap_allScalar_pair_at [(.scalar sk, .scalar sv)]
       (List.cons_ne_nil _ _)
       (fun p hp => by
@@ -132,7 +132,7 @@ theorem r607_two_pair_fires
     tokens[8]!.val = .scalar sk2.content .doubleQuoted ∧
     tokens[10]!.val = .scalar sv2.content .doubleQuoted ∧
     tokens[11]!.val = .flowMappingEnd := by
-  obtain ⟨h_sz, h_t1, h_content, h_fe, h_fme⟩ :=
+  obtain ⟨h_sz, h_t1, h_content, h_fe, h_fme, _h_key, _h_mv⟩ :=
     scanFiltered_emitMap_allScalar_pair_at
       [(.scalar sk1, .scalar sv1), (.scalar sk2, .scalar sv2)]
       (List.cons_ne_nil _ _)

@@ -1788,6 +1788,306 @@ theorem parseFlowSeqLoop_allScalar_value_at
     (by simp only [ite_true, h_pos]) (by omega) h_ok
   exact ⟨h_size, fun j h_lt => h_vals j (Nat.zero_le j) h_lt⟩
 
+private theorem parseFlowMappingLoop_allScalar_pair_at_aux
+    {tokens : Array (Positioned YamlToken)}
+    {pairs : List (YamlValue × YamlValue)}
+    (h_ne : pairs ≠ [])
+    (h_all : ∀ p ∈ pairs, ∃ sk sv : Scalar, p.1 = .scalar sk ∧ p.2 = .scalar sv)
+    (h_key_tok : ∀ j : Nat, j < pairs.length → tokens[2 + 5 * j]!.val = .key)
+    (h_scalar_tok : ∀ j : Nat, j < pairs.length → ∀ sk sv : Scalar,
+        pairs[j]? = some (.scalar sk, .scalar sv) →
+        tokens[2 + 5 * j + 1]!.val = .scalar sk.content .doubleQuoted ∧
+        tokens[2 + 5 * j + 3]!.val = .scalar sv.content .doubleQuoted)
+    (h_mv_tok : ∀ j : Nat, j < pairs.length → tokens[2 + 5 * j + 2]!.val = .value)
+    (h_fe_tok : ∀ j : Nat, 0 < j → j < pairs.length → tokens[5 * j + 1]!.val = .flowEntry)
+    (h_fme_tok : tokens[5 * pairs.length + 1]!.val = .flowMappingEnd)
+    (h_sz : tokens.size = 5 * pairs.length + 3)
+    {k : Nat} (h_kle : k ≤ pairs.length)
+    {acc : Array (YamlValue × YamlValue)} (h_acc : acc.size = k)
+    {ps : ParseState} (h_toks : ps.tokens = tokens)
+    (h_pos : ps.pos = if k = 0 then 2 else 5 * k + 1)
+    {fuel : Nat} (h_fuel : pairs.length - k + 1 ≤ fuel)
+    {result : Array (YamlValue × YamlValue) × ParseState}
+    (h_ok : parseFlowMappingLoop ps fuel acc = .ok result) :
+    result.1.size = pairs.length ∧
+    ∀ j : Nat, k ≤ j → j < pairs.length →
+        ∃ sk sv : Scalar, pairs[j]? = some (.scalar sk, .scalar sv) ∧
+        result.1[j]! = (.scalar (Scalar.mk sk.content .doubleQuoted none none none),
+                        .scalar (Scalar.mk sv.content .doubleQuoted none none none)) := by
+  induction fuel generalizing k acc ps with
+  | zero => omega
+  | succ n ih =>
+    have h_ne_len : pairs.length ≠ 0 := by
+      intro h; cases pairs with
+      | nil => exact absurd rfl h_ne
+      | cons _ _ => simp at h
+    by_cases h_keq : k = pairs.length
+    · -- EXIT: k = pairs.length, loop sees flowMappingEnd
+      subst h_keq
+      have h_pos_val : ps.pos = 5 * pairs.length + 1 := by
+        rw [h_pos, if_neg h_ne_len]
+      have h_peek_fme : ps.peek? = some .flowMappingEnd :=
+        peek_of_pos_val h_pos_val (by rw [h_toks, h_sz]; omega)
+          (by rw [h_toks]; exact h_fme_tok)
+      simp only [parseFlowMappingLoop, h_peek_fme, Except.ok.injEq] at h_ok
+      exact ⟨h_ok ▸ h_acc, fun j _ h_lt => absurd h_lt (by omega)⟩
+    · -- STEP: k < pairs.length
+      have h_klt : k < pairs.length := Nat.lt_of_le_of_ne h_kle h_keq
+      obtain ⟨sk_k, sv_k, h_val_fst, h_val_snd⟩ := h_all _ (List.getElem_mem h_klt)
+      have h_item_k : pairs[k]? = some (.scalar sk_k, .scalar sv_k) :=
+        (List.getElem?_eq_getElem h_klt).trans
+          (congrArg some (Prod.ext h_val_fst h_val_snd))
+      obtain ⟨h_tok_sk, h_tok_sv⟩ := h_scalar_tok k h_klt sk_k sv_k h_item_k
+      have h_tok_key := h_key_tok k h_klt
+      have h_tok_mv := h_mv_tok k h_klt
+      have h_ok_orig := h_ok
+      by_cases h_k0 : k = 0
+      · -- ── k = 0: ps.pos = 2, peek? = .key ──────────────────────────────────
+        subst h_k0
+        simp only [ite_true] at h_pos
+        have h_peek_key : ps.peek? = some .key :=
+          peek_of_pos_val h_pos (by rw [h_toks, h_sz]; omega) (by rw [h_toks]; exact h_tok_key)
+        unfold parseFlowMappingLoop at h_ok
+        simp only [bind, Except.bind, pure, Except.pure] at h_ok
+        split at h_ok  -- outer: flowMappingEnd vs wildcard
+        · simp [h_peek_key] at *
+        · simp only [if_neg (show ¬ (acc.size > 0) from by omega)] at h_ok
+          split at h_ok  -- 2nd peek: fme | .key | wildcard
+          · simp [h_peek_key] at *
+          · -- .key branch: ps.advance + parseExplicitKey + parseFlowMappingValue
+            -- state after consuming .key: pos = 3 = 2+5*0+1
+            have h_adv_pos : ps.advance.pos = 3 := by
+              simp [ParseState.advance, h_pos]
+            have h_adv_toks : ps.advance.tokens = tokens := by
+              simp [ParseState.advance, h_toks]
+            have h_adv_peek_sk : ps.advance.peek? = some (.scalar sk_k.content .doubleQuoted) :=
+              peek_of_pos_val h_adv_pos (by rw [h_adv_toks, h_sz]; omega)
+                (by rw [h_adv_toks]; exact h_tok_sk)
+            split at h_ok  -- parseExplicitKey: error | ok
+            · simp at h_ok
+            · rename_i ek_pair h_pek; obtain ⟨key_k, ps_ek⟩ := ek_pair
+              -- parseExplicitKey in scalar case dispatches to parseNode
+              have h_pek_is_pn : parseNode ps.advance n = .ok (key_k, ps_ek) := by
+                have : parseExplicitKey ps.advance n = parseNode ps.advance n := by
+                  simp only [parseExplicitKey, h_adv_peek_sk]
+                rwa [← this]
+              have h_key_k_val : key_k = .scalar (Scalar.mk sk_k.content .doubleQuoted none none none) :=
+                parseNode_scalar_produces_scalar ps.advance n sk_k.content .doubleQuoted key_k ps_ek
+                  h_adv_peek_sk h_pek_is_pn
+              have h_ek_pos : ps_ek.pos = 4 := by
+                have := parseNode_scalar_advances_by_one ps.advance n sk_k.content .doubleQuoted key_k ps_ek
+                  h_adv_peek_sk h_pek_is_pn
+                omega
+              have h_ek_toks : ps_ek.tokens = tokens := by
+                have := parseNode_scalar_tokens_preserved ps.advance n sk_k.content .doubleQuoted key_k ps_ek
+                  h_adv_peek_sk h_pek_is_pn
+                simp [ParseState.advance, h_toks] at this; exact this
+              -- ps_ek.peek? = .value (at position 4 = 2+5*0+2)
+              have h_ek_peek_mv : ps_ek.peek? = some .value :=
+                peek_of_pos_val h_ek_pos (by rw [h_ek_toks, h_sz]; omega)
+                  (by rw [h_ek_toks]; simpa using h_tok_mv)
+              -- ps_ek.advance.peek? = .scalar sv (at position 5 = 2+5*0+3)
+              have h_ek_adv_pos : ps_ek.advance.pos = 5 := by
+                simp [ParseState.advance, h_ek_pos]
+              have h_ek_adv_toks : ps_ek.advance.tokens = tokens := by
+                simp [ParseState.advance, h_ek_toks]
+              have h_ek_adv_peek_sv : ps_ek.advance.peek? = some (.scalar sv_k.content .doubleQuoted) :=
+                peek_of_pos_val h_ek_adv_pos (by rw [h_ek_adv_toks, h_sz]; omega)
+                  (by rw [h_ek_adv_toks]; simpa using h_tok_sv)
+              split at h_ok  -- parseFlowMappingValue: error | ok
+              · simp at h_ok
+              · rename_i mv_pair h_pfmv; obtain ⟨val_k, ps_mv⟩ := mv_pair
+                simp only [h_key_k_val] at h_pfmv
+                -- peek? facts for the currentPath-updated state (peek? only depends on tokens/pos)
+                have h_cp_peek_mv : ({ ps_ek with currentPath := ps_ek.currentPath.push (.key sk_k.content) } : ParseState).peek? = some .value :=
+                  h_ek_peek_mv
+                have h_adv_cp_peek_sv : ({ ps_ek with currentPath := ps_ek.currentPath.push (.key sk_k.content) } : ParseState).advance.peek? =
+                    some (.scalar sv_k.content .doubleQuoted) :=
+                  h_ek_adv_peek_sv
+                -- Reduce parseFlowMappingValue in h_pfmv to parseNode call
+                have h_mv_unfold := h_pfmv
+                unfold parseFlowMappingValue at h_mv_unfold
+                simp [ParseState.tryConsume, h_cp_peek_mv, h_adv_cp_peek_sv] at h_mv_unfold
+                -- case split on parseNode result directly (avoids split on do-notation)
+                cases h_pn_sv : parseNode ({ ps_ek with currentPath := ps_ek.currentPath.push (.key sk_k.content) }.advance) n with
+                | error e =>
+                  simp only [bind, Except.bind, h_pn_sv] at h_mv_unfold
+                  contradiction
+                | ok sv_pair =>
+                  obtain ⟨val_sv, ps_sv⟩ := sv_pair
+                  simp only [bind, Except.bind, h_pn_sv, Except.ok.injEq, Prod.mk.injEq] at h_mv_unfold
+                  obtain ⟨h_val_eq, h_ps_eq⟩ := h_mv_unfold
+                  have h_val_k_eq : val_k = .scalar (Scalar.mk sv_k.content .doubleQuoted none none none) := by
+                    rw [← h_val_eq]
+                    exact parseNode_scalar_produces_scalar ({ ps_ek with currentPath := ps_ek.currentPath.push (.key sk_k.content) }.advance) n
+                        sv_k.content .doubleQuoted val_sv ps_sv h_adv_cp_peek_sv h_pn_sv
+                  have h_sv_pos : ps_sv.pos = 6 := by
+                    have := parseNode_scalar_advances_by_one ({ ps_ek with currentPath := ps_ek.currentPath.push (.key sk_k.content) }.advance) n
+                        sv_k.content .doubleQuoted val_sv ps_sv h_adv_cp_peek_sv h_pn_sv
+                    simp [ParseState.advance] at this; omega
+                  have h_sv_toks : ps_sv.tokens = tokens := by
+                    have := parseNode_scalar_tokens_preserved ({ ps_ek with currentPath := ps_ek.currentPath.push (.key sk_k.content) }.advance) n
+                        sv_k.content .doubleQuoted val_sv ps_sv h_adv_cp_peek_sv h_pn_sv
+                    exact this.trans h_ek_adv_toks
+                  -- ps_mv = { ps_sv with currentPath := ps_ek.currentPath }
+                  have h_ps_mv_pos : ps_mv.pos = 6 := by rw [← h_ps_eq]; exact h_sv_pos
+                  have h_ps_mv_toks : ps_mv.tokens = tokens := by rw [← h_ps_eq]; exact h_sv_toks
+                  -- IH for k+1 = 1
+                  have h_kle1 : 1 ≤ pairs.length := by omega
+                  have h_acc1 : (acc.push (key_k, val_k)).size = 1 := by simp [h_acc]
+                  have h_pos1 : ps_mv.pos = if 1 = 0 then 2 else 5 * 1 + 1 := by simp [h_ps_mv_pos]
+                  have h_fuel1 : pairs.length - 1 + 1 ≤ n := by omega
+                  obtain ⟨h_sz_r, h_vals_r⟩ := ih h_kle1 h_acc1 h_ps_mv_toks h_pos1 h_fuel1 h_ok
+                  obtain ⟨h_idx_h, h_idx_eq⟩ := parseFlowMappingLoop_step_index ps n acc result h_ok_orig
+                      key_k val_k ps_mv h_ok
+                  exact ⟨h_sz_r, fun j h_ge h_lt => by
+                    rcases Nat.eq_or_lt_of_le h_ge with rfl | h_jpos
+                    · exact ⟨sk_k, sv_k, h_item_k, by
+                          rw [← h_acc, getElem!_pos result.1 acc.size h_idx_h, h_idx_eq,
+                              h_key_k_val, h_val_k_eq]⟩
+                    · exact h_vals_r j h_jpos h_lt⟩
+          · simp [h_peek_key] at *
+      · -- ── k > 0: ps.pos = 5k+1, peek? = .flowEntry ────────────────────────
+        have h_kpos : 0 < k := by omega
+        simp only [if_neg h_k0] at h_pos
+        have h_peek_fe : ps.peek? = some .flowEntry :=
+          peek_of_pos_val h_pos (by rw [h_toks, h_sz]; omega)
+            (by rw [h_toks]; exact h_fe_tok k h_kpos h_klt)
+        have h_adv_pos : ps.advance.pos = 2 + 5 * k := by
+          simp only [ParseState.advance, h_pos]; omega
+        have h_adv_toks : ps.advance.tokens = tokens := by simp [ParseState.advance, h_toks]
+        have h_adv_peek_key : ps.advance.peek? = some .key :=
+          peek_of_pos_val h_adv_pos (by rw [h_adv_toks, h_sz]; omega)
+            (by rw [h_adv_toks]; simpa using h_tok_key)
+        unfold parseFlowMappingLoop at h_ok
+        simp only [bind, Except.bind, pure, Except.pure] at h_ok
+        split at h_ok  -- outer: flowMappingEnd vs wildcard
+        · simp [h_peek_fe] at *
+        · simp only [if_pos (show acc.size > 0 from by rw [h_acc]; exact h_kpos)] at h_ok
+          split at h_ok  -- flowEntry | wildcard (for the separator match)
+          · -- flowEntry consumed: ps.advance
+            split at h_ok  -- 2nd peek: fme | .key | wildcard
+            · simp [h_adv_peek_key] at *
+            · -- .key branch
+              have h_adv2_pos : ps.advance.advance.pos = 2 + 5 * k + 1 := by
+                simp only [ParseState.advance]; omega
+              have h_adv2_toks : ps.advance.advance.tokens = tokens := h_toks
+              have h_adv2_peek_sk : ps.advance.advance.peek? = some (.scalar sk_k.content .doubleQuoted) :=
+                peek_of_pos_val h_adv2_pos (by rw [h_adv2_toks, h_sz]; omega)
+                  (by rw [h_adv2_toks]; simpa using h_tok_sk)
+              split at h_ok  -- parseExplicitKey: error | ok
+              · simp at h_ok
+              · rename_i ek_pair h_pek; obtain ⟨key_k, ps_ek⟩ := ek_pair
+                have h_pek_is_pn : parseNode ps.advance.advance n = .ok (key_k, ps_ek) := by
+                  have : parseExplicitKey ps.advance.advance n = parseNode ps.advance.advance n := by
+                    simp only [parseExplicitKey, h_adv2_peek_sk]
+                  rwa [← this]
+                have h_key_k_val : key_k = .scalar (Scalar.mk sk_k.content .doubleQuoted none none none) :=
+                  parseNode_scalar_produces_scalar ps.advance.advance n sk_k.content .doubleQuoted key_k ps_ek
+                    h_adv2_peek_sk h_pek_is_pn
+                have h_ek_pos : ps_ek.pos = 2 + 5 * k + 2 := by
+                  have := parseNode_scalar_advances_by_one ps.advance.advance n sk_k.content .doubleQuoted key_k ps_ek
+                    h_adv2_peek_sk h_pek_is_pn
+                  omega
+                have h_ek_toks : ps_ek.tokens = tokens := by
+                  have := parseNode_scalar_tokens_preserved ps.advance.advance n sk_k.content .doubleQuoted key_k ps_ek
+                    h_adv2_peek_sk h_pek_is_pn
+                  exact this.trans h_adv2_toks
+                have h_ek_peek_mv : ps_ek.peek? = some .value :=
+                  peek_of_pos_val h_ek_pos (by rw [h_ek_toks, h_sz]; omega)
+                    (by rw [h_ek_toks]; simpa using h_tok_mv)
+                have h_ek_adv_pos : ps_ek.advance.pos = 2 + 5 * k + 3 := by
+                  simp [ParseState.advance, h_ek_pos]
+                have h_ek_adv_toks : ps_ek.advance.tokens = tokens := by
+                  simp [ParseState.advance, h_ek_toks]
+                have h_ek_adv_peek_sv : ps_ek.advance.peek? = some (.scalar sv_k.content .doubleQuoted) :=
+                  peek_of_pos_val h_ek_adv_pos (by rw [h_ek_adv_toks, h_sz]; omega)
+                    (by rw [h_ek_adv_toks]; simpa using h_tok_sv)
+                split at h_ok  -- parseFlowMappingValue: error | ok
+                · simp at h_ok
+                · rename_i mv_pair h_pfmv; obtain ⟨val_k, ps_mv⟩ := mv_pair
+                  simp only [h_key_k_val] at h_pfmv
+                  have h_cp_peek_mv : ({ ps_ek with currentPath := ps_ek.currentPath.push (.key sk_k.content) } : ParseState).peek? = some .value :=
+                    h_ek_peek_mv
+                  have h_adv_cp_peek_sv : ({ ps_ek with currentPath := ps_ek.currentPath.push (.key sk_k.content) } : ParseState).advance.peek? =
+                      some (.scalar sv_k.content .doubleQuoted) :=
+                    h_ek_adv_peek_sv
+                  have h_mv_unfold := h_pfmv
+                  unfold parseFlowMappingValue at h_mv_unfold
+                  simp [ParseState.tryConsume, h_cp_peek_mv, h_adv_cp_peek_sv] at h_mv_unfold
+                  cases h_pn_sv : parseNode ({ ps_ek with currentPath := ps_ek.currentPath.push (.key sk_k.content) }.advance) n with
+                  | error e =>
+                    simp only [bind, Except.bind, h_pn_sv] at h_mv_unfold
+                    contradiction
+                  | ok sv_pair =>
+                    obtain ⟨val_sv, ps_sv⟩ := sv_pair
+                    simp only [bind, Except.bind, h_pn_sv, Except.ok.injEq, Prod.mk.injEq] at h_mv_unfold
+                    obtain ⟨h_val_eq, h_ps_eq⟩ := h_mv_unfold
+                    have h_val_k_eq : val_k = .scalar (Scalar.mk sv_k.content .doubleQuoted none none none) := by
+                      rw [← h_val_eq]
+                      exact parseNode_scalar_produces_scalar ({ ps_ek with currentPath := ps_ek.currentPath.push (.key sk_k.content) }.advance) n
+                          sv_k.content .doubleQuoted val_sv ps_sv h_adv_cp_peek_sv h_pn_sv
+                    have h_sv_pos : ps_sv.pos = 2 + 5 * k + 4 := by
+                      have := parseNode_scalar_advances_by_one ({ ps_ek with currentPath := ps_ek.currentPath.push (.key sk_k.content) }.advance) n
+                          sv_k.content .doubleQuoted val_sv ps_sv h_adv_cp_peek_sv h_pn_sv
+                      simp [ParseState.advance] at this; omega
+                    have h_sv_toks : ps_sv.tokens = tokens := by
+                      have := parseNode_scalar_tokens_preserved ({ ps_ek with currentPath := ps_ek.currentPath.push (.key sk_k.content) }.advance) n
+                          sv_k.content .doubleQuoted val_sv ps_sv h_adv_cp_peek_sv h_pn_sv
+                      exact this.trans h_ek_adv_toks
+                    have h_ps_mv_pos : ps_mv.pos = 2 + 5 * k + 4 := by rw [← h_ps_eq]; exact h_sv_pos
+                    have h_ps_mv_toks : ps_mv.tokens = tokens := by rw [← h_ps_eq]; exact h_sv_toks
+                    have h_kle' : k + 1 ≤ pairs.length := h_klt
+                    have h_acc' : (acc.push (key_k, val_k)).size = k + 1 := by simp [h_acc]
+                    have h_pos' : ps_mv.pos = if k + 1 = 0 then 2 else 5 * (k + 1) + 1 := by
+                      rw [if_neg (Nat.succ_ne_zero k)]; omega
+                    have h_fuel' : pairs.length - (k + 1) + 1 ≤ n := by omega
+                    obtain ⟨h_sz_r, h_vals_r⟩ := ih h_kle' h_acc' h_ps_mv_toks h_pos' h_fuel' h_ok
+                    obtain ⟨h_idx_h, h_idx_eq⟩ := parseFlowMappingLoop_step_index ps n acc result h_ok_orig
+                        key_k val_k ps_mv h_ok
+                    exact ⟨h_sz_r, fun j h_ge h_lt => by
+                      rcases Nat.eq_or_lt_of_le h_ge with rfl | h_jgt
+                      · exact ⟨sk_k, sv_k, h_item_k, by
+                            rw [← h_acc, getElem!_pos result.1 acc.size h_idx_h, h_idx_eq,
+                                h_key_k_val, h_val_k_eq]⟩
+                      · exact h_vals_r j h_jgt h_lt⟩
+            · simp [h_adv_peek_key] at *
+          · simp [h_peek_fe] at *
+
+/-- **R608. Loop value pin for all-scalar flow mappings.**  Given a token array whose structural
+    and value slots satisfy the token-pin hypotheses from R607 (`.key` at `2+5j`, scalar key at
+    `2+5j+1`, `.value` at `2+5j+2`, scalar value at `2+5j+3`, `.flowEntry` at `5j+1` for `j>0`,
+    and `.flowMappingEnd` at `5*pairs.length+1`), a `parseFlowMappingLoop` call starting at
+    position 2 with empty accumulator produces a result whose size equals `pairs.length` and whose
+    j-th element is `(.scalar sk_j, .scalar sv_j)`. -/
+theorem parseFlowMappingLoop_allScalar_pair_at
+    {tokens : Array (Positioned YamlToken)}
+    {pairs : List (YamlValue × YamlValue)}
+    (h_ne : pairs ≠ [])
+    (h_all : ∀ p ∈ pairs, ∃ sk sv : Scalar, p.1 = .scalar sk ∧ p.2 = .scalar sv)
+    (h_key_tok : ∀ j : Nat, j < pairs.length → tokens[2 + 5 * j]!.val = .key)
+    (h_scalar_tok : ∀ j : Nat, j < pairs.length → ∀ sk sv : Scalar,
+        pairs[j]? = some (.scalar sk, .scalar sv) →
+        tokens[2 + 5 * j + 1]!.val = .scalar sk.content .doubleQuoted ∧
+        tokens[2 + 5 * j + 3]!.val = .scalar sv.content .doubleQuoted)
+    (h_mv_tok : ∀ j : Nat, j < pairs.length → tokens[2 + 5 * j + 2]!.val = .value)
+    (h_fe_tok : ∀ j : Nat, 0 < j → j < pairs.length → tokens[5 * j + 1]!.val = .flowEntry)
+    (h_fme_tok : tokens[5 * pairs.length + 1]!.val = .flowMappingEnd)
+    (h_sz : tokens.size = 5 * pairs.length + 3)
+    {ps : ParseState} (h_toks : ps.tokens = tokens) (h_pos : ps.pos = 2)
+    {fuel : Nat} (h_fuel : pairs.length + 1 ≤ fuel)
+    {result : Array (YamlValue × YamlValue) × ParseState}
+    (h_ok : parseFlowMappingLoop ps fuel #[] = .ok result) :
+    result.1.size = pairs.length ∧
+    ∀ j : Nat, j < pairs.length →
+        ∃ sk sv : Scalar, pairs[j]? = some (.scalar sk, .scalar sv) ∧
+        result.1[j]! = (.scalar (Scalar.mk sk.content .doubleQuoted none none none),
+                        .scalar (Scalar.mk sv.content .doubleQuoted none none none)) := by
+  obtain ⟨h_size, h_vals⟩ := parseFlowMappingLoop_allScalar_pair_at_aux h_ne h_all h_key_tok
+    h_scalar_tok h_mv_tok h_fe_tok h_fme_tok h_sz (Nat.zero_le _) (by simp) h_toks
+    (by simp only [ite_true, h_pos]) (by omega) h_ok
+  exact ⟨h_size, fun j h_lt => h_vals j (Nat.zero_le j) h_lt⟩
+
 /-! ### §5.10.4  Front B — value-recovery trace, brick 3 link (b) indexed sub-call witnesses
 
 §5.10.3 supplied the *per-step positional index*: given `h_push`, `result.1[acc.size] = v`. This

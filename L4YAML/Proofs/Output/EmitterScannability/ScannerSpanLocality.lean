@@ -498,8 +498,12 @@ theorem emitPairList_allScalar_body_content_at :
       (∀ j : Nat, j < pairs.length → ∀ sk sv : Scalar, pairs[j]? = some (.scalar sk, .scalar sv) →
           5 * j + 1 < block.length ∧ block[5 * j + 1]!.val = .scalar sk.content .doubleQuoted ∧
           5 * j + 3 < block.length ∧ block[5 * j + 3]!.val = .scalar sv.content .doubleQuoted) ∧
-      ∀ j : Nat, j + 1 < pairs.length →
-          5 * j + 4 < block.length ∧ block[5 * j + 4]!.val = .flowEntry := by
+      (∀ j : Nat, j + 1 < pairs.length →
+          5 * j + 4 < block.length ∧ block[5 * j + 4]!.val = .flowEntry) ∧
+      (∀ j : Nat, j < pairs.length →
+          5 * j < block.length ∧ block[5 * j]!.val = .key) ∧
+      (∀ j : Nat, j < pairs.length →
+          5 * j + 2 < block.length ∧ block[5 * j + 2]!.val = .value) := by
   intro pairs
   induction pairs with
   | nil => intro h; exact absurd rfl h
@@ -668,7 +672,7 @@ theorem emitPairList_allScalar_body_content_at :
               by unfold ScannerState.currentIndent; rw [h_ids_v, h_ids₃]; exact h_indent₂,
               h_line_v.trans (_h_line₃.trans (_h_line₂.trans h_line₁)), h_atol_v, h_endline_v,
               by rw [h_stack_v, h_stack₃, h_stack₂, h_stack₁],
-              h_filter_sv, ?_, ?_, ?_⟩
+              h_filter_sv, ?_, ?_, ?_, ?_, ?_⟩
       · rfl  -- block.length = 4 = 5 * 1 - 1
       · intro j hj sk' sv' h_pair
         obtain rfl : j = 0 := Nat.lt_one_iff.mp hj
@@ -683,6 +687,17 @@ theorem emitPairList_allScalar_body_content_at :
                      List.getElem!_cons_succ, List.getElem!_cons_succ,
                      List.getElem!_cons_succ, List.getElem!_cons_zero]; exact h_tok_v_val
       · intro j hj; simp only [List.length_cons, List.length_nil] at hj; omega
+      · intro j hj
+        obtain rfl : j = 0 := Nat.lt_one_iff.mp hj
+        refine ⟨by simp, ?_⟩
+        simp only [show (5 : Nat) * 0 = 0 from rfl, List.getElem!_cons_zero]
+        rfl
+      · intro j hj
+        obtain rfl : j = 0 := Nat.lt_one_iff.mp hj
+        refine ⟨by simp, ?_⟩
+        simp only [show (5 : Nat) * 0 + 2 = 2 from rfl,
+                   List.getElem!_cons_succ, List.getElem!_cons_succ, List.getElem!_cons_zero]
+        rfl
     | cons p' tail' =>
       -- ── MULTI-PAIR CASE: pairs = p :: p' :: tail' ────────────────────────────
       obtain ⟨sk', sv', hsk', hsv'⟩ := h_all p' (.tail _ (.head _))
@@ -888,7 +903,7 @@ theorem emitPairList_allScalar_body_content_at :
       obtain ⟨n_pp, s_end, block_rest, h_chain_pp, h_corr_end,
               h_fl_end, h_dp_end, h_ids_end, h_ek_end, h_col_end,
               h_flow_end, h_indent_end, h_line_end, h_atol_end, h_endline_end, h_stack_end,
-              h_block_pp, h_len_pp, h_pw_pp, h_fe_pp⟩ :=
+              h_block_pp, h_len_pp, h_pw_pp, h_fe_pp, h_key_pp, h_mv_pp⟩ :=
         ih h_tail_ne h_tail_all s_pp rest h_corr_pp'
           h_s_pp_flow
           (by rw [h_fl_pp, h_fl_c, h_fl_v, h_fl₃, h_fl₂, h_fl₁]; exact h_fl)
@@ -1001,6 +1016,48 @@ theorem emitPairList_allScalar_body_content_at :
                      show 5 * j' + 4 + 2 = 5 * j' + 4 + 1 + 1 from by omega,
                      show 5 * j' + 4 + 1 = 5 * j' + 4 + 0 + 1 from by omega]
           exact h_fe_val
+      -- ── KEY STRUCT FACTS ─────────────────────────────────────────────────────
+      have h_key_struct : ∀ j : Nat, j < (p :: p' :: tail').length →
+          5 * j < ([keyTok, tok_k, valueTok, tok_v, feTok] ++ block_rest).length ∧
+          ([keyTok, tok_k, valueTok, tok_v, feTok] ++ block_rest)[5 * j]!.val = .key := by
+        intro j hj
+        cases j with
+        | zero =>
+          refine ⟨by simp, ?_⟩
+          simp only [show (5 : Nat) * 0 = 0 from rfl]
+          rfl
+        | succ j' =>
+          simp only [List.length_cons] at hj
+          obtain ⟨h_lt_k, h_k_val⟩ := h_key_pp j' (by simp only [List.length_cons]; omega)
+          refine ⟨by simp only [List.length_append, List.length_cons]; omega, ?_⟩
+          rw [show 5 * (j' + 1) = 5 * j' + 5 from by omega]
+          simp only [show 5 * j' + 5 = 5 * j' + 4 + 1 from by omega,
+                     show 5 * j' + 4 = 5 * j' + 3 + 1 from by omega,
+                     show 5 * j' + 3 = 5 * j' + 2 + 1 from by omega,
+                     show 5 * j' + 2 = 5 * j' + 1 + 1 from by omega,
+                     show 5 * j' + 1 = 5 * j' + 0 + 1 from by omega]
+          exact h_k_val
+      -- ── VALUE STRUCT FACTS ───────────────────────────────────────────────────
+      have h_mv_struct : ∀ j : Nat, j < (p :: p' :: tail').length →
+          5 * j + 2 < ([keyTok, tok_k, valueTok, tok_v, feTok] ++ block_rest).length ∧
+          ([keyTok, tok_k, valueTok, tok_v, feTok] ++ block_rest)[5 * j + 2]!.val = .value := by
+        intro j hj
+        cases j with
+        | zero =>
+          refine ⟨by simp, ?_⟩
+          simp only [show (5 : Nat) * 0 + 2 = 2 from rfl]
+          rfl
+        | succ j' =>
+          simp only [List.length_cons] at hj
+          obtain ⟨h_lt_v, h_v_val⟩ := h_mv_pp j' (by simp only [List.length_cons]; omega)
+          refine ⟨by simp only [List.length_append, List.length_cons]; omega, ?_⟩
+          rw [show 5 * (j' + 1) + 2 = 5 * j' + 2 + 5 from by omega]
+          simp only [show 5 * j' + 2 + 5 = 5 * j' + 2 + 4 + 1 from by omega,
+                     show 5 * j' + 2 + 4 = 5 * j' + 2 + 3 + 1 from by omega,
+                     show 5 * j' + 2 + 3 = 5 * j' + 2 + 2 + 1 from by omega,
+                     show 5 * j' + 2 + 2 = 5 * j' + 2 + 1 + 1 from by omega,
+                     show 5 * j' + 2 + 1 = 5 * j' + 2 + 0 + 1 from by omega]
+          exact h_v_val
       exact ⟨1 + (1 + 1) + (1 + (m_pp + 1)), s_end,
              [keyTok, tok_k, valueTok, tok_v, feTok] ++ block_rest,
              h_chain_all, h_corr_end,
@@ -1013,7 +1070,7 @@ theorem emitPairList_allScalar_body_content_at :
                (h_line_v.trans (_h_line₃.trans (_h_line₂.trans h_line₁))))),
              h_atol_end, h_endline_end,
              by rw [h_stack_end, h_stack_pp, h_stack_c, h_stack_v, h_stack₃, h_stack₂, h_stack₁],
-             h_filter_end, h_len, h_pointwise, h_fe⟩
+             h_filter_end, h_len, h_pointwise, h_fe, h_key_struct, h_mv_struct⟩
 
 /-- **R607. All-scalar token-array content pin for flow mappings.**
 
@@ -1040,7 +1097,9 @@ theorem scanFiltered_emitMap_allScalar_pair_at
         tokens[2 + 5 * j + 3]!.val = .scalar sv.content .doubleQuoted) ∧
     (∀ j : Nat, j + 1 < pairs.length →
         tokens[2 + 5 * j + 4]!.val = .flowEntry) ∧
-    tokens[5 * pairs.length + 1]!.val = .flowMappingEnd := by
+    tokens[5 * pairs.length + 1]!.val = .flowMappingEnd ∧
+    (∀ j : Nat, j < pairs.length → tokens[2 + 5 * j]!.val = .key) ∧
+    (∀ j : Nat, j < pairs.length → tokens[2 + 5 * j + 2]!.val = .value) := by
   let input := "{" ++ emit.emitPairList pairs ++ "}"
   have h_toList : input.toList = '{' :: (emit.emitPairList pairs).toList ++ ['}'] := by
     simp only [input, String.toList_append]; rfl
@@ -1052,7 +1111,7 @@ theorem scanFiltered_emitMap_allScalar_pair_at
   -- ═══ Step 2: body scan via R606 → s₂ and body block ═══
   obtain ⟨_n₂, s₂, block, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, h_inflow₂,
           h_indent₂, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_block_eq₂, h_block_len,
-          h_block_content, h_block_fe_content⟩ :=
+          h_block_content, h_block_fe_content, h_block_key_struct, h_block_mv_struct⟩ :=
     emitPairList_allScalar_body_content_at pairs h_ne h_all s₁ ['}']
       h_corr₁ h_inflow₁ (by rw [h_fl₁]; omega) h_indent₁ (by rw [h_col₁]; omega)
       h_ek₁ (h_line₁ ▸ h_atol₁) h_endline₁ h_ska₁ h_sync₁
@@ -1132,8 +1191,8 @@ theorem scanFiltered_emitMap_allScalar_pair_at
     calc ((s₂.tokens.filter filt)[1]'h1_lt_s2).val
         = ((s₁.tokens.filter filt)[1]'h1_lt_s1).val := congrArg Positioned.val h_eq
       _ = .flowMappingStart := h_filt₁_val1
-  -- ═══ Step 11: all five conclusions ═══
-  refine ⟨h_tokens_sz, h_t1, ?_, ?_, ?_⟩
+  -- ═══ Step 11: all seven conclusions ═══
+  refine ⟨h_tokens_sz, h_t1, ?_, ?_, ?_, ?_, ?_⟩
   · -- Key+value scalar pointwise
     intro j hj sk sv h_pair
     obtain ⟨h_k_lt, h_k_val, h_v_lt, h_v_val⟩ := h_block_content j hj sk sv h_pair
@@ -1215,5 +1274,41 @@ theorem scanFiltered_emitMap_allScalar_pair_at
       rw [getElem!_pos tokens (5 * pairs.length + 1) h_lt]
       rwa [Array.getElem_toList] at h_elem
     rw [h_tok_fme_eq]; exact h_tok_fme_val
+  · -- key struct: tokens[2+5*j]!.val = .key for j < pairs.length
+    intro j hj
+    obtain ⟨h_k_lt, h_k_val⟩ := h_block_key_struct j hj
+    have h_klt_s2 : 2 + 5 * j < (s₂.tokens.filter filt).size := by rw [h_s2_filt_sz]; omega
+    rw [h_tokens_decomp, getElem!_pos _ _ (by simp only [Array.size_push]; omega)]
+    rw [Array.getElem_push_lt (by simp only [Array.size_push]; omega)]
+    rw [Array.getElem_push_lt h_klt_s2]
+    have h_at_k : (s₂.tokens.filter filt)[2 + 5 * j]'h_klt_s2 = block[5 * j]'h_k_lt := by
+      have h_lhs_lt : 2 + 5 * j < (s₂.tokens.filter filt).toList.length := by
+        rw [Array.length_toList]; exact h_klt_s2
+      have h_opt : (s₂.tokens.filter filt).toList[2 + 5 * j]? = block[5 * j]? := by
+        rw [h_block_eq₂, List.getElem?_append_right (by rw [h_s1_filt_len]; omega)]
+        congr 1; rw [h_s1_filt_len]; omega
+      rw [List.getElem?_eq_getElem h_lhs_lt, List.getElem?_eq_getElem h_k_lt] at h_opt
+      have h_list_eq := Option.some.inj h_opt
+      rwa [Array.getElem_toList] at h_list_eq
+    rw [h_at_k, (getElem!_pos block (5 * j) h_k_lt).symm]
+    exact h_k_val
+  · -- value struct: tokens[2+5*j+2]!.val = .value for j < pairs.length
+    intro j hj
+    obtain ⟨h_v_lt, h_v_val⟩ := h_block_mv_struct j hj
+    have h_vlt_s2 : 2 + 5 * j + 2 < (s₂.tokens.filter filt).size := by rw [h_s2_filt_sz]; omega
+    rw [h_tokens_decomp, getElem!_pos _ _ (by simp only [Array.size_push]; omega)]
+    rw [Array.getElem_push_lt (by simp only [Array.size_push]; omega)]
+    rw [Array.getElem_push_lt h_vlt_s2]
+    have h_at_v : (s₂.tokens.filter filt)[2 + 5 * j + 2]'h_vlt_s2 = block[5 * j + 2]'h_v_lt := by
+      have h_lhs_lt : 2 + 5 * j + 2 < (s₂.tokens.filter filt).toList.length := by
+        rw [Array.length_toList]; exact h_vlt_s2
+      have h_opt : (s₂.tokens.filter filt).toList[2 + 5 * j + 2]? = block[5 * j + 2]? := by
+        rw [h_block_eq₂, List.getElem?_append_right (by rw [h_s1_filt_len]; omega)]
+        congr 1; rw [h_s1_filt_len]; omega
+      rw [List.getElem?_eq_getElem h_lhs_lt, List.getElem?_eq_getElem h_v_lt] at h_opt
+      have h_list_eq := Option.some.inj h_opt
+      rwa [Array.getElem_toList] at h_list_eq
+    rw [h_at_v, (getElem!_pos block (5 * j + 2) h_v_lt).symm]
+    exact h_v_val
 
 end L4YAML.Proofs.EmitterScannability
