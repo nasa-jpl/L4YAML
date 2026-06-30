@@ -817,6 +817,104 @@ the per-element flow-loop induction. Kept parameterized on the head-token facts 
 the scan-side structure lemma here) so this section owns exactly the parse-side links. Verified-but-
 unconsumed until brick 3 lands and the two content-fidelity sorries close. -/
 
+/-! ### §5.8a  Loop witness for sequence outer-shape recovery (R602)
+
+R602 strengthens `parseStream_flowSeqStart_recovers_outer_shape` by also exposing the specific
+`parseFlowSequenceLoop` call (at `pos = 2`, fuel `4·tokens.size+2`) whose result IS `items'`.
+This enables R601 to pin per-element values without going through `FlowSubrangesOk` /
+`ParseNodeFlowSeqOk` — only the parse-success hypothesis `h_parse` is needed. -/
+
+/-- **Loop witness for outer-shape recovery (sequence), R602.** Exposes the specific
+    `parseFlowSequenceLoop` call (tokens preserved, `pos = 2`, fuel `4·tokens.size+2`) whose
+    result array IS the first document's value array `items'`. Enables R601 to pin element values
+    given only `h_parse : parseStream tokens = .ok raw_docs`. Proved by tracing
+    `parseStream_first_doc_at_pos_one` → `prepareDocumentState` → `parseNode` →
+    `parseFlowSequence` → `parseFlowSequenceLoop`. -/
+theorem parseStream_flowSeqStart_loop_witness
+    (tokens : Array (Positioned YamlToken)) (raw_docs : Array YamlDocument)
+    (h_parse : parseStream tokens = .ok raw_docs)
+    (h_ne : 0 < raw_docs.size)
+    (h_lt : 1 < tokens.size)
+    (h_t1 : tokens[1]!.val = .flowSequenceStart) :
+    ∃ (items' : Array YamlValue) (ps_loop ps_doc : ParseState),
+      ps_doc.tokens = tokens ∧ ps_doc.pos = 2 ∧
+      parseFlowSequenceLoop ps_doc (4 * tokens.size + 2) #[] = .ok (items', ps_loop) ∧
+      raw_docs[0]!.value = .sequence .flow items' none none := by
+  obtain ⟨ps_1, ps_1', h_tok, h_pos, h_pd⟩ :=
+    parseStream_first_doc_at_pos_one tokens raw_docs h_parse h_ne
+  let ps_th : ParseState := { ps_1 with tagHandles := #[] }
+  have h_th_tok : ps_th.tokens = tokens := by simp [ps_th, h_tok]
+  have h_th_pos : ps_th.pos = 1 := by simp [ps_th, h_pos]
+  have h_ps1_peek : ps_1.peek? = some .flowSequenceStart := by
+    unfold ParseState.peek?; rw [h_pos, h_tok, if_pos h_lt, h_t1]
+  have h_th_peek : ps_th.peek? = some .flowSequenceStart := by
+    simp only [ps_th]; exact h_ps1_peek
+  have h_pd_dir : parseDirectives ps_1 = (#[], ps_1) :=
+    parseDirectives_skip ps_1 (by rw [h_ps1_peek]; trivial)
+  have h_prep : prepareDocumentState ps_1 = .ok (#[], ({ ps_1 with tagHandles := #[] } : ParseState)) := by
+    unfold prepareDocumentState; rw [h_pd_dir]; simp only [Array.filterMap_empty]
+    rw [show (ps_th.peek? == some YamlToken.documentStart) = false from by rw [h_th_peek]; decide]
+    simp only [Bool.false_eq_true, ↓reduceIte]
+    unfold ParseState.tryConsume; rw [h_th_peek]
+    simp only [show (BEq.beq YamlToken.flowSequenceStart YamlToken.documentStart) = false from by decide,
+               Bool.false_eq_true, ↓reduceIte, pure, Except.pure, bind, Except.bind]
+  -- Fold inline struct back to ps_th so subsequent simp lemmas match syntactically
+  have h_fold : ({ ps_1 with tagHandles := #[] } : ParseState) = ps_th := rfl
+  unfold parseDocument at h_pd
+  simp only [bind, Except.bind, h_prep, h_fold, h_th_peek, h_th_tok] at h_pd
+  have h_np : parseNodeProperties ps_th = .ok ({}, ps_th) :=
+    parseNodeProperties_skip ps_th (by rw [h_th_peek]; trivial)
+  have h_vnp : ∀ p, validateNodeProps ps_th p ({} : NodeProperties) = .ok () := by
+    intro p; unfold validateNodeProps; simp [h_th_peek, bind, Except.bind, pure, Except.pure]
+  have h_pnc : parseNodeContent ps_th (4 * tokens.size + 3) ({} : NodeProperties) =
+      parseFlowSequence ps_th (4 * tokens.size + 3) := by
+    unfold parseNodeContent; rw [h_th_peek]
+  cases h_pn : parseNode ps_th (4 * tokens.size + 4) with
+  | error e => rw [h_pn] at h_pd; simp only [reduceCtorEq] at h_pd
+  | ok r_pn =>
+    obtain ⟨val_pn, ps_pn⟩ := r_pn
+    -- Consume h_pd immediately while h_pn still reads parseNode ... = .ok (val_pn, ps_pn)
+    rw [h_pn] at h_pd
+    simp only [Except.ok.injEq, Prod.mk.injEq] at h_pd
+    obtain ⟨h_doc, -⟩ := h_pd
+    -- h_doc : {value := val_pn, ...} = raw_docs[0]!
+    -- Now unfold parseNode to learn what val_pn is
+    unfold parseNode at h_pn
+    simp only [h_th_peek, bind, Except.bind, pure, Except.pure, h_np, h_vnp, h_pnc] at h_pn
+    cases h_fs : parseFlowSequence ps_th (4 * tokens.size + 3) with
+    | error e => rw [h_fs] at h_pn; simp only [reduceCtorEq] at h_pn
+    | ok r_fs =>
+      obtain ⟨val_fs, ps_fs⟩ := r_fs
+      rw [h_fs] at h_pn
+      -- h_pn : applyNodeFinalization val_fs ps_fs {} nodeStartPos = (val_pn, ps_pn)
+      simp only [Except.ok.injEq] at h_pn
+      -- Unfold parseFlowSequence body to expose the loop call
+      simp only [parseFlowSequence, bind, Except.bind] at h_fs
+      cases h_loop : parseFlowSequenceLoop ps_th.advance (4 * tokens.size + 2) #[] with
+      | error e => rw [h_loop] at h_fs; simp only [reduceCtorEq] at h_fs
+      | ok r_loop =>
+        obtain ⟨items', ps_loop⟩ := r_loop
+        rw [h_loop] at h_fs
+        simp only [] at h_fs  -- iota-reduce match .ok (items', ps_loop)
+        cases h_fse : ps_loop.peek? with
+        | none => rw [h_fse] at h_fs; simp only [reduceCtorEq] at h_fs
+        | some tok =>
+          cases tok with
+          | flowSequenceEnd =>
+            rw [h_fse] at h_fs
+            simp only [Except.ok.injEq, Prod.mk.injEq] at h_fs
+            -- h_fs.1 : .sequence .flow items' = val_fs (i.e. val_fs = .seq .flow items')
+            have h_val_pn : val_pn = .sequence .flow items' := by
+              have h1 := congrArg Prod.fst h_pn
+              simp only [applyNodeFinalization, ← h_fs.1] at h1
+              exact h1.symm
+            exact ⟨items', ps_loop, ps_th.advance,
+              by simp [ps_th, ParseState.advance, h_tok],
+              by simp [ps_th, ParseState.advance, h_pos],
+              h_loop,
+              (congrArg YamlDocument.value h_doc).symm.trans h_val_pn⟩
+          | _ => rw [h_fse] at h_fs; simp at h_fs
+
 /-- **Outer-shape recovery, assembled (sequence).** A successful `parseStream` whose position-1
     lookahead is `.flowSequenceStart` recovers a composed first document whose value is a flow sequence
     with default tag/anchor. Composes §5.7 (position-pinning) → §5.6 (`parseDocument` dispatch) → §5.5

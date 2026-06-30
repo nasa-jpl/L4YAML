@@ -1020,7 +1020,50 @@ theorem emit_roundtrip_sequence_content_eq {inFlow : Bool} (style : CollectionSt
         items.size = items''.size ∧
         (∀ (i : Fin items.size) (rd : Array YamlDocument),
           parseYamlRaw (emit items[i]) = .ok rd → rd.size = 1 →
-          (rd.map YamlDocument.compose)[0]!.value = items''[i.val]!) := sorry
+          (rd.map YamlDocument.compose)[0]!.value = items''[i.val]!) := by
+      by_cases h_all_sc : ∀ v ∈ items.toList, ∃ sc : Scalar, v = .scalar sc
+      · -- All-scalar case: R602 --> R597 --> R601 --> compose chain
+        obtain ⟨items', ps_loop, ps_doc, h_pd_tok, h_pd_pos, h_loop_ok, h_raw_val⟩ :=
+          parseStream_flowSeqStart_loop_witness tokens raw_docs h_parse (by omega) (by omega) h_t1
+        have h_ne_list : items.toList ≠ [] := by rw [h_list]; exact List.cons_ne_nil _ _
+        obtain ⟨h_tok_sz, _, h_scalar_tok, h_fe_tok, h_fse_tok⟩ :=
+          scanFiltered_emitSeq_allScalar_token_at items.toList h_ne_list h_all_sc tokens h_scan
+        have h_fuel : items.toList.length + 1 ≤ 4 * tokens.size + 2 := by
+          rw [h_tok_sz]; omega
+        obtain ⟨h_items'_sz, h_items'_vals⟩ :=
+          parseFlowSeqLoop_allScalar_value_at h_ne_list h_all_sc
+            h_scalar_tok h_fe_tok h_fse_tok h_tok_sz
+            h_pd_tok h_pd_pos h_fuel h_loop_ok
+        simp only [] at h_items'_sz h_items'_vals
+        have h_ne_raw : 0 < raw_docs.size := by omega
+        have h_0' : 0 < (raw_docs.map YamlDocument.compose).size := by
+          rw [Array.size_map]; exact h_ne_raw
+        have h_comp_val : (raw_docs[0]!.compose).value = .sequence .flow items'' none none := by
+          have h_eq : (raw_docs.map YamlDocument.compose)[0]!.value =
+              (raw_docs[0]!.compose).value := by
+            rw [getElem!_pos _ 0 h_0', getElem!_pos raw_docs 0 h_ne_raw, Array.getElem_map]
+          rw [← h_eq]; exact h_shape
+        have h_items'_size : items'.size = items.size := by
+          rw [h_items'_sz, Array.length_toList]
+        have h_items''_size : items''.size = items'.size := by
+          rw [compose_seq_items_pointwise (raw_docs[0]!) items' items'' h_raw_val h_comp_val,
+            Array.size_map]
+        exact ⟨h_items'_size.symm.trans h_items''_size.symm,
+          fun ⟨j, hj⟩ rd h_rd h_rd_sz => by
+            have hj_list : j < items.toList.length := by rwa [Array.length_toList]
+            obtain ⟨sc_j, h_items_j_opt, h_items'_j⟩ := h_items'_vals j hj_list
+            have h_items_j_eq : items[j] = .scalar sc_j := by
+              rw [List.getElem?_eq_getElem hj_list] at h_items_j_opt
+              simp only [Option.some.injEq, Array.getElem_toList] at h_items_j_opt
+              exact h_items_j_opt
+            have h_rd_nice : parseYamlRaw (emitScalar sc_j.content) = .ok rd :=
+              (show emitScalar sc_j.content = emit items[j] from by rw [h_items_j_eq]; rfl) ▸ h_rd
+            have h_composed := parseYamlRaw_emitScalar_compose_value sc_j.content rd h_rd_nice h_rd_sz
+            have hj' : j < items'.size := by rwa [h_items'_sz, Array.length_toList]
+            exact h_composed.trans
+              (compose_seq_scalar_item (raw_docs[0]!) items' items''
+                h_raw_val h_comp_val j hj' sc_j.content .doubleQuoted h_items'_j).symm⟩
+      · sorry
     exact contentEqList_of_reparse items items'' h_size ih
       (reparse_deliverable_of_locality_seq items items''
         (fun i => grammable_to_block (h_items i)) h_loc)
