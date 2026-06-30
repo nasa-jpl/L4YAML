@@ -30,6 +30,54 @@ theorem stripAnchors_scalar (s : Scalar) :
     (YamlValue.scalar s).stripAnchors = .scalar { s with anchor := none } := by
   unfold YamlValue.stripAnchors; rfl
 
+/-! ### §5.0a  resolveAliases on empty anchor table is identity (R603)
+
+When the document's anchor array is `#[]` (the case for all emitter output, since
+the emitter never produces `&name` syntax), `resolveAliases` reduces to the identity
+function.  This is a KEY SIMPLIFICATION LEMMA for the compositionality chain: it lets
+us collapse `items'' = items'.map (fun v => (v.resolveAliases #[]).stripAnchors)` to
+`items'' = items'.map YamlValue.stripAnchors`, and further (with `stripAnchors` being
+identity for anchor-free emitter output) to `items'' = items'`.
+
+Proof: structural recursion on `YamlValue`, using `resolveList_eq_map` /
+`resolvePairs_eq_map` to convert the `where`-clause helpers to `List.map`, then
+`List.map_congr_left` + the IH per element to show the map is identity, and
+`Array.toArray_toList` to close the Array round-trip. -/
+/-- **`resolveAliases` on empty anchors is identity (R603).** For any `YamlValue`,
+    resolving aliases against an empty anchor table leaves the value unchanged:
+    the `.alias` case finds no match (empty search), scalars return immediately, and
+    sequences/mappings recurse element-wise (IH) and round-trip back via toArray. -/
+theorem resolveAliases_empty (v : YamlValue) : v.resolveAliases #[] = v := by
+  match v with
+  | .scalar _ => rfl
+  | .alias _ =>
+    simp only [YamlValue.resolveAliases]
+    rfl
+  | .sequence style items tag anchor =>
+    simp only [YamlValue.resolveAliases]
+    simp only [YamlValue.sequence.injEq, true_and, and_true]
+    rw [resolveList_eq_map,
+        show items.toList.map (fun x => x.resolveAliases #[]) = items.toList from
+          (List.map_congr_left (fun x hx => resolveAliases_empty x)).trans (List.map_id _)]
+  | .mapping style pairs tag anchor =>
+    simp only [YamlValue.resolveAliases]
+    simp only [YamlValue.mapping.injEq, true_and, and_true]
+    rw [resolvePairs_eq_map,
+        show pairs.toList.map (fun (k, w) => (k.resolveAliases #[], w.resolveAliases #[])) =
+             pairs.toList from
+          (List.map_congr_left (fun ⟨k, w⟩ hkw =>
+            Prod.ext (resolveAliases_empty k) (resolveAliases_empty w))).trans
+            (List.map_id _)]
+termination_by v
+decreasing_by
+  all_goals simp_wf
+  · have := List.sizeOf_lt_of_mem hx
+    cases items; simp_all [Array.mk.sizeOf_spec]; omega
+  · have := List.sizeOf_lt_of_mem hkw
+    cases pairs; simp_all [Array.mk.sizeOf_spec, Prod.mk.sizeOf_spec]; omega
+  · have := List.sizeOf_lt_of_mem hkw
+    cases pairs; simp_all [Array.mk.sizeOf_spec, Prod.mk.sizeOf_spec]; omega
+
 -- contentEq for scalars only depends on content string
 theorem contentEq_scalar_content (s₁ s₂ : Scalar)
     (h : s₁.content = s₂.content) : contentEq (.scalar s₁) (.scalar s₂) = true := by
