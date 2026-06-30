@@ -1015,4 +1015,205 @@ theorem emitPairList_allScalar_body_content_at :
              by rw [h_stack_end, h_stack_pp, h_stack_c, h_stack_v, h_stack₃, h_stack₂, h_stack₁],
              h_filter_end, h_len, h_pointwise, h_fe⟩
 
+/-- **R607. All-scalar token-array content pin for flow mappings.**
+
+    If `scanFiltered ("{" ++ emitPairList pairs ++ "}") = .ok tokens` with a non-empty all-scalar
+    `pairs`, then `tokens.size = 5 * pairs.length + 3` and for each `j < pairs.length`:
+    `tokens[2 + 5 * j + 1]!.val = .scalar sk.content .doubleQuoted` (key) and
+    `tokens[2 + 5 * j + 3]!.val = .scalar sv.content .doubleQuoted` (value).
+
+    Proof: chain-replay of `"{" ++ emitPairList ++ "}"` (mapping mirror of R597):
+    1. `scanNextToken_flow_open_mapping_init` yields `s₁` with filtered prefix `[streamStart, flowMappingStart]`.
+    2. R606 (`emitPairList_allScalar_body_content_at`) yields `s₂` and body `block`.
+    3. `scanNextToken_flow_close_mapping_outermost_ext` yields `s₃`.
+    4. `scanFiltered_tokens_eq_of_chain_short_stack` gives `tokens = s₂.filter ++ [tok_fme, streamEnd]`.
+    5. Offset-2 index arithmetic connects `tokens[2 + 5*j + k]` to `block[5*j + k]`. -/
+theorem scanFiltered_emitMap_allScalar_pair_at
+    (pairs : List (YamlValue × YamlValue)) (h_ne : pairs ≠ [])
+    (h_all : ∀ p ∈ pairs, ∃ sk sv : Scalar, p.1 = .scalar sk ∧ p.2 = .scalar sv)
+    (tokens : Array (Positioned YamlToken))
+    (h_scan : Scanner.scanFiltered ("{" ++ emit.emitPairList pairs ++ "}") = .ok tokens) :
+    tokens.size = 5 * pairs.length + 3 ∧
+    tokens[1]!.val = .flowMappingStart ∧
+    (∀ j : Nat, j < pairs.length → ∀ sk sv : Scalar, pairs[j]? = some (.scalar sk, .scalar sv) →
+        tokens[2 + 5 * j + 1]!.val = .scalar sk.content .doubleQuoted ∧
+        tokens[2 + 5 * j + 3]!.val = .scalar sv.content .doubleQuoted) ∧
+    (∀ j : Nat, j + 1 < pairs.length →
+        tokens[2 + 5 * j + 4]!.val = .flowEntry) ∧
+    tokens[5 * pairs.length + 1]!.val = .flowMappingEnd := by
+  let input := "{" ++ emit.emitPairList pairs ++ "}"
+  have h_toList : input.toList = '{' :: (emit.emitPairList pairs).toList ++ ['}'] := by
+    simp only [input, String.toList_append]; rfl
+  -- ═══ Step 1: open brace → s₁ ═══
+  obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_col₁,
+          h_inflow₁, h_indent₁, h_ek₁, h_line₁, h_atol₁, h_endline₁, _h_sk₁, h_filt₁,
+          h_sync₁, h_ska₁, _h_ssv₁⟩ :=
+    scanNextToken_flow_open_mapping_init input ((emit.emitPairList pairs).toList ++ ['}']) h_toList
+  -- ═══ Step 2: body scan via R606 → s₂ and body block ═══
+  obtain ⟨_n₂, s₂, block, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, h_inflow₂,
+          h_indent₂, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_block_eq₂, h_block_len,
+          h_block_content, h_block_fe_content⟩ :=
+    emitPairList_allScalar_body_content_at pairs h_ne h_all s₁ ['}']
+      h_corr₁ h_inflow₁ (by rw [h_fl₁]; omega) h_indent₁ (by rw [h_col₁]; omega)
+      h_ek₁ (h_line₁ ▸ h_atol₁) h_endline₁ h_ska₁ h_sync₁
+  -- ═══ Step 3: close brace → s₃ ═══
+  obtain ⟨s₃, h_snt₃, h_fl₃, h_dp₃, h_peek₃, h_ids₃, ⟨tok_fme, h_tok_fme_val, h_filt₃⟩⟩ :=
+    scanNextToken_flow_close_mapping_outermost_ext s₂ h_corr₂ h_inflow₂ h_indent₂ h_col₂
+      (by rw [h_fl₂, h_fl₁]) (by rw [h_dp₂, h_dp₁])
+  -- ═══ Step 4: chain composition + token equation ═══
+  have h_eof : scanNextToken s₃ = .ok none := scanNextToken_eof s₃ h_peek₃
+  have h_chain_all := (ScanChain.single h_snt₁).trans
+    (h_chain₂.toScanChain.trans (ScanChain.single h_snt₃))
+  have h_no_bom : (ScannerState.mk' input).peek? ≠ some '﻿' := by
+    have h_chars := chars_from_zero_toList input
+    rw [h_toList] at h_chars
+    have h_corr0 := initial_corr input _ h_chars
+    have ⟨h_pk, _⟩ :=
+      peek_of_chars_cons _ '{' ((emit.emitPairList pairs).toList ++ ['}']) 0 h_corr0
+    rw [h_pk]; decide
+  have h_indents_small : s₃.indents.size ≤ 1 := by
+    rw [h_ids₃, h_ids₂, h_ids₁]
+    unfold ScannerState.emit ScannerState.mk'
+    dsimp only []
+    decide
+  have h_tok_eq : Scanner.scanFiltered input =
+      .ok ((s₃.emit .streamEnd).tokens.filter filt) :=
+    scanFiltered_tokens_eq_of_chain_short_stack input _ s₃ _ rfl h_no_bom
+      h_chain_all h_eof h_fl₃ h_dp₃
+      (ScanChain.fuel_bound _ _ _ _ rfl h_chain_all h_eof)
+      h_indents_small
+  have h_tokens_eq : tokens = (s₃.emit .streamEnd).tokens.filter filt := by
+    have : Scanner.scanFiltered input = .ok tokens := h_scan
+    rw [h_tok_eq] at this; exact (Except.ok.inj this).symm
+  -- ═══ Step 5: decompose token array ═══
+  have h_emit_se : (s₃.emit .streamEnd).tokens =
+      s₃.tokens.push { pos := s₃.currentPos, val := .streamEnd } :=
+    rfl
+  have h_final_filter : (s₃.emit .streamEnd).tokens.filter filt =
+      (s₃.tokens.filter filt).push { pos := s₃.currentPos, val := .streamEnd } := by
+    rw [h_emit_se, Array.filter_push]; rfl
+  have h_tokens_decomp : tokens = ((s₂.tokens.filter filt).push tok_fme).push
+      { pos := s₃.currentPos, val := .streamEnd } := by
+    rw [h_tokens_eq, h_final_filter, h_filt₃]
+  -- ═══ Step 6: filtered prefix size ═══
+  have h_filt₁_sz : (s₁.tokens.filter filt).size = 2 := by
+    have : ((s₁.tokens.filter filt).map (·.val)).size = 2 := by rw [h_filt₁]; rfl
+    simpa [Array.size_map] using this
+  have h_s1_filt_len : (s₁.tokens.filter filt).toList.length = 2 := by
+    rw [Array.length_toList]; exact h_filt₁_sz
+  -- ═══ Step 7: s₂ filtered size ═══
+  have h_s2_filt_sz : (s₂.tokens.filter filt).size = 2 + block.length := by
+    have h_len := congrArg List.length h_block_eq₂
+    simp only [List.length_append, Array.length_toList] at h_len
+    rw [h_filt₁_sz] at h_len; omega
+  -- ═══ Step 8: overall token size ═══
+  have h_pairs_len_pos : 1 ≤ pairs.length := List.length_pos_iff.mpr h_ne
+  have h_tokens_sz : tokens.size = 5 * pairs.length + 3 := by
+    rw [h_tokens_decomp]; simp only [Array.size_push]
+    rw [h_s2_filt_sz, h_block_len]; omega
+  -- ═══ Step 9/10: s₁ filtered-array position 1 = flowMappingStart ═══
+  have h_filt₁_val1 : ((s₁.tokens.filter filt)[1]'(by rw [h_filt₁_sz]; omega)).val =
+      .flowMappingStart := by
+    have hmapped : ((s₁.tokens.filter filt).map (·.val))[1]'
+        (by simp [Array.size_map, h_filt₁_sz]) = .flowMappingStart := by
+      simp [h_filt₁]
+    rwa [Array.getElem_map] at hmapped
+  have h_t1 : tokens[1]!.val = .flowMappingStart := by
+    have h1_lt_s2 : 1 < (s₂.tokens.filter filt).size := by rw [h_s2_filt_sz]; omega
+    have h1_lt_s1 : 1 < (s₁.tokens.filter filt).size := by rw [h_filt₁_sz]; omega
+    rw [h_tokens_decomp, getElem!_pos _ _ (by simp only [Array.size_push]; omega)]
+    rw [Array.getElem_push_lt (by simp only [Array.size_push]; omega)]
+    rw [Array.getElem_push_lt h1_lt_s2]
+    have h_eq : (s₂.tokens.filter filt)[1]'h1_lt_s2 = (s₁.tokens.filter filt)[1]'h1_lt_s1 := by
+      show (s₂.tokens.filter filt).toList[1]'(by rw [Array.length_toList]; exact h1_lt_s2) =
+          (s₁.tokens.filter filt).toList[1]'(by rw [Array.length_toList]; exact h1_lt_s1)
+      simp only [h_block_eq₂]
+      exact List.getElem_append_left (by rw [Array.length_toList]; exact h1_lt_s1)
+    calc ((s₂.tokens.filter filt)[1]'h1_lt_s2).val
+        = ((s₁.tokens.filter filt)[1]'h1_lt_s1).val := congrArg Positioned.val h_eq
+      _ = .flowMappingStart := h_filt₁_val1
+  -- ═══ Step 11: all five conclusions ═══
+  refine ⟨h_tokens_sz, h_t1, ?_, ?_, ?_⟩
+  · -- Key+value scalar pointwise
+    intro j hj sk sv h_pair
+    obtain ⟨h_k_lt, h_k_val, h_v_lt, h_v_val⟩ := h_block_content j hj sk sv h_pair
+    constructor
+    · -- key: tokens[2+5*j+1]!.val = .scalar sk.content .doubleQuoted
+      have h_klt_s2 : 2 + 5 * j + 1 < (s₂.tokens.filter filt).size := by
+        rw [h_s2_filt_sz]; omega
+      rw [h_tokens_decomp, getElem!_pos _ _ (by simp only [Array.size_push]; omega)]
+      rw [Array.getElem_push_lt (by simp only [Array.size_push]; omega)]
+      rw [Array.getElem_push_lt h_klt_s2]
+      have h_at_k : (s₂.tokens.filter filt)[2 + 5 * j + 1]'h_klt_s2 =
+          block[5 * j + 1]'h_k_lt := by
+        have h_lhs_lt : 2 + 5 * j + 1 < (s₂.tokens.filter filt).toList.length := by
+          rw [Array.length_toList]; exact h_klt_s2
+        have h_opt : (s₂.tokens.filter filt).toList[2 + 5 * j + 1]? = block[5 * j + 1]? := by
+          rw [h_block_eq₂, List.getElem?_append_right (by rw [h_s1_filt_len]; omega)]
+          congr 1; rw [h_s1_filt_len]; omega
+        rw [List.getElem?_eq_getElem h_lhs_lt, List.getElem?_eq_getElem h_k_lt] at h_opt
+        have h_list_eq := Option.some.inj h_opt
+        rwa [Array.getElem_toList] at h_list_eq
+      rw [h_at_k, (getElem!_pos block (5 * j + 1) h_k_lt).symm]
+      exact h_k_val
+    · -- value: tokens[2+5*j+3]!.val = .scalar sv.content .doubleQuoted
+      have h_vlt_s2 : 2 + 5 * j + 3 < (s₂.tokens.filter filt).size := by
+        rw [h_s2_filt_sz]; omega
+      rw [h_tokens_decomp, getElem!_pos _ _ (by simp only [Array.size_push]; omega)]
+      rw [Array.getElem_push_lt (by simp only [Array.size_push]; omega)]
+      rw [Array.getElem_push_lt h_vlt_s2]
+      have h_at_v : (s₂.tokens.filter filt)[2 + 5 * j + 3]'h_vlt_s2 =
+          block[5 * j + 3]'h_v_lt := by
+        have h_lhs_lt : 2 + 5 * j + 3 < (s₂.tokens.filter filt).toList.length := by
+          rw [Array.length_toList]; exact h_vlt_s2
+        have h_opt : (s₂.tokens.filter filt).toList[2 + 5 * j + 3]? = block[5 * j + 3]? := by
+          rw [h_block_eq₂, List.getElem?_append_right (by rw [h_s1_filt_len]; omega)]
+          congr 1; rw [h_s1_filt_len]; omega
+        rw [List.getElem?_eq_getElem h_lhs_lt, List.getElem?_eq_getElem h_v_lt] at h_opt
+        have h_list_eq := Option.some.inj h_opt
+        rwa [Array.getElem_toList] at h_list_eq
+      rw [h_at_v, (getElem!_pos block (5 * j + 3) h_v_lt).symm]
+      exact h_v_val
+  · -- flowEntry: tokens[2+5*j+4]!.val = .flowEntry for j + 1 < pairs.length
+    intro j hj
+    obtain ⟨h_fe_lt, h_fe_val⟩ := h_block_fe_content j hj
+    have h_felt_s2 : 2 + 5 * j + 4 < (s₂.tokens.filter filt).size := by
+      rw [h_s2_filt_sz]; omega
+    rw [h_tokens_decomp, getElem!_pos _ _ (by simp only [Array.size_push]; omega)]
+    rw [Array.getElem_push_lt (by simp only [Array.size_push]; omega)]
+    rw [Array.getElem_push_lt h_felt_s2]
+    have h_at_fe : (s₂.tokens.filter filt)[2 + 5 * j + 4]'h_felt_s2 =
+        block[5 * j + 4]'h_fe_lt := by
+      have h_lhs_lt : 2 + 5 * j + 4 < (s₂.tokens.filter filt).toList.length := by
+        rw [Array.length_toList]; exact h_felt_s2
+      have h_opt : (s₂.tokens.filter filt).toList[2 + 5 * j + 4]? = block[5 * j + 4]? := by
+        rw [h_block_eq₂, List.getElem?_append_right (by rw [h_s1_filt_len]; omega)]
+        congr 1; rw [h_s1_filt_len]; omega
+      rw [List.getElem?_eq_getElem h_lhs_lt, List.getElem?_eq_getElem h_fe_lt] at h_opt
+      have h_list_eq := Option.some.inj h_opt
+      rwa [Array.getElem_toList] at h_list_eq
+    rw [h_at_fe, (getElem!_pos block (5 * j + 4) h_fe_lt).symm]
+    exact h_fe_val
+  · -- flowMappingEnd: tokens[5*pairs.length+1]!.val = .flowMappingEnd
+    have h_idx : (s₂.tokens.filter filt).size = 5 * pairs.length + 1 := by
+      rw [h_s2_filt_sz, h_block_len]; omega
+    have h_idx_list : (s₂.tokens.filter filt).toList.length = 5 * pairs.length + 1 := by
+      rw [Array.length_toList]; exact h_idx
+    have h_lt : 5 * pairs.length + 1 < tokens.size := by rw [h_tokens_sz]; omega
+    have h_lt2 : 5 * pairs.length + 1 < tokens.toList.length := by
+      rw [Array.length_toList]; exact h_lt
+    have h_tlist : tokens.toList = (s₂.tokens.filter filt).toList ++
+        [tok_fme, { pos := s₃.currentPos, val := .streamEnd }] := by
+      rw [h_tokens_decomp]; simp [Array.toList_push]
+    have h_opt : tokens.toList[5 * pairs.length + 1]? = some tok_fme := by
+      rw [h_tlist, List.getElem?_append_right (by rw [h_idx_list]; omega)]
+      simp only [h_idx_list, Nat.sub_self, List.getElem?_cons_zero]
+    rw [List.getElem?_eq_getElem h_lt2] at h_opt
+    have h_elem : tokens.toList[5 * pairs.length + 1]'h_lt2 = tok_fme :=
+      Option.some.inj h_opt
+    have h_tok_fme_eq : tokens[5 * pairs.length + 1]! = tok_fme := by
+      rw [getElem!_pos tokens (5 * pairs.length + 1) h_lt]
+      rwa [Array.getElem_toList] at h_elem
+    rw [h_tok_fme_eq]; exact h_tok_fme_val
+
 end L4YAML.Proofs.EmitterScannability
