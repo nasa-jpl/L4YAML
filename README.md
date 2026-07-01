@@ -127,13 +127,24 @@ five reduce to two independent obligations:
     `flowBracketBalance_matching_close` needs) and `frame_matching_close_at_end`
     (for `n ≥ 2` the matching close is the span's last token, body balanced).
     What remains of P2a is the parser-side fuel-indexed mutual induction (the
-    upper-bound companion to the lower-bound `ParseNodePosMono`).
+    upper-bound companion to the lower-bound `ParseNodePosMono`). Note for that
+    build: the flow parser is *lookahead-driven* — its loops exit on
+    `peek? = flowSequenceEnd`, never consulting a bracket counter — so no lemma
+    yet connects parseNode's consumption to `flowBracketBalance`; that bridge is
+    the vertical gap the induction must close (the combinatorial bricks above are
+    scanner-side).
   - **Bridge — scanner span:** an element's emitted tokens form a contiguous
     run inside the whole sequence's tokens — the variable-width generalization
     of the all-scalar scanner facts (R596/R597).
   - **P2b — value span-locality** (`ParseNodeValueSpanLocal`): the crux mutual
     induction over the flow parser clique, consuming P2a's frame and the
-    Bridge's agreement.
+    Bridge's agreement. Its target statement was corrected again on 2026-07-01:
+    the conclusion must project through `.toOption.map` (failure ↦ `none`), not
+    the error-sensitive `Except.map`, because parseNode's fuel-0 failure payload
+    is position-dependent (`.nestingDepthExceeded ps.currentLine`). The `.map`
+    form is `sorry`-free-refuted (`p2b_map_form_false`) at the failing boundary —
+    which the success-only probes had never exercised — and the corrected form
+    survives it (`p2b_toOption_form_survives`).
   - **P1 — loop-value:** threads P2a and P2b through the flow loop, computing
     each element's cumulative start offset.
 

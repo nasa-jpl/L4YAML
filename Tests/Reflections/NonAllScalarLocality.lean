@@ -308,13 +308,19 @@ theorem p2_axisA_value_invariant_state_not :
       && !((parseNode p2_psF 100).toOption.map (·.2.pos)
             == (parseNode p2_psS 100).toOption.map (·.2.pos)) ) = true := by native_decide
 
-/-- The refined P2 target — **value span-locality** — as a typechecked `Prop`.  Note the corrections
-    forced by the axes above: BOUNDED `.val`-agreement hypothesis (`k < n`, on `·.val`), and a
-    VALUE-projected conclusion (`.map (·.1)`).  The two `ps'.pos ≤ p + n` clauses are the FRAME
-    side-condition **P2a** (parseNode stays within its span), for which `parseNode_pos_mono_all`
-    is the established mutual-induction precedent.  Inhabitation-debt discipline: this is captured as
-    a well-typed `Prop` and validated at the boundary by the `native_decide`s above — it is NOT
-    proved here, and NO `sorry` asserts it. -/
+/-- The refined P2 target — **value span-locality** — as a typechecked `Prop`.  Corrections forced by
+    the axes above: BOUNDED `.val`-agreement hypothesis (`k < n`, on `·.val`) and a VALUE-projected
+    conclusion.  **A FOURTH correction, found this pass (2026-07-01): the conclusion must be
+    error-INSENSITIVE** — `.toOption.map (·.1)` (failure ↦ `none`), NOT the `Except`-level `.map (·.1)`.
+    parseNode's failure payload is position-dependent (fuel-0 returns `.error (.nestingDepthExceeded
+    ps.currentLine)`, and `currentLine` reads the current token's `.pos.line`), so the error-sensitive
+    `.map` form is FALSE at the FAILING boundary: two agreeing positions on different lines fail with
+    different errors while the agreement holds and the frame conditions are vacuous.  `p2b_map_form_false`
+    refutes it; `p2b_toOption_form_survives` shows the corrected form survives that witness.  The earlier
+    probes ALREADY projected through `.toOption` (Axis A) — only the `def` was over-strong.  The two
+    `ps'.pos ≤ p + n` clauses are the FRAME side-condition **P2a**.  Inhabitation-debt discipline:
+    captured as a well-typed `Prop`, validated at the SUCCESS boundary (axes above) AND the FAILING
+    boundary (`p2b_*` below); NOT proved here, NO `sorry`. -/
 def ParseNodeValueSpanLocal : Prop :=
   ∀ (t1 t2 : Array (Positioned YamlToken)) (p1 p2 f n : Nat)
     (anch : Array (String × YamlValue)),
@@ -323,8 +329,68 @@ def ParseNodeValueSpanLocal : Prop :=
       ps'.pos ≤ p1 + n) →
     (∀ v ps', parseNode { tokens := t2, pos := p2, anchors := anch } f = .ok (v, ps') →
       ps'.pos ≤ p2 + n) →
-    (parseNode { tokens := t1, pos := p1, anchors := anch } f).map (·.1)
-      = (parseNode { tokens := t2, pos := p2, anchors := anch } f).map (·.1)
+    (parseNode { tokens := t1, pos := p1, anchors := anch } f).toOption.map (·.1)
+      = (parseNode { tokens := t2, pos := p2, anchors := anch } f).toOption.map (·.1)
+
+/-! ### P2b projection CORRECTION (inhabitation-debt Rule 2 — the FAILING boundary was never probed)
+
+The success-boundary probes above (`p2_axisA` …) all project through `.toOption`, but the `def` was
+first written with the `Except`-level `.map (·.1)`, which is error-SENSITIVE.  The failing boundary was
+never exercised, and it REFUTES the `.map` form: parseNode's fuel-0 error is
+`.nestingDepthExceeded ps.currentLine`, and `currentLine` reads the current token's `.pos.line`, so two
+agreeing positions on different lines fail with different errors.  Witness: a single scalar token,
+identical `.val`, `.pos.line` 0 vs 1.  This is a textbook Rule-2 catch — a `Prop` that passes every
+SUCCESS probe was still false at the un-probed FAILING edge; see [[inhabitation-debt-validate-target-defs]]. -/
+
+/-- One scalar token at a chosen source line; identical `.val`, different `.pos.line`. -/
+def p2b_tokL (line : Nat) : Array (Positioned YamlToken) :=
+  #[ { pos := { offset := 0, line := line, col := 0 }, val := .scalar "x" .plain } ]
+
+/-- Decidable projection exposing the position-dependent fuel-0 error line. -/
+def p2b_errLine : Except ScanError YamlValue → Option Nat
+  | .error (.nestingDepthExceeded l) => some l
+  | _ => none
+
+/-- **The error-SENSITIVE `.map (·.1)` form of value span-locality is FALSE** — the reason the `def`
+    above projects through `.toOption`.  At `f = 0` both parses fail with `.nestingDepthExceeded
+    ps.currentLine`; the bounded agreement holds (identical `.val`) and both frame conditions are
+    vacuous (no `.ok` on failure), yet the two `Except`-mapped conclusions carry different error lines. -/
+theorem p2b_map_form_false :
+    ¬ (∀ (t1 t2 : Array (Positioned YamlToken)) (p1 p2 f n : Nat)
+        (anch : Array (String × YamlValue)),
+        (∀ k, k < n → (t1[p1 + k]?.map (·.val)) = (t2[p2 + k]?.map (·.val))) →
+        (∀ v ps', parseNode { tokens := t1, pos := p1, anchors := anch } f = .ok (v, ps') →
+          ps'.pos ≤ p1 + n) →
+        (∀ v ps', parseNode { tokens := t2, pos := p2, anchors := anch } f = .ok (v, ps') →
+          ps'.pos ≤ p2 + n) →
+        (parseNode { tokens := t1, pos := p1, anchors := anch } f).map (·.1)
+          = (parseNode { tokens := t2, pos := p2, anchors := anch } f).map (·.1)) := by
+  intro H
+  have hcon := H (p2b_tokL 0) (p2b_tokL 1) 0 0 0 1 #[]
+    (by intro k hk; rcases k with _ | m
+        · decide
+        · omega)
+    (by intro v ps' h
+        have hno : (parseNode { tokens := p2b_tokL 0, pos := 0, anchors := #[] } 0).toOption.isSome = false := by
+          native_decide
+        rw [h] at hno; simp [Except.toOption] at hno)
+    (by intro v ps' h
+        have hno : (parseNode { tokens := p2b_tokL 1, pos := 0, anchors := #[] } 0).toOption.isSome = false := by
+          native_decide
+        rw [h] at hno; simp [Except.toOption] at hno)
+  have h0 : p2b_errLine ((parseNode { tokens := p2b_tokL 0, pos := 0, anchors := #[] } 0).map (·.1)) = some 0 := by
+    native_decide
+  have h1 : p2b_errLine ((parseNode { tokens := p2b_tokL 1, pos := 0, anchors := #[] } 0).map (·.1)) = some 1 := by
+    native_decide
+  rw [hcon, h1] at h0
+  exact absurd h0 (by decide)
+
+/-- The corrected `.toOption.map` form SURVIVES the witness that killed the `.map` form: both parses
+    fail, `.toOption` sends both to `none`, so the conclusion holds. -/
+theorem p2b_toOption_form_survives :
+    ((parseNode { tokens := p2b_tokL 0, pos := 0, anchors := #[] } 0).toOption.map (·.1)
+      == (parseNode { tokens := p2b_tokL 1, pos := 0, anchors := #[] } 0).toOption.map (·.1)) = true := by
+  native_decide
 
 /-! ## P2a (FRAME) + Bridge birth-probes (inhabitation-debt Rule 1 + Rule 2)
 
@@ -674,5 +740,24 @@ eventual P1/P2a/P2b/Bridge proofs must satisfy. -/
 /-- info: 'NonAllScalarLocality.frame_matching_close_at_end' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms frame_matching_close_at_end
+
+/-! The P2b projection refutation and its corrected-form survival probe are `sorry`-free (the
+    `native_decide` axioms are the standard reflected-`decide` ones, as for every probe in this file). -/
+/-- info: 'NonAllScalarLocality.p2b_map_form_false' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ p2b_map_form_false._native.native_decide.ax_1_2,
+ p2b_map_form_false._native.native_decide.ax_1_6,
+ p2b_map_form_false._native.native_decide.ax_1_7,
+ p2b_map_form_false._native.native_decide.ax_1_8] -/
+#guard_msgs (whitespace := lax) in
+#print axioms p2b_map_form_false
+
+/-- info: 'NonAllScalarLocality.p2b_toOption_form_survives' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ p2b_toOption_form_survives._native.native_decide.ax_1_1] -/
+#guard_msgs (whitespace := lax) in
+#print axioms p2b_toOption_form_survives
 
 end NonAllScalarLocality
