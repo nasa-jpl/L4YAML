@@ -102,15 +102,38 @@ five reduce to two independent obligations:
   navigator up to `FlowSubrangesOk` — and thereby discharges #1 and #2 — is
   already verified and waiting on it, so #5 is the sole remaining piece of
   *mathematical* content on this track.
-- **Track B — `parseNode` span-locality** (`parseNode_position_invariant`):
-  the parser's `YamlValue` output depends only on the tokens forward of its
-  start position, never on the absolute offset or on trailing siblings. The
-  target was probed *true at its boundary* on 2026-07-01 (`YamlValue` is
-  position-free; `YamlDocument.compose` strips positions into a separate
-  field), with a three-step plan — a whole-stream loop-value theorem, the
-  span-locality mutual induction, and standalone `compose`. The all-scalar
-  branch already closes by canonical form; only the non-scalar branches (#3,
-  #4) need the general theorem. Boundary regression fixtures live in
+- **Track B — `parseNode` span-locality:** the parser's `YamlValue` output
+  depends only on the tokens forward of its start position, never on the
+  absolute offset or on trailing siblings (`YamlValue` is position-free;
+  `YamlDocument.compose` strips positions into a separate field). The precise
+  statement was pinned on 2026-07-01: the earlier `∀k`/whole-state form
+  (`parseNode_position_invariant`) is unusable — it disagrees on the output
+  position and its hypothesis is unsatisfiable in the application — so the
+  target projects the *value* under *bounded* `.val`-agreement
+  (`ParseNodeValueSpanLocal`). Closing #3/#4 factors into four pieces,
+  cheapest first:
+  - **P2a — frame:** `parseNode` advances to exactly its matching bracket
+    close (`ParseNodeFrameWithinSpan`, on a positive Dyck span `0 < n`), located
+    via `flowBracketBalance_matching_close`. This is *not* a strengthening of the
+    existing position-monotonicity lemma, which bounds position only from
+    below; the leaf precedent is the scalar `advances_by_one`. The `0 < n` guard
+    was found necessary on 2026-07-01 (the degenerate `n = 0` satisfies the Dyck
+    conditions vacuously yet forces `ps'.pos = p`, refuting the unguarded form);
+    with it the span is unique (`frameSpan_unique`, proved `sorry`-free), so the
+    frame's `n` is the matching-close span.
+  - **Bridge — scanner span:** an element's emitted tokens form a contiguous
+    run inside the whole sequence's tokens — the variable-width generalization
+    of the all-scalar scanner facts (R596/R597).
+  - **P2b — value span-locality** (`ParseNodeValueSpanLocal`): the crux mutual
+    induction over the flow parser clique, consuming P2a's frame and the
+    Bridge's agreement.
+  - **P1 — loop-value:** threads P2a and P2b through the flow loop, computing
+    each element's cumulative start offset.
+
+  P2a and the Bridge are birth-probed *tight* / *contiguous* on real tokens,
+  and the all-scalar branch already closes by canonical form, so only the
+  non-scalar branches (#3, #4) remain. The typed targets and boundary
+  regression fixtures live in
   [Tests/Reflections/NonAllScalarLocality.lean](Tests/Reflections/NonAllScalarLocality.lean).
 
 The two tracks are independent and can be closed in either order. Apart from

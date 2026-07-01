@@ -353,15 +353,63 @@ GENUINE separate leaf, NOT absorbed into P1. -/
     lower-bound `parseNode_pos_mono_all`; together they pin `ps'.pos`.  This is exactly the FRAME
     hypothesis `ParseNodeValueSpanLocal` consumes.  The Dyck conditions say `[p, p+n)` is a balanced,
     first-return span (`tokens[p]` opens, balance stays ≥ 1 strictly inside, hits 0 at `p+n`) — the
-    matching close `flowBracketBalance_matching_close` produces.  Typechecked target, validated at the
-    boundary by `p2a_*` below; NOT proved, NO `sorry`. -/
+    matching close `flowBracketBalance_matching_close` produces.  **The `0 < n` guard is load-bearing**
+    (found this pass while going to prove P2a): without it `n = 0` satisfies both Dyck conditions
+    vacuously (`flowBracketBalance t p (p + 0) = flowBracketBalance t p p = 0` by the empty-range branch;
+    the interior `∀ i, p < i < p` is vacuous) while forcing the FALSE `ps'.pos = p` — `parseNode` always
+    advances on success.  `p2a_n0_hole_refutes_unguarded` refutes the unguarded form on a real witness,
+    and `frameSpan_unique` shows the guarded conditions pin `n` uniquely.  Typechecked target, validated
+    at the boundary by `p2a_*` below; NOT proved, NO `sorry`. -/
 def ParseNodeFrameWithinSpan : Prop :=
   ∀ (t : Array (Positioned YamlToken)) (p n f : Nat) (v : YamlValue) (ps' : ParseState)
     (anch : Array (String × YamlValue)),
+    0 < n →
     flowBracketBalance t p (p + n) = 0 →
     (∀ i, p < i → i < p + n → flowBracketBalance t p i ≥ 1) →
     parseNode { tokens := t, pos := p, anchors := anch } f = .ok (v, ps') →
     ps'.pos = p + n
+
+/-! ### P2a target CORRECTION (inhabitation-debt Rule 2 — the `n = 0` boundary)
+
+Going to PROVE P2a, the first move is Rule 1 / Rule 2: probe the target at its BOUNDARY.  The degenerate
+`n = 0` edge — never fired by the `p2a_*` span probes, which all use the true `n > 0` span — REFUTES the
+unguarded frame.  `flowBracketBalance t p (p + 0) = flowBracketBalance t p p = 0` (empty range; def
+`if lo ≥ hi then 0`) and the interior quantifier is vacuous, so BOTH Dyck hypotheses hold at `n = 0` for
+ANY `p` — yet the conclusion demands `ps'.pos = p`, and `parseNode` always advances on success.  The fix
+is the `0 < n` guard now in the def.  This is the third Rule-2 save on the Front-B frontier (cf. the
+Axis-B `∀k`-unsat and the mono-lower-bound corrections): a birth-probed `Prop` that typechecks and
+passes every span probe can still be FALSE at an un-probed edge. -/
+
+/-- **Refutation of the UNGUARDED frame at `n = 0`.**  On the real witness `p2_full` at `p = 2`:
+    the first Dyck hypothesis holds (`flowBracketBalance … 2 (2+0) = 0`, empty span) and the interior
+    hypothesis is vacuous, so the unguarded `ParseNodeFrameWithinSpan` would demand `ps'.pos = 2 + 0 = 2`.
+    But `parseNode` lands at `5`.  Hence the unguarded target is FALSE; the `0 < n` guard is necessary. -/
+theorem p2a_n0_hole_refutes_unguarded :
+    ( (flowBracketBalance (p2_toks p2_full) 2 (2 + 0) == (0 : Int))
+      && ((parseNode { tokens := p2_toks p2_full, pos := 2 } 100).toOption.map (·.2.pos) == some 5)
+      && !((5 : Nat) == 2 + 0) ) = true := by native_decide
+
+/-- **Guarded conditions pin the span uniquely.**  With `0 < n`, the balanced-first-return conditions
+    determine `n`: two positive spans that both balance to 0 with a strictly-positive interior are equal
+    (else the smaller span's endpoint sits strictly inside the larger, where the interior floor forces
+    balance ≥ 1, contradicting its own balance-0).  Pure `flowBracketBalance` combinatorics — no
+    `parseNode`.  This is the well-formedness the `0 < n` guard restores (the conclusion `ps'.pos = p + n`
+    now names a UNIQUE `n`) and a genuine building block: it lets the frame's `n` be identified with the
+    `flowBracketBalance_matching_close` span. -/
+theorem frameSpan_unique
+    (t : Array (Positioned YamlToken)) (p n1 n2 : Nat)
+    (h1pos : 0 < n1) (h2pos : 0 < n2)
+    (h1zero : flowBracketBalance t p (p + n1) = 0)
+    (h2zero : flowBracketBalance t p (p + n2) = 0)
+    (h1int : ∀ i, p < i → i < p + n1 → flowBracketBalance t p i ≥ 1)
+    (h2int : ∀ i, p < i → i < p + n2 → flowBracketBalance t p i ≥ 1) :
+    n1 = n2 := by
+  rcases Nat.lt_trichotomy n1 n2 with h | h | h
+  · have hbad := h2int (p + n1) (by omega) (by omega)
+    rw [h1zero] at hbad; omega
+  · exact h
+  · have hbad := h1int (p + n2) (by omega) (by omega)
+    rw [h2zero] at hbad; omega
 
 /-! ### P2a boundary probes -- parseNode advances to EXACTLY the matching close, never to EOF.
 
@@ -436,12 +484,15 @@ sorry's locality equality `(parseYamlRaw (emit items[i]) composed)[0]!.value = i
   The hard part is the position invariant: the all-scalar closed form `pos_k = 2*k+1` generalises to the
   CUMULATIVE `pos_i = 2 + Σ_{j<i}(width_j + 1)` because element widths now vary.  *Missing.*
 * **P2a — FRAME / reads-within-span** (NEW, forced by Axis B) = `ParseNodeFrameWithinSpan` above:
-  `parseNode {t, p} f = .ok (_, ps') → ps'.pos = p + n` on a Dyck-balanced span `[p, p+n)`.  **NOT a
-  strengthening of `parseNode_pos_mono_all`** (that proves only the LOWER bound `ps'.pos ≥ ps.pos`);
-  P2a is the UPPER bound and must LOCATE the matching close — `flowBracketBalance_matching_close`
+  `parseNode {t, p} f = .ok (_, ps') → ps'.pos = p + n` on a Dyck-balanced span `[p, p+n)` with `0 < n`.
+  **NOT a strengthening of `parseNode_pos_mono_all`** (that proves only the LOWER bound `ps'.pos ≥
+  ps.pos`); P2a is the UPPER bound and must LOCATE the matching close — `flowBracketBalance_matching_close`
   supplies the span, and P2a reuses the mono induction's SHAPE (mutual over the flow sub-clique) while
-  threading balance.  Leaf precedent: `parseNode_scalar_advances_by_one` (the `n = 1` case).  Probed
-  tight at the boundary (`p2a_*`).  *Missing.*
+  threading balance.  Leaf precedent: `parseNode_scalar_advances_by_one` (the `n = 1` case).  The `0 < n`
+  guard was found necessary this pass (`n = 0` refuted the unguarded form —
+  `p2a_n0_hole_refutes_unguarded`); with it the span is unique (`frameSpan_unique`, landed sorry-free),
+  so the conclusion's `n` can be identified with the matching-close span.  Probed tight at the boundary
+  (`p2a_*`).  *Missing (the parseNode mutual induction; correction + uniqueness landed).*
 * **P2b — value span-locality** = `ParseNodeValueSpanLocal` above: value invariant under BOUNDED
   `.val`-agreement + the two frame side-conditions.  Mutual induction over the parser clique
   (parseNode / parseNodeContent / parseFlowSequenceLoop / parseFlowMappingLoop / …), projecting the
@@ -479,5 +530,18 @@ eventual P1/P2a/P2b/Bridge proofs must satisfy. -/
  locality_eq_slot0._native.native_decide.ax_1_1] -/
 #guard_msgs (whitespace := lax) in
 #print axioms locality_eq_slot0
+
+/-- info: 'NonAllScalarLocality.p2a_n0_hole_refutes_unguarded' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ p2a_n0_hole_refutes_unguarded._native.native_decide.ax_1_1] -/
+#guard_msgs (whitespace := lax) in
+#print axioms p2a_n0_hole_refutes_unguarded
+
+/-! The span-uniqueness building block is `sorry`-free and `Classical`-free: `[propext, Quot.sound]`
+    only (`omega` on the arithmetic goal `n1 = n2` does not pull `Classical.choice`). -/
+/-- info: 'NonAllScalarLocality.frameSpan_unique' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms frameSpan_unique
 
 end NonAllScalarLocality
