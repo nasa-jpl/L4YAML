@@ -261,6 +261,14 @@ import Tests.Reflections.ScannerSpanLocality
 import Tests.Reflections.ScalarLocalityBridge
 import Tests.Reflections.ComposeMapPairsPointwise
 import Tests.Reflections.FlowMapLoopWitness
+import Tests.Reflections.FlowSeqLoopWitness
+import Tests.Reflections.FlowSeqLoopValueAt
+import Tests.Reflections.FlowMapLoopPairAt
+import Tests.Reflections.ScannerMapSpanLocality
+import Tests.Reflections.ResolveAliasesEmpty
+import Tests.Reflections.MappingAllScalarLocality
+import Tests.Reflections.R447RootCarrier
+import Tests.Reflections.NonAllScalarLocality
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
