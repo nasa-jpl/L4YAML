@@ -392,6 +392,239 @@ theorem p2b_toOption_form_survives :
       == (parseNode { tokens := p2b_tokL 1, pos := 0, anchors := #[] } 0).toOption.map (·.1)) = true := by
   native_decide
 
+/-! ### P2b SCALAR LEAF — the first branch of the corrected `ParseNodeValueSpanLocal`, `sorry`-free
+
+With P2b's statement fixed to `.toOption.map`, its eventual mutual induction's FIRST branch — a scalar
+head — discharges NOW, and the proof reveals a simplification worth recording: **the scalar case needs
+NEITHER frame side-condition NOR the `k ≥ 1` agreement.**  A scalar-head parse is trailing-independent
+(`parseNode_scalar_produces_scalar` routes the scalar peek straight to its value, and
+`applyNodeFinalization` leaves a scalar head untouched), so the recovered value depends on the head
+token alone — pinned equal across the two positions by agreement at `k = 0` (needing only `0 < n`).
+Three source-shaped facts, the branch, then birth/boundary/fires probes on REAL emission. -/
+
+/-- Scalar-head parse SUCCEEDS (`.ok`) for any positive fuel — the forward companion of the
+    hypothesis-driven `parseNode_scalar_produces_scalar`. -/
+theorem parseNode_scalar_head_isOk (ps : ParseState) (n : Nat)
+    (content : String) (style : ScalarStyle)
+    (h_peek : ps.peek? = some (.scalar content style)) :
+    ∃ vp, parseNode ps (n + 1) = .ok vp := by
+  have h_np : parseNodeProperties ps = .ok ({}, ps) :=
+    L4YAML.Proofs.ParserWellBehaved.parseNodeProperties_skip ps (by rw [h_peek]; trivial)
+  have h_vnp : ∀ p, validateNodeProps ps p ({} : NodeProperties) = .ok () := by
+    intro p; unfold validateNodeProps
+    simp only [h_peek, bind, Except.bind, pure, Except.pure]; rfl
+  have h_pnc : parseNodeContent ps n ({} : NodeProperties)
+      = .ok (YamlValue.scalar { content := content, style := style }, ps.advance) := by
+    unfold parseNodeContent; rw [h_peek]
+  unfold parseNode
+  simp only [h_peek, bind, Except.bind, pure, Except.pure, h_np, h_vnp, h_pnc]
+  exact ⟨_, rfl⟩
+
+/-- Scalar-head parse's recovered VALUE (under `.toOption.map`) is exactly the head scalar,
+    position-generic — the single-sided leaf fact both sides of the equality reduce to. -/
+theorem parseNode_scalar_toOption_value (ps : ParseState) (f : Nat)
+    (content : String) (style : ScalarStyle)
+    (h_peek : ps.peek? = some (.scalar content style)) (hf : 0 < f) :
+    (parseNode ps f).toOption.map (·.1) = some (.scalar (Scalar.mk content style none none none)) := by
+  obtain ⟨n, rfl⟩ : ∃ n, f = n + 1 := ⟨f - 1, by omega⟩
+  obtain ⟨⟨v, ps'⟩, hok⟩ := parseNode_scalar_head_isOk ps n content style h_peek
+  have hv : v = .scalar (Scalar.mk content style none none none) :=
+    parseNode_scalar_produces_scalar ps (n + 1) content style v ps' h_peek hok
+  rw [hok]; simp [Except.toOption, hv]
+
+/-- Plumbing: a `ParseState`'s `peek?` is exactly the array-lookup of its position, projected to `.val`
+    (`getElem!` in `peek?` ↔ bounded `getElem?`).  Converts the bounded-`.val`-agreement HYPOTHESIS of
+    `ParseNodeValueSpanLocal` into a `peek?` equality. -/
+theorem peek_eq_getElem_map (t : Array (Positioned YamlToken)) (p : Nat)
+    (a : Array (String × YamlValue)) :
+    ({ tokens := t, pos := p, anchors := a } : ParseState).peek? = t[p]?.map (·.val) := by
+  unfold ParseState.peek?
+  by_cases h : p < t.size
+  · simp only [if_pos h, getElem?_pos t p h, getElem!_pos t p h, Option.map_some]
+  · simp only [if_neg h, getElem?_neg t p h, Option.map_none]
+
+/-- **The P2b SCALAR LEAF** — the scalar-head branch of `ParseNodeValueSpanLocal`, discharged
+    `sorry`-free and WITHOUT the frame side-conditions or the `k ≥ 1` agreement.  From agreement at
+    `k = 0` (`0 < n`) both start positions peek the same scalar; each side's value is then that scalar
+    (or `none` at `f = 0`), so the two `.toOption.map (·.1)` agree.  The two `ps'.pos ≤ p + n` frame
+    clauses of `ParseNodeValueSpanLocal` are UNUSED here — a finding: only the COLLECTION branches of
+    the P2b crux will consume the frame. -/
+theorem parseNodeValueSpanLocal_scalar_branch
+    (t1 t2 : Array (Positioned YamlToken)) (p1 p2 f n : Nat)
+    (anch : Array (String × YamlValue)) (content : String) (style : ScalarStyle)
+    (hn : 0 < n)
+    (h_head : t1[p1]?.map (·.val) = some (.scalar content style))
+    (h_agree : ∀ k, k < n → (t1[p1 + k]?.map (·.val)) = (t2[p2 + k]?.map (·.val))) :
+    (parseNode { tokens := t1, pos := p1, anchors := anch } f).toOption.map (·.1)
+      = (parseNode { tokens := t2, pos := p2, anchors := anch } f).toOption.map (·.1) := by
+  have hk0 := h_agree 0 hn
+  rw [Nat.add_zero, Nat.add_zero] at hk0
+  have h_head2 : t2[p2]?.map (·.val) = some (.scalar content style) := by rw [← hk0]; exact h_head
+  have hpk1 : ({ tokens := t1, pos := p1, anchors := anch } : ParseState).peek?
+      = some (.scalar content style) := by rw [peek_eq_getElem_map]; exact h_head
+  have hpk2 : ({ tokens := t2, pos := p2, anchors := anch } : ParseState).peek?
+      = some (.scalar content style) := by rw [peek_eq_getElem_map]; exact h_head2
+  rcases Nat.eq_zero_or_pos f with hf | hf
+  · subst hf; simp [parseNode, Except.toOption]
+  · rw [parseNode_scalar_toOption_value _ f content style hpk1 hf,
+        parseNode_scalar_toOption_value _ f content style hpk2 hf]
+
+/-- REAL emission (`sc`/`flowSeq`/`p2_toks` reuse): `["x"]`-standalone tokens; scalar `"x"`
+    (double-quoted) at pos 1, trailing streamEnd. -/
+def plsc_std : Array (Positioned YamlToken) := p2_toks (sc "x")
+/-- REAL emission: flow seq `[q, x]` tokens; scalar `"x"` at pos 4, trailing flowSequenceEnd. -/
+def plsc_ctx : Array (Positioned YamlToken) := p2_toks (flowSeq #[sc "q", sc "x"])
+
+/-- Rule 1 / Rule 5 (non-vacuous on REAL emission): the two positions share ONLY the head scalar (their
+    trailing tokens differ — streamEnd vs flowSequenceEnd), yet the recovered values agree AND are a
+    genuine `some` scalar (not both-`none`). -/
+theorem plsc_birth_value_agrees :
+    ( ((parseNode { tokens := plsc_std, pos := 1, anchors := #[] } 8).toOption.map (·.1)
+        == (parseNode { tokens := plsc_ctx, pos := 4, anchors := #[] } 8).toOption.map (·.1))
+      && (parseNode { tokens := plsc_std, pos := 1, anchors := #[] } 8).toOption.isSome ) = true := by
+  native_decide
+
+/-- Rule 2 (boundary `f = 0`): both fail (fuel exhausted); `.toOption` sends both to `none`, so they
+    still agree — the failing edge on which the rejected `.map` form disagreed (`p2b_map_form_false`). -/
+theorem plsc_boundary_f0 :
+    ( ((parseNode { tokens := plsc_std, pos := 1, anchors := #[] } 0).toOption.map (·.1)
+        == (parseNode { tokens := plsc_ctx, pos := 4, anchors := #[] } 0).toOption.map (·.1))
+      && !(parseNode { tokens := plsc_std, pos := 1, anchors := #[] } 0).toOption.isSome ) = true := by
+  native_decide
+
+/-- Rule 2 (the LEAF FIRES): the abstract `parseNodeValueSpanLocal_scalar_branch`, driven through the
+    concrete REAL-emission witness (`n = 1`, trailing differs) — hypotheses genuinely satisfied. -/
+theorem plsc_leaf_fires :
+    (parseNode { tokens := plsc_std, pos := 1, anchors := #[] } 8).toOption.map (·.1)
+      = (parseNode { tokens := plsc_ctx, pos := 4, anchors := #[] } 8).toOption.map (·.1) := by
+  apply parseNodeValueSpanLocal_scalar_branch plsc_std plsc_ctx 1 4 8 1 #[] "x" .doubleQuoted
+  · decide
+  · native_decide
+  · intro k hk
+    have hk0 : k = 0 := by omega
+    subst hk0; native_decide
+
+/-! ### P2b→JOINT re-architecture — value AND relative-advance in ONE conclusion (inhabitation-debt)
+
+The 6th pass found the flow parser is LOOKAHEAD-driven (loops exit on `peek? = closer`, no bracket
+counter), and [[ref-front-b-nonallscalar-blocking]] estimates the flowBracketBalance-based **P2a frame**
+(an absolute-reach upper bound produced separately, then consumed by P2b) at ~1500 lines — a parser↔balance
+bridge that fights the parser's grain.  Before sinking that cost, discipline says validate a cheaper
+ARCHITECTURE.  A lookahead parser keeps two runs at agreeing positions in lockstep, so the natural object
+is not "where does each run stop (absolute)" but "do the two runs ADVANCE equally (relative)."  That makes
+the advance a CONCLUSION of the SAME induction that proves value-agreement — the [[ref-consumer-joint-before-producer]]
+/ [[ref-joint-co-construction]] shape — rather than an imported frame.
+
+**Birth-probed TRUE on REAL collection emission** (`jvadv_*` below): for the nested element `["a"]` inside
+`[["a"],["b"]]`, the ABSOLUTE output `pos` differs (5 full vs 4 standalone) yet the RELATIVE advance AGREES
+(both 3) — exactly why the joint projects `·.2.pos - p`, not `·.2.pos`.  The payoff: P1 can thread the
+per-element advance PRODUCED here (transferred to the directly-computable STANDALONE advance) instead of a
+separately-produced absolute-reach P2a.  Whether the eventual COLLECTION branch still needs per-element
+`flowBracketBalance` framing, or threads `.val`-agreement directly, is the open question the next pass
+decides — NOT claimed here.  This pass captures the joint conclusion + lands its scalar leaf `sorry`-free. -/
+
+/-- NEW helper (advance companion of `parseNode_scalar_toOption_value`): a scalar-head parse advances by
+    EXACTLY one, under `.toOption.map` — relative advance `r.2.pos - ps.pos = 1`.  From
+    `parseNode_scalar_advances_by_one` (the production `n = 1` leaf) via `parseNode_scalar_head_isOk`. -/
+theorem parseNode_scalar_toOption_advance (ps : ParseState) (f : Nat)
+    (content : String) (style : ScalarStyle)
+    (h_peek : ps.peek? = some (.scalar content style)) (hf : 0 < f) :
+    (parseNode ps f).toOption.map (fun r => r.2.pos - ps.pos) = some 1 := by
+  obtain ⟨n, rfl⟩ : ∃ n, f = n + 1 := ⟨f - 1, by omega⟩
+  obtain ⟨⟨v, ps'⟩, hok⟩ := parseNode_scalar_head_isOk ps n content style h_peek
+  have hadv : ps'.pos = ps.pos + 1 :=
+    parseNode_scalar_advances_by_one ps (n + 1) content style v ps' h_peek hok
+  rw [hok]; simp only [Except.toOption, Option.map_some]; rw [hadv]; congr 1; omega
+
+/-- **The JOINT target** — `ParseNodeValueSpanLocal` strengthened with a second conclusion: under the SAME
+    hypotheses (bounded `.val`-agreement + the two frame side-conditions), not only does the recovered
+    VALUE agree, but the RELATIVE ADVANCE (`·.2.pos - p`) agrees too.  The advance agreement is genuinely
+    new content — the frames give only UPPER bounds (`≤ p + n`), not equality and not cross-run agreement.
+    Producing the advance here (rather than importing an absolute-reach P2a) is the re-architecture; it is
+    what P1 threads as the cumulative `pos_i`.  Typechecked target, birth-probed at the SUCCESS boundary on
+    a real collection (`jvadv_*`) and the FAILING boundary (`f = 0`); NOT proved as a whole, NO `sorry`. -/
+def ParseNodeValueAdvanceLocal : Prop :=
+  ∀ (t1 t2 : Array (Positioned YamlToken)) (p1 p2 f n : Nat)
+    (anch : Array (String × YamlValue)),
+    (∀ k, k < n → (t1[p1 + k]?.map (·.val)) = (t2[p2 + k]?.map (·.val))) →
+    (∀ v ps', parseNode { tokens := t1, pos := p1, anchors := anch } f = .ok (v, ps') →
+      ps'.pos ≤ p1 + n) →
+    (∀ v ps', parseNode { tokens := t2, pos := p2, anchors := anch } f = .ok (v, ps') →
+      ps'.pos ≤ p2 + n) →
+    ((parseNode { tokens := t1, pos := p1, anchors := anch } f).toOption.map (·.1)
+      = (parseNode { tokens := t2, pos := p2, anchors := anch } f).toOption.map (·.1))
+    ∧ ((parseNode { tokens := t1, pos := p1, anchors := anch } f).toOption.map (fun r => r.2.pos - p1)
+      = (parseNode { tokens := t2, pos := p2, anchors := anch } f).toOption.map (fun r => r.2.pos - p2))
+
+/-- **The JOINT SCALAR LEAF** — the scalar-head branch of `ParseNodeValueAdvanceLocal`, `sorry`-free.
+    Combines the value leaf (`parseNode_scalar_toOption_value`) with the advance leaf
+    (`parseNode_scalar_toOption_advance`, advance `= 1` both sides): from agreement at `k = 0` (`0 < n`)
+    both positions peek the same scalar, so both value and relative-advance agree.  As with the value-only
+    branch, the two frame side-conditions are UNUSED — a scalar head is trailing-independent, so only the
+    COLLECTION branches will consume framing.  This is the template the collection step follows: prove
+    value + advance TOGETHER, keeping the two runs in lockstep. -/
+theorem parseNodeValueAdvanceLocal_scalar_branch
+    (t1 t2 : Array (Positioned YamlToken)) (p1 p2 f n : Nat)
+    (anch : Array (String × YamlValue)) (content : String) (style : ScalarStyle)
+    (hn : 0 < n)
+    (h_head : t1[p1]?.map (·.val) = some (.scalar content style))
+    (h_agree : ∀ k, k < n → (t1[p1 + k]?.map (·.val)) = (t2[p2 + k]?.map (·.val))) :
+    ((parseNode { tokens := t1, pos := p1, anchors := anch } f).toOption.map (·.1)
+      = (parseNode { tokens := t2, pos := p2, anchors := anch } f).toOption.map (·.1))
+    ∧ ((parseNode { tokens := t1, pos := p1, anchors := anch } f).toOption.map (fun r => r.2.pos - p1)
+      = (parseNode { tokens := t2, pos := p2, anchors := anch } f).toOption.map (fun r => r.2.pos - p2)) := by
+  have hk0 := h_agree 0 hn
+  rw [Nat.add_zero, Nat.add_zero] at hk0
+  have h_head2 : t2[p2]?.map (·.val) = some (.scalar content style) := by rw [← hk0]; exact h_head
+  have hpk1 : ({ tokens := t1, pos := p1, anchors := anch } : ParseState).peek?
+      = some (.scalar content style) := by rw [peek_eq_getElem_map]; exact h_head
+  have hpk2 : ({ tokens := t2, pos := p2, anchors := anch } : ParseState).peek?
+      = some (.scalar content style) := by rw [peek_eq_getElem_map]; exact h_head2
+  refine ⟨?_, ?_⟩
+  · rcases Nat.eq_zero_or_pos f with hf | hf
+    · subst hf; simp [parseNode, Except.toOption]
+    · rw [parseNode_scalar_toOption_value _ f content style hpk1 hf,
+          parseNode_scalar_toOption_value _ f content style hpk2 hf]
+  · rcases Nat.eq_zero_or_pos f with hf | hf
+    · subst hf; simp [parseNode, Except.toOption]
+    · rw [parseNode_scalar_toOption_advance _ f content style hpk1 hf,
+          parseNode_scalar_toOption_advance _ f content style hpk2 hf]
+
+/-- **Joint birth (REAL collection, the crux of the re-architecture).**  For the nested element `["a"]`
+    (`p2_full` item 0 at pos 2 vs standalone `p2_std0` at pos 1): the ABSOLUTE output `pos` DIFFERS (5 vs
+    4), yet the RELATIVE advance AGREES (both 3) and the value agrees, and both are `some` — non-vacuous.
+    This is the collection case the scalar leaf does NOT cover; it validates that projecting `·.2.pos - p`
+    (relative), not `·.2.pos` (absolute), is what makes the joint conclusion TRUE across the two streams. -/
+theorem jvadv_collection_relative_advance_agrees :
+    ( !((parseNode p2_psF 100).toOption.map (·.2.pos) == (parseNode p2_psS 100).toOption.map (·.2.pos))
+      && ((parseNode p2_psF 100).toOption.map (fun r => r.2.pos - 2)
+            == (parseNode p2_psS 100).toOption.map (fun r => r.2.pos - 1))
+      && ((parseNode p2_psF 100).toOption.map (·.1) == (parseNode p2_psS 100).toOption.map (·.1))
+      && (parseNode p2_psF 100).toOption.isSome ) = true := by native_decide
+
+/-- **Joint boundary (`f = 0`).**  Both parses fail; `.toOption` sends the ADVANCE projection of both to
+    `none`, so the advance conclusion holds vacuously — the same failing edge the value conclusion survives. -/
+theorem jvadv_boundary_f0 :
+    ( ((parseNode { tokens := plsc_std, pos := 1, anchors := #[] } 0).toOption.map (fun r => r.2.pos - 1)
+        == (parseNode { tokens := plsc_ctx, pos := 4, anchors := #[] } 0).toOption.map (fun r => r.2.pos - 4))
+      && (parseNode { tokens := plsc_std, pos := 1, anchors := #[] } 0).toOption.isNone ) = true := by
+  native_decide
+
+/-- **Joint scalar leaf FIRES** — the abstract `parseNodeValueAdvanceLocal_scalar_branch` driven through the
+    REAL-emission witness (`n = 1`, trailing differs): BOTH the value and the relative-advance conclusions
+    discharge, hypotheses genuinely satisfied (not vacuous). -/
+theorem jvadv_scalar_leaf_fires :
+    ((parseNode { tokens := plsc_std, pos := 1, anchors := #[] } 8).toOption.map (·.1)
+      = (parseNode { tokens := plsc_ctx, pos := 4, anchors := #[] } 8).toOption.map (·.1))
+    ∧ ((parseNode { tokens := plsc_std, pos := 1, anchors := #[] } 8).toOption.map (fun r => r.2.pos - 1)
+      = (parseNode { tokens := plsc_ctx, pos := 4, anchors := #[] } 8).toOption.map (fun r => r.2.pos - 4)) := by
+  apply parseNodeValueAdvanceLocal_scalar_branch plsc_std plsc_ctx 1 4 8 1 #[] "x" .doubleQuoted
+  · decide
+  · native_decide
+  · intro k hk
+    have hk0 : k = 0 := by omega
+    subst hk0; native_decide
+
 /-! ## P2a (FRAME) + Bridge birth-probes (inhabitation-debt Rule 1 + Rule 2)
 
 The P2 disproof above fixed P2b's statement (`ParseNodeValueSpanLocal`).  But that statement has two
@@ -681,7 +914,19 @@ sorry's locality equality `(parseYamlRaw (emit items[i]) composed)[0]!.value = i
 * **P2b — value span-locality** = `ParseNodeValueSpanLocal` above: value invariant under BOUNDED
   `.val`-agreement + the two frame side-conditions.  Mutual induction over the parser clique
   (parseNode / parseNodeContent / parseFlowSequenceLoop / parseFlowMappingLoop / …), projecting the
-  value and jointly tracking consumed length.  This is the crux; no existing lemma. *Missing.*
+  value and jointly tracking consumed length.  This is the crux.  **Its SCALAR branch is now landed
+  `sorry`-free** (`parseNodeValueSpanLocal_scalar_branch`, above): the scalar head is
+  trailing-independent (`parseNode_scalar_produces_scalar`), so it closes from agreement at `k = 0`
+  alone — needing NEITHER frame side-condition NOR `k ≥ 1` agreement (a finding: the frame is consumed
+  only by the COLLECTION branches).  **RE-ARCHITECTED this pass to the JOINT `ParseNodeValueAdvanceLocal`**
+  (above): value AND relative-advance (`·.2.pos - p`) in ONE conclusion.  A lookahead parser keeps two
+  agreeing runs in lockstep, so the advance is a CONCLUSION of the same induction, not an imported P2a
+  frame — the [[ref-consumer-joint-before-producer]] shape.  Birth-probed TRUE on a real collection
+  (`jvadv_collection_relative_advance_agrees`: absolute `pos` differs 5≠4, relative advance agrees 3=3);
+  the joint scalar leaf `parseNodeValueAdvanceLocal_scalar_branch` is landed `sorry`-free.  *Missing: the
+  flow-COLLECTION branches (`.sequence`/`.mapping` heads), where the loop induction threads the joint —
+  and where it is DECIDED whether per-element framing still needs `flowBracketBalance` (P2a) or the
+  lockstep advance threads `.val`-agreement directly, potentially retiring the ~1500-line balance bridge.*
 * **Bridge — scanner-span agreement** (NEW, discharges P2b's hypothesis): the emitted tokens of
   `items[i]` occur as a CONTIGUOUS `.val`-run inside the emitted tokens of the whole sequence, i.e.
   `∀ k < span_i, full[pos_i+k]?.val = standalone[1+k]?.val`.  General (non-scalar) analog of the
@@ -696,11 +941,12 @@ because a scalar's parseNode reads exactly one token — span-trivial, `.val`-ag
 token, no framing needed.  Non-scalars need all four.  Map axis mirrors with `parseFlowMappingLoop`
 and key/value projections (`ps[i]!.fst/.snd`).
 
-**Build order (cheapest first).**  P2a and the Bridge are the cheapest: both are birth-probed above and
-lean on existing machinery (`flowBracketBalance_matching_close`; R596/R597).  P2b is the crux mutual
-induction (consumes P2a's frame + the Bridge's agreement).  P1 threads P2a+P2b at the loop and computes
-the cumulative `pos_i`.  Each is a self-contained unit (the all-scalar R596/R597/R601/R602 were each
-their own).
+**Build order (cheapest first).**  The Bridge is birth-probed and leans on R596/R597.  The crux is now
+the JOINT `ParseNodeValueAdvanceLocal` collection branch (value + advance in lockstep, scalar leaf landed);
+its collection step decides whether P2a's separate `flowBracketBalance` frame is still needed or is retired
+by threading the joint advance directly.  P1 threads the joint at the loop and computes the cumulative
+`pos_i` from the per-element advance the joint PRODUCES.  Each is a self-contained unit (the all-scalar
+R596/R597/R601/R602 were each their own).
 
 The `[["a"]]` probe left conjuncts B (ignore-trailing) and C (nonzero-offset) vacuous; the SEQ/MAP
 fixtures fire them; the three axis probes disprove the naive P2; and the `p2a_*`/`bridge_*` probes pin
@@ -759,5 +1005,80 @@ eventual P1/P2a/P2b/Bridge proofs must satisfy. -/
  p2b_toOption_form_survives._native.native_decide.ax_1_1] -/
 #guard_msgs (whitespace := lax) in
 #print axioms p2b_toOption_form_survives
+
+/-! The P2b scalar-leaf facts are `sorry`-free.  `peek_eq_getElem_map` is pure `[propext]` (it is just
+    `getElem!`↔`getElem?` plumbing); the three parser-side facts and the branch inherit the standard
+    `[propext, Classical.choice, Quot.sound]`; the probes add only the per-declaration reflected-`decide`
+    axioms. -/
+/-- info: 'NonAllScalarLocality.parseNode_scalar_head_isOk' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms parseNode_scalar_head_isOk
+
+/-- info: 'NonAllScalarLocality.parseNode_scalar_toOption_value' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms parseNode_scalar_toOption_value
+
+/-- info: 'NonAllScalarLocality.peek_eq_getElem_map' depends on axioms: [propext] -/
+#guard_msgs (whitespace := lax) in
+#print axioms peek_eq_getElem_map
+
+/-- info: 'NonAllScalarLocality.parseNodeValueSpanLocal_scalar_branch' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms parseNodeValueSpanLocal_scalar_branch
+
+/-- info: 'NonAllScalarLocality.plsc_birth_value_agrees' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ plsc_birth_value_agrees._native.native_decide.ax_1_1] -/
+#guard_msgs (whitespace := lax) in
+#print axioms plsc_birth_value_agrees
+
+/-- info: 'NonAllScalarLocality.plsc_boundary_f0' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ plsc_boundary_f0._native.native_decide.ax_1_1] -/
+#guard_msgs (whitespace := lax) in
+#print axioms plsc_boundary_f0
+
+/-- info: 'NonAllScalarLocality.plsc_leaf_fires' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ plsc_leaf_fires._native.native_decide.ax_1_1,
+ plsc_leaf_fires._native.native_decide.ax_1_3] -/
+#guard_msgs (whitespace := lax) in
+#print axioms plsc_leaf_fires
+
+/-! The JOINT (value+advance) re-architecture facts are `sorry`-free.  The new advance helper and the
+    joint scalar branch inherit the standard `[propext, Classical.choice, Quot.sound]`; the probes add only
+    per-declaration reflected-`decide` axioms. -/
+/-- info: 'NonAllScalarLocality.parseNode_scalar_toOption_advance' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms parseNode_scalar_toOption_advance
+
+/-- info: 'NonAllScalarLocality.parseNodeValueAdvanceLocal_scalar_branch' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms parseNodeValueAdvanceLocal_scalar_branch
+
+/-- info: 'NonAllScalarLocality.jvadv_collection_relative_advance_agrees' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ jvadv_collection_relative_advance_agrees._native.native_decide.ax_1_1] -/
+#guard_msgs (whitespace := lax) in
+#print axioms jvadv_collection_relative_advance_agrees
+
+/-- info: 'NonAllScalarLocality.jvadv_boundary_f0' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ jvadv_boundary_f0._native.native_decide.ax_1_1] -/
+#guard_msgs (whitespace := lax) in
+#print axioms jvadv_boundary_f0
+
+/-- info: 'NonAllScalarLocality.jvadv_scalar_leaf_fires' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ jvadv_scalar_leaf_fires._native.native_decide.ax_1_1,
+ jvadv_scalar_leaf_fires._native.native_decide.ax_1_3] -/
+#guard_msgs (whitespace := lax) in
+#print axioms jvadv_scalar_leaf_fires
 
 end NonAllScalarLocality

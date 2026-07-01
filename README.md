@@ -144,7 +144,22 @@ five reduce to two independent obligations:
     is position-dependent (`.nestingDepthExceeded ps.currentLine`). The `.map`
     form is `sorry`-free-refuted (`p2b_map_form_false`) at the failing boundary —
     which the success-only probes had never exercised — and the corrected form
-    survives it (`p2b_toOption_form_survives`).
+    survives it (`p2b_toOption_form_survives`). With the statement fixed, P2b's
+    **scalar branch is now landed `sorry`-free**
+    (`parseNodeValueSpanLocal_scalar_branch`): a scalar head is
+    trailing-independent (`parseNode_scalar_produces_scalar`), so it closes from
+    `.val`-agreement at `k = 0` alone — needing *neither* the frame
+    side-condition *nor* the `k ≥ 1` agreement (a finding: the frame is consumed
+    only by the collection branches). On 2026-07-01 P2b was **re-architected to
+    the joint `ParseNodeValueAdvanceLocal`**: value *and* relative advance
+    (`·.2.pos - p`) in one conclusion. Because a lookahead parser keeps two
+    agreeing runs in lockstep, the advance is a *conclusion* of the same
+    induction rather than an imported P2a frame — birth-probed true on a real
+    collection (`jvadv_collection_relative_advance_agrees`: absolute `pos` differs
+    5≠4, relative advance agrees 3=3), and the joint scalar leaf
+    (`parseNodeValueAdvanceLocal_scalar_branch`) is landed `sorry`-free. Only the
+    flow-*collection* heads remain — where it is decided whether per-element
+    framing still needs `flowBracketBalance` or the lockstep advance retires it.
   - **P1 — loop-value:** threads P2a and P2b through the flow loop, computing
     each element's cumulative start offset.
 
