@@ -120,7 +120,14 @@ five reduce to two independent obligations:
     was found necessary on 2026-07-01 (the degenerate `n = 0` satisfies the Dyck
     conditions vacuously yet forces `ps'.pos = p`, refuting the unguarded form);
     with it the span is unique (`frameSpan_unique`, proved `sorry`-free), so the
-    frame's `n` is the matching-close span.
+    frame's `n` is the matching-close span. The two pure-`flowBracketBalance`
+    bricks the frame induction consumes are now proved `sorry`-free:
+    `frameHead_classified` (the head is neutral iff `n = 1`, an opener iff
+    `n ≥ 2` — the branch dispatcher, and exactly the opener premise
+    `flowBracketBalance_matching_close` needs) and `frame_matching_close_at_end`
+    (for `n ≥ 2` the matching close is the span's last token, body balanced).
+    What remains of P2a is the parser-side fuel-indexed mutual induction (the
+    upper-bound companion to the lower-bound `ParseNodePosMono`).
   - **Bridge — scanner span:** an element's emitted tokens form a contiguous
     run inside the whole sequence's tokens — the variable-width generalization
     of the all-scalar scanner facts (R596/R597).

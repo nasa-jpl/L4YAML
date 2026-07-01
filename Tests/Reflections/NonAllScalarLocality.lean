@@ -358,8 +358,10 @@ GENUINE separate leaf, NOT absorbed into P1. -/
     vacuously (`flowBracketBalance t p (p + 0) = flowBracketBalance t p p = 0` by the empty-range branch;
     the interior `∀ i, p < i < p` is vacuous) while forcing the FALSE `ps'.pos = p` — `parseNode` always
     advances on success.  `p2a_n0_hole_refutes_unguarded` refutes the unguarded form on a real witness,
-    and `frameSpan_unique` shows the guarded conditions pin `n` uniquely.  Typechecked target, validated
-    at the boundary by `p2a_*` below; NOT proved, NO `sorry`. -/
+    and `frameSpan_unique` shows the guarded conditions pin `n` uniquely.  The two combinatorial bricks the
+    frame induction will consume — `frameHead_classified` (head dispatcher) and `frame_matching_close_at_end`
+    (span-end locator) — are proved `sorry`-free below.  Typechecked target, validated at the boundary by
+    `p2a_*` below; the parseNode side is NOT proved, NO `sorry`. -/
 def ParseNodeFrameWithinSpan : Prop :=
   ∀ (t : Array (Positioned YamlToken)) (p n f : Nat) (v : YamlValue) (ps' : ParseState)
     (anch : Array (String × YamlValue)),
@@ -410,6 +412,119 @@ theorem frameSpan_unique
   · exact h
   · have hbad := h1int (p + n2) (by omega) (by omega)
     rw [h2zero] at hbad; omega
+
+/-! ### P2a combinatorial bricks — the head DISPATCHER and the span-END locator (both `sorry`-free)
+
+`frameSpan_unique` above shows the guarded frame names a UNIQUE `n`.  The two bricks below are the
+other pure-`flowBracketBalance` facts the eventual parseNode frame induction will consume — landed this
+pass while going to prove P2a, again WITHOUT scaffolding a `sorry` on the (only just corrected) target:
+
+* `frameHead_classified` — the BRANCH DISPATCHER.  Under the guarded frame the head token's bracket
+  delta is fixed by `n`: `0` when `n = 1` (a scalar leaf — parseNode's scalar branch, advancing by 1)
+  and `1` when `n ≥ 2` (a flow-collection opener).  This is precisely the missing
+  `flowBracketDelta tokens[p]!.val = 1` premise that `flowBracketBalance_matching_close` requires — the
+  gap the `n = 0` hole exposed (an unguarded `n = 0` has NO classified head, so the matching-close
+  locator could never fire).  Proof: `flowBracketBalance t p (p+1) = flowBracketDelta t[p]!.val` (one
+  `frameBal_step`); `n = 1` forces it `= 0` via `h_zero`, `n ≥ 2` forces it `≥ 1` via the interior floor,
+  and `flowBracketDelta_le_one` caps it at `1`.
+* `frame_matching_close_at_end` — the span-END locator.  For a flow collection (`n ≥ 2`) the matching
+  close is the span's LAST token: `tokens[p+n-1]` is a closer and the body `[p+1, p+n-1)` is itself
+  balanced.  This is the shape that lets the frame conclude parseNode — which reads to its matching
+  close — advances to exactly `p + n`.  Proof: `flowBracketBalance_matching_close` at the opener
+  (`frameHead_classified` supplies the opener premise) yields a close `j`; the strict interior floor
+  `h_int` at `j+1` forces `j = p + n - 1` (else `balance p (j+1) = 0` contradicts `≥ 1`).
+
+Together with `frameSpan_unique` these reduce the OUTSTANDING P2a work to the parseNode side alone:
+the fuel-indexed mutual induction over the flow parser clique (the upper-bound companion to the
+existing lower-bound `ParseNodePosMono`, `ParserWellBehaved.lean`), whose scalar LEAF is
+`parseNode_scalar_advances_by_one` (`n = 1`) and whose collection step reads to
+`frame_matching_close_at_end`'s closer.  No production file is touched and no `sorry` is introduced. -/
+
+/-- One-step balance recurrence (mirrors the local `step` inside `flowBracketBalance_matching_close`):
+    advancing the upper endpoint by one token adds that token's `flowBracketDelta`. -/
+theorem frameBal_step (t : Array (Positioned YamlToken)) (lo i : Nat)
+    (h_lo_i : lo ≤ i) (h_sz : i < t.size) :
+    flowBracketBalance t lo (i + 1)
+      = flowBracketBalance t lo i + flowBracketDelta t[i]!.val := by
+  rw [flowBracketBalance_compose t lo i (i + 1) h_lo_i (by omega)]
+  have hlen : i < t.toList.length := by rw [Array.length_toList]; exact h_sz
+  rw [flowBracketBalance_single t i hlen]
+  have h1 : t.toList[i]'hlen = t[i] := Array.getElem_toList h_sz
+  have h2 : t[i] = t[i]! := (getElem!_pos t i h_sz).symm
+  rw [h1, h2]
+
+/-- The empty range has balance `0`. -/
+theorem frameBal_empty (t : Array (Positioned YamlToken)) (p : Nat) :
+    flowBracketBalance t p p = 0 := by simp [flowBracketBalance]
+
+/-- **Frame head classification (pure Dyck combinatorics).**  Under the P2a frame conditions the head
+    token's bracket delta is fixed by `n`: neutral (`0`) when `n = 1` (a scalar leaf), opener (`1`) when
+    `n ≥ 2` (a flow collection).  This is exactly the branch dispatcher the parseNode frame induction
+    needs, and it supplies the `flowBracketDelta = 1` premise that `flowBracketBalance_matching_close`
+    requires — the fact the `n = 0` hole showed was missing (an unguarded `n = 0` has no classified head).
+    `sorry`-free; the `0 < n` guard is what makes the classification total. -/
+theorem frameHead_classified (t : Array (Positioned YamlToken)) (p n : Nat)
+    (h_sz : p < t.size) (h_pos : 0 < n)
+    (h_zero : flowBracketBalance t p (p + n) = 0)
+    (h_int : ∀ i, p < i → i < p + n → flowBracketBalance t p i ≥ 1) :
+    flowBracketDelta t[p]!.val = if n = 1 then 0 else 1 := by
+  have hstep : flowBracketBalance t p (p + 1) = flowBracketDelta t[p]!.val := by
+    have hb := frameBal_step t p p (Nat.le_refl _) h_sz
+    rw [frameBal_empty] at hb; simpa using hb
+  by_cases hn1 : n = 1
+  · subst hn1
+    have hd : flowBracketDelta t[p]!.val = 0 := by rw [← hstep]; exact h_zero
+    simp [hd]
+  · have hge : flowBracketBalance t p (p + 1) ≥ 1 := h_int (p + 1) (by omega) (by omega)
+    have hle : flowBracketDelta t[p]!.val ≤ 1 := flowBracketDelta_le_one _
+    rw [hstep] at hge
+    rw [if_neg hn1]; omega
+
+/-- **Frame matching-close at the span end (`n ≥ 2`).**  For a flow-collection frame the matching close
+    is the LAST token of the span: `t[p+n-1]` is a closer and the enclosed body `[p+1, p+n-1)` is itself
+    balanced.  This is what lets the frame conclude parseNode — which reads forward to its matching close —
+    advances to exactly `p + n`.  Proved by applying `flowBracketBalance_matching_close` at the opener
+    (`frameHead_classified` supplies the opener premise) and pinning `j = p + n - 1` via the strict
+    interior floor `h_int`.  `sorry`-free. -/
+theorem frame_matching_close_at_end (t : Array (Positioned YamlToken)) (p n : Nat)
+    (h_sz : p + n ≤ t.size) (h_n2 : 2 ≤ n)
+    (h_zero : flowBracketBalance t p (p + n) = 0)
+    (h_int : ∀ i, p < i → i < p + n → flowBracketBalance t p i ≥ 1) :
+    flowBracketDelta t[p + n - 1]!.val = -1 ∧
+    flowBracketBalance t (p + 1) (p + n - 1) = 0 := by
+  have h_p_sz : p < t.size := by omega
+  have h_open : flowBracketDelta t[p]!.val = 1 := by
+    have hc := frameHead_classified t p n h_p_sz (by omega) h_zero h_int
+    rw [if_neg (by omega : ¬ n = 1)] at hc; exact hc
+  have h_dyck : ∀ i, p ≤ i → i ≤ p + n → flowBracketBalance t p i ≥ 0 := by
+    intro i h_lo h_hi
+    rcases Nat.lt_or_ge p i with hpi | hpi
+    · rcases Nat.lt_or_ge i (p + n) with hin | hin
+      · have := h_int i hpi hin; omega
+      · have he : i = p + n := by omega
+        subst he; omega
+    · have he : i = p := by omega
+      rw [he]; have := frameBal_empty t p; omega
+  obtain ⟨j, hkj, hjhi, hjclose, hjbody, _hjfloor⟩ :=
+    flowBracketBalance_matching_close t p p (p + n) (Nat.le_refl _) (by omega) h_sz
+      (frameBal_empty t p) h_open h_zero h_dyck
+  have h_p1 : flowBracketBalance t p (p + 1) = 1 := by
+    have hb := frameBal_step t p p (Nat.le_refl _) h_p_sz
+    rw [frameBal_empty, h_open] at hb; simpa using hb
+  have h_pj : flowBracketBalance t p j = 1 := by
+    have hc := flowBracketBalance_compose t p (p + 1) j (by omega) (by omega)
+    rw [h_p1, hjbody] at hc; omega
+  have h_j_sz : j < t.size := by omega
+  have h_pj1 : flowBracketBalance t p (j + 1) = 0 := by
+    have hb := frameBal_step t p j (by omega) h_j_sz
+    rw [h_pj, hjclose] at hb; omega
+  have h_not : ¬ (j + 1 < p + n) := by
+    intro hlt
+    have hfloor := h_int (j + 1) (by omega) hlt
+    rw [h_pj1] at hfloor; omega
+  have h_j_eq : j = p + n - 1 := by omega
+  subst h_j_eq
+  exact ⟨hjclose, hjbody⟩
 
 /-! ### P2a boundary probes -- parseNode advances to EXACTLY the matching close, never to EOF.
 
@@ -492,7 +607,11 @@ sorry's locality equality `(parseYamlRaw (emit items[i]) composed)[0]!.value = i
   guard was found necessary this pass (`n = 0` refuted the unguarded form —
   `p2a_n0_hole_refutes_unguarded`); with it the span is unique (`frameSpan_unique`, landed sorry-free),
   so the conclusion's `n` can be identified with the matching-close span.  Probed tight at the boundary
-  (`p2a_*`).  *Missing (the parseNode mutual induction; correction + uniqueness landed).*
+  (`p2a_*`).  The two pure-`flowBracketBalance` bricks the induction consumes are now landed sorry-free:
+  `frameHead_classified` (head is neutral iff `n = 1`, opener iff `n ≥ 2` — the branch dispatcher and the
+  missing `flowBracketBalance_matching_close` premise) and `frame_matching_close_at_end` (the close is the
+  span's last token, body balanced).  *Missing: only the parseNode-side fuel-indexed mutual induction (the
+  upper-bound companion to `ParseNodePosMono`); correction + uniqueness + both combinatorial bricks landed.*
 * **P2b — value span-locality** = `ParseNodeValueSpanLocal` above: value invariant under BOUNDED
   `.val`-agreement + the two frame side-conditions.  Mutual induction over the parser clique
   (parseNode / parseNodeContent / parseFlowSequenceLoop / parseFlowMappingLoop / …), projecting the
@@ -543,5 +662,17 @@ eventual P1/P2a/P2b/Bridge proofs must satisfy. -/
 /-- info: 'NonAllScalarLocality.frameSpan_unique' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms frameSpan_unique
+
+/-! The two P2a combinatorial bricks are `sorry`-free.  Both inherit `Classical.choice` from
+    `flowBracketBalance_matching_close`/`flowBracketBalance_compose` (`frameSpan_unique` avoided it
+    because it is pure `omega`), so the profile is the standard `[propext, Classical.choice, Quot.sound]`
+    — no `sorryAx`. -/
+/-- info: 'NonAllScalarLocality.frameHead_classified' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms frameHead_classified
+
+/-- info: 'NonAllScalarLocality.frame_matching_close_at_end' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms frame_matching_close_at_end
 
 end NonAllScalarLocality
