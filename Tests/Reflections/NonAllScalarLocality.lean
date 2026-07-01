@@ -53,6 +53,7 @@ open L4YAML
 open L4YAML.Emit
 open L4YAML.Grammar
 open L4YAML.TokenParser
+open L4YAML.Scanner
 open L4YAML.Proofs.RoundTrip
 open L4YAML.Proofs.EmitterScannability
 
@@ -244,35 +245,122 @@ theorem mapDecoy_val0_locality :
     ((wholePairs mapDecoy).map (fun ps => ps[0]!.snd) == standaloneVal (flowSeq #[flowSeq #[sc "z"]])) = true := by
   native_decide
 
-/-! ## Proof plan: the sorry equality is a chain of THREE pieces (not one)
+/-! ## P2 statement-shape probe (inhabitation-debt): the naive `parseNode_position_invariant`
+     is FALSE / unusable on THREE independent axes
 
-The boundary probes above confirm the TARGET is true; the universal proof factors the sorry's
-locality equality `(parseYamlRaw (emit items[i]) composed)[0]!.value = items''[i]!` as:
+The probes above confirm the DOWNSTREAM equality (`items''[i]! = standalone value`) is true.  But
+before building P2's mutual induction we must fix its EXACT statement.  The naive form (the earlier
+plan below, and [[ref-front-b-nonallscalar-blocking]]'s first draft) was:
 
-* **P1 — whole-stream loop-value theorem** (general analog of the all-scalar
-  `parseFlowSeqLoop_allScalar_value_at`): `items''[i]! = (parseNode {full_tokens, pos_i} fuel)`'s
-  YamlValue, composed, where `pos_i` is the token offset at which element `i` starts.  Fuel
-  induction on `parseFlowSequenceLoop`; the hard part is computing `pos_i` (bracket-balance
-  bookkeeping), NOT specialised to scalars.
-* **P2 — span-locality** (`parseNode_position_invariant`): the YamlValue component of
-  `parseNode {full_tokens, pos_i} fuel` equals that of `parseNode {standalone_tokens, 1} fuel`
-  whenever the token streams AGREE FORWARD (`∀ k, full[pos_i+k]?.val = standalone[1+k]?.val`).
-  Mutual induction over the parser clique (parseNode / parseNodeContent / parseFlowSequenceLoop /
-  parseFlowMappingLoop / …).  Only the FIRST component (YamlValue) is invariant — the output
-  `ParseState.pos` advances by the same DELTA but differs absolutely, so the lemma must project
-  the value, not equate whole states (`YamlValue` is position-free — see the agent map; `.value`
-  after `compose` carries no offsets, which is why the probes above are `= true`).
-* **P3 — standalone compose** (already essentially available): the standalone
-  `parseYamlRaw (emit items[i])` composed value equals the compose of `parseNode {standalone, 1}`.
+    parseNode {t1, p1} f  =  parseNode {t2, p2} f        given  ∀ k, t1[p1+k]? = t2[p2+k]?
 
-Chain: `standalone value ={P3}= compose(parseNode standalone) ={P2}= compose(parseNode full@pos_i)
-={P1}= items''[i]!`.  The **all-scalar branch (R609) collapsed P1+P3 and SKIPPED P2** because a
-scalar's parseNode reads exactly one token — position-trivial.  Non-scalars need P2 in full.
-Map axis is identical with `parseFlowMappingLoop` and key/value projections (`ps[i]!.fst/.snd`).
+**Every clause of that is wrong.**  We disprove/confirm on REAL tokens, `p2_full = [["a"],["b"]]`
+and standalone item `p2_std0 = ["a"]`.  `scanFiltered` places item 0's `parseNode` at pos 2 in the
+full stream, pos 1 standalone (read off by `#eval`):
 
-The two conjuncts the `[["a"]]` probe left vacuous (B: ignore-trailing; C: nonzero-offset) are
-EXACTLY the two properties P2's mutual induction must establish — so the boundary fixtures here
-are the concrete regression that P2 must generalise. -/
+    full:       [ streamStart, `[`@0, `[`@1, "a"@2, `]`@5, `,`@6, `[`@8, "b"@9, `]`@12, `]`@13, end@14 ]
+    standalone: [ streamStart, `[`@0,        "a"@1, `]`@4,                                    end@5  ]
+
+* **Axis A — the conclusion must project the VALUE, not the whole `ParseState`.**  Output `pos`
+  differs (5 full vs 4 standalone), so whole-result equality is FALSE; only `.map (·.1)` agrees.
+* **Axis B — the agreement hypothesis must be BOUNDED to the span, not `∀ k`.**  Forward `.val`s
+  agree for k = 0,1,2 (`[ "a" ]`) then DIVERGE at k = 3 (full `flowEntry` vs standalone `streamEnd`).
+  So `∀ k` agreement is UNSATISFIABLE in the application: the `∀ k` lemma, however true, can NEVER be
+  applied to close sorries 3+4.  This is the load-bearing correction — it forces a bounded-span
+  FRAME lemma (P2a below), strictly more work than a clean unbounded induction.
+* **Axis C — agreement is on the token `.val`, not the `Positioned` token.**  The same `[` carries
+  offset 1 in the full stream, 0 standalone: `Positioned`-equality is FALSE within the span,
+  `.val`-equality TRUE.  parseNode's value must (and does) ignore embedded offsets — `nodeStartPos`
+  only feeds `nodePositions` (tracking gated off) and `YamlValue` is position-free.
+* **Axis D — anchors (prose caveat; not fired by these fixtures).**  The whole-stream parse carries
+  anchors accumulated from PRIOR siblings; standalone does not.  The value is still invariant because
+  `parseNode` returns `.alias name` UNRESOLVED (resolution is deferred to `compose`) and the
+  `parseYamlRaw (emit items[i]) = .ok rd` hypothesis forces item i's aliases to be self-contained
+  (else standalone would fail `undefinedAlias`).  `emit` never emits a per-item alias to a sibling
+  anchor, so the extra inherited anchors are inert.  The `Prop` below fixes `anchors := anch` on both
+  sides for this reason; a fully general statement would carry a "no free alias" side condition. -/
+
+def p2_full : YamlValue := flowSeq #[ flowSeq #[sc "a"], flowSeq #[sc "b"] ]
+def p2_std0 : YamlValue := flowSeq #[sc "a"]
+def p2_toks (v : YamlValue) : Array (Positioned YamlToken) :=
+  match scanFiltered (emit v) with | .ok t => t | .error _ => #[]
+def p2_psF : ParseState := { tokens := p2_toks p2_full, pos := 2 }
+def p2_psS : ParseState := { tokens := p2_toks p2_std0, pos := 1 }
+
+/-- **Axis C**: same token `.val` at the span start, but DIFFERENT `Positioned` (offset 1 vs 0). -/
+theorem p2_axisC_val_agrees_positioned_differs :
+    ( ((p2_toks p2_full)[2]!.val == (p2_toks p2_std0)[1]!.val)
+      && !((p2_toks p2_full)[2]! == (p2_toks p2_std0)[1]!) ) = true := by native_decide
+
+/-- **Axis B**: forward `.val` agreement is bounded (k = 0,1,2) then DIVERGES at k = 3, so the
+    `∀ k` hypothesis is unsatisfiable in the application (full has `flowEntry`, standalone `streamEnd`). -/
+theorem p2_axisB_agreement_bounded_then_diverges :
+    ( ((p2_toks p2_full)[2]!.val == (p2_toks p2_std0)[1]!.val)
+      && ((p2_toks p2_full)[3]!.val == (p2_toks p2_std0)[2]!.val)
+      && ((p2_toks p2_full)[4]!.val == (p2_toks p2_std0)[3]!.val)
+      && !((p2_toks p2_full)[5]!.val == (p2_toks p2_std0)[4]!.val) ) = true := by native_decide
+
+/-- **Axis A + CRUX**: the parseNode VALUE is invariant across position/stream, but the output
+    `ParseState.pos` is NOT (5 vs 4) — the lemma must project `·.1`.  This is the target's core. -/
+theorem p2_axisA_value_invariant_state_not :
+    ( ((parseNode p2_psF 100).toOption.map (·.1) == (parseNode p2_psS 100).toOption.map (·.1))
+      && !((parseNode p2_psF 100).toOption.map (·.2.pos)
+            == (parseNode p2_psS 100).toOption.map (·.2.pos)) ) = true := by native_decide
+
+/-- The refined P2 target — **value span-locality** — as a typechecked `Prop`.  Note the corrections
+    forced by the axes above: BOUNDED `.val`-agreement hypothesis (`k < n`, on `·.val`), and a
+    VALUE-projected conclusion (`.map (·.1)`).  The two `ps'.pos ≤ p + n` clauses are the FRAME
+    side-condition **P2a** (parseNode stays within its span), for which `parseNode_pos_mono_all`
+    is the established mutual-induction precedent.  Inhabitation-debt discipline: this is captured as
+    a well-typed `Prop` and validated at the boundary by the `native_decide`s above — it is NOT
+    proved here, and NO `sorry` asserts it. -/
+def ParseNodeValueSpanLocal : Prop :=
+  ∀ (t1 t2 : Array (Positioned YamlToken)) (p1 p2 f n : Nat)
+    (anch : Array (String × YamlValue)),
+    (∀ k, k < n → (t1[p1 + k]?.map (·.val)) = (t2[p2 + k]?.map (·.val))) →
+    (∀ v ps', parseNode { tokens := t1, pos := p1, anchors := anch } f = .ok (v, ps') →
+      ps'.pos ≤ p1 + n) →
+    (∀ v ps', parseNode { tokens := t2, pos := p2, anchors := anch } f = .ok (v, ps') →
+      ps'.pos ≤ p2 + n) →
+    (parseNode { tokens := t1, pos := p1, anchors := anch } f).map (·.1)
+      = (parseNode { tokens := t2, pos := p2, anchors := anch } f).map (·.1)
+
+/-! ## Proof plan (CORRECTED): the sorry equality is a chain of FOUR pieces
+
+The earlier 3-piece plan (P1/P2/P3) understated the work: Axis B splits the old "P2" into a FRAME
+lemma plus a value lemma, and adds a scanner-side bridge to discharge the bounded agreement.  The
+sorry's locality equality `(parseYamlRaw (emit items[i]) composed)[0]!.value = items''[i]!` factors as:
+
+* **P1 — whole-stream loop-value theorem** (general analog of all-scalar
+  `parseFlowSeqLoop_allScalar_value_at`): `items''[i]! = compose (parseNode {full, pos_i} fuel).1`,
+  where `pos_i` is the token offset at which element `i` starts.  Fuel induction on
+  `parseFlowSequenceLoop`; the hard part is computing `pos_i` (bracket-balance bookkeeping).  NOT
+  scalar-specialised.  *Missing.*
+* **P2a — FRAME / reads-within-span** (NEW, forced by Axis B): `parseNode {t, p} f = .ok (_, ps') →
+  ps'.pos ≤ p + span(t, p)`, i.e. parseNode consumes exactly its bracket span.  Precedent:
+  `parseNode_pos_mono_all` (position monotonicity, already proved by mutual induction over the
+  clique) — P2a strengthens mono to an upper bound.  *Missing (but scaffolding exists).*
+* **P2b — value span-locality** = `ParseNodeValueSpanLocal` above: value invariant under BOUNDED
+  `.val`-agreement + the two frame side-conditions.  Mutual induction over the parser clique
+  (parseNode / parseNodeContent / parseFlowSequenceLoop / parseFlowMappingLoop / …), projecting the
+  value and jointly tracking consumed length.  This is the crux; no existing lemma. *Missing.*
+* **Bridge — scanner-span agreement** (NEW, discharges P2b's hypothesis): the emitted tokens of
+  `items[i]` occur as a CONTIGUOUS `.val`-run inside the emitted tokens of the whole sequence, i.e.
+  `∀ k < span_i, full[pos_i+k]?.val = standalone[1+k]?.val`.  General (non-scalar) analog of the
+  all-scalar R596/R597 (`emitList_allScalar_body_content_at`, `scanFiltered_emitSeq_allScalar_token_at`).
+  *Missing.*
+* **P3 — standalone compose** (essentially available): standalone `parseYamlRaw (emit items[i])`
+  composed value equals `compose (parseNode {standalone, 1}).1`.
+
+Chain: `standalone ={P3}= compose(parseNode std@1) ={P2b+Bridge}= compose(parseNode full@pos_i)
+={P1}= items''[i]!`.  The **all-scalar branch (R609) collapsed P1+P3 and SKIPPED P2a/P2b/Bridge**
+because a scalar's parseNode reads exactly one token — span-trivial, `.val`-agreement is the single
+token, no framing needed.  Non-scalars need all four.  Map axis mirrors with `parseFlowMappingLoop`
+and key/value projections (`ps[i]!.fst/.snd`).
+
+The `[["a"]]` probe left conjuncts B (ignore-trailing) and C (nonzero-offset) vacuous; the SEQ/MAP
+fixtures above fire them, and the three axis probes disprove the naive P2 — together they are the
+concrete regression the eventual P1/P2a/P2b/Bridge proofs must satisfy. -/
 
 /-! ## Axiom audit -/
 

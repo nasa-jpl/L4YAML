@@ -69,7 +69,9 @@ Every function in the core library is a total `def` — **no `partial def`, no
   scanner matches its `Grammar.lean` counterpart
   ([Proofs/Foundation/CharClass.lean](L4YAML/Proofs/Foundation/CharClass.lean)).
 
-**Work in progress.** Two converse theorems round out the correctness picture:
+**Work in progress.** Two converse theorems round out the correctness
+picture, both in the round-trip cluster under
+[Proofs/Output/](L4YAML/Proofs/Output/):
 
 - *Universal round-trip* — for every grammable `YamlValue v`, re-parsing
   `emit v` returns a content-equivalent value
@@ -77,6 +79,44 @@ Every function in the core library is a total `def` — **no `partial def`, no
 - *Grammar completeness* — every string in `InYamlLanguage` parses
   successfully, closing the biconditional with acceptance strictness
   ([VERSION-0.4.8.md](VERSION-0.4.8.md)).
+
+**Current frontier (2026-07-01): 5 `sorry` sites** in the universal
+round-trip cluster — up from 4, and the increase is a *decomposition, not a
+regression*: the R447 co-construction skeleton landed and split the flow
+structure blocker into a single, well-characterized navigator residual. The
+five reduce to two independent obligations:
+
+| # | Site | Track |
+|---|------|-------|
+| 1 | [`NonemptyStructure.lean:12131`](L4YAML/Proofs/Output/EmitterScannability/NonemptyStructure.lean#L12131) — `FlowSubrangesOk` (mapping) | A |
+| 2 | [`EmitterScannability.lean:411`](L4YAML/Proofs/Output/EmitterScannability.lean#L411) — `FlowSubrangesOk` (sequence) | A |
+| 5 | [`SeqInteriorSeparators.lean:11348`](L4YAML/Proofs/Output/EmitterScannability/SeqInteriorSeparators.lean#L11348) — R447 navigator `seqBody_recseqbody_provider` | A (linchpin) |
+| 3 | [`EmitterScannability.lean:1066`](L4YAML/Proofs/Output/EmitterScannability.lean#L1066) — non-all-scalar sequence locality | B |
+| 4 | [`EmitterScannability.lean:1214`](L4YAML/Proofs/Output/EmitterScannability.lean#L1214) — non-all-scalar mapping locality | B |
+
+- **Track A — `FlowSubrangesOk tokens`** (every balanced flow subrange is
+  well-formed), consumed by both structure proofs. All three of its sorries
+  bottom out at the single R447 navigator (#5): a carrier-free, per-window
+  `RecSeqBody` structural walk whose linchpin is
+  `recmappair_window_dispatch_map`. The assembler chain that lifts the
+  navigator up to `FlowSubrangesOk` — and thereby discharges #1 and #2 — is
+  already verified and waiting on it, so #5 is the sole remaining piece of
+  *mathematical* content on this track.
+- **Track B — `parseNode` span-locality** (`parseNode_position_invariant`):
+  the parser's `YamlValue` output depends only on the tokens forward of its
+  start position, never on the absolute offset or on trailing siblings. The
+  target was probed *true at its boundary* on 2026-07-01 (`YamlValue` is
+  position-free; `YamlDocument.compose` strips positions into a separate
+  field), with a three-step plan — a whole-stream loop-value theorem, the
+  span-locality mutual induction, and standalone `compose`. The all-scalar
+  branch already closes by canonical form; only the non-scalar branches (#3,
+  #4) need the general theorem. Boundary regression fixtures live in
+  [Tests/Reflections/NonAllScalarLocality.lean](Tests/Reflections/NonAllScalarLocality.lean).
+
+The two tracks are independent and can be closed in either order. Apart from
+these five `sorry`s, the library carries no incomplete proofs: the verified
+core (scanner, token parser, schema, dumper) and every completed theorem
+above remain `sorry`-, `axiom`-, and `partial`-free.
 
 Compile-time `#guard` tests in [Tests/](Tests/) — including auto-generated
 guards from the yaml-test-suite — back every proof with a kernel-evaluable
