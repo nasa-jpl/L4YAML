@@ -11306,4 +11306,76 @@ theorem seqWindow_safeBodyUnit
   · exact nestedSeq_safeBodyUnit_of_locator items tokens lo hi h_scan h_ne h_all
       h_typed h_close h_opener h_path h_win_lo h_win_ab h_win_hi
 
+/-- **R447 residual — the carrier-free per-window `RecSeqBody` navigator** (the LONE remaining
+    obligation of R447).  Produces, for every balanced seq sub-window `[lo, hi)` of the root
+    `[2, size-2)` under the path-FREE gate (`FlowBodyWindow ∧ FlowBodyContentDeepSeq ∧ SeqEnclosed`),
+    the window's stored `RecSeqBody ((tokens.toList.take hi).drop lo)`.  This is EXACTLY the shape of
+    `seqRoot_carrier_r447`'s `recIH`, so it is consumed there DIRECTLY (the R505/R502 content-provider
+    detour is vestigial — locating a window's entry yields its body directly via
+    `recseqbody_window_of_located_entry`, so producing the body is no harder than producing the content
+    the width recursion would have needed).
+
+    The residual is the carrier-free STRUCTURAL navigator over the root `RecSeqBody`
+    (`seqRoot_recseqbody`, `NonemptyStructure.lean:1962`) — descending `[` frames via
+    `recseqbody_window_of_located_entry` and `{` frames via `recmappair_window_descent`/
+    `recmappair_block_descent` down to the target window.  Three landed routes do NOT close it:
+    * token-spine navigator `nestedSeq_recseqbody_of_locator` (R388) — its `SeqPathAllSeq tokens (lo-1)`
+      gate is FALSE at map-nested seqs (`[{a:[b]}]`'s inner `[b]`; it REFUTES map-descend via
+      `seqPathAllSeq_map_descend_excluded`, `:4500`);
+    * carrier joint driver `recbody_joint_navigator_driver_carrier` (R534) — needs the root
+      `SeqInteriorSeparators`/`MapInteriorSeparators` carriers this workstream is CONSTRUCTING (circular);
+    * abstract joint driver `recbody_joint_navigator_driver` (R529, `NonemptyStructure.lean:11499`,
+      carrier-FREE, produces the joint `RecSeqBody`∧`RecMapBody` deliverable) — its `locate_map` slot
+      (`recbody_locate_map_carrier`, `:7775`, already ASSEMBLED parametric over `dispatch_map`) needs the
+      still-unbuilt balance-invisible map first-pair classifier `recmappair_window_dispatch_map`.
+
+    **The single linchpin is `recmappair_window_dispatch_map`** (surveyed across R560-R565, inhabitation
+    validated in `Tests/Reflections/MapCarrierRobustInhabitation.lean`). Exact target shape (the lifted
+    `dispatch_map` hypothesis, `:7776`):
+    `∀ lo hi, FlowBodyWindow → FlowBodyContentDeepMap → MapEnclosed → (SEQ window IH) → ∃ m, lo<m ∧ m≤hi
+    ∧ balance lo m = 0 ∧ (m=hi ∨ tokens[m]=.flowEntry) ∧ RecMapPair ((take m).drop lo)`.
+    CAVEAT: the abstract-driver route ALSO needs carrier-FREE seq/map `locate`s (only `_carrier` versions
+    exist) and the `descend_tail`/`h_hi_sz` slots wired at the provider's guard `G`. -/
+theorem seqBody_recseqbody_provider
+    (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
+    (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
+    (h_ne : items.toList ≠ [])
+    (h_all : ∀ v ∈ items.toList, EmitScansInFlowRecEntry v) :
+    ∀ lo hi, FlowBodyWindow tokens lo hi → FlowBodyContentDeepSeq tokens lo hi →
+        SeqEnclosed tokens lo → 2 ≤ lo → hi ≤ tokens.size - 2 →
+        RecSeqBody ((tokens.toList.take hi).drop lo) := by
+  intro lo hi _h_win _h_deep _h_enc _h_lo _h_hi
+  sorry -- R447-residual: carrier-free structural navigator over root RecSeqBody (linchpin: recmappair_window_dispatch_map)
+
+/-- **R447: Root carrier — reduced to the single navigator residual**
+    `(i'-b-B2c-(d)-root-carrier-r447)`: proves `SeqInteriorSeparators tokens 2 (tokens.size - 2)`
+    (ROOT CARRIER) using `seqWidthEnc_of_recIH_seq` + `seqRoot_carrier_of_widthEnc_seq`, with the
+    `recIH` DISCHARGED (no sorry here) by the direct per-window `RecSeqBody` navigator
+    `seqBody_recseqbody_provider`.  The lone remaining sorry lives in that navigator; R447 itself is a
+    pure composition of landed lemmas.  Closes sorries 1+2 once the navigator lands. -/
+theorem seqRoot_carrier_r447
+    (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
+    (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
+    (h_ne : items.toList ≠ [])
+    (h_all : ∀ v ∈ items.toList, EmitScansInFlowRecEntry v) :
+    SeqInteriorSeparators tokens 2 (tokens.size - 2) := by
+  have h_all_block : ∀ w, w ∈ items.toList → EmitScansInFlowBlock w :=
+    fun w hw => emitScansInFlowBlock_of_flowRecEntry w (h_all w hw)
+  have h_root_win := seqRoot_flowBodyWindow items tokens h_scan h_ne h_all
+  obtain ⟨_h_sz5, _h_t0, _h_tlast, h_t1, _h_tpe, _h_content0, _h_fe_pattern,
+          _h_outer_bal, _h_dyck, _h_wt_interior, _h_body_opener, _h_body_separator⟩ :=
+    scanFiltered_emitSeq_nonempty_structure items tokens h_scan h_ne h_all_block
+  have h_root_deep : FlowBodyContentDeepSeq tokens 2 (tokens.size - 2) :=
+    flowBodyContentDeepSeq_of_emit_and_window items tokens 2 (tokens.size - 2)
+      h_scan h_ne h_all_block h_root_win h_t1
+  have h_nav := seqBody_recseqbody_provider items tokens h_scan h_ne h_all
+  have recIH : ∀ lo' hi', hi' - lo' < (tokens.size - 2) - 2 → 2 ≤ lo' → hi' ≤ tokens.size - 2 →
+      FlowBodyWindow tokens lo' hi' → FlowBodyContentDeepSeq tokens lo' hi' →
+      SeqEnclosed tokens lo' → tokens[hi']!.val = .flowSequenceEnd →
+      RecSeqBody ((tokens.toList.take hi').drop lo') := by
+    intro lo' hi' _h_lt h_lo h_hi h_win h_deep h_enc _h_close
+    exact h_nav lo' hi' h_win h_deep h_enc h_lo h_hi
+  apply seqRoot_carrier_of_widthEnc_seq items tokens h_scan h_ne h_all
+  exact seqWidthEnc_of_recIH_seq tokens 2 (tokens.size - 2) h_root_win h_root_deep recIH
+
 end L4YAML.Proofs.EmitterScannability

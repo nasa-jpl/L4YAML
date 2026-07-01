@@ -1144,7 +1144,74 @@ theorem emit_roundtrip_mapping_content_eq {inFlow : Bool} (style : CollectionSty
           (rd.map YamlDocument.compose)[0]!.value = (pairs''[i.val]!).fst) ∧
         (∀ (i : Fin pairs.size) (rd : Array YamlDocument),
           parseYamlRaw (emit pairs[i].snd) = .ok rd → rd.size = 1 →
-          (rd.map YamlDocument.compose)[0]!.value = (pairs''[i.val]!).snd) := sorry
+          (rd.map YamlDocument.compose)[0]!.value = (pairs''[i.val]!).snd) := by
+      by_cases h_all_sc :
+          ∀ p ∈ pairs.toList, ∃ sk sv : Scalar, p.1 = .scalar sk ∧ p.2 = .scalar sv
+      · -- All-scalar case: R605 loop witness --> R607 token facts --> R608 pair pin --> compose
+        obtain ⟨pairs', ps_loop, ps_doc, h_pd_tok, h_pd_pos, h_loop_ok, h_raw_val⟩ :=
+          parseStream_flowMapStart_loop_witness tokens raw_docs h_parse (by omega) (by omega) h_t1
+        have h_ne_list : pairs.toList ≠ [] := by rw [h_list]; exact List.cons_ne_nil _ _
+        obtain ⟨h_tok_sz, _, h_scalar_tok, h_fe_tok_r607, h_fme_tok, h_key_tok, h_mv_tok⟩ :=
+          scanFiltered_emitMap_allScalar_pair_at pairs.toList h_ne_list h_all_sc tokens h_scan
+        have h_fuel : pairs.toList.length + 1 ≤ 4 * tokens.size + 2 := by rw [h_tok_sz]; omega
+        obtain ⟨h_pairs'_sz, h_pairs'_vals⟩ :=
+          parseFlowMappingLoop_allScalar_pair_at h_ne_list h_all_sc
+            h_key_tok h_scalar_tok h_mv_tok
+            (fun j hpos hlt => by
+              have h := h_fe_tok_r607 (j - 1) (by omega)
+              have h_idx : 2 + 5 * (j - 1) + 4 = 5 * j + 1 := by omega
+              rw [h_idx] at h; exact h)
+            h_fme_tok h_tok_sz h_pd_tok h_pd_pos h_fuel h_loop_ok
+        have h_ne_raw : 0 < raw_docs.size := by omega
+        have h_0' : 0 < (raw_docs.map YamlDocument.compose).size := by
+          rw [Array.size_map]; exact h_ne_raw
+        have h_comp_val : (raw_docs[0]!.compose).value = .mapping .flow pairs'' none none := by
+          have h_eq : (raw_docs.map YamlDocument.compose)[0]!.value =
+              (raw_docs[0]!.compose).value := by
+            rw [getElem!_pos _ 0 h_0', getElem!_pos raw_docs 0 h_ne_raw, Array.getElem_map]
+          rw [← h_eq]; exact h_shape
+        have h_pairs'_size : pairs'.size = pairs.size := by rw [h_pairs'_sz, Array.length_toList]
+        have h_pairs''_size : pairs''.size = pairs'.size := by
+          rw [compose_map_pairs_pointwise (raw_docs[0]!) pairs' pairs''
+            h_raw_val h_comp_val, Array.size_map]
+        exact ⟨h_pairs'_size.symm.trans h_pairs''_size.symm,
+          fun ⟨j, hj⟩ rd h_rd h_rd_sz => by
+            have hj_list : j < pairs.toList.length := by rwa [Array.length_toList]
+            obtain ⟨sk_j, sv_j, h_pairs_j_opt, h_pairs'_j⟩ := h_pairs'_vals j hj_list
+            rw [List.getElem?_eq_getElem hj_list] at h_pairs_j_opt
+            simp only [Option.some.injEq, Array.getElem_toList] at h_pairs_j_opt
+            have h_pairs_j_fst : pairs[j].fst = .scalar sk_j := congrArg Prod.fst h_pairs_j_opt
+            have h_rd_nice_k : parseYamlRaw (emitScalar sk_j.content) = .ok rd :=
+              (show emitScalar sk_j.content = emit pairs[j].fst from by
+                rw [h_pairs_j_fst]; rfl) ▸ h_rd
+            have h_composed_k :=
+              parseYamlRaw_emitScalar_compose_value sk_j.content rd h_rd_nice_k h_rd_sz
+            have hj' : j < pairs'.size := by rwa [h_pairs'_sz, Array.length_toList]
+            have h_pairs''_j : pairs''[j]! =
+                (.scalar (Scalar.mk sk_j.content .doubleQuoted none none none),
+                 .scalar (Scalar.mk sv_j.content .doubleQuoted none none none)) :=
+              compose_map_scalar_pair (raw_docs[0]!) pairs' pairs'' h_raw_val h_comp_val
+                j hj' sk_j.content sv_j.content .doubleQuoted .doubleQuoted h_pairs'_j
+            exact h_composed_k.trans (congrArg Prod.fst h_pairs''_j).symm,
+          fun ⟨j, hj⟩ rd h_rd h_rd_sz => by
+            have hj_list : j < pairs.toList.length := by rwa [Array.length_toList]
+            obtain ⟨sk_j, sv_j, h_pairs_j_opt, h_pairs'_j⟩ := h_pairs'_vals j hj_list
+            rw [List.getElem?_eq_getElem hj_list] at h_pairs_j_opt
+            simp only [Option.some.injEq, Array.getElem_toList] at h_pairs_j_opt
+            have h_pairs_j_snd : pairs[j].snd = .scalar sv_j := congrArg Prod.snd h_pairs_j_opt
+            have h_rd_nice_v : parseYamlRaw (emitScalar sv_j.content) = .ok rd :=
+              (show emitScalar sv_j.content = emit pairs[j].snd from by
+                rw [h_pairs_j_snd]; rfl) ▸ h_rd
+            have h_composed_v :=
+              parseYamlRaw_emitScalar_compose_value sv_j.content rd h_rd_nice_v h_rd_sz
+            have hj' : j < pairs'.size := by rwa [h_pairs'_sz, Array.length_toList]
+            have h_pairs''_j : pairs''[j]! =
+                (.scalar (Scalar.mk sk_j.content .doubleQuoted none none none),
+                 .scalar (Scalar.mk sv_j.content .doubleQuoted none none none)) :=
+              compose_map_scalar_pair (raw_docs[0]!) pairs' pairs'' h_raw_val h_comp_val
+                j hj' sk_j.content sv_j.content .doubleQuoted .doubleQuoted h_pairs'_j
+            exact h_composed_v.trans (congrArg Prod.snd h_pairs''_j).symm⟩
+      · sorry
     exact contentEqPairList_of_reparse pairs pairs'' h_size ihk ihv
       (reparse_deliverable_of_locality_pair pairs pairs''
         (fun i => grammable_to_block (hk i)) (fun i => grammable_to_block (hv i))
