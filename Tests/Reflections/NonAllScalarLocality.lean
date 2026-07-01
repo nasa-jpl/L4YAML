@@ -56,6 +56,7 @@ open L4YAML.TokenParser
 open L4YAML.Scanner
 open L4YAML.Proofs.RoundTrip
 open L4YAML.Proofs.EmitterScannability
+open L4YAML.Proofs.ParserGrammable
 
 /-! ## Fixtures -/
 
@@ -325,6 +326,102 @@ def ParseNodeValueSpanLocal : Prop :=
     (parseNode { tokens := t1, pos := p1, anchors := anch } f).map (·.1)
       = (parseNode { tokens := t2, pos := p2, anchors := anch } f).map (·.1)
 
+/-! ## P2a (FRAME) + Bridge birth-probes (inhabitation-debt Rule 1 + Rule 2)
+
+The P2 disproof above fixed P2b's statement (`ParseNodeValueSpanLocal`).  But that statement has two
+sub-targets that are ALSO to-be-built and carry their own inhabitation debt: its FRAME side-conditions
+(`ps'.pos ≤ p + n`, produced by **P2a**) and its bounded-`.val`-agreement HYPOTHESIS (produced by the
+**Bridge**).  Per [[inhabitation-debt-validate-target-defs]] rule 1 (probe at birth) and rule 2 (probe
+the BOUNDARY), each is birth-probed here on REAL tokens BEFORE the mutual induction is built.
+
+**Plan correction found while locating the P2a precedent.**  The 4-piece plan below (and
+[[ref-front-b-nonallscalar-blocking]]) called P2a "a strengthening of `parseNode_pos_mono_all`."  It is
+NOT a strengthening: `parseNode_pos_mono_all` (ParserWellBehaved.lean, `ParseNodePosMono`) proves ONLY
+the LOWER bound `ps'.pos ≥ ps.pos` — its whole content is "position never decreases," which says nothing
+about WHERE parseNode stops.  P2a needs the UPPER bound `ps'.pos = p + span`, a structurally different
+fact that must LOCATE the Dyck-matching close.  The machinery for that already exists
+(`flowBracketBalance_matching_close`, ParserGrammableBase.lean).  So P2a reuses the mono induction's
+SHAPE (mutual over the flow sub-clique) but threads bracket balance, not `≥`.  The per-element LEAF
+precedent is `parseNode_scalar_advances_by_one` (`ps'.pos = ps.pos + 1`); P2a is its non-scalar analog
+(`ps'.pos = matchingClose + 1`).  The all-scalar loop proof `parseFlowSeqLoop_allScalar_value_at_aux`
+threads exactly this leaf (plus `parseNode_scalar_produces_scalar` = P2b's leaf) with a CLOSED-FORM
+position invariant `2*k+1`; for non-scalars the widths vary, so P1's invariant becomes cumulative
+`pos_i = 2 + Σ_{j<i}(width_j + 1)` and the two leaves become mutual-inductive.  This confirms P2a is a
+GENUINE separate leaf, NOT absorbed into P1. -/
+
+/-- **P2a target — FRAME (parseNode reads exactly its bracket span).**  Upper-bound companion to the
+    lower-bound `parseNode_pos_mono_all`; together they pin `ps'.pos`.  This is exactly the FRAME
+    hypothesis `ParseNodeValueSpanLocal` consumes.  The Dyck conditions say `[p, p+n)` is a balanced,
+    first-return span (`tokens[p]` opens, balance stays ≥ 1 strictly inside, hits 0 at `p+n`) — the
+    matching close `flowBracketBalance_matching_close` produces.  Typechecked target, validated at the
+    boundary by `p2a_*` below; NOT proved, NO `sorry`. -/
+def ParseNodeFrameWithinSpan : Prop :=
+  ∀ (t : Array (Positioned YamlToken)) (p n f : Nat) (v : YamlValue) (ps' : ParseState)
+    (anch : Array (String × YamlValue)),
+    flowBracketBalance t p (p + n) = 0 →
+    (∀ i, p < i → i < p + n → flowBracketBalance t p i ≥ 1) →
+    parseNode { tokens := t, pos := p, anchors := anch } f = .ok (v, ps') →
+    ps'.pos = p + n
+
+/-! ### P2a boundary probes -- parseNode advances to EXACTLY the matching close, never to EOF.
+
+Token layout (`#eval`-read, confirmed against `scanFiltered (emit ·)`):
+
+    full [["a"],["b"]]:  0 ss, 1 `[`, 2 `[`, 3 "a", 4 `]`, 5 `,`, 6 `[`, 7 "b", 8 `]`, 9 `]`, 10 se
+    seqDecoy [[["x"]],"y"]: 0 ss,1 `[`,2 `[`,3 `[`,4 "x",5 `]`,6 `]`,7 `,`,8 "y",9 `]`,10 se
+
+`p2_full` item 0 opens at pos 2 (span 3 → close@4); item 1 (the LAST element) opens at pos 6
+(span 3 → close@8, outer close@9, EOF@10). -/
+
+/-- **P2a boundary (seq).**  Item 0 parseNode: pos 2 → 5 (= 2 + span 3).  Item 1 is the LAST element,
+    yet its parseNode lands at 9 (= 6 + span 3) — pointing AT the outer `]`@9, having consumed only its
+    own `[b]` (tokens 6,7,8).  It does NOT run to EOF (size 11, streamEnd@10).  The frame is TIGHT. -/
+theorem p2a_frame_seq_last_element_stops_at_own_close :
+    ( ((parseNode { tokens := p2_toks p2_full, pos := 2 } 100).toOption.map (·.2.pos) == some 5)
+      && ((parseNode { tokens := p2_toks p2_full, pos := 6 } 100).toOption.map (·.2.pos) == some 9) )
+      = true := by native_decide
+
+def p2_seqDecoy : YamlValue := flowSeq #[ flowSeq #[flowSeq #[sc "x"]], sc "y" ]
+
+/-- **P2a decoy (matching close, not first close).**  The doubly-nested item 0 `[["x"]]` opens at pos 2;
+    the FIRST `]` is at pos 5, the MATCHING close at pos 6.  parseNode lands at 7 (= 2 + span 5) —
+    skipping BOTH closes and stopping at the `flowEntry`@7, not mis-cutting at the first `]`@5.  This is
+    the boundary a naive "stop at the first close" frame would fail. -/
+theorem p2a_frame_seq_decoy_matching_not_first :
+    ((parseNode { tokens := p2_toks p2_seqDecoy, pos := 2 } 100).toOption.map (·.2.pos) == some 7)
+      = true := by native_decide
+
+def p2_mapMulti : YamlValue := flowMap #[ (sc "a", flowSeq #[sc "p"]), (sc "b", flowSeq #[sc "q"]) ]
+
+/-- **P2a boundary (map value axis).**  In `{ "a":["p"], "b":["q"] }` the value `["p"]` opens at pos 5
+    (→ 8), and the LAST value `["q"]` opens at pos 12 (→ 15) — pointing AT the `}`@15, not running into
+    the mapping close or EOF (size 17).  Confirms the frame is tight on the map value axis too. -/
+theorem p2a_frame_map_value_stops_at_own_close :
+    ( ((parseNode { tokens := p2_toks p2_mapMulti, pos := 5 } 100).toOption.map (·.2.pos) == some 8)
+      && ((parseNode { tokens := p2_toks p2_mapMulti, pos := 12 } 100).toOption.map (·.2.pos) == some 15) )
+      = true := by native_decide
+
+/-! ### Bridge boundary probes -- the emitted tokens of element i are a CONTIGUOUS `.val`-run.
+
+The Bridge discharges P2b's bounded-`.val`-agreement hypothesis: item i's tokens in the whole stream
+are token-for-token (on `.val`) the standalone tokens of `scanFiltered (emit items[i])` over item i's
+span.  Its general (non-scalar) form is the analog of the all-scalar R596/R597
+(`emitList_allScalar_body_content_at`, `scanFiltered_emitSeq_allScalar_token_at`), proved by induction
+on `emit.emitList` — but with VARIABLE element widths, unlike the fixed width-2 all-scalar case.  We do
+NOT fabricate a `Prop` (its honest statement needs the `pos_i`/`span_i` bookkeeping R596/R597 encode);
+we validate the concrete contiguity at a NONZERO offset (`p2_axisB` already covers slot 0). -/
+
+def p2_std1 : YamlValue := flowSeq #[sc "b"]
+
+/-- **Bridge boundary (nonzero offset).**  Item 1 `["b"]` opens at pos 6 in the whole stream; its body
+    run `full[6,7,8].val` equals the standalone `scanFiltered (emit ["b"])` body run `std1[1,2,3].val`
+    token-for-token.  Combined with `p2_axisB` (slot 0 agrees for k < 3 then diverges), this is the
+    Bridge's contiguity at both a zero and a nonzero slot. -/
+theorem bridge_seq_slot1_contiguous_val :
+    ( ((p2_toks p2_full)[6]!.val == (p2_toks p2_std1)[1]!.val)
+      && ((p2_toks p2_full)[7]!.val == (p2_toks p2_std1)[2]!.val)
+      && ((p2_toks p2_full)[8]!.val == (p2_toks p2_std1)[3]!.val) ) = true := by native_decide
+
 /-! ## Proof plan (CORRECTED): the sorry equality is a chain of FOUR pieces
 
 The earlier 3-piece plan (P1/P2/P3) understated the work: Axis B splits the old "P2" into a FRAME
@@ -332,14 +429,19 @@ lemma plus a value lemma, and adds a scanner-side bridge to discharge the bounde
 sorry's locality equality `(parseYamlRaw (emit items[i]) composed)[0]!.value = items''[i]!` factors as:
 
 * **P1 — whole-stream loop-value theorem** (general analog of all-scalar
-  `parseFlowSeqLoop_allScalar_value_at`): `items''[i]! = compose (parseNode {full, pos_i} fuel).1`,
-  where `pos_i` is the token offset at which element `i` starts.  Fuel induction on
-  `parseFlowSequenceLoop`; the hard part is computing `pos_i` (bracket-balance bookkeeping).  NOT
-  scalar-specialised.  *Missing.*
-* **P2a — FRAME / reads-within-span** (NEW, forced by Axis B): `parseNode {t, p} f = .ok (_, ps') →
-  ps'.pos ≤ p + span(t, p)`, i.e. parseNode consumes exactly its bracket span.  Precedent:
-  `parseNode_pos_mono_all` (position monotonicity, already proved by mutual induction over the
-  clique) — P2a strengthens mono to an upper bound.  *Missing (but scaffolding exists).*
+  `parseFlowSeqLoop_allScalar_value_at`, whose aux `parseFlowSeqLoop_allScalar_value_at_aux` is the
+  exact template): `items''[i]! = compose (parseNode {full, pos_i} fuel).1`.  Fuel induction on
+  `parseFlowSequenceLoop`, threading P2a (advance) + P2b (value) as the per-element leaves — precisely
+  where the all-scalar aux threads `parseNode_scalar_advances_by_one` + `parseNode_scalar_produces_scalar`.
+  The hard part is the position invariant: the all-scalar closed form `pos_k = 2*k+1` generalises to the
+  CUMULATIVE `pos_i = 2 + Σ_{j<i}(width_j + 1)` because element widths now vary.  *Missing.*
+* **P2a — FRAME / reads-within-span** (NEW, forced by Axis B) = `ParseNodeFrameWithinSpan` above:
+  `parseNode {t, p} f = .ok (_, ps') → ps'.pos = p + n` on a Dyck-balanced span `[p, p+n)`.  **NOT a
+  strengthening of `parseNode_pos_mono_all`** (that proves only the LOWER bound `ps'.pos ≥ ps.pos`);
+  P2a is the UPPER bound and must LOCATE the matching close — `flowBracketBalance_matching_close`
+  supplies the span, and P2a reuses the mono induction's SHAPE (mutual over the flow sub-clique) while
+  threading balance.  Leaf precedent: `parseNode_scalar_advances_by_one` (the `n = 1` case).  Probed
+  tight at the boundary (`p2a_*`).  *Missing.*
 * **P2b — value span-locality** = `ParseNodeValueSpanLocal` above: value invariant under BOUNDED
   `.val`-agreement + the two frame side-conditions.  Mutual induction over the parser clique
   (parseNode / parseNodeContent / parseFlowSequenceLoop / parseFlowMappingLoop / …), projecting the
@@ -358,9 +460,16 @@ because a scalar's parseNode reads exactly one token — span-trivial, `.val`-ag
 token, no framing needed.  Non-scalars need all four.  Map axis mirrors with `parseFlowMappingLoop`
 and key/value projections (`ps[i]!.fst/.snd`).
 
+**Build order (cheapest first).**  P2a and the Bridge are the cheapest: both are birth-probed above and
+lean on existing machinery (`flowBracketBalance_matching_close`; R596/R597).  P2b is the crux mutual
+induction (consumes P2a's frame + the Bridge's agreement).  P1 threads P2a+P2b at the loop and computes
+the cumulative `pos_i`.  Each is a self-contained unit (the all-scalar R596/R597/R601/R602 were each
+their own).
+
 The `[["a"]]` probe left conjuncts B (ignore-trailing) and C (nonzero-offset) vacuous; the SEQ/MAP
-fixtures above fire them, and the three axis probes disprove the naive P2 — together they are the
-concrete regression the eventual P1/P2a/P2b/Bridge proofs must satisfy. -/
+fixtures fire them; the three axis probes disprove the naive P2; and the `p2a_*`/`bridge_*` probes pin
+P2a tight and the Bridge contiguous at a nonzero offset — together they are the concrete regression the
+eventual P1/P2a/P2b/Bridge proofs must satisfy. -/
 
 /-! ## Axiom audit -/
 
