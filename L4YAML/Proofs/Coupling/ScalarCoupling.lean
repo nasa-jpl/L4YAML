@@ -193,13 +193,13 @@ theorem foldQuotedNewlinesLoop_corr (sc : ScannerState) (sp : SurfPos)
   | succ fuel' ih =>
     unfold foldQuotedNewlinesLoop
     dsimp only []  -- inline let saved, let s_skipped
-    obtain ⟨_, sp_sk, _, hcorr_sk⟩ := skipSpaces_corr sc sp hcorr
+    obtain ⟨sp_sk, _, hcorr_sk⟩ := skipWhitespace_corr sc sp hcorr
     split
     · rename_i c hpeek; split
       · rename_i hlb
         obtain ⟨sp_cn, hcorr_cn⟩ :=
-          consumeNewline_corr (skipSpaces sc) sp_sk c hcorr_sk hpeek hlb
-        exact ih (consumeNewline (skipSpaces sc)) sp_cn (cnt + 1) hcorr_cn
+          consumeNewline_corr (skipWhitespace sc) sp_sk c hcorr_sk hpeek hlb
+        exact ih (consumeNewline (skipWhitespace sc)) sp_cn (cnt + 1) hcorr_cn
       · exact ⟨sp, hcorr⟩  -- return saved = original s
     · exact ⟨sp, hcorr⟩
 
@@ -430,13 +430,13 @@ theorem skipBlankLinesLoop_corr (sc : ScannerState) (sp : SurfPos)
   | succ fuel' ih =>
     unfold skipBlankLinesLoop
     dsimp only []  -- inline let saved, let s_after_spaces
-    obtain ⟨_, sp_sk, _, hcorr_sk⟩ := skipSpaces_corr sc sp hcorr
+    obtain ⟨sp_sk, _, hcorr_sk⟩ := skipWhitespace_corr sc sp hcorr
     split
     · rename_i c hpeek; split
       · rename_i hlb
         obtain ⟨sp_cn, hcorr_cn⟩ :=
-          consumeNewline_corr (skipSpaces sc) sp_sk c hcorr_sk hpeek hlb
-        exact ih (consumeNewline (skipSpaces sc)) sp_cn (cnt + 1) hcorr_cn
+          consumeNewline_corr (skipWhitespace sc) sp_sk c hcorr_sk hpeek hlb
+        exact ih (consumeNewline (skipWhitespace sc)) sp_cn (cnt + 1) hcorr_cn
       · exact ⟨sp, hcorr⟩  -- return saved
     · exact ⟨sp, hcorr⟩
 
@@ -458,12 +458,18 @@ theorem handleBlockLineBreak_corr (sc : ScannerState) (sp : SurfPos)
     skipSpaces_corr (skipBlankLinesLoop (consumeNewline sc) 0
                       (inputEnd - (consumeNewline sc).offset + 1) inputEnd).2
                     sp_bl hcorr_bl
+  -- The returned state now skips separation white space past the indent
+  -- (s-separate-in-line [66]) before the content, so chain one more step.
+  obtain ⟨sp_ws, _, hcorr_ws⟩ :=
+    skipWhitespace_corr (skipSpaces (skipBlankLinesLoop (consumeNewline sc) 0
+                          (inputEnd - (consumeNewline sc).offset + 1) inputEnd).2)
+                        sp_sk hcorr_sk
   split at hsome
   · exact absurd hsome (by simp)  -- col < contentIndent → none
   · split at hsome
     · exact absurd hsome (by simp)  -- document boundary → none
     · simp only [Option.some.injEq, Prod.mk.injEq] at hsome
-      obtain ⟨-, rfl⟩ := hsome; exact ⟨sp_sk, hcorr_sk⟩
+      obtain ⟨-, rfl⟩ := hsome; exact ⟨sp_ws, hcorr_ws⟩
 
 /-- `collectPlainScalarLoop` preserves correspondence on `.ok` paths. -/
 theorem collectPlainScalarLoop_corr (sc : ScannerState) (sp : SurfPos)

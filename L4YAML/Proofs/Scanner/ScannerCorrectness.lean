@@ -1105,7 +1105,7 @@ theorem skipBlankLinesLoop_preserves_tokens (s : ScannerState) (cnt fuel inputEn
   | zero => unfold skipBlankLinesLoop; rfl
   | succ fuel' ih =>
     unfold skipBlankLinesLoop
-    cases h_peek : (skipSpaces s).peek? with
+    cases h_peek : (skipWhitespace s).peek? with
     | none => simp [h_peek]
     | some c =>
       simp [h_peek]
@@ -1113,8 +1113,8 @@ theorem skipBlankLinesLoop_preserves_tokens (s : ScannerState) (cnt fuel inputEn
       | false => simp []
       | true =>
         simp []
-        have h_sp := skipSpaces_preserves_tokens s
-        have h_cn := consumeNewline_preserves_tokens (skipSpaces s)
+        have h_sp := skipWhitespace_preserves_tokens s
+        have h_cn := consumeNewline_preserves_tokens (skipWhitespace s)
         rw [ih, h_cn, h_sp]
 
 /-- Helper: foldQuotedNewlinesLoop preserves tokens. -/
@@ -1124,7 +1124,7 @@ theorem foldQuotedNewlinesLoop_preserves_tokens (s : ScannerState) (emptyCount f
   | zero => unfold foldQuotedNewlinesLoop; rfl
   | succ fuel' ih =>
     unfold foldQuotedNewlinesLoop
-    cases h_peek : (skipSpaces s).peek? with
+    cases h_peek : (skipWhitespace s).peek? with
     | none => simp [h_peek]
     | some c =>
       simp [h_peek]
@@ -1132,8 +1132,8 @@ theorem foldQuotedNewlinesLoop_preserves_tokens (s : ScannerState) (emptyCount f
       | false => simp []
       | true =>
         simp []
-        have h_sp := skipSpaces_preserves_tokens s
-        have h_cn := consumeNewline_preserves_tokens (skipSpaces s)
+        have h_sp := skipWhitespace_preserves_tokens s
+        have h_cn := consumeNewline_preserves_tokens (skipWhitespace s)
         rw [ih, h_cn, h_sp]
 
 /-- Helper: foldQuotedNewlines preserves tokens. -/
@@ -1218,7 +1218,7 @@ theorem collectPlainScalarLoop_preserves_tokens (s : ScannerState) (content last
                 split at hblk <;> try contradiction
                 split at hblk <;> try contradiction
                 have := Prod.mk.inj (Option.some.inj hblk)
-                rw [← this.2, skipSpaces_preserves_tokens,
+                rw [← this.2, skipWhitespace_preserves_tokens, skipSpaces_preserves_tokens,
                     skipBlankLinesLoop_preserves_tokens, consumeNewline_preserves_tokens]
               split at h
               · -- s'.peek? = some '#' → terminate
@@ -3143,7 +3143,7 @@ theorem skipBlankLinesLoop_preserves_simpleKey (s : ScannerState) (cnt fuel inpu
   | zero => unfold skipBlankLinesLoop; rfl
   | succ fuel' ih =>
     unfold skipBlankLinesLoop
-    cases h_peek : (skipSpaces s).peek? with
+    cases h_peek : (skipWhitespace s).peek? with
     | none => simp [h_peek]
     | some c =>
       simp [h_peek]
@@ -3151,8 +3151,8 @@ theorem skipBlankLinesLoop_preserves_simpleKey (s : ScannerState) (cnt fuel inpu
       | false => simp []
       | true =>
         simp []
-        have h_sp := skipSpaces_preserves_simpleKey s
-        have h_cn := consumeNewline_preserves_simpleKey (skipSpaces s)
+        have h_sp := skipWhitespace_preserves_simpleKey s
+        have h_cn := consumeNewline_preserves_simpleKey (skipWhitespace s)
         rw [ih, h_cn, h_sp]
 
 
@@ -3162,7 +3162,7 @@ theorem foldQuotedNewlinesLoop_preserves_simpleKey (s : ScannerState) (emptyCoun
   | zero => unfold foldQuotedNewlinesLoop; rfl
   | succ fuel' ih =>
     unfold foldQuotedNewlinesLoop
-    cases h_peek : (skipSpaces s).peek? with
+    cases h_peek : (skipWhitespace s).peek? with
     | none => simp [h_peek]
     | some c =>
       simp [h_peek]
@@ -3170,8 +3170,8 @@ theorem foldQuotedNewlinesLoop_preserves_simpleKey (s : ScannerState) (emptyCoun
       | false => simp []
       | true =>
         simp []
-        have h_sp := skipSpaces_preserves_simpleKey s
-        have h_cn := consumeNewline_preserves_simpleKey (skipSpaces s)
+        have h_sp := skipWhitespace_preserves_simpleKey s
+        have h_cn := consumeNewline_preserves_simpleKey (skipWhitespace s)
         rw [ih, h_cn, h_sp]
 
 
@@ -3256,7 +3256,7 @@ theorem collectPlainScalarLoop_preserves_simpleKey (s : ScannerState) (content l
                 split at hblk <;> try contradiction
                 split at hblk <;> try contradiction
                 have := Prod.mk.inj (Option.some.inj hblk)
-                rw [← this.2, skipSpaces_preserves_simpleKey,
+                rw [← this.2, skipWhitespace_preserves_simpleKey, skipSpaces_preserves_simpleKey,
                     skipBlankLinesLoop_preserves_simpleKey, consumeNewline_preserves_simpleKey]
               split at h
               · injection h with h_eq; cases h_eq; rfl  -- '#' → state = s
@@ -3813,7 +3813,7 @@ theorem skipBlankLinesLoop_preserves_simpleKeyStack (s : ScannerState) (cnt fuel
   | zero => unfold skipBlankLinesLoop; rfl
   | succ fuel' ih =>
     unfold skipBlankLinesLoop
-    cases h_peek : (skipSpaces s).peek? with
+    cases h_peek : (skipWhitespace s).peek? with
     | none => simp [h_peek]
     | some c =>
       simp [h_peek]
@@ -3821,8 +3821,8 @@ theorem skipBlankLinesLoop_preserves_simpleKeyStack (s : ScannerState) (cnt fuel
       | false => simp []
       | true =>
         simp []
-        have h_sp := skipSpaces_preserves_simpleKeyStack s
-        have h_cn := consumeNewline_preserves_simpleKeyStack (skipSpaces s)
+        have h_sp := skipWhitespace_preserves_simpleKeyStack s
+        have h_cn := consumeNewline_preserves_simpleKeyStack (skipWhitespace s)
         rw [ih, h_cn, h_sp]
 
 
@@ -3832,7 +3832,7 @@ theorem foldQuotedNewlinesLoop_preserves_simpleKeyStack (s : ScannerState) (empt
   | zero => unfold foldQuotedNewlinesLoop; rfl
   | succ fuel' ih =>
     unfold foldQuotedNewlinesLoop
-    cases h_peek : (skipSpaces s).peek? with
+    cases h_peek : (skipWhitespace s).peek? with
     | none => simp [h_peek]
     | some c =>
       simp [h_peek]
@@ -3840,8 +3840,8 @@ theorem foldQuotedNewlinesLoop_preserves_simpleKeyStack (s : ScannerState) (empt
       | false => simp []
       | true =>
         simp []
-        have h_sp := skipSpaces_preserves_simpleKeyStack s
-        have h_cn := consumeNewline_preserves_simpleKeyStack (skipSpaces s)
+        have h_sp := skipWhitespace_preserves_simpleKeyStack s
+        have h_cn := consumeNewline_preserves_simpleKeyStack (skipWhitespace s)
         rw [ih, h_cn, h_sp]
 
 
@@ -3925,7 +3925,8 @@ theorem collectPlainScalarLoop_preserves_simpleKeyStack (s : ScannerState) (cont
                 split at hblk <;> try contradiction
                 split at hblk <;> try contradiction
                 have := Prod.mk.inj (Option.some.inj hblk)
-                rw [← this.2, skipSpaces_preserves_simpleKeyStack,
+                rw [← this.2, skipWhitespace_preserves_simpleKeyStack,
+                    skipSpaces_preserves_simpleKeyStack,
                     skipBlankLinesLoop_preserves_simpleKeyStack,
                     consumeNewline_preserves_simpleKeyStack]
               split at h
@@ -5164,7 +5165,7 @@ theorem skipBlankLinesLoop_preserves_flowLevel (s : ScannerState) (cnt fuel inpu
   | zero => unfold skipBlankLinesLoop; rfl
   | succ fuel' ih =>
     unfold skipBlankLinesLoop
-    cases h_peek : (skipSpaces s).peek? with
+    cases h_peek : (skipWhitespace s).peek? with
     | none => simp [h_peek]
     | some c =>
       simp [h_peek]
@@ -5172,8 +5173,8 @@ theorem skipBlankLinesLoop_preserves_flowLevel (s : ScannerState) (cnt fuel inpu
       | false => simp []
       | true =>
         simp []
-        have h_sp := skipSpaces_preserves_flowLevel s
-        have h_cn := consumeNewline_preserves_flowLevel (skipSpaces s)
+        have h_sp := skipWhitespace_preserves_flowLevel s
+        have h_cn := consumeNewline_preserves_flowLevel (skipWhitespace s)
         rw [ih, h_cn, h_sp]
 
 theorem foldQuotedNewlinesLoop_preserves_flowLevel (s : ScannerState) (emptyCount fuel : Nat) :
@@ -5182,7 +5183,7 @@ theorem foldQuotedNewlinesLoop_preserves_flowLevel (s : ScannerState) (emptyCoun
   | zero => unfold foldQuotedNewlinesLoop; rfl
   | succ fuel' ih =>
     unfold foldQuotedNewlinesLoop
-    cases h_peek : (skipSpaces s).peek? with
+    cases h_peek : (skipWhitespace s).peek? with
     | none => simp [h_peek]
     | some c =>
       simp [h_peek]
@@ -5190,8 +5191,8 @@ theorem foldQuotedNewlinesLoop_preserves_flowLevel (s : ScannerState) (emptyCoun
       | false => simp []
       | true =>
         simp []
-        have h_sp := skipSpaces_preserves_flowLevel s
-        have h_cn := consumeNewline_preserves_flowLevel (skipSpaces s)
+        have h_sp := skipWhitespace_preserves_flowLevel s
+        have h_cn := consumeNewline_preserves_flowLevel (skipWhitespace s)
         rw [ih, h_cn, h_sp]
 
 theorem foldQuotedNewlines_preserves_flowLevel (s : ScannerState) (s' : ScannerState) (content : String)
@@ -5316,7 +5317,7 @@ theorem collectPlainScalarLoop_preserves_flowLevel (s : ScannerState) (content l
                 split at hblk <;> try contradiction
                 split at hblk <;> try contradiction
                 have := Prod.mk.inj (Option.some.inj hblk)
-                rw [← this.2, skipSpaces_preserves_flowLevel,
+                rw [← this.2, skipWhitespace_preserves_flowLevel, skipSpaces_preserves_flowLevel,
                     skipBlankLinesLoop_preserves_flowLevel, consumeNewline_preserves_flowLevel]
               split at h
               · injection h with h_eq; cases h_eq; rfl  -- '#' → state = s
@@ -7450,7 +7451,7 @@ theorem foldQuotedNewlinesLoop_offset_ge (s : ScannerState) (emptyCount : Nat)
     unfold foldQuotedNewlinesLoop; simp only []
     split
     · split
-      · exact Nat.le_trans (Nat.le_trans (skipSpaces_offset_ge s) (consumeNewline_offset_ge _)) (ih _ _)
+      · exact Nat.le_trans (Nat.le_trans (skipWhitespace_offset_ge s) (consumeNewline_offset_ge _)) (ih _ _)
       · exact Nat.le_refl _
     · exact Nat.le_refl _
 
@@ -7464,7 +7465,7 @@ theorem skipBlankLinesLoop_offset_ge (s : ScannerState) (cnt : Nat) (fuel : Nat)
     split
     · split
       · exact Nat.le_trans
-          (Nat.le_trans (skipSpaces_offset_ge s) (consumeNewline_offset_ge _))
+          (Nat.le_trans (skipWhitespace_offset_ge s) (consumeNewline_offset_ge _))
           (ih _ _)
       · exact Nat.le_refl _
     · exact Nat.le_refl _
@@ -7679,7 +7680,7 @@ theorem collectPlainScalarLoop_offset_ge (s : ScannerState) (content spaces : St
                 rw [← this.2]
                 exact Nat.le_trans (consumeNewline_offset_ge s)
                   (Nat.le_trans (skipBlankLinesLoop_offset_ge _ _ _ _)
-                  (skipSpaces_offset_ge _))
+                  (Nat.le_trans (skipSpaces_offset_ge _) (skipWhitespace_offset_ge _)))
               split at h
               · -- s'.peek? = some '#' → terminate → state = s
                 simp only [Except.ok.injEq] at h; subst h; exact Nat.le_refl _

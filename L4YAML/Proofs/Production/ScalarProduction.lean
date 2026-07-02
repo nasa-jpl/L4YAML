@@ -124,6 +124,14 @@ theorem sindent_to_flowlineprefix {n n_sk : Nat} {sp sp' : SurfPos}
   have h_gopt := gstar_sswhite_to_gopt_sep h_gstar
   exact SFlowLinePrefix.mk n sp sp_mid sp' h_indent_n h_gopt
 
+-- A run of s-white (spaces *and* tabs) is an `s-flow-line-prefix(0)`: the
+-- indent is empty at n=0 and the whole run is `s-separate-in-line`.  This is
+-- the bridge the tab-aware blank-line scans (`skipWhitespace`) need, since
+-- `skipWhitespace_corr` yields `GStar SSWhite` rather than `SIndent`.
+theorem gstar_sswhite_to_flowlineprefix0 {sp sp' : SurfPos}
+    (h : GStar SSWhite sp sp') : SFlowLinePrefix 0 sp sp' :=
+  SFlowLinePrefix.mk 0 sp sp sp' (SIndent.zero sp) (gstar_sswhite_to_gopt_sep h)
+
 /-! ## §1c consumeNewline with SBBreak production
 
   When the scanner is at a linebreak, `consumeNewline` produces both an
@@ -170,11 +178,14 @@ theorem consumeNewline_sbreak_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
 /-! ## §1d foldQuotedNewlinesLoop production -/
 
 -- Parametric version: produces `GStar (SLEmpty n .flowIn)` for any `n`.
--- When spaces ≥ n: uses `SLEmpty.flow` via `sindent_to_flowlineprefix`.
--- When spaces < n: uses `SLEmpty.flowLt` via `SIndentLt`.
-theorem foldQuotedNewlinesLoop_prod (n : Nat) (sc : ScannerState) (sp : SurfPos)
+-- Specialised to n = 0 (the only instantiation — see the caller in
+-- `foldQuotedNewlines_prod`).  The loop now skips tab-bearing blank lines
+-- (`skipWhitespace`, my B1 fix), which yield `GStar SSWhite` rather than a pure
+-- `SIndent`; at n = 0 that whole run is `s-flow-line-prefix(0)` via
+-- `gstar_sswhite_to_flowlineprefix0`, so every skipped line is `SLEmpty 0`.
+theorem foldQuotedNewlinesLoop_prod (sc : ScannerState) (sp : SurfPos)
     (cnt fuel : Nat) (hcorr : ScannerSurfCorr sc sp) :
-    ∃ sp', GStar (SLEmpty n .flowIn) sp sp' ∧
+    ∃ sp', GStar (SLEmpty 0 .flowIn) sp sp' ∧
            ScannerSurfCorr (foldQuotedNewlinesLoop sc cnt fuel).1 sp' := by
   induction fuel generalizing sc sp cnt with
   | zero =>
@@ -182,23 +193,17 @@ theorem foldQuotedNewlinesLoop_prod (n : Nat) (sc : ScannerState) (sp : SurfPos)
     exact ⟨sp, GStar.nil _, hcorr⟩
   | succ fuel' ih =>
     unfold foldQuotedNewlinesLoop; dsimp only []
-    obtain ⟨n_sk, sp_sk, h_indent, hcorr_sk⟩ := skipSpaces_corr sc sp hcorr
+    obtain ⟨sp_ws, h_gstar, hcorr_ws⟩ := skipWhitespace_corr sc sp hcorr
     split
     · rename_i c hpeek; split
       · rename_i hlb
         obtain ⟨sp_cn, h_sbreak, hcorr_cn⟩ :=
-          consumeNewline_sbreak_corr (skipSpaces sc) sp_sk c hcorr_sk hpeek hlb
-        have h_lempty : SLEmpty n .flowIn sp sp_cn := by
-          by_cases h : n ≤ n_sk
-          · -- Enough spaces: SFlowLinePrefix n via sindent_to_flowlineprefix
-            exact SLEmpty.flow n sp sp_sk sp_cn .flowIn (Or.inr rfl)
-              (GOpt.some sp sp_sk (sindent_to_flowlineprefix h_indent h)) h_sbreak
-          · -- Fewer than n spaces: SIndentLt n
-            have h_lt : n_sk < n := by omega
-            exact SLEmpty.flowLt n sp sp_sk sp_cn .flowIn (Or.inr rfl)
-              ⟨n_sk, h_lt, h_indent⟩ h_sbreak
+          consumeNewline_sbreak_corr (skipWhitespace sc) sp_ws c hcorr_ws hpeek hlb
+        have h_lempty : SLEmpty 0 .flowIn sp sp_cn :=
+          SLEmpty.flow 0 sp sp_ws sp_cn .flowIn (Or.inr rfl)
+            (GOpt.some sp sp_ws (gstar_sswhite_to_flowlineprefix0 h_gstar)) h_sbreak
         obtain ⟨sp_rest, h_gstar_rest, hcorr_rest⟩ :=
-          ih (consumeNewline (skipSpaces sc)) sp_cn (cnt + 1) hcorr_cn
+          ih (consumeNewline (skipWhitespace sc)) sp_cn (cnt + 1) hcorr_cn
         exact ⟨sp_rest,
                GStar.cons sp sp_cn sp_rest h_lempty h_gstar_rest,
                hcorr_rest⟩
@@ -326,7 +331,7 @@ theorem foldQuotedNewlines_prod (sc : ScannerState) (sp : SurfPos)
     consumeNewline_sbreak_corr sc sp c hcorr hpeek hlb
   -- Step 2: foldQuotedNewlinesLoop → GStar (SLEmpty 0 .flowIn)
   obtain ⟨sp_loop, h_gstar_empty, hcorr_loop⟩ :=
-    foldQuotedNewlinesLoop_prod 0 (consumeNewline sc) sp_cn 0 _ hcorr_cn
+    foldQuotedNewlinesLoop_prod (consumeNewline sc) sp_cn 0 _ hcorr_cn
   -- Step 3: skipSpaces on loop result → SIndent
   obtain ⟨n_sk2, sp_sk2, h_indent2, hcorr_sk2⟩ :=
     skipSpaces_corr (loopResult sc).1 sp_loop hcorr_loop
@@ -1342,17 +1347,17 @@ theorem skipBlankLinesLoop_prod (sc : ScannerState) (sp : SurfPos)
     exact ⟨sp, GStar.nil _, hcorr⟩
   | succ fuel' ih =>
     unfold skipBlankLinesLoop; dsimp only []
-    obtain ⟨n_sk, sp_sk, h_indent, hcorr_sk⟩ := skipSpaces_corr sc sp hcorr
+    obtain ⟨sp_ws, h_gstar, hcorr_sk⟩ := skipWhitespace_corr sc sp hcorr
     split
     · rename_i c hpeek; split
       · rename_i hlb
         obtain ⟨sp_cn, h_sbreak, hcorr_cn⟩ :=
-          consumeNewline_sbreak_corr (skipSpaces sc) sp_sk c hcorr_sk hpeek hlb
+          consumeNewline_sbreak_corr (skipWhitespace sc) sp_ws c hcorr_sk hpeek hlb
         have h_lempty : SLEmpty 0 .flowIn sp sp_cn :=
-          SLEmpty.flow 0 sp sp_sk sp_cn .flowIn (Or.inr rfl)
-            (GOpt.some sp sp_sk (sindent_to_flowlineprefix h_indent (Nat.zero_le _))) h_sbreak
+          SLEmpty.flow 0 sp sp_ws sp_cn .flowIn (Or.inr rfl)
+            (GOpt.some sp sp_ws (gstar_sswhite_to_flowlineprefix0 h_gstar)) h_sbreak
         obtain ⟨sp_rest, h_gstar_rest, hcorr_rest⟩ :=
-          ih (consumeNewline (skipSpaces sc)) sp_cn (cnt + 1) hcorr_cn
+          ih (consumeNewline (skipWhitespace sc)) sp_cn (cnt + 1) hcorr_cn
         exact ⟨sp_rest,
                GStar.cons sp sp_cn sp_rest h_lempty h_gstar_rest,
                hcorr_rest⟩
@@ -1383,12 +1388,21 @@ theorem handleBlockLineBreak_prod (sc : ScannerState) (sp : SurfPos) (c : Char)
   -- Step 2: skipBlankLinesLoop → GStar (SLEmpty 0 .flowIn)
   obtain ⟨sp_loop, h_gstar_empty, hcorr_loop⟩ :=
     skipBlankLinesLoop_prod (consumeNewline sc) sp_cn 0 _ inputEnd hcorr_cn
-  -- Step 3: skipSpaces → SIndent → SFlowLinePrefix 0
+  -- Step 3: skipSpaces (indent) then skipWhitespace (separation, my B3 fix).
+  -- The returned state now sits past both, so build `SFlowLinePrefix 0` from the
+  -- combined `GStar SSWhite` (indent-spaces ++ separation-white).
   obtain ⟨n_sk, sp_sk, h_indent, hcorr_sk⟩ :=
     skipSpaces_corr
       (skipBlankLinesLoop (consumeNewline sc) 0
         (inputEnd - (consumeNewline sc).offset + 1) inputEnd).2
       sp_loop hcorr_loop
+  obtain ⟨sp_ws, h_gstar_ws, hcorr_ws⟩ :=
+    skipWhitespace_corr
+      (skipSpaces (skipBlankLinesLoop (consumeNewline sc) 0
+        (inputEnd - (consumeNewline sc).offset + 1) inputEnd).2)
+      sp_sk hcorr_sk
+  have h_gstar_all : GStar SSWhite sp_loop sp_ws :=
+    gstar_sswhite_append (sindent_to_gstar_sswhite h_indent) h_gstar_ws
   -- Unfold to trace through the definition
   unfold collectPlainScalar_handleBlockLineBreak at hblk
   dsimp only [] at hblk
@@ -1398,8 +1412,8 @@ theorem handleBlockLineBreak_prod (sc : ScannerState) (sp : SurfPos) (c : Char)
     · exact absurd hblk (by simp)
     · simp only [Option.some.injEq, Prod.mk.injEq] at hblk
       obtain ⟨-, rfl⟩ := hblk
-      exact ⟨sp_cn, sp_loop, sp_sk, h_sbreak, h_gstar_empty,
-             sindent_to_flowlineprefix h_indent (Nat.zero_le _), hcorr_sk⟩
+      exact ⟨sp_cn, sp_loop, sp_ws, h_sbreak, h_gstar_empty,
+             gstar_sswhite_to_flowlineprefix0 h_gstar_all, hcorr_ws⟩
 
 -- Full production for `collectPlainScalarLoop`: given accumulated whitespace
 -- `GStar SSWhite sp_ent sp`, produces inline entries and trailing WS.

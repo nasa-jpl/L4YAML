@@ -292,7 +292,7 @@ theorem foldQuotedNewlinesLoop_preserves_dp (s : ScannerState) (emptyCount fuel 
     simp only []
     split
     · split
-      · rw [ih, consumeNewline_preserves_dp, skipSpaces_preserves_dp]
+      · rw [ih, consumeNewline_preserves_dp, skipWhitespace_preserves_dp]
       · rfl
     · rfl
 
@@ -489,7 +489,7 @@ theorem foldQuotedNewlinesLoop_preserves_indents (s : ScannerState) (emptyCount 
     simp only []
     split
     · split
-      · rw [ih, consumeNewline_preserves_indents, skipSpaces_preserves_indents]
+      · rw [ih, consumeNewline_preserves_indents, skipWhitespace_preserves_indents]
       · rfl
     · rfl
 
@@ -676,7 +676,7 @@ theorem foldQuotedNewlinesLoop_preserves_ek (s : ScannerState) (emptyCount fuel 
     simp only []
     split
     · split
-      · rw [ih, consumeNewline_preserves_ek, skipSpaces_preserves_ek]
+      · rw [ih, consumeNewline_preserves_ek, skipWhitespace_preserves_ek]
       · rfl
     · rfl
 

@@ -2947,7 +2947,7 @@ theorem foldQuotedNewlinesLoop_preserves_flowLevel (s : ScannerState) (emptyCoun
     simp only []
     split
     · split
-      · rw [ih, consumeNewline_preserves_flowLevel, skipSpaces_preserves_flowLevel]
+      · rw [ih, consumeNewline_preserves_flowLevel, skipWhitespace_preserves_flowLevel]
       · rfl
     · rfl
 
@@ -3103,7 +3103,7 @@ theorem skipBlankLinesLoop_preserves_flowLevel (s : ScannerState) (cnt fuel inpu
       split
       · -- isLineBreakBool c = true
         exact ih _ _ |>.trans (consumeNewline_preserves_flowLevel _)
-                             |>.trans (skipSpaces_preserves_flowLevel s)
+                             |>.trans (skipWhitespace_preserves_flowLevel s)
       · -- isLineBreakBool c = false
         rfl
     · -- peek? = none
@@ -3201,8 +3201,8 @@ theorem collectPlainScalarLoop_preserves_flowLevel (s : ScannerState) (content s
                     rename_i heq_handle
                     injection heq_handle with h_pair_eq
                     cases h_pair_eq
-                    have h_fl : (skipSpaces (skipBlankLinesLoop (consumeNewline s) 0 (inputEnd - (consumeNewline s).offset + 1) inputEnd).snd).flowLevel = s.flowLevel := by
-                      rw [skipSpaces_preserves_flowLevel,
+                    have h_fl : (skipWhitespace (skipSpaces (skipBlankLinesLoop (consumeNewline s) 0 (inputEnd - (consumeNewline s).offset + 1) inputEnd).snd)).flowLevel = s.flowLevel := by
+                      rw [skipWhitespace_preserves_flowLevel, skipSpaces_preserves_flowLevel,
                           skipBlankLinesLoop_preserves_flowLevel (consumeNewline s) 0 (inputEnd - (consumeNewline s).offset + 1) inputEnd,
                           consumeNewline_preserves_flowLevel]
                     exact ih _ _ _ h_loop |>.trans h_fl

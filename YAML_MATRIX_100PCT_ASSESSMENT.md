@@ -7,14 +7,16 @@ formalization, and the proofs.*
 Generated 2026-07-02 · baseline: **event 362/402**, **json 240/279 valid**
 (see [YAML_MATRIX_COMPARISON.md](YAML_MATRIX_COMPARISON.md)).
 
-**Progress:** J1 + A applied 2026-07-02 → **event 383/402** (+21), **json 263/279
-valid** (+18). See [Status log](#status-log).
+**Progress:** J1 + A + A′/B1/B3/E applied 2026-07-02 → **event 391/402** (+29),
+**json 271/279 valid** (+26). See [Status log](#status-log).
 
 ---
 
 ## Bottom line
 
-* **40 event diffs and 39 JSON diffs remain. Every one is a *content* or
+* *(Original baseline framing; current standing is in **Progress** above —
+  after J1/A/A′/B1/B3/E only **11 event** and **8 genuine JSON** diffs remain.)*
+  **40 event diffs and 39 JSON diffs remain. Every one is a *content* or
   *structure* defect in the scanner/parser — none is a spurious accept/reject.**
   L4YAML still parses every test with the correct success/failure verdict.
 * **Two reframings of the reported numbers:**
@@ -44,15 +46,15 @@ valid** (+18). See [Status log](#status-log).
 | # | Root cause | Tests (event) | Also JSON | Fix site | Proof impact | Effort |
 |---|---|---|---|---|---|---|
 | **A** ✅ | Folded `>` clip scalar drops its trailing `\n` | 21 | most | `Scanner/Scalar.lean` `foldBlockContent` EOF case | **6 guards updated**† | XS |
-| **A′** | Folded folding mishandles blank / tab-led "more-indented" lines | MJS9, R4YG | yes | `foldBlockContent` `isMore` + blank-run logic | **none** | S |
-| **B1** | Double-quoted: tab-containing blank line folds to space not `\n` | 5GBF | yes | `foldQuotedNewlinesLoop` (`skipSpaces`→tab-aware) | **none** (output form preserved) | XS |
+| **A′** ✅ | Folded folding mishandles blank / tab-led "more-indented" lines | MJS9, R4YG | yes | `foldBlockContent` `isMore` + blank-run logic | **structural**‡ | S |
+| **B1** ✅ | Double-quoted: tab-containing blank line folds to space not `\n` | 5GBF | yes | `foldQuotedNewlinesLoop` (`skipSpaces`→tab-aware) | **structural + grammar**‡ | XS |
 | **B2** | Double-quoted: an *escaped* trailing tab is trimmed as whitespace | DE56/00–03 | yes | `collectDoubleQuotedLoop`/`trimTrailingWS` | none (structural only) | **M** |
-| **B3** | Plain: continuation-line leading tab / tab-blank line not folded | HS5T, NB6Z, UV7Q | yes | `collectPlainScalar_handleBlockLineBreak`, `skipBlankLinesLoop` | **none** | S |
+| **B3** ✅ | Plain: continuation-line leading tab / tab-blank line not folded | HS5T, NB6Z, UV7Q | yes | `collectPlainScalar_handleBlockLineBreak`, `skipBlankLinesLoop` | **structural + grammar**‡ | S |
 | **C1** | Lone `...` / comment-only tail emits a spurious empty document | HWV9, QT73, M7A3 | yes | `parseStreamLoop` **and** `Events.parseStreamMarkedLoop` | **none break** | S |
 | **C2** | Empty node with a tag/anchor opens a *sequence* that swallows siblings | FH7J, PW8X | (event-only) | `parseNodeContent` (thread `hadProps`) | **breaks 6 lemmas, re-prove** | **M** |
 | **C3** | Explicit complex mapping emits spurious empty `=VAL :` pairs | V9D5 | (event-only) | `parseBlockMappingEntryValue` add `.value` arm | **none break** | XS |
 | **D** | Tag suffix percent-escape (`%21`→`!`) not decoded | 6CK3 | no (value unaffected) | `Events.resolveTagForEvent` (emitter-side) | **none** (emitter-side) | XS |
-| **E** | Literal `\|` keep/clip on trailing-whitespace-only lines | JEF9/02, L24T/01 | yes | `scanBlockScalarBody` chomp of blank tail | **none** | S |
+| **E** ✅ | Literal `\|` keep/clip on trailing-whitespace-only lines | JEF9/02, L24T/01 | yes | `scanBlockScalarBody` chomp of blank tail | **structural**‡ | S |
 | **J1** ✅ | JSON ignores explicit core tags: `!!int 42`→`"42"` not `42` | — | 2AUY 33X3 74H7 F2C7 L94M | `Output/Json.lean` `scalarType` | **none** (Json.lean unproven) | XS |
 | **J2** | Alias to a *re-defined* anchor resolves to the wrong occurrence | — | 3GZX | `Spec/Types.lean` `resolveAliases` (order-aware) | **R604 characterization at risk** | **M** |
 
@@ -92,6 +94,51 @@ the fixes make the implementations *more* faithful to productions [165]–[169]
 regresses. **No change to the grammar formalization (`Spec/Grammar.lean`,
 `Spec/CharPredicates.lean`) is required** — these are implementation-correctness
 fixes, not missing productions.
+
+‡ *Correction (A′/B1/B3/E, done):* the "zero proof maintenance" call was **wrong**
+for these four — they broke **structural** proofs (not `#guard`s, and not content
+lemmas). The real predictor of proof breakage is **not** "content vs structure of
+the spec" but **whether the fix changes the definitional shape that proofs
+`unfold` and pattern-match on**:
+
+* **B1, B3** replaced a `skipSpaces` call with `skipWhitespace` (a *different
+  function*) inside `foldQuotedNewlinesLoop` / `skipBlankLinesLoop`, and threaded
+  a separation-`skipWhitespace` into `collectPlainScalar_handleBlockLineBreak`.
+  Every structural lemma that unfolds those and rewrites with
+  `skipSpaces_preserves_X` / `_offset_ge` / `_corr` / `_BoundInv` then failed on
+  the new head symbol. Fixed mechanically by swapping in the `skipWhitespace_*`
+  companions (which already existed) across **~40 lemmas in 6 files**:
+  `ScannerCorrectness` (4 field-preservation families × 2 loops + offsets + 4
+  `rw` chains), `ScannerBound`, `ScalarCoupling`, `ScannerPlainScalarValid`,
+  `EmitterScannability/ScanSteps` (dp/indents/ek families). All are
+  offset-monotonicity / state-field-preservation / position-correspondence
+  lemmas — none inspects the folded characters, so each swap is a rename, not a
+  re-proof.
+* **B1, B3 also broke a *grammar-witness* proof** (`ScalarProduction`,
+  `foldQuotedNewlinesLoop_prod` / `skipBlankLinesLoop_prod` /
+  `handleBlockLineBreak_prod`): the tab-aware scan yields `GStar SSWhite` where
+  the old proof had `SIndent`. Since a `spaces+tab` run is only a valid
+  `l-empty(n)` for `n ≤ #spaces`, the *parametric-n* `foldQuotedNewlinesLoop_prod`
+  is no longer true ∀n — but its **sole caller uses n = 0**, and `SLEmpty 0`
+  accepts any white run, so it was specialised to `0` and re-proved via a new
+  `gstar_sswhite_to_flowlineprefix0` bridge. (This is the one non-mechanical
+  proof edit.)
+* **A′, E** changed only local shape (`isMore := c == ' ' || c == '\t'`; an
+  EOF `let rawContent' := if … then …push '\n' else …` that keeps the returned
+  *state* component syntactically identical) — the `let`-into-string form was
+  chosen specifically so the state-field proofs see an unchanged `.snd` and need
+  no edits. E's `collectBlockScalarLoop` EOF-newline also flipped one
+  `native_decide` round-trip theorem (`roundtrip_newline`), which drove the fix
+  to only add the implicit `\n` for a *whitespace-only* trailing line (matching
+  libfyaml/pyyaml/ruamel and keeping the dumper faithful).
+
+**Net:** full `lake build` is green (0 errors; the only warnings are the
+pre-existing `EmitterScannability` sorries), no `#guard` broke this round, and all
+12 runtime suites still pass. But the projection "one-to-few-line tweaks, zero
+proof impact" understated the cost: **B1/B3 in particular are XS/S in *source* but
+touched ~7 proof files.** The remaining scanner fixes (B2) should budget for the
+same `skipSpaces→skipWhitespace`-class structural churn if they change which
+whitespace primitive a scanned span uses.
 
 ---
 
@@ -164,8 +211,11 @@ but the logic itself is fiddlier than the other scanner tweaks. Est. medium-impl
    twins (+18), zero regressions. Not quite the projected one-liner: a `FoldState`
    guard was needed so all-blank clip scalars stay empty (K858), and 6
    `Tests/Guards/Proofs` `#guard`s were updated.
-3. **A′, B1, B3, E** — the remaining scanner whitespace/tab folding tweaks. Zero
-   proof impact; clears the bulk of what's left on both axes.
+3. **A′, B1, B3, E** ✅ *(done — see [Status log](#status-log))* — the remaining
+   scanner whitespace/tab folding tweaks. Cleared exactly 8 event diffs (+8) and
+   8 JSON twins (+8), zero regressions. **Not** zero proof impact: XS/S in source
+   but ~7 proof files of structural + one grammar-witness maintenance (see the
+   ‡ correction above).
 4. **C1, C3** — document-model and complex-mapping structure. Small, no proof
    breakage (remember the C1 dual site).
 5. **C2** — empty-node/sequence; budget for re-proving the `ParserNodeProofs`
@@ -255,3 +305,53 @@ HS5T/NB6Z/UV7Q (B3), HWV9/QT73/M7A3 (C1), MJS9/R4YG (A′), JEF9/02 & L24T/01 (E
 Remaining 19 event diffs: those same root causes plus FH7J/PW8X (C2), 6CK3 (D),
 V9D5 (C3). Next in the recommended order: **D** (6CK3, emitter-side tag
 percent-decode) and the **A′/B1/B3/E** scanner whitespace/tab folding tweaks.
+
+### A′, B1, B3, E — scanner whitespace/tab folding (done 2026-07-02)
+
+**Changes** (all in `Scanner/Scalar.lean`).
+* **A′** (MJS9, R4YG) — `foldBlockContent`: `isMore := c == ' '` → `c == ' ' ||
+  c == '\t'` in both the line-boundary classifier and the `.start` case. After
+  the content indent is stripped, a *tab*-led line is more-indented too [173], so
+  the line breaks around it stay literal instead of folding to a space.
+* **B1** (5GBF) — `foldQuotedNewlinesLoop`: the blank-line emptiness probe
+  `skipSpaces` → `skipWhitespace` (spaces *and* tabs), so a `   \t`-style line in
+  a double-quoted scalar counts as an `l-empty` line (→ `\n`) rather than folding
+  to a space.
+* **B3** (HS5T, NB6Z, UV7Q) — `skipBlankLinesLoop` probe `skipSpaces` →
+  `skipWhitespace` (tab-only lines are blank), **and** in
+  `collectPlainScalar_handleBlockLineBreak` the under-indent test stays
+  `skipSpaces` (indentation is spaces only §6.1) but a trailing
+  `skipWhitespace` was added past the indent so a leading continuation-line tab
+  is stripped as `s-separate-in-line` [66] rather than kept as content.
+* **E** (JEF9/02, L24T/01) — `scanBlockScalarBody`/`collectBlockScalarLoop`:
+  EOF now acts as an implicit final `b-break` (`b-chomped-last(t)` [165]) so a
+  block scalar whose file ends without a newline still chomps correctly. Two
+  sites: (i) `autoDetectBlockScalarIndent`'s EOF branch folds the final
+  whitespace-only line's column into `maxWSCol` (fixes JEF9/02's indent
+  auto-detect); (ii) the two `collectBlockScalarLoop` EOF exits append `\n` — the
+  fully-indented-blank exit guarded on `spacesConsumed > 0`, the content-line
+  exit guarded on the collected line being **whitespace-only**. That second guard
+  is load-bearing: reference parsers (libfyaml/pyyaml/ruamel) do *not* add a
+  trailing `\n` to a real content line at EOF, and doing so would break the
+  dumper round-trip (`roundtrip_newline`); a whitespace-only trailing line (as in
+  L24T/01) *does* keep its `\n`.
+
+**Result.** Event **383 → 391** (+8), JSON **263 → 271 valid** (of 279, +8),
+**zero regressions** on either axis (verified by diffing the full pre/post fail
+sets). Cleared, both axes: 5GBF HS5T JEF9/02 L24T/01 MJS9 NB6Z R4YG UV7Q.
+Remaining 11 event diffs: 6CK3 (D), DE56/00–03 (B2), FH7J/PW8X (C2),
+HWV9/M7A3/QT73 (C1), V9D5 (C3). Remaining 8 genuine JSON diffs: 3GZX (J2),
+DE56/00–03 (B2), HWV9/M7A3/QT73 (C1) — plus the 3 phantom error-test rejects.
+
+**Proofs.** These were **not** zero-impact (correcting the ‡ note above). Full
+`lake build` is green (0 errors; only the pre-existing `EmitterScannability`
+sorries) after fixing ~40 structural lemmas across **6 files** plus one
+grammar-witness proof: `ScannerCorrectness` (offset-monotonicity + tokens/
+simpleKey/simpleKeyStack/flowLevel preservation over the two loops, 4 `rw`
+chains, `collectBlockScalarLoop` state shape kept identical via a `let`-into-
+string form), `ScannerBound` (`_BoundInv`), `ScalarCoupling` (`_corr` via the
+existing `skipWhitespace_corr`), `ScannerPlainScalarValid` (flowLevel),
+`EmitterScannability/ScanSteps` (dp/indents/ek), and `ScalarProduction`
+(`foldQuotedNewlinesLoop_prod` specialised n→0 + new
+`gstar_sswhite_to_flowlineprefix0`). All 12 runtime suites still pass
+(dumproundtrip 117/117 included). No `#guard` broke this round.

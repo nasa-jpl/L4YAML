@@ -855,7 +855,7 @@ theorem skipBlankLinesLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
     simp only [skipBlankLinesLoop]
     split  -- (skipSpaces s).peek? = some c
     · split  -- isLineBreakBool
-      · exact ih _ _ (consumeNewline_BoundInv _ (skipSpaces_BoundInv s h hend) hend)
+      · exact ih _ _ (consumeNewline_BoundInv _ (skipWhitespace_BoundInv s h hend) hend)
       · exact h
     · exact h
 
@@ -944,7 +944,7 @@ theorem foldQuotedNewlinesLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
     simp only [foldQuotedNewlinesLoop]
     split
     · split  -- isLineBreakBool
-      · exact ih _ _ (consumeNewline_BoundInv _ (skipSpaces_BoundInv s h hend) hend)
+      · exact ih _ _ (consumeNewline_BoundInv _ (skipWhitespace_BoundInv s h hend) hend)
       · exact h
     · exact h
 
@@ -1436,13 +1436,15 @@ theorem collectPlainScalar_handleBlockLineBreak_BoundInv {s₀ : ScannerState} (
   have h_bl := skipBlankLinesLoop_BoundInv (consumeNewline s) 0
     (inputEnd - (consumeNewline s).offset + 1) inputEnd h_cn hend
   have h_sp := skipSpaces_BoundInv _ h_bl hend
+  -- Extra separation-white-space skip past the indent (my B3 fix).
+  have h_ws := skipWhitespace_BoundInv _ h_sp hend
   split at hok
   · cases hok
   · split at hok
     · cases hok
     · simp only [Option.some.injEq, Prod.mk.injEq] at hok
       obtain ⟨_, rfl⟩ := hok
-      exact h_sp
+      exact h_ws
 
 theorem terminates?_state_eq (c : Char) (s : ScannerState)
     (content spaces : String) (inFlow : Bool) (result : PlainScalarResult)

@@ -156,7 +156,12 @@ def foldQuotedNewlinesLoop (s : ScannerState) (emptyCount : Nat) (fuel : Nat) :
   | 0 => (s, emptyCount)
   | fuel' + 1 =>
     let saved := s
-    let s_skipped := skipSpaces s
+    -- A blank line inside a flow scalar may carry trailing tabs as well as
+    -- spaces (§6.5 line folding treats an all-white line as empty), so skip
+    -- both to decide emptiness — else `   \t`-style lines fold to a space
+    -- instead of a line feed (5GBF).  The content-line indent/tab check stays
+    -- in `foldQuotedNewlines` below, which re-reads from `saved`.
+    let s_skipped := skipWhitespace s
     match s_skipped.peek? with
     | some c =>
       if isLineBreakBool c then
@@ -396,7 +401,11 @@ def skipBlankLinesLoop (s : ScannerState) (cnt : Nat) (fuel : Nat) (inputEnd : N
   | 0 => (cnt, s)
   | fuel' + 1 =>
     let saved := s
-    let s_after_spaces := skipSpaces s
+    -- An all-white line (spaces *and/or* tabs) is an l-empty line [70]; skip
+    -- both to recognise it as blank, else a `  \t`-style line is mistaken for
+    -- content and its `\n` folds to a space (NB6Z).  Non-blank lines reset to
+    -- `saved`, so the indent decision in the caller is unaffected.
+    let s_after_spaces := skipWhitespace s
     match s_after_spaces.peek? with
     | some c =>
       if isLineBreakBool c then
@@ -460,17 +469,22 @@ def collectPlainScalar_handleBlockLineBreak (s : ScannerState)
   let s_after_newline := consumeNewline s
   let bfuel := inputEnd - s_after_newline.offset + 1
   let (emptyCount, s_after_blanks) := skipBlankLinesLoop s_after_newline 0 bfuel inputEnd
+  -- Indentation is spaces only (§6.1), so the under-indent test uses `skipSpaces`.
   let s_after_spaces := skipSpaces s_after_blanks
   if s_after_spaces.col < contentIndent then
     none
   else if atDocumentBoundary s_after_spaces then
     none
   else
+    -- Past the required indent, any further spaces/tabs are s-separate-in-line
+    -- [66] leading white space and are folded away; a leading tab is therefore
+    -- stripped rather than kept as content (HS5T, UV7Q).
+    let s_after_sep := skipWhitespace s_after_spaces
     let content' := if emptyCount > 0 then
       content ++ String.ofList (List.replicate emptyCount '\n')
     else
       content ++ " "
-    some (content', s_after_spaces)
+    some (content', s_after_sep)
 
 -- Helper: Collect plain scalar content using structural recursion
 @[yaml_spec "7.3.3" 132 "nb-ns-plain-in-line(c)",
@@ -641,8 +655,11 @@ where
     -- Decide what to emit for the pending newline(s).
     -- `pending + 1` is the total number of `\n` chars seen since last content.
     | c :: rest, acc, st, pending + 1 =>
-      -- Classify this new line: space-leading → more-indented [173]
-      let isMore := c == ' '
+      -- Classify this new line: leading white space (space *or* tab, after the
+      -- content indent was already stripped by `collectBlockScalarLoop`) →
+      -- more-indented [173].  A tab-led line is more-indented too, so the line
+      -- breaks around it are kept literally rather than folded (MJS9, R4YG).
+      let isMore := c == ' ' || c == '\t'
       let newSt := if isMore then FoldState.more else .content
       -- Emit pending newline(s) based on previous line state.
       -- The rules derive from YAML 1.2.2 productions [170]-[181]:
@@ -673,7 +690,7 @@ where
     -- Normal character within a line (pending == 0)
     | c :: rest, acc, st, 0 =>
       let newSt := match st with
-        | .start => if c == ' ' then FoldState.more else .content
+        | .start => if c == ' ' || c == '\t' then FoldState.more else .content
         | s => s
       go rest (acc.push c) newSt 0
 
@@ -711,7 +728,13 @@ def autoDetectBlockScalarIndentLoop (probe : ScannerState) (maxWSCol maxWSLine :
         else
           (detectedIndent, maxWSLine, probe, none)
     | none =>
-      -- No more content
+      -- No non-empty line.  The content indentation is the widest blank line
+      -- (§8.1.1.1).  When the input ends without a final line break, the loop
+      -- reaches EOF *on* that last whitespace-only line (it never took the
+      -- `isLineBreakBool` branch that records `maxWSCol`), so fold its column in
+      -- here — else an all-blank scalar with no trailing newline mis-detects its
+      -- indent and keeps stray spaces (JEF9/02).
+      let maxWSCol := max maxWSCol probe_after_spaces.col
       if maxWSCol > minContentIndent then
         (maxWSCol, maxWSLine, probe, none)
       else
@@ -768,7 +791,16 @@ def collectBlockScalarLoop (s : ScannerState) (rawContent : String) (fuel : Nat)
       -- Try to consume s-indent(contentIndent): exactly contentIndent spaces
       let (spacesConsumed, s_after_spaces) := consumeExactSpaces s contentIndent
       match s_after_spaces.peek? with
-      | none => (rawContent, s_after_spaces)
+      | none =>
+        -- A trailing whitespace-only line at end-of-input.  EOF acts as an
+        -- implicit b-break (`b-chomped-last(t)` = `… | <end-of-input>`), so a
+        -- fully-indented blank final line still contributes its `\n` for the
+        -- chomp to keep/clip (JEF9/02).  Guard on `spacesConsumed > 0` so a
+        -- genuinely empty body (`|` immediately at EOF) stays empty.  The `\n`
+        -- goes into the *content* string only; the scanner state stays
+        -- `s_after_spaces` so the state-field proofs are unaffected.
+        let rawContent' := if spacesConsumed > 0 then rawContent.push '\n' else rawContent
+        (rawContent', s_after_spaces)
       | some c =>
         if isLineBreakBool c then
           -- l-empty line: fewer than contentIndent spaces followed by line break
@@ -792,7 +824,17 @@ def collectBlockScalarLoop (s : ScannerState) (rawContent : String) (fuel : Nat)
               collectBlockScalarLoop s' rawContent'' fuel' contentIndent inputEnd
             else
               collectBlockScalarLoop s_after_line rawContent' fuel' contentIndent inputEnd
-          | none => (rawContent', s_after_line)
+          -- Line terminated by end-of-input.  Add the implicit final b-break
+          -- only for a trailing *whitespace-only* line (e.g. `   ` beyond the
+          -- indent → a lone space, as in L24T/01): a real content line at EOF
+          -- takes the `<end-of-input>` alternative of `b-chomped-last(t)` [165]
+          -- and gains no phantom `\n` (matches libfyaml/pyyaml/ruamel and keeps
+          -- dumper round-trips faithful).  The `\n` goes into the content string
+          -- only; the state stays `s_after_line` for the state-field proofs.
+          | none =>
+            let rawContent'' := if lineContent.all isWhiteSpaceBool
+              then rawContent'.push '\n' else rawContent'
+            (rawContent'', s_after_line)
 
 /-- Helper for scanBlockScalar header parsing using structural recursion.
 
