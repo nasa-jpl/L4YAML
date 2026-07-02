@@ -55,18 +55,54 @@ def escapeEventValue (s : String) : String :=
    |>.replace "\r" "\\r"
    |>.replace backspace "\\b"
 
+/-- Hex-digit value of a single ASCII byte (`'0'`–`'9'`, `'A'`–`'F'`, `'a'`–`'f'`);
+    `none` for any other byte.  Used to decode `%HH` tag escapes. -/
+private def hexVal (b : UInt8) : Option Nat :=
+  let n := b.toNat
+  if 0x30 ≤ n ∧ n ≤ 0x39 then some (n - 0x30)          -- '0'–'9'
+  else if 0x41 ≤ n ∧ n ≤ 0x46 then some (n - 0x41 + 10) -- 'A'–'F'
+  else if 0x61 ≤ n ∧ n ≤ 0x66 then some (n - 0x61 + 10) -- 'a'–'f'
+  else none
+
+/-- Byte-level percent-decode loop: replace each `%HH` (two hex digits) with the
+    byte `0xHH`, pass every other byte through.  Operates on UTF-8 bytes so a
+    multi-byte escape (`%E2%9C%93` → ✓) round-trips; a `%` not followed by two
+    hex digits stays literal. -/
+private partial def percentDecodeBytes
+    (bytes : ByteArray) (i : Nat) (acc : ByteArray) : ByteArray :=
+  if i < bytes.size then
+    let b := bytes[i]!
+    if b == 0x25 ∧ i + 2 < bytes.size then
+      match hexVal bytes[i+1]!, hexVal bytes[i+2]! with
+      | some hi, some lo => percentDecodeBytes bytes (i+3) (acc.push (UInt8.ofNat (hi*16+lo)))
+      | _, _ => percentDecodeBytes bytes (i+1) (acc.push b)
+    else
+      percentDecodeBytes bytes (i+1) (acc.push b)
+  else acc
+
+/-- Percent-decode a resolved tag URI (§5.6 `ns-esc-…` / §6.8.2 tag suffix
+    resolution): `!e!tag%21` under `%TAG !e! tag:example.com,2000:app/` resolves
+    to `tag:example.com,2000:app/tag%21`, whose `%21` decodes to `!`.  Verbatim
+    `!<uri>` tags are NOT decoded (they are taken literally), so this is applied
+    only to shorthand-resolved tags. -/
+def percentDecodeTag (s : String) : String :=
+  match String.fromUTF8? (percentDecodeBytes s.toUTF8 0 ByteArray.empty) with
+  | some out => out
+  | none => s
+
 /-- Render a stored tag into the resolved form shown inside `<…>` in the event
     stream.  The raw (`TokenParser`) parser keeps tags in shorthand form, so the
-    two standard core handles are expanded to their full URIs; verbatim `tag:`
-    URIs and local (`!foo`) tags are passed through unchanged. -/
+    two standard core handles are expanded to their full URIs; the tag suffix's
+    percent escapes (`%21`→`!`) are decoded per §6.8.2.  Verbatim `!<uri>` tags
+    are taken literally (no decode). -/
 def resolveTagForEvent (t : String) : String :=
-  if t.startsWith "tag:" then t
+  if t.startsWith "tag:" then percentDecodeTag t
   else if t.startsWith "!<" && t.endsWith ">" then
-    -- verbatim tag `!<uri>` → uri
+    -- verbatim tag `!<uri>` → uri, taken literally (no percent-decode)
     String.ofList (t.toList.drop 2 |>.dropLast)
   else if t.startsWith "!!" then
-    "tag:yaml.org,2002:" ++ String.ofList (t.toList.drop 2)
-  else t  -- local tag `!foo`, non-specific `!`, or already-resolved
+    percentDecodeTag ("tag:yaml.org,2002:" ++ String.ofList (t.toList.drop 2))
+  else percentDecodeTag t  -- local tag `!foo`, non-specific `!`, or already-resolved
 
 /-- Render the optional `&anchor` property. -/
 private def anchorStr (a : Option String) : String :=

@@ -269,6 +269,7 @@ import Tests.Reflections.ResolveAliasesEmpty
 import Tests.Reflections.MappingAllScalarLocality
 import Tests.Reflections.R447RootCarrier
 import Tests.Reflections.NonAllScalarLocality
+import Tests.Reflections.EmitterTagPercentDecode
 
 /-!
 # Reflections — runnable proof-engineering demonstrations

@@ -7,16 +7,16 @@ formalization, and the proofs.*
 Generated 2026-07-02 · baseline: **event 362/402**, **json 240/279 valid**
 (see [YAML_MATRIX_COMPARISON.md](YAML_MATRIX_COMPARISON.md)).
 
-**Progress:** J1 + A + A′/B1/B3/E + C1/C3 applied 2026-07-02 → **event 395/402**
-(+33), **json 274/279 valid** (+29). See [Status log](#status-log).
+**Progress:** J1 + A + A′/B1/B3/E + C1/C3 + D applied 2026-07-02 → **event 396/402**
+(+34), **json 274/279 valid** (+29). See [Status log](#status-log).
 
 ---
 
 ## Bottom line
 
 * *(Original baseline framing; current standing is in **Progress** above —
-  after J1/A/A′/B1/B3/E/C1/C3 only **7 event** and **5 genuine JSON** diffs remain,
-  spread over just three root causes: D (6CK3), B2 (DE56×4), C2 (FH7J/PW8X) on the
+  after J1/A/A′/B1/B3/E/C1/C3/D only **6 event** and **5 genuine JSON** diffs remain,
+  spread over just three root causes: B2 (DE56×4), C2 (FH7J/PW8X) on the
   event axis; J2 (3GZX) + B2 on JSON.)*
   **40 event diffs and 39 JSON diffs remain. Every one is a *content* or
   *structure* defect in the scanner/parser — none is a spurious accept/reject.**
@@ -55,7 +55,7 @@ Generated 2026-07-02 · baseline: **event 362/402**, **json 240/279 valid**
 | **C1** ✅ | Lone `...` / comment-only tail emits a spurious empty document | HWV9, QT73, M7A3 | yes | `parseStreamLoop` **and** `Events.parseStreamMarkedLoop` | **5 runtime `parseStreamLoop` lemmas**§ | S |
 | **C2** | Empty node with a tag/anchor opens a *sequence* that swallows siblings | FH7J, PW8X | (event-only) | `parseNodeContent` (thread `hadProps`) | **breaks 6 lemmas, re-prove** | **M** |
 | **C3** ✅ | Explicit collection-key entry split into two empty-half pairs | V9D5 | (event-only) | `parseBlockMappingEntryValue` retroactive-`key` skip | **5 runtime BEV lemmas**§ + 1 test | XS |
-| **D** | Tag suffix percent-escape (`%21`→`!`) not decoded | 6CK3 | no (value unaffected) | `Events.resolveTagForEvent` (emitter-side) | **none** (emitter-side) | XS |
+| **D** ✅ | Tag suffix percent-escape (`%21`→`!`) not decoded | 6CK3 | no (value unaffected) | `Events.resolveTagForEvent` (emitter-side) | **none** (emitter-side) ✓ | XS |
 | **E** ✅ | Literal `\|` keep/clip on trailing-whitespace-only lines | JEF9/02, L24T/01 | yes | `scanBlockScalarBody` chomp of blank tail | **structural**‡ | S |
 | **J1** ✅ | JSON ignores explicit core tags: `!!int 42`→`"42"` not `42` | — | 2AUY 33X3 74H7 F2C7 L94M | `Output/Json.lean` `scalarType` | **none** (Json.lean unproven) | XS |
 | **J2** | Alias to a *re-defined* anchor resolves to the wrong occurrence | — | 3GZX | `Spec/Types.lean` `resolveAliases` (order-aware) | **R604 characterization at risk** | **M** |
@@ -250,9 +250,14 @@ but the logic itself is fiddlier than the other scanner tweaks. Est. medium-impl
 
 ## Recommended order
 
-1. **J1** ✅ *(done — see [Status log](#status-log))* and **D** (tag
-   percent-decode) — isolated, emitter-only, zero proof impact. J1 cleared 5 JSON
-   diffs exactly as projected.
+1. **J1** ✅ and **D** ✅ *(both done — see [Status log](#status-log))* — isolated,
+   emitter-only, zero proof impact. J1 cleared 5 JSON diffs and D cleared 6CK3
+   (+1 event) exactly as projected. **D is the one fix where the "zero proof
+   impact" call was finally correct**: `Output/Events.lean` is imported only by the
+   event exe / scorer / one reflection probe — never by the runtime parser or
+   scanner path — so an emitter-side change *cannot* reach a `L4YAML/Proofs/`
+   lemma. Contrast A′/B1/B3/E/C1/C3, all of which changed *parser/scanner*
+   definitional shape and broke structural proofs.
 2. **A** ✅ *(done — see [Status log](#status-log))* — the `foldBlockContent` EOF
    case. Biggest single lever: cleared exactly 21 event diffs (+21) and 18 JSON
    twins (+18), zero regressions. Not quite the projected one-liner: a `FoldState`
@@ -444,3 +449,49 @@ they now lag the runtime on C1/C3 — flagged for the Phase-3 cutover). All 12
 runtime suites pass; one spec-incorrect `ExplicitKeyTests` expectation
 (`? {a: 1}` / `: value`) was corrected to the reference-parser-confirmed single
 pair (149/149).
+
+### D — tag suffix percent-decode (done 2026-07-02)
+
+**Change.** `Output/Events.lean`: added `percentDecodeTag` (a byte-level
+`%HH`→byte loop over the tag's UTF-8, re-validated with `String.fromUTF8?`, so
+multi-byte escapes like `%E2%9C%93`→✓ round-trip and a malformed `%`/`%ZZ` stays
+literal) and routed the three *shorthand-resolved* arms of `resolveTagForEvent`
+through it. Root cause: under `%TAG !e! tag:example.com,2000:app/`, the tag
+`!e!tag%21` resolves (in `Parser.State.resolveTag`) to
+`tag:example.com,2000:app/tag%21`, and the emitter printed the `%21` verbatim; §6.8
+requires the tag suffix's percent escapes decoded (`%21`→`!`). The **verbatim
+`!<uri>` arm is deliberately *not* decoded** — verbatim tags are taken literally
+per §6.8.1 (`resolve_verbatim_not_decoded` in the probe pins this boundary).
+
+**Result.** Event **395 → 396** (+1: 6CK3), JSON unchanged at **274/279 valid**
+(6CK3 has no JSON twin — tags don't appear in JSON; "value unaffected" as
+projected). **Zero regressions** (exact pre/post fail-set diff: event fails went
+from `{6CK3, DE56×4, FH7J, PW8X}` to `{DE56×4, FH7J, PW8X}`, nothing added).
+Remaining **6 event** diffs: DE56/00–03 (B2), FH7J/PW8X (C2). Remaining **5
+genuine JSON** diffs: 3GZX (J2), DE56/00–03 (B2) — plus the 3 phantom rejects.
+
+**Proofs.** Genuinely **zero** — the "zero proof impact" call was finally correct
+(first time in this campaign). `Output/Events.lean` is imported only by the event
+exe, the in-repo scorer, and the new reflection probe — never by the runtime
+parser/scanner path — so no `L4YAML/Proofs/` lemma can see the change. Full
+`lake build` green (834/834; only the pre-existing NonAllScalarLocality sorries).
+
+**Inhabitation probe.** Per the inhabitation-debt discipline (a new `def` is
+validated as *well-formed*, never as *doing what it should*), the birth probe
+lands in `Tests/Reflections/EmitterTagPercentDecode.lean` (indexed in
+`Tests/Reflections.lean`): rule-1 birth checks on `%21`/multi-byte; rule-2
+boundary checks on lone-`%`/`%ZZ`/`%25` and the verbatim non-decode arm; each
+`resolveTagForEvent` arm enumerated; and a **rule-5 grounded end-to-end** pin of
+the full event stream from the byte-for-byte 6CK3 input through the real
+`streamToEvents` pipeline (so the decode is verified where `%TAG` expansion
+actually produces it). Axiom-audited (`[propext, Classical.choice, Quot.sound,
+…native_decide.ax]`, no `sorryAx`).
+
+**Known limitation (documented, not test-affecting).** The emitter decodes the
+*whole* resolved URI, not just the suffix, because prefix/suffix boundary is lost
+after `resolveTag` concatenates them. A `%TAG` prefix legitimately containing a
+`%HH` (an `ns-global-tag-prefix` per §6.8.2.2, where escapes are *not* decoded)
+would be over-decoded. No test-suite case exercises this; if one appears, move the
+decode to `resolveTag`, where the suffix is still distinct (at some parser-proof
+cost). `percentDecodeTag` leaves malformed `%` sequences untouched, minimizing
+blast radius.
