@@ -1143,6 +1143,231 @@ theorem seq_scalar_first_reduce_fires :
       && (parseFlowSequenceLoop { tokens := lj_two, pos := 2, anchors := #[] } 100 #[]).toOption.isSome )
       = true := by native_decide
 
+/-! ### JOINT COLLECTION, step 4 — the fuel-induction WRAPPER (a recursion combinator), and the
+     step-provider is producible for scalar heads (`sorry`-free)
+
+Steps 1–3 assembled every per-element brick of the recursive loop step: base branches
+(`parseFlowSeqLoop_joint_fuel0` / `_joint_close`), the DESCENT reductions + JOINT re-arm steps
+(`seq_scalar_first/step_joint_rearm`), the agreement shift (`agree_shift`), the frame re-arm
+(`frame_tail_of_whole`), and the anchors leaf.  The 12th pass recorded the remaining crux as
+"(i) the fuel-induction WRAPPER … apply a joint step, discharge `w ≤ n` via `frame_tail_of_whole`,
+apply the IH".  This pass LANDS that wrapper — but as a **recursion combinator** parametric over a
+single lifted per-iteration step-provider ([[ref_width_recursion_combinator_before_grammar_step]]):
+`parseFlowSeqLoop_joint_of_step` proves the WHOLE `ParseFlowSequenceLoopValueAdvanceLocal` from that
+one hypothesis.  The point of the combinator shape is that it **isolates the mutual-clique interface**
+— the provider is exactly "at a state, the loop either CLOSES or REDUCES by a common pushed value +
+common advance `w`" — which scalar heads discharge NOW and nested heads will discharge via the
+node-joint IH (the genuinely-new content).
+
+Two findings this pass, both `sorry`-free:
+
+1. **The wrapper is entirely `flowBracketBalance`-FREE.**  The combinator closes the target using ONLY
+   balance-free ingredients: value agreement CHAINS through the reduce function-equalities; relative
+   advance COMPOSES via `option_advance_shift` (which uses `parseFlowSequenceLoop_pos_mono` — a plain
+   position lower bound — to discharge the ℕ truncated-subtraction, NOT `flowBracketBalance`); frames
+   re-arm via `frame_tail_of_whole` (pure `omega`).  So for the JOINT approach P2a's ~1500-line
+   parser↔balance bridge and the 5th-pass balance bricks (`frameHead_classified` /
+   `frame_matching_close_at_end`) are **vestigial** — the lockstep advance is co-constructed, never
+   imported ([[feedback_vestigial_reduction_produce_not_type]]).  (The frame SIDE-CONDITIONS of the
+   target are still threaded — they guarantee the agreement span covers the whole consumption — but
+   they are plain `ps'.pos ≤ ps.pos + n` bounds, balance-free.)
+
+2. **The reduce case needs no `.ok` assumption** — the provider states the reduction as a FUNCTION
+   equality (`parseFlowSequenceLoop q1 (m+1) acc = parseFlowSequenceLoop qn1 m (acc.push val)`), so
+   run-1-errors-iff-run-2-errors (same success) comes for FREE by propagating through the equality; no
+   separate lockstep-totality lemma is needed.  A scalar head always parses
+   (`parseNode_scalar_head_isOk`), so `seq_scalar_first_reduce_fn` supplies that function equality with
+   no `h_ok`.
+
+Rule 3 ("only ever a hypothesis is the alarm"): the `step` provider is a fresh hypothesis, so it is
+DISCHARGED as producible here — `seq_scalar_first_provides_reduce` is a genuine producer of the
+provider's REDUCE branch for a scalar head (first position, empty accumulator), and
+`parseFlowSeqLoop_close_step` already produces the CLOSE branch.  Non-vacuity on REAL emission is
+witnessed by `seq_scalar_first_reduce_fires` (the fn-reduce on `lj_two`).  The FULL provider (dispatch
+close / separator / scalar / nested, the nested arm via the node-joint IH = the mutual clique) is the
+remaining crux; the wrapper it feeds is now done. -/
+
+/-- **Advance-composition helper.**  A relative advance measured from the OUTER start `q` equals the
+    relative advance from the SHIFTED start `qn` (`= q.pos + w`) plus `w`, on the success branch.  The
+    `+ w` is the element's own advance; loop position-monotonicity (`hmono`) discharges the ℕ
+    truncated-subtraction on the `some` case.  Balance-FREE — the mechanism that lets the wrapper
+    compose the advance conclusion without importing any `flowBracketBalance` frame. -/
+theorem option_advance_shift
+    (x : Except ScanError (Array YamlValue × ParseState)) (q qn : ParseState) (w : Nat)
+    (hpos : qn.pos = q.pos + w)
+    (hmono : ∀ r, x = .ok r → r.2.pos ≥ qn.pos) :
+    x.toOption.map (fun r => r.2.pos - q.pos)
+      = (x.toOption.map (fun r => r.2.pos - qn.pos)).map (· + w) := by
+  cases x with
+  | error e => simp [Except.toOption]
+  | ok r =>
+    have hr := hmono r rfl
+    rw [hpos] at hr
+    simp only [Except.toOption, Option.map_some, Option.some.injEq]
+    rw [hpos]
+    omega
+
+/-- **The JOINT fuel-induction WRAPPER (recursion combinator, abstract-state).**  From a single lifted
+    per-iteration step-provider — the mutual-clique interface: given the joint hypotheses at a state,
+    the loop either CLOSES here (returns the accumulator unmoved) or REDUCES to a tail call at one less
+    fuel on re-armed joint states with a common pushed value and common advance `w ≤ n` — the WHOLE
+    `ParseFlowSequenceLoopValueAdvanceLocal` follows by fuel induction.  Value agreement chains through
+    the reduce function-equalities; relative-advance agreement composes via `option_advance_shift`
+    (loop position-monotonicity); frames re-arm via `frame_tail_of_whole`.  ALL balance-FREE.  The
+    step-provider is the ONLY remaining obligation (scalar heads discharge it via
+    `seq_scalar_first_provides_reduce` / `parseFlowSeqLoop_close_step`; nested heads via the node-joint
+    IH = the mutual clique).  `sorry`-free. -/
+theorem parseFlowSeqLoop_joint_of_step
+    (step : ∀ (q1 q2 : ParseState) (m nn : Nat) (acc : Array YamlValue),
+            q1.anchors = q2.anchors →
+            (∀ k, k < nn → (q1.tokens[q1.pos + k]?.map (·.val)) = (q2.tokens[q2.pos + k]?.map (·.val))) →
+            (∀ its ps', parseFlowSequenceLoop q1 (m+1) acc = .ok (its, ps') → ps'.pos ≤ q1.pos + nn) →
+            (∀ its ps', parseFlowSequenceLoop q2 (m+1) acc = .ok (its, ps') → ps'.pos ≤ q2.pos + nn) →
+            (parseFlowSequenceLoop q1 (m+1) acc = .ok (acc, q1)
+              ∧ parseFlowSequenceLoop q2 (m+1) acc = .ok (acc, q2))
+            ∨
+            (∃ (qn1 qn2 : ParseState) (val : YamlValue) (w : Nat),
+              w ≤ nn ∧ qn1.pos = q1.pos + w ∧ qn2.pos = q2.pos + w ∧
+              qn1.anchors = qn2.anchors ∧
+              (∀ k, k < nn - w →
+                (qn1.tokens[qn1.pos + k]?.map (·.val)) = (qn2.tokens[qn2.pos + k]?.map (·.val))) ∧
+              parseFlowSequenceLoop q1 (m+1) acc = parseFlowSequenceLoop qn1 m (acc.push val) ∧
+              parseFlowSequenceLoop q2 (m+1) acc = parseFlowSequenceLoop qn2 m (acc.push val))) :
+    ParseFlowSequenceLoopValueAdvanceLocal := by
+  have aux : ∀ (f : Nat) (ps1 ps2 : ParseState) (n : Nat) (items : Array YamlValue),
+      ps1.anchors = ps2.anchors →
+      (∀ k, k < n → (ps1.tokens[ps1.pos + k]?.map (·.val)) = (ps2.tokens[ps2.pos + k]?.map (·.val))) →
+      (∀ its ps', parseFlowSequenceLoop ps1 f items = .ok (its, ps') → ps'.pos ≤ ps1.pos + n) →
+      (∀ its ps', parseFlowSequenceLoop ps2 f items = .ok (its, ps') → ps'.pos ≤ ps2.pos + n) →
+      ((parseFlowSequenceLoop ps1 f items).toOption.map (·.1)
+        = (parseFlowSequenceLoop ps2 f items).toOption.map (·.1))
+      ∧ ((parseFlowSequenceLoop ps1 f items).toOption.map (fun r => r.2.pos - ps1.pos)
+        = (parseFlowSequenceLoop ps2 f items).toOption.map (fun r => r.2.pos - ps2.pos)) := by
+    intro f
+    induction f with
+    | zero =>
+      intro ps1 ps2 n items _ _ _ _
+      have e1 : parseFlowSequenceLoop ps1 0 items = .ok (items, ps1) := by
+        simp only [parseFlowSequenceLoop]
+      have e2 : parseFlowSequenceLoop ps2 0 items = .ok (items, ps2) := by
+        simp only [parseFlowSequenceLoop]
+      rw [e1, e2]
+      refine ⟨?_, ?_⟩ <;> simp [Except.toOption, Nat.sub_self]
+    | succ m ih =>
+      intro ps1 ps2 n items h_anch h_agree h_frame1 h_frame2
+      rcases step ps1 ps2 m n items h_anch h_agree h_frame1 h_frame2 with
+        ⟨hc1, hc2⟩ | ⟨qn1, qn2, val, w, hwn, hqp1, hqp2, hqanch, hqagree, hred1, hred2⟩
+      · -- CLOSE
+        rw [hc1, hc2]
+        refine ⟨?_, ?_⟩ <;> simp [Except.toOption, Nat.sub_self]
+      · -- REDUCE
+        have h_reduce1 : ∀ its ps', parseFlowSequenceLoop qn1 m (items.push val) = .ok (its, ps') →
+            parseFlowSequenceLoop ps1 (m+1) items = .ok (its, ps') := by
+          intro its ps' h; rw [hred1]; exact h
+        have h_reduce2 : ∀ its ps', parseFlowSequenceLoop qn2 m (items.push val) = .ok (its, ps') →
+            parseFlowSequenceLoop ps2 (m+1) items = .ok (its, ps') := by
+          intro its ps' h; rw [hred2]; exact h
+        have hframe1' := frame_tail_of_whole ps1 qn1 (m+1) m n w items (items.push val)
+          hqp1 hwn h_reduce1 h_frame1
+        have hframe2' := frame_tail_of_whole ps2 qn2 (m+1) m n w items (items.push val)
+          hqp2 hwn h_reduce2 h_frame2
+        have hIH := ih qn1 qn2 (n - w) (items.push val) hqanch hqagree hframe1' hframe2'
+        have hmono1 : ∀ r, parseFlowSequenceLoop qn1 m (items.push val) = .ok r → r.2.pos ≥ qn1.pos :=
+          fun r hr => L4YAML.Proofs.ParserWellBehaved.parseFlowSequenceLoop_pos_mono m
+            (L4YAML.Proofs.ParserWellBehaved.parseNode_pos_mono_all m) qn1 (items.push val) r hr
+        have hmono2 : ∀ r, parseFlowSequenceLoop qn2 m (items.push val) = .ok r → r.2.pos ≥ qn2.pos :=
+          fun r hr => L4YAML.Proofs.ParserWellBehaved.parseFlowSequenceLoop_pos_mono m
+            (L4YAML.Proofs.ParserWellBehaved.parseNode_pos_mono_all m) qn2 (items.push val) r hr
+        refine ⟨?_, ?_⟩
+        · rw [hred1, hred2]; exact hIH.1
+        · rw [hred1, hred2,
+            option_advance_shift (parseFlowSequenceLoop qn1 m (items.push val)) ps1 qn1 w hqp1 hmono1,
+            option_advance_shift (parseFlowSequenceLoop qn2 m (items.push val)) ps2 qn2 w hqp2 hmono2,
+            hIH.2]
+  exact fun ps1 ps2 f n items h1 h2 h3 h4 => aux f ps1 ps2 n items h1 h2 h3 h4
+
+/-- **Function-level scalar reduce** (first position, empty accumulator).  A PURE function equality —
+    NO `h_ok` — because a scalar head always parses (`parseNode_scalar_head_isOk`).  This is exactly the
+    shape the combinator's step-provider REDUCE branch needs (`acc.push val` with `acc = #[]`); the
+    `.ok`-consuming `seq_scalar_first_reduce` (step 3) was for the OLD, both-`.ok`-assuming plan.  Proved
+    by the descent shape over an ABSTRACT state, unfolding only the LHS (`conv => lhs; unfold`). -/
+theorem seq_scalar_first_reduce_fn
+    (ps : ParseState) (g : Nat) (content : String) (style : ScalarStyle)
+    (h_head : ps.peek? = some (.scalar content style)) :
+    ∃ psn : ParseState,
+      psn.pos = ps.pos + 1 ∧ psn.tokens = ps.tokens ∧ psn.anchors = ps.anchors ∧
+      parseFlowSequenceLoop ps (g + 2) #[]
+        = parseFlowSequenceLoop psn (g + 1)
+            ((#[] : Array YamlValue).push (YamlValue.scalar (Scalar.mk content style none none none))) := by
+  have h_push_peek :
+      ({ ps with currentPath := ps.currentPath.push (.index (0 : Nat)) } : ParseState).peek?
+        = some (.scalar content style) := by
+    rw [peek_currentPath]; exact h_head
+  obtain ⟨⟨val, ps_node⟩, h_pn⟩ :=
+    parseNode_scalar_head_isOk { ps with currentPath := ps.currentPath.push (.index (0 : Nat)) }
+      g content style h_push_peek
+  have h_val : val = .scalar (Scalar.mk content style none none none) :=
+    parseNode_scalar_produces_scalar _ (g + 1) content style val ps_node h_push_peek h_pn
+  have h_pn_pos : ps_node.pos = ps.pos + 1 :=
+    parseNode_scalar_advances_by_one { ps with currentPath := ps.currentPath.push (.index (0 : Nat)) }
+      (g + 1) content style val ps_node h_push_peek h_pn
+  have h_pn_toks : ps_node.tokens = ps.tokens :=
+    parseNode_scalar_tokens_preserved { ps with currentPath := ps.currentPath.push (.index (0 : Nat)) }
+      (g + 1) content style val ps_node h_push_peek h_pn
+  have h_pn_anch : ps_node.anchors = ps.anchors :=
+    parseNode_scalar_anchors_preserved { ps with currentPath := ps.currentPath.push (.index (0 : Nat)) }
+      (g + 1) content style val ps_node h_push_peek h_pn
+  refine ⟨{ ps_node with currentPath := ps.currentPath }, h_pn_pos, h_pn_toks, h_pn_anch, ?_⟩
+  conv => lhs; unfold parseFlowSequenceLoop
+  simp only [h_head, bind, Except.bind, pure, Except.pure,
+    Array.size_empty, Nat.lt_irrefl, if_false, h_pn]
+  rw [h_val]
+
+/-- **Producer of the step-provider's REDUCE branch (scalar head, first position).**  Given a scalar
+    head on run 1 + `.val`-agreement + `0 < n`, this PRODUCES the exact `∃ qn1 qn2 val w` block the
+    combinator's `step` provider returns in its reduce disjunct (`w = 1`): the two runs descend by
+    `seq_scalar_first_reduce_fn` (the head transfers to run 2 by `k = 0` agreement), the common pushed
+    value is the head scalar, anchors stay equal, and `agree_shift` re-arms agreement over `[·, n-1)`.
+    This is the Rule-3 discharge — the provider's reduce disjunct is a genuine, producible object for
+    scalar heads, not a phantom. `sorry`-free. -/
+theorem seq_scalar_first_provides_reduce
+    (ps1 ps2 : ParseState) (g n : Nat) (content : String) (style : ScalarStyle)
+    (h_anch : ps1.anchors = ps2.anchors)
+    (hn : 0 < n)
+    (h_head1 : ps1.peek? = some (.scalar content style))
+    (h_agree : ∀ k, k < n →
+      (ps1.tokens[ps1.pos + k]?.map (·.val)) = (ps2.tokens[ps2.pos + k]?.map (·.val))) :
+    ∃ (qn1 qn2 : ParseState) (val : YamlValue) (w : Nat),
+      w ≤ n ∧ qn1.pos = ps1.pos + w ∧ qn2.pos = ps2.pos + w ∧
+      qn1.anchors = qn2.anchors ∧
+      (∀ k, k < n - w →
+        (qn1.tokens[qn1.pos + k]?.map (·.val)) = (qn2.tokens[qn2.pos + k]?.map (·.val))) ∧
+      parseFlowSequenceLoop ps1 (g + 2) #[] = parseFlowSequenceLoop qn1 (g + 1) (#[].push val) ∧
+      parseFlowSequenceLoop ps2 (g + 2) #[] = parseFlowSequenceLoop qn2 (g + 1) (#[].push val) := by
+  have hk0 := h_agree 0 hn
+  rw [Nat.add_zero, Nat.add_zero] at hk0
+  have h_head1' : ps1.tokens[ps1.pos]?.map (·.val) = some (.scalar content style) := by
+    rw [← peek_eq_getElem_map']; exact h_head1
+  have h_head2 : ps2.peek? = some (.scalar content style) := by
+    rw [peek_eq_getElem_map', ← hk0]; exact h_head1'
+  obtain ⟨qn1, hpos1, htok1, hanch1, hrec1⟩ := seq_scalar_first_reduce_fn ps1 g content style h_head1
+  obtain ⟨qn2, hpos2, htok2, hanch2, hrec2⟩ := seq_scalar_first_reduce_fn ps2 g content style h_head2
+  refine ⟨qn1, qn2, .scalar (Scalar.mk content style none none none), 1, hn,
+    hpos1, hpos2, ?_, ?_, hrec1, hrec2⟩
+  · rw [hanch1, hanch2]; exact h_anch
+  · intro k hk
+    rw [htok1, htok2, hpos1, hpos2]
+    exact agree_shift ps1.tokens ps2.tokens ps1.pos ps2.pos n 1 h_agree k hk
+
+/-- Producer of the step-provider's CLOSE branch: a closer head returns the accumulator unmoved on
+    each run (`parseFlowSeqLoop_close_step`).  Together with `seq_scalar_first_provides_reduce` this
+    exhibits BOTH disjuncts of the `step` provider as producible on real parser behaviour. -/
+theorem seq_provides_close (ps1 ps2 : ParseState) (g : Nat) (items : Array YamlValue)
+    (h1 : ps1.peek? = some .flowSequenceEnd) (h2 : ps2.peek? = some .flowSequenceEnd) :
+    parseFlowSequenceLoop ps1 (g + 1) items = .ok (items, ps1)
+      ∧ parseFlowSequenceLoop ps2 (g + 1) items = .ok (items, ps2) :=
+  ⟨parseFlowSeqLoop_close_step ps1 g items h1, parseFlowSeqLoop_close_step ps2 g items h2⟩
+
 /-! ## P2a (FRAME) + Bridge birth-probes (inhabitation-debt Rule 1 + Rule 2)
 
 The P2 disproof above fixed P2b's statement (`ParseNodeValueSpanLocal`).  But that statement has two
@@ -1471,14 +1696,20 @@ agreement re-arm to `agree_shift`.  **The abstract-state ITERATION machinery is 
 that an abstract state threads through the loop body — retiring the 10th-pass bet that only
 `loop_path_track_independent` had probed), and the two JOINT re-arm steps `seq_scalar_first_joint_rearm` /
 `seq_scalar_step_joint_rearm` (which assemble a descent on each run + `agree_shift` + the anchors leaf into
-the FULLY re-armed joint IH hypotheses).**  What remains of the recursive step is: (i) the fuel-induction
-WRAPPER (apply a joint step, discharge `w ≤ n` via `frame_tail_of_whole`, apply the IH); (ii) the
-NESTED-element case (swap the scalar leaves for the NODE-joint IH — the mutual clique, the genuinely-new
-content, scalar sub-case ~redundant with all-scalar R601/R609); (iii) the MAP mirror
-(`parseFlowMappingLoop`, `parseFlowMappingLoop_step_push`, key+value).  Step (i) then decides whether P2a's
-separate `flowBracketBalance` frame is still needed or is retired by threading the joint advance directly.
-P1 threads the joint at the loop and computes the cumulative `pos_i` from the per-element advance the joint
-PRODUCES.  Each is a self-contained unit (the all-scalar R596/R597/R601/R602 were each their own).
+the FULLY re-armed joint IH hypotheses).**  **Step 4 above now LANDS the fuel-induction WRAPPER
+`sorry`-free — as a RECURSION COMBINATOR `parseFlowSeqLoop_joint_of_step`: it proves the WHOLE
+`ParseFlowSequenceLoopValueAdvanceLocal` from a single lifted per-iteration step-provider, and it is
+entirely `flowBracketBalance`-FREE (value chains through reduce function-equalities, advance composes via
+`option_advance_shift` + `parseFlowSequenceLoop_pos_mono`, frames re-arm via `frame_tail_of_whole`).  So
+step (i) is DONE and it DECIDES the retirement question: P2a's `flowBracketBalance` frame is vestigial for
+the JOINT approach.  The step-provider is the ONLY remaining obligation; its scalar-head branches are
+producible NOW (`seq_scalar_first_provides_reduce` reduce + `parseFlowSeqLoop_close_step`/`seq_provides_close`
+close).**  What remains: (ii) the NESTED-element case — the full step-provider's dispatch, whose nested arm
+swaps the scalar leaves for the NODE-joint IH (the mutual clique, the genuinely-new content; scalar arm
+~redundant with all-scalar R601/R609); (iii) the MAP mirror (`parseFlowMappingLoop`,
+`parseFlowMappingLoop_step_push`, key+value).  P1 threads the joint at the loop and computes the cumulative
+`pos_i` from the per-element advance the joint PRODUCES.  Each is a self-contained unit (the all-scalar
+R596/R597/R601/R602 were each their own).
 
 The `[["a"]]` probe left conjuncts B (ignore-trailing) and C (nonzero-offset) vacuous; the SEQ/MAP
 fixtures fire them; the three axis probes disprove the naive P2; and the `p2a_*`/`bridge_*` probes pin
@@ -1731,5 +1962,30 @@ eventual P1/P2a/P2b/Bridge proofs must satisfy. -/
  seq_scalar_first_reduce_fires._native.native_decide.ax_1_1] -/
 #guard_msgs (whitespace := lax) in
 #print axioms seq_scalar_first_reduce_fires
+
+/-! ### Axiom profiles — step 4 (fuel-induction wrapper).
+    `option_advance_shift` is `Classical`-free (`[propext, Quot.sound]`) — its `omega` runs on an
+    arithmetic goal ([[ref_omega_nonarith_goal_pulls_classical]]).  The combinator, the function-level
+    reduce, and the two producers inherit `Classical.choice` from the parser leaves / pos-mono clique
+    (`[propext, Classical.choice, Quot.sound]`).  No `sorryAx`. -/
+/-- info: 'NonAllScalarLocality.option_advance_shift' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms option_advance_shift
+
+/-- info: 'NonAllScalarLocality.parseFlowSeqLoop_joint_of_step' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms parseFlowSeqLoop_joint_of_step
+
+/-- info: 'NonAllScalarLocality.seq_scalar_first_reduce_fn' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms seq_scalar_first_reduce_fn
+
+/-- info: 'NonAllScalarLocality.seq_scalar_first_provides_reduce' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms seq_scalar_first_provides_reduce
+
+/-- info: 'NonAllScalarLocality.seq_provides_close' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms seq_provides_close
 
 end NonAllScalarLocality

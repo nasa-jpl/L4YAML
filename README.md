@@ -192,9 +192,17 @@ five reduce to two independent obligations:
     `seq_scalar_first_joint_rearm` / `seq_scalar_step_joint_rearm` assemble a descent
     on each run + `agree_shift` + the anchors leaf into the fully re-armed joint IH
     hypotheses (same pushed value, `anchors`-equality, shifted `.val`-agreement); the
-    reduction fires on real emission (`seq_scalar_first_reduce_fires`). What remains is
-    (i) the fuel-induction *wrapper* (apply a joint step, discharge `w ≤ n`, apply the
-    IH), (ii) the *nested*-element case — swapping the scalar leaves for the NODE-joint
+    reduction fires on real emission (`seq_scalar_first_reduce_fires`). On 2026-07-01
+    the fuel-induction **wrapper** landed `sorry`-free as a *recursion combinator*
+    `parseFlowSeqLoop_joint_of_step`: it proves the whole loop-joint from a single
+    lifted per-iteration step-provider, and it is entirely `flowBracketBalance`-**free**
+    (value chains through the reduce function-equalities, relative advance composes via
+    `option_advance_shift` + `parseFlowSequenceLoop_pos_mono`, frames re-arm via
+    `frame_tail_of_whole`) — so P2a's separate balance frame is **vestigial** for the
+    joint approach. The step-provider is the sole remaining obligation; its scalar-head
+    branches are producible now (`seq_scalar_first_provides_reduce` for reduce,
+    `seq_provides_close` for close). What remains is (ii) the *nested*-element case — the
+    full provider's dispatch, whose nested arm swaps the scalar leaves for the NODE-joint
     IH, where the mutual clique bites (the genuinely-new content) — and (iii) the map
     mirror.
   - **P1 — loop-value:** threads P2a and P2b through the flow loop, computing
