@@ -1,6 +1,6 @@
 import L4YAML.Schema.Schema
 import L4YAML.Schema.FromToYaml
-import L4YAML.Parser.Composition
+import L4YAML.Parser.IndexedComposition
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -35,7 +35,7 @@ namespace L4YAML
     Returns `YamlError` which can be either a `ScanError` (parse failure)
     or a `SchemaError` (type conversion failure). -/
 def parseAs (α : Type) [Schema.FromYaml α] (s : String) : Except YamlError α := do
-  let yaml ← (TokenParser.parseYamlSingle s).mapError YamlError.scanError
+  let yaml ← (TokenParser.Indexed.parseYamlSingleIx s).mapError YamlError.scanError
   (Schema.fromYaml? yaml).mapError YamlError.schemaError
 
 /-- Convert a Lean value to a `YamlValue` for serialization. -/
@@ -44,7 +44,7 @@ def toYaml {α : Type} [Schema.ToYaml α] (value : α) : YamlValue :=
 
 /-- Parse YAML string with automatic schema resolution to `YamlType`. -/
 def parseTyped (s : String) : Except ScanError Schema.YamlType := do
-  let yaml ← TokenParser.parseYamlSingle s
+  let yaml ← TokenParser.Indexed.parseYamlSingleIx s
   pure (Schema.resolve yaml)
 
 end L4YAML

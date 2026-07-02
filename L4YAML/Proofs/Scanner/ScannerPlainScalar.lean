@@ -165,7 +165,9 @@ theorem canStart_isPlainSafe (c : Char) (next : Option Char) (inFlow : Bool)
   unfold canStartPlainScalarProp at hprop; unfold isPlainSafeProp
   split at hprop
   · rename_i hexc; rcases hexc with rfl | rfl | rfl
-    all_goals (split <;> simp_all [isWhiteSpaceProp, isLineBreakProp, isFlowIndicatorProp])
+    all_goals (split <;> simp_all [isWhiteSpaceProp, isSpaceProp, isTabProp,
+                                    isLineBreakProp, isLineFeedProp, isCarriageReturnProp,
+                                    isFlowIndicatorProp])
   · obtain ⟨h_ni, h_nws, h_nlb⟩ := hprop; split
     · exact ⟨h_nws, h_nlb, fun hfi =>
         h_ni ((isIndicator_iff c).mp (isFlowIndicator_implies_isIndicator c

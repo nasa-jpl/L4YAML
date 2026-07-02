@@ -592,6 +592,558 @@ theorem flowBracketBalance_compose_zero (tokens : Array (Positioned YamlToken))
       flowBracketBalance_compose tokens body_start pos (pos + 1) h_bs_pos (by omega),
       h_bal, h_tail, flowBracketBalance_single _ _ h_pos_bound, h_delta]; omega
 
+/-- The bracket delta of any token is at least `-1` (only the two close brackets
+    contribute `-1`; everything else is `0` or `+1`). -/
+theorem flowBracketDelta_ge_neg_one (t : YamlToken) : -1 ≤ flowBracketDelta t := by
+  unfold flowBracketDelta
+  split <;> decide
+
+/-- The bracket delta of any token is at most `+1` (only the two open brackets
+    contribute `+1`; everything else is `0` or `-1`). The upper companion of
+    `flowBracketDelta_ge_neg_one`: together they pin every delta to `{-1, 0, 1}`, which the
+    backward opener locator needs to classify the scanned token as opener/neutral/closer. -/
+theorem flowBracketDelta_le_one (t : YamlToken) : flowBracketDelta t ≤ 1 := by
+  unfold flowBracketDelta
+  split <;> decide
+
+/-- **Bracket-matching locator (Dyck).**  In a flow range `[lo, hi)` that is
+    *well-bracketed* — total balance `0` and every prefix balance `≥ 0` — a depth-0
+    open bracket at position `k` (balance `lo..k = 0`, `tokens[k]` an opener) has a
+    matching close at some `j` with `k < j < hi`, `tokens[j]` a closer, and the
+    enclosed body `(k+1, j)` itself balanced.
+
+    This is the pure-combinatorial core every nested-bracket conjunct of
+    `SeqBodyProps`/`MapBodyProps` rests on: it converts the flat Dyck condition the
+    emitter stream satisfies (`WellBracketed`) into the matching-bracket structure
+    `flow_parser_ok_of_structure` consumes by span induction.  The *which* bracket
+    (`]` vs `}`) and the successor token are emitter facts layered on top; this lemma
+    supplies the position `j` and the inner balance.
+
+    No Mathlib, so the "first return to balance 0 after `k`" is found by an explicit
+    fuel scan (`find`) rather than `Nat.find`. -/
+theorem flowBracketBalance_matching_close (tokens : Array (Positioned YamlToken))
+    (lo k hi : Nat) (h_lo_k : lo ≤ k) (h_k_hi : k < hi) (h_hi_sz : hi ≤ tokens.size)
+    (h_k_depth : flowBracketBalance tokens lo k = 0)
+    (h_k_open : flowBracketDelta tokens[k]!.val = 1)
+    (h_total : flowBracketBalance tokens lo hi = 0)
+    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) :
+    ∃ j, k < j ∧ j < hi ∧
+      flowBracketDelta tokens[j]!.val = -1 ∧
+      flowBracketBalance tokens (k+1) j = 0 ∧
+      (∀ i, k < i → i ≤ j → flowBracketBalance tokens lo i ≥ 1) := by
+  -- One-step recurrence for the running balance.
+  have step : ∀ i, lo ≤ i → i < tokens.size →
+      flowBracketBalance tokens lo (i+1) =
+        flowBracketBalance tokens lo i + flowBracketDelta tokens[i]!.val := by
+    intro i h_lo_i h_sz
+    rw [flowBracketBalance_compose tokens lo i (i+1) h_lo_i (by omega)]
+    have hlen : i < tokens.toList.length := by rw [Array.length_toList]; exact h_sz
+    rw [flowBracketBalance_single tokens i hlen]
+    have h1 : tokens.toList[i]'hlen = tokens[i] := Array.getElem_toList h_sz
+    have h2 : tokens[i] = tokens[i]! := (getElem!_pos tokens i h_sz).symm
+    rw [h1, h2]
+  -- Balance just after the opener is 1.
+  have h_f_k1 : flowBracketBalance tokens lo (k+1) = 1 := by
+    have hs := step k h_lo_k (by omega)
+    rw [h_k_depth, h_k_open] at hs; omega
+  -- Scan forward from `start` (kept at depth `≥ 1`) for the first return to 0.
+  -- `find` threads the running invariant `∀ i ∈ (k, start], balance lo i ≥ 1`
+  -- (the depth never drops below 1 anywhere strictly between the opener and the
+  -- first return to 0), and hands it back for the whole interior `(k, j]`.
+  have find : ∀ (f start : Nat), start + f = hi → k < start →
+      flowBracketBalance tokens lo start ≥ 1 →
+      (∀ i, k < i → i ≤ start → flowBracketBalance tokens lo i ≥ 1) →
+      ∃ j, k < j ∧ j < hi ∧
+        flowBracketDelta tokens[j]!.val = -1 ∧
+        flowBracketBalance tokens (k+1) j = 0 ∧
+        (∀ i, k < i → i ≤ j → flowBracketBalance tokens lo i ≥ 1) := by
+    intro f
+    induction f with
+    | zero =>
+      intro start h_sf h_ks h_bal _
+      have h_eq : start = hi := by omega
+      rw [h_eq, h_total] at h_bal; omega
+    | succ f ih =>
+      intro start h_sf h_ks h_bal hinv
+      have h_start_lt : start < hi := by omega
+      have h_start_sz : start < tokens.size := by omega
+      have hs := step start (by omega) h_start_sz
+      by_cases h0 : flowBracketBalance tokens lo (start+1) = 0
+      · -- `start` is the matching close; `j = start` and `hinv` is the interior invariant.
+        rw [h0] at hs
+        have h_delta_ge := flowBracketDelta_ge_neg_one tokens[start]!.val
+        have h_bs1 : flowBracketBalance tokens lo start = 1 := by omega
+        have h_d : flowBracketDelta tokens[start]!.val = -1 := by omega
+        refine ⟨start, h_ks, h_start_lt, h_d, ?_, hinv⟩
+        have hcomp := flowBracketBalance_compose tokens lo (k+1) start (by omega) (by omega)
+        rw [h_bs1, h_f_k1] at hcomp; omega
+      · -- Still inside the bracket: recurse one step further, extending the invariant to `start+1`.
+        have h_next_ge1 : flowBracketBalance tokens lo (start+1) ≥ 1 := by
+          have h_ge0 := h_dyck (start+1) (by omega) (by omega)
+          omega
+        refine ih (start+1) (by omega) (by omega) h_next_ge1 ?_
+        intro i h_ki h_i_s1
+        rcases Nat.lt_or_ge i (start+1) with h | h
+        · exact hinv i h_ki (by omega)
+        · have : i = start + 1 := by omega
+          rw [this]; exact h_next_ge1
+  exact find (hi - (k+1)) (k+1) (by omega) (by omega) (by omega)
+    (by
+      intro i h_ki h_i
+      have hi_eq : i = k + 1 := by omega
+      have : flowBracketBalance tokens lo i = 1 := hi_eq ▸ h_f_k1
+      omega)
+
+/-- **Matching close of a NESTED opener (depth-general)** — R482.  Generalizes
+    `flowBracketBalance_matching_close` from a DEPTH-0 opener (`flowBracketBalance tokens lo k = 0`)
+    to an opener `k` at ARBITRARY depth `d = flowBracketBalance tokens lo k ≥ 0` inside the balanced,
+    Dyck-floored window `[lo, hi)`.  The `h_k_depth : balance lo k = 0` hypothesis is DROPPED; the
+    located close `j` and the interior floor are stated RELATIVE TO the opener
+    (`flowBracketBalance tokens (k+1) j = 0`, `flowBracketBalance tokens (k+1) i ≥ 0`), so the
+    statement is itself depth-free.
+
+    **Why this is the missing primitive (R482 discovery).**  The seq carrier
+    `seqLocalCarrier_of_widthEnc` locates, at every gated window `[a, b)`, its INNERMOST enclosing
+    opener `p` (`seqEnclosingOpener_of_gate`) and asks `enclosingLocate`/`h_widthEnc` for `p`'s full
+    bracket span `[p, hiE)`.  For a DEEPLY-NESTED gated window the innermost encloser `p` sits at depth
+    ≥ 1 in the body window, so `seqClose_of_located_and_enclosing_within`'s `h_p_depth : balance lo p =
+    0` (and `flowBracketBalance_matching_close_seq`'s `h_k_depth`) is FALSE — the depth-0 close locator
+    cannot find a nested opener's close.  This is the depth-general BALANCE core that unblocks it: the
+    matching-close scan is purely RELATIVE to the opener's own depth, so threading the interior floor
+    against `flowBracketBalance tokens lo k` (rather than the literal `0`) generalizes the proof
+    mechanically — the return level becomes `balance lo k`, the just-after-opener level
+    `balance lo k + 1`, and the global Dyck floor `≥ 0` is now needed ONLY to pin the opener's own
+    depth `d ≥ 0` (the recurse step uses the threaded interior invariant, not the global floor).
+
+    Verified-but-unconsumed until the typed seq/map close locators are re-based onto it; references no
+    sorry site, frontier sorry count unchanged at 4; axiom-clean. -/
+theorem flowBracketBalance_matching_close_nested (tokens : Array (Positioned YamlToken))
+    (lo k hi : Nat) (h_lo_k : lo ≤ k) (h_k_hi : k < hi) (h_hi_sz : hi ≤ tokens.size)
+    (h_k_open : flowBracketDelta tokens[k]!.val = 1)
+    (h_total : flowBracketBalance tokens lo hi = 0)
+    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) :
+    ∃ j, k < j ∧ j < hi ∧
+      flowBracketDelta tokens[j]!.val = -1 ∧
+      flowBracketBalance tokens (k+1) j = 0 ∧
+      (∀ i, k < i → i ≤ j → flowBracketBalance tokens (k+1) i ≥ 0) := by
+  -- The opener's own depth is `≥ 0` (it is a position of the Dyck-floored window).
+  have h_d_ge : flowBracketBalance tokens lo k ≥ 0 := h_dyck k h_lo_k (by omega)
+  -- One-step recurrence for the running balance.
+  have step : ∀ i, lo ≤ i → i < tokens.size →
+      flowBracketBalance tokens lo (i+1) =
+        flowBracketBalance tokens lo i + flowBracketDelta tokens[i]!.val := by
+    intro i h_lo_i h_sz
+    rw [flowBracketBalance_compose tokens lo i (i+1) h_lo_i (by omega)]
+    have hlen : i < tokens.toList.length := by rw [Array.length_toList]; exact h_sz
+    rw [flowBracketBalance_single tokens i hlen]
+    have h1 : tokens.toList[i]'hlen = tokens[i] := Array.getElem_toList h_sz
+    have h2 : tokens[i] = tokens[i]! := (getElem!_pos tokens i h_sz).symm
+    rw [h1, h2]
+  -- Balance just after the opener is one ABOVE the opener's own depth.
+  have h_f_k1 : flowBracketBalance tokens lo (k+1) = flowBracketBalance tokens lo k + 1 := by
+    have hs := step k h_lo_k (by omega)
+    rw [h_k_open] at hs; omega
+  -- Scan forward from `start` (kept STRICTLY above the opener's depth) for the first RETURN to it.
+  -- The threaded invariant `∀ i ∈ (k, start], balance lo i ≥ balance lo k + 1` (the depth never drops
+  -- back to the opener's level strictly inside) is handed back for the whole interior `(k, j]`.
+  have find : ∀ (f start : Nat), start + f = hi → k < start →
+      flowBracketBalance tokens lo start ≥ flowBracketBalance tokens lo k + 1 →
+      (∀ i, k < i → i ≤ start →
+        flowBracketBalance tokens lo i ≥ flowBracketBalance tokens lo k + 1) →
+      ∃ j, k < j ∧ j < hi ∧
+        flowBracketDelta tokens[j]!.val = -1 ∧
+        flowBracketBalance tokens (k+1) j = 0 ∧
+        (∀ i, k < i → i ≤ j →
+          flowBracketBalance tokens lo i ≥ flowBracketBalance tokens lo k + 1) := by
+    intro f
+    induction f with
+    | zero =>
+      intro start h_sf h_ks h_bal _
+      have h_eq : start = hi := by omega
+      rw [h_eq, h_total] at h_bal; omega
+    | succ f ih =>
+      intro start h_sf h_ks h_bal hinv
+      have h_start_lt : start < hi := by omega
+      have h_start_sz : start < tokens.size := by omega
+      have hs := step start (by omega) h_start_sz
+      by_cases h0 : flowBracketBalance tokens lo (start+1) = flowBracketBalance tokens lo k
+      · -- `start` is the matching close; `j = start`, and `hinv` is the interior floor.
+        rw [h0] at hs
+        have h_delta_ge := flowBracketDelta_ge_neg_one tokens[start]!.val
+        have h_bs1 : flowBracketBalance tokens lo start = flowBracketBalance tokens lo k + 1 := by omega
+        have h_d : flowBracketDelta tokens[start]!.val = -1 := by omega
+        refine ⟨start, h_ks, h_start_lt, h_d, ?_, hinv⟩
+        have hcomp := flowBracketBalance_compose tokens lo (k+1) start (by omega) (by omega)
+        rw [h_bs1, h_f_k1] at hcomp; omega
+      · -- Still inside the bracket: recurse, extending the interior floor to `start+1`.
+        have h_next_ge1 :
+            flowBracketBalance tokens lo (start+1) ≥ flowBracketBalance tokens lo k + 1 := by
+          have h_delta_ge := flowBracketDelta_ge_neg_one tokens[start]!.val
+          omega
+        refine ih (start+1) (by omega) (by omega) h_next_ge1 ?_
+        intro i h_ki h_i_s1
+        rcases Nat.lt_or_ge i (start+1) with h | h
+        · exact hinv i h_ki (by omega)
+        · have : i = start + 1 := by omega
+          rw [this]; exact h_next_ge1
+  obtain ⟨j, hkj, hjhi, hjdelta, hinner, hfloor_abs⟩ :=
+    find (hi - (k+1)) (k+1) (by omega) (by omega) (by omega)
+      (by
+        intro i h_ki h_i
+        have hi_eq : i = k + 1 := by omega
+        have hb : flowBracketBalance tokens lo i = flowBracketBalance tokens lo k + 1 := hi_eq ▸ h_f_k1
+        omega)
+  -- Re-base the absolute interior floor `balance lo i ≥ balance lo k + 1` onto the opener
+  -- (`balance (k+1) i ≥ 0`), the depth-free form the child-bracket constructors consume.
+  refine ⟨j, hkj, hjhi, hjdelta, hinner, ?_⟩
+  intro i h_ki h_ij
+  have hcomp := flowBracketBalance_compose tokens lo (k+1) i (by omega) (by omega)
+  have hf := hfloor_abs i h_ki h_ij
+  rw [h_f_k1] at hcomp
+  omega
+
+/-- **Dyck origin shift (local Dyck of a depth-floor subrange).**  The local Dyck of a subrange
+    `[s, hi)` whose start `s` is a *depth-floor* — the running balance from `lo` never drops below
+    its value `d` at `s` — is exactly the global Dyck re-based at `s`.  By additivity
+    (`flowBracketBalance_compose`), `balance lo p = d + balance s p`, so the floor
+    `balance lo p ≥ d` *is* the local Dyck `balance s p ≥ 0`.
+
+    This is the combinatorial core of the `(d-dyck)` brick: `WellTyped_subrange` (in
+    `WellBracketed.lean`) consumes a per-subrange local Dyck that `FlowSubrangesOk`'s hypotheses do
+    not supply; this lemma manufactures it from the global Dyck for any subrange that begins at a
+    local depth-minimum. -/
+theorem flowBracketBalance_dyck_shift (tokens : Array (Positioned YamlToken))
+    (lo s hi : Nat) (d : Int) (h_lo_s : lo ≤ s)
+    (h_s_depth : flowBracketBalance tokens lo s = d)
+    (h_floor : ∀ p, s ≤ p → p ≤ hi → flowBracketBalance tokens lo p ≥ d) :
+    ∀ p, s ≤ p → p ≤ hi → flowBracketBalance tokens s p ≥ 0 := by
+  intro p h_sp h_ph
+  have hcomp := flowBracketBalance_compose tokens lo s p h_lo_s h_sp
+  have hfloor := h_floor p h_sp h_ph
+  omega
+
+/-- **Matched-bracket interior is locally Dyck.**  The interior `(k+1, j)` of a depth-0 opener at
+    `k` (matching close at `j`) is locally Dyck: `flowBracketBalance (k+1) p ≥ 0` for every
+    `k+1 ≤ p ≤ j`.  The depth just after the opener is `1` (`flowBracketBalance_single`), and the
+    matching-close locator's interior invariant (`balance lo i ≥ 1` over `(k, j]`, the fifth
+    conjunct of `flowBracketBalance_matching_close`) is exactly the depth-`1` floor that
+    `flowBracketBalance_dyck_shift` re-bases to `0`.  This is the concrete **local Dyck input**
+    `WellTyped_subrange` consumes for a nested subrange — the `(d-dyck)` residual, ready to feed at
+    assembly alongside the typed matching close. -/
+theorem flowBracketBalance_interior_dyck (tokens : Array (Positioned YamlToken))
+    (lo k j : Nat) (h_lo_k : lo ≤ k) (h_k_sz : k < tokens.size)
+    (h_k_depth : flowBracketBalance tokens lo k = 0)
+    (h_k_open : flowBracketDelta tokens[k]!.val = 1)
+    (h_pos : ∀ i, k < i → i ≤ j → flowBracketBalance tokens lo i ≥ 1) :
+    ∀ p, k + 1 ≤ p → p ≤ j → flowBracketBalance tokens (k+1) p ≥ 0 := by
+  have h_step : flowBracketBalance tokens lo (k+1) = 1 := by
+    rw [flowBracketBalance_compose tokens lo k (k+1) h_lo_k (by omega)]
+    have hlen : k < tokens.toList.length := by rw [Array.length_toList]; exact h_k_sz
+    rw [flowBracketBalance_single tokens k hlen]
+    have h1 : tokens.toList[k]'hlen = tokens[k] := Array.getElem_toList h_k_sz
+    have h2 : tokens[k] = tokens[k]! := (getElem!_pos tokens k h_k_sz).symm
+    rw [h1, h2]
+    omega
+  refine flowBracketBalance_dyck_shift tokens lo (k+1) j 1 (by omega) h_step ?_
+  intro p h_sp h_ph
+  exact h_pos p (by omega) h_ph
+
+/-- **Per-descend inner-floor provider** — the parser-contract Dyck floor's *self-propagation* step.
+    Composes the two pre-existing combinatorial bricks into the single descend the floor-guarded
+    `FlowSubrangesOk` redirect (R435) needs at every nested bracket:
+
+    * `flowBracketBalance_matching_close` (the forward first-return locator, built for the parser
+      span-induction) yields the matching close `j` *and* the depth-`1` interior invariant
+      `balance lo i ≥ 1` over `(k, j]` (its fifth conjunct);
+    * `flowBracketBalance_interior_dyck` (built to feed `WellTyped_subrange`) re-bases that depth-`1`
+      floor to the *local* depth-`0` Dyck floor `balance (k+1) p ≥ 0` of the interior `[k+1, j)`.
+
+    So: an OUTER window `[lo, hi)` carrying its own Dyck floor (`h_dyck`) plus a depth-`0` opener at `k`
+    *manufactures* the INNER window's own Dyck floor — exactly the floor a floor-guarded
+    `FlowSubrangesOk.{seq,map}` query demands at the inner `.seq`/`.map` descend.  The floor is therefore
+    **self-propagating** and its descent lemma was already built (twice, for two sibling consumers); this
+    lemma only wires them, introducing no new combinatorics.
+
+    Crucially, the floor must be EXPOSED on the bracket-matching output fields (`SeqBodyProps.bracket_seq`
+    etc.) for the parser to read it off: the fields currently publish only `balance (k+1) j = 0`, which
+    does NOT pin `j` as the first-return (a cross-matched inner `j` also balances), so the consumer cannot
+    re-derive the inner floor at the handed-in `j` ([[ref-reconstruct-in-place-over-relocate]], one level
+    down).  The PRODUCER (which knows the genuine structure) supplies the inner floor via THIS lemma; the
+    consumer reads it off the augmented field. -/
+theorem flowBracketBalance_inner_floor (tokens : Array (Positioned YamlToken))
+    (lo k hi : Nat) (h_lo_k : lo ≤ k) (h_k_hi : k < hi) (h_hi_sz : hi ≤ tokens.size)
+    (h_k_depth : flowBracketBalance tokens lo k = 0)
+    (h_k_open : flowBracketDelta tokens[k]!.val = 1)
+    (h_total : flowBracketBalance tokens lo hi = 0)
+    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) :
+    ∃ j, k < j ∧ j < hi ∧
+      flowBracketDelta tokens[j]!.val = -1 ∧
+      flowBracketBalance tokens (k+1) j = 0 ∧
+      (∀ p, k + 1 ≤ p → p ≤ j → flowBracketBalance tokens (k+1) p ≥ 0) := by
+  obtain ⟨j, h_kj, h_j_hi, h_j_close, h_inner_bal, h_pos⟩ :=
+    flowBracketBalance_matching_close tokens lo k hi h_lo_k h_k_hi h_hi_sz
+      h_k_depth h_k_open h_total h_dyck
+  refine ⟨j, h_kj, h_j_hi, h_j_close, h_inner_bal, ?_⟩
+  exact flowBracketBalance_interior_dyck tokens lo k j h_lo_k (by omega) h_k_depth h_k_open h_pos
+
+/-- **A matched bracket pair is depth-transparent.**  A complete bracket value — opener at `k`
+    (`flowBracketDelta = 1`), matching close at `j` (`flowBracketDelta = -1`), balanced interior
+    `(k+1, j)` — contributes net `0` to the running balance, so the balance just *after* the pair
+    equals the balance just *before* the opener:
+    `flowBracketBalance tokens lo (j+1) = flowBracketBalance tokens lo k`.
+    By `flowBracketBalance_compose` the span `[k, j+1)` splits as opener (`+1`) + interior (`0`) +
+    close (`-1`), and `flowBracketBalance_single` reads the two endpoint deltas. -/
+theorem flowBracketBalance_bracket_pair_skip (tokens : Array (Positioned YamlToken))
+    (lo k j : Nat) (h_lo_k : lo ≤ k) (h_k_j : k < j) (h_j_sz : j < tokens.size)
+    (h_open : flowBracketDelta tokens[k]!.val = 1)
+    (h_close : flowBracketDelta tokens[j]!.val = -1)
+    (h_inner : flowBracketBalance tokens (k+1) j = 0) :
+    flowBracketBalance tokens lo (j+1) = flowBracketBalance tokens lo k := by
+  have h_k_sz : k < tokens.size := Nat.lt_trans h_k_j h_j_sz
+  -- balance lo (j+1) = balance lo k + balance k (j+1)
+  rw [flowBracketBalance_compose tokens lo k (j+1) h_lo_k (by omega)]
+  -- balance k (j+1) = balance k (k+1) + balance (k+1) j + balance j (j+1)
+  rw [flowBracketBalance_compose tokens k (k+1) (j+1) (by omega) (by omega),
+      flowBracketBalance_compose tokens (k+1) j (j+1) (by omega) (by omega)]
+  -- endpoint deltas via `flowBracketBalance_single`
+  have hlk : k < tokens.toList.length := by rw [Array.length_toList]; exact h_k_sz
+  have hlj : j < tokens.toList.length := by rw [Array.length_toList]; exact h_j_sz
+  rw [flowBracketBalance_single tokens k hlk, flowBracketBalance_single tokens j hlj]
+  -- bridge `tokens.toList[·]` to `tokens[·]!`
+  have hk1 : tokens.toList[k]'hlk = tokens[k] := Array.getElem_toList h_k_sz
+  have hk2 : tokens[k] = tokens[k]! := (getElem!_pos tokens k h_k_sz).symm
+  have hj1 : tokens.toList[j]'hlj = tokens[j] := Array.getElem_toList h_j_sz
+  have hj2 : tokens[j] = tokens[j]! := (getElem!_pos tokens j h_j_sz).symm
+  rw [hk1, hk2, hj1, hj2, h_open, h_close, h_inner]
+  omega
+
+/-- **Depth-0 corollary.**  When the opener `k` sits at relative depth `0`
+    (`flowBracketBalance lo k = 0`), the position `j + 1` immediately after the matching close is
+    again at relative depth `0`.  This is the precondition that lets the bracket conjuncts' successor
+    half reuse the *same* "after a complete value, the next depth-0 token is `.flowEntry` or the body
+    close" fact that the scalar successor uses — the bracketed value is depth-transparent. -/
+theorem flowBracketBalance_after_bracket_pair_zero (tokens : Array (Positioned YamlToken))
+    (lo k j : Nat) (h_lo_k : lo ≤ k) (h_k_j : k < j) (h_j_sz : j < tokens.size)
+    (h_k_depth : flowBracketBalance tokens lo k = 0)
+    (h_open : flowBracketDelta tokens[k]!.val = 1)
+    (h_close : flowBracketDelta tokens[j]!.val = -1)
+    (h_inner : flowBracketBalance tokens (k+1) j = 0) :
+    flowBracketBalance tokens lo (j+1) = 0 := by
+  rw [flowBracketBalance_bracket_pair_skip tokens lo k j h_lo_k h_k_j h_j_sz
+      h_open h_close h_inner]
+  exact h_k_depth
+
+/-- **Backward bracket-opener locator (Dyck — the backward mirror of
+    `flowBracketBalance_matching_close`).**  If at least one bracket is open at position `a`
+    (`flowBracketBalance tokens 0 a ≥ 1`, with `a ≤ tokens.size`), there is an *innermost* enclosing
+    opener at some `p < a`: `tokens[p]` is an open bracket (`flowBracketDelta = 1`) and the body it
+    opens reaches `a` at its own top level (`flowBracketBalance tokens (p+1) a = 0`).  Thus
+    `loS := p + 1` is the body start of the bracket enclosing `a`, with `loS ≤ a` and
+    `flowBracketBalance tokens loS a = 0` — exactly the `h_loS_a`/`h_bal0` inputs that the
+    enclosing-facts provider's FROM-LOCATED assembler (`seqEnclosingFacts_provider_of_located`)
+    consumes for nested gated windows.
+
+    Where `flowBracketBalance_matching_close` scans FORWARD for the first return to depth `0` after an
+    opener, this scans BACKWARD for the last opener still unmatched at `a`.  No standalone
+    backward-matching-open primitive is needed: the `Nat.strongRecOn` on `a` recovers it inline.  The
+    last token of the prefix (index `a - 1`) is opener, neutral, or closer:
+
+    * **opener** (`delta = +1`): `a - 1` is itself the innermost opener; `balance (a) a = 0`;
+    * **neutral** (`delta = 0`): the innermost opener at `a - 1` still encloses `a` (IH at `a - 1`);
+    * **closer** (`delta = -1`): the IH at `a - 1` locates that closer's matching opener `p'`, then
+      `flowBracketBalance_bracket_pair_skip` jumps the matched block (`balance 0 a = balance 0 p'`)
+      and the IH at `p'` continues outward to the enclosing opener.
+
+    Pure balance: no `SafeBodyUnit`, no `btFold`, no structural recursion.  The seq-vs-map *type* of
+    the located opener (`tokens[p] = .flowSequenceStart`) and the matching *close* `hiS` are layered
+    on by the consumer (the gate's `btFold`-top and the forward `flowBracketBalance_matching_close`).
+    `#guard`-de-risked on `[[1, 2], 9]` (`Tests/Guards/Proofs/SeqDescentLocatorProbe.lean`) and the
+    deeper `[[[1]], 2]`: the located `p`, the balance, and the matched-block skip hold at every nested
+    gated window.
+
+    **The interior FLOOR `∀ i ∈ [p+1, a], balance (p+1) i ≥ 0` (R311).**  R309 first sized this
+    deliverable to its only consumer then (the rebase assembler, which reads only `loS`, `loS ≤ a`,
+    `balance loS a = 0`) and DROPPED the floor.  A minimal-pair probe for the *next* consumer
+    (`seqOpenerType_of_located_and_gate`, the opener-TYPE brick) showed the bare three facts are
+    INSUFFICIENT: on `[{}, ["9"]]` at `a = 6` BOTH `p = 5` (the true innermost `[`) AND `p = 2`
+    (a spurious `{`, with `balance 3 6 = -1 + 0 + 1 = 0`) satisfy `p < a ∧ delta = 1 ∧
+    balance (p+1) a = 0`, yet `tokens[2]` is a `{` while the gate-top is `some true` — so the
+    opener-type conclusion is FALSE on the bare existential.  The floor SEPARATES the pair
+    (`balance 6 6 = 0 ≥ 0` for `p = 5`; `balance 3 4 = -1 < 0` for `p = 2`), pinning innermost-ness —
+    the head of the typed stack at `a` is the bracket opened at `p` exactly because `p` is never popped
+    over `(p, a]`.  The floor is INDEPENDENT of the three facts and of the gate, so it must be
+    delivered HERE (the locator's construction is the only source of innermost-ness), not re-derived at
+    the consume site.  Threading it costs only composition of the two IH floors (closer case): the
+    enclosing opener `p'` stays at depth `≥ 0` across its whole matched span `[p', a]` because its
+    interior floor (first IH) plus `balance p' p' = 0` and `balance p' a = 0` bracket it, and
+    `balance (p+1) i = balance (p+1) p' + balance p' i = 0 + (≥ 0)` over `[p', a]`. -/
+theorem flowBracketBalance_backward_open_locate (tokens : Array (Positioned YamlToken)) (a : Nat)
+    (h_a_sz : a ≤ tokens.size) (h_open : flowBracketBalance tokens 0 a ≥ 1) :
+    ∃ p, p < a ∧ flowBracketDelta tokens[p]!.val = 1 ∧
+      flowBracketBalance tokens (p + 1) a = 0 ∧
+      (∀ i, p + 1 ≤ i → i ≤ a → flowBracketBalance tokens (p + 1) i ≥ 0) := by
+  -- Single-token balance read, bridging `tokens.toList[i]` to `tokens[i]!`.
+  have single' : ∀ i, i < tokens.size →
+      flowBracketBalance tokens i (i + 1) = flowBracketDelta tokens[i]!.val := by
+    intro i hi
+    have hlen : i < tokens.toList.length := by rw [Array.length_toList]; exact hi
+    rw [flowBracketBalance_single tokens i hlen]
+    have h1 : tokens.toList[i]'hlen = tokens[i] := Array.getElem_toList hi
+    have h2 : tokens[i] = tokens[i]! := (getElem!_pos tokens i hi).symm
+    rw [h1, h2]
+  revert h_a_sz h_open
+  induction a using Nat.strongRecOn with
+  | ind a IH =>
+    intro h_a_sz h_open
+    -- `a = 0` is impossible: the balance there is `0`.
+    rcases Nat.eq_zero_or_pos a with rfl | ha_pos
+    · have : flowBracketBalance tokens 0 0 = 0 := by simp [flowBracketBalance]
+      omega
+    -- The last token of the prefix sits at index `a - 1`.
+    have ha1_sz : a - 1 < tokens.size := by omega
+    have hsa : flowBracketBalance tokens (a - 1) a = flowBracketDelta tokens[a - 1]!.val := by
+      have h := single' (a - 1) ha1_sz
+      rwa [show a - 1 + 1 = a from by omega] at h
+    have hca : flowBracketBalance tokens 0 a
+        = flowBracketBalance tokens 0 (a - 1) + flowBracketBalance tokens (a - 1) a :=
+      flowBracketBalance_compose tokens 0 (a - 1) a (by omega) (by omega)
+    by_cases hd1 : flowBracketDelta tokens[a - 1]!.val = 1
+    · -- opener: `a - 1` is the innermost enclosing opener.
+      refine ⟨a - 1, by omega, hd1, ?_, ?_⟩
+      · rw [show a - 1 + 1 = a from by omega]
+        simp [flowBracketBalance]
+      · -- the floor is the single point `i = a`, where `balance a a = 0`.
+        intro i hi1 hi2
+        have he : a - 1 + 1 = a := by omega
+        rw [he, show i = a from by omega]
+        have h0 : flowBracketBalance tokens a a = 0 := by simp [flowBracketBalance]
+        omega
+    · by_cases hd0 : flowBracketDelta tokens[a - 1]!.val = 0
+      · -- non-bracket: the innermost opener at `a - 1` still encloses `a`.
+        have hbal_prev : flowBracketBalance tokens 0 (a - 1) ≥ 1 := by
+          rw [hsa, hd0] at hca; omega
+        obtain ⟨p, hp_lt, hp_open, hp_bal, hp_floor⟩ := IH (a - 1) (by omega) (by omega) hbal_prev
+        have hpa : flowBracketBalance tokens (p + 1) a = 0 := by
+          have hc := flowBracketBalance_compose tokens (p + 1) (a - 1) a (by omega) (by omega)
+          rw [hp_bal, hsa, hd0] at hc; omega
+        refine ⟨p, by omega, hp_open, hpa, ?_⟩
+        intro i hi1 hi2
+        rcases Nat.lt_or_ge i a with hlt | hge
+        · exact hp_floor i hi1 (by omega)
+        · rw [show i = a from by omega]; omega
+      · -- closer: skip the matched block, then continue outward.
+        have hdneg : flowBracketDelta tokens[a - 1]!.val = -1 := by
+          have hge := flowBracketDelta_ge_neg_one tokens[a - 1]!.val
+          have hle := flowBracketDelta_le_one tokens[a - 1]!.val
+          omega
+        have hbal_prev : flowBracketBalance tokens 0 (a - 1) ≥ 1 := by
+          rw [hsa, hdneg] at hca; omega
+        obtain ⟨p', hp'_lt, hp'_open, hp'_bal, hp'_floor⟩ :=
+          IH (a - 1) (by omega) (by omega) hbal_prev
+        -- Jump the matched pair `(p', a - 1)`: `balance 0 a = balance 0 p'`.
+        have hskip := flowBracketBalance_bracket_pair_skip tokens 0 p' (a - 1)
+          (by omega) hp'_lt ha1_sz hp'_open hdneg hp'_bal
+        rw [show a - 1 + 1 = a from by omega] at hskip
+        have hbal_p' : flowBracketBalance tokens 0 p' ≥ 1 := by rw [← hskip]; omega
+        obtain ⟨p, hp_lt, hp_open, hp_bal, hp_floor⟩ := IH p' (by omega) (by omega) hbal_p'
+        -- `balance (p+1) a = balance (p+1) p' + balance p' a = 0 + 0`.
+        have hp'a : flowBracketBalance tokens p' a = 0 := by
+          have hc2 := flowBracketBalance_compose tokens 0 p' a (by omega) (by omega)
+          omega
+        have hpa : flowBracketBalance tokens (p + 1) a = 0 := by
+          have hc := flowBracketBalance_compose tokens (p + 1) p' a (by omega) (by omega)
+          rw [hp_bal, hp'a] at hc; omega
+        -- The enclosing opener `p'` stays at depth `≥ 0` across its whole matched span `[p', a]`:
+        -- its interior floor (first IH) plus `balance p' p' = 0` and `balance p' a = 0` bracket it.
+        have hp'_floor_full : ∀ i, p' ≤ i → i ≤ a → flowBracketBalance tokens p' i ≥ 0 := by
+          intro i hi1 hi2
+          rcases Nat.lt_or_ge i (p' + 1) with h | h
+          · rw [show i = p' from by omega]
+            have h0 : flowBracketBalance tokens p' p' = 0 := by simp [flowBracketBalance]
+            omega
+          · rcases Nat.lt_or_ge i a with hlt | hge'
+            · -- interior of `p'`'s matched block: `balance p' i = 1 + balance (p'+1) i ≥ 1`.
+              have hc4 := flowBracketBalance_compose tokens p' (p' + 1) i (by omega) (by omega)
+              have hd_p' : flowBracketBalance tokens p' (p' + 1) = 1 := by
+                have hs := single' p' (by omega); rw [hs, hp'_open]
+              have hfl := hp'_floor i h (by omega)
+              omega
+            · rw [show i = a from by omega]; omega
+        refine ⟨p, by omega, hp_open, hpa, ?_⟩
+        intro i hi1 hi2
+        rcases Nat.lt_or_ge i (p' + 1) with hlt | hge
+        · exact hp_floor i hi1 (by omega)
+        · have hc3 := flowBracketBalance_compose tokens (p + 1) p' i (by omega) (by omega)
+          have hff := hp'_floor_full i (by omega) hi2
+          rw [hp_bal] at hc3; omega
+
+/-- **(d-shape) — the bracket-successor IS the scalar-successor (sequence body).**
+    The successor half of `SeqBodyProps.bracket_seq`/`bracket_map` — `j+1 ≤ hi ∧ (FE ∨ (seqEnd ∧
+    j+1=hi))` after a complete bracket value (opener at depth-0 `k`, matching close at `j`, balanced
+    interior) — is exactly the conclusion `scalar_succ` produces at `k+1`, only at `j+1`.  The
+    bracketed value is depth-transparent (`flowBracketBalance_after_bracket_pair_zero`: `j+1` is at
+    relative depth `0`), so the *single* "next depth-0 token after a complete value is `.flowEntry`
+    or the body close" emitter fact — here the hypothesis `h_succ`, keyed on the same depth-0 proviso
+    the scalar case discharges — supplies the conjunct.  This collapses the per-position shape work
+    for the bracket conjuncts onto the one scalar fact: `(d-shape)` reduces to a single emitter
+    obligation per body kind. -/
+theorem seq_bracket_succ_reduce (tokens : Array (Positioned YamlToken))
+    (lo hi k j : Nat) (h_lo_k : lo ≤ k) (h_k_j : k < j) (h_j_sz : j < tokens.size)
+    (h_k_depth : flowBracketBalance tokens lo k = 0)
+    (h_open : flowBracketDelta tokens[k]!.val = 1)
+    (h_close : flowBracketDelta tokens[j]!.val = -1)
+    (h_inner : flowBracketBalance tokens (k+1) j = 0)
+    (h_succ : flowBracketBalance tokens lo (j+1) = 0 →
+      j + 1 ≤ hi ∧
+      (tokens[j+1]!.val = .flowEntry ∨
+       (tokens[j+1]!.val = .flowSequenceEnd ∧ j + 1 = hi))) :
+    j + 1 ≤ hi ∧
+    (tokens[j+1]!.val = .flowEntry ∨
+     (tokens[j+1]!.val = .flowSequenceEnd ∧ j + 1 = hi)) :=
+  h_succ (flowBracketBalance_after_bracket_pair_zero tokens lo k j h_lo_k h_k_j h_j_sz
+    h_k_depth h_open h_close h_inner)
+
+/-- **(d-shape) — the value-bracket-successor IS the value-scalar-successor (mapping body, M8).**
+    Mapping-body analogue of `seq_bracket_succ_reduce`: the successor half of
+    `MapBodyProps.value_bracket_succ` (`j+1 ≤ hi ∧ (FE ∨ (mapEnd ∧ j+1=hi))`) after a complete
+    bracketed *value* equals the conclusion `value_scalar_succ` produces, only at `j+1`.  Same
+    depth-transparency reduction: the matched pair makes `j+1` depth-0, the single emitter fact
+    fires. -/
+theorem map_value_bracket_succ_reduce (tokens : Array (Positioned YamlToken))
+    (lo hi k j : Nat) (h_lo_k : lo ≤ k) (h_k_j : k < j) (h_j_sz : j < tokens.size)
+    (h_k_depth : flowBracketBalance tokens lo k = 0)
+    (h_open : flowBracketDelta tokens[k]!.val = 1)
+    (h_close : flowBracketDelta tokens[j]!.val = -1)
+    (h_inner : flowBracketBalance tokens (k+1) j = 0)
+    (h_succ : flowBracketBalance tokens lo (j+1) = 0 →
+      j + 1 ≤ hi ∧
+      (tokens[j+1]!.val = .flowEntry ∨
+       (tokens[j+1]!.val = .flowMappingEnd ∧ j + 1 = hi))) :
+    j + 1 ≤ hi ∧
+    (tokens[j+1]!.val = .flowEntry ∨
+     (tokens[j+1]!.val = .flowMappingEnd ∧ j + 1 = hi)) :=
+  h_succ (flowBracketBalance_after_bracket_pair_zero tokens lo k j h_lo_k h_k_j h_j_sz
+    h_k_depth h_open h_close h_inner)
+
+/-- **(d-shape) — after a bracketed key, `.value` follows (mapping body, M5).**
+    The successor of `MapBodyProps.key_bracket_value` (`j+1 < hi ∧ tokens[j+1] = .value`) after a
+    complete bracketed *key* — opener at depth-0 `k` (the caller passes the key's bracket start,
+    which sits at depth `0` since the preceding `.key` has delta `0`), matching close at `j` — is the
+    same `.value` the scalar-key case (`key_scalar_value`, M4) produces.  Depth-transparency again
+    bases `j+1` at relative depth `0`, so the single "what follows a complete key" emitter fact
+    fires. -/
+theorem map_key_bracket_value_reduce (tokens : Array (Positioned YamlToken))
+    (lo hi k j : Nat) (h_lo_k : lo ≤ k) (h_k_j : k < j) (h_j_sz : j < tokens.size)
+    (h_k_depth : flowBracketBalance tokens lo k = 0)
+    (h_open : flowBracketDelta tokens[k]!.val = 1)
+    (h_close : flowBracketDelta tokens[j]!.val = -1)
+    (h_inner : flowBracketBalance tokens (k+1) j = 0)
+    (h_succ : flowBracketBalance tokens lo (j+1) = 0 →
+      j + 1 < hi ∧ tokens[j+1]!.val = .value) :
+    j + 1 < hi ∧ tokens[j+1]!.val = .value :=
+  h_succ (flowBracketBalance_after_bracket_pair_zero tokens lo k j h_lo_k h_k_j h_j_sz
+    h_k_depth h_open h_close h_inner)
+
 /-! ### §6  Structural predicates for flow body subranges
 
 These predicates capture the token-level structural properties that
@@ -642,7 +1194,8 @@ structure SeqBodyProps (tokens : Array (Positioned YamlToken)) (lo hi : Nat) : P
       flowBracketBalance tokens (k+1) j = 0 ∧
       j + 1 ≤ hi ∧
       (tokens[j+1]!.val = .flowEntry ∨
-       (tokens[j+1]!.val = .flowSequenceEnd ∧ j + 1 = hi))
+       (tokens[j+1]!.val = .flowSequenceEnd ∧ j + 1 = hi)) ∧
+      (∀ p, k + 1 ≤ p → p ≤ j → flowBracketBalance tokens (k+1) p ≥ 0)
   bracket_map : ∀ k, lo ≤ k → k < hi →
     flowBracketBalance tokens lo k = 0 →
     tokens[k]!.val = .flowMappingStart →
@@ -651,7 +1204,8 @@ structure SeqBodyProps (tokens : Array (Positioned YamlToken)) (lo hi : Nat) : P
       flowBracketBalance tokens (k+1) j = 0 ∧
       j + 1 ≤ hi ∧
       (tokens[j+1]!.val = .flowEntry ∨
-       (tokens[j+1]!.val = .flowSequenceEnd ∧ j + 1 = hi))
+       (tokens[j+1]!.val = .flowSequenceEnd ∧ j + 1 = hi)) ∧
+      (∀ p, k + 1 ≤ p → p ≤ j → flowBracketBalance tokens (k+1) p ≥ 0)
 
 /-- Structural properties of a well-formed flow MAPPING body `[lo, hi)`.
 
@@ -691,7 +1245,8 @@ structure MapBodyProps (tokens : Array (Positioned YamlToken)) (lo hi : Nat) : P
       ((tokens[k+1]!.val = .flowSequenceStart ∧ tokens[j]!.val = .flowSequenceEnd) ∨
        (tokens[k+1]!.val = .flowMappingStart ∧ tokens[j]!.val = .flowMappingEnd)) ∧
       flowBracketBalance tokens (k+2) j = 0 ∧
-      j + 1 < hi ∧ tokens[j+1]!.val = .value
+      j + 1 < hi ∧ tokens[j+1]!.val = .value ∧
+      (∀ p, k + 2 ≤ p → p ≤ j → flowBracketBalance tokens (k+2) p ≥ 0)
   /-- M6: After `.value` at depth 0, content-start follows. -/
   value_content : ∀ k, lo ≤ k → k < hi →
     flowBracketBalance tokens lo k = 0 →
@@ -716,7 +1271,8 @@ structure MapBodyProps (tokens : Array (Positioned YamlToken)) (lo hi : Nat) : P
       flowBracketBalance tokens (k+2) j = 0 ∧
       j + 1 ≤ hi ∧
       (tokens[j+1]!.val = .flowEntry ∨
-       (tokens[j+1]!.val = .flowMappingEnd ∧ j + 1 = hi))
+       (tokens[j+1]!.val = .flowMappingEnd ∧ j + 1 = hi)) ∧
+      (∀ p, k + 2 ≤ p → p ≤ j → flowBracketBalance tokens (k+2) p ≥ 0)
   /-- M9: Bracket matching for flowSeqStart at depth 0 (needed for inner body IH). -/
   bracket_seq : ∀ k, lo ≤ k → k < hi →
     flowBracketBalance tokens lo k = 0 →
@@ -732,17 +1288,32 @@ structure MapBodyProps (tokens : Array (Positioned YamlToken)) (lo hi : Nat) : P
       tokens[j]!.val = .flowMappingEnd ∧
       flowBracketBalance tokens (k+1) j = 0
 
-/-- Universal structural properties: all valid flow body subranges
-    in the token array satisfy `SeqBodyProps` (for seq bodies) or
-    `MapBodyProps` (for map bodies). -/
+/-- Universal structural properties: every valid flow body subrange
+    in the token array satisfies `SeqBodyProps` (for seq bodies) or
+    `MapBodyProps` (for map bodies).
+
+    **Body-start guard** (`tokens[lo - 1]!.val = .flowSequenceStart` / `.flowMappingStart`):
+    without it the universal would be FALSE.  A balanced subrange `[lo, hi)` ending in a close
+    bracket need NOT be a genuine body: e.g. for `[a, b]` the subrange starting on the depth-0
+    `.flowEntry` (the `,`) is balanced and ends in `.flowSequenceEnd`, yet `tokens[lo]` is `.flowEntry`,
+    not a content-start, so `SeqBodyProps.content_start` fails.  The guard restricts `lo` to a real
+    interior-start — immediately preceded by the matching opener — which is exactly where the
+    dispatcher `flow_parser_ok_of_structure` projects these fields (every projection site has
+    `tokens[lo-1]` = the opener), and exactly where the emitter's structure (and
+    `seqBodyProps_assemble`/`mapBodyProps_assemble`'s `content_start` input) holds.  This is what
+    makes the producer obligation (Phase J) provable rather than false. -/
 structure FlowSubrangesOk (tokens : Array (Positioned YamlToken)) : Prop where
   seq : ∀ lo hi, lo ≤ hi → hi < tokens.size →
     tokens[hi]!.val = .flowSequenceEnd →
     flowBracketBalance tokens lo hi = 0 →
+    tokens[lo - 1]!.val = .flowSequenceStart →
+    (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
     SeqBodyProps tokens lo hi
   map : ∀ lo hi, lo ≤ hi → hi < tokens.size →
     tokens[hi]!.val = .flowMappingEnd →
     flowBracketBalance tokens lo hi = 0 →
+    tokens[lo - 1]!.val = .flowMappingStart →
+    (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
     MapBodyProps tokens lo hi
 
 end L4YAML.Proofs.ParserGrammable

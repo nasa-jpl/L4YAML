@@ -69,7 +69,9 @@ Every function in the core library is a total `def` — **no `partial def`, no
   scanner matches its `Grammar.lean` counterpart
   ([Proofs/Foundation/CharClass.lean](L4YAML/Proofs/Foundation/CharClass.lean)).
 
-**Work in progress.** Two converse theorems round out the correctness picture:
+**Work in progress.** Two converse theorems round out the correctness
+picture, both in the round-trip cluster under
+[Proofs/Output/](L4YAML/Proofs/Output/):
 
 - *Universal round-trip* — for every grammable `YamlValue v`, re-parsing
   `emit v` returns a content-equivalent value
@@ -77,6 +79,145 @@ Every function in the core library is a total `def` — **no `partial def`, no
 - *Grammar completeness* — every string in `InYamlLanguage` parses
   successfully, closing the biconditional with acceptance strictness
   ([VERSION-0.4.8.md](VERSION-0.4.8.md)).
+
+**Current frontier (2026-07-01): 5 `sorry` sites** in the universal
+round-trip cluster — up from 4, and the increase is a *decomposition, not a
+regression*: the R447 co-construction skeleton landed and split the flow
+structure blocker into a single, well-characterized navigator residual. The
+five reduce to two independent obligations:
+
+| # | Site | Track |
+|---|------|-------|
+| 1 | [`NonemptyStructure.lean:12131`](L4YAML/Proofs/Output/EmitterScannability/NonemptyStructure.lean#L12131) — `FlowSubrangesOk` (mapping) | A |
+| 2 | [`EmitterScannability.lean:411`](L4YAML/Proofs/Output/EmitterScannability.lean#L411) — `FlowSubrangesOk` (sequence) | A |
+| 5 | [`SeqInteriorSeparators.lean:11348`](L4YAML/Proofs/Output/EmitterScannability/SeqInteriorSeparators.lean#L11348) — R447 navigator `seqBody_recseqbody_provider` | A (linchpin) |
+| 3 | [`EmitterScannability.lean:1066`](L4YAML/Proofs/Output/EmitterScannability.lean#L1066) — non-all-scalar sequence locality | B |
+| 4 | [`EmitterScannability.lean:1214`](L4YAML/Proofs/Output/EmitterScannability.lean#L1214) — non-all-scalar mapping locality | B |
+
+- **Track A — `FlowSubrangesOk tokens`** (every balanced flow subrange is
+  well-formed), consumed by both structure proofs. All three of its sorries
+  bottom out at the single R447 navigator (#5): a carrier-free, per-window
+  `RecSeqBody` structural walk whose linchpin is
+  `recmappair_window_dispatch_map`. The assembler chain that lifts the
+  navigator up to `FlowSubrangesOk` — and thereby discharges #1 and #2 — is
+  already verified and waiting on it, so #5 is the sole remaining piece of
+  *mathematical* content on this track.
+- **Track B — `parseNode` span-locality:** the parser's `YamlValue` output
+  depends only on the tokens forward of its start position, never on the
+  absolute offset or on trailing siblings (`YamlValue` is position-free;
+  `YamlDocument.compose` strips positions into a separate field). The precise
+  statement was pinned on 2026-07-01: the earlier `∀k`/whole-state form
+  (`parseNode_position_invariant`) is unusable — it disagrees on the output
+  position and its hypothesis is unsatisfiable in the application — so the
+  target projects the *value* under *bounded* `.val`-agreement
+  (`ParseNodeValueSpanLocal`). Closing #3/#4 factors into four pieces,
+  cheapest first:
+  - **P2a — frame:** `parseNode` advances to exactly its matching bracket
+    close (`ParseNodeFrameWithinSpan`, on a positive Dyck span `0 < n`), located
+    via `flowBracketBalance_matching_close`. This is *not* a strengthening of the
+    existing position-monotonicity lemma, which bounds position only from
+    below; the leaf precedent is the scalar `advances_by_one`. The `0 < n` guard
+    was found necessary on 2026-07-01 (the degenerate `n = 0` satisfies the Dyck
+    conditions vacuously yet forces `ps'.pos = p`, refuting the unguarded form);
+    with it the span is unique (`frameSpan_unique`, proved `sorry`-free), so the
+    frame's `n` is the matching-close span. The two pure-`flowBracketBalance`
+    bricks the frame induction consumes are now proved `sorry`-free:
+    `frameHead_classified` (the head is neutral iff `n = 1`, an opener iff
+    `n ≥ 2` — the branch dispatcher, and exactly the opener premise
+    `flowBracketBalance_matching_close` needs) and `frame_matching_close_at_end`
+    (for `n ≥ 2` the matching close is the span's last token, body balanced).
+    What remains of P2a is the parser-side fuel-indexed mutual induction (the
+    upper-bound companion to the lower-bound `ParseNodePosMono`). Note for that
+    build: the flow parser is *lookahead-driven* — its loops exit on
+    `peek? = flowSequenceEnd`, never consulting a bracket counter — so no lemma
+    yet connects parseNode's consumption to `flowBracketBalance`; that bridge is
+    the vertical gap the induction must close (the combinatorial bricks above are
+    scanner-side).
+  - **Bridge — scanner span:** an element's emitted tokens form a contiguous
+    run inside the whole sequence's tokens — the variable-width generalization
+    of the all-scalar scanner facts (R596/R597).
+  - **P2b — value span-locality** (`ParseNodeValueSpanLocal`): the crux mutual
+    induction over the flow parser clique, consuming P2a's frame and the
+    Bridge's agreement. Its target statement was corrected again on 2026-07-01:
+    the conclusion must project through `.toOption.map` (failure ↦ `none`), not
+    the error-sensitive `Except.map`, because parseNode's fuel-0 failure payload
+    is position-dependent (`.nestingDepthExceeded ps.currentLine`). The `.map`
+    form is `sorry`-free-refuted (`p2b_map_form_false`) at the failing boundary —
+    which the success-only probes had never exercised — and the corrected form
+    survives it (`p2b_toOption_form_survives`). With the statement fixed, P2b's
+    **scalar branch is now landed `sorry`-free**
+    (`parseNodeValueSpanLocal_scalar_branch`): a scalar head is
+    trailing-independent (`parseNode_scalar_produces_scalar`), so it closes from
+    `.val`-agreement at `k = 0` alone — needing *neither* the frame
+    side-condition *nor* the `k ≥ 1` agreement (a finding: the frame is consumed
+    only by the collection branches). On 2026-07-01 P2b was **re-architected to
+    the joint `ParseNodeValueAdvanceLocal`**: value *and* relative advance
+    (`·.2.pos - p`) in one conclusion. Because a lookahead parser keeps two
+    agreeing runs in lockstep, the advance is a *conclusion* of the same
+    induction rather than an imported P2a frame — birth-probed true on a real
+    collection (`jvadv_collection_relative_advance_agrees`: absolute `pos` differs
+    5≠4, relative advance agrees 3=3), and the joint scalar leaf
+    (`parseNodeValueAdvanceLocal_scalar_branch`) is landed `sorry`-free. The
+    flow-*collection* head reduces (after `parseNode` peels the bracket + one unit
+    of fuel) to a **loop joint** over `parseFlowSequenceLoop`
+    (`ParseFlowSequenceLoopValueAdvanceLocal`), whose two base branches — fuel-0
+    (`parseFlowSeqLoop_joint_fuel0`) and the empty-collection closer
+    (`parseFlowSeqLoop_joint_close`) — are landed `sorry`-free, birth-probed
+    (`loop_joint_birth`: absolute `pos` differs 4≠3, relative advance agrees 1=1)
+    and fired on real emission (`loop_close_fires`). On 2026-07-01 the loop-joint
+    target was **corrected to abstract states**: the recursive step reduces (via
+    `parseFlowSequenceLoop_step_push`) to an *existential* continuation state
+    `ps''`, which a literal `{tokens,pos,anchors}` form cannot feed to its IH
+    without pinning all seven `ParseState` fields — including four position-tracking
+    fields that have no preservation lemmas and are irrelevant to value/advance. The
+    abstract form constrains only `tokens`/`pos`/`anchors` (the all-scalar template's
+    shape), with `loop_path_track_independent` witnessing the dropped fields inert
+    and `loop_recursive_rearm` driving the genuine two-element re-arm on real
+    emission. The recursive step's agreement re-arming is shown to be *balance-free*
+    — `agree_shift` (proved `[propext, Quot.sound]`, no `flowBracketBalance`) shifts
+    the bounded agreement by the joint's equal advance, the mechanism that would
+    retire P2a's balance bridge. The recursive step's per-element *leaf* inputs are
+    now complete: value/pos/tokens (`parseNode_scalar_produces_scalar` /
+    `_advances_by_one` / `_tokens_preserved`) plus the fourth leaf
+    `parseNode_scalar_anchors_preserved` (landed `sorry`-free — the abstract joint's
+    `anchors`-equality re-arm; a *general* anchors-preservation lemma is false, so it
+    holds precisely for the empty-props scalar case), while the frame re-arm at the
+    tail reduces (via `frame_tail_of_whole`) to the single inequality `w ≤ n`. On
+    2026-07-01 the abstract-state **iteration machinery** landed `sorry`-free: the two
+    *descent* reductions `seq_scalar_first_reduce` / `seq_scalar_step_reduce` are a
+    **real proof** (not a `native_decide` probe) that one loop iteration over an
+    abstract state reduces the whole `(g+2)` call to the tail `(g+1)` call on a
+    leaf-characterized continuation — retiring the bet that only
+    `loop_path_track_independent` had witnessed — and the two *joint* re-arm steps
+    `seq_scalar_first_joint_rearm` / `seq_scalar_step_joint_rearm` assemble a descent
+    on each run + `agree_shift` + the anchors leaf into the fully re-armed joint IH
+    hypotheses (same pushed value, `anchors`-equality, shifted `.val`-agreement); the
+    reduction fires on real emission (`seq_scalar_first_reduce_fires`). On 2026-07-01
+    the fuel-induction **wrapper** landed `sorry`-free as a *recursion combinator*
+    `parseFlowSeqLoop_joint_of_step`: it proves the whole loop-joint from a single
+    lifted per-iteration step-provider, and it is entirely `flowBracketBalance`-**free**
+    (value chains through the reduce function-equalities, relative advance composes via
+    `option_advance_shift` + `parseFlowSequenceLoop_pos_mono`, frames re-arm via
+    `frame_tail_of_whole`) — so P2a's separate balance frame is **vestigial** for the
+    joint approach. The step-provider is the sole remaining obligation; its scalar-head
+    branches are producible now (`seq_scalar_first_provides_reduce` for reduce,
+    `seq_provides_close` for close). What remains is (ii) the *nested*-element case — the
+    full provider's dispatch, whose nested arm swaps the scalar leaves for the NODE-joint
+    IH, where the mutual clique bites (the genuinely-new content) — and (iii) the map
+    mirror.
+  - **P1 — loop-value:** threads P2a and P2b through the flow loop, computing
+    each element's cumulative start offset.
+
+  P2a and the Bridge are birth-probed *tight* / *contiguous* on real tokens,
+  and the all-scalar branch already closes by canonical form, so only the
+  non-scalar branches (#3, #4) remain. The typed targets and boundary
+  regression fixtures live in
+  [Tests/Reflections/NonAllScalarLocality.lean](Tests/Reflections/NonAllScalarLocality.lean).
+
+The two tracks are independent and can be closed in either order. Apart from
+these five `sorry`s, the library carries no incomplete proofs: the verified
+core (scanner, token parser, schema, dumper) and every completed theorem
+above remain `sorry`-, `axiom`-, and `partial`-free.
 
 Compile-time `#guard` tests in [Tests/](Tests/) — including auto-generated
 guards from the yaml-test-suite — back every proof with a kernel-evaluable

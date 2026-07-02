@@ -221,7 +221,7 @@ L4YAML/Proofs/
 │   ├── ParserNodeProofs.lean
 │   ├── ParserAnchorProofs.lean
 │   ├── ParserWfaProofs.lean
-│   ├── ParserWellBehaved.lean   (after de-cruft — see 05-current-state.md)
+│   ├── ParserWellBehaved.lean   (de-crufted: fuel-mono machinery deleted — see 04-capstones.md)
 │   ├── ParserGrammable.lean
 │   └── ParserGrammableBase.lean
 │

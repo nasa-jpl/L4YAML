@@ -100,8 +100,10 @@ For every public-facing metric or guarantee:
 
 Examples:
 
-- Sorry count: primary = [`05-current-state.md`](05-current-state.md).
-  Overview.lean should either link there or include the same number.
+- Sorry count: primary = [`04-capstones.md`](04-capstones.md) (its
+  2026-07-01 Status snapshot). The Verso manual computes its own count
+  live from [`Stats.lean`](../doc/Doc/L4YAML/Stats.lean); the two
+  should agree.
 - Capstone list: primary = [`04-capstones.md`](04-capstones.md),
   mirrored by
   [`L4YAML.FGM/KeyTheoremCatalogue.lean`](../../L4YAML.FGM/KeyTheoremCatalogue.lean)
@@ -167,12 +169,13 @@ Contributor self-check:
 
 ## Process for retiring theorems
 
-When deleting a theorem (per deletion candidates in
-[`05-current-state.md`](05-current-state.md)):
+When deleting a theorem (per the "Decomposition: what is *not* a
+capstone" list in [`04-capstones.md`](04-capstones.md)):
 
 1. Grep confirms **zero external callers**.
 2. PR description states the removal and links to the blueprint
-   rationale ("per Blueprint/05-current-state.md, Group A").
+   rationale ("per Blueprint/04-capstones.md, Decomposition: what
+   is *not* a capstone").
 3. If the theorem appeared in `Verification.lean` or any other
    published doc, remove the reference in the same PR.
 4. If a downstream memory referenced the theorem, flag it for

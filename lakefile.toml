@@ -6,7 +6,11 @@ version = "0.4.6"
 defaultTargets = [
   "L4YAML",
   "Tests.Guards",
+  "Tests.Reflections",
   "tryparse",
+  "l4yaml-event",
+  "l4yaml-json",
+  "eventscore",
   "tryscan",
   "tryroundtrip",
   "trydump",
@@ -37,18 +41,24 @@ defaultTargets = [
 [[require]]
 name = "importGraph"
 git = "https://github.com/leanprover-community/import-graph"
-rev = "v4.30.0"
+rev = "v4.31.0"
 
 [[require]]
 name = "DocGen4"
 git = "https://github.com/leanprover/doc-gen4.git"
-rev = "v4.30.0"
+rev = "v4.31.0"
 
 [[lean_lib]]
 name = "L4YAML"
 
 [[lean_lib]]
 name = "Tests.Guards"
+
+# Runnable proof-engineering demonstrations (one per Blueprint Reflection) — kept
+# as a single library, separate from the behavioural L4YAML test suites. See
+# Tests/Reflections.lean for the index.
+[[lean_lib]]
+name = "Tests.Reflections"
 
 [[lean_lib]]
 name = "Tests.VerifiedResult"
@@ -80,6 +90,18 @@ root = "Tests.SuiteRunner.Main"
 [[lean_exe]]
 name = "tryparse"
 root = "Tests.TryParse"
+
+[[lean_exe]]
+name = "l4yaml-event"
+root = "Tests.EmitEvents"
+
+[[lean_exe]]
+name = "l4yaml-json"
+root = "Tests.EmitJson"
+
+[[lean_exe]]
+name = "eventscore"
+root = "Tests.SuiteRunner.EventScore"
 
 [[lean_exe]]
 name = "tryscan"

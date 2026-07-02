@@ -27,7 +27,7 @@
 import L4YAML.Spec.Types
 import L4YAML.Token.Token
 import L4YAML.Scanner.Scanner
-import L4YAML.Parser.Composition
+import L4YAML.Parser.IndexedComposition
 
 namespace L4YAML
 
@@ -593,7 +593,7 @@ def parseYamlSafe (input : String) (limits : ParserLimits := {})
   if limits.enabled && input.utf8ByteSize > limits.document.maxInputBytes then
     throw (.limitError (.documentLimit (.inputTooLarge input.utf8ByteSize limits.document.maxInputBytes)))
   -- Parse (scan + grammar)
-  let docs ← match TokenParser.parseYamlRaw input with
+  let docs ← match TokenParser.Indexed.parseYamlRawIx input with
     | .ok docs => pure docs
     | .error e => throw (.scanError e)
   -- Document count check

@@ -7,8 +7,8 @@
 > **unsound as stated** and the enclosing `parser_fuel_mono_succ`
 > infrastructure is over-engineered for its one consumer. Step 1 is
 > therefore closed; Steps 2–6 are paused pending blueprint-driven
-> reassessment. See [`Blueprint/05-current-state.md`](Blueprint/05-current-state.md)
-> for the replacement roadmap.
+> reassessment. See [`Blueprint/04-capstones.md`](Blueprint/04-capstones.md)
+> ("Decomposition: what is *not* a capstone") for the disposition.
 
 ## Status (frozen 2026-04-21)
 
@@ -16,8 +16,8 @@
 
 - **9 `_mono_zero` stubs (Parts 16–24) are retired** (see 2026-04-21
   audit note). 6 are unsound as stated; the remaining 3 are made
-  moot by the restructuring in [`Blueprint/05-current-state.md`](Blueprint/05-current-state.md)
-  Group C.
+  moot by the deletion recorded in [`Blueprint/04-capstones.md`](Blueprint/04-capstones.md)
+  ("Decomposition: what is *not* a capstone").
 - 1 `parseFlowSequenceLoop_fuel_mono` general-form sorry (Step 2) —
   **reformulate** as a specialized lemma for the one real caller at
   :7265, not via the generic 24-part machinery. See
@@ -233,8 +233,8 @@ plan table above was updated on 2026-04-19 to reflect this.
 
 Per the 2026-04-21 audit note above, *all* of Parts 13–24 will be
 retired in Step 2 of the blueprint-driven cleanup (see
-[`Blueprint/05-current-state.md`](Blueprint/05-current-state.md)
-Groups A, B, C, D): the unsound parts block `parser_fuel_mono_succ`,
+[`Blueprint/04-capstones.md`](Blueprint/04-capstones.md),
+"Decomposition: what is *not* a capstone"): the unsound parts block `parser_fuel_mono_succ`,
 the sound-but-unused parts have no purpose without it, and the
 single downstream consumer (`parseFlowSequenceLoop_fuel_mono`) will
 be reproved as a specialized lemma rather than via the generic

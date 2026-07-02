@@ -37,28 +37,25 @@ Read in order on first visit:
 3. [`03-code-organization.md`](03-code-organization.md) — proposed
    folder layout (code first; proofs to follow).
 4. [`04-capstones.md`](04-capstones.md) — the complete list of
-   capstone theorems, grouped by guarantee category, with current
-   status (✅ proved / ⏳ planned / 🚧 partial / ❓ unsound /
-   🗑 deletion candidate).
-5. [`05-current-state.md`](05-current-state.md) — honest accounting
-   of where we are: sorry count, deletion candidates, claims that
-   need reconciling against reality.  After the 2026-04-25 cleanup
-   pass, **the build emits 7 sorry warnings, all in
-   [Output/EmitterScannability.lean](../L4YAML/Proofs/Output/EmitterScannability.lean)**
-   (lines 8170, 8666, 8758, 8840, 9058, 9774, 9813).  The earlier
-   audit figure of ~138 sorrys was inflated by counting narrative
-   mentions in docstrings (`sorry'd lemmas`, etc.); the
-   build-authoritative count was always smaller.  Remaining work
-   is the EmitterScannability Step 8 pocket — see
-   [`../VERSION-0.4.7.md`](../VERSION-0.4.7.md).
-   The 16 sorry'd theorems in
-   [`Parser/ParserWellBehaved.lean`](../L4YAML/Proofs/Parser/ParserWellBehaved.lean)
-   listed in the blueprint's earlier writing have been **deleted as
-   dead code** after a `unified-dep-table --external-only` run
-   showed they had zero out-of-namespace callers; this validates
-   the parser_fuel_mono observation that motivated this blueprint
-   in the first place.
-6. [`06-discipline.md`](06-discipline.md) — the discipline going
+   capstone theorems, grouped by guarantee category, each with
+   current status, **practical significance**, and **risk if the
+   proof were absent**. This file is now the single source of
+   record for the sorry count and per-theorem status. As of
+   2026-07-01 the build is `sorry`-, `axiom`-, and `partial`-free
+   except for **five sites**, all in the universal-round-trip
+   cluster
+   [`Output/EmitterScannability/`](../L4YAML/Proofs/Output/); the
+   `ParserWellBehaved.lean` fuel-monotonicity machinery once tracked
+   separately was **deleted as dead code** (a
+   `unified-dep-table --external-only` run showed zero
+   out-of-namespace callers), which validated the observation that
+   motivated this blueprint. The April-2026 `05-current-state.md`
+   ledger has been **retired** — its accounting is superseded by
+   this file, and its doc-reconciliation items are resolved (the
+   `Scanner/*.lean` split now exists; the Verso stats are generated
+   live from [`Stats.lean`](../doc/Doc/L4YAML/Stats.lean)) or now
+   governed by [`06-discipline.md`](06-discipline.md) Rule 4.
+5. [`06-discipline.md`](06-discipline.md) — the discipline going
    forward: blueprint-first theorem proposals, adversarial
    instantiation before proof, sorry policy.
 
@@ -94,7 +91,7 @@ Before proposing a new theorem:
    that file *before* attempting the proof.
 3. Add an adversarial-instantiation test that would refute the
    statement if false, *before* attempting the proof.
-4. Prove it; update status in [`05-current-state.md`](05-current-state.md).
+4. Prove it; update status in [`04-capstones.md`](04-capstones.md).
 
 This sequence catches statement errors at step 3 (cheap) rather
 than step 4 (expensive).
@@ -1236,7 +1233,7 @@ Phase C would then reshuffle.
 - **Tooling choices**:
   - Simplest: run `theoremgraph --dot` per capstone, grep each
     output for dependency names that also show up in
-    [`05-current-state.md`](05-current-state.md)'s sorry table.
+    [`04-capstones.md`](04-capstones.md)'s Status snapshot.
   - Better: extend `theoremgraph` with a `--reaches-sorry` mode
     that classifies capstones as "kernel-checked" vs
     "transitively-conditional-on-sorry".

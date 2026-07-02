@@ -1,0 +1,1721 @@
+/-
+# Reflection 264 — the entry-boundary location splits into an *input side* (locate the split point) and a *shape side* (classify the item); the input side is a single axis-agnostic combinatorial brick
+
+Self-contained, `L4YAML`-free runnable illustration of the proof-engineering principle in
+Blueprint Reflection 264 (and memory `ref-entry-boundary-input-shape-split`).
+
+**Extended by Reflection 271** (the ADVANCE-step *invariant-preservation* certificate): the input
+side is not only *locating* the split point (`firstEntryBoundary`) but also *certifying the tail past
+it* (`advanceTail_invariant`) — two axis-agnostic balance facts, with the collection-specific shape
+side classifier between them.  A recursion can be *structurally complete* (every constructor liftable)
+yet not *runnable* (no proof the recursive call's precondition holds); the gap is this certificate.
+See the final section.
+
+**The principle.** Once a navigation recursion's *structural moves* are in hand (descend + build +
+advance, R262/R263), what remains is the **analytical entry-boundary location**, and it decomposes
+into two independent halves:
+
+  - **input side** — find *where* the first body item ends: the split point `m`, a pure
+    bracket-balance combinatorial fact owing nothing to the item's shape;
+  - **shape side** — classify *what* the first item is: a scalar, or a matched-bracket sub-window
+    (the bracket-balance matching-close analysis that *consumes* the located `m`).
+
+This file models the **input side**: a general constructive least-witness locator
+`exists_least_in_range` (no `Nat.find`, no classical choice, no well-founded recursion — structural
+induction on the search gap with the decidability instance) and its specialization
+`firstEntryBoundary`, which for a balanced window locates the least depth-`0` *boundary marker* `m`
+(balance returns to `0`, and `m` is the window end or a separator) with the minimality certificate
+that no earlier interior position is such a marker.
+
+**Why the input side is axis-agnostic — the discriminator.** Every prior navigation brick came as a
+seq lemma plus a one-session-later map mirror, because each named a collection-specific *deliverable
+type* (a sequence body vs a mapping body) whose constructor differed. The split-point locator breaks
+that rhythm: the body-separator token `FE` (the toy of `.flowEntry`) is **identical for sequences
+and mappings**, so the boundary predicate is shared and the single lemma feeds both recursions. The
+discriminator worth carrying: a navigation brick mirrors across seq/map exactly when it mentions a
+collection-specific deliverable type; one phrased purely over the shared token stream (balance, the
+shared separator) is written *once*. The shape side *will* split again (it builds the
+collection-specific entry); the input side does not.
+
+Positive witnesses: `firstMarker_l1` locates the separator after the first bracketed item in `[a],b`;
+`firstMarker_l2` locates the *window end* (the last-item branch) in the single item `[a]`. Negative
+witnesses: `not_marker_inside` — an interior position with non-zero balance is not a marker;
+`bal_l1_*` `#guard`s witness that no position earlier than the located `m` is a marker (minimality is
+concrete). The general helper is exercised by `least_ge3` on a pure-`Nat` predicate.
+-/
+
+namespace Tests.Reflections.EntryBoundaryLocator
+
+/-! ## The general constructive least-witness locator (toy of `exists_least_in_range`) -/
+
+/-- For a decidable predicate `P` holding at the range end `start + gap`, the **least** witness in
+    `[start, start + gap]`, with the minimality certificate that no `k` in `[start, m)` satisfies
+    `P`.  Fully constructive: structural induction on `gap`, decidability-driven upward scan via
+    `if h : P start then …` — no `Nat.find`, no classical choice, no well-founded recursion.  This is
+    *verbatim* the real `exists_least_in_range`. -/
+theorem exists_least_in_range (P : Nat → Prop) [DecidablePred P] :
+    ∀ (gap start : Nat), P (start + gap) →
+      ∃ m, start ≤ m ∧ m ≤ start + gap ∧ P m ∧ ∀ k, start ≤ k → k < m → ¬ P k := by
+  intro gap
+  induction gap with
+  | zero =>
+    intro start hP
+    refine ⟨start, Nat.le_refl _, ?_, ?_, ?_⟩
+    · omega
+    · simpa using hP
+    · intro k hk1 hk2; exfalso; omega
+  | succ g ih =>
+    intro start hP
+    if h0 : P start then
+      refine ⟨start, Nat.le_refl _, ?_, h0, ?_⟩
+      · omega
+      · intro k hk1 hk2; exfalso; omega
+    else
+      have hP' : P ((start + 1) + g) := by
+        have he : (start + 1) + g = start + (g + 1) := by omega
+        rw [he]; exact hP
+      obtain ⟨m, hm1, hm2, hm3, hm4⟩ := ih (start + 1) hP'
+      refine ⟨m, by omega, by omega, hm3, ?_⟩
+      intro k hk1 hk2
+      rcases Nat.lt_or_ge k (start + 1) with hlt | hge
+      · have hk_eq : k = start := by omega
+        rw [hk_eq]; exact h0
+      · exact hm4 k hge hk2
+
+/-- The helper exercised on a pure-`Nat` predicate: the least `m` in `[1, 6]` with `m ≥ 3` is `3`. -/
+theorem least_ge3 :
+    ∃ m, 1 ≤ m ∧ m ≤ 6 ∧ 3 ≤ m ∧ ∀ k, 1 ≤ k → k < m → ¬ 3 ≤ k :=
+  exists_least_in_range (fun n => 3 ≤ n) 5 1 (by omega)
+
+/-! ## The toy token stream and the first-entry-boundary locator (toy of `firstEntryBoundary`) -/
+
+/-- A toy flow token: scalar, sequence open/close bracket `op`/`cl`, the body separator `FE`
+    (`.flowEntry`), a *distinct* mapping open/close bracket `mo`/`mc` — the toy of the real
+    `.flowSequenceStart`/`.flowSequenceEnd` vs `.flowMappingStart`/`.flowMappingEnd` distinction (so a
+    nested mapping is a different shape from a nested sequence, as in the real grammar) — and the
+    depth-`0` map *pair* markers `ky`/`vl` (toy of `.key`/`.value`), which glue a key/value pair on the
+    map shape side (Reflection 268). -/
+inductive Tok | sc | op | cl | fe | mo | mc | ky | vl
+  deriving DecidableEq
+
+/-- Bracket delta — `+1` open, `-1` close, `0` otherwise.  Both bracket kinds (`op`/`cl` and
+    `mo`/`mc`) count; the separator `FE` and the pair markers `ky`/`vl` have delta `0`, so they only
+    mark a boundary *at depth 0*. -/
+def delta : Tok → Int
+  | .op => 1
+  | .cl => -1
+  | .mo => 1
+  | .mc => -1
+  | _   => 0
+
+/-- Is this token the body separator? -/
+def isFE : Tok → Bool
+  | .fe => true
+  | _   => false
+
+/-- Running bracket balance over the prefix `[0, n)`. -/
+def bal (l : List Tok) (n : Nat) : Int := ((l.take n).map delta).foldl (· + ·) 0
+
+/-- Total token at index `m` (scalar default out of range), so the boundary predicate is total. -/
+def tokAt (l : List Tok) (m : Nat) : Tok := l.getD m .sc
+
+/-- **First entry-boundary locator** (toy of `firstEntryBoundary`).  For a balanced window
+    (`bal l l.length = 0`), the least depth-`0` boundary marker `m` in `(0, l.length]` — a position
+    where the balance from `0` returns to `0` and which is either the window end or a separator —
+    with the certificate that no earlier interior position is such a marker.  Axis-agnostic: the
+    separator `FE` is the *same* token whatever the surrounding collection, so this single lemma is
+    the split-point locator for *both* a sequence body and a mapping body. -/
+theorem firstEntryBoundary (l : List Tok) (h_pos : 0 < l.length)
+    (h_total : bal l l.length = 0) :
+    ∃ m, 0 < m ∧ m ≤ l.length ∧
+      bal l m = 0 ∧
+      (m = l.length ∨ isFE (tokAt l m) = true) ∧
+      (∀ k, 0 < k → k < m →
+        ¬ (bal l k = 0 ∧ (k = l.length ∨ isFE (tokAt l k) = true))) := by
+  obtain ⟨m, hm1, hm2, hm3, hm4⟩ :=
+    exists_least_in_range
+      (fun m => bal l m = 0 ∧ (m = l.length ∨ isFE (tokAt l m) = true))
+      (l.length - 1) 1
+      (by
+        have he : 1 + (l.length - 1) = l.length := by omega
+        rw [he]; exact ⟨h_total, Or.inl rfl⟩)
+  refine ⟨m, by omega, by omega, hm3.1, hm3.2, ?_⟩
+  intro k hk1 hk2
+  exact hm4 k (by omega) hk2
+
+/-! ## Positive witnesses -/
+
+/-- `[a],b` — open, scalar, close, separator, scalar.  Balanced (`bal = 0`). -/
+def l1 : List Tok := [.op, .sc, .cl, .fe, .sc]
+
+/-- `[a]` — open, scalar, close.  A single bracketed item, no separator. -/
+def l2 : List Tok := [.op, .sc, .cl]
+
+/-- `[],a` — open, close (an *empty* bracket `[ ]`), separator, scalar.  The empty-bracket leaf
+    fires at the head: `op` immediately followed by `cl`, the matching close one step in. -/
+def l3 : List Tok := [.op, .cl, .fe, .sc]
+
+/-- `{a}` — map-open, scalar, map-close (a nested *mapping* with a one-token interior `[sc]`).  The
+    map near-leaf fires at the head: `mo` at `lo`, the matching `mc` at `hi`, interior `[sc]`
+    well-bracketed (`WB`). -/
+def l4 : List Tok := [.mo, .sc, .mc]
+
+-- The locator applies to both balanced windows (these type-check ⇒ the lemma fires).
+theorem firstMarker_l1 :
+    ∃ m, 0 < m ∧ m ≤ l1.length ∧ bal l1 m = 0 ∧
+      (m = l1.length ∨ isFE (tokAt l1 m) = true) ∧
+      (∀ k, 0 < k → k < m →
+        ¬ (bal l1 k = 0 ∧ (k = l1.length ∨ isFE (tokAt l1 k) = true))) :=
+  firstEntryBoundary l1 (by decide) (by decide)
+
+theorem firstMarker_l2 :
+    ∃ m, 0 < m ∧ m ≤ l2.length ∧ bal l2 m = 0 ∧
+      (m = l2.length ∨ isFE (tokAt l2 m) = true) ∧
+      (∀ k, 0 < k → k < m →
+        ¬ (bal l2 k = 0 ∧ (k = l2.length ∨ isFE (tokAt l2 k) = true))) :=
+  firstEntryBoundary l2 (by decide) (by decide)
+
+-- In `l1` the first marker is at `m = 3` (the separator after the bracketed item `[a]`):
+--   balance returns to 0 there, and the token is `FE`.
+#guard bal l1 3 == 0
+#guard isFE (tokAt l1 3) == true
+-- and nowhere earlier — positions 1, 2 have non-zero balance (inside the bracket), so the located
+-- `m = 3` is genuinely the least marker (minimality, witnessed concretely):
+#guard bal l1 1 == 1
+#guard bal l1 2 == 1
+
+-- In `l2` the first marker is the *window end* `m = 3 = length` (the last-item branch): balance is 0
+-- there and `m = length`, with no interior separator.
+#guard bal l2 3 == 0
+#guard l2.length == 3
+#guard bal l2 1 == 1
+#guard bal l2 2 == 1
+
+/-! ## Negative witnesses -/
+
+/-- An interior position with non-zero balance is **not** a marker (it lies *inside* the first
+    bracketed item, depth ≥ 1) — so the locator correctly skips it. -/
+theorem not_marker_inside :
+    ¬ (bal l1 2 = 0 ∧ (2 = l1.length ∨ isFE (tokAt l1 2) = true)) := by decide
+
+/-- The depth-`0` separator marker is the `FE`, not the close bracket: position `2` (the `cl` in
+    `l1`) is not the separator. -/
+theorem cl_is_not_separator : isFE (tokAt l1 2) = false := by decide
+
+/-! ## The shape side — per-constructor window-lifts (toy of `recseqentry_{scalar,seqempty,map}_window`, Reflections 265, 266 & 267)
+
+Once the input side has located the split point `m`, the **shape side** classifies *what* the first
+item `[lo, m)` is — building the entry inductive.  The shape side is the *family of per-constructor
+window-lifts* — one lemma per constructor, building that constructor from the window.  The recursive
+constructor's lift is the BUILD structural move (in the real development, `located_entry_of_recseqbody`,
+already landed), so the shape side's genuinely-new work is the **non-recursive leaves**.
+
+There are two true leaves, and **they come as a family** (Reflection 266): the one-token **scalar**
+leaf (`entry_scalar_window`, the recursion's base case — no matching-close, no descent, `m = lo + 1`),
+and the two-token **empty-bracket** leaf (`entry_seqempty_window` — an empty `[ ]`, `m = lo + 2`, the
+matching close one step in).  The empty-bracket lift is the scalar lift *scaled by one token*: the
+same window-singleton identity run twice (peel `[lo]`, then `[lo+1]`), the same trailing-`drop`-nil
+and `getElem_take` simplifications, the same head-value transport — only the arity of the fixed shape
+moved.  That is the signature of a *leaf family*: once the first leaf is proven, the rest are the same
+proof at a different arity, not fresh analysis.
+
+The family's **last member** (Reflection 267) is the **nested-mapping near-leaf** (`entry_map_window`):
+a nested mapping `{ … }` as one item of the enclosing sequence.  It is a *near*-leaf, not a true leaf
+— it spans a *variable* interior, not a fixed token count — but still NOT a recursion edge, because
+the `map` constructor STORES only the flat `WB interior` projection fact (not a recursive body, R244),
+so the enclosing locate does not descend through it.  Its lift is **the recursive `seq` BUILD move
+minus one field**: it transports the *same* window plumbing (rest-decomposition `(take (hi+1)).drop
+(lo+1) = (take hi).drop (lo+1) ++ [b]` via `List.take_add_one`/`List.drop_append_of_le_length`, opener
+peel via `List.getElem_cons_drop`/`List.getElem_take`, into `op :: (interior ++ [cl])` shape) and
+differs only in the terminal constructor (`Entry.map`, not `seq`) and that it is fed the bare
+`WB interior` hypothesis (not a recursive body).  That one-field arity delta *is* the store-vs-project
+decision — the same principle the constructor arity expressed in R246/R261/R263, here one tier up.
+
+This is also where the **seq/map mirror re-splits**: these lemmas name the entry inductive (a
+collection-specific deliverable type, unlike the axis-agnostic `firstEntryBoundary`), so they are
+seq-specific — the map shape side's leaf is a whole key/value *pair*, a different (heavier) shape.
+With scalar + seqEmpty + map + the BUILD-move `seq`, the seq shape side's four-way head dispatch is
+complete. -/
+
+/-- A toy *well-bracketed* predicate (toy of `WellBracketed`): the interior's running balance returns
+    to `0` over its whole length.  This is the **flat projection fact** the `map` near-leaf STORES —
+    contrast the recursive `seq`, whose interior is a recursive body structure.  It is decidable, so
+    the witnesses below discharge it by `decide`. -/
+def WB (l : List Tok) : Prop := bal l l.length = 0
+
+instance (l : List Tok) : Decidable (WB l) := by unfold WB; infer_instance
+
+/-- A toy recursive seq entry (toy of `RecSeqEntry`): a scalar leaf, an empty-bracket leaf, a
+    bracketed sub-*sequence*, or a nested *mapping*.  `scalar` and `seqEmpty` are the non-recursive
+    leaves the shape side lands first; `seq` is the recursive constructor whose window-lift is the
+    BUILD structural move (so it is *not* new shape-side work); `map` is the **near-leaf** — a
+    bracketed window like `seq`, but it STORES only the flat `WB interior` projection fact (toy of
+    `RecSeqEntry.map` storing only `WellBracketed`, R244), NOT a recursive body, so it does not extend
+    the recursion graph.  `seqEmpty`/`map` are written with parametric tokens + value hypotheses,
+    mirroring the real `RecSeqEntry.{seqEmpty,map} (op cl) (h_op …) (h_cl …)`. -/
+inductive Entry : List Tok → Prop where
+  | scalar (t : Tok) (h : t = .sc) : Entry [t]
+  | seqEmpty (a b : Tok) (h_op : a = .op) (h_cl : b = .cl) : Entry (a :: ([] ++ [b]))
+  | seq (interior : List Tok) : Entry (.op :: (interior ++ [.cl]))
+  | map (a b : Tok) (interior : List Tok)
+      (h_op : a = .mo) (h_cl : b = .mc) (h_wb : WB interior) :
+      Entry (a :: (interior ++ [b]))
+
+/-- **Scalar-leaf window-lift** (toy of `recseqentry_scalar_window`).  The one-token window at a
+    scalar head is an `Entry.scalar` — the non-recursive base case.  Same proof skeleton as the real
+    lemma: the window-singleton identity `(l.take (lo+1)).drop lo = [l[lo]]` (`List.getElem_cons_drop`
+    + `List.getElem_take`, trailing `drop (lo+1)` killed by `List.drop_eq_nil_of_le`), then the leaf
+    constructor with the head value transported off `tokAt` (`List.getElem_eq_getD`). -/
+theorem entry_scalar_window (l : List Tok) (lo : Nat)
+    (h_lo : lo < l.length) (h_sc : tokAt l lo = .sc) :
+    Entry ((l.take (lo + 1)).drop lo) := by
+  have hlen : lo < (l.take (lo + 1)).length := by rw [List.length_take]; omega
+  have h_drop_nil : (l.take (lo + 1)).drop (lo + 1) = [] := by
+    apply List.drop_eq_nil_of_le; rw [List.length_take]; omega
+  have h_win : (l.take (lo + 1)).drop lo = [l[lo]'h_lo] := by
+    have h := (List.getElem_cons_drop hlen).symm
+    rw [List.getElem_take, h_drop_nil] at h
+    exact h
+  rw [h_win]
+  have h_val : l[lo]'h_lo = .sc := by
+    rw [List.getElem_eq_getD (.sc)]; exact h_sc
+  exact Entry.scalar _ h_val
+
+/-! ### Positive witnesses — the scalar leaf fires at every scalar head -/
+
+-- In `l1 = [op, sc, cl, fe, sc]` the scalar heads are positions `1` and `4`; the leaf lift fires at
+-- each, producing an `Entry` of the one-token window `[sc]`.
+theorem scalar_window_l1_1 : Entry ((l1.take (1 + 1)).drop 1) :=
+  entry_scalar_window l1 1 (by decide) (by decide)
+
+theorem scalar_window_l1_4 : Entry ((l1.take (4 + 1)).drop 4) :=
+  entry_scalar_window l1 4 (by decide) (by decide)
+
+-- The located window really is the singleton `[sc]`:
+#guard (l1.take (1 + 1)).drop 1 == [Tok.sc]
+#guard (l1.take (4 + 1)).drop 4 == [Tok.sc]
+
+/-! ### Negative witnesses — the leaf does *not* cover the bracketed (recursive) constructor -/
+
+/-- The window head at position `0` of `l1` is `op`, not a scalar — so `entry_scalar_window` does
+    **not** apply there: an opener head is the recursive `seq` constructor's job (its window-lift is
+    the BUILD structural move), not the leaf's. -/
+theorem op_head_is_not_scalar_leaf : tokAt l1 0 ≠ .sc := by decide
+
+-- And the bracketed first item `[op, sc, cl]` is three tokens, not the one-token shape the scalar
+-- leaf produces — the recursive constructor genuinely is a different (non-leaf) window-lift.
+#guard (l1.take 3).length == 3
+
+/-! ### The empty-bracket leaf — the scalar leaf scaled by one token (toy of `recseqentry_seqempty_window`, Reflection 266)
+
+The second non-recursive leaf: an empty bracket `[ ]`.  The proof is `entry_scalar_window`'s window
+identity run **twice** — the only thing that changed is the arity (one token → two). -/
+
+/-- **Empty-bracket window-lift** (toy of `recseqentry_seqempty_window`).  Given an opener `op` at the
+    window head immediately followed by a closer `cl`, the two-token window `(l.take (lo+2)).drop lo`
+    is an `Entry.seqEmpty` — `m = lo + 2`, non-recursive (no interior to descend into).  Same skeleton
+    as `entry_scalar_window`, the `List.getElem_cons_drop` peel applied twice (`[lo]` then `[lo+1]`,
+    trailing `drop (lo+2)` killed by `List.drop_eq_nil_of_le`), each index through the `take` by
+    `List.getElem_take`, both head values transported off `tokAt` (`List.getElem_eq_getD`). -/
+theorem entry_seqempty_window (l : List Tok) (lo : Nat)
+    (h_lo1 : lo + 1 < l.length)
+    (h_open : tokAt l lo = .op) (h_close : tokAt l (lo + 1) = .cl) :
+    Entry ((l.take (lo + 2)).drop lo) := by
+  have h_lo : lo < l.length := by omega
+  have hlen0 : lo < (l.take (lo + 2)).length := by rw [List.length_take]; omega
+  have hlen1 : lo + 1 < (l.take (lo + 2)).length := by rw [List.length_take]; omega
+  have h_drop_nil : (l.take (lo + 2)).drop (lo + 2) = [] := by
+    apply List.drop_eq_nil_of_le; rw [List.length_take]; omega
+  have h_win : (l.take (lo + 2)).drop lo = [l[lo]'h_lo, l[lo + 1]'h_lo1] := by
+    have e1 := (List.getElem_cons_drop hlen1).symm
+    rw [List.getElem_take, h_drop_nil] at e1
+    have e0 := (List.getElem_cons_drop hlen0).symm
+    rw [List.getElem_take, e1] at e0
+    exact e0
+  rw [h_win]
+  have h_op_val : l[lo]'h_lo = .op := by rw [List.getElem_eq_getD (.sc)]; exact h_open
+  have h_cl_val : l[lo + 1]'h_lo1 = .cl := by rw [List.getElem_eq_getD (.sc)]; exact h_close
+  exact Entry.seqEmpty _ _ h_op_val h_cl_val
+
+/-! #### Positive witness — the empty-bracket leaf fires at an `op`-then-`cl` head -/
+
+-- In `l3 = [op, cl, fe, sc]` the empty bracket sits at the head (`lo = 0`); the leaf lift fires,
+-- producing an `Entry` of the two-token window `[op, cl]`.
+theorem seqempty_window_l3_0 : Entry ((l3.take (0 + 2)).drop 0) :=
+  entry_seqempty_window l3 0 (by decide) (by decide) (by decide)
+
+-- The located window really is the two-token `[op, cl]`:
+#guard (l3.take (0 + 2)).drop 0 == [Tok.op, Tok.cl]
+
+/-! #### Negative witnesses — the empty-bracket leaf is *not* a one-token shape, and needs the close adjacent -/
+
+-- The empty-bracket window is two tokens, distinct from the scalar leaf's one-token shape: the two
+-- leaves are genuinely different members of the family (different arity), not the same lemma.
+#guard (l3.take (0 + 2)).drop 0 != [Tok.op]
+
+/-- The empty-bracket leaf needs `cl` *immediately* after `op`.  In `l1 = [op, sc, cl, …]` the token
+    after the opener is `sc`, not `cl` — so `entry_seqempty_window` does **not** apply at `l1`'s head:
+    that is the recursive `seq` constructor's job (a non-empty interior), not the empty leaf's. -/
+theorem l1_head_is_not_empty_bracket : tokAt l1 (0 + 1) ≠ .cl := by decide
+
+/-! ### The nested-mapping near-leaf — the recursive `seq` BUILD move minus one field (toy of `recseqentry_map_window`, Reflection 267)
+
+The family's last member.  A *variable*-width interior (so a near-leaf, not a true leaf), but it
+STORES only the flat `WB interior` fact, so it terminates the dispatch rather than recursing.  The
+proof is the *same* window plumbing as the recursive `seq` BUILD move, differing only in the terminal
+constructor and the one stored field (`WB`, not a recursive body). -/
+
+/-- **Nested-mapping window-lift** (toy of `recseqentry_map_window`).  Given a map-opener `mo` at the
+    window head `lo`, its matching map-closer `mc` at `hi`, and a well-bracketed interior window
+    `(l.take hi).drop (lo+1)` (the flat `WB` projection fact), the opener-window
+    `(l.take (hi+1)).drop lo` is an `Entry.map`.  The proof transports the recursive `seq` BUILD move's
+    window plumbing verbatim: rest-decomposition `(take (hi+1)).drop (lo+1) = (take hi).drop (lo+1) ++
+    [l[hi]]` (`List.take_add_one` + `List.drop_append_of_le_length`), opener peel
+    (`List.getElem_cons_drop` + `List.getElem_take`) into `op :: (interior ++ [cl])` shape, head values
+    off `tokAt` (`List.getElem_eq_getD`) — then `Entry.map` fed the bare `h_wb`.  The *only* differences
+    from a recursive `seq` build are the constructor (`map`) and that one stored field (`WB`, not a
+    body): the one-field arity delta IS the store-vs-project decision. -/
+theorem entry_map_window (l : List Tok) (lo hi : Nat)
+    (h_lo_hi : lo < hi) (h_hi : hi < l.length)
+    (h_open : tokAt l lo = .mo) (h_close : tokAt l hi = .mc)
+    (h_wb : WB ((l.take hi).drop (lo + 1))) :
+    Entry ((l.take (hi + 1)).drop lo) := by
+  have h_lo : lo < l.length := by omega
+  -- rest-decomposition: the `interior ++ [cl]` tail.
+  have h_rest : (l.take (hi + 1)).drop (lo + 1)
+      = (l.take hi).drop (lo + 1) ++ [l[hi]'h_hi] := by
+    have h_ts : l.take (hi + 1) = l.take hi ++ [l[hi]'h_hi] := by
+      rw [List.take_add_one, List.getElem?_eq_getElem h_hi]; rfl
+    rw [h_ts]
+    have h_len : lo + 1 ≤ (l.take hi).length := by rw [List.length_take]; omega
+    rw [List.drop_append_of_le_length h_len]
+  -- peel the opener.
+  have h_peel : (l.take (hi + 1)).drop lo
+      = l[lo]'(by omega) :: (l.take (hi + 1)).drop (lo + 1) := by
+    have hlen : lo < (l.take (hi + 1)).length := by rw [List.length_take]; omega
+    have h := (List.getElem_cons_drop hlen).symm
+    rw [List.getElem_take] at h
+    exact h
+  rw [h_peel, h_rest]
+  have h_op_val : l[lo]'(by omega) = .mo := by rw [List.getElem_eq_getD (.sc)]; exact h_open
+  have h_cl_val : l[hi]'h_hi = .mc := by rw [List.getElem_eq_getD (.sc)]; exact h_close
+  exact Entry.map _ _ _ h_op_val h_cl_val h_wb
+
+/-! #### Positive witness — the map near-leaf fires at a `mo … mc` window -/
+
+-- In `l4 = [mo, sc, mc]` the nested map sits at the head (`lo = 0`, `hi = 2`); the near-leaf fires,
+-- producing an `Entry` of the window `[mo, sc, mc]` — its interior `[sc]` is well-bracketed (`WB`).
+theorem map_window_l4_0 : Entry ((l4.take (2 + 1)).drop 0) :=
+  entry_map_window l4 0 2 (by decide) (by decide) (by decide) (by decide) (by decide)
+
+-- The interior window really is `[sc]`, and it is `WB` (balance returns to 0):
+#guard (l4.take 2).drop (0 + 1) == [Tok.sc]
+theorem interior_l4_is_wb : WB ((l4.take 2).drop (0 + 1)) := by decide
+-- and the located opener-window really is the whole `[mo, sc, mc]`:
+#guard (l4.take (2 + 1)).drop 0 == [Tok.mo, Tok.sc, Tok.mc]
+
+/-! #### Negative witnesses — the near-leaf needs the matching `mc`, a balanced interior, and stores no body -/
+
+-- The map near-leaf is a (≥2)-token shape, not the scalar leaf's one-token window: it is a genuinely
+-- different family member.
+#guard (l4.take (2 + 1)).drop 0 != [Tok.mo]
+
+/-- An *unbalanced* interior is not a valid near-leaf input: `WB` is exactly the stored projection
+    fact, and it fails for `[mo]` (a lone opener, balance `1 ≠ 0`).  This is the flat fact the
+    constructor stores in place of a recursive body. -/
+theorem unbalanced_interior_not_wb : ¬ WB [Tok.mo] := by decide
+
+/-- The map near-leaf needs the *map* closer `mc`, distinct from the sequence closer `cl`: in
+    `l1 = [op, sc, cl, …]` the bracket is a sequence bracket, so the map near-leaf does not apply
+    there (that is the seq side's dispatch — `seqEmpty`/`seq`/`scalar` — not `map`). -/
+theorem cl_is_not_map_close : tokAt l1 2 ≠ .mc := by decide
+
+/-! ## The map shape side — one pair assembler, not a dispatch (toy of `recmappair_window`, Reflection 268)
+
+The shape side **re-splits** across seq/map (it names a collection-specific deliverable type — here
+the `Pair` inductive — unlike the axis-agnostic `firstEntryBoundary`).  But the map shape side, unlike
+the seq side, is **not a per-constructor dispatch at all**.  A map-body item is always a whole
+key/value *pair* `ky <block_k> vl <block_v>` (`Pair`), and `Pair.mk` is the inductive's sole
+constructor — there is nothing to classify by head token.  So the map shape side is **one assembler**,
+`pair_window`, that does two things, both of which *reuse already-landed work*:
+
+  - it **consumes the complete seq dispatch as its two sub-blocks**: the key and value blocks are
+    arbitrary `Entry`s — a scalar, an empty bracket, a nested sequence, or a nested mapping — so the
+    seq side being finished (R265–R267) means the map side adds *zero* per-constructor classification.
+    `pair_window` takes the two `Entry` blocks as hypotheses and never inspects their shape;
+  - its one new piece — the **pair glue** — is a *composition of two already-landed positional
+    patterns*: the **segment split** at the `vl` separator (the ADVANCE plumbing
+    `List.take_append_drop`/`take_take`/`drop_drop`, splitting the pair interior `[lo+1, m)` at `kv`)
+    and the **opener peel** of `l[lo]` (the BUILD/leaf peel `List.getElem_cons_drop`/`List.getElem_take`),
+    terminated by `Pair.mk`.
+
+So the seq/map re-split that the prior sections anticipated as "a separate brick" surfaces here as
+**composition** (ADVANCE-split ∘ BUILD-peel), not a fresh family of lemmas. -/
+
+/-- A toy map pair (toy of `RecMapPair`): `ky :: (block_k ++ vl :: block_v)`, with the key and value
+    blocks each a recursive seq `Entry`, glued by the depth-`0` `ky`/`vl` markers.  Sole constructor —
+    the map shape side classifies nothing, it only assembles. -/
+inductive Pair : List Tok → Prop where
+  | mk (kt : Tok) (block_k : List Tok) (vt : Tok) (block_v : List Tok)
+      (h_kt : kt = .ky) (h_ke : Entry block_k) (h_vt : vt = .vl) (h_ve : Entry block_v) :
+      Pair (kt :: (block_k ++ vt :: block_v))
+
+/-- **Map-pair window assembler** (toy of `recmappair_window`).  Given a key marker `ky` at the window
+    head `lo`, a key block over `[lo+1, kv)` as an `Entry`, a value marker `vl` at `kv`, and a value
+    block over `[kv+1, m)` as an `Entry`, the pair window `(l.take m).drop lo` is a `Pair`.  The proof
+    composes two already-landed plumbing patterns: the **segment split** at the `vl` separator
+    (`recseqbody_cons_window`'s ADVANCE plumbing — `List.take_append_drop`/`take_take`/`drop_drop`,
+    splitting `[lo+1, m)` at `kv`) and the **opener peel** of `l[lo]` (`List.getElem_cons_drop` +
+    `List.getElem_take`), terminated by `Pair.mk`, with both marker values transported off `tokAt`
+    (`List.getElem_eq_getD`).  The two `Entry` sub-blocks are *hypotheses* — agnostic to how they were
+    produced (the seq dispatch covers every block shape). -/
+theorem pair_window (l : List Tok) (lo kv m : Nat)
+    (h_lo_kv : lo < kv) (h_kv_m : kv < m) (h_m : m ≤ l.length)
+    (h_key : tokAt l lo = .ky) (h_value : tokAt l kv = .vl)
+    (h_ke : Entry ((l.take kv).drop (lo + 1)))
+    (h_ve : Entry ((l.take m).drop (kv + 1))) :
+    Pair ((l.take m).drop lo) := by
+  have h_lo : lo < l.length := by omega
+  have h_kv : kv < l.length := by omega
+  -- segment split: the pair interior `[lo+1, m)` divides at the `vl` marker `kv`.
+  have hA : (l.take m).drop (lo + 1)
+      = (l.take kv).drop (lo + 1) ++ (l.take m).drop kv := by
+    rw [← List.take_append_drop (kv - (lo + 1)) ((l.take m).drop (lo + 1))]
+    congr 1
+    · rw [List.drop_take, List.drop_take, List.take_take,
+        Nat.min_eq_left (show kv - (lo + 1) ≤ m - (lo + 1) by omega)]
+    · rw [List.drop_drop, Nat.add_sub_cancel' (show lo + 1 ≤ kv by omega)]
+  -- separator peel: the `vl` marker at `kv` heads the value half `[kv, m)`.
+  have hB : (l.take m).drop kv = l[kv]'h_kv :: (l.take m).drop (kv + 1) := by
+    have hlen : kv < (l.take m).length := by rw [List.length_take]; omega
+    have h := (List.getElem_cons_drop hlen).symm
+    rw [List.getElem_take] at h
+    exact h
+  -- opener peel: the `ky` marker at `lo` heads the whole pair window `[lo, m)`.
+  have h_peel : (l.take m).drop lo = l[lo]'h_lo :: (l.take m).drop (lo + 1) := by
+    have hlen : lo < (l.take m).length := by rw [List.length_take]; omega
+    have h := (List.getElem_cons_drop hlen).symm
+    rw [List.getElem_take] at h
+    exact h
+  rw [h_peel, hA, hB]
+  have h_kt_val : l[lo]'h_lo = .ky := by rw [List.getElem_eq_getD (.sc)]; exact h_key
+  have h_vt_val : l[kv]'h_kv = .vl := by rw [List.getElem_eq_getD (.sc)]; exact h_value
+  exact Pair.mk _ _ _ _ h_kt_val h_ke h_vt_val h_ve
+
+/-! ### Positive witness — the pair assembler glues two scalar `Entry` blocks -/
+
+/-- `{a: b}` flattened to a body: `ky a vl b` — a scalar-key/scalar-value pair. -/
+def l5 : List Tok := [.ky, .sc, .vl, .sc]
+
+-- The pair occupies `[0, 4)`: key marker at `0`, key block `[sc]` over `[1, 2)`, value marker at `2`,
+-- value block `[sc]` over `[3, 4)`.  Both blocks are produced by the *seq* scalar leaf — the seq
+-- dispatch supplies the map side's sub-blocks.
+theorem pair_window_l5 : Pair ((l5.take 4).drop 0) :=
+  pair_window l5 0 2 4 (by decide) (by decide) (by decide) (by decide) (by decide)
+    (entry_scalar_window l5 1 (by decide) (by decide))
+    (entry_scalar_window l5 3 (by decide) (by decide))
+
+-- The two sub-blocks really are the singleton `[sc]`, and the whole window is the four-token pair:
+#guard (l5.take 2).drop (0 + 1) == [Tok.sc]
+#guard (l5.take 4).drop (2 + 1) == [Tok.sc]
+#guard (l5.take 4).drop 0 == [Tok.ky, Tok.sc, Tok.vl, Tok.sc]
+
+/-! ### Negative witnesses — the pair is a composite (not a single `Entry`), and needs both markers -/
+
+-- The pair window is a four-token composite, distinct from any single-`Entry` window shape (the
+-- scalar leaf's one token, the empty bracket's two): the map item is a heavier shape than a seq item.
+#guard (l5.take 4).drop 0 != [Tok.sc]
+#guard (l5.take 4).drop 0 != [Tok.ky]
+
+/-- The pair assembler needs the *key* marker `ky` at the head: in `l1` (a sequence body) the head is
+    `op`, not `ky`, so `pair_window` does not apply — a sequence body is not a mapping body. -/
+theorem seq_head_is_not_key : tokAt l1 0 ≠ .ky := by decide
+
+/-- And the *value* marker `vl` separating the two blocks is distinct from the seq separator `fe`: in
+    `l1` position `3` is `fe`, not `vl`. -/
+theorem fe_is_not_value : tokAt l1 3 ≠ .vl := by decide
+
+/-! ## The ADVANCE-step tail invariant — invariant preservation (toy of `advanceTail_invariant`, Reflection 271)
+
+The input/shape split above gives the recursion its *moves* and its *split-point locator*, but a
+recursion is not **runnable** until one more fact is proved: after it ADVANCEs past a depth-`0`
+separator at `m`, the tail `[m+1, hi)` is **itself a valid recursive sub-instance**.  The structural
+moves are all *assembly* lemmas (given the pieces — a located entry, a recursive tail — build the
+constructor); **none of them certifies the recursive call's _precondition_** (that the tail is a
+balanced window the locator and classifier can act on).  That certificate is `advanceTail_invariant`,
+the toy's final brick: pure bracket-balance algebra, and — like `firstEntryBoundary`, unlike the
+structural moves — **axis-agnostic** (it names no entry/pair deliverable type, so it is written once
+for both the sequence and the mapping recursion).
+
+It needs a *range* balance `balR l lo hi` (toy of `flowBracketBalance`, balance over `[lo, hi)`), its
+additivity `balR_compose` (toy of `flowBracketBalance_compose`), and the single-token value
+`balR_single`.  Then, given a balanced window with a depth-`0` separator at `m`, it delivers the three
+facts the recursive call on `[m+1, hi)` needs: (a) the prefix *through* the separator is balanced;
+(b) the **tail is balanced**; (c) the tail **re-bases** — every depth from the outer origin `lo`
+equals the depth from the new origin `m+1` (`balR lo p = balR (m+1) p`), so the recursion threads its
+invariants from a *moving* origin for free.  This sharpens R264's input/shape split: the *input* side
+is locate-the-point **and** certify-the-tail, both axis-agnostic; structural-complete ≠ runnable. -/
+
+/-- Sum of bracket deltas over a token list. -/
+def sumD (l : List Tok) : Int := (l.map delta).foldl (· + ·) 0
+
+/-- Shifting the `foldl` accumulator out (toy of the real `foldl_add_shift`). -/
+theorem foldl_add_shift (l : List Int) (init : Int) :
+    l.foldl (· + ·) init = init + l.foldl (· + ·) 0 := by
+  induction l generalizing init with
+  | nil => simp
+  | cons hd tl ih => simp only [List.foldl]; rw [ih, ih (0 + hd)]; omega
+
+/-- `sumD` is additive over append — the workhorse behind `balR_compose`. -/
+theorem sumD_append (a b : List Tok) : sumD (a ++ b) = sumD a + sumD b := by
+  unfold sumD
+  rw [List.map_append, List.foldl_append]
+  exact foldl_add_shift (b.map delta) ((a.map delta).foldl (· + ·) 0)
+
+/-- **Range balance** over `[lo, hi)` (toy of `flowBracketBalance`). -/
+def balR (l : List Tok) (lo hi : Nat) : Int :=
+  if lo ≥ hi then 0 else sumD ((l.drop lo).take (hi - lo))
+
+/-- **Additivity** of the range balance: splitting `[lo, hi)` at a midpoint adds (toy of
+    `flowBracketBalance_compose`).  Same proof shape as the real lemma: the two degenerate ends by
+    `simp`, the middle by the slice decomposition `take (hi-lo) (drop lo) = take (mid-lo) (drop lo) ++
+    take (hi-mid) (drop mid)` (`List.take_add` + `List.drop_drop`) fed to `sumD_append`. -/
+theorem balR_compose (l : List Tok) (lo mid hi : Nat) (h1 : lo ≤ mid) (h2 : mid ≤ hi) :
+    balR l lo hi = balR l lo mid + balR l mid hi := by
+  by_cases hlm : lo = mid
+  · subst hlm; simp [balR]
+  · by_cases hmh : mid = hi
+    · subst hmh; simp [balR]
+    · have e1 : ¬ lo ≥ hi := by omega
+      have e2 : ¬ lo ≥ mid := by omega
+      have e3 : ¬ mid ≥ hi := by omega
+      unfold balR
+      rw [if_neg e1, if_neg e2, if_neg e3]
+      have hsplit : (l.drop lo).take (hi - lo)
+          = (l.drop lo).take (mid - lo) ++ (l.drop mid).take (hi - mid) := by
+        rw [show hi - lo = (mid - lo) + (hi - mid) from by omega, List.take_add,
+            List.drop_drop, show lo + (mid - lo) = mid from by omega]
+      rw [hsplit, sumD_append]
+
+/-- The range balance of a single token equals its bracket delta (toy of
+    `flowBracketBalance_single`). -/
+theorem balR_single (l : List Tok) (i : Nat) (h : i < l.length) :
+    balR l i (i + 1) = delta (l[i]'h) := by
+  have hslice : (l.drop i).take (i + 1 - i) = [l[i]'h] := by
+    rw [show i + 1 - i = 1 from by omega, List.drop_eq_getElem_cons h]; rfl
+  unfold balR
+  rw [if_neg (show ¬ i ≥ i + 1 from by omega), hslice]
+  simp [sumD]
+
+/-- **ADVANCE-step tail invariant** (toy of `advanceTail_invariant`).  Given a balanced window
+    `[lo, hi)` and a depth-`0` separator `fe` at `m` (`lo ≤ m < hi`, `balR l lo m = 0`,
+    `tokAt l m = .fe`), the tail `[m+1, hi)` is a valid recursive sub-instance: (a) the prefix through
+    the separator is balanced, (b) the tail is balanced, (c) every outer-origin depth on the tail
+    equals the new-origin depth.  *Verbatim* the real proof's structure: the separator's delta is `0`
+    (`balR_single`), so `balR_compose` split at `m` and at `m+1` gives all three by linear arithmetic
+    — no structural induction, axis-agnostic. -/
+theorem advanceTail_invariant (l : List Tok) (lo m hi : Nat)
+    (h_lo_m : lo ≤ m) (h_m_hi : m < hi) (h_hi : hi ≤ l.length)
+    (h_m_bal : balR l lo m = 0)
+    (h_sep : tokAt l m = .fe)
+    (h_total : balR l lo hi = 0) :
+    balR l lo (m + 1) = 0 ∧ balR l (m + 1) hi = 0 ∧
+    (∀ p, m + 1 ≤ p → p ≤ hi → balR l lo p = balR l (m + 1) p) := by
+  have h_m_len : m < l.length := by omega
+  -- the separator's delta is 0, so the single-token range `[m, m+1)` is balanced.
+  have h_val : l[m]'h_m_len = .fe := by rw [List.getElem_eq_getD (.sc)]; exact h_sep
+  have h_single : balR l m (m + 1) = 0 := by rw [balR_single l m h_m_len, h_val]; rfl
+  -- (a) prefix through the separator.
+  have h_prefix : balR l lo (m + 1) = 0 := by
+    rw [balR_compose l lo m (m + 1) h_lo_m (by omega), h_m_bal]; omega
+  -- (b) tail balanced (total − prefix).
+  have h_tail : balR l (m + 1) hi = 0 := by
+    have hc := balR_compose l lo (m + 1) hi (by omega) (by omega)
+    rw [h_total, h_prefix] at hc; omega
+  refine ⟨h_prefix, h_tail, ?_⟩
+  -- (c) re-basing: `balR lo p = balR lo (m+1) + balR (m+1) p = 0 + balR (m+1) p`.
+  intro p hp1 hp2
+  rw [balR_compose l lo (m + 1) p (by omega) hp1, h_prefix]; omega
+
+/-! ### Positive witness — the invariant fires on a depth-`0` separator -/
+
+/-- `[a],[b]` — `op sc cl fe op sc cl`.  Balanced, with the body separator `fe` at depth `0` (position
+    `3`) splitting it into two bracketed items.  A richer tail than `l1`'s lone scalar — the tail
+    `[4, 7)` is itself a bracketed item, so re-basing is exercised *mid-bracket*. -/
+def l6 : List Tok := [.op, .sc, .cl, .fe, .op, .sc, .cl]
+
+theorem advanceTail_l6 :
+    balR l6 0 (3 + 1) = 0 ∧ balR l6 (3 + 1) 7 = 0 ∧
+    (∀ p, 3 + 1 ≤ p → p ≤ 7 → balR l6 0 p = balR l6 (3 + 1) p) :=
+  advanceTail_invariant l6 0 3 7 (by decide) (by decide) (by decide)
+    (by decide) (by decide) (by decide)
+
+-- (a) the prefix `op sc cl fe` through the separator is balanced; (b) the tail `op sc cl` is balanced:
+#guard balR l6 0 4 == 0
+#guard balR l6 4 7 == 0
+-- (c) re-basing exercised *mid-bracket*: inside the tail's `[b]` the running depth is `1` from EITHER
+-- origin — the outer origin `0` and the new origin `4` agree precisely because the prefix `[0,4)` is
+-- balanced.  This is the fact that lets the recursion thread its invariants from a moving origin.
+#guard balR l6 0 5 == balR l6 4 5
+#guard balR l6 0 6 == balR l6 4 6
+#guard balR l6 0 5 == 1
+#guard balR l6 4 5 == 1
+
+/-! ### Negative witnesses — the depth-`0` hypothesis is load-bearing -/
+
+/-- `[ , ]` — an `fe` *inside* the bracket (position `1`), at depth `1` not `0`. -/
+def l7 : List Tok := [.op, .fe, .cl]
+
+/-- An **interior** separator (inside a bracket, depth ≥ 1) does **not** satisfy `balR l lo m = 0`, so
+    `advanceTail_invariant` correctly does not apply there — only a *depth-0* separator splits the body
+    into recursive sub-instances.  (The token *is* a separator; what disqualifies it is its depth.) -/
+theorem interior_sep_not_depth0 : balR l7 0 1 ≠ 0 := by decide
+#guard tokAt l7 1 == Tok.fe       -- it is an `fe`…
+#guard balR l7 0 1 == 1           -- …but at depth 1, so not a body boundary
+
+-- Re-basing is **not** a free identity: it holds on the tail *because* the prefix `[0, m+1)` is
+-- balanced.  At a position *before* the new origin the two frames disagree — origin `0` sees the
+-- leading bracket, origin `4` sees an empty (clamped) range.
+#guard balR l6 0 2 != balR l6 4 2
+
+/-! ## The head-dispatch — the locator's VARIABLE marker meets the lift's FIXED split point (toy of `recseqentry_scalar_dispatch`, Reflection 272)
+
+The shape-side lifts above are each stated at a *fixed* window keyed on their own split point
+(`entry_scalar_window` produces `Entry ((l.take (lo+1)).drop lo)` — its `m` is *literally* `lo+1`).
+`firstEntryBoundary` produces a *variable* marker `m` with only a minimality certificate.  The
+**head-dispatch** is the bridge that proves the two coincide: it is neither locating nor classifying
+but a SPLIT-POINT-COINCIDENCE proof.  For the scalar branch (`lo = 0` here, matching the toy
+locator), the coincidence is `m = 1`: a scalar head has delta `0` so `bal l 1 = 0`; the grammar
+substrate `h_succ` (the scalar entry is *complete* — position `1` is the window end or a separator)
+makes `1` a marker; the locator returned `m` as the **least** marker, so `m ≤ 1`, and `0 < m` forces
+`m = 1` — the located window *is* the one-token scalar window `entry_scalar_window` classifies.  The
+dispatch is the first toy to *consume* `firstEntryBoundary`'s minimality output, where every prior
+locate brick only *produced* substrate. -/
+
+/-- **Scalar head-dispatch step** (toy of `recseqentry_scalar_dispatch`).  Given the locator's outputs
+    for a window starting at `0` — the marker `m` (`0 < m ≤ l.length`) and its minimality — a scalar
+    head (`tokAt l 0 = .sc`), and the trailing-separator substrate `h_succ`, derive `m = 1` and the
+    located window's `Entry`.  The minimality clause is the engine: `1` is a marker, and `m` is the
+    least, so `m = 1`; then `entry_scalar_window` lifts the one-token window. -/
+theorem entry_scalar_dispatch (l : List Tok) (m : Nat)
+    (h_pos : 0 < l.length)
+    (h_zero_m : 0 < m) (_h_m_hi : m ≤ l.length)
+    (h_m_least : ∀ k, 0 < k → k < m →
+      ¬ (bal l k = 0 ∧ (k = l.length ∨ isFE (tokAt l k) = true)))
+    (h_sc : tokAt l 0 = .sc)
+    (h_succ : 1 = l.length ∨ isFE (tokAt l 1) = true) :
+    m = 1 ∧ Entry ((l.take m).drop 0) := by
+  -- The scalar head contributes delta `0`, so the one-token prefix `[0, 1)` is balanced.
+  have h_bal1 : bal l 1 = 0 := by
+    match l, h_pos with
+    | a :: t, _ =>
+      have ha : a = .sc := by simpa [tokAt] using h_sc
+      simp [bal, ha, delta]
+  -- `1` is a boundary marker (balanced + completes the entry); the least marker `m` is thus `≤ 1`.
+  have h_marker1 : bal l 1 = 0 ∧ (1 = l.length ∨ isFE (tokAt l 1) = true) := ⟨h_bal1, h_succ⟩
+  have h_m_eq : m = 1 := by
+    rcases Nat.lt_or_ge 1 m with hlt | hge
+    · exact absurd h_marker1 (h_m_least 1 (by omega) hlt)
+    · omega
+  refine ⟨h_m_eq, ?_⟩
+  rw [h_m_eq, List.drop_zero]
+  have := entry_scalar_window l 0 h_pos h_sc
+  rwa [List.drop_zero] at this
+
+/-! ### Positive witness — the locator's marker, fed to the dispatch, is proven to be `1` -/
+
+/-- `a,b` — scalar, separator, scalar.  A two-item seq body whose first item is the lone scalar `a`. -/
+def l8 : List Tok := [.sc, .fe, .sc]
+
+-- The faithful composition: `firstEntryBoundary` produces the *variable* marker `m`; the dispatch
+-- *proves* `m = 1` (the coincidence) and lifts the located window to an `Entry`.
+theorem dispatch_l8 : ∃ m, m = 1 ∧ Entry ((l8.take m).drop 0) := by
+  obtain ⟨m, hm_pos, hm_hi, _, _, hm_least⟩ := firstEntryBoundary l8 (by decide) (by decide)
+  exact ⟨m, entry_scalar_dispatch l8 m (by decide) hm_pos hm_hi hm_least (by decide) (by decide)⟩
+
+-- The located window really is the one-token scalar window `[sc]`:
+#guard (l8.take 1).drop 0 == [Tok.sc]
+-- `1` is a marker (balanced, and the next token is the separator), pinning the least `m` to it:
+#guard bal l8 1 == 0
+#guard isFE (tokAt l8 1) == true
+
+/-! ### Negative witnesses — the scalar branch's two preconditions are load-bearing -/
+
+-- (1) The head must be a scalar: at an `op` head (`l1` position `0`) the bracket branch fires, not the
+-- scalar dispatch.  (Same disqualifier as the scalar *leaf*, now at the dispatch level.)
+theorem op_head_is_not_scalar_dispatch : tokAt l1 0 ≠ .sc := by decide
+
+/-- `a a ,` — two adjacent scalars with no separator between.  Not a valid seq body: the first scalar
+    is *not* a complete entry, so the trailing-separator substrate `h_succ` fails (position `1` is a
+    scalar, not the separator, and not the window end).  The dispatch's scalar branch cannot fire. -/
+def l9 : List Tok := [.sc, .sc, .fe]
+
+theorem l9_scalar_not_complete : ¬ (1 = l9.length ∨ isFE (tokAt l9 1) = true) := by decide
+#guard tokAt l9 1 == Tok.sc        -- position 1 is another scalar…
+#guard l9.length == 3              -- …and the window does not end at 1, so `h_succ` is unavailable
+
+/-! ### The empty-bracket branch — leastness no longer suffices; the MARKER clause is now load-bearing (toy of `recseqentry_seqempty_dispatch`, Reflection 273)
+
+The scalar branch above hid an asymmetry.  A scalar entry ends at the *earliest* candidate `m = 1`,
+so `firstEntryBoundary`'s LEASTNESS clause alone pinned it — the MARKER clause (`m` is itself a
+marker) was never touched.  The empty bracket `[ ]` spans TWO tokens (`m = 2`), and its interior
+position `1` is **not** a marker: the opener drives the balance to `+1` (`bal l 1 = 1 ≠ 0`).  Now
+leastness *backfires*: it is quantified over the **open** interval `(0, m)`, so at `m = 1` it is
+vacuous (no `k` with `0 < k < 1`) and perfectly satisfiable — leastness *permits* the degenerate
+`m = 1`.  The only thing excluding it is the OTHER output of `firstEntryBoundary`: that `m` is
+*itself* a marker (`bal l m = 0`), which `bal l 1 = 1` contradicts.  So every multi-token entry must
+consume the MARKER clause; the one-token scalar leaf did not.  This is R273's accounting: the dispatch
+consumes `firstEntryBoundary`'s output in two clauses, and they split by branch (by entry arity). -/
+
+/-- **Empty-bracket head-dispatch step** (toy of `recseqentry_seqempty_dispatch`).  Mirrors
+    `entry_scalar_dispatch` for the `op`-then-`cl` head, but now takes the locator's MARKER fact
+    `h_m_marker` as well as its minimality `h_m_least` — and *needs* it: leastness alone permits
+    `m = 1` (the un-balanced opener), only `bal l m = 0` excludes it.  Derives `m = 2` (the closer
+    returns the balance to `0`: `+1` then `-1`) and lifts the two-token window via
+    `entry_seqempty_window`. -/
+theorem entry_seqempty_dispatch (l : List Tok) (m : Nat)
+    (h_lo1 : 0 + 1 < l.length)
+    (h_zero_m : 0 < m) (_h_m_hi : m ≤ l.length)
+    (h_m_marker : bal l m = 0 ∧ (m = l.length ∨ isFE (tokAt l m) = true))
+    (h_m_least : ∀ k, 0 < k → k < m →
+      ¬ (bal l k = 0 ∧ (k = l.length ∨ isFE (tokAt l k) = true)))
+    (h_open : tokAt l 0 = .op)
+    (h_close : tokAt l 1 = .cl)
+    (h_succ : 2 = l.length ∨ isFE (tokAt l 2) = true) :
+    m = 2 ∧ Entry ((l.take m).drop 0) := by
+  -- the opener contributes delta `+1`, so position `1` is NOT balanced — it cannot be the marker.
+  have h_bal1 : bal l 1 = 1 := by
+    match l, h_lo1 with
+    | a :: b :: t, _ =>
+      have ha : a = .op := by simpa [tokAt] using h_open
+      simp [bal, ha, delta]
+  -- the closer returns the balance to `0` at position `2`: `+1` then `-1`.
+  have h_bal2 : bal l 2 = 0 := by
+    match l, h_lo1 with
+    | a :: b :: t, _ =>
+      have ha : a = .op := by simpa [tokAt] using h_open
+      have hb : b = .cl := by simpa [tokAt] using h_close
+      simp [bal, ha, hb, delta]
+  -- `2` is a genuine boundary marker (balanced + completes the entry, via `h_succ`).
+  have h_marker2 : bal l 2 = 0 ∧ (2 = l.length ∨ isFE (tokAt l 2) = true) := ⟨h_bal2, h_succ⟩
+  -- minimality ⟹ `m ≤ 2`; the MARKER clause excludes `m = 1` (its balance is `1`, not `0`).
+  have h_m_le : m ≤ 2 := by
+    rcases Nat.lt_or_ge 2 m with hlt | hge
+    · exact absurd h_marker2 (h_m_least 2 (by omega) hlt)
+    · exact hge
+  have h_m_ne1 : m ≠ 1 := by
+    intro h
+    have hmb := h_m_marker.1
+    rw [h, h_bal1] at hmb
+    omega
+  have h_m_eq : m = 2 := by omega
+  refine ⟨h_m_eq, ?_⟩
+  rw [h_m_eq, List.drop_zero]
+  have := entry_seqempty_window l 0 h_lo1 h_open h_close
+  rwa [List.drop_zero] at this
+
+/-! #### Positive witness — the locator's marker, fed to the dispatch, is proven to be `2` -/
+
+-- The faithful composition: `firstEntryBoundary` produces the *variable* marker `m`; the dispatch
+-- *proves* `m = 2` (consuming the marker clause `hm_bal` to step over the interior opener at `1`).
+theorem dispatch_seqempty_l3 : ∃ m, m = 2 ∧ Entry ((l3.take m).drop 0) := by
+  obtain ⟨m, hm_pos, hm_hi, hm_bal, hm_cond, hm_least⟩ := firstEntryBoundary l3 (by decide) (by decide)
+  exact ⟨m, entry_seqempty_dispatch l3 m (by decide) hm_pos hm_hi ⟨hm_bal, hm_cond⟩ hm_least
+    (by decide) (by decide) (by decide)⟩
+
+-- The located window really is the two-token empty bracket `[op, cl]`:
+#guard (l3.take 2).drop 0 == [Tok.op, Tok.cl]
+-- `2` is a marker (balanced, next token is the separator), but `1` (the opener) is NOT:
+#guard bal l3 2 == 0
+#guard isFE (tokAt l3 2) == true
+#guard bal l3 1 == 1
+
+/-! #### Negative witnesses — why the MARKER clause is load-bearing here (and was not for scalar) -/
+
+/-- **The crux of R273.**  Position `1` (the opener) is NOT a marker — its balance is `1`, not `0`.
+    So leastness over `(0, m)` cannot by itself exclude `m = 1`; only `firstEntryBoundary`'s MARKER
+    clause (`bal l m = 0`) does, since `bal l3 1 = 1 ≠ 0`.  This is the asymmetry the one-token scalar
+    leaf hid: there, the entry ended at the earliest candidate `m = 1`, so leastness alone sufficed. -/
+theorem l3_interior_opener_not_marker :
+    ¬ (bal l3 1 = 0 ∧ (1 = l3.length ∨ isFE (tokAt l3 1) = true)) := by decide
+
+/-- Leastness at `m = 1` is **vacuous** for *any* list — there is no `k` with `0 < k < 1` — so the
+    minimality hypothesis alone can never rule out the degenerate split `m = 1`.  Only the marker
+    clause can; this is precisely the hypothesis the bracket branch adds over the scalar branch. -/
+theorem leastness_vacuous_at_one (l : List Tok) :
+    ∀ k, 0 < k → k < 1 → ¬ (bal l k = 0 ∧ (k = l.length ∨ isFE (tokAt l k) = true)) := by
+  intro k hk1 hk2; omega
+
+/-! ### The bracket branches' shared resolution — `seqEmpty`'s arithmetic with the close generalized to a variable, carried by the positivity invariant the typed wrapper drops (toy of `firstEntryBoundary_bracket_resolve`, Reflection 274)
+
+The `seqEmpty` branch above pinned `m = 2` by a two-sided squeeze: `m ≤ 2` (leastness against the
+marker `2`) and `m ≠ 1` (the marker clause kills the interior opener, `bal l 1 = 1 ≠ 0`).  A
+*non-empty* bracket `[a…]` closes at a *variable* `j`, not the literal `1`, so its interior is a whole
+INTERVAL `(0, j]` of positions to step over, not one.  The fact that does this is the **strict-positivity
+invariant** `∀ i, 0 < i → i ≤ j → bal l i ≥ 1` (the running depth never returns to `0` strictly inside
+the bracket) — the general form of `seqEmpty`'s single hard-coded `bal l 1 = 1`.
+
+This invariant is exactly what the *generic* matching-close locator produces and what the *typed*
+seq/map wrappers **drop** (they keep the close position + its token + the inner balance).  So the
+resolution must reach past the convenient typed wrapper to the generic one: the typed wrapper's kept
+token plays NO role in pinning `m`, while its dropped positivity is the whole engine.  The same
+"the convenient wrapper is lossy exactly where the next consumer needs the original" principle as
+`ref-array-wrapper-window-generalization` (R230, a wrapper that fixes a *window* too narrowly), here
+in its dual form: a wrapper that drops a *conjunct*.
+
+Like `firstEntryBoundary`, the resolution names no collection-specific deliverable type — it yields the
+bare identity `m = j+1` over the bracket *balance*, not the opener token — so it is written ONCE for
+both the seq and map bracket branches (R264); the seq/map split re-enters only at the window lift
+layered on top (`entry_map_window` vs the seq BUILD move). -/
+
+/-- **Bracket head-dispatch resolution** (toy of `firstEntryBoundary_bracket_resolve`).  Given the
+    locator's outputs (the marker `m` and its minimality) plus the *generic* matching-close locator's
+    two interior facts — `h_bal_j1` (the balance returns to `0` just past the close `j`) and
+    `h_j_pos` (the strict-positivity invariant over `(0, j]`) — and the trailing-separator substrate
+    `h_succ`, derive `m = j + 1`.  Produces ONLY the arithmetic identity (no `Entry`): the window lift
+    is layered on top, and the same spine serves both bracket branches.  The squeeze: leastness against
+    the marker `j+1` bounds `m` above; positivity (no interior `0 < m ≤ j` can have balance `0`) bounds
+    it below. -/
+theorem bracket_resolve_dispatch (l : List Tok) (m j : Nat)
+    (h_zero_m : 0 < m) (_h_m_hi : m ≤ l.length)
+    (h_m_marker : bal l m = 0 ∧ (m = l.length ∨ isFE (tokAt l m) = true))
+    (h_m_least : ∀ k, 0 < k → k < m →
+      ¬ (bal l k = 0 ∧ (k = l.length ∨ isFE (tokAt l k) = true)))
+    (_h_zero_j : 0 < j)
+    (h_bal_j1 : bal l (j + 1) = 0)
+    (h_j_pos : ∀ i, 0 < i → i ≤ j → bal l i ≥ 1)
+    (h_succ : j + 1 = l.length ∨ isFE (tokAt l (j + 1)) = true) :
+    m = j + 1 := by
+  -- `j+1` is a genuine boundary marker; minimality bounds `m` above (the LEAST clause).
+  have h_marker_j1 : bal l (j + 1) = 0 ∧ (j + 1 = l.length ∨ isFE (tokAt l (j + 1)) = true) :=
+    ⟨h_bal_j1, h_succ⟩
+  have h_m_le : m ≤ j + 1 := by
+    rcases Nat.lt_or_ge (j + 1) m with hlt | hge
+    · exact absurd h_marker_j1 (h_m_least (j + 1) (by omega) hlt)
+    · exact hge
+  -- positivity forbids a depth-`0` marker at any `0 < m ≤ j`, bounding `m` below (the MARKER clause).
+  have h_m_ge : j + 1 ≤ m := by
+    rcases Nat.lt_or_ge j m with hjm | hmj
+    · omega
+    · have hpos := h_j_pos m h_zero_m hmj
+      rw [h_m_marker.1] at hpos
+      omega
+  omega
+
+/-! #### Positive witness — a NON-empty bracket: `j = 2`, positivity stepped over the interval `{1, 2}` -/
+
+-- In `l1 = [op, sc, cl, fe, sc]` the first item is the non-empty bracket `[a] = [op, sc, cl]`, closing
+-- at `j = 2`; the separator marker is at `m = 3 = j + 1`.  The faithful composition: `firstEntryBoundary`
+-- produces the *variable* marker `m`, and the resolution *proves* `m = 2 + 1`, consuming the positivity
+-- invariant over the whole interior interval `{1, 2}` (where `seqEmpty` only ever stepped over one).
+theorem dispatch_bracket_l1 : ∃ m, m = 2 + 1 := by
+  obtain ⟨m, hm_pos, hm_hi, hm_bal, hm_cond, hm_least⟩ := firstEntryBoundary l1 (by decide) (by decide)
+  refine ⟨m, bracket_resolve_dispatch l1 m 2 hm_pos hm_hi ⟨hm_bal, hm_cond⟩ hm_least
+    (by decide) (by decide) ?_ (by decide)⟩
+  -- positivity over `(0, 2]` = `{1, 2}`: both interior positions have depth `≥ 1`.
+  intro i h1 h2
+  rcases (show i = 1 ∨ i = 2 by omega) with rfl | rfl
+  · decide
+  · decide
+
+-- The located close really is at `j = 2` (the `cl`), the marker at `m = 3` (the `fe`):
+#guard bal l1 3 == 0
+#guard isFE (tokAt l1 3) == true
+#guard tokAt l1 2 == Tok.cl
+-- positivity over the interior interval `{1, 2}` — both depths `≥ 1` (the bracket stays open):
+#guard bal l1 1 == 1
+#guard bal l1 2 == 1
+
+/-! #### Positive witness — the resolution SUBSUMES the empty-bracket leaf at `j = 1` -/
+
+/-- At `j = 1` (the empty bracket `[ ]`, close one step in) positivity over `(0, 1]` is the single fact
+    `bal l3 1 ≥ 1` — exactly what `entry_seqempty_dispatch` hard-coded — and the resolution yields
+    `m = 1 + 1 = 2`.  So the same spine that resolves the non-empty bracket above subsumes the
+    `seqEmpty` leaf: the leaf is the resolution at the literal close `j = 1`. -/
+theorem bracket_resolve_subsumes_seqempty_l3 : ∃ m, m = 1 + 1 := by
+  obtain ⟨m, hm_pos, hm_hi, hm_bal, hm_cond, hm_least⟩ := firstEntryBoundary l3 (by decide) (by decide)
+  refine ⟨m, bracket_resolve_dispatch l3 m 1 hm_pos hm_hi ⟨hm_bal, hm_cond⟩ hm_least
+    (by decide) (by decide) ?_ (by decide)⟩
+  intro i h1 h2
+  rcases (show i = 1 by omega) with rfl
+  decide
+
+/-! #### Crux witnesses — positivity is the engine; the typed wrapper keeps the unused token and drops it -/
+
+/-- **The crux of R274.**  The strict-positivity invariant is what excludes an interior position from
+    being a marker: at position `2` of `l1` (the bracket's close, still at depth `1` *before* it pops)
+    the balance is `1`, so `bal l1 2 ≥ 1`, and any position with balance `≥ 1` can never satisfy the
+    marker predicate's `bal = 0` conjunct.  This is the fact the *typed* matching-close wrapper drops
+    and the resolution must recover from the *generic* locator. -/
+theorem interior_balance_pos_excludes_marker :
+    bal l1 2 ≥ 1 ∧ ¬ (bal l1 2 = 0 ∧ (2 = l1.length ∨ isFE (tokAt l1 2) = true)) := by decide
+
+/-- What the *typed* wrapper KEEPS (the close token at `j`) is exactly what the resolution does NOT
+    use; what it DROPS (positivity over `(0, j]`) is exactly what the resolution DOES use.  Both are
+    exhibited for `l1`'s bracket (close `cl` at `j = 2`): the kept token `tokAt l1 2 = .cl` plays no
+    role in pinning `m`, while the dropped positivity `bal l1 1 ≥ 1 ∧ bal l1 2 ≥ 1` is what steps the
+    split past the interior.  The API-granularity lesson: reach past the convenient typed wrapper to the
+    generic locator for the loss-bearing fact. -/
+theorem typed_keeps_token_drops_positivity :
+    tokAt l1 2 = .cl ∧ (bal l1 1 ≥ 1 ∧ bal l1 2 ≥ 1) := by decide
+
+/-! ### The first bracket dispatch branch — resolution ∘ window-lift, and STORAGE orders the branches (toy of `recseqentry_map_dispatch`, Reflection 275)
+
+R274's `bracket_resolve_dispatch` pins `m = j+1`; this section composes it with the near-leaf window
+lift `entry_map_window` into one dispatch step, `entry_map_dispatch` — the FIRST point at which the
+input-side resolution and a shape-side lift meet on the bracket axis.  Two moves, the same shape as the
+two leaf dispatches but with the split point now *variable*: **resolve** the variable split point (the
+shared spine), then **lift** the opener-window.  No new arithmetic over R274 — pure composition.
+
+**Which bracket branch lands first is a STORAGE fact, not a token fact.**  Both bracket branches share
+the resolution *verbatim* (it is balance-stated, axis-agnostic, R264); the deciding difference is
+downstream, in what the deliverable constructor STORES.  `Entry.map` stores only the flat `WB interior`
+projection — a DECIDABLE fact, so the dispatch supplies it inline (`by decide`) and the branch closes
+STANDALONE, a near-leaf with no descent.  The recursive `seq`, by contrast, stores a recursive body
+(`SeqBody` below) the locate recursion must assemble — its *oracle* — which is NOT a decidable flat
+fact, so its branch cannot land until the driver exists.  The near-leaf lands first; the recursive
+branch rides in with the driver.  (Same storage-severs-recursion principle as R268, here reaching up
+from the shape side into the dispatch layer.) -/
+
+/-- **Nested-mapping head-dispatch step** (toy of `recseqentry_map_dispatch`).  Composes the shared
+    resolution `bracket_resolve_dispatch` (pins `m = j+1`) with the near-leaf lift `entry_map_window`
+    (`Entry.map` from the head/close tokens + the flat interior `WB`).  A NEAR-leaf, not a recursion
+    edge: it consumes the interior `WB` directly as a hypothesis and never recurses — which is exactly
+    why it lands standalone, before the recursive `seq` branch. -/
+theorem entry_map_dispatch (l : List Tok) (m j : Nat)
+    (h_zero_m : 0 < m) (h_m_hi : m ≤ l.length)
+    (h_m_marker : bal l m = 0 ∧ (m = l.length ∨ isFE (tokAt l m) = true))
+    (h_m_least : ∀ k, 0 < k → k < m →
+      ¬ (bal l k = 0 ∧ (k = l.length ∨ isFE (tokAt l k) = true)))
+    (h_zero_j : 0 < j) (h_j_len : j < l.length)
+    (h_open : tokAt l 0 = .mo) (h_close : tokAt l j = .mc)
+    (h_bal_j1 : bal l (j + 1) = 0)
+    (h_j_pos : ∀ i, 0 < i → i ≤ j → bal l i ≥ 1)
+    (h_wb : WB ((l.take j).drop (0 + 1)))
+    (h_succ : j + 1 = l.length ∨ isFE (tokAt l (j + 1)) = true) :
+    m = j + 1 ∧ Entry ((l.take m).drop 0) := by
+  -- resolve: the shared bracket spine pins the split point past the matching close.
+  have h_m_eq : m = j + 1 :=
+    bracket_resolve_dispatch l m j h_zero_m h_m_hi h_m_marker h_m_least h_zero_j h_bal_j1 h_j_pos h_succ
+  refine ⟨h_m_eq, ?_⟩
+  -- lift: with `m = j+1` the window is the opener-window `[0, j+1)`, an `Entry.map` near-leaf.
+  rw [h_m_eq]
+  exact entry_map_window l 0 j h_zero_j h_j_len h_open h_close h_wb
+
+/-! #### Positive witness — a nested mapping as a sequence item: the map branch fires standalone -/
+
+/-- `{a},b` — a nested mapping `{a}` then a separator then a scalar.  Balanced; its first item is the
+    map `[mo, sc, mc]` closing at `j = 2`, with the separator marker at `m = 3 = j + 1`. -/
+def l10 : List Tok := [.mo, .sc, .mc, .fe, .sc]
+
+-- The faithful composition: `firstEntryBoundary` produces the *variable* marker `m`, and
+-- `entry_map_dispatch` both *proves* `m = 2 + 1` (resolution) and *lifts* the opener-window into an
+-- `Entry` (the `map` near-leaf) — all from the flat interior `WB`, no recursion.
+theorem dispatch_map_l10 : ∃ m, m = 2 + 1 ∧ Entry ((l10.take m).drop 0) := by
+  obtain ⟨m, hm_pos, hm_hi, hm_bal, hm_cond, hm_least⟩ := firstEntryBoundary l10 (by decide) (by decide)
+  refine ⟨m, entry_map_dispatch l10 m 2 hm_pos hm_hi ⟨hm_bal, hm_cond⟩ hm_least
+    (by decide) (by decide) (by decide) (by decide) (by decide) ?_ (by decide) (by decide)⟩
+  -- positivity over `(0, 2]` = `{1, 2}`: both interior positions stay at depth `≥ 1`.
+  intro i h1 h2
+  rcases (show i = 1 ∨ i = 2 by omega) with rfl | rfl
+  · decide
+  · decide
+
+-- The located map-window really is the three-token `[mo, sc, mc]`, marker at `m = 3` (the `fe`):
+#guard (l10.take 3).drop 0 == [Tok.mo, Tok.sc, Tok.mc]
+#guard bal l10 3 == 0
+#guard isFE (tokAt l10 3) == true
+#guard tokAt l10 2 == Tok.mc
+
+/-! #### Crux witnesses — the storage contrast: map's store is a decidable flat fact, seq's is a recursive structure -/
+
+/-- A toy *recursive* sequence body (toy of `RecSeqBody`): `nil`, or an `Entry` followed by a body.
+    Unlike `WB` (a flat, decidable balance fact) this is a recursive STRUCTURE — it has no `Decidable`
+    instance and cannot be produced by `decide`; the locate recursion must *assemble* it from
+    sub-`Entry`s.  This is the storage the recursive `seq` branch carries and the near-leaf `map`
+    branch does not — and the reason the `seq` branch needs the driver's oracle while `map` does not. -/
+inductive SeqBody : List Tok → Prop where
+  | nil : SeqBody []
+  | cons (e rest : List Tok) (h : Entry e) (ht : SeqBody rest) : SeqBody (e ++ rest)
+
+/-- **The crux of R275, positive half.**  The `map` near-leaf's stored obligation is the flat `WB`
+    projection — DECIDABLE, hence supplied inline by `decide`.  For `l10`'s nested mapping the interior
+    window is `[sc]` and `WB [sc]` holds by `decide`.  This is exactly why `entry_map_dispatch` closes
+    standalone: its only interior obligation is a flat fact, needing no recursion. -/
+theorem map_store_is_decidable_flat :
+    WB ((l10.take 2).drop (0 + 1)) ∧ (l10.take 2).drop (0 + 1) = [Tok.sc] := by decide
+
+/-- **The crux of R275, negative half.**  The recursive `seq` branch's store is a `SeqBody` — a
+    recursive structure, NOT a decidable flat fact: it is proved by its *constructors*, bottoming out in
+    a sub-`Entry` (`Entry.scalar`), not by `decide`.  That sub-`Entry` is the recursion's *oracle*: the
+    locate driver supplies it.  Contrast `map_store_is_decidable_flat` above (closed by `decide`) — the
+    two stored facts differ in kind, and that difference is what orders the branches: the flat-store
+    `map` branch lands now, the recursive-store `seq` branch lands with the driver. -/
+theorem seq_store_is_recursive_structure : SeqBody [Tok.sc] :=
+  SeqBody.cons [Tok.sc] [] (Entry.scalar Tok.sc rfl) SeqBody.nil
+
+/-! ### The second bracket dispatch branch — the recursive `seq` lands STANDALONE too; the dispatch LEMMA vs the dispatch STEP-in-driver (toy of `recseqentry_seq_dispatch`, Reflection 276)
+
+R275 landed the near-leaf `map` branch and predicted the recursive `seq` branch "cannot land standalone."
+This section lands the `seq` branch, `entry_seq_dispatch` — *standalone*, before any driver — refining
+that prediction.  The dispatch LEMMA takes the recursive oracle as a *hypothesis* (`h_rec : SeqBody …`),
+exactly as the map lemma takes the flat `WB` as a hypothesis; a hypothesis is free regardless of how hard
+it will later be to discharge.  What genuinely waits for the driver is the *instantiation* of that
+hypothesis: `dispatch_seq_l1` discharges it from constructors (the consumer-of-a-produced-oracle), while
+`seq_dispatch_consumes_oracle` takes it as a bare hypothesis (the pure consumer) — and the driver will
+discharge it from a recursive call.  So BOTH bracket dispatch lemmas land standalone; the storage
+asymmetry is only in whether the body-hypothesis is dischargeable OUTSIDE the recursion (`WB`: yes, inline
+`decide`, cf. `map_store_is_decidable_flat`; `SeqBody`: no, only by the oracle, cf.
+`seq_store_is_recursive_structure`). -/
+
+/-- A faithful toy of `RecSeqEntry` whose `seq` constructor STORES its recursive body (like the real
+    `RecSeqEntry.seq`, and unlike this file's deliberately-unconditional `Entry.seq`).  The stored body is
+    what makes the `seq` branch's lift consume a recursive oracle rather than a flat fact. -/
+inductive RecEntry : List Tok → Prop where
+  | scalar (t : Tok) : RecEntry [t]
+  | seq (opTok clTok : Tok) (interior : List Tok)
+      (h_op : opTok = .op) (h_cl : clTok = .cl) (h_rec : SeqBody interior) :
+      RecEntry (opTok :: (interior ++ [clTok]))
+
+/-- **Recursive-sequence window-lift** (toy of the BUILD move `located_entry_of_recseqbody`).  Verbatim
+    the same window plumbing as `entry_map_window`, differing only in the terminal constructor
+    (`RecEntry.seq`) and the one stored field — the *recursive* `SeqBody` oracle, not the flat `WB`.  That
+    single field is the entire store-vs-project difference between the two bracket branches. -/
+theorem recentry_seq_window (l : List Tok) (lo hi : Nat)
+    (h_lo_hi : lo < hi) (h_hi : hi < l.length)
+    (h_open : tokAt l lo = .op) (h_close : tokAt l hi = .cl)
+    (h_rec : SeqBody ((l.take hi).drop (lo + 1))) :
+    RecEntry ((l.take (hi + 1)).drop lo) := by
+  have h_lo : lo < l.length := by omega
+  have h_rest : (l.take (hi + 1)).drop (lo + 1)
+      = (l.take hi).drop (lo + 1) ++ [l[hi]'h_hi] := by
+    have h_ts : l.take (hi + 1) = l.take hi ++ [l[hi]'h_hi] := by
+      rw [List.take_add_one, List.getElem?_eq_getElem h_hi]; rfl
+    rw [h_ts]
+    have h_len : lo + 1 ≤ (l.take hi).length := by rw [List.length_take]; omega
+    rw [List.drop_append_of_le_length h_len]
+  have h_peel : (l.take (hi + 1)).drop lo
+      = l[lo]'(by omega) :: (l.take (hi + 1)).drop (lo + 1) := by
+    have hlen : lo < (l.take (hi + 1)).length := by rw [List.length_take]; omega
+    have h := (List.getElem_cons_drop hlen).symm
+    rw [List.getElem_take] at h
+    exact h
+  rw [h_peel, h_rest]
+  have h_op_val : l[lo]'(by omega) = .op := by rw [List.getElem_eq_getD (.sc)]; exact h_open
+  have h_cl_val : l[hi]'h_hi = .cl := by rw [List.getElem_eq_getD (.sc)]; exact h_close
+  exact RecEntry.seq _ _ _ h_op_val h_cl_val h_rec
+
+/-- **Recursive-sequence head-dispatch step** (toy of `recseqentry_seq_dispatch`).  The verbatim sibling
+    of `entry_map_dispatch`: the SAME shared resolution `bracket_resolve_dispatch` (pins `m = j+1`, called
+    with identical arguments — it is axis-agnostic, naming neither bracket token) glued to the recursive
+    lift `recentry_seq_window`.  The only swap from the map branch is the body-hypothesis: the recursive
+    `h_rec : SeqBody …` in place of the flat `h_wb : WB …`.  A hypothesis either way — so the lemma is
+    just as standalone as the map one. -/
+theorem entry_seq_dispatch (l : List Tok) (m j : Nat)
+    (h_zero_m : 0 < m) (h_m_hi : m ≤ l.length)
+    (h_m_marker : bal l m = 0 ∧ (m = l.length ∨ isFE (tokAt l m) = true))
+    (h_m_least : ∀ k, 0 < k → k < m →
+      ¬ (bal l k = 0 ∧ (k = l.length ∨ isFE (tokAt l k) = true)))
+    (h_zero_j : 0 < j) (h_j_len : j < l.length)
+    (h_open : tokAt l 0 = .op) (h_close : tokAt l j = .cl)
+    (h_bal_j1 : bal l (j + 1) = 0)
+    (h_j_pos : ∀ i, 0 < i → i ≤ j → bal l i ≥ 1)
+    (h_rec : SeqBody ((l.take j).drop (0 + 1)))
+    (h_succ : j + 1 = l.length ∨ isFE (tokAt l (j + 1)) = true) :
+    m = j + 1 ∧ RecEntry ((l.take m).drop 0) := by
+  -- resolve: the SAME shared bracket spine (identical call to the map branch's) pins the split point.
+  have h_m_eq : m = j + 1 :=
+    bracket_resolve_dispatch l m j h_zero_m h_m_hi h_m_marker h_m_least h_zero_j h_bal_j1 h_j_pos h_succ
+  refine ⟨h_m_eq, ?_⟩
+  -- lift: with `m = j+1` the window is the opener-window `[0, j+1)`, a recursive `RecEntry.seq` built
+  -- from the inner-window `SeqBody` oracle.
+  rw [h_m_eq]
+  exact recentry_seq_window l 0 j h_zero_j h_j_len h_open h_close h_rec
+
+/-! #### Positive witness — the `seq` branch fires standalone, but its oracle is PRODUCED (not inline `decide`) -/
+
+-- `l1 = [op, sc, cl, fe, sc]` — first item the non-empty bracket `[a] = [op, sc, cl]` closing at `j = 2`,
+-- separator marker at `m = 3 = j + 1`.  Unlike `dispatch_map_l10` (whose `WB` hypothesis is discharged
+-- inline by `decide`), the recursive `h_rec : SeqBody [sc]` here is the second `?_`, discharged by an
+-- explicit constructor proof — the recursion's oracle, here PRODUCED by hand (the driver will produce it
+-- by a recursive call).
+theorem dispatch_seq_l1 : ∃ m, m = 2 + 1 ∧ RecEntry ((l1.take m).drop 0) := by
+  obtain ⟨m, hm_pos, hm_hi, hm_bal, hm_cond, hm_least⟩ := firstEntryBoundary l1 (by decide) (by decide)
+  refine ⟨m, entry_seq_dispatch l1 m 2 hm_pos hm_hi ⟨hm_bal, hm_cond⟩ hm_least
+    (by decide) (by decide) (by decide) (by decide) (by decide) ?_ ?_ (by decide)⟩
+  · -- positivity over `(0, 2]` = `{1, 2}`: both interior positions stay at depth `≥ 1`.
+    intro i h1 h2
+    rcases (show i = 1 ∨ i = 2 by omega) with rfl | rfl
+    · decide
+    · decide
+  · -- the recursive oracle `SeqBody [sc]` — NOT `decide`, assembled from constructors.
+    show SeqBody ((l1.take 2).drop (0 + 1))
+    have h : (l1.take 2).drop (0 + 1) = [Tok.sc] := by decide
+    rw [h]
+    exact SeqBody.cons [Tok.sc] [] (Entry.scalar Tok.sc rfl) SeqBody.nil
+
+-- The located seq-window really is the three-token `[op, sc, cl]`, marker at `m = 3` (the `fe`):
+#guard (l1.take 3).drop 0 == [Tok.op, Tok.sc, Tok.cl]
+#guard (l1.take 2).drop (0 + 1) == [Tok.sc]
+
+/-! #### The crux of R276 — the dispatch lemma is a free CONSUMER of the oracle (the lemma/step split) -/
+
+/-- **The dispatch LEMMA consumes the oracle; it never produces it.**  Given the recursive oracle
+    `h_rec : SeqBody [sc]` *as a bare hypothesis* — not constructed, not `decide`d — `entry_seq_dispatch`
+    fires and produces the `RecEntry`.  This is R276's refinement of R275 made concrete: the seq dispatch
+    lemma is a total function of its oracle, hence STANDALONE, exactly like the map lemma.  The contrast
+    with `dispatch_seq_l1` is the whole point — there the *same* lemma is fed an oracle PRODUCED from
+    constructors; here it is fed one ASSUMED.  Lemma layer = free consumer; only the production of the
+    oracle (the driver's recursive call) couples to the recursion. -/
+theorem seq_dispatch_consumes_oracle (h_rec : SeqBody [Tok.sc]) :
+    ∃ m, m = 2 + 1 ∧ RecEntry ((l1.take m).drop 0) := by
+  obtain ⟨m, hm_pos, hm_hi, hm_bal, hm_cond, hm_least⟩ := firstEntryBoundary l1 (by decide) (by decide)
+  refine ⟨m, entry_seq_dispatch l1 m 2 hm_pos hm_hi ⟨hm_bal, hm_cond⟩ hm_least
+    (by decide) (by decide) (by decide) (by decide) (by decide) ?_ ?_ (by decide)⟩
+  · intro i h1 h2
+    rcases (show i = 1 ∨ i = 2 by omega) with rfl | rfl
+    · decide
+    · decide
+  · -- the oracle is CONSUMED, not produced — passed straight in from the hypothesis.
+    show SeqBody ((l1.take 2).drop (0 + 1))
+    have h : (l1.take 2).drop (0 + 1) = [Tok.sc] := by decide
+    rw [h]
+    exact h_rec
+
+/-! ### The dispatch INPUT — the fused close locator, and the two-existential witness-identity trap (toy of `matchingClose_full_seq`, Reflection 277)
+
+R272–R276 built the dispatch *shapes*; every bracket dispatch above takes the matching close `j` and its
+facts as *hypotheses*.  This section is the toy of the first *input* supplier, `matchingClose_full_seq` —
+the lemma that LOCATES `j` and hands the dispatch the complete `j`-bundle.  The lesson is *how* to combine
+the two lossy sources R274 identified (the generic locator keeps positivity but only the close *delta*;
+the typed wrapper keeps the close *token* but drops positivity) when **each is an `∃ j`**.
+
+**Positive — fix the witness ONCE via the positivity-bearing source, then re-derive the token at THAT `j`
+from the shared core.**  The generic locator is a single `∃ j, …positivity…`; the "typed core" is a
+`∀ j, …facts at j… → token at j` (the sub-component the typed wrapper itself wraps — in L4YAML,
+`matching_close_typed_core`).  Threading the generic's witness `j` through the core yields one witness
+carrying BOTH facts.  No uniqueness lemma, no second existential. -/
+
+/-- **The fused locator.**  One `∃` in (the positivity-bearing generic source), one `∀`-core
+    (`h_core`, the token reader), one `∃` out carrying *all* the facts about a *single* witness `j`.
+    This is `matchingClose_full_seq`'s exact shape: run the generic locator once, apply the typed core
+    at the same `j`.  The typed *wrapper* (its own `∃ j`) is never invoked. -/
+theorem fused_locator_one_witness (l : List Tok)
+    (h_generic : ∃ j, 0 < j ∧ bal l (j + 1) = 0 ∧ (∀ i, 0 < i → i ≤ j → bal l i ≥ 1))
+    (h_core : ∀ j, (0 < j ∧ bal l (j + 1) = 0 ∧ (∀ i, 0 < i → i ≤ j → bal l i ≥ 1)) →
+      tokAt l j = .cl) :
+    ∃ j, (0 < j ∧ bal l (j + 1) = 0 ∧ (∀ i, 0 < i → i ≤ j → bal l i ≥ 1)) ∧ tokAt l j = .cl := by
+  obtain ⟨j, hj⟩ := h_generic
+  exact ⟨j, hj, h_core j hj⟩
+
+/-- Positive instance on `l1`'s bracket: the fused bundle holds at the single witness `j = 2` — the
+    positivity-bearing facts (close-just-past at `bal l1 3 = 0`, depth `≥ 1` over the interior `{1,2}`)
+    AND the close token `.cl`, all about the *same* `j`.  One witness, both facts — the dispatch can now
+    consume the full `j`-bundle (cf. `dispatch_bracket_l1`, which used only the positivity half). -/
+theorem fused_locator_l1 :
+    ∃ j, (0 < j ∧ bal l1 (j + 1) = 0 ∧ (∀ i, 0 < i → i ≤ j → bal l1 i ≥ 1)) ∧ tokAt l1 j = .cl := by
+  refine ⟨2, ⟨by decide, by decide, ?_⟩, by decide⟩
+  intro i h1 h2
+  rcases (show i = 1 ∨ i = 2 by omega) with rfl | rfl
+  · decide
+  · decide
+
+/-- **Negative — the witness-identity trap.**  Obtaining the two sources as *independent* existentials
+    `(∃ j, P j) ∧ (∃ j, Q j)` does NOT give `∃ j, P j ∧ Q j`: the two witnesses can differ, and without a
+    uniqueness lemma the conjunction-under-one-witness is unprovable.  Modelled at its logical core: both
+    `∃ j, j = 0` and `∃ j, j = 1` hold, yet `∃ j, j = 0 ∧ j = 1` is FALSE.  This is exactly why
+    `matchingClose_full_seq` must NOT `obtain` both the generic locator and the typed *wrapper* and try to
+    reconcile their `j`'s — it threads one witness through the shared core instead. -/
+theorem naive_two_existentials_lose_identity :
+    ((∃ j : Nat, j = 0) ∧ (∃ j : Nat, j = 1)) ∧ ¬ (∃ j : Nat, j = 0 ∧ j = 1) := by
+  refine ⟨⟨⟨0, rfl⟩, ⟨1, rfl⟩⟩, ?_⟩
+  rintro ⟨j, h0, h1⟩
+  omega
+
+/-! ### The map mirror — the fusion transports verbatim, only the close token is a knob (toy of `matchingClose_full_map`, Reflection 278)
+
+`matchingClose_full_seq` (R277) located the seq-bracket close and fused the two lossy sources at one
+witness.  Its map mirror `matchingClose_full_map` is a *verbatim sibling*: the entire fusion engine —
+the generic locator, the witness threading, the positivity invariant — is collection-agnostic and
+travels untouched; **only the leaf close token changes** (`.flowSequenceEnd` → `.flowMappingEnd`, with
+the matching opener token, pushed stack bottom, and close-reader).  The toy makes the "only the token
+is a knob" claim *literal*: the fusion below is parameterized over the close token `close`, so the seq
+and map locators are the **same theorem at `.cl` vs `.mc`** — the knob is an explicit argument, and the
+proof body never mentions it. -/
+
+/-- **The fusion engine, token-agnostic.**  Identical to `fused_locator_one_witness` except the close
+    token is a *parameter* `close`.  The proof — run the positivity-bearing generic source once, apply the
+    token core at that witness — does not mention `close` at all: it is pure plumbing.  This is R278's
+    claim in Lean: the seq/map seam is *exactly* the `close` knob, everything else is shared. -/
+theorem fused_locator_generic_close (l : List Tok) (close : Tok)
+    (h_generic : ∃ j, 0 < j ∧ bal l (j + 1) = 0 ∧ (∀ i, 0 < i → i ≤ j → bal l i ≥ 1))
+    (h_core : ∀ j, (0 < j ∧ bal l (j + 1) = 0 ∧ (∀ i, 0 < i → i ≤ j → bal l i ≥ 1)) →
+      tokAt l j = close) :
+    ∃ j, (0 < j ∧ bal l (j + 1) = 0 ∧ (∀ i, 0 < i → i ≤ j → bal l i ≥ 1)) ∧ tokAt l j = close := by
+  obtain ⟨j, hj⟩ := h_generic
+  exact ⟨j, hj, h_core j hj⟩
+
+/-- The **seq** locator is the engine at `close := .cl` — confirming `fused_locator_one_witness` above
+    factors through the shared engine with the seq token as the only choice. -/
+theorem fused_locator_seq_via_generic (l : List Tok)
+    (h_generic : ∃ j, 0 < j ∧ bal l (j + 1) = 0 ∧ (∀ i, 0 < i → i ≤ j → bal l i ≥ 1))
+    (h_core : ∀ j, (0 < j ∧ bal l (j + 1) = 0 ∧ (∀ i, 0 < i → i ≤ j → bal l i ≥ 1)) →
+      tokAt l j = .cl) :
+    ∃ j, (0 < j ∧ bal l (j + 1) = 0 ∧ (∀ i, 0 < i → i ≤ j → bal l i ≥ 1)) ∧ tokAt l j = .cl :=
+  fused_locator_generic_close l .cl h_generic h_core
+
+/-- The **map** mirror is the *same engine* at `close := .mc` — the verbatim transport, no new proof.
+    This is `matchingClose_full_map`'s relationship to `matchingClose_full_seq` in miniature: one
+    constructor (one token) of delta, the rest shared. -/
+theorem fused_locator_map_one_witness (l : List Tok)
+    (h_generic : ∃ j, 0 < j ∧ bal l (j + 1) = 0 ∧ (∀ i, 0 < i → i ≤ j → bal l i ≥ 1))
+    (h_core : ∀ j, (0 < j ∧ bal l (j + 1) = 0 ∧ (∀ i, 0 < i → i ≤ j → bal l i ≥ 1)) →
+      tokAt l j = .mc) :
+    ∃ j, (0 < j ∧ bal l (j + 1) = 0 ∧ (∀ i, 0 < i → i ≤ j → bal l i ≥ 1)) ∧ tokAt l j = .mc :=
+  fused_locator_generic_close l .mc h_generic h_core
+
+/-- Positive instance on `l4 = [mo, sc, mc]`'s map bracket: the fused bundle holds at the single
+    witness `j = 2` — positivity over the interior `{1,2}` (depth `≥ 1`), close-just-past
+    (`bal l4 3 = 0`), AND the map close token `.mc`.  The seq analogue is `fused_locator_l1`; the two
+    instances differ only in the list and the asserted close token, nothing in the method. -/
+theorem fused_locator_map_l4 :
+    ∃ j, (0 < j ∧ bal l4 (j + 1) = 0 ∧ (∀ i, 0 < i → i ≤ j → bal l4 i ≥ 1)) ∧ tokAt l4 j = .mc := by
+  refine ⟨2, ⟨by decide, by decide, ?_⟩, by decide⟩
+  intro i h1 h2
+  rcases (show i = 1 ∨ i = 2 by omega) with rfl | rfl
+  · decide
+  · decide
+
+/-- **Negative — the knob is load-bearing: the map instance is NOT a seq close.**  The same witness
+    `j = 2` that closes `l4`'s map bracket carries token `.mc`, which is *not* `.cl`.  So a locator that
+    hard-coded `.cl` would mis-classify the map bracket — confirming the close token is a genuine knob
+    that must flip, not an incidental label.  (The fusion *engine* is shared; the *token* is not.) -/
+theorem map_close_is_not_seq_close : tokAt l4 2 = .mc ∧ tokAt l4 2 ≠ .cl := by
+  exact ⟨by decide, by decide⟩
+
+/-! ### R279 — the driver bifurcates: a grammar-free ASSEMBLE half vs a grammar-bearing CLASSIFY half
+
+`recseqbody_window_assemble` is the driver's *assemble* half: given a *located* first entry plus the
+recursion's tail oracle, fold them into the whole-window `RecSeqBody` by selecting `cons` (ADVANCE)
+vs `single` (TERMINATE) on `firstEntryBoundary`'s marker disjunction.  Its defining property is that
+it names **no per-window grammar substrate** — all the grammar (head-shape, value-end successors)
+lives in the `RecSeqEntry` it is *handed* and in the CLASSIFY half that produces it.
+
+This toy makes the bifurcation literal.  `ToyEntry` carries the grammar (nonempty + head is a
+content-start — the two `RecSeqEntry` projections); `ToyBody` mirrors `RecSeqBody` (`single` /
+`cons`-with-separator).  The selector `toy_body_assemble` consumes only a `ToyEntry`, the marker
+disjunction, and a *guarded* tail oracle — never a grammar fact of its own; the TERMINATE branch
+never touches the oracle.  The negatives show (a) the marker disjunction is load-bearing (the two
+branches assert *different* windows), and (b) the grammar lives in CLASSIFY: a bad head can't even
+form a `ToyEntry`, so the obligation the assemble half is free of is exactly the one classify owes. -/
+
+/-- Toy content-start predicate: the three item-head tokens (scalar / seq-open / map-open). -/
+def isContentStart : Tok → Bool
+  | .sc | .op | .mo => true
+  | _ => false
+
+/-- Toy located entry — the grammar the assemble half is *handed*, mirroring `RecSeqEntry`'s
+    `ne_nil` / `head_contentStart` projections.  All content grammar lives HERE, not in assemble. -/
+structure ToyEntry (e : List Tok) : Prop where
+  ne : e ≠ []
+  head : isContentStart (e.headD .fe) = true
+
+/-- Toy body deliverable — the mirror of `RecSeqBody`: a lone entry (`single`) or an entry followed
+    by a `.fe` separator and a recursive rest (`cons`). -/
+inductive ToyBody : List Tok → Prop where
+  | single (e : List Tok) (he : ToyEntry e) : ToyBody e
+  | cons (e rest : List Tok) (he : ToyEntry e) (h_rest : ToyBody rest) :
+      ToyBody (e ++ .fe :: rest)
+
+/-- **The assemble selector** (toy of `recseqbody_window_assemble`).  Given a located entry `e`
+    (carrying its grammar), the marker disjunction `w = e ∨ w = e ++ .fe :: tail` (TERMINATE vs
+    ADVANCE — the toy of `m = hi ∨ tokens[m] = .flowEntry`), and the tail oracle *guarded* by
+    `w ≠ e`, produce `ToyBody w`.  The proof consumes NO grammar substrate: TERMINATE is
+    `ToyBody.single` (oracle untouched), ADVANCE is `ToyBody.cons` fed the guarded oracle. -/
+theorem toy_body_assemble (e tail w : List Tok)
+    (he : ToyEntry e)
+    (h_marker : w = e ∨ w = e ++ .fe :: tail)
+    (h_tail : w ≠ e → ToyBody tail) :
+    ToyBody w := by
+  rcases h_marker with h | h
+  · -- TERMINATE: the oracle is never invoked.
+    rw [h]; exact ToyBody.single e he
+  · -- ADVANCE: invoke the guarded oracle on the strictly-shorter tail.
+    subst h
+    refine ToyBody.cons e tail he (h_tail ?_)
+    intro hc
+    have hlen := congrArg List.length hc
+    simp only [List.length_append, List.length_cons] at hlen
+    omega
+
+/-- Positive — TERMINATE: a one-entry window assembles with the oracle *unused* (here vacuous,
+    `w ≠ e` is false), proving the selector's terminate branch is grammar-and-oracle-free. -/
+theorem toy_assemble_terminate : ToyBody [.sc] :=
+  toy_body_assemble [.sc] [.op, .cl] [.sc] ⟨by decide, by decide⟩ (Or.inl rfl)
+    (fun hc => absurd rfl hc)
+
+/-- Positive — ADVANCE: a two-entry window `[sc, fe, sc]` assembles by consing the head entry onto
+    the tail body, the oracle supplying `ToyBody [sc]` for the tail. -/
+theorem toy_assemble_advance : ToyBody [.sc, .fe, .sc] :=
+  toy_body_assemble [.sc] [.sc] [.sc, .fe, .sc] ⟨by decide, by decide⟩ (Or.inr rfl)
+    (fun _ => ToyBody.single [.sc] ⟨by decide, by decide⟩)
+
+/-- Positive — the assemble half is grammar-free in the *tail*: it folds in whatever `ToyBody` the
+    oracle hands back without inspecting the tail's content, exactly as `recseqbody_cons_window`
+    defers its `h_rest` verbatim. -/
+theorem toy_assemble_grammar_free_tail (tail : List Tok) (h_tail : ToyBody tail) :
+    ToyBody (.sc :: .fe :: tail) :=
+  toy_body_assemble [.sc] tail (.sc :: .fe :: tail) ⟨by decide, by decide⟩ (Or.inr rfl)
+    (fun _ => h_tail)
+
+/-- **Negative — the marker disjunction is load-bearing.**  TERMINATE and ADVANCE assert *different*
+    windows for the same entry/tail (`e` vs `e ++ .fe :: tail`), so the selector genuinely needs the
+    marker to know which `ToyBody` it produces; it cannot be dropped. -/
+theorem toy_marker_load_bearing (e tail : List Tok) : e ≠ e ++ .fe :: tail := by
+  intro hc
+  have hlen := congrArg List.length hc
+  simp only [List.length_append, List.length_cons] at hlen
+  omega
+
+/-- **Negative — the grammar lives in CLASSIFY, not ASSEMBLE.**  A window headed by a non-content-start
+    token (`.mc`, a close) cannot even form a `ToyEntry` — the very obligation the assemble half is free
+    of (it is *handed* a `ToyEntry`) is the one the classify half must discharge.  So the bifurcation is
+    real: assemble adds no grammar, classify owes all of it. -/
+theorem toy_bad_head_not_entry : ¬ ToyEntry [.mc] :=
+  fun h => absurd h.head (by decide)
+
+/-! ### R280 — the grammar-free assemble selector mirrors seq→map by transporting its WHOLE control
+flow verbatim; the seam is exactly the deliverable type (one knob), so the mirror confirms assemble
+is the reusable shape
+
+R279 (above) split the driver's per-window step into grammar-free *assemble* and grammar-bearing
+*classify*, and landed the seq assemble.  R280 lands its map mirror.  The lesson R280 isolates: a
+*grammar-free* step's seq/map seam costs exactly **one** knob — the deliverable type — and nothing
+else.  Unlike the grammar-bearing dispatch inputs (R278), whose mirror cost four collection-specific
+knobs (close token, stack bottom, close-reader, returned token), the assemble selector's mirror
+changes only the entry/body types and the two constructors that follow from them.  The marker token
+(`.fe`) and the guard are shared across kinds.
+
+The toy below makes "one knob" literal three ways: (1) `toy_map_body_assemble` is the map mirror,
+its proof *character-identical* to `toy_body_assemble`; (2) `toy_assemble_generic` abstracts the
+selector over an ARBITRARY entry predicate `P` and body relation `B` with their two constructors —
+it typechecks, proving the control flow names no collection-specific token, so seq and map are mere
+instances (`toy_seq_via_generic` / `toy_map_via_generic`); (3) the negatives show the head-grammar
+IS that one knob and it genuinely differs per kind (key vs content-start), the thing assemble is
+handed but never inspects. -/
+
+/-- Toy key-head predicate — the map deliverable's grammar: the head is a `.ky` key token (vs the
+    seq entry's three content-start tokens).  This single-token difference IS the seq/map knob. -/
+def isKeyHead : Tok → Bool
+  | .ky => true
+  | _ => false
+
+/-- Toy located map pair — the map mirror of `ToyEntry`, carrying `RecMapPair`'s `ne_nil` /
+    `head_key` projections. -/
+structure ToyMapPair (p : List Tok) : Prop where
+  ne : p ≠ []
+  head : isKeyHead (p.headD .fe) = true
+
+/-- Toy map body deliverable — the mirror of `ToyBody` / `RecMapBody`: a lone pair (`single`) or a
+    pair followed by a `.fe` separator and a recursive rest (`cons`). -/
+inductive ToyMapBody : List Tok → Prop where
+  | single (p : List Tok) (hp : ToyMapPair p) : ToyMapBody p
+  | cons (p rest : List Tok) (hp : ToyMapPair p) (h_rest : ToyMapBody rest) :
+      ToyMapBody (p ++ .fe :: rest)
+
+/-- **The map assemble selector** (toy of `recmapbody_window_assemble`).  Its proof is
+    *character-identical* to `toy_body_assemble`: same marker split, same `rw`/`subst`, same guarded
+    oracle, same length-contradiction discharging the guard.  Only the deliverable type changed —
+    `ToyMapPair`/`ToyMapBody` for `ToyEntry`/`ToyBody`.  Costing this mirror measures the seam: one
+    knob, the deliverable type. -/
+theorem toy_map_body_assemble (p tail w : List Tok)
+    (hp : ToyMapPair p)
+    (h_marker : w = p ∨ w = p ++ .fe :: tail)
+    (h_tail : w ≠ p → ToyMapBody tail) :
+    ToyMapBody w := by
+  rcases h_marker with h | h
+  · rw [h]; exact ToyMapBody.single p hp
+  · subst h
+    refine ToyMapBody.cons p tail hp (h_tail ?_)
+    intro hc
+    have hlen := congrArg List.length hc
+    simp only [List.length_append, List.length_cons] at hlen
+    omega
+
+/-- **The seam is exactly the deliverable type — one knob, made literal.**  The assemble selector
+    abstracted over an ARBITRARY entry predicate `P` and body relation `B` with their two
+    constructors (`Bsingle`/`Bcons`) supplied as hypotheses.  The control flow references the
+    collection only through those two constructors; the marker token `.fe` is baked in (it is NOT a
+    knob — it is shared across kinds).  That this generic version typechecks proves the assemble step
+    touches no grammar beyond the deliverable type: seq and map are both instances, differing only in
+    the `(P, B, Bsingle, Bcons)` 4-tuple the deliverable type determines. -/
+theorem toy_assemble_generic
+    (P : List Tok → Prop) (B : List Tok → Prop)
+    (Bsingle : ∀ e, P e → B e)
+    (Bcons : ∀ e rest, P e → B rest → B (e ++ .fe :: rest))
+    (e tail w : List Tok)
+    (he : P e)
+    (h_marker : w = e ∨ w = e ++ .fe :: tail)
+    (h_tail : w ≠ e → B tail) :
+    B w := by
+  rcases h_marker with h | h
+  · rw [h]; exact Bsingle e he
+  · subst h
+    refine Bcons e tail he (h_tail ?_)
+    intro hc
+    have hlen := congrArg List.length hc
+    simp only [List.length_append, List.length_cons] at hlen
+    omega
+
+/-- Positive — the seq assemble is the generic selector at the seq 4-tuple (no new proof). -/
+theorem toy_seq_via_generic (e tail w : List Tok) (he : ToyEntry e)
+    (h_marker : w = e ∨ w = e ++ .fe :: tail) (h_tail : w ≠ e → ToyBody tail) :
+    ToyBody w :=
+  toy_assemble_generic ToyEntry ToyBody ToyBody.single ToyBody.cons e tail w he h_marker h_tail
+
+/-- Positive — the map assemble is the *same* generic selector at the map 4-tuple; the ONLY change
+    from `toy_seq_via_generic` is the deliverable type, confirming the one-knob seam. -/
+theorem toy_map_via_generic (p tail w : List Tok) (hp : ToyMapPair p)
+    (h_marker : w = p ∨ w = p ++ .fe :: tail) (h_tail : w ≠ p → ToyMapBody tail) :
+    ToyMapBody w :=
+  toy_assemble_generic ToyMapPair ToyMapBody ToyMapBody.single ToyMapBody.cons p tail w hp h_marker
+    h_tail
+
+/-- Positive — map TERMINATE: a one-pair window assembles with the oracle unused. -/
+theorem toy_map_assemble_terminate : ToyMapBody [.ky] :=
+  toy_map_body_assemble [.ky] [.op, .cl] [.ky] ⟨by decide, by decide⟩ (Or.inl rfl)
+    (fun hc => absurd rfl hc)
+
+/-- Positive — map ADVANCE: a two-pair window `[ky, fe, ky]` conses the head pair onto the tail. -/
+theorem toy_map_assemble_advance : ToyMapBody [.ky, .fe, .ky] :=
+  toy_map_body_assemble [.ky] [.ky] [.ky, .fe, .ky] ⟨by decide, by decide⟩ (Or.inr rfl)
+    (fun _ => ToyMapBody.single [.ky] ⟨by decide, by decide⟩)
+
+/-- **Negative — the head-grammar IS the one knob, and it is map-specific.**  A content-start head
+    (`.sc`) cannot form a `ToyMapPair` — the map deliverable demands a `.ky` key head.  This is the
+    single thing the seq→map mirror changed; assemble is *handed* the pair and never inspects it. -/
+theorem toy_map_head_is_the_knob : ¬ ToyMapPair [.sc] :=
+  fun h => absurd h.head (by decide)
+
+/-- **Negative — the knob is genuinely seq/map-distinct.**  Dually, a key head (`.ky`) cannot form a
+    `ToyEntry` (the seq deliverable wants a content-start), so the knob is not a shared token that
+    happens to coincide — swapping it mis-classifies the collection.  Knob count = 1 and the knob is
+    real: the precise measure R280 reads off the mirror's cost. -/
+theorem toy_seq_head_not_map : ¬ ToyEntry [.ky] :=
+  fun h => absurd h.head (by decide)
+
+/-! ### R281 — the classify unifier names the grammar substrate by FOLDING the per-shape dispatches
+    into one head-shape disjunction.
+
+R279/R280 carved the locate driver into a grammar-free *assemble* half (done both axes) and a
+grammar-bearing *classify* half, and named the classify half as the seat of the driver's real
+difficulty: facts about the emitted-token CONTENT (which head shape an item is, where a value ends)
+that neither balance nor the producer contract encodes.  R281 lands the classify unifier — and the
+lesson is *how naming the substrate actually looks*: it is a **fold**, and the substrate is exactly
+the new hypothesis the fold introduces.
+
+The toy below folds the three `Entry`-returning dispatches — `entry_scalar_dispatch`,
+`entry_seqempty_dispatch`, `entry_map_dispatch` (R272/R273/R275 toys) — together with
+`firstEntryBoundary` (R262 toy) into ONE lemma `entry_classify` whose single new hypothesis `h_head`
+is a three-way **head-shape disjunction**.  That disjunction IS the grammar substrate of a body item
+(a scalar / an empty bracket `[ ]` / a nested mapping `{ … }`, each disjunct carrying its dispatch's
+own head/close/successor facts), named explicitly.  The conclusion STRENGTHENS `firstEntryBoundary`'s
+five split-point facts with the `Entry` classification — INPUT (where the item ends) and SHAPE (what
+it is) fused into one deliverable.  (The real `recseqentry_classify` folds a *fourth*, recursive
+`seq` branch too; it differs only by carrying a `SeqBody` oracle hypothesis — cf.
+`entry_seq_dispatch` / `seq_dispatch_consumes_oracle` above — and is omitted here only because the toy
+splits its recursive entry into a separate `RecEntry` type; the fold STRUCTURE is identical.)
+
+Positives: the unifier fires on a scalar head (`classify_l8_scalar`), an empty bracket
+(`classify_l3_seqempty`), and a nested mapping (`classify_l10_map`).  Negative
+(`classify_substrate_load_bearing`): a `.ky` head satisfies NO disjunct, so the substrate is
+unsatisfiable and the unifier cannot be invoked — even though `firstEntryBoundary` would still locate
+a marker, there is no `Entry` to lift, because the grammar substrate (not the bare marker) is what
+classifies.  The substrate is load-bearing. -/
+
+/-- **The classify unifier** (toy of `recseqentry_classify`).  Folds `firstEntryBoundary` + the three
+    `Entry` head-dispatches into one lemma whose one new hypothesis is the head-shape disjunction (the
+    named grammar substrate), and whose conclusion fuses `firstEntryBoundary`'s split-point INPUT with
+    the `Entry` SHAPE.  Proof: run `firstEntryBoundary` once, then `rcases` the disjunction and hand
+    each branch to its matching dispatch, threading the SAME `m`-facts. -/
+theorem entry_classify (l : List Tok) (h_pos : 0 < l.length) (h_total : bal l l.length = 0)
+    (h_head :
+      -- scalar leaf
+      (tokAt l 0 = .sc ∧ (1 = l.length ∨ isFE (tokAt l 1) = true)) ∨
+      -- empty bracket `[ ]`
+      (0 + 1 < l.length ∧ tokAt l 0 = .op ∧ tokAt l 1 = .cl ∧
+        (2 = l.length ∨ isFE (tokAt l 2) = true)) ∨
+      -- nested mapping `{ … }`
+      (∃ j, tokAt l 0 = .mo ∧ 0 < j ∧ j < l.length ∧ tokAt l j = .mc ∧
+        bal l (j + 1) = 0 ∧ (∀ i, 0 < i → i ≤ j → bal l i ≥ 1) ∧
+        WB ((l.take j).drop (0 + 1)) ∧ (j + 1 = l.length ∨ isFE (tokAt l (j + 1)) = true))) :
+    ∃ m, 0 < m ∧ m ≤ l.length ∧ bal l m = 0 ∧
+      (m = l.length ∨ isFE (tokAt l m) = true) ∧
+      (∀ k, 0 < k → k < m →
+        ¬ (bal l k = 0 ∧ (k = l.length ∨ isFE (tokAt l k) = true))) ∧
+      Entry ((l.take m).drop 0) := by
+  obtain ⟨m, h_zero_m, h_m_hi, h_m_bal, h_m_marker, h_m_least⟩ := firstEntryBoundary l h_pos h_total
+  refine ⟨m, h_zero_m, h_m_hi, h_m_bal, h_m_marker, h_m_least, ?_⟩
+  rcases h_head with
+    ⟨h_sc, h_succ⟩ |
+    ⟨h_lo1, h_open, h_close, h_succ⟩ |
+    ⟨j, h_open, h_zero_j, h_j_len, h_close, h_bal_j1, h_j_pos, h_wb, h_succ⟩
+  · -- scalar: minimality alone pins `m = 1`.
+    exact (entry_scalar_dispatch l m h_pos h_zero_m h_m_hi h_m_least h_sc h_succ).2
+  · -- empty bracket: the marker clause excludes the unbalanced position `1`, pinning `m = 2`.
+    exact (entry_seqempty_dispatch l m h_lo1 h_zero_m h_m_hi ⟨h_m_bal, h_m_marker⟩ h_m_least
+      h_open h_close h_succ).2
+  · -- nested mapping: the bracket spine pins `m = j+1`; near-leaf via flat `WB`.
+    exact (entry_map_dispatch l m j h_zero_m h_m_hi ⟨h_m_bal, h_m_marker⟩ h_m_least h_zero_j h_j_len
+      h_open h_close h_bal_j1 h_j_pos h_wb h_succ).2
+
+/-- Positive — scalar head: the unifier classifies `l8 = [sc, fe, sc]`'s first item as a scalar
+    `Entry` (`m = 1`, the located window `[sc]`). -/
+theorem classify_l8_scalar : ∃ m, Entry ((l8.take m).drop 0) := by
+  obtain ⟨m, _, _, _, _, _, h⟩ :=
+    entry_classify l8 (by decide) (by decide) (Or.inl ⟨by decide, Or.inr (by decide)⟩)
+  exact ⟨m, h⟩
+
+/-- Positive — empty bracket: the unifier classifies `l3 = [op, cl, fe, sc]`'s first item as an empty
+    sequence `Entry` (`m = 2`, the located window `[op, cl]`). -/
+theorem classify_l3_seqempty : ∃ m, Entry ((l3.take m).drop 0) := by
+  obtain ⟨m, _, _, _, _, _, h⟩ :=
+    entry_classify l3 (by decide) (by decide)
+      (Or.inr (Or.inl ⟨by decide, by decide, by decide, Or.inr (by decide)⟩))
+  exact ⟨m, h⟩
+
+/-- Positive — nested mapping: the unifier classifies `l10 = [mo, sc, mc, fe, sc]`'s first item as a
+    map `Entry` (`m = j+1 = 3`, the located window `[mo, sc, mc]`).  The `h_j_pos` interior-positivity
+    obligation is the lone non-`decide` field — supplied by case-splitting the bounded `i ∈ {1, 2}`. -/
+theorem classify_l10_map : ∃ m, Entry ((l10.take m).drop 0) := by
+  have h_j_pos : ∀ i, 0 < i → i ≤ 2 → bal l10 i ≥ 1 := by
+    intro i h1 h2
+    rcases (show i = 1 ∨ i = 2 by omega) with rfl | rfl
+    · decide
+    · decide
+  obtain ⟨m, _, _, _, _, _, h⟩ :=
+    entry_classify l10 (by decide) (by decide)
+      (Or.inr (Or.inr ⟨2, by decide, by decide, by decide, by decide, by decide, h_j_pos, by decide,
+        Or.inr (by decide)⟩))
+  exact ⟨m, h⟩
+
+/-- A body item whose head is a bare `.ky` — not a valid body-item head in the grammar. -/
+def lBad : List Tok := [.ky, .fe, .sc]
+
+/-- **Negative — the grammar substrate is load-bearing, not the bare marker.**  A `.ky` head satisfies
+    NONE of the three head-shape disjuncts (each demands `tokAt lBad 0 ∈ {.sc, .op, .mo}`), so the
+    substrate `h_head` is unsatisfiable and `entry_classify` cannot be invoked — there is no `Entry` to
+    lift.  `firstEntryBoundary` alone would still locate a marker `m`; what it CANNOT do is classify the
+    item, because classification is exactly what the named substrate (not the marker) supplies.  This is
+    why naming the substrate is the driver's real work: drop it and the fold has nothing to dispatch on. -/
+theorem classify_substrate_load_bearing :
+    ¬ ((tokAt lBad 0 = .sc ∧ (1 = lBad.length ∨ isFE (tokAt lBad 1) = true)) ∨
+       (0 + 1 < lBad.length ∧ tokAt lBad 0 = .op ∧ tokAt lBad 1 = .cl ∧
+         (2 = lBad.length ∨ isFE (tokAt lBad 2) = true)) ∨
+       (∃ j, tokAt lBad 0 = .mo ∧ 0 < j ∧ j < lBad.length ∧ tokAt lBad j = .mc ∧
+         bal lBad (j + 1) = 0 ∧ (∀ i, 0 < i → i ≤ j → bal lBad i ≥ 1) ∧
+         WB ((lBad.take j).drop (0 + 1)) ∧
+         (j + 1 = lBad.length ∨ isFE (tokAt lBad (j + 1)) = true))) := by
+  rintro (⟨h, _⟩ | ⟨_, h, _⟩ | ⟨j, h, _⟩) <;> exact absurd h (by decide)
+
+/-! ### R282 — the MAP classify unifier names a substrate that is a CONJUNCTION, not a disjunction:
+    a map body item has ONE shape, and the four-way head variety lives one level down.
+
+R281 (above) folded the seq dispatches into one lemma whose substrate `h_head` is a four-way head-shape
+**disjunction**.  R282 lands the symmetric map mirror `mapentry_classify` (toy of `recmapentry_classify`),
+and the mirror's substrate is differently *shaped* — and that is the lesson.  A seq body item is one of
+four head shapes, so its substrate is a disjunction (one disjunct per dispatch).  A *map* body item has
+exactly ONE shape: a key/value PAIR `ky <block_k> vl <block_v>` (`Pair`, whose sole `Pair.mk` is the
+inductive's only constructor).  So the map substrate is a single **conjunction**: a `ky` head, a depth-`0`
+`vl` separator at `kv`, and the two interior blocks as arbitrary `Entry`s.  The four-way head variety has
+not vanished — it lives one level DOWN, inside the pair's two `Entry` sub-blocks (each itself a scalar /
+`[ ]` / `{ … }`, resolved by the *seq* classify `entry_classify` above).  So the map level adds no fresh
+head-shape classification, only the pair glue `pair_window` and the same split-point pin.
+
+The pin needs a *different* invariant than the seq side.  The seq bracket dispatch pinned `m = j+1` from a
+*local* positivity invariant (`h_j_pos`: balance `≥ 1` strictly inside the bracket), which rules out every
+interior boundary for free.  A pair's interior is NOT uniformly positive: balance returns to `0` at the
+depth-`0` `vl` separator `kv` (here every `ky`/`vl`/`sc` token has delta `0`, so the whole pair sits at
+balance `0` throughout), saved from being a boundary only because those tokens are never `FE`.  No single
+balance invariant captures that, so the no-interior-boundary fact is supplied DIRECTLY as the substrate's
+last conjunct (`h_e_least`), in the same verified-but-unconsumed discipline by which `entry_classify` took
+its bracket `j`-bundle.  Given it, the pin is pure trichotomy: `firstEntryBoundary`'s least boundary `m`
+and the substrate's pair end `e` are each `≤` the other, so `m = e`, and `pair_window` lifts `[0, e)` to a
+`Pair`.
+
+Positive (`classify_l5_map`): the unifier classifies `l5 = [ky, sc, vl, sc]`'s first item as a scalar-key/
+scalar-value `Pair` (`m = e = 4`, the located window the whole list).  Negative
+(`classify_map_substrate_load_bearing`): a sequence body `l1 = [op, …]` has head `op ≠ ky`, so the
+conjunction's FIRST conjunct already fails — the map substrate is unsatisfiable on a non-mapping body, even
+though `firstEntryBoundary` would still locate a marker.  The substrate (its `ky`-head conjunct), not the
+bare marker, is what says "this is a pair." -/
+
+/-- **The map classify unifier** (toy of `recmapentry_classify`).  Folds `firstEntryBoundary` + the pair
+    glue `pair_window` + the split-point pin into one lemma whose one new hypothesis is the pair
+    **conjunction** substrate, and whose conclusion fuses `firstEntryBoundary`'s split-point INPUT with the
+    `Pair` SHAPE.  Proof: run `firstEntryBoundary` once, pin its `m` to the substrate's pair end `e` by
+    trichotomy (each is a boundary the other's minimality forbids strictly inside), then `pair_window`. -/
+theorem mapentry_classify (l : List Tok) (h_pos : 0 < l.length) (h_total : bal l l.length = 0)
+    (h_head :
+      tokAt l 0 = .ky ∧
+      ∃ kv e, 0 < kv ∧ kv < e ∧ e ≤ l.length ∧
+        tokAt l kv = .vl ∧
+        Entry ((l.take kv).drop (0 + 1)) ∧
+        Entry ((l.take e).drop (kv + 1)) ∧
+        bal l e = 0 ∧
+        (e = l.length ∨ isFE (tokAt l e) = true) ∧
+        (∀ k, 0 < k → k < e →
+          ¬ (bal l k = 0 ∧ (k = l.length ∨ isFE (tokAt l k) = true)))) :
+    ∃ m, 0 < m ∧ m ≤ l.length ∧ bal l m = 0 ∧
+      (m = l.length ∨ isFE (tokAt l m) = true) ∧
+      (∀ k, 0 < k → k < m →
+        ¬ (bal l k = 0 ∧ (k = l.length ∨ isFE (tokAt l k) = true))) ∧
+      Pair ((l.take m).drop 0) := by
+  obtain ⟨m, h_zero_m, h_m_hi, h_m_bal, h_m_marker, h_m_least⟩ := firstEntryBoundary l h_pos h_total
+  obtain ⟨h_key, kv, e, h_zero_kv, h_kv_e, h_e_len, h_value, h_ke, h_ve, h_e_bal, h_e_marker, h_e_least⟩ :=
+    h_head
+  have h_m_e : m = e := by
+    rcases Nat.lt_trichotomy m e with h | h | h
+    · exact absurd ⟨h_m_bal, h_m_marker⟩ (h_e_least m h_zero_m h)
+    · exact h
+    · exact absurd ⟨h_e_bal, h_e_marker⟩ (h_m_least e (by omega) h)
+  refine ⟨m, h_zero_m, h_m_hi, h_m_bal, h_m_marker, h_m_least, ?_⟩
+  rw [h_m_e]
+  exact pair_window l 0 kv e h_zero_kv h_kv_e (by omega) h_key h_value h_ke h_ve
+
+/-- Positive — the map unifier classifies `l5 = [ky, sc, vl, sc]`'s first item as a scalar/scalar `Pair`
+    (`m = e = 4`).  The two `Entry` sub-blocks are produced by the *seq* scalar leaf (`entry_scalar_window`)
+    — the seq classify supplies the map level's sub-blocks.  The lone non-`decide` field is the
+    no-interior-boundary conjunct, discharged by case-splitting the bounded `k ∈ {1, 2, 3}`. -/
+theorem classify_l5_map : ∃ m, Pair ((l5.take m).drop 0) := by
+  have h_e_least : ∀ k, 0 < k → k < 4 →
+      ¬ (bal l5 k = 0 ∧ (k = l5.length ∨ isFE (tokAt l5 k) = true)) := by
+    intro k h1 h2
+    rcases (show k = 1 ∨ k = 2 ∨ k = 3 by omega) with rfl | rfl | rfl <;> decide
+  obtain ⟨m, _, _, _, _, _, h⟩ :=
+    mapentry_classify l5 (by decide) (by decide)
+      ⟨by decide, 2, 4, by decide, by decide, by decide, by decide,
+        entry_scalar_window l5 1 (by decide) (by decide),
+        entry_scalar_window l5 3 (by decide) (by decide),
+        by decide, Or.inl (by decide), h_e_least⟩
+  exact ⟨m, h⟩
+
+/-- **Negative — the map substrate's `ky`-head conjunct is load-bearing.**  A sequence body
+    `l1 = [op, sc, cl, fe, sc]` has head `op ≠ ky`, so the FIRST conjunct of the map substrate already
+    fails — the whole conjunction is unsatisfiable, and `mapentry_classify` cannot be invoked on a
+    non-mapping body.  Unlike the seq substrate (a disjunction, refuted only by ruling out ALL branches),
+    the map substrate is a conjunction, refuted by its single head conjunct alone: one shape, one head. -/
+theorem classify_map_substrate_load_bearing :
+    ¬ (tokAt l1 0 = .ky ∧
+       ∃ kv e, 0 < kv ∧ kv < e ∧ e ≤ l1.length ∧
+         tokAt l1 kv = .vl ∧
+         Entry ((l1.take kv).drop (0 + 1)) ∧
+         Entry ((l1.take e).drop (kv + 1)) ∧
+         bal l1 e = 0 ∧
+         (e = l1.length ∨ isFE (tokAt l1 e) = true) ∧
+         (∀ k, 0 < k → k < e →
+           ¬ (bal l1 k = 0 ∧ (k = l1.length ∨ isFE (tokAt l1 k) = true)))) := by
+  rintro ⟨h, _⟩
+  exact absurd h (by decide)
+
+end Tests.Reflections.EntryBoundaryLocator

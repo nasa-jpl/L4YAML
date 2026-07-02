@@ -754,28 +754,28 @@ theorem empty_node (s : SurfPos) : SENode s s :=
 theorem isWhiteSpace_gives_SSWhite (c : Char) (rest : List Char) (col : Nat)
     (h : isWhiteSpaceBool c = true) :
     SSWhite ⟨c :: rest, col⟩ ⟨rest, col + 1⟩ := by
-  simp [isWhiteSpaceBool, Bool.or_eq_true, beq_iff_eq] at h
+  simp [isWhiteSpaceBool, isSpaceBool, isTabBool, Bool.or_eq_true, beq_iff_eq] at h
   rcases h with rfl | rfl
   · exact SSWhite.space rest col
   · exact SSWhite.tab rest col
 
 /-- A whitespace character (space or tab) is not `\n`. -/
 theorem isWhiteSpace_not_newline (c : Char) (h : isWhiteSpaceBool c = true) : c ≠ '\n' := by
-  simp [isWhiteSpaceBool, Bool.or_eq_true, beq_iff_eq] at h
+  simp [isWhiteSpaceBool, isSpaceBool, isTabBool, Bool.or_eq_true, beq_iff_eq] at h
   rcases h with rfl | rfl <;> decide
 
 /-- A whitespace character (space or tab) is not `\r`. -/
 theorem isWhiteSpace_not_cr (c : Char) (h : isWhiteSpaceBool c = true) : c ≠ '\r' := by
-  simp [isWhiteSpaceBool, Bool.or_eq_true, beq_iff_eq] at h
+  simp [isWhiteSpaceBool, isSpaceBool, isTabBool, Bool.or_eq_true, beq_iff_eq] at h
   rcases h with rfl | rfl <;> decide
 
 /-- A non-line-break character is not `\n`. -/
 theorem not_isLineBreak_not_newline (c : Char) (h : ¬isLineBreakBool c = true) : c ≠ '\n' := by
-  intro heq; subst heq; simp [isLineBreakBool] at h
+  intro heq; subst heq; simp [isLineBreakBool, isLineFeedBool, isCarriageReturnBool] at h
 
 /-- A non-line-break character is not `\r`. -/
 theorem not_isLineBreak_not_cr (c : Char) (h : ¬isLineBreakBool c = true) : c ≠ '\r' := by
-  intro heq; subst heq; simp [isLineBreakBool] at h
+  intro heq; subst heq; simp [isLineBreakBool, isLineFeedBool, isCarriageReturnBool] at h
 
 /-- A non-line-break character satisfies `isNbChar`. -/
 theorem not_isLineBreak_isNbChar (c : Char) (h : ¬isLineBreakBool c = true) :

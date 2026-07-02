@@ -97,17 +97,11 @@ theorem stripAnnotationsPairs_eq_map (ps : List (YamlValue × YamlValue)) :
     obtain ⟨k, v⟩ := p
     simp [stripAnnotations.stripAnnotationsPairs, List.map, ih]
 
-/-- Array elements are strictly smaller than the array (for well-founded recursion). -/
+/-- Array elements are strictly smaller than the array (for well-founded recursion).
+    Since Lean 4.31.0 this is exactly the library lemma `Array.sizeOf_getElem`. -/
 theorem array_sizeOf_getElem_lt {α : Type _} [SizeOf α] (a : Array α) (i : Nat)
-    (hi : i < a.size) : sizeOf a[i] < sizeOf a := by
-  have hil : i < a.toList.length := hi
-  have hmem : a.toList[i] ∈ a.toList := List.getElem_mem hil
-  have h1 := List.sizeOf_lt_of_mem hmem
-  have h2 : a.toList[i]'hil = a[i] := Array.getElem_toList hi
-  rw [h2] at h1
-  have h3 : sizeOf a.toList < sizeOf a := by
-    rcases a with ⟨l⟩; dsimp; omega
-  omega
+    (hi : i < a.size) : sizeOf a[i] < sizeOf a :=
+  Array.sizeOf_getElem a i hi
 
 /-- First component of a pair is strictly smaller than the pair. -/
 theorem prod_fst_sizeOf_lt {α β : Type _} [SizeOf α] [SizeOf β]
