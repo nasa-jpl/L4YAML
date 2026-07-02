@@ -143,6 +143,12 @@ private def parseStreamMarkedLoop (ps : ParseState) (acc : Array MarkedDoc)
     match ps.peek? with
     | some .streamEnd => .ok acc
     | none => .ok acc
+    | some .documentEnd =>
+      -- Mirror of `parseStreamLoop`'s suffix handling: a bare `...` is a
+      -- document *suffix* (§9.2 [205]), not an empty document.  Consume and
+      -- continue without recording a spurious empty `MarkedDoc`.
+      let (_, ps) := ps.tryConsume .documentEnd
+      parseStreamMarkedLoop ps acc .afterDocumentEnd fuel
     | some tok =>
       if !streamState.validNextToken tok then
         let pos := ps.peekPos?.getD { offset := 0, line := 0, col := 0 }

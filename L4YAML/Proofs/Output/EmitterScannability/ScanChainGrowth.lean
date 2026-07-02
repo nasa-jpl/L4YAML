@@ -3533,6 +3533,7 @@ that `parseStream` also succeeds on those tokens. The key argument:
 theorem parseStreamLoop_single_doc
     (ps : ParseState) (fuel : Nat) (h_fuel : fuel ≥ 2)
     (tok : YamlToken) (h_peek : ps.peek? = some tok) (h_not_se : tok ≠ .streamEnd)
+    (h_not_de : tok ≠ .documentEnd)
     (doc : YamlDocument) (ps' : ParseState)
     (h_doc : parseDocument ps = .ok (doc, ps'))
     (h_peek' : ps'.peek? = some .streamEnd) :
@@ -3547,10 +3548,12 @@ theorem parseStreamLoop_single_doc
       unfold parseStreamLoop; dsimp only []  -- reduce Nat.succ match
       rw [h_peek]  -- substitute ps.peek? = some tok
       -- Case-split by YamlToken constructor to resolve the compiled match.
-      -- .streamEnd is impossible (contradicts h_not_se); all others take catch-all.
+      -- .streamEnd / .documentEnd are impossible (contradict h_not_se / h_not_de,
+      -- and the C1 fix routes `.documentEnd` to a distinct suffix-skip arm anyway);
+      -- all others take the content catch-all.
       cases tok
-      <;> first | exact absurd rfl h_not_se | skip
-      -- All 22 remaining goals: content branch (identical proof)
+      <;> first | exact absurd rfl h_not_se | exact absurd rfl h_not_de | skip
+      -- All remaining goals: content branch (identical proof)
       all_goals (
         dsimp only []  -- reduce the YamlToken match
         simp only [StreamState.validNextToken, Bool.not_true]

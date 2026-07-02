@@ -81,6 +81,16 @@ def ParseState.peek? (ps : ParseState) : Option YamlToken :=
   else
     none
 
+/-- Peek at the token one past the current one, without consuming.
+    Used for the two-token lookahead that distinguishes a scanner-inserted
+    retroactive `key` marker (`key` immediately followed by `value`) from a
+    genuine next map entry. -/
+def ParseState.peekNext? (ps : ParseState) : Option YamlToken :=
+  if ps.pos + 1 < ps.tokens.size then
+    some ps.tokens[ps.pos + 1]!.val
+  else
+    none
+
 /-- Peek at the current token's source position. -/
 def ParseState.peekPos? (ps : ParseState) : Option YamlPos :=
   if ps.pos < ps.tokens.size then

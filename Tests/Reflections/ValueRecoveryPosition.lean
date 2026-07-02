@@ -139,7 +139,9 @@ theorem seqTokens_first_doc_at_pos_one
     (h_parse : parseStream seqTokens = .ok docs)
     (h_ne : 0 < docs.size) :
     ∃ ps ps', ps.tokens = seqTokens ∧ ps.pos = 1 ∧ parseDocument ps = .ok (docs[0]!, ps') :=
-  parseStream_first_doc_at_pos_one seqTokens docs h_parse h_ne
+  -- The C1 guard `seqTokens[1]!.val ≠ .documentEnd` is genuinely true (it is
+  -- `.flowSequenceStart`), so this stays a non-vacuous use of the lemma.
+  parseStream_first_doc_at_pos_one seqTokens docs h_parse h_ne (by native_decide)
 
 /-- Mirror: the lemma applied to the REAL mapping token array. -/
 theorem mapTokens_first_doc_at_pos_one
@@ -147,7 +149,9 @@ theorem mapTokens_first_doc_at_pos_one
     (h_parse : parseStream mapTokens = .ok docs)
     (h_ne : 0 < docs.size) :
     ∃ ps ps', ps.tokens = mapTokens ∧ ps.pos = 1 ∧ parseDocument ps = .ok (docs[0]!, ps') :=
-  parseStream_first_doc_at_pos_one mapTokens docs h_parse h_ne
+  -- The C1 guard `mapTokens[1]!.val ≠ .documentEnd` is genuinely true (it is
+  -- `.flowMappingStart`), so this stays a non-vacuous use of the lemma.
+  parseStream_first_doc_at_pos_one mapTokens docs h_parse h_ne (by native_decide)
 
 -- Axiom audit — the position-pinning lemma and its loop traces route through `parseStreamLoop` /
 -- `parseDocument` and the `Except`-monad simp machinery, so they carry `Classical.choice` (same

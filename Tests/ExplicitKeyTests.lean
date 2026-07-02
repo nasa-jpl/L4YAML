@@ -452,16 +452,21 @@ def testNestedStructureKeys (state : IO.Ref TestCollector) : IO Unit := do
   | .error e => checkM state "? [1,2] : value parses" false e.toString
 
   -- Flow mapping as key: ? {a: 1}\n: value
-  -- Note: `: value` at col 0 starts a separate entry (null→"value"),
-  -- since the flow mapping closes on the `?` line.  Two entries total.
+  -- Per §8.2.2 [189] the `?` and `:` at the same (col-0) indentation form ONE
+  -- explicit block-mapping entry: key = {a: 1}, value = "value".  This holds
+  -- regardless of the key being a flow or block collection — confirmed against the
+  -- cpp / nimyaml / dotnet-yamldotnet reference parsers, which all emit a single
+  -- `{a:1} → "value"` pair.  L4YAML previously split this into two entries
+  -- (`{a:1}→null`, `null→"value"`); the retroactive-key skip (matrix defect C3,
+  -- test V9D5) now merges the two halves of the explicit entry correctly.
   match parseSingle "? {a: 1}\n: value" with
   | .ok v =>
     check state "? {a:1} : value is mapping" (v.isMapping)
-    check state "? {a:1} pair count" (pairCount v == 2)
+    check state "? {a:1} pair count" (pairCount v == 1)
     match pairAt? v 0 with
     | some (k, val) =>
       check state "? {a:1} key is mapping" (k.isMapping)
-      check state "? {a:1} value is null" (isNull val)
+      check state "? {a:1} value" (content val == some "value")
     | none => check state "? {a:1} has pair" false
   | .error e => checkM state "? {a:1} : value parses" false e.toString
 

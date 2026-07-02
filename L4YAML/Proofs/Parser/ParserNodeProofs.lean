@@ -272,8 +272,17 @@ theorem parseBlockMappingEntryValue_ag (h_ih : ParseNodeAG n)
     all_goals try (obtain ⟨rfl, rfl⟩ := h_ok; exact h_tc)
     -- parseNode: h_ok = parseNode ps_tc fuel = .ok (val, ps')
     all_goals exact AG.trans h_tc (h_ih _ fuel _ _ h_fuel h_ok)
-  · -- consumed = false
-    obtain ⟨rfl, rfl⟩ := h_ok; exact h_tc
+  · -- consumed = false: retroactive-key skip (V9D5) or empty value.
+    -- Prefix AG across the skipped retroactive `key` + consumed `:` — both are
+    -- pure position advances, so anchors are preserved.
+    have h_pre : AG ps (((ps.tryConsume .value).2.tryConsume .key).2.tryConsume .value).2 :=
+      AG.trans h_tc (AG.trans (AG.tryConsume _ _) (AG.tryConsume _ _))
+    split at h_ok                    -- outer: peek?, peekNext?
+    all_goals (try (split at h_ok))  -- inner: peek? dispatch in the retroactive arm
+    all_goals (first
+      | (obtain ⟨rfl, rfl⟩ := h_ok; exact h_tc)
+      | (obtain ⟨rfl, rfl⟩ := h_ok; exact h_pre)
+      | exact AG.trans h_pre (h_ih _ fuel _ _ h_fuel h_ok))
 
 -- handleBlockMappingKeyEntry: advance → if keyHasContent → parseNode/emptyNode → BEV → restore path
 set_option maxHeartbeats 400000 in
@@ -1176,8 +1185,14 @@ theorem parseBlockMappingEntryValue_aar (h_ih_aar : ParseNodeAAR n)
     all_goals try (obtain ⟨rfl, rfl⟩ := h_ok; exact emptyNode_aar _)
     -- parseNode case: val from parseNode
     all_goals exact h_ih_aar _ fuel _ _ h_fuel h_ok
-  · -- consumed = false: val = emptyNode
-    obtain ⟨rfl, rfl⟩ := h_ok; exact emptyNode_aar _
+  · -- consumed = false: retroactive-key skip (V9D5) or empty value.
+    -- Value is either emptyNode (both fallback and retroactive empty cases) or a
+    -- parseNode result (retroactive collection value) — AAR holds for both.
+    split at h_ok                    -- outer: peek?, peekNext?
+    all_goals (try (split at h_ok))  -- inner: peek? dispatch in the retroactive arm
+    all_goals (first
+      | (obtain ⟨rfl, rfl⟩ := h_ok; exact emptyNode_aar _)
+      | exact h_ih_aar _ fuel _ _ h_fuel h_ok)
 
 -- handleBlockMappingKeyEntry: (key, val, ps') — both key and val AAR
 set_option maxHeartbeats 400000 in

@@ -1070,11 +1070,33 @@ theorem parseBlockMappingEntryValue_wb (tokens : Array (Positioned YamlToken))
       have h_wb := parseNodeWB_apply h_ih h_tc_tok h_ok (by omega)
       exact ⟨h_wb.1, fun h_flow => h_wb.2.1 (h_tc_fn ▸ h_flow),
              h_wb.2.2.1.trans h_tc_fn, h_wb.2.2.2⟩)
-  · -- consumed = false: result = (emptyNode, ps)
-    obtain ⟨rfl, rfl⟩ := h_ok
-    exact ⟨empty_scalar_scannable none none false,
-           fun _ => empty_scalar_scannable none none true,
-           h_tc_fn, h_tc_tok⟩
+  · -- consumed = false: retroactive-key skip (V9D5) or empty value.
+    -- Extend the flowNesting/tokens facts across the skipped retroactive `key`
+    -- and the consumed `:` (both non-flow tokens, so nesting is preserved).
+    have hB_tok : ((ps.tryConsume .value).2.tryConsume .key).2.tokens = tokens :=
+      (tryConsume_tokens _ .key).trans h_tc_tok
+    have hC_tok : (((ps.tryConsume .value).2.tryConsume .key).2.tryConsume .value).2.tokens = tokens :=
+      (tryConsume_tokens _ .value).trans hB_tok
+    have hB_fn : flowNesting tokens ((ps.tryConsume .value).2.tryConsume .key).2.pos
+        = flowNesting tokens ps.pos :=
+      (tryConsume_flowNesting tokens _ .key h_tc_tok
+        (by decide) (by decide) (by decide) (by decide)).trans h_tc_fn
+    have hC_fn : flowNesting tokens (((ps.tryConsume .value).2.tryConsume .key).2.tryConsume .value).2.pos
+        = flowNesting tokens ps.pos :=
+      (tryConsume_flowNesting tokens _ .value hB_tok
+        (by decide) (by decide) (by decide) (by decide)).trans hB_fn
+    split at h_ok                    -- outer: peek?, peekNext?
+    all_goals (try (split at h_ok))  -- inner: peek? dispatch in the retroactive arm
+    all_goals (first
+      | (obtain ⟨rfl, rfl⟩ := h_ok
+         exact ⟨empty_scalar_scannable none none false,
+                fun _ => empty_scalar_scannable none none true, h_tc_fn, h_tc_tok⟩)
+      | (obtain ⟨rfl, rfl⟩ := h_ok
+         exact ⟨empty_scalar_scannable none none false,
+                fun _ => empty_scalar_scannable none none true, hC_fn, hC_tok⟩)
+      | (have h_wb := parseNodeWB_apply h_ih hC_tok h_ok (by omega)
+         exact ⟨h_wb.1, fun h_flow => h_wb.2.1 (hC_fn ▸ h_flow),
+                h_wb.2.2.1.trans hC_fn, h_wb.2.2.2⟩))
 
 /-- Variant of `parseBlockMappingEntryValue_wb` with h_ok before h_eq,
     so that `ps` is inferred from the `h_ok` hypothesis. -/
@@ -3026,6 +3048,8 @@ theorem parseStreamLoop_docs_from_parseDocument
       simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_acc
     · -- none → result = docs
       simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_acc
+    · -- documentEnd (bare `...` suffix) → skip it, recurse with same accumulator
+      exact ih _ _ _ ((tryConsume_tokens _ _).trans h_eq) h_acc h_ok
     · -- some tok → validation + parseDocument + recurse
       rename_i tok
       split at h_ok
@@ -3397,8 +3421,19 @@ theorem parseBlockMappingEntryValue_pos_mono (fuel : Nat)
     -- Direct parseNode branch
     all_goals (try { have h_pn := parseNodePosMono_apply h_ih h_ok; try simp only [] at h_pn
                      omega })
-  · -- consumed = false → emptyNode
-    simp only [Except.ok.injEq] at h_ok; subst h_ok; simp only []; omega
+  · -- consumed = false: retroactive-key skip (V9D5) or empty value.
+    -- Position advances monotonically through the skipped `key` and consumed `:`.
+    have h_k := tryConsume_pos_mono (ps.tryConsume .value).2 .key
+    have h_v := tryConsume_pos_mono ((ps.tryConsume .value).2.tryConsume .key).2 .value
+    split at h_ok                    -- outer: peek?, peekNext?
+    all_goals (try (split at h_ok))  -- inner: peek? dispatch in the retroactive arm
+    -- emptyNode branches (fallback at ps_tc, retroactive at the skip+consume state)
+    all_goals (try {
+      simp only [Except.ok.injEq] at h_ok; subst h_ok; simp only []; omega })
+    -- parseNode branch (retroactive collection value)
+    all_goals (try {
+      have h_pn := parseNodePosMono_apply h_ih h_ok; try simp only [] at h_pn
+      omega })
 
 theorem handleBlockMappingKeyEntry_pos_mono (fuel : Nat)
     (h_ih : ParseNodePosMono fuel)

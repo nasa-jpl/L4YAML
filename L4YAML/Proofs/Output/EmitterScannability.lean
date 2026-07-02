@@ -277,7 +277,7 @@ theorem parseStream_three_tokens_scalar (content : String)
   -- Apply parseStreamLoop_single_doc
   have h_fuel_ge : tokens.size ≥ 2 := by omega
   have h_loop := parseStreamLoop_single_doc ps1 tokens.size h_fuel_ge
-    (.scalar content .doubleQuoted) h_peek1 (by intro h; cases h)
+    (.scalar content .doubleQuoted) h_peek1 (by intro h; cases h) (by intro h; cases h)
     { value := .scalar { content, style := .doubleQuoted, tag := none, anchor := none },
       directives := #[], anchors := ps1.advance.anchors, nodePositions := ps1.advance.nodePositions }
     ps1.advance h_doc_val h_peek2
@@ -567,7 +567,7 @@ theorem parseStream_emitSequence (style : CollectionStyle) (items : Array YamlVa
     -- Apply parseStreamLoop_single_doc
     have h_fuel_ge : tokens.size ≥ 2 := by omega
     have h_loop_doc := parseStreamLoop_single_doc ps1 tokens.size h_fuel_ge
-      .flowSequenceStart h_peek1 (by intro h; cases h)
+      .flowSequenceStart h_peek1 (by intro h; cases h) (by intro h; cases h)
       { value := .sequence .flow items_res,
         directives := #[], anchors := ps_loop.advance.anchors,
         nodePositions := ps_loop.advance.nodePositions }
@@ -765,7 +765,7 @@ theorem parseStream_emitMapping (style : CollectionStyle) (pairs : Array (YamlVa
     -- Apply parseStreamLoop_single_doc
     have h_fuel_ge : tokens.size ≥ 2 := by omega
     have h_loop_doc := parseStreamLoop_single_doc ps1 tokens.size h_fuel_ge
-      .flowMappingStart h_peek1 (by intro h; cases h)
+      .flowMappingStart h_peek1 (by intro h; cases h) (by intro h; cases h)
       { value := .mapping .flow pairs_res,
         directives := #[], anchors := ps_loop.advance.anchors,
         nodePositions := ps_loop.advance.nodePositions }

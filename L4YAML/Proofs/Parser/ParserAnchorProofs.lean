@@ -174,6 +174,8 @@ theorem parseStreamLoop_aliases_resolve
     split at h_ok
     · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_acc
     · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_acc
+    · -- documentEnd (bare `...` suffix) → skip it, recurse with same accumulator
+      exact ih _ _ _ h_acc h_ok
     · -- some tok → validation + parseDocument + recurse
       split at h_ok
       · simp at h_ok

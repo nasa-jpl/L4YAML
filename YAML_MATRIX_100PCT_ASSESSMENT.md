@@ -7,15 +7,17 @@ formalization, and the proofs.*
 Generated 2026-07-02 · baseline: **event 362/402**, **json 240/279 valid**
 (see [YAML_MATRIX_COMPARISON.md](YAML_MATRIX_COMPARISON.md)).
 
-**Progress:** J1 + A + A′/B1/B3/E applied 2026-07-02 → **event 391/402** (+29),
-**json 271/279 valid** (+26). See [Status log](#status-log).
+**Progress:** J1 + A + A′/B1/B3/E + C1/C3 applied 2026-07-02 → **event 395/402**
+(+33), **json 274/279 valid** (+29). See [Status log](#status-log).
 
 ---
 
 ## Bottom line
 
 * *(Original baseline framing; current standing is in **Progress** above —
-  after J1/A/A′/B1/B3/E only **11 event** and **8 genuine JSON** diffs remain.)*
+  after J1/A/A′/B1/B3/E/C1/C3 only **7 event** and **5 genuine JSON** diffs remain,
+  spread over just three root causes: D (6CK3), B2 (DE56×4), C2 (FH7J/PW8X) on the
+  event axis; J2 (3GZX) + B2 on JSON.)*
   **40 event diffs and 39 JSON diffs remain. Every one is a *content* or
   *structure* defect in the scanner/parser — none is a spurious accept/reject.**
   L4YAML still parses every test with the correct success/failure verdict.
@@ -50,9 +52,9 @@ Generated 2026-07-02 · baseline: **event 362/402**, **json 240/279 valid**
 | **B1** ✅ | Double-quoted: tab-containing blank line folds to space not `\n` | 5GBF | yes | `foldQuotedNewlinesLoop` (`skipSpaces`→tab-aware) | **structural + grammar**‡ | XS |
 | **B2** | Double-quoted: an *escaped* trailing tab is trimmed as whitespace | DE56/00–03 | yes | `collectDoubleQuotedLoop`/`trimTrailingWS` | none (structural only) | **M** |
 | **B3** ✅ | Plain: continuation-line leading tab / tab-blank line not folded | HS5T, NB6Z, UV7Q | yes | `collectPlainScalar_handleBlockLineBreak`, `skipBlankLinesLoop` | **structural + grammar**‡ | S |
-| **C1** | Lone `...` / comment-only tail emits a spurious empty document | HWV9, QT73, M7A3 | yes | `parseStreamLoop` **and** `Events.parseStreamMarkedLoop` | **none break** | S |
+| **C1** ✅ | Lone `...` / comment-only tail emits a spurious empty document | HWV9, QT73, M7A3 | yes | `parseStreamLoop` **and** `Events.parseStreamMarkedLoop` | **5 runtime `parseStreamLoop` lemmas**§ | S |
 | **C2** | Empty node with a tag/anchor opens a *sequence* that swallows siblings | FH7J, PW8X | (event-only) | `parseNodeContent` (thread `hadProps`) | **breaks 6 lemmas, re-prove** | **M** |
-| **C3** | Explicit complex mapping emits spurious empty `=VAL :` pairs | V9D5 | (event-only) | `parseBlockMappingEntryValue` add `.value` arm | **none break** | XS |
+| **C3** ✅ | Explicit collection-key entry split into two empty-half pairs | V9D5 | (event-only) | `parseBlockMappingEntryValue` retroactive-`key` skip | **5 runtime BEV lemmas**§ + 1 test | XS |
 | **D** | Tag suffix percent-escape (`%21`→`!`) not decoded | 6CK3 | no (value unaffected) | `Events.resolveTagForEvent` (emitter-side) | **none** (emitter-side) | XS |
 | **E** ✅ | Literal `\|` keep/clip on trailing-whitespace-only lines | JEF9/02, L24T/01 | yes | `scanBlockScalarBody` chomp of blank tail | **structural**‡ | S |
 | **J1** ✅ | JSON ignores explicit core tags: `!!int 42`→`"42"` not `42` | — | 2AUY 33X3 74H7 F2C7 L94M | `Output/Json.lean` `scalarType` | **none** (Json.lean unproven) | XS |
@@ -140,6 +142,51 @@ touched ~7 proof files.** The remaining scanner fixes (B2) should budget for the
 same `skipSpaces→skipWhitespace`-class structural churn if they change which
 whitespace primitive a scanned span uses.
 
+§ *Correction (C1/C3, done):* the "none break" call was wrong a **third** time —
+same lesson (definitional-shape change, not spec content). Both fixes touched the
+`do`-block shape that structural proofs `unfold` + `split` on:
+
+* **C1** added a `| some .documentEnd => …` arm to `parseStreamLoop` (a §9.2 [205]
+  `l-document-suffix`, consumed without emitting a doc). Every runtime proof that
+  `unfold`s `parseStreamLoop` and case-splits on `ps.peek?` gained an unhandled
+  case: `parseStreamLoop_docs_from_parseDocument` (`ParserWellBehaved`),
+  `parseStreamLoop_wfa` (`ParserWfaProofs`), `parseStreamLoop_aliases_resolve`
+  (`ParserAnchorProofs`), `parseStreamLoop_preserves_head` +
+  `parseStreamLoop_first_doc_from_entry` (`ContentFidelity`), and
+  `parseStreamLoop_single_doc` (`ScanChainGrowth`). The first three take a
+  one-line `documentEnd` bullet (skip ⇒ apply the IH with the same accumulator,
+  anchors/tokens preserved through `tryConsume .documentEnd`). The last three are
+  **entry-shape** lemmas ("the first doc came from `parseDocument` at the entry")
+  that go *false* for a leading bare `...`, so they needed a
+  `peek? ≠ some .documentEnd` guard threaded from their callers (all emitter
+  output, whose pos-1 token is a flow opener). `Events.parseStreamMarkedLoop` has
+  **no** proofs (emitter-only), so the C1 dual site's second half is proof-free.
+* **C3** was applied as a *retroactive-`key` skip*: for `? <key>` whose key is a
+  block/flow collection, the scanner inserts a `key` marker right before the `:`
+  value marker (which opens a new line), and the parser was reading `? key` and
+  `: value` as two empty-half entries. The fix skips a `key` that is *immediately
+  followed by* `value` (mirrors `parseFlowMappingValue`'s existing flow handling).
+  Crucially it was placed **in the `consumed = false` else branch**, leaving the
+  `tryConsume .value` prefix and the whole `consumed = true` path byte-identical —
+  so only each lemma's short else-tail moved: `parseBlockMappingEntryValue`'s
+  `_ag`/`_aar` (`ParserNodeProofs`), `_wb`/`_pos_mono` (`ParserWellBehaved`),
+  `_wfa`/`_tok` (`ParserWfaProofs`). The skip is `tryConsume .key` (not `advance`)
+  so the same `tryConsume_*` companions discharge tokens/flow-nesting/anchors.
+* **The C3 guard is behaviourally exact, verified against reference parsers.** The
+  same retroactive-`key` token pattern appears for *both* V9D5
+  (`? earth: blue` / `: moon: white`, must merge) and `? {a: 1}` / `: value` (also
+  must merge). cpp / nimyaml / dotnet-yamldotnet all emit **one** `key → value`
+  pair for each, so the merge is correct in both cases — one `ExplicitKeyTests`
+  expectation that pinned the *old* two-entry split was spec-incorrect and was
+  updated (§8.2.2 [189]: `?`/`:` at aligned indent = one explicit entry, flow or
+  block key alike).
+* **Indexed twins untouched (deliberate).**
+  `L4YAML.TokenParser.Indexed.{parseStreamLoop,parseBlockMappingEntryValue}` are a
+  separate proof-only parser (`TokenParserIx.lean`), so the `Indexed*` proof files
+  did **not** break. Per precedent they stay untouched — **but they now model the
+  old C1/C3 behaviour**, so the eventual Phase-3 cutover (indexed twin *replaces*
+  the runtime parser) must port these two fixes and re-prove the indexed lemmas.
+
 ---
 
 ## The three fixes that cost something
@@ -216,8 +263,11 @@ but the logic itself is fiddlier than the other scanner tweaks. Est. medium-impl
    8 JSON twins (+8), zero regressions. **Not** zero proof impact: XS/S in source
    but ~7 proof files of structural + one grammar-witness maintenance (see the
    ‡ correction above).
-4. **C1, C3** — document-model and complex-mapping structure. Small, no proof
-   breakage (remember the C1 dual site).
+4. **C1, C3** ✅ *(done — see [Status log](#status-log))* — document-model and
+   complex-mapping structure. Cleared exactly HWV9/M7A3/QT73 (C1) + V9D5 (C3) on
+   both axes, zero regressions. **Not** proof-free (the "no proof breakage" call
+   was wrong again): C1's new `parseStreamLoop` arm broke 5 runtime lemmas and C3's
+   shape change broke 5 more — all mechanical (see the § note below).
 5. **C2** — empty-node/sequence; budget for re-proving the `ParserNodeProofs`
    sub-lemmas.
 6. **B2, J2** — the two fiddly ones (escaped trailing whitespace; order-aware alias
@@ -355,3 +405,42 @@ existing `skipWhitespace_corr`), `ScannerPlainScalarValid` (flowLevel),
 (`foldQuotedNewlinesLoop_prod` specialised n→0 + new
 `gstar_sswhite_to_flowlineprefix0`). All 12 runtime suites still pass
 (dumproundtrip 117/117 included). No `#guard` broke this round.
+
+### C1, C3 — document-suffix + explicit collection-key (done 2026-07-02)
+
+**Changes.**
+* **C1** (HWV9, QT73, M7A3) — a bare `...` with no preceding content is an §9.2
+  [205] `l-document-suffix`, not an empty document. Added a
+  `| some .documentEnd => tryConsume .documentEnd; recurse (.afterDocumentEnd)`
+  arm to **both** `TokenParser.parseStreamLoop` **and**
+  `Events.parseStreamMarkedLoop` (the dual site), so a leading/interstitial `...`
+  is consumed without emitting a phantom `+DOC =VAL: -DOC`. Explicit empty
+  documents (`--- ...`) are untouched — their loop peek is `.documentStart`, which
+  still routes through `parseDocument`.
+* **C3** (V9D5) — an explicit `? <collection-key>` entry was split into two
+  empty-half pairs (`{key}→null`, `null→{value}`) because the scanner inserts a
+  retroactive `key` marker before the `:` value marker. `parseBlockMappingEntryValue`
+  now skips a `key` that is *immediately followed by* `value` (in the
+  `consumed = false` branch, guarded via `peekNext?`), keeping the entry a single
+  `? key : value` pair. New two-token lookahead `ParseState.peekNext?`.
+
+**Result.** Event **391 → 395** (+4), JSON **271 → 274 valid** (of 279, +3),
+**zero regressions** (full pre/post fail-set diff). Cleared: HWV9, M7A3, QT73
+(C1, both axes) + V9D5 (C3, event-only). Remaining **7 event** diffs: 6CK3 (D),
+DE56/00–03 (B2), FH7J/PW8X (C2). Remaining **5 genuine JSON** diffs: 3GZX (J2),
+DE56/00–03 (B2) — plus the 3 phantom error-test rejects.
+
+**Proofs.** Green `lake build` (0 errors; only the pre-existing
+`EmitterScannability` sorries) after fixing **10 runtime lemmas across 5 files**
+(see the § note above): C1 broke 5 `parseStreamLoop` lemmas (`ParserWellBehaved`,
+`ParserWfaProofs`, `ParserAnchorProofs`, `ContentFidelity` ×2, `ScanChainGrowth`);
+C3 broke 5 `parseBlockMappingEntryValue` lemmas (`ParserNodeProofs` ×2,
+`ParserWellBehaved` ×2, `ParserWfaProofs` ×2 — the else-branch placement kept the
+`consumed = true` proofs untouched). Three of the C1 entry-shape lemmas + the one
+`single_doc` lemma needed a `peek? ≠ documentEnd` guard threaded to their callers
+(incl. the `ValueRecoveryPosition` reflection demo, `by native_decide` on real
+tokens). The `Indexed*` twins were **not** touched (separate proof-only parser;
+they now lag the runtime on C1/C3 — flagged for the Phase-3 cutover). All 12
+runtime suites pass; one spec-incorrect `ExplicitKeyTests` expectation
+(`? {a: 1}` / `: value`) was corrected to the reference-parser-confirmed single
+pair (149/149).

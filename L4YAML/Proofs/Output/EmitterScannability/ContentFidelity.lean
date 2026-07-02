@@ -753,6 +753,8 @@ theorem parseStreamLoop_preserves_head
       simp only [Except.ok.injEq] at h_ok; subst h_ok; exact ⟨h_ne, rfl⟩
     · -- none → result = docs
       simp only [Except.ok.injEq] at h_ok; subst h_ok; exact ⟨h_ne, rfl⟩
+    · -- documentEnd (bare `...` suffix) → skip, recurse with same accumulator
+      exact ih _ _ _ h_ne h_ok
     · rename_i tok
       split at h_ok
       · simp at h_ok  -- validation failure → error, contradiction
@@ -782,7 +784,8 @@ theorem parseStreamLoop_first_doc_from_entry
     (ps : ParseState) (streamState : StreamState) (fuel : Nat)
     (result : Array YamlDocument)
     (h_ok : parseStreamLoop ps #[] streamState fuel = .ok result)
-    (h_ne : 0 < result.size) :
+    (h_ne : 0 < result.size)
+    (h_not_de : ps.peek? ≠ some .documentEnd) :
     ∃ ps', parseDocument ps = .ok (result[0]!, ps') := by
   cases fuel with
   | zero =>
@@ -793,6 +796,10 @@ theorem parseStreamLoop_first_doc_from_entry
     split at h_ok
     · simp only [Except.ok.injEq] at h_ok; subst h_ok; simp at h_ne  -- streamEnd → empty, ⊥
     · simp only [Except.ok.injEq] at h_ok; subst h_ok; simp at h_ne  -- none → empty, ⊥
+    · -- documentEnd: a bare `...` entry is excluded by h_not_de (with a non-empty
+      -- result the first doc would come from *after* the skipped suffix, not from
+      -- `parseDocument ps`, so the conclusion needs the entry to be real content).
+      exact absurd (by assumption) h_not_de
     · rename_i tok
       split at h_ok
       · simp at h_ok  -- validation failure
@@ -826,7 +833,8 @@ theorem parseStreamLoop_first_doc_from_entry
 theorem parseStream_first_doc_at_pos_one
     (tokens : Array (Positioned YamlToken)) (docs : Array YamlDocument)
     (h_parse : parseStream tokens = .ok docs)
-    (h_ne : 0 < docs.size) :
+    (h_ne : 0 < docs.size)
+    (h_t1_nde : tokens[1]!.val ≠ .documentEnd) :
     ∃ ps ps', ps.tokens = tokens ∧ ps.pos = 1 ∧ parseDocument ps = .ok (docs[0]!, ps') := by
   unfold parseStream at h_parse
   simp only [bind, Except.bind] at h_parse
@@ -837,8 +845,15 @@ theorem parseStream_first_doc_at_pos_one
       (expect_tokens _ _ _ _ h_expect).trans (by simp)
     have h_pos : ps_start.pos = 1 := by
       rw [expect_pos_succ _ _ _ _ h_expect]
+    -- The entry (pos 1) is a real content token, not a bare `...`: excludes the
+    -- C1 suffix-skip arm, so the first document does come from `parseDocument ps`.
+    have h_sd_nde : ps_start.peek? ≠ some .documentEnd := by
+      unfold ParseState.peek?; rw [h_pos, h_tok]
+      split
+      · intro h; exact h_t1_nde (Option.some.inj h)
+      · simp
     obtain ⟨ps', h_pd⟩ :=
-      parseStreamLoop_first_doc_from_entry ps_start .initial tokens.size docs h_parse h_ne
+      parseStreamLoop_first_doc_from_entry ps_start .initial tokens.size docs h_parse h_ne h_sd_nde
     exact ⟨ps_start, ps', h_tok, h_pos, h_pd⟩
 
 /-! ### §5.8  Front B — value-recovery trace, brick 2 assembled: outer-shape recovery end-to-end
@@ -890,6 +905,7 @@ theorem parseStream_flowSeqStart_loop_witness
       raw_docs[0]!.value = .sequence .flow items' none none := by
   obtain ⟨ps_1, ps_1', h_tok, h_pos, h_pd⟩ :=
     parseStream_first_doc_at_pos_one tokens raw_docs h_parse h_ne
+      (by rw [h_t1]; intro h; cases h)
   let ps_th : ParseState := { ps_1 with tagHandles := #[] }
   have h_th_tok : ps_th.tokens = tokens := by simp [ps_th, h_tok]
   have h_th_pos : ps_th.pos = 1 := by simp [ps_th, h_pos]
@@ -977,6 +993,7 @@ theorem parseStream_flowSeqStart_recovers_outer_shape
     ∃ items'', (raw_docs.map YamlDocument.compose)[0]!.value = .sequence .flow items'' none none := by
   obtain ⟨ps, ps', h_ps_tok, h_ps_pos, h_pd⟩ :=
     parseStream_first_doc_at_pos_one tokens raw_docs h_parse h_ne
+      (by rw [h_head]; intro h; cases h)
   have h_peek : ps.peek? = some .flowSequenceStart := by
     unfold ParseState.peek?
     rw [h_ps_pos, h_ps_tok, if_pos h_lt, h_head]
@@ -1017,6 +1034,7 @@ theorem parseStream_flowMapStart_loop_witness
       raw_docs[0]!.value = .mapping .flow pairs' none none := by
   obtain ⟨ps_1, ps_1', h_tok, h_pos, h_pd⟩ :=
     parseStream_first_doc_at_pos_one tokens raw_docs h_parse h_ne
+      (by rw [h_t1]; intro h; cases h)
   let ps_th : ParseState := { ps_1 with tagHandles := #[] }
   have h_th_tok : ps_th.tokens = tokens := by simp [ps_th, h_tok]
   have h_th_pos : ps_th.pos = 1 := by simp [ps_th, h_pos]
@@ -1096,6 +1114,7 @@ theorem parseStream_flowMapStart_recovers_outer_shape
     ∃ pairs'', (raw_docs.map YamlDocument.compose)[0]!.value = .mapping .flow pairs'' none none := by
   obtain ⟨ps, ps', h_ps_tok, h_ps_pos, h_pd⟩ :=
     parseStream_first_doc_at_pos_one tokens raw_docs h_parse h_ne
+      (by rw [h_head]; intro h; cases h)
   have h_peek : ps.peek? = some .flowMappingStart := by
     unfold ParseState.peek?
     rw [h_ps_pos, h_ps_tok, if_pos h_lt, h_head]

@@ -304,7 +304,25 @@ def parseBlockMappingEntryValue (ps : ParseState) (fuel : Nat)
         parseNode ps fuel
     | _ => parseNode ps fuel
   else
-    .ok (emptyNode, ps)
+    -- §8.2.2 [191] `l-block-map-explicit-value`: an explicit `? key` whose key is
+    -- a *block collection* is followed by a scanner-inserted retroactive `key`
+    -- marker right before the `:` value marker (which opens a new line at the
+    -- key's own indentation).  `tryConsume .value` above missed it (peek was
+    -- `.key`), so skip the retroactive `key`, consume the real `:`, and parse the
+    -- value — keeping the explicit entry a single `? key : value` pair instead of
+    -- splitting into two empty-half entries (V9D5).  Guarded on the *following*
+    -- token being `.value`, so a genuine next entry (`? a` / `? b`, where the
+    -- second `key` is followed by content) is untouched.  Mirrors the flow
+    -- retroactive-key handling in `parseFlowMappingValue`.  Kept in this branch
+    -- so the `consumed = true` path (and its proofs) stay structurally unchanged.
+    match ps.peek?, ps.peekNext? with
+    | some .key, some .value =>
+      let (_, ps) := ps.tryConsume .key    -- skip the retroactive `key`
+      let (_, ps) := ps.tryConsume .value  -- consume the real `:`
+      match ps.peek? with
+      | some .key | some .blockEnd | none => .ok (emptyNode, ps)
+      | _ => parseNode ps fuel
+    | _, _ => .ok (emptyNode, ps)
 
 /-- Handle the `.key` branch of a block mapping iteration.
     Parses the key node (if present) and delegates value parsing to
@@ -749,6 +767,14 @@ def parseStreamLoop (ps : ParseState) (docs : Array YamlDocument)
     match ps.peek? with
     | some .streamEnd => .ok docs
     | none => .ok docs
+    | some .documentEnd =>
+      -- A bare `...` with no preceding document content is a document *suffix*
+      -- (§9.2 [205] `l-document-suffix`), not an empty document.  Consume it and
+      -- continue without emitting a spurious empty document.  Explicit empty
+      -- documents (`--- ...`) are unaffected: their loop peek is `.documentStart`,
+      -- so they still route through `parseDocument` and emit an empty node.
+      let (_, ps) := ps.tryConsume .documentEnd
+      parseStreamLoop ps docs .afterDocumentEnd fuel
     | some tok =>
       if !streamState.validNextToken tok then
         let pos := ps.peekPos?.getD { offset := 0, line := 0, col := 0 }

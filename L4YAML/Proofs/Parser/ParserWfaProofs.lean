@@ -432,8 +432,19 @@ theorem parseBlockMappingEntryValue_wfa
     all_goals (try (obtain ⟨rfl, rfl⟩ := h_ok; exact h_tc_wfa))
     -- parseNode goals
     all_goals exact h_ih _ fuel _ _ h_fuel h_tc_tok h_ok h_tc_wfa
-  · -- consumed = false
-    obtain ⟨rfl, rfl⟩ := h_ok; exact h_tc_wfa
+  · -- consumed = false: retroactive-key skip (V9D5) or empty value.
+    -- Anchors/tokens are preserved through the skipped `key` and consumed `:`.
+    have h_C_wfa : WellFormedAnchors
+        (((ps.tryConsume .value).2.tryConsume .key).2.tryConsume .value).2.anchors := by
+      rw [tc_anchors, tc_anchors]; exact h_tc_wfa
+    have h_C_tok : (((ps.tryConsume .value).2.tryConsume .key).2.tryConsume .value).2.tokens
+        = tokens := by rw [tc_tokens, tc_tokens]; exact h_tc_tok
+    split at h_ok                    -- outer: peek?, peekNext?
+    all_goals (try (split at h_ok))  -- inner: peek? dispatch in the retroactive arm
+    all_goals (first
+      | (obtain ⟨rfl, rfl⟩ := h_ok; exact h_tc_wfa)
+      | (obtain ⟨rfl, rfl⟩ := h_ok; exact h_C_wfa)
+      | exact h_ih _ fuel _ _ h_fuel h_C_tok h_ok h_C_wfa)
 
 -- handleBlockMappingValueEntry
 theorem handleBlockMappingValueEntry_wfa
@@ -515,7 +526,15 @@ theorem parseBlockMappingEntryValue_tok
     all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
     all_goals (try (obtain ⟨rfl, rfl⟩ := h_ok; exact h_tc_tok))
     all_goals exact parseNode_tokens_of_wb h_wb _ fuel h_fuel h_tc_tok _ _ h_ok
-  · obtain ⟨rfl, rfl⟩ := h_ok; exact h_tc_tok
+  · -- consumed = false: retroactive-key skip (V9D5) or empty value.
+    have h_C_tok : (((ps.tryConsume .value).2.tryConsume .key).2.tryConsume .value).2.tokens
+        = tokens := (tc_tokens _ _).trans ((tc_tokens _ _).trans h_tc_tok)
+    split at h_ok                    -- outer: peek?, peekNext?
+    all_goals (try (split at h_ok))  -- inner: peek? dispatch in the retroactive arm
+    all_goals (first
+      | (obtain ⟨rfl, rfl⟩ := h_ok; exact h_tc_tok)
+      | (obtain ⟨rfl, rfl⟩ := h_ok; exact h_C_tok)
+      | exact parseNode_tokens_of_wb h_wb _ fuel h_fuel h_C_tok _ _ h_ok)
 
 theorem handleBlockMappingValueEntry_tok
     {tokens : Array (Positioned YamlToken)} {n : Nat}
@@ -1617,6 +1636,13 @@ theorem parseStreamLoop_wfa
     split at h_ok
     · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_acc
     · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_acc
+    · -- documentEnd (bare `...` suffix) → skip it, recurse with same accumulator
+      apply ih
+      · exact (tryConsume_tokens_wfa ps .documentEnd).trans h_tok
+      · have h_eq := tryConsume_anchors_wfa ps .documentEnd
+        simp only [h_eq]; exact h_wfa_ps
+      · exact h_acc
+      · exact h_ok
     · -- some tok
       split at h_ok
       · simp at h_ok -- invalid token → error
