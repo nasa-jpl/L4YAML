@@ -625,6 +625,147 @@ theorem jvadv_scalar_leaf_fires :
     have hk0 : k = 0 := by omega
     subst hk0; native_decide
 
+/-! ### JOINT COLLECTION branch, step 1 — the loop-joint TARGET, the balance-FREE shift brick, and the
+     two loop BASE branches (`sorry`-free)
+
+The joint scalar leaf above closes a NODE whose head is a scalar.  A NODE whose head is a flow collection
+(`.sequence`/`.mapping`) reduces — after `parseNode` peels the head bracket and one unit of fuel — to a
+LOOP over the body: `parseFlowSequenceLoop` (TokenParser.lean:400) / `parseFlowMappingLoop` (:495).  So the
+collection branch of `ParseNodeValueAdvanceLocal` reduces to a JOINT LOOP fact: two loop runs at agreeing
+positions, sharing an accumulator, produce EQUAL items AND advance EQUALLY (relative).  This pass captures
+that loop-joint target, lands its BALANCE-FREE mechanism and its two BASE branches `sorry`-free, and probes
+it on REAL emission — WITHOUT attempting the recursive step (a genuine mutual induction over the parser
+clique, next pass).  Discipline: probe/validate the target before the induction; no `sorry` on source.
+
+**The re-architecture's central bet, made concrete here.** The 6th-pass finding was that the loop is
+LOOKAHEAD-driven (exits on `peek? = flowSequenceEnd`, no bracket counter).  The recursive loop step, given
+the joint IH on the element (value + EQUAL advance `w`), must re-establish the bounded `.val`-agreement at
+the SHIFTED positions `p1+w`, `p2+w` to fire the IH on the loop tail.  `agree_shift` below shows that
+re-establishment is PURE index arithmetic driven by the equal advance `w` — NO `flowBracketBalance`.  That
+is the mechanism that would retire P2a's ~1500-line balance bridge.  (Still not a proof that it does — the
+recursive step, where `w` must also be shown to keep the element WITHIN the span, is next pass.  `agree_shift`
+is `[propext, Quot.sound]` — `Classical`-free — underscoring it is plain arithmetic, not parser reasoning.) -/
+
+/-- **The balance-FREE agreement-shift brick.**  If bounded `.val`-agreement holds over `[p, p+n)` and both
+    runs advance by the SAME `w`, agreement holds over the residual span at the shifted starts `p1+w`,
+    `p2+w`.  Pure index arithmetic (`[propext, Quot.sound]`, no `flowBracketBalance`, no `Classical`).  This
+    is what the recursive loop step will use to re-arm the IH's agreement hypothesis from the joint's ADVANCE
+    conclusion `w` — the replacement for P2a's imported balance frame. -/
+theorem agree_shift (t1 t2 : Array (Positioned YamlToken)) (p1 p2 n w : Nat)
+    (h_agree : ∀ k, k < n → (t1[p1 + k]?.map (·.val)) = (t2[p2 + k]?.map (·.val))) :
+    ∀ k, k < n - w → (t1[(p1 + w) + k]?.map (·.val)) = (t2[(p2 + w) + k]?.map (·.val)) := by
+  intro k hk
+  have hkw : w + k < n := by omega
+  have h := h_agree (w + k) hkw
+  rw [show p1 + w + k = p1 + (w + k) by omega, show p2 + w + k = p2 + (w + k) by omega]
+  exact h
+
+/-- **The loop-joint TARGET** — the object the flow-COLLECTION branch of `ParseNodeValueAdvanceLocal`
+    reduces to.  Two `parseFlowSequenceLoop` runs at agreeing positions, sharing the accumulator `items`,
+    under bounded `.val`-agreement + the two frame side-conditions: the recovered items AGREE and the
+    RELATIVE advance AGREES.  Same shape as the node joint, keyed on the loop instead of `parseNode`.
+    Typechecked target, birth-probed on a real collection (`loop_joint_birth`) and the empty-collection
+    boundary (`loop_close_fires`); NOT proved as a whole, NO `sorry`. -/
+def ParseFlowSequenceLoopValueAdvanceLocal : Prop :=
+  ∀ (t1 t2 : Array (Positioned YamlToken)) (p1 p2 f n : Nat)
+    (anch : Array (String × YamlValue)) (items : Array YamlValue),
+    (∀ k, k < n → (t1[p1 + k]?.map (·.val)) = (t2[p2 + k]?.map (·.val))) →
+    (∀ its ps', parseFlowSequenceLoop { tokens := t1, pos := p1, anchors := anch } f items = .ok (its, ps') →
+      ps'.pos ≤ p1 + n) →
+    (∀ its ps', parseFlowSequenceLoop { tokens := t2, pos := p2, anchors := anch } f items = .ok (its, ps') →
+      ps'.pos ≤ p2 + n) →
+    ((parseFlowSequenceLoop { tokens := t1, pos := p1, anchors := anch } f items).toOption.map (·.1)
+      = (parseFlowSequenceLoop { tokens := t2, pos := p2, anchors := anch } f items).toOption.map (·.1))
+    ∧ ((parseFlowSequenceLoop { tokens := t1, pos := p1, anchors := anch } f items).toOption.map (fun r => r.2.pos - p1)
+      = (parseFlowSequenceLoop { tokens := t2, pos := p2, anchors := anch } f items).toOption.map (fun r => r.2.pos - p2))
+
+/-- Reduction helper: at a `flowSequenceEnd` head the loop returns the accumulator unmoved. -/
+theorem parseFlowSeqLoop_close_step (ps : ParseState) (g : Nat) (items : Array YamlValue)
+    (h : ps.peek? = some .flowSequenceEnd) :
+    parseFlowSequenceLoop ps (g + 1) items = .ok (items, ps) := by
+  unfold parseFlowSequenceLoop
+  simp only [h]
+
+/-- **Loop base branch 1 — fuel 0.**  The loop returns `(items, ps)` unmoved on both sides, so value
+    (`items`) and relative advance (`0`) agree trivially.  No hypotheses needed. -/
+theorem parseFlowSeqLoop_joint_fuel0
+    (t1 t2 : Array (Positioned YamlToken)) (p1 p2 : Nat)
+    (anch : Array (String × YamlValue)) (items : Array YamlValue) :
+    ((parseFlowSequenceLoop { tokens := t1, pos := p1, anchors := anch } 0 items).toOption.map (·.1)
+      = (parseFlowSequenceLoop { tokens := t2, pos := p2, anchors := anch } 0 items).toOption.map (·.1))
+    ∧ ((parseFlowSequenceLoop { tokens := t1, pos := p1, anchors := anch } 0 items).toOption.map (fun r => r.2.pos - p1)
+      = (parseFlowSequenceLoop { tokens := t2, pos := p2, anchors := anch } 0 items).toOption.map (fun r => r.2.pos - p2)) := by
+  refine ⟨?_, ?_⟩ <;> simp [parseFlowSequenceLoop, Except.toOption]
+
+/-- **Loop base branch 2 — empty collection (head is the closer).**  From `.val`-agreement at `k = 0`
+    (`0 < n`) both runs peek `flowSequenceEnd` and return the accumulator unmoved; value + relative advance
+    agree.  The two frame side-conditions are UNUSED — the empty-collection base, like the scalar leaf, sheds
+    the frame; only the RECURSIVE step will consume it. -/
+theorem parseFlowSeqLoop_joint_close
+    (t1 t2 : Array (Positioned YamlToken)) (p1 p2 f n : Nat)
+    (anch : Array (String × YamlValue)) (items : Array YamlValue)
+    (hn : 0 < n)
+    (h_head : t1[p1]?.map (·.val) = some .flowSequenceEnd)
+    (h_agree : ∀ k, k < n → (t1[p1 + k]?.map (·.val)) = (t2[p2 + k]?.map (·.val))) :
+    ((parseFlowSequenceLoop { tokens := t1, pos := p1, anchors := anch } f items).toOption.map (·.1)
+      = (parseFlowSequenceLoop { tokens := t2, pos := p2, anchors := anch } f items).toOption.map (·.1))
+    ∧ ((parseFlowSequenceLoop { tokens := t1, pos := p1, anchors := anch } f items).toOption.map (fun r => r.2.pos - p1)
+      = (parseFlowSequenceLoop { tokens := t2, pos := p2, anchors := anch } f items).toOption.map (fun r => r.2.pos - p2)) := by
+  have hk0 := h_agree 0 hn
+  rw [Nat.add_zero, Nat.add_zero] at hk0
+  have h_head2 : t2[p2]?.map (·.val) = some .flowSequenceEnd := by rw [← hk0]; exact h_head
+  have hpk1 : ({ tokens := t1, pos := p1, anchors := anch } : ParseState).peek? = some .flowSequenceEnd := by
+    rw [peek_eq_getElem_map]; exact h_head
+  have hpk2 : ({ tokens := t2, pos := p2, anchors := anch } : ParseState).peek? = some .flowSequenceEnd := by
+    rw [peek_eq_getElem_map]; exact h_head2
+  rcases Nat.eq_zero_or_pos f with hf | hf
+  · subst hf; exact parseFlowSeqLoop_joint_fuel0 t1 t2 p1 p2 anch items
+  · obtain ⟨g, rfl⟩ : ∃ g, f = g + 1 := ⟨f - 1, by omega⟩
+    rw [parseFlowSeqLoop_close_step _ g items hpk1, parseFlowSeqLoop_close_step _ g items hpk2]
+    refine ⟨?_, ?_⟩ <;> simp [Except.toOption]
+
+/-- REAL-emission loop witnesses (reuse `p2_toks`/`p2_full`/`p2_std0`). -/
+def lj_loopFull (p : Nat) : Except ScanError (Array YamlValue × ParseState) :=
+  parseFlowSequenceLoop { tokens := p2_toks p2_full, pos := p, anchors := #[] } 100 #[]
+def lj_loopStd (p : Nat) : Except ScanError (Array YamlValue × ParseState) :=
+  parseFlowSequenceLoop { tokens := p2_toks p2_std0, pos := p, anchors := #[] } 100 #[]
+def lj_empty : Array (Positioned YamlToken) := p2_toks (flowSeq #[])
+def lj_nested : Array (Positioned YamlToken) := p2_toks (flowSeq #[ flowSeq #[], flowSeq #[sc "z"] ])
+
+/-- **Loop-joint birth (REAL collection, the crux).**  The inner `["a"]` loop in `[["a"],["b"]]` (`full`
+    from pos 3) vs the standalone `["a"]` loop (`std0` from pos 2): ABSOLUTE output `pos` DIFFERS (4 vs 3),
+    yet the RELATIVE advance AGREES (both 1) and the items AGREE, both `some` — non-vacuous.  Exactly why
+    the loop joint projects `·.2.pos - p` (relative), not `·.2.pos` (absolute). -/
+theorem loop_joint_birth :
+    ( !((lj_loopFull 3).toOption.map (·.2.pos) == (lj_loopStd 2).toOption.map (·.2.pos))
+      && ((lj_loopFull 3).toOption.map (fun r => r.2.pos - 3) == (lj_loopStd 2).toOption.map (fun r => r.2.pos - 2))
+      && ((lj_loopFull 3).toOption.map (·.1) == (lj_loopStd 2).toOption.map (·.1))
+      && (lj_loopFull 3).toOption.isSome ) = true := by native_decide
+
+/-- **Balance-free recursive-step evidence.**  After the scalar element `"a"` advances by 1 on BOTH runs,
+    the residual `.val`-agreement still holds at the shifted positions (`full[4] = ] = std0[3]`), and the
+    shifted head IS the closer — so the loop reaches its exit by AGREEMENT alone, with no `flowBracketBalance`
+    term.  This is the concrete witness for what `agree_shift` does structurally. -/
+theorem loop_step_shift_balance_free :
+    ( ((p2_toks p2_full)[3]!.val == (p2_toks p2_std0)[2]!.val)
+      && ((p2_toks p2_full)[4]!.val == (p2_toks p2_std0)[3]!.val)
+      && ((p2_toks p2_full)[4]!.val == YamlToken.flowSequenceEnd) ) = true := by native_decide
+
+/-- **Close branch FIRES on REAL emission.**  The inner `[]` loop inside `[[], ["z"]]` (`lj_nested` from
+    pos 3) vs the standalone `[]` loop (`lj_empty` from pos 2) — two DIFFERENT streams sharing ONLY the
+    `flowSequenceEnd` head; the abstract `parseFlowSeqLoop_joint_close` discharges (empty items, advance 0
+    both sides), hypotheses genuinely satisfied. -/
+theorem loop_close_fires :
+    ((parseFlowSequenceLoop { tokens := lj_nested, pos := 3, anchors := #[] } 100 #[]).toOption.map (·.1)
+      = (parseFlowSequenceLoop { tokens := lj_empty, pos := 2, anchors := #[] } 100 #[]).toOption.map (·.1))
+    ∧ ((parseFlowSequenceLoop { tokens := lj_nested, pos := 3, anchors := #[] } 100 #[]).toOption.map (fun r => r.2.pos - 3)
+      = (parseFlowSequenceLoop { tokens := lj_empty, pos := 2, anchors := #[] } 100 #[]).toOption.map (fun r => r.2.pos - 2)) := by
+  apply parseFlowSeqLoop_joint_close lj_nested lj_empty 3 2 100 1 #[] #[] (by omega)
+  · native_decide
+  · intro k hk
+    have hk0 : k = 0 := by omega
+    subst hk0; native_decide
+
 /-! ## P2a (FRAME) + Bridge birth-probes (inhabitation-debt Rule 1 + Rule 2)
 
 The P2 disproof above fixed P2b's statement (`ParseNodeValueSpanLocal`).  But that statement has two
@@ -1080,5 +1221,46 @@ eventual P1/P2a/P2b/Bridge proofs must satisfy. -/
  jvadv_scalar_leaf_fires._native.native_decide.ax_1_3] -/
 #guard_msgs (whitespace := lax) in
 #print axioms jvadv_scalar_leaf_fires
+
+/-! The JOINT COLLECTION step-1 facts are `sorry`-free.  `agree_shift` is `[propext, Quot.sound]` —
+    `Classical`-free, being pure index arithmetic; the loop reduction/base branches inherit the standard
+    `[propext, Classical.choice, Quot.sound]`; the probes add only per-declaration reflected-`decide`. -/
+/-- info: 'NonAllScalarLocality.agree_shift' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms agree_shift
+
+/-- info: 'NonAllScalarLocality.parseFlowSeqLoop_close_step' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms parseFlowSeqLoop_close_step
+
+/-- info: 'NonAllScalarLocality.parseFlowSeqLoop_joint_fuel0' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms parseFlowSeqLoop_joint_fuel0
+
+/-- info: 'NonAllScalarLocality.parseFlowSeqLoop_joint_close' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms parseFlowSeqLoop_joint_close
+
+/-- info: 'NonAllScalarLocality.loop_joint_birth' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ loop_joint_birth._native.native_decide.ax_1_1] -/
+#guard_msgs (whitespace := lax) in
+#print axioms loop_joint_birth
+
+/-- info: 'NonAllScalarLocality.loop_step_shift_balance_free' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ loop_step_shift_balance_free._native.native_decide.ax_1_1] -/
+#guard_msgs (whitespace := lax) in
+#print axioms loop_step_shift_balance_free
+
+/-- info: 'NonAllScalarLocality.loop_close_fires' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ loop_close_fires._native.native_decide.ax_1_2,
+ loop_close_fires._native.native_decide.ax_1_4] -/
+#guard_msgs (whitespace := lax) in
+#print axioms loop_close_fires
 
 end NonAllScalarLocality

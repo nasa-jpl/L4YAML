@@ -157,9 +157,19 @@ five reduce to two independent obligations:
     induction rather than an imported P2a frame — birth-probed true on a real
     collection (`jvadv_collection_relative_advance_agrees`: absolute `pos` differs
     5≠4, relative advance agrees 3=3), and the joint scalar leaf
-    (`parseNodeValueAdvanceLocal_scalar_branch`) is landed `sorry`-free. Only the
-    flow-*collection* heads remain — where it is decided whether per-element
-    framing still needs `flowBracketBalance` or the lockstep advance retires it.
+    (`parseNodeValueAdvanceLocal_scalar_branch`) is landed `sorry`-free. The
+    flow-*collection* head reduces (after `parseNode` peels the bracket + one unit
+    of fuel) to a **loop joint** over `parseFlowSequenceLoop`; on 2026-07-01 that
+    target (`ParseFlowSequenceLoopValueAdvanceLocal`) was captured and its two base
+    branches landed `sorry`-free — fuel-0 (`parseFlowSeqLoop_joint_fuel0`) and the
+    empty-collection closer (`parseFlowSeqLoop_joint_close`), birth-probed
+    (`loop_joint_birth`: absolute `pos` differs 4≠3, relative advance agrees 1=1)
+    and fired on real emission (`loop_close_fires`). The recursive step's
+    agreement re-arming is shown to be *balance-free* — `agree_shift` (proved
+    `[propext, Quot.sound]`, no `flowBracketBalance`) shifts the bounded agreement
+    by the joint's equal advance, the mechanism that would retire P2a's balance
+    bridge. Only the recursive loop step (a mutual induction over the parser
+    clique) remains to decide it.
   - **P1 — loop-value:** threads P2a and P2b through the flow loop, computing
     each element's cumulative start offset.
 
