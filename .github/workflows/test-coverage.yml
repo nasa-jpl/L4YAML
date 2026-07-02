@@ -287,8 +287,8 @@ jobs:
         # Runs after every other report under docs/reports/ has landed so
         # the JSON aggregates source-scan, env-scan (via Lean.collectAxioms
         # on the compiled L4YAML environment), and the existing test-runner
-        # totals. Output: docs/reports/stats.json — picked up by the
-        # `git add docs/` commit step below.
+        # totals. Output: docs/reports/stats.json — published with the rest
+        # of docs/ to the gh-pages branch in Phase 6.
         run: |
           lake exe collect-stats
           test -f docs/reports/stats.json
@@ -318,6 +318,12 @@ jobs:
 
       # -------------------------------------------------------
       # Phase 6: Publish
+      #
+      # The generated site (docs/) is published to the orphan `gh-pages` branch instead of
+      # being committed to main. gh-pages is a single flat commit, replaced (force-pushed)
+      # on every publish, so the often-regenerated HTML/JS + API docs + reports + PDF never
+      # churn main's history. GitHub Pages: Settings -> Pages -> Deploy from a branch ->
+      # gh-pages -> / (root). See scripts/publish-pages.sh.
       # -------------------------------------------------------
       - name: Upload documentation as artifact
         uses: actions/upload-artifact@v3
@@ -326,14 +332,14 @@ jobs:
           path: docs/
           retention-days: 30
 
-      - name: Commit documentation to main branch
+      - name: Publish documentation to gh-pages branch
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         run: |
+          # commit-tree needs a committer identity even though nothing is committed on main.
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/
-          git diff --staged --quiet || git commit -m "Update docs and test reports: ${{ github.sha }}"
-          git push
+          # Assemble docs/ as a single orphan commit on gh-pages and force-push it.
+          PAGES_PUSH=1 bash scripts/publish-pages.sh
 
       - name: Comment on PR with coverage summary
         if: github.event_name == 'pull_request'
