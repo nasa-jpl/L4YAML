@@ -238,8 +238,8 @@ private def checkFlowPlainWF (input : String) : Bool :=
 #guard lastToken scanBlockScalar "|-\n  stripped\n" == some (.scalar "stripped" .literal)
 #guard lastToken scanBlockScalar "|+\n  kept\n\n" == some (.scalar "kept\n\n" .literal)
 
--- Content extraction — folded style
-#guard lastToken scanBlockScalar ">\n  hello\n  world\n" == some (.scalar "hello world" .folded)
+-- Content extraction — folded style (clip keeps the final line break)
+#guard lastToken scanBlockScalar ">\n  hello\n  world\n" == some (.scalar "hello world\n" .folded)
 
 -- Block scalar flags
 private def afterBlock : Option (Bool × Bool) :=
@@ -280,11 +280,11 @@ private def scanTokens (input : String) : Option (List YamlToken) :=
   .scalar "key" .plain, .value,
   .scalar "block content\n" .literal, .blockEnd, .streamEnd]
 
--- Block folded in mapping value
+-- Block folded in mapping value (clip keeps the final line break)
 #guard scanTokens "key: >\n  folded\n  content\n" == some [
   .streamStart, .blockMappingStart, .key,
   .scalar "key" .plain, .value,
-  .scalar "folded content" .folded, .blockEnd, .streamEnd]
+  .scalar "folded content\n" .folded, .blockEnd, .streamEnd]
 
 -- Double-quoted with escapes in mapping
 #guard scanTokens "key: \"line1\\nline2\"" == some [
@@ -336,7 +336,7 @@ private def scanTokens (input : String) : Option (List YamlToken) :=
 #guard scanTokens "- |\n  lit1\n- >\n  fold1\n" == some [
   .streamStart, .blockSequenceStart,
   .blockEntry, .scalar "lit1\n" .literal,
-  .blockEntry, .scalar "fold1" .folded,
+  .blockEntry, .scalar "fold1\n" .folded,
   .blockEnd, .streamEnd]
 
 -- UTF-8 in double-quoted
@@ -369,11 +369,11 @@ private def scanTokens (input : String) : Option (List YamlToken) :=
   .scalar "key" .plain, .value,
   .scalar "" .singleQuoted, .blockEnd, .streamEnd]
 
--- Folded multi-line
+-- Folded multi-line (clip keeps the final line break)
 #guard scanTokens "key: >\n  hello\n  world\n" == some [
   .streamStart, .blockMappingStart, .key,
   .scalar "key" .plain, .value,
-  .scalar "hello world" .folded, .blockEnd, .streamEnd]
+  .scalar "hello world\n" .folded, .blockEnd, .streamEnd]
 
 -- Literal multi-line
 #guard scanTokens "key: |\n  hello\n  world\n" == some [

@@ -388,8 +388,9 @@ private def scanTokens (input : String) : Option (List YamlToken) :=
 #guard scanTokens "|\n  content\n" == some [
   .streamStart, .scalar "content\n" .literal, .streamEnd]
 
+-- folded clip keeps the final line break → trailing `\n`
 #guard scanTokens ">\n  folded\n  content\n" == some [
-  .streamStart, .scalar "folded content" .folded, .streamEnd]
+  .streamStart, .scalar "folded content\n" .folded, .streamEnd]
 
 -- === Quoted scalars in pipeline ===
 #guard scanTokens "\"hello\"" == some [

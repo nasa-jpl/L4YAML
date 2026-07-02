@@ -624,8 +624,16 @@ where
     | 0 => acc
     | n + 1 => appendNewlines (acc.push '\n') n
   go : List Char → String → FoldState → Nat → String
-    -- End of input: don't emit trailing newlines (chomping handles them)
-    | [], acc, _, _ => acc
+    -- End of input.  This fold pass runs *after* chomping (see
+    -- `scanBlockScalarBody`), so `raw`'s trailing `\n` run is already the chomped
+    -- result (strip→0, clip→1, keep→N) and, when there was content, must be
+    -- preserved rather than dropped (a trailing run is never folded to a space —
+    -- that needs a following content char — so re-emitting `pending` reproduces
+    -- the chomp exactly).  `FoldState.start` means the body was entirely blank
+    -- lines: no content char ever left `start`, so `acc` is empty and an
+    -- all-blank clip/strip scalar must stay empty (`>` / `>-` over blanks → "").
+    | [], acc, .start, _       => acc
+    | [], acc, _,      pending => appendNewlines acc pending
     -- Newline: don't emit yet, increment pending count
     | '\n' :: rest, acc, st, pending =>
       go rest acc st (pending + 1)

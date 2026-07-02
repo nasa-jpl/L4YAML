@@ -120,8 +120,9 @@ private def scanBlockScalarContent (input : String) : Option String :=
 #guard scanBlockScalarContent "|\n  auto\n" == some "auto\n"
 -- §8.1.3 auto-detect with leading blank lines
 #guard scanBlockScalarContent "|\n\n  first\n" == some "\nfirst\n"
--- Folded scalar: newlines between same-indent lines are folded to spaces
-#guard scanBlockScalarContent ">\n  hello\n  world\n" == some "hello world"
+-- Folded scalar: newlines between same-indent lines are folded to spaces; the
+-- final line break is kept by clip chomping (default) → single trailing `\n`
+#guard scanBlockScalarContent ">\n  hello\n  world\n" == some "hello world\n"
 -- Literal scalar: newlines preserved
 #guard scanBlockScalarContent "|\n  hello\n  world\n" == some "hello\nworld\n"
 -- Strip chomp: no trailing newline
