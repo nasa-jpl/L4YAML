@@ -52,12 +52,28 @@ def floatToJson : FloatValue → String
   | .inf false => "-Infinity"
   | .nan => "NaN"
 
+/-- Normalize a stored tag to the full-URI form `resolveScalar` matches on.
+
+    The composed parser keeps the two default core handles in shorthand form
+    (`!!int`, `!!str`, …) and verbatim tags as `!<uri>` (see
+    `Parser.State.resolveTag`).  `resolveScalar` only recognizes the expanded
+    `tag:yaml.org,2002:…` URIs, so `!!int 42` would otherwise fall through to a
+    string.  Expand both forms here; local tags (`!foo`) and already-resolved
+    URIs pass through unchanged (and `resolveScalar` maps unknown tags to str). -/
+def normalizeTag (t : String) : String :=
+  if t.startsWith "tag:" then t
+  else if t.startsWith "!<" && t.endsWith ">" then
+    String.ofList (t.toList.drop 2 |>.dropLast)
+  else if t.startsWith "!!" then
+    "tag:yaml.org,2002:" ++ String.ofList (t.toList.drop 2)
+  else t
+
 /-- Core-schema type of a scalar, respecting presentation style: quoted/literal/
     folded scalars are strings; only plain scalars are implicitly resolved.  An
     explicit tag always takes precedence. -/
 def scalarType (s : Scalar) : YamlType :=
   match s.tag with
-  | some _ => resolveScalar s.content s.tag
+  | some t => resolveScalar s.content (some (normalizeTag t))
   | none =>
     match s.style with
     | .plain => resolveImplicit s.content

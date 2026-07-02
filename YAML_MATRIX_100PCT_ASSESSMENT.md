@@ -7,6 +7,9 @@ formalization, and the proofs.*
 Generated 2026-07-02 · baseline: **event 362/402**, **json 240/279 valid**
 (see [YAML_MATRIX_COMPARISON.md](YAML_MATRIX_COMPARISON.md)).
 
+**Progress:** J1 applied 2026-07-02 → **json 245/279 valid** (+5), event unchanged.
+See [Status log](#status-log).
+
 ---
 
 ## Bottom line
@@ -50,7 +53,7 @@ Generated 2026-07-02 · baseline: **event 362/402**, **json 240/279 valid**
 | **C3** | Explicit complex mapping emits spurious empty `=VAL :` pairs | V9D5 | (event-only) | `parseBlockMappingEntryValue` add `.value` arm | **none break** | XS |
 | **D** | Tag suffix percent-escape (`%21`→`!`) not decoded | 6CK3 | no (value unaffected) | `Events.resolveTagForEvent` (emitter-side) | **none** (emitter-side) | XS |
 | **E** | Literal `\|` keep/clip on trailing-whitespace-only lines | JEF9/02, L24T/01 | yes | `scanBlockScalarBody` chomp of blank tail | **none** | S |
-| **J1** | JSON ignores explicit core tags: `!!int 42`→`"42"` not `42` | — | 2AUY 33X3 74H7 F2C7 L94M | `Output/Json.lean` `scalarType` | **none** (Json.lean unproven) | XS |
+| **J1** ✅ | JSON ignores explicit core tags: `!!int 42`→`"42"` not `42` | — | 2AUY 33X3 74H7 F2C7 L94M | `Output/Json.lean` `scalarType` | **none** (Json.lean unproven) | XS |
 | **J2** | Alias to a *re-defined* anchor resolves to the wrong occurrence | — | 3GZX | `Spec/Types.lean` `resolveAliases` (order-aware) | **R604 characterization at risk** | **M** |
 
 XS = a few lines · S = one function · M = design change and/or re-proof.
@@ -148,8 +151,9 @@ but the logic itself is fiddlier than the other scanner tweaks. Est. medium-impl
 
 ## Recommended order
 
-1. **J1** (JSON tags) and **D** (tag percent-decode) — isolated, emitter-only,
-   zero proof impact. J1 alone clears 5 JSON diffs.
+1. **J1** ✅ *(done — see [Status log](#status-log))* and **D** (tag
+   percent-decode) — isolated, emitter-only, zero proof impact. J1 cleared 5 JSON
+   diffs exactly as projected.
 2. **A** — the `foldBlockContent` EOF one-liner. Biggest single lever: ~21 event
    diffs and most of their JSON twins. Zero proof impact.
 3. **A′, B1, B3, E** — the remaining scanner whitespace/tab folding tweaks. Zero
@@ -164,3 +168,34 @@ but the logic itself is fiddlier than the other scanner tweaks. Est. medium-impl
 After 1–5, both axes should sit at ~99% (all but B2's 4 DE56 variants and J2's
 3GZX). Steps 6 close the last two root causes for a genuine 402/402 event and
 279/279 JSON.
+
+---
+
+## Status log
+
+### J1 — explicit core tags in JSON (done 2026-07-02)
+
+**Change.** `Output/Json.lean`: added `normalizeTag`, which expands a stored tag
+to the full-URI form `resolveScalar` matches on — shorthand `!!int` →
+`tag:yaml.org,2002:int` and verbatim `!<uri>` → `uri` — and applied it in
+`scalarType` before `resolveScalar`. Root cause was that the composed parser
+keeps the two default core handles in shorthand form (`Parser.State.resolveTag`,
+"default secondary" keeps `!!` + suffix), which `resolveScalar` didn't recognize,
+so `!!int 42` fell through to a string. Local tags (`!foo`) and already-resolved
+URIs pass through unchanged; unknown tags still map to `str` in `resolveScalar`.
+
+**Result.** JSON axis **240 → 245 valid** (of 279). The exact five projected
+tests cleared — 2AUY, 33X3, 74H7, F2C7, L94M — with **no regressions** (diff
+39 → 34; the 3 phantom "rejects" are the unrelated error-test scorer artifacts).
+Event axis unchanged (JSON-only defect).
+
+**Proofs.** None broken. `Output.Json` is imported only by the `l4yaml-json`
+emitter exe (`Tests/EmitJson.lean`); no file under `L4YAML/Proofs/` references it.
+Full `lake build` succeeds (833 jobs) — the entire proof set **replays from cache**
+(no proof recompiled), and the only warnings are the pre-existing `sorry`s in
+`EmitterScannability` (the NonAllScalarLocality workstream), untouched by this
+change. Confirms the assessment's "zero proof impact / Json.lean unproven" call.
+
+Remaining 34 JSON diffs: 3GZX (J2), DE56/00–03 (B2), 5GBF (B1), HS5T/NB6Z/UV7Q
+(B3), HWV9/QT73/M7A3 (C1), MJS9/R4YG (A′), JEF9/02 & L24T/01 (E), and the
+folded/plain scalar-content set (A/A′/B3) — all as classified above.
