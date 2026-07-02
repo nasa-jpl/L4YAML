@@ -176,8 +176,15 @@ five reduce to two independent obligations:
     emission. The recursive step's agreement re-arming is shown to be *balance-free*
     — `agree_shift` (proved `[propext, Quot.sound]`, no `flowBracketBalance`) shifts
     the bounded agreement by the joint's equal advance, the mechanism that would
-    retire P2a's balance bridge. Only the recursive loop step (a mutual induction
-    over the parser clique) remains to decide it.
+    retire P2a's balance bridge. The recursive step's per-element *leaf* inputs are
+    now complete: value/pos/tokens (`parseNode_scalar_produces_scalar` /
+    `_advances_by_one` / `_tokens_preserved`) plus the fourth leaf
+    `parseNode_scalar_anchors_preserved` (landed `sorry`-free — the abstract joint's
+    `anchors`-equality re-arm; a *general* anchors-preservation lemma is false, so it
+    holds precisely for the empty-props scalar case), while the frame re-arm at the
+    tail reduces (via `frame_tail_of_whole`) to the single inequality `w ≤ n`. Only
+    the recursive loop step itself (a mutual induction over the parser clique, with
+    `w ≤ n` the one open arithmetic obligation) remains to decide it.
   - **P1 — loop-value:** threads P2a and P2b through the flow loop, computing
     each element's cumulative start offset.
 

@@ -834,6 +834,100 @@ theorem loop_close_fires :
     have hk0 : k = 0 := by omega
     subst hk0; native_decide
 
+/-! ### JOINT COLLECTION, step 2 — the RECURSIVE loop step's leaf bricks (`sorry`-free)
+
+The 10th pass corrected the loop-joint target to abstract states so the existential `ps''` from
+`parseFlowSequenceLoop_step_push` can feed the IH.  Going to build the recursive step itself
+(the crux fuel induction), reading the all-scalar template `parseFlowSeqLoop_allScalar_value_at_aux`
+(ContentFidelity.lean:1595) shows the STEP case threads three per-element LEAF facts to advance the IH:
+`parseNode_scalar_produces_scalar` (value), `parseNode_scalar_advances_by_one` (pos +1), and
+`parseNode_scalar_tokens_preserved` (tokens fixed).  For the **abstract-state JOINT** IH there is a
+FOURTH obligation those three don't cover: the joint carries `ps1.anchors = ps2.anchors`, so to fire the
+IH at the two advanced states `ps1''`, `ps2''` the step must re-establish `ps1''.anchors = ps2''.anchors`
+— i.e. it needs `parseNode` on a scalar head to PRESERVE anchors.  No such lemma exists (grep confirms
+only tokens/pos/trackPositions preservation; `applyNodeFinalization` has `_tokens`/`_pos`/`_trackPositions`
+but no anchors lemma — correctly, since a GENERAL anchors lemma is FALSE when `props.anchor = some name`,
+which registers an anchor).  This pass lands that missing leaf `sorry`-free (it holds precisely because a
+scalar head yields EMPTY props ⇒ `anchor = none` ⇒ no `addAnchor`), probes it on real scalar-head emission,
+and isolates the one ARITHMETIC obligation the recursive step's frame re-arm carries (`w ≤ n`).  The
+recursive mutual induction itself is NOT attempted (still the crux — the nested-element case is a genuine
+mutual induction over the parser clique); this de-risks its leaf inputs first.  Discipline: land the
+concretely-needed bricks and surface the obligation before the induction sink; no `sorry` on source. -/
+
+/-- `applyNodeFinalization` preserves the anchors table WHEN no anchor property is registered
+    (`props.anchor = none`).  The general form is FALSE (a `some name` property calls `addAnchor`), so
+    this is the guarded companion of `applyNodeFinalization_tokens`/`_pos` — the anchors analog that only
+    holds for the empty-props (scalar/alias-free) case the scalar leaf sits in. -/
+theorem applyNodeFinalization_anchors_none
+    (val : YamlValue) (ps : ParseState) (props : NodeProperties) (nsp : YamlPos)
+    (h : props.anchor = none) :
+    (applyNodeFinalization val ps props nsp).2.anchors = ps.anchors := by
+  simp only [applyNodeFinalization, h]
+  split <;> simp_all
+
+/-- **The FOURTH scalar leaf — `parseNode` on a scalar head PRESERVES the anchors table.**  Completes the
+    per-element leaf quartet the recursive loop-joint step needs (value / pos / tokens already exist as
+    `parseNode_scalar_produces_scalar` / `_advances_by_one` / `_tokens_preserved`).  A scalar token is
+    neither anchor nor alias, so `parseNodeProperties` returns EMPTY props (`parseNodeProperties_skip`),
+    `parseNodeContent` only `advance`s (which preserves anchors), and finalization registers no anchor
+    (`applyNodeFinalization_anchors_none` at `props = {}`).  This is exactly the fact that re-arms the
+    joint's `ps1.anchors = ps2.anchors` hypothesis at each iteration: `ps''.anchors = ps.anchors` on BOTH
+    runs, so equal-in ⇒ equal-out.  Position-generic; `sorry`-free. -/
+theorem parseNode_scalar_anchors_preserved (ps : ParseState) (fuel : Nat)
+    (content : String) (style : ScalarStyle) (v : YamlValue) (ps' : ParseState)
+    (h_peek : ps.peek? = some (.scalar content style))
+    (h_parse : parseNode ps fuel = .ok (v, ps')) :
+    ps'.anchors = ps.anchors := by
+  cases fuel with
+  | zero => simp only [parseNode, reduceCtorEq] at h_parse
+  | succ n =>
+    have h_np : parseNodeProperties ps = .ok ({}, ps) :=
+      L4YAML.Proofs.ParserWellBehaved.parseNodeProperties_skip ps (by rw [h_peek]; trivial)
+    have h_vnp : ∀ p, validateNodeProps ps p ({} : NodeProperties) = .ok () := by
+      intro p; unfold validateNodeProps
+      simp only [h_peek, bind, Except.bind, pure, Except.pure]; rfl
+    have h_pnc : parseNodeContent ps n ({} : NodeProperties)
+        = .ok (YamlValue.scalar { content := content, style := style }, ps.advance) := by
+      unfold parseNodeContent; rw [h_peek]
+    unfold parseNode at h_parse
+    simp only [h_peek, bind, Except.bind, pure, Except.pure, h_np, h_vnp, h_pnc] at h_parse
+    have h2 := Except.ok.inj h_parse
+    have h_ps'_eq : ps' = (applyNodeFinalization
+        (YamlValue.scalar { content := content, style := style }) ps.advance {}
+        (ps.peekPos?.getD { offset := 0, line := 0, col := 0 })).2 :=
+      (congrArg Prod.snd h2).symm
+    rw [h_ps'_eq, applyNodeFinalization_anchors_none _ _ _ _ (by rfl)]
+    simp [ParseState.advance]
+
+/-- Real-emission probe (Rule 1/5): a genuine SCALAR head (`"x"` at pos 1 of the standalone `emit (sc "x")`
+    = `plsc_std`) parsed with a NON-empty inherited anchors table leaves that table UNCHANGED, and the
+    parse SUCCEEDS (non-vacuous — the scalar branch really fires, not a fuel-0 failure). -/
+theorem al_anchors_probe :
+    ( ((parseNode { tokens := plsc_std, pos := 1, anchors := #[("x", sc "y")] } 8).toOption.map (·.2.anchors)
+        == some #[("x", sc "y")])
+      && (parseNode { tokens := plsc_std, pos := 1, anchors := #[("x", sc "y")] } 8).toOption.isSome ) = true := by
+  native_decide
+
+/-- **Frame-tail threading (pure arithmetic + the step reduction).**  In the recursive loop step, after
+    the element advances by `w`, the IH's FRAME side-condition — stated on the SHIFTED start `ps1''` over
+    the residual span `n - w` — follows from the WHOLE-call frame + the `step_push` reduction (which makes
+    the tail-call result equal the whole-call result), PROVIDED `w ≤ n`.  This isolates the single
+    arithmetic obligation the recursive step must discharge to re-arm the frame at the tail — the frame
+    counterpart of what `agree_shift` does for the agreement hypothesis.  `Classical`/`flowBracketBalance`-
+    free (bar `omega`'s standard axioms).  It does NOT prove `w ≤ n` holds in the induction (that is part
+    of the crux, next pass) — it shows the frame re-arm reduces to exactly that inequality. -/
+theorem frame_tail_of_whole
+    (ps1 ps1'' : ParseState) (f g n w : Nat) (items acc' : Array YamlValue)
+    (h_adv : ps1''.pos = ps1.pos + w)
+    (h_wn : w ≤ n)
+    (h_reduce : ∀ its ps', parseFlowSequenceLoop ps1'' g acc' = .ok (its, ps') →
+                  parseFlowSequenceLoop ps1 f items = .ok (its, ps'))
+    (h_whole : ∀ its ps', parseFlowSequenceLoop ps1 f items = .ok (its, ps') → ps'.pos ≤ ps1.pos + n) :
+    ∀ its ps', parseFlowSequenceLoop ps1'' g acc' = .ok (its, ps') → ps'.pos ≤ ps1''.pos + (n - w) := by
+  intro its ps' h
+  have hw := h_whole its ps' (h_reduce its ps' h)
+  rw [h_adv]; omega
+
 /-! ## P2a (FRAME) + Bridge birth-probes (inhabitation-debt Rule 1 + Rule 2)
 
 The P2 disproof above fixed P2b's statement (`ParseNodeValueSpanLocal`).  But that statement has two
@@ -1151,11 +1245,16 @@ token, no framing needed.  Non-scalars need all four.  Map axis mirrors with `pa
 and key/value projections (`ps[i]!.fst/.snd`).
 
 **Build order (cheapest first).**  The Bridge is birth-probed and leans on R596/R597.  The crux is now
-the JOINT `ParseNodeValueAdvanceLocal` collection branch (value + advance in lockstep, scalar leaf landed);
-its collection step decides whether P2a's separate `flowBracketBalance` frame is still needed or is retired
-by threading the joint advance directly.  P1 threads the joint at the loop and computes the cumulative
-`pos_i` from the per-element advance the joint PRODUCES.  Each is a self-contained unit (the all-scalar
-R596/R597/R601/R602 were each their own).
+the JOINT `ParseNodeValueAdvanceLocal` collection branch — reduced (9th/10th pass) to the ABSTRACT-state
+loop-joint `ParseFlowSequenceLoopValueAdvanceLocal`, whose base branches are landed and whose RECURSIVE
+step is the remaining crux.  Its per-element LEAF inputs are now COMPLETE and `sorry`-free: value / pos /
+tokens (`parseNode_scalar_produces_scalar` / `_advances_by_one` / `_tokens_preserved`, production) plus the
+FOURTH leaf `parseNode_scalar_anchors_preserved` (landed here — re-arms the joint's `anchors`-equality); the
+frame re-arm at the tail reduces (via `frame_tail_of_whole`) to the single inequality `w ≤ n`, and the
+agreement re-arm to `agree_shift`.  The recursive step then decides whether P2a's separate
+`flowBracketBalance` frame is still needed or is retired by threading the joint advance directly.  P1 threads
+the joint at the loop and computes the cumulative `pos_i` from the per-element advance the joint PRODUCES.
+Each is a self-contained unit (the all-scalar R596/R597/R601/R602 were each their own).
 
 The `[["a"]]` probe left conjuncts B (ignore-trailing) and C (nonzero-offset) vacuous; the SEQ/MAP
 fixtures fire them; the three axis probes disprove the naive P2; and the `p2a_*`/`bridge_*` probes pin
@@ -1355,5 +1454,27 @@ eventual P1/P2a/P2b/Bridge proofs must satisfy. -/
  loop_close_fires._native.native_decide.ax_1_4] -/
 #guard_msgs (whitespace := lax) in
 #print axioms loop_close_fires
+
+/-! The recursive-step leaf bricks are `sorry`-free.  The anchors-preservation facts and the frame-tail
+    arithmetic inherit the standard `[propext, Classical.choice, Quot.sound]`; the real-emission probe adds
+    only its per-declaration reflected-`decide` axiom. -/
+/-- info: 'NonAllScalarLocality.applyNodeFinalization_anchors_none' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms applyNodeFinalization_anchors_none
+
+/-- info: 'NonAllScalarLocality.parseNode_scalar_anchors_preserved' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms parseNode_scalar_anchors_preserved
+
+/-- info: 'NonAllScalarLocality.al_anchors_probe' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ al_anchors_probe._native.native_decide.ax_1_1] -/
+#guard_msgs (whitespace := lax) in
+#print axioms al_anchors_probe
+
+/-- info: 'NonAllScalarLocality.frame_tail_of_whole' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms frame_tail_of_whole
 
 end NonAllScalarLocality
