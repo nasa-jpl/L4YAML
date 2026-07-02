@@ -182,9 +182,21 @@ five reduce to two independent obligations:
     `parseNode_scalar_anchors_preserved` (landed `sorry`-free — the abstract joint's
     `anchors`-equality re-arm; a *general* anchors-preservation lemma is false, so it
     holds precisely for the empty-props scalar case), while the frame re-arm at the
-    tail reduces (via `frame_tail_of_whole`) to the single inequality `w ≤ n`. Only
-    the recursive loop step itself (a mutual induction over the parser clique, with
-    `w ≤ n` the one open arithmetic obligation) remains to decide it.
+    tail reduces (via `frame_tail_of_whole`) to the single inequality `w ≤ n`. On
+    2026-07-01 the abstract-state **iteration machinery** landed `sorry`-free: the two
+    *descent* reductions `seq_scalar_first_reduce` / `seq_scalar_step_reduce` are a
+    **real proof** (not a `native_decide` probe) that one loop iteration over an
+    abstract state reduces the whole `(g+2)` call to the tail `(g+1)` call on a
+    leaf-characterized continuation — retiring the bet that only
+    `loop_path_track_independent` had witnessed — and the two *joint* re-arm steps
+    `seq_scalar_first_joint_rearm` / `seq_scalar_step_joint_rearm` assemble a descent
+    on each run + `agree_shift` + the anchors leaf into the fully re-armed joint IH
+    hypotheses (same pushed value, `anchors`-equality, shifted `.val`-agreement); the
+    reduction fires on real emission (`seq_scalar_first_reduce_fires`). What remains is
+    (i) the fuel-induction *wrapper* (apply a joint step, discharge `w ≤ n`, apply the
+    IH), (ii) the *nested*-element case — swapping the scalar leaves for the NODE-joint
+    IH, where the mutual clique bites (the genuinely-new content) — and (iii) the map
+    mirror.
   - **P1 — loop-value:** threads P2a and P2b through the flow loop, computing
     each element's cumulative start offset.
 

@@ -928,6 +928,221 @@ theorem frame_tail_of_whole
   have hw := h_whole its ps' (h_reduce its ps' h)
   rw [h_adv]; omega
 
+/-! ### JOINT COLLECTION, step 3 — the abstract-state iteration DESCENT (a REAL proof) + the JOINT
+     re-arm step, both `sorry`-free
+
+The 11th pass assembled the recursive step's per-element LEAF quartet (value / pos / tokens / anchors)
+and reduced the frame re-arm to `w ≤ n` (`frame_tail_of_whole`).  It did NOT thread them: the 10th pass's
+architectural bet — that ABSTRACT states survive threading through the loop body (`parseFlowSequenceLoop`'s
+separator / path push-restore / `parseNode` / recurse), the four position-tracking fields staying inert —
+was validated only by the `native_decide` probe `loop_path_track_independent`.  This pass discharges that
+bet with a REAL proof: a single loop iteration over an ABSTRACT state genuinely reduces to the tail call
+on a leaf-characterized continuation.  This is the concrete mechanism the JOINT fuel induction iterates;
+it is NOT redundant with the all-scalar R601/R609 aux (`parseFlowSeqLoop_allScalar_value_at_aux`), which
+descends over KNOWN token layout with closed-form positions (`peek_of_pos_val`) — here the peeks are
+re-derived from `.val`-agreement and the state is abstract.
+
+Two DESCENT reductions (`seq_scalar_first_reduce` at the first position `items = #[]`, `seq_scalar_step_reduce`
+at a general position with the `flowEntry` separator), then the two JOINT re-arm steps that combine a descent
+on EACH run with `agree_shift` + the anchors quartet-leaf to re-establish ALL of the joint IH's hypotheses
+(equal pushed value, `anchors`-equality, `.val`-agreement shifted by the equal advance).  The frame re-arm is
+the separate `frame_tail_of_whole` (`w ≤ n`, here `w ∈ {1, 2}`).  What remains of the crux is exactly: the
+fuel-induction WRAPPER (apply a joint step, then the IH, discharging `w ≤ n`), the NESTED-element case
+(swap the scalar leaves for the NODE-joint IH — the mutual clique, the genuinely-new content), and the MAP
+mirror.  Discipline: land the descent machinery `sorry`-free and probe it on real emission before the
+mutual-induction wrapper; no `sorry` on source. -/
+
+/-- A struct-update of `currentPath` is transparent to `peek?` (it reads `tokens`/`pos` only).  Used to
+    carry the scalar-head peek across the loop body's `savedPath.push` bookkeeping. -/
+theorem peek_currentPath (ps : ParseState) (p : Array PathSegment) :
+    ({ ps with currentPath := p } : ParseState).peek? = ps.peek? := rfl
+
+/-- **Abstract-state DESCENT, first position (`items = #[]`).**  One loop iteration with a scalar element
+    head reduces the whole `(g+2)` call to the tail `(g+1)` call on a state `psn` whose pos/tokens/anchors
+    are pinned by the four scalar leaves (`psn.pos = ps.pos + 1`, tokens & anchors preserved).  Proved by
+    the all-scalar-aux descent shape (`unfold parseFlowSequenceLoop at h_ok`; the separator `if` is false at
+    `items = #[]`; the inner peek routes to the `parseNode` branch), but over an ABSTRACT state — the real
+    proof that the four tracking fields stay inert.  `sorry`-free. -/
+theorem seq_scalar_first_reduce
+    (ps : ParseState) (g : Nat) (content : String) (style : ScalarStyle)
+    (result : Array YamlValue × ParseState)
+    (h_head : ps.peek? = some (.scalar content style))
+    (h_ok : parseFlowSequenceLoop ps (g + 2) #[] = .ok result) :
+    ∃ psn : ParseState,
+      psn.pos = ps.pos + 1 ∧ psn.tokens = ps.tokens ∧ psn.anchors = ps.anchors ∧
+      parseFlowSequenceLoop psn (g + 1)
+        #[YamlValue.scalar (Scalar.mk content style none none none)] = .ok result := by
+  have h_push_peek :
+      ({ ps with currentPath := ps.currentPath.push (.index (0 : Nat)) } : ParseState).peek?
+        = some (.scalar content style) := by
+    rw [peek_currentPath]; exact h_head
+  obtain ⟨⟨val, ps_node⟩, h_pn⟩ :=
+    parseNode_scalar_head_isOk { ps with currentPath := ps.currentPath.push (.index (0 : Nat)) }
+      g content style h_push_peek
+  have h_val : val = .scalar (Scalar.mk content style none none none) :=
+    parseNode_scalar_produces_scalar _ (g + 1) content style val ps_node h_push_peek h_pn
+  have h_pn_pos : ps_node.pos = ps.pos + 1 :=
+    parseNode_scalar_advances_by_one { ps with currentPath := ps.currentPath.push (.index (0 : Nat)) }
+      (g + 1) content style val ps_node h_push_peek h_pn
+  have h_pn_toks : ps_node.tokens = ps.tokens :=
+    parseNode_scalar_tokens_preserved { ps with currentPath := ps.currentPath.push (.index (0 : Nat)) }
+      (g + 1) content style val ps_node h_push_peek h_pn
+  have h_pn_anch : ps_node.anchors = ps.anchors :=
+    parseNode_scalar_anchors_preserved { ps with currentPath := ps.currentPath.push (.index (0 : Nat)) }
+      (g + 1) content style val ps_node h_push_peek h_pn
+  refine ⟨{ ps_node with currentPath := ps.currentPath }, h_pn_pos, h_pn_toks, h_pn_anch, ?_⟩
+  unfold parseFlowSequenceLoop at h_ok
+  simp only [h_head, bind, Except.bind, pure, Except.pure,
+    Array.size_empty, Nat.lt_irrefl, if_false, h_pn] at h_ok
+  rw [h_val] at h_ok
+  exact h_ok
+
+/-- **Abstract-state DESCENT, general position (`items.size > 0`).**  Mirror of `seq_scalar_first_reduce`
+    at a non-first slot: the head is the `flowEntry` separator (one `advance`), the post-separator head is
+    the scalar element, so the whole `(g+2)` call reduces to the tail `(g+1)` call on a state at
+    `ps.pos + 2`.  The loop rebinds `ps ↦ ps.advance` before saving `savedPath`, so the path push/restore
+    is keyed on `ps.advance.currentPath`.  `sorry`-free. -/
+theorem seq_scalar_step_reduce
+    (ps : ParseState) (g : Nat) (content : String) (style : ScalarStyle)
+    (items : Array YamlValue) (result : Array YamlValue × ParseState)
+    (h_ne : items.size > 0)
+    (h_sep : ps.peek? = some .flowEntry)
+    (h_elt : ps.advance.peek? = some (.scalar content style))
+    (h_ok : parseFlowSequenceLoop ps (g + 2) items = .ok result) :
+    ∃ psn : ParseState,
+      psn.pos = ps.pos + 2 ∧ psn.tokens = ps.tokens ∧ psn.anchors = ps.anchors ∧
+      parseFlowSequenceLoop psn (g + 1)
+        (items.push (YamlValue.scalar (Scalar.mk content style none none none))) = .ok result := by
+  have h_push_peek :
+      ({ ps.advance with currentPath := ps.advance.currentPath.push (.index items.size) }
+        : ParseState).peek? = some (.scalar content style) := by
+    rw [peek_currentPath]; exact h_elt
+  obtain ⟨⟨val, ps_node⟩, h_pn⟩ :=
+    parseNode_scalar_head_isOk
+      { ps.advance with currentPath := ps.advance.currentPath.push (.index items.size) }
+      g content style h_push_peek
+  have h_val : val = .scalar (Scalar.mk content style none none none) :=
+    parseNode_scalar_produces_scalar _ (g + 1) content style val ps_node h_push_peek h_pn
+  have h_pn_pos : ps_node.pos = ps.pos + 2 :=
+    parseNode_scalar_advances_by_one
+      { ps.advance with currentPath := ps.advance.currentPath.push (.index items.size) }
+      (g + 1) content style val ps_node h_push_peek h_pn
+  have h_pn_toks : ps_node.tokens = ps.tokens :=
+    parseNode_scalar_tokens_preserved
+      { ps.advance with currentPath := ps.advance.currentPath.push (.index items.size) }
+      (g + 1) content style val ps_node h_push_peek h_pn
+  have h_pn_anch : ps_node.anchors = ps.anchors :=
+    parseNode_scalar_anchors_preserved
+      { ps.advance with currentPath := ps.advance.currentPath.push (.index items.size) }
+      (g + 1) content style val ps_node h_push_peek h_pn
+  refine ⟨{ ps_node with currentPath := ps.advance.currentPath }, h_pn_pos, h_pn_toks, h_pn_anch, ?_⟩
+  unfold parseFlowSequenceLoop at h_ok
+  simp only [h_sep, bind, Except.bind, pure, Except.pure,
+    if_pos h_ne, h_elt, h_pn] at h_ok
+  rw [h_val] at h_ok
+  exact h_ok
+
+/-- **The JOINT scalar-element iteration step, first position.**  Two abstract runs at agreeing positions
+    with a scalar element head (`items = #[]`) each descend (`seq_scalar_first_reduce`) to tail calls at
+    `psn1`, `psn2`, and the descent + `agree_shift` (`w = 1`) + the anchors leaf re-establish ALL joint IH
+    hypotheses: the SAME pushed value, `psn1.anchors = psn2.anchors`, and `.val`-agreement over the residual
+    span `[·, n-1)`.  This is precisely what the JOINT fuel induction applies before invoking its IH (the
+    frame re-arm being `frame_tail_of_whole`, `w = 1 ≤ n`).  `sorry`-free. -/
+theorem seq_scalar_first_joint_rearm
+    (ps1 ps2 : ParseState) (g n : Nat) (content : String) (style : ScalarStyle)
+    (result1 result2 : Array YamlValue × ParseState)
+    (h_anch : ps1.anchors = ps2.anchors)
+    (hn : 0 < n)
+    (h_head1 : ps1.peek? = some (.scalar content style))
+    (h_agree : ∀ k, k < n →
+      (ps1.tokens[ps1.pos + k]?.map (·.val)) = (ps2.tokens[ps2.pos + k]?.map (·.val)))
+    (h_ok1 : parseFlowSequenceLoop ps1 (g + 2) #[] = .ok result1)
+    (h_ok2 : parseFlowSequenceLoop ps2 (g + 2) #[] = .ok result2) :
+    ∃ (psn1 psn2 : ParseState) (val : YamlValue),
+      parseFlowSequenceLoop psn1 (g + 1) (#[].push val) = .ok result1 ∧
+      parseFlowSequenceLoop psn2 (g + 1) (#[].push val) = .ok result2 ∧
+      psn1.anchors = psn2.anchors ∧
+      psn1.pos = ps1.pos + 1 ∧ psn2.pos = ps2.pos + 1 ∧
+      (∀ k, k < n - 1 →
+        (psn1.tokens[psn1.pos + k]?.map (·.val)) = (psn2.tokens[psn2.pos + k]?.map (·.val))) := by
+  have hk0 := h_agree 0 hn
+  rw [Nat.add_zero, Nat.add_zero] at hk0
+  have h_head1' : ps1.tokens[ps1.pos]?.map (·.val) = some (.scalar content style) := by
+    rw [← peek_eq_getElem_map']; exact h_head1
+  have h_head2 : ps2.peek? = some (.scalar content style) := by
+    rw [peek_eq_getElem_map', ← hk0]; exact h_head1'
+  obtain ⟨psn1, hpos1, htok1, hanch1, hrec1⟩ :=
+    seq_scalar_first_reduce ps1 g content style result1 h_head1 h_ok1
+  obtain ⟨psn2, hpos2, htok2, hanch2, hrec2⟩ :=
+    seq_scalar_first_reduce ps2 g content style result2 h_head2 h_ok2
+  refine ⟨psn1, psn2, .scalar (Scalar.mk content style none none none), hrec1, hrec2, ?_, hpos1, hpos2, ?_⟩
+  · rw [hanch1, hanch2]; exact h_anch
+  · intro k hk
+    rw [htok1, htok2, hpos1, hpos2]
+    exact agree_shift ps1.tokens ps2.tokens ps1.pos ps2.pos n 1 h_agree k hk
+
+/-- **The JOINT scalar-element iteration step, general position (`items.size > 0`).**  The `w = 2` mirror
+    of `seq_scalar_first_joint_rearm`: the separator (`k = 0` agreement) and element (`k = 1` agreement)
+    heads transfer to run 2, both descend by `seq_scalar_step_reduce`, and `agree_shift` (`w = 2`) re-arms
+    agreement over `[·, n-2)`.  Together the two joint steps cover every scalar-element iteration of the
+    loop.  `sorry`-free. -/
+theorem seq_scalar_step_joint_rearm
+    (ps1 ps2 : ParseState) (g n : Nat) (content : String) (style : ScalarStyle)
+    (items : Array YamlValue) (result1 result2 : Array YamlValue × ParseState)
+    (h_ne : items.size > 0)
+    (h_anch : ps1.anchors = ps2.anchors)
+    (hn : 1 < n)
+    (h_sep1 : ps1.peek? = some .flowEntry)
+    (h_elt1 : ps1.advance.peek? = some (.scalar content style))
+    (h_agree : ∀ k, k < n →
+      (ps1.tokens[ps1.pos + k]?.map (·.val)) = (ps2.tokens[ps2.pos + k]?.map (·.val)))
+    (h_ok1 : parseFlowSequenceLoop ps1 (g + 2) items = .ok result1)
+    (h_ok2 : parseFlowSequenceLoop ps2 (g + 2) items = .ok result2) :
+    ∃ (psn1 psn2 : ParseState) (val : YamlValue),
+      parseFlowSequenceLoop psn1 (g + 1) (items.push val) = .ok result1 ∧
+      parseFlowSequenceLoop psn2 (g + 1) (items.push val) = .ok result2 ∧
+      psn1.anchors = psn2.anchors ∧
+      psn1.pos = ps1.pos + 2 ∧ psn2.pos = ps2.pos + 2 ∧
+      (∀ k, k < n - 2 →
+        (psn1.tokens[psn1.pos + k]?.map (·.val)) = (psn2.tokens[psn2.pos + k]?.map (·.val))) := by
+  have hk0 := h_agree 0 (by omega)
+  rw [Nat.add_zero, Nat.add_zero] at hk0
+  have h_sep1' : ps1.tokens[ps1.pos]?.map (·.val) = some .flowEntry := by
+    rw [← peek_eq_getElem_map']; exact h_sep1
+  have h_sep2 : ps2.peek? = some .flowEntry := by
+    rw [peek_eq_getElem_map', ← hk0]; exact h_sep1'
+  have hk1 := h_agree 1 hn
+  have h_adv_peek : ∀ ps : ParseState, ps.advance.peek? = ps.tokens[ps.pos + 1]?.map (·.val) := by
+    intro ps; rw [peek_eq_getElem_map']; rfl
+  have h_elt1' : ps1.tokens[ps1.pos + 1]?.map (·.val) = some (.scalar content style) := by
+    rw [← h_adv_peek ps1]; exact h_elt1
+  have h_elt2 : ps2.advance.peek? = some (.scalar content style) := by
+    rw [h_adv_peek ps2, ← hk1]; exact h_elt1'
+  obtain ⟨psn1, hpos1, htok1, hanch1, hrec1⟩ :=
+    seq_scalar_step_reduce ps1 g content style items result1 h_ne h_sep1 h_elt1 h_ok1
+  obtain ⟨psn2, hpos2, htok2, hanch2, hrec2⟩ :=
+    seq_scalar_step_reduce ps2 g content style items result2 h_ne h_sep2 h_elt2 h_ok2
+  refine ⟨psn1, psn2, .scalar (Scalar.mk content style none none none), hrec1, hrec2, ?_, hpos1, hpos2, ?_⟩
+  · rw [hanch1, hanch2]; exact h_anch
+  · intro k hk
+    rw [htok1, htok2, hpos1, hpos2]
+    exact agree_shift ps1.tokens ps2.tokens ps1.pos ps2.pos n 2 h_agree k hk
+
+/-- **Descent fires on REAL emission (Rule 1/5).**  The first element `"a"` of `["a","b"]` (`lj_two`,
+    scalar `"a"` `.doubleQuoted` at pos 2): the whole `parseFlowSequenceLoop` at pos 2 reduces to the tail
+    call at pos 3 with the scalar pushed — verified by the item-array AND final-position projections
+    agreeing (and the loop succeeding, so non-vacuous).  This is `seq_scalar_first_reduce`'s reduction on
+    genuine scanner tokens, not a hand-built state. -/
+theorem seq_scalar_first_reduce_fires :
+    ( ((parseFlowSequenceLoop { tokens := lj_two, pos := 2, anchors := #[] } 100 #[]).toOption.map (·.1)
+        == (parseFlowSequenceLoop { tokens := lj_two, pos := 3, anchors := #[] } 99
+              #[YamlValue.scalar (Scalar.mk "a" .doubleQuoted none none none)]).toOption.map (·.1))
+      && ((parseFlowSequenceLoop { tokens := lj_two, pos := 2, anchors := #[] } 100 #[]).toOption.map (·.2.pos)
+        == (parseFlowSequenceLoop { tokens := lj_two, pos := 3, anchors := #[] } 99
+              #[YamlValue.scalar (Scalar.mk "a" .doubleQuoted none none none)]).toOption.map (·.2.pos))
+      && (parseFlowSequenceLoop { tokens := lj_two, pos := 2, anchors := #[] } 100 #[]).toOption.isSome )
+      = true := by native_decide
+
 /-! ## P2a (FRAME) + Bridge birth-probes (inhabitation-debt Rule 1 + Rule 2)
 
 The P2 disproof above fixed P2b's statement (`ParseNodeValueSpanLocal`).  But that statement has two
@@ -1247,14 +1462,23 @@ and key/value projections (`ps[i]!.fst/.snd`).
 **Build order (cheapest first).**  The Bridge is birth-probed and leans on R596/R597.  The crux is now
 the JOINT `ParseNodeValueAdvanceLocal` collection branch — reduced (9th/10th pass) to the ABSTRACT-state
 loop-joint `ParseFlowSequenceLoopValueAdvanceLocal`, whose base branches are landed and whose RECURSIVE
-step is the remaining crux.  Its per-element LEAF inputs are now COMPLETE and `sorry`-free: value / pos /
+step is the remaining crux.  Its per-element LEAF inputs are COMPLETE and `sorry`-free: value / pos /
 tokens (`parseNode_scalar_produces_scalar` / `_advances_by_one` / `_tokens_preserved`, production) plus the
-FOURTH leaf `parseNode_scalar_anchors_preserved` (landed here — re-arms the joint's `anchors`-equality); the
+FOURTH leaf `parseNode_scalar_anchors_preserved` (11th pass — re-arms the joint's `anchors`-equality); the
 frame re-arm at the tail reduces (via `frame_tail_of_whole`) to the single inequality `w ≤ n`, and the
-agreement re-arm to `agree_shift`.  The recursive step then decides whether P2a's separate
-`flowBracketBalance` frame is still needed or is retired by threading the joint advance directly.  P1 threads
-the joint at the loop and computes the cumulative `pos_i` from the per-element advance the joint PRODUCES.
-Each is a self-contained unit (the all-scalar R596/R597/R601/R602 were each their own).
+agreement re-arm to `agree_shift`.  **The abstract-state ITERATION machinery is now landed `sorry`-free
+(step 3 above): the two DESCENT reductions `seq_scalar_first_reduce` / `seq_scalar_step_reduce` (REAL proofs
+that an abstract state threads through the loop body — retiring the 10th-pass bet that only
+`loop_path_track_independent` had probed), and the two JOINT re-arm steps `seq_scalar_first_joint_rearm` /
+`seq_scalar_step_joint_rearm` (which assemble a descent on each run + `agree_shift` + the anchors leaf into
+the FULLY re-armed joint IH hypotheses).**  What remains of the recursive step is: (i) the fuel-induction
+WRAPPER (apply a joint step, discharge `w ≤ n` via `frame_tail_of_whole`, apply the IH); (ii) the
+NESTED-element case (swap the scalar leaves for the NODE-joint IH — the mutual clique, the genuinely-new
+content, scalar sub-case ~redundant with all-scalar R601/R609); (iii) the MAP mirror
+(`parseFlowMappingLoop`, `parseFlowMappingLoop_step_push`, key+value).  Step (i) then decides whether P2a's
+separate `flowBracketBalance` frame is still needed or is retired by threading the joint advance directly.
+P1 threads the joint at the loop and computes the cumulative `pos_i` from the per-element advance the joint
+PRODUCES.  Each is a self-contained unit (the all-scalar R596/R597/R601/R602 were each their own).
 
 The `[["a"]]` probe left conjuncts B (ignore-trailing) and C (nonzero-offset) vacuous; the SEQ/MAP
 fixtures fire them; the three axis probes disprove the naive P2; and the `p2a_*`/`bridge_*` probes pin
@@ -1476,5 +1700,36 @@ eventual P1/P2a/P2b/Bridge proofs must satisfy. -/
 /-- info: 'NonAllScalarLocality.frame_tail_of_whole' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms frame_tail_of_whole
+
+/-! The JOINT COLLECTION step-3 facts (abstract-state descent + joint re-arm) are `sorry`-free.
+    `peek_currentPath` is pure `rfl` (`does not depend on any axioms`); the descent reductions and the two
+    joint re-arm steps inherit the standard `[propext, Classical.choice, Quot.sound]`; the real-emission
+    descent probe adds only its per-declaration reflected-`decide` axiom. -/
+/-- info: 'NonAllScalarLocality.peek_currentPath' does not depend on any axioms -/
+#guard_msgs (whitespace := lax) in
+#print axioms peek_currentPath
+
+/-- info: 'NonAllScalarLocality.seq_scalar_first_reduce' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms seq_scalar_first_reduce
+
+/-- info: 'NonAllScalarLocality.seq_scalar_step_reduce' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms seq_scalar_step_reduce
+
+/-- info: 'NonAllScalarLocality.seq_scalar_first_joint_rearm' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms seq_scalar_first_joint_rearm
+
+/-- info: 'NonAllScalarLocality.seq_scalar_step_joint_rearm' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms seq_scalar_step_joint_rearm
+
+/-- info: 'NonAllScalarLocality.seq_scalar_first_reduce_fires' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ seq_scalar_first_reduce_fires._native.native_decide.ax_1_1] -/
+#guard_msgs (whitespace := lax) in
+#print axioms seq_scalar_first_reduce_fires
 
 end NonAllScalarLocality
