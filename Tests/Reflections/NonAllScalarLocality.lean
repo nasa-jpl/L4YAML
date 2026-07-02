@@ -625,17 +625,33 @@ theorem jvadv_scalar_leaf_fires :
     have hk0 : k = 0 := by omega
     subst hk0; native_decide
 
-/-! ### JOINT COLLECTION branch, step 1 — the loop-joint TARGET, the balance-FREE shift brick, and the
-     two loop BASE branches (`sorry`-free)
+/-! ### JOINT COLLECTION branch, step 1 — the loop-joint TARGET (ABSTRACT-state, recursion-ready), the
+     balance-FREE shift brick, and the two loop BASE branches (`sorry`-free)
 
 The joint scalar leaf above closes a NODE whose head is a scalar.  A NODE whose head is a flow collection
 (`.sequence`/`.mapping`) reduces — after `parseNode` peels the head bracket and one unit of fuel — to a
 LOOP over the body: `parseFlowSequenceLoop` (TokenParser.lean:400) / `parseFlowMappingLoop` (:495).  So the
 collection branch of `ParseNodeValueAdvanceLocal` reduces to a JOINT LOOP fact: two loop runs at agreeing
-positions, sharing an accumulator, produce EQUAL items AND advance EQUALLY (relative).  This pass captures
-that loop-joint target, lands its BALANCE-FREE mechanism and its two BASE branches `sorry`-free, and probes
-it on REAL emission — WITHOUT attempting the recursive step (a genuine mutual induction over the parser
-clique, next pass).  Discipline: probe/validate the target before the induction; no `sorry` on source.
+positions, sharing an accumulator, produce EQUAL items AND advance EQUALLY (relative).
+
+**10th-pass shape CORRECTION (inhabitation-debt Rule 2, at the ARCHITECTURE).**  Before sinking the
+recursive induction, we read the one-step reduction it must consume — `parseFlowSequenceLoop_step_push`
+(ContentFidelity.lean:1438): a successful `(fuel+1)` loop reduces to `∃ v ps'', parseFlowSequenceLoop ps''
+fuel (acc.push v) = .ok result`, where `ps''` is EXISTENTIAL.  The 9th-pass loop-joint fixed the two states
+to the LITERAL form `{ tokens := t, pos := p, anchors := anch }` — pinning 3 of `ParseState`'s 7 fields and
+DEFAULTING the 4 position-tracking fields (`tagHandles`/`trackPositions`/`currentPath`/`nodePositions`).
+Feeding the existential `ps''` to a literal-form IH would require proving `ps''` matches ALL 7 fields,
+including the 4 tracking fields — for which NO preservation lemmas exist, and which are IRRELEVANT to value
+and advance.  So the literal form is too rigid for the recursion.  The target below is CORRECTED to ABSTRACT
+states constrained only by what the conclusion depends on (`tokens`/`pos`/`anchors`), leaving the 4 tracking
+fields unmentioned — exactly the shape the all-scalar template `parseFlowSeqLoop_allScalar_value_at_aux`
+(ContentFidelity.lean:1595) proves survives the fuel induction.  `loop_path_track_independent` below is the
+load-bearing soundness probe: the loop's value+ABSOLUTE-pos are inert under the dropped fields.
+
+This pass lands the CORRECTED (abstract) target, re-grounds its BALANCE-FREE mechanism and its two BASE
+branches `sorry`-free, and probes the genuine RECURSIVE re-arm on REAL emission — WITHOUT attempting the
+recursive step (a genuine mutual induction over the parser clique, next pass).  Discipline: correct the
+target before the induction; no `sorry` on source.
 
 **The re-architecture's central bet, made concrete here.** The 6th-pass finding was that the loop is
 LOOKAHEAD-driven (exits on `peek? = flowSequenceEnd`, no bracket counter).  The recursive loop step, given
@@ -660,24 +676,27 @@ theorem agree_shift (t1 t2 : Array (Positioned YamlToken)) (p1 p2 n w : Nat)
   rw [show p1 + w + k = p1 + (w + k) by omega, show p2 + w + k = p2 + (w + k) by omega]
   exact h
 
-/-- **The loop-joint TARGET** — the object the flow-COLLECTION branch of `ParseNodeValueAdvanceLocal`
-    reduces to.  Two `parseFlowSequenceLoop` runs at agreeing positions, sharing the accumulator `items`,
-    under bounded `.val`-agreement + the two frame side-conditions: the recovered items AGREE and the
-    RELATIVE advance AGREES.  Same shape as the node joint, keyed on the loop instead of `parseNode`.
-    Typechecked target, birth-probed on a real collection (`loop_joint_birth`) and the empty-collection
-    boundary (`loop_close_fires`); NOT proved as a whole, NO `sorry`. -/
+/-- **The loop-joint TARGET (ABSTRACT-state, recursion-ready).**  The object the flow-COLLECTION branch
+    of `ParseNodeValueAdvanceLocal` reduces to.  Two `parseFlowSequenceLoop` runs `ps1`, `ps2` sharing the
+    accumulator `items`, under equal anchors + bounded `.val`-agreement + the two frame side-conditions:
+    the recovered items AGREE and the RELATIVE advance AGREES.  Keyed on ABSTRACT states (not the literal
+    `{ tokens, pos, anchors }`) so the existential `ps''` from `parseFlowSequenceLoop_step_push` can feed the
+    IH at the recursive step — see the shape-correction note above.  The `anchors` equality is the
+    placeholder for the deferred "no free alias" side-condition (Axis D); the four position-tracking fields
+    are deliberately UNconstrained (`loop_path_track_independent` witnesses their irrelevance).  Typechecked
+    target, birth-probed on a real collection (`loop_joint_birth`), a genuine recursive re-arm
+    (`loop_recursive_rearm`), and the empty-collection boundary (`loop_close_fires`); NOT proved as a whole,
+    NO `sorry`. -/
 def ParseFlowSequenceLoopValueAdvanceLocal : Prop :=
-  ∀ (t1 t2 : Array (Positioned YamlToken)) (p1 p2 f n : Nat)
-    (anch : Array (String × YamlValue)) (items : Array YamlValue),
-    (∀ k, k < n → (t1[p1 + k]?.map (·.val)) = (t2[p2 + k]?.map (·.val))) →
-    (∀ its ps', parseFlowSequenceLoop { tokens := t1, pos := p1, anchors := anch } f items = .ok (its, ps') →
-      ps'.pos ≤ p1 + n) →
-    (∀ its ps', parseFlowSequenceLoop { tokens := t2, pos := p2, anchors := anch } f items = .ok (its, ps') →
-      ps'.pos ≤ p2 + n) →
-    ((parseFlowSequenceLoop { tokens := t1, pos := p1, anchors := anch } f items).toOption.map (·.1)
-      = (parseFlowSequenceLoop { tokens := t2, pos := p2, anchors := anch } f items).toOption.map (·.1))
-    ∧ ((parseFlowSequenceLoop { tokens := t1, pos := p1, anchors := anch } f items).toOption.map (fun r => r.2.pos - p1)
-      = (parseFlowSequenceLoop { tokens := t2, pos := p2, anchors := anch } f items).toOption.map (fun r => r.2.pos - p2))
+  ∀ (ps1 ps2 : ParseState) (f n : Nat) (items : Array YamlValue),
+    ps1.anchors = ps2.anchors →
+    (∀ k, k < n → (ps1.tokens[ps1.pos + k]?.map (·.val)) = (ps2.tokens[ps2.pos + k]?.map (·.val))) →
+    (∀ its ps', parseFlowSequenceLoop ps1 f items = .ok (its, ps') → ps'.pos ≤ ps1.pos + n) →
+    (∀ its ps', parseFlowSequenceLoop ps2 f items = .ok (its, ps') → ps'.pos ≤ ps2.pos + n) →
+    ((parseFlowSequenceLoop ps1 f items).toOption.map (·.1)
+      = (parseFlowSequenceLoop ps2 f items).toOption.map (·.1))
+    ∧ ((parseFlowSequenceLoop ps1 f items).toOption.map (fun r => r.2.pos - ps1.pos)
+      = (parseFlowSequenceLoop ps2 f items).toOption.map (fun r => r.2.pos - ps2.pos))
 
 /-- Reduction helper: at a `flowSequenceEnd` head the loop returns the accumulator unmoved. -/
 theorem parseFlowSeqLoop_close_step (ps : ParseState) (g : Nat) (items : Array YamlValue)
@@ -686,43 +705,47 @@ theorem parseFlowSeqLoop_close_step (ps : ParseState) (g : Nat) (items : Array Y
   unfold parseFlowSequenceLoop
   simp only [h]
 
-/-- **Loop base branch 1 — fuel 0.**  The loop returns `(items, ps)` unmoved on both sides, so value
-    (`items`) and relative advance (`0`) agree trivially.  No hypotheses needed. -/
-theorem parseFlowSeqLoop_joint_fuel0
-    (t1 t2 : Array (Positioned YamlToken)) (p1 p2 : Nat)
-    (anch : Array (String × YamlValue)) (items : Array YamlValue) :
-    ((parseFlowSequenceLoop { tokens := t1, pos := p1, anchors := anch } 0 items).toOption.map (·.1)
-      = (parseFlowSequenceLoop { tokens := t2, pos := p2, anchors := anch } 0 items).toOption.map (·.1))
-    ∧ ((parseFlowSequenceLoop { tokens := t1, pos := p1, anchors := anch } 0 items).toOption.map (fun r => r.2.pos - p1)
-      = (parseFlowSequenceLoop { tokens := t2, pos := p2, anchors := anch } 0 items).toOption.map (fun r => r.2.pos - p2)) := by
-  refine ⟨?_, ?_⟩ <;> simp [parseFlowSequenceLoop, Except.toOption]
+/-- Abstract-state peek bridge — the general form of `peek_eq_getElem_map` for an arbitrary `ParseState`
+    (not the literal `{ tokens, pos, anchors }`).  Used by the abstract-state loop base branches. -/
+theorem peek_eq_getElem_map' (ps : ParseState) :
+    ps.peek? = ps.tokens[ps.pos]?.map (·.val) := by
+  unfold ParseState.peek?
+  by_cases h : ps.pos < ps.tokens.size
+  · simp only [if_pos h, getElem?_pos ps.tokens ps.pos h, getElem!_pos ps.tokens ps.pos h, Option.map_some]
+  · simp only [if_neg h, getElem?_neg ps.tokens ps.pos h, Option.map_none]
 
-/-- **Loop base branch 2 — empty collection (head is the closer).**  From `.val`-agreement at `k = 0`
-    (`0 < n`) both runs peek `flowSequenceEnd` and return the accumulator unmoved; value + relative advance
-    agree.  The two frame side-conditions are UNUSED — the empty-collection base, like the scalar leaf, sheds
-    the frame; only the RECURSIVE step will consume it. -/
-theorem parseFlowSeqLoop_joint_close
-    (t1 t2 : Array (Positioned YamlToken)) (p1 p2 f n : Nat)
-    (anch : Array (String × YamlValue)) (items : Array YamlValue)
+/-- **Loop base branch 1 — fuel 0** (abstract-state).  The loop returns `(items, ps)` unmoved on both
+    sides, so value (`items`) and relative advance (`0`) agree trivially.  No hypotheses needed. -/
+theorem parseFlowSeqLoop_joint_fuel0 (ps1 ps2 : ParseState) (items : Array YamlValue) :
+    ((parseFlowSequenceLoop ps1 0 items).toOption.map (·.1)
+      = (parseFlowSequenceLoop ps2 0 items).toOption.map (·.1))
+    ∧ ((parseFlowSequenceLoop ps1 0 items).toOption.map (fun r => r.2.pos - ps1.pos)
+      = (parseFlowSequenceLoop ps2 0 items).toOption.map (fun r => r.2.pos - ps2.pos)) := by
+  refine ⟨?_, ?_⟩ <;> simp [parseFlowSequenceLoop, Except.toOption, Nat.sub_self]
+
+/-- **Loop base branch 2 — empty collection (head is the closer)** (abstract-state).  From `.val`-agreement
+    at `k = 0` (`0 < n`) both runs peek `flowSequenceEnd` and return the accumulator unmoved; value +
+    relative advance agree.  The two frame side-conditions are UNUSED — the empty-collection base, like the
+    scalar leaf, sheds the frame; only the RECURSIVE step will consume it. -/
+theorem parseFlowSeqLoop_joint_close (ps1 ps2 : ParseState) (f n : Nat) (items : Array YamlValue)
     (hn : 0 < n)
-    (h_head : t1[p1]?.map (·.val) = some .flowSequenceEnd)
-    (h_agree : ∀ k, k < n → (t1[p1 + k]?.map (·.val)) = (t2[p2 + k]?.map (·.val))) :
-    ((parseFlowSequenceLoop { tokens := t1, pos := p1, anchors := anch } f items).toOption.map (·.1)
-      = (parseFlowSequenceLoop { tokens := t2, pos := p2, anchors := anch } f items).toOption.map (·.1))
-    ∧ ((parseFlowSequenceLoop { tokens := t1, pos := p1, anchors := anch } f items).toOption.map (fun r => r.2.pos - p1)
-      = (parseFlowSequenceLoop { tokens := t2, pos := p2, anchors := anch } f items).toOption.map (fun r => r.2.pos - p2)) := by
+    (h_head : ps1.peek? = some .flowSequenceEnd)
+    (h_agree : ∀ k, k < n → (ps1.tokens[ps1.pos + k]?.map (·.val)) = (ps2.tokens[ps2.pos + k]?.map (·.val))) :
+    ((parseFlowSequenceLoop ps1 f items).toOption.map (·.1)
+      = (parseFlowSequenceLoop ps2 f items).toOption.map (·.1))
+    ∧ ((parseFlowSequenceLoop ps1 f items).toOption.map (fun r => r.2.pos - ps1.pos)
+      = (parseFlowSequenceLoop ps2 f items).toOption.map (fun r => r.2.pos - ps2.pos)) := by
   have hk0 := h_agree 0 hn
   rw [Nat.add_zero, Nat.add_zero] at hk0
-  have h_head2 : t2[p2]?.map (·.val) = some .flowSequenceEnd := by rw [← hk0]; exact h_head
-  have hpk1 : ({ tokens := t1, pos := p1, anchors := anch } : ParseState).peek? = some .flowSequenceEnd := by
-    rw [peek_eq_getElem_map]; exact h_head
-  have hpk2 : ({ tokens := t2, pos := p2, anchors := anch } : ParseState).peek? = some .flowSequenceEnd := by
-    rw [peek_eq_getElem_map]; exact h_head2
+  have h1 : ps1.tokens[ps1.pos]?.map (·.val) = some .flowSequenceEnd := by
+    rw [← peek_eq_getElem_map']; exact h_head
+  have h_head2 : ps2.peek? = some .flowSequenceEnd := by
+    rw [peek_eq_getElem_map', ← hk0]; exact h1
   rcases Nat.eq_zero_or_pos f with hf | hf
-  · subst hf; exact parseFlowSeqLoop_joint_fuel0 t1 t2 p1 p2 anch items
+  · subst hf; exact parseFlowSeqLoop_joint_fuel0 ps1 ps2 items
   · obtain ⟨g, rfl⟩ : ∃ g, f = g + 1 := ⟨f - 1, by omega⟩
-    rw [parseFlowSeqLoop_close_step _ g items hpk1, parseFlowSeqLoop_close_step _ g items hpk2]
-    refine ⟨?_, ?_⟩ <;> simp [Except.toOption]
+    rw [parseFlowSeqLoop_close_step _ g items h_head, parseFlowSeqLoop_close_step _ g items h_head2]
+    refine ⟨?_, ?_⟩ <;> simp [Except.toOption, Nat.sub_self]
 
 /-- REAL-emission loop witnesses (reuse `p2_toks`/`p2_full`/`p2_std0`). -/
 def lj_loopFull (p : Nat) : Except ScanError (Array YamlValue × ParseState) :=
@@ -731,6 +754,11 @@ def lj_loopStd (p : Nat) : Except ScanError (Array YamlValue × ParseState) :=
   parseFlowSequenceLoop { tokens := p2_toks p2_std0, pos := p, anchors := #[] } 100 #[]
 def lj_empty : Array (Positioned YamlToken) := p2_toks (flowSeq #[])
 def lj_nested : Array (Positioned YamlToken) := p2_toks (flowSeq #[ flowSeq #[], flowSeq #[sc "z"] ])
+/-- Two-scalar-element sequence `["a","b"]` standalone, and embedded as element 0 of `[["a","b"],"q"]`.
+    Layout (eyeballed): `lj_two` = `[`@1 `a`@2 `,`@3 `b`@4 `]`@5; `lj_twoCtx` inner `["a","b"]` =
+    `a`@3 `,`@4 `b`@5 `]`@6, then `,"q"]` trailing. -/
+def lj_two    : Array (Positioned YamlToken) := p2_toks (flowSeq #[sc "a", sc "b"])
+def lj_twoCtx : Array (Positioned YamlToken) := p2_toks (flowSeq #[ flowSeq #[sc "a", sc "b"], sc "q" ])
 
 /-- **Loop-joint birth (REAL collection, the crux).**  The inner `["a"]` loop in `[["a"],["b"]]` (`full`
     from pos 3) vs the standalone `["a"]` loop (`std0` from pos 2): ABSOLUTE output `pos` DIFFERS (4 vs 3),
@@ -751,16 +779,56 @@ theorem loop_step_shift_balance_free :
       && ((p2_toks p2_full)[4]!.val == (p2_toks p2_std0)[3]!.val)
       && ((p2_toks p2_full)[4]!.val == YamlToken.flowSequenceEnd) ) = true := by native_decide
 
-/-- **Close branch FIRES on REAL emission.**  The inner `[]` loop inside `[[], ["z"]]` (`lj_nested` from
-    pos 3) vs the standalone `[]` loop (`lj_empty` from pos 2) — two DIFFERENT streams sharing ONLY the
-    `flowSequenceEnd` head; the abstract `parseFlowSeqLoop_joint_close` discharges (empty items, advance 0
-    both sides), hypotheses genuinely satisfied. -/
+/-- **Multi-element recursive re-arm (REAL, the new content).**  The two-scalar loop `["a","b"]` standalone
+    (`lj_two`@2) vs embedded as element 0 of `[["a","b"],"q"]` (`lj_twoCtx`@3): value `[a,b]` AGREES and the
+    RELATIVE advance AGREES (both 3) though the ABSOLUTE stop DIFFERS (5 vs 6), and the embedded run is
+    NON-vacuously carrying a trailing `,"q"]`.  This drives the recursion across TWO scalar iterations
+    (separator + element on the second) — the case `agree_shift` re-arms, the real regression for the
+    recursive step (`loop_joint_birth` only exercised a single element). -/
+theorem loop_recursive_rearm :
+    ( ((parseFlowSequenceLoop { tokens := lj_two, pos := 2, anchors := #[] } 100 #[]).toOption.map (·.1)
+        == (parseFlowSequenceLoop { tokens := lj_twoCtx, pos := 3, anchors := #[] } 100 #[]).toOption.map (·.1))
+      && ((parseFlowSequenceLoop { tokens := lj_two, pos := 2, anchors := #[] } 100 #[]).toOption.map (fun r => r.2.pos - 2)
+        == (parseFlowSequenceLoop { tokens := lj_twoCtx, pos := 3, anchors := #[] } 100 #[]).toOption.map (fun r => r.2.pos - 3))
+      && !((parseFlowSequenceLoop { tokens := lj_two, pos := 2, anchors := #[] } 100 #[]).toOption.map (·.2.pos)
+        == (parseFlowSequenceLoop { tokens := lj_twoCtx, pos := 3, anchors := #[] } 100 #[]).toOption.map (·.2.pos))
+      && (parseFlowSequenceLoop { tokens := lj_two, pos := 2, anchors := #[] } 100 #[]).toOption.isSome ) = true := by
+  native_decide
+
+/-- Token-level shift witness for the 2-element run: after `"a"` advances by 1 (`w = 1`), the residual
+    `.val`s agree at the shifted starts `lj_two`@3 vs `lj_twoCtx`@4 across the remaining span, closer
+    included — the concrete `agree_shift` instance the second iteration re-arms with. -/
+theorem loop_two_shift :
+    ( (lj_two[3]!.val == lj_twoCtx[4]!.val) && (lj_two[4]!.val == lj_twoCtx[5]!.val)
+      && (lj_two[5]!.val == lj_twoCtx[6]!.val) && (lj_two[5]!.val == YamlToken.flowSequenceEnd) ) = true := by
+  native_decide
+
+/-- **Abstract-form soundness probe (load-bearing).**  The abstract joint DROPS the 4 position-tracking
+    fields; its truth rests on the loop's value+ABSOLUTE-pos being independent of `currentPath` /
+    `trackPositions`.  The same `["a"]` loop (`p2_toks p2_std0`@2) run with default tracking vs
+    `currentPath := #[.index 7]` + `trackPositions := true` yields the SAME value AND the SAME position —
+    confirming the dropped fields are inert for the conclusion, so the abstract Prop is not over-strong. -/
+theorem loop_path_track_independent :
+    ( ((parseFlowSequenceLoop { tokens := p2_toks p2_std0, pos := 2, anchors := #[] } 100 #[]).toOption.map (·.1)
+        == (parseFlowSequenceLoop { tokens := p2_toks p2_std0, pos := 2, anchors := #[], currentPath := #[.index 7], trackPositions := true } 100 #[]).toOption.map (·.1))
+      && ((parseFlowSequenceLoop { tokens := p2_toks p2_std0, pos := 2, anchors := #[] } 100 #[]).toOption.map (·.2.pos)
+        == (parseFlowSequenceLoop { tokens := p2_toks p2_std0, pos := 2, anchors := #[], currentPath := #[.index 7], trackPositions := true } 100 #[]).toOption.map (·.2.pos))
+      && (parseFlowSequenceLoop { tokens := p2_toks p2_std0, pos := 2, anchors := #[] } 100 #[]).toOption.isSome ) = true := by
+  native_decide
+
+/-- **Close branch FIRES on REAL emission** (abstract form).  The inner `[]` loop inside `[[], ["z"]]`
+    (`lj_nested` from pos 3) vs the standalone `[]` loop (`lj_empty` from pos 2) — two DIFFERENT streams
+    sharing ONLY the `flowSequenceEnd` head; the abstract `parseFlowSeqLoop_joint_close` discharges (empty
+    items, advance 0 both sides), hypotheses genuinely satisfied. -/
 theorem loop_close_fires :
     ((parseFlowSequenceLoop { tokens := lj_nested, pos := 3, anchors := #[] } 100 #[]).toOption.map (·.1)
       = (parseFlowSequenceLoop { tokens := lj_empty, pos := 2, anchors := #[] } 100 #[]).toOption.map (·.1))
     ∧ ((parseFlowSequenceLoop { tokens := lj_nested, pos := 3, anchors := #[] } 100 #[]).toOption.map (fun r => r.2.pos - 3)
       = (parseFlowSequenceLoop { tokens := lj_empty, pos := 2, anchors := #[] } 100 #[]).toOption.map (fun r => r.2.pos - 2)) := by
-  apply parseFlowSeqLoop_joint_close lj_nested lj_empty 3 2 100 1 #[] #[] (by omega)
+  apply parseFlowSeqLoop_joint_close
+    { tokens := lj_nested, pos := 3, anchors := #[] }
+    { tokens := lj_empty, pos := 2, anchors := #[] } 100 1 #[]
+  · omega
   · native_decide
   · intro k hk
     have hk0 : k = 0 := by omega
@@ -1233,6 +1301,10 @@ eventual P1/P2a/P2b/Bridge proofs must satisfy. -/
 #guard_msgs (whitespace := lax) in
 #print axioms parseFlowSeqLoop_close_step
 
+/-- info: 'NonAllScalarLocality.peek_eq_getElem_map'' depends on axioms: [propext] -/
+#guard_msgs (whitespace := lax) in
+#print axioms peek_eq_getElem_map'
+
 /-- info: 'NonAllScalarLocality.parseFlowSeqLoop_joint_fuel0' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms parseFlowSeqLoop_joint_fuel0
@@ -1254,6 +1326,27 @@ eventual P1/P2a/P2b/Bridge proofs must satisfy. -/
  loop_step_shift_balance_free._native.native_decide.ax_1_1] -/
 #guard_msgs (whitespace := lax) in
 #print axioms loop_step_shift_balance_free
+
+/-- info: 'NonAllScalarLocality.loop_recursive_rearm' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ loop_recursive_rearm._native.native_decide.ax_1_1] -/
+#guard_msgs (whitespace := lax) in
+#print axioms loop_recursive_rearm
+
+/-- info: 'NonAllScalarLocality.loop_two_shift' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ loop_two_shift._native.native_decide.ax_1_1] -/
+#guard_msgs (whitespace := lax) in
+#print axioms loop_two_shift
+
+/-- info: 'NonAllScalarLocality.loop_path_track_independent' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ loop_path_track_independent._native.native_decide.ax_1_1] -/
+#guard_msgs (whitespace := lax) in
+#print axioms loop_path_track_independent
 
 /-- info: 'NonAllScalarLocality.loop_close_fires' depends on axioms: [propext,
  Classical.choice,

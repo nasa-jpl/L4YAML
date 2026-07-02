@@ -159,17 +159,25 @@ five reduce to two independent obligations:
     5≠4, relative advance agrees 3=3), and the joint scalar leaf
     (`parseNodeValueAdvanceLocal_scalar_branch`) is landed `sorry`-free. The
     flow-*collection* head reduces (after `parseNode` peels the bracket + one unit
-    of fuel) to a **loop joint** over `parseFlowSequenceLoop`; on 2026-07-01 that
-    target (`ParseFlowSequenceLoopValueAdvanceLocal`) was captured and its two base
-    branches landed `sorry`-free — fuel-0 (`parseFlowSeqLoop_joint_fuel0`) and the
-    empty-collection closer (`parseFlowSeqLoop_joint_close`), birth-probed
+    of fuel) to a **loop joint** over `parseFlowSequenceLoop`
+    (`ParseFlowSequenceLoopValueAdvanceLocal`), whose two base branches — fuel-0
+    (`parseFlowSeqLoop_joint_fuel0`) and the empty-collection closer
+    (`parseFlowSeqLoop_joint_close`) — are landed `sorry`-free, birth-probed
     (`loop_joint_birth`: absolute `pos` differs 4≠3, relative advance agrees 1=1)
-    and fired on real emission (`loop_close_fires`). The recursive step's
-    agreement re-arming is shown to be *balance-free* — `agree_shift` (proved
-    `[propext, Quot.sound]`, no `flowBracketBalance`) shifts the bounded agreement
-    by the joint's equal advance, the mechanism that would retire P2a's balance
-    bridge. Only the recursive loop step (a mutual induction over the parser
-    clique) remains to decide it.
+    and fired on real emission (`loop_close_fires`). On 2026-07-01 the loop-joint
+    target was **corrected to abstract states**: the recursive step reduces (via
+    `parseFlowSequenceLoop_step_push`) to an *existential* continuation state
+    `ps''`, which a literal `{tokens,pos,anchors}` form cannot feed to its IH
+    without pinning all seven `ParseState` fields — including four position-tracking
+    fields that have no preservation lemmas and are irrelevant to value/advance. The
+    abstract form constrains only `tokens`/`pos`/`anchors` (the all-scalar template's
+    shape), with `loop_path_track_independent` witnessing the dropped fields inert
+    and `loop_recursive_rearm` driving the genuine two-element re-arm on real
+    emission. The recursive step's agreement re-arming is shown to be *balance-free*
+    — `agree_shift` (proved `[propext, Quot.sound]`, no `flowBracketBalance`) shifts
+    the bounded agreement by the joint's equal advance, the mechanism that would
+    retire P2a's balance bridge. Only the recursive loop step (a mutual induction
+    over the parser clique) remains to decide it.
   - **P1 — loop-value:** threads P2a and P2b through the flow loop, computing
     each element's cumulative start offset.
 
