@@ -2539,10 +2539,10 @@ theorem parseNodeContent_wb (tokens : Array (Positioned YamlToken))
     (n fuel : Nat) (h_fuel : fuel ≤ n)
     (h_fpsv : FlowAwarePSV tokens) (h_ih : ParseNodeWB tokens n)
     (h_matched : FlowBracketsMatched tokens)
-    (ps : ParseState) (props : NodeProperties)
+    (ps : ParseState) (props : NodeProperties) (isSeqEntry : Bool)
     (result : YamlValue × ParseState)
     (h_eq : ps.tokens = tokens)
-    (h_ok : parseNodeContent ps fuel props = .ok result) :
+    (h_ok : parseNodeContent ps fuel props isSeqEntry = .ok result) :
     Scannable result.1 false ∧
     (flowNesting tokens ps.pos > 0 → Scannable result.1 true) ∧
     flowNesting tokens result.2.pos = flowNesting tokens ps.pos ∧
@@ -2573,8 +2573,15 @@ theorem parseNodeContent_wb (tokens : Array (Positioned YamlToken))
   -- Case: blockMappingStart
   · rename_i heq_peek
     exact parseBlockMapping_wb tokens fuel h_ih_fuel ps result h_eq heq_peek h_ok
-  -- Case: blockEntry → implicit block sequence
-  · exact parseImplicitBlockSequence_wb tokens fuel h_ih_fuel ps result h_eq h_ok
+  -- Case: blockEntry → empty scalar (seq-entry context, C2) or implicit block sequence
+  · split at h_ok
+    · -- isSeqEntry: empty scalar, ps' = ps (C2) — identical to the empty-content case
+      simp only [Except.ok.injEq] at h_ok; subst h_ok
+      exact ⟨empty_scalar_scannable props.tag props.anchor false,
+             fun _ => empty_scalar_scannable props.tag props.anchor true,
+             rfl, h_eq⟩
+    · -- otherwise: implicit block sequence
+      exact parseImplicitBlockSequence_wb tokens fuel h_ih_fuel ps result h_eq h_ok
   -- Case: flowSequenceStart
   · rename_i heq_peek
     exact parseFlowSequence_wb tokens fuel h_fpsv h_ih_fuel h_matched ps result h_eq heq_peek h_ok
@@ -2736,7 +2743,7 @@ theorem parseNode_wb_all (tokens : Array (Positioned YamlToken))
                   heq_props h_eq
               -- parseNodeContent well-behavedness
               have h_content := parseNodeContent_wb tokens n k hk h_fpsv ih h_matched
-                v_props.2 v_props.1 v_content h_props_tok heq_content
+                v_props.2 v_props.1 _ v_content h_props_tok heq_content
               -- applyNodeFinalization results (opaque form)
               have h_fin_pos := applyNodeFinalization_pos
                 v_content.1 v_content.2 v_props.1
@@ -3938,16 +3945,21 @@ theorem parseFlowMapping_pos_mono (fuel : Nat)
 
 theorem parseNodeContent_pos_mono (fuel : Nat)
     (h_ih : ParseNodePosMono fuel)
-    (ps : ParseState) (props : NodeProperties)
+    (ps : ParseState) (props : NodeProperties) (isSeqEntry : Bool)
     (result : YamlValue × ParseState)
-    (h_ok : parseNodeContent ps fuel props = .ok result) :
+    (h_ok : parseNodeContent ps fuel props isSeqEntry = .ok result) :
     result.2.pos ≥ ps.pos := by
   unfold parseNodeContent at h_ok
   split at h_ok
   · simp only [Except.ok.injEq] at h_ok; subst h_ok; simp [ParseState.advance]
   · exact parseBlockSequence_pos_mono fuel h_ih ps result h_ok
   · exact parseBlockMapping_pos_mono fuel h_ih ps result h_ok
-  · exact parseImplicitBlockSequence_pos_mono fuel h_ih ps result h_ok
+  · -- blockEntry: empty scalar (seq-entry context, C2) or implicit block sequence
+    split at h_ok
+    · -- isSeqEntry: empty scalar, result.2 = ps (C2)
+      simp only [Except.ok.injEq] at h_ok; subst h_ok; exact Nat.le_refl _
+    · -- otherwise: implicit block sequence
+      exact parseImplicitBlockSequence_pos_mono fuel h_ih ps result h_ok
   · exact parseFlowSequence_pos_mono fuel h_ih ps result h_ok
   · exact parseFlowMapping_pos_mono fuel h_ih ps result h_ok
   · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact Nat.le_refl _
@@ -3991,7 +4003,7 @@ theorem parseNode_pos_mono_all : ∀ n, ParseNodePosMono n := by
               try dsimp only [] at h_ok
               simp only [Except.ok.injEq] at h_ok
               have h_props := parseNodeProperties_pos_mono ps props ps_props heq_props
-              have h_content := parseNodeContent_pos_mono k ih ps_props props _ heq_content
+              have h_content := parseNodeContent_pos_mono k ih ps_props props _ _ heq_content
               -- Extract ps' = (applyNodeFinalization ...).2 without expanding
               have h_ps := congrArg Prod.snd h_ok
               simp only [] at h_ps  -- reduces (val', ps').2 to ps'
@@ -4038,6 +4050,11 @@ theorem parseNode_emitter_advances (ps : ParseState) (fuel : Nat)
           have h_ps := congrArg Prod.snd h_ok
           simp only [] at h_val h_ps
           rw [show ps'.pos = ps_content.pos from by rw [← h_ps]; exact applyNodeFinalization_pos ..]
+          -- Position monotonicity of the (still-folded) content dispatch, used by the
+          -- blockEntry case where the isSeqEntry branch is opaque to `split`.
+          have h_content_ge : ps_content.pos ≥ ps_props.pos :=
+            parseNodeContent_pos_mono fuel (parseNode_pos_mono_all fuel)
+              ps_props props _ (content_val, ps_content) heq_content
           -- Now show ps_content.pos > ps.pos via content dispatch
           unfold parseNodeContent at heq_content
           split at heq_content
@@ -4071,10 +4088,11 @@ theorem parseNode_emitter_advances (ps : ParseState) (fuel : Nat)
                 simp only [Except.ok.injEq] at heq_content
                 obtain ⟨_, rfl⟩ := Prod.mk.inj heq_content
                 split <;> simp [ParseState.advance] at h_loop ⊢ <;> omega
-          · -- blockEntry (implicit block sequence): contradicts emitter tok
+          · -- blockEntry: empty scalar (seq-entry context, C2) or implicit block
+            --  sequence — both are unreachable under an emitter token
             rcases Nat.lt_or_ge ps.pos ps_props.pos with h_strict | h_le
-            · have h_ibs := parseImplicitBlockSequence_pos_mono fuel (parseNode_pos_mono_all fuel) ps_props _ heq_content
-              simp only [] at h_ibs; omega
+            · -- props advanced strictly ⇒ ps_content.pos ≥ ps_props.pos > ps.pos (h_content_ge)
+              omega
             · have h_eq_pos : ps_props.pos = ps.pos := by omega
               have h_tok := parseNodeProperties_tokens ps props ps_props heq_props
               have h_peek_eq : ps_props.peek? = ps.peek? := by

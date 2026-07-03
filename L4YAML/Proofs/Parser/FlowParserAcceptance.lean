@@ -66,9 +66,9 @@ theorem parseNode_scalar_flow (ps : ParseState) (m : Nat) (h_m : 0 < m)
   have h_val : validateNodeProps ps ps.pos {} = .ok () :=
     validateNodeProps_scalar ps ps.pos c s h_peek
   -- Content dispatch returns the scalar and advances by one.
-  have h_content : parseNodeContent ps k {} =
-      .ok (YamlValue.scalar { content := c, style := s, tag := none, anchor := none }, ps.advance) := by
-    simp [parseNodeContent, h_peek]
+  have h_content : ∀ b, parseNodeContent ps k {} b =
+      .ok (YamlValue.scalar { content := c, style := s, tag := none, anchor := none }, ps.advance) :=
+    fun _ => by simp [parseNodeContent, h_peek]
   refine ⟨(applyNodeFinalization
             (YamlValue.scalar { content := c, style := s, tag := none, anchor := none })
             ps.advance {} (ps.peekPos?.getD { offset := 0, line := 0, col := 0 })).2,
@@ -130,8 +130,8 @@ theorem parseNode_flowSeqStart_of_parse (ps ps' : ParseState) (k : Nat) (v : Yam
     parseNodeProperties_skip ps (by simp [h_peek])
   have h_val : validateNodeProps ps ps.pos {} = .ok () :=
     validateNodeProps_flowSeqStart ps ps.pos h_peek
-  have h_content : parseNodeContent ps k {} = .ok (v, ps') := by
-    simp only [parseNodeContent, h_peek]; exact h_parse
+  have h_content : ∀ b, parseNodeContent ps k {} b = .ok (v, ps') :=
+    fun _ => by simp only [parseNodeContent, h_peek]; exact h_parse
   unfold parseNode
   simp only [h_peek, bind, Except.bind, pure, Except.pure, h_props, h_val, h_content]
 
@@ -148,8 +148,8 @@ theorem parseNode_flowMapStart_of_parse (ps ps' : ParseState) (k : Nat) (v : Yam
     parseNodeProperties_skip ps (by simp [h_peek])
   have h_val : validateNodeProps ps ps.pos {} = .ok () :=
     validateNodeProps_flowMapStart ps ps.pos h_peek
-  have h_content : parseNodeContent ps k {} = .ok (v, ps') := by
-    simp only [parseNodeContent, h_peek]; exact h_parse
+  have h_content : ∀ b, parseNodeContent ps k {} b = .ok (v, ps') :=
+    fun _ => by simp only [parseNodeContent, h_peek]; exact h_parse
   unfold parseNode
   simp only [h_peek, bind, Except.bind, pure, Except.pure, h_props, h_val, h_content]
 

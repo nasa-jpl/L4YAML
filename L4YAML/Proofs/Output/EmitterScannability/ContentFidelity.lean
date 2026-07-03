@@ -384,8 +384,8 @@ theorem parseNode_flowSeqStart_produces_sequence (ps : ParseState) (fuel : Nat)
       simp only [h_peek, bind, Except.bind, pure, Except.pure]
       rfl
     -- content dispatch routes a flowSequenceStart peek to parseFlowSequence (at decremented fuel)
-    have h_pnc : parseNodeContent ps n ({} : NodeProperties) = parseFlowSequence ps n := by
-      unfold parseNodeContent; rw [h_peek]
+    have h_pnc : ∀ b, parseNodeContent ps n ({} : NodeProperties) b = parseFlowSequence ps n :=
+      fun _ => by unfold parseNodeContent; rw [h_peek]
     unfold parseNode at h
     simp only [h_peek, bind, Except.bind, pure, Except.pure, h_np, h_vnp, h_pnc] at h
     cases hfs : parseFlowSequence ps n with
@@ -419,8 +419,8 @@ theorem parseNode_flowMapStart_produces_mapping (ps : ParseState) (fuel : Nat)
       intro p; unfold validateNodeProps
       simp only [h_peek, bind, Except.bind, pure, Except.pure]
       rfl
-    have h_pnc : parseNodeContent ps n ({} : NodeProperties) = parseFlowMapping ps n := by
-      unfold parseNodeContent; rw [h_peek]
+    have h_pnc : ∀ b, parseNodeContent ps n ({} : NodeProperties) b = parseFlowMapping ps n :=
+      fun _ => by unfold parseNodeContent; rw [h_peek]
     unfold parseNode at h
     simp only [h_peek, bind, Except.bind, pure, Except.pure, h_np, h_vnp, h_pnc] at h
     cases hfm : parseFlowMapping ps n with
@@ -488,9 +488,9 @@ theorem parseNode_scalar_produces_scalar (ps : ParseState) (fuel : Nat)
       simp only [h_peek, bind, Except.bind, pure, Except.pure]
       rfl
     -- content dispatch routes a scalar peek straight to the scalar value (empty-prop tag/anchor)
-    have h_pnc : parseNodeContent ps n ({} : NodeProperties)
-        = .ok (YamlValue.scalar { content := content, style := style }, ps.advance) := by
-      unfold parseNodeContent; rw [h_peek]
+    have h_pnc : ∀ b, parseNodeContent ps n ({} : NodeProperties) b
+        = .ok (YamlValue.scalar { content := content, style := style }, ps.advance) :=
+      fun _ => by unfold parseNodeContent; rw [h_peek]
     unfold parseNode at h
     simp only [h_peek, bind, Except.bind, pure, Except.pure, h_np, h_vnp, h_pnc] at h
     -- finalization is identity on a scalar head (the `other` arm); read off the first component
@@ -522,9 +522,9 @@ theorem parseNode_scalar_advances_by_one
       intro p; unfold validateNodeProps
       simp only [h_peek, bind, Except.bind, pure, Except.pure]
       rfl
-    have h_pnc : parseNodeContent ps n ({} : NodeProperties)
-        = .ok (YamlValue.scalar { content := content, style := style }, ps.advance) := by
-      unfold parseNodeContent; rw [h_peek]
+    have h_pnc : ∀ b, parseNodeContent ps n ({} : NodeProperties) b
+        = .ok (YamlValue.scalar { content := content, style := style }, ps.advance) :=
+      fun _ => by unfold parseNodeContent; rw [h_peek]
     unfold parseNode at h_parse
     simp only [h_peek, bind, Except.bind, pure, Except.pure, h_np, h_vnp, h_pnc] at h_parse
     have h2 := Except.ok.inj h_parse
@@ -551,9 +551,9 @@ theorem parseNode_scalar_tokens_preserved (ps : ParseState) (fuel : Nat)
       intro p; unfold validateNodeProps
       simp only [h_peek, bind, Except.bind, pure, Except.pure]
       rfl
-    have h_pnc : parseNodeContent ps n ({} : NodeProperties)
-        = .ok (YamlValue.scalar { content := content, style := style }, ps.advance) := by
-      unfold parseNodeContent; rw [h_peek]
+    have h_pnc : ∀ b, parseNodeContent ps n ({} : NodeProperties) b
+        = .ok (YamlValue.scalar { content := content, style := style }, ps.advance) :=
+      fun _ => by unfold parseNodeContent; rw [h_peek]
     unfold parseNode at h_parse
     simp only [h_peek, bind, Except.bind, pure, Except.pure, h_np, h_vnp, h_pnc] at h_parse
     have h2 := Except.ok.inj h_parse
@@ -930,9 +930,9 @@ theorem parseStream_flowSeqStart_loop_witness
     parseNodeProperties_skip ps_th (by rw [h_th_peek]; trivial)
   have h_vnp : ∀ p, validateNodeProps ps_th p ({} : NodeProperties) = .ok () := by
     intro p; unfold validateNodeProps; simp [h_th_peek, bind, Except.bind, pure, Except.pure]
-  have h_pnc : parseNodeContent ps_th (4 * tokens.size + 3) ({} : NodeProperties) =
-      parseFlowSequence ps_th (4 * tokens.size + 3) := by
-    unfold parseNodeContent; rw [h_th_peek]
+  have h_pnc : ∀ b, parseNodeContent ps_th (4 * tokens.size + 3) ({} : NodeProperties) b =
+      parseFlowSequence ps_th (4 * tokens.size + 3) :=
+    fun _ => by unfold parseNodeContent; rw [h_th_peek]
   cases h_pn : parseNode ps_th (4 * tokens.size + 4) with
   | error e => rw [h_pn] at h_pd; simp only [reduceCtorEq] at h_pd
   | ok r_pn =>
@@ -1058,9 +1058,9 @@ theorem parseStream_flowMapStart_loop_witness
     parseNodeProperties_skip ps_th (by rw [h_th_peek]; trivial)
   have h_vnp : ∀ p, validateNodeProps ps_th p ({} : NodeProperties) = .ok () := by
     intro p; unfold validateNodeProps; simp [h_th_peek, bind, Except.bind, pure, Except.pure]
-  have h_pnc : parseNodeContent ps_th (4 * tokens.size + 3) ({} : NodeProperties) =
-      parseFlowMapping ps_th (4 * tokens.size + 3) := by
-    unfold parseNodeContent; rw [h_th_peek]
+  have h_pnc : ∀ b, parseNodeContent ps_th (4 * tokens.size + 3) ({} : NodeProperties) b =
+      parseFlowMapping ps_th (4 * tokens.size + 3) :=
+    fun _ => by unfold parseNodeContent; rw [h_th_peek]
   cases h_pn : parseNode ps_th (4 * tokens.size + 4) with
   | error e => rw [h_pn] at h_pd; simp only [reduceCtorEq] at h_pd
   | ok r_pn =>

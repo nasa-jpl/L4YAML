@@ -522,9 +522,9 @@ theorem parseStream_emitSequence (style : CollectionStyle) (items : Array YamlVa
       simp only [bind, Except.bind]
       rw [h_loop_ok]; simp only [h_loop_peek]
     -- parseNodeContent dispatches to parseFlowSequence
-    have h_parseNC : parseNodeContent ps1 (4 * tokens.size + 3) {} =
-        Except.ok (.sequence .flow items_res, ps_loop.advance) := by
-      unfold parseNodeContent; rw [h_peek1]; exact h_parseFlowSeq
+    have h_parseNC : ∀ b, parseNodeContent ps1 (4 * tokens.size + 3) {} b =
+        Except.ok (.sequence .flow items_res, ps_loop.advance) :=
+      fun _ => by unfold parseNodeContent; rw [h_peek1]; exact h_parseFlowSeq
     -- applyNodeFinalization is identity for empty props and trackPositions=false
     have h_finalize : applyNodeFinalization
         (.sequence .flow items_res) ps_loop.advance {}
@@ -722,9 +722,9 @@ theorem parseStream_emitMapping (style : CollectionStyle) (pairs : Array (YamlVa
       simp only [bind, Except.bind]
       rw [h_loop_ok]; simp only [h_loop_peek]
     -- parseNodeContent dispatches to parseFlowMapping
-    have h_parseNC : parseNodeContent ps1 (4 * tokens.size + 3) {} =
-        Except.ok (.mapping .flow pairs_res, ps_loop.advance) := by
-      unfold parseNodeContent; rw [h_peek1]; exact h_parseFlowMap
+    have h_parseNC : ∀ b, parseNodeContent ps1 (4 * tokens.size + 3) {} b =
+        Except.ok (.mapping .flow pairs_res, ps_loop.advance) :=
+      fun _ => by unfold parseNodeContent; rw [h_peek1]; exact h_parseFlowMap
     -- applyNodeFinalization is identity for empty props and trackPositions=false
     have h_finalize : applyNodeFinalization
         (.mapping .flow pairs_res) ps_loop.advance {}

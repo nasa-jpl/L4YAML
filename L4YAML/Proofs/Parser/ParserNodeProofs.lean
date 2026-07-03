@@ -802,8 +802,8 @@ theorem parseNodeProperties_ag
 
 theorem parseNodeContent_ag (h_ih : ParseNodeAG n)
     (ps : ParseState) (fuel : Nat) (h_fuel : fuel ≤ n)
-    (props : NodeProperties) (val : YamlValue) (ps' : ParseState)
-    (h_ok : parseNodeContent ps fuel props = .ok (val, ps')) :
+    (props : NodeProperties) (isSeqEntry : Bool) (val : YamlValue) (ps' : ParseState)
+    (h_ok : parseNodeContent ps fuel props isSeqEntry = .ok (val, ps')) :
     AG ps ps' := by
   unfold parseNodeContent at h_ok
   split at h_ok
@@ -815,8 +815,14 @@ theorem parseNodeContent_ag (h_ih : ParseNodeAG n)
     exact parseBlockSequence_ag h_ih ps fuel (by omega) val ps' h_ok
   · -- blockMappingStart
     exact parseBlockMapping_ag h_ih ps fuel (by omega) val ps' h_ok
-  · -- blockEntry (implicit block sequence)
-    exact parseImplicitBlockSequence_ag h_ih ps fuel (by omega) val ps' h_ok
+  · -- blockEntry: empty scalar (seq-entry context, C2) or implicit block sequence
+    split at h_ok
+    · -- isSeqEntry: empty scalar, no state change (C2)
+      simp only [Except.ok.injEq] at h_ok
+      obtain ⟨_, rfl⟩ := Prod.mk.inj h_ok
+      exact AG.refl
+    · -- otherwise: implicit block sequence
+      exact parseImplicitBlockSequence_ag h_ih ps fuel (by omega) val ps' h_ok
   · -- flowSequenceStart
     exact parseFlowSequence_ag h_ih ps fuel (by omega) val ps' h_ok
   · -- flowMappingStart
@@ -873,7 +879,7 @@ theorem parseNode_ag_all : ∀ n, ParseNodeAG n := by
           · rename_i content_res heq_content
             obtain ⟨val_c, ps_c⟩ := content_res
             dsimp only [] at h_ok
-            have h_ag_content := parseNodeContent_ag h_pnag ps_props k h_k_le props val_c ps_c heq_content
+            have h_ag_content := parseNodeContent_ag h_pnag ps_props k h_k_le props _ val_c ps_c heq_content
             -- applyNodeFinalization: h_ok now says .ok (finalize ...) = .ok (val, ps')
             simp only [Except.ok.injEq] at h_ok
             obtain ⟨_, rfl⟩ := Prod.mk.inj h_ok
@@ -1712,8 +1718,8 @@ theorem parseFlowMapping_aar (h_ih_aar : ParseNodeAAR n) (h_ih_ag : ParseNodeAG 
 
 theorem parseNodeContent_aar (h_ih_aar : ParseNodeAAR n) (h_ih_ag : ParseNodeAG n)
     (ps : ParseState) (fuel : Nat) (h_fuel : fuel ≤ n + 1) (props : NodeProperties)
-    (val : YamlValue) (ps' : ParseState)
-    (h_ok : parseNodeContent ps fuel props = .ok (val, ps')) :
+    (isSeqEntry : Bool) (val : YamlValue) (ps' : ParseState)
+    (h_ok : parseNodeContent ps fuel props isSeqEntry = .ok (val, ps')) :
     AllAliasesResolve val ps'.anchors := by
   unfold parseNodeContent at h_ok
   split at h_ok
@@ -1723,7 +1729,14 @@ theorem parseNodeContent_aar (h_ih_aar : ParseNodeAAR n) (h_ih_ag : ParseNodeAG 
     exact .scalar _ _
   · exact parseBlockSequence_aar h_ih_aar h_ih_ag ps fuel (by omega) val ps' h_ok
   · exact parseBlockMapping_aar h_ih_aar h_ih_ag ps fuel (by omega) val ps' h_ok
-  · exact parseImplicitBlockSequence_aar h_ih_aar h_ih_ag ps fuel (by omega) val ps' h_ok
+  · -- blockEntry: empty scalar (seq-entry context, C2) or implicit block sequence
+    split at h_ok
+    · -- isSeqEntry: empty scalar (C2)
+      simp only [Except.ok.injEq] at h_ok
+      obtain ⟨rfl, rfl⟩ := Prod.mk.inj h_ok
+      exact .scalar _ _
+    · -- otherwise: implicit block sequence
+      exact parseImplicitBlockSequence_aar h_ih_aar h_ih_ag ps fuel (by omega) val ps' h_ok
   · exact parseFlowSequence_aar h_ih_aar h_ih_ag ps fuel (by omega) val ps' h_ok
   · exact parseFlowMapping_aar h_ih_aar h_ih_ag ps fuel (by omega) val ps' h_ok
   · -- empty scalar
@@ -1784,7 +1797,7 @@ theorem parseNode_aar_all : ∀ n, ParseNodeAAR n := by
             simp only [Except.ok.injEq] at h_ok
             obtain ⟨rfl, rfl⟩ := Prod.mk.inj h_ok
             exact applyNodeFinalization_aar val_c ps_c props _
-              (parseNodeContent_aar ih_aar h_ih_ag ps_props k (by omega) props val_c ps_c heq_content)
+              (parseNodeContent_aar ih_aar h_ih_ag ps_props k (by omega) props _ val_c ps_c heq_content)
 
 -- Extraction
 theorem parseNode_aliases_resolve'

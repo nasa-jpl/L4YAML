@@ -270,6 +270,7 @@ import Tests.Reflections.MappingAllScalarLocality
 import Tests.Reflections.R447RootCarrier
 import Tests.Reflections.NonAllScalarLocality
 import Tests.Reflections.EmitterTagPercentDecode
+import Tests.Reflections.EmptyNodePropsSeqEntry
 
 /-!
 # Reflections — runnable proof-engineering demonstrations

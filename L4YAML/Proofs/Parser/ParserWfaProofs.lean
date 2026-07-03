@@ -1244,8 +1244,8 @@ theorem parseNodeContent_wfa
     (h_wb : ParseNodeWB tokens n)
     (ps : ParseState) (fuel : Nat) (h_fuel : fuel ≤ n)
     (h_tok : ps.tokens = tokens)
-    (props : NodeProperties) (val : YamlValue) (ps' : ParseState)
-    (h_ok : parseNodeContent ps fuel props = .ok (val, ps'))
+    (props : NodeProperties) (isSeqEntry : Bool) (val : YamlValue) (ps' : ParseState)
+    (h_ok : parseNodeContent ps fuel props isSeqEntry = .ok (val, ps'))
     (h_wfa : WellFormedAnchors ps.anchors) :
     WellFormedAnchors ps'.anchors := by
   unfold parseNodeContent at h_ok
@@ -1255,7 +1255,13 @@ theorem parseNodeContent_wfa
     rw [advance_anchors]; exact h_wfa
   · exact parseBlockSequence_wfa h_ih h_wb ps fuel (by omega) h_tok _ _ h_ok h_wfa
   · exact parseBlockMapping_wfa h_ih h_wb ps fuel (by omega) h_tok _ _ h_ok h_wfa
-  · exact parseImplicitBlockSequence_wfa h_ih h_wb ps fuel (by omega) h_tok _ _ h_ok h_wfa
+  · -- blockEntry: empty scalar (seq-entry context, C2) or implicit block sequence
+    split at h_ok
+    · -- isSeqEntry: empty scalar, ps' = ps (C2)
+      simp only [Except.ok.injEq] at h_ok; obtain ⟨_, rfl⟩ := Prod.mk.inj h_ok
+      exact h_wfa
+    · -- otherwise: implicit block sequence
+      exact parseImplicitBlockSequence_wfa h_ih h_wb ps fuel (by omega) h_tok _ _ h_ok h_wfa
   · exact parseFlowSequence_wfa h_ih h_wb ps fuel (by omega) h_tok _ _ h_ok h_wfa
   · exact parseFlowMapping_wfa h_ih h_wb ps fuel (by omega) h_tok _ _ h_ok h_wfa
   · -- empty scalar: ps' = ps
@@ -1413,14 +1419,14 @@ theorem parseNode_wfa_all
             dsimp only [] at h_ok
             -- WFA propagation through content
             have h_wfa_c := parseNodeContent_wfa ih h_pnwb ps_props k h_k_le
-              h_tok_props props val_c ps_c heq_content h_wfa_props
+              h_tok_props props _ val_c ps_c heq_content h_wfa_props
             -- Scannable from WB
             have h_cwb := parseNodeContent_wb tokens n k h_k_le h_fpsv h_pnwb h_matched
-              ps_props props (val_c, ps_c) h_tok_props heq_content
+              ps_props props _ (val_c, ps_c) h_tok_props heq_content
             -- AAR from content_aar
             have h_aar_c := parseNodeContent_aar
               (parseNode_aar_all n) (parseNode_ag_all n)
-              ps_props k (by omega) props val_c ps_c heq_content
+              ps_props k (by omega) props _ val_c ps_c heq_content
             -- h_ok: applyNodeFinalization val_c ps_c props nodeStartPos = (val, ps')
             -- (after Except.ok injection)
             simp only [Except.ok.injEq] at h_ok

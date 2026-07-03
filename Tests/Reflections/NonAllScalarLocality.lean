@@ -413,9 +413,9 @@ theorem parseNode_scalar_head_isOk (ps : ParseState) (n : Nat)
   have h_vnp : ∀ p, validateNodeProps ps p ({} : NodeProperties) = .ok () := by
     intro p; unfold validateNodeProps
     simp only [h_peek, bind, Except.bind, pure, Except.pure]; rfl
-  have h_pnc : parseNodeContent ps n ({} : NodeProperties)
-      = .ok (YamlValue.scalar { content := content, style := style }, ps.advance) := by
-    unfold parseNodeContent; rw [h_peek]
+  have h_pnc : ∀ b, parseNodeContent ps n ({} : NodeProperties) b
+      = .ok (YamlValue.scalar { content := content, style := style }, ps.advance) :=
+    fun _ => by unfold parseNodeContent; rw [h_peek]
   unfold parseNode
   simp only [h_peek, bind, Except.bind, pure, Except.pure, h_np, h_vnp, h_pnc]
   exact ⟨_, rfl⟩
@@ -886,9 +886,9 @@ theorem parseNode_scalar_anchors_preserved (ps : ParseState) (fuel : Nat)
     have h_vnp : ∀ p, validateNodeProps ps p ({} : NodeProperties) = .ok () := by
       intro p; unfold validateNodeProps
       simp only [h_peek, bind, Except.bind, pure, Except.pure]; rfl
-    have h_pnc : parseNodeContent ps n ({} : NodeProperties)
-        = .ok (YamlValue.scalar { content := content, style := style }, ps.advance) := by
-      unfold parseNodeContent; rw [h_peek]
+    have h_pnc : ∀ b, parseNodeContent ps n ({} : NodeProperties) b
+        = .ok (YamlValue.scalar { content := content, style := style }, ps.advance) :=
+      fun _ => by unfold parseNodeContent; rw [h_peek]
     unfold parseNode at h_parse
     simp only [h_peek, bind, Except.bind, pure, Except.pure, h_np, h_vnp, h_pnc] at h_parse
     have h2 := Except.ok.inj h_parse

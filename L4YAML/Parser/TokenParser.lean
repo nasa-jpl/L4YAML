@@ -89,17 +89,25 @@ mutual
   yaml_spec "7.5" 157 "c-flow-json-content(n,c)",
   yaml_spec "7.5" 158 "ns-flow-content(n,c)",
   yaml_spec "7.5" 159 "ns-flow-yaml-node(n,c)"]
-def parseNodeContent (ps : ParseState) (fuel : Nat) (props : NodeProperties) :
-    Except ScanError (YamlValue × ParseState) :=
+def parseNodeContent (ps : ParseState) (fuel : Nat) (props : NodeProperties)
+    (isSeqEntry : Bool) : Except ScanError (YamlValue × ParseState) :=
   match ps.peek? with
   | some (YamlToken.scalar content style) =>
     .ok (YamlValue.scalar { content, style, tag := props.tag, anchor := props.anchor }, ps.advance)
   | some .blockSequenceStart => parseBlockSequence ps fuel
   | some .blockMappingStart => parseBlockMapping ps fuel
   | some .blockEntry =>
-    -- Implicit block sequence: libyaml/our scanner omits BLOCK-SEQUENCE-START
-    -- when block entries sit at the same indent as the containing mapping key.
-    parseImplicitBlockSequence ps fuel
+    if isSeqEntry then
+      -- §8.2.1 (BLOCK-IN context): this node was reached directly from a block
+      -- sequence entry (`-`).  Its properties are followed by a sibling `-` at
+      -- the same indent, so the node is an *empty scalar* carrying the
+      -- properties; the `blockEntry` belongs to the parent sequence and must
+      -- NOT open a nested implicit sequence (FH7J, PW8X).
+      .ok (YamlValue.scalar { content := "", style := .plain, tag := props.tag, anchor := props.anchor }, ps)
+    else
+      -- Implicit block sequence: libyaml/our scanner omits BLOCK-SEQUENCE-START
+      -- when block entries sit at the same indent as the containing mapping key.
+      parseImplicitBlockSequence ps fuel
   | some .flowSequenceStart => parseFlowSequence ps fuel
   | some .flowMappingStart => parseFlowMapping ps fuel
   | _ =>
@@ -150,11 +158,21 @@ def parseNode (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × Pa
   | _ => pure ()
   -- Parse optional node properties
   let prePropPos := ps.pos
+  -- §8.2.1 BLOCK-IN vs BLOCK-OUT: a node reached directly from a block sequence
+  -- entry is preceded by a `blockEntry` token.  In that context a `blockEntry`
+  -- following the node's properties is a *sibling* entry (empty scalar), not the
+  -- start of a nested implicit sequence — see `parseNodeContent` (FH7J, PW8X).
+  let isSeqEntry : Bool :=
+    if prePropPos > 0 then
+      match ps.tokens[prePropPos - 1]!.val with
+      | .blockEntry => true
+      | _           => false
+    else false
   let (props, ps) ← parseNodeProperties ps
   -- Validate node properties (block-same-line + duplicate-anchor checks)
   validateNodeProps ps prePropPos props
   -- Parse content (dispatched via parseNodeContent)
-  let (val, ps) ← parseNodeContent ps fuel props
+  let (val, ps) ← parseNodeContent ps fuel props isSeqEntry
   -- Apply properties, register anchor, and record G5c position
   .ok (applyNodeFinalization val ps props nodeStartPos)
 

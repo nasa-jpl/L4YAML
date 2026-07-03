@@ -7,17 +7,16 @@ formalization, and the proofs.*
 Generated 2026-07-02 · baseline: **event 362/402**, **json 240/279 valid**
 (see [YAML_MATRIX_COMPARISON.md](YAML_MATRIX_COMPARISON.md)).
 
-**Progress:** J1 + A + A′/B1/B3/E + C1/C3 + D applied 2026-07-02 → **event 396/402**
-(+34), **json 274/279 valid** (+29). See [Status log](#status-log).
+**Progress:** J1 + A + A′/B1/B3/E + C1/C3 + D + C2 applied 2026-07-02 → **event 398/402**
+(+36), **json 274/279 valid** (+29). See [Status log](#status-log).
 
 ---
 
 ## Bottom line
 
 * *(Original baseline framing; current standing is in **Progress** above —
-  after J1/A/A′/B1/B3/E/C1/C3/D only **6 event** and **5 genuine JSON** diffs remain,
-  spread over just three root causes: B2 (DE56×4), C2 (FH7J/PW8X) on the
-  event axis; J2 (3GZX) + B2 on JSON.)*
+  after J1/A/A′/B1/B3/E/C1/C3/D/C2 only **4 event** and **5 genuine JSON** diffs remain,
+  over just two root causes: B2 (DE56×4) on the event axis; J2 (3GZX) + B2 on JSON.)*
   **40 event diffs and 39 JSON diffs remain. Every one is a *content* or
   *structure* defect in the scanner/parser — none is a spurious accept/reject.**
   L4YAML still parses every test with the correct success/failure verdict.
@@ -53,7 +52,7 @@ Generated 2026-07-02 · baseline: **event 362/402**, **json 240/279 valid**
 | **B2** | Double-quoted: an *escaped* trailing tab is trimmed as whitespace | DE56/00–03 | yes | `collectDoubleQuotedLoop`/`trimTrailingWS` | none (structural only) | **M** |
 | **B3** ✅ | Plain: continuation-line leading tab / tab-blank line not folded | HS5T, NB6Z, UV7Q | yes | `collectPlainScalar_handleBlockLineBreak`, `skipBlankLinesLoop` | **structural + grammar**‡ | S |
 | **C1** ✅ | Lone `...` / comment-only tail emits a spurious empty document | HWV9, QT73, M7A3 | yes | `parseStreamLoop` **and** `Events.parseStreamMarkedLoop` | **5 runtime `parseStreamLoop` lemmas**§ | S |
-| **C2** | Empty node with a tag/anchor opens a *sequence* that swallows siblings | FH7J, PW8X | (event-only) | `parseNodeContent` (thread `hadProps`) | **breaks 6 lemmas, re-prove** | **M** |
+| **C2** ✅ | Empty node with a tag/anchor opens a *sequence* that swallows siblings | FH7J, PW8X | (event-only) | `parseNode`/`parseNodeContent` (derive `isSeqEntry` — **not** `hadProps`, see log) | **6 lemmas re-proven**∥ | **M** |
 | **C3** ✅ | Explicit collection-key entry split into two empty-half pairs | V9D5 | (event-only) | `parseBlockMappingEntryValue` retroactive-`key` skip | **5 runtime BEV lemmas**§ + 1 test | XS |
 | **D** ✅ | Tag suffix percent-escape (`%21`→`!`) not decoded | 6CK3 | no (value unaffected) | `Events.resolveTagForEvent` (emitter-side) | **none** (emitter-side) ✓ | XS |
 | **E** ✅ | Literal `\|` keep/clip on trailing-whitespace-only lines | JEF9/02, L24T/01 | yes | `scanBlockScalarBody` chomp of blank tail | **structural**‡ | S |
@@ -187,21 +186,50 @@ same lesson (definitional-shape change, not spec content). Both fixes touched th
   old C1/C3 behaviour**, so the eventual Phase-3 cutover (indexed twin *replaces*
   the runtime parser) must port these two fixes and re-prove the indexed lemmas.
 
+∥ *Correction (C2, done):* the proposed **`hadProps` gate was semantically wrong** —
+it regressed `57H4` and `SKE5` (both spec examples), where a node's tag/anchor
+legitimately decorates a *same-indent* block sequence that is the node's content.
+Both regressions are **map values**; both targets (FH7J/PW8X) are **sequence
+entries** — `hadProps` is true for all four, so it cannot discriminate. The real
+signal is the parser **context** (§8.2.1 `c` = BLOCK-IN vs BLOCK-OUT): the token
+*before* the node is `blockEntry` for a sequence entry, `value`/`key` for a map
+value/key. `parseNode` derives `isSeqEntry := (ps.tokens[prePropPos-1] == blockEntry)`
+from `ps` and passes it to `parseNodeContent`; the empty-scalar branch fires **only**
+when `isSeqEntry`. Deriving it *internally* keeps `parseNode`'s signature intact, so
+the `ParseNode{AG,AAR,WFA,WB,PosMono}` invariant theorems were untouched — only the
+6 lemmas that `unfold parseNodeContent` gained the extra `Bool` and its empty-scalar
+sub-case (`parseNodeContent_ag`/`_aar`/`_wfa`/`_wb`/`_pos_mono`; the emitter
+`parseNode_emitter_advances`'s blockEntry case closed via the folded
+`parseNodeContent_pos_mono` + `omega`). The 6 lemmas the original write-up predicted
+were the right count — but the discriminator was not, and only a **birth probe on the
+four real inputs** caught it (`Tests/Reflections/EmptyNodePropsSeqEntry.lean`;
+[[feedback-inhabitation-debt-validate-target-defs]]). The `Indexed*` twin still models
+the old behaviour and must port this on the Phase-3 cutover.
+
 ---
 
 ## The three fixes that cost something
 
-### C2 — empty tagged/anchored node opens a phantom sequence (FH7J, PW8X)
+### C2 — empty tagged/anchored node opens a phantom sequence (FH7J, PW8X) — **done 2026-07-02, see [Status log](#status-log)**
 `- !!str` (empty scalar carrying `!!str`) followed by more `-` entries is parsed as
 an empty **sequence** nesting the siblings. In `parseNodeContent`, a node property
 followed by a `blockEntry` token routes to `parseImplicitBlockSequence` instead of
-yielding an empty scalar. Fix: thread a `hadProps : Bool` and, when properties were
-present, return the empty scalar. This **breaks and requires re-proving**
-`parseNodeContent_ag`/`_aar` and transitively `parseBlockSequence(Loop)_ag`/`_aar`
-in `Proofs/Parser/ParserNodeProofs.lean` (the anchor-growth and
-alias-resolution invariants over the changed branch). The top-level
-`parseNode_ag_all` structure survives; only the sub-lemmas need updating. Est.
-medium — the invariants are monotone, so re-proof is mechanical, not novel.
+yielding an empty scalar.
+
+**The `hadProps` fix proposed here was wrong** — it regresses `57H4` (Spec Example
+8.22, *Block Collection Nodes*) and `SKE5` (*Anchor before a zero-indented
+sequence*), where a node's properties legitimately tag/anchor a *same-indent* block
+sequence that IS its content. Those inputs have properties too, so `hadProps`
+cannot separate them from FH7J/PW8X. The distinguisher is the parser **context**
+(§8.2.1 BLOCK-IN vs BLOCK-OUT): a node reached from a sequence entry is preceded by
+a `blockEntry` token; a mapping value by a `value` token. The landed fix derives
+`isSeqEntry := (ps.tokens[prePropPos-1] == blockEntry)` in `parseNode` and passes it
+to `parseNodeContent`; only in the sequence-entry context does a following
+`blockEntry` yield the empty scalar. Deriving the flag *inside* `parseNode` keeps
+its signature unchanged, so the `ParseNode*` **invariant** theorems did not need
+generalizing — only the 6 lemmas that `unfold parseNodeContent` gained the extra
+`isSeqEntry` parameter and its empty-scalar sub-case (`parseNodeContent_ag`/`_aar`/
+`_wfa`/`_wb`/`_pos_mono`, plus the emitter `parseNode_emitter_advances`).
 
 ### J2 — alias to a re-defined anchor (3GZX)
 When an anchor name is defined twice, `*name` must bind to the **most recent
@@ -273,14 +301,16 @@ but the logic itself is fiddlier than the other scanner tweaks. Est. medium-impl
    both axes, zero regressions. **Not** proof-free (the "no proof breakage" call
    was wrong again): C1's new `parseStreamLoop` arm broke 5 runtime lemmas and C3's
    shape change broke 5 more — all mechanical (see the § note below).
-5. **C2** — empty-node/sequence; budget for re-proving the `ParserNodeProofs`
-   sub-lemmas.
+5. **C2** ✅ *(done — see [Status log](#status-log))* — empty-node/sequence. Cleared
+   FH7J + PW8X (+2 event), zero regressions. The proposed `hadProps` gate was
+   **wrong** (regressed 57H4/SKE5); the landed fix keys on a derived `isSeqEntry`
+   context flag. 6 lemmas re-proven, mechanical.
 6. **B2, J2** — the two fiddly ones (escaped trailing whitespace; order-aware alias
    resolution with R604 restatement).
 
-After 1–5, both axes should sit at ~99% (all but B2's 4 DE56 variants and J2's
-3GZX). Steps 6 close the last two root causes for a genuine 402/402 event and
-279/279 JSON.
+After 1–5, both axes now sit at ~99% (event 398/402, all but B2's 4 DE56 variants;
+json 274/279, all but B2 + J2's 3GZX). Step 6 closes the last two root causes for a
+genuine 402/402 event and 279/279 JSON.
 
 ---
 
@@ -495,3 +525,57 @@ would be over-decoded. No test-suite case exercises this; if one appears, move t
 decode to `resolveTag`, where the suffix is still distinct (at some parser-proof
 cost). `percentDecodeTag` leaves malformed `%` sequences untouched, minimizing
 blast radius.
+
+### C2 — empty tagged/anchored node opens a phantom sequence (done 2026-07-02)
+
+**Change.** `Parser/TokenParser.lean`: `parseNode` derives
+`isSeqEntry := (ps.tokens[prePropPos-1].val == blockEntry)` (guarded on
+`prePropPos > 0`) and passes it to `parseNodeContent`; the `blockEntry` content arm
+now returns an **empty scalar** (carrying the node's props) when `isSeqEntry`, and
+opens the implicit sequence otherwise. Root cause: `- !!str` / `- &a` as a *sequence
+entry* followed by a sibling `-` at the same indent was routed to
+`parseImplicitBlockSequence`, which swallowed all the siblings into one nested
+sequence (FH7J collapsed 3 entries → 1; PW8X 6 → 1).
+
+**The discriminator matters — the obvious one is wrong.** The write-up's proposed
+`hadProps` gate regresses `57H4` (Spec Example 8.22) and `SKE5` ("anchor before a
+zero-indented sequence"): there the properties decorate a *same-indent* block
+sequence that IS the node's content, and both inputs have properties, so `hadProps`
+can't tell them from FH7J/PW8X. The two `#guard`s in `Tests/Guards/Proofs/
+SuiteGuards/Advanced.lean` for 57H4/SKE5 turned red the instant the `hadProps`
+version compiled — the fastest possible refutation. The correct signal is the parser
+**context** (§8.2.1 `c`): sequence entries are preceded by a `blockEntry` token, map
+values by a `value` token (verified by dumping the token streams — they are otherwise
+locally identical at the decision point).
+
+**Result.** Event **396 → 398** (+2: FH7J, PW8X), JSON unchanged at **274/279 valid**
+(both have empty `in.json` — event-only, as projected). **Zero regressions** (exact
+fail-set diff: event fails went `{DE56×4, FH7J, PW8X}` → `{DE56×4}`, nothing added;
+JSON unchanged). FH7J and PW8X now emit the **byte-for-byte** expected event streams.
+Remaining **4 event** diffs: DE56/00–03 (B2). Remaining **5 genuine JSON** diffs:
+3GZX (J2), DE56/00–03 (B2) — plus the 3 phantom rejects.
+
+**Proofs.** 6 lemmas re-proven, all mechanical; the ∥ note has the full account.
+Deriving `isSeqEntry` inside `parseNode` (rather than threading a parameter through
+the mutual recursion) kept `parseNode`'s signature — and therefore every
+`ParseNode*` invariant theorem and all its call sites — untouched. Only the lemmas
+that `unfold parseNodeContent` gained the extra `Bool`: `parseNodeContent_ag`/`_aar`
+(`ParserNodeProofs`), `_wfa` (`ParserWfaProofs`), `_wb`/`_pos_mono` +
+`parseNode_emitter_advances` (`ParserWellBehaved`). The direct
+`parseNodeContent … {}` uses in the flow/emitter acceptance proofs
+(`FlowParserAcceptance`, `EmitterScannability`, `ContentFidelity`,
+`NonAllScalarLocality`) were generalized over the flag (`∀ b, … b = …`) since their
+peek is bracket/scalar (isSeqEntry-independent). Full `lake build` green (834/834;
+only the pre-existing NonAllScalarLocality sorries).
+
+**Inhabitation probe.** `Tests/Reflections/EmptyNodePropsSeqEntry.lean` (indexed):
+rule-5 grounded pins of the full FH7J/PW8X event streams (the two POSITIVE cases),
+plus rule-2 **boundary** pins of 57H4/SKE5's full streams carrying `+SEQ <tag>` /
+`+SEQ &anchor` on the *collection* — so a regression to the empty-scalar reading
+(which would emit `=VAL <…> :`) is caught. This probe is exactly the artifact the
+inhabitation-debt discipline calls for: the `hadProps` branch *type-checked*, and
+only exercising the four real inputs proved it did the wrong thing. Axiom-audited
+(`[propext, Classical.choice, Quot.sound, …native_decide.ax]`, no `sorryAx`).
+
+**Indexed twin.** `TokenParserIx.parseNodeContent` is unchanged (still models the old
+behaviour); the Phase-3 cutover must port this fix.
