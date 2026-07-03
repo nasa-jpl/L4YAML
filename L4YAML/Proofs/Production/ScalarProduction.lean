@@ -474,7 +474,19 @@ theorem collectDoubleQuotedLoop_prod (sc : ScannerState) (sp : SurfPos)
       SNbDoubleMultiLine 0 sp sp_body ∧
       GLit '"' sp_body sp_close ∧
       ScannerSurfCorr s' sp_close := by
-  induction fuel generalizing sc sp content with
+  -- protectedLen (default 0) generalised so the IH covers the fold shift (B2).
+  suffices H : ∀ (p : Nat) (sc : ScannerState) (sp : SurfPos) (content : String),
+      ScannerSurfCorr sc sp →
+      collectDoubleQuotedLoop sc content fuel startPos inFlow currentIndent inputEnd p
+        = .ok (result_content, s') →
+      (∃ sp_body sp_close,
+        SNbDoubleMultiLine 0 sp sp_body ∧
+        GLit '"' sp_body sp_close ∧
+        ScannerSurfCorr s' sp_close) by
+    exact H 0 sc sp content hcorr hok
+  clear hok hcorr
+  intro p sc sp content hcorr hok
+  induction fuel generalizing sc sp content p with
   | zero => simp [collectDoubleQuotedLoop] at hok
   | succ fuel' ih =>
     unfold collectDoubleQuotedLoop at hok
@@ -510,7 +522,7 @@ theorem collectDoubleQuotedLoop_prod (sc : ScannerState) (sp : SurfPos)
           obtain ⟨sp_ws, h_gstar_ws, hcorr_ws⟩ :=
             skipWhitespace_corr (consumeNewline sc.advance) sp_cn hcorr_cn
           obtain ⟨sp_body, sp_close, h_body, h_glit, h_corr⟩ :=
-            ih _ sp_ws content hcorr_ws hok
+            ih _ _ sp_ws content hcorr_ws hok
           -- Build SSDoubleEscaped: no leading ws, backslash, linebreak, no empty lines, flow prefix
           have h_gopt := gstar_sswhite_to_gopt_sep h_gstar_ws
           have h_flp : SFlowLinePrefix 0 sp_cn sp_ws :=
@@ -537,7 +549,7 @@ theorem collectDoubleQuotedLoop_prod (sc : ScannerState) (sp : SurfPos)
             obtain ⟨sp_esc, h_dq_char, hcorr_esc⟩ :=
               processEscape_prod sc.advance rest sc.col hcorr_adv hproc
             obtain ⟨sp_body, sp_close, h_body, h_glit, h_corr⟩ :=
-              ih _ sp_esc _ hcorr_esc hok
+              ih _ _ sp_esc _ hcorr_esc hok
             exact ⟨sp_body, sp_close,
                    SNbDoubleMultiLine_prepend _ _ _ h_dq_char h_body,
                    h_glit, h_corr⟩
@@ -563,7 +575,7 @@ theorem collectDoubleQuotedLoop_prod (sc : ScannerState) (sp : SurfPos)
             · split at hok  -- do-notation residue
               · simp at hok
               · obtain ⟨sp_body, sp_close, h_body, h_glit, h_corr⟩ :=
-                  ih _ sp_fold _ hcorr_fold hok
+                  ih _ _ sp_fold _ hcorr_fold hok
                 exact ⟨sp_body, sp_close,
                        SNbDoubleMultiLine.multi 0
                          ⟨c :: rest, sc.col⟩ ⟨c :: rest, sc.col⟩
@@ -583,7 +595,7 @@ theorem collectDoubleQuotedLoop_prod (sc : ScannerState) (sp : SurfPos)
           have hcorr_adv :=
             advance_non_newline_corr sc c rest hcorr hmore h_not_nl h_not_cr
           obtain ⟨sp_body, sp_close, h_body, h_glit, h_corr⟩ :=
-            ih sc.advance ⟨rest, sc.col + 1⟩ _ hcorr_adv hok
+            ih _ sc.advance ⟨rest, sc.col + 1⟩ _ hcorr_adv hok
           have h_dq_char : SNbDoubleChar ⟨c :: rest, sc.col⟩ ⟨rest, sc.col + 1⟩ :=
             SNbDoubleChar.plain c rest sc.col
               (not_lineBreak_bool_to_prop hne_lb) hne_bs hne_dq

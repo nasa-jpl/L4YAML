@@ -2978,7 +2978,14 @@ theorem collectDoubleQuotedLoop_preserves_flowLevel (s : ScannerState) (content 
     (result : String × ScannerState)
     (h : collectDoubleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd = .ok result) :
     result.snd.flowLevel = s.flowLevel := by
-  induction fuel generalizing s content with
+  -- protectedLen (default 0) generalised so the IH covers the fold shift (B2).
+  suffices H : ∀ (p : Nat) (s : ScannerState) (content : String),
+      collectDoubleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd p = .ok result →
+      result.snd.flowLevel = s.flowLevel by
+    exact H 0 s content h
+  clear h
+  intro p s content h
+  induction fuel generalizing s content p with
   | zero => unfold collectDoubleQuotedLoop at h; contradiction
   | succ fuel' ih =>
     unfold collectDoubleQuotedLoop at h
@@ -2994,7 +3001,7 @@ theorem collectDoubleQuotedLoop_preserves_flowLevel (s : ScannerState) (content 
         -- Now split on isLineBreakBool c
         split at h
         · -- Escaped line break
-          exact ih _ _ h |>.trans (skipWhitespace_preserves_flowLevel _)
+          exact ih _ _ _ h |>.trans (skipWhitespace_preserves_flowLevel _)
                          |>.trans (consumeNewline_preserves_flowLevel _)
                          |>.trans (advance_preserves_flowLevel s)
         · -- Regular escape
@@ -3002,7 +3009,7 @@ theorem collectDoubleQuotedLoop_preserves_flowLevel (s : ScannerState) (content 
           split at h <;> try contradiction
           rename_i escape_result heq_escape
           have h_fl_escape := processEscape_preserves_flowLevel _ _ heq_escape
-          exact ih _ _ h |>.trans h_fl_escape |>.trans (advance_preserves_flowLevel s)
+          exact ih _ _ _ h |>.trans h_fl_escape |>.trans (advance_preserves_flowLevel s)
     · -- Case: peek? = some c (other character)
       split at h
       · -- Line break: fold newlines
@@ -3018,10 +3025,10 @@ theorem collectDoubleQuotedLoop_preserves_flowLevel (s : ScannerState) (content 
         simp only [] at h
         split at h <;> try contradiction
         -- After all validations pass, we have the recursive call
-        exact ih _ _ h |>.trans h_fl_fold
+        exact ih _ _ _ h |>.trans h_fl_fold
       · -- Regular character
         split at h <;> try contradiction  -- isNbJsonBool check
-        exact ih _ _ h |>.trans (advance_preserves_flowLevel s)
+        exact ih _ _ _ h |>.trans (advance_preserves_flowLevel s)
 
 theorem scanDoubleQuoted_preserves_flowLevel (s s' : ScannerState)
     (h_ok : scanDoubleQuoted s = .ok s') :

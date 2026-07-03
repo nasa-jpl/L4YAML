@@ -1283,7 +1283,17 @@ theorem collectDoubleQuotedLoop_BoundInv {s₀ : ScannerState} (s s' : ScannerSt
     (hok : collectDoubleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd
            = .ok (resultContent, s')) :
     BoundInv s₀ s' := by
-  induction fuel generalizing s content with
+  -- protectedLen (default 0) generalised (`pl`, avoiding the inner `next p`) so
+  -- the IH covers the fold shift (B2).
+  suffices H : ∀ (pl : Nat) (s : ScannerState) (content : String),
+      BoundInv s₀ s →
+      collectDoubleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd pl
+        = .ok (resultContent, s') →
+      BoundInv s₀ s' by
+    exact H 0 s content h hok
+  clear hok h
+  intro pl s content h hok
+  induction fuel generalizing s content pl with
   | zero => simp only [collectDoubleQuotedLoop] at hok; cases hok
   | succ n ih =>
     simp only [collectDoubleQuotedLoop] at hok
@@ -1300,7 +1310,7 @@ theorem collectDoubleQuotedLoop_BoundInv {s₀ : ScannerState} (s s' : ScannerSt
         split at hok  -- isLineBreakBool
         · -- escaped line break: no bind, just let + recurse
           try dsimp only [] at hok
-          exact ih _ _ (skipWhitespace_BoundInv _
+          exact ih _ _ _ (skipWhitespace_BoundInv _
             (consumeNewline_BoundInv _ (advance_BoundInv s h hend) hend) hend) hok
         · -- regular escape: do with processEscape ←
           simp only [bind, Except.bind, Bind.bind] at hok
@@ -1308,7 +1318,7 @@ theorem collectDoubleQuotedLoop_BoundInv {s₀ : ScannerState} (s s' : ScannerSt
           · cases hok
           · next p heq =>
             try dsimp only [] at hok
-            exact ih _ _ (processEscape_BoundInv _ _ p.1
+            exact ih _ _ _ (processEscape_BoundInv _ _ p.1
               (advance_BoundInv s h hend) hend heq) hok
       · cases hok  -- none: error
     · -- some c (not '"', not '\\')
@@ -1324,11 +1334,11 @@ theorem collectDoubleQuotedLoop_BoundInv {s₀ : ScannerState} (s s' : ScannerSt
           · split at hok  -- underIndented
             · cases hok
             · try dsimp only [] at hok
-              exact ih _ _ (foldQuotedNewlines_BoundInv _ p.2 _ h hend heq) hok
+              exact ih _ _ _ (foldQuotedNewlines_BoundInv _ p.2 _ h hend heq) hok
       · split at hok  -- !isNbJsonBool
         · cases hok
         · try dsimp only [] at hok
-          exact ih _ _ (advance_BoundInv s h hend) hok
+          exact ih _ _ _ (advance_BoundInv s h hend) hok
 
 set_option maxHeartbeats 6400000 in
 theorem collectSingleQuotedLoop_BoundInv {s₀ : ScannerState} (s s' : ScannerState)

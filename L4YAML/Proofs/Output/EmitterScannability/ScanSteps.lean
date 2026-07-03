@@ -323,7 +323,14 @@ theorem collectDoubleQuotedLoop_preserves_dp (s : ScannerState) (content : Strin
     (result : String × ScannerState)
     (h : collectDoubleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd = .ok result) :
     result.snd.directivesPresent = s.directivesPresent := by
-  induction fuel generalizing s content with
+  -- protectedLen (default 0) generalised so the IH covers the fold shift (B2).
+  suffices H : ∀ (p : Nat) (s : ScannerState) (content : String),
+      collectDoubleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd p = .ok result →
+      result.snd.directivesPresent = s.directivesPresent by
+    exact H 0 s content h
+  clear h
+  intro p s content h
+  induction fuel generalizing s content p with
   | zero => unfold collectDoubleQuotedLoop at h; contradiction
   | succ fuel' ih =>
     unfold collectDoubleQuotedLoop at h
@@ -336,7 +343,7 @@ theorem collectDoubleQuotedLoop_preserves_dp (s : ScannerState) (content : Strin
       split at h <;> try contradiction
       · split at h
         · -- Escaped line break
-          exact ih _ _ h |>.trans (skipWhitespace_preserves_dp _)
+          exact ih _ _ _ h |>.trans (skipWhitespace_preserves_dp _)
                          |>.trans (consumeNewline_preserves_dp _)
                          |>.trans (advance_preserves_dp s)
         · -- Regular escape
@@ -344,7 +351,7 @@ theorem collectDoubleQuotedLoop_preserves_dp (s : ScannerState) (content : Strin
           split at h <;> try contradiction
           rename_i escape_result heq_escape
           have h_dp_escape := processEscape_preserves_dp _ _ heq_escape
-          exact ih _ _ h |>.trans h_dp_escape |>.trans (advance_preserves_dp s)
+          exact ih _ _ _ h |>.trans h_dp_escape |>.trans (advance_preserves_dp s)
     · -- Case: peek? = some c (other character)
       split at h
       · -- Line break: fold newlines
@@ -356,10 +363,10 @@ theorem collectDoubleQuotedLoop_preserves_dp (s : ScannerState) (content : Strin
         split at h <;> try contradiction
         simp only [] at h
         split at h <;> try contradiction
-        exact ih _ _ h |>.trans h_dp_fold
+        exact ih _ _ _ h |>.trans h_dp_fold
       · -- Regular character
         split at h <;> try contradiction
-        exact ih _ _ h |>.trans (advance_preserves_dp s)
+        exact ih _ _ _ h |>.trans (advance_preserves_dp s)
 
 -- scanDoubleQuoted preserves directivesPresent (structural — only tokens/offset/line/col change)
 theorem scanDoubleQuoted_preserves_dp (s s' : ScannerState)
@@ -520,7 +527,14 @@ theorem collectDoubleQuotedLoop_preserves_indents (s : ScannerState) (content : 
     (result : String × ScannerState)
     (h : collectDoubleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd = .ok result) :
     result.snd.indents = s.indents := by
-  induction fuel generalizing s content with
+  -- protectedLen (default 0) generalised so the IH covers the fold shift (B2).
+  suffices H : ∀ (p : Nat) (s : ScannerState) (content : String),
+      collectDoubleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd p = .ok result →
+      result.snd.indents = s.indents by
+    exact H 0 s content h
+  clear h
+  intro p s content h
+  induction fuel generalizing s content p with
   | zero => unfold collectDoubleQuotedLoop at h; contradiction
   | succ fuel' ih =>
     unfold collectDoubleQuotedLoop at h
@@ -532,13 +546,13 @@ theorem collectDoubleQuotedLoop_preserves_indents (s : ScannerState) (content : 
       simp only [] at h
       split at h <;> try contradiction
       · split at h
-        · exact (ih _ _ h).trans (skipWhitespace_preserves_indents _)
+        · exact (ih _ _ _ h).trans (skipWhitespace_preserves_indents _)
                 |>.trans (consumeNewline_preserves_indents _) |>.trans (advance_preserves_indents s)
         · simp only [bind, Except.bind] at h
           split at h <;> try contradiction
           rename_i escape_result heq_escape
           cases escape_result
-          exact (ih _ _ h).trans (processEscape_preserves_indents _ _ heq_escape)
+          exact (ih _ _ _ h).trans (processEscape_preserves_indents _ _ heq_escape)
                 |>.trans (advance_preserves_indents s)
     · -- regular character
       split at h
@@ -549,9 +563,9 @@ theorem collectDoubleQuotedLoop_preserves_indents (s : ScannerState) (content : 
         split at h <;> try contradiction
         simp only [] at h
         split at h <;> try contradiction
-        exact (ih _ _ h).trans (foldQuotedNewlines_preserves_indents _ _ heq_fold)
+        exact (ih _ _ _ h).trans (foldQuotedNewlines_preserves_indents _ _ heq_fold)
       · split at h <;> try contradiction
-        exact (ih _ _ h).trans (advance_preserves_indents s)
+        exact (ih _ _ _ h).trans (advance_preserves_indents s)
 
 theorem scanDoubleQuoted_preserves_indents (s s' : ScannerState)
     (h_ok : scanDoubleQuoted s = .ok s') :
@@ -707,7 +721,14 @@ theorem collectDoubleQuotedLoop_preserves_ek (s : ScannerState) (content : Strin
     (result : String × ScannerState)
     (h : collectDoubleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd = .ok result) :
     result.snd.explicitKeyLine = s.explicitKeyLine := by
-  induction fuel generalizing s content with
+  -- protectedLen (default 0) generalised so the IH covers the fold shift (B2).
+  suffices H : ∀ (p : Nat) (s : ScannerState) (content : String),
+      collectDoubleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd p = .ok result →
+      result.snd.explicitKeyLine = s.explicitKeyLine by
+    exact H 0 s content h
+  clear h
+  intro p s content h
+  induction fuel generalizing s content p with
   | zero => unfold collectDoubleQuotedLoop at h; contradiction
   | succ fuel' ih =>
     unfold collectDoubleQuotedLoop at h
@@ -720,14 +741,14 @@ theorem collectDoubleQuotedLoop_preserves_ek (s : ScannerState) (content : Strin
       split at h <;> try contradiction
       · split at h
         · -- Escaped line break
-          exact ih _ _ h |>.trans (skipWhitespace_preserves_ek _)
+          exact ih _ _ _ h |>.trans (skipWhitespace_preserves_ek _)
                          |>.trans (consumeNewline_preserves_ek _)
                          |>.trans (advance_explicitKeyLine s)
         · -- Regular escape
           simp only [bind, Except.bind] at h
           split at h <;> try contradiction
           rename_i escape_result heq_escape
-          exact ih _ _ h |>.trans (processEscape_preserves_ek _ _ heq_escape)
+          exact ih _ _ _ h |>.trans (processEscape_preserves_ek _ _ heq_escape)
                 |>.trans (advance_explicitKeyLine s)
     · -- Case: peek? = some c (other character)
       split at h
@@ -739,10 +760,10 @@ theorem collectDoubleQuotedLoop_preserves_ek (s : ScannerState) (content : Strin
         split at h <;> try contradiction
         simp only [] at h
         split at h <;> try contradiction
-        exact ih _ _ h |>.trans (foldQuotedNewlines_preserves_ek _ _ heq_fold)
+        exact ih _ _ _ h |>.trans (foldQuotedNewlines_preserves_ek _ _ heq_fold)
       · -- Regular character
         split at h <;> try contradiction
-        exact ih _ _ h |>.trans (advance_explicitKeyLine s)
+        exact ih _ _ _ h |>.trans (advance_explicitKeyLine s)
 
 -- scanDoubleQuoted preserves explicitKeyLine
 theorem scanDoubleQuoted_preserves_ek (s s' : ScannerState)

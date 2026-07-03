@@ -271,6 +271,7 @@ import Tests.Reflections.R447RootCarrier
 import Tests.Reflections.NonAllScalarLocality
 import Tests.Reflections.EmitterTagPercentDecode
 import Tests.Reflections.EmptyNodePropsSeqEntry
+import Tests.Reflections.EscapedTrailingTab
 
 /-!
 # Reflections — runnable proof-engineering demonstrations

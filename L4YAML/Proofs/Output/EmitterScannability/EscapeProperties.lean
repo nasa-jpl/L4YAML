@@ -555,7 +555,22 @@ theorem collectDoubleQuotedLoop_escapeString_succeeds
       .ok (acc ++ String.ofList content_rest, s') ∧ ScannerSurfCorr s' ⟨rest, s'.col⟩
       ∧ s'.col > 0
       ∧ s'.line = sc.line := by
-  induction content_rest generalizing sc acc fuel with
+  -- protectedLen (default 0) generalised so the IH covers the escape branch's
+  -- shifted boundary (B2); `escapeString` output has no line folds, so the
+  -- returned content is protectedLen-independent.
+  suffices H : ∀ (p : Nat) (sc : ScannerState) (acc : String) (fuel : Nat),
+      ScannerSurfCorr sc
+        ⟨(escapeString (String.ofList content_rest)).toList ++ ['"'] ++ rest, sc.col⟩ →
+      fuel ≥ content_rest.length + 1 →
+      ∃ s',
+        collectDoubleQuotedLoop sc acc fuel startPos inFlow currentIndent sc.inputEnd p =
+        .ok (acc ++ String.ofList content_rest, s') ∧ ScannerSurfCorr s' ⟨rest, s'.col⟩
+        ∧ s'.col > 0
+        ∧ s'.line = sc.line by
+    exact H 0 sc acc fuel hcorr h_fuel
+  clear hcorr h_fuel
+  intro p sc acc fuel hcorr h_fuel
+  induction content_rest generalizing sc acc fuel p with
   | nil =>
     -- Remaining chars: escapeString "" ++ "\"" ++ rest = '"' :: rest
     have h_ofnil : (String.ofList ([] : List Char)) = "" := rfl
@@ -622,7 +637,7 @@ theorem collectDoubleQuotedLoop_escapeString_succeeds
           rw [show acc ++ String.ofList (c :: cs) = acc.push c ++ String.ofList cs
             from (push_append_ofList_eq acc c cs).symm]
           obtain ⟨s', h_loop, hcorr_s', h_col_s', h_line_s'⟩ :=
-            ih sc.advance.advance (acc.push c) fuel'
+            ih _ sc.advance.advance (acc.push c) fuel'
             hcorr_tag (by simp [List.length_cons] at h_f; omega)
           exact ⟨s', h_loop, hcorr_s', h_col_s',
             h_line_s'.trans ((advance_line_of_peek sc.advance tag h_lt_tag h_peek_tag
@@ -739,7 +754,7 @@ theorem collectDoubleQuotedLoop_escapeString_succeeds
           rw [show acc ++ String.ofList (c :: cs) = acc.push c ++ String.ofList cs
             from (push_append_ofList_eq acc c cs).symm]
           obtain ⟨s', h_loop, hcorr_s', h_col_s', h_line_s'⟩ :=
-            ih s_after (acc.push c) fuel' hcorr_after
+            ih _ s_after (acc.push c) fuel' hcorr_after
             (by simp [List.length_cons] at h_f; omega)
           -- Line chain: s' → s_after → sc.advance → sc
           have h_line_proc : s_after.line = sc.advance.line := h_ie_line
@@ -803,7 +818,7 @@ theorem collectDoubleQuotedLoop_escapeString_succeeds
           rw [show acc ++ String.ofList (c :: cs) = acc.push c ++ String.ofList cs
             from (push_append_ofList_eq acc c cs).symm]
           obtain ⟨s', h_loop, hcorr_s', h_col_s', h_line_s'⟩ :=
-            ih sc.advance (acc.push c) fuel' hcorr_c
+            ih _ sc.advance (acc.push c) fuel' hcorr_c
             (by simp [List.length_cons] at h_f; omega)
           exact ⟨s', h_loop, hcorr_s', h_col_s',
             h_line_s'.trans (advance_line_of_peek sc c h_lt_c h_peek_c h_ne_nl h_ne_cr)⟩

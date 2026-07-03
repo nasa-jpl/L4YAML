@@ -232,8 +232,18 @@ def validateTrailingContent (s : ScannerState) (inputEnd : Nat) : Except ScanErr
   yaml_spec "7.3.1" 116 "nb-double-multi-line(n)",
   yaml_spec "5.1" 2 "nb-json"]
 def collectDoubleQuotedLoop (s : ScannerState) (content : String) (fuel : Nat)
-    (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat) :
+    (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat)
+    (protectedLen : Nat := 0) :
     Except ScanError (String × ScannerState) :=
+  -- `protectedLen` is the number of leading characters of `content` that a line
+  -- fold must NOT trim (§6.5): everything up to and including the last
+  -- `ns-double-char` — a non-white char *or* an **escaped** white char
+  -- (`ns-esc-tab`/`ns-esc-space`, [62]).  Only the *unescaped* `s-white*` run
+  -- past `protectedLen` is layout whitespace and is dropped at a fold.  This
+  -- keeps an escaped trailing tab (`"…\t\n …"`, DE56/00–03) as content while
+  -- still trimming a literal trailing tab (DE56/04–05).  For any scalar without
+  -- an escaped trailing white char, `protectedLen` equals the naive
+  -- `trimTrailingWS` boundary, so behaviour is byte-identical.
   match fuel with
   | 0 => .error (.unterminatedScalar .doubleQuoted startPos.line)
   | fuel' + 1 =>
@@ -251,17 +261,20 @@ def collectDoubleQuotedLoop (s : ScannerState) (content : String) (fuel : Nat)
           -- Escaped line break: consume and skip whitespace
           let s_after_newline := consumeNewline s_after_backslash
           let s_after_ws := skipWhitespace s_after_newline
-          collectDoubleQuotedLoop s_after_ws content fuel' startPos inFlow currentIndent inputEnd
+          collectDoubleQuotedLoop s_after_ws content fuel' startPos inFlow currentIndent inputEnd protectedLen
         else do
           -- Regular escape sequence
           let (ch, s_after_escape) ← processEscape s_after_backslash
           let content' := content.push ch
-          collectDoubleQuotedLoop s_after_escape content' fuel' startPos inFlow currentIndent inputEnd
+          -- An escaped char is `ns-double-char` (content, never layout), so the
+          -- whole prefix through it is protected from a later fold's trim.
+          collectDoubleQuotedLoop s_after_escape content' fuel' startPos inFlow currentIndent inputEnd content'.length
       | none => .error (.unterminatedEscape s_after_backslash.line)
     | some c =>
       if isLineBreakBool c then do
-        -- Line break: fold newlines
-        let content_trimmed := trimTrailingWS content
+        -- Line break: fold newlines.  Trim only the *unescaped* trailing white
+        -- run (everything past `protectedLen`), keeping escaped trailing WS.
+        let content_trimmed := String.ofList (content.toList.take protectedLen)
         let (folded, s') ← foldQuotedNewlines s
         -- Validation: document markers at col 0 terminate
         if atDocumentStart s' || atDocumentEnd s' then
@@ -270,14 +283,20 @@ def collectDoubleQuotedLoop (s : ScannerState) (content : String) (fuel : Nat)
         if (s'.col : Int) ≤ currentIndent then
           throw (.underIndentedScalar .doubleQuoted s'.line)
         let content' := content_trimmed ++ folded
-        collectDoubleQuotedLoop s' content' fuel' startPos inFlow currentIndent inputEnd
+        -- A folded space (`b-as-space`) is layout and stays trimmable; folded
+        -- line feeds (`b-l-trimmed`) are content and are protected.
+        let protectedLen' := content_trimmed.length + (if folded == " " then 0 else folded.length)
+        collectDoubleQuotedLoop s' content' fuel' startPos inFlow currentIndent inputEnd protectedLen'
       else if !isNbJsonBool c then
         -- C0 control character — [2] nb-json violation (§5.1)
         .error (.invalidControlChar c .doubleQuoted s.line s.col)
       else
         -- Regular character (nb-json minus '"' minus '\')
         let content' := content.push c
-        collectDoubleQuotedLoop s.advance content' fuel' startPos inFlow currentIndent inputEnd
+        -- Unescaped space/tab is layout (`s-white`) — leave `protectedLen` so it
+        -- stays trimmable at a fold; any other char advances the boundary.
+        let protectedLen' := if c == ' ' || c == '\t' then protectedLen else content'.length
+        collectDoubleQuotedLoop s.advance content' fuel' startPos inFlow currentIndent inputEnd protectedLen'
 
 /-- Scan a double-quoted scalar.
 

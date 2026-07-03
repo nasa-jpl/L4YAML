@@ -7,16 +7,17 @@ formalization, and the proofs.*
 Generated 2026-07-02 · baseline: **event 362/402**, **json 240/279 valid**
 (see [YAML_MATRIX_COMPARISON.md](YAML_MATRIX_COMPARISON.md)).
 
-**Progress:** J1 + A + A′/B1/B3/E + C1/C3 + D + C2 applied 2026-07-02 → **event 398/402**
-(+36), **json 274/279 valid** (+29). See [Status log](#status-log).
+**Progress:** J1 + A + A′/B1/B3/E + C1/C3 + D + C2 + B2 applied 2026-07-02 → **event 402/402**
+(+40, **100%**), **json 278/279 valid** (+33). See [Status log](#status-log). Only **J2** (3GZX)
+remains — a single JSON-only diff.
 
 ---
 
 ## Bottom line
 
 * *(Original baseline framing; current standing is in **Progress** above —
-  after J1/A/A′/B1/B3/E/C1/C3/D/C2 only **4 event** and **5 genuine JSON** diffs remain,
-  over just two root causes: B2 (DE56×4) on the event axis; J2 (3GZX) + B2 on JSON.)*
+  after J1/A/A′/B1/B3/E/C1/C3/D/C2/B2 the **event axis is 402/402 (100%)** and only **1 genuine
+  JSON diff** remains, over a single root cause: J2 (3GZX).)*
   **40 event diffs and 39 JSON diffs remain. Every one is a *content* or
   *structure* defect in the scanner/parser — none is a spurious accept/reject.**
   L4YAML still parses every test with the correct success/failure verdict.
@@ -49,7 +50,7 @@ Generated 2026-07-02 · baseline: **event 362/402**, **json 240/279 valid**
 | **A** ✅ | Folded `>` clip scalar drops its trailing `\n` | 21 | most | `Scanner/Scalar.lean` `foldBlockContent` EOF case | **6 guards updated**† | XS |
 | **A′** ✅ | Folded folding mishandles blank / tab-led "more-indented" lines | MJS9, R4YG | yes | `foldBlockContent` `isMore` + blank-run logic | **structural**‡ | S |
 | **B1** ✅ | Double-quoted: tab-containing blank line folds to space not `\n` | 5GBF | yes | `foldQuotedNewlinesLoop` (`skipSpaces`→tab-aware) | **structural + grammar**‡ | XS |
-| **B2** | Double-quoted: an *escaped* trailing tab is trimmed as whitespace | DE56/00–03 | yes | `collectDoubleQuotedLoop`/`trimTrailingWS` | none (structural only) | **M** |
+| **B2** ✅ | Double-quoted: an *escaped* trailing tab is trimmed as whitespace | DE56/00–03 | yes | `collectDoubleQuotedLoop` (thread a `protectedLen` boundary — **not** `trimTrailingWS`) | **~13 lemmas re-generalized**¶ | **M** |
 | **B3** ✅ | Plain: continuation-line leading tab / tab-blank line not folded | HS5T, NB6Z, UV7Q | yes | `collectPlainScalar_handleBlockLineBreak`, `skipBlankLinesLoop` | **structural + grammar**‡ | S |
 | **C1** ✅ | Lone `...` / comment-only tail emits a spurious empty document | HWV9, QT73, M7A3 | yes | `parseStreamLoop` **and** `Events.parseStreamMarkedLoop` | **5 runtime `parseStreamLoop` lemmas**§ | S |
 | **C2** ✅ | Empty node with a tag/anchor opens a *sequence* that swallows siblings | FH7J, PW8X | (event-only) | `parseNode`/`parseNodeContent` (derive `isSeqEntry` — **not** `hadProps`, see log) | **6 lemmas re-proven**∥ | **M** |
@@ -206,9 +207,30 @@ four real inputs** caught it (`Tests/Reflections/EmptyNodePropsSeqEntry.lean`;
 [[feedback-inhabitation-debt-validate-target-defs]]). The `Indexed*` twin still models
 the old behaviour and must port this on the Phase-3 cutover.
 
+¶ *Correction (B2, done):* the "none (structural only)" proof-impact call was **wrong** — B2 was
+the campaign's **largest** proof churn, for a structural reason the "content vs structure" heuristic
+misses. Distinguishing an escaped trailing tab (content, keep) from a literal one (layout, trim)
+needs *carried state* — a `protectedLen` boundary marking the last `ns-double-char` — because by
+fold time both are a bare `'\t'`. No signature-free trick works (no marker codepoint is safe: `\u`/
+`\U` escapes can inject *any* codepoint). So `collectDoubleQuotedLoop` **gained a parameter**, and
+even though the value is defaulted to 0 (every real entry starts there) and the trim output is
+*byte-identical* for non-escaped-tab inputs, the parameter broke **~13 inducting lemmas across 7
+files** (`ScannerCorrectness` ×5 — tokens/simpleKey/simpleKeyStack/flowLevel/offset_ge;
+`ScanSteps` ×3 — dp/indents/ek; `ScannerPlainScalarValid` flowLevel; `ScalarCoupling` `_corr`;
+`ScalarProduction` `_prod`; `ScannerBound` `_BoundInv`; `EscapeProperties` `_escapeString_succeeds`).
+The repair is **uniform and mechanical**: wrap each goal in `∀ p` and add `p` to `generalizing`, so
+the IH covers the recursive call's shifted boundary; the lemma's *external* statement (and therefore
+**all ~60 application sites**) is unchanged because it fixes `p = 0`. Two shape variants:
+*intro-style* (hypothesis `intro`-duced) re-quantifies the result in the wrapper; *hparam-style*
+(hypothesis is a signature binder) must `clear` it first — else `induction fuel` reverts the
+signature hyp and pollutes the IH. `_escapeString_succeeds` inducts on the char list, not fuel, but
+takes the same `∀ p` wrapper (its `escapeString` input has no folds, so the pinned content value is
+`p`-independent). The `Indexed*` twin (`collectDoubleQuotedLoopIx`) is a **separate** function and
+was untouched; it lags B2 and must port on the Phase-3 cutover.
+
 ---
 
-## The three fixes that cost something
+## The three fixes that cost something (C2 ✅, B2 ✅ done; only J2 remains)
 
 ### C2 — empty tagged/anchored node opens a phantom sequence (FH7J, PW8X) — **done 2026-07-02, see [Status log](#status-log)**
 `- !!str` (empty scalar carrying `!!str`) followed by more `-` entries is parsed as
@@ -245,14 +267,16 @@ an order-aware traversal, which puts **R604 (`compose_map_pairs_pointwise`, the
 R603 (`resolveAliases_empty`) and `WellFormedAnchors` are agnostic and survive.
 Est. medium — the only defect with genuine *formalization* impact.
 
-### B2 — escaped trailing tab in a double-quoted scalar (DE56/00–03)
+### B2 — escaped trailing tab in a double-quoted scalar (DE56/00–03) — **done 2026-07-02, see [Status log](#status-log)**
 `"…trailing\t\n  tab"` — the `\t` escape produces a real tab that
 `trimTrailingWS` then strips as if it were layout whitespace, because by fold time
-the escaped/literal distinction is lost. The fix must protect escaped trailing
-whitespace from the fold-time trim (e.g. track a "last char was escaped" boundary
-or defer trimming to only *unescaped* run). Contained in `collectDoubleQuotedLoop`;
-its proofs are structural (`_corr`, `_preserves_tokens`, `_BoundInv`) so they hold,
-but the logic itself is fiddlier than the other scanner tweaks. Est. medium-impl.
+the escaped/literal distinction is lost. The landed fix threads a `protectedLen`
+boundary through `collectDoubleQuotedLoop` (the position after the last
+`ns-double-char` = last non-white *or* escaped-white char); the fold trims only the
+unescaped white run past it. **The proof cost was the campaign's largest, not "none"**
+— adding the parameter broke ~13 inducting lemmas across 7 files, all repaired by a
+uniform `∀ p` generalization (external statements unchanged, so ~60 application sites
+untouched); see the ¶ correction above.
 
 ---
 
@@ -305,12 +329,15 @@ but the logic itself is fiddlier than the other scanner tweaks. Est. medium-impl
    FH7J + PW8X (+2 event), zero regressions. The proposed `hadProps` gate was
    **wrong** (regressed 57H4/SKE5); the landed fix keys on a derived `isSeqEntry`
    context flag. 6 lemmas re-proven, mechanical.
-6. **B2, J2** — the two fiddly ones (escaped trailing whitespace; order-aware alias
-   resolution with R604 restatement).
+6. **B2** ✅ *(done — see [Status log](#status-log))* — escaped trailing whitespace.
+   Cleared DE56/00–03 (+4 event, +4 JSON), zero regressions, **event now 402/402**.
+   The projected "none (structural only)" proof cost was wrong — it was the campaign's
+   *largest*: a threaded `protectedLen` parameter broke ~13 inducting lemmas across 7
+   files, all repaired by a uniform `∀ p` generalization (see the ¶ correction).
+7. **J2** — the last one (order-aware alias resolution with R604 restatement).
 
-After 1–5, both axes now sit at ~99% (event 398/402, all but B2's 4 DE56 variants;
-json 274/279, all but B2 + J2's 3GZX). Step 6 closes the last two root causes for a
-genuine 402/402 event and 279/279 JSON.
+After 1–6 the **event axis is 402/402 (100%)** and json is 278/279 valid (all but J2's
+3GZX). Step 7 (J2) closes the last root cause for a genuine 279/279 JSON.
 
 ---
 
@@ -579,3 +606,56 @@ only exercising the four real inputs proved it did the wrong thing. Axiom-audite
 
 **Indexed twin.** `TokenParserIx.parseNodeContent` is unchanged (still models the old
 behaviour); the Phase-3 cutover must port this fix.
+
+### B2 — escaped trailing tab in a double-quoted scalar (done 2026-07-02)
+
+**Change.** `Scanner/Scalar.lean`: `collectDoubleQuotedLoop` gained a
+`protectedLen : Nat := 0` parameter — the count of leading `content` chars a fold must
+**not** trim, i.e. the position after the last `ns-double-char` (a non-white char *or* an
+**escaped** white char, `ns-esc-tab`/`ns-esc-space` [62]). The line-break branch now trims
+only the *unescaped* white run past `protectedLen` (`content.toList.take protectedLen`
+replaces `trimTrailingWS content`); the escape branch protects its pushed char
+(`protectedLen := content'.length`), a literal space/tab leaves it (stays trimmable), and a
+folded space stays trimmable while folded line-feeds are protected. Root cause: an escaped
+`\t`/`\<TAB>` decodes to a real tab that, by fold time, is indistinguishable from a literal
+trailing tab, so `trimTrailingWS` stripped it (DE56/00–03 lost `…trailing<TAB>`). §7.3.1:
+an escaped tab is content (`ns-double-char`), a bare trailing tab is layout (`s-white`,
+dropped by `s-flow-folded` [74]).
+
+**Why a parameter was unavoidable.** The distinction requires *carried state* — it can't be
+recomputed from `content` alone at the fold, and no in-band marker is safe (a `\u`/`\U`
+escape can inject any codepoint, so any sentinel could collide with real content). Threading
+`protectedLen` is the minimal such state.
+
+**Result.** Event **398 → 402** (+4: DE56/00, /01, /02, /03 — **100%, 402/402**), JSON
+**274 → 278 valid** (of 279, +4: the same four twins). **Zero regressions** (exact pre/post
+fail-set diff: event fails went `{DE56×4}` → `{}`; json genuine fails `{3GZX, DE56×4}` →
+`{3GZX}`). DE56/04–05 (bare literal trailing tabs) still trim, unchanged. Only **1 genuine
+JSON diff** remains: 3GZX (J2). All 12 runtime suites pass with identical counts
+(scannertests 32, specexamples 132, scannerspecexamples 132, dumproundtrip 117, …).
+
+**Proofs.** **Not** zero-impact — the *largest* churn of the campaign (¶ correction). The new
+parameter broke **~13 inducting lemmas across 7 files**, all repaired **mechanically** by the
+same `∀ p` generalization: wrap the goal in `suffices H : ∀ (p : Nat) …`, add `p` to
+`generalizing`, bump the IH applications (`ih … _ … h`). Because the wrapper fixes `p = 0` (the
+default every real entry uses) the lemmas' **external statements are unchanged**, so their
+**~60 application sites needed no edits**. Files: `ScannerCorrectness` (tokens / simpleKey /
+simpleKeyStack / flowLevel / offset_ge), `ScanSteps` (dp / indents / ek),
+`ScannerPlainScalarValid` (flowLevel), `ScalarCoupling` (`_corr`), `ScalarProduction`
+(`_prod`), `ScannerBound` (`_BoundInv`), `EscapeProperties` (`_escapeString_succeeds`). Two
+mechanical gotchas: (i) *hparam-style* lemmas (hypothesis is a signature binder) must `clear`
+it before the fresh `intro`, or `induction fuel` reverts it and pollutes the IH (the
+intro-style ones don't); (ii) the generalized `p` lands **first** in the IH, so non-`_`
+applications prepend a `_`. Full `lake build` green (835 jobs; only the pre-existing
+NonAllScalarLocality sorries at `EmitterScannability` 957/1072).
+
+**Inhabitation probe.** `Tests/Reflections/EscapedTrailingTab.lean` (indexed in
+`Tests/Reflections.lean`): rule-5 grounded pins of the full DE56/00–03 event streams (the four
+POSITIVE cases, each carrying the kept `\t`), plus rule-2 **boundary** pins of DE56/04–05 (bare
+literal tabs whose streams have NO `\t` — so a regression to "keep every trailing tab" is
+caught). The escaped/literal pair (`\t` vs `\<TAB>` vs bare `<TAB>`) is exactly the distinction
+that `type-checks` under any bookkeeping but is only *validated* on real bytes. Axiom-audited
+(`[propext, Classical.choice, Quot.sound, …native_decide.ax]`, no `sorryAx`).
+
+**Indexed twin.** `collectDoubleQuotedLoopIx` (`Scanner/IndexedScanner.lean`) is a separate
+function and was untouched; it lags B2 and must port on the Phase-3 cutover.

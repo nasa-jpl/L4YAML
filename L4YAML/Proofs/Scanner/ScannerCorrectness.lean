@@ -1252,8 +1252,14 @@ theorem collectDoubleQuotedLoop_preserves_tokens (s : ScannerState) (content : S
     (fuel : Nat) (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat) :
     ∀ result, collectDoubleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd = .ok result →
     result.snd.tokens = s.tokens := by
-  intro result h
-  induction fuel generalizing s content with
+  -- The fold trim carries a `protectedLen` (default 0); generalise it so the IH
+  -- covers the shifted boundary the recursive call passes (B2).
+  suffices H : ∀ (p : Nat) (s : ScannerState) (content : String) (result : String × ScannerState),
+      collectDoubleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd p = .ok result →
+      result.snd.tokens = s.tokens by
+    intro result h; exact H 0 s content result h
+  intro p s content result h
+  induction fuel generalizing s content p with
   | zero =>
     unfold collectDoubleQuotedLoop at h
     contradiction
@@ -1274,7 +1280,7 @@ theorem collectDoubleQuotedLoop_preserves_tokens (s : ScannerState) (content : S
         have h_cn := consumeNewline_preserves_tokens s.advance
         have h_sw := skipWhitespace_preserves_tokens (consumeNewline s.advance)
         have h_adv := advance_preserves_tokens s
-        rw [ih _ _ h, h_sw, h_cn, h_adv]
+        rw [ih _ _ _ h, h_sw, h_cn, h_adv]
       · -- regular escape sequence
         simp only [bind, Except.bind] at h
         split at h <;> try contradiction
@@ -1283,7 +1289,7 @@ theorem collectDoubleQuotedLoop_preserves_tokens (s : ScannerState) (content : S
         | mk ch s_after_escape =>
           have h_proc := processEscape_preserves_tokens s.advance ch s_after_escape heq
           have h_adv := advance_preserves_tokens s
-          rw [ih _ _ h, h_proc, h_adv]
+          rw [ih _ _ _ h, h_proc, h_adv]
     · -- some c case (regular character)
       split at h
       · -- isLineBreak c
@@ -1296,11 +1302,11 @@ theorem collectDoubleQuotedLoop_preserves_tokens (s : ScannerState) (content : S
           split at h <;> try contradiction
           split at h <;> try contradiction
           split at h <;> try contradiction
-          rw [ih s_fold (trimTrailingWS content ++ folded) h, h_fold]
+          rw [ih _ _ _ h, h_fold]
       · -- regular character
         split at h <;> try contradiction  -- isNbJsonBool check
         have h_adv := advance_preserves_tokens s
-        rw [ih _ _ h, h_adv]
+        rw [ih _ _ _ h, h_adv]
 
 /-- Helper: collectSingleQuotedLoop preserves tokens. -/
 theorem collectSingleQuotedLoop_preserves_tokens (s : ScannerState) (content : String)
@@ -3288,8 +3294,14 @@ theorem collectDoubleQuotedLoop_preserves_simpleKey (s : ScannerState) (content 
     (fuel : Nat) (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat) :
     ∀ result, collectDoubleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd = .ok result →
     result.snd.simpleKey = s.simpleKey := by
-  intro result h
-  induction fuel generalizing s content with
+  -- protectedLen (default 0) is generalised so the IH covers the fold
+  -- boundary the recursive call shifts (B2).
+  suffices H : ∀ (p : Nat) (s : ScannerState) (content : String) (result : String × ScannerState),
+      collectDoubleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd p = .ok result →
+      result.snd.simpleKey = s.simpleKey by
+    intro result h; exact H 0 s content result h
+  intro p s content result h
+  induction fuel generalizing s content p with
   | zero =>
     unfold collectDoubleQuotedLoop at h
     contradiction
@@ -3310,7 +3322,7 @@ theorem collectDoubleQuotedLoop_preserves_simpleKey (s : ScannerState) (content 
         have h_cn := consumeNewline_preserves_simpleKey s.advance
         have h_sw := skipWhitespace_preserves_simpleKey (consumeNewline s.advance)
         have h_adv := advance_preserves_simpleKey s
-        rw [ih _ _ h, h_sw, h_cn, h_adv]
+        rw [ih _ _ _ h, h_sw, h_cn, h_adv]
       · -- regular escape sequence
         simp only [bind, Except.bind] at h
         split at h <;> try contradiction
@@ -3319,7 +3331,7 @@ theorem collectDoubleQuotedLoop_preserves_simpleKey (s : ScannerState) (content 
         | mk ch s_after_escape =>
           have h_proc := processEscape_preserves_simpleKey s.advance ch s_after_escape heq
           have h_adv := advance_preserves_simpleKey s
-          rw [ih _ _ h, h_proc, h_adv]
+          rw [ih _ _ _ h, h_proc, h_adv]
     · -- some c case (regular character)
       split at h
       · -- isLineBreak c
@@ -3332,11 +3344,11 @@ theorem collectDoubleQuotedLoop_preserves_simpleKey (s : ScannerState) (content 
           split at h <;> try contradiction
           split at h <;> try contradiction
           split at h <;> try contradiction
-          rw [ih s_fold (trimTrailingWS content ++ folded) h, h_fold]
+          rw [ih _ _ _ h, h_fold]
       · -- regular character
         split at h <;> try contradiction  -- isNbJsonBool check
         have h_adv := advance_preserves_simpleKey s
-        rw [ih _ _ h, h_adv]
+        rw [ih _ _ _ h, h_adv]
 
 
 theorem collectSingleQuotedLoop_preserves_simpleKey (s : ScannerState) (content : String)
@@ -3959,8 +3971,14 @@ theorem collectDoubleQuotedLoop_preserves_simpleKeyStack (s : ScannerState) (con
     (fuel : Nat) (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat) :
     ∀ result, collectDoubleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd = .ok result →
     result.snd.simpleKeyStack = s.simpleKeyStack := by
-  intro result h
-  induction fuel generalizing s content with
+  -- protectedLen (default 0) is generalised so the IH covers the fold
+  -- boundary the recursive call shifts (B2).
+  suffices H : ∀ (p : Nat) (s : ScannerState) (content : String) (result : String × ScannerState),
+      collectDoubleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd p = .ok result →
+      result.snd.simpleKeyStack = s.simpleKeyStack by
+    intro result h; exact H 0 s content result h
+  intro p s content result h
+  induction fuel generalizing s content p with
   | zero =>
     unfold collectDoubleQuotedLoop at h
     contradiction
@@ -3981,7 +3999,7 @@ theorem collectDoubleQuotedLoop_preserves_simpleKeyStack (s : ScannerState) (con
         have h_cn := consumeNewline_preserves_simpleKeyStack s.advance
         have h_sw := skipWhitespace_preserves_simpleKeyStack (consumeNewline s.advance)
         have h_adv := advance_preserves_simpleKeyStack s
-        rw [ih _ _ h, h_sw, h_cn, h_adv]
+        rw [ih _ _ _ h, h_sw, h_cn, h_adv]
       · -- regular escape sequence
         simp only [bind, Except.bind] at h
         split at h <;> try contradiction
@@ -3990,7 +4008,7 @@ theorem collectDoubleQuotedLoop_preserves_simpleKeyStack (s : ScannerState) (con
         | mk ch s_after_escape =>
           have h_proc := processEscape_preserves_simpleKeyStack s.advance ch s_after_escape heq
           have h_adv := advance_preserves_simpleKeyStack s
-          rw [ih _ _ h, h_proc, h_adv]
+          rw [ih _ _ _ h, h_proc, h_adv]
     · -- some c case (regular character)
       split at h
       · -- isLineBreak c
@@ -4003,11 +4021,11 @@ theorem collectDoubleQuotedLoop_preserves_simpleKeyStack (s : ScannerState) (con
           split at h <;> try contradiction
           split at h <;> try contradiction
           split at h <;> try contradiction
-          rw [ih s_fold (trimTrailingWS content ++ folded) h, h_fold]
+          rw [ih _ _ _ h, h_fold]
       · -- regular character
         split at h <;> try contradiction  -- isNbJsonBool check
         have h_adv := advance_preserves_simpleKeyStack s
-        rw [ih _ _ h, h_adv]
+        rw [ih _ _ _ h, h_adv]
 
 
 theorem collectSingleQuotedLoop_preserves_simpleKeyStack (s : ScannerState) (content : String)
@@ -5348,8 +5366,14 @@ theorem collectDoubleQuotedLoop_preserves_flowLevel (s : ScannerState) (content 
     (fuel : Nat) (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat) :
     ∀ result, collectDoubleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd = .ok result →
     result.snd.flowLevel = s.flowLevel := by
-  intro result h
-  induction fuel generalizing s content with
+  -- protectedLen (default 0) is generalised so the IH covers the fold
+  -- boundary the recursive call shifts (B2).
+  suffices H : ∀ (p : Nat) (s : ScannerState) (content : String) (result : String × ScannerState),
+      collectDoubleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd p = .ok result →
+      result.snd.flowLevel = s.flowLevel by
+    intro result h; exact H 0 s content result h
+  intro p s content result h
+  induction fuel generalizing s content p with
   | zero =>
     unfold collectDoubleQuotedLoop at h
     contradiction
@@ -5370,7 +5394,7 @@ theorem collectDoubleQuotedLoop_preserves_flowLevel (s : ScannerState) (content 
         have h_cn := consumeNewline_preserves_flowLevel s.advance
         have h_sw := skipWhitespace_preserves_flowLevel (consumeNewline s.advance)
         have h_adv := advance_preserves_flowLevel s
-        rw [ih _ _ h, h_sw, h_cn, h_adv]
+        rw [ih _ _ _ h, h_sw, h_cn, h_adv]
       · -- regular escape sequence
         simp only [bind, Except.bind] at h
         split at h <;> try contradiction
@@ -5379,7 +5403,7 @@ theorem collectDoubleQuotedLoop_preserves_flowLevel (s : ScannerState) (content 
         | mk ch s_after_escape =>
           have h_proc := processEscape_preserves_flowLevel s.advance ch s_after_escape heq
           have h_adv := advance_preserves_flowLevel s
-          rw [ih _ _ h, h_proc, h_adv]
+          rw [ih _ _ _ h, h_proc, h_adv]
     · -- some c case (regular character)
       split at h
       · -- isLineBreak c
@@ -5392,11 +5416,11 @@ theorem collectDoubleQuotedLoop_preserves_flowLevel (s : ScannerState) (content 
           split at h <;> try contradiction
           split at h <;> try contradiction
           split at h <;> try contradiction
-          rw [ih s_fold (trimTrailingWS content ++ folded) h, h_fold]
+          rw [ih _ _ _ h, h_fold]
       · -- regular character
         split at h <;> try contradiction  -- isNbJsonBool check
         have h_adv := advance_preserves_flowLevel s
-        rw [ih _ _ h, h_adv]
+        rw [ih _ _ _ h, h_adv]
 
 theorem collectSingleQuotedLoop_preserves_flowLevel (s : ScannerState) (content : String)
     (fuel : Nat) (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat) :
@@ -7538,7 +7562,15 @@ theorem collectDoubleQuotedLoop_offset_ge (s : ScannerState) (content : String)
     (str : String) (s' : ScannerState)
     (h : collectDoubleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd = .ok (str, s')) :
     s'.offset ≥ s.offset := by
-  induction fuel generalizing s content with
+  -- protectedLen (default 0) is generalised so the IH covers the fold
+  -- boundary the recursive call shifts (B2).
+  suffices H : ∀ (p : Nat) (s : ScannerState) (content : String),
+      collectDoubleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd p = .ok (str, s') →
+      s'.offset ≥ s.offset by
+    exact H 0 s content h
+  clear h
+  intro p s content h
+  induction fuel generalizing s content p with
   | zero => unfold collectDoubleQuotedLoop at h; contradiction
   | succ n ih =>
     unfold collectDoubleQuotedLoop at h
@@ -7555,7 +7587,7 @@ theorem collectDoubleQuotedLoop_offset_ge (s : ScannerState) (content : String)
         · -- isLineBreak: consumeNewline → skipWhitespace → recurse
           exact Nat.le_trans (ScannerProgress.advance_offset_ge s)
             (Nat.le_trans (consumeNewline_offset_ge s.advance)
-            (Nat.le_trans (skipWhitespace_offset_ge _) (ih _ _ h)))
+            (Nat.le_trans (skipWhitespace_offset_ge _) (ih _ _ _ h)))
         · -- regular escape: processEscape → recurse
           simp only [bind, Except.bind] at h
           split at h <;> try contradiction
@@ -7563,7 +7595,7 @@ theorem collectDoubleQuotedLoop_offset_ge (s : ScannerState) (content : String)
           cases esc_result with
           | mk ch s_esc =>
             exact Nat.le_trans (ScannerProgress.advance_offset_ge s)
-              (Nat.le_trans (processEscape_offset_ge s.advance ch s_esc heq) (ih _ _ h))
+              (Nat.le_trans (processEscape_offset_ge s.advance ch s_esc heq) (ih _ _ _ h))
       · contradiction  -- none after backslash
     · -- some c (regular/linebreak)
       split at h
@@ -7576,10 +7608,10 @@ theorem collectDoubleQuotedLoop_offset_ge (s : ScannerState) (content : String)
           simp only [pure, Except.pure] at h
           split at h <;> try contradiction  -- atDocumentStart || atDocumentEnd
           split at h <;> try contradiction  -- col ≤ currentIndent
-          exact Nat.le_trans (foldQuotedNewlines_offset_ge s folded s_fold heq) (ih _ _ h)
+          exact Nat.le_trans (foldQuotedNewlines_offset_ge s folded s_fold heq) (ih _ _ _ h)
       · -- regular character: advance → recurse
         split at h <;> try contradiction  -- isNbJsonBool check
-        exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _ _ h)
+        exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _ _ _ h)
 
 theorem collectSingleQuotedLoop_offset_ge (s : ScannerState) (content : String)
     (fuel : Nat) (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat)

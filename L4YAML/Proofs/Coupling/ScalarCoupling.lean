@@ -256,7 +256,16 @@ theorem collectDoubleQuotedLoop_corr (sc : ScannerState) (sp : SurfPos)
     (hok : collectDoubleQuotedLoop sc content fuel startPos inFlow currentIndent inputEnd
            = .ok (result_content, s')) :
     ∃ sp', ScannerSurfCorr s' sp' := by
-  induction fuel generalizing sc sp content with
+  -- protectedLen (default 0) generalised so the IH covers the fold shift (B2).
+  suffices H : ∀ (p : Nat) (sc : ScannerState) (sp : SurfPos) (content : String),
+      ScannerSurfCorr sc sp →
+      collectDoubleQuotedLoop sc content fuel startPos inFlow currentIndent inputEnd p
+        = .ok (result_content, s') →
+      ∃ sp', ScannerSurfCorr s' sp' by
+    exact H 0 sc sp content hcorr hok
+  clear hok hcorr
+  intro p sc sp content hcorr hok
+  induction fuel generalizing sc sp content p with
   | zero => simp [collectDoubleQuotedLoop] at hok
   | succ fuel' ih =>
     unfold collectDoubleQuotedLoop at hok
@@ -277,7 +286,7 @@ theorem collectDoubleQuotedLoop_corr (sc : ScannerState) (sp : SurfPos)
             consumeNewline_unconditional_corr sc.advance sp_adv hcorr_adv
           obtain ⟨sp_ws, _, hcorr_ws⟩ :=
             skipWhitespace_corr (consumeNewline sc.advance) sp_cn hcorr_cn
-          exact ih _ sp_ws content hcorr_ws hok
+          exact ih _ _ sp_ws content hcorr_ws hok
         · -- not line break: processEscape
           simp only [bind, Except.bind] at hok
           split at hok
@@ -285,7 +294,7 @@ theorem collectDoubleQuotedLoop_corr (sc : ScannerState) (sp : SurfPos)
           · rename_i esc_result hproc
             obtain ⟨sp_esc, hcorr_esc⟩ :=
               processEscape_corr sc.advance sp_adv hcorr_adv hproc
-            exact ih _ sp_esc _ hcorr_esc hok
+            exact ih _ _ sp_esc _ hcorr_esc hok
       · exact absurd hok (by simp)  -- none → error
     · -- peek? = some c (regular)
       rename_i c hpeek hne_dq hne_bs
@@ -304,12 +313,12 @@ theorem collectDoubleQuotedLoop_corr (sc : ScannerState) (sp : SurfPos)
             · -- After both guards pass, there may be do-notation match residue
               split at hok
               · simp at hok  -- .error case impossible
-              · exact ih _ sp_fold _ hcorr_fold hok
+              · exact ih _ _ sp_fold _ hcorr_fold hok
       · split at hok
         · simp at hok  -- invalid control char
         · -- valid nb-json char: advance
           obtain ⟨sp_adv, hcorr_adv⟩ := advance_corr sc sp hcorr
-          exact ih sc.advance sp_adv _ hcorr_adv hok
+          exact ih _ sc.advance sp_adv _ hcorr_adv hok
 
 /-- `scanDoubleQuoted` preserves correspondence on `.ok` paths. -/
 theorem scanDoubleQuoted_corr (sc : ScannerState) (sp : SurfPos)
