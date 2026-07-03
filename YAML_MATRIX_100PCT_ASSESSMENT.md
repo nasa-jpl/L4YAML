@@ -7,17 +7,18 @@ formalization, and the proofs.*
 Generated 2026-07-02 · baseline: **event 362/402**, **json 240/279 valid**
 (see [YAML_MATRIX_COMPARISON.md](YAML_MATRIX_COMPARISON.md)).
 
-**Progress:** J1 + A + A′/B1/B3/E + C1/C3 + D + C2 + B2 applied 2026-07-02 → **event 402/402**
-(+40, **100%**), **json 278/279 valid** (+33). See [Status log](#status-log). Only **J2** (3GZX)
-remains — a single JSON-only diff.
+**Progress:** J1 + A + A′/B1/B3/E + C1/C3 + D + C2 + B2 + J2 applied 2026-07-02 → **event 402/402**
+(+40, **100%**), **json 279/279 valid** (+39, **100%**). See [Status log](#status-log). **The matrix
+is closed** — the scorer's only remaining entries are the 3 phantom rejects (error tests shipping a
+stale `in.json`, correctly rejected).
 
 ---
 
 ## Bottom line
 
 * *(Original baseline framing; current standing is in **Progress** above —
-  after J1/A/A′/B1/B3/E/C1/C3/D/C2/B2 the **event axis is 402/402 (100%)** and only **1 genuine
-  JSON diff** remains, over a single root cause: J2 (3GZX).)*
+  after J1/A/A′/B1/B3/E/C1/C3/D/C2/B2/J2 **both axes are at 100%**: event **402/402** and
+  json **279/279 valid**. No genuine diff remains.)*
   **40 event diffs and 39 JSON diffs remain. Every one is a *content* or
   *structure* defect in the scanner/parser — none is a spurious accept/reject.**
   L4YAML still parses every test with the correct success/failure verdict.
@@ -58,7 +59,7 @@ remains — a single JSON-only diff.
 | **D** ✅ | Tag suffix percent-escape (`%21`→`!`) not decoded | 6CK3 | no (value unaffected) | `Events.resolveTagForEvent` (emitter-side) | **none** (emitter-side) ✓ | XS |
 | **E** ✅ | Literal `\|` keep/clip on trailing-whitespace-only lines | JEF9/02, L24T/01 | yes | `scanBlockScalarBody` chomp of blank tail | **structural**‡ | S |
 | **J1** ✅ | JSON ignores explicit core tags: `!!int 42`→`"42"` not `42` | — | 2AUY 33X3 74H7 F2C7 L94M | `Output/Json.lean` `scalarType` | **none** (Json.lean unproven) | XS |
-| **J2** | Alias to a *re-defined* anchor resolves to the wrong occurrence | — | 3GZX | `Spec/Types.lean` `resolveAliases` (order-aware) | **R604 characterization at risk** | **M** |
+| **J2** ✅ | Alias to a *re-defined* anchor resolves to the wrong occurrence | — | 3GZX | `Spec/Types.lean` `resolveAliasesOrdered` (new, compose-only; `resolveAliases` kept for `addAnchor`) | **R595/R604 guarded + new C1 joint induction**# | **M** |
 
 XS = a few lines · S = one function · M = design change and/or re-proof.
 
@@ -228,9 +229,28 @@ takes the same `∀ p` wrapper (its `escapeString` input has no folds, so the pi
 `p`-independent). The `Indexed*` twin (`collectDoubleQuotedLoopIx`) is a **separate** function and
 was untouched; it lags B2 and must port on the Phase-3 cutover.
 
+# *Correction (J2, done):* "R604 at risk" under-scoped it — order-aware resolution is an
+*architectural* change to `compose`, but the cheap repair was **additive**: a new
+`YamlValue.resolveAliasesOrdered` (environment-threading, in-document-order walk) used **only** by
+`YamlDocument.compose`, with the old global `resolveAliases` kept for `ParseState.addAnchor` — so
+R603, `resolveAliases_scalar`, and every parser-side WFA lemma survive **verbatim**. What did move:
+(i) **R595/R604** (+ their scalar corollaries) gained an `anchorFree` guard and ride a new bridge,
+`resolveAliasesOrdered_of_anchorFree` — on an anchor-free tree the environment never grows, every
+alias falls back to the old first-match table lookup, so ordered ≡ old from the empty env; emitter
+output is always anchor-free, and both all-scalar use sites discharge the guard from R601/R608's
+`anchor := none` pins. (ii) The **C1 grammability bridge** `compose_grammable` needed a genuinely
+new induction (`compose_value_grammable_ordered`) with a **JOINT** conclusion — resolved value
+grammable ∧ threaded env `WellFormedEnv` — because bindings made inside an earlier sibling are
+consumed by later siblings; the bind edge is discharged by the case's own grammability conjunct
+lifted by `adaptForFlowContext_grammable_forall`, plus two new strip/adapt algebra lemmas
+(`stripAnchors_stripAnchors` idempotence, `adaptForFlowContext_stripAnchors` commutation).
+(iii) The compose outer-shape lemmas re-prove **unconditionally** over the ordered walk.
+(iv) The compose family's axiom profiles gained `Classical.choice` (the ordered walk's equation
+lemmas carry it) — 6 reflection `#guard_msgs` audits refreshed; no `sorryAx` anywhere.
+
 ---
 
-## The three fixes that cost something (C2 ✅, B2 ✅ done; only J2 remains)
+## The three fixes that cost something (C2 ✅, B2 ✅, J2 ✅ — all done)
 
 ### C2 — empty tagged/anchored node opens a phantom sequence (FH7J, PW8X) — **done 2026-07-02, see [Status log](#status-log)**
 `- !!str` (empty scalar carrying `!!str`) followed by more `-` entries is parsed as
@@ -253,19 +273,25 @@ generalizing — only the 6 lemmas that `unfold parseNodeContent` gained the ext
 `isSeqEntry` parameter and its empty-scalar sub-case (`parseNodeContent_ag`/`_aar`/
 `_wfa`/`_wb`/`_pos_mono`, plus the emitter `parseNode_emitter_advances`).
 
-### J2 — alias to a re-defined anchor (3GZX)
+### J2 — alias to a re-defined anchor (3GZX) — **done 2026-07-02, see [Status log](#status-log)**
 When an anchor name is defined twice, `*name` must bind to the **most recent
-definition preceding the alias**. `resolveAliases` runs as a final pass over the
-full anchor array with `Array.findSome?` (first match), so both aliases in 3GZX
-resolve to the *first* `Foo`; the second should be `Bar`. Note the trap: a naive
+definition preceding the alias** (§7.1). `resolveAliases` ran as a final pass over
+the full anchor array with `Array.findSome?` (first match), so both aliases in 3GZX
+resolved to the *first* `Foo`; the second should be `Bar`. Note the trap: a naive
 "search from the end" (global last-wins) fixes the *second* alias but **regresses
 the first** (`Second occurrence` legitimately wants `Foo`). Correct behaviour is
-*position-relative*: each alias resolves against the definitions in scope at its
-own document position. That turns `resolveAliases` from a pure pointwise map into
-an order-aware traversal, which puts **R604 (`compose_map_pairs_pointwise`, the
-"resolution = pointwise map" characterization) at risk** and needs re-statement.
-R603 (`resolveAliases_empty`) and `WellFormedAnchors` are agnostic and survive.
-Est. medium — the only defect with genuine *formalization* impact.
+*position-relative* — no global table can serve two aliases that need different
+values for the same name. The landed fix is **additive**: a new
+`resolveAliasesOrdered` walks the tree in document order threading a binding
+environment (a node's anchor binds *after* its own content, cleaned exactly like
+`addAnchor`; aliases look up most-recent-first with the old first-match table as
+fallback), and only `YamlDocument.compose` (+ the bounded runtime twin
+`resolveAliasesLimited`) switched to it — `addAnchor` keeps the old
+`resolveAliases`, so single-definition documents are byte-identical and the
+parser-side proofs survive verbatim. R604 (with R595) was indeed the casualty —
+restated with an `anchorFree` guard over a new ordered≡old bridge — and the C1
+grammability bridge needed a new joint induction; see the # correction above.
+R603 (`resolveAliases_empty`) and `WellFormedAnchors` survive as predicted.
 
 ### B2 — escaped trailing tab in a double-quoted scalar (DE56/00–03) — **done 2026-07-02, see [Status log](#status-log)**
 `"…trailing\t\n  tab"` — the `\t` escape produces a real tab that
@@ -288,7 +314,7 @@ untouched); see the ¶ correction above.
    precisely why these content bugs coexist with "formally verified." Reaching 100%
    on the matrix does not require touching that gap — but it also does not *close*
    it. Certifying the fixes themselves (new theorems: `foldBlockContent` equals the
-   §8.1.3 folding relation, `resolveAliases` respects §7.1 anchor scope) is a
+   §8.1.3 folding relation, `resolveAliasesOrdered` respects a §7.1 anchor-scope relation) is a
    worthwhile but **separate** proof effort.
 2. **Dual emitter path.** The event stream is produced by `Events.parseStreamMarkedLoop`,
    a deliberate mirror of `TokenParser.parseStreamLoop`. The C1 document-model fix
@@ -334,10 +360,16 @@ untouched); see the ¶ correction above.
    The projected "none (structural only)" proof cost was wrong — it was the campaign's
    *largest*: a threaded `protectedLen` parameter broke ~13 inducting lemmas across 7
    files, all repaired by a uniform `∀ p` generalization (see the ¶ correction).
-7. **J2** — the last one (order-aware alias resolution with R604 restatement).
+7. **J2** ✅ *(done — see [Status log](#status-log))* — order-aware alias resolution.
+   Cleared 3GZX (+1 JSON), zero regressions, **json now 279/279**. Landed as an
+   *additive* `resolveAliasesOrdered` used only by `compose` (old `resolveAliases`
+   kept for `addAnchor`); R595/R604 restated behind an `anchorFree` guard + bridge,
+   and the C1 grammability bridge re-proven as a joint env-threading induction
+   (see the # correction).
 
-After 1–6 the **event axis is 402/402 (100%)** and json is 278/279 valid (all but J2's
-3GZX). Step 7 (J2) closes the last root cause for a genuine 279/279 JSON.
+After 1–7 **both axes are 100%**: event **402/402** and json **279/279 valid**.
+The matrix is closed; the only scorer residue is the 3 phantom rejects
+(stale `in.json` on error tests — a scorer artifact, not an L4YAML defect).
 
 ---
 
@@ -659,3 +691,60 @@ that `type-checks` under any bookkeeping but is only *validated* on real bytes. 
 
 **Indexed twin.** `collectDoubleQuotedLoopIx` (`Scanner/IndexedScanner.lean`) is a separate
 function and was untouched; it lags B2 and must port on the Phase-3 cutover.
+
+### J2 — order-aware alias resolution (done 2026-07-02) — **the matrix is closed**
+
+**Change.** `Spec/Types.lean`: new `YamlValue.resolveAliasesOrdered (v) (anchors) (env := [])`
+— an in-document-order walk threading a binding environment, most recent first. A node's anchor
+binds *after* its own content is resolved (so an alias never sees the node it sits inside), and
+bound values are cleaned exactly like `ParseState.addAnchor` cleans stored anchors
+(`stripAnchors` then `adaptForFlowContext`). An alias takes the most recent env binding; with no
+preceding in-tree definition it falls back to the parse-time table with the **old first-match
+lookup** (degenerate/cyclic docs unchanged — and moot, since the parser already rejects forward
+aliases at parse time, §7.1). `YamlDocument.compose` switched to the ordered walk; a new
+`YamlValue.anchorFree` predicate supports the proof bridge. `Config/Limits.lean`:
+`resolveAliasesLimited` (the bounded runtime twin used by `composeLimited`) threads the same
+environment, keeping its node-count/cycle/expansion accounting. **`ParseState.addAnchor` keeps
+the old `resolveAliases`** — the additive-parallel-function architecture is what confined the
+proof churn (see the # correction): for any single-definition document the two disciplines
+agree (the fallback covers it), so only rebinding documents change behaviour.
+
+**Result.** JSON **278 → 279 valid** (of 279, +1: 3GZX — **100%**). Event unchanged at
+**402/402** (`compose` never runs on the event axis; aliases emit as `=ALI` from the
+serialization tree). **Zero regressions** — the scorer's fail set is now exactly the 3 phantom
+rejects (`9MQT/01`, `DK95/01`, `DK95/06`, stale `in.json` on error tests). Rebinding resolves
+per §7.1 across mapping pairs, sequence items, and out of nested siblings
+(`{"a":1,"b":1,"c":2,"d":2}`, `[1,1,2,2]`, and the nested-escape pin in the probe). All runtime
+suites pass with identical counts (scannertests 32, specexamples 132, scannerspecexamples 132,
+dumproundtrip 117, rawparsetests 29, tests 10, flowtests 88, validationtests 84,
+explicitkeytests 149, adversarialtests 154, mutationtests 45, propertytests 124), plus
+limittests **43/43** — the env-threaded `resolveAliasesLimited` preserves the billion-laughs
+accounting — and adversarialinstantiation 2441, productioncoverage 728.
+
+**Proofs.** The predicted R604 risk was real but under-scoped; the full repair (# correction):
+R595/R604 + scalar corollaries gained an `anchorFree` guard over the new bridge
+`resolveAliasesOrdered_of_anchorFree` (ordered ≡ old from the empty env on anchor-free trees;
+both all-scalar use sites in `EmitterScannability` discharge the guard from R601/R608's
+`anchor := none` pins); `compose_grammable` (C1) re-proven via
+`compose_value_grammable_ordered`, a Scannable-induction with a **JOINT** conclusion
+(`Grammable` ∧ `WellFormedEnv`, the env generalized) whose bind edge reuses the case's own
+grammability conjunct lifted by `adaptForFlowContext_grammable_forall`; new supporting algebra
+`stripAnchors_stripAnchors` / `adaptForFlowContext_stripAnchors`; compose outer-shape lemmas
+re-proven unconditionally; `compose_scalar_content(-Ix)` re-routed through
+`resolveAliasesOrdered_fst_scalar(-Ix)`. R603 and `WellFormedAnchors` survived verbatim as
+predicted. Compose-family axiom profiles gained `Classical.choice` (ordered walk equation
+lemmas); 6 reflection `#guard_msgs` audits refreshed — no `sorryAx`. Full `lake build` green
+(837 jobs; only the 5 pre-existing Front-B sorries).
+
+**Inhabitation probe.** `Tests/Reflections/OrderAwareAlias.lean` (indexed in
+`Tests/Reflections.lean`): the env plumbing *type-checks* under first-wins, last-wins, and
+positional lookup alike, so the pins bracket the fix from both sides — 3GZX's full JSON
+(`Second occurrence` pins `Foo` = NOT last-wins, `Reuse anchor` pins `Bar` = NOT first-wins),
+a minimal rebind mapping, sequence-item threading (`goList`), nested-binding escape (the
+joint-conclusion motivation made concrete), plus rule-2 boundary pins: 3GZX's **event** stream
+byte-identical (both `=ALI` survive) and a forward alias still parse-rejected. Axiom-audited
+(`[propext, Classical.choice, Quot.sound, …native_decide.ax]`, no `sorryAx`).
+
+**Indexed twin.** None lagging from J2: `IndexedComposition` shares `YamlDocument.compose`
+(fix inherited), and `ParseStateIx.addAnchor` keeps the old `resolveAliases` just like the flat
+parser. The Phase-3 cutover debt remains C1/C2/B2 (+ earlier scanner fixes) only.

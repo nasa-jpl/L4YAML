@@ -97,6 +97,7 @@ theorem map_pairs_pointwise_concrete
     (_h_parse : parseYamlRaw (emit mapKV) = .ok docs)
     (h_size : docs.size = 1)
     (pairs' pairs'' : Array (YamlValue × YamlValue))
+    (h_af : ∀ p ∈ pairs'.toList, p.1.anchorFree = true ∧ p.2.anchorFree = true)
     (h_val : docs[0]!.value = .mapping .flow pairs' none none)
     (h_comp : (docs.map YamlDocument.compose)[0]!.value = .mapping .flow pairs'' none none) :
     pairs'' = pairs'.map (fun ⟨kv, vv⟩ => ((kv.resolveAliases docs[0]!.anchors).stripAnchors,
@@ -108,7 +109,7 @@ theorem map_pairs_pointwise_concrete
       rw [Array.getElem_map (hi := by rwa [Array.size_map])]
       congr 1; exact (getElem!_pos docs 0 h0).symm
     rw [← h_lift]; exact h_comp
-  exact compose_map_pairs_pointwise docs[0]! pairs' pairs'' h_val h_doc_comp
+  exact compose_map_pairs_pointwise docs[0]! pairs' pairs'' h_af h_val h_doc_comp
 
 /-- `compose_map_scalar_pair` fires: pair 0 of pairs'' equals the standalone scalar pair
     if the corresponding raw pair 0 is that scalar pair. -/
@@ -117,6 +118,7 @@ theorem scalar_pair_concrete_elem0
     (_h_parse : parseYamlRaw (emit mapKV) = .ok docs)
     (h_size : docs.size = 1)
     (pairs' pairs'' : Array (YamlValue × YamlValue))
+    (h_af : ∀ p ∈ pairs'.toList, p.1.anchorFree = true ∧ p.2.anchorFree = true)
     (h_val : docs[0]!.value = .mapping .flow pairs' none none)
     (h_comp : (docs.map YamlDocument.compose)[0]!.value = .mapping .flow pairs'' none none)
     (h_pairs_size : 0 < pairs'.size)
@@ -131,17 +133,19 @@ theorem scalar_pair_concrete_elem0
       rw [Array.getElem_map (hi := by rwa [Array.size_map])]
       congr 1; exact (getElem!_pos docs 0 h0).symm
     rw [← h_lift]; exact h_comp
-  exact compose_map_scalar_pair docs[0]! pairs' pairs'' h_val h_doc_comp 0 h_pairs_size
+  exact compose_map_scalar_pair docs[0]! pairs' pairs'' h_af h_val h_doc_comp 0 h_pairs_size
       "k" "v" .doubleQuoted .doubleQuoted h_pair
 
 /-! ## Axiom audit: the new theorems use no sorry -/
 
 /-- info: 'L4YAML.Proofs.EmitterScannability.compose_map_pairs_pointwise' depends on axioms: [propext,
+ Classical.choice,
  Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms compose_map_pairs_pointwise
 
 /-- info: 'L4YAML.Proofs.EmitterScannability.compose_map_scalar_pair' depends on axioms: [propext,
+ Classical.choice,
  Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms compose_map_scalar_pair

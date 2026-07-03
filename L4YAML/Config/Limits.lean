@@ -414,27 +414,46 @@ structure AliasResolveState where
 
     Unlike `YamlValue.resolveAliases` (which has no bounds), this version
     tracks resolution depth and total expansion count, failing with an
-    `AliasLimitError` when any limit is exceeded. -/
+    `AliasLimitError` when any limit is exceeded.
+
+    Resolution is **order-aware**, mirroring `YamlValue.resolveAliasesOrdered`:
+    the walk threads an environment of bindings made so far (most recent
+    first, bound after the node's own content, cleaned like
+    `ParseState.addAnchor`), so each alias binds to the most recent
+    *preceding* definition of its anchor name (§7.1). Aliases with no
+    preceding in-tree definition fall back to the parse-time `anchors`
+    table with the original first-match lookup. -/
 partial def resolveAliasesLimited (v : YamlValue) (anchors : Array (String × YamlValue))
     (limits : AliasLimits) : Except AliasLimitError YamlValue := do
-  let (result, _) ← go v anchors limits 0 [] { expansions := 0, nodeCount := 0 }
+  let (result, _, _) ← go v anchors limits 0 [] { expansions := 0, nodeCount := 0 } []
   return result
 where
   go (v : YamlValue) (anchors : Array (String × YamlValue)) (limits : AliasLimits)
      (depth : Nat) (visiting : List String) (st : AliasResolveState)
-     : Except AliasLimitError (YamlValue × AliasResolveState) := do
+     (env : List (String × YamlValue))
+     : Except AliasLimitError (YamlValue × AliasResolveState × List (String × YamlValue)) := do
     -- Node count
     let st := { st with nodeCount := st.nodeCount + 1 }
     if st.nodeCount > limits.maxResolvedNodes then
       throw (.nodeCountExceeded st.nodeCount limits.maxResolvedNodes)
     match v with
-    | .scalar _ => return (v, st)
+    | .scalar s =>
+      match s.anchor with
+      | some a =>
+        return (v, st, (a, YamlValue.scalar { s with anchor := none } |>.adaptForFlowContext) :: env)
+      | none => return (v, st, env)
     | .sequence style items tag anchor => do
-      let (items', st) ← goList items.toList anchors limits depth visiting st
-      return (.sequence style items'.toArray tag anchor, st)
+      let (items', st, env) ← goList items.toList anchors limits depth visiting st env
+      let v' := YamlValue.sequence style items'.toArray tag anchor
+      match anchor with
+      | some a => return (v', st, (a, v'.stripAnchors.adaptForFlowContext) :: env)
+      | none => return (v', st, env)
     | .mapping style pairs tag anchor => do
-      let (pairs', st) ← goPairs pairs.toList anchors limits depth visiting st
-      return (.mapping style pairs'.toArray tag anchor, st)
+      let (pairs', st, env) ← goPairs pairs.toList anchors limits depth visiting st env
+      let v' := YamlValue.mapping style pairs'.toArray tag anchor
+      match anchor with
+      | some a => return (v', st, (a, v'.stripAnchors.adaptForFlowContext) :: env)
+      | none => return (v', st, env)
     | .alias name => do
       -- Cycle detection
       if limits.rejectCycles && visiting.contains name then
@@ -446,29 +465,41 @@ where
       let st := { st with expansions := st.expansions + 1 }
       if st.expansions > limits.maxAliasExpansions then
         throw (.expansionCountExceeded st.expansions limits.maxAliasExpansions)
-      -- Resolve
-      match anchors.findSome? (fun (n, val) => if n == name then some val else none) with
-      | some val => go val anchors limits (depth + 1) (name :: visiting) st
-      | none => return (v, st)  -- unresolved alias: preserve as-is
+      -- Resolve: most recent preceding in-tree binding first, then the
+      -- parse-time table.  The recursion into the substituted value keeps
+      -- the node-count/cycle accounting of the original; bound values are
+      -- cleaned (anchor-free), so the recursion cannot re-bind.
+      match env.findSome? (fun (n, val) => if n == name then some val else none) with
+      | some val =>
+        let (val', st, _) ← go val anchors limits (depth + 1) (name :: visiting) st env
+        return (val', st, env)
+      | none =>
+        match anchors.findSome? (fun (n, val) => if n == name then some val else none) with
+        | some val =>
+          let (val', st, _) ← go val anchors limits (depth + 1) (name :: visiting) st env
+          return (val', st, env)
+        | none => return (v, st, env)  -- unresolved alias: preserve as-is
   goList (vs : List YamlValue) (anchors : Array (String × YamlValue)) (limits : AliasLimits)
       (depth : Nat) (visiting : List String) (st : AliasResolveState)
-      : Except AliasLimitError (List YamlValue × AliasResolveState) := do
+      (env : List (String × YamlValue))
+      : Except AliasLimitError (List YamlValue × AliasResolveState × List (String × YamlValue)) := do
     match vs with
-    | [] => return ([], st)
+    | [] => return ([], st, env)
     | v :: rest => do
-      let (v', st) ← go v anchors limits depth visiting st
-      let (rest', st) ← goList rest anchors limits depth visiting st
-      return (v' :: rest', st)
+      let (v', st, env) ← go v anchors limits depth visiting st env
+      let (rest', st, env) ← goList rest anchors limits depth visiting st env
+      return (v' :: rest', st, env)
   goPairs (ps : List (YamlValue × YamlValue)) (anchors : Array (String × YamlValue))
       (limits : AliasLimits) (depth : Nat) (visiting : List String) (st : AliasResolveState)
-      : Except AliasLimitError (List (YamlValue × YamlValue) × AliasResolveState) := do
+      (env : List (String × YamlValue))
+      : Except AliasLimitError (List (YamlValue × YamlValue) × AliasResolveState × List (String × YamlValue)) := do
     match ps with
-    | [] => return ([], st)
+    | [] => return ([], st, env)
     | (k, v) :: rest => do
-      let (k', st) ← go k anchors limits depth visiting st
-      let (v', st) ← go v anchors limits depth visiting st
-      let (rest', st) ← goPairs rest anchors limits depth visiting st
-      return ((k', v') :: rest', st)
+      let (k', st, env) ← go k anchors limits depth visiting st env
+      let (v', st, env) ← go v anchors limits depth visiting st env
+      let (rest', st, env) ← goPairs rest anchors limits depth visiting st env
+      return ((k', v') :: rest', st, env)
 
 /-! ## Structural Validation -/
 

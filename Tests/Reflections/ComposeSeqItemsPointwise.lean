@@ -97,6 +97,7 @@ theorem seq_items_pointwise_concrete
     (_h_parse : parseYamlRaw (emit seqAB) = .ok docs)
     (h_size : docs.size = 1)
     (items' items'' : Array YamlValue)
+    (h_af : ∀ v ∈ items'.toList, v.anchorFree = true)
     (h_val : docs[0]!.value = .sequence .flow items' none none)
     (h_comp : (docs.map YamlDocument.compose)[0]!.value = .sequence .flow items'' none none) :
     items'' = items'.map (fun v => (v.resolveAliases docs[0]!.anchors).stripAnchors) := by
@@ -107,7 +108,7 @@ theorem seq_items_pointwise_concrete
       rw [Array.getElem_map (hi := by rwa [Array.size_map])]
       congr 1; exact (getElem!_pos docs 0 h0).symm
     rw [← h_lift]; exact h_comp
-  exact compose_seq_items_pointwise docs[0]! items' items'' h_val h_doc_comp
+  exact compose_seq_items_pointwise docs[0]! items' items'' h_af h_val h_doc_comp
 
 /-- `compose_seq_scalar_item` fires: element `i` of items'' equals the standalone scalar
     if the corresponding raw item is that scalar. -/
@@ -116,6 +117,7 @@ theorem scalar_item_concrete_elem0
     (_h_parse : parseYamlRaw (emit seqAB) = .ok docs)
     (h_size : docs.size = 1)
     (items' items'' : Array YamlValue)
+    (h_af : ∀ v ∈ items'.toList, v.anchorFree = true)
     (h_val : docs[0]!.value = .sequence .flow items' none none)
     (h_comp : (docs.map YamlDocument.compose)[0]!.value = .sequence .flow items'' none none)
     (h_items_size : 0 < items'.size)
@@ -128,16 +130,18 @@ theorem scalar_item_concrete_elem0
       rw [Array.getElem_map (hi := by rwa [Array.size_map])]
       congr 1; exact (getElem!_pos docs 0 h0).symm
     rw [← h_lift]; exact h_comp
-  exact compose_seq_scalar_item docs[0]! items' items'' h_val h_doc_comp 0 h_items_size "a" .doubleQuoted h_item
+  exact compose_seq_scalar_item docs[0]! items' items'' h_af h_val h_doc_comp 0 h_items_size "a" .doubleQuoted h_item
 
 /-! ## Axiom audit: the new theorems use no sorry -/
 
 /-- info: 'L4YAML.Proofs.EmitterScannability.compose_seq_items_pointwise' depends on axioms: [propext,
+ Classical.choice,
  Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms compose_seq_items_pointwise
 
 /-- info: 'L4YAML.Proofs.EmitterScannability.compose_seq_scalar_item' depends on axioms: [propext,
+ Classical.choice,
  Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms compose_seq_scalar_item

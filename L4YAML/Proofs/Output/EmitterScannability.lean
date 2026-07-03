@@ -97,12 +97,18 @@ the anchor field. Since `contentEq` ignores anchors, compose doesn't
 affect content equivalence for scalars.
 -/
 
+-- resolveAliasesOrdered returns scalars unchanged (whatever binding it makes)
+theorem resolveAliasesOrdered_fst_scalar (s : Scalar)
+    (anchors : Array (String × YamlValue)) (env : List (String × YamlValue)) :
+    ((YamlValue.scalar s).resolveAliasesOrdered anchors env).fst = .scalar s := by
+  simp only [YamlValue.resolveAliasesOrdered]
+
 -- compose on a scalar document preserves the content field
 theorem compose_scalar_content (doc : YamlDocument) (s : Scalar)
     (h_val : doc.value = .scalar s) :
     (doc.compose).value = .scalar { s with anchor := none } := by
   unfold YamlDocument.compose; dsimp only []
-  rw [h_val, resolveAliases_scalar, stripAnchors_scalar]
+  rw [h_val, resolveAliasesOrdered_fst_scalar, stripAnchors_scalar]
 
 -- contentEq through compose for scalars: original vs composed
 theorem contentEq_scalar_compose (s_orig : Scalar) (s_parsed : Scalar)
@@ -1045,8 +1051,19 @@ theorem emit_roundtrip_sequence_content_eq {inFlow : Bool} (style : CollectionSt
           rw [← h_eq]; exact h_shape
         have h_items'_size : items'.size = items.size := by
           rw [h_items'_sz, Array.length_toList]
+        -- R601's per-index pins are anchorless scalars, so items' is anchor-free (J2 guard)
+        have h_af : ∀ v ∈ items'.toList, v.anchorFree = true := by
+          intro v hv
+          obtain ⟨i, hi, h_eq⟩ := List.getElem_of_mem hv
+          have hi'' : i < items'.size := by rwa [Array.length_toList] at hi
+          have hi' : i < items.toList.length := by rwa [← h_items'_sz]
+          obtain ⟨sc_i, _, h_pin⟩ := h_items'_vals i hi'
+          have h_v : v = items'[i]! := by
+            rw [← h_eq, Array.getElem_toList, getElem!_pos items' i hi'']
+          rw [h_v, h_pin]
+          simp [YamlValue.anchorFree]
         have h_items''_size : items''.size = items'.size := by
-          rw [compose_seq_items_pointwise (raw_docs[0]!) items' items'' h_raw_val h_comp_val,
+          rw [compose_seq_items_pointwise (raw_docs[0]!) items' items'' h_af h_raw_val h_comp_val,
             Array.size_map]
         exact ⟨h_items'_size.symm.trans h_items''_size.symm,
           fun ⟨j, hj⟩ rd h_rd h_rd_sz => by
@@ -1062,7 +1079,7 @@ theorem emit_roundtrip_sequence_content_eq {inFlow : Bool} (style : CollectionSt
             have hj' : j < items'.size := by rwa [h_items'_sz, Array.length_toList]
             exact h_composed.trans
               (compose_seq_scalar_item (raw_docs[0]!) items' items''
-                h_raw_val h_comp_val j hj' sc_j.content .doubleQuoted h_items'_j).symm⟩
+                h_af h_raw_val h_comp_val j hj' sc_j.content .doubleQuoted h_items'_j).symm⟩
       · sorry
     exact contentEqList_of_reparse items items'' h_size ih
       (reparse_deliverable_of_locality_seq items items''
@@ -1171,9 +1188,20 @@ theorem emit_roundtrip_mapping_content_eq {inFlow : Bool} (style : CollectionSty
             rw [getElem!_pos _ 0 h_0', getElem!_pos raw_docs 0 h_ne_raw, Array.getElem_map]
           rw [← h_eq]; exact h_shape
         have h_pairs'_size : pairs'.size = pairs.size := by rw [h_pairs'_sz, Array.length_toList]
+        -- R608's per-index pins are anchorless scalar pairs, so pairs' is anchor-free (J2 guard)
+        have h_af : ∀ p ∈ pairs'.toList, p.1.anchorFree = true ∧ p.2.anchorFree = true := by
+          intro q hq
+          obtain ⟨i, hi, h_eq⟩ := List.getElem_of_mem hq
+          have hi'' : i < pairs'.size := by rwa [Array.length_toList] at hi
+          have hi' : i < pairs.toList.length := by rwa [← h_pairs'_sz]
+          obtain ⟨sk_i, sv_i, _, h_pin⟩ := h_pairs'_vals i hi'
+          have h_q : q = pairs'[i]! := by
+            rw [← h_eq, Array.getElem_toList, getElem!_pos pairs' i hi'']
+          rw [h_q, h_pin]
+          exact ⟨by simp [YamlValue.anchorFree], by simp [YamlValue.anchorFree]⟩
         have h_pairs''_size : pairs''.size = pairs'.size := by
           rw [compose_map_pairs_pointwise (raw_docs[0]!) pairs' pairs''
-            h_raw_val h_comp_val, Array.size_map]
+            h_af h_raw_val h_comp_val, Array.size_map]
         exact ⟨h_pairs'_size.symm.trans h_pairs''_size.symm,
           fun ⟨j, hj⟩ rd h_rd h_rd_sz => by
             have hj_list : j < pairs.toList.length := by rwa [Array.length_toList]
@@ -1190,7 +1218,7 @@ theorem emit_roundtrip_mapping_content_eq {inFlow : Bool} (style : CollectionSty
             have h_pairs''_j : pairs''[j]! =
                 (.scalar (Scalar.mk sk_j.content .doubleQuoted none none none),
                  .scalar (Scalar.mk sv_j.content .doubleQuoted none none none)) :=
-              compose_map_scalar_pair (raw_docs[0]!) pairs' pairs'' h_raw_val h_comp_val
+              compose_map_scalar_pair (raw_docs[0]!) pairs' pairs'' h_af h_raw_val h_comp_val
                 j hj' sk_j.content sv_j.content .doubleQuoted .doubleQuoted h_pairs'_j
             exact h_composed_k.trans (congrArg Prod.fst h_pairs''_j).symm,
           fun ⟨j, hj⟩ rd h_rd h_rd_sz => by
@@ -1208,7 +1236,7 @@ theorem emit_roundtrip_mapping_content_eq {inFlow : Bool} (style : CollectionSty
             have h_pairs''_j : pairs''[j]! =
                 (.scalar (Scalar.mk sk_j.content .doubleQuoted none none none),
                  .scalar (Scalar.mk sv_j.content .doubleQuoted none none none)) :=
-              compose_map_scalar_pair (raw_docs[0]!) pairs' pairs'' h_raw_val h_comp_val
+              compose_map_scalar_pair (raw_docs[0]!) pairs' pairs'' h_af h_raw_val h_comp_val
                 j hj' sk_j.content sv_j.content .doubleQuoted .doubleQuoted h_pairs'_j
             exact h_composed_v.trans (congrArg Prod.snd h_pairs''_j).symm⟩
       · sorry

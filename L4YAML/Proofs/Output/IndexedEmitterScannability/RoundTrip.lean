@@ -111,12 +111,18 @@ theorem stripAnchors_scalarIx (s : Scalar) :
     (YamlValue.scalar s).stripAnchors = .scalar { s with anchor := none } := by
   unfold YamlValue.stripAnchors; rfl
 
+/-- `resolveAliasesOrdered` returns scalars unchanged (whatever binding it makes). -/
+theorem resolveAliasesOrdered_fst_scalarIx (s : Scalar)
+    (anchors : Array (String × YamlValue)) (env : List (String × YamlValue)) :
+    ((YamlValue.scalar s).resolveAliasesOrdered anchors env).fst = .scalar s := by
+  simp only [YamlValue.resolveAliasesOrdered]
+
 /-- `compose` on a scalar document preserves the content field. -/
 theorem compose_scalar_contentIx (doc : YamlDocument) (s : Scalar)
     (h_val : doc.value = .scalar s) :
     (doc.compose).value = .scalar { s with anchor := none } := by
   unfold YamlDocument.compose; dsimp only []
-  rw [h_val, resolveAliases_scalarIx, stripAnchors_scalarIx]
+  rw [h_val, resolveAliasesOrdered_fst_scalarIx, stripAnchors_scalarIx]
 
 /-- `contentEq` for scalars only depends on the content string. -/
 theorem contentEq_scalar_contentIx (s₁ s₂ : Scalar)

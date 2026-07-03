@@ -164,14 +164,25 @@ theorem mapping_all_scalar_locality_chain
       rw [getElem!_pos _ 0 h_0', getElem!_pos raw_docs 0 h_ne_raw, Array.getElem_map]
     rw [← h_eq]; exact h_shape
   have h_pairs'_size : pairs'.size = 1 := by rw [h_pairs'_sz]; rfl
+  -- the single pinned pair is an anchorless scalar pair, so pairs' is anchor-free (J2 guard)
+  have h_af : ∀ p ∈ pairs'.toList, p.1.anchorFree = true ∧ p.2.anchorFree = true := by
+    intro q hq
+    obtain ⟨i, hi, h_eq⟩ := List.getElem_of_mem hq
+    have hi'' : i < pairs'.size := by rwa [Array.length_toList] at hi
+    have h_i0 : i = 0 := by omega
+    subst h_i0
+    have h_q : q = pairs'[0]! := by
+      rw [← h_eq, Array.getElem_toList, getElem!_pos pairs' 0 hi'']
+    rw [h_q, h_pair0_pin]
+    exact ⟨by simp [YamlValue.anchorFree], by simp [YamlValue.anchorFree]⟩
   have h_pairs''_size : pairs''.size = 1 := by
-    rw [compose_map_pairs_pointwise (raw_docs[0]!) pairs' pairs'' h_raw_val h_comp_val,
+    rw [compose_map_pairs_pointwise (raw_docs[0]!) pairs' pairs'' h_af h_raw_val h_comp_val,
         Array.size_map, h_pairs'_size]
   have h_pairs'_0 : 0 < pairs'.size := by omega
   have h_pairs''_0 : pairs''[0]! =
       (.scalar (Scalar.mk sk.content .doubleQuoted none none none),
        .scalar (Scalar.mk sv.content .doubleQuoted none none none)) :=
-    compose_map_scalar_pair (raw_docs[0]!) pairs' pairs'' h_raw_val h_comp_val
+    compose_map_scalar_pair (raw_docs[0]!) pairs' pairs'' h_af h_raw_val h_comp_val
       0 h_pairs'_0 sk.content sv.content .doubleQuoted .doubleQuoted h_pair0_pin
   -- Step 6: locality equations from parseYamlRaw_emitScalar_compose_value
   exact ⟨h_pairs''_size,
@@ -194,6 +205,7 @@ theorem mapping_all_scalar_locality_chain
 #print axioms parseFlowMappingLoop_allScalar_pair_at
 
 /-- info: 'L4YAML.Proofs.EmitterScannability.compose_map_scalar_pair' depends on axioms: [propext,
+ Classical.choice,
  Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms compose_map_scalar_pair

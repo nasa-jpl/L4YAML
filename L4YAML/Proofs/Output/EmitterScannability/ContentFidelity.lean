@@ -78,6 +78,148 @@ decreasing_by
   · have := List.sizeOf_lt_of_mem hkw
     cases pairs; simp_all [Array.mk.sizeOf_spec, Prod.mk.sizeOf_spec]; omega
 
+/-! ### §5.0b  Order-aware resolution coincides with global lookup on anchor-free trees (J2)
+
+`YamlDocument.compose` resolves aliases with `resolveAliasesOrdered` (each alias binds to
+the most recent *preceding* definition, §7.1).  The walk's environment only grows at
+anchor-carrying nodes, so on an **anchor-free** tree (every parsed-back emitter output:
+the emitter never produces `&name` syntax) the environment stays empty, every alias falls
+back to the parse-time table with the original first-match lookup, and the ordered walk
+computes exactly `resolveAliases`.  This bridge lets the pointwise compose
+characterizations (§5.17/§5.18) keep their `resolveAliases`-shaped right-hand sides. -/
+
+/-- Elements of an `anchorFree` list are `anchorFree`. -/
+theorem anchorFree_goList_forall (l : List YamlValue)
+    (h : YamlValue.anchorFree.goList l = true) : ∀ v ∈ l, v.anchorFree = true := by
+  induction l with
+  | nil => intro v hv; exact (List.not_mem_nil hv).elim
+  | cons w ws ih =>
+    simp only [YamlValue.anchorFree.goList, Bool.and_eq_true] at h
+    intro v hv
+    rcases List.mem_cons.mp hv with rfl | hm
+    · exact h.1
+    · exact ih h.2 v hm
+
+/-- Components of an `anchorFree` pair list are `anchorFree`. -/
+theorem anchorFree_goPairs_forall (l : List (YamlValue × YamlValue))
+    (h : YamlValue.anchorFree.goPairs l = true) :
+    ∀ p ∈ l, p.1.anchorFree = true ∧ p.2.anchorFree = true := by
+  induction l with
+  | nil => intro p hp; exact (List.not_mem_nil hp).elim
+  | cons q qs ih =>
+    obtain ⟨k, w⟩ := q
+    simp only [YamlValue.anchorFree.goPairs, Bool.and_eq_true] at h
+    intro p hp
+    rcases List.mem_cons.mp hp with rfl | hm
+    · exact ⟨h.1.1, h.1.2⟩
+    · exact ih h.2 p hm
+
+/-- A list of `anchorFree` values is `anchorFree`. -/
+theorem anchorFree_goList_of_forall (l : List YamlValue)
+    (h : ∀ v ∈ l, v.anchorFree = true) : YamlValue.anchorFree.goList l = true := by
+  induction l with
+  | nil => rfl
+  | cons w ws ih =>
+    simp only [YamlValue.anchorFree.goList, Bool.and_eq_true]
+    exact ⟨h w List.mem_cons_self, ih (fun v hv => h v (List.mem_cons_of_mem _ hv))⟩
+
+/-- A pair list with `anchorFree` components is `anchorFree`. -/
+theorem anchorFree_goPairs_of_forall (l : List (YamlValue × YamlValue))
+    (h : ∀ p ∈ l, p.1.anchorFree = true ∧ p.2.anchorFree = true) :
+    YamlValue.anchorFree.goPairs l = true := by
+  induction l with
+  | nil => rfl
+  | cons q qs ih =>
+    obtain ⟨k, w⟩ := q
+    simp only [YamlValue.anchorFree.goPairs, Bool.and_eq_true]
+    exact ⟨⟨(h (k, w) List.mem_cons_self).1, (h (k, w) List.mem_cons_self).2⟩,
+      ih (fun p hp => h p (List.mem_cons_of_mem _ hp))⟩
+
+/-- `goList` over elements that resolve like the old walk (from the empty
+    environment) equals the old `resolveList` and returns the environment empty. -/
+theorem goList_ordered_eq_resolveList (anchors : Array (String × YamlValue))
+    (l : List YamlValue)
+    (H : ∀ v ∈ l, v.resolveAliasesOrdered anchors [] = (v.resolveAliases anchors, [])) :
+    YamlValue.resolveAliasesOrdered.goList anchors l []
+      = (YamlValue.resolveAliases.resolveList l anchors, []) := by
+  induction l with
+  | nil => rfl
+  | cons v vs ih =>
+    have hv := H v List.mem_cons_self
+    have hrest := ih (fun w hw => H w (List.mem_cons_of_mem _ hw))
+    simp only [YamlValue.resolveAliasesOrdered.goList, YamlValue.resolveAliases.resolveList,
+      hv, hrest]
+
+/-- `goPairs` analog of `goList_ordered_eq_resolveList`. -/
+theorem goPairs_ordered_eq_resolvePairs (anchors : Array (String × YamlValue))
+    (l : List (YamlValue × YamlValue))
+    (H : ∀ p ∈ l, p.1.resolveAliasesOrdered anchors [] = (p.1.resolveAliases anchors, []) ∧
+                  p.2.resolveAliasesOrdered anchors [] = (p.2.resolveAliases anchors, [])) :
+    YamlValue.resolveAliasesOrdered.goPairs anchors l []
+      = (YamlValue.resolveAliases.resolvePairs l anchors, []) := by
+  induction l with
+  | nil => rfl
+  | cons p ps ih =>
+    obtain ⟨k, v⟩ := p
+    have hp := H (k, v) List.mem_cons_self
+    have hrest := ih (fun q hq => H q (List.mem_cons_of_mem _ hq))
+    simp only [YamlValue.resolveAliasesOrdered.goPairs, YamlValue.resolveAliases.resolvePairs,
+      hp.1, hp.2, hrest]
+
+/-- **Order-aware resolution from the empty environment coincides with the global
+    lookup on anchor-free trees (J2 bridge).**  No node binds (the tree is
+    anchor-free), so the environment stays `[]`, every alias falls back to the
+    first-match table lookup — exactly `resolveAliases` — and the walk returns
+    the environment unchanged. -/
+theorem resolveAliasesOrdered_of_anchorFree (v : YamlValue)
+    (anchors : Array (String × YamlValue)) (h : v.anchorFree = true) :
+    v.resolveAliasesOrdered anchors [] = (v.resolveAliases anchors, []) := by
+  match v with
+  | .scalar s =>
+    have h_anchor : s.anchor = none := by
+      simpa [YamlValue.anchorFree, Option.isNone_iff_eq_none] using h
+    simp only [YamlValue.resolveAliasesOrdered, YamlValue.resolveAliases, h_anchor]
+  | .alias name =>
+    simp only [YamlValue.resolveAliasesOrdered, YamlValue.resolveAliases, List.findSome?_nil]
+    cases h_find : anchors.findSome? (fun (n, val) => if n == name then some val else none) <;>
+      rfl
+  | .sequence style items tag anchor =>
+    have h' : anchor.isNone = true ∧ YamlValue.anchorFree.goList items.toList = true := by
+      simpa [YamlValue.anchorFree, Bool.and_eq_true] using h
+    have h_anchor : anchor = none := Option.isNone_iff_eq_none.mp h'.1
+    have h_go := goList_ordered_eq_resolveList anchors items.toList
+      (fun w hw => resolveAliasesOrdered_of_anchorFree w anchors
+        (anchorFree_goList_forall items.toList h'.2 w hw))
+    simp only [YamlValue.resolveAliasesOrdered, YamlValue.resolveAliases, h_go, h_anchor]
+  | .mapping style pairs tag anchor =>
+    have h' : anchor.isNone = true ∧ YamlValue.anchorFree.goPairs pairs.toList = true := by
+      simpa [YamlValue.anchorFree, Bool.and_eq_true] using h
+    have h_anchor : anchor = none := Option.isNone_iff_eq_none.mp h'.1
+    have h_go := goPairs_ordered_eq_resolvePairs anchors pairs.toList
+      (fun ⟨k, w⟩ hkw =>
+        ⟨resolveAliasesOrdered_of_anchorFree k anchors
+          (anchorFree_goPairs_forall pairs.toList h'.2 (k, w) hkw).1,
+         resolveAliasesOrdered_of_anchorFree w anchors
+          (anchorFree_goPairs_forall pairs.toList h'.2 (k, w) hkw).2⟩)
+    simp only [YamlValue.resolveAliasesOrdered, YamlValue.resolveAliases, h_go, h_anchor]
+termination_by v
+decreasing_by
+  all_goals simp_wf
+  · have := List.sizeOf_lt_of_mem hw
+    cases items; simp_all [Array.mk.sizeOf_spec]; omega
+  · have := List.sizeOf_lt_of_mem hkw
+    cases pairs; simp_all [Array.mk.sizeOf_spec, Prod.mk.sizeOf_spec]; omega
+  · have := List.sizeOf_lt_of_mem hkw
+    cases pairs; simp_all [Array.mk.sizeOf_spec, Prod.mk.sizeOf_spec]; omega
+
+/-- The J2 bridge at the `compose` boundary: on an anchor-free document value,
+    the composed value is the old `resolveAliases`-then-`stripAnchors` image. -/
+theorem compose_value_of_anchorFree (doc : YamlDocument)
+    (h : doc.value.anchorFree = true) :
+    (doc.compose).value = (doc.value.resolveAliases doc.anchors).stripAnchors := by
+  show ((doc.value.resolveAliasesOrdered doc.anchors []).fst).stripAnchors = _
+  rw [resolveAliasesOrdered_of_anchorFree doc.value doc.anchors h]
+
 -- contentEq for scalars only depends on content string
 theorem contentEq_scalar_content (s₁ s₂ : Scalar)
     (h : s₁.content = s₂.content) : contentEq (.scalar s₁) (.scalar s₂) = true := by
@@ -590,9 +732,15 @@ theorem compose_preserves_flow_sequence (doc : YamlDocument) (items' : Array Yam
     (h : doc.value = .sequence .flow items' none none) :
     ∃ items'', (doc.compose).value = .sequence .flow items'' none none := by
   have hv : (doc.compose).value
-      = (doc.value.resolveAliases doc.anchors).stripAnchors := rfl
+      = ((doc.value.resolveAliasesOrdered doc.anchors []).fst).stripAnchors := rfl
   rw [hv, h]
-  unfold YamlValue.resolveAliases YamlValue.stripAnchors
+  have h1 : ((YamlValue.sequence .flow items' none none).resolveAliasesOrdered doc.anchors []).fst
+      = .sequence .flow
+          (YamlValue.resolveAliasesOrdered.goList doc.anchors items'.toList []).fst.toArray
+          none none := by
+    simp only [YamlValue.resolveAliasesOrdered]
+  rw [h1]
+  unfold YamlValue.stripAnchors
   exact ⟨_, rfl⟩
 
 /-- **`compose` preserves outer shape (mapping).** Mirror of `compose_preserves_flow_sequence`: a
@@ -603,9 +751,15 @@ theorem compose_preserves_flow_mapping (doc : YamlDocument) (pairs' : Array (Yam
     (h : doc.value = .mapping .flow pairs' none none) :
     ∃ pairs'', (doc.compose).value = .mapping .flow pairs'' none none := by
   have hv : (doc.compose).value
-      = (doc.value.resolveAliases doc.anchors).stripAnchors := rfl
+      = ((doc.value.resolveAliasesOrdered doc.anchors []).fst).stripAnchors := rfl
   rw [hv, h]
-  unfold YamlValue.resolveAliases YamlValue.stripAnchors
+  have h1 : ((YamlValue.mapping .flow pairs' none none).resolveAliasesOrdered doc.anchors []).fst
+      = .mapping .flow
+          (YamlValue.resolveAliasesOrdered.goPairs doc.anchors pairs'.toList []).fst.toArray
+          none none := by
+    simp only [YamlValue.resolveAliasesOrdered]
+  rw [h1]
+  unfold YamlValue.stripAnchors
   exact ⟨_, rfl⟩
 
 /-! ### §5.6  Front B — value-recovery trace, brick 2 last link (part 1): `parseDocument` dispatch
@@ -2909,6 +3063,7 @@ leaf (to be landed as a future brick) to fill the sorry at
     `(rd.map compose)[0]!.value = items''[j]!` for scalar elements. -/
 theorem compose_seq_items_pointwise
     (doc : YamlDocument) (items' items'' : Array YamlValue)
+    (h_af : ∀ v ∈ items'.toList, v.anchorFree = true)
     (h_val : doc.value = .sequence .flow items' none none)
     (h_comp : (doc.compose).value = .sequence .flow items'' none none) :
     items'' = items'.map (fun v => (v.resolveAliases doc.anchors).stripAnchors) := by
@@ -2928,10 +3083,13 @@ theorem compose_seq_items_pointwise
     rw [List.toList_toArray, stripList_eq_map, List.map_map, ← Array.toList_map, Array.toArray_toList]
     simp [Function.comp]
   -- Assemble: doc.compose.value = .sequence .flow (items'.map f)
+  have h_af_whole : doc.value.anchorFree = true := by
+    rw [h_val]
+    simp only [YamlValue.anchorFree, Option.isNone_none, Bool.true_and]
+    exact anchorFree_goList_of_forall items'.toList h_af
   have h_assembled : (doc.compose).value =
       .sequence .flow (items'.map (fun v => (v.resolveAliases doc.anchors).stripAnchors)) none none := by
-    show (doc.value.resolveAliases doc.anchors).stripAnchors = _
-    rw [h_val, h_step2, h_step3]
+    rw [compose_value_of_anchorFree doc h_af_whole, h_val, h_step2, h_step3]
   -- Extract items'' = items'.map f by injectivity of the sequence constructor
   have h_eq := h_comp.symm.trans h_assembled
   simp only [YamlValue.sequence.injEq] at h_eq
@@ -2946,13 +3104,14 @@ theorem compose_seq_items_pointwise
     `anchor = none` gives `{ s with anchor := none } = s`. So compose is identity here. -/
 theorem compose_seq_scalar_item
     (doc : YamlDocument) (items' items'' : Array YamlValue)
+    (h_af : ∀ v ∈ items'.toList, v.anchorFree = true)
     (h_val : doc.value = .sequence .flow items' none none)
     (h_comp : (doc.compose).value = .sequence .flow items'' none none)
     (j : Nat) (hj : j < items'.size)
     (content : String) (style : ScalarStyle)
     (h_item : items'[j]! = .scalar (Scalar.mk content style none none none)) :
     items''[j]! = .scalar (Scalar.mk content style none none none) := by
-  have h_eq := compose_seq_items_pointwise doc items' items'' h_val h_comp
+  have h_eq := compose_seq_items_pointwise doc items' items'' h_af h_val h_comp
   subst h_eq
   have h_sz : j < (items'.map (fun v => (v.resolveAliases doc.anchors).stripAnchors)).size :=
     by rwa [Array.size_map]
@@ -2994,6 +3153,7 @@ matching `parseYamlRaw_emitScalar_compose_value` on each side. -/
     extracts `pairs''`. -/
 theorem compose_map_pairs_pointwise
     (doc : YamlDocument) (pairs' pairs'' : Array (YamlValue × YamlValue))
+    (h_af : ∀ p ∈ pairs'.toList, p.1.anchorFree = true ∧ p.2.anchorFree = true)
     (h_val : doc.value = .mapping .flow pairs' none none)
     (h_comp : (doc.compose).value = .mapping .flow pairs'' none none) :
     pairs'' = pairs'.map (fun ⟨k, v⟩ => ((k.resolveAliases doc.anchors).stripAnchors,
@@ -3017,11 +3177,14 @@ theorem compose_map_pairs_pointwise
     rw [List.toList_toArray, stripPairs_eq_map, List.map_map, ← Array.toList_map, Array.toArray_toList]
     simp [Function.comp]
   -- Assemble: doc.compose.value = .mapping .flow (pairs'.map f)
+  have h_af_whole : doc.value.anchorFree = true := by
+    rw [h_val]
+    simp only [YamlValue.anchorFree, Option.isNone_none, Bool.true_and]
+    exact anchorFree_goPairs_of_forall pairs'.toList h_af
   have h_assembled : (doc.compose).value =
       .mapping .flow (pairs'.map (fun ⟨k, v⟩ => ((k.resolveAliases doc.anchors).stripAnchors,
                                                   (v.resolveAliases doc.anchors).stripAnchors))) none none := by
-    show (doc.value.resolveAliases doc.anchors).stripAnchors = _
-    rw [h_val, h_step2, h_step3]
+    rw [compose_value_of_anchorFree doc h_af_whole, h_val, h_step2, h_step3]
   -- Extract pairs'' = pairs'.map f by injectivity of the mapping constructor
   have h_eq := h_comp.symm.trans h_assembled
   simp only [YamlValue.mapping.injEq] at h_eq
@@ -3038,6 +3201,7 @@ theorem compose_map_pairs_pointwise
     anchor-free scalar pairs.  The key/value analog of `compose_seq_scalar_item`. -/
 theorem compose_map_scalar_pair
     (doc : YamlDocument) (pairs' pairs'' : Array (YamlValue × YamlValue))
+    (h_af : ∀ p ∈ pairs'.toList, p.1.anchorFree = true ∧ p.2.anchorFree = true)
     (h_val : doc.value = .mapping .flow pairs' none none)
     (h_comp : (doc.compose).value = .mapping .flow pairs'' none none)
     (j : Nat) (hj : j < pairs'.size)
@@ -3046,7 +3210,7 @@ theorem compose_map_scalar_pair
                              .scalar (Scalar.mk vk vs none none none))) :
     pairs''[j]! = (.scalar (Scalar.mk ck cs none none none),
                    .scalar (Scalar.mk vk vs none none none)) := by
-  have h_eq := compose_map_pairs_pointwise doc pairs' pairs'' h_val h_comp
+  have h_eq := compose_map_pairs_pointwise doc pairs' pairs'' h_af h_val h_comp
   subst h_eq
   have h_sz : j < (pairs'.map (fun ⟨k, v⟩ => ((k.resolveAliases doc.anchors).stripAnchors,
                                                (v.resolveAliases doc.anchors).stripAnchors))).size :=

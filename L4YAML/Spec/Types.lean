@@ -568,6 +568,94 @@ where
     | (k, v) :: rest =>
       (k.adaptForFlowContext, v.adaptForFlowContext) :: adaptPairs rest
 
+/-- No node in the tree carries an anchor property.
+
+Emitter output never carries anchors, so parsed-back trees in the
+round-trip proofs satisfy this; on such trees the order-aware
+resolution below coincides with the global table lookup of
+`YamlValue.resolveAliases`. -/
+def YamlValue.anchorFree (v : YamlValue) : Bool :=
+  match v with
+  | .scalar s => s.anchor.isNone
+  | .sequence _ items _ anchor => anchor.isNone && goList items.toList
+  | .mapping _ pairs _ anchor => anchor.isNone && goPairs pairs.toList
+  | .alias _ => true
+where
+  /-- Anchor-freedom for a list of values. -/
+  goList : List YamlValue → Bool
+    | [] => true
+    | v :: vs => v.anchorFree && goList vs
+  /-- Anchor-freedom for a list of key-value pairs. -/
+  goPairs : List (YamlValue × YamlValue) → Bool
+    | [] => true
+    | (k, v) :: rest => k.anchorFree && v.anchorFree && goPairs rest
+
+/--
+Resolve alias nodes **order-aware** (YAML 1.2.2 §7.1): an alias node
+refers to the *most recent preceding* node with that anchor in document
+order — not to a globally selected table entry, which mis-resolves a
+document that rebinds an anchor name (`First occurrence: &a Foo`,
+`Second occurrence: *a`, `Override anchor: &a Bar`, `Reuse anchor: *a`
+must give `Foo` for the first alias and `Bar` for the second).
+
+The walk threads an environment `env` of bindings made so far,
+most recent first. A node's anchor binds *after* its own content is
+resolved, so an alias never sees the node it sits inside; bound values
+are cleaned exactly like `ParseState.addAnchor` cleans stored anchor
+values (anchors stripped, scalars adapted for flow contexts).
+
+Aliases with no preceding in-tree definition fall back to the
+parse-time table `anchors` with the original first-match lookup,
+preserving the old behavior for degenerate (cyclic) documents.
+-/
+def YamlValue.resolveAliasesOrdered (v : YamlValue) (anchors : Array (String × YamlValue))
+    (env : List (String × YamlValue) := []) : YamlValue × List (String × YamlValue) :=
+  match v with
+  | .scalar s =>
+    (v, match s.anchor with
+        | some a => (a, YamlValue.scalar { s with anchor := none } |>.adaptForFlowContext) :: env
+        | none => env)
+  | .sequence style items tag anchor =>
+    let r := goList anchors items.toList env
+    let v' := YamlValue.sequence style r.fst.toArray tag anchor
+    (v', match anchor with
+         | some a => (a, v'.stripAnchors.adaptForFlowContext) :: r.snd
+         | none => r.snd)
+  | .mapping style pairs tag anchor =>
+    let r := goPairs anchors pairs.toList env
+    let v' := YamlValue.mapping style r.fst.toArray tag anchor
+    (v', match anchor with
+         | some a => (a, v'.stripAnchors.adaptForFlowContext) :: r.snd
+         | none => r.snd)
+  | .alias name =>
+    match env.findSome? (fun (n, val) => if n == name then some val else none) with
+    | some val => (val, env)
+    | none =>
+      match anchors.findSome? (fun (n, val) => if n == name then some val else none) with
+      | some val => (val, env)
+      | none => (v, env)  -- unresolved alias: preserve as-is
+where
+  /-- Resolve a list of values in order, threading the binding environment. -/
+  goList (anchors : Array (String × YamlValue)) :
+      List YamlValue → List (String × YamlValue)
+      → List YamlValue × List (String × YamlValue)
+    | [], env => ([], env)
+    | v :: vs, env =>
+      let r := v.resolveAliasesOrdered anchors env
+      let rs := goList anchors vs r.snd
+      (r.fst :: rs.fst, rs.snd)
+  /-- Resolve a list of key-value pairs in order (key before value),
+      threading the binding environment. -/
+  goPairs (anchors : Array (String × YamlValue)) :
+      List (YamlValue × YamlValue) → List (String × YamlValue)
+      → List (YamlValue × YamlValue) × List (String × YamlValue)
+    | [], env => ([], env)
+    | (k, v) :: rest, env =>
+      let rk := k.resolveAliasesOrdered anchors env
+      let rv := v.resolveAliasesOrdered anchors rk.snd
+      let rs := goPairs anchors rest rv.snd
+      ((rk.fst, rv.fst) :: rs.fst, rs.snd)
+
 /--
 **Compose**: resolve aliases and strip anchor annotations.
 
@@ -577,12 +665,16 @@ This is the "Compose" step from YAML 1.2.2 §3.1
 Takes a serialization tree (with `.alias` nodes and `anchor` fields)
 and produces a representation graph (all aliases resolved, no anchors).
 
-The `anchors` parameter is the document's anchor map, captured during
-the Parse phase.
+Alias resolution is **order-aware** (`resolveAliasesOrdered`): each
+alias binds to the most recent preceding definition of its anchor name
+(§7.1), so a document that rebinds an anchor name resolves each alias
+against the definition in scope at the alias's own position. The
+`anchors` parameter (the document's parse-time anchor map) only serves
+as a fallback for aliases with no preceding in-tree definition.
 -/
 def YamlDocument.compose (doc : YamlDocument) : YamlDocument :=
   { doc with
-    value := (doc.value.resolveAliases doc.anchors).stripAnchors
+    value := (doc.value.resolveAliasesOrdered doc.anchors).fst.stripAnchors
     anchors := #[] }
 
 /-- Strip all comments from a document (§6.6: comments are presentation detail). -/

@@ -115,17 +115,21 @@ theorem mapRawDoc_compose_recovers_mapping
     ∃ pairs'', (mapRawDoc.compose).value = .mapping .flow pairs'' none none :=
   compose_preserves_flow_mapping mapRawDoc pairs' h
 
--- Axiom audit — the source lemmas are pure structural unfolds of `compose` / `resolveAliases` /
--- `stripAnchors` (a `rfl` projection, two `unfold`s, and a constructor witness), so their profile is
--- LEANER than bricks 1 and 2(a): no `Classical.choice` — those inherited it from the `Except`-monad
--- simp machinery, which these never touch. (The `native_decide` firing probes above are separate and
--- carry `Lean.ofReduceBool` on top.)
-/-- info: 'L4YAML.Proofs.EmitterScannability.compose_preserves_flow_sequence' depends on axioms: [propext, Quot.sound] -/
-#guard_msgs in
+-- Axiom audit — the source lemmas are structural unfolds of `compose` / `resolveAliasesOrdered` /
+-- `stripAnchors` (a `rfl` projection, the ordered walk's sequence/mapping equation, an `unfold`,
+-- and a constructor witness).  Since J2 (order-aware alias resolution) the ordered walk's equation
+-- lemmas carry `Classical.choice`; still no `sorryAx` and no `Lean.ofReduceBool` (the
+-- `native_decide` firing probes above are separate and carry that on top.)
+/-- info: 'L4YAML.Proofs.EmitterScannability.compose_preserves_flow_sequence' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs (whitespace := lax) in
 #print axioms compose_preserves_flow_sequence
 
-/-- info: 'L4YAML.Proofs.EmitterScannability.compose_preserves_flow_mapping' depends on axioms: [propext, Quot.sound] -/
-#guard_msgs in
+/-- info: 'L4YAML.Proofs.EmitterScannability.compose_preserves_flow_mapping' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs (whitespace := lax) in
 #print axioms compose_preserves_flow_mapping
 
 end ValueRecoveryCompose
