@@ -34,6 +34,40 @@ jobs:
           fi
           elan show
 
+      - name: Set up hermetic Python venv
+        run: |
+          # The self-hosted runner snapshots its PATH into <runner>/.path
+          # when it is configured/started; that snapshot can carry a
+          # FOREIGN project's venv (one shadowed python3 here — a
+          # mid-upgrade pytest in it failed the FFI tests, and the old
+          # pip-install fallback even wrote weasyprint into it). Build a
+          # per-job venv from an explicit interpreter and prepend it via
+          # GITHUB_PATH so every later `python3` — the pytest steps, the
+          # cross-language heredoc, suiterunner's python backend, the
+          # report and PDF scripts — is hermetic, whatever the runner's
+          # ambient PATH says.
+          PYBASE=/usr/bin/python3.12
+          if [ ! -x "$PYBASE" ]; then PYBASE=/usr/bin/python3; fi
+          "$PYBASE" -m venv "$RUNNER_TEMP/ci-venv"
+          VPY="$RUNNER_TEMP/ci-venv/bin/python3"
+          "$VPY" -m pip install --quiet --disable-pip-version-check --upgrade pip
+          "$VPY" -m pip install --quiet --disable-pip-version-check pytest
+          "$VPY" --version
+          "$VPY" -m pytest --version
+          echo "$RUNNER_TEMP/ci-venv/bin" >> "$GITHUB_PATH"
+          # A venv does NOT isolate against PYTHONPATH: its entries come
+          # before both the stdlib and the venv's site-packages on
+          # sys.path. On this box, ROS setup scripts export
+          # PYTHONPATH=/opt/ros/... whose packages register pytest
+          # plugins that crash under the venv's interpreter (the origin
+          # of the old `-p no:launch_ros` flags). GITHUB_ENV cannot
+          # unset, and PYTHONPATH="" would put the cwd on sys.path, so
+          # point it at an empty directory; PYTHONNOUSERSITE blocks
+          # ~/.local site-packages the same way.
+          mkdir -p "$RUNNER_TEMP/ci-venv/empty-pythonpath"
+          echo "PYTHONPATH=$RUNNER_TEMP/ci-venv/empty-pythonpath" >> "$GITHUB_ENV"
+          echo "PYTHONNOUSERSITE=1" >> "$GITHUB_ENV"
+
       - name: Install weasyprint for PDF generation
         id: weasyprint
         run: |
@@ -51,20 +85,19 @@ jobs:
           else
             echo "No passwordless sudo — skipping system package install (must be pre-installed)"
           fi
-          # Check if weasyprint is already available (e.g. pre-installed in venv),
-          # otherwise try to install it.
-          if python3 -c "import weasyprint" 2>/dev/null; then
-            echo "weasyprint already available"
-            echo "has_weasyprint=true" >> "$GITHUB_OUTPUT"
-          elif python3 -m pip install weasyprint; then
-            echo "has_weasyprint=true" >> "$GITHUB_OUTPUT"
-          elif python3 -m pip install --user weasyprint; then
+          # Install weasyprint into the CI venv (python3 = the hermetic
+          # venv from the previous step, via GITHUB_PATH). Verify by
+          # IMPORT, not pip exit status: import is what html-to-pdf.py
+          # does, and it also proves the system pango/cairo libraries
+          # above are actually present.
+          if python3 -c "import weasyprint" 2>/dev/null \
+             || { python3 -m pip install --quiet --disable-pip-version-check weasyprint \
+                  && python3 -c "import weasyprint" 2>/dev/null; }; then
             echo "has_weasyprint=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::warning::weasyprint install failed — PDF generation will be skipped"
+            echo "::warning::weasyprint unavailable — PDF generation will be skipped"
             echo "has_weasyprint=false" >> "$GITHUB_OUTPUT"
           fi
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       # -------------------------------------------------------
       # Phase 1: Build everything
@@ -110,7 +143,7 @@ jobs:
         # Build straight into ffi/out — the canonical layout from the
         # ffi/CMakeLists.txt header: suiterunner's c backend runs
         # ffi/out/tryparse_c (Tests/SuiteRunner/Main.lean), the Python
-        # steps point L4YAML_LIB/LD_LIBRARY_PATH at ffi/out, and
+        # steps point L4YAML_LIB at ffi/out/libl4yaml.so, and
         # tryparse_c's BUILD_RPATH ($ORIGIN) finds libl4yaml.so
         # in-place. Assert both artifacts here so a broken C build
         # fails THIS step, not the cross-language comparison later.
@@ -133,11 +166,10 @@ jobs:
           RESULTS="docs/reports"
           echo "=== Python FFI Tests ===" | tee "$RESULTS/python-ffi-tests.txt"
           cd "$GITHUB_WORKSPACE"
-          L4YAML_LIB="$GITHUB_WORKSPACE/ffi/out" \
+          L4YAML_LIB="$GITHUB_WORKSPACE/ffi/out/libl4yaml.so" \
           LD_LIBRARY_PATH="$GITHUB_WORKSPACE/ffi/out:${LD_LIBRARY_PATH:-}" \
           python3 -m pytest Tests/test_python_ffi.py \
             -v --tb=short --no-header \
-            -p no:launch_ros -p no:launch_testing \
             --junitxml="$RESULTS/python-ffi-junit.xml" \
             2>&1 | tee -a "$RESULTS/python-ffi-tests.txt"
 
@@ -148,11 +180,10 @@ jobs:
           RESULTS="docs/reports"
           echo "=== Python Package Tests ===" | tee "$RESULTS/python-package-tests.txt"
           cd "$GITHUB_WORKSPACE"
-          L4YAML_LIB="$GITHUB_WORKSPACE/ffi/out" \
+          L4YAML_LIB="$GITHUB_WORKSPACE/ffi/out/libl4yaml.so" \
           LD_LIBRARY_PATH="$GITHUB_WORKSPACE/ffi/out:${LD_LIBRARY_PATH:-}" \
           python3 -m pytest python/tests/ \
             -v --tb=short --no-header \
-            -p no:launch_ros -p no:launch_testing \
             --junitxml="$RESULTS/python-package-junit.xml" \
             2>&1 | tee -a "$RESULTS/python-package-tests.txt"
 
@@ -163,7 +194,7 @@ jobs:
           set -o pipefail
           RESULTS="docs/reports"
           echo "=== Cross-Language yaml-test-suite Comparison ===" | tee "$RESULTS/cross-lang-comparison.txt"
-          L4YAML_LIB="$GITHUB_WORKSPACE/ffi/out" \
+          L4YAML_LIB="$GITHUB_WORKSPACE/ffi/out/libl4yaml.so" \
           LD_LIBRARY_PATH="$GITHUB_WORKSPACE/ffi/out:${LD_LIBRARY_PATH:-}" \
           python3 - "$RESULTS" <<'PYEOF' | tee -a "$RESULTS/cross-lang-comparison.txt"
           import subprocess, sys, json, pathlib

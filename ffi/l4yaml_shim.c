@@ -56,6 +56,7 @@ extern lean_obj_res l4yaml_doc_root_impl(lean_obj_arg doc);
 
 /* Value inspection — consume val */
 extern uint8_t      l4yaml_value_kind_impl(lean_obj_arg val);
+extern uint8_t      l4yaml_value_scalar_style_impl(lean_obj_arg val);
 extern lean_obj_res l4yaml_value_as_string(lean_obj_arg val);
 extern uint32_t     l4yaml_value_seq_length_impl(lean_obj_arg val);
 extern lean_obj_res l4yaml_value_seq_get_impl(lean_obj_arg val, uint32_t i);
@@ -241,6 +242,11 @@ void *l4yaml_doc_root(void *doc) {
 uint8_t l4yaml_value_kind(void *v) {
     lean_inc((lean_object *)v);
     return l4yaml_value_kind_impl((lean_object *)v);
+}
+
+uint8_t l4yaml_value_scalar_style(void *v) {
+    lean_inc((lean_object *)v);
+    return l4yaml_value_scalar_style_impl((lean_object *)v);
 }
 
 const char *l4yaml_value_string(void *v) {

@@ -58,6 +58,15 @@ typedef void *l4yaml_string_t;
 #define L4YAML_MAPPING   2
 #define L4YAML_ALIAS     3
 
+/* ── Scalar styles (from l4yaml_value_scalar_style) ───────────── */
+
+#define L4YAML_STYLE_PLAIN          0
+#define L4YAML_STYLE_SINGLE_QUOTED  1
+#define L4YAML_STYLE_DOUBLE_QUOTED  2
+#define L4YAML_STYLE_LITERAL        3
+#define L4YAML_STYLE_FOLDED         4
+#define L4YAML_STYLE_NOT_SCALAR     255
+
 /* ── Lifecycle ───────────────────────────────────────────────────── */
 
 /*
@@ -165,6 +174,18 @@ uint8_t l4yaml_value_kind(l4yaml_value_t v);
  * See "String lifetime" note at the top of this header.
  */
 const char *l4yaml_value_string(l4yaml_value_t v);
+
+/*
+ * Scalar presentation style: L4YAML_STYLE_PLAIN (0),
+ * L4YAML_STYLE_SINGLE_QUOTED (1), L4YAML_STYLE_DOUBLE_QUOTED (2),
+ * L4YAML_STYLE_LITERAL (3), L4YAML_STYLE_FOLDED (4).
+ * Returns L4YAML_STYLE_NOT_SCALAR (255) for non-scalar values.
+ *
+ * Core-schema note (YAML 1.2.2 section 10.3.2): only PLAIN scalars
+ * are subject to type resolution; a binding deciding whether 42 is a
+ * number or the string "42" must consult this.
+ */
+uint8_t l4yaml_value_scalar_style(l4yaml_value_t v);
 
 /* Sequence item count.  Returns 0 for non-sequence values. */
 uint32_t l4yaml_value_seq_length(l4yaml_value_t v);

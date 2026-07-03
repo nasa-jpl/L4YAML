@@ -421,8 +421,18 @@ class TestErrorHandling:
             l4yaml.load("{unclosed")
 
     def test_tab_in_indentation(self) -> None:
+        # "key:\n\t value" is NOT an error: the line's indentation is
+        # zero spaces, and the tab is separation space before the
+        # plain scalar (yaml-test-suite tab semantics). A tab used as
+        # block indentation before an indicator IS an error:
         with pytest.raises(l4yaml.ParseError):
-            l4yaml.load("key:\n\t value")
+            l4yaml.load("a:\n\t- x")
+
+    def test_tab_as_separation_accepted(self) -> None:
+        # Companion to test_tab_in_indentation: tab as separation
+        # space before a plain scalar is legal.
+        v = l4yaml.load("key:\n\t value")
+        assert v.as_dict()["key"].as_str() == "value"
 
     def test_error_message_nonempty(self) -> None:
         with pytest.raises(l4yaml.ParseError) as exc_info:

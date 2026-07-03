@@ -72,6 +72,7 @@ instance : FromYaml ScalarPref where
     | "doubleQuoted" => .ok .doubleQuoted
     | "singleQuoted" => .ok .singleQuoted
     | "auto"         => .ok .auto
+    | "preserve"     => .ok .preserve
     | other          => .error (.unknownVariant other "ScalarPref")
 
 instance : ToYaml ScalarPref where
@@ -80,6 +81,7 @@ instance : ToYaml ScalarPref where
     | .doubleQuoted => YamlValue.scalar { content := "doubleQuoted", style := .plain }
     | .singleQuoted => YamlValue.scalar { content := "singleQuoted", style := .plain }
     | .auto         => YamlValue.scalar { content := "auto", style := .plain }
+    | .preserve     => YamlValue.scalar { content := "preserve", style := .plain }
 
 instance : FromYaml DumpConfig where
   fromYaml? v := do

@@ -29,20 +29,25 @@ _LIB: ctypes.CDLL | None = None
 
 def _find_library() -> Path:
     """Locate libl4yaml.so by searching several candidate paths."""
-    # 1. Explicit environment variable
+    # 1. Explicit environment variable: the .so itself, or a directory
+    #    containing it.
     env_path: str | None = os.environ.get("L4YAML_LIB")
     if env_path:
         p = Path(env_path)
+        if p.is_dir():
+            p = p / "libl4yaml.so"
         if p.is_file():
             return p
 
-    # 2. Relative to this package (../../../ffi/build/libl4yaml.so)
+    # 2. Relative to this package: pkg_dir is <repo>/python/l4yaml, so
+    #    the repo root is two parents up.
     pkg_dir: Path = Path(__file__).resolve().parent
+    repo_root: Path = pkg_dir.parent.parent
     candidates: list[Path] = [
         pkg_dir / "libl4yaml.so",
         pkg_dir.parent / "libl4yaml.so",
-        pkg_dir.parent.parent.parent / "ffi" / "build" / "libl4yaml.so",
-        pkg_dir.parent.parent.parent / "ffi" / "out" / "libl4yaml.so",
+        repo_root / "ffi" / "out" / "libl4yaml.so",
+        repo_root / "ffi" / "build" / "libl4yaml.so",
     ]
 
     # 3. Platform-specific extension
@@ -142,6 +147,9 @@ def _load_lib() -> ctypes.CDLL:
     # ── Value inspection ─────────────────────────────────────────────
     lib.l4yaml_value_kind.argtypes = [c_void_p]
     lib.l4yaml_value_kind.restype = c_uint8
+
+    lib.l4yaml_value_scalar_style.argtypes = [c_void_p]
+    lib.l4yaml_value_scalar_style.restype = c_uint8
 
     lib.l4yaml_value_string.argtypes = [c_void_p]
     lib.l4yaml_value_string.restype = c_char_p

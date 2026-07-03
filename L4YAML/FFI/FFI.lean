@@ -208,6 +208,26 @@ def valueYamlTag (val : @& YamlValue) : Option String :=
   | .mapping _ _ tag _ => tag
   | .alias _ => none
 
+/-- Get the scalar presentation style of a value as a small integer,
+    mirroring `ScalarStyle`'s constructor order (`L4YAML/Spec/Types.lean`):
+    0 = plain, 1 = single-quoted, 2 = double-quoted, 3 = literal,
+    4 = folded.  Returns 255 for non-scalar values.
+
+    Core-schema note (YAML 1.2.2 §10.3.2): only PLAIN scalars are
+    subject to type resolution — bindings deciding whether `42` is a
+    number or the string `"42"` must consult this. -/
+@[export l4yaml_value_scalar_style_impl]
+def valueScalarStyle (val : @& YamlValue) : UInt8 :=
+  match val with
+  | .scalar s =>
+    match s.style with
+    | .plain        => 0
+    | .singleQuoted => 1
+    | .doubleQuoted => 2
+    | .literal      => 3
+    | .folded       => 4
+  | _ => 255
+
 /-- Get the anchor name of a value.  Returns `Option String`:
     `some name` if the value carries an anchor, `none` otherwise. -/
 @[export l4yaml_value_anchor_raw]

@@ -29,6 +29,15 @@ _KIND_NAMES: dict[int, str] = {
     _ALIAS: "alias",
 }
 
+# Scalar style constants (must match l4yaml.h L4YAML_STYLE_*)
+_STYLE_NAMES: dict[int, str] = {
+    0: "plain",
+    1: "single_quoted",
+    2: "double_quoted",
+    3: "literal",
+    4: "folded",
+}
+
 
 class YamlValue:
     """Immutable YAML value backed by an opaque Lean handle.
@@ -64,6 +73,19 @@ class YamlValue:
         return self._lib.l4yaml_value_kind(self._handle)
 
     # ── Scalar ───────────────────────────────────────────────────────
+
+    @property
+    def style(self) -> str | None:
+        """Scalar presentation style: ``"plain"``, ``"single_quoted"``,
+        ``"double_quoted"``, ``"literal"``, or ``"folded"``;
+        ``None`` for non-scalar values.
+
+        Per the YAML 1.2 Core Schema (§10.3.2) only PLAIN scalars are
+        subject to type resolution — quoted and block scalars are
+        always strings.
+        """
+        s: int = self._lib.l4yaml_value_scalar_style(self._handle)
+        return _STYLE_NAMES.get(s)
 
     def as_str(self) -> str:
         """Return scalar content as a Python string.
@@ -151,6 +173,23 @@ class YamlValue:
             key_str: str = key_val.as_str()
             vh: int = self._lib.l4yaml_value_map_val(self._handle, i)
             result.append((key_str, YamlValue(handle=vh, lib=self._lib)))
+        return result
+
+    def raw_items(self) -> list[tuple[YamlValue, YamlValue]]:
+        """Return mapping as ``(key, value)`` pairs with the keys as
+        :class:`YamlValue` — unlike :meth:`items`, which stringifies
+        keys and so loses their kind/style/tag."""
+        if self._kind_id != _MAPPING:
+            raise L4YAMLError(
+                f"raw_items() requires a mapping, got {self.kind}"
+            )
+        n: int = self._lib.l4yaml_value_map_length(self._handle)
+        result: list[tuple[YamlValue, YamlValue]] = []
+        for i in range(n):
+            kh: int = self._lib.l4yaml_value_map_key(self._handle, i)
+            key_val = YamlValue(handle=kh, lib=self._lib)
+            vh: int = self._lib.l4yaml_value_map_val(self._handle, i)
+            result.append((key_val, YamlValue(handle=vh, lib=self._lib)))
         return result
 
     # ── Tag / Anchor ─────────────────────────────────────────────────

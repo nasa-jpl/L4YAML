@@ -21,6 +21,7 @@ or file paths, matching l4yaml's configuration-as-YAML model::
 """
 from __future__ import annotations
 
+import json
 import math
 from pathlib import Path
 from typing import Any, Iterator
@@ -85,27 +86,39 @@ def _coerce_scalar(s: str) -> Any:
     return s
 
 
+def _scalar_to_python(v: YamlValue) -> Any:
+    """Convert one scalar node to Python.
+
+    Core Schema resolution applies to PLAIN scalars only
+    (YAML 1.2 §10.3.2): a quoted or block scalar is always a string,
+    so ``"42"`` stays ``"42"`` while ``42`` becomes ``int``.
+    """
+    s: str = v.as_str()
+    return _coerce_scalar(s) if v.style == "plain" else s
+
+
 # ── Recursive conversion ─────────────────────────────────────────────
 
 
 def to_python(v: YamlValue) -> Any:
     """Recursively convert a :class:`~l4yaml.YamlValue` to native Python.
 
-    - Scalars are coerced to ``int``, ``float``, ``bool``, ``None``,
-      or ``str`` per the YAML 1.2 Core Schema.
+    - Plain scalars are coerced to ``int``, ``float``, ``bool``,
+      ``None``, or ``str`` per the YAML 1.2 Core Schema; quoted and
+      block scalars stay ``str``.
     - Sequences become ``list``.
-    - Mappings become ``dict`` (keys are coerced too).
+    - Mappings become ``dict`` (keys are converted the same way).
     - Aliases return the raw anchor name as ``str``.
     """
     kind: str = v.kind
     if kind == "scalar":
-        return _coerce_scalar(v.as_str())
+        return _scalar_to_python(v)
     if kind == "sequence":
         return [to_python(item) for item in v.as_list()]
     if kind == "mapping":
         return {
-            _coerce_scalar(k): to_python(val)
-            for k, val in v.items()
+            _scalar_to_python(k): to_python(val)
+            for k, val in v.raw_items()
         }
     if kind == "alias":
         return v.as_str()
@@ -307,14 +320,11 @@ def safe_dump(
         YAML string if *stream* is ``None``, otherwise ``None``.
     """
     yaml_str: str = _python_to_yaml(data)
-    from l4yaml import dump, dump_configured, load
+    from l4yaml import dump_configured, load
 
     v: YamlValue = load(yaml_str, limits="unlimited")
     cfg: str | None = _read_dump_config(config)
-    if cfg is not None:
-        result: str = dump_configured(v, config_yaml=cfg)
-    else:
-        result = dump(v)
+    result: str = dump_configured(v, config_yaml=_fidelity_config(cfg))
 
     if stream is not None:
         stream.write(result)
@@ -348,6 +358,30 @@ def safe_dump_all(
         stream.write(result)
         return None
     return result
+
+
+# ── Dump config with type fidelity ───────────────────────────────────
+
+
+def _fidelity_config(user_cfg: str | None) -> str:
+    """Merge type-fidelity defaults into a user dump config.
+
+    ``safe_dump`` must produce YAML that ``safe_load``s back to the
+    same Python types: ``scalarStyle: preserve`` keeps the quoting
+    that ``_python_to_yaml`` chose (so ``"42"`` stays a string) and
+    ``allowReservedPlain`` lets ``True``/``None`` dump as plain
+    ``true``/``null`` (so they stay a bool/null). Explicit user
+    settings for either key win. The merged config is emitted as
+    JSON, which the config parser reads as flow-style YAML.
+    """
+    merged: Any = safe_load(user_cfg) if user_cfg is not None else {}
+    if merged is None:
+        merged = {}
+    if not isinstance(merged, dict):
+        raise ConfigError(f"dump config must be a mapping, got: {merged!r}")
+    merged.setdefault("scalarStyle", "preserve")
+    merged.setdefault("allowReservedPlain", True)
+    return json.dumps(merged)
 
 
 # ── Python → YAML serialization ──────────────────────────────────────

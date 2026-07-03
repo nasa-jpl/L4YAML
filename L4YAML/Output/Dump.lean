@@ -77,12 +77,19 @@ Scalar style preference for the dump function.
 - `doubleQuoted`: always double-quote
 - `singleQuoted`: single-quote when content allows
 - `auto`: choose based on content analysis (default)
+- `preserve`: honor each node's own `Scalar.style` when representable
+  (falling back like `auto` where it is not). Content-based styles
+  (`auto`) re-quote from scratch, which changes the TYPE a core-schema
+  consumer resolves: a parsed `'42'` re-emitted plain reads back as an
+  integer. `preserve` keeps quoted scalars quoted; combine with
+  `allowReservedPlain := true` so plain `true`/`null` also stay plain.
 -/
 inductive ScalarPref where
   | plain
   | doubleQuoted
   | singleQuoted
   | auto
+  | preserve
   deriving Repr, BEq, Inhabited, DecidableEq, ToJson, FromJson
 
 /-! ## Configuration -/
@@ -286,6 +293,21 @@ def chooseScalarStyle (s : Scalar) (cfg : DumpConfig)
               (ctx == .block || !isFlowUnsafe s.content) then
         .plain
       else .doubleQuoted
+    | .preserve =>
+      -- Honor the node's own quoting style when representable.
+      match s.style with
+      | .doubleQuoted => .doubleQuoted
+      | .singleQuoted =>
+        -- Single-quoted cannot represent newlines
+        if hasNewlines s.content then .doubleQuoted else .singleQuoted
+      | _ =>
+        -- Plain (or a block style not already honored by the outer
+        -- literal/folded case): plain when safe, else double-quoted.
+        if !s.content.isEmpty && !hasNewlines s.content &&
+            isPlainSafe s.content cfg.allowReservedPlain &&
+            (ctx == .block || !isFlowUnsafe s.content) then
+          .plain
+        else .doubleQuoted
 
 /-- Resolve collection style from node annotation, config, and dump context.
     When context is flow, block collections are forced to flow (YAML §8.1

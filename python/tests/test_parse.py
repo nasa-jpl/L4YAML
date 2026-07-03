@@ -135,8 +135,10 @@ class TestLoadAll:
 @needs_lib
 class TestParseErrors:
     def test_invalid_yaml(self) -> None:
+        # (":\n  :\n    :" is VALID — nested mappings with empty keys —
+        # so use bare content after a mapping, which cannot parse.)
         with pytest.raises(l4yaml.ParseError):
-            l4yaml.load(":\n  :\n    :")
+            l4yaml.load("a: b\n- c")
 
     def test_bad_preset_name(self) -> None:
         with pytest.raises(ValueError, match="Unknown limits preset"):
@@ -156,6 +158,31 @@ class TestTagAnchor:
     def test_no_anchor(self) -> None:
         v = l4yaml.load("hello")
         assert v.anchor is None
+
+
+# ── Scalar style ─────────────────────────────────────────────────────
+
+@needs_lib
+class TestScalarStyle:
+    def test_plain(self) -> None:
+        assert l4yaml.load("42").style == "plain"
+
+    def test_single_quoted(self) -> None:
+        assert l4yaml.load("'42'").style == "single_quoted"
+
+    def test_double_quoted(self) -> None:
+        assert l4yaml.load('"42"').style == "double_quoted"
+
+    def test_literal(self) -> None:
+        v = l4yaml.load("x: |\n  body")
+        assert v.as_dict()["x"].style == "literal"
+
+    def test_folded(self) -> None:
+        v = l4yaml.load("x: >\n  body")
+        assert v.as_dict()["x"].style == "folded"
+
+    def test_non_scalar_has_no_style(self) -> None:
+        assert l4yaml.load("[1, 2]").style is None
 
 
 # ── Type errors ──────────────────────────────────────────────────────
