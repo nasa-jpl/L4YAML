@@ -251,6 +251,30 @@ def isPlainSafe (s : String) (allowReserved : Bool := false) : Bool :=
 def hasNewlines (s : String) : Bool :=
   s.any (· == '\n')
 
+/-- `ns-plain-first` refinement used only by `ScalarPref.preserve`:
+    `isPlainSafe` rejects every leading indicator, but YAML [126]
+    permits a leading `-` when followed by a non-space character
+    (`-1`, `-.inf`). Without this, a parsed plain `-1` would be
+    re-emitted quoted — changing its core-schema type to string.
+    Kept separate from `isPlainSafe` so the existing prefs (and the
+    output calibrated to them) are untouched. -/
+def isPlainSafePreserve (s : String) (allowReserved : Bool := false) : Bool :=
+  isPlainSafe s allowReserved ||
+  (match s.toList with
+   | '-' :: c :: rest =>
+     c != ' ' && c != '\t' && isPlainSafe (String.ofList (c :: rest)) allowReserved
+   | _ => false)
+
+/-- Whether content can be carried VERBATIM inside single quotes:
+    printable characters only (plus tab; C0, DEL, and C1 excluded per
+    c-printable §5.1). A raw CR reparses as line folding (silent
+    corruption) and other controls are invalid YAML there;
+    double-quoting escapes them instead. -/
+def singleQuotedRepresentable (s : String) : Bool :=
+  s.all (fun c => c == '\t' ||
+    (0x20 ≤ c.toNat && c.toNat != 0x7F &&
+     !(0x80 ≤ c.toNat && c.toNat ≤ 0x9F)))
+
 /-- Check if string content is unsafe as a plain scalar in flow context.
     Flow context forbids additional characters beyond what `isPlainSafe` checks:
     - Any `:` (not just `: `), since `:` followed by `,`, `}`, `]` is a mapping indicator
@@ -298,16 +322,21 @@ def chooseScalarStyle (s : Scalar) (cfg : DumpConfig)
       match s.style with
       | .doubleQuoted => .doubleQuoted
       | .singleQuoted =>
-        -- Single-quoted cannot represent newlines
-        if hasNewlines s.content then .doubleQuoted else .singleQuoted
-      | _ =>
-        -- Plain (or a block style not already honored by the outer
-        -- literal/folded case): plain when safe, else double-quoted.
-        if !s.content.isEmpty && !hasNewlines s.content &&
-            isPlainSafe s.content cfg.allowReservedPlain &&
+        -- Newlines/controls cannot be carried verbatim in single quotes
+        if singleQuotedRepresentable s.content then .singleQuoted
+        else .doubleQuoted
+      | .plain =>
+        if !hasNewlines s.content &&
+            isPlainSafePreserve s.content cfg.allowReservedPlain &&
             (ctx == .block || !isFlowUnsafe s.content) then
           .plain
         else .doubleQuoted
+      | _ =>
+        -- A literal/folded style NOT honored by the outer newline+block
+        -- case (no newline in content, or flow context): block scalars
+        -- always resolve to strings (§10.3.2), so quote — re-emitting
+        -- plain could flip the type (`>- 42` must not become `42`).
+        .doubleQuoted
 
 /-- Resolve collection style from node annotation, config, and dump context.
     When context is flow, block collections are forced to flow (YAML §8.1

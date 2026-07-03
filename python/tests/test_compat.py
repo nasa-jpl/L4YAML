@@ -361,3 +361,72 @@ class TestCompatRoundTrip:
 
     def test_none(self) -> None:
         self._roundtrip(None)
+
+    def test_negative_int(self) -> None:
+        # Regression: the preserve dump style must keep a parsed plain
+        # "-1" plain (leading '-' is ns-plain-first-safe), or it comes
+        # back as the string "-1".
+        result = safe_load(safe_dump({"k": -1}))
+        assert result == {"k": -1}
+        assert isinstance(result["k"], int)
+
+    def test_negative_float(self) -> None:
+        result = safe_load(safe_dump({"k": -3.14}))
+        assert result == {"k": -3.14}
+        assert isinstance(result["k"], float)
+
+    def test_non_string_keys(self) -> None:
+        # Regression: keys must round-trip with their types — dumping
+        # 42 as '42' (quoted) pins it to str under style-aware loading.
+        data = {42: "int", True: "bool", None: "null"}
+        result = safe_load(safe_dump(data))
+        assert result == data
+        assert {type(k) for k in result} == {type(k) for k in data}
+
+    def test_quoted_string_value(self) -> None:
+        # dump("42" the string) must load back as a string.
+        result = safe_load(safe_dump({"k": "42"}))
+        assert result == {"k": "42"}
+        assert isinstance(result["k"], str)
+
+
+# ── safe_dump config handling ─────────────────────────────────────────
+
+
+@needs_lib
+class TestSafeDumpConfig:
+    def test_bad_config_value_raises(self) -> None:
+        # A value the Lean DumpConfig reader would reject must raise
+        # loudly — it would otherwise silently discard the WHOLE
+        # config, including the type-fidelity defaults.
+        with pytest.raises(l4yaml.ConfigError):
+            safe_dump({"a": 1}, config="indent: banana")
+
+    def test_bad_config_enum_raises(self) -> None:
+        with pytest.raises(l4yaml.ConfigError):
+            safe_dump({"a": 1}, config="scalarStyle: fancy")
+
+    def test_negative_int_config_raises(self) -> None:
+        # indent/lineWidth are Nat on the Lean side; a negative would
+        # silently drop the whole config there.
+        with pytest.raises(l4yaml.ConfigError):
+            safe_dump({"a": 1}, config="indent: -2")
+
+    def test_malformed_config_raises_config_error(self) -> None:
+        # Malformed config YAML must not surface as a bare ParseError
+        # indistinguishable from a problem with the data being dumped.
+        with pytest.raises(l4yaml.ConfigError):
+            safe_dump({"a": 1}, config="{unclosed")
+
+    def test_valid_config_keeps_fidelity(self) -> None:
+        # A cosmetic setting must not disturb the fidelity defaults.
+        result = safe_load(safe_dump({"k": "42"}, config="indent: 4"))
+        assert result == {"k": "42"}
+        assert isinstance(result["k"], str)
+
+    def test_dump_all_documents_reparse(self) -> None:
+        # Regression: chunks are newline-terminated before the '---'
+        # separator, so the stream reparses into the same documents.
+        result = safe_dump_all([{"a": 1}, {"b": 2}])
+        assert result is not None
+        assert list(safe_load_all(result)) == [{"a": 1}, {"b": 2}]

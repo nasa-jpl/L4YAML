@@ -29,14 +29,19 @@ _LIB: ctypes.CDLL | None = None
 
 def _find_library() -> Path:
     """Locate libl4yaml.so by searching several candidate paths."""
-    # 1. Explicit environment variable: the .so itself, or a directory
-    #    containing it.
+    # 1. Explicit environment variable: the library itself, or a
+    #    directory containing it (platform-appropriate name).
+    lib_names: list[str] = ["libl4yaml.so"]
+    if sys.platform == "darwin":
+        lib_names.append("libl4yaml.dylib")
     env_path: str | None = os.environ.get("L4YAML_LIB")
     if env_path:
         p = Path(env_path)
         if p.is_dir():
-            p = p / "libl4yaml.so"
-        if p.is_file():
+            for name in lib_names:
+                if (p / name).is_file():
+                    return p / name
+        elif p.is_file():
             return p
 
     # 2. Relative to this package: pkg_dir is <repo>/python/l4yaml, so
@@ -61,9 +66,9 @@ def _find_library() -> Path:
             return candidate
 
     raise OSError(
-        "Cannot find libl4yaml.so. Set L4YAML_LIB environment "
-        "variable to the full path, or place the library next to this "
-        "package."
+        "Cannot find libl4yaml.so. Set the L4YAML_LIB environment "
+        "variable to the library file or its directory, or place the "
+        "library next to this package."
     )
 
 
@@ -148,8 +153,16 @@ def _load_lib() -> ctypes.CDLL:
     lib.l4yaml_value_kind.argtypes = [c_void_p]
     lib.l4yaml_value_kind.restype = c_uint8
 
-    lib.l4yaml_value_scalar_style.argtypes = [c_void_p]
-    lib.l4yaml_value_scalar_style.restype = c_uint8
+    try:
+        lib.l4yaml_value_scalar_style.argtypes = [c_void_p]
+        lib.l4yaml_value_scalar_style.restype = c_uint8
+    except AttributeError as exc:
+        # OSError (not AttributeError) so callers' library-missing
+        # handling — e.g. the test suites' needs_lib skip — applies.
+        raise OSError(
+            "libl4yaml.so predates the scalar-style API (v0.5.0) — "
+            "rebuild it: cmake -B ffi/out -S ffi && cmake --build ffi/out"
+        ) from exc
 
     lib.l4yaml_value_string.argtypes = [c_void_p]
     lib.l4yaml_value_string.restype = c_char_p

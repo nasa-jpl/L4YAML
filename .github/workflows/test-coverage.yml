@@ -48,13 +48,10 @@ jobs:
           # ambient PATH says.
           PYBASE=/usr/bin/python3.12
           if [ ! -x "$PYBASE" ]; then PYBASE=/usr/bin/python3; fi
-          "$PYBASE" -m venv "$RUNNER_TEMP/ci-venv"
-          VPY="$RUNNER_TEMP/ci-venv/bin/python3"
-          "$VPY" -m pip install --quiet --disable-pip-version-check --upgrade pip
-          "$VPY" -m pip install --quiet --disable-pip-version-check pytest
-          "$VPY" --version
-          "$VPY" -m pytest --version
-          echo "$RUNNER_TEMP/ci-venv/bin" >> "$GITHUB_PATH"
+          "$PYBASE" -m venv "$RUNNER_TEMP/ci-venv" || {
+            echo "::error::venv creation with $PYBASE failed — the runner needs a python with the venv module (Debian/Ubuntu: apt install python3-venv)"
+            exit 1
+          }
           # A venv does NOT isolate against PYTHONPATH: its entries come
           # before both the stdlib and the venv's site-packages on
           # sys.path. On this box, ROS setup scripts export
@@ -63,10 +60,20 @@ jobs:
           # of the old `-p no:launch_ros` flags). GITHUB_ENV cannot
           # unset, and PYTHONPATH="" would put the cwd on sys.path, so
           # point it at an empty directory; PYTHONNOUSERSITE blocks
-          # ~/.local site-packages the same way.
+          # ~/.local site-packages the same way. Export locally too:
+          # the GITHUB_ENV write only affects LATER steps, and the
+          # pip/pytest checks below must not load foreign site-packages.
           mkdir -p "$RUNNER_TEMP/ci-venv/empty-pythonpath"
-          echo "PYTHONPATH=$RUNNER_TEMP/ci-venv/empty-pythonpath" >> "$GITHUB_ENV"
+          export PYTHONPATH="$RUNNER_TEMP/ci-venv/empty-pythonpath"
+          export PYTHONNOUSERSITE=1
+          echo "PYTHONPATH=$PYTHONPATH" >> "$GITHUB_ENV"
           echo "PYTHONNOUSERSITE=1" >> "$GITHUB_ENV"
+          VPY="$RUNNER_TEMP/ci-venv/bin/python3"
+          "$VPY" -m pip install --quiet --disable-pip-version-check --upgrade pip
+          "$VPY" -m pip install --quiet --disable-pip-version-check pytest
+          "$VPY" --version
+          "$VPY" -m pytest --version
+          echo "$RUNNER_TEMP/ci-venv/bin" >> "$GITHUB_PATH"
 
       - name: Install weasyprint for PDF generation
         id: weasyprint

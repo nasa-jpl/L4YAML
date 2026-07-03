@@ -352,6 +352,10 @@ def safe_dump_all(
     for doc in documents:
         chunk: str | None = safe_dump(doc, config=config)
         if chunk is not None:
+            # The dumper emits no trailing newline; without one the
+            # '---' separator would glue onto the previous document.
+            if not chunk.endswith("\n"):
+                chunk += "\n"
             parts.append(chunk)
     result: str = "---\n".join(parts)
     if stream is not None:
@@ -361,6 +365,22 @@ def safe_dump_all(
 
 
 # ── Dump config with type fidelity ───────────────────────────────────
+
+
+# DumpConfig fields (L4YAML/Output/Dump.lean) and their value shapes,
+# used to validate user configs eagerly: the Lean config reader falls
+# back to ALL defaults when any field fails to parse, which would
+# silently drop the fidelity settings below over a cosmetic typo.
+_DUMP_CONFIG_SPEC: dict[str, Any] = {
+    "indent": int,
+    "lineWidth": int,
+    "sortKeys": bool,
+    "allowReservedPlain": bool,
+    "omitEmpty": bool,
+    "compactSequenceMap": bool,
+    "defaultStyle": ("block", "flow", "auto"),
+    "scalarStyle": ("plain", "doubleQuoted", "singleQuoted", "auto", "preserve"),
+}
 
 
 def _fidelity_config(user_cfg: str | None) -> str:
@@ -373,12 +393,42 @@ def _fidelity_config(user_cfg: str | None) -> str:
     ``true``/``null`` (so they stay a bool/null). Explicit user
     settings for either key win. The merged config is emitted as
     JSON, which the config parser reads as flow-style YAML.
+
+    Raises:
+        ConfigError: If the config is not valid YAML, not a mapping,
+            or a known field has a value the dump config would reject.
     """
-    merged: Any = safe_load(user_cfg) if user_cfg is not None else {}
-    if merged is None:
-        merged = {}
+    if user_cfg is None:
+        merged: Any = {}
+    else:
+        try:
+            merged = safe_load(user_cfg)
+        except L4YAMLError as exc:
+            raise ConfigError(f"invalid dump config YAML: {exc}") from exc
+        if merged is None:
+            merged = {}
     if not isinstance(merged, dict):
         raise ConfigError(f"dump config must be a mapping, got: {merged!r}")
+    for key, spec in _DUMP_CONFIG_SPEC.items():
+        if key not in merged:
+            continue
+        val = merged[key]
+        if isinstance(spec, tuple):
+            ok = val in spec
+            expected = " | ".join(spec)
+        elif spec is int:
+            # The Lean fields are Nat: bools and negatives would fail
+            # its reader and silently drop the whole config.
+            ok = isinstance(val, int) and not isinstance(val, bool) and val >= 0
+            expected = "non-negative int"
+        else:
+            ok = isinstance(val, spec)
+            expected = spec.__name__
+        if not ok:
+            raise ConfigError(
+                f"dump config field {key!r}: invalid value {val!r} "
+                f"(expected {expected})"
+            )
     merged.setdefault("scalarStyle", "preserve")
     merged.setdefault("allowReservedPlain", True)
     return json.dumps(merged)
@@ -470,7 +520,11 @@ def _dump_mapping(mapping: dict[Any, Any], indent: int) -> str:
     prefix: str = "  " * indent
     lines: list[str] = []
     for key, val in mapping.items():
-        key_str: str = _quote_scalar(str(key))
+        # Serialize keys with type fidelity: _quote_scalar(str(key))
+        # would quote non-string keys (42 -> '42'), pinning them to str
+        # under style-aware loading. Non-scalar keys raise TypeError
+        # (as pyyaml's safe_dump rejects them).
+        key_str: str = _python_to_yaml(key)
         if isinstance(val, (dict, list)) and val:
             child: str = _python_to_yaml(val, indent + 1)
             lines.append(f"{prefix}{key_str}:\n{child}")

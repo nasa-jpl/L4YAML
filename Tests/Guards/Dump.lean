@@ -186,4 +186,52 @@ private def docADir : YamlDocument :=
 #guard dump (.sequence .block #[.plainScalar "a", .plainScalar "b"])
   { compactSequenceMap := true } == "- a\n- b"
 
+/-! ### scalarStyle preserve: honor node style, keep core-schema type
+
+The type-fidelity config used by the Python binding's `safe_dump`
+(`{ scalarStyle := .preserve, allowReservedPlain := true }`): each
+scalar re-emits in its own style, so quoting — and therefore the type
+a core-schema consumer resolves — survives a load→dump round trip. -/
+
+-- Plain stays plain, including leading '-' (ns-plain-first
+-- refinement `isPlainSafePreserve`; plain `-1` must not re-quote
+-- into a string) and reserved words under allowReservedPlain.
+#guard dump (.plainScalar "-1")
+  { scalarStyle := .preserve, allowReservedPlain := true } == "-1"
+#guard dump (.plainScalar "-3.14")
+  { scalarStyle := .preserve, allowReservedPlain := true } == "-3.14"
+#guard dump (.plainScalar "-.inf")
+  { scalarStyle := .preserve, allowReservedPlain := true } == "-.inf"
+#guard dump (.plainScalar "true")
+  { scalarStyle := .preserve, allowReservedPlain := true } == "true"
+#guard dump (.plainScalar "42") { scalarStyle := .preserve } == "42"
+-- Without allowReservedPlain, reserved words still quote.
+#guard dump (.plainScalar "true") { scalarStyle := .preserve } == "\"true\""
+-- Plain content that is not plain-safe still quotes ('- x' is a
+-- sequence-entry lookalike; empty needs quotes).
+#guard dump (.plainScalar "- x") { scalarStyle := .preserve } == "\"- x\""
+#guard dump (.plainScalar "key: value")
+  { scalarStyle := .preserve } == "\"key: value\""
+#guard dump (.plainScalar "") { scalarStyle := .preserve } == "\"\""
+-- Quoted stays quoted: '42' must not re-emit plain (type would flip
+-- string→int under core-schema resolution).
+#guard dump (.quotedScalar "42" .singleQuoted)
+  { scalarStyle := .preserve } == "'42'"
+#guard dump (.quotedScalar "true" .singleQuoted)
+  { scalarStyle := .preserve, allowReservedPlain := true } == "'true'"
+#guard dump (.quotedScalar "42" .doubleQuoted)
+  { scalarStyle := .preserve } == "\"42\""
+-- Block styles not honored by the newline case quote to stay strings
+-- (`>- 42` must not become plain 42).
+#guard dump (.scalar ⟨"42", .folded, none, none, none⟩)
+  { scalarStyle := .preserve, allowReservedPlain := true } == "\"42\""
+#guard dump (.scalar ⟨"true", .literal, none, none, none⟩)
+  { scalarStyle := .preserve, allowReservedPlain := true } == "\"true\""
+-- Single-quoted content that single quotes cannot carry verbatim
+-- (CR/C0 controls, newlines) falls back to escaped double quotes.
+#guard dump (.scalar ⟨"a\rb", .singleQuoted, none, none, none⟩)
+  { scalarStyle := .preserve } == "\"a\\rb\""
+#guard dump (.scalar ⟨"line1\nline2", .singleQuoted, none, none, none⟩)
+  { scalarStyle := .preserve } == "\"line1\\nline2\""
+
 end L4YAML.Dump

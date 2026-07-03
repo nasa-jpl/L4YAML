@@ -24,6 +24,11 @@ fn main() {
 
     println!("cargo:rustc-link-search=native={}", lib_dir.display());
     println!("cargo:rustc-link-lib=dylib=l4yaml");
+    // Export for dependents (via `links = "l4yaml"`): l4yaml's build.rs
+    // turns these into -rpath link args so binaries/examples resolve
+    // libl4yaml.so and libleanshared.so at RUNTIME without
+    // LD_LIBRARY_PATH — mirroring tryparse_c's CMake BUILD_RPATH.
+    println!("cargo:lib_dir={}", lib_dir.display());
 
     // 2. Locate libleanshared.so (transitive dep)
     let lean_lib_dir = if let Ok(dir) = env::var("LEAN_LIB_DIR") {
@@ -42,6 +47,7 @@ fn main() {
     };
     println!("cargo:rustc-link-search=native={}", lean_lib_dir.display());
     println!("cargo:rustc-link-lib=dylib=leanshared");
+    println!("cargo:lean_lib_dir={}", lean_lib_dir.display());
 
     // 3. Generate bindings from l4yaml.h
     let header = {

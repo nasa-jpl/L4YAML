@@ -28,7 +28,7 @@ All fields are optional (defaults match `DumpConfig {}`):
 ```
 
 `defaultStyle`: `"block"` | `"flow"` | `"auto"`
-`scalarStyle`: `"plain"` | `"doubleQuoted"` | `"singleQuoted"` | `"auto"`
+`scalarStyle`: `"plain"` | `"doubleQuoted"` | `"singleQuoted"` | `"auto"` | `"preserve"`
 
 ## Exit codes
 
