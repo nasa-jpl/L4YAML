@@ -1,18 +1,25 @@
 /-
-  L4YAML Documentation — At-a-Glance table from `stats.json`.
+  L4YAML Documentation — At-a-Glance table from the embedded stats payload.
 
-  Defines `:::statsTable`, a Verso block directive that reads
-  `docs/reports/stats.json` (emitted by `lake exe collect-stats`) at
-  doc-elaboration time and renders the at-a-glance table that used to
-  live as hand-typed numbers in `doc/Doc/L4YAML/Overview.lean`.
+  Defines `:::statsTable`, a Verso block directive that renders the
+  at-a-glance table (which used to live as hand-typed numbers in
+  `doc/Doc/L4YAML/Overview.lean`) from `Doc.L4YAML.StatsData.statsJson?`
+  — the `stats.json` payload embedded as a Lean string literal by
+  `lake exe collect-stats --emit-lean`.
 
-  Schema mirrors `tools/CollectStats.lean` (schema_version 2). Missing
-  fields render as `"?"` so the doc still builds when only an older
-  `stats.json` is present; CI regenerates the JSON on every push.
+  The payload is an IMPORT, not an elaboration-time file read, so Lake
+  tracks it: regenerating `StatsData.lean` re-elaborates exactly the
+  modules that use this directive. The committed `StatsData.lean` is a
+  `none` placeholder — every cell renders `"?"` and the doc builds
+  hermetically from a fresh clone. Missing fields likewise render as
+  `"?"` when an older payload is embedded.
+
+  Schema mirrors `tools/CollectStats.lean` (schema_version 2).
 -/
 import Lean
 import VersoManual
 import Doc.L4YAML.CellDsl
+import Doc.L4YAML.StatsData
 
 open Lean Elab
 open Verso Doc Elab
@@ -24,25 +31,14 @@ namespace Doc.L4YAML.StatsTable
 
 /-! ## JSON loading -/
 
-/-- Locate `docs/reports/stats.json` from the doc-build's cwd. The doc
-    project is built from `doc/`, so the JSON lives one level up. -/
-def resolveStatsJson : IO System.FilePath := do
-  let cwd ← IO.currentDir
-  let candidates := #[
-    cwd / ".." / "docs" / "reports" / "stats.json",
-    cwd / "docs" / "reports" / "stats.json"
-  ]
-  for c in candidates do
-    if ← c.pathExists then return c
-  throw (IO.userError
-    s!"stats.json not found near {cwd} — run `lake exe collect-stats` first")
-
-def loadJson : IO Json := do
-  let p ← resolveStatsJson
-  let txt ← IO.FS.readFile p
-  match Json.parse txt with
-  | .error e => throw (IO.userError s!"stats.json parse error: {e}")
-  | .ok j    => return j
+/-- Parse the embedded payload. The committed placeholder (`none`)
+    yields `Json.null`, so every lookup misses and renders `"?"` — a
+    fresh-clone build stays green. A malformed GENERATED payload is a
+    hard error: it can only come from a broken `--emit-lean`. -/
+def loadJson : Except String Json :=
+  match StatsData.statsJson? with
+  | none   => .ok Json.null
+  | some s => Json.parse s
 
 /-! ## JSON path helpers -/
 
@@ -150,12 +146,14 @@ def buildCells (j : Json) : Array Cell := Id.run do
 
 /-! ## Directive -/
 
-/-- `:::statsTable` — render the at-a-glance table from `docs/reports/stats.json`.
+/-- `:::statsTable` — render the at-a-glance table from the embedded
+    `Doc.L4YAML.StatsData` payload.
     Schema mirrors `tools/CollectStats.lean` (schema_version 2). -/
 @[directive]
 def statsTable : DirectiveExpanderOf Unit
   | (), _ => do
-    let j ← Doc.L4YAML.StatsTable.loadJson
-    buildTableSyntax 2 (header := true) (buildCells j)
+    match Doc.L4YAML.StatsTable.loadJson with
+    | .error e => throwError "StatsData payload parse error: {e}"
+    | .ok j => buildTableSyntax 2 (header := true) (buildCells j)
 
 end Doc.L4YAML.StatsTable

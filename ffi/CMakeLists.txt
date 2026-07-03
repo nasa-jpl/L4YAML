@@ -96,19 +96,23 @@ endif()
 #     (`l_Lake_Manifest_*`) which isn't part of this shared library.
 #
 #   * Transitive deps that L4YAML doesn't import, pulled in only to
-#     satisfy a tooling-only direct dep — BibtexQuery and MD4Lean
-#     come along for DocGen4's citation / markdown rendering.  They
-#     land under .lake/packages/ during resolution and get compiled
-#     once `lake build :docs` runs, but L4YAML's own IR doesn't
-#     reference any of their symbols, so linking them is dead weight.
-#     Worse: both track moving inputRevs (`nightly-testing` and
-#     `main`), so their lean-toolchain routinely drifts past this
+#     satisfy a tooling-only direct dep — BibtexQuery, MD4Lean, Cli,
+#     UnicodeBasic, leansqlite and plausible come along for DocGen4 /
+#     importGraph.  They land under .lake/packages/ during resolution
+#     and get compiled once `lake build :docs` / `lake build graph`
+#     runs, but L4YAML's own IR doesn't reference any of their
+#     symbols, so linking them is dead weight.  Worse: some track
+#     moving inputRevs (`nightly-testing` / `main`), so their
+#     lean-toolchain (or a stale local build of them) drifts from this
 #     project's pin → undefined references at libl4yaml.so link time.
 #
-# Add new entries as Lake's resolution changes.
+# L4YAML's lakefile requires ONLY tooling packages (importGraph,
+# DocGen4), so today every package under .lake/packages/ belongs here.
+# If a real library dependency is ever added, do NOT list it.
 set(L4YAML_FFI_SKIP_PACKAGES
   "DocGen4" "importGraph"
-  "BibtexQuery" "MD4Lean")
+  "BibtexQuery" "MD4Lean"
+  "Cli" "UnicodeBasic" "leansqlite" "plausible")
 
 # 2. Each Lake-resolved dep's lean-toolchain vs the parent project's.
 #    Lake compiles a dep with that dep's own pin, then we link

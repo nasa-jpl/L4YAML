@@ -13,6 +13,8 @@ _out/
 # often-regenerated artifact never churns main's history. (The 437 already-committed docs/
 # commits are removed from history via git filter-repo in the deferred cleanup step.)
 /docs
+# CI staging dir for the site swap in "Copy Verso output to docs/" (removed on success)
+/docs.new
 # Ignore stray top-level HTML files to prevent accidental commits outside the site tree
 /*.html
 ## Blueprint

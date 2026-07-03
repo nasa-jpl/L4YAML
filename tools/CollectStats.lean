@@ -4,7 +4,9 @@
   with a regenerated JSON file the docs read from.
 
   Usage:
-      lake exe collect-stats [OUT]            # writes to OUT (default: docs/reports/stats.json)
+      lake exe collect-stats [OUT]             # writes to OUT (default: docs/reports/stats.json)
+      lake exe collect-stats --emit-lean [OUT] # + regenerate doc/Doc/L4YAML/StatsData.lean, the
+                                               #   embedded payload the doc build imports
 
   Three data sources, no test-suite reruns:
     * source-scan counts: `theorems`, `lemmas`, `lines`, `partial_defs`, `guards`
@@ -365,6 +367,47 @@ unsafe def buildJson (root : FilePath) : IO Json := do
     ("yaml_test_suite", yts.getD Json.null),
   ]
 
+/-! ## StatsData.lean emission (`--emit-lean`) -/
+
+/-- Regenerate `doc/Doc/L4YAML/StatsData.lean`: the same payload as
+    `stats.json`, embedded as a Lean string literal and IMPORTED by the
+    doc build's `:::statsTable` (`doc/Doc/L4YAML/StatsTable.lean`) — so
+    the dependency is visible to Lake and a content change re-elaborates
+    exactly the importing modules. The emitted text matches the committed
+    placeholder except the final `statsJson?` definition; a regeneration
+    diff is a single line. -/
+def emitStatsDataLean (root : FilePath) (json : Json) : IO Unit := do
+  let path := root / "doc" / "Doc" / "L4YAML" / "StatsData.lean"
+  let headerLines : List String := [
+    "/-",
+    "  Doc.L4YAML.StatsData — embedded `stats.json` payload for `:::statsTable`.",
+    "",
+    "  GENERATED FILE — regenerate with `lake exe collect-stats --emit-lean`",
+    "  (repo root). The COMMITTED version is a deliberate placeholder (`none`):",
+    "  the at-a-glance table renders every cell as \"?\" so a fresh clone builds",
+    "  the docs hermetically without running collect-stats first.",
+    "",
+    "  CI regenerates this file (workspace-only, never committed back) after",
+    "  the test suites and right before the doc build, so the published site",
+    "  always embeds the current run's stats. Because `StatsTable` IMPORTS",
+    "  this module instead of reading `docs/reports/stats.json` at elaboration",
+    "  time, the dependency is visible to Lake: a content change re-elaborates",
+    "  exactly the importing `Doc.*` modules — no IO at elaboration, no hidden",
+    "  staleness if `.lake` caching is ever enabled.",
+    "-/",
+    "",
+    "namespace Doc.L4YAML.StatsData",
+    "",
+    "/-- Compact `stats.json` payload embedded at generation time;",
+    "    `none` in the committed placeholder (every table cell renders \"?\"). -/"
+  ]
+  let defLine := s!"def statsJson? : Option String := some {json.compress.quote}"
+  let contents :=
+    String.intercalate "\n" headerLines ++ "\n" ++ defLine
+      ++ "\n\nend Doc.L4YAML.StatsData\n"
+  IO.FS.writeFile path contents
+  IO.println s!"collect-stats: wrote {path}"
+
 unsafe def main (args : List String) : IO UInt32 := do
   let cwd ← IO.currentDir
   -- Find the repo root: caller may invoke from `cwd = repo` or `cwd = repo/doc`.
@@ -375,7 +418,9 @@ unsafe def main (args : List String) : IO UInt32 := do
       rootOpt := some c; break
   let root := rootOpt.getD cwd
 
-  let outPath : FilePath := match args with
+  let emitLean := args.contains "--emit-lean"
+  let posArgs := args.filter (· != "--emit-lean")
+  let outPath : FilePath := match posArgs with
     | [p] => FilePath.mk p
     | _   => root / "docs" / "reports" / "stats.json"
 
@@ -383,6 +428,8 @@ unsafe def main (args : List String) : IO UInt32 := do
   IO.FS.createDirAll (outPath.parent.getD ".")
   IO.FS.writeFile outPath json.pretty
   IO.println s!"collect-stats: wrote {outPath}"
+  if emitLean then
+    emitStatsDataLean root json
   return 0
 
 end L4YAML.CollectStats

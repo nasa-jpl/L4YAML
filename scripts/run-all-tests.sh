@@ -6,6 +6,10 @@
 #   CI uses "docs/reports" to avoid clashing with Verso's docs/Test-Results/.
 #
 # The script assumes lake build has already been run.
+#
+# Every suite runs to completion even if an earlier one fails (all report
+# files are still produced), but failures are collected and the script
+# exits nonzero at the end — CI must not go green over failing suites.
 
 set -euo pipefail
 
@@ -14,13 +18,17 @@ mkdir -p "$OUT"
 
 BIN="./.lake/build/bin"
 
+FAILED_SUITES=()
+
 run_suite() {
   local name="$1"
   local exe="$2"
   local outfile="$OUT/$name.txt"
   echo "=== Running: $name ==="
   echo "=== $name ===" > "$outfile"
-  "$BIN/$exe" 2>&1 | tee -a "$outfile" || true
+  if ! "$BIN/$exe" 2>&1 | tee -a "$outfile"; then
+    FAILED_SUITES+=("$name")
+  fi
   echo ""
 }
 
@@ -48,8 +56,14 @@ run_suite "errorstagediag"      "errorstagediag"
 run_suite "scalarstagediag"     "scalarstagediag"
 
 # ---- HTML coverage reports from suiterunner ----
+# NB: --html mode always exits 0 (report generation succeeded); per-test
+# pass/fail accounting lives in the generated reports and is gated by the
+# cross-language comparison step in CI. A nonzero exit here means the
+# runner itself crashed.
 echo "=== Generating HTML coverage reports ==="
-"$BIN/suiterunner" --html "$OUT/" | tee "$OUT/coverage-console.txt" || true
+if ! "$BIN/suiterunner" --html "$OUT/" | tee "$OUT/coverage-console.txt"; then
+  FAILED_SUITES+=("suiterunner-html")
+fi
 
 # ---- Concatenate all text results ----
 cat \
@@ -70,5 +84,10 @@ cat \
   "$OUT/productioncoverage.txt" \
   "$OUT/limittests.txt" \
   > "$OUT/all-verified-tests.txt"
+
+if [ "${#FAILED_SUITES[@]}" -gt 0 ]; then
+  echo "=== FAILED suites (${#FAILED_SUITES[@]}): ${FAILED_SUITES[*]} ===" >&2
+  exit 1
+fi
 
 echo "=== All Lean test suites complete. Results in $OUT/ ==="

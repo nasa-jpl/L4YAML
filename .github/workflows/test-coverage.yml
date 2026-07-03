@@ -70,127 +70,55 @@ jobs:
       # Phase 1: Build everything
       # -------------------------------------------------------
       - name: Build parser and test tools
+        # One combined build (same target set as before, one job graph) so
+        # the final "Build completed successfully (N jobs)" line yields the
+        # job count for collect-stats (tools/CollectStats.lean reads
+        # BUILD_JOBS_TOTAL/BUILD_JOBS_PASSED; reaching the export means
+        # every job succeeded, so passed == total).
         run: |
-          lake build L4YAML
-          lake build suiterunner tryparse tryroundtrip trydump
-          lake build tests demo explicitkeytests flowtests
-          lake build validationtests dumproundtrip rawparsetests
-          lake build specexamples schemadump scannertests scannerspecexamples
-          lake build adversarialtests mutationtests propertytests productioncoverage
-          lake build limittests
-          lake build flowregressioncheck errorstagediag scalarstagediag
-
-      - name: Build documentation (doc/ sub-project)
-        run: |
-          cd doc
-          lake update
-          lake build l4yaml-doc
-
-      - name: Generate L4YAML import graph
-        # Renders the runtime module-import graph that the Architecture
-        # page embeds at `Architecture/Import-Graph/graphs/import-graph.svg`.
-        # The Proofs subtree is excluded — `L4YAML.Surface.Surface` would
-        # otherwise pull `L4YAML.Proofs.Production.DocumentProduction`,
-        # and merging the full Proofs environment trips a duplicate
-        # equation-lemma error in `lake exe graph`. Surface itself is
-        # represented via `L4YAML.Surface.Document` (its non-Proofs leaf).
-        run: |
-          # graphviz `dot` is needed to render the .dot file to .svg.
-          if ! command -v dot >/dev/null 2>&1; then
-            if sudo -n true 2>/dev/null && command -v dnf >/dev/null 2>&1; then
-              sudo dnf install -y graphviz
-            elif sudo -n true 2>/dev/null && command -v apt-get >/dev/null 2>&1; then
-              sudo apt-get update -qq && sudo apt-get install -y -qq graphviz
-            else
-              echo "::error::graphviz 'dot' not found and no passwordless sudo to install it"
-              exit 1
-            fi
+          set -o pipefail
+          lake build L4YAML \
+            suiterunner tryparse tryroundtrip trydump \
+            tests demo explicitkeytests flowtests \
+            validationtests dumproundtrip rawparsetests \
+            specexamples schemadump scannertests scannerspecexamples \
+            adversarialtests mutationtests propertytests productioncoverage \
+            limittests \
+            flowregressioncheck errorstagediag scalarstagediag \
+            2>&1 | tee "$RUNNER_TEMP/lake-build.log"
+          if JOBS=$(grep -oE '\([0-9]+ jobs\)' "$RUNNER_TEMP/lake-build.log" | tail -1 | grep -oE '[0-9]+'); then
+            echo "BUILD_JOBS_TOTAL=$JOBS" >> "$GITHUB_ENV"
+            echo "BUILD_JOBS_PASSED=$JOBS" >> "$GITHUB_ENV"
+          else
+            echo "::warning::could not parse lake job count — build_jobs will be null in stats.json"
           fi
-          mkdir -p doc/Doc/L4YAML/graphs
-          lake build graph
-          lake exe graph \
-            --to=L4YAML.Scanner.Scanner,L4YAML.Parser.Composition,L4YAML.Surface.Document,L4YAML.Output.Dump,L4YAML.Output.Emitter,L4YAML.FFI.FFI,L4YAML.Schema.Api,L4YAML.Config.Config \
-            doc/Doc/L4YAML/graphs/import-graph.dot
-          dot -Tsvg doc/Doc/L4YAML/graphs/import-graph.dot \
-            -o doc/Doc/L4YAML/graphs/import-graph.svg
-          ls -lh doc/Doc/L4YAML/graphs/import-graph.*
 
       # -------------------------------------------------------
-      # Phase 2: Generate Verso HTML documentation
-      # -------------------------------------------------------
-      - name: Download theorem dependency graphs from L4YAML.FGM
-        # We fetch only the headlines tarball — the ~20 SVGs for headline
-        # and categoryCapstone entries embedded directly into the Verso
-        # verification doc. The full-catalogue tarball
-        # (`theorem-graphs-all.tar.gz`, ~400 SVGs) stays on the GitHub
-        # release and is linked from the doc for on-demand download.
-        run: |
-          mkdir -p doc/Doc/L4YAML/graphs
-          REPO="pass/L4YAML.FGM"
-          TAG="graphs-latest"
-          ASSET="theorem-graphs-headlines.tar.gz"
-          API_URL="${GITHUB_SERVER_URL}/api/v3/repos/${REPO}/releases/tags/${TAG}"
-
-          # Fetch the release metadata to find the asset download URL
-          ASSET_URL=$(curl -sSf \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            "${API_URL}" \
-            | python3 -c "
-          import sys, json
-          release = json.load(sys.stdin)
-          for asset in release.get('assets', []):
-              if asset['name'] == '${ASSET}':
-                  print(asset['url'])
-                  sys.exit(0)
-          print('ERROR: asset not found', file=sys.stderr)
-          sys.exit(1)
-          ")
-
-          # Download the asset
-          curl -sSfL \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/octet-stream" \
-            "${ASSET_URL}" \
-            -o "doc/Doc/L4YAML/graphs/${ASSET}"
-
-          # Extract SVGs
-          tar xzf "doc/Doc/L4YAML/graphs/${ASSET}" -C doc/Doc/L4YAML/graphs/
-          rm -f "doc/Doc/L4YAML/graphs/${ASSET}"
-          echo "Downloaded $(ls doc/Doc/L4YAML/graphs/*.svg 2>/dev/null | wc -l) SVG graphs from L4YAML.FGM release"
-
-      - name: Generate Verso documentation
-        run: |
-          cd doc
-          lake exe l4yaml-doc
-          echo "Verso HTML generated in doc/_out/html-multi/"
-
-      - name: Copy Verso output to docs/
-        run: |
-          rm -rf docs
-          cp -r doc/_out/html-multi docs
-          echo "Verso HTML copied to docs/"
-
-      - name: Generate doc-gen4 API documentation
-        run: |
-          lake build :docs
-          cp -r .lake/build/doc docs/api
-          echo "doc-gen4 API docs copied to docs/api/"
-
-      # -------------------------------------------------------
-      # Phase 3: Run all test suites
+      # Phase 2: Run all test suites
+      #
+      # Runs BEFORE the doc build: the suites are independent of the
+      # generated site (they only write docs/reports/), and Phase 3 must
+      # regenerate the stats payload (StatsData.lean) from this run's
+      # results before Phase 4 elaborates the Verso docs.
       # -------------------------------------------------------
       - name: Run Lean test suites
         run: |
           mkdir -p docs/reports
           bash scripts/run-all-tests.sh docs/reports
 
-      - name: Build C shared library
+      - name: Build C shared library and tryparse_c
+        # Build straight into ffi/out — the canonical layout from the
+        # ffi/CMakeLists.txt header: suiterunner's c backend runs
+        # ffi/out/tryparse_c (Tests/SuiteRunner/Main.lean), the Python
+        # steps point L4YAML_LIB/LD_LIBRARY_PATH at ffi/out, and
+        # tryparse_c's BUILD_RPATH ($ORIGIN) finds libl4yaml.so
+        # in-place. Assert both artifacts here so a broken C build
+        # fails THIS step, not the cross-language comparison later.
         run: |
-          cmake -B ffi/build -S ffi
-          cmake --build ffi/build
-          mkdir -p ffi/out
-          cp ffi/build/libl4yaml.so ffi/out/libl4yaml.so 2>/dev/null || true
+          cmake -B ffi/out -S ffi
+          cmake --build ffi/out
+          test -f ffi/out/libl4yaml.so
+          test -x ffi/out/tryparse_c
 
       - name: Build Rust tryparse binary
         run: |
@@ -199,6 +127,9 @@ jobs:
 
       - name: Run Python FFI tests
         run: |
+          # pipefail: without it the pipeline's status is tee's 0 and a
+          # pytest failure never fails the job.
+          set -o pipefail
           RESULTS="docs/reports"
           echo "=== Python FFI Tests ===" | tee "$RESULTS/python-ffi-tests.txt"
           cd "$GITHUB_WORKSPACE"
@@ -212,6 +143,8 @@ jobs:
 
       - name: Run Python package tests
         run: |
+          # pipefail: see "Run Python FFI tests".
+          set -o pipefail
           RESULTS="docs/reports"
           echo "=== Python Package Tests ===" | tee "$RESULTS/python-package-tests.txt"
           cd "$GITHUB_WORKSPACE"
@@ -225,6 +158,9 @@ jobs:
 
       - name: Run cross-language yaml-test-suite comparison
         run: |
+          # pipefail: the heredoc python's sys.exit(1) on a backend
+          # mismatch must fail this step, not be eaten by tee.
+          set -o pipefail
           RESULTS="docs/reports"
           echo "=== Cross-Language yaml-test-suite Comparison ===" | tee "$RESULTS/cross-lang-comparison.txt"
           L4YAML_LIB="$GITHUB_WORKSPACE/ffi/out" \
@@ -277,7 +213,7 @@ jobs:
           PYEOF
 
       # -------------------------------------------------------
-      # Phase 4: Generate HTML reports from test data
+      # Phase 3: Generate HTML reports from test data
       # -------------------------------------------------------
       - name: Generate test result HTML reports
         run: |
@@ -286,12 +222,127 @@ jobs:
       - name: Collect stats (kernel-accurate axiom + sorry counts)
         # Runs after every other report under docs/reports/ has landed so
         # the JSON aggregates source-scan, env-scan (via Lean.collectAxioms
-        # on the compiled L4YAML environment), and the existing test-runner
-        # totals. Output: docs/reports/stats.json — published with the rest
-        # of docs/ to the gh-pages branch in Phase 6.
+        # on the compiled L4YAML environment), and this run's test-runner
+        # totals. Two outputs:
+        #   * docs/reports/stats.json — published site data (gh-pages).
+        #   * doc/Doc/L4YAML/StatsData.lean — this run's payload embedded
+        #     as a Lean module (workspace-only overwrite of the committed
+        #     placeholder; never committed back). The Phase-4 doc build
+        #     IMPORTS it, so Lake tracks the dependency by content hash.
         run: |
-          lake exe collect-stats
+          lake exe collect-stats --emit-lean
           test -f docs/reports/stats.json
+          grep -q 'statsJson? : Option String := some' doc/Doc/L4YAML/StatsData.lean
+
+      # -------------------------------------------------------
+      # Phase 4: Build and generate documentation
+      # -------------------------------------------------------
+      - name: Build documentation (doc/ sub-project)
+        # `:::statsTable` renders from Doc.L4YAML.StatsData — the payload
+        # module "Collect stats" regenerated above — so this step must
+        # follow it for the table to show THIS run's data. The payload is
+        # an import, so Lake tracks it by content hash: correct even if
+        # runner-side .lake caching is ever enabled.
+        run: |
+          cd doc
+          lake update
+          lake build l4yaml-doc
+
+      - name: Generate L4YAML import graph
+        # Renders the runtime module-import graph that the Architecture
+        # page embeds at `Architecture/Import-Graph/graphs/import-graph.svg`.
+        # The Proofs subtree is excluded — `L4YAML.Surface.Surface` would
+        # otherwise pull `L4YAML.Proofs.Production.DocumentProduction`,
+        # and merging the full Proofs environment trips a duplicate
+        # equation-lemma error in `lake exe graph`. Surface itself is
+        # represented via `L4YAML.Surface.Document` (its non-Proofs leaf).
+        run: |
+          # graphviz `dot` is needed to render the .dot file to .svg.
+          if ! command -v dot >/dev/null 2>&1; then
+            if sudo -n true 2>/dev/null && command -v dnf >/dev/null 2>&1; then
+              sudo dnf install -y graphviz
+            elif sudo -n true 2>/dev/null && command -v apt-get >/dev/null 2>&1; then
+              sudo apt-get update -qq && sudo apt-get install -y -qq graphviz
+            else
+              echo "::error::graphviz 'dot' not found and no passwordless sudo to install it"
+              exit 1
+            fi
+          fi
+          mkdir -p doc/Doc/L4YAML/graphs
+          lake build graph
+          lake exe graph \
+            --to=L4YAML.Scanner.Scanner,L4YAML.Parser.Composition,L4YAML.Surface.Document,L4YAML.Output.Dump,L4YAML.Output.Emitter,L4YAML.FFI.FFI,L4YAML.Schema.Api,L4YAML.Config.Config \
+            doc/Doc/L4YAML/graphs/import-graph.dot
+          dot -Tsvg doc/Doc/L4YAML/graphs/import-graph.dot \
+            -o doc/Doc/L4YAML/graphs/import-graph.svg
+          ls -lh doc/Doc/L4YAML/graphs/import-graph.*
+
+      - name: Download theorem dependency graphs from L4YAML.FGM
+        # We fetch only the headlines tarball — the ~20 SVGs for headline
+        # and categoryCapstone entries embedded directly into the Verso
+        # verification doc. The full-catalogue tarball
+        # (`theorem-graphs-all.tar.gz`, ~400 SVGs) stays on the GitHub
+        # release and is linked from the doc for on-demand download.
+        run: |
+          mkdir -p doc/Doc/L4YAML/graphs
+          REPO="pass/L4YAML.FGM"
+          TAG="graphs-latest"
+          ASSET="theorem-graphs-headlines.tar.gz"
+          API_URL="${GITHUB_SERVER_URL}/api/v3/repos/${REPO}/releases/tags/${TAG}"
+
+          # Fetch the release metadata to find the asset download URL
+          ASSET_URL=$(curl -sSf \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "${API_URL}" \
+            | python3 -c "
+          import sys, json
+          release = json.load(sys.stdin)
+          for asset in release.get('assets', []):
+              if asset['name'] == '${ASSET}':
+                  print(asset['url'])
+                  sys.exit(0)
+          print('ERROR: asset not found', file=sys.stderr)
+          sys.exit(1)
+          ")
+
+          # Download the asset
+          curl -sSfL \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/octet-stream" \
+            "${ASSET_URL}" \
+            -o "doc/Doc/L4YAML/graphs/${ASSET}"
+
+          # Extract SVGs
+          tar xzf "doc/Doc/L4YAML/graphs/${ASSET}" -C doc/Doc/L4YAML/graphs/
+          rm -f "doc/Doc/L4YAML/graphs/${ASSET}"
+          echo "Downloaded $(ls doc/Doc/L4YAML/graphs/*.svg 2>/dev/null | wc -l) SVG graphs from L4YAML.FGM release"
+
+      - name: Generate Verso documentation
+        run: |
+          cd doc
+          lake exe l4yaml-doc
+          echo "Verso HTML generated in doc/_out/html-multi/"
+
+      - name: Copy Verso output to docs/
+        run: |
+          # docs/reports (test reports + stats.json from Phases 2-3) must
+          # survive the site refresh — assemble the new site next to it,
+          # carry the reports over, then swap.
+          rm -rf docs.new
+          cp -r doc/_out/html-multi docs.new
+          if [ -d docs/reports ]; then
+            cp -r docs/reports docs.new/reports
+          fi
+          rm -rf docs
+          mv docs.new docs
+          echo "Verso HTML copied to docs/ (reports preserved)"
+
+      - name: Generate doc-gen4 API documentation
+        run: |
+          lake build :docs
+          cp -r .lake/build/doc docs/api
+          echo "doc-gen4 API docs copied to docs/api/"
 
       # -------------------------------------------------------
       # Phase 5: Generate PDF from HTML
