@@ -72,6 +72,10 @@ def score_one(cmd, d, axis, timeout):
         if not os.path.exists(d + '/in.json'):
             return ('skip', tid)   # no json oracle for this test
         rc, out = run(cmd, inp, timeout)
+        if is_err:
+            # a few error tests carry a stale in.json (9MQT/01, DK95/01,
+            # DK95/06); correct behavior is still to reject the input
+            return ('err-ok' if rc != 0 else 'err-miss', tid)
         if rc == 124:
             return ('timeout', tid)
         if rc != 0:
