@@ -66,3 +66,5 @@ rust/Cargo.lock
 rust/.cargo/config.toml
 # Graphs (generated theorem dependency graphs — source DOT/SVGs)
 doc/Doc/L4YAML/graphs/
+# pixi project-local env (LeanCopilot native runtime deps)
+.pixi/

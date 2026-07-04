@@ -111,7 +111,7 @@ is a nested inductive, so the `induction` tactic does not support it.
 Uses well-founded recursion on `sizeOf` to handle recursive calls through
 list elements.
 -/
-def toYamlValue_nodeToValue : (n : ValidNode) → NodeToValue n (toYamlValue n)
+theorem toYamlValue_nodeToValue : (n : ValidNode) → NodeToValue n (toYamlValue n)
   | .plainScalarBlock content h hf hcs hsh => .plainScalarBlock content h hf hcs hsh
   | .plainScalarFlow content h hf hcs hsh hfl => .plainScalarFlow content h hf hcs hsh hfl
   | .singleQuoted content => .singleQuoted content

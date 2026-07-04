@@ -1,0 +1,82 @@
+version: 7
+platforms:
+- name: linux-64
+environments:
+  default:
+    channels:
+    - url: https://conda.anaconda.org/conda-forge/
+    packages:
+      linux-64:
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/_openmp_mutex-4.5-20_gnu.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/libgcc-13.4.0-he0feb66_19.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/libgomp-13.4.0-he0feb66_19.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/libstdcxx-13.4.0-h934c35e_19.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/libstdcxx-ng-13.4.0-hdf11a46_19.conda
+packages:
+- conda: https://conda.anaconda.org/conda-forge/linux-64/_openmp_mutex-4.5-20_gnu.conda
+  build_number: 20
+  sha256: 1dd3fffd892081df9726d7eb7e0dea6198962ba775bd88842135a4ddb4deb3c9
+  md5: a9f577daf3de00bca7c3c76c0ecbd1de
+  depends:
+  - __glibc >=2.17,<3.0.a0
+  - libgomp >=7.5.0
+  constrains:
+  - openmp_impl <0.0a0
+  license: BSD-3-Clause
+  license_family: BSD
+  run_exports:
+    strong:
+    - _openmp_mutex >=4.5
+  size: 28948
+  timestamp: 1770939786096
+- conda: https://conda.anaconda.org/conda-forge/linux-64/libgcc-13.4.0-he0feb66_19.conda
+  sha256: b5e3abed676b3f6c70c49e90a0d7328acafdc9a9394c5d9b6234f9fb59af6260
+  md5: 3a606a093207d966e454d44d005f26a2
+  depends:
+  - __glibc >=2.17,<3.0.a0
+  - _openmp_mutex >=4.5
+  constrains:
+  - libgcc-ng ==13.4.0=*_19
+  - libgomp 13.4.0 he0feb66_19
+  license: GPL-3.0-only WITH GCC-exception-3.1
+  license_family: GPL
+  run_exports: {}
+  size: 963969
+  timestamp: 1778268364270
+- conda: https://conda.anaconda.org/conda-forge/linux-64/libgomp-13.4.0-he0feb66_19.conda
+  sha256: 9f75e5c3a71d30583661af2af3f097a3b91fa0e462713d4e093f73b3f77389cd
+  md5: fcb8e152376a5e92be988dc231dee03d
+  depends:
+  - __glibc >=2.17,<3.0.a0
+  license: GPL-3.0-only WITH GCC-exception-3.1
+  license_family: GPL
+  run_exports:
+    strong:
+    - _openmp_mutex >=4.5
+  size: 567037
+  timestamp: 1778268284550
+- conda: https://conda.anaconda.org/conda-forge/linux-64/libstdcxx-13.4.0-h934c35e_19.conda
+  sha256: 6ea2cedf270a807d6ae256e699f2806e455ecc2ae2afd6978c7d04652b70080b
+  md5: b1fa950f1e51e94b6611533fe04ae08d
+  depends:
+  - __glibc >=2.17,<3.0.a0
+  - libgcc 13.4.0 he0feb66_19
+  constrains:
+  - libstdcxx-ng ==13.4.0=*_19
+  license: GPL-3.0-only WITH GCC-exception-3.1
+  license_family: GPL
+  run_exports: {}
+  size: 5679312
+  timestamp: 1778268387528
+- conda: https://conda.anaconda.org/conda-forge/linux-64/libstdcxx-ng-13.4.0-hdf11a46_19.conda
+  sha256: 14c8f546f15511d8ac95c760d8ac283cbcb3b248f73f76eec842ea68c7dce640
+  md5: 897c0c76986ce8312e0904c303b9a015
+  depends:
+  - libstdcxx 13.4.0 h934c35e_19
+  license: GPL-3.0-only WITH GCC-exception-3.1
+  license_family: GPL
+  run_exports:
+    strong:
+    - libstdcxx
+  size: 27824
+  timestamp: 1778268424644

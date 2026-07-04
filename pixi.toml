@@ -1,0 +1,24 @@
+# Project-local native runtime deps for LeanCopilot.
+#
+# LeanCopilot's prebuilt libctranslate2.so.4 requires GLIBCXX_3.4.30 (gcc >= 12);
+# EL9's /lib64/libstdc++.so.6 stops at GLIBCXX_3.4.29. Its base-glibc needs top out
+# at GLIBC_2.34, which EL9 satisfies, so a newer libstdc++ on LD_LIBRARY_PATH is the
+# only missing piece. conda-forge's libstdcxx-ng ships it; pixi pins it per-project.
+#
+# Usage:
+#   pixi install          # once
+#   pixi run build        # lake build with the env active
+#   pixi shell            # interactive shell with LD_LIBRARY_PATH set
+[workspace]
+name = "l4yaml"
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+libstdcxx-ng = "13.*"
+
+[activation.env]
+LD_LIBRARY_PATH = "$CONDA_PREFIX/lib:$LD_LIBRARY_PATH"
+
+[tasks]
+build = "lake build"
