@@ -26,6 +26,8 @@ import L4YAML.Proofs.Output.EmitterScannability.BlockProducers
 import L4YAML.Proofs.Output.EmitterScannability.ScannerSpanLocality
 import L4YAML.Proofs.Output.EmitterScannability.NonemptyStructure
 import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+import L4YAML.Proofs.Output.EmitterScannability.StreamNodeWitness
+import L4YAML.Proofs.Output.EmitterScannability.GeneralLocality
 
 /-!
 # Emitter Scannability (Phase E, Steps 1–2)
@@ -881,6 +883,45 @@ theorem emit_parse_succeeds (v : YamlValue) (hg : Grammable v false) :
   obtain ⟨docs, h_parse⟩ := parseStream_accepts_emit_tokens v hg tokens h_scan
   exact ⟨docs, Composition.parseYamlRaw_pipeline (emit v) tokens docs h_scan h_parse⟩
 
+/-- Package the standalone witness for a grammable element: parse success, single document,
+    the pinned standalone tokens, the stream node witness, purity, and the composed-value pin. -/
+theorem stdElt_of_grammable (v : YamlValue) (hg : Grammable v false) : StdElt v := by
+  obtain ⟨rd, h_rd⟩ := emit_parse_succeeds v hg
+  have h_rd_sz := emit_produces_single_document v hg rd h_rd
+  obtain ⟨stdToks, h_scan_std, h_parse_std⟩ := Composition.parseYamlRaw_ok_decompose _ _ h_rd
+  have h_pin_std := scanFiltered_emit_tokvals v hg stdToks h_scan_std
+  have h_clean_body : ∀ t ∈ emitTokVals v, FlowCleanTok t = true := emitTokVals_flowClean v
+  obtain ⟨val, q, h_node, h_end, h_docval⟩ :=
+    parseStream_single_doc_node_witness stdToks rd (emitTokVals v) h_parse_std h_rd_sz
+      h_pin_std h_clean_body (emitTokVals_head v)
+  have h_cl_toks : CleanTokens stdToks := by
+    intro i hi
+    have h_at := pin_getElem?_val h_pin_std i
+    rw [getElem?_pos stdToks i hi] at h_at
+    simp only [Option.map_some] at h_at
+    have h_mem := List.mem_of_getElem? h_at.symm
+    rcases List.mem_cons.mp h_mem with h_e | h_m
+    · rw [h_e]; rfl
+    · rcases List.mem_append.mp h_m with h_m | h_m
+      · have h_fc := h_clean_body _ h_m
+        simp [CleanTok, h_fc]
+      · rw [List.mem_singleton.mp h_m]; rfl
+  obtain ⟨h_pure, _⟩ := parseNode_pure (4 * stdToks.size + 4)
+    ({ tokens := stdToks, pos := 1 } : ParseState) val q h_cl_toks h_node
+  refine ⟨stdToks, val, q, h_pin_std, h_node, h_end, h_pure, ?_⟩
+  intro rd' h_rd'
+  have h_eq : rd' = rd := by
+    rw [h_rd] at h_rd'
+    exact (Except.ok.inj h_rd').symm
+  rw [h_eq]
+  refine ⟨h_rd_sz, ?_⟩
+  have h_ne : 0 < rd.size := by omega
+  have h_0' : 0 < (rd.map YamlDocument.compose).size := by rw [Array.size_map]; omega
+  have h_ix : (rd.map YamlDocument.compose)[0]!.value = (rd[0]!.compose).value := by
+    rw [getElem!_pos _ 0 h_0', getElem!_pos rd 0 h_ne, Array.getElem_map]
+  rw [h_ix, compose_value_of_anchorFree _ (by rw [h_docval]; exact h_pure.2.2), h_docval,
+    h_pure.1, h_pure.2.1]
+
 /-- **Full pipeline (with compose)**: Emitter output parses successfully
     through `parseYaml`, which resolves aliases via `YamlDocument.compose`.
 
@@ -1109,7 +1150,66 @@ theorem emit_roundtrip_sequence_content_eq {inFlow : Bool} (style : CollectionSt
             exact h_composed.trans
               (compose_seq_scalar_item (raw_docs[0]!) items' items''
                 h_af h_raw_val h_comp_val j hj' sc_j.content .doubleQuoted h_items'_j).symm⟩
-      · sorry
+      · -- General branch: the token-vals pin + the standalone-witness walk (subsumes all-scalar).
+        obtain ⟨items', ps_loop, ps_doc, h_pd_tok, h_pd_pos, h_loop_ok, h_raw_val⟩ :=
+          parseStream_flowSeqStart_loop_witness tokens raw_docs h_parse (by omega) (by omega) h_t1
+        have h_ne_list : items.toList ≠ [] := by rw [h_list]; exact List.cons_ne_nil _ _
+        have h_all_tv : ∀ w ∈ items.toList, EmitScansTokVals w := by
+          intro w hw
+          obtain ⟨i, hi, h_eq⟩ := List.getElem_of_mem hw
+          have h_szi : i < items.size := by rwa [Array.length_toList] at hi
+          exact h_eq ▸ emit_scans_tokvals _ (h_items ⟨i, h_szi⟩)
+        have h_pin := scanFiltered_emitSeq_tokvals items.toList h_ne_list h_all_tv tokens h_scan
+        have h_std : ∀ w ∈ items.toList, StdElt w := by
+          intro w hw
+          obtain ⟨i, hi, h_eq⟩ := List.getElem_of_mem hw
+          have h_szi : i < items.size := by rwa [Array.length_toList] at hi
+          exact h_eq ▸ stdElt_of_grammable _ (grammable_to_block (h_items ⟨i, h_szi⟩))
+        have h_fuel : items.toList.length + 1 ≤ 4 * tokens.size + 2 := by
+          have h_len := congrArg List.length h_pin
+          have h_ge := seqTokVals_length_ge items.toList
+          simp only [List.length_map, Array.length_toList, List.length_cons,
+            List.length_append, List.length_nil] at h_len
+          omega
+        obtain ⟨h_sz', h_vals⟩ := parseFlowSeqLoop_tokvals_value_at h_ne_list h_pin h_std
+          h_pd_tok h_pd_pos h_fuel h_loop_ok
+        have h_ne_raw : 0 < raw_docs.size := by omega
+        have h_0' : 0 < (raw_docs.map YamlDocument.compose).size := by
+          rw [Array.size_map]; exact h_ne_raw
+        have h_comp_val : (raw_docs[0]!.compose).value = .sequence .flow items'' none none := by
+          have h_eq : (raw_docs.map YamlDocument.compose)[0]!.value =
+              (raw_docs[0]!.compose).value := by
+            rw [getElem!_pos _ 0 h_0', getElem!_pos raw_docs 0 h_ne_raw, Array.getElem_map]
+          rw [← h_eq]; exact h_shape
+        have h_items'_size : items'.size = items.size := by
+          rw [h_sz', Array.length_toList]
+        have h_af : ∀ w ∈ items'.toList, w.anchorFree = true := by
+          intro w hw
+          obtain ⟨i, hi, h_eq⟩ := List.getElem_of_mem hw
+          have hi'' : i < items'.size := by rwa [Array.length_toList] at hi
+          have hi' : i < items.toList.length := by rw [← h_sz']; exact hi''
+          obtain ⟨sv, h_stdval, h_pin_i⟩ := h_vals i hi'
+          have h_w : w = items'[i]! := by
+            rw [← h_eq, Array.getElem_toList, getElem!_pos items' i hi'']
+          rw [h_w, h_pin_i]
+          exact h_stdval.1.2.2
+        have h_items''_size : items''.size = items'.size := by
+          rw [compose_seq_items_pointwise (raw_docs[0]!) items' items'' h_af h_raw_val h_comp_val,
+            Array.size_map]
+        refine ⟨h_items'_size.symm.trans h_items''_size.symm, ?_⟩
+        rintro ⟨j, hj⟩ rd h_rd h_rd_sz
+        have hj_list : j < items.toList.length := by rwa [Array.length_toList]
+        obtain ⟨sv, ⟨h_sv_pure, h_sv_std⟩, h_pin_j⟩ := h_vals j hj_list
+        have h_lst : items.toList[j] = items[j] := Array.getElem_toList ..
+        obtain ⟨_, h_comp⟩ := h_sv_std rd (by rw [h_lst]; exact h_rd)
+        have hj' : j < items'.size := by rw [h_items'_size]; exact hj
+        have h_j'' : items''[j]!
+            = (items'[j]!.resolveAliases (raw_docs[0]!).anchors).stripAnchors := by
+          rw [compose_seq_items_pointwise (raw_docs[0]!) items' items'' h_af h_raw_val h_comp_val,
+            getElem!_pos _ j (by rw [Array.size_map]; exact hj'), getElem!_pos items' j hj',
+            Array.getElem_map]
+        rw [h_j'', h_pin_j, h_sv_pure.1, h_sv_pure.2.1]
+        exact h_comp
     exact contentEqList_of_reparse items items'' h_size ih
       (reparse_deliverable_of_locality_seq items items''
         (fun i => grammable_to_block (h_items i)) h_loc)
@@ -1268,7 +1368,104 @@ theorem emit_roundtrip_mapping_content_eq {inFlow : Bool} (style : CollectionSty
               compose_map_scalar_pair (raw_docs[0]!) pairs' pairs'' h_af h_raw_val h_comp_val
                 j hj' sk_j.content sv_j.content .doubleQuoted .doubleQuoted h_pairs'_j
             exact h_composed_v.trans (congrArg Prod.snd h_pairs''_j).symm⟩
-      · sorry
+      · -- General branch (map): the token-vals pin + the standalone-witness walk.
+        obtain ⟨pairs', ps_loop, ps_doc, h_pd_tok, h_pd_pos, h_loop_ok, h_raw_val⟩ :=
+          parseStream_flowMapStart_loop_witness tokens raw_docs h_parse (by omega) (by omega) h_t1
+        have h_ne_list : pairs.toList ≠ [] := by rw [h_list]; exact List.cons_ne_nil _ _
+        have h_all_k : ∀ p ∈ pairs.toList, EmitScansSavedKeyTokVals p.1 := by
+          intro p hp
+          obtain ⟨i, hi, h_eq⟩ := List.getElem_of_mem hp
+          have h_szi : i < pairs.size := by rwa [Array.length_toList] at hi
+          exact h_eq ▸ emit_scans_saved_key_tokvals _ (hk ⟨i, h_szi⟩)
+        have h_all_v : ∀ p ∈ pairs.toList, EmitScansTokVals p.2 := by
+          intro p hp
+          obtain ⟨i, hi, h_eq⟩ := List.getElem_of_mem hp
+          have h_szi : i < pairs.size := by rwa [Array.length_toList] at hi
+          exact h_eq ▸ emit_scans_tokvals _ (hv ⟨i, h_szi⟩)
+        have h_pin := scanFiltered_emitMap_tokvals pairs.toList h_ne_list h_all_k h_all_v
+          tokens h_scan
+        have h_std_k : ∀ p ∈ pairs.toList, StdElt p.1 := by
+          intro p hp
+          obtain ⟨i, hi, h_eq⟩ := List.getElem_of_mem hp
+          have h_szi : i < pairs.size := by rwa [Array.length_toList] at hi
+          exact h_eq ▸ stdElt_of_grammable _ (grammable_to_block (hk ⟨i, h_szi⟩))
+        have h_std_v : ∀ p ∈ pairs.toList, StdElt p.2 := by
+          intro p hp
+          obtain ⟨i, hi, h_eq⟩ := List.getElem_of_mem hp
+          have h_szi : i < pairs.size := by rwa [Array.length_toList] at hi
+          exact h_eq ▸ stdElt_of_grammable _ (grammable_to_block (hv ⟨i, h_szi⟩))
+        have h_fuel : pairs.toList.length + 1 ≤ 4 * tokens.size + 2 := by
+          have h_len := congrArg List.length h_pin
+          have h_ge := mapTokVals_length_ge pairs.toList
+          simp only [List.length_map, Array.length_toList, List.length_cons,
+            List.length_append, List.length_nil] at h_len
+          omega
+        obtain ⟨h_sz', h_vals⟩ := parseFlowMapLoop_tokvals_pair_at h_ne_list h_pin
+          h_std_k h_std_v h_pd_tok h_pd_pos h_fuel h_loop_ok
+        have h_ne_raw : 0 < raw_docs.size := by omega
+        have h_0' : 0 < (raw_docs.map YamlDocument.compose).size := by
+          rw [Array.size_map]; exact h_ne_raw
+        have h_comp_val : (raw_docs[0]!.compose).value = .mapping .flow pairs'' none none := by
+          have h_eq : (raw_docs.map YamlDocument.compose)[0]!.value =
+              (raw_docs[0]!.compose).value := by
+            rw [getElem!_pos _ 0 h_0', getElem!_pos raw_docs 0 h_ne_raw, Array.getElem_map]
+          rw [← h_eq]; exact h_shape
+        have h_pairs'_size : pairs'.size = pairs.size := by
+          rw [h_sz', Array.length_toList]
+        have h_af : ∀ p ∈ pairs'.toList, p.1.anchorFree = true ∧ p.2.anchorFree = true := by
+          intro q hq
+          obtain ⟨i, hi, h_eq⟩ := List.getElem_of_mem hq
+          have hi'' : i < pairs'.size := by rwa [Array.length_toList] at hi
+          have hi' : i < pairs.toList.length := by rw [← h_sz']; exact hi''
+          obtain ⟨sk, sv, h_sk_std, h_sv_std, h_pin_i⟩ := h_vals i hi'
+          have h_q : q = pairs'[i]! := by
+            rw [← h_eq, Array.getElem_toList, getElem!_pos pairs' i hi'']
+          rw [h_q, h_pin_i]
+          exact ⟨h_sk_std.1.2.2, h_sv_std.1.2.2⟩
+        have h_pairs''_size : pairs''.size = pairs'.size := by
+          rw [compose_map_pairs_pointwise (raw_docs[0]!) pairs' pairs'' h_af h_raw_val h_comp_val,
+            Array.size_map]
+        refine ⟨h_pairs'_size.symm.trans h_pairs''_size.symm, ?_, ?_⟩
+        · rintro ⟨j, hj⟩ rd h_rd h_rd_sz
+          have hj_list : j < pairs.toList.length := by rwa [Array.length_toList]
+          obtain ⟨sk, sv, ⟨h_sk_pure, h_sk_std⟩, _, h_pin_j⟩ := h_vals j hj_list
+          have h_lst : pairs.toList[j] = pairs[j] := Array.getElem_toList ..
+          obtain ⟨_, h_comp⟩ := h_sk_std rd (by rw [h_lst]; exact h_rd)
+          have hj' : j < pairs'.size := by rw [h_pairs'_size]; exact hj
+          have h_j'' : pairs''[j]!
+              = ((sk.resolveAliases (raw_docs[0]!).anchors).stripAnchors,
+                 (sv.resolveAliases (raw_docs[0]!).anchors).stripAnchors) := by
+            rw [compose_map_pairs_pointwise (raw_docs[0]!) pairs' pairs''
+                h_af h_raw_val h_comp_val,
+              getElem!_pos _ j (by rw [Array.size_map]; exact hj'),
+              Array.getElem_map,
+              show pairs'[j] = (sk, sv) from by
+                have h_p : pairs'[j]! = (sk, sv) := h_pin_j
+                rwa [getElem!_pos pairs' j hj'] at h_p]
+          rw [h_j'']
+          simp only []
+          rw [h_sk_pure.1, h_sk_pure.2.1]
+          exact h_comp
+        · rintro ⟨j, hj⟩ rd h_rd h_rd_sz
+          have hj_list : j < pairs.toList.length := by rwa [Array.length_toList]
+          obtain ⟨sk, sv, _, ⟨h_sv_pure, h_sv_std⟩, h_pin_j⟩ := h_vals j hj_list
+          have h_lst : pairs.toList[j] = pairs[j] := Array.getElem_toList ..
+          obtain ⟨_, h_comp⟩ := h_sv_std rd (by rw [h_lst]; exact h_rd)
+          have hj' : j < pairs'.size := by rw [h_pairs'_size]; exact hj
+          have h_j'' : pairs''[j]!
+              = ((sk.resolveAliases (raw_docs[0]!).anchors).stripAnchors,
+                 (sv.resolveAliases (raw_docs[0]!).anchors).stripAnchors) := by
+            rw [compose_map_pairs_pointwise (raw_docs[0]!) pairs' pairs''
+                h_af h_raw_val h_comp_val,
+              getElem!_pos _ j (by rw [Array.size_map]; exact hj'),
+              Array.getElem_map,
+              show pairs'[j] = (sk, sv) from by
+                have h_p : pairs'[j]! = (sk, sv) := h_pin_j
+                rwa [getElem!_pos pairs' j hj'] at h_p]
+          rw [h_j'']
+          simp only []
+          rw [h_sv_pure.1, h_sv_pure.2.1]
+          exact h_comp
     exact contentEqPairList_of_reparse pairs pairs'' h_size ihk ihv
       (reparse_deliverable_of_locality_pair pairs pairs''
         (fun i => grammable_to_block (hk i)) (fun i => grammable_to_block (hv i))

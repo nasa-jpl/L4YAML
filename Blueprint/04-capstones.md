@@ -9,17 +9,39 @@ practice** and **what risk we would carry without the proof** — so a
 reader can judge the guarantees on impact, not just on their formal
 statement.
 
-## Status snapshot (2026-07-03)
+## Status snapshot (2026-07-04)
 
-The build is **`sorry`-, `axiom`-, and `partial`-free except for
-exactly two active `sorry` sites**, both inside the single
-universal-round-trip cluster under
+The build is **`sorry`-, `axiom`-, and `partial`-free.  Zero active
+`sorry` sites remain: `universal_roundtrip` is fully machine-checked**
+(axioms: `propext`, `Classical.choice`, `Quot.sound` plus the
+pre-existing per-declaration `native_decide` reflected-decide leaves —
+no `sorryAx` anywhere on the closed path).
+
+**Track B closed 2026-07-04.**  The two former non-all-scalar locality
+sorries (`emit_roundtrip_sequence_content_eq` /
+`emit_roundtrip_mapping_content_eq`) are proven by the
+**general-locality chain**, six new modules under
 [`Proofs/Output/EmitterScannability/`](../L4YAML/Proofs/Output/):
 
-| # | Site | Enclosing theorem | Track |
-|---|------|-------------------|-------|
-| 1 | [`EmitterScannability.lean:1109`](../L4YAML/Proofs/Output/EmitterScannability.lean#L1109) | `emit_roundtrip_sequence_content_eq` (non-all-scalar sequence locality) | B |
-| 2 | [`EmitterScannability.lean:1268`](../L4YAML/Proofs/Output/EmitterScannability.lean#L1268) | `emit_roundtrip_mapping_content_eq` (non-all-scalar mapping locality) | B |
+| Module | Content |
+|--------|---------|
+| `TokVals.lean` | `emitTokVals` — the value-determined `.val`-run of an emission — and the `FlowCleanTok` window gate |
+| `TokValsPin.lean` | the scanner Bridge: `scanFiltered (emit v)` pinned to `[streamStart] ++ emitTokVals v ++ [streamEnd]` (parallel deep-producer mirror; content-pinning scalar leaf) |
+| `ValueLocality.lean` | the **both-success two-fuel value-locality joint** over the parser clique (`parseNode_joint`): `.val`-agreeing flow-clean windows + a one-sided standalone frame ⇒ equal values, equal advances, token preservation; step inversions for both flow loops; proper-exit-gated loop joints |
+| `ValuePurity.lean` | `parseNode_pure`: values parsed from clean token arrays are `resolveAliases`-invariant, `stripAnchors`-invariant, anchor-free — collapsing `compose` to the identity on both sides |
+| `StreamNodeWitness.lean` | `parseStream_single_doc_node_witness`: a single-document stream forces one `parseNode` at position 1 ending exactly at `streamEnd` — the joint's standalone frame |
+| `GeneralLocality.lean` | the walks (`parseFlowSeqLoop_tokvals_value_at` / `parseFlowMapLoop_tokvals_pair_at`, R601/R608 generalized): each whole-stream slot equals its element's standalone composed value |
+
+Consumption (`stdElt_of_grammable` + the two branch rewrites in
+`EmitterScannability.lean`) subsumes the all-scalar template.  Key
+design points, each Rule-2 probed before construction
+(`Tests/Reflections/GeneralLocalityBirth.lean`): the joint must be
+two-fuel (standalone vs in-stream fuels differ); two-fuel loop joints
+are refutable at fuel 0, so they carry proper-exit hypotheses supplied
+by the enclosing close-checks; the flow-clean gate replaces all
+anchors/tagHandles hypotheses (emissions contain no anchor/alias/tag/
+block syntax); and the frame is one-sided because only the standalone
+run can supply it without re-importing bracket machinery.
 
 **Track A closed 2026-07-03.**  The three former Track-A sorries —
 `parseStream_emitSequence` / `scanFiltered_emitMap_nonempty_structure`
@@ -437,7 +459,8 @@ values.
 **The gap (2026-07-01)**: capstone 6.1/6.10 `universal_roundtrip` is
 now a **declared** theorem (`EmitterScannability.lean:1285`), but its
 proof is `sorry`-reachable through 6.9's canonical-emitter closure.
-The residual is exactly the **two `sorry`s** of the Status snapshot,
+The residual was exactly the **two `sorry`s** of the 2026-07-03 snapshot
+(both now closed by the general-locality chain above),
 split into two independent tracks:
 
 - **Track A — `FlowSubrangesOk`** (every balanced flow subrange is
