@@ -9,20 +9,37 @@ practice** and **what risk we would carry without the proof** — so a
 reader can judge the guarantees on impact, not just on their formal
 statement.
 
-## Status snapshot (2026-07-01)
+## Status snapshot (2026-07-03)
 
 The build is **`sorry`-, `axiom`-, and `partial`-free except for
-exactly five active `sorry` sites**, all inside the single
+exactly two active `sorry` sites**, both inside the single
 universal-round-trip cluster under
 [`Proofs/Output/EmitterScannability/`](../L4YAML/Proofs/Output/):
 
 | # | Site | Enclosing theorem | Track |
 |---|------|-------------------|-------|
-| 1 | [`EmitterScannability.lean:411`](../L4YAML/Proofs/Output/EmitterScannability.lean#L411) | `parseStream_emitSequence` (`FlowSubrangesOk`, sequence) | A |
-| 2 | [`NonemptyStructure.lean:12131`](../L4YAML/Proofs/Output/EmitterScannability/NonemptyStructure.lean#L12131) | `scanFiltered_emitMap_nonempty_structure` (`FlowSubrangesOk`, mapping) | A |
-| 3 | [`SeqInteriorSeparators.lean:11348`](../L4YAML/Proofs/Output/EmitterScannability/SeqInteriorSeparators.lean#L11348) | `seqBody_recseqbody_provider` (R447 navigator — **linchpin**) | A |
-| 4 | [`EmitterScannability.lean:1066`](../L4YAML/Proofs/Output/EmitterScannability.lean#L1066) | `emit_roundtrip_sequence_content_eq` (non-all-scalar sequence locality) | B |
-| 5 | [`EmitterScannability.lean:1214`](../L4YAML/Proofs/Output/EmitterScannability.lean#L1214) | `emit_roundtrip_mapping_content_eq` (non-all-scalar mapping locality) | B |
+| 1 | [`EmitterScannability.lean:1109`](../L4YAML/Proofs/Output/EmitterScannability.lean#L1109) | `emit_roundtrip_sequence_content_eq` (non-all-scalar sequence locality) | B |
+| 2 | [`EmitterScannability.lean:1268`](../L4YAML/Proofs/Output/EmitterScannability.lean#L1268) | `emit_roundtrip_mapping_content_eq` (non-all-scalar mapping locality) | B |
+
+**Track A closed 2026-07-03.**  The three former Track-A sorries —
+`parseStream_emitSequence` / `scanFiltered_emitMap_nonempty_structure`
+(both `FlowSubrangesOk`) and the R447 navigator linchpin
+`seqBody_recseqbody_provider` — are now fully proven (`sorryAx`-free,
+audited) by the **deep-family positional navigator**
+([`DeepNavigator.lean`](../L4YAML/Proofs/Output/EmitterScannability/DeepNavigator.lean)):
+the severance-free `RecSeqBodyDeep`/`RecMapBodyDeep` root bodies (off
+emission) are walked positionally to EVERY close-gated sub-window
+(`deep_navigate_core`), per-window `SeqBodyProps`/`MapBodyProps` are
+read directly off the stored pair structure
+(`mapBodyProps_of_recmapbodydeep`), and `FlowSubrangesOk` follows from
+its definition (`flowSubrangesOk_of_deep_nav`) — no interior-separator
+carrier and no six-fact assembler on the closed path.  Two Rule-2
+catches were part of the closure (both refuted mechanically before
+building): the navigator provider's original statement lacked its
+close-gate (`Tests/Reflections/ProviderCloseGate.lean`), and the
+landed guarded bracket-`succ` assembler hypotheses are unsatisfiable
+on two-bracket-pair emissions (the R548 decoy at the hypothesis
+level), which the direct producer bypasses.
 
 Everything else — the scanner (Group 2), parser correctness /
 soundness / completeness / determinism (Groups 3–4), value semantics
@@ -49,7 +66,7 @@ now-retired `05-current-state.md` once carried, which described
 work-remaining frontier:
 
 1. **Universal round-trip** (Group 6.1, `universal_roundtrip`) — the
-   5 `sorry`s above. *Emit-then-parse recovers content.*
+   2 `sorry`s above. *Emit-then-parse recovers content.*
 2. **Grammar completeness** (Group 7.7, `parse_iff_grammar` converse)
    — **not yet declared**; blocked on the round-trip work and on
    removing two over-approximation grammar constructors
@@ -420,7 +437,7 @@ values.
 **The gap (2026-07-01)**: capstone 6.1/6.10 `universal_roundtrip` is
 now a **declared** theorem (`EmitterScannability.lean:1285`), but its
 proof is `sorry`-reachable through 6.9's canonical-emitter closure.
-The residual is exactly the **five `sorry`s** of the Status snapshot,
+The residual is exactly the **two `sorry`s** of the Status snapshot,
 split into two independent tracks:
 
 - **Track A — `FlowSubrangesOk`** (every balanced flow subrange is

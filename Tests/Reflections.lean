@@ -267,6 +267,8 @@ import Tests.Reflections.FlowMapLoopPairAt
 import Tests.Reflections.ScannerMapSpanLocality
 import Tests.Reflections.ResolveAliasesEmpty
 import Tests.Reflections.MappingAllScalarLocality
+import Tests.Reflections.DeepNavigatorFires
+import Tests.Reflections.ProviderCloseGate
 import Tests.Reflections.R447RootCarrier
 import Tests.Reflections.NonAllScalarLocality
 import Tests.Reflections.EmitterTagPercentDecode

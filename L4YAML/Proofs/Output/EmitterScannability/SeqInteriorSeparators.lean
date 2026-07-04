@@ -2,7 +2,7 @@
 Copyright (c) 2026 L4YAML contributors. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Proofs.Output.EmitterScannability.NonemptyStructure
+import L4YAML.Proofs.Output.EmitterScannability.DeepNavigator
 
 /-!
 # `SeqInteriorSeparators` — the seq-typed separator carrier (sub-brick `(i'-b-descend-defn)`)
@@ -8420,7 +8420,7 @@ theorem mapGlobalFlowSeqOpenerAdj_of_emit
     (h_all_v_block : ∀ p, p ∈ pairs.toList → EmitScansInFlowBlock p.2) :
     GlobalFlowSeqOpenerAdj tokens := by
   obtain ⟨h_sz7, h_t0, _h_tend, h_t1, h_close, _h_key, _h_fe_pattern,
-          h_outer_bal, h_dyck, _h_wt_interior, _h_pnok, h_body_opener, _h_body_separator⟩ :=
+          h_outer_bal, h_dyck, _h_wt_interior, h_body_opener, _h_body_separator⟩ :=
     scanFiltered_emitMap_nonempty_structure pairs tokens h_scan h_ne h_all_k_block h_all_v_block
   exact globalFlowSeqOpenerAdj_of_map_structure tokens (by omega) h_t0 h_t1 h_close
     h_outer_bal h_dyck h_body_opener
@@ -8797,7 +8797,7 @@ theorem mapGlobalFlowSeqSepAdj_of_emit
     (h_all_v_block : ∀ p, p ∈ pairs.toList → EmitScansInFlowBlock p.2) :
     GlobalFlowSeqSepAdj tokens := by
   obtain ⟨h_sz7, h_t0, _h_tend, h_t1, h_close, _h_key, h_keypattern,
-          h_outer_bal, _h_dyck, _h_wt_interior, _h_pnok, _h_body_opener, h_body_separator⟩ :=
+          h_outer_bal, _h_dyck, _h_wt_interior, _h_body_opener, h_body_separator⟩ :=
     scanFiltered_emitMap_nonempty_structure pairs tokens h_scan h_ne h_all_k_block h_all_v_block
   have h_nts : tokens[tokens.size - 3]!.val ≠ .flowEntry := by
     intro h_fe
@@ -10086,7 +10086,7 @@ theorem mapWholeStreamWellTyped
     (h_all_v_block : ∀ p, p ∈ pairs.toList → EmitScansInFlowBlock p.2) :
     WellTyped tokens.toList := by
   obtain ⟨h_sz7, h_t0, h_tlast, h_t1, h_close, _h_key, _h_fe_pattern,
-          _h_outer_bal, _h_dyck, h_wt_interior, _h_pnok, _h_body_opener, _h_body_separator⟩ :=
+          _h_outer_bal, _h_dyck, h_wt_interior, _h_body_opener, _h_body_separator⟩ :=
     scanFiltered_emitMap_nonempty_structure pairs tokens h_scan h_ne h_all_k_block h_all_v_block
   have h_len : tokens.toList.length = tokens.size := Array.length_toList
   -- the four boundary indices are in range
@@ -11335,17 +11335,42 @@ theorem seqWindow_safeBodyUnit
     `∀ lo hi, FlowBodyWindow → FlowBodyContentDeepMap → MapEnclosed → (SEQ window IH) → ∃ m, lo<m ∧ m≤hi
     ∧ balance lo m = 0 ∧ (m=hi ∨ tokens[m]=.flowEntry) ∧ RecMapPair ((take m).drop lo)`.
     CAVEAT: the abstract-driver route ALSO needs carrier-FREE seq/map `locate`s (only `_carrier` versions
-    exist) and the `descend_tail`/`h_hi_sz` slots wired at the provider's guard `G`. -/
+    exist) and the `descend_tail`/`h_hi_sz` slots wired at the provider's guard `G`.
+
+    **CLOSE-GATE CORRECTION (Rule-2 save at the sorry-statement level).**  The gate now carries
+    `tokens[hi]!.val = .flowSequenceEnd`, which the sole consumer (`seqRoot_carrier_r447`'s `recIH`)
+    holds and previously DISCARDED.  Without it the statement is FALSE: on `["a","b"]` the window
+    `[2, 4)` (first entry + the depth-`0` separator) satisfies every other hypothesis, yet a
+    `RecSeqBody` can never end on a `.flowEntry` (refuted sorry-free by
+    `Tests/Reflections/ProviderCloseGate.lean:provider_ungated_refuted`).  With the close-gate, the
+    window's own Dyck floor forces `hi` to be the matching close of `lo`'s nearest enclosing opener,
+    so every gated window is a genuine entry-boundary suffix of a stored bracket interior — the shape
+    the stored-root navigator can serve. -/
 theorem seqBody_recseqbody_provider
     (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
     (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
     (h_ne : items.toList ≠ [])
-    (h_all : ∀ v ∈ items.toList, EmitScansInFlowRecEntry v) :
+    (h_all : ∀ v ∈ items.toList, EmitScansInFlowRecEntryDeep v) :
     ∀ lo hi, FlowBodyWindow tokens lo hi → FlowBodyContentDeepSeq tokens lo hi →
-        SeqEnclosed tokens lo → 2 ≤ lo → hi ≤ tokens.size - 2 →
+        SeqEnclosed tokens lo → tokens[hi]!.val = .flowSequenceEnd →
+        2 ≤ lo → hi ≤ tokens.size - 2 →
         RecSeqBody ((tokens.toList.take hi).drop lo) := by
-  intro lo hi _h_win _h_deep _h_enc _h_lo _h_hi
-  sorry -- R447-residual: carrier-free structural navigator over root RecSeqBody (linchpin: recmappair_window_dispatch_map)
+  intro lo hi h_win h_deep _h_enc h_close h_lo h_hi
+  -- The DEEP root body (severance-free, so the navigator can `cases` map interiors).
+  have h_root := seqRoot_recseqbodyDeep items tokens h_scan h_ne h_all
+  have h_all_flat : ∀ v ∈ items.toList, EmitScansInFlowRecEntry v :=
+    fun v hv => EmitScansInFlowRecEntryDeep.toFlat (h_all v hv)
+  have h_all_block : ∀ w, w ∈ items.toList → EmitScansInFlowBlock w :=
+    fun w hw => emitScansInFlowBlock_of_flowRecEntry w (h_all_flat w hw)
+  -- The root close token `tokens[size-2] = ]` anchors the navigator's root span.
+  obtain ⟨h_sz5, _h_t0, _h_tlast, _h_t1, h_tpe, _h_content0, _h_fe_pattern,
+          _h_outer_bal, _h_dyck, _h_wt, _h_oa, _h_sa⟩ :=
+    scanFiltered_emitSeq_nonempty_structure items tokens h_scan h_ne h_all_block
+  -- Run the joint deep navigator at the root span and project the seq half at the gated window.
+  have h_nav := (deep_navigate_core tokens ((tokens.size - 2) - 2) 2 (tokens.size - 2)
+      (Nat.le_refl _) (by omega)).1 h_root h_tpe
+  exact RecSeqBodyDeep.toFlat ((h_nav lo hi ⟨h_lo, h_win.lo_lt_hi, h_hi, h_win.balanced,
+    h_win.dyck, Or.inl ⟨h_close, Or.inl h_deep.headContentStart⟩⟩).1 h_close)
 
 /-- **R447: Root carrier — reduced to the single navigator residual**
     `(i'-b-B2c-(d)-root-carrier-r447)`: proves `SeqInteriorSeparators tokens 2 (tokens.size - 2)`
@@ -11357,11 +11382,13 @@ theorem seqRoot_carrier_r447
     (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
     (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
     (h_ne : items.toList ≠ [])
-    (h_all : ∀ v ∈ items.toList, EmitScansInFlowRecEntry v) :
+    (h_all : ∀ v ∈ items.toList, EmitScansInFlowRecEntryDeep v) :
     SeqInteriorSeparators tokens 2 (tokens.size - 2) := by
+  have h_all_flat : ∀ v ∈ items.toList, EmitScansInFlowRecEntry v :=
+    fun v hv => EmitScansInFlowRecEntryDeep.toFlat (h_all v hv)
   have h_all_block : ∀ w, w ∈ items.toList → EmitScansInFlowBlock w :=
-    fun w hw => emitScansInFlowBlock_of_flowRecEntry w (h_all w hw)
-  have h_root_win := seqRoot_flowBodyWindow items tokens h_scan h_ne h_all
+    fun w hw => emitScansInFlowBlock_of_flowRecEntry w (h_all_flat w hw)
+  have h_root_win := seqRoot_flowBodyWindow items tokens h_scan h_ne h_all_flat
   obtain ⟨_h_sz5, _h_t0, _h_tlast, h_t1, _h_tpe, _h_content0, _h_fe_pattern,
           _h_outer_bal, _h_dyck, _h_wt_interior, _h_body_opener, _h_body_separator⟩ :=
     scanFiltered_emitSeq_nonempty_structure items tokens h_scan h_ne h_all_block
@@ -11373,9 +11400,9 @@ theorem seqRoot_carrier_r447
       FlowBodyWindow tokens lo' hi' → FlowBodyContentDeepSeq tokens lo' hi' →
       SeqEnclosed tokens lo' → tokens[hi']!.val = .flowSequenceEnd →
       RecSeqBody ((tokens.toList.take hi').drop lo') := by
-    intro lo' hi' _h_lt h_lo h_hi h_win h_deep h_enc _h_close
-    exact h_nav lo' hi' h_win h_deep h_enc h_lo h_hi
-  apply seqRoot_carrier_of_widthEnc_seq items tokens h_scan h_ne h_all
+    intro lo' hi' _h_lt h_lo h_hi h_win h_deep h_enc h_close
+    exact h_nav lo' hi' h_win h_deep h_enc h_close h_lo h_hi
+  apply seqRoot_carrier_of_widthEnc_seq items tokens h_scan h_ne h_all_flat
   exact seqWidthEnc_of_recIH_seq tokens 2 (tokens.size - 2) h_root_win h_root_deep recIH
 
 end L4YAML.Proofs.EmitterScannability

@@ -119,30 +119,33 @@ theorem seqRoot_carrier_r447_type_ok :
     ∀ (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
       (_h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
       (_h_ne : items.toList ≠ [])
-      (_h_all : ∀ v ∈ items.toList, EmitScansInFlowRecEntry v),
+      (_h_all : ∀ v ∈ items.toList, EmitScansInFlowRecEntryDeep v),
       SeqInteriorSeparators tokens 2 (tokens.size - 2) :=
   @seqRoot_carrier_r447
 
 /-- Type-check probe: `seqBody_recseqbody_provider` is exactly the per-window `RecSeqBody` navigator
-    (the lone R447 residual) `seqRoot_carrier_r447`'s `recIH` consumes directly. -/
+    (the lone R447 residual) `seqRoot_carrier_r447`'s `recIH` consumes directly.  Carries the
+    close-gate `tokens[hi]!.val = .flowSequenceEnd` (the Rule-2 correction — the ungated form is
+    REFUTED by `Tests/Reflections/ProviderCloseGate.lean`; the consumer supplies the close fact
+    verbatim). -/
 theorem provider_type_ok :
     ∀ (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
       (_h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
       (_h_ne : items.toList ≠ [])
-      (_h_all : ∀ v ∈ items.toList, EmitScansInFlowRecEntry v),
+      (_h_all : ∀ v ∈ items.toList, EmitScansInFlowRecEntryDeep v),
       ∀ lo hi, FlowBodyWindow tokens lo hi → FlowBodyContentDeepSeq tokens lo hi →
-        SeqEnclosed tokens lo → 2 ≤ lo → hi ≤ tokens.size - 2 →
+        SeqEnclosed tokens lo → tokens[hi]!.val = .flowSequenceEnd →
+        2 ≤ lo → hi ≤ tokens.size - 2 →
         RecSeqBody ((tokens.toList.take hi).drop lo) :=
   @seqBody_recseqbody_provider
 
-/-! ## Axiom audit -/
+/-! ## Axiom audit
 
--- `native_decide` probes pick up `sorryAx` transitively through `Scanner.scanFiltered` /
--- `parseYamlRaw` when the import environment contains sorry sites.  The kernel bypass still runs
--- correctly; the sorry reflects a kernel-proof limitation, not a logical gap.
+With the R447 residual `seqBody_recseqbody_provider` CLOSED (the deep-family navigator,
+`DeepNavigator.lean`), the root carrier's profile is `sorryAx`-FREE — the pin below is the
+regression guard on that closure. -/
 
 /-- info: 'R447RootCarrier.seqRoot_carrier_r447_type_ok' depends on axioms: [propext,
- sorryAx,
  Classical.choice,
  Quot.sound] -/
 #guard_msgs (whitespace := lax) in

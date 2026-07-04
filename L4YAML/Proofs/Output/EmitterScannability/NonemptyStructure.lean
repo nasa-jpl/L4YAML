@@ -11905,7 +11905,6 @@ theorem scanFiltered_emitMap_nonempty_structure
     -- [NEW] Typed-bracket matching of the interior `[2, tokens.size-2)` — threaded from
     -- `WellTyped block`; the type half the untyped balance above discarded.
     WellTyped ((tokens.toList.take (tokens.size - 2)).drop 2) ∧
-    L4YAML.Proofs.ParserWellBehaved.ParseEntryFlowMapOk tokens (tokens.size - 2) (4 * tokens.size + 4) 2 ∧
     -- [NEW] (i'-b-B2c step c) The all-depth seq-opener adjacency field over the map body window
     -- `[2, tokens.size-2)`: every `.flowSequenceStart` opener (a nested seq inside the map) with a
     -- non-close successor is followed by a flow-content-start.  Re-projection of the R407 map body
@@ -12119,21 +12118,14 @@ theorem scanFiltered_emitMap_nonempty_structure
       List.take_left]
   have h_wt_interior : WellTyped ((tokens.toList.take (tokens.size - 2)).drop 2) := by
     rw [h_take_eq]; exact h_body_wt_raw
-  -- ═══ [NEW] Dispatcher wiring (map side): parser-acceptance ← structural `FlowSubrangesOk` ═══
-  -- Mirror of the seq-side reduction (commit `79350657`, Reflection 225): the span strong-induction
-  -- dispatcher `flow_parser_ok_of_structure`'s `.map` half turns the universal structural fact
-  -- `FlowSubrangesOk tokens` — every nested balanced subrange has `SeqBodyProps`/`MapBodyProps` —
-  -- into `ParseEntryFlowMapOk` at every subrange.  Instantiating at the outer span `(2, tokens.size - 2)`
-  -- discharges `h_pnok` directly from `h_subranges`, so the map sorry no longer states a
-  -- parser-EXECUTION obligation: it is now the SAME pure STRUCTURAL residual `FlowSubrangesOk tokens`
-  -- the seq side already carries (Phase J — produce the per-subrange `SeqBodyProps`/`MapBodyProps`).
-  -- With both structure sorries now this single residual, one Phase-J producer closes both at once.
-  have h_subranges : FlowSubrangesOk tokens := sorry
-  have h_pnok : L4YAML.Proofs.ParserWellBehaved.ParseEntryFlowMapOk
-      tokens (tokens.size - 2) (4 * tokens.size + 4) 2 :=
-    (L4YAML.Proofs.ParserWellBehaved.flow_parser_ok_of_structure
-        tokens (4 * tokens.size + 4) h_subranges).2
-      2 (tokens.size - 2) (by omega) (by omega) h_tpe h_outer_bal h_t1 h_dyck
+  -- [RELOCATED — the R442 mirror] The `ParseEntryFlowMapOk` conjunct (and the `FlowSubrangesOk`
+  -- residual it consumed as an inline `sorry`) has MOVED OUT to the caller
+  -- `parseStream_emitMapping`: this lemma threads only the Block-keyed per-pair predicates, but
+  -- the deep map root seed behind `FlowSubrangesOk` (`mapRoot_recmapbodydeep` +
+  -- `flowSubrangesOk_of_deep_root_map`, `DeepNavigator.lean`) needs the stronger DEEP per-pair
+  -- predicates, which the caller's `Grammable` hypotheses supply.  The map structure lemma is now
+  -- `sorry`-free, cleaning the whole map context-provider family's axiom profile
+  -- (cf. `Tests/Reflections/MirrorInheritsDependencyAxioms.lean`).
   -- [NEW] (i'-b-B2c step c) Re-project the map body characterization Part `OpenerAdj block`
   -- (`h_body_oa_raw : OpenerAdj ((s₂.filter p).toList.drop 2)`) into the array-`getElem!` body
   -- opener field over `[2, tokens.size-2)` — the seq mirror, identical bridge (`.flowSequenceStart`
@@ -12171,7 +12163,7 @@ theorem scanFiltered_emitMap_nonempty_structure
       (by rw [← e_k]; exact hsep) (by rw [← e_k1]; exact hne)
     rw [e_k1]; exact key
   exact ⟨h_sz7, h_t0, h_tlast, h_t1, h_tpe, h_t2_key, h_fe_pattern,
-         h_outer_bal, h_dyck, h_wt_interior, h_pnok, h_body_opener, h_body_separator⟩
+         h_outer_bal, h_dyck, h_wt_interior, h_body_opener, h_body_separator⟩
 
 
 end L4YAML.Proofs.EmitterScannability
