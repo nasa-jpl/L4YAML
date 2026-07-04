@@ -6,7 +6,8 @@
 
 Generated 2026-07-03 (first measured 2026-07-01) · suite: `yaml/yaml-test-suite`
 `data` branch (402 tests) · other processors: `yamlio/alpine-runtime-all` docker
-image · L4YAML v0.5.0 (`main`).
+image (built 2021-11-19, the latest published aggregate; per-processor versions
+in the Results table, provenance in §Processor versions) · L4YAML v0.5.0 (`main`).
 
 ---
 
@@ -19,11 +20,19 @@ L4YAML is the only processor that is **perfect on all three axes**:
   wrongly rejects dozens of valid documents and/or accepts invalid ones.
 * **Event axis (full structural output) — 402/402 (100%).** Every valid test's
   event stream matches `test.event` byte-for-byte; every error test is rejected.
-  The next-best processors are the generated reference parser (385) and
-  libfyaml (382).
+  The next-best processors *in this run* are the generated reference parser
+  (385, RefParser 0.0.3) and libfyaml (382, v0.7.2). Note that the
+  [matrix.yaml.info](https://matrix.yaml.info) snapshot of 2022-01-17 records
+  *different builds* of both at 402/402 on the same tests — event-axis scores
+  are per-build, not per-library; see §Processor versions below.
 * **JSON axis — 282/282 (100%).** Every valid test with a JSON oracle matches
   `in.json` structurally; the 3 error tests that carry a (stale) `in.json` are
   correctly rejected. Next best: YAML::PP and HsYAML (272).
+
+The all-three-axes claim also holds against the published matrix's own
+(January 2022) numbers: no processor there is perfect on all three axes either —
+c-libfyaml came closest (clean event and accept/reject views, one `diff` on
+its JSON view).
 
 When first measured (2026-07-01) L4YAML scored 362/402 event and 240/282 JSON —
 the two output axes had never been exercised before (the in-repo suite runner
@@ -75,39 +84,46 @@ tests ship a stale `in.json`; matching it would mean accepting invalid YAML).
 `correct` = output matches the oracle on valid tests **and** the parser rejects
 each error test.
 
-| Processor | Lang | Event (of 402) | JSON (of 282) |
-| --- | --- | --- | --- |
-| **L4YAML** | **Lean** | **402/402 (100%)** | **282/282 (100%)** |
-| perl-refparser | Perl | 385/402 (96%) | – |
-| c-libfyaml | C | 382/402 (95%) | 269/282 (95%) |
-| perl-pp (YAML::PP) | Perl | 374/402 (93%) | 272/282 (96%) |
-| py-ruamel | Python | 345/402 (86%) | 239/282 (85%) |
-| hs-hsyaml | Haskell | 330/402 (82%) | 272/282 (96%) |
-| perl-pplibyaml | Perl | 330/402 (82%) | 236/282 (84%) |
-| c-libyaml | C | 330/402 (82%) | – |
-| py-pyyaml | Python | 329/402 (82%) | 224/282 (79%) |
-| java-snakeyaml | Java | 322/402 (80%) | 199/282 (71%) |
-| dotnet-yamldotnet | C# | 317/402 (79%) | 175/282 (62%) |
-| js-yaml | JS | 312/402 (78%) | 268/282 (95%) |
-| nim-nimyaml | Nim | 312/402 (78%) | – |
-| cpp-yamlcpp | C++ | 151/402 (38%) † | – |
-| js-jsyaml | JS | – | 226/282 (80%) |
-| perl-xs | Perl | – | 222/282 (79%) |
-| ruby-psych | Ruby | – | 221/282 (78%) |
-| lua-lyaml | Lua | – | 208/282 (74%) |
-| perl-syck | Perl | – | 166/282 (59%) |
-| raku-yamlish | Raku | – | 163/282 (58%) |
-| perl-yaml (YAML.pm) | Perl | – | 101/282 (36%) |
-| perl-tiny | Perl | – | 47/282 (17%) |
+| Processor | Lang | Version | Event (of 402) | JSON (of 282) |
+| --- | --- | --- | --- | --- |
+| **L4YAML** | **Lean** | **0.5.0** | **402/402 (100%)** | **282/282 (100%)** |
+| perl-refparser | Perl | RefParser 0.0.3 | 385/402 (96%) | – |
+| c-libfyaml | C | libfyaml 0.7.2 | 382/402 (95%) | 269/282 (95%) |
+| perl-pp (YAML::PP) | Perl | 0.03 | 374/402 (93%) | 272/282 (96%) |
+| py-ruamel | Python | ruamel.yaml 0.16.10 | 345/402 (86%) | 239/282 (85%) |
+| hs-hsyaml | Haskell | HsYAML 0.2.1.0 | 330/402 (82%) † | 272/282 (96%) |
+| perl-pplibyaml | Perl | YAML::PP::LibYAML 0.005 | 330/402 (82%) | 236/282 (84%) |
+| c-libyaml | C | libyaml 0.2.5 | 330/402 (82%) | – |
+| py-pyyaml | Python | PyYAML 5.4.1 | 329/402 (82%) | 224/282 (79%) |
+| java-snakeyaml | Java | SnakeYAML 1.29 | 322/402 (80%) | 199/282 (71%) |
+| dotnet-yamldotnet | C# | YamlDotNet 11.2.1 | 317/402 (79%) † | 175/282 (62%) |
+| js-yaml (npm `yaml`) | JS | 2.0.0-8 | 312/402 (78%) | 268/282 (95%) |
+| nim-nimyaml | Nim | NimYAML 0.16.0 | 312/402 (78%) † | – |
+| cpp-yamlcpp | C++ | yaml-cpp 0.7.0 | 151/402 (38%) † | – |
+| js-jsyaml (npm `js-yaml`) | JS | 4.1.0 | – | 226/282 (80%) |
+| perl-xs (YAML::XS) | Perl | 0.83 | – | 222/282 (79%) |
+| ruby-psych | Ruby | psych 4.0.1 | – | 221/282 (78%) |
+| lua-lyaml | Lua | lyaml 6.2.7 | – | 208/282 (74%) |
+| perl-syck (YAML::Syck) | Perl | 1.34 | – | 166/282 (59%) |
+| raku-yamlish | Raku | YAMLish 0.0.6 | – | 163/282 (58%) |
+| perl-yaml (YAML.pm) | Perl | 1.30 | – | 101/282 (36%) |
+| perl-tiny (YAML::Tiny) | Perl | 1.73 | – | 47/282 (17%) |
 
-† cpp-yamlcpp's *tester* emits a reduced event format (no style/tag detail); the
-low score reflects the tester, not necessarily the library. A reminder that the
-event axis measures processor **+ tester** together.
+† These *testers* emit a reduced event format (e.g. no flow indicators or
+style/tag detail), which the official matrix runner compensates for by
+comparing them against correspondingly reduced expected events (see
+§Processor versions); the harness here compares everyone against `test.event`
+verbatim, so their scores are understated relative to the matrix's
+methodology. A reminder that the event axis measures processor **+ tester**
+together.
 
 ### Accept/reject axis (event-capable processors)
 
 This is the axis behind "passes all YAML 1.2.2 tests." L4YAML is the only
-processor that is perfect on both halves.
+processor in this run that is perfect on both halves. (The published matrix's
+2022 snapshot records clean accept/reject for the libfyaml and reference-parser
+builds *it* tested; the builds shipping in the aggregate image do not reproduce
+that — see §Processor versions.)
 
 | Processor | valid accepted | invalid rejected |  |
 | --- | --- | --- | --- |
@@ -127,6 +143,61 @@ processor that is perfect on both halves.
 L4YAML never rejects a valid document (0 false negatives) and never accepts an
 invalid one (0 false positives). The mainstream C/Python/Java parsers reject
 50-60 valid documents each.
+
+---
+
+## Processor versions
+
+The Version column above comes from the image's own manifest
+(`/yaml/info/*.yaml` inside `yamlio/alpine-runtime-all`, built 2021-11-19 —
+the latest aggregate published to Docker Hub). Every non-L4YAML number in this
+report is a measurement of exactly those builds.
+
+### How this relates to matrix.yaml.info (and why the numbers differ)
+
+The published matrix is a **January 2022 snapshot**: its tables say "Generated
+with yaml-test-suite/data Commit `6e6c296a` 2022-01-17" and it has not been
+regenerated since. Comparing it with this report:
+
+* **The test content is *not* stale.** The `data-2022-01-17` tag's tree is
+  bit-identical to today's `data` branch head (`6ad3d2c6`; verified —
+  `git diff` between the two is empty). The 402 tests scored here are exactly
+  the 402 tests the matrix scored.
+* **The processor scores *are* stale — a score is a property of a build, not
+  of a library.** The matrix records `c-libfyaml-event` at a clean 402/402,
+  but the libfyaml **0.7.2** build shipping in the aggregate image scores
+  382/402 on the identical tests (6 event diffs, 5 valid documents rejected,
+  9 invalid accepted). Spot-checks confirm these are genuine parser behavior,
+  not harness artifacts: 0.7.2 drops an escaped trailing tab from a
+  double-quoted scalar (`DE56/02`, emits `=VAL "3 trailingtab` for
+  `=VAL "3 trailing\t tab`) and accepts tab-as-indentation in flow context
+  (`Y79Y/003`). The matrix's run evidently used a different (fixed) libfyaml
+  build. Likewise `perl-refparser-event` shows 402/402 on the matrix while
+  RefParser 0.0.3 scores 385/402 here — mostly *tester*-side encoding quirks
+  (8 diffs write a scalar's trailing space as the literal marker `<SPC>`,
+  3 write an escaped tab as `\\␉` instead of `\t`), plus 4 genuine parse
+  differences (escaped trailing tabs, `DE56/02-03`; block-literal trailing
+  newlines, `JEF9/00,02`), one valid document rejected (`JEF9/01`) and one
+  error test accepted (`2G84/00`).
+* **Comparison strictness differs for six testers.** The matrix runner
+  ([perlpunk/yaml-test-matrix](https://github.com/perlpunk/yaml-test-matrix),
+  `bin/compare-framework-tests`) compares cpp-yamlcpp, cpp-rapidyaml,
+  rust-yamlrust, dotnet-yamldotnet, nim-nimyaml, and hs-hsyaml against
+  *reduced* expected events (flow indicators / quoting style / anchor detail
+  stripped, matching what those testers can express); everyone else — libfyaml
+  and the reference parser included — is compared verbatim, as all processors
+  are here. So for the four of those six present in this table (marked †),
+  the matrix's methodology would score them higher than this report does. For
+  libfyaml and the reference parser — compared verbatim by both — the gap is
+  the build (parser or tester), not the comparison rules.
+
+Practical upshot: published matrix numbers and this report's numbers are both
+real measurements of the same 402 tests, but of different builds under
+(for six testers) different comparison rules. Per-library comparisons should
+always cite the build, as the Results table now does. L4YAML's own numbers are
+build-pinned too (v0.5.0), with the difference that its conformance is also
+theorem-backed — each parser change lands with the proof corpus re-established,
+so the score is a maintained invariant rather than a per-release observation.
 
 ---
 
