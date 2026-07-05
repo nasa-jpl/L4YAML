@@ -15,7 +15,7 @@ def leanCopilotLinkArgs : Array String :=
     #[]
 
 package L4YAML where
-  version := v!"0.5.0"
+  version := v!"0.5.1"
   leanOptions := #[
     ⟨`autoImplicit, false⟩
   ]
