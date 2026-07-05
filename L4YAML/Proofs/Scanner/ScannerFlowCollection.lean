@@ -242,7 +242,7 @@ theorem scanFlowEntry_preserves_flowLevel (s : ScannerState) (s' : ScannerState)
     (h : scanFlowEntry s = .ok s') :
     s'.flowLevel = s.flowLevel := by
   unfold scanFlowEntry at h
-  simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+  simp only [Bind.bind, Except.bind] at h
   split at h
   · split at h
     · exact absurd h (by simp)
@@ -254,7 +254,7 @@ theorem scanFlowEntry_tokens_size (s : ScannerState) (s' : ScannerState)
     (h : scanFlowEntry s = .ok s') :
     s'.tokens.size = s.tokens.size + 1 := by
   unfold scanFlowEntry at h
-  simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+  simp only [Bind.bind, Except.bind] at h
   split at h
   · split at h
     · exact absurd h (by simp)
