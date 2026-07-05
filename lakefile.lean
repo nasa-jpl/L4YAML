@@ -6,7 +6,8 @@ open Lake DSL
     imports LeanCopilot. Interactive `suggest_tactics` in the editor does NOT need
     it (LeanCopilot's own precompiled module dynlibs carry the FFI); linking it
     unconditionally gives every exe a runtime dependency on libctranslate2.so.4
-    (+ GLIBCXX_3.4.30 via the pixi env), breaking them outside `pixi run`. -/
+    (+ GLIBCXX_3.4.30 via the pixi env), breaking them outside `pixi run`. Only
+    meaningful when LeanCopilot is enabled — see the gated `require` below. -/
 def leanCopilotLinkArgs : Array String :=
   if (get_config? leancopilot).isSome then
     #["-L./.lake/packages/LeanCopilot/.lake/build/lib", "-lctranslate2"]
@@ -20,6 +21,18 @@ package L4YAML where
   ]
   moreLinkArgs := leanCopilotLinkArgs
 
+-- LeanCopilot is required only when the `L4YAML_LEANCOPILOT` environment variable is
+-- set, which `pixi.toml`'s `[activation.env]` does automatically. So it is available
+-- inside the pixi env (interactive proving, `pixi run`) but absent in CI, which never
+-- activates pixi and thus resolves a clean, toolchain-matched dependency set (no
+-- LeanCopilot / aesop / batteries pulled in one Lean minor ahead of this project's
+-- pin). See README.md → "LeanCopilot". We gate on an env var, not a `-K` flag, because
+-- the VS Code Lean extension forwards `lean4.serverArgs` to `lean --server` after
+-- lake's `--` (so `-K` never reaches lake config) while the server does inherit the
+-- process environment. `unsafeBaseIO` reads the var at configuration time (`meta if`
+-- needs a pure `Bool`; the `(← IO.getEnv …)` form does not elaborate); Lake caches the
+-- config, so toggling it takes `lake -R` / a server restart to re-read.
+meta if (unsafeBaseIO (IO.getEnv "L4YAML_LEANCOPILOT")).isSome then
 require LeanCopilot from git
   "https://github.com/lean-dojo/LeanCopilot.git" @ "v4.31.0"
 

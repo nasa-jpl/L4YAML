@@ -467,6 +467,51 @@ python -m pip install -e python
 cargo build --manifest-path rust/Cargo.toml
 ```
 
+### LeanCopilot (optional; interactive proof suggestions)
+
+[LeanCopilot](https://github.com/lean-dojo/LeanCopilot) powers tactics like
+`suggest_tactics` while developing proofs. It is **off by default** and needed only
+for interactive proving — the library, proofs, FFI, and CI do not depend on it, and no
+committed file imports it. It is kept optional deliberately: its release tags do not
+track Lean 1:1 (the `v4.31.0` tag is built against Lean `v4.32.0-rc1` and pulls
+`aesop`/`batteries` one minor ahead of this project's pin), and its prebuilt
+`libctranslate2.so.4` needs `GLIBCXX_3.4.30`, which EL9's system `libstdc++` lacks.
+
+The project-local [pixi](https://pixi.sh) env solves both: it puts a new-enough
+`libstdc++` on `LD_LIBRARY_PATH` and sets `L4YAML_LEANCOPILOT=1`, the variable that
+switches the conditional `require LeanCopilot` in [lakefile.lean](lakefile.lean) on.
+Outside the pixi env the variable is unset, so LeanCopilot (and the ahead-of-pin
+`aesop`/`batteries`) are never resolved and CI stays clean.
+
+Enable it once:
+
+```sh
+pixi install                              # materialise .pixi/envs/default
+pixi run -- lake build LeanCopilot        # build LeanCopilot + its native libs
+pixi run -- lake exe LeanCopilot/download # fetch models (~11G -> ~/.cache/lean_copilot)
+```
+
+Then prove from *inside* the env, so both the variable and `LD_LIBRARY_PATH` are
+present:
+
+- **CLI** — `pixi shell`, then `lake lean Path/To/File.lean` (use `lake lean`, not
+  `lake env lean`: only the former passes `--load-dynlib` for LeanCopilot's FFI).
+- **VS Code** — launch the editor **from inside `pixi shell`** (e.g. `code .`). The
+  Lean 4 extension (0.0.237) builds the server environment from `process.env` only — it
+  has no `lean4.serverEnv` setting — so `.vscode/settings.json` cannot inject
+  `LD_LIBRARY_PATH` or `L4YAML_LEANCOPILOT`; inheriting them from the launching shell is
+  what lets `import LeanCopilot` resolve and its native libs load. (For the same reason
+  there is no way to pass `-Kleancopilot=on` from the editor — `lean4.serverArgs` are
+  forwarded to `lean --server`, not to lake.)
+
+Lake caches the resolved configuration, so the first build or edit after toggling the
+variable needs a reconfigure: `lake -R build …`, or just restart the Lean server.
+
+Keep `import LeanCopilot` out of committed proof files (CI has neither the models nor
+the env) — import it transiently while proving. Building an L4YAML **executable** that
+imports LeanCopilot additionally needs `-Kleancopilot=on` to link CTranslate2
+(`pixi run -- lake build -Kleancopilot=on <exe>`); no current exe does.
+
 ## Running tests
 
 ```sh

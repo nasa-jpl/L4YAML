@@ -5,10 +5,14 @@
 # at GLIBC_2.34, which EL9 satisfies, so a newer libstdc++ on LD_LIBRARY_PATH is the
 # only missing piece. conda-forge's libstdcxx-ng ships it; pixi pins it per-project.
 #
+# Activating this env also sets L4YAML_LEANCOPILOT=1 (below), which switches on the
+# LeanCopilot dependency in lakefile.lean -- so LeanCopilot is available inside the pixi
+# env and absent outside it (e.g. in CI). See README.md -> "LeanCopilot".
+#
 # Usage:
 #   pixi install          # once
-#   pixi run build        # lake build with the env active
-#   pixi shell            # interactive shell with LD_LIBRARY_PATH set
+#   pixi run build        # lake build with the env active (LeanCopilot enabled)
+#   pixi shell            # interactive shell; launch VS Code from here for proving
 [workspace]
 name = "l4yaml"
 channels = ["conda-forge"]
@@ -19,6 +23,10 @@ libstdcxx-ng = "13.*"
 
 [activation.env]
 LD_LIBRARY_PATH = "$CONDA_PREFIX/lib:$LD_LIBRARY_PATH"
+# Switches on the LeanCopilot dependency in lakefile.lean (see README.md -> "LeanCopilot").
+# Set only inside this pixi env, so CI -- which never activates pixi -- resolves a clean,
+# toolchain-matched dependency set without LeanCopilot/aesop/batteries.
+L4YAML_LEANCOPILOT = "1"
 
 [tasks]
 build = "lake build"
