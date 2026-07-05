@@ -534,7 +534,7 @@ lake exe dumproundtrip           # dump round-trip
 lake exe schemadump              # Schema ↔ Dump integration
 ```
 
-The full list of executables is in [lakefile.toml](lakefile.toml).
+The full list of executables is in [lakefile.lean](lakefile.lean).
 
 ### Querying test results
 
@@ -560,6 +560,36 @@ lake exe queryresults ./docs/reports/coverage-summary.json filter --id Y79Y
 # Diff two runs (outcome changes, additions, removals)
 lake exe queryresults diff before.json after.json
 ```
+
+### L4YAML and the YAML Test Matrix
+
+Submitted [yaml-runtimes PR #39](https://github.com/yaml/yaml-runtimes/pull/39) to
+add L4YAML to the official YAML Test Matrix, which was last updated in [v2022-01-17](https://matrix.yaml.info/). At that time, there were 20 processors; this PR would make L4YAML the 21st processor, and the first verified one. The PR is still open as of 2026-07-05.
+
+**Forks while the PR is pending.** So the comparison is available now rather than
+only after PR #39 merges, both projects that produce [matrix.yaml.info](https://matrix.yaml.info/)
+have been forked to include L4YAML:
+
+- [NicolasRouquette/yaml-runtimes @ `l4yaml`](https://github.com/NicolasRouquette/yaml-runtimes/tree/l4yaml)
+  — adds the `l4yaml` processor: a Debian/glibc runtime image (Lean's toolchain
+  is not musl-compatible, so it is standalone, not part of `alpine-runtime-all`)
+  exposing the `l4yaml-event` and `l4yaml-json` testers, plus the `l4yaml` entry
+  in `list.yaml`. This is the PR #39 branch.
+- [NicolasRouquette/yaml-test-matrix @ `l4yaml`](https://github.com/NicolasRouquette/yaml-test-matrix/tree/l4yaml)
+  — points the matrix at the fork's `list.yaml`, makes the in-container test
+  runner POSIX so it runs in the Debian L4YAML image as well as the Alpine ones,
+  and adds a self-contained Perl driver image so the matrix can be generated on
+  any Docker host without a hand-installed CPAN stack.
+
+**Self-hosted matrix.** This repository's CI regenerates the matrix from the two
+forks and publishes it alongside the documentation. On a `v*` version tag (or a
+manual workflow run) it packages the testers built for the commit under test
+into the runtime image, runs the full yaml-test-suite through L4YAML and the
+other processors, and deploys the result to this repo's GitHub Pages at
+[`/matrix/`](matrix/index.html) — so the page always reflects the released
+L4YAML, not a snapshot. In that comparison L4YAML passes every case: all 308
+valid event streams and all 279 JSON oracles match byte-for-byte, and every
+invalid input is rejected (event 402/402, JSON 282/282 over the data form).
 
 ## Project layout
 

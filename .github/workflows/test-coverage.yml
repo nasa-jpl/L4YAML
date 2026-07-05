@@ -3,6 +3,9 @@ name: Build Documentation and Test Coverage
 on:
   push:
     branches: [ main, master ]
+    # Version tags additionally trigger the YAML Test Matrix (see the gated
+    # "Generate YAML Test Matrix" step) and republish the site with it.
+    tags: [ 'v*' ]
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:
@@ -406,6 +409,133 @@ jobs:
           fi
 
       # -------------------------------------------------------
+      # Phase 5b: YAML Test Matrix (version releases only)
+      #
+      # Reproduces matrix.yaml.info for THIS commit: builds the L4YAML runtime
+      # image from the just-compiled testers, then runs the yaml-test-suite
+      # through every processor's yaml-runtimes image and renders the comparison
+      # page into docs/matrix/ so the gh-pages publish below carries it.
+      #
+      # Gated to `v*` tags and manual dispatch — it is heavy (image pulls + the
+      # full suite x ~37 views) and the score only changes when L4YAML does.
+      # Requires the two forks to be pushed + public:
+      #   NicolasRouquette/yaml-runtimes @ l4yaml   (runtime images + list.yaml)
+      #   NicolasRouquette/yaml-test-matrix @ l4yaml (matrix generator + driver)
+      # -------------------------------------------------------
+      - name: Generate YAML Test Matrix (L4YAML vs other processors)
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+        env:
+          RUNTIMES_REPO: https://github.com/NicolasRouquette/yaml-runtimes.git
+          RUNTIMES_REF: l4yaml
+          MATRIX_REPO: https://github.com/NicolasRouquette/yaml-test-matrix.git
+          MATRIX_REF: l4yaml
+          # Pinned so the matrix matches matrix.yaml.info's snapshot (the `data`
+          # head is a bit-identical tree). Bump deliberately.
+          TESTSUITE_DATA_REF: data-2022-01-17
+        run: |
+          set -euo pipefail
+          WORK="$RUNNER_TEMP/yaml-matrix"
+          rm -rf "$WORK"; mkdir -p "$WORK"
+
+          # (1) Package THIS commit's testers into the lean runtime image via the
+          #     prebuilt path — no in-Docker recompile, so the matrix scores the
+          #     checked-out code rather than the released tarball. The Lean-static
+          #     binaries built on this (older-glibc) runner run in bookworm-slim.
+          lake build l4yaml-event l4yaml-json
+          git clone --depth 1 --branch "$RUNTIMES_REF" "$RUNTIMES_REPO" "$WORK/yaml-runtimes"
+          install -D .lake/build/bin/l4yaml-event "$WORK/yaml-runtimes/docker/lean/prebuilt/l4yaml-event"
+          install -D .lake/build/bin/l4yaml-json  "$WORK/yaml-runtimes/docker/lean/prebuilt/l4yaml-json"
+          # Stamp the actual version into the image's advertised views.csv.
+          VER="$(grep -oE 'version := v!"[^"]+"' lakefile.lean | grep -oE '[0-9][0-9.]*' | head -1 || true)"
+          [ -n "$VER" ] && sed -i "s/,0\\.5\\.0,/,$VER,/g" "$WORK/yaml-runtimes/docker/lean/info/views.csv" || true
+          docker build -t yamlio/alpine-runtime-lean \
+            -f "$WORK/yaml-runtimes/docker/lean/prebuilt.dockerfile" \
+            "$WORK/yaml-runtimes/docker/lean"
+
+          # (2) Matrix generator + its Perl driver image (carries the CPAN deps
+          #     and a docker CLI so it can spawn the runtime containers as
+          #     siblings of the host daemon).
+          git clone --depth 1 --branch "$MATRIX_REF" "$MATRIX_REPO" "$WORK/yaml-test-matrix"
+          docker build -t yaml-test-matrix:driver \
+            -f "$WORK/yaml-test-matrix/docker/Dockerfile" "$WORK/yaml-test-matrix/docker"
+
+          # (3) Reference runtimes (published on Docker Hub). Best-effort: a
+          #     missing image only drops its own view (see the per-view loop).
+          for rt in static python perl node ruby haskell dotnet lua; do
+            docker pull -q "yamlio/alpine-runtime-$rt" \
+              || echo "::warning::could not pull yamlio/alpine-runtime-$rt — its views will be skipped"
+          done
+
+          # (4) Inputs: pinned test-suite data + the fork's runtime list.
+          cd "$WORK/yaml-test-matrix"
+          git clone --quiet --depth 1 --branch "$TESTSUITE_DATA_REF" \
+            https://github.com/yaml/yaml-test-suite yaml-test-suite/data
+          wget -qO list.yaml \
+            "https://raw.githubusercontent.com/NicolasRouquette/yaml-runtimes/$RUNTIMES_REF/list.yaml"
+          mkdir -p matrix/data matrix/tmp
+
+          # (5) Run the pipeline inside the driver. The workspace is bind-mounted
+          #     at its own absolute path so the driver's `docker run -v <path>`
+          #     mounts resolve on the host; per-view loop keeps one broken
+          #     runtime from aborting the whole matrix (--all would `die`).
+          DOCKER_GID="$(getent group docker | cut -d: -f3 || true)"
+          GROUPADD=""
+          [ -n "$DOCKER_GID" ] && GROUPADD="--group-add $DOCKER_GID"
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD":"$PWD" -w "$PWD" \
+            --user "$(id -u):$(id -g)" $GROUPADD \
+            yaml-test-matrix:driver \
+            sh -eu -c '
+              ./bin/expected
+              views="$(./bin/run-framework-tests --list)"
+              for v in $views; do ./bin/run-framework-tests --view "$v" || echo "::warning::matrix run $v failed"; done
+              for v in $views; do ./bin/compare-framework-tests --view "$v" || echo "::warning::matrix compare $v failed"; done
+              ./bin/create-matrix
+              ./bin/highlight || true
+            '
+
+          # (6) Fold the generated site into docs/ for the gh-pages publish.
+          cd "$GITHUB_WORKSPACE"
+          mkdir -p docs
+          rm -rf docs/matrix
+          cp -r "$WORK/yaml-test-matrix/matrix/html" docs/matrix
+          echo "YAML Test Matrix -> docs/matrix ($(find docs/matrix -type f | wc -l) files)"
+
+      - name: Carry forward the last published YAML Test Matrix
+        if: >-
+          github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+          || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+        run: |
+          # Non-release pushes don't regenerate the matrix; restore the last one
+          # from gh-pages so the orphan re-publish below doesn't drop it. When the
+          # matrix WAS generated this run, keep it.
+          if [ -d docs/matrix ]; then
+            echo "matrix generated this run — keeping docs/matrix"
+          else
+            git fetch --depth 1 origin gh-pages 2>/dev/null || true
+            if git rev-parse --verify FETCH_HEAD >/dev/null 2>&1; then
+              mkdir -p docs
+              if git archive FETCH_HEAD matrix 2>/dev/null | tar -x -C docs 2>/dev/null; then
+                echo "restored docs/matrix from gh-pages ($(find docs/matrix -type f 2>/dev/null | wc -l) files)"
+              else
+                echo "no prior matrix on gh-pages — nothing to carry forward"
+              fi
+            fi
+          fi
+
+      - name: Add YAML Test Matrix link to the documentation landing page
+        if: >-
+          github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+          || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+        run: |
+          if [ -d docs/matrix ] && [ -f docs/index.html ] && ! grep -q 'matrix/index.html' docs/index.html; then
+            sed -i 's|strategy, security model, and FFI bindings for C, Python, and Rust.</p>|&\n              <p>Conformance vs other YAML processors on the <a href="https://github.com/yaml/yaml-test-suite">yaml-test-suite</a>: see the <a href="matrix/index.html">YAML Test Matrix</a>.</p>|' docs/index.html \
+              && echo "matrix link injected into docs/index.html" \
+              || echo "::warning::could not inject matrix link (landing anchor not found)"
+          fi
+
+      # -------------------------------------------------------
       # Phase 6: Publish
       #
       # The generated site (docs/) is published to the orphan `gh-pages` branch instead of
@@ -422,7 +552,9 @@ jobs:
           retention-days: 30
 
       - name: Publish documentation to gh-pages branch
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        if: >-
+          github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+          || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
         run: |
           # commit-tree needs a committer identity even though nothing is committed on main.
           git config user.name "github-actions[bot]"
