@@ -550,7 +550,7 @@ when cutting a release; there is no automation that propagates between them.
 
 | Location | Field |
 |---|---|
-| [lakefile.toml](lakefile.toml) | `version = "..."` |
+| [lakefile.lean](lakefile.lean) | `version = "..."` |
 | [rust/l4yaml-sys/Cargo.toml](rust/l4yaml-sys/Cargo.toml) | `version = "..."` |
 | [rust/l4yaml/Cargo.toml](rust/l4yaml/Cargo.toml) | `version = "..."` |
 | [python/pyproject.toml](python/pyproject.toml) | `version = "..."` |
@@ -559,7 +559,7 @@ when cutting a release; there is no automation that propagates between them.
 A grep target for sanity-checking that nothing has drifted:
 
 ```sh
-grep -REn '^\s*version\s*=' lakefile.toml rust/*/Cargo.toml python/pyproject.toml
+grep -REn '^\s*version\s*:?=' lakefile.lean rust/*/Cargo.toml python/pyproject.toml
 grep -n  '^__version__' python/l4yaml/__init__.py
 ```
 
@@ -567,6 +567,81 @@ The Lean side reads its version from the lakefile (no in-source constant);
 the Rust workspace currently declares `version` per-crate (it could be
 centralized via `[workspace.package]` if cross-crate sync becomes a
 maintenance pain).
+
+## Next steps
+
+**Close the event-axis verification gap.** The event stream (the
+`+STR`/`+DOC`/`=VAL`… notation scored against the yaml-test-suite) currently
+has no formal coverage: nothing under [L4YAML/Proofs/](L4YAML/Proofs/)
+references [L4YAML/Output/Events.lean](L4YAML/Output/Events.lean), whose
+`parseStreamMarkedLoop` is an unverified mirror of the verified
+`TokenParser.parseStreamLoop` (~13 duplicated decision points, plus
+`explicitStartAt` re-implementing the directive skip of `parseDirectives`).
+Demonstrated 2026-07-04: commenting out the `some .documentEnd` suffix arm
+(the C1 fix from commit `7d43fe61`) left `lake build` — and CI — green while
+the event axis silently regressed 402→399 (HWV9, QT73, M7A3). YAML 1.2.2
+defines no normative event model (events are "a traversal of the
+serialization tree", §3.1.1/§3.2.2; the wire format is the de-facto
+libyaml/yaml-test-suite DSL), but the serialization tree plus the §9 document
+grammar (productions [205]/[206]/[208]/[211]) fully determine event
+*semantics*, and the agreement theorem in step 3 needs no external reference
+at all. The `Events.lean` definitions are already de-privatized so loop-level
+lemmas can be stated from `Proofs/`.
+
+1. **Pin the C1 event streams at build time.** Add a
+   `Tests/Reflections/DocumentSuffixEvents.lean` pinning the byte-exact
+   `streamToEvents` output for HWV9 (`...\n` → `+STR`/`-STR`), QT73
+   (`# comment\n...\n` → `+STR`/`-STR`), and M7A3 (spec Example 9.3 — two
+   documents, no phantom empty document between the two `...` lines) via
+   `native_decide`, following the existing event-pin convention
+   (`EmptyNodePropsSeqEntry`, `EscapedTrailingTab`, `EmitterTagPercentDecode`,
+   `OrderAwareAlias`), and **index it in
+   [Tests/Reflections.lean](Tests/Reflections.lean)** — an unindexed
+   reflection is never built. This makes the `documentEnd` arm a
+   build-time-guarded fact like defects C2/B2/D/J2 already are.
+
+2. **Close the CI gap.** The build step of
+   [.github/workflows/test-coverage.yml](.github/workflows/test-coverage.yml)
+   uses an explicit target list that omits `Tests.Guards`,
+   `Tests.Reflections`, `l4yaml-event`, `l4yaml-json`, and `eventscore`, and
+   `scripts/run-all-tests.sh` runs nothing event-related — so even the
+   existing reflection pins never elaborate in CI. Add the guard/reflection
+   libs and the event targets to the build list, and add an event-scoring
+   step with a fail threshold:
+
+   ```sh
+   lake build eventscore && .lake/build/bin/eventscore --suite yaml-test-suite
+   # Baseline on the pinned submodule (478062b9): 347/358 correct.
+   # The 11 event-diffs are upstream suite-version skew, not defects.
+   # (The full 402-test matrix runs against the suite's data-branch
+   # export; see YAML_MATRIX_COMPARISON.md.)
+   ```
+
+3. **Prove the agreement theorem** welding the mirror to the verified
+   parser. `MarkedDoc` embeds a full `YamlDocument` plus two `Bool` marks, so
+   the forget-the-marks projection is just `MarkedDoc.doc`:
+
+   ```lean
+   theorem parseYamlRawMarked_agrees (input : String) :
+       (parseYamlRawMarked input).map (·.map (·.doc)) = parseYamlRaw input
+   ```
+
+   proved from a loop-level lemma by fuel induction:
+
+   ```lean
+   theorem parseStreamMarkedLoop_agrees (ps acc ss fuel) :
+       (parseStreamMarkedLoop ps acc ss fuel).map (·.map (·.doc))
+         = parseStreamLoop ps (acc.map (·.doc)) ss fuel
+   ```
+
+   The loop arms are pairwise identical except the push ordering around
+   `tryConsume .documentEnd`, which is semantically neutral for the projected
+   document list. After this lands, any future drift between the two loops is
+   a proof breakage instead of a silent event regression. The theorem does
+   not cover the `explicitStart`/`explicitEnd` marks themselves
+   (`explicitStartAt` is a second copy of the directive grammar); those stay
+   guarded by the step-1 pins, which check the `+DOC ---` / `-DOC ...`
+   decorations byte-exactly.
 
 ## Contributing
 

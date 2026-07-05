@@ -68,7 +68,7 @@ theorem pureVal_scalar (s : Scalar) (h : s.anchor = none) : PureVal (.scalar s) 
 theorem pureVal_emptyNode : PureVal emptyNode :=
   pureVal_scalar _ rfl
 
-private theorem list_map_self {α : Type} (l : List α) (f : α → α)
+theorem list_map_self {α : Type} (l : List α) (f : α → α)
     (h : ∀ x ∈ l, f x = x) : l.map f = l := by
   induction l with
   | nil => rfl

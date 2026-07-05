@@ -55,28 +55,28 @@ def mapLoopWindow (acZero : Bool) (rest : List (YamlValue × YamlValue)) : List 
   | _, true => emitTokVals.mapTokVals rest
   | _, false => .flowEntry :: emitTokVals.mapTokVals rest
 
-private theorem push_getElem!_lt (a : Array YamlValue) (x : YamlValue) (j : Nat)
+theorem push_getElem!_lt (a : Array YamlValue) (x : YamlValue) (j : Nat)
     (hj : j < a.size) : (a.push x)[j]! = a[j]! := by
   rw [getElem!_pos (a.push x) j (by simp; omega), getElem!_pos a j hj]
   exact Array.getElem_push_lt hj
 
-private theorem push_getElem!_last (a : Array YamlValue) (x : YamlValue) :
+theorem push_getElem!_last (a : Array YamlValue) (x : YamlValue) :
     (a.push x)[a.size]! = x := by
   rw [getElem!_pos (a.push x) a.size (by simp)]
   exact Array.getElem_push_eq ..
 
-private theorem pair_push_getElem!_lt (a : Array (YamlValue × YamlValue))
+theorem pair_push_getElem!_lt (a : Array (YamlValue × YamlValue))
     (x : YamlValue × YamlValue) (j : Nat) (hj : j < a.size) : (a.push x)[j]! = a[j]! := by
   rw [getElem!_pos (a.push x) j (by simp; omega), getElem!_pos a j hj]
   exact Array.getElem_push_lt hj
 
-private theorem pair_push_getElem!_last (a : Array (YamlValue × YamlValue))
+theorem pair_push_getElem!_last (a : Array (YamlValue × YamlValue))
     (x : YamlValue × YamlValue) : (a.push x)[a.size]! = x := by
   rw [getElem!_pos (a.push x) a.size (by simp)]
   exact Array.getElem_push_eq ..
 
 /-- The head token of an emission run, with its content-start classification. -/
-private theorem emitTokVals_head_tok (v : YamlValue) :
+theorem emitTokVals_head_tok (v : YamlValue) :
     ∃ htk, (emitTokVals v)[0]? = some htk
       ∧ ((∃ c st, htk = .scalar c st) ∨ htk = .flowSequenceStart ∨ htk = .flowMappingStart) := by
   have h_h := emitTokVals_head v
@@ -92,7 +92,7 @@ private theorem emitTokVals_head_tok (v : YamlValue) :
     · exact Or.inr (Or.inr h)
 
 set_option maxHeartbeats 3200000 in
-private theorem seq_walk_aux {tokens : Array (Positioned YamlToken)} :
+theorem seq_walk_aux {tokens : Array (Positioned YamlToken)} :
     ∀ (rest : List YamlValue) (acc : Array YamlValue) (ps : ParseState) (fuel : Nat)
       (result : Array YamlValue × ParseState),
       (∀ v ∈ rest, StdElt v) →
@@ -423,7 +423,7 @@ theorem parseFlowSeqLoop_tokvals_value_at {tokens : Array (Positioned YamlToken)
     simpa using h_at'
 
 set_option maxHeartbeats 6400000 in
-private theorem map_walk_aux {tokens : Array (Positioned YamlToken)} :
+theorem map_walk_aux {tokens : Array (Positioned YamlToken)} :
     ∀ (rest : List (YamlValue × YamlValue)) (acc : Array (YamlValue × YamlValue))
       (ps : ParseState) (fuel : Nat)
       (result : Array (YamlValue × YamlValue) × ParseState),

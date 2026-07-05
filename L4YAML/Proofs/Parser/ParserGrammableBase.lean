@@ -593,7 +593,7 @@ theorem WellFormedEnv.cons {env : List (String × YamlValue)}
     satisfies the element-level (grammable ∧ well-formed-env) contract keeps
     every resolved element grammable after stripping and the final
     environment well-formed. -/
-private theorem goList_grammable_ordered
+theorem goList_grammable_ordered
     (anchors : Array (String × YamlValue)) (ctx : Bool)
     (l : List YamlValue)
     (H : ∀ v ∈ l, ∀ env, WellFormedEnv env →
@@ -622,7 +622,7 @@ private theorem goList_grammable_ordered
 /-- Joint contract for `goPairs`: the key/value analog of
     `goList_grammable_ordered` (key resolved before value before the rest,
     each step re-arming the environment invariant). -/
-private theorem goPairs_grammable_ordered
+theorem goPairs_grammable_ordered
     (anchors : Array (String × YamlValue)) (ctx : Bool)
     (l : List (YamlValue × YamlValue))
     (Hk : ∀ p ∈ l, ∀ env, WellFormedEnv env →

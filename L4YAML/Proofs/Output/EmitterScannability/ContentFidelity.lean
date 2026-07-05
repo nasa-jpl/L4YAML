@@ -1765,7 +1765,7 @@ Proof strategy: fuel induction.  Position invariant: at step k the parser is at 
 `parseFlowSequenceLoop_step_index` converts the recursive-call witness into the
 `result.1[k]! = val` equation. -/
 
-private theorem parseFlowSeqLoop_allScalar_value_at_aux
+theorem parseFlowSeqLoop_allScalar_value_at_aux
     {tokens : Array (Positioned YamlToken)}
     {items : List YamlValue}
     (h_ne : items ≠ [])
@@ -1961,7 +1961,7 @@ theorem parseFlowSeqLoop_allScalar_value_at
     (by simp only [ite_true, h_pos]) (by omega) h_ok
   exact ⟨h_size, fun j h_lt => h_vals j (Nat.zero_le j) h_lt⟩
 
-private theorem parseFlowMappingLoop_allScalar_pair_at_aux
+theorem parseFlowMappingLoop_allScalar_pair_at_aux
     {tokens : Array (Positioned YamlToken)}
     {pairs : List (YamlValue × YamlValue)}
     (h_ne : pairs ≠ [])

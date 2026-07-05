@@ -25,7 +25,7 @@ namespace L4YAML.Json
 open L4YAML L4YAML.Schema
 
 /-- Four-digit lowercase hex for a `\uXXXX` JSON escape. -/
-private def toHex4 (n : Nat) : String :=
+def toHex4 (n : Nat) : String :=
   let digits := "0123456789abcdef".toList
   let d (k : Nat) : Char := digits[(n / (16 ^ k)) % 16]!
   String.ofList [d 3, d 2, d 1, d 0]

@@ -44,7 +44,7 @@ open L4YAML L4YAML.TokenParser
 /-! ## Escaping and property rendering -/
 
 /-- Backspace character (0x08), escaped as `\b` in the event stream. -/
-private def backspace : String := String.singleton (Char.ofNat 8)
+def backspace : String := String.singleton (Char.ofNat 8)
 
 /-- Escape a scalar's content for the event stream.  Backslash is escaped first
     so the backslashes introduced by the control-character rules are not doubled. -/
@@ -57,7 +57,7 @@ def escapeEventValue (s : String) : String :=
 
 /-- Hex-digit value of a single ASCII byte (`'0'`–`'9'`, `'A'`–`'F'`, `'a'`–`'f'`);
     `none` for any other byte.  Used to decode `%HH` tag escapes. -/
-private def hexVal (b : UInt8) : Option Nat :=
+def hexVal (b : UInt8) : Option Nat :=
   let n := b.toNat
   if 0x30 ≤ n ∧ n ≤ 0x39 then some (n - 0x30)          -- '0'–'9'
   else if 0x41 ≤ n ∧ n ≤ 0x46 then some (n - 0x41 + 10) -- 'A'–'F'
@@ -68,7 +68,7 @@ private def hexVal (b : UInt8) : Option Nat :=
     byte `0xHH`, pass every other byte through.  Operates on UTF-8 bytes so a
     multi-byte escape (`%E2%9C%93` → ✓) round-trips; a `%` not followed by two
     hex digits stays literal. -/
-private partial def percentDecodeBytes
+partial def percentDecodeBytes
     (bytes : ByteArray) (i : Nat) (acc : ByteArray) : ByteArray :=
   if i < bytes.size then
     let b := bytes[i]!
@@ -105,15 +105,15 @@ def resolveTagForEvent (t : String) : String :=
   else percentDecodeTag t  -- local tag `!foo`, non-specific `!`, or already-resolved
 
 /-- Render the optional `&anchor` property. -/
-private def anchorStr (a : Option String) : String :=
+def anchorStr (a : Option String) : String :=
   match a with | some x => s!" &{x}" | none => ""
 
 /-- Render the optional `<tag>` property. -/
-private def tagStr (t : Option String) : String :=
+def tagStr (t : Option String) : String :=
   match t with | some x => s!" <{resolveTagForEvent x}>" | none => ""
 
 /-- The style character for a scalar. -/
-private def styleChar : ScalarStyle → String
+def styleChar : ScalarStyle → String
   | .plain        => ":"
   | .singleQuoted => "'"
   | .doubleQuoted => "\""
@@ -155,7 +155,7 @@ structure MarkedDoc where
 /-- Does the document beginning at `ps` open with an explicit `---`?
     Directives (`%YAML`, `%TAG`) may precede it; a directive-led document is
     always explicit per §9.1.5. -/
-private def explicitStartAt (ps : ParseState) : Bool :=
+def explicitStartAt (ps : ParseState) : Bool :=
   let rec go (i : Nat) (fuel : Nat) : Bool :=
     match fuel with
     | 0 => false
@@ -171,7 +171,7 @@ private def explicitStartAt (ps : ParseState) : Bool :=
 
 /-- Mirror of `TokenParser.parseStreamLoop` that additionally records explicit
     `---` / `...` markers for each document. -/
-private def parseStreamMarkedLoop (ps : ParseState) (acc : Array MarkedDoc)
+def parseStreamMarkedLoop (ps : ParseState) (acc : Array MarkedDoc)
     (streamState : StreamState) (fuel : Nat) : Except ScanError (Array MarkedDoc) :=
   match fuel with
   | 0 => .ok acc
