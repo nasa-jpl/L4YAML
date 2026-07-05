@@ -106,13 +106,31 @@ endif()
 #     lean-toolchain (or a stale local build of them) drifts from this
 #     project's pin → undefined references at libl4yaml.so link time.
 #
-# L4YAML's lakefile requires ONLY tooling packages (importGraph,
-# DocGen4), so today every package under .lake/packages/ belongs here.
-# If a real library dependency is ever added, do NOT list it.
+#   * Interactive-proving deps — LeanCopilot (a direct `require` for
+#     editor `suggest_tactics`) and its tactic-framework transitive
+#     deps aesop and batteries.  NO L4YAML runtime module imports any
+#     of them (the sole `Std.Data.HashMap` import resolves to core Lean,
+#     NOT the `batteries` package), so none of their symbols reach
+#     libl4yaml.so.  Critically, LeanCopilot's release tags do not track
+#     Lean's version 1:1 — its `v4.31.0` tag pins lean-toolchain
+#     `v4.32.0-rc1` and drags aesop/batteries to `v4.32.0-rc1` too, one
+#     minor ahead of this project's `v4.31.0`.  There is no LeanCopilot
+#     release built against Lean 4.31.0, so this skew is unavoidable
+#     while we require LeanCopilot; excluding their IR here is what keeps
+#     it out of the 4.31 shared library.  (On the self-hosted runner a
+#     persistent .lake means their 4.32 IR can linger from a
+#     `-Kleancopilot=on` dev build even when a given CI step never
+#     rebuilds them — the skip list must hold regardless.)
+#
+# Rule for future edits: list a package here iff L4YAML's own compiled
+# code never imports it.  A genuine *runtime* library dependency — one
+# whose symbols L4YAML's IR references — must NOT be listed, or the link
+# will fail with undefined references to it.
 set(L4YAML_FFI_SKIP_PACKAGES
   "DocGen4" "importGraph"
   "BibtexQuery" "MD4Lean"
-  "Cli" "UnicodeBasic" "leansqlite" "plausible")
+  "Cli" "UnicodeBasic" "leansqlite" "plausible"
+  "LeanCopilot" "aesop" "batteries")
 
 # 2. Each Lake-resolved dep's lean-toolchain vs the parent project's.
 #    Lake compiles a dep with that dep's own pin, then we link
