@@ -28,7 +28,7 @@ authors := ["Nicolas F. Rouquette"]
 shortTitle := "L4YAML"
 %%%
 
-L4YAML is a fully verified YAML 1.2.2 parser written in pure Lean 4.
+L4YAML {version}[] is a fully verified YAML 1.2.2 parser written in pure Lean 4.
 It delivers {numTheorems}[] machine-checked theorems across
 {numProofModules}[] proof modules, zero axioms, zero `sorry`, and
 zero `partial def` — while passing 100% of the YAML 1.2.2

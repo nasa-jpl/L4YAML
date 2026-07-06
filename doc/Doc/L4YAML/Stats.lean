@@ -126,4 +126,36 @@ def leanLines : RoleExpanderOf Unit
     let s := formatWithCommas n
     `(Verso.Doc.Inline.text $(Lean.quote s))
 
+/-! ## Package-version role -/
+
+/-- The declared package version, read from `lakefile.lean`'s
+    `version := v!"X.Y.Z"` line relative to the repo root — the single source
+    of truth (`scripts/bump-version.sh` keeps it in sync with the Python and
+    Rust packages). Mirrors the file-reading approach of `leanLines`/`scanProofs`,
+    and carries the same `lake clean` staleness caveat noted at the top of this
+    module (CI always builds the doc fresh, so the published version is current). -/
+def readVersion : IO String := do
+  let txt ← IO.FS.readFile ((← resolveRepoRoot) / "lakefile.lean")
+  -- Match the committed form `  version := v!"X.Y.Z"` using only `splitOn`
+  -- (returns `List String`, avoiding the `String.Slice` results of drop/takeWhile).
+  for line in txt.splitOn "\n" do
+    match line.splitOn "version := v!\"" with
+    | _ :: rest :: _ =>
+      match rest.splitOn "\"" with
+      | ver :: _ => return ver
+      | _ => pure ()
+    | _ => pure ()
+  throw (IO.userError "readVersion: no `version := v!\"…\"` line in lakefile.lean")
+
+elab "l4yaml_version_str" : term => do
+  return Lean.mkStrLit (← readVersion)
+
+/-- The declared package version, e.g. `"0.5.1"`. -/
+def versionStr : String := l4yaml_version_str
+
+/-- Inline role: `{version}[]` expands to the declared package version. -/
+@[role]
+def version : RoleExpanderOf Unit
+  | (), _ => ``(Verso.Doc.Inline.text Doc.L4YAML.Stats.versionStr)
+
 end Doc.L4YAML.Stats
