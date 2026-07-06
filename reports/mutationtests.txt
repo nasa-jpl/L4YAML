@@ -1,0 +1,71 @@
+=== mutationtests ===
+=== Mutation Testing on yaml-test-suite (v0.2.13.2) ===
+
+--- STRICT: tabs in quoted scalar continuations ---
+  ✓ 4CQQ tab in dquote continuation (STRICT: libyaml accepts)
+  ✓ DK95:2 tab in dquote continuation (STRICT: libyaml accepts)
+  ✓ DK95:8 dquote continuation at col 0 (STRICT: libyaml accepts)
+  ✓ NAT4:0 tab in squote continuation (STRICT: libyaml accepts)
+  ✓ RZP5:0 tab in dquote continuation (STRICT: libyaml accepts)
+
+--- STRICT: tabs in flow context ---
+  ✓ 87E4 tab indent in flow seq entry (STRICT: libyaml accepts)
+  ✓ 87E4 tab indent before flow closer (STRICT: libyaml accepts)
+  ✓ L9U5 tab indent in flow entry (STRICT: libyaml accepts)
+  ✓ ZF4X tab indent in flow mapping (STRICT: libyaml accepts)
+  ✓ LP6E tab indent in multiline flow (STRICT: libyaml accepts)
+  ✓ M5DY tab indent in flow seq (STRICT: libyaml accepts)
+
+--- STRICT: other mutations ---
+  ✓ 2SXE anchor:key no space (STRICT: libyaml accepts)
+  ✓ 35KP dash shifted right in multi-doc (STRICT: libyaml accepts)
+  ✓ 6ZKB comment+... joined (STRICT: libyaml accepts)
+  ✓ V55R dash shifted right with anchor (STRICT: libyaml accepts)
+
+--- LENIENT: indent shift ---
+  ✓ 2SXE:0 over-indent alias key (LENIENT: libyaml rejects)
+  ✓ 2SXE:0 under-indent alias key (LENIENT: libyaml rejects)
+  ✓ 5MUD:0 over-indent colon in flow (LENIENT: libyaml rejects)
+  ✓ 5MUD:0 under-indent colon in flow (LENIENT: libyaml rejects)
+  ✓ 4Q9F:0 under-indent flow content (LENIENT: libyaml rejects)
+  ✓ 6FWR:0 under-indent block value (LENIENT: libyaml rejects)
+
+--- LENIENT: delete-newline ---
+  ✓ 2JQS:0 join empty-key lines (LENIENT: libyaml rejects)
+  ✓ 4ABK:0 join multi-doc line 0+1 (LENIENT: libyaml rejects)
+  ✓ 6CK3:0 join doc start+content (LENIENT: libyaml rejects)
+  ✓ 5T43:0 join literal+value lines (LENIENT: libyaml rejects)
+  ✓ 58MP:0 join ?-colon lines (LENIENT: libyaml rejects)
+
+--- LENIENT: add-newline ---
+  ✓ 2LFX:0 blank after directive (LENIENT: libyaml rejects)
+  ✓ 4MUZ:0 blank in multi-doc (LENIENT: libyaml rejects)
+  ✓ 5MUD:0 blank after doc-start (LENIENT: libyaml rejects)
+
+--- LENIENT: space-to-tab (indent) ---
+  ✓ 2LFX:0 tab indent directive comment (LENIENT: libyaml rejects)
+  ✓ 4Q9F:0 tab indent block scalar (BOTH_REJECT)
+  ✓ 5MUD:0 tab indent flow content (LENIENT: libyaml rejects)
+  ✓ 6JQW:0 tab indent block mapping (BOTH_REJECT)
+
+--- LENIENT: colon-nospace ---
+  ✓ 6KGN:0 b:*anchor no space (LENIENT: libyaml rejects)
+  ✓ 7Z25:0 key:value no space (LENIENT: libyaml rejects)
+  ✓ 9SA2:0 flow multiline key:value (LENIENT: libyaml rejects)
+
+--- LENIENT: dash-indent ---
+  ✓ 8XYN:0 dash shifted right with emoji anchor (LENIENT: libyaml rejects)
+  ✓ DBG4:0 dash shifted right in sequence (LENIENT: libyaml rejects)
+
+--- Agreement: BOTH_REJECT mutations ---
+  ✓ space-to-tab block indent
+  ✓ indent-1 breaks nested mapping
+  ✓ delete-newline block scalar header
+  ✓ space-to-tab block scalar content
+
+--- Agreement: BOTH_ACCEPT mutations ---
+  ✓ add-newline after seq entry
+  ✓ indent+1 on scalar value
+  ✓ add-newline after mapping value
+
+=== Results: 45/45 passed ===

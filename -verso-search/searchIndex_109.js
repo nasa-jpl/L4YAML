@@ -1,0 +1,1 @@
+window.docContents[109].resolve({"/Verification/What-L4YAML-Proves/#theorem-graphs-roundtrip":{"contents":"\n\n","context":"L4YAML: A Verified YAML 1.2.2 Parser in Lean 4\u0009Verification\u0009What L4YAML Proves","header":"3.4.6. Roundtrip","id":"/Verification/What-L4YAML-Proves/#theorem-graphs-roundtrip"}});

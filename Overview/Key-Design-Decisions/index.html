@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script>
+      (function(){
+  const {protocol:proto, host:hostName, pathname:path, search:srch, hash:hsh} = window.location;
+  if (!(path.endsWith("/") || path.endsWith(".html"))) {
+    window.location.replace(`${proto}//${hostName}${path}/${srch}${hsh}`);
+  }
+})()</script>
+    <base href="./../../"><meta charset="utf-8">
+    <meta name="viewport" content="height=device-height, width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
+    <title>Key Design Decisions</title><link rel="stylesheet" href="book.css">
+    <link rel="stylesheet" href="verso-vars.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js" integrity="sha384-zbcZAIxlvJtNE3Dp5nxLXdXtXyxwOdnILY1TDPVmKFhl4r4nSUG1r8bcFXGVa4Te" crossorigin="anonymous"></script>
+    <script src="-verso-search/elasticlunr.min.js"></script>
+    <script src="-verso-search/fuzzysort.min.js"></script>
+    <script src="-verso-search/searchIndex.js"></script>
+    <script type="module" src="-verso-search/search-init.js"></script>
+    <link rel="stylesheet" href="-verso-search/search-box.css">
+    <link rel="stylesheet" href="-verso-search/search-highlight.css">
+    <link rel="stylesheet" href="-verso-search/domain-display.css">
+    <script src="-verso-data/katex/katex.js"></script>
+    <script src="-verso-data/katex/math.js"></script>
+    <link rel="stylesheet" href="-verso-data/katex/katex.css">
+    <style>
+table.tabular {
+  margin: auto;
+  border-spacing: 1rem;
+}
+table.tabular.left-align {
+  margin-right: auto;
+  margin-left: 0;
+}
+table.tabular.center-align {
+  margin: auto;
+}
+table.tabular.right-align {
+  margin-left auto;
+  margin-right: 0;
+}
+table.tabular td, table.tabular th {
+  text-align: left;
+  vertical-align: top;
+}
+table.tabular td > p:first-child, table.tabular th > p:first-child {
+  margin-top: 0;
+}
+table.tabular td > p:last-child, table.tabular th > p:first-child {
+  margin-bottom: 0;
+}
+</style><style>
+    main .theIndex {
+      padding-left: 0;
+      font-family: var(--verso-text-font-family);
+    }
+
+    main .theIndex nav {
+      position: sticky;
+      top: var(--verso-header-height);
+      background: white;
+      font-family: var(--verso-structure-font-family);
+    }
+
+    main .theIndex [id] {
+      /* This needs the combined height of the index header and the page header. We
+         know the height of the page header, but the index header height varies, so
+         we use the maximum height it gets which also works well for readers with
+         wide screens */
+      scroll-margin-top: calc(var(--verso-header-height) + 7.5rem);
+    }
+
+    @media screen and (max-width: 700px) {
+      /* On mobile, the sticky index takes up half the screen. */
+      main .theIndex nav {
+        position: static;
+      }
+
+      main .theIndex [id] {
+        /* On mobile, the index header is not sticky, so we just need to
+        be below the page header. */
+        scroll-margin-top: var(--verso-header-height);
+      }
+    }
+
+    main .theIndex nav ol {
+      padding: 0;
+    }
+
+    main .theIndex nav ol li {
+      display: inline-block;
+    }
+
+    main .theIndex nav ol li a {
+      /* Padding instead of margin to have a bigger click target */
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+    }
+    /* Increase the size of the touch target on phones */
+    @media screen and (max-width: 700px) {
+      main .theIndex nav ol li a {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+      }
+    }
+
+    main .theIndex nav ol li:first-child a {
+      padding-left: 0;
+    }
+
+    main .theIndex nav ol li + li:before {
+      content: "|";
+    }
+
+    main .theIndex h1,
+    main .theIndex h2,
+    main .theIndex h3,
+    main .theIndex h4,
+    main .theIndex h5,
+    main .theIndex h6 {
+      margin-top: 0;
+    }
+
+    main .theIndex ol {
+      list-style-type: none;
+    }
+
+    main .theIndex .division > ol {
+      padding-left: 0;
+      display: flex;
+      flex-direction: column;
+      gap: .5rem;
+      overflow-wrap: break-word;
+    }
+
+   main .theIndex .division > ol > li {
+      margin-bottom: 0.5rem;
+    }
+
+    main .theIndex .division ol ol {
+      padding-left: 1rem;
+    }
+
+    main .theIndex .division {
+      break-inside: avoid;
+      counter-reset: none;
+      max-width: none;
+      width: auto;
+    }
+    </style><script src="-verso-search/search-highlight.js" defer="defer"></script>
+    </head>
+  <body>
+    <header>
+      <div class="header-logo-wrapper"></div>
+      <div class="header-title-wrapper">
+        <a href="" class="header-title"><h1>
+            L4YAML</h1>
+          </a></div>
+      </header>
+    <label for="toggle-toc" id="toggle-toc-click"><span class="line line1"></span><span class="line line2"></span><span class="line line3"></span></label><div class="with-toc">
+      <div class="toc-backdrop" onclick="document.getElementById('toggle-toc-click')?.click()"></div>
+      <nav id="toc">
+        <input type="checkbox" id="toggle-toc"><div class="first">
+          <a href="" class="toc-title"><h1>
+              L4YAML</h1>
+            </a><div class="split-tocs">
+            <div class="split-toc book">
+              <div class="title">
+                <label for="--verso-manual-toc-----bookRoot" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-----bookRoot"></label><span class="">Table of Contents</span></div>
+              <table><tr class="current numbered"><td class="num">1.</td><td><a href="Overview/#overview">Overview</a></td></tr><tr class="numbered"><td class="num">2.</td><td><a href="Architecture/#architecture">Architecture</a></td></tr><tr class="numbered"><td class="num">3.</td><td><a href="Verification/#verification">Verification</a></td></tr><tr class="numbered"><td class="num">4.</td><td><a href="Security/#security">Security</a></td></tr><tr class="numbered"><td class="num">5.</td><td><a href="FFI-Bindings/#ffi">FFI Bindings</a></td></tr><tr class="numbered"><td class="num">6.</td><td><a href="Building/#building">Building</a></td></tr><tr class="numbered"><td class="num">7.</td><td><a href="Testing/#testing">Testing</a></td></tr><tr class="numbered"><td class="num">8.</td><td><a href="Test-Results/#test-results">Test Results</a></td></tr><tr class="unnumbered"><td class="num"><td><a href="Index/#index">Index</a></td></tr></table></div>
+            <div class="split-toc">
+              <div class="title">
+                <label for="--verso-manual-toc-overview" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-overview" checked="checked"></label><span class="number">1.</span> <span class=""><a href="Overview/#overview">Overview</a></span></div>
+              <table><tr class="numbered"><td class="num">1.1.</td><td><a href="Overview/At-a-Glance/#at-a-glance">At a Glance</a></td></tr><tr class="current numbered"><td class="num">1.2.</td><td><a href="Overview/Key-Design-Decisions/#design-decisions">Key Design Decisions</a></td></tr></table></div>
+            <div class="split-toc">
+              <div class="title">
+                <span class="no-toggle"></span><span class="number">1.2.</span> <span class="current"><a href="Overview/Key-Design-Decisions/#design-decisions">Key Design Decisions</a></span></div>
+              </div>
+            </div>
+          </div>
+        <div class="last"></div>
+        </nav>
+      <main><div class="content-wrapper">
+          <nav class="prev-next-buttons">
+            <a class="local-button active" href="Overview/At-a-Glance/#at-a-glance" rel="prev" title="1.1. At a Glance"><span class="arrow">←</span><span class="where">1.1. At a Glance</span></a><a class="local-button active" href="Architecture/#architecture" rel="next" title="2. Architecture"><span class="where">2. Architecture</span><span class="arrow">→</span></a></nav>
+          <section>
+            <h1>
+              1.2. Key Design Decisions<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=design-decisions" title="Permalink">🔗</a></span></h1>
+            <p>
+              The parser is built around several deliberate design choices:</p>
+            <ul>
+              <li>
+                <p>
+                  <strong>Pure Lean 4, zero external dependencies.</strong>
+   The core parser has no C FFI calls and no dependency on external
+   parsing libraries.
+   This ensures every line of parsing logic is visible to the
+   Lean kernel for formal verification.</p>
+                </li>
+              <li>
+                <p>
+                  <strong>Total functions only.</strong>
+   Every function terminates provably.
+   The <code>partial</code> keyword is never used in production code.
+   Termination is proved via well-founded recursion over input
+   offsets, indentation levels, and flow nesting depth.</p>
+                </li>
+              <li>
+                <p>
+                  <strong>Append-only token streams.</strong>
+   Tokens are emitted into a pre-allocated array with placeholder
+   reservation slots.
+   Backpatching uses <code>setIfInBounds</code> (bounded update) rather than
+   <code>insertAt</code> (which would shift indices).
+   This design ensures monotonic progress and simplifies the
+   formal proof of scanner correctness.</p>
+                </li>
+              <li>
+                <p>
+                  <strong>Two-pass architecture.</strong>
+   A character-level scanner emits a <code>YamlToken</code> stream, which a
+   separate recursive-descent parser converts to a typed AST.
+   This separation mirrors the YAML specification's own layered
+   structure and enables independent verification of each layer.</p>
+                </li>
+              <li>
+                <p>
+                  <strong>Configurable security limits.</strong>
+   All resource bounds (nesting depth, string length, collection sizes)
+   are configurable via <code>ParserLimits</code>, with four built-in presets
+   from <code>strict</code> to <code>unlimited</code>.
+</p>
+                </li>
+              </ul>
+            </section>
+          <nav class="prev-next-buttons">
+            <a class="local-button active" href="Overview/At-a-Glance/#at-a-glance" rel="prev" title="1.1. At a Glance"><span class="arrow">←</span><span class="where">1.1. At a Glance</span></a><a class="local-button active" href="Architecture/#architecture" rel="next" title="2. Architecture"><span class="where">2. Architecture</span><span class="arrow">→</span></a></nav>
+          </div>
+        </main></div>
+    </body>
+  </html>
+

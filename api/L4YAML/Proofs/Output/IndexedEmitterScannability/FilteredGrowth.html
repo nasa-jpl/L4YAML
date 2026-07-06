@@ -1,0 +1,42 @@
+<html lang="en"><head><meta charset="UTF-8"></meta><meta name="viewport" content="width=device-width, initial-scale=1"></meta><link rel="stylesheet" href="../../../.././style.css"></link><link rel="icon" href="../../../.././favicon.svg"></link><link rel="mask-icon" href="../../../.././favicon.svg" color="#000000"></link><link rel="prefetch" href="../../../.././/declarations/declaration-data.bmp" as="image"></link><title>L4YAML.Proofs.Output.IndexedEmitterScannability.FilteredGrowth</title><script defer="true" src="../../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../../.././";</script><script>const MODULE_NAME="L4YAML.Proofs.Output.IndexedEmitterScannability.FilteredGrowth";</script><script type="module" src="../../../.././jump-src.js"></script><script type="module" src="../../../.././search.js"></script><script type="module" src="../../../.././expand-nav.js"></script><script type="module" src="../../../.././how-about.js"></script><script type="module" src="../../../.././instances.js"></script><script type="module" src="../../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"></input><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">L4YAML</span>.<span class="name">Proofs</span>.<span class="name">Output</span>.<span class="name">IndexedEmitterScannability</span>.<span class="name">FilteredGrowth</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"></input>&#32;<button id="search_button" onclick="javascript: form.action='../../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/c558fda35b06e05a93078c6c12c18ea598b9ea47/L4YAML/Proofs/Output/IndexedEmitterScannability/FilteredGrowth.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../../.././Init.html">Init</a></li><li><a href="../../../.././L4YAML/Proofs/Output/IndexedEmitterScannability/FilteredGrowth/FirstFiltered.html">L4YAML.Proofs.Output.IndexedEmitterScannability.FilteredGrowth.FirstFiltered</a></li><li><a href="../../../.././L4YAML/Proofs/Output/IndexedEmitterScannability/FilteredGrowth/Infra.html">L4YAML.Proofs.Output.IndexedEmitterScannability.FilteredGrowth.Infra</a></li><li><a href="../../../.././L4YAML/Proofs/Output/IndexedEmitterScannability/FilteredGrowth/PerDispatch.html">L4YAML.Proofs.Output.IndexedEmitterScannability.FilteredGrowth.PerDispatch</a></li><li><a href="../../../.././L4YAML/Proofs/Output/IndexedEmitterScannability/FilteredGrowth/Turn3.html">L4YAML.Proofs.Output.IndexedEmitterScannability.FilteredGrowth.Turn3</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-L4YAML.Proofs.Output.IndexedEmitterScannability.FilteredGrowth" class="imported-by-list"></ul></details></div></nav><main>
+<div class="mod_doc"><h1 id="IndexedEmitterScannability-FilteredGrowth-re-export-shim" class="markdown-heading"><code>IndexedEmitterScannability.FilteredGrowth</code> — re-export shim <a class="hover-link" href="#IndexedEmitterScannability-FilteredGrowth-re-export-shim">#</a></h1><p>The <code>FilteredGrowth</code> machinery is split into one file per sub-session
+under <code>FilteredGrowth/</code>. Importing this module pulls in everything;
+importing sub-files directly is also fine. The namespace
+<code>L4YAML.Proofs.Indexed.EmitterScannability.FilteredGrowth</code> is
+preserved.</p><h2 id="Sub-sessions-Phase-3-Step-6f-3b3-filteredgrowth" class="markdown-heading">Sub-sessions (Phase 3 Step 6f.3b3.filteredgrowth) <a class="hover-link" href="#Sub-sessions-Phase-3-Step-6f-3b3-filteredgrowth">#</a></h2><ul><li><code><a href="../../../.././FilteredGrowth/FirstFiltered.html">FilteredGrowth/FirstFiltered.lean</a></code> — first-filtered-token lemmas
+for flow-content scanners (legacy lines 5587–5899). Ships
+<code>scanFlowSequenceStartIx_first_filtered_token</code>,
+<code>scanFlowMappingStartIx_first_filtered_token</code>,
+<code>scanDoubleQuotedIx_first_filtered_token</code>, plus emitter shape
+helpers (<code>emit_first_char</code>, <code>emitList_first_char</code>,
+<code>emitList_toList_ne_nil</code>), <code>emit_tokens_pushIx</code>, and the generic
+<code>Array_filter_prefix_of_raw_prefix</code> array lemma.</li><li><code><a href="../../../.././FilteredGrowth/Infra.html">FilteredGrowth/Infra.lean</a></code> — filtered token array growth
+infrastructure (legacy lines 5900–6070). Ships
+<code>List_filter_set_length_monoIx</code>, <code>Array_setIfInBounds_filter_monoIx</code>,
+<code>preprocess_filtered_monoIx</code>, <code>allowDir_ite_filter_monoIx</code>,
+<code>List_filter_length_ge_oneIx</code>,
+<code>filtered_grows_of_extended_prefixIx</code>, <code>filtered_grows_of_any_newIx</code>.</li><li><code><a href="../../../.././FilteredGrowth/PerDispatch.html">FilteredGrowth/PerDispatch.lean</a></code> — re-export shim for per-
+dispatch-layer filtered growth, sub-split under
+<code>FilteredGrowth/PerDispatch/</code> (Step 6f.3b3.filteredgrowth.perdispatch,
+both sub-sessions landed). Ships:<ul><li><code><a href="../../../.././PerDispatch/StructFlow.html">PerDispatch/StructFlow.lean</a></code> <em>(legacy 6071–6362)</em> —
+structural + flow-indicator dispatch lemmas
+(<code>scanDocumentStart_filtered_growsIx</code>,
+<code>scanDocumentEnd_filtered_growsIx</code>,
+<code>scanYamlDirective_new_token_eqIx</code>,
+<code>scanTagDirective_new_token_eqIx</code>,
+<code>scanDirective_filtered_growsIx</code>,
+<code>dispatchStructural_filtered_monoIx</code>,
+<code>dispatchFlowIndicators_filtered_growsIx</code>).</li><li><code><a href="../../../.././PerDispatch/BlockContent.html">PerDispatch/BlockContent.lean</a></code> <em>(legacy 6364–6757)</em> —
+block-indicator + content dispatch lemmas
+(<code>scanBlockEntry_filtered_growsIx</code>, <code>scanKey_filtered_growsIx</code>,
+<code>scanValue_filtered_growsIx</code>,
+<code>dispatchBlockIndicators_filtered_growsIx</code>,
+<code>dispatchContent_new_not_placeholderIx</code>,
+<code>dispatchContent_filtered_growsIx</code>).</li></ul></li><li><code><a href="../../../.././FilteredGrowth/Turn3.html">FilteredGrowth/Turn3.lean</a></code> <em>(legacy 6759–6908)</em> — dispatch-level
+filtered growth (Step 6f.3b3.filteredgrowth.turn3). Ships
+<code>scanNextTokenIx_via_flow_dispatch_filtered_grows</code>,
+<code>scanNextTokenIx_via_block_dispatch_filtered_grows</code>,
+<code>scanNextTokenIx_via_content_dispatch_filtered_grows</code>, and the
+in-flow corollary <code>scanNextTokenIx_filtered_grows_in_flow</code>.</li></ul><p>With Turn3 landed, the <code>.filteredgrowth</code> file-level step closes:
+FirstFiltered + Infra + PerDispatch (2/2) + Turn3 all ported.</p><p>See <code>Basic.lean</code> for the directory-wide cutover plan.</p></div></main>
+<nav class="nav"><iframe src="../../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

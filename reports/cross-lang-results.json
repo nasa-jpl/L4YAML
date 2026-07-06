@@ -1,0 +1,132 @@
+{
+  "unlimited": {
+    "lean": {
+      "passed": 783,
+      "failed": 86,
+      "skipped": 151,
+      "total": 1020
+    },
+    "c": {
+      "passed": 783,
+      "failed": 86,
+      "skipped": 151,
+      "total": 1020
+    },
+    "python": {
+      "passed": 783,
+      "failed": 86,
+      "skipped": 151,
+      "total": 1020
+    },
+    "rust": {
+      "passed": 783,
+      "failed": 86,
+      "skipped": 151,
+      "total": 1020
+    }
+  },
+  "default": {
+    "lean": {
+      "passed": 774,
+      "failed": 95,
+      "skipped": 151,
+      "total": 1020
+    },
+    "c": {
+      "passed": 774,
+      "failed": 95,
+      "skipped": 151,
+      "total": 1020
+    },
+    "python": {
+      "passed": 774,
+      "failed": 95,
+      "skipped": 151,
+      "total": 1020
+    },
+    "rust": {
+      "passed": 774,
+      "failed": 95,
+      "skipped": 151,
+      "total": 1020
+    }
+  },
+  "strict": {
+    "lean": {
+      "passed": 774,
+      "failed": 95,
+      "skipped": 151,
+      "total": 1020
+    },
+    "c": {
+      "passed": 774,
+      "failed": 95,
+      "skipped": 151,
+      "total": 1020
+    },
+    "python": {
+      "passed": 774,
+      "failed": 95,
+      "skipped": 151,
+      "total": 1020
+    },
+    "rust": {
+      "passed": 774,
+      "failed": 95,
+      "skipped": 151,
+      "total": 1020
+    }
+  },
+  "permissive": {
+    "lean": {
+      "passed": 774,
+      "failed": 95,
+      "skipped": 151,
+      "total": 1020
+    },
+    "c": {
+      "passed": 774,
+      "failed": 95,
+      "skipped": 151,
+      "total": 1020
+    },
+    "python": {
+      "passed": 774,
+      "failed": 95,
+      "skipped": 151,
+      "total": 1020
+    },
+    "rust": {
+      "passed": 774,
+      "failed": 95,
+      "skipped": 151,
+      "total": 1020
+    }
+  },
+  "safe_tags": {
+    "lean": {
+      "passed": 774,
+      "failed": 95,
+      "skipped": 151,
+      "total": 1020
+    },
+    "c": {
+      "passed": 774,
+      "failed": 95,
+      "skipped": 151,
+      "total": 1020
+    },
+    "python": {
+      "passed": 774,
+      "failed": 95,
+      "skipped": 151,
+      "total": 1020
+    },
+    "rust": {
+      "passed": 774,
+      "failed": 95,
+      "skipped": 151,
+      "total": 1020
+    }
+  }
+}

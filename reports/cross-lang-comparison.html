@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Cross-Language yaml-test-suite Comparison</title>
+<style>
+body{font-family:system-ui,sans-serif;margin:2em;background:#f8f9fa}
+h1{color:#1a1a2e} h2{color:#16213e;margin-top:1.5em}
+table{border-collapse:collapse;margin:1em 0}
+th,td{border:1px solid #dee2e6;padding:6px 14px;text-align:right}
+th{background:#343a40;color:#fff;text-align:center}
+td:first-child{text-align:left;font-weight:bold}
+.match{background:#d4edda;color:#155724}
+.mismatch{background:#f8d7da;color:#721c24}
+.summary{font-size:1.1em;margin:1em 0}
+</style></head><body>
+<h1>Cross-Language yaml-test-suite Comparison</h1>
+<p>All four backends (Lean, C, Python, Rust) run the same yaml-test-suite test cases through the verified parser via their respective FFI layers.</p>
+<h2>Results by Limit Preset</h2>
+<table><tr><th>Preset</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Total</th><th>Backends Match?</th></tr>
+<tr><td>unlimited</td><td>783</td><td>86</td><td>151</td><td>1020</td><td class="match">✓ All identical</td></tr>
+<tr><td>default</td><td>774</td><td>95</td><td>151</td><td>1020</td><td class="match">✓ All identical</td></tr>
+<tr><td>strict</td><td>774</td><td>95</td><td>151</td><td>1020</td><td class="match">✓ All identical</td></tr>
+<tr><td>permissive</td><td>774</td><td>95</td><td>151</td><td>1020</td><td class="match">✓ All identical</td></tr>
+<tr><td>safe_tags</td><td>774</td><td>95</td><td>151</td><td>1020</td><td class="match">✓ All identical</td></tr>
+</table>
+<h2>Full Matrix (Backend × Preset)</h2>
+<table><tr><th>Backend</th>
+<th>unlimited</th>
+<th>default</th>
+<th>strict</th>
+<th>permissive</th>
+<th>safe_tags</th>
+</tr>
+<tr><td>lean</td>
+<td>783/86/151</td>
+<td>774/95/151</td>
+<td>774/95/151</td>
+<td>774/95/151</td>
+<td>774/95/151</td>
+</tr>
+<tr><td>c</td>
+<td>783/86/151</td>
+<td>774/95/151</td>
+<td>774/95/151</td>
+<td>774/95/151</td>
+<td>774/95/151</td>
+</tr>
+<tr><td>python</td>
+<td>783/86/151</td>
+<td>774/95/151</td>
+<td>774/95/151</td>
+<td>774/95/151</td>
+<td>774/95/151</td>
+</tr>
+<tr><td>rust</td>
+<td>783/86/151</td>
+<td>774/95/151</td>
+<td>774/95/151</td>
+<td>774/95/151</td>
+<td>774/95/151</td>
+</tr>
+</table>
+<p class="summary match">✓ All backends produce identical results for every preset</p>
+</body></html>

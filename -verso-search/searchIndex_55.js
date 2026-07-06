@@ -1,0 +1,1 @@
+window.docContents[55].resolve({"/Verification/Three-Layer-Strategy/#three-layer-strategy":{"contents":"\n\n\n\n\n\n","context":"L4YAML: A Verified YAML 1.2.2 Parser in Lean 4\u0009Verification","header":"3.1. Three-Layer Strategy","id":"/Verification/Three-Layer-Strategy/#three-layer-strategy"}});

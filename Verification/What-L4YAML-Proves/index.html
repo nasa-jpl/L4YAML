@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script>
+      (function(){
+  const {protocol:proto, host:hostName, pathname:path, search:srch, hash:hsh} = window.location;
+  if (!(path.endsWith("/") || path.endsWith(".html"))) {
+    window.location.replace(`${proto}//${hostName}${path}/${srch}${hsh}`);
+  }
+})()</script>
+    <base href="./../../"><meta charset="utf-8">
+    <meta name="viewport" content="height=device-height, width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
+    <title>What L4YAML Proves</title><link rel="stylesheet" href="book.css">
+    <link rel="stylesheet" href="verso-vars.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js" integrity="sha384-zbcZAIxlvJtNE3Dp5nxLXdXtXyxwOdnILY1TDPVmKFhl4r4nSUG1r8bcFXGVa4Te" crossorigin="anonymous"></script>
+    <script src="-verso-search/elasticlunr.min.js"></script>
+    <script src="-verso-search/fuzzysort.min.js"></script>
+    <script src="-verso-search/searchIndex.js"></script>
+    <script type="module" src="-verso-search/search-init.js"></script>
+    <link rel="stylesheet" href="-verso-search/search-box.css">
+    <link rel="stylesheet" href="-verso-search/search-highlight.css">
+    <link rel="stylesheet" href="-verso-search/domain-display.css">
+    <script src="-verso-data/katex/katex.js"></script>
+    <script src="-verso-data/katex/math.js"></script>
+    <link rel="stylesheet" href="-verso-data/katex/katex.css">
+    <style>
+table.tabular {
+  margin: auto;
+  border-spacing: 1rem;
+}
+table.tabular.left-align {
+  margin-right: auto;
+  margin-left: 0;
+}
+table.tabular.center-align {
+  margin: auto;
+}
+table.tabular.right-align {
+  margin-left auto;
+  margin-right: 0;
+}
+table.tabular td, table.tabular th {
+  text-align: left;
+  vertical-align: top;
+}
+table.tabular td > p:first-child, table.tabular th > p:first-child {
+  margin-top: 0;
+}
+table.tabular td > p:last-child, table.tabular th > p:first-child {
+  margin-bottom: 0;
+}
+</style><style>
+    main .theIndex {
+      padding-left: 0;
+      font-family: var(--verso-text-font-family);
+    }
+
+    main .theIndex nav {
+      position: sticky;
+      top: var(--verso-header-height);
+      background: white;
+      font-family: var(--verso-structure-font-family);
+    }
+
+    main .theIndex [id] {
+      /* This needs the combined height of the index header and the page header. We
+         know the height of the page header, but the index header height varies, so
+         we use the maximum height it gets which also works well for readers with
+         wide screens */
+      scroll-margin-top: calc(var(--verso-header-height) + 7.5rem);
+    }
+
+    @media screen and (max-width: 700px) {
+      /* On mobile, the sticky index takes up half the screen. */
+      main .theIndex nav {
+        position: static;
+      }
+
+      main .theIndex [id] {
+        /* On mobile, the index header is not sticky, so we just need to
+        be below the page header. */
+        scroll-margin-top: var(--verso-header-height);
+      }
+    }
+
+    main .theIndex nav ol {
+      padding: 0;
+    }
+
+    main .theIndex nav ol li {
+      display: inline-block;
+    }
+
+    main .theIndex nav ol li a {
+      /* Padding instead of margin to have a bigger click target */
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+    }
+    /* Increase the size of the touch target on phones */
+    @media screen and (max-width: 700px) {
+      main .theIndex nav ol li a {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+      }
+    }
+
+    main .theIndex nav ol li:first-child a {
+      padding-left: 0;
+    }
+
+    main .theIndex nav ol li + li:before {
+      content: "|";
+    }
+
+    main .theIndex h1,
+    main .theIndex h2,
+    main .theIndex h3,
+    main .theIndex h4,
+    main .theIndex h5,
+    main .theIndex h6 {
+      margin-top: 0;
+    }
+
+    main .theIndex ol {
+      list-style-type: none;
+    }
+
+    main .theIndex .division > ol {
+      padding-left: 0;
+      display: flex;
+      flex-direction: column;
+      gap: .5rem;
+      overflow-wrap: break-word;
+    }
+
+   main .theIndex .division > ol > li {
+      margin-bottom: 0.5rem;
+    }
+
+    main .theIndex .division ol ol {
+      padding-left: 1rem;
+    }
+
+    main .theIndex .division {
+      break-inside: avoid;
+      counter-reset: none;
+      max-width: none;
+      width: auto;
+    }
+    </style><script src="-verso-search/search-highlight.js" defer="defer"></script>
+    </head>
+  <body>
+    <header>
+      <div class="header-logo-wrapper"></div>
+      <div class="header-title-wrapper">
+        <a href="" class="header-title"><h1>
+            L4YAML</h1>
+          </a></div>
+      </header>
+    <label for="toggle-toc" id="toggle-toc-click"><span class="line line1"></span><span class="line line2"></span><span class="line line3"></span></label><div class="with-toc">
+      <div class="toc-backdrop" onclick="document.getElementById('toggle-toc-click')?.click()"></div>
+      <nav id="toc">
+        <input type="checkbox" id="toggle-toc"><div class="first">
+          <a href="" class="toc-title"><h1>
+              L4YAML</h1>
+            </a><div class="split-tocs">
+            <div class="split-toc book">
+              <div class="title">
+                <label for="--verso-manual-toc-----bookRoot" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-----bookRoot"></label><span class="">Table of Contents</span></div>
+              <table><tr class="numbered"><td class="num">1.</td><td><a href="Overview/#overview">Overview</a></td></tr><tr class="numbered"><td class="num">2.</td><td><a href="Architecture/#architecture">Architecture</a></td></tr><tr class="current numbered"><td class="num">3.</td><td><a href="Verification/#verification">Verification</a></td></tr><tr class="numbered"><td class="num">4.</td><td><a href="Security/#security">Security</a></td></tr><tr class="numbered"><td class="num">5.</td><td><a href="FFI-Bindings/#ffi">FFI Bindings</a></td></tr><tr class="numbered"><td class="num">6.</td><td><a href="Building/#building">Building</a></td></tr><tr class="numbered"><td class="num">7.</td><td><a href="Testing/#testing">Testing</a></td></tr><tr class="numbered"><td class="num">8.</td><td><a href="Test-Results/#test-results">Test Results</a></td></tr><tr class="unnumbered"><td class="num"><td><a href="Index/#index">Index</a></td></tr></table></div>
+            <div class="split-toc">
+              <div class="title">
+                <label for="--verso-manual-toc-verification" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-verification" checked="checked"></label><span class="number">3.</span> <span class=""><a href="Verification/#verification">Verification</a></span></div>
+              <table><tr class="numbered"><td class="num">3.1.</td><td><a href="Verification/Three-Layer-Strategy/#three-layer-strategy">Three-Layer Strategy</a></td></tr><tr class="numbered"><td class="num">3.2.</td><td><a href="Verification/Key-Theorems/#key-theorems">Key Theorems</a></td></tr><tr class="numbered"><td class="num">3.3.</td><td><a href="Verification/Key-Proof-Modules/#proof-modules">Key Proof Modules</a></td></tr><tr class="current numbered"><td class="num">3.4.</td><td><a href="Verification/What-L4YAML-Proves/#theorem-graphs">What L4YAML Proves</a></td></tr><tr class="numbered"><td class="num">3.5.</td><td><a href="Verification/Mind-the-Fibration-Gap/#fibration-gap">Mind the Fibration Gap</a></td></tr><tr class="numbered"><td class="num">3.6.</td><td><a href="Verification/Fibration-Gap-___-Worked-Example/#fibration-worked-example">Fibration Gap — Worked Example</a></td></tr><tr class="numbered"><td class="num">3.7.</td><td><a href="Verification/Proof-Engineering-Patterns/#proof-patterns">Proof Engineering Patterns</a></td></tr><tr class="numbered"><td class="num">3.8.</td><td><a href="Verification/Zero-Axiom-Policy/#zero-axiom">Zero-Axiom Policy</a></td></tr></table></div>
+            <div class="split-toc">
+              <div class="title">
+                <label for="--verso-manual-toc-theorem-graphs" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-theorem-graphs" checked="checked"></label><span class="number">3.4.</span> <span class="current"><a href="Verification/What-L4YAML-Proves/#theorem-graphs">What L4YAML Proves</a></span></div>
+              <table><tr class="numbered"><td class="num">3.4.1.</td><td><a href="Verification/What-L4YAML-Proves/#theorem-graphs-pipeline">Pipeline Composition</a></td></tr><tr class="numbered"><td class="num">3.4.2.</td><td><a href="Verification/What-L4YAML-Proves/#theorem-graphs-scanner">Scanner</a></td></tr><tr class="numbered"><td class="num">3.4.3.</td><td><a href="Verification/What-L4YAML-Proves/#theorem-graphs-parser">Parser</a></td></tr><tr class="numbered"><td class="num">3.4.4.</td><td><a href="Verification/What-L4YAML-Proves/#theorem-graphs-end-to-end">End-to-End Correctness</a></td></tr><tr class="numbered"><td class="num">3.4.5.</td><td><a href="Verification/What-L4YAML-Proves/#theorem-graphs-values">Values — Soundness</a></td></tr><tr class="numbered"><td class="num">3.4.6.</td><td><a href="Verification/What-L4YAML-Proves/#theorem-graphs-roundtrip">Roundtrip</a></td></tr><tr class="numbered"><td class="num">3.4.7.</td><td><a href="Verification/What-L4YAML-Proves/#theorem-graphs-production">Grammar Production</a></td></tr><tr class="numbered"><td class="num">3.4.8.</td><td><a href="Verification/What-L4YAML-Proves/#theorem-graphs-surface-coupling">Surface Coupling</a></td></tr><tr class="numbered"><td class="num">3.4.9.</td><td><a href="Verification/What-L4YAML-Proves/#L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--Generating-graphs-locally">Generating graphs locally</a></td></tr></table></div>
+            </div>
+          </div>
+        <div class="last"></div>
+        </nav>
+      <main><div class="content-wrapper">
+          <nav class="prev-next-buttons">
+            <a class="local-button active" href="Verification/Key-Proof-Modules/#proof-modules" rel="prev" title="3.3. Key Proof Modules"><span class="arrow">←</span><span class="where">3.3. Key Proof Modules</span></a><a class="local-button active" href="Verification/Mind-the-Fibration-Gap/#fibration-gap" rel="next" title="3.5. Mind the Fibration Gap"><span class="where">3.5. Mind the Fibration Gap</span><span class="arrow">→</span></a></nav>
+          <section>
+            <h1>
+              3.4. What L4YAML Proves<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=theorem-graphs" title="Permalink">🔗</a></span></h1>
+            <p>
+              <span id="--index--next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next"></span>
+<span id="--index--next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next"></span>
+This page is the front-door answer to <em>what L4YAML proves</em>.  Each
+card below embeds one headline theorem's <em>functorial chain graph</em>
+— the proof-term dependency structure extracted by the FGM
+<code>theoremgraph</code> tool — together with its plain-English summary and
+a ChainDepth tag that classifies how tightly the theorem's proof
+is pinned to the pipeline functions it names.  The ChainDepth tags
+carry the honesty labelling from §Mind the Fibration Gap: <em>deep</em>
+theorems are canaries for silent behavioural drift, <em>propBridge</em>
+theorems delegate that role to a wrapped predicate, and <em>weak</em>
+theorems do not participate in the fibration at all.</p>
+            <p>
+              Only the headline + categoryCapstone entries (~11 theorems) are
+embedded here; the full catalogue is published as the
+<code>theorem-graphs-all.tar.gz</code> asset on the
+<a href="https://github.jpl.nasa.gov/pass/L4YAML.FGM/releases/tag/graphs-latest"><code>graphs-latest</code> release of L4YAML.FGM</a>
+and is downloadable on demand.  Per-module hierarchical browsing
+of the full catalogue inside this site is a planned step.</p>
+            <section>
+              <h2 id="theorem-graphs-pipeline">
+                3.4.1. Pipeline Composition<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=theorem-graphs-pipeline" title="Permalink">🔗</a></span></h2>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--Pipeline-Composition--parseYaml_pipeline--___-deep">
+                  3.4.1.1. <code>parseYaml_pipeline</code> — deep<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--Pipeline-Composition--parseYaml_pipeline--___-deep" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <em>1.1</em> — <code>parseYaml</code> decomposes as <code>parseStream ∘ scanFiltered</code>.
+The pipeline's decomposition capstone: every downstream
+soundness/completeness headline routes through it.</p>
+                <p>
+                  <object type="image/svg+xml" data="Verification/What-L4YAML-Proves/graphs/L4YAML/Proofs/Composition/parseYaml_pipeline.chain.svg">parseYaml_pipeline chain graph</object></p>
+                <ul>
+                  <li>
+                    <p>
+                      <em>ChainDepth</em>: <code>deep</code></p>
+                    </li>
+                  <li>
+                    <p>
+                      <em>Module</em>: <code>L4YAML.Proofs.Composition</code></p>
+                    </li>
+                  </ul>
+                </section>
+              </section>
+            <section>
+              <h2 id="theorem-graphs-scanner">
+                3.4.2. Scanner<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=theorem-graphs-scanner" title="Permalink">🔗</a></span></h2>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--Scanner--scan_full_consumption--___-deep">
+                  3.4.2.1. <code>scan_full_consumption</code> — deep<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--Scanner--scan_full_consumption--___-deep" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <em>2.1</em> — a successful scan consumes the entire input.  Rules out
+the common correctness trap where a scanner returns <code>.ok</code> after
+stopping early on an unexpected character.</p>
+                <p>
+                  <object type="image/svg+xml" data="Verification/What-L4YAML-Proves/graphs/L4YAML/Proofs/Scanner/ScanStrictCoupling/scan_full_consumption.chain.svg">scan_full_consumption chain graph</object></p>
+                <ul>
+                  <li>
+                    <p>
+                      <em>ChainDepth</em>: <code>deep</code></p>
+                    </li>
+                  <li>
+                    <p>
+                      <em>Module</em>: <code>L4YAML.Proofs.Scanner.ScanStrictCoupling</code></p>
+                    </li>
+                  </ul>
+                </section>
+              </section>
+            <section>
+              <h2 id="theorem-graphs-parser">
+                3.4.3. Parser<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=theorem-graphs-parser" title="Permalink">🔗</a></span></h2>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--Parser--parseStream_respects_grammar_unconditional--___-deep">
+                  3.4.3.1. <code>parseStream_respects_grammar_unconditional</code> — deep<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--Parser--parseStream_respects_grammar_unconditional--___-deep" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <em>3.1</em> — the parser respects the YAML 1.2.2 grammar with no
+well-formedness precondition.  The root anchor for the grammar-
+production chain.</p>
+                <p>
+                  <object type="image/svg+xml" data="Verification/What-L4YAML-Proves/graphs/L4YAML/Proofs/EndToEndCorrectness/parseStream_respects_grammar_unconditional.chain.svg">parseStream_respects_grammar_unconditional chain graph</object></p>
+                <ul>
+                  <li>
+                    <p>
+                      <em>ChainDepth</em>: <code>deep</code></p>
+                    </li>
+                  <li>
+                    <p>
+                      <em>Module</em>: <code>L4YAML.Proofs.EndToEndCorrectness</code></p>
+                    </li>
+                  </ul>
+                </section>
+              </section>
+            <section>
+              <h2 id="theorem-graphs-end-to-end">
+                3.4.4. End-to-End Correctness<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=theorem-graphs-end-to-end" title="Permalink">🔗</a></span></h2>
+              <p>
+                The two soundness variants (<code>parse_sound_shallow</code> and
+<code>parse_sound_deep</code>) are the fibration-gap worked example — see
+§Fibration Gap — Worked Example for the side-by-side walkthrough.</p>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--End-to-End-Correctness--parse_sound_shallow--___-propBridge">
+                  3.4.4.1. <code>parse_sound_shallow</code> — propBridge<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--End-to-End-Correctness--parse_sound_shallow--___-propBridge" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <em>4.1</em> — <code>parse .ok → ValidYamlProp</code>.  The shallow variant hides
+the pipeline stages inside the <code>ValidYamlProp</code> predicate; the
+chain walker cannot descend.  Useful as a minimal soundness
+statement; not the canary.</p>
+                <p>
+                  <object type="image/svg+xml" data="Verification/What-L4YAML-Proves/graphs/L4YAML/Proofs/EndToEndCorrectness/parse_sound_shallow.chain.svg">parse_sound_shallow chain graph</object></p>
+                <ul>
+                  <li>
+                    <p>
+                      <em>ChainDepth</em>: <code>propBridge</code></p>
+                    </li>
+                  <li>
+                    <p>
+                      <em>Module</em>: <code>L4YAML.Proofs.EndToEndCorrectness</code></p>
+                    </li>
+                  </ul>
+                </section>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--End-to-End-Correctness--parse_sound_deep--___-deep">
+                  3.4.4.2. <code>parse_sound_deep</code> — deep<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--End-to-End-Correctness--parse_sound_deep--___-deep" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <em>4.1d</em> — same soundness claim with every pipeline stage exposed
+in the type and each stage's lemma cited in the proof.  The
+canary for silent code changes along <code>parseYaml → parseYamlRaw →
+parseStream</code>.</p>
+                <p>
+                  <object type="image/svg+xml" data="Verification/What-L4YAML-Proves/graphs/L4YAML/Proofs/EndToEndCorrectness/parse_sound_deep.chain.svg">parse_sound_deep chain graph</object></p>
+                <ul>
+                  <li>
+                    <p>
+                      <em>ChainDepth</em>: <code>deep</code></p>
+                    </li>
+                  <li>
+                    <p>
+                      <em>Module</em>: <code>L4YAML.Proofs.EndToEndCorrectness</code></p>
+                    </li>
+                  </ul>
+                </section>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--End-to-End-Correctness--parse_complete--___-propBridge">
+                  3.4.4.3. <code>parse_complete</code> — propBridge<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--End-to-End-Correctness--parse_complete--___-propBridge" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <em>4.2</em> — <code>ValidYamlProp → parse .ok</code>.  Completeness with the
+same <code>Prop</code>-wrapping shape as <code>parse_sound_shallow</code>; an
+engineering follow-up analogous to <code>parse_sound_deep</code> would
+expose the pipeline stages and cite the completeness lemmas
+directly.</p>
+                <p>
+                  <object type="image/svg+xml" data="Verification/What-L4YAML-Proves/graphs/L4YAML/Proofs/EndToEndCorrectness/parse_complete.chain.svg">parse_complete chain graph</object></p>
+                <ul>
+                  <li>
+                    <p>
+                      <em>ChainDepth</em>: <code>propBridge</code></p>
+                    </li>
+                  <li>
+                    <p>
+                      <em>Module</em>: <code>L4YAML.Proofs.EndToEndCorrectness</code></p>
+                    </li>
+                  </ul>
+                </section>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--End-to-End-Correctness--parse_deterministic--___-weak">
+                  3.4.4.4. <code>parse_deterministic</code> — weak<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--End-to-End-Correctness--parse_deterministic--___-weak" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <em>4.3</em> — <code>parse</code> is a function (same input, same output).
+Structurally weak: the proof is tactic-only and cites no project
+lemmas, so no functorial chain exists.  Serves as a type-level
+sanity check on the API shape, not as a canary.</p>
+                <p>
+                  <object type="image/svg+xml" data="Verification/What-L4YAML-Proves/graphs/L4YAML/Proofs/EndToEndCorrectness/parse_deterministic.chain.svg">parse_deterministic chain graph</object></p>
+                <ul>
+                  <li>
+                    <p>
+                      <em>ChainDepth</em>: <code>weak</code> (structural)</p>
+                    </li>
+                  <li>
+                    <p>
+                      <em>Module</em>: <code>L4YAML.Proofs.EndToEndCorrectness</code></p>
+                    </li>
+                  </ul>
+                </section>
+              </section>
+            <section>
+              <h2 id="theorem-graphs-values">
+                3.4.5. Values — Soundness<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=theorem-graphs-values" title="Permalink">🔗</a></span></h2>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--Values-___-Soundness--validYaml_construct--___-weak">
+                  3.4.5.1. <code>validYaml_construct</code> — weak<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--Values-___-Soundness--validYaml_construct--___-weak" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <em>5.1</em> — constructing <code>ValidYaml</code> from a parse result is
+well-defined.  Establishes that the packaging step from <code>docs</code>
+to <code>ValidYaml</code> respects the underlying invariants; the proof is
+structural and carries no fibration signal.</p>
+                <p>
+                  <object type="image/svg+xml" data="Verification/What-L4YAML-Proves/graphs/L4YAML/Proofs/Soundness/validYaml_construct.chain.svg">validYaml_construct chain graph</object></p>
+                <ul>
+                  <li>
+                    <p>
+                      <em>ChainDepth</em>: <code>weak</code> (structural)</p>
+                    </li>
+                  <li>
+                    <p>
+                      <em>Module</em>: <code>L4YAML.Proofs.Soundness</code></p>
+                    </li>
+                  </ul>
+                </section>
+              </section>
+            <section>
+              <h2 id="theorem-graphs-roundtrip">
+                3.4.6. Roundtrip<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=theorem-graphs-roundtrip" title="Permalink">🔗</a></span></h2>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--Roundtrip--universal_roundtrip--___-deep-_LPAR____-sorry-reachable-via-6___9_RPAR_">
+                  3.4.6.1. <code>universal_roundtrip</code> — deep (🚧 sorry-reachable via 6.9)<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--Roundtrip--universal_roundtrip--___-deep-_LPAR____-sorry-reachable-via-6___9_RPAR_" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <em>6.1</em> — the universal YAML round-trip property: emit ∘ parse is
+content-preserving up to <code>contentEq</code>.  Fibration-aligned against
+the emitter/parser composition; carries a sorry marker via 6.9
+pending the final stage's proof.</p>
+                <p>
+                  <object type="image/svg+xml" data="Verification/What-L4YAML-Proves/graphs/L4YAML/Proofs/Output/EmitterScannability/universal_roundtrip.chain.svg">universal_roundtrip chain graph</object></p>
+                <ul>
+                  <li>
+                    <p>
+                      <em>ChainDepth</em>: <code>deep</code></p>
+                    </li>
+                  <li>
+                    <p>
+                      <em>Module</em>: <code>L4YAML.Proofs.Output.EmitterScannability</code></p>
+                    </li>
+                  </ul>
+                </section>
+              </section>
+            <section>
+              <h2 id="theorem-graphs-production">
+                3.4.7. Grammar Production<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=theorem-graphs-production" title="Permalink">🔗</a></span></h2>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--Grammar-Production--parse_strict_proof--___-deep-_LPAR____-sorry-reachable-via-7___2___-7___6_RPAR_">
+                  3.4.7.1. <code>parse_strict_proof</code> — deep (🚧 sorry-reachable via 7.2, 7.6)<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--Grammar-Production--parse_strict_proof--___-deep-_LPAR____-sorry-reachable-via-7___2___-7___6_RPAR_" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <em>7.1</em> — parser acceptance implies <code>InYamlLanguage</code>.  Bridges the
+parser-level chain to the grammar-production relation used by the
+Blueprint.  Sorry-reachable via the scanner-side 7.2/7.6 lemmas.</p>
+                <p>
+                  <object type="image/svg+xml" data="Verification/What-L4YAML-Proves/graphs/L4YAML/Proofs/Production/DocumentProduction/parse_strict_proof.chain.svg">parse_strict_proof chain graph</object></p>
+                <ul>
+                  <li>
+                    <p>
+                      <em>ChainDepth</em>: <code>deep</code></p>
+                    </li>
+                  <li>
+                    <p>
+                      <em>Module</em>: <code>L4YAML.Proofs.Production.DocumentProduction</code></p>
+                    </li>
+                  </ul>
+                </section>
+              </section>
+            <section>
+              <h2 id="theorem-graphs-surface-coupling">
+                3.4.8. Surface Coupling<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=theorem-graphs-surface-coupling" title="Permalink">🔗</a></span></h2>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--Surface-Coupling--SIndent_zero--___-weak">
+                  3.4.8.1. <code>SIndent_zero</code> — weak<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--Surface-Coupling--SIndent_zero--___-weak" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <em>8.1</em> — bundle representative for character-level
+indent/character predicates.  Structural lemma connecting the
+scanner's character-class tests to the <code>SIndent</code> surface
+predicate; does not itself expose a call chain.</p>
+                <p>
+                  <object type="image/svg+xml" data="Verification/What-L4YAML-Proves/graphs/L4YAML/Proofs/Coupling/SurfaceCoupling/SIndent_zero.chain.svg">SIndent_zero chain graph</object></p>
+                <ul>
+                  <li>
+                    <p>
+                      <em>ChainDepth</em>: <code>weak</code> (structural)</p>
+                    </li>
+                  <li>
+                    <p>
+                      <em>Module</em>: <code>L4YAML.Proofs.Coupling.SurfaceCoupling</code></p>
+                    </li>
+                  </ul>
+                </section>
+              </section>
+            <section>
+              <h2 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--Generating-graphs-locally">
+                3.4.9. Generating graphs locally<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--Generating-graphs-locally" title="Permalink">🔗</a></span></h2>
+              <p>
+                The <code>theoremgraph</code> tool lives in the
+<a href="https://github.jpl.nasa.gov/pass/L4YAML.FGM">L4YAML.FGM</a> bridge
+project; see its <code>tools/README.md</code> for invocations.  Common
+starting points:</p>
+              <pre>cd ../L4YAML.FGM
+lake build theoremgraph
+lake exe theoremgraph --list                       # catalogue
+lake exe theoremgraph --chain parse_sound_deep     # one chain DOT
+lake exe theoremgraph --tier headline tmp/out      # headline tarball contents
+lake exe theoremgraph tmp/graphs                   # full tree (≈400 DOTs)
+</pre></section>
+            </section>
+          <nav class="prev-next-buttons">
+            <a class="local-button active" href="Verification/Key-Proof-Modules/#proof-modules" rel="prev" title="3.3. Key Proof Modules"><span class="arrow">←</span><span class="where">3.3. Key Proof Modules</span></a><a class="local-button active" href="Verification/Mind-the-Fibration-Gap/#fibration-gap" rel="next" title="3.5. Mind the Fibration Gap"><span class="where">3.5. Mind the Fibration Gap</span><span class="arrow">→</span></a></nav>
+          </div>
+        </main></div>
+    </body>
+  </html>
+

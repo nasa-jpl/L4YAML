@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script>
+      (function(){
+  const {protocol:proto, host:hostName, pathname:path, search:srch, hash:hsh} = window.location;
+  if (!(path.endsWith("/") || path.endsWith(".html"))) {
+    window.location.replace(`${proto}//${hostName}${path}/${srch}${hsh}`);
+  }
+})()</script>
+    <base href="./../../"><meta charset="utf-8">
+    <meta name="viewport" content="height=device-height, width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
+    <title>Key Theorems</title><link rel="stylesheet" href="book.css">
+    <link rel="stylesheet" href="verso-vars.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js" integrity="sha384-zbcZAIxlvJtNE3Dp5nxLXdXtXyxwOdnILY1TDPVmKFhl4r4nSUG1r8bcFXGVa4Te" crossorigin="anonymous"></script>
+    <script src="-verso-search/elasticlunr.min.js"></script>
+    <script src="-verso-search/fuzzysort.min.js"></script>
+    <script src="-verso-search/searchIndex.js"></script>
+    <script type="module" src="-verso-search/search-init.js"></script>
+    <link rel="stylesheet" href="-verso-search/search-box.css">
+    <link rel="stylesheet" href="-verso-search/search-highlight.css">
+    <link rel="stylesheet" href="-verso-search/domain-display.css">
+    <script src="-verso-data/katex/katex.js"></script>
+    <script src="-verso-data/katex/math.js"></script>
+    <link rel="stylesheet" href="-verso-data/katex/katex.css">
+    <style>
+table.tabular {
+  margin: auto;
+  border-spacing: 1rem;
+}
+table.tabular.left-align {
+  margin-right: auto;
+  margin-left: 0;
+}
+table.tabular.center-align {
+  margin: auto;
+}
+table.tabular.right-align {
+  margin-left auto;
+  margin-right: 0;
+}
+table.tabular td, table.tabular th {
+  text-align: left;
+  vertical-align: top;
+}
+table.tabular td > p:first-child, table.tabular th > p:first-child {
+  margin-top: 0;
+}
+table.tabular td > p:last-child, table.tabular th > p:first-child {
+  margin-bottom: 0;
+}
+</style><style>
+    main .theIndex {
+      padding-left: 0;
+      font-family: var(--verso-text-font-family);
+    }
+
+    main .theIndex nav {
+      position: sticky;
+      top: var(--verso-header-height);
+      background: white;
+      font-family: var(--verso-structure-font-family);
+    }
+
+    main .theIndex [id] {
+      /* This needs the combined height of the index header and the page header. We
+         know the height of the page header, but the index header height varies, so
+         we use the maximum height it gets which also works well for readers with
+         wide screens */
+      scroll-margin-top: calc(var(--verso-header-height) + 7.5rem);
+    }
+
+    @media screen and (max-width: 700px) {
+      /* On mobile, the sticky index takes up half the screen. */
+      main .theIndex nav {
+        position: static;
+      }
+
+      main .theIndex [id] {
+        /* On mobile, the index header is not sticky, so we just need to
+        be below the page header. */
+        scroll-margin-top: var(--verso-header-height);
+      }
+    }
+
+    main .theIndex nav ol {
+      padding: 0;
+    }
+
+    main .theIndex nav ol li {
+      display: inline-block;
+    }
+
+    main .theIndex nav ol li a {
+      /* Padding instead of margin to have a bigger click target */
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+    }
+    /* Increase the size of the touch target on phones */
+    @media screen and (max-width: 700px) {
+      main .theIndex nav ol li a {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+      }
+    }
+
+    main .theIndex nav ol li:first-child a {
+      padding-left: 0;
+    }
+
+    main .theIndex nav ol li + li:before {
+      content: "|";
+    }
+
+    main .theIndex h1,
+    main .theIndex h2,
+    main .theIndex h3,
+    main .theIndex h4,
+    main .theIndex h5,
+    main .theIndex h6 {
+      margin-top: 0;
+    }
+
+    main .theIndex ol {
+      list-style-type: none;
+    }
+
+    main .theIndex .division > ol {
+      padding-left: 0;
+      display: flex;
+      flex-direction: column;
+      gap: .5rem;
+      overflow-wrap: break-word;
+    }
+
+   main .theIndex .division > ol > li {
+      margin-bottom: 0.5rem;
+    }
+
+    main .theIndex .division ol ol {
+      padding-left: 1rem;
+    }
+
+    main .theIndex .division {
+      break-inside: avoid;
+      counter-reset: none;
+      max-width: none;
+      width: auto;
+    }
+    </style><script src="-verso-search/search-highlight.js" defer="defer"></script>
+    </head>
+  <body>
+    <header>
+      <div class="header-logo-wrapper"></div>
+      <div class="header-title-wrapper">
+        <a href="" class="header-title"><h1>
+            L4YAML</h1>
+          </a></div>
+      </header>
+    <label for="toggle-toc" id="toggle-toc-click"><span class="line line1"></span><span class="line line2"></span><span class="line line3"></span></label><div class="with-toc">
+      <div class="toc-backdrop" onclick="document.getElementById('toggle-toc-click')?.click()"></div>
+      <nav id="toc">
+        <input type="checkbox" id="toggle-toc"><div class="first">
+          <a href="" class="toc-title"><h1>
+              L4YAML</h1>
+            </a><div class="split-tocs">
+            <div class="split-toc book">
+              <div class="title">
+                <label for="--verso-manual-toc-----bookRoot" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-----bookRoot"></label><span class="">Table of Contents</span></div>
+              <table><tr class="numbered"><td class="num">1.</td><td><a href="Overview/#overview">Overview</a></td></tr><tr class="numbered"><td class="num">2.</td><td><a href="Architecture/#architecture">Architecture</a></td></tr><tr class="current numbered"><td class="num">3.</td><td><a href="Verification/#verification">Verification</a></td></tr><tr class="numbered"><td class="num">4.</td><td><a href="Security/#security">Security</a></td></tr><tr class="numbered"><td class="num">5.</td><td><a href="FFI-Bindings/#ffi">FFI Bindings</a></td></tr><tr class="numbered"><td class="num">6.</td><td><a href="Building/#building">Building</a></td></tr><tr class="numbered"><td class="num">7.</td><td><a href="Testing/#testing">Testing</a></td></tr><tr class="numbered"><td class="num">8.</td><td><a href="Test-Results/#test-results">Test Results</a></td></tr><tr class="unnumbered"><td class="num"><td><a href="Index/#index">Index</a></td></tr></table></div>
+            <div class="split-toc">
+              <div class="title">
+                <label for="--verso-manual-toc-verification" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-verification" checked="checked"></label><span class="number">3.</span> <span class=""><a href="Verification/#verification">Verification</a></span></div>
+              <table><tr class="numbered"><td class="num">3.1.</td><td><a href="Verification/Three-Layer-Strategy/#three-layer-strategy">Three-Layer Strategy</a></td></tr><tr class="current numbered"><td class="num">3.2.</td><td><a href="Verification/Key-Theorems/#key-theorems">Key Theorems</a></td></tr><tr class="numbered"><td class="num">3.3.</td><td><a href="Verification/Key-Proof-Modules/#proof-modules">Key Proof Modules</a></td></tr><tr class="numbered"><td class="num">3.4.</td><td><a href="Verification/What-L4YAML-Proves/#theorem-graphs">What L4YAML Proves</a></td></tr><tr class="numbered"><td class="num">3.5.</td><td><a href="Verification/Mind-the-Fibration-Gap/#fibration-gap">Mind the Fibration Gap</a></td></tr><tr class="numbered"><td class="num">3.6.</td><td><a href="Verification/Fibration-Gap-___-Worked-Example/#fibration-worked-example">Fibration Gap — Worked Example</a></td></tr><tr class="numbered"><td class="num">3.7.</td><td><a href="Verification/Proof-Engineering-Patterns/#proof-patterns">Proof Engineering Patterns</a></td></tr><tr class="numbered"><td class="num">3.8.</td><td><a href="Verification/Zero-Axiom-Policy/#zero-axiom">Zero-Axiom Policy</a></td></tr></table></div>
+            <div class="split-toc">
+              <div class="title">
+                <label for="--verso-manual-toc-key-theorems" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-key-theorems" checked="checked"></label><span class="number">3.2.</span> <span class="current"><a href="Verification/Key-Theorems/#key-theorems">Key Theorems</a></span></div>
+              <table><tr class="numbered"><td class="num">3.2.1.</td><td><a href="Verification/Key-Theorems/#thm-pipeline">Pipeline Composition</a></td></tr><tr class="numbered"><td class="num">3.2.2.</td><td><a href="Verification/Key-Theorems/#thm-scanner">Scanner Correctness</a></td></tr><tr class="numbered"><td class="num">3.2.3.</td><td><a href="Verification/Key-Theorems/#thm-parser">Parser Correctness</a></td></tr><tr class="numbered"><td class="num">3.2.4.</td><td><a href="Verification/Key-Theorems/#thm-soundness">Soundness</a></td></tr><tr class="numbered"><td class="num">3.2.5.</td><td><a href="Verification/Key-Theorems/#thm-roundtrip">Round-Trip Properties</a></td></tr></table></div>
+            </div>
+          </div>
+        <div class="last"></div>
+        </nav>
+      <main><div class="content-wrapper">
+          <nav class="prev-next-buttons">
+            <a class="local-button active" href="Verification/Three-Layer-Strategy/#three-layer-strategy" rel="prev" title="3.1. Three-Layer Strategy"><span class="arrow">←</span><span class="where">3.1. Three-Layer Strategy</span></a><a class="local-button active" href="Verification/Key-Proof-Modules/#proof-modules" rel="next" title="3.3. Key Proof Modules"><span class="where">3.3. Key Proof Modules</span><span class="arrow">→</span></a></nav>
+          <section>
+            <h1>
+              3.2. Key Theorems<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=key-theorems" title="Permalink">🔗</a></span></h1>
+            <p>
+              <span id="--index--next-next-next-next-next-next-next-next-next-next-next-next-next"></span>
+The following capstone theorems represent the main formal
+guarantees established by L4YAML.  Each is machine-checked
+by the Lean kernel with zero axioms beyond the built-in
+foundations.</p>
+            <p>
+              Each theorem is accompanied by a bipartite dependency graph
+showing the implementation functions it proves properties
+about (blue, left) and the supporting theorems used in
+its proof (green, right).  Stdlib lemmas surface in orange
+when they are domain-relevant.</p>
+            <section>
+              <h2 id="thm-pipeline">
+                3.2.1. Pipeline Composition<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=thm-pipeline" title="Permalink">🔗</a></span></h2>
+              <p>
+                These theorems establish that the scanner and parser compose
+correctly into a single end-to-end pipeline.</p>
+              <table class="tabular"><thead><tr><th><p>
+                        Theorem</p>
+                      </th><th><p>
+                        Module</p>
+                      </th><th><p>
+                        Statement
+</p>
+                      </th></tr></thead><tr><td><p>
+                      <code>parseYaml_pipeline</code></p>
+                    </td><td><p>
+                      <code>Composition</code></p>
+                    </td><td><p>
+                      End-to-end: scan then parse composes correctly.  If <code>scanFiltered</code> produces tokens and <code>parseStream</code> accepts them, then <code>parseYaml</code> succeeds with the same result.
+</p>
+                    </td></tr><tr><td><p>
+                      <code>parseYamlRaw_pipeline</code></p>
+                    </td><td><p>
+                      <code>Composition</code></p>
+                    </td><td><p>
+                      Raw pipeline variant without schema resolution.
+</p>
+                    </td></tr><tr><td><p>
+                      <code>parseYamlRaw_ok_decompose</code></p>
+                    </td><td><p>
+                      <code>Composition</code></p>
+                    </td><td><p>
+                      Every successful <code>parseYamlRaw</code> result decomposes into a successful scan step followed by a successful parse step.
+</p>
+                    </td></tr><tr><td><p>
+                      <code>emit_pipeline_decompose_ix</code></p>
+                    </td><td><p>
+                      <code>ScannerEmitBridge</code></p>
+                    </td><td><p>
+                      Emitter-side pipeline decomposition: every successful <code>parseYamlRawIx (emit v)</code> splits into a successful indexed scan (<code>scanFilteredIx</code>) and a successful indexed parse (<code>parseStreamIx</code>) of the emitter output — the emitter analogue of <code>parseYamlRaw_ok_decompose</code>.
+</p>
+                    </td></tr><tr><td><p>
+                      <code>parseYaml_ok_iff</code></p>
+                    </td><td><p>
+                      <code>Completeness</code></p>
+                    </td><td><p>
+                      <code>parseYaml</code> succeeds if and only if the input is valid YAML — the bridge between the implementation and the specification.</p>
+                    </td></tr></table><section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Pipeline-Composition--parseYaml_pipeline">
+                  3.2.1.1. <code>parseYaml_pipeline</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Pipeline-Composition--parseYaml_pipeline" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <object type="image/svg+xml" data="Verification/Key-Theorems/graphs/parseYaml_pipeline.svg">parseYaml_pipeline dependency graph</object></p>
+                </section>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Pipeline-Composition--parseYamlRaw_pipeline">
+                  3.2.1.2. <code>parseYamlRaw_pipeline</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Pipeline-Composition--parseYamlRaw_pipeline" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <object type="image/svg+xml" data="Verification/Key-Theorems/graphs/parseYamlRaw_pipeline.svg">parseYamlRaw_pipeline dependency graph</object></p>
+                </section>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Pipeline-Composition--parseYamlRaw_ok_decompose">
+                  3.2.1.3. <code>parseYamlRaw_ok_decompose</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Pipeline-Composition--parseYamlRaw_ok_decompose" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <object type="image/svg+xml" data="Verification/Key-Theorems/graphs/parseYamlRaw_ok_decompose.svg">parseYamlRaw_ok_decompose dependency graph</object></p>
+                </section>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Pipeline-Composition--emit_pipeline_decompose_ix">
+                  3.2.1.4. <code>emit_pipeline_decompose_ix</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Pipeline-Composition--emit_pipeline_decompose_ix" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <object type="image/svg+xml" data="Verification/Key-Theorems/graphs/emit_pipeline_decompose_ix.svg">emit_pipeline_decompose_ix dependency graph</object></p>
+                </section>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Pipeline-Composition--parseYaml_ok_iff">
+                  3.2.1.5. <code>parseYaml_ok_iff</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Pipeline-Composition--parseYaml_ok_iff" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <object type="image/svg+xml" data="Verification/Key-Theorems/graphs/parseYaml_ok_iff.svg">parseYaml_ok_iff dependency graph</object></p>
+                </section>
+              </section>
+            <section>
+              <h2 id="thm-scanner">
+                3.2.2. Scanner Correctness<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=thm-scanner" title="Permalink">🔗</a></span></h2>
+              <p>
+                <span id="--index--next-next-next-next-next-next-next-next-next-next-next-next-next-next"></span>
+Properties of the character-to-token scanner:</p>
+              <table class="tabular"><thead><tr><th><p>
+                        Theorem</p>
+                      </th><th><p>
+                        Module</p>
+                      </th><th><p>
+                        Statement
+</p>
+                      </th></tr></thead><tr><td><p>
+                      <code>scan_produces_valid_tokens</code></p>
+                    </td><td><p>
+                      <code>ScannerCorrectness</code></p>
+                    </td><td><p>
+                      The scanner output satisfies <code>ValidTokenStream</code>: every emitted token is well-formed, positions are monotonically increasing, and the stream is bracketed by <code>STREAM_START</code>/<code>STREAM_END</code>.
+</p>
+                    </td></tr><tr><td><p>
+                      <code>advance_offset_lt</code></p>
+                    </td><td><p>
+                      <code>ScannerProgress</code></p>
+                    </td><td><p>
+                      Scanner advance <em>strictly</em> increases the byte offset when the offset is within bounds — this is the core termination lemma.
+</p>
+                    </td></tr><tr><td><p>
+                      <code>scanLoop_success_emits_streamEnd</code></p>
+                    </td><td><p>
+                      <code>ScannerCorrectness</code></p>
+                    </td><td><p>
+                      A successful scan loop always terminates with a <code>STREAM_END</code> token.</p>
+                    </td></tr></table><section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Scanner-Correctness--scan_produces_valid_tokens">
+                  3.2.2.1. <code>scan_produces_valid_tokens</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Scanner-Correctness--scan_produces_valid_tokens" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <object type="image/svg+xml" data="Verification/Key-Theorems/graphs/scan_produces_valid_tokens.svg">scan_produces_valid_tokens dependency graph</object></p>
+                </section>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Scanner-Correctness--advance_offset_lt">
+                  3.2.2.2. <code>advance_offset_lt</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Scanner-Correctness--advance_offset_lt" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <object type="image/svg+xml" data="Verification/Key-Theorems/graphs/advance_offset_lt.svg">advance_offset_lt dependency graph</object></p>
+                </section>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Scanner-Correctness--scanLoop_success_emits_streamEnd">
+                  3.2.2.3. <code>scanLoop_success_emits_streamEnd</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Scanner-Correctness--scanLoop_success_emits_streamEnd" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <object type="image/svg+xml" data="Verification/Key-Theorems/graphs/scanLoop_success_emits_streamEnd.svg">scanLoop_success_emits_streamEnd dependency graph</object></p>
+                </section>
+              </section>
+            <section>
+              <h2 id="thm-parser">
+                3.2.3. Parser Correctness<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=thm-parser" title="Permalink">🔗</a></span></h2>
+              <p>
+                <span id="--index--next-next-next-next-next-next-next-next-next-next-next-next-next-next-next"></span>
+Properties of the token-to-AST parser:</p>
+              <table class="tabular"><thead><tr><th><p>
+                        Theorem</p>
+                      </th><th><p>
+                        Module</p>
+                      </th><th><p>
+                        Statement
+</p>
+                      </th></tr></thead><tr><td><p>
+                      <code>parseStream_sound</code></p>
+                    </td><td><p>
+                      <code>ParserSoundness</code></p>
+                    </td><td><p>
+                      If the parser produces an AST, it corresponds to a valid YAML grammar derivation.
+</p>
+                    </td></tr><tr><td><p>
+                      <code>parseNode_anchors_grow</code></p>
+                    </td><td><p>
+                      <code>ParserNodeProofs</code></p>
+                    </td><td><p>
+                      The anchor set grows monotonically through <code>parseNode</code> — anchors are never lost during parsing.
+</p>
+                    </td></tr><tr><td><p>
+                      <code>parseNode_aliases_resolve'</code></p>
+                    </td><td><p>
+                      <code>ParserNodeProofs</code></p>
+                    </td><td><p>
+                      Every alias (<code>*name</code>) in the output of <code>parseNode</code> resolves to a previously defined anchor (<code>&name</code>).
+</p>
+                    </td></tr><tr><td><p>
+                      <code>parseStream_output_anchors_wellformed</code></p>
+                    </td><td><p>
+                      <code>ParserWfaProofs</code></p>
+                    </td><td><p>
+                      After <code>parseStream</code> completes, all output anchors are well-formed: every alias target exists and every anchor body is <code>Grammable</code>.</p>
+                    </td></tr></table><section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Parser-Correctness--parseStream_sound">
+                  3.2.3.1. <code>parseStream_sound</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Parser-Correctness--parseStream_sound" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <object type="image/svg+xml" data="Verification/Key-Theorems/graphs/parseStream_sound.svg">parseStream_sound dependency graph</object></p>
+                </section>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Parser-Correctness--parseNode_anchors_grow">
+                  3.2.3.2. <code>parseNode_anchors_grow</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Parser-Correctness--parseNode_anchors_grow" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <object type="image/svg+xml" data="Verification/Key-Theorems/graphs/parseNode_anchors_grow.svg">parseNode_anchors_grow dependency graph</object></p>
+                </section>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Parser-Correctness--parseNode_aliases_resolve___">
+                  3.2.3.3. <code>parseNode_aliases_resolve'</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Parser-Correctness--parseNode_aliases_resolve___" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <object type="image/svg+xml" data="Verification/Key-Theorems/graphs/parseNode_aliases_resolve_27.svg">parseNode_aliases_resolve' dependency graph</object></p>
+                </section>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Parser-Correctness--parseStream_output_anchors_wellformed">
+                  3.2.3.4. <code>parseStream_output_anchors_wellformed</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Parser-Correctness--parseStream_output_anchors_wellformed" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <object type="image/svg+xml" data="Verification/Key-Theorems/graphs/parseStream_output_anchors_wellformed.svg">parseStream_output_anchors_wellformed dependency graph</object></p>
+                </section>
+              </section>
+            <section>
+              <h2 id="thm-soundness">
+                3.2.4. Soundness<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=thm-soundness" title="Permalink">🔗</a></span></h2>
+              <p>
+                <span id="--index--next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next"></span>
+Theorems establishing that the AST-to-value conversion
+faithfully implements the YAML specification:</p>
+              <table class="tabular"><thead><tr><th><p>
+                        Theorem</p>
+                      </th><th><p>
+                        Module</p>
+                      </th><th><p>
+                        Statement
+</p>
+                      </th></tr></thead><tr><td><p>
+                      <code>toYamlValue_correct</code></p>
+                    </td><td><p>
+                      <code>Soundness</code></p>
+                    </td><td><p>
+                      The <code>toYamlValue</code> function correctly implements the specification's construction rules.
+</p>
+                    </td></tr><tr><td><p>
+                      <code>nodeToValue_total</code></p>
+                    </td><td><p>
+                      <code>Soundness</code></p>
+                    </td><td><p>
+                      Every well-formed AST node can be converted to a <code>YamlValue</code> — the conversion is total.
+</p>
+                    </td></tr><tr><td><p>
+                      <code>nodeToValue_deterministic</code></p>
+                    </td><td><p>
+                      <code>Soundness</code></p>
+                    </td><td><p>
+                      AST-to-value conversion is deterministic: the same input always produces the same output.
+</p>
+                    </td></tr><tr><td><p>
+                      <code>scalar_content_preserved</code></p>
+                    </td><td><p>
+                      <code>Soundness</code></p>
+                    </td><td><p>
+                      Scalar string content is preserved through the parsing pipeline — no characters are added, dropped, or reordered.</p>
+                    </td></tr></table><section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Soundness--toYamlValue_correct">
+                  3.2.4.1. <code>toYamlValue_correct</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Soundness--toYamlValue_correct" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <object type="image/svg+xml" data="Verification/Key-Theorems/graphs/toYamlValue_correct.svg">toYamlValue_correct dependency graph</object></p>
+                </section>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Soundness--nodeToValue_total">
+                  3.2.4.2. <code>nodeToValue_total</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Soundness--nodeToValue_total" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <object type="image/svg+xml" data="Verification/Key-Theorems/graphs/nodeToValue_total.svg">nodeToValue_total dependency graph</object></p>
+                </section>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Soundness--nodeToValue_deterministic">
+                  3.2.4.3. <code>nodeToValue_deterministic</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Soundness--nodeToValue_deterministic" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <object type="image/svg+xml" data="Verification/Key-Theorems/graphs/nodeToValue_deterministic.svg">nodeToValue_deterministic dependency graph</object></p>
+                </section>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Soundness--scalar_content_preserved">
+                  3.2.4.4. <code>scalar_content_preserved</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Soundness--scalar_content_preserved" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <object type="image/svg+xml" data="Verification/Key-Theorems/graphs/scalar_content_preserved.svg">scalar_content_preserved dependency graph</object></p>
+                </section>
+              </section>
+            <section>
+              <h2 id="thm-roundtrip">
+                3.2.5. Round-Trip Properties<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=thm-roundtrip" title="Permalink">🔗</a></span></h2>
+              <p>
+                <span id="--index--next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next"></span>
+Theorems about the parse → emit → parse cycle:</p>
+              <table class="tabular"><thead><tr><th><p>
+                        Theorem</p>
+                      </th><th><p>
+                        Module</p>
+                      </th><th><p>
+                        Statement
+</p>
+                      </th></tr></thead><tr><td><p>
+                      <code>contentEq_refl</code></p>
+                    </td><td><p>
+                      <code>RoundTrip</code></p>
+                    </td><td><p>
+                      Content equality is reflexive: every YAML value is content-equal to itself.
+</p>
+                    </td></tr><tr><td><p>
+                      <code>contentEq_symm</code></p>
+                    </td><td><p>
+                      <code>RoundTrip</code></p>
+                    </td><td><p>
+                      Content equality is symmetric.
+</p>
+                    </td></tr><tr><td><p>
+                      <code>contentEq_trans</code></p>
+                    </td><td><p>
+                      <code>RoundTrip</code></p>
+                    </td><td><p>
+                      Content equality is transitive — together with reflexivity and symmetry, this makes <code>contentEq</code> an equivalence relation.
+</p>
+                    </td></tr><tr><td><p>
+                      <code>emit_content_invariant</code></p>
+                    </td><td><p>
+                      <code>ScannerEmitBridge</code></p>
+                    </td><td><p>
+                      The emitter preserves content equality: if two values are content-equal, their emitted canonical forms are identical.
+</p>
+                    </td></tr><tr><td><p>
+                      <code>escapeTag_roundtrip</code></p>
+                    </td><td><p>
+                      <code>RoundTrip</code></p>
+                    </td><td><p>
+                      Tag URI escape and unescape are inverse operations.</p>
+                    </td></tr></table><section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Round-Trip-Properties--contentEq_refl">
+                  3.2.5.1. <code>contentEq_refl</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Round-Trip-Properties--contentEq_refl" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <object type="image/svg+xml" data="Verification/Key-Theorems/graphs/contentEq_refl.svg">contentEq_refl dependency graph</object></p>
+                </section>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Round-Trip-Properties--contentEq_symm">
+                  3.2.5.2. <code>contentEq_symm</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Round-Trip-Properties--contentEq_symm" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <object type="image/svg+xml" data="Verification/Key-Theorems/graphs/contentEq_symm.svg">contentEq_symm dependency graph</object></p>
+                </section>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Round-Trip-Properties--contentEq_trans">
+                  3.2.5.3. <code>contentEq_trans</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Round-Trip-Properties--contentEq_trans" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <object type="image/svg+xml" data="Verification/Key-Theorems/graphs/contentEq_trans.svg">contentEq_trans dependency graph</object></p>
+                </section>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Round-Trip-Properties--emit_content_invariant">
+                  3.2.5.4. <code>emit_content_invariant</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Round-Trip-Properties--emit_content_invariant" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <object type="image/svg+xml" data="Verification/Key-Theorems/graphs/emit_content_invariant.svg">emit_content_invariant dependency graph</object></p>
+                </section>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Round-Trip-Properties--escapeTag_roundtrip">
+                  3.2.5.5. <code>escapeTag_roundtrip</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Round-Trip-Properties--escapeTag_roundtrip" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <object type="image/svg+xml" data="Verification/Key-Theorems/graphs/escapeTag_roundtrip.svg">escapeTag_roundtrip dependency graph</object></p>
+                </section>
+              </section>
+            </section>
+          <nav class="prev-next-buttons">
+            <a class="local-button active" href="Verification/Three-Layer-Strategy/#three-layer-strategy" rel="prev" title="3.1. Three-Layer Strategy"><span class="arrow">←</span><span class="where">3.1. Three-Layer Strategy</span></a><a class="local-button active" href="Verification/Key-Proof-Modules/#proof-modules" rel="next" title="3.3. Key Proof Modules"><span class="where">3.3. Key Proof Modules</span><span class="arrow">→</span></a></nav>
+          </div>
+        </main></div>
+    </body>
+  </html>
+
