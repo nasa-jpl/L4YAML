@@ -559,10 +559,19 @@ jobs:
       # gh-pages -> / (root). See scripts/publish-pages.sh.
       # -------------------------------------------------------
       - name: Upload documentation as artifact
+        # Never let the convenience artifact block the gh-pages publish below.
+        continue-on-error: true
         uses: actions/upload-artifact@v3
         with:
           name: l4yaml-docs
-          path: docs/
+          # The matrix's per-test detail pages are named with yaml-test-suite
+          # IDs that contain colons (e.g. matrix/details/2G84:00.html).
+          # upload-artifact rejects colons (NTFS-unsafe filenames), but git and
+          # GitHub Pages serve them fine, so the matrix still publishes to
+          # gh-pages — just exclude it from the downloadable artifact.
+          path: |
+            docs
+            !docs/matrix/**
           retention-days: 30
 
       - name: Publish documentation to gh-pages branch
