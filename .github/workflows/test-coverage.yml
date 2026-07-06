@@ -434,6 +434,20 @@ jobs:
           TESTSUITE_DATA_REF: data-2022-01-17
         run: |
           set -euo pipefail
+
+          # Preflight: the matrix needs the Docker daemon. If this runner's
+          # service account is not in the `docker` group the socket is
+          # unreachable (`permission denied ... /var/run/docker.sock`). The
+          # matrix is an auxiliary artifact, so skip it with a visible warning
+          # rather than failing the whole release job (docs still publish; the
+          # "Carry forward" step below keeps the last matrix). Enable it by
+          # adding the runner user to the docker group and restarting the runner
+          # service — see README "L4YAML and the YAML Test Matrix".
+          if ! docker version >/dev/null 2>&1; then
+            echo "::warning title=YAML Test Matrix skipped::Docker is not accessible for user '$(id -un)' on this runner (is the runner service account in the 'docker' group?) — skipping matrix generation."
+            exit 0
+          fi
+
           WORK="$RUNNER_TEMP/yaml-matrix"
           rm -rf "$WORK"; mkdir -p "$WORK"
 

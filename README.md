@@ -591,6 +591,13 @@ L4YAML, not a snapshot. In that comparison L4YAML passes every case: all 308
 valid event streams and all 279 JSON oracles match byte-for-byte, and every
 invalid input is rejected (event 402/402, JSON 282/282 over the data form).
 
+The matrix step drives Docker (it builds/pulls runtime images and runs them as
+sibling containers), so the CI runner's **service account must be in the
+`docker` group** — e.g. `sudo usermod -aG docker <runner-user>` followed by a
+restart of the runner service. If Docker is unreachable the step logs a warning
+and skips (the release still publishes; the previously-generated matrix is kept)
+rather than failing the job.
+
 ## Project layout
 
 ```
