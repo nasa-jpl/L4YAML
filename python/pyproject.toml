@@ -7,7 +7,7 @@ name = "l4yaml"
 # Keep this in sync with python/l4yaml/__init__.py's __version__,
 # and with the version declarations in lakefile.toml and the rust
 # crates.  See "Versioning" in the project README.
-version = "0.5.1"
+version = "0.5.2"
 description = "Python bindings for the verified Lean 4 YAML parser"
 readme = "README.md"
 requires-python = ">=3.10"
