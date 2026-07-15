@@ -219,7 +219,7 @@ theorem scanFlowEntryIx_preserves_directivesPresent
     (s s' : ScannerStateIx input) (h : scanFlowEntryIx s = .ok s') :
     s'.directivesPresent = s.directivesPresent := by
   unfold scanFlowEntryIx at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at h; subst h)
@@ -229,7 +229,7 @@ theorem scanFlowEntryIx_preserves_indents
     (s s' : ScannerStateIx input) (h : scanFlowEntryIx s = .ok s') :
     s'.indents = s.indents := by
   unfold scanFlowEntryIx at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at h; subst h)
@@ -239,7 +239,7 @@ theorem scanFlowEntryIx_preserves_explicitKeyLine
     (s s' : ScannerStateIx input) (h : scanFlowEntryIx s = .ok s') :
     s'.explicitKeyLine = s.explicitKeyLine := by
   unfold scanFlowEntryIx at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at h; subst h)
@@ -249,7 +249,7 @@ theorem scanFlowEntryIx_preserves_allowDirectives
     (s s' : ScannerStateIx input) (h : scanFlowEntryIx s = .ok s') :
     s'.allowDirectives = s.allowDirectives := by
   unfold scanFlowEntryIx at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at h; subst h)
@@ -259,7 +259,7 @@ theorem scanFlowEntryIx_preserves_needIndentCheck
     (s s' : ScannerStateIx input) (h : scanFlowEntryIx s = .ok s') :
     s'.needIndentCheck = s.needIndentCheck := by
   unfold scanFlowEntryIx at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at h; subst h)

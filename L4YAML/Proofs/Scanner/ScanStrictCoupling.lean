@@ -252,10 +252,8 @@ theorem scanNextToken_dispatchContent_corr (sc : ScannerState) (sp : SurfPos) (c
           have h := Except.ok.inj hok; subst h
           exact scanTag_corr sc sp hcorr s_t h_tag
       · split at hok
-        · split at hok
-          · simp at hok
-          · have h := Except.ok.inj hok; subst h
-            exact scanBlockScalar_corr sc sp hcorr ‹_›
+        · -- '|' or '>': scanBlockScalar returns directly
+          exact scanBlockScalar_corr sc sp hcorr hok
         · split at hok
           · split at hok
             · simp at hok
@@ -273,10 +271,8 @@ theorem scanNextToken_dispatchContent_corr (sc : ScannerState) (sp : SurfPos) (c
                 · exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩⟩
                 · exact ⟨sp', hcorr'⟩
             · split at hok
-              · split at hok
-                · simp at hok
-                · have h := Except.ok.inj hok; subst h
-                  exact scanPlainScalar_corr sc sp hcorr ‹_›
+              · -- canStartPlainScalar: scanPlainScalar returns directly
+                exact scanPlainScalar_corr sc sp hcorr hok
               · simp at hok
 
 /-! ## §3 Preprocess Coupling -/

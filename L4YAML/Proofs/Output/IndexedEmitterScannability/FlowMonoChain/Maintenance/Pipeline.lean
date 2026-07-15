@@ -106,10 +106,7 @@ theorem dispatchStructural_none_flow (s : ScannerStateIx input) (c : Char)
   unfold scanNextTokenIx_dispatchStructural
   have h_col_ne : (s.cursor.pos.col == 0) = false :=
     decide_eq_false (by omega)
-  simp [bind, Except.bind, pure, Pure.pure, Except.pure,
-    h_flow, h_col_ne,
-    show ¬(s.currentIndent ≥ (0 : Int)) from by omega,
-    show ¬((s.cursor.pos.col : Int) ≤ s.currentIndent) from by omega]
+  simp [pure, Pure.pure, Except.pure, h_flow, h_col_ne, show ¬(s.currentIndent ≥ (0 : Int)) from by omega, show ¬((s.cursor.pos.col : Int) ≤ s.currentIndent) from by omega]
 
 /-- At initial state (`flowLevel = 0`, not at doc-start/end markers),
     structural dispatch returns `none` for any non-`%` character.
@@ -126,8 +123,7 @@ theorem dispatchStructural_none_non_directive (s : ScannerStateIx input) (c : Ch
   have h_not_inflow : s.inFlow = false := by
     unfold ScannerStateIx.inFlow; rw [h_fl]; rfl
   have h_c_pct : (c == '%') = false := beq_eq_false_iff_ne.mpr h_not_pct
-  simp [bind, Except.bind, pure, Pure.pure, Except.pure, h_not_inflow,
-    h_noDocStart, h_noDocEnd, h_c_pct]
+  simp [pure, Pure.pure, Except.pure, h_not_inflow, h_noDocStart, h_noDocEnd, h_c_pct]
 
 /-- Specialisation for `'['` at initial state. -/
 theorem dispatchStructural_none_bracket_init (s : ScannerStateIx input)
@@ -213,10 +209,7 @@ theorem dispatchFlowIndicators_none (s : ScannerStateIx input) (c : Char)
     (h1 : c ≠ '[') (h2 : c ≠ ']') (h3 : c ≠ '{') (h4 : c ≠ '}') (h5 : c ≠ ',') :
     scanNextTokenIx_dispatchFlowIndicators s c = .ok none := by
   unfold scanNextTokenIx_dispatchFlowIndicators
-  simp [bind, Except.bind, pure, Pure.pure, Except.pure,
-    beq_eq_false_iff_ne.mpr h1, beq_eq_false_iff_ne.mpr h2,
-    beq_eq_false_iff_ne.mpr h3, beq_eq_false_iff_ne.mpr h4,
-    beq_eq_false_iff_ne.mpr h5]
+  simp [pure, Pure.pure, Except.pure, beq_eq_false_iff_ne.mpr h1, beq_eq_false_iff_ne.mpr h2, beq_eq_false_iff_ne.mpr h3, beq_eq_false_iff_ne.mpr h4, beq_eq_false_iff_ne.mpr h5]
 
 /-- Flow dispatch for `'['` always returns
     `some (scanFlowSequenceStartIx s)`. -/
@@ -233,10 +226,7 @@ theorem dispatchFlowIndicators_brace (s : ScannerStateIx input) :
     scanNextTokenIx_dispatchFlowIndicators s '{' =
       .ok (some (scanFlowMappingStartIx s)) := by
   unfold scanNextTokenIx_dispatchFlowIndicators
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure,
-    show ('{' == '[') = false from by decide,
-    show ('{' == ']') = false from by decide,
-    show ('{' == '{') = true from by decide, ↓reduceIte, Bool.false_eq_true]
+  simp only [pure, Pure.pure, Except.pure, show ('{' == '[') = false from by decide,     show ('{' == ']') = false from by decide, show ('{' == '{') = true from by decide, ↓reduceIte, Bool.false_eq_true]
 
 /-- Flow dispatch for `']'` with `flowLevel > 0` returns
     `some (scanFlowSequenceEndIx s)`. The legacy split between
@@ -251,8 +241,7 @@ theorem dispatchFlowIndicators_close_bracket (s : ScannerStateIx input)
   unfold scanNextTokenIx_dispatchFlowIndicators
   have h_ne : (s.flowLevel == 0) = false :=
     beq_eq_false_iff_ne.mpr (by omega)
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure,
-    show (']' == '[') = false from by decide,
+  simp only [pure, Pure.pure, Except.pure, show (']' == '[') = false from by decide,
     show (']' == ']') = true from by decide,
     h_ne, ↓reduceIte, Bool.false_eq_true]
 
@@ -265,12 +254,7 @@ theorem dispatchFlowIndicators_close_brace (s : ScannerStateIx input)
   unfold scanNextTokenIx_dispatchFlowIndicators
   have h_ne : (s.flowLevel == 0) = false :=
     beq_eq_false_iff_ne.mpr (by omega)
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure,
-    show ('}' == '[') = false from by decide,
-    show ('}' == ']') = false from by decide,
-    show ('}' == '{') = false from by decide,
-    show ('}' == '}') = true from by decide,
-    h_ne, ↓reduceIte, Bool.false_eq_true]
+  simp only [pure, Pure.pure, Except.pure, show ('}' == '[') = false from by decide,     show ('}' == ']') = false from by decide, show ('}' == '{') = false from by decide, show ('}' == '}') = true from by decide, h_ne, ↓reduceIte, Bool.false_eq_true]
 
 /-! ## §5  `scanFlowEntryIx_ok` (used by `_comma`) -/
 
@@ -283,7 +267,7 @@ theorem scanFlowEntryIx_ok (s : ScannerStateIx input)
     scanFlowEntryIx s =
       .ok { (s.emit YamlToken.flowEntry).advance with simpleKeyAllowed := true } := by
   unfold scanFlowEntryIx
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure]
+  simp only [bind, Except.bind]
   cases h_lrt : lastRealTokenValIx? s.tokens with
   | none => rfl
   | some t =>
@@ -327,28 +311,19 @@ Each returns `.ok none` because the character is neither `'-'` nor
 theorem dispatchBlockIndicators_none_quote (s : ScannerStateIx input) :
     scanNextTokenIx_dispatchBlockIndicators s '"' = .ok none := by
   unfold scanNextTokenIx_dispatchBlockIndicators
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure,
-    show ('"' == '-') = false from by decide,
-    show ('"' == '?') = false from by decide,
-    show ('"' == ':') = false from by decide,
-    Bool.false_and, Bool.false_eq_true, ↓reduceIte]
+  simp only [pure, Pure.pure, Except.pure, show ('"' == '-') = false from by decide, show ('"' == '?') = false from by decide, show ('"' == ':') = false from by decide, Bool.false_and, Bool.false_eq_true, ↓reduceIte]
 
 /-- Block dispatch returns `none` for `','`. -/
 theorem dispatchBlockIndicators_none_comma (s : ScannerStateIx input) :
     scanNextTokenIx_dispatchBlockIndicators s ',' = .ok none := by
   unfold scanNextTokenIx_dispatchBlockIndicators
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure,
-    show (',' == '-') = false from by decide,
-    show (',' == '?') = false from by decide,
-    show (',' == ':') = false from by decide,
-    Bool.false_and, Bool.false_eq_true, ↓reduceIte]
+  simp only [pure, Pure.pure, Except.pure, show (',' == '-') = false from by decide, show (',' == '?') = false from by decide, show (',' == ':') = false from by decide, Bool.false_and, Bool.false_eq_true, ↓reduceIte]
 
 /-- Block dispatch returns `none` for `']'`. -/
 theorem dispatchBlockIndicators_none_close_bracket (s : ScannerStateIx input) :
     scanNextTokenIx_dispatchBlockIndicators s ']' = .ok none := by
   unfold scanNextTokenIx_dispatchBlockIndicators
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure,
-    show (']' == '-') = false from by decide,
+  simp only [pure, Pure.pure, Except.pure, show (']' == '-') = false from by decide,
     show (']' == '?') = false from by decide,
     show (']' == ':') = false from by decide,
     Bool.false_and, Bool.false_eq_true, ↓reduceIte]
@@ -357,11 +332,7 @@ theorem dispatchBlockIndicators_none_close_bracket (s : ScannerStateIx input) :
 theorem dispatchBlockIndicators_none_close_brace (s : ScannerStateIx input) :
     scanNextTokenIx_dispatchBlockIndicators s '}' = .ok none := by
   unfold scanNextTokenIx_dispatchBlockIndicators
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure,
-    show ('}' == '-') = false from by decide,
-    show ('}' == '?') = false from by decide,
-    show ('}' == ':') = false from by decide,
-    Bool.false_and, Bool.false_eq_true, ↓reduceIte]
+  simp only [pure, Pure.pure, Except.pure, show ('}' == '-') = false from by decide, show ('}' == '?') = false from by decide, show ('}' == ':') = false from by decide, Bool.false_and, Bool.false_eq_true, ↓reduceIte]
 
 /-! ## §6  Pipeline composition
 

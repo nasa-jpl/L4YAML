@@ -127,7 +127,7 @@ zero out tags, anchors, and blockMeta), both sides are definitionally
 equal — `rfl` closes every non-plain branch, and the plain-empty
 branch closes after substituting `content = ""`.
 -/
-def scalar_has_witness :
+theorem scalar_has_witness :
     (s : Scalar) → (inFlow : Bool) →
     ScalarScannable s inFlow →
     ∃ n : ValidNode,
@@ -198,7 +198,7 @@ theorem stripped_pairs_eq
 
 `noncomputable` because `Classical.choice` is used to select witnesses.
 -/
-noncomputable def yamlValue_has_witness :
+theorem yamlValue_has_witness :
     (v : YamlValue) → (inFlow : Bool) → Grammable v inFlow →
     ∃ n : ValidNode, stripAnnotations (toYamlValue n) = stripAnnotations v
   | YamlValue.scalar s, inFlow, .scalar _ _ h => scalar_has_witness s inFlow h

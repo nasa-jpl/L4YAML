@@ -136,7 +136,7 @@ theorem scanDocumentEndIx_preserves_flowLevel
     (s s' : ScannerStateIx input) (h : scanDocumentEndIx s = .ok s') :
     s'.flowLevel = s.flowLevel := by
   unfold scanDocumentEndIx at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at h; subst h)
@@ -151,7 +151,7 @@ theorem scanYamlDirectiveIx_preserves_flowLevel
     (h : scanYamlDirectiveIx s cAfterWS startPos hStart = .ok s') :
     s'.flowLevel = s.flowLevel := by
   unfold scanYamlDirectiveIx at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at h; subst h; rfl)
@@ -182,7 +182,7 @@ theorem scanBlockEntryIx_preserves_flowLevel
     (s s' : ScannerStateIx input) (h : scanBlockEntryIx s = .ok s') :
     s'.flowLevel = s.flowLevel := by
   unfold scanBlockEntryIx at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at h; subst h)
@@ -195,7 +195,7 @@ theorem scanKeyIx_preserves_flowLevel
     (s s' : ScannerStateIx input) (h : scanKeyIx s = .ok s') :
     s'.flowLevel = s.flowLevel := by
   unfold scanKeyIx at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at h; subst h)
@@ -222,7 +222,7 @@ theorem scanFlowEntryIx_preserves_flowLevel
     (s s' : ScannerStateIx input) (h : scanFlowEntryIx s = .ok s') :
     s'.flowLevel = s.flowLevel := by
   unfold scanFlowEntryIx at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at h; subst h)
@@ -316,7 +316,7 @@ theorem scanNextTokenIx_dispatchContent_preserves_flowLevel
   by_cases hg1 : (c == '&') = true
   · -- '&' anchor
     rw [if_pos hg1] at h
-    simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+    try simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
     cases hA : scanAnchorOrAliasIx s true with
     | error e => rw [hA] at h; cases h
     | ok v =>
@@ -382,7 +382,7 @@ theorem scanNextTokenIx_dispatchContent_preserves_simpleKeyStack
   by_cases hg1 : (c == '&') = true
   · -- '&' anchor
     rw [if_pos hg1] at h
-    simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+    try simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
     cases hA : scanAnchorOrAliasIx s true with
     | error e => rw [hA] at h; cases h
     | ok v =>

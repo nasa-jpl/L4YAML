@@ -74,7 +74,7 @@ structure RangesOk : Prop where
     move): given the locate recursion's not-yet-built output as a bare universal hypothesis, package
     the per-element joint into the universal structure.  Each field instantiates the locator at the
     guarded window and hands the bundle + the field's own guard to the joint. -/
-def rangesOk_of_locator (locate : ∀ lo hi, G lo hi → Located lo hi) : RangesOk :=
+theorem rangesOk_of_locator (locate : ∀ lo hi, G lo hi → Located lo hi) : RangesOk :=
   ⟨fun lo hi hg => elemProps_of_located (locate lo hi hg) hg⟩
 
 /-- End-to-end composition (toy of the two sorry sites consuming the assembler's output): the

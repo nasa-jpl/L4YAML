@@ -106,7 +106,7 @@ theorem facts_of_root (lo' hi' a b : Nat)
 /-- A concrete carrier: facts hold at every window (toy), gate keyed on a prefix folding to `some []`. -/
 def samplePre : Nat → List Tok := fun _ => [Tok.other]
 def sampleFloor : Nat → Nat → Prop := fun _ _ => True
-def sampleCarrier : MapInteriorSeparators 0 10 samplePre sampleFloor :=
+theorem sampleCarrier : MapInteriorSeparators 0 10 samplePre sampleFloor :=
   fun _a b _ hab _ _ => ⟨hab, Nat.le_trans hab (Nat.le_succ b)⟩
 theorem sample_pre : btFold (some []) (samplePre 2) = some [] := rfl
 

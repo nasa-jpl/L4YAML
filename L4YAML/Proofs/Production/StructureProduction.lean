@@ -891,7 +891,7 @@ theorem scanDocumentEnd_prod (sc : ScannerState) (sp : SurfPos)
   refine ⟨⟨rest, 3⟩, SCDocumentEnd.mk rest, ?_⟩
   -- Unfold and handle Except
   unfold scanDocumentEnd at hok
-  simp only [bind, Except.bind, pure, Except.pure] at hok
+  simp only [bind, Except.bind] at hok
   split at hok
   · exact absurd hok (by simp)
   · -- Build correspondence through unwindIndents + emit + advanceN 3
@@ -1183,7 +1183,7 @@ theorem scanYamlDirective_prod (sc : ScannerState)
     (hok : scanYamlDirective sc s_after_ws startPos = .ok s') :
     ∃ sp', GStar SNbChar sp_ws sp' ∧ ScannerSurfCorr s' sp' := by
   unfold scanYamlDirective at hok
-  simp only [bind, Except.bind, pure, Except.pure] at hok
+  simp only [bind, Except.bind] at hok
   split at hok
   · exact absurd hok (by simp)
   · obtain ⟨sp_major, h_nb_maj, hcorr_major⟩ :=
@@ -1215,7 +1215,7 @@ theorem scanTagDirective_prod
     (hok : scanTagDirective sc s_after_ws startPos = .ok s') :
     ∃ sp', GStar SNbChar sp_ws sp' ∧ ScannerSurfCorr s' sp' := by
   unfold scanTagDirective at hok
-  simp only [bind, Except.bind, pure, Except.pure] at hok
+  simp only [bind, Except.bind] at hok
   obtain ⟨sp_hdl, h_nb_hdl, hcorr_hdl⟩ :=
     collectTagHandleDirectiveLoop_prod s_after_ws sp_ws hcorr_ws "" _
   obtain ⟨sp_ws2, h_ws, hcorr_ws2⟩ :=

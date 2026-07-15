@@ -76,7 +76,7 @@ stripping and the list/pair helpers that handle collection elements.
 
 mutual
 /-- List helper for idempotence. -/
-def stripAnnotationsList_idempotent :
+theorem stripAnnotationsList_idempotent :
     (vs : List YamlValue) →
     stripAnnotations.stripAnnotationsList (stripAnnotations.stripAnnotationsList vs) =
       stripAnnotations.stripAnnotationsList vs
@@ -87,7 +87,7 @@ def stripAnnotationsList_idempotent :
         (stripAnnotationsList_idempotent vs)
 
 /-- Pair list helper for idempotence. -/
-def stripAnnotationsPairs_idempotent :
+theorem stripAnnotationsPairs_idempotent :
     (ps : List (YamlValue × YamlValue)) →
     stripAnnotations.stripAnnotationsPairs (stripAnnotations.stripAnnotationsPairs ps) =
       stripAnnotations.stripAnnotationsPairs ps
@@ -106,7 +106,7 @@ stripping once.
 This is a natural property: once annotations are removed, there is
 nothing left to strip.
 -/
-def stripAnnotations_idempotent :
+theorem stripAnnotations_idempotent :
     (v : YamlValue) →
     stripAnnotations (stripAnnotations v) = stripAnnotations v
   | .scalar _s => rfl
@@ -174,7 +174,7 @@ The `inFlow` parameter and `Grammable` hypothesis are required because
 context-aware `Grammable` cannot be proven universally for all `ValidNode`
 values — only for those that are flow-context-consistent.
 -/
-noncomputable def grammar_value_roundtrip (n : ValidNode) (inFlow : Bool)
+theorem grammar_value_roundtrip (n : ValidNode) (inFlow : Bool)
     (hg : Grammable (toYamlValue n) inFlow) :
     ∃ n' : ValidNode,
       stripAnnotations (toYamlValue n') = stripAnnotations (toYamlValue n) :=
@@ -202,7 +202,7 @@ Combined with `parseStream_sound`:
     → ∃ n, stripAnnotations (toYamlValue n) = stripAnnotations docs[i].value   [soundness]
 ```
 -/
-noncomputable def parseStream_complete
+theorem parseStream_complete
     (tokens : Array (Positioned YamlToken))
     (docs : Array YamlDocument)
     (_hparse : TokenParser.parseStream tokens = Except.ok docs)
@@ -220,7 +220,7 @@ there exists a `ValidNode` witness whose stripped form matches.
 This is the core bridge: the soundness direction (P10.8d) always finds
 a witness `n` from a grammable value `v`.
 -/
-noncomputable def soundness_completeness_compose
+theorem soundness_completeness_compose
     (v : YamlValue) (hg : Grammable v false) :
     ∃ n : ValidNode,
       stripAnnotations (toYamlValue n) = stripAnnotations v :=

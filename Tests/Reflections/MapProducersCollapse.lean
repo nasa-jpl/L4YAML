@@ -100,7 +100,7 @@ theorem producers_of_root (hi : Nat) (floor : Nat → Nat → Prop)
 
 /-- A concrete carrier: the facts hold at every gated window, with the gate's floor always satisfiable. -/
 def sampleFloor : Nat → Nat → Prop := fun _ _ => True
-def sampleCarrier : Carrier 10 sampleFloor :=
+theorem sampleCarrier : Carrier 10 sampleFloor :=
   fun _a b _ hab _ _ => ⟨hab, Nat.le_trans hab (Nat.le_succ b)⟩
 
 /-- The empty nested `{}` window `lo = hi = 5`: the producer still fires (vacuously), because the

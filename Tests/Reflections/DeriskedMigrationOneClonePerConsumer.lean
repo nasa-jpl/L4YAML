@@ -75,7 +75,7 @@ theorem oldGuard_false_at_cl : ¬ OldGuard Tok.op Tok.cl := by
 
 /-- The re-scoped guard HOLDS (vacuously) at the empty bracket — its `b ≠ cl` premise is unmet, so the
     opener clause never fires.  This is WHY the empty case must be handled by routing, not the guard. -/
-def newGuard_holds_at_cl : NewGuard Tok.op Tok.cl := ⟨fun _ hb => absurd rfl hb⟩
+theorem newGuard_holds_at_cl : NewGuard Tok.op Tok.cl := ⟨fun _ hb => absurd rfl hb⟩
 
 /-! ## The relocation — the OLD guard DERIVES `b ≠ cl`; the re-scoped guard makes it a SUPPLIED premise -/
 

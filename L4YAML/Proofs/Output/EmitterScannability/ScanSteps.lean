@@ -361,9 +361,8 @@ theorem collectDoubleQuotedLoop_preserves_dp (s : ScannerState) (content : Strin
         have h_dp_fold := foldQuotedNewlines_preserves_dp _ _ heq_fold
         split at h <;> try contradiction
         split at h <;> try contradiction
-        simp only [] at h
-        split at h <;> try contradiction
-        exact ih _ _ _ h |>.trans h_dp_fold
+        -- 4.32.0: `== " "` guard splits into recursive branches; close each via IH
+        split at h <;> (first | (exact ih _ _ _ h |>.trans h_dp_fold) | contradiction)
       · -- Regular character
         split at h <;> try contradiction
         exact ih _ _ _ h |>.trans (advance_preserves_dp s)
@@ -373,7 +372,7 @@ theorem scanDoubleQuoted_preserves_dp (s s' : ScannerState)
     (h_ok : scanDoubleQuoted s = .ok s') :
     s'.directivesPresent = s.directivesPresent := by
   unfold scanDoubleQuoted at h_ok
-  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  simp only [bind, Except.bind] at h_ok
   split at h_ok <;> try contradiction
   rename_i result heq
   have h_dp_collect := collectDoubleQuotedLoop_preserves_dp _ _ _ _ _ _ _ _ heq
@@ -561,9 +560,8 @@ theorem collectDoubleQuotedLoop_preserves_indents (s : ScannerState) (content : 
         rename_i fold_result heq_fold
         split at h <;> try contradiction
         split at h <;> try contradiction
-        simp only [] at h
-        split at h <;> try contradiction
-        exact (ih _ _ _ h).trans (foldQuotedNewlines_preserves_indents _ _ heq_fold)
+        -- 4.32.0: `== " "` guard splits into recursive branches; close each via IH
+        split at h <;> (first | (exact (ih _ _ _ h).trans (foldQuotedNewlines_preserves_indents _ _ heq_fold)) | contradiction)
       · split at h <;> try contradiction
         exact (ih _ _ _ h).trans (advance_preserves_indents s)
 
@@ -571,7 +569,7 @@ theorem scanDoubleQuoted_preserves_indents (s s' : ScannerState)
     (h_ok : scanDoubleQuoted s = .ok s') :
     s'.indents = s.indents := by
   unfold scanDoubleQuoted at h_ok
-  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  simp only [bind, Except.bind] at h_ok
   split at h_ok <;> try contradiction
   rename_i result heq
   have h_ids_collect := collectDoubleQuotedLoop_preserves_indents _ _ _ _ _ _ _ _ heq
@@ -758,9 +756,8 @@ theorem collectDoubleQuotedLoop_preserves_ek (s : ScannerState) (content : Strin
         rename_i folded_result heq_fold
         split at h <;> try contradiction
         split at h <;> try contradiction
-        simp only [] at h
-        split at h <;> try contradiction
-        exact ih _ _ _ h |>.trans (foldQuotedNewlines_preserves_ek _ _ heq_fold)
+        -- 4.32.0: `== " "` guard splits into recursive branches; close each via IH
+        split at h <;> (first | (exact ih _ _ _ h |>.trans (foldQuotedNewlines_preserves_ek _ _ heq_fold)) | contradiction)
       · -- Regular character
         split at h <;> try contradiction
         exact ih _ _ _ h |>.trans (advance_explicitKeyLine s)
@@ -770,7 +767,7 @@ theorem scanDoubleQuoted_preserves_ek (s s' : ScannerState)
     (h_ok : scanDoubleQuoted s = .ok s') :
     s'.explicitKeyLine = s.explicitKeyLine := by
   unfold scanDoubleQuoted at h_ok
-  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  simp only [bind, Except.bind] at h_ok
   split at h_ok <;> try contradiction
   rename_i result heq
   have h_ek_collect := collectDoubleQuotedLoop_preserves_ek _ _ _ _ _ _ _ _ heq
@@ -1259,7 +1256,7 @@ theorem AllTokensOnLine_scanDoubleQuoted (s s' : ScannerState)
     (l : Nat) (h_atol : AllTokensOnLine s l) (h_line : s.line = l) :
     AllTokensOnLine s' l := by
   unfold scanDoubleQuoted at h_ok
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h_ok
+  simp only [bind, Except.bind] at h_ok
   split at h_ok <;> try contradiction
   rename_i result heq
   split at h_ok
@@ -1783,11 +1780,7 @@ theorem dispatchStructural_none_flow (s : ScannerState) (c : Char)
   have h_fl_pos : s.flowLevel > 0 := by
     unfold ScannerState.inFlow at h_flow; exact of_decide_eq_true h_flow
   unfold scanNextToken_dispatchStructural
-  simp [ScannerState.inFlow, h_fl_pos,
-        show ¬(s.currentIndent ≥ (0 : Int)) from by omega,
-        show ¬((s.col : Int) ≤ s.currentIndent) from by omega,
-        show s.col ≠ 0 from by omega,
-        bind, Except.bind, pure, Except.pure]
+  simp [ScannerState.inFlow, h_fl_pos, show ¬(s.currentIndent ≥ (0 : Int)) from by omega, show ¬((s.col : Int) ≤ s.currentIndent) from by omega, show s.col ≠ 0 from by omega, pure, Except.pure]
 
 /-- `checkBlockFlowIndent` succeeds for non-bracket characters or when in flow. -/
 theorem checkBlockFlowIndent_ok_flow (s : ScannerState) (c : Char)
@@ -2112,8 +2105,7 @@ theorem dispatchStructural_none_bracket_init (s : ScannerState)
     (h_noDocEnd : atDocumentEnd s = false) :
     scanNextToken_dispatchStructural s '[' = .ok none := by
   unfold scanNextToken_dispatchStructural
-  simp [ScannerState.inFlow, h_fl, h_noDocStart, h_noDocEnd,
-        bind, Except.bind, pure, Except.pure]
+  simp [ScannerState.inFlow, h_fl, h_noDocStart, h_noDocEnd, pure, Except.pure]
 
 /-- checkBlockFlowIndent passes for `[` at initial state
     (currentIndent = -1 < 0, so the guard is false). -/
@@ -3556,8 +3548,7 @@ theorem dispatchStructural_none_brace_init (s : ScannerState)
     (h_noDocEnd : atDocumentEnd s = false) :
     scanNextToken_dispatchStructural s '{' = .ok none := by
   unfold scanNextToken_dispatchStructural
-  simp [ScannerState.inFlow, h_fl, h_noDocStart, h_noDocEnd,
-        bind, Except.bind, pure, Except.pure]
+  simp [ScannerState.inFlow, h_fl, h_noDocStart, h_noDocEnd, pure, Except.pure]
 
 /-- checkBlockFlowIndent passes for `{` at initial state. -/
 theorem checkBlockFlowIndent_brace_init (s : ScannerState)

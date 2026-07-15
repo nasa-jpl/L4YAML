@@ -238,7 +238,7 @@ theorem parseStream_three_tokens_scalar (content : String)
   have h_pd : parseDirectives ps1 = (#[], ps1) := parseDirectives_skip ps1 h_peek_not_dir
   have h_pds : prepareDocumentState ps1 = .ok (#[], ps1) := by
     unfold prepareDocumentState
-    simp only [bind, Except.bind, pure, Except.pure, h_pd, Array.filterMap_empty]
+    simp only [bind, Except.bind, h_pd, Array.filterMap_empty]
     have h_th : { ps1 with tagHandles := #[] } = ps1 := by
       simp [ps1, ParseState.advance]
     rw [h_th, h_peek1]
@@ -456,7 +456,7 @@ theorem parseStream_emitSequence (style : CollectionStyle) (items : Array YamlVa
     have h_pd : parseDirectives ps1 = (#[], ps1) := parseDirectives_skip ps1 h_peek_not_dir
     have h_pds : prepareDocumentState ps1 = .ok (#[], ps1) := by
       unfold prepareDocumentState
-      simp only [bind, Except.bind, pure, Except.pure, h_pd, Array.filterMap_empty]
+      simp only [bind, Except.bind, h_pd, Array.filterMap_empty]
       have h_th : { ps1 with tagHandles := #[] } = ps1 := by
         simp [ps1, ParseState.advance]
       rw [h_th, h_peek1]
@@ -689,7 +689,7 @@ theorem parseStream_emitMapping (style : CollectionStyle) (pairs : Array (YamlVa
     have h_pd : parseDirectives ps1 = (#[], ps1) := parseDirectives_skip ps1 h_peek_not_dir
     have h_pds : prepareDocumentState ps1 = .ok (#[], ps1) := by
       unfold prepareDocumentState
-      simp only [bind, Except.bind, pure, Except.pure, h_pd, Array.filterMap_empty]
+      simp only [bind, Except.bind, h_pd, Array.filterMap_empty]
       have h_th : { ps1 with tagHandles := #[] } = ps1 := by
         simp [ps1, ParseState.advance]
       rw [h_th, h_peek1]

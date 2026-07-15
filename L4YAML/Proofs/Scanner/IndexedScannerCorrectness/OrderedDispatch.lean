@@ -152,7 +152,7 @@ theorem scanFlowEntryIx_preserves_ScanInvIx {input : String}
     (s s' : ScannerStateIx input) (h : ScanInvIx s)
     (h_ok : scanFlowEntryIx s = .ok s') : ScanInvIx s' := by
   unfold scanFlowEntryIx at h_ok
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h_ok
+  simp only [bind, Except.bind] at h_ok
   have h1 := emit_preserves_ScanInvIx s YamlToken.flowEntry h
   have h2 := advance_preserves_ScanInvIx _ h1
   split at h_ok
@@ -214,7 +214,7 @@ theorem scanBlockEntryIx_preserves_ScanInvIx {input : String}
     (s s' : ScannerStateIx input) (h : ScanInvIx s)
     (h_ok : scanBlockEntryIx s = .ok s') : ScanInvIx s' := by
   unfold scanBlockEntryIx at h_ok
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h_ok
+  simp only [bind, Except.bind] at h_ok
   split at h_ok
   · -- !s.inFlow = true: tab check active
     split at h_ok
@@ -243,7 +243,7 @@ theorem scanKeyIx_preserves_ScanInvIx {input : String}
     (s s' : ScannerStateIx input) (h : ScanInvIx s)
     (h_ok : scanKeyIx s = .ok s') : ScanInvIx s' := by
   unfold scanKeyIx at h_ok
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h_ok
+  simp only [bind, Except.bind] at h_ok
   split at h_ok
   · split at h_ok
     · split at h_ok
@@ -384,7 +384,7 @@ theorem scanDocumentEndIx_preserves_ScanInvIx {input : String}
         simpleKeyAllowed := true, allowDirectives := true,
         directivesPresent := false, definedAnchors := #[] } h_adv rfl rfl
   unfold scanDocumentEndIx at h_ok
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h_ok
+  simp only [bind, Except.bind] at h_ok
   repeat (any_goals (split at h_ok))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at h_ok; subst h_ok)
@@ -701,7 +701,7 @@ theorem scanYamlDirectiveIx_new_token_start {input : String}
   by_cases hd : s.seenYamlDirective = true
   · rw [if_pos hd] at h_ok; simp [Bind.bind, Except.bind] at h_ok
   · rw [if_neg hd] at h_ok
-    simp only [pure_bind] at h_ok
+    simp only [] at h_ok
     split at h_ok
     · simp only [Except.ok.injEq] at h_ok
       subst h_ok
@@ -788,7 +788,7 @@ theorem scanYamlDirectiveIx_tokens_size_le_succ {input : String}
   by_cases hd : s.seenYamlDirective = true
   · rw [if_pos hd] at h; simp [Bind.bind, Except.bind] at h
   · rw [if_neg hd] at h
-    simp only [pure_bind] at h
+    simp only [] at h
     split at h
     · simp only [Except.ok.injEq] at h; subst h; simp
     · simp at h
@@ -1137,7 +1137,7 @@ theorem scanNextTokenIx_dispatchContent_preserves_ScanInvIx {input : String}
   by_cases hg1 : (c == '&') = true
   · -- '&' anchor
     rw [if_pos hg1] at h_ok
-    simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h_ok
+    try simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h_ok
     cases hA : scanAnchorOrAliasIx s true with
     | error e => rw [hA] at h_ok; cases h_ok
     | ok v =>
@@ -1213,7 +1213,7 @@ theorem scanNextTokenIx_dispatchContent_preserves_AllKeysValidIx {input : String
   by_cases hg1 : (c == '&') = true
   · -- '&' anchor
     rw [if_pos hg1] at h_ok
-    simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h_ok
+    try simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h_ok
     cases hA : scanAnchorOrAliasIx s true with
     | error e => rw [hA] at h_ok; cases h_ok
     | ok v =>

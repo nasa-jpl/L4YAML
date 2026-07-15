@@ -41,23 +41,23 @@ def Body (n : Nat) : Prop := 0 < n ∧ BodySucc n
 /-- The dispatch+assemble core (models `recseqentry_window_dispatch_seq` + `recseqbody_window_assemble`):
     it CONSUMES the current window's content — the guard alone is not enough, because `BodySucc` is
     top-down and unreadable from the guard. -/
-def dispatch (n : Nat) (_g : Guard n) (c : Content n) : Body n := c
+theorem dispatch (n : Nat) (_g : Guard n) (c : Content n) : Body n := c
 
 /-- **The carrier-PARAMETRIC recursion** (models `seqWindowRecSeqBody_seq_of_provider`): driven by an
     abstract per-window content PROVIDER `prov`, the carrier lifted to one hypothesis. The recursion uses
     the provider in EXACTLY one place (to get the current window's content), then runs the dispatch. -/
-def recBodyOfProvider (prov : ∀ n, Guard n → Content n) (n : Nat) (g : Guard n) : Body n :=
+theorem recBodyOfProvider (prov : ∀ n, Guard n → Content n) (n : Nat) (g : Guard n) : Body n :=
   dispatch n g (prov n g)
 
 /-- The CARRIER (models `SeqInteriorSeparators`): a global oracle supplying every (valid) window's content. -/
 def Carrier : Prop := ∀ n, Guard n → Content n
 
 /-- The carrier provider: read each window's content straight off the carrier — the SOLE carrier use. -/
-def carrierProvider (cr : Carrier) : ∀ n, Guard n → Content n := cr
+theorem carrierProvider (cr : Carrier) : ∀ n, Guard n → Content n := cr
 
 /-- **The carrier recursion is ONE instance of the parametric one** (models
     `seqWindowRecSeqBody_seq_general` as the carrier instance of `seqWindowRecSeqBody_seq_of_provider`). -/
-def recBodyOfCarrier (cr : Carrier) (n : Nat) (g : Guard n) : Body n :=
+theorem recBodyOfCarrier (cr : Carrier) (n : Nat) (g : Guard n) : Body n :=
   recBodyOfProvider (carrierProvider cr) n g
 
 /-- The carrier recursion is DEFINITIONALLY the parametric one fed the carrier provider — the abstraction

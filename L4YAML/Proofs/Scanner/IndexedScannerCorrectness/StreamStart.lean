@@ -344,7 +344,8 @@ theorem scanNextTokenIx_dispatchContent_maintains_SimpleKeyAboveIx {input : Stri
   by_cases hg1 : (c == '&') = true
   · -- c == '&': anchor
     rw [if_pos hg1] at h_ok
-    simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h_ok
+    -- 4.32.0 already reduces the anchor bind; the `cases`/`rw` below is robust either way
+    try simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h_ok
     cases hA : scanAnchorOrAliasIx s true with
     | error e => rw [hA] at h_ok; cases h_ok
     | ok v =>
@@ -549,7 +550,8 @@ theorem scanNextTokenIx_dispatchContent_preserves_prefix {input : String}
   by_cases hg1 : (c == '&') = true
   · -- c == '&'
     rw [if_pos hg1] at h_ok
-    simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h_ok
+    -- 4.32.0 already reduces the anchor bind; the `cases`/`rw` below is robust either way
+    try simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h_ok
     cases hA : scanAnchorOrAliasIx s true with
     | error e => rw [hA] at h_ok; cases h_ok
     | ok v =>

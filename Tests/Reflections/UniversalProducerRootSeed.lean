@@ -171,14 +171,14 @@ theorem seedMap (pre block full : List Tok) (h_eq : full = pre ++ block) (f : Ma
 theorem recmap_good : RecMap good := RecMap.nest [Tok.A] RecMap.a
 
 /-- the map feed is inhabited at `good` — length 3 clears the floor. -/
-def mapfeed_good : MapFeed good := ⟨trivial, recmap_good, by decide⟩
+theorem mapfeed_good : MapFeed good := ⟨trivial, recmap_good, by decide⟩
 
 /-- the map seed fires at the root window (prefix `[OB]`) — the SAME positional wrap as the seq seed. -/
 theorem seed_map_root : RecMap (([Tok.OB] ++ good).drop 1) :=
   seedMap [Tok.OB] good _ rfl mapfeed_good
 
 -- the seq feed IS inhabited at the singleton `[A]` (no floor) …
-def seqfeed_singleton : SeqFeed [Tok.A] := ⟨Rec.a⟩
+theorem seqfeed_singleton : SeqFeed [Tok.A] := ⟨Rec.a⟩
 
 -- … but the map feed is NOT — the `3 ≤ length` floor (R250) excludes it; the seq side has no floor:
 #guard ([Tok.A] : List Tok).length == 1

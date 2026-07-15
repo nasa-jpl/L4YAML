@@ -572,19 +572,22 @@ theorem collectDoubleQuotedLoop_prod (sc : ScannerState) (sp : SurfPos)
           · simp at hok
           · split at hok  -- underIndented guard
             · simp at hok
-            · split at hok  -- do-notation residue
-              · simp at hok
-              · obtain ⟨sp_body, sp_close, h_body, h_glit, h_corr⟩ :=
-                  ih _ _ sp_fold _ hcorr_fold hok
-                exact ⟨sp_body, sp_close,
-                       SNbDoubleMultiLine.multi 0
-                         ⟨c :: rest, sc.col⟩ ⟨c :: rest, sc.col⟩
-                         sp_fold ⟨[], 0⟩ _
-                         (GStar.nil _)
-                         (SSDoubleBreak.flowFold 0 _ sp_cn sp_loop _
-                           h_sbreak h_gstar_empty h_flp)
-                         h_body,
-                       h_glit, h_corr⟩
+            · -- 4.32.0 reshaped the residue into a `== " "` guard (both branches
+              -- recurse); close each via the IH, error branch (if any) via simp
+              split at hok <;>
+                first
+                  | (obtain ⟨sp_body, sp_close, h_body, h_glit, h_corr⟩ :=
+                       ih _ _ sp_fold _ hcorr_fold hok
+                     exact ⟨sp_body, sp_close,
+                            SNbDoubleMultiLine.multi 0
+                              ⟨c :: rest, sc.col⟩ ⟨c :: rest, sc.col⟩
+                              sp_fold ⟨[], 0⟩ _
+                              (GStar.nil _)
+                              (SSDoubleBreak.flowFold 0 _ sp_cn sp_loop _
+                                h_sbreak h_gstar_empty h_flp)
+                              h_body,
+                            h_glit, h_corr⟩)
+                  | simp at hok
       · -- not line break: control char check
         split at hok
         · simp at hok  -- invalid control char → error
@@ -638,14 +641,12 @@ theorem scanDoubleQuoted_prod (sc : ScannerState) (sp : SurfPos)
                SCDoubleQuoted.mk 0 .blockIn _ _ _ _
                  (GLit.mk rest sc.col) h_body h_glit_close,
                corr_of_simpleKeyAllowed_update false (corr_of_emitAt _ _ hcorr_close)⟩
-    · -- !inFlow = false: no validate
-      split at hok
-      · simp at hok
-      · have h := Except.ok.inj hok; subst h
-        exact ⟨sp_close,
-               SCDoubleQuoted.mk 0 .blockIn _ _ _ _
-                 (GLit.mk rest sc.col) h_body h_glit_close,
-               corr_of_simpleKeyAllowed_update false (corr_of_emitAt _ _ hcorr_close)⟩
+    · -- !inFlow = false: no validate; `hok` is a direct `.ok` equality now
+      have h := Except.ok.inj hok; subst h
+      exact ⟨sp_close,
+             SCDoubleQuoted.mk 0 .blockIn _ _ _ _
+               (GLit.mk rest sc.col) h_body h_glit_close,
+             corr_of_simpleKeyAllowed_update false (corr_of_emitAt _ _ hcorr_close)⟩
 
 /-! ## §4 Single-Quoted Scalar -/
 
@@ -735,18 +736,17 @@ theorem collectSingleQuotedLoop_prod (sc : ScannerState) (sp : SurfPos)
           · simp at hok
           · split at hok  -- underIndented guard
             · simp at hok
-            · split at hok  -- do-notation residue
-              · simp at hok
-              · obtain ⟨sp_body, sp_close, h_body, h_glit, h_corr⟩ :=
-                  ih _ sp_fold _ hcorr_fold hok
-                exact ⟨sp_body, sp_close,
-                       SNbSingleMultiLine.multi 0
-                         ⟨c :: rest, sc.col⟩ ⟨c :: rest, sc.col⟩
-                         sp_cn sp_loop sp_fold _
-                         (GStar.nil _)
-                         h_sbreak h_gstar_empty h_flp
-                         h_body,
-                       h_glit, h_corr⟩
+            · -- 4.32.0: `hok` is directly the recursive call; recurse via IH
+              obtain ⟨sp_body, sp_close, h_body, h_glit, h_corr⟩ :=
+                ih _ sp_fold _ hcorr_fold hok
+              exact ⟨sp_body, sp_close,
+                     SNbSingleMultiLine.multi 0
+                       ⟨c :: rest, sc.col⟩ ⟨c :: rest, sc.col⟩
+                       sp_cn sp_loop sp_fold _
+                       (GStar.nil _)
+                       h_sbreak h_gstar_empty h_flp
+                       h_body,
+                     h_glit, h_corr⟩
       · split at hok
         · simp at hok  -- invalid control char → error
         · -- valid char: advance + recurse
@@ -801,14 +801,12 @@ theorem scanSingleQuoted_prod (sc : ScannerState) (sp : SurfPos)
                SCSingleQuoted.mk 0 .blockIn _ _ _ _
                  (GLit.mk rest sc.col) h_text h_glit_close,
                corr_of_simpleKeyAllowed_update false (corr_of_emitAt _ _ hcorr_close)⟩
-    · -- !inFlow = false: no validate
-      split at hok
-      · simp at hok
-      · have h := Except.ok.inj hok; subst h
-        exact ⟨sp_close,
-               SCSingleQuoted.mk 0 .blockIn _ _ _ _
-                 (GLit.mk rest sc.col) h_text h_glit_close,
-               corr_of_simpleKeyAllowed_update false (corr_of_emitAt _ _ hcorr_close)⟩
+    · -- !inFlow = false: no validate; `hok` is a direct `.ok` equality now
+      have h := Except.ok.inj hok; subst h
+      exact ⟨sp_close,
+             SCSingleQuoted.mk 0 .blockIn _ _ _ _
+               (GLit.mk rest sc.col) h_text h_glit_close,
+             corr_of_simpleKeyAllowed_update false (corr_of_emitAt _ _ hcorr_close)⟩
 
 /-! ## §5 Plain-safe bridge (Layer 4a)
 

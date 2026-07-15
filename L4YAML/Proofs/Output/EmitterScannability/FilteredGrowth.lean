@@ -270,7 +270,7 @@ theorem scanDoubleQuoted_first_filtered_token (s : ScannerState) (rest : List Ch
       exfalso
       have h_dc_err : scanNextToken_dispatchContent s_ad '"' = Except.error e := by
         unfold scanNextToken_dispatchContent
-        simp [bind, Except.bind, pure, Except.pure, h_dq_eq]
+        simp [bind, Except.bind, h_dq_eq]
       rw [h_dc_err] at h_dc; exact absurd h_dc (by simp)
     | ok s_dq =>
       obtain ⟨c, h_tok⟩ := scanDoubleQuoted_tokens_push h_dq_eq
@@ -449,7 +449,7 @@ theorem emitList_head_step_noOverwrite (s s' : ScannerState) (c : Char) (rest : 
       exfalso
       have h_dc_err : scanNextToken_dispatchContent s_ad '"' = Except.error e := by
         unfold scanNextToken_dispatchContent
-        simp [bind, Except.bind, pure, Except.pure, h_dq_eq]
+        simp [bind, Except.bind, h_dq_eq]
       rw [h_dc_err] at h_dc; exact absurd h_dc (by simp)
     | ok s_dq =>
       have h_sdq_sk : s_dq.simpleKey = s_ad.simpleKey :=
@@ -885,15 +885,14 @@ theorem scanDocumentEnd_filtered_grows (s s' : ScannerState)
   -- h_new: the last token is .documentEnd (non-placeholder)
   unfold scanDocumentEnd at h; dsimp only [] at h
   simp only [bind, Except.bind] at h
-  split at h
-  · contradiction
-  · split at h
-    · contradiction
-    · split at h <;> (split at h <;> first | contradiction | skip) <;>
-        (injection h with h_eq; subst h_eq; dsimp only []
-         simp only [ScannerCorrectness.advanceN_preserves_tokens, emit_tokens_push]
-         simp only [Array.size_push, Nat.add_sub_cancel, Array.getElem_push_eq]
-         decide)
+  -- 4.32.0 reshaped the do-notation match tree; split fully, close leaves uniformly.
+  repeat' split at h
+  all_goals first
+    | contradiction
+    | (injection h with h_eq; subst h_eq; dsimp only []
+       simp only [ScannerCorrectness.advanceN_preserves_tokens, emit_tokens_push]
+       simp only [Array.size_push, Nat.add_sub_cancel, Array.getElem_push_eq]
+       decide)
 
 /-! #### Directive new-token identification (Tier 1, Turn 1)
 
@@ -926,40 +925,17 @@ theorem scanYamlDirective_new_token_eq (s s_after_ws : ScannerState) (startPos :
   unfold scanYamlDirective at h
   dsimp only [] at h
   simp only [bind, Except.bind] at h
-  split at h
-  · contradiction
-  · split at h
-    · contradiction
-    · split at h
-      · -- some '#'
-        split at h
-        · contradiction
-        · injection h with h_eq; subst h_eq
-          dsimp only [ScannerState.emitAt]
-          apply Exists.intro
-          apply Exists.intro
-          rw [ScannerCorrectness.skipWhitespace_preserves_tokens,
-              ScannerCorrectness.ScanHelpers.collectVersionMinorLoop_preserves_tokens,
-              ScannerCorrectness.ScanHelpers.collectVersionMajorLoop_preserves_tokens, h_ws]
-      · -- some c (not '#')
-        split at h
-        · contradiction
-        · split at h <;> try contradiction
-          all_goals (injection h with h_eq; subst h_eq
-                     dsimp only [ScannerState.emitAt]
-                     apply Exists.intro
-                     apply Exists.intro
-                     rw [ScannerCorrectness.skipWhitespace_preserves_tokens,
-                         ScannerCorrectness.ScanHelpers.collectVersionMinorLoop_preserves_tokens,
-                         ScannerCorrectness.ScanHelpers.collectVersionMajorLoop_preserves_tokens, h_ws])
-      · -- none
-        injection h with h_eq; subst h_eq
-        dsimp only [ScannerState.emitAt]
-        apply Exists.intro
-        apply Exists.intro
-        rw [ScannerCorrectness.skipWhitespace_preserves_tokens,
-            ScannerCorrectness.ScanHelpers.collectVersionMinorLoop_preserves_tokens,
-            ScannerCorrectness.ScanHelpers.collectVersionMajorLoop_preserves_tokens, h_ws]
+  -- 4.32.0 reshaped the do-notation match tree; split fully, close leaves uniformly.
+  repeat' split at h
+  all_goals first
+    | contradiction
+    | (injection h with h_eq; subst h_eq
+       dsimp only [ScannerState.emitAt]
+       apply Exists.intro
+       apply Exists.intro
+       rw [ScannerCorrectness.skipWhitespace_preserves_tokens,
+           ScannerCorrectness.ScanHelpers.collectVersionMinorLoop_preserves_tokens,
+           ScannerCorrectness.ScanHelpers.collectVersionMajorLoop_preserves_tokens, h_ws])
 
 /-- The new token emitted by a successful `scanTagDirective` is exactly
     `.tagDirective handle pfx` for some `handle`/`pfx` parsed from the
@@ -1092,8 +1068,7 @@ theorem dispatchFlowIndicators_filtered_grows (s s' : ScannerState) (c : Char)
     (s'.tokens.filter (fun t => t.val != .placeholder)).size ≥
     (s.tokens.filter (fun t => t.val != .placeholder)).size + 1 := by
   unfold scanNextToken_dispatchFlowIndicators at h
-  simp only [bind, ScannerCorrectness.ScanHelpers.bind_error_simp,
-             ScannerCorrectness.ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   repeat (any_goals (split at h))
   any_goals contradiction
@@ -1300,7 +1275,7 @@ theorem dispatchBlockIndicators_filtered_grows (s s' : ScannerState) (c : Char)
     (s'.tokens.filter (fun t => t.val != .placeholder)).size ≥
     (s.tokens.filter (fun t => t.val != .placeholder)).size + 1 := by
   unfold scanNextToken_dispatchBlockIndicators at h
-  simp only [bind, ScannerCorrectness.ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   repeat (any_goals (split at h))
   any_goals contradiction
@@ -1324,7 +1299,7 @@ theorem dispatchContent_new_not_placeholder (s s' : ScannerState) (c : Char)
     (h_strict : s'.tokens.size ≥ s.tokens.size + 1) :
     (s'.tokens[s.tokens.size]'(by omega)).val ≠ YamlToken.placeholder := by
   unfold scanNextToken_dispatchContent at h
-  simp only [bind, ScannerCorrectness.ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   -- '&' anchor
   split at h
@@ -1515,7 +1490,7 @@ theorem dispatchContent_filtered_grows (s s' : ScannerState) (c : Char)
     have h_mono := ScannerCorrectness.ScanHelpers.dispatchContent_tokens_mono s c s' h
     -- Each scanner adds exactly 1 token (≥ + 1):
     unfold scanNextToken_dispatchContent at h
-    simp only [bind, ScannerCorrectness.ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+    simp only [bind, pure, Pure.pure, Except.pure] at h
     simp only [Except.bind] at h
     repeat (any_goals (split at h))
     any_goals contradiction

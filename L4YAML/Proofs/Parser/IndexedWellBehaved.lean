@@ -894,27 +894,25 @@ theorem parseDirectives_tokens_ix (ps : ParseStateIx input) :
   simp only [Std.Legacy.Range.forIn_eq_forIn_range', Std.Legacy.Range.size,
              Nat.sub_zero, Nat.add_sub_cancel, Nat.div_one]
   generalize List.range' 0 fuel 1 = ls
-  suffices h : ∀ (acc : MProd (Array Directive) (ParseStateIx input)),
-      acc.2.tokens = ps.tokens →
-      (Id.run (do
-          let r ← @forIn Id (List Nat) Nat _ _ ls acc (fun _ r =>
-            match r.snd.peek? with
-            | some (.versionDirective major minor) => do
-              pure PUnit.unit
-              pure (ForInStep.yield (MProd.mk (r.fst.push (.yaml (toString major ++ "." ++ toString minor))) r.snd.advance))
-            | some (.tagDirective handle tagPrefix) => do
-              pure PUnit.unit
-              pure (ForInStep.yield (MProd.mk (r.fst.push (.tag handle tagPrefix)) r.snd.advance))
-            | _ => pure (ForInStep.done (MProd.mk r.fst r.snd)))
-          pure (r.fst, r.snd))).snd.tokens = ps.tokens by
-    exact h (MProd.mk #[] ps) rfl
+  suffices h : ∀ (acc : ParseStateIx input × Array Directive),
+      acc.1.tokens = ps.tokens →
+      (do
+          let __s ← @forIn Id (List Nat) Nat _ _ ls acc (fun _ __s =>
+            match __s.fst.peek? with
+            | some (.versionDirective major minor) =>
+              pure (ForInStep.yield (__s.fst.advance, __s.snd.push (.yaml (toString major ++ toString "." ++ toString minor))))
+            | some (.tagDirective handle tagPrefix) =>
+              pure (ForInStep.yield (__s.fst.advance, __s.snd.push (.tag handle tagPrefix)))
+            | _ => pure (ForInStep.done (__s.fst, __s.snd)))
+          pure (__s.snd, __s.fst)).snd.tokens = ps.tokens by
+    exact h (ps, #[]) rfl
   intro acc h_inv
   induction ls generalizing acc with
   | nil =>
-    simp only [Id.run, List.forIn'_nil, ForIn.forIn, bind, pure]
+    simp only [List.forIn'_nil, ForIn.forIn, bind, pure]
     exact h_inv
   | cons _ xs ih =>
-    simp only [ForIn.forIn, List.forIn'_cons, Id.run, bind, pure] at ih ⊢
+    simp only [ForIn.forIn, List.forIn'_cons, bind, pure] at ih ⊢
     split
     · rename_i _ heq
       revert heq; split
@@ -2726,7 +2724,7 @@ theorem prepareDocumentState_tokens_preserved_ix
       _ = (parseDirectives ps).2.tokens := rfl
       _ = ps.tokens := parseDirectives_tokens_ix ps
   unfold prepareDocumentState at h_ok
-  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  simp only [bind, Except.bind] at h_ok
   all_goals (first | split at h_ok | skip)
   all_goals (first | split at h_ok | skip)
   all_goals (first | split at h_ok | skip)

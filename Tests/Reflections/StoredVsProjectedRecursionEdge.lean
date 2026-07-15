@@ -114,7 +114,7 @@ end
 /-- The **projecting** member has a flat *leaf* builder: from a pure balance fact, **no recursion**
     into `Entry`/`Body`.  (There is deliberately no `seqLeaf (bal interior = 0) → Entry (os :: …)` —
     `Entry.seq`'s premise is `Body interior`, the edge the storing member keeps.) -/
-def mapLeaf (interior : List Tok) (h : bal interior = 0) :
+theorem mapLeaf (interior : List Tok) (h : bal interior = 0) :
     Entry (Tok.om :: (interior ++ [Tok.cm])) :=
   Entry.map interior h
 
@@ -145,12 +145,12 @@ theorem not_body_nil : ¬ Body [] := fun h => body_ne_nil [] h rfl
     because `Entry.map` projects `bal`).  A *keyed* twin producer would share `buildBody`, hence
     depend on `buildEntry` for its own `seq` case — the dependency ordering R251 reads off this graph. -/
 mutual
-def buildEntry : (v : Val) → Entry (emit v)
+theorem buildEntry : (v : Val) → Entry (emit v)
   | .a => Entry.atom
   | .seq [] => Entry.seqEmpty
   | .seq (x :: xs) => Entry.seq (emitList (x :: xs)) (buildBody (x :: xs) (by simp))
   | .map xs => Entry.map (emitList xs) (bal_emitList xs)        -- LEAF: no buildBody/buildEntry call
-def buildBody : (xs : List Val) → xs ≠ [] → Body (emitList xs)
+theorem buildBody : (xs : List Val) → xs ≠ [] → Body (emitList xs)
   | [], h => absurd rfl h
   | [x], _ => by
       have he : emitList [x] = emit x := by simp [emitList]
@@ -174,14 +174,14 @@ theorem bal_aa_zero    : bal [Tok.a, Tok.a] = 0 := by decide
 theorem bal_om_nonzero : bal [Tok.om] ≠ 0 := by decide
 
 -- POSITIVE: the projecting member builds from a flat fact, with NO `Body` for its interior
-def built_map_empty : Entry [Tok.om, Tok.cm] := Entry.map [] (by decide)
-def built_map_leaf  : Entry [Tok.om, Tok.a, Tok.a, Tok.cm] := mapLeaf [Tok.a, Tok.a] (by decide)
+theorem built_map_empty : Entry [Tok.om, Tok.cm] := Entry.map [] (by decide)
+theorem built_map_leaf  : Entry [Tok.om, Tok.a, Tok.a, Tok.cm] := mapLeaf [Tok.a, Tok.a] (by decide)
 
 -- The storing member genuinely needs a recursive `Body` (here `Body.single … Entry.atom`) …
-def built_seq_one   : Entry [Tok.os, Tok.a, Tok.cs] :=
+theorem built_seq_one   : Entry [Tok.os, Tok.a, Tok.cs] :=
   Entry.seq [Tok.a] (Body.single [Tok.a] Entry.atom)
 -- … and a dedicated empty constructor, because `Body []` is uninhabited (`not_body_nil`).
-def built_seq_empty : Entry [Tok.os, Tok.cs] := Entry.seqEmpty
+theorem built_seq_empty : Entry [Tok.os, Tok.cs] := Entry.seqEmpty
 
 #guard decide (emit (Val.map []) = [Tok.om, Tok.cm])
 #guard decide (emit (Val.seq []) = [Tok.os, Tok.cs])
@@ -205,16 +205,16 @@ def KeyEntry (e : List Tok) : Prop := Entry e ∧ bal e = 0
 
 /-- The dependent producer — non-recursive: `Entry` part from the BASE sibling `buildEntry`, the
     extra fact from the flat `bal_emit`.  No `buildKeyEntry` call in its own body ⇒ its IH is dead. -/
-def buildKeyEntry (v : Val) : KeyEntry (emit v) := ⟨buildEntry v, bal_emit v⟩
+theorem buildKeyEntry (v : Val) : KeyEntry (emit v) := ⟨buildEntry v, bal_emit v⟩
 
 -- POSITIVE: the dependent twin builds for every shape, with NO self-recursion …
-def built_key_atom : KeyEntry [Tok.a]                 := buildKeyEntry Val.a
-def built_key_seq  : KeyEntry [Tok.os, Tok.a, Tok.cs] := buildKeyEntry (Val.seq [Val.a])
-def built_key_map  : KeyEntry [Tok.om, Tok.cm]        := buildKeyEntry (Val.map [])
+theorem built_key_atom : KeyEntry [Tok.a]                 := buildKeyEntry Val.a
+theorem built_key_seq  : KeyEntry [Tok.os, Tok.a, Tok.cs] := buildKeyEntry (Val.seq [Val.a])
+theorem built_key_map  : KeyEntry [Tok.om, Tok.cm]        := buildKeyEntry (Val.map [])
 
 -- … and projecting it back recovers exactly the base `Entry` (the dependent stores nothing new
 -- structurally — only the extra flat fact, which holds on every emit block, fails on unbalanced).
-def key_projects_to_entry : Entry [Tok.os, Tok.a, Tok.cs] := built_key_seq.1
+theorem key_projects_to_entry : Entry [Tok.os, Tok.a, Tok.cs] := built_key_seq.1
 #guard decide (bal (emit (Val.seq [Val.a])) = 0)   -- the extra fact holds on an emit block …
 #guard decide (bal [Tok.os, Tok.a] ≠ 0)            -- … but not on an unbalanced one ⇒ no KeyEntry
 

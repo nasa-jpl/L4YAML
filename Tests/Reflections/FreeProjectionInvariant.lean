@@ -133,7 +133,7 @@ structure Located (l : List Tok) : Prop where
 /-- **The assembler reads `dyck` off the deliverable for free.**  It takes only `wt` as a hypothesis
     and derives `dyck` from `(Rec.toWB h).2` — no separate `h_dyck`.  Mirror of the strengthened
     `seqLocated_of_recseqbody`/`mapLocated_of_recmapbody` (Reflection 253). -/
-def located_of_rec {l : List Tok} (h : Rec l) (hwt : WT l) : Located l :=
+theorem located_of_rec {l : List Tok} (h : Rec l) (hwt : WT l) : Located l :=
   ⟨hwt, (Rec.toWB h).2⟩
 
 /-! ## Positive witness — typed-matched `[os, a, cs]` assembles a `Located`. -/
@@ -207,7 +207,7 @@ theorem rec_window : Rec [Tok.om, Tok.a, Tok.cm] :=
     `dyck` and the subrange's balance/Dyck side conditions FOR FREE off the window's own
     `Rec.toWB`.  No per-window `WT` hypothesis and no `dyck` hypothesis — only the structural
     `Rec`, the outer `WT`, and the window's (free) balance. -/
-def located_of_rec_outer (outer window : List Tok)
+theorem located_of_rec_outer (outer window : List Tok)
     (hsub : WTsub outer window) (h_outer : WT outer) (h_rec : Rec window)
     (h_bal : balance window = 0) : Located window :=
   ⟨hsub h_outer h_bal (Rec.toWB h_rec).2, (Rec.toWB h_rec).2⟩

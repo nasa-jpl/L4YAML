@@ -39,20 +39,20 @@ theorem proj {l : List Bool} (d : Deliv l) : Content l := d.2
 /-- The producer's CONTENT-FREE IH (models the seq oracle's width IH `h_ih`): produces the deliverable with
     NO appeal to content. Here the trivial constructor — the modelling point is that it is the ONE producer
     whose single evaluation the twin shares. -/
-def ihFree (l : List Bool) (h1 : l ≠ []) (h2 : ∀ x ∈ l, x = true) : Deliv l := ⟨h1, h2⟩
+theorem ihFree (l : List Bool) (h1 : l ≠ []) (h2 : ∀ x ∈ l, x = true) : Deliv l := ⟨h1, h2⟩
 
 /-- The OLD producer (models `recseqentry_seqbracket_oracle_seq`): returns ONLY the deliverable. -/
-def oracle (l : List Bool) (h1 : l ≠ []) (h2 : ∀ x ∈ l, x = true) : Deliv l := ihFree l h1 h2
+theorem oracle (l : List Bool) (h1 : l ≠ []) (h2 : ∀ x ∈ l, x = true) : Deliv l := ihFree l h1 h2
 
 /-- **The TWIN** (models `recseqentry_seqbracket_oracle_seq_content`, R503): returns the deliverable AND its
     free projection, from a SINGLE `ihFree` evaluation — the `let`-shared `d` does double duty. -/
-def oracleContent (l : List Bool) (h1 : l ≠ []) (h2 : ∀ x ∈ l, x = true) : Deliv l ∧ Content l :=
+theorem oracleContent (l : List Bool) (h1 : l ≠ []) (h2 : ∀ x ∈ l, x = true) : Deliv l ∧ Content l :=
   let d := ihFree l h1 h2
   ⟨d, proj d⟩
 
 /-- The PARALLEL re-derivation edge (models R500 `flowBodyContent_descend_seq` re-running
     `seqChild_safeBodyUnit_seq`): produces the SAME content but re-invokes the producer `ihFree`. -/
-def reDerive (l : List Bool) (h1 : l ≠ []) (h2 : ∀ x ∈ l, x = true) : Content l :=
+theorem reDerive (l : List Bool) (h1 : l ≠ []) (h2 : ∀ x ∈ l, x = true) : Content l :=
   proj (ihFree l h1 h2)
 
 /-- **The double duty is manifest**: the twin's content is literally a PROJECTION of the deliverable it

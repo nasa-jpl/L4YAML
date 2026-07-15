@@ -97,7 +97,7 @@ theorem scanDocumentEndIx_tokens_eq {s s' : ScannerStateIx input}
   by_cases hd : (s.directivesPresent && !s.documentEverStarted) = true
   · rw [if_pos hd] at h; simp [Bind.bind, Except.bind] at h
   · rw [if_neg hd] at h
-    simp only [pure_bind] at h
+    simp only [] at h
     split at h
     all_goals first
       | (simp only [Except.ok.injEq] at h; subst h; rfl)
@@ -201,7 +201,7 @@ theorem scanYamlDirective_new_token_eqIx {s : ScannerStateIx input}
   by_cases hd : s.seenYamlDirective = true
   · rw [if_pos hd] at h; simp [Bind.bind, Except.bind] at h
   · rw [if_neg hd] at h
-    simp only [pure_bind] at h
+    simp only [] at h
     split at h
     · simp only [Except.ok.injEq] at h
       subst h

@@ -159,14 +159,14 @@ theorem parseNode_inert_head (ps : ParseState) (m : Nat) (v : YamlValue) (q : Pa
     have h_vnp : ∀ p, validateNodeProps ps p ({} : NodeProperties) = .ok () := by
       intro p; unfold validateNodeProps
       rcases h_head with h1 | h1 | h1 | h1 | h1 | h1 | h1 | h1 <;>
-        simp only [h1, bind, Except.bind, pure, Except.pure] <;> rfl
+        simp only [h1, pure, Except.pure] <;> rfl
     have h_pnc : ∀ b, parseNodeContent ps n ({} : NodeProperties) b
         = .ok (YamlValue.scalar { content := "", style := .plain }, ps) := by
       intro b; unfold parseNodeContent
       rcases h_head with h1 | h1 | h1 | h1 | h1 | h1 | h1 | h1 <;> rw [h1]
     unfold parseNode at h
     rcases h_head with h1 | h1 | h1 | h1 | h1 | h1 | h1 | h1 <;>
-    · simp only [h1, bind, Except.bind, pure, Except.pure, h_np, h_vnp, h_pnc] at h
+    · simp only [h1, bind, Except.bind, h_np, h_vnp, h_pnc] at h
       have h2 := Except.ok.inj h
       have h_v := congrArg Prod.fst h2
       simp only [applyNodeFinalization] at h_v
@@ -197,13 +197,13 @@ theorem parseNode_flowSeqStart_decompose (ps : ParseState) (m : Nat)
       parseNodeProperties_skip ps (by rw [h_peek]; trivial)
     have h_vnp : ∀ p, validateNodeProps ps p ({} : NodeProperties) = .ok () := by
       intro p; unfold validateNodeProps
-      simp only [h_peek, bind, Except.bind, pure, Except.pure]
+      simp only [h_peek, pure, Except.pure]
       rfl
     have h_pnc : ∀ b, parseNodeContent ps n ({} : NodeProperties) b
         = parseFlowSequence ps n := by
       intro b; unfold parseNodeContent; rw [h_peek]
     unfold parseNode at h
-    simp only [h_peek, bind, Except.bind, pure, Except.pure, h_np, h_vnp, h_pnc] at h
+    simp only [h_peek, bind, Except.bind, h_np, h_vnp, h_pnc] at h
     cases n with
     | zero => simp only [parseFlowSequence, reduceCtorEq] at h
     | succ g =>
@@ -252,13 +252,13 @@ theorem parseNode_flowMapStart_decompose (ps : ParseState) (m : Nat)
       parseNodeProperties_skip ps (by rw [h_peek]; trivial)
     have h_vnp : ∀ p, validateNodeProps ps p ({} : NodeProperties) = .ok () := by
       intro p; unfold validateNodeProps
-      simp only [h_peek, bind, Except.bind, pure, Except.pure]
+      simp only [h_peek, pure, Except.pure]
       rfl
     have h_pnc : ∀ b, parseNodeContent ps n ({} : NodeProperties) b
         = parseFlowMapping ps n := by
       intro b; unfold parseNodeContent; rw [h_peek]
     unfold parseNode at h
-    simp only [h_peek, bind, Except.bind, pure, Except.pure, h_np, h_vnp, h_pnc] at h
+    simp only [h_peek, bind, Except.bind, h_np, h_vnp, h_pnc] at h
     cases n with
     | zero => simp only [parseFlowMapping, reduceCtorEq] at h
     | succ g =>

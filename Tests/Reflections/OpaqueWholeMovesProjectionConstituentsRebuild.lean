@@ -137,7 +137,7 @@ inductive Entry : List Tok → Prop where
     `recC` (the rich recursive constructor).  Both branches return the SAME builder type, so the
     outer wrap applies it constructor-blind (mirror the `h_entry_builder` conjunct of the map arms'
     nested existential: `.mapRec` for non-empty pairs, `.map` for empty `{}`). -/
-def entryBuilder (body : List Tok) (h : RBody body ∨ body = []) :
+theorem entryBuilder (body : List Tok) (h : RBody body ∨ body = []) :
     Entry (Tok.op :: (body ++ [Tok.cl])) :=
   match h with
   | .inl hb => .recC body hb

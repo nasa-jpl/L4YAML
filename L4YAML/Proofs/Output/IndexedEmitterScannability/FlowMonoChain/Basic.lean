@@ -698,7 +698,8 @@ theorem scanNextTokenIx_dispatchContent_maintains_SKAFIx {input : String}
   by_cases hg1 : (c == '&') = true
   · -- '&' anchor
     rw [if_pos hg1] at h
-    simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+    -- 4.32.0 already reduces the anchor bind; the `cases`/`rw` below is robust either way
+    try simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
     cases hA : scanAnchorOrAliasIx s true with
     | error e => rw [hA] at h; cases h
     | ok v =>

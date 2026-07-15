@@ -66,14 +66,14 @@ opaque Carrier : Nat → Nat → Prop
 
 /-- The window-parametric producer: just expose the descent route's parameters.  Models
     `seqLocalCarrier_of_widthEnc`. -/
-def windowProduce
+theorem windowProduce
     (descRoute : ∀ lo hi, BaseUnit lo hi → WidthSupplier lo hi → Carrier lo hi)
     (lo hi : Nat) (base : BaseUnit lo hi) (w : WidthSupplier lo hi) : Carrier lo hi :=
   descRoute lo hi base w
 
 /-- The ROOT producer: bake in the literal span `[2, size]` and the FLAT base `flatBase`.  Models the
     pre-R446 `seqRoot_carrier_of_widthEnc` (via `seqRoot_seqInteriorSeparators` + `seqRoot_safeBodyUnit`). -/
-def rootProduce
+theorem rootProduce
     (descRoute : ∀ lo hi, BaseUnit lo hi → WidthSupplier lo hi → Carrier lo hi)
     (size : Nat) (flatBase : BaseUnit 2 size) (w : WidthSupplier 2 size) : Carrier 2 size :=
   descRoute 2 size flatBase w

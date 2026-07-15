@@ -138,8 +138,16 @@ abbrev adjB (l : List Tok) : Prop := adj Tok.sep Tok.key l
     `adj_append` at two different token pairs — the "verbatim clone" made literal.  In the real code
     `OpenerAdj_append` and `SepAdj_append` are separate source theorems, but each is exactly this
     parametric proof specialised, which is why the mirror needed no proof edits. -/
-def adjA_append := adj_append Tok.opn Tok.cls
-def adjB_append := adj_append Tok.sep Tok.key
+theorem adjA_append : ∀ (a b : List Tok),
+    adj Tok.opn Tok.cls a → adj Tok.opn Tok.cls b →
+    (∀ (hla : 0 < a.length), a[a.length-1]'(Nat.sub_lt hla Nat.one_pos) ≠ Tok.opn) →
+    adj Tok.opn Tok.cls (a ++ b) :=
+  adj_append Tok.opn Tok.cls
+theorem adjB_append : ∀ (a b : List Tok),
+    adj Tok.sep Tok.key a → adj Tok.sep Tok.key b →
+    (∀ (hla : 0 < a.length), a[a.length-1]'(Nat.sub_lt hla Nat.one_pos) ≠ Tok.sep) →
+    adj Tok.sep Tok.key (a ++ b) :=
+  adj_append Tok.sep Tok.key
 
 -- `#guard_msgs` pins each ascribed signature as checked documentation AND keeps it out of the
 -- build log; a match is swallowed silently, any drift in the type fails the build with an error.

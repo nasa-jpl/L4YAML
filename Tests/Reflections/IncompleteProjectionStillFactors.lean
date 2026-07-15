@@ -67,7 +67,7 @@ structure Content (n : Nat) (tok : Nat → Tok) : Prop where
 /-- The assembler (toy of `flowBodyContent_of_deep`).  `head` is a FREE whole-field projection;
     `sepNext` is `rcases`-split into the carrier's interior field (`k + 1 < n`) and the named boundary
     residual (`k + 1 = n`); `valSep` is wholly residual. -/
-def assemble {n : Nat} {tok : Nat → Tok}
+theorem assemble {n : Nat} {tok : Nat → Tok}
     (h_deep : DeepGuard n tok)
     (h_valSep : ∀ k, k < n → tok k ≠ .comma → (k + 1 = n ∨ tok (k + 1) = .comma))
     (h_boundary : ∀ k, k + 1 = n → tok k = .comma → isContentStart (tok (k + 1))) :

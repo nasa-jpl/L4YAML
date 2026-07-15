@@ -523,13 +523,13 @@ theorem parseNode_flowSeqStart_produces_sequence (ps : ParseState) (fuel : Nat)
     -- validation passes for any prePropPos (the block-start / dup-anchor triggers don't fire)
     have h_vnp : ∀ p, validateNodeProps ps p ({} : NodeProperties) = .ok () := by
       intro p; unfold validateNodeProps
-      simp only [h_peek, bind, Except.bind, pure, Except.pure]
+      simp only [h_peek, pure, Except.pure]
       rfl
     -- content dispatch routes a flowSequenceStart peek to parseFlowSequence (at decremented fuel)
     have h_pnc : ∀ b, parseNodeContent ps n ({} : NodeProperties) b = parseFlowSequence ps n :=
       fun _ => by unfold parseNodeContent; rw [h_peek]
     unfold parseNode at h
-    simp only [h_peek, bind, Except.bind, pure, Except.pure, h_np, h_vnp, h_pnc] at h
+    simp only [h_peek, bind, Except.bind, h_np, h_vnp, h_pnc] at h
     cases hfs : parseFlowSequence ps n with
     | error e => rw [hfs] at h; simp only [reduceCtorEq] at h
     | ok r =>
@@ -559,12 +559,12 @@ theorem parseNode_flowMapStart_produces_mapping (ps : ParseState) (fuel : Nat)
       parseNodeProperties_skip ps (by rw [h_peek]; trivial)
     have h_vnp : ∀ p, validateNodeProps ps p ({} : NodeProperties) = .ok () := by
       intro p; unfold validateNodeProps
-      simp only [h_peek, bind, Except.bind, pure, Except.pure]
+      simp only [h_peek, pure, Except.pure]
       rfl
     have h_pnc : ∀ b, parseNodeContent ps n ({} : NodeProperties) b = parseFlowMapping ps n :=
       fun _ => by unfold parseNodeContent; rw [h_peek]
     unfold parseNode at h
-    simp only [h_peek, bind, Except.bind, pure, Except.pure, h_np, h_vnp, h_pnc] at h
+    simp only [h_peek, bind, Except.bind, h_np, h_vnp, h_pnc] at h
     cases hfm : parseFlowMapping ps n with
     | error e => rw [hfm] at h; simp only [reduceCtorEq] at h
     | ok r =>
@@ -627,14 +627,14 @@ theorem parseNode_scalar_produces_scalar (ps : ParseState) (fuel : Nat)
     -- validation passes for any prePropPos (the block-start / dup-anchor triggers don't fire)
     have h_vnp : ∀ p, validateNodeProps ps p ({} : NodeProperties) = .ok () := by
       intro p; unfold validateNodeProps
-      simp only [h_peek, bind, Except.bind, pure, Except.pure]
+      simp only [h_peek, pure, Except.pure]
       rfl
     -- content dispatch routes a scalar peek straight to the scalar value (empty-prop tag/anchor)
     have h_pnc : ∀ b, parseNodeContent ps n ({} : NodeProperties) b
         = .ok (YamlValue.scalar { content := content, style := style }, ps.advance) :=
       fun _ => by unfold parseNodeContent; rw [h_peek]
     unfold parseNode at h
-    simp only [h_peek, bind, Except.bind, pure, Except.pure, h_np, h_vnp, h_pnc] at h
+    simp only [h_peek, bind, Except.bind, h_np, h_vnp, h_pnc] at h
     -- finalization is identity on a scalar head (the `other` arm); read off the first component
     have h2 := Except.ok.inj h
     have h1 := congrArg Prod.fst h2
@@ -662,13 +662,13 @@ theorem parseNode_scalar_advances_by_one
       parseNodeProperties_skip ps (by rw [h_peek]; trivial)
     have h_vnp : ∀ p, validateNodeProps ps p ({} : NodeProperties) = .ok () := by
       intro p; unfold validateNodeProps
-      simp only [h_peek, bind, Except.bind, pure, Except.pure]
+      simp only [h_peek, pure, Except.pure]
       rfl
     have h_pnc : ∀ b, parseNodeContent ps n ({} : NodeProperties) b
         = .ok (YamlValue.scalar { content := content, style := style }, ps.advance) :=
       fun _ => by unfold parseNodeContent; rw [h_peek]
     unfold parseNode at h_parse
-    simp only [h_peek, bind, Except.bind, pure, Except.pure, h_np, h_vnp, h_pnc] at h_parse
+    simp only [h_peek, bind, Except.bind, h_np, h_vnp, h_pnc] at h_parse
     have h2 := Except.ok.inj h_parse
     -- (applyNodeFinalization ...).2 = ps' via the second pair component
     have h_ps'_eq : ps' = (applyNodeFinalization
@@ -691,13 +691,13 @@ theorem parseNode_scalar_tokens_preserved (ps : ParseState) (fuel : Nat)
       parseNodeProperties_skip ps (by rw [h_peek]; trivial)
     have h_vnp : ∀ p, validateNodeProps ps p ({} : NodeProperties) = .ok () := by
       intro p; unfold validateNodeProps
-      simp only [h_peek, bind, Except.bind, pure, Except.pure]
+      simp only [h_peek, pure, Except.pure]
       rfl
     have h_pnc : ∀ b, parseNodeContent ps n ({} : NodeProperties) b
         = .ok (YamlValue.scalar { content := content, style := style }, ps.advance) :=
       fun _ => by unfold parseNodeContent; rw [h_peek]
     unfold parseNode at h_parse
-    simp only [h_peek, bind, Except.bind, pure, Except.pure, h_np, h_vnp, h_pnc] at h_parse
+    simp only [h_peek, bind, Except.bind, h_np, h_vnp, h_pnc] at h_parse
     have h2 := Except.ok.inj h_parse
     have h_ps'_eq : ps' = (applyNodeFinalization
         (YamlValue.scalar { content := content, style := style }) ps.advance {}
@@ -805,8 +805,7 @@ theorem parseDocument_flowSeqStart_produces_sequence (ps : ParseState)
     simp only [Bool.false_eq_true, ↓reduceIte]
     unfold ParseState.tryConsume
     rw [h_peek_a]
-    simp only [show (BEq.beq YamlToken.flowSequenceStart YamlToken.documentStart) = false from by decide,
-               Bool.false_eq_true, ↓reduceIte, pure, Except.pure, bind, Except.bind]
+    simp only [show (BEq.beq YamlToken.flowSequenceStart YamlToken.documentStart) = false from by decide, Bool.false_eq_true, ↓reduceIte]
   -- root-node dispatch: flowSequenceStart routes to parseNode (not the empty-node branch)
   unfold parseDocument at h
   simp only [bind, Except.bind, h_prep, h_peek_a] at h
@@ -844,8 +843,7 @@ theorem parseDocument_flowMapStart_produces_mapping (ps : ParseState)
     simp only [Bool.false_eq_true, ↓reduceIte]
     unfold ParseState.tryConsume
     rw [h_peek_a]
-    simp only [show (BEq.beq YamlToken.flowMappingStart YamlToken.documentStart) = false from by decide,
-               Bool.false_eq_true, ↓reduceIte, pure, Except.pure, bind, Except.bind]
+    simp only [show (BEq.beq YamlToken.flowMappingStart YamlToken.documentStart) = false from by decide, Bool.false_eq_true, ↓reduceIte]
   unfold parseDocument at h
   simp only [bind, Except.bind, h_prep, h_peek_a] at h
   cases h_pn : parseNode ({ ps with tagHandles := #[] } : ParseState)
@@ -1074,8 +1072,7 @@ theorem parseStream_flowSeqStart_loop_witness
     rw [show (ps_th.peek? == some YamlToken.documentStart) = false from by rw [h_th_peek]; decide]
     simp only [Bool.false_eq_true, ↓reduceIte]
     unfold ParseState.tryConsume; rw [h_th_peek]
-    simp only [show (BEq.beq YamlToken.flowSequenceStart YamlToken.documentStart) = false from by decide,
-               Bool.false_eq_true, ↓reduceIte, pure, Except.pure, bind, Except.bind]
+    simp only [show (BEq.beq YamlToken.flowSequenceStart YamlToken.documentStart) = false from by decide, Bool.false_eq_true, ↓reduceIte]
   -- Fold inline struct back to ps_th so subsequent simp lemmas match syntactically
   have h_fold : ({ ps_1 with tagHandles := #[] } : ParseState) = ps_th := rfl
   unfold parseDocument at h_pd
@@ -1083,7 +1080,7 @@ theorem parseStream_flowSeqStart_loop_witness
   have h_np : parseNodeProperties ps_th = .ok ({}, ps_th) :=
     parseNodeProperties_skip ps_th (by rw [h_th_peek]; trivial)
   have h_vnp : ∀ p, validateNodeProps ps_th p ({} : NodeProperties) = .ok () := by
-    intro p; unfold validateNodeProps; simp [h_th_peek, bind, Except.bind, pure, Except.pure]
+    intro p; unfold validateNodeProps; simp [h_th_peek, pure, Except.pure]
   have h_pnc : ∀ b, parseNodeContent ps_th (4 * tokens.size + 3) ({} : NodeProperties) b =
       parseFlowSequence ps_th (4 * tokens.size + 3) :=
     fun _ => by unfold parseNodeContent; rw [h_th_peek]
@@ -1098,7 +1095,7 @@ theorem parseStream_flowSeqStart_loop_witness
     -- h_doc : {value := val_pn, ...} = raw_docs[0]!
     -- Now unfold parseNode to learn what val_pn is
     unfold parseNode at h_pn
-    simp only [h_th_peek, bind, Except.bind, pure, Except.pure, h_np, h_vnp, h_pnc] at h_pn
+    simp only [h_th_peek, bind, Except.bind, h_np, h_vnp, h_pnc] at h_pn
     cases h_fs : parseFlowSequence ps_th (4 * tokens.size + 3) with
     | error e => rw [h_fs] at h_pn; simp only [reduceCtorEq] at h_pn
     | ok r_fs =>
@@ -1203,15 +1200,14 @@ theorem parseStream_flowMapStart_loop_witness
     rw [show (ps_th.peek? == some YamlToken.documentStart) = false from by rw [h_th_peek]; decide]
     simp only [Bool.false_eq_true, ↓reduceIte]
     unfold ParseState.tryConsume; rw [h_th_peek]
-    simp only [show (BEq.beq YamlToken.flowMappingStart YamlToken.documentStart) = false from by decide,
-               Bool.false_eq_true, ↓reduceIte, pure, Except.pure, bind, Except.bind]
+    simp only [show (BEq.beq YamlToken.flowMappingStart YamlToken.documentStart) = false from by decide, Bool.false_eq_true, ↓reduceIte]
   have h_fold : ({ ps_1 with tagHandles := #[] } : ParseState) = ps_th := rfl
   unfold parseDocument at h_pd
   simp only [bind, Except.bind, h_prep, h_fold, h_th_peek, h_th_tok] at h_pd
   have h_np : parseNodeProperties ps_th = .ok ({}, ps_th) :=
     parseNodeProperties_skip ps_th (by rw [h_th_peek]; trivial)
   have h_vnp : ∀ p, validateNodeProps ps_th p ({} : NodeProperties) = .ok () := by
-    intro p; unfold validateNodeProps; simp [h_th_peek, bind, Except.bind, pure, Except.pure]
+    intro p; unfold validateNodeProps; simp [h_th_peek, pure, Except.pure]
   have h_pnc : ∀ b, parseNodeContent ps_th (4 * tokens.size + 3) ({} : NodeProperties) b =
       parseFlowMapping ps_th (4 * tokens.size + 3) :=
     fun _ => by unfold parseNodeContent; rw [h_th_peek]
@@ -1223,7 +1219,7 @@ theorem parseStream_flowMapStart_loop_witness
     simp only [Except.ok.injEq, Prod.mk.injEq] at h_pd
     obtain ⟨h_doc, -⟩ := h_pd
     unfold parseNode at h_pn
-    simp only [h_th_peek, bind, Except.bind, pure, Except.pure, h_np, h_vnp, h_pnc] at h_pn
+    simp only [h_th_peek, bind, Except.bind, h_np, h_vnp, h_pnc] at h_pn
     cases h_fm : parseFlowMapping ps_th (4 * tokens.size + 3) with
     | error e => rw [h_fm] at h_pn; simp only [reduceCtorEq] at h_pn
     | ok r_fm =>

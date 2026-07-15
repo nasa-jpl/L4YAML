@@ -88,7 +88,7 @@ theorem probe_not_strongPath : ¬ StrongPath probeStack := by
   rintro ⟨_, h_all⟩; simp [probeStack] at h_all
 
 -- ...yet the GATE HOLDS (its `enc` head is `true`)...
-def probeGate : Gate probeStack := ⟨trivial, rfl, trivial⟩
+theorem probeGate : Gate probeStack := ⟨trivial, rfl, trivial⟩
 
 -- ...so the producer's need `Enclosed` is supplied — for a window OUTSIDE `StrongPath`'s domain.
 theorem probe_enclosed_via_gate : Enclosed probeStack := enclosed_of_gate probeGate

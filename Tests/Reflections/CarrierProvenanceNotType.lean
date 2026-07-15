@@ -67,13 +67,13 @@ inductive Rec : Nat → Nat → Prop
   | mk (lo hi : Nat) : Rec lo hi
 
 /-- The deliverable projects to the carrier — the toy `seqSeparatorFacts_of_recseqbody`. -/
-def carrier_of_rec {lo hi : Nat} (_ : Rec lo hi) : Carrier lo hi := fun a _ _ => Nat.zero_le a
+theorem carrier_of_rec {lo hi : Nat} (_ : Rec lo hi) : Carrier lo hi := fun a _ _ => Nat.zero_le a
 
 /-! ## PROVENANCE A — an emission-INDEPENDENT producer: the cycle breaks -/
 
 /-- `Rec` is producible WITHOUT any carrier — the toy `emitList_scans_recseqbody` (straight from
     emission, recursion-independent). -/
-def rec_from_emission (lo hi : Nat) : Rec lo hi := Rec.mk lo hi
+theorem rec_from_emission (lo hi : Nat) : Rec lo hi := Rec.mk lo hi
 
 /-- **POSITIVE.**  With a recursion-independent producer, the carrier is obtained UNCONDITIONALLY —
     a `Carrier`, not a `Carrier → Carrier`.  The cycle is broken; this is the live route. -/

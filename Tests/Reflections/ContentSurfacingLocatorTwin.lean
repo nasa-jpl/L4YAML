@@ -36,11 +36,11 @@ theorem proj {j : Nat} (b : Body j) : Content j := b
 
 /-- The content-emitting ORACLE (models R503 `recseqentry_seqbracket_oracle_seq_content`): at the located
     close `j` it returns the body, its FREE content, and the trailing separator from ONE evaluation. -/
-def oracle (j : Nat) (hj : 0 < j) : Body j ∧ Content j ∧ True :=
+theorem oracle (j : Nat) (hj : 0 < j) : Body j ∧ Content j ∧ True :=
   ⟨hj, proj hj, trivial⟩
 
 /-- The close-LOCATOR (models `matchingClose_full_seq`): produces the descend close `j` internally. -/
-def locate : ∃ j, 0 < j := ⟨1, by decide⟩
+theorem locate : ∃ j, 0 < j := ⟨1, by decide⟩
 
 /-- The entry-shaped output (models `RecSeqEntry`), tagged by the entry END `m` — which is `j` or `j+1`, so
     the located close `j` is NOT recoverable from it. -/
@@ -68,7 +68,7 @@ theorem locatedContent_surfaces_content : ∃ j, 0 < j ∧ Content j := locatedC
 
 /-- The descend recursive call is CONTENT-FREE: the body is produced from a content-free IH, taking NO
     content argument (models the seq oracle's content-free width IH `h_ih`). -/
-def descendIH (j : Nat) (hj : 0 < j) : Body j := hj
+theorem descendIH (j : Nat) (hj : 0 < j) : Body j := hj
 
 /-- **The surfaced content is genuinely free AND genuinely unneeded by the descend**: it equals the
     projection of the body the content-free `descendIH` already produces — so propagating it costs nothing,
@@ -80,7 +80,7 @@ theorem surfaced_content_is_free (j : Nat) (hj : 0 < j) :
     current body (models the dispatch) CONSUMES the current window's content `curContent`; it cannot be
     produced from the (smaller) child body alone. A width-only recursion has no parent to source it from —
     this is the one place the carrier was load-bearing, and the gap R504 does NOT close. -/
-def step (curContent : Content 5) (_childBody : Body 3) : Body 5 :=
+theorem step (curContent : Content 5) (_childBody : Body 3) : Body 5 :=
   -- `curContent` is consumed (the dispatch needs the current content); `_childBody` is the content-free IH,
   -- available but NOT sufficient on its own — the current body needs the current content.
   curContent

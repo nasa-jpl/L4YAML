@@ -354,7 +354,7 @@ there exists a `ValidNode` whose `toYamlValue` is annotation-equivalent.
 
 Re-export of `soundness_completeness_compose` from `Indexed.Completeness`.
 -/
-noncomputable def grammable_has_witness (v : YamlValue) (hg : Grammable v false) :
+theorem grammable_has_witness (v : YamlValue) (hg : Grammable v false) :
     ∃ n : ValidNode,
       stripAnnotations (toYamlValue n) = stripAnnotations v :=
   L4YAML.Proofs.Indexed.Completeness.soundness_completeness_compose v hg
@@ -380,7 +380,7 @@ This is the conditional form of the target `canonical_roundtrip` theorem.
 The condition "`parseYamlRawIx` succeeds" is verified by `#guard` on
 concrete instances in §4.
 -/
-noncomputable def canonical_roundtrip_conditional (n : ValidNode)
+theorem canonical_roundtrip_conditional (n : ValidNode)
     (docs : Array YamlDocument)
     (h_parse : parseYamlRawIx (emit (toYamlValue n)) = .ok docs)
     (h_grammable : ∀ i : Fin docs.size, Grammable docs[i].value false) :
@@ -402,7 +402,7 @@ This follows because:
 4. Therefore `emit (toYamlValue witness) = emit v` (step 1)
 5. The parser output relates to SOME valid node (soundness)
 -/
-noncomputable def emit_parse_has_witness (v : YamlValue)
+theorem emit_parse_has_witness (v : YamlValue)
     (_hg : Grammable v false)
     (docs : Array YamlDocument)
     (h_parse : parseYamlRawIx (emit v) = .ok docs)

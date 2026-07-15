@@ -101,9 +101,9 @@ def Entry0 (m : Nat) : Prop := m ≤ 5
 
 /-- The three bricks at toy types (each `True`), and the dispatch returning the rich existential at the
     boundary `m = 5` of the window `[0, 5)`. -/
-def toyContent : True → True → True := fun _ _ => trivial
-def toyIh : True → True := fun _ => trivial
-def toyDispatch : True → True → True → DispatchOut 0 5 Bal0 Marker0 Min0 Entry0 :=
+theorem toyContent : True → True → True := fun _ _ => trivial
+theorem toyIh : True → True := fun _ => trivial
+theorem toyDispatch : True → True → True → DispatchOut 0 5 Bal0 Marker0 Min0 Entry0 :=
   fun _ _ _ => ⟨5, Nat.zero_lt_succ _, Nat.le_refl 5, rfl, Or.inl rfl, trivial, Nat.le_refl 5⟩
 
 /-- The wiring RUN: feed the three toy bricks to `locateOfBricks`, obtaining the leaner `LocateHole`

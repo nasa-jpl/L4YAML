@@ -283,7 +283,7 @@ theorem scanBlockEntryIx_offset_monotonic {input : String}
       rw [if_pos ht] at h
       simp [Bind.bind, Except.bind] at h
     · rw [if_neg ht] at h
-      simp only [pure_bind] at h
+      simp only [] at h
       rw [if_pos hi] at h
       simp only [Except.ok.injEq] at h
       subst h
@@ -291,7 +291,7 @@ theorem scanBlockEntryIx_offset_monotonic {input : String}
       simp only [advance_cursor, emit_cursor, pushSequenceIndentIx_cursor]
       exact IxCursor.advance_offset_monotonic _
   · rw [if_neg hi] at h
-    simp only [pure_bind] at h
+    simp only [] at h
     rw [if_neg hi] at h
     simp only [Except.ok.injEq] at h
     subst h
@@ -315,14 +315,14 @@ theorem scanKeyIx_offset_monotonic {input : String}
     · -- some '\t' — throw fires; bind reduces to `.error _`, contradicts `.ok s'`.
       simp [Bind.bind, Except.bind] at h
     · -- catch-all — `pure () >>= ... = .ok {...}`.
-      simp only [pure_bind, Except.ok.injEq] at h
+      simp only [Except.ok.injEq] at h
       subst h
       show s.cursor.pos.offset ≤ _
       simp only [advance_cursor, emit_cursor, pushMappingIndentIx_cursor]
       exact IxCursor.advance_offset_monotonic _
   · -- Flow context: outer if collapses to `s`; inner if also takes else.
     simp only [if_neg hi, advance_inFlow, emit_inFlow] at h
-    simp only [pure_bind, Except.ok.injEq] at h
+    simp only [Except.ok.injEq] at h
     subst h
     show s.cursor.pos.offset ≤ _
     simp only [advance_cursor, emit_cursor]
@@ -433,7 +433,7 @@ theorem scanDocumentEndIx_offset_monotonic {input : String}
     simp [Bind.bind, Except.bind] at h
   · rw [if_neg hd] at h
     -- Normalize the outer `pure ()`-bind so the match is the next destructible.
-    simp only [pure_bind] at h
+    simp only [] at h
     split at h
     all_goals first
       | (simp only [Except.ok.injEq] at h
@@ -548,7 +548,7 @@ theorem scanYamlDirectiveIx_offset_monotonic {input : String}
   · rw [if_pos hd] at h
     simp [Bind.bind, Except.bind] at h
   · rw [if_neg hd] at h
-    simp only [pure_bind] at h
+    simp only [] at h
     -- Remaining: `if !major.isEmpty && !minor.isEmpty then .ok ... else throw`.
     split at h
     · simp only [Except.ok.injEq] at h
@@ -764,7 +764,7 @@ theorem scanBlockEntryIx_tokens_size_le {input : String}
       rw [if_pos ht] at h
       simp [Bind.bind, Except.bind] at h
     · rw [if_neg ht] at h
-      simp only [pure_bind] at h
+      simp only [] at h
       rw [if_pos hi] at h
       simp only [Except.ok.injEq] at h
       subst h
@@ -772,7 +772,7 @@ theorem scanBlockEntryIx_tokens_size_le {input : String}
       refine Nat.le_trans (pushSequenceIndentIx_tokens_size_le s s.cursor.pos.col) ?_
       simp
   · rw [if_neg hi] at h
-    simp only [pure_bind] at h
+    simp only [] at h
     rw [if_neg hi] at h
     simp only [Except.ok.injEq] at h
     subst h
@@ -790,14 +790,14 @@ theorem scanKeyIx_tokens_size_le {input : String}
       pushMappingIndentIx_inFlow] at h
     split at h
     · simp [Bind.bind, Except.bind] at h
-    · simp only [pure_bind, Except.ok.injEq] at h
+    · simp only [Except.ok.injEq] at h
       subst h
       show s.tokens.size ≤ _
       refine Nat.le_trans (pushMappingIndentIx_tokens_size_le s s.cursor.pos.col) ?_
       simp
   · -- Flow context: outer if collapses to `s`; inner if takes else.
     simp only [if_neg hi, advance_inFlow, emit_inFlow] at h
-    simp only [pure_bind, Except.ok.injEq] at h
+    simp only [Except.ok.injEq] at h
     subst h
     show s.tokens.size ≤ _
     simp
@@ -882,7 +882,7 @@ theorem scanDocumentEndIx_tokens_size_le {input : String}
   · rw [if_pos hd] at h
     simp [Bind.bind, Except.bind] at h
   · rw [if_neg hd] at h
-    simp only [pure_bind] at h
+    simp only [] at h
     split at h
     all_goals first
       | (simp only [Except.ok.injEq] at h
@@ -946,7 +946,7 @@ theorem scanYamlDirectiveIx_tokens_size_le {input : String}
   · rw [if_pos hd] at h
     simp [Bind.bind, Except.bind] at h
   · rw [if_neg hd] at h
-    simp only [pure_bind] at h
+    simp only [] at h
     split at h
     · simp only [Except.ok.injEq] at h
       subst h
@@ -1127,7 +1127,7 @@ theorem scanNextTokenIx_dispatchStructural_ok_some_cases {input : String}
             cases hSDE : scanDocumentEndIx s with
             | error e =>
               rw [hSDE] at h
-              simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+              simp [Bind.bind, Except.bind] at h
             | ok v =>
               rw [hSDE] at h
               simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
@@ -1139,13 +1139,13 @@ theorem scanNextTokenIx_dispatchStructural_ok_some_cases {input : String}
               cases hSD : scanDirectiveIx s with
               | error e =>
                 rw [hSD] at h
-                simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+                simp [Bind.bind, Except.bind] at h
               | ok v =>
                 rw [hSD] at h
                 simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
                 exact congrArg Except.ok h
             · rw [if_neg hg5] at h
-              simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+              simp [Pure.pure, Except.pure] at h
   · rw [if_neg hg1] at h
     by_cases hg2 : (s.cursor.pos.col == 0 && s.inFlow &&
                     (atDocumentStartIx s.cursor || atDocumentEndIx s.cursor)) = true
@@ -1165,7 +1165,7 @@ theorem scanNextTokenIx_dispatchStructural_ok_some_cases {input : String}
           cases hSDE : scanDocumentEndIx s with
           | error e =>
             rw [hSDE] at h
-            simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+            simp [Bind.bind, Except.bind] at h
           | ok v =>
             rw [hSDE] at h
             simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
@@ -1177,13 +1177,13 @@ theorem scanNextTokenIx_dispatchStructural_ok_some_cases {input : String}
             cases hSD : scanDirectiveIx s with
             | error e =>
               rw [hSD] at h
-              simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+              simp [Bind.bind, Except.bind] at h
             | ok v =>
               rw [hSD] at h
               simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
               exact congrArg Except.ok h
           · rw [if_neg hg5] at h
-            simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+            simp [Pure.pure, Except.pure] at h
 
 theorem scanNextTokenIx_dispatchStructural_offset_monotonic {input : String}
     {s s' : ScannerStateIx input} {c : Char}
@@ -1266,13 +1266,13 @@ theorem scanNextTokenIx_dispatchFlowIndicators_ok_some_cases {input : String}
               cases hSFE : scanFlowEntryIx s with
               | error e =>
                 rw [hSFE] at h
-                simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+                simp [Bind.bind, Except.bind] at h
               | ok v =>
                 rw [hSFE] at h
                 simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
                 exact congrArg Except.ok h
           · rw [if_neg hg5] at h
-            simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+            simp [Pure.pure, Except.pure] at h
 
 theorem scanNextTokenIx_dispatchFlowIndicators_offset_monotonic {input : String}
     {s s' : ScannerStateIx input} {c : Char}
@@ -1328,7 +1328,7 @@ theorem scanNextTokenIx_dispatchBlockIndicators_ok_some_cases {input : String}
       cases hK : scanKeyIx s with
       | error e =>
         rw [hK] at h
-        simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+        simp [Bind.bind, Except.bind] at h
       | ok v =>
         rw [hK] at h
         simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
@@ -1340,13 +1340,13 @@ theorem scanNextTokenIx_dispatchBlockIndicators_ok_some_cases {input : String}
         cases hV : scanValueIx s with
         | error e =>
           rw [hV] at h
-          simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+          simp [Bind.bind, Except.bind] at h
         | ok v =>
           rw [hV] at h
           simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
           exact congrArg Except.ok h
       · rw [if_neg hg3] at h
-        simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+        simp [Pure.pure, Except.pure] at h
 
 theorem scanNextTokenIx_dispatchBlockIndicators_offset_monotonic {input : String}
     {s s' : ScannerStateIx input} {c : Char}
@@ -1386,7 +1386,8 @@ theorem scanNextTokenIx_dispatchContent_ok_monotonic {input : String}
   unfold scanNextTokenIx_dispatchContent at h
   by_cases hg1 : (c == '&') = true
   · rw [if_pos hg1] at h
-    simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+    -- 4.32.0 already reduces the anchor bind; the `cases`/`rw` below is robust either way
+    try simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
     cases hA : scanAnchorOrAliasIx s true with
     | error e => rw [hA] at h; cases h
     | ok v =>

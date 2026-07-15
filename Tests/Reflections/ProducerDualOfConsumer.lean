@@ -234,31 +234,31 @@ theorem buildLocatedMap (l : List Tok) (lo hi : Nat)
 /-! ## Positive witnesses — build on each side; read the seq one back; project the map one's `WB` -/
 
 /-- Seq inner body `[a]` for the window `[ a ]` (`l = [os, a, cs]`, `lo = 1`, `hi = 2`). -/
-def sbody_a : SBody (([Tok.os, .a, .cs].take 2).drop 1) := by
+theorem sbody_a : SBody (([Tok.os, .a, .cs].take 2).drop 1) := by
   show SBody [.a]
   exact .single [.a] .atom
 
 /-- The seq PRODUCER builds the located entry `SEntry [os, a, cs]`, **feeding** the stored `WB`. -/
-def built_seq : SEntry (([Tok.os, .a, .cs].take (2 + 1)).drop (1 - 1)) :=
+theorem built_seq : SEntry (([Tok.os, .a, .cs].take (2 + 1)).drop (1 - 1)) :=
   buildLocatedSeq [.os, .a, .cs] 1 2 (by omega) (by omega) (by decide) (by decide) (by decide) sbody_a
 
 /-- …and the seq CONSUMER reads the inner body back off it — the constructor/eliminator round-trip. -/
-def read_back_seq : SBody (([Tok.os, .a, .cs].take 2).drop 1) :=
+theorem read_back_seq : SBody (([Tok.os, .a, .cs].take 2).drop 1) :=
   readLocatedSeq [.os, .a, .cs] 1 2 (by omega) (by omega) (by decide) (by decide) built_seq
 
 /-- Map inner body `[a]` for the window `{ a }` (`l = [om, a, cm]`, `lo = 1`, `hi = 2`). -/
-def mbody_a : MBody (([Tok.om, .a, .cm].take 2).drop 1) := by
+theorem mbody_a : MBody (([Tok.om, .a, .cm].take 2).drop 1) := by
   show MBody [.a]
   exact .single [.a] .atom
 
 /-- The map PRODUCER builds the located entry `MEntry [om, a, cm]` — the constructor call **shed** the
     `WB` argument the seq build supplied (R246). -/
-def built_map : MEntry (([Tok.om, .a, .cm].take (2 + 1)).drop (1 - 1)) :=
+theorem built_map : MEntry (([Tok.om, .a, .cm].take (2 + 1)).drop (1 - 1)) :=
   buildLocatedMap [.om, .a, .cm] 1 2 (by omega) (by omega) (by decide) (by decide) (by decide) mbody_a
 
 /-- …yet the `WB` the `map` constructor never stored is recovered **post-hoc** by projection — exactly
     `RecMapEntry.toWellBracketed`.  This is *why* the field can be shed at construction (R244/R246). -/
-def wb_recovered : WB (([Tok.om, .a, .cm].take (2 + 1)).drop (1 - 1)) :=
+theorem wb_recovered : WB (([Tok.om, .a, .cm].take (2 + 1)).drop (1 - 1)) :=
   MEntry.toWB built_map
 
 /-! ## The BUNDLE assembler (R247) — lift the field-level dual to the consumer's bundled deliverable -/
@@ -308,17 +308,17 @@ theorem bundleLocatedMap (l : List Tok) (lo hi : Nat)
 
 /-- The seq BUNDLE: every cheap field is `by omega`/`by decide`, only the last argument (`sbody_a`) is
     a real deliverable — the witness encodes "only the recursive field is non-trivial." -/
-def slocated_a : SLocated [.os, .a, .cs] 1 2 :=
+theorem slocated_a : SLocated [.os, .a, .cs] 1 2 :=
   bundleLocatedSeq [.os, .a, .cs] 1 2 (by omega) (by omega) (by decide) (by decide) (by decide) sbody_a
 
 /-- The recursive field is the meat: projecting `entry` back out recovers exactly the located entry
     `buildLocatedSeq` produced. -/
-def slocated_entry : SEntry (([Tok.os, .a, .cs].take (2 + 1)).drop (1 - 1)) := slocated_a.entry
+theorem slocated_entry : SEntry (([Tok.os, .a, .cs].take (2 + 1)).drop (1 - 1)) := slocated_a.entry
 
 /-- The map BUNDLE: note the **extra** `(by decide)` for `h_key` — one argument more than the seq
     bundle, the bundle-level arity bump R247 names (the stored pair primitive the entry producer
     doesn't supply). -/
-def mlocated_a : MLocated [.om, .a, .cm] 1 2 :=
+theorem mlocated_a : MLocated [.om, .a, .cm] 1 2 :=
   bundleLocatedMap [.om, .a, .cm] 1 2 (by omega) (by omega) (by decide) (by decide) (by decide) (by decide) mbody_a
 
 /-! ## R248 — the storage asymmetry is *scale-free*: SHRINK at the entry constructor, GROWTH at the
@@ -340,11 +340,11 @@ arity half — shrink here, growth there — is exactly these witnesses. -/
 
 /-- GROWTH made concrete: the stored pair primitive `keyF` projects back out of the map bundle (mirror
     of `slocated_entry`), proving it is a genuine stored field the assembler threaded in, not derived. -/
-def mlocated_key : (2 : Nat) ≤ [Tok.om, .a, .cm].length := mlocated_a.keyF
+theorem mlocated_key : (2 : Nat) ≤ [Tok.om, .a, .cm].length := mlocated_a.keyF
 
 /-- The recursive `entry` still projects back out too, exactly as on the seq side — the GROWTH is *only*
     in the extra stored primitive, the recursive field behaves identically across the two bundles. -/
-def mlocated_entry : MEntry (([Tok.om, .a, .cm].take (2 + 1)).drop (1 - 1)) := mlocated_a.entry
+theorem mlocated_entry : MEntry (([Tok.om, .a, .cm].take (2 + 1)).drop (1 - 1)) := mlocated_a.entry
 
 /-! ## The opener-kind guard is load-bearing, and decidable balance sanity checks -/
 

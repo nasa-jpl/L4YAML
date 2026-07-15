@@ -111,13 +111,13 @@ theorem scanBlockEntryIx_tokens_eq {s s' : ScannerStateIx input}
     by_cases ht : s.hasTabInPrecedingWhitespace = true
     · rw [if_pos ht] at h; simp [Bind.bind, Except.bind] at h
     · rw [if_neg ht] at h
-      simp only [pure_bind] at h
+      simp only [] at h
       rw [if_pos hi] at h
       simp only [Except.ok.injEq] at h
       subst h
       simp only [if_pos hi, advance_tokens]
   · rw [if_neg hi] at h
-    simp only [pure_bind] at h
+    simp only [] at h
     rw [if_neg hi] at h
     simp only [Except.ok.injEq] at h
     subst h
@@ -137,11 +137,11 @@ theorem scanKeyIx_tokens_eq {s s' : ScannerStateIx input}
   · simp only [if_pos hi, advance_inFlow, emit_inFlow, pushMappingIndentIx_inFlow] at h
     split at h
     · simp [Bind.bind, Except.bind] at h
-    · simp only [pure_bind, Except.ok.injEq] at h
+    · simp only [Except.ok.injEq] at h
       subst h
       simp only [if_pos hi, advance_tokens]
   · simp only [if_neg hi, advance_inFlow, emit_inFlow] at h
-    simp only [pure_bind, Except.ok.injEq] at h
+    simp only [Except.ok.injEq] at h
     subst h
     simp only [if_neg hi, advance_tokens]
 
@@ -378,7 +378,7 @@ theorem dispatchContent_new_not_placeholderIx {s s' : ScannerStateIx input} {c :
   unfold scanNextTokenIx_dispatchContent at h
   by_cases hg1 : (c == '&') = true
   · rw [if_pos hg1] at h
-    simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+    try simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
     cases hA : scanAnchorOrAliasIx s true with
     | error e => rw [hA] at h; cases h
     | ok v =>
@@ -459,7 +459,7 @@ theorem dispatchContent_adds_one_tokenIx {s s' : ScannerStateIx input} {c : Char
   unfold scanNextTokenIx_dispatchContent at h
   by_cases hg1 : (c == '&') = true
   · rw [if_pos hg1] at h
-    simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+    try simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
     cases hA : scanAnchorOrAliasIx s true with
     | error e => rw [hA] at h; cases h
     | ok v =>

@@ -412,12 +412,12 @@ theorem parseNode_scalar_head_isOk (ps : ParseState) (n : Nat)
     L4YAML.Proofs.ParserWellBehaved.parseNodeProperties_skip ps (by rw [h_peek]; trivial)
   have h_vnp : ∀ p, validateNodeProps ps p ({} : NodeProperties) = .ok () := by
     intro p; unfold validateNodeProps
-    simp only [h_peek, bind, Except.bind, pure, Except.pure]; rfl
+    simp only [h_peek, pure, Except.pure]; rfl
   have h_pnc : ∀ b, parseNodeContent ps n ({} : NodeProperties) b
       = .ok (YamlValue.scalar { content := content, style := style }, ps.advance) :=
     fun _ => by unfold parseNodeContent; rw [h_peek]
   unfold parseNode
-  simp only [h_peek, bind, Except.bind, pure, Except.pure, h_np, h_vnp, h_pnc]
+  simp only [h_peek, bind, Except.bind, h_np, h_vnp, h_pnc]
   exact ⟨_, rfl⟩
 
 /-- Scalar-head parse's recovered VALUE (under `.toOption.map`) is exactly the head scalar,
@@ -885,12 +885,12 @@ theorem parseNode_scalar_anchors_preserved (ps : ParseState) (fuel : Nat)
       L4YAML.Proofs.ParserWellBehaved.parseNodeProperties_skip ps (by rw [h_peek]; trivial)
     have h_vnp : ∀ p, validateNodeProps ps p ({} : NodeProperties) = .ok () := by
       intro p; unfold validateNodeProps
-      simp only [h_peek, bind, Except.bind, pure, Except.pure]; rfl
+      simp only [h_peek, pure, Except.pure]; rfl
     have h_pnc : ∀ b, parseNodeContent ps n ({} : NodeProperties) b
         = .ok (YamlValue.scalar { content := content, style := style }, ps.advance) :=
       fun _ => by unfold parseNodeContent; rw [h_peek]
     unfold parseNode at h_parse
-    simp only [h_peek, bind, Except.bind, pure, Except.pure, h_np, h_vnp, h_pnc] at h_parse
+    simp only [h_peek, bind, Except.bind, h_np, h_vnp, h_pnc] at h_parse
     have h2 := Except.ok.inj h_parse
     have h_ps'_eq : ps' = (applyNodeFinalization
         (YamlValue.scalar { content := content, style := style }) ps.advance {}

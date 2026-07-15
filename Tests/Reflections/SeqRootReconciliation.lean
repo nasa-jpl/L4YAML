@@ -80,24 +80,24 @@ structure Contract (t : Toks) : Prop where
   map : MapProducer t
 
 /-- Toy R432 — the window facts from the carrier + emit context. -/
-def windowFacts_of_carrier (t : Toks) (hc : Carrier t) (he : Emit t) : WindowFacts t :=
+theorem windowFacts_of_carrier (t : Toks) (hc : Carrier t) (he : Emit t) : WindowFacts t :=
   ⟨hc.balanced, he.nonempty⟩
 
 /-- Toy R415 (`seqWindowRecSeqBody_seq_general`) — the seq deliverable from the window facts. -/
-def seqProducer_of_windowFacts (t : Toks) (hw : WindowFacts t) : SeqProducer t := ⟨hw⟩
+theorem seqProducer_of_windowFacts (t : Toks) (hw : WindowFacts t) : SeqProducer t := ⟨hw⟩
 
 /-- Toy `seqHRec_of_root_and_emit` — FOLD the discharged seq chain: the seq deliverable now follows
     from the carrier + emit alone. -/
-def seqProducer_of_carrier_and_emit (t : Toks) (hc : Carrier t) (he : Emit t) : SeqProducer t :=
+theorem seqProducer_of_carrier_and_emit (t : Toks) (hc : Carrier t) (he : Emit t) : SeqProducer t :=
   seqProducer_of_windowFacts t (windowFacts_of_carrier t hc he)
 
 /-- Toy `flowSubrangesOk_of_window_producers` — the contract consumer, needing BOTH producers. -/
-def contract_of_producers (t : Toks) (hs : SeqProducer t) (hm : MapProducer t) : Contract t := ⟨hs, hm⟩
+theorem contract_of_producers (t : Toks) (hs : SeqProducer t) (hm : MapProducer t) : Contract t := ⟨hs, hm⟩
 
 /-- **Toy R512** (`flowSubrangesOk_of_seqRoot_and_map_producers`) — the RECONCILIATION.  The contract
     collapses to `Carrier ∧ Emit ∧ MapProducer`: the whole seq half is now the single carrier
     hypothesis, the map side still raw. -/
-def contract_of_carrier_and_map (t : Toks) (hc : Carrier t) (he : Emit t) (hm : MapProducer t) :
+theorem contract_of_carrier_and_map (t : Toks) (hc : Carrier t) (he : Emit t) (hm : MapProducer t) :
     Contract t :=
   contract_of_producers t (seqProducer_of_carrier_and_emit t hc he) hm
 
@@ -107,7 +107,7 @@ structure DriverObligations (t : Toks) : Prop where
   descendTail : t.count OPEN = t.count CLOSE
 
 /-- A SECOND route to the SAME `SeqProducer`, via the driver decomposition (toy R510/R511). -/
-def seqProducer_via_driver (t : Toks) (hd : DriverObligations t) : SeqProducer t :=
+theorem seqProducer_via_driver (t : Toks) (hd : DriverObligations t) : SeqProducer t :=
   ⟨⟨hd.descendTail, hd.locate⟩⟩
 
 /-- **The off-path finding.**  `SeqProducer t` is a `Prop`, so the carrier route and the driver route

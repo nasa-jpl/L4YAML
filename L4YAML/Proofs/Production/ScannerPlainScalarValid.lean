@@ -428,7 +428,7 @@ theorem dispatchContent_preserves_PlainScalarsValid
       cases anch_result with
       | error => simp at h_ok
       | ok s_anch =>
-        dsimp only [] at h_ok
+        try dsimp only [] at h_ok
         change Except.ok _ = Except.ok s' at h_ok
         have h_eq := Except.ok.inj h_ok; subst h_eq
         intro j hj hge
@@ -454,7 +454,7 @@ theorem dispatchContent_preserves_PlainScalarsValid
           cases anch_result with
           | error => simp at h_ok
           | ok s_anch =>
-            dsimp only [] at h_ok
+            try dsimp only [] at h_ok
             simp only [Except.ok.injEq] at h_ok; subst h_ok
             intro j hj hge
             have h_sz := scanAnchorOrAlias_adds_one_token s false s_anch h_anch
@@ -476,7 +476,7 @@ theorem dispatchContent_preserves_PlainScalarsValid
           cases tag_result with
           | error => simp at h_ok
           | ok s_tag =>
-            dsimp only [] at h_ok
+            try dsimp only [] at h_ok
             simp only [Except.ok.injEq] at h_ok; subst h_ok
             intro j hj hge
             have h_sz := scanTag_adds_one_token s s_tag h_tag
@@ -484,15 +484,12 @@ theorem dispatchContent_preserves_PlainScalarsValid
             subst hj_eq
             exact scanTag_psv_match s s_tag h_tag hj
         · split at h_ok
-          · -- c == '|' || '>': .scalar _ .literal/.folded — not .plain
-            split at h_ok <;> try contradiction
-            simp only [Except.ok.injEq] at h_ok; subst h_ok
-            rename_i s_bs h_bs
+          · -- c == '|' || '>': scanBlockScalar returns directly (not .plain)
             intro j hj hge
             have : j = s.tokens.size := by
-              have := scanBlockScalar_adds_one_token s s_bs h_bs; omega
+              have := scanBlockScalar_adds_one_token s _ h_ok; omega
             subst this
-            exact scanBlockScalar_psv_match s s_bs h_bs hj
+            exact scanBlockScalar_psv_match s _ h_ok hj
           · split at h_ok
             · -- c == '"': .scalar _ .doubleQuoted — not .plain
               split at h_ok <;> try contradiction
@@ -521,21 +518,19 @@ theorem dispatchContent_preserves_PlainScalarsValid
                   )
               · split at h_ok
                 · -- canStartPlainScalar: THE .scalar _ .plain case
-                  split at h_ok <;> try contradiction
-                  simp only [Except.ok.injEq] at h_ok; subst h_ok
-                  rename_i s_ps h_ps
+                  -- scanPlainScalar returns directly (4.32.0): `s'` is the result, `h_ok` the equation
                   have h_cs : canStartPlainScalarBool c (s.peekAt? 1) s.inFlow = true := by assumption
                   intro j hj hge
                   have : j = s.tokens.size := by
-                    have := scanPlainScalar_adds_one_token s s_ps h_ps; omega
+                    have := scanPlainScalar_adds_one_token s _ h_ok; omega
                   subst this
                   -- B3.4 + monotonicity
-                  generalize h_tok : (s_ps.tokens[s.tokens.size]'hj).val = tok
+                  generalize h_tok : (s'.tokens[s.tokens.size]'hj).val = tok
                   cases tok with
                   | scalar content style =>
                     cases style with
                     | plain =>
-                      have h_cv := scanPlainScalar_content_valid s s_ps h_ps
+                      have h_cv := scanPlainScalar_content_valid s _ h_ok
                         ⟨c, h_peek, h_cs⟩ hj
                       rw [h_tok] at h_cv
                       exact ScalarScannable_any_implies_false _ s.inFlow h_cv
@@ -586,7 +581,7 @@ theorem preprocess_preserves_PlainScalarsValid
   · -- New tokens: .blockEnd and .placeholder only
     intro j hj hge
     unfold scanNextToken_preprocess at h_ok
-    simp only [bind, bind_error_simp, bind_ok_simp, pure, Pure.pure, Except.pure] at h_ok
+    simp only [bind, pure, Pure.pure, Except.pure] at h_ok
     simp only [Except.bind] at h_ok
     split at h_ok
     · contradiction
@@ -664,25 +659,12 @@ theorem scanDocumentEnd_tokens_eq (s : ScannerState) (s' : ScannerState)
   unfold scanDocumentEnd at h_de
   dsimp only [] at h_de
   simp only [bind, Except.bind] at h_de
-  split at h_de
-  · contradiction
-  · split at h_de
-    · contradiction
-    · split at h_de
-      · split at h_de
-        · contradiction
-        · injection h_de with h_eq; subst h_eq
-          simp only [advanceN_preserves_tokens]
-      · split at h_de
-        · contradiction
-        · injection h_de with h_eq; subst h_eq
-          simp only [advanceN_preserves_tokens]
-      · split at h_de
-        · split at h_de
-          · contradiction
-          · injection h_de with h_eq; subst h_eq
-            simp only [advanceN_preserves_tokens]
-        · contradiction
+  -- 4.32.0 reshaped the do-notation match tree; split fully, close leaves uniformly.
+  repeat' split at h_de
+  all_goals first
+    | contradiction
+    | (injection h_de with h_eq; subst h_eq
+       simp only [advanceN_preserves_tokens])
 
 theorem scanDocumentEnd_new_not_plain (s : ScannerState) (s' : ScannerState)
     (h_de : scanDocumentEnd s = .ok s') (j : Nat)
@@ -731,7 +713,7 @@ theorem scanYamlDirective_new_tok_not_plain (s s_after_ws : ScannerState) (start
       (s.inputEnd - (collectVersionMajorLoop s_after_ws "" (s.inputEnd - s_after_ws.offset)).snd.offset)).fst.toNat!, startPos⟩ := by
     unfold scanYamlDirective at h
     dsimp only [] at h
-    simp only [bind, Except.bind, pure, Except.pure] at h
+    simp only [bind, Except.bind] at h
     split at h
     · contradiction
     · split at h
@@ -772,17 +754,17 @@ theorem scanTagDirective_new_tok_not_plain (s s_after_ws : ScannerState) (startP
     split at h
     · split at h
       · contradiction
-      · simp only [pure, Except.pure, Except.ok.injEq] at h; subst h
+      · simp only [Except.ok.injEq] at h; subst h
         simp only [ScannerState.emitAt, skipWhitespace_preserves_tokens,
           collectTagPrefixLoop_preserves_tokens,
           collectTagHandleDirectiveLoop_preserves_tokens, h_ws]
     · split at h
       · contradiction
-      · simp only [pure, Except.pure, Except.ok.injEq] at h; subst h
+      · simp only [Except.ok.injEq] at h; subst h
         simp only [ScannerState.emitAt, skipWhitespace_preserves_tokens,
           collectTagPrefixLoop_preserves_tokens,
           collectTagHandleDirectiveLoop_preserves_tokens, h_ws]
-    · simp only [pure, Except.pure, Except.ok.injEq] at h; subst h
+    · simp only [Except.ok.injEq] at h; subst h
       simp only [ScannerState.emitAt, skipWhitespace_preserves_tokens,
         collectTagPrefixLoop_preserves_tokens,
         collectTagHandleDirectiveLoop_preserves_tokens, h_ws]
@@ -833,7 +815,7 @@ theorem scanYamlDirective_new_not_plain (s s_after_ws : ScannerState) (startPos 
     | _ => True := by
   unfold scanYamlDirective at h
   dsimp only [] at h
-  simp only [bind, Except.bind, pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   split at h
   · contradiction
   · split at h
@@ -886,7 +868,7 @@ theorem scanTagDirective_new_not_plain (s s_after_ws : ScannerState) (startPos :
   · -- some '#'
     split at h
     · contradiction
-    · simp only [pure, Except.pure, Except.ok.injEq] at h; subst h; dsimp only []
+    · simp only [Except.ok.injEq] at h; subst h; dsimp only []
       have h_j : j = s.tokens.size := by
         simp only [emitAt_tokens_size, skipWhitespace_preserves_tokens,
           collectTagPrefixLoop_preserves_tokens,
@@ -898,7 +880,7 @@ theorem scanTagDirective_new_not_plain (s s_after_ws : ScannerState) (startPos :
   · -- some c
     split at h
     · contradiction
-    · simp only [pure, Except.pure, Except.ok.injEq] at h; subst h; dsimp only []
+    · simp only [Except.ok.injEq] at h; subst h; dsimp only []
       have h_j : j = s.tokens.size := by
         simp only [emitAt_tokens_size, skipWhitespace_preserves_tokens,
           collectTagPrefixLoop_preserves_tokens,
@@ -908,7 +890,7 @@ theorem scanTagDirective_new_not_plain (s s_after_ws : ScannerState) (startPos :
         collectTagPrefixLoop_preserves_tokens,
         collectTagHandleDirectiveLoop_preserves_tokens, h_ws, Array.getElem_push_eq]
   · -- none
-    simp only [pure, Except.pure, Except.ok.injEq] at h; subst h; dsimp only []
+    simp only [Except.ok.injEq] at h; subst h; dsimp only []
     have h_j : j = s.tokens.size := by
       simp only [emitAt_tokens_size, skipWhitespace_preserves_tokens,
         collectTagPrefixLoop_preserves_tokens,
@@ -963,7 +945,7 @@ theorem dispatchStructural_preserves_PlainScalarsValid
   · intro i hi; exact dispatchStructural_preserves_prefix s c s' h_ok i (by omega)
   · intro j hj hge
     unfold scanNextToken_dispatchStructural at h_ok
-    simp only [bind, bind_error_simp, bind_ok_simp, pure, Pure.pure, Except.pure] at h_ok
+    simp only [bind, pure, Pure.pure, Except.pure] at h_ok
     simp only [Except.bind] at h_ok
     repeat (any_goals (split at h_ok))
     any_goals contradiction
@@ -987,7 +969,7 @@ theorem dispatchFlowIndicators_preserves_PlainScalarsValid
   · intro i hi; exact dispatchFlowIndicators_preserves_prefix s c s' h_ok i (by omega)
   · intro j hj hge
     unfold scanNextToken_dispatchFlowIndicators at h_ok
-    simp only [bind, bind_error_simp, bind_ok_simp, pure, Pure.pure, Except.pure] at h_ok
+    simp only [bind, pure, Pure.pure, Except.pure] at h_ok
     simp only [Except.bind] at h_ok
     repeat (any_goals (split at h_ok))
     any_goals contradiction
@@ -1105,7 +1087,7 @@ theorem scanBlockEntry_preserves_PlainScalarsValid
     (h_ok : scanBlockEntry s = .ok s') :
     PlainScalarsValid s'.tokens := by
   unfold scanBlockEntry at h_ok
-  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  simp only [bind, Except.bind] at h_ok
   split at h_ok
   · split at h_ok
     · contradiction
@@ -1125,7 +1107,7 @@ theorem scanKey_preserves_PlainScalarsValid
     (h_ok : scanKey s = .ok s') :
     PlainScalarsValid s'.tokens := by
   unfold scanKey at h_ok
-  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  simp only [bind, Except.bind] at h_ok
   split at h_ok
   · split at h_ok
     · split at h_ok
@@ -1748,7 +1730,7 @@ theorem preprocess_preserves_FlowNestingInv
     (h_ok : scanNextToken_preprocess s = .ok (some (s1, c))) :
     FlowNestingInv s1 := by
   unfold scanNextToken_preprocess at h_ok
-  simp only [bind, bind_error_simp, bind_ok_simp, pure, Pure.pure, Except.pure] at h_ok
+  simp only [bind, pure, Pure.pure, Except.pure] at h_ok
   simp only [Except.bind] at h_ok
   split at h_ok
   · contradiction
@@ -1790,7 +1772,7 @@ theorem preprocess_preserves_FlowContextPSV
     -- Same token analysis as preprocess_preserves_PlainScalarsValid:
     -- new tokens are .blockEnd or .placeholder, not .scalar _ .plain
     unfold scanNextToken_preprocess at h_ok
-    simp only [bind, bind_error_simp, bind_ok_simp, pure, Pure.pure, Except.pure] at h_ok
+    simp only [bind, pure, Pure.pure, Except.pure] at h_ok
     simp only [Except.bind] at h_ok
     split at h_ok
     · contradiction
@@ -1948,7 +1930,7 @@ theorem scanDocumentEnd_preserves_FlowNestingInv (s s' : ScannerState)
     (h_fni : FlowNestingInv s) (h_ok : scanDocumentEnd s = .ok s') :
     FlowNestingInv s' := by
   unfold scanDocumentEnd at h_ok
-  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  simp only [bind, Except.bind] at h_ok
   split at h_ok
   · simp at h_ok
   · -- All ok paths produce the same `result` computed before validation
@@ -1992,7 +1974,7 @@ theorem scanDirective_preserves_flowLevel (s s' : ScannerState)
         simp only [Except.ok.injEq] at h; subst h
         rw [skipToEndOfLine_preserves_flowLevel]
         unfold scanYamlDirective at hm
-        simp only [bind, Except.bind, pure, Except.pure] at hm
+        simp only [bind, Except.bind] at hm
         split at hm
         · contradiction  -- seenYamlDirective error
         · split at hm
@@ -2030,7 +2012,7 @@ theorem scanDirective_preserves_flowLevel (s s' : ScannerState)
           · -- some '#'
             split at hm
             · contradiction
-            · simp only [pure, Except.pure, Except.ok.injEq] at hm; subst hm; simp only []
+            · simp only [Except.ok.injEq] at hm; subst hm; simp only []
               rw [emitAt_preserves_flowLevel, skipWhitespace_preserves_flowLevel,
                   collectTagPrefixLoop_preserves_flowLevel,
                   skipWhitespace_preserves_flowLevel,
@@ -2038,13 +2020,13 @@ theorem scanDirective_preserves_flowLevel (s s' : ScannerState)
           · -- some c
             split at hm
             · contradiction
-            · simp only [pure, Except.pure, Except.ok.injEq] at hm; subst hm; simp only []
+            · simp only [Except.ok.injEq] at hm; subst hm; simp only []
               rw [emitAt_preserves_flowLevel, skipWhitespace_preserves_flowLevel,
                   collectTagPrefixLoop_preserves_flowLevel,
                   skipWhitespace_preserves_flowLevel,
                   collectTagHandleDirectiveLoop_preserves_flowLevel, h_ws_fl]
           · -- none
-            simp only [pure, Except.pure, Except.ok.injEq] at hm; subst hm; simp only []
+            simp only [Except.ok.injEq] at hm; subst hm; simp only []
             rw [emitAt_preserves_flowLevel, skipWhitespace_preserves_flowLevel,
                 collectTagPrefixLoop_preserves_flowLevel,
                 skipWhitespace_preserves_flowLevel,
@@ -2064,7 +2046,7 @@ theorem scanYamlDirective_new_tokens_not_flow (s s_after_ws : ScannerState) (sta
     (s'.tokens[j]'hj).val ≠ .flowMappingEnd := by
   unfold scanYamlDirective at h
   dsimp only [] at h
-  simp only [bind, Except.bind, pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   split at h
   · contradiction
   · -- All three YAML sub-branches produce the same token structure
@@ -2113,17 +2095,17 @@ theorem scanTagDirective_new_tokens_not_flow (s s_after_ws : ScannerState) (star
     split at h
     · split at h
       · contradiction
-      · simp only [pure, Except.pure, Except.ok.injEq] at h; subst h
+      · simp only [Except.ok.injEq] at h; subst h
         simp only [ScannerState.emitAt, skipWhitespace_preserves_tokens,
           collectTagPrefixLoop_preserves_tokens,
           collectTagHandleDirectiveLoop_preserves_tokens, h_ws]
     · split at h
       · contradiction
-      · simp only [pure, Except.pure, Except.ok.injEq] at h; subst h
+      · simp only [Except.ok.injEq] at h; subst h
         simp only [ScannerState.emitAt, skipWhitespace_preserves_tokens,
           collectTagPrefixLoop_preserves_tokens,
           collectTagHandleDirectiveLoop_preserves_tokens, h_ws]
-    · simp only [pure, Except.pure, Except.ok.injEq] at h; subst h
+    · simp only [Except.ok.injEq] at h; subst h
       simp only [ScannerState.emitAt, skipWhitespace_preserves_tokens,
         collectTagPrefixLoop_preserves_tokens,
         collectTagHandleDirectiveLoop_preserves_tokens, h_ws]
@@ -2188,7 +2170,7 @@ theorem dispatchStructural_preserves_FlowInv
     · intro j hj hge _
       -- All new structural tokens satisfy fpsv_of_not_plain
       unfold scanNextToken_dispatchStructural at h_ok
-      simp only [bind, bind_error_simp, bind_ok_simp, pure, Pure.pure, Except.pure] at h_ok
+      simp only [bind, pure, Pure.pure, Except.pure] at h_ok
       simp only [Except.bind] at h_ok
       repeat (any_goals (split at h_ok))
       any_goals contradiction
@@ -2211,7 +2193,7 @@ theorem dispatchStructural_preserves_FlowInv
         exact scanDirective_new_tok_not_plain s v h_dir j hj hge))
   · -- FlowNestingInv: structural dispatch preserves flowLevel and emits non-flow tokens
     unfold scanNextToken_dispatchStructural at h_ok
-    simp only [bind, bind_error_simp, bind_ok_simp, pure, Pure.pure, Except.pure] at h_ok
+    simp only [bind, pure, Pure.pure, Except.pure] at h_ok
     simp only [Except.bind] at h_ok
     repeat (any_goals (split at h_ok))
     any_goals contradiction
@@ -2373,7 +2355,7 @@ theorem dispatchFlowIndicators_preserves_FlowInv
                     have hsize : s_flow.tokens.size = s.tokens.size + 1 := by
                       have := scanFlowEntry_adds_one_token s s_flow h_flow
                       unfold scanFlowEntry at h_flow
-                      simp only [bind, Except.bind, pure, Except.pure] at h_flow
+                      simp only [bind, Except.bind] at h_flow
                       split at h_flow
                       · split at h_flow
                         · simp at h_flow
@@ -2384,7 +2366,7 @@ theorem dispatchFlowIndicators_preserves_FlowInv
                     have : j = s.tokens.size := by omega
                     subst this
                     unfold scanFlowEntry at h_flow
-                    simp only [bind, Except.bind, pure, Except.pure] at h_flow
+                    simp only [bind, Except.bind] at h_flow
                     split at h_flow
                     · split at h_flow
                       · simp at h_flow
@@ -2397,7 +2379,7 @@ theorem dispatchFlowIndicators_preserves_FlowInv
                   have h_fl := scanFlowEntry_preserves_flowLevel s s_flow h_flow
                   rw [h_fl]
                   unfold scanFlowEntry at h_flow
-                  simp only [bind, Except.bind, pure, Except.pure] at h_flow
+                  simp only [bind, Except.bind] at h_flow
                   split at h_flow
                   · split at h_flow
                     · simp at h_flow
@@ -3021,11 +3003,8 @@ theorem collectDoubleQuotedLoop_preserves_flowLevel (s : ScannerState) (content 
         split at h <;> try contradiction
         -- Split on indentation check
         split at h <;> try contradiction
-        -- Simplify the monadic structure
-        simp only [] at h
-        split at h <;> try contradiction
-        -- After all validations pass, we have the recursive call
-        exact ih _ _ _ h |>.trans h_fl_fold
+        -- 4.32.0: `== " "` guard splits into recursive branches; close each via IH
+        split at h <;> (first | (exact ih _ _ _ h |>.trans h_fl_fold) | contradiction)
       · -- Regular character
         split at h <;> try contradiction  -- isNbJsonBool check
         exact ih _ _ _ h |>.trans (advance_preserves_flowLevel s)
@@ -3034,7 +3013,7 @@ theorem scanDoubleQuoted_preserves_flowLevel (s s' : ScannerState)
     (h_ok : scanDoubleQuoted s = .ok s') :
     s'.flowLevel = s.flowLevel := by
   unfold scanDoubleQuoted at h_ok
-  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  simp only [bind, Except.bind] at h_ok
   split at h_ok <;> try contradiction
   rename_i result heq
   have h_fl_collect := collectDoubleQuotedLoop_preserves_flowLevel _ _ _ _ _ _ _ _ heq
@@ -3073,7 +3052,7 @@ theorem collectSingleQuotedLoop_preserves_flowLevel (s : ScannerState) (content 
         split at h <;> try contradiction
         rename_i folded_result heq_fold
         have h_fl_fold := foldQuotedNewlines_preserves_flowLevel _ _ heq_fold
-        split at h <;> try contradiction
+        -- 4.32.0: after the two guards `h` is directly the recursive call
         split at h <;> try contradiction
         split at h <;> try contradiction
         exact ih _ _ h |>.trans h_fl_fold
@@ -3085,7 +3064,7 @@ theorem scanSingleQuoted_preserves_flowLevel (s s' : ScannerState)
     (h_ok : scanSingleQuoted s = .ok s') :
     s'.flowLevel = s.flowLevel := by
   unfold scanSingleQuoted at h_ok
-  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  simp only [bind, Except.bind] at h_ok
   split at h_ok <;> try contradiction
   rename_i result heq
   have h_fl_collect := collectSingleQuotedLoop_preserves_flowLevel _ _ _ _ _ _ _ _ heq
@@ -3349,7 +3328,7 @@ theorem scanDoubleQuoted_preserves_FlowInv (s s' : ScannerState)
       subst this
       apply fpsv_of_not_plain
       unfold scanDoubleQuoted at h_ok
-      simp only [bind, Except.bind, pure, Except.pure] at h_ok
+      simp only [bind, Except.bind] at h_ok
       split at h_ok <;> try contradiction
       rename_i result heq_collect
       split at h_ok
@@ -3376,7 +3355,7 @@ theorem scanDoubleQuoted_preserves_FlowInv (s s' : ScannerState)
       omega
     rw [h_size, scanDoubleQuoted_preserves_flowLevel s s' h_ok]
     unfold scanDoubleQuoted at h_ok
-    simp only [bind, Except.bind, pure, Except.pure] at h_ok
+    simp only [bind, Except.bind] at h_ok
     split at h_ok <;> try contradiction
     rename_i result heq_collect
     split at h_ok
@@ -3424,7 +3403,7 @@ theorem scanSingleQuoted_preserves_FlowInv (s s' : ScannerState)
       subst this
       apply fpsv_of_not_plain
       unfold scanSingleQuoted at h_ok
-      simp only [bind, Except.bind, pure, Except.pure] at h_ok
+      simp only [bind, Except.bind] at h_ok
       split at h_ok <;> try contradiction
       rename_i result heq_collect
       split at h_ok
@@ -3450,7 +3429,7 @@ theorem scanSingleQuoted_preserves_FlowInv (s s' : ScannerState)
       omega
     rw [h_size, scanSingleQuoted_preserves_flowLevel s s' h_ok]
     unfold scanSingleQuoted at h_ok
-    simp only [bind, Except.bind, pure, Except.pure] at h_ok
+    simp only [bind, Except.bind] at h_ok
     split at h_ok <;> try contradiction
     rename_i result heq_collect
     split at h_ok
@@ -3565,7 +3544,7 @@ theorem dispatchContent_preserves_FlowInv
     cases anch_result with
     | error => simp at h_ok
     | ok s_anch =>
-      dsimp only [] at h_ok
+      try dsimp only [] at h_ok
       change Except.ok _ = Except.ok s' at h_ok
       have h_eq := Except.ok.inj h_ok; subst h_eq
       exact scanAnchorOrAlias_preserves_FlowInv s true s_anch h_anch h_fpsv h_fni
@@ -3577,7 +3556,7 @@ theorem dispatchContent_preserves_FlowInv
         cases anch_result with
         | error => simp at h_ok
         | ok s_anch =>
-          dsimp only [] at h_ok
+          try dsimp only [] at h_ok
           simp only [Except.ok.injEq] at h_ok; subst h_ok
           exact scanAnchorOrAlias_preserves_FlowInv s false s_anch h_anch h_fpsv h_fni
     · split at h_ok
@@ -3586,16 +3565,12 @@ theorem dispatchContent_preserves_FlowInv
         cases tag_result with
         | error => simp at h_ok
         | ok s_tag =>
-          dsimp only [] at h_ok
+          try dsimp only [] at h_ok
           simp only [Except.ok.injEq] at h_ok; subst h_ok
           exact scanTag_preserves_FlowInv s s_tag h_tag h_fpsv h_fni
       · split at h_ok
-        · -- c == '|' or c == '>'
-          split at h_ok
-          · contradiction
-          · rename_i s_bs h_bs
-            injection h_ok with h_eq; subst h_eq
-            exact scanBlockScalar_preserves_FlowInv s s_bs h_bs h_fpsv h_fni
+        · -- c == '|' or c == '>': scanBlockScalar returns directly
+          exact scanBlockScalar_preserves_FlowInv s _ h_ok h_fpsv h_fni
         · split at h_ok
           · -- c == '"'
             split at h_ok
@@ -3617,16 +3592,12 @@ theorem dispatchContent_preserves_FlowInv
                 · injection h_ok with h_eq; subst h_eq
                   exact scanSingleQuoted_preserves_FlowInv s s_sq h_sq h_fpsv h_fni
             · split at h_ok
-              · -- Plain scalar
+              · -- Plain scalar: scanPlainScalar returns directly
                 rename_i h_canStart
-                split at h_ok
-                · contradiction
-                · rename_i s_ps h_ps
-                  injection h_ok with h_eq; subst h_eq
-                  have h_cs : ∃ c', s.peek? = some c' ∧
-                      canStartPlainScalarBool c' (s.peekAt? 1) s.inFlow = true := by
-                    exact ⟨c, h_peek, h_canStart⟩
-                  exact scanPlainScalar_preserves_FlowInv s s_ps h_ps h_cs h_fpsv h_fni
+                have h_cs : ∃ c', s.peek? = some c' ∧
+                    canStartPlainScalarBool c' (s.peekAt? 1) s.inFlow = true := by
+                  exact ⟨c, h_peek, h_canStart⟩
+                exact scanPlainScalar_preserves_FlowInv s _ h_ok h_cs h_fpsv h_fni
               · simp at h_ok
 
 /-! ### pushSequenceIndent / pushMappingIndent token type lemmas -/
@@ -3662,7 +3633,7 @@ theorem scanBlockEntry_new_token_not_plain (s s' : ScannerState)
   -- Generalize the token value, then show it's one of blockSequenceStart/blockEntry
   generalize h_gen : (s'.tokens[j]'hj).val = tok_val
   unfold scanBlockEntry at h_ok
-  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  simp only [bind, Except.bind] at h_ok
   split at h_ok
   · split at h_ok
     · contradiction
@@ -3714,7 +3685,7 @@ theorem scanBlockEntry_preserves_FlowNestingInv
     FlowNestingInv s' := by
   -- scanBlockEntry: emits non-flow tokens, preserves flowLevel
   unfold scanBlockEntry at h_ok
-  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  simp only [bind, Except.bind] at h_ok
   split at h_ok
   · split at h_ok
     · contradiction
@@ -3770,7 +3741,7 @@ theorem scanKey_new_token_not_plain (s s' : ScannerState)
     | _ => True) := by
   generalize h_gen : (s'.tokens[j]'hj).val = tok_val
   unfold scanKey at h_ok
-  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  simp only [bind, Except.bind] at h_ok
   -- Tactic for resolving each branch after injection/subst/simp/unfold:
   -- After Array.getElem_push, h_gen has nested ifs. Repeatedly split + close.
   split at h_ok
@@ -3851,7 +3822,7 @@ theorem scanKey_preserves_FlowNestingInv
     FlowNestingInv s' := by
   -- scanKey: emits non-flow tokens (.key, optionally .blockMappingStart), preserves flowLevel
   unfold scanKey at h_ok
-  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  simp only [bind, Except.bind] at h_ok
   split at h_ok
   · split at h_ok
     · split at h_ok
@@ -4879,7 +4850,7 @@ theorem dispatchContent_preserves_AllKeysPlaceholderInv
     cases anch_result with
     | error => simp at h_ok
     | ok s_anch =>
-      dsimp only [] at h_ok
+      try dsimp only [] at h_ok
       change Except.ok _ = Except.ok s' at h_ok
       have h_eq := Except.ok.inj h_ok; subst h_eq
       have h_base := AllKeysPlaceholderInv_mono s s_anch h_akpi
@@ -4897,7 +4868,7 @@ theorem dispatchContent_preserves_AllKeysPlaceholderInv
         cases anch_result with
         | error => simp at h_ok
         | ok s_anch =>
-          dsimp only [] at h_ok
+          try dsimp only [] at h_ok
           simp only [Except.ok.injEq] at h_ok; subst h_ok
           exact AllKeysPlaceholderInv_mono s s_anch h_akpi
             (scanAnchorOrAlias_preserves_simpleKey s false s_anch h_anch)
@@ -4910,7 +4881,7 @@ theorem dispatchContent_preserves_AllKeysPlaceholderInv
         cases tag_result with
         | error => simp at h_ok
         | ok s_tag =>
-          dsimp only [] at h_ok
+          try dsimp only [] at h_ok
           simp only [Except.ok.injEq] at h_ok; subst h_ok
           exact AllKeysPlaceholderInv_mono s s_tag h_akpi
             (scanTag_preserves_simpleKey s s_tag h_tag)
@@ -4918,15 +4889,12 @@ theorem dispatchContent_preserves_AllKeysPlaceholderInv
             (by have := ScanHelpers.scanTag_adds_one_token s s_tag h_tag; omega)
             (fun i hi => ScanHelpers.scanTag_preserves_prefix s s_tag h_tag i hi)
       · split at h_ok
-        · -- c == '|' || c == '>': block scalar (clears key)
-          split at h_ok <;> try contradiction
-          simp only [Except.ok.injEq] at h_ok; subst h_ok
-          rename_i s_bs h_bs
+        · -- c == '|' || c == '>': block scalar returns directly (clears key)
           exact AllKeysPlaceholderInv_of_cleared_mono s _ h_akpi
-            (scanBlockScalar_clears_simpleKey s s_bs h_bs)
-            (scanBlockScalar_preserves_simpleKeyStack s s_bs h_bs)
-            (by have := ScanHelpers.scanBlockScalar_adds_one_token s s_bs h_bs; omega)
-            (fun i hi => ScanHelpers.scanBlockScalar_preserves_prefix s s_bs h_bs i hi)
+            (scanBlockScalar_clears_simpleKey s _ h_ok)
+            (scanBlockScalar_preserves_simpleKeyStack s _ h_ok)
+            (by have := ScanHelpers.scanBlockScalar_adds_one_token s _ h_ok; omega)
+            (fun i hi => ScanHelpers.scanBlockScalar_preserves_prefix s _ h_ok i hi)
         · split at h_ok
           · -- c == '"': double quoted
             split at h_ok <;> try contradiction
@@ -4952,15 +4920,12 @@ theorem dispatchContent_preserves_AllKeysPlaceholderInv
               · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_akpi_sq
               · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_akpi_sq
             · split at h_ok
-              · -- plain scalar
-                split at h_ok <;> try contradiction
-                simp only [Except.ok.injEq] at h_ok; subst h_ok
-                rename_i s_ps h_ps
+              · -- plain scalar returns directly
                 exact AllKeysPlaceholderInv_mono s _ h_akpi
-                  (scanPlainScalar_preserves_simpleKey s s_ps h_ps)
-                  (scanPlainScalar_preserves_simpleKeyStack s s_ps h_ps)
-                  (by have := ScanHelpers.scanPlainScalar_adds_one_token s s_ps h_ps; omega)
-                  (fun i hi => ScanHelpers.scanPlainScalar_preserves_prefix s s_ps h_ps i hi)
+                  (scanPlainScalar_preserves_simpleKey s _ h_ok)
+                  (scanPlainScalar_preserves_simpleKeyStack s _ h_ok)
+                  (by have := ScanHelpers.scanPlainScalar_adds_one_token s _ h_ok; omega)
+                  (fun i hi => ScanHelpers.scanPlainScalar_preserves_prefix s _ h_ok i hi)
               · -- error
                 simp at h_ok
 
@@ -4974,7 +4939,7 @@ theorem dispatchBlockIndicators_preserves_FlowInv
     FlowContextPSV s'.tokens ∧ FlowNestingInv s' := by
   -- Block indicators: `-` (blockEntry), `?` (key), `:` (value)
   unfold scanNextToken_dispatchBlockIndicators at h_ok
-  simp only [bind, bind_ok_simp, pure, Pure.pure, Except.pure] at h_ok
+  simp only [bind, pure, Pure.pure, Except.pure] at h_ok
   simp only [Except.bind] at h_ok
   repeat (any_goals (split at h_ok))
   any_goals contradiction

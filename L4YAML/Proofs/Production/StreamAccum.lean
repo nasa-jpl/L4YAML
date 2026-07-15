@@ -2077,7 +2077,7 @@ theorem dispatchContent_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
         cases alias_result with
         | error => simp at hok
         | ok s_val =>
-          dsimp only [] at hok
+          try dsimp only [] at hok
           have h := Except.ok.inj hok; subst h
           exact scanAnchorOrAlias_corr sc sp hcorr false s_val h_alias
     -- c == '!' (tag)
@@ -2086,16 +2086,13 @@ theorem dispatchContent_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
         cases tag_result with
         | error => simp at hok
         | ok s_val =>
-          dsimp only [] at hok
+          try dsimp only [] at hok
           have h := Except.ok.inj hok; subst h
           exact scanTag_corr sc sp hcorr s_val h_tag
       -- c == '|' || c == '>' (block scalar)
       · split at hok
-        · split at hok
-          · simp at hok
-          · rename_i s_bs hbs
-            have h := Except.ok.inj hok; subst h
-            exact scanBlockScalar_corr sc sp hcorr hbs
+        · -- scanBlockScalar returns directly
+          exact scanBlockScalar_corr sc sp hcorr hok
         -- c == '"' (double-quoted)
         · split at hok
           · split at hok
@@ -2121,11 +2118,8 @@ theorem dispatchContent_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
                 · exact ⟨sp', hcorr'⟩
             -- canStartPlainScalarBool (plain scalar)
             · split at hok
-              · split at hok
-                · simp at hok
-                · rename_i s_ps hps
-                  have h := Except.ok.inj hok; subst h
-                  exact scanPlainScalar_corr sc sp hcorr hps
+              · -- scanPlainScalar returns directly
+                exact scanPlainScalar_corr sc sp hcorr hok
               -- error: unexpectedChar
               · simp at hok
 
@@ -2226,7 +2220,7 @@ theorem dispatchContent_alias_prod (sc : ScannerState) (sp : SurfPos)
         cases alias_result with
         | error => simp at hok
         | ok s_anch =>
-          dsimp only [] at hok
+          try dsimp only [] at hok
           simp only [Except.ok.injEq] at hok; subst hok
           obtain ⟨sp', h_alias, hcorr'⟩ :=
             scanAnchorOrAlias_aliasNode_prod sc sp hcorr hpeek s_anch h_alias
@@ -2255,11 +2249,8 @@ theorem dispatchContent_blockScalar_prod (sc : ScannerState) (sp : SurfPos)
         · rename_i h_eq; exact absurd h_eq (by decide)
         · -- '|' == '|' || '|' == '>' = true
           split at hok
-          · split at hok
-            · simp at hok
-            · rename_i s_bs hbs
-              have h := Except.ok.inj hok; subst h
-              exact scanBlockScalar_prod sc sp hcorr (Or.inl hpeek) hbs
+          · -- scanBlockScalar returns directly
+            exact scanBlockScalar_prod sc sp hcorr (Or.inl hpeek) hok
           · rename_i h_neq; exact absurd rfl h_neq
   | inr h_fld =>
     subst h_fld
@@ -2272,11 +2263,8 @@ theorem dispatchContent_blockScalar_prod (sc : ScannerState) (sp : SurfPos)
       · split at hok
         · rename_i h_eq; exact absurd h_eq (by decide)
         · split at hok
-          · split at hok
-            · simp at hok
-            · rename_i s_bs hbs
-              have h := Except.ok.inj hok; subst h
-              exact scanBlockScalar_prod sc sp hcorr (Or.inr hpeek) hbs
+          · -- scanBlockScalar returns directly
+            exact scanBlockScalar_prod sc sp hcorr (Or.inr hpeek) hok
           · rename_i h_neq; exact absurd rfl h_neq
 
 -- If structural dispatch returns .ok none, the scanner is not at a document boundary
@@ -2340,15 +2328,11 @@ theorem dispatchContent_plainScalar_prod (sc : ScannerState) (sp : SurfPos)
             · rename_i h_eq; exact absurd (beq_iff_eq.mp h_eq) hnotSQ
             · -- canStartPlainScalarBool branch: either plain scalar succeeds or error
               split at hok
-              · -- canStartPlainScalarBool = true: scanPlainScalar
-                split at hok
-                · simp at hok
-                · -- scanPlainScalar succeeded
-                  have h := Except.ok.inj hok; subst h
-                  exact scanPlainScalar_to_flowNode sc sp hcorr hpeek
-                    (by assumption)
-                    h_not_doc
-                    (by assumption)
+              · -- canStartPlainScalarBool = true: scanPlainScalar returns directly
+                exact scanPlainScalar_to_flowNode sc sp hcorr hpeek
+                  (by assumption)
+                  h_not_doc
+                  (by assumption)
               · -- canStartPlainScalarBool = false: .error
                 simp at hok
 

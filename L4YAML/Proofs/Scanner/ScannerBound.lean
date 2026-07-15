@@ -998,7 +998,7 @@ theorem scanDocumentEnd_BoundInv (s s' : ScannerState)
   -- scanDocumentEnd always returns `.ok result` where result is a fixed chain.
   -- The trailing validation doesn't affect the returned state.
   unfold scanDocumentEnd at hok
-  simp only [bind, Except.bind, pure, Except.pure, Bind.bind, Pure.pure] at hok
+  simp only [bind, Except.bind, Bind.bind] at hok
   -- After resolving do-notation, hok has guard + validation splits
   -- but the returned state is always the same
   have h_unw := unwindIndents_BoundInv s (-1) h
@@ -1034,7 +1034,7 @@ theorem scanYamlDirective_BoundInv {s₀ : ScannerState} (s s_ws s' : ScannerSta
   -- scanYamlDirective returns { emitAt (skipWhitespace (collectVersionMinorLoop ...)) ... with ... }
   -- The validation (match peek?) doesn't affect the returned state.
   unfold scanYamlDirective at hok
-  simp only [bind, Except.bind, pure, Except.pure, Bind.bind, Pure.pure] at hok
+  simp only [bind, Except.bind, Bind.bind] at hok
   let s_maj := (collectVersionMajorLoop s_ws "" (s.inputEnd - s_ws.offset)).2
   let s_min := (collectVersionMinorLoop s_maj "" (s.inputEnd - s_maj.offset)).2
   let s_val := skipWhitespace s_min
@@ -1068,7 +1068,7 @@ theorem scanTagDirective_BoundInv {s₀ : ScannerState} (s s_ws s' : ScannerStat
     BoundInv s₀ s' := by
   -- scanTagDirective returns { emitAt (skipWhitespace (collectTagPrefixLoop ...)) ... with ... }
   unfold scanTagDirective at hok
-  simp only [bind, Except.bind, pure, Except.pure, Bind.bind, Pure.pure] at hok
+  simp only [bind, Except.bind, Bind.bind] at hok
   let s_hnd := (collectTagHandleDirectiveLoop s_ws "" (s.inputEnd - s_ws.offset)).2
   let s_ws2 := skipWhitespace s_hnd
   let s_pfx := (collectTagPrefixLoop s_ws2 "" (s.inputEnd - s_ws2.offset)).2
@@ -1324,7 +1324,7 @@ theorem collectDoubleQuotedLoop_BoundInv {s₀ : ScannerState} (s s' : ScannerSt
     · -- some c (not '"', not '\\')
       split at hok  -- isLineBreakBool
       · -- line break: do with foldQuotedNewlines ←
-        simp only [bind, Except.bind, pure, Pure.pure, Bind.bind, Except.pure] at hok
+        simp only [bind, Except.bind, Bind.bind] at hok
         split at hok  -- foldQuotedNewlines result
         · cases hok
         · next p heq =>
@@ -1367,7 +1367,7 @@ theorem collectSingleQuotedLoop_BoundInv {s₀ : ScannerState} (s s' : ScannerSt
     · -- some c (not '\'')
       split at hok  -- isLineBreakBool
       · -- line break: do with foldQuotedNewlines ←
-        simp only [bind, Except.bind, pure, Pure.pure, Bind.bind, Except.pure] at hok
+        simp only [bind, Except.bind, Bind.bind] at hok
         split at hok  -- foldQuotedNewlines result
         · cases hok
         · next p heq =>
@@ -1389,7 +1389,7 @@ theorem scanDoubleQuoted_BoundInv (s s' : ScannerState)
     (hok : scanDoubleQuoted s = .ok s') :
     BoundInv s s' := by
   unfold scanDoubleQuoted at hok
-  simp only [bind, Except.bind, pure, Pure.pure, Bind.bind, Except.pure] at hok
+  simp only [bind, Except.bind, Bind.bind] at hok
   have h_adv := advance_BoundInv s h hend
   split at hok  -- bind on collectDoubleQuotedLoop
   · cases hok
@@ -1415,7 +1415,7 @@ theorem scanSingleQuoted_BoundInv (s s' : ScannerState)
     (hok : scanSingleQuoted s = .ok s') :
     BoundInv s s' := by
   unfold scanSingleQuoted at hok
-  simp only [bind, Except.bind, pure, Pure.pure, Bind.bind, Except.pure] at hok
+  simp only [bind, Except.bind, Bind.bind] at hok
   have h_adv := advance_BoundInv s h hend
   split at hok  -- bind on collectSingleQuotedLoop
   · cases hok
@@ -1694,25 +1694,16 @@ theorem dispatchContent_preserves_bound (s sp s' : ScannerState) (c : Char)
   · split at hok
     · split at hok  -- !definedAnchors check
       · cases hok  -- error: undefined alias
-      · split at hok  -- bind on scanAnchorOrAlias
-        · cases hok
-        · rename_i s_a heq
-          simp only [Except.ok.injEq] at hok; subst hok
-          exact BoundInv.trans h_bi (scanAnchorOrAlias_BoundInv sp _ false h_refl h_hend heq)
+      · -- scanAnchorOrAlias result is returned directly
+        exact BoundInv.trans h_bi (scanAnchorOrAlias_BoundInv sp _ false h_refl h_hend hok)
     -- 3. c == '!' (tag)
     · split at hok
-      · split at hok  -- bind on scanTag
-        · cases hok
-        · rename_i s_t heq
-          simp only [Except.ok.injEq] at hok; subst hok
-          exact BoundInv.trans h_bi (scanTag_BoundInv sp _ h_refl h_hend heq)
+      · -- scanTag result is returned directly
+        exact BoundInv.trans h_bi (scanTag_BoundInv sp _ h_refl h_hend hok)
       -- 4. c == '|' || c == '>' (block scalar)
       · split at hok
-        · split at hok  -- bind on scanBlockScalar
-          · cases hok
-          · rename_i s_bs heq
-            simp only [Except.ok.injEq] at hok; subst hok
-            exact BoundInv.trans h_bi (scanBlockScalar_BoundInv sp _ h_refl h_hend heq)
+        · -- scanBlockScalar result is returned directly
+          exact BoundInv.trans h_bi (scanBlockScalar_BoundInv sp _ h_refl h_hend hok)
         -- 5. c == '"' (double quoted)
         · split at hok
           · split at hok  -- bind on scanDoubleQuoted
@@ -1738,11 +1729,8 @@ theorem dispatchContent_preserves_bound (s sp s' : ScannerState) (c : Char)
                   exact BoundInv.trans h_bi (scanSingleQuoted_BoundInv sp _ h_refl h_hend heq)
             -- 7. canStartPlainScalar (plain scalar)
             · split at hok
-              · split at hok  -- bind on scanPlainScalar
-                · cases hok
-                · rename_i s_ps heq
-                  simp only [Except.ok.injEq] at hok; subst hok
-                  exact BoundInv.trans h_bi (scanPlainScalar_BoundInv sp _ h_refl h_hend heq)
+              · -- scanPlainScalar result is returned directly
+                exact BoundInv.trans h_bi (scanPlainScalar_BoundInv sp _ h_refl h_hend hok)
               -- 8. else: error (.unexpectedChar)
               · cases hok
 

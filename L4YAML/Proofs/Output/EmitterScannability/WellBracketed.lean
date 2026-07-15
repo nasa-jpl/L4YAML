@@ -2758,7 +2758,7 @@ theorem scanFlowEntry_filtered (s s' : ScannerState)
     let p := fun (t : Positioned YamlToken) => t.val != .placeholder
     s'.tokens.filter p = (s.tokens.filter p).push { pos := s.currentPos, val := .flowEntry } := by
   unfold scanFlowEntry at h
-  simp only [bind, Except.bind, pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   -- Split on the validation check
   split at h
   · split at h
@@ -3001,7 +3001,7 @@ theorem scanNextToken_flow_scalar_filtered_push (s : ScannerState) (rest : List 
       exfalso
       have h_dc_err : scanNextToken_dispatchContent s_ad '"' = Except.error e := by
         unfold scanNextToken_dispatchContent
-        simp [bind, Except.bind, pure, Except.pure, h_dq_eq]
+        simp [bind, Except.bind, h_dq_eq]
       rw [h_dc_err] at h_dc; exact absurd h_dc (by simp)
     | ok s_dq =>
       obtain ⟨c, h_tok⟩ := scanDoubleQuoted_tokens_push h_dq_eq
@@ -3087,7 +3087,7 @@ theorem scanNextToken_flow_scalar_filtered_push_content (s : ScannerState)
       exfalso
       have h_dc_err : scanNextToken_dispatchContent s_ad '"' = Except.error e := by
         unfold scanNextToken_dispatchContent
-        simp [bind, Except.bind, pure, Except.pure, h_dq_eq]
+        simp [bind, Except.bind, h_dq_eq]
       rw [h_dc_err] at h_dc; exact absurd h_dc (by simp)
     | ok s_dq =>
       have h_s'_tokens : s'.tokens = s_dq.tokens := by

@@ -346,17 +346,16 @@ theorem dispatchContentIx_quote (s : ScannerStateIx input) (c : Char) (hc : c = 
   refine ⟨?_, ?_, ?_, ?_⟩
   · -- dispatchStructural: '"' doesn't match %, ---, ...
     unfold scanNextTokenIx_dispatchStructural
-    simp [ScannerStateIx.inFlow, h_notFlow, h_noDocStart, h_noDocEnd,
-          bind, Except.bind, pure, Except.pure]
+    simp [ScannerStateIx.inFlow, h_notFlow, h_noDocStart, h_noDocEnd, pure, Except.pure]
   · -- checkBlockFlowIndent: currentIndent = -1 < 0, condition false
     unfold scanNextTokenIx_checkBlockFlowIndent
     simp [ScannerStateIx.inFlow, h_notFlow, h_indent]
   · -- dispatchFlowIndicators: '"' doesn't match [, ], {, }, ,
     unfold scanNextTokenIx_dispatchFlowIndicators
-    simp [bind, Except.bind, pure, Except.pure]
+    simp [pure, Except.pure]
   · -- dispatchBlockIndicators: '"' doesn't match -, ?, :
     unfold scanNextTokenIx_dispatchBlockIndicators
-    simp [bind, Except.bind, pure, Except.pure]
+    simp [pure, Except.pure]
 
 /-! ## §1.5  `emitScalar` value-level lemmas
 

@@ -191,7 +191,7 @@ theorem scanBlockEntryIx_offset_lt {s s' : ScannerStateIx input}
     · rw [if_pos ht] at h
       simp [Bind.bind, Except.bind] at h
     · rw [if_neg ht] at h
-      simp only [pure_bind] at h
+      simp only [] at h
       rw [if_pos hi] at h
       simp only [Except.ok.injEq] at h
       subst h
@@ -199,7 +199,7 @@ theorem scanBlockEntryIx_offset_lt {s s' : ScannerStateIx input}
       simp only [advance_cursor, emit_cursor, pushSequenceIndentIx_cursor]
       exact L4YAML.Indexed.IxCursor.advance_offset_lt_of_hasMore _ h_hm
   · rw [if_neg hi] at h
-    simp only [pure_bind] at h
+    simp only [] at h
     rw [if_neg hi] at h
     simp only [Except.ok.injEq] at h
     subst h
@@ -218,13 +218,13 @@ theorem scanKeyIx_offset_lt {s s' : ScannerStateIx input}
       pushMappingIndentIx_inFlow] at h
     split at h
     · simp [Bind.bind, Except.bind] at h
-    · simp only [pure_bind, Except.ok.injEq] at h
+    · simp only [Except.ok.injEq] at h
       subst h
       show s.cursor.pos.offset < _
       simp only [advance_cursor, emit_cursor, pushMappingIndentIx_cursor]
       exact L4YAML.Indexed.IxCursor.advance_offset_lt_of_hasMore _ h_hm
   · simp only [if_neg hi, advance_inFlow, emit_inFlow] at h
-    simp only [pure_bind, Except.ok.injEq] at h
+    simp only [Except.ok.injEq] at h
     subst h
     show s.cursor.pos.offset < _
     simp only [advance_cursor, emit_cursor]
@@ -290,7 +290,7 @@ theorem scanDocumentEndIx_offset_lt {s s' : ScannerStateIx input}
   · rw [if_pos hd] at h
     simp [Bind.bind, Except.bind] at h
   · rw [if_neg hd] at h
-    simp only [pure_bind] at h
+    simp only [] at h
     split at h
     all_goals first
       | (simp only [Except.ok.injEq] at h
@@ -733,7 +733,8 @@ theorem scanNextTokenIx_dispatchContent_offset_gt {s s' : ScannerStateIx input} 
   unfold scanNextTokenIx_dispatchContent at h
   by_cases hg1 : (c == '&') = true
   · rw [if_pos hg1] at h
-    simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+    -- 4.32.0 already reduces the anchor bind; the `cases`/`rw` below is robust either way
+    try simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
     cases hA : scanAnchorOrAliasIx s true with
     | error e => rw [hA] at h; cases h
     | ok v =>

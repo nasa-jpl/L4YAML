@@ -310,10 +310,8 @@ theorem collectDoubleQuotedLoop_corr (sc : ScannerState) (sp : SurfPos)
           · simp at hok  -- doc marker true → error
           · split at hok  -- underIndented if
             · simp at hok  -- underIndented true → error
-            · -- After both guards pass, there may be do-notation match residue
-              split at hok
-              · simp at hok  -- .error case impossible
-              · exact ih _ _ sp_fold _ hcorr_fold hok
+            · -- After both guards pass, split the residual `== " "` guard; both recurse
+              split at hok <;> exact ih _ _ sp_fold _ hcorr_fold hok
       · split at hok
         · simp at hok  -- invalid control char
         · -- valid nb-json char: advance
@@ -344,11 +342,9 @@ theorem scanDoubleQuoted_corr (sc : ScannerState) (sp : SurfPos)
       · -- validation ok: state unchanged
         have h := Except.ok.inj hok; subst h
         exact ⟨sp_close, corr_of_simpleKeyAllowed_update false (corr_of_emitAt _ _ hcorr_close)⟩
-    · -- !inFlow = false: no validate (pure ())
-      split at hok  -- match on .ok ()
-      · simp at hok  -- .error case impossible
-      · have h := Except.ok.inj hok; subst h
-        exact ⟨sp_close, corr_of_simpleKeyAllowed_update false (corr_of_emitAt _ _ hcorr_close)⟩
+    · -- !inFlow = false: no validate (pure ()); `hok` is a direct `.ok` equality now
+      have h := Except.ok.inj hok; subst h
+      exact ⟨sp_close, corr_of_simpleKeyAllowed_update false (corr_of_emitAt _ _ hcorr_close)⟩
 
 /-! ## §5 Single-Quoted Scalar -/
 
@@ -390,9 +386,7 @@ theorem collectSingleQuotedLoop_corr (sc : ScannerState) (sp : SurfPos)
           · simp at hok  -- documentMarker
           · split at hok  -- underIndented if
             · simp at hok  -- underIndented
-            · split at hok
-              · simp at hok  -- .error case impossible
-              · exact ih _ sp_fold _ hcorr_fold hok
+            · exact ih _ sp_fold _ hcorr_fold hok
       · split at hok
         · simp at hok  -- invalid control char
         · obtain ⟨sp_adv, hcorr_adv⟩ := advance_corr sc sp hcorr
@@ -421,11 +415,9 @@ theorem scanSingleQuoted_corr (sc : ScannerState) (sp : SurfPos)
       · simp at hok  -- validation error
       · have h := Except.ok.inj hok; subst h
         exact ⟨sp_close, corr_of_simpleKeyAllowed_update false (corr_of_emitAt _ _ hcorr_close)⟩
-    · -- !inFlow = false: no validate (pure ())
-      split at hok  -- match on .ok ()
-      · simp at hok  -- .error case impossible
-      · have h := Except.ok.inj hok; subst h
-        exact ⟨sp_close, corr_of_simpleKeyAllowed_update false (corr_of_emitAt _ _ hcorr_close)⟩
+    · -- !inFlow = false: no validate (pure ()); `hok` is a direct `.ok` equality now
+      have h := Except.ok.inj hok; subst h
+      exact ⟨sp_close, corr_of_simpleKeyAllowed_update false (corr_of_emitAt _ _ hcorr_close)⟩
 
 /-! ## §6 Plain Scalar -/
 

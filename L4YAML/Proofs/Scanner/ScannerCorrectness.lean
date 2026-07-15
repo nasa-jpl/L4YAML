@@ -1147,18 +1147,12 @@ theorem foldQuotedNewlines_preserves_tokens (s : ScannerState) (s' : ScannerStat
   have h_fold := foldQuotedNewlinesLoop_preserves_tokens (consumeNewline s) 0 fuel
   have h_sp := skipSpaces_preserves_tokens (foldQuotedNewlinesLoop (consumeNewline s) 0 fuel).fst
   have h_sw := skipWhitespace_preserves_tokens (skipSpaces (foldQuotedNewlinesLoop (consumeNewline s) 0 fuel).fst)
-  split at h <;> try contradiction
-  · -- inFlow check branch
-    split at h <;> try contradiction
-    split at h <;> try contradiction
-    split at h
-    · injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn]
-    · injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn]
-  · -- no inFlow check
-    split at h <;> try contradiction
-    split at h
-    · injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn]
-    · injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn]
+  -- 4.32.0 reshaped the do-notation match tree; split fully, then close every
+  -- leaf uniformly (error leaves by contradiction, ok leaves by the fold chain).
+  repeat' split at h
+  all_goals first
+    | contradiction
+    | (injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn])
 
 /-- Helper: collectPlainScalarLoop preserves tokens. -/
 theorem collectPlainScalarLoop_preserves_tokens (s : ScannerState) (content lastLine : String)
@@ -1299,10 +1293,8 @@ theorem collectDoubleQuotedLoop_preserves_tokens (s : ScannerState) (content : S
         cases fold_result with
         | mk folded s_fold =>
           have h_fold := foldQuotedNewlines_preserves_tokens s s_fold folded heq
-          split at h <;> try contradiction
-          split at h <;> try contradiction
-          split at h <;> try contradiction
-          rw [ih _ _ _ h, h_fold]
+          repeat' split at h
+          all_goals (first | contradiction | rw [ih _ _ _ h, h_fold])
       · -- regular character
         split at h <;> try contradiction  -- isNbJsonBool check
         have h_adv := advance_preserves_tokens s
@@ -1342,10 +1334,8 @@ theorem collectSingleQuotedLoop_preserves_tokens (s : ScannerState) (content : S
         cases fold_result with
         | mk folded s_fold =>
           have h_fold := foldQuotedNewlines_preserves_tokens s s_fold folded heq
-          split at h <;> try contradiction  -- atDocumentStart check
-          split at h <;> try contradiction  -- atDocumentEnd check
-          split at h <;> try contradiction  -- col ≤ currentIndent check
-          rw [ih s_fold _ h, h_fold]
+          repeat' split at h
+          all_goals (first | contradiction | rw [ih s_fold _ h, h_fold])
       · -- isLineBreak c = false, regular character
         split at h <;> try contradiction  -- isNbJsonBool check
         have h_adv := advance_preserves_tokens s
@@ -1405,34 +1395,15 @@ theorem scanDocumentEnd_adds_tokens (s : ScannerState) (s' : ScannerState)
   unfold scanDocumentEnd at h
   dsimp only [] at h
   simp only [bind, Except.bind] at h
-  split at h
-  · contradiction
-  · split at h
-    · contradiction
-    · split at h
-      · split at h
-        · contradiction
-        · injection h with h_eq; subst h_eq
-          dsimp only []
-          simp only [emit_tokens_size, advanceN_preserves_tokens]
-          have h_unwind := unwindIndents_adds_tokens s (-1)
-          omega
-      · split at h
-        · contradiction
-        · injection h with h_eq; subst h_eq
-          dsimp only []
-          simp only [emit_tokens_size, advanceN_preserves_tokens]
-          have h_unwind := unwindIndents_adds_tokens s (-1)
-          omega
-      · split at h
-        · split at h
-          · contradiction
-          · injection h with h_eq; subst h_eq
-            dsimp only []
-            simp only [emit_tokens_size, advanceN_preserves_tokens]
-            have h_unwind := unwindIndents_adds_tokens s (-1)
-            omega
-        · contradiction
+  -- 4.32.0 reshaped the do-notation match tree; split fully, close leaves uniformly.
+  repeat' split at h
+  all_goals first
+    | contradiction
+    | (injection h with h_eq; subst h_eq
+       dsimp only []
+       simp only [emit_tokens_size, advanceN_preserves_tokens]
+       have h_unwind := unwindIndents_adds_tokens s (-1)
+       omega)
 
 /-- collectDirectiveNameLoop preserves tokens. -/
 theorem collectDirectiveNameLoop_preserves_tokens (s : ScannerState) (name : String) (fuel : Nat) :
@@ -1504,40 +1475,17 @@ theorem scanYamlDirective_monotonic (s : ScannerState) (s_after_ws : ScannerStat
   unfold scanYamlDirective at h
   dsimp only [] at h
   simp only [bind, Except.bind] at h
-  split at h
-  · contradiction
-  · split at h
-    · contradiction
-    · split at h
-      · -- some '#'
-        split at h
-        · contradiction
-        · injection h with h_eq; subst h_eq; dsimp only []
-          rw [emitAt_tokens_size,
-              skipWhitespace_preserves_tokens,
-              collectVersionMinorLoop_preserves_tokens,
-              collectVersionMajorLoop_preserves_tokens,
-              h_ws]
-          omega
-      · -- some c (not '#')
-        split at h
-        · contradiction
-        · split at h <;> try contradiction
-          all_goals (injection h with h_eq; subst h_eq; dsimp only []
-                     rw [emitAt_tokens_size,
-                         skipWhitespace_preserves_tokens,
-                         collectVersionMinorLoop_preserves_tokens,
-                         collectVersionMajorLoop_preserves_tokens,
-                         h_ws]
-                     omega)
-      · -- none
-        injection h with h_eq; subst h_eq; dsimp only []
-        rw [emitAt_tokens_size,
-            skipWhitespace_preserves_tokens,
-            collectVersionMinorLoop_preserves_tokens,
-            collectVersionMajorLoop_preserves_tokens,
-            h_ws]
-        omega
+  -- 4.32.0 reshaped the do-notation match tree; split fully, close leaves uniformly.
+  repeat' split at h
+  all_goals first
+    | contradiction
+    | (injection h with h_eq; subst h_eq; dsimp only []
+       rw [emitAt_tokens_size,
+           skipWhitespace_preserves_tokens,
+           collectVersionMinorLoop_preserves_tokens,
+           collectVersionMajorLoop_preserves_tokens,
+           h_ws]
+       omega)
 
 /-- scanTagDirective is monotonic in token count. -/
 theorem scanTagDirective_monotonic (s : ScannerState) (s_after_ws : ScannerState) (startPos : YamlPos)
@@ -1960,7 +1908,7 @@ theorem dispatchStructural_tokens_mono (s : ScannerState) (c : Char) (s' : Scann
     (h : scanNextToken_dispatchStructural s c = .ok (some s')) :
     s'.tokens.size ≥ s.tokens.size := by
   unfold scanNextToken_dispatchStructural at h
-  simp only [bind, bind_error_simp, bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   repeat (any_goals (split at h))
   any_goals contradiction
@@ -1975,7 +1923,7 @@ theorem dispatchFlowIndicators_tokens_mono (s : ScannerState) (c : Char) (s' : S
     (h : scanNextToken_dispatchFlowIndicators s c = .ok (some s')) :
     s'.tokens.size ≥ s.tokens.size := by
   unfold scanNextToken_dispatchFlowIndicators at h
-  simp only [bind, bind_error_simp, bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   repeat (any_goals (split at h))
   any_goals contradiction
@@ -1992,7 +1940,7 @@ theorem dispatchBlockIndicators_tokens_mono (s : ScannerState) (c : Char) (s' : 
     (h : scanNextToken_dispatchBlockIndicators s c = .ok (some s')) :
     s'.tokens.size ≥ s.tokens.size := by
   unfold scanNextToken_dispatchBlockIndicators at h
-  simp only [bind, bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   repeat (any_goals (split at h))
   any_goals contradiction
@@ -2007,7 +1955,7 @@ theorem dispatchContent_tokens_mono (s : ScannerState) (c : Char) (s' : ScannerS
     (h : scanNextToken_dispatchContent s c = .ok s') :
     s'.tokens.size ≥ s.tokens.size := by
   unfold scanNextToken_dispatchContent at h
-  simp only [bind, bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   repeat (any_goals (split at h))
   any_goals contradiction
@@ -2033,7 +1981,7 @@ theorem preprocess_tokens_mono (s : ScannerState) (s1 : ScannerState) (c : Char)
     (h : scanNextToken_preprocess s = .ok (some (s1, c))) :
     s1.tokens.size ≥ s.tokens.size := by
   unfold scanNextToken_preprocess at h
-  simp only [bind, bind_error_simp, bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   split at h
   · contradiction
@@ -2075,7 +2023,7 @@ theorem preprocess_preserves_prefix (s : ScannerState) (s1 : ScannerState) (c : 
     (i : Nat) (h_bound : i < s.tokens.size) :
     s1.tokens[i]'(by have := preprocess_tokens_mono s s1 c h; omega) = s.tokens[i] := by
   unfold scanNextToken_preprocess at h
-  simp only [bind, bind_error_simp, bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   split at h
   · contradiction
@@ -2197,28 +2145,13 @@ theorem scanDocumentEnd_preserves_prefix (s s' : ScannerState)
     (h : scanDocumentEnd s = .ok s') (i : Nat) (h_i : i < s.tokens.size) :
     s'.tokens[i]'(by have := scanDocumentEnd_adds_tokens s s' h; omega) = s.tokens[i] := by
   unfold scanDocumentEnd at h; dsimp only [] at h; simp only [bind, Except.bind] at h
-  split at h
-  · contradiction
-  · split at h
-    · contradiction
-    · split at h
-      · split at h
-        · contradiction
-        · injection h with h_eq; subst h_eq; dsimp only []
-          simp only [advanceN_preserves_tokens]
-          exact emit_unwind_preserves_prefix s (-1) _ .documentEnd i h_i
-      · split at h
-        · contradiction
-        · injection h with h_eq; subst h_eq; dsimp only []
-          simp only [advanceN_preserves_tokens]
-          exact emit_unwind_preserves_prefix s (-1) _ .documentEnd i h_i
-      · split at h
-        · split at h
-          · contradiction
-          · injection h with h_eq; subst h_eq; dsimp only []
-            simp only [advanceN_preserves_tokens]
-            exact emit_unwind_preserves_prefix s (-1) _ .documentEnd i h_i
-        · contradiction
+  -- 4.32.0 reshaped the do-notation match tree; split fully, close leaves uniformly.
+  repeat' split at h
+  all_goals first
+    | contradiction
+    | (injection h with h_eq; subst h_eq; dsimp only []
+       simp only [advanceN_preserves_tokens]
+       exact emit_unwind_preserves_prefix s (-1) _ .documentEnd i h_i)
 
 /-- scanYamlDirective preserves token prefix. -/
 theorem scanYamlDirective_preserves_prefix (s s_after_ws : ScannerState)
@@ -2229,28 +2162,14 @@ theorem scanYamlDirective_preserves_prefix (s s_after_ws : ScannerState)
     s'.tokens[i]'(by have := scanYamlDirective_monotonic s s_after_ws startPos s' h_ws h; omega)
     = s.tokens[i] := by
   unfold scanYamlDirective at h; dsimp only [] at h; simp only [bind, Except.bind] at h
-  split at h
-  · contradiction
-  · split at h
-    · contradiction
-    · split at h
-      · split at h
-        · contradiction
-        · injection h with h_eq; subst h_eq; dsimp only []
-          apply emitAt_chain_preserves_prefix
-          rw [skipWhitespace_preserves_tokens, collectVersionMinorLoop_preserves_tokens,
-              collectVersionMajorLoop_preserves_tokens, h_ws]
-      · split at h
-        · contradiction
-        · split at h <;> try contradiction
-          all_goals (injection h with h_eq; subst h_eq; dsimp only []
-                     apply emitAt_chain_preserves_prefix
-                     rw [skipWhitespace_preserves_tokens, collectVersionMinorLoop_preserves_tokens,
-                         collectVersionMajorLoop_preserves_tokens, h_ws])
-      · injection h with h_eq; subst h_eq; dsimp only []
-        apply emitAt_chain_preserves_prefix
-        rw [skipWhitespace_preserves_tokens, collectVersionMinorLoop_preserves_tokens,
-            collectVersionMajorLoop_preserves_tokens, h_ws]
+  -- 4.32.0 reshaped the do-notation match tree; split fully, close leaves uniformly.
+  repeat' split at h
+  all_goals first
+    | contradiction
+    | (injection h with h_eq; subst h_eq; dsimp only []
+       apply emitAt_chain_preserves_prefix
+       rw [skipWhitespace_preserves_tokens, collectVersionMinorLoop_preserves_tokens,
+           collectVersionMajorLoop_preserves_tokens, h_ws])
 
 /-- scanTagDirective preserves token prefix. -/
 theorem scanTagDirective_preserves_prefix (s s_after_ws : ScannerState)
@@ -2574,7 +2493,7 @@ theorem dispatchStructural_preserves_prefix (s : ScannerState) (c : Char) (s' : 
     (i : Nat) (h_i : i < s.tokens.size) :
     s'.tokens[i]'(by have := dispatchStructural_tokens_mono s c s' h; omega) = s.tokens[i] := by
   unfold scanNextToken_dispatchStructural at h
-  simp only [bind, bind_error_simp, bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   repeat (any_goals (split at h))
   any_goals contradiction
@@ -2593,7 +2512,7 @@ theorem dispatchFlowIndicators_preserves_prefix (s : ScannerState) (c : Char) (s
     (i : Nat) (h_i : i < s.tokens.size) :
     s'.tokens[i]'(by have := dispatchFlowIndicators_tokens_mono s c s' h; omega) = s.tokens[i] := by
   unfold scanNextToken_dispatchFlowIndicators at h
-  simp only [bind, bind_error_simp, bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   repeat (any_goals (split at h))
   any_goals contradiction
@@ -2811,7 +2730,7 @@ theorem dispatchBlockIndicators_preserves_prefix (s : ScannerState) (c : Char) (
     s'.tokens[i]'(by have := dispatchBlockIndicators_tokens_mono s c s' h; omega) =
     s.tokens[i]'(by omega) := by
   unfold scanNextToken_dispatchBlockIndicators at h
-  simp only [bind, bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   repeat (any_goals (split at h))
   any_goals contradiction
@@ -2827,7 +2746,7 @@ theorem dispatchContent_preserves_prefix (s : ScannerState) (c : Char) (s' : Sca
     (i : Nat) (h_i : i < s.tokens.size) :
     s'.tokens[i]'(by have := dispatchContent_tokens_mono s c s' h; omega) = s.tokens[i] := by
   unfold scanNextToken_dispatchContent at h
-  simp only [bind, bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   -- Handle anchor/alias/tag with explicit generalize to keep ok-equation
   split at h
@@ -3191,18 +3110,12 @@ theorem foldQuotedNewlines_preserves_simpleKey (s : ScannerState) (s' : ScannerS
   have h_fold := foldQuotedNewlinesLoop_preserves_simpleKey (consumeNewline s) 0 fuel
   have h_sp := skipSpaces_preserves_simpleKey (foldQuotedNewlinesLoop (consumeNewline s) 0 fuel).fst
   have h_sw := skipWhitespace_preserves_simpleKey (skipSpaces (foldQuotedNewlinesLoop (consumeNewline s) 0 fuel).fst)
-  split at h <;> try contradiction
-  · -- inFlow check branch
-    split at h <;> try contradiction
-    split at h <;> try contradiction
-    split at h
-    · injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn]
-    · injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn]
-  · -- no inFlow check
-    split at h <;> try contradiction
-    split at h
-    · injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn]
-    · injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn]
+  -- 4.32.0 reshaped the do-notation match tree; split fully, then close every
+  -- leaf uniformly (error leaves by contradiction, ok leaves by the fold chain).
+  repeat' split at h
+  all_goals first
+    | contradiction
+    | (injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn])
 
 
 theorem collectPlainScalarLoop_preserves_simpleKey (s : ScannerState) (content lastLine : String)
@@ -3341,10 +3254,8 @@ theorem collectDoubleQuotedLoop_preserves_simpleKey (s : ScannerState) (content 
         cases fold_result with
         | mk folded s_fold =>
           have h_fold := foldQuotedNewlines_preserves_simpleKey s s_fold folded heq
-          split at h <;> try contradiction
-          split at h <;> try contradiction
-          split at h <;> try contradiction
-          rw [ih _ _ _ h, h_fold]
+          repeat' split at h
+          all_goals (first | contradiction | rw [ih _ _ _ h, h_fold])
       · -- regular character
         split at h <;> try contradiction  -- isNbJsonBool check
         have h_adv := advance_preserves_simpleKey s
@@ -3384,10 +3295,8 @@ theorem collectSingleQuotedLoop_preserves_simpleKey (s : ScannerState) (content 
         cases fold_result with
         | mk folded s_fold =>
           have h_fold := foldQuotedNewlines_preserves_simpleKey s s_fold folded heq
-          split at h <;> try contradiction  -- atDocumentStart check
-          split at h <;> try contradiction  -- atDocumentEnd check
-          split at h <;> try contradiction  -- col ≤ currentIndent check
-          rw [ih s_fold _ h, h_fold]
+          repeat' split at h
+          all_goals (first | contradiction | rw [ih s_fold _ h, h_fold])
       · -- isLineBreak c = false, regular character
         split at h <;> try contradiction  -- isNbJsonBool check
         have h_adv := advance_preserves_simpleKey s
@@ -3867,18 +3776,12 @@ theorem foldQuotedNewlines_preserves_simpleKeyStack (s : ScannerState) (s' : Sca
   have h_fold := foldQuotedNewlinesLoop_preserves_simpleKeyStack (consumeNewline s) 0 fuel
   have h_sp := skipSpaces_preserves_simpleKeyStack (foldQuotedNewlinesLoop (consumeNewline s) 0 fuel).fst
   have h_sw := skipWhitespace_preserves_simpleKeyStack (skipSpaces (foldQuotedNewlinesLoop (consumeNewline s) 0 fuel).fst)
-  split at h <;> try contradiction
-  · -- inFlow check branch
-    split at h <;> try contradiction
-    split at h <;> try contradiction
-    split at h
-    · injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn]
-    · injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn]
-  · -- no inFlow check
-    split at h <;> try contradiction
-    split at h
-    · injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn]
-    · injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn]
+  -- 4.32.0 reshaped the do-notation match tree; split fully, then close every
+  -- leaf uniformly (error leaves by contradiction, ok leaves by the fold chain).
+  repeat' split at h
+  all_goals first
+    | contradiction
+    | (injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn])
 
 
 theorem collectPlainScalarLoop_preserves_simpleKeyStack (s : ScannerState) (content lastLine : String)
@@ -4018,10 +3921,8 @@ theorem collectDoubleQuotedLoop_preserves_simpleKeyStack (s : ScannerState) (con
         cases fold_result with
         | mk folded s_fold =>
           have h_fold := foldQuotedNewlines_preserves_simpleKeyStack s s_fold folded heq
-          split at h <;> try contradiction
-          split at h <;> try contradiction
-          split at h <;> try contradiction
-          rw [ih _ _ _ h, h_fold]
+          repeat' split at h
+          all_goals (first | contradiction | rw [ih _ _ _ h, h_fold])
       · -- regular character
         split at h <;> try contradiction  -- isNbJsonBool check
         have h_adv := advance_preserves_simpleKeyStack s
@@ -4061,10 +3962,8 @@ theorem collectSingleQuotedLoop_preserves_simpleKeyStack (s : ScannerState) (con
         cases fold_result with
         | mk folded s_fold =>
           have h_fold := foldQuotedNewlines_preserves_simpleKeyStack s s_fold folded heq
-          split at h <;> try contradiction  -- atDocumentStart check
-          split at h <;> try contradiction  -- atDocumentEnd check
-          split at h <;> try contradiction  -- col ≤ currentIndent check
-          rw [ih s_fold _ h, h_fold]
+          repeat' split at h
+          all_goals (first | contradiction | rw [ih s_fold _ h, h_fold])
       · -- isLineBreak c = false, regular character
         split at h <;> try contradiction  -- isNbJsonBool check
         have h_adv := advance_preserves_simpleKeyStack s
@@ -4273,7 +4172,7 @@ theorem preprocess_preserves_simpleKeyStack (s : ScannerState) (s1 : ScannerStat
     (h : scanNextToken_preprocess s = .ok (some (s1, c))) :
     s1.simpleKeyStack = s.simpleKeyStack := by
   unfold scanNextToken_preprocess at h
-  simp only [bind, ScanHelpers.bind_error_simp, ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   split at h
   · contradiction
@@ -4332,7 +4231,7 @@ theorem preprocess_simpleKey_inv (s : ScannerState) (s1 : ScannerState) (c : Cha
   -- Now unfold preprocess and trace to saveSimpleKey
   intro h_poss
   unfold scanNextToken_preprocess at h
-  simp only [bind, ScanHelpers.bind_error_simp, ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   split at h
   · contradiction
@@ -4552,7 +4451,7 @@ theorem scanDocumentStart_preserves_flowLevel (s : ScannerState) :
 theorem scanDocumentEnd_clears_simpleKey (s : ScannerState) (s' : ScannerState)
     (h : scanDocumentEnd s = .ok s') : s'.simpleKey.possible = false := by
   unfold scanDocumentEnd at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at h; subst h)
@@ -4561,7 +4460,7 @@ theorem scanDocumentEnd_clears_simpleKey (s : ScannerState) (s' : ScannerState)
 theorem scanDocumentEnd_preserves_simpleKeyStack (s : ScannerState) (s' : ScannerState)
     (h : scanDocumentEnd s = .ok s') : s'.simpleKeyStack = s.simpleKeyStack := by
   unfold scanDocumentEnd at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at h; subst h)
@@ -4571,7 +4470,7 @@ theorem scanDocumentEnd_preserves_simpleKeyStack (s : ScannerState) (s' : Scanne
 theorem scanDocumentEnd_preserves_flowLevel (s : ScannerState) (s' : ScannerState)
     (h : scanDocumentEnd s = .ok s') : s'.flowLevel = s.flowLevel := by
   unfold scanDocumentEnd at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at h; subst h)
@@ -4581,7 +4480,7 @@ theorem scanDocumentEnd_preserves_flowLevel (s : ScannerState) (s' : ScannerStat
 theorem scanKey_clears_simpleKey (s : ScannerState) (s' : ScannerState)
     (h : scanKey s = .ok s') : s'.simpleKey.possible = false := by
   unfold scanKey at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at h; subst h; rfl)
@@ -4589,7 +4488,7 @@ theorem scanKey_clears_simpleKey (s : ScannerState) (s' : ScannerState)
 theorem scanKey_preserves_simpleKeyStack (s : ScannerState) (s' : ScannerState)
     (h : scanKey s = .ok s') : s'.simpleKeyStack = s.simpleKeyStack := by
   unfold scanKey at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at h; subst h)
@@ -4599,7 +4498,7 @@ theorem scanKey_preserves_simpleKeyStack (s : ScannerState) (s' : ScannerState)
 theorem scanKey_preserves_flowLevel (s : ScannerState) (s' : ScannerState)
     (h : scanKey s = .ok s') : s'.flowLevel = s.flowLevel := by
   unfold scanKey at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at h; subst h)
@@ -4779,7 +4678,7 @@ theorem scanDirective_preserves_simpleKey (s : ScannerState) (s' : ScannerState)
         have h_eq := Except.ok.inj h; subst h_eq
         rw [skipToEndOfLine_preserves_simpleKey]
         unfold scanYamlDirective at h_inner
-        simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h_inner
+        simp only [bind, Except.bind] at h_inner
         split at h_inner <;> try contradiction
         repeat (any_goals (split at h_inner))
         all_goals (try contradiction)
@@ -4800,7 +4699,7 @@ theorem scanDirective_preserves_simpleKey (s : ScannerState) (s' : ScannerState)
           simp only [bind, Except.bind] at h_inner
           split at h_inner <;> try (split at h_inner <;> try contradiction)
           all_goals (try contradiction)
-          all_goals (simp only [pure, Except.pure, Pure.pure, Except.ok.injEq] at h_inner; subst h_inner)
+          all_goals (simp only [Except.ok.injEq] at h_inner; subst h_inner)
           all_goals simp [emitAt_preserves_simpleKey, collectTagPrefixLoop_preserves_simpleKey,
                 skipWhitespace_preserves_simpleKey,
                 collectTagHandleDirectiveLoop_preserves_simpleKey,
@@ -4825,7 +4724,7 @@ theorem scanDirective_preserves_simpleKeyStack (s : ScannerState) (s' : ScannerS
         have h_eq := Except.ok.inj h; subst h_eq
         rw [skipToEndOfLine_preserves_simpleKeyStack]
         unfold scanYamlDirective at h_inner
-        simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h_inner
+        simp only [bind, Except.bind] at h_inner
         split at h_inner <;> try contradiction
         repeat (any_goals (split at h_inner))
         all_goals (try contradiction)
@@ -4846,7 +4745,7 @@ theorem scanDirective_preserves_simpleKeyStack (s : ScannerState) (s' : ScannerS
           simp only [bind, Except.bind] at h_inner
           split at h_inner <;> try (split at h_inner <;> try contradiction)
           all_goals (try contradiction)
-          all_goals (simp only [pure, Except.pure, Pure.pure, Except.ok.injEq] at h_inner; subst h_inner)
+          all_goals (simp only [Except.ok.injEq] at h_inner; subst h_inner)
           all_goals simp [emitAt_preserves_simpleKeyStack, collectTagPrefixLoop_preserves_simpleKeyStack,
                 skipWhitespace_preserves_simpleKeyStack,
                 collectTagHandleDirectiveLoop_preserves_simpleKeyStack,
@@ -4870,7 +4769,7 @@ theorem scanDirective_preserves_flowLevel (s : ScannerState) (s' : ScannerState)
         have h_eq := Except.ok.inj h; subst h_eq
         rw [skipToEndOfLine_preserves_flowLevel]
         unfold scanYamlDirective at h_inner
-        simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h_inner
+        simp only [bind, Except.bind] at h_inner
         split at h_inner <;> try contradiction
         repeat (any_goals (split at h_inner))
         all_goals (try contradiction)
@@ -4891,7 +4790,7 @@ theorem scanDirective_preserves_flowLevel (s : ScannerState) (s' : ScannerState)
           simp only [bind, Except.bind] at h_inner
           split at h_inner <;> try (split at h_inner <;> try contradiction)
           all_goals (try contradiction)
-          all_goals (simp only [pure, Except.pure, Pure.pure, Except.ok.injEq] at h_inner; subst h_inner)
+          all_goals (simp only [Except.ok.injEq] at h_inner; subst h_inner)
           all_goals simp [emitAt_preserves_flowLevel, collectTagPrefixLoop_preserves_flowLevel,
                 skipWhitespace_preserves_flowLevel,
                 collectTagHandleDirectiveLoop_preserves_flowLevel,
@@ -4905,7 +4804,7 @@ theorem scanDirective_preserves_flowLevel (s : ScannerState) (s' : ScannerState)
 theorem scanFlowEntry_preserves_simpleKey (s : ScannerState) (s' : ScannerState)
     (h : scanFlowEntry s = .ok s') : s'.simpleKey = s.simpleKey := by
   unfold scanFlowEntry at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at h; subst h)
@@ -4914,7 +4813,7 @@ theorem scanFlowEntry_preserves_simpleKey (s : ScannerState) (s' : ScannerState)
 theorem scanFlowEntry_preserves_simpleKeyStack (s : ScannerState) (s' : ScannerState)
     (h : scanFlowEntry s = .ok s') : s'.simpleKeyStack = s.simpleKeyStack := by
   unfold scanFlowEntry at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at h; subst h)
@@ -4923,7 +4822,7 @@ theorem scanFlowEntry_preserves_simpleKeyStack (s : ScannerState) (s' : ScannerS
 theorem scanBlockEntry_preserves_simpleKey (s : ScannerState) (s' : ScannerState)
     (h : scanBlockEntry s = .ok s') : s'.simpleKey = s.simpleKey := by
   unfold scanBlockEntry at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at h; subst h)
@@ -4933,7 +4832,7 @@ theorem scanBlockEntry_preserves_simpleKey (s : ScannerState) (s' : ScannerState
 theorem scanBlockEntry_preserves_simpleKeyStack (s : ScannerState) (s' : ScannerState)
     (h : scanBlockEntry s = .ok s') : s'.simpleKeyStack = s.simpleKeyStack := by
   unfold scanBlockEntry at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at h; subst h)
@@ -4943,7 +4842,7 @@ theorem scanBlockEntry_preserves_simpleKeyStack (s : ScannerState) (s' : Scanner
 theorem scanBlockEntry_preserves_flowLevel (s : ScannerState) (s' : ScannerState)
     (h : scanBlockEntry s = .ok s') : s'.flowLevel = s.flowLevel := by
   unfold scanBlockEntry at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at h; subst h)
@@ -5223,18 +5122,12 @@ theorem foldQuotedNewlines_preserves_flowLevel (s : ScannerState) (s' : ScannerS
   have h_fold := foldQuotedNewlinesLoop_preserves_flowLevel (consumeNewline s) 0 fuel
   have h_sp := skipSpaces_preserves_flowLevel (foldQuotedNewlinesLoop (consumeNewline s) 0 fuel).fst
   have h_sw := skipWhitespace_preserves_flowLevel (skipSpaces (foldQuotedNewlinesLoop (consumeNewline s) 0 fuel).fst)
-  split at h <;> try contradiction
-  · -- inFlow check branch
-    split at h <;> try contradiction
-    split at h <;> try contradiction
-    split at h
-    · injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn]
-    · injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn]
-  · -- no inFlow check
-    split at h <;> try contradiction
-    split at h
-    · injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn]
-    · injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn]
+  -- 4.32.0 reshaped the do-notation match tree; split fully, then close every
+  -- leaf uniformly (error leaves by contradiction, ok leaves by the fold chain).
+  repeat' split at h
+  all_goals first
+    | contradiction
+    | (injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn])
 
 theorem collectHexDigitsLoop_preserves_flowLevel (s : ScannerState) (hex : String) (n : Nat) :
     (collectHexDigitsLoop s hex n).snd.flowLevel = s.flowLevel := by
@@ -5413,10 +5306,8 @@ theorem collectDoubleQuotedLoop_preserves_flowLevel (s : ScannerState) (content 
         cases fold_result with
         | mk folded s_fold =>
           have h_fold := foldQuotedNewlines_preserves_flowLevel s s_fold folded heq
-          split at h <;> try contradiction
-          split at h <;> try contradiction
-          split at h <;> try contradiction
-          rw [ih _ _ _ h, h_fold]
+          repeat' split at h
+          all_goals (first | contradiction | rw [ih _ _ _ h, h_fold])
       · -- regular character
         split at h <;> try contradiction  -- isNbJsonBool check
         have h_adv := advance_preserves_flowLevel s
@@ -5455,10 +5346,8 @@ theorem collectSingleQuotedLoop_preserves_flowLevel (s : ScannerState) (content 
         cases fold_result with
         | mk folded s_fold =>
           have h_fold := foldQuotedNewlines_preserves_flowLevel s s_fold folded heq
-          split at h <;> try contradiction  -- atDocumentStart check
-          split at h <;> try contradiction  -- atDocumentEnd check
-          split at h <;> try contradiction  -- col ≤ currentIndent check
-          rw [ih s_fold _ h, h_fold]
+          repeat' split at h
+          all_goals (first | contradiction | rw [ih s_fold _ h, h_fold])
       · -- isLineBreak c = false, regular character
         split at h <;> try contradiction  -- isNbJsonBool check
         have h_adv := advance_preserves_flowLevel s
@@ -5576,7 +5465,7 @@ theorem scanPlainScalar_preserves_flowLevel (s : ScannerState) (s' : ScannerStat
 theorem scanDoubleQuoted_preserves_simpleKey (s : ScannerState) (s' : ScannerState)
     (h : scanDoubleQuoted s = .ok s') : s'.simpleKey = s.simpleKey := by
   unfold scanDoubleQuoted at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   split at h <;> try contradiction
   rename_i result heq
   split at h
@@ -5593,7 +5482,7 @@ theorem scanDoubleQuoted_preserves_simpleKey (s : ScannerState) (s' : ScannerSta
 theorem scanDoubleQuoted_preserves_simpleKeyStack (s : ScannerState) (s' : ScannerState)
     (h : scanDoubleQuoted s = .ok s') : s'.simpleKeyStack = s.simpleKeyStack := by
   unfold scanDoubleQuoted at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   split at h <;> try contradiction
   rename_i result heq
   split at h
@@ -5610,7 +5499,7 @@ theorem scanDoubleQuoted_preserves_simpleKeyStack (s : ScannerState) (s' : Scann
 theorem scanDoubleQuoted_preserves_flowLevel (s : ScannerState) (s' : ScannerState)
     (h : scanDoubleQuoted s = .ok s') : s'.flowLevel = s.flowLevel := by
   unfold scanDoubleQuoted at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   split at h <;> try contradiction
   rename_i result heq
   split at h
@@ -5627,7 +5516,7 @@ theorem scanDoubleQuoted_preserves_flowLevel (s : ScannerState) (s' : ScannerSta
 theorem scanSingleQuoted_preserves_simpleKey (s : ScannerState) (s' : ScannerState)
     (h : scanSingleQuoted s = .ok s') : s'.simpleKey = s.simpleKey := by
   unfold scanSingleQuoted at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   split at h <;> try contradiction
   rename_i result heq
   split at h
@@ -5644,7 +5533,7 @@ theorem scanSingleQuoted_preserves_simpleKey (s : ScannerState) (s' : ScannerSta
 theorem scanSingleQuoted_preserves_simpleKeyStack (s : ScannerState) (s' : ScannerState)
     (h : scanSingleQuoted s = .ok s') : s'.simpleKeyStack = s.simpleKeyStack := by
   unfold scanSingleQuoted at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   split at h <;> try contradiction
   rename_i result heq
   split at h
@@ -5661,7 +5550,7 @@ theorem scanSingleQuoted_preserves_simpleKeyStack (s : ScannerState) (s' : Scann
 theorem scanSingleQuoted_preserves_flowLevel (s : ScannerState) (s' : ScannerState)
     (h : scanSingleQuoted s = .ok s') : s'.flowLevel = s.flowLevel := by
   unfold scanSingleQuoted at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   split at h <;> try contradiction
   rename_i result heq
   split at h
@@ -5694,7 +5583,7 @@ theorem dispatchStructural_preserves_flowLevel (s : ScannerState) (c : Char) (s'
     (h : scanNextToken_dispatchStructural s c = .ok (some s')) :
     s'.flowLevel = s.flowLevel := by
   unfold scanNextToken_dispatchStructural at h
-  simp only [bind, ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   repeat (any_goals (split at h))
   any_goals contradiction
@@ -5712,7 +5601,7 @@ theorem dispatchStructural_preserves_simpleKeyStack (s : ScannerState) (c : Char
     (h : scanNextToken_dispatchStructural s c = .ok (some s')) :
     s'.simpleKeyStack = s.simpleKeyStack := by
   unfold scanNextToken_dispatchStructural at h
-  simp only [bind, ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   repeat (any_goals (split at h))
   any_goals contradiction
@@ -5730,7 +5619,7 @@ theorem dispatchBlockIndicators_preserves_flowLevel (s : ScannerState) (c : Char
     (h : scanNextToken_dispatchBlockIndicators s c = .ok (some s')) :
     s'.flowLevel = s.flowLevel := by
   unfold scanNextToken_dispatchBlockIndicators at h
-  simp only [bind, ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   repeat (any_goals (split at h))
   any_goals contradiction
@@ -5748,7 +5637,7 @@ theorem dispatchBlockIndicators_preserves_simpleKeyStack (s : ScannerState) (c :
     (h : scanNextToken_dispatchBlockIndicators s c = .ok (some s')) :
     s'.simpleKeyStack = s.simpleKeyStack := by
   unfold scanNextToken_dispatchBlockIndicators at h
-  simp only [bind, ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   repeat (any_goals (split at h))
   any_goals contradiction
@@ -5766,7 +5655,7 @@ theorem dispatchContent_preserves_flowLevel (s : ScannerState) (c : Char) (s' : 
     (h : scanNextToken_dispatchContent s c = .ok s') :
     s'.flowLevel = s.flowLevel := by
   unfold scanNextToken_dispatchContent at h
-  simp only [bind, ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   split at h
   · -- '&': scanAnchorOrAlias bind
@@ -5812,7 +5701,7 @@ theorem dispatchContent_preserves_simpleKeyStack (s : ScannerState) (c : Char) (
     (h : scanNextToken_dispatchContent s c = .ok s') :
     s'.simpleKeyStack = s.simpleKeyStack := by
   unfold scanNextToken_dispatchContent at h
-  simp only [bind, ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   split at h
   · -- '&': scanAnchorOrAlias bind
@@ -5965,7 +5854,7 @@ theorem dispatchStructural_maintains_simpleKeyAbove (s : ScannerState) (c : Char
     (n : Nat) (_h_n : n ≤ s.tokens.size) (h_inv : SimpleKeyAbove s n) :
     SimpleKeyAbove s' n := by
   unfold scanNextToken_dispatchStructural at h
-  simp only [bind, ScanHelpers.bind_error_simp, ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   repeat (any_goals (split at h))
   any_goals contradiction
@@ -5991,7 +5880,7 @@ theorem dispatchFlowIndicators_maintains_simpleKeyAbove (s : ScannerState) (c : 
     (n : Nat) (_h_n : n ≤ s.tokens.size) (h_inv : SimpleKeyAbove s n) :
     SimpleKeyAbove s' n := by
   unfold scanNextToken_dispatchFlowIndicators at h
-  simp only [bind, ScanHelpers.bind_error_simp, ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   repeat (any_goals (split at h))
   any_goals contradiction
@@ -6045,7 +5934,7 @@ theorem dispatchBlockIndicators_maintains_simpleKeyAbove (s : ScannerState) (c :
     (n : Nat) (_h_n : n ≤ s.tokens.size) (h_inv : SimpleKeyAbove s n) :
     SimpleKeyAbove s' n := by
   unfold scanNextToken_dispatchBlockIndicators at h
-  simp only [bind, ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   repeat (any_goals (split at h))
   any_goals contradiction
@@ -6115,14 +6004,15 @@ theorem dispatchContent_maintains_simpleKeyAbove (s : ScannerState) (c : Char) (
         all_goals (try (simp only [Except.ok.injEq] at h; subst h))
         all_goals (
           first
-    | -- Monadic functions that clear simpleKey
-      (rename_i h_eq; exact SimpleKeyAbove_of_cleared_preserved _ s n
-        (scanBlockScalar_clears_simpleKey s _ h_eq)
-        (scanBlockScalar_preserves_simpleKeyStack s _ h_eq) h_inv)
-    | -- scanPlainScalar: preserves both
-      (rename_i h_eq; exact SimpleKeyAbove_of_preserved _ s n
-        (scanPlainScalar_preserves_simpleKey s _ h_eq)
-        (scanPlainScalar_preserves_simpleKeyStack s _ h_eq) h_inv)
+    | -- block scalar returns directly (4.32.0): clears simpleKey (uses `h`, not a
+      -- split-introduced equation, because the branch is now `scanBlockScalar s`)
+      (exact SimpleKeyAbove_of_cleared_preserved _ s n
+        (scanBlockScalar_clears_simpleKey s _ h)
+        (scanBlockScalar_preserves_simpleKeyStack s _ h) h_inv)
+    | -- plain scalar returns directly (4.32.0): preserves both
+      (exact SimpleKeyAbove_of_preserved _ s n
+        (scanPlainScalar_preserves_simpleKey s _ h)
+        (scanPlainScalar_preserves_simpleKeyStack s _ h) h_inv)
     | -- endLine update (isTrue): possible preserved, tokenIndex preserved, stack preserved
       (rename_i h_eq_dq _
        -- Try scanDoubleQuoted first
@@ -7062,7 +6952,7 @@ theorem scanFlowEntry_preserves_ScanInv (s : ScannerState)
     (h : ScanInv s) (s' : ScannerState)
     (h_ok : scanFlowEntry s = .ok s') : ScanInv s' := by
   unfold scanFlowEntry at h_ok
-  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  simp only [bind, Except.bind] at h_ok
   split at h_ok
   · split at h_ok
     · simp at h_ok
@@ -7605,7 +7495,7 @@ theorem collectDoubleQuotedLoop_offset_ge (s : ScannerState) (content : String)
         rename_i fold_result heq
         cases fold_result with
         | mk folded s_fold =>
-          simp only [pure, Except.pure] at h
+          simp only [] at h
           split at h <;> try contradiction  -- atDocumentStart || atDocumentEnd
           split at h <;> try contradiction  -- col ≤ currentIndent
           exact Nat.le_trans (foldQuotedNewlines_offset_ge s folded s_fold heq) (ih _ _ _ h)
@@ -7641,7 +7531,7 @@ theorem collectSingleQuotedLoop_offset_ge (s : ScannerState) (content : String)
         rename_i fold_result heq
         cases fold_result with
         | mk folded s_fold =>
-          simp only [pure, Except.pure] at h
+          simp only [] at h
           split at h <;> try contradiction  -- atDocumentStart || atDocumentEnd
           split at h <;> try contradiction  -- col ≤ currentIndent
           exact Nat.le_trans (foldQuotedNewlines_offset_ge s folded s_fold heq) (ih _ _ h)
@@ -7775,7 +7665,7 @@ set_option maxHeartbeats 800000 in
 theorem scanDocumentEnd_preserves_ScanInv (s s' : ScannerState)
     (h : ScanInv s) (h_ok : scanDocumentEnd s = .ok s') : ScanInv s' := by
   unfold scanDocumentEnd at h_ok
-  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  simp only [bind, Except.bind] at h_ok
   split at h_ok
   · simp at h_ok
   · -- All ok paths produce the same `result` state; prove ScanInv per branch
@@ -7811,7 +7701,7 @@ theorem scanYamlDirective_preserves_ScanInv (s s_after_ws : ScannerState)
     (s' : ScannerState) (h_ok : scanYamlDirective s s_after_ws startPos = .ok s') :
     ScanInv s' := by
   unfold scanYamlDirective at h_ok
-  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  simp only [bind, Except.bind] at h_ok
   split at h_ok
   · simp at h_ok
   · -- past seenYamlDirective check; all intermediate ops are advance-only
@@ -7885,7 +7775,7 @@ theorem scanTagDirective_preserves_ScanInv (s s_after_ws : ScannerState)
   · -- some '#'
     split at h_ok
     · contradiction
-    · simp only [pure, Except.pure, Pure.pure, Except.ok.injEq] at h_ok; subst h_ok
+    · simp only [Except.ok.injEq] at h_ok; subst h_ok
       apply field_update_preserves_ScanInv _ _ _ rfl rfl
       apply emitAt_preserves_ScanInv
       · exact skipWhitespace_preserves_ScanInv _
@@ -7905,7 +7795,7 @@ theorem scanTagDirective_preserves_ScanInv (s s_after_ws : ScannerState)
   · -- some c
     split at h_ok
     · contradiction
-    · simp only [pure, Except.pure, Pure.pure, Except.ok.injEq] at h_ok; subst h_ok
+    · simp only [Except.ok.injEq] at h_ok; subst h_ok
       apply field_update_preserves_ScanInv _ _ _ rfl rfl
       apply emitAt_preserves_ScanInv
       · exact skipWhitespace_preserves_ScanInv _
@@ -7923,7 +7813,7 @@ theorem scanTagDirective_preserves_ScanInv (s s_after_ws : ScannerState)
                    skipWhitespace_preserves_tokens,
                    ScanHelpers.collectTagHandleDirectiveLoop_preserves_tokens])
   · -- none
-    simp only [pure, Except.pure, Pure.pure, Except.ok.injEq] at h_ok; subst h_ok
+    simp only [Except.ok.injEq] at h_ok; subst h_ok
     apply field_update_preserves_ScanInv _ _ _ rfl rfl
     apply emitAt_preserves_ScanInv
     · exact skipWhitespace_preserves_ScanInv _
@@ -8104,7 +7994,7 @@ theorem pushMappingIfNotInFlow_preserves_ScanInv (s : ScannerState)
 theorem scanBlockEntry_preserves_ScanInv (s s' : ScannerState)
     (h : ScanInv s) (h_ok : scanBlockEntry s = .ok s') : ScanInv s' := by
   unfold scanBlockEntry at h_ok
-  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  simp only [bind, Except.bind] at h_ok
   split at h_ok
   · -- guard fired: !s.inFlow = true, split on hasTab
     rename_i h_fl
@@ -8128,7 +8018,7 @@ theorem scanBlockEntry_preserves_ScanInv (s s' : ScannerState)
 theorem scanKey_preserves_ScanInv (s s' : ScannerState)
     (h : ScanInv s) (h_ok : scanKey s = .ok s') : ScanInv s' := by
   unfold scanKey at h_ok
-  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  simp only [bind, Except.bind] at h_ok
   -- Examine what split does:
   split at h_ok
   · rename_i h_cond1
@@ -8379,7 +8269,7 @@ theorem scanTag_preserves_ScanInv (s : ScannerState)
 theorem scanDoubleQuoted_preserves_ScanInv (s s' : ScannerState)
     (h : ScanInv s) (h_ok : scanDoubleQuoted s = .ok s') : ScanInv s' := by
   unfold scanDoubleQuoted at h_ok
-  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  simp only [bind, Except.bind] at h_ok
   split at h_ok <;> try contradiction
   rename_i dq_result heq
   cases dq_result with
@@ -8430,7 +8320,7 @@ theorem scanDoubleQuoted_preserves_ScanInv (s s' : ScannerState)
 theorem scanSingleQuoted_preserves_ScanInv (s s' : ScannerState)
     (h : ScanInv s) (h_ok : scanSingleQuoted s = .ok s') : ScanInv s' := by
   unfold scanSingleQuoted at h_ok
-  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  simp only [bind, Except.bind] at h_ok
   split at h_ok <;> try contradiction
   rename_i sq_result heq
   cases sq_result with
@@ -8610,10 +8500,8 @@ theorem dispatchContent_preserves_ScanInv (s : ScannerState) (c : Char)
           exact scanTag_preserves_ScanInv s h s_t h_tag
       · -- c == '|' || c == '>'
         split at h_ok
-        · split at h_ok <;> try contradiction
-          simp only [Except.ok.injEq] at h_ok; subst h_ok
-          rename_i s_bs h_bs
-          exact scanBlockScalar_preserves_ScanInv s s_bs h h_bs
+        · -- scanBlockScalar result is returned directly
+          exact scanBlockScalar_preserves_ScanInv s _ h h_ok
         · -- c == '"'
           split at h_ok
           · split at h_ok <;> try contradiction
@@ -8637,10 +8525,8 @@ theorem dispatchContent_preserves_ScanInv (s : ScannerState) (c : Char)
                 exact scanSingleQuoted_preserves_ScanInv s s_sq h h_sq
             · -- canStartPlainScalar
               split at h_ok
-              · split at h_ok <;> try contradiction
-                simp only [Except.ok.injEq] at h_ok; subst h_ok
-                rename_i s_ps h_ps
-                exact scanPlainScalar_preserves_ScanInv s s_ps h h_ps
+              · -- scanPlainScalar result is returned directly
+                exact scanPlainScalar_preserves_ScanInv s _ h h_ok
               · -- error: unexpectedChar
                 simp at h_ok
 
@@ -9208,34 +9094,26 @@ theorem dispatchContent_preserves_AllKeysValid (s : ScannerState) (c : Char)
     · -- c == '*': alias (with alias validation check)
       split at h
       · contradiction
-      · split at h
-        · contradiction
-        · simp only [Except.ok.injEq] at h; subst h
-          exact AllKeysValid_mono s _ h_akv
-            (scanAnchorOrAlias_preserves_simpleKey s false _ (by assumption))
-            (scanAnchorOrAlias_preserves_simpleKeyStack s false _ (by assumption))
-            (by have := ScanHelpers.scanAnchorOrAlias_adds_one_token s false _ (by assumption); omega)
-            (fun i hi => ScanHelpers.scanAnchorOrAlias_preserves_prefix s false _ (by assumption) i hi)
+      · -- scanAnchorOrAlias result returned directly
+        exact AllKeysValid_mono s _ h_akv
+          (scanAnchorOrAlias_preserves_simpleKey s false _ h)
+          (scanAnchorOrAlias_preserves_simpleKeyStack s false _ h)
+          (by have := ScanHelpers.scanAnchorOrAlias_adds_one_token s false _ h; omega)
+          (fun i hi => ScanHelpers.scanAnchorOrAlias_preserves_prefix s false _ h i hi)
     · split at h
-      · -- c == '!': tag
-        split at h
-        · contradiction
-        · simp only [Except.ok.injEq] at h; subst h
-          exact AllKeysValid_mono s _ h_akv
-            (scanTag_preserves_simpleKey s _ (by assumption))
-            (scanTag_preserves_simpleKeyStack s _ (by assumption))
-            (by have := ScanHelpers.scanTag_adds_one_token s _ (by assumption); omega)
-            (fun i hi => ScanHelpers.scanTag_preserves_prefix s _ (by assumption) i hi)
+      · -- c == '!': tag result returned directly
+        exact AllKeysValid_mono s _ h_akv
+          (scanTag_preserves_simpleKey s _ h)
+          (scanTag_preserves_simpleKeyStack s _ h)
+          (by have := ScanHelpers.scanTag_adds_one_token s _ h; omega)
+          (fun i hi => ScanHelpers.scanTag_preserves_prefix s _ h i hi)
       · split at h
-        · -- c == '|' || c == '>': block scalar (clears key)
-          split at h <;> try contradiction
-          simp only [Except.ok.injEq] at h; subst h
-          rename_i s_bs h_bs
-          exact AllKeysValid_of_cleared_current s _ (scanBlockScalar_clears_simpleKey s s_bs h_bs)
+        · -- c == '|' || c == '>': block scalar returns directly (clears key)
+          exact AllKeysValid_of_cleared_current s _ (scanBlockScalar_clears_simpleKey s _ h)
             (SimpleKeyStackValid_mono s _ h_akv.2
-              (scanBlockScalar_preserves_simpleKeyStack s s_bs h_bs)
-              (by have := ScanHelpers.scanBlockScalar_adds_one_token s s_bs h_bs; omega)
-              (fun i hi => ScanHelpers.scanBlockScalar_preserves_prefix s s_bs h_bs i hi))
+              (scanBlockScalar_preserves_simpleKeyStack s _ h)
+              (by have := ScanHelpers.scanBlockScalar_adds_one_token s _ h; omega)
+              (fun i hi => ScanHelpers.scanBlockScalar_preserves_prefix s _ h i hi))
         · split at h
           · -- c == '"': double quoted (preserves key+stack, possibly endLine update)
             split at h <;> try contradiction
@@ -9261,15 +9139,12 @@ theorem dispatchContent_preserves_AllKeysValid (s : ScannerState) (c : Char)
               · simp only [Except.ok.injEq] at h; subst h; exact h_akv_sq
               · simp only [Except.ok.injEq] at h; subst h; exact h_akv_sq
             · split at h
-              · -- plain scalar
-                split at h <;> try contradiction
-                simp only [Except.ok.injEq] at h; subst h
-                rename_i s_ps h_ps
+              · -- plain scalar returns directly
                 exact AllKeysValid_mono s _ h_akv
-                  (scanPlainScalar_preserves_simpleKey s s_ps h_ps)
-                  (scanPlainScalar_preserves_simpleKeyStack s s_ps h_ps)
-                  (by have := ScanHelpers.scanPlainScalar_adds_one_token s s_ps h_ps; omega)
-                  (fun i hi => ScanHelpers.scanPlainScalar_preserves_prefix s s_ps h_ps i hi)
+                  (scanPlainScalar_preserves_simpleKey s _ h)
+                  (scanPlainScalar_preserves_simpleKeyStack s _ h)
+                  (by have := ScanHelpers.scanPlainScalar_adds_one_token s _ h; omega)
+                  (fun i hi => ScanHelpers.scanPlainScalar_preserves_prefix s _ h i hi)
               · -- error
                 simp at h
 
@@ -10038,12 +9913,12 @@ theorem scanDocumentEnd_offset_lt (s s' : ScannerState)
   split at h
   · cases h
   · split at h
-    · simp only [pure, Except.pure, Bind.bind, Except.bind, Except.ok.injEq] at h
+    · simp only [Except.ok.injEq] at h
       subst h; dsimp only []; exact docEnd_core s hlt _ rfl
-    · simp only [pure, Except.pure, Bind.bind, Except.bind, Except.ok.injEq] at h
+    · simp only [Except.ok.injEq] at h
       subst h; dsimp only []; exact docEnd_core s hlt _ rfl
     · split at h
-      · simp only [pure, Except.pure, Bind.bind, Except.bind, Except.ok.injEq] at h
+      · simp only [Except.ok.injEq] at h
         subst h; dsimp only []; exact docEnd_core s hlt _ rfl
       · simp only [Bind.bind, Except.bind] at h; cases h
 
@@ -10066,25 +9941,13 @@ theorem scanYamlDirective_offset_ge' (s s_after_ws : ScannerState) (startPos : Y
   unfold scanYamlDirective at h
   dsimp only [] at h
   simp only [bind, Except.bind] at h
-  split at h
-  · contradiction
-  · split at h
-    · contradiction
-    · split at h
-      · split at h
-        · contradiction
-        · injection h with h_eq; subst h_eq; dsimp only []
-          exact Nat.le_trans (collectVersionMajorLoop_offset_ge _ _ _)
-            (Nat.le_trans (collectVersionMinorLoop_offset_ge _ _ _) (skipWhitespace_offset_ge _))
-      · split at h
-        · contradiction
-        · split at h <;> try contradiction
-          all_goals (injection h with h_eq; subst h_eq; dsimp only []
-                     exact Nat.le_trans (collectVersionMajorLoop_offset_ge _ _ _)
-                       (Nat.le_trans (collectVersionMinorLoop_offset_ge _ _ _) (skipWhitespace_offset_ge _)))
-      · injection h with h_eq; subst h_eq; dsimp only []
-        exact Nat.le_trans (collectVersionMajorLoop_offset_ge _ _ _)
-          (Nat.le_trans (collectVersionMinorLoop_offset_ge _ _ _) (skipWhitespace_offset_ge _))
+  -- 4.32.0 reshaped the do-notation match tree; split fully, close leaves uniformly.
+  repeat' split at h
+  all_goals first
+    | contradiction
+    | (injection h with h_eq; subst h_eq; dsimp only []
+       exact Nat.le_trans (collectVersionMajorLoop_offset_ge _ _ _)
+         (Nat.le_trans (collectVersionMinorLoop_offset_ge _ _ _) (skipWhitespace_offset_ge _)))
 
 theorem scanTagDirective_offset_ge' (s s_after_ws : ScannerState) (startPos : YamlPos)
     (s' : ScannerState)
@@ -10093,24 +9956,14 @@ theorem scanTagDirective_offset_ge' (s s_after_ws : ScannerState) (startPos : Ya
   unfold scanTagDirective at h
   dsimp only [] at h
   simp only [bind, Except.bind] at h
-  split at h
-  · split at h
-    · contradiction
-    · injection h with h_eq; subst h_eq; dsimp only []
-      exact Nat.le_trans (collectTagHandleDirectiveLoop_offset_ge _ _ _)
-        (Nat.le_trans (skipWhitespace_offset_ge _)
-          (Nat.le_trans (collectTagPrefixLoop_offset_ge _ _ _) (skipWhitespace_offset_ge _)))
-  · split at h
-    · contradiction
-    · split at h <;> try contradiction
-      all_goals (injection h with h_eq; subst h_eq; dsimp only []
-                 exact Nat.le_trans (collectTagHandleDirectiveLoop_offset_ge _ _ _)
-                   (Nat.le_trans (skipWhitespace_offset_ge _)
-                     (Nat.le_trans (collectTagPrefixLoop_offset_ge _ _ _) (skipWhitespace_offset_ge _))))
-  · injection h with h_eq; subst h_eq; dsimp only []
-    exact Nat.le_trans (collectTagHandleDirectiveLoop_offset_ge _ _ _)
-      (Nat.le_trans (skipWhitespace_offset_ge _)
-        (Nat.le_trans (collectTagPrefixLoop_offset_ge _ _ _) (skipWhitespace_offset_ge _)))
+  -- 4.32.0 reshaped the do-notation match tree; split fully, close leaves uniformly.
+  repeat' split at h
+  all_goals first
+    | contradiction
+    | (injection h with h_eq; subst h_eq; dsimp only []
+       exact Nat.le_trans (collectTagHandleDirectiveLoop_offset_ge _ _ _)
+         (Nat.le_trans (skipWhitespace_offset_ge _)
+           (Nat.le_trans (collectTagPrefixLoop_offset_ge _ _ _) (skipWhitespace_offset_ge _))))
 
 set_option maxHeartbeats 1600000 in
 /-- `scanDirective` strictly advances offset when `offset < inputEnd`. -/
@@ -10485,20 +10338,14 @@ theorem dispatchContent_offset_gt (s s' : ScannerState) (c : Char)
   · split at h  -- c == '*'
     · split at h
       · cases h
-      · split at h
-        · cases h
-        · simp only [Except.ok.injEq] at h; subst h
-          exact scanAnchorOrAlias_offset_lt s _ false h_hm ‹_›
+      · -- scanAnchorOrAlias result returned directly
+        exact scanAnchorOrAlias_offset_lt s _ false h_hm h
     · split at h  -- c == '!'
-      · split at h
-        · cases h
-        · simp only [Except.ok.injEq] at h; subst h
-          exact scanTag_offset_lt s _ h_hm ‹_›
+      · -- scanTag result returned directly
+        exact scanTag_offset_lt s _ h_hm h
       · split at h  -- c == '|' || c == '>'
-        · split at h
-          · cases h
-          · simp only [Except.ok.injEq] at h; subst h
-            exact scanBlockScalar_offset_lt s _ h_hm ‹_›
+        · -- scanBlockScalar result returned directly
+          exact scanBlockScalar_offset_lt s _ h_hm h
         · split at h  -- c == '"'
           · split at h
             · cases h
@@ -10514,11 +10361,9 @@ theorem dispatchContent_offset_gt (s s' : ScannerState) (c : Char)
                 · subst h; dsimp only []; exact scanSingleQuoted_offset_lt s _ h_hm ‹_›
                 · subst h; exact scanSingleQuoted_offset_lt s _ h_hm ‹_›
             · split at h  -- canStartPlainScalarBool
-              · split at h
-                · cases h
-                · simp only [Except.ok.injEq] at h; subst h
-                  exact scanPlainScalar_offset_lt s _ c h_hm hpeek
-                    (by assumption) hnoDoc (by assumption)
+              · -- scanPlainScalar result returned directly
+                exact scanPlainScalar_offset_lt s _ c h_hm hpeek
+                  (by assumption) hnoDoc h
               · cases h
 
 /-! #### §5.5  `scanNextToken_progress` — Capstone

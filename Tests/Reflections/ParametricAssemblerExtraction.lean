@@ -68,7 +68,7 @@ structure SpanProps (lo hi : Nat) : Prop where
     primitive (`lo_pos` ← `hp`, `width` ← `hw`) or the span-generic helper (`mid_ok` ← `midpoint_in_span`).
     This IS the lifted inline `have SpanProps[c]`: the proof never mentions a concrete span, so abstracting
     the span to a parameter was free. -/
-def assemble (lo hi : Nat) (hp : 0 < lo) (hw : hi ≤ lo + 8) : SpanProps lo hi :=
+theorem assemble (lo hi : Nat) (hp : 0 < lo) (hw : hi ≤ lo + 8) : SpanProps lo hi :=
   ⟨hp, hw, fun h => midpoint_in_span lo hi h⟩
 
 /-- The fixed instance — the former inline `have` — is now a one-line call. -/
@@ -97,7 +97,7 @@ structure SpanPropsBad (lo hi : Nat) : Prop where
 /-- **NEGATIVE assembler.**  The `parity` field cannot be projected off a primitive or a span-generic
     helper, so the proof must BAKE IN the constant: it requires `(lo, hi) = (3, 9)`, then closes `parity` by
     `decide` after substitution.  The constant-dependence is now in the body, not (only) the hypotheses. -/
-def assembleBad (lo hi : Nat) (hc : lo = 3 ∧ hi = 9) (hp : 0 < lo) (hw : hi ≤ lo + 8) :
+theorem assembleBad (lo hi : Nat) (hc : lo = 3 ∧ hi = 9) (hp : 0 < lo) (hw : hi ≤ lo + 8) :
     SpanPropsBad lo hi :=
   ⟨hp, hw, by obtain ⟨rfl, rfl⟩ := hc; decide⟩
 
@@ -137,7 +137,7 @@ structure SpanProps2 (lo hi : Nat) : Prop where
 
 /-- **Second assembler.**  Built from scratch, but pure dispatch: three direct primitive projections and
     two bare symmetric-helper outputs.  The cost is field-shape matching, not proof. -/
-def assemble2 (lo hi : Nat) (hp : 0 < lo) (hw : hi ≤ lo + 8) (he : lo ≤ hi) : SpanProps2 lo hi :=
+theorem assemble2 (lo hi : Nat) (hp : 0 < lo) (hw : hi ≤ lo + 8) (he : lo ≤ hi) : SpanProps2 lo hi :=
   ⟨hp, hw, he, fun h => midpoint_in_span lo hi h, fun h => lower_quarter_in_span lo hi h⟩
 
 /-- The second assembler serves the fixed span too — one call, same shape as `assemble`. -/

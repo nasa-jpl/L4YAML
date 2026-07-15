@@ -148,23 +148,23 @@ theorem recbody_single (e : List Tok) (h_e : REntry e) : RBody e :=
 
 /-- a one-scalar body `[A]` (the `single` leaf), now via the TERMINATE *move* `recbody_single`
     (rather than `RBody.single` inline) — the recursion's base case. -/
-def bodyA : RBody [Tok.A] :=
+theorem bodyA : RBody [Tok.A] :=
   recbody_single [Tok.A] REntry.scalar
 
 /-- ADVANCE builds the multi-entry body `[A, FE, A]` = `[A] ++ FE :: [A]` from a leading scalar entry
     and a trailing body — and that trailing body `bodyA` is the TERMINATE move.  So this is the
     recursion's genuine two-item shape: **one ADVANCE step over a TERMINATE base.** -/
-def body_AFA : RBody [Tok.A, Tok.FE, Tok.A] :=
+theorem body_AFA : RBody [Tok.A, Tok.FE, Tok.A] :=
   recbody_cons [Tok.A] [Tok.A] REntry.scalar bodyA
 
 /-- The full recursion shape on a three-entry body `[A,FE,A,FE,A]`: **ADVANCE ∘ ADVANCE ∘ TERMINATE**
     — two steps, then the base case stops it.  Without `recbody_single` the innermost trailing body
     has no constructor and the recursion cannot close. -/
-def body_AFAFA : RBody [Tok.A, Tok.FE, Tok.A, Tok.FE, Tok.A] :=
+theorem body_AFAFA : RBody [Tok.A, Tok.FE, Tok.A, Tok.FE, Tok.A] :=
   recbody_cons [Tok.A] [Tok.A, Tok.FE, Tok.A] REntry.scalar body_AFA
 
 /-- BUILD wraps that multi-entry body into the nested bracket entry `[OB, A, FE, A, CB]`. -/
-def entry_AFA : REntry [Tok.OB, Tok.A, Tok.FE, Tok.A, Tok.CB] :=
+theorem entry_AFA : REntry [Tok.OB, Tok.A, Tok.FE, Tok.A, Tok.CB] :=
   entry_of_recbody [Tok.A, Tok.FE, Tok.A] body_AFA
 
 /-- DESCEND recovers the *multi-entry* interior `[A, FE, A]` from that entry — the recursion then
@@ -173,7 +173,7 @@ theorem descend_multi : RBody [Tok.A, Tok.FE, Tok.A] :=
   recbody_of_entry (interior := [Tok.A, Tok.FE, Tok.A]) entry_AFA rfl
 
 /-- ADVANCE again: extend the nested entry into a still-larger body `[OB,A,FE,A,CB] ++ FE :: [A]`. -/
-def body_full : RBody [Tok.OB, Tok.A, Tok.FE, Tok.A, Tok.CB, Tok.FE, Tok.A] :=
+theorem body_full : RBody [Tok.OB, Tok.A, Tok.FE, Tok.A, Tok.CB, Tok.FE, Tok.A] :=
   recbody_cons [Tok.OB, Tok.A, Tok.FE, Tok.A, Tok.CB] [Tok.A] entry_AFA bodyA
 
 /-! ### Negative — an entry is never empty and never a bare separator (so the moves never misfire) -/
@@ -251,15 +251,15 @@ theorem mbody_single (p : List Tok) (h_p : MPair p) : MBody p :=
   MBody.single p (MPair.ne_nil h_p) h_p (MPair.head_key h_p (MPair.ne_nil h_p))
 
 /-- a one-scalar-key/one-scalar-value pair `[KY, A, VL, A]` = `KY :: ([A] ++ VL :: [A])`. -/
-def pairAA : MPair [Tok.KY, Tok.A, Tok.VL, Tok.A] :=
+theorem pairAA : MPair [Tok.KY, Tok.A, Tok.VL, Tok.A] :=
   MPair.mk [Tok.A] [Tok.A] REntry.scalar REntry.scalar
 
 /-- a single-pair body (the `single` leaf), now via the TERMINATE *move* `mbody_single`. -/
-def mbodyAA : MBody [Tok.KY, Tok.A, Tok.VL, Tok.A] :=
+theorem mbodyAA : MBody [Tok.KY, Tok.A, Tok.VL, Tok.A] :=
   mbody_single [Tok.KY, Tok.A, Tok.VL, Tok.A] pairAA
 
 /-- ADVANCE builds the two-pair body `[KY,A,VL,A] ++ FE :: [KY,A,VL,A]`. -/
-def mbody_two : MBody [Tok.KY, Tok.A, Tok.VL, Tok.A, Tok.FE, Tok.KY, Tok.A, Tok.VL, Tok.A] :=
+theorem mbody_two : MBody [Tok.KY, Tok.A, Tok.VL, Tok.A, Tok.FE, Tok.KY, Tok.A, Tok.VL, Tok.A] :=
   mbody_cons [Tok.KY, Tok.A, Tok.VL, Tok.A] [Tok.KY, Tok.A, Tok.VL, Tok.A] pairAA mbodyAA
 
 /-- **R270 — the base-case mirror is free, made concrete.**  The map structural twin of the seq
@@ -269,7 +269,7 @@ def mbody_two : MBody [Tok.KY, Tok.A, Tok.VL, Tok.A, Tok.FE, Tok.KY, Tok.A, Tok.
     `RBody`/`REntry`/`recbody_*`/`REntry.scalar`.  That sameness is R270's point — the terminate move
     carries no positional plumbing, so its mirror (and any recursion shape built atop it) transports
     with zero divergence; the two axes' recursions are the same shape with the leaf types swapped. -/
-def mbody_PFPFP :
+theorem mbody_PFPFP :
     MBody [Tok.KY, Tok.A, Tok.VL, Tok.A, Tok.FE, Tok.KY, Tok.A, Tok.VL, Tok.A,
            Tok.FE, Tok.KY, Tok.A, Tok.VL, Tok.A] :=
   mbody_cons [Tok.KY, Tok.A, Tok.VL, Tok.A]

@@ -1075,7 +1075,7 @@ theorem scanNextTokenIx_dispatchContent_maintains_NoOverwriteAtIx {input : Strin
   by_cases hg1 : (c == '&') = true
   · -- '&' anchor
     rw [if_pos hg1] at h
-    simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+    try simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
     cases hA : scanAnchorOrAliasIx s true with
     | error e => rw [hA] at h; cases h
     | ok v =>

@@ -1866,7 +1866,7 @@ theorem scanBlockEntryIx_preserves_PlainScalarsValidIx {input : String}
     by_cases ht : s.hasTabInPrecedingWhitespace = true
     · rw [if_pos ht] at h_ok; simp [Bind.bind, Except.bind] at h_ok
     · rw [if_neg ht] at h_ok
-      simp only [pure_bind] at h_ok
+      simp only [] at h_ok
       rw [if_pos hi] at h_ok
       simp only [Except.ok.injEq] at h_ok
       subst h_ok
@@ -1879,7 +1879,7 @@ theorem scanBlockEntryIx_preserves_PlainScalarsValidIx {input : String}
       exact emit_non_plain_preserves_PlainScalarsValidIx
         (pushSequenceIndentIx s s.cursor.pos.col) .blockEntry h_step1 (by trivial)
   · rw [if_neg hi] at h_ok
-    simp only [pure_bind] at h_ok
+    simp only [] at h_ok
     rw [if_neg hi] at h_ok
     simp only [Except.ok.injEq] at h_ok
     subst h_ok
@@ -1897,7 +1897,7 @@ theorem scanBlockEntryIx_preserves_FlowContextPSVIx {input : String}
     by_cases ht : s.hasTabInPrecedingWhitespace = true
     · rw [if_pos ht] at h_ok; simp [Bind.bind, Except.bind] at h_ok
     · rw [if_neg ht] at h_ok
-      simp only [pure_bind] at h_ok
+      simp only [] at h_ok
       rw [if_pos hi] at h_ok
       simp only [Except.ok.injEq] at h_ok
       subst h_ok
@@ -1911,7 +1911,7 @@ theorem scanBlockEntryIx_preserves_FlowContextPSVIx {input : String}
         (pushSequenceIndentIx s s.cursor.pos.col) .blockEntry h_step1
         (by trivial) (by decide) (by decide) (by decide) (by decide)
   · rw [if_neg hi] at h_ok
-    simp only [pure_bind] at h_ok
+    simp only [] at h_ok
     rw [if_neg hi] at h_ok
     simp only [Except.ok.injEq] at h_ok
     subst h_ok
@@ -1930,7 +1930,7 @@ theorem scanBlockEntryIx_preserves_FlowNestingInvIx {input : String}
     by_cases ht : s.hasTabInPrecedingWhitespace = true
     · rw [if_pos ht] at h_ok; simp [Bind.bind, Except.bind] at h_ok
     · rw [if_neg ht] at h_ok
-      simp only [pure_bind] at h_ok
+      simp only [] at h_ok
       rw [if_pos hi] at h_ok
       simp only [Except.ok.injEq] at h_ok
       subst h_ok
@@ -1942,7 +1942,7 @@ theorem scanBlockEntryIx_preserves_FlowNestingInvIx {input : String}
       unfold FlowNestingInvIx at h_step2 ⊢
       simpa using h_step2
   · rw [if_neg hi] at h_ok
-    simp only [pure_bind] at h_ok
+    simp only [] at h_ok
     rw [if_neg hi] at h_ok
     simp only [Except.ok.injEq] at h_ok
     subst h_ok
@@ -1970,7 +1970,7 @@ theorem scanKeyIx_preserves_PlainScalarsValidIx {input : String}
       pushMappingIndentIx_inFlow] at h_ok
     split at h_ok
     · simp [Bind.bind, Except.bind] at h_ok
-    · simp only [pure_bind, Except.ok.injEq] at h_ok
+    · simp only [Except.ok.injEq] at h_ok
       subst h_ok
       show PlainScalarsValidIx
         { ((pushMappingIndentIx s s.cursor.pos.col).emit .key).advance with .. }.tokens
@@ -1980,7 +1980,7 @@ theorem scanKeyIx_preserves_PlainScalarsValidIx {input : String}
       exact emit_non_plain_preserves_PlainScalarsValidIx
         (pushMappingIndentIx s s.cursor.pos.col) .key h_step1 (by trivial)
   · simp only [if_neg hi, advance_inFlow, emit_inFlow] at h_ok
-    simp only [pure_bind, Except.ok.injEq] at h_ok
+    simp only [Except.ok.injEq] at h_ok
     subst h_ok
     show PlainScalarsValidIx { (s.emit .key).advance with .. }.tokens
     simp only [advance_tokens]
@@ -1996,7 +1996,7 @@ theorem scanKeyIx_preserves_FlowContextPSVIx {input : String}
       pushMappingIndentIx_inFlow] at h_ok
     split at h_ok
     · simp [Bind.bind, Except.bind] at h_ok
-    · simp only [pure_bind, Except.ok.injEq] at h_ok
+    · simp only [Except.ok.injEq] at h_ok
       subst h_ok
       show FlowContextPSVIx
         { ((pushMappingIndentIx s s.cursor.pos.col).emit .key).advance with .. }.tokens
@@ -2007,7 +2007,7 @@ theorem scanKeyIx_preserves_FlowContextPSVIx {input : String}
         (pushMappingIndentIx s s.cursor.pos.col) .key h_step1
         (by trivial) (by decide) (by decide) (by decide) (by decide)
   · simp only [if_neg hi, advance_inFlow, emit_inFlow] at h_ok
-    simp only [pure_bind, Except.ok.injEq] at h_ok
+    simp only [Except.ok.injEq] at h_ok
     subst h_ok
     show FlowContextPSVIx { (s.emit .key).advance with .. }.tokens
     simp only [advance_tokens]
@@ -2024,7 +2024,7 @@ theorem scanKeyIx_preserves_FlowNestingInvIx {input : String}
       pushMappingIndentIx_inFlow] at h_ok
     split at h_ok
     · simp [Bind.bind, Except.bind] at h_ok
-    · simp only [pure_bind, Except.ok.injEq] at h_ok
+    · simp only [Except.ok.injEq] at h_ok
       subst h_ok
       have h_step1 := pushMappingIndentIx_preserves_FlowNestingInvIx
         s s.cursor.pos.col h_fni
@@ -2034,7 +2034,7 @@ theorem scanKeyIx_preserves_FlowNestingInvIx {input : String}
       unfold FlowNestingInvIx at h_step2 ⊢
       simpa using h_step2
   · simp only [if_neg hi, advance_inFlow, emit_inFlow] at h_ok
-    simp only [pure_bind, Except.ok.injEq] at h_ok
+    simp only [Except.ok.injEq] at h_ok
     subst h_ok
     have h_step1 := emit_non_flow_preserves_FlowNestingInvIx s .key h_fni
       (by decide) (by decide) (by decide) (by decide)
@@ -3229,7 +3229,7 @@ theorem scanDocumentEndIx_preserves_PlainScalarsValidIx {input : String}
     (h_old : PlainScalarsValidIx s.tokens) :
     PlainScalarsValidIx s'.tokens := by
   unfold scanDocumentEndIx at h_de
-  simp only [bind, Except.bind, pure, Except.pure] at h_de
+  simp only [bind, Except.bind] at h_de
   split at h_de
   · simp at h_de
   · have h_base : PlainScalarsValidIx
@@ -3248,7 +3248,7 @@ theorem scanDocumentEndIx_preserves_FlowContextPSVIx {input : String}
     (h_old : FlowContextPSVIx s.tokens) :
     FlowContextPSVIx s'.tokens := by
   unfold scanDocumentEndIx at h_de
-  simp only [bind, Except.bind, pure, Except.pure] at h_de
+  simp only [bind, Except.bind] at h_de
   split at h_de
   · simp at h_de
   · have h_base : FlowContextPSVIx
@@ -3268,7 +3268,7 @@ theorem scanDocumentEndIx_preserves_FlowNestingInvIx {input : String}
     (h_fni : FlowNestingInvIx s) :
     FlowNestingInvIx s' := by
   unfold scanDocumentEndIx at h_de
-  simp only [bind, Except.bind, pure, Except.pure] at h_de
+  simp only [bind, Except.bind] at h_de
   split at h_de
   · simp at h_de
   · have h_base : FlowNestingInvIx
@@ -3300,7 +3300,7 @@ theorem scanYamlDirectiveIx_preserves_PlainScalarsValidIx {input : String}
     (h_old : PlainScalarsValidIx s.tokens) :
     PlainScalarsValidIx s'.tokens := by
   unfold scanYamlDirectiveIx at h_ok
-  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  simp only [bind, Except.bind] at h_ok
   split at h_ok
   · simp at h_ok
   · split at h_ok
@@ -3315,7 +3315,7 @@ theorem scanYamlDirectiveIx_preserves_FlowContextPSVIx {input : String}
     (h_old : FlowContextPSVIx s.tokens) :
     FlowContextPSVIx s'.tokens := by
   unfold scanYamlDirectiveIx at h_ok
-  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  simp only [bind, Except.bind] at h_ok
   split at h_ok
   · simp at h_ok
   · split at h_ok
@@ -3330,7 +3330,7 @@ theorem scanYamlDirectiveIx_preserves_FlowNestingInvIx {input : String}
     (h_fni : FlowNestingInvIx s) :
     FlowNestingInvIx s' := by
   unfold scanYamlDirectiveIx at h_ok
-  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  simp only [bind, Except.bind] at h_ok
   split at h_ok
   · simp at h_ok
   · split at h_ok
@@ -3762,7 +3762,7 @@ theorem scanNextTokenIx_dispatchContent_preserves_PlainScalarsValidIx
   unfold scanNextTokenIx_dispatchContent at h_ok
   by_cases hg1 : (c == '&') = true
   · rw [if_pos hg1] at h_ok
-    simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h_ok
+    try simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h_ok
     cases hA : scanAnchorOrAliasIx s true with
     | error e => rw [hA] at h_ok; cases h_ok
     | ok v =>
@@ -3873,7 +3873,7 @@ theorem scanNextTokenIx_dispatchContent_preserves_FlowContextPSVIx
   unfold scanNextTokenIx_dispatchContent at h_ok
   by_cases hg1 : (c == '&') = true
   · rw [if_pos hg1] at h_ok
-    simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h_ok
+    try simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h_ok
     cases hA : scanAnchorOrAliasIx s true with
     | error e => rw [hA] at h_ok; cases h_ok
     | ok v =>
@@ -3985,7 +3985,7 @@ theorem scanNextTokenIx_dispatchContent_preserves_FlowNestingInvIx
   unfold scanNextTokenIx_dispatchContent at h_ok
   by_cases hg1 : (c == '&') = true
   · rw [if_pos hg1] at h_ok
-    simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h_ok
+    try simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h_ok
     cases hA : scanAnchorOrAliasIx s true with
     | error e => rw [hA] at h_ok; cases h_ok
     | ok v =>
@@ -4476,7 +4476,7 @@ theorem scanDocumentEndIx_clears_simpleKey {input : String}
     (s s' : ScannerStateIx input) (h : scanDocumentEndIx s = .ok s') :
     s'.simpleKey.possible = false := by
   unfold scanDocumentEndIx at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at h; subst h; rfl)
@@ -4485,7 +4485,7 @@ theorem scanDocumentEndIx_preserves_simpleKeyStack {input : String}
     (s s' : ScannerStateIx input) (h : scanDocumentEndIx s = .ok s') :
     s'.simpleKeyStack = s.simpleKeyStack := by
   unfold scanDocumentEndIx at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at h; subst h)
@@ -4500,7 +4500,7 @@ theorem scanYamlDirectiveIx_preserves_simpleKey {input : String}
     (h : scanYamlDirectiveIx s cAfterWS startPos hStart = .ok s') :
     s'.simpleKey = s.simpleKey := by
   unfold scanYamlDirectiveIx at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at h; subst h; rfl)
@@ -4512,7 +4512,7 @@ theorem scanYamlDirectiveIx_preserves_simpleKeyStack {input : String}
     (h : scanYamlDirectiveIx s cAfterWS startPos hStart = .ok s') :
     s'.simpleKeyStack = s.simpleKeyStack := by
   unfold scanYamlDirectiveIx at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at h; subst h; rfl)
@@ -4565,7 +4565,7 @@ theorem scanBlockEntryIx_preserves_simpleKey {input : String}
     (s s' : ScannerStateIx input) (h : scanBlockEntryIx s = .ok s') :
     s'.simpleKey = s.simpleKey := by
   unfold scanBlockEntryIx at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at h; subst h)
@@ -4578,7 +4578,7 @@ theorem scanBlockEntryIx_preserves_simpleKeyStack {input : String}
     (s s' : ScannerStateIx input) (h : scanBlockEntryIx s = .ok s') :
     s'.simpleKeyStack = s.simpleKeyStack := by
   unfold scanBlockEntryIx at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at h; subst h)
@@ -4591,7 +4591,7 @@ theorem scanKeyIx_clears_simpleKey {input : String}
     (s s' : ScannerStateIx input) (h : scanKeyIx s = .ok s') :
     s'.simpleKey.possible = false := by
   unfold scanKeyIx at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at h; subst h; rfl)
@@ -4600,7 +4600,7 @@ theorem scanKeyIx_preserves_simpleKeyStack {input : String}
     (s s' : ScannerStateIx input) (h : scanKeyIx s = .ok s') :
     s'.simpleKeyStack = s.simpleKeyStack := by
   unfold scanKeyIx at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at h; subst h)
@@ -4787,7 +4787,7 @@ theorem scanFlowEntryIx_preserves_simpleKey {input : String}
     (s s' : ScannerStateIx input) (h : scanFlowEntryIx s = .ok s') :
     s'.simpleKey = s.simpleKey := by
   unfold scanFlowEntryIx at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at h; subst h)
@@ -4797,7 +4797,7 @@ theorem scanFlowEntryIx_preserves_simpleKeyStack {input : String}
     (s s' : ScannerStateIx input) (h : scanFlowEntryIx s = .ok s') :
     s'.simpleKeyStack = s.simpleKeyStack := by
   unfold scanFlowEntryIx at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at h; subst h)
@@ -4923,7 +4923,7 @@ theorem scanBlockEntryIx_preserves_prefix {input : String}
     · rw [if_pos ht] at h_ok
       simp [Bind.bind, Except.bind] at h_ok
     · rw [if_neg ht] at h_ok
-      simp only [pure_bind] at h_ok
+      simp only [] at h_ok
       rw [if_pos hi] at h_ok
       simp only [Except.ok.injEq] at h_ok
       subst h_ok
@@ -4935,7 +4935,7 @@ theorem scanBlockEntryIx_preserves_prefix {input : String}
               YamlToken.blockEntry i h_i_lt).trans
             (pushSequenceIndentIx_preserves_prefix s s.cursor.pos.col i h_bound)
   · rw [if_neg hi] at h_ok
-    simp only [pure_bind] at h_ok
+    simp only [] at h_ok
     rw [if_neg hi] at h_ok
     simp only [Except.ok.injEq] at h_ok
     subst h_ok
@@ -4955,7 +4955,7 @@ theorem scanKeyIx_preserves_prefix {input : String}
       pushMappingIndentIx_inFlow] at h_ok
     split at h_ok
     · simp [Bind.bind, Except.bind] at h_ok
-    · simp only [pure_bind, Except.ok.injEq] at h_ok
+    · simp only [Except.ok.injEq] at h_ok
       subst h_ok
       show ((pushMappingIndentIx s s.cursor.pos.col).emit YamlToken.key).tokens[i]'_ =
         s.tokens[i]'h_bound
@@ -4965,7 +4965,7 @@ theorem scanKeyIx_preserves_prefix {input : String}
               YamlToken.key i h_i_lt).trans
             (pushMappingIndentIx_preserves_prefix s s.cursor.pos.col i h_bound)
   · simp only [if_neg hi, advance_inFlow, emit_inFlow] at h_ok
-    simp only [pure_bind, Except.ok.injEq] at h_ok
+    simp only [Except.ok.injEq] at h_ok
     subst h_ok
     show (s.emit YamlToken.key).tokens[i]'_ = s.tokens[i]'h_bound
     exact emit_preserves_tokens_at s YamlToken.key i h_bound
@@ -4991,7 +4991,7 @@ theorem scanYamlDirectiveIx_preserves_prefix {input : String}
   · rw [if_pos hd] at h_ok
     simp [Bind.bind, Except.bind] at h_ok
   · rw [if_neg hd] at h_ok
-    simp only [pure_bind] at h_ok
+    simp only [] at h_ok
     split at h_ok
     · simp only [Except.ok.injEq] at h_ok
       subst h_ok
@@ -5063,7 +5063,7 @@ theorem scanDocumentEndIx_preserves_prefix {input : String}
   · rw [if_pos hd] at h_ok
     simp [Bind.bind, Except.bind] at h_ok
   · rw [if_neg hd] at h_ok
-    simp only [pure_bind] at h_ok
+    try simp only [] at h_ok
     -- The post-emit state's `.tokens` is `((unwindIndentsIx s (-1)).emit .documentEnd).tokens`
     -- regardless of the probe-match arm (probe only affects the unit early-return chain;
     -- the eventual `.ok s` carries the post-emit state).
@@ -5218,7 +5218,7 @@ theorem scanFlowEntryIx_preserves_prefix {input : String}
     s'.tokens[i]'(by have := scanFlowEntryIx_tokens_size_le h_ok; omega) =
     s.tokens[i]'h_bound := by
   unfold scanFlowEntryIx at h_ok
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h_ok
+  simp only [bind, Except.bind] at h_ok
   have h_emit := emit_preserves_tokens_at s YamlToken.flowEntry i h_bound
   repeat (any_goals (split at h_ok))
   all_goals (try contradiction)
@@ -5750,7 +5750,7 @@ theorem scanNextTokenIx_dispatchContent_preserves_AllKeysPlaceholderInvIx {input
   by_cases hg1 : (c == '&') = true
   · -- c == '&': anchor
     rw [if_pos hg1] at h_ok
-    simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h_ok
+    try simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h_ok
     cases hA : scanAnchorOrAliasIx s true with
     | error e => rw [hA] at h_ok; cases h_ok
     | ok v =>

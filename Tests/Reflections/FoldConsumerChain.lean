@@ -59,14 +59,14 @@ def Target (toks : List Tok) : Prop :=
 
 /-- **Joint A — universal packaging** (toy of `flowSubrangesOk_of_locators`, R243): the per-window
     locators *are* the universal target, field-for-field. -/
-def jPack (toks : List Tok)
+theorem jPack (toks : List Tok)
     (hLoc : ∀ lo hi, lo ≤ hi → hi < toks.length → toks[lo - 1]! = Tok.OB → Located toks lo hi) :
     Target toks := hLoc
 
 /-- **Joint B — boundary-anchoring** (toy of `seqLocator_of_window_recseqbody`, R255): recover
     `2 ≤ lo` from the frame token `toks[0] = SS` (since `SS ≠ OB`), threading the *bounded* producer
     into the *unbounded* locator. -/
-def jBound (toks : List Tok)
+theorem jBound (toks : List Tok)
     (hSS : toks[0]! = Tok.SS)
     (hProd : ∀ lo hi, 2 ≤ lo → lo ≤ hi → hi < toks.length →
         toks[lo - 1]! = Tok.OB → Producer toks lo hi) :
@@ -84,7 +84,7 @@ def jBound (toks : List Tok)
 /-- **The R257 fold**: compose the whole chain into one lemma keyed *only* on the producer `hProd`
     (and the in-scope frame fact `hSS`).  Every consumer step downstream of the producer is composed
     here once; the only owed obligation left in the signature is `hProd` — the producer's contract. -/
-def targetOfProducer (toks : List Tok)
+theorem targetOfProducer (toks : List Tok)
     (hSS : toks[0]! = Tok.SS)
     (hProd : ∀ lo hi, 2 ≤ lo → lo ≤ hi → hi < toks.length →
         toks[lo - 1]! = Tok.OB → Producer toks lo hi) :

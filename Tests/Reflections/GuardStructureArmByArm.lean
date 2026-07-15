@@ -35,7 +35,7 @@ theorem step_base (t off : Nat) (g : GuardBase t off) : Deliv t off :=
   ⟨g.f_lo, g.f_hi⟩
 
 -- A concrete satisfiable base window `off = 3` against target `t = 5`.
-def gBase : GuardBase 5 3 := ⟨by decide, by decide⟩
+theorem gBase : GuardBase 5 3 := ⟨by decide, by decide⟩
 
 #guard decide (Deliv 5 3)              -- the base deliverable holds at the base window
 #guard decide ((3 : Nat) ≤ 5)          -- f_lo at off = 3
@@ -54,7 +54,7 @@ structure GuardFull (t off : Nat) : Prop extends GuardBase t off where
 theorem step_base_via_full (t off : Nat) (g : GuardFull t off) : Deliv t off :=
   step_base t off g.toGuardBase
 
-def gFull : GuardFull 5 3 := ⟨gBase, by decide⟩
+theorem gFull : GuardFull 5 3 := ⟨gBase, by decide⟩
 
 #guard decide (Deliv 5 3)              -- still projects through GuardFull
 

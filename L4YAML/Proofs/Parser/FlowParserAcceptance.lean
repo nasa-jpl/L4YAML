@@ -39,7 +39,7 @@ token stream, supplied by the caller from the body-token characterization. -/
 theorem validateNodeProps_scalar (ps : ParseState) (prePropPos : Nat)
     (c : String) (s : ScalarStyle) (h_peek : ps.peek? = some (.scalar c s)) :
     validateNodeProps ps prePropPos {} = .ok () := by
-  simp [validateNodeProps, h_peek, bind, Except.bind, pure, Except.pure]
+  simp [validateNodeProps, h_peek, pure, Except.pure]
 
 /-- **Scalar base case** for flow-body parser acceptance.
 
@@ -75,7 +75,7 @@ theorem parseNode_scalar_flow (ps : ParseState) (m : Nat) (h_m : 0 < m)
           ?_, ?_, ?_, ?_⟩
   · -- The parseNode equation.
     unfold parseNode
-    simp only [h_peek, bind, Except.bind, pure, Except.pure, h_props, h_val, h_content]
+    simp only [h_peek, bind, Except.bind, h_props, h_val, h_content]
     -- Finalization leaves a scalar value unchanged.
     simp only [applyNodeFinalization]
   · rw [applyNodeFinalization_pos]; rfl
@@ -103,14 +103,14 @@ about how `parseNode` dispatches, shared by both inductions. -/
 theorem validateNodeProps_flowSeqStart (ps : ParseState) (prePropPos : Nat)
     (h_peek : ps.peek? = some .flowSequenceStart) :
     validateNodeProps ps prePropPos {} = .ok () := by
-  simp [validateNodeProps, h_peek, bind, Except.bind, pure, Except.pure]
+  simp [validateNodeProps, h_peek, pure, Except.pure]
 
 /-- `validateNodeProps` succeeds on an opening-flow-mapping peek with empty
     `NodeProperties` (same reasoning as `validateNodeProps_flowSeqStart`). -/
 theorem validateNodeProps_flowMapStart (ps : ParseState) (prePropPos : Nat)
     (h_peek : ps.peek? = some .flowMappingStart) :
     validateNodeProps ps prePropPos {} = .ok () := by
-  simp [validateNodeProps, h_peek, bind, Except.bind, pure, Except.pure]
+  simp [validateNodeProps, h_peek, pure, Except.pure]
 
 /-- **Flow-sequence recursive case** for node parsing.
 
@@ -133,7 +133,7 @@ theorem parseNode_flowSeqStart_of_parse (ps ps' : ParseState) (k : Nat) (v : Yam
   have h_content : ∀ b, parseNodeContent ps k {} b = .ok (v, ps') :=
     fun _ => by simp only [parseNodeContent, h_peek]; exact h_parse
   unfold parseNode
-  simp only [h_peek, bind, Except.bind, pure, Except.pure, h_props, h_val, h_content]
+  simp only [h_peek, bind, Except.bind, h_props, h_val, h_content]
 
 /-- **Flow-mapping recursive case** for node parsing (mirror of
     `parseNode_flowSeqStart_of_parse`).  Connects `parseNode` to
@@ -151,7 +151,7 @@ theorem parseNode_flowMapStart_of_parse (ps ps' : ParseState) (k : Nat) (v : Yam
   have h_content : ∀ b, parseNodeContent ps k {} b = .ok (v, ps') :=
     fun _ => by simp only [parseNodeContent, h_peek]; exact h_parse
   unfold parseNode
-  simp only [h_peek, bind, Except.bind, pure, Except.pure, h_props, h_val, h_content]
+  simp only [h_peek, bind, Except.bind, h_props, h_val, h_content]
 
 /-! ## §III  Structure → parser-state bridge (`.bridge.parsenode.brackets`, predicates half)
 

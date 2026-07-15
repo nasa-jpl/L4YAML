@@ -229,16 +229,16 @@ theorem dispatchContent_quote (s : ScannerState) (c : Char) (hc : c = '"')
   · -- dispatchStructural: '"' doesn't match %, -, .
     unfold scanNextToken_dispatchStructural
     simp [ScannerState.inFlow, h_notFlow, h_noDocStart, h_noDocEnd,
-          bind, Except.bind, pure, Except.pure]
+          pure, Except.pure]
   · -- checkBlockFlowIndent: currentIndent = -1 < 0, condition false
     unfold scanNextToken_checkBlockFlowIndent
     simp [ScannerState.inFlow, h_notFlow, h_indent]
   · -- dispatchFlowIndicators: '"' doesn't match [, ], {, }, ,
     unfold scanNextToken_dispatchFlowIndicators
-    simp [bind, Except.bind, pure, Except.pure]
+    simp [pure, Except.pure]
   · -- dispatchBlockIndicators: '"' doesn't match -, ?, :
     unfold scanNextToken_dispatchBlockIndicators
-    simp [bind, Except.bind, pure, Except.pure]
+    simp [pure, Except.pure]
 
 -- Transfer ScannerSurfCorr when only non-position fields change
 -- (tokens, simpleKey, flags, etc.)
@@ -700,8 +700,7 @@ theorem preprocess_preserves_flowLevel (s s1 : ScannerState) (c : Char)
     (h : scanNextToken_preprocess s = .ok (some (s1, c))) :
     s1.flowLevel = s.flowLevel := by
   unfold scanNextToken_preprocess at h
-  simp only [bind, ScannerCorrectness.ScanHelpers.bind_error_simp,
-    ScannerCorrectness.ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   split at h
   · contradiction
@@ -746,8 +745,7 @@ theorem dispatchStructural_maintains_SimpleKeyAboveFloor (s : ScannerState) (c :
     (n₀ fl₀ : Nat) (_h_n₀ : n₀ ≤ s.tokens.size) (h_inv : SimpleKeyAboveFloor s n₀ fl₀) :
     SimpleKeyAboveFloor s' n₀ fl₀ := by
   unfold scanNextToken_dispatchStructural at h
-  simp only [bind, ScannerCorrectness.ScanHelpers.bind_error_simp,
-    ScannerCorrectness.ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   repeat (any_goals (split at h))
   any_goals contradiction
@@ -774,8 +772,7 @@ theorem dispatchFlowIndicators_maintains_SimpleKeyAboveFloor (s : ScannerState) 
     (h_fl_post : s'.flowLevel ≥ fl₀) :
     SimpleKeyAboveFloor s' n₀ fl₀ := by
   unfold scanNextToken_dispatchFlowIndicators at h
-  simp only [bind, ScannerCorrectness.ScanHelpers.bind_error_simp,
-    ScannerCorrectness.ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   repeat (any_goals (split at h))
   any_goals contradiction
@@ -825,8 +822,7 @@ theorem dispatchBlockIndicators_maintains_SimpleKeyAboveFloor (s : ScannerState)
     (n₀ fl₀ : Nat) (_h_n₀ : n₀ ≤ s.tokens.size) (h_inv : SimpleKeyAboveFloor s n₀ fl₀) :
     SimpleKeyAboveFloor s' n₀ fl₀ := by
   unfold scanNextToken_dispatchBlockIndicators at h
-  simp only [bind, ScannerCorrectness.ScanHelpers.bind_ok_simp, pure, Pure.pure,
-    Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   repeat (any_goals (split at h))
   any_goals contradiction
@@ -892,12 +888,12 @@ theorem dispatchContent_maintains_SimpleKeyAboveFloor (s : ScannerState) (c : Ch
         all_goals (try (simp only [Except.ok.injEq] at h; subst h))
         all_goals (
           first
-    | (rename_i h_eq; exact SimpleKeyAboveFloor_of_cleared_preserved _ s n₀ fl₀
-        (ScannerCorrectness.scanBlockScalar_clears_simpleKey s _ h_eq)
-        (ScannerCorrectness.scanBlockScalar_preserves_simpleKeyStack s _ h_eq) h_inv)
-    | (rename_i h_eq; exact SimpleKeyAboveFloor_of_preserved _ s n₀ fl₀
-        (ScannerCorrectness.scanPlainScalar_preserves_simpleKey s _ h_eq)
-        (ScannerCorrectness.scanPlainScalar_preserves_simpleKeyStack s _ h_eq) h_inv)
+    | (exact SimpleKeyAboveFloor_of_cleared_preserved _ s n₀ fl₀
+        (ScannerCorrectness.scanBlockScalar_clears_simpleKey s _ h)
+        (ScannerCorrectness.scanBlockScalar_preserves_simpleKeyStack s _ h) h_inv)
+    | (exact SimpleKeyAboveFloor_of_preserved _ s n₀ fl₀
+        (ScannerCorrectness.scanPlainScalar_preserves_simpleKey s _ h)
+        (ScannerCorrectness.scanPlainScalar_preserves_simpleKeyStack s _ h) h_inv)
     | (rename_i h_eq_dq _;
        first
        | (have h_sk := ScannerCorrectness.scanDoubleQuoted_preserves_simpleKey s _ h_eq_dq
@@ -1402,8 +1398,7 @@ theorem preprocess_simpleKey_pointwise_inv (s s1 : ScannerState) (c : Char)
     m ≠ s1.simpleKey.tokenIndex ∧ m ≠ s1.simpleKey.tokenIndex + 1 := by
   intro h_poss
   unfold scanNextToken_preprocess at h
-  simp only [bind, ScannerCorrectness.ScanHelpers.bind_error_simp,
-    ScannerCorrectness.ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   split at h
   · contradiction
@@ -1473,8 +1468,7 @@ theorem dispatchStructural_maintains_NoOverwriteAt (s : ScannerState) (c : Char)
     (m : Nat) (_h_m : m < s.tokens.size) (h_inv : NoOverwriteAt s m) :
     NoOverwriteAt s' m := by
   unfold scanNextToken_dispatchStructural at h
-  simp only [bind, ScannerCorrectness.ScanHelpers.bind_error_simp,
-    ScannerCorrectness.ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   repeat (any_goals (split at h))
   any_goals contradiction
@@ -1503,8 +1497,7 @@ theorem dispatchFlowIndicators_maintains_NoOverwriteAt (s : ScannerState) (c : C
     (m : Nat) (_h_m : m < s.tokens.size) (h_inv : NoOverwriteAt s m) :
     NoOverwriteAt s' m := by
   unfold scanNextToken_dispatchFlowIndicators at h
-  simp only [bind, ScannerCorrectness.ScanHelpers.bind_error_simp,
-    ScannerCorrectness.ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   repeat (any_goals (split at h))
   any_goals contradiction
@@ -1537,8 +1530,7 @@ theorem dispatchBlockIndicators_maintains_NoOverwriteAt (s : ScannerState) (c : 
     (m : Nat) (_h_m : m < s.tokens.size) (h_inv : NoOverwriteAt s m) :
     NoOverwriteAt s' m := by
   unfold scanNextToken_dispatchBlockIndicators at h
-  simp only [bind, ScannerCorrectness.ScanHelpers.bind_ok_simp, pure, Pure.pure,
-    Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   repeat (any_goals (split at h))
   any_goals contradiction
@@ -1606,12 +1598,12 @@ theorem dispatchContent_maintains_NoOverwriteAt (s : ScannerState) (c : Char)
         all_goals (try (simp only [Except.ok.injEq] at h; subst h))
         all_goals (
           first
-    | (rename_i h_eq; exact NoOverwriteAt_of_cleared_preserved _ s m
-        (ScannerCorrectness.scanBlockScalar_clears_simpleKey s _ h_eq)
-        (ScannerCorrectness.scanBlockScalar_preserves_simpleKeyStack s _ h_eq) h_inv)
-    | (rename_i h_eq; exact NoOverwriteAt_of_preserved _ s m
-        (ScannerCorrectness.scanPlainScalar_preserves_simpleKey s _ h_eq)
-        (ScannerCorrectness.scanPlainScalar_preserves_simpleKeyStack s _ h_eq) h_inv)
+    | (exact NoOverwriteAt_of_cleared_preserved _ s m
+        (ScannerCorrectness.scanBlockScalar_clears_simpleKey s _ h)
+        (ScannerCorrectness.scanBlockScalar_preserves_simpleKeyStack s _ h) h_inv)
+    | (exact NoOverwriteAt_of_preserved _ s m
+        (ScannerCorrectness.scanPlainScalar_preserves_simpleKey s _ h)
+        (ScannerCorrectness.scanPlainScalar_preserves_simpleKeyStack s _ h) h_inv)
     | (rename_i h_eq_dq _;
        first
        | (have h_sk := ScannerCorrectness.scanDoubleQuoted_preserves_simpleKey s _ h_eq_dq
@@ -1810,8 +1802,7 @@ theorem dispatchBlockIndicators_preserves_position_specific (s : ScannerState) (
       omega) =
     s.tokens[m]'h_m := by
   unfold scanNextToken_dispatchBlockIndicators at h
-  simp only [bind, ScannerCorrectness.ScanHelpers.bind_ok_simp, pure, Pure.pure,
-    Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   repeat (any_goals (split at h))
   any_goals contradiction
@@ -2057,8 +2048,7 @@ theorem preprocess_simpleKey_pointwise_inv_flow (s s1 : ScannerState) (c : Char)
     m ≠ s1.simpleKey.tokenIndex + 1 := by
   intro h_poss
   unfold scanNextToken_preprocess at h
-  simp only [bind, ScannerCorrectness.ScanHelpers.bind_error_simp,
-    ScannerCorrectness.ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   split at h
   · contradiction
@@ -2125,8 +2115,7 @@ theorem dispatchStructural_maintains_FlowNoOverwriteAt (s : ScannerState) (c : C
     (m : Nat) (_h_m : m < s.tokens.size) (h_inv : FlowNoOverwriteAt s m) :
     FlowNoOverwriteAt s' m := by
   unfold scanNextToken_dispatchStructural at h
-  simp only [bind, ScannerCorrectness.ScanHelpers.bind_error_simp,
-    ScannerCorrectness.ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   repeat (any_goals (split at h))
   any_goals contradiction
@@ -2153,8 +2142,7 @@ theorem dispatchFlowIndicators_maintains_FlowNoOverwriteAt (s : ScannerState) (c
     (m : Nat) (_h_m : m < s.tokens.size) (h_inv : FlowNoOverwriteAt s m) :
     FlowNoOverwriteAt s' m := by
   unfold scanNextToken_dispatchFlowIndicators at h
-  simp only [bind, ScannerCorrectness.ScanHelpers.bind_error_simp,
-    ScannerCorrectness.ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   repeat (any_goals (split at h))
   any_goals contradiction
@@ -2187,8 +2175,7 @@ theorem dispatchBlockIndicators_maintains_FlowNoOverwriteAt (s : ScannerState) (
     (m : Nat) (_h_m : m < s.tokens.size) (h_inv : FlowNoOverwriteAt s m) :
     FlowNoOverwriteAt s' m := by
   unfold scanNextToken_dispatchBlockIndicators at h
-  simp only [bind, ScannerCorrectness.ScanHelpers.bind_ok_simp, pure, Pure.pure,
-    Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   repeat (any_goals (split at h))
   any_goals contradiction
@@ -2256,12 +2243,12 @@ theorem dispatchContent_maintains_FlowNoOverwriteAt (s : ScannerState) (c : Char
         all_goals (try (simp only [Except.ok.injEq] at h; subst h))
         all_goals (
           first
-    | (rename_i h_eq; exact FlowNoOverwriteAt_of_cleared_preserved _ s m
-        (ScannerCorrectness.scanBlockScalar_clears_simpleKey s _ h_eq)
-        (ScannerCorrectness.scanBlockScalar_preserves_simpleKeyStack s _ h_eq) h_inv)
-    | (rename_i h_eq; exact FlowNoOverwriteAt_of_preserved _ s m
-        (ScannerCorrectness.scanPlainScalar_preserves_simpleKey s _ h_eq)
-        (ScannerCorrectness.scanPlainScalar_preserves_simpleKeyStack s _ h_eq) h_inv)
+    | (exact FlowNoOverwriteAt_of_cleared_preserved _ s m
+        (ScannerCorrectness.scanBlockScalar_clears_simpleKey s _ h)
+        (ScannerCorrectness.scanBlockScalar_preserves_simpleKeyStack s _ h) h_inv)
+    | (exact FlowNoOverwriteAt_of_preserved _ s m
+        (ScannerCorrectness.scanPlainScalar_preserves_simpleKey s _ h)
+        (ScannerCorrectness.scanPlainScalar_preserves_simpleKeyStack s _ h) h_inv)
     | (rename_i h_eq_dq _;
        first
        | (have h_sk := ScannerCorrectness.scanDoubleQuoted_preserves_simpleKey s _ h_eq_dq
@@ -2469,8 +2456,7 @@ theorem dispatchBlockIndicators_preserves_position_specific_flow (s : ScannerSta
       omega) =
     s.tokens[m]'h_m := by
   unfold scanNextToken_dispatchBlockIndicators at h
-  simp only [bind, ScannerCorrectness.ScanHelpers.bind_ok_simp, pure, Pure.pure,
-    Except.pure] at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   repeat (any_goals (split at h))
   any_goals contradiction
@@ -2858,7 +2844,7 @@ theorem dispatchBlockIndicators_at_non_colon_preserves_positions (s : ScannerSta
     | false => rfl
     | true => exact absurd (eq_of_beq hcc) h_not_colon
   unfold scanNextToken_dispatchBlockIndicators at h
-  simp only [bind, ScannerCorrectness.ScanHelpers.bind_ok_simp, pure, Pure.pure,
+  simp only [bind, pure, Pure.pure,
     Except.pure, hcf, Bool.false_and] at h
   simp only [Except.bind] at h
   repeat (any_goals (split at h))

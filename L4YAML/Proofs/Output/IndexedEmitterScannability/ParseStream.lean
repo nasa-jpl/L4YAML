@@ -415,7 +415,7 @@ theorem parseStream_three_tokens_scalarIx {input : String} (content : String)
   have h_pd : parseDirectives ps1 = (#[], ps1) := parseDirectives_skipIx ps1 h_peek_not_dir
   have h_pds : prepareDocumentState ps1 = .ok (#[], ps1) := by
     unfold prepareDocumentState
-    simp only [bind, Except.bind, pure, Except.pure, h_pd, Array.filterMap_empty]
+    simp only [bind, Except.bind, h_pd, Array.filterMap_empty]
     have h_th : { ps1 with tagHandles := #[] } = ps1 := by
       simp [ps1, ParseStateIx.advance]
     rw [h_th, h_peek1]

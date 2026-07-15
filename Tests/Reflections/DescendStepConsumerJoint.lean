@@ -116,7 +116,7 @@ theorem flat_of_entry {e interior : List Tok} (h : RecEntry e)
 /-! ### Positive — the descend primitive returns the recursable `RecBody`; the joint keeps only `Flat` -/
 
 -- the nested located window `[OB, A, CB]` = `OB :: ([A] ++ [CB])`.
-def entry1 : RecEntry [Tok.OB, Tok.A, Tok.CB] :=
+theorem entry1 : RecEntry [Tok.OB, Tok.A, Tok.CB] :=
   RecEntry.nest [Tok.A] (RecBody.single _ RecEntry.scalar)
 
 /-- the descend primitive hands back the inner body `RecBody [A]` (the recursion's IH input). -/
@@ -134,7 +134,7 @@ theorem consume_one : Flat [Tok.A] := by
 /-! ### Positive — the descend primitive is recursion-enabling (descend two levels) -/
 
 -- a doubly-nested window `[OB, OB, A, CB, CB]` = `OB :: ([OB, A, CB] ++ [CB])`.
-def entry2 : RecEntry [Tok.OB, Tok.OB, Tok.A, Tok.CB, Tok.CB] :=
+theorem entry2 : RecEntry [Tok.OB, Tok.OB, Tok.A, Tok.CB, Tok.CB] :=
   RecEntry.nest [Tok.OB, Tok.A, Tok.CB] (RecBody.single _ entry1)
 
 /-- descend TWICE using only the primitive: outer window → `RecBody [OB,A,CB]` → (`.toEntry` then
@@ -230,7 +230,7 @@ theorem no_mapentry_scalar : ¬ MapEntry [Tok.A] := by
   intro h; cases h
 
 -- positive map witnesses (verbatim mirror of the seq witnesses; `{ }` = `[OB, CB]`).
-def mapEntry1 : MapEntry [Tok.OB, Tok.OB, Tok.CB, Tok.CB] :=
+theorem mapEntry1 : MapEntry [Tok.OB, Tok.OB, Tok.CB, Tok.CB] :=
   MapEntry.nest [Tok.OB, Tok.CB] (MapBody.single _ MapEntry.mapEmpty)
 
 /-- the map descend primitive hands back the inner body `MapBody [OB, CB]` (the recursion's IH input). -/
@@ -240,7 +240,7 @@ theorem descend_map_one : MapBody [Tok.OB, Tok.CB] := by
   · exact absurd h (by decide)
 
 -- a doubly-nested map window `{ { { } } }`.
-def mapEntry2 : MapEntry [Tok.OB, Tok.OB, Tok.OB, Tok.CB, Tok.CB, Tok.CB] :=
+theorem mapEntry2 : MapEntry [Tok.OB, Tok.OB, Tok.OB, Tok.CB, Tok.CB, Tok.CB] :=
   MapEntry.nest [Tok.OB, Tok.OB, Tok.CB, Tok.CB] (MapBody.single _ mapEntry1)
 
 /-- descend TWICE using only the primitive (mirror of `descend_twice`): the map descend step is

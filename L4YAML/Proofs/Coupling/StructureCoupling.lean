@@ -461,7 +461,7 @@ theorem scanDocumentEnd_corr (sc : ScannerState) (sp : SurfPos)
     (hok : scanDocumentEnd sc = .ok s') :
     ∃ sp', ScannerSurfCorr s' sp' := by
   unfold scanDocumentEnd at hok
-  simp only [bind, Except.bind, pure, Except.pure] at hok
+  simp only [bind, Except.bind] at hok
   split at hok
   · exact absurd hok (by simp) -- directiveWithoutDocument
   · obtain ⟨sp_uw, hcorr_uw⟩ := unwindIndents_corr sc sp hcorr (-1)
@@ -559,7 +559,7 @@ theorem scanYamlDirective_corr (sc : ScannerState)
     (hok : scanYamlDirective sc s_after_ws startPos = .ok s') :
     ∃ sp', ScannerSurfCorr s' sp' := by
   unfold scanYamlDirective at hok
-  simp only [bind, Except.bind, pure, Except.pure] at hok
+  simp only [bind, Except.bind] at hok
   split at hok
   · exact absurd hok (by simp) -- duplicateYamlDirective
   · obtain ⟨sp_major, hcorr_major⟩ :=
@@ -591,7 +591,7 @@ theorem scanTagDirective_corr (sc : ScannerState) (sp : SurfPos)
     (hok : scanTagDirective sc s_after_ws startPos = .ok s') :
     ∃ sp', ScannerSurfCorr s' sp' := by
   unfold scanTagDirective at hok
-  simp only [bind, Except.bind, pure, Except.pure] at hok
+  simp only [bind, Except.bind] at hok
   obtain ⟨sp_hdl, hcorr_hdl⟩ :=
     collectTagHandleDirectiveLoop_corr s_after_ws sp_ws hcorr_ws "" _
   obtain ⟨sp_ws2, _, hcorr_ws2⟩ :=
