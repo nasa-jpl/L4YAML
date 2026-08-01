@@ -55,7 +55,7 @@ open L4YAML L4YAML.CharPredicates L4YAML.Indexed
 
 /-! ## Layer E1 — escape sequence offset monotonicity -/
 
-theorem collectHexDigitsLoopIx_offset_monotonic {input : String} (c : IxCursor input)
+lemma collectHexDigitsLoopIx_offset_monotonic {input : String} (c : IxCursor input)
     (hex : String) (n : Nat) :
     c.pos.offset ≤ (collectHexDigitsLoopIx c hex n).2.pos.offset := by
   induction n generalizing c hex with
@@ -68,7 +68,7 @@ theorem collectHexDigitsLoopIx_offset_monotonic {input : String} (c : IxCursor i
       · exact Nat.le_refl _
     · exact Nat.le_refl _
 
-theorem parseHexEscapeIx_offset_monotonic {input : String} (c : IxCursor input)
+lemma parseHexEscapeIx_offset_monotonic {input : String} (c : IxCursor input)
     (n : Nat) {ch : Char} {c' : IxCursor input}
     (h : parseHexEscapeIx c n = some (ch, c')) :
     c.pos.offset ≤ c'.pos.offset := by
@@ -86,7 +86,7 @@ theorem parseHexEscapeIx_offset_monotonic {input : String} (c : IxCursor input)
     · contradiction
 
 /-- `processEscapeIx` is monotonic on the cursor offset when successful. -/
-theorem processEscapeIx_offset_monotonic {input : String} (c : IxCursor input)
+lemma processEscapeIx_offset_monotonic {input : String} (c : IxCursor input)
     {ch : Char} {c' : IxCursor input}
     (h : processEscapeIx c = some (ch, c')) :
     c.pos.offset ≤ c'.pos.offset := by
@@ -116,7 +116,7 @@ theorem processEscapeIx_offset_monotonic {input : String} (c : IxCursor input)
     `\\` was already consumed by the caller — `processEscapeIx` runs
     from *after* the backslash, and at minimum consumes the escape
     indicator character itself. -/
-theorem processEscapeIx_offset_lt {input : String} (c : IxCursor input)
+lemma processEscapeIx_offset_lt {input : String} (c : IxCursor input)
     {ch : Char} {c' : IxCursor input}
     (h : processEscapeIx c = some (ch, c')) :
     c.pos.offset < c'.pos.offset := by
@@ -183,7 +183,7 @@ strict (`<`) version for these: the strict bound on the entry-point
 `IxCursor.advance_offset_lt_of_hasMore` applied at the dispatch site,
 combined with `≤` on the helper. -/
 
-theorem skipBlankLinesLoopIx_offset_monotonic {input : String} (c : IxCursor input)
+lemma skipBlankLinesLoopIx_offset_monotonic {input : String} (c : IxCursor input)
     (emptyCount : Nat) (fuel : Nat) :
     c.pos.offset ≤ (skipBlankLinesLoopIx c emptyCount fuel).1.pos.offset := by
   induction fuel generalizing c emptyCount with
@@ -210,7 +210,7 @@ theorem skipBlankLinesLoopIx_offset_monotonic {input : String} (c : IxCursor inp
     · -- peek? = none: yields (c, _)
       exact Nat.le_refl _
 
-theorem foldQuotedNewlinesIx_offset_monotonic {input : String} (c : IxCursor input) :
+lemma foldQuotedNewlinesIx_offset_monotonic {input : String} (c : IxCursor input) :
     c.pos.offset ≤ (foldQuotedNewlinesIx c).2.pos.offset := by
   unfold foldQuotedNewlinesIx
   -- Both branches of the `if emptyCount > 0` use the same cursor:
@@ -234,7 +234,7 @@ theorem foldQuotedNewlinesIx_offset_monotonic {input : String} (c : IxCursor inp
   · exact hChain
   · exact hChain
 
-theorem handleBlockLineBreakIx_offset_monotonic {input : String} (c : IxCursor input)
+lemma handleBlockLineBreakIx_offset_monotonic {input : String} (c : IxCursor input)
     (contentIndent : Nat) {folded : String} {c' : IxCursor input}
     (h : handleBlockLineBreakIx c contentIndent = some (folded, c')) :
     c.pos.offset ≤ c'.pos.offset := by
@@ -287,7 +287,7 @@ We use the first pattern below (less re-naming).
 
 /-! ## Layer E2 — double-quoted offset monotonicity & strict progress -/
 
-theorem collectDoubleQuotedLoopIx_offset_monotonic {input : String} (c : IxCursor input)
+lemma collectDoubleQuotedLoopIx_offset_monotonic {input : String} (c : IxCursor input)
     (content : String) (fuel : Nat) {result : String × IxCursor input}
     (h : collectDoubleQuotedLoopIx c content fuel = some result) :
     c.pos.offset ≤ result.2.pos.offset := by
@@ -341,7 +341,7 @@ theorem collectDoubleQuotedLoopIx_offset_monotonic {input : String} (c : IxCurso
             have hRec : c.advance.pos.offset ≤ result.2.pos.offset := ih _ _ h
             exact Nat.le_trans (IxCursor.advance_offset_monotonic c) hRec
 
-theorem scanDoubleQuotedIx_offset_lt {input : String} (c : IxCursor input)
+lemma scanDoubleQuotedIx_offset_lt {input : String} (c : IxCursor input)
     {result : String × IxCursor input}
     (h : scanDoubleQuotedIx c = some result) :
     c.pos.offset < result.2.pos.offset := by
@@ -368,7 +368,7 @@ theorem scanDoubleQuotedIx_offset_lt {input : String} (c : IxCursor input)
 
 /-! ## Layer E3 — single-quoted offset monotonicity & strict progress -/
 
-theorem collectSingleQuotedLoopIx_offset_monotonic {input : String} (c : IxCursor input)
+lemma collectSingleQuotedLoopIx_offset_monotonic {input : String} (c : IxCursor input)
     (content : String) (fuel : Nat) {result : String × IxCursor input}
     (h : collectSingleQuotedLoopIx c content fuel = some result) :
     c.pos.offset ≤ result.2.pos.offset := by
@@ -410,7 +410,7 @@ theorem collectSingleQuotedLoopIx_offset_monotonic {input : String} (c : IxCurso
           have hRec : c.advance.pos.offset ≤ result.2.pos.offset := ih _ _ h
           exact Nat.le_trans (IxCursor.advance_offset_monotonic c) hRec
 
-theorem scanSingleQuotedIx_offset_lt {input : String} (c : IxCursor input)
+lemma scanSingleQuotedIx_offset_lt {input : String} (c : IxCursor input)
     {result : String × IxCursor input}
     (h : scanSingleQuotedIx c = some result) :
     c.pos.offset < result.2.pos.offset := by
@@ -444,7 +444,7 @@ folding via `foldQuotedNewlinesIx`; block continuation via
 `handleBlockLineBreakIx`) whose chained monotonicity reduces to
 the helper lemmas above. -/
 
-theorem collectPlainScalarLoopIx_offset_monotonic {input : String} (c : IxCursor input)
+lemma collectPlainScalarLoopIx_offset_monotonic {input : String} (c : IxCursor input)
     (content spaces : String) (inFlow : Bool) (contentIndent : Nat) (fuel : Nat) :
     c.pos.offset ≤
     (collectPlainScalarLoopIx c content spaces inFlow contentIndent fuel).2.pos.offset := by
@@ -485,7 +485,7 @@ theorem collectPlainScalarLoopIx_offset_monotonic {input : String} (c : IxCursor
       · exact Nat.le_refl _                                -- not plain-safe
       · exact Nat.le_trans (IxCursor.advance_offset_monotonic c) (ih _ _ _)  -- plain-safe content
 
-theorem scanPlainScalarIx_offset_monotonic {input : String} (c : IxCursor input)
+lemma scanPlainScalarIx_offset_monotonic {input : String} (c : IxCursor input)
     (inFlow : Bool) (contentIndent : Nat) :
     c.pos.offset ≤ (scanPlainScalarIx c inFlow contentIndent).2.pos.offset := by
   unfold scanPlainScalarIx
@@ -499,7 +499,7 @@ The block-scalar code path threads several helpers:
 monotonic on the cursor offset; the entry-point `scanBlockScalarIx`
 chains them together. -/
 
-theorem consumeExactSpacesIx_offset_monotonic {input : String} (c : IxCursor input)
+lemma consumeExactSpacesIx_offset_monotonic {input : String} (c : IxCursor input)
     (count : Nat) :
     c.pos.offset ≤ (consumeExactSpacesIx c count).2.pos.offset := by
   induction count generalizing c with
@@ -510,7 +510,7 @@ theorem consumeExactSpacesIx_offset_monotonic {input : String} (c : IxCursor inp
     · exact Nat.le_trans (IxCursor.advance_offset_monotonic c) (ih c.advance)
     · exact Nat.le_refl _
 
-theorem collectLineContentLoopIx_offset_monotonic {input : String} (c : IxCursor input)
+lemma collectLineContentLoopIx_offset_monotonic {input : String} (c : IxCursor input)
     (content : String) (fuel : Nat) :
     c.pos.offset ≤ (collectLineContentLoopIx c content fuel).2.pos.offset := by
   induction fuel generalizing c content with
@@ -523,7 +523,7 @@ theorem collectLineContentLoopIx_offset_monotonic {input : String} (c : IxCursor
       · exact Nat.le_trans (IxCursor.advance_offset_monotonic c) (ih _ _)
     · exact Nat.le_refl _
 
-theorem parseBlockHeaderLoopIx_offset_monotonic {input : String} (c : IxCursor input)
+lemma parseBlockHeaderLoopIx_offset_monotonic {input : String} (c : IxCursor input)
     (chomp : ChompStyle) (explicitOffset : Option Nat) (fuel : Nat) :
     c.pos.offset ≤
     (parseBlockHeaderLoopIx c chomp explicitOffset fuel).2.2.pos.offset := by
@@ -542,7 +542,7 @@ theorem parseBlockHeaderLoopIx_offset_monotonic {input : String} (c : IxCursor i
           · exact Nat.le_refl _
     · exact Nat.le_refl _                                    -- peek? = none
 
-theorem collectBlockScalarLoopIx_offset_monotonic {input : String} (c : IxCursor input)
+lemma collectBlockScalarLoopIx_offset_monotonic {input : String} (c : IxCursor input)
     (rawContent : String) (contentIndent : Nat) (fuel : Nat) :
     c.pos.offset ≤
     (collectBlockScalarLoopIx c rawContent contentIndent fuel).2.pos.offset := by
@@ -589,7 +589,7 @@ theorem collectBlockScalarLoopIx_offset_monotonic {input : String} (c : IxCursor
               exact Nat.le_trans hSp hLine
 
 /-- Helper: the post-header cursor is monotonic relative to `c`. -/
-theorem blockHeaderToBodyIx_offset_monotonic {input : String} (c : IxCursor input) :
+lemma blockHeaderToBodyIx_offset_monotonic {input : String} (c : IxCursor input) :
     c.pos.offset ≤ (blockHeaderToBodyIx c).pos.offset := by
   unfold blockHeaderToBodyIx
   have hAdv : c.pos.offset ≤ c.advance.pos.offset :=
@@ -635,7 +635,7 @@ theorem blockHeaderToBodyIx_offset_monotonic {input : String} (c : IxCursor inpu
   exact Nat.le_trans hAdv (Nat.le_trans hHdr (Nat.le_trans hSW
     (Nat.le_trans hComm hCLB)))
 
-theorem scanBlockScalarIx_offset_monotonic {input : String} (c : IxCursor input)
+lemma scanBlockScalarIx_offset_monotonic {input : String} (c : IxCursor input)
     (parentIndent : Nat) {result : String × ScalarStyle × IxCursor input}
     (h : scanBlockScalarIx c parentIndent = some result) :
     c.pos.offset ≤ result.2.2.pos.offset := by
@@ -681,7 +681,7 @@ Decomposed into four layers:
    (hexStringValue digits)` with the value-range guard
    `< 0x110000` already discharged. -/
 
-theorem hexDigitValue_lt_16 {ch : Char} (h : isHexDigitBool ch = true) :
+lemma hexDigitValue_lt_16 {ch : Char} (h : isHexDigitBool ch = true) :
     hexDigitValue ch < 16 := by
   -- Push hypotheses *and* goal to Nat in one simp pass.
   simp only [isHexDigitBool, Bool.or_eq_true, Bool.and_eq_true,
@@ -724,19 +724,19 @@ theorem hexDigitValue_lt_16 {ch : Char} (h : isHexDigitBool ch = true) :
       · intro hGe; rw [h61] at hGe; omega
       · intro hCond; have hLe := hCond.2; rw [h39] at hLe; omega
 
-@[simp] theorem hexStringValue_empty : hexStringValue "" = 0 := by
+@[simp] lemma hexStringValue_empty : hexStringValue "" = 0 := by
   unfold hexStringValue
   rw [String.foldl_eq_foldl_toList]
   rfl
 
-theorem hexStringValue_push (s : String) (ch : Char) :
+lemma hexStringValue_push (s : String) (ch : Char) :
     hexStringValue (s.push ch) = hexStringValue s * 16 + hexDigitValue ch := by
   unfold hexStringValue
   rw [String.foldl_eq_foldl_toList, String.toList_push, List.foldl_append,
       String.foldl_eq_foldl_toList]
   rfl
 
-theorem hexStringValue_lt_pow {s : String}
+lemma hexStringValue_lt_pow {s : String}
     (hAll : ∀ c ∈ s.toList, isHexDigitBool c = true) :
     hexStringValue s < 16 ^ s.length := by
   induction s using String.push_induction with
@@ -764,7 +764,7 @@ theorem hexStringValue_lt_pow {s : String}
     -- ≤ 16 ^ b.length * 16.
     omega
 
-theorem parseHexEscapeIx_decoded {input : String} (c : IxCursor input) (n : Nat)
+lemma parseHexEscapeIx_decoded {input : String} (c : IxCursor input) (n : Nat)
     {ch : Char} {c' : IxCursor input}
     (h : parseHexEscapeIx c n = some (ch, c')) :
     hexStringValue (collectHexDigitsLoopIx c "" n).1 < 0x110000
@@ -803,7 +803,7 @@ The proof is a four-way `split` per `fuel + 1` step:
    `minContentIndent ≤ result` for any `maxWSCol`, so it discharges
    directly. -/
 
-theorem autoDetectBlockScalarIndentLoopIx_ge_min
+lemma autoDetectBlockScalarIndentLoopIx_ge_min
     {input : String} (probe : IxCursor input)
     (maxWSCol minContentIndent fuel : Nat) :
     minContentIndent ≤
@@ -828,7 +828,7 @@ theorem autoDetectBlockScalarIndentLoopIx_ge_min
     · -- none — EOF: result = max maxWSCol minContentIndent
       split <;> omega
 
-theorem autoDetectBlockScalarIndentIx_ge_min
+lemma autoDetectBlockScalarIndentIx_ge_min
     {input : String} (c : IxCursor input) (minContentIndent : Nat) :
     minContentIndent ≤ autoDetectBlockScalarIndentIx c minContentIndent := by
   unfold autoDetectBlockScalarIndentIx
@@ -852,30 +852,30 @@ match their YAML 1.2.2 spec semantics. The fold step lives in §8.1.3
 *definitional* unfolds — they serve as spec-traceability anchors for the
 downstream multi-line consumers (Steps 5b.7 quoted, 5b.8 plain). -/
 
-theorem applyChomp_keep (raw : String) :
+lemma applyChomp_keep (raw : String) :
     applyChomp .keep raw = raw :=
   rfl
 
-theorem applyChomp_strip (raw : String) :
+lemma applyChomp_strip (raw : String) :
     applyChomp .strip raw = stripTrailingNewlines raw :=
   rfl
 
-theorem applyChomp_clip_of_endsWith {raw : String}
+lemma applyChomp_clip_of_endsWith {raw : String}
     (h : raw.endsWith (String.singleton lineFeedChar) = true) :
     applyChomp .clip raw =
       stripTrailingNewlines raw ++ String.singleton lineFeedChar := by
   simp [applyChomp, h]
 
-theorem applyChomp_clip_of_not_endsWith {raw : String}
+lemma applyChomp_clip_of_not_endsWith {raw : String}
     (h : raw.endsWith (String.singleton lineFeedChar) = false) :
     applyChomp .clip raw = stripTrailingNewlines raw := by
   simp [applyChomp, h]
 
-theorem foldBlockContentGo_nil (acc : String) (st : FoldState) (pending : Nat) :
+lemma foldBlockContentGo_nil (acc : String) (st : FoldState) (pending : Nat) :
     foldBlockContentGo [] acc st pending = acc :=
   rfl
 
-theorem foldBlockContent_empty :
+lemma foldBlockContent_empty :
     foldBlockContent "" = "" :=
   rfl
 
@@ -901,7 +901,7 @@ work in Layers E2/E3 above; the lemmas below pin the *delimiter*,
 *doubled-quote*, and *line-break-fold* branches — those are the ones
 downstream proofs will quote when reasoning about content equality. -/
 
-theorem foldQuotedNewlinesIx_of_blank_lines {input : String} (c : IxCursor input)
+lemma foldQuotedNewlinesIx_of_blank_lines {input : String} (c : IxCursor input)
     (h : (skipBlankLinesLoopIx (consumeLineBreak c) 0 input.utf8ByteSize).2 > 0) :
     foldQuotedNewlinesIx c =
       (String.ofList
@@ -913,7 +913,7 @@ theorem foldQuotedNewlinesIx_of_blank_lines {input : String} (c : IxCursor input
   unfold foldQuotedNewlinesIx
   simp [h]
 
-theorem foldQuotedNewlinesIx_of_single_break {input : String} (c : IxCursor input)
+lemma foldQuotedNewlinesIx_of_single_break {input : String} (c : IxCursor input)
     (h : (skipBlankLinesLoopIx (consumeLineBreak c) 0 input.utf8ByteSize).2 = 0) :
     foldQuotedNewlinesIx c =
       (String.singleton spaceChar,
@@ -922,12 +922,12 @@ theorem foldQuotedNewlinesIx_of_single_break {input : String} (c : IxCursor inpu
   unfold foldQuotedNewlinesIx
   simp [h]
 
-theorem collectDoubleQuotedLoopIx_zero {input : String}
+lemma collectDoubleQuotedLoopIx_zero {input : String}
     (c : IxCursor input) (content : String) :
     collectDoubleQuotedLoopIx c content 0 = none :=
   rfl
 
-theorem collectDoubleQuotedLoopIx_closing {input : String}
+lemma collectDoubleQuotedLoopIx_closing {input : String}
     (c : IxCursor input) (content : String) (fuel : Nat)
     {ch : Char} (hPeek : c.peek? = some ch)
     (hQuote : isDoubleQuoteBool ch = true) :
@@ -936,7 +936,7 @@ theorem collectDoubleQuotedLoopIx_closing {input : String}
   rw [hPeek]
   simp [hQuote]
 
-theorem collectDoubleQuotedLoopIx_linebreak {input : String}
+lemma collectDoubleQuotedLoopIx_linebreak {input : String}
     (c : IxCursor input) (content : String) (fuel : Nat)
     {ch : Char} (hPeek : c.peek? = some ch)
     (hNotQuote : isDoubleQuoteBool ch = false)
@@ -949,12 +949,12 @@ theorem collectDoubleQuotedLoopIx_linebreak {input : String}
   rw [hPeek]
   simp [hNotQuote, hNotEscape, hLineBreak]
 
-theorem collectSingleQuotedLoopIx_zero {input : String}
+lemma collectSingleQuotedLoopIx_zero {input : String}
     (c : IxCursor input) (content : String) :
     collectSingleQuotedLoopIx c content 0 = none :=
   rfl
 
-theorem collectSingleQuotedLoopIx_doubled {input : String}
+lemma collectSingleQuotedLoopIx_doubled {input : String}
     (c : IxCursor input) (content : String) (fuel : Nat)
     {ch : Char} (hPeek : c.peek? = some ch)
     (hQuote : isSingleQuoteBool ch = true)
@@ -967,7 +967,7 @@ theorem collectSingleQuotedLoopIx_doubled {input : String}
   rw [hPeek]
   simp [hQuote, hPeekAdv, hNext]
 
-theorem collectSingleQuotedLoopIx_closing_some {input : String}
+lemma collectSingleQuotedLoopIx_closing_some {input : String}
     (c : IxCursor input) (content : String) (fuel : Nat)
     {ch : Char} (hPeek : c.peek? = some ch)
     (hQuote : isSingleQuoteBool ch = true)
@@ -978,7 +978,7 @@ theorem collectSingleQuotedLoopIx_closing_some {input : String}
   rw [hPeek]
   simp [hQuote, hPeekAdv, hNext]
 
-theorem collectSingleQuotedLoopIx_closing_none {input : String}
+lemma collectSingleQuotedLoopIx_closing_none {input : String}
     (c : IxCursor input) (content : String) (fuel : Nat)
     {ch : Char} (hPeek : c.peek? = some ch)
     (hQuote : isSingleQuoteBool ch = true)
@@ -988,7 +988,7 @@ theorem collectSingleQuotedLoopIx_closing_none {input : String}
   rw [hPeek]
   simp [hQuote, hPeekAdv]
 
-theorem collectSingleQuotedLoopIx_linebreak {input : String}
+lemma collectSingleQuotedLoopIx_linebreak {input : String}
     (c : IxCursor input) (content : String) (fuel : Nat)
     {ch : Char} (hPeek : c.peek? = some ch)
     (hNotQuote : isSingleQuoteBool ch = false)
@@ -1024,13 +1024,13 @@ Proof shape mirrors Layer F.3 (Step 5b.7) — `rfl` for `_zero`,
 `conv => lhs; unfold …` for the five recursive branches whose RHS is
 another `collectPlainScalarLoopIx` call (Reflection 57). -/
 
-theorem collectPlainScalarLoopIx_zero {input : String} (c : IxCursor input)
+lemma collectPlainScalarLoopIx_zero {input : String} (c : IxCursor input)
     (content spaces : String) (inFlow : Bool) (contentIndent : Nat) :
     collectPlainScalarLoopIx c content spaces inFlow contentIndent 0 =
       (content ++ spaces, c) :=
   rfl
 
-theorem collectPlainScalarLoopIx_eof {input : String} (c : IxCursor input)
+lemma collectPlainScalarLoopIx_eof {input : String} (c : IxCursor input)
     (content spaces : String) (inFlow : Bool) (contentIndent : Nat) (fuel : Nat)
     (hPeek : c.peek? = none) :
     collectPlainScalarLoopIx c content spaces inFlow contentIndent (fuel + 1) =
@@ -1038,7 +1038,7 @@ theorem collectPlainScalarLoopIx_eof {input : String} (c : IxCursor input)
   unfold collectPlainScalarLoopIx
   rw [hPeek]
 
-theorem collectPlainScalarLoopIx_comment {input : String} (c : IxCursor input)
+lemma collectPlainScalarLoopIx_comment {input : String} (c : IxCursor input)
     (content spaces : String) (inFlow : Bool) (contentIndent : Nat) (fuel : Nat)
     {ch : Char} (hPeek : c.peek? = some ch)
     (hComment : isCommentBool ch = true)
@@ -1049,7 +1049,7 @@ theorem collectPlainScalarLoopIx_comment {input : String} (c : IxCursor input)
   rw [hPeek]
   simp [hComment, hSpaces]
 
-theorem collectPlainScalarLoopIx_colon_terminate {input : String} (c : IxCursor input)
+lemma collectPlainScalarLoopIx_colon_terminate {input : String} (c : IxCursor input)
     (content spaces : String) (inFlow : Bool) (contentIndent : Nat) (fuel : Nat)
     {ch : Char} (hPeek : c.peek? = some ch)
     (hNotComment : isCommentBool ch = false)
@@ -1061,7 +1061,7 @@ theorem collectPlainScalarLoopIx_colon_terminate {input : String} (c : IxCursor 
   rw [hPeek]
   simp [hNotComment, hMapVal, hColon]
 
-theorem collectPlainScalarLoopIx_colon_continue {input : String} (c : IxCursor input)
+lemma collectPlainScalarLoopIx_colon_continue {input : String} (c : IxCursor input)
     (content spaces : String) (inFlow : Bool) (contentIndent : Nat) (fuel : Nat)
     {ch : Char} (hPeek : c.peek? = some ch)
     (hNotComment : isCommentBool ch = false)
@@ -1074,7 +1074,7 @@ theorem collectPlainScalarLoopIx_colon_continue {input : String} (c : IxCursor i
   rw [hPeek]
   simp [hNotComment, hMapVal, hColon]
 
-theorem collectPlainScalarLoopIx_flow_indicator {input : String} (c : IxCursor input)
+lemma collectPlainScalarLoopIx_flow_indicator {input : String} (c : IxCursor input)
     (content spaces : String) (contentIndent : Nat) (fuel : Nat)
     {ch : Char} (hPeek : c.peek? = some ch)
     (hNotComment : isCommentBool ch = false)
@@ -1090,7 +1090,7 @@ theorem collectPlainScalarLoopIx_flow_indicator {input : String} (c : IxCursor i
     post-fold cursor does NOT peek `#` (continues into the next line).
     With the `#`-after-fold termination added in Phase 3 Step 6d.1e.11,
     this requires the precondition `cAfterFold.peek? ≠ some '#'`. -/
-theorem collectPlainScalarLoopIx_linebreak_flow_continue {input : String} (c : IxCursor input)
+lemma collectPlainScalarLoopIx_linebreak_flow_continue {input : String} (c : IxCursor input)
     (content spaces : String) (contentIndent : Nat) (fuel : Nat)
     {ch : Char} (hPeek : c.peek? = some ch)
     (hNotComment : isCommentBool ch = false)
@@ -1111,7 +1111,7 @@ theorem collectPlainScalarLoopIx_linebreak_flow_continue {input : String} (c : I
 
 /-- `_linebreak_flow_hash`: flow-context line break where the post-fold
     cursor peeks `#` — plain scalar terminates at the pre-fold cursor. -/
-theorem collectPlainScalarLoopIx_linebreak_flow_hash {input : String} (c : IxCursor input)
+lemma collectPlainScalarLoopIx_linebreak_flow_hash {input : String} (c : IxCursor input)
     (content spaces : String) (contentIndent : Nat) (fuel : Nat)
     {ch : Char} (hPeek : c.peek? = some ch)
     (hNotComment : isCommentBool ch = false)
@@ -1125,7 +1125,7 @@ theorem collectPlainScalarLoopIx_linebreak_flow_hash {input : String} (c : IxCur
   rw [hPeek]
   simp [hNotComment, hNotMapVal, hNotFlowInd, hLineBreak, hHash]
 
-theorem collectPlainScalarLoopIx_linebreak_block_none {input : String} (c : IxCursor input)
+lemma collectPlainScalarLoopIx_linebreak_block_none {input : String} (c : IxCursor input)
     (content spaces : String) (contentIndent : Nat) (fuel : Nat)
     {ch : Char} (hPeek : c.peek? = some ch)
     (hNotComment : isCommentBool ch = false)
@@ -1140,7 +1140,7 @@ theorem collectPlainScalarLoopIx_linebreak_block_none {input : String} (c : IxCu
 
 /-- `_linebreak_block_some_continue`: block-context line break where the
     post-fold cursor does NOT peek `#`. -/
-theorem collectPlainScalarLoopIx_linebreak_block_some_continue {input : String} (c : IxCursor input)
+lemma collectPlainScalarLoopIx_linebreak_block_some_continue {input : String} (c : IxCursor input)
     (content spaces : String) (contentIndent : Nat) (fuel : Nat)
     {ch : Char} (hPeek : c.peek? = some ch)
     (hNotComment : isCommentBool ch = false)
@@ -1162,7 +1162,7 @@ theorem collectPlainScalarLoopIx_linebreak_block_some_continue {input : String} 
 /-- `_linebreak_block_some_hash`: block-context line break where the
     post-fold cursor peeks `#` — plain scalar terminates at the pre-fold
     cursor. -/
-theorem collectPlainScalarLoopIx_linebreak_block_some_hash {input : String} (c : IxCursor input)
+lemma collectPlainScalarLoopIx_linebreak_block_some_hash {input : String} (c : IxCursor input)
     (content spaces : String) (contentIndent : Nat) (fuel : Nat)
     {ch : Char} (hPeek : c.peek? = some ch)
     (hNotComment : isCommentBool ch = false)
@@ -1177,7 +1177,7 @@ theorem collectPlainScalarLoopIx_linebreak_block_some_hash {input : String} (c :
   rw [hPeek]
   simp [hNotComment, hNotMapVal, hLineBreak, hHandle, hHash]
 
-theorem collectPlainScalarLoopIx_whitespace {input : String} (c : IxCursor input)
+lemma collectPlainScalarLoopIx_whitespace {input : String} (c : IxCursor input)
     (content spaces : String) (inFlow : Bool) (contentIndent : Nat) (fuel : Nat)
     {ch : Char} (hPeek : c.peek? = some ch)
     (hNotComment : isCommentBool ch = false)
@@ -1191,7 +1191,7 @@ theorem collectPlainScalarLoopIx_whitespace {input : String} (c : IxCursor input
   rw [hPeek]
   simp [hNotComment, hNotMapVal, hNotFlowInd, hNotLineBreak, hWhitespace]
 
-theorem collectPlainScalarLoopIx_not_plain_safe {input : String} (c : IxCursor input)
+lemma collectPlainScalarLoopIx_not_plain_safe {input : String} (c : IxCursor input)
     (content spaces : String) (inFlow : Bool) (contentIndent : Nat) (fuel : Nat)
     {ch : Char} (hPeek : c.peek? = some ch)
     (hNotComment : isCommentBool ch = false)
@@ -1206,7 +1206,7 @@ theorem collectPlainScalarLoopIx_not_plain_safe {input : String} (c : IxCursor i
   rw [hPeek]
   simp [hNotComment, hNotMapVal, hNotFlowInd, hNotLineBreak, hNotWhitespace, hNotPlainSafe]
 
-theorem collectPlainScalarLoopIx_content {input : String} (c : IxCursor input)
+lemma collectPlainScalarLoopIx_content {input : String} (c : IxCursor input)
     (content spaces : String) (inFlow : Bool) (contentIndent : Nat) (fuel : Nat)
     {ch : Char} (hPeek : c.peek? = some ch)
     (hNotComment : isCommentBool ch = false)
@@ -1226,7 +1226,7 @@ theorem collectPlainScalarLoopIx_content {input : String} (c : IxCursor input)
     `spaces.length = 0` (which makes the loop's `isComment ch &&
     spaces.length > 0` check fail). Used by the §B3.3 indexed
     port. -/
-theorem collectPlainScalarLoopIx_content_gen {input : String} (c : IxCursor input)
+lemma collectPlainScalarLoopIx_content_gen {input : String} (c : IxCursor input)
     (content spaces : String) (inFlow : Bool) (contentIndent : Nat) (fuel : Nat)
     {ch : Char} (hPeek : c.peek? = some ch)
     (hNotCommArm : (isCommentBool ch && decide (spaces.length > 0)) = false)
@@ -1292,7 +1292,7 @@ open L4YAML.Proofs.ScannerPlainContent
     `peekAt? 1` exists, is not blank, and (in flow context) is not a
     flow indicator. This is the indexed analog of legacy
     `terminates_none_colon_peekAt_nonblank`. -/
-theorem colonTerminatesPlain_false_iff {input : String} (c : IxCursor input)
+lemma colonTerminatesPlain_false_iff {input : String} (c : IxCursor input)
     (inFlow : Bool) (h : colonTerminatesPlain c inFlow = false) :
     ∃ n, c.peekAt? 1 = some n ∧ isBlankBool n = false ∧
       (inFlow && isFlowIndicatorBool n) = false := by
@@ -1307,7 +1307,7 @@ theorem colonTerminatesPlain_false_iff {input : String} (c : IxCursor input)
 /-- `handleBlockLineBreakIx` returns either `" "` or
     `replicate '\n'` when it succeeds. Indexed twin of legacy
     `handleBlockLineBreak_content_form`. -/
-theorem handleBlockLineBreakIx_content_form {input : String} (c : IxCursor input)
+lemma handleBlockLineBreakIx_content_form {input : String} (c : IxCursor input)
     (contentIndent : Nat) {folded : String} {c' : IxCursor input}
     (h : handleBlockLineBreakIx c contentIndent = some (folded, c')) :
     folded = " " ∨ (∃ n, n > 0 ∧ folded = String.ofList (List.replicate n '\n')) := by
@@ -1333,7 +1333,7 @@ theorem handleBlockLineBreakIx_content_form {input : String} (c : IxCursor input
 /-- `foldQuotedNewlinesIx` returns either `" "` or
     `replicate '\n'`. Indexed twin of legacy
     `foldQuotedNewlines_result_form`. -/
-theorem foldQuotedNewlinesIx_result_form {input : String} (c : IxCursor input) :
+lemma foldQuotedNewlinesIx_result_form {input : String} (c : IxCursor input) :
     (foldQuotedNewlinesIx c).1 = " " ∨
     (∃ n, n > 0 ∧ (foldQuotedNewlinesIx c).1 = String.ofList (List.replicate n '\n')) := by
   unfold foldQuotedNewlinesIx
@@ -1411,7 +1411,7 @@ structure PlainContentInvIx {input : String} (content : String) (spaces : String
       spaces = "" ∧ (∀ n, c.peek? = some n → ¬isBlankProp n)
 
 /-- The invariant holds trivially for empty content and empty spaces. -/
-theorem PlainContentInvIx.empty {input : String} (inFlow : Bool) (c : IxCursor input) :
+lemma PlainContentInvIx.empty {input : String} (inFlow : Bool) (c : IxCursor input) :
     PlainContentInvIx (input := input) "" "" inFlow c where
   content_noColonSpace := noColonSpaceProp_empty
   content_noSpaceHash := noSpaceHashProp_empty
@@ -1426,12 +1426,12 @@ def BoundaryHashIx {input : String} (content spaces : String) (c : IxCursor inpu
   content.toList.getLast? = some ' ' → spaces = "" → ∀ n, c.peek? = some n → n ≠ '#'
 
 /-- `BoundaryHashIx` holds trivially for empty content. -/
-theorem BoundaryHashIx.empty {input : String} (c : IxCursor input) :
+lemma BoundaryHashIx.empty {input : String} (c : IxCursor input) :
     BoundaryHashIx (input := input) "" "" c :=
   fun h => by simp [String.toList, List.getLast?] at h
 
 /-- Transfer `PlainContentInvIx` to a new cursor where `peek?` is non-blank. -/
-theorem PlainContentInvIx.transfer_nonblank_peek {input : String}
+lemma PlainContentInvIx.transfer_nonblank_peek {input : String}
     {content spaces : String} {inFlow : Bool} {c : IxCursor input}
     (inv : PlainContentInvIx content spaces inFlow c)
     (c' : IxCursor input) (ch : Char)
@@ -1448,7 +1448,7 @@ theorem PlainContentInvIx.transfer_nonblank_peek {input : String}
 /-- Build `PlainContentInvIx` for `content ++ fold` where `fold` is `" "`
     or replicate newlines. Used by both flow and block line-break
     recursion cases. Indexed twin of legacy `PlainContentInv.of_fold`. -/
-theorem PlainContentInvIx.of_fold {input : String}
+lemma PlainContentInvIx.of_fold {input : String}
     {content spaces : String} {inFlow : Bool} {c c' : IxCursor input}
     (inv : PlainContentInvIx content spaces inFlow c)
     (ch : Char) (hpeek : c.peek? = some ch) (hc_lb : isLineBreakProp ch)
@@ -1495,7 +1495,7 @@ in the invariant is safe: the `spaces_whitespace` field is vacuous
 on `""`, and `boundary_colon` (`content ends with ':' → spaces = ""
 ∧ ...`) is already `""` whenever its hypothesis fires. -/
 
-theorem PlainContentInvIx.drop_spaces {input : String}
+lemma PlainContentInvIx.drop_spaces {input : String}
     {content spaces : String} {inFlow : Bool} {c : IxCursor input}
     (inv : PlainContentInvIx content spaces inFlow c) :
     PlainContentInvIx content "" inFlow c where
@@ -1512,12 +1512,12 @@ the legacy `trimTrailingWS`'s `fun c => c == ' ' || c == '\t'`
 predicate. The lemmas below transfer content properties through the
 trim. -/
 
-theorem trimTrailingWSIx_eq (s : String) :
+lemma trimTrailingWSIx_eq (s : String) :
     trimTrailingWSIx s =
       String.ofList ((s.toList.reverse.dropWhile isWhiteSpaceBool).reverse) := by
   unfold trimTrailingWSIx; rfl
 
-theorem trimTrailingWSIx_noColonSpace (content : String)
+lemma trimTrailingWSIx_noColonSpace (content : String)
     (h : noColonSpaceProp content) :
     noColonSpaceProp (trimTrailingWSIx content) := by
   rw [trimTrailingWSIx_eq]
@@ -1526,7 +1526,7 @@ theorem trimTrailingWSIx_noColonSpace (content : String)
   exact L4YAML.Proofs.StringProperties.trim_preserves_noColonSpace
     isWhiteSpaceBool content.toList h'
 
-theorem trimTrailingWSIx_noSpaceHash (content : String)
+lemma trimTrailingWSIx_noSpaceHash (content : String)
     (h : noSpaceHashProp content) :
     noSpaceHashProp (trimTrailingWSIx content) := by
   rw [trimTrailingWSIx_eq]
@@ -1535,7 +1535,7 @@ theorem trimTrailingWSIx_noSpaceHash (content : String)
   exact L4YAML.Proofs.StringProperties.trim_preserves_noSpaceHash
     isWhiteSpaceBool content.toList h'
 
-theorem trimTrailingWSIx_noFlowIndicators (content : String)
+lemma trimTrailingWSIx_noFlowIndicators (content : String)
     (h : noFlowIndicatorsProp content) :
     noFlowIndicatorsProp (trimTrailingWSIx content) := by
   rw [trimTrailingWSIx_eq]
@@ -1546,7 +1546,7 @@ theorem trimTrailingWSIx_noFlowIndicators (content : String)
 
 /-- `trimTrailingWSIx` preserves `List.head?` when the result is nonempty.
     Indexed twin of legacy `trimTrailingWS_preserves_head`. -/
-theorem trimTrailingWSIx_preserves_head (content : String) (c : Char)
+lemma trimTrailingWSIx_preserves_head (content : String) (c : Char)
     (hne : (trimTrailingWSIx content).toList ≠ [])
     (hhead : content.toList.head? = some c) :
     (trimTrailingWSIx content).toList.head? = some c := by
@@ -1566,7 +1566,7 @@ theorem trimTrailingWSIx_preserves_head (content : String) (c : Char)
 
 /-- Helper: `List.dropWhile p` on `(xs ++ ys)` with all-`p` `xs`
     skips through `xs` and recurses on `ys`. -/
-theorem dropWhile_append_all (p : Char → Bool) (xs ys : List Char)
+lemma dropWhile_append_all (p : Char → Bool) (xs ys : List Char)
     (hxs : ∀ x ∈ xs, p x = true) :
     List.dropWhile p (xs ++ ys) = List.dropWhile p ys := by
   induction xs with
@@ -1580,7 +1580,7 @@ theorem dropWhile_append_all (p : Char → Bool) (xs ys : List Char)
 /-- `trimTrailingWSIx (a ++ b) = trimTrailingWSIx a` when `b` is all
     whitespace. Used to simplify the trim after the indexed loop's EOF
     case merges trailing `spaces` into the raw output. -/
-theorem trimTrailingWSIx_append_whitespace (a b : String)
+lemma trimTrailingWSIx_append_whitespace (a b : String)
     (hb : ∀ c ∈ b.toList, isWhiteSpaceProp c) :
     trimTrailingWSIx (a ++ b) = trimTrailingWSIx a := by
   unfold trimTrailingWSIx
@@ -1598,21 +1598,21 @@ theorem trimTrailingWSIx_append_whitespace (a b : String)
 The loop only appends to `content` (never shrinks it). Indexed twin of
 legacy `collectPlainScalarLoop_content_isPrefix`. -/
 
-theorem prefix_of_append_string (a b : String) :
+lemma prefix_of_append_string (a b : String) :
     a.toList <+: (a ++ b).toList := by
   rw [String.toList_append]; exact ⟨b.toList, rfl⟩
 
-theorem prefix_of_append_string_3 (a b c : String) :
+lemma prefix_of_append_string_3 (a b c : String) :
     a.toList <+: (a ++ b ++ c).toList := by
   rw [String.toList_append, String.toList_append]
   exact ⟨b.toList ++ c.toList, by rw [List.append_assoc]⟩
 
-theorem bool_eq_false_of_not_eq_true {b : Bool} (h : ¬ b = true) : b = false := by
+lemma bool_eq_false_of_not_eq_true {b : Bool} (h : ¬ b = true) : b = false := by
   cases b
   · rfl
   · exact absurd rfl h
 
-theorem collectPlainScalarLoopIx_content_isPrefix {input : String}
+lemma collectPlainScalarLoopIx_content_isPrefix {input : String}
     (c : IxCursor input) (content spaces : String) (inFlow : Bool)
     (contentIndent fuel : Nat) :
     content.toList <+:
@@ -1673,7 +1673,7 @@ legacy `collectPlainScalarLoop_preserves_contentInv` (§B3.3) but uses
 an existential decomposition because the indexed loop returns
 `String × IxCursor` (no separate `content`/`spaces` projection). -/
 
-theorem collectPlainScalarLoopIx_preserves_contentInv {input : String}
+lemma collectPlainScalarLoopIx_preserves_contentInv {input : String}
     (c : IxCursor input) (content spaces : String) (inFlow : Bool)
     (contentIndent fuel : Nat)
     (inv : PlainContentInvIx content spaces inFlow c)
@@ -1993,7 +1993,7 @@ the entry cursor's first char, the resulting raw content has the
 witness char at its head and satisfies `validPlainFirstProp`. Indexed
 twin of legacy `collectPlainScalarLoop_validFirst_and_head`. -/
 
-theorem collectPlainScalarLoopIx_validFirst_and_head {input : String}
+lemma collectPlainScalarLoopIx_validFirst_and_head {input : String}
     (c : IxCursor input) (inFlow : Bool) (contentIndent fuel : Nat)
     (c0 : Char) (hpeek : c.peek? = some c0)
     (hcs : canStartPlainScalarBool c0 (c.peekAt? 1) inFlow = true)
@@ -2327,7 +2327,7 @@ set_option maxHeartbeats 1600000 in
 /-- `scanPlainScalarIx` produces a non-empty raw content with
     `ScalarScannable` semantics for the trimmed result. The precondition
     is the same shape as the legacy `scanPlainScalar_content_valid`. -/
-theorem scanPlainScalarIx_content_valid {input : String} (c : IxCursor input)
+lemma scanPlainScalarIx_content_valid {input : String} (c : IxCursor input)
     (inFlow : Bool) (contentIndent : Nat)
     (h_canStart : ∃ ch, c.peek? = some ch ∧
         canStartPlainScalarBool ch (c.peekAt? 1) inFlow = true)

@@ -83,14 +83,14 @@ variable {input : String}
 
 /-- `scanDocumentStartIx`'s `tokens` field equals
     `(unwindIndentsIx s (-1)).emit YamlToken.documentStart`'s tokens. -/
-theorem scanDocumentStartIx_tokens_eq (s : ScannerStateIx input) :
+lemma scanDocumentStartIx_tokens_eq (s : ScannerStateIx input) :
     (scanDocumentStartIx s).tokens =
       ((unwindIndentsIx s (-1)).emit YamlToken.documentStart).tokens := rfl
 
 /-- `scanDocumentEndIx`'s `tokens` field equals
     `(unwindIndentsIx s (-1)).emit YamlToken.documentEnd`'s tokens
     on every successful branch. -/
-theorem scanDocumentEndIx_tokens_eq {s s' : ScannerStateIx input}
+lemma scanDocumentEndIx_tokens_eq {s s' : ScannerStateIx input}
     (h : scanDocumentEndIx s = .ok s') :
     s'.tokens = ((unwindIndentsIx s (-1)).emit YamlToken.documentEnd).tokens := by
   unfold scanDocumentEndIx at h
@@ -108,7 +108,7 @@ theorem scanDocumentEndIx_tokens_eq {s s' : ScannerStateIx input}
 
 /-- `scanFlowEntryIx`'s `tokens` field equals
     `(s.emit YamlToken.flowEntry)`'s tokens on every successful branch. -/
-theorem scanFlowEntryIx_tokens_eq {s s' : ScannerStateIx input}
+lemma scanFlowEntryIx_tokens_eq {s s' : ScannerStateIx input}
     (h : scanFlowEntryIx s = .ok s') :
     s'.tokens = (s.emit YamlToken.flowEntry).tokens := by
   unfold scanFlowEntryIx at h
@@ -126,7 +126,7 @@ unwinds indents (`unwindIndentsIx_tokens_size_le`), then emits
 `.documentStart` (non-placeholder). Indexed twin of legacy
 `scanDocumentStart_filtered_grows` (line 6075). -/
 
-theorem scanDocumentStart_filtered_growsIx (s : ScannerStateIx input) :
+lemma scanDocumentStart_filtered_growsIx (s : ScannerStateIx input) :
     let p := fun (t : IxToken input) => t.token != .placeholder
     ((scanDocumentStartIx s).tokens.tokens.filter p).size ≥
       (s.tokens.tokens.filter p).size + 1 := by
@@ -157,7 +157,7 @@ succeeds: same structure as `scanDocumentStartIx`, with the
 trailing `do`-block probe (excluded by `h`). Indexed twin of legacy
 `scanDocumentEnd_filtered_grows` (line 6092). -/
 
-theorem scanDocumentEnd_filtered_growsIx {s s' : ScannerStateIx input}
+lemma scanDocumentEnd_filtered_growsIx {s s' : ScannerStateIx input}
     (h : scanDocumentEndIx s = .ok s') :
     let p := fun (t : IxToken input) => t.token != .placeholder
     (s'.tokens.tokens.filter p).size ≥ (s.tokens.tokens.filter p).size + 1 := by
@@ -191,7 +191,7 @@ flattened to the form consumed by §5: the post-state strictly grows
 by 1 raw token, and the new token at index `s.tokens.size` is non-
 `.placeholder`. -/
 
-theorem scanYamlDirective_new_token_eqIx {s : ScannerStateIx input}
+lemma scanYamlDirective_new_token_eqIx {s : ScannerStateIx input}
     {cAfterWS : IxCursor input} {startPos : YamlPos}
     {hStart : startPos.offset ≤ cAfterWS.pos.offset} {s' : ScannerStateIx input}
     (h : scanYamlDirectiveIx s cAfterWS startPos hStart = .ok s') :
@@ -232,7 +232,7 @@ theorem scanYamlDirective_new_token_eqIx {s : ScannerStateIx input}
 `scanTagDirective_new_token_eq` (line 6184). Same flattened form
 as §3. -/
 
-theorem scanTagDirective_new_token_eqIx {s : ScannerStateIx input}
+lemma scanTagDirective_new_token_eqIx {s : ScannerStateIx input}
     {cAfterWS : IxCursor input} {startPos : YamlPos}
     {hStart : startPos.offset ≤ cAfterWS.pos.offset} {s' : ScannerStateIx input}
     (h : scanTagDirectiveIx s cAfterWS startPos hStart = .ok s') :
@@ -266,7 +266,7 @@ emits no token (tokens unchanged), so under `h_grew : s'.tokens.size
 which emit a non-`.placeholder` token by §3/§4. Indexed twin of legacy
 `scanDirective_filtered_grows` (line 6232). -/
 
-theorem scanDirective_filtered_growsIx {s s' : ScannerStateIx input}
+lemma scanDirective_filtered_growsIx {s s' : ScannerStateIx input}
     (h : scanDirectiveIx s = .ok s')
     (h_grew : s'.tokens.tokens.size > s.tokens.tokens.size) :
     (s'.tokens.tokens.filter (fun t => t.token != .placeholder)).size ≥
@@ -308,7 +308,7 @@ theorem scanDirective_filtered_growsIx {s s' : ScannerStateIx input}
 directive) each preserve filtered prefix. Indexed twin of legacy
 `dispatchStructural_filtered_mono` (line 6293). -/
 
-theorem dispatchStructural_filtered_monoIx {s s' : ScannerStateIx input} {c : Char}
+lemma dispatchStructural_filtered_monoIx {s s' : ScannerStateIx input} {c : Char}
     (h : scanNextTokenIx_dispatchStructural s c = .ok (some s')) :
     (s'.tokens.tokens.filter (fun t => t.token != .placeholder)).size ≥
     (s.tokens.tokens.filter (fun t => t.token != .placeholder)).size := by
@@ -338,7 +338,7 @@ emits exactly one non-`.placeholder` token. Indexed twin of legacy
 /-- Shared body for the 5 flow-indicator dispatch cases: given the
 post-state's `tokens` field equals `(s.emit tok).tokens` and `tok`
 is non-`.placeholder`, derive `≥ +1` filtered growth. -/
-theorem flowIndicator_filtered_grows_of_emit_eq
+lemma flowIndicator_filtered_grows_of_emit_eq
     (s s' : ScannerStateIx input) (tok : YamlToken)
     (h_eq : s'.tokens = (s.emit tok).tokens)
     (h_tok : tok ≠ YamlToken.placeholder)
@@ -363,7 +363,7 @@ theorem flowIndicator_filtered_grows_of_emit_eq
     simp only [h_arr, Array.getElem_push_eq, IxToken.mk'] at h_pl
     exact h_tok h_pl
 
-theorem dispatchFlowIndicators_filtered_growsIx {s s' : ScannerStateIx input} {c : Char}
+lemma dispatchFlowIndicators_filtered_growsIx {s s' : ScannerStateIx input} {c : Char}
     (h : scanNextTokenIx_dispatchFlowIndicators s c = .ok (some s')) :
     (s'.tokens.tokens.filter (fun t => t.token != .placeholder)).size ≥
     (s.tokens.tokens.filter (fun t => t.token != .placeholder)).size + 1 := by

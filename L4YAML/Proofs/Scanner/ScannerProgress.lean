@@ -61,7 +61,7 @@ inequality on offset when `offset < inputEnd`.
     This is the fundamental progress lemma. Every dispatch branch
     calls `advance` at least once on a state satisfying this precondition,
     yielding the strict inequality needed for fuel sufficiency. -/
-theorem advance_offset_lt (s : ScannerState)
+lemma advance_offset_lt (s : ScannerState)
     (hlt : s.offset < s.inputEnd) :
     s.offset < s.advance.offset := by
   unfold ScannerState.advance
@@ -75,7 +75,7 @@ theorem advance_offset_lt (s : ScannerState)
   · split <;> exact hprog
 
 /-- `advance` monotonically increases `offset` (non-strict; identity when at end). -/
-theorem advance_offset_ge (s : ScannerState) :
+lemma advance_offset_ge (s : ScannerState) :
     s.offset ≤ s.advance.offset := by
   by_cases hlt : s.offset < s.inputEnd
   · exact Nat.le_of_lt (advance_offset_lt s hlt)
@@ -89,70 +89,70 @@ Intermediate scanner operations that don't touch `offset`.
 -/
 
 /-- `emit` preserves `offset`. -/
-theorem emit_offset (s : ScannerState) (tok : YamlToken) :
+lemma emit_offset (s : ScannerState) (tok : YamlToken) :
     (s.emit tok).offset = s.offset := by
   rfl
 
 /-- `emit` preserves `inputEnd`. -/
-theorem emit_inputEnd (s : ScannerState) (tok : YamlToken) :
+lemma emit_inputEnd (s : ScannerState) (tok : YamlToken) :
     (s.emit tok).inputEnd = s.inputEnd := by
   rfl
 
 /-- `emit` preserves `input`. -/
-theorem emit_input (s : ScannerState) (tok : YamlToken) :
+lemma emit_input (s : ScannerState) (tok : YamlToken) :
     (s.emit tok).input = s.input := by
   rfl
 
 /-- `pushSequenceIndent` preserves `offset`. -/
-theorem pushSequenceIndent_offset (s : ScannerState) (col : Int) :
+lemma pushSequenceIndent_offset (s : ScannerState) (col : Int) :
     (pushSequenceIndent s col).offset = s.offset := by
   unfold pushSequenceIndent
   split <;> simp [ScannerState.emit]
 
 /-- `pushSequenceIndent` preserves `inputEnd`. -/
-theorem pushSequenceIndent_inputEnd (s : ScannerState) (col : Int) :
+lemma pushSequenceIndent_inputEnd (s : ScannerState) (col : Int) :
     (pushSequenceIndent s col).inputEnd = s.inputEnd := by
   unfold pushSequenceIndent
   split <;> simp [ScannerState.emit]
 
 /-- `pushSequenceIndent` preserves `input`. -/
-theorem pushSequenceIndent_input (s : ScannerState) (col : Int) :
+lemma pushSequenceIndent_input (s : ScannerState) (col : Int) :
     (pushSequenceIndent s col).input = s.input := by
   unfold pushSequenceIndent
   split <;> simp [ScannerState.emit]
 
 /-- `pushMappingIndent` preserves `offset`. -/
-theorem pushMappingIndent_offset (s : ScannerState) (col : Int) :
+lemma pushMappingIndent_offset (s : ScannerState) (col : Int) :
     (pushMappingIndent s col).offset = s.offset := by
   unfold pushMappingIndent
   split <;> simp [ScannerState.emit]
 
 /-- `pushMappingIndent` preserves `inputEnd`. -/
-theorem pushMappingIndent_inputEnd (s : ScannerState) (col : Int) :
+lemma pushMappingIndent_inputEnd (s : ScannerState) (col : Int) :
     (pushMappingIndent s col).inputEnd = s.inputEnd := by
   unfold pushMappingIndent
   split <;> simp [ScannerState.emit]
 
 /-- `pushMappingIndent` preserves `input`. -/
-theorem pushMappingIndent_input (s : ScannerState) (col : Int) :
+lemma pushMappingIndent_input (s : ScannerState) (col : Int) :
     (pushMappingIndent s col).input = s.input := by
   unfold pushMappingIndent
   split <;> simp [ScannerState.emit]
 
 /-- `saveSimpleKey` preserves `offset`. -/
-theorem saveSimpleKey_offset (s : ScannerState) :
+lemma saveSimpleKey_offset (s : ScannerState) :
     (saveSimpleKey s).offset = s.offset := by
   unfold saveSimpleKey
   split <;> (try split) <;> (try split) <;> rfl
 
 /-- `saveSimpleKey` preserves `inputEnd`. -/
-theorem saveSimpleKey_inputEnd (s : ScannerState) :
+lemma saveSimpleKey_inputEnd (s : ScannerState) :
     (saveSimpleKey s).inputEnd = s.inputEnd := by
   unfold saveSimpleKey
   split <;> (try split) <;> (try split) <;> rfl
 
 /-- `saveSimpleKey` preserves `input`. -/
-theorem saveSimpleKey_input (s : ScannerState) :
+lemma saveSimpleKey_input (s : ScannerState) :
     (saveSimpleKey s).input = s.input := by
   unfold saveSimpleKey
   split <;> (try split) <;> (try split) <;> rfl
@@ -165,7 +165,7 @@ directly from `advance_offset_lt`.
 -/
 
 /-- `scanFlowSequenceStart` strictly advances offset when `offset < inputEnd`. -/
-theorem scanFlowSequenceStart_offset_lt (s : ScannerState)
+lemma scanFlowSequenceStart_offset_lt (s : ScannerState)
     (hlt : s.offset < s.inputEnd) :
     s.offset < (scanFlowSequenceStart s).offset := by
   unfold scanFlowSequenceStart
@@ -181,7 +181,7 @@ theorem scanFlowSequenceStart_offset_lt (s : ScannerState)
   · omega
 
 /-- `scanFlowMappingStart` strictly advances offset when `offset < inputEnd`. -/
-theorem scanFlowMappingStart_offset_lt (s : ScannerState)
+lemma scanFlowMappingStart_offset_lt (s : ScannerState)
     (hlt : s.offset < s.inputEnd) :
     s.offset < (scanFlowMappingStart s).offset := by
   unfold scanFlowMappingStart
@@ -197,7 +197,7 @@ theorem scanFlowMappingStart_offset_lt (s : ScannerState)
   · omega
 
 /-- `scanFlowSequenceEnd` strictly advances offset when `offset < inputEnd`. -/
-theorem scanFlowSequenceEnd_offset_lt (s : ScannerState)
+lemma scanFlowSequenceEnd_offset_lt (s : ScannerState)
     (hlt : s.offset < s.inputEnd) :
     s.offset < (scanFlowSequenceEnd s).offset := by
   unfold scanFlowSequenceEnd
@@ -214,7 +214,7 @@ theorem scanFlowSequenceEnd_offset_lt (s : ScannerState)
   · omega
 
 /-- `scanFlowMappingEnd` strictly advances offset when `offset < inputEnd`. -/
-theorem scanFlowMappingEnd_offset_lt (s : ScannerState)
+lemma scanFlowMappingEnd_offset_lt (s : ScannerState)
     (hlt : s.offset < s.inputEnd) :
     s.offset < (scanFlowMappingEnd s).offset := by
   unfold scanFlowMappingEnd
@@ -240,7 +240,7 @@ on representative concrete states.
 -/
 
 /-- `scanFlowEntry` strictly advances offset when `offset < inputEnd`. -/
-theorem scanFlowEntry_offset_lt (s s' : ScannerState)
+lemma scanFlowEntry_offset_lt (s s' : ScannerState)
     (hlt : s.offset < s.inputEnd)
     (h : scanFlowEntry s = .ok s') :
     s.offset < s'.offset := by
@@ -266,21 +266,21 @@ verified on concrete states.
 -/
 
 /-- `advanceNLoop` preserves offset monotonically. -/
-theorem advanceNLoop_offset_ge (s : ScannerState) (n : Nat) :
+lemma advanceNLoop_offset_ge (s : ScannerState) (n : Nat) :
     s.offset ≤ (ScannerState.advanceNLoop s n).offset := by
   induction n generalizing s with
   | zero => unfold ScannerState.advanceNLoop; exact Nat.le_refl _
   | succ n ih => unfold ScannerState.advanceNLoop; exact Nat.le_trans (advance_offset_ge s) (ih _)
 
 /-- `advanceN (n+1)` strict progress when `offset < inputEnd`. -/
-theorem advanceN_succ_offset_lt (s : ScannerState) (n : Nat)
+lemma advanceN_succ_offset_lt (s : ScannerState) (n : Nat)
     (hlt : s.offset < s.inputEnd) :
     s.offset < (s.advanceN (n + 1)).offset := by
   unfold ScannerState.advanceN ScannerState.advanceNLoop
   exact Nat.lt_of_lt_of_le (advance_offset_lt s hlt) (advanceNLoop_offset_ge _ _)
 
 /-- Helper: `advance` on emitted state gives strict progress. -/
-theorem advance_emit_offset_lt (s : ScannerState) (tok : YamlToken)
+lemma advance_emit_offset_lt (s : ScannerState) (tok : YamlToken)
     (hlt : s.offset < s.inputEnd) :
     s.offset < (s.emit tok).advance.offset := by
   have h1 := advance_offset_lt (s.emit tok) (by rw [emit_offset, emit_inputEnd]; exact hlt)
@@ -288,7 +288,7 @@ theorem advance_emit_offset_lt (s : ScannerState) (tok : YamlToken)
 
 set_option maxHeartbeats 400000 in
 /-- `scanBlockEntry` strictly advances offset when `offset < inputEnd`. -/
-theorem scanBlockEntry_offset_lt (s s' : ScannerState)
+lemma scanBlockEntry_offset_lt (s s' : ScannerState)
     (hlt : s.offset < s.inputEnd)
     (h : scanBlockEntry s = .ok s') :
     s.offset < s'.offset := by
@@ -307,7 +307,7 @@ theorem scanBlockEntry_offset_lt (s s' : ScannerState)
 
 set_option maxHeartbeats 400000 in
 /-- `scanKey` strictly advances offset when `offset < inputEnd`. -/
-theorem scanKey_offset_lt (s s' : ScannerState)
+lemma scanKey_offset_lt (s s' : ScannerState)
     (hlt : s.offset < s.inputEnd)
     (h : scanKey s = .ok s') :
     s.offset < s'.offset := by

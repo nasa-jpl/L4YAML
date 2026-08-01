@@ -66,41 +66,41 @@ def add (a b : YamlPos) : YamlPos :=
     col    := a.col    + b.col }
 
 /-- **Item 7(a)** — left identity: `zero + p = p`. -/
-@[simp] theorem zero_add (p : YamlPos) : add zero p = p := by
+@[simp] lemma zero_add (p : YamlPos) : add zero p = p := by
   simp [add, zero]
 
 /-- **Item 7(b)** — right identity: `p + zero = p`. -/
-@[simp] theorem add_zero (p : YamlPos) : add p zero = p := by
+@[simp] lemma add_zero (p : YamlPos) : add p zero = p := by
   simp [add, zero]
 
 /-- **Item 7(c)** — associativity: `(a + b) + c = a + (b + c)`. -/
-theorem add_assoc (a b c : YamlPos) :
+lemma add_assoc (a b c : YamlPos) :
     add (add a b) c = add a (add b c) := by
   simp [add, Nat.add_assoc]
 
 /-- Componentwise commutativity (the underlying `Nat` add is
     commutative, so the `YamlPos` monoid is commutative). -/
-theorem add_comm (a b : YamlPos) : add a b = add b a := by
+lemma add_comm (a b : YamlPos) : add a b = add b a := by
   simp [add, Nat.add_comm]
 
 /-! ## Item 13 — Total order on `YamlPos` -/
 
 /-- **Reflexivity** of `≤` (delegates to `Nat`). -/
-theorem le_refl (p : YamlPos) : p ≤ p := Nat.le_refl _
+lemma le_refl (p : YamlPos) : p ≤ p := Nat.le_refl _
 
 /-- **Transitivity** of `≤` (delegates to `Nat`). -/
-theorem le_trans {a b c : YamlPos} (hab : a ≤ b) (hbc : b ≤ c) : a ≤ c :=
+lemma le_trans {a b c : YamlPos} (hab : a ≤ b) (hbc : b ≤ c) : a ≤ c :=
   Nat.le_trans hab hbc
 
 /-- **Antisymmetry** of `≤` on `offset`: equal offsets imply equal
     offsets (line/col may still differ — this is antisymmetry of the
     *order*, not equality of the values). -/
-theorem offset_antisymm {a b : YamlPos}
+lemma offset_antisymm {a b : YamlPos}
     (hab : a ≤ b) (hba : b ≤ a) : a.offset = b.offset :=
   Nat.le_antisymm hab hba
 
 /-- **Totality** of `≤` (delegates to `Nat`). -/
-theorem le_total (a b : YamlPos) : a ≤ b ∨ b ≤ a :=
+lemma le_total (a b : YamlPos) : a ≤ b ∨ b ≤ a :=
   Nat.le_total a.offset b.offset
 
 /-- **Decidability** of `≤`. -/
@@ -113,7 +113,7 @@ instance : DecidableRel (α := YamlPos) (· < ·) := fun a b =>
 
 /-- `<` ↔ `≤ ∧ ≠ on offsets` — the standard bridge between strict
     and non-strict order. -/
-theorem lt_iff_le_and_offset_ne {a b : YamlPos} :
+lemma lt_iff_le_and_offset_ne {a b : YamlPos} :
     a < b ↔ a ≤ b ∧ a.offset ≠ b.offset := by
   constructor
   · intro h
@@ -127,12 +127,12 @@ theorem lt_iff_le_and_offset_ne {a b : YamlPos} :
     adding the same `c` on the right preserves `≤`.
 -/
 
-theorem add_le_add_right {a b : YamlPos} (h : a ≤ b) (c : YamlPos) :
+lemma add_le_add_right {a b : YamlPos} (h : a ≤ b) (c : YamlPos) :
     add a c ≤ add b c := by
   show a.offset + c.offset ≤ b.offset + c.offset
   exact Nat.add_le_add_right h _
 
-theorem add_le_add_left {a b : YamlPos} (h : a ≤ b) (c : YamlPos) :
+lemma add_le_add_left {a b : YamlPos} (h : a ≤ b) (c : YamlPos) :
     add c a ≤ add c b := by
   show c.offset + a.offset ≤ c.offset + b.offset
   exact Nat.add_le_add_left h _

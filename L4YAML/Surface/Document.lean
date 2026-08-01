@@ -190,7 +190,7 @@ def InYamlLanguage (s : String) : Prop :=
 /-- The indent consumed by the scanner corresponds to `SIndent n` in
     the surface syntax. This is the simplest coupling theorem and
     serves as a template for more complex ones. -/
-theorem indent_coupling (n : Nat) (cs : List Char) (col : Nat) :
+lemma indent_coupling (n : Nat) (cs : List Char) (col : Nat) :
     cs.take n = List.replicate n ' ' →
     cs.length ≥ n →
     SIndent n ⟨cs, col⟩ ⟨cs.drop n, col + n⟩ := by

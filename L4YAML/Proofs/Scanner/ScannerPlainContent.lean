@@ -47,7 +47,7 @@ structure PlainContentInv (content : String) (spaces : String)
 
 /-- The invariant holds trivially for empty content and empty spaces
     (regardless of scanner state). -/
-theorem PlainContentInv.empty (inFlow : Bool) (s : ScannerState) :
+lemma PlainContentInv.empty (inFlow : Bool) (s : ScannerState) :
     PlainContentInv "" "" inFlow s where
   content_noColonSpace := noColonSpaceProp_empty
   content_noSpaceHash := noSpaceHashProp_empty
@@ -62,14 +62,14 @@ def BoundaryHash (content spaces : String) (s : ScannerState) : Prop :=
   content.toList.getLast? = some ' ' → spaces = "" → ∀ n, s.peek? = some n → n ≠ '#'
 
 /-- BoundaryHash holds trivially for empty content. -/
-theorem BoundaryHash.empty (_inFlow : Bool) (s : ScannerState) :
+lemma BoundaryHash.empty (_inFlow : Bool) (s : ScannerState) :
     BoundaryHash "" "" s :=
   fun h => by simp [String.toList, List.getLast?] at h
 
 /-! ## Scanner State Lemmas -/
 
 /-- `s.advance.peek?` equals `s.peekAt? 1` when the scanner has a current char. -/
-theorem advance_peek_eq_peekAt_one (s : ScannerState) (c : Char)
+lemma advance_peek_eq_peekAt_one (s : ScannerState) (c : Char)
     (h : s.peek? = some c) :
     s.advance.peek? = s.peekAt? 1 := by
   unfold ScannerState.peek? at h ⊢
@@ -85,7 +85,7 @@ theorem advance_peek_eq_peekAt_one (s : ScannerState) (c : Char)
 
 /-- When `_terminates?` returns `none` and `c = ':'`, the next char (`peekAt? 1`)
     is non-blank. This is the key fact for maintaining `boundary_colon`. -/
-theorem terminates_none_colon_peekAt_nonblank (s : ScannerState) (c : Char)
+lemma terminates_none_colon_peekAt_nonblank (s : ScannerState) (c : Char)
     (content spaces : String) (inFlow : Bool)
     (hterm : collectPlainScalar_terminates? c s content spaces inFlow = none)
     (hcolon : c = ':') :
@@ -103,28 +103,28 @@ theorem terminates_none_colon_peekAt_nonblank (s : ScannerState) (c : Char)
 /-! ## Content String Property Lemmas -/
 
 /-- `noColonSpaceProp` for a single space string. -/
-theorem noColonSpaceProp_space : noColonSpaceProp " " := by
+lemma noColonSpaceProp_space : noColonSpaceProp " " := by
   intro ⟨i, h1, _⟩
   have : " ".toList = [' '] := by native_decide
   rw [this] at h1
   cases i <;> simp at h1
 
 /-- `noSpaceHashProp` for a single space string. -/
-theorem noSpaceHashProp_space : noSpaceHashProp " " := by
+lemma noSpaceHashProp_space : noSpaceHashProp " " := by
   intro ⟨i, _, h2⟩
   have : " ".toList = [' '] := by native_decide
   rw [this] at h2
   cases i <;> simp at h2
 
 /-- `noFlowIndicatorsProp` for a single space string. -/
-theorem noFlowIndicatorsProp_space : noFlowIndicatorsProp " " := by
+lemma noFlowIndicatorsProp_space : noFlowIndicatorsProp " " := by
   intro c hc
   have : " ".toList = [' '] := by native_decide
   rw [this] at hc; simp at hc; subst hc
   intro h; simp [isFlowIndicatorProp] at h
 
 /-- Helper: elements of `List.replicate` are all the replicated element. -/
-theorem replicate_getElem?_char {a b : Char} {n i : Nat}
+lemma replicate_getElem?_char {a b : Char} {n i : Nat}
     (h : (List.replicate n a)[i]? = some b) : b = a := by
   rw [List.getElem?_replicate] at h
   split at h
@@ -132,21 +132,21 @@ theorem replicate_getElem?_char {a b : Char} {n i : Nat}
   · simp at h
 
 /-- `noColonSpaceProp` for strings of newlines only. -/
-theorem noColonSpaceProp_replicate_newline (n : Nat) :
+lemma noColonSpaceProp_replicate_newline (n : Nat) :
     noColonSpaceProp (String.ofList (List.replicate n '\n')) := by
   intro ⟨i, h1, _⟩
   simp only [String.toList_ofList] at h1
   exact absurd (replicate_getElem?_char h1) (by decide)
 
 /-- `noSpaceHashProp` for strings of newlines only. -/
-theorem noSpaceHashProp_replicate_newline (n : Nat) :
+lemma noSpaceHashProp_replicate_newline (n : Nat) :
     noSpaceHashProp (String.ofList (List.replicate n '\n')) := by
   intro ⟨i, h1, _⟩
   simp only [String.toList_ofList] at h1
   exact absurd (replicate_getElem?_char h1) (by decide)
 
 /-- `noFlowIndicatorsProp` for strings of newlines only. -/
-theorem noFlowIndicatorsProp_replicate_newline (n : Nat) :
+lemma noFlowIndicatorsProp_replicate_newline (n : Nat) :
     noFlowIndicatorsProp (String.ofList (List.replicate n '\n')) := by
   intro c hc
   simp only [String.toList_ofList] at hc
@@ -155,14 +155,14 @@ theorem noFlowIndicatorsProp_replicate_newline (n : Nat) :
   intro h; simp [isFlowIndicatorProp] at h
 
 /-- Last character of `content ++ " "` is `' '`. -/
-theorem getLast_append_space (content : String) :
+lemma getLast_append_space (content : String) :
     (content ++ " ").toList.getLast? = some ' ' := by
   have htl : " ".toList = [' '] := by native_decide
   rw [String.toList_append, htl]
   simp [List.getLast?_append]
 
 /-- Last character of `content ++ replicate n '\n'` is `'\n'` when `n > 0`. -/
-theorem getLast_append_replicate_newline (content : String) (n : Nat) (hn : n > 0) :
+lemma getLast_append_replicate_newline (content : String) (n : Nat) (hn : n > 0) :
     (content ++ String.ofList (List.replicate n '\n')).toList.getLast? = some '\n' := by
   rw [String.toList_append, String.toList_ofList]
   have hne : List.replicate n '\n' ≠ [] := by
@@ -172,10 +172,10 @@ theorem getLast_append_replicate_newline (content : String) (n : Nat) (hn : n > 
   congr 1; exact List.getLast_replicate hne
 
 /-- First character of `" "` is `' '`. -/
-theorem head_space : " ".toList.head? = some ' ' := by native_decide
+lemma head_space : " ".toList.head? = some ' ' := by native_decide
 
 /-- First character of `replicate n '\n'` is `'\n'` when `n > 0`. -/
-theorem head_replicate_newline (n : Nat) (hn : n > 0) :
+lemma head_replicate_newline (n : Nat) (hn : n > 0) :
     (String.ofList (List.replicate n '\n')).toList.head? = some '\n' := by
   simp only [String.toList_ofList]
   cases n with
@@ -185,12 +185,12 @@ theorem head_replicate_newline (n : Nat) (hn : n > 0) :
 /-! ## Main Preservation Theorem (B3.3) -/
 
 /-- Helper: `'#'` is not blank. -/
-theorem hash_not_blank : ¬isBlankProp '#' := by
+lemma hash_not_blank : ¬isBlankProp '#' := by
   simp [isBlankProp, isWhiteSpaceProp, isSpaceProp, isTabProp,
         isLineBreakProp, isLineFeedProp, isCarriageReturnProp]
 
 /-- When `_terminates?` returns `some result`, content, spaces, and state are unchanged. -/
-theorem terminates_preserves_all
+lemma terminates_preserves_all
     (c : Char) (s : ScannerState) (content spaces : String) (inFlow : Bool) (r : PlainScalarResult)
     (h : collectPlainScalar_terminates? c s content spaces inFlow = some r) :
     r.content = content ∧ r.spaces = spaces ∧ r.state = s := by
@@ -208,7 +208,7 @@ theorem terminates_preserves_all
         · contradiction
 
 /-- Transfer `PlainContentInv` to a new state where `peek?` is known non-blank. -/
-theorem PlainContentInv.transfer_nonblank_peek
+lemma PlainContentInv.transfer_nonblank_peek
     {content spaces : String} {inFlow : Bool} {s : ScannerState}
     (inv : PlainContentInv content spaces inFlow s)
     (s' : ScannerState) (c : Char)
@@ -224,7 +224,7 @@ theorem PlainContentInv.transfer_nonblank_peek
 
 /-- When `_handleBlockLineBreak` returns `some (content', s')`, content' is
     `content ++ " "` or `content ++ replicate '\n'`. -/
-theorem handleBlockLineBreak_content_form
+lemma handleBlockLineBreak_content_form
     (s : ScannerState) (content : String) (contentIndent inputEnd : Nat)
     (content' : String) (s' : ScannerState)
     (h : collectPlainScalar_handleBlockLineBreak s content contentIndent inputEnd = some (content', s')) :
@@ -246,7 +246,7 @@ theorem handleBlockLineBreak_content_form
         left; exact this.1.symm
 
 /-- When `foldQuotedNewlines` succeeds, the folded string is `" "` or replicate newlines. -/
-theorem foldQuotedNewlines_result_form
+lemma foldQuotedNewlines_result_form
     (s : ScannerState) (folded : String) (s' : ScannerState)
     (h : foldQuotedNewlines s = .ok (folded, s')) :
     (folded = " ") ∨
@@ -276,7 +276,7 @@ theorem foldQuotedNewlines_result_form
 
 /-- Build `PlainContentInv` for `content ++ fold` where `fold` is `" "` or replicate newlines.
     Used by both block and flow linebreak recursion cases. -/
-theorem PlainContentInv.of_fold
+lemma PlainContentInv.of_fold
     {content spaces : String} {inFlow : Bool} {s s' : ScannerState}
     (inv : PlainContentInv content spaces inFlow s)
     (c : Char) (hpeek : s.peek? = some c) (hc_lb : isLineBreakProp c)
@@ -316,7 +316,7 @@ theorem PlainContentInv.of_fold
 /-- `collectPlainScalarLoop` preserves `PlainContentInv`.
     If the invariant holds for the input `content`, `spaces`, `inFlow`, and `s`,
     then it holds for the result's `content`, `spaces`, `inFlow`, and `state`. -/
-theorem collectPlainScalarLoop_preserves_contentInv
+lemma collectPlainScalarLoop_preserves_contentInv
     (s : ScannerState) (content spaces : String) (fuel : Nat)
     (inFlow : Bool) (contentIndent : Nat) (inputEnd : Nat)
     (inv : PlainContentInv content spaces inFlow s)

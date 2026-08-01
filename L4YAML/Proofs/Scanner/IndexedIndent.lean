@@ -51,7 +51,7 @@ open L4YAML L4YAML.CharPredicates L4YAML.Indexed
 
 /-! ## `skipCommentTextLoop` — offset monotonicity & termination -/
 
-theorem skipCommentTextLoop_offset_monotonic {input : String} (c : IxCursor input)
+lemma skipCommentTextLoop_offset_monotonic {input : String} (c : IxCursor input)
     (fuel : Nat) :
     c.pos.offset ≤ (skipCommentTextLoop c fuel).pos.offset := by
   induction fuel generalizing c with
@@ -65,7 +65,7 @@ theorem skipCommentTextLoop_offset_monotonic {input : String} (c : IxCursor inpu
       · exact Nat.le_refl _
       · exact Nat.le_trans (IxCursor.advance_offset_monotonic c) (ih c.advance)
 
-theorem skipCommentText_offset_monotonic {input : String} (c : IxCursor input) :
+lemma skipCommentText_offset_monotonic {input : String} (c : IxCursor input) :
     c.pos.offset ≤ (skipCommentText c).pos.offset :=
   skipCommentTextLoop_offset_monotonic c _
 
@@ -73,7 +73,7 @@ theorem skipCommentText_offset_monotonic {input : String} (c : IxCursor input) :
     a line-break character or (b) end-of-input. The fuel bound
     matches `skipWhitespaceLoop_terminates` — each advancing
     iteration strictly increases the byte offset. -/
-theorem skipCommentTextLoop_terminates {input : String} (c : IxCursor input)
+lemma skipCommentTextLoop_terminates {input : String} (c : IxCursor input)
     (fuel : Nat) (hFuel : input.utf8ByteSize - c.pos.offset ≤ fuel) :
     peekIsLineBreak (skipCommentTextLoop c fuel) = true ∨
         (skipCommentTextLoop c fuel).peek? = none := by
@@ -106,14 +106,14 @@ theorem skipCommentTextLoop_terminates {input : String} (c : IxCursor input)
         have hFuel' : input.utf8ByteSize - c.advance.pos.offset ≤ fuel := by omega
         exact ih c.advance hFuel'
 
-theorem skipCommentText_terminates {input : String} (c : IxCursor input) :
+lemma skipCommentText_terminates {input : String} (c : IxCursor input) :
     peekIsLineBreak (skipCommentText c) = true ∨ (skipCommentText c).peek? = none := by
   unfold skipCommentText
   exact skipCommentTextLoop_terminates c _ (Nat.sub_le _ _)
 
 /-! ## `skipToContentLoop` — offset monotonicity & termination -/
 
-theorem skipToContentLoop_offset_monotonic {input : String} (c : IxCursor input)
+lemma skipToContentLoop_offset_monotonic {input : String} (c : IxCursor input)
     (fuel : Nat) :
     c.pos.offset ≤ (skipToContentLoop c fuel).pos.offset := by
   induction fuel generalizing c with
@@ -160,7 +160,7 @@ theorem skipToContentLoop_offset_monotonic {input : String} (c : IxCursor input)
         · -- content — stop at c1
           exact hSW
 
-theorem skipToContent_offset_monotonic {input : String} (c : IxCursor input) :
+lemma skipToContent_offset_monotonic {input : String} (c : IxCursor input) :
     c.pos.offset ≤ (skipToContent c).pos.offset :=
   skipToContentLoop_offset_monotonic c _
 
@@ -190,7 +190,7 @@ fuel argument and folds in with the dispatch-loop measure of
 Step 4. -/
 
 /-- `skipToContent` is a no-op at end-of-input. -/
-theorem skipToContent_atEnd {input : String} (c : IxCursor input)
+lemma skipToContent_atEnd {input : String} (c : IxCursor input)
     (h : c.peek? = none) : skipToContent c = c := by
   unfold skipToContent skipToContentLoop
   -- Need to show: after fuel+1, with peek? = none, the result is c.
@@ -209,7 +209,7 @@ theorem skipToContent_atEnd {input : String} (c : IxCursor input)
     character — a `Char` that is not whitespace, not a line break,
     and not `'#'`. This is the *completeness* direction: the
     scanner consumes nothing when there is nothing to consume. -/
-theorem skipToContent_at_content {input : String} (c : IxCursor input)
+lemma skipToContent_at_content {input : String} (c : IxCursor input)
     {ch : Char} (hpe : c.peek? = some ch)
     (hWS : isWhiteSpaceBool ch = false)
     (hLB : isLineBreakBool ch = false)
@@ -252,7 +252,7 @@ reaches end-of-input or lands at a non-`s-l-comments` character. -/
     character (not whitespace, not line break, not `'#'`) provided
     `fuel > utf8ByteSize - c.pos.offset`. The strict bound matches
     the strict offset progress of each iterating branch. -/
-theorem skipToContentLoop_progress {input : String} (c : IxCursor input)
+lemma skipToContentLoop_progress {input : String} (c : IxCursor input)
     (fuel : Nat) (hFuel : input.utf8ByteSize - c.pos.offset < fuel) :
     (skipToContentLoop c fuel).peek? = none ∨
     ∃ ch, (skipToContentLoop c fuel).peek? = some ch ∧
@@ -342,7 +342,7 @@ theorem skipToContentLoop_progress {input : String} (c : IxCursor input)
     The entry-point fuel is `input.utf8ByteSize + 1`, which strictly
     exceeds `utf8ByteSize - c.pos.offset` for any cursor `c` (since
     `c.posBound : c.pos.offset ≤ utf8ByteSize`). -/
-theorem skipToContent_progress {input : String} (c : IxCursor input) :
+lemma skipToContent_progress {input : String} (c : IxCursor input) :
     (skipToContent c).peek? = none ∨
     ∃ ch, (skipToContent c).peek? = some ch ∧
           isWhiteSpaceBool ch = false ∧

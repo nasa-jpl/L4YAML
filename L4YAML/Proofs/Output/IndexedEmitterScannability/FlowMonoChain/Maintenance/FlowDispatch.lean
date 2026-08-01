@@ -108,54 +108,54 @@ variable {input : String}
 
 /-! ## §1  `scanFlowSequenceStartIx` field preservation -/
 
-@[simp] theorem scanFlowSequenceStartIx_directivesPresent (s : ScannerStateIx input) :
+@[simp] lemma scanFlowSequenceStartIx_directivesPresent (s : ScannerStateIx input) :
     (scanFlowSequenceStartIx s).directivesPresent = s.directivesPresent := by
   unfold scanFlowSequenceStartIx; rfl
 
-@[simp] theorem scanFlowSequenceStartIx_indents (s : ScannerStateIx input) :
+@[simp] lemma scanFlowSequenceStartIx_indents (s : ScannerStateIx input) :
     (scanFlowSequenceStartIx s).indents = s.indents := by
   unfold scanFlowSequenceStartIx; rfl
 
-@[simp] theorem scanFlowSequenceStartIx_explicitKeyLine (s : ScannerStateIx input) :
+@[simp] lemma scanFlowSequenceStartIx_explicitKeyLine (s : ScannerStateIx input) :
     (scanFlowSequenceStartIx s).explicitKeyLine = s.explicitKeyLine := by
   unfold scanFlowSequenceStartIx; rfl
 
-@[simp] theorem scanFlowSequenceStartIx_allowDirectives (s : ScannerStateIx input) :
+@[simp] lemma scanFlowSequenceStartIx_allowDirectives (s : ScannerStateIx input) :
     (scanFlowSequenceStartIx s).allowDirectives = s.allowDirectives := by
   unfold scanFlowSequenceStartIx; rfl
 
-@[simp] theorem scanFlowSequenceStartIx_needIndentCheck (s : ScannerStateIx input) :
+@[simp] lemma scanFlowSequenceStartIx_needIndentCheck (s : ScannerStateIx input) :
     (scanFlowSequenceStartIx s).needIndentCheck = s.needIndentCheck := by
   unfold scanFlowSequenceStartIx; rfl
 
-theorem scanFlowSequenceStartIx_flowLevel_eq (s : ScannerStateIx input) :
+lemma scanFlowSequenceStartIx_flowLevel_eq (s : ScannerStateIx input) :
     (scanFlowSequenceStartIx s).flowLevel = s.flowLevel + 1 := by
   unfold scanFlowSequenceStartIx
   simp only [advance_flowLevel, emit_flowLevel]
 
 /-! ## §2  `scanFlowMappingStartIx` field preservation -/
 
-@[simp] theorem scanFlowMappingStartIx_directivesPresent (s : ScannerStateIx input) :
+@[simp] lemma scanFlowMappingStartIx_directivesPresent (s : ScannerStateIx input) :
     (scanFlowMappingStartIx s).directivesPresent = s.directivesPresent := by
   unfold scanFlowMappingStartIx; rfl
 
-@[simp] theorem scanFlowMappingStartIx_indents (s : ScannerStateIx input) :
+@[simp] lemma scanFlowMappingStartIx_indents (s : ScannerStateIx input) :
     (scanFlowMappingStartIx s).indents = s.indents := by
   unfold scanFlowMappingStartIx; rfl
 
-@[simp] theorem scanFlowMappingStartIx_explicitKeyLine (s : ScannerStateIx input) :
+@[simp] lemma scanFlowMappingStartIx_explicitKeyLine (s : ScannerStateIx input) :
     (scanFlowMappingStartIx s).explicitKeyLine = s.explicitKeyLine := by
   unfold scanFlowMappingStartIx; rfl
 
-@[simp] theorem scanFlowMappingStartIx_allowDirectives (s : ScannerStateIx input) :
+@[simp] lemma scanFlowMappingStartIx_allowDirectives (s : ScannerStateIx input) :
     (scanFlowMappingStartIx s).allowDirectives = s.allowDirectives := by
   unfold scanFlowMappingStartIx; rfl
 
-@[simp] theorem scanFlowMappingStartIx_needIndentCheck (s : ScannerStateIx input) :
+@[simp] lemma scanFlowMappingStartIx_needIndentCheck (s : ScannerStateIx input) :
     (scanFlowMappingStartIx s).needIndentCheck = s.needIndentCheck := by
   unfold scanFlowMappingStartIx; rfl
 
-theorem scanFlowMappingStartIx_flowLevel_eq (s : ScannerStateIx input) :
+lemma scanFlowMappingStartIx_flowLevel_eq (s : ScannerStateIx input) :
     (scanFlowMappingStartIx s).flowLevel = s.flowLevel + 1 := by
   unfold scanFlowMappingStartIx
   simp only [advance_flowLevel, emit_flowLevel]
@@ -165,45 +165,45 @@ theorem scanFlowMappingStartIx_flowLevel_eq (s : ScannerStateIx input) :
 `flowLevel_eq` (`.flowLevel = s.flowLevel - 1`) already lives in
 `FlowMonoChain.Basic` (used by the FlowIndicators SKAF dispatcher). -/
 
-@[simp] theorem scanFlowSequenceEndIx_directivesPresent (s : ScannerStateIx input) :
+@[simp] lemma scanFlowSequenceEndIx_directivesPresent (s : ScannerStateIx input) :
     (scanFlowSequenceEndIx s).directivesPresent = s.directivesPresent := by
   unfold scanFlowSequenceEndIx; rfl
 
-@[simp] theorem scanFlowSequenceEndIx_indents (s : ScannerStateIx input) :
+@[simp] lemma scanFlowSequenceEndIx_indents (s : ScannerStateIx input) :
     (scanFlowSequenceEndIx s).indents = s.indents := by
   unfold scanFlowSequenceEndIx; rfl
 
-@[simp] theorem scanFlowSequenceEndIx_explicitKeyLine (s : ScannerStateIx input) :
+@[simp] lemma scanFlowSequenceEndIx_explicitKeyLine (s : ScannerStateIx input) :
     (scanFlowSequenceEndIx s).explicitKeyLine = s.explicitKeyLine := by
   unfold scanFlowSequenceEndIx; rfl
 
-@[simp] theorem scanFlowSequenceEndIx_allowDirectives (s : ScannerStateIx input) :
+@[simp] lemma scanFlowSequenceEndIx_allowDirectives (s : ScannerStateIx input) :
     (scanFlowSequenceEndIx s).allowDirectives = s.allowDirectives := by
   unfold scanFlowSequenceEndIx; rfl
 
-@[simp] theorem scanFlowSequenceEndIx_needIndentCheck (s : ScannerStateIx input) :
+@[simp] lemma scanFlowSequenceEndIx_needIndentCheck (s : ScannerStateIx input) :
     (scanFlowSequenceEndIx s).needIndentCheck = s.needIndentCheck := by
   unfold scanFlowSequenceEndIx; rfl
 
 /-! ## §4  `scanFlowMappingEndIx` field preservation -/
 
-@[simp] theorem scanFlowMappingEndIx_directivesPresent (s : ScannerStateIx input) :
+@[simp] lemma scanFlowMappingEndIx_directivesPresent (s : ScannerStateIx input) :
     (scanFlowMappingEndIx s).directivesPresent = s.directivesPresent := by
   unfold scanFlowMappingEndIx; rfl
 
-@[simp] theorem scanFlowMappingEndIx_indents (s : ScannerStateIx input) :
+@[simp] lemma scanFlowMappingEndIx_indents (s : ScannerStateIx input) :
     (scanFlowMappingEndIx s).indents = s.indents := by
   unfold scanFlowMappingEndIx; rfl
 
-@[simp] theorem scanFlowMappingEndIx_explicitKeyLine (s : ScannerStateIx input) :
+@[simp] lemma scanFlowMappingEndIx_explicitKeyLine (s : ScannerStateIx input) :
     (scanFlowMappingEndIx s).explicitKeyLine = s.explicitKeyLine := by
   unfold scanFlowMappingEndIx; rfl
 
-@[simp] theorem scanFlowMappingEndIx_allowDirectives (s : ScannerStateIx input) :
+@[simp] lemma scanFlowMappingEndIx_allowDirectives (s : ScannerStateIx input) :
     (scanFlowMappingEndIx s).allowDirectives = s.allowDirectives := by
   unfold scanFlowMappingEndIx; rfl
 
-@[simp] theorem scanFlowMappingEndIx_needIndentCheck (s : ScannerStateIx input) :
+@[simp] lemma scanFlowMappingEndIx_needIndentCheck (s : ScannerStateIx input) :
     (scanFlowMappingEndIx s).needIndentCheck = s.needIndentCheck := by
   unfold scanFlowMappingEndIx; rfl
 
@@ -215,7 +215,7 @@ theorem scanFlowMappingStartIx_flowLevel_eq (s : ScannerStateIx input) :
 chain; the field-preservation lemmas factor through `repeat split`
 to peel the guard. -/
 
-theorem scanFlowEntryIx_preserves_directivesPresent
+lemma scanFlowEntryIx_preserves_directivesPresent
     (s s' : ScannerStateIx input) (h : scanFlowEntryIx s = .ok s') :
     s'.directivesPresent = s.directivesPresent := by
   unfold scanFlowEntryIx at h
@@ -225,7 +225,7 @@ theorem scanFlowEntryIx_preserves_directivesPresent
   all_goals (simp only [Except.ok.injEq] at h; subst h)
   all_goals rfl
 
-theorem scanFlowEntryIx_preserves_indents
+lemma scanFlowEntryIx_preserves_indents
     (s s' : ScannerStateIx input) (h : scanFlowEntryIx s = .ok s') :
     s'.indents = s.indents := by
   unfold scanFlowEntryIx at h
@@ -235,7 +235,7 @@ theorem scanFlowEntryIx_preserves_indents
   all_goals (simp only [Except.ok.injEq] at h; subst h)
   all_goals rfl
 
-theorem scanFlowEntryIx_preserves_explicitKeyLine
+lemma scanFlowEntryIx_preserves_explicitKeyLine
     (s s' : ScannerStateIx input) (h : scanFlowEntryIx s = .ok s') :
     s'.explicitKeyLine = s.explicitKeyLine := by
   unfold scanFlowEntryIx at h
@@ -245,7 +245,7 @@ theorem scanFlowEntryIx_preserves_explicitKeyLine
   all_goals (simp only [Except.ok.injEq] at h; subst h)
   all_goals rfl
 
-theorem scanFlowEntryIx_preserves_allowDirectives
+lemma scanFlowEntryIx_preserves_allowDirectives
     (s s' : ScannerStateIx input) (h : scanFlowEntryIx s = .ok s') :
     s'.allowDirectives = s.allowDirectives := by
   unfold scanFlowEntryIx at h
@@ -255,7 +255,7 @@ theorem scanFlowEntryIx_preserves_allowDirectives
   all_goals (simp only [Except.ok.injEq] at h; subst h)
   all_goals rfl
 
-theorem scanFlowEntryIx_preserves_needIndentCheck
+lemma scanFlowEntryIx_preserves_needIndentCheck
     (s s' : ScannerStateIx input) (h : scanFlowEntryIx s = .ok s') :
     s'.needIndentCheck = s.needIndentCheck := by
   unfold scanFlowEntryIx at h
@@ -283,7 +283,7 @@ for `.maintenance` consumers:
 
     Indexed twin of legacy `lastRealTokenVal_push_non_ph`
     (legacy line 4463). -/
-theorem lastRealTokenValIx_push_non_ph
+lemma lastRealTokenValIx_push_non_ph
     (ts : Indexed.TokenStream input)
     (t : IxToken input) (h_nph : t.token ≠ YamlToken.placeholder) :
     lastRealTokenValIx? (ts.push t) = some t.token := by
@@ -315,7 +315,7 @@ theorem lastRealTokenValIx_push_non_ph
 
     Indexed twin of legacy `lastRealTokenVal_push_two_ph`
     (legacy line 4480). -/
-theorem lastRealTokenValIx_push_two_ph
+lemma lastRealTokenValIx_push_two_ph
     (ts : Indexed.TokenStream input)
     (ph1 ph2 : IxToken input)
     (h1 : ph1.token = YamlToken.placeholder)
@@ -389,7 +389,7 @@ two `.placeholder` tokens (`twoPlaceholderEmits` branch). The
 "no trailing flow delimiter" property of `lastRealTokenValIx?`
 carries through both cases by §6. -/
 
-theorem saveSimpleKeyIx_preserves_lastRealTokenValIx_ne_flow
+lemma saveSimpleKeyIx_preserves_lastRealTokenValIx_ne_flow
     (s : ScannerStateIx input)
     (h_last : ∀ t, lastRealTokenValIx? s.tokens = some t →
       t ≠ YamlToken.flowSequenceStart ∧ t ≠ YamlToken.flowMappingStart

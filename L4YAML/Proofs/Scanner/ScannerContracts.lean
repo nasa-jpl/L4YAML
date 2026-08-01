@@ -50,7 +50,7 @@ The `mk'` constructor satisfies all four `WellFormed` conjuncts:
 -/
 
 /-- `mk'` produces a well-formed initial state. -/
-theorem mk'_wellFormed (input : String) :
+lemma mk'_wellFormed (input : String) :
     (ScannerState.mk' input).WellFormed := by
   refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
   · -- indents.size ≥ 1: default indents = #[sentinel], size = 1
@@ -70,11 +70,11 @@ theorem mk'_wellFormed (input : String) :
     rfl
 
 /-- The initial indent stack sentinel is `{ column := -1 }`. -/
-theorem mk'_indents_sentinel (input : String) :
+lemma mk'_indents_sentinel (input : String) :
     (ScannerState.mk' input).indents = #[{ column := -1, isSequence := false }] := rfl
 
 /-- The initial flow stack is empty. -/
-theorem mk'_flowStack_empty (input : String) :
+lemma mk'_flowStack_empty (input : String) :
     (ScannerState.mk' input).flowStack = #[] := rfl
 
 /-! ## §2  Field Preservation Lemmas
@@ -84,23 +84,23 @@ These `rfl`-based lemmas establish that `emit` (which only modifies the
 -/
 
 /-- `emit` preserves `flowLevel`. -/
-theorem emit_flowLevel (s : ScannerState) (tok : YamlToken) :
+lemma emit_flowLevel (s : ScannerState) (tok : YamlToken) :
     (s.emit tok).flowLevel = s.flowLevel := rfl
 
 /-- `emit` preserves `flowStack`. -/
-theorem emit_flowStack (s : ScannerState) (tok : YamlToken) :
+lemma emit_flowStack (s : ScannerState) (tok : YamlToken) :
     (s.emit tok).flowStack = s.flowStack := rfl
 
 /-- `emit` preserves indent stack. -/
-theorem emit_indents (s : ScannerState) (tok : YamlToken) :
+lemma emit_indents (s : ScannerState) (tok : YamlToken) :
     (s.emit tok).indents = s.indents := rfl
 
 /-- `emit` preserves indent stack size. -/
-theorem emit_indents_size (s : ScannerState) (tok : YamlToken) :
+lemma emit_indents_size (s : ScannerState) (tok : YamlToken) :
     (s.emit tok).indents.size = s.indents.size := rfl
 
 /-- `emit` preserves `simpleKeyStack`. -/
-theorem emit_simpleKeyStack (s : ScannerState) (tok : YamlToken) :
+lemma emit_simpleKeyStack (s : ScannerState) (tok : YamlToken) :
     (s.emit tok).simpleKeyStack = s.simpleKeyStack := rfl
 
 /-! ## §3  Flow Level Contracts — Proven Theorems
@@ -109,19 +109,19 @@ Each flow open/close operation maintains `flowLevel = flowStack.size`.
 -/
 
 /-- Helper: `emit` preserves flowLevel. -/
-theorem emit_preserves_flowLevel (s : ScannerState) (tok : YamlToken) :
+lemma emit_preserves_flowLevel (s : ScannerState) (tok : YamlToken) :
     (s.emit tok).flowLevel = s.flowLevel := by
   unfold ScannerState.emit
   rfl
 
 /-- Helper: `emit` preserves flowStack. -/
-theorem emit_preserves_flowStack (s : ScannerState) (tok : YamlToken) :
+lemma emit_preserves_flowStack (s : ScannerState) (tok : YamlToken) :
     (s.emit tok).flowStack = s.flowStack := by
   unfold ScannerState.emit
   rfl
 
 /-- Helper: `advance` preserves flowLevel. -/
-theorem advance_preserves_flowLevel (s : ScannerState) :
+lemma advance_preserves_flowLevel (s : ScannerState) :
     s.advance.flowLevel = s.flowLevel := by
   unfold ScannerState.advance
   split
@@ -132,7 +132,7 @@ theorem advance_preserves_flowLevel (s : ScannerState) :
   · rfl
 
 /-- Helper: `advance` preserves flowStack. -/
-theorem advance_preserves_flowStack (s : ScannerState) :
+lemma advance_preserves_flowStack (s : ScannerState) :
     s.advance.flowStack = s.flowStack := by
   unfold ScannerState.advance
   split
@@ -143,13 +143,13 @@ theorem advance_preserves_flowStack (s : ScannerState) :
   · rfl
 
 /-- Helper: `emit` preserves simpleKeyStack. -/
-theorem emit_preserves_simpleKeyStack (s : ScannerState) (tok : YamlToken) :
+lemma emit_preserves_simpleKeyStack (s : ScannerState) (tok : YamlToken) :
     (s.emit tok).simpleKeyStack = s.simpleKeyStack := by
   unfold ScannerState.emit
   rfl
 
 /-- Helper: `advance` preserves simpleKeyStack. -/
-theorem advance_preserves_simpleKeyStack (s : ScannerState) :
+lemma advance_preserves_simpleKeyStack (s : ScannerState) :
     s.advance.simpleKeyStack = s.simpleKeyStack := by
   unfold ScannerState.advance
   split
@@ -160,7 +160,7 @@ theorem advance_preserves_simpleKeyStack (s : ScannerState) :
   · rfl
 
 /-- `scanFlowSequenceStart` increments `flowLevel` by exactly 1. -/
-theorem scanFlowSequenceStart_flowLevel (s : ScannerState) :
+lemma scanFlowSequenceStart_flowLevel (s : ScannerState) :
     (scanFlowSequenceStart s).flowLevel = s.flowLevel + 1 := by
   unfold scanFlowSequenceStart
   -- After refactoring: final flowLevel = s_after_advance.flowLevel + 1
@@ -170,14 +170,14 @@ theorem scanFlowSequenceStart_flowLevel (s : ScannerState) :
   simp only [emit_preserves_flowLevel, advance_preserves_flowLevel]
 
 /-- `scanFlowMappingStart` increments `flowLevel` by exactly 1. -/
-theorem scanFlowMappingStart_flowLevel (s : ScannerState) :
+lemma scanFlowMappingStart_flowLevel (s : ScannerState) :
     (scanFlowMappingStart s).flowLevel = s.flowLevel + 1 := by
   unfold scanFlowMappingStart
   simp only [emit_preserves_flowLevel, advance_preserves_flowLevel]
 
 /-- After `scanFlowSequenceStart`, `flowLevel = flowStack.size`
     (assuming the invariant held before). -/
-theorem scanFlowSequenceStart_flow_sync (s : ScannerState)
+lemma scanFlowSequenceStart_flow_sync (s : ScannerState)
     (h : s.flowLevel = s.flowStack.size) :
     (scanFlowSequenceStart s).flowLevel = (scanFlowSequenceStart s).flowStack.size := by
   unfold scanFlowSequenceStart
@@ -188,7 +188,7 @@ theorem scanFlowSequenceStart_flow_sync (s : ScannerState)
 
 /-- After `scanFlowSequenceStart`, `simpleKeyStack.size = flowStack.size`
     (assuming the invariant held before). -/
-theorem scanFlowSequenceStart_simpleKeyStack_sync (s : ScannerState)
+lemma scanFlowSequenceStart_simpleKeyStack_sync (s : ScannerState)
     (h : s.simpleKeyStack.size = s.flowStack.size) :
     (scanFlowSequenceStart s).simpleKeyStack.size = (scanFlowSequenceStart s).flowStack.size := by
   unfold scanFlowSequenceStart
@@ -199,7 +199,7 @@ theorem scanFlowSequenceStart_simpleKeyStack_sync (s : ScannerState)
 
 /-- After `scanFlowMappingStart`, `flowLevel = flowStack.size`
     (assuming the invariant held before). -/
-theorem scanFlowMappingStart_flow_sync (s : ScannerState)
+lemma scanFlowMappingStart_flow_sync (s : ScannerState)
     (h : s.flowLevel = s.flowStack.size) :
     (scanFlowMappingStart s).flowLevel = (scanFlowMappingStart s).flowStack.size := by
   unfold scanFlowMappingStart
@@ -210,7 +210,7 @@ theorem scanFlowMappingStart_flow_sync (s : ScannerState)
 
 /-- After `scanFlowMappingStart`, `simpleKeyStack.size = flowStack.size`
     (assuming the invariant held before). -/
-theorem scanFlowMappingStart_simpleKeyStack_sync (s : ScannerState)
+lemma scanFlowMappingStart_simpleKeyStack_sync (s : ScannerState)
     (h : s.simpleKeyStack.size = s.flowStack.size) :
     (scanFlowMappingStart s).simpleKeyStack.size = (scanFlowMappingStart s).flowStack.size := by
   unfold scanFlowMappingStart
@@ -220,7 +220,7 @@ theorem scanFlowMappingStart_simpleKeyStack_sync (s : ScannerState)
   omega
 
 /-- `inFlow` is true iff `flowLevel > 0`. -/
-theorem inFlow_iff_flowLevel_pos (s : ScannerState) :
+lemma inFlow_iff_flowLevel_pos (s : ScannerState) :
     s.inFlow = true ↔ s.flowLevel > 0 := by
   simp [ScannerState.inFlow]
 
@@ -256,13 +256,13 @@ def digitOffset (c : Char) : Nat := c.toNat - '0'.toNat
 
 /-- Each valid indentation indicator digit (1–9) maps to a value ≥ 1.
     Verified by `native_decide` on all 9 concrete cases. -/
-theorem digitOffset_ge_one_all :
+lemma digitOffset_ge_one_all :
     ∀ c ∈ ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
       digitOffset c ≥ 1 := by native_decide
 
 /-- Each valid indentation indicator digit (1–9) maps to a value ≤ 9.
     Verified by `native_decide` on all 9 concrete cases. -/
-theorem digitOffset_le_nine_all :
+lemma digitOffset_le_nine_all :
     ∀ c ∈ ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
       digitOffset c ≤ 9 := by native_decide
 

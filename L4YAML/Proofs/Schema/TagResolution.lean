@@ -23,13 +23,13 @@ namespace L4YAML.Proofs.TagResolution
 /-! ## §1: Verbatim tags -/
 
 /-- Verbatim tag (empty handle, non-empty suffix) passes through as-is (§6.8.2). -/
-theorem resolveTag_verbatim (tagHandles : Array (String × String))
+lemma resolveTag_verbatim (tagHandles : Array (String × String))
     (suffix : String) (h : suffix ≠ "") :
     resolveTag tagHandles "" suffix = suffix := by
   unfold resolveTag; simp [h]
 
 /-- Verbatim tag resolution is independent of the tag handle mapping. -/
-theorem resolveTag_verbatim_independent
+lemma resolveTag_verbatim_independent
     (th₁ th₂ : Array (String × String)) (suffix : String) (h : suffix ≠ "") :
     resolveTag th₁ "" suffix = resolveTag th₂ "" suffix := by
   simp [resolveTag, h]
@@ -37,7 +37,7 @@ theorem resolveTag_verbatim_independent
 /-! ## §2: Declared handles -/
 
 /-- When a handle is found in the mapping, the tag resolves to `prefix ++ suffix`. -/
-theorem resolveTag_declared (tagHandles : Array (String × String))
+lemma resolveTag_declared (tagHandles : Array (String × String))
     (handle pfx suffix : String) (h_ne : handle ≠ "")
     (h_found : tagHandles.find? (·.1 == handle) = some (handle, pfx)) :
     resolveTag tagHandles handle suffix = pfx ++ suffix := by
@@ -47,52 +47,52 @@ theorem resolveTag_declared (tagHandles : Array (String × String))
 /-! ## §3: Default secondary handle -/
 
 /-- Without a `%TAG !!` declaration, `!!` tags keep shorthand `!!suffix`. -/
-theorem resolveTag_default_secondary (tagHandles : Array (String × String))
+lemma resolveTag_default_secondary (tagHandles : Array (String × String))
     (suffix : String)
     (h_none : tagHandles.find? (·.1 == "!!") = none) :
     resolveTag tagHandles "!!" suffix = "!!" ++ suffix := by
   unfold resolveTag; simp [h_none]
 
 /-- Default secondary handle: example with empty mapping. -/
-theorem resolveTag_secondary_empty :
+lemma resolveTag_secondary_empty :
     resolveTag #[] "!!" "str" = "!!str" := by native_decide
 
 /-! ## §4: Default primary handle -/
 
 /-- Without a `%TAG !` declaration, primary tags keep shorthand `!suffix`. -/
-theorem resolveTag_default_primary (tagHandles : Array (String × String))
+lemma resolveTag_default_primary (tagHandles : Array (String × String))
     (suffix : String)
     (h_none : tagHandles.find? (·.1 == "!") = none) :
     resolveTag tagHandles "!" suffix = "!" ++ suffix := by
   unfold resolveTag; simp [h_none]
 
 /-- Default primary handle: example with empty mapping. -/
-theorem resolveTag_primary_empty :
+lemma resolveTag_primary_empty :
     resolveTag #[] "!" "foo" = "!foo" := by native_decide
 
 /-! ## §5: Edge cases -/
 
 /-- Empty handle ++ empty suffix produces empty string. -/
-theorem resolveTag_empty_empty :
+lemma resolveTag_empty_empty :
     resolveTag #[] "" "" = "" := by native_decide
 
 /-- Named handle `!e!` resolves via mapping. -/
-theorem resolveTag_named_example :
+lemma resolveTag_named_example :
     resolveTag #[("!e!", "tag:example.com,2000:app/")] "!e!" "foo" =
     "tag:example.com,2000:app/foo" := by native_decide
 
 /-- Named handle `!yaml!` resolves via mapping. -/
-theorem resolveTag_yaml_example :
+lemma resolveTag_yaml_example :
     resolveTag #[("!yaml!", "tag:yaml.org,2002:")] "!yaml!" "str" =
     "tag:yaml.org,2002:str" := by native_decide
 
 /-- Secondary handle override: `%TAG !! prefix` overrides the default. -/
-theorem resolveTag_secondary_override :
+lemma resolveTag_secondary_override :
     resolveTag #[("!!", "tag:example.com,2000:app/")] "!!" "int" =
     "tag:example.com,2000:app/int" := by native_decide
 
 /-- Primary handle override: `%TAG ! prefix` overrides the default. -/
-theorem resolveTag_primary_override :
+lemma resolveTag_primary_override :
     resolveTag #[("!", "!foo")] "!" "bar" = "!foobar" := by native_decide
 
 end L4YAML.Proofs.TagResolution

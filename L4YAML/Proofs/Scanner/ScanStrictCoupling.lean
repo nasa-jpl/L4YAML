@@ -52,7 +52,7 @@ open L4YAML.Proofs.StructureCoupling
 -- CharsFromOffset iterates byte positions using get/next, while
 -- String.toList iterates using String.Internal.toArray.
 -- Both traverse valid UTF-8 and produce identical character sequences.
-theorem chars_from_zero_toList (input : String) :
+lemma chars_from_zero_toList (input : String) :
     CharsFromOffset input 0 input.toList :=
   CouplingBridge.chars_from_zero_toList input
 
@@ -61,7 +61,7 @@ theorem chars_from_zero_toList (input : String) :
 Field-preservation lemmas for unwindIndentsLoop and saveSimpleKey:
 offset, inputEnd, and input are unchanged by these bookkeeping operations. -/
 
-theorem unwindIndentsLoop_offset (s : ScannerState) (col : Int) (fuel : Nat) :
+lemma unwindIndentsLoop_offset (s : ScannerState) (col : Int) (fuel : Nat) :
     (unwindIndentsLoop s col fuel).offset = s.offset := by
   induction fuel generalizing s with
   | zero => unfold unwindIndentsLoop; rfl
@@ -70,7 +70,7 @@ theorem unwindIndentsLoop_offset (s : ScannerState) (col : Int) (fuel : Nat) :
     · exact ih _
     · rfl
 
-theorem unwindIndentsLoop_inputEnd (s : ScannerState) (col : Int) (fuel : Nat) :
+lemma unwindIndentsLoop_inputEnd (s : ScannerState) (col : Int) (fuel : Nat) :
     (unwindIndentsLoop s col fuel).inputEnd = s.inputEnd := by
   induction fuel generalizing s with
   | zero => unfold unwindIndentsLoop; rfl
@@ -79,7 +79,7 @@ theorem unwindIndentsLoop_inputEnd (s : ScannerState) (col : Int) (fuel : Nat) :
     · exact ih _
     · rfl
 
-theorem unwindIndentsLoop_input (s : ScannerState) (col : Int) (fuel : Nat) :
+lemma unwindIndentsLoop_input (s : ScannerState) (col : Int) (fuel : Nat) :
     (unwindIndentsLoop s col fuel).input = s.input := by
   induction fuel generalizing s with
   | zero => unfold unwindIndentsLoop; rfl
@@ -88,22 +88,22 @@ theorem unwindIndentsLoop_input (s : ScannerState) (col : Int) (fuel : Nat) :
     · exact ih _
     · rfl
 
-theorem saveSimpleKey_offset (s : ScannerState) :
+lemma saveSimpleKey_offset (s : ScannerState) :
     (saveSimpleKey s).offset = s.offset := by
   unfold saveSimpleKey
   split <;> (try split) <;> (try split) <;> rfl
 
-theorem saveSimpleKey_inputEnd (s : ScannerState) :
+lemma saveSimpleKey_inputEnd (s : ScannerState) :
     (saveSimpleKey s).inputEnd = s.inputEnd := by
   unfold saveSimpleKey
   split <;> (try split) <;> (try split) <;> rfl
 
-theorem saveSimpleKey_input (s : ScannerState) :
+lemma saveSimpleKey_input (s : ScannerState) :
     (saveSimpleKey s).input = s.input := by
   unfold saveSimpleKey
   split <;> (try split) <;> (try split) <;> rfl
 
-theorem saveSimpleKey_peek (s : ScannerState) :
+lemma saveSimpleKey_peek (s : ScannerState) :
     (saveSimpleKey s).peek? = s.peek? := by
   unfold ScannerState.peek?
   simp only [saveSimpleKey_offset, saveSimpleKey_inputEnd, saveSimpleKey_input]
@@ -115,7 +115,7 @@ These theorems compose the leaf _corr theorems from StructureCoupling
 and ScalarCoupling. -/
 
 -- Structural dispatch: document markers and directives.
-theorem scanNextToken_dispatchStructural_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
+lemma scanNextToken_dispatchStructural_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
     (hcorr : ScannerSurfCorr sc sp) (s' : ScannerState)
     (hok : scanNextToken_dispatchStructural sc c = .ok (some s')) :
     ∃ sp', ScannerSurfCorr s' sp' := by
@@ -158,7 +158,7 @@ theorem scanNextToken_dispatchStructural_corr (sc : ScannerState) (sp : SurfPos)
           · simp at hok
 
 -- Flow indicator dispatch: [ ] { } ,
-theorem scanNextToken_dispatchFlowIndicators_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
+lemma scanNextToken_dispatchFlowIndicators_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
     (hcorr : ScannerSurfCorr sc sp) (s' : ScannerState)
     (hok : scanNextToken_dispatchFlowIndicators sc c = .ok (some s')) :
     ∃ sp', ScannerSurfCorr s' sp' := by
@@ -194,7 +194,7 @@ theorem scanNextToken_dispatchFlowIndicators_corr (sc : ScannerState) (sp : Surf
           · simp at hok
 
 -- Block indicator dispatch: - ? :
-theorem scanNextToken_dispatchBlockIndicators_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
+lemma scanNextToken_dispatchBlockIndicators_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
     (hcorr : ScannerSurfCorr sc sp) (s' : ScannerState)
     (hok : scanNextToken_dispatchBlockIndicators sc c = .ok (some s')) :
     ∃ sp', ScannerSurfCorr s' sp' := by
@@ -218,7 +218,7 @@ theorem scanNextToken_dispatchBlockIndicators_corr (sc : ScannerState) (sp : Sur
       · simp at hok
 
 -- Content dispatch: & * ! | > " ' plain scalars.
-theorem scanNextToken_dispatchContent_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
+lemma scanNextToken_dispatchContent_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
     (hcorr : ScannerSurfCorr sc sp) (s' : ScannerState)
     (hok : scanNextToken_dispatchContent sc c = .ok s') :
     ∃ sp', ScannerSurfCorr s' sp' := by
@@ -278,7 +278,7 @@ theorem scanNextToken_dispatchContent_corr (sc : ScannerState) (sp : SurfPos) (c
 /-! ## §3 Preprocess Coupling -/
 
 -- scanNextToken_preprocess preserves ScannerSurfCorr on the .ok (some _) path.
-theorem scanNextToken_preprocess_corr (sc : ScannerState) (sp : SurfPos)
+lemma scanNextToken_preprocess_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (s' : ScannerState) (c : Char)
     (hok : scanNextToken_preprocess sc = .ok (some (s', c))) :
     ∃ sp', ScannerSurfCorr s' sp' := by
@@ -313,7 +313,7 @@ theorem scanNextToken_preprocess_corr (sc : ScannerState) (sp : SurfPos)
             exact ⟨sp1, saveSimpleKey_corr _ sp1 hcorr1⟩
 
 -- When scanNextToken_preprocess returns .ok none, all input is consumed.
-theorem scanNextToken_preprocess_none_consumed (sc : ScannerState) (sp : SurfPos)
+lemma scanNextToken_preprocess_none_consumed (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
     (hok : scanNextToken_preprocess sc = .ok none) :
     ∃ sp_final : SurfPos, sp_final.chars = [] := by
@@ -360,7 +360,7 @@ theorem scanNextToken_preprocess_none_consumed (sc : ScannerState) (sp : SurfPos
 /-! ## §4 scanNextToken Coupling -/
 
 -- When scanNextToken returns .ok (some s'), ScannerSurfCorr is preserved.
-theorem scanNextToken_corr (sc : ScannerState) (sp : SurfPos)
+lemma scanNextToken_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (s' : ScannerState)
     (hok : scanNextToken sc = .ok (some s')) :
     ∃ sp', ScannerSurfCorr s' sp' := by
@@ -406,7 +406,7 @@ theorem scanNextToken_corr (sc : ScannerState) (sp : SurfPos)
                       exact scanNextToken_dispatchContent_corr _ sp_pre c_pre hcorr_ad s_cnt h_cnt
 
 -- When scanNextToken returns .ok none, all input characters are consumed.
-theorem scanNextToken_none_consumed (sc : ScannerState) (sp : SurfPos)
+lemma scanNextToken_none_consumed (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
     (hok : scanNextToken sc = .ok none) :
     ∃ sp_final : SurfPos, sp_final.chars = [] := by
@@ -441,7 +441,7 @@ theorem scanNextToken_none_consumed (sc : ScannerState) (sp : SurfPos)
 -- Proof by induction on fuel, threading ScannerSurfCorr through each
 -- scanNextToken step via scanNextToken_corr, and using
 -- scanNextToken_none_consumed when the loop terminates.
-theorem scanLoop_full_consumption (sc : ScannerState) (sp : SurfPos) (fuel : Nat)
+lemma scanLoop_full_consumption (sc : ScannerState) (sp : SurfPos) (fuel : Nat)
     (tokens : Array (Positioned YamlToken))
     (hcorr : ScannerSurfCorr sc sp)
     (hok : scanLoop sc fuel = .ok tokens) :

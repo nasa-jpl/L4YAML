@@ -55,77 +55,77 @@ document boundary markers. The YAML 1.2.2 §9.1.2 production [206]:
 -/
 
 /-- `---` followed by space is c-forbidden. -/
-theorem cForbidden_dash_space :
+lemma cForbidden_dash_space :
     isCForbiddenPrefix ['-', '-', '-', ' '] = true := by native_decide
 
 /-- `---` followed by tab is c-forbidden. -/
-theorem cForbidden_dash_tab :
+lemma cForbidden_dash_tab :
     isCForbiddenPrefix ['-', '-', '-', '\t'] = true := by native_decide
 
 /-- `---` followed by newline is c-forbidden. -/
-theorem cForbidden_dash_newline :
+lemma cForbidden_dash_newline :
     isCForbiddenPrefix ['-', '-', '-', '\n'] = true := by native_decide
 
 /-- `---` followed by carriage return is c-forbidden. -/
-theorem cForbidden_dash_cr :
+lemma cForbidden_dash_cr :
     isCForbiddenPrefix ['-', '-', '-', '\r'] = true := by native_decide
 
 /-- `---` at end-of-input is c-forbidden. -/
-theorem cForbidden_dash_eof :
+lemma cForbidden_dash_eof :
     isCForbiddenPrefix ['-', '-', '-'] = true := by native_decide
 
 /-- `...` followed by space is c-forbidden. -/
-theorem cForbidden_dot_space :
+lemma cForbidden_dot_space :
     isCForbiddenPrefix ['.', '.', '.', ' '] = true := by native_decide
 
 /-- `...` followed by tab is c-forbidden. -/
-theorem cForbidden_dot_tab :
+lemma cForbidden_dot_tab :
     isCForbiddenPrefix ['.', '.', '.', '\t'] = true := by native_decide
 
 /-- `...` followed by newline is c-forbidden. -/
-theorem cForbidden_dot_newline :
+lemma cForbidden_dot_newline :
     isCForbiddenPrefix ['.', '.', '.', '\n'] = true := by native_decide
 
 /-- `...` followed by carriage return is c-forbidden. -/
-theorem cForbidden_dot_cr :
+lemma cForbidden_dot_cr :
     isCForbiddenPrefix ['.', '.', '.', '\r'] = true := by native_decide
 
 /-- `...` at end-of-input is c-forbidden. -/
-theorem cForbidden_dot_eof :
+lemma cForbidden_dot_eof :
     isCForbiddenPrefix ['.', '.', '.'] = true := by native_decide
 
 /-! ### Negative cases: sequences that are NOT c-forbidden -/
 
 /-- Empty input is not c-forbidden. -/
-theorem not_cForbidden_empty :
+lemma not_cForbidden_empty :
     isCForbiddenPrefix [] = false := by native_decide
 
 /-- A single dash is not c-forbidden. -/
-theorem not_cForbidden_single_dash :
+lemma not_cForbidden_single_dash :
     isCForbiddenPrefix ['-'] = false := by native_decide
 
 /-- Two dashes are not c-forbidden. -/
-theorem not_cForbidden_two_dashes :
+lemma not_cForbidden_two_dashes :
     isCForbiddenPrefix ['-', '-'] = false := by native_decide
 
 /-- `---` followed by a letter is not c-forbidden. -/
-theorem not_cForbidden_dash_letter :
+lemma not_cForbidden_dash_letter :
     isCForbiddenPrefix ['-', '-', '-', 'a'] = false := by native_decide
 
 /-- `...` followed by a letter is not c-forbidden. -/
-theorem not_cForbidden_dot_letter :
+lemma not_cForbidden_dot_letter :
     isCForbiddenPrefix ['.', '.', '.', 'a'] = false := by native_decide
 
 /-- Two dots are not c-forbidden. -/
-theorem not_cForbidden_two_dots :
+lemma not_cForbidden_two_dots :
     isCForbiddenPrefix ['.', '.'] = false := by native_decide
 
 /-- A mixed sequence is not c-forbidden. -/
-theorem not_cForbidden_mixed :
+lemma not_cForbidden_mixed :
     isCForbiddenPrefix ['-', '.', '-'] = false := by native_decide
 
 /-- A plain word is not c-forbidden. -/
-theorem not_cForbidden_word :
+lemma not_cForbidden_word :
     isCForbiddenPrefix ['h', 'e', 'l', 'l', 'o'] = false := by native_decide
 
 /-! ## §2: Fold Append Character Properties
@@ -136,25 +136,25 @@ can start a c-forbidden sequence (`'-'` and `'.'`).
 -/
 
 /-- A fold-appended character is never `'-'`. -/
-theorem fold_char_ne_dash (c : Char) (h : isFoldAppendChar c) : c ≠ '-' := by
+lemma fold_char_ne_dash (c : Char) (h : isFoldAppendChar c) : c ≠ '-' := by
   cases h with
   | inl h => subst h; decide
   | inr h => subst h; decide
 
 /-- A fold-appended character is never `'.'`. -/
-theorem fold_char_ne_dot (c : Char) (h : isFoldAppendChar c) : c ≠ '.' := by
+lemma fold_char_ne_dot (c : Char) (h : isFoldAppendChar c) : c ≠ '.' := by
   cases h with
   | inl h => subst h; decide
   | inr h => subst h; decide
 
 /-- Space is a fold-append character. -/
-theorem space_isFoldAppendChar : isFoldAppendChar ' ' := Or.inl rfl
+lemma space_isFoldAppendChar : isFoldAppendChar ' ' := Or.inl rfl
 
 /-- Newline is a fold-append character. -/
-theorem newline_isFoldAppendChar : isFoldAppendChar '\n' := Or.inr rfl
+lemma newline_isFoldAppendChar : isFoldAppendChar '\n' := Or.inr rfl
 
 /-- The fold-append character set is exactly `{' ', '\n'}`. -/
-theorem isFoldAppendChar_iff (c : Char) : isFoldAppendChar c ↔ c = ' ' ∨ c = '\n' :=
+lemma isFoldAppendChar_iff (c : Char) : isFoldAppendChar c ↔ c = ' ' ∨ c = '\n' :=
   Iff.rfl
 
 /-! ## §3: Key Linking Theorems
@@ -168,11 +168,11 @@ of a document boundary marker.
 /-- A list starting with space is never c-forbidden.
     Since `isCForbiddenPrefix` requires the list to start with `'-'` or `'.'`,
     any list starting with `' '` falls through to the catch-all `_ => false`. -/
-theorem not_cForbidden_space_start (cs : List Char) :
+lemma not_cForbidden_space_start (cs : List Char) :
     isCForbiddenPrefix (' ' :: cs) = false := by rfl
 
 /-- A list starting with newline is never c-forbidden. -/
-theorem not_cForbidden_newline_start (cs : List Char) :
+lemma not_cForbidden_newline_start (cs : List Char) :
     isCForbiddenPrefix ('\n' :: cs) = false := by rfl
 
 /--
@@ -184,7 +184,7 @@ or `'\n'`, and neither of these can start a `---` or `...` marker.
 Therefore, the fold operation cannot introduce c-forbidden content
 at the boundary between the trimmed accumulator and the fold suffix.
 -/
-theorem fold_append_not_cForbidden_start (c : Char) (cs : List Char)
+lemma fold_append_not_cForbidden_start (c : Char) (cs : List Char)
     (hfold : isFoldAppendChar c) : isCForbiddenPrefix (c :: cs) = false := by
   cases hfold with
   | inl h => subst h; rfl
@@ -196,7 +196,7 @@ it starts with `---` or `...` followed by a valid follower.
 
 Stated as: if c-forbidden is true, the first character is `'-'` or `'.'`.
 -/
-theorem cForbidden_first_char (cs : List Char) (h : isCForbiddenPrefix cs = true) :
+lemma cForbidden_first_char (cs : List Char) (h : isCForbiddenPrefix cs = true) :
     ∃ c rest, cs = c :: rest ∧ (c = '-' ∨ c = '.') := by
   unfold isCForbiddenPrefix at h
   split at h
@@ -209,7 +209,7 @@ Summary: fold-appended characters and c-forbidden starting characters
 are disjoint sets. No character is both a fold-append char and a
 c-forbidden starting char.
 -/
-theorem fold_cForbidden_disjoint (c : Char) :
+lemma fold_cForbidden_disjoint (c : Char) :
     isFoldAppendChar c → ¬ (c = '-' ∨ c = '.') := by
   intro hfold hmarker
   cases hmarker with
@@ -222,27 +222,27 @@ Properties of the follower predicate that completes the c-forbidden check.
 -/
 
 /-- EOF (empty list) is a valid marker follower. -/
-theorem markerFollower_eof : isMarkerFollower [] = true := by native_decide
+lemma markerFollower_eof : isMarkerFollower [] = true := by native_decide
 
 /-- Space is a valid marker follower. -/
-theorem markerFollower_space : isMarkerFollower [' '] = true := by native_decide
+lemma markerFollower_space : isMarkerFollower [' '] = true := by native_decide
 
 /-- Tab is a valid marker follower. -/
-theorem markerFollower_tab : isMarkerFollower ['\t'] = true := by native_decide
+lemma markerFollower_tab : isMarkerFollower ['\t'] = true := by native_decide
 
 /-- Newline is a valid marker follower. -/
-theorem markerFollower_newline : isMarkerFollower ['\n'] = true := by native_decide
+lemma markerFollower_newline : isMarkerFollower ['\n'] = true := by native_decide
 
 /-- Carriage return is a valid marker follower. -/
-theorem markerFollower_cr : isMarkerFollower ['\r'] = true := by native_decide
+lemma markerFollower_cr : isMarkerFollower ['\r'] = true := by native_decide
 
 /-- A letter is NOT a valid marker follower. -/
-theorem not_markerFollower_letter : isMarkerFollower ['a'] = false := by native_decide
+lemma not_markerFollower_letter : isMarkerFollower ['a'] = false := by native_decide
 
 /-- A digit is NOT a valid marker follower. -/
-theorem not_markerFollower_digit : isMarkerFollower ['0'] = false := by native_decide
+lemma not_markerFollower_digit : isMarkerFollower ['0'] = false := by native_decide
 
 /-- A dash is NOT a valid marker follower. -/
-theorem not_markerFollower_dash : isMarkerFollower ['-'] = false := by native_decide
+lemma not_markerFollower_dash : isMarkerFollower ['-'] = false := by native_decide
 
 end L4YAML.Proofs.FoldNewlines

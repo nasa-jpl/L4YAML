@@ -32,7 +32,7 @@ open L4YAML.Proofs.ScannerCorrectness (skipWhitespaceLoop_offset_ge)
 /-! ## §1 Helpers -/
 
 -- Derive `offset < inputEnd` from `peek? = some c`
-theorem peek_some_has_more {sc : ScannerState} {c : Char}
+lemma peek_some_has_more {sc : ScannerState} {c : Char}
     (hpeek : sc.peek? = some c) : sc.offset < sc.inputEnd := by
   unfold ScannerState.peek? at hpeek
   split at hpeek
@@ -40,7 +40,7 @@ theorem peek_some_has_more {sc : ScannerState} {c : Char}
   · cases hpeek
 
 -- Derive exact surface position from `peek? = some c` + `ScannerSurfCorr`
-theorem peek_some_sp {sc : ScannerState} {sp : SurfPos} {c : Char}
+lemma peek_some_sp {sc : ScannerState} {sp : SurfPos} {c : Char}
     (hcorr : ScannerSurfCorr sc sp) (hpeek : sc.peek? = some c) :
     ∃ rest, sp = ⟨c :: rest, sc.col⟩ := by
   have hmore := peek_some_has_more hpeek
@@ -53,7 +53,7 @@ theorem peek_some_sp {sc : ScannerState} {sp : SurfPos} {c : Char}
     exact ⟨hchars, hcorr.col_eq⟩⟩
 
 -- Prepend a `SNbDoubleChar` to the first line of `SNbDoubleMultiLine`
-theorem SNbDoubleMultiLine_prepend (s s₁ s_end : SurfPos)
+lemma SNbDoubleMultiLine_prepend (s s₁ s_end : SurfPos)
     (hchar : SNbDoubleChar s s₁)
     (hrest : SNbDoubleMultiLine 0 s₁ s_end) :
     SNbDoubleMultiLine 0 s s_end := by
@@ -66,7 +66,7 @@ theorem SNbDoubleMultiLine_prepend (s s₁ s_end : SurfPos)
       (GStar.cons s s₁ s₁' hchar hline) hbreak hcont
 
 -- Bridge: `¬isLineBreakBool c = true → ¬isLineBreakProp c`
-theorem not_lineBreak_bool_to_prop {c : Char}
+lemma not_lineBreak_bool_to_prop {c : Char}
     (h : ¬isLineBreakBool c = true) : ¬isLineBreakProp c :=
   fun hlb => h ((isLineBreak_iff c).mpr hlb)
 
@@ -74,7 +74,7 @@ theorem not_lineBreak_bool_to_prop {c : Char}
 
 -- SIndent split: SIndent (m + k) → ∃ sp_mid, SIndent m ∧ SIndent k.
 -- Building block for making _prod theorems parametric in n.
-theorem sindent_split {m k : Nat} {sp sp' : SurfPos}
+lemma sindent_split {m k : Nat} {sp sp' : SurfPos}
     (h : SIndent (m + k) sp sp') :
     ∃ sp_mid, SIndent m sp sp_mid ∧ SIndent k sp_mid sp' := by
   induction m generalizing sp with
@@ -90,14 +90,14 @@ theorem sindent_split {m k : Nat} {sp sp' : SurfPos}
       exact ⟨sp_mid, SIndent.succ m' rest col sp_mid h_first, h_second⟩
 
 -- SIndent → GStar SSWhite
-theorem sindent_to_gstar_sswhite {n : Nat} {sp sp' : SurfPos}
+lemma sindent_to_gstar_sswhite {n : Nat} {sp sp' : SurfPos}
     (h : SIndent n sp sp') : GStar SSWhite sp sp' := by
   induction h with
   | zero => exact GStar.nil _
   | succ n rest col s' _ ih => exact GStar.cons _ _ _ (SSWhite.space rest col) ih
 
 -- Concatenation of GStar SSWhite
-theorem gstar_sswhite_append {sp1 sp2 sp3 : SurfPos}
+lemma gstar_sswhite_append {sp1 sp2 sp3 : SurfPos}
     (h1 : GStar SSWhite sp1 sp2) (h2 : GStar SSWhite sp2 sp3) :
     GStar SSWhite sp1 sp3 := by
   induction h1 with
@@ -105,7 +105,7 @@ theorem gstar_sswhite_append {sp1 sp2 sp3 : SurfPos}
   | cons _ _ _ hx _ ih => exact GStar.cons _ _ _ hx (ih h2)
 
 -- GStar SSWhite → GOpt SSeparateInLine
-theorem gstar_sswhite_to_gopt_sep {sp sp' : SurfPos}
+lemma gstar_sswhite_to_gopt_sep {sp sp' : SurfPos}
     (h : GStar SSWhite sp sp') : GOpt SSeparateInLine sp sp' := by
   match h with
   | GStar.nil _ => exact GOpt.none _
@@ -114,7 +114,7 @@ theorem gstar_sswhite_to_gopt_sep {sp sp' : SurfPos}
 
 -- SIndent with n_sk spaces → SFlowLinePrefix n for any n ≤ n_sk.
 -- Decomposes spaces into SIndent n (indent) + remaining as GOpt SSeparateInLine.
-theorem sindent_to_flowlineprefix {n n_sk : Nat} {sp sp' : SurfPos}
+lemma sindent_to_flowlineprefix {n n_sk : Nat} {sp sp' : SurfPos}
     (h : SIndent n_sk sp sp') (hle : n ≤ n_sk) :
     SFlowLinePrefix n sp sp' := by
   have h_eq : n_sk = n + (n_sk - n) := by omega
@@ -128,7 +128,7 @@ theorem sindent_to_flowlineprefix {n n_sk : Nat} {sp sp' : SurfPos}
 -- indent is empty at n=0 and the whole run is `s-separate-in-line`.  This is
 -- the bridge the tab-aware blank-line scans (`skipWhitespace`) need, since
 -- `skipWhitespace_corr` yields `GStar SSWhite` rather than `SIndent`.
-theorem gstar_sswhite_to_flowlineprefix0 {sp sp' : SurfPos}
+lemma gstar_sswhite_to_flowlineprefix0 {sp sp' : SurfPos}
     (h : GStar SSWhite sp sp') : SFlowLinePrefix 0 sp sp' :=
   SFlowLinePrefix.mk 0 sp sp sp' (SIndent.zero sp) (gstar_sswhite_to_gopt_sep h)
 
@@ -139,7 +139,7 @@ theorem gstar_sswhite_to_flowlineprefix0 {sp sp' : SurfPos}
   treats both `\n` and `\r` as line terminators (col:=0, line+1) per
   YAML spec §5.4 [28].  For CRLF, the `\n` byte is skipped by raw
   offset increment to avoid double-counting the line. -/
-theorem consumeNewline_sbreak_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
+lemma consumeNewline_sbreak_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek : sc.peek? = some c)
     (hlb : isLineBreakBool c = true) :
@@ -183,7 +183,7 @@ theorem consumeNewline_sbreak_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
 -- (`skipWhitespace`, my B1 fix), which yield `GStar SSWhite` rather than a pure
 -- `SIndent`; at n = 0 that whole run is `s-flow-line-prefix(0)` via
 -- `gstar_sswhite_to_flowlineprefix0`, so every skipped line is `SLEmpty 0`.
-theorem foldQuotedNewlinesLoop_prod (sc : ScannerState) (sp : SurfPos)
+lemma foldQuotedNewlinesLoop_prod (sc : ScannerState) (sp : SurfPos)
     (cnt fuel : Nat) (hcorr : ScannerSurfCorr sc sp) :
     ∃ sp', GStar (SLEmpty 0 .flowIn) sp sp' ∧
            ScannerSurfCorr (foldQuotedNewlinesLoop sc cnt fuel).1 sp' := by
@@ -212,7 +212,7 @@ theorem foldQuotedNewlinesLoop_prod (sc : ScannerState) (sp : SurfPos)
 
 /-! ## §1e Hex escape helpers -/
 
-theorem scanner_hex_to_surface_hex (c : Char)
+lemma scanner_hex_to_surface_hex (c : Char)
     (h : (c.isDigit || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) = true) :
     isNsHexDigit c := by
   unfold isNsHexDigit; unfold Char.isDigit at h
@@ -222,17 +222,17 @@ theorem scanner_hex_to_surface_hex (c : Char)
   · right; left; exact h
   · right; right; exact h
 
-theorem hex_char_ne_newline (c : Char)
+lemma hex_char_ne_newline (c : Char)
     (h : (c.isDigit || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) = true) :
     c ≠ '\n' := by
   intro heq; subst heq; simp [Char.isDigit] at h
 
-theorem hex_char_ne_cr (c : Char)
+lemma hex_char_ne_cr (c : Char)
     (h : (c.isDigit || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) = true) :
     c ≠ '\r' := by
   intro heq; subst heq; simp [Char.isDigit] at h
 
-theorem collectHexDigitsLoop_prod (sc : ScannerState) (chars : List Char) (col : Nat)
+lemma collectHexDigitsLoop_prod (sc : ScannerState) (chars : List Char) (col : Nat)
     (hex : String) (n : Nat)
     (hcorr : ScannerSurfCorr sc ⟨chars, col⟩)
     (hlen : (collectHexDigitsLoop sc hex n).1.length = hex.length + n) :
@@ -278,7 +278,7 @@ theorem collectHexDigitsLoop_prod (sc : ScannerState) (chars : List Char) (col :
           Bool.not_eq_true _ |>.mp hhex
         simp [collectHexDigitsLoop, hpeek_eq, hhex_f] at hlen
 
-theorem parseHexEscape_prod (sc : ScannerState) (chars : List Char) (col : Nat)
+lemma parseHexEscape_prod (sc : ScannerState) (chars : List Char) (col : Nat)
     (n : Nat) {ch : Char} {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc ⟨chars, col⟩)
     (hok : parseHexEscape sc n = .ok (ch, s')) :
@@ -300,7 +300,7 @@ theorem parseHexEscape_prod (sc : ScannerState) (chars : List Char) (col : Nat)
       exact collectHexDigitsLoop_prod sc chars col "" n hcorr hlen
     · simp at hok
 
-theorem list_eq_cons {α : Type} {n : Nat} {l : List α} (h : l.length = n + 1) :
+lemma list_eq_cons {α : Type} {n : Nat} {l : List α} (h : l.length = n + 1) :
     ∃ a t, l = a :: t ∧ t.length = n := by
   cases l with | nil => simp at h | cons a t => exact ⟨a, t, rfl, by simpa using h⟩
 
@@ -314,7 +314,7 @@ abbrev loopResult (sc : ScannerState) :=
 -- the consumed chars form a flow-folded break: `SBBreak + GStar SLEmpty + SFlowLinePrefix`.
 -- Uses n=0 (universally satisfiable): the grammar n+1→n fix means flowInBlock 0
 -- needs SFlowNode 0 directly, so no parametric indent lifting is needed.
-theorem foldQuotedNewlines_prod (sc : ScannerState) (sp : SurfPos)
+lemma foldQuotedNewlines_prod (sc : ScannerState) (sp : SurfPos)
     (c : Char)
     {content : String} {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc sp)
@@ -373,7 +373,7 @@ theorem foldQuotedNewlines_prod (sc : ScannerState) (sp : SurfPos)
 
 -- When `processEscape` succeeds, the `\` + escape chars form a valid `SNbDoubleChar`
 -- starting from `⟨'\\' :: rest, col⟩`.
-theorem processEscape_prod (sc_bs : ScannerState) (rest : List Char) (col : Nat)
+lemma processEscape_prod (sc_bs : ScannerState) (rest : List Char) (col : Nat)
     {ch : Char} {s' : ScannerState}
     (hcorr_bs : ScannerSurfCorr sc_bs ⟨rest, col + 1⟩)
     (hproc : processEscape sc_bs = .ok (ch, s')) :
@@ -463,7 +463,7 @@ theorem processEscape_prod (sc_bs : ScannerState) (rest : List Char) (col : Nat)
 -- 1. Body: `SNbDoubleMultiLine 0` from current position to before closing `"`
 -- 2. Close: `GLit '"'` consuming the closing `"`
 -- 3. `ScannerSurfCorr` preserved after closing `"`
-theorem collectDoubleQuotedLoop_prod (sc : ScannerState) (sp : SurfPos)
+lemma collectDoubleQuotedLoop_prod (sc : ScannerState) (sp : SurfPos)
     (content : String) (fuel : Nat)
     (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat)
     {result_content : String} {s' : ScannerState}
@@ -608,7 +608,7 @@ theorem collectDoubleQuotedLoop_prod (sc : ScannerState) (sp : SurfPos)
 
 -- `scanDoubleQuoted` success produces a complete `SCDoubleQuoted 0 .blockIn`.
 -- Precondition: `sc.peek? = some '"'` (from scanner dispatch).
-theorem scanDoubleQuoted_prod (sc : ScannerState) (sp : SurfPos)
+lemma scanDoubleQuoted_prod (sc : ScannerState) (sp : SurfPos)
     {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek_dq : sc.peek? = some '"')
@@ -651,7 +651,7 @@ theorem scanDoubleQuoted_prod (sc : ScannerState) (sp : SurfPos)
 /-! ## §4 Single-Quoted Scalar -/
 
 -- Prepend a `SNbSingleChar` to the first line of `SNbSingleMultiLine`
-theorem SNbSingleMultiLine_prepend (s s₁ s_end : SurfPos)
+lemma SNbSingleMultiLine_prepend (s s₁ s_end : SurfPos)
     (hchar : SNbSingleChar s s₁)
     (hrest : SNbSingleMultiLine 0 s₁ s_end) :
     SNbSingleMultiLine 0 s s_end := by
@@ -667,7 +667,7 @@ theorem SNbSingleMultiLine_prepend (s s₁ s_end : SurfPos)
 -- 1. Body: `SNbSingleMultiLine 0` from current position to before closing `'`
 -- 2. Close: `GLit '\'' ` consuming the closing `'`
 -- 3. `ScannerSurfCorr` preserved after closing `'`
-theorem collectSingleQuotedLoop_prod (sc : ScannerState) (sp : SurfPos)
+lemma collectSingleQuotedLoop_prod (sc : ScannerState) (sp : SurfPos)
     (content : String) (fuel : Nat)
     (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat)
     {result_content : String} {s' : ScannerState}
@@ -766,7 +766,7 @@ theorem collectSingleQuotedLoop_prod (sc : ScannerState) (sp : SurfPos)
 
 -- `scanSingleQuoted` success produces a complete `SCSingleQuoted 0 .blockIn`.
 -- Precondition: `sc.peek? = some '\''` (from scanner dispatch).
-theorem scanSingleQuoted_prod (sc : ScannerState) (sp : SurfPos)
+lemma scanSingleQuoted_prod (sc : ScannerState) (sp : SurfPos)
     {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek_sq : sc.peek? = some '\'')
@@ -816,31 +816,31 @@ theorem scanSingleQuoted_prod (sc : ScannerState) (sp : SurfPos)
   (flipped conjunction), plus `¬flow` for flow contexts. -/
 
 -- Bool → Prop for block context: `isPlainSafeBool c false ↔ isNsChar c`.
-theorem isPlainSafe_block_to_nsChar {c : Char}
+lemma isPlainSafe_block_to_nsChar {c : Char}
     (h : isPlainSafeBool c false = true) : isNsChar c := by
   have hp := (isPlainSafe_iff c false).mp h
   simp only [isPlainSafeProp] at hp
   exact ⟨hp.2, hp.1⟩
 
 -- Bool → surface Prop for blockIn: `isPlainSafeBool c false → isNsPlainSafe .blockIn c`.
-theorem isPlainSafe_to_nsPlainSafe_blockIn {c : Char}
+lemma isPlainSafe_to_nsPlainSafe_blockIn {c : Char}
     (h : isPlainSafeBool c false = true) : isNsPlainSafe .blockIn c :=
   isPlainSafe_block_to_nsChar h
 
 -- Bool → surface Prop for blockOut: same as blockIn.
-theorem isPlainSafe_to_nsPlainSafe_blockOut {c : Char}
+lemma isPlainSafe_to_nsPlainSafe_blockOut {c : Char}
     (h : isPlainSafeBool c false = true) : isNsPlainSafe .blockOut c :=
   isPlainSafe_block_to_nsChar h
 
 -- Bool → surface Prop for flowIn: adds flow indicator exclusion.
-theorem isPlainSafe_to_nsPlainSafe_flowIn {c : Char}
+lemma isPlainSafe_to_nsPlainSafe_flowIn {c : Char}
     (h : isPlainSafeBool c true = true) : isNsPlainSafe .flowIn c := by
   have hp := (isPlainSafe_iff c true).mp h
   simp only [isPlainSafeProp] at hp
   exact ⟨⟨hp.2.1, hp.1⟩, hp.2.2⟩
 
 -- isPlainSafeBool c inFlow → c is not a linebreak (useful for advance proofs).
-theorem isPlainSafe_not_linebreak {c : Char} {inFlow : Bool}
+lemma isPlainSafe_not_linebreak {c : Char} {inFlow : Bool}
     (h : isPlainSafeBool c inFlow = true) : ¬isLineBreakProp c := by
   have hp := (isPlainSafe_iff c inFlow).mp h
   cases inFlow
@@ -850,7 +850,7 @@ theorem isPlainSafe_not_linebreak {c : Char} {inFlow : Bool}
     simp only [isPlainSafeProp] at hp; exact hp.2.1
 
 -- isPlainSafeBool c inFlow → c ≠ '\n' ∧ c ≠ '\r' (for advance_non_newline_corr).
-theorem isPlainSafe_not_newline {c : Char} {inFlow : Bool}
+lemma isPlainSafe_not_newline {c : Char} {inFlow : Bool}
     (h : isPlainSafeBool c inFlow = true) : c ≠ '\n' ∧ c ≠ '\r' := by
   have hlb := isPlainSafe_not_linebreak h
   constructor
@@ -864,14 +864,14 @@ theorem isPlainSafe_not_newline {c : Char} {inFlow : Bool}
   `GStar (GChar (fun c => isBlockScalarHeaderChar c = true))`. -/
 
 -- Header chars are not newlines: used for advance_non_newline_corr.
-theorem blockHeaderChar_not_newline {c : Char}
+lemma blockHeaderChar_not_newline {c : Char}
     (h : Grammar.isBlockScalarHeaderChar c = true) : c ≠ '\n' ∧ c ≠ '\r' := by
   constructor
   · intro heq; subst heq; simp [Grammar.isBlockScalarHeaderChar] at h
   · intro heq; subst heq; simp [Grammar.isBlockScalarHeaderChar] at h
 
 -- isDigit && != '0' → isBlockScalarHeaderChar (digit 1-9 is a header char).
-theorem isDigitNotZero_isBlockHeaderChar {c : Char}
+lemma isDigitNotZero_isBlockHeaderChar {c : Char}
     (h : (c.isDigit && (c != '0')) = true) :
     Grammar.isBlockScalarHeaderChar c = true := by
   have ⟨hdig, hne⟩ := Bool.and_eq_true_iff.mp h
@@ -894,7 +894,7 @@ theorem isDigitNotZero_isBlockHeaderChar {c : Char}
 -- `parseBlockHeaderLoop` preserves or sets `explicitOffset` to `some d` with `d ≥ 1`.
 -- Starting with `none`, any digit sets d = c.toNat - '0'.toNat ≥ 1.
 -- Starting with `some d` where `d ≥ 1`, the value is preserved or overwritten with ≥ 1.
-theorem parseBlockHeaderLoop_offset_preserves (sc : ScannerState) (chomp : ChompStyle)
+lemma parseBlockHeaderLoop_offset_preserves (sc : ScannerState) (chomp : ChompStyle)
     (off : Option Nat) (fuel : Nat)
     (hoff : ∀ d, off = some d → d ≥ 1) :
     ∀ d, (parseBlockHeaderLoop sc chomp off fuel).2.1 = some d → d ≥ 1 := by
@@ -929,7 +929,7 @@ theorem parseBlockHeaderLoop_offset_preserves (sc : ScannerState) (chomp : Chomp
     · exact hoff    -- none: returns unchanged offset
 
 -- `parseBlockHeaderLoop` produces `GStar (GChar isBlockScalarHeaderChar)`.
-theorem parseBlockHeaderLoop_prod (sc : ScannerState) (sp : SurfPos)
+lemma parseBlockHeaderLoop_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (chomp : ChompStyle)
     (explicitOffset : Option Nat) (fuel : Nat) :
     let (_, _, sc') := parseBlockHeaderLoop sc chomp explicitOffset fuel
@@ -999,7 +999,7 @@ theorem parseBlockHeaderLoop_prod (sc : ScannerState) (sp : SurfPos)
 
 -- Helper: when peek? = some ' ', first component of consumeExactSpaces (n+1)
 --   = first component of consumeExactSpaces sc.advance n + 1
-theorem consumeExactSpaces_succ_space_fst (sc : ScannerState) (n : Nat)
+lemma consumeExactSpaces_succ_space_fst (sc : ScannerState) (n : Nat)
     (hpeek : sc.peek? = some ' ') :
     (consumeExactSpaces sc (n + 1)).1 = (consumeExactSpaces sc.advance n).1 + 1 := by
   -- generalize the recursive call BEFORE unfolding to keep both sides in sync
@@ -1010,7 +1010,7 @@ theorem consumeExactSpaces_succ_space_fst (sc : ScannerState) (n : Nat)
 
 -- Helper: when peek? = some ' ', second component of consumeExactSpaces (n+1)
 --   = second component of consumeExactSpaces sc.advance n
-theorem consumeExactSpaces_succ_space_snd (sc : ScannerState) (n : Nat)
+lemma consumeExactSpaces_succ_space_snd (sc : ScannerState) (n : Nat)
     (hpeek : sc.peek? = some ' ') :
     (consumeExactSpaces sc (n + 1)).2 = (consumeExactSpaces sc.advance n).2 := by
   generalize h : consumeExactSpaces sc.advance n = p
@@ -1019,7 +1019,7 @@ theorem consumeExactSpaces_succ_space_snd (sc : ScannerState) (n : Nat)
   · contradiction
 
 -- Helper: when peek? ≠ some ' ', consumeExactSpaces (n+1) returns (0, sc)
-theorem consumeExactSpaces_succ_not_space (sc : ScannerState) (n : Nat)
+lemma consumeExactSpaces_succ_not_space (sc : ScannerState) (n : Nat)
     (hpeek : sc.peek? ≠ some ' ') :
     consumeExactSpaces sc (n + 1) = (0, sc) := by
   unfold consumeExactSpaces; split
@@ -1027,7 +1027,7 @@ theorem consumeExactSpaces_succ_not_space (sc : ScannerState) (n : Nat)
   · rfl
 
 -- `consumeExactSpaces` returns at most `count` spaces.
-theorem consumeExactSpaces_fst_le (sc : ScannerState) (count : Nat) :
+lemma consumeExactSpaces_fst_le (sc : ScannerState) (count : Nat) :
     (consumeExactSpaces sc count).1 ≤ count := by
   induction count generalizing sc with
   | zero => simp [consumeExactSpaces]
@@ -1038,7 +1038,7 @@ theorem consumeExactSpaces_fst_le (sc : ScannerState) (count : Nat) :
     · rw [consumeExactSpaces_succ_not_space sc n hpeek]; simp
 
 -- `consumeExactSpaces` produces `SIndent` for however many spaces were actually consumed.
-theorem consumeExactSpaces_sindent_partial (sc : ScannerState) (sp : SurfPos)
+lemma consumeExactSpaces_sindent_partial (sc : ScannerState) (sp : SurfPos)
     (count : Nat) (hcorr : ScannerSurfCorr sc sp) :
     ∃ sp', SIndent (consumeExactSpaces sc count).1 sp sp' ∧
            ScannerSurfCorr (consumeExactSpaces sc count).2 sp' := by
@@ -1061,7 +1061,7 @@ theorem consumeExactSpaces_sindent_partial (sc : ScannerState) (sp : SurfPos)
       exact ⟨sp, SIndent.zero sp, hcorr⟩
 
 -- `consumeExactSpaces` with full count consumed produces `SIndent count`.
-theorem consumeExactSpaces_sindent_prod (sc : ScannerState) (sp : SurfPos)
+lemma consumeExactSpaces_sindent_prod (sc : ScannerState) (sp : SurfPos)
     (count : Nat) (hcorr : ScannerSurfCorr sc sp)
     (hfull : (consumeExactSpaces sc count).1 = count) :
     ∃ sp', SIndent count sp sp' ∧ ScannerSurfCorr (consumeExactSpaces sc count).2 sp' := by
@@ -1087,7 +1087,7 @@ theorem consumeExactSpaces_sindent_prod (sc : ScannerState) (sp : SurfPos)
 
 -- `collectLineContentLoop` produces `GStar SNbChar` + correspondence.
 -- Each consumed character is non-break (since the loop stops at breaks).
-theorem collectLineContentLoop_nbchar_prod (sc : ScannerState) (sp : SurfPos)
+lemma collectLineContentLoop_nbchar_prod (sc : ScannerState) (sp : SurfPos)
     (content : String) (fuel : Nat) (hcorr : ScannerSurfCorr sc sp) :
     ∃ sp', GStar SNbChar sp sp' ∧
            ScannerSurfCorr (collectLineContentLoop sc content fuel).2 sp' := by
@@ -1119,14 +1119,14 @@ theorem collectLineContentLoop_nbchar_prod (sc : ScannerState) (sp : SurfPos)
       exact ⟨sp, GStar.nil sp, hcorr⟩
 
 -- GStar → GPlus conversion when at least one element exists (from known first char).
-theorem gstar_to_gplus_from_first {P : SurfPos → SurfPos → Prop}
+lemma gstar_to_gplus_from_first {P : SurfPos → SurfPos → Prop}
     {sp sp₁ sp' : SurfPos}
     (h_first : P sp sp₁) (h_rest : GStar P sp₁ sp') :
     GPlus P sp sp' := GPlus.mk sp sp₁ sp' h_first h_rest
 
 -- When collectLineContentLoop is called with peek? = some c (not break),
 -- the first char WILL be consumed, giving GPlus SNbChar.
-theorem collectLineContentLoop_gplus_prod (sc : ScannerState) (sp : SurfPos)
+lemma collectLineContentLoop_gplus_prod (sc : ScannerState) (sp : SurfPos)
     (c : Char) (content : String) (fuel : Nat)
     (hcorr : ScannerSurfCorr sc sp) (hpeek : sc.peek? = some c)
     (hne_lb : ¬isLineBreakBool c = true) (hfuel : fuel ≥ 1) :
@@ -1175,14 +1175,14 @@ def ctxOfInFlow : Bool → YamlContext
   | true => .flowIn
 
 -- Bridge: `isPlainSafeBool c inFlow` → `isNsPlainSafe (ctxOfInFlow inFlow) c`.
-theorem isPlainSafe_to_nsPlainSafe {c : Char} {inFlow : Bool}
+lemma isPlainSafe_to_nsPlainSafe {c : Char} {inFlow : Bool}
     (h : isPlainSafeBool c inFlow = true) : isNsPlainSafe (ctxOfInFlow inFlow) c := by
   cases inFlow with
   | false => exact isPlainSafe_to_nsPlainSafe_blockIn h
   | true => exact isPlainSafe_to_nsPlainSafe_flowIn h
 
 -- Bridge: `isFlowIndicatorProp c → isIndicatorProp c`.
-theorem flowIndicatorProp_to_indicatorProp {c : Char}
+lemma flowIndicatorProp_to_indicatorProp {c : Char}
     (h : isFlowIndicatorProp c) : isIndicatorProp c := by
   unfold isFlowIndicatorProp isIndicatorProp at *
   have hsub : [',', '[', ']', '{', '}'] ⊆
@@ -1192,7 +1192,7 @@ theorem flowIndicatorProp_to_indicatorProp {c : Char}
 
 -- Bridge: `isPlainSafeBool c inFlow` + not-colon + not-hash → `SNsPlainChar (ctxOfInFlow inFlow)`.
 -- (`:` needs next char safe via `colonSafe` constructor; `#` needs col > 0 via `hashAfterNs`.)
-theorem isPlainSafe_to_plainChar_basic (c : Char) (rest : List Char) (col : Nat) (inFlow : Bool)
+lemma isPlainSafe_to_plainChar_basic (c : Char) (rest : List Char) (col : Nat) (inFlow : Bool)
     (hSafe : isPlainSafeBool c inFlow = true)
     (hNotColon : c ≠ ':') (hNotHash : c ≠ '#') :
     SNsPlainChar (ctxOfInFlow inFlow) ⟨c :: rest, col⟩ ⟨rest, col + 1⟩ :=
@@ -1201,7 +1201,7 @@ theorem isPlainSafe_to_plainChar_basic (c : Char) (rest : List Char) (col : Nat)
 
 -- Bridge: `isPlainSafeBool c inFlow` + not-colon + not-hash →
 -- `SNbNsPlainInLineEntry (ctxOfInFlow inFlow)` with empty whitespace prefix.
-theorem isPlainSafe_to_inlineEntry_basic (c : Char) (rest : List Char) (col : Nat) (inFlow : Bool)
+lemma isPlainSafe_to_inlineEntry_basic (c : Char) (rest : List Char) (col : Nat) (inFlow : Bool)
     (hSafe : isPlainSafeBool c inFlow = true)
     (hNotColon : c ≠ ':') (hNotHash : c ≠ '#') :
     SNbNsPlainInLineEntry (ctxOfInFlow inFlow) ⟨c :: rest, col⟩ ⟨rest, col + 1⟩ :=
@@ -1220,7 +1220,7 @@ theorem isPlainSafe_to_inlineEntry_basic (c : Char) (rest : List Char) (col : Na
 -- When `next = some n`, rest must start with `n` (hrest_head).
 -- When `next = none`, the exception branch of canStart returns false, so
 -- the hypothesis is contradictory for exception chars.
-theorem canStartPlainScalar_to_SNsPlainFirst (c : Char) (rest : List Char)
+lemma canStartPlainScalar_to_SNsPlainFirst (c : Char) (rest : List Char)
     (col : Nat) (next : Option Char) (inFlow : Bool)
     (hstart : canStartPlainScalarBool c next inFlow = true)
     (hrest_head : ∀ n, next = some n → ∃ rest', rest = n :: rest') :
@@ -1275,7 +1275,7 @@ theorem canStartPlainScalar_to_SNsPlainFirst (c : Char) (rest : List Char)
 
 -- Bridge: terminates?=none at ':' → next char exists and is not blank
 -- (and in flow context, not a flow indicator).
-theorem colon_not_terminated_next (sc : ScannerState) (content spaces : String) (inFlow : Bool)
+lemma colon_not_terminated_next (sc : ScannerState) (content spaces : String) (inFlow : Bool)
     (h : collectPlainScalar_terminates? ':' sc content spaces inFlow = none) :
     ∃ n, sc.peekAt? 1 = some n ∧ isBlankBool n = false ∧
          (inFlow = true → isFlowIndicatorBool n = false) := by
@@ -1294,7 +1294,7 @@ theorem colon_not_terminated_next (sc : ScannerState) (content spaces : String) 
     cases inFlow <;> simp at h
 
 -- Bridge: ¬isBlankBool → isNsChar (for colonSafe)
-theorem not_blank_to_nsChar {c : Char} (h : isBlankBool c = false) : isNsChar c := by
+lemma not_blank_to_nsChar {c : Char} (h : isBlankBool c = false) : isNsChar c := by
   simp [isNsChar, isLineBreakProp, isLineFeedProp, isCarriageReturnProp,
     isWhiteSpaceProp, isSpaceProp, isTabProp,
     isBlankBool, isWhiteSpaceBool, isSpaceBool, isTabBool,
@@ -1307,7 +1307,7 @@ theorem not_blank_to_nsChar {c : Char} (h : isBlankBool c = false) : isNsChar c 
 -- Helper: prepend a single whitespace char to inline continuation.
 -- If no entries follow, it extends trailing WS.
 -- If entries follow, it extends the first entry's GStar SSWhite prefix.
-theorem prepend_white_to_continuation
+lemma prepend_white_to_continuation
     {sp sp_adv sp_end sp_trail : SurfPos}
     (hws : SSWhite sp sp_adv)
     (h_ent : GStar (SNbNsPlainInLineEntry .blockIn) sp_adv sp_end)
@@ -1328,7 +1328,7 @@ theorem prepend_white_to_continuation
         h_trail⟩
 
 -- Helper: create a new inline entry from a safe char + prepend to continuation.
-theorem prepend_char_to_continuation
+lemma prepend_char_to_continuation
     {sp sp_adv sp_end sp_trail : SurfPos}
     (hchar : SNsPlainChar .blockIn sp sp_adv)
     (h_ent : GStar (SNbNsPlainInLineEntry .blockIn) sp_adv sp_end)
@@ -1346,7 +1346,7 @@ theorem prepend_char_to_continuation
   producing one `SLEmpty 0 .flowIn` per blank line.  Uses `.flowIn` context
   because `s-flow-folded(n)` (YAML §6.8 [75]) always uses `l-empty(n, flow-in)`
   regardless of outer context. -/
-theorem skipBlankLinesLoop_prod (sc : ScannerState) (sp : SurfPos)
+lemma skipBlankLinesLoop_prod (sc : ScannerState) (sp : SurfPos)
     (cnt fuel : Nat) (inputEnd : Nat)
     (hcorr : ScannerSurfCorr sc sp) :
     ∃ sp', GStar (SLEmpty 0 .flowIn) sp sp' ∧
@@ -1379,7 +1379,7 @@ theorem skipBlankLinesLoop_prod (sc : ScannerState) (sp : SurfPos)
   Production theorem for `collectPlainScalar_handleBlockLineBreak`:
   `SBBreak + GStar (SLEmpty 0 .flowIn) + SFlowLinePrefix 0 + corr`.
   Analogous to `foldQuotedNewlines_prod` (§1e) for flow context. -/
-theorem handleBlockLineBreak_prod (sc : ScannerState) (sp : SurfPos) (c : Char)
+lemma handleBlockLineBreak_prod (sc : ScannerState) (sp : SurfPos) (c : Char)
     (content : String) (contentIndent inputEnd : Nat)
     {content' : String} {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc sp)
@@ -1428,7 +1428,7 @@ theorem handleBlockLineBreak_prod (sc : ScannerState) (sp : SurfPos) (c : Char)
 -- Full production for `collectPlainScalarLoop`: given accumulated whitespace
 -- `GStar SSWhite sp_ent sp`, produces inline entries and trailing WS.
 -- Parameterized over `inFlow` for both block and flow contexts.
-theorem collectPlainScalarLoop_prod (sc : ScannerState) (sp : SurfPos)
+lemma collectPlainScalarLoop_prod (sc : ScannerState) (sp : SurfPos)
     (content spaces : String) (fuel : Nat)
     (contentIndent inputEnd : Nat)
     (sp_ent : SurfPos) (inFlow : Bool)
@@ -1649,7 +1649,7 @@ theorem collectPlainScalarLoop_prod (sc : ScannerState) (sp : SurfPos)
                 h_next_rest, h_ws_rest, hcorr_rest⟩
 
 -- Helper: canStartPlainScalar → first char is not whitespace.
-theorem canStartPlainScalar_not_ws {c : Char} {next : Option Char} {inFlow : Bool}
+lemma canStartPlainScalar_not_ws {c : Char} {next : Option Char} {inFlow : Bool}
     (h : canStartPlainScalarBool c next inFlow = true) : isWhiteSpaceBool c = false := by
   unfold canStartPlainScalarBool at h
   split at h
@@ -1657,7 +1657,7 @@ theorem canStartPlainScalar_not_ws {c : Char} {next : Option Char} {inFlow : Boo
   · revert h; cases isWhiteSpaceBool c <;> simp
 
 -- Helper: GStar SSWhite starting at a non-WS char must be nil.
-theorem gstar_sswhite_at_non_ws {c : Char} {rest : List Char} {col : Nat} {s₁ : SurfPos}
+lemma gstar_sswhite_at_non_ws {c : Char} {rest : List Char} {col : Nat} {s₁ : SurfPos}
     (h : GStar SSWhite ⟨c :: rest, col⟩ s₁)
     (h_nws : isWhiteSpaceBool c = false) :
     s₁ = ⟨c :: rest, col⟩ := by
@@ -1667,14 +1667,14 @@ theorem gstar_sswhite_at_non_ws {c : Char} {rest : List Char} {col : Nat} {s₁ 
     cases hw <;> simp [isWhiteSpaceBool, isSpaceBool, isTabBool] at h_nws
 
 -- Helper: SNsPlainChar at ⟨c :: rest, col⟩ always produces ⟨rest, col + 1⟩.
-theorem SNsPlainChar_at_head {c : Char} {rest : List Char} {col : Nat} {sp' : SurfPos}
+lemma SNsPlainChar_at_head {c : Char} {rest : List Char} {col : Nat} {sp' : SurfPos}
     (h : SNsPlainChar .blockIn ⟨c :: rest, col⟩ sp') :
     sp' = ⟨rest, col + 1⟩ := by
   cases h <;> rfl
 
 -- Context lift: SNsPlainChar .blockIn → .flowOut (definitional: isNsPlainSafe
 -- .blockIn = isNsPlainSafe .flowOut = isNsChar for non-flow contexts).
-theorem SNsPlainChar_blockIn_to_flowOut {sp sp' : SurfPos}
+lemma SNsPlainChar_blockIn_to_flowOut {sp sp' : SurfPos}
     (h : SNsPlainChar .blockIn sp sp') : SNsPlainChar .flowOut sp sp' := by
   cases h with
   | safe ch rest col hS hNC hNH =>
@@ -1684,14 +1684,14 @@ theorem SNsPlainChar_blockIn_to_flowOut {sp sp' : SurfPos}
   | hashAfterNs rest col hC => exact SNsPlainChar.hashAfterNs .flowOut rest col hC
 
 -- Context lift: SNbNsPlainInLineEntry .blockIn → .flowOut.
-theorem SNbNsPlainInLineEntry_blockIn_to_flowOut {sp sp' : SurfPos}
+lemma SNbNsPlainInLineEntry_blockIn_to_flowOut {sp sp' : SurfPos}
     (h : SNbNsPlainInLineEntry .blockIn sp sp') : SNbNsPlainInLineEntry .flowOut sp sp' :=
   match h with
   | SNbNsPlainInLineEntry.mk _ _ s₁ _ ws_pre char =>
     SNbNsPlainInLineEntry.mk .flowOut _ s₁ _ ws_pre (SNsPlainChar_blockIn_to_flowOut char)
 
 -- Context lift: GStar (SNbNsPlainInLineEntry .blockIn) → GStar (...flowOut).
-theorem GStar_entries_blockIn_to_flowOut {sp sp' : SurfPos}
+lemma GStar_entries_blockIn_to_flowOut {sp sp' : SurfPos}
     (h : GStar (SNbNsPlainInLineEntry .blockIn) sp sp') :
     GStar (SNbNsPlainInLineEntry .flowOut) sp sp' := by
   induction h with
@@ -1701,7 +1701,7 @@ theorem GStar_entries_blockIn_to_flowOut {sp sp' : SurfPos}
 
 -- Context lift: SNsPlainFirst .blockIn → .flowOut (avoids circular import
 -- with NodeProduction.lean which has the same theorem).
-theorem SNsPlainFirst_blockIn_to_flowOut' {s s' : SurfPos}
+lemma SNsPlainFirst_blockIn_to_flowOut' {s s' : SurfPos}
     (h : SNsPlainFirst .blockIn s s') : SNsPlainFirst .flowOut s s' := by
   cases h with
   | nonIndicator ch rest col hSafe hNotInd =>
@@ -1713,7 +1713,7 @@ theorem SNsPlainFirst_blockIn_to_flowOut' {s s' : SurfPos}
 
 -- Context lift: SNsPlainChar .flowIn → .flowOut (flowIn is more restrictive,
 -- so isNsPlainSafe .flowIn c → isNsPlainSafe .flowOut c by dropping flow indicator exclusion).
-theorem SNsPlainChar_flowIn_to_flowOut {sp sp' : SurfPos}
+lemma SNsPlainChar_flowIn_to_flowOut {sp sp' : SurfPos}
     (h : SNsPlainChar .flowIn sp sp') : SNsPlainChar .flowOut sp sp' := by
   cases h with
   | safe ch rest col hS hNC hNH =>
@@ -1723,14 +1723,14 @@ theorem SNsPlainChar_flowIn_to_flowOut {sp sp' : SurfPos}
   | hashAfterNs rest col hC => exact SNsPlainChar.hashAfterNs .flowOut rest col hC
 
 -- Context lift: SNbNsPlainInLineEntry .flowIn → .flowOut.
-theorem SNbNsPlainInLineEntry_flowIn_to_flowOut {sp sp' : SurfPos}
+lemma SNbNsPlainInLineEntry_flowIn_to_flowOut {sp sp' : SurfPos}
     (h : SNbNsPlainInLineEntry .flowIn sp sp') : SNbNsPlainInLineEntry .flowOut sp sp' :=
   match h with
   | SNbNsPlainInLineEntry.mk _ _ s₁ _ ws_pre char =>
     SNbNsPlainInLineEntry.mk .flowOut _ s₁ _ ws_pre (SNsPlainChar_flowIn_to_flowOut char)
 
 -- Context lift: GStar (SNbNsPlainInLineEntry .flowIn) → GStar (...flowOut).
-theorem GStar_entries_flowIn_to_flowOut {sp sp' : SurfPos}
+lemma GStar_entries_flowIn_to_flowOut {sp sp' : SurfPos}
     (h : GStar (SNbNsPlainInLineEntry .flowIn) sp sp') :
     GStar (SNbNsPlainInLineEntry .flowOut) sp sp' := by
   induction h with
@@ -1739,7 +1739,7 @@ theorem GStar_entries_flowIn_to_flowOut {sp sp' : SurfPos}
     exact GStar.cons s₁ s₂ s₃ (SNbNsPlainInLineEntry_flowIn_to_flowOut entry) ih
 
 -- Context lift: SNsPlainFirst .flowIn → .flowOut.
-theorem SNsPlainFirst_flowIn_to_flowOut {s s' : SurfPos}
+lemma SNsPlainFirst_flowIn_to_flowOut {s s' : SurfPos}
     (h : SNsPlainFirst .flowIn s s') : SNsPlainFirst .flowOut s s' := by
   cases h with
   | nonIndicator ch rest col hSafe hNotInd =>
@@ -1750,13 +1750,13 @@ theorem SNsPlainFirst_flowIn_to_flowOut {s s' : SurfPos}
     exact SNsPlainFirst.questionSafe .flowOut next rest col hSafe.1
 
 -- Generic context lift: ctxOfInFlow inFlow → .flowOut (dispatches to block/flow lifts).
-theorem SNsPlainFirst_ctxOfInFlow_to_flowOut {s s' : SurfPos} {inFlow : Bool}
+lemma SNsPlainFirst_ctxOfInFlow_to_flowOut {s s' : SurfPos} {inFlow : Bool}
     (h : SNsPlainFirst (ctxOfInFlow inFlow) s s') : SNsPlainFirst .flowOut s s' := by
   cases inFlow with
   | false => exact SNsPlainFirst_blockIn_to_flowOut' h
   | true => exact SNsPlainFirst_flowIn_to_flowOut h
 
-theorem GStar_entries_ctxOfInFlow_to_flowOut {sp sp' : SurfPos} {inFlow : Bool}
+lemma GStar_entries_ctxOfInFlow_to_flowOut {sp sp' : SurfPos} {inFlow : Bool}
     (h : GStar (SNbNsPlainInLineEntry (ctxOfInFlow inFlow)) sp sp') :
     GStar (SNbNsPlainInLineEntry .flowOut) sp sp' := by
   cases inFlow with
@@ -1765,7 +1765,7 @@ theorem GStar_entries_ctxOfInFlow_to_flowOut {sp sp' : SurfPos} {inFlow : Bool}
 
 -- Context lift: SSNsPlainNextLine n (ctxOfInFlow inFlow) → SSNsPlainNextLine n .flowOut.
 -- Only the entries component depends on context; SLEmpty uses hardcoded .flowIn.
-theorem SSNsPlainNextLine_ctxOfInFlow_to_flowOut {n : Nat} {s s' : SurfPos} {inFlow : Bool}
+lemma SSNsPlainNextLine_ctxOfInFlow_to_flowOut {n : Nat} {s s' : SurfPos} {inFlow : Bool}
     (h : SSNsPlainNextLine n (ctxOfInFlow inFlow) s s') :
     SSNsPlainNextLine n .flowOut s s' := by
   cases h with
@@ -1775,7 +1775,7 @@ theorem SSNsPlainNextLine_ctxOfInFlow_to_flowOut {n : Nat} {s s' : SurfPos} {inF
       (GStar_entries_ctxOfInFlow_to_flowOut h_entries)
 
 -- Context lift for GStar of next-lines.
-theorem GStar_SSNsPlainNextLine_ctxOfInFlow_to_flowOut
+lemma GStar_SSNsPlainNextLine_ctxOfInFlow_to_flowOut
     {n : Nat} {s s' : SurfPos} {inFlow : Bool}
     (h : GStar (SSNsPlainNextLine n (ctxOfInFlow inFlow)) s s') :
     GStar (SSNsPlainNextLine n .flowOut) s s' := by
@@ -1785,7 +1785,7 @@ theorem GStar_SSNsPlainNextLine_ctxOfInFlow_to_flowOut
     exact GStar.cons _ _ _ (SSNsPlainNextLine_ctxOfInFlow_to_flowOut hfirst) ih
 
 -- canStartPlainScalar → isPlainSafeBool (first char is plain safe)
-theorem canStartPlain_implies_safe {c : Char} {next : Option Char} {inFlow : Bool}
+lemma canStartPlain_implies_safe {c : Char} {next : Option Char} {inFlow : Bool}
     (h : canStartPlainScalarBool c next inFlow = true) :
     isPlainSafeBool c inFlow = true := by
   simp only [canStartPlainScalarBool] at h
@@ -1802,7 +1802,7 @@ theorem canStartPlain_implies_safe {c : Char} {next : Option Char} {inFlow : Boo
     · revert h; cases isWhiteSpaceBool c <;> cases isLineBreakBool c <;> simp_all [isFlowIndicatorBool, isIndicatorBool]
 
 -- canStartPlainScalar → not a line break (Bool form)
-theorem canStartPlain_not_linebreak {c : Char} {next : Option Char} {inFlow : Bool}
+lemma canStartPlain_not_linebreak {c : Char} {next : Option Char} {inFlow : Bool}
     (h : canStartPlainScalarBool c next inFlow = true) :
     isLineBreakBool c = false := by
   have hs := canStartPlain_implies_safe h
@@ -1811,7 +1811,7 @@ theorem canStartPlain_not_linebreak {c : Char} {next : Option Char} {inFlow : Bo
 
 -- First char satisfying canStartPlainScalar doesn't trigger terminates?
 -- (given no document boundary at column 0).
-theorem canStartPlain_first_not_terminates (c : Char) (sc : ScannerState) (inFlow : Bool)
+lemma canStartPlain_first_not_terminates (c : Char) (sc : ScannerState) (inFlow : Bool)
     (hstart : canStartPlainScalarBool c (sc.peekAt? 1) inFlow = true)
     (h_not_doc : sc.col = 0 → atDocumentBoundary sc = false) :
     collectPlainScalar_terminates? c sc "" "" inFlow = none := by
@@ -1883,7 +1883,7 @@ theorem canStartPlain_first_not_terminates (c : Char) (sc : ScannerState) (inFlo
 
 -- When the first char is valid content and terminates? = none, extract the
 -- recursive call from collectPlainScalarLoop at fuel (n+1).
-theorem collectPlainScalarLoop_content_first_step
+lemma collectPlainScalarLoop_content_first_step
     {c : Char} {sc : ScannerState} {fuel ci ie : Nat}
     {result : PlainScalarResult} {inFlow : Bool}
     (hpeek : sc.peek? = some c)
@@ -1916,7 +1916,7 @@ theorem collectPlainScalarLoop_content_first_step
 -- Requires: not at document boundary at column 0 (callers check this via
 -- scanNextToken_dispatchStructural before reaching content dispatch).
 -- Parameterized over inFlow: works for both block and flow contexts.
-theorem scanPlainScalar_to_flowNode (sc : ScannerState) (sp : SurfPos)
+lemma scanPlainScalar_to_flowNode (sc : ScannerState) (sp : SurfPos)
     {s' : ScannerState} {c : Char}
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek : sc.peek? = some c)
@@ -1984,7 +1984,7 @@ theorem scanPlainScalar_to_flowNode (sc : ScannerState) (sp : SurfPos)
       h_trail,
       corr_of_simpleKeyAllowed_update false (corr_of_emitAt _ _ hcorr_result)⟩
 
-theorem scanPlainScalar_prod (sc : ScannerState) (sp : SurfPos)
+lemma scanPlainScalar_prod (sc : ScannerState) (sp : SurfPos)
     {s' : ScannerState} {c : Char}
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek : sc.peek? = some c)
@@ -2046,7 +2046,7 @@ theorem scanPlainScalar_prod (sc : ScannerState) (sp : SurfPos)
 -- Proof that if the comment is successfully consumed,
 -- the characters strictly form a GOpt SCNbCommentText derivation tree
 -- and preserve scanner-surface correspondence.
-theorem scanBlockScalarSkipComment_prod (sc : ScannerState) (sp : SurfPos)
+lemma scanBlockScalarSkipComment_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) :
     ∃ sp', GOpt SCNbCommentText sp sp' ∧
            ScannerSurfCorr (scanBlockScalarSkipComment sc) sp' := by
@@ -2078,7 +2078,7 @@ theorem scanBlockScalarSkipComment_prod (sc : ScannerState) (sp : SurfPos)
     exact ⟨sp, GOpt.none sp, hcorr⟩
 
 -- `peek? = none` implies scanner is at/past end of input.
-theorem peek_none_not_lt {sc : ScannerState}
+lemma peek_none_not_lt {sc : ScannerState}
     (hpeek : sc.peek? = none) : ¬ sc.offset < sc.inputEnd := by
   unfold ScannerState.peek? at hpeek
   split at hpeek
@@ -2086,7 +2086,7 @@ theorem peek_none_not_lt {sc : ScannerState}
   · assumption
 
 -- `scanBlockScalarConsumeNewline` produces `SBComment`.
-theorem scanBlockScalarConsumeNewline_prod (sc : ScannerState) (sp : SurfPos)
+lemma scanBlockScalarConsumeNewline_prod (sc : ScannerState) (sp : SurfPos)
     {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc sp)
     (hok : scanBlockScalarConsumeNewline sc = .ok s') :
@@ -2128,7 +2128,7 @@ theorem scanBlockScalarConsumeNewline_prod (sc : ScannerState) (sp : SurfPos)
 -- Fully proven for non-empty whitespace and empty-whitespace-no-comment.
 -- The empty-whitespace-with-comment case is handled at the call site (absorbed
 -- into the call site's existing sorry — unreachable from scanner).
-theorem whitespace_comment_break_to_SSBComment_withWS
+lemma whitespace_comment_break_to_SSBComment_withWS
     (sp_hdr sp_first sp_ws sp_cmt sp_nl : SurfPos)
     (h_first : SSWhite sp_hdr sp_first) (h_rest : GStar SSWhite sp_first sp_ws)
     (h_cmt : GOpt SCNbCommentText sp_ws sp_cmt)
@@ -2144,7 +2144,7 @@ theorem whitespace_comment_break_to_SSBComment_withWS
   These are the remaining pieces needed to close the `scanBlockScalar_prod` sorry. -/
 
 -- `autoDetectBlockScalarIndentLoop` returns indent ≥ minContentIndent when no error.
-theorem autoDetectBlockScalarIndentLoop_ge_min
+lemma autoDetectBlockScalarIndentLoop_ge_min
     (probe : ScannerState) (maxWSCol maxWSLine min fuel ie : Nat) :
     (autoDetectBlockScalarIndentLoop probe maxWSCol maxWSLine min fuel ie).2.2.2 = none →
     (autoDetectBlockScalarIndentLoop probe maxWSCol maxWSLine min fuel ie).1 ≥ min := by
@@ -2170,7 +2170,7 @@ theorem autoDetectBlockScalarIndentLoop_ge_min
       split <;> omega
 
 -- `autoDetectBlockScalarIndent` returns indent ≥ minContentIndent when no error.
-theorem autoDetectBlockScalarIndent_ge_min
+lemma autoDetectBlockScalarIndent_ge_min
     (s : ScannerState) (min ie : Nat) :
     (autoDetectBlockScalarIndent s min ie).2 = none →
     (autoDetectBlockScalarIndent s min ie).1 ≥ min := by
@@ -2186,7 +2186,7 @@ theorem autoDetectBlockScalarIndent_ge_min
 
 -- `scanBlockScalarBody` on success implies the content indent is ≥ 1
 -- when the parent indent is ≥ 0 and any explicit offset is ≥ 1.
-theorem scanBlockScalarBody_indent_ge_one
+lemma scanBlockScalarBody_indent_ge_one
     (sc_orig sc_after_nl : ScannerState)
     (chomp : ChompStyle) (explicitOffset : Option Nat)
     (isLiteral : Bool) (startPos : YamlPos) {s' : ScannerState}
@@ -2228,7 +2228,7 @@ theorem scanBlockScalarBody_indent_ge_one
 -- The first line becomes the head of the GSeq, and if the recursive content
 -- has text lines they become SBNbLiteralNext entries in the GStar tail.
 -- Prepend an `SLEmpty` to an `SLNbLiteralText`'s GStar prefix.
-theorem prepend_empty_to_text_line {n : Nat}
+lemma prepend_empty_to_text_line {n : Nat}
     {sp sp_cn sp_end : SurfPos}
     (h_empty : SLEmpty n .blockIn sp sp_cn)
     (h_text : SLNbLiteralText n sp_cn sp_end) :
@@ -2244,20 +2244,20 @@ theorem prepend_empty_to_text_line {n : Nat}
   Helpers for building `SLLiteralContent` incrementally from loop iterations. -/
 
 -- Empty literal content: no text, no break, no trailing.
-theorem empty_literal_content {n : Nat} (sp : SurfPos) :
+lemma empty_literal_content {n : Nat} (sp : SurfPos) :
     SLLiteralContent n sp sp :=
   SLLiteralContent.mk n sp sp sp sp sp
     (GOpt.none sp) (GOpt.none sp) (GStar.nil sp) (GOpt.none sp)
 
 -- Trailing indent only: `SIndentLe n` at EOF.
-theorem indent_only_literal_content {n : Nat} {sp sp' : SurfPos}
+lemma indent_only_literal_content {n : Nat} {sp sp' : SurfPos}
     (h : SIndentLe n sp sp') : SLLiteralContent n sp sp' :=
   SLLiteralContent.mk n sp sp sp sp sp'
     (GOpt.none sp) (GOpt.none sp) (GStar.nil sp) (GOpt.some sp sp' h)
 
 -- Prepend an `SLEmpty n .blockIn` to `SLLiteralContent n`.
 -- The empty line either joins the first text line's prefix or the trailing empties.
-theorem prepend_empty_to_literal_content {n : Nat}
+lemma prepend_empty_to_literal_content {n : Nat}
     {sp sp₁ sp' : SurfPos}
     (h_empty : SLEmpty n .blockIn sp sp₁)
     (h_tail : SLLiteralContent n sp₁ sp') :
@@ -2291,7 +2291,7 @@ theorem prepend_empty_to_literal_content {n : Nat}
           h_trail_indent
 
 -- Single content line without trailing break → `SLLiteralContent`.
-theorem content_only_to_literal {n : Nat}
+lemma content_only_to_literal {n : Nat}
     {sp sp' : SurfPos}
     (h_text : SLNbLiteralText n sp sp') :
     SLLiteralContent n sp sp' :=
@@ -2301,7 +2301,7 @@ theorem content_only_to_literal {n : Nat}
 
 -- Content line + trailing break + body tail → `SLLiteralContent`.
 -- The break + tail's text lines become `SBNbLiteralNext` continuations.
-theorem content_break_tail_to_literal {n : Nat}
+lemma content_break_tail_to_literal {n : Nat}
     {sp sp₁ sp₂ sp' : SurfPos}
     (h_text : SLNbLiteralText n sp sp₁)
     (h_break : SBBreak sp₁ sp₂)
@@ -2339,7 +2339,7 @@ theorem content_break_tail_to_literal {n : Nat}
           h_trail_indent
 
 -- Content line + trailing break + trailing indent → `SLLiteralContent`.
-theorem content_break_indent_to_literal {n : Nat}
+lemma content_break_indent_to_literal {n : Nat}
     {sp sp₁ sp₂ sp' : SurfPos}
     (h_text : SLNbLiteralText n sp sp₁)
     (h_break : SBBreak sp₁ sp₂)
@@ -2354,7 +2354,7 @@ theorem content_break_indent_to_literal {n : Nat}
 -- collectLineContentLoop has sufficient fuel — it always ends at break/EOF.)
 
 -- SIndent n converts to GStar SNbChar (each indent space is non-break).
-theorem SIndent_gives_GStar_SNbChar {n : Nat} {sp sp' : SurfPos}
+lemma SIndent_gives_GStar_SNbChar {n : Nat} {sp sp' : SurfPos}
     (h : SIndent n sp sp') : GStar SNbChar sp sp' := by
   induction h with
   | zero => exact GStar.nil _
@@ -2362,24 +2362,24 @@ theorem SIndent_gives_GStar_SNbChar {n : Nat} {sp sp' : SurfPos}
     exact GStar.cons _ _ _ (not_isLineBreak_gives_SNbChar ' ' rest col (by decide)) ih
 
 -- SIndentLe n converts to GStar SNbChar.
-theorem SIndentLe_gives_GStar_SNbChar {n : Nat} {sp sp' : SurfPos}
+lemma SIndentLe_gives_GStar_SNbChar {n : Nat} {sp sp' : SurfPos}
     (h : SIndentLe n sp sp') : GStar SNbChar sp sp' := by
   obtain ⟨_, _, h_indent⟩ := h
   exact SIndent_gives_GStar_SNbChar h_indent
 
 -- Extend GPlus with additional GStar elements.
-theorem GPlus_extend_GStar {P : SurfPos → SurfPos → Prop} {sp₁ sp₂ sp₃ : SurfPos}
+lemma GPlus_extend_GStar {P : SurfPos → SurfPos → Prop} {sp₁ sp₂ sp₃ : SurfPos}
     (h₁ : GPlus P sp₁ sp₂) (h₂ : GStar P sp₂ sp₃) : GPlus P sp₁ sp₃ :=
   match h₁ with
   | .mk _ sp_m _ h_first h_rest => GPlus.mk _ sp_m _ h_first (GStar_trans h_rest h₂)
 
 -- Convert GPlus to GStar.
-theorem GPlus_to_GStar {P : SurfPos → SurfPos → Prop} {sp₁ sp₂ : SurfPos}
+lemma GPlus_to_GStar {P : SurfPos → SurfPos → Prop} {sp₁ sp₂ : SurfPos}
     (h : GPlus P sp₁ sp₂) : GStar P sp₁ sp₂ :=
   match h with
   | .mk _ _ _ h_first h_rest => GStar.cons _ _ _ h_first h_rest
 
-theorem prefix_text_literal_content {n : Nat}
+lemma prefix_text_literal_content {n : Nat}
     {sp sp₁ sp' : SurfPos}
     (h_text : SLNbLiteralText n sp sp₁)
     (h_tail : SLLiteralContent n sp₁ sp') :
@@ -2459,7 +2459,7 @@ theorem prefix_text_literal_content {n : Nat}
   - processes a content line without break (content_only or prefix_text). -/
 
 -- `collectBlockScalarLoop` produces `SLLiteralContent n` and preserves correspondence.
-theorem collectBlockScalarLoop_literal_prod
+lemma collectBlockScalarLoop_literal_prod
     (sc : ScannerState) (sp : SurfPos)
     (rawContent : String) (fuel : Nat) (contentIndent inputEnd : Nat)
     (hcorr : ScannerSurfCorr sc sp) :
@@ -2560,7 +2560,7 @@ theorem collectBlockScalarLoop_literal_prod
   - `consumeNewline_sbreak_corr`: newline → `SBBreak` -/
 
 -- Block scalar header chars are not whitespace, line-break, or BOM.
-theorem headerChar_notWsLbBom (c : Char)
+lemma headerChar_notWsLbBom (c : Char)
     (h : Grammar.isBlockScalarHeaderChar c = true) : notWsLbBom c := by
   unfold notWsLbBom Grammar.isBlockScalarHeaderChar at *
   simp only [Bool.or_eq_true, beq_iff_eq, Bool.and_eq_true, decide_eq_true_eq] at h
@@ -2573,7 +2573,7 @@ theorem headerChar_notWsLbBom (c : Char)
     refine ⟨⟨?_, ?_⟩, ⟨?_, ?_⟩, ?_⟩ <;> (intro heq; subst heq; simp at h1 h2 <;> omega)
 
 -- `parseBlockHeaderLoop` preserves the property that `peekBack?` is not ws/lb/BOM.
-theorem parseBlockHeaderLoop_preserves_peekBack_not_ws
+lemma parseBlockHeaderLoop_preserves_peekBack_not_ws
     (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (chomp : ChompStyle) (off : Option Nat) (fuel : Nat)
     (h_pb : ∀ c, sc.peekBack? = some c → notWsLbBom c) :
@@ -2615,7 +2615,7 @@ theorem parseBlockHeaderLoop_preserves_peekBack_not_ws
     · exact h_pb
 
 -- `skipWhitespace` is identity when the SurfPos is unchanged across it.
-theorem skipWhitespace_eq_of_same_surfpos {sc : ScannerState} {sp : SurfPos}
+lemma skipWhitespace_eq_of_same_surfpos {sc : ScannerState} {sp : SurfPos}
     (hcorr : ScannerSurfCorr sc sp)
     (hcorr' : ScannerSurfCorr (skipWhitespace sc) sp) :
     skipWhitespace sc = sc := by
@@ -2643,7 +2643,7 @@ theorem skipWhitespace_eq_of_same_surfpos {sc : ScannerState} {sp : SurfPos}
 -- Proof that `scanBlockScalarSkipComment` is identity
 -- when `peekBack?` returns a non-ws/lb/BOM char
 -- and that it consumes nothing.
-theorem scanBlockScalarSkipComment_noop (sc : ScannerState)
+lemma scanBlockScalarSkipComment_noop (sc : ScannerState)
     (h : ∀ c, sc.peekBack? = some c → notWsLbBom c) :
     scanBlockScalarSkipComment sc = sc := by
   unfold scanBlockScalarSkipComment
@@ -2657,7 +2657,7 @@ theorem scanBlockScalarSkipComment_noop (sc : ScannerState)
   · rfl
 
 -- `SCNbCommentText sp sp` is impossible (column contradiction).
-theorem scNbCommentText_irrefl (sp : SurfPos) : ¬ SCNbCommentText sp sp := by
+lemma scNbCommentText_irrefl (sp : SurfPos) : ¬ SCNbCommentText sp sp := by
   intro h
   match h with
   | .mk rest col _ hstar =>
@@ -2665,7 +2665,7 @@ theorem scNbCommentText_irrefl (sp : SurfPos) : ¬ SCNbCommentText sp sp := by
     omega
 
 -- Mathematical unreachability: `#` comment without preceding whitespace after block header.
-theorem scanBlockScalar_unreachable_comment_without_ws
+lemma scanBlockScalar_unreachable_comment_without_ws
     (sc : ScannerState) (sp_adv sp_hdr sp_cmt : SurfPos)
     (c₀ : Char) (rest : List Char)
     (hcorr : ScannerSurfCorr sc ⟨c₀ :: rest, sc.col⟩)
@@ -2696,7 +2696,7 @@ theorem scanBlockScalar_unreachable_comment_without_ws
 -- `scanBlockScalarBody` for literal produces `SLLiteralContent` + correspondence.
 -- Unwraps `scanBlockScalarBody` to expose `collectBlockScalarLoop`, applies
 -- `collectBlockScalarLoop_literal_prod`, then adjusts for emitAt/simpleKey.
-theorem scanBlockScalarBody_literal_prod (sc_orig sc_after_nl : ScannerState)
+lemma scanBlockScalarBody_literal_prod (sc_orig sc_after_nl : ScannerState)
     (sp : SurfPos) (chomp : ChompStyle) (explicitOffset : Option Nat)
     (startPos : YamlPos) {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc_after_nl sp)
@@ -2738,7 +2738,7 @@ theorem scanBlockScalarBody_literal_prod (sc_orig sc_after_nl : ScannerState)
 -- `scanBlockScalarBody` for folded also produces `SLLiteralContent` + correspondence.
 -- The scanner uses the same `collectBlockScalarLoop` for both literal and folded;
 -- the only difference is post-processing of the collected content string.
-theorem scanBlockScalarBody_folded_prod (sc_orig sc_after_nl : ScannerState)
+lemma scanBlockScalarBody_folded_prod (sc_orig sc_after_nl : ScannerState)
     (sp : SurfPos) (chomp : ChompStyle) (explicitOffset : Option Nat)
     (startPos : YamlPos) {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc_after_nl sp)
@@ -2781,7 +2781,7 @@ theorem scanBlockScalarBody_folded_prod (sc_orig sc_after_nl : ScannerState)
 -- Body: FULLY PROVEN for both literal and folded via `collectBlockScalarLoop_literal_prod`.
 -- Dispatch: FULLY PROVEN for literal (`|`) and folded (`>`).
 -- Note: hm constraint removed from SCLLiteral/SCLFolded (A11 — Nat encoding offset).
-theorem scanBlockScalar_prod (sc : ScannerState) (sp : SurfPos)
+lemma scanBlockScalar_prod (sc : ScannerState) (sp : SurfPos)
     {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc sp)
     (hchar : sc.peek? = some '|' ∨ sc.peek? = some '>')

@@ -71,31 +71,31 @@ def top? : IndentStack α → Option α
     can reason via the `IndentStack` API. -/
 
 /-- **Left identity**: `[] ++ s = s`. -/
-@[simp] theorem nil_append (s : IndentStack α) :
+@[simp] lemma nil_append (s : IndentStack α) :
     (empty : IndentStack α) ++ s = s := List.nil_append s
 
 /-- **Right identity**: `s ++ [] = s`. -/
-@[simp] theorem append_nil (s : IndentStack α) :
+@[simp] lemma append_nil (s : IndentStack α) :
     s ++ (empty : IndentStack α) = s := List.append_nil s
 
 /-- **Associativity**: `(a ++ b) ++ c = a ++ (b ++ c)`. -/
-theorem append_assoc (a b c : IndentStack α) :
+lemma append_assoc (a b c : IndentStack α) :
     (a ++ b) ++ c = a ++ (b ++ c) := List.append_assoc a b c
 
 /-! ## Item 8(b) — push/pop laws -/
 
 /-- **Pop after push**: pushing then popping recovers the
     original stack. -/
-@[simp] theorem pop_push (s : IndentStack α) (a : α) :
+@[simp] lemma pop_push (s : IndentStack α) (a : α) :
     (push s a).pop = s := rfl
 
 /-- **Top after push**: peeking after pushing returns the pushed
     entry. -/
-@[simp] theorem top?_push (s : IndentStack α) (a : α) :
+@[simp] lemma top?_push (s : IndentStack α) (a : α) :
     (push s a).top? = some a := rfl
 
 /-- **Top of empty**: peeking the empty stack returns `none`. -/
-@[simp] theorem top?_empty :
+@[simp] lemma top?_empty :
     (empty : IndentStack α).top? = none := rfl
 
 /-- **Pop of empty**: popping the empty stack is a no-op (returns
@@ -103,13 +103,13 @@ theorem append_assoc (a b c : IndentStack α) :
     sentinel-bottom convention is enforced *separately* via a
     well-formedness invariant, not by giving `pop` a non-empty
     precondition. -/
-@[simp] theorem pop_empty :
+@[simp] lemma pop_empty :
     (empty : IndentStack α).pop = empty := rfl
 
 /-- **Push as cons**: relates the stack API to the underlying
     list constructor. Useful for switching between `push`/`pop`
     reasoning and induction on `List`. -/
-theorem push_eq_cons (s : IndentStack α) (a : α) :
+lemma push_eq_cons (s : IndentStack α) (a : α) :
     push s a = a :: s := rfl
 
 end IndentStack

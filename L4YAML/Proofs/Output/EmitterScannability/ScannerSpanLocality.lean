@@ -41,7 +41,7 @@ abbrev filt : Positioned YamlToken → Bool := fun t => t.val != .placeholder
     `scanNextToken_flow_comma_filtered_push` + `scanNextToken_preprocess_flow_ws1` for the `", "`
     separator.  The IH provides the tail's block with the same property, and the indexing step
     uses `List.getElem!_cons_succ` twice to hop over the two prefix tokens.  -/
-theorem emitList_allScalar_body_content_at :
+lemma emitList_allScalar_body_content_at :
     ∀ (items : List YamlValue), items ≠ [] →
     ∀ (_h_all : ∀ v ∈ items, ∃ sc : Scalar, v = .scalar sc),
     ∀ (s : ScannerState) (rest : List Char),
@@ -286,7 +286,7 @@ theorem emitList_allScalar_body_content_at :
     3. `scanNextToken_flow_close_seq_outermost_ext` yields `s₃`.
     4. `scanFiltered_tokens_eq_of_chain_short_stack` gives `tokens = s₂.filter ++ [tok_fse, streamEnd]`.
     5. Offset-2 index arithmetic connects `tokens[2 + 2*j]` to `block[2*j]`. -/
-theorem scanFiltered_emitSeq_allScalar_token_at
+lemma scanFiltered_emitSeq_allScalar_token_at
     (items : List YamlValue) (h_ne : items ≠ [])
     (h_all : ∀ v ∈ items, ∃ sc : Scalar, v = .scalar sc)
     (tokens : Array (Positioned YamlToken))
@@ -470,7 +470,7 @@ theorem scanFiltered_emitSeq_allScalar_token_at
     `.value` tokens, with re-anchoring via `block_take_eq_of_getElem?` +
     `List_filter_drop_succ_of_take`.  The IH threading uses `scanNextToken_flow_comma_simpleKey`
     to restore `simpleKeyAllowed = true` for each subsequent pair.  -/
-theorem emitPairList_allScalar_body_content_at :
+lemma emitPairList_allScalar_body_content_at :
     ∀ (pairs : List (YamlValue × YamlValue)), pairs ≠ [] →
     ∀ (_h_all : ∀ p ∈ pairs, ∃ sk sv : Scalar, p.1 = .scalar sk ∧ p.2 = .scalar sv),
     ∀ (s : ScannerState) (rest : List Char),
@@ -1085,7 +1085,7 @@ theorem emitPairList_allScalar_body_content_at :
     3. `scanNextToken_flow_close_mapping_outermost_ext` yields `s₃`.
     4. `scanFiltered_tokens_eq_of_chain_short_stack` gives `tokens = s₂.filter ++ [tok_fme, streamEnd]`.
     5. Offset-2 index arithmetic connects `tokens[2 + 5*j + k]` to `block[5*j + k]`. -/
-theorem scanFiltered_emitMap_allScalar_pair_at
+lemma scanFiltered_emitMap_allScalar_pair_at
     (pairs : List (YamlValue × YamlValue)) (h_ne : pairs ≠ [])
     (h_all : ∀ p ∈ pairs, ∃ sk sv : Scalar, p.1 = .scalar sk ∧ p.2 = .scalar sv)
     (tokens : Array (Positioned YamlToken))

@@ -86,20 +86,20 @@ namespace Fuel
 def zero : Fuel := 0
 
 /-- **Left identity**: `0 + n = n`. -/
-@[simp] theorem zero_add (n : Fuel) : zero + n = n := Nat.zero_add n
+@[simp] lemma zero_add (n : Fuel) : zero + n = n := Nat.zero_add n
 
 /-- **Right identity**: `n + 0 = n`. -/
-@[simp] theorem add_zero (n : Fuel) : n + zero = n := Nat.add_zero n
+@[simp] lemma add_zero (n : Fuel) : n + zero = n := Nat.add_zero n
 
 /-- **Associativity**: `(a + b) + c = a + (b + c)`. -/
-theorem add_assoc (a b c : Fuel) : (a + b) + c = a + (b + c) :=
+lemma add_assoc (a b c : Fuel) : (a + b) + c = a + (b + c) :=
   Nat.add_assoc a b c
 
 /-- **Commutativity**: `a + b = b + a`. The parser doesn't rely
     on commutativity (iteration composition is generically
     non-commutative), but it holds on the underlying carrier and
     is useful for normalising fuel arithmetic. -/
-theorem add_comm (a b : Fuel) : a + b = b + a := Nat.add_comm a b
+lemma add_comm (a b : Fuel) : a + b = b + a := Nat.add_comm a b
 
 end Fuel
 
@@ -118,17 +118,17 @@ def iterate {α : Type u} (step : α → α) : Fuel → α → α
 variable {α : Type u}
 
 /-- **Identity action**: zero fuel applies `step` zero times. -/
-@[simp] theorem iterate_zero (step : α → α) (x : α) :
+@[simp] lemma iterate_zero (step : α → α) (x : α) :
     iterate step 0 x = x := rfl
 
 /-- **Successor unfold**: `iterate step (n+1) x = iterate step n (step x)`. -/
-theorem iterate_succ (step : α → α) (n : Fuel) (x : α) :
+lemma iterate_succ (step : α → α) (n : Fuel) (x : α) :
     iterate step (n + 1) x = iterate step n (step x) := rfl
 
 /-- **Fuel-additive composition** (Item 11 capstone, total form):
     running for `n + m` steps equals running for `n` steps then
     `m` more. -/
-theorem iterate_add (step : α → α) (n m : Fuel) (x : α) :
+lemma iterate_add (step : α → α) (n m : Fuel) (x : α) :
     iterate step (n + m) x = iterate step m (iterate step n x) := by
   induction n generalizing x with
   | zero => simp [iterate]
@@ -157,11 +157,11 @@ def iterateOpt (step : α → Option α) : Fuel → α → Option α
   | n + 1, x => (step x).bind (iterateOpt step n)
 
 /-- **Identity (partial)**: zero fuel succeeds trivially. -/
-@[simp] theorem iterateOpt_zero (step : α → Option α) (x : α) :
+@[simp] lemma iterateOpt_zero (step : α → Option α) (x : α) :
     iterateOpt step 0 x = some x := rfl
 
 /-- **Successor unfold (partial)**. -/
-theorem iterateOpt_succ (step : α → Option α) (n : Fuel) (x : α) :
+lemma iterateOpt_succ (step : α → Option α) (n : Fuel) (x : α) :
     iterateOpt step (n + 1) x = (step x).bind (iterateOpt step n) := rfl
 
 /-- **Fuel-additive composition** (Item 11 capstone, partial form):
@@ -169,7 +169,7 @@ theorem iterateOpt_succ (step : α → Option α) (n : Fuel) (x : α) :
     then `m` more. The right-hand side `Option.bind` is the
     "modulo termination" caveat from the inventory: if the prefix
     fails, the whole composition fails. -/
-theorem iterateOpt_add (step : α → Option α) (n m : Fuel) (x : α) :
+lemma iterateOpt_add (step : α → Option α) (n m : Fuel) (x : α) :
     iterateOpt step (n + m) x =
       (iterateOpt step n x).bind (iterateOpt step m) := by
   induction n generalizing x with

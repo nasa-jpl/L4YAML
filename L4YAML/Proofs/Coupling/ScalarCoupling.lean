@@ -29,7 +29,7 @@ open L4YAML.Proofs.ScannerCoupling
 /-! ## §1 Core Helpers -/
 
 /-- All `some` branches of `collectPlainScalar_terminates?` return `state := s`. -/
-theorem terminates_state_eq (c : Char) (s : ScannerState)
+lemma terminates_state_eq (c : Char) (s : ScannerState)
     (content spaces : String) (inFlow : Bool) (r : PlainScalarResult)
     (h : collectPlainScalar_terminates? c s content spaces inFlow = some r) :
     r.state = s := by
@@ -58,7 +58,7 @@ theorem terminates_state_eq (c : Char) (s : ScannerState)
 
 /-- A single `advance` preserves correspondence for some surface position.
     Handles newline, non-newline, and EOF (identity) uniformly. -/
-theorem advance_corr (sc : ScannerState) (sp : SurfPos)
+lemma advance_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) :
     ∃ sp', ScannerSurfCorr sc.advance sp' := by
   by_cases hmore : sc.offset < sc.inputEnd
@@ -80,7 +80,7 @@ theorem advance_corr (sc : ScannerState) (sp : SurfPos)
     rw [this]; exact ⟨sp, hcorr⟩
 
 /-- `consumeNewline` preserves correspondence unconditionally. -/
-theorem consumeNewline_unconditional_corr (sc : ScannerState) (sp : SurfPos)
+lemma consumeNewline_unconditional_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) :
     ∃ sp', ScannerSurfCorr (consumeNewline sc) sp' := by
   unfold consumeNewline
@@ -110,7 +110,7 @@ theorem consumeNewline_unconditional_corr (sc : ScannerState) (sp : SurfPos)
     exact ⟨sp, hcorr⟩
 
 /-- `emitAt` only modifies `tokens`, preserving correspondence. -/
-theorem corr_of_emitAt {sc : ScannerState} {sp : SurfPos}
+lemma corr_of_emitAt {sc : ScannerState} {sp : SurfPos}
     (pos : YamlPos) (tok : YamlToken)
     (hcorr : ScannerSurfCorr sc sp) :
     ScannerSurfCorr (sc.emitAt pos tok) sp :=
@@ -119,7 +119,7 @@ theorem corr_of_emitAt {sc : ScannerState} {sp : SurfPos}
 /-! ## §2 Utility Loops -/
 
 /-- `collectHexDigitsLoop` preserves correspondence. -/
-theorem collectHexDigitsLoop_corr (sc : ScannerState) (sp : SurfPos)
+lemma collectHexDigitsLoop_corr (sc : ScannerState) (sp : SurfPos)
     (hex : String) (n : Nat) (hcorr : ScannerSurfCorr sc sp) :
     ∃ sp', ScannerSurfCorr (collectHexDigitsLoop sc hex n).2 sp' := by
   induction n generalizing sc sp hex with
@@ -133,7 +133,7 @@ theorem collectHexDigitsLoop_corr (sc : ScannerState) (sp : SurfPos)
     · exact ⟨sp, hcorr⟩
 
 /-- `parseHexEscape` preserves correspondence on `.ok` paths. -/
-theorem parseHexEscape_corr (sc : ScannerState) (sp : SurfPos) (n : Nat)
+lemma parseHexEscape_corr (sc : ScannerState) (sp : SurfPos) (n : Nat)
     {c : Char} {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc sp)
     (hok : parseHexEscape sc n = .ok (c, s')) :
@@ -150,7 +150,7 @@ theorem parseHexEscape_corr (sc : ScannerState) (sp : SurfPos) (n : Nat)
     · exact absurd hok (by simp)
 
 /-- `processEscape` preserves correspondence on `.ok` paths. -/
-theorem processEscape_corr (sc : ScannerState) (sp : SurfPos)
+lemma processEscape_corr (sc : ScannerState) (sp : SurfPos)
     {c : Char} {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc sp)
     (hok : processEscape sc = .ok (c, s')) :
@@ -168,7 +168,7 @@ theorem processEscape_corr (sc : ScannerState) (sp : SurfPos)
       | (simp at hok))  -- wildcard error arm
 
 /-- `skipTrailingSpaces` preserves correspondence. -/
-theorem skipTrailingSpaces_corr (sc : ScannerState) (sp : SurfPos) (fuel : Nat)
+lemma skipTrailingSpaces_corr (sc : ScannerState) (sp : SurfPos) (fuel : Nat)
     (hcorr : ScannerSurfCorr sc sp) :
     ∃ sp', ScannerSurfCorr (skipTrailingSpaces sc fuel) sp' := by
   induction fuel generalizing sc sp with
@@ -185,7 +185,7 @@ theorem skipTrailingSpaces_corr (sc : ScannerState) (sp : SurfPos) (fuel : Nat)
 
 /-- `foldQuotedNewlinesLoop` preserves correspondence (1st component).
     Note: the non-recursive cases return the ORIGINAL input `s`, not `skipSpaces s`. -/
-theorem foldQuotedNewlinesLoop_corr (sc : ScannerState) (sp : SurfPos)
+lemma foldQuotedNewlinesLoop_corr (sc : ScannerState) (sp : SurfPos)
     (cnt fuel : Nat) (hcorr : ScannerSurfCorr sc sp) :
     ∃ sp', ScannerSurfCorr (foldQuotedNewlinesLoop sc cnt fuel).1 sp' := by
   induction fuel generalizing sc sp cnt with
@@ -204,7 +204,7 @@ theorem foldQuotedNewlinesLoop_corr (sc : ScannerState) (sp : SurfPos)
     · exact ⟨sp, hcorr⟩
 
 /-- `foldQuotedNewlines` preserves correspondence on `.ok` paths. -/
-theorem foldQuotedNewlines_corr (sc : ScannerState) (sp : SurfPos)
+lemma foldQuotedNewlines_corr (sc : ScannerState) (sp : SurfPos)
     {content : String} {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc sp)
     (hok : foldQuotedNewlines sc = .ok (content, s')) :
@@ -248,7 +248,7 @@ theorem foldQuotedNewlines_corr (sc : ScannerState) (sp : SurfPos)
 /-! ## §4 Double-Quoted Scalar -/
 
 /-- `collectDoubleQuotedLoop` preserves correspondence on `.ok` paths. -/
-theorem collectDoubleQuotedLoop_corr (sc : ScannerState) (sp : SurfPos)
+lemma collectDoubleQuotedLoop_corr (sc : ScannerState) (sp : SurfPos)
     (content : String) (fuel : Nat)
     (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat)
     {result_content : String} {s' : ScannerState}
@@ -319,7 +319,7 @@ theorem collectDoubleQuotedLoop_corr (sc : ScannerState) (sp : SurfPos)
           exact ih _ sc.advance sp_adv _ hcorr_adv hok
 
 /-- `scanDoubleQuoted` preserves correspondence on `.ok` paths. -/
-theorem scanDoubleQuoted_corr (sc : ScannerState) (sp : SurfPos)
+lemma scanDoubleQuoted_corr (sc : ScannerState) (sp : SurfPos)
     {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc sp)
     (hok : scanDoubleQuoted sc = .ok s') :
@@ -349,7 +349,7 @@ theorem scanDoubleQuoted_corr (sc : ScannerState) (sp : SurfPos)
 /-! ## §5 Single-Quoted Scalar -/
 
 /-- `collectSingleQuotedLoop` preserves correspondence on `.ok` paths. -/
-theorem collectSingleQuotedLoop_corr (sc : ScannerState) (sp : SurfPos)
+lemma collectSingleQuotedLoop_corr (sc : ScannerState) (sp : SurfPos)
     (content : String) (fuel : Nat)
     (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat)
     {result_content : String} {s' : ScannerState}
@@ -393,7 +393,7 @@ theorem collectSingleQuotedLoop_corr (sc : ScannerState) (sp : SurfPos)
           exact ih sc.advance sp_adv _ hcorr_adv hok
 
 /-- `scanSingleQuoted` preserves correspondence on `.ok` paths. -/
-theorem scanSingleQuoted_corr (sc : ScannerState) (sp : SurfPos)
+lemma scanSingleQuoted_corr (sc : ScannerState) (sp : SurfPos)
     {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc sp)
     (hok : scanSingleQuoted sc = .ok s') :
@@ -422,7 +422,7 @@ theorem scanSingleQuoted_corr (sc : ScannerState) (sp : SurfPos)
 /-! ## §6 Plain Scalar -/
 
 /-- `skipBlankLinesLoop` preserves correspondence (2nd component). -/
-theorem skipBlankLinesLoop_corr (sc : ScannerState) (sp : SurfPos)
+lemma skipBlankLinesLoop_corr (sc : ScannerState) (sp : SurfPos)
     (cnt fuel : Nat) (inputEnd : Nat)
     (hcorr : ScannerSurfCorr sc sp) :
     ∃ sp', ScannerSurfCorr (skipBlankLinesLoop sc cnt fuel inputEnd).2 sp' := by
@@ -443,7 +443,7 @@ theorem skipBlankLinesLoop_corr (sc : ScannerState) (sp : SurfPos)
 
 /-- `collectPlainScalar_handleBlockLineBreak` preserves correspondence
     when it returns `some`. -/
-theorem handleBlockLineBreak_corr (sc : ScannerState) (sp : SurfPos)
+lemma handleBlockLineBreak_corr (sc : ScannerState) (sp : SurfPos)
     (content : String) (contentIndent inputEnd : Nat)
     {content' : String} {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc sp)
@@ -473,7 +473,7 @@ theorem handleBlockLineBreak_corr (sc : ScannerState) (sp : SurfPos)
       obtain ⟨-, rfl⟩ := hsome; exact ⟨sp_ws, hcorr_ws⟩
 
 /-- `collectPlainScalarLoop` preserves correspondence on `.ok` paths. -/
-theorem collectPlainScalarLoop_corr (sc : ScannerState) (sp : SurfPos)
+lemma collectPlainScalarLoop_corr (sc : ScannerState) (sp : SurfPos)
     (content spaces : String) (fuel : Nat)
     (inFlow : Bool) (contentIndent : Nat) (inputEnd : Nat)
     {result : PlainScalarResult}
@@ -555,7 +555,7 @@ theorem collectPlainScalarLoop_corr (sc : ScannerState) (sp : SurfPos)
               exact ih sc.advance sp_adv _ _ hcorr_adv hok
 
 /-- `scanPlainScalar` preserves correspondence on `.ok` paths. -/
-theorem scanPlainScalar_corr (sc : ScannerState) (sp : SurfPos)
+lemma scanPlainScalar_corr (sc : ScannerState) (sp : SurfPos)
     {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc sp)
     (hok : scanPlainScalar sc = .ok s') :
@@ -573,7 +573,7 @@ theorem scanPlainScalar_corr (sc : ScannerState) (sp : SurfPos)
 /-! ## §7 Block Scalar -/
 
 /-- `consumeExactSpaces` preserves correspondence (2nd component). -/
-theorem consumeExactSpaces_corr (sc : ScannerState) (sp : SurfPos) (count : Nat)
+lemma consumeExactSpaces_corr (sc : ScannerState) (sp : SurfPos) (count : Nat)
     (hcorr : ScannerSurfCorr sc sp) :
     ∃ sp', ScannerSurfCorr (consumeExactSpaces sc count).2 sp' := by
   induction count generalizing sc sp with
@@ -585,7 +585,7 @@ theorem consumeExactSpaces_corr (sc : ScannerState) (sp : SurfPos) (count : Nat)
     · exact ⟨sp, hcorr⟩
 
 /-- `collectLineContentLoop` preserves correspondence (2nd component). -/
-theorem collectLineContentLoop_corr (sc : ScannerState) (sp : SurfPos)
+lemma collectLineContentLoop_corr (sc : ScannerState) (sp : SurfPos)
     (content : String) (fuel : Nat)
     (hcorr : ScannerSurfCorr sc sp) :
     ∃ sp', ScannerSurfCorr (collectLineContentLoop sc content fuel).2 sp' := by
@@ -600,7 +600,7 @@ theorem collectLineContentLoop_corr (sc : ScannerState) (sp : SurfPos)
     · exact ⟨sp, hcorr⟩
 
 /-- `collectBlockScalarLoop` preserves correspondence (2nd component). -/
-theorem collectBlockScalarLoop_corr (sc : ScannerState) (sp : SurfPos)
+lemma collectBlockScalarLoop_corr (sc : ScannerState) (sp : SurfPos)
     (rawContent : String) (fuel : Nat) (contentIndent inputEnd : Nat)
     (hcorr : ScannerSurfCorr sc sp) :
     ∃ sp', ScannerSurfCorr (collectBlockScalarLoop sc rawContent fuel contentIndent inputEnd).2 sp' := by
@@ -648,7 +648,7 @@ theorem collectBlockScalarLoop_corr (sc : ScannerState) (sp : SurfPos)
             · exact ⟨sp_line, hcorr_line⟩  -- none after content
 
 /-- `parseBlockHeaderLoop` preserves correspondence (3rd component). -/
-theorem parseBlockHeaderLoop_corr (sc : ScannerState) (sp : SurfPos)
+lemma parseBlockHeaderLoop_corr (sc : ScannerState) (sp : SurfPos)
     (chomp : ChompStyle) (explicitOffset : Option Nat) (fuel : Nat)
     (hcorr : ScannerSurfCorr sc sp) :
     ∃ sp', ScannerSurfCorr (parseBlockHeaderLoop sc chomp explicitOffset fuel).2.2 sp' := by
@@ -667,7 +667,7 @@ theorem parseBlockHeaderLoop_corr (sc : ScannerState) (sp : SurfPos)
     · exact ⟨sp, hcorr⟩
 
 /-- `scanBlockScalarSkipComment` preserves correspondence. -/
-theorem scanBlockScalarSkipComment_corr (sc : ScannerState) (sp : SurfPos)
+lemma scanBlockScalarSkipComment_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) :
     ∃ sp', ScannerSurfCorr (scanBlockScalarSkipComment sc) sp' := by
   unfold scanBlockScalarSkipComment
@@ -691,7 +691,7 @@ theorem scanBlockScalarSkipComment_corr (sc : ScannerState) (sp : SurfPos)
     exact ⟨sp, hcorr⟩
 
 /-- `scanBlockScalarConsumeNewline` preserves correspondence on `.ok` paths. -/
-theorem scanBlockScalarConsumeNewline_corr (sc : ScannerState) (sp : SurfPos)
+lemma scanBlockScalarConsumeNewline_corr (sc : ScannerState) (sp : SurfPos)
     {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc sp)
     (hok : scanBlockScalarConsumeNewline sc = .ok s') :
@@ -710,7 +710,7 @@ theorem scanBlockScalarConsumeNewline_corr (sc : ScannerState) (sp : SurfPos)
   · have h := Except.ok.inj hok; subst h; exact ⟨sp, hcorr⟩
 
 /-- `scanBlockScalarBody` preserves correspondence on `.ok` paths. -/
-theorem scanBlockScalarBody_corr (sc_orig sc_after_nl : ScannerState)
+lemma scanBlockScalarBody_corr (sc_orig sc_after_nl : ScannerState)
     (sp : SurfPos) (chomp : ChompStyle) (explicitOffset : Option Nat)
     (isLiteral : Bool) (startPos : YamlPos)
     {s' : ScannerState}
@@ -739,7 +739,7 @@ theorem scanBlockScalarBody_corr (sc_orig sc_after_nl : ScannerState)
     exact ⟨sp_loop, ⟨hcorr_loop.chars_from, hcorr_loop.col_eq, hcorr_loop.end_eq, hcorr_loop.input_prefix, hcorr_loop.indent_cols_nonneg⟩⟩
 
 /-- `scanBlockScalar` preserves correspondence on `.ok` paths. -/
-theorem scanBlockScalar_corr (sc : ScannerState) (sp : SurfPos)
+lemma scanBlockScalar_corr (sc : ScannerState) (sp : SurfPos)
     {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc sp)
     (hok : scanBlockScalar sc = .ok s') :

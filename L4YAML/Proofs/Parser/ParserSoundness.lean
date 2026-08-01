@@ -54,31 +54,31 @@ unfolding in the kernel always works, even when the tactic-level
 equation lemmas are absent.
 -/
 
-@[simp] theorem stripAnnotations_scalar (s : Scalar) :
+@[simp] lemma stripAnnotations_scalar (s : Scalar) :
     stripAnnotations (YamlValue.scalar s) =
       YamlValue.scalar ⟨s.content, s.style, none, none, none⟩ := rfl
 
-@[simp] theorem stripAnnotations_sequence
+@[simp] lemma stripAnnotations_sequence
     (style : CollectionStyle) (items : Array YamlValue)
     (tag : Option String) (anchor : Option String) :
     stripAnnotations (YamlValue.sequence style items tag anchor) =
       YamlValue.sequence style
         (stripAnnotations.stripAnnotationsList items.toList).toArray := rfl
 
-@[simp] theorem stripAnnotations_mapping
+@[simp] lemma stripAnnotations_mapping
     (style : CollectionStyle) (pairs : Array (YamlValue × YamlValue))
     (tag : Option String) (anchor : Option String) :
     stripAnnotations (YamlValue.mapping style pairs tag anchor) =
       YamlValue.mapping style
         (stripAnnotations.stripAnnotationsPairs pairs.toList).toArray := rfl
 
-@[simp] theorem stripAnnotations_alias (name : String) :
+@[simp] lemma stripAnnotations_alias (name : String) :
     stripAnnotations (YamlValue.alias name) = YamlValue.alias name := rfl
 
 /--
 `stripAnnotationsList` agrees with `List.map stripAnnotations`.
 -/
-theorem stripAnnotationsList_eq_map (vs : List YamlValue) :
+lemma stripAnnotationsList_eq_map (vs : List YamlValue) :
     stripAnnotations.stripAnnotationsList vs = vs.map stripAnnotations := by
   induction vs with
   | nil => rfl
@@ -88,7 +88,7 @@ theorem stripAnnotationsList_eq_map (vs : List YamlValue) :
 /--
 `stripAnnotationsPairs` agrees with `List.map` of the pair stripping.
 -/
-theorem stripAnnotationsPairs_eq_map (ps : List (YamlValue × YamlValue)) :
+lemma stripAnnotationsPairs_eq_map (ps : List (YamlValue × YamlValue)) :
     stripAnnotations.stripAnnotationsPairs ps =
     ps.map fun ⟨k, v⟩ => (stripAnnotations k, stripAnnotations v) := by
   induction ps with
@@ -99,17 +99,17 @@ theorem stripAnnotationsPairs_eq_map (ps : List (YamlValue × YamlValue)) :
 
 /-- Array elements are strictly smaller than the array (for well-founded recursion).
     Since Lean 4.31.0 this is exactly the library lemma `Array.sizeOf_getElem`. -/
-theorem array_sizeOf_getElem_lt {α : Type _} [SizeOf α] (a : Array α) (i : Nat)
+lemma array_sizeOf_getElem_lt {α : Type _} [SizeOf α] (a : Array α) (i : Nat)
     (hi : i < a.size) : sizeOf a[i] < sizeOf a :=
   Array.sizeOf_getElem a i hi
 
 /-- First component of a pair is strictly smaller than the pair. -/
-theorem prod_fst_sizeOf_lt {α β : Type _} [SizeOf α] [SizeOf β]
+lemma prod_fst_sizeOf_lt {α β : Type _} [SizeOf α] [SizeOf β]
     (p : α × β) : sizeOf p.1 < sizeOf p := by
   rcases p with ⟨a, b⟩; simp [Prod.mk.sizeOf_spec]; omega
 
 /-- Second component of a pair is strictly smaller than the pair. -/
-theorem prod_snd_sizeOf_lt {α β : Type _} [SizeOf α] [SizeOf β]
+lemma prod_snd_sizeOf_lt {α β : Type _} [SizeOf α] [SizeOf β]
     (p : α × β) : sizeOf p.2 < sizeOf p := by
   rcases p with ⟨a, b⟩; simp [Prod.mk.sizeOf_spec]; omega
 
@@ -127,7 +127,7 @@ zero out tags, anchors, and blockMeta), both sides are definitionally
 equal — `rfl` closes every non-plain branch, and the plain-empty
 branch closes after substituting `content = ""`.
 -/
-theorem scalar_has_witness :
+lemma scalar_has_witness :
     (s : Scalar) → (inFlow : Bool) →
     ScalarScannable s inFlow →
     ∃ n : ValidNode,
@@ -159,7 +159,7 @@ theorem scalar_has_witness :
 
 /-! ### List equality helpers -/
 
-theorem stripped_list_eq
+lemma stripped_list_eq
     (nodes : List ValidNode) (items : Array YamlValue)
     (hlen : nodes.length = items.size)
     (helem : ∀ (i : Nat) (hi : i < items.size),
@@ -173,7 +173,7 @@ theorem stripped_list_eq
   have hi : i < items.size := by simp at hi₂; omega
   exact helem i hi
 
-theorem stripped_pairs_eq
+lemma stripped_pairs_eq
     (nodePairs : List (ValidNode × ValidNode))
     (pairs : Array (YamlValue × YamlValue))
     (hlen : nodePairs.length = pairs.size)
@@ -198,7 +198,7 @@ theorem stripped_pairs_eq
 
 `noncomputable` because `Classical.choice` is used to select witnesses.
 -/
-theorem yamlValue_has_witness :
+lemma yamlValue_has_witness :
     (v : YamlValue) → (inFlow : Bool) → Grammable v inFlow →
     ∃ n : ValidNode, stripAnnotations (toYamlValue n) = stripAnnotations v
   | YamlValue.scalar s, inFlow, .scalar _ _ h => scalar_has_witness s inFlow h
@@ -320,7 +320,7 @@ The `Grammable` hypothesis encodes the scanner contract.
             = stripAnnotations docs[i].value
 ```
 -/
-theorem parseStream_sound
+lemma parseStream_sound
     (tokens : Array (Positioned YamlToken))
     (docs : Array YamlDocument)
     (_hparse : TokenParser.parseStream tokens = Except.ok docs)

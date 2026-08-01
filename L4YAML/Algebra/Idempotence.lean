@@ -99,11 +99,11 @@ def canonicalize (v : YamlValue) : YamlValue :=
 
 /-- Per-constructor: aliases are stable under canonicalisation
     (both operations are identity on aliases). -/
-@[simp] theorem canonicalize_alias (name : String) :
+@[simp] lemma canonicalize_alias (name : String) :
     canonicalize (.alias name) = .alias name := rfl
 
 /-- `canonicalize` unfolded as a `Function.comp`. -/
-theorem canonicalize_eq_comp :
+lemma canonicalize_eq_comp :
     canonicalize = YamlValue.adaptForFlowContext ∘ YamlValue.stripAnchors := by
   funext v; rfl
 
@@ -127,7 +127,7 @@ The packaged corollary
 
     Stated as `canonicalize (canonicalize v) = canonicalize v`.
     The proof composes Items 18 + 19 + 20 (packaged as Item 21). -/
-theorem canonicalize_idempotent (v : YamlValue) :
+lemma canonicalize_idempotent (v : YamlValue) :
     canonicalize (canonicalize v) = canonicalize v := by
   unfold canonicalize
   exact stripAnchors_adaptForFlowContext_pipeline_idempotent v
@@ -135,7 +135,7 @@ theorem canonicalize_idempotent (v : YamlValue) :
 /-- Item 4 as a `Function.comp` equation, useful when the
     round-trip pipeline is being composed with further L1
     transforms. -/
-theorem canonicalize_comp_idempotent :
+lemma canonicalize_comp_idempotent :
     canonicalize ∘ canonicalize = canonicalize := by
   funext v; exact canonicalize_idempotent v
 
@@ -159,22 +159,22 @@ def RoundTripStable (v : YamlValue) : Prop :=
   canonicalize v = v
 
 /-- Every `canonicalize`-output is round-trip stable. -/
-theorem canonicalize_isStable (v : YamlValue) :
+lemma canonicalize_isStable (v : YamlValue) :
     RoundTripStable (canonicalize v) :=
   canonicalize_idempotent v
 
 /-- `canonicalize` acts as the identity on round-trip stable
     values. -/
-theorem canonicalize_of_stable {v : YamlValue} (h : RoundTripStable v) :
+lemma canonicalize_of_stable {v : YamlValue} (h : RoundTripStable v) :
     canonicalize v = v := h
 
 /-- Re-applying the pipeline preserves stability. -/
-theorem RoundTripStable_canonicalize (v : YamlValue) :
+lemma RoundTripStable_canonicalize (v : YamlValue) :
     RoundTripStable (canonicalize v) :=
   canonicalize_isStable v
 
 /-- Aliases are always round-trip stable. -/
-@[simp] theorem RoundTripStable_alias (name : String) :
+@[simp] lemma RoundTripStable_alias (name : String) :
     RoundTripStable (.alias name) := by
   show canonicalize (.alias name) = .alias name
   rfl
@@ -195,7 +195,7 @@ match, where-clause helpers reduced to `List.map`, then IH
 applied element-wise. -/
 
 /-- `Schema.resolve.resolveList` reduces to `List.map`. -/
-theorem resolveList_eq_map (l : List YamlValue) :
+lemma resolveList_eq_map (l : List YamlValue) :
     resolve.resolveList l = l.map resolve := by
   induction l with
   | nil => rfl
@@ -204,7 +204,7 @@ theorem resolveList_eq_map (l : List YamlValue) :
     rw [ih]
 
 /-- `Schema.resolve.resolvePairs` reduces to `List.map`. -/
-theorem resolvePairs_eq_map (l : List (YamlValue × YamlValue)) :
+lemma resolvePairs_eq_map (l : List (YamlValue × YamlValue)) :
     resolve.resolvePairs l =
       l.map (fun (k, v) => (resolve k, resolve v)) := by
   induction l with
@@ -223,7 +223,7 @@ local macro "yaml_decreasing" : tactic =>
 
 /-- `resolve` is invariant under `stripAnchors`: anchors are
     metadata that resolution never reads. -/
-theorem resolve_stripAnchors (v : YamlValue) :
+lemma resolve_stripAnchors (v : YamlValue) :
     resolve v.stripAnchors = resolve v := by
   match v with
   | .scalar _ => rfl
@@ -262,7 +262,7 @@ decreasing_by yaml_decreasing
 /-- `resolve` is invariant under `adaptForFlowContext`: style is
     metadata that resolution never reads (resolution depends on
     `content` and `tag` only). -/
-theorem resolve_adaptForFlowContext (v : YamlValue) :
+lemma resolve_adaptForFlowContext (v : YamlValue) :
     resolve v.adaptForFlowContext = resolve v := by
   match v with
   | .scalar s =>
@@ -306,7 +306,7 @@ decreasing_by yaml_decreasing
 /-- **Item 16 ⊗ Item 4** — schema resolution is invariant under
     L1 canonicalisation. The round-trip preserves the resolved
     semantic value. -/
-theorem resolve_canonicalize (v : YamlValue) :
+lemma resolve_canonicalize (v : YamlValue) :
     resolve (canonicalize v) = resolve v := by
   unfold canonicalize
   rw [resolve_adaptForFlowContext, resolve_stripAnchors]
@@ -329,7 +329,7 @@ top-level collections is forced to `none` after canonicalisation. -/
     sequence is `none`. The `stripAnchors` half discards it; the
     `adaptForFlowContext` half doesn't touch the anchor of
     a sequence. -/
-theorem anchor_sequence_canonicalize_none
+lemma anchor_sequence_canonicalize_none
     (style : CollectionStyle) (items : Array YamlValue)
     (tag anchor : Option String) :
     ∃ (items' : Array YamlValue),
@@ -341,7 +341,7 @@ theorem anchor_sequence_canonicalize_none
 
 /-- After canonicalisation, the top-level `anchor` field on a
     mapping is `none`. -/
-theorem anchor_mapping_canonicalize_none
+lemma anchor_mapping_canonicalize_none
     (style : CollectionStyle) (pairs : Array (YamlValue × YamlValue))
     (tag anchor : Option String) :
     ∃ (pairs' : Array (YamlValue × YamlValue)),
@@ -353,7 +353,7 @@ theorem anchor_mapping_canonicalize_none
 
 /-- After canonicalisation, the top-level `anchor` field on a
     scalar is `none`. -/
-theorem anchor_scalar_canonicalize_none (s : Scalar) :
+lemma anchor_scalar_canonicalize_none (s : Scalar) :
     ∃ (s' : Scalar),
       canonicalize (.scalar s) = .scalar s' ∧ s'.anchor = none := by
   -- `stripAnchors` yields `.scalar { s with anchor := none }`,
@@ -392,7 +392,7 @@ shape only. -/
 
     This corollary is exposed for Phase 4 consumers as a
     one-step rewrite. -/
-theorem dedupFirst_idempotent_canonicalize
+lemma dedupFirst_idempotent_canonicalize
     (xs : List (YamlValue × YamlValue)) :
     MappingKeys.dedupFirst (MappingKeys.dedupFirst xs) =
       MappingKeys.dedupFirst xs :=
@@ -421,7 +421,7 @@ def LawfulRoundTrip₁ {T : Type u}
 /-- The trivial L1 instance: when `load = canonicalize` and
     `dump = id`, the abstract law collapses to Item 4 itself.
     Lets downstream proofs phrase the law without re-deriving it. -/
-theorem LawfulRoundTrip₁.canonicalize_id :
+lemma LawfulRoundTrip₁.canonicalize_id :
     LawfulRoundTrip₁ canonicalize (id : YamlValue → YamlValue) := by
   intro v
   -- Goal: `canonicalize (id (canonicalize v)) = canonicalize v`,

@@ -81,29 +81,29 @@ def empty : TokenList τ := []
     `TokenList` API rather than reaching through to `List`. -/
 
 /-- **Left identity**: `[] ++ ts = ts`. -/
-@[simp] theorem nil_append (ts : TokenList τ) :
+@[simp] lemma nil_append (ts : TokenList τ) :
     (empty : TokenList τ) ++ ts = ts := List.nil_append ts
 
 /-- **Right identity**: `ts ++ [] = ts`. -/
-@[simp] theorem append_nil (ts : TokenList τ) :
+@[simp] lemma append_nil (ts : TokenList τ) :
     ts ++ (empty : TokenList τ) = ts := List.append_nil ts
 
 /-- **Associativity**: `(a ++ b) ++ c = a ++ (b ++ c)`. -/
-theorem append_assoc (a b c : TokenList τ) :
+lemma append_assoc (a b c : TokenList τ) :
     (a ++ b) ++ c = a ++ (b ++ c) := List.append_assoc a b c
 
 /-! ## Item 10(b) — singleton/cons/snoc bridge laws -/
 
 /-- **Singleton via cons**: `singleton t = t :: []`. -/
-theorem singleton_eq_cons (t : τ) :
+lemma singleton_eq_cons (t : τ) :
     singleton t = cons t empty := rfl
 
 /-- **Cons as append**: relating `cons` to the monoid op. -/
-theorem cons_eq_append (t : τ) (ts : TokenList τ) :
+lemma cons_eq_append (t : τ) (ts : TokenList τ) :
     cons t ts = singleton t ++ ts := rfl
 
 /-- **Snoc as append**: relating `snoc` to the monoid op. -/
-theorem snoc_eq_append (ts : TokenList τ) (t : τ) :
+lemma snoc_eq_append (ts : TokenList τ) (t : τ) :
     snoc ts t = ts ++ singleton t := rfl
 
 /-! ## Item 10(c) — length is a monoid homomorphism
@@ -113,14 +113,14 @@ theorem snoc_eq_append (ts : TokenList τ) (t : τ) :
     measure progress in tokens emitted. -/
 
 /-- **Length of empty**: `length [] = 0`. -/
-@[simp] theorem length_empty : length (empty : TokenList τ) = 0 := rfl
+@[simp] lemma length_empty : length (empty : TokenList τ) = 0 := rfl
 
 /-- **Length is additive**: `length (a ++ b) = length a + length b`. -/
-@[simp] theorem length_append (a b : TokenList τ) :
+@[simp] lemma length_append (a b : TokenList τ) :
     length (a ++ b) = length a + length b := List.length_append
 
 /-- **Length of singleton**: `length (singleton t) = 1`. -/
-@[simp] theorem length_singleton (t : τ) :
+@[simp] lemma length_singleton (t : τ) :
     length (singleton t) = 1 := rfl
 
 /-! ## Item 10(d) — fold homomorphism
@@ -134,12 +134,12 @@ theorem snoc_eq_append (ts : TokenList τ) (t : τ) :
 
 /-- **Left-fold over append**: folding the concatenation equals
     folding the suffix on top of the prefix's fold. -/
-theorem foldl_append (f : α → τ → α) (z : α) (a b : TokenList τ) :
+lemma foldl_append (f : α → τ → α) (z : α) (a b : TokenList τ) :
     (a ++ b).foldl f z = b.foldl f (a.foldl f z) := List.foldl_append
 
 /-- **Right-fold over append**: folding from the right factors
     through the prefix. -/
-theorem foldr_append (f : τ → α → α) (z : α) (a b : TokenList τ) :
+lemma foldr_append (f : τ → α → α) (z : α) (a b : TokenList τ) :
     (a ++ b).foldr f z = a.foldr f (b.foldr f z) := List.foldr_append
 
 end TokenList

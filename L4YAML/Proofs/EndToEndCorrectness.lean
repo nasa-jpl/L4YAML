@@ -200,7 +200,7 @@ Alternative formulation: Parse soundness in terms of individual documents.
 
 Successful parsing decomposes into raw documents that compose to the final output.
 -/
-theorem parse_sound_documents (input : String) (docs : Array YamlDocument)
+lemma parse_sound_documents (input : String) (docs : Array YamlDocument)
     (h : parseYamlIx input = .ok docs) :
     ∃ raw_docs : Array YamlDocument,
       docs = raw_docs.map YamlDocument.compose := by
@@ -262,7 +262,7 @@ The `stripAnnotations` equality bridges parser output (which may carry
 tags/anchors) to the grammar specification (which uses `none` for all
 annotation fields).
 -/
-theorem parse_produces_valid_yaml (input : String)
+lemma parse_produces_valid_yaml (input : String)
     (docs : Array YamlDocument)
     (h : parseYamlIx input = .ok docs) :
     ∀ i : Fin docs.size,
@@ -295,7 +295,7 @@ rather than existential binder types).
 The bridge sees `ValidYaml` → `Prop` via the function type, making this
 theorem appear in the `verifiedBy` list of `Grammar.ValidYaml`.
 -/
-theorem parseYamlIx_implies_validYaml (input : String)
+lemma parseYamlIx_implies_validYaml (input : String)
     (docs : Array YamlDocument)
     (h : parseYamlIx input = .ok docs)
     (i : Fin docs.size) :
@@ -321,7 +321,7 @@ on zero staging axioms: `scanIx_first_is_streamStart` (§7.9,
 are both *theorems* now. `#print axioms` shows only the Lean
 foundational triple.
 -/
-theorem parseYamlIx_implies_valid_token_stream (input : String)
+lemma parseYamlIx_implies_valid_token_stream (input : String)
     (docs : Array YamlDocument)
     (h : parseYamlIx input = .ok docs) :
     ∃ (tokens : Indexed.TokenStream input),
@@ -350,7 +350,7 @@ theorem parse_deterministic (input : String)
 
 If two strings are equal, their parse results are equal.
 -/
-theorem parse_respects_eq (s₁ s₂ : String) (h : s₁ = s₂) :
+lemma parse_respects_eq (s₁ s₂ : String) (h : s₁ = s₂) :
     parseYamlIx s₁ = parseYamlIx s₂ := by
   rw [h]
 
@@ -380,7 +380,7 @@ The witness bundles a `ValidNode` grammar node (from
 `parseYamlIx_produces_valid_nodes`) with the YAML version directive
 extracted from the document's directives array.
 -/
-theorem parse_produces_valid_documents (input : String)
+lemma parse_produces_valid_documents (input : String)
     (docs : Array YamlDocument)
     (h : parseYamlIx input = .ok docs) :
     ∀ i : Fin docs.size,
@@ -404,7 +404,7 @@ Note: YAML 1.2.2 §9.2 allows empty streams (`[streamStart, streamEnd]`),
 so the nonempty precondition is necessary. The parser returns `#[]` for
 empty inputs like `""`.
 -/
-theorem parse_produces_valid_stream (input : String)
+lemma parse_produces_valid_stream (input : String)
     (docs : Array YamlDocument)
     (h : parseYamlIx input = .ok docs)
     (h_ne : docs.size > 0) :
@@ -430,7 +430,7 @@ every document satisfies `ValidDocumentProp`.
 Makes `ValidDocumentProp` visible from the end-to-end level in the
 doc-verification-bridge's `verifiedBy` analysis.
 -/
-theorem parseYamlIx_implies_valid_document (input : String)
+lemma parseYamlIx_implies_valid_document (input : String)
     (docs : Array YamlDocument)
     (h : parseYamlIx input = .ok docs)
     (i : Fin docs.size) :
@@ -445,7 +445,7 @@ nonempty stream implies the documents satisfy `ValidStreamProp`.
 Makes `ValidStreamProp` visible from the end-to-end level in the
 doc-verification-bridge's `verifiedBy` analysis.
 -/
-theorem parseYamlIx_implies_valid_stream (input : String)
+lemma parseYamlIx_implies_valid_stream (input : String)
     (docs : Array YamlDocument)
     (h : parseYamlIx input = .ok docs)
     (h_ne : docs.size > 0) :

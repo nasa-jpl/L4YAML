@@ -47,7 +47,7 @@ def isTrailingWs (c : Char) : Bool :=
 
 /-- `dropWhile` on a list where the predicate holds for all elements
     returns the empty list. -/
-theorem dropWhile_nil_of_all_true {α : Type} (p : α → Bool) (xs : List α)
+lemma dropWhile_nil_of_all_true {α : Type} (p : α → Bool) (xs : List α)
     (h : ∀ x ∈ xs, p x = true) : xs.dropWhile p = [] := by
   induction xs with
   | nil => rfl
@@ -72,11 +72,11 @@ adds YAML-specific adaptors on top.
 -/
 
 /-- **Empty list**: trimming the empty list returns the empty list. -/
-theorem dropWhile_empty {α : Type} (p : α → Bool) : ([] : List α).dropWhile p = [] := by
+lemma dropWhile_empty {α : Type} (p : α → Bool) : ([] : List α).dropWhile p = [] := by
   rfl
 
 /-- **All matching**: if all chars match, the trim removes everything. -/
-theorem reverse_dropWhile_reverse_all_ws (cs : List Char)
+lemma reverse_dropWhile_reverse_all_ws (cs : List Char)
     (h : ∀ c ∈ cs, isTrailingWs c = true) :
     (cs.reverse.dropWhile isTrailingWs).reverse = [] := by
   have hrev : ∀ c ∈ cs.reverse, isTrailingWs c = true :=
@@ -85,7 +85,7 @@ theorem reverse_dropWhile_reverse_all_ws (cs : List Char)
   rfl
 
 /-- **No trailing ws**: if the last element doesn't match, trim is identity. -/
-theorem reverse_dropWhile_reverse_noop (cs : List Char) (c : Char)
+lemma reverse_dropWhile_reverse_noop (cs : List Char) (c : Char)
     (hNe : cs ≠ [])
     (hLast : cs.getLast hNe = c)
     (hNotWs : isTrailingWs c = false) :
@@ -114,19 +114,19 @@ Here we prove additional content-level properties.
 -/
 
 /-- A folded result always carries a string payload. -/
-theorem folded_payload (s : String) :
+lemma folded_payload (s : String) :
     ∃ (t : String), FoldResult.folded s = FoldResult.folded t :=
   ⟨s, rfl⟩
 
 /-- The string extracted from a `folded` result equals what was put in. -/
-theorem folded_content_roundtrip (s : String) :
+lemma folded_content_roundtrip (s : String) :
     match (FoldResult.folded s) with
     | .folded t => t = s
     | .forbidden _ => False := by
   rfl
 
 /-- A forbidden result carries an error message. -/
-theorem forbidden_has_message (msg : String) :
+lemma forbidden_has_message (msg : String) :
     match (FoldResult.forbidden msg) with
     | .folded _ => False
     | .forbidden m => m = msg := by
@@ -134,7 +134,7 @@ theorem forbidden_has_message (msg : String) :
 
 /-- Fold results are determined by their constructor: matching on the
     result always classifies correctly. -/
-theorem foldResult_classification (r : FoldResult) :
+lemma foldResult_classification (r : FoldResult) :
     (∃ s, r = .folded s ∧ match r with | .folded _ => True | .forbidden _ => False) ∨
     (∃ m, r = .forbidden m ∧ match r with | .folded _ => False | .forbidden _ => True) := by
   match r with
@@ -142,12 +142,12 @@ theorem foldResult_classification (r : FoldResult) :
   | .forbidden m => exact Or.inr ⟨m, rfl, trivial⟩
 
 /-- `FoldResult.folded` is injective. -/
-theorem folded_injective (s t : String) :
+lemma folded_injective (s t : String) :
     FoldResult.folded s = FoldResult.folded t → s = t := by
   intro h; exact FoldResult.folded.inj h
 
 /-- `FoldResult.forbidden` is injective. -/
-theorem forbidden_injective (s t : String) :
+lemma forbidden_injective (s t : String) :
     FoldResult.forbidden s = FoldResult.forbidden t → s = t := by
   intro h; exact FoldResult.forbidden.inj h
 
@@ -160,7 +160,7 @@ preserved.
 -/
 
 /-- The reverse‑dropWhile‑reverse operation produces a prefix of the original. -/
-theorem reverse_dropWhile_reverse_isPrefix (p : Char → Bool) (cs : List Char) :
+lemma reverse_dropWhile_reverse_isPrefix (p : Char → Bool) (cs : List Char) :
     ∃ suf, cs = (cs.reverse.dropWhile p).reverse ++ suf := by
   have := @List.takeWhile_append_dropWhile _ p cs.reverse
   refine ⟨(cs.reverse.takeWhile p).reverse, ?_⟩
@@ -170,7 +170,7 @@ theorem reverse_dropWhile_reverse_isPrefix (p : Char → Bool) (cs : List Char) 
         List.reverse_append ..
 
 /-- `hasAdjacentChars` is false on a prefix when it is false on the whole list. -/
-theorem hasAdjacentChars_false_of_append (a b : Char) (xs ys : List Char)
+lemma hasAdjacentChars_false_of_append (a b : Char) (xs ys : List Char)
     (h : hasAdjacentChars a b (xs ++ ys) = false) :
     hasAdjacentChars a b xs = false := by
   rw [Bool.eq_false_iff] at h ⊢
@@ -178,7 +178,7 @@ theorem hasAdjacentChars_false_of_append (a b : Char) (xs ys : List Char)
   exact h ((hasAdjacentChars_append a b xs ys).mpr (Or.inl h'))
 
 /-- Trimming trailing whitespace preserves `noColonSpaceProp`. -/
-theorem trim_preserves_noColonSpace (p : Char → Bool) (cs : List Char)
+lemma trim_preserves_noColonSpace (p : Char → Bool) (cs : List Char)
     (h : noColonSpaceProp (String.ofList cs)) :
     noColonSpaceProp (String.ofList (cs.reverse.dropWhile p).reverse) := by
   obtain ⟨suf, hsuf⟩ := reverse_dropWhile_reverse_isPrefix p cs
@@ -188,7 +188,7 @@ theorem trim_preserves_noColonSpace (p : Char → Bool) (cs : List Char)
   simp [hasAdjacentChars_false_of_append ':' ' ' _ suf (Bool.not_inj h)]
 
 /-- Trimming trailing whitespace preserves `noSpaceHashProp`. -/
-theorem trim_preserves_noSpaceHash (p : Char → Bool) (cs : List Char)
+lemma trim_preserves_noSpaceHash (p : Char → Bool) (cs : List Char)
     (h : noSpaceHashProp (String.ofList cs)) :
     noSpaceHashProp (String.ofList (cs.reverse.dropWhile p).reverse) := by
   obtain ⟨suf, hsuf⟩ := reverse_dropWhile_reverse_isPrefix p cs
@@ -198,7 +198,7 @@ theorem trim_preserves_noSpaceHash (p : Char → Bool) (cs : List Char)
   simp [hasAdjacentChars_false_of_append ' ' '#' _ suf (Bool.not_inj h)]
 
 /-- Trimming trailing whitespace preserves `noFlowIndicatorsProp`. -/
-theorem trim_preserves_noFlowIndicators (p : Char → Bool) (cs : List Char)
+lemma trim_preserves_noFlowIndicators (p : Char → Bool) (cs : List Char)
     (h : noFlowIndicatorsProp (String.ofList cs)) :
     noFlowIndicatorsProp (String.ofList (cs.reverse.dropWhile p).reverse) := by
   obtain ⟨suf, hsuf⟩ := reverse_dropWhile_reverse_isPrefix p cs
@@ -209,7 +209,7 @@ theorem trim_preserves_noFlowIndicators (p : Char → Bool) (cs : List Char)
 /-- Trimming preserves `validPlainFirstProp` when the result has ≥ 2 characters.
     (When the first char is `-`/`?`/`:`, `canStartPlainScalarProp c none` is `False`,
     so a single-char result would not inherit `validPlainFirstProp` from the original.) -/
-theorem trim_preserves_validPlainFirst (p : Char → Bool) (cs : List Char)
+lemma trim_preserves_validPlainFirst (p : Char → Bool) (cs : List Char)
     (inFlow : Bool) (h : validPlainFirstProp (String.ofList cs) inFlow)
     (hge2 : (cs.reverse.dropWhile p).reverse.length ≥ 2) :
     validPlainFirstProp (String.ofList (cs.reverse.dropWhile p).reverse) inFlow := by

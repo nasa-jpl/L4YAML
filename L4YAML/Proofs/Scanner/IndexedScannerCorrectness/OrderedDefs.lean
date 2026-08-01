@@ -150,12 +150,12 @@ Indexed twins of legacy `SimpleKeyValid_mono` / `SimpleKeyStackValid_mono`
 / `AllKeysValid_mono` / `AllKeysValid_of_cleared_current` and the
 `ScanInv` "cleared/identity" companions. -/
 
-theorem SimpleKeyValidIx_of_not_possible {input : String}
+lemma SimpleKeyValidIx_of_not_possible {input : String}
     (s : ScannerStateIx input)
     (h : s.simpleKey.possible = false) : SimpleKeyValidIx s :=
   fun h_poss => absurd h_poss (by simp [h])
 
-theorem SimpleKeyValidIx_mono {input : String} (s s' : ScannerStateIx input)
+lemma SimpleKeyValidIx_mono {input : String} (s s' : ScannerStateIx input)
     (h_skv : SimpleKeyValidIx s)
     (h_sk : s'.simpleKey = s.simpleKey)
     (h_mono : s'.tokens.tokens.size ≥ s.tokens.tokens.size)
@@ -169,7 +169,7 @@ theorem SimpleKeyValidIx_mono {input : String} (s s' : ScannerStateIx input)
   · intro h1; rw [h_pref _ hb1]; exact hp1 hb1
   · intro h2; rw [h_pref _ hb2]; exact hp2 hb2
 
-theorem SimpleKeyStackValidIx_mono {input : String} (s s' : ScannerStateIx input)
+lemma SimpleKeyStackValidIx_mono {input : String} (s s' : ScannerStateIx input)
     (h_ssv : SimpleKeyStackValidIx s)
     (h_stack : s'.simpleKeyStack = s.simpleKeyStack)
     (h_mono : s'.tokens.tokens.size ≥ s.tokens.tokens.size)
@@ -186,7 +186,7 @@ theorem SimpleKeyStackValidIx_mono {input : String} (s s' : ScannerStateIx input
   · intro h1; rw [h_pref _ hb1]; exact hp1 hb1
   · intro h2; rw [h_pref _ hb2]; exact hp2 hb2
 
-theorem AllKeysValidIx_mono {input : String} (s s' : ScannerStateIx input)
+lemma AllKeysValidIx_mono {input : String} (s s' : ScannerStateIx input)
     (h_akv : AllKeysValidIx s)
     (h_sk : s'.simpleKey = s.simpleKey)
     (h_stack : s'.simpleKeyStack = s.simpleKeyStack)
@@ -197,7 +197,7 @@ theorem AllKeysValidIx_mono {input : String} (s s' : ScannerStateIx input)
   ⟨SimpleKeyValidIx_mono s s' h_akv.1 h_sk h_mono h_pref,
    SimpleKeyStackValidIx_mono s s' h_akv.2 h_stack h_mono h_pref⟩
 
-theorem AllKeysValidIx_of_cleared {input : String} (s' : ScannerStateIx input)
+lemma AllKeysValidIx_of_cleared {input : String} (s' : ScannerStateIx input)
     (h_poss : s'.simpleKey.possible = false)
     (h_ssv : SimpleKeyStackValidIx s')
     : AllKeysValidIx s' :=
@@ -215,7 +215,7 @@ The `_mono` family above requires *full token equality* on the prefix
 Indexed twin of legacy `SimpleKeyStackValid_mono_pos`
 (`ScannerCorrectness.lean:8803`). -/
 
-theorem SimpleKeyValidIx_mono_pos {input : String} (s s' : ScannerStateIx input)
+lemma SimpleKeyValidIx_mono_pos {input : String} (s s' : ScannerStateIx input)
     (h_skv : SimpleKeyValidIx s)
     (h_sk : s'.simpleKey = s.simpleKey)
     (h_mono : s'.tokens.tokens.size ≥ s.tokens.tokens.size)
@@ -229,7 +229,7 @@ theorem SimpleKeyValidIx_mono_pos {input : String} (s s' : ScannerStateIx input)
   · intro _h1; rw [h_pref_start _ hb1]; exact hp1 hb1
   · intro _h2; rw [h_pref_start _ hb2]; exact hp2 hb2
 
-theorem SimpleKeyStackValidIx_mono_pos {input : String} (s s' : ScannerStateIx input)
+lemma SimpleKeyStackValidIx_mono_pos {input : String} (s s' : ScannerStateIx input)
     (h_ssv : SimpleKeyStackValidIx s)
     (h_stack : s'.simpleKeyStack = s.simpleKeyStack)
     (h_mono : s'.tokens.tokens.size ≥ s.tokens.tokens.size)
@@ -246,7 +246,7 @@ theorem SimpleKeyStackValidIx_mono_pos {input : String} (s s' : ScannerStateIx i
   · intro _h1; rw [h_pref_start _ hb1]; exact hp1 hb1
   · intro _h2; rw [h_pref_start _ hb2]; exact hp2 hb2
 
-theorem AllKeysValidIx_mono_pos {input : String} (s s' : ScannerStateIx input)
+lemma AllKeysValidIx_mono_pos {input : String} (s s' : ScannerStateIx input)
     (h_akv : AllKeysValidIx s)
     (h_sk : s'.simpleKey = s.simpleKey)
     (h_stack : s'.simpleKeyStack = s.simpleKeyStack)
@@ -259,7 +259,7 @@ theorem AllKeysValidIx_mono_pos {input : String} (s s' : ScannerStateIx input)
 
 /-- `ScanInvIx` is preserved by field updates that touch neither tokens
     nor the cursor offset. -/
-theorem ScanInvIx_of_field_update {input : String} (s s' : ScannerStateIx input)
+lemma ScanInvIx_of_field_update {input : String} (s s' : ScannerStateIx input)
     (h : ScanInvIx s)
     (h_tok : s'.tokens = s.tokens)
     (h_off : s'.cursor.pos.offset = s.cursor.pos.offset) :
@@ -269,7 +269,7 @@ theorem ScanInvIx_of_field_update {input : String} (s s' : ScannerStateIx input)
 
 /-- `ScanInvIx` is preserved by field updates that only INCREASE
     `cursor.pos.offset` (and leave tokens unchanged). -/
-theorem ScanInvIx_of_offset_ge {input : String} (s s' : ScannerStateIx input)
+lemma ScanInvIx_of_offset_ge {input : String} (s s' : ScannerStateIx input)
     (h : ScanInvIx s)
     (h_tok : s'.tokens = s.tokens)
     (h_off : s.cursor.pos.offset ≤ s'.cursor.pos.offset) :

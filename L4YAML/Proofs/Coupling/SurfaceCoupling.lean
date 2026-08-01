@@ -85,22 +85,22 @@ theorem GChar_col (p : Char → Prop) (s s' : SurfPos)
   cases h; rfl
 
 /-- `GLit ch` advances column by 1. -/
-theorem GLit_col (ch : Char) (s s' : SurfPos)
+lemma GLit_col (ch : Char) (s s' : SurfPos)
     (h : GLit ch s s') : s'.col = s.col + 1 := by
   cases h; rfl
 
 /-- `SBBreak` resets column to 0 (line feed case). -/
-theorem SBBreak_lf_col (rest : List Char) (col : Nat) :
+lemma SBBreak_lf_col (rest : List Char) (col : Nat) :
     SBBreak ⟨'\n' :: rest, col⟩ ⟨rest, 0⟩ :=
   SBBreak.lf rest col
 
 /-- `SBBreak` resets column to 0 (carriage return case). -/
-theorem SBBreak_cr_col (rest : List Char) (col : Nat) :
+lemma SBBreak_cr_col (rest : List Char) (col : Nat) :
     SBBreak ⟨'\r' :: rest, col⟩ ⟨rest, 0⟩ :=
   SBBreak.cr rest col
 
 /-- `SBBreak` resets column to 0 (CRLF case). -/
-theorem SBBreak_crlf_col (rest : List Char) (col : Nat) :
+lemma SBBreak_crlf_col (rest : List Char) (col : Nat) :
     SBBreak ⟨'\r' :: '\n' :: rest, col⟩ ⟨rest, 0⟩ :=
   SBBreak.crLf rest col
 
@@ -109,7 +109,7 @@ theorem SBBreak_crlf_col (rest : List Char) (col : Nat) :
 These lemmas show how surface syntax productions compose. -/
 
 /-- Sequential composition preserves column tracking. -/
-theorem GSeq_col (P Q : SurfPos → SurfPos → Prop) (s₁ _s₂ s₃ : SurfPos)
+lemma GSeq_col (P Q : SurfPos → SurfPos → Prop) (s₁ _s₂ s₃ : SurfPos)
     (colP : ∀ a b, P a b → b.col = a.col + 1)
     (colQ : ∀ a b, Q a b → b.col = a.col + 1)
     (h : GSeq P Q s₁ s₃) : s₃.col = s₁.col + 2 := by
@@ -120,12 +120,12 @@ theorem GSeq_col (P Q : SurfPos → SurfPos → Prop) (s₁ _s₂ s₃ : SurfPos
     omega
 
 /-- `GStar P` preserves the starting position when empty. -/
-theorem GStar_nil (P : SurfPos → SurfPos → Prop) (s : SurfPos) :
+lemma GStar_nil (P : SurfPos → SurfPos → Prop) (s : SurfPos) :
     GStar P s s :=
   GStar.nil s
 
 /-- `GOpt P` can always match as none (zero-width). -/
-theorem GOpt_none (P : SurfPos → SurfPos → Prop) (s : SurfPos) :
+lemma GOpt_none (P : SurfPos → SurfPos → Prop) (s : SurfPos) :
     GOpt P s s :=
   GOpt.none s
 
@@ -136,7 +136,7 @@ corresponds to `SIndent n` in the surface syntax. -/
 
 /-- If a list starts with `n` spaces, `SIndent n` holds on the
     corresponding `SurfPos`, advancing by exactly `n` characters. -/
-theorem spaces_give_SIndent (n : Nat) (chars : List Char) (col : Nat)
+lemma spaces_give_SIndent (n : Nat) (chars : List Char) (col : Nat)
     (hpre : chars.take n = List.replicate n ' ')
     (hlen : chars.length ≥ n) :
     SIndent n ⟨chars, col⟩ ⟨chars.drop n, col + n⟩ :=
@@ -148,17 +148,17 @@ The scanner's `consumeNewline` consuming CR/LF/CRLF corresponds
 to `SBBreak` in the surface syntax. -/
 
 /-- If the head character is `\n`, `SBBreak` holds. -/
-theorem lf_gives_SBBreak (rest : List Char) (col : Nat) :
+lemma lf_gives_SBBreak (rest : List Char) (col : Nat) :
     SBBreak ⟨'\n' :: rest, col⟩ ⟨rest, 0⟩ :=
   SBBreak.lf rest col
 
 /-- If the head characters are `\r\n`, `SBBreak` holds. -/
-theorem crlf_gives_SBBreak (rest : List Char) (col : Nat) :
+lemma crlf_gives_SBBreak (rest : List Char) (col : Nat) :
     SBBreak ⟨'\r' :: '\n' :: rest, col⟩ ⟨rest, 0⟩ :=
   SBBreak.crLf rest col
 
 /-- If the head character is `\r` (not followed by `\n`), `SBBreak` holds. -/
-theorem cr_gives_SBBreak (rest : List Char) (col : Nat) :
+lemma cr_gives_SBBreak (rest : List Char) (col : Nat) :
     SBBreak ⟨'\r' :: rest, col⟩ ⟨rest, 0⟩ :=
   SBBreak.cr rest col
 
@@ -168,22 +168,22 @@ Single whitespace character matches `SSWhite` (the `GChar isWhiteSpaceProp`
 combinator applied to space or tab). -/
 
 /-- Space satisfies `isWhiteSpaceProp`. -/
-theorem space_is_white : isWhiteSpaceProp ' ' := by
+lemma space_is_white : isWhiteSpaceProp ' ' := by
   unfold isWhiteSpaceProp
   decide
 
 /-- Tab satisfies `isWhiteSpaceProp`. -/
-theorem tab_is_white : isWhiteSpaceProp '\t' := by
+lemma tab_is_white : isWhiteSpaceProp '\t' := by
   unfold isWhiteSpaceProp
   decide
 
 /-- A space character matches `SSWhite`. -/
-theorem space_gives_SSWhite (rest : List Char) (col : Nat) :
+lemma space_gives_SSWhite (rest : List Char) (col : Nat) :
     SSWhite ⟨' ' :: rest, col⟩ ⟨rest, col + 1⟩ :=
   SSWhite.space rest col
 
 /-- A tab character matches `SSWhite`. -/
-theorem tab_gives_SSWhite (rest : List Char) (col : Nat) :
+lemma tab_gives_SSWhite (rest : List Char) (col : Nat) :
     SSWhite ⟨'\t' :: rest, col⟩ ⟨rest, col + 1⟩ :=
   SSWhite.tab rest col
 
@@ -193,7 +193,7 @@ A `#` followed by non-break characters to end of line matches
 `SCNbCommentText`. -/
 
 /-- Comment text starting with `#` produces `SCNbCommentText`. -/
-theorem hash_comment (rest : List Char) (col : Nat) (s' : SurfPos)
+lemma hash_comment (rest : List Char) (col : Nat) (s' : SurfPos)
     (hBody : GStar (GChar isNbChar) ⟨rest, col + 1⟩ s') :
     SCNbCommentText ⟨'#' :: rest, col⟩ s' :=
   SCNbCommentText.mk rest col s' hBody
@@ -201,7 +201,7 @@ theorem hash_comment (rest : List Char) (col : Nat) (s' : SurfPos)
 /-! ## §7 Empty Node Coupling -/
 
 /-- The empty node `e-node` [72] matches trivially at any position. -/
-theorem empty_node (s : SurfPos) : SENode s s :=
+lemma empty_node (s : SurfPos) : SENode s s :=
   GEps.mk s
 
 end L4YAML.Proofs.SurfaceCoupling

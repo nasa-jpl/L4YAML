@@ -58,14 +58,14 @@ def listByteSize : List Char → Nat
   | [] => 0
   | c :: rest => c.utf8Size + listByteSize rest
 
-theorem listByteSize_append (l₁ l₂ : List Char) :
+lemma listByteSize_append (l₁ l₂ : List Char) :
     listByteSize (l₁ ++ l₂) = listByteSize l₁ + listByteSize l₂ := by
   induction l₁ with
   | nil => simp [listByteSize]
   | cons c cs ih => simp [listByteSize, ih]; omega
 
 /-- `utf8GetAux` returns the character at the byte boundary of a prefix. -/
-theorem utf8GetAux_at_boundary (pre : List Char) (c : Char) (suf : List Char)
+lemma utf8GetAux_at_boundary (pre : List Char) (c : Char) (suf : List Char)
     (base : String.Pos.Raw) :
     String.Pos.Raw.utf8GetAux (pre ++ c :: suf) base
       ⟨base.byteIdx + listByteSize pre⟩ = c := by
@@ -90,7 +90,7 @@ theorem utf8GetAux_at_boundary (pre : List Char) (c : Char) (suf : List Char)
 
 /-- `utf8PrevAux` returns the start position of the character at a given boundary.
     Dual of `utf8GetAux_at_boundary`: prev at the end of character `c` returns its start. -/
-theorem utf8PrevAux_at_boundary (pre : List Char) (c : Char) (suf : List Char)
+lemma utf8PrevAux_at_boundary (pre : List Char) (c : Char) (suf : List Char)
     (base_n : Nat) :
     String.Pos.Raw.utf8PrevAux (pre ++ c :: suf) ⟨base_n⟩
       ⟨base_n + listByteSize pre + c.utf8Size⟩ =
@@ -123,7 +123,7 @@ theorem utf8PrevAux_at_boundary (pre : List Char) (c : Char) (suf : List Char)
 
 /-- prev(next(p)) = p when the character list prefix is known.
     Uses `utf8PrevAux_at_boundary` with the concrete prefix. -/
-theorem prev_next_with_prefix (input : String) (pre : List Char)
+lemma prev_next_with_prefix (input : String) (pre : List Char)
     (c : Char) (rest : List Char)
     (hsplit : input.toList = pre ++ c :: rest) :
     String.Pos.Raw.prev input (String.Pos.Raw.next input ⟨listByteSize pre⟩) =
@@ -145,7 +145,7 @@ theorem prev_next_with_prefix (input : String) (pre : List Char)
   simp at h
   exact h
 
-theorem toByteArray_eq_utf8Encode (input : String) :
+lemma toByteArray_eq_utf8Encode (input : String) :
     input.toByteArray = input.toList.utf8Encode := by
   have h := String.ofList_toList (s := input)
   have h2 : (String.ofList input.toList).toByteArray = input.toList.utf8Encode := by
@@ -153,7 +153,7 @@ theorem toByteArray_eq_utf8Encode (input : String) :
   rw [h] at h2; exact h2
 
 /-- String byte size equals the sum of character byte sizes. -/
-theorem utf8ByteSize_eq_listByteSize (input : String) :
+lemma utf8ByteSize_eq_listByteSize (input : String) :
     input.utf8ByteSize = listByteSize input.toList := by
   show input.toByteArray.size = listByteSize input.toList
   rw [toByteArray_eq_utf8Encode]
@@ -165,15 +165,15 @@ theorem utf8ByteSize_eq_listByteSize (input : String) :
   | nil => simp [listByteSize]
   | cons c cs ih => simp [listByteSize, ih]
 
-theorem get_eq_utf8GetAux (input : String) (p : Nat) :
+lemma get_eq_utf8GetAux (input : String) (p : Nat) :
     String.Pos.Raw.get input ⟨p⟩ = String.Pos.Raw.utf8GetAux input.toList 0 ⟨p⟩ := rfl
 
-theorem next_byteIdx (input : String) (p : Nat) :
+lemma next_byteIdx (input : String) (p : Nat) :
     (String.Pos.Raw.next input ⟨p⟩).byteIdx =
     p + (String.Pos.Raw.get input ⟨p⟩).utf8Size := rfl
 
 /-- Starting at byte offset 0, iterating get/next yields `input.toList`. -/
-theorem chars_from_zero_toList (input : String) :
+lemma chars_from_zero_toList (input : String) :
     CharsFromOffset input 0 input.toList := by
   suffices h : ∀ (pre suf : List Char), input.toList = pre ++ suf →
       CharsFromOffset input (listByteSize pre) suf from
@@ -217,7 +217,7 @@ structure ScannerSurfCorr (sc : ScannerState) (sp : SurfPos) : Prop where
   indent_cols_nonneg : ∀ (i : Nat) (hi : i < sc.indents.size), i > 0 → sc.indents[i].column ≥ 0
 
 -- Derive `currentIndent ≥ 0` from `ScannerSurfCorr` when indent stack has non-sentinel entries.
-theorem ScannerSurfCorr.currentIndent_nonneg {sc : ScannerState} {sp : SurfPos}
+lemma ScannerSurfCorr.currentIndent_nonneg {sc : ScannerState} {sp : SurfPos}
     (hcorr : ScannerSurfCorr sc sp) (hne : sc.indents.size > 1) :
     sc.currentIndent ≥ 0 := by
   simp only [ScannerState.currentIndent]
@@ -229,7 +229,7 @@ theorem ScannerSurfCorr.currentIndent_nonneg {sc : ScannerState} {sp : SurfPos}
 
 /-- CharsFromOffset is a function: given `input` and `offset`, the
     character list is uniquely determined. -/
-theorem CharsFromOffset_unique {input : String} {p : Nat}
+lemma CharsFromOffset_unique {input : String} {p : Nat}
     {cs₁ cs₂ : List Char}
     (h₁ : CharsFromOffset input p cs₁)
     (h₂ : CharsFromOffset input p cs₂) : cs₁ = cs₂ := by
@@ -249,7 +249,7 @@ theorem CharsFromOffset_unique {input : String} {p : Nat}
 
 /-- Surface position correspondence is unique: given a scanner state,
     at most one surface position corresponds to it. -/
-theorem ScannerSurfCorr_unique {sc : ScannerState} {sp₁ sp₂ : SurfPos}
+lemma ScannerSurfCorr_unique {sc : ScannerState} {sp₁ sp₂ : SurfPos}
     (h₁ : ScannerSurfCorr sc sp₁) (h₂ : ScannerSurfCorr sc sp₂) :
     sp₁ = sp₂ := by
   have hchars := CharsFromOffset_unique h₁.chars_from h₂.chars_from
@@ -258,7 +258,7 @@ theorem ScannerSurfCorr_unique {sc : ScannerState} {sp₁ sp₂ : SurfPos}
   exact ⟨hchars, hcol⟩
 
 /-- Initial state correspondence. -/
-theorem initial_corr (input : String) (cs : List Char)
+lemma initial_corr (input : String) (cs : List Char)
     (hcs : CharsFromOffset input 0 cs) :
     ScannerSurfCorr (ScannerState.mk' input) ⟨cs, 0⟩ :=
   have heq : cs = input.toList := CharsFromOffset_unique hcs (chars_from_zero_toList input)
@@ -269,7 +269,7 @@ theorem initial_corr (input : String) (cs : List Char)
 
 /-- If the scanner has more input, the surface position is non-empty
     and its head matches `peek?`. -/
-theorem peek_corr (sc : ScannerState) (sp : SurfPos)
+lemma peek_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
     (hmore : sc.offset < sc.inputEnd) :
     ∃ c rest, sp.chars = c :: rest ∧ sc.peek? = some c := by
@@ -281,7 +281,7 @@ theorem peek_corr (sc : ScannerState) (sp : SurfPos)
     exact ⟨c, rest, rfl, by simp [ScannerState.peek?, hcorr.end_eq, hlt, hc]⟩
 
 /-- At end of input, the surface position has no remaining characters. -/
-theorem eof_corr (sc : ScannerState) (sp : SurfPos)
+lemma eof_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
     (heof : ¬ sc.offset < sc.inputEnd) :
     sp.chars = [] := by
@@ -294,7 +294,7 @@ theorem eof_corr (sc : ScannerState) (sp : SurfPos)
 
 /-! ### peekAt? ↔ CharsFromOffset bridge -/
 
-theorem peekAtLoop_cons {input : String} {inputEnd p : Nat}
+lemma peekAtLoop_cons {input : String} {inputEnd p : Nat}
     {c : Char} {rest : List Char}
     (hlt : p < inputEnd)
     (hcf : CharsFromOffset input p (c :: rest)) :
@@ -303,7 +303,7 @@ theorem peekAtLoop_cons {input : String} {inputEnd p : Nat}
   | cons _ hp _ _ hc hrest =>
     simp [ScannerState.peekAt?Loop, show p < inputEnd from hlt, hc]
 
-theorem peekAtLoop_step {input : String} {inputEnd p : Nat} {n : Nat}
+lemma peekAtLoop_step {input : String} {inputEnd p : Nat} {n : Nat}
     (hlt : p < inputEnd) :
     ScannerState.peekAt?Loop input inputEnd ⟨p⟩ (n + 1) =
     ScannerState.peekAt?Loop input inputEnd
@@ -311,7 +311,7 @@ theorem peekAtLoop_step {input : String} {inputEnd p : Nat} {n : Nat}
   simp [ScannerState.peekAt?Loop, show p < inputEnd from hlt]
 
 /-- When the surface chars begin with `c :: rest`, `peekAt? 0 = some c`. -/
-theorem peekAt_zero_corr (sc : ScannerState) (sp : SurfPos)
+lemma peekAt_zero_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
     (c : Char) (rest : List Char) (hchars : sp.chars = c :: rest) :
     sc.peekAt? 0 = some c := by
@@ -323,7 +323,7 @@ theorem peekAt_zero_corr (sc : ScannerState) (sp : SurfPos)
   exact peekAtLoop_cons hlt (hchars ▸ hcorr.chars_from)
 
 /-- Extract `CharsFromOffset` for the tail after a cons. -/
-theorem chars_from_cons_tail {input : String} {p : Nat}
+lemma chars_from_cons_tail {input : String} {p : Nat}
     {c : Char} {rest : List Char}
     (hcf : CharsFromOffset input p (c :: rest)) :
     CharsFromOffset input (String.Pos.Raw.next input ⟨p⟩).byteIdx rest := by
@@ -331,14 +331,14 @@ theorem chars_from_cons_tail {input : String} {p : Nat}
 
 /-- `atDocumentStart` + `ScannerSurfCorr` implies chars begin with `---`.
     Extracts the char pattern needed by `scanDocumentStart_prod`. -/
-theorem option_beq_some_eq {c d : Char} (h : (some c == some d) = true) : c = d := by
+lemma option_beq_some_eq {c d : Char} (h : (some c == some d) = true) : c = d := by
   simp [beq_iff_eq] at h; exact h
 
-theorem option_beq_none_absurd {d : Char} (h : (none == some d) = true) : False := by
+lemma option_beq_none_absurd {d : Char} (h : (none == some d) = true) : False := by
   simp [] at h
 
 /-- Extract hypotheses from `atDocumentStart sc = true`. -/
-theorem atDocumentStart_decompose {sc : ScannerState}
+lemma atDocumentStart_decompose {sc : ScannerState}
     (h : atDocumentStart sc = true) :
     sc.col = 0 ∧ sc.peekAt? 0 = some '-' ∧
     sc.peekAt? 1 = some '-' ∧ sc.peekAt? 2 = some '-' := by
@@ -360,7 +360,7 @@ theorem atDocumentStart_decompose {sc : ScannerState}
     | some c => rw [show c = '-' from option_beq_some_eq hp2]
 
 /-- Extract hypotheses from `atDocumentEnd sc = true`. -/
-theorem atDocumentEnd_decompose {sc : ScannerState}
+lemma atDocumentEnd_decompose {sc : ScannerState}
     (h : atDocumentEnd sc = true) :
     sc.col = 0 ∧ sc.peekAt? 0 = some '.' ∧
     sc.peekAt? 1 = some '.' ∧ sc.peekAt? 2 = some '.' := by
@@ -384,7 +384,7 @@ theorem atDocumentEnd_decompose {sc : ScannerState}
 /-- When `peekAt? n` returns `some c`, the character at offset+n positions
     in the chars list equals `c`. Helper lemma for extracting chars from
     `peekAt?`. -/
-theorem peekAtLoop_some_chars {input : String} {inputEnd p : Nat}
+lemma peekAtLoop_some_chars {input : String} {inputEnd p : Nat}
     {n : Nat} {c : Char}
     (hend : inputEnd = input.utf8ByteSize)
     (hok : ScannerState.peekAt?Loop input inputEnd ⟨p⟩ n = some c)
@@ -416,7 +416,7 @@ theorem peekAtLoop_some_chars {input : String} {inputEnd p : Nat}
 
 /-- When we have `peekAt? 0/1/2` all returning `some`, extract the first three
     chars from `sp.chars`.  Used by `atDocumentStart_chars` and `atDocumentEnd_chars`. -/
-theorem three_peekAt_to_chars {sc : ScannerState} {sp : SurfPos} {c0 c1 c2 : Char}
+lemma three_peekAt_to_chars {sc : ScannerState} {sp : SurfPos} {c0 c1 c2 : Char}
     (hcorr : ScannerSurfCorr sc sp)
     (hp0 : sc.peekAt? 0 = some c0)
     (hp1 : sc.peekAt? 1 = some c1)
@@ -461,7 +461,7 @@ theorem three_peekAt_to_chars {sc : ScannerState} {sp : SurfPos} {c0 c1 c2 : Cha
   simp at hcs2; obtain ⟨rfl, rfl, rfl⟩ := hcs2
   exact ⟨rest2, hcs0⟩
 
-theorem atDocumentStart_chars (sc : ScannerState) (sp : SurfPos)
+lemma atDocumentStart_chars (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
     (h_at : atDocumentStart sc = true) :
     ∃ rest, sp.chars = '-' :: '-' :: '-' :: rest ∧ sp.col = 0 := by
@@ -472,7 +472,7 @@ theorem atDocumentStart_chars (sc : ScannerState) (sp : SurfPos)
 
 /-- `atDocumentEnd` + `ScannerSurfCorr` implies chars begin with `...`.
     Extracts the char pattern needed by `scanDocumentEnd_prod`. -/
-theorem atDocumentEnd_chars (sc : ScannerState) (sp : SurfPos)
+lemma atDocumentEnd_chars (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
     (h_at : atDocumentEnd sc = true) :
     ∃ rest, sp.chars = '.' :: '.' :: '.' :: rest ∧ sp.col = 0 := by
@@ -486,21 +486,21 @@ theorem atDocumentEnd_chars (sc : ScannerState) (sp : SurfPos)
 Helper lemmas extracting field projections from `ScannerState.advance`,
 then the main correspondence theorems. -/
 
-theorem advance_input (s : ScannerState) : s.advance.input = s.input := by
+lemma advance_input (s : ScannerState) : s.advance.input = s.input := by
   unfold ScannerState.advance; split
   · dsimp only []; split
     · rfl
     · split <;> rfl
   · rfl
 
-theorem advance_inputEnd (s : ScannerState) : s.advance.inputEnd = s.inputEnd := by
+lemma advance_inputEnd (s : ScannerState) : s.advance.inputEnd = s.inputEnd := by
   unfold ScannerState.advance; split
   · dsimp only []; split
     · rfl
     · split <;> rfl
   · rfl
 
-theorem advance_offset_eq (s : ScannerState) (h : s.offset < s.inputEnd) :
+lemma advance_offset_eq (s : ScannerState) (h : s.offset < s.inputEnd) :
     s.advance.offset = (String.Pos.Raw.next s.input ⟨s.offset⟩).byteIdx := by
   unfold ScannerState.advance; split
   · dsimp only []; split
@@ -508,7 +508,7 @@ theorem advance_offset_eq (s : ScannerState) (h : s.offset < s.inputEnd) :
     · split <;> rfl
   · omega
 
-theorem advance_offset_of_eq (s1 s2 : ScannerState)
+lemma advance_offset_of_eq (s1 s2 : ScannerState)
     (h_input : s1.input = s2.input) (h_offset : s1.offset = s2.offset)
     (h_inputEnd : s1.inputEnd = s2.inputEnd) :
     s1.advance.offset = s2.advance.offset := by
@@ -522,7 +522,7 @@ theorem advance_offset_of_eq (s1 s2 : ScannerState)
       unfold ScannerState.advance; simp [show ¬(s2.offset < s2.inputEnd) from by rw [← h_offset, ← h_inputEnd]; exact h]
     rw [h1', h2', h_offset]
 
-theorem advance_col_non_newline (s : ScannerState) (h : s.offset < s.inputEnd)
+lemma advance_col_non_newline (s : ScannerState) (h : s.offset < s.inputEnd)
     (hnl : ¬ (String.Pos.Raw.get s.input ⟨s.offset⟩ == '\n') = true)
     (hcr : ¬ (String.Pos.Raw.get s.input ⟨s.offset⟩ == '\r') = true) :
     s.advance.col = s.col + 1 := by
@@ -530,14 +530,14 @@ theorem advance_col_non_newline (s : ScannerState) (h : s.offset < s.inputEnd)
   · dsimp only []; simp [hnl, hcr]
   · omega
 
-theorem advance_col_newline (s : ScannerState) (h : s.offset < s.inputEnd)
+lemma advance_col_newline (s : ScannerState) (h : s.offset < s.inputEnd)
     (hyes : (String.Pos.Raw.get s.input ⟨s.offset⟩ == '\n') = true) :
     s.advance.col = 0 := by
   unfold ScannerState.advance; split
   · dsimp only []; simp [hyes]
   · omega
 
-theorem advance_col_cr (s : ScannerState) (h : s.offset < s.inputEnd)
+lemma advance_col_cr (s : ScannerState) (h : s.offset < s.inputEnd)
     (hcr : (String.Pos.Raw.get s.input ⟨s.offset⟩ == '\r') = true) :
     s.advance.col = 0 := by
   have hnl : (String.Pos.Raw.get s.input ⟨s.offset⟩ == '\n') = false := by
@@ -547,35 +547,35 @@ theorem advance_col_cr (s : ScannerState) (h : s.offset < s.inputEnd)
   · dsimp only []; simp [hnl, hcr]
   · omega
 
-theorem advance_indents (s : ScannerState) : s.advance.indents = s.indents := by
+lemma advance_indents (s : ScannerState) : s.advance.indents = s.indents := by
   unfold ScannerState.advance; split
   · dsimp only []; split
     · rfl
     · split <;> rfl
   · rfl
 
-theorem advance_inFlow (s : ScannerState) : s.advance.inFlow = s.inFlow := by
+lemma advance_inFlow (s : ScannerState) : s.advance.inFlow = s.inFlow := by
   unfold ScannerState.advance; split
   · dsimp only []; split
     · rfl
     · split <;> rfl
   · rfl
 
-theorem advance_flowLevel (s : ScannerState) : s.advance.flowLevel = s.flowLevel := by
+lemma advance_flowLevel (s : ScannerState) : s.advance.flowLevel = s.flowLevel := by
   unfold ScannerState.advance; split
   · dsimp only []; split
     · rfl
     · split <;> rfl
   · rfl
 
-theorem advance_dp (s : ScannerState) : s.advance.directivesPresent = s.directivesPresent := by
+lemma advance_dp (s : ScannerState) : s.advance.directivesPresent = s.directivesPresent := by
   unfold ScannerState.advance; split
   · dsimp only []; split
     · rfl
     · split <;> rfl
   · rfl
 
-theorem advance_explicitKeyLine (s : ScannerState) :
+lemma advance_explicitKeyLine (s : ScannerState) :
     s.advance.explicitKeyLine = s.explicitKeyLine := by
   unfold ScannerState.advance; split
   · dsimp only []; split
@@ -584,7 +584,7 @@ theorem advance_explicitKeyLine (s : ScannerState) :
   · rfl
 
 /-- Advance past a non-newline, non-CR character preserves line number. -/
-theorem advance_line_non_newline (s : ScannerState) (h : s.offset < s.inputEnd)
+lemma advance_line_non_newline (s : ScannerState) (h : s.offset < s.inputEnd)
     (hnl : ¬ (String.Pos.Raw.get s.input ⟨s.offset⟩ == '\n') = true)
     (hcr : ¬ (String.Pos.Raw.get s.input ⟨s.offset⟩ == '\r') = true) :
     s.advance.line = s.line := by
@@ -593,7 +593,7 @@ theorem advance_line_non_newline (s : ScannerState) (h : s.offset < s.inputEnd)
   · omega
 
 /-- Advance past non-newline, non-CR preserves correspondence. -/
-theorem advance_non_newline_corr (sc : ScannerState) (c : Char) (rest : List Char)
+lemma advance_non_newline_corr (sc : ScannerState) (c : Char) (rest : List Char)
     (hcorr : ScannerSurfCorr sc ⟨c :: rest, sc.col⟩)
     (hmore : sc.offset < sc.inputEnd)
     (hnl : c ≠ '\n')
@@ -620,7 +620,7 @@ theorem advance_non_newline_corr (sc : ScannerState) (c : Char) (rest : List Cha
     }
 
 /-- Advance past `\n` preserves correspondence with column reset. -/
-theorem advance_newline_corr (sc : ScannerState) (rest : List Char)
+lemma advance_newline_corr (sc : ScannerState) (rest : List Char)
     (hcorr : ScannerSurfCorr sc ⟨'\n' :: rest, sc.col⟩)
     (hmore : sc.offset < sc.inputEnd) :
     ScannerSurfCorr sc.advance ⟨rest, 0⟩ := by
@@ -643,7 +643,7 @@ theorem advance_newline_corr (sc : ScannerState) (rest : List Char)
     }
 
 /-- Advance past `\r` preserves correspondence with column reset. -/
-theorem advance_cr_corr (sc : ScannerState) (rest : List Char)
+lemma advance_cr_corr (sc : ScannerState) (rest : List Char)
     (hcorr : ScannerSurfCorr sc ⟨'\r' :: rest, sc.col⟩)
     (hmore : sc.offset < sc.inputEnd) :
     ScannerSurfCorr sc.advance ⟨rest, 0⟩ := by
@@ -668,7 +668,7 @@ theorem advance_cr_corr (sc : ScannerState) (rest : List Char)
 /-- Skip one character by raw offset increment, preserving correspondence.
     Used for the `\n` byte in CRLF sequences where line counting was already
     handled by the preceding `\r` advance. -/
-theorem skip_byte_corr (sc : ScannerState) (c : Char) (rest : List Char) (col : Nat)
+lemma skip_byte_corr (sc : ScannerState) (c : Char) (rest : List Char) (col : Nat)
     (hcorr : ScannerSurfCorr sc ⟨c :: rest, col⟩)
     (_hmore : sc.offset < sc.inputEnd) :
     ScannerSurfCorr
@@ -692,26 +692,26 @@ theorem skip_byte_corr (sc : ScannerState) (c : Char) (rest : List Char) (col : 
 /-! ## §5 Production Coupling (Scanner → Surface) -/
 
 /-- `n` consecutive spaces give `SIndent n`. -/
-theorem skipSpaces_gives_SIndent (n : Nat) (sp : SurfPos)
+lemma skipSpaces_gives_SIndent (n : Nat) (sp : SurfPos)
     (hpre : sp.chars.take n = List.replicate n ' ')
     (hlen : sp.chars.length ≥ n) :
     SIndent n sp ⟨sp.chars.drop n, sp.col + n⟩ :=
   Surface.indent_coupling n sp.chars sp.col hpre hlen
 
 /-- `\n` gives `SBBreak`. -/
-theorem lf_gives_SBBreak (sp : SurfPos) (rest : List Char)
+lemma lf_gives_SBBreak (sp : SurfPos) (rest : List Char)
     (hchars : sp.chars = '\n' :: rest) :
     SBBreak sp ⟨rest, 0⟩ := by
   cases sp; simp at hchars; subst hchars; exact SBBreak.lf rest _
 
 /-- `\r\n` gives `SBBreak`. -/
-theorem crlf_gives_SBBreak (sp : SurfPos) (rest : List Char)
+lemma crlf_gives_SBBreak (sp : SurfPos) (rest : List Char)
     (hchars : sp.chars = '\r' :: '\n' :: rest) :
     SBBreak sp ⟨rest, 0⟩ := by
   cases sp; simp at hchars; subst hchars; exact SBBreak.crLf rest _
 
 /-- `\r` gives `SBBreak`. -/
-theorem cr_gives_SBBreak (sp : SurfPos) (rest : List Char)
+lemma cr_gives_SBBreak (sp : SurfPos) (rest : List Char)
     (hchars : sp.chars = '\r' :: rest) :
     SBBreak sp ⟨rest, 0⟩ := by
   cases sp; simp at hchars; subst hchars; exact SBBreak.cr rest _
@@ -719,39 +719,39 @@ theorem cr_gives_SBBreak (sp : SurfPos) (rest : List Char)
 /-! ## §6 Composition Helpers -/
 
 /-- Start-of-line gives `SSeparateInLine` (zero-width, any column). -/
-theorem start_of_line_gives_SSeparateInLine (rest : List Char) :
+lemma start_of_line_gives_SSeparateInLine (rest : List Char) :
     SSeparateInLine ⟨rest, 0⟩ ⟨rest, 0⟩ :=
   SSeparateInLine.startOfLine ⟨rest, 0⟩
 
 /-- Space gives `SSeparateInLine`. -/
-theorem space_gives_SSeparateInLine (rest : List Char) (col : Nat) :
+lemma space_gives_SSeparateInLine (rest : List Char) (col : Nat) :
     SSeparateInLine ⟨' ' :: rest, col⟩ ⟨rest, col + 1⟩ :=
   SSeparateInLine.whites _ _
     (GPlus.mk _ _ _ (SSWhite.space rest col) (GStar.nil _))
 
 /-- Start-of-line gives `SSLComments`. -/
-theorem start_of_line_gives_SSLComments (rest : List Char) :
+lemma start_of_line_gives_SSLComments (rest : List Char) :
     SSLComments ⟨rest, 0⟩ ⟨rest, 0⟩ :=
   SSLComments.startOfLine rest ⟨rest, 0⟩ (GStar.nil _)
 
 /-- Break gives `SSBComment`. -/
-theorem break_gives_SSBComment (sp sp' : SurfPos) (hbreak : SBBreak sp sp') :
+lemma break_gives_SSBComment (sp sp' : SurfPos) (hbreak : SBBreak sp sp') :
     SSBComment sp sp' :=
   SSBComment.noSep sp sp' (SBComment.break sp sp' hbreak)
 
 /-- EOF gives `SBComment`. -/
-theorem eof_gives_SBComment (col : Nat) :
+lemma eof_gives_SBComment (col : Nat) :
     SBComment ⟨[], col⟩ ⟨[], col⟩ :=
   SBComment.eof col
 
 /-- Empty node matches anywhere. -/
-theorem empty_node (s : SurfPos) : SENode s s :=
+lemma empty_node (s : SurfPos) : SENode s s :=
   GEps.mk s
 
 /-! ## §7 Bool↔Prop Character Bridging -/
 
 /-- If `isWhiteSpaceBool c = true`, then `SSWhite` holds. -/
-theorem isWhiteSpace_gives_SSWhite (c : Char) (rest : List Char) (col : Nat)
+lemma isWhiteSpace_gives_SSWhite (c : Char) (rest : List Char) (col : Nat)
     (h : isWhiteSpaceBool c = true) :
     SSWhite ⟨c :: rest, col⟩ ⟨rest, col + 1⟩ := by
   simp [isWhiteSpaceBool, isSpaceBool, isTabBool, Bool.or_eq_true, beq_iff_eq] at h
@@ -760,31 +760,31 @@ theorem isWhiteSpace_gives_SSWhite (c : Char) (rest : List Char) (col : Nat)
   · exact SSWhite.tab rest col
 
 /-- A whitespace character (space or tab) is not `\n`. -/
-theorem isWhiteSpace_not_newline (c : Char) (h : isWhiteSpaceBool c = true) : c ≠ '\n' := by
+lemma isWhiteSpace_not_newline (c : Char) (h : isWhiteSpaceBool c = true) : c ≠ '\n' := by
   simp [isWhiteSpaceBool, isSpaceBool, isTabBool, Bool.or_eq_true, beq_iff_eq] at h
   rcases h with rfl | rfl <;> decide
 
 /-- A whitespace character (space or tab) is not `\r`. -/
-theorem isWhiteSpace_not_cr (c : Char) (h : isWhiteSpaceBool c = true) : c ≠ '\r' := by
+lemma isWhiteSpace_not_cr (c : Char) (h : isWhiteSpaceBool c = true) : c ≠ '\r' := by
   simp [isWhiteSpaceBool, isSpaceBool, isTabBool, Bool.or_eq_true, beq_iff_eq] at h
   rcases h with rfl | rfl <;> decide
 
 /-- A non-line-break character is not `\n`. -/
-theorem not_isLineBreak_not_newline (c : Char) (h : ¬isLineBreakBool c = true) : c ≠ '\n' := by
+lemma not_isLineBreak_not_newline (c : Char) (h : ¬isLineBreakBool c = true) : c ≠ '\n' := by
   intro heq; subst heq; simp [isLineBreakBool, isLineFeedBool, isCarriageReturnBool] at h
 
 /-- A non-line-break character is not `\r`. -/
-theorem not_isLineBreak_not_cr (c : Char) (h : ¬isLineBreakBool c = true) : c ≠ '\r' := by
+lemma not_isLineBreak_not_cr (c : Char) (h : ¬isLineBreakBool c = true) : c ≠ '\r' := by
   intro heq; subst heq; simp [isLineBreakBool, isLineFeedBool, isCarriageReturnBool] at h
 
 /-- A non-line-break character satisfies `isNbChar`. -/
-theorem not_isLineBreak_isNbChar (c : Char) (h : ¬isLineBreakBool c = true) :
+lemma not_isLineBreak_isNbChar (c : Char) (h : ¬isLineBreakBool c = true) :
     isNbChar c := by
   intro hlb
   exact h ((isLineBreak_iff c).mpr hlb)
 
 /-- A non-line-break character gives `SNbChar` (= `GChar isNbChar`). -/
-theorem not_isLineBreak_gives_SNbChar (c : Char) (rest : List Char) (col : Nat)
+lemma not_isLineBreak_gives_SNbChar (c : Char) (rest : List Char) (col : Nat)
     (h : ¬isLineBreakBool c = true) :
     GChar isNbChar ⟨c :: rest, col⟩ ⟨rest, col + 1⟩ :=
   GChar.mk c rest col (not_isLineBreak_isNbChar c h)
@@ -792,21 +792,21 @@ theorem not_isLineBreak_gives_SNbChar (c : Char) (rest : List Char) (col : Nat)
 /-! ## §8 GStar Composition -/
 
 /-- Transitivity for `GStar`: append two star sequences. -/
-theorem GStar_trans {P : SurfPos → SurfPos → Prop} {s₁ s₂ s₃ : SurfPos}
+lemma GStar_trans {P : SurfPos → SurfPos → Prop} {s₁ s₂ s₃ : SurfPos}
     (h₁ : GStar P s₁ s₂) (h₂ : GStar P s₂ s₃) : GStar P s₁ s₃ := by
   induction h₁ with
   | nil => exact h₂
   | cons _ _ _ hp _ ih => exact GStar.cons _ _ _ hp (ih h₂)
 
 /-- Non-emptiness evidence `s ≠ s'` lifts `GStar` to `GPlus`. -/
-theorem GStar_to_GPlus {P : SurfPos → SurfPos → Prop} {s s' : SurfPos}
+lemma GStar_to_GPlus {P : SurfPos → SurfPos → Prop} {s s' : SurfPos}
     (h : GStar P s s') (hne : s ≠ s') : GPlus P s s' := by
   match h with
   | .nil _ => exact absurd rfl hne
   | .cons _ sp_mid _ h_head h_tail => exact GPlus.mk _ sp_mid _ h_head h_tail
 
 /-- `SIndent n` can be viewed as `GStar SSWhite` (each space is whitespace). -/
-theorem SIndent_gives_GStar_SSWhite {n : Nat} {s s' : SurfPos}
+lemma SIndent_gives_GStar_SSWhite {n : Nat} {s s' : SurfPos}
     (h : SIndent n s s') : GStar SSWhite s s' := by
   induction h with
   | zero => exact GStar.nil _
@@ -816,32 +816,32 @@ theorem SIndent_gives_GStar_SSWhite {n : Nat} {s s' : SurfPos}
 /-! ## §9 Field Update Correspondence -/
 
 /-- Updating `comments` preserves correspondence. -/
-theorem corr_of_comments_update {sc : ScannerState} {sp : SurfPos}
+lemma corr_of_comments_update {sc : ScannerState} {sp : SurfPos}
     (cs : Array (L4YAML.YamlPos × String)) (hcorr : ScannerSurfCorr sc sp) :
     ScannerSurfCorr { sc with comments := cs } sp :=
   ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix, hcorr.indent_cols_nonneg⟩
 
 /-- Updating `needIndentCheck` preserves correspondence. -/
-theorem corr_of_needIndentCheck_update {sc : ScannerState} {sp : SurfPos}
+lemma corr_of_needIndentCheck_update {sc : ScannerState} {sp : SurfPos}
     (b : Bool) (hcorr : ScannerSurfCorr sc sp) :
     ScannerSurfCorr { sc with needIndentCheck := b } sp :=
   ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix, hcorr.indent_cols_nonneg⟩
 
 /-- Updating `simpleKeyAllowed` preserves correspondence. -/
-theorem corr_of_simpleKeyAllowed_update {sc : ScannerState} {sp : SurfPos}
+lemma corr_of_simpleKeyAllowed_update {sc : ScannerState} {sp : SurfPos}
     (b : Bool) (hcorr : ScannerSurfCorr sc sp) :
     ScannerSurfCorr { sc with simpleKeyAllowed := b } sp :=
   ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix, hcorr.indent_cols_nonneg⟩
 
 /-! ## §10 PeekBack Reasoning -/
 
-theorem listByteSize_pos_of_ne_nil {l : List Char} (h : l ≠ []) :
+lemma listByteSize_pos_of_ne_nil {l : List Char} (h : l ≠ []) :
     listByteSize l > 0 := by
   match l with
   | [] => exact absurd rfl h
   | c :: cs => simp [listByteSize]; have := Char.utf8Size_pos c; omega
 
-theorem listByteSize_dropLast_add_getLast (l : List Char) (h : l ≠ []) :
+lemma listByteSize_dropLast_add_getLast (l : List Char) (h : l ≠ []) :
     listByteSize l.dropLast + (l.getLast h).utf8Size = listByteSize l := by
   induction l with
   | nil => exact absurd rfl h
@@ -864,7 +864,7 @@ theorem listByteSize_dropLast_add_getLast (l : List Char) (h : l ≠ []) :
 /-- `peekBack?` returns the last character of the input prefix.
     When the scanner offset is positive, `prev` lands at the start of the
     last character before the current position, and `get` recovers it. -/
-theorem peekBack_eq_last_prefix {sc : ScannerState} {sp : SurfPos}
+lemma peekBack_eq_last_prefix {sc : ScannerState} {sp : SurfPos}
     {pre : List Char}
     (hsplit : sc.input.toList = pre ++ sp.chars)
     (hoff : listByteSize pre = sc.offset)
@@ -902,7 +902,7 @@ def notWsLbBom (c : Char) : Prop :=
   isWhiteSpaceBool c = false ∧ isLineBreakBool c = false ∧ (c == '\uFEFF') = false
 
 /-- After `advance` past a non-newline character `c`, `peekBack?` returns `c`. -/
-theorem advance_peekBack_eq_peek {sc : ScannerState} {c : Char} {rest : List Char}
+lemma advance_peekBack_eq_peek {sc : ScannerState} {c : Char} {rest : List Char}
     (hcorr : ScannerSurfCorr sc ⟨c :: rest, sc.col⟩)
     (hmore : sc.offset < sc.inputEnd)
     (hnl : c ≠ '\n') (hcr : c ≠ '\r') :
@@ -922,7 +922,7 @@ theorem advance_peekBack_eq_peek {sc : ScannerState} {c : Char} {rest : List Cha
 
 /-! ## §12 SkipWhitespace Input Preservation -/
 
-theorem skipWhitespaceLoop_input (sc : ScannerState) (fuel : Nat) :
+lemma skipWhitespaceLoop_input (sc : ScannerState) (fuel : Nat) :
     (skipWhitespaceLoop sc fuel).input = sc.input := by
   induction fuel generalizing sc with
   | zero => simp [skipWhitespaceLoop]
@@ -933,13 +933,13 @@ theorem skipWhitespaceLoop_input (sc : ScannerState) (fuel : Nat) :
       · rfl
     · rfl
 
-theorem skipWhitespace_input (sc : ScannerState) :
+lemma skipWhitespace_input (sc : ScannerState) :
     (skipWhitespace sc).input = sc.input := by
   unfold skipWhitespace; exact skipWhitespaceLoop_input sc _
 
 /-! ## §13 Offset Uniqueness from SurfPos -/
 
-theorem ScannerSurfCorr_same_offset {sc1 sc2 : ScannerState} {sp : SurfPos}
+lemma ScannerSurfCorr_same_offset {sc1 sc2 : ScannerState} {sp : SurfPos}
     (h1 : ScannerSurfCorr sc1 sp) (h2 : ScannerSurfCorr sc2 sp)
     (h_input : sc1.input = sc2.input) :
     sc1.offset = sc2.offset := by
@@ -951,7 +951,7 @@ theorem ScannerSurfCorr_same_offset {sc1 sc2 : ScannerState} {sp : SurfPos}
 
 /-! ## §14 GStar Column Monotonicity -/
 
-theorem gstar_gchar_col_le {p : Char → Prop} {s1 s2 : SurfPos}
+lemma gstar_gchar_col_le {p : Char → Prop} {s1 s2 : SurfPos}
     (h : GStar (GChar p) s1 s2) : s2.col ≥ s1.col := by
   induction h with
   | nil => omega

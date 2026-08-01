@@ -37,31 +37,31 @@ open L4YAML.Proofs.StructureProduction
 /-! ## §1 Pure Composition: Scalar → SFlowContent -/
 
 -- [154] c-flow-json-content: double-quoted scalar.
-theorem doubleQuoted_flowContent {n : Nat} {c : YamlContext} {s s' : SurfPos}
+lemma doubleQuoted_flowContent {n : Nat} {c : YamlContext} {s s' : SurfPos}
     (h : SCDoubleQuoted n c s s') :
     SFlowContent n c s s' :=
   SFlowContent.doubleQ n c s s' h
 
 -- [154] c-flow-json-content: single-quoted scalar.
-theorem singleQuoted_flowContent {n : Nat} {c : YamlContext} {s s' : SurfPos}
+lemma singleQuoted_flowContent {n : Nat} {c : YamlContext} {s s' : SurfPos}
     (h : SCSingleQuoted n c s s') :
     SFlowContent n c s s' :=
   SFlowContent.singleQ n c s s' h
 
 -- [159] ns-flow-yaml-content: plain scalar.
-theorem plain_flowContent {n : Nat} {c : YamlContext} {s s' : SurfPos}
+lemma plain_flowContent {n : Nat} {c : YamlContext} {s s' : SurfPos}
     (h : SNsPlain n c s s') :
     SFlowContent n c s s' :=
   SFlowContent.plain n c s s' h
 
 -- [154] c-flow-json-content: flow sequence.
-theorem flowSeq_flowContent {n : Nat} {c : YamlContext} {s s' : SurfPos}
+lemma flowSeq_flowContent {n : Nat} {c : YamlContext} {s s' : SurfPos}
     (h : SFlowSequence n c s s') :
     SFlowContent n c s s' :=
   SFlowContent.flowSeq n c s s' h
 
 -- [154] c-flow-json-content: flow mapping.
-theorem flowMap_flowContent {n : Nat} {c : YamlContext} {s s' : SurfPos}
+lemma flowMap_flowContent {n : Nat} {c : YamlContext} {s s' : SurfPos}
     (h : SFlowMapping n c s s') :
     SFlowContent n c s s' :=
   SFlowContent.flowMap n c s s' h
@@ -69,19 +69,19 @@ theorem flowMap_flowContent {n : Nat} {c : YamlContext} {s s' : SurfPos}
 /-! ## §2 Pure Composition: SFlowContent → SFlowNode -/
 
 -- [161] ns-flow-node: bare content (no properties).
-theorem flowContent_flowNode {n : Nat} {c : YamlContext} {s s' : SurfPos}
+lemma flowContent_flowNode {n : Nat} {c : YamlContext} {s s' : SurfPos}
     (h : SFlowContent n c s s') :
     SFlowNode n c s s' :=
   SFlowNode.content n c s s' h
 
 -- [161] ns-flow-node: alias reference.
-theorem alias_flowNode {n : Nat} {c : YamlContext} {s s' : SurfPos}
+lemma alias_flowNode {n : Nat} {c : YamlContext} {s s' : SurfPos}
     (h : SCNsAliasNode s s') :
     SFlowNode n c s s' :=
   SFlowNode.alias n c s s' h
 
 -- [161] ns-flow-node: properties + separator + content.
-theorem propsContent_flowNode {n : Nat} {c : YamlContext}
+lemma propsContent_flowNode {n : Nat} {c : YamlContext}
     {s s₁ s₂ s' : SurfPos}
     (h_props : SCNsProperties n c s s₁)
     (h_sep : SSeparate n c s₁ s₂)
@@ -90,7 +90,7 @@ theorem propsContent_flowNode {n : Nat} {c : YamlContext}
   SFlowNode.propsContent n c s s₁ s₂ s' h_props h_sep h_content
 
 -- [161] ns-flow-node: properties only (empty content).
-theorem propsEmpty_flowNode {n : Nat} {c : YamlContext} {s s' : SurfPos}
+lemma propsEmpty_flowNode {n : Nat} {c : YamlContext} {s s' : SurfPos}
     (h_props : SCNsProperties n c s s') :
     SFlowNode n c s s' :=
   SFlowNode.propsEmpty n c s s' h_props
@@ -98,7 +98,7 @@ theorem propsEmpty_flowNode {n : Nat} {c : YamlContext} {s s' : SurfPos}
 /-! ## §3 Pure Composition: SFlowNode / Scalars → SBlockNode -/
 
 -- [195] s-l+flow-in-block(n,c): separator + flow node + comments.
-theorem flowInBlock_blockNode {n : Nat} {c : YamlContext}
+lemma flowInBlock_blockNode {n : Nat} {c : YamlContext}
     {s s₁ s₂ s' : SurfPos}
     (h_sep : SSeparate n .flowOut s s₁)
     (h_flow : SFlowNode n .flowOut s₁ s₂)
@@ -107,7 +107,7 @@ theorem flowInBlock_blockNode {n : Nat} {c : YamlContext}
   SBlockNode.flowInBlock n c s s₁ s₂ s' h_sep h_flow h_comments
 
 -- [198] s-l+block-scalar: separator + optional properties + literal scalar.
-theorem literal_blockNode {n : Nat} {c : YamlContext}
+lemma literal_blockNode {n : Nat} {c : YamlContext}
     {s s₁ s₂ s' : SurfPos}
     (h_sep : SSeparate n c s s₁)
     (h_props : GOpt (GSeq (SCNsProperties n c) (SSeparate n c)) s₁ s₂)
@@ -116,7 +116,7 @@ theorem literal_blockNode {n : Nat} {c : YamlContext}
   SBlockNode.blockLiteral n c s s₁ s₂ s' h_sep h_props h_lit
 
 -- [198] s-l+block-scalar: separator + optional properties + folded scalar.
-theorem folded_blockNode {n : Nat} {c : YamlContext}
+lemma folded_blockNode {n : Nat} {c : YamlContext}
     {s s₁ s₂ s' : SurfPos}
     (h_sep : SSeparate n c s s₁)
     (h_props : GOpt (GSeq (SCNsProperties n c) (SSeparate n c)) s₁ s₂)
@@ -125,7 +125,7 @@ theorem folded_blockNode {n : Nat} {c : YamlContext}
   SBlockNode.blockFolded n c s s₁ s₂ s' h_sep h_props h_fold
 
 -- [72] e-node + s-l-comments: empty node.
-theorem emptyNode_blockNode {n : Nat} {c : YamlContext} {s s' : SurfPos}
+lemma emptyNode_blockNode {n : Nat} {c : YamlContext} {s s' : SurfPos}
     (h : SSLComments s s') :
     SBlockNode n c s s' :=
   SBlockNode.emptyNode n c s s' h
@@ -133,7 +133,7 @@ theorem emptyNode_blockNode {n : Nat} {c : YamlContext} {s s' : SurfPos}
 /-! ## §4 Scanner-to-SFlowContent Production (n=0, c=.blockIn) -/
 
 -- `scanDoubleQuoted` success → `SFlowContent 0 .blockIn`.
-theorem scanDoubleQuoted_flowContent_prod (sc : ScannerState) (sp : SurfPos)
+lemma scanDoubleQuoted_flowContent_prod (sc : ScannerState) (sp : SurfPos)
     {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek_dq : sc.peek? = some '"')
@@ -143,7 +143,7 @@ theorem scanDoubleQuoted_flowContent_prod (sc : ScannerState) (sp : SurfPos)
   exact ⟨sp', doubleQuoted_flowContent h_dq, hcorr'⟩
 
 -- `scanSingleQuoted` success → `SFlowContent 0 .blockIn`.
-theorem scanSingleQuoted_flowContent_prod (sc : ScannerState) (sp : SurfPos)
+lemma scanSingleQuoted_flowContent_prod (sc : ScannerState) (sp : SurfPos)
     {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek_sq : sc.peek? = some '\'')
@@ -155,7 +155,7 @@ theorem scanSingleQuoted_flowContent_prod (sc : ScannerState) (sp : SurfPos)
 /-! ## §5 Scanner-to-SFlowNode Production (n=0, c=.blockIn) -/
 
 -- `scanDoubleQuoted` success → `SFlowNode 0 .blockIn`.
-theorem scanDoubleQuoted_flowNode_prod (sc : ScannerState) (sp : SurfPos)
+lemma scanDoubleQuoted_flowNode_prod (sc : ScannerState) (sp : SurfPos)
     {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek_dq : sc.peek? = some '"')
@@ -165,7 +165,7 @@ theorem scanDoubleQuoted_flowNode_prod (sc : ScannerState) (sp : SurfPos)
   exact ⟨sp', flowContent_flowNode h_fc, hcorr'⟩
 
 -- `scanSingleQuoted` success → `SFlowNode 0 .blockIn`.
-theorem scanSingleQuoted_flowNode_prod (sc : ScannerState) (sp : SurfPos)
+lemma scanSingleQuoted_flowNode_prod (sc : ScannerState) (sp : SurfPos)
     {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek_sq : sc.peek? = some '\'')
@@ -204,7 +204,7 @@ theorem scanSingleQuoted_flowNode_prod (sc : ScannerState) (sp : SurfPos)
 
 -- Plain scalar first-char context lift: `.blockIn → .flowOut`.
 -- Works because `isNsPlainSafe .blockIn ch = isNsPlainSafe .flowOut ch` definitionally.
-theorem SNsPlainFirst_blockIn_to_flowOut {s s' : SurfPos}
+lemma SNsPlainFirst_blockIn_to_flowOut {s s' : SurfPos}
     (h : SNsPlainFirst .blockIn s s') : SNsPlainFirst .flowOut s s' := by
   cases h with
   | nonIndicator ch rest col hSafe hNotInd =>
@@ -223,7 +223,7 @@ theorem SNsPlainFirst_blockIn_to_flowOut {s s' : SurfPos}
 --             (SNsPlainOneLine.mk .blockIn s s₁ s₁ h_first (GStar.nil _))
 --             (GStar.nil _)
 -- to the .flowOut version.
-theorem SNsPlain_blockIn_to_flowOut_minimal {s s₁ : SurfPos}
+lemma SNsPlain_blockIn_to_flowOut_minimal {s s₁ : SurfPos}
     (h_first : SNsPlainFirst .blockIn s s₁) :
     SNsPlain 0 .flowOut s s₁ :=
   SNsPlainMultiLine.mk 0 .flowOut s s₁ s₁
@@ -233,7 +233,7 @@ theorem SNsPlain_blockIn_to_flowOut_minimal {s s₁ : SurfPos}
 
 -- Plain scalar → SFlowNode context lift for minimal witness.
 -- Composes: SNsPlainFirst .blockIn → SNsPlain 0 .flowOut → SFlowContent → SFlowNode.
-theorem SFlowNode_plain_blockIn_to_flowOut_minimal {s s₁ : SurfPos}
+lemma SFlowNode_plain_blockIn_to_flowOut_minimal {s s₁ : SurfPos}
     (h_first : SNsPlainFirst .blockIn s s₁) :
     SFlowNode 0 .flowOut s s₁ :=
   flowContent_flowNode (plain_flowContent (SNsPlain_blockIn_to_flowOut_minimal h_first))
@@ -246,7 +246,7 @@ theorem SFlowNode_plain_blockIn_to_flowOut_minimal {s s₁ : SurfPos}
 -- on both endpoints is required because the key contexts use a different body
 -- (`SNbDoubleOneLine`) and the lift across that boundary does not hold.
 @[yaml_spec "7.3.1" 109 "c-double-quoted(n,c) context lift between non-key contexts (same n)"]
-theorem SCDoubleQuoted_ctx_lift {n : Nat} {c₁ c₂ : YamlContext} {s s' : SurfPos}
+lemma SCDoubleQuoted_ctx_lift {n : Nat} {c₁ c₂ : YamlContext} {s s' : SurfPos}
     (h : SCDoubleQuoted n c₁ s s')
     (hc₁ : c₁ ≠ .blockKey ∧ c₁ ≠ .flowKey)
     (hc₂ : c₂ ≠ .blockKey ∧ c₂ ≠ .flowKey) :
@@ -265,7 +265,7 @@ theorem SCDoubleQuoted_ctx_lift {n : Nat} {c₁ c₂ : YamlContext} {s s' : Surf
 -- on both endpoints is required because the key contexts use a different body
 -- (`SNbSingleOneLine`) and the lift across that boundary does not hold.
 @[yaml_spec "7.3.1" 120 "c-single-quoted(n,c) context lift between non-key contexts (same n)"]
-theorem SCSingleQuoted_ctx_lift {n : Nat} {c₁ c₂ : YamlContext} {s s' : SurfPos}
+lemma SCSingleQuoted_ctx_lift {n : Nat} {c₁ c₂ : YamlContext} {s s' : SurfPos}
     (h : SCSingleQuoted n c₁ s s')
     (hc₁ : c₁ ≠ .blockKey ∧ c₁ ≠ .flowKey)
     (hc₂ : c₂ ≠ .blockKey ∧ c₂ ≠ .flowKey) :
@@ -279,14 +279,14 @@ theorem SCSingleQuoted_ctx_lift {n : Nat} {c₁ c₂ : YamlContext} {s s' : Surf
 -- SFlowContent context lift for quoted scalars.
 -- Works for double-quoted, single-quoted, and alias (which has no context).
 -- Does NOT work for plain scalars or flow collections in general.
-theorem SFlowContent_doubleQ_ctx_lift {n : Nat} {c₁ c₂ : YamlContext} {s s' : SurfPos}
+lemma SFlowContent_doubleQ_ctx_lift {n : Nat} {c₁ c₂ : YamlContext} {s s' : SurfPos}
     (h : SCDoubleQuoted n c₁ s s')
     (hc₁ : c₁ ≠ .blockKey ∧ c₁ ≠ .flowKey)
     (hc₂ : c₂ ≠ .blockKey ∧ c₂ ≠ .flowKey) :
     SFlowContent n c₂ s s' :=
   doubleQuoted_flowContent (SCDoubleQuoted_ctx_lift h hc₁ hc₂)
 
-theorem SFlowContent_singleQ_ctx_lift {n : Nat} {c₁ c₂ : YamlContext} {s s' : SurfPos}
+lemma SFlowContent_singleQ_ctx_lift {n : Nat} {c₁ c₂ : YamlContext} {s s' : SurfPos}
     (h : SCSingleQuoted n c₁ s s')
     (hc₁ : c₁ ≠ .blockKey ∧ c₁ ≠ .flowKey)
     (hc₂ : c₂ ≠ .blockKey ∧ c₂ ≠ .flowKey) :
@@ -294,14 +294,14 @@ theorem SFlowContent_singleQ_ctx_lift {n : Nat} {c₁ c₂ : YamlContext} {s s' 
   singleQuoted_flowContent (SCSingleQuoted_ctx_lift h hc₁ hc₂)
 
 -- SFlowNode context lift for quoted scalars (bare content, no properties).
-theorem SFlowNode_doubleQ_ctx_lift {n : Nat} {c₁ c₂ : YamlContext} {s s' : SurfPos}
+lemma SFlowNode_doubleQ_ctx_lift {n : Nat} {c₁ c₂ : YamlContext} {s s' : SurfPos}
     (h : SCDoubleQuoted n c₁ s s')
     (hc₁ : c₁ ≠ .blockKey ∧ c₁ ≠ .flowKey)
     (hc₂ : c₂ ≠ .blockKey ∧ c₂ ≠ .flowKey) :
     SFlowNode n c₂ s s' :=
   flowContent_flowNode (SFlowContent_doubleQ_ctx_lift h hc₁ hc₂)
 
-theorem SFlowNode_singleQ_ctx_lift {n : Nat} {c₁ c₂ : YamlContext} {s s' : SurfPos}
+lemma SFlowNode_singleQ_ctx_lift {n : Nat} {c₁ c₂ : YamlContext} {s s' : SurfPos}
     (h : SCSingleQuoted n c₁ s s')
     (hc₁ : c₁ ≠ .blockKey ∧ c₁ ≠ .flowKey)
     (hc₂ : c₂ ≠ .blockKey ∧ c₂ ≠ .flowKey) :
@@ -312,20 +312,20 @@ theorem SFlowNode_singleQ_ctx_lift {n : Nat} {c₁ c₂ : YamlContext} {s s' : S
 
 -- Alias node: GLit '*' + GPlus anchor chars → SCNsAliasNode.
 -- Takes destructured GLit output + GPlus name.
-theorem aliasNode_of_glit_gplus {rest : List Char} {col : Nat} {sp' : SurfPos}
+lemma aliasNode_of_glit_gplus {rest : List Char} {col : Nat} {sp' : SurfPos}
     (h_gplus : GPlus (GChar isNsAnchorChar) ⟨rest, col + 1⟩ sp') :
     SCNsAliasNode ⟨'*' :: rest, col⟩ sp' :=
   SCNsAliasNode.mk rest col sp' h_gplus
 
 -- Anchor property: GLit '&' + GPlus anchor chars → SCNsAnchorProperty.
-theorem anchorProp_of_glit_gplus {rest : List Char} {col : Nat} {sp' : SurfPos}
+lemma anchorProp_of_glit_gplus {rest : List Char} {col : Nat} {sp' : SurfPos}
     (h_gplus : GPlus (GChar isNsAnchorChar) ⟨rest, col + 1⟩ sp') :
     SCNsAnchorProperty ⟨'&' :: rest, col⟩ sp' :=
   SCNsAnchorProperty.mk rest col sp' h_gplus
 
 -- scanAnchorOrAlias → SCNsAliasNode (unconditional).
 -- Since A10 Except conversion, `.ok` guarantees non-empty name, so sp_mid ≠ sp'.
-theorem scanAnchorOrAlias_aliasNode_prod (sc : ScannerState) (sp : SurfPos)
+lemma scanAnchorOrAlias_aliasNode_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek : sc.peek? = some '*')
     (s' : ScannerState) (hok : scanAnchorOrAlias sc false = .ok s') :
@@ -338,7 +338,7 @@ theorem scanAnchorOrAlias_aliasNode_prod (sc : ScannerState) (sp : SurfPos)
 
 -- scanAnchorOrAlias → SCNsAnchorProperty (unconditional).
 -- Since A10 Except conversion, `.ok` guarantees non-empty name, so sp_mid ≠ sp'.
-theorem scanAnchorOrAlias_anchorProp_prod (sc : ScannerState) (sp : SurfPos)
+lemma scanAnchorOrAlias_anchorProp_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek : sc.peek? = some '&')
     (s' : ScannerState) (hok : scanAnchorOrAlias sc true = .ok s') :
@@ -350,7 +350,7 @@ theorem scanAnchorOrAlias_anchorProp_prod (sc : ScannerState) (sp : SurfPos)
     exact ⟨sp', anchorProp_of_glit_gplus (GStar_to_GPlus h_gstar h_ne), hcorr'⟩
 
 -- scanAnchorOrAlias → SFlowNode (alias, unconditional).
-theorem scanAnchorOrAlias_flowNode_prod (sc : ScannerState) (sp : SurfPos)
+lemma scanAnchorOrAlias_flowNode_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek : sc.peek? = some '*')
     (s' : ScannerState) (hok : scanAnchorOrAlias sc false = .ok s') :
@@ -408,7 +408,7 @@ theorem scanAnchorOrAlias_flowNode_prod (sc : ScannerState) (sp : SurfPos)
     **Proof idea:** The `single` case converts to `cons` (original entry
     stays as head, new entry becomes a `single` tail). The `cons` case
     keeps the head entry and recurses on the tail. -/
-theorem SBlockSeqEntries_snoc {n : Nat} {s s_mid s₁ s₂ s' : SurfPos}
+lemma SBlockSeqEntries_snoc {n : Nat} {s s_mid s₁ s₂ s' : SurfPos}
     (h_entries : SBlockSeqEntries n s s_mid)
     (h_indent : SIndent n s_mid s₁)
     (h_dash : GLit '-' s₁ s₂)

@@ -63,7 +63,7 @@ variable {input : String}
 
 /-! ## §1  `scanNextTokenIx_via_flow_dispatch_filtered_grows` (legacy 6769) -/
 
-theorem scanNextTokenIx_via_flow_dispatch_filtered_grows
+lemma scanNextTokenIx_via_flow_dispatch_filtered_grows
     (s s_pp s_ad s_result : ScannerStateIx input) (c : Char)
     (h_pp : scanNextTokenIx_preprocess s = .ok (some (s_pp, c)))
     (_h_struct : scanNextTokenIx_dispatchStructural s_pp c = .ok none)
@@ -83,7 +83,7 @@ theorem scanNextTokenIx_via_flow_dispatch_filtered_grows
 
 /-! ## §2  `scanNextTokenIx_via_block_dispatch_filtered_grows` (legacy 6787) -/
 
-theorem scanNextTokenIx_via_block_dispatch_filtered_grows
+lemma scanNextTokenIx_via_block_dispatch_filtered_grows
     (s s_pp s_ad s_result : ScannerStateIx input) (c : Char)
     (h_pp : scanNextTokenIx_preprocess s = .ok (some (s_pp, c)))
     (_h_struct : scanNextTokenIx_dispatchStructural s_pp c = .ok none)
@@ -104,7 +104,7 @@ theorem scanNextTokenIx_via_block_dispatch_filtered_grows
 
 /-! ## §3  `scanNextTokenIx_via_content_dispatch_filtered_grows` (legacy 6806) -/
 
-theorem scanNextTokenIx_via_content_dispatch_filtered_grows
+lemma scanNextTokenIx_via_content_dispatch_filtered_grows
     (s s_pp s_ad s_result : ScannerStateIx input) (c : Char)
     (h_pp : scanNextTokenIx_preprocess s = .ok (some (s_pp, c)))
     (_h_struct : scanNextTokenIx_dispatchStructural s_pp c = .ok none)
@@ -134,7 +134,7 @@ out the directive branch entirely, so the conclusion goes through
 unconditionally for emitter outputs. -/
 
 set_option maxHeartbeats 800000 in
-theorem scanNextTokenIx_filtered_grows_in_flow
+lemma scanNextTokenIx_filtered_grows_in_flow
     (s s' : ScannerStateIx input) (c : Char) (rest : List Char)
     (hcorr : ScannerSurfCorrIx s ⟨c :: rest, s.cursor.pos.col⟩)
     (h_flow : s.inFlow = true)

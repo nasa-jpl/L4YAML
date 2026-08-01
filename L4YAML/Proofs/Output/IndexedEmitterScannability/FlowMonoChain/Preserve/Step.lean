@@ -74,37 +74,37 @@ stage scanners (`scanDocumentStartIx`, `scanDocumentEndIx`,
 change it. These twins are consumed by the `scanNextTokenIx_
 preserves_sync` chain in `Sync/Invariant.lean` §2. -/
 
-@[simp] theorem advanceN_flowLevel (s : ScannerStateIx input) (n : Nat) :
+@[simp] lemma advanceN_flowLevel (s : ScannerStateIx input) (n : Nat) :
     (s.advanceN n).flowLevel = s.flowLevel := rfl
 
-@[simp] theorem advanceN_simpleKeyStack (s : ScannerStateIx input) (n : Nat) :
+@[simp] lemma advanceN_simpleKeyStack (s : ScannerStateIx input) (n : Nat) :
     (s.advanceN n).simpleKeyStack = s.simpleKeyStack := rfl
 
-theorem pushSequenceIndentIx_preserves_flowLevel
+lemma pushSequenceIndentIx_preserves_flowLevel
     (s : ScannerStateIx input) (col : Int) :
     (pushSequenceIndentIx s col).flowLevel = s.flowLevel := by
   unfold pushSequenceIndentIx
   split <;> simp [emit_flowLevel]
 
-theorem pushSequenceIndentIx_preserves_simpleKeyStack
+lemma pushSequenceIndentIx_preserves_simpleKeyStack
     (s : ScannerStateIx input) (col : Int) :
     (pushSequenceIndentIx s col).simpleKeyStack = s.simpleKeyStack := by
   unfold pushSequenceIndentIx
   split <;> simp [emit_preserves_simpleKeyStack]
 
-theorem pushMappingIndentIx_preserves_flowLevel
+lemma pushMappingIndentIx_preserves_flowLevel
     (s : ScannerStateIx input) (col : Int) :
     (pushMappingIndentIx s col).flowLevel = s.flowLevel := by
   unfold pushMappingIndentIx
   split <;> simp [emit_flowLevel]
 
-theorem pushMappingIndentIx_preserves_simpleKeyStack
+lemma pushMappingIndentIx_preserves_simpleKeyStack
     (s : ScannerStateIx input) (col : Int) :
     (pushMappingIndentIx s col).simpleKeyStack = s.simpleKeyStack := by
   unfold pushMappingIndentIx
   split <;> simp [emit_preserves_simpleKeyStack]
 
-theorem scanValueClearKeyIx_preserves_flowLevel (s : ScannerStateIx input) :
+lemma scanValueClearKeyIx_preserves_flowLevel (s : ScannerStateIx input) :
     (scanValueClearKeyIx s).flowLevel = s.flowLevel := by
   unfold scanValueClearKeyIx
   split
@@ -113,7 +113,7 @@ theorem scanValueClearKeyIx_preserves_flowLevel (s : ScannerStateIx input) :
     · split <;> rfl
   · rfl
 
-theorem scanValuePrepareIx_preserves_flowLevel (s : ScannerStateIx input) :
+lemma scanValuePrepareIx_preserves_flowLevel (s : ScannerStateIx input) :
     (scanValuePrepareIx s).flowLevel = s.flowLevel := by
   unfold scanValuePrepareIx
   split
@@ -126,13 +126,13 @@ theorem scanValuePrepareIx_preserves_flowLevel (s : ScannerStateIx input) :
       · exact pushMappingIndentIx_preserves_flowLevel s s.cursor.pos.col
       · rfl
 
-theorem scanDocumentStartIx_preserves_flowLevel (s : ScannerStateIx input) :
+lemma scanDocumentStartIx_preserves_flowLevel (s : ScannerStateIx input) :
     (scanDocumentStartIx s).flowLevel = s.flowLevel := by
   unfold scanDocumentStartIx
   show (unwindIndentsIx s (-1)).flowLevel = s.flowLevel
   exact unwindIndentsIx_preserves_flowLevel s (-1)
 
-theorem scanDocumentEndIx_preserves_flowLevel
+lemma scanDocumentEndIx_preserves_flowLevel
     (s s' : ScannerStateIx input) (h : scanDocumentEndIx s = .ok s') :
     s'.flowLevel = s.flowLevel := by
   unfold scanDocumentEndIx at h
@@ -144,7 +144,7 @@ theorem scanDocumentEndIx_preserves_flowLevel
     show (unwindIndentsIx s (-1)).flowLevel = s.flowLevel
   all_goals exact unwindIndentsIx_preserves_flowLevel s (-1)
 
-theorem scanYamlDirectiveIx_preserves_flowLevel
+lemma scanYamlDirectiveIx_preserves_flowLevel
     (s : ScannerStateIx input) (cAfterWS : IxCursor input)
     (startPos : YamlPos) (hStart : startPos.offset ≤ cAfterWS.pos.offset)
     (s' : ScannerStateIx input)
@@ -156,7 +156,7 @@ theorem scanYamlDirectiveIx_preserves_flowLevel
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at h; subst h; rfl)
 
-theorem scanTagDirectiveIx_preserves_flowLevel
+lemma scanTagDirectiveIx_preserves_flowLevel
     (s : ScannerStateIx input) (cAfterWS : IxCursor input)
     (startPos : YamlPos) (hStart : startPos.offset ≤ cAfterWS.pos.offset)
     (s' : ScannerStateIx input)
@@ -165,7 +165,7 @@ theorem scanTagDirectiveIx_preserves_flowLevel
   unfold scanTagDirectiveIx at h
   simp only [Except.ok.injEq] at h; subst h; rfl
 
-theorem scanDirectiveIx_preserves_flowLevel
+lemma scanDirectiveIx_preserves_flowLevel
     (s s' : ScannerStateIx input) (h : scanDirectiveIx s = .ok s') :
     s'.flowLevel = s.flowLevel := by
   unfold scanDirectiveIx at h
@@ -178,7 +178,7 @@ theorem scanDirectiveIx_preserves_flowLevel
       · exact (scanTagDirectiveIx_preserves_flowLevel _ _ _ _ _ h).trans rfl
       · simp only [Except.ok.injEq] at h; subst h; rfl
 
-theorem scanBlockEntryIx_preserves_flowLevel
+lemma scanBlockEntryIx_preserves_flowLevel
     (s s' : ScannerStateIx input) (h : scanBlockEntryIx s = .ok s') :
     s'.flowLevel = s.flowLevel := by
   unfold scanBlockEntryIx at h
@@ -191,7 +191,7 @@ theorem scanBlockEntryIx_preserves_flowLevel
     | exact pushSequenceIndentIx_preserves_flowLevel s s.cursor.pos.col
     | rfl
 
-theorem scanKeyIx_preserves_flowLevel
+lemma scanKeyIx_preserves_flowLevel
     (s s' : ScannerStateIx input) (h : scanKeyIx s = .ok s') :
     s'.flowLevel = s.flowLevel := by
   unfold scanKeyIx at h
@@ -204,7 +204,7 @@ theorem scanKeyIx_preserves_flowLevel
     | exact pushMappingIndentIx_preserves_flowLevel s s.cursor.pos.col
     | rfl
 
-theorem scanValueIx_preserves_flowLevel
+lemma scanValueIx_preserves_flowLevel
     (s s' : ScannerStateIx input) (h : scanValueIx s = .ok s') :
     s'.flowLevel = s.flowLevel := by
   unfold scanValueIx at h
@@ -218,7 +218,7 @@ theorem scanValueIx_preserves_flowLevel
       scanValuePrepareIx_preserves_flowLevel,
       scanValueClearKeyIx_preserves_flowLevel]
 
-theorem scanFlowEntryIx_preserves_flowLevel
+lemma scanFlowEntryIx_preserves_flowLevel
     (s s' : ScannerStateIx input) (h : scanFlowEntryIx s = .ok s') :
     s'.flowLevel = s.flowLevel := by
   unfold scanFlowEntryIx at h
@@ -237,7 +237,7 @@ invariant. The flow-indicator dispatcher is *not* preservation-shaped —
 its proof obligation is the joint sync invariant, handled in
 `Sync/Invariant.lean` §1. -/
 
-theorem scanNextTokenIx_dispatchStructural_preserves_flowLevel
+lemma scanNextTokenIx_dispatchStructural_preserves_flowLevel
     (s : ScannerStateIx input) (c : Char) (s' : ScannerStateIx input)
     (h : scanNextTokenIx_dispatchStructural s c = .ok (some s')) :
     s'.flowLevel = s.flowLevel := by
@@ -254,7 +254,7 @@ theorem scanNextTokenIx_dispatchStructural_preserves_flowLevel
     | (rename_i h_eq; exact scanDirectiveIx_preserves_flowLevel s _ h_eq)
     | (simp_all; done)
 
-theorem scanNextTokenIx_dispatchStructural_preserves_simpleKeyStack
+lemma scanNextTokenIx_dispatchStructural_preserves_simpleKeyStack
     (s : ScannerStateIx input) (c : Char) (s' : ScannerStateIx input)
     (h : scanNextTokenIx_dispatchStructural s c = .ok (some s')) :
     s'.simpleKeyStack = s.simpleKeyStack := by
@@ -271,7 +271,7 @@ theorem scanNextTokenIx_dispatchStructural_preserves_simpleKeyStack
     | (rename_i h_eq; exact scanDirectiveIx_preserves_simpleKeyStack s _ h_eq)
     | (simp_all; done)
 
-theorem scanNextTokenIx_dispatchBlockIndicators_preserves_flowLevel
+lemma scanNextTokenIx_dispatchBlockIndicators_preserves_flowLevel
     (s : ScannerStateIx input) (c : Char) (s' : ScannerStateIx input)
     (h : scanNextTokenIx_dispatchBlockIndicators s c = .ok (some s')) :
     s'.flowLevel = s.flowLevel := by
@@ -288,7 +288,7 @@ theorem scanNextTokenIx_dispatchBlockIndicators_preserves_flowLevel
     | (rename_i h_eq; exact scanValueIx_preserves_flowLevel s _ h_eq)
     | (simp_all; done)
 
-theorem scanNextTokenIx_dispatchBlockIndicators_preserves_simpleKeyStack
+lemma scanNextTokenIx_dispatchBlockIndicators_preserves_simpleKeyStack
     (s : ScannerStateIx input) (c : Char) (s' : ScannerStateIx input)
     (h : scanNextTokenIx_dispatchBlockIndicators s c = .ok (some s')) :
     s'.simpleKeyStack = s.simpleKeyStack := by
@@ -305,7 +305,7 @@ theorem scanNextTokenIx_dispatchBlockIndicators_preserves_simpleKeyStack
     | (rename_i h_eq; exact scanValueIx_preserves_simpleKeyStack s _ h_eq)
     | (simp_all; done)
 
-theorem scanNextTokenIx_dispatchContent_preserves_flowLevel
+lemma scanNextTokenIx_dispatchContent_preserves_flowLevel
     (s : ScannerStateIx input) (c : Char) (s' : ScannerStateIx input)
     (h : scanNextTokenIx_dispatchContent s c = .ok s') :
     s'.flowLevel = s.flowLevel := by
@@ -371,7 +371,7 @@ theorem scanNextTokenIx_dispatchContent_preserves_flowLevel
               · simp only [Except.ok.injEq] at h; subst h; rfl
               · cases h
 
-theorem scanNextTokenIx_dispatchContent_preserves_simpleKeyStack
+lemma scanNextTokenIx_dispatchContent_preserves_simpleKeyStack
     (s : ScannerStateIx input) (c : Char) (s' : ScannerStateIx input)
     (h : scanNextTokenIx_dispatchContent s c = .ok s') :
     s'.simpleKeyStack = s.simpleKeyStack := by

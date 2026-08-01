@@ -162,7 +162,7 @@ def EmitPairListScansInFlowIx_strong (pairs : List (YamlValue × YamlValue)) : P
 /-- `EmitPairListScansInFlowIx_strong` implies the weak version
     (drops the `n ≥ 3` conjunct). Useful as a degradation when the
     consumer doesn't need the strong claim. -/
-theorem EmitPairListScansInFlowIx_strong.toWeak {pairs : List (YamlValue × YamlValue)}
+lemma EmitPairListScansInFlowIx_strong.toWeak {pairs : List (YamlValue × YamlValue)}
     (h_strong : EmitPairListScansInFlowIx_strong (input := input) pairs) :
     EmitPairListScansInFlowIx (input := input) pairs := by
   intro s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
@@ -187,7 +187,7 @@ proven by the same non-empty-`emit` → non-empty-chain argument. -/
     (singleton + multi-pair induction); the lower bound emerges from
     the chain composition `n₁(key) + 1(colon) + (n_v' + 1)(value)`
     with positive sub-chains. -/
-theorem emitPairList_scans_nonemptyIx_strong (pairs : List (YamlValue × YamlValue))
+lemma emitPairList_scans_nonemptyIx_strong (pairs : List (YamlValue × YamlValue))
     (h_ne : pairs ≠ [])
     (h_all_k : ∀ p ∈ pairs, EmitScansInFlowIx (input := input) p.1)
     (h_all_v : ∀ p ∈ pairs, EmitScansInFlowIx (input := input) p.2) :
@@ -580,7 +580,7 @@ only consumers. -/
 /-- Token-array shape of `scanValuePrepareIx` in flow context: equals
     the original tokens with a single `setIfInBounds` at position
     `tokenIndex + 1` writing a `.key`-shaped token. -/
-theorem scanValuePrepareIx_flow_tokens_eq (s : ScannerStateIx input)
+lemma scanValuePrepareIx_flow_tokens_eq (s : ScannerStateIx input)
     (h_sk : s.simpleKey.possible = true)
     (h_flow : s.inFlow = true) :
     (scanValuePrepareIx s).tokens.tokens =
@@ -593,7 +593,7 @@ theorem scanValuePrepareIx_flow_tokens_eq (s : ScannerStateIx input)
 
 /-- `scanValuePrepareIx` in flow context preserves total token array
     size (overwriteAtCursor uses `setIfInBounds`, which is size-stable). -/
-theorem scanValuePrepareIx_flow_size_eq (s : ScannerStateIx input)
+lemma scanValuePrepareIx_flow_size_eq (s : ScannerStateIx input)
     (h_sk : s.simpleKey.possible = true)
     (h_flow : s.inFlow = true) :
     (scanValuePrepareIx s).tokens.tokens.size = s.tokens.tokens.size := by
@@ -605,7 +605,7 @@ theorem scanValuePrepareIx_flow_size_eq (s : ScannerStateIx input)
     `scanValuePrepareIx_flow_size_eq` (the size statement) and
     `scanValuePrepareIx_flow_tokens_eq` (the underlying setIfInBounds
     equation). -/
-theorem scanValuePrepareIx_flow_pointwise (s : ScannerStateIx input)
+lemma scanValuePrepareIx_flow_pointwise (s : ScannerStateIx input)
     (h_sk : s.simpleKey.possible = true)
     (h_flow : s.inFlow = true) :
     -- (key) IF position `idx + 1` is in range, the new token there is `.key`.
@@ -691,7 +691,7 @@ applied to `s.tokens.tokens.take n₀` and `s'.tokens.tokens`. -/
     semantic re-naming of `FlowMonoChainIx_preserves_raw_prefix`
     (`Sync/Invariant.lean §4`) emphasizing the "no-overwrite" reading.
     Consumers lift to filtered-prefix via `Array_filter_prefix_of_raw_prefix`. -/
-theorem FlowMonoChainIx_filtered_prefix_no_overwrite
+lemma FlowMonoChainIx_filtered_prefix_no_overwrite
     {s s' : ScannerStateIx input} {n fl₀ n₀ : Nat}
     (h_fmc : FlowMonoChainIx fl₀ s n s')
     (h_n₀_le : n₀ ≤ s.tokens.size)
@@ -706,7 +706,7 @@ theorem FlowMonoChainIx_filtered_prefix_no_overwrite
     if the raw prefix of length `n₀` is preserved (per the per-position
     wrapper above), the filtered token list at `s'` extends the
     filtered list of the first `n₀` raw tokens at `s`. -/
-theorem FlowMonoChainIx_filtered_prefix_no_overwrite_list
+lemma FlowMonoChainIx_filtered_prefix_no_overwrite_list
     {s s' : ScannerStateIx input} {n fl₀ n₀ : Nat}
     (h_fmc : FlowMonoChainIx fl₀ s n s')
     (h_n₀_le : n₀ ≤ s.tokens.size)
@@ -798,7 +798,7 @@ def NoOverwriteAtIx (s : ScannerStateIx input) (m : Nat) : Prop :=
     `NoOverwriteAtIx` transports. Parallel to
     `SimpleKeyAboveFloorIx_of_cleared_preserved` (`FlowMonoChain/
     Basic.lean §2.1`). -/
-theorem NoOverwriteAtIx_of_cleared_preserved
+lemma NoOverwriteAtIx_of_cleared_preserved
     (s_out s_in : ScannerStateIx input) (m : Nat)
     (h_sk : s_out.simpleKey.possible = false)
     (h_stack : s_out.simpleKeyStack = s_in.simpleKeyStack)
@@ -810,7 +810,7 @@ theorem NoOverwriteAtIx_of_cleared_preserved
 /-- If `s_out` preserves both `simpleKey` and `simpleKeyStack`, then
     `NoOverwriteAtIx` transports. Parallel to
     `SimpleKeyAboveFloorIx_of_preserved`. -/
-theorem NoOverwriteAtIx_of_preserved
+lemma NoOverwriteAtIx_of_preserved
     (s_out s_in : ScannerStateIx input) (m : Nat)
     (h_sk : s_out.simpleKey = s_in.simpleKey)
     (h_stack : s_out.simpleKeyStack = s_in.simpleKeyStack)
@@ -822,7 +822,7 @@ theorem NoOverwriteAtIx_of_preserved
 /-- Flow-open transport: `s_out` clears the current simple key and
     pushes the old `simpleKey` onto `simpleKeyStack`. Parallel to
     `SimpleKeyAboveFloorIx_of_flow_open`. -/
-theorem NoOverwriteAtIx_of_flow_open
+lemma NoOverwriteAtIx_of_flow_open
     (s_out s_in : ScannerStateIx input) (m : Nat)
     (h_sk : s_out.simpleKey.possible = false)
     (h_stack : s_out.simpleKeyStack = s_in.simpleKeyStack.push s_in.simpleKey)
@@ -851,7 +851,7 @@ theorem NoOverwriteAtIx_of_flow_open
     `SimpleKeyAboveFloorIx_of_flow_close` but with no sync hypothesis
     (NoOverwriteAt's stack-entry conjunct covers ALL slots, so popping
     just reduces the universe of obligations). -/
-theorem NoOverwriteAtIx_of_flow_close
+lemma NoOverwriteAtIx_of_flow_close
     (s_out s_in : ScannerStateIx input) (m : Nat)
     (h_sk : s_out.simpleKey =
       s_in.simpleKeyStack.back?.getD { cursor := IxCursor.start input })
@@ -881,7 +881,7 @@ theorem NoOverwriteAtIx_of_flow_close
     (set branch), and both ≠ m / ≠ m given `m < st.tokens.size`.
     Parallel to `saveSimpleKeyIx_simpleKey_inv` (`FlowMonoChain/
     Basic.lean §2.2`) but with the `≠m` hypothesis form. -/
-theorem saveSimpleKeyIx_simpleKey_pointwise_inv {input : String}
+lemma saveSimpleKeyIx_simpleKey_pointwise_inv {input : String}
     (st : ScannerStateIx input) (m : Nat) (h_tok : m < st.tokens.size)
     (h_inv : st.simpleKey.possible = true →
       m ≠ st.simpleKey.tokenIndex ∧ m ≠ st.simpleKey.tokenIndex + 1) :
@@ -898,7 +898,7 @@ theorem saveSimpleKeyIx_simpleKey_pointwise_inv {input : String}
 /-- `scanNextTokenIx_preprocess` carries the simpleKey pointwise
     invariant. Parallel to `scanNextTokenIx_preprocess_simpleKey_inv`
     (`FlowMonoChain/Basic.lean §2.2`). -/
-theorem scanNextTokenIx_preprocess_simpleKey_pointwise_inv {input : String}
+lemma scanNextTokenIx_preprocess_simpleKey_pointwise_inv {input : String}
     (s s1 : ScannerStateIx input) (c : Char)
     (h : scanNextTokenIx_preprocess s = .ok (some (s1, c))) (m : Nat)
     (h_m : m < s.tokens.size)
@@ -957,7 +957,7 @@ theorem scanNextTokenIx_preprocess_simpleKey_pointwise_inv {input : String}
 
 /-- `scanNextTokenIx_preprocess` maintains the full `NoOverwriteAtIx`
     invariant. Parallel to `scanNextTokenIx_preprocess_maintains_SKAFIx`. -/
-theorem scanNextTokenIx_preprocess_maintains_NoOverwriteAtIx {input : String}
+lemma scanNextTokenIx_preprocess_maintains_NoOverwriteAtIx {input : String}
     (s s1 : ScannerStateIx input) (c : Char)
     (h : scanNextTokenIx_preprocess s = .ok (some (s1, c)))
     (m : Nat) (h_m : m < s.tokens.size)
@@ -974,7 +974,7 @@ theorem scanNextTokenIx_preprocess_maintains_NoOverwriteAtIx {input : String}
 
 /-- `scanNextTokenIx_dispatchStructural` maintains `NoOverwriteAtIx`.
     Parallel to `scanNextTokenIx_dispatchStructural_maintains_SKAFIx`. -/
-theorem scanNextTokenIx_dispatchStructural_maintains_NoOverwriteAtIx {input : String}
+lemma scanNextTokenIx_dispatchStructural_maintains_NoOverwriteAtIx {input : String}
     (s : ScannerStateIx input) (c : Char) (s' : ScannerStateIx input)
     (h : scanNextTokenIx_dispatchStructural s c = .ok (some s'))
     (m : Nat) (_h_m : m < s.tokens.size)
@@ -1001,7 +1001,7 @@ theorem scanNextTokenIx_dispatchStructural_maintains_NoOverwriteAtIx {input : St
 
 /-- `scanNextTokenIx_dispatchFlowIndicators` maintains `NoOverwriteAtIx`.
     Parallel to `scanNextTokenIx_dispatchFlowIndicators_maintains_SKAFIx`. -/
-theorem scanNextTokenIx_dispatchFlowIndicators_maintains_NoOverwriteAtIx {input : String}
+lemma scanNextTokenIx_dispatchFlowIndicators_maintains_NoOverwriteAtIx {input : String}
     (s : ScannerStateIx input) (c : Char) (s' : ScannerStateIx input)
     (h : scanNextTokenIx_dispatchFlowIndicators s c = .ok (some s'))
     (m : Nat) (_h_m : m < s.tokens.size)
@@ -1034,7 +1034,7 @@ theorem scanNextTokenIx_dispatchFlowIndicators_maintains_NoOverwriteAtIx {input 
 
 /-- `scanNextTokenIx_dispatchBlockIndicators` maintains `NoOverwriteAtIx`.
     Parallel to `scanNextTokenIx_dispatchBlockIndicators_maintains_SKAFIx`. -/
-theorem scanNextTokenIx_dispatchBlockIndicators_maintains_NoOverwriteAtIx {input : String}
+lemma scanNextTokenIx_dispatchBlockIndicators_maintains_NoOverwriteAtIx {input : String}
     (s : ScannerStateIx input) (c : Char) (s' : ScannerStateIx input)
     (h : scanNextTokenIx_dispatchBlockIndicators s c = .ok (some s'))
     (m : Nat) (_h_m : m < s.tokens.size)
@@ -1061,7 +1061,7 @@ theorem scanNextTokenIx_dispatchBlockIndicators_maintains_NoOverwriteAtIx {input
 
 /-- `scanNextTokenIx_dispatchContent` maintains `NoOverwriteAtIx`.
     Parallel to `scanNextTokenIx_dispatchContent_maintains_SKAFIx`. -/
-theorem scanNextTokenIx_dispatchContent_maintains_NoOverwriteAtIx {input : String}
+lemma scanNextTokenIx_dispatchContent_maintains_NoOverwriteAtIx {input : String}
     (s : ScannerStateIx input) (c : Char) (s' : ScannerStateIx input)
     (h : scanNextTokenIx_dispatchContent s c = .ok s')
     (m : Nat) (_h_m : m < s.tokens.size)
@@ -1146,7 +1146,7 @@ set_option maxHeartbeats 400000 in
 /-- Capstone: `scanNextTokenIx` maintains `NoOverwriteAtIx`. Parallel
     to `scanNextTokenIx_maintains_SKAFIx` (`FlowMonoChain.Basic §2.4`)
     but with the pointwise (≠m) invariant — no sync hypothesis needed. -/
-theorem scanNextTokenIx_maintains_NoOverwriteAtIx {input : String}
+lemma scanNextTokenIx_maintains_NoOverwriteAtIx {input : String}
     (s s' : ScannerStateIx input)
     (h_next : scanNextTokenIx s = .ok (some s'))
     (m : Nat) (h_m : m < s.tokens.size)
@@ -1228,7 +1228,7 @@ theorem scanNextTokenIx_maintains_NoOverwriteAtIx {input : String}
     Mirrors the prefix-form proof at line 5101 but uses the pointwise
     hypothesis directly (no need to derive `tokenIndex ≠ m` from
     `i < n ≤ tokenIndex`). -/
-theorem scanValuePrepareIx_preserves_position_specific {input : String}
+lemma scanValuePrepareIx_preserves_position_specific {input : String}
     (s : ScannerStateIx input)
     (m : Nat) (h_m : m < s.tokens.size)
     (h_inv : s.simpleKey.possible = true →
@@ -1282,7 +1282,7 @@ theorem scanValuePrepareIx_preserves_position_specific {input : String}
       · rfl
 
 /-- Pointwise (≠m) form of `scanValueIx_preserves_prefix`. -/
-theorem scanValueIx_preserves_position_specific {input : String}
+lemma scanValueIx_preserves_position_specific {input : String}
     (s s' : ScannerStateIx input)
     (h_ok : scanValueIx s = .ok s')
     (m : Nat) (h_m : m < s.tokens.size)
@@ -1335,7 +1335,7 @@ set_option maxHeartbeats 400000 in
     Per Reflection 155: this is the step-level primitive needed by
     `.tokenshape.list` and `.tokenshape.pair` consumers when the
     protected position sits ABOVE the simpleKey reservation. -/
-theorem scanNextTokenIx_preserves_position_specific {input : String}
+lemma scanNextTokenIx_preserves_position_specific {input : String}
     (s s' : ScannerStateIx input) (m : Nat) (h_m : m < s.tokens.size)
     (h_inv : s.simpleKey.possible = true →
       m ≠ s.simpleKey.tokenIndex ∧ m ≠ s.simpleKey.tokenIndex + 1)
@@ -1487,7 +1487,7 @@ theorem scanNextTokenIx_preserves_position_specific {input : String}
     Per Reflection 155: enables `.tokenshape.list` and `.tokenshape.
     pair` consumers to preserve a specific position above the simpleKey
     reservation through the rest of the chain. -/
-theorem FlowMonoChainIx_preserves_position_specific {input : String}
+lemma FlowMonoChainIx_preserves_position_specific {input : String}
     {s s' : ScannerStateIx input} {n fl₀ : Nat}
     (h_fmc : FlowMonoChainIx fl₀ s n s')
     (m : Nat) (h_m : m < s.tokens.size)

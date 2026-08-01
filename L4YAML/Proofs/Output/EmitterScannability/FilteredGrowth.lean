@@ -40,7 +40,7 @@ that fact and serve as building blocks for body-token characterization in
 
 /-- After `scanNextToken` with leading `[` in flow context, the first new
     filtered token is `.flowSequenceStart`. -/
-theorem scanFlowSequenceStart_first_filtered_token (s : ScannerState) (rest : List Char)
+lemma scanFlowSequenceStart_first_filtered_token (s : ScannerState) (rest : List Char)
     (hcorr : ScannerSurfCorr s ⟨'[' :: rest, s.col⟩)
     (h_flow : s.inFlow = true)
     (h_indent : s.currentIndent < 0)
@@ -99,7 +99,7 @@ theorem scanFlowSequenceStart_first_filtered_token (s : ScannerState) (rest : Li
 
 /-- After `scanNextToken` with leading `{` in flow context, the first new
     filtered token is `.flowMappingStart`. -/
-theorem scanFlowMappingStart_first_filtered_token (s : ScannerState) (rest : List Char)
+lemma scanFlowMappingStart_first_filtered_token (s : ScannerState) (rest : List Char)
     (hcorr : ScannerSurfCorr s ⟨'{' :: rest, s.col⟩)
     (h_flow : s.inFlow = true)
     (h_indent : s.currentIndent < 0)
@@ -158,7 +158,7 @@ theorem scanFlowMappingStart_first_filtered_token (s : ScannerState) (rest : Lis
     are exactly the input's tokens with one `.scalar _ .doubleQuoted` pushed.
     Used by `scanDoubleQuoted_first_filtered_token` to identify the new
     token without knowing the specific content string. -/
-theorem scanDoubleQuoted_tokens_push {s s' : ScannerState}
+lemma scanDoubleQuoted_tokens_push {s s' : ScannerState}
     (h : scanDoubleQuoted s = .ok s') :
     ∃ c, s'.tokens
       = s.tokens.push ⟨s.currentPos, .scalar c .doubleQuoted, s.currentPos⟩ := by
@@ -188,7 +188,7 @@ theorem scanDoubleQuoted_tokens_push {s s' : ScannerState}
     `'"' :: escapeString content ++ '"' :: rest` in flow context, `scanDoubleQuoted`
     produces a token push of exactly `.scalar content .doubleQuoted`.
     Strengthens `scanDoubleQuoted_tokens_push` (which gives only `∃ c`). -/
-theorem scanDoubleQuoted_tokens_push_content {s s' : ScannerState}
+lemma scanDoubleQuoted_tokens_push_content {s s' : ScannerState}
     (content : String) (rest : List Char)
     (hcorr : ScannerSurfCorr s ⟨['"'] ++ (escapeString content).toList ++ ['"'] ++ rest, s.col⟩)
     (h_flow : s.inFlow = true)
@@ -212,7 +212,7 @@ theorem scanDoubleQuoted_tokens_push_content {s s' : ScannerState}
     filtered token is some `.scalar` token (the doubleQuoted scalar emitted
     by `scanDoubleQuoted`).  Content and subType are existentially
     quantified — the lemma's purpose is dispatch identification. -/
-theorem scanDoubleQuoted_first_filtered_token (s : ScannerState) (rest : List Char)
+lemma scanDoubleQuoted_first_filtered_token (s : ScannerState) (rest : List Char)
     (hcorr : ScannerSurfCorr s ⟨'"' :: rest, s.col⟩)
     (h_flow : s.inFlow = true)
     (h_indent : s.currentIndent < 0)
@@ -301,7 +301,7 @@ theorem scanDoubleQuoted_first_filtered_token (s : ScannerState) (rest : List Ch
     and the line is not an explicit-key line, `saveSimpleKey` reserves two
     placeholder slots (`tokens.size` grows by 2) and records a pending key
     whose `tokenIndex` is the pre-save `tokens.size`. -/
-theorem saveSimpleKey_eval (s : ScannerState)
+lemma saveSimpleKey_eval (s : ScannerState)
     (h_ek : s.explicitKeyLine = none) (h_ska : s.simpleKeyAllowed = true) :
     (saveSimpleKey s).simpleKey.possible = true ∧
     (saveSimpleKey s).simpleKey.tokenIndex = s.tokens.size ∧
@@ -317,7 +317,7 @@ theorem saveSimpleKey_eval (s : ScannerState)
     (if any) and every newly-pushed stack key point at `N` (the head item's
     reserved slot), while pre-existing stack keys reside strictly below `N - 1`
     (their `tokenIndex + 1 < N`, from `SimpleKeyStackValid`). -/
-theorem noOverwrite_of_keys_at_or_below (s' : ScannerState) (N : Nat)
+lemma noOverwrite_of_keys_at_or_below (s' : ScannerState) (N : Nat)
     (hP1 : s'.simpleKey.possible = true → s'.simpleKey.tokenIndex = N)
     (hP2 : ∀ (j : Nat) (h : j < s'.simpleKeyStack.size),
         s'.simpleKeyStack[j].possible = true →
@@ -338,7 +338,7 @@ theorem noOverwrite_of_keys_at_or_below (s' : ScannerState) (N : Nat)
     stack keys, strictly below `N - 1` (by `SimpleKeyStackValid`).  Packaged as
     the two no-overwrite invariants consumed by substrate.d (`N+2`) and
     substrate.e (`N`) at the residual-chain start. -/
-theorem emitList_head_step_noOverwrite (s s' : ScannerState) (c : Char) (rest : List Char)
+lemma emitList_head_step_noOverwrite (s s' : ScannerState) (c : Char) (rest : List Char)
     (hcorr : ScannerSurfCorr s ⟨c :: rest, s.col⟩)
     (h_flow : s.inFlow = true) (h_indent : s.currentIndent < 0) (h_col : s.col > 0)
     (h_ek : s.explicitKeyLine = none) (h_ska : s.simpleKeyAllowed = true)
@@ -483,7 +483,7 @@ theorem emitList_head_step_noOverwrite (s s' : ScannerState) (c : Char) (rest : 
 
 -- The first char of `emit v` is always a non-whitespace content char.
 -- Used for space-handling in comma-separated lists.
-theorem emit_first_char (v : YamlValue) :
+lemma emit_first_char (v : YamlValue) :
     ∃ c rest', (emit v).toList = c :: rest' ∧
       isWhiteSpaceBool c = false ∧ isLineBreakBool c = false ∧ c ≠ '#' := by
   cases v with
@@ -501,7 +501,7 @@ theorem emit_first_char (v : YamlValue) :
     simp only [emit, emitScalar, String.toList_append]; rfl
 
 -- The first char of `emitList (v :: vs)` is the first char of `emit v`.
-theorem emitList_first_char (v : YamlValue) (vs : List YamlValue) :
+lemma emitList_first_char (v : YamlValue) (vs : List YamlValue) :
     ∃ c rest', (emit.emitList (v :: vs)).toList = c :: rest' ∧
       isWhiteSpaceBool c = false ∧ isLineBreakBool c = false ∧ c ≠ '#' := by
   obtain ⟨c, ev_rest, h_emit_eq, h_nws, h_nlb, h_nc⟩ := emit_first_char v
@@ -520,7 +520,7 @@ theorem emitList_first_char (v : YamlValue) (vs : List YamlValue) :
 -- The first char of `emit v` is one of the flow content-start indicators
 -- `[` / `{` / `"`.  Refines `emit_first_char`'s "non-whitespace" conclusion
 -- to the exact dispatch-relevant characters.
-theorem emit_first_char_bracket (v : YamlValue) :
+lemma emit_first_char_bracket (v : YamlValue) :
     ∃ c rest', (emit v).toList = c :: rest' ∧ (c = '[' ∨ c = '{' ∨ c = '"') := by
   cases v with
   | scalar s =>
@@ -537,7 +537,7 @@ theorem emit_first_char_bracket (v : YamlValue) :
     simp only [emit, emitScalar, String.toList_append]; rfl
 
 -- The first char of `emitList (v :: vs)` is one of `[` / `{` / `"`.
-theorem emitList_first_char_bracket (v : YamlValue) (vs : List YamlValue) :
+lemma emitList_first_char_bracket (v : YamlValue) (vs : List YamlValue) :
     ∃ c rest', (emit.emitList (v :: vs)).toList = c :: rest' ∧ (c = '[' ∨ c = '{' ∨ c = '"') := by
   obtain ⟨c, ev_rest, h_emit_eq, h_c⟩ := emit_first_char_bracket v
   match vs with
@@ -552,7 +552,7 @@ theorem emitList_first_char_bracket (v : YamlValue) (vs : List YamlValue) :
     exact ⟨c, ev_rest ++ (", " ++ emit.emitList (v' :: vs')).toList, by simp, h_c⟩
 
 -- `emitList` is non-empty on non-empty input: its toList is non-nil.
-theorem emitList_toList_ne_nil (v : YamlValue) (vs : List YamlValue) :
+lemma emitList_toList_ne_nil (v : YamlValue) (vs : List YamlValue) :
     (emit.emitList (v :: vs)).toList ≠ [] := by
   obtain ⟨c, rest', h_eq, _, _, _⟩ := emitList_first_char v vs
   rw [h_eq]; exact List.cons_ne_nil _ _
@@ -561,13 +561,13 @@ theorem emitList_toList_ne_nil (v : YamlValue) (vs : List YamlValue) :
     Gives: `(s.emit tok).tokens = s.tokens.push ⟨s.currentPos, tok⟩`.
     Forward-declared from its later siblings to support the filtered-growth
     infrastructure that follows. -/
-theorem emit_tokens_push (s : ScannerState) (tok : YamlToken) :
+lemma emit_tokens_push (s : ScannerState) (tok : YamlToken) :
     (s.emit tok).tokens = s.tokens.push { pos := s.currentPos, val := tok } := by
   unfold ScannerState.emit; rfl
 
 /-- If `b` extends `a` (same elements at all positions `i < a.size`), then
     `b.filter p` has `a.filter p` as a prefix. -/
-theorem Array_filter_prefix_of_raw_prefix {α : Type}
+lemma Array_filter_prefix_of_raw_prefix {α : Type}
     (a b : Array α) (p : α → Bool)
     (h_sz : a.size ≤ b.size)
     (h_eq : ∀ i (hi : i < a.size), b[i]'(by omega) = a[i]) :
@@ -586,7 +586,7 @@ theorem Array_filter_prefix_of_raw_prefix {α : Type}
 
 /-- Pointwise corollary of `Array_filter_prefix_of_raw_prefix`: at any filtered
     index below `(a.filter p).size`, `b.filter p` agrees with `a.filter p`. -/
-theorem Array_filter_getElem_of_raw_prefix {α : Type}
+lemma Array_filter_getElem_of_raw_prefix {α : Type}
     (a b : Array α) (p : α → Bool)
     (h_sz : a.size ≤ b.size)
     (h_eq : ∀ i (hi : i < a.size), b[i]'(by omega) = a[i])
@@ -613,7 +613,7 @@ theorem Array_filter_getElem_of_raw_prefix {α : Type}
 -/
 
 -- List helper: replacing an element that passes a filter doesn't decrease filter count.
-theorem List_filter_set_length_mono {α : Type} (l : List α) (i : Nat) (v : α)
+lemma List_filter_set_length_mono {α : Type} (l : List α) (i : Nat) (v : α)
     (p : α → Bool) (hv : p v = true) :
     ((l.set i v).filter p).length ≥ (l.filter p).length := by
   induction l generalizing i with
@@ -630,7 +630,7 @@ theorem List_filter_set_length_mono {α : Type} (l : List α) (i : Nat) (v : α)
 
 -- Array.setIfInBounds with a filter-passing replacement preserves or grows
 -- the filtered array size.
-theorem Array_setIfInBounds_filter_mono {α : Type} (a : Array α) (i : Nat) (v : α)
+lemma Array_setIfInBounds_filter_mono {α : Type} (a : Array α) (i : Nat) (v : α)
     (p : α → Bool) (hv : p v = true) :
     ((a.setIfInBounds i v).filter p).size ≥ (a.filter p).size := by
   unfold Array.setIfInBounds
@@ -647,7 +647,7 @@ theorem Array_setIfInBounds_filter_mono {α : Type} (a : Array α) (i : Nat) (v 
 /-- **Filtered-set, dropping a filtered-out slot.** When `l[i]` fails the filter
     `p`, dropping it (splitting around index `i`) leaves `l.filter p` intact.  The
     list-level fact behind "a placeholder slot is invisible to the filtered view". -/
-theorem List_filter_eq_of_not_pass {α : Type} (l : List α) (i : Nat) (p : α → Bool)
+lemma List_filter_eq_of_not_pass {α : Type} (l : List α) (i : Nat) (p : α → Bool)
     (hi : i < l.length) (h_old : p (l[i]'hi) = false) :
     l.filter p = (l.take i).filter p ++ (l.drop (i + 1)).filter p := by
   induction l generalizing i with
@@ -673,7 +673,7 @@ theorem List_filter_eq_of_not_pass {α : Type} (l : List α) (i : Nat) (p : α �
     slot into a visible `.key`, inserting it at its filtered rank — the general form
     of the special "first new filtered token is `.key`" fact `keyshape_first_token_key`
     proves, lifted to the *entire* filtered block (toward sorries 9646/9552). -/
-theorem List_filter_set_of_not_pass {α : Type} (l : List α) (i : Nat) (v : α)
+lemma List_filter_set_of_not_pass {α : Type} (l : List α) (i : Nat) (v : α)
     (p : α → Bool) (hi : i < l.length) (h_old : p (l[i]'hi) = false) (h_new : p v = true) :
     (l.set i v).filter p = (l.take i).filter p ++ v :: (l.drop (i + 1)).filter p := by
   induction l generalizing i with
@@ -694,7 +694,7 @@ theorem List_filter_set_of_not_pass {α : Type} (l : List α) (i : Nat) (v : α)
 /-- Array bridge: `setIfInBounds` at a filtered-out slot inserts the new (filtered-in)
     token at its rank in the filtered `toList` — the form the colon producer applies
     (`s₂.tokens = (s₁.tokens.setIfInBounds (N+1) keyTok).push valueTok`). -/
-theorem Array_filter_setIfInBounds_of_not_pass {α : Type} (a : Array α) (i : Nat) (v : α)
+lemma Array_filter_setIfInBounds_of_not_pass {α : Type} (a : Array α) (i : Nat) (v : α)
     (p : α → Bool) (hi : i < a.size) (h_old : p (a[i]'hi) = false) (h_new : p v = true) :
     ((a.setIfInBounds i v).filter p).toList =
       (a.toList.take i).filter p ++ v :: (a.toList.drop (i + 1)).filter p := by
@@ -713,7 +713,7 @@ theorem Array_filter_setIfInBounds_of_not_pass {α : Type} (a : Array α) (i : N
     pins the *content after* that slot to the key block `block_k`, so the colon delta
     becomes a clean front-insert `.key :: block_k` relative to the pair-start prefix
     (toward sorries 9646/9552). -/
-theorem List_filter_drop_succ_of_take {α : Type} (l : List α) (k : Nat) (p : α → Bool)
+lemma List_filter_drop_succ_of_take {α : Type} (l : List α) (k : Nat) (p : α → Bool)
     (hk : k < l.length) (h_old : p (l[k]'hk) = false)
     (baseFilt block_k : List α)
     (h_take : (l.take k).filter p = baseFilt)
@@ -725,7 +725,7 @@ theorem List_filter_drop_succ_of_take {α : Type} (l : List α) (k : Nat) (p : �
 
 -- Preprocessing monotonicity: the filtered token count doesn't decrease
 -- through `scanNextToken_preprocess`.
-theorem preprocess_filtered_mono (s : ScannerState) (s₁ : ScannerState) (c : Char)
+lemma preprocess_filtered_mono (s : ScannerState) (s₁ : ScannerState) (c : Char)
     (h : scanNextToken_preprocess s = .ok (some (s₁, c))) :
     (s₁.tokens.filter (fun t => t.val != .placeholder)).size ≥
     (s.tokens.filter (fun t => t.val != .placeholder)).size := by
@@ -738,7 +738,7 @@ theorem preprocess_filtered_mono (s : ScannerState) (s₁ : ScannerState) (c : C
   rw [h_eq, List.length_append]; omega
 
 -- `allowDirectives` if-then-else preserves filtered token count (tokens unchanged).
-theorem allowDir_ite_filter (s : ScannerState) :
+lemma allowDir_ite_filter (s : ScannerState) :
     let p := fun (t : Positioned YamlToken) => t.val != .placeholder
     ((if s.allowDirectives = true then
         { s with allowDirectives := false, documentEverStarted := true }
@@ -748,7 +748,7 @@ theorem allowDir_ite_filter (s : ScannerState) :
 /-! #### General filtered growth helper -/
 
 -- If a non-empty list's first element passes filter `p`, filter has length ≥ 1.
-theorem List_filter_length_ge_one {α : Type} (l : List α) (p : α → Bool)
+lemma List_filter_length_ge_one {α : Type} (l : List α) (p : α → Bool)
     (h_len : l.length ≥ 1) (h_head : p (l[0]'(by omega)) = true) :
     (l.filter p).length ≥ 1 := by
   match l with
@@ -760,7 +760,7 @@ theorem List_filter_length_ge_one {α : Type} (l : List α) (p : α → Bool)
 -- If array `b` extends array `a` (same elements at positions `< a.size`), has at
 -- least one more element, and that element at position `a.size` passes filter `p`,
 -- then `(b.filter p).size ≥ (a.filter p).size + 1`.
-theorem filtered_grows_of_extended_prefix {α : Type}
+lemma filtered_grows_of_extended_prefix {α : Type}
     (a b : Array α) (p : α → Bool)
     (h_sz : b.size ≥ a.size + 1)
     (h_pres : ∀ i (hi : i < a.size), b[i]'(by omega) = a[i])
@@ -805,7 +805,7 @@ theorem filtered_grows_of_extended_prefix {α : Type}
 -- then `(b.filter p).size ≥ (a.filter p).size + 1`.
 -- Used when we know a specific NEW element (e.g. the last) is non-placeholder,
 -- but don't know the exact value at the first new position `a.size`.
-theorem filtered_grows_of_any_new {α : Type}
+lemma filtered_grows_of_any_new {α : Type}
     (a b : Array α) (p : α → Bool)
     (h_sz : b.size ≥ a.size + 1)
     (h_pres : ∀ i (hi : i < a.size), b[i]'(by omega) = a[i])
@@ -855,7 +855,7 @@ theorem filtered_grows_of_any_new {α : Type}
 
 -- scanDocumentStart grows filtered array by ≥1.
 -- The last new token is .documentStart (non-placeholder).
-theorem scanDocumentStart_filtered_grows (s : ScannerState) :
+lemma scanDocumentStart_filtered_grows (s : ScannerState) :
     let p := fun (t : Positioned YamlToken) => t.val != .placeholder
     ((scanDocumentStart s).tokens.filter p).size ≥ (s.tokens.filter p).size + 1 := by
   apply filtered_grows_of_any_new s.tokens (scanDocumentStart s).tokens _
@@ -872,7 +872,7 @@ theorem scanDocumentStart_filtered_grows (s : ScannerState) :
 
 -- scanDocumentEnd grows filtered array by ≥1.
 -- The last new token is .documentEnd (non-placeholder).
-theorem scanDocumentEnd_filtered_grows (s s' : ScannerState)
+lemma scanDocumentEnd_filtered_grows (s s' : ScannerState)
     (h : scanDocumentEnd s = .ok s') :
     let p := fun (t : Positioned YamlToken) => t.val != .placeholder
     (s'.tokens.filter p).size ≥ (s.tokens.filter p).size + 1 := by
@@ -916,7 +916,7 @@ genuinely identifies a YAML/TAG branch.
 /-- The new token emitted by a successful `scanYamlDirective` is exactly
     `.versionDirective major minor` for some `major`/`minor` parsed from
     the input — a non-placeholder. -/
-theorem scanYamlDirective_new_token_eq (s s_after_ws : ScannerState) (startPos : YamlPos)
+lemma scanYamlDirective_new_token_eq (s s_after_ws : ScannerState) (startPos : YamlPos)
     (s' : ScannerState)
     (h_ws : s_after_ws.tokens = s.tokens)
     (h : scanYamlDirective s s_after_ws startPos = .ok s') :
@@ -940,7 +940,7 @@ theorem scanYamlDirective_new_token_eq (s s_after_ws : ScannerState) (startPos :
 /-- The new token emitted by a successful `scanTagDirective` is exactly
     `.tagDirective handle pfx` for some `handle`/`pfx` parsed from the
     input — a non-placeholder. -/
-theorem scanTagDirective_new_token_eq (s s_after_ws : ScannerState) (startPos : YamlPos)
+lemma scanTagDirective_new_token_eq (s s_after_ws : ScannerState) (startPos : YamlPos)
     (s' : ScannerState)
     (h_ws : s_after_ws.tokens = s.tokens)
     (h : scanTagDirective s s_after_ws startPos = .ok s') :
@@ -988,7 +988,7 @@ theorem scanTagDirective_new_token_eq (s s_after_ws : ScannerState) (startPos : 
     which contradicts `h_grew`; in YAML/TAG branches the new token is
     `.versionDirective`/`.tagDirective` (non-placeholder) by the
     `*_new_token_eq` lemmas above. -/
-theorem scanDirective_filtered_grows (s s' : ScannerState)
+lemma scanDirective_filtered_grows (s s' : ScannerState)
     (h : scanDirective s = .ok s')
     (h_grew : s'.tokens.size > s.tokens.size) :
     (s'.tokens.filter (fun t => t.val != .placeholder)).size ≥
@@ -1049,7 +1049,7 @@ theorem scanDirective_filtered_grows (s s' : ScannerState)
 -- tokens but unknown directives (%RESERVED) emit none.
 -- We keep ≥0 (monotone) for the overall structural dispatch but prove ≥+1
 -- for the document marker sub-cases which is sufficient for scanNextToken.
-theorem dispatchStructural_filtered_mono (s s' : ScannerState) (c : Char)
+lemma dispatchStructural_filtered_mono (s s' : ScannerState) (c : Char)
     (h : scanNextToken_dispatchStructural s c = .ok (some s')) :
     (s'.tokens.filter (fun t => t.val != .placeholder)).size ≥
     (s.tokens.filter (fun t => t.val != .placeholder)).size := by
@@ -1063,7 +1063,7 @@ theorem dispatchStructural_filtered_mono (s s' : ScannerState) (c : Char)
 -- Flow indicator dispatch: each function emits exactly 1 non-placeholder token.
 -- scanFlowSequenceStart/End, scanFlowMappingStart/End push one token each;
 -- scanFlowEntry pushes .flowEntry. validateFlowClose is error-only (no state change).
-theorem dispatchFlowIndicators_filtered_grows (s s' : ScannerState) (c : Char)
+lemma dispatchFlowIndicators_filtered_grows (s s' : ScannerState) (c : Char)
     (h : scanNextToken_dispatchFlowIndicators s c = .ok (some s')) :
     (s'.tokens.filter (fun t => t.val != .placeholder)).size ≥
     (s.tokens.filter (fun t => t.val != .placeholder)).size + 1 := by
@@ -1123,7 +1123,7 @@ theorem dispatchFlowIndicators_filtered_grows (s s' : ScannerState) (c : Char)
 -- scanValue uses setIfInBounds → needs scanValuePrepare_filtered_mono.
 -- Per-block-function filtered growth lemmas.
 -- scanBlockEntry: pushSequenceIndent (monotonic) + emit .blockEntry (+1).
-theorem scanBlockEntry_filtered_grows (s s' : ScannerState)
+lemma scanBlockEntry_filtered_grows (s s' : ScannerState)
     (h : scanBlockEntry s = .ok s') :
     (s'.tokens.filter (fun t => t.val != .placeholder)).size ≥
     (s.tokens.filter (fun t => t.val != .placeholder)).size + 1 := by
@@ -1144,7 +1144,7 @@ theorem scanBlockEntry_filtered_grows (s s' : ScannerState)
   all_goals decide
 
 -- scanKey: pushMappingIndent (monotonic) + emit .key (+1).
-theorem scanKey_filtered_grows (s s' : ScannerState)
+lemma scanKey_filtered_grows (s s' : ScannerState)
     (h : scanKey s = .ok s') :
     (s'.tokens.filter (fun t => t.val != .placeholder)).size ≥
     (s.tokens.filter (fun t => t.val != .placeholder)).size + 1 := by
@@ -1187,7 +1187,7 @@ theorem scanKey_filtered_grows (s s' : ScannerState)
 -- then emit .value (+1). Uses Array_setIfInBounds_filter_mono for monotonicity
 -- through scanValuePrepare, then filtered_grows_of_extended_prefix for the emit step.
 set_option maxHeartbeats 400000 in
-theorem scanValue_filtered_grows (s s' : ScannerState)
+lemma scanValue_filtered_grows (s s' : ScannerState)
     (h : scanValue s = .ok s') :
     (s'.tokens.filter (fun t => t.val != .placeholder)).size ≥
     (s.tokens.filter (fun t => t.val != .placeholder)).size + 1 := by
@@ -1270,7 +1270,7 @@ theorem scanValue_filtered_grows (s s' : ScannerState)
           · omega
 
 -- Block indicator dispatch: scanBlockEntry, scanKey, scanValue.
-theorem dispatchBlockIndicators_filtered_grows (s s' : ScannerState) (c : Char)
+lemma dispatchBlockIndicators_filtered_grows (s s' : ScannerState) (c : Char)
     (h : scanNextToken_dispatchBlockIndicators s c = .ok (some s')) :
     (s'.tokens.filter (fun t => t.val != .placeholder)).size ≥
     (s.tokens.filter (fun t => t.val != .placeholder)).size + 1 := by
@@ -1294,7 +1294,7 @@ theorem dispatchBlockIndicators_filtered_grows (s s' : ScannerState) (c : Char)
 -- The proof mirrors dispatchContent_preserves_prefix but tracks the NEW token value
 -- instead of preserving existing tokens.
 set_option maxHeartbeats 3200000 in
-theorem dispatchContent_new_not_placeholder (s s' : ScannerState) (c : Char)
+lemma dispatchContent_new_not_placeholder (s s' : ScannerState) (c : Char)
     (h : scanNextToken_dispatchContent s c = .ok s')
     (h_strict : s'.tokens.size ≥ s.tokens.size + 1) :
     (s'.tokens[s.tokens.size]'(by omega)).val ≠ YamlToken.placeholder := by
@@ -1480,7 +1480,7 @@ theorem dispatchContent_new_not_placeholder (s s' : ScannerState) (c : Char)
 
 -- All content tokens (anchor, alias, tag, scalar) are non-placeholder.
 set_option maxHeartbeats 3200000 in
-theorem dispatchContent_filtered_grows (s s' : ScannerState) (c : Char)
+lemma dispatchContent_filtered_grows (s s' : ScannerState) (c : Char)
     (h : scanNextToken_dispatchContent s c = .ok s') :
     (s'.tokens.filter (fun t => t.val != .placeholder)).size ≥
     (s.tokens.filter (fun t => t.val != .placeholder)).size + 1 := by
@@ -1524,7 +1524,7 @@ uses inside each `scanNextToken_flow_*` emitter helper to expose a per-step
 `ScanChainGrew` witness alongside the existing `scanNextToken s = .ok (some s')`
 output, sidestepping the line-8343 sorry. -/
 
-theorem scanNextToken_via_flow_dispatch_filtered_grows
+lemma scanNextToken_via_flow_dispatch_filtered_grows
     (s s_pp s_ad s_result : ScannerState) (c : Char)
     (h_pp : scanNextToken_preprocess s = .ok (some (s_pp, c)))
     (_h_struct : scanNextToken_dispatchStructural s_pp c = .ok none)
@@ -1542,7 +1542,7 @@ theorem scanNextToken_via_flow_dispatch_filtered_grows
   have h_disp := dispatchFlowIndicators_filtered_grows _ _ _ h_flow
   omega
 
-theorem scanNextToken_via_block_dispatch_filtered_grows
+lemma scanNextToken_via_block_dispatch_filtered_grows
     (s s_pp s_ad s_result : ScannerState) (c : Char)
     (h_pp : scanNextToken_preprocess s = .ok (some (s_pp, c)))
     (_h_struct : scanNextToken_dispatchStructural s_pp c = .ok none)
@@ -1561,7 +1561,7 @@ theorem scanNextToken_via_block_dispatch_filtered_grows
   have h_disp := dispatchBlockIndicators_filtered_grows _ _ _ h_block
   omega
 
-theorem scanNextToken_via_content_dispatch_filtered_grows
+lemma scanNextToken_via_content_dispatch_filtered_grows
     (s s_pp s_ad s_result : ScannerState) (c : Char)
     (h_pp : scanNextToken_preprocess s = .ok (some (s_pp, c)))
     (_h_struct : scanNextToken_dispatchStructural s_pp c = .ok none)
@@ -1592,7 +1592,7 @@ theorem scanNextToken_via_content_dispatch_filtered_grows
 -- Used at construction sites of `EmitScansInFlow` family (Tier 1 Turn 3) to
 -- obtain the per-step witness needed to build `ScanChainGrew`.
 set_option maxHeartbeats 800000 in
-theorem scanNextToken_filtered_grows_in_flow
+lemma scanNextToken_filtered_grows_in_flow
     (s s' : ScannerState) (c : Char) (rest : List Char)
     (hcorr : ScannerSurfCorr s ⟨c :: rest, s.col⟩)
     (h_flow : s.inFlow = true)

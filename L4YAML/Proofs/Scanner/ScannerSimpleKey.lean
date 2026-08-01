@@ -61,7 +61,7 @@ any WellFormed conjunct.  Preservation remains trivial.
 -/
 
 /-- `saveSimpleKey` preserves C1 (`indents.size ≥ 1`). -/
-theorem saveSimpleKey_preserves_indents_ge_1 (s : ScannerState)
+lemma saveSimpleKey_preserves_indents_ge_1 (s : ScannerState)
     (hwf : s.indents.size ≥ 1) :
     (saveSimpleKey s).indents.size ≥ 1 := by
   unfold saveSimpleKey
@@ -69,7 +69,7 @@ theorem saveSimpleKey_preserves_indents_ge_1 (s : ScannerState)
   split <;> simp_all
 
 /-- `saveSimpleKey` preserves C2 (`flowLevel = flowStack.size`). -/
-theorem saveSimpleKey_preserves_flow_sync (s : ScannerState)
+lemma saveSimpleKey_preserves_flow_sync (s : ScannerState)
     (hflow : s.flowLevel = s.flowStack.size) :
     (saveSimpleKey s).flowLevel = (saveSimpleKey s).flowStack.size := by
   unfold saveSimpleKey
@@ -77,7 +77,7 @@ theorem saveSimpleKey_preserves_flow_sync (s : ScannerState)
   split <;> simp_all
 
 /-- `saveSimpleKey` preserves C3 (`simpleKeyStack.size = flowStack.size`). -/
-theorem saveSimpleKey_preserves_sk_sync (s : ScannerState)
+lemma saveSimpleKey_preserves_sk_sync (s : ScannerState)
     (hsk : s.simpleKeyStack.size = s.flowStack.size) :
     (saveSimpleKey s).simpleKeyStack.size = (saveSimpleKey s).flowStack.size := by
   unfold saveSimpleKey
@@ -85,7 +85,7 @@ theorem saveSimpleKey_preserves_sk_sync (s : ScannerState)
   split <;> simp_all
 
 /-- `saveSimpleKey` preserves C4 (`offset ≤ inputEnd`). -/
-theorem saveSimpleKey_preserves_offset_le (s : ScannerState)
+lemma saveSimpleKey_preserves_offset_le (s : ScannerState)
     (hoff : s.offset ≤ s.inputEnd) :
     (saveSimpleKey s).offset ≤ (saveSimpleKey s).inputEnd := by
   unfold saveSimpleKey
@@ -93,7 +93,7 @@ theorem saveSimpleKey_preserves_offset_le (s : ScannerState)
   split <;> simp_all
 
 /-- `saveSimpleKey` preserves C5 (indent stack monotonicity). -/
-theorem saveSimpleKey_preserves_monotone (s : ScannerState)
+lemma saveSimpleKey_preserves_monotone (s : ScannerState)
     (hmono : ∀ (i : Nat) (hi : i + 1 < s.indents.size),
       (s.indents[i]'(by omega)).column < (s.indents[i + 1]'hi).column) :
     ∀ (i : Nat) (hi : i + 1 < (saveSimpleKey s).indents.size),
@@ -104,7 +104,7 @@ theorem saveSimpleKey_preserves_monotone (s : ScannerState)
   split <;> simp_all
 
 /-- `saveSimpleKey` preserves C6 (sentinel). -/
-theorem saveSimpleKey_preserves_sentinel (s : ScannerState)
+lemma saveSimpleKey_preserves_sentinel (s : ScannerState)
     (_hind : s.indents.size ≥ 1)
     (hsent : ∀ (_ : 0 < s.indents.size), s.indents[0] = { column := -1, isSequence := false }) :
     ∀ (_ : 0 < (saveSimpleKey s).indents.size),
@@ -114,7 +114,7 @@ theorem saveSimpleKey_preserves_sentinel (s : ScannerState)
   split <;> simp_all
 
 /-- `saveSimpleKey` preserves `WellFormed` (all 6 conjuncts). -/
-theorem saveSimpleKey_preserves_wellFormed (s : ScannerState)
+lemma saveSimpleKey_preserves_wellFormed (s : ScannerState)
     (hwf : s.WellFormed) :
     (saveSimpleKey s).WellFormed := by
   obtain ⟨hind, hflow, hsk, hoff, hmono, hsent⟩ := hwf
@@ -161,7 +161,7 @@ PROOF TARGET.
 
 /-- Helper: the intermediate state after conditional pushMappingIndent
     and emit in scanKey preserves WellFormed. -/
-theorem scanKey_pre_advance_wellFormed (s : ScannerState)
+lemma scanKey_pre_advance_wellFormed (s : ScannerState)
     (hwf : s.WellFormed) :
     ((if !s.inFlow then pushMappingIndent s s.col else s).emit .key).WellFormed := by
   split

@@ -69,37 +69,37 @@ Structurally identical to `emit` — only modifies `tokens`.
 -/
 
 /-- `emitAt` preserves `indents`. -/
-theorem emitAt_indents (s : ScannerState) (pos : YamlPos) (tok : YamlToken) :
+lemma emitAt_indents (s : ScannerState) (pos : YamlPos) (tok : YamlToken) :
     (s.emitAt pos tok).indents = s.indents := by
   unfold ScannerState.emitAt; rfl
 
 /-- `emitAt` preserves `flowLevel`. -/
-theorem emitAt_flowLevel (s : ScannerState) (pos : YamlPos) (tok : YamlToken) :
+lemma emitAt_flowLevel (s : ScannerState) (pos : YamlPos) (tok : YamlToken) :
     (s.emitAt pos tok).flowLevel = s.flowLevel := by
   unfold ScannerState.emitAt; rfl
 
 /-- `emitAt` preserves `flowStack`. -/
-theorem emitAt_flowStack (s : ScannerState) (pos : YamlPos) (tok : YamlToken) :
+lemma emitAt_flowStack (s : ScannerState) (pos : YamlPos) (tok : YamlToken) :
     (s.emitAt pos tok).flowStack = s.flowStack := by
   unfold ScannerState.emitAt; rfl
 
 /-- `emitAt` preserves `simpleKeyStack`. -/
-theorem emitAt_simpleKeyStack (s : ScannerState) (pos : YamlPos) (tok : YamlToken) :
+lemma emitAt_simpleKeyStack (s : ScannerState) (pos : YamlPos) (tok : YamlToken) :
     (s.emitAt pos tok).simpleKeyStack = s.simpleKeyStack := by
   unfold ScannerState.emitAt; rfl
 
 /-- `emitAt` preserves `offset`. -/
-theorem emitAt_offset (s : ScannerState) (pos : YamlPos) (tok : YamlToken) :
+lemma emitAt_offset (s : ScannerState) (pos : YamlPos) (tok : YamlToken) :
     (s.emitAt pos tok).offset = s.offset := by
   unfold ScannerState.emitAt; rfl
 
 /-- `emitAt` preserves `inputEnd`. -/
-theorem emitAt_inputEnd (s : ScannerState) (pos : YamlPos) (tok : YamlToken) :
+lemma emitAt_inputEnd (s : ScannerState) (pos : YamlPos) (tok : YamlToken) :
     (s.emitAt pos tok).inputEnd = s.inputEnd := by
   unfold ScannerState.emitAt; rfl
 
 /-- `emitAt` preserves `WellFormed` (all 6 conjuncts). -/
-theorem emitAt_preserves_wellFormed (s : ScannerState) (pos : YamlPos) (tok : YamlToken)
+lemma emitAt_preserves_wellFormed (s : ScannerState) (pos : YamlPos) (tok : YamlToken)
     (hwf : s.WellFormed) : (s.emitAt pos tok).WellFormed := by
   obtain ⟨hind, hflow, hsk, hoff, hmono, hsent⟩ := hwf
   refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
@@ -125,18 +125,18 @@ none of which modify C1–C3 fields.
 -/
 
 /-- A record update touching only `simpleKeyAllowed` preserves all WellFormed fields. -/
-theorem with_simpleKeyAllowed_preserves_wellFormed (s : ScannerState)
+lemma with_simpleKeyAllowed_preserves_wellFormed (s : ScannerState)
     (hwf : s.WellFormed) (b : Bool) :
     ({ s with simpleKeyAllowed := b } : ScannerState).WellFormed := hwf
 
 /-- A record update touching only `simpleKeyAllowed` and `simpleKey` preserves WellFormed. -/
-theorem with_simpleKeyAllowed_simpleKey_preserves_wellFormed (s : ScannerState)
+lemma with_simpleKeyAllowed_simpleKey_preserves_wellFormed (s : ScannerState)
     (hwf : s.WellFormed) (b : Bool) (sk : SimpleKeyState) :
     ({ s with simpleKeyAllowed := b, simpleKey := sk } : ScannerState).WellFormed := hwf
 
 /-- The final return pattern of `scanDoubleQuoted`/`scanSingleQuoted`:
     `{ s'.emitAt pos tok with simpleKeyAllowed := false }` preserves WellFormed. -/
-theorem emitAt_then_setFlags_preserves_wellFormed (s : ScannerState)
+lemma emitAt_then_setFlags_preserves_wellFormed (s : ScannerState)
     (pos : YamlPos) (tok : YamlToken) (hwf : s.WellFormed) :
     ({ s.emitAt pos tok with simpleKeyAllowed := false } : ScannerState).WellFormed :=
   emitAt_preserves_wellFormed s pos tok hwf
@@ -144,7 +144,7 @@ theorem emitAt_then_setFlags_preserves_wellFormed (s : ScannerState)
 /-- The final return pattern of `scanBlockScalar`:
     `{ s'.emitAt pos tok with simpleKeyAllowed := true, simpleKey := ... }`
     preserves WellFormed. -/
-theorem emitAt_then_blockFlags_preserves_wellFormed (s : ScannerState)
+lemma emitAt_then_blockFlags_preserves_wellFormed (s : ScannerState)
     (pos : YamlPos) (tok : YamlToken) (hwf : s.WellFormed) :
     ({ s.emitAt pos tok with
        simpleKeyAllowed := true

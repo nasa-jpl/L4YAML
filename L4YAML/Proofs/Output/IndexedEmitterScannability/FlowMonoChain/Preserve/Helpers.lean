@@ -141,55 +141,55 @@ def StackEndLineOnLineIx (s : ScannerStateIx input) (l : Nat) : Prop :=
 for any field that is *not* touched by the inner `simpleKey`-record
 update and is unchanged by `emit`, the proof is `rfl` in all branches. -/
 
-@[simp] theorem saveSimpleKeyIx_indents (s : ScannerStateIx input) :
+@[simp] lemma saveSimpleKeyIx_indents (s : ScannerStateIx input) :
     (saveSimpleKeyIx s).indents = s.indents := by
   unfold saveSimpleKeyIx; split
   · rfl
   · split <;> rfl
 
-@[simp] theorem saveSimpleKeyIx_flowLevel (s : ScannerStateIx input) :
+@[simp] lemma saveSimpleKeyIx_flowLevel (s : ScannerStateIx input) :
     (saveSimpleKeyIx s).flowLevel = s.flowLevel := by
   unfold saveSimpleKeyIx; split
   · rfl
   · split <;> rfl
 
-@[simp] theorem saveSimpleKeyIx_inFlow (s : ScannerStateIx input) :
+@[simp] lemma saveSimpleKeyIx_inFlow (s : ScannerStateIx input) :
     (saveSimpleKeyIx s).inFlow = s.inFlow := by
   unfold ScannerStateIx.inFlow
   rw [saveSimpleKeyIx_flowLevel]
 
-@[simp] theorem saveSimpleKeyIx_explicitKeyLine (s : ScannerStateIx input) :
+@[simp] lemma saveSimpleKeyIx_explicitKeyLine (s : ScannerStateIx input) :
     (saveSimpleKeyIx s).explicitKeyLine = s.explicitKeyLine := by
   unfold saveSimpleKeyIx; split
   · rfl
   · split <;> rfl
 
-@[simp] theorem saveSimpleKeyIx_directivesPresent (s : ScannerStateIx input) :
+@[simp] lemma saveSimpleKeyIx_directivesPresent (s : ScannerStateIx input) :
     (saveSimpleKeyIx s).directivesPresent = s.directivesPresent := by
   unfold saveSimpleKeyIx; split
   · rfl
   · split <;> rfl
 
-@[simp] theorem saveSimpleKeyIx_allowDirectives (s : ScannerStateIx input) :
+@[simp] lemma saveSimpleKeyIx_allowDirectives (s : ScannerStateIx input) :
     (saveSimpleKeyIx s).allowDirectives = s.allowDirectives := by
   unfold saveSimpleKeyIx; split
   · rfl
   · split <;> rfl
 
-@[simp] theorem saveSimpleKeyIx_flowStack (s : ScannerStateIx input) :
+@[simp] lemma saveSimpleKeyIx_flowStack (s : ScannerStateIx input) :
     (saveSimpleKeyIx s).flowStack = s.flowStack := by
   unfold saveSimpleKeyIx; split
   · rfl
   · split <;> rfl
 
-@[simp] theorem saveSimpleKeyIx_needIndentCheck (s : ScannerStateIx input) :
+@[simp] lemma saveSimpleKeyIx_needIndentCheck (s : ScannerStateIx input) :
     (saveSimpleKeyIx s).needIndentCheck = s.needIndentCheck := by
   unfold saveSimpleKeyIx; split
   · rfl
   · split <;> rfl
 
 /-- `saveSimpleKeyIx` preserves `peek?` (it preserves the cursor). -/
-theorem saveSimpleKeyIx_peek? (s : ScannerStateIx input) :
+lemma saveSimpleKeyIx_peek? (s : ScannerStateIx input) :
     (saveSimpleKeyIx s).peek? = s.peek? := by
   unfold ScannerStateIx.peek?
   rw [saveSimpleKeyIx_cursor]
@@ -200,7 +200,7 @@ In the flow-emitter context, every call to `saveSimpleKeyIx` happens
 with `simpleKeyAllowed = false` and `explicitKeyLine = none`, so it
 is the identity. -/
 
-theorem saveSimpleKeyIx_id_of_flow_ska_false_ek_none (s : ScannerStateIx input)
+lemma saveSimpleKeyIx_id_of_flow_ska_false_ek_none (s : ScannerStateIx input)
     (h_flow : s.inFlow = true) (h_ska : s.simpleKeyAllowed = false)
     (h_ek : s.explicitKeyLine = none) :
     saveSimpleKeyIx s = s := by
@@ -223,7 +223,7 @@ key downstream consumer):
     `AllTokensOnLineIx` (every token is on the current line, so the
     prior token cannot be on a *different* line). -/
 
-theorem scanValueValidateIx_ok_of_not_possible_ek_none (s : ScannerStateIx input)
+lemma scanValueValidateIx_ok_of_not_possible_ek_none (s : ScannerStateIx input)
     (h_ek : s.explicitKeyLine = none)
     (h_sk : s.simpleKey.possible = false) :
     scanValueValidateIx s = .ok () := by
@@ -233,7 +233,7 @@ theorem scanValueValidateIx_ok_of_not_possible_ek_none (s : ScannerStateIx input
 
 /-- In flow context with all tokens on the current cursor line and
     `EndLineOnLineIx s`, `scanValueValidateIx` succeeds. -/
-theorem scanValueValidateIx_ok_of_flow_allTokensOnLine (s : ScannerStateIx input)
+lemma scanValueValidateIx_ok_of_flow_allTokensOnLine (s : ScannerStateIx input)
     (h_flow : s.inFlow = true)
     (h_ek : s.explicitKeyLine = none)
     (h_atol : AllTokensOnLineIx s s.cursor.pos.line)
@@ -266,7 +266,7 @@ theorem scanValueValidateIx_ok_of_flow_allTokensOnLine (s : ScannerStateIx input
 The two-emit branch pushes two `.placeholder` tokens; the
 `fun t => t.token != .placeholder` filter discards them. -/
 
-theorem saveSimpleKeyIx_filter_placeholder (s : ScannerStateIx input) :
+lemma saveSimpleKeyIx_filter_placeholder (s : ScannerStateIx input) :
     (saveSimpleKeyIx s).tokens.tokens.filter (fun t => t.token != .placeholder)
     = s.tokens.tokens.filter (fun t => t.token != .placeholder) := by
   unfold saveSimpleKeyIx
@@ -293,7 +293,7 @@ theorem saveSimpleKeyIx_filter_placeholder (s : ScannerStateIx input) :
     `AllTokensOnLineIx`. Threading record-update branches through this
     avoids dependent-index rewrite headaches: the forall-quantified
     `h` proof slot is rewritten cleanly because it's *bound*, not free. -/
-theorem AllTokensOnLineIx_of_tokens_eq {s s' : ScannerStateIx input} {l : Nat}
+lemma AllTokensOnLineIx_of_tokens_eq {s s' : ScannerStateIx input} {l : Nat}
     (h_eq : s'.tokens = s.tokens) (h_atol : AllTokensOnLineIx s l) :
     AllTokensOnLineIx s' l := by
   unfold AllTokensOnLineIx at *
@@ -302,7 +302,7 @@ theorem AllTokensOnLineIx_of_tokens_eq {s s' : ScannerStateIx input} {l : Nat}
 
 /-- Emitting a zero-width token at `s.cursor.pos` (line `l` when
     `s.cursor.pos.line = l`) preserves `AllTokensOnLineIx`. -/
-theorem AllTokensOnLineIx_emit (s : ScannerStateIx input)
+lemma AllTokensOnLineIx_emit (s : ScannerStateIx input)
     (tok : YamlToken) (l : Nat)
     (h_atol : AllTokensOnLineIx s l) (h_line : s.cursor.pos.line = l) :
     AllTokensOnLineIx (s.emit tok) l := by
@@ -318,7 +318,7 @@ theorem AllTokensOnLineIx_emit (s : ScannerStateIx input)
     exact h_line
 
 /-- Advancing the cursor leaves `tokens` unchanged. -/
-theorem AllTokensOnLineIx_advance (s : ScannerStateIx input) (l : Nat)
+lemma AllTokensOnLineIx_advance (s : ScannerStateIx input) (l : Nat)
     (h_atol : AllTokensOnLineIx s l) :
     AllTokensOnLineIx s.advance l := by
   intro i h_bound
@@ -326,7 +326,7 @@ theorem AllTokensOnLineIx_advance (s : ScannerStateIx input) (l : Nat)
   exact h_atol i h_bound
 
 /-- `emitAt` with `startPos.line = l` preserves `AllTokensOnLineIx`. -/
-theorem AllTokensOnLineIx_emitAt (s : ScannerStateIx input)
+lemma AllTokensOnLineIx_emitAt (s : ScannerStateIx input)
     (startPos : YamlPos) (tok : YamlToken)
     (hOrder : startPos.offset ≤ s.cursor.pos.offset) (l : Nat)
     (h_atol : AllTokensOnLineIx s l) (h_pos_line : startPos.line = l) :
@@ -342,7 +342,7 @@ theorem AllTokensOnLineIx_emitAt (s : ScannerStateIx input)
 
 /-- `saveSimpleKeyIx` preserves `AllTokensOnLineIx`: either no token is
     added, or two placeholders are pushed at `s.cursor.pos`. -/
-theorem AllTokensOnLineIx_saveSimpleKeyIx (s : ScannerStateIx input) (l : Nat)
+lemma AllTokensOnLineIx_saveSimpleKeyIx (s : ScannerStateIx input) (l : Nat)
     (h_atol : AllTokensOnLineIx s l) (h_line : s.cursor.pos.line = l) :
     AllTokensOnLineIx (saveSimpleKeyIx s) l := by
   rcases saveSimpleKeyIx_tokens_cases s with h_eq | h_eq
@@ -360,7 +360,7 @@ theorem AllTokensOnLineIx_saveSimpleKeyIx (s : ScannerStateIx input) (l : Nat)
 
 /-- The `allowDirectives := false, documentEverStarted := true` record
     update doesn't touch `tokens`. -/
-theorem AllTokensOnLineIx_allowDirectives (s : ScannerStateIx input) (l : Nat)
+lemma AllTokensOnLineIx_allowDirectives (s : ScannerStateIx input) (l : Nat)
     (h_atol : AllTokensOnLineIx s l) :
     AllTokensOnLineIx (if s.allowDirectives then
         { s with allowDirectives := false, documentEverStarted := true } else s) l := by
@@ -373,7 +373,7 @@ fresh record with `endLine := s.cursor.pos.line` and
 `cursor := s.cursor`. Both endLine and pos.line then equal the current
 cursor's line. -/
 
-theorem EndLineOnLineIx_saveSimpleKeyIx (s : ScannerStateIx input)
+lemma EndLineOnLineIx_saveSimpleKeyIx (s : ScannerStateIx input)
     (h_prev : EndLineOnLineIx s) :
     EndLineOnLineIx (saveSimpleKeyIx s) := by
   -- Unfold the target only; keep saveSimpleKeyIx as `saveSimpleKeyIx` and
@@ -403,7 +403,7 @@ Each flow-indicator scanner emits one token at `s.cursor.pos` (line
 `l` by hypothesis), then advances, then updates record fields not
 visible to `AllTokensOnLineIx`. -/
 
-theorem AllTokensOnLineIx_scanFlowSequenceStartIx (s : ScannerStateIx input) (l : Nat)
+lemma AllTokensOnLineIx_scanFlowSequenceStartIx (s : ScannerStateIx input) (l : Nat)
     (h_atol : AllTokensOnLineIx s l) (h_line : s.cursor.pos.line = l) :
     AllTokensOnLineIx (scanFlowSequenceStartIx s) l := by
   unfold scanFlowSequenceStartIx
@@ -414,7 +414,7 @@ theorem AllTokensOnLineIx_scanFlowSequenceStartIx (s : ScannerStateIx input) (l 
   have h_adv := AllTokensOnLineIx_advance _ l h_emit
   exact h_adv i h_bound
 
-theorem AllTokensOnLineIx_scanFlowMappingStartIx (s : ScannerStateIx input) (l : Nat)
+lemma AllTokensOnLineIx_scanFlowMappingStartIx (s : ScannerStateIx input) (l : Nat)
     (h_atol : AllTokensOnLineIx s l) (h_line : s.cursor.pos.line = l) :
     AllTokensOnLineIx (scanFlowMappingStartIx s) l := by
   unfold scanFlowMappingStartIx
@@ -423,7 +423,7 @@ theorem AllTokensOnLineIx_scanFlowMappingStartIx (s : ScannerStateIx input) (l :
   have h_adv := AllTokensOnLineIx_advance _ l h_emit
   exact h_adv i h_bound
 
-theorem AllTokensOnLineIx_scanFlowSequenceEndIx (s : ScannerStateIx input) (l : Nat)
+lemma AllTokensOnLineIx_scanFlowSequenceEndIx (s : ScannerStateIx input) (l : Nat)
     (h_atol : AllTokensOnLineIx s l) (h_line : s.cursor.pos.line = l) :
     AllTokensOnLineIx (scanFlowSequenceEndIx s) l := by
   unfold scanFlowSequenceEndIx
@@ -432,7 +432,7 @@ theorem AllTokensOnLineIx_scanFlowSequenceEndIx (s : ScannerStateIx input) (l : 
   have h_adv := AllTokensOnLineIx_advance _ l h_emit
   exact h_adv i h_bound
 
-theorem AllTokensOnLineIx_scanFlowMappingEndIx (s : ScannerStateIx input) (l : Nat)
+lemma AllTokensOnLineIx_scanFlowMappingEndIx (s : ScannerStateIx input) (l : Nat)
     (h_atol : AllTokensOnLineIx s l) (h_line : s.cursor.pos.line = l) :
     AllTokensOnLineIx (scanFlowMappingEndIx s) l := by
   unfold scanFlowMappingEndIx
@@ -445,7 +445,7 @@ theorem AllTokensOnLineIx_scanFlowMappingEndIx (s : ScannerStateIx input) (l : N
     `simpleKeyAllowed := true` update. The literal-expression shape
     matches how the dispatcher consumes it (the leading-comma guard
     case-splits *before* this expression). -/
-theorem AllTokensOnLineIx_scanFlowEntry_expr (s : ScannerStateIx input) (l : Nat)
+lemma AllTokensOnLineIx_scanFlowEntry_expr (s : ScannerStateIx input) (l : Nat)
     (h_atol : AllTokensOnLineIx s l) (h_line : s.cursor.pos.line = l) :
     AllTokensOnLineIx
       ({ (s.emit YamlToken.flowEntry).advance with simpleKeyAllowed := true }) l := by
@@ -471,7 +471,7 @@ This lemma is the transfer keyed on that exact wrapper expression.
 The `cursor := cAfter` record update is invisible to `tokens`; the
 `simpleKeyAllowed := false` update is also invisible; only `emitAt`
 adds a token, with `start = startPos` of line `l`. -/
-theorem AllTokensOnLineIx_dispatchContent_quote_arm (s : ScannerStateIx input)
+lemma AllTokensOnLineIx_dispatchContent_quote_arm (s : ScannerStateIx input)
     (cAfter : IxCursor input) (startPos : YamlPos) (content : String)
     (hOrder :
       startPos.offset ≤ (({ s with cursor := cAfter } : ScannerStateIx input)).cursor.pos.offset)
@@ -497,11 +497,11 @@ After `scanFlowSequenceStartIx` / `scanFlowMappingStartIx`, the
 `simpleKey` field is set to a fresh record (defaulting to
 `possible := false`). -/
 
-theorem scanFlowSequenceStartIx_simpleKey_not_possible (s : ScannerStateIx input) :
+lemma scanFlowSequenceStartIx_simpleKey_not_possible (s : ScannerStateIx input) :
     (scanFlowSequenceStartIx s).simpleKey.possible = false := by
   unfold scanFlowSequenceStartIx; rfl
 
-theorem scanFlowMappingStartIx_simpleKey_not_possible (s : ScannerStateIx input) :
+lemma scanFlowMappingStartIx_simpleKey_not_possible (s : ScannerStateIx input) :
     (scanFlowMappingStartIx s).simpleKey.possible = false := by
   unfold scanFlowMappingStartIx; rfl
 

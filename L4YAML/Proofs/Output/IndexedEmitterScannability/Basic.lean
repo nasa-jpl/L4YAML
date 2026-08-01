@@ -100,7 +100,7 @@ role here — they're verbatim twins of legacy §1. -/
 
 /-- An unescaped character (one that `escapeChar` passes through as-is)
     is a valid `nb-json` character that is neither `"` nor `\`. -/
-theorem escapeChar_passthrough_is_valid (c : Char)
+lemma escapeChar_passthrough_is_valid (c : Char)
     (h_not_escaped : escapeChar c = c.toString) :
     isNbJsonBool c = true ∧ c ≠ '"' ∧ c ≠ '\\' := by
   unfold escapeChar at h_not_escaped
@@ -128,7 +128,7 @@ theorem escapeChar_passthrough_is_valid (c : Char)
 /-- Every character of `escapeChar c` is a valid `nb-json` character.
     This is needed because `collectDoubleQuotedLoopIx` checks
     `isNbJsonBool` on each character it encounters. -/
-theorem escapeChar_output_nbJson (c : Char) :
+lemma escapeChar_output_nbJson (c : Char) :
     ∀ ch ∈ (escapeChar c).toList, isNbJsonBool ch = true := by
   by_cases h_val : c.val.toNat < 128
   · have h_bounded : ∀ n : Fin 128, ∀ ch ∈ (escapeChar (Char.ofNat n.val)).toList,
@@ -151,7 +151,7 @@ Properties of the strings produced by `emit` that are needed for
 scanner acceptance. -/
 
 /-- The output of `emit v` is non-empty for any value. -/
-theorem emit_nonempty (v : YamlValue) : (emit v).length > 0 := by
+lemma emit_nonempty (v : YamlValue) : (emit v).length > 0 := by
   have : ("\"" : String).length = 1 := by native_decide
   have : ("[" : String).length = 1 := by native_decide
   have : ("]" : String).length = 1 := by native_decide
@@ -161,13 +161,13 @@ theorem emit_nonempty (v : YamlValue) : (emit v).length > 0 := by
 
 /-! ### §2.1  `escapeString` Decomposition -/
 
-theorem string_foldl_toList {α : Type _}
+lemma string_foldl_toList {α : Type _}
     (f : α → Char → α) (init : α) (s : String) :
     s.foldl f init = s.toList.foldl f init := by
   simp [String.foldl, String.Slice.foldl, ← Std.Iter.foldl_toList]
 
 /-- The accumulator-shift property for `escapeString`'s foldl. -/
-theorem escapeString_foldl_shift (chars : List Char) (init : String) :
+lemma escapeString_foldl_shift (chars : List Char) (init : String) :
     chars.foldl (fun acc c => acc ++ escapeChar c) init =
     init ++ chars.foldl (fun acc c => acc ++ escapeChar c) "" := by
   induction chars generalizing init with
@@ -178,13 +178,13 @@ theorem escapeString_foldl_shift (chars : List Char) (init : String) :
     simp [String.append_assoc]
 
 /-- `escapeString` on empty string. -/
-theorem escapeString_nil : escapeString "" = "" := by
+lemma escapeString_nil : escapeString "" = "" := by
   unfold escapeString
   rw [string_foldl_toList]
   simp
 
 /-- `escapeString` distributes over cons. -/
-theorem escapeString_cons (c : Char) (cs : List Char) :
+lemma escapeString_cons (c : Char) (cs : List Char) :
     escapeString (String.ofList (c :: cs)) =
     escapeChar c ++ escapeString (String.ofList cs) := by
   unfold escapeString
@@ -198,7 +198,7 @@ The first character of `escapeChar c` output determines which branch
 of `collectDoubleQuotedLoopIx` processes it. -/
 
 /-- The first character of `escapeChar c` is never `"`. -/
-theorem escapeChar_head_not_quote (c : Char) :
+lemma escapeChar_head_not_quote (c : Char) :
     (escapeChar c).toList.head? ≠ some '"' := by
   by_cases h_val : c.val.toNat < 128
   · have : ∀ n : Fin 128,
@@ -214,7 +214,7 @@ theorem escapeChar_head_not_quote (c : Char) :
     exact absurd h_val (by native_decide)
 
 /-- The first character of `escapeChar c` is never a line break. -/
-theorem escapeChar_head_not_linebreak (c : Char) :
+lemma escapeChar_head_not_linebreak (c : Char) :
     ∀ ch, (escapeChar c).toList.head? = some ch → isLineBreakBool ch = false := by
   by_cases h_val : c.val.toNat < 128
   · have : ∀ n : Fin 128, ∀ ch,
@@ -235,7 +235,7 @@ theorem escapeChar_head_not_linebreak (c : Char) :
     exact ⟨beq_eq_false_iff_ne.mpr h1, beq_eq_false_iff_ne.mpr h2⟩
 
 /-- No character of `escapeChar c` is a line break. -/
-theorem escapeChar_output_no_linebreak (c : Char) :
+lemma escapeChar_output_no_linebreak (c : Char) :
     ∀ ch ∈ (escapeChar c).toList, isLineBreakBool ch = false := by
   by_cases h_val : c.val.toNat < 128
   · have h_bounded : ∀ n : Fin 128, ∀ ch ∈ (escapeChar (Char.ofNat n.val)).toList,
@@ -257,7 +257,7 @@ theorem escapeChar_output_no_linebreak (c : Char) :
     exact ⟨beq_eq_false_iff_ne.mpr h1, beq_eq_false_iff_ne.mpr h2⟩
 
 /-- The output of `escapeChar c` is non-empty. -/
-theorem escapeChar_nonempty (c : Char) : (escapeChar c).toList ≠ [] := by
+lemma escapeChar_nonempty (c : Char) : (escapeChar c).toList ≠ [] := by
   by_cases h_val : c.val.toNat < 128
   · have : ∀ n : Fin 128, (escapeChar (Char.ofNat n.val)).toList ≠ [] := by native_decide
     have := this ⟨c.toNat, by unfold Char.toNat; omega⟩
@@ -273,7 +273,7 @@ theorem escapeChar_nonempty (c : Char) : (escapeChar c).toList ≠ [] := by
 Lifting per-character properties from `escapeChar` to `escapeString`. -/
 
 /-- Generic: `foldl` with string append equals `flatMap` on character lists. -/
-theorem foldl_append_toList_eq_flatMap (chars : List Char) (f : Char → String) :
+lemma foldl_append_toList_eq_flatMap (chars : List Char) (f : Char → String) :
     (chars.foldl (fun (acc : String) c => acc ++ f c) "").toList =
     chars.flatMap (fun c => (f c).toList) := by
   suffices h : ∀ init : String,
@@ -291,7 +291,7 @@ theorem foldl_append_toList_eq_flatMap (chars : List Char) (f : Char → String)
     simp [String.toList_append]
 
 /-- A character is in `escapeString content` iff it is in some `escapeChar c`. -/
-theorem escapeString_mem_iff (content : String) (ch : Char) :
+lemma escapeString_mem_iff (content : String) (ch : Char) :
     ch ∈ (escapeString content).toList ↔
     ∃ c ∈ content.toList, ch ∈ (escapeChar c).toList := by
   constructor
@@ -309,7 +309,7 @@ theorem escapeString_mem_iff (content : String) (ch : Char) :
     exact ⟨c, h_c_mem, h_ch_mem⟩
 
 /-- All chars of `escapeString content` are valid `nb-json` characters. -/
-theorem escapeString_all_nbJson (content : String) :
+lemma escapeString_all_nbJson (content : String) :
     ∀ ch ∈ (escapeString content).toList, isNbJsonBool ch = true := by
   intro ch h_mem
   rw [escapeString_mem_iff] at h_mem
@@ -317,7 +317,7 @@ theorem escapeString_all_nbJson (content : String) :
   exact escapeChar_output_nbJson c ch h_ch_mem
 
 /-- No character of `escapeString content` is a line break. -/
-theorem escapeString_no_linebreak (content : String) :
+lemma escapeString_no_linebreak (content : String) :
     ∀ ch ∈ (escapeString content).toList, isLineBreakBool ch = false := by
   intro ch h_mem
   rw [escapeString_mem_iff] at h_mem
@@ -331,19 +331,19 @@ acceptance proof. The state-dependent helpers + the heavyweight core
 loop lemma are staged for follow-up. -/
 
 /-- Named escape tags are never line breaks. -/
-theorem escapeTag_not_linebreak (c tag : Char)
+lemma escapeTag_not_linebreak (c tag : Char)
     (h_tag : escapeTag c = some tag) : isLineBreakBool tag = false := by
   unfold escapeTag at h_tag; split at h_tag
   all_goals first | exact Option.noConfusion h_tag | skip
   all_goals (injection h_tag; try subst_vars; try native_decide)
 
 /-- `escapeChar` for passthrough characters produces `[c]`. -/
-theorem escapeChar_passthrough_toList (c : Char) (h : isEscapedChar c = false) :
+lemma escapeChar_passthrough_toList (c : Char) (h : isEscapedChar c = false) :
     (escapeChar c).toList = [c] := by
   rw [escapeChar_identity c h]; simp [Char.toString]
 
 /-- `escapeChar` for named escapes produces `['\\', tag]`. -/
-theorem escapeChar_named_toList (c tag : Char) (h : escapeTag c = some tag) :
+lemma escapeChar_named_toList (c tag : Char) (h : escapeTag c = some tag) :
     (escapeChar c).toList = ['\\', tag] := by
   have ⟨h_eq, _⟩ := escapeTag_roundtrip c tag h
   rw [h_eq]; simp [Char.toString]
@@ -352,14 +352,14 @@ theorem escapeChar_named_toList (c tag : Char) (h : escapeTag c = some tag) :
 def scannerHexCheck (c : Char) : Bool :=
   c.isDigit || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')
 
-theorem hexNibble_is_hex : ∀ n : Fin 16, scannerHexCheck (hexNibble n.val) = true := by
+lemma hexNibble_is_hex : ∀ n : Fin 16, scannerHexCheck (hexNibble n.val) = true := by
   native_decide
 
-theorem hexNibble_lt128 : ∀ n : Fin 16, (hexNibble n.val).toNat < 128 := by
+lemma hexNibble_lt128 : ∀ n : Fin 16, (hexNibble n.val).toNat < 128 := by
   native_decide
 
 /-- Two-character hex foldl is bounded by 0x110000. -/
-theorem hex_two_foldl_bound : ∀ (n1 n2 : Fin 128),
+lemma hex_two_foldl_bound : ∀ (n1 n2 : Fin 128),
     scannerHexCheck (Char.ofNat n1.val) = true →
     scannerHexCheck (Char.ofNat n2.val) = true →
     (("".push (Char.ofNat n1.val)).push (Char.ofNat n2.val)).foldl (fun acc c =>
@@ -368,7 +368,7 @@ theorem hex_two_foldl_bound : ∀ (n1 n2 : Fin 128),
                  else c.toNat - 'A'.toNat + 10) 0 < 0x110000 := by native_decide
 
 /-- Structural decomposition of `escapeChar c` for hex-escaped chars. -/
-theorem escapeChar_hex_structure (c : Char)
+lemma escapeChar_hex_structure (c : Char)
     (h_lt : c.val.toNat < 0x20) (h_no_tag : escapeTag c = none) :
     ∃ h1 h2 : Char,
       (escapeChar c).toList = ['\\', 'x', h1, h2] ∧
@@ -393,18 +393,18 @@ theorem escapeChar_hex_structure (c : Char)
     hexNibble_lt128 ⟨c.toNat % 16, by unfold Char.toNat; omega⟩⟩
 
 /-- String helper: `s.push c ++ String.ofList cs = s ++ String.ofList (c :: cs)`. -/
-theorem push_append_ofList_eq (s : String) (c : Char) (cs : List Char) :
+lemma push_append_ofList_eq (s : String) (c : Char) (cs : List Char) :
     s.push c ++ String.ofList cs = s ++ String.ofList (c :: cs) := by
   apply String.ext
   simp only [String.toList_append, String.toList_push, String.toList_ofList,
              List.append_assoc, List.singleton_append]
 
 /-- String helper: `s ++ String.ofList [] = s`. -/
-theorem append_ofList_nil (s : String) : s ++ String.ofList [] = s := by
+lemma append_ofList_nil (s : String) : s ++ String.ofList [] = s := by
   apply String.ext; simp
 
 /-- Hex foldl roundtrip for control characters. -/
-theorem hex_foldl_roundtrip : ∀ n : Fin 32,
+lemma hex_foldl_roundtrip : ∀ n : Fin 32,
     let h1 := hexNibble (n.val / 16)
     let h2 := hexNibble (n.val % 16)
     (("".push h1).push h2).foldl (fun acc c =>
@@ -448,7 +448,7 @@ specialised to `IxCursor input`. -/
 
 /-- If the cursor has more input, the surface position is non-empty
     and its head matches `peek?`. Twin of legacy `peek_corr`. -/
-theorem peek_corrIx {input : String} (c : IxCursor input) (sp : SurfPos)
+lemma peek_corrIx {input : String} (c : IxCursor input) (sp : SurfPos)
     (hcorr : CursorSurfCorrIx c sp)
     (hmore : c.pos.offset < input.utf8ByteSize) :
     ∃ ch rest, sp.chars = ch :: rest ∧ c.peek? = some ch := by
@@ -463,7 +463,7 @@ theorem peek_corrIx {input : String} (c : IxCursor input) (sp : SurfPos)
 
 /-- At end of input, the surface position has no remaining characters.
     Twin of legacy `eof_corr`. -/
-theorem eof_corrIx {input : String} (c : IxCursor input) (sp : SurfPos)
+lemma eof_corrIx {input : String} (c : IxCursor input) (sp : SurfPos)
     (hcorr : CursorSurfCorrIx c sp)
     (heof : ¬ c.pos.offset < input.utf8ByteSize) :
     sp.chars = [] := by
@@ -474,7 +474,7 @@ theorem eof_corrIx {input : String} (c : IxCursor input) (sp : SurfPos)
   | _ :: _, CharsFromOffset.cons _ hp _ _ _ _ => exact absurd hp (by omega)
 
 /-- Bridge: when `peek?` matches the surface head, project peek + bound. -/
-theorem peek_of_chars_consIx {input : String} (c : IxCursor input)
+lemma peek_of_chars_consIx {input : String} (c : IxCursor input)
     (ch : Char) (rest : List Char) (col : Nat)
     (hcorr : CursorSurfCorrIx c ⟨ch :: rest, col⟩) :
     c.peek? = some ch ∧ c.pos.offset < input.utf8ByteSize := by
@@ -485,7 +485,7 @@ theorem peek_of_chars_consIx {input : String} (c : IxCursor input)
 
 /-- `IxCursor.advance` past a non-newline, non-CR character leaves the
     line unchanged. Twin of legacy `advance_line_non_newline`. -/
-theorem advance_line_non_newline_ix {input : String} (c : IxCursor input)
+lemma advance_line_non_newline_ix {input : String} (c : IxCursor input)
     (h : c.pos.offset < input.utf8ByteSize)
     (hnl : ¬ (String.Pos.Raw.get input ⟨c.pos.offset⟩ == '\n') = true)
     (hcr : ¬ (String.Pos.Raw.get input ⟨c.pos.offset⟩ == '\r') = true) :
@@ -495,7 +495,7 @@ theorem advance_line_non_newline_ix {input : String} (c : IxCursor input)
 
 /-- `IxCursor.advance` past a non-newline, non-CR character bumps `col`
     by 1. -/
-theorem advance_col_non_newline_ix {input : String} (c : IxCursor input)
+lemma advance_col_non_newline_ix {input : String} (c : IxCursor input)
     (h : c.pos.offset < input.utf8ByteSize)
     (hnl : ¬ (String.Pos.Raw.get input ⟨c.pos.offset⟩ == '\n') = true)
     (hcr : ¬ (String.Pos.Raw.get input ⟨c.pos.offset⟩ == '\r') = true) :
@@ -506,7 +506,7 @@ theorem advance_col_non_newline_ix {input : String} (c : IxCursor input)
 /-- Advance past a non-newline, non-CR character preserves cursor
     surface correspondence (column bumped by 1). Twin of legacy
     `advance_non_newline_corr`. -/
-theorem advance_non_newline_corrIx {input : String} (c : IxCursor input)
+lemma advance_non_newline_corrIx {input : String} (c : IxCursor input)
     (ch : Char) (rest : List Char)
     (hcorr : CursorSurfCorrIx c ⟨ch :: rest, c.pos.col⟩)
     (hmore : c.pos.offset < input.utf8ByteSize)
@@ -566,7 +566,7 @@ on every ASCII hex digit by `native_decide`. -/
 
 /-- The 2-digit hex foldl bound, restated using the indexed scanner's
     `hexStringValue`. -/
-theorem hex_two_foldl_boundIx : ∀ (n1 n2 : Fin 128),
+lemma hex_two_foldl_boundIx : ∀ (n1 n2 : Fin 128),
     isHexDigitBool (Char.ofNat n1.val) = true →
     isHexDigitBool (Char.ofNat n2.val) = true →
     hexStringValue (("".push (Char.ofNat n1.val)).push (Char.ofNat n2.val))
@@ -575,7 +575,7 @@ theorem hex_two_foldl_boundIx : ∀ (n1 n2 : Fin 128),
 /-- For C0-control chars (`c.val.toNat < 0x20`), the hex-foldl round-trip
     recovers the original code point. Indexed-scanner variant of
     `hex_foldl_roundtrip`. -/
-theorem hex_foldl_roundtripIx : ∀ n : Fin 32,
+lemma hex_foldl_roundtripIx : ∀ n : Fin 32,
     let h1 := hexNibble (n.val / 16)
     let h2 := hexNibble (n.val % 16)
     hexStringValue (("".push h1).push h2) = n.val := by native_decide
@@ -584,7 +584,7 @@ theorem hex_foldl_roundtripIx : ∀ n : Fin 32,
     agree on every ASCII char. The two-digit hex content emitted by
     `escapeHex2` is ASCII, so the bridge is enough to lift
     `scannerHexCheck` witnesses to `isHexDigitBool` witnesses. -/
-theorem scannerHexCheck_eq_isHexDigitBool : ∀ c : Char,
+lemma scannerHexCheck_eq_isHexDigitBool : ∀ c : Char,
     c.toNat < 128 → scannerHexCheck c = isHexDigitBool c := by
   intro c hlt
   have h : ∀ n : Fin 128,
@@ -602,7 +602,7 @@ rather than a direct match — the proofs use this factoring. -/
 
 /-- The named-escape decode table `simpleEscapeChar` inverts `escapeTag`
     on every escapable character. Helper for `processEscapeIx_named_*`. -/
-theorem simpleEscapeChar_of_escapeTag (origChar tag : Char)
+lemma simpleEscapeChar_of_escapeTag (origChar tag : Char)
     (h : escapeTag origChar = some tag) :
     simpleEscapeChar tag = some origChar := by
   unfold escapeTag at h
@@ -613,7 +613,7 @@ theorem simpleEscapeChar_of_escapeTag (origChar tag : Char)
 
 /-- `processEscapeIx` succeeds on a named-escape tag, returning the
     original character. Twin of legacy `processEscape_named_content`. -/
-theorem processEscapeIx_named_content {input : String} (c : IxCursor input)
+lemma processEscapeIx_named_content {input : String} (c : IxCursor input)
     (origChar tag : Char)
     (h_tag : escapeTag origChar = some tag) (h_peek : c.peek? = some tag) :
     processEscapeIx c = some (origChar, c.advance) := by
@@ -624,14 +624,14 @@ theorem processEscapeIx_named_content {input : String} (c : IxCursor input)
 
 /-- Existential `processEscapeIx_named_content`. Twin of legacy
     `processEscape_named_ok`. -/
-theorem processEscapeIx_named_ok {input : String} (c : IxCursor input)
+lemma processEscapeIx_named_ok {input : String} (c : IxCursor input)
     (origChar tag : Char)
     (h_tag : escapeTag origChar = some tag) (h_peek : c.peek? = some tag) :
     ∃ decoded, processEscapeIx c = some (decoded, c.advance) :=
   ⟨origChar, processEscapeIx_named_content c origChar tag h_tag h_peek⟩
 
 /-- When `peek?` matches a known non-newline char, advance preserves line. -/
-theorem advance_line_of_peekIx {input : String} (c : IxCursor input) (ch : Char)
+lemma advance_line_of_peekIx {input : String} (c : IxCursor input) (ch : Char)
     (h_lt : c.pos.offset < input.utf8ByteSize) (h_peek : c.peek? = some ch)
     (hnl : ch ≠ '\n') (hcr : ch ≠ '\r') :
     c.advance.pos.line = c.pos.line := by
@@ -644,7 +644,7 @@ theorem advance_line_of_peekIx {input : String} (c : IxCursor input) (ch : Char)
 
 /-- `processEscapeIx` succeeds on `x H1 H2` hex sequences produced by
     `escapeHex2`. Twin of legacy `processEscape_hex_ok`. -/
-theorem processEscapeIx_hex_ok {input : String} (c : IxCursor input)
+lemma processEscapeIx_hex_ok {input : String} (c : IxCursor input)
     (h1 h2 : Char) (rest : List Char) (col : Nat)
     (hcorr : CursorSurfCorrIx c ⟨'x' :: h1 :: h2 :: rest, col⟩)
     (h_h1_nn : h1 ≠ '\n') (h_h1_cr : h1 ≠ '\r')
@@ -735,7 +735,7 @@ this proof is somewhat simpler than legacy in the passthrough branch. -/
 /-- The core loop lemma: `collectDoubleQuotedLoopIx` succeeds on
     `escapeString content ++ "\"" ++ rest`, returning `acc ++ content`
     plus the post-quote cursor at `rest`. -/
-theorem collectDoubleQuotedLoopIx_escapeString_succeeds {input : String}
+lemma collectDoubleQuotedLoopIx_escapeString_succeeds {input : String}
     (c : IxCursor input) (content_rest : List Char) (rest : List Char)
     (acc : String) (fuel : Nat)
     (hcorr : CursorSurfCorrIx c

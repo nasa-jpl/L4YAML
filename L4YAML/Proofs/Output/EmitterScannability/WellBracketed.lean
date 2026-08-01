@@ -48,47 +48,47 @@ per-`emit v` block to be shown bracket-balanced with positive interior — is
 def pbalance (l : List (Positioned YamlToken)) : Int :=
   l.foldl (fun acc t => acc + flowBracketDelta t.val) 0
 
-theorem pbalance_nil : pbalance [] = 0 := rfl
+lemma pbalance_nil : pbalance [] = 0 := rfl
 
-theorem pbalance_append (a b : List (Positioned YamlToken)) :
+lemma pbalance_append (a b : List (Positioned YamlToken)) :
     pbalance (a ++ b) = pbalance a + pbalance b := by
   unfold pbalance
   rw [List.foldl_append,
       foldl_add_shift b (fun t => flowBracketDelta t.val) (a.foldl _ 0)]
 
-theorem pbalance_singleton (t : Positioned YamlToken) :
+lemma pbalance_singleton (t : Positioned YamlToken) :
     pbalance [t] = flowBracketDelta t.val := by
   simp [pbalance, List.foldl]
 
-theorem pbalance_cons (t : Positioned YamlToken) (l : List (Positioned YamlToken)) :
+lemma pbalance_cons (t : Positioned YamlToken) (l : List (Positioned YamlToken)) :
     pbalance (t :: l) = flowBracketDelta t.val + pbalance l := by
   have h : t :: l = [t] ++ l := rfl
   rw [h, pbalance_append, pbalance_singleton]
 
 /-- `.flowEntry` contributes `0` to the bracket balance. -/
-theorem flowBracketDelta_flowEntry : flowBracketDelta .flowEntry = 0 := rfl
+lemma flowBracketDelta_flowEntry : flowBracketDelta .flowEntry = 0 := rfl
 
 /-- A flow-sequence opener `[` contributes `+1`. -/
-theorem flowBracketDelta_flowSequenceStart : flowBracketDelta .flowSequenceStart = 1 := rfl
+lemma flowBracketDelta_flowSequenceStart : flowBracketDelta .flowSequenceStart = 1 := rfl
 
 /-- A flow-sequence closer `]` contributes `-1`. -/
-theorem flowBracketDelta_flowSequenceEnd : flowBracketDelta .flowSequenceEnd = -1 := rfl
+lemma flowBracketDelta_flowSequenceEnd : flowBracketDelta .flowSequenceEnd = -1 := rfl
 
 /-- A flow-mapping opener `{` contributes `+1`. -/
-theorem flowBracketDelta_flowMappingStart : flowBracketDelta .flowMappingStart = 1 := rfl
+lemma flowBracketDelta_flowMappingStart : flowBracketDelta .flowMappingStart = 1 := rfl
 
 /-- A flow-mapping closer `}` contributes `-1`. -/
-theorem flowBracketDelta_flowMappingEnd : flowBracketDelta .flowMappingEnd = -1 := rfl
+lemma flowBracketDelta_flowMappingEnd : flowBracketDelta .flowMappingEnd = -1 := rfl
 
 /-- A scalar token contributes `0`. -/
-theorem flowBracketDelta_scalar (value : String) (style : ScalarStyle) :
+lemma flowBracketDelta_scalar (value : String) (style : ScalarStyle) :
     flowBracketDelta (.scalar value style) = 0 := rfl
 
 /-- A `.key` token contributes `0`. -/
-theorem flowBracketDelta_key : flowBracketDelta .key = 0 := rfl
+lemma flowBracketDelta_key : flowBracketDelta .key = 0 := rfl
 
 /-- The only tokens of delta `+1` are the two openers `[` / `{`. -/
-theorem flowBracketDelta_eq_one_iff (v : YamlToken) :
+lemma flowBracketDelta_eq_one_iff (v : YamlToken) :
     flowBracketDelta v = 1 ↔ v = .flowSequenceStart ∨ v = .flowMappingStart := by
   cases v <;> simp [flowBracketDelta]
 
@@ -110,7 +110,7 @@ inductive SafeBody (Q : YamlToken → Prop) : List (Positioned YamlToken) → Pr
       SafeBody Q (e ++ fe :: rest)
 
 /-- The head of a `SafeBody` exists and satisfies `Q`. -/
-theorem SafeBody.head_Q {Q : YamlToken → Prop} {l : List (Positioned YamlToken)}
+lemma SafeBody.head_Q {Q : YamlToken → Prop} {l : List (Positioned YamlToken)}
     (h : SafeBody Q l) : ∃ (hl : 0 < l.length), Q (l[0]'hl).val := by
   have key : ∀ (e : List (Positioned YamlToken)) (h_ne : e ≠ []),
       ∃ (hl : 0 < e.length), (e[0]'hl) = e.head h_ne := by
@@ -130,7 +130,7 @@ theorem SafeBody.head_Q {Q : YamlToken → Prop} {l : List (Positioned YamlToken
 
 /-- **Main balance lemma.** In a `SafeBody`, every balance-0 `.flowEntry` is a
     separator, immediately followed by an entry head (which satisfies `Q`). -/
-theorem SafeBody_flowEntry_zero_balance {Q : YamlToken → Prop}
+lemma SafeBody_flowEntry_zero_balance {Q : YamlToken → Prop}
     {body : List (Positioned YamlToken)} (h : SafeBody Q body) :
     ∀ (k : Nat) (hk : k < body.length),
       (body[k]'hk).val = .flowEntry → pbalance (body.take k) = 0 →
@@ -202,7 +202,7 @@ theorem SafeBody_flowEntry_zero_balance {Q : YamlToken → Prop}
 
 /-- Bridge: `flowBracketBalance` on an array slice equals `pbalance` of the
     corresponding `drop`/`take` of its `toList`. -/
-theorem flowBracketBalance_eq_pbalance (arr : Array (Positioned YamlToken))
+lemma flowBracketBalance_eq_pbalance (arr : Array (Positioned YamlToken))
     (lo k : Nat) (h : lo ≤ k) :
     flowBracketBalance arr lo k = pbalance ((arr.toList.drop lo).take (k - lo)) := by
   unfold flowBracketBalance pbalance
@@ -215,7 +215,7 @@ theorem flowBracketBalance_eq_pbalance (arr : Array (Positioned YamlToken))
 /-- **Array/offset wrapper.** Restates `SafeBody_flowEntry_zero_balance` against
     `flowBracketBalance` on the filtered token array with base offset `lo`,
     matching the body-characterization consumers. -/
-theorem SafeBody_array_flowEntry {Q : YamlToken → Prop}
+lemma SafeBody_array_flowEntry {Q : YamlToken → Prop}
     (arr : Array (Positioned YamlToken)) (lo : Nat)
     (h : SafeBody Q (arr.toList.drop lo)) :
     ∀ (k : Nat), lo ≤ k → (hk : k < arr.size) →
@@ -266,31 +266,31 @@ through `emit_scans_in_flow` and the list/pairlist producers — is
 def WellBracketed (l : List (Positioned YamlToken)) : Prop :=
   pbalance l = 0 ∧ ∀ (i : Nat), pbalance (l.take i) ≥ 0
 
-theorem WellBracketed_nil : WellBracketed [] := by
+lemma WellBracketed_nil : WellBracketed [] := by
   refine ⟨pbalance_nil, fun i => ?_⟩
   simp [List.take_nil, pbalance_nil]
 
 /-- Prefix balance of a concatenation splits additively. -/
-theorem pbalance_take_append (a b : List (Positioned YamlToken)) (i : Nat) :
+lemma pbalance_take_append (a b : List (Positioned YamlToken)) (i : Nat) :
     pbalance ((a ++ b).take i) = pbalance (a.take i) + pbalance (b.take (i - a.length)) := by
   rw [List.take_append, pbalance_append]
 
 /-- Prefix balance of a singleton: `0` (empty prefix) or its delta. -/
-theorem pbalance_take_singleton (t : Positioned YamlToken) (j : Nat) :
+lemma pbalance_take_singleton (t : Positioned YamlToken) (j : Nat) :
     pbalance ([t].take j) = if j = 0 then 0 else flowBracketDelta t.val := by
   match j with
   | 0 => simp [pbalance_nil]
   | k + 1 => simp [List.take_succ_cons, pbalance_singleton]
 
 /-- A single token of zero delta (scalar, `:`, `.value`, …) is well-bracketed. -/
-theorem WellBracketed_singleton_delta_zero (t : Positioned YamlToken)
+lemma WellBracketed_singleton_delta_zero (t : Positioned YamlToken)
     (h : flowBracketDelta t.val = 0) : WellBracketed [t] := by
   refine ⟨by rw [pbalance_singleton, h], fun i => ?_⟩
   rw [pbalance_take_singleton]
   split <;> omega
 
 /-- `WellBracketed` is closed under concatenation. -/
-theorem WellBracketed_append (a b : List (Positioned YamlToken))
+lemma WellBracketed_append (a b : List (Positioned YamlToken))
     (ha : WellBracketed a) (hb : WellBracketed b) : WellBracketed (a ++ b) := by
   refine ⟨?_, fun i => ?_⟩
   · have := ha.1; have := hb.1; rw [pbalance_append]; omega
@@ -305,7 +305,7 @@ theorem WellBracketed_append (a b : List (Positioned YamlToken))
     the key block (breaking the per-step append decomposition the sequence-body
     producer relied on), and `WellBracketed`-ness must survive that mid-list
     insertion regardless of *where* it lands. -/
-theorem WellBracketed_insert_delta_zero (l : List (Positioned YamlToken))
+lemma WellBracketed_insert_delta_zero (l : List (Positioned YamlToken))
     (t : Positioned YamlToken) (i : Nat)
     (h_delta : flowBracketDelta t.val = 0) (h_wb : WellBracketed l) :
     WellBracketed (l.take i ++ t :: l.drop i) := by
@@ -341,7 +341,7 @@ theorem WellBracketed_insert_delta_zero (l : List (Positioned YamlToken))
     *front* of the key block (the first new filtered token is `.key`, per
     `keyshape_first_token_key`), so this cons form is the one the mapping-body
     producer applies directly. -/
-theorem WellBracketed_cons_delta_zero (t : Positioned YamlToken)
+lemma WellBracketed_cons_delta_zero (t : Positioned YamlToken)
     (l : List (Positioned YamlToken))
     (h_delta : flowBracketDelta t.val = 0) (h_wb : WellBracketed l) :
     WellBracketed (t :: l) := by
@@ -351,7 +351,7 @@ theorem WellBracketed_cons_delta_zero (t : Positioned YamlToken)
     (delta `+1`) and closer (delta `-1`) is both `WellBracketed` and `EntrySafe`.
     The `EntrySafe` half is the payoff: every interior `.flowEntry` is at
     balance `≥ 1` because the opener already contributes `+1`. -/
-theorem wrap_block (op cl : Positioned YamlToken) (body : List (Positioned YamlToken))
+lemma wrap_block (op cl : Positioned YamlToken) (body : List (Positioned YamlToken))
     (h_op : flowBracketDelta op.val = 1) (h_cl : flowBracketDelta cl.val = -1)
     (h_body : WellBracketed body) :
     WellBracketed (op :: (body ++ [cl])) ∧ EntrySafe (op :: (body ++ [cl])) := by
@@ -413,7 +413,7 @@ theorem wrap_block (op cl : Positioned YamlToken) (body : List (Positioned YamlT
 /-- A scalar entry (a single non-`.flowEntry`, delta-`0` token) is `EntrySafe`.
     The `≠ .flowEntry` premise is essential: a singleton `.flowEntry` would have
     its sole token at prefix balance `0`, violating the `≥ 1` interior condition. -/
-theorem EntrySafe_singleton (t : Positioned YamlToken)
+lemma EntrySafe_singleton (t : Positioned YamlToken)
     (h_delta : flowBracketDelta t.val = 0) (h_ne : t.val ≠ .flowEntry) : EntrySafe [t] := by
   refine ⟨by rw [pbalance_singleton, h_delta], fun i h_i h_fe => ?_⟩
   -- a singleton's only index is 0, and its value is not a flowEntry
@@ -428,7 +428,7 @@ theorem EntrySafe_singleton (t : Positioned YamlToken)
 /-- A flow-sequence block `[ body ]` with `WellBracketed` interior is both
     `WellBracketed` and `EntrySafe` — the shape a scanned `emit (.sequence …)`
     block takes. Specializes `wrap_block` with the concrete bracket deltas. -/
-theorem wrap_seq_block (op cl : Positioned YamlToken)
+lemma wrap_seq_block (op cl : Positioned YamlToken)
     (body : List (Positioned YamlToken))
     (h_op : op.val = .flowSequenceStart) (h_cl : cl.val = .flowSequenceEnd)
     (h_body : WellBracketed body) :
@@ -439,7 +439,7 @@ theorem wrap_seq_block (op cl : Positioned YamlToken)
 /-- A flow-mapping block `{ body }` with `WellBracketed` interior is both
     `WellBracketed` and `EntrySafe` — the shape a scanned `emit (.mapping …)`
     block takes. Specializes `wrap_block` with the concrete bracket deltas. -/
-theorem wrap_map_block (op cl : Positioned YamlToken)
+lemma wrap_map_block (op cl : Positioned YamlToken)
     (body : List (Positioned YamlToken))
     (h_op : op.val = .flowMappingStart) (h_cl : cl.val = .flowMappingEnd)
     (h_body : WellBracketed body) :
@@ -448,7 +448,7 @@ theorem wrap_map_block (op cl : Positioned YamlToken)
     (h_cl ▸ flowBracketDelta_flowMappingEnd) h_body
 
 /-- A scalar entry — a single `.scalar` token — is `EntrySafe`. -/
-theorem EntrySafe_scalar (t : Positioned YamlToken) (value : String) (style : ScalarStyle)
+lemma EntrySafe_scalar (t : Positioned YamlToken) (value : String) (style : ScalarStyle)
     (h : t.val = .scalar value style) : EntrySafe [t] :=
   EntrySafe_singleton t (h ▸ flowBracketDelta_scalar value style) (by rw [h]; simp)
 
@@ -456,7 +456,7 @@ theorem EntrySafe_scalar (t : Positioned YamlToken) (value : String) (style : Sc
     bracket-balanced (`pbalance = 0`), so the prefix balance at any `.flowEntry`
     in `a` is the same as inside `a` alone (`≥ 1`), and the prefix balance at a
     `.flowEntry` in `b` is `pbalance a + (b-prefix balance) = 0 + (≥ 1)`. -/
-theorem EntrySafe_append (a b : List (Positioned YamlToken))
+lemma EntrySafe_append (a b : List (Positioned YamlToken))
     (ha : EntrySafe a) (hb : EntrySafe b) : EntrySafe (a ++ b) := by
   refine ⟨by rw [pbalance_append, ha.1, hb.1]; omega, ?_⟩
   intro i h_i h_fe
@@ -501,18 +501,18 @@ def OpenerAdj (l : List (Positioned YamlToken)) : Prop :=
     isFlowContentStart (l[k+1]'h).val
 
 /-- Base: the empty body (an empty `[]`/`{}` interior) is opener-adjacent (vacuous). -/
-theorem OpenerAdj_nil : OpenerAdj [] := by
+lemma OpenerAdj_nil : OpenerAdj [] := by
   intro k h; simp at h
 
 /-- Base: a singleton block (a scalar block) is opener-adjacent (no successor index). -/
-theorem OpenerAdj_singleton (t : Positioned YamlToken) : OpenerAdj [t] := by
+lemma OpenerAdj_singleton (t : Positioned YamlToken) : OpenerAdj [t] := by
   intro k h; simp at h
 
 /-- **Fundamental recursive brick.**  Prepending a token preserves opener-adjacency,
     provided that if the new head is an opener, its successor (the old head) is either
     the close (excluded by the field's premise) or a content-start.  The seq-block wrap
     `[ body ]` is this lemma with the `.flowSequenceStart` opener as the new head. -/
-theorem OpenerAdj_cons (t : Positioned YamlToken) (rest : List (Positioned YamlToken))
+lemma OpenerAdj_cons (t : Positioned YamlToken) (rest : List (Positioned YamlToken))
     (h_rest : OpenerAdj rest)
     (h_head : t.val = .flowSequenceStart →
        ∀ (h0 : 0 < rest.length), (rest[0]'h0).val ≠ .flowSequenceEnd →
@@ -535,7 +535,7 @@ theorem OpenerAdj_cons (t : Positioned YamlToken) (rest : List (Positioned YamlT
     field is local; the only boundary case is `a`'s last token — and emitter blocks /
     separators always end with a close or scalar (never an opener), so the bridge
     "`a`'s tail is not `.flowSequenceStart`" discharges the boundary vacuously. -/
-theorem OpenerAdj_append (a b : List (Positioned YamlToken))
+lemma OpenerAdj_append (a b : List (Positioned YamlToken))
     (ha : OpenerAdj a) (hb : OpenerAdj b)
     (h_tail : ∀ (hla : 0 < a.length),
        (a[a.length-1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowSequenceStart) :
@@ -576,7 +576,7 @@ theorem OpenerAdj_append (a b : List (Positioned YamlToken))
     indices to the outer `tokens` via their local `h_tok_body`.  The proof-carrying `getElem` lives
     entirely here (via `List.getElem_drop` + `Array.getElem_toList`), so the consumers stay in the
     `getElem!` world. -/
-theorem OpenerAdj_array (arr : Array (Positioned YamlToken)) (lo : Nat)
+lemma OpenerAdj_array (arr : Array (Positioned YamlToken)) (lo : Nat)
     (h : OpenerAdj (arr.toList.drop lo)) :
     ∀ (k : Nat), lo ≤ k → k + 1 < arr.size →
       arr[k]!.val = .flowSequenceStart →
@@ -615,11 +615,11 @@ def SepAdj (l : List (Positioned YamlToken)) : Prop :=
     isFlowContentStart (l[k+1]'h).val
 
 /-- Base: the empty body (an empty `[]`/`{}` interior) is separator-adjacent (vacuous). -/
-theorem SepAdj_nil : SepAdj [] := by
+lemma SepAdj_nil : SepAdj [] := by
   intro k h; simp at h
 
 /-- Base: a singleton block (a scalar block) is separator-adjacent (no successor index). -/
-theorem SepAdj_singleton (t : Positioned YamlToken) : SepAdj [t] := by
+lemma SepAdj_singleton (t : Positioned YamlToken) : SepAdj [t] := by
   intro k h; simp at h
 
 /-- **Fundamental recursive brick.**  Prepending a token preserves separator-adjacency,
@@ -627,7 +627,7 @@ theorem SepAdj_singleton (t : Positioned YamlToken) : SepAdj [t] := by
     is either an explicit key `.key` (excluded by the field's `≠ .key` premise) or a
     content-start.  The seam glue `… ++ [feTok] ++ …` is this lemma with the `.flowEntry`
     separator as the new head. -/
-theorem SepAdj_cons (t : Positioned YamlToken) (rest : List (Positioned YamlToken))
+lemma SepAdj_cons (t : Positioned YamlToken) (rest : List (Positioned YamlToken))
     (h_rest : SepAdj rest)
     (h_head : t.val = .flowEntry →
        ∀ (h0 : 0 < rest.length), (rest[0]'h0).val ≠ .key →
@@ -650,7 +650,7 @@ theorem SepAdj_cons (t : Positioned YamlToken) (rest : List (Positioned YamlToke
     field is local; the only boundary case is `a`'s last token — and emitter blocks /
     separators always end with a close or scalar (never a `.flowEntry`), so the bridge
     "`a`'s tail is not `.flowEntry`" discharges the boundary vacuously. -/
-theorem SepAdj_append (a b : List (Positioned YamlToken))
+lemma SepAdj_append (a b : List (Positioned YamlToken))
     (ha : SepAdj a) (hb : SepAdj b)
     (h_tail : ∀ (hla : 0 < a.length),
        (a[a.length-1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowEntry) :
@@ -689,7 +689,7 @@ theorem SepAdj_append (a b : List (Positioned YamlToken))
     global producer `globalFlowSeqSepAdj_of_structure` consumes as its `h_body` field — the structure
     consumers convert their characterization Part (`SepAdj block`) to it through this wrapper, then
     re-base the array indices to the outer `tokens` via their local `h_tok_body`. -/
-theorem SepAdj_array (arr : Array (Positioned YamlToken)) (lo : Nat)
+lemma SepAdj_array (arr : Array (Positioned YamlToken)) (lo : Nat)
     (h : SepAdj (arr.toList.drop lo)) :
     ∀ (k : Nat), lo ≤ k → k + 1 < arr.size →
       arr[k]!.val = .flowEntry →
@@ -720,7 +720,7 @@ theorem SepAdj_array (arr : Array (Positioned YamlToken)) (lo : Nat)
     an opener (the tail bridge from [[ref-orthogonal-invariant-algebra-before-threading]]).
     `OpenerAdj_cons` supplies the head premise `op.val = .flowSequenceStart`, so the
     seat `_h_op` is unused here — kept only for call-site symmetry with `wrap_seq_block`. -/
-theorem OpenerAdj_wrap_seq (op cl : Positioned YamlToken)
+lemma OpenerAdj_wrap_seq (op cl : Positioned YamlToken)
     (body : List (Positioned YamlToken))
     (_h_op : op.val = .flowSequenceStart) (h_cl : cl.val = .flowSequenceEnd)
     (h_body : OpenerAdj body)
@@ -747,7 +747,7 @@ theorem OpenerAdj_wrap_seq (op cl : Positioned YamlToken)
     opener-adjacent given the body is opener-adjacent and the body's last token is
     not itself an opener.  No head condition is needed: the new head `{` is not a
     `.flowSequenceStart`, so the `OpenerAdj_cons` head premise is vacuous. -/
-theorem OpenerAdj_wrap_map (op cl : Positioned YamlToken)
+lemma OpenerAdj_wrap_map (op cl : Positioned YamlToken)
     (body : List (Positioned YamlToken))
     (h_op : op.val = .flowMappingStart)
     (h_body : OpenerAdj body)
@@ -765,7 +765,7 @@ theorem OpenerAdj_wrap_map (op cl : Positioned YamlToken)
 /-- **Last-token-not-opener** for a singleton block (the scalar arm).  The block's only
     token is its last, so if it is not a seq-opener (it is a scalar), the
     `OpenerAdj_append` boundary bridge `h_tail` holds.  Defeq: `[t][0] = t`. -/
-theorem lastNonOpener_singleton (t : Positioned YamlToken)
+lemma lastNonOpener_singleton (t : Positioned YamlToken)
     (h : t.val ≠ .flowSequenceStart) :
     ∀ (hla : 0 < [t].length),
       ([t][[t].length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowSequenceStart :=
@@ -775,7 +775,7 @@ theorem lastNonOpener_singleton (t : Positioned YamlToken)
     The block ends in its close `cl` (`]`/`}`); if `cl` is not a seq-opener, the
     `OpenerAdj_append` boundary bridge `h_tail` holds.  Routed through `getLast?` to avoid
     the dependent-index motive issue. -/
-theorem lastNonOpener_wrap (op cl : Positioned YamlToken) (body : List (Positioned YamlToken))
+lemma lastNonOpener_wrap (op cl : Positioned YamlToken) (body : List (Positioned YamlToken))
     (h : cl.val ≠ .flowSequenceStart) :
     ∀ (hla : 0 < (op :: (body ++ [cl])).length),
       ((op :: (body ++ [cl]))[(op :: (body ++ [cl])).length - 1]'(Nat.sub_lt hla Nat.one_pos)).val
@@ -793,7 +793,7 @@ theorem lastNonOpener_wrap (op cl : Positioned YamlToken) (body : List (Position
 /-- Reduce a block's "last token is not a seq-opener" fact to a `getLast?` witness — the
     `getElem` form the `EmitScansInFlowBlock`/`EmitListScansInFlowBlock` tail field uses, derived
     from the compositionally-cheaper `getLast?` (which has clean `append`/`cons`/`concat` lemmas). -/
-theorem lastNonOpener_of_getLast? (l : List (Positioned YamlToken)) (t : Positioned YamlToken)
+lemma lastNonOpener_of_getLast? (l : List (Positioned YamlToken)) (t : Positioned YamlToken)
     (h_gl : l.getLast? = some t) (h : t.val ≠ .flowSequenceStart) :
     ∀ (hla : 0 < l.length),
       (l[l.length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowSequenceStart := by
@@ -805,7 +805,7 @@ theorem lastNonOpener_of_getLast? (l : List (Positioned YamlToken)) (t : Positio
 
 /-- The forward bridge: a `getElem` "last not opener" yields a `getLast?` witness with a
     not-opener value (so a recursive tail block's stored tail field re-enters `getLast?` algebra). -/
-theorem getLast?_not_opener_of_lastNonOpener (l : List (Positioned YamlToken)) (hne : l ≠ [])
+lemma getLast?_not_opener_of_lastNonOpener (l : List (Positioned YamlToken)) (hne : l ≠ [])
     (h : ∀ (hla : 0 < l.length),
       (l[l.length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowSequenceStart) :
     ∃ t, l.getLast? = some t ∧ t.val ≠ .flowSequenceStart := by
@@ -821,7 +821,7 @@ theorem getLast?_not_opener_of_lastNonOpener (l : List (Positioned YamlToken)) (
     last token is `rest`'s last (when non-empty) or `feTok` — neither a seq-opener.  Stated in
     the producer's exact term shape (left-associated) so no list-rewrite under the dependent
     `length - 1` getElem is needed. -/
-theorem lastNonOpener_append3
+lemma lastNonOpener_append3
     (a rest : List (Positioned YamlToken)) (feTok : Positioned YamlToken)
     (h_fe : feTok.val ≠ .flowSequenceStart)
     (h_rest : ∀ (hla : 0 < rest.length),
@@ -847,7 +847,7 @@ theorem lastNonOpener_append3
     value block `block_v`).  The last token is `b`'s last, so `b`'s tail-not-opener field
     transfers to the whole append.  Routed through `getLast?` (the `append` short-circuits to
     `b.getLast?` once `b ≠ []`) to avoid the dependent `length - 1` getElem motive trap. -/
-theorem lastNonOpener_append_right (a b : List (Positioned YamlToken)) (hb : b ≠ [])
+lemma lastNonOpener_append_right (a b : List (Positioned YamlToken)) (hb : b ≠ [])
     (h_b : ∀ (hla : 0 < b.length),
       (b[b.length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowSequenceStart) :
     ∀ (hla : 0 < (a ++ b).length),
@@ -866,7 +866,7 @@ theorem lastNonOpener_append_right (a b : List (Positioned YamlToken)) (hb : b �
     `feTok` — is exactly `lastNonOpener_append_right` over the singleton `[feTok]`.  This is
     the `OpenerAdj` mirror of `lastNonOpener_append3` and rides the SAME left-associated
     term shape the list producers emit (`(a ++ [feTok]) ++ rest`). -/
-theorem OpenerAdj_seam (a rest : List (Positioned YamlToken)) (feTok : Positioned YamlToken)
+lemma OpenerAdj_seam (a rest : List (Positioned YamlToken)) (feTok : Positioned YamlToken)
     (ha : OpenerAdj a) (h_rest : OpenerAdj rest)
     (h_fe : feTok.val ≠ .flowSequenceStart)
     (h_tail_a : ∀ (hla : 0 < a.length),
@@ -889,7 +889,7 @@ theorem OpenerAdj_seam (a rest : List (Positioned YamlToken)) (feTok : Positione
     onto `block_v` needs only that the inner block's tail (`value`) is not a seq-opener — the
     `lastNonOpener_wrap` of `key :: (block_k ++ [value])`.  No `block_v ≠ []` is required (the
     outer `OpenerAdj_append` admits an empty right side). -/
-theorem OpenerAdj_map_single (key value : Positioned YamlToken)
+lemma OpenerAdj_map_single (key value : Positioned YamlToken)
     (block_k block_v : List (Positioned YamlToken))
     (h_key : key.val ≠ .flowSequenceStart)
     (h_value : value.val ≠ .flowSequenceStart)
@@ -934,7 +934,7 @@ trigger-coinciding seat. -/
     premise discharges VACUOUSLY and NO `h_head` content-start obligation is owed (per R421 that
     obligation lives at the seam, `SepAdj_seam`).  Only the body field and the tail bridge are
     needed; `cl`'s value is irrelevant. -/
-theorem SepAdj_wrap_seq (op cl : Positioned YamlToken)
+lemma SepAdj_wrap_seq (op cl : Positioned YamlToken)
     (body : List (Positioned YamlToken))
     (h_op : op.val = .flowSequenceStart)
     (h_body : SepAdj body)
@@ -953,7 +953,7 @@ theorem SepAdj_wrap_seq (op cl : Positioned YamlToken)
     separator-adjacent given the body is and the body's tail is not a `.flowEntry`.  The new head
     `{` is not a `.flowEntry`, so the `SepAdj_cons` head premise is vacuous — identical shape to
     `SepAdj_wrap_seq`, because for the separator field BOTH block openers are inert. -/
-theorem SepAdj_wrap_map (op cl : Positioned YamlToken)
+lemma SepAdj_wrap_map (op cl : Positioned YamlToken)
     (body : List (Positioned YamlToken))
     (h_op : op.val = .flowMappingStart)
     (h_body : SepAdj body)
@@ -971,7 +971,7 @@ theorem SepAdj_wrap_map (op cl : Positioned YamlToken)
 /-- `SepAdj` tail bridge — singleton (mirror of `lastNonOpener_singleton`).  `[t]`'s only token is
     its last; if it is not a `.flowEntry`, the `SepAdj_append` boundary bridge holds.  Token-opaque
     verbatim clone (the trigger is threaded as the hypothesis `h`, never inspected). -/
-theorem lastNonSep_singleton (t : Positioned YamlToken)
+lemma lastNonSep_singleton (t : Positioned YamlToken)
     (h : t.val ≠ .flowEntry) :
     ∀ (hla : 0 < [t].length),
       ([t][[t].length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowEntry :=
@@ -980,7 +980,7 @@ theorem lastNonSep_singleton (t : Positioned YamlToken)
 /-- `SepAdj` tail bridge — wrapped block (mirror of `lastNonOpener_wrap`).  A wrapped block
     `op :: (body ++ [cl])` ends in `cl`; if `cl` is not a `.flowEntry`, the boundary bridge holds.
     Token-opaque verbatim clone, routed through `getLast?`. -/
-theorem lastNonSep_wrap (op cl : Positioned YamlToken) (body : List (Positioned YamlToken))
+lemma lastNonSep_wrap (op cl : Positioned YamlToken) (body : List (Positioned YamlToken))
     (h : cl.val ≠ .flowEntry) :
     ∀ (hla : 0 < (op :: (body ++ [cl])).length),
       ((op :: (body ++ [cl]))[(op :: (body ++ [cl])).length - 1]'(Nat.sub_lt hla Nat.one_pos)).val
@@ -997,7 +997,7 @@ theorem lastNonSep_wrap (op cl : Positioned YamlToken) (body : List (Positioned 
 
 /-- `SepAdj` tail bridge — `getLast?` form (mirror of `lastNonOpener_of_getLast?`).  Reduce a
     block's "last token ≠ `.flowEntry`" to a `getLast?` witness.  Token-opaque verbatim clone. -/
-theorem lastNonSep_of_getLast? (l : List (Positioned YamlToken)) (t : Positioned YamlToken)
+lemma lastNonSep_of_getLast? (l : List (Positioned YamlToken)) (t : Positioned YamlToken)
     (h_gl : l.getLast? = some t) (h : t.val ≠ .flowEntry) :
     ∀ (hla : 0 < l.length),
       (l[l.length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowEntry := by
@@ -1009,7 +1009,7 @@ theorem lastNonSep_of_getLast? (l : List (Positioned YamlToken)) (t : Positioned
 
 /-- The forward bridge (mirror of `getLast?_not_opener_of_lastNonOpener`): a `getElem` "last ≠
     `.flowEntry`" yields a `getLast?` witness with a non-separator value.  Token-opaque clone. -/
-theorem getLast?_not_sep_of_lastNonSep (l : List (Positioned YamlToken)) (hne : l ≠ [])
+lemma getLast?_not_sep_of_lastNonSep (l : List (Positioned YamlToken)) (hne : l ≠ [])
     (h : ∀ (hla : 0 < l.length),
       (l[l.length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowEntry) :
     ∃ t, l.getLast? = some t ∧ t.val ≠ .flowEntry := by
@@ -1027,7 +1027,7 @@ theorem getLast?_not_sep_of_lastNonSep (l : List (Positioned YamlToken)) (hne : 
     so the `OpenerAdj`-style `lastNonOpener_append3` (which ALSO covered `rest = []` via the inert
     seam) has NO sound `.flowEntry` analogue at `rest = []`; PER R421 the tail bridge's domain
     restricts to `rest ≠ []`. -/
-theorem lastNonSep_append_right (a b : List (Positioned YamlToken)) (hb : b ≠ [])
+lemma lastNonSep_append_right (a b : List (Positioned YamlToken)) (hb : b ≠ [])
     (h_b : ∀ (hla : 0 < b.length),
       (b[b.length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowEntry) :
     ∀ (hla : 0 < (a ++ b).length),
@@ -1044,7 +1044,7 @@ theorem lastNonSep_append_right (a b : List (Positioned YamlToken)) (hb : b ≠ 
     carries a REAL content-start obligation `h_head_rest` on `rest`'s head.  Glue `[feTok] ++ rest`
     by `SepAdj_cons` (whose cons head premise IS the seam obligation), then `a ++ …` by
     `SepAdj_append` with `a`'s tail bridge.  `_h_fe` is folded into the cons premise and so unused. -/
-theorem SepAdj_seam (a rest : List (Positioned YamlToken)) (feTok : Positioned YamlToken)
+lemma SepAdj_seam (a rest : List (Positioned YamlToken)) (feTok : Positioned YamlToken)
     (ha : SepAdj a) (h_rest : SepAdj rest)
     (_h_fe : feTok.val = .flowEntry)
     (h_head_rest : ∀ (h0 : 0 < rest.length),
@@ -1063,7 +1063,7 @@ theorem SepAdj_seam (a rest : List (Positioned YamlToken)) (feTok : Positioned Y
     `.value`, NEITHER the `.flowEntry` trigger, so both the head wrap and the tail bridge discharge
     against the abstract premises `key ≠ .flowEntry` / `value ≠ .flowEntry`, never a concrete trigger
     token — token-opaque, so the obligation does not relocate here. -/
-theorem SepAdj_map_single (key value : Positioned YamlToken)
+lemma SepAdj_map_single (key value : Positioned YamlToken)
     (block_k block_v : List (Positioned YamlToken))
     (h_key : key.val ≠ .flowEntry)
     (h_value : value.val ≠ .flowEntry)
@@ -1110,7 +1110,7 @@ def EntryUnit (e : List (Positioned YamlToken)) : Prop :=
 
 /-- A single delta-`0` token (a `.scalar`/`.key`/`.value`) is a unit entry — vacuously,
     it has no proper nonempty prefix. -/
-theorem EntryUnit_singleton_delta_zero (t : Positioned YamlToken)
+lemma EntryUnit_singleton_delta_zero (t : Positioned YamlToken)
     (h_delta : flowBracketDelta t.val = 0) : EntryUnit [t] := by
   refine ⟨by rw [pbalance_singleton, h_delta], fun i h_i h_lt => ?_⟩
   exfalso
@@ -1118,7 +1118,7 @@ theorem EntryUnit_singleton_delta_zero (t : Positioned YamlToken)
   omega
 
 /-- A `.scalar` token is a unit entry. -/
-theorem EntryUnit_scalar (t : Positioned YamlToken) (value : String) (style : ScalarStyle)
+lemma EntryUnit_scalar (t : Positioned YamlToken) (value : String) (style : ScalarStyle)
     (h : t.val = .scalar value style) : EntryUnit [t] :=
   EntryUnit_singleton_delta_zero t (h ▸ flowBracketDelta_scalar value style)
 
@@ -1126,7 +1126,7 @@ theorem EntryUnit_scalar (t : Positioned YamlToken) (value : String) (style : Sc
     (delta `-1`) is a unit entry: the opener lifts every interior prefix to balance
     `≥ 1`, and the closer's `-1` only lands at the final position.  The unit refinement
     of `wrap_block`'s `EntrySafe` half. -/
-theorem EntryUnit_wrap (op cl : Positioned YamlToken) (body : List (Positioned YamlToken))
+lemma EntryUnit_wrap (op cl : Positioned YamlToken) (body : List (Positioned YamlToken))
     (h_op : flowBracketDelta op.val = 1) (h_cl : flowBracketDelta cl.val = -1)
     (h_body : WellBracketed body) : EntryUnit (op :: (body ++ [cl])) := by
   refine ⟨?_, fun i h_i h_lt => ?_⟩
@@ -1149,7 +1149,7 @@ theorem EntryUnit_wrap (op cl : Positioned YamlToken) (body : List (Positioned Y
     singleton, the whole entry to balance `+1 ≠ 0`).  This recovers the
     last-token-not-opener field of `EmitScansInFlowBlock` from the `EntryUnit` conjunct alone —
     the bridge the `EmitScansInFlowRecEntry → EmitScansInFlowBlock` down-coercion uses. -/
-theorem lastNonOpener_of_entryUnit (e : List (Positioned YamlToken)) (h_eu : EntryUnit e) :
+lemma lastNonOpener_of_entryUnit (e : List (Positioned YamlToken)) (h_eu : EntryUnit e) :
     ∀ (hla : 0 < e.length),
       (e[e.length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowSequenceStart := by
   intro hla hopen
@@ -1196,7 +1196,7 @@ inductive SafeBodyUnit (Q : YamlToken → Prop) : List (Positioned YamlToken) �
     or its successor is a separating `.flowEntry`.  `EntrySafe` is too weak for this —
     it permits an interior depth-`0` split that would make `body[k+1]` another token of
     the *same* entry; `EntryUnit`'s `≥ 1` interior condition forbids it. -/
-theorem SafeBodyUnit_succ {Q : YamlToken → Prop}
+lemma SafeBodyUnit_succ {Q : YamlToken → Prop}
     {body : List (Positioned YamlToken)} (h : SafeBodyUnit Q body) :
     ∀ (k : Nat) (hk : k < body.length),
       pbalance (body.take (k + 1)) = 0 → (body[k]'hk).val ≠ .flowEntry →
@@ -1285,7 +1285,7 @@ theorem SafeBodyUnit_succ {Q : YamlToken → Prop}
 /-- **Array/offset wrapper** for `SafeBodyUnit_succ`, against `flowBracketBalance` on the
     filtered token array with base offset `lo` — the value-end successor dual of
     `SafeBody_array_flowEntry`, in the shape the body characterizations consume. -/
-theorem SafeBodyUnit_array_succ {Q : YamlToken → Prop}
+lemma SafeBodyUnit_array_succ {Q : YamlToken → Prop}
     (arr : Array (Positioned YamlToken)) (lo : Nat)
     (h : SafeBodyUnit Q (arr.toList.drop lo)) :
     ∀ (k : Nat), lo ≤ k → (hk : k < arr.size) →
@@ -1325,7 +1325,7 @@ theorem SafeBodyUnit_array_succ {Q : YamlToken → Prop}
     the unbounded `arr.toList.drop lo` prefix whenever the cut `k` lies within the window
     (`k ≤ hi`): both name exactly the elements `[lo, k)`.  This lets the windowed SafeBody wrappers
     below reuse `flowBracketBalance_eq_pbalance` (which is stated against the unbounded drop). -/
-theorem window_prefix_eq (arr : Array (Positioned YamlToken)) (lo hi k : Nat)
+lemma window_prefix_eq (arr : Array (Positioned YamlToken)) (lo hi k : Nat)
     (h_k_hi : k ≤ hi) (h_hi_sz : hi ≤ arr.size) :
     ((arr.toList.take hi).drop lo).take (k - lo) = (arr.toList.drop lo).take (k - lo) := by
   apply List.ext_getElem
@@ -1339,7 +1339,7 @@ theorem window_prefix_eq (arr : Array (Positioned YamlToken)) (lo hi k : Nat)
     (which is `drop lo`-to-end and so only applies to the outer span).  A depth-0 `.flowEntry`
     separator at `k ∈ [lo, hi)` is followed by a `Q`-token at `k + 1 < hi`.  This is the
     `SeqBodyProps.after_fe` substrate at an arbitrary guarded subrange (Phase J). -/
-theorem SafeBody_array_flowEntry_window {Q : YamlToken → Prop}
+lemma SafeBody_array_flowEntry_window {Q : YamlToken → Prop}
     (arr : Array (Positioned YamlToken)) (lo hi : Nat) (h_hi : hi ≤ arr.size)
     (h : SafeBody Q ((arr.toList.take hi).drop lo)) :
     ∀ (k : Nat) (_hk_lo : lo ≤ k) (hk_hi : k < hi),
@@ -1375,7 +1375,7 @@ theorem SafeBody_array_flowEntry_window {Q : YamlToken → Prop}
     A balanced-prefix end at `k ∈ [lo, hi)` that is not a `.flowEntry` separator is an entry END:
     the body close (`k + 1 = hi`) or a `.flowEntry` next.  This is the `SeqBodyProps.scalar_succ` /
     bracket-conjunct `h_succ` substrate at an arbitrary guarded subrange (Phase J). -/
-theorem SafeBodyUnit_array_succ_window {Q : YamlToken → Prop}
+lemma SafeBodyUnit_array_succ_window {Q : YamlToken → Prop}
     (arr : Array (Positioned YamlToken)) (lo hi : Nat) (h_hi : hi ≤ arr.size)
     (h : SafeBodyUnit Q ((arr.toList.take hi).drop lo)) :
     ∀ (k : Nat) (_hk_lo : lo ≤ k) (hk_hi : k < hi),
@@ -1419,7 +1419,7 @@ theorem SafeBodyUnit_array_succ_window {Q : YamlToken → Prop}
     premise of `flowBodyContent_of_deep` *vacuously* — its premise (last token is a depth-`0`
     `.flowEntry`) is refuted, so the residual no-trailing-comma fact comes from the SAME
     `SafeBodyUnit` substrate the producer already delivers via `RecSeqBody.toSafeBodyUnit`. -/
-theorem SafeBodyUnit_last_not_sep {Q : YamlToken → Prop}
+lemma SafeBodyUnit_last_not_sep {Q : YamlToken → Prop}
     (hQ : ∀ v, Q v → v ≠ .flowEntry)
     {body : List (Positioned YamlToken)} (h : SafeBodyUnit Q body) :
     ∀ (k : Nat) (hk : k < body.length),
@@ -1472,7 +1472,7 @@ theorem SafeBodyUnit_last_not_sep {Q : YamlToken → Prop}
     last in-window position `k` (`k + 1 = hi`) whose prefix balance returns to `0` is NOT a `.flowEntry`
     separator.  Fed `exfalso`-style, this discharges the `noTrailingSepFact` residual at any guarded
     seq subrange: the windowed `SafeBodyUnit` the body producer delivers refutes a trailing comma. -/
-theorem SafeBodyUnit_array_last_not_sep_window {Q : YamlToken → Prop}
+lemma SafeBodyUnit_array_last_not_sep_window {Q : YamlToken → Prop}
     (hQ : ∀ v, Q v → v ≠ .flowEntry)
     (arr : Array (Positioned YamlToken)) (lo hi : Nat) (h_hi : hi ≤ arr.size)
     (h : SafeBodyUnit Q ((arr.toList.take hi).drop lo)) :
@@ -1501,7 +1501,7 @@ theorem SafeBodyUnit_array_last_not_sep_window {Q : YamlToken → Prop}
 /-- Prepending a delta-`0`, non-`.flowEntry` token to an `EntrySafe` entry keeps
     it `EntrySafe`: the head contributes nothing to the balance, and any interior
     `.flowEntry` is the tail's, whose prefix balance is unchanged by the head. -/
-theorem EntrySafe_cons_delta_zero (t : Positioned YamlToken)
+lemma EntrySafe_cons_delta_zero (t : Positioned YamlToken)
     (l : List (Positioned YamlToken))
     (h_delta : flowBracketDelta t.val = 0) (h_ne : t.val ≠ .flowEntry)
     (hl : EntrySafe l) : EntrySafe (t :: l) := by
@@ -1553,29 +1553,29 @@ def WellTyped (l : List (Positioned YamlToken)) : Prop :=
   btFold (some []) l = some []
 
 /-- The empty token list is `WellTyped` (the typed twin of `WellBracketed_nil`). -/
-theorem WellTyped_nil : WellTyped [] := rfl
+lemma WellTyped_nil : WellTyped [] := rfl
 
-theorem btFold_cons (s0 : Option (List Bool)) (t : Positioned YamlToken)
+lemma btFold_cons (s0 : Option (List Bool)) (t : Positioned YamlToken)
     (rest : List (Positioned YamlToken)) :
     btFold s0 (t :: rest) = btFold (s0.bind (btStep t)) rest := by
   simp [btFold, List.foldl_cons]
 
-theorem btFold_cons_some (s : List Bool) (t : Positioned YamlToken)
+lemma btFold_cons_some (s : List Bool) (t : Positioned YamlToken)
     (rest : List (Positioned YamlToken)) :
     btFold (some s) (t :: rest) = btFold (btStep t s) rest := by
   simp [btFold, List.foldl_cons, Option.bind]
 
-theorem btFold_append (s0 : Option (List Bool)) (a b : List (Positioned YamlToken)) :
+lemma btFold_append (s0 : Option (List Bool)) (a b : List (Positioned YamlToken)) :
     btFold s0 (a ++ b) = btFold (btFold s0 a) b := by
   simp [btFold, List.foldl_append]
 
-theorem btFold_none (l : List (Positioned YamlToken)) : btFold none l = none := by
+lemma btFold_none (l : List (Positioned YamlToken)) : btFold none l = none := by
   induction l with
   | nil => rfl
   | cons t rest ih => rw [btFold_cons]; exact ih
 
 /-- A non-bracket token (`flowBracketDelta = 0`) leaves the typed stack unchanged. -/
-theorem btStep_delta_zero (t : Positioned YamlToken) (s : List Bool)
+lemma btStep_delta_zero (t : Positioned YamlToken) (s : List Bool)
     (h : flowBracketDelta t.val = 0) : btStep t s = some s := by
   unfold btStep
   cases hv : t.val <;> simp only [hv] at h ⊢ <;>
@@ -1583,7 +1583,7 @@ theorem btStep_delta_zero (t : Positioned YamlToken) (s : List Bool)
 
 /-- **Stack-frame for a single step.**  If a step is defined over stack `s`, the same step
     over an extended stack `s ++ extra` leaves `extra` untouched. -/
-theorem btStep_frame (t : Positioned YamlToken) (s m extra : List Bool)
+lemma btStep_frame (t : Positioned YamlToken) (s m extra : List Bool)
     (h : btStep t s = some m) : btStep t (s ++ extra) = some (m ++ extra) := by
   unfold btStep at h ⊢
   cases hv : t.val <;> simp only [hv] at h ⊢ <;>
@@ -1597,7 +1597,7 @@ theorem btStep_frame (t : Positioned YamlToken) (s m extra : List Bool)
 /-- **Stack-frame for a fold.**  A fold defined over stack `s` (ending at `m`) runs identically
     over an extended stack `s ++ extra`, ending at `m ++ extra`.  This is the inductive engine:
     a `WellTyped` body never underflows its starting stack, so it returns to it. -/
-theorem btFold_frame (l : List (Positioned YamlToken)) :
+lemma btFold_frame (l : List (Positioned YamlToken)) :
     ∀ (s m extra : List Bool), btFold (some s) l = some m →
       btFold (some (s ++ extra)) l = some (m ++ extra) := by
   induction l with
@@ -1616,14 +1616,14 @@ theorem btFold_frame (l : List (Positioned YamlToken)) :
       exact ih m' m extra h
 
 /-- A `WellTyped` body folded over *any* prefix stack returns to that prefix. -/
-theorem WellTyped_frame (l : List (Positioned YamlToken)) (pre : List Bool)
+lemma WellTyped_frame (l : List (Positioned YamlToken)) (pre : List Bool)
     (h : WellTyped l) : btFold (some pre) l = some pre := by
   have := btFold_frame l [] [] pre h
   simpa using this
 
 /-- A defined fold's prefix is defined (mirrors `WellTyped_prefix_some`, without `WellTyped`):
     `none` is absorbing, so an undefined prefix would force the whole fold to `none ≠ some r`. -/
-theorem btFold_some_prefix (a b : List (Positioned YamlToken)) (r : List Bool)
+lemma btFold_some_prefix (a b : List (Positioned YamlToken)) (r : List Bool)
     (h : btFold (some []) (a ++ b) = some r) : ∃ m, btFold (some []) a = some m := by
   rw [btFold_append] at h
   cases ha : btFold (some []) a with
@@ -1631,7 +1631,7 @@ theorem btFold_some_prefix (a b : List (Positioned YamlToken)) (r : List Bool)
   | some s => exact ⟨s, rfl⟩
 
 /-- A single delta-`0` token is `WellTyped`. -/
-theorem WellTyped_singleton_delta_zero (t : Positioned YamlToken)
+lemma WellTyped_singleton_delta_zero (t : Positioned YamlToken)
     (h : flowBracketDelta t.val = 0) : WellTyped [t] := by
   unfold WellTyped
   rw [btFold_cons_some]
@@ -1639,14 +1639,14 @@ theorem WellTyped_singleton_delta_zero (t : Positioned YamlToken)
   exact btStep_delta_zero t [] h
 
 /-- `WellTyped` is closed under concatenation (stack-fold homomorphism). -/
-theorem WellTyped_append (a b : List (Positioned YamlToken))
+lemma WellTyped_append (a b : List (Positioned YamlToken))
     (ha : WellTyped a) (hb : WellTyped b) : WellTyped (a ++ b) := by
   unfold WellTyped at *
   rw [btFold_append, ha]; exact hb
 
 /-- Prepending a delta-`0` token preserves `WellTyped` — the typed twin of
     `WellBracketed_cons_delta_zero`. -/
-theorem WellTyped_cons_delta_zero (t : Positioned YamlToken)
+lemma WellTyped_cons_delta_zero (t : Positioned YamlToken)
     (l : List (Positioned YamlToken))
     (h_delta : flowBracketDelta t.val = 0) (h_wt : WellTyped l) : WellTyped (t :: l) := by
   have h : t :: l = [t] ++ l := rfl
@@ -1656,7 +1656,7 @@ theorem WellTyped_cons_delta_zero (t : Positioned YamlToken)
 /-- **Typed wrap (sequence).**  A `WellTyped` interior framed by `[ … ]` is `WellTyped`:
     the matching `]` pops exactly the `[` this lemma pushed.  The typed twin of
     `wrap_seq_block` — its payoff is that the close is provably a `]`, not a `}`. -/
-theorem wrap_seq_typed (op cl : Positioned YamlToken) (body : List (Positioned YamlToken))
+lemma wrap_seq_typed (op cl : Positioned YamlToken) (body : List (Positioned YamlToken))
     (h_op : op.val = .flowSequenceStart) (h_cl : cl.val = .flowSequenceEnd)
     (h_body : WellTyped body) : WellTyped (op :: (body ++ [cl])) := by
   unfold WellTyped
@@ -1667,7 +1667,7 @@ theorem wrap_seq_typed (op cl : Positioned YamlToken) (body : List (Positioned Y
   unfold btStep; rw [h_cl]
 
 /-- **Typed wrap (mapping).**  A `WellTyped` interior framed by `{ … }` is `WellTyped`. -/
-theorem wrap_map_typed (op cl : Positioned YamlToken) (body : List (Positioned YamlToken))
+lemma wrap_map_typed (op cl : Positioned YamlToken) (body : List (Positioned YamlToken))
     (h_op : op.val = .flowMappingStart) (h_cl : cl.val = .flowMappingEnd)
     (h_body : WellTyped body) : WellTyped (op :: (body ++ [cl])) := by
   unfold WellTyped
@@ -1695,7 +1695,7 @@ of a `[` is a `]`) — is the second sub-brick, layered above this. -/
 /-- **One step shifts the stack length by exactly the bracket delta.**  A `[`/`{` push adds
     one, a matching `]`/`}` pop removes one, everything else is unchanged — mirroring
     `flowBracketDelta`.  The `none` (mismatch/underflow) cases are excluded by the hypothesis. -/
-theorem btStep_length (t : Positioned YamlToken) (s s' : List Bool)
+lemma btStep_length (t : Positioned YamlToken) (s s' : List Bool)
     (h : btStep t s = some s') :
     (s'.length : Int) = (s.length : Int) + flowBracketDelta t.val := by
   unfold btStep at h
@@ -1709,7 +1709,7 @@ theorem btStep_length (t : Positioned YamlToken) (s s' : List Bool)
 /-- **A `some`-valued fold shifts length by `pbalance`.**  Whenever the typed fold from a
     starting stack `s0` stays defined (`= some s1`), the final stack length differs from the
     initial by the cumulative bracket balance of the list. -/
-theorem btFold_length (l : List (Positioned YamlToken)) :
+lemma btFold_length (l : List (Positioned YamlToken)) :
     ∀ (s0 s1 : List Bool), btFold (some s0) l = some s1 →
       (s1.length : Int) = (s0.length : Int) + pbalance l := by
   induction l with
@@ -1733,7 +1733,7 @@ theorem btFold_length (l : List (Positioned YamlToken)) :
     not pop into `extra` (`0 ≤ s.length + flowBracketDelta t.val`, so a pop has something in `s` to
     remove), the same step is defined over `s` alone, and the extension is preserved.  The converse
     of `btStep_frame`. -/
-theorem btStep_frame_inv (t : Positioned YamlToken) (s extra M : List Bool)
+lemma btStep_frame_inv (t : Positioned YamlToken) (s extra M : List Bool)
     (h_nopop : 0 ≤ (s.length : Int) + flowBracketDelta t.val)
     (h : btStep t (s ++ extra) = some M) :
     ∃ n, btStep t s = some n ∧ M = n ++ extra := by
@@ -1752,7 +1752,7 @@ theorem btStep_frame_inv (t : Positioned YamlToken) (s extra M : List Bool)
     the extension is preserved (`m' = m ++ extra`).  The floor alone suffices for definedness of the
     smaller fold because every pop the big fold makes targets a within-`l` push (never `extra`), so the
     smaller fold replays the identical, defined decisions. -/
-theorem btFold_frame_inv (l : List (Positioned YamlToken)) :
+lemma btFold_frame_inv (l : List (Positioned YamlToken)) :
     ∀ (s extra m' : List Bool),
       (∀ k, k ≤ l.length → 0 ≤ (s.length : Int) + pbalance (l.take k)) →
       btFold (some (s ++ extra)) l = some m' →
@@ -1787,7 +1787,7 @@ theorem btFold_frame_inv (l : List (Positioned YamlToken)) :
 
 /-- **A prefix of a `WellTyped` list never underflows** — it folds to `some` (because `none`
     is absorbing, an underflowing prefix would force the whole fold to `none ≠ some []`). -/
-theorem WellTyped_prefix_some (a b : List (Positioned YamlToken))
+lemma WellTyped_prefix_some (a b : List (Positioned YamlToken))
     (h : WellTyped (a ++ b)) : ∃ s, btFold (some []) a = some s := by
   unfold WellTyped at h
   rw [btFold_append] at h
@@ -1799,7 +1799,7 @@ theorem WellTyped_prefix_some (a b : List (Positioned YamlToken))
     is `some s` with `s.length` equal to that prefix's `pbalance`.  This is the glue between
     the typed-stack world (`WellTyped`) and the numeric `flowBracketBalance`/`pbalance` world
     where the matching locator and `SeqBodyProps` live. -/
-theorem WellTyped_take_stack (l : List (Positioned YamlToken)) (m : Nat)
+lemma WellTyped_take_stack (l : List (Positioned YamlToken)) (m : Nat)
     (h : WellTyped l) :
     ∃ s, btFold (some []) (l.take m) = some s ∧ (s.length : Int) = pbalance (l.take m) := by
   have hsplit : l = l.take m ++ l.drop m := (List.take_append_drop m l).symm
@@ -1819,7 +1819,7 @@ theorem WellTyped_take_stack (l : List (Positioned YamlToken)) (m : Nat)
     `flowBracketBalance tokens 0 a = pbalance (take a)`).  Both `[` and `{` push one stack element AND
     contribute `+1` via `flowBracketDelta`, so the count is uniform across seq/map — a non-empty stack
     (`btFold`-top `= some _`) ⇒ length `≥ 1` ⇒ balance `≥ 1` directly, with no per-step induction. -/
-theorem flowBracketBalance_pos_of_btFold_head
+lemma flowBracketBalance_pos_of_btFold_head
     (tokens : Array (Positioned YamlToken)) (a : Nat) (hd : Bool)
     (h_mark : (btFold (some []) (tokens.toList.take a)).bind (·.head?) = some hd) :
     flowBracketBalance tokens 0 a ≥ 1 := by
@@ -1842,14 +1842,14 @@ theorem flowBracketBalance_pos_of_btFold_head
 /-- **Reading the close type (sequence).**  The only `btStep` that pops `[true]` to `[]` is a
     `.flowSequenceEnd` — once the bridge fixes the stack at the close to `[true]`, this pins
     the close token to a `]`. -/
-theorem btStep_pop_eq_seqEnd (t : Positioned YamlToken)
+lemma btStep_pop_eq_seqEnd (t : Positioned YamlToken)
     (h : btStep t [true] = some []) : t.val = .flowSequenceEnd := by
   unfold btStep at h
   cases hv : t.val <;> simp only [hv] at h <;> simp_all
 
 /-- **Reading the close type (mapping).**  The only `btStep` that pops `[false]` to `[]` is a
     `.flowMappingEnd`. -/
-theorem btStep_pop_eq_mapEnd (t : Positioned YamlToken)
+lemma btStep_pop_eq_mapEnd (t : Positioned YamlToken)
     (h : btStep t [false] = some []) : t.val = .flowMappingEnd := by
   unfold btStep at h
   cases hv : t.val <;> simp only [hv] at h <;> simp_all
@@ -1868,7 +1868,7 @@ Feeding `s0 = [true]` (just after a depth-0 `[`) and the interior span up to the
 then forces the close's singleton to be `[true]` as well — pinning the close type via part 1. -/
 
 /-- `getLast?` ignores a `cons` onto a non-empty tail: the bottom (last) element is unchanged. -/
-theorem getLast?_cons_ne (a : Bool) (s : List Bool) (hs : s ≠ []) :
+lemma getLast?_cons_ne (a : Bool) (s : List Bool) (hs : s ≠ []) :
     (a :: s).getLast? = s.getLast? := by
   cases s with
   | nil => exact absurd rfl hs
@@ -1876,7 +1876,7 @@ theorem getLast?_cons_ne (a : Bool) (s : List Bool) (hs : s ≠ []) :
 
 /-- **One step preserves the stack bottom** (when neither stack is empty).  A push prepends to
     the head, a matching pop removes the head — both leave the last element untouched. -/
-theorem btStep_getLast?_preserved (t : Positioned YamlToken) (s s' : List Bool)
+lemma btStep_getLast?_preserved (t : Positioned YamlToken) (s s' : List Bool)
     (hs : s ≠ []) (hs' : s' ≠ []) (h : btStep t s = some s') :
     s'.getLast? = s.getLast? := by
   unfold btStep at h
@@ -1895,7 +1895,7 @@ theorem btStep_getLast?_preserved (t : Positioned YamlToken) (s s' : List Bool)
     drops below `1`, the final stack has the *same bottom element* as `s0`.  The bottom opener is
     never popped while depth stays positive — this is the structural fact the type-collapsing
     numeric balance cannot see. -/
-theorem btFold_getLast?_preserved (l : List (Positioned YamlToken)) :
+lemma btFold_getLast?_preserved (l : List (Positioned YamlToken)) :
     ∀ (s0 sf : List Bool), s0 ≠ [] →
       (∀ m, m ≤ l.length → 1 ≤ (s0.length : Int) + pbalance (l.take m)) →
       btFold (some s0) l = some sf →
@@ -1945,11 +1945,11 @@ payoff: `flowBracketBalance_matching_close_{seq,map}` — given a `WellTyped` in
 matching close of a `[` is a `]` (of a `{` is a `}`), exactly the `tokens[j]!.val` the
 `SeqBodyProps`/`MapBodyProps` bracket conjuncts demand and the numeric balance cannot supply. -/
 
-theorem btStep_val_congr (t t' : Positioned YamlToken) (s : List Bool)
+lemma btStep_val_congr (t t' : Positioned YamlToken) (s : List Bool)
     (h : t.val = t'.val) : btStep t s = btStep t' s := by
   unfold btStep; rw [h]
 
-theorem btStep_emptypush_delta (t : Positioned YamlToken) (b : Bool)
+lemma btStep_emptypush_delta (t : Positioned YamlToken) (b : Bool)
     (h : btStep t [] = some [b]) : flowBracketDelta t.val = 1 := by
   unfold btStep at h
   cases hv : t.val <;> simp only [hv] at h <;>
@@ -1961,7 +1961,7 @@ theorem btStep_emptypush_delta (t : Positioned YamlToken) (b : Bool)
     of a depth-0 opener at `k` (numeric facts from `flowBracketBalance_matching_close`) pops
     the exact singleton `[b]` the opener pushed.  `B` is abstract so this avoids re-deriving
     the `take`/`drop` offset bridge inside `WellTyped`. -/
-theorem matching_close_typed_generic
+lemma matching_close_typed_generic
     (B : List (Positioned YamlToken)) (tokens : Array (Positioned YamlToken))
     (lo k j hi : Nat) (b : Bool)
     (hlenB : B.length = hi - lo)
@@ -2062,7 +2062,7 @@ theorem matching_close_typed_generic
 /-- **Typed matching-close — array core.**  Specializes `matching_close_typed_generic` to the
     interior slice `[lo, hi)` of the token array, proving the `length`/`balance`/`value`
     bridges for that concrete `B`. -/
-theorem matching_close_typed_core
+lemma matching_close_typed_core
     (tokens : Array (Positioned YamlToken)) (lo k j hi : Nat) (b : Bool)
     (h_lo_k : lo ≤ k) (h_kj : k < j) (h_j_hi : j < hi) (h_hi_sz : hi ≤ tokens.size)
     (h_k_depth : flowBracketBalance tokens lo k = 0)
@@ -2094,7 +2094,7 @@ theorem matching_close_typed_core
   exact matching_close_typed_generic ((tokens.toList.drop lo).take (hi - lo)) tokens lo k j hi b
     hlenB hbal hval h_wt h_lo_k h_kj h_j_hi h_hi_sz h_k_depth h_k_push h_inner h_j_close h_pos
 
-theorem flowBracketBalance_matching_close_seq
+lemma flowBracketBalance_matching_close_seq
     (tokens : Array (Positioned YamlToken)) (lo k hi : Nat)
     (h_lo_k : lo ≤ k) (h_k_hi : k < hi) (h_hi_sz : hi ≤ tokens.size)
     (h_k_depth : flowBracketBalance tokens lo k = 0)
@@ -2119,7 +2119,7 @@ theorem flowBracketBalance_matching_close_seq
     flowBracketBalance_interior_dyck tokens lo k j h_lo_k (by omega) h_k_depth h_k_open_delta hpos
   exact ⟨j, hkj, hjhi, btStep_pop_eq_seqEnd _ hpop, hinner, h_floor⟩
 
-theorem flowBracketBalance_matching_close_map
+lemma flowBracketBalance_matching_close_map
     (tokens : Array (Positioned YamlToken)) (lo k hi : Nat)
     (h_lo_k : lo ≤ k) (h_k_hi : k < hi) (h_hi_sz : hi ≤ tokens.size)
     (h_k_depth : flowBracketBalance tokens lo k = 0)
@@ -2163,7 +2163,7 @@ ambient `WellTyped`. -/
     pop never reaches into `extra` (guard: a closer requires `s` non-empty), then the same step
     over `s` alone is defined and the result is the un-extended stack `s' ++ extra`.  The
     converse of `btStep_frame`. -/
-theorem btStep_unframe (t : Positioned YamlToken) (s extra r : List Bool)
+lemma btStep_unframe (t : Positioned YamlToken) (s extra r : List Bool)
     (h : btStep t (s ++ extra) = some r)
     (hguard : flowBracketDelta t.val = -1 → s ≠ []) :
     ∃ s', btStep t s = some s' ∧ r = s' ++ extra := by
@@ -2184,7 +2184,7 @@ theorem btStep_unframe (t : Positioned YamlToken) (s extra r : List Bool)
     `extra` (Dyck guard: every prefix keeps `s.length + pbalance ≥ 0`) runs identically over `s`
     alone, ending one un-extended stack lower.  This is the down-direction dual of `btFold_frame`;
     the guard is what `btFold_frame` gets for free in the up-direction. -/
-theorem btFold_unframe (m : List (Positioned YamlToken)) :
+lemma btFold_unframe (m : List (Positioned YamlToken)) :
     ∀ (s extra mfull : List Bool),
       btFold (some (s ++ extra)) m = some mfull →
       (∀ i, i ≤ m.length → (s.length : Int) + pbalance (m.take i) ≥ 0) →
@@ -2227,7 +2227,7 @@ theorem btFold_unframe (m : List (Positioned YamlToken)) :
     (feasible) prefix `pre ++ m`, and balance-`0` forces the resulting stack back to `[]`.  This
     discharges the `WellTyped` hypothesis that `flowBracketBalance_matching_close_{seq,map}` demand
     for *nested* subranges, where the global `WellTyped` is all that is on hand. -/
-theorem WellTyped_infix_balanced (pre m suf : List (Positioned YamlToken))
+lemma WellTyped_infix_balanced (pre m suf : List (Positioned YamlToken))
     (h : WellTyped (pre ++ m ++ suf))
     (hbal : pbalance m = 0)
     (hdyck : ∀ i, i ≤ m.length → pbalance (m.take i) ≥ 0) :
@@ -2268,7 +2268,7 @@ bridge converts both balance facts into the `pbalance` form the engine takes.  T
     (every prefix balance from `lo` stays `≥ 0`) is `WellTyped`.  Packages
     `WellTyped_infix_balanced` behind the `flowBracketBalance`/array-index interface that
     `FlowSubrangesOk` and `flowBracketBalance_matching_close_{seq,map}` consume. -/
-theorem WellTyped_subrange (tokens : Array (Positioned YamlToken)) (LO lo hi HI : Nat)
+lemma WellTyped_subrange (tokens : Array (Positioned YamlToken)) (LO lo hi HI : Nat)
     (hLO : LO ≤ lo) (h_lo_hi : lo ≤ hi) (hHI : hi ≤ HI)
     (h_HI_sz : HI ≤ tokens.size)
     (hW : WellTyped ((tokens.toList.take HI).drop LO))
@@ -2348,7 +2348,7 @@ core's output, so the `{seq,map}` wrappers are even simpler than their depth-0 o
     absolute `flowBracketBalance tokens lo i ≥ 1`.  The interior `[k+1, j)` is recovered `WellTyped`
     via `WellTyped_infix_balanced`, so its fold from `b :: s_k` returns to `b :: s_k`
     (`WellTyped_frame`); `btStep_frame_inv` then strips the frame `s_k` off the close. -/
-theorem matching_close_typed_generic_nested
+lemma matching_close_typed_generic_nested
     (B : List (Positioned YamlToken)) (tokens : Array (Positioned YamlToken))
     (lo k j hi : Nat) (b : Bool)
     (hlenB : B.length = hi - lo)
@@ -2457,7 +2457,7 @@ theorem matching_close_typed_generic_nested
     proving the `length`/`balance`/`value` bridges for that concrete `B` (verbatim from
     `matching_close_typed_core`, dropping `h_k_depth` and swapping `h_pos` for the relative
     `h_floor`). -/
-theorem matching_close_typed_core_nested
+lemma matching_close_typed_core_nested
     (tokens : Array (Positioned YamlToken)) (lo k j hi : Nat) (b : Bool)
     (h_lo_k : lo ≤ k) (h_kj : k < j) (h_j_hi : j < hi) (h_hi_sz : hi ≤ tokens.size)
     (h_k_push : btStep tokens[k]! [] = some [b])
@@ -2495,7 +2495,7 @@ theorem matching_close_typed_core_nested
     and reads the close type via `matching_close_typed_core_nested` + `btStep_pop_eq_seqEnd`.  The
     relative interior floor is the balance core's own output — no `flowBracketBalance_interior_dyck`
     re-derivation. -/
-theorem flowBracketBalance_matching_close_seq_nested
+lemma flowBracketBalance_matching_close_seq_nested
     (tokens : Array (Positioned YamlToken)) (lo k hi : Nat)
     (h_lo_k : lo ≤ k) (h_k_hi : k < hi) (h_hi_sz : hi ≤ tokens.size)
     (h_k_open : tokens[k]!.val = .flowSequenceStart)
@@ -2516,7 +2516,7 @@ theorem flowBracketBalance_matching_close_seq_nested
 
 /-- **Depth-general typed locator (mapping).**  The nested twin of
     `flowBracketBalance_matching_close_map`, with `h_k_depth` DROPPED (see the seq analogue). -/
-theorem flowBracketBalance_matching_close_map_nested
+lemma flowBracketBalance_matching_close_map_nested
     (tokens : Array (Positioned YamlToken)) (lo k hi : Nat)
     (h_lo_k : lo ≤ k) (h_k_hi : k < hi) (h_hi_sz : hi ≤ tokens.size)
     (h_k_open : tokens[k]!.val = .flowMappingStart)
@@ -2561,7 +2561,7 @@ only the close-type and which locator differ. -/
     `WellTyped` seq body `[lo, hi)` yields the full `bracket_seq` conjunct: matching `]` at `j`
     with balanced interior (typed locator), plus the `FE ∨ (seqEnd ∧ j+1=hi)` successor
     (`seq_bracket_succ_reduce` from `h_succ`). -/
-theorem seq_bracket_seq_conjunct (tokens : Array (Positioned YamlToken))
+lemma seq_bracket_seq_conjunct (tokens : Array (Positioned YamlToken))
     (lo hi k : Nat) (h_lo_k : lo ≤ k) (h_k_hi : k < hi) (h_hi_sz : hi ≤ tokens.size)
     (h_k_depth : flowBracketBalance tokens lo k = 0)
     (h_k_open : tokens[k]!.val = .flowSequenceStart)
@@ -2594,7 +2594,7 @@ theorem seq_bracket_seq_conjunct (tokens : Array (Positioned YamlToken))
     the `bracket_map` conjunct: matching `}` at `j` (typed locator `..._map`) with balanced
     interior, plus the SAME seq-body successor — a seq body closes with `.flowSequenceEnd`, so a
     bracketed-map item still routes through `seq_bracket_succ_reduce`. -/
-theorem seq_bracket_map_conjunct (tokens : Array (Positioned YamlToken))
+lemma seq_bracket_map_conjunct (tokens : Array (Positioned YamlToken))
     (lo hi k : Nat) (h_lo_k : lo ≤ k) (h_k_hi : k < hi) (h_hi_sz : hi ≤ tokens.size)
     (h_k_depth : flowBracketBalance tokens lo k = 0)
     (h_k_open : tokens[k]!.val = .flowMappingStart)
@@ -2644,7 +2644,7 @@ carry delta `0` and are excluded).  M9/M10 (`bracket_seq`/`bracket_map`) need no
     yields the full M5 conjunct: the 2-way kind split routes through the matching typed locator for
     the close position+type with balanced interior, plus the `.value` successor
     (`map_key_bracket_value_reduce` from the shared "what follows a complete key" fact `h_succ`). -/
-theorem map_key_bracket_conjunct (tokens : Array (Positioned YamlToken))
+lemma map_key_bracket_conjunct (tokens : Array (Positioned YamlToken))
     (lo hi k : Nat) (h_lo_k1 : lo ≤ k + 1) (h_k1_hi : k + 1 < hi) (h_hi_sz : hi ≤ tokens.size)
     (h_k1_depth : flowBracketBalance tokens lo (k+1) = 0)
     (h_open : tokens[k+1]!.val = .flowSequenceStart ∨ tokens[k+1]!.val = .flowMappingStart)
@@ -2686,7 +2686,7 @@ theorem map_key_bracket_conjunct (tokens : Array (Positioned YamlToken))
     balanced interior, plus the `FE ∨ (mapEnd ∧ j+1=hi)` successor (`map_value_bracket_succ_reduce`
     from `h_succ`).  A map body closes with `.flowMappingEnd`, so both kinds carry the map
     successor. -/
-theorem map_value_bracket_conjunct (tokens : Array (Positioned YamlToken))
+lemma map_value_bracket_conjunct (tokens : Array (Positioned YamlToken))
     (lo hi k : Nat) (h_lo_k1 : lo ≤ k + 1) (h_k1_hi : k + 1 < hi) (h_hi_sz : hi ≤ tokens.size)
     (h_k1_depth : flowBracketBalance tokens lo (k+1) = 0)
     (h_open : tokens[k+1]!.val = .flowSequenceStart ∨ tokens[k+1]!.val = .flowMappingStart)
@@ -2730,7 +2730,7 @@ theorem map_value_bracket_conjunct (tokens : Array (Positioned YamlToken))
 -- ═══ Filtered token lemmas for scanner handlers ═══
 
 /-- `scanFlowSequenceStart` filtered token equation: adds exactly one `.flowSequenceStart`. -/
-theorem scanFlowSequenceStart_filtered (s : ScannerState) :
+lemma scanFlowSequenceStart_filtered (s : ScannerState) :
     let p := fun (t : Positioned YamlToken) => t.val != .placeholder
     (scanFlowSequenceStart s).tokens.filter p =
     (s.tokens.filter p).push { pos := s.currentPos, val := .flowSequenceStart } := by
@@ -2741,7 +2741,7 @@ theorem scanFlowSequenceStart_filtered (s : ScannerState) :
   rw [Array.filter_push]; rfl
 
 /-- `scanFlowMappingStart` filtered token equation: adds exactly one `.flowMappingStart`. -/
-theorem scanFlowMappingStart_filtered (s : ScannerState) :
+lemma scanFlowMappingStart_filtered (s : ScannerState) :
     let p := fun (t : Positioned YamlToken) => t.val != .placeholder
     (scanFlowMappingStart s).tokens.filter p =
     (s.tokens.filter p).push { pos := s.currentPos, val := .flowMappingStart } := by
@@ -2753,7 +2753,7 @@ theorem scanFlowMappingStart_filtered (s : ScannerState) :
 
 /-- `scanFlowEntry` filtered token equation (when it succeeds):
     adds exactly one `.flowEntry`. -/
-theorem scanFlowEntry_filtered (s s' : ScannerState)
+lemma scanFlowEntry_filtered (s s' : ScannerState)
     (h : scanFlowEntry s = .ok s') :
     let p := fun (t : Positioned YamlToken) => t.val != .placeholder
     s'.tokens.filter p = (s.tokens.filter p).push { pos := s.currentPos, val := .flowEntry } := by
@@ -2777,7 +2777,7 @@ theorem scanFlowEntry_filtered (s s' : ScannerState)
     rw [Array.filter_push]; rfl
 
 /-- `scanFlowSequenceEnd` filtered token equation: adds exactly one `.flowSequenceEnd`. -/
-theorem scanFlowSequenceEnd_filtered (s : ScannerState) :
+lemma scanFlowSequenceEnd_filtered (s : ScannerState) :
     let p := fun (t : Positioned YamlToken) => t.val != .placeholder
     (scanFlowSequenceEnd s).tokens.filter p =
     (s.tokens.filter p).push { pos := s.currentPos, val := .flowSequenceEnd } := by
@@ -2788,7 +2788,7 @@ theorem scanFlowSequenceEnd_filtered (s : ScannerState) :
   rw [Array.filter_push]; rfl
 
 /-- `scanFlowMappingEnd` filtered token equation: adds exactly one `.flowMappingEnd`. -/
-theorem scanFlowMappingEnd_filtered (s : ScannerState) :
+lemma scanFlowMappingEnd_filtered (s : ScannerState) :
     let p := fun (t : Positioned YamlToken) => t.val != .placeholder
     (scanFlowMappingEnd s).tokens.filter p =
     (s.tokens.filter p).push { pos := s.currentPos, val := .flowMappingEnd } := by
@@ -2815,7 +2815,7 @@ theorem scanFlowMappingEnd_filtered (s : ScannerState) :
     consumes.  No consumers yet — pure enablement, mirroring `.leafdelta`. -/
 
 /-- `[` dispatch: the new filtered token is exactly one `.flowSequenceStart`. -/
-theorem scanNextToken_flow_open_seq_filtered_push (s : ScannerState) (rest : List Char)
+lemma scanNextToken_flow_open_seq_filtered_push (s : ScannerState) (rest : List Char)
     (hcorr : ScannerSurfCorr s ⟨'[' :: rest, s.col⟩)
     (h_flow : s.inFlow = true) (h_indent : s.currentIndent < 0) (h_col : s.col > 0)
     {s' : ScannerState} (h_snt : scanNextToken s = .ok (some s')) :
@@ -2848,7 +2848,7 @@ theorem scanNextToken_flow_open_seq_filtered_push (s : ScannerState) (rest : Lis
   rw [h_s', hf, h_ad_filter]
 
 /-- `{` dispatch: the new filtered token is exactly one `.flowMappingStart`. -/
-theorem scanNextToken_flow_open_map_filtered_push (s : ScannerState) (rest : List Char)
+lemma scanNextToken_flow_open_map_filtered_push (s : ScannerState) (rest : List Char)
     (hcorr : ScannerSurfCorr s ⟨'{' :: rest, s.col⟩)
     (h_flow : s.inFlow = true) (h_indent : s.currentIndent < 0) (h_col : s.col > 0)
     {s' : ScannerState} (h_snt : scanNextToken s = .ok (some s')) :
@@ -2882,7 +2882,7 @@ theorem scanNextToken_flow_open_map_filtered_push (s : ScannerState) (rest : Lis
 
 /-- `]` dispatch (nested, `flowLevel ≥ 2`): the new filtered token is exactly
     one `.flowSequenceEnd`. -/
-theorem scanNextToken_flow_close_seq_filtered_push (s : ScannerState) (rest : List Char)
+lemma scanNextToken_flow_close_seq_filtered_push (s : ScannerState) (rest : List Char)
     (hcorr : ScannerSurfCorr s ⟨']' :: rest, s.col⟩)
     (h_flow : s.inFlow = true) (h_indent : s.currentIndent < 0) (h_col : s.col > 0)
     (h_fl_ge2 : s.flowLevel ≥ 2)
@@ -2919,7 +2919,7 @@ theorem scanNextToken_flow_close_seq_filtered_push (s : ScannerState) (rest : Li
 
 /-- `}` dispatch (nested, `flowLevel ≥ 2`): the new filtered token is exactly
     one `.flowMappingEnd`. -/
-theorem scanNextToken_flow_close_map_filtered_push (s : ScannerState) (rest : List Char)
+lemma scanNextToken_flow_close_map_filtered_push (s : ScannerState) (rest : List Char)
     (hcorr : ScannerSurfCorr s ⟨'}' :: rest, s.col⟩)
     (h_flow : s.inFlow = true) (h_indent : s.currentIndent < 0) (h_col : s.col > 0)
     (h_fl_ge2 : s.flowLevel ≥ 2)
@@ -2955,7 +2955,7 @@ theorem scanNextToken_flow_close_map_filtered_push (s : ScannerState) (rest : Li
   rw [h_s', hf, h_ad_filter]
 
 /-- `"` dispatch: the new filtered token is exactly one `.scalar _ .doubleQuoted`. -/
-theorem scanNextToken_flow_scalar_filtered_push (s : ScannerState) (rest : List Char)
+lemma scanNextToken_flow_scalar_filtered_push (s : ScannerState) (rest : List Char)
     (hcorr : ScannerSurfCorr s ⟨'"' :: rest, s.col⟩)
     (h_flow : s.inFlow = true) (h_indent : s.currentIndent < 0) (h_col : s.col > 0)
     {s' : ScannerState} (h_snt : scanNextToken s = .ok (some s')) :
@@ -3027,7 +3027,7 @@ theorem scanNextToken_flow_scalar_filtered_push (s : ScannerState) (rest : List 
     `'"' :: escapeString content ++ '"' :: rest` in flow context, `scanNextToken`
     produces a single filtered-token push of exactly `.scalar content .doubleQuoted`.
     Strengthens `scanNextToken_flow_scalar_filtered_push` (which gives only `∃ str st`). -/
-theorem scanNextToken_flow_scalar_filtered_push_content (s : ScannerState)
+lemma scanNextToken_flow_scalar_filtered_push_content (s : ScannerState)
     (content : String) (rest : List Char)
     (hcorr : ScannerSurfCorr s ⟨'"' :: (escapeString content).toList ++ ['"'] ++ rest, s.col⟩)
     (h_flow : s.inFlow = true) (h_indent : s.currentIndent < 0) (h_col : s.col > 0)
@@ -3112,7 +3112,7 @@ theorem scanNextToken_flow_scalar_filtered_push_content (s : ScannerState)
     leaf the *body* of `EmitListScansInFlowBlock` / `EmitPairListScansInFlowBlock`
     threads between item blocks.  Requires the `lastRealToken ≠ flow*` premise that
     `scanFlowEntry` needs (every preceding `emit v` block supplies it). -/
-theorem scanNextToken_flow_comma_filtered_push (s : ScannerState) (rest : List Char)
+lemma scanNextToken_flow_comma_filtered_push (s : ScannerState) (rest : List Char)
     (hcorr : ScannerSurfCorr s ⟨',' :: rest, s.col⟩)
     (h_flow : s.inFlow = true) (h_indent : s.currentIndent < 0) (h_col : s.col > 0)
     (h_last : ∀ t, lastRealTokenVal? s.tokens = some t →
@@ -3167,7 +3167,7 @@ theorem scanNextToken_flow_comma_filtered_push (s : ScannerState) (rest : List C
     mapping-body producer needs both to re-establish the per-pair preconditions
     (`simpleKeyAllowed = true`, `simpleKey.possible = false`) before the recursive
     `EmitPairListScansInFlowBlock` call. -/
-theorem scanNextToken_flow_comma_simpleKey (s : ScannerState) (rest : List Char)
+lemma scanNextToken_flow_comma_simpleKey (s : ScannerState) (rest : List Char)
     (hcorr : ScannerSurfCorr s ⟨',' :: rest, s.col⟩)
     (h_flow : s.inFlow = true) (h_indent : s.currentIndent < 0) (h_col : s.col > 0)
     (h_last : ∀ t, lastRealTokenVal? s.tokens = some t →
@@ -3211,7 +3211,7 @@ theorem scanNextToken_flow_comma_simpleKey (s : ScannerState) (rest : List Char)
 
 /-- `ScanChain_deterministic`: two chains with the same start state and step count
     reach the same final state (since `scanNextToken` is a function). -/
-theorem ScanChain_deterministic {s s₁ s₂ : ScannerState} {n : Nat}
+lemma ScanChain_deterministic {s s₁ s₂ : ScannerState} {n : Nat}
     (h₁ : ScanChain s n s₁) (h₂ : ScanChain s n s₂) : s₁ = s₂ := by
   induction h₁ generalizing s₂ with
   | zero => cases h₂; rfl
@@ -3223,7 +3223,7 @@ theorem ScanChain_deterministic {s s₁ s₂ : ScannerState} {n : Nat}
       exact ih h_rest₂
 
 /-- `ScanChain.split`: decompose a chain into two consecutive sub-chains. -/
-theorem ScanChain.split {s s₁ s₂ : ScannerState} {n₁ n₂ : Nat}
+lemma ScanChain.split {s s₁ s₂ : ScannerState} {n₁ n₂ : Nat}
     (h₁ : ScanChain s n₁ s₁) (h_total : ScanChain s (n₁ + n₂) s₂) :
     ScanChain s₁ n₂ s₂ := by
   induction h₁ generalizing s₂ with

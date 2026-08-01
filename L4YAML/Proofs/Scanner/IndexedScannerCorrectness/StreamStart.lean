@@ -81,7 +81,7 @@ flag fields differ). `_of_cleared_mono` covers transitions where
 `_flowStart` / `_flowEnd` cover the flow-collection bracket
 transitions that push/pop the stack. -/
 
-theorem SimpleKeyAboveIx_mono {input : String} (s s' : ScannerStateIx input) (n : Nat)
+lemma SimpleKeyAboveIx_mono {input : String} (s s' : ScannerStateIx input) (n : Nat)
     (h_inv : SimpleKeyAboveIx s n)
     (h_sk : s'.simpleKey = s.simpleKey)
     (h_stack : s'.simpleKeyStack = s.simpleKeyStack) :
@@ -93,7 +93,7 @@ theorem SimpleKeyAboveIx_mono {input : String} (s s' : ScannerStateIx input) (n 
     rw [h_get] at h_poss_j ⊢
     exact h_inv.2 j hj' h_poss_j
 
-theorem SimpleKeyAboveIx_of_cleared_mono {input : String} (s s' : ScannerStateIx input) (n : Nat)
+lemma SimpleKeyAboveIx_of_cleared_mono {input : String} (s s' : ScannerStateIx input) (n : Nat)
     (h_inv : SimpleKeyAboveIx s n)
     (h_cleared : s'.simpleKey.possible = false)
     (h_stack : s'.simpleKeyStack = s.simpleKeyStack) :
@@ -106,7 +106,7 @@ theorem SimpleKeyAboveIx_of_cleared_mono {input : String} (s s' : ScannerStateIx
 
 /-- Flow start (`[`, `{`) clears current key and pushes old key onto
     the stack — both invariants transfer. -/
-theorem SimpleKeyAboveIx_flowStart {input : String} (s s' : ScannerStateIx input) (n : Nat)
+lemma SimpleKeyAboveIx_flowStart {input : String} (s s' : ScannerStateIx input) (n : Nat)
     (h_inv : SimpleKeyAboveIx s n)
     (h_cleared : s'.simpleKey.possible = false)
     (h_pushed : s'.simpleKeyStack = s.simpleKeyStack.push s.simpleKey) :
@@ -129,7 +129,7 @@ theorem SimpleKeyAboveIx_flowStart {input : String} (s s' : ScannerStateIx input
 /-- Flow end (`]`, `}`) restores current key from stack top and pops.
     The restored key was on the stack, so its invariant was already
     established; the popped stack is a prefix of the old stack. -/
-theorem SimpleKeyAboveIx_flowEnd {input : String} (s s' : ScannerStateIx input) (n : Nat)
+lemma SimpleKeyAboveIx_flowEnd {input : String} (s s' : ScannerStateIx input) (n : Nat)
     (h_inv : SimpleKeyAboveIx s n)
     (h_restored : s'.simpleKey =
       s.simpleKeyStack.back?.getD { cursor := IxCursor.start input })
@@ -163,7 +163,7 @@ s.tokens.size, ... }` (case 2). In the latter case,
 `tokens.size ≥ n` (precondition) guarantees the new key's
 `tokenIndex ≥ n`, and the stack is unchanged (`emit`-only). -/
 
-theorem saveSimpleKeyIx_maintains_SimpleKeyAboveIx {input : String}
+lemma saveSimpleKeyIx_maintains_SimpleKeyAboveIx {input : String}
     (s : ScannerStateIx input) (n : Nat) (h_n : n ≤ s.tokens.size)
     (h_inv : SimpleKeyAboveIx s n) :
     SimpleKeyAboveIx (saveSimpleKeyIx s) n := by
@@ -207,7 +207,7 @@ None of `skipToContentS` / `unwindIndentsIx` touch `simpleKey` or
 `n ≤ tokens.size` bound, which is monotone through the preceding
 steps. -/
 
-theorem scanNextTokenIx_preprocess_maintains_SimpleKeyAboveIx {input : String}
+lemma scanNextTokenIx_preprocess_maintains_SimpleKeyAboveIx {input : String}
     (s s' : ScannerStateIx input) (c : Char) (n : Nat) (h_n : n ≤ s.tokens.size)
     (h_pre : scanNextTokenIx_preprocess s = .ok (some (s', c)))
     (h_inv : SimpleKeyAboveIx s n) :
@@ -269,7 +269,7 @@ Each of the four `scanNextTokenIx_dispatch*` sub-dispatchers preserves
 `_preserves_simpleKey` / `_clears_simpleKey` / `_simpleKey_restored` /
 `_stack_pushed` / `_stack_popped` facts in `IndexedScannerPlainScalarValid`. -/
 
-theorem scanNextTokenIx_dispatchStructural_maintains_SimpleKeyAboveIx {input : String}
+lemma scanNextTokenIx_dispatchStructural_maintains_SimpleKeyAboveIx {input : String}
     (s s' : ScannerStateIx input) (c : Char) (n : Nat)
     (h_inv : SimpleKeyAboveIx s n)
     (h_ok : scanNextTokenIx_dispatchStructural s c = .ok (some s')) :
@@ -286,7 +286,7 @@ theorem scanNextTokenIx_dispatchStructural_maintains_SimpleKeyAboveIx {input : S
       (scanDirectiveIx_preserves_simpleKey s s' hOk)
       (scanDirectiveIx_preserves_simpleKeyStack s s' hOk)
 
-theorem scanNextTokenIx_dispatchFlowIndicators_maintains_SimpleKeyAboveIx {input : String}
+lemma scanNextTokenIx_dispatchFlowIndicators_maintains_SimpleKeyAboveIx {input : String}
     (s s' : ScannerStateIx input) (c : Char) (n : Nat)
     (h_inv : SimpleKeyAboveIx s n)
     (h_ok : scanNextTokenIx_dispatchFlowIndicators s c = .ok (some s')) :
@@ -314,7 +314,7 @@ theorem scanNextTokenIx_dispatchFlowIndicators_maintains_SimpleKeyAboveIx {input
       (scanFlowEntryIx_preserves_simpleKey s s' hOk)
       (scanFlowEntryIx_preserves_simpleKeyStack s s' hOk)
 
-theorem scanNextTokenIx_dispatchBlockIndicators_maintains_SimpleKeyAboveIx {input : String}
+lemma scanNextTokenIx_dispatchBlockIndicators_maintains_SimpleKeyAboveIx {input : String}
     (s s' : ScannerStateIx input) (c : Char) (n : Nat)
     (h_inv : SimpleKeyAboveIx s n)
     (h_ok : scanNextTokenIx_dispatchBlockIndicators s c = .ok (some s')) :
@@ -333,7 +333,7 @@ theorem scanNextTokenIx_dispatchBlockIndicators_maintains_SimpleKeyAboveIx {inpu
       (scanValueIx_clears_simpleKey s s' hOk)
       (scanValueIx_preserves_simpleKeyStack s s' hOk)
 
-theorem scanNextTokenIx_dispatchContent_maintains_SimpleKeyAboveIx {input : String}
+lemma scanNextTokenIx_dispatchContent_maintains_SimpleKeyAboveIx {input : String}
     (s s' : ScannerStateIx input) (c : Char) (n : Nat)
     (h_inv : SimpleKeyAboveIx s n)
     (h_ok : scanNextTokenIx_dispatchContent s c = .ok s') :
@@ -423,7 +423,7 @@ Composes preprocess (§7.4) with the four sub-dispatcher maintains
 lemmas (§7.5) and the `allowDirectives` record update (which
 preserves both `simpleKey` and `simpleKeyStack` by mono). -/
 
-theorem scanNextTokenIx_maintains_SimpleKeyAboveIx {input : String}
+lemma scanNextTokenIx_maintains_SimpleKeyAboveIx {input : String}
     (s s' : ScannerStateIx input) (n : Nat) (h_n : n ≤ s.tokens.size)
     (h_inv : SimpleKeyAboveIx s n)
     (h_ok : scanNextTokenIx s = .ok (some s')) :
@@ -515,7 +515,7 @@ so we build it here by case-splitting through each `c` branch of the
 dispatcher. Each content branch only `emit`-pushes a token (scalars,
 anchors, tags) and so preserves the entire prefix. -/
 
-theorem _inline_scalar_preserves_prefix {input : String}
+lemma _inline_scalar_preserves_prefix {input : String}
     (s : ScannerStateIx input) (cAfter : IxCursor input)
     (startPos : YamlPos) (tok : YamlToken)
     (hBound : startPos.offset ≤ cAfter.pos.offset)
@@ -537,7 +537,7 @@ theorem _inline_scalar_preserves_prefix {input : String}
       s.tokens.tokens[i]'h_bound
   exact Array.getElem_push_lt h_bound
 
-theorem scanNextTokenIx_dispatchContent_preserves_prefix {input : String}
+lemma scanNextTokenIx_dispatchContent_preserves_prefix {input : String}
     (s s' : ScannerStateIx input) (c : Char)
     (h_ok : scanNextTokenIx_dispatchContent s c = .ok s')
     (i : Nat) (h_bound : i < s.tokens.size) :
@@ -628,7 +628,7 @@ Spec uses `Indexed.TokenStream`'s `GetElem` instance, with the
 original bound provided explicitly via `Nat.lt_of_lt_of_le` (omega
 does not see through the `.size = .tokens.size` defeq). -/
 
-theorem _preprocess_preserves_prefix {input : String}
+lemma _preprocess_preserves_prefix {input : String}
     (s s' : ScannerStateIx input) (c : Char) (n : Nat) (h_n : n ≤ s.tokens.size)
     (h_pre : scanNextTokenIx_preprocess s = .ok (some (s', c)))
     (i : Nat) (h_i : i < n) :
@@ -708,13 +708,13 @@ theorem _preprocess_preserves_prefix {input : String}
           rw [saveSimpleKeyIx_preserves_prefix s.skipToContentS i h_i_skip]
           exact h_skip_eq
 
-theorem _dir_update_tokens {input : String} (s_pp : ScannerStateIx input) :
+lemma _dir_update_tokens {input : String} (s_pp : ScannerStateIx input) :
     (if s_pp.allowDirectives = true then
         { s_pp with allowDirectives := false, documentEverStarted := true }
       else s_pp).tokens = s_pp.tokens := by
   split <;> rfl
 
-theorem scanNextTokenIx_preserves_prefix {input : String}
+lemma scanNextTokenIx_preserves_prefix {input : String}
     (s s' : ScannerStateIx input) (n : Nat) (h_n : n ≤ s.tokens.size)
     (h_inv : SimpleKeyAboveIx s n)
     (h_ok : scanNextTokenIx s = .ok (some s'))
@@ -872,7 +872,7 @@ ScannerCorrectness.lean:6197`). Proven by induction on fuel:
       `scanNextTokenIx_preserves_prefix` +
       `scanNextTokenIx_maintains_SimpleKeyAboveIx` + IH. -/
 
-theorem scanLoopIx_preserves_tokens {input : String}
+lemma scanLoopIx_preserves_tokens {input : String}
     (s : ScannerStateIx input) (fuel : Nat) (ts : Indexed.TokenStream input)
     (n : Nat) (h_n : n ≤ s.tokens.size) (h_inv : SimpleKeyAboveIx s n)
     (h : scanLoopIx s fuel = .ok ts) (i : Nat) (h_i : i < n) :
@@ -933,7 +933,7 @@ both. Both states satisfy `SimpleKeyAboveIx _ 1` vacuously
 `scanLoopIx_preserves_tokens` with `n = 1` and `i = 0` gives that
 `tokens[0]` is preserved through the loop. -/
 
-theorem scanIx_first_is_streamStart {input : String}
+lemma scanIx_first_is_streamStart {input : String}
     (tokens : Indexed.TokenStream input)
     (h : scanIx input = .ok tokens)
     (h_size : 0 < tokens.tokens.size) :

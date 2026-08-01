@@ -70,7 +70,7 @@ documentEverStarted). These record updates trivially preserve WellFormed.
 
 /-- A record update touching only `simpleKeyAllowed` and non-WellFormed
     metadata flags preserves WellFormed. Used by `scanDocumentStart`. -/
-theorem with_docStart_flags_preserves_wellFormed (s : ScannerState)
+lemma with_docStart_flags_preserves_wellFormed (s : ScannerState)
     (hwf : s.WellFormed) :
     ({ s with
        simpleKeyAllowed := true
@@ -81,7 +81,7 @@ theorem with_docStart_flags_preserves_wellFormed (s : ScannerState)
 
 /-- A record update touching only `simpleKeyAllowed`, `allowDirectives`,
     and `directivesPresent` preserves WellFormed. Used by `scanDocumentEnd`. -/
-theorem with_docEnd_flags_preserves_wellFormed (s : ScannerState)
+lemma with_docEnd_flags_preserves_wellFormed (s : ScannerState)
     (hwf : s.WellFormed) :
     ({ s with
        simpleKeyAllowed := true
@@ -90,7 +90,7 @@ theorem with_docEnd_flags_preserves_wellFormed (s : ScannerState)
 
 /-- A record update touching only `seenYamlDirective` and `directivesPresent`
     preserves WellFormed. Used by `scanDirective` (YAML branch). -/
-theorem with_yamlDirective_flags_preserves_wellFormed (s : ScannerState)
+lemma with_yamlDirective_flags_preserves_wellFormed (s : ScannerState)
     (hwf : s.WellFormed) :
     ({ s with
        seenYamlDirective := true
@@ -98,13 +98,13 @@ theorem with_yamlDirective_flags_preserves_wellFormed (s : ScannerState)
 
 /-- A record update touching only `directivesPresent` preserves WellFormed.
     Used by `scanDirective` (TAG branch). -/
-theorem with_tagDirective_flags_preserves_wellFormed (s : ScannerState)
+lemma with_tagDirective_flags_preserves_wellFormed (s : ScannerState)
     (hwf : s.WellFormed) :
     ({ s with directivesPresent := true } : ScannerState).WellFormed := hwf
 
 /-- A record update touching only `simpleKey` preserves WellFormed.
     Used by `scanDocumentStart`/`End` to clear simple key state. -/
-theorem with_simpleKey_preserves_wellFormed (s : ScannerState)
+lemma with_simpleKey_preserves_wellFormed (s : ScannerState)
     (hwf : s.WellFormed) (sk : SimpleKeyState) :
     ({ s with simpleKey := sk } : ScannerState).WellFormed := hwf
 

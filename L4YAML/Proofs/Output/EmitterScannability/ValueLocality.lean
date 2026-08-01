@@ -54,7 +54,7 @@ open L4YAML.Proofs.ParserWellBehaved
 /-! ## §0  Windows: `.val`-agreement, the flow-clean gate, and transfer helpers -/
 
 /-- `peek?` is the `.val`-projection of the positional lookup. -/
-theorem peek?_eq_getElem? (ps : ParseState) :
+lemma peek?_eq_getElem? (ps : ParseState) :
     ps.peek? = ps.tokens[ps.pos]?.map (·.val) := by
   unfold ParseState.peek?
   split
@@ -74,14 +74,14 @@ def WAgree (t1 t2 : Array (Positioned YamlToken)) (p1 p2 nn : Nat) : Prop :=
 def WClean (t1 : Array (Positioned YamlToken)) (p1 nn : Nat) : Prop :=
   ∀ k, k < nn → ∀ pt, t1[p1 + k]? = some pt → FlowCleanTok pt.val = true
 
-theorem WAgree.shift {t1 t2 : Array (Positioned YamlToken)} {p1 p2 nn : Nat}
+lemma WAgree.shift {t1 t2 : Array (Positioned YamlToken)} {p1 p2 nn : Nat}
     (h : WAgree t1 t2 p1 p2 nn) (w : Nat) :
     WAgree t1 t2 (p1 + w) (p2 + w) (nn - w) := by
   intro k hk
   rw [Nat.add_assoc, Nat.add_assoc]
   exact h (w + k) (by omega)
 
-theorem WClean.shift {t1 : Array (Positioned YamlToken)} {p1 nn : Nat}
+lemma WClean.shift {t1 : Array (Positioned YamlToken)} {p1 nn : Nat}
     (h : WClean t1 p1 nn) (w : Nat) :
     WClean t1 (p1 + w) (nn - w) := by
   intro k hk pt hpt
@@ -89,18 +89,18 @@ theorem WClean.shift {t1 : Array (Positioned YamlToken)} {p1 nn : Nat}
   exact h (w + k) (by omega) pt hpt
 
 /-- A window can be weakened to a shorter one. -/
-theorem WAgree.mono {t1 t2 : Array (Positioned YamlToken)} {p1 p2 nn : Nat}
+lemma WAgree.mono {t1 t2 : Array (Positioned YamlToken)} {p1 p2 nn : Nat}
     (h : WAgree t1 t2 p1 p2 nn) {nn' : Nat} (hle : nn' ≤ nn) :
     WAgree t1 t2 p1 p2 nn' :=
   fun k hk => h k (by omega)
 
-theorem WClean.mono {t1 : Array (Positioned YamlToken)} {p1 nn : Nat}
+lemma WClean.mono {t1 : Array (Positioned YamlToken)} {p1 nn : Nat}
     (h : WClean t1 p1 nn) {nn' : Nat} (hle : nn' ≤ nn) :
     WClean t1 p1 nn' :=
   fun k hk => h k (by omega)
 
 /-- Agreement transfers `peek?` between two aligned states. -/
-theorem WAgree.peek_eq {ps1 ps2 : ParseState} {nn : Nat}
+lemma WAgree.peek_eq {ps1 ps2 : ParseState} {nn : Nat}
     (h : WAgree ps1.tokens ps2.tokens ps1.pos ps2.pos nn) (hnn : 0 < nn) :
     ps1.peek? = ps2.peek? := by
   rw [peek?_eq_getElem?, peek?_eq_getElem?]
@@ -108,7 +108,7 @@ theorem WAgree.peek_eq {ps1 ps2 : ParseState} {nn : Nat}
   simpa using h0
 
 /-- The gate applies to the head token of the window. -/
-theorem WClean.head {ps1 : ParseState} {nn : Nat}
+lemma WClean.head {ps1 : ParseState} {nn : Nat}
     (h : WClean ps1.tokens ps1.pos nn) (hnn : 0 < nn)
     {tok : YamlToken} (h_pk : ps1.peek? = some tok) :
     FlowCleanTok tok = true := by
@@ -124,7 +124,7 @@ theorem WClean.head {ps1 : ParseState} {nn : Nat}
 
 /-- Aligned-offset peek transfer: two states sitting at the same offset `d` inside agreeing
     windows have equal `peek?`. -/
-theorem WAgree.peek_eq_at {t1 t2 : Array (Positioned YamlToken)} {p1 p2 nn : Nat}
+lemma WAgree.peek_eq_at {t1 t2 : Array (Positioned YamlToken)} {p1 p2 nn : Nat}
     (h : WAgree t1 t2 p1 p2 nn) {q1 q2 : ParseState} {d : Nat}
     (h_t1 : q1.tokens = t1) (h_t2 : q2.tokens = t2)
     (h_p1 : q1.pos = p1 + d) (h_p2 : q2.pos = p2 + d) (hd : d < nn) :
@@ -143,7 +143,7 @@ call, the close token, and the exact exit position. -/
 /-- `parseNode` on an inert head (`]`, `}`, `,`, `?`-key, `:`-value, or end-of-tokens):
     the content dispatch falls to the catch-all, producing the empty plain scalar with no
     position change. -/
-theorem parseNode_inert_head (ps : ParseState) (m : Nat) (v : YamlValue) (q : ParseState)
+lemma parseNode_inert_head (ps : ParseState) (m : Nat) (v : YamlValue) (q : ParseState)
     (h_head : ps.peek? = none ∨ ps.peek? = some .flowSequenceEnd
       ∨ ps.peek? = some .flowMappingEnd ∨ ps.peek? = some .flowEntry
       ∨ ps.peek? = some .key ∨ ps.peek? = some .value
@@ -180,7 +180,7 @@ theorem parseNode_inert_head (ps : ParseState) (m : Nat) (v : YamlValue) (q : Pa
 /-- `parseNode` on a `[` head decomposes into the inner `parseFlowSequenceLoop` run: the loop
     starts at `ps.advance` with two fuel units consumed, ends at the matching `]` (the
     close-check), and the node returns the flow sequence one past it. -/
-theorem parseNode_flowSeqStart_decompose (ps : ParseState) (m : Nat)
+lemma parseNode_flowSeqStart_decompose (ps : ParseState) (m : Nat)
     (v : YamlValue) (q : ParseState)
     (h_peek : ps.peek? = some .flowSequenceStart)
     (h : parseNode ps m = .ok (v, q)) :
@@ -235,7 +235,7 @@ theorem parseNode_flowSeqStart_decompose (ps : ParseState) (m : Nat)
           | _ => rw [h_cl] at h <;> simp only [reduceCtorEq] at h
 
 /-- Mapping mirror of `parseNode_flowSeqStart_decompose`. -/
-theorem parseNode_flowMapStart_decompose (ps : ParseState) (m : Nat)
+lemma parseNode_flowMapStart_decompose (ps : ParseState) (m : Nat)
     (v : YamlValue) (q : ParseState)
     (h_peek : ps.peek? = some .flowMappingStart)
     (h : parseNode ps m = .ok (v, q)) :
@@ -320,7 +320,7 @@ def pairKeyStep (ps : ParseState) (g : Nat) : Except ScanError (YamlValue × Par
   | _ => parseNode ps g
 
 
-theorem pairKeyStep_pos_mono (ps : ParseState) (g : Nat) (key : YamlValue) (q : ParseState)
+lemma pairKeyStep_pos_mono (ps : ParseState) (g : Nat) (key : YamlValue) (q : ParseState)
     (h : pairKeyStep ps g = .ok (key, q)) : ps.pos ≤ q.pos := by
   unfold pairKeyStep at h
   split at h <;>
@@ -330,7 +330,7 @@ theorem pairKeyStep_pos_mono (ps : ParseState) (g : Nat) (key : YamlValue) (q : 
       | exact parseNodePosMono_apply (parseNode_pos_mono_all g) h (Nat.le_refl _)
 
 /-- `tryConsume` refused: the head is not the requested token and the state is unchanged. -/
-theorem tryConsume_false_facts (ps : ParseState) (tok : YamlToken)
+lemma tryConsume_false_facts (ps : ParseState) (tok : YamlToken)
     (h : (ps.tryConsume tok).1 = false) :
     ps.peek? ≠ some tok ∧ (ps.tryConsume tok).2 = ps := by
   unfold ParseState.tryConsume at h ⊢
@@ -343,7 +343,7 @@ theorem tryConsume_false_facts (ps : ParseState) (tok : YamlToken)
     · exact ⟨by simp [h_t], by simp [h_t]⟩
 
 /-- `tryConsume` fired: the head was the requested token and the state advanced by one. -/
-theorem tryConsume_true_facts (ps : ParseState) (tok : YamlToken)
+lemma tryConsume_true_facts (ps : ParseState) (tok : YamlToken)
     (h : (ps.tryConsume tok).1 = true) :
     ps.peek? = some tok ∧ (ps.tryConsume tok).2 = ps.advance := by
   unfold ParseState.tryConsume at h ⊢
@@ -357,7 +357,7 @@ theorem tryConsume_true_facts (ps : ParseState) (tok : YamlToken)
 
 /-- Joint for the factored key phase (dispatch: empty heads coincide across runs by `.val`
     agreement; otherwise both run `parseNode`). -/
-theorem pairKeyStep_joint (n : Nat) (h_node : ParseNodeJoint n)
+lemma pairKeyStep_joint (n : Nat) (h_node : ParseNodeJoint n)
     (g1 : Nat) (hg1 : g1 ≤ n) (g2 : Nat) (ps1 ps2 : ParseState) (nn : Nat)
     (key1 key2 : YamlValue) (q1 q2 : ParseState)
     (hnn : 0 < nn)
@@ -402,7 +402,7 @@ theorem pairKeyStep_joint (n : Nat) (h_node : ParseNodeJoint n)
 /-- Inversion of `parseSinglePairMapping` success into aligned atomized components: the key
     phase (factored as `pairKeyStep`), the `:`-consumption width `w`, and the value phase
     (`parseNode` exposed directly, with the head classification that decided the arm). -/
-theorem parseSinglePairMapping_inv (ps : ParseState) (g : Nat) (v : YamlValue) (q : ParseState)
+lemma parseSinglePairMapping_inv (ps : ParseState) (g : Nat) (v : YamlValue) (q : ParseState)
     (h : parseSinglePairMapping ps (g + 1) = .ok (v, q)) :
     ∃ (key : YamlValue) (psk : ParseState) (w : Nat) (psv0 : ParseState)
       (val : YamlValue) (pv : ParseState),
@@ -516,7 +516,7 @@ theorem parseSinglePairMapping_inv (ps : ParseState) (g : Nat) (v : YamlValue) (
 set_option maxHeartbeats 1600000 in
 /-- The two-fuel both-success joint for `parseSinglePairMapping` (the `[key: value]` sugar
     element of flow sequences): equal values, equal relative advances, tokens preserved. -/
-theorem parseSinglePairMapping_joint (n : Nat) (h_node : ParseNodeJoint n)
+lemma parseSinglePairMapping_joint (n : Nat) (h_node : ParseNodeJoint n)
     (f1 : Nat) (hf1 : f1 ≤ n + 1) (f2 : Nat) (ps1 ps2 : ParseState) (nn : Nat)
     (v1 v2 : YamlValue) (q1 q2 : ParseState)
     (h_ag : WAgree ps1.tokens ps2.tokens ps1.pos ps2.pos nn)
@@ -631,7 +631,7 @@ both runs carry PROPER-EXIT hypotheses (`r.2.peek? = some .flowSequenceEnd`) —
 invocation by the enclosing `parseFlowSequence` close-check. -/
 
 /-- A loop sitting on its close token returns immediately at ANY fuel. -/
-theorem parseFlowSeqLoop_close_now (ps : ParseState) (f : Nat) (items : Array YamlValue)
+lemma parseFlowSeqLoop_close_now (ps : ParseState) (f : Nat) (items : Array YamlValue)
     (r : Array YamlValue × ParseState)
     (h_pk : ps.peek? = some .flowSequenceEnd)
     (h : parseFlowSequenceLoop ps f items = .ok r) : r = (items, ps) := by
@@ -648,7 +648,7 @@ theorem parseFlowSeqLoop_close_now (ps : ParseState) (f : Nat) (items : Array Ya
 /-- One-step inversion of a successful `parseFlowSequenceLoop` at positive fuel: close now,
     early return, or (separator·element·continuation) with all states exposed through
     pos/tokens equations (the `currentPath` bookkeeping stays abstract). -/
-theorem parseFlowSequenceLoop_step_inv (ps : ParseState) (k : Nat) (items : Array YamlValue)
+lemma parseFlowSequenceLoop_step_inv (ps : ParseState) (k : Nat) (items : Array YamlValue)
     (r : Array YamlValue × ParseState)
     (h : parseFlowSequenceLoop ps (k + 1) items = .ok r) :
     (ps.peek? = some .flowSequenceEnd ∧ r = (items, ps))
@@ -734,7 +734,7 @@ set_option maxHeartbeats 3200000 in
 /-- The two-fuel both-success joint for `parseFlowSequenceLoop`: same accumulator, agreeing
     gated windows, a strict run-1 frame, and proper (close-token) exits on both runs force
     equal result arrays, equal relative advances, and token preservation. -/
-theorem parseFlowSequenceLoop_joint (n : Nat) (h_node : ParseNodeJoint n) :
+lemma parseFlowSequenceLoop_joint (n : Nat) (h_node : ParseNodeJoint n) :
     ∀ (f1 : Nat), f1 ≤ n + 1 → ∀ (f2 : Nat) (ps1 ps2 : ParseState) (nn : Nat)
       (items : Array YamlValue) (r1 r2 : Array YamlValue × ParseState),
       WAgree ps1.tokens ps2.tokens ps1.pos ps2.pos nn →
@@ -946,7 +946,7 @@ then value, then recurse). -/
 /-- Joint for the explicit-key phase of flow-mapping entries (dispatch: empty heads coincide
     across runs by `.val` agreement; otherwise both run `parseNode`).  Mirror of
     `pairKeyStep_joint` with `.flowMappingEnd` in place of `.flowSequenceEnd`. -/
-theorem parseExplicitKey_joint (n : Nat) (h_node : ParseNodeJoint n)
+lemma parseExplicitKey_joint (n : Nat) (h_node : ParseNodeJoint n)
     (g1 : Nat) (hg1 : g1 ≤ n) (g2 : Nat) (ps1 ps2 : ParseState) (nn : Nat)
     (key1 key2 : YamlValue) (q1 q2 : ParseState)
     (hnn : 0 < nn)
@@ -990,7 +990,7 @@ theorem parseExplicitKey_joint (n : Nat) (h_node : ParseNodeJoint n)
 
 /-- Case split on `tryConsume` when only the resulting state is consumed (the discarded-Bool
     `.key`-marker consume in `parseFlowMappingValue`). -/
-theorem tryConsume_snd_cases (ps : ParseState) (tok : YamlToken) :
+lemma tryConsume_snd_cases (ps : ParseState) (tok : YamlToken) :
     (ps.peek? = some tok ∧ (ps.tryConsume tok).2 = ps.advance)
     ∨ (ps.peek? ≠ some tok ∧ (ps.tryConsume tok).2 = ps) := by
   cases h : (ps.tryConsume tok).1 with
@@ -999,7 +999,7 @@ theorem tryConsume_snd_cases (ps : ParseState) (tok : YamlToken) :
 
 /-- A mapping loop sitting on its close token returns immediately at ANY fuel.  Mirror of
     `parseFlowSeqLoop_close_now`. -/
-theorem parseFlowMapLoop_close_now (ps : ParseState) (f : Nat)
+lemma parseFlowMapLoop_close_now (ps : ParseState) (f : Nat)
     (pairs : Array (YamlValue × YamlValue))
     (r : Array (YamlValue × YamlValue) × ParseState)
     (h_pk : ps.peek? = some .flowMappingEnd)
@@ -1019,7 +1019,7 @@ theorem parseFlowMapLoop_close_now (ps : ParseState) (f : Nat)
     phase (`parseNode` exposed directly, with the head classification that decided the arm).
     The `savedPath`/`keyContent` currentPath bookkeeping is METADATA: `pos`/`tokens`/`peek?`
     of the path-modified intermediate states are pinned back to `ps`'s. -/
-theorem parseFlowMappingValue_inv (ps : ParseState) (g : Nat) (sp : YamlPath) (kc : String)
+lemma parseFlowMappingValue_inv (ps : ParseState) (g : Nat) (sp : YamlPath) (kc : String)
     (v : YamlValue) (q : ParseState)
     (h : parseFlowMappingValue ps g sp kc = .ok (v, q)) :
     ∃ (wk wv : Nat) (mid psv0 : ParseState) (val : YamlValue) (pv : ParseState),
@@ -1123,7 +1123,7 @@ set_option maxHeartbeats 1600000 in
     mapping entry): equal values, equal relative advances, tokens preserved.  The
     `savedPath`/`keyContent` arguments are METADATA and may differ across the two runs.
     Mirror of `parseSinglePairMapping_joint`. -/
-theorem parseFlowMappingValue_joint (n : Nat) (h_node : ParseNodeJoint n)
+lemma parseFlowMappingValue_joint (n : Nat) (h_node : ParseNodeJoint n)
     (g1 : Nat) (hg1 : g1 ≤ n) (g2 : Nat) (sp1 sp2 : YamlPath) (kc1 kc2 : String)
     (ps1 ps2 : ParseState) (nn : Nat)
     (v1 v2 : YamlValue) (q1 q2 : ParseState)
@@ -1227,7 +1227,7 @@ theorem parseFlowMappingValue_joint (n : Nat) (h_node : ParseNodeJoint n)
     the consumed `.key` marker, or `parseNode` for implicit keys) and the value phase
     (`parseFlowMappingValue`, its `savedPath`/`keyContent` arguments existentially absorbed).
     Mirror of `parseFlowSequenceLoop_step_inv`. -/
-theorem parseFlowMappingLoop_step_inv (ps : ParseState) (k : Nat)
+lemma parseFlowMappingLoop_step_inv (ps : ParseState) (k : Nat)
     (pairs : Array (YamlValue × YamlValue))
     (r : Array (YamlValue × YamlValue) × ParseState)
     (h : parseFlowMappingLoop ps (k + 1) pairs = .ok r) :
@@ -1337,7 +1337,7 @@ set_option maxHeartbeats 3200000 in
     gated windows, a strict run-1 frame, and proper (close-token) exits on both runs force
     equal result arrays, equal relative advances, and token preservation.  Mirror of
     `parseFlowSequenceLoop_joint`. -/
-theorem parseFlowMappingLoop_joint (n : Nat) (h_node : ParseNodeJoint n) :
+lemma parseFlowMappingLoop_joint (n : Nat) (h_node : ParseNodeJoint n) :
     ∀ (f1 : Nat), f1 ≤ n + 1 → ∀ (f2 : Nat) (ps1 ps2 : ParseState) (nn : Nat)
       (pairs : Array (YamlValue × YamlValue))
       (r1 r2 : Array (YamlValue × YamlValue) × ParseState),
@@ -1612,7 +1612,7 @@ One `Nat.rec` closes the clique: the per-head dispatch reduces to the single-run
 dirty heads. -/
 
 set_option maxHeartbeats 1600000 in
-theorem parseNode_joint_all : ∀ n, ParseNodeJoint n := by
+lemma parseNode_joint_all : ∀ n, ParseNodeJoint n := by
   intro n
   induction n with
   | zero =>
@@ -1712,7 +1712,7 @@ theorem parseNode_joint_all : ∀ n, ParseNodeJoint n := by
 /-- **The value-locality joint** (public form): two successful `parseNode` runs over
     `.val`-agreeing windows, with run 1's window flow-clean and framed, return the same value
     with the same relative advance, preserving both token arrays. -/
-theorem parseNode_joint (f1 f2 : Nat) (ps1 ps2 : ParseState) (nn : Nat)
+lemma parseNode_joint (f1 f2 : Nat) (ps1 ps2 : ParseState) (nn : Nat)
     (v1 v2 : YamlValue) (q1 q2 : ParseState)
     (hnn : 0 < nn)
     (h_ag : WAgree ps1.tokens ps2.tokens ps1.pos ps2.pos nn)

@@ -93,7 +93,7 @@ to satisfy `ScannerSurfCorrIx` over the full `input.toList`. -/
 /-- The initial `ScannerStateIx.mk' input` is in surface correspondence
     with the full input list at col 0. Indexed twin of `initial_corr`
     (`Proofs/Coupling/CouplingBridge.lean:261`). -/
-theorem initial_corrIx (input : String) :
+lemma initial_corrIx (input : String) :
     ScannerSurfCorrIx (input := input) (ScannerStateIx.mk' input)
       ⟨input.toList, 0⟩ := by
   refine ⟨?_, rfl, ?_, ?_⟩
@@ -126,7 +126,7 @@ at sentinel), trailing-content check, `saveSimpleKeyIx`, `peek?`.
     every field needed by downstream init-state chains (flowLevel,
     indents, cursor position, allowDirectives, etc.).
     Indexed twin of `scanNextToken_preprocess_init_state` (legacy 3258). -/
-theorem scanNextTokenIx_preprocess_init_state (input : String) (c : Char)
+lemma scanNextTokenIx_preprocess_init_state (input : String) (c : Char)
     (rest : List Char)
     (h_toList : input.toList = c :: rest)
     (h_nws : isWhiteSpaceBool c = false)
@@ -283,7 +283,7 @@ differ: `flowLevel = 0` and `peek? = none`. -/
 /-- Full `scanNextTokenIx` for `']'` at outermost flow close
     (`flowLevel = 1`, EOF). Indexed twin of `scanNextToken_flow_close_
     seq_outermost` (legacy 4947). -/
-theorem scanNextTokenIx_flow_close_seq_outermost (s : ScannerStateIx input)
+lemma scanNextTokenIx_flow_close_seq_outermost (s : ScannerStateIx input)
     (hcorr : ScannerSurfCorrIx s ⟨[']'], s.cursor.pos.col⟩)
     (h_flow : s.inFlow = true)
     (h_indent : s.currentIndent < 0)
@@ -360,7 +360,7 @@ Mirror of §3 for `}` and `scanFlowMappingEndIx`. -/
 /-- Full `scanNextTokenIx` for `'}'` at outermost flow close
     (`flowLevel = 1`, EOF). Indexed twin of `scanNextToken_flow_close_
     mapping_outermost` (legacy 5274). -/
-theorem scanNextTokenIx_flow_close_mapping_outermost (s : ScannerStateIx input)
+lemma scanNextTokenIx_flow_close_mapping_outermost (s : ScannerStateIx input)
     (hcorr : ScannerSurfCorrIx s ⟨['}'], s.cursor.pos.col⟩)
     (h_flow : s.inFlow = true)
     (h_indent : s.currentIndent < 0)
@@ -432,7 +432,7 @@ init` + `dispatchFlowIndicators_brace`) and extracts the result via
 /-- `scanNextTokenIx` on the initial scanner state at `{` dispatches
     to `scanFlowMappingStartIx`, entering flow context.
     Indexed twin of `scanNextToken_flow_open_mapping_init` (legacy 5445). -/
-theorem scanNextTokenIx_flow_open_mapping_init (input : String) (rest : List Char)
+lemma scanNextTokenIx_flow_open_mapping_init (input : String) (rest : List Char)
     (h_toList : input.toList = '{' :: rest) :
     let s₀ := (ScannerStateIx.mk' input).emit YamlToken.streamStart
     ∃ s', scanNextTokenIx s₀ = .ok (some s')
@@ -650,7 +650,7 @@ YamlToken.flowSequenceStart`. -/
 /-- `scanNextTokenIx` on the initial scanner state at `[` dispatches
     to `scanFlowSequenceStartIx`, entering flow context. Indexed twin
     of `scanNextToken_flow_open_init` (legacy 4095). -/
-theorem scanNextTokenIx_flow_open_seq_init (input : String) (rest : List Char)
+lemma scanNextTokenIx_flow_open_seq_init (input : String) (rest : List Char)
     (h_toList : input.toList = '[' :: rest) :
     let s₀ := (ScannerStateIx.mk' input).emit YamlToken.streamStart
     ∃ s', scanNextTokenIx s₀ = .ok (some s')

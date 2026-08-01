@@ -40,7 +40,7 @@ applies. The final struct updates (flowLevel, simpleKeyAllowed, etc.) are
 non-tracked, so correspondence transfers via field projection. -/
 
 -- `scanFlowSequenceStart` produces `GLit '['`.
-theorem scanFlowSequenceStart_prod (sc : ScannerState) (sp : SurfPos)
+lemma scanFlowSequenceStart_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (hpeek : sc.peek? = some '[') :
     ∃ sp', GLit '[' sp sp' ∧ ScannerSurfCorr (scanFlowSequenceStart sc) sp' := by
   obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek
@@ -58,7 +58,7 @@ theorem scanFlowSequenceStart_prod (sc : ScannerState) (sp : SurfPos)
   exact ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq, hcorr_adv.input_prefix, hcorr_adv.indent_cols_nonneg⟩
 
 -- `scanFlowSequenceEnd` produces `GLit ']'`.
-theorem scanFlowSequenceEnd_prod (sc : ScannerState) (sp : SurfPos)
+lemma scanFlowSequenceEnd_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (hpeek : sc.peek? = some ']') :
     ∃ sp', GLit ']' sp sp' ∧ ScannerSurfCorr (scanFlowSequenceEnd sc) sp' := by
   obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek
@@ -76,7 +76,7 @@ theorem scanFlowSequenceEnd_prod (sc : ScannerState) (sp : SurfPos)
   exact ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq, hcorr_adv.input_prefix, hcorr_adv.indent_cols_nonneg⟩
 
 -- `scanFlowMappingStart` produces `GLit '{'`.
-theorem scanFlowMappingStart_prod (sc : ScannerState) (sp : SurfPos)
+lemma scanFlowMappingStart_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (hpeek : sc.peek? = some '{') :
     ∃ sp', GLit '{' sp sp' ∧ ScannerSurfCorr (scanFlowMappingStart sc) sp' := by
   obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek
@@ -94,7 +94,7 @@ theorem scanFlowMappingStart_prod (sc : ScannerState) (sp : SurfPos)
   exact ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq, hcorr_adv.input_prefix, hcorr_adv.indent_cols_nonneg⟩
 
 -- `scanFlowMappingEnd` produces `GLit '}'`.
-theorem scanFlowMappingEnd_prod (sc : ScannerState) (sp : SurfPos)
+lemma scanFlowMappingEnd_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (hpeek : sc.peek? = some '}') :
     ∃ sp', GLit '}' sp sp' ∧ ScannerSurfCorr (scanFlowMappingEnd sc) sp' := by
   obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek
@@ -112,7 +112,7 @@ theorem scanFlowMappingEnd_prod (sc : ScannerState) (sp : SurfPos)
   exact ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq, hcorr_adv.input_prefix, hcorr_adv.indent_cols_nonneg⟩
 
 -- `scanFlowEntry` preserves correspondence on success.
-theorem scanFlowEntry_prod (sc : ScannerState) (sp : SurfPos)
+lemma scanFlowEntry_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
     (s' : ScannerState) (hok : scanFlowEntry sc = .ok s') :
     ∃ sp', ScannerSurfCorr s' sp' :=
@@ -133,7 +133,7 @@ char list. -/
 -- Derive `offset < inputEnd` from ScannerSurfCorr with nonempty chars.
 -- Used when `peek_some_has_more` doesn't apply (intermediate state's peek?
 -- isn't known, but the SurfPos chars are known nonempty after `peek_some_sp`).
-theorem corr_nonempty_has_more {sc : ScannerState}
+lemma corr_nonempty_has_more {sc : ScannerState}
     {c : Char} {rest : List Char} {col : Nat}
     (hcorr : ScannerSurfCorr sc ⟨c :: rest, col⟩) :
     sc.offset < sc.inputEnd := by
@@ -141,7 +141,7 @@ theorem corr_nonempty_has_more {sc : ScannerState}
   | .cons _ hlt _ _ _ _ => have := hcorr.end_eq; omega
 
 -- `scanBlockEntry` produces `GLit '-'`.
-theorem scanBlockEntry_prod (sc : ScannerState) (sp : SurfPos)
+lemma scanBlockEntry_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (hpeek : sc.peek? = some '-')
     (s' : ScannerState) (hok : scanBlockEntry sc = .ok s') :
     ∃ sp', GLit '-' sp sp' ∧ ScannerSurfCorr s' sp' := by
@@ -186,7 +186,7 @@ theorem scanBlockEntry_prod (sc : ScannerState) (sp : SurfPos)
     exact ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq, hcorr_adv.input_prefix, hcorr_adv.indent_cols_nonneg⟩
 
 -- Bridge: isBlankBool c → ¬isNsChar c (converse of not_blank_to_nsChar in ScalarProduction).
-theorem blank_to_not_nsChar {c : Char}
+lemma blank_to_not_nsChar {c : Char}
     (h : isBlankBool c = true) : ¬isNsChar c := by
   simp [isNsChar, isLineBreakProp, isLineFeedProp, isCarriageReturnProp,
     isWhiteSpaceProp, isSpaceProp, isTabProp,
@@ -198,7 +198,7 @@ theorem blank_to_not_nsChar {c : Char}
 -- GNot SNsChar at position after block entry indicator, given isBlockEntryCandidate.
 -- The scanner checks `peekAt? 1` = blank/EOF. After advancing past `-`, the head
 -- of the remaining chars is the character that was at `peekAt? 1`.
-theorem blockEntryCandidate_gnot (sc : ScannerState) (rest : List Char) (col : Nat)
+lemma blockEntryCandidate_gnot (sc : ScannerState) (rest : List Char) (col : Nat)
     (hcorr : ScannerSurfCorr sc ⟨'-' :: rest, col⟩)
     (h_candidate : isBlockEntryCandidate sc = true) :
     GNot SNsChar ⟨rest, col + 1⟩ := by
@@ -224,7 +224,7 @@ theorem blockEntryCandidate_gnot (sc : ScannerState) (rest : List Char) (col : N
       exact blank_to_not_nsChar h_candidate h_pred
 
 -- `scanKey` produces `GLit '?'`.
-theorem scanKey_prod (sc : ScannerState) (sp : SurfPos)
+lemma scanKey_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (hpeek : sc.peek? = some '?')
     (s' : ScannerState) (hok : scanKey sc = .ok s') :
     ∃ sp', GLit '?' sp sp' ∧ ScannerSurfCorr s' sp' := by
@@ -280,7 +280,7 @@ theorem scanKey_prod (sc : ScannerState) (sp : SurfPos)
       exact ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq, hcorr_adv.input_prefix, hcorr_adv.indent_cols_nonneg⟩
 
 -- `scanValue` produces `GLit ':'`.
-theorem scanValue_prod (sc : ScannerState) (sp : SurfPos)
+lemma scanValue_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (hpeek : sc.peek? = some ':')
     (s' : ScannerState) (hok : scanValue sc = .ok s') :
     ∃ sp', GLit ':' sp sp' ∧ ScannerSurfCorr s' sp' := by
@@ -325,14 +325,14 @@ The overall `scanAnchorOrAlias` produces `GLit marker ∧ GStar (GChar isNsAncho
 Tag scanning delegates to `_corr` (4-variant analysis deferred). -/
 
 -- Bridge: scanner's Bool conjunction → surface Prop `isNsAnchorChar`.
-theorem not_of_bool_false {P : Prop} {b : Bool}
+lemma not_of_bool_false {P : Prop} {b : Bool}
     (h_iff : P ↔ b = true) (hf : b = false) : ¬P :=
   fun hp => by rw [hf] at h_iff; exact absurd (h_iff.mp hp) Bool.false_ne_true
 
-theorem bool_not_true_imp_false {b : Bool} (h : (!b) = true) :
+lemma bool_not_true_imp_false {b : Bool} (h : (!b) = true) :
     b = false := by cases b <;> simp_all
 
-theorem isNsAnchorChar_of_scanner_cond {c : Char}
+lemma isNsAnchorChar_of_scanner_cond {c : Char}
     (h : (!isFlowIndicatorBool c && !isWhiteSpaceBool c &&
           !isLineBreakBool c) = true) :
     isNsAnchorChar c := by
@@ -347,7 +347,7 @@ theorem isNsAnchorChar_of_scanner_cond {c : Char}
 
 -- `collectAnchorNameLoop` produces `GStar (GChar isNsAnchorChar)`.
 -- When starting from empty name and the result name grew, positions differ (sp ≠ sp').
-theorem collectAnchorNameLoop_prod (sc : ScannerState) (sp : SurfPos)
+lemma collectAnchorNameLoop_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (name : String) (fuel : Nat) :
     ∃ sp', GStar (GChar isNsAnchorChar) sp sp' ∧
            ScannerSurfCorr (collectAnchorNameLoop sc name fuel).snd sp' ∧
@@ -391,7 +391,7 @@ theorem collectAnchorNameLoop_prod (sc : ScannerState) (sp : SurfPos)
 -- `scanAnchorOrAlias` produces `GLit marker ∧ GStar (GChar isNsAnchorChar)` with `sp_mid ≠ sp'`.
 -- The marker character is `&` for anchors and `*` for aliases.
 -- Since `.ok` requires a non-empty name (A10 Except conversion), the GStar is always non-empty.
-theorem scanAnchorOrAlias_prod (sc : ScannerState) (sp : SurfPos)
+lemma scanAnchorOrAlias_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (isAnchor : Bool)
     (marker : Char) (hpeek : sc.peek? = some marker)
     (hne_nl : marker ≠ '\n') (hne_cr : marker ≠ '\r')
@@ -422,7 +422,7 @@ theorem scanAnchorOrAlias_prod (sc : ScannerState) (sp : SurfPos)
 /-! ### Tag char predicate bridges -/
 
 -- Word chars are tag chars: ns-word-char ⊂ ns-tag-char.
-theorem isWordCharProp_to_isTagCharProp {c : Char} (hw : isWordCharProp c) :
+lemma isWordCharProp_to_isTagCharProp {c : Char} (hw : isWordCharProp c) :
     isTagCharProp c := by
   refine ⟨Or.inl hw, ?_, ?_⟩ <;> intro h
   · subst h; simp [isWordCharProp, isAsciiLetterProp] at hw
@@ -431,7 +431,7 @@ theorem isWordCharProp_to_isTagCharProp {c : Char} (hw : isWordCharProp c) :
       simp [isWordCharProp, isAsciiLetterProp] at hw
 
 -- Lift `GStar (GChar P)` through predicate implication.
-theorem GStar_gchar_lift {P Q : Char → Prop} (h : ∀ c, P c → Q c)
+lemma GStar_gchar_lift {P Q : Char → Prop} (h : ∀ c, P c → Q c)
     {sp sp' : SurfPos} (hg : GStar (GChar P) sp sp') :
     GStar (GChar Q) sp sp' := by
   induction hg with
@@ -444,7 +444,7 @@ theorem GStar_gchar_lift {P Q : Char → Prop} (h : ∀ c, P c → Q c)
 /-! ### Tag suffix loop production -/
 
 -- `collectTagSuffixLoop` produces `GStar (GChar isTagCharProp)`.
-theorem collectTagSuffixLoop_prod (sc : ScannerState) (sp : SurfPos)
+lemma collectTagSuffixLoop_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (suffix : String) (fuel : Nat) :
     ∃ sp', GStar (GChar isTagCharProp) sp sp' ∧
            ScannerSurfCorr (collectTagSuffixLoop sc suffix fuel).snd sp' := by
@@ -482,7 +482,7 @@ theorem collectTagSuffixLoop_prod (sc : ScannerState) (sp : SurfPos)
 -- `collectVerbatimTagLoop` produces `GStar (GChar isUriCharProp)` for URI chars.
 -- When the loop terminates at `>`, also produces `GLit '>'`.
 -- Links grammar positions to scanner-level `foundClose` and `uri` values.
-theorem collectVerbatimTagLoop_prod (sc : ScannerState) (sp : SurfPos)
+lemma collectVerbatimTagLoop_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (uri : String) (fuel : Nat) :
     ∃ sp_mid sp', GStar (GChar isUriCharProp) sp sp_mid ∧
                   ScannerSurfCorr (collectVerbatimTagLoop sc uri fuel).snd.snd sp' ∧
@@ -541,7 +541,7 @@ theorem collectVerbatimTagLoop_prod (sc : ScannerState) (sp : SurfPos)
 -- `collectTagHandleLoop` produces `GStar (GChar isWordCharProp)` for word chars.
 -- When the loop terminates at `!`, also produces `GLit '!'` and `foundBang = true`.
 -- When stopping without `!`, produces `foundBang = false` and `sp_mid = sp'`.
-theorem collectTagHandleLoop_prod (sc : ScannerState) (sp : SurfPos)
+lemma collectTagHandleLoop_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (chars : String) (fuel : Nat) :
     ∃ sp_mid sp', GStar (GChar isWordCharProp) sp sp_mid ∧
                   ScannerSurfCorr (collectTagHandleLoop sc chars fuel).snd.snd sp' ∧
@@ -590,7 +590,7 @@ theorem collectTagHandleLoop_prod (sc : ScannerState) (sp : SurfPos)
 
 -- `scanTag` on the secondary branch (`!!suffix`) produces `SCNsTagProperty.secondary`.
 -- Preconditions: first char `!`, second char `!`.
-theorem scanTag_secondary_prod (sc : ScannerState) (sp : SurfPos)
+lemma scanTag_secondary_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek : sc.peek? = some '!') (hpeek2 : sc.advance.peek? = some '!')
     (s' : ScannerState) (hok : scanTag sc = .ok s') :
@@ -641,7 +641,7 @@ theorem scanTag_secondary_prod (sc : ScannerState) (sp : SurfPos)
 
 -- Named/non-specific tag grammar + correspondence.
 -- Pre: scanner after first `!`, at ⟨rest, col+1⟩, peek ≠ `!`.
-theorem scanNamedTag_prod (sc : ScannerState) (rest : List Char) (col : Nat)
+lemma scanNamedTag_prod (sc : ScannerState) (rest : List Char) (col : Nat)
     (hcorr : ScannerSurfCorr sc ⟨rest, col + 1⟩)
     (hpeek_not_bang : ¬(sc.peek? = some '!'))
     (startPos : YamlPos) (inputEnd : Nat) :
@@ -699,7 +699,7 @@ theorem scanNamedTag_prod (sc : ScannerState) (rest : List Char) (col : Nat)
 -- Handles verbatim `!<uri>`, named `!handle!suffix`, and non-specific `!`.
 -- Verbatim well-formed case fully proven. S8/S9 closed via A10 Except + linking lemmas.
 -- S10 closed via A16 scanNamedTag_prod decomposition.
-theorem scanTag_nonSecondary_prod (sc : ScannerState) (sp : SurfPos)
+lemma scanTag_nonSecondary_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek : sc.peek? = some '!') (hpeek2 : ¬(sc.advance.peek? = some '!'))
     (s' : ScannerState) (hok : scanTag sc = .ok s') :
@@ -779,7 +779,7 @@ theorem scanTag_nonSecondary_prod (sc : ScannerState) (sp : SurfPos)
     exact ⟨sp', h_tag, corr_of_simpleKeyAllowed_update false hcorr'⟩
 
 -- `scanTag` preserves correspondence on all branches.
-theorem scanTag_prod (sc : ScannerState) (sp : SurfPos)
+lemma scanTag_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (s' : ScannerState)
     (hok : scanTag sc = .ok s') :
     ∃ sp', ScannerSurfCorr s' sp' :=
@@ -796,7 +796,7 @@ Helper: `unwindIndents_corr_exact` shows `unwindIndents` preserves the
 exact surface position (not just existential). -/
 
 -- `unwindIndentsLoop` preserves the exact surface position.
-theorem unwindIndentsLoop_corr_exact (sc : ScannerState) (sp : SurfPos)
+lemma unwindIndentsLoop_corr_exact (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (col : Int) (fuel : Nat) :
     ScannerSurfCorr (unwindIndentsLoop sc col fuel) sp := by
   induction fuel generalizing sc with
@@ -814,14 +814,14 @@ theorem unwindIndentsLoop_corr_exact (sc : ScannerState) (sp : SurfPos)
     · exact hcorr
 
 -- `unwindIndents` preserves the exact surface position.
-theorem unwindIndents_corr_exact (sc : ScannerState) (sp : SurfPos)
+lemma unwindIndents_corr_exact (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (col : Int) :
     ScannerSurfCorr (unwindIndents sc col) sp := by
   unfold unwindIndents
   exact unwindIndentsLoop_corr_exact sc sp hcorr col _
 
 -- `scanDocumentStart` produces `SCDirectivesEnd` when chars = `---rest` at col 0.
-theorem scanDocumentStart_prod (sc : ScannerState) (sp : SurfPos)
+lemma scanDocumentStart_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
     (rest : List Char) (hchars : sp.chars = '-' :: '-' :: '-' :: rest)
     (hcol : sp.col = 0) :
@@ -879,7 +879,7 @@ theorem scanDocumentStart_prod (sc : ScannerState) (sp : SurfPos)
          hcorr_adv3.end_eq, hcorr_adv3.input_prefix, hcorr_adv3.indent_cols_nonneg⟩
 
 -- `scanDocumentEnd` produces `SCDocumentEnd` when chars = `...rest` at col 0.
-theorem scanDocumentEnd_prod (sc : ScannerState) (sp : SurfPos)
+lemma scanDocumentEnd_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
     (rest : List Char) (hchars : sp.chars = '.' :: '.' :: '.' :: rest)
     (hcol : sp.col = 0)
@@ -969,7 +969,7 @@ theorem scanDocumentEnd_prod (sc : ScannerState) (sp : SurfPos)
 -- After `skipToEndOfLine`, the scanner is at a line break or EOF.
 -- Converts peek-level information to surface-position chars evidence.
 -- Used by `scanDirective_prod` to give the break/EOF postcondition.
-theorem skipToEndOfLineLoop_at_break_or_eof (sc : ScannerState) (fuel : Nat)
+lemma skipToEndOfLineLoop_at_break_or_eof (sc : ScannerState) (fuel : Nat)
     (h_fuel : sc.offset + fuel ≥ sc.inputEnd) :
     let s' := skipToEndOfLineLoop sc fuel
     s'.peek? = none ∨ ∃ c, s'.peek? = some c ∧ isLineBreakBool c = true := by
@@ -999,7 +999,7 @@ theorem skipToEndOfLineLoop_at_break_or_eof (sc : ScannerState) (fuel : Nat)
     · -- peek? = none → return sc
       exact Or.inl ‹_›
 
-theorem skipToEndOfLine_at_break_or_eof (sc : ScannerState) :
+lemma skipToEndOfLine_at_break_or_eof (sc : ScannerState) :
     let s' := skipToEndOfLine sc
     s'.peek? = none ∨ ∃ c, s'.peek? = some c ∧ isLineBreakBool c = true := by
   unfold skipToEndOfLine
@@ -1007,7 +1007,7 @@ theorem skipToEndOfLine_at_break_or_eof (sc : ScannerState) :
 
 -- Surface-position version: after `skipToEndOfLine`, the surface position
 -- has empty chars (EOF) or starts with a break character.
-theorem skipToEndOfLine_at_break_or_eof_chars (sc : ScannerState)
+lemma skipToEndOfLine_at_break_or_eof_chars (sc : ScannerState)
     (sp' : SurfPos)
     (hcorr' : ScannerSurfCorr (skipToEndOfLine sc) sp') :
     sp'.chars = [] ∨ ∃ ch rest, sp'.chars = ch :: rest ∧ isLineBreakBool ch = true := by
@@ -1033,7 +1033,7 @@ theorem skipToEndOfLine_at_break_or_eof_chars (sc : ScannerState)
     obtain ⟨rest', rfl⟩ := peek_some_sp hcorr' hpeek
     exact Or.inr ⟨c, rest', rfl, hlb⟩
 
-theorem GStar_SSWhite_to_GStar_SNbChar {sp sp' : SurfPos}
+lemma GStar_SSWhite_to_GStar_SNbChar {sp sp' : SurfPos}
     (h : GStar SSWhite sp sp') : GStar SNbChar sp sp' := by
   induction h with
   | nil => exact GStar.nil _
@@ -1044,7 +1044,7 @@ theorem GStar_SSWhite_to_GStar_SNbChar {sp sp' : SurfPos}
     | tab rest col =>
       exact GStar.cons _ _ _ (not_isLineBreak_gives_SNbChar '\t' rest col (by decide)) ih
 
-theorem collectDirectiveNameLoop_prod (sc : ScannerState) (sp : SurfPos)
+lemma collectDirectiveNameLoop_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (name : String) (fuel : Nat) :
     ∃ sp', GStar SNbChar sp sp' ∧
       ScannerSurfCorr (collectDirectiveNameLoop sc name fuel).snd sp' := by
@@ -1066,14 +1066,14 @@ theorem collectDirectiveNameLoop_prod (sc : ScannerState) (sp : SurfPos)
       · exact ⟨sp, GStar.nil _, hcorr⟩
     · exact ⟨sp, GStar.nil _, hcorr⟩
 
-theorem isDigit_not_isLineBreak (c : Char) (h : c.isDigit = true) :
+lemma isDigit_not_isLineBreak (c : Char) (h : c.isDigit = true) :
     ¬isLineBreakBool c = true := by
   intro hlb; simp [isLineBreakBool, isLineFeedBool, isCarriageReturnBool] at hlb
   cases hlb with
   | inl h1 => subst h1; simp [Char.isDigit] at h
   | inr h1 => subst h1; simp [Char.isDigit] at h
 
-theorem collectVersionMajorLoop_prod (sc : ScannerState) (sp : SurfPos)
+lemma collectVersionMajorLoop_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (major : String) (fuel : Nat) :
     ∃ sp', GStar SNbChar sp sp' ∧
       ScannerSurfCorr (collectVersionMajorLoop sc major fuel).snd sp' := by
@@ -1102,7 +1102,7 @@ theorem collectVersionMajorLoop_prod (sc : ScannerState) (sp : SurfPos)
       · exact ⟨sp, GStar.nil _, hcorr⟩
     · exact ⟨sp, GStar.nil _, hcorr⟩
 
-theorem collectVersionMinorLoop_prod (sc : ScannerState) (sp : SurfPos)
+lemma collectVersionMinorLoop_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (minor : String) (fuel : Nat) :
     ∃ sp', GStar SNbChar sp sp' ∧
       ScannerSurfCorr (collectVersionMinorLoop sc minor fuel).snd sp' := by
@@ -1122,14 +1122,14 @@ theorem collectVersionMinorLoop_prod (sc : ScannerState) (sp : SurfPos)
       · exact ⟨sp, GStar.nil _, hcorr⟩
     · exact ⟨sp, GStar.nil _, hcorr⟩
 
-theorem isWordCharOrBang_not_isLineBreak (c : Char)
+lemma isWordCharOrBang_not_isLineBreak (c : Char)
     (h : (isWordCharBool c || c == '!') = true) :
     ¬isLineBreakBool c = true := by
   intro hlb; simp [isLineBreakBool, isLineFeedBool, isCarriageReturnBool] at hlb
   simp [isWordCharBool, isWordCharProp, isAsciiLetterProp] at h
   rcases hlb with rfl | rfl <;> simp_all
 
-theorem collectTagHandleDirectiveLoop_prod (sc : ScannerState) (sp : SurfPos)
+lemma collectTagHandleDirectiveLoop_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (handle : String) (fuel : Nat) :
     ∃ sp', GStar SNbChar sp sp' ∧
       ScannerSurfCorr (collectTagHandleDirectiveLoop sc handle fuel).snd sp' := by
@@ -1149,14 +1149,14 @@ theorem collectTagHandleDirectiveLoop_prod (sc : ScannerState) (sp : SurfPos)
       · exact ⟨sp, GStar.nil _, hcorr⟩
     · exact ⟨sp, GStar.nil _, hcorr⟩
 
-theorem isUriChar_not_isLineBreak (c : Char)
+lemma isUriChar_not_isLineBreak (c : Char)
     (h : isUriCharBool c = true) :
     ¬isLineBreakBool c = true := by
   intro hlb; simp [isLineBreakBool, isLineFeedBool, isCarriageReturnBool] at hlb
   simp [isUriCharBool, isUriCharProp, isWordCharProp, isAsciiLetterProp] at h
   rcases hlb with rfl | rfl <;> simp_all
 
-theorem collectTagPrefixLoop_prod (sc : ScannerState) (sp : SurfPos)
+lemma collectTagPrefixLoop_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (pfx : String) (fuel : Nat) :
     ∃ sp', GStar SNbChar sp sp' ∧
       ScannerSurfCorr (collectTagPrefixLoop sc pfx fuel).snd sp' := by
@@ -1176,7 +1176,7 @@ theorem collectTagPrefixLoop_prod (sc : ScannerState) (sp : SurfPos)
       · exact ⟨sp, GStar.nil _, hcorr⟩
     · exact ⟨sp, GStar.nil _, hcorr⟩
 
-theorem scanYamlDirective_prod (sc : ScannerState)
+lemma scanYamlDirective_prod (sc : ScannerState)
     (s_after_ws : ScannerState) (sp_ws : SurfPos)
     (hcorr_ws : ScannerSurfCorr s_after_ws sp_ws)
     (startPos : YamlPos) (s' : ScannerState)
@@ -1208,7 +1208,7 @@ theorem scanYamlDirective_prod (sc : ScannerState)
     · have h := Except.ok.inj hok; subst h
       exact ⟨sp_ws2, h_total, ⟨hcorr_ws2.chars_from, hcorr_ws2.col_eq, hcorr_ws2.end_eq, hcorr_ws2.input_prefix, hcorr_ws2.indent_cols_nonneg⟩⟩
 
-theorem scanTagDirective_prod
+lemma scanTagDirective_prod
     (s_after_ws : ScannerState) (sp_ws : SurfPos)
     (hcorr_ws : ScannerSurfCorr s_after_ws sp_ws)
     (sc : ScannerState) (startPos : YamlPos) (s' : ScannerState)
@@ -1245,7 +1245,7 @@ theorem scanTagDirective_prod
 -- up to the line break are non-break characters.  After 4y.1, all directive
 -- branches end with `skipToEndOfLine`, so the scanner is always at break/EOF.
 -- Requires `hpeek` (the caller dispatches on `sc.peek? = some '%'`).
-theorem scanDirective_prod (sc : ScannerState) (sp : SurfPos)
+lemma scanDirective_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek : sc.peek? = some '%')
     (s' : ScannerState) (hok : scanDirective sc = .ok s') :

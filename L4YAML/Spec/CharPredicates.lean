@@ -31,12 +31,12 @@ namespace L4YAML.CharPredicates
 /-! ## Helper Lemma -/
 
 /-- Negate both sides of a Bool↔Prop correspondence. -/
-theorem not_bool_iff_not {b : Bool} {p : Prop} (h : b = true ↔ p) :
+lemma not_bool_iff_not {b : Bool} {p : Prop} (h : b = true ↔ p) :
     (!b) = true ↔ ¬p := by
   cases b <;> simp_all
 
 /-- `!(b₁ && b₂) = true ↔ (b₁ = true → ¬p)` given `b₂ = true ↔ p`. -/
-theorem not_and_bool_iff_imp_not {b₁ b₂ : Bool} {p : Prop}
+lemma not_and_bool_iff_imp_not {b₁ b₂ : Bool} {p : Prop}
     (h : b₂ = true ↔ p) :
     (!(b₁ && b₂)) = true ↔ (b₁ = true → ¬p) := by
   cases b₁ <;> cases b₂ <;> simp_all
@@ -59,7 +59,7 @@ def isLineFeedBool (c : Char) : Bool := c == '\n'
 @[yaml_spec "5.4" 24 "b-line-feed"]
 def isLineFeedProp (c : Char) : Prop := c == '\n'
 
-theorem isLineFeed_iff (c : Char) : isLineFeedBool c = true ↔ isLineFeedProp c := by
+lemma isLineFeed_iff (c : Char) : isLineFeedBool c = true ↔ isLineFeedProp c := by
   simp [isLineFeedBool, isLineFeedProp]
 
 instance (c : Char) : Decidable (isLineFeedProp c) := by
@@ -73,7 +73,7 @@ def isCarriageReturnBool (c : Char) : Bool := c == '\r'
 @[yaml_spec "5.4" 25 "b-carriage-return"]
 def isCarriageReturnProp (c : Char) : Prop := c == '\r'
 
-theorem isCarriageReturn_iff (c : Char) :
+lemma isCarriageReturn_iff (c : Char) :
     isCarriageReturnBool c = true ↔ isCarriageReturnProp c := by
   simp [isCarriageReturnBool, isCarriageReturnProp]
 
@@ -88,7 +88,7 @@ def isLineBreakBool (c : Char) : Bool := isLineFeedBool c || isCarriageReturnBoo
 @[yaml_spec "5.4" 26 "b-char"]
 def isLineBreakProp (c : Char) : Prop := isLineFeedProp c ∨ isCarriageReturnProp c
 
-theorem isLineBreak_iff (c : Char) : isLineBreakBool c = true ↔ isLineBreakProp c := by
+lemma isLineBreak_iff (c : Char) : isLineBreakBool c = true ↔ isLineBreakProp c := by
   simp only [isLineBreakBool, isLineBreakProp, Bool.or_eq_true,
              isLineFeed_iff, isCarriageReturn_iff]
 
@@ -112,7 +112,7 @@ def isSpaceBool (c : Char) : Bool := c == ' '
 @[yaml_spec "5.5" 31 "s-space"]
 def isSpaceProp (c : Char) : Prop := c == ' '
 
-theorem isSpace_iff (c : Char) : isSpaceBool c = true ↔ isSpaceProp c := by
+lemma isSpace_iff (c : Char) : isSpaceBool c = true ↔ isSpaceProp c := by
   simp [isSpaceBool, isSpaceProp]
 
 instance (c : Char) : Decidable (isSpaceProp c) := by
@@ -126,7 +126,7 @@ def isTabBool (c : Char) : Bool := c == '\t'
 @[yaml_spec "5.5" 32 "s-tab"]
 def isTabProp (c : Char) : Prop := c == '\t'
 
-theorem isTab_iff (c : Char) : isTabBool c = true ↔ isTabProp c := by
+lemma isTab_iff (c : Char) : isTabBool c = true ↔ isTabProp c := by
   simp [isTabBool, isTabProp]
 
 instance (c : Char) : Decidable (isTabProp c) := by
@@ -140,7 +140,7 @@ def isWhiteSpaceBool (c : Char) : Bool := isSpaceBool c || isTabBool c
 @[yaml_spec "5.5" 33 "s-white"]
 def isWhiteSpaceProp (c : Char) : Prop := isSpaceProp c ∨ isTabProp c
 
-theorem isWhiteSpace_iff (c : Char) : isWhiteSpaceBool c = true ↔ isWhiteSpaceProp c := by
+lemma isWhiteSpace_iff (c : Char) : isWhiteSpaceBool c = true ↔ isWhiteSpaceProp c := by
   simp only [isWhiteSpaceBool, isWhiteSpaceProp, Bool.or_eq_true, isSpace_iff, isTab_iff]
 
 instance (c : Char) : Decidable (isWhiteSpaceProp c) := by
@@ -154,7 +154,7 @@ def isBlankBool (c : Char) : Bool := isWhiteSpaceBool c || isLineBreakBool c
 /-- Blank: whitespace or line break (Prop). -/
 def isBlankProp (c : Char) : Prop := isWhiteSpaceProp c ∨ isLineBreakProp c
 
-theorem isBlank_iff (c : Char) : isBlankBool c = true ↔ isBlankProp c := by
+lemma isBlank_iff (c : Char) : isBlankBool c = true ↔ isBlankProp c := by
   simp only [isBlankBool, isBlankProp, Bool.or_eq_true, isWhiteSpace_iff, isLineBreak_iff]
 
 instance (c : Char) : Decidable (isBlankProp c) := by
@@ -183,7 +183,7 @@ def isFlowIndicatorBool (c : Char) : Bool := c ∈ [',', '[', ']', '{', '}']
   yaml_spec "5.3" 23 "c-flow-indicator"]
 def isFlowIndicatorProp (c : Char) : Prop := c ∈ [',', '[', ']', '{', '}']
 
-theorem isFlowIndicator_iff (c : Char) :
+lemma isFlowIndicator_iff (c : Char) :
     isFlowIndicatorBool c = true ↔ isFlowIndicatorProp c := by
   simp [isFlowIndicatorBool, isFlowIndicatorProp, List.mem_cons, Bool.or_eq_true]
 
@@ -243,7 +243,7 @@ def isIndicatorProp (c : Char) : Prop :=
   c ∈ ['-', '?', ':', ',', '[', ']', '{', '}', '#', '&', '*', '!', '|', '>',
        '\'', '"', '%', '@', '`']
 
-theorem isIndicator_iff (c : Char) :
+lemma isIndicator_iff (c : Char) :
     isIndicatorBool c = true ↔ isIndicatorProp c := by
   simp [isIndicatorBool, isIndicatorProp, List.mem_cons, Bool.or_eq_true]
 
@@ -267,7 +267,7 @@ def isSequenceEntryBool (c : Char) : Bool := c == '-'
 @[yaml_spec "5.3" 4 "c-sequence-entry"]
 def isSequenceEntryProp (c : Char) : Prop := c == '-'
 
-theorem isSequenceEntry_iff (c : Char) :
+lemma isSequenceEntry_iff (c : Char) :
     isSequenceEntryBool c = true ↔ isSequenceEntryProp c := by
   simp [isSequenceEntryBool, isSequenceEntryProp]
 
@@ -282,7 +282,7 @@ def isMappingValueBool (c : Char) : Bool := c == ':'
 @[yaml_spec "5.3" 6 "c-mapping-value"]
 def isMappingValueProp (c : Char) : Prop := c == ':'
 
-theorem isMappingValue_iff (c : Char) :
+lemma isMappingValue_iff (c : Char) :
     isMappingValueBool c = true ↔ isMappingValueProp c := by
   simp [isMappingValueBool, isMappingValueProp]
 
@@ -297,7 +297,7 @@ def isCommentBool (c : Char) : Bool := c == '#'
 @[yaml_spec "5.3" 12 "c-comment"]
 def isCommentProp (c : Char) : Prop := c == '#'
 
-theorem isComment_iff (c : Char) :
+lemma isComment_iff (c : Char) :
     isCommentBool c = true ↔ isCommentProp c := by
   simp [isCommentBool, isCommentProp]
 
@@ -312,7 +312,7 @@ def isLiteralBool (c : Char) : Bool := c == '|'
 @[yaml_spec "5.3" 16 "c-literal"]
 def isLiteralProp (c : Char) : Prop := c == '|'
 
-theorem isLiteral_iff (c : Char) :
+lemma isLiteral_iff (c : Char) :
     isLiteralBool c = true ↔ isLiteralProp c := by
   simp [isLiteralBool, isLiteralProp]
 
@@ -327,7 +327,7 @@ def isFoldedBool (c : Char) : Bool := c == '>'
 @[yaml_spec "5.3" 17 "c-folded"]
 def isFoldedProp (c : Char) : Prop := c == '>'
 
-theorem isFolded_iff (c : Char) :
+lemma isFolded_iff (c : Char) :
     isFoldedBool c = true ↔ isFoldedProp c := by
   simp [isFoldedBool, isFoldedProp]
 
@@ -342,7 +342,7 @@ def isSingleQuoteBool (c : Char) : Bool := c == '\''
 @[yaml_spec "5.3" 18 "c-single-quote"]
 def isSingleQuoteProp (c : Char) : Prop := c == '\''
 
-theorem isSingleQuote_iff (c : Char) :
+lemma isSingleQuote_iff (c : Char) :
     isSingleQuoteBool c = true ↔ isSingleQuoteProp c := by
   simp [isSingleQuoteBool, isSingleQuoteProp]
 
@@ -357,7 +357,7 @@ def isDoubleQuoteBool (c : Char) : Bool := c == '"'
 @[yaml_spec "5.3" 19 "c-double-quote"]
 def isDoubleQuoteProp (c : Char) : Prop := c == '"'
 
-theorem isDoubleQuote_iff (c : Char) :
+lemma isDoubleQuote_iff (c : Char) :
     isDoubleQuoteBool c = true ↔ isDoubleQuoteProp c := by
   simp [isDoubleQuoteBool, isDoubleQuoteProp]
 
@@ -379,7 +379,7 @@ def isEscapeBool (c : Char) : Bool := c == '\\'
 @[yaml_spec "5.7" 41 "c-escape"]
 def isEscapeProp (c : Char) : Prop := c == '\\'
 
-theorem isEscape_iff (c : Char) :
+lemma isEscape_iff (c : Char) :
     isEscapeBool c = true ↔ isEscapeProp c := by
   simp [isEscapeBool, isEscapeProp]
 
@@ -394,7 +394,7 @@ def isNsEscNullBool (c : Char) : Bool := c == '0'
 @[yaml_spec "5.7" 42 "ns-esc-null"]
 def isNsEscNullProp (c : Char) : Prop := c == '0'
 
-theorem isNsEscNull_iff (c : Char) :
+lemma isNsEscNull_iff (c : Char) :
     isNsEscNullBool c = true ↔ isNsEscNullProp c := by
   simp [isNsEscNullBool, isNsEscNullProp]
 
@@ -409,7 +409,7 @@ def isNsEscBellBool (c : Char) : Bool := c == 'a'
 @[yaml_spec "5.7" 43 "ns-esc-bell"]
 def isNsEscBellProp (c : Char) : Prop := c == 'a'
 
-theorem isNsEscBell_iff (c : Char) :
+lemma isNsEscBell_iff (c : Char) :
     isNsEscBellBool c = true ↔ isNsEscBellProp c := by
   simp [isNsEscBellBool, isNsEscBellProp]
 
@@ -424,7 +424,7 @@ def isNsEscBackspaceBool (c : Char) : Bool := c == 'b'
 @[yaml_spec "5.7" 44 "ns-esc-backspace"]
 def isNsEscBackspaceProp (c : Char) : Prop := c == 'b'
 
-theorem isNsEscBackspace_iff (c : Char) :
+lemma isNsEscBackspace_iff (c : Char) :
     isNsEscBackspaceBool c = true ↔ isNsEscBackspaceProp c := by
   simp [isNsEscBackspaceBool, isNsEscBackspaceProp]
 
@@ -440,7 +440,7 @@ def isNsEscHorizontalTabBool (c : Char) : Bool := c == 't'
 @[yaml_spec "5.7" 45 "ns-esc-horizontal-tab"]
 def isNsEscHorizontalTabProp (c : Char) : Prop := c == 't'
 
-theorem isNsEscHorizontalTab_iff (c : Char) :
+lemma isNsEscHorizontalTab_iff (c : Char) :
     isNsEscHorizontalTabBool c = true ↔ isNsEscHorizontalTabProp c := by
   simp [isNsEscHorizontalTabBool, isNsEscHorizontalTabProp]
 
@@ -455,7 +455,7 @@ def isNsEscLineFeedBool (c : Char) : Bool := c == 'n'
 @[yaml_spec "5.7" 46 "ns-esc-line-feed"]
 def isNsEscLineFeedProp (c : Char) : Prop := c == 'n'
 
-theorem isNsEscLineFeed_iff (c : Char) :
+lemma isNsEscLineFeed_iff (c : Char) :
     isNsEscLineFeedBool c = true ↔ isNsEscLineFeedProp c := by
   simp [isNsEscLineFeedBool, isNsEscLineFeedProp]
 
@@ -470,7 +470,7 @@ def isNsEscVerticalTabBool (c : Char) : Bool := c == 'v'
 @[yaml_spec "5.7" 47 "ns-esc-vertical-tab"]
 def isNsEscVerticalTabProp (c : Char) : Prop := c == 'v'
 
-theorem isNsEscVerticalTab_iff (c : Char) :
+lemma isNsEscVerticalTab_iff (c : Char) :
     isNsEscVerticalTabBool c = true ↔ isNsEscVerticalTabProp c := by
   simp [isNsEscVerticalTabBool, isNsEscVerticalTabProp]
 
@@ -485,7 +485,7 @@ def isNsEscFormFeedBool (c : Char) : Bool := c == 'f'
 @[yaml_spec "5.7" 48 "ns-esc-form-feed"]
 def isNsEscFormFeedProp (c : Char) : Prop := c == 'f'
 
-theorem isNsEscFormFeed_iff (c : Char) :
+lemma isNsEscFormFeed_iff (c : Char) :
     isNsEscFormFeedBool c = true ↔ isNsEscFormFeedProp c := by
   simp [isNsEscFormFeedBool, isNsEscFormFeedProp]
 
@@ -500,7 +500,7 @@ def isNsEscCarriageReturnBool (c : Char) : Bool := c == 'r'
 @[yaml_spec "5.7" 49 "ns-esc-carriage-return"]
 def isNsEscCarriageReturnProp (c : Char) : Prop := c == 'r'
 
-theorem isNsEscCarriageReturn_iff (c : Char) :
+lemma isNsEscCarriageReturn_iff (c : Char) :
     isNsEscCarriageReturnBool c = true ↔ isNsEscCarriageReturnProp c := by
   simp [isNsEscCarriageReturnBool, isNsEscCarriageReturnProp]
 
@@ -515,7 +515,7 @@ def isNsEscEscapeBool (c : Char) : Bool := c == 'e'
 @[yaml_spec "5.7" 50 "ns-esc-escape"]
 def isNsEscEscapeProp (c : Char) : Prop := c == 'e'
 
-theorem isNsEscEscape_iff (c : Char) :
+lemma isNsEscEscape_iff (c : Char) :
     isNsEscEscapeBool c = true ↔ isNsEscEscapeProp c := by
   simp [isNsEscEscapeBool, isNsEscEscapeProp]
 
@@ -530,7 +530,7 @@ def isNsEscSlashBool (c : Char) : Bool := c == '/'
 @[yaml_spec "5.7" 53 "ns-esc-slash"]
 def isNsEscSlashProp (c : Char) : Prop := c == '/'
 
-theorem isNsEscSlash_iff (c : Char) :
+lemma isNsEscSlash_iff (c : Char) :
     isNsEscSlashBool c = true ↔ isNsEscSlashProp c := by
   simp [isNsEscSlashBool, isNsEscSlashProp]
 
@@ -545,7 +545,7 @@ def isNsEscNextLineBool (c : Char) : Bool := c == 'N'
 @[yaml_spec "5.7" 55 "ns-esc-next-line"]
 def isNsEscNextLineProp (c : Char) : Prop := c == 'N'
 
-theorem isNsEscNextLine_iff (c : Char) :
+lemma isNsEscNextLine_iff (c : Char) :
     isNsEscNextLineBool c = true ↔ isNsEscNextLineProp c := by
   simp [isNsEscNextLineBool, isNsEscNextLineProp]
 
@@ -560,7 +560,7 @@ def isNsEscNbspBool (c : Char) : Bool := c == '_'
 @[yaml_spec "5.7" 56 "ns-esc-non-breaking-space"]
 def isNsEscNbspProp (c : Char) : Prop := c == '_'
 
-theorem isNsEscNbsp_iff (c : Char) :
+lemma isNsEscNbsp_iff (c : Char) :
     isNsEscNbspBool c = true ↔ isNsEscNbspProp c := by
   simp [isNsEscNbspBool, isNsEscNbspProp]
 
@@ -575,7 +575,7 @@ def isNsEscLineSeparatorBool (c : Char) : Bool := c == 'L'
 @[yaml_spec "5.7" 57 "ns-esc-line-separator"]
 def isNsEscLineSeparatorProp (c : Char) : Prop := c == 'L'
 
-theorem isNsEscLineSeparator_iff (c : Char) :
+lemma isNsEscLineSeparator_iff (c : Char) :
     isNsEscLineSeparatorBool c = true ↔ isNsEscLineSeparatorProp c := by
   simp [isNsEscLineSeparatorBool, isNsEscLineSeparatorProp]
 
@@ -590,7 +590,7 @@ def isNsEscParagraphSeparatorBool (c : Char) : Bool := c == 'P'
 @[yaml_spec "5.7" 58 "ns-esc-paragraph-separator"]
 def isNsEscParagraphSeparatorProp (c : Char) : Prop := c == 'P'
 
-theorem isNsEscParagraphSeparator_iff (c : Char) :
+lemma isNsEscParagraphSeparator_iff (c : Char) :
     isNsEscParagraphSeparatorBool c = true ↔ isNsEscParagraphSeparatorProp c := by
   simp [isNsEscParagraphSeparatorBool, isNsEscParagraphSeparatorProp]
 
@@ -605,7 +605,7 @@ def isNsEsc8BitBool (c : Char) : Bool := c == 'x'
 @[yaml_spec "5.7" 59 "ns-esc-8-bit"]
 def isNsEsc8BitProp (c : Char) : Prop := c == 'x'
 
-theorem isNsEsc8Bit_iff (c : Char) :
+lemma isNsEsc8Bit_iff (c : Char) :
     isNsEsc8BitBool c = true ↔ isNsEsc8BitProp c := by
   simp [isNsEsc8BitBool, isNsEsc8BitProp]
 
@@ -620,7 +620,7 @@ def isNsEsc16BitBool (c : Char) : Bool := c == 'u'
 @[yaml_spec "5.7" 60 "ns-esc-16-bit"]
 def isNsEsc16BitProp (c : Char) : Prop := c == 'u'
 
-theorem isNsEsc16Bit_iff (c : Char) :
+lemma isNsEsc16Bit_iff (c : Char) :
     isNsEsc16BitBool c = true ↔ isNsEsc16BitProp c := by
   simp [isNsEsc16BitBool, isNsEsc16BitProp]
 
@@ -635,7 +635,7 @@ def isNsEsc32BitBool (c : Char) : Bool := c == 'U'
 @[yaml_spec "5.7" 61 "ns-esc-32-bit"]
 def isNsEsc32BitProp (c : Char) : Prop := c == 'U'
 
-theorem isNsEsc32Bit_iff (c : Char) :
+lemma isNsEsc32Bit_iff (c : Char) :
     isNsEsc32BitBool c = true ↔ isNsEsc32BitProp c := by
   simp [isNsEsc32BitBool, isNsEsc32BitProp]
 
@@ -658,7 +658,7 @@ def isChompKeepBool (c : Char) : Bool := c == '+'
 @[yaml_spec "8.1.1.2" 164 "c-chomping-indicator"]
 def isChompKeepProp (c : Char) : Prop := c == '+'
 
-theorem isChompKeep_iff (c : Char) :
+lemma isChompKeep_iff (c : Char) :
     isChompKeepBool c = true ↔ isChompKeepProp c := by
   simp [isChompKeepBool, isChompKeepProp]
 
@@ -681,7 +681,7 @@ def isDocEndDotBool (c : Char) : Bool := c == '.'
 @[yaml_spec "9.1.4" 203 "c-document-end"]
 def isDocEndDotProp (c : Char) : Prop := c == '.'
 
-theorem isDocEndDot_iff (c : Char) :
+lemma isDocEndDot_iff (c : Char) :
     isDocEndDotBool c = true ↔ isDocEndDotProp c := by
   simp [isDocEndDotBool, isDocEndDotProp]
 
@@ -801,7 +801,7 @@ instance (c : Char) : Decidable (isPrintableProp c) := by
 @[yaml_spec "5.1" 1 "c-printable"]
 def isPrintableBool (c : Char) : Bool := decide (isPrintableProp c)
 
-theorem isPrintable_iff (c : Char) : isPrintableBool c = true ↔ isPrintableProp c := by
+lemma isPrintable_iff (c : Char) : isPrintableBool c = true ↔ isPrintableProp c := by
   simp [isPrintableBool, decide_eq_true_eq]
 
 /-! ## JSON Characters
@@ -826,7 +826,7 @@ instance (c : Char) : Decidable (isNbJsonProp c) := by
 @[yaml_spec "5.1" 2 "nb-json"]
 def isNbJsonBool (c : Char) : Bool := decide (isNbJsonProp c)
 
-theorem isNbJson_iff (c : Char) : isNbJsonBool c = true ↔ isNbJsonProp c := by
+lemma isNbJson_iff (c : Char) : isNbJsonBool c = true ↔ isNbJsonProp c := by
   simp [isNbJsonBool, decide_eq_true_eq]
 
 /-! ## Indent Character
@@ -842,7 +842,7 @@ def isIndentCharBool (c : Char) : Bool := c == ' '
 @[yaml_spec "5.5" 31 "s-space"]
 def isIndentCharProp (c : Char) : Prop := c == ' '
 
-theorem isIndentChar_iff (c : Char) :
+lemma isIndentChar_iff (c : Char) :
     isIndentCharBool c = true ↔ isIndentCharProp c := by
   simp [isIndentCharBool, isIndentCharProp]
 
@@ -868,7 +868,7 @@ instance (c : Char) : Decidable (isAsciiLetterProp c) := by
 @[yaml_spec "5.6" 37 "ns-ascii-letter"]
 def isAsciiLetterBool (c : Char) : Bool := decide (isAsciiLetterProp c)
 
-theorem isAsciiLetter_iff (c : Char) : isAsciiLetterBool c = true ↔ isAsciiLetterProp c := by
+lemma isAsciiLetter_iff (c : Char) : isAsciiLetterBool c = true ↔ isAsciiLetterProp c := by
   simp [isAsciiLetterBool, decide_eq_true_eq]
 
 /-- `[38] ns-word-char`: `ns-dec-digit | ns-ascii-letter | '-'` (Prop). -/
@@ -889,7 +889,7 @@ instance (c : Char) : Decidable (isWordCharProp c) := by
   yaml_spec "5.6" 38 "ns-word-char"]
 def isWordCharBool (c : Char) : Bool := decide (isWordCharProp c)
 
-theorem isWordChar_iff (c : Char) : isWordCharBool c = true ↔ isWordCharProp c := by
+lemma isWordChar_iff (c : Char) : isWordCharBool c = true ↔ isWordCharProp c := by
   simp [isWordCharBool, decide_eq_true_eq]
 
 /-- `[39] ns-uri-char`: word-char plus URI-special characters and `%` (Prop).
@@ -914,7 +914,7 @@ instance (c : Char) : Decidable (isUriCharProp c) := by
   yaml_spec "5.6" 39 "ns-uri-char"]
 def isUriCharBool (c : Char) : Bool := decide (isUriCharProp c)
 
-theorem isUriChar_iff (c : Char) : isUriCharBool c = true ↔ isUriCharProp c := by
+lemma isUriChar_iff (c : Char) : isUriCharBool c = true ↔ isUriCharProp c := by
   simp [isUriCharBool, decide_eq_true_eq]
 
 /-- `[40] ns-tag-char`: `ns-uri-char - '!' - c-flow-indicator` (Prop). -/
@@ -931,7 +931,7 @@ instance (c : Char) : Decidable (isTagCharProp c) := by
   yaml_spec "5.6" 40 "ns-tag-char"]
 def isTagCharBool (c : Char) : Bool := decide (isTagCharProp c)
 
-theorem isTagChar_iff (c : Char) : isTagCharBool c = true ↔ isTagCharProp c := by
+lemma isTagChar_iff (c : Char) : isTagCharBool c = true ↔ isTagCharProp c := by
   simp [isTagCharBool, decide_eq_true_eq]
 
 /-! ## Plain Scalar First Character
@@ -981,7 +981,7 @@ instance (c : Char) (next : Option Char) (inFlow : Bool) :
     | some n => infer_instance
   · infer_instance
 
-theorem canStartPlainScalar_iff (c : Char) (next : Option Char) (inFlow : Bool) :
+lemma canStartPlainScalar_iff (c : Char) (next : Option Char) (inFlow : Bool) :
     canStartPlainScalarBool c next inFlow = true ↔
     canStartPlainScalarProp c next inFlow := by
   simp only [canStartPlainScalarBool, canStartPlainScalarProp]
@@ -1054,7 +1054,7 @@ def isPlainSafeProp (c : Char) (inFlow : Bool) : Prop :=
 instance (c : Char) (inFlow : Bool) : Decidable (isPlainSafeProp c inFlow) := by
   unfold isPlainSafeProp; infer_instance
 
-theorem isPlainSafe_iff (c : Char) (inFlow : Bool) :
+lemma isPlainSafe_iff (c : Char) (inFlow : Bool) :
     isPlainSafeBool c inFlow = true ↔ isPlainSafeProp c inFlow := by
   simp only [isPlainSafeBool, isPlainSafeProp]
   split
@@ -1121,7 +1121,7 @@ instance (content : String) (inFlow : Bool) : Decidable (validPlainFirstProp con
     | nil => exact inferInstance
     | cons n _ => exact inferInstance
 
-theorem validPlainFirst_iff (content : String) (inFlow : Bool) :
+lemma validPlainFirst_iff (content : String) (inFlow : Bool) :
     validPlainFirstBool content inFlow = true ↔ validPlainFirstProp content inFlow := by
   unfold validPlainFirstBool validPlainFirstProp
   split
@@ -1140,7 +1140,7 @@ def hasAdjacentChars (a b : Char) : List Char → Bool
   | c₁ :: c₂ :: rest => (c₁ == a && c₂ == b) || hasAdjacentChars a b (c₂ :: rest)
   | _ => false
 
-theorem hasAdjacentChars_true_implies (a b : Char) (cs : List Char)
+lemma hasAdjacentChars_true_implies (a b : Char) (cs : List Char)
     (h : hasAdjacentChars a b cs = true) :
     ∃ i, cs[i]? = some a ∧ cs[i + 1]? = some b := by
   induction cs with
@@ -1159,7 +1159,7 @@ theorem hasAdjacentChars_true_implies (a b : Char) (cs : List Char)
         have ⟨i, hi₁, hi₂⟩ := ih h
         exact ⟨i + 1, by simp [hi₁], by simp [hi₂]⟩
 
-theorem hasAdjacentChars_true_of (a b : Char) (cs : List Char)
+lemma hasAdjacentChars_true_of (a b : Char) (cs : List Char)
     (h : ∃ i, cs[i]? = some a ∧ cs[i + 1]? = some b) :
     hasAdjacentChars a b cs = true := by
   induction cs with
@@ -1184,7 +1184,7 @@ theorem hasAdjacentChars_true_of (a b : Char) (cs : List Char)
         simp at h₁ h₂
         exact ih ⟨j, h₁, h₂⟩
 
-theorem hasAdjacentChars_iff (a b : Char) (cs : List Char) :
+lemma hasAdjacentChars_iff (a b : Char) (cs : List Char) :
     hasAdjacentChars a b cs = true ↔ ∃ i, cs[i]? = some a ∧ cs[i + 1]? = some b :=
   ⟨hasAdjacentChars_true_implies a b cs, hasAdjacentChars_true_of a b cs⟩
 
@@ -1196,13 +1196,13 @@ preservation lemmas needed for B3.
 -/
 
 /-- `hasAdjacentChars` is false on a singleton list. -/
-theorem hasAdjacentChars_singleton (a b : Char) (c : Char) :
+lemma hasAdjacentChars_singleton (a b : Char) (c : Char) :
     hasAdjacentChars a b [c] = false := by
   rfl
 
 /-- Pushing a character: `hasAdjacentChars a b (xs ++ [c])` iff it already
     holds in `xs`, or the last char of `xs` is `a` and `c` is `b`. -/
-theorem hasAdjacentChars_append_singleton (a b : Char) (xs : List Char) (c : Char) :
+lemma hasAdjacentChars_append_singleton (a b : Char) (xs : List Char) (c : Char) :
     hasAdjacentChars a b (xs ++ [c]) = true ↔
     hasAdjacentChars a b xs = true ∨ (xs.getLast? = some a ∧ c = b) := by
   induction xs with
@@ -1228,7 +1228,7 @@ theorem hasAdjacentChars_append_singleton (a b : Char) (xs : List Char) (c : Cha
 
 /-- Negative form: no adjacent `a b` in `xs ++ [c]` iff no adjacent `a b`
     in `xs` AND NOT (last of xs is `a` and `c` is `b`). -/
-theorem not_hasAdjacentChars_append_singleton (a b : Char) (xs : List Char) (c : Char) :
+lemma not_hasAdjacentChars_append_singleton (a b : Char) (xs : List Char) (c : Char) :
     hasAdjacentChars a b (xs ++ [c]) = false ↔
     hasAdjacentChars a b xs = false ∧ ¬(xs.getLast? = some a ∧ c = b) := by
   rw [Bool.eq_false_iff, Bool.eq_false_iff]
@@ -1243,7 +1243,7 @@ theorem not_hasAdjacentChars_append_singleton (a b : Char) (xs : List Char) (c :
 
 /-- `hasAdjacentChars` over concatenation: holds iff it holds in the left part,
     the right part, or across the boundary (last of left = a, first of right = b). -/
-theorem hasAdjacentChars_append (a b : Char) (xs ys : List Char) :
+lemma hasAdjacentChars_append (a b : Char) (xs ys : List Char) :
     hasAdjacentChars a b (xs ++ ys) = true ↔
     hasAdjacentChars a b xs = true ∨ hasAdjacentChars a b ys = true
     ∨ (xs.getLast? = some a ∧ ys.head? = some b) := by
@@ -1309,7 +1309,7 @@ instance (content : String) : Decidable (noColonSpaceProp content) :=
   | true => .isFalse (fun hn =>
       absurd ((hasAdjacentChars_iff ':' ' ' content.toList).mp h) hn)
 
-theorem noColonSpace_iff (content : String) :
+lemma noColonSpace_iff (content : String) :
     noColonSpaceBool content = true ↔ noColonSpaceProp content :=
   not_bool_iff_not (hasAdjacentChars_iff ':' ' ' content.toList)
 
@@ -1336,7 +1336,7 @@ instance (content : String) : Decidable (noSpaceHashProp content) :=
   | true => .isFalse (fun hn =>
       absurd ((hasAdjacentChars_iff ' ' '#' content.toList).mp h) hn)
 
-theorem noSpaceHash_iff (content : String) :
+lemma noSpaceHash_iff (content : String) :
     noSpaceHashBool content = true ↔ noSpaceHashProp content :=
   not_bool_iff_not (hasAdjacentChars_iff ' ' '#' content.toList)
 
@@ -1360,7 +1360,7 @@ instance (content : String) : Decidable (noFlowIndicatorsProp content) := by
   unfold noFlowIndicatorsProp
   exact List.decidableBAll _ content.toList
 
-theorem noFlowIndicators_iff (content : String) :
+lemma noFlowIndicators_iff (content : String) :
     noFlowIndicatorsBool content = true ↔ noFlowIndicatorsProp content := by
   constructor
   · intro h c hc hfi
@@ -1383,12 +1383,12 @@ for the `PlainContentInv` loop invariant in Phase B3.3.
 /-! ### noColonSpace preservation -/
 
 /-- `noColonSpace` for the empty string. -/
-theorem noColonSpaceProp_empty : noColonSpaceProp "" := by
+lemma noColonSpaceProp_empty : noColonSpaceProp "" := by
   intro ⟨i, h1, _⟩; simp at h1
 
 /-- Pushing a character preserves `noColonSpace` when the push doesn't
     introduce a `: ` pair at the boundary. -/
-theorem noColonSpaceProp_push (content : String) (c : Char)
+lemma noColonSpaceProp_push (content : String) (c : Char)
     (h : noColonSpaceProp content)
     (h_boundary : ¬(content.toList.getLast? = some ':' ∧ c = ' ')) :
     noColonSpaceProp (content.push c) := by
@@ -1404,7 +1404,7 @@ theorem noColonSpaceProp_push (content : String) (c : Char)
 
 /-- Appending two strings preserves `noColonSpace` when both parts are
     clean and the boundary is safe. -/
-theorem noColonSpaceProp_append (s t : String)
+lemma noColonSpaceProp_append (s t : String)
     (hs : noColonSpaceProp s) (ht : noColonSpaceProp t)
     (h_boundary : ¬(s.toList.getLast? = some ':' ∧ t.toList.head? = some ' ')) :
     noColonSpaceProp (s ++ t) := by
@@ -1420,12 +1420,12 @@ theorem noColonSpaceProp_append (s t : String)
 /-! ### noSpaceHash preservation -/
 
 /-- `noSpaceHash` for the empty string. -/
-theorem noSpaceHashProp_empty : noSpaceHashProp "" := by
+lemma noSpaceHashProp_empty : noSpaceHashProp "" := by
   intro ⟨i, h1, _⟩; simp at h1
 
 /-- Pushing a character preserves `noSpaceHash` when the push doesn't
     introduce a ` #` pair at the boundary. -/
-theorem noSpaceHashProp_push (content : String) (c : Char)
+lemma noSpaceHashProp_push (content : String) (c : Char)
     (h : noSpaceHashProp content)
     (h_boundary : ¬(content.toList.getLast? = some ' ' ∧ c = '#')) :
     noSpaceHashProp (content.push c) := by
@@ -1439,7 +1439,7 @@ theorem noSpaceHashProp_push (content : String) (c : Char)
 
 /-- Appending two strings preserves `noSpaceHash` when both parts are
     clean and the boundary is safe. -/
-theorem noSpaceHashProp_append (s t : String)
+lemma noSpaceHashProp_append (s t : String)
     (hs : noSpaceHashProp s) (ht : noSpaceHashProp t)
     (h_boundary : ¬(s.toList.getLast? = some ' ' ∧ t.toList.head? = some '#')) :
     noSpaceHashProp (s ++ t) := by
@@ -1455,11 +1455,11 @@ theorem noSpaceHashProp_append (s t : String)
 /-! ### noFlowIndicators preservation -/
 
 /-- `noFlowIndicators` for the empty string. -/
-theorem noFlowIndicatorsProp_empty : noFlowIndicatorsProp "" := by
+lemma noFlowIndicatorsProp_empty : noFlowIndicatorsProp "" := by
   intro c hc; simp at hc
 
 /-- Pushing a non-flow-indicator character preserves `noFlowIndicators`. -/
-theorem noFlowIndicatorsProp_push (content : String) (c : Char)
+lemma noFlowIndicatorsProp_push (content : String) (c : Char)
     (h : noFlowIndicatorsProp content)
     (hc : ¬isFlowIndicatorProp c) :
     noFlowIndicatorsProp (content.push c) := by
@@ -1470,7 +1470,7 @@ theorem noFlowIndicatorsProp_push (content : String) (c : Char)
   · simp at hx'; rw [hx']; exact hc
 
 /-- Appending preserves `noFlowIndicators` when both parts are clean. -/
-theorem noFlowIndicatorsProp_append (s t : String)
+lemma noFlowIndicatorsProp_append (s t : String)
     (hs : noFlowIndicatorsProp s) (ht : noFlowIndicatorsProp t) :
     noFlowIndicatorsProp (s ++ t) := by
   intro c hc
@@ -1482,13 +1482,13 @@ theorem noFlowIndicatorsProp_append (s t : String)
 /-! ### validPlainFirst preservation -/
 
 /-- `validPlainFirst` is vacuously true for the empty string. -/
-theorem validPlainFirstProp_empty (inFlow : Bool) :
+lemma validPlainFirstProp_empty (inFlow : Bool) :
     validPlainFirstProp "" inFlow := by
   simp [validPlainFirstProp]
 
 /-- `validPlainFirst` depends only on the first 1–2 characters.
     Pushing a character onto a string with ≥2 characters preserves it. -/
-theorem validPlainFirstProp_push_of_nonempty (content : String) (c : Char)
+lemma validPlainFirstProp_push_of_nonempty (content : String) (c : Char)
     (inFlow : Bool) (h : validPlainFirstProp content inFlow)
     (hlen : ∃ x y rest, content.toList = x :: y :: rest) :
     validPlainFirstProp (content.push c) inFlow := by
@@ -1497,7 +1497,7 @@ theorem validPlainFirstProp_push_of_nonempty (content : String) (c : Char)
   exact h
 
 /-- `validPlainFirst` for appending to a string with ≥2 characters. -/
-theorem validPlainFirstProp_append_of_nonempty (s t : String)
+lemma validPlainFirstProp_append_of_nonempty (s t : String)
     (inFlow : Bool) (h : validPlainFirstProp s inFlow)
     (hlen : ∃ x y rest, s.toList = x :: y :: rest) :
     validPlainFirstProp (s ++ t) inFlow := by
@@ -1508,7 +1508,7 @@ theorem validPlainFirstProp_append_of_nonempty (s t : String)
 /-! ### Boundary helpers for scanner loop proofs -/
 
 /-- Extract list membership from a `getElem?` hit. -/
-theorem mem_of_getElemQ_some {l : List Char} {a : Char} {i : Nat}
+lemma mem_of_getElemQ_some {l : List Char} {a : Char} {i : Nat}
     (h : l[i]? = some a) : a ∈ l := by
   induction l generalizing i with
   | nil => exact absurd h (by simp)
@@ -1522,13 +1522,13 @@ theorem mem_of_getElemQ_some {l : List Char} {a : Char} {i : Nat}
       exact List.mem_cons_of_mem x (ih this)
 
 /-- A non-whitespace, non-line-break character is not ' '. -/
-theorem not_space_of_plainSafe (c : Char) (inFlow : Bool)
+lemma not_space_of_plainSafe (c : Char) (inFlow : Bool)
     (h : isPlainSafeProp c inFlow) : c ≠ ' ' := by
   intro heq; rw [heq] at h
   simp [isPlainSafeProp, isWhiteSpaceProp, isSpaceProp, isTabProp] at h
 
 /-- Whitespace chars have `getLast? = some ' '` or `some '\t'`. -/
-theorem whitespace_getLast?_cases (spaces : String)
+lemma whitespace_getLast?_cases (spaces : String)
     (h : ∀ c ∈ spaces.toList, isWhiteSpaceProp c) (hne : spaces.toList ≠ []) :
     spaces.toList.getLast? = some ' ' ∨ spaces.toList.getLast? = some '\t' := by
   have hLast := List.getLast?_eq_some_getLast hne
@@ -1539,7 +1539,7 @@ theorem whitespace_getLast?_cases (spaces : String)
   rcases hws with h1 | h1 <;> simp [h1]
 
 /-- A string of pure whitespace has no colon-space pattern. -/
-theorem noColonSpaceProp_of_whitespace (s : String)
+lemma noColonSpaceProp_of_whitespace (s : String)
     (h : ∀ c ∈ s.toList, isWhiteSpaceProp c) : noColonSpaceProp s := by
   intro ⟨i, h1, _⟩
   have hMem := mem_of_getElemQ_some h1
@@ -1547,7 +1547,7 @@ theorem noColonSpaceProp_of_whitespace (s : String)
   simp [isWhiteSpaceProp, isSpaceProp, isTabProp] at hws
 
 /-- A string of pure whitespace has no space-hash pattern. -/
-theorem noSpaceHashProp_of_whitespace (s : String)
+lemma noSpaceHashProp_of_whitespace (s : String)
     (h : ∀ c ∈ s.toList, isWhiteSpaceProp c) : noSpaceHashProp s := by
   intro ⟨i, _, h2⟩
   have hMem := mem_of_getElemQ_some h2
@@ -1555,7 +1555,7 @@ theorem noSpaceHashProp_of_whitespace (s : String)
   simp [isWhiteSpaceProp, isSpaceProp, isTabProp] at hws
 
 /-- A string of pure whitespace has no flow indicators. -/
-theorem noFlowIndicatorsProp_of_whitespace (s : String)
+lemma noFlowIndicatorsProp_of_whitespace (s : String)
     (h : ∀ c ∈ s.toList, isWhiteSpaceProp c) : noFlowIndicatorsProp s := by
   intro c hc hfi
   have := h c hc

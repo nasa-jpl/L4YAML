@@ -80,7 +80,7 @@ token-level `PlainScalarsValid` and C2's tree-level `Scannable`. -/
 
     This is the bridge that `FlowAwarePSV` fills: flow-context tokens
     have these properties by scanner construction (B3.4). -/
-theorem ScalarScannable_strengthen (s : Scalar)
+lemma ScalarScannable_strengthen (s : Scalar)
     (h : ScalarScannable s false)
     (h_vpf : s.style = .plain → s.content.length > 0 →
       validPlainFirstProp s.content true)
@@ -108,7 +108,7 @@ These connect B3.5's token-level `PlainScalarsValid` to the tree-level
 
 /-- A scalar YamlValue constructed from a token satisfying PlainScalarsValid
     is Scannable at block context. -/
-theorem scalar_from_token_scannable
+lemma scalar_from_token_scannable
     (tokens : Array (Positioned YamlToken))
     (h_psv : PlainScalarsValid tokens)
     (i : Nat) (hi : i < tokens.size)
@@ -126,7 +126,7 @@ theorem scalar_from_token_scannable
 
 /-- A scalar from a flow-context token satisfying FlowAwarePSV is
     Scannable at any flow context. -/
-theorem scalar_from_flow_token_scannable
+lemma scalar_from_flow_token_scannable
     (tokens : Array (Positioned YamlToken))
     (h_fpsv : FlowAwarePSV tokens)
     (i : Nat) (hi : i < tokens.size)
@@ -153,7 +153,7 @@ theorem scalar_from_flow_token_scannable
 
 /-- Empty content scalar (parser empty node) is trivially Scannable
     at any flow context. -/
-theorem empty_scalar_scannable (tag anchor : Option String) (inFlow : Bool) :
+lemma empty_scalar_scannable (tag anchor : Option String) (inFlow : Bool) :
     Scannable (.scalar ⟨"", .plain, tag, anchor, none⟩) inFlow := by
   apply Scannable.scalar; intro _ hlen; simp at hlen
 
@@ -161,7 +161,7 @@ theorem empty_scalar_scannable (tag anchor : Option String) (inFlow : Bool) :
     access `(ps.tokens[ps.pos]'h).val` equals `tok`.
     Bridges the `Array.getElem!` in `peek?` to the bounded `getElem` used
     in proofs like `flowNesting_non_flow_step`. -/
-theorem peek_some_bounded (ps : ParseState) (tok : YamlToken)
+lemma peek_some_bounded (ps : ParseState) (tok : YamlToken)
     (h : ps.peek? = some tok) :
     ps.pos < ps.tokens.size ∧
     ∀ (h_lt : ps.pos < ps.tokens.size), (ps.tokens[ps.pos]'h_lt).val = tok := by
@@ -186,7 +186,7 @@ Used by the mutual scannability induction to maintain `flowNesting > 0`
 inside flow collections. -/
 
 /-- Helper: `flowNesting tokens (i+1)` factors as go-step from `flowNesting tokens i`. -/
-theorem flowNesting_split_step (tokens : Array (Positioned YamlToken))
+lemma flowNesting_split_step (tokens : Array (Positioned YamlToken))
     (i : Nat) (_hi : i < tokens.size) :
     flowNesting tokens (i + 1) =
     flowNesting.go tokens i (i + 1) (flowNesting tokens i) := by
@@ -195,7 +195,7 @@ theorem flowNesting_split_step (tokens : Array (Positioned YamlToken))
   exact flowNesting_go_split tokens 0 i (i + 1) 0 (by omega) (by omega)
 
 /-- After consuming a flow-start token, `flowNesting` is positive. -/
-theorem flowNesting_pos_after_flow_start (tokens : Array (Positioned YamlToken))
+lemma flowNesting_pos_after_flow_start (tokens : Array (Positioned YamlToken))
     (i : Nat) (hi : i < tokens.size)
     (h : (tokens[i]'hi).val = .flowSequenceStart ∨
          (tokens[i]'hi).val = .flowMappingStart) :
@@ -206,7 +206,7 @@ theorem flowNesting_pos_after_flow_start (tokens : Array (Positioned YamlToken))
   rcases h with h | h <;> simp [h] <;> omega
 
 /-- After consuming a flow-start token, `flowNesting` increases by exactly 1. -/
-theorem flowNesting_after_flow_start_eq (tokens : Array (Positioned YamlToken))
+lemma flowNesting_after_flow_start_eq (tokens : Array (Positioned YamlToken))
     (i : Nat) (hi : i < tokens.size)
     (h : (tokens[i]'hi).val = .flowSequenceStart ∨
          (tokens[i]'hi).val = .flowMappingStart) :
@@ -217,7 +217,7 @@ theorem flowNesting_after_flow_start_eq (tokens : Array (Positioned YamlToken))
   rcases h with h | h <;> simp [h]
 
 /-- After consuming a flow-end token, `flowNesting` decreases by 1 (saturating). -/
-theorem flowNesting_after_flow_end (tokens : Array (Positioned YamlToken))
+lemma flowNesting_after_flow_end (tokens : Array (Positioned YamlToken))
     (i : Nat) (hi : i < tokens.size)
     (h : (tokens[i]'hi).val = .flowSequenceEnd ∨
          (tokens[i]'hi).val = .flowMappingEnd)
@@ -229,7 +229,7 @@ theorem flowNesting_after_flow_end (tokens : Array (Positioned YamlToken))
   rcases h with h | h <;> simp [h, h_pos]
 
 /-- Advancing past a non-flow-boundary token preserves `flowNesting`. -/
-theorem flowNesting_non_flow_step (tokens : Array (Positioned YamlToken))
+lemma flowNesting_non_flow_step (tokens : Array (Positioned YamlToken))
     (i : Nat) (hi : i < tokens.size)
     (h1 : (tokens[i]'hi).val ≠ .flowSequenceStart)
     (h2 : (tokens[i]'hi).val ≠ .flowMappingStart)
@@ -243,7 +243,7 @@ theorem flowNesting_non_flow_step (tokens : Array (Positioned YamlToken))
   cases tok <;> simp_all
 
 /-- `flowNesting` is constant for positions `≥ tokens.size`. -/
-theorem flowNesting_beyond_size (tokens : Array (Positioned YamlToken))
+lemma flowNesting_beyond_size (tokens : Array (Positioned YamlToken))
     (i : Nat) (hi : i ≥ tokens.size) :
     flowNesting tokens (i + 1) = flowNesting tokens i := by
   unfold flowNesting
@@ -258,7 +258,7 @@ stronger than block-context scannability.  This allows us to prove
 `Scannable val false` at the document root. -/
 
 /-- Flow-context scannability implies block-context scannability. -/
-theorem Scannable_true_implies_false :
+lemma Scannable_true_implies_false :
     (v : YamlValue) → Scannable v true → Scannable v false
   | .scalar s, .scalar _ _ h_ss =>
     .scalar s false (ScalarScannable_true_implies_false s h_ss)
@@ -291,7 +291,7 @@ decreasing_by
        omega)
 
 /-- Scannable at any `inFlow` implies Scannable at `false`. -/
-theorem Scannable_any_implies_false (v : YamlValue) (b : Bool) :
+lemma Scannable_any_implies_false (v : YamlValue) (b : Bool) :
     Scannable v b → Scannable v false := by
   cases b with
   | false => exact id
@@ -301,7 +301,7 @@ theorem Scannable_any_implies_false (v : YamlValue) (b : Bool) :
 
 /-- `scanFiltered` output satisfies `FlowAwarePSV`: both `PlainScalarsValid`
     and `FlowContextPSV` (flow-context scalars satisfy `ScalarScannable _ true`). -/
-theorem scanFiltered_flow_aware_psv (input : String)
+lemma scanFiltered_flow_aware_psv (input : String)
     (tokens : Array (Positioned YamlToken))
     (h : Scanner.scanFiltered input = .ok tokens) :
     FlowAwarePSV tokens :=
@@ -314,7 +314,7 @@ Adding or changing `tag`/`anchor` fields preserves `Scannable`, because
 and collection item scannability. -/
 
 /-- Attaching properties (tag, anchor) to a collection preserves `Scannable`. -/
-theorem Scannable_attach_props (val : YamlValue) (inFlow : Bool)
+lemma Scannable_attach_props (val : YamlValue) (inFlow : Bool)
     (tag : Option String) (anchor : Option String)
     (h : Scannable val inFlow) :
     Scannable (match val with
@@ -341,7 +341,7 @@ None of these operations affect `val`'s scannability or the token array. -/
 
 /-- The value produced by `applyNodeFinalization` is `Scannable` whenever
     the raw content value is `Scannable`. -/
-theorem applyNodeFinalization_scannable
+lemma applyNodeFinalization_scannable
     (val : YamlValue) (ps : ParseState) (props : NodeProperties)
     (nodeStartPos : YamlPos) (inFlow : Bool)
     (h : Scannable val inFlow) :
@@ -362,7 +362,7 @@ theorem applyNodeFinalization_scannable
 
 /-- `applyNodeFinalization` does not modify the token array.
     (It only touches `anchors`, `nodePositions`, `currentPath`.) -/
-theorem applyNodeFinalization_tokens
+lemma applyNodeFinalization_tokens
     (val : YamlValue) (ps : ParseState) (props : NodeProperties)
     (nodeStartPos : YamlPos) :
     (applyNodeFinalization val ps props nodeStartPos).2.tokens = ps.tokens := by
@@ -372,7 +372,7 @@ theorem applyNodeFinalization_tokens
 
 /-- `applyNodeFinalization` preserves the parse position (`.pos`).
     Properties application, anchor registration, and G5c tracking never advance. -/
-theorem applyNodeFinalization_pos
+lemma applyNodeFinalization_pos
     (val : YamlValue) (ps : ParseState) (props : NodeProperties)
     (nodeStartPos : YamlPos) :
     (applyNodeFinalization val ps props nodeStartPos).2.pos = ps.pos := by
@@ -381,7 +381,7 @@ theorem applyNodeFinalization_pos
   all_goals (split <;> simp_all)
 
 /-- `applyNodeFinalization` preserves `trackPositions`. -/
-theorem applyNodeFinalization_trackPositions
+lemma applyNodeFinalization_trackPositions
     (val : YamlValue) (ps : ParseState) (props : NodeProperties)
     (nodeStartPos : YamlPos) :
     (applyNodeFinalization val ps props nodeStartPos).2.trackPositions = ps.trackPositions := by
@@ -420,14 +420,14 @@ elab "unfold_loop_at" h:ident : tactic => do
     let mvarId ← mvarId.replaceLocalDeclDefEq fvarId currentTy
     replaceMainGoal [mvarId]
 
-@[simp] theorem ParseState.advance_tokens (ps : ParseState) :
+@[simp] lemma ParseState.advance_tokens (ps : ParseState) :
     ps.advance.tokens = ps.tokens := rfl
 
 -- `parseNodeProperties` preserves the token array — only `.pos` changes.
 set_option maxRecDepth 10000 in
 set_option maxHeartbeats 800000000 in
 set_option linter.unusedSimpArgs false in
-theorem parseNodeProperties_tokens (ps : ParseState) (props : NodeProperties) (ps' : ParseState)
+lemma parseNodeProperties_tokens (ps : ParseState) (props : NodeProperties) (ps' : ParseState)
     (h : parseNodeProperties ps = .ok (props, ps')) :
     ps'.tokens = ps.tokens := by
   -- Unroll the for-loop (2 iterations + termination check)
@@ -537,7 +537,7 @@ theorem parseNodeProperties_tokens (ps : ParseState) (props : NodeProperties) (p
             all_goals (first | rfl | simp [ParseState.advance_tokens])
 
 -- Helper: advancing past a non-flow-boundary token preserves flowNesting
-theorem advance_preserves_flowNesting
+lemma advance_preserves_flowNesting
     (tokens : Array (Positioned YamlToken)) (ps : ParseState) {tok : YamlToken}
     (h_peek : ps.peek? = some tok) (h_eq : ps.tokens = tokens)
     (h1 : tok ≠ .flowSequenceStart) (h2 : tok ≠ .flowMappingStart)
@@ -550,7 +550,7 @@ theorem advance_preserves_flowNesting
     (by rw [h_val h_lt]; exact h1) (by rw [h_val h_lt]; exact h2)
     (by rw [h_val h_lt]; exact h3) (by rw [h_val h_lt]; exact h4)
 
-theorem advance2_preserves_flowNesting
+lemma advance2_preserves_flowNesting
     (tokens : Array (Positioned YamlToken)) (ps : ParseState) {tok1 tok2 : YamlToken}
     (h_peek1 : ps.peek? = some tok1) (h_peek2 : ps.advance.peek? = some tok2)
     (h_eq : ps.tokens = tokens)
@@ -570,7 +570,7 @@ theorem advance2_preserves_flowNesting
 set_option maxRecDepth 10000 in
 set_option maxHeartbeats 800000000 in
 set_option linter.unusedSimpArgs false in
-theorem parseNodeProperties_flowNesting (tokens : Array (Positioned YamlToken))
+lemma parseNodeProperties_flowNesting (tokens : Array (Positioned YamlToken))
     (ps : ParseState) (props : NodeProperties) (ps' : ParseState)
     (h : parseNodeProperties ps = .ok (props, ps'))
     (h_eq : ps.tokens = tokens) :
@@ -695,7 +695,7 @@ def ParseNodeWB (tokens : Array (Positioned YamlToken)) (n : Nat) : Prop :=
 /-- Variant of `ParseNodeWB` application that accepts a non-destructured
     pair result (matching how `split at h_ok` produces `parseNode` hypotheses).
     Takes `h_ok` before `h_le` so `m` is determined before omega needs it. -/
-theorem parseNodeWB_apply {tokens : Array (Positioned YamlToken)} {n : Nat}
+lemma parseNodeWB_apply {tokens : Array (Positioned YamlToken)} {n : Nat}
     (h_ih : ParseNodeWB tokens n)
     {ps : ParseState} {m : Nat} {v : YamlValue × ParseState}
     (h_tok : ps.tokens = tokens)
@@ -711,7 +711,7 @@ theorem parseNodeWB_apply {tokens : Array (Positioned YamlToken)} {n : Nat}
     Parameter order: h_ok FIRST (so assumption determines ps, m, v),
     then h_le (omega, now m is known), then h_tok LAST (assumption finds
     the right token proof by definitional reduction of struct projections). -/
-theorem parseNode_scannable_false {tokens : Array (Positioned YamlToken)} {n : Nat}
+lemma parseNode_scannable_false {tokens : Array (Positioned YamlToken)} {n : Nat}
     (h_ih : ParseNodeWB tokens n)
     {ps : ParseState} {m : Nat} {v : YamlValue × ParseState}
     (h_ok : parseNode ps m = .ok v)
@@ -720,7 +720,7 @@ theorem parseNode_scannable_false {tokens : Array (Positioned YamlToken)} {n : N
     Scannable v.1 false :=
   (h_ih ps m v.1 v.2 h_le h_tok h_ok).1
 
-theorem parseNode_scannable_true {tokens : Array (Positioned YamlToken)} {n : Nat}
+lemma parseNode_scannable_true {tokens : Array (Positioned YamlToken)} {n : Nat}
     (h_ih : ParseNodeWB tokens n)
     {ps : ParseState} {m : Nat} {v : YamlValue × ParseState}
     (h_ok : parseNode ps m = .ok v)
@@ -729,7 +729,7 @@ theorem parseNode_scannable_true {tokens : Array (Positioned YamlToken)} {n : Na
     flowNesting tokens ps.pos > 0 → Scannable v.1 true :=
   (h_ih ps m v.1 v.2 h_le h_tok h_ok).2.1
 
-theorem parseNode_flowNesting {tokens : Array (Positioned YamlToken)} {n : Nat}
+lemma parseNode_flowNesting {tokens : Array (Positioned YamlToken)} {n : Nat}
     (h_ih : ParseNodeWB tokens n)
     {ps : ParseState} {m : Nat} {v : YamlValue × ParseState}
     (h_ok : parseNode ps m = .ok v)
@@ -738,7 +738,7 @@ theorem parseNode_flowNesting {tokens : Array (Positioned YamlToken)} {n : Nat}
     flowNesting tokens v.2.pos = flowNesting tokens ps.pos :=
   (h_ih ps m v.1 v.2 h_le h_tok h_ok).2.2.1
 
-theorem parseNode_tokens {tokens : Array (Positioned YamlToken)} {n : Nat}
+lemma parseNode_tokens {tokens : Array (Positioned YamlToken)} {n : Nat}
     (h_ih : ParseNodeWB tokens n)
     {ps : ParseState} {m : Nat} {v : YamlValue × ParseState}
     (h_ok : parseNode ps m = .ok v)
@@ -759,7 +759,7 @@ structure is established. -/
 
 /-- Helper: pushing a Scannable value onto an all-Scannable array
     preserves the all-Scannable property. -/
-theorem push_all_scannable {items : Array YamlValue} {x : YamlValue}
+lemma push_all_scannable {items : Array YamlValue} {x : YamlValue}
     {inFlow : Bool}
     (h_items : ∀ i : Fin items.size, Scannable items[i] inFlow)
     (h_x : Scannable x inFlow) :
@@ -773,7 +773,7 @@ theorem push_all_scannable {items : Array YamlValue} {x : YamlValue}
 
 /-- Helper: pushing a pair onto an all-Scannable pair array
     preserves the Scannable property for both projections. -/
-theorem push_pair_scannable {pairs : Array (YamlValue × YamlValue)}
+lemma push_pair_scannable {pairs : Array (YamlValue × YamlValue)}
     {kv : YamlValue × YamlValue} {inFlow : Bool}
     (h_pairs : ∀ i : Fin pairs.size, Scannable pairs[i].1 inFlow ∧ Scannable pairs[i].2 inFlow)
     (h_kv : Scannable kv.1 inFlow ∧ Scannable kv.2 inFlow) :
@@ -791,7 +791,7 @@ theorem push_pair_scannable {pairs : Array (YamlValue × YamlValue)}
     · exact h_kv.2
 
 /-- `tryConsume` preserves the token array. -/
-theorem tryConsume_tokens (ps : ParseState) (tok : YamlToken) :
+lemma tryConsume_tokens (ps : ParseState) (tok : YamlToken) :
     (ps.tryConsume tok).2.tokens = ps.tokens := by
   unfold ParseState.tryConsume
   split
@@ -801,7 +801,7 @@ theorem tryConsume_tokens (ps : ParseState) (tok : YamlToken) :
   · rfl
 
 /-- `tryConsume` preserves flowNesting for non-flow tokens. -/
-theorem tryConsume_flowNesting (tokens : Array (Positioned YamlToken))
+lemma tryConsume_flowNesting (tokens : Array (Positioned YamlToken))
     (ps : ParseState) (tok : YamlToken)
     (h_eq : ps.tokens = tokens)
     (h1 : tok ≠ .flowSequenceStart) (h2 : tok ≠ .flowMappingStart)
@@ -819,7 +819,7 @@ theorem tryConsume_flowNesting (tokens : Array (Positioned YamlToken))
 
 /-- `tryConsume` on a currentPath-modified state preserves tokens of
     the original state.  (currentPath doesn't affect peek?/advance.) -/
-theorem tryConsume_with_path_tokens (ps : ParseState) (p : YamlPath) (tok : YamlToken) :
+lemma tryConsume_with_path_tokens (ps : ParseState) (p : YamlPath) (tok : YamlToken) :
     ({ ps with currentPath := p }.tryConsume tok).2.tokens = ps.tokens := by
   unfold ParseState.tryConsume
   split
@@ -828,7 +828,7 @@ theorem tryConsume_with_path_tokens (ps : ParseState) (p : YamlPath) (tok : Yaml
 
 /-- `tryConsume` on a currentPath-modified state preserves flowNesting
     of the original state.  (currentPath doesn't affect peek?/advance.) -/
-theorem tryConsume_with_path_fn (tokens : Array (Positioned YamlToken))
+lemma tryConsume_with_path_fn (tokens : Array (Positioned YamlToken))
     (ps : ParseState) (p : YamlPath) (tok : YamlToken)
     (h_eq : ps.tokens = tokens)
     (h1 : tok ≠ .flowSequenceStart) (h2 : tok ≠ .flowMappingStart)
@@ -839,7 +839,7 @@ theorem tryConsume_with_path_fn (tokens : Array (Positioned YamlToken))
 
 /-- Loop invariant for `parseBlockSequenceLoop`: all accumulated items remain
     Scannable, flowNesting is preserved, and the token array is unchanged. -/
-theorem parseBlockSequenceLoop_wb (tokens : Array (Positioned YamlToken))
+lemma parseBlockSequenceLoop_wb (tokens : Array (Positioned YamlToken))
     (n fuel : Nat) (h_fuel : fuel ≤ n)
     (_h_fpsv : FlowAwarePSV tokens) -- TODO: should we remove this unused hypothesis?
     (h_ih : ParseNodeWB tokens n)
@@ -944,7 +944,7 @@ theorem parseBlockSequenceLoop_wb (tokens : Array (Positioned YamlToken))
 /-- `parseBlockSequence` well-behaved given parseNode IH.
     Requires `h_peek` because the function unconditionally advances past
     `blockSequenceStart` and we need the token to be non-flow. -/
-theorem parseBlockSequence_wb (tokens : Array (Positioned YamlToken))
+lemma parseBlockSequence_wb (tokens : Array (Positioned YamlToken))
     (fuel : Nat) (h_fpsv : FlowAwarePSV tokens) (h_ih : ParseNodeWB tokens fuel)
     (ps : ParseState) (result : YamlValue × ParseState)
     (h_eq : ps.tokens = tokens)
@@ -1021,7 +1021,7 @@ theorem parseBlockSequence_wb (tokens : Array (Positioned YamlToken))
     the returned value is Scannable, and the output state
     preserves flowNesting and tokens.
     Extracted for use by `handleBlockMappingKeyEntry_wb`. -/
-theorem parseBlockMappingEntryValue_wb (tokens : Array (Positioned YamlToken))
+lemma parseBlockMappingEntryValue_wb (tokens : Array (Positioned YamlToken))
     (n fuel : Nat) (h_fuel : fuel ≤ n)
     (h_ih : ParseNodeWB tokens n)
     (ps : ParseState) (keyHasContent : Bool) (keyLine keyCol : Nat)
@@ -1100,7 +1100,7 @@ theorem parseBlockMappingEntryValue_wb (tokens : Array (Positioned YamlToken))
 
 /-- Variant of `parseBlockMappingEntryValue_wb` with h_ok before h_eq,
     so that `ps` is inferred from the `h_ok` hypothesis. -/
-theorem bevWB (tokens : Array (Positioned YamlToken))
+lemma bevWB (tokens : Array (Positioned YamlToken))
     (n fuel : Nat) (h_fuel : fuel ≤ n)
     (h_ih : ParseNodeWB tokens n)
     {ps : ParseState} {kc : Bool} {kl kcol : Nat}
@@ -1117,7 +1117,7 @@ theorem bevWB (tokens : Array (Positioned YamlToken))
 /-- Well-behavedness of the `.key` branch entry handler:
     the returned key and value are Scannable, and the output state
     preserves flowNesting and tokens. -/
-theorem handleBlockMappingKeyEntry_wb (tokens : Array (Positioned YamlToken))
+lemma handleBlockMappingKeyEntry_wb (tokens : Array (Positioned YamlToken))
     (n fuel : Nat) (h_fuel : fuel ≤ n)
     (h_ih : ParseNodeWB tokens n)
     (ps : ParseState) (pairIdx : Nat)
@@ -1189,7 +1189,7 @@ theorem handleBlockMappingKeyEntry_wb (tokens : Array (Positioned YamlToken))
 /-- Well-behavedness of the `.value` branch entry handler (implicit key):
     the returned value is Scannable, and the output state preserves
     flowNesting and tokens. -/
-theorem handleBlockMappingValueEntry_wb (tokens : Array (Positioned YamlToken))
+lemma handleBlockMappingValueEntry_wb (tokens : Array (Positioned YamlToken))
     (n fuel : Nat) (h_fuel : fuel ≤ n)
     (h_ih : ParseNodeWB tokens n)
     (ps : ParseState) (pairIdx : Nat)
@@ -1241,7 +1241,7 @@ theorem handleBlockMappingValueEntry_wb (tokens : Array (Positioned YamlToken))
     flowNesting/tokens preservation, plus the IH for the recursive call,
     close the mapping-loop conclusion.  Extracted from the inductive step
     of `parseBlockMappingLoop_wb` to keep elaboration lightweight. -/
-theorem mapping_recurse
+lemma mapping_recurse
     (tokens : Array (Positioned YamlToken))
     (ps : ParseState)
     (pairs : Array (YamlValue × YamlValue))
@@ -1293,7 +1293,7 @@ theorem mapping_recurse
 /-- Loop invariant for `parseBlockMappingLoop`: all accumulated pairs remain
     Scannable (both projections), flowNesting is preserved, and the token
     array is unchanged. -/
-theorem parseBlockMappingLoop_wb (tokens : Array (Positioned YamlToken))
+lemma parseBlockMappingLoop_wb (tokens : Array (Positioned YamlToken))
     (n fuel : Nat) (h_fuel : fuel ≤ n)
     (h_ih : ParseNodeWB tokens n)
     (ps : ParseState) (pairs : Array (YamlValue × YamlValue))
@@ -1358,7 +1358,7 @@ theorem parseBlockMappingLoop_wb (tokens : Array (Positioned YamlToken))
 /-- `parseBlockMapping` well-behaved given parseNode IH.
     Requires `h_peek` because the function unconditionally advances past
     `blockMappingStart` and we need the token to be non-flow. -/
-theorem parseBlockMapping_wb (tokens : Array (Positioned YamlToken))
+lemma parseBlockMapping_wb (tokens : Array (Positioned YamlToken))
     (fuel : Nat) (h_ih : ParseNodeWB tokens fuel)
     (ps : ParseState) (result : YamlValue × ParseState)
     (h_eq : ps.tokens = tokens)
@@ -1432,7 +1432,7 @@ theorem parseBlockMapping_wb (tokens : Array (Positioned YamlToken))
 
 /-- Loop invariant for `parseImplicitBlockSequenceLoop`: analogous to
     `parseBlockSequenceLoop_wb` but for the implicit block sequence loop. -/
-theorem parseImplicitBlockSequenceLoop_wb (tokens : Array (Positioned YamlToken))
+lemma parseImplicitBlockSequenceLoop_wb (tokens : Array (Positioned YamlToken))
     (n fuel : Nat) (h_fuel : fuel ≤ n)
     (h_ih : ParseNodeWB tokens n)
     (ps : ParseState) (items : Array YamlValue) (result : Array YamlValue × ParseState)
@@ -1530,7 +1530,7 @@ theorem parseImplicitBlockSequenceLoop_wb (tokens : Array (Positioned YamlToken)
       exact ⟨h_items_false, h_items_true, rfl, h_eq⟩
 
 /-- `parseImplicitBlockSequence` well-behaved given parseNode IH. -/
-theorem parseImplicitBlockSequence_wb (tokens : Array (Positioned YamlToken))
+lemma parseImplicitBlockSequence_wb (tokens : Array (Positioned YamlToken))
     (fuel : Nat) (h_ih : ParseNodeWB tokens fuel)
     (ps : ParseState) (result : YamlValue × ParseState)
     (h_eq : ps.tokens = tokens)
@@ -1575,7 +1575,7 @@ set_option maxHeartbeats 800000 in
     Requires `flowNesting > 0` because `.mapping .flow` forces children to
     `Scannable _ true` regardless of the outer context (see BRIDGING.md,
     parseSinglePairMapping_wb Reflections). -/
-theorem parseSinglePairMapping_wb (tokens : Array (Positioned YamlToken))
+lemma parseSinglePairMapping_wb (tokens : Array (Positioned YamlToken))
     (n fuel : Nat) (h_fuel : fuel ≤ n)
     (_h_fpsv : FlowAwarePSV tokens) (h_ih : ParseNodeWB tokens n)
     (ps : ParseState) (result : YamlValue × ParseState)
@@ -1698,7 +1698,7 @@ set_option maxHeartbeats 800000 in
     the token array is unchanged.
     Requires `flowNesting > 0` at entry so that `parseSinglePairMapping_wb`
     and `parseNode` return `Scannable _ true`. -/
-theorem parseFlowSequenceLoop_wb (tokens : Array (Positioned YamlToken))
+lemma parseFlowSequenceLoop_wb (tokens : Array (Positioned YamlToken))
     (n fuel : Nat) (h_fuel : fuel ≤ n)
     (h_fpsv : FlowAwarePSV tokens) (h_ih : ParseNodeWB tokens n)
     (ps : ParseState) (items : Array YamlValue)
@@ -1816,7 +1816,7 @@ theorem parseFlowSequenceLoop_wb (tokens : Array (Positioned YamlToken))
     enabling exact flowNesting accounting (+1 at start, −1 at end).
     The else-branch (missing `flowSequenceEnd`) is trivially closed because
     the code returns `.error`, contradicting `h_ok`. -/
-theorem parseFlowSequence_wb (tokens : Array (Positioned YamlToken))
+lemma parseFlowSequence_wb (tokens : Array (Positioned YamlToken))
     (fuel : Nat) (h_fpsv : FlowAwarePSV tokens) (h_ih : ParseNodeWB tokens fuel)
     (h_matched : FlowBracketsMatched tokens)
     (ps : ParseState) (result : YamlValue × ParseState)
@@ -1906,7 +1906,7 @@ See INTERACTIONS.md §Wadler-Style "Theorems for Free" as Refactoring Guards. -/
 /-- Well-behavedness of `parseFlowMappingValue`:
     the returned value is Scannable, and the output state preserves
     flowNesting and tokens. -/
-theorem parseFlowMappingValue_wb
+lemma parseFlowMappingValue_wb
     (tokens : Array (Positioned YamlToken))
     (n fuel : Nat) (h_fuel : fuel ≤ n)
     (h_ih : ParseNodeWB tokens n)
@@ -1978,7 +1978,7 @@ theorem parseFlowMappingValue_wb
 
 /-- Token preservation for `parseFlowMappingValue`: the token array is unchanged.
     Helper for `parseFlowMappingLoop_tokens_preserved`. -/
-theorem parseFlowMappingValue_tokens_preserved
+lemma parseFlowMappingValue_tokens_preserved
     (tokens : Array (Positioned YamlToken))
     (n : Nat) (h_ih : ParseNodeWB tokens n)
     (ps : ParseState) (fuel : Nat) (h_fuel : fuel ≤ n)
@@ -2013,7 +2013,7 @@ theorem parseFlowMappingValue_tokens_preserved
     simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_tcr_tok
 
 /-- Token preservation for `parseExplicitKey`: the token array is unchanged. -/
-theorem parseExplicitKey_tokens_preserved
+lemma parseExplicitKey_tokens_preserved
     (tokens : Array (Positioned YamlToken))
     (n : Nat) (h_ih : ParseNodeWB tokens n)
     (ps : ParseState) (fuel : Nat) (h_fuel : fuel ≤ n)
@@ -2029,7 +2029,7 @@ theorem parseExplicitKey_tokens_preserved
 /-- Well-behavedness of `parseExplicitKey`:
     the returned key is Scannable, flowNesting preserved, tokens preserved.
     Dispatches emptyNode (for `.value`/`.flowEntry`/`.flowMappingEnd`) or parseNode. -/
-theorem parseExplicitKey_wb
+lemma parseExplicitKey_wb
     (tokens : Array (Positioned YamlToken))
     (n fuel : Nat) (h_fuel : fuel ≤ n)
     (h_ih : ParseNodeWB tokens n)
@@ -2060,7 +2060,7 @@ set_option maxHeartbeats 800000 in
     Proved via induction on fuel, using `parseFlowMappingValue_tokens_preserved`
     for the extracted value-dispatch and `parseExplicitKey_tokens_preserved`
     for explicit key dispatch. -/
-theorem parseFlowMappingLoop_tokens_preserved
+lemma parseFlowMappingLoop_tokens_preserved
     (tokens : Array (Positioned YamlToken))
     (n : Nat)
     (_h_fpsv : FlowAwarePSV tokens) -- should this unused hypothesis be removed?
@@ -2126,7 +2126,7 @@ theorem parseFlowMappingLoop_tokens_preserved
 
 /-- Monotonicity: `parseFlowMappingLoop` never shrinks the pairs array.
     Free theorem from the push-only accumulator pattern. -/
-theorem parseFlowMappingLoop_pairs_grow
+lemma parseFlowMappingLoop_pairs_grow
     (ps : ParseState) (fuel : Nat)
     (pairs : Array (YamlValue × YamlValue))
     (result : Array (YamlValue × YamlValue) × ParseState)
@@ -2168,7 +2168,7 @@ theorem parseFlowMappingLoop_pairs_grow
 
 /-- Flow-version recursion helper for `parseFlowMappingLoop_wb`.
     Threads scannable / flowNesting / token facts through the recursive tail. -/
-theorem flow_mapping_recurse
+lemma flow_mapping_recurse
     (tokens : Array (Positioned YamlToken))
     (ps : ParseState)
     (pairs : Array (YamlValue × YamlValue))
@@ -2212,7 +2212,7 @@ theorem flow_mapping_recurse
 
 /-- Helper: close a goal with parseExplicitKey ok + parseFlowMappingValue ok + recurse.
     Combines `parseExplicitKey_wb` + `parseFlowMappingValue_wb` + `flow_mapping_recurse`. -/
-theorem explicitKey_val_recurse
+lemma explicitKey_val_recurse
     (tokens : Array (Positioned YamlToken))
     (n : Nat) (h_ih : ParseNodeWB tokens n)
     (ps : ParseState)
@@ -2267,7 +2267,7 @@ theorem explicitKey_val_recurse
 
 /-- Helper: close a goal with parseNode ok + parseFlowMappingValue ok + recurse.
     Used for implicit-key branches where parseNode is called directly. -/
-theorem implicitKey_val_recurse
+lemma implicitKey_val_recurse
     (tokens : Array (Positioned YamlToken))
     (n : Nat) (h_ih : ParseNodeWB tokens n)
     (ps : ParseState)
@@ -2328,7 +2328,7 @@ set_option maxHeartbeats 800000 in
     After extracting `parseExplicitKey`, the loop has only 2 content branches
     (explicit key via `parseExplicitKey`, implicit key via `parseNode`) × 2
     separator paths = 4 recursive goals, closed by the helper theorems. -/
-theorem parseFlowMappingLoop_wb
+lemma parseFlowMappingLoop_wb
     (tokens : Array (Positioned YamlToken))
     (n fuel : Nat) (h_fuel : fuel ≤ n)
     (h_ih : ParseNodeWB tokens n)
@@ -2449,7 +2449,7 @@ theorem parseFlowMappingLoop_wb
     Requires `h_matched` for the same reason as `parseFlowSequence_wb`:
     the else-branch (missing `flowMappingEnd`) has an off-by-one
     flowNesting that needs bracket-matching to rule out. -/
-theorem parseFlowMapping_wb (tokens : Array (Positioned YamlToken))
+lemma parseFlowMapping_wb (tokens : Array (Positioned YamlToken))
     (fuel : Nat) (h_fpsv : FlowAwarePSV tokens) (h_ih : ParseNodeWB tokens fuel)
     (h_matched : FlowBracketsMatched tokens)
     (ps : ParseState) (result : YamlValue × ParseState)
@@ -2522,7 +2522,7 @@ theorem parseFlowMapping_wb (tokens : Array (Positioned YamlToken))
 
 /-- Base case: at fuel 0, `parseNode` always returns error, so `ParseNodeWB`
     is vacuously true. -/
-theorem parseNode_wb_zero (tokens : Array (Positioned YamlToken)) :
+lemma parseNode_wb_zero (tokens : Array (Positioned YamlToken)) :
     ParseNodeWB tokens 0 := by
   intro ps m val ps' hm h_eq h_ok
   have : m = 0 := by omega
@@ -2535,7 +2535,7 @@ theorem parseNode_wb_zero (tokens : Array (Positioned YamlToken)) :
     the returned value is Scannable, and the output state preserves
     flowNesting and tokens.
     Extracted for use by `parseNode_wb_all`. -/
-theorem parseNodeContent_wb (tokens : Array (Positioned YamlToken))
+lemma parseNodeContent_wb (tokens : Array (Positioned YamlToken))
     (n fuel : Nat) (h_fuel : fuel ≤ n)
     (h_fpsv : FlowAwarePSV tokens) (h_ih : ParseNodeWB tokens n)
     (h_matched : FlowBracketsMatched tokens)
@@ -2606,13 +2606,13 @@ hold on the new implementation. -/
 -- `validateNodeProps` returns Unit on success and never modifies the parse state.
 -- After `Except.bind (validateNodeProps ps p props) (fun () => k ps)`, the
 -- continuation receives the SAME `ps`.
-theorem validateNodeProps_ok (ps : ParseState) (prePropPos : Nat)
+lemma validateNodeProps_ok (ps : ParseState) (prePropPos : Nat)
     (props : NodeProperties)
     (_ : validateNodeProps ps prePropPos props = .ok ()) :
     True := trivial
 
 -- W1: Alias branch preserves tokens
-theorem parseNode_alias_tokens (ps : ParseState) (fuel : Nat) (name : String)
+lemma parseNode_alias_tokens (ps : ParseState) (fuel : Nat) (name : String)
     (h_peek : ps.peek? = some (.alias name))
     (result : YamlValue × ParseState)
     (h_ok : parseNode ps (fuel + 1) = .ok result) :
@@ -2628,7 +2628,7 @@ theorem parseNode_alias_tokens (ps : ParseState) (fuel : Nat) (name : String)
     }
 
 -- W2: Alias branch preserves flowNesting
-theorem parseNode_alias_flowNesting (tokens : Array (Positioned YamlToken))
+lemma parseNode_alias_flowNesting (tokens : Array (Positioned YamlToken))
     (ps : ParseState) (fuel : Nat) (name : String)
     (h_peek : ps.peek? = some (.alias name))
     (h_eq : ps.tokens = tokens)
@@ -2673,7 +2673,7 @@ theorem parseNode_alias_flowNesting (tokens : Array (Positioned YamlToken))
       `flowNesting_non_flow_step`.
     - Flow start+end pairs: net zero change (start +1, end −1).
     - Properties (anchor, tag): non-flow tokens, preserved. -/
-theorem parseNode_wb_all (tokens : Array (Positioned YamlToken))
+lemma parseNode_wb_all (tokens : Array (Positioned YamlToken))
     (h_fpsv : FlowAwarePSV tokens)
     (h_matched : FlowBracketsMatched tokens) :
     ∀ n, ParseNodeWB tokens n := by
@@ -2777,7 +2777,7 @@ token array. These facts are used by `parseDocument_tokens_preserved`.
 -/
 
 /-- `parseDirectives` preserves the token array. -/
-theorem parseDirectives_tokens (ps : ParseState) :
+lemma parseDirectives_tokens (ps : ParseState) :
     (parseDirectives ps).2.tokens = ps.tokens := by
   unfold parseDirectives
   simp only [Id.run]
@@ -2825,7 +2825,7 @@ theorem parseDirectives_tokens (ps : ParseState) :
 /-- `parseNode` preserves the token array: the output state has the
     same tokens as the input state. Follows from the 4th conjunct of
     `parseNode_wb_all` (the `ParseNodeWB` inductive well-behavedness). -/
-theorem parseNode_tokens_preserved
+lemma parseNode_tokens_preserved
     (tokens : Array (Positioned YamlToken))
     (h_fpsv : FlowAwarePSV tokens)
     (h_matched : FlowBracketsMatched tokens)
@@ -2856,7 +2856,7 @@ By `parseNode_wb_all`, the root value satisfies `Scannable _ false`.
 -/
 
 /-- `prepareDocumentState` preserves the token array. -/
-theorem prepareDocumentState_tokens_preserved
+lemma prepareDocumentState_tokens_preserved
     (ps : ParseState) (dirs : Array Directive) (ps' : ParseState)
     (h_ok : prepareDocumentState ps = .ok (dirs, ps')) :
     ps'.tokens = ps.tokens := by
@@ -2891,7 +2891,7 @@ theorem prepareDocumentState_tokens_preserved
 
 /-- `parseDocument` preserves the token array — only metadata changes.
     Uses `prepareDocumentState_tokens_preserved` and `parseNode_tokens_preserved`. -/
-theorem parseDocument_tokens_preserved
+lemma parseDocument_tokens_preserved
     (ps : ParseState) (doc : YamlDocument) (ps' : ParseState)
     (h_fpsv : FlowAwarePSV ps.tokens)
     (h_matched : FlowBracketsMatched ps.tokens)
@@ -2932,7 +2932,7 @@ theorem parseDocument_tokens_preserved
 
     This lemma captures the essential content-dispatch structure without
     requiring full do-notation reasoning. -/
-theorem parseDocument_value_cases
+lemma parseDocument_value_cases
     (ps : ParseState) (doc : YamlDocument) (ps' : ParseState)
     (h_ok : parseDocument ps = .ok (doc, ps')) :
     (doc.value = emptyNode) ∨
@@ -2977,7 +2977,7 @@ theorem parseDocument_value_cases
     the result of `parseNode` at fuel `4 * tokens.size + 4` with
     `ps_inner.tokens = tokens`. By `parseNode_wb_all`, the latter
     satisfies `Scannable doc.value false`. -/
-theorem parseDocument_scannable
+lemma parseDocument_scannable
     (tokens : Array (Positioned YamlToken))
     (ps : ParseState) (doc : YamlDocument) (ps' : ParseState)
     (h_fpsv : FlowAwarePSV tokens)
@@ -3014,7 +3014,7 @@ gives the desired conclusion.
 -/
 
 /-- `ParseState.expect` preserves the token array. -/
-theorem expect_tokens (ps ps' : ParseState) (tok : YamlToken) (desc : String)
+lemma expect_tokens (ps ps' : ParseState) (tok : YamlToken) (desc : String)
     (h : ps.expect tok desc = .ok ps') : ps'.tokens = ps.tokens := by
   unfold ParseState.expect at h
   split at h
@@ -3029,7 +3029,7 @@ theorem expect_tokens (ps ps' : ParseState) (tok : YamlToken) (desc : String)
 
     This is the core inductive structure that makes `parseStream_doc_from_parseDocument`
     tractable after extracting `parseStreamLoop`. -/
-theorem parseStreamLoop_docs_from_parseDocument
+lemma parseStreamLoop_docs_from_parseDocument
     (tokens : Array (Positioned YamlToken))
     (h_fpsv : FlowAwarePSV tokens) (h_matched : FlowBracketsMatched tokens)
     (ps : ParseState) (docs : Array YamlDocument)
@@ -3101,7 +3101,7 @@ theorem parseStreamLoop_docs_from_parseDocument
     recursion: each iteration calls `parseDocument` on a `ParseState` whose
     `.tokens` field is the original `tokens` (since only `.pos`, `.anchors`,
     `.nodePositions`, `.currentPath`, `.tagHandles` change). -/
-theorem parseStream_doc_from_parseDocument
+lemma parseStream_doc_from_parseDocument
     (tokens : Array (Positioned YamlToken))
     (h_fpsv : FlowAwarePSV tokens) (h_matched : FlowBracketsMatched tokens)
     (docs : Array YamlDocument)
@@ -3125,7 +3125,7 @@ theorem parseStream_doc_from_parseDocument
     **Proof**: By `parseStream_doc_from_parseDocument`, each document
     was produced by `parseDocument` with `ps.tokens = tokens`. By
     `parseDocument_scannable`, the root value is `Scannable _ false`. -/
-theorem parseStream_output_scannable
+lemma parseStream_output_scannable
     (tokens : Array (Positioned YamlToken))
     (docs : Array YamlDocument)
     (h_fpsv : FlowAwarePSV tokens)
@@ -3156,7 +3156,7 @@ def ParseNodePosMono (n : Nat) : Prop :=
     m ≤ n → parseNode ps m = .ok (val, ps') → ps'.pos ≥ ps.pos
 
 /-- Projection helper for `ParseNodePosMono`. -/
-theorem parseNodePosMono_apply {n : Nat} (h_ih : ParseNodePosMono n)
+lemma parseNodePosMono_apply {n : Nat} (h_ih : ParseNodePosMono n)
     {ps : ParseState} {m : Nat} {v : YamlValue × ParseState}
     (h_ok : parseNode ps m = .ok v)
     (h_le : m ≤ n := by omega) :
@@ -3164,7 +3164,7 @@ theorem parseNodePosMono_apply {n : Nat} (h_ih : ParseNodePosMono n)
   h_ih ps m v.1 v.2 h_le h_ok
 
 /-- `tryConsume` doesn't decrease position. -/
-theorem tryConsume_pos_mono (ps : ParseState) (tok : YamlToken) :
+lemma tryConsume_pos_mono (ps : ParseState) (tok : YamlToken) :
     (ps.tryConsume tok).2.pos ≥ ps.pos := by
   unfold ParseState.tryConsume
   split
@@ -3176,7 +3176,7 @@ theorem tryConsume_pos_mono (ps : ParseState) (tok : YamlToken) :
 -- `parseNodeProperties` doesn't decrease position.
 set_option maxRecDepth 10000 in
 set_option maxHeartbeats 800000000 in
-theorem parseNodeProperties_pos_mono (ps : ParseState)
+lemma parseNodeProperties_pos_mono (ps : ParseState)
     (props : NodeProperties) (ps' : ParseState)
     (h : parseNodeProperties ps = .ok (props, ps')) :
     ps'.pos ≥ ps.pos := by
@@ -3276,7 +3276,7 @@ theorem parseNodeProperties_pos_mono (ps : ParseState)
 
 /-! #### Block sequence position monotonicity -/
 
-theorem parseBlockSequenceLoop_pos_mono (fuel : Nat)
+lemma parseBlockSequenceLoop_pos_mono (fuel : Nat)
     (h_ih : ParseNodePosMono fuel)
     (ps : ParseState) (items : Array YamlValue)
     (result : Array YamlValue × ParseState)
@@ -3312,7 +3312,7 @@ theorem parseBlockSequenceLoop_pos_mono (fuel : Nat)
     next => -- peek? ≠ blockEntry
       simp only [Except.ok.injEq] at h_ok; subst h_ok; exact Nat.le_refl _
 
-theorem parseBlockSequence_pos_mono (fuel : Nat)
+lemma parseBlockSequence_pos_mono (fuel : Nat)
     (h_ih : ParseNodePosMono fuel)
     (ps : ParseState) (result : YamlValue × ParseState)
     (h_ok : parseBlockSequence ps fuel = .ok result) :
@@ -3334,7 +3334,7 @@ theorem parseBlockSequence_pos_mono (fuel : Nat)
 
 /-! #### Implicit block sequence position monotonicity -/
 
-theorem parseImplicitBlockSequenceLoop_pos_mono (fuel : Nat)
+lemma parseImplicitBlockSequenceLoop_pos_mono (fuel : Nat)
     (h_ih : ParseNodePosMono fuel)
     (ps : ParseState) (items : Array YamlValue)
     (result : Array YamlValue × ParseState)
@@ -3370,7 +3370,7 @@ theorem parseImplicitBlockSequenceLoop_pos_mono (fuel : Nat)
     next => -- peek? ≠ blockEntry
       simp only [Except.ok.injEq] at h_ok; subst h_ok; exact Nat.le_refl _
 
-theorem parseImplicitBlockSequence_pos_mono (fuel : Nat)
+lemma parseImplicitBlockSequence_pos_mono (fuel : Nat)
     (h_ih : ParseNodePosMono fuel)
     (ps : ParseState) (result : YamlValue × ParseState)
     (h_ok : parseImplicitBlockSequence ps fuel = .ok result) :
@@ -3391,7 +3391,7 @@ theorem parseImplicitBlockSequence_pos_mono (fuel : Nat)
 
 /-! #### Block mapping position monotonicity -/
 
-theorem parseBlockMappingEntryValue_pos_mono (fuel : Nat)
+lemma parseBlockMappingEntryValue_pos_mono (fuel : Nat)
     (h_ih : ParseNodePosMono fuel)
     (ps : ParseState) (keyHasContent : Bool) (keyLine keyCol : Nat)
     (result : YamlValue × ParseState)
@@ -3440,7 +3440,7 @@ theorem parseBlockMappingEntryValue_pos_mono (fuel : Nat)
       have h_pn := parseNodePosMono_apply h_ih h_ok; try simp only [] at h_pn
       omega })
 
-theorem handleBlockMappingKeyEntry_pos_mono (fuel : Nat)
+lemma handleBlockMappingKeyEntry_pos_mono (fuel : Nat)
     (h_ih : ParseNodePosMono fuel)
     (ps : ParseState) (pairIdx : Nat)
     (result : YamlValue × YamlValue × ParseState)
@@ -3478,7 +3478,7 @@ theorem handleBlockMappingKeyEntry_pos_mono (fuel : Nat)
       _ _ _ _ _ (by assumption)
     simp [ParseState.advance] at h_key h_bev ⊢; omega }
 
-theorem handleBlockMappingValueEntry_pos_mono (fuel : Nat)
+lemma handleBlockMappingValueEntry_pos_mono (fuel : Nat)
     (h_ih : ParseNodePosMono fuel)
     (ps : ParseState) (pairIdx : Nat)
     (result : YamlValue × ParseState)
@@ -3502,7 +3502,7 @@ theorem handleBlockMappingValueEntry_pos_mono (fuel : Nat)
       have h_pn := parseNodePosMono_apply h_ih heq_pn
       simp [ParseState.advance] at h_pn ⊢; omega
 
-theorem parseBlockMappingLoop_pos_mono (fuel : Nat)
+lemma parseBlockMappingLoop_pos_mono (fuel : Nat)
     (h_ih : ParseNodePosMono fuel)
     (ps : ParseState) (pairs : Array (YamlValue × YamlValue))
     (result : Array (YamlValue × YamlValue) × ParseState)
@@ -3537,7 +3537,7 @@ theorem parseBlockMappingLoop_pos_mono (fuel : Nat)
     · -- other → identity
       simp only [Except.ok.injEq] at h_ok; subst h_ok; exact Nat.le_refl _
 
-theorem parseBlockMapping_pos_mono (fuel : Nat)
+lemma parseBlockMapping_pos_mono (fuel : Nat)
     (h_ih : ParseNodePosMono fuel)
     (ps : ParseState) (result : YamlValue × ParseState)
     (h_ok : parseBlockMapping ps fuel = .ok result) :
@@ -3559,7 +3559,7 @@ theorem parseBlockMapping_pos_mono (fuel : Nat)
 
 /-! #### Flow mapping helpers (needed before flow sequence loop) -/
 
-theorem parseFlowMappingValue_pos_mono (fuel : Nat)
+lemma parseFlowMappingValue_pos_mono (fuel : Nat)
     (h_ih : ParseNodePosMono fuel)
     (ps : ParseState) (savedPath : YamlPath) (keyContent : String)
     (result : YamlValue × ParseState)
@@ -3603,7 +3603,7 @@ theorem parseFlowMappingValue_pos_mono (fuel : Nat)
               try simp only [] at h_tc1_pos h_tc2_pos h_ps1_pos h_pn
               omega } }
 
-theorem parseExplicitKey_pos_mono (fuel : Nat)
+lemma parseExplicitKey_pos_mono (fuel : Nat)
     (h_ih : ParseNodePosMono fuel)
     (ps : ParseState)
     (result : YamlValue × ParseState)
@@ -3616,7 +3616,7 @@ theorem parseExplicitKey_pos_mono (fuel : Nat)
   next => exact parseNodePosMono_apply h_ih h_ok
 
 set_option maxHeartbeats 1600000 in
-theorem parseSinglePairMapping_pos_mono (fuel : Nat)
+lemma parseSinglePairMapping_pos_mono (fuel : Nat)
     (h_ih : ParseNodePosMono fuel)
     (ps : ParseState) (result : YamlValue × ParseState)
     (h_ok : parseSinglePairMapping ps fuel = .ok result) :
@@ -3737,7 +3737,7 @@ theorem parseSinglePairMapping_pos_mono (fuel : Nat)
                   omega } } } }
 /-! #### Flow sequence position monotonicity -/
 
-theorem parseFlowSequenceLoop_pos_mono (fuel : Nat)
+lemma parseFlowSequenceLoop_pos_mono (fuel : Nat)
     (h_ih : ParseNodePosMono fuel)
     (ps : ParseState) (items : Array YamlValue)
     (result : Array YamlValue × ParseState)
@@ -3807,7 +3807,7 @@ theorem parseFlowSequenceLoop_pos_mono (fuel : Nat)
               { ps_pn with currentPath := _ } _ h_ok
             simp at h_rec h_pn ⊢; omega
 
-theorem parseFlowSequence_pos_mono (fuel : Nat)
+lemma parseFlowSequence_pos_mono (fuel : Nat)
     (h_ih : ParseNodePosMono fuel)
     (ps : ParseState) (result : YamlValue × ParseState)
     (h_ok : parseFlowSequence ps fuel = .ok result) :
@@ -3831,7 +3831,7 @@ theorem parseFlowSequence_pos_mono (fuel : Nat)
 
 /-! #### Flow mapping position monotonicity -/
 
-theorem parseFlowMappingLoop_pos_mono (fuel : Nat)
+lemma parseFlowMappingLoop_pos_mono (fuel : Nat)
     (h_ih : ParseNodePosMono fuel)
     (ps : ParseState) (pairs : Array (YamlValue × YamlValue))
     (result : Array (YamlValue × YamlValue) × ParseState)
@@ -3917,7 +3917,7 @@ theorem parseFlowMappingLoop_pos_mono (fuel : Nat)
               have h_rec := ih_fuel h_ih_k ps_fmv _ h_ok
               simp at h_pn h_fmv ⊢; omega
 
-theorem parseFlowMapping_pos_mono (fuel : Nat)
+lemma parseFlowMapping_pos_mono (fuel : Nat)
     (h_ih : ParseNodePosMono fuel)
     (ps : ParseState) (result : YamlValue × ParseState)
     (h_ok : parseFlowMapping ps fuel = .ok result) :
@@ -3941,7 +3941,7 @@ theorem parseFlowMapping_pos_mono (fuel : Nat)
 
 /-! #### Content dispatch and main induction -/
 
-theorem parseNodeContent_pos_mono (fuel : Nat)
+lemma parseNodeContent_pos_mono (fuel : Nat)
     (h_ih : ParseNodePosMono fuel)
     (ps : ParseState) (props : NodeProperties) (isSeqEntry : Bool)
     (result : YamlValue × ParseState)
@@ -3962,7 +3962,7 @@ theorem parseNodeContent_pos_mono (fuel : Nat)
   · exact parseFlowMapping_pos_mono fuel h_ih ps result h_ok
   · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact Nat.le_refl _
 
-theorem parseNode_pos_mono_all : ∀ n, ParseNodePosMono n := by
+lemma parseNode_pos_mono_all : ∀ n, ParseNodePosMono n := by
   intro n
   induction n with
   | zero =>
@@ -4012,7 +4012,7 @@ theorem parseNode_pos_mono_all : ∀ n, ParseNodePosMono n := by
 
 /-! #### Emitter-specific strict position advancement -/
 
-theorem parseNode_emitter_advances (ps : ParseState) (fuel : Nat)
+lemma parseNode_emitter_advances (ps : ParseState) (fuel : Nat)
     (val : YamlValue) (ps' : ParseState)
     (h_ok : parseNode ps (fuel + 1) = .ok (val, ps'))
     (h_emit_tok : (∃ s, ps.peek? = some (.scalar s .doubleQuoted)) ∨
@@ -4204,7 +4204,7 @@ def ParseNodeFlowSeqOk (tokens : Array (Positioned YamlToken))
 
 -- Fuel monotonicity: ParseNodeFlowSeqOk at fuel implies it at fuel' ≤ fuel
 -- (the fuel parameter only restricts m ≤ fuel, so larger fuel is weaker).
-theorem ParseNodeFlowSeqOk.mono {tokens endPos fuel fuel' body_start}
+lemma ParseNodeFlowSeqOk.mono {tokens endPos fuel fuel' body_start}
     (h : ParseNodeFlowSeqOk tokens endPos fuel body_start)
     (h_le : fuel' ≤ fuel) : ParseNodeFlowSeqOk tokens endPos fuel' body_start :=
   fun ps m h_tok h_pos_m h_m h_pos h_bs h_depth h_lb h_cs =>
@@ -4214,7 +4214,7 @@ theorem ParseNodeFlowSeqOk.mono {tokens endPos fuel fuel' body_start}
 
 -- Helper: if ps.peek? = some tok and ps.pos < ps.tokens.size,
 -- then (ps.tokens[ps.pos]).val = tok
-theorem peek_some_val {ps : ParseState} {tok : YamlToken}
+lemma peek_some_val {ps : ParseState} {tok : YamlToken}
     (h_peek : ps.peek? = some tok) :
     ps.pos < ps.tokens.size ∧ ps.tokens[ps.pos]!.val = tok := by
   unfold ParseState.peek? at h_peek
@@ -4225,14 +4225,14 @@ theorem peek_some_val {ps : ParseState} {tok : YamlToken}
 
 -- Helper: if ps.pos = k and k < ps.tokens.size and (ps.tokens[k]).val = tok,
 -- then ps.peek? = some tok
-theorem peek_of_pos_val {ps : ParseState} {k : Nat} {tok : YamlToken}
+lemma peek_of_pos_val {ps : ParseState} {k : Nat} {tok : YamlToken}
     (h_pos : ps.pos = k) (h_bound : k < ps.tokens.size)
     (h_val : ps.tokens[k]!.val = tok) :
     ps.peek? = some tok := by
   simp only [ParseState.peek?, h_pos, h_bound, ↓reduceIte, h_val]
 
 set_option maxHeartbeats 1600000 in
-theorem parseFlowSequenceLoop_emitter_ok (fuel : Nat)
+lemma parseFlowSequenceLoop_emitter_ok (fuel : Nat)
     (ps : ParseState) (items_acc : Array YamlValue) (endPos : Nat)
     (body_start : Nat)
     (h_pn : ParseNodeFlowSeqOk ps.tokens endPos fuel body_start)
@@ -4529,7 +4529,7 @@ def ParseEntryFlowMapOk (tokens : Array (Positioned YamlToken))
            (val_ps.peek? = some .flowMappingEnd ∧ val_ps.pos = endPos)) ∧
           flowBracketBalance tokens ps.pos val_ps.pos = 0
 
-theorem ParseEntryFlowMapOk.mono {tokens endPos fuel fuel' body_start}
+lemma ParseEntryFlowMapOk.mono {tokens endPos fuel fuel' body_start}
     (h : ParseEntryFlowMapOk tokens endPos fuel body_start)
     (h_le : fuel' ≤ fuel) : ParseEntryFlowMapOk tokens endPos fuel' body_start :=
   fun ps m h_tok h_pos_m h_m h_pos h_bs h_depth h_lb h_key =>
@@ -4539,7 +4539,7 @@ theorem ParseEntryFlowMapOk.mono {tokens endPos fuel fuel' body_start}
 
 
 set_option maxHeartbeats 3200000 in
-theorem parseFlowMappingLoop_emitter_ok (fuel : Nat)
+lemma parseFlowMappingLoop_emitter_ok (fuel : Nat)
     (ps : ParseState) (pairs_acc : Array (YamlValue × YamlValue)) (endPos : Nat)
     (body_start : Nat)
     (h_entry : ParseEntryFlowMapOk ps.tokens endPos fuel body_start)
@@ -4771,7 +4771,7 @@ pushed to proving `FlowSubrangesOk` (Phase J). -/
 -- The `for _ in [:2] do` loop breaks on the first iteration because
 -- `peek?` matches `| _ => break`.
 set_option maxHeartbeats 3200000 in
-theorem parseNodeProperties_skip (ps : ParseState)
+lemma parseNodeProperties_skip (ps : ParseState)
     (h : match ps.peek? with
         | some (.anchor _) | some (.tag _ _) => False
         | _ => True) :

@@ -55,7 +55,7 @@ the scanner's `collectDoubleQuotedLoop`. We need two properties:
 
 /-- An unescaped character (one that `escapeChar` passes through as-is)
     is a valid `nb-json` character that is neither `"` nor `\`. -/
-theorem escapeChar_passthrough_is_valid (c : Char)
+lemma escapeChar_passthrough_is_valid (c : Char)
     (h_not_escaped : escapeChar c = c.toString) :
     isNbJsonBool c = true ∧ c ≠ '"' ∧ c ≠ '\\' := by
   unfold escapeChar at h_not_escaped
@@ -87,7 +87,7 @@ theorem escapeChar_passthrough_is_valid (c : Char)
 /-- Every character of `escapeChar c` is a valid `nb-json` character.
     This is needed because `collectDoubleQuotedLoop` checks `isNbJsonBool`
     on each character it encounters. -/
-theorem escapeChar_output_nbJson (c : Char) :
+lemma escapeChar_output_nbJson (c : Char) :
     ∀ ch ∈ (escapeChar c).toList, isNbJsonBool ch = true := by
   by_cases h_val : c.val.toNat < 128
   · -- ASCII range: native_decide over Fin 128 covers all cases
@@ -113,7 +113,7 @@ scanner acceptance.
 -/
 
 /-- The output of `emit v` is non-empty for any value. -/
-theorem emit_nonempty (v : YamlValue) : (emit v).length > 0 := by
+lemma emit_nonempty (v : YamlValue) : (emit v).length > 0 := by
   have : ("\"" : String).length = 1 := by native_decide
   have : ("[" : String).length = 1 := by native_decide
   have : ("]" : String).length = 1 := by native_decide
@@ -131,14 +131,14 @@ The key fact: `escapeString` is a monoid homomorphism that concatenates
 -- Bridge: `String.foldl` in Lean 4.29 goes through `Std.Iter.fold` on
 -- `Slice.chars`, NOT `List.foldl`.  We prove the equivalence via
 -- `Iter.foldl_toList` and `String.toList_chars` (both `@[simp]`).
-theorem string_foldl_toList {α : Type _}
+lemma string_foldl_toList {α : Type _}
     (f : α → Char → α) (init : α) (s : String) :
     s.foldl f init = s.toList.foldl f init := by
   simp [String.foldl, String.Slice.foldl, ← Std.Iter.foldl_toList]
 
 /-- The accumulator-shift property for `escapeString`'s foldl: prepending
     to the accumulator is the same as prepending to the result. -/
-theorem escapeString_foldl_shift (chars : List Char) (init : String) :
+lemma escapeString_foldl_shift (chars : List Char) (init : String) :
     chars.foldl (fun acc c => acc ++ escapeChar c) init =
     init ++ chars.foldl (fun acc c => acc ++ escapeChar c) "" := by
   induction chars generalizing init with
@@ -149,14 +149,14 @@ theorem escapeString_foldl_shift (chars : List Char) (init : String) :
     simp [String.append_assoc]
 
 /-- `escapeString` on empty string. -/
-theorem escapeString_nil : escapeString "" = "" := by
+lemma escapeString_nil : escapeString "" = "" := by
   unfold escapeString
   rw [string_foldl_toList]
   simp
 
 /-- `escapeString` distributes over cons: the output is the escape of the
     first character followed by the escape of the rest. -/
-theorem escapeString_cons (c : Char) (cs : List Char) :
+lemma escapeString_cons (c : Char) (cs : List Char) :
     escapeString (String.ofList (c :: cs)) =
     escapeChar c ++ escapeString (String.ofList cs) := by
   unfold escapeString
@@ -172,7 +172,7 @@ of `collectDoubleQuotedLoop` processes it.
 
 /-- The first character of `escapeChar c` is never `"`.
     This ensures the scanner never mistakes escape output for a closing quote. -/
-theorem escapeChar_head_not_quote (c : Char) :
+lemma escapeChar_head_not_quote (c : Char) :
     (escapeChar c).toList.head? ≠ some '"' := by
   by_cases h_val : c.val.toNat < 128
   · have : ∀ n : Fin 128,
@@ -189,7 +189,7 @@ theorem escapeChar_head_not_quote (c : Char) :
 
 /-- The first character of `escapeChar c` is never a line break.
     This ensures `collectDoubleQuotedLoop` never takes the newline-fold branch. -/
-theorem escapeChar_head_not_linebreak (c : Char) :
+lemma escapeChar_head_not_linebreak (c : Char) :
     ∀ ch, (escapeChar c).toList.head? = some ch → isLineBreakBool ch = false := by
   by_cases h_val : c.val.toNat < 128
   · have : ∀ n : Fin 128, ∀ ch,
@@ -211,7 +211,7 @@ theorem escapeChar_head_not_linebreak (c : Char) :
 
 /-- No character of `escapeChar c` is a line break.
     Stronger than `escapeChar_head_not_linebreak` — covers ALL output chars. -/
-theorem escapeChar_output_no_linebreak (c : Char) :
+lemma escapeChar_output_no_linebreak (c : Char) :
     ∀ ch ∈ (escapeChar c).toList, isLineBreakBool ch = false := by
   by_cases h_val : c.val.toNat < 128
   · have h_bounded : ∀ n : Fin 128, ∀ ch ∈ (escapeChar (Char.ofNat n.val)).toList,
@@ -233,7 +233,7 @@ theorem escapeChar_output_no_linebreak (c : Char) :
     exact ⟨beq_eq_false_iff_ne.mpr h1, beq_eq_false_iff_ne.mpr h2⟩
 
 /-- The output of `escapeChar c` is non-empty. -/
-theorem escapeChar_nonempty (c : Char) : (escapeChar c).toList ≠ [] := by
+lemma escapeChar_nonempty (c : Char) : (escapeChar c).toList ≠ [] := by
   by_cases h_val : c.val.toNat < 128
   · have : ∀ n : Fin 128, (escapeChar (Char.ofNat n.val)).toList ≠ [] := by native_decide
     have := this ⟨c.toNat, by unfold Char.toNat; omega⟩
@@ -252,7 +252,7 @@ We lift per-character properties from `escapeChar` to `escapeString`.
 -/
 
 /-- Generic: `foldl` with string append equals `flatMap` on character lists. -/
-theorem foldl_append_toList_eq_flatMap (chars : List Char) (f : Char → String) :
+lemma foldl_append_toList_eq_flatMap (chars : List Char) (f : Char → String) :
     (chars.foldl (fun (acc : String) c => acc ++ f c) "").toList =
     chars.flatMap (fun c => (f c).toList) := by
   suffices h : ∀ init : String,
@@ -271,7 +271,7 @@ theorem foldl_append_toList_eq_flatMap (chars : List Char) (f : Char → String)
 
 /-- A character is in `escapeString content` iff it is in some `escapeChar c`
     for `c` in `content`. -/
-theorem escapeString_mem_iff (content : String) (ch : Char) :
+lemma escapeString_mem_iff (content : String) (ch : Char) :
     ch ∈ (escapeString content).toList ↔
     ∃ c ∈ content.toList, ch ∈ (escapeChar c).toList := by
   constructor
@@ -289,7 +289,7 @@ theorem escapeString_mem_iff (content : String) (ch : Char) :
     exact ⟨c, h_c_mem, h_ch_mem⟩
 
 /-- All chars of `escapeString content` are valid `nb-json` characters. -/
-theorem escapeString_all_nbJson (content : String) :
+lemma escapeString_all_nbJson (content : String) :
     ∀ ch ∈ (escapeString content).toList, isNbJsonBool ch = true := by
   intro ch h_mem
   rw [escapeString_mem_iff] at h_mem
@@ -297,7 +297,7 @@ theorem escapeString_all_nbJson (content : String) :
   exact escapeChar_output_nbJson c ch h_ch_mem
 
 /-- No character of `escapeString content` is a line break. -/
-theorem escapeString_no_linebreak (content : String) :
+lemma escapeString_no_linebreak (content : String) :
     ∀ ch ∈ (escapeString content).toList, isLineBreakBool ch = false := by
   intro ch h_mem
   rw [escapeString_mem_iff] at h_mem
@@ -323,7 +323,7 @@ The proof proceeds by induction on `content.toList`:
 
 /-- Derive `peek?` from `ScannerSurfCorr` when the surface position starts
     with a known character. Column can be arbitrary. -/
-theorem peek_of_chars_cons (sc : ScannerState) (c : Char) (rest : List Char)
+lemma peek_of_chars_cons (sc : ScannerState) (c : Char) (rest : List Char)
     (col : Nat) (hcorr : ScannerSurfCorr sc ⟨c :: rest, col⟩) :
     sc.peek? = some c ∧ sc.offset < sc.inputEnd := by
   by_cases h_lt : sc.offset < sc.inputEnd
@@ -333,7 +333,7 @@ theorem peek_of_chars_cons (sc : ScannerState) (c : Char) (rest : List Char)
 
 /-- `processEscape` succeeds when peeking at a named escape tag
     (one of `escapeTag`'s output characters). Returns `(decoded, sc.advance)`. -/
-theorem processEscape_named_ok (sc : ScannerState) (c tag : Char)
+lemma processEscape_named_ok (sc : ScannerState) (c tag : Char)
     (h_tag : escapeTag c = some tag) (h_peek : sc.peek? = some tag) :
     ∃ decoded, processEscape sc = .ok (decoded, sc.advance) := by
   unfold processEscape; rw [h_peek]; dsimp only []
@@ -349,7 +349,7 @@ theorem processEscape_named_ok (sc : ScannerState) (c tag : Char)
 /-- **Strengthened named escape**: `processEscape` on a named escape tag
     returns the ORIGINAL character `c`, not just some existential decoded value.
     This is the content-preservation key for the round-trip proof. -/
-theorem processEscape_named_content (sc : ScannerState) (c tag : Char)
+lemma processEscape_named_content (sc : ScannerState) (c tag : Char)
     (h_tag : escapeTag c = some tag) (h_peek : sc.peek? = some tag) :
     processEscape sc = .ok (c, sc.advance) := by
   unfold escapeTag at h_tag; split at h_tag <;> simp_all
@@ -358,7 +358,7 @@ theorem processEscape_named_content (sc : ScannerState) (c tag : Char)
 
 /-- Named escape tags are never line breaks — needed to distinguish
     escape from escaped-newline in the scanner. -/
-theorem escapeTag_not_linebreak (c tag : Char)
+lemma escapeTag_not_linebreak (c tag : Char)
     (h_tag : escapeTag c = some tag) : isLineBreakBool tag = false := by
   unfold escapeTag at h_tag; split at h_tag
   all_goals first | exact Option.noConfusion h_tag | skip
@@ -366,12 +366,12 @@ theorem escapeTag_not_linebreak (c tag : Char)
 
 /-- `escapeChar` for passthrough characters produces a single-element
     char list equal to `[c]`. -/
-theorem escapeChar_passthrough_toList (c : Char) (h : isEscapedChar c = false) :
+lemma escapeChar_passthrough_toList (c : Char) (h : isEscapedChar c = false) :
     (escapeChar c).toList = [c] := by
   rw [escapeChar_identity c h]; simp [Char.toString]
 
 /-- `escapeChar` for named escapes produces exactly `['\\', tag]`. -/
-theorem escapeChar_named_toList (c tag : Char) (h : escapeTag c = some tag) :
+lemma escapeChar_named_toList (c tag : Char) (h : escapeTag c = some tag) :
     (escapeChar c).toList = ['\\', tag] := by
   have ⟨h_eq, _⟩ := escapeTag_roundtrip c tag h
   rw [h_eq]; simp [Char.toString]
@@ -380,15 +380,15 @@ theorem escapeChar_named_toList (c tag : Char) (h : escapeTag c = some tag) :
 def scannerHexCheck (c : Char) : Bool :=
   c.isDigit || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')
 
-theorem hexNibble_is_hex : ∀ n : Fin 16, scannerHexCheck (hexNibble n.val) = true := by
+lemma hexNibble_is_hex : ∀ n : Fin 16, scannerHexCheck (hexNibble n.val) = true := by
   native_decide
 
-theorem hexNibble_lt128 : ∀ n : Fin 16, (hexNibble n.val).toNat < 128 := by
+lemma hexNibble_lt128 : ∀ n : Fin 16, (hexNibble n.val).toNat < 128 := by
   native_decide
 
 /-- For any two hex chars (each with toNat < 128 and scannerHexCheck = true),
     the 2-digit hex foldl value is < 0x110000. -/
-theorem hex_two_foldl_bound : ∀ (n1 n2 : Fin 128),
+lemma hex_two_foldl_bound : ∀ (n1 n2 : Fin 128),
     scannerHexCheck (Char.ofNat n1.val) = true →
     scannerHexCheck (Char.ofNat n2.val) = true →
     (("".push (Char.ofNat n1.val)).push (Char.ofNat n2.val)).foldl (fun acc c =>
@@ -398,7 +398,7 @@ theorem hex_two_foldl_bound : ∀ (n1 n2 : Fin 128),
 
 /-- `escapeChar` output for hex-escaped characters (C0 controls with no named tag)
     has the form `['\\', 'x', h1, h2]` where h1, h2 are hex digits with toNat < 128. -/
-theorem escapeChar_hex_structure (c : Char)
+lemma escapeChar_hex_structure (c : Char)
     (h_lt : c.val.toNat < 0x20) (h_no_tag : escapeTag c = none) :
     ∃ h1 h2 : Char,
       (escapeChar c).toList = ['\\', 'x', h1, h2] ∧
@@ -425,7 +425,7 @@ theorem escapeChar_hex_structure (c : Char)
 -- ═══ line preservation helper ═══
 -- When we know peek? = some c and c is not a newline/CR, advance preserves line.
 -- This bridges ScannerSurfCorr-level character identity with advance_line_non_newline.
-theorem advance_line_of_peek (s : ScannerState) (c : Char)
+lemma advance_line_of_peek (s : ScannerState) (c : Char)
     (h_lt : s.offset < s.inputEnd) (h_peek : s.peek? = some c)
     (hnl : c ≠ '\n') (hcr : c ≠ '\r') :
     s.advance.line = s.line := by
@@ -438,7 +438,7 @@ theorem advance_line_of_peek (s : ScannerState) (c : Char)
 /-- `processEscape` succeeds on hex escape sequences produced by `escapeHex2`.
     When the scanner is positioned at `'x' :: h1 :: h2 :: rest`, processEscape
     reads `x`, then `parseHexEscape` consumes `h1 h2`. -/
-theorem processEscape_hex_ok (sc : ScannerState) (h1 h2 : Char)
+lemma processEscape_hex_ok (sc : ScannerState) (h1 h2 : Char)
     (rest : List Char) (col : Nat)
     (hcorr : ScannerSurfCorr sc ⟨'x' :: h1 :: h2 :: rest, col⟩)
     (h_h1_nn : h1 ≠ '\n') (h_h1_cr : h1 ≠ '\r')
@@ -514,18 +514,18 @@ theorem processEscape_hex_ok (sc : ScannerState) (h1 h2 : Char)
     h_line⟩
 
 -- String helper: s.push c ++ String.ofList cs = s ++ String.ofList (c :: cs)
-theorem push_append_ofList_eq (s : String) (c : Char) (cs : List Char) :
+lemma push_append_ofList_eq (s : String) (c : Char) (cs : List Char) :
     s.push c ++ String.ofList cs = s ++ String.ofList (c :: cs) := by
   apply String.ext
   simp only [String.toList_append, String.toList_push, String.toList_ofList,
              List.append_assoc, List.singleton_append]
 
 -- String helper: s ++ String.ofList [] = s
-theorem append_ofList_nil (s : String) : s ++ String.ofList [] = s := by
+lemma append_ofList_nil (s : String) : s ++ String.ofList [] = s := by
   apply String.ext; simp
 
 -- Hex foldl roundtrip for control characters (c.val.toNat < 0x20)
-theorem hex_foldl_roundtrip : ∀ n : Fin 32,
+lemma hex_foldl_roundtrip : ∀ n : Fin 32,
     let h1 := hexNibble (n.val / 16)
     let h2 := hexNibble (n.val % 16)
     (("".push h1).push h2).foldl (fun acc c =>
@@ -543,7 +543,7 @@ theorem hex_foldl_roundtrip : ∀ n : Fin 32,
     - Passthrough char: regular char branch → recurse.
     - Named escape: `\tag` → processEscape → recurse.
     - Hex escape: `\xHH` → processEscape → recurse. -/
-theorem collectDoubleQuotedLoop_escapeString_succeeds
+lemma collectDoubleQuotedLoop_escapeString_succeeds
     (sc : ScannerState) (content_rest : List Char) (rest : List Char)
     (acc : String) (fuel : Nat)
     (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int)

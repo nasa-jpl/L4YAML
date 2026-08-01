@@ -86,68 +86,68 @@ variable {input : String}
 
 /-! ## §1  `directivesPresent` preservation -/
 
-@[simp] theorem advance_directivesPresent (s : ScannerStateIx input) :
+@[simp] lemma advance_directivesPresent (s : ScannerStateIx input) :
     s.advance.directivesPresent = s.directivesPresent := rfl
 
-@[simp] theorem advanceN_directivesPresent (s : ScannerStateIx input) (n : Nat) :
+@[simp] lemma advanceN_directivesPresent (s : ScannerStateIx input) (n : Nat) :
     (s.advanceN n).directivesPresent = s.directivesPresent := rfl
 
-@[simp] theorem emit_directivesPresent (s : ScannerStateIx input) (tok : YamlToken) :
+@[simp] lemma emit_directivesPresent (s : ScannerStateIx input) (tok : YamlToken) :
     (s.emit tok).directivesPresent = s.directivesPresent := rfl
 
-@[simp] theorem emitAt_directivesPresent (s : ScannerStateIx input)
+@[simp] lemma emitAt_directivesPresent (s : ScannerStateIx input)
     (startPos : YamlPos) (tok : YamlToken)
     (h : startPos.offset ≤ s.cursor.pos.offset) :
     (s.emitAt startPos tok h).directivesPresent = s.directivesPresent := rfl
 
-@[simp] theorem skipSpacesS_directivesPresent (s : ScannerStateIx input) :
+@[simp] lemma skipSpacesS_directivesPresent (s : ScannerStateIx input) :
     s.skipSpacesS.1.directivesPresent = s.directivesPresent := rfl
 
-@[simp] theorem skipWhitespaceS_directivesPresent (s : ScannerStateIx input) :
+@[simp] lemma skipWhitespaceS_directivesPresent (s : ScannerStateIx input) :
     s.skipWhitespaceS.directivesPresent = s.directivesPresent := rfl
 
 /-! ## §2  `indents` preservation -/
 
-@[simp] theorem advance_indents (s : ScannerStateIx input) :
+@[simp] lemma advance_indents (s : ScannerStateIx input) :
     s.advance.indents = s.indents := rfl
 
-@[simp] theorem advanceN_indents (s : ScannerStateIx input) (n : Nat) :
+@[simp] lemma advanceN_indents (s : ScannerStateIx input) (n : Nat) :
     (s.advanceN n).indents = s.indents := rfl
 
-@[simp] theorem emit_indents (s : ScannerStateIx input) (tok : YamlToken) :
+@[simp] lemma emit_indents (s : ScannerStateIx input) (tok : YamlToken) :
     (s.emit tok).indents = s.indents := rfl
 
-@[simp] theorem emitAt_indents (s : ScannerStateIx input)
+@[simp] lemma emitAt_indents (s : ScannerStateIx input)
     (startPos : YamlPos) (tok : YamlToken)
     (h : startPos.offset ≤ s.cursor.pos.offset) :
     (s.emitAt startPos tok h).indents = s.indents := rfl
 
-@[simp] theorem skipSpacesS_indents (s : ScannerStateIx input) :
+@[simp] lemma skipSpacesS_indents (s : ScannerStateIx input) :
     s.skipSpacesS.1.indents = s.indents := rfl
 
-@[simp] theorem skipWhitespaceS_indents (s : ScannerStateIx input) :
+@[simp] lemma skipWhitespaceS_indents (s : ScannerStateIx input) :
     s.skipWhitespaceS.indents = s.indents := rfl
 
 /-! ## §3  `explicitKeyLine` preservation -/
 
-@[simp] theorem advance_explicitKeyLine (s : ScannerStateIx input) :
+@[simp] lemma advance_explicitKeyLine (s : ScannerStateIx input) :
     s.advance.explicitKeyLine = s.explicitKeyLine := rfl
 
-@[simp] theorem advanceN_explicitKeyLine (s : ScannerStateIx input) (n : Nat) :
+@[simp] lemma advanceN_explicitKeyLine (s : ScannerStateIx input) (n : Nat) :
     (s.advanceN n).explicitKeyLine = s.explicitKeyLine := rfl
 
-@[simp] theorem emit_explicitKeyLine (s : ScannerStateIx input) (tok : YamlToken) :
+@[simp] lemma emit_explicitKeyLine (s : ScannerStateIx input) (tok : YamlToken) :
     (s.emit tok).explicitKeyLine = s.explicitKeyLine := rfl
 
-@[simp] theorem emitAt_explicitKeyLine (s : ScannerStateIx input)
+@[simp] lemma emitAt_explicitKeyLine (s : ScannerStateIx input)
     (startPos : YamlPos) (tok : YamlToken)
     (h : startPos.offset ≤ s.cursor.pos.offset) :
     (s.emitAt startPos tok h).explicitKeyLine = s.explicitKeyLine := rfl
 
-@[simp] theorem skipSpacesS_explicitKeyLine (s : ScannerStateIx input) :
+@[simp] lemma skipSpacesS_explicitKeyLine (s : ScannerStateIx input) :
     s.skipSpacesS.1.explicitKeyLine = s.explicitKeyLine := rfl
 
-@[simp] theorem skipWhitespaceS_explicitKeyLine (s : ScannerStateIx input) :
+@[simp] lemma skipWhitespaceS_explicitKeyLine (s : ScannerStateIx input) :
     s.skipWhitespaceS.explicitKeyLine = s.explicitKeyLine := rfl
 
 end L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain

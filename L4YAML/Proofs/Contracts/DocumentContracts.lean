@@ -55,16 +55,16 @@ def isDocumentBoundary (s : String) : Prop :=
   s = "---" ∨ s = "..."
 
 /-- Both `---` and `...` are recognized as document boundaries. -/
-theorem docBoundary_start : isDocumentBoundary "---" := Or.inl rfl
+lemma docBoundary_start : isDocumentBoundary "---" := Or.inl rfl
 
-theorem docBoundary_end : isDocumentBoundary "..." := Or.inr rfl
+lemma docBoundary_end : isDocumentBoundary "..." := Or.inr rfl
 
 /-- `---` and `...` are distinct boundaries. -/
-theorem docBoundary_distinct : ("---" : String) ≠ "..." := by
+lemma docBoundary_distinct : ("---" : String) ≠ "..." := by
   decide
 
 /-- A document boundary is exactly one of two values. -/
-theorem docBoundary_exhaustive (s : String) (h : isDocumentBoundary s) :
+lemma docBoundary_exhaustive (s : String) (h : isDocumentBoundary s) :
     s = "---" ∨ s = "..." := h
 
 /-! ## §2  Contract D2: Trailing Content Comment Check
@@ -83,16 +83,16 @@ def isValidCommentStart (c : Char) (hadPrecedingWs : Bool) : Prop :=
   c = '#' ∧ hadPrecedingWs = true
 
 /-- `#` with preceding whitespace is a valid comment. -/
-theorem comment_with_ws : isValidCommentStart '#' true :=
+lemma comment_with_ws : isValidCommentStart '#' true :=
   ⟨rfl, rfl⟩
 
 /-- `#` without preceding whitespace is NOT a valid comment. -/
-theorem comment_without_ws : ¬ isValidCommentStart '#' false := by
+lemma comment_without_ws : ¬ isValidCommentStart '#' false := by
   intro ⟨_, h⟩
   exact Bool.noConfusion h
 
 /-- Non-`#` characters are never comment starts. -/
-theorem non_hash_not_comment (c : Char) (b : Bool) (h : c ≠ '#') :
+lemma non_hash_not_comment (c : Char) (b : Bool) (h : c ≠ '#') :
     ¬ isValidCommentStart c b := by
   intro ⟨hc, _⟩
   exact h hc
@@ -112,19 +112,19 @@ def madeProgress (before after : YamlPos) : Prop :=
   after.offset > before.offset
 
 /-- Progress is irreflexive: no position shows progress relative to itself. -/
-theorem madeProgress_irrefl (p : YamlPos) : ¬ madeProgress p p := by
+lemma madeProgress_irrefl (p : YamlPos) : ¬ madeProgress p p := by
   unfold madeProgress
   omega
 
 /-- Progress is transitive. -/
-theorem madeProgress_trans (p q r : YamlPos)
+lemma madeProgress_trans (p q r : YamlPos)
     (h1 : madeProgress p q) (h2 : madeProgress q r) :
     madeProgress p r := by
   unfold madeProgress at *
   omega
 
 /-- If the offset advanced by at least 1, progress was made. -/
-theorem madeProgress_of_advance (p : YamlPos) (n : Nat) (hn : n > 0) :
+lemma madeProgress_of_advance (p : YamlPos) (n : Nat) (hn : n > 0) :
     madeProgress p { p with offset := p.offset + n } := by
   unfold madeProgress
   simp
@@ -139,17 +139,17 @@ The default handles `!` and `!!` are always available.
 -/
 
 /-- The default tag handles include `!` (primary). -/
-theorem default_handles_include_primary :
+lemma default_handles_include_primary :
     "!" ∈ (["!", "!!"] : List String) := by
   decide
 
 /-- The default tag handles include `!!` (secondary). -/
-theorem default_handles_include_secondary :
+lemma default_handles_include_secondary :
     "!!" ∈ (["!", "!!"] : List String) := by
   decide
 
 /-- Default handles are exactly two. -/
-theorem default_handles_count :
+lemma default_handles_count :
     (["!", "!!"] : List String).length = 2 := by
   rfl
 
@@ -164,18 +164,18 @@ def atMostOneYaml (dirs : Array Directive) : Prop :=
   (dirs.filter (fun d => match d with | .yaml _ => true | .tag _ _ => false)).size ≤ 1
 
 /-- An empty directive array trivially satisfies the constraint. -/
-theorem atMostOneYaml_empty : atMostOneYaml #[] := by
+lemma atMostOneYaml_empty : atMostOneYaml #[] := by
   unfold atMostOneYaml
   simp [Array.filter, Array.size]
 
 /-- A single YAML directive satisfies the constraint. -/
-theorem atMostOneYaml_single (v : String) :
+lemma atMostOneYaml_single (v : String) :
     atMostOneYaml #[Directive.yaml v] := by
   unfold atMostOneYaml
   simp [Array.filter, Array.size]
 
 /-- A single TAG directive satisfies the constraint. -/
-theorem atMostOneYaml_tag (h p : String) :
+lemma atMostOneYaml_tag (h p : String) :
     atMostOneYaml #[Directive.tag h p] := by
   unfold atMostOneYaml
   simp [Array.filter, Array.size]

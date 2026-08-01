@@ -81,7 +81,7 @@ that `parseStreamIx` also succeeds on those tokens. The key argument:
     leaves `peek?` at `streamEnd`; then `parseStreamLoop` produces exactly
     one document. Indexed twin of legacy `parseStreamLoop_single_doc`
     (line 8433). -/
-theorem parseStreamLoop_single_docIx {input : String}
+lemma parseStreamLoop_single_docIx {input : String}
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≥ 2)
     (tok : YamlToken) (h_peek : ps.peek? = some tok) (h_not_se : tok ≠ .streamEnd)
     (doc : YamlDocument) (ps' : ParseStateIx input)
@@ -123,7 +123,7 @@ theorem parseStreamLoop_single_docIx {input : String}
     grammable. Follows from `parseStreamIx_output_grammable` applied to
     the scan+parse decomposition. Indexed twin of legacy
     `emit_parsed_grammable` (line 8472). -/
-theorem emit_parsed_grammableIx (v : YamlValue)
+lemma emit_parsed_grammableIx (v : YamlValue)
     (docs : Array YamlDocument)
     (h : parseYamlIx (emit v) = .ok docs) :
     ∀ doc ∈ docs.toList, Grammable doc.value false := by
@@ -160,7 +160,7 @@ canonical roundtrip `parseYamlIx ∘ emit = id` (modulo stripping) follows.
     with empty directives and unchanged state. The `for _ in [:fuel] do`
     loop breaks on the first iteration. Indexed twin of legacy
     `parseDirectives_skip` (line 8677). -/
-theorem parseDirectives_skipIx {input : String} (ps : ParseStateIx input)
+lemma parseDirectives_skipIx {input : String} (ps : ParseStateIx input)
     (h : match ps.peek? with
         | some (.versionDirective _ _) | some (.tagDirective _ _) => False
         | _ => True) :
@@ -192,7 +192,7 @@ set_option maxHeartbeats 3200000 in
 /-- When `parseNodeProperties` sees a non-anchor/tag token, it returns
     immediately with empty properties and unchanged state. Indexed twin of
     legacy `parseNodeProperties_skip` (`ParserWellBehaved.lean:4692`). -/
-theorem parseNodeProperties_skipIx {input : String} (ps : ParseStateIx input)
+lemma parseNodeProperties_skipIx {input : String} (ps : ParseStateIx input)
     (h : match ps.peek? with
         | some (.anchor _) | some (.tag _ _) => False
         | _ => True) :
@@ -222,7 +222,7 @@ SS2-wrapper `scan_accepts_emitScalarIx` (§3.3) + `scanFilteredIx_of_chain_eq`
     `.token` projections fixed) and the explicit `scanFilteredIx`
     equality. Indexed analog of the equality embedded in legacy
     `scanFiltered_emitScalar_vals`'s `h_filt_full` step (line 8647). -/
-theorem scanFilteredIx_emitScalar_eq (content : String) :
+lemma scanFilteredIx_emitScalar_eq (content : String) :
     ∃ (ss_ix : Indexed.IxToken (emitScalar content))
       (tok_scalar : Indexed.IxToken (emitScalar content))
       (se_ix : Indexed.IxToken (emitScalar content)),
@@ -308,7 +308,7 @@ theorem scanFilteredIx_emitScalar_eq (content : String) :
     a token stream where the scalar token's value equals the original
     content. Indexed twin of legacy `scanFiltered_emitScalar_content`
     (line 8545). -/
-theorem scanFilteredIx_emitScalar_content (content : String)
+lemma scanFilteredIx_emitScalar_content (content : String)
     (tokens : Indexed.TokenStream (emitScalar content))
     (h_scan : scanFilteredIx (emitScalar content) = .ok tokens) :
     ∃ i, i < tokens.size ∧
@@ -330,7 +330,7 @@ theorem scanFilteredIx_emitScalar_content (content : String)
     content` produces exactly 3 tokens: `streamStart`,
     `scalar content .doubleQuoted`, `streamEnd`. Indexed twin of legacy
     `scanFiltered_emitScalar_vals` (line 8607). -/
-theorem scanFilteredIx_emitScalar_vals (content : String)
+lemma scanFilteredIx_emitScalar_vals (content : String)
     (tokens : Indexed.TokenStream (emitScalar content))
     (h_scan : scanFilteredIx (emitScalar content) = .ok tokens) :
     tokens.size = 3
@@ -357,7 +357,7 @@ set_option maxHeartbeats 6400000 in
     `parseStreamIx` produces exactly one document whose value is
     `YamlValue.scalar { content := content, style := .doubleQuoted }`.
     Indexed twin of legacy `parseStream_three_tokens_scalar` (line 8710). -/
-theorem parseStream_three_tokens_scalarIx {input : String} (content : String)
+lemma parseStream_three_tokens_scalarIx {input : String} (content : String)
     (tokens : Indexed.TokenStream input)
     (h_sz : tokens.size = 3)
     (h_t0 : tokens.tokens[0]!.token = YamlToken.streamStart)
@@ -480,7 +480,7 @@ theorem parseStream_three_tokens_scalarIx {input : String} (content : String)
     `parseYamlRawIx` succeeds on emitter scalar output, the first
     document's value is a scalar with the original content. Indexed twin
     of legacy `parseYamlRaw_emitScalar_value` (line 8812). -/
-theorem parseYamlRawIx_emitScalar_value (content : String)
+lemma parseYamlRawIx_emitScalar_value (content : String)
     (raw_docs : Array YamlDocument)
     (h_raw : parseYamlRawIx (emitScalar content) = .ok raw_docs) :
     ∃ s : Scalar, raw_docs[0]!.value = .scalar s ∧ s.content = content := by

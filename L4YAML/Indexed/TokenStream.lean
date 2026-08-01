@@ -168,26 +168,26 @@ instance {input : String} :
     GetElem (TokenStream input) Nat (IxToken input) (fun ts i => i < ts.size) where
   getElem ts i h := ts.tokens[i]'h
 
-theorem getElem_eq_tokens_getElem {input : String}
+lemma getElem_eq_tokens_getElem {input : String}
     (ts : TokenStream input) (i : Nat) (h : i < ts.size) :
     ts[i]'h = ts.tokens[i]'h := rfl
 
-@[simp] theorem size_empty (input : String) :
+@[simp] lemma size_empty (input : String) :
     size (empty input) = 0 := rfl
 
-@[simp] theorem size_singleton {input : String} (t : IxToken input) :
+@[simp] lemma size_singleton {input : String} (t : IxToken input) :
     size (singleton t) = 1 := rfl
 
-@[simp] theorem size_push {input : String} (ts : TokenStream input)
+@[simp] lemma size_push {input : String} (ts : TokenStream input)
     (t : IxToken input) :
     size (push ts t) = size ts + 1 := by
   simp [size, push]
 
-@[simp] theorem size_append {input : String} (ts₁ ts₂ : TokenStream input) :
+@[simp] lemma size_append {input : String} (ts₁ ts₂ : TokenStream input) :
     size (append ts₁ ts₂) = size ts₁ + size ts₂ := by
   simp [size, append]
 
-@[simp] theorem isEmpty_empty (input : String) :
+@[simp] lemma isEmpty_empty (input : String) :
     isEmpty (empty input) = true := rfl
 
 end TokenStream

@@ -39,39 +39,39 @@ open L4YAML.Proofs.StreamAccum
 /-! ## §1 Trivial Stream Constructions -/
 
 /-- The empty string is a valid YAML stream. -/
-theorem empty_yaml_stream :
+lemma empty_yaml_stream :
     SLYamlStream ⟨[], 0⟩ ⟨[], 0⟩ :=
   SLYamlStream.single ⟨[], 0⟩ ⟨[], 0⟩ ⟨[], 0⟩ ⟨[], 0⟩
     (GStar.nil _) (GOpt.none _) (GStar.nil _)
 
 /-- The empty string is in the YAML language. -/
-theorem empty_InYamlLanguage : InYamlLanguage "" :=
+lemma empty_InYamlLanguage : InYamlLanguage "" :=
   ⟨⟨[], 0⟩, empty_yaml_stream, rfl⟩
 
 /-! ## §2 Document Prefix Helpers -/
 
 /-- A zero-width document prefix (no BOM, no comments). -/
-theorem trivial_prefix (sp : SurfPos) :
+lemma trivial_prefix (sp : SurfPos) :
     SLDocumentPrefix sp sp :=
   SLDocumentPrefix.comments sp sp (GStar.nil _)
 
 /-- BOM produces a document prefix.
     '\uFEFF' at any column advances by 1, then no comments. -/
-theorem bom_gives_prefix (rest : List Char) (col : Nat) :
+lemma bom_gives_prefix (rest : List Char) (col : Nat) :
     SLDocumentPrefix ⟨'\uFEFF' :: rest, col⟩ ⟨rest, col + 1⟩ :=
   SLDocumentPrefix.bom rest col ⟨rest, col + 1⟩ (GStar.nil _)
 
 /-! ## §3 Document Suffix Helpers -/
 
 /-- `SCDocumentEnd` + `SSLComments` → `SLDocumentSuffix`. -/
-theorem doc_end_comments_give_suffix (sp sp₁ sp' : SurfPos)
+lemma doc_end_comments_give_suffix (sp sp₁ sp' : SurfPos)
     (h_end : SCDocumentEnd sp sp₁)
     (h_comments : SSLComments sp₁ sp') :
     SLDocumentSuffix sp sp' :=
   SLDocumentSuffix.mk sp sp₁ sp' h_end h_comments
 
 /-- Document end with break: '...' + newline → suffix. -/
-theorem doc_end_break_suffix (rest : List Char) (sp_trail : SurfPos)
+lemma doc_end_break_suffix (rest : List Char) (sp_trail : SurfPos)
     (h_break : SBBreak ⟨rest, 3⟩ sp_trail) :
     SLDocumentSuffix ⟨'.' :: '.' :: '.' :: rest, 0⟩ sp_trail :=
   SLDocumentSuffix.mk _ ⟨rest, 3⟩ sp_trail
@@ -81,7 +81,7 @@ theorem doc_end_break_suffix (rest : List Char) (sp_trail : SurfPos)
       (GStar.nil _))
 
 /-- Document end at EOF: '...' at input end → suffix. -/
-theorem doc_end_eof_suffix :
+lemma doc_end_eof_suffix :
     SLDocumentSuffix ⟨['.', '.', '.'], 0⟩ ⟨[], 3⟩ :=
   SLDocumentSuffix.mk _ ⟨[], 3⟩ ⟨[], 3⟩
     (SCDocumentEnd.mk [])
@@ -92,19 +92,19 @@ theorem doc_end_eof_suffix :
 /-! ## §4 SSLComments Helpers -/
 
 /-- At column 0 with no content, SSLComments is trivially satisfied. -/
-theorem start_of_line_comments (rest : List Char) :
+lemma start_of_line_comments (rest : List Char) :
     SSLComments ⟨rest, 0⟩ ⟨rest, 0⟩ :=
   SSLComments.startOfLine rest ⟨rest, 0⟩ (GStar.nil _)
 
 /-- EOF gives SSLComments. -/
-theorem eof_comments (col : Nat) :
+lemma eof_comments (col : Nat) :
     SSLComments ⟨[], col⟩ ⟨[], col⟩ :=
   SSLComments.withComment ⟨[], col⟩ ⟨[], col⟩ ⟨[], col⟩
     (SSBComment.noSep _ _ (SBComment.eof _))
     (GStar.nil _)
 
 /-- Newline gives SSLComments. -/
-theorem break_gives_comments (sp sp' : SurfPos) (h : SBBreak sp sp') :
+lemma break_gives_comments (sp sp' : SurfPos) (h : SBBreak sp sp') :
     SSLComments sp sp' :=
   SSLComments.withComment sp sp' sp'
     (SSBComment.noSep sp sp' (SBComment.break sp sp' h))
@@ -113,7 +113,7 @@ theorem break_gives_comments (sp sp' : SurfPos) (h : SBBreak sp sp') :
 /-! ## §5 Explicit Document Helpers -/
 
 /-- '---' followed by SSLComments gives an explicit document. -/
-theorem directives_end_comments_give_explicit (sp sp₁ sp' : SurfPos)
+lemma directives_end_comments_give_explicit (sp sp₁ sp' : SurfPos)
     (h_end : SCDirectivesEnd sp sp₁)
     (h_comments : SSLComments sp₁ sp') :
     SLExplicitDocument sp sp' :=
@@ -140,7 +140,7 @@ theorem directives_end_comments_give_explicit (sp sp₁ sp' : SurfPos)
 /-! ### §6a Stream Extension Lemmas -/
 
 -- One bare document forms a stream (no prefix, no suffix).
-theorem bare_to_stream (s s' : SurfPos)
+lemma bare_to_stream (s s' : SurfPos)
     (h_bare : SLBareDocument s s') :
     SLYamlStream s s' :=
   SLYamlStream.single s s s' s'
@@ -150,7 +150,7 @@ theorem bare_to_stream (s s' : SurfPos)
 
 -- Empty document at any position forms a stream.
 -- Used when all content has been consumed by prefixes/suffixes.
-theorem empty_to_stream (sp : SurfPos) :
+lemma empty_to_stream (sp : SurfPos) :
     SLYamlStream sp sp :=
   SLYamlStream.single sp sp sp sp
     (GStar.nil _)
@@ -158,7 +158,7 @@ theorem empty_to_stream (sp : SurfPos) :
     (GStar.nil _)
 
 -- Extend a stream with suffix(es) (after '...').
-theorem stream_append_suffix (s s₁ s₂ : SurfPos)
+lemma stream_append_suffix (s s₁ s₂ : SurfPos)
     (h_stream : SLYamlStream s s₁)
     (h_suffixes : GPlus SLDocumentSuffix s₁ s₂) :
     SLYamlStream s s₂ :=
@@ -167,7 +167,7 @@ theorem stream_append_suffix (s s₁ s₂ : SurfPos)
     (GStar.nil _) (GOpt.none _) (GStar.nil _)
 
 -- Extend a stream with an implicit continuation (after prefix(es) + explicit doc).
-theorem stream_implicit_continue (s s₁ s₂ s₃ : SurfPos)
+lemma stream_implicit_continue (s s₁ s₂ s₃ : SurfPos)
     (h_stream : SLYamlStream s s₁)
     (h_prefixes : GStar SLDocumentPrefix s₁ s₂)
     (h_doc : SLExplicitDocument s₂ s₃) :

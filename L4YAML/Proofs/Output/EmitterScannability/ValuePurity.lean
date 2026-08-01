@@ -38,7 +38,7 @@ def CleanTokens (tokens : Array (Positioned YamlToken)) : Prop :=
 def PureVal (v : YamlValue) : Prop :=
   (∀ A, v.resolveAliases A = v) ∧ v.stripAnchors = v ∧ v.anchorFree = true
 
-theorem CleanTokens.head {ps : ParseState} (h : CleanTokens ps.tokens)
+lemma CleanTokens.head {ps : ParseState} (h : CleanTokens ps.tokens)
     {t : YamlToken} (h_pk : ps.peek? = some t) : CleanTok t = true := by
   rw [peek?_eq_getElem?] at h_pk
   cases h_get : ps.tokens[ps.pos]? with
@@ -58,17 +58,17 @@ theorem CleanTokens.head {ps : ParseState} (h : CleanTokens ps.tokens)
 
 /-! ## Pure-value constructors -/
 
-theorem pureVal_scalar (s : Scalar) (h : s.anchor = none) : PureVal (.scalar s) := by
+lemma pureVal_scalar (s : Scalar) (h : s.anchor = none) : PureVal (.scalar s) := by
   refine ⟨fun A => resolveAliases_scalar s A, ?_, ?_⟩
   · rw [stripAnchors_scalar]
     cases s
     simp_all
   · simp [YamlValue.anchorFree, h]
 
-theorem pureVal_emptyNode : PureVal emptyNode :=
+lemma pureVal_emptyNode : PureVal emptyNode :=
   pureVal_scalar _ rfl
 
-theorem list_map_self {α : Type} (l : List α) (f : α → α)
+lemma list_map_self {α : Type} (l : List α) (f : α → α)
     (h : ∀ x ∈ l, f x = x) : l.map f = l := by
   induction l with
   | nil => rfl
@@ -76,7 +76,7 @@ theorem list_map_self {α : Type} (l : List α) (f : α → α)
     simp only [List.map_cons, h a (List.mem_cons_self ..), List.cons.injEq, true_and]
     exact ih (fun x hx => h x (List.mem_cons_of_mem a hx))
 
-theorem pureVal_sequence (st : CollectionStyle) (items : Array YamlValue)
+lemma pureVal_sequence (st : CollectionStyle) (items : Array YamlValue)
     (h : ∀ v ∈ items.toList, PureVal v) :
     PureVal (.sequence st items none none) := by
   refine ⟨?_, ?_, ?_⟩
@@ -94,7 +94,7 @@ theorem pureVal_sequence (st : CollectionStyle) (items : Array YamlValue)
     rw [anchorFree_goList_of_forall items.toList (fun x hx => (h x hx).2.2)]
     rfl
 
-theorem pureVal_mapping (st : CollectionStyle) (pairs : Array (YamlValue × YamlValue))
+lemma pureVal_mapping (st : CollectionStyle) (pairs : Array (YamlValue × YamlValue))
     (h : ∀ p ∈ pairs.toList, PureVal p.1 ∧ PureVal p.2) :
     PureVal (.mapping st pairs none none) := by
   refine ⟨?_, ?_, ?_⟩
@@ -130,7 +130,7 @@ def ParseNodePure (n : Nat) : Prop :=
     CleanTokens ps.tokens → parseNode ps m = .ok (v, q) →
     PureVal v ∧ q.tokens = ps.tokens
 
-theorem pairKeyStep_pure (n : Nat) (h_ih : ParseNodePure n) (g : Nat) (hg : g ≤ n)
+lemma pairKeyStep_pure (n : Nat) (h_ih : ParseNodePure n) (g : Nat) (hg : g ≤ n)
     (ps : ParseState) (key : YamlValue) (q : ParseState)
     (h_cl : CleanTokens ps.tokens)
     (h : pairKeyStep ps g = .ok (key, q)) :
@@ -144,7 +144,7 @@ theorem pairKeyStep_pure (n : Nat) (h_ih : ParseNodePure n) (g : Nat) (hg : g �
        exact ⟨by rw [← h1]; exact pureVal_emptyNode, rfl⟩)
     | exact h_ih g hg ps key q h_cl h
 
-theorem parseExplicitKey_pure (n : Nat) (h_ih : ParseNodePure n) (g : Nat) (hg : g ≤ n)
+lemma parseExplicitKey_pure (n : Nat) (h_ih : ParseNodePure n) (g : Nat) (hg : g ≤ n)
     (ps : ParseState) (key : YamlValue) (q : ParseState)
     (h_cl : CleanTokens ps.tokens)
     (h : parseExplicitKey ps g = .ok (key, q)) :
@@ -158,7 +158,7 @@ theorem parseExplicitKey_pure (n : Nat) (h_ih : ParseNodePure n) (g : Nat) (hg :
        exact ⟨by rw [← h1]; exact pureVal_emptyNode, rfl⟩)
     | exact h_ih g hg ps key q h_cl h
 
-theorem parseFlowMappingValue_pure (n : Nat) (h_ih : ParseNodePure n) (g : Nat) (hg : g ≤ n)
+lemma parseFlowMappingValue_pure (n : Nat) (h_ih : ParseNodePure n) (g : Nat) (hg : g ≤ n)
     (ps : ParseState) (sp : YamlPath) (kc : String) (v : YamlValue) (q : ParseState)
     (h_cl : CleanTokens ps.tokens)
     (h : parseFlowMappingValue ps g sp kc = .ok (v, q)) :
@@ -173,7 +173,7 @@ theorem parseFlowMappingValue_pure (n : Nat) (h_ih : ParseNodePure n) (g : Nat) 
     · exact h_ih g hg psv0 val pv h_cl_v hpn
   exact ⟨by rw [hveq]; exact h_val.1, by rw [hqt, h_val.2, hvt]⟩
 
-theorem parseSinglePairMapping_pure (n : Nat) (h_ih : ParseNodePure n)
+lemma parseSinglePairMapping_pure (n : Nat) (h_ih : ParseNodePure n)
     (f : Nat) (hf : f ≤ n + 1) (ps : ParseState) (v : YamlValue) (q : ParseState)
     (h_cl : CleanTokens ps.tokens)
     (h : parseSinglePairMapping ps f = .ok (v, q)) :
@@ -202,7 +202,7 @@ theorem parseSinglePairMapping_pure (n : Nat) (h_ih : ParseNodePure n)
   rw [hp']
   exact ⟨h_key_pure, h_val.1⟩
 
-theorem parseFlowSequenceLoop_pure (n : Nat) (h_ih : ParseNodePure n) :
+lemma parseFlowSequenceLoop_pure (n : Nat) (h_ih : ParseNodePure n) :
     ∀ (f : Nat), f ≤ n + 1 → ∀ (ps : ParseState) (acc : Array YamlValue)
       (r : Array YamlValue × ParseState),
       CleanTokens ps.tokens →
@@ -250,7 +250,7 @@ theorem parseFlowSequenceLoop_pure (n : Nat) (h_ih : ParseNodePure n) :
               · rw [List.mem_singleton.mp hx]; exact h_val) h_cont
         exact ⟨h_all, by rw [h_rtok, htc, h_ntok, hte, h_t']⟩
 
-theorem parseFlowMappingLoop_pure (n : Nat) (h_ih : ParseNodePure n) :
+lemma parseFlowMappingLoop_pure (n : Nat) (h_ih : ParseNodePure n) :
     ∀ (f : Nat), f ≤ n + 1 → ∀ (ps : ParseState) (acc : Array (YamlValue × YamlValue))
       (r : Array (YamlValue × YamlValue) × ParseState),
       CleanTokens ps.tokens →
@@ -308,7 +308,7 @@ theorem parseFlowMappingLoop_pure (n : Nat) (h_ih : ParseNodePure n) :
         exact ⟨h_all, by rw [h_rtok, htc, h_vtok, hmt, h_ktok, hte, h_t']⟩
 
 set_option maxHeartbeats 1600000 in
-theorem parseNode_pure_all : ∀ n, ParseNodePure n := by
+lemma parseNode_pure_all : ∀ n, ParseNodePure n := by
   intro n
   induction n with
   | zero =>
@@ -355,7 +355,7 @@ theorem parseNode_pure_all : ∀ n, ParseNodePure n := by
           exact ⟨by rw [hv]; exact pureVal_scalar _ rfl, ht⟩)
 
 /-- **Purity of clean-token parses** (public form). -/
-theorem parseNode_pure (f : Nat) (ps : ParseState) (v : YamlValue) (q : ParseState)
+lemma parseNode_pure (f : Nat) (ps : ParseState) (v : YamlValue) (q : ParseState)
     (h_cl : CleanTokens ps.tokens) (h : parseNode ps f = .ok (v, q)) :
     PureVal v ∧ q.tokens = ps.tokens :=
   parseNode_pure_all f f (Nat.le_refl _) ps v q h_cl h

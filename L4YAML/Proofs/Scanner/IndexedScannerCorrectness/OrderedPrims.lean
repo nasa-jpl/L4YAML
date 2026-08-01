@@ -36,7 +36,7 @@ the new state's cursor offset (which is the same for `emit`/`emitAt`/
 /-- The key positional fact for a single `Array.push`: positions of new
     array's indices equal the push value at the new slot, and old slot's
     value below. -/
-theorem push_start_offset_eq {input : String}
+lemma push_start_offset_eq {input : String}
     (arr : Array (IxToken input)) (t : IxToken input)
     (k : Nat) (hk : k < (arr.push t).size) :
     ((arr.push t)[k]'hk).start.offset =
@@ -51,7 +51,7 @@ theorem push_start_offset_eq {input : String}
 
 /-- `emit tok` preserves `ScanInvIx`: the new token's start is
     `s.cursor.pos`, equal to all-old-bounds; cursor offset unchanged. -/
-theorem emit_preserves_ScanInvIx {input : String} (s : ScannerStateIx input)
+lemma emit_preserves_ScanInvIx {input : String} (s : ScannerStateIx input)
     (tok : YamlToken) (h : ScanInvIx s) : ScanInvIx (s.emit tok) := by
   obtain ⟨h_ord, h_bnd⟩ := h
   unfold ScanInvIx ScanInv'Ix
@@ -99,7 +99,7 @@ theorem emit_preserves_ScanInvIx {input : String} (s : ScannerStateIx input)
     inserts at a position ≥ all current tokens). The hypothesis is
     typically discharged by `startPos = s.cursor.pos` at some earlier
     state composed with `ScanInvIx`. -/
-theorem emitAt_preserves_ScanInvIx {input : String} (s : ScannerStateIx input)
+lemma emitAt_preserves_ScanInvIx {input : String} (s : ScannerStateIx input)
     (startPos : YamlPos) (tok : YamlToken)
     (hOrder : startPos.offset ≤ s.cursor.pos.offset)
     (h : ScanInvIx s)
@@ -145,7 +145,7 @@ theorem emitAt_preserves_ScanInvIx {input : String} (s : ScannerStateIx input)
 /-- Specialised `emitAt` preservation: when `startPos.offset =
     s.cursor.pos.offset`, the `h_ge` precondition follows from
     `ScanInvIx`'s bound. -/
-theorem emitAt_preserves_ScanInvIx_eq {input : String} (s : ScannerStateIx input)
+lemma emitAt_preserves_ScanInvIx_eq {input : String} (s : ScannerStateIx input)
     (startPos : YamlPos) (tok : YamlToken)
     (hOrder : startPos.offset ≤ s.cursor.pos.offset)
     (h_eq : startPos.offset = s.cursor.pos.offset)
@@ -155,18 +155,18 @@ theorem emitAt_preserves_ScanInvIx_eq {input : String} (s : ScannerStateIx input
     (fun i => by rw [h_eq]; exact h.2 i)
 
 /-- `advance` preserves `ScanInvIx`: tokens unchanged, cursor advances. -/
-theorem advance_preserves_ScanInvIx {input : String} (s : ScannerStateIx input)
+lemma advance_preserves_ScanInvIx {input : String} (s : ScannerStateIx input)
     (h : ScanInvIx s) : ScanInvIx s.advance := by
   apply ScanInvIx_of_offset_ge s s.advance h (by rfl) (advance_offset_monotonic s)
 
 /-- `advanceN` preserves `ScanInvIx`. -/
-theorem advanceN_preserves_ScanInvIx {input : String} (s : ScannerStateIx input)
+lemma advanceN_preserves_ScanInvIx {input : String} (s : ScannerStateIx input)
     (n : Nat) (h : ScanInvIx s) : ScanInvIx (s.advanceN n) := by
   apply ScanInvIx_of_offset_ge s (s.advanceN n) h (by rfl) (advanceN_offset_monotonic s n)
 
 /-- `overwriteAtCursor i sk tok` preserves `ScanInvIx` provided that
     `sk.pos.offset` matches the existing slot's `.start.offset`. -/
-theorem overwriteAtCursor_preserves_ScanInvIx {input : String} (s : ScannerStateIx input)
+lemma overwriteAtCursor_preserves_ScanInvIx {input : String} (s : ScannerStateIx input)
     (i : Nat) (sk : IxCursor input) (tok : YamlToken)
     (h : ScanInvIx s)
     (h_match : ∀ (h_i : i < s.tokens.tokens.size),
@@ -245,7 +245,7 @@ These two lemmas isolate the `setIfInBounds` reasoning that
 equals `sk.pos`; (2) any *other* slot's `.start` is unchanged. Used by
 `_mono_pos`-based `_preserves_AllKeysValidIx` proofs. -/
 
-theorem overwriteAtCursor_start_at_idx {input : String} (s : ScannerStateIx input)
+lemma overwriteAtCursor_start_at_idx {input : String} (s : ScannerStateIx input)
     (i : Nat) (sk : IxCursor input) (tok : YamlToken)
     (h_i : i < (s.overwriteAtCursor i sk tok).tokens.tokens.size) :
     ((s.overwriteAtCursor i sk tok).tokens.tokens[i]'h_i).start = sk.pos := by
@@ -254,7 +254,7 @@ theorem overwriteAtCursor_start_at_idx {input : String} (s : ScannerStateIx inpu
   rw [Array.getElem_setIfInBounds_self]
   rfl
 
-theorem overwriteAtCursor_preserves_other_start {input : String}
+lemma overwriteAtCursor_preserves_other_start {input : String}
     (s : ScannerStateIx input) (i k : Nat) (sk : IxCursor input) (tok : YamlToken)
     (h_ne : i ≠ k)
     (h_k_orig : k < s.tokens.tokens.size) :
@@ -272,7 +272,7 @@ theorem overwriteAtCursor_preserves_other_start {input : String}
     `overwriteAtCursor i sk tok` preserves the `.start` field of *every*
     slot. Used by `scanValuePrepareIx_preserves_AllKeysValidIx` to feed
     `SimpleKeyStackValidIx_mono_pos`. -/
-theorem overwriteAtCursor_preserves_start_if_match {input : String}
+lemma overwriteAtCursor_preserves_start_if_match {input : String}
     (s : ScannerStateIx input) (i : Nat) (sk : IxCursor input) (tok : YamlToken)
     (h_match : ∀ (h_i : i < s.tokens.tokens.size),
       (s.tokens.tokens[i]'h_i).start = sk.pos)
@@ -295,7 +295,7 @@ composition. -/
 
 /-- `skipToContentS` preserves `ScanInvIx`: cursor advances, tokens
     unchanged. -/
-theorem skipToContentS_preserves_ScanInvIx {input : String}
+lemma skipToContentS_preserves_ScanInvIx {input : String}
     (s : ScannerStateIx input) (h : ScanInvIx s) :
     ScanInvIx s.skipToContentS := by
   apply ScanInvIx_of_offset_ge s s.skipToContentS h
@@ -304,7 +304,7 @@ theorem skipToContentS_preserves_ScanInvIx {input : String}
 
 /-- `unwindIndentsLoopIx` preserves `ScanInvIx`: emits `blockEnd` at
     cursor.pos in each iteration. -/
-theorem unwindIndentsLoopIx_preserves_ScanInvIx {input : String}
+lemma unwindIndentsLoopIx_preserves_ScanInvIx {input : String}
     (s : ScannerStateIx input) (col : Int) (fuel : Nat)
     (h : ScanInvIx s) : ScanInvIx (unwindIndentsLoopIx s col fuel) := by
   induction fuel generalizing s with
@@ -320,13 +320,13 @@ theorem unwindIndentsLoopIx_preserves_ScanInvIx {input : String}
       exact ih _ h_pop
     · exact h
 
-theorem unwindIndentsIx_preserves_ScanInvIx {input : String}
+lemma unwindIndentsIx_preserves_ScanInvIx {input : String}
     (s : ScannerStateIx input) (col : Int)
     (h : ScanInvIx s) : ScanInvIx (unwindIndentsIx s col) := by
   unfold unwindIndentsIx
   exact unwindIndentsLoopIx_preserves_ScanInvIx s col s.indents.size h
 
-theorem pushSequenceIndentIx_preserves_ScanInvIx {input : String}
+lemma pushSequenceIndentIx_preserves_ScanInvIx {input : String}
     (s : ScannerStateIx input) (col : Int)
     (h : ScanInvIx s) : ScanInvIx (pushSequenceIndentIx s col) := by
   unfold pushSequenceIndentIx
@@ -334,7 +334,7 @@ theorem pushSequenceIndentIx_preserves_ScanInvIx {input : String}
   · apply ScanInvIx_of_field_update _ _ (emit_preserves_ScanInvIx s _ h) rfl rfl
   · exact h
 
-theorem pushMappingIndentIx_preserves_ScanInvIx {input : String}
+lemma pushMappingIndentIx_preserves_ScanInvIx {input : String}
     (s : ScannerStateIx input) (col : Int)
     (h : ScanInvIx s) : ScanInvIx (pushMappingIndentIx s col) := by
   unfold pushMappingIndentIx
@@ -342,7 +342,7 @@ theorem pushMappingIndentIx_preserves_ScanInvIx {input : String}
   · apply ScanInvIx_of_field_update _ _ (emit_preserves_ScanInvIx s _ h) rfl rfl
   · exact h
 
-theorem saveSimpleKeyIx_preserves_ScanInvIx {input : String}
+lemma saveSimpleKeyIx_preserves_ScanInvIx {input : String}
     (s : ScannerStateIx input) (h : ScanInvIx s) :
     ScanInvIx (saveSimpleKeyIx s) := by
   unfold saveSimpleKeyIx
@@ -365,7 +365,7 @@ The simpleKey/simpleKeyStack preservation lemmas
 with the `_preserves_prefix` lemmas for full-token equality, we close
 `AllKeysValidIx` preservation via `AllKeysValidIx_mono`. -/
 
-theorem skipToContentS_preserves_AllKeysValidIx {input : String}
+lemma skipToContentS_preserves_AllKeysValidIx {input : String}
     (s : ScannerStateIx input) (h : AllKeysValidIx s) :
     AllKeysValidIx s.skipToContentS := by
   apply AllKeysValidIx_mono s s.skipToContentS h
@@ -374,7 +374,7 @@ theorem skipToContentS_preserves_AllKeysValidIx {input : String}
     (by simp [skipToContentS_tokens])
     (fun i hi => by simp [skipToContentS_tokens])
 
-theorem unwindIndentsIx_preserves_AllKeysValidIx {input : String}
+lemma unwindIndentsIx_preserves_AllKeysValidIx {input : String}
     (s : ScannerStateIx input) (col : Int)
     (h : AllKeysValidIx s) : AllKeysValidIx (unwindIndentsIx s col) := by
   apply AllKeysValidIx_mono s _ h
@@ -396,7 +396,7 @@ matches the legacy `saveSimpleKey_preserves_SimpleKeyValid`
 /-- The new token's `.start` field after `emit` equals the cursor
     position. Indexed analogue of the implicit fact behind
     `Array.getElem_push_eq` + `ScannerState.currentPos`. -/
-theorem emit_new_token_start {input : String} (s : ScannerStateIx input)
+lemma emit_new_token_start {input : String} (s : ScannerStateIx input)
     (tok : YamlToken)
     (h : s.tokens.size < (s.emit tok).tokens.size) :
     ((s.emit tok).tokens[s.tokens.size]'h).start = s.cursor.pos := by
@@ -408,7 +408,7 @@ theorem emit_new_token_start {input : String} (s : ScannerStateIx input)
 
 /-- The new token's `.start` field after `emitAt` equals `startPos`.
     Sister lemma to `emitAt_new_token_token` (which projects `.token`). -/
-theorem emitAt_new_token_start {input : String} (s : ScannerStateIx input)
+lemma emitAt_new_token_start {input : String} (s : ScannerStateIx input)
     (startPos : YamlPos) (tok : YamlToken)
     (hOrder : startPos.offset ≤ s.cursor.pos.offset)
     (h : s.tokens.size < (s.emitAt startPos tok hOrder).tokens.size) :
@@ -422,7 +422,7 @@ theorem emitAt_new_token_start {input : String} (s : ScannerStateIx input)
 /-- `saveSimpleKeyIx` preserves `SimpleKeyValidIx`: on the two-emit
     branch the new simpleKey has `tokenIndex = s.tokens.size`, and the
     two pushed slots carry `.start = s.cursor.pos = new simpleKey.pos`. -/
-theorem saveSimpleKeyIx_preserves_SimpleKeyValidIx {input : String}
+lemma saveSimpleKeyIx_preserves_SimpleKeyValidIx {input : String}
     (s : ScannerStateIx input) (h_skv : SimpleKeyValidIx s) :
     SimpleKeyValidIx (saveSimpleKeyIx s) := by
   rcases saveSimpleKeyIx_state_cases s with h_eq | h_eq
@@ -481,7 +481,7 @@ theorem saveSimpleKeyIx_preserves_SimpleKeyValidIx {input : String}
 /-- `saveSimpleKeyIx` preserves `SimpleKeyStackValidIx`: the simpleKeyStack
     is unchanged on both branches; on the two-emit branch the token
     prefix is preserved by `twoPlaceholderEmits_preserves_prefix`. -/
-theorem saveSimpleKeyIx_preserves_SimpleKeyStackValidIx {input : String}
+lemma saveSimpleKeyIx_preserves_SimpleKeyStackValidIx {input : String}
     (s : ScannerStateIx input) (h_ssv : SimpleKeyStackValidIx s) :
     SimpleKeyStackValidIx (saveSimpleKeyIx s) := by
   rcases saveSimpleKeyIx_state_cases s with h_eq | h_eq
@@ -518,7 +518,7 @@ theorem saveSimpleKeyIx_preserves_SimpleKeyStackValidIx {input : String}
       exact (congrArg IxToken.start
         (twoPlaceholderEmits_preserves_prefix s _ hb2)).trans (hp2 hb2)
 
-theorem saveSimpleKeyIx_preserves_AllKeysValidIx {input : String}
+lemma saveSimpleKeyIx_preserves_AllKeysValidIx {input : String}
     (s : ScannerStateIx input) (h : AllKeysValidIx s) :
     AllKeysValidIx (saveSimpleKeyIx s) :=
   ⟨saveSimpleKeyIx_preserves_SimpleKeyValidIx s h.1,
@@ -530,7 +530,7 @@ These compose `AllKeysValidIx_mono` with the existing
 `emit_preserves_simpleKey` / `emit_preserves_simpleKeyStack` /
 `emit_preserves_tokens_at` (and the trivial `advance_*` analogues). -/
 
-theorem emit_preserves_AllKeysValidIx {input : String}
+lemma emit_preserves_AllKeysValidIx {input : String}
     (s : ScannerStateIx input) (tok : YamlToken) (h : AllKeysValidIx s) :
     AllKeysValidIx (s.emit tok) := by
   apply AllKeysValidIx_mono s _ h
@@ -538,7 +538,7 @@ theorem emit_preserves_AllKeysValidIx {input : String}
     (by show s.tokens.size ≤ (s.emit tok).tokens.size; rw [emit_tokens_size]; omega)
     (fun i hi => emit_preserves_tokens_at s tok i hi)
 
-theorem advance_preserves_AllKeysValidIx {input : String}
+lemma advance_preserves_AllKeysValidIx {input : String}
     (s : ScannerStateIx input) (h : AllKeysValidIx s) :
     AllKeysValidIx s.advance := by
   apply AllKeysValidIx_mono s _ h
@@ -555,7 +555,7 @@ general, all new tokens have `.start.offset = s.cursor.pos.offset`).
 Used by `scanAnchorOrAliasIx` / `scanTagIx` / `scanYamlDirectiveIx` /
 `scanTagDirectiveIx` chains in OrderedDispatch, where the
 `emitAt startPos token hBound` always has `startPos = s.cursor.pos`. -/
-theorem ScanInvIx_of_one_emit_at_pre_cursor {input : String}
+lemma ScanInvIx_of_one_emit_at_pre_cursor {input : String}
     (s s' : ScannerStateIx input) (h : ScanInvIx s)
     (h_off : s.cursor.pos.offset ≤ s'.cursor.pos.offset)
     (h_size : s.tokens.tokens.size ≤ s'.tokens.tokens.size)

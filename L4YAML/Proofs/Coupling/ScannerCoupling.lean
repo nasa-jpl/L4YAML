@@ -37,7 +37,7 @@ open L4YAML.Proofs.CouplingBridge
 /-! ## §1 Helpers -/
 
 /-- If `peek?` returns `some c`, then `offset < inputEnd`. -/
-theorem peek_some_hasMore (sc : ScannerState) (c : Char)
+lemma peek_some_hasMore (sc : ScannerState) (c : Char)
     (h : sc.peek? = some c) : sc.offset < sc.inputEnd := by
   unfold ScannerState.peek? at h; split at h
   · assumption
@@ -45,7 +45,7 @@ theorem peek_some_hasMore (sc : ScannerState) (c : Char)
 
 /-- If `peek?` returns `some c` and correspondence holds,
     the surface chars start with `c`. -/
-theorem peek_some_chars (sc : ScannerState) (sp : SurfPos) (c : Char)
+lemma peek_some_chars (sc : ScannerState) (sp : SurfPos) (c : Char)
     (hcorr : ScannerSurfCorr sc sp) (hpeek : sc.peek? = some c) :
     ∃ rest, sp.chars = c :: rest := by
   have hmore := peek_some_hasMore sc c hpeek
@@ -54,13 +54,13 @@ theorem peek_some_chars (sc : ScannerState) (sp : SurfPos) (c : Char)
   subst hceq; exact ⟨rest, hchars⟩
 
 /-- `Raw.next` strictly increases the byte offset. -/
-theorem raw_next_gt (s : String) (p : Nat) :
+lemma raw_next_gt (s : String) (p : Nat) :
     (String.Pos.Raw.next s ⟨p⟩).byteIdx > p :=
   String.Pos.Raw.byteIdx_lt_byteIdx_next s ⟨p⟩
 
 /-- After advance, the fuel budget decreases: if `fuel + 1 ≥ inputEnd - offset`,
     then `fuel ≥ inputEnd - advance.offset`. -/
-theorem advance_fuel_budget (sc : ScannerState) (fuel : Nat)
+lemma advance_fuel_budget (sc : ScannerState) (fuel : Nat)
     (hmore : sc.offset < sc.inputEnd)
     (hfuel : fuel + 1 ≥ sc.inputEnd - sc.offset) :
     fuel ≥ sc.advance.inputEnd - sc.advance.offset := by
@@ -74,7 +74,7 @@ theorem advance_fuel_budget (sc : ScannerState) (fuel : Nat)
 /-- `skipSpacesLoop` consumes leading spaces and preserves correspondence.
     Returns the number of spaces consumed `n`, a surface proof `SIndent n`,
     and updated correspondence for the post-skip state. -/
-theorem skipSpacesLoop_corr (sc : ScannerState) (sp : SurfPos) (fuel : Nat)
+lemma skipSpacesLoop_corr (sc : ScannerState) (sp : SurfPos) (fuel : Nat)
     (hcorr : ScannerSurfCorr sc sp)
     (hfuel : fuel ≥ sc.inputEnd - sc.offset) :
     ∃ (n : Nat) (sp' : SurfPos),
@@ -105,7 +105,7 @@ theorem skipSpacesLoop_corr (sc : ScannerState) (sp : SurfPos) (fuel : Nat)
       exact ⟨0, sp, SIndent.zero sp, hcorr⟩
 
 /-- Top-level coupling for `skipSpaces`: wraps the loop version. -/
-theorem skipSpaces_corr (sc : ScannerState) (sp : SurfPos)
+lemma skipSpaces_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) :
     ∃ (n : Nat) (sp' : SurfPos),
       SIndent n sp sp' ∧ ScannerSurfCorr (skipSpaces sc) sp' := by
@@ -115,7 +115,7 @@ theorem skipSpaces_corr (sc : ScannerState) (sp : SurfPos)
 /-! ## §3 consumeNewline Coupling -/
 
 /-- `consumeNewline` when peeking `\n` consumes it and produces `SBBreak`. -/
-theorem consumeNewline_lf_corr (sc : ScannerState) (rest : List Char)
+lemma consumeNewline_lf_corr (sc : ScannerState) (rest : List Char)
     (hcorr : ScannerSurfCorr sc ⟨'\n' :: rest, sc.col⟩)
     (hpeek : sc.peek? = some '\n') :
     SBBreak ⟨'\n' :: rest, sc.col⟩ ⟨rest, 0⟩ ∧
@@ -137,7 +137,7 @@ theorem consumeNewline_lf_corr (sc : ScannerState) (rest : List Char)
       exact hcorr.indent_cols_nonneg i hi h0
 
 /-- `consumeNewline` when peeking `\r` followed by `\n` (CRLF). -/
-theorem consumeNewline_crlf_corr (sc : ScannerState) (rest : List Char)
+lemma consumeNewline_crlf_corr (sc : ScannerState) (rest : List Char)
     (_hcorr : ScannerSurfCorr sc ⟨'\r' :: '\n' :: rest, sc.col⟩)
     (_hpeek_cr : sc.peek? = some '\r')
     (_hpeek_lf : sc.advance.peek? = some '\n') :
@@ -145,7 +145,7 @@ theorem consumeNewline_crlf_corr (sc : ScannerState) (rest : List Char)
   exact SBBreak.crLf rest sc.col
 
 /-- `consumeNewline` when peeking lone `\r` (no following `\n`). -/
-theorem consumeNewline_cr_corr (sc : ScannerState) (rest : List Char)
+lemma consumeNewline_cr_corr (sc : ScannerState) (rest : List Char)
     (_hcorr : ScannerSurfCorr sc ⟨'\r' :: rest, sc.col⟩)
     (_hpeek : sc.peek? = some '\r') :
     SBBreak ⟨'\r' :: rest, sc.col⟩ ⟨rest, 0⟩ := by
@@ -154,7 +154,7 @@ theorem consumeNewline_cr_corr (sc : ScannerState) (rest : List Char)
 /-- Unified `consumeNewline` correspondence: if a line break character is
     peeked, `consumeNewline` advances to a state with some valid surface
     correspondence.  Dispatches on `'\n'`, CRLF, and lone `'\r'`. -/
-theorem consumeNewline_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
+lemma consumeNewline_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek : sc.peek? = some c)
     (hlb : isLineBreakBool c = true) :
@@ -192,7 +192,7 @@ theorem consumeNewline_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
 /-- `skipWhitespaceLoop` consumes leading whitespace (spaces + tabs) and
     preserves correspondence.  Returns a surface proof `GStar SSWhite`
     and updated correspondence for the post-skip state. -/
-theorem skipWhitespaceLoop_corr (sc : ScannerState) (sp : SurfPos) (fuel : Nat)
+lemma skipWhitespaceLoop_corr (sc : ScannerState) (sp : SurfPos) (fuel : Nat)
     (hcorr : ScannerSurfCorr sc sp)
     (hfuel : fuel ≥ sc.inputEnd - sc.offset) :
     ∃ sp', GStar SSWhite sp sp' ∧ ScannerSurfCorr (skipWhitespaceLoop sc fuel) sp' := by
@@ -228,7 +228,7 @@ theorem skipWhitespaceLoop_corr (sc : ScannerState) (sp : SurfPos) (fuel : Nat)
       exact ⟨sp, GStar.nil sp, hcorr⟩
 
 /-- Top-level coupling for `skipWhitespace`: wraps the loop version. -/
-theorem skipWhitespace_corr (sc : ScannerState) (sp : SurfPos)
+lemma skipWhitespace_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) :
     ∃ sp', GStar SSWhite sp sp' ∧ ScannerSurfCorr (skipWhitespace sc) sp' := by
   unfold skipWhitespace
@@ -238,7 +238,7 @@ theorem skipWhitespace_corr (sc : ScannerState) (sp : SurfPos)
 
 /-- `skipToEndOfLineLoop` consumes non-break characters and preserves
     correspondence.  Returns `GStar SNbChar` (= `GStar (GChar isNbChar)`). -/
-theorem skipToEndOfLineLoop_corr (sc : ScannerState) (sp : SurfPos) (fuel : Nat)
+lemma skipToEndOfLineLoop_corr (sc : ScannerState) (sp : SurfPos) (fuel : Nat)
     (hcorr : ScannerSurfCorr sc sp)
     (hfuel : fuel ≥ sc.inputEnd - sc.offset) :
     ∃ sp', GStar SNbChar sp sp' ∧ ScannerSurfCorr (skipToEndOfLineLoop sc fuel) sp' := by
@@ -274,7 +274,7 @@ theorem skipToEndOfLineLoop_corr (sc : ScannerState) (sp : SurfPos) (fuel : Nat)
       exact ⟨sp, GStar.nil sp, hcorr⟩
 
 /-- Top-level coupling for `skipToEndOfLine`. -/
-theorem skipToEndOfLine_corr (sc : ScannerState) (sp : SurfPos)
+lemma skipToEndOfLine_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) :
     ∃ sp', GStar SNbChar sp sp' ∧ ScannerSurfCorr (skipToEndOfLine sc) sp' := by
   unfold skipToEndOfLine
@@ -285,7 +285,7 @@ theorem skipToEndOfLine_corr (sc : ScannerState) (sp : SurfPos)
 /-- `collectCommentTextLoop` consumes non-break characters (the comment
     body after `#`) and preserves correspondence.  The accumulated text
     string is irrelevant for surface syntax coupling. -/
-theorem collectCommentTextLoop_corr (sc : ScannerState) (sp : SurfPos)
+lemma collectCommentTextLoop_corr (sc : ScannerState) (sp : SurfPos)
     (text : String) (fuel : Nat)
     (hcorr : ScannerSurfCorr sc sp)
     (hfuel : fuel ≥ sc.inputEnd - sc.offset) :
@@ -330,7 +330,7 @@ theorem collectCommentTextLoop_corr (sc : ScannerState) (sp : SurfPos)
 
     The `comments` field update does not affect correspondence since it
     does not change `input`/`offset`/`col`/`inputEnd`. -/
-theorem skipToContentComment_corr (sc : ScannerState) (sp : SurfPos)
+lemma skipToContentComment_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) :
     ∃ sp', GOpt SCNbCommentText sp sp' ∧
            ScannerSurfCorr (skipToContentComment sc) sp' := by
@@ -401,7 +401,7 @@ preserves correspondence and the consumed characters form valid whitespace
     On every `.ok s'` return, the scanner state `s'` has a corresponding
     surface position `sp'` that is reachable from `sp` via indentation
     spaces (`SIndent`) and/or whitespace (`GStar SSWhite`). -/
-theorem skipToContentWs_ok_corr (sc : ScannerState) (sp : SurfPos) (s' : ScannerState)
+lemma skipToContentWs_ok_corr (sc : ScannerState) (sp : SurfPos) (s' : ScannerState)
     (hcorr : ScannerSurfCorr sc sp)
     (hok : skipToContentWs sc = .ok s') :
     ∃ sp', GStar SSWhite sp sp' ∧ ScannerSurfCorr s' sp' := by
@@ -454,7 +454,7 @@ breaks.  When it returns `.ok`, the scanner state has a corresponding
 surface position. -/
 
 /-- Monotonicity: `skipSpacesLoop` does not decrease the offset. -/
-theorem skipSpacesLoop_offset_mono (sc : ScannerState) (fuel : Nat) :
+lemma skipSpacesLoop_offset_mono (sc : ScannerState) (fuel : Nat) :
     (skipSpacesLoop sc fuel).offset ≥ sc.offset ∧
     (skipSpacesLoop sc fuel).inputEnd = sc.inputEnd := by
   induction fuel generalizing sc with
@@ -473,7 +473,7 @@ theorem skipSpacesLoop_offset_mono (sc : ScannerState) (fuel : Nat) :
       exact ⟨Nat.le_refl _, rfl⟩
 
 /-- Monotonicity: `skipWhitespaceLoop` does not decrease the offset. -/
-theorem skipWhitespaceLoop_offset_mono (sc : ScannerState) (fuel : Nat) :
+lemma skipWhitespaceLoop_offset_mono (sc : ScannerState) (fuel : Nat) :
     (skipWhitespaceLoop sc fuel).offset ≥ sc.offset ∧
     (skipWhitespaceLoop sc fuel).inputEnd = sc.inputEnd := by
   induction fuel generalizing sc with
@@ -499,7 +499,7 @@ theorem skipWhitespaceLoop_offset_mono (sc : ScannerState) (fuel : Nat) :
     Proof: if any whitespace was consumed, `advance` would strictly increase the
     offset, and the recursive call can only increase further (by monotonicity).
     So offset equality implies no WS was consumed → state unchanged. -/
-theorem skipWhitespaceLoop_eq_of_same_offset (sc : ScannerState) (fuel : Nat)
+lemma skipWhitespaceLoop_eq_of_same_offset (sc : ScannerState) (fuel : Nat)
     (heq : (skipWhitespaceLoop sc fuel).offset = sc.offset) :
     skipWhitespaceLoop sc fuel = sc := by
   induction fuel generalizing sc with
@@ -526,7 +526,7 @@ theorem skipWhitespaceLoop_eq_of_same_offset (sc : ScannerState) (fuel : Nat)
       rfl
 
 /-- If the current char is not whitespace (or at EOF), `skipWhitespaceLoop` is a no-op. -/
-theorem skipWhitespaceLoop_noop_of_not_ws (sc : ScannerState) (fuel : Nat)
+lemma skipWhitespaceLoop_noop_of_not_ws (sc : ScannerState) (fuel : Nat)
     (h : match sc.peek? with | some c => isWhiteSpaceBool c = false | none => True) :
     skipWhitespaceLoop sc fuel = sc := by
   cases fuel with
@@ -542,14 +542,14 @@ theorem skipWhitespaceLoop_noop_of_not_ws (sc : ScannerState) (fuel : Nat)
     · rfl
 
 /-- `skipWhitespace` returns the input state when the first char is not whitespace. -/
-theorem skipWhitespace_noop (sc : ScannerState)
+lemma skipWhitespace_noop (sc : ScannerState)
     (h : match sc.peek? with | some c => isWhiteSpaceBool c = false | none => True) :
     skipWhitespace sc = sc := by
   unfold skipWhitespace
   exact skipWhitespaceLoop_noop_of_not_ws sc _ h
 
 /-- Monotonicity: `collectCommentTextLoop` does not decrease the offset. -/
-theorem collectCommentTextLoop_offset_mono (sc : ScannerState) (text : String) (fuel : Nat) :
+lemma collectCommentTextLoop_offset_mono (sc : ScannerState) (text : String) (fuel : Nat) :
     (collectCommentTextLoop sc text fuel).2.offset ≥ sc.offset ∧
     (collectCommentTextLoop sc text fuel).2.inputEnd = sc.inputEnd := by
   induction fuel generalizing sc text with
@@ -580,7 +580,7 @@ theorem collectCommentTextLoop_offset_mono (sc : ScannerState) (text : String) (
 
     The proof handles the nested `match`/`if`/`let`/struct-update through
     direct case analysis on the `commentOk` boolean. -/
-theorem skipToContentComment_offset_mono (sc : ScannerState) :
+lemma skipToContentComment_offset_mono (sc : ScannerState) :
     (skipToContentComment sc).offset ≥ sc.offset ∧
     (skipToContentComment sc).inputEnd = sc.inputEnd := by
   unfold skipToContentComment
@@ -624,7 +624,7 @@ theorem skipToContentComment_offset_mono (sc : ScannerState) :
     exact ⟨Nat.le_refl _, rfl⟩
 
 /-- `consumeNewline` advances the offset by at least 1 when a line break is peeked. -/
-theorem consumeNewline_offset_advance (sc : ScannerState) (c : Char)
+lemma consumeNewline_offset_advance (sc : ScannerState) (c : Char)
     (hpeek : sc.peek? = some c) (hlb : isLineBreakBool c = true) :
     (consumeNewline sc).offset > sc.offset ∧
     (consumeNewline sc).inputEnd = sc.inputEnd := by
@@ -653,7 +653,7 @@ theorem consumeNewline_offset_advance (sc : ScannerState) (c : Char)
       · exact advance_inputEnd sc
 
 /-- Monotonicity: `skipToContentWs` does not decrease the offset on `.ok` paths. -/
-theorem skipToContentWs_offset_mono (sc : ScannerState) (s' : ScannerState)
+lemma skipToContentWs_offset_mono (sc : ScannerState) (s' : ScannerState)
     (hok : skipToContentWs sc = .ok s') :
     s'.offset ≥ sc.offset ∧ s'.inputEnd = sc.inputEnd := by
   unfold skipToContentWs at hok
@@ -702,7 +702,7 @@ theorem skipToContentWs_offset_mono (sc : ScannerState) (s' : ScannerState)
     exact ⟨h_ws_off, h_ws_end⟩
 
 /-- `skipToContentLoop` preserves correspondence on `.ok` paths. -/
-theorem skipToContentLoop_ok_corr (sc : ScannerState) (sp : SurfPos) (fuel : Nat)
+lemma skipToContentLoop_ok_corr (sc : ScannerState) (sp : SurfPos) (fuel : Nat)
     (s_result : ScannerState)
     (hcorr : ScannerSurfCorr sc sp)
     (hfuel : fuel ≥ sc.inputEnd - sc.offset + 1)

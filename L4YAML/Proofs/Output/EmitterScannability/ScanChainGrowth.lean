@@ -55,7 +55,7 @@ inductive ScanChainGrew (p : Positioned YamlToken → Bool) :
          ScanChainGrew p s (n + 1) s'
 
 /-- Forgetful map: a `ScanChainGrew` is, in particular, a `ScanChain`. -/
-theorem ScanChainGrew.toScanChain {p : Positioned YamlToken → Bool}
+lemma ScanChainGrew.toScanChain {p : Positioned YamlToken → Bool}
     {s s' : ScannerState} {n : Nat}
     (h : ScanChainGrew p s n s') : ScanChain s n s' := by
   induction h with
@@ -63,12 +63,12 @@ theorem ScanChainGrew.toScanChain {p : Positioned YamlToken → Bool}
   | step h_snt _h_grew _h_rest ih => exact .step h_snt ih
 
 /-- A zero-length `ScanChainGrew` leaves the state unchanged. -/
-theorem ScanChainGrew.eq_of_zero {p : Positioned YamlToken → Bool}
+lemma ScanChainGrew.eq_of_zero {p : Positioned YamlToken → Bool}
     {s s' : ScannerState} (h : ScanChainGrew p s 0 s') : s' = s := by
   cases h; rfl
 
 /-- Single-step constructor for `ScanChainGrew`. -/
-theorem ScanChainGrew.single {p : Positioned YamlToken → Bool}
+lemma ScanChainGrew.single {p : Positioned YamlToken → Bool}
     {s s' : ScannerState}
     (h : scanNextToken s = .ok (some s'))
     (h_grew : (s'.tokens.filter p).size > (s.tokens.filter p).size) :
@@ -76,7 +76,7 @@ theorem ScanChainGrew.single {p : Positioned YamlToken → Bool}
   .step h h_grew .zero
 
 /-- Transitivity for `ScanChainGrew`: concatenate two strict chains. -/
-theorem ScanChainGrew.trans {p : Positioned YamlToken → Bool}
+lemma ScanChainGrew.trans {p : Positioned YamlToken → Bool}
     {s₁ s₂ s₃ : ScannerState} {n₁ n₂ : Nat}
     (h1 : ScanChainGrew p s₁ n₁ s₂) (h2 : ScanChainGrew p s₂ n₂ s₃) :
     ScanChainGrew p s₁ (n₁ + n₂) s₃ := by
@@ -93,7 +93,7 @@ theorem ScanChainGrew.trans {p : Positioned YamlToken → Bool}
     `ScanChain_filtered_grows`, but proven directly from the per-step
     witness — does not depend on `scanNextToken_filtered_grows` (and so
     does not depend on the line-8379 sorry). -/
-theorem ScanChainGrew_filtered_grows {p : Positioned YamlToken → Bool}
+lemma ScanChainGrew_filtered_grows {p : Positioned YamlToken → Bool}
     {s s' : ScannerState} {n : Nat}
     (h_chain : ScanChainGrew p s n s') :
     (s'.tokens.filter p).size ≥ (s.tokens.filter p).size + n := by
@@ -108,7 +108,7 @@ theorem ScanChainGrew_filtered_grows {p : Positioned YamlToken → Bool}
     chain must be non-empty (length ≥ 1) so the first step's witness can
     be transitively weakened from `s₂.tokens.filter` down to
     `s₁.tokens.filter`. -/
-theorem ScanChainGrew_of_scanNextToken_eq {p : Positioned YamlToken → Bool}
+lemma ScanChainGrew_of_scanNextToken_eq {p : Positioned YamlToken → Bool}
     {s₁ s₂ s' : ScannerState} {n : Nat}
     (h_eq : scanNextToken s₁ = scanNextToken s₂)
     (h_le : (s₁.tokens.filter p).size ≤ (s₂.tokens.filter p).size)
@@ -189,7 +189,7 @@ def EmitListScansInFlow (items : List YamlValue) : Prop :=
       ∧ FlowMonoChain s.flowLevel s n s'
 
 /-- Empty list body is trivially scanned (0-step chain). -/
-theorem emitList_scans_empty : EmitListScansInFlow [] := by
+lemma emitList_scans_empty : EmitListScansInFlow [] := by
   intro s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
   -- emit.emitList [] = "", toList = [], so state is already at rest
   have h_eq : (emit.emitList ([] : List YamlValue)).toList ++ rest = rest := by
@@ -200,7 +200,7 @@ theorem emitList_scans_empty : EmitListScansInFlow [] := by
 /-- Non-empty list scanning via induction on the item list.
     Structure: singleton case uses EmitScansInFlow directly;
     multi-item case chains emit v + comma + space + recursive emitList. -/
-theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
+lemma emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
     (h_all : ∀ v ∈ items, EmitScansInFlow v) :
     EmitListScansInFlow items := by
   induction items with
@@ -340,7 +340,7 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
 -- ═══ Flow mapping pair list scanning ═══
 
 -- The first char of `emitPairList (p :: ps)` is the first char of `emit p.1` (the key).
-theorem emitPairList_first_char (p : YamlValue × YamlValue) (ps : List (YamlValue × YamlValue)) :
+lemma emitPairList_first_char (p : YamlValue × YamlValue) (ps : List (YamlValue × YamlValue)) :
     ∃ c rest', (emit.emitPairList (p :: ps)).toList = c :: rest' ∧
       isWhiteSpaceBool c = false ∧ isLineBreakBool c = false ∧ c ≠ '#' := by
   obtain ⟨c, ev_rest, h_emit_eq, h_nws, h_nlb, h_nc⟩ := emit_first_char p.1
@@ -363,7 +363,7 @@ theorem emitPairList_first_char (p : YamlValue × YamlValue) (ps : List (YamlVal
 -- isValueCandidate returns true when peekAt? 1 is a space (blank).
 -- This works through ALL branches of isValueCandidate because each branch
 -- has a peekAt? 1 fallback path.
-theorem isValueCandidate_of_peekAt_blank (s : ScannerState)
+lemma isValueCandidate_of_peekAt_blank (s : ScannerState)
     (h : s.peekAt? 1 = some ' ') :
     isValueCandidate s = true := by
   unfold isValueCandidate
@@ -392,7 +392,7 @@ theorem isValueCandidate_of_peekAt_blank (s : ScannerState)
 -- Requires space after `:` (emitter always produces ": ") for isValueCandidate
 -- to hold in all simpleKey branches via peekAt? fallback.
 -- Result state is at `' ' :: rest'` (space not yet consumed).
-theorem scanNextToken_flow_value (s : ScannerState)
+lemma scanNextToken_flow_value (s : ScannerState)
     (rest' : List Char)
     (hcorr : ScannerSurfCorr s ⟨':' :: ' ' :: rest', s.col⟩)
     (h_flow : s.inFlow = true)
@@ -862,7 +862,7 @@ theorem scanNextToken_flow_value (s : ScannerState)
     `Array.ext_getElem?`), then turns it into the filtered-list equation with the
     insert-at-rank lemma `Array_filter_setIfInBounds_of_not_pass` + `Array.filter_push`.
     No remaining scanner exposure. -/
-theorem scanNextToken_flow_value_block (s : ScannerState)
+lemma scanNextToken_flow_value_block (s : ScannerState)
     (rest' : List Char)
     (hcorr : ScannerSurfCorr s ⟨':' :: ' ' :: rest', s.col⟩)
     (h_flow : s.inFlow = true)
@@ -976,7 +976,7 @@ def EmitPairListScansInFlow_strong (pairs : List (YamlValue × YamlValue)) : Pro
       ∧ n ≥ 3
 
 /-- `EmitPairListScansInFlow_strong` implies the weak version (drops `n ≥ 3`). -/
-theorem EmitPairListScansInFlow_strong.toWeak {pairs : List (YamlValue × YamlValue)}
+lemma EmitPairListScansInFlow_strong.toWeak {pairs : List (YamlValue × YamlValue)}
     (h_strong : EmitPairListScansInFlow_strong pairs) :
     EmitPairListScansInFlow pairs := by
   intro s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
@@ -986,7 +986,7 @@ theorem EmitPairListScansInFlow_strong.toWeak {pairs : List (YamlValue × YamlVa
   exact ⟨n, s', h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc⟩
 
-theorem emitPairList_scans_empty : EmitPairListScansInFlow [] := by
+lemma emitPairList_scans_empty : EmitPairListScansInFlow [] := by
   intro s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
   have h_eq : (emit.emitPairList ([] : List (YamlValue × YamlValue))).toList ++ rest = rest := by
     simp [emit.emitPairList]
@@ -998,7 +998,7 @@ theorem emitPairList_scans_empty : EmitPairListScansInFlow [] := by
 --
 -- Note: scanValueValidate discharge is sorry'd pending line/token tracking
 -- (Change B Layer 1.1 — checks 2 and 4 require isInFlowSequence + token analysis).
-theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
+lemma emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
     (h_ne : pairs ≠ [])
     (h_all_k : ∀ p ∈ pairs, EmitScansInFlow p.1)
     (h_all_v : ∀ p ∈ pairs, EmitScansInFlow p.2) :
@@ -1379,7 +1379,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
         rw [h_stack_end, h_stack_pp, h_stack_c, h_stack_v, h_stack_pp₃, h_stack_v₂, h_stack₁]
 
 /-- Every grammable value satisfies `EmitScansInFlow`. -/
-theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inFlow) :
+lemma emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inFlow) :
     EmitScansInFlow v := by
   induction hg with
   | scalar s _ h =>
@@ -1646,7 +1646,7 @@ non-resolution witness used by `.tokenshape.list.discharge`. -/
 
 /-- `saveSimpleKey` reserves a `.placeholder` at the old token-array size when
     a simple key is allowed and no explicit key is pending. -/
-theorem saveSimpleKey_getElem?_size (s : ScannerState)
+lemma saveSimpleKey_getElem?_size (s : ScannerState)
     (h_ek : s.explicitKeyLine = none) (h_ska : s.simpleKeyAllowed = true) :
     (saveSimpleKey s).tokens[s.tokens.size]? = some ⟨s.currentPos, .placeholder, s.currentPos⟩ := by
   unfold saveSimpleKey
@@ -1659,7 +1659,7 @@ theorem saveSimpleKey_getElem?_size (s : ScannerState)
     `saveSimpleKey_getElem?_size`: both slots `N`, `N + 1` are placeholders, which
     is what the colon's retroactive `.set` of `.key` at `tokenIndex + 1 = N + 1`
     relies on to be a clean filtered-list insertion. -/
-theorem saveSimpleKey_getElem?_size_succ (s : ScannerState)
+lemma saveSimpleKey_getElem?_size_succ (s : ScannerState)
     (h_ek : s.explicitKeyLine = none) (h_ska : s.simpleKeyAllowed = true) :
     (saveSimpleKey s).tokens[s.tokens.size + 1]? = some ⟨s.currentPos, .placeholder, s.currentPos⟩ := by
   unfold saveSimpleKey
@@ -1670,7 +1670,7 @@ theorem saveSimpleKey_getElem?_size_succ (s : ScannerState)
 
 /-- Scalar key head facts: scanning a double-quoted scalar in flow from
     `simpleKeyAllowed = true` leaves the saved key alive at slot `N`. -/
-theorem scanNextToken_flow_scalar_savedKey (s : ScannerState)
+lemma scanNextToken_flow_scalar_savedKey (s : ScannerState)
     (content : String) (rest : List Char)
     (hcorr : ScannerSurfCorr s ⟨['"'] ++ (escapeString content).toList ++ ['"'] ++ rest, s.col⟩)
     (h_flow : s.inFlow = true) (h_indent : s.currentIndent < 0) (h_col : s.col > 0)
@@ -1766,7 +1766,7 @@ theorem scanNextToken_flow_scalar_savedKey (s : ScannerState)
 
 /-- Flow `[` open with a saved key: reserves the key placeholder at slot `N`
     and emits `.flowSequenceStart` at `N + 2`, so `tokens[N] = .placeholder`. -/
-theorem scanNextToken_flow_open_seq_savedKey (s s' : ScannerState) (rest : List Char)
+lemma scanNextToken_flow_open_seq_savedKey (s s' : ScannerState) (rest : List Char)
     (hcorr : ScannerSurfCorr s ⟨'[' :: rest, s.col⟩)
     (h_flow : s.inFlow = true) (h_indent : s.currentIndent < 0) (h_col : s.col > 0)
     (h_ek : s.explicitKeyLine = none) (h_ska : s.simpleKeyAllowed = true)
@@ -1805,7 +1805,7 @@ theorem scanNextToken_flow_open_seq_savedKey (s s' : ScannerState) (rest : List 
     exact saveSimpleKey_getElem?_size_succ s h_ek h_ska
 
 /-- Flow `{` open with a saved key (mapping analogue of the above). -/
-theorem scanNextToken_flow_open_mapping_savedKey (s s' : ScannerState) (rest : List Char)
+lemma scanNextToken_flow_open_mapping_savedKey (s s' : ScannerState) (rest : List Char)
     (hcorr : ScannerSurfCorr s ⟨'{' :: rest, s.col⟩)
     (h_flow : s.inFlow = true) (h_indent : s.currentIndent < 0) (h_col : s.col > 0)
     (h_ek : s.explicitKeyLine = none) (h_ska : s.simpleKeyAllowed = true)
@@ -1884,7 +1884,7 @@ def EmitScansInFlowSavedKey (v : YamlValue) : Prop :=
 /-- Producer for `EmitScansInFlowSavedKey` by induction on `Grammable v inFlow`.
     Scalars survive directly; composites push the saved key on `[`/`{`, preserve
     it across the body, and restore it on `]`/`}`. -/
-theorem emit_scans_in_flow_saved_key (v : YamlValue) {inFlow : Bool} (hg : Grammable v inFlow) :
+lemma emit_scans_in_flow_saved_key (v : YamlValue) {inFlow : Bool} (hg : Grammable v inFlow) :
     EmitScansInFlowSavedKey v := by
   induction hg with
   | scalar sc _ h =>
@@ -2223,7 +2223,7 @@ threading the fixed protected target `n_target` (never the per-call size).
     them — `SimpleKeyStackValid` pins them strictly below `N`), and the bulk prefix
     `[0..N)` is preserved by the full chain.  A reference array `s.tokens ++ [ph, .key]`
     transfers the filtered token via `Array_filter_getElem_of_raw_prefix`. -/
-theorem keyshape_first_token_key
+lemma keyshape_first_token_key
     {n_all n_resid : Nat} (s s₁ s₂ s_end : ScannerState)
     (h_sk : s.simpleKey.possible = false)
     (h_sync : s.simpleKeyStack.size = s.flowLevel)
@@ -2350,7 +2350,7 @@ theorem keyshape_first_token_key
     effect pins `.key` at `N+1`, and `keyshape_first_token_key` performs the filter
     transfer.  The value and any remaining pairs reuse `EmitScansInFlow` and the plain
     `emitPairList_scans_nonempty` producer. -/
-theorem emitPairList_scans_nonempty_keyshape
+lemma emitPairList_scans_nonempty_keyshape
     (pairs : List (YamlValue × YamlValue)) (h_ne : pairs ≠ [])
     (h_all_k : ∀ p ∈ pairs, EmitScansInFlow p.1)
     (h_all_v : ∀ p ∈ pairs, EmitScansInFlow p.2)
@@ -2746,7 +2746,7 @@ theorem emitPairList_scans_nonempty_keyshape
 /-- Lower the flow floor of a `SavedKeyDoesntResolve`.  Mirrors
     `FlowMonoChain.weaken`: every `flowLevel ≥ fl₀` obligation stays valid when
     `fl₀` shrinks. -/
-theorem SavedKeyDoesntResolve.weaken {fl₀ fl₁ n_target : Nat}
+lemma SavedKeyDoesntResolve.weaken {fl₀ fl₁ n_target : Nat}
     {s s' : ScannerState} {n : Nat}
     (h : SavedKeyDoesntResolve fl₀ n_target s n s') (h_le : fl₁ ≤ fl₀) :
     SavedKeyDoesntResolve fl₁ n_target s n s' := by
@@ -2758,7 +2758,7 @@ theorem SavedKeyDoesntResolve.weaken {fl₀ fl₁ n_target : Nat}
     the step preserves position `n_target + 1` unconditionally (substrate.g), so
     it extends a `SavedKeyDoesntResolve`.  This is the bridge from substrate.g's
     per-character primitive into substrate.f's chain predicate. -/
-theorem SavedKeyDoesntResolve.step_of_non_colon
+lemma SavedKeyDoesntResolve.step_of_non_colon
     {fl₀ n_target : Nat} {s s_mid s' : ScannerState} {n : Nat}
     (h_fl : s.flowLevel ≥ fl₀)
     (h_snt : scanNextToken s = .ok (some s_mid))
@@ -2775,7 +2775,7 @@ theorem SavedKeyDoesntResolve.step_of_non_colon
     universally-quantified non-`:` hypothesis used by
     `SavedKeyDoesntResolve.step_of_non_colon`.  `scanNextToken_preprocess` is a
     function, so any `(t, c')` it yields equals `(saveSimpleKey s, c)`. -/
-theorem no_colon_of_preprocess_flow (s : ScannerState) (c : Char) (rest : List Char)
+lemma no_colon_of_preprocess_flow (s : ScannerState) (c : Char) (rest : List Char)
     (col : Nat) (hcorr : ScannerSurfCorr s ⟨c :: rest, col⟩)
     (h_flow : s.inFlow = true) (h_nws : isWhiteSpaceBool c = false)
     (h_nlb : isLineBreakBool c = false) (h_nc : c ≠ '#') (h_col : c ≠ ':') :
@@ -2790,7 +2790,7 @@ theorem no_colon_of_preprocess_flow (s : ScannerState) (c : Char) (rest : List C
     starts un-overwritable and `m < s.tokens.size`, it stays un-overwritable
     across an entire `FlowMonoChain`.  Direct induction delegating each step to
     `scanNextToken_maintains_NoOverwriteAt`. -/
-theorem FlowMonoChain_maintains_NoOverwriteAt {fl₀ : Nat} {s s' : ScannerState} {n : Nat}
+lemma FlowMonoChain_maintains_NoOverwriteAt {fl₀ : Nat} {s s' : ScannerState} {n : Nat}
     (h_fmc : FlowMonoChain fl₀ s n s') (m : Nat) (h_m : m < s.tokens.size)
     (h_inv : NoOverwriteAt s m) : NoOverwriteAt s' m := by
   induction h_fmc with
@@ -2807,7 +2807,7 @@ theorem FlowMonoChain_maintains_NoOverwriteAt {fl₀ : Nat} {s s' : ScannerState
     fires uniformly — no per-character classification needed.  This handles every
     *inner* emit sub-chain (where the body starts past the protected position);
     only the top-level body boundary needs the substrate.g per-step route. -/
-theorem SavedKeyDoesntResolve_of_FlowMonoChain_skFloor
+lemma SavedKeyDoesntResolve_of_FlowMonoChain_skFloor
     {fl₀ n_target : Nat} {s s' : ScannerState} {n : Nat}
     (h_fmc : FlowMonoChain fl₀ s n s')
     (h_fl_pos : fl₀ ≥ 1)
@@ -2836,7 +2836,7 @@ theorem SavedKeyDoesntResolve_of_FlowMonoChain_skFloor
     `tokenIndex ≠ n_target` that `step_of_tokenIndex_ne` needs, while tolerating
     harmless low keys (`tokenIndex < n_target`).  Used for emit sub-bodies that
     start strictly past the protected position. -/
-theorem SavedKeyDoesntResolve_of_FlowMonoChain_noOverwrite
+lemma SavedKeyDoesntResolve_of_FlowMonoChain_noOverwrite
     {fl₀ n_target : Nat} {s s' : ScannerState} {n : Nat}
     (h_fmc : FlowMonoChain fl₀ s n s')
     (h_fl_pos : fl₀ ≥ 1)
@@ -2916,7 +2916,7 @@ def EmitScansInFlowSKDR (v : YamlValue) : Prop :=
       ∧ SavedKeyDoesntResolve s.flowLevel N s n s'
 
 /-- SKDR-producing companion to `emit_scans_in_flow`. -/
-theorem emit_scans_in_flow_with_skdr (v : YamlValue) {inFlow : Bool}
+lemma emit_scans_in_flow_with_skdr (v : YamlValue) {inFlow : Bool}
     (hg : Grammable v inFlow) : EmitScansInFlowSKDR v := by
   induction hg with
   | scalar sc _ h =>
@@ -3169,7 +3169,7 @@ theorem emit_scans_in_flow_with_skdr (v : YamlValue) {inFlow : Bool}
     preprocessed `s₃` re-roots at `s₂` step-for-step (the first step's position-`N+1`
     witness transfers through the token equality).  SKDR analogue of
     `ScanChainGrew_of_scanNextToken_eq` / `FlowMonoChain_of_scanNextToken_eq`. -/
-theorem SavedKeyDoesntResolve_lift_preprocess {fl₀ N : Nat} {s₂ s₃ s_end : ScannerState}
+lemma SavedKeyDoesntResolve_lift_preprocess {fl₀ N : Nat} {s₂ s₃ s_end : ScannerState}
     {n : Nat}
     (h_eq : scanNextToken s₂ = scanNextToken s₃)
     (h_fl₂ : s₂.flowLevel ≥ fl₀)
@@ -3219,7 +3219,7 @@ def EmitListScansInFlowSKDR (items : List YamlValue) : Prop :=
     flow-sequence body item-by-item; each item via `emit_scans_in_flow_with_skdr`,
     each comma via `step_of_non_colon` (the `ExactSync` invariant threads through
     the existing `simpleKeyStack`/`flowLevel` preservation conjuncts). -/
-theorem emitList_scans_nonempty_with_skdr (items : List YamlValue) (h_ne : items ≠ [])
+lemma emitList_scans_nonempty_with_skdr (items : List YamlValue) (h_ne : items ≠ [])
     (h_all : ∀ v ∈ items, EmitScansInFlowSKDR v) :
     EmitListScansInFlowSKDR items := by
   induction items with
@@ -3355,7 +3355,7 @@ theorem emitList_scans_nonempty_with_skdr (items : List YamlValue) (h_ne : items
       · rw [h_stack_end, h_stack_pp₃, h_stack₂, h_stack₁]
 
 -- Helper: extract existential from isOk
-theorem scanFiltered_exists_of_isOk {s : String}
+lemma scanFiltered_exists_of_isOk {s : String}
     (h : (Scanner.scanFiltered s).toBool = true) :
     ∃ tokens, Scanner.scanFiltered s = .ok tokens := by
   cases h_eq : Scanner.scanFiltered s with
@@ -3378,7 +3378,7 @@ theorem scanFiltered_exists_of_isOk {s : String}
     on `Grammable`. The `emit` function ignores `inFlow` (always produces
     flow format), so scanner acceptance is independent of the flow context
     under which the value is grammable. -/
-theorem emit_produces_valid_yaml (v : YamlValue) {inFlow : Bool} (hg : Grammable v inFlow) :
+lemma emit_produces_valid_yaml (v : YamlValue) {inFlow : Bool} (hg : Grammable v inFlow) :
     ∃ tokens, scanFiltered (emit v) = .ok tokens := by
   induction hg with
   | scalar s _ h =>
@@ -3530,7 +3530,7 @@ that `parseStream` also succeeds on those tokens. The key argument:
 -- ═══ Challenge 2: parseStreamLoop state machine — single implicit document ═══
 -- If the parser sees content (not streamEnd), parseDocument succeeds and
 -- leaves peek? at streamEnd, then parseStreamLoop produces exactly one document.
-theorem parseStreamLoop_single_doc
+lemma parseStreamLoop_single_doc
     (ps : ParseState) (fuel : Nat) (h_fuel : fuel ≥ 2)
     (tok : YamlToken) (h_peek : ps.peek? = some tok) (h_not_se : tok ≠ .streamEnd)
     (h_not_de : tok ≠ .documentEnd)
@@ -3572,7 +3572,7 @@ theorem parseStreamLoop_single_doc
 /-- **Grammability preservation**: The parsed output of emitter output
     is grammable. Follows from `parseStream_output_grammable` applied
     to the scan+parse decomposition. -/
-theorem emit_parsed_grammable (v : YamlValue)
+lemma emit_parsed_grammable (v : YamlValue)
     (docs : Array YamlDocument)
     (h : parseYaml (emit v) = .ok docs) :
     ∀ doc ∈ docs.toList, Grammable doc.value false := by

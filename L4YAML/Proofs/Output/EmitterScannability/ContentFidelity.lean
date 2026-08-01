@@ -20,13 +20,13 @@ open L4YAML.Proofs.ParserWellBehaved
 open L4YAML.Proofs.ScalarCoupling
 
 -- resolveAliases is identity on scalars
-theorem resolveAliases_scalar (s : Scalar)
+lemma resolveAliases_scalar (s : Scalar)
     (anchors : Array (String × YamlValue)) :
     (YamlValue.scalar s).resolveAliases anchors = .scalar s := by
   unfold YamlValue.resolveAliases; rfl
 
 -- stripAnchors on scalar just clears the anchor
-theorem stripAnchors_scalar (s : Scalar) :
+lemma stripAnchors_scalar (s : Scalar) :
     (YamlValue.scalar s).stripAnchors = .scalar { s with anchor := none } := by
   unfold YamlValue.stripAnchors; rfl
 
@@ -47,7 +47,7 @@ Proof: structural recursion on `YamlValue`, using `resolveList_eq_map` /
     resolving aliases against an empty anchor table leaves the value unchanged:
     the `.alias` case finds no match (empty search), scalars return immediately, and
     sequences/mappings recurse element-wise (IH) and round-trip back via toArray. -/
-theorem resolveAliases_empty (v : YamlValue) : v.resolveAliases #[] = v := by
+lemma resolveAliases_empty (v : YamlValue) : v.resolveAliases #[] = v := by
   match v with
   | .scalar _ => rfl
   | .alias _ =>
@@ -89,7 +89,7 @@ computes exactly `resolveAliases`.  This bridge lets the pointwise compose
 characterizations (§5.17/§5.18) keep their `resolveAliases`-shaped right-hand sides. -/
 
 /-- Elements of an `anchorFree` list are `anchorFree`. -/
-theorem anchorFree_goList_forall (l : List YamlValue)
+lemma anchorFree_goList_forall (l : List YamlValue)
     (h : YamlValue.anchorFree.goList l = true) : ∀ v ∈ l, v.anchorFree = true := by
   induction l with
   | nil => intro v hv; exact (List.not_mem_nil hv).elim
@@ -101,7 +101,7 @@ theorem anchorFree_goList_forall (l : List YamlValue)
     · exact ih h.2 v hm
 
 /-- Components of an `anchorFree` pair list are `anchorFree`. -/
-theorem anchorFree_goPairs_forall (l : List (YamlValue × YamlValue))
+lemma anchorFree_goPairs_forall (l : List (YamlValue × YamlValue))
     (h : YamlValue.anchorFree.goPairs l = true) :
     ∀ p ∈ l, p.1.anchorFree = true ∧ p.2.anchorFree = true := by
   induction l with
@@ -115,7 +115,7 @@ theorem anchorFree_goPairs_forall (l : List (YamlValue × YamlValue))
     · exact ih h.2 p hm
 
 /-- A list of `anchorFree` values is `anchorFree`. -/
-theorem anchorFree_goList_of_forall (l : List YamlValue)
+lemma anchorFree_goList_of_forall (l : List YamlValue)
     (h : ∀ v ∈ l, v.anchorFree = true) : YamlValue.anchorFree.goList l = true := by
   induction l with
   | nil => rfl
@@ -124,7 +124,7 @@ theorem anchorFree_goList_of_forall (l : List YamlValue)
     exact ⟨h w List.mem_cons_self, ih (fun v hv => h v (List.mem_cons_of_mem _ hv))⟩
 
 /-- A pair list with `anchorFree` components is `anchorFree`. -/
-theorem anchorFree_goPairs_of_forall (l : List (YamlValue × YamlValue))
+lemma anchorFree_goPairs_of_forall (l : List (YamlValue × YamlValue))
     (h : ∀ p ∈ l, p.1.anchorFree = true ∧ p.2.anchorFree = true) :
     YamlValue.anchorFree.goPairs l = true := by
   induction l with
@@ -137,7 +137,7 @@ theorem anchorFree_goPairs_of_forall (l : List (YamlValue × YamlValue))
 
 /-- `goList` over elements that resolve like the old walk (from the empty
     environment) equals the old `resolveList` and returns the environment empty. -/
-theorem goList_ordered_eq_resolveList (anchors : Array (String × YamlValue))
+lemma goList_ordered_eq_resolveList (anchors : Array (String × YamlValue))
     (l : List YamlValue)
     (H : ∀ v ∈ l, v.resolveAliasesOrdered anchors [] = (v.resolveAliases anchors, [])) :
     YamlValue.resolveAliasesOrdered.goList anchors l []
@@ -151,7 +151,7 @@ theorem goList_ordered_eq_resolveList (anchors : Array (String × YamlValue))
       hv, hrest]
 
 /-- `goPairs` analog of `goList_ordered_eq_resolveList`. -/
-theorem goPairs_ordered_eq_resolvePairs (anchors : Array (String × YamlValue))
+lemma goPairs_ordered_eq_resolvePairs (anchors : Array (String × YamlValue))
     (l : List (YamlValue × YamlValue))
     (H : ∀ p ∈ l, p.1.resolveAliasesOrdered anchors [] = (p.1.resolveAliases anchors, []) ∧
                   p.2.resolveAliasesOrdered anchors [] = (p.2.resolveAliases anchors, [])) :
@@ -171,7 +171,7 @@ theorem goPairs_ordered_eq_resolvePairs (anchors : Array (String × YamlValue))
     anchor-free), so the environment stays `[]`, every alias falls back to the
     first-match table lookup — exactly `resolveAliases` — and the walk returns
     the environment unchanged. -/
-theorem resolveAliasesOrdered_of_anchorFree (v : YamlValue)
+lemma resolveAliasesOrdered_of_anchorFree (v : YamlValue)
     (anchors : Array (String × YamlValue)) (h : v.anchorFree = true) :
     v.resolveAliasesOrdered anchors [] = (v.resolveAliases anchors, []) := by
   match v with
@@ -214,14 +214,14 @@ decreasing_by
 
 /-- The J2 bridge at the `compose` boundary: on an anchor-free document value,
     the composed value is the old `resolveAliases`-then-`stripAnchors` image. -/
-theorem compose_value_of_anchorFree (doc : YamlDocument)
+lemma compose_value_of_anchorFree (doc : YamlDocument)
     (h : doc.value.anchorFree = true) :
     (doc.compose).value = (doc.value.resolveAliases doc.anchors).stripAnchors := by
   show ((doc.value.resolveAliasesOrdered doc.anchors []).fst).stripAnchors = _
   rw [resolveAliasesOrdered_of_anchorFree doc.value doc.anchors h]
 
 -- contentEq for scalars only depends on content string
-theorem contentEq_scalar_content (s₁ s₂ : Scalar)
+lemma contentEq_scalar_content (s₁ s₂ : Scalar)
     (h : s₁.content = s₂.content) : contentEq (.scalar s₁) (.scalar s₂) = true := by
   unfold contentEq; simp [h]
 
@@ -239,7 +239,7 @@ from the emitter's escape-encoded output. This is the key roundtrip property.
     `collectDoubleQuotedLoop` + `processEscape` decoding. The proof follows
     from `collectDoubleQuotedLoop_escapeString_succeeds` strengthened with
     content equality (the loop accumulator reconstructs the original string). -/
-theorem scanFiltered_emitScalar_content (content : String) (tokens : Array (Positioned YamlToken))
+lemma scanFiltered_emitScalar_content (content : String) (tokens : Array (Positioned YamlToken))
     (h_scan : scanFiltered (emitScalar content) = .ok tokens) :
     ∃ i, i < tokens.size ∧ tokens[i]!.val = .scalar content .doubleQuoted := by
   -- Get scanner state with token membership
@@ -301,7 +301,7 @@ theorem scanFiltered_emitScalar_content (content : String) (tokens : Array (Posi
     with empty directives and unchanged state.
     The `for _ in [:fuel] do` loop breaks on the first iteration because
     `peek?` matches `| _ => break`. -/
-theorem parseDirectives_skip (ps : ParseState)
+lemma parseDirectives_skip (ps : ParseState)
     (h : match ps.peek? with
         | some (.versionDirective _ _) | some (.tagDirective _ _) => False
         | _ => True) :
@@ -350,8 +350,8 @@ def checkFullMap : Bool :=
     | .error _ => false
   | .error _ => false
 
-theorem checkFullSeq_true : checkFullSeq = true := by native_decide
-theorem checkFullMap_true : checkFullMap = true := by native_decide
+lemma checkFullSeq_true : checkFullSeq = true := by native_decide
+lemma checkFullMap_true : checkFullMap = true := by native_decide
 
 -- Content fidelity Bool checks for empty flow collections.
 -- Verifies: parseYamlRaw "[]"/{}" succeeds AND the composed result is content-equivalent
@@ -370,15 +370,15 @@ def checkContentMap : Bool :=
     contentEq (.mapping .flow #[]) (raw_docs.map YamlDocument.compose)[0]!.value
   | .error _ => false
 
-theorem checkContentSeq_true : checkContentSeq = true := by native_decide
-theorem checkContentMap_true : checkContentMap = true := by native_decide
+lemma checkContentSeq_true : checkContentSeq = true := by native_decide
+lemma checkContentMap_true : checkContentMap = true := by native_decide
 
 -- ==========================================
 -- Helper Lemmas for Content Fidelity
 -- ==========================================
 
 -- contentEq on sequences ignores style/tag/anchor: only items matter.
-theorem contentEq_sequence_items (style₁ style₂ : CollectionStyle)
+lemma contentEq_sequence_items (style₁ style₂ : CollectionStyle)
     (items₁ items₂ : Array YamlValue)
     (tag₁ tag₂ anchor₁ anchor₂ : Option String) :
     contentEq (.sequence style₁ items₁ tag₁ anchor₁)
@@ -387,7 +387,7 @@ theorem contentEq_sequence_items (style₁ style₂ : CollectionStyle)
   unfold contentEq; rfl
 
 -- contentEq on mappings ignores style/tag/anchor: only pairs matter.
-theorem contentEq_mapping_pairs (style₁ style₂ : CollectionStyle)
+lemma contentEq_mapping_pairs (style₁ style₂ : CollectionStyle)
     (pairs₁ pairs₂ : Array (YamlValue × YamlValue))
     (tag₁ tag₂ anchor₁ anchor₂ : Option String) :
     contentEq (.mapping style₁ pairs₁ tag₁ anchor₁)
@@ -396,7 +396,7 @@ theorem contentEq_mapping_pairs (style₁ style₂ : CollectionStyle)
   unfold contentEq; rfl
 
 -- contentEq on sequences with any style/tag/anchor equals contentEq with canonical style/tag/anchor.
-theorem contentEq_seq_style_irrel (style : CollectionStyle) (items : Array YamlValue)
+lemma contentEq_seq_style_irrel (style : CollectionStyle) (items : Array YamlValue)
     (tag anchor : Option String) (v : YamlValue) :
     contentEq (.sequence style items tag anchor) v =
     contentEq (.sequence .flow items none none) v := by
@@ -406,7 +406,7 @@ theorem contentEq_seq_style_irrel (style : CollectionStyle) (items : Array YamlV
   | _ => unfold contentEq; rfl
 
 -- contentEq on mappings with any style/tag/anchor equals contentEq with canonical style/tag/anchor.
-theorem contentEq_map_style_irrel (style : CollectionStyle) (pairs : Array (YamlValue × YamlValue))
+lemma contentEq_map_style_irrel (style : CollectionStyle) (pairs : Array (YamlValue × YamlValue))
     (tag anchor : Option String) (v : YamlValue) :
     contentEq (.mapping style pairs tag anchor) v =
     contentEq (.mapping .flow pairs none none) v := by
@@ -434,7 +434,7 @@ lift lands. -/
     only `.ok` branch constructs `YamlValue.sequence .flow items` (and `.sequence .flow items`
     *is* `.sequence .flow items none none` by the constructor defaults). The first link of Front
     B's value-recovery trace. -/
-theorem parseFlowSequence_produces_sequence (ps : ParseState) (fuel : Nat)
+lemma parseFlowSequence_produces_sequence (ps : ParseState) (fuel : Nat)
     (v : YamlValue) (ps' : ParseState)
     (h : parseFlowSequence ps fuel = .ok (v, ps')) :
     ∃ items', v = .sequence .flow items' none none := by
@@ -461,7 +461,7 @@ theorem parseFlowSequence_produces_sequence (ps : ParseState) (fuel : Nat)
 /-- **Outer-shape recovery (mapping).** Mirror of `parseFlowSequence_produces_sequence`: a
     successful `parseFlowMapping` yields a flow mapping value with default tag/anchor — the only
     `.ok` branch constructs `YamlValue.mapping .flow pairs`. -/
-theorem parseFlowMapping_produces_mapping (ps : ParseState) (fuel : Nat)
+lemma parseFlowMapping_produces_mapping (ps : ParseState) (fuel : Nat)
     (v : YamlValue) (ps' : ParseState)
     (h : parseFlowMapping ps fuel = .ok (v, ps')) :
     ∃ pairs', v = .mapping .flow pairs' none none := by
@@ -509,7 +509,7 @@ constructor) and the `parseStream`/`parseDocument` wrapping land. -/
     (whose outer shape `parseFlowSequence_produces_sequence` pins to `.sequence .flow _ none none`),
     and `applyNodeFinalization` leaves that head untouched because the empty props supply `none`
     tag/anchor. Brick 2's dispatch link, lifting brick 1 through `parseNode`. -/
-theorem parseNode_flowSeqStart_produces_sequence (ps : ParseState) (fuel : Nat)
+lemma parseNode_flowSeqStart_produces_sequence (ps : ParseState) (fuel : Nat)
     (v : YamlValue) (ps' : ParseState)
     (h_peek : ps.peek? = some .flowSequenceStart)
     (h : parseNode ps fuel = .ok (v, ps')) :
@@ -547,7 +547,7 @@ theorem parseNode_flowSeqStart_produces_sequence (ps : ParseState) (fuel : Nat)
     successful `parseNode` whose lookahead is `.flowMappingStart` produces a flow mapping with
     default tag/anchor, by the same skip / dispatch / finalization-is-identity argument over
     `parseFlowMapping_produces_mapping`. -/
-theorem parseNode_flowMapStart_produces_mapping (ps : ParseState) (fuel : Nat)
+lemma parseNode_flowMapStart_produces_mapping (ps : ParseState) (fuel : Nat)
     (v : YamlValue) (ps' : ParseState)
     (h_peek : ps.peek? = some .flowMappingStart)
     (h : parseNode ps fuel = .ok (v, ps')) :
@@ -613,7 +613,7 @@ perturb the 4-sorry frontier. -/
     props rewrite).  Empty props ⇒ `tag = anchor = none`; `blockMeta` defaults `none`.  Position-generic
     (no constraint on `ps.pos`), so it pins the recovered value for a scalar element span anywhere
     mid-stream — the parser-locality leaf the loop-locality producer consumes. -/
-theorem parseNode_scalar_produces_scalar (ps : ParseState) (fuel : Nat)
+lemma parseNode_scalar_produces_scalar (ps : ParseState) (fuel : Nat)
     (content : String) (style : ScalarStyle) (v : YamlValue) (ps' : ParseState)
     (h_peek : ps.peek? = some (.scalar content style))
     (h : parseNode ps fuel = .ok (v, ps')) :
@@ -649,7 +649,7 @@ theorem parseNode_scalar_produces_scalar (ps : ParseState) (fuel : Nat)
     extracts the SECOND pair component.  Position-generic, no constraint on `ps.pos`.  Verified-but-
     unconsumed until the loop-locality position-tracking producer threads it through
     `parseFlowSequenceLoop_push_pointwise` to prove `ps_j.pos = 2 + 2*j`. -/
-theorem parseNode_scalar_advances_by_one
+lemma parseNode_scalar_advances_by_one
     (ps : ParseState) (fuel : Nat)
     (content : String) (style : ScalarStyle) (v : YamlValue) (ps' : ParseState)
     (h_peek : ps.peek? = some (.scalar content style))
@@ -679,7 +679,7 @@ theorem parseNode_scalar_advances_by_one
     simp [ParseState.advance]
 
 /-- `parseNode` for a scalar lookahead preserves the token array. -/
-theorem parseNode_scalar_tokens_preserved (ps : ParseState) (fuel : Nat)
+lemma parseNode_scalar_tokens_preserved (ps : ParseState) (fuel : Nat)
     (content : String) (style : ScalarStyle) (v : YamlValue) (ps' : ParseState)
     (h_peek : ps.peek? = some (.scalar content style))
     (h_parse : parseNode ps fuel = .ok (v, ps')) :
@@ -728,7 +728,7 @@ brick 3 (the per-element induction) land. -/
     `style`/`tag` through, and `stripAnchors` clearing the anchor slot to the `none` it already
     held). The recursive child-walk rewrites only the items array. Brick 2 sub-link (b), lifting the
     outer shape across `compose`. -/
-theorem compose_preserves_flow_sequence (doc : YamlDocument) (items' : Array YamlValue)
+lemma compose_preserves_flow_sequence (doc : YamlDocument) (items' : Array YamlValue)
     (h : doc.value = .sequence .flow items' none none) :
     ∃ items'', (doc.compose).value = .sequence .flow items'' none none := by
   have hv : (doc.compose).value
@@ -747,7 +747,7 @@ theorem compose_preserves_flow_sequence (doc : YamlDocument) (items' : Array Yam
     flow mapping with default tag/anchor stays a flow mapping with default tag/anchor across
     `compose`, by the same `resolveAliases`/`stripAnchors` pass-through and the recursive child-walk
     touching only the pairs array. -/
-theorem compose_preserves_flow_mapping (doc : YamlDocument) (pairs' : Array (YamlValue × YamlValue))
+lemma compose_preserves_flow_mapping (doc : YamlDocument) (pairs' : Array (YamlValue × YamlValue))
     (h : doc.value = .mapping .flow pairs' none none) :
     ∃ pairs'', (doc.compose).value = .mapping .flow pairs'' none none := by
   have hv : (doc.compose).value
@@ -786,7 +786,7 @@ leading `[` / `{`) joins it to `parseStream_doc_from_parseDocument` and brick 2(
     dispatch routes the peek to `parseNode` (not the empty-node branch), and brick 2(a)
     (`parseNode_flowSeqStart_produces_sequence`) pins that node's shape, which `parseDocument` stores
     verbatim. The `parseDocument` link of brick 2's wrapping. -/
-theorem parseDocument_flowSeqStart_produces_sequence (ps : ParseState)
+lemma parseDocument_flowSeqStart_produces_sequence (ps : ParseState)
     (doc : YamlDocument) (ps' : ParseState)
     (h_peek : ps.peek? = some .flowSequenceStart)
     (h : parseDocument ps = .ok (doc, ps')) :
@@ -825,7 +825,7 @@ theorem parseDocument_flowSeqStart_produces_sequence (ps : ParseState)
     a successful `parseDocument` whose lookahead is `.flowMappingStart` produces a document whose
     value is a flow mapping with default tag/anchor, by the same directive-skip / root dispatch /
     `parseNode`-shape (`parseNode_flowMapStart_produces_mapping`) argument. -/
-theorem parseDocument_flowMapStart_produces_mapping (ps : ParseState)
+lemma parseDocument_flowMapStart_produces_mapping (ps : ParseState)
     (doc : YamlDocument) (ps' : ParseState)
     (h_peek : ps.peek? = some .flowMappingStart)
     (h : parseDocument ps = .ok (doc, ps')) :
@@ -876,7 +876,7 @@ assembles those into the outer-shape recovery lemma and discharges the per-eleme
 
 /-- `expect` advances the position by exactly one on success (it returns `ps.advance` whenever the
     lookahead matches). The position half of `expect_tokens`. -/
-theorem expect_pos_succ (ps ps' : ParseState) (tok : YamlToken) (desc : String)
+lemma expect_pos_succ (ps ps' : ParseState) (tok : YamlToken) (desc : String)
     (h : ps.expect tok desc = .ok ps') : ps'.pos = ps.pos + 1 := by
   unfold ParseState.expect at h
   split at h
@@ -888,7 +888,7 @@ theorem expect_pos_succ (ps ps' : ParseState) (tok : YamlToken) (desc : String)
 /-- `parseStreamLoop` only ever appends to its accumulator (never reorders or drops), so once the
     accumulator is non-empty its head element is preserved verbatim into the result, and the result
     stays non-empty. The structural invariant behind first-document recovery. -/
-theorem parseStreamLoop_preserves_head
+lemma parseStreamLoop_preserves_head
     (ps : ParseState) (docs : Array YamlDocument) (streamState : StreamState) (fuel : Nat)
     (result : Array YamlDocument)
     (h_ne : 0 < docs.size)
@@ -932,7 +932,7 @@ theorem parseStreamLoop_preserves_head
     run on the loop's ENTRY state. A non-empty result forces the productive branch (peek is not
     `streamEnd`/`none`, validation passes, `parseDocument` succeeds), and `parseStreamLoop_preserves_head`
     carries the freshly-pushed doc through any deeper recursion as `result[0]!`. -/
-theorem parseStreamLoop_first_doc_from_entry
+lemma parseStreamLoop_first_doc_from_entry
     (ps : ParseState) (streamState : StreamState) (fuel : Nat)
     (result : Array YamlDocument)
     (h_ok : parseStreamLoop ps #[] streamState fuel = .ok result)
@@ -982,7 +982,7 @@ theorem parseStreamLoop_first_doc_from_entry
     `streamStart` — over the same token array. Joins §5.6's `parseDocument` dispatch to the head-token
     scanner facts: at pos 1 the lookahead is `tokens[1]`, which for emitted flow collections is the
     leading `[` / `{`. The position-dependent half of brick 2's wrapping. -/
-theorem parseStream_first_doc_at_pos_one
+lemma parseStream_first_doc_at_pos_one
     (tokens : Array (Positioned YamlToken)) (docs : Array YamlDocument)
     (h_parse : parseStream tokens = .ok docs)
     (h_ne : 0 < docs.size)
@@ -1045,7 +1045,7 @@ This enables R601 to pin per-element values without going through `FlowSubranges
     given only `h_parse : parseStream tokens = .ok raw_docs`. Proved by tracing
     `parseStream_first_doc_at_pos_one` → `prepareDocumentState` → `parseNode` →
     `parseFlowSequence` → `parseFlowSequenceLoop`. -/
-theorem parseStream_flowSeqStart_loop_witness
+lemma parseStream_flowSeqStart_loop_witness
     (tokens : Array (Positioned YamlToken)) (raw_docs : Array YamlDocument)
     (h_parse : parseStream tokens = .ok raw_docs)
     (h_ne : 0 < raw_docs.size)
@@ -1135,7 +1135,7 @@ theorem parseStream_flowSeqStart_loop_witness
     with default tag/anchor. Composes §5.7 (position-pinning) → §5.6 (`parseDocument` dispatch) → §5.5
     (`compose` preserves the head), then bridges `(raw_docs.map compose)[0]!`. The full outer-shape half
     of Front B's value-recovery trace; only the per-element body (brick 3) remains. -/
-theorem parseStream_flowSeqStart_recovers_outer_shape
+lemma parseStream_flowSeqStart_recovers_outer_shape
     (tokens : Array (Positioned YamlToken)) (raw_docs : Array YamlDocument)
     (h_parse : parseStream tokens = .ok raw_docs)
     (h_ne : 0 < raw_docs.size)
@@ -1173,7 +1173,7 @@ parse-success hypothesis `h_parse` is needed. Mirror of R602 for the mapping axi
     `parseFlowMapping` → `parseFlowMappingLoop`. Mirror of `parseStream_flowSeqStart_loop_witness`
     (R602) with `.flowSequenceStart`/`parseFlowSequenceLoop` swapped for
     `.flowMappingStart`/`parseFlowMappingLoop`. -/
-theorem parseStream_flowMapStart_loop_witness
+lemma parseStream_flowMapStart_loop_witness
     (tokens : Array (Positioned YamlToken)) (raw_docs : Array YamlDocument)
     (h_parse : parseStream tokens = .ok raw_docs)
     (h_ne : 0 < raw_docs.size)
@@ -1255,7 +1255,7 @@ theorem parseStream_flowMapStart_loop_witness
     a successful `parseStream` whose position-1 lookahead is `.flowMappingStart` recovers a composed
     first document whose value is a flow mapping with default tag/anchor, by the same §5.7 → §5.6 → §5.5
     composition over the mapping-side links and the same `getElem!`/`Array.map` bridge. -/
-theorem parseStream_flowMapStart_recovers_outer_shape
+lemma parseStream_flowMapStart_recovers_outer_shape
     (tokens : Array (Positioned YamlToken)) (raw_docs : Array YamlDocument)
     (h_parse : parseStream tokens = .ok raw_docs)
     (h_ne : 0 < raw_docs.size)
@@ -1303,7 +1303,7 @@ induction lands. -/
     content-equal value lists keeps them content-equal: the `contentEqList` inductive step the
     brick-3 flow-sequence loop invariant extends by, one parsed item per iteration. (Length-mismatch
     cases are vacuous — `contentEqList` is already `false` there, so `h` is unsatisfiable.) -/
-theorem contentEqList_append_singleton (l₁ l₂ : List YamlValue) (a b : YamlValue)
+lemma contentEqList_append_singleton (l₁ l₂ : List YamlValue) (a b : YamlValue)
     (h : contentEq.contentEqList l₁ l₂ = true) (hab : contentEq a b = true) :
     contentEq.contentEqList (l₁ ++ [a]) (l₂ ++ [b]) = true := by
   match l₁, l₂ with
@@ -1320,7 +1320,7 @@ theorem contentEqList_append_singleton (l₁ l₂ : List YamlValue) (a b : YamlV
     `contentEqList_append_singleton`: pushing content-equal elements onto two content-equal arrays
     keeps their `toList`s content-equal. This is the exact shape the brick-3 sequence loop invariant
     extends by (the loop accumulator is an `Array YamlValue` grown via `items_acc.push val`). -/
-theorem contentEqList_push (A B : Array YamlValue) (a b : YamlValue)
+lemma contentEqList_push (A B : Array YamlValue) (a b : YamlValue)
     (h : contentEq.contentEqList A.toList B.toList = true) (hab : contentEq a b = true) :
     contentEq.contentEqList (A.push a).toList (B.push b).toList = true := by
   rw [Array.toList_push, Array.toList_push]
@@ -1330,7 +1330,7 @@ theorem contentEqList_push (A B : Array YamlValue) (a b : YamlValue)
     key/value pair lists: appending one content-equal pair to each of two content-equal pair lists
     keeps them content-equal. The `contentEqPairList` inductive step the brick-3 flow-mapping loop
     invariant extends by, one parsed entry per iteration. -/
-theorem contentEqPairList_append_singleton (l₁ l₂ : List (YamlValue × YamlValue))
+lemma contentEqPairList_append_singleton (l₁ l₂ : List (YamlValue × YamlValue))
     (ka va kb vb : YamlValue)
     (h : contentEq.contentEqPairList l₁ l₂ = true)
     (hk : contentEq ka kb = true) (hv : contentEq va vb = true) :
@@ -1350,7 +1350,7 @@ theorem contentEqPairList_append_singleton (l₁ l₂ : List (YamlValue × YamlV
 /-- **Content-pair-list step (mapping, accumulator).** `Array.push` corollary of
     `contentEqPairList_append_singleton`: the exact shape the brick-3 mapping loop invariant extends
     by (the loop accumulator is an `Array (YamlValue × YamlValue)` grown via `pairs_acc.push (k, v)`). -/
-theorem contentEqPairList_push (A B : Array (YamlValue × YamlValue))
+lemma contentEqPairList_push (A B : Array (YamlValue × YamlValue))
     (ka va kb vb : YamlValue)
     (h : contentEq.contentEqPairList A.toList B.toList = true)
     (hk : contentEq ka kb = true) (hv : contentEq va vb = true) :
@@ -1385,7 +1385,7 @@ lands. -/
     array whose `toList` extends the accumulator's `toList` by the list of elements parsed in this
     call. Pure structural fact: fuel induction over the loop, every branch either returns the
     accumulator (`extra := []`) or recurses on `acc.push v` (`extra := v :: …`, via `Array.toList_push`). -/
-theorem parseFlowSequenceLoop_result_append
+lemma parseFlowSequenceLoop_result_append
     (ps : ParseState) (fuel : Nat) (acc : Array YamlValue)
     (result : Array YamlValue × ParseState)
     (h_ok : parseFlowSequenceLoop ps fuel acc = .ok result) :
@@ -1420,7 +1420,7 @@ theorem parseFlowSequenceLoop_result_append
     successful `parseFlowMappingLoop` returns a pair array whose `toList` extends the accumulator's by
     the entries parsed in this call. The list refinement of `parseFlowMappingLoop_pairs_grow`
     (`ParserWellBehaved.lean:2107`), same fuel induction with `pairs.push (key, val)`. -/
-theorem parseFlowMappingLoop_result_append
+lemma parseFlowMappingLoop_result_append
     (ps : ParseState) (fuel : Nat) (acc : Array (YamlValue × YamlValue))
     (result : Array (YamlValue × YamlValue) × ParseState)
     (h_ok : parseFlowMappingLoop ps fuel acc = .ok result) :
@@ -1481,7 +1481,7 @@ positional join lands. -/
     and holding of the accumulator, holds of every element of a successful `parseFlowSequenceLoop`
     result. Parametric value-half spine; same fuel induction as `parseFlowSequenceLoop_result_append`,
     lifting `P` over each `acc.push w` via `Array.mem_push`. -/
-theorem parseFlowSequenceLoop_all (P : YamlValue → Prop)
+lemma parseFlowSequenceLoop_all (P : YamlValue → Prop)
     (h_node : ∀ ps f v ps', parseNode ps f = .ok (v, ps') → P v)
     (h_pair : ∀ ps f v ps', parseSinglePairMapping ps f = .ok (v, ps') → P v)
     (ps : ParseState) (fuel : Nat) (acc : Array YamlValue)
@@ -1527,7 +1527,7 @@ theorem parseFlowSequenceLoop_all (P : YamlValue → Prop)
     `(key, val)` pairs, the key from `parseNode` (implicit-key branch) or `parseExplicitKey`
     (explicit-`.key` branch) and the value from `parseFlowMappingValue`, so a pair property `P` closed
     under both production paths and holding of the accumulator holds of every recovered pair. -/
-theorem parseFlowMappingLoop_all (P : (YamlValue × YamlValue) → Prop)
+lemma parseFlowMappingLoop_all (P : (YamlValue × YamlValue) → Prop)
     (h_implicit : ∀ ps f k ps' ps2 sp kc v ps3,
       parseNode ps f = .ok (k, ps') →
       parseFlowMappingValue ps2 f sp kc = .ok (v, ps3) → P (k, v))
@@ -1604,7 +1604,7 @@ from repeated step applications lands. -/
     `parseSinglePairMapping`) follows from §5.10.1's `parseFlowSequenceLoop_all`. The step that the
     positional induction iterates: combined with §5.10's `result_append`, it pins `result.1[acc.size] = v`
     without scanner-side reasoning. -/
-theorem parseFlowSequenceLoop_step_push
+lemma parseFlowSequenceLoop_step_push
     (ps : ParseState) (fuel : Nat) (acc : Array YamlValue)
     (result : Array YamlValue × ParseState)
     (h_ok : parseFlowSequenceLoop ps (fuel+1) acc = .ok result) :
@@ -1633,7 +1633,7 @@ theorem parseFlowSequenceLoop_step_push
     to `parseFlowMappingLoop ps'' fuel (acc.push (k, v))`. Separator and path bookkeeping isolated here;
     key provenance (`parseNode` vs `parseExplicitKey`) and value provenance (`parseFlowMappingValue`)
     follow from `parseFlowMappingLoop_all`. -/
-theorem parseFlowMappingLoop_step_push
+lemma parseFlowMappingLoop_step_push
     (ps : ParseState) (fuel : Nat) (acc : Array (YamlValue × YamlValue))
     (result : Array (YamlValue × YamlValue) × ParseState)
     (h_ok : parseFlowMappingLoop ps (fuel+1) acc = .ok result) :
@@ -1685,7 +1685,7 @@ Verified-but-unconsumed until the fuel induction that iterates `step_push` + `st
     `parseFlowSequenceLoop_step_push`, the element at position `acc.size` in the final result is `v`.
     Proof: `result_append` on `h_push` gives `result.1.toList = acc.toList ++ [v] ++ extra`; index
     `acc.size` falls in the `[v]` slot, recovered by `List.getElem_append_right`. -/
-theorem parseFlowSequenceLoop_step_index
+lemma parseFlowSequenceLoop_step_index
     (ps : ParseState) (fuel : Nat) (acc : Array YamlValue)
     (result : Array YamlValue × ParseState)
     (_h_ok : parseFlowSequenceLoop ps (fuel+1) acc = .ok result)
@@ -1712,7 +1712,7 @@ theorem parseFlowSequenceLoop_step_index
 
 /-- **Positional index (mapping).** Mirror of `parseFlowSequenceLoop_step_index` for
     `parseFlowMappingLoop`: given `h_push`, the element at position `acc.size` is `(k, v)`. -/
-theorem parseFlowMappingLoop_step_index
+lemma parseFlowMappingLoop_step_index
     (ps : ParseState) (fuel : Nat) (acc : Array (YamlValue × YamlValue))
     (result : Array (YamlValue × YamlValue) × ParseState)
     (_h_ok : parseFlowMappingLoop ps (fuel+1) acc = .ok result)
@@ -1761,7 +1761,7 @@ Proof strategy: fuel induction.  Position invariant: at step k the parser is at 
 `parseFlowSequenceLoop_step_index` converts the recursive-call witness into the
 `result.1[k]! = val` equation. -/
 
-theorem parseFlowSeqLoop_allScalar_value_at_aux
+lemma parseFlowSeqLoop_allScalar_value_at_aux
     {tokens : Array (Positioned YamlToken)}
     {items : List YamlValue}
     (h_ne : items ≠ [])
@@ -1934,7 +1934,7 @@ theorem parseFlowSeqLoop_allScalar_value_at_aux
     at position 2 with empty accumulator produces a result whose size equals `items.length`
     and whose j-th element is `.scalar (Scalar.mk sc_j.content .doubleQuoted none none none)`.
     Verified-but-unconsumed until threaded into the Front-B sequence locality sorry. -/
-theorem parseFlowSeqLoop_allScalar_value_at
+lemma parseFlowSeqLoop_allScalar_value_at
     {tokens : Array (Positioned YamlToken)}
     {items : List YamlValue}
     (h_ne : items ≠ [])
@@ -1957,7 +1957,7 @@ theorem parseFlowSeqLoop_allScalar_value_at
     (by simp only [ite_true, h_pos]) (by omega) h_ok
   exact ⟨h_size, fun j h_lt => h_vals j (Nat.zero_le j) h_lt⟩
 
-theorem parseFlowMappingLoop_allScalar_pair_at_aux
+lemma parseFlowMappingLoop_allScalar_pair_at_aux
     {tokens : Array (Positioned YamlToken)}
     {pairs : List (YamlValue × YamlValue)}
     (h_ne : pairs ≠ [])
@@ -2229,7 +2229,7 @@ theorem parseFlowMappingLoop_allScalar_pair_at_aux
     and `.flowMappingEnd` at `5*pairs.length+1`), a `parseFlowMappingLoop` call starting at
     position 2 with empty accumulator produces a result whose size equals `pairs.length` and whose
     j-th element is `(.scalar sk_j, .scalar sv_j)`. -/
-theorem parseFlowMappingLoop_allScalar_pair_at
+lemma parseFlowMappingLoop_allScalar_pair_at
     {tokens : Array (Positioned YamlToken)}
     {pairs : List (YamlValue × YamlValue)}
     (h_ne : pairs ≠ [])
@@ -2288,7 +2288,7 @@ the sub-call's parse state and the emitted span of `items[j]`. -/
 
 /-- **Push count ≤ fuel (sequence).** The loop pushes at most `fuel` elements:
     `result.1.size ≤ acc.size + fuel`. Proved by fuel induction + `step_push`. -/
-theorem parseFlowSequenceLoop_pushcount_le_fuel
+lemma parseFlowSequenceLoop_pushcount_le_fuel
     (ps : ParseState) (fuel : Nat) (acc : Array YamlValue)
     (result : Array YamlValue × ParseState)
     (h_ok : parseFlowSequenceLoop ps fuel acc = .ok result) :
@@ -2305,7 +2305,7 @@ theorem parseFlowSequenceLoop_pushcount_le_fuel
 
 /-- **Push count ≤ fuel (mapping).** Mirror of `parseFlowSequenceLoop_pushcount_le_fuel`:
     `result.1.size ≤ acc.size + fuel` for `parseFlowMappingLoop`. -/
-theorem parseFlowMappingLoop_pushcount_le_fuel
+lemma parseFlowMappingLoop_pushcount_le_fuel
     (ps : ParseState) (fuel : Nat) (acc : Array (YamlValue × YamlValue))
     (result : Array (YamlValue × YamlValue) × ParseState)
     (h_ok : parseFlowMappingLoop ps fuel acc = .ok result) :
@@ -2326,7 +2326,7 @@ theorem parseFlowMappingLoop_pushcount_le_fuel
     is exactly the first `j+1` elements of the final result — the sub-call that produced element `j`.
     Proved by fuel induction + `step_push`: `j = acc.size` uses `acc.push v` as witness (content from
     `result_append` + `List.take_append`); `j > acc.size` recurses on the `acc.push v` sub-call. -/
-theorem parseFlowSequenceLoop_push_subwit
+lemma parseFlowSequenceLoop_push_subwit
     (ps : ParseState) (fuel : Nat) (acc : Array YamlValue)
     (result : Array YamlValue × ParseState)
     (h_ok : parseFlowSequenceLoop ps fuel acc = .ok result) :
@@ -2368,7 +2368,7 @@ theorem parseFlowSequenceLoop_push_subwit
     `parseFlowMappingLoop`: for each `j` with `acc.size ≤ j < result.1.size`, there exist `ps_j`
     and `acc_j` with `parseFlowMappingLoop ps_j (fuel - (j - acc.size) - 1) acc_j = .ok result`
     and `acc_j.toList = result.1.toList.take (j + 1)`. Same fuel induction structure with pairs. -/
-theorem parseFlowMappingLoop_push_subwit
+lemma parseFlowMappingLoop_push_subwit
     (ps : ParseState) (fuel : Nat) (acc : Array (YamlValue × YamlValue))
     (result : Array (YamlValue × YamlValue) × ParseState)
     (h_ok : parseFlowMappingLoop ps fuel acc = .ok result) :
@@ -2440,7 +2440,7 @@ Verified-but-unconsumed until §5.14's scanner-span-locality bridge connects `ps
     accumulator `acc_j.push v`), and `result.1[j]! = v`.  `acc_j.toList = result.1.toList.take j` pins
     the accumulator content.  Proof: fuel induction; `j = acc.size` uses `step_index`; `j > acc.size`
     uses the IH on `(ps'', k, acc.push v)`. -/
-theorem parseFlowSequenceLoop_push_pointwise
+lemma parseFlowSequenceLoop_push_pointwise
     (ps : ParseState) (fuel : Nat) (acc : Array YamlValue)
     (result : Array YamlValue × ParseState)
     (h_ok : parseFlowSequenceLoop ps fuel acc = .ok result) :
@@ -2480,7 +2480,7 @@ theorem parseFlowSequenceLoop_push_pointwise
     `parseFlowMappingLoop`: for each `j` in `[acc.size, result.1.size)`, the pair `(mkey, mval)` pushed
     at position `j`, with `acc_j.toList = result.1.toList.take j`, explicit pre/post-push sub-calls, and
     `result.1[j]! = (mkey, mval)`.  Same fuel-induction structure with pairs. -/
-theorem parseFlowMappingLoop_push_pointwise
+lemma parseFlowMappingLoop_push_pointwise
     (ps : ParseState) (fuel : Nat) (acc : Array (YamlValue × YamlValue))
     (result : Array (YamlValue × YamlValue) × ParseState)
     (h_ok : parseFlowMappingLoop ps fuel acc = .ok result) :
@@ -2540,7 +2540,7 @@ until that producer lands ([[ref-consumer-joint-before-producer]], [[ref-univers
     deliverable (`∀ i, contentEq l₁[i] l₂[i]`, supplied index-by-index by the per-element round-trip IH)
     + the length into the fold. Pure structural recursion on the first list; the head fact comes from
     index `0`, the tail from the IH at shifted indices. -/
-theorem contentEqList_of_pointwise (l₁ l₂ : List YamlValue)
+lemma contentEqList_of_pointwise (l₁ l₂ : List YamlValue)
     (h_len : l₁.length = l₂.length)
     (h_pt : ∀ (i : Nat) (h₁ : i < l₁.length) (h₂ : i < l₂.length),
               contentEq l₁[i] l₂[i] = true) :
@@ -2565,7 +2565,7 @@ theorem contentEqList_of_pointwise (l₁ l₂ : List YamlValue)
     the mapping side of brick 3's content half; the per-element deliverable here is the pair
     `contentEq l₁[i].1 l₂[i].1 ∧ contentEq l₁[i].2 l₂[i].2` (the IHs `ihk`/`ihv`), assembled into the
     fold. -/
-theorem contentEqPairList_of_pointwise (l₁ l₂ : List (YamlValue × YamlValue))
+lemma contentEqPairList_of_pointwise (l₁ l₂ : List (YamlValue × YamlValue))
     (h_len : l₁.length = l₂.length)
     (h_pt : ∀ (i : Nat) (h₁ : i < l₁.length) (h₂ : i < l₂.length),
               contentEq l₁[i].1 l₂[i].1 = true ∧ contentEq l₁[i].2 l₂[i].2 = true) :
@@ -2618,7 +2618,7 @@ until the scanner-side span decomposition (the producer's next sub-link) consume
     ", ".intercalate (l.map emit)`. The closed form on which the producer's span-locality rests — the
     body string IS `emit items[0] ++ ", " ++ emit items[1] ++ …`. Pure structural induction; the three
     `emitList` cases match `String.intercalate`'s `nil` / `singleton` / `cons_cons`. -/
-theorem emitList_eq_intercalate (l : List YamlValue) :
+lemma emitList_eq_intercalate (l : List YamlValue) :
     emit.emitList l = ", ".intercalate (l.map emit) := by
   induction l with
   | nil => rfl
@@ -2634,7 +2634,7 @@ theorem emitList_eq_intercalate (l : List YamlValue) :
     emitted by `emit.emitPairList` is the `", "`-intercalation of the per-entry emissions `emit k ++ ": "
     ++ emit v`. Same structural induction, destructuring each head pair so the `emitPairList` equations
     fire. -/
-theorem emitPairList_eq_intercalate (l : List (YamlValue × YamlValue)) :
+lemma emitPairList_eq_intercalate (l : List (YamlValue × YamlValue)) :
     emit.emitPairList l
       = ", ".intercalate (l.map (fun p => emit p.1 ++ ": " ++ emit p.2)) := by
   induction l with
@@ -2653,7 +2653,7 @@ theorem emitPairList_eq_intercalate (l : List (YamlValue × YamlValue)) :
     `emit (.sequence …) = "[" ++ ", ".intercalate (items.toList.map emit) ++ "]"`. The producer-facing
     statement — the WHOLE emitted stream, expressed per-element. Immediate from `emitList_eq_intercalate`
     (the `style`/`tag`/`anchor` fields are irrelevant to the body). -/
-theorem emit_sequence_eq_bracket_intercalate
+lemma emit_sequence_eq_bracket_intercalate
     (style : CollectionStyle) (items : Array YamlValue)
     (tag anchor : Option String) :
     emit (.sequence style items tag anchor)
@@ -2665,7 +2665,7 @@ theorem emit_sequence_eq_bracket_intercalate
 /-- **Whole-`emit` bracketed form (mapping).** Mirror: `emit (.mapping …) = "{" ++ ", ".intercalate
     (pairs.toList.map (fun p => emit p.1 ++ ": " ++ emit p.2)) ++ "}"`. Immediate from
     `emitPairList_eq_intercalate`. -/
-theorem emit_mapping_eq_bracket_intercalate
+lemma emit_mapping_eq_bracket_intercalate
     (style : CollectionStyle) (pairs : Array (YamlValue × YamlValue))
     (tag anchor : Option String) :
     emit (.mapping style pairs tag anchor)
@@ -2709,7 +2709,7 @@ span-locality identity relating each peeled `(emit v).toList` segment to the sta
     [',', ' '] ++ (emit.emitList tail).toList`. The single peel step the flow-sequence scan recursion
     takes (`ScanChainGrowth.lean:222`), now reusable. (`tail = []` is excluded — there the separator is
     absent and `emit.emitList [v] = emit v`, the singleton scan base case.) -/
-theorem emitList_toList_cons_of_ne_nil (v : YamlValue) (tail : List YamlValue) (h : tail ≠ []) :
+lemma emitList_toList_cons_of_ne_nil (v : YamlValue) (tail : List YamlValue) (h : tail ≠ []) :
     (emit.emitList (v :: tail)).toList
       = (emit v).toList ++ [',', ' '] ++ (emit.emitList tail).toList := by
   cases tail with
@@ -2724,7 +2724,7 @@ theorem emitList_toList_cons_of_ne_nil (v : YamlValue) (tail : List YamlValue) (
     ++ [',', ' '] ++ (emit.emitPairList tail).toList`. The head ENTRY emits as `emit k ++ ": " ++ emit
     val` (the inner `[':', ' ']` joins key to value), then the `[',', ' ']` entry separator, then the
     tail. The single peel step the flow-mapping scan recursion takes. -/
-theorem emitPairList_toList_cons_of_ne_nil
+lemma emitPairList_toList_cons_of_ne_nil
     (k val : YamlValue) (tail : List (YamlValue × YamlValue)) (h : tail ≠ []) :
     (emit.emitPairList ((k, val) :: tail)).toList
       = (emit k).toList ++ [':', ' '] ++ (emit val).toList ++ [',', ' ']
@@ -2742,7 +2742,7 @@ theorem emitPairList_toList_cons_of_ne_nil
     `(emit (.sequence …)).toList = '[' :: ((emit.emitList items.toList).toList ++ [']'])`. The framing
     the producer enters the body scan with — `'['` opens the flow level, the trailing `']'` closes it,
     and everything between is the §5.12/§5.13 per-element body. -/
-theorem emit_sequence_toList_bracket
+lemma emit_sequence_toList_bracket
     (style : CollectionStyle) (items : Array YamlValue) (tag anchor : Option String) :
     (emit (.sequence style items tag anchor)).toList
       = '[' :: ((emit.emitList items.toList).toList ++ [']']) := by
@@ -2753,7 +2753,7 @@ theorem emit_sequence_toList_bracket
 /-- **Whole-stream bracket char form (mapping).** Mirror: `(emit (.mapping …)).toList = '{' ::
     ((emit.emitPairList pairs.toList).toList ++ ['}'])`. `'{'` opens the flow level, the trailing `'}'`
     closes it. -/
-theorem emit_mapping_toList_bracket
+lemma emit_mapping_toList_bracket
     (style : CollectionStyle) (pairs : Array (YamlValue × YamlValue)) (tag anchor : Option String) :
     (emit (.mapping style pairs tag anchor)).toList
       = '{' :: ((emit.emitPairList pairs.toList).toList ++ ['}']) := by
@@ -2793,7 +2793,7 @@ Verified-but-unconsumed until the segment-equality producer consumes it. -/
 /-- **List head/middle/last split.** Any list of length `≥ 2` decomposes as `a :: (core ++ [b])` — a
     distinct head `a`, middle `core`, and last `b`.  Pure structural fact (`dropLast_concat_getLast`);
     the shape the stream framing hangs the `.streamStart` head and `.streamEnd` last on. -/
-theorem list_split_head_mid_last {α : Type _} (L : List α) (h : 2 ≤ L.length) :
+lemma list_split_head_mid_last {α : Type _} (L : List α) (h : 2 ≤ L.length) :
     ∃ a core b, L = a :: (core ++ [b]) := by
   cases L with
   | nil => simp at h
@@ -2806,7 +2806,7 @@ theorem list_split_head_mid_last {α : Type _} (L : List α) (h : 2 ≤ L.length
     (the raw `scan`'s `tokens[0]`) through the `.placeholder` filter: `.streamStart` passes the filter,
     and `Array.filter` preserves order, so the raw head survives as the filtered head
     (`List.filter_cons_of_pos`). -/
-theorem scanFiltered_first_is_streamStart (input : String) (ft : Array (Positioned YamlToken))
+lemma scanFiltered_first_is_streamStart (input : String) (ft : Array (Positioned YamlToken))
     (h : scanFiltered input = .ok ft) (h_size : ft.size > 0) :
     (ft[0]'h_size).val = YamlToken.streamStart := by
   unfold scanFiltered at h
@@ -2846,7 +2846,7 @@ theorem scanFiltered_first_is_streamStart (input : String) (ft : Array (Position
     array's end: lifted from `scan_last_is_streamEnd` through the filter via the `List.filter_reverse`
     + `filter_cons_of_pos` surgery (the raw last token `.streamEnd` passes the filter and stays last,
     since reversing-then-filtering keeps the head). -/
-theorem scanFiltered_last_is_streamEnd (input : String) (ft : Array (Positioned YamlToken))
+lemma scanFiltered_last_is_streamEnd (input : String) (ft : Array (Positioned YamlToken))
     (h : scanFiltered input = .ok ft) (h_size : ft.size > 0) :
     (ft[ft.size - 1]'(by omega)).val = YamlToken.streamEnd := by
   unfold scanFiltered at h
@@ -2898,7 +2898,7 @@ theorem scanFiltered_last_is_streamEnd (input : String) (ft : Array (Positioned 
     stream markers bracket a marker-free `core`.  The producer's CORRECTED contract: an in-stream
     segment equals `core`, never the whole `scanFiltered (emit v)`.  Assembled from the head/last
     framing and the structural `list_split_head_mid_last`. -/
-theorem scanFiltered_stream_framing (input : String) (ft : Array (Positioned YamlToken))
+lemma scanFiltered_stream_framing (input : String) (ft : Array (Positioned YamlToken))
     (h : scanFiltered input = .ok ft) (h_size : 2 ≤ ft.size) :
     ∃ (t0 tlast : Positioned YamlToken) (core : List (Positioned YamlToken)),
       ft.toList = t0 :: (core ++ [tlast])
@@ -2929,7 +2929,7 @@ theorem scanFiltered_stream_framing (input : String) (ft : Array (Positioned Yam
     the token VALUES are `.streamStart :: (coreVals ++ [.streamEnd])`.  This is the form the
     segment-equality producer reads — `coreVals` is exactly the marker-free token-value run the
     in-stream segment must equal (the parser consumes token values, not positions). -/
-theorem scanFiltered_vals_stream_framing (input : String) (ft : Array (Positioned YamlToken))
+lemma scanFiltered_vals_stream_framing (input : String) (ft : Array (Positioned YamlToken))
     (h : scanFiltered input = .ok ft) (h_size : 2 ≤ ft.size) :
     ∃ coreVals, ft.toList.map (·.val)
       = YamlToken.streamStart :: (coreVals ++ [YamlToken.streamEnd]) := by
@@ -2972,7 +2972,7 @@ grounded against real emission in the paired `Tests/Reflections` probe before th
     re-parse fact that `items''[i]!` is the composed value of `parseYamlRaw (emit items[i])` (the
     producer deliverable), discharge the full brick-3 sequence conjunction. Bang-indexed deliverable so
     `h_size ∧ h_rep` is one non-dependent obligation. -/
-theorem contentEqList_of_reparse
+lemma contentEqList_of_reparse
     (items items'' : Array YamlValue)
     (h_size : items.size = items''.size)
     (ih : ∀ (i : Fin items.size) (rd : Array YamlDocument),
@@ -3000,7 +3000,7 @@ theorem contentEqList_of_reparse
     composes the key/value round-trip IHs (`ihk`/`ihv`) with §5.11's `contentEqPairList_of_pointwise`.
     The per-entry deliverable is a CONJUNCTION — both the key and the value re-parse to `pairs''[i]!`'s
     `.fst`/`.snd` — assembled into the brick-3 mapping conjunction. -/
-theorem contentEqPairList_of_reparse
+lemma contentEqPairList_of_reparse
     (pairs pairs'' : Array (YamlValue × YamlValue))
     (h_size : pairs.size = pairs''.size)
     (ihk : ∀ (i : Fin pairs.size) (rd : Array YamlDocument),
@@ -3057,7 +3057,7 @@ leaf (to be landed as a future brick) to fill the sorry at
     items. Combined with the scanner-span-locality leaf (scanner-level identification of each
     `items'[j]!`), it closes the per-element locality equation:
     `(rd.map compose)[0]!.value = items''[j]!` for scalar elements. -/
-theorem compose_seq_items_pointwise
+lemma compose_seq_items_pointwise
     (doc : YamlDocument) (items' items'' : Array YamlValue)
     (h_af : ∀ v ∈ items'.toList, v.anchorFree = true)
     (h_val : doc.value = .sequence .flow items' none none)
@@ -3098,7 +3098,7 @@ theorem compose_seq_items_pointwise
     `resolveAliases_scalar` gives `(scalar s).resolveAliases anchors = scalar s`;
     `stripAnchors_scalar` gives `(scalar s).stripAnchors = scalar { s with anchor := none }`;
     `anchor = none` gives `{ s with anchor := none } = s`. So compose is identity here. -/
-theorem compose_seq_scalar_item
+lemma compose_seq_scalar_item
     (doc : YamlDocument) (items' items'' : Array YamlValue)
     (h_af : ∀ v ∈ items'.toList, v.anchorFree = true)
     (h_val : doc.value = .sequence .flow items' none none)
@@ -3147,7 +3147,7 @@ matching `parseYamlRaw_emitScalar_compose_value` on each side. -/
     `stripPairs_eq_map`; the two maps collapse via `List.map_map`; `← Array.toList_map` +
     `Array.toArray_toList` converts back to an Array.map; and `YamlValue.mapping.injEq`
     extracts `pairs''`. -/
-theorem compose_map_pairs_pointwise
+lemma compose_map_pairs_pointwise
     (doc : YamlDocument) (pairs' pairs'' : Array (YamlValue × YamlValue))
     (h_af : ∀ p ∈ pairs'.toList, p.1.anchorFree = true ∧ p.2.anchorFree = true)
     (h_val : doc.value = .mapping .flow pairs' none none)
@@ -3195,7 +3195,7 @@ theorem compose_map_pairs_pointwise
     `stripAnchors_scalar` gives `(scalar s).stripAnchors = scalar { s with anchor := none }`;
     `anchor = none` means `{ s with anchor := none } = s`.  So compose is identity on
     anchor-free scalar pairs.  The key/value analog of `compose_seq_scalar_item`. -/
-theorem compose_map_scalar_pair
+lemma compose_map_scalar_pair
     (doc : YamlDocument) (pairs' pairs'' : Array (YamlValue × YamlValue))
     (h_af : ∀ p ∈ pairs'.toList, p.1.anchorFree = true ∧ p.2.anchorFree = true)
     (h_val : doc.value = .mapping .flow pairs' none none)

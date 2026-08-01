@@ -49,12 +49,12 @@ destructuring them (mirroring the structural model, which uses `p.1`/`p.2`
 throughout); these two rfl-by-eta lemmas restate the `mapTokVals` unfolding
 equations in `p.1`/`p.2` form. -/
 
-theorem mapTokVals_pair_singleton (p : YamlValue × YamlValue) :
+lemma mapTokVals_pair_singleton (p : YamlValue × YamlValue) :
     emitTokVals.mapTokVals [p]
       = .key :: (emitTokVals p.1 ++ (.value :: emitTokVals p.2)) := by
   obtain ⟨k, v⟩ := p; rfl
 
-theorem mapTokVals_pair_cons (p q : YamlValue × YamlValue)
+lemma mapTokVals_pair_cons (p q : YamlValue × YamlValue)
     (rest : List (YamlValue × YamlValue)) :
     emitTokVals.mapTokVals (p :: q :: rest)
       = (.key :: (emitTokVals p.1 ++ (.value :: emitTokVals p.2)))
@@ -150,7 +150,7 @@ def EmitScansSavedKeyTokVals (v : YamlValue) : Prop :=
 /-- Value-determined mirror of `emitList_scans_recseqbodyDeep`: the
     comma-separated body block of `emitList items` maps to
     `emitTokVals.seqTokVals items`. -/
-theorem emitList_scans_tokvals (items : List YamlValue) (h_ne : items ≠ [])
+lemma emitList_scans_tokvals (items : List YamlValue) (h_ne : items ≠ [])
     (h_all : ∀ v ∈ items, EmitScansTokVals v) :
     ∀ (s : ScannerState) (rest_chars : List Char),
       ScannerSurfCorr s ⟨(emit.emitList items).toList ++ rest_chars, s.col⟩ →
@@ -325,7 +325,7 @@ theorem emitList_scans_tokvals (items : List YamlValue) (h_ne : items ≠ [])
 /-- Value-determined mirror of `emitPairList_scans_recmapbodyDeep`: the
     `", "`-separated key/value body block of `emitPairList pairs` maps to
     `emitTokVals.mapTokVals pairs`. -/
-theorem emitPairList_scans_tokvals (pairs : List (YamlValue × YamlValue))
+lemma emitPairList_scans_tokvals (pairs : List (YamlValue × YamlValue))
     (h_ne : pairs ≠ [])
     (h_all_k : ∀ p ∈ pairs, EmitScansSavedKeyTokVals p.1)
     (h_all_v : ∀ p ∈ pairs, EmitScansTokVals p.2) :
@@ -780,7 +780,7 @@ theorem emitPairList_scans_tokvals (pairs : List (YamlValue × YamlValue))
     chain shapes). Same `Grammable` induction as the structural producer, with
     the scalar leaf swapped to the content-pinned
     `scanNextToken_flow_scalar_filtered_push_content`. -/
-theorem emit_scans_tokvals_both (v : YamlValue) {inFlow : Bool}
+lemma emit_scans_tokvals_both (v : YamlValue) {inFlow : Bool}
     (hg : Grammable v inFlow) :
     EmitScansTokVals v ∧ EmitScansSavedKeyTokVals v := by
   induction hg with
@@ -1537,12 +1537,12 @@ theorem emit_scans_tokvals_both (v : YamlValue) {inFlow : Bool}
                      h_body_pin, emitTokVals]
 
 /-- Value-side projection of the combined producer. -/
-theorem emit_scans_tokvals (v : YamlValue) {inFlow : Bool}
+lemma emit_scans_tokvals (v : YamlValue) {inFlow : Bool}
     (hg : Grammable v inFlow) : EmitScansTokVals v :=
   (emit_scans_tokvals_both v hg).1
 
 /-- Saved-key-side projection of the combined producer. -/
-theorem emit_scans_saved_key_tokvals (v : YamlValue) {inFlow : Bool}
+lemma emit_scans_saved_key_tokvals (v : YamlValue) {inFlow : Bool}
     (hg : Grammable v inFlow) : EmitScansSavedKeyTokVals v :=
   (emit_scans_tokvals_both v hg).2
 
@@ -1553,7 +1553,7 @@ Chain replays open_init → body → outermost close →
 pinning the ENTIRE filtered `.val`-run of a standalone emission. -/
 
 /-- Whole-array `.val`-run pin for a standalone non-empty flow sequence. -/
-theorem scanFiltered_emitSeq_tokvals
+lemma scanFiltered_emitSeq_tokvals
     (items : List YamlValue) (h_ne : items ≠ [])
     (h_all : ∀ v ∈ items, EmitScansTokVals v)
     (tokens : Array (Positioned YamlToken))
@@ -1634,7 +1634,7 @@ theorem scanFiltered_emitSeq_tokvals
           (emitTokVals.seqTokVals items ++ [.flowSequenceEnd, .streamEnd])) := rfl
 
 /-- Whole-array `.val`-run pin for a standalone non-empty flow mapping. -/
-theorem scanFiltered_emitMap_tokvals
+lemma scanFiltered_emitMap_tokvals
     (pairs : List (YamlValue × YamlValue)) (h_ne : pairs ≠ [])
     (h_all_k : ∀ p ∈ pairs, EmitScansSavedKeyTokVals p.1)
     (h_all_v : ∀ p ∈ pairs, EmitScansTokVals p.2)
@@ -1719,7 +1719,7 @@ theorem scanFiltered_emitMap_tokvals
 /-- **Whole-array value-determined pin.**  For any `Grammable v`, the filtered
     token `.val`-run of the standalone emission `emit v` is exactly
     `.streamStart :: (emitTokVals v ++ [.streamEnd])`. -/
-theorem scanFiltered_emit_tokvals (v : YamlValue) {inFlow : Bool}
+lemma scanFiltered_emit_tokvals (v : YamlValue) {inFlow : Bool}
     (hg : Grammable v inFlow) (tokens : Array (Positioned YamlToken))
     (h_scan : Scanner.scanFiltered (emit v) = .ok tokens) :
     tokens.toList.map (·.val) = .streamStart :: (emitTokVals v ++ [.streamEnd]) := by

@@ -103,7 +103,7 @@ The key algebraic theorem: resolution-equivalent values produce the
 same `YamlType` under `Schema.resolve`. -/
 
 /-- Helper: `resolveEqList` implies `resolve.resolveList` equality. -/
-theorem resolveList_eq (vs vs' : List YamlValue)
+lemma resolveList_eq (vs vs' : List YamlValue)
     (ih : ∀ v, v ∈ vs → ∀ v', resolveEq v v' = true → resolve v = resolve v')
     (h : resolveEq.resolveEqList vs vs' = true) :
     resolve.resolveList vs = resolve.resolveList vs' := by
@@ -118,7 +118,7 @@ theorem resolveList_eq (vs vs' : List YamlValue)
     rw [ih v (.head _) v' hh.1, resolveList_eq rest rest' (fun w hw => ih w (.tail _ hw)) hh.2]
 
 /-- Helper: `resolveEqPairList` implies `resolve.resolvePairs` equality. -/
-theorem resolvePairList_eq (ps ps' : List (YamlValue × YamlValue))
+lemma resolvePairList_eq (ps ps' : List (YamlValue × YamlValue))
     (ih : ∀ p, p ∈ ps →
       (∀ v', resolveEq p.1 v' = true → resolve p.1 = resolve v') ∧
       (∀ v', resolveEq p.2 v' = true → resolve p.2 = resolve v'))
@@ -142,7 +142,7 @@ theorem resolvePairList_eq (ps ps' : List (YamlValue × YamlValue))
     This is the key algebraic composition theorem: it decouples
     schema preservation from parser correctness. Combined with
     `dump→parse` content preservation, it gives the full round-trip. -/
-theorem resolve_eq_of_resolveEq (v v' : YamlValue) (h : resolveEq v v' = true) :
+lemma resolve_eq_of_resolveEq (v v' : YamlValue) (h : resolveEq v v' = true) :
     resolve v = resolve v' := by
   match v, v' with
   | .scalar s₁, .scalar s₂ =>
@@ -214,7 +214,7 @@ where
     This covers all `toYaml` outputs (which produce `tag := none`),
     most YAML files without explicit tags, and all `dump→parse` cycles
     of tag-free values. -/
-theorem resolve_eq_of_contentEq_noTags (v v' : YamlValue)
+lemma resolve_eq_of_contentEq_noTags (v v' : YamlValue)
     (h_ceq : contentEq v v' = true) (h_nt : noTags v = true) (h_nt' : noTags v' = true) :
     resolve v = resolve v' := by
   match v, v' with
@@ -352,97 +352,97 @@ Since all functions are total (`def`, not `partial def`), `native_decide`
 compiles to native code and evaluates the full pipeline. -/
 
 -- Scalar round-trips
-theorem roundtrip_plain_hello :
+lemma roundtrip_plain_hello :
     resolveRoundTrips (.plainScalar "hello") = true := by native_decide
 
-theorem roundtrip_plain_world :
+lemma roundtrip_plain_world :
     resolveRoundTrips (.plainScalar "world") = true := by native_decide
 
-theorem roundtrip_plain_empty :
+lemma roundtrip_plain_empty :
     resolveRoundTrips (.plainScalar "") = true := by native_decide
 
 -- Reserved words (dump auto-quotes, parser recovers content)
-theorem roundtrip_reserved_true :
+lemma roundtrip_reserved_true :
     resolveRoundTrips (.plainScalar "true") = true := by native_decide
 
-theorem roundtrip_reserved_false :
+lemma roundtrip_reserved_false :
     resolveRoundTrips (.plainScalar "false") = true := by native_decide
 
-theorem roundtrip_reserved_null :
+lemma roundtrip_reserved_null :
     resolveRoundTrips (.plainScalar "null") = true := by native_decide
 
-theorem roundtrip_reserved_42 :
+lemma roundtrip_reserved_42 :
     resolveRoundTrips (.plainScalar "42") = true := by native_decide
 
-theorem roundtrip_reserved_neg7 :
+lemma roundtrip_reserved_neg7 :
     resolveRoundTrips (.plainScalar "-7") = true := by native_decide
 
 -- Special characters (require quoting)
-theorem roundtrip_colon_space :
+lemma roundtrip_colon_space :
     resolveRoundTrips (.plainScalar "key: value") = true := by native_decide
 
-theorem roundtrip_newline :
+lemma roundtrip_newline :
     resolveRoundTrips (.plainScalar "line1\nline2") = true := by native_decide
 
 -- Double-quoted scalars
-theorem roundtrip_double_quoted :
+lemma roundtrip_double_quoted :
     resolveRoundTrips (.scalar ⟨"hello", .doubleQuoted, none, none, none⟩) = true := by
   native_decide
 
 -- Flow sequences
-theorem roundtrip_empty_flow_seq :
+lemma roundtrip_empty_flow_seq :
     resolveRoundTrips (.sequence .flow #[]) = true := by native_decide
 
-theorem roundtrip_flow_seq_scalars :
+lemma roundtrip_flow_seq_scalars :
     resolveRoundTrips (.sequence .flow #[.plainScalar "a", .plainScalar "b"] none) = true := by
   native_decide
 
 -- Block sequences
-theorem roundtrip_empty_block_seq :
+lemma roundtrip_empty_block_seq :
     resolveRoundTrips (.sequence .block #[]) = true := by native_decide
 
-theorem roundtrip_block_seq_scalars :
+lemma roundtrip_block_seq_scalars :
     resolveRoundTrips (.sequence .block #[.plainScalar "a", .plainScalar "b"] none) = true := by
   native_decide
 
 -- Flow mappings
-theorem roundtrip_empty_flow_map :
+lemma roundtrip_empty_flow_map :
     resolveRoundTrips (.mapping .flow #[]) = true := by native_decide
 
-theorem roundtrip_flow_map_pair :
+lemma roundtrip_flow_map_pair :
     resolveRoundTrips (.mapping .flow #[(.plainScalar "key", .plainScalar "val")] none) = true := by
   native_decide
 
 -- Block mappings
-theorem roundtrip_empty_block_map :
+lemma roundtrip_empty_block_map :
     resolveRoundTrips (.mapping .block #[]) = true := by native_decide
 
-theorem roundtrip_block_map_pair :
+lemma roundtrip_block_map_pair :
     resolveRoundTrips (.mapping .block #[(.plainScalar "k", .plainScalar "v")] none) = true := by
   native_decide
 
 -- Nested structures
-theorem roundtrip_nested_seq_in_map :
+lemma roundtrip_nested_seq_in_map :
     resolveRoundTrips (.mapping .block
       #[(.plainScalar "items",
          .sequence .block #[.plainScalar "a", .plainScalar "b"] none)] none) = true := by
   native_decide
 
-theorem roundtrip_nested_map_in_seq :
+lemma roundtrip_nested_map_in_seq :
     resolveRoundTrips (.sequence .block
       #[.mapping .flow #[(.plainScalar "k", .plainScalar "v")] none] none) = true := by
   native_decide
 
 -- DumpConfig variations
-theorem roundtrip_config_double_quoted :
+lemma roundtrip_config_double_quoted :
     resolveRoundTrips (.plainScalar "hello") { scalarStyle := .doubleQuoted } = true := by
   native_decide
 
-theorem roundtrip_config_single_quoted :
+lemma roundtrip_config_single_quoted :
     resolveRoundTrips (.plainScalar "hello") { scalarStyle := .singleQuoted } = true := by
   native_decide
 
-theorem roundtrip_config_flow :
+lemma roundtrip_config_flow :
     resolveRoundTrips (.sequence .block #[.plainScalar "a"] none)
       { defaultStyle := .flow } = true := by native_decide
 
@@ -453,57 +453,57 @@ For Lean types with `ToYaml`, the full chain:
 -/
 
 -- Bool
-theorem roundtrip_typed_true :
+lemma roundtrip_typed_true :
     resolveRoundTripsTyped true = true := by native_decide
 
-theorem roundtrip_typed_false :
+lemma roundtrip_typed_false :
     resolveRoundTripsTyped false = true := by native_decide
 
 -- Nat
-theorem roundtrip_typed_nat_0 :
+lemma roundtrip_typed_nat_0 :
     resolveRoundTripsTyped (0 : Nat) = true := by native_decide
 
-theorem roundtrip_typed_nat_42 :
+lemma roundtrip_typed_nat_42 :
     resolveRoundTripsTyped (42 : Nat) = true := by native_decide
 
 -- Int
-theorem roundtrip_typed_int_100 :
+lemma roundtrip_typed_int_100 :
     resolveRoundTripsTyped (100 : Int) = true := by native_decide
 
-theorem roundtrip_typed_int_neg7 :
+lemma roundtrip_typed_int_neg7 :
     resolveRoundTripsTyped (-7 : Int) = true := by native_decide
 
 -- String (schema-safe)
-theorem roundtrip_typed_string_hello :
+lemma roundtrip_typed_string_hello :
     resolveRoundTripsTyped "hello" = true := by native_decide
 
-theorem roundtrip_typed_string_empty :
+lemma roundtrip_typed_string_empty :
     resolveRoundTripsTyped "" = true := by native_decide
 
 -- Unit
-theorem roundtrip_typed_unit :
+lemma roundtrip_typed_unit :
     resolveRoundTripsTyped () = true := by native_decide
 
 -- Option
-theorem roundtrip_typed_option_some :
+lemma roundtrip_typed_option_some :
     resolveRoundTripsTyped (some "hello" : Option String) = true := by native_decide
 
-theorem roundtrip_typed_option_none :
+lemma roundtrip_typed_option_none :
     resolveRoundTripsTyped (none : Option String) = true := by native_decide
 
 -- Array
-theorem roundtrip_typed_array_strings :
+lemma roundtrip_typed_array_strings :
     resolveRoundTripsTyped (#["a", "b"] : Array String) = true := by native_decide
 
-theorem roundtrip_typed_array_empty :
+lemma roundtrip_typed_array_empty :
     resolveRoundTripsTyped (#[] : Array String) = true := by native_decide
 
 -- List
-theorem roundtrip_typed_list_strings :
+lemma roundtrip_typed_list_strings :
     resolveRoundTripsTyped (["x", "y"] : List String) = true := by native_decide
 
 -- Nested
-theorem roundtrip_typed_nested_arrays :
+lemma roundtrip_typed_nested_arrays :
     resolveRoundTripsTyped (#[#["a", "b"], #["c"]] : Array (Array String)) = true := by
   native_decide
 

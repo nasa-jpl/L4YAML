@@ -35,7 +35,7 @@ The Prop specification of line breaks matches the Bool implementation.
 - Prop: `isLineFeedProp c ∨ isCarriageReturnProp c`
 - Bool: `isLineFeedBool c || isCarriageReturnBool c`
 -/
-theorem isLineBreak_correspondence (c : Char) :
+lemma isLineBreak_correspondence (c : Char) :
     isLineBreakProp c ↔ isLineBreakBool c = true := by
   simp only [isLineBreakProp, isLineBreakBool, isLineFeedProp, isLineFeedBool,
              isCarriageReturnProp, isCarriageReturnBool, Bool.or_eq_true]
@@ -48,7 +48,7 @@ The Prop specification of white space matches the Bool implementation.
 - Prop: `isSpaceProp c ∨ isTabProp c`
 - Bool: `isSpaceBool c || isTabBool c`
 -/
-theorem isWhiteSpace_correspondence (c : Char) :
+lemma isWhiteSpace_correspondence (c : Char) :
     isWhiteSpaceProp c ↔ isWhiteSpaceBool c = true := by
   simp only [isWhiteSpaceProp, isWhiteSpaceBool, isSpaceProp, isSpaceBool,
              isTabProp, isTabBool, Bool.or_eq_true]
@@ -63,7 +63,7 @@ The Prop specification of indentation characters matches the parser check.
 
 We prove the definition is equivalent to `(c == ' ') = true`.
 -/
-theorem isIndentChar_iff (c : Char) :
+lemma isIndentChar_iff (c : Char) :
     isIndentCharProp c ↔ (c == ' ') = true := by
   simp only [isIndentCharProp]
 
@@ -74,7 +74,7 @@ The Prop specification of flow indicators matches the Bool implementation.
 
 Both use `c ∈ [',', '[', ']', '{', '}']`.
 -/
-theorem isFlowIndicator_correspondence (c : Char) :
+lemma isFlowIndicator_correspondence (c : Char) :
     isFlowIndicatorProp c ↔ isFlowIndicatorBool c = true := by
   unfold isFlowIndicatorProp isFlowIndicatorBool
   simp [List.mem_cons, Bool.or_eq_true]
@@ -85,7 +85,7 @@ theorem isFlowIndicator_correspondence (c : Char) :
 The full indicator list used in `canStartPlainScalar` matches
 `isIndicatorBool`. Both expand to `List.elem` on the same character list.
 -/
-theorem isIndicator_equiv (c : Char) :
+lemma isIndicator_equiv (c : Char) :
     (c ∈ ['-', '?', ':', ',', '[', ']', '{', '}', '#', '&', '*', '!', '|', '>',
           '\'', '"', '%', '@', '`'] : Prop) ↔
     isIndicatorBool c = true := by
@@ -114,7 +114,7 @@ not whitespace, not a line break, and not an indicator, then
 The `else` branch of `canStartPlainScalarBool` is context-independent:
 `!isIndicator c && !isWhiteSpace c && !isLineBreak c`.
 -/
-theorem canStartPlainScalar_base (c : Char) (next : Option Char) (inFlow : Bool)
+lemma canStartPlainScalar_base (c : Char) (next : Option Char) (inFlow : Bool)
     (hDash : c ≠ '-') (hQ : c ≠ '?') (hColon : c ≠ ':') :
     isPrintableProp c ∧ ¬ isWhiteSpaceProp c ∧ ¬ isLineBreakProp c ∧ ¬ isIndicatorProp c →
     canStartPlainScalarBool c next inFlow = true := by
@@ -152,7 +152,7 @@ In flow context, the following character must also not be a flow indicator.
 Exception characters in block context: accepted when the following character
 is not whitespace and not a line break.
 -/
-theorem canStartPlainScalar_exception (c : Char) (n : Char)
+lemma canStartPlainScalar_exception (c : Char) (n : Char)
     (hExc : c = '-' ∨ c = '?' ∨ c = ':')
     (hNotWs : isWhiteSpaceBool n = false)
     (hNotLb : isLineBreakBool n = false) :
@@ -164,7 +164,7 @@ theorem canStartPlainScalar_exception (c : Char) (n : Char)
 Exception characters in flow context: additionally requires the following
 character is not a flow indicator.
 -/
-theorem canStartPlainScalar_exception_flow (c : Char) (n : Char)
+lemma canStartPlainScalar_exception_flow (c : Char) (n : Char)
     (hExc : c = '-' ∨ c = '?' ∨ c = ':')
     (hNotWs : isWhiteSpaceBool n = false)
     (hNotLb : isLineBreakBool n = false)
@@ -176,7 +176,7 @@ theorem canStartPlainScalar_exception_flow (c : Char) (n : Char)
 /--
 Exception characters with no following character are rejected in any context.
 -/
-theorem canStartPlainScalar_exception_none (c : Char) (inFlow : Bool)
+lemma canStartPlainScalar_exception_none (c : Char) (inFlow : Bool)
     (hExc : c = '-' ∨ c = '?' ∨ c = ':') :
     canStartPlainScalarBool c none inFlow = false := by
   unfold canStartPlainScalarBool

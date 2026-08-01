@@ -42,7 +42,7 @@ open L4YAML.Proofs.Composition
 
 /-- `scanFiltered` preserves `PlainScalarsValid`.
     Filtering removes non-content tokens; plain scalar tokens are preserved. -/
-theorem scanFiltered_plain_scalars_valid (input : String)
+lemma scanFiltered_plain_scalars_valid (input : String)
     (tokens : Array (Positioned YamlToken))
     (h : Scanner.scanFiltered input = .ok tokens) :
     PlainScalarsValid tokens :=
@@ -60,7 +60,7 @@ theorem scanFiltered_plain_scalars_valid (input : String)
     values are `Grammable` at every flow context. This excludes the
     pathological case where block-context plain scalars with flow
     indicators are aliased into flow context. See §4 for details. -/
-theorem parseStream_output_grammable
+lemma parseStream_output_grammable
     (input : String)
     (tokens : Array (Positioned YamlToken))
     (raw_docs : Array YamlDocument)
@@ -80,7 +80,7 @@ theorem parseStream_output_grammable
 
     Combines the final grammability result with the existing
     `parseStream_respects_grammar` theorem. -/
-theorem parseYaml_produces_valid_nodes
+lemma parseYaml_produces_valid_nodes
     (input : String)
     (docs : Array YamlDocument)
     (h : parseYaml input = .ok docs) :

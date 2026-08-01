@@ -90,7 +90,7 @@ The indexed version is a 1:1 transfer with `parseStream` →
 at the indexed variant. -/
 
 -- parseDocument-level lift.
-theorem parseDocument_aliases_resolve_ix
+lemma parseDocument_aliases_resolve_ix
     (ps : ParseStateIx input) (doc : YamlDocument) (ps' : ParseStateIx input)
     (h_ok : parseDocument ps = .ok (doc, ps')) :
     AllAliasesResolve doc.value doc.anchors := by
@@ -124,7 +124,7 @@ theorem parseDocument_aliases_resolve_ix
         exact parseNode_aliases_resolve' _ _ _ _ h_node
 
 -- parseStreamLoop-level lift (induction on fuel).
-theorem parseStreamLoop_aliases_resolve_ix
+lemma parseStreamLoop_aliases_resolve_ix
     (ps : ParseStateIx input) (docs : Array YamlDocument)
     (streamState : StreamState) (fuel : Nat)
     (result : Array YamlDocument)
@@ -163,7 +163,7 @@ theorem parseStreamLoop_aliases_resolve_ix
           · exact ih _ _ _ h_acc' h_ok
 
 -- parseStreamIx-level lift (the C2b indexed final).
-theorem parseStreamIx_output_aliases_resolve
+lemma parseStreamIx_output_aliases_resolve
     (tokens : Indexed.TokenStream input)
     (docs : Array YamlDocument)
     (h_parse : parseStreamIx tokens = .ok docs) :
@@ -197,7 +197,7 @@ theorem parseStreamIx_output_aliases_resolve
     pathological case where block-context plain scalars with flow
     indicators are aliased into flow context. See ParserGrammableBase §4
     for details. -/
-theorem parseStreamIx_output_grammable
+lemma parseStreamIx_output_grammable
     (tokens : Indexed.TokenStream input)
     (raw_docs : Array YamlDocument)
     (h_fpsv : FlowAwarePSVIx tokens)
@@ -222,7 +222,7 @@ theorem parseStreamIx_output_grammable
     `parseStreamIx` (the full `parseYaml`-pipeline twin is deferred to
     the Step 6f cutover, where `parseYaml` is rebound to use the indexed
     pipeline). -/
-theorem parseStreamIx_produces_valid_nodes
+lemma parseStreamIx_produces_valid_nodes
     (tokens : Indexed.TokenStream input)
     (docs : Array YamlDocument)
     (h_fpsv : FlowAwarePSVIx tokens)
@@ -242,7 +242,7 @@ theorem parseStreamIx_produces_valid_nodes
     hypotheses are discharged via
     `scanFilteredIx_FlowAwarePSVIx` /
     `scanFilteredIx_FlowBracketsMatchedIx`. -/
-theorem parseStreamIx_produces_valid_nodes_unconditional
+lemma parseStreamIx_produces_valid_nodes_unconditional
     {input : String} (tokens : Indexed.TokenStream input)
     (docs : Array YamlDocument)
     (h_scan : scanFilteredIx input = .ok tokens)
@@ -258,7 +258,7 @@ theorem parseStreamIx_produces_valid_nodes_unconditional
     documents whose values have `ValidNode` witnesses. Indexed twin
     of `parseYaml_produces_valid_nodes` in
     `Proofs/Parser/ParserGrammable.lean`. -/
-theorem parseYamlIx_produces_valid_nodes
+lemma parseYamlIx_produces_valid_nodes
     (input : String) (docs : Array YamlDocument)
     (h : parseYamlIx input = .ok docs) :
     ∀ doc ∈ docs.toList, ∃ node : ValidNode,
@@ -283,7 +283,7 @@ theorem parseYamlIx_produces_valid_nodes
     then apply `scanIx_valid_token_stream` (Step 6f.3b3.primitives.tractable
     composed theorem replacing the prior 6f.3b2.consume monolithic
     staging axiom — see Reflection 108). -/
-theorem parseYamlIx_implies_valid_token_stream
+lemma parseYamlIx_implies_valid_token_stream
     (input : String) (docs : Array YamlDocument)
     (h : parseYamlIx input = .ok docs) :
     ∃ (tokens : Indexed.TokenStream input),

@@ -134,7 +134,7 @@ inductive ScanChainGrewIx (p : IxToken input → Bool) :
 
 /-- Forgetful map: a `ScanChainGrewIx` is, in particular, a `ScanChainIx`.
     Mirrors legacy `ScanChainGrew.toScanChain`. -/
-theorem ScanChainGrewIx.toScanChainIx {p : IxToken input → Bool}
+lemma ScanChainGrewIx.toScanChainIx {p : IxToken input → Bool}
     {s s' : ScannerStateIx input} {n : Nat}
     (h : ScanChainGrewIx p s n s') : ScanChainIx s n s' := by
   induction h with
@@ -143,7 +143,7 @@ theorem ScanChainGrewIx.toScanChainIx {p : IxToken input → Bool}
 
 /-- Single-step constructor for `ScanChainGrewIx`. Mirrors legacy
     `ScanChainGrew.single`. -/
-theorem ScanChainGrewIx.single {p : IxToken input → Bool}
+lemma ScanChainGrewIx.single {p : IxToken input → Bool}
     {s s' : ScannerStateIx input}
     (h : scanNextTokenIx s = .ok (some s'))
     (h_grew : (s'.tokens.tokens.filter p).size > (s.tokens.tokens.filter p).size) :
@@ -152,7 +152,7 @@ theorem ScanChainGrewIx.single {p : IxToken input → Bool}
 
 /-- Transitivity for `ScanChainGrewIx`: concatenate two strict chains.
     Mirrors legacy `ScanChainGrew.trans`. -/
-theorem ScanChainGrewIx.trans {p : IxToken input → Bool}
+lemma ScanChainGrewIx.trans {p : IxToken input → Bool}
     {s₁ s₂ s₃ : ScannerStateIx input} {n₁ n₂ : Nat}
     (h1 : ScanChainGrewIx p s₁ n₁ s₂) (h2 : ScanChainGrewIx p s₂ n₂ s₃) :
     ScanChainGrewIx p s₁ (n₁ + n₂) s₃ := by
@@ -170,7 +170,7 @@ theorem ScanChainGrewIx.trans {p : IxToken input → Bool}
     the per-step witness — does not depend on a loose
     `scanNextTokenIx_filtered_grows` (and so does not depend on any
     sorry). Mirrors legacy `ScanChainGrew_filtered_grows`. -/
-theorem ScanChainGrewIx_filtered_grows {p : IxToken input → Bool}
+lemma ScanChainGrewIx_filtered_grows {p : IxToken input → Bool}
     {s s' : ScannerStateIx input} {n : Nat}
     (h_chain : ScanChainGrewIx p s n s') :
     (s'.tokens.tokens.filter p).size ≥ (s.tokens.tokens.filter p).size + n := by
@@ -185,7 +185,7 @@ theorem ScanChainGrewIx_filtered_grows {p : IxToken input → Bool}
     (length ≥ 1) so the first step's witness can be transitively weakened
     from `s₂.tokens.filter` down to `s₁.tokens.filter`. Mirrors legacy
     `ScanChainGrew_of_scanNextToken_eq`. -/
-theorem ScanChainGrewIx_of_scanNextTokenIx_eq {p : IxToken input → Bool}
+lemma ScanChainGrewIx_of_scanNextTokenIx_eq {p : IxToken input → Bool}
     {s₁ s₂ s' : ScannerStateIx input} {n : Nat}
     (h_eq : scanNextTokenIx s₁ = scanNextTokenIx s₂)
     (h_le : (s₁.tokens.tokens.filter p).size ≤ (s₂.tokens.tokens.filter p).size)
@@ -282,7 +282,7 @@ def EmitListScansInFlowIx (items : List YamlValue) : Prop :=
 
 /-- Empty list body is trivially scanned (0-step chain). Indexed twin of
     legacy `emitList_scans_empty` (lines 7059–7066). -/
-theorem emitList_scans_emptyIx : EmitListScansInFlowIx (input := input) [] := by
+lemma emitList_scans_emptyIx : EmitListScansInFlowIx (input := input) [] := by
   intro s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
   have h_eq : (L4YAML.Emit.emit.emitList ([] : List YamlValue)).toList ++ rest = rest := by
     simp only [L4YAML.Emit.emit.emitList]; rfl
@@ -294,7 +294,7 @@ theorem emitList_scans_emptyIx : EmitListScansInFlowIx (input := input) [] := by
     uses `EmitScansInFlowIx` directly; the multi-item case chains
     `emit v` + `", "` + recursive `emitList`. Indexed twin of legacy
     `emitList_scans_nonempty` (lines 7068–7207). -/
-theorem emitList_scans_nonemptyIx (items : List YamlValue) (h_ne : items ≠ [])
+lemma emitList_scans_nonemptyIx (items : List YamlValue) (h_ne : items ≠ [])
     (h_all : ∀ v ∈ items, EmitScansInFlowIx (input := input) v) :
     EmitListScansInFlowIx (input := input) items := by
   induction items with
@@ -437,7 +437,7 @@ theorem emitList_scans_nonemptyIx (items : List YamlValue) (h_ne : items ≠ [])
 /-- The first char of `emitPairList (p :: ps)` is the first char of the key
     `emit p.1` — a non-whitespace, non-`#` content char. Indexed twin of
     legacy `emitPairList_first_char` (lines 7211–7229). -/
-theorem emitPairList_first_charIx (p : YamlValue × YamlValue)
+lemma emitPairList_first_charIx (p : YamlValue × YamlValue)
     (ps : List (YamlValue × YamlValue)) :
     ∃ c rest', (L4YAML.Emit.emit.emitPairList (p :: ps)).toList = c :: rest' ∧
       isWhiteSpaceBool c = false ∧ isLineBreakBool c = false ∧ c ≠ '#' := by
@@ -464,7 +464,7 @@ theorem emitPairList_first_charIx (p : YamlValue × YamlValue)
     blank-acceptance (`isBlankBool ' ' = true`) collapses the result to
     `true`. Indexed twin of legacy `isValueCandidate_of_peekAt_blank`
     (lines 7234–7254). -/
-theorem isValueCandidate_of_peekAt_blankIx (s : ScannerStateIx input)
+lemma isValueCandidate_of_peekAt_blankIx (s : ScannerStateIx input)
     (h : s.peekAt? 1 = some ' ') :
     isValueCandidateIx s = true := by
   unfold isValueCandidateIx
@@ -485,7 +485,7 @@ are pure record updates, so the legacy proof's ~15 field-tracking
 /-- `scanValuePrepareIx` preserves `indents` in flow context: the two
     indent-pushing branches (`col > currentIndent` and the
     `pushMappingIndentIx` fall-through) both require `!s.inFlow`. -/
-theorem scanValuePrepareIx_indents_of_inFlow (s : ScannerStateIx input)
+lemma scanValuePrepareIx_indents_of_inFlow (s : ScannerStateIx input)
     (h_flow : s.inFlow = true) :
     (scanValuePrepareIx s).indents = s.indents := by
   unfold scanValuePrepareIx
@@ -497,7 +497,7 @@ theorem scanValuePrepareIx_indents_of_inFlow (s : ScannerStateIx input)
 /-- `scanValuePrepareIx` preserves `directivesPresent` in flow context
     (`overwriteAtCursor` and the simple-key record update are both
     `directivesPresent`-invariant). -/
-theorem scanValuePrepareIx_directivesPresent_of_inFlow (s : ScannerStateIx input)
+lemma scanValuePrepareIx_directivesPresent_of_inFlow (s : ScannerStateIx input)
     (h_flow : s.inFlow = true) :
     (scanValuePrepareIx s).directivesPresent = s.directivesPresent := by
   unfold scanValuePrepareIx
@@ -508,7 +508,7 @@ theorem scanValuePrepareIx_directivesPresent_of_inFlow (s : ScannerStateIx input
 
 /-- Overwriting the token at index `i` with a zero-width token whose
     saved cursor sits on line `l` preserves `AllTokensOnLineIx`. -/
-theorem AllTokensOnLineIx_overwriteAtCursor (s : ScannerStateIx input)
+lemma AllTokensOnLineIx_overwriteAtCursor (s : ScannerStateIx input)
     (i : Nat) (sk : IxCursor input) (tok : YamlToken) (l : Nat)
     (h_atol : AllTokensOnLineIx s l) (h_sk_line : sk.pos.line = l) :
     AllTokensOnLineIx (s.overwriteAtCursor i sk tok) l := by
@@ -532,7 +532,7 @@ theorem AllTokensOnLineIx_overwriteAtCursor (s : ScannerStateIx input)
     `tokenIndex + 1` with a `.key` token saved at `simpleKey.cursor`,
     whose line is `s.cursor.pos.line` by `EndLineOnLineIx`. Indexed twin
     of legacy `AllTokensOnLine_scanValuePrepare_flow` (lines 3189–3213). -/
-theorem AllTokensOnLineIx_scanValuePrepare_flow (s : ScannerStateIx input) (l : Nat)
+lemma AllTokensOnLineIx_scanValuePrepare_flow (s : ScannerStateIx input) (l : Nat)
     (h_atol : AllTokensOnLineIx s l) (h_line : s.cursor.pos.line = l)
     (h_flow : s.inFlow = true)
     (h_ek : s.explicitKeyLine = none)
@@ -565,7 +565,7 @@ theorem AllTokensOnLineIx_scanValuePrepare_flow (s : ScannerStateIx input) (l : 
     `AllTokensOnLineIx`/`EndLineOnLineIx` invariants (via
     `scanValueValidateIx_ok_of_flow_allTokensOnLine`), so no `h_sv`
     hypothesis is needed. -/
-theorem scanNextToken_flow_valueIx (s : ScannerStateIx input)
+lemma scanNextToken_flow_valueIx (s : ScannerStateIx input)
     (rest' : List Char)
     (hcorr : ScannerSurfCorrIx s ⟨':' :: ' ' :: rest', s.cursor.pos.col⟩)
     (h_flow : s.inFlow = true)
@@ -841,7 +841,7 @@ def EmitPairListScansInFlowIx (pairs : List (YamlValue × YamlValue)) : Prop :=
 
 /-- Empty pair list is trivially scanned (0-step chain). Indexed twin of
     legacy `emitPairList_scans_empty` (lines 7651–7655). -/
-theorem emitPairList_scans_emptyIx : EmitPairListScansInFlowIx (input := input) [] := by
+lemma emitPairList_scans_emptyIx : EmitPairListScansInFlowIx (input := input) [] := by
   intro s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
   have h_eq : (L4YAML.Emit.emit.emitPairList ([] : List (YamlValue × YamlValue))).toList ++ rest
       = rest := by
@@ -856,7 +856,7 @@ theorem emitPairList_scans_emptyIx : EmitPairListScansInFlowIx (input := input) 
     `emitPairList_scans_nonempty` (lines 7663–8011). Unlike legacy, the
     `scanValueValidate` precondition for the `:` step is derived internally
     (see §2b), so no `h_sv` plumbing is needed. -/
-theorem emitPairList_scans_nonemptyIx (pairs : List (YamlValue × YamlValue))
+lemma emitPairList_scans_nonemptyIx (pairs : List (YamlValue × YamlValue))
     (h_ne : pairs ≠ [])
     (h_all_k : ∀ p ∈ pairs, EmitScansInFlowIx (input := input) p.1)
     (h_all_v : ∀ p ∈ pairs, EmitScansInFlowIx (input := input) p.2) :
@@ -1257,7 +1257,7 @@ Indexed twin of legacy `emit_scans_in_flow` (lines 8014–8255). For
 every `Grammable v inFlow` value `v`, scanning the canonical emitter
 output `(emit v).toList` inside a flow context produces a non-empty
 `ScanChainGrewIx` that preserves all the flow invariants. -/
-theorem emit_scans_in_flowIx (v : YamlValue) {inFlow : Bool}
+lemma emit_scans_in_flowIx (v : YamlValue) {inFlow : Bool}
     (hg : L4YAML.Grammar.Grammable v inFlow) : EmitScansInFlowIx (input := input) v := by
   induction hg with
   | scalar s _ _ =>
@@ -1500,7 +1500,7 @@ See the Blueprint's `.toplevel` plan tree and Reflection 144. -/
     decidable Boolean, so `native_decide` settles it; this bridge then
     forgets the Boolean witness back to the existential the main theorem
     expects). Indexed twin of `scanFiltered_exists_of_isOk` (legacy 8258). -/
-theorem scanFilteredIx_exists_of_isOk {s : String}
+lemma scanFilteredIx_exists_of_isOk {s : String}
     (h : (scanFilteredIx s).toBool = true) :
     ∃ tokens, scanFilteredIx s = .ok tokens := by
   cases h_eq : scanFilteredIx s with
@@ -1555,7 +1555,7 @@ set_option maxHeartbeats 800000 in
     body re-elaborates with them as opaque names rather than as
     `let`-bound projections — avoids whnf-elaboration thrashing on
     `L4YAML.Emit.emitScalar content`. -/
-theorem scanNextTokenIx_emitScalar_init (content : String) :
+lemma scanNextTokenIx_emitScalar_init (content : String) :
     ∃ s₁, scanNextTokenIx
         ((ScannerStateIx.mk' (L4YAML.Emit.emitScalar content)).emit YamlToken.streamStart)
         = .ok (some s₁)
@@ -1805,7 +1805,7 @@ Indexed twin of `scan_accepts_emitScalar` (legacy 3500–3532). -/
 
 /-- The scanner accepts any double-quoted scalar produced by the
     emitter: `scanFilteredIx (emitScalar content)` succeeds. -/
-theorem scan_accepts_emitScalarIx (content : String) :
+lemma scan_accepts_emitScalarIx (content : String) :
     ∃ tokens, scanFilteredIx (L4YAML.Emit.emitScalar content) = .ok tokens := by
   -- Reduce to: ∃ toks, scanIx (emitScalar content) = .ok toks
   suffices h : ∃ toks, scanIx (L4YAML.Emit.emitScalar content) = .ok toks by
@@ -1890,7 +1890,7 @@ the documented budget; no new user-defined axioms. -/
     `v`, the byte stream `L4YAML.Emit.emit v` is accepted by the
     indexed scanner (`scanFilteredIx` returns `.ok`). Indexed twin of
     legacy `emit_produces_valid_yaml` (line 8281). -/
-theorem emit_produces_valid_yamlIx (v : YamlValue) {inFlow : Bool}
+lemma emit_produces_valid_yamlIx (v : YamlValue) {inFlow : Bool}
     (hg : L4YAML.Grammar.Grammable v inFlow) :
     ∃ tokens, scanFilteredIx (L4YAML.Emit.emit v) = .ok tokens := by
   induction hg with

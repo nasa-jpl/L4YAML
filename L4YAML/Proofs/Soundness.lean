@@ -67,7 +67,7 @@ This structural lemma is needed because `toYamlValueList` is defined
 via explicit recursion (to satisfy Lean's termination checker) rather
 than `List.map`.
 -/
-theorem toYamlValueList_eq_map (ns : List ValidNode) :
+lemma toYamlValueList_eq_map (ns : List ValidNode) :
     toYamlValue.toYamlValueList ns = ns.map toYamlValue := by
   induction ns with
   | nil => rfl
@@ -77,7 +77,7 @@ theorem toYamlValueList_eq_map (ns : List ValidNode) :
 /--
 `toYamlValuePairs` agrees with `List.map` of the pair conversion.
 -/
-theorem toYamlValuePairs_eq_map (es : List (ValidNode × ValidNode)) :
+lemma toYamlValuePairs_eq_map (es : List (ValidNode × ValidNode)) :
     toYamlValue.toYamlValuePairs es = es.map fun ⟨k, v⟩ => (toYamlValue k, toYamlValue v) := by
   induction es with
   | nil => rfl
@@ -87,7 +87,7 @@ theorem toYamlValuePairs_eq_map (es : List (ValidNode × ValidNode)) :
 
 /-! ### Size helpers for well-founded recursion through product lists -/
 
-theorem prod_fst_sizeOf_lt {α β : Type _} [SizeOf α] [SizeOf β]
+lemma prod_fst_sizeOf_lt {α β : Type _} [SizeOf α] [SizeOf β]
     (l : List (α × β)) (i : Nat) (hi : i < l.length) :
     sizeOf l[i].1 < sizeOf l := by
   have h1 := List.sizeOf_lt_of_mem (List.getElem_mem hi)
@@ -95,7 +95,7 @@ theorem prod_fst_sizeOf_lt {α β : Type _} [SizeOf α] [SizeOf β]
     cases l[i]; simp [Prod.mk.sizeOf_spec]
   omega
 
-theorem prod_snd_sizeOf_lt {α β : Type _} [SizeOf α] [SizeOf β]
+lemma prod_snd_sizeOf_lt {α β : Type _} [SizeOf α] [SizeOf β]
     (l : List (α × β)) (i : Nat) (hi : i < l.length) :
     sizeOf l[i].2 < sizeOf l := by
   have h1 := List.sizeOf_lt_of_mem (List.getElem_mem hi)
@@ -111,7 +111,7 @@ is a nested inductive, so the `induction` tactic does not support it.
 Uses well-founded recursion on `sizeOf` to handle recursive calls through
 list elements.
 -/
-theorem toYamlValue_nodeToValue : (n : ValidNode) → NodeToValue n (toYamlValue n)
+lemma toYamlValue_nodeToValue : (n : ValidNode) → NodeToValue n (toYamlValue n)
   | .plainScalarBlock content h hf hcs hsh => .plainScalarBlock content h hf hcs hsh
   | .plainScalarFlow content h hf hcs hsh hfl => .plainScalarFlow content h hf hcs hsh hfl
   | .singleQuoted content => .singleQuoted content
@@ -159,7 +159,7 @@ decreasing_by
 
 /-! ### Helper: list equality from element-wise induction hypotheses -/
 
-theorem vals_eq_map_of_ih
+lemma vals_eq_map_of_ih
     (nodes : List ValidNode) (vals : List YamlValue)
     (hlen : nodes.length = vals.length)
     (ih : ∀ i (hi : i < nodes.length),
@@ -170,7 +170,7 @@ theorem vals_eq_map_of_ih
   simp only [List.get_eq_getElem, List.getElem_map]
   exact ih i (by omega)
 
-theorem pairs_eq_map_of_ih
+lemma pairs_eq_map_of_ih
     (entries : List (ValidNode × ValidNode))
     (pairs : List (YamlValue × YamlValue))
     (hlen : entries.length = pairs.length)
@@ -187,7 +187,7 @@ theorem pairs_eq_map_of_ih
 /--
 Reverse direction: `NodeToValue n v` implies `v = toYamlValue n`.
 -/
-theorem nodeToValue_implies_toYamlValue {n : ValidNode} {v : YamlValue}
+lemma nodeToValue_implies_toYamlValue {n : ValidNode} {v : YamlValue}
     (h : NodeToValue n v) : v = toYamlValue n := by
   induction h with
   | plainScalarBlock _ _ _ _ _ => rfl
@@ -233,14 +233,14 @@ every grammar node has a corresponding value, and that value is unique.
 /--
 **Totality**: every `ValidNode` has a corresponding `YamlValue`.
 -/
-theorem nodeToValue_total (n : ValidNode) :
+lemma nodeToValue_total (n : ValidNode) :
     ∃ v, NodeToValue n v :=
   ⟨toYamlValue n, toYamlValue_nodeToValue n⟩
 
 /--
 **Determinism**: `NodeToValue` maps each node to exactly one value.
 -/
-theorem nodeToValue_deterministic {n : ValidNode} {v₁ v₂ : YamlValue}
+lemma nodeToValue_deterministic {n : ValidNode} {v₁ v₂ : YamlValue}
     (h₁ : NodeToValue n v₁) (h₂ : NodeToValue n v₂) : v₁ = v₂ := by
   rw [nodeToValue_implies_toYamlValue h₁, nodeToValue_implies_toYamlValue h₂]
 
@@ -252,14 +252,14 @@ lemmas: they guarantee the parser cannot mis-label scalar styles.
 -/
 
 /-- Plain scalars (block context) produce `.plain` style. -/
-theorem plainScalar_block_style_sound (content : String) (h : content.length > 0)
+lemma plainScalar_block_style_sound (content : String) (h : content.length > 0)
     (hfirst : validPlainFirstProp content false)
     (hnoCS : noColonSpaceProp content) (hnoSH : noSpaceHashProp content) :
     ∃ s, toYamlValue (.plainScalarBlock content h hfirst hnoCS hnoSH) = .scalar s ∧ s.style = .plain := by
   exact ⟨⟨content, .plain, none, none, none⟩, rfl, rfl⟩
 
 /-- Plain scalars (flow context) produce `.plain` style. -/
-theorem plainScalar_flow_style_sound (content : String) (h : content.length > 0)
+lemma plainScalar_flow_style_sound (content : String) (h : content.length > 0)
     (hfirst : validPlainFirstProp content true)
     (hnoCS : noColonSpaceProp content) (hnoSH : noSpaceHashProp content)
     (hnoFlow : noFlowIndicatorsProp content) :
@@ -267,23 +267,23 @@ theorem plainScalar_flow_style_sound (content : String) (h : content.length > 0)
   exact ⟨⟨content, .plain, none, none, none⟩, rfl, rfl⟩
 
 /-- Single-quoted scalars produce `.singleQuoted` style. -/
-theorem singleQuoted_style_sound (content : String) :
+lemma singleQuoted_style_sound (content : String) :
     ∃ s, toYamlValue (.singleQuoted content) = .scalar s ∧ s.style = .singleQuoted := by
   exact ⟨⟨content, .singleQuoted, none, none, none⟩, rfl, rfl⟩
 
 /-- Double-quoted scalars produce `.doubleQuoted` style. -/
-theorem doubleQuoted_style_sound (content : String) :
+lemma doubleQuoted_style_sound (content : String) :
     ∃ s, toYamlValue (.doubleQuoted content) = .scalar s ∧ s.style = .doubleQuoted := by
   exact ⟨⟨content, .doubleQuoted, none, none, none⟩, rfl, rfl⟩
 
 /-- Literal block scalars produce `.literal` style. -/
-theorem literal_style_sound (content : String) (indent : Nat) (chomp : ChompStyle) :
+lemma literal_style_sound (content : String) (indent : Nat) (chomp : ChompStyle) :
     ∃ s, toYamlValue (.literalScalar content indent chomp) = .scalar s
     ∧ s.style = .literal := by
   exact ⟨⟨content, .literal, none, none, some ⟨chomp, some indent⟩⟩, rfl, rfl⟩
 
 /-- Folded block scalars produce `.folded` style. -/
-theorem folded_style_sound (content : String) (indent : Nat) (chomp : ChompStyle) :
+lemma folded_style_sound (content : String) (indent : Nat) (chomp : ChompStyle) :
     ∃ s, toYamlValue (.foldedScalar content indent chomp) = .scalar s
     ∧ s.style = .folded := by
   exact ⟨⟨content, .folded, none, none, some ⟨chomp, some indent⟩⟩, rfl, rfl⟩
@@ -295,7 +295,7 @@ is exactly the content string in the corresponding `YamlValue.scalar`.
 This guarantees the parser does not silently alter scalar content during
 the grammar→value correspondence.
 -/
-theorem scalar_content_preserved (n : ValidNode) (v : YamlValue)
+lemma scalar_content_preserved (n : ValidNode) (v : YamlValue)
     (h : NodeToValue n v) :
     (∀ c hne hf hcs hsh, n = .plainScalarBlock c hne hf hcs hsh → ∃ s, v = .scalar s ∧ s.content = c) ∧
     (∀ c hne hf hcs hsh hfl, n = .plainScalarFlow c hne hf hcs hsh hfl → ∃ s, v = .scalar s ∧ s.content = c) ∧
@@ -322,25 +322,25 @@ and preserve element/entry counts.
 -/
 
 /-- Block sequences produce `.block` collection style. -/
-theorem blockSeq_style_sound (indent : Nat) (items : List ValidNode) :
+lemma blockSeq_style_sound (indent : Nat) (items : List ValidNode) :
     ∃ style arr, toYamlValue (.blockSeq indent items) = .sequence style arr none
     ∧ style = .block := by
   exact ⟨.block, _, rfl, rfl⟩
 
 /-- Flow sequences produce `.flow` collection style. -/
-theorem flowSeq_style_sound (items : List ValidNode) :
+lemma flowSeq_style_sound (items : List ValidNode) :
     ∃ style arr, toYamlValue (.flowSeq items) = .sequence style arr none
     ∧ style = .flow := by
   exact ⟨.flow, _, rfl, rfl⟩
 
 /-- Block mappings produce `.block` collection style. -/
-theorem blockMap_style_sound (indent : Nat) (entries : List (ValidNode × ValidNode)) :
+lemma blockMap_style_sound (indent : Nat) (entries : List (ValidNode × ValidNode)) :
     ∃ style arr, toYamlValue (.blockMap indent entries) = .mapping style arr none
     ∧ style = .block := by
   exact ⟨.block, _, rfl, rfl⟩
 
 /-- Flow mappings produce `.flow` collection style. -/
-theorem flowMap_style_sound (entries : List (ValidNode × ValidNode)) :
+lemma flowMap_style_sound (entries : List (ValidNode × ValidNode)) :
     ∃ style arr, toYamlValue (.flowMap entries) = .mapping style arr none
     ∧ style = .flow := by
   exact ⟨.flow, _, rfl, rfl⟩
@@ -349,7 +349,7 @@ theorem flowMap_style_sound (entries : List (ValidNode × ValidNode)) :
 **Sequence item count preservation**: the number of items in a `ValidNode`
 sequence matches the number of items in the resulting `YamlValue.sequence`.
 -/
-theorem seq_items_count_preserved (items : List ValidNode) :
+lemma seq_items_count_preserved (items : List ValidNode) :
     (toYamlValue.toYamlValueList items).length = items.length := by
   rw [toYamlValueList_eq_map]; simp
 
@@ -357,7 +357,7 @@ theorem seq_items_count_preserved (items : List ValidNode) :
 **Mapping entry count preservation**: the number of entries in a `ValidNode`
 mapping matches the number in the resulting `YamlValue.mapping`.
 -/
-theorem map_entries_count_preserved (entries : List (ValidNode × ValidNode)) :
+lemma map_entries_count_preserved (entries : List (ValidNode × ValidNode)) :
     (toYamlValue.toYamlValuePairs entries).length = entries.length := by
   rw [toYamlValuePairs_eq_map]; simp
 
@@ -377,7 +377,7 @@ The `def` is classified as `computationalOperation` by the
 doc-verification-bridge; this `theorem` makes the result visible as a
 verified property of `NodeToValue`.
 -/
-theorem toYamlValue_produces_nodeToValue (n : ValidNode) :
+lemma toYamlValue_produces_nodeToValue (n : ValidNode) :
     NodeToValue n (toYamlValue n) :=
   toYamlValue_nodeToValue n
 
@@ -400,7 +400,7 @@ theorem validYaml_construct (input : String) (n : ValidNode) :
 **Value determination**: the `YamlValue` in a `ValidYaml` is uniquely
 determined by its `ValidNode` — it must be `toYamlValue grammar`.
 -/
-theorem validYaml_value_eq_toYamlValue (vy : ValidYaml) :
+lemma validYaml_value_eq_toYamlValue (vy : ValidYaml) :
     vy.value = toYamlValue vy.grammar :=
   nodeToValue_implies_toYamlValue vy.corresponds
 
@@ -408,7 +408,7 @@ theorem validYaml_value_eq_toYamlValue (vy : ValidYaml) :
 **Scalar ValidYaml is a scalar YamlValue**: if a `ValidYaml`'s grammar
 is any scalar constructor, the value is a `YamlValue.scalar`.
 -/
-theorem validYaml_scalar_is_scalar (vy : ValidYaml) :
+lemma validYaml_scalar_is_scalar (vy : ValidYaml) :
     (∃ c h hf hcs hsh, vy.grammar = .plainScalarBlock c h hf hcs hsh) ∨
     (∃ c h hf hcs hsh hfl, vy.grammar = .plainScalarFlow c h hf hcs hsh hfl) ∨
     (∃ c, vy.grammar = .singleQuoted c) ∨
@@ -426,7 +426,7 @@ theorem validYaml_scalar_is_scalar (vy : ValidYaml) :
 **Collection ValidYaml is a collection YamlValue**: if a `ValidYaml`'s grammar
 is any collection constructor, the value is a sequence or mapping.
 -/
-theorem validYaml_collection_kind (vy : ValidYaml) :
+lemma validYaml_collection_kind (vy : ValidYaml) :
     (∃ n items, vy.grammar = .blockSeq n items) ∨
     (∃ items, vy.grammar = .flowSeq items) →
     ∃ style arr tag, vy.value = .sequence style arr tag := by

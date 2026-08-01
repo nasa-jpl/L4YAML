@@ -60,7 +60,7 @@ Two cases:
 -/
 
 /-- `pushSequenceIndent` preserves C1 (`indents.size ≥ 1`). -/
-theorem pushSequenceIndent_preserves_indents_ge_1 (s : ScannerState) (col : Int)
+lemma pushSequenceIndent_preserves_indents_ge_1 (s : ScannerState) (col : Int)
     (hwf : s.indents.size ≥ 1) :
     (pushSequenceIndent s col).indents.size ≥ 1 := by
   unfold pushSequenceIndent
@@ -71,7 +71,7 @@ theorem pushSequenceIndent_preserves_indents_ge_1 (s : ScannerState) (col : Int)
     exact hwf
 
 /-- `pushSequenceIndent` preserves C2 (`flowLevel = flowStack.size`). -/
-theorem pushSequenceIndent_preserves_flow_sync (s : ScannerState) (col : Int)
+lemma pushSequenceIndent_preserves_flow_sync (s : ScannerState) (col : Int)
     (hflow : s.flowLevel = s.flowStack.size) :
     (pushSequenceIndent s col).flowLevel = (pushSequenceIndent s col).flowStack.size := by
   unfold pushSequenceIndent
@@ -80,7 +80,7 @@ theorem pushSequenceIndent_preserves_flow_sync (s : ScannerState) (col : Int)
   · exact hflow
 
 /-- `pushSequenceIndent` preserves C3 (`simpleKeyStack.size = flowStack.size`). -/
-theorem pushSequenceIndent_preserves_sk_sync (s : ScannerState) (col : Int)
+lemma pushSequenceIndent_preserves_sk_sync (s : ScannerState) (col : Int)
     (hsk : s.simpleKeyStack.size = s.flowStack.size) :
     (pushSequenceIndent s col).simpleKeyStack.size =
     (pushSequenceIndent s col).flowStack.size := by
@@ -90,7 +90,7 @@ theorem pushSequenceIndent_preserves_sk_sync (s : ScannerState) (col : Int)
   · exact hsk
 
 /-- `pushSequenceIndent` preserves C4 (`offset ≤ inputEnd`). -/
-theorem pushSequenceIndent_preserves_offset_le (s : ScannerState) (col : Int)
+lemma pushSequenceIndent_preserves_offset_le (s : ScannerState) (col : Int)
     (hoff : s.offset ≤ s.inputEnd) :
     (pushSequenceIndent s col).offset ≤ (pushSequenceIndent s col).inputEnd := by
   unfold pushSequenceIndent
@@ -99,7 +99,7 @@ theorem pushSequenceIndent_preserves_offset_le (s : ScannerState) (col : Int)
   · exact hoff
 
 /-- `pushSequenceIndent` preserves C5 (indent stack monotonicity). -/
-theorem pushSequenceIndent_preserves_monotone (s : ScannerState) (col : Int)
+lemma pushSequenceIndent_preserves_monotone (s : ScannerState) (col : Int)
     (hind : s.indents.size ≥ 1)
     (hmono : ∀ (i : Nat) (hi : i + 1 < s.indents.size),
       (s.indents[i]'(by omega)).column < (s.indents[i + 1]'hi).column) :
@@ -135,7 +135,7 @@ theorem pushSequenceIndent_preserves_monotone (s : ScannerState) (col : Int)
     exact hmono
 
 /-- `pushSequenceIndent` preserves C6 (sentinel). -/
-theorem pushSequenceIndent_preserves_sentinel (s : ScannerState) (col : Int)
+lemma pushSequenceIndent_preserves_sentinel (s : ScannerState) (col : Int)
     (hind : s.indents.size ≥ 1)
     (hsent : ∀ (_ : 0 < s.indents.size), s.indents[0] = { column := -1, isSequence := false }) :
     ∀ (_ : 0 < (pushSequenceIndent s col).indents.size),
@@ -151,7 +151,7 @@ theorem pushSequenceIndent_preserves_sentinel (s : ScannerState) (col : Int)
     exact hsent
 
 /-- `pushSequenceIndent` preserves `WellFormed` (all 6 conjuncts). -/
-theorem pushSequenceIndent_preserves_wellFormed (s : ScannerState) (col : Int)
+lemma pushSequenceIndent_preserves_wellFormed (s : ScannerState) (col : Int)
     (hwf : s.WellFormed) :
     (pushSequenceIndent s col).WellFormed := by
   obtain ⟨hind, hflow, hsk, hoff, hmono, hsent⟩ := hwf
@@ -176,7 +176,7 @@ Structurally identical to `pushSequenceIndent`.
 -/
 
 /-- `pushMappingIndent` preserves C1 (`indents.size ≥ 1`). -/
-theorem pushMappingIndent_preserves_indents_ge_1 (s : ScannerState) (col : Int)
+lemma pushMappingIndent_preserves_indents_ge_1 (s : ScannerState) (col : Int)
     (hwf : s.indents.size ≥ 1) :
     (pushMappingIndent s col).indents.size ≥ 1 := by
   unfold pushMappingIndent
@@ -185,7 +185,7 @@ theorem pushMappingIndent_preserves_indents_ge_1 (s : ScannerState) (col : Int)
   · exact hwf
 
 /-- `pushMappingIndent` preserves C2 (`flowLevel = flowStack.size`). -/
-theorem pushMappingIndent_preserves_flow_sync (s : ScannerState) (col : Int)
+lemma pushMappingIndent_preserves_flow_sync (s : ScannerState) (col : Int)
     (hflow : s.flowLevel = s.flowStack.size) :
     (pushMappingIndent s col).flowLevel = (pushMappingIndent s col).flowStack.size := by
   unfold pushMappingIndent
@@ -194,7 +194,7 @@ theorem pushMappingIndent_preserves_flow_sync (s : ScannerState) (col : Int)
   · exact hflow
 
 /-- `pushMappingIndent` preserves C3 (`simpleKeyStack.size = flowStack.size`). -/
-theorem pushMappingIndent_preserves_sk_sync (s : ScannerState) (col : Int)
+lemma pushMappingIndent_preserves_sk_sync (s : ScannerState) (col : Int)
     (hsk : s.simpleKeyStack.size = s.flowStack.size) :
     (pushMappingIndent s col).simpleKeyStack.size =
     (pushMappingIndent s col).flowStack.size := by
@@ -204,7 +204,7 @@ theorem pushMappingIndent_preserves_sk_sync (s : ScannerState) (col : Int)
   · exact hsk
 
 /-- `pushMappingIndent` preserves C4 (`offset ≤ inputEnd`). -/
-theorem pushMappingIndent_preserves_offset_le (s : ScannerState) (col : Int)
+lemma pushMappingIndent_preserves_offset_le (s : ScannerState) (col : Int)
     (hoff : s.offset ≤ s.inputEnd) :
     (pushMappingIndent s col).offset ≤ (pushMappingIndent s col).inputEnd := by
   unfold pushMappingIndent
@@ -213,7 +213,7 @@ theorem pushMappingIndent_preserves_offset_le (s : ScannerState) (col : Int)
   · exact hoff
 
 /-- `pushMappingIndent` preserves C5 (indent stack monotonicity). -/
-theorem pushMappingIndent_preserves_monotone (s : ScannerState) (col : Int)
+lemma pushMappingIndent_preserves_monotone (s : ScannerState) (col : Int)
     (hind : s.indents.size ≥ 1)
     (hmono : ∀ (i : Nat) (hi : i + 1 < s.indents.size),
       (s.indents[i]'(by omega)).column < (s.indents[i + 1]'hi).column) :
@@ -241,7 +241,7 @@ theorem pushMappingIndent_preserves_monotone (s : ScannerState) (col : Int)
   · exact hmono
 
 /-- `pushMappingIndent` preserves C6 (sentinel). -/
-theorem pushMappingIndent_preserves_sentinel (s : ScannerState) (col : Int)
+lemma pushMappingIndent_preserves_sentinel (s : ScannerState) (col : Int)
     (hind : s.indents.size ≥ 1)
     (hsent : ∀ (_ : 0 < s.indents.size), s.indents[0] = { column := -1, isSequence := false }) :
     ∀ (_ : 0 < (pushMappingIndent s col).indents.size),
@@ -255,7 +255,7 @@ theorem pushMappingIndent_preserves_sentinel (s : ScannerState) (col : Int)
   · exact hsent
 
 /-- `pushMappingIndent` preserves `WellFormed` (all 6 conjuncts). -/
-theorem pushMappingIndent_preserves_wellFormed (s : ScannerState) (col : Int)
+lemma pushMappingIndent_preserves_wellFormed (s : ScannerState) (col : Int)
     (hwf : s.WellFormed) :
     (pushMappingIndent s col).WellFormed := by
   obtain ⟨hind, hflow, hsk, hoff, hmono, hsent⟩ := hwf
@@ -294,37 +294,37 @@ For C2/C3/C4:
 -/
 
 /-- The loop body of `unwindIndents` preserves `flowLevel`. -/
-theorem unwindBody_flowLevel (s : ScannerState) :
+lemma unwindBody_flowLevel (s : ScannerState) :
     { s.emit .blockEnd with indents := (s.emit .blockEnd).indents.pop }.flowLevel =
     s.flowLevel := by
   simp [ScannerState.emit]
 
 /-- The loop body of `unwindIndents` preserves `flowStack`. -/
-theorem unwindBody_flowStack (s : ScannerState) :
+lemma unwindBody_flowStack (s : ScannerState) :
     { s.emit .blockEnd with indents := (s.emit .blockEnd).indents.pop }.flowStack =
     s.flowStack := by
   simp [ScannerState.emit]
 
 /-- The loop body of `unwindIndents` preserves `simpleKeyStack`. -/
-theorem unwindBody_simpleKeyStack (s : ScannerState) :
+lemma unwindBody_simpleKeyStack (s : ScannerState) :
     { s.emit .blockEnd with indents := (s.emit .blockEnd).indents.pop }.simpleKeyStack =
     s.simpleKeyStack := by
   simp [ScannerState.emit]
 
 /-- The loop body of `unwindIndents` preserves `offset`. -/
-theorem unwindBody_offset (s : ScannerState) :
+lemma unwindBody_offset (s : ScannerState) :
     { s.emit .blockEnd with indents := (s.emit .blockEnd).indents.pop }.offset =
     s.offset := by
   simp [ScannerState.emit]
 
 /-- The loop body of `unwindIndents` preserves `inputEnd`. -/
-theorem unwindBody_inputEnd (s : ScannerState) :
+lemma unwindBody_inputEnd (s : ScannerState) :
     { s.emit .blockEnd with indents := (s.emit .blockEnd).indents.pop }.inputEnd =
     s.inputEnd := by
   simp [ScannerState.emit]
 
 /-- When `indents.size > 1`, the loop body preserves C1 (`indents.size ≥ 1`). -/
-theorem unwindBody_indents_ge_1 (s : ScannerState)
+lemma unwindBody_indents_ge_1 (s : ScannerState)
     (h : s.indents.size > 1) :
     { s.emit .blockEnd with
       indents := (s.emit .blockEnd).indents.pop }.indents.size ≥ 1 := by

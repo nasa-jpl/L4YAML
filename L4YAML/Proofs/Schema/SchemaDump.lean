@@ -68,34 +68,34 @@ open L4YAML.TokenParser
 -/
 
 /-- Bool `true` serializes to auto-quoted `"true"`. -/
-theorem dumpTyped_true : dumpTyped true = "\"true\"" := by native_decide
+lemma dumpTyped_true : dumpTyped true = "\"true\"" := by native_decide
 
 /-- Bool `false` serializes to auto-quoted `"false"`. -/
-theorem dumpTyped_false : dumpTyped false = "\"false\"" := by native_decide
+lemma dumpTyped_false : dumpTyped false = "\"false\"" := by native_decide
 
 /-- Nat 0 serializes to `"0"`. -/
-theorem dumpTyped_nat_zero : dumpTyped (0 : Nat) = "0" := by native_decide
+lemma dumpTyped_nat_zero : dumpTyped (0 : Nat) = "0" := by native_decide
 
 /-- Nat 42 serializes to `"42"`. -/
-theorem dumpTyped_nat_42 : dumpTyped (42 : Nat) = "42" := by native_decide
+lemma dumpTyped_nat_42 : dumpTyped (42 : Nat) = "42" := by native_decide
 
 /-- Int -7 serializes to `"-7"`. -/
-theorem dumpTyped_int_neg7 : dumpTyped (-7 : Int) = "\"-7\"" := by native_decide
+lemma dumpTyped_int_neg7 : dumpTyped (-7 : Int) = "\"-7\"" := by native_decide
 
 /-- Int 100 serializes to `"100"`. -/
-theorem dumpTyped_int_100 : dumpTyped (100 : Int) = "100" := by native_decide
+lemma dumpTyped_int_100 : dumpTyped (100 : Int) = "100" := by native_decide
 
 /-- Unit serializes to auto-quoted `"null"`. -/
-theorem dumpTyped_unit : dumpTyped () = "\"null\"" := by native_decide
+lemma dumpTyped_unit : dumpTyped () = "\"null\"" := by native_decide
 
 /-- Simple string serializes as plain scalar. -/
-theorem dumpTyped_string_simple : dumpTyped "hello" = "hello" := by native_decide
+lemma dumpTyped_string_simple : dumpTyped "hello" = "hello" := by native_decide
 
 /-- Empty string serializes as double-quoted `""`. -/
-theorem dumpTyped_string_empty : dumpTyped "" = "\"\"" := by native_decide
+lemma dumpTyped_string_empty : dumpTyped "" = "\"\"" := by native_decide
 
 /-- String with colon-space serializes as double-quoted. -/
-theorem dumpTyped_string_colonspace :
+lemma dumpTyped_string_colonspace :
     dumpTyped "key: value" = "\"key: value\"" := by native_decide
 
 /-! ## §2: ToYaml Produces Well-Formed YamlValues
@@ -121,75 +121,75 @@ Proved concretely for all built-in `ToYaml` instances.
 -/
 
 /-- Bool true round-trips through dump→parse→contentEq. -/
-theorem contentRoundTrips_true :
+lemma contentRoundTrips_true :
     contentRoundTrips true = true := by native_decide
 
 /-- Bool false round-trips through dump→parse→contentEq. -/
-theorem contentRoundTrips_false :
+lemma contentRoundTrips_false :
     contentRoundTrips false = true := by native_decide
 
 /-- Nat 0 round-trips through dump→parse→contentEq. -/
-theorem contentRoundTrips_nat_zero :
+lemma contentRoundTrips_nat_zero :
     contentRoundTrips (0 : Nat) = true := by native_decide
 
 /-- Nat 42 round-trips through dump→parse→contentEq. -/
-theorem contentRoundTrips_nat_42 :
+lemma contentRoundTrips_nat_42 :
     contentRoundTrips (42 : Nat) = true := by native_decide
 
 /-- Int -7 round-trips through dump→parse→contentEq. -/
-theorem contentRoundTrips_int_neg7 :
+lemma contentRoundTrips_int_neg7 :
     contentRoundTrips (-7 : Int) = true := by native_decide
 
 /-- Int 100 round-trips through dump→parse→contentEq. -/
-theorem contentRoundTrips_int_100 :
+lemma contentRoundTrips_int_100 :
     contentRoundTrips (100 : Int) = true := by native_decide
 
 /-- String "hello" round-trips through dump→parse→contentEq. -/
-theorem contentRoundTrips_string_hello :
+lemma contentRoundTrips_string_hello :
     contentRoundTrips "hello" = true := by native_decide
 
 /-- String "world" round-trips through dump→parse→contentEq. -/
-theorem contentRoundTrips_string_world :
+lemma contentRoundTrips_string_world :
     contentRoundTrips "world" = true := by native_decide
 
 /-- Empty string round-trips through dump→parse→contentEq. -/
-theorem contentRoundTrips_string_empty :
+lemma contentRoundTrips_string_empty :
     contentRoundTrips "" = true := by native_decide
 
 /-- String with special chars round-trips through dump→parse→contentEq. -/
-theorem contentRoundTrips_string_colonspace :
+lemma contentRoundTrips_string_colonspace :
     contentRoundTrips "key: value" = true := by native_decide
 
 /-- Unit round-trips through dump→parse→contentEq. -/
-theorem contentRoundTrips_unit :
+lemma contentRoundTrips_unit :
     contentRoundTrips () = true := by native_decide
 
 /-- Optional some round-trips through dump→parse→contentEq. -/
-theorem contentRoundTrips_option_some :
+lemma contentRoundTrips_option_some :
     contentRoundTrips (some "hello" : Option String) = true := by native_decide
 
 /-- Optional Nat round-trips through dump→parse→contentEq. -/
-theorem contentRoundTrips_option_nat :
+lemma contentRoundTrips_option_nat :
     contentRoundTrips (some (42 : Nat) : Option Nat) = true := by native_decide
 
 /-- Array of strings round-trips through dump→parse→contentEq. -/
-theorem contentRoundTrips_array_strings :
+lemma contentRoundTrips_array_strings :
     contentRoundTrips (#["a", "b"] : Array String) = true := by native_decide
 
 /-- Singleton array round-trips through dump→parse→contentEq. -/
-theorem contentRoundTrips_array_singleton :
+lemma contentRoundTrips_array_singleton :
     contentRoundTrips (#["x"] : Array String) = true := by native_decide
 
 /-- Empty array round-trips through dump→parse→contentEq. -/
-theorem contentRoundTrips_array_empty :
+lemma contentRoundTrips_array_empty :
     contentRoundTrips (#[] : Array String) = true := by native_decide
 
 /-- List of strings round-trips through dump→parse→contentEq. -/
-theorem contentRoundTrips_list_strings :
+lemma contentRoundTrips_list_strings :
     contentRoundTrips (["a", "b"] : List String) = true := by native_decide
 
 /-- Nested arrays round-trip through dump→parse→contentEq. -/
-theorem contentRoundTrips_nested_arrays :
+lemma contentRoundTrips_nested_arrays :
     contentRoundTrips (#[#["a", "b"], #["c"]] : Array (Array String)) = true := by
   native_decide
 
@@ -212,40 +212,40 @@ def roundTripsTo {α : Type} [ToYaml α] [FromYaml α] [BEq α]
   | .error _ => false
 
 /-- Bool true typed round-trip succeeds. -/
-theorem roundTrip_bool_true :
+lemma roundTrip_bool_true :
     roundTripsTo true = true := by native_decide
 
 /-- Bool false typed round-trip succeeds. -/
-theorem roundTrip_bool_false :
+lemma roundTrip_bool_false :
     roundTripsTo false = true := by native_decide
 
 /-- Nat round-trip succeeds. -/
-theorem roundTrip_nat_42 :
+lemma roundTrip_nat_42 :
     roundTripsTo (42 : Nat) = true := by native_decide
 
 /-- Nat 0 round-trip succeeds. -/
-theorem roundTrip_nat_zero :
+lemma roundTrip_nat_zero :
     roundTripsTo (0 : Nat) = true := by native_decide
 
 /-- Int round-trip succeeds. -/
-theorem roundTrip_int_100 :
+lemma roundTrip_int_100 :
     roundTripsTo (100 : Int) = true := by native_decide
 
 /-- Int negative round-trip succeeds. -/
-theorem roundTrip_int_neg7 :
+lemma roundTrip_int_neg7 :
     roundTripsTo (-7 : Int) = true := by native_decide
 
 /-- String round-trip succeeds. -/
-theorem roundTrip_string_hello :
+lemma roundTrip_string_hello :
     roundTripsTo "hello" = true := by native_decide
 
 
 /-- String with special chars round-trip succeeds. -/
-theorem roundTrip_string_colonspace :
+lemma roundTrip_string_colonspace :
     roundTripsTo "key: value" = true := by native_decide
 
 /-- Unit round-trip succeeds. -/
-theorem roundTrip_unit :
+lemma roundTrip_unit :
     roundTripsTo () = true := by native_decide
 
 /-! ## §5: Config Variation Round-Trips
@@ -254,17 +254,17 @@ Content round-trips hold regardless of DumpConfig settings.
 -/
 
 /-- Double-quoted config preserves content round-trip for strings. -/
-theorem contentRoundTrips_quoted_hello :
+lemma contentRoundTrips_quoted_hello :
     contentRoundTrips "hello" (cfg := { scalarStyle := .doubleQuoted }) = true := by
   native_decide
 
 /-- Single-quoted config preserves content round-trip for strings. -/
-theorem contentRoundTrips_singlequoted_hello :
+lemma contentRoundTrips_singlequoted_hello :
     contentRoundTrips "hello" (cfg := { scalarStyle := .singleQuoted }) = true := by
   native_decide
 
 /-- Custom indent preserves content round-trip for arrays. -/
-theorem contentRoundTrips_indent4_array :
+lemma contentRoundTrips_indent4_array :
     contentRoundTrips (#["a", "b"] : Array String) (cfg := { indent := 4 }) = true := by
   native_decide
 

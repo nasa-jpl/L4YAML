@@ -92,7 +92,7 @@ unchanged through any update that preserves `s.indents`. -/
     twin in `Basic.lean:477`). When the surface position has a head
     character, the state's `peek?` matches and the cursor is in
     bounds. -/
-theorem peek_of_chars_consIx_state (s : ScannerStateIx input) (c : Char)
+lemma peek_of_chars_consIx_state (s : ScannerStateIx input) (c : Char)
     (rest : List Char) (col : Nat)
     (hcorr : ScannerSurfCorrIx s ⟨c :: rest, col⟩) :
     s.peek? = some c ∧ s.cursor.pos.offset < input.utf8ByteSize := by
@@ -104,7 +104,7 @@ theorem peek_of_chars_consIx_state (s : ScannerStateIx input) (c : Char)
     cursor advances past a non-newline character, the new state
     (assumed to share the same cursor as `s.cursor.advance` and the
     same indents) keeps surface correspondence. -/
-theorem advance_non_newline_corrIx_state (s s' : ScannerStateIx input)
+lemma advance_non_newline_corrIx_state (s s' : ScannerStateIx input)
     (ch : Char) (rest : List Char)
     (hcorr : ScannerSurfCorrIx s ⟨ch :: rest, s.cursor.pos.col⟩)
     (h_cur : s'.cursor = s.cursor.advance)
@@ -126,7 +126,7 @@ theorem advance_non_newline_corrIx_state (s s' : ScannerStateIx input)
 /-- `ScannerSurfCorrIx`-form of `advance_line_of_peekIx` (cursor-level
     twin in `Basic.lean:634`). When `peek?` matches a known non-newline
     char, advance preserves line. -/
-theorem advance_line_of_peekIx_state (s : ScannerStateIx input) (ch : Char)
+lemma advance_line_of_peekIx_state (s : ScannerStateIx input) (ch : Char)
     (h_lt : s.cursor.pos.offset < input.utf8ByteSize)
     (h_peek : s.peek? = some ch)
     (hnl : ch ≠ '\n') (hcr : ch ≠ '\r') :
@@ -142,7 +142,7 @@ preservation simp lemmas from `.maintenance.flowdispatch` §1. -/
 /-- `scanFlowSequenceStartIx` advances past `[`, giving specific
     `ScannerSurfCorrIx` at the rest and bundled field preservation.
     Indexed twin of `scanFlowSequenceStart_detail` (legacy 3817). -/
-theorem scanFlowSequenceStartIx_detail (s : ScannerStateIx input)
+lemma scanFlowSequenceStartIx_detail (s : ScannerStateIx input)
     (rest : List Char)
     (hcorr : ScannerSurfCorrIx s ⟨'[' :: rest, s.cursor.pos.col⟩) :
     ScannerSurfCorrIx (scanFlowSequenceStartIx s) ⟨rest, s.cursor.pos.col + 1⟩
@@ -169,7 +169,7 @@ theorem scanFlowSequenceStartIx_detail (s : ScannerStateIx input)
 
 /-- `scanFlowMappingStartIx` advances past `{`, mirror of §2.
     Indexed twin of `scanFlowMappingStart_detail` (legacy 5032). -/
-theorem scanFlowMappingStartIx_detail (s : ScannerStateIx input)
+lemma scanFlowMappingStartIx_detail (s : ScannerStateIx input)
     (rest : List Char)
     (hcorr : ScannerSurfCorrIx s ⟨'{' :: rest, s.cursor.pos.col⟩) :
     ScannerSurfCorrIx (scanFlowMappingStartIx s) ⟨rest, s.cursor.pos.col + 1⟩
@@ -197,7 +197,7 @@ theorem scanFlowMappingStartIx_detail (s : ScannerStateIx input)
 /-- `scanFlowSequenceEndIx` advances past `]`, decrementing
     `flowLevel`. Indexed twin of `scanFlowSequenceEnd_detail`
     (legacy 4711). -/
-theorem scanFlowSequenceEndIx_detail (s : ScannerStateIx input)
+lemma scanFlowSequenceEndIx_detail (s : ScannerStateIx input)
     (rest : List Char)
     (hcorr : ScannerSurfCorrIx s ⟨']' :: rest, s.cursor.pos.col⟩) :
     ScannerSurfCorrIx (scanFlowSequenceEndIx s) ⟨rest, s.cursor.pos.col + 1⟩
@@ -223,7 +223,7 @@ theorem scanFlowSequenceEndIx_detail (s : ScannerStateIx input)
 /-- Token property: `scanFlowSequenceEndIx` ends with `.flowSequenceEnd`
     as last real token. Indexed twin of `scanFlowSequenceEnd_
     lastRealTokenVal` (legacy 4736). -/
-theorem scanFlowSequenceEndIx_lastRealTokenValIx (s : ScannerStateIx input) :
+lemma scanFlowSequenceEndIx_lastRealTokenValIx (s : ScannerStateIx input) :
     lastRealTokenValIx? (scanFlowSequenceEndIx s).tokens = some YamlToken.flowSequenceEnd := by
   unfold scanFlowSequenceEndIx
   show lastRealTokenValIx? ((s.emit YamlToken.flowSequenceEnd).advance).tokens = _
@@ -233,7 +233,7 @@ theorem scanFlowSequenceEndIx_lastRealTokenValIx (s : ScannerStateIx input) :
 
 /-- `scanFlowSequenceEndIx` preserves `peek?` from the underlying
     advance. Indexed twin of `scanFlowSequenceEnd_peek` (legacy 4912). -/
-theorem scanFlowSequenceEndIx_peek (s : ScannerStateIx input) :
+lemma scanFlowSequenceEndIx_peek (s : ScannerStateIx input) :
     (scanFlowSequenceEndIx s).peek? = (s.emit YamlToken.flowSequenceEnd).advance.peek? := by
   unfold scanFlowSequenceEndIx
   rfl
@@ -242,7 +242,7 @@ theorem scanFlowSequenceEndIx_peek (s : ScannerStateIx input) :
 
 /-- `scanFlowMappingEndIx` advances past `}`, decrementing `flowLevel`.
     Indexed twin of `scanFlowMappingEnd_detail` (legacy 5085). -/
-theorem scanFlowMappingEndIx_detail (s : ScannerStateIx input)
+lemma scanFlowMappingEndIx_detail (s : ScannerStateIx input)
     (rest : List Char)
     (hcorr : ScannerSurfCorrIx s ⟨'}' :: rest, s.cursor.pos.col⟩) :
     ScannerSurfCorrIx (scanFlowMappingEndIx s) ⟨rest, s.cursor.pos.col + 1⟩
@@ -268,7 +268,7 @@ theorem scanFlowMappingEndIx_detail (s : ScannerStateIx input)
 /-- Token property: `scanFlowMappingEndIx` ends with `.flowMappingEnd`
     as last real token. Indexed twin of `scanFlowMappingEnd_
     lastRealTokenVal` (legacy 5107). -/
-theorem scanFlowMappingEndIx_lastRealTokenValIx (s : ScannerStateIx input) :
+lemma scanFlowMappingEndIx_lastRealTokenValIx (s : ScannerStateIx input) :
     lastRealTokenValIx? (scanFlowMappingEndIx s).tokens = some YamlToken.flowMappingEnd := by
   unfold scanFlowMappingEndIx
   show lastRealTokenValIx? ((s.emit YamlToken.flowMappingEnd).advance).tokens = _
@@ -278,7 +278,7 @@ theorem scanFlowMappingEndIx_lastRealTokenValIx (s : ScannerStateIx input) :
 
 /-- `scanFlowMappingEndIx` preserves `peek?` from the underlying
     advance. Indexed twin of `scanFlowMappingEnd_peek` (legacy 5115). -/
-theorem scanFlowMappingEndIx_peek (s : ScannerStateIx input) :
+lemma scanFlowMappingEndIx_peek (s : ScannerStateIx input) :
     (scanFlowMappingEndIx s).peek? = (s.emit YamlToken.flowMappingEnd).advance.peek? := by
   unfold scanFlowMappingEndIx
   rfl
@@ -291,7 +291,7 @@ correspondence advance past `,`. -/
 
 /-- Field preservation + ScannerSurfCorrIx through `scanFlowEntryIx`.
     Indexed twin of `scanFlowEntry_detail` (legacy 4424). -/
-theorem scanFlowEntryIx_detail (s : ScannerStateIx input) (rest : List Char)
+lemma scanFlowEntryIx_detail (s : ScannerStateIx input) (rest : List Char)
     (hcorr : ScannerSurfCorrIx s ⟨',' :: rest, s.cursor.pos.col⟩)
     (h_last : ∀ t, lastRealTokenValIx? s.tokens = some t →
       t ≠ YamlToken.flowSequenceStart ∧ t ≠ YamlToken.flowMappingStart

@@ -195,30 +195,30 @@ that the Step 2 scanner will rely on. We keep the corpus small —
 non-obvious facts (e.g., monotonicity of `advance` on `offset`)
 arrive alongside their use sites in Step 2. -/
 
-@[simp] theorem pos_start (input : String) :
+@[simp] lemma pos_start (input : String) :
     (start input).pos = ⟨0, 0, 0⟩ := rfl
 
-@[simp] theorem offset_start (input : String) :
+@[simp] lemma offset_start (input : String) :
     (start input).pos.offset = 0 := rfl
 
-@[simp] theorem peek?_start_empty :
+@[simp] lemma peek?_start_empty :
     peek? (start "") = none := by
   simp [peek?, start]
 
-@[simp] theorem advanceN_zero {input : String} (c : IxCursor input) :
+@[simp] lemma advanceN_zero {input : String} (c : IxCursor input) :
     advanceN c 0 = c := rfl
 
-@[simp] theorem hasMore_iff {input : String} (c : IxCursor input) :
+@[simp] lemma hasMore_iff {input : String} (c : IxCursor input) :
     c.hasMore = true ↔ c.pos.offset < input.utf8ByteSize := by
   simp [hasMore]
 
-@[simp] theorem peek?_eq_none_iff {input : String} (c : IxCursor input) :
+@[simp] lemma peek?_eq_none_iff {input : String} (c : IxCursor input) :
     c.peek? = none ↔ input.utf8ByteSize ≤ c.pos.offset := by
   unfold peek?
   split <;> rename_i h <;> simp <;> omega
 
 /-- `advance` at end-of-input is a no-op. -/
-theorem advance_atEnd {input : String} (c : IxCursor input)
+lemma advance_atEnd {input : String} (c : IxCursor input)
     (h : ¬ c.pos.offset < input.utf8ByteSize) :
     c.advance = c := by
   unfold advance
@@ -227,7 +227,7 @@ theorem advance_atEnd {input : String} (c : IxCursor input)
 /-- `advance` strictly increases the byte offset when the cursor has
     more input. Proof uses `String.Pos.Raw.byteIdx_lt_byteIdx_next`
     (stdlib) plus the `Nat.min` clamp. -/
-theorem advance_offset_lt_of_hasMore {input : String} (c : IxCursor input)
+lemma advance_offset_lt_of_hasMore {input : String} (c : IxCursor input)
     (h : c.pos.offset < input.utf8ByteSize) :
     c.pos.offset < c.advance.pos.offset := by
   have hnext : c.pos.offset < (String.Pos.Raw.next input ⟨c.pos.offset⟩).byteIdx :=
@@ -237,7 +237,7 @@ theorem advance_offset_lt_of_hasMore {input : String} (c : IxCursor input)
   split <;> omega
 
 /-- `advance` is monotonic on the byte offset (whether or not at end). -/
-theorem advance_offset_monotonic {input : String} (c : IxCursor input) :
+lemma advance_offset_monotonic {input : String} (c : IxCursor input) :
     c.pos.offset ≤ c.advance.pos.offset := by
   by_cases h : c.pos.offset < input.utf8ByteSize
   · exact Nat.le_of_lt (advance_offset_lt_of_hasMore c h)
@@ -246,7 +246,7 @@ theorem advance_offset_monotonic {input : String} (c : IxCursor input) :
 /-- The post-`advance` byte offset is `min next.byteIdx utf8` when the
     cursor has more input. Helper exposing the `Nat.min` clamp of
     `nextOffsetClamped`. -/
-theorem advance_offset_eq_min_next {input : String} (c : IxCursor input)
+lemma advance_offset_eq_min_next {input : String} (c : IxCursor input)
     (h : c.pos.offset < input.utf8ByteSize) :
     c.advance.pos.offset =
       Nat.min (String.Pos.Raw.next input ⟨c.pos.offset⟩).byteIdx input.utf8ByteSize := by
@@ -266,7 +266,7 @@ theorem advance_offset_eq_min_next {input : String} (c : IxCursor input)
       `c.advance.peek?` is `none`; the `peekAt?Loop` recursion also
       yields `none` because the next position's `byteIdx` exceeds
       `utf8ByteSize`. -/
-theorem advance_peek_eq_peekAt_one {input : String} (c : IxCursor input)
+lemma advance_peek_eq_peekAt_one {input : String} (c : IxCursor input)
     {ch : Char} (h : c.peek? = some ch) :
     c.advance.peek? = c.peekAt? 1 := by
   have hlt : c.pos.offset < input.utf8ByteSize := by

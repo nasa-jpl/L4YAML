@@ -44,14 +44,14 @@ structure BoundInv (s₀ s : ScannerState) : Prop where
   isValid : String.Pos.Raw.IsValid s.input ⟨s.offset⟩
 
 /-- Reflexive: BoundInv holds for the initial state. -/
-theorem BoundInv.refl (s : ScannerState)
+lemma BoundInv.refl (s : ScannerState)
     (h_le : s.offset ≤ s.inputEnd)
     (h_iv : String.Pos.Raw.IsValid s.input ⟨s.offset⟩) :
     BoundInv s s :=
   ⟨h_le, rfl, rfl, h_iv⟩
 
 /-- BoundInv is transitive through intermediate states. -/
-theorem BoundInv.trans {s₀ s₁ s₂ : ScannerState}
+lemma BoundInv.trans {s₀ s₁ s₂ : ScannerState}
     (h₁ : BoundInv s₀ s₁) (h₂ : BoundInv s₁ s₂) :
     BoundInv s₀ s₂ :=
   ⟨h₂.offset_le,
@@ -62,7 +62,7 @@ theorem BoundInv.trans {s₀ s₁ s₂ : ScannerState}
 /-! ## §2  Building-Block BoundInv Preservation -/
 
 /-- `advance` preserves BoundInv. -/
-theorem advance_BoundInv {s₀ : ScannerState} (s : ScannerState)
+lemma advance_BoundInv {s₀ : ScannerState} (s : ScannerState)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
     BoundInv s₀ s.advance := by
   have hie : s.inputEnd = s.input.utf8ByteSize := by
@@ -75,7 +75,7 @@ theorem advance_BoundInv {s₀ : ScannerState} (s : ScannerState)
   ⟩
 
 /-- `emit` preserves BoundInv. -/
-theorem emit_BoundInv {s₀ : ScannerState} (s : ScannerState) (tok : YamlToken)
+lemma emit_BoundInv {s₀ : ScannerState} (s : ScannerState) (tok : YamlToken)
     (h : BoundInv s₀ s) :
     BoundInv s₀ (s.emit tok) :=
   ⟨by rw [emit_offset, emit_inputEnd]; exact h.offset_le,
@@ -84,7 +84,7 @@ theorem emit_BoundInv {s₀ : ScannerState} (s : ScannerState) (tok : YamlToken)
    by rw [emit_input]; rw [show (s.emit tok).offset = s.offset from rfl]; exact h.isValid⟩
 
 /-- `emitAt` preserves BoundInv. -/
-theorem emitAt_BoundInv {s₀ : ScannerState} (s : ScannerState) (pos : YamlPos) (tok : YamlToken)
+lemma emitAt_BoundInv {s₀ : ScannerState} (s : ScannerState) (pos : YamlPos) (tok : YamlToken)
     (h : BoundInv s₀ s) :
     BoundInv s₀ (s.emitAt pos tok) :=
   -- emitAt is just another emit with position; doesn't touch offset/inputEnd/input
@@ -94,7 +94,7 @@ theorem emitAt_BoundInv {s₀ : ScannerState} (s : ScannerState) (pos : YamlPos)
    by unfold ScannerState.emitAt; exact h.isValid⟩
 
 /-- `pushSequenceIndent` preserves BoundInv. -/
-theorem pushSequenceIndent_BoundInv {s₀ : ScannerState} (s : ScannerState) (col : Int)
+lemma pushSequenceIndent_BoundInv {s₀ : ScannerState} (s : ScannerState) (col : Int)
     (h : BoundInv s₀ s) :
     BoundInv s₀ (pushSequenceIndent s col) :=
   ⟨by rw [pushSequenceIndent_offset, pushSequenceIndent_inputEnd]; exact h.offset_le,
@@ -103,7 +103,7 @@ theorem pushSequenceIndent_BoundInv {s₀ : ScannerState} (s : ScannerState) (co
    by rw [pushSequenceIndent_input]; rw [pushSequenceIndent_offset]; exact h.isValid⟩
 
 /-- `pushMappingIndent` preserves BoundInv. -/
-theorem pushMappingIndent_BoundInv {s₀ : ScannerState} (s : ScannerState) (col : Int)
+lemma pushMappingIndent_BoundInv {s₀ : ScannerState} (s : ScannerState) (col : Int)
     (h : BoundInv s₀ s) :
     BoundInv s₀ (pushMappingIndent s col) :=
   ⟨by rw [pushMappingIndent_offset, pushMappingIndent_inputEnd]; exact h.offset_le,
@@ -112,7 +112,7 @@ theorem pushMappingIndent_BoundInv {s₀ : ScannerState} (s : ScannerState) (col
    by rw [pushMappingIndent_input]; rw [pushMappingIndent_offset]; exact h.isValid⟩
 
 /-- `saveSimpleKey` preserves BoundInv. -/
-theorem saveSimpleKey_BoundInv {s₀ : ScannerState} (s : ScannerState)
+lemma saveSimpleKey_BoundInv {s₀ : ScannerState} (s : ScannerState)
     (h : BoundInv s₀ s) :
     BoundInv s₀ (saveSimpleKey s) :=
   ⟨by rw [saveSimpleKey_offset, saveSimpleKey_inputEnd]; exact h.offset_le,
@@ -121,7 +121,7 @@ theorem saveSimpleKey_BoundInv {s₀ : ScannerState} (s : ScannerState)
    by rw [saveSimpleKey_input]; rw [saveSimpleKey_offset]; exact h.isValid⟩
 
 /-- Field updates not touching offset/inputEnd/input preserve BoundInv. -/
-theorem fieldUpdate_BoundInv {s₀ : ScannerState} (s : ScannerState)
+lemma fieldUpdate_BoundInv {s₀ : ScannerState} (s : ScannerState)
     (s' : ScannerState)
     (h : BoundInv s₀ s)
     (hoff : s'.offset = s.offset)
@@ -142,7 +142,7 @@ or `flowPop.emit.advance`, with no loops. -/
 -- offset/inputEnd/input as advance applied to an intermediate state
 -- that preserves BoundInv.
 
-theorem scanFlowSequenceStart_BoundInv (s : ScannerState)
+lemma scanFlowSequenceStart_BoundInv (s : ScannerState)
     (h : BoundInv s s) (hend : s.inputEnd = s.input.utf8ByteSize) :
     BoundInv s (scanFlowSequenceStart s) := by
   -- scanFlowSequenceStart s = { s_adv with flowLevel, flowStack, ... }
@@ -156,7 +156,7 @@ theorem scanFlowSequenceStart_BoundInv (s : ScannerState)
   have h3 : BoundInv s s_adv := advance_BoundInv _ h2 hend
   exact ⟨h3.offset_le, h3.inputEnd_eq, h3.input_eq, h3.isValid⟩
 
-theorem scanFlowMappingStart_BoundInv (s : ScannerState)
+lemma scanFlowMappingStart_BoundInv (s : ScannerState)
     (h : BoundInv s s) (hend : s.inputEnd = s.input.utf8ByteSize) :
     BoundInv s (scanFlowMappingStart s) := by
   let s_kd : ScannerState := { s with simpleKey := { possible := false } }
@@ -167,7 +167,7 @@ theorem scanFlowMappingStart_BoundInv (s : ScannerState)
   have h3 : BoundInv s s_adv := advance_BoundInv _ h2 hend
   exact ⟨h3.offset_le, h3.inputEnd_eq, h3.input_eq, h3.isValid⟩
 
-theorem scanFlowSequenceEnd_BoundInv (s : ScannerState)
+lemma scanFlowSequenceEnd_BoundInv (s : ScannerState)
     (h : BoundInv s s) (hend : s.inputEnd = s.input.utf8ByteSize) :
     BoundInv s (scanFlowSequenceEnd s) := by
   let s_em := s.emit .flowSequenceEnd
@@ -176,7 +176,7 @@ theorem scanFlowSequenceEnd_BoundInv (s : ScannerState)
   have h3 : BoundInv s s_adv := advance_BoundInv _ h2 hend
   exact ⟨h3.offset_le, h3.inputEnd_eq, h3.input_eq, h3.isValid⟩
 
-theorem scanFlowMappingEnd_BoundInv (s : ScannerState)
+lemma scanFlowMappingEnd_BoundInv (s : ScannerState)
     (h : BoundInv s s) (hend : s.inputEnd = s.input.utf8ByteSize) :
     BoundInv s (scanFlowMappingEnd s) := by
   let s_em := s.emit .flowMappingEnd
@@ -185,7 +185,7 @@ theorem scanFlowMappingEnd_BoundInv (s : ScannerState)
   have h3 : BoundInv s s_adv := advance_BoundInv _ h2 hend
   exact ⟨h3.offset_le, h3.inputEnd_eq, h3.input_eq, h3.isValid⟩
 
-theorem scanFlowEntry_BoundInv (s s' : ScannerState)
+lemma scanFlowEntry_BoundInv (s s' : ScannerState)
     (h : BoundInv s s) (hend : s.inputEnd = s.input.utf8ByteSize)
     (hok : scanFlowEntry s = .ok s') :
     BoundInv s s' := by
@@ -204,7 +204,7 @@ theorem scanFlowEntry_BoundInv (s s' : ScannerState)
 
 /-! ## §4  Block Indicator Scanners — BoundInv Preservation -/
 
-theorem scanBlockEntry_BoundInv (s s' : ScannerState)
+lemma scanBlockEntry_BoundInv (s s' : ScannerState)
     (h : BoundInv s s) (hend : s.inputEnd = s.input.utf8ByteSize)
     (hok : scanBlockEntry s = .ok s') :
     BoundInv s s' := by
@@ -229,7 +229,7 @@ theorem scanBlockEntry_BoundInv (s s' : ScannerState)
     have h3 : BoundInv s s_adv := advance_BoundInv _ h2 hend
     exact ⟨h3.offset_le, h3.inputEnd_eq, h3.input_eq, h3.isValid⟩
 
-theorem scanKey_BoundInv (s s' : ScannerState)
+lemma scanKey_BoundInv (s s' : ScannerState)
     (h : BoundInv s s) (hend : s.inputEnd = s.input.utf8ByteSize)
     (hok : scanKey s = .ok s') :
     BoundInv s s' := by
@@ -270,7 +270,7 @@ These compose the leaf-level lemmas from §3-§4. -/
 
 /-- `dispatchFlowIndicators` preserves BoundInv.
     Fully proven — all 5 flow indicator functions are loop-free. -/
-theorem dispatchFlowIndicators_preserves_bound (s s' : ScannerState) (c : Char)
+lemma dispatchFlowIndicators_preserves_bound (s s' : ScannerState) (c : Char)
     (h_bi : BoundInv s s) (hend : s.inputEnd = s.input.utf8ByteSize)
     (hok : scanNextToken_dispatchFlowIndicators s c = .ok (some s')) :
     BoundInv s s' := by
@@ -311,7 +311,7 @@ theorem dispatchFlowIndicators_preserves_bound (s s' : ScannerState) (c : Char)
 -- scanValue BoundInv: complex control flow but no loops.
 -- All paths end with (emit .value).advance on a state derived from s
 -- by offset-preserving operations.
-theorem scanValue_BoundInv (s s' : ScannerState)
+lemma scanValue_BoundInv (s s' : ScannerState)
     (h_bi : BoundInv s s) (hend : s.inputEnd = s.input.utf8ByteSize)
     (hok : scanValue s = .ok s') :
     BoundInv s s' := by
@@ -387,7 +387,7 @@ theorem scanValue_BoundInv (s s' : ScannerState)
 /-- `dispatchBlockIndicators` preserves BoundInv.
     Fully proven — scanBlockEntry, scanKey use no loops. scanValue
     uses no loops either (just field updates + advance). -/
-theorem dispatchBlockIndicators_preserves_bound (s s' : ScannerState) (c : Char)
+lemma dispatchBlockIndicators_preserves_bound (s s' : ScannerState) (c : Char)
     (h_bi : BoundInv s s) (hend : s.inputEnd = s.input.utf8ByteSize)
     (hok : scanNextToken_dispatchBlockIndicators s c = .ok (some s')) :
     BoundInv s s' := by
@@ -419,7 +419,7 @@ Note: Functions using `termination_by fuel` (WF recursion) do NOT reduce
 `f s 0 = s` definitionally.  We must `simp only [f]` in the zero case. -/
 
 /-- `advanceNLoop` preserves BoundInv. -/
-theorem advanceNLoop_BoundInv {s₀ : ScannerState} (s : ScannerState) (n : Nat)
+lemma advanceNLoop_BoundInv {s₀ : ScannerState} (s : ScannerState) (n : Nat)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
     BoundInv s₀ (ScannerState.advanceNLoop s n) := by
   induction n generalizing s with
@@ -427,13 +427,13 @@ theorem advanceNLoop_BoundInv {s₀ : ScannerState} (s : ScannerState) (n : Nat)
   | succ n ih => exact ih _ (advance_BoundInv s h hend)
 
 /-- `advanceN` preserves BoundInv. -/
-theorem advanceN_BoundInv {s₀ : ScannerState} (s : ScannerState) (n : Nat)
+lemma advanceN_BoundInv {s₀ : ScannerState} (s : ScannerState) (n : Nat)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
     BoundInv s₀ (s.advanceN n) :=
   advanceNLoop_BoundInv s n h hend
 
 /-- `skipWhitespaceLoop` preserves BoundInv. -/
-theorem skipWhitespaceLoop_BoundInv {s₀ : ScannerState} (s : ScannerState) (fuel : Nat)
+lemma skipWhitespaceLoop_BoundInv {s₀ : ScannerState} (s : ScannerState) (fuel : Nat)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
     BoundInv s₀ (skipWhitespaceLoop s fuel) := by
   induction fuel generalizing s with
@@ -447,13 +447,13 @@ theorem skipWhitespaceLoop_BoundInv {s₀ : ScannerState} (s : ScannerState) (fu
     · exact h
 
 /-- `skipWhitespace` preserves BoundInv. -/
-theorem skipWhitespace_BoundInv {s₀ : ScannerState} (s : ScannerState)
+lemma skipWhitespace_BoundInv {s₀ : ScannerState} (s : ScannerState)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
     BoundInv s₀ (skipWhitespace s) :=
   skipWhitespaceLoop_BoundInv s _ h hend
 
 /-- `skipSpacesLoop` preserves BoundInv. -/
-theorem skipSpacesLoop_BoundInv {s₀ : ScannerState} (s : ScannerState) (fuel : Nat)
+lemma skipSpacesLoop_BoundInv {s₀ : ScannerState} (s : ScannerState) (fuel : Nat)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
     BoundInv s₀ (skipSpacesLoop s fuel) := by
   induction fuel generalizing s with
@@ -465,13 +465,13 @@ theorem skipSpacesLoop_BoundInv {s₀ : ScannerState} (s : ScannerState) (fuel :
     · exact h
 
 /-- `skipSpaces` preserves BoundInv. -/
-theorem skipSpaces_BoundInv {s₀ : ScannerState} (s : ScannerState)
+lemma skipSpaces_BoundInv {s₀ : ScannerState} (s : ScannerState)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
     BoundInv s₀ (skipSpaces s) :=
   skipSpacesLoop_BoundInv s _ h hend
 
 /-- `collectCommentTextLoop` preserves BoundInv (in second component). -/
-theorem collectCommentTextLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
+lemma collectCommentTextLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
     (text : String) (fuel : Nat)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
     BoundInv s₀ (collectCommentTextLoop s text fuel).2 := by
@@ -487,7 +487,7 @@ theorem collectCommentTextLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
 
 /-- `skipToContentComment` preserves BoundInv.
     Handles the `#` → advance → `collectCommentTextLoop` → field update path. -/
-theorem skipToContentComment_BoundInv {s₀ : ScannerState} (s : ScannerState)
+lemma skipToContentComment_BoundInv {s₀ : ScannerState} (s : ScannerState)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
     BoundInv s₀ (skipToContentComment s) := by
   unfold skipToContentComment
@@ -504,7 +504,7 @@ theorem skipToContentComment_BoundInv {s₀ : ScannerState} (s : ScannerState)
 
 /-- `consumeNewline` preserves BoundInv.
     Handles `\n` (one advance) and `\r` + optional `\n` (one or two advances). -/
-theorem consumeNewline_BoundInv {s₀ : ScannerState} (s : ScannerState)
+lemma consumeNewline_BoundInv {s₀ : ScannerState} (s : ScannerState)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
     BoundInv s₀ (consumeNewline s) := by
   unfold consumeNewline
@@ -539,7 +539,7 @@ theorem consumeNewline_BoundInv {s₀ : ScannerState} (s : ScannerState)
     exact h
 
 /-- `skipToContentWs` preserves BoundInv. -/
-theorem skipToContentWs_BoundInv {s₀ : ScannerState} (s s' : ScannerState)
+lemma skipToContentWs_BoundInv {s₀ : ScannerState} (s s' : ScannerState)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize)
     (hok : skipToContentWs s = .ok s') :
     BoundInv s₀ s' := by
@@ -553,7 +553,7 @@ theorem skipToContentWs_BoundInv {s₀ : ScannerState} (s s' : ScannerState)
   repeat (first | cases hok; (first | exact h_wsss | exact h_ss | exact h_ws) | split at hok | cases hok)
 
 /-- `skipToContentLoop` preserves BoundInv. -/
-theorem skipToContentLoop_BoundInv {s₀ : ScannerState} (s s' : ScannerState) (fuel : Nat)
+lemma skipToContentLoop_BoundInv {s₀ : ScannerState} (s s' : ScannerState) (fuel : Nat)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize)
     (hok : skipToContentLoop s fuel = .ok s') :
     BoundInv s₀ s' := by
@@ -588,7 +588,7 @@ theorem skipToContentLoop_BoundInv {s₀ : ScannerState} (s s' : ScannerState) (
         cases hok; exact h_cmt
 
 /-- `skipToContent` preserves BoundInv. -/
-theorem skipToContent_BoundInv {s₀ : ScannerState} (s s' : ScannerState)
+lemma skipToContent_BoundInv {s₀ : ScannerState} (s s' : ScannerState)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize)
     (hok : skipToContent s = .ok s') :
     BoundInv s₀ s' :=
@@ -596,7 +596,7 @@ theorem skipToContent_BoundInv {s₀ : ScannerState} (s s' : ScannerState)
 
 /-- `unwindIndentsLoop` preserves BoundInv.
     Each step emits `.blockEnd` and pops `indents`, neither touching offset/inputEnd/input. -/
-theorem unwindIndentsLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
+lemma unwindIndentsLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
     (col : Int) (fuel : Nat)
     (h : BoundInv s₀ s) :
     BoundInv s₀ (unwindIndentsLoop s col fuel) := by
@@ -609,7 +609,7 @@ theorem unwindIndentsLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
     · exact h
 
 /-- `unwindIndents` preserves BoundInv. -/
-theorem unwindIndents_BoundInv {s₀ : ScannerState} (s : ScannerState) (col : Int)
+lemma unwindIndents_BoundInv {s₀ : ScannerState} (s : ScannerState) (col : Int)
     (h : BoundInv s₀ s) :
     BoundInv s₀ (unwindIndents s col) :=
   unwindIndentsLoop_BoundInv s col _ h
@@ -621,7 +621,7 @@ and content dispatchers.  All proofs complete — no sorry. -/
 
 -- Simple fuel-based loops (provable)
 
-theorem skipToEndOfLineLoop_BoundInv {s₀ : ScannerState} (s : ScannerState) (fuel : Nat)
+lemma skipToEndOfLineLoop_BoundInv {s₀ : ScannerState} (s : ScannerState) (fuel : Nat)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
     BoundInv s₀ (skipToEndOfLineLoop s fuel) := by
   induction fuel generalizing s with
@@ -634,12 +634,12 @@ theorem skipToEndOfLineLoop_BoundInv {s₀ : ScannerState} (s : ScannerState) (f
       · exact ih _ (advance_BoundInv s h hend)
     · exact h
 
-theorem skipToEndOfLine_BoundInv {s₀ : ScannerState} (s : ScannerState)
+lemma skipToEndOfLine_BoundInv {s₀ : ScannerState} (s : ScannerState)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
     BoundInv s₀ (skipToEndOfLine s) :=
   skipToEndOfLineLoop_BoundInv s _ h hend
 
-theorem skipDocEndWhitespace_BoundInv {s₀ : ScannerState} (s : ScannerState) (fuel : Nat)
+lemma skipDocEndWhitespace_BoundInv {s₀ : ScannerState} (s : ScannerState) (fuel : Nat)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
     BoundInv s₀ (skipDocEndWhitespace s fuel) := by
   induction fuel generalizing s with
@@ -652,7 +652,7 @@ theorem skipDocEndWhitespace_BoundInv {s₀ : ScannerState} (s : ScannerState) (
       · exact h
     · exact h
 
-theorem collectDirectiveNameLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
+lemma collectDirectiveNameLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
     (name : String) (fuel : Nat)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
     BoundInv s₀ (collectDirectiveNameLoop s name fuel).2 := by
@@ -668,7 +668,7 @@ theorem collectDirectiveNameLoop_BoundInv {s₀ : ScannerState} (s : ScannerStat
 
 -- Additional simple loop BoundInv lemmas
 
-theorem collectAnchorNameLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
+lemma collectAnchorNameLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
     (name : String) (fuel : Nat)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
     BoundInv s₀ (collectAnchorNameLoop s name fuel).2 := by
@@ -682,7 +682,7 @@ theorem collectAnchorNameLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
       · exact h
     · exact h
 
-theorem collectVersionMajorLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
+lemma collectVersionMajorLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
     (major : String) (fuel : Nat)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
     BoundInv s₀ (collectVersionMajorLoop s major fuel).2 := by
@@ -697,7 +697,7 @@ theorem collectVersionMajorLoop_BoundInv {s₀ : ScannerState} (s : ScannerState
       · exact h
     · exact h
 
-theorem collectVersionMinorLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
+lemma collectVersionMinorLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
     (minor : String) (fuel : Nat)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
     BoundInv s₀ (collectVersionMinorLoop s minor fuel).2 := by
@@ -711,7 +711,7 @@ theorem collectVersionMinorLoop_BoundInv {s₀ : ScannerState} (s : ScannerState
       · exact h
     · exact h
 
-theorem collectTagHandleDirectiveLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
+lemma collectTagHandleDirectiveLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
     (handle : String) (fuel : Nat)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
     BoundInv s₀ (collectTagHandleDirectiveLoop s handle fuel).2 := by
@@ -725,7 +725,7 @@ theorem collectTagHandleDirectiveLoop_BoundInv {s₀ : ScannerState} (s : Scanne
       · exact h
     · exact h
 
-theorem collectTagPrefixLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
+lemma collectTagPrefixLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
     (pfx : String) (fuel : Nat)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
     BoundInv s₀ (collectTagPrefixLoop s pfx fuel).2 := by
@@ -739,7 +739,7 @@ theorem collectTagPrefixLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
       · exact h
     · exact h
 
-theorem collectVerbatimTagLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
+lemma collectVerbatimTagLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
     (uri : String) (fuel : Nat)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
     BoundInv s₀ (collectVerbatimTagLoop s uri fuel).2.2 := by
@@ -754,7 +754,7 @@ theorem collectVerbatimTagLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
       · exact h
     · exact h
 
-theorem collectTagSuffixLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
+lemma collectTagSuffixLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
     (suffix : String) (fuel : Nat)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
     BoundInv s₀ (collectTagSuffixLoop s suffix fuel).2 := by
@@ -768,7 +768,7 @@ theorem collectTagSuffixLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
       · exact h
     · exact h
 
-theorem collectTagHandleLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
+lemma collectTagHandleLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
     (chars : String) (fuel : Nat)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
     BoundInv s₀ (collectTagHandleLoop s chars fuel).2.2 := by
@@ -783,7 +783,7 @@ theorem collectTagHandleLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
       · exact h
     · exact h
 
-theorem collectHexDigitsLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
+lemma collectHexDigitsLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
     (hex : String) (n : Nat)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
     BoundInv s₀ (collectHexDigitsLoop s hex n).2 := by
@@ -797,7 +797,7 @@ theorem collectHexDigitsLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
       · exact h
     · exact h
 
-theorem collectLineContentLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
+lemma collectLineContentLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
     (content : String) (fuel : Nat)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
     BoundInv s₀ (collectLineContentLoop s content fuel).2 := by
@@ -811,7 +811,7 @@ theorem collectLineContentLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
       · exact ih _ _ (advance_BoundInv s h hend)
     · exact h
 
-theorem consumeExactSpaces_BoundInv {s₀ : ScannerState} (s : ScannerState)
+lemma consumeExactSpaces_BoundInv {s₀ : ScannerState} (s : ScannerState)
     (count : Nat)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
     BoundInv s₀ (consumeExactSpaces s count).2 := by
@@ -823,7 +823,7 @@ theorem consumeExactSpaces_BoundInv {s₀ : ScannerState} (s : ScannerState)
     · exact ih _ (advance_BoundInv s h hend)
     · exact h
 
-theorem parseBlockHeaderLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
+lemma parseBlockHeaderLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
     (chomp : ChompStyle) (explicitOffset : Option Nat) (fuel : Nat)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
     BoundInv s₀ (parseBlockHeaderLoop s chomp explicitOffset fuel).2.2 := by
@@ -845,7 +845,7 @@ theorem parseBlockHeaderLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
       · simp only [Prod.mk.injEq] at h_eq; obtain ⟨_, _, rfl⟩ := h_eq; exact h
     · simp only [Prod.mk.injEq] at h_eq; obtain ⟨_, _, rfl⟩ := h_eq; exact h
 
-theorem skipBlankLinesLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
+lemma skipBlankLinesLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
     (cnt : Nat) (fuel : Nat) (inputEnd : Nat)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
     BoundInv s₀ (skipBlankLinesLoop s cnt fuel inputEnd).2 := by
@@ -859,7 +859,7 @@ theorem skipBlankLinesLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
       · exact h
     · exact h
 
-theorem skipTrailingSpaces_BoundInv {s₀ : ScannerState} (s : ScannerState)
+lemma skipTrailingSpaces_BoundInv {s₀ : ScannerState} (s : ScannerState)
     (fuel : Nat)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
     BoundInv s₀ (skipTrailingSpaces s fuel) := by
@@ -875,7 +875,7 @@ theorem skipTrailingSpaces_BoundInv {s₀ : ScannerState} (s : ScannerState)
 
 -- Sub-scanner helper BoundInv lemmas
 
-theorem scanBlockScalarSkipComment_BoundInv {s₀ : ScannerState} (s : ScannerState)
+lemma scanBlockScalarSkipComment_BoundInv {s₀ : ScannerState} (s : ScannerState)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
     BoundInv s₀ (scanBlockScalarSkipComment s) := by
   unfold scanBlockScalarSkipComment
@@ -889,7 +889,7 @@ theorem scanBlockScalarSkipComment_BoundInv {s₀ : ScannerState} (s : ScannerSt
       | exact h)
   · exact h
 
-theorem scanBlockScalarConsumeNewline_BoundInv {s₀ : ScannerState} (s s' : ScannerState)
+lemma scanBlockScalarConsumeNewline_BoundInv {s₀ : ScannerState} (s s' : ScannerState)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize)
     (hok : scanBlockScalarConsumeNewline s = .ok s') :
     BoundInv s₀ s' := by
@@ -903,7 +903,7 @@ theorem scanBlockScalarConsumeNewline_BoundInv {s₀ : ScannerState} (s s' : Sca
       · cases hok
   · injection hok with hok; subst hok; exact h
 
-theorem parseHexEscape_BoundInv {s₀ : ScannerState} (s s' : ScannerState)
+lemma parseHexEscape_BoundInv {s₀ : ScannerState} (s s' : ScannerState)
     (n : Nat) (ch : Char)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize)
     (hok : parseHexEscape s n = .ok (ch, s')) :
@@ -918,7 +918,7 @@ theorem parseHexEscape_BoundInv {s₀ : ScannerState} (s s' : ScannerState)
     · cases hok
 
 set_option maxHeartbeats 6400000 in
-theorem processEscape_BoundInv {s₀ : ScannerState} (s s' : ScannerState) (ch : Char)
+lemma processEscape_BoundInv {s₀ : ScannerState} (s s' : ScannerState) (ch : Char)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize)
     (hok : processEscape s = .ok (ch, s')) :
     BoundInv s₀ s' := by
@@ -934,7 +934,7 @@ theorem processEscape_BoundInv {s₀ : ScannerState} (s s' : ScannerState) (ch :
       | exact parseHexEscape_BoundInv _ _ _ _ h_adv hend hok
       | contradiction
 
-theorem foldQuotedNewlinesLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
+lemma foldQuotedNewlinesLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
     (emptyCount : Nat) (fuel : Nat)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
     BoundInv s₀ (foldQuotedNewlinesLoop s emptyCount fuel).1 := by
@@ -949,7 +949,7 @@ theorem foldQuotedNewlinesLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
     · exact h
 
 set_option maxHeartbeats 3200000 in
-theorem foldQuotedNewlines_BoundInv {s₀ : ScannerState} (s s' : ScannerState)
+lemma foldQuotedNewlines_BoundInv {s₀ : ScannerState} (s s' : ScannerState)
     (content : String)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize)
     (hok : foldQuotedNewlines s = .ok (content, s')) :
@@ -980,7 +980,7 @@ theorem foldQuotedNewlines_BoundInv {s₀ : ScannerState} (s s' : ScannerState)
 -- Structural scanner BoundInv lemmas
 
 set_option maxHeartbeats 1600000 in
-theorem scanDocumentStart_BoundInv (s : ScannerState)
+lemma scanDocumentStart_BoundInv (s : ScannerState)
     (h : BoundInv s s) (hend : s.inputEnd = s.input.utf8ByteSize) :
     BoundInv s (scanDocumentStart s) := by
   have h_unw := unwindIndents_BoundInv s (-1) h
@@ -991,7 +991,7 @@ theorem scanDocumentStart_BoundInv (s : ScannerState)
   exact fieldUpdate_BoundInv _ _ h_adv rfl rfl rfl
 
 set_option maxHeartbeats 3200000 in
-theorem scanDocumentEnd_BoundInv (s s' : ScannerState)
+lemma scanDocumentEnd_BoundInv (s s' : ScannerState)
     (h : BoundInv s s) (hend : s.inputEnd = s.input.utf8ByteSize)
     (hok : scanDocumentEnd s = .ok s') :
     BoundInv s s' := by
@@ -1026,7 +1026,7 @@ theorem scanDocumentEnd_BoundInv (s s' : ScannerState)
           | (injection hok with hok; subst hok; exact h_res)))
 
 set_option maxHeartbeats 3200000 in
-theorem scanYamlDirective_BoundInv {s₀ : ScannerState} (s s_ws s' : ScannerState)
+lemma scanYamlDirective_BoundInv {s₀ : ScannerState} (s s_ws s' : ScannerState)
     (startPos : YamlPos)
     (h : BoundInv s₀ s_ws) (hend : s₀.inputEnd = s₀.input.utf8ByteSize)
     (hok : scanYamlDirective s s_ws startPos = .ok s') :
@@ -1061,7 +1061,7 @@ theorem scanYamlDirective_BoundInv {s₀ : ScannerState} (s s_ws s' : ScannerSta
           | (injection hok with hok; subst hok; exact h_res)))
 
 set_option maxHeartbeats 3200000 in
-theorem scanTagDirective_BoundInv {s₀ : ScannerState} (s s_ws s' : ScannerState)
+lemma scanTagDirective_BoundInv {s₀ : ScannerState} (s s_ws s' : ScannerState)
     (startPos : YamlPos)
     (h : BoundInv s₀ s_ws) (hend : s₀.inputEnd = s₀.input.utf8ByteSize)
     (hok : scanTagDirective s s_ws startPos = .ok s') :
@@ -1096,7 +1096,7 @@ theorem scanTagDirective_BoundInv {s₀ : ScannerState} (s s_ws s' : ScannerStat
           | (injection hok with hok; subst hok; exact h_res)))
 
 set_option maxHeartbeats 3200000 in
-theorem scanDirective_BoundInv (s s' : ScannerState)
+lemma scanDirective_BoundInv (s s' : ScannerState)
     (h : BoundInv s s) (hend : s.inputEnd = s.input.utf8ByteSize)
     (hok : scanDirective s = .ok s') :
     BoundInv s s' := by
@@ -1127,7 +1127,7 @@ theorem scanDirective_BoundInv (s s' : ScannerState)
 
 -- Content scanner BoundInv lemmas (all proven — complex loops)
 
-theorem scanAnchorOrAlias_BoundInv (s s' : ScannerState) (isAnchor : Bool)
+lemma scanAnchorOrAlias_BoundInv (s s' : ScannerState) (isAnchor : Bool)
     (h : BoundInv s s) (hend : s.inputEnd = s.input.utf8ByteSize)
     (hok : scanAnchorOrAlias s isAnchor = .ok s') :
     BoundInv s s' := by
@@ -1143,7 +1143,7 @@ theorem scanAnchorOrAlias_BoundInv (s s' : ScannerState) (isAnchor : Bool)
 
 -- Tag sub-scanner helpers
 
-theorem scanVerbatimTag_BoundInv {s₀ : ScannerState} (s s' : ScannerState)
+lemma scanVerbatimTag_BoundInv {s₀ : ScannerState} (s s' : ScannerState)
     (startPos : YamlPos)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize)
     (hok : scanVerbatimTag s startPos = .ok s') :
@@ -1157,7 +1157,7 @@ theorem scanVerbatimTag_BoundInv {s₀ : ScannerState} (s s' : ScannerState)
       exact emitAt_BoundInv _ _ _
         (collectVerbatimTagLoop_BoundInv _ "" _ (advance_BoundInv s h hend) hend)
 
-theorem scanSecondaryTag_BoundInv {s₀ : ScannerState} (s : ScannerState)
+lemma scanSecondaryTag_BoundInv {s₀ : ScannerState} (s : ScannerState)
     (startPos : YamlPos)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
     BoundInv s₀ (scanSecondaryTag s startPos) := by
@@ -1165,7 +1165,7 @@ theorem scanSecondaryTag_BoundInv {s₀ : ScannerState} (s : ScannerState)
   exact emitAt_BoundInv _ _ _
     (collectTagSuffixLoop_BoundInv _ "" _ (advance_BoundInv s h hend) hend)
 
-theorem scanNamedTag_BoundInv {s₀ : ScannerState} (s : ScannerState)
+lemma scanNamedTag_BoundInv {s₀ : ScannerState} (s : ScannerState)
     (startPos : YamlPos) (inputEnd : Nat)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
     BoundInv s₀ (scanNamedTag s startPos inputEnd) := by
@@ -1179,7 +1179,7 @@ theorem scanNamedTag_BoundInv {s₀ : ScannerState} (s : ScannerState)
     exact emitAt_BoundInv _ _ _
       (collectTagHandleLoop_BoundInv _ "" _ h hend)
 
-theorem scanTag_BoundInv (s s' : ScannerState)
+lemma scanTag_BoundInv (s s' : ScannerState)
     (h : BoundInv s s) (hend : s.inputEnd = s.input.utf8ByteSize)
     (hok : scanTag s = .ok s') :
     BoundInv s s' := by
@@ -1206,7 +1206,7 @@ theorem scanTag_BoundInv (s s' : ScannerState)
 -- Block scalar loop BoundInv
 
 set_option maxHeartbeats 6400000 in
-theorem collectBlockScalarLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
+lemma collectBlockScalarLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
     (rawContent : String) (fuel : Nat) (contentIndent : Nat) (inputEnd : Nat)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
     BoundInv s₀ (collectBlockScalarLoop s rawContent fuel contentIndent inputEnd).2 := by
@@ -1232,7 +1232,7 @@ theorem collectBlockScalarLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
             · exact h_lcl
 
 set_option maxHeartbeats 6400000 in
-theorem scanBlockScalarBody_BoundInv {s₀ : ScannerState} (s_orig s_after_newline s' : ScannerState)
+lemma scanBlockScalarBody_BoundInv {s₀ : ScannerState} (s_orig s_after_newline s' : ScannerState)
     (chomp : ChompStyle) (explicitOffset : Option Nat) (isLiteral : Bool) (startPos : YamlPos)
     (h : BoundInv s₀ s_after_newline) (hend : s₀.inputEnd = s₀.input.utf8ByteSize)
     (hok : scanBlockScalarBody s_orig s_after_newline chomp explicitOffset isLiteral startPos = .ok s') :
@@ -1257,7 +1257,7 @@ theorem scanBlockScalarBody_BoundInv {s₀ : ScannerState} (s_orig s_after_newli
              (collectBlockScalarLoop_BoundInv s_after_newline "" _ _ _ h hend).isValid⟩
 
 set_option maxHeartbeats 3200000 in
-theorem scanBlockScalar_BoundInv (s s' : ScannerState)
+lemma scanBlockScalar_BoundInv (s s' : ScannerState)
     (h : BoundInv s s) (hend : s.inputEnd = s.input.utf8ByteSize)
     (hok : scanBlockScalar s = .ok s') :
     BoundInv s s' := by
@@ -1276,7 +1276,7 @@ theorem scanBlockScalar_BoundInv (s s' : ScannerState)
 -- Complex loop BoundInv lemmas
 
 set_option maxHeartbeats 6400000 in
-theorem collectDoubleQuotedLoop_BoundInv {s₀ : ScannerState} (s s' : ScannerState)
+lemma collectDoubleQuotedLoop_BoundInv {s₀ : ScannerState} (s s' : ScannerState)
     (content resultContent : String) (fuel : Nat) (startPos : YamlPos) (inFlow : Bool)
     (currentIndent : Int) (inputEnd : Nat)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize)
@@ -1341,7 +1341,7 @@ theorem collectDoubleQuotedLoop_BoundInv {s₀ : ScannerState} (s s' : ScannerSt
           exact ih _ _ _ (advance_BoundInv s h hend) hok
 
 set_option maxHeartbeats 6400000 in
-theorem collectSingleQuotedLoop_BoundInv {s₀ : ScannerState} (s s' : ScannerState)
+lemma collectSingleQuotedLoop_BoundInv {s₀ : ScannerState} (s s' : ScannerState)
     (content resultContent : String) (fuel : Nat) (startPos : YamlPos) (inFlow : Bool)
     (currentIndent : Int) (inputEnd : Nat)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize)
@@ -1384,7 +1384,7 @@ theorem collectSingleQuotedLoop_BoundInv {s₀ : ScannerState} (s s' : ScannerSt
           exact ih _ _ (advance_BoundInv s h hend) hok
 
 set_option maxHeartbeats 3200000 in
-theorem scanDoubleQuoted_BoundInv (s s' : ScannerState)
+lemma scanDoubleQuoted_BoundInv (s s' : ScannerState)
     (h : BoundInv s s) (hend : s.inputEnd = s.input.utf8ByteSize)
     (hok : scanDoubleQuoted s = .ok s') :
     BoundInv s s' := by
@@ -1410,7 +1410,7 @@ theorem scanDoubleQuoted_BoundInv (s s' : ScannerState)
       exact ⟨h_dq.offset_le, h_dq.inputEnd_eq, h_dq.input_eq, h_dq.isValid⟩
 
 set_option maxHeartbeats 3200000 in
-theorem scanSingleQuoted_BoundInv (s s' : ScannerState)
+lemma scanSingleQuoted_BoundInv (s s' : ScannerState)
     (h : BoundInv s s) (hend : s.inputEnd = s.input.utf8ByteSize)
     (hok : scanSingleQuoted s = .ok s') :
     BoundInv s s' := by
@@ -1435,7 +1435,7 @@ theorem scanSingleQuoted_BoundInv (s s' : ScannerState)
 
 -- Plain scalar loop BoundInv
 
-theorem collectPlainScalar_handleBlockLineBreak_BoundInv {s₀ : ScannerState} (s s' : ScannerState)
+lemma collectPlainScalar_handleBlockLineBreak_BoundInv {s₀ : ScannerState} (s s' : ScannerState)
     (content content' : String) (contentIndent : Nat) (inputEnd : Nat)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize)
     (hok : collectPlainScalar_handleBlockLineBreak s content contentIndent inputEnd = some (content', s')) :
@@ -1456,7 +1456,7 @@ theorem collectPlainScalar_handleBlockLineBreak_BoundInv {s₀ : ScannerState} (
       obtain ⟨_, rfl⟩ := hok
       exact h_ws
 
-theorem terminates?_state_eq (c : Char) (s : ScannerState)
+lemma terminates?_state_eq (c : Char) (s : ScannerState)
     (content spaces : String) (inFlow : Bool) (result : PlainScalarResult)
     (h : collectPlainScalar_terminates? c s content spaces inFlow = some result) :
     result.state = s := by
@@ -1479,7 +1479,7 @@ theorem terminates?_state_eq (c : Char) (s : ScannerState)
         · contradiction
 
 set_option maxHeartbeats 12800000 in
-theorem collectPlainScalarLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
+lemma collectPlainScalarLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
     (content spaces : String) (fuel : Nat) (inFlow : Bool) (contentIndent : Nat) (inputEnd : Nat)
     (r : PlainScalarResult)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize)
@@ -1550,7 +1550,7 @@ theorem collectPlainScalarLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
               exact ih _ _ _ _ (advance_BoundInv s h hend) hok
 
 set_option maxHeartbeats 3200000 in
-theorem scanPlainScalar_BoundInv (s s' : ScannerState)
+lemma scanPlainScalar_BoundInv (s s' : ScannerState)
     (h : BoundInv s s) (hend : s.inputEnd = s.input.utf8ByteSize)
     (hok : scanPlainScalar s = .ok s') :
     BoundInv s s' := by
@@ -1572,7 +1572,7 @@ theorem scanPlainScalar_BoundInv (s s' : ScannerState)
 -- Chains: skipToContent → maybe unwindIndents → saveSimpleKey → peek?
 -- All sub-operations preserve BoundInv (proven in §5b).
 -- The do-notation desugaring creates join points that require careful handling.
-theorem preprocess_preserves_bound (s : ScannerState) (sp : ScannerState) (c : Char)
+lemma preprocess_preserves_bound (s : ScannerState) (sp : ScannerState) (c : Char)
     (h_bi : BoundInv s s) (hend : s.inputEnd = s.input.utf8ByteSize)
     (hok : scanNextToken_preprocess s = .ok (some (sp, c))) :
     BoundInv s sp := by
@@ -1614,7 +1614,7 @@ theorem preprocess_preserves_bound (s : ScannerState) (sp : ScannerState) (c : C
 
 -- Structural dispatch preserves BoundInv.
 -- Dispatches to scanDocumentStart, scanDocumentEnd, or scanDirective.
-theorem dispatchStructural_preserves_bound (s sp s' : ScannerState) (c : Char)
+lemma dispatchStructural_preserves_bound (s sp s' : ScannerState) (c : Char)
     (h_bi : BoundInv s sp) (hend : s.inputEnd = s.input.utf8ByteSize)
     (hok : scanNextToken_dispatchStructural sp c = .ok (some s')) :
     BoundInv s s' := by
@@ -1672,7 +1672,7 @@ theorem dispatchStructural_preserves_bound (s sp s' : ScannerState) (c : Char)
 -- Content dispatch preserves BoundInv.
 -- Dispatches to scanAnchorOrAlias, scanTag, scanBlockScalar,
 -- scanDoubleQuoted, scanSingleQuoted, scanPlainScalar.
-theorem dispatchContent_preserves_bound (s sp s' : ScannerState) (c : Char)
+lemma dispatchContent_preserves_bound (s sp s' : ScannerState) (c : Char)
     (h_bi : BoundInv s sp) (hend : s.inputEnd = s.input.utf8ByteSize)
     (hok : scanNextToken_dispatchContent sp c = .ok s') :
     BoundInv s s' := by
@@ -1737,7 +1737,7 @@ theorem dispatchContent_preserves_bound (s sp s' : ScannerState) (c : Char)
 /-! ## §7  scanNextToken_preserves_bound — Capstone Composition -/
 
 -- Helper: allowDirectives toggle doesn't affect BoundInv
-theorem allowDirectives_toggle_BoundInv {s₀ sp : ScannerState}
+lemma allowDirectives_toggle_BoundInv {s₀ sp : ScannerState}
     (h : BoundInv s₀ sp) :
     BoundInv s₀ { sp with allowDirectives := false, documentEverStarted := true } :=
   fieldUpdate_BoundInv _ _ h rfl rfl rfl
@@ -1749,7 +1749,7 @@ but tracks the full BoundInv bundle (offset ≤ inputEnd, inputEnd/input
 preserved, IsValid) instead of just offset increase.
 
 The proof dispatches to per-dispatch preservation lemmas from §3-§6. -/
-theorem scanNextToken_preserves_bound_full (s s' : ScannerState)
+lemma scanNextToken_preserves_bound_full (s s' : ScannerState)
     (h : scanNextToken s = .ok (some s'))
     (h_bi : BoundInv s s)
     (hend : s.inputEnd = s.input.utf8ByteSize) :
@@ -1841,7 +1841,7 @@ theorem scanNextToken_preserves_bound_full (s s' : ScannerState)
                         exact dispatchContent_preserves_bound s _ _ c h_bi_sp2 hend ‹_›
 
 /-- Wrapper matching the signature used in EmitterScannability. -/
-theorem scanNextToken_preserves_bound (s s' : ScannerState)
+lemma scanNextToken_preserves_bound (s s' : ScannerState)
     (h : scanNextToken s = .ok (some s'))
     (h_le : s.offset ≤ s.inputEnd)
     (h_ie : s.inputEnd = s.input.utf8ByteSize)

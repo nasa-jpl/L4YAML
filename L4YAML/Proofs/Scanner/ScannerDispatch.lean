@@ -87,27 +87,27 @@ fields. These trivially preserve WellFormed.
 -/
 
 /-- Setting `needIndentCheck := false` preserves WellFormed. -/
-theorem with_needIndentCheck_preserves_wellFormed (s : ScannerState)
+lemma with_needIndentCheck_preserves_wellFormed (s : ScannerState)
     (hwf : s.WellFormed) :
     ({ s with needIndentCheck := false } : ScannerState).WellFormed := hwf
 
 /-- Setting `allowDirectives := false, documentEverStarted := true` preserves WellFormed. -/
-theorem with_allowDirectives_false_preserves_wellFormed (s : ScannerState)
+lemma with_allowDirectives_false_preserves_wellFormed (s : ScannerState)
     (hwf : s.WellFormed) :
     ({ s with allowDirectives := false, documentEverStarted := true } : ScannerState).WellFormed := hwf
 
 /-- Updating `simpleKey.endLine` preserves WellFormed. -/
-theorem with_simpleKey_endLine_preserves_wellFormed (s : ScannerState)
+lemma with_simpleKey_endLine_preserves_wellFormed (s : ScannerState)
     (hwf : s.WellFormed) (n : Nat) :
     ({ s with simpleKey := { s.simpleKey with endLine := n } } : ScannerState).WellFormed := hwf
 
 /-- Setting `simpleKeyAllowed` and `explicitKeyLine` preserves WellFormed. -/
-theorem with_simpleKeyAllowed_explicitKeyLine_preserves_wellFormed (s : ScannerState)
+lemma with_simpleKeyAllowed_explicitKeyLine_preserves_wellFormed (s : ScannerState)
     (hwf : s.WellFormed) (b : Bool) (l : Option Nat) :
     ({ s with simpleKeyAllowed := b, explicitKeyLine := l } : ScannerState).WellFormed := hwf
 
 /-- Setting `simpleKeyAllowed := true` preserves WellFormed. -/
-theorem with_simpleKeyAllowed_true_preserves_wellFormed (s : ScannerState)
+lemma with_simpleKeyAllowed_true_preserves_wellFormed (s : ScannerState)
     (hwf : s.WellFormed) :
     ({ s with simpleKeyAllowed := true } : ScannerState).WellFormed := hwf
 
@@ -123,7 +123,7 @@ preconditions for `advance`; full WellFormed is validated on concrete states.
 -/
 
 /-- `scanFlowSequenceStart` preserves C1 (`indents.size ≥ 1`). -/
-theorem scanFlowSequenceStart_preserves_indents (s : ScannerState)
+lemma scanFlowSequenceStart_preserves_indents (s : ScannerState)
     (h : s.indents.size ≥ 1) :
     (scanFlowSequenceStart s).indents.size ≥ 1 := by
   unfold scanFlowSequenceStart
@@ -135,7 +135,7 @@ theorem scanFlowSequenceStart_preserves_indents (s : ScannerState)
   · exact h
 
 /-- `scanFlowMappingStart` preserves C1 (`indents.size ≥ 1`). -/
-theorem scanFlowMappingStart_preserves_indents (s : ScannerState)
+lemma scanFlowMappingStart_preserves_indents (s : ScannerState)
     (h : s.indents.size ≥ 1) :
     (scanFlowMappingStart s).indents.size ≥ 1 := by
   unfold scanFlowMappingStart

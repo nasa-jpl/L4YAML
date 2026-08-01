@@ -80,7 +80,7 @@ Replacing an element of a list with a value that passes the filter
 does not decrease the filtered length. Verbatim port of legacy
 `List_filter_set_length_mono` (line 5912). -/
 
-theorem List_filter_set_length_monoIx {α : Type} (l : List α) (i : Nat) (v : α)
+lemma List_filter_set_length_monoIx {α : Type} (l : List α) (i : Nat) (v : α)
     (p : α → Bool) (hv : p v = true) :
     ((l.set i v).filter p).length ≥ (l.filter p).length := by
   induction l generalizing i with
@@ -101,7 +101,7 @@ theorem List_filter_set_length_monoIx {α : Type} (l : List α) (i : Nat) (v : �
 grows the filtered array size. Verbatim port of legacy
 `Array_setIfInBounds_filter_mono` (line 5929). -/
 
-theorem Array_setIfInBounds_filter_monoIx {α : Type} (a : Array α) (i : Nat) (v : α)
+lemma Array_setIfInBounds_filter_monoIx {α : Type} (a : Array α) (i : Nat) (v : α)
     (p : α → Bool) (hv : p v = true) :
     ((a.setIfInBounds i v).filter p).size ≥ (a.filter p).size := by
   unfold Array.setIfInBounds
@@ -121,7 +121,7 @@ The filtered token count doesn't decrease through
 `scanNextTokenIx_preprocess`. Indexed twin of legacy
 `preprocess_filtered_mono` (line 5945). -/
 
-theorem preprocess_filtered_monoIx (s s_pp : ScannerStateIx input) (c : Char)
+lemma preprocess_filtered_monoIx (s s_pp : ScannerStateIx input) (c : Char)
     (h : scanNextTokenIx_preprocess s = .ok (some (s_pp, c))) :
     (s_pp.tokens.tokens.filter (fun t => t.token != .placeholder)).size ≥
     (s.tokens.tokens.filter (fun t => t.token != .placeholder)).size := by
@@ -147,7 +147,7 @@ The `allowDirectives = true` if-then-else (which sets
 preserves filtered token count — both fields are non-token. Verbatim
 port of legacy `allowDir_ite_filter` (line 5958). -/
 
-theorem allowDir_ite_filter_monoIx (s : ScannerStateIx input) :
+lemma allowDir_ite_filter_monoIx (s : ScannerStateIx input) :
     let p := fun (t : IxToken input) => t.token != .placeholder
     ((if s.allowDirectives = true then
         { s with allowDirectives := false, documentEverStarted := true }
@@ -160,7 +160,7 @@ If a non-empty list's first element passes filter `p`, the filtered
 list has length ≥ 1. Verbatim port of legacy `List_filter_length_ge_one`
 (line 5968). -/
 
-theorem List_filter_length_ge_oneIx {α : Type} (l : List α) (p : α → Bool)
+lemma List_filter_length_ge_oneIx {α : Type} (l : List α) (p : α → Bool)
     (h_len : l.length ≥ 1) (h_head : p (l[0]'(by omega)) = true) :
     (l.filter p).length ≥ 1 := by
   match l with
@@ -176,7 +176,7 @@ has at least one more element, and that element at position `a.size`
 passes filter `p`, then `(b.filter p).size ≥ (a.filter p).size + 1`.
 Verbatim port of legacy `filtered_grows_of_extended_prefix` (line 5980). -/
 
-theorem filtered_grows_of_extended_prefixIx {α : Type}
+lemma filtered_grows_of_extended_prefixIx {α : Type}
     (a b : Array α) (p : α → Bool)
     (h_sz : b.size ≥ a.size + 1)
     (h_pres : ∀ i (hi : i < a.size), b[i]'(by omega) = a[i])
@@ -225,7 +225,7 @@ a specific NEW element (e.g. the last) is non-`.placeholder`, but
 don't know the exact value at the first new position `a.size`.
 Verbatim port of legacy `filtered_grows_of_any_new` (line 6025). -/
 
-theorem filtered_grows_of_any_newIx {α : Type}
+lemma filtered_grows_of_any_newIx {α : Type}
     (a b : Array α) (p : α → Bool)
     (h_sz : b.size ≥ a.size + 1)
     (h_pres : ∀ i (hi : i < a.size), b[i]'(by omega) = a[i])

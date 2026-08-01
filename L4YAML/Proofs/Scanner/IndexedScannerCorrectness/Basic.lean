@@ -41,7 +41,7 @@ deleted at the 6f.6 cutover). -/
     original list such that the filtered element equals the original,
     it satisfies the predicate, and `i` equals the count of satisfying
     elements before `j`. -/
-theorem list_filter_origIdx
+lemma list_filter_origIdx
     {α : Type _} (l : List α) (p : α → Bool) (i : Nat)
     (hi : i < (l.filter p).length) :
     ∃ j, ∃ hj : j < l.length,
@@ -77,7 +77,7 @@ theorem list_filter_origIdx
 /-- Core List-level forward direction: position `j` in a list with
     `p l[j] = true` maps to position `i = (l.take j |>.filter p).length`
     in the filtered list. -/
-theorem list_filter_getElem_by_count
+lemma list_filter_getElem_by_count
     {α : Type _} (l : List α) (p : α → Bool) (j : Nat) (hj : j < l.length)
     (h_sat : p l[j] = true) :
     ((l.take j).filter p).length < (l.filter p).length ∧
@@ -108,7 +108,7 @@ theorem list_filter_getElem_by_count
     the predicate before j. Indexed twin of legacy
     `array_filter_getElem_correspondence`; structurally identical
     (the element type is generic). -/
-theorem array_filter_getElem_correspondence
+lemma array_filter_getElem_correspondence
     {α : Type _} (arr : Array α) (p : α → Bool) (j : Nat) (hj : j < arr.size)
     (h_sat : p arr[j] = true) :
     let filtered := arr.filter p
@@ -146,7 +146,7 @@ The predicate is `fun t => t.token != YamlToken.placeholder`
 /-- `flowNestingIx.go` on the original array equals `flowNestingIx.go`
     on the filtered array, where the target in the filtered array is
     the count of non-placeholder tokens before position `j`. -/
-theorem flowNestingIx_go_filter_equiv
+lemma flowNestingIx_go_filter_equiv
     (all_tokens : Array (IxToken input))
     (j : Nat) (hj : j ≤ all_tokens.size)
     (depth : Nat) :
@@ -245,7 +245,7 @@ forwards to `flowNestingIx.go tokens.tokens`, and `tokens.size` is
     pipeline, `scan_flow_aware_psv_ix_axiom` operates on the
     *unfiltered* `scanIx`, so we need the explicit filter-preserves
     lemma here. -/
-theorem filter_preserves_PlainScalarsValidIx
+lemma filter_preserves_PlainScalarsValidIx
     (all_tokens : Indexed.TokenStream input)
     (h_psv : PlainScalarsValidIx all_tokens) :
     PlainScalarsValidIx
@@ -280,7 +280,7 @@ theorem filter_preserves_PlainScalarsValidIx
 /-- Filtering placeholders preserves `FlowContextPSVIx`. Indexed twin
     of legacy `filter_preserves_FlowContextPSV`
     (`ScannerPlainScalarValid.lean:5379`). -/
-theorem filter_preserves_FlowContextPSVIx
+lemma filter_preserves_FlowContextPSVIx
     (all_tokens : Indexed.TokenStream input)
     (h_fpsv : FlowContextPSVIx all_tokens) :
     FlowContextPSVIx
@@ -320,7 +320,7 @@ theorem filter_preserves_FlowContextPSVIx
 /-- Filtering placeholders preserves `FlowAwarePSVIx`. Combines
     `filter_preserves_PlainScalarsValidIx` and
     `filter_preserves_FlowContextPSVIx`. -/
-theorem filter_preserves_FlowAwarePSVIx
+lemma filter_preserves_FlowAwarePSVIx
     (all_tokens : Indexed.TokenStream input)
     (h_fapsv : FlowAwarePSVIx all_tokens) :
     FlowAwarePSVIx
@@ -333,7 +333,7 @@ theorem filter_preserves_FlowAwarePSVIx
     twin of legacy `filter_preserves_FlowBracketsMatched`
     (`ScannerPlainScalarValid.lean:5546`). Uses
     `flowNestingIx_go_filter_equiv` with target = full array size. -/
-theorem filter_preserves_FlowBracketsMatchedIx
+lemma filter_preserves_FlowBracketsMatchedIx
     (all_tokens : Indexed.TokenStream input)
     (h_fbm : FlowBracketsMatchedIx all_tokens) :
     FlowBracketsMatchedIx
@@ -384,7 +384,7 @@ in `Proofs/Production/IndexedScannerPlainScalarValid.lean`). -/
     (`ParserWellBehaved.lean:304`) — except the legacy was a trivial
     wrapper because legacy `scan_flow_aware_psv` already operated on
     `scanFiltered`. -/
-theorem scanFilteredIx_FlowAwarePSVIx
+lemma scanFilteredIx_FlowAwarePSVIx
     (input : String) (tokens : Indexed.TokenStream input)
     (h_scan : scanFilteredIx input = .ok tokens) :
     FlowAwarePSVIx tokens := by
@@ -398,7 +398,7 @@ theorem scanFilteredIx_FlowAwarePSVIx
   · contradiction
 
 /-- `scanFilteredIx` output satisfies `FlowBracketsMatchedIx`. -/
-theorem scanFilteredIx_FlowBracketsMatchedIx
+lemma scanFilteredIx_FlowBracketsMatchedIx
     (input : String) (tokens : Indexed.TokenStream input)
     (h_scan : scanFilteredIx input = .ok tokens) :
     FlowBracketsMatchedIx tokens := by
@@ -468,7 +468,7 @@ Indexed twin of legacy `scanLoop_success_emits_streamEnd`
 the *only* success-returning arm of `scanLoopIx` is the terminal
 `unwindIndentsIx + emit streamEnd` branch. -/
 
-theorem scanLoopIx_success_emits_streamEnd {input : String} :
+lemma scanLoopIx_success_emits_streamEnd {input : String} :
     ∀ (s : ScannerStateIx input) (fuel : Nat) (ts : Indexed.TokenStream input),
       scanLoopIx s fuel = .ok ts →
       ∃ (s' : ScannerStateIx input), ts = (s'.emit YamlToken.streamEnd).tokens := by
@@ -505,7 +505,7 @@ regardless of how the recursive arms grew the stream. Indexed twin of
 legacy `scanLoop_increases_tokens`
 (`Proofs/Scanner/ScannerCorrectness.lean:6257`). -/
 
-theorem scanLoopIx_increases_tokens {input : String}
+lemma scanLoopIx_increases_tokens {input : String}
     {s : ScannerStateIx input} {fuel : Nat} {ts : Indexed.TokenStream input}
     (h : scanLoopIx s fuel = .ok ts) :
     s.tokens.size + 1 ≤ ts.size := by
@@ -549,7 +549,7 @@ Indexed twin of legacy `scan_produces_at_least_two`
 tokens.size`) with the observation that the initial state after
 `mk' |> emit streamStart` has `tokens.size = 1`. -/
 
-theorem scanIx_produces_at_least_two {input : String}
+lemma scanIx_produces_at_least_two {input : String}
     (tokens : Indexed.TokenStream input)
     (h : scanIx input = .ok tokens) :
     tokens.tokens.size ≥ 2 := by
@@ -575,7 +575,7 @@ Indexed twin of legacy `scan_last_is_streamEnd`
 `scanLoopIx_success_emits_streamEnd` with `Array.getElem_push_eq`
 (retrieving the last element of a pushed array). -/
 
-theorem scanIx_last_is_streamEnd {input : String}
+lemma scanIx_last_is_streamEnd {input : String}
     (tokens : Indexed.TokenStream input)
     (h : scanIx input = .ok tokens)
     (h_size : 0 < tokens.tokens.size) :

@@ -58,25 +58,25 @@ and canonical value emission. These properties verify the structure.
 -/
 
 /-- emitWithComments on a document with no comments equals emit on the value. -/
-theorem emitWithComments_empty_comments :
+lemma emitWithComments_empty_comments :
     emitWithComments { value := YamlValue.plainScalar "hello",
                        comments := #[], nodePositions := #[] } =
     emit (YamlValue.plainScalar "hello") := by native_decide
 
 /-- emitWithComments on a document with one comment produces a comment line
     followed by the value. -/
-theorem emitWithComments_one_comment :
+lemma emitWithComments_one_comment :
     emitWithComments { value := YamlValue.plainScalar "hello",
                        comments := #[(⟨0, 0, 0⟩, ⟨" a comment", .inline⟩)],
                        nodePositions := #[] } =
     "# a comment\n\"hello\"" := by native_decide
 
 /-- emitCommentLines on empty comments produces empty string. -/
-theorem emitCommentLines_empty :
+lemma emitCommentLines_empty :
     emitCommentLines #[] = "" := by native_decide
 
 /-- emitCommentLines on a single comment produces `#text\n`. -/
-theorem emitCommentLines_single :
+lemma emitCommentLines_single :
     emitCommentLines #[(⟨0, 0, 0⟩, ⟨" test", .inline⟩)] = "# test\n" := by native_decide
 
 /-! ## §2: Comment Text Round-Trip via `#guard`
@@ -118,27 +118,27 @@ scan→parse→emit→re-scan→re-parse pipeline on concrete inputs.
 -/
 
 /-- A document with no comments: value round-trips correctly. -/
-theorem value_roundtrip_no_comments :
+lemma value_roundtrip_no_comments :
     valueRoundTrips { value := .plainScalar "hello",
                       comments := #[], nodePositions := #[] } = true := by
   native_decide
 
 /-- A document with one comment: value still round-trips. -/
-theorem value_roundtrip_one_comment :
+lemma value_roundtrip_one_comment :
     valueRoundTrips { value := .plainScalar "hello",
                       comments := #[(⟨0, 0, 0⟩, ⟨" my comment", .inline⟩)],
                       nodePositions := #[] } = true := by
   native_decide
 
 /-- A document with one comment: comment text round-trips. -/
-theorem comment_roundtrip_one_comment :
+lemma comment_roundtrip_one_comment :
     commentRoundTrips { value := .plainScalar "hello",
                         comments := #[(⟨0, 0, 0⟩, ⟨" my comment", .inline⟩)],
                         nodePositions := #[] } = true := by
   native_decide
 
 /-- A document with two comments: both texts round-trip. -/
-theorem comment_roundtrip_two_comments :
+lemma comment_roundtrip_two_comments :
     commentRoundTrips { value := .plainScalar "value",
                         comments := #[(⟨0, 0, 0⟩, ⟨" first", .inline⟩),
                                       (⟨1, 0, 10⟩, ⟨" second", .inline⟩)],
@@ -146,14 +146,14 @@ theorem comment_roundtrip_two_comments :
   native_decide
 
 /-- Empty mapping with a comment: round-trips. -/
-theorem comment_roundtrip_mapping :
+lemma comment_roundtrip_mapping :
     commentRoundTrips { value := .mapping .flow #[] none,
                         comments := #[(⟨0, 0, 0⟩, ⟨" map comment", .inline⟩)],
                         nodePositions := #[] } = true := by
   native_decide
 
 /-- Empty sequence with a comment: round-trips. -/
-theorem comment_roundtrip_sequence :
+lemma comment_roundtrip_sequence :
     commentRoundTrips { value := .sequence .flow #[] none,
                         comments := #[(⟨0, 0, 0⟩, ⟨" seq comment", .inline⟩)],
                         nodePositions := #[] } = true := by
@@ -176,32 +176,32 @@ between comments and node positions.
 -/
 
 /-- A comment on the same line as a node start is classified `.inline`. -/
-theorem classify_inline_same_line :
+lemma classify_inline_same_line :
     classifyCommentPosition ⟨10, 1, 5⟩
       #[(#[], ⟨0, 1, 0⟩, ⟨20, 5, 0⟩)] = .inline := by native_decide
 
 /-- A comment on a line before any node is classified `.before`. -/
-theorem classify_before_any_node :
+lemma classify_before_any_node :
     classifyCommentPosition ⟨0, 0, 0⟩
       #[(#[], ⟨5, 1, 0⟩, ⟨20, 5, 0⟩)] = .before := by native_decide
 
 /-- A comment on a line after all nodes is classified `.after`. -/
-theorem classify_after_all_nodes :
+lemma classify_after_all_nodes :
     classifyCommentPosition ⟨25, 6, 0⟩
       #[(#[], ⟨5, 1, 0⟩, ⟨20, 5, 0⟩)] = .after := by native_decide
 
 /-- When there are no nodes, a comment is classified `.after` (fallback). -/
-theorem classify_no_nodes_fallback :
+lemma classify_no_nodes_fallback :
     classifyCommentPosition ⟨5, 1, 0⟩ #[] = .after := by native_decide
 
 /-- With multiple nodes, a comment on one node's line is `.inline`. -/
-theorem classify_inline_multi_node :
+lemma classify_inline_multi_node :
     classifyCommentPosition ⟨15, 3, 10⟩
       #[(#[.index 0], ⟨5, 1, 0⟩, ⟨10, 2, 0⟩),
         (#[.index 1], ⟨12, 3, 0⟩, ⟨20, 4, 0⟩)] = .inline := by native_decide
 
 /-- A comment between two nodes (different lines from both) is `.before`. -/
-theorem classify_between_nodes :
+lemma classify_between_nodes :
     classifyCommentPosition ⟨11, 2, 5⟩
       #[(#[.index 0], ⟨5, 1, 0⟩, ⟨10, 1, 5⟩),
         (#[.index 1], ⟨15, 3, 0⟩, ⟨20, 4, 0⟩)] = .before := by native_decide
@@ -216,42 +216,42 @@ Concrete proofs for `dumpCommentLine`, `dumpCommentsOfPosition`, and
 open L4YAML.Dump
 
 /-- `dumpCommentLine` prepends `#` to the comment text. -/
-theorem dumpCommentLine_structure :
+lemma dumpCommentLine_structure :
     dumpCommentLine { text := " test comment", position := .inline } =
     "# test comment" := by native_decide
 
 /-- `dumpCommentsOfPosition` on an empty array returns `""`. -/
-theorem dumpCommentsOfPosition_empty :
+lemma dumpCommentsOfPosition_empty :
     dumpCommentsOfPosition #[] .before = "" := by native_decide
 
 /-- `dumpDocumentWithComments` with no comments equals `dumpDocument`. -/
-theorem dumpDocumentWithComments_no_comments :
+lemma dumpDocumentWithComments_no_comments :
     dumpDocumentWithComments { value := .plainScalar "hello" } =
     dumpDocument { value := .plainScalar "hello" } := by native_decide
 
 /-- Before comment is emitted before the value. -/
-theorem dumpDocumentWithComments_before :
+lemma dumpDocumentWithComments_before :
     dumpDocumentWithComments
       { value := .plainScalar "hello",
         comments := #[(⟨0, 0, 0⟩, ⟨" header", .before⟩)] } =
     "# header\nhello" := by native_decide
 
 /-- After comment is emitted after the value. -/
-theorem dumpDocumentWithComments_after :
+lemma dumpDocumentWithComments_after :
     dumpDocumentWithComments
       { value := .plainScalar "hello",
         comments := #[(⟨20, 5, 0⟩, ⟨" footer", .after⟩)] } =
     "hello\n# footer\n" := by native_decide
 
 /-- Inline comment is appended to the first content line. -/
-theorem dumpDocumentWithComments_inline :
+lemma dumpDocumentWithComments_inline :
     dumpDocumentWithComments
       { value := .plainScalar "hello",
         comments := #[(⟨5, 1, 5⟩, ⟨" note", .inline⟩)] } =
     "hello # note" := by native_decide
 
 /-- Mixed before + inline + after produces expected output. -/
-theorem dumpDocumentWithComments_mixed :
+lemma dumpDocumentWithComments_mixed :
     dumpDocumentWithComments
       { value := .plainScalar "hello",
         comments := #[(⟨0, 0, 0⟩, ⟨" top", .before⟩),
@@ -260,7 +260,7 @@ theorem dumpDocumentWithComments_mixed :
     "# top\nhello # mid\n# end\n" := by native_decide
 
 /-- `dumpDocumentsWithComments` on a single document equals single-doc dump. -/
-theorem dumpDocumentsWithComments_single :
+lemma dumpDocumentsWithComments_single :
     dumpDocumentsWithComments #[{ value := .plainScalar "hello" }] =
     dumpDocumentWithComments { value := .plainScalar "hello" } := by
   native_decide

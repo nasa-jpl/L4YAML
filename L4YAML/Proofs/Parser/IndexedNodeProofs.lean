@@ -46,7 +46,7 @@ namespace L4YAML.Proofs.Indexed.NodeProofs
 -- Local copy of bridge lemma (mirrors legacy `ParserNodeProofs`;
 -- self-contained so the cutover commit can drop this file's
 -- legacy twin without touching downstream callers).
-theorem any_name_implies_findSome_isSome'
+lemma any_name_implies_findSome_isSome'
     (anchors : Array (String × YamlValue)) (name : String)
     (h : anchors.any (fun (n, _) => n == name) = true) :
     (anchors.findSome? (fun (n, _) => if n == name then some () else none)).isSome = true :=
@@ -101,16 +101,16 @@ def AG (ps ps' : ParseStateIx input) : Prop :=
 
 variable {ps ps' ps1 ps2 ps3 : ParseStateIx input}
 
-theorem AG.refl : AG ps ps := fun i => ⟨i, rfl⟩
-theorem AG.trans (h12 : AG ps1 ps2) (h23 : AG ps2 ps3) : AG ps1 ps3 := by
+lemma AG.refl : AG ps ps := fun i => ⟨i, rfl⟩
+lemma AG.trans (h12 : AG ps1 ps2) (h23 : AG ps2 ps3) : AG ps1 ps3 := by
   intro i; obtain ⟨j, hj⟩ := h12 i; obtain ⟨k, hk⟩ := h23 j; exact ⟨k, hk ▸ hj⟩
-theorem AG.of_eq (h : ps'.anchors = ps.anchors) : AG ps ps' :=
+lemma AG.of_eq (h : ps'.anchors = ps.anchors) : AG ps ps' :=
   fun ⟨i, hi⟩ => ⟨⟨i, h ▸ hi⟩, by simp [h]⟩
-theorem AG.advance (ps : ParseStateIx input) : AG ps ps.advance :=
+lemma AG.advance (ps : ParseStateIx input) : AG ps ps.advance :=
   AG.of_eq (by simp [ParseStateIx.advance])
-theorem AG.withField (ps : ParseStateIx input) (p : YamlPath) :
+lemma AG.withField (ps : ParseStateIx input) (p : YamlPath) :
     AG ps { ps with currentPath := p } := AG.of_eq rfl
-theorem AG.tryConsume (ps : ParseStateIx input) (tok : YamlToken) :
+lemma AG.tryConsume (ps : ParseStateIx input) (tok : YamlToken) :
     AG ps (ps.tryConsume tok).2 := by
   unfold ParseStateIx.tryConsume
   split
@@ -120,11 +120,11 @@ theorem AG.tryConsume (ps : ParseStateIx input) (tok : YamlToken) :
   · exact AG.refl
 
 -- tryConsume preserves anchors (needed for unification in AAR proofs)
-@[simp] theorem tryConsume_snd_anchors (ps : ParseStateIx input) (tok : YamlToken) :
+@[simp] lemma tryConsume_snd_anchors (ps : ParseStateIx input) (tok : YamlToken) :
     (ps.tryConsume tok).snd.anchors = ps.anchors := by
   unfold ParseStateIx.tryConsume; split <;> (try split) <;> simp [ParseStateIx.advance]
 
-theorem applyNodeFinalization_ag
+lemma applyNodeFinalization_ag
     (val : YamlValue) (ps : ParseStateIx input) (props : NodeProperties)
     (nodeStartPos : YamlPos) :
     AG ps (applyNodeFinalization val ps props nodeStartPos).2 := by
@@ -152,7 +152,7 @@ variable {n : Nat}
 
 /-! ## Sub-parser AG lemmas: block sequences -/
 
-theorem parseBlockSequenceLoop_ag (h_ih : ParseNodeAG input n)
+lemma parseBlockSequenceLoop_ag (h_ih : ParseNodeAG input n)
     (ps : ParseStateIx input) (fuel : Nat) (items : Array YamlValue)
     (h_fuel : fuel ≤ n + 1)
     (result : Array YamlValue) (ps' : ParseStateIx input)
@@ -192,7 +192,7 @@ theorem parseBlockSequenceLoop_ag (h_ih : ParseNodeAG input n)
       simp only [Except.ok.injEq] at h_ok
       obtain ⟨_, rfl⟩ := Prod.mk.inj h_ok; exact AG.refl
 
-theorem parseBlockSequence_ag (h_ih : ParseNodeAG input n)
+lemma parseBlockSequence_ag (h_ih : ParseNodeAG input n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n + 1)
     (val : YamlValue) (ps' : ParseStateIx input)
     (h_ok : parseBlockSequence ps fuel = .ok (val, ps')) :
@@ -217,7 +217,7 @@ theorem parseBlockSequence_ag (h_ih : ParseNodeAG input n)
 
 /-! ## Sub-parser AG lemmas: implicit block sequences -/
 
-theorem parseImplicitBlockSequenceLoop_ag (h_ih : ParseNodeAG input n)
+lemma parseImplicitBlockSequenceLoop_ag (h_ih : ParseNodeAG input n)
     (ps : ParseStateIx input) (fuel : Nat) (items : Array YamlValue)
     (h_fuel : fuel ≤ n + 1)
     (result : Array YamlValue) (ps' : ParseStateIx input)
@@ -255,7 +255,7 @@ theorem parseImplicitBlockSequenceLoop_ag (h_ih : ParseNodeAG input n)
     · simp only [Except.ok.injEq] at h_ok
       obtain ⟨_, rfl⟩ := Prod.mk.inj h_ok; exact AG.refl
 
-theorem parseImplicitBlockSequence_ag (h_ih : ParseNodeAG input n)
+lemma parseImplicitBlockSequence_ag (h_ih : ParseNodeAG input n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n + 1)
     (val : YamlValue) (ps' : ParseStateIx input)
     (h_ok : parseImplicitBlockSequence ps fuel = .ok (val, ps')) :
@@ -277,7 +277,7 @@ theorem parseImplicitBlockSequence_ag (h_ih : ParseNodeAG input n)
 
 /-! ## Sub-parser AG lemmas: block mapping -/
 
-theorem parseBlockMappingEntryValue_ag (h_ih : ParseNodeAG input n)
+lemma parseBlockMappingEntryValue_ag (h_ih : ParseNodeAG input n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n)
     (keyHasContent : Bool) (keyLine keyCol : Nat)
     (val : YamlValue) (ps' : ParseStateIx input)
@@ -310,7 +310,7 @@ theorem parseBlockMappingEntryValue_ag (h_ih : ParseNodeAG input n)
 
 -- handleBlockMappingKeyEntry: advance → if keyHasContent → parseNode/emptyNode → BEV → restore path
 set_option maxHeartbeats 400000 in
-theorem handleBlockMappingKeyEntry_ag (h_ih : ParseNodeAG input n)
+lemma handleBlockMappingKeyEntry_ag (h_ih : ParseNodeAG input n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n)
     (pairIdx : Nat) (key val : YamlValue) (ps' : ParseStateIx input)
     (h_ok : handleBlockMappingKeyEntry ps fuel pairIdx = .ok (key, val, ps')) :
@@ -344,7 +344,7 @@ theorem handleBlockMappingKeyEntry_ag (h_ih : ParseNodeAG input n)
         (AG.trans (parseBlockMappingEntryValue_ag h_ih _ _ h_fuel _ _ _ _ _ (by assumption))
           (AG.withField _ _))))
 
-theorem handleBlockMappingValueEntry_ag (h_ih : ParseNodeAG input n)
+lemma handleBlockMappingValueEntry_ag (h_ih : ParseNodeAG input n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n)
     (pairIdx : Nat) (val : YamlValue) (ps' : ParseStateIx input)
     (h_ok : handleBlockMappingValueEntry ps fuel pairIdx = .ok (val, ps')) :
@@ -370,7 +370,7 @@ theorem handleBlockMappingValueEntry_ag (h_ih : ParseNodeAG input n)
         (AG.trans (AG.withField ps.advance _)
           (AG.trans (h_ih _ fuel v ps_n h_fuel heq_pn) (AG.withField ps_n _)))
 
-theorem parseBlockMappingLoop_ag (h_ih : ParseNodeAG input n)
+lemma parseBlockMappingLoop_ag (h_ih : ParseNodeAG input n)
     (ps : ParseStateIx input) (fuel : Nat) (pairs : Array (YamlValue × YamlValue))
     (h_fuel : fuel ≤ n + 1)
     (result : Array (YamlValue × YamlValue)) (ps' : ParseStateIx input)
@@ -407,7 +407,7 @@ theorem parseBlockMappingLoop_ag (h_ih : ParseNodeAG input n)
       simp only [Except.ok.injEq] at h_ok
       obtain ⟨_, rfl⟩ := Prod.mk.inj h_ok; exact AG.refl
 
-theorem parseBlockMapping_ag (h_ih : ParseNodeAG input n)
+lemma parseBlockMapping_ag (h_ih : ParseNodeAG input n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n + 1)
     (val : YamlValue) (ps' : ParseStateIx input)
     (h_ok : parseBlockMapping ps fuel = .ok (val, ps')) :
@@ -433,7 +433,7 @@ theorem parseBlockMapping_ag (h_ih : ParseNodeAG input n)
 /-! ## Sub-parser AG lemmas: flow parsers -/
 
 -- parseExplicitKey: emptyNode or parseNode
-theorem parseExplicitKey_ag (h_ih : ParseNodeAG input n)
+lemma parseExplicitKey_ag (h_ih : ParseNodeAG input n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n)
     (val : YamlValue) (ps' : ParseStateIx input)
     (h_ok : parseExplicitKey ps fuel = .ok (val, ps')) :
@@ -449,7 +449,7 @@ theorem parseExplicitKey_ag (h_ih : ParseNodeAG input n)
   · exact h_ih _ fuel _ _ h_fuel h_ok
 
 -- parseFlowMappingValue: withField → tryConsume key → tryConsume value → parseNode/emptyNode
-theorem parseFlowMappingValue_ag (h_ih : ParseNodeAG input n)
+lemma parseFlowMappingValue_ag (h_ih : ParseNodeAG input n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n)
     (savedPath : YamlPath) (keyContent : String)
     (val : YamlValue) (ps' : ParseStateIx input)
@@ -478,7 +478,7 @@ theorem parseFlowMappingValue_ag (h_ih : ParseNodeAG input n)
 
 -- parseSinglePairMapping: advance → parseNode/emptyNode → withField → tryConsume → parseNode/emptyNode → withField
 set_option maxHeartbeats 1600000 in
-theorem parseSinglePairMapping_ag (h_ih : ParseNodeAG input n)
+lemma parseSinglePairMapping_ag (h_ih : ParseNodeAG input n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n + 1)
     (val : YamlValue) (ps' : ParseStateIx input)
     (h_ok : parseSinglePairMapping ps fuel = .ok (val, ps')) :
@@ -519,7 +519,7 @@ theorem parseSinglePairMapping_ag (h_ih : ParseNodeAG input n)
           (AG.trans (h_ih _ k _ _ (by omega) (by assumption)) (AG.withField _ _)))))
 
 -- parseFlowSequenceLoop
-theorem parseFlowSequenceLoop_ag (h_ih : ParseNodeAG input n)
+lemma parseFlowSequenceLoop_ag (h_ih : ParseNodeAG input n)
     (ps : ParseStateIx input) (fuel : Nat) (items : Array YamlValue)
     (h_fuel : fuel ≤ n + 1)
     (result : Array YamlValue) (ps' : ParseStateIx input)
@@ -588,7 +588,7 @@ theorem parseFlowSequenceLoop_ag (h_ih : ParseNodeAG input n)
                 (AG.trans (h_ih _ k v ps3 (by omega) heq_pn)
                   (AG.trans (AG.withField ps3 _) (ih_fuel _ _ (by omega) h_ok)))
 
-theorem parseFlowSequence_ag (h_ih : ParseNodeAG input n)
+lemma parseFlowSequence_ag (h_ih : ParseNodeAG input n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n + 1)
     (val : YamlValue) (ps' : ParseStateIx input)
     (h_ok : parseFlowSequence ps fuel = .ok (val, ps')) :
@@ -612,7 +612,7 @@ theorem parseFlowSequence_ag (h_ih : ParseNodeAG input n)
       · simp at h_ok
 
 -- parseFlowMappingLoop
-theorem parseFlowMappingLoop_ag (h_ih : ParseNodeAG input n)
+lemma parseFlowMappingLoop_ag (h_ih : ParseNodeAG input n)
     (ps : ParseStateIx input) (fuel : Nat) (pairs : Array (YamlValue × YamlValue))
     (h_fuel : fuel ≤ n + 1)
     (result : Array (YamlValue × YamlValue)) (ps' : ParseStateIx input)
@@ -699,7 +699,7 @@ theorem parseFlowMappingLoop_ag (h_ih : ParseNodeAG input n)
                   (AG.trans (parseFlowMappingValue_ag h_ih ps_pn k (by omega) _ _ val_v ps_fmv heq_fmv)
                     (ih_fuel _ _ (by omega) h_ok))
 
-theorem parseFlowMapping_ag (h_ih : ParseNodeAG input n)
+lemma parseFlowMapping_ag (h_ih : ParseNodeAG input n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n + 1)
     (val : YamlValue) (ps' : ParseStateIx input)
     (h_ok : parseFlowMapping ps fuel = .ok (val, ps')) :
@@ -725,7 +725,7 @@ theorem parseFlowMapping_ag (h_ih : ParseNodeAG input n)
 /-! ## parseNodeProperties AG (trivial — only advance, no parseNode) -/
 
 set_option maxHeartbeats 800000 in
-theorem parseNodeProperties_ag
+lemma parseNodeProperties_ag
     (ps : ParseStateIx input) (props : NodeProperties) (ps' : ParseStateIx input)
     (h_ok : parseNodeProperties ps = .ok (props, ps')) :
     AG ps ps' := by
@@ -824,7 +824,7 @@ theorem parseNodeProperties_ag
 
 /-! ## parseNodeContent AG -/
 
-theorem parseNodeContent_ag (h_ih : ParseNodeAG input n)
+lemma parseNodeContent_ag (h_ih : ParseNodeAG input n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n)
     (props : NodeProperties) (val : YamlValue) (ps' : ParseStateIx input)
     (h_ok : parseNodeContent ps fuel props = .ok (val, ps')) :
@@ -853,7 +853,7 @@ theorem parseNodeContent_ag (h_ih : ParseNodeAG input n)
 /-! ## Main theorem: parseNode AG by strong induction -/
 
 set_option maxHeartbeats 400000 in
-theorem parseNode_ag_all : ∀ n, ParseNodeAG input n := by
+lemma parseNode_ag_all : ∀ n, ParseNodeAG input n := by
   intro n
   induction n with
   | zero =>
@@ -907,7 +907,7 @@ theorem parseNode_ag_all : ∀ n, ParseNodeAG input n := by
 
 /-! ## Extract the target theorem -/
 
-theorem parseNode_anchors_grow (ps : ParseStateIx input) (n : Nat)
+lemma parseNode_anchors_grow (ps : ParseStateIx input) (n : Nat)
     (val : YamlValue) (ps' : ParseStateIx input)
     (h_ok : parseNode ps n = .ok (val, ps')) :
     ∀ i : Fin ps.anchors.size, ∃ j : Fin ps'.anchors.size,
@@ -924,7 +924,7 @@ def ParseNodeAAR (input : String) (n : Nat) : Prop :=
 -- Bridge lemma: imported from ParserAnchorProofs as `any_name_implies_findSome_isSome'`
 
 -- AAR.mono: lift AAR to larger anchors via AG embedding
-theorem aar_mono {val : YamlValue} {a1 a2 : Array (String × YamlValue)}
+lemma aar_mono {val : YamlValue} {a1 a2 : Array (String × YamlValue)}
     (h_ag : ∀ i : Fin a1.size, ∃ j : Fin a2.size, a2[j] = a1[i])
     (h : AllAliasesResolve val a1) : AllAliasesResolve val a2 := by
   induction h with
@@ -943,14 +943,14 @@ theorem aar_mono {val : YamlValue} {a1 a2 : Array (String × YamlValue)}
 
 -- AAR for applyNodeFinalization: preserves AAR + lifts through anchor push
 -- Helper: changing tag/anchor fields preserves AAR
-theorem aar_retag_sequence (anchors : Array (String × YamlValue))
+lemma aar_retag_sequence (anchors : Array (String × YamlValue))
     {style : CollectionStyle} {items : Array YamlValue}
     {t1 a1 : Option String} (t2 a2 : Option String)
     (h : AllAliasesResolve (.sequence style items t1 a1) anchors) :
     AllAliasesResolve (.sequence style items t2 a2) anchors := by
   cases h with | sequence _ _ _ _ _ hi => exact .sequence _ _ _ _ _ hi
 
-theorem aar_retag_mapping (anchors : Array (String × YamlValue))
+lemma aar_retag_mapping (anchors : Array (String × YamlValue))
     {style : CollectionStyle} {pairs : Array (YamlValue × YamlValue)}
     {t1 a1 : Option String} (t2 a2 : Option String)
     (h : AllAliasesResolve (.mapping style pairs t1 a1) anchors) :
@@ -958,13 +958,13 @@ theorem aar_retag_mapping (anchors : Array (String × YamlValue))
   cases h with | mapping _ _ _ _ _ hk hv => exact .mapping _ _ _ _ _ hk hv
 
 -- AAR.push: AllAliasesResolve preserved when anchors grow by one push
-theorem aar_push {val : YamlValue} {anchors : Array (String × YamlValue)}
+lemma aar_push {val : YamlValue} {anchors : Array (String × YamlValue)}
     (entry : String × YamlValue) (h : AllAliasesResolve val anchors) :
     AllAliasesResolve val (anchors.push entry) :=
   aar_mono (fun ⟨i, hi⟩ => ⟨⟨i, by simp [Array.size_push]; omega⟩,
     by simp [Array.getElem_push, show i < anchors.size from hi]⟩) h
 
-theorem applyNodeFinalization_aar
+lemma applyNodeFinalization_aar
     (val : YamlValue) (ps : ParseStateIx input) (props : NodeProperties)
     (nodeStartPos : YamlPos)
     (h_aar : AllAliasesResolve val ps.anchors) :
@@ -1004,12 +1004,12 @@ theorem applyNodeFinalization_aar
 /-! ## AllAliasesResolve (AAR) sub-parser proofs -/
 
 -- Helper: emptyNode is always AAR
-theorem emptyNode_aar (anchors : Array (String × YamlValue)) :
+lemma emptyNode_aar (anchors : Array (String × YamlValue)) :
     AllAliasesResolve emptyNode anchors := by
   unfold emptyNode; exact .scalar _ _
 
 -- Helper: push preserves items AAR invariant
-theorem items_push_aar
+lemma items_push_aar
     {items : Array YamlValue} {val : YamlValue}
     {a_old a_new : Array (String × YamlValue)}
     (h_ag : ∀ i : Fin a_old.size, ∃ j : Fin a_new.size, a_new[j] = a_old[i])
@@ -1023,7 +1023,7 @@ theorem items_push_aar
   next => exact h_new
 
 -- Helper: push preserves pairs AAR invariant
-theorem pairs_push_aar
+lemma pairs_push_aar
     {pairs : Array (YamlValue × YamlValue)} {key val : YamlValue}
     {a_old a_new : Array (String × YamlValue)}
     (h_ag : ∀ i : Fin a_old.size, ∃ j : Fin a_new.size, a_new[j] = a_old[i])
@@ -1041,7 +1041,7 @@ theorem pairs_push_aar
     next => dsimp only []; first | exact h_new_k | exact h_new_v)
 
 -- Block sequence loop AAR
-theorem parseBlockSequenceLoop_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_ag : ParseNodeAG input n)
+lemma parseBlockSequenceLoop_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_ag : ParseNodeAG input n)
     (ps : ParseStateIx input) (fuel : Nat) (items : Array YamlValue)
     (h_fuel : fuel ≤ n + 1)
     (result : Array YamlValue) (ps' : ParseStateIx input)
@@ -1085,7 +1085,7 @@ theorem parseBlockSequenceLoop_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_ag : 
       obtain ⟨rfl, rfl⟩ := Prod.mk.inj h_ok; exact h_pre
 
 -- Block sequence wrapper AAR
-theorem parseBlockSequence_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_ag : ParseNodeAG input n)
+lemma parseBlockSequence_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_ag : ParseNodeAG input n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n + 1)
     (val : YamlValue) (ps' : ParseStateIx input)
     (h_ok : parseBlockSequence ps fuel = .ok (val, ps')) :
@@ -1112,7 +1112,7 @@ theorem parseBlockSequence_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_ag : Pars
            rw [this]; exact .sequence _ _ _ _ _ h_items))
 
 -- Implicit block sequence loop AAR
-theorem parseImplicitBlockSequenceLoop_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_ag : ParseNodeAG input n)
+lemma parseImplicitBlockSequenceLoop_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_ag : ParseNodeAG input n)
     (ps : ParseStateIx input) (fuel : Nat) (items : Array YamlValue)
     (h_fuel : fuel ≤ n + 1)
     (result : Array YamlValue) (ps' : ParseStateIx input)
@@ -1158,7 +1158,7 @@ theorem parseImplicitBlockSequenceLoop_aar (h_ih_aar : ParseNodeAAR input n) (h_
       obtain ⟨rfl, rfl⟩ := Prod.mk.inj h_ok; exact h_pre
 
 -- Implicit block sequence wrapper AAR
-theorem parseImplicitBlockSequence_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_ag : ParseNodeAG input n)
+lemma parseImplicitBlockSequence_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_ag : ParseNodeAG input n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n + 1)
     (val : YamlValue) (ps' : ParseStateIx input)
     (h_ok : parseImplicitBlockSequence ps fuel = .ok (val, ps')) :
@@ -1183,7 +1183,7 @@ theorem parseImplicitBlockSequence_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_a
 /-! ### Block mapping AAR -/
 
 -- parseBlockMappingEntryValue: value is emptyNode or parseNode result
-theorem parseBlockMappingEntryValue_aar (h_ih_aar : ParseNodeAAR input n)
+lemma parseBlockMappingEntryValue_aar (h_ih_aar : ParseNodeAAR input n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n)
     (keyHasContent : Bool) (keyLine keyCol : Nat)
     (val : YamlValue) (ps' : ParseStateIx input)
@@ -1214,7 +1214,7 @@ theorem parseBlockMappingEntryValue_aar (h_ih_aar : ParseNodeAAR input n)
 
 -- handleBlockMappingKeyEntry: (key, val, ps') — both key and val AAR
 set_option maxHeartbeats 400000 in
-theorem handleBlockMappingKeyEntry_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_ag : ParseNodeAG input n)
+lemma handleBlockMappingKeyEntry_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_ag : ParseNodeAG input n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n)
     (pairIdx : Nat) (key val : YamlValue) (ps' : ParseStateIx input)
     (h_ok : handleBlockMappingKeyEntry ps fuel pairIdx = .ok (key, val, ps')) :
@@ -1254,7 +1254,7 @@ theorem handleBlockMappingKeyEntry_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_a
       (parseBlockMappingEntryValue_aar h_ih_aar _ _ h_fuel _ _ _ _ _ (by assumption))⟩
 
 -- handleBlockMappingValueEntry: (val, ps') — val is emptyNode or parseNode
-theorem handleBlockMappingValueEntry_aar (h_ih_aar : ParseNodeAAR input n)
+lemma handleBlockMappingValueEntry_aar (h_ih_aar : ParseNodeAAR input n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n)
     (pairIdx : Nat) (val : YamlValue) (ps' : ParseStateIx input)
     (h_ok : handleBlockMappingValueEntry ps fuel pairIdx = .ok (val, ps')) :
@@ -1277,7 +1277,7 @@ theorem handleBlockMappingValueEntry_aar (h_ih_aar : ParseNodeAAR input n)
       exact aar_mono (AG.withField ps_n _) (h_ih_aar _ fuel v ps_n h_fuel heq_pn)
 
 -- Block mapping loop AAR
-theorem parseBlockMappingLoop_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_ag : ParseNodeAG input n)
+lemma parseBlockMappingLoop_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_ag : ParseNodeAG input n)
     (ps : ParseStateIx input) (fuel : Nat) (pairs : Array (YamlValue × YamlValue))
     (h_fuel : fuel ≤ n + 1)
     (result : Array (YamlValue × YamlValue)) (ps' : ParseStateIx input)
@@ -1325,7 +1325,7 @@ theorem parseBlockMappingLoop_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_ag : P
       obtain ⟨rfl, rfl⟩ := Prod.mk.inj h_ok; exact ⟨h_pre_k, h_pre_v⟩
 
 -- Block mapping wrapper AAR
-theorem parseBlockMapping_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_ag : ParseNodeAG input n)
+lemma parseBlockMapping_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_ag : ParseNodeAG input n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n + 1)
     (val : YamlValue) (ps' : ParseStateIx input)
     (h_ok : parseBlockMapping ps fuel = .ok (val, ps')) :
@@ -1355,7 +1355,7 @@ theorem parseBlockMapping_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_ag : Parse
 /-! ### Flow parser AAR -/
 
 -- parseExplicitKey: emptyNode or parseNode
-theorem parseExplicitKey_aar (h_ih_aar : ParseNodeAAR input n)
+lemma parseExplicitKey_aar (h_ih_aar : ParseNodeAAR input n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n)
     (val : YamlValue) (ps' : ParseStateIx input)
     (h_ok : parseExplicitKey ps fuel = .ok (val, ps')) :
@@ -1366,7 +1366,7 @@ theorem parseExplicitKey_aar (h_ih_aar : ParseNodeAAR input n)
   · exact h_ih_aar _ fuel _ _ h_fuel h_ok
 
 -- parseFlowMappingValue: emptyNode or parseNode
-theorem parseFlowMappingValue_aar (h_ih_aar : ParseNodeAAR input n)
+lemma parseFlowMappingValue_aar (h_ih_aar : ParseNodeAAR input n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n)
     (savedPath : YamlPath) (keyContent : String)
     (val : YamlValue) (ps' : ParseStateIx input)
@@ -1398,7 +1398,7 @@ theorem parseFlowMappingValue_aar (h_ih_aar : ParseNodeAAR input n)
 
 -- parseSinglePairMapping: creates .mapping .flow #[(key, val)]
 -- Helper for single-pair mapping AAR close
-theorem spm_close (anchors : Array (String × YamlValue)) (k v : YamlValue)
+lemma spm_close (anchors : Array (String × YamlValue)) (k v : YamlValue)
     (hk : AllAliasesResolve k anchors) (hv : AllAliasesResolve v anchors) :
     AllAliasesResolve (.mapping .flow #[(k, v)]) anchors := by
   apply AllAliasesResolve.mapping
@@ -1406,14 +1406,14 @@ theorem spm_close (anchors : Array (String × YamlValue)) (k v : YamlValue)
   · intro ⟨i, hi⟩; match i, hi with | 0, _ => dsimp; exact hv
 
 -- Helper: AAR from undestrutured parseNode result (avoids Prod.mk unification issue)
-theorem aar_of_parseNode (h_ih : ParseNodeAAR input n)
+lemma aar_of_parseNode (h_ih : ParseNodeAAR input n)
     (ps : ParseStateIx input) (k : Nat) (res : YamlValue × ParseStateIx input)
     (h_fuel : k ≤ n) (h_ok : parseNode ps k = .ok res) :
     AllAliasesResolve res.fst res.snd.anchors :=
   h_ih ps k res.fst res.snd h_fuel (by rw [← Prod.eta res]; exact h_ok)
 
 set_option maxHeartbeats 800000 in
-theorem parseSinglePairMapping_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_ag : ParseNodeAG input n)
+lemma parseSinglePairMapping_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_ag : ParseNodeAG input n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n + 1)
     (val : YamlValue) (ps' : ParseStateIx input)
     (h_ok : parseSinglePairMapping ps fuel = .ok (val, ps')) :
@@ -1454,7 +1454,7 @@ theorem parseSinglePairMapping_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_ag : 
       · exact aar_of_parseNode h_ih_aar _ k _ (by omega) (by assumption))
 
 -- Flow sequence loop AAR
-theorem parseFlowSequenceLoop_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_ag : ParseNodeAG input n)
+lemma parseFlowSequenceLoop_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_ag : ParseNodeAG input n)
     (ps : ParseStateIx input) (fuel : Nat) (items : Array YamlValue)
     (h_fuel : fuel ≤ n + 1)
     (result : Array YamlValue) (ps' : ParseStateIx input)
@@ -1550,7 +1550,7 @@ theorem parseFlowSequenceLoop_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_ag : P
                 h_pre h_pn_aar)
 
 -- Flow sequence wrapper AAR
-theorem parseFlowSequence_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_ag : ParseNodeAG input n)
+lemma parseFlowSequence_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_ag : ParseNodeAG input n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n + 1)
     (val : YamlValue) (ps' : ParseStateIx input)
     (h_ok : parseFlowSequence ps fuel = .ok (val, ps')) :
@@ -1575,7 +1575,7 @@ theorem parseFlowSequence_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_ag : Parse
       · simp at h_ok
 
 -- Flow mapping loop AAR
-theorem parseFlowMappingLoop_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_ag : ParseNodeAG input n)
+lemma parseFlowMappingLoop_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_ag : ParseNodeAG input n)
     (ps : ParseStateIx input) (fuel : Nat) (pairs : Array (YamlValue × YamlValue))
     (h_fuel : fuel ≤ n + 1)
     (result : Array (YamlValue × YamlValue)) (ps' : ParseStateIx input)
@@ -1699,7 +1699,7 @@ theorem parseFlowMappingLoop_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_ag : Pa
               exact ih_fuel ps_fmv _ (by omega) h_ok h_pk h_pv
 
 -- Flow mapping wrapper AAR
-theorem parseFlowMapping_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_ag : ParseNodeAG input n)
+lemma parseFlowMapping_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_ag : ParseNodeAG input n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n + 1)
     (val : YamlValue) (ps' : ParseStateIx input)
     (h_ok : parseFlowMapping ps fuel = .ok (val, ps')) :
@@ -1728,7 +1728,7 @@ theorem parseFlowMapping_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_ag : ParseN
 
 /-! ### parseNodeContent and parseNode AAR -/
 
-theorem parseNodeContent_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_ag : ParseNodeAG input n)
+lemma parseNodeContent_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_ag : ParseNodeAG input n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n + 1) (props : NodeProperties)
     (val : YamlValue) (ps' : ParseStateIx input)
     (h_ok : parseNodeContent ps fuel props = .ok (val, ps')) :
@@ -1751,7 +1751,7 @@ theorem parseNodeContent_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_ag : ParseN
 
 -- Main AAR theorem by strong induction
 set_option maxHeartbeats 400000 in
-theorem parseNode_aar_all : ∀ n, ParseNodeAAR input n := by
+lemma parseNode_aar_all : ∀ n, ParseNodeAAR input n := by
   intro n
   induction n with
   | zero =>
@@ -1805,7 +1805,7 @@ theorem parseNode_aar_all : ∀ n, ParseNodeAAR input n := by
               (parseNodeContent_aar ih_aar h_ih_ag ps_props k (by omega) props val_c ps_c heq_content)
 
 -- Extraction
-theorem parseNode_aliases_resolve'
+lemma parseNode_aliases_resolve'
     (ps : ParseStateIx input) (fuel : Nat) (val : YamlValue) (ps' : ParseStateIx input)
     (h : parseNode ps fuel = .ok (val, ps')) :
     AllAliasesResolve val ps'.anchors :=

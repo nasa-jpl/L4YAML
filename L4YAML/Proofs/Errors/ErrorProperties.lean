@@ -39,11 +39,11 @@ lemmas confirm that `toString` round-trips through the coercion.
 -/
 
 /-- Coercing a `ScanError` to `YamlError` preserves its string representation. -/
-theorem coe_scan_error_toString (e : ScanError) :
+lemma coe_scan_error_toString (e : ScanError) :
     (e : YamlError).toString = e.toString := rfl
 
 /-- Coercing a `SchemaError` to `YamlError` preserves its string representation. -/
-theorem coe_schema_error_toString (e : SchemaError) :
+lemma coe_schema_error_toString (e : SchemaError) :
     (e : YamlError).toString = e.toString := rfl
 
 /-! ## §2  Discriminability
@@ -52,19 +52,19 @@ Scanner and schema errors occupy disjoint constructors of `YamlError`.
 -/
 
 /-- A scan error wrapped in `YamlError` is never equal to a schema error. -/
-theorem scan_error_ne_schema_error (se : ScanError) (sce : SchemaError) :
+lemma scan_error_ne_schema_error (se : ScanError) (sce : SchemaError) :
     YamlError.scanError se ≠ YamlError.schemaError sce := by
   intro h; cases h
 
 /-! ## §3  Constructor Injectivity -/
 
 /-- `YamlError.scanError` is injective. -/
-theorem yaml_error_scan_injective {e₁ e₂ : ScanError} :
+lemma yaml_error_scan_injective {e₁ e₂ : ScanError} :
     YamlError.scanError e₁ = YamlError.scanError e₂ → e₁ = e₂ := by
   intro h; cases h; rfl
 
 /-- `YamlError.schemaError` is injective. -/
-theorem yaml_error_schema_injective {e₁ e₂ : SchemaError} :
+lemma yaml_error_schema_injective {e₁ e₂ : SchemaError} :
     YamlError.schemaError e₁ = YamlError.schemaError e₂ → e₁ = e₂ := by
   intro h; cases h; rfl
 
@@ -76,12 +76,12 @@ produce the specific `SchemaError` constructor(s) visible in its definition.
 -/
 
 /-- `getMapping` only produces `.notAMapping`: if it errors, the error is exactly `.notAMapping v`. -/
-theorem getMapping_error {v : YamlValue} {e : SchemaError}
+lemma getMapping_error {v : YamlValue} {e : SchemaError}
     (h : getMapping v = .error e) : e = .notAMapping v := by
   cases v <;> simp_all [getMapping]
 
 /-- `getString` only produces `.notAScalar`: if it errors, the error is exactly `.notAScalar v`. -/
-theorem getString_error {v : YamlValue} {e : SchemaError}
+lemma getString_error {v : YamlValue} {e : SchemaError}
     (h : getString v = .error e) : e = .notAScalar v := by
   cases v <;> simp_all [getString]
 
@@ -92,27 +92,27 @@ to success and reports a unique error constructor for everything else.
 -/
 
 /-- `fromYamlType? Unit` only produces `.expectedNull`. -/
-theorem fromYamlType_unit_error {t : Schema.YamlType} {e : SchemaError} :
+lemma fromYamlType_unit_error {t : Schema.YamlType} {e : SchemaError} :
     (fromYamlType? t : Except SchemaError Unit) = .error e → e = .expectedNull t := by
   intro h; cases t <;> simp_all [fromYamlType?, FromYamlType.fromYamlType?]
 
 /-- `fromYamlType? Bool` only produces `.expectedBoolean`. -/
-theorem fromYamlType_bool_error {t : Schema.YamlType} {e : SchemaError} :
+lemma fromYamlType_bool_error {t : Schema.YamlType} {e : SchemaError} :
     (fromYamlType? t : Except SchemaError Bool) = .error e → e = .expectedBoolean t := by
   intro h; cases t <;> simp_all [fromYamlType?, FromYamlType.fromYamlType?]
 
 /-- `fromYamlType? Int` only produces `.expectedInteger`. -/
-theorem fromYamlType_int_error {t : Schema.YamlType} {e : SchemaError} :
+lemma fromYamlType_int_error {t : Schema.YamlType} {e : SchemaError} :
     (fromYamlType? t : Except SchemaError Int) = .error e → e = .expectedInteger t := by
   intro h; cases t <;> simp_all [fromYamlType?, FromYamlType.fromYamlType?]
 
 /-- `fromYamlType? String` only produces `.expectedString`. -/
-theorem fromYamlType_string_error {t : Schema.YamlType} {e : SchemaError} :
+lemma fromYamlType_string_error {t : Schema.YamlType} {e : SchemaError} :
     (fromYamlType? t : Except SchemaError String) = .error e → e = .expectedString t := by
   intro h; cases t <;> simp_all [fromYamlType?, FromYamlType.fromYamlType?]
 
 /-- `fromYamlType? Nat` produces exactly `.expectedInteger` or `.negativeNat`. -/
-theorem fromYamlType_nat_error {t : Schema.YamlType} {e : SchemaError} :
+lemma fromYamlType_nat_error {t : Schema.YamlType} {e : SchemaError} :
     (fromYamlType? t : Except SchemaError Nat) = .error e →
     e = .expectedInteger t ∨ ∃ n : Int, t = .int n ∧ n < 0 ∧ e = .negativeNat n := by
   intro h

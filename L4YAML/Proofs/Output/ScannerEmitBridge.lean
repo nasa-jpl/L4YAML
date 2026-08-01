@@ -91,7 +91,7 @@ in `ParserCompleteness.lean`:
 /-- `emitList` distributes over `stripAnnotationsList`:
     stripping annotations from each element doesn't change the
     emitted list representation. -/
-theorem emitList_stripAnnotationsList (vs : List YamlValue)
+lemma emitList_stripAnnotationsList (vs : List YamlValue)
     (ih : ∀ v, v ∈ vs → emit (stripAnnotations v) = emit v) :
     emit.emitList (stripAnnotations.stripAnnotationsList vs) = emit.emitList vs := by
   match vs with
@@ -111,7 +111,7 @@ theorem emitList_stripAnnotationsList (vs : List YamlValue)
 /-- `emitPairList` distributes over `stripAnnotationsPairs`:
     stripping annotations from keys and values doesn't change the
     emitted pair-list representation. -/
-theorem emitPairList_stripAnnotationsPairs :
+lemma emitPairList_stripAnnotationsPairs :
     (ps : List (YamlValue × YamlValue)) →
     (ih : ∀ p, p ∈ ps →
           emit (stripAnnotations p.1) = emit p.1 ∧
@@ -145,7 +145,7 @@ metadata are invisible to it.
 
 This is a universal theorem over all `YamlValue` trees.
 -/
-theorem emit_stripAnnotations (v : YamlValue) :
+lemma emit_stripAnnotations (v : YamlValue) :
     emit (stripAnnotations v) = emit v := by
   match v with
   | .scalar _s => rfl
@@ -193,7 +193,7 @@ and recurses structurally through collections.
 -/
 
 /-- `emitList` agrees on content-equivalent lists. -/
-theorem emitList_contentEq (vs₁ vs₂ : List YamlValue)
+lemma emitList_contentEq (vs₁ vs₂ : List YamlValue)
     (ih : ∀ v₁, v₁ ∈ vs₁ → ∀ v₂, contentEq v₁ v₂ = true → emit v₁ = emit v₂)
     (h : contentEq.contentEqList vs₁ vs₂ = true) :
     emit.emitList vs₁ = emit.emitList vs₂ := by
@@ -221,7 +221,7 @@ theorem emitList_contentEq (vs₁ vs₂ : List YamlValue)
       (fun v hv => ih v (.tail _ hv)) h_and.2
 
 /-- `emitPairList` agrees on content-equivalent pair lists. -/
-theorem emitPairList_contentEq :
+lemma emitPairList_contentEq :
     (ps₁ ps₂ : List (YamlValue × YamlValue)) →
     (ih : ∀ p, p ∈ ps₁ →
           (∀ v₂, contentEq p.1 v₂ = true → emit p.1 = emit v₂) ∧
@@ -261,7 +261,7 @@ anchor, or blockMeta) and recurses structurally through collections.
 Together with `emit_stripAnnotations`, this shows the emitter factors
 through content — it is insensitive to all non-semantic metadata.
 -/
-theorem contentEq_implies_emit_eq (v₁ v₂ : YamlValue)
+lemma contentEq_implies_emit_eq (v₁ v₂ : YamlValue)
     (h : contentEq v₁ v₂ = true) :
     emit v₁ = emit v₂ := by
   match v₁, v₂ with
@@ -331,7 +331,7 @@ emitter output.
 
 Step 6f.3b1 migration: reparented onto the indexed pipeline.
 -/
-theorem emit_pipeline_decompose_ix (v : YamlValue) (docs : Array YamlDocument)
+lemma emit_pipeline_decompose_ix (v : YamlValue) (docs : Array YamlDocument)
     (h : parseYamlRawIx (emit v) = .ok docs) :
     ∃ tokens : Indexed.TokenStream (emit v),
       scanFilteredIx (emit v) = .ok tokens ∧
@@ -344,7 +344,7 @@ annotations and re-emitting produces the same string.
 
 Corollary of `emit_stripAnnotations`.
 -/
-theorem emit_stripped_eq (v : YamlValue) :
+lemma emit_stripped_eq (v : YamlValue) :
     emit (stripAnnotations v) = emit v :=
   emit_stripAnnotations v
 
@@ -354,7 +354,7 @@ there exists a `ValidNode` whose `toYamlValue` is annotation-equivalent.
 
 Re-export of `soundness_completeness_compose` from `Indexed.Completeness`.
 -/
-theorem grammable_has_witness (v : YamlValue) (hg : Grammable v false) :
+lemma grammable_has_witness (v : YamlValue) (hg : Grammable v false) :
     ∃ n : ValidNode,
       stripAnnotations (toYamlValue n) = stripAnnotations v :=
   L4YAML.Proofs.Indexed.Completeness.soundness_completeness_compose v hg
@@ -366,7 +366,7 @@ value.
 
 Direct composition of `contentEq_implies_emit_eq` and `contentEq_refl`.
 -/
-theorem emit_content_invariant (v₁ v₂ : YamlValue)
+lemma emit_content_invariant (v₁ v₂ : YamlValue)
     (h : contentEq v₁ v₂ = true) :
     emit v₁ = emit v₂ :=
   contentEq_implies_emit_eq v₁ v₂ h
@@ -403,7 +403,7 @@ This follows because:
 4. Therefore `emit (toYamlValue witness) = emit v` (step 1)
 5. The parser output relates to SOME valid node (soundness)
 -/
-theorem emit_parse_has_witness (v : YamlValue)
+lemma emit_parse_has_witness (v : YamlValue)
     (_hg : Grammable v false)
     (docs : Array YamlDocument)
     (h_parse : parseYamlRawIx (emit v) = .ok docs)

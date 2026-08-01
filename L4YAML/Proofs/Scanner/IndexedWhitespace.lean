@@ -48,28 +48,28 @@ open L4YAML L4YAML.CharPredicates L4YAML.Indexed
 
 /-! ## `peekIs*` ↔ spec bridge -/
 
-theorem peekIsLineBreak_iff {input : String} (c : IxCursor input) :
+lemma peekIsLineBreak_iff {input : String} (c : IxCursor input) :
     peekIsLineBreak c = true ↔ ∃ ch, c.peek? = some ch ∧ isLineBreakProp ch := by
   unfold peekIsLineBreak
   cases h : c.peek? with
   | none    => simp
   | some ch => simp [isLineBreak_iff]
 
-theorem peekIsWhiteSpace_iff {input : String} (c : IxCursor input) :
+lemma peekIsWhiteSpace_iff {input : String} (c : IxCursor input) :
     peekIsWhiteSpace c = true ↔ ∃ ch, c.peek? = some ch ∧ isWhiteSpaceProp ch := by
   unfold peekIsWhiteSpace
   cases h : c.peek? with
   | none    => simp
   | some ch => simp [isWhiteSpace_iff]
 
-theorem peekIsBlank_iff {input : String} (c : IxCursor input) :
+lemma peekIsBlank_iff {input : String} (c : IxCursor input) :
     peekIsBlank c = true ↔ ∃ ch, c.peek? = some ch ∧ isBlankProp ch := by
   unfold peekIsBlank
   cases h : c.peek? with
   | none    => simp
   | some ch => simp [isBlank_iff]
 
-theorem peekIsIndentChar_iff {input : String} (c : IxCursor input) :
+lemma peekIsIndentChar_iff {input : String} (c : IxCursor input) :
     peekIsIndentChar c = true ↔ ∃ ch, c.peek? = some ch ∧ isIndentCharProp ch := by
   unfold peekIsIndentChar
   cases h : c.peek? with
@@ -78,25 +78,25 @@ theorem peekIsIndentChar_iff {input : String} (c : IxCursor input) :
 
 /-! ## `peekIs*` at end-of-input -/
 
-theorem peekIsLineBreak_atEnd {input : String} (c : IxCursor input)
+lemma peekIsLineBreak_atEnd {input : String} (c : IxCursor input)
     (h : c.peek? = none) : peekIsLineBreak c = false := by
   unfold peekIsLineBreak; rw [h]
 
-theorem peekIsWhiteSpace_atEnd {input : String} (c : IxCursor input)
+lemma peekIsWhiteSpace_atEnd {input : String} (c : IxCursor input)
     (h : c.peek? = none) : peekIsWhiteSpace c = false := by
   unfold peekIsWhiteSpace; rw [h]
 
-theorem peekIsBlank_atEnd {input : String} (c : IxCursor input)
+lemma peekIsBlank_atEnd {input : String} (c : IxCursor input)
     (h : c.peek? = none) : peekIsBlank c = false := by
   unfold peekIsBlank; rw [h]
 
-theorem peekIsIndentChar_atEnd {input : String} (c : IxCursor input)
+lemma peekIsIndentChar_atEnd {input : String} (c : IxCursor input)
     (h : c.peek? = none) : peekIsIndentChar c = false := by
   unfold peekIsIndentChar; rw [h]
 
 /-! ## `peekIs*` implies cursor `hasMore` -/
 
-theorem peekIsIndentChar_implies_hasMore {input : String} (c : IxCursor input)
+lemma peekIsIndentChar_implies_hasMore {input : String} (c : IxCursor input)
     (h : peekIsIndentChar c = true) : c.pos.offset < input.utf8ByteSize := by
   unfold peekIsIndentChar at h
   if h' : c.pos.offset < input.utf8ByteSize then
@@ -106,7 +106,7 @@ theorem peekIsIndentChar_implies_hasMore {input : String} (c : IxCursor input)
       (IxCursor.peek?_eq_none_iff c).mpr (Nat.le_of_not_lt h')
     rw [hpe] at h; exact absurd h (by decide)
 
-theorem peekIsWhiteSpace_implies_hasMore {input : String} (c : IxCursor input)
+lemma peekIsWhiteSpace_implies_hasMore {input : String} (c : IxCursor input)
     (h : peekIsWhiteSpace c = true) : c.pos.offset < input.utf8ByteSize := by
   unfold peekIsWhiteSpace at h
   if h' : c.pos.offset < input.utf8ByteSize then
@@ -118,7 +118,7 @@ theorem peekIsWhiteSpace_implies_hasMore {input : String} (c : IxCursor input)
 
 /-! ## `skipSpaces` / `skipWhitespace` — offset monotonicity -/
 
-theorem skipSpacesLoop_offset_monotonic {input : String} (c : IxCursor input)
+lemma skipSpacesLoop_offset_monotonic {input : String} (c : IxCursor input)
     (fuel : Nat) :
     c.pos.offset ≤ (skipSpacesLoop c fuel).1.pos.offset := by
   induction fuel generalizing c with
@@ -133,11 +133,11 @@ theorem skipSpacesLoop_offset_monotonic {input : String} (c : IxCursor input)
     · -- non-indent branch: cursor unchanged
       exact Nat.le_refl _
 
-theorem skipSpaces_offset_monotonic {input : String} (c : IxCursor input) :
+lemma skipSpaces_offset_monotonic {input : String} (c : IxCursor input) :
     c.pos.offset ≤ (skipSpaces c).1.pos.offset :=
   skipSpacesLoop_offset_monotonic c _
 
-theorem skipWhitespaceLoop_offset_monotonic {input : String} (c : IxCursor input)
+lemma skipWhitespaceLoop_offset_monotonic {input : String} (c : IxCursor input)
     (fuel : Nat) :
     c.pos.offset ≤ (skipWhitespaceLoop c fuel).pos.offset := by
   induction fuel generalizing c with
@@ -149,7 +149,7 @@ theorem skipWhitespaceLoop_offset_monotonic {input : String} (c : IxCursor input
     · exact Nat.le_trans (IxCursor.advance_offset_monotonic c) (ih c.advance)
     · exact Nat.le_refl _
 
-theorem skipWhitespace_offset_monotonic {input : String} (c : IxCursor input) :
+lemma skipWhitespace_offset_monotonic {input : String} (c : IxCursor input) :
     c.pos.offset ≤ (skipWhitespace c).pos.offset :=
   skipWhitespaceLoop_offset_monotonic c _
 
@@ -157,13 +157,13 @@ theorem skipWhitespace_offset_monotonic {input : String} (c : IxCursor input) :
 
 /-- Zero-step base: at `fuel = 0`, `skipSpaces` returns the input
     cursor with count 0. -/
-@[simp] theorem skipSpacesLoop_zero {input : String} (c : IxCursor input) :
+@[simp] lemma skipSpacesLoop_zero {input : String} (c : IxCursor input) :
     skipSpacesLoop c 0 = (c, 0) := by
   unfold skipSpacesLoop; rfl
 
 /-- Non-indent shortcut: when the current char is not a space the loop
     returns `(c, 0)` immediately, regardless of remaining fuel. -/
-theorem skipSpacesLoop_no_indent {input : String} (c : IxCursor input)
+lemma skipSpacesLoop_no_indent {input : String} (c : IxCursor input)
     (fuel : Nat) (h : peekIsIndentChar c = false) :
     skipSpacesLoop c (fuel + 1) = (c, 0) := by
   unfold skipSpacesLoop; simp [h]
@@ -178,7 +178,7 @@ that advances strictly increases `offset` by at least one
 `utf8ByteSize - offset` iterations the cursor reaches end-of-input
 and the next peek fails. -/
 
-theorem skipSpacesLoop_terminates {input : String} (c : IxCursor input)
+lemma skipSpacesLoop_terminates {input : String} (c : IxCursor input)
     (fuel : Nat) (hFuel : input.utf8ByteSize - c.pos.offset ≤ fuel) :
     peekIsIndentChar (skipSpacesLoop c fuel).1 = false := by
   induction fuel generalizing c with
@@ -204,12 +204,12 @@ theorem skipSpacesLoop_terminates {input : String} (c : IxCursor input)
       | false => rfl
       | true  => exact absurd h' hPeek
 
-theorem skipSpaces_terminates {input : String} (c : IxCursor input) :
+lemma skipSpaces_terminates {input : String} (c : IxCursor input) :
     peekIsIndentChar (skipSpaces c).1 = false := by
   unfold skipSpaces
   exact skipSpacesLoop_terminates c _ (Nat.sub_le _ _)
 
-theorem skipWhitespaceLoop_terminates {input : String} (c : IxCursor input)
+lemma skipWhitespaceLoop_terminates {input : String} (c : IxCursor input)
     (fuel : Nat) (hFuel : input.utf8ByteSize - c.pos.offset ≤ fuel) :
     peekIsWhiteSpace (skipWhitespaceLoop c fuel) = false := by
   induction fuel generalizing c with
@@ -233,7 +233,7 @@ theorem skipWhitespaceLoop_terminates {input : String} (c : IxCursor input)
       | false => rfl
       | true  => exact absurd h' hPeek
 
-theorem skipWhitespace_terminates {input : String} (c : IxCursor input) :
+lemma skipWhitespace_terminates {input : String} (c : IxCursor input) :
     peekIsWhiteSpace (skipWhitespace c) = false := by
   unfold skipWhitespace
   exact skipWhitespaceLoop_terminates c _ (Nat.sub_le _ _)
@@ -247,7 +247,7 @@ is therefore exactly the column delta. -/
 
 /-- Advancing past an indent-char bumps `col` by 1 and leaves `line`
     unchanged. Builds on `IxCursor.advance`'s line/col update rule. -/
-theorem advance_indent_col_succ {input : String} (c : IxCursor input)
+lemma advance_indent_col_succ {input : String} (c : IxCursor input)
     (h : peekIsIndentChar c = true) :
     c.advance.pos.col = c.pos.col + 1 ∧ c.advance.pos.line = c.pos.line := by
   have hMore : c.pos.offset < input.utf8ByteSize :=
@@ -259,7 +259,7 @@ theorem advance_indent_col_succ {input : String} (c : IxCursor input)
   unfold IxCursor.advance
   simp [dif_pos hMore, hCh]
 
-theorem skipSpacesLoop_col_eq_count {input : String} (c : IxCursor input)
+lemma skipSpacesLoop_col_eq_count {input : String} (c : IxCursor input)
     (fuel : Nat) :
     (skipSpacesLoop c fuel).1.pos.col =
         c.pos.col + (skipSpacesLoop c fuel).2 ∧
@@ -285,18 +285,18 @@ theorem skipSpacesLoop_col_eq_count {input : String} (c : IxCursor input)
       show c.pos.col = c.pos.col + 0
       omega
 
-theorem skipSpaces_col_eq_count {input : String} (c : IxCursor input) :
+lemma skipSpaces_col_eq_count {input : String} (c : IxCursor input) :
     (skipSpaces c).1.pos.col = c.pos.col + (skipSpaces c).2 ∧
     (skipSpaces c).1.pos.line = c.pos.line :=
   skipSpacesLoop_col_eq_count c _
 
 /-! ## `consumeLineBreak` — case lemmas -/
 
-theorem consumeLineBreak_LF {input : String} (c : IxCursor input)
+lemma consumeLineBreak_LF {input : String} (c : IxCursor input)
     (h : c.peek? = some '\n') : consumeLineBreak c = c.advance := by
   simp [consumeLineBreak, isLineFeedBool, h]
 
-theorem consumeLineBreak_CR_no_LF {input : String} (c : IxCursor input)
+lemma consumeLineBreak_CR_no_LF {input : String} (c : IxCursor input)
     (hCR : c.peek? = some '\r') (hNotLF : c.peekAt? 1 ≠ some '\n') :
     consumeLineBreak c = c.advance := by
   unfold consumeLineBreak
@@ -308,31 +308,31 @@ theorem consumeLineBreak_CR_no_LF {input : String} (c : IxCursor input)
     have hne : n ≠ '\n' := fun heq => hNotLF (heq ▸ h)
     simp [isLineFeedBool, isCarriageReturnBool, hne]
 
-theorem consumeLineBreak_CRLF_offset {input : String} (c : IxCursor input)
+lemma consumeLineBreak_CRLF_offset {input : String} (c : IxCursor input)
     (hCR : c.peek? = some '\r') (hLF : c.peekAt? 1 = some '\n') :
     (consumeLineBreak c).pos.offset = c.advance.advance.pos.offset := by
   unfold consumeLineBreak
   simp [hCR, hLF, isLineFeedBool, isCarriageReturnBool]
 
-theorem consumeLineBreak_CRLF_line {input : String} (c : IxCursor input)
+lemma consumeLineBreak_CRLF_line {input : String} (c : IxCursor input)
     (hCR : c.peek? = some '\r') (hLF : c.peekAt? 1 = some '\n') :
     (consumeLineBreak c).pos.line = c.advance.pos.line := by
   unfold consumeLineBreak
   simp [hCR, hLF, isLineFeedBool, isCarriageReturnBool]
 
-theorem consumeLineBreak_CRLF_col {input : String} (c : IxCursor input)
+lemma consumeLineBreak_CRLF_col {input : String} (c : IxCursor input)
     (hCR : c.peek? = some '\r') (hLF : c.peekAt? 1 = some '\n') :
     (consumeLineBreak c).pos.col = 0 := by
   unfold consumeLineBreak
   simp [hCR, hLF, isLineFeedBool, isCarriageReturnBool]
 
-theorem consumeLineBreak_atEnd {input : String} (c : IxCursor input)
+lemma consumeLineBreak_atEnd {input : String} (c : IxCursor input)
     (h : c.peek? = none) : consumeLineBreak c = c := by
   simp [consumeLineBreak, h]
 
 /-- `consumeLineBreak` is a no-op when the current character is neither
     LF nor CR. Common case lemma used by the dispatch layer. -/
-theorem consumeLineBreak_other_char {input : String} (c : IxCursor input)
+lemma consumeLineBreak_other_char {input : String} (c : IxCursor input)
     {ch : Char} (hp : c.peek? = some ch) (hLF : ch ≠ '\n') (hCR : ch ≠ '\r') :
     consumeLineBreak c = c := by
   unfold consumeLineBreak; rw [hp]
@@ -340,7 +340,7 @@ theorem consumeLineBreak_other_char {input : String} (c : IxCursor input)
   have hb2 : isCarriageReturnBool ch = false := by simp [isCarriageReturnBool, hCR]
   simp [hb1, hb2]
 
-theorem consumeLineBreak_no_op {input : String} (c : IxCursor input)
+lemma consumeLineBreak_no_op {input : String} (c : IxCursor input)
     (hCh : ∀ ch, c.peek? = some ch → ch ≠ '\n' ∧ ch ≠ '\r') :
     consumeLineBreak c = c := by
   cases hp : c.peek? with
@@ -351,7 +351,7 @@ theorem consumeLineBreak_no_op {input : String} (c : IxCursor input)
 
 /-! ## Offset monotonicity for `consumeLineBreak` -/
 
-theorem consumeLineBreak_offset_monotonic {input : String} (c : IxCursor input) :
+lemma consumeLineBreak_offset_monotonic {input : String} (c : IxCursor input) :
     c.pos.offset ≤ (consumeLineBreak c).pos.offset := by
   cases hp : c.peek? with
   | none =>
@@ -382,7 +382,7 @@ least one byte. This is the strict counterpart of
 iteration that doesn't return must consume at least one line break,
 hence at least one byte. -/
 
-theorem consumeLineBreak_strict {input : String} (c : IxCursor input)
+lemma consumeLineBreak_strict {input : String} (c : IxCursor input)
     {ch : Char} (hp : c.peek? = some ch) (hLB : isLineBreakBool ch = true) :
     c.pos.offset < (consumeLineBreak c).pos.offset := by
   -- Successful peek ⇒ cursor has more input.

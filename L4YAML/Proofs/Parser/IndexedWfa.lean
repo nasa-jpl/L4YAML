@@ -67,12 +67,12 @@ def ParseNodeWFAIx (tokens : Indexed.TokenStream input) (n : Nat) : Prop :=
     WellFormedAnchors ps'.anchors
 
 -- Empty anchors are trivially well-formed.
-theorem WFA_empty : WellFormedAnchors (#[] : Array (String × YamlValue)) := by
+lemma WFA_empty : WellFormedAnchors (#[] : Array (String × YamlValue)) := by
   intro name val h_find _
   simp [Array.findSome?] at h_find
 
 -- WellFormedAnchors is preserved when pushing a universally-grammable entry.
-theorem WFA_of_push (anchors : Array (String × YamlValue))
+lemma WFA_of_push (anchors : Array (String × YamlValue))
     (entry : String × YamlValue)
     (h_wfa : WellFormedAnchors anchors)
     (h_new : ∀ inFlow, Grammable entry.2.stripAnchors inFlow) :
@@ -100,7 +100,7 @@ theorem WFA_of_push (anchors : Array (String × YamlValue))
 -- ============================================================
 
 -- addAnchor preserves WFA when the value has a Grammable composition.
-theorem addAnchor_wfa (ps : ParseStateIx input) (name : String) (val : YamlValue)
+lemma addAnchor_wfa (ps : ParseStateIx input) (name : String) (val : YamlValue)
     (h_wfa : WellFormedAnchors ps.anchors)
     (h_gram : ∀ inFlow, Grammable ((val.resolveAliases ps.anchors).stripAnchors.adaptForFlowContext) inFlow) :
     WellFormedAnchors (ps.addAnchor name val).anchors := by
@@ -116,7 +116,7 @@ theorem addAnchor_wfa (ps : ParseStateIx input) (name : String) (val : YamlValue
     exact h_gram inFlow
 
 -- Helper: compose + adaptForFlowContext gives universally-grammable values.
-theorem cleaned_grammable_forall
+lemma cleaned_grammable_forall
     (val : YamlValue) (ps : ParseStateIx input)
     (h_scannable : Scannable val false)
     (h_aar : AllAliasesResolve val ps.anchors)
@@ -126,7 +126,7 @@ theorem cleaned_grammable_forall
   exact adaptForFlowContext_grammable_forall _ _ h_g
 
 -- applyNodeFinalization preserves WFA when Scannable + AAR + WFA hold.
-theorem applyNodeFinalization_wfa
+lemma applyNodeFinalization_wfa
     (val : YamlValue) (ps : ParseStateIx input) (props : NodeProperties) (nodeStartPos : YamlPos)
     (h_wfa : WellFormedAnchors ps.anchors)
     (h_scannable : Scannable val false)
@@ -179,23 +179,23 @@ theorem applyNodeFinalization_wfa
 -- lemmas (from ParseNodeWBIx and advance/tryConsume).
 
 -- Helper: advance preserves anchors and tokens.
-theorem advance_anchors_ix (ps : ParseStateIx input) :
+lemma advance_anchors_ix (ps : ParseStateIx input) :
     ps.advance.anchors = ps.anchors := by simp [ParseStateIx.advance]
 
-theorem advance_tokens_wfa_ix (ps : ParseStateIx input) :
+lemma advance_tokens_wfa_ix (ps : ParseStateIx input) :
     ps.advance.tokens = ps.tokens := by simp [ParseStateIx.advance]
 
 -- Helper: tryConsume preserves anchors and tokens.
-theorem tc_anchors_ix (ps : ParseStateIx input) (tok : YamlToken) :
+lemma tc_anchors_ix (ps : ParseStateIx input) (tok : YamlToken) :
     (ps.tryConsume tok).2.anchors = ps.anchors := by
   unfold ParseStateIx.tryConsume; split <;> (try split) <;> simp [ParseStateIx.advance]
 
-theorem tc_tokens_wfa_ix (ps : ParseStateIx input) (tok : YamlToken) :
+lemma tc_tokens_wfa_ix (ps : ParseStateIx input) (tok : YamlToken) :
     (ps.tryConsume tok).2.tokens = ps.tokens := by
   unfold ParseStateIx.tryConsume; split <;> (try split) <;> simp [ParseStateIx.advance]
 
 -- Get tokens preservation from ParseNodeWBIx.
-theorem parseNode_tokens_of_wb_ix
+lemma parseNode_tokens_of_wb_ix
     {tokens : Indexed.TokenStream input} {n : Nat}
     (h_wb : ParseNodeWBIx tokens n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n)
@@ -206,7 +206,7 @@ theorem parseNode_tokens_of_wb_ix
   (h_wb ps fuel val ps' h_fuel h_tok h_ok).2.2.2
 
 -- parseExplicitKey: emptyNode or parseNode
-theorem parseExplicitKey_wfa
+lemma parseExplicitKey_wfa
     {tokens : Indexed.TokenStream input} {n : Nat}
     (h_ih : ParseNodeWFAIx tokens n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n)
@@ -222,7 +222,7 @@ theorem parseExplicitKey_wfa
     | exact h_ih ps fuel _ _ h_fuel h_tok h_ok h_wfa)
 
 -- parseBlockSequenceLoop
-theorem parseBlockSequenceLoop_wfa
+lemma parseBlockSequenceLoop_wfa
     {tokens : Indexed.TokenStream input} {n : Nat}
     (h_ih : ParseNodeWFAIx tokens n) (h_wb : ParseNodeWBIx tokens n)
     (ps : ParseStateIx input) (fuel : Nat) (items : Array YamlValue)
@@ -278,7 +278,7 @@ theorem parseBlockSequenceLoop_wfa
       obtain ⟨_, rfl⟩ := Prod.mk.inj h_ok; exact h_wfa
 
 -- parseBlockSequence
-theorem parseBlockSequence_wfa
+lemma parseBlockSequence_wfa
     {tokens : Indexed.TokenStream input} {n : Nat}
     (h_ih : ParseNodeWFAIx tokens n) (h_wb : ParseNodeWBIx tokens n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n + 1)
@@ -307,7 +307,7 @@ theorem parseBlockSequence_wfa
       · exact h_wfa_loop
 
 -- parseImplicitBlockSequenceLoop
-theorem parseImplicitBlockSequenceLoop_wfa
+lemma parseImplicitBlockSequenceLoop_wfa
     {tokens : Indexed.TokenStream input} {n : Nat}
     (h_ih : ParseNodeWFAIx tokens n) (h_wb : ParseNodeWBIx tokens n)
     (ps : ParseStateIx input) (fuel : Nat) (items : Array YamlValue)
@@ -359,7 +359,7 @@ theorem parseImplicitBlockSequenceLoop_wfa
       obtain ⟨_, rfl⟩ := Prod.mk.inj h_ok; exact h_wfa
 
 -- parseImplicitBlockSequence
-theorem parseImplicitBlockSequence_wfa
+lemma parseImplicitBlockSequence_wfa
     {tokens : Indexed.TokenStream input} {n : Nat}
     (h_ih : ParseNodeWFAIx tokens n) (h_wb : ParseNodeWBIx tokens n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n + 1)
@@ -385,7 +385,7 @@ theorem parseImplicitBlockSequence_wfa
 
 -- parseBlockMappingEntryValue
 set_option maxHeartbeats 400000 in
-theorem parseBlockMappingEntryValue_wfa
+lemma parseBlockMappingEntryValue_wfa
     {tokens : Indexed.TokenStream input} {n : Nat}
     (h_ih : ParseNodeWFAIx tokens n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n)
@@ -423,7 +423,7 @@ theorem parseBlockMappingEntryValue_wfa
     obtain ⟨rfl, rfl⟩ := h_ok; exact h_tc_wfa
 
 -- handleBlockMappingValueEntry
-theorem handleBlockMappingValueEntry_wfa
+lemma handleBlockMappingValueEntry_wfa
     {tokens : Indexed.TokenStream input} {n : Nat}
     (h_ih : ParseNodeWFAIx tokens n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n)
@@ -461,7 +461,7 @@ theorem handleBlockMappingValueEntry_wfa
 
 -- ── §3a  Tokens preservation for compound sub-parsers ──────────────
 
-theorem parseExplicitKey_tok
+lemma parseExplicitKey_tok
     {tokens : Indexed.TokenStream input} {n : Nat}
     (h_wb : ParseNodeWBIx tokens n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n)
@@ -475,7 +475,7 @@ theorem parseExplicitKey_tok
     | exact parseNode_tokens_of_wb_ix h_wb ps fuel h_fuel h_tok _ _ h_ok)
 
 set_option maxHeartbeats 400000 in
-theorem parseBlockMappingEntryValue_tok
+lemma parseBlockMappingEntryValue_tok
     {tokens : Indexed.TokenStream input} {n : Nat}
     (h_wb : ParseNodeWBIx tokens n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n)
@@ -504,7 +504,7 @@ theorem parseBlockMappingEntryValue_tok
     all_goals exact parseNode_tokens_of_wb_ix h_wb _ fuel h_fuel h_tc_tok _ _ h_ok
   · obtain ⟨rfl, rfl⟩ := h_ok; exact h_tc_tok
 
-theorem handleBlockMappingValueEntry_tok
+lemma handleBlockMappingValueEntry_tok
     {tokens : Indexed.TokenStream input} {n : Nat}
     (h_wb : ParseNodeWBIx tokens n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n)
@@ -530,7 +530,7 @@ theorem handleBlockMappingValueEntry_tok
         (by dsimp only []; exact h_tok_adv) _ _ heq_pn
 
 -- Helpers accepting undestruct'd pair results (for goals after split where v✝ is opaque)
-theorem pn_tok_pair
+lemma pn_tok_pair
     {tokens : Indexed.TokenStream input} {n : Nat}
     (h_wb : ParseNodeWBIx tokens n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n)
@@ -541,7 +541,7 @@ theorem pn_tok_pair
   obtain ⟨v, ps'⟩ := result
   exact parseNode_tokens_of_wb_ix h_wb ps fuel h_fuel h_tok v ps' h_ok
 
-theorem bev_tok_pair
+lemma bev_tok_pair
     {tokens : Indexed.TokenStream input} {n : Nat}
     (h_wb : ParseNodeWBIx tokens n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n)
@@ -553,7 +553,7 @@ theorem bev_tok_pair
   obtain ⟨v, ps'⟩ := result
   exact parseBlockMappingEntryValue_tok h_wb ps fuel h_fuel h_tok keyHasContent keyLine keyCol v ps' h_ok
 
-theorem pn_wfa_pair
+lemma pn_wfa_pair
     {tokens : Indexed.TokenStream input} {n : Nat}
     (h_ih : ParseNodeWFAIx tokens n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n)
@@ -565,7 +565,7 @@ theorem pn_wfa_pair
   obtain ⟨v, ps'⟩ := result
   exact h_ih ps fuel v ps' h_fuel h_tok h_ok h_wfa
 
-theorem bev_wfa_pair
+lemma bev_wfa_pair
     {tokens : Indexed.TokenStream input} {n : Nat}
     (h_ih : ParseNodeWFAIx tokens n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n)
@@ -579,7 +579,7 @@ theorem bev_wfa_pair
   exact parseBlockMappingEntryValue_wfa h_ih ps fuel h_fuel h_tok keyHasContent keyLine keyCol v ps' h_ok h_wfa
 
 set_option maxHeartbeats 800000 in
-theorem handleBlockMappingKeyEntry_tok
+lemma handleBlockMappingKeyEntry_tok
     {tokens : Indexed.TokenStream input} {n : Nat}
     (h_wb : ParseNodeWBIx tokens n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n)
@@ -621,7 +621,7 @@ theorem handleBlockMappingKeyEntry_tok
          case pnok => assumption
          case pntok => exact h_tok_adv))
 
-theorem parseFlowMappingValue_tok
+lemma parseFlowMappingValue_tok
     {tokens : Indexed.TokenStream input} {n : Nat}
     (h_wb : ParseNodeWBIx tokens n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n)
@@ -654,7 +654,7 @@ theorem parseFlowMappingValue_tok
     exact parseNode_tokens_of_wb_ix h_wb _ fuel h_fuel h_tc2 _ _ (by assumption))
 
 set_option maxHeartbeats 800000 in
-theorem parseSinglePairMapping_tok
+lemma parseSinglePairMapping_tok
     {tokens : Indexed.TokenStream input} {n : Nat}
     (h_wb : ParseNodeWBIx tokens n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n + 1)
@@ -704,7 +704,7 @@ theorem parseSinglePairMapping_tok
 
 -- handleBlockMappingKeyEntry
 set_option maxHeartbeats 1600000 in
-theorem handleBlockMappingKeyEntry_wfa
+lemma handleBlockMappingKeyEntry_wfa
     {tokens : Indexed.TokenStream input} {n : Nat}
     (h_ih : ParseNodeWFAIx tokens n) (h_wb : ParseNodeWBIx tokens n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n)
@@ -759,7 +759,7 @@ theorem handleBlockMappingKeyEntry_wfa
          case pntok2 => exact h_tok_adv
          case pnwfa2 => exact h_wfa_adv))
 
-theorem parseBlockMappingLoop_wfa
+lemma parseBlockMappingLoop_wfa
     {tokens : Indexed.TokenStream input} {n : Nat}
     (h_ih : ParseNodeWFAIx tokens n) (h_wb : ParseNodeWBIx tokens n)
     (ps : ParseStateIx input) (fuel : Nat)
@@ -805,7 +805,7 @@ theorem parseBlockMappingLoop_wfa
       obtain ⟨_, rfl⟩ := Prod.mk.inj h_ok; exact h_wfa
 
 -- parseBlockMapping
-theorem parseBlockMapping_wfa
+lemma parseBlockMapping_wfa
     {tokens : Indexed.TokenStream input} {n : Nat}
     (h_ih : ParseNodeWFAIx tokens n) (h_wb : ParseNodeWBIx tokens n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n + 1)
@@ -833,7 +833,7 @@ theorem parseBlockMapping_wfa
       · exact h_wfa_loop
 
 -- parseFlowMappingValue
-theorem parseFlowMappingValue_wfa
+lemma parseFlowMappingValue_wfa
     {tokens : Indexed.TokenStream input} {n : Nat}
     (h_ih : ParseNodeWFAIx tokens n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n)
@@ -870,7 +870,7 @@ theorem parseFlowMappingValue_wfa
 
 -- parseSinglePairMapping
 set_option maxHeartbeats 1600000 in
-theorem parseSinglePairMapping_wfa
+lemma parseSinglePairMapping_wfa
     {tokens : Indexed.TokenStream input} {n : Nat}
     (h_ih : ParseNodeWFAIx tokens n) (h_wb : ParseNodeWBIx tokens n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n + 1)
@@ -928,7 +928,7 @@ theorem parseSinglePairMapping_wfa
 
 -- parseFlowSequenceLoop
 set_option maxHeartbeats 1600000 in
-theorem parseFlowSequenceLoop_wfa
+lemma parseFlowSequenceLoop_wfa
     {tokens : Indexed.TokenStream input} {n : Nat}
     (h_ih : ParseNodeWFAIx tokens n) (h_wb : ParseNodeWBIx tokens n)
     (ps : ParseStateIx input) (fuel : Nat) (items : Array YamlValue)
@@ -1034,7 +1034,7 @@ theorem parseFlowSequenceLoop_wfa
               (by subst h_ps_r; dsimp only []; exact h_wfa3)
 
 -- parseFlowSequence
-theorem parseFlowSequence_wfa
+lemma parseFlowSequence_wfa
     {tokens : Indexed.TokenStream input} {n : Nat}
     (h_ih : ParseNodeWFAIx tokens n) (h_wb : ParseNodeWBIx tokens n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n + 1)
@@ -1062,7 +1062,7 @@ theorem parseFlowSequence_wfa
 
 -- parseFlowMappingLoop
 set_option maxHeartbeats 1600000 in
-theorem parseFlowMappingLoop_wfa
+lemma parseFlowMappingLoop_wfa
     {tokens : Indexed.TokenStream input} {n : Nat}
     (h_ih : ParseNodeWFAIx tokens n) (h_wb : ParseNodeWBIx tokens n)
     (ps : ParseStateIx input) (fuel : Nat)
@@ -1180,7 +1180,7 @@ theorem parseFlowMappingLoop_wfa
               exact ih_fuel ps_fmv _ (by omega) h_tok_fmv h_ok h_wfa_fmv
 
 -- parseFlowMapping
-theorem parseFlowMapping_wfa
+lemma parseFlowMapping_wfa
     {tokens : Indexed.TokenStream input} {n : Nat}
     (h_ih : ParseNodeWFAIx tokens n) (h_wb : ParseNodeWBIx tokens n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n + 1)
@@ -1207,7 +1207,7 @@ theorem parseFlowMapping_wfa
       · simp at h_ok
 
 -- parseNodeContent dispatches to sub-parsers, each preserving WFA.
-theorem parseNodeContent_wfa
+lemma parseNodeContent_wfa
     {tokens : Indexed.TokenStream input} {n : Nat}
     (h_ih : ParseNodeWFAIx tokens n)
     (h_wb : ParseNodeWBIx tokens n)
@@ -1240,7 +1240,7 @@ theorem parseNodeContent_wfa
 set_option maxRecDepth 10000 in
 set_option maxHeartbeats 800000000 in
 set_option linter.unusedSimpArgs false in
-theorem parseNodeProperties_anchors_eq_ix
+lemma parseNodeProperties_anchors_eq_ix
     (ps : ParseStateIx input) (props : NodeProperties) (ps' : ParseStateIx input)
     (h : parseNodeProperties ps = .ok (props, ps')) :
     ps'.anchors = ps.anchors := by
@@ -1335,7 +1335,7 @@ theorem parseNodeProperties_anchors_eq_ix
             all_goals (first | rfl | simp [ParseStateIx.advance])
 
 set_option maxHeartbeats 800000 in
-theorem parseNode_wfa_all
+lemma parseNode_wfa_all
     (tokens : Indexed.TokenStream input)
     (h_fpsv : FlowAwarePSVIx tokens)
     (h_matched : FlowBracketsMatchedIx tokens) :
@@ -1399,7 +1399,7 @@ theorem parseNode_wfa_all
             exact applyNodeFinalization_wfa val_c ps_c props _ h_wfa_c h_cwb.1 h_aar_c
 
 -- Extraction: single-call version.
-theorem parseNode_wfa
+lemma parseNode_wfa
     (tokens : Indexed.TokenStream input)
     (h_fpsv : FlowAwarePSVIx tokens)
     (h_matched : FlowBracketsMatchedIx tokens)
@@ -1416,7 +1416,7 @@ theorem parseNode_wfa
 -- ============================================================
 
 /-- `parseDirectives` preserves the anchors array (only `pos` changes). -/
-theorem parseDirectives_anchors_ix (ps : ParseStateIx input) :
+lemma parseDirectives_anchors_ix (ps : ParseStateIx input) :
     (parseDirectives ps).2.anchors = ps.anchors := by
   unfold parseDirectives
   simp only [Id.run]
@@ -1461,7 +1461,7 @@ theorem parseDirectives_anchors_ix (ps : ParseStateIx input) :
         subst this; simp [ParseStateIx.advance, h_inv]
       · intro heq; contradiction
 
-theorem prepareDocumentState_anchors_eq_ix
+lemma prepareDocumentState_anchors_eq_ix
     (ps : ParseStateIx input) (dirs : Array Directive) (ps' : ParseStateIx input)
     (h : prepareDocumentState ps = .ok (dirs, ps')) :
     ps'.anchors = ps.anchors := by
@@ -1494,7 +1494,7 @@ theorem prepareDocumentState_anchors_eq_ix
     obtain ⟨_, rfl⟩ := h
     exact h_anch)
 
-theorem prepareDocumentState_tokens_eq_ix
+lemma prepareDocumentState_tokens_eq_ix
     (ps : ParseStateIx input) (dirs : Array Directive) (ps' : ParseStateIx input)
     (h : prepareDocumentState ps = .ok (dirs, ps')) :
     ps'.tokens = ps.tokens :=
@@ -1504,7 +1504,7 @@ theorem prepareDocumentState_tokens_eq_ix
 -- §6  parseDocument produces WFA anchors
 -- ============================================================
 
-theorem parseDocument_wfa
+lemma parseDocument_wfa
     (tokens : Indexed.TokenStream input)
     (h_fpsv : FlowAwarePSVIx tokens)
     (h_matched : FlowBracketsMatchedIx tokens)
@@ -1549,7 +1549,7 @@ theorem parseDocument_wfa
 -- ============================================================
 
 -- parseDocument preserves tokens (for stream loop token threading).
-theorem parseDocument_tokens_eq_ix
+lemma parseDocument_tokens_eq_ix
     (tokens : Indexed.TokenStream input)
     (h_fpsv : FlowAwarePSVIx tokens)
     (h_matched : FlowBracketsMatchedIx tokens)
@@ -1560,7 +1560,7 @@ theorem parseDocument_tokens_eq_ix
   parseDocument_tokens_preserved_ix ps doc ps' (h_tok ▸ h_fpsv) (h_tok ▸ h_matched) h_ok
 
 -- expect preserves tokens.
-theorem expect_tokens_wfa_ix (ps : ParseStateIx input) (tok : YamlToken) (msg : String)
+lemma expect_tokens_wfa_ix (ps : ParseStateIx input) (tok : YamlToken) (msg : String)
     (ps' : ParseStateIx input)
     (h : ps.expect tok msg = .ok ps') :
     ps'.tokens = ps.tokens := by
@@ -1573,7 +1573,7 @@ theorem expect_tokens_wfa_ix (ps : ParseStateIx input) (tok : YamlToken) (msg : 
   · -- none case: error = ok ps'
     simp at h
 
-theorem parseStreamLoop_wfa
+lemma parseStreamLoop_wfa
     (tokens : Indexed.TokenStream input)
     (h_fpsv : FlowAwarePSVIx tokens)
     (h_matched : FlowBracketsMatchedIx tokens)
@@ -1635,7 +1635,7 @@ theorem parseStreamLoop_wfa
             · exact h_ok
 
 -- The final theorem: parseStreamIx output has well-formed anchors.
-theorem parseStreamIx_output_anchors_wellformed
+lemma parseStreamIx_output_anchors_wellformed
     (tokens : Indexed.TokenStream input)
     (docs : Array YamlDocument)
     (h_fpsv : FlowAwarePSVIx tokens)

@@ -103,7 +103,7 @@ namespace YamlEquiv
 /-- `YamlEquiv` is an `Equivalence`. Trivial because the
     constructors `refl`/`symm`/`trans` are literally the
     three Equivalence laws. -/
-theorem is_equivalence : Equivalence YamlEquiv :=
+lemma is_equivalence : Equivalence YamlEquiv :=
   ⟨YamlEquiv.refl, YamlEquiv.symm, YamlEquiv.trans⟩
 
 end YamlEquiv
@@ -125,7 +125,7 @@ the full constructor name.
 
 /-- **Item 1**: two mappings with permuted pair lists are
     `≈`-equivalent. Stated as a theorem for `rw`-style use. -/
-theorem mapping_comm {style : CollectionStyle} {tag anchor : Option String}
+lemma mapping_comm {style : CollectionStyle} {tag anchor : Option String}
     {pairs₁ pairs₂ : Array (YamlValue × YamlValue)}
     (h : pairs₁.toList.Perm pairs₂.toList) :
     YamlEquiv (.mapping style pairs₁ tag anchor)
@@ -148,7 +148,7 @@ because string inequality is `decide`-able.
 /-- **Item 2** — counterexample: there exist two sequences with
     permuted-but-distinct item arrays. Witnesses that no
     `sequence_perm` constructor is admissible *under `=`*. -/
-theorem sequence_not_comm :
+lemma sequence_not_comm :
     ∃ (style : CollectionStyle) (tag anchor : Option String)
       (items₁ items₂ : Array YamlValue),
       items₁.toList.Perm items₂.toList ∧
@@ -222,7 +222,7 @@ def dedupFirst : List (YamlValue × YamlValue) → List (YamlValue × YamlValue)
     (k, v) :: (dedupFirst rest).filter (fun p => !(p.1 == k))
 
 /-- Filtering preserves `Nodup` of the projection. -/
-theorem nodup_filter {p : YamlValue × YamlValue → Bool}
+lemma nodup_filter {p : YamlValue × YamlValue → Bool}
     (xs : List (YamlValue × YamlValue))
     (h : (xs.map keyOf).Nodup) :
     ((xs.filter p).map keyOf).Nodup := by
@@ -244,7 +244,7 @@ theorem nodup_filter {p : YamlValue × YamlValue → Bool}
     · exact ih hTail
 
 /-- The head's key does not occur in `(dedupFirst rest).filter (·.1 ≠ k)`. -/
-theorem not_mem_keys_filter (k : YamlValue) (rest : List (YamlValue × YamlValue)) :
+lemma not_mem_keys_filter (k : YamlValue) (rest : List (YamlValue × YamlValue)) :
     k ∉ ((dedupFirst rest).filter (fun p => !(p.1 == k))).map keyOf := by
   intro hmem
   rw [List.mem_map] at hmem
@@ -260,7 +260,7 @@ theorem not_mem_keys_filter (k : YamlValue) (rest : List (YamlValue × YamlValue
   exact absurd (hRefl.symm.trans hfilt) (by decide)
 
 /-- **Item 5(a)** — `dedupFirst` produces a `Nodup` key list. -/
-theorem noDup_dedupFirst (xs : List (YamlValue × YamlValue)) :
+lemma noDup_dedupFirst (xs : List (YamlValue × YamlValue)) :
     ((dedupFirst xs).map keyOf).Nodup := by
   induction xs with
   | nil => simp [dedupFirst]
@@ -272,7 +272,7 @@ theorem noDup_dedupFirst (xs : List (YamlValue × YamlValue)) :
     · exact nodup_filter (dedupFirst rest) ih
 
 /-- A pair list whose key projection is `Nodup` is fixed by `dedupFirst`. -/
-theorem dedupFirst_of_noDup (xs : List (YamlValue × YamlValue))
+lemma dedupFirst_of_noDup (xs : List (YamlValue × YamlValue))
     (h : (xs.map keyOf).Nodup) :
     dedupFirst xs = xs := by
   induction xs with
@@ -294,7 +294,7 @@ theorem dedupFirst_of_noDup (xs : List (YamlValue × YamlValue))
     exact beq_eq_false_iff_ne.mpr hne
 
 /-- **Item 5(b)** — `dedupFirst` is idempotent. -/
-theorem dedupFirst_idem (xs : List (YamlValue × YamlValue)) :
+lemma dedupFirst_idem (xs : List (YamlValue × YamlValue)) :
     dedupFirst (dedupFirst xs) = dedupFirst xs :=
   dedupFirst_of_noDup (dedupFirst xs) (noDup_dedupFirst xs)
 
@@ -346,7 +346,7 @@ class Bisimulation (α : Type u) where
 
 /-- **Reachability is an `AnchorMap` lookup** — restated as a `rfl`
     for downstream rewriting. -/
-@[simp] theorem anchorReachable_iff (m : AnchorMap) (name : String) (v : YamlValue) :
+@[simp] lemma anchorReachable_iff (m : AnchorMap) (name : String) (v : YamlValue) :
     anchorReachable m name v ↔ m.find? name = some v := Iff.rfl
 
 end L4YAML.Algebra.Equivalence

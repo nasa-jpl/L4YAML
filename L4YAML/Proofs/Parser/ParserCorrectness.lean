@@ -111,7 +111,7 @@ pattern — no `termination_by` annotations needed.
 successfully parse and compose the yaml-test-suite, providing strong evidence
 that the hypothesis holds in practice.
 -/
-theorem parseStream_values_have_witnesses
+lemma parseStream_values_have_witnesses
     (tokens : Array (Positioned YamlToken))
     (docs : Array YamlDocument)
     (_h : parseStream tokens = .ok docs)
@@ -150,7 +150,7 @@ because:
 codebase (see ScannerEmitBridge.lean, ParserCompleteness.lean) and is empirically
 validated by 787 `#guard` checks.
 -/
-theorem parseStream_respects_grammar
+lemma parseStream_respects_grammar
     (tokens : Array (Positioned YamlToken))
     (docs : Array YamlDocument)
     (h_parse : parseStream tokens = .ok docs)

@@ -71,22 +71,22 @@ def FlowCleanTok : YamlToken → Bool
 
 /-! ## Unfolding equations (definitional) -/
 
-@[simp] theorem seqTokVals_nil : emitTokVals.seqTokVals [] = [] := rfl
+@[simp] lemma seqTokVals_nil : emitTokVals.seqTokVals [] = [] := rfl
 
-theorem seqTokVals_singleton (v : YamlValue) :
+lemma seqTokVals_singleton (v : YamlValue) :
     emitTokVals.seqTokVals [v] = emitTokVals v := rfl
 
-theorem seqTokVals_cons_cons (v w : YamlValue) (vs : List YamlValue) :
+lemma seqTokVals_cons_cons (v w : YamlValue) (vs : List YamlValue) :
     emitTokVals.seqTokVals (v :: w :: vs)
       = emitTokVals v ++ (.flowEntry :: emitTokVals.seqTokVals (w :: vs)) := rfl
 
-@[simp] theorem mapTokVals_nil : emitTokVals.mapTokVals [] = [] := rfl
+@[simp] lemma mapTokVals_nil : emitTokVals.mapTokVals [] = [] := rfl
 
-theorem mapTokVals_singleton (k v : YamlValue) :
+lemma mapTokVals_singleton (k v : YamlValue) :
     emitTokVals.mapTokVals [(k, v)]
       = .key :: (emitTokVals k ++ (.value :: emitTokVals v)) := rfl
 
-theorem mapTokVals_cons_cons (k v : YamlValue) (p : YamlValue × YamlValue)
+lemma mapTokVals_cons_cons (k v : YamlValue) (p : YamlValue × YamlValue)
     (rest : List (YamlValue × YamlValue)) :
     emitTokVals.mapTokVals ((k, v) :: p :: rest)
       = (.key :: (emitTokVals k ++ (.value :: emitTokVals v)))
@@ -95,15 +95,15 @@ theorem mapTokVals_cons_cons (k v : YamlValue) (p : YamlValue × YamlValue)
 /-! ## Structure lemmas -/
 
 /-- Every emission's token run is non-empty. -/
-theorem emitTokVals_ne_nil (v : YamlValue) : emitTokVals v ≠ [] := by
+lemma emitTokVals_ne_nil (v : YamlValue) : emitTokVals v ≠ [] := by
   cases v <;> simp [emitTokVals]
 
-theorem emitTokVals_length_pos (v : YamlValue) : 0 < (emitTokVals v).length :=
+lemma emitTokVals_length_pos (v : YamlValue) : 0 < (emitTokVals v).length :=
   List.length_pos_iff.mpr (emitTokVals_ne_nil v)
 
 /-- The head of an emission's run is a content-start token: a scalar or a flow opener.
     (Feeds the loop walks: element heads are never `.flowSequenceEnd`/`.key`/`.flowEntry`.) -/
-theorem emitTokVals_head (v : YamlValue) :
+lemma emitTokVals_head (v : YamlValue) :
     (∃ c st, (emitTokVals v).head? = some (.scalar c st))
     ∨ (emitTokVals v).head? = some .flowSequenceStart
     ∨ (emitTokVals v).head? = some .flowMappingStart := by
@@ -114,7 +114,7 @@ theorem emitTokVals_head (v : YamlValue) :
   | alias name => exact Or.inl ⟨"*" ++ name, .doubleQuoted, rfl⟩
 
 /-- Item count is bounded by the body-run length (each item contributes ≥ 1 token). -/
-theorem seqTokVals_length_ge (items : List YamlValue) :
+lemma seqTokVals_length_ge (items : List YamlValue) :
     items.length ≤ (emitTokVals.seqTokVals items).length := by
   match items with
   | [] => simp
@@ -129,7 +129,7 @@ theorem seqTokVals_length_ge (items : List YamlValue) :
     omega
 
 /-- Pair count is bounded by the body-run length. -/
-theorem mapTokVals_length_ge (pairs : List (YamlValue × YamlValue)) :
+lemma mapTokVals_length_ge (pairs : List (YamlValue × YamlValue)) :
     pairs.length ≤ (emitTokVals.mapTokVals pairs).length := by
   match pairs with
   | [] => simp
@@ -145,7 +145,7 @@ theorem mapTokVals_length_ge (pairs : List (YamlValue × YamlValue)) :
 mutual
 
 /-- Every token an emission produces is flow-clean. -/
-theorem emitTokVals_flowClean (v : YamlValue) :
+lemma emitTokVals_flowClean (v : YamlValue) :
     ∀ t ∈ emitTokVals v, FlowCleanTok t = true := by
   match v with
   | .scalar s => intro t ht; simp [emitTokVals] at ht; simp [ht, FlowCleanTok]
@@ -165,7 +165,7 @@ theorem emitTokVals_flowClean (v : YamlValue) :
     · exact mapTokVals_flowClean pairs.toList t ht
     · rfl
 
-theorem seqTokVals_flowClean (l : List YamlValue) :
+lemma seqTokVals_flowClean (l : List YamlValue) :
     ∀ t ∈ emitTokVals.seqTokVals l, FlowCleanTok t = true := by
   match l with
   | [] => intro t ht; simp at ht
@@ -179,7 +179,7 @@ theorem seqTokVals_flowClean (l : List YamlValue) :
       · rfl
       · exact seqTokVals_flowClean (w :: vs) t ht
 
-theorem mapTokVals_flowClean (l : List (YamlValue × YamlValue)) :
+lemma mapTokVals_flowClean (l : List (YamlValue × YamlValue)) :
     ∀ t ∈ emitTokVals.mapTokVals l, FlowCleanTok t = true := by
   match l with
   | [] => intro t ht; simp at ht

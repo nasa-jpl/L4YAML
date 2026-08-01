@@ -101,36 +101,36 @@ These are **value-level** facts and port verbatim from legacy
 (lines 8503–8529). They don't depend on the indexed substrate. -/
 
 /-- `resolveAliases` is identity on scalars. -/
-theorem resolveAliases_scalarIx (s : Scalar)
+lemma resolveAliases_scalarIx (s : Scalar)
     (anchors : Array (String × YamlValue)) :
     (YamlValue.scalar s).resolveAliases anchors = .scalar s := by
   unfold YamlValue.resolveAliases; rfl
 
 /-- `stripAnchors` on a scalar just clears the anchor field. -/
-theorem stripAnchors_scalarIx (s : Scalar) :
+lemma stripAnchors_scalarIx (s : Scalar) :
     (YamlValue.scalar s).stripAnchors = .scalar { s with anchor := none } := by
   unfold YamlValue.stripAnchors; rfl
 
 /-- `resolveAliasesOrdered` returns scalars unchanged (whatever binding it makes). -/
-theorem resolveAliasesOrdered_fst_scalarIx (s : Scalar)
+lemma resolveAliasesOrdered_fst_scalarIx (s : Scalar)
     (anchors : Array (String × YamlValue)) (env : List (String × YamlValue)) :
     ((YamlValue.scalar s).resolveAliasesOrdered anchors env).fst = .scalar s := by
   simp only [YamlValue.resolveAliasesOrdered]
 
 /-- `compose` on a scalar document preserves the content field. -/
-theorem compose_scalar_contentIx (doc : YamlDocument) (s : Scalar)
+lemma compose_scalar_contentIx (doc : YamlDocument) (s : Scalar)
     (h_val : doc.value = .scalar s) :
     (doc.compose).value = .scalar { s with anchor := none } := by
   unfold YamlDocument.compose; dsimp only []
   rw [h_val, resolveAliasesOrdered_fst_scalarIx, stripAnchors_scalarIx]
 
 /-- `contentEq` for scalars only depends on the content string. -/
-theorem contentEq_scalar_contentIx (s₁ s₂ : Scalar)
+lemma contentEq_scalar_contentIx (s₁ s₂ : Scalar)
     (h : s₁.content = s₂.content) : contentEq (.scalar s₁) (.scalar s₂) = true := by
   unfold contentEq; simp [h]
 
 /-- `contentEq` through compose for scalars: original vs composed. -/
-theorem contentEq_scalar_composeIx (s_orig : Scalar) (s_parsed : Scalar)
+lemma contentEq_scalar_composeIx (s_orig : Scalar) (s_parsed : Scalar)
     (h_content : s_orig.content = s_parsed.content) :
     contentEq (.scalar s_orig) (.scalar { s_parsed with anchor := none }) = true :=
   contentEq_scalar_contentIx s_orig { s_parsed with anchor := none } h_content
@@ -164,7 +164,7 @@ the round-trip cluster's downstream consumers expect. -/
     **Verbatim port** from legacy `unwindIndents_noop_short_stack`
     (line 8881) — the proof structure is identical because
     `unwindIndentsIx` shares the legacy's `match`/`if` skeleton. -/
-theorem unwindIndents_noop_short_stackIx {input : String}
+lemma unwindIndents_noop_short_stackIx {input : String}
     (s : ScannerStateIx input) (h_stack : s.indents.size ≤ 1) :
     unwindIndentsIx s (-1) = s := by
   unfold unwindIndentsIx
@@ -189,7 +189,7 @@ theorem unwindIndents_noop_short_stackIx {input : String}
     is at most a singleton. Combines `scanFilteredIx_of_chain_eq` (the
     FlowMonoChain Sync Invariant §5 export) with `unwindIndents_noop_
     short_stackIx`. -/
-theorem scanFiltered_tokens_eq_of_chain_short_stackIx
+lemma scanFiltered_tokens_eq_of_chain_short_stackIx
     (input : String) (s₀ s_final : ScannerStateIx input) (n : Nat)
     (h_s0 : s₀ = (ScannerStateIx.mk' input).emit YamlToken.streamStart)
     (h_no_bom : (ScannerStateIx.mk' input).peek? ≠ some '﻿')
@@ -208,7 +208,7 @@ theorem scanFiltered_tokens_eq_of_chain_short_stackIx
 /-- `ScanChainIx` token-stream monotonicity: the token array grows
     (non-strictly) through any scan chain. Inducts on the chain,
     discharging each step with `scanNextTokenIx_tokens_size_le`. -/
-theorem ScanChainIx_tokens_mono {input : String} {s s' : ScannerStateIx input}
+lemma ScanChainIx_tokens_mono {input : String} {s s' : ScannerStateIx input}
     {n : Nat} (h_chain : ScanChainIx s n s') : s'.tokens.size ≥ s.tokens.size := by
   induction h_chain with
   | zero => exact Nat.le_refl _
@@ -229,7 +229,7 @@ theorem ScanChainIx_tokens_mono {input : String} {s s' : ScannerStateIx input}
     from `scanNextTokenIx_tokens_size_le`) plus `SimpleKeyAboveIx s' n`,
     enabling straightforward induction in
     `ScanChainIx_preserves_raw_prefix`. -/
-theorem scanNextTokenIx_prefix_and_sk_inv {input : String}
+lemma scanNextTokenIx_prefix_and_sk_inv {input : String}
     (s s' : ScannerStateIx input)
     (h_next : scanNextTokenIx s = .ok (some s'))
     (n : Nat) (h_n : n ≤ s.tokens.size)
@@ -249,7 +249,7 @@ theorem scanNextTokenIx_prefix_and_sk_inv {input : String}
     `SimpleKeyAboveIx s n₀` holds. The `SimpleKeyAboveIx` invariant is
     maintained through each step by `scanNextTokenIx_prefix_and_sk_inv`,
     making the induction straightforward. -/
-theorem ScanChainIx_preserves_raw_prefix {input : String}
+lemma ScanChainIx_preserves_raw_prefix {input : String}
     {s s' : ScannerStateIx input} {k : Nat}
     (h_chain : ScanChainIx s k s')
     (n₀ : Nat) (h_n₀ : n₀ ≤ s.tokens.size)
@@ -273,7 +273,7 @@ involvement; the same `emitPairList` function is shared between the
 legacy and indexed pipelines. Ports verbatim from legacy line 9058. -/
 
 /-- `emitPairList` for non-empty pairs produces a non-empty string. -/
-theorem emitPairList_toList_ne_nilIx (p : YamlValue × YamlValue)
+lemma emitPairList_toList_ne_nilIx (p : YamlValue × YamlValue)
     (ps : List (YamlValue × YamlValue)) :
     (L4YAML.Emit.emit.emitPairList (p :: ps)).toList ≠ [] := by
   obtain ⟨c, rest', h_eq, _, _, _⟩ := emitPairList_first_charIx p ps
@@ -297,7 +297,7 @@ both. -/
 
 /-- `scanFlowSequenceEndIx` pushes exactly one `.flowSequenceEnd`
     `IxToken` onto the underlying token array. -/
-theorem scanFlowSequenceEnd_tokens_eqIx {input : String}
+lemma scanFlowSequenceEnd_tokens_eqIx {input : String}
     (s : ScannerStateIx input) :
     (scanFlowSequenceEndIx s).tokens.tokens =
       s.tokens.tokens.push (Indexed.IxToken.mk' (input := input)
@@ -308,7 +308,7 @@ theorem scanFlowSequenceEnd_tokens_eqIx {input : String}
 
 /-- `scanFlowMappingEndIx` pushes exactly one `.flowMappingEnd`
     `IxToken` onto the underlying token array. -/
-theorem scanFlowMappingEnd_tokens_eqIx {input : String}
+lemma scanFlowMappingEnd_tokens_eqIx {input : String}
     (s : ScannerStateIx input) :
     (scanFlowMappingEndIx s).tokens.tokens =
       s.tokens.tokens.push (Indexed.IxToken.mk' (input := input)
@@ -364,7 +364,7 @@ the result-state field equations.
     `.flowSequenceEnd` which passes the placeholder filter). Indexed
     twin of legacy `scanNextToken_flow_close_seq_outermost_ext` (line
     8086). -/
-theorem scanNextToken_flow_close_seq_outermost_extIx {input : String}
+lemma scanNextToken_flow_close_seq_outermost_extIx {input : String}
     (s : ScannerStateIx input)
     (hcorr : ScannerSurfCorrIx s ⟨[']'], s.cursor.pos.col⟩)
     (h_flow : s.inFlow = true)
@@ -471,7 +471,7 @@ theorem scanNextToken_flow_close_seq_outermost_extIx {input : String}
     of legacy `scanNextToken_flow_close_mapping_outermost_ext` (line
     9176). Structurally identical to the close-bracket case modulo
     the bracket / brace / sequenceEnd / mappingEnd substitutions. -/
-theorem scanNextToken_flow_close_mapping_outermost_extIx {input : String}
+lemma scanNextToken_flow_close_mapping_outermost_extIx {input : String}
     (s : ScannerStateIx input)
     (hcorr : ScannerSurfCorrIx s ⟨['}'], s.cursor.pos.col⟩)
     (h_flow : s.inFlow = true)
@@ -625,7 +625,7 @@ rewrite chain (`scanFlow*Ix_tokens_eq` → `emit_tokens_pushIx` →
 /-- `scanFlowSequenceStartIx` filtered token equation: adds exactly one
     `.flowSequenceStart` non-placeholder token. Indexed twin of legacy
     `scanFlowSequenceStart_filtered` (line 9378). -/
-theorem scanFlowSequenceStartIx_filtered {input : String}
+lemma scanFlowSequenceStartIx_filtered {input : String}
     (s : ScannerStateIx input) :
     let p := fun (t : Indexed.IxToken input) => t.token != YamlToken.placeholder
     (scanFlowSequenceStartIx s).tokens.tokens.filter p =
@@ -642,7 +642,7 @@ theorem scanFlowSequenceStartIx_filtered {input : String}
 /-- `scanFlowMappingStartIx` filtered token equation: adds exactly one
     `.flowMappingStart` non-placeholder token. Indexed twin of legacy
     `scanFlowMappingStart_filtered` (line 9389). -/
-theorem scanFlowMappingStartIx_filtered {input : String}
+lemma scanFlowMappingStartIx_filtered {input : String}
     (s : ScannerStateIx input) :
     let p := fun (t : Indexed.IxToken input) => t.token != YamlToken.placeholder
     (scanFlowMappingStartIx s).tokens.tokens.filter p =
@@ -659,7 +659,7 @@ theorem scanFlowMappingStartIx_filtered {input : String}
 /-- `scanFlowEntryIx` filtered token equation (when it succeeds): adds
     exactly one `.flowEntry` non-placeholder token. Indexed twin of
     legacy `scanFlowEntry_filtered` (line 9401). -/
-theorem scanFlowEntryIx_filtered {input : String}
+lemma scanFlowEntryIx_filtered {input : String}
     {s s' : ScannerStateIx input}
     (h : scanFlowEntryIx s = .ok s') :
     let p := fun (t : Indexed.IxToken input) => t.token != YamlToken.placeholder
@@ -686,7 +686,7 @@ Pure inductions on the chain shape — no substrate dependency beyond
 /-- Two `ScanChainIx`s from the same start state with the same step
     count reach the same end state. Indexed twin of legacy
     `ScanChain_deterministic` (line 9426). -/
-theorem ScanChainIx_deterministic {input : String}
+lemma ScanChainIx_deterministic {input : String}
     {s s₁ s₂ : ScannerStateIx input} {n : Nat}
     (h₁ : ScanChainIx s n s₁) (h₂ : ScanChainIx s n s₂) : s₁ = s₂ := by
   induction h₁ generalizing s₂ with
@@ -702,7 +702,7 @@ theorem ScanChainIx_deterministic {input : String}
     if `s` reaches `s₁` in `n₁` steps and `s₂` in `n₁ + n₂` steps, then
     `s₁` reaches `s₂` in `n₂` steps. Indexed twin of legacy
     `ScanChain.split` (line 9438). -/
-theorem ScanChainIx.split {input : String}
+lemma ScanChainIx.split {input : String}
     {s s₁ s₂ : ScannerStateIx input} {n₁ n₂ : Nat}
     (h₁ : ScanChainIx s n₁ s₁) (h_total : ScanChainIx s (n₁ + n₂) s₂) :
     ScanChainIx s₁ n₂ s₂ := by
@@ -742,7 +742,7 @@ Both call sites (in downstream `parseStream_emit*` theorems) have
 `h_stack_floor` vacuously true. Indexed twin of legacy
 `ScanChain_filtered_prefix` (line 9043). -/
 
-theorem FlowMonoChainIx_filtered_prefix {input : String}
+lemma FlowMonoChainIx_filtered_prefix {input : String}
     {s s' : ScannerStateIx input} {n fl₀ : Nat}
     (h_fmc : FlowMonoChainIx fl₀ s n s')
     (h_sk : s.simpleKey.possible = false)
@@ -776,7 +776,7 @@ non-`.placeholder` and so survive the filter (`List.head_filter` /
 
 Indexed twin of legacy `scanFiltered_boundary_tokens` (line 9267). -/
 
-theorem scanFilteredIx_boundary_tokens (input : String)
+lemma scanFilteredIx_boundary_tokens (input : String)
     (tokens : Indexed.TokenStream input)
     (h : scanFilteredIx input = .ok tokens) :
     tokens.tokens.size ≥ 2 ∧
@@ -935,7 +935,7 @@ matching `.body2` outer-level-flowEntry claim. -/
     claim are deferred to `.body1.tokenshape` / `.body2`. Indexed twin
     of legacy `emitList_body_filtered_characterization` (lines
     9474–9552), first-conjunct fragment of Part-1 only. -/
-theorem emitList_body_filtered_characterizationIx_part1
+lemma emitList_body_filtered_characterizationIx_part1
     {input : String} (items : List YamlValue) (h_ne : items ≠ [])
     (h_all : ∀ v ∈ items, EmitScansInFlowIx (input := input) v)
     (s : ScannerStateIx input) (rest : List Char)
@@ -1016,7 +1016,7 @@ theorem emitList_body_filtered_characterizationIx_part1
     on the post-first-step state, and `scanValuePrepareIx`'s
     placeholder→.key conversion adds further intricacy for the pair case
     (the `.key` first-filtered-token claim comes from step 2, not step 1). -/
-theorem emitPairList_body_filtered_characterizationIx_part1
+lemma emitPairList_body_filtered_characterizationIx_part1
     {input : String} (pairs : List (YamlValue × YamlValue)) (h_ne : pairs ≠ [])
     (h_all_k : ∀ p ∈ pairs, EmitScansInFlowIx (input := input) p.1)
     (h_all_v : ∀ p ∈ pairs, EmitScansInFlowIx (input := input) p.2)

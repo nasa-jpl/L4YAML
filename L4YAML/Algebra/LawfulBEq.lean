@@ -96,19 +96,19 @@ the basis for the `LawfulBEq YamlValue` proofs below.
 -/
 
 -- Same-constructor reductions
-@[simp] theorem beqYamlValue_scalar (s₁ s₂ : Scalar) :
+@[simp] lemma beqYamlValue_scalar (s₁ s₂ : Scalar) :
     beqYamlValue (.scalar s₁) (.scalar s₂) = (s₁ == s₂) := rfl
 
-@[simp] theorem beqYamlValue_alias (n₁ n₂ : String) :
+@[simp] lemma beqYamlValue_alias (n₁ n₂ : String) :
     beqYamlValue (.alias n₁) (.alias n₂) = (n₁ == n₂) := rfl
 
-@[simp] theorem beqYamlValue_sequence (st₁ st₂ : CollectionStyle)
+@[simp] lemma beqYamlValue_sequence (st₁ st₂ : CollectionStyle)
     (items₁ items₂ : Array YamlValue) (tag₁ tag₂ anc₁ anc₂ : Option String) :
     beqYamlValue (.sequence st₁ items₁ tag₁ anc₁) (.sequence st₂ items₂ tag₂ anc₂)
     = (st₁ == st₂ && beqYamlValue.beqList items₁.toList items₂.toList
        && tag₁ == tag₂ && anc₁ == anc₂) := rfl
 
-@[simp] theorem beqYamlValue_mapping (st₁ st₂ : CollectionStyle)
+@[simp] lemma beqYamlValue_mapping (st₁ st₂ : CollectionStyle)
     (pairs₁ pairs₂ : Array (YamlValue × YamlValue))
     (tag₁ tag₂ anc₁ anc₂ : Option String) :
     beqYamlValue (.mapping st₁ pairs₁ tag₁ anc₁) (.mapping st₂ pairs₂ tag₂ anc₂)
@@ -116,55 +116,55 @@ the basis for the `LawfulBEq YamlValue` proofs below.
        && tag₁ == tag₂ && anc₁ == anc₂) := rfl
 
 -- Cross-constructor reductions (all `false`)
-@[simp] theorem beqYV_sc_sq (s st items tag anc) :
+@[simp] lemma beqYV_sc_sq (s st items tag anc) :
     beqYamlValue (.scalar s) (.sequence st items tag anc) = false := rfl
-@[simp] theorem beqYV_sc_mp (s st pairs tag anc) :
+@[simp] lemma beqYV_sc_mp (s st pairs tag anc) :
     beqYamlValue (.scalar s) (.mapping st pairs tag anc) = false := rfl
-@[simp] theorem beqYV_sc_al (s n) :
+@[simp] lemma beqYV_sc_al (s n) :
     beqYamlValue (.scalar s) (.alias n) = false := rfl
-@[simp] theorem beqYV_sq_sc (st items tag anc s) :
+@[simp] lemma beqYV_sq_sc (st items tag anc s) :
     beqYamlValue (.sequence st items tag anc) (.scalar s) = false := rfl
-@[simp] theorem beqYV_sq_mp (st₁ items tag₁ anc₁ st₂ pairs tag₂ anc₂) :
+@[simp] lemma beqYV_sq_mp (st₁ items tag₁ anc₁ st₂ pairs tag₂ anc₂) :
     beqYamlValue (.sequence st₁ items tag₁ anc₁) (.mapping st₂ pairs tag₂ anc₂) = false := rfl
-@[simp] theorem beqYV_sq_al (st items tag anc n) :
+@[simp] lemma beqYV_sq_al (st items tag anc n) :
     beqYamlValue (.sequence st items tag anc) (.alias n) = false := rfl
-@[simp] theorem beqYV_mp_sc (st pairs tag anc s) :
+@[simp] lemma beqYV_mp_sc (st pairs tag anc s) :
     beqYamlValue (.mapping st pairs tag anc) (.scalar s) = false := rfl
-@[simp] theorem beqYV_mp_sq (st₁ pairs tag₁ anc₁ st₂ items tag₂ anc₂) :
+@[simp] lemma beqYV_mp_sq (st₁ pairs tag₁ anc₁ st₂ items tag₂ anc₂) :
     beqYamlValue (.mapping st₁ pairs tag₁ anc₁) (.sequence st₂ items tag₂ anc₂) = false := rfl
-@[simp] theorem beqYV_mp_al (st pairs tag anc n) :
+@[simp] lemma beqYV_mp_al (st pairs tag anc n) :
     beqYamlValue (.mapping st pairs tag anc) (.alias n) = false := rfl
-@[simp] theorem beqYV_al_sc (n s) :
+@[simp] lemma beqYV_al_sc (n s) :
     beqYamlValue (.alias n) (.scalar s) = false := rfl
-@[simp] theorem beqYV_al_sq (n st items tag anc) :
+@[simp] lemma beqYV_al_sq (n st items tag anc) :
     beqYamlValue (.alias n) (.sequence st items tag anc) = false := rfl
-@[simp] theorem beqYV_al_mp (n st pairs tag anc) :
+@[simp] lemma beqYV_al_mp (n st pairs tag anc) :
     beqYamlValue (.alias n) (.mapping st pairs tag anc) = false := rfl
 
 -- List helper reductions
-@[simp] theorem beqList_nil :
+@[simp] lemma beqList_nil :
     beqYamlValue.beqList [] [] = true := rfl
-@[simp] theorem beqList_cons (a b : YamlValue) (as bs : List YamlValue) :
+@[simp] lemma beqList_cons (a b : YamlValue) (as bs : List YamlValue) :
     beqYamlValue.beqList (a :: as) (b :: bs)
     = (beqYamlValue a b && beqYamlValue.beqList as bs) := rfl
-@[simp] theorem beqList_nil_cons (b : YamlValue) (bs : List YamlValue) :
+@[simp] lemma beqList_nil_cons (b : YamlValue) (bs : List YamlValue) :
     beqYamlValue.beqList [] (b :: bs) = false := rfl
-@[simp] theorem beqList_cons_nil (a : YamlValue) (as : List YamlValue) :
+@[simp] lemma beqList_cons_nil (a : YamlValue) (as : List YamlValue) :
     beqYamlValue.beqList (a :: as) [] = false := rfl
 
 -- Pair-list helper reductions
-@[simp] theorem beqPairList_nil :
+@[simp] lemma beqPairList_nil :
     beqYamlValue.beqPairList [] [] = true := rfl
-@[simp] theorem beqPairList_cons (k₁ v₁ : YamlValue)
+@[simp] lemma beqPairList_cons (k₁ v₁ : YamlValue)
     (rest₁ : List (YamlValue × YamlValue))
     (k₂ v₂ : YamlValue) (rest₂ : List (YamlValue × YamlValue)) :
     beqYamlValue.beqPairList ((k₁, v₁) :: rest₁) ((k₂, v₂) :: rest₂)
     = (beqYamlValue k₁ k₂ && beqYamlValue v₁ v₂
        && beqYamlValue.beqPairList rest₁ rest₂) := rfl
-@[simp] theorem beqPairList_nil_cons
+@[simp] lemma beqPairList_nil_cons
     (p : YamlValue × YamlValue) (ps : List (YamlValue × YamlValue)) :
     beqYamlValue.beqPairList [] (p :: ps) = false := rfl
-@[simp] theorem beqPairList_cons_nil
+@[simp] lemma beqPairList_cons_nil
     (p : YamlValue × YamlValue) (ps : List (YamlValue × YamlValue)) :
     beqYamlValue.beqPairList (p :: ps) [] = false := rfl
 
@@ -179,7 +179,7 @@ explicit pattern matches with recursive calls.
 -/
 
 -- `beq_self_eq_true` (a.k.a. `@[simp] ReflBEq.rfl`)
-theorem beqYamlValue_rfl : ∀ (v : YamlValue), beqYamlValue v v = true
+lemma beqYamlValue_rfl : ∀ (v : YamlValue), beqYamlValue v v = true
   | .scalar _ => by simp [beqYamlValue_scalar]
   | .alias _ => by simp [beqYamlValue_alias]
   | .sequence _ items _ _ => by
@@ -202,7 +202,7 @@ where
               beqPairList_rfl rest]
 
 -- `eq_of_beq` via structural case analysis on all constructor pairs
-theorem beqYamlValue_eq : ∀ (a b : YamlValue),
+lemma beqYamlValue_eq : ∀ (a b : YamlValue),
     beqYamlValue a b = true → a = b
   | .scalar s₁, .scalar s₂, h => by
       simp [beqYamlValue_scalar] at h; exact congrArg _ h

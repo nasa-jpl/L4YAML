@@ -296,7 +296,7 @@ Parse (→ serialization tree) + Compose (→ representation graph).
 
 Re-exports `L4YAML.Proofs.Indexed.Composition.parseYamlIx_ok_iff`.
 -/
-theorem parseYamlIx_ok_iff (input : String) (docs : Array YamlDocument) :
+lemma parseYamlIx_ok_iff (input : String) (docs : Array YamlDocument) :
     parseYamlIx input = .ok docs ↔
     ∃ rawDocs : Array YamlDocument,
       parseYamlRawIx input = .ok rawDocs ∧
@@ -320,12 +320,12 @@ def parseYamlEq (input : String) (expected : Array YamlDocument) : Bool :=
 -- is available (§1) for propositional equality proofs when needed.
 
 /-- Plain scalar `"a"` parses successfully. -/
-theorem parseYaml_a_ok :
+lemma parseYaml_a_ok :
     (match parseYamlIx "a" with | .ok _ => true | .error _ => false) = true := by
   native_decide
 
 /-- Plain scalar `"a"` produces the expected value. -/
-theorem parseYaml_a_value :
+lemma parseYaml_a_value :
     (match parseYamlIx "a" with
      | .ok docs => docs.size == 1
        && docs[0]!.value == .scalar ⟨"a", .plain, none, none, none⟩
@@ -333,7 +333,7 @@ theorem parseYaml_a_value :
   native_decide
 
 /-- Double-quoted scalar `"hello"` parses correctly. -/
-theorem parseYaml_dq_hello :
+lemma parseYaml_dq_hello :
     (match parseYamlIx "\"hello\"" with
      | .ok docs => docs.size == 1
        && docs[0]!.value == .scalar ⟨"hello", .doubleQuoted, none, none, none⟩
@@ -341,7 +341,7 @@ theorem parseYaml_dq_hello :
   native_decide
 
 /-- Single-quoted scalar `'hello'` parses correctly. -/
-theorem parseYaml_sq_hello :
+lemma parseYaml_sq_hello :
     (match parseYamlIx "'hello'" with
      | .ok docs => docs.size == 1
        && docs[0]!.value == .scalar ⟨"hello", .singleQuoted, none, none, none⟩
@@ -349,14 +349,14 @@ theorem parseYaml_sq_hello :
   native_decide
 
 /-- Flow sequence `[1, 2, 3]` produces one document. -/
-theorem parseYaml_flow_seq :
+lemma parseYaml_flow_seq :
     (match parseYamlIx "[1, 2, 3]" with
      | .ok docs => docs.size == 1
      | .error _ => false) = true := by
   native_decide
 
 /-- Block mapping `key: value` produces the expected structure. -/
-theorem parseYaml_block_map :
+lemma parseYaml_block_map :
     (match parseYamlIx "key: value" with
      | .ok docs => docs.size == 1
        && docs[0]!.value == .mapping .block
@@ -366,34 +366,34 @@ theorem parseYaml_block_map :
   native_decide
 
 /-- `parseYamlEq` check for plain scalar `"a"`. -/
-theorem parseYaml_a_eq :
+lemma parseYaml_a_eq :
     parseYamlEq "a" #[{ value := .scalar ⟨"a", .plain, none, none, none⟩,
                          directives := #[] }] = true := by
   native_decide
 
 /-- Literal block scalar parses correctly. -/
-theorem parseYaml_literal_block :
+lemma parseYaml_literal_block :
     (match parseYamlIx "|\n  hello\n  world" with
      | .ok docs => docs.size == 1
      | .error _ => false) = true := by
   native_decide
 
 /-- Folded block scalar parses correctly. -/
-theorem parseYaml_folded_block :
+lemma parseYaml_folded_block :
     (match parseYamlIx ">\n  hello\n  world" with
      | .ok docs => docs.size == 1
      | .error _ => false) = true := by
   native_decide
 
 /-- Multi-document stream parses both documents. -/
-theorem parseYaml_multi_doc :
+lemma parseYaml_multi_doc :
     (match parseYamlIx "---\na\n---\nb" with
      | .ok docs => docs.size == 2
      | .error _ => false) = true := by
   native_decide
 
 /-- Flow mapping parses correctly. -/
-theorem parseYaml_flow_map :
+lemma parseYaml_flow_map :
     (match parseYamlIx "{a: b, c: d}" with
      | .ok docs => docs.size == 1
        && docs[0]!.value == .mapping .flow
@@ -403,7 +403,7 @@ theorem parseYaml_flow_map :
   native_decide
 
 /-- Nested block structure: mapping with sequence value. -/
-theorem parseYaml_nested_block :
+lemma parseYaml_nested_block :
     (match parseYamlIx "items:\n- a\n- b" with
      | .ok docs => docs.size == 1
      | .error _ => false) = true := by

@@ -102,7 +102,7 @@ lemmas) is proved by combining `skipToContent_atEnd` with the
     (`L4YAML.Scanner.Indexed.skipToContent_atEnd`) implies the
     line counter does not advance, so `skipToContentS`'s
     "if-line-changed" branch never fires. -/
-theorem skipToContentS_atEnd (s : ScannerStateIx input)
+lemma skipToContentS_atEnd (s : ScannerStateIx input)
     (h : s.peek? = none) : s.skipToContentS = s := by
   unfold ScannerStateIx.skipToContentS
   have h_cur : L4YAML.Scanner.Indexed.skipToContent s.cursor = s.cursor :=
@@ -117,7 +117,7 @@ step's `skipToContentS` is a no-op (§1.0); the subsequent
 `!s.hasMore` test short-circuits to `.ok none`. -/
 
 /-- The preprocess step returns `.ok none` at end-of-input. -/
-theorem scanNextTokenIx_preprocess_eof (s : ScannerStateIx input)
+lemma scanNextTokenIx_preprocess_eof (s : ScannerStateIx input)
     (h : s.peek? = none) :
     scanNextTokenIx_preprocess s = .ok none := by
   unfold scanNextTokenIx_preprocess
@@ -133,7 +133,7 @@ theorem scanNextTokenIx_preprocess_eof (s : ScannerStateIx input)
   simp [h_hm]
 
 /-- `scanNextTokenIx` returns `.ok none` at end-of-input. -/
-theorem scanNextTokenIx_eof (s : ScannerStateIx input)
+lemma scanNextTokenIx_eof (s : ScannerStateIx input)
     (h : s.peek? = none) : scanNextTokenIx s = .ok none := by
   unfold scanNextTokenIx
   rw [scanNextTokenIx_preprocess_eof s h]
@@ -151,7 +151,7 @@ take the two preconditions explicitly. -/
 /-- **Forward step (equality)**: If `scanNextTokenIx` produces a new
     state `s₁`, and `scanLoopIx s₁ fuel` succeeds with `ts`, then
     `scanLoopIx s₀ (fuel + 1)` succeeds with the same `ts`. -/
-theorem scanLoopIx_step_eq {s₀ s₁ : ScannerStateIx input} {fuel : Nat}
+lemma scanLoopIx_step_eq {s₀ s₁ : ScannerStateIx input} {fuel : Nat}
     {ts : Indexed.TokenStream input}
     (h_snt : scanNextTokenIx s₀ = .ok (some s₁))
     (h_loop : scanLoopIx s₁ fuel = .ok ts) :
@@ -162,7 +162,7 @@ theorem scanLoopIx_step_eq {s₀ s₁ : ScannerStateIx input} {fuel : Nat}
 
 /-- **Forward step (existential)**: existential variant of
     `scanLoopIx_step_eq`. -/
-theorem scanLoopIx_step {s₀ s₁ : ScannerStateIx input} {fuel : Nat}
+lemma scanLoopIx_step {s₀ s₁ : ScannerStateIx input} {fuel : Nat}
     (h_snt : scanNextTokenIx s₀ = .ok (some s₁))
     (h_loop : ∃ ts, scanLoopIx s₁ fuel = .ok ts) :
     ∃ ts, scanLoopIx s₀ (fuel + 1) = .ok ts := by
@@ -172,7 +172,7 @@ theorem scanLoopIx_step {s₀ s₁ : ScannerStateIx input} {fuel : Nat}
 /-- **Fuel monotonicity**: `scanLoopIx` success with `fuel₁` lifts to
     any larger fuel `fuel₂ ≥ fuel₁`. Mirrors legacy
     `scanLoop_fuel_mono`. -/
-theorem scanLoopIx_fuel_mono {s : ScannerStateIx input} {fuel₁ fuel₂ : Nat}
+lemma scanLoopIx_fuel_mono {s : ScannerStateIx input} {fuel₁ fuel₂ : Nat}
     {ts : Indexed.TokenStream input}
     (h : scanLoopIx s fuel₁ = .ok ts) (h_le : fuel₁ ≤ fuel₂) :
     scanLoopIx s fuel₂ = .ok ts := by
@@ -194,7 +194,7 @@ theorem scanLoopIx_fuel_mono {s : ScannerStateIx input} {fuel₁ fuel₂ : Nat}
 /-- **Two-iteration (existential)**: a `some` step followed by an
     `none` step (with the trailing state satisfying the EOF
     preconditions) gives `scanLoopIx s₀ fuel = .ok _` for any `fuel ≥ 2`. -/
-theorem scanLoopIx_two_iter {s₀ s₁ : ScannerStateIx input} {fuel : Nat}
+lemma scanLoopIx_two_iter {s₀ s₁ : ScannerStateIx input} {fuel : Nat}
     (h_fuel : fuel ≥ 2)
     (h_snt0 : scanNextTokenIx s₀ = .ok (some s₁))
     (h_snt1 : scanNextTokenIx s₁ = .ok none)
@@ -219,7 +219,7 @@ theorem scanLoopIx_two_iter {s₀ s₁ : ScannerStateIx input} {fuel : Nat}
 
 /-- **Two-iteration (equality)**: computational variant of
     `scanLoopIx_two_iter`. -/
-theorem scanLoopIx_two_iter_eq {s₀ s₁ : ScannerStateIx input} {fuel : Nat}
+lemma scanLoopIx_two_iter_eq {s₀ s₁ : ScannerStateIx input} {fuel : Nat}
     (h_fuel : fuel ≥ 2)
     (h_snt0 : scanNextTokenIx s₀ = .ok (some s₁))
     (h_snt1 : scanNextTokenIx s₁ = .ok none)
@@ -241,7 +241,7 @@ theorem scanLoopIx_two_iter_eq {s₀ s₁ : ScannerStateIx input} {fuel : Nat}
 /-- **Terminal step (existential)**: at EOF (and with the no-error
     preconditions on `flowLevel` and `directivesPresent`),
     `scanLoopIx s 1` succeeds. -/
-theorem scanLoopIx_eof {s : ScannerStateIx input}
+lemma scanLoopIx_eof {s : ScannerStateIx input}
     (h_snt : scanNextTokenIx s = .ok none)
     (h_fl : s.flowLevel = 0)
     (h_dp : s.directivesPresent = false) :
@@ -257,7 +257,7 @@ theorem scanLoopIx_eof {s : ScannerStateIx input}
 
 /-- **Terminal step (equality)**: at EOF, `scanLoopIx` produces
     exactly the unwound + `streamEnd` token stream. -/
-theorem scanLoopIx_eof_eq {s : ScannerStateIx input} {fuel : Nat}
+lemma scanLoopIx_eof_eq {s : ScannerStateIx input} {fuel : Nat}
     (h_fuel : fuel ≥ 1)
     (h_snt : scanNextTokenIx s = .ok none)
     (h_fl : s.flowLevel = 0)
@@ -294,7 +294,7 @@ structure ScannerSurfCorrIx {input : String} (sc : ScannerStateIx input)
     ∀ (i : Nat) (hi : i < sc.indents.size), i > 0 → sc.indents[i].column ≥ 0
 
 /-- If the surface position has empty remaining chars, then `peek? = none`. -/
-theorem peek_none_of_empty_surfIx (sc : ScannerStateIx input) (col : Nat)
+lemma peek_none_of_empty_surfIx (sc : ScannerStateIx input) (col : Nat)
     (hcorr : ScannerSurfCorrIx sc ⟨[], col⟩) :
     sc.peek? = none := by
   have h_ge : input.utf8ByteSize ≤ sc.cursor.pos.offset :=
@@ -306,7 +306,7 @@ theorem peek_none_of_empty_surfIx (sc : ScannerStateIx input) (col : Nat)
     (tokens, simple key, flags, etc.). Mirrors legacy
     `ScannerSurfCorr_transfer`; the `input` parameter is type-level
     so no `input` field needs to match. -/
-theorem ScannerSurfCorrIx_transfer {sc sc' : ScannerStateIx input} {sp : SurfPos}
+lemma ScannerSurfCorrIx_transfer {sc sc' : ScannerStateIx input} {sp : SurfPos}
     (hcorr : ScannerSurfCorrIx sc sp)
     (h_offset : sc'.cursor.pos.offset = sc.cursor.pos.offset)
     (h_col : sc'.cursor.pos.col = sc.cursor.pos.col)
@@ -333,7 +333,7 @@ upstream dispatcher, so control falls through to
     marker), each of the four upstream dispatchers returns the no-op
     result, so `scanNextTokenIx` ultimately reaches
     `dispatchContent`. -/
-theorem dispatchContentIx_quote (s : ScannerStateIx input) (c : Char) (hc : c = '"')
+lemma dispatchContentIx_quote (s : ScannerStateIx input) (c : Char) (hc : c = '"')
     (h_notFlow : s.flowLevel = 0)
     (h_indent : s.currentIndent = -1)
     (h_noDocStart : atDocumentStartIx s.cursor = false)
@@ -364,7 +364,7 @@ Ported verbatim from legacy `emitScalar_toList` /
 `emitScalar_utf8ByteSize_ge` (lines 1058–1070). -/
 
 /-- `emitScalar content` decomposes as `'"' :: escapeString content :: '"'`. -/
-theorem emitScalar_toList (content : String) :
+lemma emitScalar_toList (content : String) :
     (L4YAML.Emit.emitScalar content).toList
       = ['"'] ++ (L4YAML.Emit.escapeString content).toList ++ ['"'] := by
   have h1 : ("\"" : String).toList = ['"'] := by native_decide
@@ -372,7 +372,7 @@ theorem emitScalar_toList (content : String) :
   simp only [String.toList_append, h1]
 
 /-- `emitScalar content` has at least 2 bytes (the two `'"'` delimiters). -/
-theorem emitScalar_utf8ByteSize_ge (content : String) :
+lemma emitScalar_utf8ByteSize_ge (content : String) :
     (L4YAML.Emit.emitScalar content).utf8ByteSize ≥ 2 := by
   simp only [utf8ByteSize_eq_listByteSize, emitScalar_toList,
              listByteSize_append, listByteSize]
@@ -416,7 +416,7 @@ inductive ScanChainIx {input : String} :
 
 /-- Transitivity: concatenate two scan chains. Mirrors legacy
     `ScanChain.trans` (line 1193). -/
-theorem ScanChainIx.trans {s₁ s₂ s₃ : ScannerStateIx input} {n₁ n₂ : Nat}
+lemma ScanChainIx.trans {s₁ s₂ s₃ : ScannerStateIx input} {n₁ n₂ : Nat}
     (h1 : ScanChainIx s₁ n₁ s₂) (h2 : ScanChainIx s₂ n₂ s₃) :
     ScanChainIx s₁ (n₁ + n₂) s₃ := by
   induction h1 with
@@ -429,7 +429,7 @@ theorem ScanChainIx.trans {s₁ s₂ s₃ : ScannerStateIx input} {n₁ n₂ : N
 
 /-- A single `scanNextTokenIx` step as a `ScanChainIx`. Mirrors
     legacy `ScanChain.single` (line 1205). -/
-theorem ScanChainIx.single {s s' : ScannerStateIx input}
+lemma ScanChainIx.single {s s' : ScannerStateIx input}
     (h : scanNextTokenIx s = .ok (some s')) :
     ScanChainIx s 1 s' :=
   .step h .zero
@@ -439,7 +439,7 @@ theorem ScanChainIx.single {s s' : ScannerStateIx input}
 /-- If `n` steps succeed reaching `s'`, and `scanLoopIx s' fuel`
     succeeds, then `scanLoopIx s (fuel + n)` succeeds with the same
     result. Mirrors legacy `ScanChain.to_scanLoop` (line 1213). -/
-theorem ScanChainIx.to_scanLoopIx {s s' : ScannerStateIx input}
+lemma ScanChainIx.to_scanLoopIx {s s' : ScannerStateIx input}
     {n fuel : Nat} {ts : Indexed.TokenStream input}
     (h_chain : ScanChainIx s n s')
     (h_loop : scanLoopIx s' fuel = .ok ts) :
@@ -454,7 +454,7 @@ theorem ScanChainIx.to_scanLoopIx {s s' : ScannerStateIx input}
 
 /-- Existential variant of `.to_scanLoopIx`. Mirrors legacy
     `ScanChain.to_scanLoop_exists` (line 1227). -/
-theorem ScanChainIx.to_scanLoopIx_exists {s s' : ScannerStateIx input}
+lemma ScanChainIx.to_scanLoopIx_exists {s s' : ScannerStateIx input}
     {n : Nat}
     (h_chain : ScanChainIx s n s')
     (h_loop : ∃ fuel ts, scanLoopIx s' fuel = .ok ts) :
@@ -486,7 +486,7 @@ inductively. -/
     `offset ≥ offset + n`, but that requires the strict-progress
     capstone `scanNextTokenIx_progress` which is not yet ported.
     See `.internals.progress` slice. -/
-theorem ScanChainIx.offset_monotonic_weak {s₀ s_final : ScannerStateIx input}
+lemma ScanChainIx.offset_monotonic_weak {s₀ s_final : ScannerStateIx input}
     {n : Nat} (h_chain : ScanChainIx s₀ n s_final) :
     s_final.cursor.pos.offset ≥ s₀.cursor.pos.offset := by
   induction h_chain with
@@ -499,7 +499,7 @@ theorem ScanChainIx.offset_monotonic_weak {s₀ s_final : ScannerStateIx input}
     size. This is the indexed twin of legacy `bound_invariant`'s
     second conjunct (`offset ≤ inputEnd`); in the indexed substrate
     it is a direct projection of the cursor's `posBound` field. -/
-theorem ScanChainIx.offset_bounded {s₀ s_final : ScannerStateIx input}
+lemma ScanChainIx.offset_bounded {s₀ s_final : ScannerStateIx input}
     {n : Nat} (_h_chain : ScanChainIx s₀ n s_final) :
     s_final.cursor.pos.offset ≤ input.utf8ByteSize :=
   s_final.cursor.posBound
@@ -519,7 +519,7 @@ which is the fuel `scanIx` provides to `scanLoopIx`. -/
     `inputEnd = s₀.inputEnd`) are split off as
     `ScanChainIx.offset_bounded` (§2.3): in the indexed substrate the
     `inputEnd` field doesn't exist and `posBound` is structural. -/
-theorem ScanChainIx.bound_invariant {s₀ s_final : ScannerStateIx input}
+lemma ScanChainIx.bound_invariant {s₀ s_final : ScannerStateIx input}
     {n : Nat} (h_chain : ScanChainIx s₀ n s_final) :
     s_final.cursor.pos.offset ≥ s₀.cursor.pos.offset + n := by
   induction h_chain with
@@ -542,7 +542,7 @@ theorem ScanChainIx.bound_invariant {s₀ s_final : ScannerStateIx input}
     needs `h_le` / `h_ie` / `h_iv` preconditions that are all
     structural in the indexed substrate; only the `s₀ = mk'.emit ...`
     starting-shape and the chain itself are needed. -/
-theorem ScanChainIx.fuel_bound (s₀ s_final : ScannerStateIx input)
+lemma ScanChainIx.fuel_bound (s₀ s_final : ScannerStateIx input)
     (n : Nat) (h_s0 : s₀ = (ScannerStateIx.mk' input).emit YamlToken.streamStart)
     (h_chain : ScanChainIx s₀ n s_final)
     (_h_eof : scanNextTokenIx s_final = .ok none) :

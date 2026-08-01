@@ -49,7 +49,7 @@ The following theorems decompose this pipeline.
 `parseYamlRaw` decomposes into scanning then parsing: if both stages
 succeed, the result is the `parseStream` output on the scanned tokens.
 -/
-theorem parseYamlRaw_pipeline (input : String)
+lemma parseYamlRaw_pipeline (input : String)
     (tokens : Array (Positioned YamlToken))
     (docs : Array YamlDocument)
     (h_scan : Scanner.scanFiltered input = .ok tokens)
@@ -61,7 +61,7 @@ theorem parseYamlRaw_pipeline (input : String)
 If `parseYamlRaw` succeeds, then both `Scanner.scan` and `parseStream`
 must have succeeded.
 -/
-theorem parseYamlRaw_ok_decompose (input : String) (docs : Array YamlDocument)
+lemma parseYamlRaw_ok_decompose (input : String) (docs : Array YamlDocument)
     (h : parseYamlRaw input = .ok docs) :
     ∃ tokens : Array (Positioned YamlToken),
       Scanner.scanFiltered input = .ok tokens ∧ parseStream tokens = .ok docs := by
@@ -81,7 +81,7 @@ theorem parseYamlRaw_ok_decompose (input : String) (docs : Array YamlDocument)
 /--
 If `Scanner.scan` fails, `parseYamlRaw` fails with the same error.
 -/
-theorem parseYamlRaw_scan_error (input : String) (e : ScanError)
+lemma parseYamlRaw_scan_error (input : String) (e : ScanError)
     (h : Scanner.scanFiltered input = .error e) :
     parseYamlRaw input = .error e := by
   simp only [parseYamlRaw, h]
@@ -90,7 +90,7 @@ theorem parseYamlRaw_scan_error (input : String) (e : ScanError)
 If `Scanner.scan` succeeds but `parseStream` fails, `parseYamlRaw` fails
 with the same parse error.
 -/
-theorem parseYamlRaw_parse_error (input : String) (e : ScanError)
+lemma parseYamlRaw_parse_error (input : String) (e : ScanError)
     (tokens : Array (Positioned YamlToken))
     (h_scan : Scanner.scanFiltered input = .ok tokens)
     (h_parse : parseStream tokens = .error e) :
@@ -108,7 +108,7 @@ here we provide additional convenience forms.
 /--
 If `parseYamlRaw` succeeds, `parseYaml` succeeds with composed documents.
 -/
-theorem parseYaml_of_parseYamlRaw_ok (input : String) (docs : Array YamlDocument)
+lemma parseYaml_of_parseYamlRaw_ok (input : String) (docs : Array YamlDocument)
     (h : parseYamlRaw input = .ok docs) :
     parseYaml input = .ok (docs.map YamlDocument.compose) := by
   simp only [parseYaml, h]
@@ -116,7 +116,7 @@ theorem parseYaml_of_parseYamlRaw_ok (input : String) (docs : Array YamlDocument
 /--
 If `parseYamlRaw` fails, `parseYaml` fails with the same error.
 -/
-theorem parseYaml_of_parseYamlRaw_error (input : String) (e : ScanError)
+lemma parseYaml_of_parseYamlRaw_error (input : String) (e : ScanError)
     (h : parseYamlRaw input = .error e) :
     parseYaml input = .error e := by
   simp only [parseYaml, h]

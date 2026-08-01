@@ -98,43 +98,43 @@ Each entry below exhibits the roundtrip for one fixed input by
 fully computable functions, so the goal reduces to a concrete
 `Bool` equation that the kernel compiles and evaluates. -/
 
-theorem roundtrip_empty : roundtripOk "" = true := by native_decide
+lemma roundtrip_empty : roundtripOk "" = true := by native_decide
 
-theorem roundtrip_plain_x : roundtripOk "x" = true := by native_decide
+lemma roundtrip_plain_x : roundtripOk "x" = true := by native_decide
 
-theorem roundtrip_plain_abc : roundtripOk "abc" = true := by native_decide
+lemma roundtrip_plain_abc : roundtripOk "abc" = true := by native_decide
 
-theorem roundtrip_plain_hello : roundtripOk "hello" = true := by native_decide
+lemma roundtrip_plain_hello : roundtripOk "hello" = true := by native_decide
 
-theorem roundtrip_flow_seq_empty : roundtripOk "[]" = true := by native_decide
+lemma roundtrip_flow_seq_empty : roundtripOk "[]" = true := by native_decide
 
-theorem roundtrip_flow_map_empty : roundtripOk "{}" = true := by native_decide
+lemma roundtrip_flow_map_empty : roundtripOk "{}" = true := by native_decide
 
-theorem roundtrip_flow_seq_one : roundtripOk "[x]" = true := by native_decide
+lemma roundtrip_flow_seq_one : roundtripOk "[x]" = true := by native_decide
 
-theorem roundtrip_flow_seq_two : roundtripOk "[x,y]" = true := by native_decide
+lemma roundtrip_flow_seq_two : roundtripOk "[x,y]" = true := by native_decide
 
-theorem roundtrip_flow_seq_three : roundtripOk "[a,b,c]" = true := by native_decide
+lemma roundtrip_flow_seq_three : roundtripOk "[a,b,c]" = true := by native_decide
 
-theorem roundtrip_flow_seq_four : roundtripOk "[a,b,c,d]" = true := by native_decide
+lemma roundtrip_flow_seq_four : roundtripOk "[a,b,c,d]" = true := by native_decide
 
-theorem roundtrip_flow_seq_nested_empty : roundtripOk "[[]]" = true := by native_decide
+lemma roundtrip_flow_seq_nested_empty : roundtripOk "[[]]" = true := by native_decide
 
-theorem roundtrip_flow_seq_of_map : roundtripOk "[{}]" = true := by native_decide
+lemma roundtrip_flow_seq_of_map : roundtripOk "[{}]" = true := by native_decide
 
-theorem roundtrip_flow_map_one : roundtripOk "{a}" = true := by native_decide
+lemma roundtrip_flow_map_one : roundtripOk "{a}" = true := by native_decide
 
-theorem roundtrip_flow_map_two : roundtripOk "{a,b}" = true := by native_decide
+lemma roundtrip_flow_map_two : roundtripOk "{a,b}" = true := by native_decide
 
-theorem roundtrip_flow_seq_mixed_a : roundtripOk "[a,[b,c]]" = true := by native_decide
+lemma roundtrip_flow_seq_mixed_a : roundtripOk "[a,[b,c]]" = true := by native_decide
 
-theorem roundtrip_flow_seq_mixed_b : roundtripOk "[{a},b]" = true := by native_decide
+lemma roundtrip_flow_seq_mixed_b : roundtripOk "[{a},b]" = true := by native_decide
 
-theorem roundtrip_flow_map_mixed : roundtripOk "{a,{b}}" = true := by native_decide
+lemma roundtrip_flow_map_mixed : roundtripOk "{a,{b}}" = true := by native_decide
 
-theorem roundtrip_flow_seq_of_seq : roundtripOk "[[],[]]" = true := by native_decide
+lemma roundtrip_flow_seq_of_seq : roundtripOk "[[],[]]" = true := by native_decide
 
-theorem roundtrip_flow_map_of_seq : roundtripOk "{[]}" = true := by native_decide
+lemma roundtrip_flow_map_of_seq : roundtripOk "{[]}" = true := by native_decide
 
 /-! ## Closed-form consequence
 
@@ -143,7 +143,7 @@ formulation in the Blueprint follows directly: `present ts = input`
 makes `scanIx (present ts)` reduce to `scanIx input`, which is
 already known to equal `.ok ts` by the `match`. -/
 
-theorem scanIx_present_of_roundtripOk (input : String)
+lemma scanIx_present_of_roundtripOk (input : String)
     (h : roundtripOk input = true) :
     ∃ ts : Indexed.TokenStream input,
       scanIx input = .ok ts ∧ present ts = input := by

@@ -75,69 +75,69 @@ These properties hold by computation on the pure `emit` function.
 -/
 
 /-- Emitting a scalar produces a string starting with `"`. -/
-theorem emit_scalar_starts_quote :
+lemma emit_scalar_starts_quote :
     (emitScalar "test").front = '"' := by native_decide
 
 /-- Emitting an empty scalar produces `""`. -/
-theorem emit_scalar_empty : emitScalar "" = "\"\"" := by native_decide
+lemma emit_scalar_empty : emitScalar "" = "\"\"" := by native_decide
 
 /-- Emitting a plain ASCII word produces the expected double-quoted form. -/
-theorem emit_scalar_hello : emitScalar "hello" = "\"hello\"" := by native_decide
+lemma emit_scalar_hello : emitScalar "hello" = "\"hello\"" := by native_decide
 
 /-- The escape function preserves plain ASCII characters. -/
-theorem escapeChar_ascii_letter : escapeChar 'a' = "a" := by native_decide
+lemma escapeChar_ascii_letter : escapeChar 'a' = "a" := by native_decide
 
 /-- The escape function escapes backslash. -/
-theorem escapeChar_backslash : escapeChar '\\' = "\\\\" := by native_decide
+lemma escapeChar_backslash : escapeChar '\\' = "\\\\" := by native_decide
 
 /-- The escape function escapes double quote. -/
-theorem escapeChar_quote : escapeChar '"' = "\\\"" := by native_decide
+lemma escapeChar_quote : escapeChar '"' = "\\\"" := by native_decide
 
 /-- The escape function escapes newline. -/
-theorem escapeChar_newline : escapeChar '\n' = "\\n" := by native_decide
+lemma escapeChar_newline : escapeChar '\n' = "\\n" := by native_decide
 
 /-- The escape function escapes tab. -/
-theorem escapeChar_tab : escapeChar '\t' = "\\t" := by native_decide
+lemma escapeChar_tab : escapeChar '\t' = "\\t" := by native_decide
 
 /-- The escape function escapes null. -/
-theorem escapeChar_null : escapeChar '\x00' = "\\0" := by native_decide
+lemma escapeChar_null : escapeChar '\x00' = "\\0" := by native_decide
 
 /-- The escape function escapes carriage return. -/
-theorem escapeChar_cr : escapeChar '\r' = "\\r" := by native_decide
+lemma escapeChar_cr : escapeChar '\r' = "\\r" := by native_decide
 
 /-- Emitting a scalar with special characters applies proper escaping. -/
-theorem emit_scalar_with_newline :
+lemma emit_scalar_with_newline :
     emitScalar "line1\nline2" = "\"line1\\nline2\"" := by native_decide
 
 /-- Emitting a scalar with a backslash escapes it. -/
-theorem emit_scalar_with_backslash :
+lemma emit_scalar_with_backslash :
     emitScalar "a\\b" = "\"a\\\\b\"" := by native_decide
 
 /-- Emitting a scalar containing a double quote escapes it. -/
-theorem emit_scalar_with_quote :
+lemma emit_scalar_with_quote :
     emitScalar "say \"hi\"" = "\"say \\\"hi\\\"\"" := by native_decide
 
 /-- Emitting an empty sequence produces `[]`. -/
-theorem emit_empty_seq :
+lemma emit_empty_seq :
     emit (.sequence .flow #[] none) = "[]" := by native_decide
 
 /-- Emitting an empty mapping produces `{}`. -/
-theorem emit_empty_map :
+lemma emit_empty_map :
     emit (.mapping .flow #[] none) = "{}" := by native_decide
 
 /-- Emitting a single-element sequence. -/
-theorem emit_single_seq :
+lemma emit_single_seq :
     emit (.sequence .flow #[.scalar ⟨"a", .plain, none, none, none⟩] none)
     = "[\"a\"]" := by native_decide
 
 /-- Emitting a two-element sequence. -/
-theorem emit_two_seq :
+lemma emit_two_seq :
     emit (.sequence .flow #[.scalar ⟨"a", .plain, none, none, none⟩,
                             .scalar ⟨"b", .plain, none, none, none⟩] none)
     = "[\"a\", \"b\"]" := by native_decide
 
 /-- Emitting a single-entry mapping. -/
-theorem emit_single_map :
+lemma emit_single_map :
     emit (.mapping .flow #[(.scalar ⟨"key", .plain, none, none, none⟩,
                             .scalar ⟨"value", .plain, none, none, none⟩)] none)
     = "{\"key\": \"value\"}" := by native_decide
@@ -153,69 +153,69 @@ This is the key property linking the emitter to the parser specification.
 -/
 
 /-- Null round-trip: `\0` → null → `\0`. -/
-theorem escape_resolve_null :
+lemma escape_resolve_null :
     resolveNamedEscape '0' = some '\x00' ∧ escapeChar '\x00' = "\\0" := by
   exact ⟨by native_decide, by native_decide⟩
 
 /-- Bell round-trip: `\a` → bell → `\a`. -/
-theorem escape_resolve_bell :
+lemma escape_resolve_bell :
     resolveNamedEscape 'a' = some '\x07' ∧ escapeChar '\x07' = "\\a" := by
   exact ⟨by native_decide, by native_decide⟩
 
 /-- Backspace round-trip: `\b` → BS → `\b`. -/
-theorem escape_resolve_backspace :
+lemma escape_resolve_backspace :
     resolveNamedEscape 'b' = some '\x08' ∧ escapeChar '\x08' = "\\b" := by
   exact ⟨by native_decide, by native_decide⟩
 
 /-- Tab round-trip: `\t` → TAB → `\t`. -/
-theorem escape_resolve_tab :
+lemma escape_resolve_tab :
     resolveNamedEscape 't' = some '\t' ∧ escapeChar '\t' = "\\t" := by
   exact ⟨by native_decide, by native_decide⟩
 
 /-- Line feed round-trip: `\n` → LF → `\n`. -/
-theorem escape_resolve_lf :
+lemma escape_resolve_lf :
     resolveNamedEscape 'n' = some '\n' ∧ escapeChar '\n' = "\\n" := by
   exact ⟨by native_decide, by native_decide⟩
 
 /-- Vertical tab round-trip: `\v` → VT → `\v`. -/
-theorem escape_resolve_vt :
+lemma escape_resolve_vt :
     resolveNamedEscape 'v' = some '\x0b' ∧ escapeChar '\x0b' = "\\v" := by
   exact ⟨by native_decide, by native_decide⟩
 
 /-- Form feed round-trip: `\f` → FF → `\f`. -/
-theorem escape_resolve_ff :
+lemma escape_resolve_ff :
     resolveNamedEscape 'f' = some '\x0c' ∧ escapeChar '\x0c' = "\\f" := by
   exact ⟨by native_decide, by native_decide⟩
 
 /-- Carriage return round-trip: `\r` → CR → `\r`. -/
-theorem escape_resolve_cr :
+lemma escape_resolve_cr :
     resolveNamedEscape 'r' = some '\r' ∧ escapeChar '\r' = "\\r" := by
   exact ⟨by native_decide, by native_decide⟩
 
 /-- Escape round-trip: `\e` → ESC → `\e`. -/
-theorem escape_resolve_esc :
+lemma escape_resolve_esc :
     resolveNamedEscape 'e' = some '\x1b' ∧ escapeChar '\x1b' = "\\e" := by
   exact ⟨by native_decide, by native_decide⟩
 
 /-- Backslash round-trip: `\\` → `\` → `\\`. -/
-theorem escape_resolve_backslash :
+lemma escape_resolve_backslash :
     resolveNamedEscape '\\' = some '\\' ∧ escapeChar '\\' = "\\\\" := by
   exact ⟨by native_decide, by native_decide⟩
 
 /-- Double quote round-trip: `\"` → `"` → `\"`. -/
-theorem escape_resolve_dquote :
+lemma escape_resolve_dquote :
     resolveNamedEscape '"' = some '"' ∧ escapeChar '"' = "\\\"" := by
   exact ⟨by native_decide, by native_decide⟩
 
 /-! ### Characters that resolve to printable — pass through `escapeChar` unchanged -/
 
 /-- Space resolved from `\ ` passes through escapeChar unchanged. -/
-theorem escape_resolve_space :
+lemma escape_resolve_space :
     resolveNamedEscape ' ' = some ' ' ∧ escapeChar ' ' = " " := by
   exact ⟨by native_decide, by native_decide⟩
 
 /-- Slash resolved from `\/` passes through escapeChar unchanged. -/
-theorem escape_resolve_slash :
+lemma escape_resolve_slash :
     resolveNamedEscape '/' = some '/' ∧ escapeChar '/' = "/" := by
   exact ⟨by native_decide, by native_decide⟩
 
@@ -225,40 +225,40 @@ theorem escape_resolve_slash :
 -/
 
 /-- `contentEq` is reflexive for scalars. -/
-theorem contentEq_refl_scalar (s : Scalar) :
+lemma contentEq_refl_scalar (s : Scalar) :
     contentEq (.scalar s) (.scalar s) = true := by
   show (s.content == s.content) = true
   exact beq_self_eq_true s.content
 
 /-- `contentEq` ignores scalar style. -/
-theorem contentEq_ignores_style (content : String)
+lemma contentEq_ignores_style (content : String)
     (s₁ s₂ : ScalarStyle) (t₁ t₂ : Option String) :
     contentEq (.scalar ⟨content, s₁, t₁, none, none⟩) (.scalar ⟨content, s₂, t₂, none, none⟩) = true := by
   show (content == content) = true
   exact beq_self_eq_true content
 
 /-- `contentEq` ignores collection style. -/
-theorem contentEq_ignores_collection_style :
+lemma contentEq_ignores_collection_style :
     contentEq (.sequence .block #[] none) (.sequence .flow #[] none) = true := by
   native_decide
 
 /-- `contentEq` is reflexive for empty sequences. -/
-theorem contentEq_refl_empty_seq :
+lemma contentEq_refl_empty_seq :
     contentEq (.sequence .flow #[] none) (.sequence .flow #[] none) = true := by
   native_decide
 
 /-- `contentEq` is reflexive for empty mappings. -/
-theorem contentEq_refl_empty_map :
+lemma contentEq_refl_empty_map :
     contentEq (.mapping .flow #[] none) (.mapping .flow #[] none) = true := by
   native_decide
 
 /-- `contentEq` distinguishes different scalar content. -/
-theorem contentEq_diff_content :
+lemma contentEq_diff_content :
     contentEq (.scalar ⟨"a", .plain, none, none, none⟩) (.scalar ⟨"b", .plain, none, none, none⟩) = false := by
   native_decide
 
 /-- `contentEq` distinguishes scalars from sequences. -/
-theorem contentEq_scalar_ne_seq :
+lemma contentEq_scalar_ne_seq :
     contentEq (.scalar ⟨"a", .plain, none, none, none⟩) (.sequence .flow #[] none) = false := by
   native_decide
 
@@ -270,42 +270,42 @@ Structural theorems about the emitter that connect to parser behavior.
 /--
 The emitter produces non-empty output on any scalar.
 -/
-theorem emit_scalar_nonempty :
+lemma emit_scalar_nonempty :
     (emit (.scalar ⟨"", .plain, none, none, none⟩)).length > 0 := by native_decide
 
 /--
 The emitter produces non-empty output on any empty sequence.
 -/
-theorem emit_seq_nonempty :
+lemma emit_seq_nonempty :
     (emit (.sequence .flow #[] none)).length > 0 := by native_decide
 
 /--
 The emitter produces non-empty output on any empty mapping.
 -/
-theorem emit_map_nonempty :
+lemma emit_map_nonempty :
     (emit (.mapping .flow #[] none)).length > 0 := by native_decide
 
 /--
 `escapeString` preserves the empty string.
 -/
-theorem escapeString_empty : escapeString "" = "" := by native_decide
+lemma escapeString_empty : escapeString "" = "" := by native_decide
 
 /--
 `escapeString` of a single plain character is just that character's string.
 -/
-theorem escapeString_single_a : escapeString "a" = "a" := by native_decide
+lemma escapeString_single_a : escapeString "a" = "a" := by native_decide
 
 /--
 `contentEq` is reflexive for concrete scalars.
 -/
-theorem contentEq_refl_hello :
+lemma contentEq_refl_hello :
     contentEq (.scalar ⟨"hello", .plain, none, none, none⟩) (.scalar ⟨"hello", .plain, none, none, none⟩) = true := by
   native_decide
 
 /--
 `contentEq` is reflexive for concrete nested structures.
 -/
-theorem contentEq_refl_nested :
+lemma contentEq_refl_nested :
     contentEq
       (.mapping .flow #[(.scalar ⟨"k", .plain, none, none, none⟩,
                          .sequence .flow #[.scalar ⟨"v", .plain, none, none, none⟩] none)] none)
@@ -327,7 +327,7 @@ match branch. The `where`-clause helpers `contentEqList` and `contentEqPairList`
 -/
 
 /-- `contentEqList` is reflexive given an inductive hypothesis on elements. -/
-theorem contentEqList_refl (vs : List YamlValue)
+lemma contentEqList_refl (vs : List YamlValue)
     (ih : ∀ v, v ∈ vs → contentEq v v = true) :
     contentEq.contentEqList vs vs = true := by
   induction vs with
@@ -337,7 +337,7 @@ theorem contentEqList_refl (vs : List YamlValue)
     exact ⟨ih hd (.head tl), ihtl (fun v hv => ih v (.tail hd hv))⟩
 
 /-- `contentEqPairList` is reflexive given an inductive hypothesis on pairs. -/
-theorem contentEqPairList_refl (ps : List (YamlValue × YamlValue))
+lemma contentEqPairList_refl (ps : List (YamlValue × YamlValue))
     (ih : ∀ p, p ∈ ps → contentEq p.1 p.1 = true ∧ contentEq p.2 p.2 = true) :
     contentEq.contentEqPairList ps ps = true := by
   induction ps with
@@ -355,7 +355,7 @@ This is the universal version — it holds for **all** values, not just concrete
 It subsumes `contentEq_refl_hello`, `contentEq_refl_nested`, `contentEq_refl_scalar`,
 `contentEq_refl_empty_seq`, and `contentEq_refl_empty_map`.
 -/
-theorem contentEq_refl (v : YamlValue) : contentEq v v = true := by
+lemma contentEq_refl (v : YamlValue) : contentEq v v = true := by
   match v with
   | .scalar s =>
     show (s.content == s.content) = true
@@ -390,7 +390,7 @@ lemmas for lists and pair-lists that take an inductive hypothesis from the calle
 -/
 
 /-- `contentEqList` is symmetric given a symmetric IH on elements. -/
-theorem contentEqList_symm (vs₁ vs₂ : List YamlValue)
+lemma contentEqList_symm (vs₁ vs₂ : List YamlValue)
     (ih : ∀ v, v ∈ vs₁ → ∀ v₂, contentEq v v₂ = true → contentEq v₂ v = true)
     (h : contentEq.contentEqList vs₁ vs₂ = true) :
     contentEq.contentEqList vs₂ vs₁ = true := by
@@ -404,7 +404,7 @@ theorem contentEqList_symm (vs₁ vs₂ : List YamlValue)
            contentEqList_symm tl₁ tl₂ (fun v hv => ih v (.tail _ hv)) h.2⟩
 
 /-- `contentEqPairList` is symmetric given a symmetric IH on pairs. -/
-theorem contentEqPairList_symm (ps₁ ps₂ : List (YamlValue × YamlValue))
+lemma contentEqPairList_symm (ps₁ ps₂ : List (YamlValue × YamlValue))
     (ih : ∀ p, p ∈ ps₁ →
           (∀ v₂, contentEq p.1 v₂ = true → contentEq v₂ p.1 = true) ∧
           (∀ v₂, contentEq p.2 v₂ = true → contentEq v₂ p.2 = true))
@@ -425,7 +425,7 @@ theorem contentEqPairList_symm (ps₁ ps₂ : List (YamlValue × YamlValue))
 
     Together with `contentEq_refl`, this establishes that `contentEq` is
     at least a partial equivalence relation. -/
-theorem contentEq_symm (v₁ v₂ : YamlValue) (h : contentEq v₁ v₂ = true) :
+lemma contentEq_symm (v₁ v₂ : YamlValue) (h : contentEq v₁ v₂ = true) :
     contentEq v₂ v₁ = true := by
   match v₁, v₂ with
   | .scalar s₁, .scalar s₂ =>
@@ -493,7 +493,7 @@ is a full equivalence relation on `YamlValue`.
 -/
 
 /-- `contentEqList` is transitive given a transitive IH on elements. -/
-theorem contentEqList_trans (vs₁ vs₂ vs₃ : List YamlValue)
+lemma contentEqList_trans (vs₁ vs₂ vs₃ : List YamlValue)
     (ih : ∀ v, v ∈ vs₁ → ∀ v₂ v₃, contentEq v v₂ = true → contentEq v₂ v₃ = true →
                                      contentEq v v₃ = true)
     (h₁ : contentEq.contentEqList vs₁ vs₂ = true)
@@ -511,7 +511,7 @@ theorem contentEqList_trans (vs₁ vs₂ vs₃ : List YamlValue)
            contentEqList_trans tl₁ tl₂ tl₃ (fun v hv => ih v (.tail _ hv)) h₁.2 h₂.2⟩
 
 /-- `contentEqPairList` is transitive given a transitive IH on pairs. -/
-theorem contentEqPairList_trans (ps₁ ps₂ ps₃ : List (YamlValue × YamlValue))
+lemma contentEqPairList_trans (ps₁ ps₂ ps₃ : List (YamlValue × YamlValue))
     (ih : ∀ p, p ∈ ps₁ →
           (∀ v₂ v₃, contentEq p.1 v₂ = true → contentEq v₂ v₃ = true → contentEq p.1 v₃ = true) ∧
           (∀ v₂ v₃, contentEq p.2 v₂ = true → contentEq v₂ v₃ = true → contentEq p.2 v₃ = true))
@@ -535,7 +535,7 @@ theorem contentEqPairList_trans (ps₁ ps₂ ps₃ : List (YamlValue × YamlValu
 
     Together with `contentEq_refl` and `contentEq_symm`, this establishes
     that `contentEq` is a full equivalence relation on `YamlValue`. -/
-theorem contentEq_trans (v₁ v₂ v₃ : YamlValue)
+lemma contentEq_trans (v₁ v₂ v₃ : YamlValue)
     (h₁ : contentEq v₁ v₂ = true) (h₂ : contentEq v₂ v₃ = true) :
     contentEq v₁ v₃ = true := by
   match v₁, v₂, v₃ with
@@ -619,7 +619,7 @@ def isEscapedChar (c : Char) : Bool :=
   | c => c.val.toNat < 0x20
 
 /-- For non-escaped characters, `escapeChar c` is `c.toString`. -/
-theorem escapeChar_identity (c : Char) (h : isEscapedChar c = false) :
+lemma escapeChar_identity (c : Char) (h : isEscapedChar c = false) :
     escapeChar c = c.toString := by
   unfold escapeChar
   split <;> (unfold isEscapedChar at h; simp_all)

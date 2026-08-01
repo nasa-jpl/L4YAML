@@ -115,7 +115,7 @@ def renderToken {input : String} (tok : Indexed.IxToken input) : String :=
 def present {input : String} (ts : Indexed.TokenStream input) : String :=
   ts.tokens.foldl (init := "") fun acc tok => acc ++ renderToken tok
 
-@[simp] theorem present_empty (input : String) :
+@[simp] lemma present_empty (input : String) :
     present (Indexed.TokenStream.empty input) = "" := rfl
 
 end L4YAML.Scanner.Indexed

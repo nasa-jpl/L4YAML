@@ -69,7 +69,7 @@ variable {P Q R : SurfPos → SurfPos → Prop}
     law that involves `GEps`. -/
 
 /-- **Epsilon iff equality**: `GEps s s'` holds iff `s = s'`. -/
-theorem eps_iff_eq (s s' : SurfPos) :
+lemma eps_iff_eq (s s' : SurfPos) :
     GEps s s' ↔ s = s' :=
   ⟨fun h => match h with | .mk _ => rfl,
    fun h => h ▸ GEps.mk s⟩
@@ -83,7 +83,7 @@ theorem eps_iff_eq (s s' : SurfPos) :
 
 /-- **`GSeq` associativity**, stated pointwise as an `Iff` at each
     pair of positions. -/
-theorem seq_assoc (s s' : SurfPos) :
+lemma seq_assoc (s s' : SurfPos) :
     GSeq (GSeq P Q) R s s' ↔ GSeq P (GSeq Q R) s s' :=
   ⟨fun h => match h with
     | .mk _ s₃ _ (.mk _ s₂ _ hp hq) hr =>
@@ -93,13 +93,13 @@ theorem seq_assoc (s s' : SurfPos) :
       .mk s s₃ s' (.mk s s₂ s₃ hp hq) hr⟩
 
 /-- **Left identity of `GSeq`**: `GEps; P = P`. -/
-theorem eps_seq (s s' : SurfPos) :
+lemma eps_seq (s s' : SurfPos) :
     GSeq GEps P s s' ↔ P s s' :=
   ⟨fun h => match h with | .mk _ _ _ (.mk _) hp => hp,
    fun hp => .mk s s s' (GEps.mk s) hp⟩
 
 /-- **Right identity of `GSeq`**: `P; GEps = P`. -/
-theorem seq_eps (s s' : SurfPos) :
+lemma seq_eps (s s' : SurfPos) :
     GSeq P GEps s s' ↔ P s s' :=
   ⟨fun h => match h with | .mk _ _ _ hp (.mk _) => hp,
    fun hp => .mk s s' s' hp (GEps.mk s')⟩
@@ -111,7 +111,7 @@ theorem seq_eps (s s' : SurfPos) :
     re-injects on the opposite side. -/
 
 /-- **`GAlt` commutativity**. -/
-theorem alt_comm (s s' : SurfPos) :
+lemma alt_comm (s s' : SurfPos) :
     GAlt P Q s s' ↔ GAlt Q P s s' :=
   ⟨fun h => match h with
     | .left _ _ hp => .right s s' hp
@@ -121,7 +121,7 @@ theorem alt_comm (s s' : SurfPos) :
     | .right _ _ hp => .left s s' hp⟩
 
 /-- **`GAlt` associativity**. -/
-theorem alt_assoc (s s' : SurfPos) :
+lemma alt_assoc (s s' : SurfPos) :
     GAlt (GAlt P Q) R s s' ↔ GAlt P (GAlt Q R) s s' :=
   ⟨fun h => match h with
     | .left _ _ (.left _ _ hp) => .left s s' hp
@@ -133,7 +133,7 @@ theorem alt_assoc (s s' : SurfPos) :
     | .right _ _ (.right _ _ hr) => .right s s' hr⟩
 
 /-- **`GAlt` idempotence**: `P | P = P`. -/
-theorem alt_idem (s s' : SurfPos) :
+lemma alt_idem (s s' : SurfPos) :
     GAlt P P s s' ↔ P s s' :=
   ⟨fun h => match h with
     | .left _ _ hp => hp
@@ -155,7 +155,7 @@ theorem alt_idem (s s' : SurfPos) :
 
 /-- Helper: appending two `GStar P` runs gives a single `GStar P`
     run. Used in the forward direction of `star_star`. -/
-theorem star_append {s₁ s₂ s₃ : SurfPos}
+lemma star_append {s₁ s₂ s₃ : SurfPos}
     (h₁ : GStar P s₁ s₂) (h₂ : GStar P s₂ s₃) :
     GStar P s₁ s₃ := by
   induction h₁ with
@@ -166,7 +166,7 @@ theorem star_append {s₁ s₂ s₃ : SurfPos}
     forward direction collapses a star-of-stars chain by appending
     each inner `GStar P` run; the backward direction wraps a single
     `GStar P` run inside a one-step star-of-stars chain. -/
-theorem star_star (s s' : SurfPos) :
+lemma star_star (s s' : SurfPos) :
     GStar (GStar P) s s' ↔ GStar P s s' := by
   constructor
   · intro h
@@ -177,7 +177,7 @@ theorem star_star (s s' : SurfPos) :
     exact GStar.cons s s' s' h (GStar.nil s')
 
 /-- **`GPlus` decomposition**: `P⁺ = P; P*`. -/
-theorem plus_iff_seq_star (s s' : SurfPos) :
+lemma plus_iff_seq_star (s s' : SurfPos) :
     GPlus P s s' ↔ GSeq P (GStar P) s s' :=
   ⟨fun h => match h with
     | .mk _ s₂ _ hp hstar => .mk s s₂ s' hp hstar,
@@ -188,7 +188,7 @@ theorem plus_iff_seq_star (s s' : SurfPos) :
     branches rely on tactic-mode `cases` to unify the two `GOpt`
     indices (resp. unfold `GEps`), which term-mode `match` does
     not propagate into the goal type automatically. -/
-theorem opt_iff_alt_eps (s s' : SurfPos) :
+lemma opt_iff_alt_eps (s s' : SurfPos) :
     GOpt P s s' ↔ GAlt P GEps s s' := by
   constructor
   · intro h
@@ -209,7 +209,7 @@ theorem opt_iff_alt_eps (s s' : SurfPos) :
     leading match. -/
 
 /-- **`GStar` one-step unfold**. -/
-theorem star_unfold (s s' : SurfPos) :
+lemma star_unfold (s s' : SurfPos) :
     GStar P s s' ↔ s = s' ∨ ∃ s'', P s s'' ∧ GStar P s'' s' :=
   ⟨fun h => match h with
     | .nil _ => Or.inl rfl
@@ -225,7 +225,7 @@ theorem star_unfold (s s' : SurfPos) :
     direct constructor re-shuffle. -/
 
 /-- **`GSeq3` reduces to right-associated `GSeq`**. -/
-theorem seq3_iff_seq_seq (s s' : SurfPos) :
+lemma seq3_iff_seq_seq (s s' : SurfPos) :
     GSeq3 P Q R s s' ↔ GSeq P (GSeq Q R) s s' :=
   ⟨fun h => match h with
     | .mk _ s₂ s₃ _ hp hq hr =>

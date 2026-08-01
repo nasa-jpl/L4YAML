@@ -108,7 +108,7 @@ open L4YAML.Proofs.ScannerLoopInvariant
 /-- `ScannerState.advance` preserves the `tokens` array.
     Complement to `advance_flowLevel`, `advance_flowStack`, etc.
     from `ScannerLoopInvariant`. -/
-theorem advance_tokens (s : ScannerState) :
+lemma advance_tokens (s : ScannerState) :
     s.advance.tokens = s.tokens := by
   unfold ScannerState.advance; split <;> simp_all
   split
@@ -118,35 +118,35 @@ theorem advance_tokens (s : ScannerState) :
 /-! ## Token count: each flow function adds exactly one token -/
 
 /-- `scanFlowSequenceStart` adds exactly one token. -/
-theorem scanFlowSequenceStart_tokens_size (s : ScannerState) :
+lemma scanFlowSequenceStart_tokens_size (s : ScannerState) :
     (scanFlowSequenceStart s).tokens.size = s.tokens.size + 1 := by
   simp [scanFlowSequenceStart, advance_tokens, ScannerState.emit, Array.size_push]
 
 /-- `scanFlowMappingStart` adds exactly one token. -/
-theorem scanFlowMappingStart_tokens_size (s : ScannerState) :
+lemma scanFlowMappingStart_tokens_size (s : ScannerState) :
     (scanFlowMappingStart s).tokens.size = s.tokens.size + 1 := by
   simp [scanFlowMappingStart, advance_tokens, ScannerState.emit, Array.size_push]
 
 /-- `scanFlowSequenceEnd` adds exactly one token. -/
-theorem scanFlowSequenceEnd_tokens_size (s : ScannerState) :
+lemma scanFlowSequenceEnd_tokens_size (s : ScannerState) :
     (scanFlowSequenceEnd s).tokens.size = s.tokens.size + 1 := by
   simp [scanFlowSequenceEnd, advance_tokens, ScannerState.emit, Array.size_push]
 
 /-- `scanFlowMappingEnd` adds exactly one token. -/
-theorem scanFlowMappingEnd_tokens_size (s : ScannerState) :
+lemma scanFlowMappingEnd_tokens_size (s : ScannerState) :
     (scanFlowMappingEnd s).tokens.size = s.tokens.size + 1 := by
   simp [scanFlowMappingEnd, advance_tokens, ScannerState.emit, Array.size_push]
 
 /-! ## Flow end decrements flowLevel when > 0 -/
 
 /-- Helper: emit preserves flowLevel. -/
-theorem emit_preserves_flowLevel (s : ScannerState) (tok : YamlToken) :
+lemma emit_preserves_flowLevel (s : ScannerState) (tok : YamlToken) :
     (s.emit tok).flowLevel = s.flowLevel := by
   unfold ScannerState.emit
   rfl
 
 /-- Helper: advance preserves flowLevel. -/
-theorem advance_preserves_flowLevel (s : ScannerState) :
+lemma advance_preserves_flowLevel (s : ScannerState) :
     s.advance.flowLevel = s.flowLevel := by
   unfold ScannerState.advance
   split
@@ -157,14 +157,14 @@ theorem advance_preserves_flowLevel (s : ScannerState) :
   · rfl
 
 /-- When `flowLevel > 0`, `scanFlowSequenceEnd` decrements it by 1. -/
-theorem scanFlowSequenceEnd_flowLevel_pos (s : ScannerState) (h : s.flowLevel > 0) :
+lemma scanFlowSequenceEnd_flowLevel_pos (s : ScannerState) (h : s.flowLevel > 0) :
     (scanFlowSequenceEnd s).flowLevel = s.flowLevel - 1 := by
   unfold scanFlowSequenceEnd
   simp only [emit_preserves_flowLevel, advance_preserves_flowLevel]
   split <;> omega
 
 /-- When `flowLevel > 0`, `scanFlowMappingEnd` decrements it by 1. -/
-theorem scanFlowMappingEnd_flowLevel_pos (s : ScannerState) (h : s.flowLevel > 0) :
+lemma scanFlowMappingEnd_flowLevel_pos (s : ScannerState) (h : s.flowLevel > 0) :
     (scanFlowMappingEnd s).flowLevel = s.flowLevel - 1 := by
   unfold scanFlowMappingEnd
   simp only [emit_preserves_flowLevel, advance_preserves_flowLevel]
@@ -173,13 +173,13 @@ theorem scanFlowMappingEnd_flowLevel_pos (s : ScannerState) (h : s.flowLevel > 0
 /-! ## Flow end preserves flow_sync when > 0 -/
 
 /-- Helper: emit preserves flowStack. -/
-theorem emit_preserves_flowStack (s : ScannerState) (tok : YamlToken) :
+lemma emit_preserves_flowStack (s : ScannerState) (tok : YamlToken) :
     (s.emit tok).flowStack = s.flowStack := by
   unfold ScannerState.emit
   rfl
 
 /-- Helper: advance preserves flowStack. -/
-theorem advance_preserves_flowStack (s : ScannerState) :
+lemma advance_preserves_flowStack (s : ScannerState) :
     s.advance.flowStack = s.flowStack := by
   unfold ScannerState.advance
   split
@@ -190,7 +190,7 @@ theorem advance_preserves_flowStack (s : ScannerState) :
   · rfl
 
 /-- `scanFlowSequenceEnd` preserves `flowLevel = flowStack.size` when `flowLevel > 0`. -/
-theorem scanFlowSequenceEnd_flow_sync (s : ScannerState)
+lemma scanFlowSequenceEnd_flow_sync (s : ScannerState)
     (h : s.flowLevel = s.flowStack.size) (hpos : s.flowLevel > 0) :
     (scanFlowSequenceEnd s).flowLevel = (scanFlowSequenceEnd s).flowStack.size := by
   unfold scanFlowSequenceEnd
@@ -200,7 +200,7 @@ theorem scanFlowSequenceEnd_flow_sync (s : ScannerState)
   split <;> omega
 
 /-- `scanFlowMappingEnd` preserves `flowLevel = flowStack.size` when `flowLevel > 0`. -/
-theorem scanFlowMappingEnd_flow_sync (s : ScannerState)
+lemma scanFlowMappingEnd_flow_sync (s : ScannerState)
     (h : s.flowLevel = s.flowStack.size) (hpos : s.flowLevel > 0) :
     (scanFlowMappingEnd s).flowLevel = (scanFlowMappingEnd s).flowStack.size := by
   unfold scanFlowMappingEnd
@@ -212,25 +212,25 @@ theorem scanFlowMappingEnd_flow_sync (s : ScannerState)
 /-! ## Flow start → inFlow -/
 
 /-- After `scanFlowSequenceStart`, `inFlow = true`. -/
-theorem scanFlowSequenceStart_inFlow (s : ScannerState) :
+lemma scanFlowSequenceStart_inFlow (s : ScannerState) :
     (scanFlowSequenceStart s).inFlow = true := by
   simp [scanFlowSequenceStart, ScannerState.inFlow, ScannerState.emit]
 
 /-- After `scanFlowMappingStart`, `inFlow = true`. -/
-theorem scanFlowMappingStart_inFlow (s : ScannerState) :
+lemma scanFlowMappingStart_inFlow (s : ScannerState) :
     (scanFlowMappingStart s).inFlow = true := by
   simp [scanFlowMappingStart, ScannerState.inFlow, ScannerState.emit]
 
 /-! ## Flow start pushes correct stack marker -/
 
 /-- `scanFlowSequenceStart` pushes `true` (sequence marker) on `flowStack`. -/
-theorem scanFlowSequenceStart_pushes_true (s : ScannerState) :
+lemma scanFlowSequenceStart_pushes_true (s : ScannerState) :
     (scanFlowSequenceStart s).flowStack = s.flowStack.push true := by
   unfold scanFlowSequenceStart
   simp only [emit_preserves_flowStack, advance_preserves_flowStack]
 
 /-- `scanFlowMappingStart` pushes `false` (mapping marker) on `flowStack`. -/
-theorem scanFlowMappingStart_pushes_false (s : ScannerState) :
+lemma scanFlowMappingStart_pushes_false (s : ScannerState) :
     (scanFlowMappingStart s).flowStack = s.flowStack.push false := by
   unfold scanFlowMappingStart
   simp only [emit_preserves_flowStack, advance_preserves_flowStack]
@@ -238,7 +238,7 @@ theorem scanFlowMappingStart_pushes_false (s : ScannerState) :
 /-! ## scanFlowEntry correctness -/
 
 /-- A successful `scanFlowEntry` preserves `flowLevel`. -/
-theorem scanFlowEntry_preserves_flowLevel (s : ScannerState) (s' : ScannerState)
+lemma scanFlowEntry_preserves_flowLevel (s : ScannerState) (s' : ScannerState)
     (h : scanFlowEntry s = .ok s') :
     s'.flowLevel = s.flowLevel := by
   unfold scanFlowEntry at h
@@ -250,7 +250,7 @@ theorem scanFlowEntry_preserves_flowLevel (s : ScannerState) (s' : ScannerState)
   · injection h with h; rw [← h]; simp [ScannerState.emit, advance_flowLevel]
 
 /-- A successful `scanFlowEntry` adds exactly one token. -/
-theorem scanFlowEntry_tokens_size (s : ScannerState) (s' : ScannerState)
+lemma scanFlowEntry_tokens_size (s : ScannerState) (s' : ScannerState)
     (h : scanFlowEntry s = .ok s') :
     s'.tokens.size = s.tokens.size + 1 := by
   unfold scanFlowEntry at h

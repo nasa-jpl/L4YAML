@@ -37,7 +37,7 @@ The `tag`, `anchor`, and `blockMeta` fields are irrelevant.
 -/
 
 /-- `ScalarScannable` depends only on `content` and `style`. -/
-theorem ScalarScannable_eq_of_content_style_eq
+lemma ScalarScannable_eq_of_content_style_eq
     (c : String) (st : ScalarStyle)
     (t1 t2 : Option String) (a1 a2 : Option String)
     (b1 b2 : Option BlockScalarMeta) (inFlow : Bool) :
@@ -46,13 +46,13 @@ theorem ScalarScannable_eq_of_content_style_eq
   constructor <;> (intro h hplain hlen; exact h hplain hlen)
 
 /-- Clearing the anchor field preserves `ScalarScannable`. -/
-theorem ScalarScannable_strip_anchor (s : Scalar) (inFlow : Bool) :
+lemma ScalarScannable_strip_anchor (s : Scalar) (inFlow : Bool) :
     ScalarScannable s inFlow ↔
       ScalarScannable { s with anchor := none } inFlow := by
   constructor <;> (intro h hplain hlen; exact h hplain hlen)
 
 /-- Non-plain scalars trivially satisfy `ScalarScannable`. -/
-theorem ScalarScannable_of_nonplain (s : Scalar) (inFlow : Bool)
+lemma ScalarScannable_of_nonplain (s : Scalar) (inFlow : Bool)
     (h : s.style ≠ .plain) :
     ScalarScannable s inFlow :=
   fun hplain _ => absurd hplain h
@@ -65,7 +65,7 @@ independent, `Grammable` is preserved.
 -/
 
 /-- `stripAnchors` on a `.scalar` node preserves `Grammable`. -/
-theorem stripAnchors_scalar_grammable (s : Scalar) (inFlow : Bool)
+lemma stripAnchors_scalar_grammable (s : Scalar) (inFlow : Bool)
     (h : Grammable (.scalar s) inFlow) :
     Grammable (.scalar { s with anchor := none }) inFlow := by
   cases h with
@@ -74,14 +74,14 @@ theorem stripAnchors_scalar_grammable (s : Scalar) (inFlow : Bool)
       ((ScalarScannable_strip_anchor s inFlow).mp h_ss)
 
 /-- The `stripList` where-clause helper equals `List.map stripAnchors`. -/
-theorem stripList_eq_map (l : List YamlValue) :
+lemma stripList_eq_map (l : List YamlValue) :
     YamlValue.stripAnchors.stripList l = l.map YamlValue.stripAnchors := by
   induction l with
   | nil => simp [YamlValue.stripAnchors.stripList]
   | cons v vs ih => simp [YamlValue.stripAnchors.stripList, ih]
 
 /-- The `stripPairs` where-clause helper equals `List.map` over pairs. -/
-theorem stripPairs_eq_map (l : List (YamlValue × YamlValue)) :
+lemma stripPairs_eq_map (l : List (YamlValue × YamlValue)) :
     YamlValue.stripAnchors.stripPairs l =
       l.map (fun (k, v) => (k.stripAnchors, v.stripAnchors)) := by
   induction l with
@@ -97,7 +97,7 @@ The proof is by induction on the `Grammable` derivation. The scalar
 case uses metadata independence. The sequence/mapping cases use the
 `stripList_eq_map`/`stripPairs_eq_map` lemmas to reduce where-clause
 mutual recursion to `List.map`, then apply the IH element-wise. -/
-theorem stripAnchors_preserves_Grammable (v : YamlValue) (inFlow : Bool) :
+lemma stripAnchors_preserves_Grammable (v : YamlValue) (inFlow : Bool) :
     Grammable v inFlow → Grammable v.stripAnchors inFlow := by
   intro h
   induction h with
@@ -142,7 +142,7 @@ inductive AliasFree : YamlValue → Prop where
       AliasFree (.mapping style pairs tag anchor)
 
 /-- Alias-free `Scannable` implies `Grammable`. -/
-theorem Scannable_aliasFree_to_Grammable (v : YamlValue) (inFlow : Bool) :
+lemma Scannable_aliasFree_to_Grammable (v : YamlValue) (inFlow : Bool) :
     Scannable v inFlow → AliasFree v → Grammable v inFlow := by
   intro h_scan h_af
   induction h_scan with
@@ -224,7 +224,7 @@ This is the core tool for discharging `parseStream_output_anchors_wellformed`. -
 /-- `hasFlowIndicator cs = false` implies no flow indicators (Prop).
     Each char-level check in `hasFlowIndicator` exactly matches `isFlowIndicatorProp`,
     so `hasFlowIndicator cs = false` means no char in `cs` is a flow indicator. -/
-theorem hasFlowIndicator_false_noFlowIndicators (content : String)
+lemma hasFlowIndicator_false_noFlowIndicators (content : String)
     (h : hasFlowIndicator content.toList = false) :
     noFlowIndicatorsProp content := by
   unfold noFlowIndicatorsProp
@@ -260,7 +260,7 @@ theorem hasFlowIndicator_false_noFlowIndicators (content : String)
     The only difference between `false` and `true` contexts is that
     exception chars (-, ?, :) with a next char add `¬isFlowIndicatorProp n`
     in flow context, which follows from `noFlowIndicatorsProp`. -/
-theorem ScalarScannable_false_to_true_noFI (s : Scalar)
+lemma ScalarScannable_false_to_true_noFI (s : Scalar)
     (h : ScalarScannable s false)
     (h_nfi : noFlowIndicatorsProp s.content) :
     ScalarScannable s true := by
@@ -306,7 +306,7 @@ theorem ScalarScannable_false_to_true_noFI (s : Scalar)
       · exact hvpf
 
 /-- The `adaptList` where-clause helper equals `List.map adaptForFlowContext`. -/
-theorem adaptList_eq_map (l : List YamlValue) :
+lemma adaptList_eq_map (l : List YamlValue) :
     YamlValue.adaptForFlowContext.adaptList l =
       l.map YamlValue.adaptForFlowContext := by
   induction l with
@@ -314,7 +314,7 @@ theorem adaptList_eq_map (l : List YamlValue) :
   | cons v vs ih => simp [YamlValue.adaptForFlowContext.adaptList, ih]
 
 /-- The `adaptPairs` where-clause helper equals `List.map` over pairs. -/
-theorem adaptPairs_eq_map (l : List (YamlValue × YamlValue)) :
+lemma adaptPairs_eq_map (l : List (YamlValue × YamlValue)) :
     YamlValue.adaptForFlowContext.adaptPairs l =
       l.map (fun (k, v) => (k.adaptForFlowContext, v.adaptForFlowContext)) := by
   induction l with
@@ -334,7 +334,7 @@ theorem adaptPairs_eq_map (l : List (YamlValue × YamlValue)) :
 --     - Non-plain scalars → unchanged (vacuously scannable)
 --     - Collections → recursive
 set_option maxHeartbeats 800000 in
-theorem adaptForFlowContext_grammable_forall (v : YamlValue) (b : Bool)
+lemma adaptForFlowContext_grammable_forall (v : YamlValue) (b : Bool)
     (h : Grammable v b) : ∀ inFlow, Grammable v.adaptForFlowContext inFlow := by
   induction h with
   | scalar s b h_ss =>
@@ -388,7 +388,7 @@ theorem adaptForFlowContext_grammable_forall (v : YamlValue) (b : Bool)
 
 /-- If `findSome?` with unit-returning predicate succeeds, then
     `findSome?` with value-returning predicate also succeeds. -/
-theorem findSome_unit_to_val (arr : Array (String × YamlValue)) (name : String)
+lemma findSome_unit_to_val (arr : Array (String × YamlValue)) (name : String)
     (h : (arr.findSome? (fun (n, _) => if n == name then some () else none)).isSome) :
     ∃ val, arr.findSome? (fun (n, v) => if n == name then some v else none) = some val := by
   simp only [Option.isSome_iff_exists] at h
@@ -408,7 +408,7 @@ theorem findSome_unit_to_val (arr : Array (String × YamlValue)) (name : String)
       · simp [h_eq]⟩⟩
 
 /-- The `resolveList` where-clause helper equals `List.map resolveAliases`. -/
-theorem resolveList_eq_map (l : List YamlValue) (anchors : Array (String × YamlValue)) :
+lemma resolveList_eq_map (l : List YamlValue) (anchors : Array (String × YamlValue)) :
     YamlValue.resolveAliases.resolveList l anchors =
       l.map (fun v => v.resolveAliases anchors) := by
   induction l with
@@ -416,7 +416,7 @@ theorem resolveList_eq_map (l : List YamlValue) (anchors : Array (String × Yaml
   | cons v vs ih => simp [YamlValue.resolveAliases.resolveList, ih]
 
 /-- The `resolvePairs` where-clause helper equals `List.map` over pairs. -/
-theorem resolvePairs_eq_map (l : List (YamlValue × YamlValue))
+lemma resolvePairs_eq_map (l : List (YamlValue × YamlValue))
     (anchors : Array (String × YamlValue)) :
     YamlValue.resolveAliases.resolvePairs l anchors =
       l.map (fun (k, v) => (k.resolveAliases anchors, v.resolveAliases anchors)) := by
@@ -439,7 +439,7 @@ set_option maxHeartbeats 4000000 in
     - **sequence/mapping**: Rewrite where-clause recursion using
       `resolveList_eq_map`/`resolvePairs_eq_map` and
       `stripList_eq_map`/`stripPairs_eq_map`, then apply IH element-wise. -/
-theorem compose_value_grammable
+lemma compose_value_grammable
     (v : YamlValue) (anchors : Array (String × YamlValue)) (inFlow : Bool)
     (h_scan : Scannable v inFlow)
     (h_resolve : AllAliasesResolve v anchors)
@@ -497,7 +497,7 @@ bindings made inside an earlier sibling are consumed by later siblings, so
 neither conjunct is provable alone. -/
 
 /-- `stripAnchors` is idempotent. -/
-theorem stripAnchors_stripAnchors (v : YamlValue) :
+lemma stripAnchors_stripAnchors (v : YamlValue) :
     v.stripAnchors.stripAnchors = v.stripAnchors := by
   match v with
   | .scalar s => rfl
@@ -529,7 +529,7 @@ decreasing_by
     restyles scalars (the adapt condition reads `style`/`content`, which
     stripping never touches), and stripping only clears anchor fields
     (which adaptation never touches). -/
-theorem adaptForFlowContext_stripAnchors (v : YamlValue) :
+lemma adaptForFlowContext_stripAnchors (v : YamlValue) :
     v.adaptForFlowContext.stripAnchors = v.stripAnchors.adaptForFlowContext := by
   match v with
   | .scalar s =>
@@ -570,11 +570,11 @@ def WellFormedEnv (env : List (String × YamlValue)) : Prop :=
       ∀ inFlow, Grammable val.stripAnchors inFlow
 
 /-- The empty environment is well-formed. -/
-theorem wellFormedEnv_nil : WellFormedEnv [] := fun _ _ h => nomatch h
+lemma wellFormedEnv_nil : WellFormedEnv [] := fun _ _ h => nomatch h
 
 /-- Extending a well-formed environment with a binding whose value is
     universally grammable after stripping preserves well-formedness. -/
-theorem WellFormedEnv.cons {env : List (String × YamlValue)}
+lemma WellFormedEnv.cons {env : List (String × YamlValue)}
     (h_env : WellFormedEnv env) (a : String) (val : YamlValue)
     (h_val : ∀ inFlow, Grammable val.stripAnchors inFlow) :
     WellFormedEnv ((a, val) :: env) := by
@@ -593,7 +593,7 @@ theorem WellFormedEnv.cons {env : List (String × YamlValue)}
     satisfies the element-level (grammable ∧ well-formed-env) contract keeps
     every resolved element grammable after stripping and the final
     environment well-formed. -/
-theorem goList_grammable_ordered
+lemma goList_grammable_ordered
     (anchors : Array (String × YamlValue)) (ctx : Bool)
     (l : List YamlValue)
     (H : ∀ v ∈ l, ∀ env, WellFormedEnv env →
@@ -622,7 +622,7 @@ theorem goList_grammable_ordered
 /-- Joint contract for `goPairs`: the key/value analog of
     `goList_grammable_ordered` (key resolved before value before the rest,
     each step re-arming the environment invariant). -/
-theorem goPairs_grammable_ordered
+lemma goPairs_grammable_ordered
     (anchors : Array (String × YamlValue)) (ctx : Bool)
     (l : List (YamlValue × YamlValue))
     (Hk : ∀ p ∈ l, ∀ env, WellFormedEnv env →
@@ -666,7 +666,7 @@ set_option maxHeartbeats 4000000 in
     (cleaned `stripAnchors ∘ adaptForFlowContext`, exactly like
     `ParseState.addAnchor`), and the binding edge is discharged by the case's
     own grammability conjunct lifted by `adaptForFlowContext_grammable_forall`. -/
-theorem compose_value_grammable_ordered
+lemma compose_value_grammable_ordered
     (v : YamlValue) (anchors : Array (String × YamlValue)) (inFlow : Bool)
     (h_scan : Scannable v inFlow)
     (h_resolve : AllAliasesResolve v anchors)
@@ -834,7 +834,7 @@ theorem compose_value_grammable_ordered
 
 /-- C1 applied to `YamlDocument.compose` (order-aware resolution): the walk
     starts from the empty (trivially well-formed) environment. -/
-theorem compose_grammable (doc : YamlDocument)
+lemma compose_grammable (doc : YamlDocument)
     (h_scan : Scannable doc.value false)
     (h_resolve : AllAliasesResolve doc.value doc.anchors)
     (h_anchors : WellFormedAnchors doc.anchors) :
@@ -867,7 +867,7 @@ def flowBracketBalance (tokens : Array (Positioned YamlToken)) (lo hi : Nat) : I
     slice.foldl (fun acc t => acc + flowBracketDelta t.val) 0
 
 -- Helper: foldl of additive function shifts the init out
-theorem foldl_add_shift {α : Type _} (l : List α) (f : α → Int) (init : Int) :
+lemma foldl_add_shift {α : Type _} (l : List α) (f : α → Int) (init : Int) :
     l.foldl (fun acc t => acc + f t) init = init + l.foldl (fun acc t => acc + f t) 0 := by
   induction l generalizing init with
   | nil => simp [List.foldl]
@@ -878,7 +878,7 @@ theorem foldl_add_shift {α : Type _} (l : List α) (f : α → Int) (init : Int
 
 /-- Bracket balance composition: splitting a range at a midpoint yields additive
     balance values. -/
-theorem flowBracketBalance_compose (tokens : Array (Positioned YamlToken))
+lemma flowBracketBalance_compose (tokens : Array (Positioned YamlToken))
     (lo mid hi : Nat) (h_lm : lo ≤ mid) (h_mh : mid ≤ hi) :
     flowBracketBalance tokens lo hi = flowBracketBalance tokens lo mid + flowBracketBalance tokens mid hi := by
   by_cases h1 : lo = mid
@@ -902,7 +902,7 @@ theorem flowBracketBalance_compose (tokens : Array (Positioned YamlToken))
 
 /-- Appending a token to the array does not affect bracket balance for ranges
     within the original array bounds. -/
-theorem flowBracketBalance_push (tokens : Array (Positioned YamlToken))
+lemma flowBracketBalance_push (tokens : Array (Positioned YamlToken))
     (tok : Positioned YamlToken) (lo hi : Nat) (h : hi ≤ tokens.size) :
     flowBracketBalance (tokens.push tok) lo hi = flowBracketBalance tokens lo hi := by
   simp only [flowBracketBalance]
@@ -917,7 +917,7 @@ theorem flowBracketBalance_push (tokens : Array (Positioned YamlToken))
                List.take_zero, List.drop_zero, List.append_nil]
 
 /-- The bracket balance of a single token equals its bracket delta. -/
-theorem flowBracketBalance_single (tokens : Array (Positioned YamlToken))
+lemma flowBracketBalance_single (tokens : Array (Positioned YamlToken))
     (i : Nat) (h : i < tokens.toList.length) :
     flowBracketBalance tokens i (i + 1) = flowBracketDelta tokens.toList[i].val := by
   simp only [flowBracketBalance, show ¬(i ≥ i + 1) from by omega, ↓reduceIte,
@@ -927,7 +927,7 @@ theorem flowBracketBalance_single (tokens : Array (Positioned YamlToken))
 
 /-- Composing a zero-balance prefix, a single non-bracket token, and a zero-balance suffix
     yields zero total balance. Used for flowEntry + parseNode compositions. -/
-theorem flowBracketBalance_compose_zero (tokens : Array (Positioned YamlToken))
+lemma flowBracketBalance_compose_zero (tokens : Array (Positioned YamlToken))
     (body_start pos pos_after : Nat)
     (h_bs_pos : body_start ≤ pos)
     (h_pos_bound : pos < tokens.toList.length)
@@ -942,7 +942,7 @@ theorem flowBracketBalance_compose_zero (tokens : Array (Positioned YamlToken))
 
 /-- The bracket delta of any token is at least `-1` (only the two close brackets
     contribute `-1`; everything else is `0` or `+1`). -/
-theorem flowBracketDelta_ge_neg_one (t : YamlToken) : -1 ≤ flowBracketDelta t := by
+lemma flowBracketDelta_ge_neg_one (t : YamlToken) : -1 ≤ flowBracketDelta t := by
   unfold flowBracketDelta
   split <;> decide
 
@@ -950,7 +950,7 @@ theorem flowBracketDelta_ge_neg_one (t : YamlToken) : -1 ≤ flowBracketDelta t 
     contribute `+1`; everything else is `0` or `-1`). The upper companion of
     `flowBracketDelta_ge_neg_one`: together they pin every delta to `{-1, 0, 1}`, which the
     backward opener locator needs to classify the scanned token as opener/neutral/closer. -/
-theorem flowBracketDelta_le_one (t : YamlToken) : flowBracketDelta t ≤ 1 := by
+lemma flowBracketDelta_le_one (t : YamlToken) : flowBracketDelta t ≤ 1 := by
   unfold flowBracketDelta
   split <;> decide
 
@@ -969,7 +969,7 @@ theorem flowBracketDelta_le_one (t : YamlToken) : flowBracketDelta t ≤ 1 := by
 
     No Mathlib, so the "first return to balance 0 after `k`" is found by an explicit
     fuel scan (`find`) rather than `Nat.find`. -/
-theorem flowBracketBalance_matching_close (tokens : Array (Positioned YamlToken))
+lemma flowBracketBalance_matching_close (tokens : Array (Positioned YamlToken))
     (lo k hi : Nat) (h_lo_k : lo ≤ k) (h_k_hi : k < hi) (h_hi_sz : hi ≤ tokens.size)
     (h_k_depth : flowBracketBalance tokens lo k = 0)
     (h_k_open : flowBracketDelta tokens[k]!.val = 1)
@@ -1065,7 +1065,7 @@ theorem flowBracketBalance_matching_close (tokens : Array (Positioned YamlToken)
 
     Verified-but-unconsumed until the typed seq/map close locators are re-based onto it; references no
     sorry site, frontier sorry count unchanged at 4; axiom-clean. -/
-theorem flowBracketBalance_matching_close_nested (tokens : Array (Positioned YamlToken))
+lemma flowBracketBalance_matching_close_nested (tokens : Array (Positioned YamlToken))
     (lo k hi : Nat) (h_lo_k : lo ≤ k) (h_k_hi : k < hi) (h_hi_sz : hi ≤ tokens.size)
     (h_k_open : flowBracketDelta tokens[k]!.val = 1)
     (h_total : flowBracketBalance tokens lo hi = 0)
@@ -1160,7 +1160,7 @@ theorem flowBracketBalance_matching_close_nested (tokens : Array (Positioned Yam
     `WellBracketed.lean`) consumes a per-subrange local Dyck that `FlowSubrangesOk`'s hypotheses do
     not supply; this lemma manufactures it from the global Dyck for any subrange that begins at a
     local depth-minimum. -/
-theorem flowBracketBalance_dyck_shift (tokens : Array (Positioned YamlToken))
+lemma flowBracketBalance_dyck_shift (tokens : Array (Positioned YamlToken))
     (lo s hi : Nat) (d : Int) (h_lo_s : lo ≤ s)
     (h_s_depth : flowBracketBalance tokens lo s = d)
     (h_floor : ∀ p, s ≤ p → p ≤ hi → flowBracketBalance tokens lo p ≥ d) :
@@ -1178,7 +1178,7 @@ theorem flowBracketBalance_dyck_shift (tokens : Array (Positioned YamlToken))
     `flowBracketBalance_dyck_shift` re-bases to `0`.  This is the concrete **local Dyck input**
     `WellTyped_subrange` consumes for a nested subrange — the `(d-dyck)` residual, ready to feed at
     assembly alongside the typed matching close. -/
-theorem flowBracketBalance_interior_dyck (tokens : Array (Positioned YamlToken))
+lemma flowBracketBalance_interior_dyck (tokens : Array (Positioned YamlToken))
     (lo k j : Nat) (h_lo_k : lo ≤ k) (h_k_sz : k < tokens.size)
     (h_k_depth : flowBracketBalance tokens lo k = 0)
     (h_k_open : flowBracketDelta tokens[k]!.val = 1)
@@ -1218,7 +1218,7 @@ theorem flowBracketBalance_interior_dyck (tokens : Array (Positioned YamlToken))
     re-derive the inner floor at the handed-in `j` ([[ref-reconstruct-in-place-over-relocate]], one level
     down).  The PRODUCER (which knows the genuine structure) supplies the inner floor via THIS lemma; the
     consumer reads it off the augmented field. -/
-theorem flowBracketBalance_inner_floor (tokens : Array (Positioned YamlToken))
+lemma flowBracketBalance_inner_floor (tokens : Array (Positioned YamlToken))
     (lo k hi : Nat) (h_lo_k : lo ≤ k) (h_k_hi : k < hi) (h_hi_sz : hi ≤ tokens.size)
     (h_k_depth : flowBracketBalance tokens lo k = 0)
     (h_k_open : flowBracketDelta tokens[k]!.val = 1)
@@ -1241,7 +1241,7 @@ theorem flowBracketBalance_inner_floor (tokens : Array (Positioned YamlToken))
     `flowBracketBalance tokens lo (j+1) = flowBracketBalance tokens lo k`.
     By `flowBracketBalance_compose` the span `[k, j+1)` splits as opener (`+1`) + interior (`0`) +
     close (`-1`), and `flowBracketBalance_single` reads the two endpoint deltas. -/
-theorem flowBracketBalance_bracket_pair_skip (tokens : Array (Positioned YamlToken))
+lemma flowBracketBalance_bracket_pair_skip (tokens : Array (Positioned YamlToken))
     (lo k j : Nat) (h_lo_k : lo ≤ k) (h_k_j : k < j) (h_j_sz : j < tokens.size)
     (h_open : flowBracketDelta tokens[k]!.val = 1)
     (h_close : flowBracketDelta tokens[j]!.val = -1)
@@ -1270,7 +1270,7 @@ theorem flowBracketBalance_bracket_pair_skip (tokens : Array (Positioned YamlTok
     again at relative depth `0`.  This is the precondition that lets the bracket conjuncts' successor
     half reuse the *same* "after a complete value, the next depth-0 token is `.flowEntry` or the body
     close" fact that the scalar successor uses — the bracketed value is depth-transparent. -/
-theorem flowBracketBalance_after_bracket_pair_zero (tokens : Array (Positioned YamlToken))
+lemma flowBracketBalance_after_bracket_pair_zero (tokens : Array (Positioned YamlToken))
     (lo k j : Nat) (h_lo_k : lo ≤ k) (h_k_j : k < j) (h_j_sz : j < tokens.size)
     (h_k_depth : flowBracketBalance tokens lo k = 0)
     (h_open : flowBracketDelta tokens[k]!.val = 1)
@@ -1325,7 +1325,7 @@ theorem flowBracketBalance_after_bracket_pair_zero (tokens : Array (Positioned Y
     enclosing opener `p'` stays at depth `≥ 0` across its whole matched span `[p', a]` because its
     interior floor (first IH) plus `balance p' p' = 0` and `balance p' a = 0` bracket it, and
     `balance (p+1) i = balance (p+1) p' + balance p' i = 0 + (≥ 0)` over `[p', a]`. -/
-theorem flowBracketBalance_backward_open_locate (tokens : Array (Positioned YamlToken)) (a : Nat)
+lemma flowBracketBalance_backward_open_locate (tokens : Array (Positioned YamlToken)) (a : Nat)
     (h_a_sz : a ≤ tokens.size) (h_open : flowBracketBalance tokens 0 a ≥ 1) :
     ∃ p, p < a ∧ flowBracketDelta tokens[p]!.val = 1 ∧
       flowBracketBalance tokens (p + 1) a = 0 ∧
@@ -1435,7 +1435,7 @@ theorem flowBracketBalance_backward_open_locate (tokens : Array (Positioned Yaml
     the scalar case discharges — supplies the conjunct.  This collapses the per-position shape work
     for the bracket conjuncts onto the one scalar fact: `(d-shape)` reduces to a single emitter
     obligation per body kind. -/
-theorem seq_bracket_succ_reduce (tokens : Array (Positioned YamlToken))
+lemma seq_bracket_succ_reduce (tokens : Array (Positioned YamlToken))
     (lo hi k j : Nat) (h_lo_k : lo ≤ k) (h_k_j : k < j) (h_j_sz : j < tokens.size)
     (h_k_depth : flowBracketBalance tokens lo k = 0)
     (h_open : flowBracketDelta tokens[k]!.val = 1)
@@ -1457,7 +1457,7 @@ theorem seq_bracket_succ_reduce (tokens : Array (Positioned YamlToken))
     bracketed *value* equals the conclusion `value_scalar_succ` produces, only at `j+1`.  Same
     depth-transparency reduction: the matched pair makes `j+1` depth-0, the single emitter fact
     fires. -/
-theorem map_value_bracket_succ_reduce (tokens : Array (Positioned YamlToken))
+lemma map_value_bracket_succ_reduce (tokens : Array (Positioned YamlToken))
     (lo hi k j : Nat) (h_lo_k : lo ≤ k) (h_k_j : k < j) (h_j_sz : j < tokens.size)
     (h_k_depth : flowBracketBalance tokens lo k = 0)
     (h_open : flowBracketDelta tokens[k]!.val = 1)
@@ -1480,7 +1480,7 @@ theorem map_value_bracket_succ_reduce (tokens : Array (Positioned YamlToken))
     same `.value` the scalar-key case (`key_scalar_value`, M4) produces.  Depth-transparency again
     bases `j+1` at relative depth `0`, so the single "what follows a complete key" emitter fact
     fires. -/
-theorem map_key_bracket_value_reduce (tokens : Array (Positioned YamlToken))
+lemma map_key_bracket_value_reduce (tokens : Array (Positioned YamlToken))
     (lo hi k j : Nat) (h_lo_k : lo ≤ k) (h_k_j : k < j) (h_j_sz : j < tokens.size)
     (h_k_depth : flowBracketBalance tokens lo k = 0)
     (h_open : flowBracketDelta tokens[k]!.val = 1)

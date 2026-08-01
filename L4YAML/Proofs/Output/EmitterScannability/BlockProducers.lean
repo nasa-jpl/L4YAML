@@ -50,7 +50,7 @@ open L4YAML.Proofs.ParserGrammable (flowBracketDelta flowBracketBalance
     Given the first-`N` raw prefix matches `s.tokens` (`h_pref` pointwise) and slot `N` is
     filtered out (`h_ph`), the take-of-`N+1` filter is exactly `s.tokens`' filter: the first
     `N` tokens contribute `s.tokens`' filter and the placeholder at slot `N` filters away. -/
-theorem block_take_eq_of_getElem?
+lemma block_take_eq_of_getElem?
     (arr base : Array (Positioned YamlToken)) (N : Nat)
     (p : Positioned YamlToken → Bool)
     (h_base : base.size = N)
@@ -80,7 +80,7 @@ theorem block_take_eq_of_getElem?
     `simpleKeyAllowed = true` (a simple key can start immediately inside the mapping).  Needed
     because the mapping-body producer `emitPairList_scans_block_nonempty` requires it (the first
     pair's key is reserved via `saveSimpleKey`). -/
-theorem scanNextToken_flow_open_mapping_ska (s s' : ScannerState) (rest : List Char)
+lemma scanNextToken_flow_open_mapping_ska (s s' : ScannerState) (rest : List Char)
     (hcorr : ScannerSurfCorr s ⟨'{' :: rest, s.col⟩)
     (h_flow : s.inFlow = true) (h_indent : s.currentIndent < 0) (h_col : s.col > 0)
     (h_snt : scanNextToken s = .ok (some s')) :
@@ -110,7 +110,7 @@ theorem scanNextToken_flow_open_mapping_ska (s s' : ScannerState) (rest : List C
     EmitScansInFlowSavedKeyBlock v`.  Each constructor's pair is assembled from the
     corresponding non-block template plus the block conjuncts. -/
 set_option maxHeartbeats 1600000 in
-theorem emit_scans_block_combined (v : YamlValue) {inFlow : Bool}
+lemma emit_scans_block_combined (v : YamlValue) {inFlow : Bool}
     (hg : Grammable v inFlow) :
     EmitScansInFlowBlock v ∧ EmitScansInFlowSavedKeyBlock v := by
   induction hg with
@@ -785,11 +785,11 @@ theorem emit_scans_block_combined (v : YamlValue) {inFlow : Bool}
           Array.getElem?_eq_getElem hh
         have := Option.some.inj (h_some.symm.trans h_s3_rawN1?); rw [this]
 
-theorem emit_scans_in_flow_block (v : YamlValue) {inFlow : Bool}
+lemma emit_scans_in_flow_block (v : YamlValue) {inFlow : Bool}
     (hg : Grammable v inFlow) : EmitScansInFlowBlock v :=
   (emit_scans_block_combined v hg).1
 
-theorem emit_scans_in_flow_saved_key_block (v : YamlValue) {inFlow : Bool}
+lemma emit_scans_in_flow_saved_key_block (v : YamlValue) {inFlow : Bool}
     (hg : Grammable v inFlow) : EmitScansInFlowSavedKeyBlock v :=
   (emit_scans_block_combined v hg).2
 
@@ -811,7 +811,7 @@ recurse decomposition) but additionally accumulates the `SafeBody`: each item's
 `EmitScansInFlowBlock` already exposes `EntrySafe block` and a content-start head, and
 the comma contributes the `.flowEntry` separator — exactly the `SafeBody.single` /
 `SafeBody.cons` inputs. -/
-theorem emitList_scans_safebody (items : List YamlValue) (h_ne : items ≠ [])
+lemma emitList_scans_safebody (items : List YamlValue) (h_ne : items ≠ [])
     (h_all : ∀ v ∈ items, EmitScansInFlowBlock v) :
     ∀ (s : ScannerState) (rest_chars : List Char),
       ScannerSurfCorr s ⟨(emit.emitList items).toList ++ rest_chars, s.col⟩ →
@@ -1041,7 +1041,7 @@ and the delta-`0` `.key`/`.value` glue tokens via `EntrySafe_cons_delta_zero` /
 `EntrySafe_append` / `EntrySafe_singleton`.  The proof otherwise mirrors
 `emitPairList_scans_block_nonempty` (same key / colon / value / comma / recurse
 decomposition). -/
-theorem emitPairList_scans_safebody (pairs : List (YamlValue × YamlValue))
+lemma emitPairList_scans_safebody (pairs : List (YamlValue × YamlValue))
     (h_ne : pairs ≠ [])
     (h_all_k : ∀ p ∈ pairs, EmitScansInFlowSavedKeyBlock p.1)
     (h_all_v : ∀ p ∈ pairs, EmitScansInFlowBlock p.2) :

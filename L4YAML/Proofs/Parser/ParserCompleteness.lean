@@ -76,7 +76,7 @@ stripping and the list/pair helpers that handle collection elements.
 
 mutual
 /-- List helper for idempotence. -/
-theorem stripAnnotationsList_idempotent :
+lemma stripAnnotationsList_idempotent :
     (vs : List YamlValue) →
     stripAnnotations.stripAnnotationsList (stripAnnotations.stripAnnotationsList vs) =
       stripAnnotations.stripAnnotationsList vs
@@ -87,7 +87,7 @@ theorem stripAnnotationsList_idempotent :
         (stripAnnotationsList_idempotent vs)
 
 /-- Pair list helper for idempotence. -/
-theorem stripAnnotationsPairs_idempotent :
+lemma stripAnnotationsPairs_idempotent :
     (ps : List (YamlValue × YamlValue)) →
     stripAnnotations.stripAnnotationsPairs (stripAnnotations.stripAnnotationsPairs ps) =
       stripAnnotations.stripAnnotationsPairs ps
@@ -106,7 +106,7 @@ stripping once.
 This is a natural property: once annotations are removed, there is
 nothing left to strip.
 -/
-theorem stripAnnotations_idempotent :
+lemma stripAnnotations_idempotent :
     (v : YamlValue) →
     stripAnnotations (stripAnnotations v) = stripAnnotations v
   | .scalar _s => rfl
@@ -137,7 +137,7 @@ annotation-free values for all scalar constructors (the block-scalar
 metadata field `some ⟨chomp, indent⟩` is the only difference, and
 `stripAnnotations` removes it).
 -/
-theorem stripAnnotations_toYamlValue_scalar_content (n : ValidNode) (s : Scalar)
+lemma stripAnnotations_toYamlValue_scalar_content (n : ValidNode) (s : Scalar)
     (h : toYamlValue n = .scalar s) :
     stripAnnotations (toYamlValue n) =
       .scalar ⟨s.content, s.style, none, none, none⟩ := by
@@ -203,7 +203,7 @@ Combined with `parseStream_sound`:
     → ∃ n, stripAnnotations (toYamlValue n) = stripAnnotations docs[i].value   [soundness]
 ```
 -/
-theorem parseStream_complete
+lemma parseStream_complete
     (tokens : Array (Positioned YamlToken))
     (docs : Array YamlDocument)
     (_hparse : TokenParser.parseStream tokens = Except.ok docs)

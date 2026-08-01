@@ -91,7 +91,7 @@ variable {input : String}
 /-- `overwriteAtCursor`'s underlying token array is `Array.setIfInBounds`
     of a zero-width token at the saved cursor. By `rfl` through the
     `TokenStream.setIfInBounds` definition. -/
-theorem overwriteAtCursor_tokens_tokens (s : ScannerStateIx input)
+lemma overwriteAtCursor_tokens_tokens (s : ScannerStateIx input)
     (i : Nat) (sk : IxCursor input) (tok : YamlToken) :
     (s.overwriteAtCursor i sk tok).tokens.tokens =
       s.tokens.tokens.setIfInBounds i
@@ -100,7 +100,7 @@ theorem overwriteAtCursor_tokens_tokens (s : ScannerStateIx input)
 /-- `scanBlockEntryIx`'s `tokens` field equals
     `((if !inFlow then pushSequenceIndentIx else id).emit .blockEntry)`'s
     tokens on the successful (non-tab-throw) branch. -/
-theorem scanBlockEntryIx_tokens_eq {s s' : ScannerStateIx input}
+lemma scanBlockEntryIx_tokens_eq {s s' : ScannerStateIx input}
     (h : scanBlockEntryIx s = .ok s') :
     s'.tokens =
       ((if !s.inFlow then pushSequenceIndentIx s s.cursor.pos.col else s).emit
@@ -127,7 +127,7 @@ theorem scanBlockEntryIx_tokens_eq {s s' : ScannerStateIx input}
     `((if !inFlow then pushMappingIndentIx else id).emit .key)`'s tokens
     on every successful branch (the trailing tab-after-`?` probe is a
     guard that does not touch tokens). -/
-theorem scanKeyIx_tokens_eq {s s' : ScannerStateIx input}
+lemma scanKeyIx_tokens_eq {s s' : ScannerStateIx input}
     (h : scanKeyIx s = .ok s') :
     s'.tokens =
       ((if !s.inFlow then pushMappingIndentIx s s.cursor.pos.col else s).emit
@@ -150,7 +150,7 @@ theorem scanKeyIx_tokens_eq {s s' : ScannerStateIx input}
     non-`.placeholder` tokens (`overwriteAtCursor` ↦
     `Array_setIfInBounds_filter_monoIx`), or emits a
     `.blockMappingStart` (the deferred-mapping-start case). -/
-theorem scanValuePrepareIx_filtered_monoIx (s : ScannerStateIx input) :
+lemma scanValuePrepareIx_filtered_monoIx (s : ScannerStateIx input) :
     ((scanValuePrepareIx s).tokens.tokens.filter (fun t => t.token != .placeholder)).size ≥
       (s.tokens.tokens.filter (fun t => t.token != .placeholder)).size := by
   unfold scanValuePrepareIx
@@ -217,7 +217,7 @@ theorem scanValuePrepareIx_filtered_monoIx (s : ScannerStateIx input) :
 
 /-! ## §1  `scanBlockEntry_filtered_growsIx` (legacy 6368) -/
 
-theorem scanBlockEntry_filtered_growsIx {s s' : ScannerStateIx input}
+lemma scanBlockEntry_filtered_growsIx {s s' : ScannerStateIx input}
     (h : scanBlockEntryIx s = .ok s') :
     (s'.tokens.tokens.filter (fun t => t.token != .placeholder)).size ≥
       (s.tokens.tokens.filter (fun t => t.token != .placeholder)).size + 1 := by
@@ -240,7 +240,7 @@ theorem scanBlockEntry_filtered_growsIx {s s' : ScannerStateIx input}
 
 /-! ## §2  `scanKey_filtered_growsIx` (legacy 6389) -/
 
-theorem scanKey_filtered_growsIx {s s' : ScannerStateIx input}
+lemma scanKey_filtered_growsIx {s s' : ScannerStateIx input}
     (h : scanKeyIx s = .ok s') :
     (s'.tokens.tokens.filter (fun t => t.token != .placeholder)).size ≥
       (s.tokens.tokens.filter (fun t => t.token != .placeholder)).size + 1 := by
@@ -264,7 +264,7 @@ theorem scanKey_filtered_growsIx {s s' : ScannerStateIx input}
 /-! ## §3  `scanValue_filtered_growsIx` (legacy 6432) -/
 
 set_option maxHeartbeats 400000 in
-theorem scanValue_filtered_growsIx {s s' : ScannerStateIx input}
+lemma scanValue_filtered_growsIx {s s' : ScannerStateIx input}
     (h : scanValueIx s = .ok s') :
     (s'.tokens.tokens.filter (fun t => t.token != .placeholder)).size ≥
       (s.tokens.tokens.filter (fun t => t.token != .placeholder)).size + 1 := by
@@ -301,7 +301,7 @@ theorem scanValue_filtered_growsIx {s s' : ScannerStateIx input}
 
 /-! ## §4  `dispatchBlockIndicators_filtered_growsIx` (legacy 6515) -/
 
-theorem dispatchBlockIndicators_filtered_growsIx {s s' : ScannerStateIx input} {c : Char}
+lemma dispatchBlockIndicators_filtered_growsIx {s s' : ScannerStateIx input} {c : Char}
     (h : scanNextTokenIx_dispatchBlockIndicators s c = .ok (some s')) :
     (s'.tokens.tokens.filter (fun t => t.token != .placeholder)).size ≥
       (s.tokens.tokens.filter (fun t => t.token != .placeholder)).size + 1 := by
@@ -321,7 +321,7 @@ the `.scalar` push shape off the reduced dispatch branch. -/
 /-- The anchor/alias scanner's new token at `s.tokens.size` is
     `.anchor`/`.alias` — never `.placeholder`. Twin of the upstream
     `scanAnchorOrAliasIx_new_token_not_plain`. -/
-theorem scanAnchorOrAliasIx_new_not_placeholderIx (s : ScannerStateIx input)
+lemma scanAnchorOrAliasIx_new_not_placeholderIx (s : ScannerStateIx input)
     (isAnchor : Bool) (s' : ScannerStateIx input)
     (h_ok : scanAnchorOrAliasIx s isAnchor = .ok s')
     (hj : s.tokens.tokens.size < s'.tokens.tokens.size) :
@@ -339,7 +339,7 @@ theorem scanAnchorOrAliasIx_new_not_placeholderIx (s : ScannerStateIx input)
 
 /-- The tag scanner's new token at `s.tokens.size` is `.tag _ _` —
     never `.placeholder`. Twin of `scanTagIx_new_token_not_plain`. -/
-theorem scanTagIx_new_not_placeholderIx (s : ScannerStateIx input)
+lemma scanTagIx_new_not_placeholderIx (s : ScannerStateIx input)
     (s' : ScannerStateIx input)
     (h_ok : scanTagIx s = .ok s')
     (hj : s.tokens.tokens.size < s'.tokens.tokens.size) :
@@ -371,7 +371,7 @@ theorem scanTagIx_new_not_placeholderIx (s : ScannerStateIx input)
     intro hpl; cases hpl
 
 set_option maxHeartbeats 1600000 in
-theorem dispatchContent_new_not_placeholderIx {s s' : ScannerStateIx input} {c : Char}
+lemma dispatchContent_new_not_placeholderIx {s s' : ScannerStateIx input} {c : Char}
     (h : scanNextTokenIx_dispatchContent s c = .ok s')
     (h_strict : s'.tokens.tokens.size ≥ s.tokens.tokens.size + 1) :
     (s'.tokens.tokens[s.tokens.tokens.size]'(by omega)).token ≠ YamlToken.placeholder := by
@@ -453,7 +453,7 @@ prefix is preserved, and the new token is non-`.placeholder` (§5). -/
 set_option maxHeartbeats 1600000 in
 /-- `scanNextTokenIx_dispatchContent` adds exactly one token across all
     seven productions. -/
-theorem dispatchContent_adds_one_tokenIx {s s' : ScannerStateIx input} {c : Char}
+lemma dispatchContent_adds_one_tokenIx {s s' : ScannerStateIx input} {c : Char}
     (h : scanNextTokenIx_dispatchContent s c = .ok s') :
     s'.tokens.size = s.tokens.size + 1 := by
   unfold scanNextTokenIx_dispatchContent at h
@@ -505,7 +505,7 @@ theorem dispatchContent_adds_one_tokenIx {s s' : ScannerStateIx input} {c : Char
               · rw [if_pos hg7] at h; cases h; simp only [emitAt_tokens_size]
               · rw [if_neg hg7] at h; cases h
 
-theorem dispatchContent_filtered_growsIx {s s' : ScannerStateIx input} {c : Char}
+lemma dispatchContent_filtered_growsIx {s s' : ScannerStateIx input} {c : Char}
     (h : scanNextTokenIx_dispatchContent s c = .ok s') :
     (s'.tokens.tokens.filter (fun t => t.token != .placeholder)).size ≥
       (s.tokens.tokens.filter (fun t => t.token != .placeholder)).size + 1 := by

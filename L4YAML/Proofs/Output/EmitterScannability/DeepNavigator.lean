@@ -51,7 +51,7 @@ They are collection-agnostic (pure list algebra), shared by both axes. -/
 
 /-- A concatenation decomposition of a slice re-slices its FRONT part: if
     `(take hi0).drop lo0 = e ++ suffix` then `e = (take (lo0 + e.length)).drop lo0`. -/
-theorem slice_front_of_append (tokens : Array (Positioned YamlToken)) (lo0 hi0 : Nat)
+lemma slice_front_of_append (tokens : Array (Positioned YamlToken)) (lo0 hi0 : Nat)
     (e suffix : List (Positioned YamlToken))
     (h_lo0_hi0 : lo0 ≤ hi0) (h_hi0 : hi0 ≤ tokens.size)
     (h_shape : (tokens.toList.take hi0).drop lo0 = e ++ suffix) :
@@ -78,7 +78,7 @@ theorem slice_front_of_append (tokens : Array (Positioned YamlToken)) (lo0 hi0 :
 /-- A concatenation decomposition of a slice re-slices its BACK part past a single separator:
     if `(take hi0).drop lo0 = e ++ fe :: rest` with `m := lo0 + e.length`, then `tokens[m]! = fe`
     and `rest = (take hi0).drop (m+1)`. -/
-theorem slice_sep_rest_of_append (tokens : Array (Positioned YamlToken)) (lo0 hi0 : Nat)
+lemma slice_sep_rest_of_append (tokens : Array (Positioned YamlToken)) (lo0 hi0 : Nat)
     (e : List (Positioned YamlToken)) (fe : Positioned YamlToken)
     (rest : List (Positioned YamlToken))
     (h_hi0 : hi0 ≤ tokens.size)
@@ -118,7 +118,7 @@ theorem slice_sep_rest_of_append (tokens : Array (Positioned YamlToken)) (lo0 hi
   rw [getElem!_pos tokens (lo0 + e.length) h_m_sz, ← Array.getElem_toList, ← h_get, h_head_eq]
 
 /-- Head peel of a non-empty slice: `(take hi0).drop lo0 = tokens.toList[lo0] :: (take hi0).drop (lo0+1)`. -/
-theorem slice_cons_head (tokens : Array (Positioned YamlToken)) (lo0 hi0 : Nat)
+lemma slice_cons_head (tokens : Array (Positioned YamlToken)) (lo0 hi0 : Nat)
     (h_lo : lo0 < hi0) (h_hi : hi0 ≤ tokens.size) :
     (tokens.toList.take hi0).drop lo0
       = tokens.toList[lo0]'(by rw [Array.length_toList]; omega)
@@ -130,7 +130,7 @@ theorem slice_cons_head (tokens : Array (Positioned YamlToken)) (lo0 hi0 : Nat)
   exact h
 
 /-- The `getElem!`/`toList` bridge for in-bounds positions. -/
-theorem tok_bang_eq_toList (tokens : Array (Positioned YamlToken)) (i : Nat)
+lemma tok_bang_eq_toList (tokens : Array (Positioned YamlToken)) (i : Nat)
     (h : i < tokens.size) :
     tokens[i]! = tokens.toList[i]'(by rw [Array.length_toList]; exact h) := by
   rw [getElem!_pos tokens i h, Array.getElem_toList]
@@ -144,7 +144,7 @@ pair stored on a slice as positional facts plus stored deep sub-terms on sub-sli
 /-- **Deep seq-body positional split.**  A `RecSeqBodyDeep` on the slice `[lo0, hi0)` is either a
     single entry spanning the whole window, or a first entry `[lo0, m)`, a depth-`0` `.flowEntry`
     separator at `m`, and a deep tail body on `[m+1, hi0)`. -/
-theorem recseqbodydeep_window_split (tokens : Array (Positioned YamlToken)) (lo0 hi0 : Nat)
+lemma recseqbodydeep_window_split (tokens : Array (Positioned YamlToken)) (lo0 hi0 : Nat)
     (h_lo0_hi0 : lo0 ≤ hi0) (h_hi0 : hi0 ≤ tokens.size)
     (h_body : RecSeqBodyDeep ((tokens.toList.take hi0).drop lo0)) :
     (RecEntryDeep ((tokens.toList.take hi0).drop lo0))
@@ -167,7 +167,7 @@ theorem recseqbodydeep_window_split (tokens : Array (Positioned YamlToken)) (lo0
     · rw [← h_rest_slice]; exact h_rest
 
 /-- **Deep map-body positional split** — the pair mirror of `recseqbodydeep_window_split`. -/
-theorem recmapbodydeep_window_split (tokens : Array (Positioned YamlToken)) (lo0 hi0 : Nat)
+lemma recmapbodydeep_window_split (tokens : Array (Positioned YamlToken)) (lo0 hi0 : Nat)
     (h_lo0_hi0 : lo0 ≤ hi0) (h_hi0 : hi0 ≤ tokens.size)
     (h_body : RecMapBodyDeep ((tokens.toList.take hi0).drop lo0)) :
     (RecMapPairDeep ((tokens.toList.take hi0).drop lo0))
@@ -193,7 +193,7 @@ theorem recmapbodydeep_window_split (tokens : Array (Positioned YamlToken)) (lo0
     bracketed collection whose opener/closer sit at `lo0` / `m-1` and whose interior `[lo0+1, m-1)`
     carries the stored deep body.  This is the severance-free dispatch the flat family cannot
     provide (`.map` vs `.mapRec` are token-indistinguishable there). -/
-theorem recentrydeep_window_cases (tokens : Array (Positioned YamlToken)) (lo0 m : Nat)
+lemma recentrydeep_window_cases (tokens : Array (Positioned YamlToken)) (lo0 m : Nat)
     (h_lo0_m : lo0 ≤ m) (h_m : m ≤ tokens.size)
     (h_e : RecEntryDeep ((tokens.toList.take m).drop lo0)) :
     (m = lo0 + 1 ∧ ∃ c s, tokens[lo0]!.val = .scalar c s)
@@ -325,7 +325,7 @@ theorem recentrydeep_window_cases (tokens : Array (Positioned YamlToken)) (lo0 m
 /-- **Deep map-pair positional descent** — the deep mirror of the landed flat
     `recmappair_window_descent`: recover the pair's value-separator position `kv` and both
     key/value sub-blocks as `RecEntryDeep`s on their slices. -/
-theorem recmappairdeep_window_descent (tokens : Array (Positioned YamlToken)) (lo m : Nat)
+lemma recmappairdeep_window_descent (tokens : Array (Positioned YamlToken)) (lo m : Nat)
     (h_lo_m : lo < m) (h_m_sz : m ≤ tokens.size)
     (h_pair : RecMapPairDeep ((tokens.toList.take m).drop lo)) :
     ∃ kv, lo < kv ∧ kv < m ∧
@@ -361,7 +361,7 @@ The four bracket-arithmetic moves the navigator's case analysis runs on: positio
 end; and the interior escape bound. -/
 
 /-- Positional floors of a `WellBracketed` slice: total balance `0` and every prefix `≥ 0`. -/
-theorem wellBracketed_slice_positional (tokens : Array (Positioned YamlToken)) (a b : Nat)
+lemma wellBracketed_slice_positional (tokens : Array (Positioned YamlToken)) (a b : Nat)
     (h_ab : a ≤ b) (_h_b : b ≤ tokens.size)
     (h_wb : WellBracketed ((tokens.toList.take b).drop a)) :
     flowBracketBalance tokens a b = 0
@@ -384,7 +384,7 @@ theorem wellBracketed_slice_positional (tokens : Array (Positioned YamlToken)) (
 
 /-- A gated window never starts at a closer: the first step dips the window balance to `-1`,
     violating the window's own Dyck floor. -/
-theorem window_no_closer_head (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+lemma window_no_closer_head (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (h_lo_hi : lo < hi) (h_lo_sz : lo < tokens.size)
     (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
     (h_closer : flowBracketDelta tokens[lo]!.val = -1) : False := by
@@ -399,7 +399,7 @@ theorem window_no_closer_head (tokens : Array (Positioned YamlToken)) (lo hi : N
 /-- **Depth-`0` closer forcing**: a balanced closer-ended window starting at a depth-`0` position
     of a floored body span ends exactly at the span end.  (At `lo = lo0` this is the whole-window
     forcing; at map-pair block heads it drives the closer-type mismatch refutations.) -/
-theorem window_depth0_closer_ends_at_end (tokens : Array (Positioned YamlToken))
+lemma window_depth0_closer_ends_at_end (tokens : Array (Positioned YamlToken))
     (lo0 hi0 lo hi : Nat)
     (h_hi0_sz : hi0 ≤ tokens.size)
     (h_floor : ∀ i, lo0 ≤ i → i ≤ hi0 → flowBracketBalance tokens lo0 i ≥ 0)
@@ -423,7 +423,7 @@ theorem window_depth0_closer_ends_at_end (tokens : Array (Positioned YamlToken))
 
 /-- **Interior escape bound**: a gated window starting strictly inside a floored balanced interior
     `[a, c)` whose successor token at `c` is a closer stays inside the interior (`hi ≤ c`). -/
-theorem window_in_interior_stays (tokens : Array (Positioned YamlToken)) (a c lo hi : Nat)
+lemma window_in_interior_stays (tokens : Array (Positioned YamlToken)) (a c lo hi : Nat)
     (h_c_sz : c < tokens.size)
     (h_int_bal : flowBracketBalance tokens a c = 0)
     (h_int_floor : ∀ i, a ≤ i → i ≤ c → flowBracketBalance tokens a i ≥ 0)
@@ -476,7 +476,7 @@ theorem window_in_interior_stays (tokens : Array (Positioned YamlToken)) (a c lo
     Dyck floor) or descends into the entry's stored interior body, served by the supplied
     narrower-span navigators.  The window needs NO prior `hi`-bound: the interior escape bound
     derives `hi ≤ m - 1` from the interior's own floors. -/
-theorem recentrydeep_window_navigate (tokens : Array (Positioned YamlToken)) (lo0 m : Nat)
+lemma recentrydeep_window_navigate (tokens : Array (Positioned YamlToken)) (lo0 m : Nat)
     (h_m_sz : m ≤ tokens.size) (h_lo0_m : lo0 ≤ m)
     (h_entry : RecEntryDeep ((tokens.toList.take m).drop lo0))
     (nav_seq : ∀ a b, b - a < m - lo0 → b < tokens.size →
@@ -535,7 +535,7 @@ theorem recentrydeep_window_navigate (tokens : Array (Positioned YamlToken)) (lo
 
 /-- A deep entry's LAST token is never an opener (it is a scalar or a closer) — the fact that
     refutes windows starting just past an entry/block with the `tokens[lo-1]`-opener fallback. -/
-theorem recentrydeep_last_not_opener (tokens : Array (Positioned YamlToken)) (a b : Nat)
+lemma recentrydeep_last_not_opener (tokens : Array (Positioned YamlToken)) (a b : Nat)
     (h_ab : a ≤ b) (h_b_sz : b ≤ tokens.size)
     (h_e : RecEntryDeep ((tokens.toList.take b).drop a)) :
     ¬ (tokens[b - 1]!.val = .flowSequenceStart ∨ tokens[b - 1]!.val = .flowMappingStart) := by
@@ -550,7 +550,7 @@ theorem recentrydeep_last_not_opener (tokens : Array (Positioned YamlToken)) (a 
 
 /-- A deep entry's HEAD token is a content-start (scalar or opener) — the fact that refutes the
     `.key`-head gate at map-pair block heads. -/
-theorem recentrydeep_head_shapes (tokens : Array (Positioned YamlToken)) (a b : Nat)
+lemma recentrydeep_head_shapes (tokens : Array (Positioned YamlToken)) (a b : Nat)
     (h_ab : a ≤ b) (h_b_sz : b ≤ tokens.size)
     (h_e : RecEntryDeep ((tokens.toList.take b).drop a)) :
     (∃ c s, tokens[a]!.val = .scalar c s)
@@ -567,7 +567,7 @@ theorem recentrydeep_head_shapes (tokens : Array (Positioned YamlToken)) (a b : 
     body floored on `[lo0, hi0)` (close `}` at `hi0`) is refuted (block-head and `.value`-position
     starts fail the head gates after the depth-`0` forcing) or descends into a key/value block's
     stored interior, served by the supplied narrower-span navigators. -/
-theorem recmappairdeep_window_navigate (tokens : Array (Positioned YamlToken))
+lemma recmappairdeep_window_navigate (tokens : Array (Positioned YamlToken))
     (lo0 m' hi0 : Nat)
     (h_lo0_m' : lo0 < m') (h_m'_hi0 : m' ≤ hi0) (h_hi0_sz : hi0 < tokens.size)
     (h_pair : RecMapPairDeep ((tokens.toList.take m').drop lo0))
@@ -687,7 +687,7 @@ close-keyed joint deliverable.  The two halves (seq body / map body) mirror each
 whole-window delivery at `lo = lo0`, dispatch the split at `lo > lo0` (first entry/pair descent,
 separator refutation, suffix recursion). -/
 
-theorem deep_navigate_core (tokens : Array (Positioned YamlToken)) :
+lemma deep_navigate_core (tokens : Array (Positioned YamlToken)) :
     ∀ (span lo0 hi0 : Nat), hi0 - lo0 ≤ span → hi0 < tokens.size →
       (RecSeqBodyDeep ((tokens.toList.take hi0).drop lo0) →
         tokens[hi0]!.val = .flowSequenceEnd →
@@ -831,7 +831,7 @@ close-bracket scan chain, feeding the body through the DEEP chain producer
 The adapter below is `emitList_body_recseqbody` with the producer (and deliverable) swapped —
 byte-identical scan-state steps ([[ref-recursive-producer-mirrors-flat-over-shared-induction]]). -/
 
-theorem emitList_body_recseqbodyDeep
+lemma emitList_body_recseqbodyDeep
     (items : List YamlValue) (h_ne : items ≠ [])
     (h_all : ∀ v ∈ items, EmitScansInFlowRecEntryDeep v)
     (s : ScannerState) (rest : List Char)
@@ -879,7 +879,7 @@ theorem emitList_body_recseqbodyDeep
 
 /-- **Deep seq root seed** — `RecSeqBodyDeep` of the root body window `[2, size-2)` off emission;
     the severance-free mirror of `seqRoot_recseqbody`, keyed on the DEEP per-item hypothesis. -/
-theorem seqRoot_recseqbodyDeep
+lemma seqRoot_recseqbodyDeep
     (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
     (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
     (h_ne : items.toList ≠ [])
@@ -972,7 +972,7 @@ or a block head — and each field's successor payload is the block's own stored
 own-close pinned by the block's interior floors (never a generic closer). -/
 
 /-- A deep entry (block) is at least one token wide. -/
-theorem recentrydeep_width_pos (tokens : Array (Positioned YamlToken)) (a b : Nat)
+lemma recentrydeep_width_pos (tokens : Array (Positioned YamlToken)) (a b : Nat)
     (h_ab : a ≤ b) (h_b_sz : b ≤ tokens.size)
     (h_e : RecEntryDeep ((tokens.toList.take b).drop a)) : a < b := by
   rcases recentrydeep_window_cases tokens a b h_ab h_b_sz h_e with
@@ -980,7 +980,7 @@ theorem recentrydeep_width_pos (tokens : Array (Positioned YamlToken)) (a b : Na
 
 /-- Strictly-inside positions of a deep entry (block) spanning `[a, b)` sit at depth `≥ 1`
     relative to the block start: `flowBracketBalance tokens a k ≥ 1` for `a < k < b`. -/
-theorem recentrydeep_interior_pos (tokens : Array (Positioned YamlToken)) (a b k : Nat)
+lemma recentrydeep_interior_pos (tokens : Array (Positioned YamlToken)) (a b k : Nat)
     (h_ab : a ≤ b) (h_b_sz : b ≤ tokens.size)
     (h_e : RecEntryDeep ((tokens.toList.take b).drop a))
     (h_a_k : a < k) (h_k_b : k < b) :
@@ -1042,7 +1042,7 @@ theorem recentrydeep_interior_pos (tokens : Array (Positioned YamlToken)) (a b k
       omega
 
 /-- A deep entry (block) spanning `[a, b)` is balanced: `flowBracketBalance tokens a b = 0`. -/
-theorem recentrydeep_balanced (tokens : Array (Positioned YamlToken)) (a b : Nat)
+lemma recentrydeep_balanced (tokens : Array (Positioned YamlToken)) (a b : Nat)
     (h_ab : a ≤ b) (h_b_sz : b ≤ tokens.size)
     (h_e : RecEntryDeep ((tokens.toList.take b).drop a)) :
     flowBracketBalance tokens a b = 0 :=
@@ -1050,7 +1050,7 @@ theorem recentrydeep_balanced (tokens : Array (Positioned YamlToken)) (a b : Nat
     (RecEntryDeep.toFlat h_e).toWellBracketed).1
 
 /-- A deep map body is at least one token wide. -/
-theorem recmapbodydeep_width_pos (tokens : Array (Positioned YamlToken)) (a b : Nat)
+lemma recmapbodydeep_width_pos (tokens : Array (Positioned YamlToken)) (a b : Nat)
     (h_ab : a ≤ b) (h_b_sz : b ≤ tokens.size)
     (h_body : RecMapBodyDeep ((tokens.toList.take b).drop a)) : a < b := by
   have h_slice_len : ((tokens.toList.take b).drop a).length = b - a := by
@@ -1070,7 +1070,7 @@ theorem recmapbodydeep_width_pos (tokens : Array (Positioned YamlToken)) (a b : 
     marker), a value separator (`.value`, with its block and pair-end marker), a depth-`0`
     `.flowEntry` (followed by the next pair's `.key`), or a block head (carrying its own stored
     entry).  The payloads are exactly what the ten `MapBodyProps` fields read off. -/
-theorem recmapbodydeep_depth0_classify (tokens : Array (Positioned YamlToken)) :
+lemma recmapbodydeep_depth0_classify (tokens : Array (Positioned YamlToken)) :
     ∀ (span lo0 hi0 : Nat), hi0 - lo0 ≤ span → hi0 ≤ tokens.size →
       RecMapBodyDeep ((tokens.toList.take hi0).drop lo0) →
       ∀ k, lo0 ≤ k → k < hi0 → flowBracketBalance tokens lo0 k = 0 →
@@ -1208,7 +1208,7 @@ theorem recmapbodydeep_depth0_classify (tokens : Array (Positioned YamlToken)) :
         exact h_out
 
 /-- The head token of a deep entry is a flow content-start. -/
-theorem recentrydeep_head_contentStart (tokens : Array (Positioned YamlToken)) (a b : Nat)
+lemma recentrydeep_head_contentStart (tokens : Array (Positioned YamlToken)) (a b : Nat)
     (h_ab : a ≤ b) (h_b_sz : b ≤ tokens.size)
     (h_e : RecEntryDeep ((tokens.toList.take b).drop a)) :
     isFlowContentStart tokens[a]!.val := by
@@ -1218,7 +1218,7 @@ theorem recentrydeep_head_contentStart (tokens : Array (Positioned YamlToken)) (
 /-- **Per-window `MapBodyProps` directly from the deep body** — no carrier, no lifted ∀-`j`
     bracket-`succ` primitives: every field is read off the classified pair structure, with each
     bracket's successor pinned to its OWN stored close. -/
-theorem mapBodyProps_of_recmapbodydeep (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+lemma mapBodyProps_of_recmapbodydeep (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (h_hi_sz : hi ≤ tokens.size)
     (h_close : tokens[hi]!.val = .flowMappingEnd)
     (h_body : RecMapBodyDeep ((tokens.toList.take hi).drop lo)) :
@@ -1489,7 +1489,7 @@ navigator every gated window has its deep body: the seq half assembles through t
 windowed-`SafeBody` joint, the map half through the direct §6 producer.  No carrier, no six-fact
 assembler. -/
 
-theorem flowSubrangesOk_of_deep_nav (tokens : Array (Positioned YamlToken))
+lemma flowSubrangesOk_of_deep_nav (tokens : Array (Positioned YamlToken))
     (h_sz5 : tokens.size ≥ 5)
     (h_t0 : tokens[0]!.val = .streamStart)
     (h_tlast : tokens[tokens.size - 1]!.val = .streamEnd)
@@ -1555,7 +1555,7 @@ theorem flowSubrangesOk_of_deep_nav (tokens : Array (Positioned YamlToken))
 
 /-- `FlowSubrangesOk` from the SEQ-emission deep root (`[ … ]`): navigate the stored root
     `RecSeqBodyDeep`. -/
-theorem flowSubrangesOk_of_deep_root (tokens : Array (Positioned YamlToken))
+lemma flowSubrangesOk_of_deep_root (tokens : Array (Positioned YamlToken))
     (h_sz5 : tokens.size ≥ 5)
     (h_t0 : tokens[0]!.val = .streamStart)
     (h_tlast : tokens[tokens.size - 1]!.val = .streamEnd)
@@ -1570,7 +1570,7 @@ theorem flowSubrangesOk_of_deep_root (tokens : Array (Positioned YamlToken))
 /-- `FlowSubrangesOk` from the MAP-emission deep root (`{ … }`): navigate the stored root
     `RecMapBodyDeep` — the mirror wrapper `scanFiltered_emitMap_nonempty_structure`'s relocated
     consumer uses. -/
-theorem flowSubrangesOk_of_deep_root_map (tokens : Array (Positioned YamlToken))
+lemma flowSubrangesOk_of_deep_root_map (tokens : Array (Positioned YamlToken))
     (h_sz5 : tokens.size ≥ 5)
     (h_t0 : tokens[0]!.val = .streamStart)
     (h_tlast : tokens[tokens.size - 1]!.val = .streamEnd)
@@ -1587,7 +1587,7 @@ theorem flowSubrangesOk_of_deep_root_map (tokens : Array (Positioned YamlToken))
 The `{ … }` mirror of §4: replay the open-brace → pair-body → close-brace chain, feeding the body
 through `emitPairList_scans_recmapbodyDeep`. -/
 
-theorem emitPairList_body_recmapbodyDeep
+lemma emitPairList_body_recmapbodyDeep
     (pairs : List (YamlValue × YamlValue)) (h_ne : pairs ≠ [])
     (h_all_k : ∀ p ∈ pairs, EmitScansInFlowSavedKeyRecEntryDeep p.1)
     (h_all_v : ∀ p ∈ pairs, EmitScansInFlowRecEntryDeep p.2)
@@ -1637,7 +1637,7 @@ theorem emitPairList_body_recmapbodyDeep
 
 /-- **Deep map root seed** — `RecMapBodyDeep` of the root body window `[2, size-2)` off the map
     emission `"{" ++ emitPairList pairs ++ "}"`; the `{`-mirror of `seqRoot_recseqbodyDeep`. -/
-theorem mapRoot_recmapbodydeep
+lemma mapRoot_recmapbodydeep
     (pairs : Array (YamlValue × YamlValue)) (tokens : Array (Positioned YamlToken))
     (h_scan : Scanner.scanFiltered ("{" ++ emit.emitPairList pairs.toList ++ "}") = .ok tokens)
     (h_ne : pairs.toList ≠ [])

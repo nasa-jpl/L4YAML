@@ -62,7 +62,7 @@ coupling infrastructure in the Proofs/ directory. See
     This is the target theorem for v0.4.0. The proof will be constructed
     incrementally by establishing coupling theorems for each layer of
     the parser pipeline. -/
-theorem parse_strict
+lemma parse_strict
     (input : String)
     (docs : Array L4YAML.YamlDocument)
     (h : L4YAML.TokenParser.parseYaml input = .ok docs) :
@@ -72,7 +72,7 @@ theorem parse_strict
 /-- Scanner strictness: if scanning succeeds, the input matches
     the character-level and whitespace surface syntax productions
     (basic structure layer). -/
-theorem scan_strict
+lemma scan_strict
     (input : String)
     (tokens : Array (L4YAML.Positioned L4YAML.YamlToken))
     (h : L4YAML.Scanner.scan input = .ok tokens) :

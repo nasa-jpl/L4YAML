@@ -36,7 +36,7 @@ token stream, supplied by the caller from the body-token characterization. -/
     A scalar is not a block-collection start, so the §8.2.2 same-line check
     is vacuous; and `{}` has `hadDuplicateAnchor = false`, so the §6.9.2
     duplicate-anchor check is skipped. -/
-theorem validateNodeProps_scalar (ps : ParseState) (prePropPos : Nat)
+lemma validateNodeProps_scalar (ps : ParseState) (prePropPos : Nat)
     (c : String) (s : ScalarStyle) (h_peek : ps.peek? = some (.scalar c s)) :
     validateNodeProps ps prePropPos {} = .ok () := by
   simp [validateNodeProps, h_peek, pure, Except.pure]
@@ -51,7 +51,7 @@ theorem validateNodeProps_scalar (ps : ParseState) (prePropPos : Nat)
 
     This is the leaf of the `flow_parser_ok_of_structure` induction, used by
     both the `ParseNodeFlowSeqOk` and `ParseEntryFlowMapOk` derivations. -/
-theorem parseNode_scalar_flow (ps : ParseState) (m : Nat) (h_m : 0 < m)
+lemma parseNode_scalar_flow (ps : ParseState) (m : Nat) (h_m : 0 < m)
     (c : String) (s : ScalarStyle) (h_peek : ps.peek? = some (.scalar c s)) :
     ∃ ps', parseNode ps m =
         .ok (YamlValue.scalar { content := c, style := s, tag := none, anchor := none }, ps') ∧
@@ -100,14 +100,14 @@ about how `parseNode` dispatches, shared by both inductions. -/
 /-- `validateNodeProps` succeeds on an opening-flow-sequence peek with empty
     `NodeProperties`: `.flowSequenceStart` is not a block-collection start, so
     the §8.2.2 same-line check is vacuous, and `{}` skips the §6.9.2 check. -/
-theorem validateNodeProps_flowSeqStart (ps : ParseState) (prePropPos : Nat)
+lemma validateNodeProps_flowSeqStart (ps : ParseState) (prePropPos : Nat)
     (h_peek : ps.peek? = some .flowSequenceStart) :
     validateNodeProps ps prePropPos {} = .ok () := by
   simp [validateNodeProps, h_peek, pure, Except.pure]
 
 /-- `validateNodeProps` succeeds on an opening-flow-mapping peek with empty
     `NodeProperties` (same reasoning as `validateNodeProps_flowSeqStart`). -/
-theorem validateNodeProps_flowMapStart (ps : ParseState) (prePropPos : Nat)
+lemma validateNodeProps_flowMapStart (ps : ParseState) (prePropPos : Nat)
     (h_peek : ps.peek? = some .flowMappingStart) :
     validateNodeProps ps prePropPos {} = .ok () := by
   simp [validateNodeProps, h_peek, pure, Except.pure]
@@ -120,7 +120,7 @@ theorem validateNodeProps_flowMapStart (ps : ParseState) (prePropPos : Nat)
     sequence value is unchanged by empty-property finalization) at the same
     landing state.  This connects `parseNode` to the already-closed loop
     theorem `parseFlowSequenceLoop_emitter_ok`. -/
-theorem parseNode_flowSeqStart_of_parse (ps ps' : ParseState) (k : Nat) (v : YamlValue)
+lemma parseNode_flowSeqStart_of_parse (ps ps' : ParseState) (k : Nat) (v : YamlValue)
     (h_peek : ps.peek? = some .flowSequenceStart)
     (h_parse : parseFlowSequence ps k = .ok (v, ps')) :
     parseNode ps (k + 1) =
@@ -138,7 +138,7 @@ theorem parseNode_flowSeqStart_of_parse (ps ps' : ParseState) (k : Nat) (v : Yam
 /-- **Flow-mapping recursive case** for node parsing (mirror of
     `parseNode_flowSeqStart_of_parse`).  Connects `parseNode` to
     `parseFlowMappingLoop_emitter_ok`. -/
-theorem parseNode_flowMapStart_of_parse (ps ps' : ParseState) (k : Nat) (v : YamlValue)
+lemma parseNode_flowMapStart_of_parse (ps ps' : ParseState) (k : Nat) (v : YamlValue)
     (h_peek : ps.peek? = some .flowMappingStart)
     (h_parse : parseFlowMapping ps k = .ok (v, ps')) :
     parseNode ps (k + 1) =
@@ -180,7 +180,7 @@ This section builds the glue that crosses that gap:
 /-- Translate a token-level `isFlowContentStart` fact at the current position
     into the content-start `ps.peek?` disjunction.  Used by both flow-body node
     inductions to dispatch `parseNodeContent`. -/
-theorem peek_of_isFlowContentStart {ps : ParseState} {k : Nat}
+lemma peek_of_isFlowContentStart {ps : ParseState} {k : Nat}
     (h_pos : ps.pos = k) (h_bound : k < ps.tokens.size)
     (h_cs : isFlowContentStart ps.tokens[k]!.val) :
     (∃ c s, ps.peek? = some (.scalar c s)) ∨
@@ -203,7 +203,7 @@ theorem peek_of_isFlowContentStart {ps : ParseState} {k : Nat}
     hypothesis, combining the §I reduction `parseNode_scalar_flow` with
     `SeqBodyProps.scalar_succ` (successor peek) and `flowBracketBalance_single`
     (span balance). -/
-theorem parseNode_seqScalar_ok {tokens : Array (Positioned YamlToken)}
+lemma parseNode_seqScalar_ok {tokens : Array (Positioned YamlToken)}
     {endPos body_start : Nat}
     (hbody : SeqBodyProps tokens body_start endPos)
     (h_end : endPos < tokens.size)
@@ -276,7 +276,7 @@ bracket balance from the four depth-0 non-bracket tokens (`.key`, scalar,
 /-- A single depth-0 non-bracket token contributes zero bracket balance over its
     one-token span.  The `flowBracketBalance_single` bridge specialized to a token
     whose `flowBracketDelta` is `0` (`.key`, `.value`, `.scalar`, …). -/
-theorem flowBracketBalance_step_zero {tokens : Array (Positioned YamlToken)} {q : Nat}
+lemma flowBracketBalance_step_zero {tokens : Array (Positioned YamlToken)} {q : Nat}
     (hq : q < tokens.size) (h0 : flowBracketDelta tokens[q]!.val = 0) :
     flowBracketBalance tokens q (q + 1) = 0 := by
   have hsz' : q < tokens.toList.length := by simpa using hq
@@ -289,7 +289,7 @@ theorem flowBracketBalance_step_zero {tokens : Array (Positioned YamlToken)} {q 
     `scalar c s` token, `parseExplicitKey` dispatches past its empty-key guards
     (`.value` / `.flowEntry` / `.flowMappingEnd`) to `parseNode`, succeeding with
     the scalar value, advancing by one, and preserving tokens / `trackPositions`. -/
-theorem parseExplicitKey_scalar (ps : ParseState) (m : Nat) (h_m : 0 < m)
+lemma parseExplicitKey_scalar (ps : ParseState) (m : Nat) (h_m : 0 < m)
     (c : String) (s : ScalarStyle) (h_peek : ps.peek? = some (.scalar c s)) :
     ∃ ps', parseExplicitKey ps m =
         .ok (YamlValue.scalar { content := c, style := s, tag := none, anchor := none }, ps') ∧
@@ -308,7 +308,7 @@ theorem parseExplicitKey_scalar (ps : ParseState) (m : Nat) (h_m : 0 < m)
     `parseNode` returns the value.  The result advances by exactly two tokens
     (separator + scalar) and preserves tokens / `trackPositions` (only
     `currentPath` is touched, and it is restored to `savedPath`). -/
-theorem parseFlowMappingValue_scalar (ps : ParseState) (m : Nat) (h_m : 0 < m)
+lemma parseFlowMappingValue_scalar (ps : ParseState) (m : Nat) (h_m : 0 < m)
     (savedPath : YamlPath) (keyContent : String)
     (cv : String) (sv : ScalarStyle)
     (h_peek_value : ps.peek? = some .value)
@@ -373,7 +373,7 @@ theorem parseFlowMappingValue_scalar (ps : ParseState) (m : Nat) (h_m : 0 < m)
     `parseNode_seqScalar_ok`.  M4 (`key_scalar_value`) supplies the `.value`
     after a scalar key; M7 (`value_scalar_succ`) supplies the landing after a
     scalar value. -/
-theorem parseEntry_mapScalar_ok {tokens : Array (Positioned YamlToken)}
+lemma parseEntry_mapScalar_ok {tokens : Array (Positioned YamlToken)}
     {endPos body_start : Nat}
     (hbody : MapBodyProps tokens body_start endPos)
     (h_end : endPos < tokens.size)
@@ -504,7 +504,7 @@ succeed, shared verbatim by the sequence and mapping node cases. -/
     The bridge between the closed loop theorem `parseFlowSequenceLoop_emitter_ok`
     and §II's `parseNode_flowSeqStart_of_parse`: the latter consumes exactly a
     `parseFlowSequence ps k = .ok (v, ps')` success of this shape. -/
-theorem parseFlowSequence_emitter_ok (ps : ParseState) (fuel j body_start : Nat)
+lemma parseFlowSequence_emitter_ok (ps : ParseState) (fuel j body_start : Nat)
     (pre : LoopSeqPreconditions ps.tokens ps.advance j body_start fuel) :
     ∃ items ps', parseFlowSequence ps (fuel + 1) =
         .ok (YamlValue.sequence .flow items, ps') ∧
@@ -537,7 +537,7 @@ theorem parseFlowSequence_emitter_ok (ps : ParseState) (fuel j body_start : Nat)
 
     The `LoopMapPreconditions.h_after_fe` gives the strict bound `k+1 < j` for the
     post-separator key; the loop theorem only needs `k+1 ≤ j`, so it is weakened. -/
-theorem parseFlowMapping_emitter_ok (ps : ParseState) (fuel j body_start : Nat)
+lemma parseFlowMapping_emitter_ok (ps : ParseState) (fuel j body_start : Nat)
     (pre : LoopMapPreconditions ps.tokens ps.advance j body_start fuel) :
     ∃ pairs ps', parseFlowMapping ps (fuel + 1) =
         .ok (YamlValue.mapping .flow pairs, ps') ∧
@@ -585,7 +585,7 @@ loop theorem expects. -/
 
 /-- Assemble `LoopSeqPreconditions` for the inner sequence body `[ps_adv.pos, j)`
     from its `SeqBodyProps` and its `ParseNodeFlowSeqOk` predicate. -/
-theorem loopSeqPre_of (tokens : Array (Positioned YamlToken)) (ps_adv : ParseState)
+lemma loopSeqPre_of (tokens : Array (Positioned YamlToken)) (ps_adv : ParseState)
     (j fuel : Nat)
     (h_tok : ps_adv.tokens = tokens)
     (hbody : SeqBodyProps tokens ps_adv.pos j)
@@ -632,7 +632,7 @@ theorem loopSeqPre_of (tokens : Array (Positioned YamlToken)) (ps_adv : ParseSta
 
 /-- Assemble `LoopMapPreconditions` for the inner mapping body `[ps_adv.pos, j)`
     from its `MapBodyProps` and its `ParseEntryFlowMapOk` predicate. -/
-theorem loopMapPre_of (tokens : Array (Positioned YamlToken)) (ps_adv : ParseState)
+lemma loopMapPre_of (tokens : Array (Positioned YamlToken)) (ps_adv : ParseState)
     (j fuel : Nat)
     (h_tok : ps_adv.tokens = tokens)
     (hbody : MapBodyProps tokens ps_adv.pos j)
@@ -700,7 +700,7 @@ the inner parse result `ps'` (`applyNodeFinalization` preserves `pos`/`tokens`/
 /-- **Bracket-sequence key reduction.**  `parseExplicitKey` on a `.flowSequenceStart`
     peek dispatches past its empty-key guards to `parseNode`; with the inner
     `parseFlowSequence ps k` succeeding, it returns the finalized sequence value. -/
-theorem parseExplicitKey_flowSeqStart_of_parse (ps ps' : ParseState) (k : Nat) (v : YamlValue)
+lemma parseExplicitKey_flowSeqStart_of_parse (ps ps' : ParseState) (k : Nat) (v : YamlValue)
     (h_peek : ps.peek? = some .flowSequenceStart)
     (h_parse : parseFlowSequence ps k = .ok (v, ps')) :
     parseExplicitKey ps (k + 1) =
@@ -710,7 +710,7 @@ theorem parseExplicitKey_flowSeqStart_of_parse (ps ps' : ParseState) (k : Nat) (
   exact parseNode_flowSeqStart_of_parse ps ps' k v h_peek h_parse
 
 /-- **Bracket-mapping key reduction** (mirror of `parseExplicitKey_flowSeqStart_of_parse`). -/
-theorem parseExplicitKey_flowMapStart_of_parse (ps ps' : ParseState) (k : Nat) (v : YamlValue)
+lemma parseExplicitKey_flowMapStart_of_parse (ps ps' : ParseState) (k : Nat) (v : YamlValue)
     (h_peek : ps.peek? = some .flowMappingStart)
     (h_parse : parseFlowMapping ps k = .ok (v, ps')) :
     parseExplicitKey ps (k + 1) =
@@ -727,7 +727,7 @@ theorem parseExplicitKey_flowMapStart_of_parse (ps ps' : ParseState) (k : Nat) (
     `parseNode`) to §II's `parseFlowSequence` reduction; the path is restored afterwards.
     The landing state inherits `pos`/`tokens`/`trackPositions` from the inner parse result
     `ps'` (finalization and the path restore touch none of them). -/
-theorem parseFlowMappingValue_flowSeqStart_of_parse (ps : ParseState) (m : Nat)
+lemma parseFlowMappingValue_flowSeqStart_of_parse (ps : ParseState) (m : Nat)
     (savedPath : YamlPath) (keyContent : String)
     (ps' : ParseState) (v : YamlValue) (k : Nat) (h_m : m = k + 1)
     (h_peek_value : ps.peek? = some .value)
@@ -780,7 +780,7 @@ theorem parseFlowMappingValue_flowSeqStart_of_parse (ps : ParseState) (m : Nat)
 
 /-- **Bracket-mapping value reduction** (mirror of
     `parseFlowMappingValue_flowSeqStart_of_parse`). -/
-theorem parseFlowMappingValue_flowMapStart_of_parse (ps : ParseState) (m : Nat)
+lemma parseFlowMappingValue_flowMapStart_of_parse (ps : ParseState) (m : Nat)
     (savedPath : YamlPath) (keyContent : String)
     (ps' : ParseState) (v : YamlValue) (k : Nat) (h_m : m = k + 1)
     (h_peek_value : ps.peek? = some .value)
@@ -856,7 +856,7 @@ level (see `ParseNodeFlowSeqOk`).  Closing the dispatcher discharges exactly the
 emitter output is the remaining step. -/
 
 /-- Open(+1) + balanced inner(0) + close(−1) over a bracket span is 0. -/
-theorem flowBracketBalance_bracketSpan {tokens : Array (Positioned YamlToken)} {a b : Nat}
+lemma flowBracketBalance_bracketSpan {tokens : Array (Positioned YamlToken)} {a b : Nat}
     (h_ab : a < b) (h_b : b < tokens.size)
     (h_open : flowBracketDelta tokens[a]!.val = 1)
     (h_close : flowBracketDelta tokens[b]!.val = -1)
@@ -880,7 +880,7 @@ theorem flowBracketBalance_bracketSpan {tokens : Array (Positioned YamlToken)} {
       e_open, h_inner, e_close]
   omega
 
-theorem flow_parser_ok_of_structure (tokens : Array (Positioned YamlToken)) (fuel : Nat)
+lemma flow_parser_ok_of_structure (tokens : Array (Positioned YamlToken)) (fuel : Nat)
     (hsub : FlowSubrangesOk tokens) :
     (∀ lo hi, lo ≤ hi → hi < tokens.size → tokens[hi]!.val = .flowSequenceEnd →
        flowBracketBalance tokens lo hi = 0 → tokens[lo - 1]!.val = .flowSequenceStart →

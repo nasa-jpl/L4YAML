@@ -137,7 +137,7 @@ pattern — no `termination_by` annotations needed.
 successfully parse and compose the yaml-test-suite, providing strong evidence
 that the hypothesis holds in practice.
 -/
-theorem parseStreamIx_values_have_witnesses
+lemma parseStreamIx_values_have_witnesses
     (tokens : Indexed.TokenStream input)
     (docs : Array YamlDocument)
     (_h : parseStreamIx tokens = .ok docs)
@@ -176,7 +176,7 @@ because:
 codebase (see ScannerEmitBridge.lean, IndexedCompleteness.lean) and is empirically
 validated by 787 `#guard` checks.
 -/
-theorem parseStreamIx_respects_grammar
+lemma parseStreamIx_respects_grammar
     (tokens : Indexed.TokenStream input)
     (docs : Array YamlDocument)
     (h_parse : parseStreamIx tokens = .ok docs)

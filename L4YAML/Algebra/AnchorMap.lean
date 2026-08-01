@@ -81,7 +81,7 @@ verification proofs will use. They are the specification of
 /-- Auxiliary: filtering by `n != name` preserves `findSome?` for `name' ≠ name`.
     Elements removed by the filter have `n = name ≠ name'`, so `f` returns
     `none` for them and the `findSome?` result is unchanged. -/
-theorem list_findSome?_filter_preserves
+lemma list_findSome?_filter_preserves
     (xs : List (String × YamlValue)) (name name' : String)
     (hne : name ≠ name') :
     List.findSome? (fun (n, v) => if n == name' then some v else none)
@@ -108,7 +108,7 @@ theorem list_findSome?_filter_preserves
       exact ih
 
 /-- **Get-after-set**: looking up a just-inserted key returns the inserted value. -/
-theorem find?_insert (m : AnchorMap) (name : String) (val : YamlValue) :
+lemma find?_insert (m : AnchorMap) (name : String) (val : YamlValue) :
     AnchorMap.find? (AnchorMap.insert m name val) name = some val := by
   simp only [AnchorMap.find?, AnchorMap.insert]
   rw [Array.findSome?_push]
@@ -123,7 +123,7 @@ theorem find?_insert (m : AnchorMap) (name : String) (val : YamlValue) :
   exact if_neg hfilt
 
 /-- **Non-interference**: inserting under `k` does not affect lookups for `k' ≠ k`. -/
-theorem find?_insert_ne (m : AnchorMap) (name name' : String) (val : YamlValue)
+lemma find?_insert_ne (m : AnchorMap) (name name' : String) (val : YamlValue)
     (h : name ≠ name') :
     AnchorMap.find? (AnchorMap.insert m name val) name' = AnchorMap.find? m name' := by
   simp only [AnchorMap.find?, AnchorMap.insert]
@@ -137,7 +137,7 @@ theorem find?_insert_ne (m : AnchorMap) (name name' : String) (val : YamlValue)
   exact list_findSome?_filter_preserves m.toList name name' h
 
 /-- **Empty**: no key is found in an empty map. -/
-theorem find?_empty (name : String) :
+lemma find?_empty (name : String) :
     AnchorMap.find? AnchorMap.empty name = none := by
   rfl
 

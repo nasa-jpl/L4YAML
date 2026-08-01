@@ -74,14 +74,14 @@ arm*. Together they characterise `resolveImplicit` completely.
 -/
 
 /-- **Null arm**: a string the `isNull` predicate accepts resolves to `.null`. -/
-theorem resolveImplicit_of_isNull {s : String} (h : isNull s = true) :
+lemma resolveImplicit_of_isNull {s : String} (h : isNull s = true) :
     resolveImplicit s = .null := by
   unfold resolveImplicit
   rw [h]; rfl
 
 /-- **Bool arm**: when `isNull` fails and `isBool` produces `some b`,
     `resolveImplicit` produces `.bool b`. -/
-theorem resolveImplicit_of_isBool {s : String} {b : Bool}
+lemma resolveImplicit_of_isBool {s : String} {b : Bool}
     (h_null : isNull s = false) (h_bool : isBool s = some b) :
     resolveImplicit s = .bool b := by
   unfold resolveImplicit
@@ -90,7 +90,7 @@ theorem resolveImplicit_of_isBool {s : String} {b : Bool}
 
 /-- **Int arm**: when `isNull` and `isBool` both fail and `isInt`
     produces `some i`, `resolveImplicit` produces `.int i`. -/
-theorem resolveImplicit_of_isInt {s : String} {i : Int}
+lemma resolveImplicit_of_isInt {s : String} {i : Int}
     (h_null : isNull s = false) (h_bool : isBool s = none)
     (h_int : isInt s = some i) :
     resolveImplicit s = .int i := by
@@ -100,7 +100,7 @@ theorem resolveImplicit_of_isInt {s : String} {i : Int}
 
 /-- **Float arm**: when `isNull`/`isBool`/`isInt` all fail and
     `isFloat` produces `some f`, `resolveImplicit` produces `.float f`. -/
-theorem resolveImplicit_of_isFloat {s : String} {f : FloatValue}
+lemma resolveImplicit_of_isFloat {s : String} {f : FloatValue}
     (h_null : isNull s = false) (h_bool : isBool s = none)
     (h_int : isInt s = none) (h_float : isFloat s = some f) :
     resolveImplicit s = .float f := by
@@ -110,7 +110,7 @@ theorem resolveImplicit_of_isFloat {s : String} {f : FloatValue}
 
 /-- **Str fallback**: when every classifier fails, `resolveImplicit`
     falls through to `.str s`. -/
-theorem resolveImplicit_str {s : String}
+lemma resolveImplicit_str {s : String}
     (h_null : isNull s = false) (h_bool : isBool s = none)
     (h_int : isInt s = none) (h_float : isFloat s = none) :
     resolveImplicit s = .str s := by
@@ -133,57 +133,57 @@ otherwise.
 -/
 
 /-- **Explicit null tag**: short-circuits to `.null` independent of content. -/
-@[simp] theorem resolveScalar_tag_null (content : String) :
+@[simp] lemma resolveScalar_tag_null (content : String) :
     resolveScalar content (some "tag:yaml.org,2002:null") = .null := rfl
 
 /-- **Explicit str tag**: short-circuits to `.str content`. -/
-@[simp] theorem resolveScalar_tag_str (content : String) :
+@[simp] lemma resolveScalar_tag_str (content : String) :
     resolveScalar content (some "tag:yaml.org,2002:str") = .str content := rfl
 
 /-- **Explicit bool tag with parseable content**. -/
-theorem resolveScalar_tag_bool_some {content : String} {b : Bool}
+lemma resolveScalar_tag_bool_some {content : String} {b : Bool}
     (h : isBool content = some b) :
     resolveScalar content (some "tag:yaml.org,2002:bool") = .bool b := by
   show (match isBool content with | some b => YamlType.bool b | none => YamlType.str content) = .bool b
   rw [h]
 
 /-- **Explicit bool tag with unparseable content** falls back to `.str`. -/
-theorem resolveScalar_tag_bool_none {content : String}
+lemma resolveScalar_tag_bool_none {content : String}
     (h : isBool content = none) :
     resolveScalar content (some "tag:yaml.org,2002:bool") = .str content := by
   show (match isBool content with | some b => YamlType.bool b | none => YamlType.str content) = .str content
   rw [h]
 
 /-- **Explicit int tag with parseable content**. -/
-theorem resolveScalar_tag_int_some {content : String} {i : Int}
+lemma resolveScalar_tag_int_some {content : String} {i : Int}
     (h : isInt content = some i) :
     resolveScalar content (some "tag:yaml.org,2002:int") = .int i := by
   show (match isInt content with | some i => YamlType.int i | none => YamlType.str content) = .int i
   rw [h]
 
 /-- **Explicit int tag with unparseable content** falls back to `.str`. -/
-theorem resolveScalar_tag_int_none {content : String}
+lemma resolveScalar_tag_int_none {content : String}
     (h : isInt content = none) :
     resolveScalar content (some "tag:yaml.org,2002:int") = .str content := by
   show (match isInt content with | some i => YamlType.int i | none => YamlType.str content) = .str content
   rw [h]
 
 /-- **Explicit float tag with parseable content**. -/
-theorem resolveScalar_tag_float_some {content : String} {f : FloatValue}
+lemma resolveScalar_tag_float_some {content : String} {f : FloatValue}
     (h : isFloat content = some f) :
     resolveScalar content (some "tag:yaml.org,2002:float") = .float f := by
   show (match isFloat content with | some f => YamlType.float f | none => YamlType.str content) = .float f
   rw [h]
 
 /-- **Explicit float tag with unparseable content** falls back to `.str`. -/
-theorem resolveScalar_tag_float_none {content : String}
+lemma resolveScalar_tag_float_none {content : String}
     (h : isFloat content = none) :
     resolveScalar content (some "tag:yaml.org,2002:float") = .str content := by
   show (match isFloat content with | some f => YamlType.float f | none => YamlType.str content) = .str content
   rw [h]
 
 /-- **No tag**: delegate to implicit resolution. -/
-@[simp] theorem resolveScalar_none (content : String) :
+@[simp] lemma resolveScalar_none (content : String) :
     resolveScalar content none = resolveImplicit content := rfl
 
 /-! ## Item 16(c) — `resolve` constructor unfoldings
@@ -199,22 +199,22 @@ The `sequence` / `mapping` cases recurse via the auxiliary
 standard `nil` / `cons` unfoldings shown below.
 -/
 
-@[simp] theorem resolve_scalar (s : Scalar) :
+@[simp] lemma resolve_scalar (s : Scalar) :
     resolve (.scalar s) = resolveScalar s.content s.tag := rfl
 
-@[simp] theorem resolve_alias (name : String) :
+@[simp] lemma resolve_alias (name : String) :
     resolve (.alias name) = .null := rfl
 
-@[simp] theorem resolveList_nil :
+@[simp] lemma resolveList_nil :
     resolve.resolveList [] = [] := rfl
 
-@[simp] theorem resolveList_cons (v : YamlValue) (vs : List YamlValue) :
+@[simp] lemma resolveList_cons (v : YamlValue) (vs : List YamlValue) :
     resolve.resolveList (v :: vs) = resolve v :: resolve.resolveList vs := rfl
 
-@[simp] theorem resolvePairs_nil :
+@[simp] lemma resolvePairs_nil :
     resolve.resolvePairs [] = [] := rfl
 
-@[simp] theorem resolvePairs_cons (k v : YamlValue) (rest : List (YamlValue × YamlValue)) :
+@[simp] lemma resolvePairs_cons (k v : YamlValue) (rest : List (YamlValue × YamlValue)) :
     resolve.resolvePairs ((k, v) :: rest)
       = (resolve k, resolve v) :: resolve.resolvePairs rest := rfl
 
@@ -259,7 +259,7 @@ each one reduces to `fromYamlType? (resolve (toYaml a)) = .ok a`.
     composed with `resolve`. This is the structural decomposition
     that every Phase 5 per-instance round-trip proof rewrites with
     on its first step. -/
-theorem fromYaml_via_resolve {α : Type u} [FromYamlType α] (v : YamlValue) :
+lemma fromYaml_via_resolve {α : Type u} [FromYamlType α] (v : YamlValue) :
     @fromYaml? α (instFromYamlOfFromYamlType) v = fromYamlType? (resolve v) := rfl
 
 end L4YAML.Algebra.Schema

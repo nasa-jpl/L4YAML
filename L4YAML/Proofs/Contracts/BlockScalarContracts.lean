@@ -72,59 +72,59 @@ monad, so they are fully machine-checked.
 -/
 
 /-- The chomp indicators `-` and `+` are header chars. -/
-theorem chomp_indicators_are_header_chars :
+lemma chomp_indicators_are_header_chars :
     isBlockScalarHeaderChar '-' = true ∧ isBlockScalarHeaderChar '+' = true := by
   constructor <;> native_decide
 
 /-- Each digit 1–9 is a header char. -/
-theorem digit1_is_header_char : isBlockScalarHeaderChar '1' = true := by native_decide
-theorem digit2_is_header_char : isBlockScalarHeaderChar '2' = true := by native_decide
-theorem digit3_is_header_char : isBlockScalarHeaderChar '3' = true := by native_decide
-theorem digit4_is_header_char : isBlockScalarHeaderChar '4' = true := by native_decide
-theorem digit5_is_header_char : isBlockScalarHeaderChar '5' = true := by native_decide
-theorem digit6_is_header_char : isBlockScalarHeaderChar '6' = true := by native_decide
-theorem digit7_is_header_char : isBlockScalarHeaderChar '7' = true := by native_decide
-theorem digit8_is_header_char : isBlockScalarHeaderChar '8' = true := by native_decide
-theorem digit9_is_header_char : isBlockScalarHeaderChar '9' = true := by native_decide
+lemma digit1_is_header_char : isBlockScalarHeaderChar '1' = true := by native_decide
+lemma digit2_is_header_char : isBlockScalarHeaderChar '2' = true := by native_decide
+lemma digit3_is_header_char : isBlockScalarHeaderChar '3' = true := by native_decide
+lemma digit4_is_header_char : isBlockScalarHeaderChar '4' = true := by native_decide
+lemma digit5_is_header_char : isBlockScalarHeaderChar '5' = true := by native_decide
+lemma digit6_is_header_char : isBlockScalarHeaderChar '6' = true := by native_decide
+lemma digit7_is_header_char : isBlockScalarHeaderChar '7' = true := by native_decide
+lemma digit8_is_header_char : isBlockScalarHeaderChar '8' = true := by native_decide
+lemma digit9_is_header_char : isBlockScalarHeaderChar '9' = true := by native_decide
 
 /-- Newline is NOT a header char. -/
-theorem newline_not_header_char : isBlockScalarHeaderChar '\n' = false := by
+lemma newline_not_header_char : isBlockScalarHeaderChar '\n' = false := by
   native_decide
 
 /-- Space is NOT a header char (spaces are trailing, not indicator). -/
-theorem space_not_header_char : isBlockScalarHeaderChar ' ' = false := by
+lemma space_not_header_char : isBlockScalarHeaderChar ' ' = false := by
   native_decide
 
 /-- Tab is NOT a header char. -/
-theorem tab_not_header_char : isBlockScalarHeaderChar '\t' = false := by
+lemma tab_not_header_char : isBlockScalarHeaderChar '\t' = false := by
   native_decide
 
 /-- `0` is NOT a header char (only 1–9 are valid indentation indicators). -/
-theorem zero_not_header_char : isBlockScalarHeaderChar '0' = false := by
+lemma zero_not_header_char : isBlockScalarHeaderChar '0' = false := by
   native_decide
 
 /-- Any ASCII letter is NOT a header char. -/
-theorem letter_a_not_header_char : isBlockScalarHeaderChar 'a' = false := by
+lemma letter_a_not_header_char : isBlockScalarHeaderChar 'a' = false := by
   native_decide
 
 /-- `#` (comment start) is NOT a header char.
     It's consumed by `skipTrailing`, not the indicator loop. -/
-theorem hash_not_header_char : isBlockScalarHeaderChar '#' = false := by
+lemma hash_not_header_char : isBlockScalarHeaderChar '#' = false := by
   native_decide
 
 /-- The `extractHeaderChars` function leaves non-header chars untouched. -/
-theorem extractHeaderChars_preserves_non_header (c : Char) (cs : List Char)
+lemma extractHeaderChars_preserves_non_header (c : Char) (cs : List Char)
     (h : isBlockScalarHeaderChar c = false) :
     extractHeaderChars (c :: cs) = ([], c :: cs) := by
   unfold extractHeaderChars
   simp [h]
 
 /-- An empty input yields an empty header. -/
-theorem extractHeaderChars_nil : extractHeaderChars [] = ([], []) := by
+lemma extractHeaderChars_nil : extractHeaderChars [] = ([], []) := by
   rfl
 
 /-- The extracted header contains only header chars. -/
-theorem extractHeaderChars_all_valid : ∀ cs : List Char,
+lemma extractHeaderChars_all_valid : ∀ cs : List Char,
     ∀ c ∈ (extractHeaderChars cs).1, isBlockScalarHeaderChar c = true := by
   intro cs
   induction cs with
@@ -144,7 +144,7 @@ theorem extractHeaderChars_all_valid : ∀ cs : List Char,
       simp
 
 /-- The remainder after extraction starts with a non-header char (or is empty). -/
-theorem extractHeaderChars_remainder_start : ∀ cs : List Char,
+lemma extractHeaderChars_remainder_start : ∀ cs : List Char,
     ∀ c cs', (extractHeaderChars cs).2 = c :: cs' →
       isBlockScalarHeaderChar c = false := by
   intro cs
@@ -209,7 +209,7 @@ def satisfiesG1 (headerCharsConsumed : Nat) : Bool :=
 **Contract G1 specification**: if `satisfiesG1` holds, the count
 is bounded by 2.
 -/
-theorem satisfiesG1_spec (n : Nat) :
+lemma satisfiesG1_spec (n : Nat) :
     satisfiesG1 n = true → n ≤ 2 := by
   intro h
   simp [satisfiesG1] at h
@@ -220,7 +220,7 @@ theorem satisfiesG1_spec (n : Nat) :
 (it's a `Bool` function), but we also show it is tight — at most
 one chomp indicator and one indentation indicator.
 -/
-theorem satisfiesG1_tight :
+lemma satisfiesG1_tight :
     satisfiesG1 0 = true ∧ satisfiesG1 1 = true ∧ satisfiesG1 2 = true
     ∧ satisfiesG1 3 = false := by
   simp [satisfiesG1]
@@ -240,7 +240,7 @@ def satisfiesG2 (postCol : Nat) (atEnd : Bool) : Bool :=
 **Contract G2 specification**: `satisfiesG2` implies the stream is
 either at EOF or at column 0.
 -/
-theorem satisfiesG2_spec (col : Nat) (atEnd : Bool) :
+lemma satisfiesG2_spec (col : Nat) (atEnd : Bool) :
     satisfiesG2 col atEnd = true → atEnd = true ∨ col = 0 := by
   intro h
   simp [satisfiesG2] at h
@@ -252,7 +252,7 @@ theorem satisfiesG2_spec (col : Nat) (atEnd : Bool) :
 **Contract G2 column zero case**: when not at EOF, `satisfiesG2`
 forces column = 0.
 -/
-theorem satisfiesG2_not_eof (col : Nat) :
+lemma satisfiesG2_not_eof (col : Nat) :
     satisfiesG2 col false = true → col = 0 := by
   intro h
   simp [satisfiesG2] at h
@@ -271,7 +271,7 @@ def satisfiesNonConsuming (pre post : YamlPos) : Bool :=
   pre.offset == post.offset && pre.line == post.line && pre.col == post.col
 
 /-- Helper: decompose a three-way `Bool.and` into individual equalities. -/
-theorem and3_true {a b c : Bool} (h : (a && b && c) = true) :
+lemma and3_true {a b c : Bool} (h : (a && b && c) = true) :
     a = true ∧ b = true ∧ c = true := by
   cases a <;> cases b <;> cases c <;> simp_all
 
@@ -279,7 +279,7 @@ theorem and3_true {a b c : Bool} (h : (a && b && c) = true) :
 **Non-consuming specification**: if the predicate holds, all three
 position fields are equal.
 -/
-theorem satisfiesNonConsuming_spec (pre post : YamlPos) :
+lemma satisfiesNonConsuming_spec (pre post : YamlPos) :
     satisfiesNonConsuming pre post = true →
     pre.offset = post.offset ∧ pre.line = post.line ∧ pre.col = post.col := by
   unfold satisfiesNonConsuming
@@ -291,7 +291,7 @@ theorem satisfiesNonConsuming_spec (pre post : YamlPos) :
 **Non-consuming reflexivity**: a position trivially satisfies the
 non-consuming predicate with itself.
 -/
-theorem satisfiesNonConsuming_refl (p : YamlPos) :
+lemma satisfiesNonConsuming_refl (p : YamlPos) :
     satisfiesNonConsuming p p = true := by
   unfold satisfiesNonConsuming
   simp only [beq_self_eq_true, Bool.and_true]
@@ -312,7 +312,7 @@ def satisfiesIndentBound (indent : Nat) (content : String) : Bool :=
 /--
 **Indent-bound specification for empty content**: vacuously true.
 -/
-theorem satisfiesIndentBound_empty (n : Nat) :
+lemma satisfiesIndentBound_empty (n : Nat) :
     satisfiesIndentBound n "" = true := by
   unfold satisfiesIndentBound
   rfl
@@ -337,7 +337,7 @@ def satisfiesComposition (g1 : Bool) (g2 : Bool) (nonConsuming : Bool)
 **Composition specification**: the composition requires all four
 sub-contracts to hold.
 -/
-theorem satisfiesComposition_spec (g1 g2 nc ib : Bool) :
+lemma satisfiesComposition_spec (g1 g2 nc ib : Bool) :
     satisfiesComposition g1 g2 nc ib = true →
     g1 = true ∧ g2 = true ∧ nc = true ∧ ib = true := by
   intro h
@@ -349,7 +349,7 @@ theorem satisfiesComposition_spec (g1 g2 nc ib : Bool) :
 **Composition from sub-contracts**: if all four sub-contracts hold,
 the composition holds.
 -/
-theorem satisfiesComposition_intro {g1 g2 nc ib : Bool}
+lemma satisfiesComposition_intro {g1 g2 nc ib : Bool}
     (hg1 : g1 = true) (hg2 : g2 = true) (hnc : nc = true) (hib : ib = true) :
     satisfiesComposition g1 g2 nc ib = true := by
   subst hg1; subst hg2; subst hnc; subst hib
@@ -370,7 +370,7 @@ This is the key safety property — the root cause of the original bug
 was that the header left the stream at a non-zero column, meaning
 content indentation had been consumed by `skipTrailing`.
 -/
-theorem g2_prevents_indentation_leak (col : Nat) (headerChars : Nat)
+lemma g2_prevents_indentation_leak (col : Nat) (headerChars : Nat)
     (hg2 : satisfiesG2 col false = true) (hg1 : satisfiesG1 headerChars = true) :
     col = 0 ∧ headerChars ≤ 2 := by
   constructor
@@ -383,7 +383,7 @@ and the stream was at column 0 before it, the stream is still at
 column 0 after it. This means `blockScalarContent` receives the
 stream at column 0, where it expects to find indentation spaces.
 -/
-theorem nonConsuming_preserves_g2 (pre post : YamlPos)
+lemma nonConsuming_preserves_g2 (pre post : YamlPos)
     (hnc : satisfiesNonConsuming pre post = true)
     (hcol : pre.col = 0) :
     post.col = 0 := by
@@ -427,7 +427,7 @@ in the proof context, not a computational property. The actual
 enforcement is via the `lookAhead` calls in `blockScalarHeader`
 and the runtime assertions that verify G1/G2.
 -/
-theorem principle_peek_before_consume : True := trivial
+lemma principle_peek_before_consume : True := trivial
 
 /-! ## §5  Content Character Bridge
 
@@ -437,13 +437,13 @@ predicate from Grammar.lean to the `extractHeaderChars` theorems.
 -/
 
 /-- Content chars (non-header chars) stop header extraction. -/
-theorem isContentChar_stops_extraction (c : Char) (cs : List Char)
+lemma isContentChar_stops_extraction (c : Char) (cs : List Char)
     (h : isContentChar c) :
     extractHeaderChars (c :: cs) = ([], c :: cs) :=
   extractHeaderChars_preserves_non_header c cs h
 
 /-- Content character classification is the complement of header chars. -/
-theorem isContentChar_complement (c : Char) :
+lemma isContentChar_complement (c : Char) :
     isContentChar c ↔ ¬(isBlockScalarHeaderChar c = true) := by
   unfold isContentChar
   constructor
@@ -457,7 +457,7 @@ and `validHeaderLength` is a direct re-statement of the ≤ 2 bound.
 -/
 
 /-- Extracted header chars cannot exceed input length. -/
-theorem extractHeaderChars_length_le (cs : List Char) :
+lemma extractHeaderChars_length_le (cs : List Char) :
     (extractHeaderChars cs).1.length ≤ cs.length := by
   induction cs with
   | nil => simp [extractHeaderChars]
@@ -468,11 +468,11 @@ theorem extractHeaderChars_length_le (cs : List Char) :
     · simp
 
 /-- `validHeaderLength` directly gives the ≤ 2 bound. -/
-theorem validHeaderLength_bound (cs : List Char) (h : validHeaderLength cs) :
+lemma validHeaderLength_bound (cs : List Char) (h : validHeaderLength cs) :
     (extractHeaderChars cs).1.length ≤ 2 := h
 
 /-- Empty input trivially satisfies `validHeaderLength`. -/
-theorem validHeaderLength_nil : validHeaderLength [] := by
+lemma validHeaderLength_nil : validHeaderLength [] := by
   unfold validHeaderLength extractHeaderChars; simp
 
 end L4YAML.Proofs.BlockScalarContracts

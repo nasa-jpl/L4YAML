@@ -98,7 +98,7 @@ variable {input : String}
     structural dispatch returns `none` (no doc-marker / directive
     handling at non-zero column). Indexed twin of
     `dispatchStructural_none_flow` (legacy 3735). -/
-theorem dispatchStructural_none_flow (s : ScannerStateIx input) (c : Char)
+lemma dispatchStructural_none_flow (s : ScannerStateIx input) (c : Char)
     (h_flow : s.inFlow = true)
     (h_indent : s.currentIndent < 0)
     (h_col_pos : s.cursor.pos.col > 0) :
@@ -113,7 +113,7 @@ theorem dispatchStructural_none_flow (s : ScannerStateIx input) (c : Char)
     Indexed twin of `dispatchStructural_none_bracket_init`
     (legacy 4066) / `_none_brace_init` (legacy 5425), generalised
     to any character — caller supplies the specialisation. -/
-theorem dispatchStructural_none_non_directive (s : ScannerStateIx input) (c : Char)
+lemma dispatchStructural_none_non_directive (s : ScannerStateIx input) (c : Char)
     (h_fl : s.flowLevel = 0)
     (h_noDocStart : atDocumentStartIx s.cursor = false)
     (h_noDocEnd : atDocumentEndIx s.cursor = false)
@@ -126,7 +126,7 @@ theorem dispatchStructural_none_non_directive (s : ScannerStateIx input) (c : Ch
   simp [pure, Pure.pure, Except.pure, h_not_inflow, h_noDocStart, h_noDocEnd, h_c_pct]
 
 /-- Specialisation for `'['` at initial state. -/
-theorem dispatchStructural_none_bracket_init (s : ScannerStateIx input)
+lemma dispatchStructural_none_bracket_init (s : ScannerStateIx input)
     (h_fl : s.flowLevel = 0)
     (h_noDocStart : atDocumentStartIx s.cursor = false)
     (h_noDocEnd : atDocumentEndIx s.cursor = false) :
@@ -134,7 +134,7 @@ theorem dispatchStructural_none_bracket_init (s : ScannerStateIx input)
   dispatchStructural_none_non_directive s '[' h_fl h_noDocStart h_noDocEnd (by decide)
 
 /-- Specialisation for `'{'` at initial state. -/
-theorem dispatchStructural_none_brace_init (s : ScannerStateIx input)
+lemma dispatchStructural_none_brace_init (s : ScannerStateIx input)
     (h_fl : s.flowLevel = 0)
     (h_noDocStart : atDocumentStartIx s.cursor = false)
     (h_noDocEnd : atDocumentEndIx s.cursor = false) :
@@ -144,7 +144,7 @@ theorem dispatchStructural_none_brace_init (s : ScannerStateIx input)
 /-! ## §2  `checkBlockFlowIndent` return-value lemmas -/
 
 /-- In flow context, the indent guard is vacuous. -/
-theorem checkBlockFlowIndent_ok_flow (s : ScannerStateIx input) (c : Char)
+lemma checkBlockFlowIndent_ok_flow (s : ScannerStateIx input) (c : Char)
     (h_flow : s.inFlow = true) :
     scanNextTokenIx_checkBlockFlowIndent s c = .ok () := by
   unfold scanNextTokenIx_checkBlockFlowIndent
@@ -153,7 +153,7 @@ theorem checkBlockFlowIndent_ok_flow (s : ScannerStateIx input) (c : Char)
 /-- At initial state (`flowLevel = 0`, `currentIndent = -1`),
     `checkBlockFlowIndent` passes for `'['` (the indent guard fails
     because `-1 ≥ 0` is false). -/
-theorem checkBlockFlowIndent_bracket_init (s : ScannerStateIx input)
+lemma checkBlockFlowIndent_bracket_init (s : ScannerStateIx input)
     (h_fl : s.flowLevel = 0)
     (h_indent : s.currentIndent = -1) :
     scanNextTokenIx_checkBlockFlowIndent s '[' = .ok () := by
@@ -165,7 +165,7 @@ theorem checkBlockFlowIndent_bracket_init (s : ScannerStateIx input)
     decide_false, Bool.false_and, Bool.false_eq_true, ↓reduceIte]
 
 /-- At initial state, `checkBlockFlowIndent` passes for `'{'`. -/
-theorem checkBlockFlowIndent_brace_init (s : ScannerStateIx input)
+lemma checkBlockFlowIndent_brace_init (s : ScannerStateIx input)
     (h_fl : s.flowLevel = 0)
     (h_indent : s.currentIndent = -1) :
     scanNextTokenIx_checkBlockFlowIndent s '{' = .ok () := by
@@ -177,7 +177,7 @@ theorem checkBlockFlowIndent_brace_init (s : ScannerStateIx input)
     decide_false, Bool.false_and, Bool.false_eq_true, ↓reduceIte]
 
 /-- The indent guard fires only on `'['` / `'{'`; for `','` it passes. -/
-theorem checkBlockFlowIndent_ok_comma (s : ScannerStateIx input) :
+lemma checkBlockFlowIndent_ok_comma (s : ScannerStateIx input) :
     scanNextTokenIx_checkBlockFlowIndent s ',' = .ok () := by
   unfold scanNextTokenIx_checkBlockFlowIndent
   simp only [show (',' == '[') = false from by decide,
@@ -185,7 +185,7 @@ theorem checkBlockFlowIndent_ok_comma (s : ScannerStateIx input) :
     Bool.and_false, Bool.false_eq_true, ↓reduceIte]
 
 /-- The indent guard fires only on `'['` / `'{'`; for `']'` it passes. -/
-theorem checkBlockFlowIndent_ok_close_bracket (s : ScannerStateIx input) :
+lemma checkBlockFlowIndent_ok_close_bracket (s : ScannerStateIx input) :
     scanNextTokenIx_checkBlockFlowIndent s ']' = .ok () := by
   unfold scanNextTokenIx_checkBlockFlowIndent
   simp only [show (']' == '[') = false from by decide,
@@ -193,7 +193,7 @@ theorem checkBlockFlowIndent_ok_close_bracket (s : ScannerStateIx input) :
     Bool.and_false, Bool.false_eq_true, ↓reduceIte]
 
 /-- The indent guard fires only on `'['` / `'{'`; for `'}'` it passes. -/
-theorem checkBlockFlowIndent_ok_close_brace (s : ScannerStateIx input) :
+lemma checkBlockFlowIndent_ok_close_brace (s : ScannerStateIx input) :
     scanNextTokenIx_checkBlockFlowIndent s '}' = .ok () := by
   unfold scanNextTokenIx_checkBlockFlowIndent
   simp only [show ('}' == '[') = false from by decide,
@@ -205,7 +205,7 @@ theorem checkBlockFlowIndent_ok_close_brace (s : ScannerStateIx input) :
 /-- For a character that is none of `[`, `]`, `{`, `}`, `,`, flow
     dispatch returns `none`. Indexed twin of
     `dispatchFlowIndicators_none` (legacy 3759). -/
-theorem dispatchFlowIndicators_none (s : ScannerStateIx input) (c : Char)
+lemma dispatchFlowIndicators_none (s : ScannerStateIx input) (c : Char)
     (h1 : c ≠ '[') (h2 : c ≠ ']') (h3 : c ≠ '{') (h4 : c ≠ '}') (h5 : c ≠ ',') :
     scanNextTokenIx_dispatchFlowIndicators s c = .ok none := by
   unfold scanNextTokenIx_dispatchFlowIndicators
@@ -213,7 +213,7 @@ theorem dispatchFlowIndicators_none (s : ScannerStateIx input) (c : Char)
 
 /-- Flow dispatch for `'['` always returns
     `some (scanFlowSequenceStartIx s)`. -/
-theorem dispatchFlowIndicators_bracket (s : ScannerStateIx input) :
+lemma dispatchFlowIndicators_bracket (s : ScannerStateIx input) :
     scanNextTokenIx_dispatchFlowIndicators s '[' =
       .ok (some (scanFlowSequenceStartIx s)) := by
   unfold scanNextTokenIx_dispatchFlowIndicators
@@ -222,7 +222,7 @@ theorem dispatchFlowIndicators_bracket (s : ScannerStateIx input) :
 
 /-- Flow dispatch for `'{'` always returns
     `some (scanFlowMappingStartIx s)`. -/
-theorem dispatchFlowIndicators_brace (s : ScannerStateIx input) :
+lemma dispatchFlowIndicators_brace (s : ScannerStateIx input) :
     scanNextTokenIx_dispatchFlowIndicators s '{' =
       .ok (some (scanFlowMappingStartIx s)) := by
   unfold scanNextTokenIx_dispatchFlowIndicators
@@ -234,7 +234,7 @@ theorem dispatchFlowIndicators_brace (s : ScannerStateIx input) :
     `_close_bracket_outermost` (flowLevel = 1, EOF) collapses
     because the indexed pipeline has no `validateFlowClose`
     tail-validation. -/
-theorem dispatchFlowIndicators_close_bracket (s : ScannerStateIx input)
+lemma dispatchFlowIndicators_close_bracket (s : ScannerStateIx input)
     (h_fl : s.flowLevel > 0) :
     scanNextTokenIx_dispatchFlowIndicators s ']' =
       .ok (some (scanFlowSequenceEndIx s)) := by
@@ -247,7 +247,7 @@ theorem dispatchFlowIndicators_close_bracket (s : ScannerStateIx input)
 
 /-- Flow dispatch for `'}'` with `flowLevel > 0` returns
     `some (scanFlowMappingEndIx s)`. -/
-theorem dispatchFlowIndicators_close_brace (s : ScannerStateIx input)
+lemma dispatchFlowIndicators_close_brace (s : ScannerStateIx input)
     (h_fl : s.flowLevel > 0) :
     scanNextTokenIx_dispatchFlowIndicators s '}' =
       .ok (some (scanFlowMappingEndIx s)) := by
@@ -260,7 +260,7 @@ theorem dispatchFlowIndicators_close_brace (s : ScannerStateIx input)
 
 /-- `scanFlowEntryIx` succeeds when the last real token is not a
     flow delimiter. Indexed twin of `scanFlowEntry_ok` (legacy 4398). -/
-theorem scanFlowEntryIx_ok (s : ScannerStateIx input)
+lemma scanFlowEntryIx_ok (s : ScannerStateIx input)
     (h_last : ∀ t, lastRealTokenValIx? s.tokens = some t →
       t ≠ YamlToken.flowSequenceStart ∧ t ≠ YamlToken.flowMappingStart
       ∧ t ≠ YamlToken.flowEntry) :
@@ -282,7 +282,7 @@ theorem scanFlowEntryIx_ok (s : ScannerStateIx input)
 
 /-- Flow dispatch for `','` with `flowLevel > 0` and a non-flow-
     delimiter last token returns `some` of the comma-emit chain. -/
-theorem dispatchFlowIndicators_comma (s : ScannerStateIx input)
+lemma dispatchFlowIndicators_comma (s : ScannerStateIx input)
     (h_fl : s.flowLevel > 0)
     (h_last : ∀ t, lastRealTokenValIx? s.tokens = some t →
       t ≠ YamlToken.flowSequenceStart ∧ t ≠ YamlToken.flowMappingStart
@@ -308,19 +308,19 @@ Each returns `.ok none` because the character is neither `'-'` nor
 `'?'` nor `':'`. -/
 
 /-- Block dispatch returns `none` for `'"'`. -/
-theorem dispatchBlockIndicators_none_quote (s : ScannerStateIx input) :
+lemma dispatchBlockIndicators_none_quote (s : ScannerStateIx input) :
     scanNextTokenIx_dispatchBlockIndicators s '"' = .ok none := by
   unfold scanNextTokenIx_dispatchBlockIndicators
   simp only [pure, Pure.pure, Except.pure, show ('"' == '-') = false from by decide, show ('"' == '?') = false from by decide, show ('"' == ':') = false from by decide, Bool.false_and, Bool.false_eq_true, ↓reduceIte]
 
 /-- Block dispatch returns `none` for `','`. -/
-theorem dispatchBlockIndicators_none_comma (s : ScannerStateIx input) :
+lemma dispatchBlockIndicators_none_comma (s : ScannerStateIx input) :
     scanNextTokenIx_dispatchBlockIndicators s ',' = .ok none := by
   unfold scanNextTokenIx_dispatchBlockIndicators
   simp only [pure, Pure.pure, Except.pure, show (',' == '-') = false from by decide, show (',' == '?') = false from by decide, show (',' == ':') = false from by decide, Bool.false_and, Bool.false_eq_true, ↓reduceIte]
 
 /-- Block dispatch returns `none` for `']'`. -/
-theorem dispatchBlockIndicators_none_close_bracket (s : ScannerStateIx input) :
+lemma dispatchBlockIndicators_none_close_bracket (s : ScannerStateIx input) :
     scanNextTokenIx_dispatchBlockIndicators s ']' = .ok none := by
   unfold scanNextTokenIx_dispatchBlockIndicators
   simp only [pure, Pure.pure, Except.pure, show (']' == '-') = false from by decide,
@@ -329,7 +329,7 @@ theorem dispatchBlockIndicators_none_close_bracket (s : ScannerStateIx input) :
     Bool.false_and, Bool.false_eq_true, ↓reduceIte]
 
 /-- Block dispatch returns `none` for `'}'`. -/
-theorem dispatchBlockIndicators_none_close_brace (s : ScannerStateIx input) :
+lemma dispatchBlockIndicators_none_close_brace (s : ScannerStateIx input) :
     scanNextTokenIx_dispatchBlockIndicators s '}' = .ok none := by
   unfold scanNextTokenIx_dispatchBlockIndicators
   simp only [pure, Pure.pure, Except.pure, show ('}' == '-') = false from by decide, show ('}' == '?') = false from by decide, show ('}' == ':') = false from by decide, Bool.false_and, Bool.false_eq_true, ↓reduceIte]
@@ -344,7 +344,7 @@ dispatch (success and error) and block-indicator dispatch. -/
     flow → block) yield `.ok none` and content dispatch produces a
     result, `scanNextTokenIx` returns that result.
     Indexed twin of `scanNextToken_via_content_dispatch` (legacy 3852). -/
-theorem scanNextTokenIx_via_content_dispatch
+lemma scanNextTokenIx_via_content_dispatch
     (s s_pp s_ad s_result : ScannerStateIx input) (c : Char)
     (h_pp : scanNextTokenIx_preprocess s = .ok (some (s_pp, c)))
     (h_struct : scanNextTokenIx_dispatchStructural s_pp c = .ok none)
@@ -368,7 +368,7 @@ theorem scanNextTokenIx_via_content_dispatch
 /-- Error variant: when content dispatch errors, `scanNextTokenIx`
     propagates that error. Indexed twin of
     `scanNextToken_via_content_dispatch_error` (legacy 3869). -/
-theorem scanNextTokenIx_via_content_dispatch_error
+lemma scanNextTokenIx_via_content_dispatch_error
     (s s_pp s_ad : ScannerStateIx input) (c : Char) (e : ScanError)
     (h_pp : scanNextTokenIx_preprocess s = .ok (some (s_pp, c)))
     (h_struct : scanNextTokenIx_dispatchStructural s_pp c = .ok none)
@@ -393,7 +393,7 @@ theorem scanNextTokenIx_via_content_dispatch_error
     indicator dispatch produces a result, `scanNextTokenIx` returns
     that result. Used for `:` (value indicator) in flow context.
     Indexed twin of `scanNextToken_via_block_dispatch` (legacy 3889). -/
-theorem scanNextTokenIx_via_block_dispatch
+lemma scanNextTokenIx_via_block_dispatch
     (s s_pp s_ad s_result : ScannerStateIx input) (c : Char)
     (h_pp : scanNextTokenIx_preprocess s = .ok (some (s_pp, c)))
     (h_struct : scanNextTokenIx_dispatchStructural s_pp c = .ok none)

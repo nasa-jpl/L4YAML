@@ -33,14 +33,14 @@ open L4YAML.Proofs.ScalarCoupling
 /-! ## §1 Shared Helpers -/
 
 /-- `emit` only modifies `tokens`, preserving correspondence. -/
-theorem corr_of_emit {sc : ScannerState} {sp : SurfPos}
+lemma corr_of_emit {sc : ScannerState} {sp : SurfPos}
     (tok : YamlToken)
     (hcorr : ScannerSurfCorr sc sp) :
     ScannerSurfCorr (sc.emit tok) sp :=
   ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix, hcorr.indent_cols_nonneg⟩
 
 /-- `advanceNLoop` preserves correspondence by composing `advance_corr`. -/
-theorem advanceNLoop_corr (sc : ScannerState) (sp : SurfPos)
+lemma advanceNLoop_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (n : Nat) :
     ∃ sp', ScannerSurfCorr (sc.advanceNLoop n) sp' := by
   induction n generalizing sc sp with
@@ -51,7 +51,7 @@ theorem advanceNLoop_corr (sc : ScannerState) (sp : SurfPos)
     exact ih sc.advance sp' hcorr'
 
 /-- `advanceN` preserves correspondence (wrapper for `advanceNLoop`). -/
-theorem advanceN_corr (sc : ScannerState) (sp : SurfPos)
+lemma advanceN_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (n : Nat) :
     ∃ sp', ScannerSurfCorr (sc.advanceN n) sp' := by
   unfold ScannerState.advanceN
@@ -59,7 +59,7 @@ theorem advanceN_corr (sc : ScannerState) (sp : SurfPos)
 
 /-! ## §2 Flow Indicators -/
 
-theorem scanFlowSequenceStart_corr (sc : ScannerState) (sp : SurfPos)
+lemma scanFlowSequenceStart_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) :
     ∃ sp', ScannerSurfCorr (scanFlowSequenceStart sc) sp' := by
   unfold scanFlowSequenceStart
@@ -68,7 +68,7 @@ theorem scanFlowSequenceStart_corr (sc : ScannerState) (sp : SurfPos)
     ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix, hcorr.indent_cols_nonneg⟩
   exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩⟩
 
-theorem scanFlowSequenceEnd_corr (sc : ScannerState) (sp : SurfPos)
+lemma scanFlowSequenceEnd_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) :
     ∃ sp', ScannerSurfCorr (scanFlowSequenceEnd sc) sp' := by
   unfold scanFlowSequenceEnd
@@ -76,7 +76,7 @@ theorem scanFlowSequenceEnd_corr (sc : ScannerState) (sp : SurfPos)
     ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix, hcorr.indent_cols_nonneg⟩
   exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩⟩
 
-theorem scanFlowMappingStart_corr (sc : ScannerState) (sp : SurfPos)
+lemma scanFlowMappingStart_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) :
     ∃ sp', ScannerSurfCorr (scanFlowMappingStart sc) sp' := by
   unfold scanFlowMappingStart
@@ -85,7 +85,7 @@ theorem scanFlowMappingStart_corr (sc : ScannerState) (sp : SurfPos)
     ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix, hcorr.indent_cols_nonneg⟩
   exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩⟩
 
-theorem scanFlowMappingEnd_corr (sc : ScannerState) (sp : SurfPos)
+lemma scanFlowMappingEnd_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) :
     ∃ sp', ScannerSurfCorr (scanFlowMappingEnd sc) sp' := by
   unfold scanFlowMappingEnd
@@ -93,7 +93,7 @@ theorem scanFlowMappingEnd_corr (sc : ScannerState) (sp : SurfPos)
     ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix, hcorr.indent_cols_nonneg⟩
   exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩⟩
 
-theorem scanFlowEntry_corr (sc : ScannerState) (sp : SurfPos)
+lemma scanFlowEntry_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (s' : ScannerState)
     (hok : scanFlowEntry sc = .ok s') :
     ∃ sp', ScannerSurfCorr s' sp' := by
@@ -113,7 +113,7 @@ theorem scanFlowEntry_corr (sc : ScannerState) (sp : SurfPos)
 
 /-! ## §3 Indentation Management -/
 
-theorem unwindIndentsLoop_corr (sc : ScannerState) (sp : SurfPos)
+lemma unwindIndentsLoop_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (col : Int) (fuel : Nat) :
     ∃ sp', ScannerSurfCorr (unwindIndentsLoop sc col fuel) sp' := by
   induction fuel generalizing sc sp with
@@ -129,13 +129,13 @@ theorem unwindIndentsLoop_corr (sc : ScannerState) (sp : SurfPos)
            exact hcorr.indent_cols_nonneg i (by simp [Array.size_pop] at hi; omega) h0⟩
     · exact ⟨sp, hcorr⟩
 
-theorem unwindIndents_corr (sc : ScannerState) (sp : SurfPos)
+lemma unwindIndents_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (col : Int) :
     ∃ sp', ScannerSurfCorr (unwindIndents sc col) sp' := by
   unfold unwindIndents
   exact unwindIndentsLoop_corr sc sp hcorr col _
 
-theorem pushSequenceIndent_corr (sc : ScannerState) (sp : SurfPos)
+lemma pushSequenceIndent_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (col : Int) (hcol : col ≥ 0) :
     ScannerSurfCorr (pushSequenceIndent sc col) sp := by
   unfold pushSequenceIndent; split
@@ -149,7 +149,7 @@ theorem pushSequenceIndent_corr (sc : ScannerState) (sp : SurfPos)
                subst this; rw [Array.getElem_push_eq]; exact hcol⟩
   · exact hcorr
 
-theorem pushMappingIndent_corr (sc : ScannerState) (sp : SurfPos)
+lemma pushMappingIndent_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (col : Int) (hcol : col ≥ 0) :
     ScannerSurfCorr (pushMappingIndent sc col) sp := by
   unfold pushMappingIndent; split
@@ -165,7 +165,7 @@ theorem pushMappingIndent_corr (sc : ScannerState) (sp : SurfPos)
 
 /-! ## §4 Node Properties: Anchor & Tag Collection Loops -/
 
-theorem collectAnchorNameLoop_corr (sc : ScannerState) (sp : SurfPos)
+lemma collectAnchorNameLoop_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (name : String) (fuel : Nat) :
     ∃ sp', ScannerSurfCorr (collectAnchorNameLoop sc name fuel).snd sp' := by
   induction fuel generalizing sc sp name with
@@ -178,7 +178,7 @@ theorem collectAnchorNameLoop_corr (sc : ScannerState) (sp : SurfPos)
       · exact ⟨sp, hcorr⟩
     · exact ⟨sp, hcorr⟩
 
-theorem scanAnchorOrAlias_corr (sc : ScannerState) (sp : SurfPos)
+lemma scanAnchorOrAlias_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (isAnchor : Bool) (s' : ScannerState)
     (hok : scanAnchorOrAlias sc isAnchor = .ok s') :
     ∃ sp', ScannerSurfCorr s' sp' := by
@@ -192,7 +192,7 @@ theorem scanAnchorOrAlias_corr (sc : ScannerState) (sp : SurfPos)
       collectAnchorNameLoop_corr sc.advance sp_adv hcorr_adv "" _
     exact ⟨sp_name, ⟨hcorr_name.chars_from, hcorr_name.col_eq, hcorr_name.end_eq, hcorr_name.input_prefix, hcorr_name.indent_cols_nonneg⟩⟩
 
-theorem collectVerbatimTagLoop_corr (sc : ScannerState) (sp : SurfPos)
+lemma collectVerbatimTagLoop_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (uri : String) (fuel : Nat) :
     ∃ sp', ScannerSurfCorr (collectVerbatimTagLoop sc uri fuel).snd.snd sp' := by
   induction fuel generalizing sc sp uri with
@@ -209,7 +209,7 @@ theorem collectVerbatimTagLoop_corr (sc : ScannerState) (sp : SurfPos)
       · exact ⟨sp, hcorr⟩
     · exact ⟨sp, hcorr⟩
 
-theorem collectTagSuffixLoop_corr (sc : ScannerState) (sp : SurfPos)
+lemma collectTagSuffixLoop_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (suffix : String) (fuel : Nat) :
     ∃ sp', ScannerSurfCorr (collectTagSuffixLoop sc suffix fuel).snd sp' := by
   induction fuel generalizing sc sp suffix with
@@ -222,7 +222,7 @@ theorem collectTagSuffixLoop_corr (sc : ScannerState) (sp : SurfPos)
       · exact ⟨sp, hcorr⟩
     · exact ⟨sp, hcorr⟩
 
-theorem collectTagHandleLoop_corr (sc : ScannerState) (sp : SurfPos)
+lemma collectTagHandleLoop_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (chars : String) (fuel : Nat) :
     ∃ sp', ScannerSurfCorr (collectTagHandleLoop sc chars fuel).snd.snd sp' := by
   induction fuel generalizing sc sp chars with
@@ -241,7 +241,7 @@ theorem collectTagHandleLoop_corr (sc : ScannerState) (sp : SurfPos)
 
 /-! ## §5 Node Properties: Tag Scanning -/
 
-theorem scanVerbatimTag_corr (sc : ScannerState) (sp : SurfPos)
+lemma scanVerbatimTag_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (startPos : YamlPos) (s' : ScannerState)
     (hok : scanVerbatimTag sc startPos = .ok s') :
     ∃ sp', ScannerSurfCorr s' sp' := by
@@ -257,7 +257,7 @@ theorem scanVerbatimTag_corr (sc : ScannerState) (sp : SurfPos)
         collectVerbatimTagLoop_corr sc.advance sp_adv hcorr_adv "" _
       exact ⟨sp_uri, ⟨hcorr_uri.chars_from, hcorr_uri.col_eq, hcorr_uri.end_eq, hcorr_uri.input_prefix, hcorr_uri.indent_cols_nonneg⟩⟩
 
-theorem scanSecondaryTag_corr (sc : ScannerState) (sp : SurfPos)
+lemma scanSecondaryTag_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (startPos : YamlPos) :
     ∃ sp', ScannerSurfCorr (scanSecondaryTag sc startPos) sp' := by
   unfold scanSecondaryTag
@@ -266,7 +266,7 @@ theorem scanSecondaryTag_corr (sc : ScannerState) (sp : SurfPos)
     collectTagSuffixLoop_corr sc.advance sp_adv hcorr_adv "" _
   exact ⟨sp_sfx, ⟨hcorr_sfx.chars_from, hcorr_sfx.col_eq, hcorr_sfx.end_eq, hcorr_sfx.input_prefix, hcorr_sfx.indent_cols_nonneg⟩⟩
 
-theorem scanNamedTag_corr (sc : ScannerState) (sp : SurfPos)
+lemma scanNamedTag_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (startPos : YamlPos) (inputEnd : Nat) :
     ∃ sp', ScannerSurfCorr (scanNamedTag sc startPos inputEnd) sp' := by
   unfold scanNamedTag; dsimp only []
@@ -280,7 +280,7 @@ theorem scanNamedTag_corr (sc : ScannerState) (sp : SurfPos)
   · -- foundBang = false
     exact ⟨sp_hdl, ⟨hcorr_hdl.chars_from, hcorr_hdl.col_eq, hcorr_hdl.end_eq, hcorr_hdl.input_prefix, hcorr_hdl.indent_cols_nonneg⟩⟩
 
-theorem scanTag_corr (sc : ScannerState) (sp : SurfPos)
+lemma scanTag_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (s' : ScannerState)
     (hok : scanTag sc = .ok s') :
     ∃ sp', ScannerSurfCorr s' sp' := by
@@ -306,7 +306,7 @@ theorem scanTag_corr (sc : ScannerState) (sp : SurfPos)
 
 /-! ## §6 Block Structure -/
 
-theorem scanValueClearKey_corr (sc : ScannerState) (sp : SurfPos)
+lemma scanValueClearKey_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) :
     ScannerSurfCorr (scanValueClearKey sc) sp := by
   unfold scanValueClearKey
@@ -318,7 +318,7 @@ theorem scanValueClearKey_corr (sc : ScannerState) (sp : SurfPos)
       · exact hcorr
   · exact hcorr
 
-theorem scanValuePrepare_corr (sc : ScannerState) (sp : SurfPos)
+lemma scanValuePrepare_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) :
     ScannerSurfCorr (scanValuePrepare sc) sp := by
   unfold scanValuePrepare
@@ -346,7 +346,7 @@ theorem scanValuePrepare_corr (sc : ScannerState) (sp : SurfPos)
       · exact pushMappingIndent_corr sc sp hcorr _ (Int.natCast_nonneg _)
       · exact hcorr
 
-theorem saveSimpleKey_corr (sc : ScannerState) (sp : SurfPos)
+lemma saveSimpleKey_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) :
     ScannerSurfCorr (saveSimpleKey sc) sp := by
   unfold saveSimpleKey
@@ -356,7 +356,7 @@ theorem saveSimpleKey_corr (sc : ScannerState) (sp : SurfPos)
     · exact ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix, hcorr.indent_cols_nonneg⟩
     · exact hcorr
 
-theorem scanBlockEntry_corr (sc : ScannerState) (sp : SurfPos)
+lemma scanBlockEntry_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (s' : ScannerState)
     (hok : scanBlockEntry sc = .ok s') :
     ∃ sp', ScannerSurfCorr s' sp' := by
@@ -378,7 +378,7 @@ theorem scanBlockEntry_corr (sc : ScannerState) (sp : SurfPos)
       ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix, hcorr.indent_cols_nonneg⟩
     exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩⟩
 
-theorem scanKey_corr (sc : ScannerState) (sp : SurfPos)
+lemma scanKey_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (s' : ScannerState)
     (hok : scanKey sc = .ok s') :
     ∃ sp', ScannerSurfCorr s' sp' := by
@@ -411,7 +411,7 @@ theorem scanKey_corr (sc : ScannerState) (sp : SurfPos)
     · have h := Except.ok.inj hok; subst h
       exact ⟨sp_adv, ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq, hcorr_adv.input_prefix, hcorr_adv.indent_cols_nonneg⟩⟩
 
-theorem scanValue_corr (sc : ScannerState) (sp : SurfPos)
+lemma scanValue_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (s' : ScannerState)
     (hok : scanValue sc = .ok s') :
     ∃ sp', ScannerSurfCorr s' sp' := by
@@ -433,7 +433,7 @@ theorem scanValue_corr (sc : ScannerState) (sp : SurfPos)
 
 /-! ## §7 Document Boundaries -/
 
-theorem skipDocEndWhitespace_corr (sc : ScannerState) (sp : SurfPos)
+lemma skipDocEndWhitespace_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (fuel : Nat) :
     ∃ sp', ScannerSurfCorr (skipDocEndWhitespace sc fuel) sp' := by
   induction fuel generalizing sc sp with
@@ -446,7 +446,7 @@ theorem skipDocEndWhitespace_corr (sc : ScannerState) (sp : SurfPos)
       · exact ⟨sp, hcorr⟩
     · exact ⟨sp, hcorr⟩
 
-theorem scanDocumentStart_corr (sc : ScannerState) (sp : SurfPos)
+lemma scanDocumentStart_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) :
     ∃ sp', ScannerSurfCorr (scanDocumentStart sc) sp' := by
   unfold scanDocumentStart
@@ -456,7 +456,7 @@ theorem scanDocumentStart_corr (sc : ScannerState) (sp : SurfPos)
     sp_uw ⟨hcorr_uw.chars_from, hcorr_uw.col_eq, hcorr_uw.end_eq, hcorr_uw.input_prefix, hcorr_uw.indent_cols_nonneg⟩ 3
   exact ⟨sp_adv, ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq, hcorr_adv.input_prefix, hcorr_adv.indent_cols_nonneg⟩⟩
 
-theorem scanDocumentEnd_corr (sc : ScannerState) (sp : SurfPos)
+lemma scanDocumentEnd_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (s' : ScannerState)
     (hok : scanDocumentEnd sc = .ok s') :
     ∃ sp', ScannerSurfCorr s' sp' := by
@@ -481,7 +481,7 @@ theorem scanDocumentEnd_corr (sc : ScannerState) (sp : SurfPos)
 
 /-! ## §8 Directive Collection Loops -/
 
-theorem collectDirectiveNameLoop_corr (sc : ScannerState) (sp : SurfPos)
+lemma collectDirectiveNameLoop_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (name : String) (fuel : Nat) :
     ∃ sp', ScannerSurfCorr (collectDirectiveNameLoop sc name fuel).snd sp' := by
   induction fuel generalizing sc sp name with
@@ -494,7 +494,7 @@ theorem collectDirectiveNameLoop_corr (sc : ScannerState) (sp : SurfPos)
       · exact ⟨sp, hcorr⟩
     · exact ⟨sp, hcorr⟩
 
-theorem collectVersionMajorLoop_corr (sc : ScannerState) (sp : SurfPos)
+lemma collectVersionMajorLoop_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (major : String) (fuel : Nat) :
     ∃ sp', ScannerSurfCorr (collectVersionMajorLoop sc major fuel).snd sp' := by
   induction fuel generalizing sc sp major with
@@ -511,7 +511,7 @@ theorem collectVersionMajorLoop_corr (sc : ScannerState) (sp : SurfPos)
       · exact ⟨sp, hcorr⟩
     · exact ⟨sp, hcorr⟩
 
-theorem collectVersionMinorLoop_corr (sc : ScannerState) (sp : SurfPos)
+lemma collectVersionMinorLoop_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (minor : String) (fuel : Nat) :
     ∃ sp', ScannerSurfCorr (collectVersionMinorLoop sc minor fuel).snd sp' := by
   induction fuel generalizing sc sp minor with
@@ -524,7 +524,7 @@ theorem collectVersionMinorLoop_corr (sc : ScannerState) (sp : SurfPos)
       · exact ⟨sp, hcorr⟩
     · exact ⟨sp, hcorr⟩
 
-theorem collectTagHandleDirectiveLoop_corr (sc : ScannerState) (sp : SurfPos)
+lemma collectTagHandleDirectiveLoop_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (handle : String) (fuel : Nat) :
     ∃ sp', ScannerSurfCorr (collectTagHandleDirectiveLoop sc handle fuel).snd sp' := by
   induction fuel generalizing sc sp handle with
@@ -537,7 +537,7 @@ theorem collectTagHandleDirectiveLoop_corr (sc : ScannerState) (sp : SurfPos)
       · exact ⟨sp, hcorr⟩
     · exact ⟨sp, hcorr⟩
 
-theorem collectTagPrefixLoop_corr (sc : ScannerState) (sp : SurfPos)
+lemma collectTagPrefixLoop_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (pfx : String) (fuel : Nat) :
     ∃ sp', ScannerSurfCorr (collectTagPrefixLoop sc pfx fuel).snd sp' := by
   induction fuel generalizing sc sp pfx with
@@ -552,7 +552,7 @@ theorem collectTagPrefixLoop_corr (sc : ScannerState) (sp : SurfPos)
 
 /-! ## §9 Directive Scanning -/
 
-theorem scanYamlDirective_corr (sc : ScannerState)
+lemma scanYamlDirective_corr (sc : ScannerState)
     (s_after_ws : ScannerState) (sp_ws : SurfPos)
     (hcorr_ws : ScannerSurfCorr s_after_ws sp_ws)
     (startPos : YamlPos) (s' : ScannerState)
@@ -584,7 +584,7 @@ theorem scanYamlDirective_corr (sc : ScannerState)
       have h := Except.ok.inj hok; subst h
       exact ⟨sp_ws2, ⟨hcorr_ws2.chars_from, hcorr_ws2.col_eq, hcorr_ws2.end_eq, hcorr_ws2.input_prefix, hcorr_ws2.indent_cols_nonneg⟩⟩
 
-theorem scanTagDirective_corr (sc : ScannerState) (sp : SurfPos)
+lemma scanTagDirective_corr (sc : ScannerState) (sp : SurfPos)
     (_hcorr : ScannerSurfCorr sc sp) (s_after_ws : ScannerState) (sp_ws : SurfPos)
     (hcorr_ws : ScannerSurfCorr s_after_ws sp_ws)
     (startPos : YamlPos) (s' : ScannerState)
@@ -613,7 +613,7 @@ theorem scanTagDirective_corr (sc : ScannerState) (sp : SurfPos)
   · have h := Except.ok.inj hok; subst h
     exact ⟨sp_val, ⟨hcorr_val.chars_from, hcorr_val.col_eq, hcorr_val.end_eq, hcorr_val.input_prefix, hcorr_val.indent_cols_nonneg⟩⟩
 
-theorem scanDirective_corr (sc : ScannerState) (sp : SurfPos)
+lemma scanDirective_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (s' : ScannerState)
     (hok : scanDirective sc = .ok s') :
     ∃ sp', ScannerSurfCorr s' sp' := by

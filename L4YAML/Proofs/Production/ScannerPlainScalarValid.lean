@@ -62,7 +62,7 @@ def PlainScalarsValid (tokens : Array (Positioned YamlToken)) : Prop :=
 
 /-! ## Monotonicity: ScalarScannable true → false -/
 
-theorem canStartPlainScalarProp_true_implies_false (c : Char) (next : Option Char) :
+lemma canStartPlainScalarProp_true_implies_false (c : Char) (next : Option Char) :
     canStartPlainScalarProp c next true → canStartPlainScalarProp c next false := by
   unfold canStartPlainScalarProp
   split
@@ -71,7 +71,7 @@ theorem canStartPlainScalarProp_true_implies_false (c : Char) (next : Option Cha
     | some n => intro ⟨h1, h2, _⟩; exact ⟨h1, h2, fun h => absurd h (by decide)⟩
   · exact id
 
-theorem validPlainFirstProp_true_implies_false (content : String) :
+lemma validPlainFirstProp_true_implies_false (content : String) :
     validPlainFirstProp content true → validPlainFirstProp content false := by
   unfold validPlainFirstProp
   cases content.toList with
@@ -86,7 +86,7 @@ theorem validPlainFirstProp_true_implies_false (content : String) :
         exact canStartPlainScalarProp_true_implies_false c none h
     | cons n _ => exact canStartPlainScalarProp_true_implies_false c (some n)
 
-theorem ScalarScannable_true_implies_false (s : Scalar) :
+lemma ScalarScannable_true_implies_false (s : Scalar) :
     ScalarScannable s true → ScalarScannable s false := by
   intro h hplain hlen
   have ⟨h1, h2, h3, _⟩ := h hplain hlen
@@ -94,7 +94,7 @@ theorem ScalarScannable_true_implies_false (s : Scalar) :
          fun h => absurd h (by decide)⟩
 
 /-- `ScalarScannable _ b` implies `ScalarScannable _ false` for any `b`. -/
-theorem ScalarScannable_any_implies_false (s : Scalar) (b : Bool) :
+lemma ScalarScannable_any_implies_false (s : Scalar) (b : Bool) :
     ScalarScannable s b → ScalarScannable s false := by
   cases b with
   | false => exact id
@@ -102,11 +102,11 @@ theorem ScalarScannable_any_implies_false (s : Scalar) (b : Bool) :
 
 /-! ## Generic lemmas -/
 
-theorem PlainScalarsValid_empty : PlainScalarsValid #[] :=
+lemma PlainScalarsValid_empty : PlainScalarsValid #[] :=
   fun _ hi => absurd hi (by simp [Array.size])
 
 /-- Prefix preservation + new tokens valid ⟹ PlainScalarsValid for extended array. -/
-theorem PlainScalarsValid_of_prefix_and_new
+lemma PlainScalarsValid_of_prefix_and_new
     (old_tokens new_tokens : Array (Positioned YamlToken))
     (h_old : PlainScalarsValid old_tokens)
     (h_mono : old_tokens.size ≤ new_tokens.size)
@@ -132,7 +132,7 @@ def psv_match (tok : Positioned YamlToken) : Prop :=
   | _ => True
 
 /-- When a token is provably not `.scalar _ .plain`, the PSV match is `True`. -/
-theorem psv_match_of_ne_plain
+lemma psv_match_of_ne_plain
     (tokens : Array (Positioned YamlToken)) (j : Nat) (hj : j < tokens.size)
     (h_ne : ∀ c, (tokens[j]'hj).val ≠ YamlToken.scalar c .plain) :
     match (tokens[j]'hj).val with
@@ -150,7 +150,7 @@ only emit non-plain-scalar tokens at new positions. Used to close the
 "new token characterization" sorry obligations in the dispatch theorems. -/
 
 /-- If a token's `.val` is not `.scalar _ .plain`, the PSV match gives `True`. -/
-theorem psv_of_not_plain (tok : Positioned YamlToken)
+lemma psv_of_not_plain (tok : Positioned YamlToken)
     (h : match tok.val with | .scalar _ .plain => False | _ => True) :
     match tok.val with
     | .scalar content .plain => ScalarScannable ⟨content, .plain, none, none, none⟩ false
@@ -161,7 +161,7 @@ theorem psv_of_not_plain (tok : Positioned YamlToken)
 
 set_option maxHeartbeats 800000 in
 /-- `unwindIndentsLoop` only emits `.blockEnd` tokens at new positions. -/
-theorem unwindIndentsLoop_new_tokens_not_plain (s : ScannerState) (col : Int) (fuel : Nat) :
+lemma unwindIndentsLoop_new_tokens_not_plain (s : ScannerState) (col : Int) (fuel : Nat) :
     ∀ (j : Nat) (hj : j < (unwindIndentsLoop s col fuel).tokens.size), j ≥ s.tokens.size →
     match ((unwindIndentsLoop s col fuel).tokens[j]'hj).val with
     | .scalar _ .plain => False
@@ -195,7 +195,7 @@ theorem unwindIndentsLoop_new_tokens_not_plain (s : ScannerState) (col : Int) (f
     · intro j hj hge; omega
 
 /-- `unwindIndents` only emits `.blockEnd` tokens at new positions. -/
-theorem unwindIndents_new_tokens_not_plain (s : ScannerState) (col : Int)
+lemma unwindIndents_new_tokens_not_plain (s : ScannerState) (col : Int)
     (j : Nat) (hj : j < (unwindIndents s col).tokens.size) (hge : j ≥ s.tokens.size) :
     match ((unwindIndents s col).tokens[j]'hj).val with
     | .scalar _ .plain => False
@@ -205,7 +205,7 @@ theorem unwindIndents_new_tokens_not_plain (s : ScannerState) (col : Int)
 
 set_option maxHeartbeats 400000 in
 /-- `saveSimpleKey` only inserts `.placeholder` tokens at new positions. -/
-theorem saveSimpleKey_new_tokens_not_plain (s : ScannerState)
+lemma saveSimpleKey_new_tokens_not_plain (s : ScannerState)
     (j : Nat) (hj : j < (saveSimpleKey s).tokens.size) (hge : j ≥ s.tokens.size) :
     match ((saveSimpleKey s).tokens[j]'hj).val with
     | .scalar _ .plain => False
@@ -230,7 +230,7 @@ theorem saveSimpleKey_new_tokens_not_plain (s : ScannerState)
       subst hj_eq
       simp [Array.getElem_push]
 
-theorem scanPlainScalar_preserves_PlainScalarsValid
+lemma scanPlainScalar_preserves_PlainScalarsValid
     (s s' : ScannerState) (h_old : PlainScalarsValid s.tokens)
     (h_ok : scanPlainScalar s = .ok s')
     (h_canStart : ∃ c, s.peek? = some c ∧
@@ -258,7 +258,7 @@ theorem scanPlainScalar_preserves_PlainScalarsValid
 
 set_option maxHeartbeats 800000 in
 /-- The token added by `scanTag` is always `.tag _ _`, never `.scalar _ .plain`. -/
-theorem scanTag_psv_match (s : ScannerState)
+lemma scanTag_psv_match (s : ScannerState)
     (s' : ScannerState) (hok : scanTag s = .ok s')
     (hj : s.tokens.size < s'.tokens.size) :
     match (s'.tokens[s.tokens.size]'hj).val with
@@ -310,7 +310,7 @@ theorem scanTag_psv_match (s : ScannerState)
     simp only [h_is_tag]
 
 set_option maxHeartbeats 1600000 in
-theorem scanBlockScalar_psv_match (s s_bs : ScannerState)
+lemma scanBlockScalar_psv_match (s s_bs : ScannerState)
     (h_bs : scanBlockScalar s = .ok s_bs)
     (hj : s.tokens.size < s_bs.tokens.size) :
     match (s_bs.tokens[s.tokens.size]'hj).val with
@@ -348,7 +348,7 @@ theorem scanBlockScalar_psv_match (s s_bs : ScannerState)
     )
 
 set_option maxHeartbeats 1600000 in
-theorem scanDoubleQuoted_psv_match (s s_dq : ScannerState)
+lemma scanDoubleQuoted_psv_match (s s_dq : ScannerState)
     (h_dq : scanDoubleQuoted s = .ok s_dq)
     (hj : s.tokens.size < s_dq.tokens.size) :
     match (s_dq.tokens[s.tokens.size]'hj).val with
@@ -378,7 +378,7 @@ theorem scanDoubleQuoted_psv_match (s s_dq : ScannerState)
     subst h_gen; trivial
 
 set_option maxHeartbeats 1600000 in
-theorem scanSingleQuoted_psv_match (s s_sq : ScannerState)
+lemma scanSingleQuoted_psv_match (s s_sq : ScannerState)
     (h_sq : scanSingleQuoted s = .ok s_sq)
     (hj : s.tokens.size < s_sq.tokens.size) :
     match (s_sq.tokens[s.tokens.size]'hj).val with
@@ -410,7 +410,7 @@ theorem scanSingleQuoted_psv_match (s s_sq : ScannerState)
 /-! ## dispatchContent preserves PlainScalarsValid -/
 
 set_option maxHeartbeats 800000 in
-theorem dispatchContent_preserves_PlainScalarsValid
+lemma dispatchContent_preserves_PlainScalarsValid
     (s : ScannerState) (c : Char) (h_peek : s.peek? = some c)
     (h_old : PlainScalarsValid s.tokens)
     (s' : ScannerState)
@@ -545,7 +545,7 @@ These functions only emit structural/flow/block tokens, never `.scalar _ .plain`
 Preservation follows from prefix preservation + the fact that no new plain scalar
 tokens are introduced. The sorry's are for characterizing new token values. -/
 
-theorem preprocess_peek (s s' : ScannerState) (c : Char)
+lemma preprocess_peek (s s' : ScannerState) (c : Char)
     (h : scanNextToken_preprocess s = .ok (some (s', c))) :
     s'.peek? = some c := by
   unfold scanNextToken_preprocess at h
@@ -570,7 +570,7 @@ theorem preprocess_peek (s s' : ScannerState) (c : Char)
             obtain ⟨rfl, rfl⟩ := h
             assumption
 
-theorem preprocess_preserves_PlainScalarsValid
+lemma preprocess_preserves_PlainScalarsValid
     (s s1 : ScannerState) (c : Char)
     (h_old : PlainScalarsValid s.tokens)
     (h_ok : scanNextToken_preprocess s = .ok (some (s1, c))) :
@@ -618,7 +618,7 @@ theorem preprocess_preserves_PlainScalarsValid
               apply psv_of_not_plain
               exact saveSimpleKey_new_tokens_not_plain v j hj (by omega)
 
-theorem scanDocumentStart_new_tok_not_plain (s : ScannerState) (j : Nat)
+lemma scanDocumentStart_new_tok_not_plain (s : ScannerState) (j : Nat)
     (hj : j < (scanDocumentStart s).tokens.size) (hge : j ≥ s.tokens.size) :
     match ((scanDocumentStart s).tokens[j]'hj).val with
     | .scalar _ .plain => False
@@ -634,7 +634,7 @@ theorem scanDocumentStart_new_tok_not_plain (s : ScannerState) (j : Nat)
   · have h_j : j = (unwindIndents s (-1)).tokens.size := by rw [emit_tokens_size, h_sk_tok] at hj; omega
     subst h_j; unfold ScannerState.emit; simp only [Array.getElem_push_eq]
 
-theorem scanDocumentStart_new_not_plain (s : ScannerState) (j : Nat)
+lemma scanDocumentStart_new_not_plain (s : ScannerState) (j : Nat)
     (hj : j < (scanDocumentStart s).tokens.size) (hge : j ≥ s.tokens.size) :
     match ((scanDocumentStart s).tokens[j]'hj).val with
     | .scalar content .plain => ScalarScannable ⟨content, .plain, none, none, none⟩ false
@@ -653,7 +653,7 @@ theorem scanDocumentStart_new_not_plain (s : ScannerState) (j : Nat)
 -- All OK branches of scanDocumentEnd return the same `result`, whose tokens are
 -- exactly the emit .documentEnd of the unwindIndents state.
 set_option maxHeartbeats 800000 in
-theorem scanDocumentEnd_tokens_eq (s : ScannerState) (s' : ScannerState)
+lemma scanDocumentEnd_tokens_eq (s : ScannerState) (s' : ScannerState)
     (h_de : scanDocumentEnd s = .ok s') :
     s'.tokens = ({ unwindIndents s (-1) with simpleKey := { possible := false } }.emit .documentEnd).tokens := by
   unfold scanDocumentEnd at h_de
@@ -666,7 +666,7 @@ theorem scanDocumentEnd_tokens_eq (s : ScannerState) (s' : ScannerState)
     | (injection h_de with h_eq; subst h_eq
        simp only [advanceN_preserves_tokens])
 
-theorem scanDocumentEnd_new_not_plain (s : ScannerState) (s' : ScannerState)
+lemma scanDocumentEnd_new_not_plain (s : ScannerState) (s' : ScannerState)
     (h_de : scanDocumentEnd s = .ok s') (j : Nat)
     (hj : j < s'.tokens.size) (hge : j ≥ s.tokens.size) :
     match (s'.tokens[j]'hj).val with
@@ -683,7 +683,7 @@ theorem scanDocumentEnd_new_not_plain (s : ScannerState) (s' : ScannerState)
   · have h_j : j = (unwindIndents s (-1)).tokens.size := by rw [emit_tokens_size, h_sk_tok] at hj; omega
     subst h_j; unfold ScannerState.emit; simp only [Array.getElem_push_eq]
 
-theorem scanDocumentEnd_new_tok_not_plain (s : ScannerState) (s' : ScannerState)
+lemma scanDocumentEnd_new_tok_not_plain (s : ScannerState) (s' : ScannerState)
     (h_de : scanDocumentEnd s = .ok s') (j : Nat)
     (hj : j < s'.tokens.size) (hge : j ≥ s.tokens.size) :
     match (s'.tokens[j]'hj).val with
@@ -700,7 +700,7 @@ theorem scanDocumentEnd_new_tok_not_plain (s : ScannerState) (s' : ScannerState)
   · have h_j : j = (unwindIndents s (-1)).tokens.size := by rw [emit_tokens_size, h_sk_tok] at hj; omega
     subst h_j; unfold ScannerState.emit; simp only [Array.getElem_push_eq]
 
-theorem scanYamlDirective_new_tok_not_plain (s s_after_ws : ScannerState) (startPos : YamlPos)
+lemma scanYamlDirective_new_tok_not_plain (s s_after_ws : ScannerState) (startPos : YamlPos)
     (s' : ScannerState) (h : scanYamlDirective s s_after_ws startPos = .ok s')
     (h_ws : s_after_ws.tokens = s.tokens) (j : Nat)
     (hj : j < s'.tokens.size) (hge : j ≥ s.tokens.size) :
@@ -737,7 +737,7 @@ theorem scanYamlDirective_new_tok_not_plain (s s_after_ws : ScannerState) (start
   have h_j : j = s.tokens.size := by omega
   simp only [h_toks, h_j, Array.getElem_push_eq]
 
-theorem scanTagDirective_new_tok_not_plain (s s_after_ws : ScannerState) (startPos : YamlPos)
+lemma scanTagDirective_new_tok_not_plain (s s_after_ws : ScannerState) (startPos : YamlPos)
     (s' : ScannerState) (h : scanTagDirective s s_after_ws startPos = .ok s')
     (h_ws : s_after_ws.tokens = s.tokens) (j : Nat)
     (hj : j < s'.tokens.size) (hge : j ≥ s.tokens.size) :
@@ -772,7 +772,7 @@ theorem scanTagDirective_new_tok_not_plain (s s_after_ws : ScannerState) (startP
   have h_j : j = s.tokens.size := by omega
   simp only [h_toks, h_j, Array.getElem_push_eq]
 
-theorem scanDirective_new_tok_not_plain (s : ScannerState) (s' : ScannerState)
+lemma scanDirective_new_tok_not_plain (s : ScannerState) (s' : ScannerState)
     (h_dir : scanDirective s = .ok s') (j : Nat)
     (hj : j < s'.tokens.size) (hge : j ≥ s.tokens.size) :
     match (s'.tokens[j]'hj).val with
@@ -806,7 +806,7 @@ theorem scanDirective_new_tok_not_plain (s : ScannerState) (s' : ScannerState)
       rw [skipToEndOfLine_preserves_tokens, h_ws_tok] at hj; omega
 
 set_option maxHeartbeats 800000 in
-theorem scanYamlDirective_new_not_plain (s s_after_ws : ScannerState) (startPos : YamlPos)
+lemma scanYamlDirective_new_not_plain (s s_after_ws : ScannerState) (startPos : YamlPos)
     (s' : ScannerState) (h : scanYamlDirective s s_after_ws startPos = .ok s')
     (h_ws : s_after_ws.tokens = s.tokens) (j : Nat)
     (hj : j < s'.tokens.size) (hge : j ≥ s.tokens.size) :
@@ -854,7 +854,7 @@ theorem scanYamlDirective_new_not_plain (s s_after_ws : ScannerState) (startPos 
         collectVersionMinorLoop_preserves_tokens,
         collectVersionMajorLoop_preserves_tokens, h_ws, Array.getElem_push_eq]
 
-theorem scanTagDirective_new_not_plain (s s_after_ws : ScannerState) (startPos : YamlPos)
+lemma scanTagDirective_new_not_plain (s s_after_ws : ScannerState) (startPos : YamlPos)
     (s' : ScannerState) (h : scanTagDirective s s_after_ws startPos = .ok s')
     (h_ws : s_after_ws.tokens = s.tokens) (j : Nat)
     (hj : j < s'.tokens.size) (hge : j ≥ s.tokens.size) :
@@ -900,7 +900,7 @@ theorem scanTagDirective_new_not_plain (s s_after_ws : ScannerState) (startPos :
       collectTagPrefixLoop_preserves_tokens,
       collectTagHandleDirectiveLoop_preserves_tokens, h_ws, Array.getElem_push_eq]
 
-theorem scanDirective_new_not_plain (s : ScannerState) (s' : ScannerState)
+lemma scanDirective_new_not_plain (s : ScannerState) (s' : ScannerState)
     (h_dir : scanDirective s = .ok s') (j : Nat)
     (hj : j < s'.tokens.size) (hge : j ≥ s.tokens.size) :
     match (s'.tokens[j]'hj).val with
@@ -935,7 +935,7 @@ theorem scanDirective_new_not_plain (s : ScannerState) (s' : ScannerState)
       rw [skipToEndOfLine_preserves_tokens, h_ws_tok] at hj; omega
 
 set_option maxHeartbeats 800000 in
-theorem dispatchStructural_preserves_PlainScalarsValid
+lemma dispatchStructural_preserves_PlainScalarsValid
     (s : ScannerState) (c : Char) (h_old : PlainScalarsValid s.tokens)
     (s' : ScannerState)
     (h_ok : scanNextToken_dispatchStructural s c = .ok (some s')) :
@@ -959,7 +959,7 @@ theorem dispatchStructural_preserves_PlainScalarsValid
     -- scanDirective goals: have heq✝ : scanDirective s = .ok v✝
     all_goals (rename_i v h_dir; exact scanDirective_new_not_plain s v h_dir j hj hge)
 
-theorem dispatchFlowIndicators_preserves_PlainScalarsValid
+lemma dispatchFlowIndicators_preserves_PlainScalarsValid
     (s : ScannerState) (c : Char) (h_old : PlainScalarsValid s.tokens)
     (s' : ScannerState)
     (h_ok : scanNextToken_dispatchFlowIndicators s c = .ok (some s')) :
@@ -1019,7 +1019,7 @@ theorem dispatchFlowIndicators_preserves_PlainScalarsValid
 
 /-! ### Block indicators: helper lemmas for dispatchBlockIndicators -/
 
-theorem PlainScalarsValid_setIfInBounds_non_plain
+lemma PlainScalarsValid_setIfInBounds_non_plain
     (tokens : Array (Positioned YamlToken))
     (h_old : PlainScalarsValid tokens)
     (idx : Nat) (val : Positioned YamlToken)
@@ -1040,7 +1040,7 @@ theorem PlainScalarsValid_setIfInBounds_non_plain
     | _ => trivial
   · simp only [h_eq, ↓reduceIte]; exact h_old i h_i_lt
 
-theorem PlainScalarsValid_push_non_plain
+lemma PlainScalarsValid_push_non_plain
     (tokens : Array (Positioned YamlToken))
     (h_old : PlainScalarsValid tokens)
     (val : Positioned YamlToken)
@@ -1060,7 +1060,7 @@ theorem PlainScalarsValid_push_non_plain
       | _ => trivial
     | _ => trivial
 
-theorem pushSequenceIndent_preserves_PlainScalarsValid
+lemma pushSequenceIndent_preserves_PlainScalarsValid
     (s : ScannerState) (col : Int) (h_old : PlainScalarsValid s.tokens) :
     PlainScalarsValid (pushSequenceIndent s col).tokens := by
   unfold pushSequenceIndent
@@ -1070,7 +1070,7 @@ theorem pushSequenceIndent_preserves_PlainScalarsValid
       ⟨s.currentPos, .blockSequenceStart, s.currentPos⟩ (by trivial)
   · exact h_old
 
-theorem pushMappingIndent_preserves_PlainScalarsValid
+lemma pushMappingIndent_preserves_PlainScalarsValid
     (s : ScannerState) (col : Int) (h_old : PlainScalarsValid s.tokens) :
     PlainScalarsValid (pushMappingIndent s col).tokens := by
   unfold pushMappingIndent
@@ -1081,7 +1081,7 @@ theorem pushMappingIndent_preserves_PlainScalarsValid
   · exact h_old
 
 set_option maxHeartbeats 400000 in
-theorem scanBlockEntry_preserves_PlainScalarsValid
+lemma scanBlockEntry_preserves_PlainScalarsValid
     (s : ScannerState) (s' : ScannerState)
     (h_old : PlainScalarsValid s.tokens)
     (h_ok : scanBlockEntry s = .ok s') :
@@ -1101,7 +1101,7 @@ theorem scanBlockEntry_preserves_PlainScalarsValid
     exact h_old
 
 set_option maxHeartbeats 800000 in
-theorem scanKey_preserves_PlainScalarsValid
+lemma scanKey_preserves_PlainScalarsValid
     (s : ScannerState) (s' : ScannerState)
     (h_old : PlainScalarsValid s.tokens)
     (h_ok : scanKey s = .ok s') :
@@ -1130,7 +1130,7 @@ theorem scanKey_preserves_PlainScalarsValid
       simp only [advance_preserves_tokens]
       apply PlainScalarsValid_push_non_plain _ _ _ (by trivial); exact h_old
 
-theorem scanValuePrepare_preserves_PlainScalarsValid
+lemma scanValuePrepare_preserves_PlainScalarsValid
     (s : ScannerState) (h_old : PlainScalarsValid s.tokens) :
     PlainScalarsValid (scanValuePrepare s).tokens := by
   unfold scanValuePrepare
@@ -1151,7 +1151,7 @@ theorem scanValuePrepare_preserves_PlainScalarsValid
       · exact h_old
 
 set_option maxHeartbeats 800000 in
-theorem scanValue_preserves_PlainScalarsValid
+lemma scanValue_preserves_PlainScalarsValid
     (s : ScannerState) (s' : ScannerState)
     (h_old : PlainScalarsValid s.tokens)
     (h_ok : scanValue s = .ok s') :
@@ -1173,7 +1173,7 @@ set_option maxHeartbeats 400000 in
 /-- Block indicators: uses `setIfInBounds` which may overwrite tokens, but only
     with `.key`/`.blockMappingStart` (never `.scalar _ .plain`).
     Separate treatment needed because prefix preservation has SimpleKeyAbove condition. -/
-theorem dispatchBlockIndicators_preserves_PlainScalarsValid
+lemma dispatchBlockIndicators_preserves_PlainScalarsValid
     (s : ScannerState) (c : Char) (h_old : PlainScalarsValid s.tokens)
     (s' : ScannerState)
     (h_ok : scanNextToken_dispatchBlockIndicators s c = .ok (some s')) :
@@ -1199,7 +1199,7 @@ theorem dispatchBlockIndicators_preserves_PlainScalarsValid
 
 /-! ## scanNextToken preserves PlainScalarsValid -/
 
-theorem allowDir_ite_preserves_PlainScalarsValid (s : ScannerState)
+lemma allowDir_ite_preserves_PlainScalarsValid (s : ScannerState)
     (h : PlainScalarsValid s.tokens) :
     PlainScalarsValid (if s.allowDirectives then
       { s with allowDirectives := false, documentEverStarted := true }
@@ -1207,7 +1207,7 @@ theorem allowDir_ite_preserves_PlainScalarsValid (s : ScannerState)
   split <;> exact h
 
 set_option maxHeartbeats 400000 in
-theorem scanNextToken_preserves_PlainScalarsValid :
+lemma scanNextToken_preserves_PlainScalarsValid :
     ∀ (s s' : ScannerState),
       PlainScalarsValid s.tokens →
       scanNextToken s = .ok (some s') →
@@ -1244,7 +1244,7 @@ theorem scanNextToken_preserves_PlainScalarsValid :
 
 /-! ## scanLoop preserves PlainScalarsValid -/
 
-theorem finalEmit_preserves_PlainScalarsValid (s : ScannerState)
+lemma finalEmit_preserves_PlainScalarsValid (s : ScannerState)
     (h : PlainScalarsValid s.tokens) :
     PlainScalarsValid ((unwindIndents s (-1)).emit .streamEnd).tokens := by
   apply PlainScalarsValid_of_prefix_and_new s.tokens _ h (by
@@ -1264,7 +1264,7 @@ theorem finalEmit_preserves_PlainScalarsValid (s : ScannerState)
         omega
       subst h_j; simp [ScannerState.emit, Array.getElem_push_eq]
 
-theorem scanLoop_preserves_PlainScalarsValid
+lemma scanLoop_preserves_PlainScalarsValid
     (s : ScannerState) (fuel : Nat)
     (tokens : Array (Positioned YamlToken))
     (h_old : PlainScalarsValid s.tokens)
@@ -1287,7 +1287,7 @@ theorem scanLoop_preserves_PlainScalarsValid
 
 /-! ## scan and scanFiltered -/
 
-theorem scan_all_plain_scalars_valid (input : String)
+lemma scan_all_plain_scalars_valid (input : String)
     (tokens : Array (Positioned YamlToken))
     (h : scan input = .ok tokens) :
     PlainScalarsValid tokens := by
@@ -1327,7 +1327,7 @@ theorem scan_all_plain_scalars_valid (input : String)
 
     **Status**: The chain architecture is complete. Remaining sorries are for
     non-plain token characterization (structurally obvious) and scan setup. -/
-theorem scan_plain_scalar_valid (input : String)
+lemma scan_plain_scalar_valid (input : String)
     (tokens : Array (Positioned YamlToken))
     (h : Scanner.scanFiltered input = .ok tokens)
     (i : Nat) (hi : i < tokens.size) :
@@ -1418,7 +1418,7 @@ def FlowBracketsMatched (tokens : Array (Positioned YamlToken)) : Prop :=
 
 /-! ### flowNesting stability -/
 
-theorem FlowContextPSV_empty : FlowContextPSV #[] :=
+lemma FlowContextPSV_empty : FlowContextPSV #[] :=
   fun _ hi => absurd hi (by simp [Array.size])
 
 /-- `flowNesting.go` is stable under prefix-preserving array extension.
@@ -1429,7 +1429,7 @@ theorem FlowContextPSV_empty : FlowContextPSV #[] :=
     `go new pos target depth` and `go old pos target depth` inspect
     `tokens[pos].val` (identical by `h_prefix_val` since `pos < old.size`),
     compute the same `depth'`, and recurse with `pos + 1`. -/
-theorem flowNesting_go_prefix_stable
+lemma flowNesting_go_prefix_stable
     (old new : Array (Positioned YamlToken))
     (h_mono : old.size ≤ new.size)
     (h_prefix_val : ∀ j (hj : j < old.size),
@@ -1454,7 +1454,7 @@ theorem flowNesting_go_prefix_stable
       exact ih (pos + 1) _ (by omega)
 
 /-- `flowNesting` at positions `≤ old.size` is unchanged by array extension. -/
-theorem flowNesting_prefix_stable
+lemma flowNesting_prefix_stable
     (old new : Array (Positioned YamlToken))
     (h_mono : old.size ≤ new.size)
     (h_prefix_val : ∀ j (hj : j < old.size),
@@ -1467,7 +1467,7 @@ theorem flowNesting_prefix_stable
 /-! ### FlowContextPSV extension lemma -/
 
 /-- `FlowContextPSV` transfers through prefix-preserving array extension. -/
-theorem FlowContextPSV_of_prefix_and_new
+lemma FlowContextPSV_of_prefix_and_new
     (old_tokens new_tokens : Array (Positioned YamlToken))
     (h_old : FlowContextPSV old_tokens)
     (h_mono : old_tokens.size ≤ new_tokens.size)
@@ -1494,7 +1494,7 @@ theorem FlowContextPSV_of_prefix_and_new
 /-! ### flowNesting extension lemmas -/
 
 /-- `flowNesting.go` on an out-of-bounds range just returns `depth`. -/
-theorem flowNesting_go_oob (tokens : Array (Positioned YamlToken))
+lemma flowNesting_go_oob (tokens : Array (Positioned YamlToken))
     (pos target depth : Nat) (h : pos ≥ tokens.size) :
     flowNesting.go tokens pos target depth = depth := by
   generalize hk : target - pos = k
@@ -1507,7 +1507,7 @@ theorem flowNesting_go_oob (tokens : Array (Positioned YamlToken))
       show ¬(pos < tokens.size) by omega, dite_false]
 
 /-- One-step unfolding of `flowNesting.go` when `pos < tokens.size` and `pos < target`. -/
-theorem flowNesting_go_step
+lemma flowNesting_go_step
     (tokens : Array (Positioned YamlToken))
     (pos target depth : Nat) (h_pos : pos < tokens.size) (h_tgt : pos < target) :
     flowNesting.go tokens pos target depth =
@@ -1521,7 +1521,7 @@ theorem flowNesting_go_step
             eq_true h_pos, dite_true]
 
 /-- `flowNesting.go` returns `depth` when `pos ≥ target`. -/
-theorem flowNesting_go_ge_target (tokens : Array (Positioned YamlToken))
+lemma flowNesting_go_ge_target (tokens : Array (Positioned YamlToken))
     (pos target depth : Nat) (h : pos ≥ target) :
     flowNesting.go tokens pos target depth = depth := by
   unfold flowNesting.go; simp [h]
@@ -1532,7 +1532,7 @@ theorem flowNesting_go_ge_target (tokens : Array (Positioned YamlToken))
     Uses `flowNesting_go_step` to unfold one step at a time, avoiding the
     cascading-unfold problem where `unfold` on the full goal unfolds ALL
     `flowNesting.go` occurrences simultaneously. -/
-theorem flowNesting_go_split
+lemma flowNesting_go_split
     (tokens : Array (Positioned YamlToken))
     (pos mid target depth : Nat) (h1 : pos ≤ mid) (h2 : mid ≤ target) :
     flowNesting.go tokens pos target depth =
@@ -1558,7 +1558,7 @@ theorem flowNesting_go_split
                   flowNesting_go_oob tokens mid target depth (by omega)]
 
 /-- Processing a single pushed token at the end of the array. -/
-theorem flowNesting_go_single_push
+lemma flowNesting_go_single_push
     (tokens : Array (Positioned YamlToken)) (t : Positioned YamlToken)
     (depth : Nat) :
     flowNesting.go (tokens.push t) tokens.size (tokens.size + 1) depth =
@@ -1574,7 +1574,7 @@ theorem flowNesting_go_single_push
   simp only [show tokens.size + 1 ≥ tokens.size + 1 from Nat.le_refl _, ite_true]
 
 /-- How `flowNesting` changes when a single token is appended to the array. -/
-theorem flowNesting_push (tokens : Array (Positioned YamlToken)) (t : Positioned YamlToken) :
+lemma flowNesting_push (tokens : Array (Positioned YamlToken)) (t : Positioned YamlToken) :
     flowNesting (tokens.push t) (tokens.size + 1) =
     match t.val with
     | .flowSequenceStart | .flowMappingStart => flowNesting tokens tokens.size + 1
@@ -1592,7 +1592,7 @@ theorem flowNesting_push (tokens : Array (Positioned YamlToken)) (t : Positioned
   exact flowNesting_go_single_push tokens t _
 
 /-- Appending a non-flow token preserves `flowNesting` at the old size. -/
-theorem flowNesting_push_non_flow (tokens : Array (Positioned YamlToken))
+lemma flowNesting_push_non_flow (tokens : Array (Positioned YamlToken))
     (t : Positioned YamlToken)
     (h1 : t.val ≠ .flowSequenceStart) (h2 : t.val ≠ .flowMappingStart)
     (h3 : t.val ≠ .flowSequenceEnd) (h4 : t.val ≠ .flowMappingEnd) :
@@ -1602,7 +1602,7 @@ theorem flowNesting_push_non_flow (tokens : Array (Positioned YamlToken))
 
 /-- `FlowNestingInv` is preserved when a non-flow token is emitted
     and `flowLevel` is unchanged. -/
-theorem FlowNestingInv_emit_non_flow (s : ScannerState) (tok : YamlToken)
+lemma FlowNestingInv_emit_non_flow (s : ScannerState) (tok : YamlToken)
     (h_fni : FlowNestingInv s)
     (h1 : tok ≠ .flowSequenceStart) (h2 : tok ≠ .flowMappingStart)
     (h3 : tok ≠ .flowSequenceEnd) (h4 : tok ≠ .flowMappingEnd) :
@@ -1616,7 +1616,7 @@ theorem FlowNestingInv_emit_non_flow (s : ScannerState) (tok : YamlToken)
 /-! ### FlowInv helper lemmas -/
 
 /-- When a token is provably not `.scalar _ .plain`, the FlowContextPSV match is `True`. -/
-theorem fpsv_of_not_plain (tok : Positioned YamlToken)
+lemma fpsv_of_not_plain (tok : Positioned YamlToken)
     (h : match tok.val with | .scalar _ .plain => False | _ => True) :
     match tok.val with
     | .scalar content .plain =>
@@ -1627,7 +1627,7 @@ theorem fpsv_of_not_plain (tok : Positioned YamlToken)
   rename_i content style; cases style <;> simp_all
 
 /-- `flowNesting.go` on non-flow tokens returns depth unchanged. -/
-theorem flowNesting_go_non_flow
+lemma flowNesting_go_non_flow
     (tokens : Array (Positioned YamlToken)) (pos target depth : Nat)
     (h_nf : ∀ j, pos ≤ j → j < target → (hj : j < tokens.size) →
       (tokens[j]'hj).val ≠ .flowSequenceStart ∧
@@ -1655,7 +1655,7 @@ theorem flowNesting_go_non_flow
 
 /-- `FlowNestingInv` is preserved through any extension that adds only non-flow tokens
     and preserves flowLevel. -/
-theorem FlowNestingInv_of_non_flow_extension
+lemma FlowNestingInv_of_non_flow_extension
     (s s' : ScannerState)
     (h_fni : FlowNestingInv s)
     (h_mono : s.tokens.size ≤ s'.tokens.size)
@@ -1678,7 +1678,7 @@ theorem FlowNestingInv_of_non_flow_extension
   exact h_fni
 
 /-- `unwindIndentsLoop` preserves `FlowNestingInv`. -/
-theorem unwindIndentsLoop_preserves_FlowNestingInv (s : ScannerState) (col : Int) (fuel : Nat)
+lemma unwindIndentsLoop_preserves_FlowNestingInv (s : ScannerState) (col : Int) (fuel : Nat)
     (h_fni : FlowNestingInv s) :
     FlowNestingInv (unwindIndentsLoop s col fuel) := by
   induction fuel generalizing s with
@@ -1691,14 +1691,14 @@ theorem unwindIndentsLoop_preserves_FlowNestingInv (s : ScannerState) (col : Int
     · exact h_fni
 
 /-- `unwindIndents` preserves `FlowNestingInv`. -/
-theorem unwindIndents_preserves_FlowNestingInv (s : ScannerState) (col : Int)
+lemma unwindIndents_preserves_FlowNestingInv (s : ScannerState) (col : Int)
     (h_fni : FlowNestingInv s) :
     FlowNestingInv (unwindIndents s col) := by
   unfold unwindIndents
   exact unwindIndentsLoop_preserves_FlowNestingInv s col s.indents.size h_fni
 
 /-- `saveSimpleKey` preserves `FlowNestingInv`. -/
-theorem saveSimpleKey_preserves_FlowNestingInv (s : ScannerState)
+lemma saveSimpleKey_preserves_FlowNestingInv (s : ScannerState)
     (h_fni : FlowNestingInv s) :
     FlowNestingInv (saveSimpleKey s) := by
   unfold FlowNestingInv at *
@@ -1724,7 +1724,7 @@ theorem saveSimpleKey_preserves_FlowNestingInv (s : ScannerState)
     exact h_fni
 
 /-- Preprocessing preserves `FlowNestingInv`. -/
-theorem preprocess_preserves_FlowNestingInv
+lemma preprocess_preserves_FlowNestingInv
     (s s1 : ScannerState) (c : Char)
     (h_fni : FlowNestingInv s)
     (h_ok : scanNextToken_preprocess s = .ok (some (s1, c))) :
@@ -1760,7 +1760,7 @@ theorem preprocess_preserves_FlowNestingInv
             exact saveSimpleKey_preserves_FlowNestingInv v h_fni_v
 
 /-- Preprocessing preserves `FlowContextPSV`. -/
-theorem preprocess_preserves_FlowContextPSV
+lemma preprocess_preserves_FlowContextPSV
     (s s1 : ScannerState) (c : Char)
     (h_old : FlowContextPSV s.tokens)
     (h_ok : scanNextToken_preprocess s = .ok (some (s1, c))) :
@@ -1808,7 +1808,7 @@ theorem preprocess_preserves_FlowContextPSV
                 (saveSimpleKey_new_tokens_not_plain v j hj (by omega))
 
 /-- `allowDirectives` conditional preserves `FlowNestingInv` (tokens and flowLevel unchanged). -/
-theorem allowDir_ite_preserves_FlowNestingInv (s : ScannerState)
+lemma allowDir_ite_preserves_FlowNestingInv (s : ScannerState)
     (h : FlowNestingInv s) :
     FlowNestingInv (if s.allowDirectives then
       { s with allowDirectives := false, documentEverStarted := true }
@@ -1816,7 +1816,7 @@ theorem allowDir_ite_preserves_FlowNestingInv (s : ScannerState)
   split <;> exact h
 
 /-- `allowDirectives` conditional preserves `FlowContextPSV` (tokens unchanged). -/
-theorem allowDir_ite_preserves_FlowContextPSV (s : ScannerState)
+lemma allowDir_ite_preserves_FlowContextPSV (s : ScannerState)
     (h : FlowContextPSV s.tokens) :
     FlowContextPSV (if s.allowDirectives then
       { s with allowDirectives := false, documentEverStarted := true }
@@ -1830,7 +1830,7 @@ indicators, and `flowLevel` is unchanged. `FlowNestingInv_of_non_flow_extension`
 handles all three. -/
 
 /-- Unwinding new tokens from `unwindIndents` are non-flow. -/
-theorem unwindIndentsLoop_new_tokens_not_flow (s : ScannerState) (col : Int) (fuel : Nat) :
+lemma unwindIndentsLoop_new_tokens_not_flow (s : ScannerState) (col : Int) (fuel : Nat) :
     ∀ (j : Nat) (hj : j < (unwindIndentsLoop s col fuel).tokens.size), j ≥ s.tokens.size →
     ((unwindIndentsLoop s col fuel).tokens[j]'hj).val ≠ .flowSequenceStart ∧
     ((unwindIndentsLoop s col fuel).tokens[j]'hj).val ≠ .flowMappingStart ∧
@@ -1863,7 +1863,7 @@ theorem unwindIndentsLoop_new_tokens_not_flow (s : ScannerState) (col : Int) (fu
     · intro j hj hge; omega
 
 /-- `unwindIndents` new tokens are non-flow. -/
-theorem unwindIndents_new_tokens_not_flow (s : ScannerState) (col : Int)
+lemma unwindIndents_new_tokens_not_flow (s : ScannerState) (col : Int)
     (j : Nat) (hj : j < (unwindIndents s col).tokens.size) (hge : j ≥ s.tokens.size) :
     ((unwindIndents s col).tokens[j]'hj).val ≠ .flowSequenceStart ∧
     ((unwindIndents s col).tokens[j]'hj).val ≠ .flowMappingStart ∧
@@ -1873,7 +1873,7 @@ theorem unwindIndents_new_tokens_not_flow (s : ScannerState) (col : Int)
   exact unwindIndentsLoop_new_tokens_not_flow s col s.indents.size j hj hge
 
 /-- `saveSimpleKey` new tokens are non-flow (.placeholder only). -/
-theorem saveSimpleKey_new_tokens_not_flow (s : ScannerState)
+lemma saveSimpleKey_new_tokens_not_flow (s : ScannerState)
     (j : Nat) (hj : j < (saveSimpleKey s).tokens.size) (hge : j ≥ s.tokens.size) :
     ((saveSimpleKey s).tokens[j]'hj).val ≠ .flowSequenceStart ∧
     ((saveSimpleKey s).tokens[j]'hj).val ≠ .flowMappingStart ∧
@@ -1906,13 +1906,13 @@ indicators, and `flowLevel` is unchanged. The flow indicators dispatch changes
 both and requires specific analysis. -/
 
 /-- `advanceN` preserves `FlowNestingInv` (preserves both tokens and flowLevel). -/
-theorem advanceN_preserves_FlowNestingInv (s : ScannerState) (n : Nat)
+lemma advanceN_preserves_FlowNestingInv (s : ScannerState) (n : Nat)
     (h : FlowNestingInv s) : FlowNestingInv (s.advanceN n) := by
   unfold FlowNestingInv at *
   rw [advanceN_preserves_tokens, advanceN_preserves_flowLevel]; exact h
 
 /-- `scanDocumentStart` preserves `FlowNestingInv`. -/
-theorem scanDocumentStart_preserves_FlowNestingInv (s : ScannerState)
+lemma scanDocumentStart_preserves_FlowNestingInv (s : ScannerState)
     (h : FlowNestingInv s) : FlowNestingInv (scanDocumentStart s) := by
   unfold scanDocumentStart
   apply advanceN_preserves_FlowNestingInv
@@ -1926,7 +1926,7 @@ set_option maxHeartbeats 800000 in
 /-- `scanDocumentEnd` preserves `FlowNestingInv` on success.
     The function chains: unwindIndents → simpleKey update → emit .documentEnd → advanceN 3 →
     field update. Validation (skipDocEndWhitespace + peek) may throw but doesn't change result. -/
-theorem scanDocumentEnd_preserves_FlowNestingInv (s s' : ScannerState)
+lemma scanDocumentEnd_preserves_FlowNestingInv (s s' : ScannerState)
     (h_fni : FlowNestingInv s) (h_ok : scanDocumentEnd s = .ok s') :
     FlowNestingInv s' := by
   unfold scanDocumentEnd at h_ok
@@ -1951,7 +1951,7 @@ theorem scanDocumentEnd_preserves_FlowNestingInv (s s' : ScannerState)
 
 set_option maxHeartbeats 800000 in
 /-- `scanDirective` preserves `flowLevel` on success. -/
-theorem scanDirective_preserves_flowLevel (s s' : ScannerState)
+lemma scanDirective_preserves_flowLevel (s s' : ScannerState)
     (h : scanDirective s = .ok s') : s'.flowLevel = s.flowLevel := by
   unfold scanDirective at h
   split at h
@@ -2036,7 +2036,7 @@ theorem scanDirective_preserves_flowLevel (s s' : ScannerState)
         simp only [Except.ok.injEq] at h; subst h
         rw [skipToEndOfLine_preserves_flowLevel, h_ws_fl]
 
-theorem scanYamlDirective_new_tokens_not_flow (s s_after_ws : ScannerState) (startPos : YamlPos)
+lemma scanYamlDirective_new_tokens_not_flow (s s_after_ws : ScannerState) (startPos : YamlPos)
     (s' : ScannerState) (h : scanYamlDirective s s_after_ws startPos = .ok s')
     (h_ws : s_after_ws.tokens = s.tokens) (j : Nat)
     (hj : j < s'.tokens.size) (hge : j ≥ s.tokens.size) :
@@ -2077,7 +2077,7 @@ theorem scanYamlDirective_new_tokens_not_flow (s s_after_ws : ScannerState) (sta
     simp only [h_toks, h_j, Array.getElem_push_eq]
     exact ⟨by nofun, by nofun, by nofun, by nofun⟩
 
-theorem scanTagDirective_new_tokens_not_flow (s s_after_ws : ScannerState) (startPos : YamlPos)
+lemma scanTagDirective_new_tokens_not_flow (s s_after_ws : ScannerState) (startPos : YamlPos)
     (s' : ScannerState) (h : scanTagDirective s s_after_ws startPos = .ok s')
     (h_ws : s_after_ws.tokens = s.tokens) (j : Nat)
     (hj : j < s'.tokens.size) (hge : j ≥ s.tokens.size) :
@@ -2118,7 +2118,7 @@ set_option maxHeartbeats 800000 in
 /-- `scanDirective` emits non-flow tokens.
     Proved by the same structural decomposition as `scanDirective_new_not_plain`:
     each branch emits `.versionDirective`, `.tagDirective`, or no new tokens. -/
-theorem scanDirective_new_tokens_not_flow (s s' : ScannerState)
+lemma scanDirective_new_tokens_not_flow (s s' : ScannerState)
     (h : scanDirective s = .ok s')
     (j : Nat) (hj : j < s'.tokens.size) (hge : j ≥ s.tokens.size) :
     (s'.tokens[j]'hj).val ≠ .flowSequenceStart ∧
@@ -2155,7 +2155,7 @@ theorem scanDirective_new_tokens_not_flow (s s' : ScannerState)
 
 set_option maxHeartbeats 800000 in
 /-- Structural dispatch preserves `FlowInv`. -/
-theorem dispatchStructural_preserves_FlowInv
+lemma dispatchStructural_preserves_FlowInv
     (s : ScannerState) (c : Char)
     (h_fpsv : FlowContextPSV s.tokens) (h_fni : FlowNestingInv s)
     (s' : ScannerState)
@@ -2214,7 +2214,7 @@ theorem dispatchStructural_preserves_FlowInv
                  (fun j hj hge => scanDirective_new_tokens_not_flow s v h_dir j hj hge))
 
 /-- Flow indicators dispatch preserves `FlowInv`. -/
-theorem dispatchFlowIndicators_preserves_FlowInv
+lemma dispatchFlowIndicators_preserves_FlowInv
     (s : ScannerState) (c : Char)
     (h_fpsv : FlowContextPSV s.tokens) (h_fni : FlowNestingInv s)
     (s' : ScannerState)
@@ -2394,7 +2394,7 @@ theorem dispatchFlowIndicators_preserves_FlowInv
 
 -- Helper lemmas for content tokens
 
-theorem collectAnchorNameLoop_preserves_flowLevel (s : ScannerState) (acc : String) (fuel : Nat) :
+lemma collectAnchorNameLoop_preserves_flowLevel (s : ScannerState) (acc : String) (fuel : Nat) :
     (collectAnchorNameLoop s acc fuel).snd.flowLevel = s.flowLevel := by
   induction fuel generalizing s acc with
   | zero => unfold collectAnchorNameLoop; rfl
@@ -2406,7 +2406,7 @@ theorem collectAnchorNameLoop_preserves_flowLevel (s : ScannerState) (acc : Stri
       · rfl
     · rfl
 
-theorem collectVerbatimTagLoop_preserves_flowLevel (s : ScannerState) (uri : String) (fuel : Nat) :
+lemma collectVerbatimTagLoop_preserves_flowLevel (s : ScannerState) (uri : String) (fuel : Nat) :
     (collectVerbatimTagLoop s uri fuel).snd.snd.flowLevel = s.flowLevel := by
   induction fuel generalizing s uri with
   | zero => unfold collectVerbatimTagLoop; rfl
@@ -2421,7 +2421,7 @@ theorem collectVerbatimTagLoop_preserves_flowLevel (s : ScannerState) (uri : Str
     · -- none
       rfl
 
-theorem collectTagSuffixLoop_preserves_flowLevel (s : ScannerState) (suffix : String) (fuel : Nat) :
+lemma collectTagSuffixLoop_preserves_flowLevel (s : ScannerState) (suffix : String) (fuel : Nat) :
     (collectTagSuffixLoop s suffix fuel).snd.flowLevel = s.flowLevel := by
   induction fuel generalizing s suffix with
   | zero => unfold collectTagSuffixLoop; rfl
@@ -2433,7 +2433,7 @@ theorem collectTagSuffixLoop_preserves_flowLevel (s : ScannerState) (suffix : St
       · rfl
     · rfl
 
-theorem collectTagHandleLoop_preserves_flowLevel (s : ScannerState) (chars : String) (fuel : Nat) :
+lemma collectTagHandleLoop_preserves_flowLevel (s : ScannerState) (chars : String) (fuel : Nat) :
     (collectTagHandleLoop s chars fuel).snd.snd.flowLevel = s.flowLevel := by
   induction fuel generalizing s chars with
   | zero => unfold collectTagHandleLoop; rfl
@@ -2446,7 +2446,7 @@ theorem collectTagHandleLoop_preserves_flowLevel (s : ScannerState) (chars : Str
       · rfl
     · rfl
 
-theorem scanAnchorOrAlias_preserves_flowLevel (s : ScannerState) (isAnchor : Bool)
+lemma scanAnchorOrAlias_preserves_flowLevel (s : ScannerState) (isAnchor : Bool)
     (s' : ScannerState) (hok : scanAnchorOrAlias s isAnchor = .ok s') :
     s'.flowLevel = s.flowLevel := by
   unfold scanAnchorOrAlias at hok; dsimp only [] at hok
@@ -2455,7 +2455,7 @@ theorem scanAnchorOrAlias_preserves_flowLevel (s : ScannerState) (isAnchor : Boo
   · have h := Except.ok.inj hok; subst h; dsimp only []
     simp [ScannerState.emitAt, collectAnchorNameLoop_preserves_flowLevel, advance_preserves_flowLevel]
 
-theorem scanAnchorOrAlias_new_token_not_plain (s : ScannerState) (isAnchor : Bool)
+lemma scanAnchorOrAlias_new_token_not_plain (s : ScannerState) (isAnchor : Bool)
     (s' : ScannerState) (hok : scanAnchorOrAlias s isAnchor = .ok s') :
     let tok := s'.tokens[s.tokens.size]'(by
       have := ScanHelpers.scanAnchorOrAlias_adds_one_token s isAnchor s' hok; omega)
@@ -2472,7 +2472,7 @@ theorem scanAnchorOrAlias_new_token_not_plain (s : ScannerState) (isAnchor : Boo
 
 -- Individual helper lemmas for content scan functions
 
-theorem scanAnchorOrAlias_preserves_FlowInv (s : ScannerState) (isAnchor : Bool)
+lemma scanAnchorOrAlias_preserves_FlowInv (s : ScannerState) (isAnchor : Bool)
     (s' : ScannerState) (hok : scanAnchorOrAlias s isAnchor = .ok s')
     (h_fpsv : FlowContextPSV s.tokens) (h_fni : FlowNestingInv s) :
     FlowContextPSV s'.tokens ∧
@@ -2509,7 +2509,7 @@ theorem scanAnchorOrAlias_preserves_FlowInv (s : ScannerState) (isAnchor : Bool)
       split <;> (rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, _, s.currentPos⟩
              (by nofun) (by nofun) (by nofun) (by nofun)]; exact h_fni)
 
-theorem scanVerbatimTag_preserves_flowLevel (s : ScannerState) (startPos : YamlPos)
+lemma scanVerbatimTag_preserves_flowLevel (s : ScannerState) (startPos : YamlPos)
     (s_vt : ScannerState) (hok : scanVerbatimTag s startPos = .ok s_vt) :
     s_vt.flowLevel = s.flowLevel := by
   unfold scanVerbatimTag at hok; dsimp only [] at hok
@@ -2521,12 +2521,12 @@ theorem scanVerbatimTag_preserves_flowLevel (s : ScannerState) (startPos : YamlP
       simp [ScannerState.emitAt,
             collectVerbatimTagLoop_preserves_flowLevel, advance_preserves_flowLevel]
 
-theorem scanSecondaryTag_preserves_flowLevel (s : ScannerState) (startPos : YamlPos) :
+lemma scanSecondaryTag_preserves_flowLevel (s : ScannerState) (startPos : YamlPos) :
     (scanSecondaryTag s startPos).flowLevel = s.flowLevel := by
   unfold scanSecondaryTag
   simp [ScannerState.emitAt, collectTagSuffixLoop_preserves_flowLevel, advance_preserves_flowLevel]
 
-theorem scanNamedTag_preserves_flowLevel (s : ScannerState) (startPos : YamlPos) (inputEnd : Nat) :
+lemma scanNamedTag_preserves_flowLevel (s : ScannerState) (startPos : YamlPos) (inputEnd : Nat) :
     (scanNamedTag s startPos inputEnd).flowLevel = s.flowLevel := by
   unfold scanNamedTag
   generalize h_handle : (collectTagHandleLoop s "" (inputEnd - s.offset)) = handle_result
@@ -2539,7 +2539,7 @@ theorem scanNamedTag_preserves_flowLevel (s : ScannerState) (startPos : YamlPos)
           collectTagSuffixLoop_preserves_flowLevel, h_fl]
   · simp [ScannerState.emitAt, h_fl]
 
-theorem scanTag_preserves_flowLevel (s : ScannerState)
+lemma scanTag_preserves_flowLevel (s : ScannerState)
     (s' : ScannerState) (hok : scanTag s = .ok s') :
     s'.flowLevel = s.flowLevel := by
   unfold scanTag at hok; dsimp only [] at hok
@@ -2566,7 +2566,7 @@ theorem scanTag_preserves_flowLevel (s : ScannerState)
     rw [scanNamedTag_preserves_flowLevel s.advance s.currentPos s.inputEnd,
         advance_preserves_flowLevel]
 
-theorem scanVerbatimTag_new_token_is_tag (s : ScannerState) (startPos : YamlPos)
+lemma scanVerbatimTag_new_token_is_tag (s : ScannerState) (startPos : YamlPos)
     (s_vt : ScannerState) (hok : scanVerbatimTag s startPos = .ok s_vt)
     (h : s.tokens.size < s_vt.tokens.size) :
     ∃ handle suffix, (s_vt.tokens[s.tokens.size]'h).val = .tag handle suffix := by
@@ -2579,14 +2579,14 @@ theorem scanVerbatimTag_new_token_is_tag (s : ScannerState) (startPos : YamlPos)
       simp [ScannerState.emitAt, collectVerbatimTagLoop_preserves_tokens,
             advance_preserves_tokens, Array.getElem_push_eq]
 
-theorem scanSecondaryTag_new_token_is_tag (s : ScannerState) (startPos : YamlPos)
+lemma scanSecondaryTag_new_token_is_tag (s : ScannerState) (startPos : YamlPos)
     (h : s.tokens.size < (scanSecondaryTag s startPos).tokens.size) :
     ∃ handle suffix, ((scanSecondaryTag s startPos).tokens[s.tokens.size]'h).val = .tag handle suffix := by
   unfold scanSecondaryTag
   simp [ScannerState.emitAt, collectTagSuffixLoop_preserves_tokens,
         advance_preserves_tokens, Array.getElem_push_eq]
 
-theorem scanNamedTag_new_token_is_tag (s : ScannerState) (startPos : YamlPos) (inputEnd : Nat)
+lemma scanNamedTag_new_token_is_tag (s : ScannerState) (startPos : YamlPos) (inputEnd : Nat)
     (h : s.tokens.size < (scanNamedTag s startPos inputEnd).tokens.size) :
     ∃ handle suffix, ((scanNamedTag s startPos inputEnd).tokens[s.tokens.size]'h).val = .tag handle suffix := by
   unfold scanNamedTag
@@ -2602,7 +2602,7 @@ theorem scanNamedTag_new_token_is_tag (s : ScannerState) (startPos : YamlPos) (i
   · -- foundBang = false
     simp [ScannerState.emitAt, h_toks, Array.getElem_push_eq]
 
-theorem scanTag_new_token_is_tag (s : ScannerState)
+lemma scanTag_new_token_is_tag (s : ScannerState)
     (s' : ScannerState) (hok : scanTag s = .ok s')
     (h : s.tokens.size < s'.tokens.size) :
     ∃ handle suffix, (s'.tokens[s.tokens.size]'h).val = .tag handle suffix := by
@@ -2627,7 +2627,7 @@ theorem scanTag_new_token_is_tag (s : ScannerState)
     simp only [← advance_preserves_tokens s] at h ⊢
     exact scanNamedTag_new_token_is_tag s.advance s.currentPos s.inputEnd h
 
-theorem scanTag_new_token_not_plain (s : ScannerState)
+lemma scanTag_new_token_not_plain (s : ScannerState)
     (s' : ScannerState) (hok : scanTag s = .ok s') :
     let tok := s'.tokens[s.tokens.size]'(by
       have := scanTag_adds_one_token s s' hok; omega)
@@ -2639,7 +2639,7 @@ theorem scanTag_new_token_not_plain (s : ScannerState)
   obtain ⟨handle, suffix, h_tag⟩ := scanTag_new_token_is_tag s s' hok h_sz
   simp only [h_tag]
 
-theorem scanTag_preserves_FlowInv (s : ScannerState)
+lemma scanTag_preserves_FlowInv (s : ScannerState)
     (s' : ScannerState) (hok : scanTag s = .ok s')
     (h_fpsv : FlowContextPSV s.tokens) (h_fni : FlowNestingInv s) :
     FlowContextPSV s'.tokens ∧ FlowNestingInv s' := by
@@ -2723,7 +2723,7 @@ theorem scanTag_preserves_FlowInv (s : ScannerState)
 
 -- Helper: scalar scan functions preserve flowLevel
 
-theorem consumeExactSpaces_preserves_flowLevel (s : ScannerState) (count : Nat) :
+lemma consumeExactSpaces_preserves_flowLevel (s : ScannerState) (count : Nat) :
     (consumeExactSpaces s count).snd.flowLevel = s.flowLevel := by
   induction count generalizing s with
   | zero => unfold consumeExactSpaces; rfl
@@ -2733,7 +2733,7 @@ theorem consumeExactSpaces_preserves_flowLevel (s : ScannerState) (count : Nat) 
     · simp [ih, advance_preserves_flowLevel]
     · rfl
 
-theorem consumeNewline_preserves_flowLevel (s : ScannerState) :
+lemma consumeNewline_preserves_flowLevel (s : ScannerState) :
     (consumeNewline s).flowLevel = s.flowLevel := by
   unfold consumeNewline
   split
@@ -2744,7 +2744,7 @@ theorem consumeNewline_preserves_flowLevel (s : ScannerState) :
     · simp [advance_preserves_flowLevel]
   · rfl
 
-theorem collectLineContentLoop_preserves_flowLevel (s : ScannerState) (content : String) (fuel : Nat) :
+lemma collectLineContentLoop_preserves_flowLevel (s : ScannerState) (content : String) (fuel : Nat) :
     (collectLineContentLoop s content fuel).snd.flowLevel = s.flowLevel := by
   induction fuel generalizing s content with
   | zero => unfold collectLineContentLoop; rfl
@@ -2756,7 +2756,7 @@ theorem collectLineContentLoop_preserves_flowLevel (s : ScannerState) (content :
       · rw [ih, advance_preserves_flowLevel]
     · rfl
 
-theorem collectBlockScalarLoop_preserves_flowLevel (s : ScannerState) (rawContent : String)
+lemma collectBlockScalarLoop_preserves_flowLevel (s : ScannerState) (rawContent : String)
     (fuel contentIndent inputEnd : Nat) :
     (collectBlockScalarLoop s rawContent fuel contentIndent inputEnd).snd.flowLevel = s.flowLevel := by
   induction fuel generalizing s rawContent with
@@ -2786,7 +2786,7 @@ theorem collectBlockScalarLoop_preserves_flowLevel (s : ScannerState) (rawConten
                 · rw [ih, h_fl_line, h_fl_spaces]
               · rw [h_fl_line, h_fl_spaces]
 
-theorem collectCommentTextLoop_preserves_flowLevel (s : ScannerState) (text : String) (fuel : Nat) :
+lemma collectCommentTextLoop_preserves_flowLevel (s : ScannerState) (text : String) (fuel : Nat) :
     (collectCommentTextLoop s text fuel).snd.flowLevel = s.flowLevel := by
   induction fuel generalizing s text with
   | zero => unfold collectCommentTextLoop; rfl
@@ -2798,7 +2798,7 @@ theorem collectCommentTextLoop_preserves_flowLevel (s : ScannerState) (text : St
       · rw [ih, advance_preserves_flowLevel]
     · rfl
 
-theorem scanBlockScalarSkipComment_preserves_flowLevel (s : ScannerState) :
+lemma scanBlockScalarSkipComment_preserves_flowLevel (s : ScannerState) :
     (scanBlockScalarSkipComment s).flowLevel = s.flowLevel := by
   unfold scanBlockScalarSkipComment
   split
@@ -2810,7 +2810,7 @@ theorem scanBlockScalarSkipComment_preserves_flowLevel (s : ScannerState) :
     · rfl
   · rfl
 
-theorem parseBlockHeaderLoop_preserves_flowLevel (s : ScannerState) (chomp : ChompStyle)
+lemma parseBlockHeaderLoop_preserves_flowLevel (s : ScannerState) (chomp : ChompStyle)
     (explicitOffset : Option Nat) (fuel : Nat) :
     (parseBlockHeaderLoop s chomp explicitOffset fuel).snd.snd.flowLevel = s.flowLevel := by
   induction fuel generalizing s chomp explicitOffset with
@@ -2825,7 +2825,7 @@ theorem parseBlockHeaderLoop_preserves_flowLevel (s : ScannerState) (chomp : Cho
       · rfl
     · rfl
 
-theorem scanBlockScalarConsumeNewline_preserves_flowLevel (s s' : ScannerState)
+lemma scanBlockScalarConsumeNewline_preserves_flowLevel (s s' : ScannerState)
     (h : scanBlockScalarConsumeNewline s = .ok s') :
     s'.flowLevel = s.flowLevel := by
   unfold scanBlockScalarConsumeNewline at h
@@ -2838,7 +2838,7 @@ theorem scanBlockScalarConsumeNewline_preserves_flowLevel (s s' : ScannerState)
       · contradiction
   · injection h with h_eq; subst h_eq; rfl
 
-theorem scanBlockScalar_preserves_flowLevel (s s' : ScannerState)
+lemma scanBlockScalar_preserves_flowLevel (s s' : ScannerState)
     (h_ok : scanBlockScalar s = .ok s') :
     s'.flowLevel = s.flowLevel := by
   unfold scanBlockScalar at h_ok
@@ -2863,7 +2863,7 @@ theorem scanBlockScalar_preserves_flowLevel (s s' : ScannerState)
       injection h_ok with h_eq; subst h_eq
       simp [collectBlockScalarLoop_preserves_flowLevel, h_fl]
 
-theorem collectHexDigitsLoop_preserves_flowLevel (s : ScannerState) (hex : String) (n : Nat) :
+lemma collectHexDigitsLoop_preserves_flowLevel (s : ScannerState) (hex : String) (n : Nat) :
     (collectHexDigitsLoop s hex n).snd.flowLevel = s.flowLevel := by
   induction n generalizing s hex with
   | zero => unfold collectHexDigitsLoop; rfl
@@ -2875,7 +2875,7 @@ theorem collectHexDigitsLoop_preserves_flowLevel (s : ScannerState) (hex : Strin
       · rfl
     · rfl
 
-theorem parseHexEscape_preserves_flowLevel (s : ScannerState) (digits : Nat)
+lemma parseHexEscape_preserves_flowLevel (s : ScannerState) (digits : Nat)
     (result : Char × ScannerState) (h : parseHexEscape s digits = .ok result) :
     result.snd.flowLevel = s.flowLevel := by
   unfold parseHexEscape at h
@@ -2891,7 +2891,7 @@ theorem parseHexEscape_preserves_flowLevel (s : ScannerState) (digits : Nat)
     · -- Case: val >= 0x110000 (error)
       contradiction
 
-theorem processEscape_preserves_flowLevel (s : ScannerState) (result : Char × ScannerState)
+lemma processEscape_preserves_flowLevel (s : ScannerState) (result : Char × ScannerState)
     (h : processEscape s = .ok result) :
     result.snd.flowLevel = s.flowLevel := by
   unfold processEscape at h
@@ -2920,7 +2920,7 @@ theorem processEscape_preserves_flowLevel (s : ScannerState) (result : Char × S
   · simp only [] at h; exact parseHexEscape_preserves_flowLevel _ _ _ h |>.trans (advance_preserves_flowLevel s)
   · contradiction
 
-theorem foldQuotedNewlinesLoop_preserves_flowLevel (s : ScannerState) (emptyCount fuel : Nat) :
+lemma foldQuotedNewlinesLoop_preserves_flowLevel (s : ScannerState) (emptyCount fuel : Nat) :
     (foldQuotedNewlinesLoop s emptyCount fuel).fst.flowLevel = s.flowLevel := by
   induction fuel generalizing s emptyCount with
   | zero => unfold foldQuotedNewlinesLoop; rfl
@@ -2933,7 +2933,7 @@ theorem foldQuotedNewlinesLoop_preserves_flowLevel (s : ScannerState) (emptyCoun
       · rfl
     · rfl
 
-theorem foldQuotedNewlines_preserves_flowLevel (s : ScannerState) (result : String × ScannerState)
+lemma foldQuotedNewlines_preserves_flowLevel (s : ScannerState) (result : String × ScannerState)
     (h : foldQuotedNewlines s = .ok result) :
     result.snd.flowLevel = s.flowLevel := by
   unfold foldQuotedNewlines at h
@@ -2955,7 +2955,7 @@ theorem foldQuotedNewlines_preserves_flowLevel (s : ScannerState) (result : Stri
       simp [skipWhitespace_preserves_flowLevel, skipSpaces_preserves_flowLevel,
             foldQuotedNewlinesLoop_preserves_flowLevel, consumeNewline_preserves_flowLevel]
 
-theorem collectDoubleQuotedLoop_preserves_flowLevel (s : ScannerState) (content : String) (fuel : Nat)
+lemma collectDoubleQuotedLoop_preserves_flowLevel (s : ScannerState) (content : String) (fuel : Nat)
     (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat)
     (result : String × ScannerState)
     (h : collectDoubleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd = .ok result) :
@@ -3009,7 +3009,7 @@ theorem collectDoubleQuotedLoop_preserves_flowLevel (s : ScannerState) (content 
         split at h <;> try contradiction  -- isNbJsonBool check
         exact ih _ _ _ h |>.trans (advance_preserves_flowLevel s)
 
-theorem scanDoubleQuoted_preserves_flowLevel (s s' : ScannerState)
+lemma scanDoubleQuoted_preserves_flowLevel (s s' : ScannerState)
     (h_ok : scanDoubleQuoted s = .ok s') :
     s'.flowLevel = s.flowLevel := by
   unfold scanDoubleQuoted at h_ok
@@ -3026,7 +3026,7 @@ theorem scanDoubleQuoted_preserves_flowLevel (s s' : ScannerState)
     injection h_ok with h_eq; subst h_eq
     simp [emitAt_preserves_flowLevel, h_fl_collect, advance_preserves_flowLevel]
 
-theorem collectSingleQuotedLoop_preserves_flowLevel (s : ScannerState) (content : String) (fuel : Nat)
+lemma collectSingleQuotedLoop_preserves_flowLevel (s : ScannerState) (content : String) (fuel : Nat)
     (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat)
     (result : String × ScannerState)
     (h : collectSingleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd = .ok result) :
@@ -3060,7 +3060,7 @@ theorem collectSingleQuotedLoop_preserves_flowLevel (s : ScannerState) (content 
         split at h <;> try contradiction  -- isNbJsonBool check
         exact ih _ _ h |>.trans (advance_preserves_flowLevel s)
 
-theorem scanSingleQuoted_preserves_flowLevel (s s' : ScannerState)
+lemma scanSingleQuoted_preserves_flowLevel (s s' : ScannerState)
     (h_ok : scanSingleQuoted s = .ok s') :
     s'.flowLevel = s.flowLevel := by
   unfold scanSingleQuoted at h_ok
@@ -3077,7 +3077,7 @@ theorem scanSingleQuoted_preserves_flowLevel (s s' : ScannerState)
     injection h_ok with h_eq; subst h_eq
     simp [emitAt_preserves_flowLevel, h_fl_collect, advance_preserves_flowLevel]
 
-theorem skipBlankLinesLoop_preserves_flowLevel (s : ScannerState) (cnt fuel inputEnd : Nat) :
+lemma skipBlankLinesLoop_preserves_flowLevel (s : ScannerState) (cnt fuel inputEnd : Nat) :
     (skipBlankLinesLoop s cnt fuel inputEnd).snd.flowLevel = s.flowLevel := by
   induction fuel generalizing s cnt with
   | zero => unfold skipBlankLinesLoop; rfl
@@ -3095,7 +3095,7 @@ theorem skipBlankLinesLoop_preserves_flowLevel (s : ScannerState) (cnt fuel inpu
     · -- peek? = none
       rfl
 
-theorem collectPlainScalarLoop_preserves_flowLevel (s : ScannerState) (content spaces : String) (fuel : Nat)
+lemma collectPlainScalarLoop_preserves_flowLevel (s : ScannerState) (content spaces : String) (fuel : Nat)
     (inFlow : Bool) (contentIndent inputEnd : Nat) (result : PlainScalarResult)
     (h : collectPlainScalarLoop s content spaces fuel inFlow contentIndent inputEnd = .ok result) :
     result.state.flowLevel = s.flowLevel := by
@@ -3204,7 +3204,7 @@ theorem collectPlainScalarLoop_preserves_flowLevel (s : ScannerState) (content s
             · -- continues with content
               exact ih _ _ _ h |>.trans (advance_preserves_flowLevel s)
 
-theorem scanPlainScalar_preserves_flowLevel (s s' : ScannerState)
+lemma scanPlainScalar_preserves_flowLevel (s s' : ScannerState)
     (h_ok : scanPlainScalar s = .ok s') :
     s'.flowLevel = s.flowLevel := by
   unfold scanPlainScalar at h_ok
@@ -3215,7 +3215,7 @@ theorem scanPlainScalar_preserves_flowLevel (s s' : ScannerState)
   injection h_ok with h_eq; subst h_eq
   simp [emitAt_preserves_flowLevel, h_fl_collect]
 
-theorem scanPlainScalar_new_token_is_plain (s s' : ScannerState)
+lemma scanPlainScalar_new_token_is_plain (s s' : ScannerState)
     (h_ok : scanPlainScalar s = .ok s')
     (hj : s.tokens.size < s'.tokens.size) :
     ∃ content, (s'.tokens[s.tokens.size]'hj).val = .scalar content .plain := by
@@ -3230,7 +3230,7 @@ theorem scanPlainScalar_new_token_is_plain (s s' : ScannerState)
   simp only [h_tok, Array.getElem_push_eq]
   exact ⟨_, rfl⟩
 
-theorem scanBlockScalar_preserves_FlowInv (s s' : ScannerState)
+lemma scanBlockScalar_preserves_FlowInv (s s' : ScannerState)
     (h_ok : scanBlockScalar s = .ok s')
     (h_fpsv : FlowContextPSV s.tokens) (h_fni : FlowNestingInv s) :
     FlowContextPSV s'.tokens ∧ FlowNestingInv s' := by
@@ -3306,7 +3306,7 @@ theorem scanBlockScalar_preserves_FlowInv (s s' : ScannerState)
       rw [flowNesting_push_non_flow s.tokens _ (by nofun) (by nofun) (by nofun) (by nofun)]
       exact h_fni
 
-theorem scanDoubleQuoted_preserves_FlowInv (s s' : ScannerState)
+lemma scanDoubleQuoted_preserves_FlowInv (s s' : ScannerState)
     (h_ok : scanDoubleQuoted s = .ok s')
     (h_fpsv : FlowContextPSV s.tokens) (h_fni : FlowNestingInv s) :
     FlowContextPSV s'.tokens ∧ FlowNestingInv s' := by
@@ -3381,7 +3381,7 @@ theorem scanDoubleQuoted_preserves_FlowInv (s s' : ScannerState)
       · exact h_fni
       all_goals nofun
 
-theorem scanSingleQuoted_preserves_FlowInv (s s' : ScannerState)
+lemma scanSingleQuoted_preserves_FlowInv (s s' : ScannerState)
     (h_ok : scanSingleQuoted s = .ok s')
     (h_fpsv : FlowContextPSV s.tokens) (h_fni : FlowNestingInv s) :
     FlowContextPSV s'.tokens ∧ FlowNestingInv s' := by
@@ -3455,7 +3455,7 @@ theorem scanSingleQuoted_preserves_FlowInv (s s' : ScannerState)
       · exact h_fni
       all_goals nofun
 
-theorem scanPlainScalar_preserves_FlowInv (s s' : ScannerState)
+lemma scanPlainScalar_preserves_FlowInv (s s' : ScannerState)
     (h_ok : scanPlainScalar s = .ok s')
     (h_canStart : ∃ c, s.peek? = some c ∧
         canStartPlainScalarBool c (s.peekAt? 1) s.inFlow = true)
@@ -3529,7 +3529,7 @@ theorem scanPlainScalar_preserves_FlowInv (s s' : ScannerState)
     all_goals nofun
 
 /-- Content dispatch preserves `FlowInv` by delegating to individual scan function lemmas. -/
-theorem dispatchContent_preserves_FlowInv
+lemma dispatchContent_preserves_FlowInv
     (s : ScannerState) (c : Char)
     (h_peek : s.peek? = some c)
     (h_fpsv : FlowContextPSV s.tokens) (h_fni : FlowNestingInv s)
@@ -3602,7 +3602,7 @@ theorem dispatchContent_preserves_FlowInv
 
 /-! ### pushSequenceIndent / pushMappingIndent token type lemmas -/
 
-theorem pushSequenceIndent_new_token_is_blockSequenceStart (s : ScannerState) (col : Int)
+lemma pushSequenceIndent_new_token_is_blockSequenceStart (s : ScannerState) (col : Int)
     (h : col > s.currentIndent) :
     (pushSequenceIndent s col).tokens[s.tokens.size]'(by
       unfold pushSequenceIndent
@@ -3611,7 +3611,7 @@ theorem pushSequenceIndent_new_token_is_blockSequenceStart (s : ScannerState) (c
   unfold pushSequenceIndent
   simp [h, ScannerState.emit, Array.getElem_push_eq]
 
-theorem pushMappingIndent_new_token_is_blockMappingStart (s : ScannerState) (col : Int)
+lemma pushMappingIndent_new_token_is_blockMappingStart (s : ScannerState) (col : Int)
     (h : col > s.currentIndent) :
     (pushMappingIndent s col).tokens[s.tokens.size]'(by
       unfold pushMappingIndent
@@ -3624,7 +3624,7 @@ theorem pushMappingIndent_new_token_is_blockMappingStart (s : ScannerState) (col
 
 /-- Helper: scanBlockEntry emits only .blockEntry or .blockSequenceStart tokens,
     never .scalar _ .plain. -/
-theorem scanBlockEntry_new_token_not_plain (s s' : ScannerState)
+lemma scanBlockEntry_new_token_not_plain (s s' : ScannerState)
     (h_ok : scanBlockEntry s = .ok s')
     (j : Nat) (hj : j < s'.tokens.size) (hge : j ≥ s.tokens.size) :
     (match (s'.tokens[j]'hj).val with
@@ -3661,7 +3661,7 @@ theorem scanBlockEntry_new_token_not_plain (s s' : ScannerState)
     · omega  -- j < s.tokens.size contradicts hge
     · subst h_gen; trivial  -- blockEntry
 
-theorem scanBlockEntry_preserves_FlowContextPSV
+lemma scanBlockEntry_preserves_FlowContextPSV
     (s s' : ScannerState) (h_fpsv : FlowContextPSV s.tokens)
     (h_ok : scanBlockEntry s = .ok s') :
     FlowContextPSV s'.tokens := by
@@ -3679,7 +3679,7 @@ theorem scanBlockEntry_preserves_FlowContextPSV
     apply fpsv_of_not_plain
     exact scanBlockEntry_new_token_not_plain s s' h_ok j hj hge
 
-theorem scanBlockEntry_preserves_FlowNestingInv
+lemma scanBlockEntry_preserves_FlowNestingInv
     (s s' : ScannerState) (h_fni : FlowNestingInv s)
     (h_ok : scanBlockEntry s = .ok s') :
     FlowNestingInv s' := by
@@ -3733,7 +3733,7 @@ theorem scanBlockEntry_preserves_FlowNestingInv
     simp only [advance_preserves_flowLevel, advance_preserves_tokens] at h_after_entry ⊢
     exact h_after_entry
 
-theorem scanKey_new_token_not_plain (s s' : ScannerState)
+lemma scanKey_new_token_not_plain (s s' : ScannerState)
     (h_ok : scanKey s = .ok s')
     (j : Nat) (hj : j < s'.tokens.size) (hge : j ≥ s.tokens.size) :
     (match (s'.tokens[j]'hj).val with
@@ -3798,7 +3798,7 @@ theorem scanKey_new_token_not_plain (s s' : ScannerState)
       split at h_gen <;> try omega
       subst h_gen; exact True.intro
 
-theorem scanKey_preserves_FlowContextPSV
+lemma scanKey_preserves_FlowContextPSV
     (s s' : ScannerState) (h_fpsv : FlowContextPSV s.tokens)
     (h_ok : scanKey s = .ok s') :
     FlowContextPSV s'.tokens := by
@@ -3816,7 +3816,7 @@ theorem scanKey_preserves_FlowContextPSV
     apply fpsv_of_not_plain
     exact scanKey_new_token_not_plain s s' h_ok j hj hge
 
-theorem scanKey_preserves_FlowNestingInv
+lemma scanKey_preserves_FlowNestingInv
     (s s' : ScannerState) (h_fni : FlowNestingInv s)
     (h_ok : scanKey s = .ok s') :
     FlowNestingInv s' := by
@@ -3912,7 +3912,7 @@ theorem scanKey_preserves_FlowNestingInv
 /-! ### setIfInBounds preserves FlowContextPSV -/
 
 /-- The flow-nesting depth function maps non-flow tokens to `depth` unchanged. -/
-theorem flowNesting_depth_non_flow (v : YamlToken) (depth : Nat)
+lemma flowNesting_depth_non_flow (v : YamlToken) (depth : Nat)
     (h1 : v ≠ .flowSequenceStart) (h2 : v ≠ .flowMappingStart)
     (h3 : v ≠ .flowSequenceEnd) (h4 : v ≠ .flowMappingEnd) :
     (match v with
@@ -3922,7 +3922,7 @@ theorem flowNesting_depth_non_flow (v : YamlToken) (depth : Nat)
   cases v <;> first | contradiction | rfl
 
 /-- Replacing a non-flow token with another non-flow token preserves `flowNesting.go`. -/
-theorem flowNesting_go_setIfInBounds_non_flow
+lemma flowNesting_go_setIfInBounds_non_flow
     (tokens : Array (Positioned YamlToken))
     (idx : Nat) (val : Positioned YamlToken)
     (h_val_nf : val.val ≠ .flowSequenceStart ∧ val.val ≠ .flowMappingStart ∧
@@ -3968,7 +3968,7 @@ theorem flowNesting_go_setIfInBounds_non_flow
           flowNesting_go_oob tokens pos target depth (by omega)]
 
 /-- Replacing a non-flow token with a non-flow token preserves `flowNesting`. -/
-theorem flowNesting_setIfInBounds_non_flow
+lemma flowNesting_setIfInBounds_non_flow
     (tokens : Array (Positioned YamlToken))
     (idx : Nat) (val : Positioned YamlToken)
     (h_val_nf : val.val ≠ .flowSequenceStart ∧ val.val ≠ .flowMappingStart ∧
@@ -3983,7 +3983,7 @@ theorem flowNesting_setIfInBounds_non_flow
 
 /-- `setIfInBounds` with a non-flow, non-plain replacement preserves `FlowContextPSV`,
     provided the original token at the modified position is also non-flow. -/
-theorem FlowContextPSV_setIfInBounds
+lemma FlowContextPSV_setIfInBounds
     (tokens : Array (Positioned YamlToken)) (h_old : FlowContextPSV tokens)
     (idx : Nat) (val : Positioned YamlToken)
     (h_np : match val.val with | .scalar _ .plain => False | _ => True)
@@ -4010,7 +4010,7 @@ theorem FlowContextPSV_setIfInBounds
 
 /-- `scanValuePrepare` preserves `FlowContextPSV` provided tokens at simple-key
     positions are placeholders (non-flow tokens). -/
-theorem scanValuePrepare_preserves_FlowContextPSV
+lemma scanValuePrepare_preserves_FlowContextPSV
     (s : ScannerState) (h_old : FlowContextPSV s.tokens)
     (h_ph : s.simpleKey.possible = true →
       (∀ (h : s.simpleKey.tokenIndex < s.tokens.size),
@@ -4079,7 +4079,7 @@ theorem scanValuePrepare_preserves_FlowContextPSV
 
 /-- `scanValuePrepare` preserves `FlowNestingInv` provided tokens at simple-key
     positions are placeholders (non-flow tokens). -/
-theorem scanValuePrepare_preserves_FlowNestingInv
+lemma scanValuePrepare_preserves_FlowNestingInv
     (s : ScannerState) (h_fni : FlowNestingInv s)
     (h_ph : s.simpleKey.possible = true →
       (∀ (h : s.simpleKey.tokenIndex < s.tokens.size),
@@ -4146,7 +4146,7 @@ theorem scanValuePrepare_preserves_FlowNestingInv
       · -- inFlow: identity
         exact h_fni
 
-theorem scanValue_preserves_FlowContextPSV
+lemma scanValue_preserves_FlowContextPSV
     (s s' : ScannerState) (h_fpsv : FlowContextPSV s.tokens)
     (h_ok : scanValue s = .ok s')
     (h_ph : s.simpleKey.possible = true →
@@ -4193,7 +4193,7 @@ theorem scanValue_preserves_FlowContextPSV
           simp [Array.size_push] at hj; omega
         subst this; simp [Array.getElem_push_eq]
 
-theorem scanValue_preserves_FlowNestingInv
+lemma scanValue_preserves_FlowNestingInv
     (s s' : ScannerState) (h_fni : FlowNestingInv s)
     (h_ok : scanValue s = .ok s')
     (h_ph : s.simpleKey.possible = true →
@@ -4303,12 +4303,12 @@ def AllKeysPlaceholderInv (s : ScannerState) : Prop :=
   SimpleKeyStackOrdering s
 
 -- Vacuous when `possible = false`.
-theorem SimpleKeyPlaceholderInv_of_not_possible (s : ScannerState)
+lemma SimpleKeyPlaceholderInv_of_not_possible (s : ScannerState)
     (h : s.simpleKey.possible = false) : SimpleKeyPlaceholderInv s :=
   fun h_poss => absurd h_poss (by simp [h])
 
 -- Monotone: preserved when simpleKey unchanged, tokens grow, prefix preserved.
-theorem SimpleKeyPlaceholderInv_mono (s s' : ScannerState)
+lemma SimpleKeyPlaceholderInv_mono (s s' : ScannerState)
     (h_phi : SimpleKeyPlaceholderInv s)
     (h_sk : s'.simpleKey = s.simpleKey)
     (h_mono : s'.tokens.size ≥ s.tokens.size)
@@ -4322,7 +4322,7 @@ theorem SimpleKeyPlaceholderInv_mono (s s' : ScannerState)
   · intro h2; rw [h_pref _ hb2]; exact hp2 hb2
 
 -- Stack monotone: preserved when simpleKeyStack unchanged, tokens grow, prefix preserved.
-theorem SimpleKeyStackPlaceholderInv_mono (s s' : ScannerState)
+lemma SimpleKeyStackPlaceholderInv_mono (s s' : ScannerState)
     (h_ssphi : SimpleKeyStackPlaceholderInv s)
     (h_stack : s'.simpleKeyStack = s.simpleKeyStack)
     (h_mono : s'.tokens.size ≥ s.tokens.size)
@@ -4338,12 +4338,12 @@ theorem SimpleKeyStackPlaceholderInv_mono (s s' : ScannerState)
   · intro h2; rw [h_pref _ hb2]; exact hp2 hb2
 
 -- Disjoint is vacuous when current `possible = false`.
-theorem SimpleKeyTokenDisjoint_of_not_possible (s : ScannerState)
+lemma SimpleKeyTokenDisjoint_of_not_possible (s : ScannerState)
     (h : s.simpleKey.possible = false) : SimpleKeyTokenDisjoint s :=
   fun h_poss => absurd h_poss (by simp [h])
 
 -- Disjoint preserved when simpleKey and stack unchanged.
-theorem SimpleKeyTokenDisjoint_mono (s s' : ScannerState)
+lemma SimpleKeyTokenDisjoint_mono (s s' : ScannerState)
     (h_d : SimpleKeyTokenDisjoint s)
     (h_sk : s'.simpleKey = s.simpleKey)
     (h_stack : s'.simpleKeyStack = s.simpleKeyStack) :
@@ -4356,7 +4356,7 @@ theorem SimpleKeyTokenDisjoint_mono (s s' : ScannerState)
   exact h_d h_poss j hj' h_poss_j
 
 -- Stack ordering preserved when stack unchanged.
-theorem SimpleKeyStackOrdering_mono (s s' : ScannerState)
+lemma SimpleKeyStackOrdering_mono (s s' : ScannerState)
     (h_o : SimpleKeyStackOrdering s)
     (h_stack : s'.simpleKeyStack = s.simpleKeyStack) :
     SimpleKeyStackOrdering s' := by
@@ -4368,7 +4368,7 @@ theorem SimpleKeyStackOrdering_mono (s s' : ScannerState)
   exact h_o j hj' h_poss_j k hk h_poss_k
 
 -- Combined monotone.
-theorem AllKeysPlaceholderInv_mono (s s' : ScannerState)
+lemma AllKeysPlaceholderInv_mono (s s' : ScannerState)
     (h_akpi : AllKeysPlaceholderInv s)
     (h_sk : s'.simpleKey = s.simpleKey)
     (h_stack : s'.simpleKeyStack = s.simpleKeyStack)
@@ -4381,7 +4381,7 @@ theorem AllKeysPlaceholderInv_mono (s s' : ScannerState)
    SimpleKeyStackOrdering_mono s s' h_akpi.2.2.2 h_stack⟩
 
 -- Cleared current: vacuous for current key, stack condition must be supplied.
-theorem AllKeysPlaceholderInv_of_cleared_current (s' : ScannerState)
+lemma AllKeysPlaceholderInv_of_cleared_current (s' : ScannerState)
     (h_poss : s'.simpleKey.possible = false)
     (h_ssphi : SimpleKeyStackPlaceholderInv s')
     (h_disjoint : SimpleKeyTokenDisjoint s')
@@ -4391,7 +4391,7 @@ theorem AllKeysPlaceholderInv_of_cleared_current (s' : ScannerState)
    h_disjoint, h_ordering⟩
 
 -- Combined: cleared current + stack preserved via mono (common pattern).
-theorem AllKeysPlaceholderInv_of_cleared_mono (s s' : ScannerState)
+lemma AllKeysPlaceholderInv_of_cleared_mono (s s' : ScannerState)
     (h_akpi : AllKeysPlaceholderInv s)
     (h_clears : s'.simpleKey.possible = false)
     (h_stack : s'.simpleKeyStack = s.simpleKeyStack)
@@ -4410,7 +4410,7 @@ theorem AllKeysPlaceholderInv_of_cleared_mono (s s' : ScannerState)
     Branch 2 (simpleKeyAllowed): pushes 2 placeholder tokens at `tokens.size`,
       sets `tokenIndex = tokens.size`, stack unchanged.
     Branch 3 (else): no-op. -/
-theorem saveSimpleKey_preserves_AllKeysPlaceholderInv (s : ScannerState)
+lemma saveSimpleKey_preserves_AllKeysPlaceholderInv (s : ScannerState)
     (h_akpi : AllKeysPlaceholderInv s) : AllKeysPlaceholderInv (saveSimpleKey s) := by
   unfold saveSimpleKey
   split
@@ -4455,7 +4455,7 @@ theorem saveSimpleKey_preserves_AllKeysPlaceholderInv (s : ScannerState)
     `skipToContent` and `unwindIndents` preserve simpleKey and extend tokens as prefix.
     `saveSimpleKey` either is a no-op (preserving) or pushes 2 fresh placeholders
     (establishing the invariant from scratch). -/
-theorem preprocess_preserves_AllKeysPlaceholderInv
+lemma preprocess_preserves_AllKeysPlaceholderInv
     (s s' : ScannerState) (c : Char)
     (h_pre : scanNextToken_preprocess s = .ok (some (s', c)))
     (h_akpi : AllKeysPlaceholderInv s) :
@@ -4500,7 +4500,7 @@ theorem preprocess_preserves_AllKeysPlaceholderInv
 /-- `dispatchStructural` preserves `AllKeysPlaceholderInv`.
     Each structural sub-scanner either clears `possible` (making current key vacuous)
     or preserves simpleKey + stack + token prefix (mono). -/
-theorem dispatchStructural_preserves_AllKeysPlaceholderInv
+lemma dispatchStructural_preserves_AllKeysPlaceholderInv
     (s : ScannerState) (c : Char)
     (h_akpi : AllKeysPlaceholderInv s)
     (s' : ScannerState)
@@ -4574,7 +4574,7 @@ theorem dispatchStructural_preserves_AllKeysPlaceholderInv
 
 /-- Flow start preserves `AllKeysPlaceholderInv`.
     Pushes current key to stack, clears current. -/
-theorem flowStart_preserves_AllKeysPlaceholderInv (s s' : ScannerState)
+lemma flowStart_preserves_AllKeysPlaceholderInv (s s' : ScannerState)
     (h_akpi : AllKeysPlaceholderInv s)
     (h_cleared : s'.simpleKey.possible = false)
     (h_pushed : s'.simpleKeyStack = s.simpleKeyStack.push s.simpleKey)
@@ -4630,7 +4630,7 @@ theorem flowStart_preserves_AllKeysPlaceholderInv (s s' : ScannerState)
 
 /-- Flow end preserves `AllKeysPlaceholderInv`.
     Restores current key from stack top, pops stack. -/
-theorem flowEnd_preserves_AllKeysPlaceholderInv (s s' : ScannerState)
+lemma flowEnd_preserves_AllKeysPlaceholderInv (s s' : ScannerState)
     (h_akpi : AllKeysPlaceholderInv s)
     (h_restored : s'.simpleKey = s.simpleKeyStack.back?.getD {})
     (h_popped : s'.simpleKeyStack = s.simpleKeyStack.pop)
@@ -4699,7 +4699,7 @@ theorem flowEnd_preserves_AllKeysPlaceholderInv (s s' : ScannerState)
     Flow openers push to stack + clear current.
     Flow closers restore from stack top + pop.
     Flow entry preserves simpleKey + stack + prefix (mono). -/
-theorem dispatchFlowIndicators_preserves_AllKeysPlaceholderInv
+lemma dispatchFlowIndicators_preserves_AllKeysPlaceholderInv
     (s : ScannerState) (c : Char)
     (h_akpi : AllKeysPlaceholderInv s)
     (s' : ScannerState)
@@ -4761,7 +4761,7 @@ theorem dispatchFlowIndicators_preserves_AllKeysPlaceholderInv
     `scanBlockEntry`: mono (preserves simpleKey/stack/prefix).
     `scanKey`: clears `possible`, stack preserved by prefix.
     `scanValue`: clears `possible`, stack preserved by element-outside-sk lemma. -/
-theorem dispatchBlockIndicators_preserves_AllKeysPlaceholderInv
+lemma dispatchBlockIndicators_preserves_AllKeysPlaceholderInv
     (s : ScannerState) (c : Char)
     (h_akpi : AllKeysPlaceholderInv s)
     (s' : ScannerState)
@@ -4836,7 +4836,7 @@ theorem dispatchBlockIndicators_preserves_AllKeysPlaceholderInv
 /-- `dispatchContent` preserves `AllKeysPlaceholderInv`.
     All content sub-scanners either clear `possible` (block scalar) or
     preserve simpleKey + stack + prefix (mono). -/
-theorem dispatchContent_preserves_AllKeysPlaceholderInv
+lemma dispatchContent_preserves_AllKeysPlaceholderInv
     (s : ScannerState) (c : Char)
     (h_akpi : AllKeysPlaceholderInv s)
     (s' : ScannerState)
@@ -4930,7 +4930,7 @@ theorem dispatchContent_preserves_AllKeysPlaceholderInv
                 simp at h_ok
 
 /-- Block indicators dispatch preserves `FlowInv`. -/
-theorem dispatchBlockIndicators_preserves_FlowInv
+lemma dispatchBlockIndicators_preserves_FlowInv
     (s : ScannerState) (c : Char)
     (h_fpsv : FlowContextPSV s.tokens) (h_fni : FlowNestingInv s)
     (h_phi : SimpleKeyPlaceholderInv s)
@@ -4983,7 +4983,7 @@ set_option maxHeartbeats 800000 in
     - Plain scalar branch: use `scanPlainScalar_content_valid` (B3.4) + `FlowNestingInv`
     - `FlowNestingInv`: `preserves_flowLevel` for most branches,
       flow nesting increment/decrement for flow indicator branches -/
-theorem scanNextToken_preserves_FlowInv
+lemma scanNextToken_preserves_FlowInv
     (s s' : ScannerState)
     (h_fpsv : FlowContextPSV s.tokens)
     (h_fni : FlowNestingInv s)
@@ -5034,7 +5034,7 @@ theorem scanNextToken_preserves_FlowInv
         have h_fi := dispatchContent_preserves_FlowInv _ c h_peek3 h_fpsv3 h_fni3 _ (by assumption)
         exact ⟨h_fi.1, h_fi.2, dispatchContent_preserves_AllKeysPlaceholderInv _ c h_akpi3 _ (by assumption)⟩
 
-theorem finalEmit_preserves_FlowContextPSV (s : ScannerState)
+lemma finalEmit_preserves_FlowContextPSV (s : ScannerState)
     (h : FlowContextPSV s.tokens) :
     FlowContextPSV ((unwindIndents s (-1)).emit .streamEnd).tokens := by
   apply FlowContextPSV_of_prefix_and_new s.tokens _ h
@@ -5061,7 +5061,7 @@ theorem finalEmit_preserves_FlowContextPSV (s : ScannerState)
         rw [emit_tokens_size] at hj; omega
       subst h_j; simp [ScannerState.emit, Array.getElem_push_eq]
 
-theorem scanLoop_preserves_FlowInv
+lemma scanLoop_preserves_FlowInv
     (s : ScannerState) (fuel : Nat)
     (tokens : Array (Positioned YamlToken))
     (h_fpsv : FlowContextPSV s.tokens)
@@ -5083,7 +5083,7 @@ theorem scanLoop_preserves_FlowInv
       have ⟨h1, h2, h3⟩ := scanNextToken_preserves_FlowInv s s' h_fpsv h_fni h_akpi h_snt
       exact ih s' h1 h2 h3 h_ok
 
-theorem flowNesting_go_streamStart (p : YamlPos) :
+lemma flowNesting_go_streamStart (p : YamlPos) :
     flowNesting.go #[⟨p, .streamStart, p⟩] 0 1 0 = 0 := by
   unfold flowNesting.go
   split
@@ -5097,7 +5097,7 @@ theorem flowNesting_go_streamStart (p : YamlPos) :
     · rfl
 
 /-- `scan` output satisfies `FlowContextPSV`. -/
-theorem scan_all_flow_context_psv (input : String)
+lemma scan_all_flow_context_psv (input : String)
     (tokens : Array (Positioned YamlToken))
     (h : scan input = .ok tokens) :
     FlowContextPSV tokens := by
@@ -5157,7 +5157,7 @@ theorem scan_all_flow_context_psv (input : String)
 /-! ### Filter preservation -/
 
 /-- A placeholder token at position k doesn't change the flow depth. -/
-theorem flowNesting_go_placeholder_neutral
+lemma flowNesting_go_placeholder_neutral
     (tokens : Array (Positioned YamlToken))
     (k target depth : Nat) (hk : k < tokens.size) (h_tgt : k < target)
     (h_placeholder : (tokens[k]).val = .placeholder) :
@@ -5170,7 +5170,7 @@ theorem flowNesting_go_placeholder_neutral
     there exists a canonical position `j` in the original list such that the
     filtered element equals the original, it satisfies the predicate, and `i`
     equals the count of satisfying elements before `j`. -/
-theorem list_filter_origIdx
+lemma list_filter_origIdx
     {α : Type _} (l : List α) (p : α → Bool) (i : Nat)
     (hi : i < (l.filter p).length) :
     ∃ j, ∃ hj : j < l.length,
@@ -5205,7 +5205,7 @@ theorem list_filter_origIdx
 
 /-- Core List-level forward direction: position `j` in a list with `p l[j] = true`
     maps to position `i = (l.take j |>.filter p).length` in the filtered list. -/
-theorem list_filter_getElem_by_count
+lemma list_filter_getElem_by_count
     {α : Type _} (l : List α) (p : α → Bool) (j : Nat) (hj : j < l.length)
     (h_sat : p l[j] = true) :
     ((l.take j).filter p).length < (l.filter p).length ∧
@@ -5231,7 +5231,7 @@ theorem list_filter_getElem_by_count
 
 /-- Array wrapper: the i-th element of a filtered array corresponds to the j-th element
     of the original array, where i counts elements satisfying the predicate before j. -/
-theorem array_filter_getElem_correspondence
+lemma array_filter_getElem_correspondence
     {α : Type _} (arr : Array α) (p : α → Bool) (j : Nat) (hj : j < arr.size)
     (h_sat : p arr[j] = true) :
     let filtered := arr.filter p
@@ -5256,7 +5256,7 @@ theorem array_filter_getElem_correspondence
 /-- `flowNesting.go` on the original array equals `flowNesting.go` on the filtered
     array, where the target in the filtered array is the count of non-placeholder
     tokens before position `j`. -/
-theorem flowNesting_go_filter_equiv
+lemma flowNesting_go_filter_equiv
     (all_tokens : Array (Positioned YamlToken))
     (j : Nat) (hj : j ≤ all_tokens.size)
     (depth : Nat) :
@@ -5348,7 +5348,7 @@ theorem flowNesting_go_filter_equiv
 /-- Filtering out `.placeholder` tokens preserves `FlowContextPSV`.
     `.placeholder` tokens are neither flow start/end nor plain scalars,
     so removing them preserves flow nesting at all retained positions. -/
-theorem filter_preserves_FlowContextPSV
+lemma filter_preserves_FlowContextPSV
     (all_tokens : Array (Positioned YamlToken))
     (h_fpsv : FlowContextPSV all_tokens) :
     FlowContextPSV (all_tokens.filter fun t => t.val != YamlToken.placeholder) := by
@@ -5383,7 +5383,7 @@ theorem filter_preserves_FlowContextPSV
 /-! ### Main theorems -/
 
 /-- **B3.5+**: Flow-context plain scalar tokens satisfy `ScalarScannable _ true`. -/
-theorem scan_flow_context_psv (input : String)
+lemma scan_flow_context_psv (input : String)
     (tokens : Array (Positioned YamlToken))
     (h : Scanner.scanFiltered input = .ok tokens) :
     FlowContextPSV tokens := by
@@ -5397,7 +5397,7 @@ theorem scan_flow_context_psv (input : String)
 
 /-- **B3.5+ main**: Scanner output satisfies `FlowAwarePSV`.
     Combines B3.5's `PlainScalarsValid` with `FlowContextPSV`. -/
-theorem scan_flow_aware_psv (input : String)
+lemma scan_flow_aware_psv (input : String)
     (tokens : Array (Positioned YamlToken))
     (h : Scanner.scanFiltered input = .ok tokens) :
     FlowAwarePSV tokens :=
@@ -5421,7 +5421,7 @@ theorem scan_flow_aware_psv (input : String)
     In the `.ok none` (completion) branch, `scanLoop` checks `s.flowLevel > 0`
     and returns `.error` if so. Combined with `FlowNestingInv`, the else branch
     gives `flowLevel = 0`, which is preserved through `unwindIndents` + `emit .streamEnd`. -/
-theorem scanLoop_FlowBracketsMatched
+lemma scanLoop_FlowBracketsMatched
     (s : ScannerState) (fuel : Nat)
     (tokens : Array (Positioned YamlToken))
     (h_fpsv : FlowContextPSV s.tokens)
@@ -5456,7 +5456,7 @@ theorem scanLoop_FlowBracketsMatched
       exact ih s' h1 h2 h3 h_ok
 
 /-- `scan` (without filtering) output has matched flow brackets. -/
-theorem scan_FlowBracketsMatched (input : String)
+lemma scan_FlowBracketsMatched (input : String)
     (tokens : Array (Positioned YamlToken))
     (h : scan input = .ok tokens) :
     FlowBracketsMatched tokens := by
@@ -5515,7 +5515,7 @@ theorem scan_FlowBracketsMatched (input : String)
 
 /-- Filtering out `.placeholder` tokens preserves `FlowBracketsMatched`.
     Uses `flowNesting_go_filter_equiv` with target = full array size. -/
-theorem filter_preserves_FlowBracketsMatched
+lemma filter_preserves_FlowBracketsMatched
     (all_tokens : Array (Positioned YamlToken))
     (h_fbm : FlowBracketsMatched all_tokens) :
     FlowBracketsMatched (all_tokens.filter fun t => t.val != YamlToken.placeholder) := by
@@ -5541,7 +5541,7 @@ theorem filter_preserves_FlowBracketsMatched
 /-- Scanner output has matched flow brackets.
     The scanner checks `flowLevel > 0` at completion and errors if so.
     Combined with `FlowNestingInv`, this gives `flowNesting = 0` on success. -/
-theorem scan_flow_brackets_matched (input : String)
+lemma scan_flow_brackets_matched (input : String)
     (tokens : Array (Positioned YamlToken))
     (h : Scanner.scanFiltered input = .ok tokens) :
     FlowBracketsMatched tokens := by

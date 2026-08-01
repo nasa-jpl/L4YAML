@@ -76,7 +76,7 @@ variable {input : String}
 /-- Each character occupies at least one UTF-8 byte: a `CharsFromOffset`
     witness bounds its list length by the remaining byte count. Local
     port of legacy `CharsFromOffset_length_le` (legacy 850). -/
-theorem CharsFromOffset_length_le {offset : Nat} {chars : List Char}
+lemma CharsFromOffset_length_le {offset : Nat} {chars : List Char}
     (h : CharsFromOffset input offset chars) :
     chars.length ≤ input.utf8ByteSize - offset := by
   induction h with
@@ -90,7 +90,7 @@ theorem CharsFromOffset_length_le {offset : Nat} {chars : List Char}
 /-- `escapeString` never shrinks the character count. Local port of
     legacy `escapeString_length_ge` (legacy 877), using the
     already-ported `escapeChar_nonempty`. -/
-theorem escapeString_length_ge (cs : List Char) :
+lemma escapeString_length_ge (cs : List Char) :
     (escapeString (String.ofList cs)).toList.length ≥ cs.length := by
   induction cs with
   | nil => exact Nat.zero_le _
@@ -111,7 +111,7 @@ opening-quote peek/advance and the fuel discharge. -/
 /-- `scanDoubleQuotedIx` on a cursor whose remaining characters are
     `'"' :: (escapeString content).toList ++ ['"'] ++ rest` succeeds
     with the decoded `content` and a post-quote cursor at `rest`. -/
-theorem scanDoubleQuotedIx_escapeString_corr (c : IxCursor input)
+lemma scanDoubleQuotedIx_escapeString_corr (c : IxCursor input)
     (content : String) (rest : List Char)
     (hcorr : CursorSurfCorrIx c
       ⟨'"' :: ((escapeString content).toList ++ ['"'] ++ rest), c.pos.col⟩) :
@@ -156,7 +156,7 @@ theorem scanDoubleQuotedIx_escapeString_corr (c : IxCursor input)
 /-- Full `scanNextTokenIx` for a double-quoted scalar `"…"` in flow
     context. Indexed twin of `scanNextToken_flow_scanDoubleQuoted`
     (legacy 3910). -/
-theorem scanNextTokenIx_flow_scanDoubleQuoted (s : ScannerStateIx input)
+lemma scanNextTokenIx_flow_scanDoubleQuoted (s : ScannerStateIx input)
     (content : String) (rest : List Char)
     (hcorr : ScannerSurfCorrIx s
       ⟨'"' :: ((escapeString content).toList ++ ['"'] ++ rest), s.cursor.pos.col⟩)

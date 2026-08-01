@@ -86,7 +86,7 @@ s, c))`. -/
     the identity. The line doesn't change (cursor doesn't advance),
     so the `skipToContentS` definition takes the else branch
     `{ s with cursor := s.cursor } = s`. -/
-theorem skipToContentS_id_of_content (s : ScannerStateIx input)
+lemma skipToContentS_id_of_content (s : ScannerStateIx input)
     {ch : Char} (h_pk : s.peek? = some ch)
     (h_nws : isWhiteSpaceBool ch = false)
     (h_nlb : isLineBreakBool ch = false)
@@ -100,7 +100,7 @@ theorem skipToContentS_id_of_content (s : ScannerStateIx input)
 
 /-- The cornerstone preprocessing reduction in flow context.
     Indexed twin of `scanNextToken_preprocess_flow` (legacy 3561). -/
-theorem scanNextTokenIx_preprocess_flow (s : ScannerStateIx input) (c : Char)
+lemma scanNextTokenIx_preprocess_flow (s : ScannerStateIx input) (c : Char)
     (rest : List Char) (col : Nat)
     (hcorr : ScannerSurfCorrIx s ⟨c :: rest, col⟩)
     (h_flow : s.inFlow = true)
@@ -149,7 +149,7 @@ absorb lemma `skipToContent_one_space` is short. -/
     the following character is content (non-ws, non-lb, non-`#`).
     `skipWhitespace` advances past the lone space; the peek-case then
     stops at the content character. -/
-theorem skipToContent_one_space (c : IxCursor input) {ch : Char}
+lemma skipToContent_one_space (c : IxCursor input) {ch : Char}
     (h_sp : c.peek? = some ' ')
     (h_next : c.advance.peek? = some ch)
     (h_nws : isWhiteSpaceBool ch = false)
@@ -186,7 +186,7 @@ theorem skipToContent_one_space (c : IxCursor input) {ch : Char}
 /-- State-level: `skipToContentS` absorbs one leading space, yielding
     `s.advance`. The line is unchanged (advance past a space), so the
     `skipToContentS` newline-reset branch is not taken. -/
-theorem skipToContentS_ws1 (s : ScannerStateIx input) {c : Char}
+lemma skipToContentS_ws1 (s : ScannerStateIx input) {c : Char}
     (h_sp : s.peek? = some ' ')
     (h_next : s.advance.peek? = some c)
     (h_nws : isWhiteSpaceBool c = false)
@@ -206,7 +206,7 @@ theorem skipToContentS_ws1 (s : ScannerStateIx input) {c : Char}
     preprocessing of the post-space state `s.advance`, with that state's
     invariants exposed. Indexed twin of `scanNextToken_preprocess_flow_ws1`
     (legacy 3590). -/
-theorem scanNextTokenIx_preprocess_flow_ws1 (s : ScannerStateIx input) (c : Char)
+lemma scanNextTokenIx_preprocess_flow_ws1 (s : ScannerStateIx input) (c : Char)
     (rest : List Char)
     (hcorr : ScannerSurfCorrIx s ⟨' ' :: c :: rest, s.cursor.pos.col⟩)
     (h_flow : s.inFlow = true)
@@ -277,7 +277,7 @@ preprocessing (via §1) → structural dispatch (none) → flow dispatch
 
 /-- Full `scanNextTokenIx` for `','` in flow context.
     Indexed twin of `scanNextToken_flow_comma` (legacy 4575). -/
-theorem scanNextTokenIx_flow_comma (s : ScannerStateIx input)
+lemma scanNextTokenIx_flow_comma (s : ScannerStateIx input)
     (rest : List Char)
     (hcorr : ScannerSurfCorrIx s ⟨',' :: rest, s.cursor.pos.col⟩)
     (h_flow : s.inFlow = true)

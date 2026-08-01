@@ -30,7 +30,7 @@ open L4YAML.TokenParser
 open L4YAML.Proofs.ParserWellBehaved
 
 /-- `tryConsume` on a non-matching head is the identity (paired form). -/
-theorem tryConsume_of_ne (ps : ParseState) (tok : YamlToken)
+lemma tryConsume_of_ne (ps : ParseState) (tok : YamlToken)
     (h : ps.peek? ≠ some tok) : ps.tryConsume tok = (false, ps) := by
   unfold ParseState.tryConsume
   cases h_pk : ps.peek? with
@@ -40,7 +40,7 @@ theorem tryConsume_of_ne (ps : ParseState) (tok : YamlToken)
     simp [h_t]
 
 /-- `parseStreamLoop` only grows the document accumulator. -/
-theorem parseStreamLoop_docs_le (f : Nat) :
+lemma parseStreamLoop_docs_le (f : Nat) :
     ∀ (ps : ParseState) (docs : Array YamlDocument) (st : StreamState)
       (out : Array YamlDocument),
       parseStreamLoop ps docs st f = .ok out → docs.size ≤ out.size := by
@@ -72,14 +72,14 @@ theorem parseStreamLoop_docs_le (f : Nat) :
                omega)
 
 /-- Positional `.val` read-off from a whole-array pin. -/
-theorem pin_getElem?_val {tokens : Array (Positioned YamlToken)} {L : List YamlToken}
+lemma pin_getElem?_val {tokens : Array (Positioned YamlToken)} {L : List YamlToken}
     (h_pin : tokens.toList.map (·.val) = L) (i : Nat) :
     tokens[i]?.map (·.val) = L[i]? := by
   rw [← h_pin, List.getElem?_map, ← Array.getElem?_toList]
 
 /-- `prepareDocumentState` on a directive-free, non-`---` head: no directives, no consumption,
     only the (empty) `tagHandles` reset. -/
-theorem prepareDocumentState_clean (ps : ParseState)
+lemma prepareDocumentState_clean (ps : ParseState)
     (h_head : match ps.peek? with
       | some (.versionDirective _ _) | some (.tagDirective _ _) | some .documentStart => False
       | _ => True) :
@@ -121,7 +121,7 @@ set_option maxHeartbeats 3200000 in
     pinned `[streamStart] ++ body ++ [streamEnd]` array (flow-clean, content-start-headed body)
     comes from one `parseNode` call at position 1 that ends exactly at the `streamEnd`
     position — the run-1 frame and value pin the locality walks consume. -/
-theorem parseStream_single_doc_node_witness
+lemma parseStream_single_doc_node_witness
     (tokens : Array (Positioned YamlToken)) (docs : Array YamlDocument)
     (body : List YamlToken)
     (h_parse : parseStream tokens = .ok docs)

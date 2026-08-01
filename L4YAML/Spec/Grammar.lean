@@ -115,7 +115,7 @@ Used for block scalar content lines.
 def IndentedAtLeast (n : Nat) (cs : List Char) : Prop :=
   ∃ m, m ≥ n ∧ Indented m cs
 
-theorem indented_weaken {n m : Nat} {cs : List Char}
+lemma indented_weaken {n m : Nat} {cs : List Char}
     (h : Indented m cs) (hle : n ≤ m) : Indented n cs := by
   induction n generalizing m cs with
   | zero => exact .zero cs
@@ -130,7 +130,7 @@ instance (n : Nat) (cs : List Char) : Decidable (IndentedAtLeast n cs) :=
   | .isFalse h => .isFalse (fun ⟨_, hge, hind⟩ => h (indented_weaken hind hge))
 
 /-- IndentedAtLeast 0 is trivially satisfied by any input. -/
-theorem indentedAtLeast_zero (cs : List Char) : IndentedAtLeast 0 cs :=
+lemma indentedAtLeast_zero (cs : List Char) : IndentedAtLeast 0 cs :=
   ⟨0, Nat.le_refl 0, Indented.zero cs⟩
 
 /-! ## c-forbidden Content (YAML 1.2.2 §9.1.2: https://yaml.org/spec/1.2.2/#912-document-markers)

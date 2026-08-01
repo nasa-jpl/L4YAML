@@ -121,7 +121,7 @@ def EmitScansInFlowBlock (v : YamlValue) : Prop :=
     `ContentStartTok = isFlowContentStart` (definitionally identical), and the
     `≠ .flowSequenceEnd` premise is simply discarded — line 107 asserts the
     content-start head UNCONDITIONALLY for a non-empty block. -/
-theorem openerAdj_head_of_block_contentStart
+lemma openerAdj_head_of_block_contentStart
     (block : List (Positioned YamlToken))
     (h : ∃ (hne : block ≠ []), ContentStartTok (block.head hne).val) :
     ∀ (h0 : 0 < block.length),
@@ -136,7 +136,7 @@ theorem openerAdj_head_of_block_contentStart
     head (so `a` non-empty), so a content-start head of `a` yields the `OpenerAdj_wrap_seq`
     `h_head` shape for the whole body.  Stated in the producer's exact term shape; the `[0]`
     index is constant so the two `getElem_append_left` steps carry no dependent-length motive. -/
-theorem headContentStart_append3
+lemma headContentStart_append3
     (a rest : List (Positioned YamlToken)) (feTok : Positioned YamlToken)
     (h_cs : ∃ (hne : a ≠ []), ContentStartTok (a.head hne).val) :
     ∀ (h0 : 0 < (a ++ [feTok] ++ rest).length),
@@ -163,7 +163,7 @@ theorem headContentStart_append3
     the SEQ-side field-(ii) constructor — the `≠ .key`-gated head the `SepAdj_seam` successor clause
     consumes; for the SEQ list-body the head is always a value's content-start head (`h_cs₁`), so the
     field is genuine (not vacuous), unlike the pair-list where the head is literally `.key`. -/
-theorem sepAdjHead_append3
+lemma sepAdjHead_append3
     (a rest : List (Positioned YamlToken)) (feTok : Positioned YamlToken)
     (h_cs : ∃ (hne : a ≠ []), ContentStartTok (a.head hne).val) :
     ∀ (h0 : 0 < (a ++ [feTok] ++ rest).length),
@@ -200,7 +200,7 @@ theorem sepAdjHead_append3
     bridge does NOT apply there; the recursive seam owes a `SepAdj`-shaped (`≠ .key`-gated) head
     field on the list-body, threaded alongside.  Leaf-vs-seam asymmetry: the ∃-head bridges for
     free; the already-gated recursive head does not. -/
-theorem sepAdj_head_of_block_contentStart
+lemma sepAdj_head_of_block_contentStart
     (block : List (Positioned YamlToken))
     (h : ∃ (hne : block ≠ []), ContentStartTok (block.head hne).val) :
     ∀ (h0 : 0 < block.length),
@@ -218,7 +218,7 @@ theorem sepAdj_head_of_block_contentStart
     is never `.flowEntry`).  For length `≥ 2` the proper prefix at `length-1` has balance `≥ 1`,
     forcing `pbalance e = pbalance (take (length-1)) + 0 ≥ 1 ≠ 0`.  Used by the
     `EmitScansInFlowRecEntry → EmitScansInFlowBlock` coercion to supply the new `lastNonSep` field. -/
-theorem lastNonSep_of_entryUnit_contentHead (e : List (Positioned YamlToken))
+lemma lastNonSep_of_entryUnit_contentHead (e : List (Positioned YamlToken))
     (h_eu : EntryUnit e)
     (h_head : ∃ (hne : e ≠ []), ContentStartTok (e.head hne).val) :
     ∀ (hla : 0 < e.length),
@@ -298,7 +298,7 @@ def EmitListScansInFlowBlock (items : List YamlValue) : Prop :=
       ∧ SepAdj block
 
 /-- Empty list body: 0-step chain, empty (`WellBracketed`) block. -/
-theorem emitList_scans_block_empty : EmitListScansInFlowBlock [] := by
+lemma emitList_scans_block_empty : EmitListScansInFlowBlock [] := by
   intro s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline _h_sync
   have h_eq : (emit.emitList ([] : List YamlValue)).toList ++ rest = rest := by
     simp only [emit.emitList]; rfl
@@ -317,7 +317,7 @@ theorem emitList_scans_block_empty : EmitListScansInFlowBlock [] := by
     token `.flowEntry` IS the separator, so an empty tail would falsify it) need NOT thread a new
     `block ≠ []` carrier field: the growth witness is already in scope at every seam (it is how the
     recursion makes progress) and certifies the delta for free. -/
-theorem block_ne_nil_of_chainGrew
+lemma block_ne_nil_of_chainGrew
     {s s' : ScannerState} {n : Nat} {block : List (Positioned YamlToken)}
     (h_chain : ScanChainGrew (fun t => t.val != .placeholder) s (n + 1) s')
     (h_eq : (s'.tokens.filter (fun t => t.val != .placeholder)).toList
@@ -335,7 +335,7 @@ theorem block_ne_nil_of_chainGrew
     block: each item block (from `EmitScansInFlowBlock`) is `WellBracketed`, each
     `", "` separator contributes a single delta-`0` `.flowEntry`, and the recursive
     tail block is `WellBracketed`; `WellBracketed_append` glues them. -/
-theorem emitList_scans_block_nonempty (items : List YamlValue) (h_ne : items ≠ [])
+lemma emitList_scans_block_nonempty (items : List YamlValue) (h_ne : items ≠ [])
     (h_all : ∀ v ∈ items, EmitScansInFlowBlock v) :
     EmitListScansInFlowBlock items := by
   induction items with
@@ -632,7 +632,7 @@ def EmitPairListScansInFlowBlock (pairs : List (YamlValue × YamlValue)) : Prop 
       ∧ SepAdj block
 
 /-- Empty pair-list body: 0-step chain, empty (`WellBracketed`) block. -/
-theorem emitPairList_scans_block_empty : EmitPairListScansInFlowBlock [] := by
+lemma emitPairList_scans_block_empty : EmitPairListScansInFlowBlock [] := by
   intro s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska h_sync
   have h_eq : (emit.emitPairList ([] : List (YamlValue × YamlValue))).toList ++ rest = rest := by
     simp [emit.emitPairList]
@@ -654,7 +654,7 @@ theorem emitPairList_scans_block_empty : EmitPairListScansInFlowBlock [] := by
     glued by `WellBracketed_append`.  The `", "` separator between pairs contributes one
     delta-0 `.flowEntry` and re-establishes the per-pair simple-key preconditions
     (`scanNextToken_flow_comma_simpleKey` + the ws1 simple-key preservation). -/
-theorem emitPairList_scans_block_nonempty (pairs : List (YamlValue × YamlValue))
+lemma emitPairList_scans_block_nonempty (pairs : List (YamlValue × YamlValue))
     (h_ne : pairs ≠ [])
     (h_all_k : ∀ p ∈ pairs, EmitScansInFlowSavedKeyBlock p.1)
     (h_all_v : ∀ p ∈ pairs, EmitScansInFlowBlock p.2) :

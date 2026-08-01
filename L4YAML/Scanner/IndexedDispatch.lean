@@ -173,7 +173,7 @@ in `Proofs/Scanner/IndexedWhitespace.lean`: induction on `fuel`,
 `unfold` the loop, then `split` on each branching `match` / `if`. The
 recursive branch chains `advance_offset_monotonic` with the IH. -/
 
-theorem collectAnchorNameLoopIx_offset_monotonic {input : String}
+lemma collectAnchorNameLoopIx_offset_monotonic {input : String}
     (c : IxCursor input) (name : String) (fuel : Nat) :
     c.pos.offset ≤ (collectAnchorNameLoopIx c name fuel).2.pos.offset := by
   induction fuel generalizing c name with
@@ -188,7 +188,7 @@ theorem collectAnchorNameLoopIx_offset_monotonic {input : String}
     · -- none
       exact Nat.le_refl _
 
-theorem collectTagHandleLoopIx_offset_monotonic {input : String}
+lemma collectTagHandleLoopIx_offset_monotonic {input : String}
     (c : IxCursor input) (chars : String) (fuel : Nat) :
     c.pos.offset ≤ (collectTagHandleLoopIx c chars fuel).2.2.pos.offset := by
   induction fuel generalizing c chars with
@@ -207,7 +207,7 @@ theorem collectTagHandleLoopIx_offset_monotonic {input : String}
     · -- none
       exact Nat.le_refl _
 
-theorem collectTagSuffixLoopIx_offset_monotonic {input : String}
+lemma collectTagSuffixLoopIx_offset_monotonic {input : String}
     (c : IxCursor input) (suffix : String) (fuel : Nat) :
     c.pos.offset ≤ (collectTagSuffixLoopIx c suffix fuel).2.pos.offset := by
   induction fuel generalizing c suffix with
@@ -222,7 +222,7 @@ theorem collectTagSuffixLoopIx_offset_monotonic {input : String}
     · -- none
       exact Nat.le_refl _
 
-theorem collectVerbatimTagLoopIx_offset_monotonic {input : String}
+lemma collectVerbatimTagLoopIx_offset_monotonic {input : String}
     (c : IxCursor input) (uri : String) (fuel : Nat) :
     c.pos.offset ≤ (collectVerbatimTagLoopIx c uri fuel).2.2.pos.offset := by
   induction fuel generalizing c uri with
@@ -241,7 +241,7 @@ theorem collectVerbatimTagLoopIx_offset_monotonic {input : String}
     · -- none
       exact Nat.le_refl _
 
-theorem collectDirectiveNameLoopIx_offset_monotonic {input : String}
+lemma collectDirectiveNameLoopIx_offset_monotonic {input : String}
     (c : IxCursor input) (name : String) (fuel : Nat) :
     c.pos.offset ≤ (collectDirectiveNameLoopIx c name fuel).2.pos.offset := by
   induction fuel generalizing c name with
@@ -256,7 +256,7 @@ theorem collectDirectiveNameLoopIx_offset_monotonic {input : String}
     · -- none
       exact Nat.le_refl _
 
-theorem collectVersionMajorLoopIx_offset_monotonic {input : String}
+lemma collectVersionMajorLoopIx_offset_monotonic {input : String}
     (c : IxCursor input) (major : String) (fuel : Nat) :
     c.pos.offset ≤ (collectVersionMajorLoopIx c major fuel).2.pos.offset := by
   induction fuel generalizing c major with
@@ -275,7 +275,7 @@ theorem collectVersionMajorLoopIx_offset_monotonic {input : String}
     · -- none
       exact Nat.le_refl _
 
-theorem collectVersionMinorLoopIx_offset_monotonic {input : String}
+lemma collectVersionMinorLoopIx_offset_monotonic {input : String}
     (c : IxCursor input) (minor : String) (fuel : Nat) :
     c.pos.offset ≤ (collectVersionMinorLoopIx c minor fuel).2.pos.offset := by
   induction fuel generalizing c minor with
@@ -292,7 +292,7 @@ theorem collectVersionMinorLoopIx_offset_monotonic {input : String}
     · -- none
       exact Nat.le_refl _
 
-theorem skipDocEndWhitespaceIx_offset_monotonic {input : String}
+lemma skipDocEndWhitespaceIx_offset_monotonic {input : String}
     (c : IxCursor input) (fuel : Nat) :
     c.pos.offset ≤ (skipDocEndWhitespaceIx c fuel).pos.offset := by
   induction fuel generalizing c with

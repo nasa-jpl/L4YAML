@@ -91,7 +91,7 @@ namespace L4YAML.Indexed.IxCursor
 
 /-- `advanceN (n + 1)` strictly advances offset when the cursor has more
     input. Mirrors `ScannerProgress.advanceN_succ_offset_lt`. -/
-theorem advanceN_succ_offset_lt {input : String} (c : IxCursor input) (n : Nat)
+lemma advanceN_succ_offset_lt {input : String} (c : IxCursor input) (n : Nat)
     (h : c.pos.offset < input.utf8ByteSize) :
     c.pos.offset < (c.advanceN (n + 1)).pos.offset := by
   show c.pos.offset < (c.advance.advanceN n).pos.offset
@@ -103,13 +103,13 @@ end L4YAML.Indexed.IxCursor
 namespace L4YAML.Scanner.Indexed.ScannerStateIx
 
 /-- State-level strict progress for `advance` under `hasMore`. -/
-theorem advance_offset_lt_of_hasMore {input : String} (s : ScannerStateIx input)
+lemma advance_offset_lt_of_hasMore {input : String} (s : ScannerStateIx input)
     (h : s.cursor.pos.offset < input.utf8ByteSize) :
     s.cursor.pos.offset < s.advance.cursor.pos.offset :=
   L4YAML.Indexed.IxCursor.advance_offset_lt_of_hasMore s.cursor h
 
 /-- State-level strict progress for `advanceN (n + 1)` under `hasMore`. -/
-theorem advanceN_succ_offset_lt_of_hasMore {input : String} (s : ScannerStateIx input)
+lemma advanceN_succ_offset_lt_of_hasMore {input : String} (s : ScannerStateIx input)
     (n : Nat) (h : s.cursor.pos.offset < input.utf8ByteSize) :
     s.cursor.pos.offset < (s.advanceN (n + 1)).cursor.pos.offset := by
   rw [advanceN_cursor]
@@ -136,7 +136,7 @@ cursor-preserving operations (`emit`, structure update) leave the
 offset unchanged. -/
 
 /-- `scanFlowSequenceStartIx` strictly advances offset. -/
-theorem scanFlowSequenceStartIx_offset_lt (s : ScannerStateIx input)
+lemma scanFlowSequenceStartIx_offset_lt (s : ScannerStateIx input)
     (h_hm : s.cursor.pos.offset < input.utf8ByteSize) :
     s.cursor.pos.offset < (scanFlowSequenceStartIx s).cursor.pos.offset := by
   unfold scanFlowSequenceStartIx
@@ -145,7 +145,7 @@ theorem scanFlowSequenceStartIx_offset_lt (s : ScannerStateIx input)
   exact L4YAML.Indexed.IxCursor.advance_offset_lt_of_hasMore _ h_hm
 
 /-- `scanFlowSequenceEndIx` strictly advances offset. -/
-theorem scanFlowSequenceEndIx_offset_lt (s : ScannerStateIx input)
+lemma scanFlowSequenceEndIx_offset_lt (s : ScannerStateIx input)
     (h_hm : s.cursor.pos.offset < input.utf8ByteSize) :
     s.cursor.pos.offset < (scanFlowSequenceEndIx s).cursor.pos.offset := by
   unfold scanFlowSequenceEndIx
@@ -154,7 +154,7 @@ theorem scanFlowSequenceEndIx_offset_lt (s : ScannerStateIx input)
   exact L4YAML.Indexed.IxCursor.advance_offset_lt_of_hasMore _ h_hm
 
 /-- `scanFlowMappingStartIx` strictly advances offset. -/
-theorem scanFlowMappingStartIx_offset_lt (s : ScannerStateIx input)
+lemma scanFlowMappingStartIx_offset_lt (s : ScannerStateIx input)
     (h_hm : s.cursor.pos.offset < input.utf8ByteSize) :
     s.cursor.pos.offset < (scanFlowMappingStartIx s).cursor.pos.offset := by
   unfold scanFlowMappingStartIx
@@ -163,7 +163,7 @@ theorem scanFlowMappingStartIx_offset_lt (s : ScannerStateIx input)
   exact L4YAML.Indexed.IxCursor.advance_offset_lt_of_hasMore _ h_hm
 
 /-- `scanFlowMappingEndIx` strictly advances offset. -/
-theorem scanFlowMappingEndIx_offset_lt (s : ScannerStateIx input)
+lemma scanFlowMappingEndIx_offset_lt (s : ScannerStateIx input)
     (h_hm : s.cursor.pos.offset < input.utf8ByteSize) :
     s.cursor.pos.offset < (scanFlowMappingEndIx s).cursor.pos.offset := by
   unfold scanFlowMappingEndIx
@@ -180,7 +180,7 @@ closes the `.ok` arms via the trailing `advance` on a cursor-preserving
 chain. -/
 
 /-- `scanBlockEntryIx` strictly advances offset on `.ok`. -/
-theorem scanBlockEntryIx_offset_lt {s s' : ScannerStateIx input}
+lemma scanBlockEntryIx_offset_lt {s s' : ScannerStateIx input}
     (h_hm : s.cursor.pos.offset < input.utf8ByteSize)
     (h : scanBlockEntryIx s = .ok s') :
     s.cursor.pos.offset < s'.cursor.pos.offset := by
@@ -208,7 +208,7 @@ theorem scanBlockEntryIx_offset_lt {s s' : ScannerStateIx input}
     exact L4YAML.Indexed.IxCursor.advance_offset_lt_of_hasMore _ h_hm
 
 /-- `scanKeyIx` strictly advances offset on `.ok`. -/
-theorem scanKeyIx_offset_lt {s s' : ScannerStateIx input}
+lemma scanKeyIx_offset_lt {s s' : ScannerStateIx input}
     (h_hm : s.cursor.pos.offset < input.utf8ByteSize)
     (h : scanKeyIx s = .ok s') :
     s.cursor.pos.offset < s'.cursor.pos.offset := by
@@ -231,7 +231,7 @@ theorem scanKeyIx_offset_lt {s s' : ScannerStateIx input}
     exact L4YAML.Indexed.IxCursor.advance_offset_lt_of_hasMore _ h_hm
 
 /-- `scanValueIx` strictly advances offset on `.ok`. -/
-theorem scanValueIx_offset_lt {s s' : ScannerStateIx input}
+lemma scanValueIx_offset_lt {s s' : ScannerStateIx input}
     (h_hm : s.cursor.pos.offset < input.utf8ByteSize)
     (h : scanValueIx s = .ok s') :
     s.cursor.pos.offset < s'.cursor.pos.offset := by
@@ -249,7 +249,7 @@ theorem scanValueIx_offset_lt {s s' : ScannerStateIx input}
       exact L4YAML.Indexed.IxCursor.advance_offset_lt_of_hasMore _ h_hm
 
 /-- `scanFlowEntryIx` strictly advances offset on `.ok`. -/
-theorem scanFlowEntryIx_offset_lt {s s' : ScannerStateIx input}
+lemma scanFlowEntryIx_offset_lt {s s' : ScannerStateIx input}
     (h_hm : s.cursor.pos.offset < input.utf8ByteSize)
     (h : scanFlowEntryIx s = .ok s') :
     s.cursor.pos.offset < s'.cursor.pos.offset := by
@@ -272,7 +272,7 @@ theorem scanFlowEntryIx_offset_lt {s s' : ScannerStateIx input}
 /-! ## §3  Document / directive leaf strict progress -/
 
 /-- `scanDocumentStartIx` strictly advances offset (consumes `---`). -/
-theorem scanDocumentStartIx_offset_lt (s : ScannerStateIx input)
+lemma scanDocumentStartIx_offset_lt (s : ScannerStateIx input)
     (h_hm : s.cursor.pos.offset < input.utf8ByteSize) :
     s.cursor.pos.offset < (scanDocumentStartIx s).cursor.pos.offset := by
   unfold scanDocumentStartIx
@@ -281,7 +281,7 @@ theorem scanDocumentStartIx_offset_lt (s : ScannerStateIx input)
   exact L4YAML.Indexed.IxCursor.advanceN_succ_offset_lt _ 2 h_hm
 
 /-- `scanDocumentEndIx` strictly advances offset on `.ok` (consumes `...`). -/
-theorem scanDocumentEndIx_offset_lt {s s' : ScannerStateIx input}
+lemma scanDocumentEndIx_offset_lt {s s' : ScannerStateIx input}
     (h_hm : s.cursor.pos.offset < input.utf8ByteSize)
     (h : scanDocumentEndIx s = .ok s') :
     s.cursor.pos.offset < s'.cursor.pos.offset := by
@@ -309,7 +309,7 @@ theorem scanDocumentEndIx_offset_lt {s s' : ScannerStateIx input}
 
 /-- `scanDirectiveIx` strictly advances offset on `.ok` (consumes at
     least the leading `%`). -/
-theorem scanDirectiveIx_offset_lt {s s' : ScannerStateIx input}
+lemma scanDirectiveIx_offset_lt {s s' : ScannerStateIx input}
     (h_hm : s.cursor.pos.offset < input.utf8ByteSize)
     (h : scanDirectiveIx s = .ok s') :
     s.cursor.pos.offset < s'.cursor.pos.offset := by
@@ -346,7 +346,7 @@ theorem scanDirectiveIx_offset_lt {s s' : ScannerStateIx input}
 
 /-- `scanAnchorOrAliasIx` strictly advances offset on `.ok` (consumes
     at least the leading `&` or `*`). -/
-theorem scanAnchorOrAliasIx_offset_lt {s s' : ScannerStateIx input} {isAnchor : Bool}
+lemma scanAnchorOrAliasIx_offset_lt {s s' : ScannerStateIx input} {isAnchor : Bool}
     (h_hm : s.cursor.pos.offset < input.utf8ByteSize)
     (h : scanAnchorOrAliasIx s isAnchor = .ok s') :
     s.cursor.pos.offset < s'.cursor.pos.offset := by
@@ -366,7 +366,7 @@ theorem scanAnchorOrAliasIx_offset_lt {s s' : ScannerStateIx input} {isAnchor : 
 
 /-- `scanTagIx` strictly advances offset on `.ok` (consumes at least
     the leading `!`). -/
-theorem scanTagIx_offset_lt {s s' : ScannerStateIx input}
+lemma scanTagIx_offset_lt {s s' : ScannerStateIx input}
     (h_hm : s.cursor.pos.offset < input.utf8ByteSize)
     (h : scanTagIx s = .ok s') :
     s.cursor.pos.offset < s'.cursor.pos.offset := by
@@ -419,7 +419,7 @@ strict progress at the cursor level; the dispatcher composes through
 /-- `scanBlockScalarIx` strictly advances cursor offset on `some`
     (consumes at least the leading `|`/`>`). Indexed twin of
     `ScannerCorrectness.scanBlockScalar_offset_lt`. -/
-theorem scanBlockScalarIx_offset_lt {input : String} (c : IxCursor input)
+lemma scanBlockScalarIx_offset_lt {input : String} (c : IxCursor input)
     (parentIndent : Nat) {result : String × ScalarStyle × IxCursor input}
     (h_hm : c.pos.offset < input.utf8ByteSize)
     (h : scanBlockScalarIx c parentIndent = some result) :
@@ -507,13 +507,13 @@ the file header for details. -/
 /-! #### Boolean helpers (ports of `ScannerCorrectness.lean:10228–10260`) -/
 
 /-- Flow indicators are indicators. -/
-theorem flowIndicator_isIndicator' (c : Char) (h : isFlowIndicatorBool c = true) :
+lemma flowIndicator_isIndicator' (c : Char) (h : isFlowIndicatorBool c = true) :
     isIndicatorBool c = true := by
   simp [isFlowIndicatorBool, List.mem_cons] at h
   rcases h with rfl | rfl | rfl | rfl | rfl; all_goals decide
 
 /-- `canStart` implies not a line break. -/
-theorem canStart_not_lb (c : Char) (next : Option Char) (inFlow : Bool)
+lemma canStart_not_lb (c : Char) (next : Option Char) (inFlow : Bool)
     (hcan : canStartPlainScalarBool c next inFlow = true) :
     isLineBreakBool c = false := by
   unfold canStartPlainScalarBool at hcan; split at hcan
@@ -521,7 +521,7 @@ theorem canStart_not_lb (c : Char) (next : Option Char) (inFlow : Bool)
   · simp only [Bool.and_eq_true, Bool.not_eq_true'] at hcan; exact hcan.2
 
 /-- `canStart` implies not whitespace. -/
-theorem canStart_not_ws (c : Char) (next : Option Char) (inFlow : Bool)
+lemma canStart_not_ws (c : Char) (next : Option Char) (inFlow : Bool)
     (hcan : canStartPlainScalarBool c next inFlow = true) :
     isWhiteSpaceBool c = false := by
   unfold canStartPlainScalarBool at hcan; split at hcan
@@ -529,7 +529,7 @@ theorem canStart_not_ws (c : Char) (next : Option Char) (inFlow : Bool)
   · simp only [Bool.and_eq_true, Bool.not_eq_true'] at hcan; exact hcan.1.2
 
 /-- `canStart` implies plain-safe. -/
-theorem canStart_plainSafe (c : Char) (next : Option Char) (inFlow : Bool)
+lemma canStart_plainSafe (c : Char) (next : Option Char) (inFlow : Bool)
     (hcan : canStartPlainScalarBool c next inFlow = true) :
     isPlainSafeBool c inFlow = true := by
   have hws := canStart_not_ws c next inFlow hcan
@@ -544,7 +544,7 @@ theorem canStart_plainSafe (c : Char) (next : Option Char) (inFlow : Bool)
   · simp [hws, hlb]
 
 /-- `canStart` implies not a flow indicator. -/
-theorem canStart_not_flowIndicator (c : Char) (next : Option Char) (inFlow : Bool)
+lemma canStart_not_flowIndicator (c : Char) (next : Option Char) (inFlow : Bool)
     (hcan : canStartPlainScalarBool c next inFlow = true) :
     isFlowIndicatorBool c = false := by
   cases h_fi : isFlowIndicatorBool c with
@@ -559,7 +559,7 @@ theorem canStart_not_flowIndicator (c : Char) (next : Option Char) (inFlow : Boo
       exact absurd hind (by simp [hcan.1.1])
 
 /-- When `canStart` holds on `':'`, `colonTerminatesPlain c inFlow = false`. -/
-theorem colonTerminatesPlain_false_of_canStart {input : String} (c : IxCursor input)
+lemma colonTerminatesPlain_false_of_canStart {input : String} (c : IxCursor input)
     (inFlow : Bool)
     (h_can : canStartPlainScalarBool ':' (c.peekAt? 1) inFlow = true) :
     colonTerminatesPlain c inFlow = false := by
@@ -596,7 +596,7 @@ theorem colonTerminatesPlain_false_of_canStart {input : String} (c : IxCursor in
     - `c.peek? = some ch` (the first character is `ch`)
     - `canStartPlainScalarBool ch (c.peekAt? 1) inFlow = true` (the
       character can begin a plain scalar) -/
-theorem scanPlainScalarIx_offset_lt {input : String} (c : IxCursor input)
+lemma scanPlainScalarIx_offset_lt {input : String} (c : IxCursor input)
     (ch : Char) (inFlow : Bool) (contentIndent : Nat)
     (h_hm : c.pos.offset < input.utf8ByteSize)
     (h_peek : c.peek? = some ch)
@@ -682,7 +682,7 @@ on its success path. The strict-progress composes via
 `Nat.lt_of_lt_of_le` against the leaf's `_offset_lt`. -/
 
 /-- `scanNextTokenIx_dispatchStructural` strict progress on `.ok (some _)`. -/
-theorem scanNextTokenIx_dispatchStructural_offset_gt {s s' : ScannerStateIx input} {c : Char}
+lemma scanNextTokenIx_dispatchStructural_offset_gt {s s' : ScannerStateIx input} {c : Char}
     (h_hm : s.cursor.pos.offset < input.utf8ByteSize)
     (h : scanNextTokenIx_dispatchStructural s c = .ok (some s')) :
     s.cursor.pos.offset < s'.cursor.pos.offset := by
@@ -693,7 +693,7 @@ theorem scanNextTokenIx_dispatchStructural_offset_gt {s s' : ScannerStateIx inpu
   · exact scanDirectiveIx_offset_lt h_hm h_dr
 
 /-- `scanNextTokenIx_dispatchFlowIndicators` strict progress on `.ok (some _)`. -/
-theorem scanNextTokenIx_dispatchFlowIndicators_offset_gt {s s' : ScannerStateIx input} {c : Char}
+lemma scanNextTokenIx_dispatchFlowIndicators_offset_gt {s s' : ScannerStateIx input} {c : Char}
     (h_hm : s.cursor.pos.offset < input.utf8ByteSize)
     (h : scanNextTokenIx_dispatchFlowIndicators s c = .ok (some s')) :
     s.cursor.pos.offset < s'.cursor.pos.offset := by
@@ -706,7 +706,7 @@ theorem scanNextTokenIx_dispatchFlowIndicators_offset_gt {s s' : ScannerStateIx 
   · exact scanFlowEntryIx_offset_lt h_hm h_fe
 
 /-- `scanNextTokenIx_dispatchBlockIndicators` strict progress on `.ok (some _)`. -/
-theorem scanNextTokenIx_dispatchBlockIndicators_offset_gt {s s' : ScannerStateIx input} {c : Char}
+lemma scanNextTokenIx_dispatchBlockIndicators_offset_gt {s s' : ScannerStateIx input} {c : Char}
     (h_hm : s.cursor.pos.offset < input.utf8ByteSize)
     (h : scanNextTokenIx_dispatchBlockIndicators s c = .ok (some s')) :
     s.cursor.pos.offset < s'.cursor.pos.offset := by
@@ -725,7 +725,7 @@ theorem scanNextTokenIx_dispatchBlockIndicators_offset_gt {s s' : ScannerStateIx
     does not perform an `atDocumentBoundary` check (legacy
     `collectPlainScalar_terminates?` did at
     `Scanner/Scalar.lean:442`). -/
-theorem scanNextTokenIx_dispatchContent_offset_gt {s s' : ScannerStateIx input} {c : Char}
+lemma scanNextTokenIx_dispatchContent_offset_gt {s s' : ScannerStateIx input} {c : Char}
     (h_hm : s.cursor.pos.offset < input.utf8ByteSize)
     (h_peek : s.peek? = some c)
     (h : scanNextTokenIx_dispatchContent s c = .ok s') :
@@ -818,7 +818,7 @@ by a successful `scanNextTokenIx_preprocess` call:
     are applicable. -/
 
 /-- The `c` returned by a successful preprocess matches `s'.peek?`. -/
-theorem scanNextTokenIx_preprocess_peek_eq {input : String}
+lemma scanNextTokenIx_preprocess_peek_eq {input : String}
     {s s' : ScannerStateIx input} {c : Char}
     (h : scanNextTokenIx_preprocess s = .ok (some (s', c))) :
     s'.peek? = some c := by
@@ -840,7 +840,7 @@ theorem scanNextTokenIx_preprocess_peek_eq {input : String}
 
 /-- A successful preprocess leaves the cursor strictly inside the
     input (witnessed by the `some c` peek). -/
-theorem scanNextTokenIx_preprocess_hasMore {input : String}
+lemma scanNextTokenIx_preprocess_hasMore {input : String}
     {s s' : ScannerStateIx input} {c : Char}
     (h : scanNextTokenIx_preprocess s = .ok (some (s', c))) :
     s'.cursor.pos.offset < input.utf8ByteSize := by
@@ -872,7 +872,7 @@ set_option maxHeartbeats 800000 in
     `scanNextTokenIx s = .ok (some s')` call has
     `s.cursor.pos.offset < s'.cursor.pos.offset`. The capstone
     termination argument for `ScanChainIx.fuel_bound`. -/
-theorem scanNextTokenIx_progress {input : String}
+lemma scanNextTokenIx_progress {input : String}
     {s s' : ScannerStateIx input}
     (h : scanNextTokenIx s = .ok (some s')) :
     s.cursor.pos.offset < s'.cursor.pos.offset := by

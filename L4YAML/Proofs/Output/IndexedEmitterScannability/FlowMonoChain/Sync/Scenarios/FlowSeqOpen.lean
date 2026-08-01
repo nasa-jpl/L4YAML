@@ -55,7 +55,7 @@ inheriting the prior `EndLineOnLineIx s`. -/
 /-- Full `scanNextTokenIx` for `'['` inside an existing flow context.
     Indexed twin of `scanNextToken_flow_open_nested` (legacy 4251).
     Sequence analog of `scanNextTokenIx_flow_open_mapping_nested`. -/
-theorem scanNextTokenIx_flow_open_seq_nested (s : ScannerStateIx input)
+lemma scanNextTokenIx_flow_open_seq_nested (s : ScannerStateIx input)
     (rest : List Char)
     (hcorr : ScannerSurfCorrIx s ⟨'[' :: rest, s.cursor.pos.col⟩)
     (h_flow : s.inFlow = true)

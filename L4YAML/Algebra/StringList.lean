@@ -44,15 +44,15 @@ namespace L4YAML.Algebra.StringList
 /-! ## Item 9 — List free-monoid laws -/
 
 /-- **List left identity**: `[] ++ xs = xs`. -/
-@[simp] theorem list_nil_append {α : Type _} (xs : List α) :
+@[simp] lemma list_nil_append {α : Type _} (xs : List α) :
     [] ++ xs = xs := List.nil_append xs
 
 /-- **List right identity**: `xs ++ [] = xs`. -/
-@[simp] theorem list_append_nil {α : Type _} (xs : List α) :
+@[simp] lemma list_append_nil {α : Type _} (xs : List α) :
     xs ++ [] = xs := List.append_nil xs
 
 /-- **List associativity**: `(xs ++ ys) ++ zs = xs ++ (ys ++ zs)`. -/
-theorem list_append_assoc {α : Type _} (xs ys zs : List α) :
+lemma list_append_assoc {α : Type _} (xs ys zs : List α) :
     (xs ++ ys) ++ zs = xs ++ (ys ++ zs) := List.append_assoc xs ys zs
 
 /-! ## Item 9 — Prefix / suffix decomposition
@@ -63,14 +63,14 @@ theorem list_append_assoc {α : Type _} (xs ys zs : List α) :
     one-stop reference. -/
 
 /-- A prefix decomposes the underlying list as `xs ++ zs`. -/
-theorem prefix_iff_exists_append {α : Type _} {xs ys : List α} :
+lemma prefix_iff_exists_append {α : Type _} {xs ys : List α} :
     xs <+: ys ↔ ∃ zs, ys = xs ++ zs := by
   constructor
   · rintro ⟨zs, rfl⟩; exact ⟨zs, rfl⟩
   · rintro ⟨zs, rfl⟩; exact ⟨zs, rfl⟩
 
 /-- Every list is a prefix of itself appended to anything. -/
-theorem prefix_append_right {α : Type _} (xs ys : List α) :
+lemma prefix_append_right {α : Type _} (xs ys : List α) :
     xs <+: xs ++ ys := ⟨ys, rfl⟩
 
 /-! ## Item 9 — `String ↔ List Char` bridge -/
@@ -78,13 +78,13 @@ theorem prefix_append_right {α : Type _} (xs ys : List α) :
 /-- **String append distributes over `toList`**:
     `(s ++ t).toList = s.toList ++ t.toList`. (Re-export of
     core Lean's `String.toList_append`.) -/
-theorem toList_append (s t : String) :
+lemma toList_append (s t : String) :
     (s ++ t).toList = s.toList ++ t.toList :=
   String.toList_append
 
 /-- **String length is list length**:
     `(s ++ t).length = s.length + t.length`. -/
-theorem length_append (s t : String) :
+lemma length_append (s t : String) :
     (s ++ t).length = s.length + t.length := by
   simp [String.length_append]
 
@@ -92,13 +92,13 @@ theorem length_append (s t : String) :
 
 /-- `dropWhile p` on a list starting with an element where `p` is false
     returns the entire list. -/
-theorem dropWhile_cons_false {α : Type} (p : α → Bool) (x : α) (xs : List α)
+lemma dropWhile_cons_false {α : Type} (p : α → Bool) (x : α) (xs : List α)
     (h : p x = false) : (x :: xs).dropWhile p = x :: xs := by
   simp [List.dropWhile, h]
 
 /-- **Item 22(a) — list-level idempotence**: After dropping elements
     matching `p`, applying `dropWhile p` again is a no-op. -/
-theorem dropWhile_idempotent {α : Type} (p : α → Bool) (xs : List α) :
+lemma dropWhile_idempotent {α : Type} (p : α → Bool) (xs : List α) :
     (xs.dropWhile p).dropWhile p = xs.dropWhile p := by
   induction xs with
   | nil => rfl
@@ -114,7 +114,7 @@ theorem dropWhile_idempotent {α : Type} (p : α → Bool) (xs : List α) :
 /-- **Item 22(b) — reverse-trim-reverse idempotent**:
     Applying the full trim operation twice is the same as once,
     at the list level. -/
-theorem reverse_dropWhile_reverse_idempotent {α : Type} (p : α → Bool) (xs : List α) :
+lemma reverse_dropWhile_reverse_idempotent {α : Type} (p : α → Bool) (xs : List α) :
     ((xs.reverse.dropWhile p).reverse.reverse.dropWhile p).reverse
     = (xs.reverse.dropWhile p).reverse := by
   rw [List.reverse_reverse]

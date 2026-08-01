@@ -35,7 +35,7 @@ OR dispatchBlockIndicators OR dispatchContent). The field updates and
 `checkBlockFlowIndent` (which returns Unit) preserve both invariants
 trivially. -/
 
-theorem scanNextTokenIx_preserves_ScanInvIx
+lemma scanNextTokenIx_preserves_ScanInvIx
     {s s' : ScannerStateIx input} (h : ScanInvIx s) (h_akv : AllKeysValidIx s)
     (h_ok : scanNextTokenIx s = .ok (some s')) : ScanInvIx s' := by
   unfold scanNextTokenIx at h_ok
@@ -132,7 +132,7 @@ theorem scanNextTokenIx_preserves_ScanInvIx
                         cases h_ok
                         exact scanNextTokenIx_dispatchContent_preserves_ScanInvIx h_sp hCon
 
-theorem scanNextTokenIx_preserves_AllKeysValidIx
+lemma scanNextTokenIx_preserves_AllKeysValidIx
     {s s' : ScannerStateIx input} (h_akv : AllKeysValidIx s)
     (h_ok : scanNextTokenIx s = .ok (some s')) : AllKeysValidIx s' := by
   unfold scanNextTokenIx at h_ok
@@ -237,7 +237,7 @@ preserve `ScanInvIx`) or we recurse on `scanNextTokenIx`'s output
     the *final* state's cursor offset, not the input state's. Phrased
     as `ScanInv'Ix` rather than `ScanInvIx` since we lose the final
     state's structure (`scanLoopIx` returns the TokenStream alone). -/
-theorem scanLoopIx_ordered {s : ScannerStateIx input} {fuel : Nat}
+lemma scanLoopIx_ordered {s : ScannerStateIx input} {fuel : Nat}
     {ts : Indexed.TokenStream input}
     (h : ScanInvIx s) (h_akv : AllKeysValidIx s)
     (h_ok : scanLoopIx s fuel = .ok ts) :
@@ -279,7 +279,7 @@ advance for BOM) satisfies both `ScanInvIx` and `AllKeysValidIx`
 vacuously (no simpleKey saved yet, simpleKeyStack empty, one token
 with `.start = 0`). -/
 
-theorem ScanInvIx_mk' (input : String) :
+lemma ScanInvIx_mk' (input : String) :
     ScanInvIx (ScannerStateIx.mk' input) := by
   refine ⟨?_, ?_⟩
   · -- tokens is empty
@@ -288,7 +288,7 @@ theorem ScanInvIx_mk' (input : String) :
   · intro ⟨i, hi⟩
     exact absurd hi (Nat.not_lt_zero i)
 
-theorem AllKeysValidIx_mk' (input : String) :
+lemma AllKeysValidIx_mk' (input : String) :
     AllKeysValidIx (ScannerStateIx.mk' input) := by
   refine ⟨?_, ?_⟩
   · intro h_poss
@@ -304,7 +304,7 @@ theorem AllKeysValidIx_mk' (input : String) :
     rw [h_sz] at hj
     exact Nat.not_lt_zero j hj
 
-theorem scanIx_positions_ordered (tokens : Indexed.TokenStream input)
+lemma scanIx_positions_ordered (tokens : Indexed.TokenStream input)
     (h : scanIx input = .ok tokens) :
     ∀ (i j : Fin tokens.tokens.size), i.val < j.val →
       (tokens.tokens[i]).start.offset ≤ (tokens.tokens[j]).start.offset := by
@@ -341,7 +341,7 @@ because the composite needs `scanIx_positions_ordered` from §8.11
 (this file). All three conjuncts are now real theorems — no staging
 axioms remain in the `scanIx` chain. -/
 
-theorem scanIx_valid_token_stream
+lemma scanIx_valid_token_stream
     {input : String} (tokens : Indexed.TokenStream input)
     (h : scanIx input = .ok tokens) :
     ValidTokenStreamPropIx tokens := by

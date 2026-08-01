@@ -73,7 +73,7 @@ variable {input : String}
 /-- After `scanNextTokenIx` with leading `[` in flow context, the
     first new filtered token is `.flowSequenceStart`. Indexed twin of
     `scanFlowSequenceStart_first_filtered_token` (legacy 5598). -/
-theorem scanFlowSequenceStartIx_first_filtered_token (s : ScannerStateIx input)
+lemma scanFlowSequenceStartIx_first_filtered_token (s : ScannerStateIx input)
     (rest : List Char)
     (hcorr : ScannerSurfCorrIx s ⟨'[' :: rest, s.cursor.pos.col⟩)
     (h_flow : s.inFlow = true)
@@ -146,7 +146,7 @@ theorem scanFlowSequenceStartIx_first_filtered_token (s : ScannerStateIx input)
 /-- After `scanNextTokenIx` with leading `{` in flow context, the
     first new filtered token is `.flowMappingStart`. Indexed twin of
     `scanFlowMappingStart_first_filtered_token` (legacy 5657). -/
-theorem scanFlowMappingStartIx_first_filtered_token (s : ScannerStateIx input)
+lemma scanFlowMappingStartIx_first_filtered_token (s : ScannerStateIx input)
     (rest : List Char)
     (hcorr : ScannerSurfCorrIx s ⟨'{' :: rest, s.cursor.pos.col⟩)
     (h_flow : s.inFlow = true)
@@ -222,7 +222,7 @@ the token-push shape off the `emitAt`-then-record-update body. -/
     subType are existentially quantified — the lemma's purpose is
     dispatch identification. Indexed twin of
     `scanDoubleQuoted_first_filtered_token` (legacy 5746). -/
-theorem scanDoubleQuotedIx_first_filtered_token (s : ScannerStateIx input)
+lemma scanDoubleQuotedIx_first_filtered_token (s : ScannerStateIx input)
     (rest : List Char)
     (hcorr : ScannerSurfCorrIx s ⟨'"' :: rest, s.cursor.pos.col⟩)
     (h_flow : s.inFlow = true)
@@ -370,7 +370,7 @@ No indexed-scanner content; ported verbatim from legacy 5833–5871.
 chain). -/
 
 /-- The first char of `Emit.emit v` is always a non-whitespace content char. -/
-theorem emit_first_char (v : YamlValue) :
+lemma emit_first_char (v : YamlValue) :
     ∃ c rest', (L4YAML.Emit.emit v).toList = c :: rest' ∧
       isWhiteSpaceBool c = false ∧ isLineBreakBool c = false ∧ c ≠ '#' := by
   cases v with
@@ -392,7 +392,7 @@ theorem emit_first_char (v : YamlValue) :
     simp only [L4YAML.Emit.emit, L4YAML.Emit.emitScalar, String.toList_append]; rfl
 
 /-- The first char of `Emit.emit.emitList (v :: vs)` is the first char of `Emit.emit v`. -/
-theorem emitList_first_char (v : YamlValue) (vs : List YamlValue) :
+lemma emitList_first_char (v : YamlValue) (vs : List YamlValue) :
     ∃ c rest', (L4YAML.Emit.emit.emitList (v :: vs)).toList = c :: rest' ∧
       isWhiteSpaceBool c = false ∧ isLineBreakBool c = false ∧ c ≠ '#' := by
   obtain ⟨c, ev_rest, h_emit_eq, h_nws, h_nlb, h_nc⟩ := emit_first_char v
@@ -410,7 +410,7 @@ theorem emitList_first_char (v : YamlValue) (vs : List YamlValue) :
       by simp, h_nws, h_nlb, h_nc⟩
 
 /-- `Emit.emit.emitList` is non-empty on non-empty input: its toList is non-nil. -/
-theorem emitList_toList_ne_nil (v : YamlValue) (vs : List YamlValue) :
+lemma emitList_toList_ne_nil (v : YamlValue) (vs : List YamlValue) :
     (L4YAML.Emit.emit.emitList (v :: vs)).toList ≠ [] := by
   obtain ⟨c, rest', h_eq, _, _, _⟩ := emitList_first_char v vs
   rw [h_eq]; exact List.cons_ne_nil _ _
@@ -421,7 +421,7 @@ Identifies the single-token push performed by `ScannerStateIx.emit`.
 Indexed twin of legacy `emit_tokens_push` (5877). -/
 
 /-- After `s.emit tok`, the pushed token is the last element of the array. -/
-theorem emit_tokens_pushIx (s : ScannerStateIx input) (tok : YamlToken) :
+lemma emit_tokens_pushIx (s : ScannerStateIx input) (tok : YamlToken) :
     (s.emit tok).tokens.tokens =
       s.tokens.tokens.push
         (IxToken.mk' (input := input) s.cursor.pos tok s.cursor.pos
@@ -436,7 +436,7 @@ Generic `Array α` lemma: if `b` extends `a`, then `b.filter p` has
 
 /-- If `b` extends `a` (same elements at all positions `i < a.size`),
     then `b.filter p` has `a.filter p` as a prefix. -/
-theorem Array_filter_prefix_of_raw_prefix {α : Type}
+lemma Array_filter_prefix_of_raw_prefix {α : Type}
     (a b : Array α) (p : α → Bool)
     (h_sz : a.size ≤ b.size)
     (h_eq : ∀ i (hi : i < a.size), b[i]'(by omega) = a[i]) :

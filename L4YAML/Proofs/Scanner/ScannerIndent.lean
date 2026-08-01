@@ -49,13 +49,13 @@ based on whether it's a newline, and moves `offset` to the next byte position.
 -/
 
 /-- Helper: space is not newline. -/
-theorem space_ne_newline : (' ' : Char) ≠ '\n' := by decide
+lemma space_ne_newline : (' ' : Char) ≠ '\n' := by decide
 
 /--
 When the current character is a space, `advance` increases `col` by 1.
 Requires the offset to be within bounds (not at end of input).
 -/
-theorem advance_space_col (s : ScannerState)
+lemma advance_space_col (s : ScannerState)
     (hBounds : s.offset < s.inputEnd)
     (hChar : String.Pos.Raw.get s.input ⟨s.offset⟩ = ' ') :
     s.advance.col = s.col + 1 := by
@@ -65,7 +65,7 @@ theorem advance_space_col (s : ScannerState)
 /--
 When the current character is a space, `advance` preserves `line`.
 -/
-theorem advance_space_line (s : ScannerState)
+lemma advance_space_line (s : ScannerState)
     (hBounds : s.offset < s.inputEnd)
     (hChar : String.Pos.Raw.get s.input ⟨s.offset⟩ = ' ') :
     s.advance.line = s.line := by
@@ -76,7 +76,7 @@ theorem advance_space_line (s : ScannerState)
 When the current character is not a newline (`\n`) and not a carriage return (`\r`),
 `advance` increases `col` by 1.
 -/
-theorem advance_nonNewline_col (s : ScannerState)
+lemma advance_nonNewline_col (s : ScannerState)
     (hBounds : s.offset < s.inputEnd)
     (hNotNl : String.Pos.Raw.get s.input ⟨s.offset⟩ ≠ '\n')
     (hNotCr : String.Pos.Raw.get s.input ⟨s.offset⟩ ≠ '\r') :
@@ -93,7 +93,7 @@ theorem advance_nonNewline_col (s : ScannerState)
 When the current character is not a newline (`\n`) and not a carriage return (`\r`),
 `advance` preserves `line`.
 -/
-theorem advance_nonNewline_line (s : ScannerState)
+lemma advance_nonNewline_line (s : ScannerState)
     (hBounds : s.offset < s.inputEnd)
     (hNotNl : String.Pos.Raw.get s.input ⟨s.offset⟩ ≠ '\n')
     (hNotCr : String.Pos.Raw.get s.input ⟨s.offset⟩ ≠ '\r') :
@@ -109,7 +109,7 @@ theorem advance_nonNewline_line (s : ScannerState)
 /--
 When the current character is a carriage return, `advance` resets `col` to 0.
 -/
-theorem advance_cr_col (s : ScannerState)
+lemma advance_cr_col (s : ScannerState)
     (hBounds : s.offset < s.inputEnd)
     (hCr : String.Pos.Raw.get s.input ⟨s.offset⟩ = '\r') :
     s.advance.col = 0 := by
@@ -119,7 +119,7 @@ theorem advance_cr_col (s : ScannerState)
 /--
 When the current character is a carriage return, `advance` increments `line` by 1.
 -/
-theorem advance_cr_line (s : ScannerState)
+lemma advance_cr_line (s : ScannerState)
     (hBounds : s.offset < s.inputEnd)
     (hCr : String.Pos.Raw.get s.input ⟨s.offset⟩ = '\r') :
     s.advance.line = s.line + 1 := by
@@ -129,7 +129,7 @@ theorem advance_cr_line (s : ScannerState)
 /--
 When the current character is a newline, `advance` resets `col` to 0.
 -/
-theorem advance_newline_col (s : ScannerState)
+lemma advance_newline_col (s : ScannerState)
     (hBounds : s.offset < s.inputEnd)
     (hNl : String.Pos.Raw.get s.input ⟨s.offset⟩ = '\n') :
     s.advance.col = 0 := by
@@ -139,7 +139,7 @@ theorem advance_newline_col (s : ScannerState)
 /--
 When the current character is a newline, `advance` increments `line` by 1.
 -/
-theorem advance_newline_line (s : ScannerState)
+lemma advance_newline_line (s : ScannerState)
     (hBounds : s.offset < s.inputEnd)
     (hNl : String.Pos.Raw.get s.input ⟨s.offset⟩ = '\n') :
     s.advance.line = s.line + 1 := by
@@ -149,7 +149,7 @@ theorem advance_newline_line (s : ScannerState)
 /--
 When offset is at or past end, `advance` is the identity.
 -/
-theorem advance_at_end (s : ScannerState)
+lemma advance_at_end (s : ScannerState)
     (hEnd : ¬ (s.offset < s.inputEnd)) :
     s.advance = s := by
   unfold ScannerState.advance
@@ -176,7 +176,7 @@ inductive AdvancedNSpaces : Nat → ScannerState → ScannerState → Prop where
 /--
 After advancing over `n` consecutive spaces, `col` increases by exactly `n`.
 -/
-theorem advanceN_spaces_col (n : Nat) (s s' : ScannerState)
+lemma advanceN_spaces_col (n : Nat) (s s' : ScannerState)
     (h : AdvancedNSpaces n s s') : s'.col = s.col + n := by
   induction h with
   | zero => omega
@@ -187,7 +187,7 @@ theorem advanceN_spaces_col (n : Nat) (s s' : ScannerState)
 /--
 After advancing over `n` consecutive spaces, `line` stays the same.
 -/
-theorem advanceN_spaces_line (n : Nat) (s s' : ScannerState)
+lemma advanceN_spaces_line (n : Nat) (s s' : ScannerState)
     (h : AdvancedNSpaces n s s') : s'.line = s.line := by
   induction h with
   | zero => rfl

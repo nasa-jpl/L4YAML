@@ -253,7 +253,7 @@ inductive FlowStack : SurfPos → SurfPos → Prop where
 
 /-- Absorb both BlockStack and FlowStack into the stream.
     FlowStack is always nil (4z.1), so this only handles BlockStack. -/
-theorem absorb_stacks (sp_start sp_gram sp_block sp_flow : SurfPos)
+lemma absorb_stacks (sp_start sp_gram sp_block sp_flow : SurfPos)
     (h_stream : SLYamlStream sp_start sp_gram)
     (h_stack : BlockStack sp_gram sp_block)
     (h_flow : FlowStack sp_block sp_flow) : SLYamlStream sp_start sp_flow := by
@@ -276,7 +276,7 @@ theorem absorb_stacks (sp_start sp_gram sp_block sp_flow : SurfPos)
 
 /-- When `scanNextToken_preprocess` returns `none` (EOF) and the scanner
     is at col=0, the remaining characters form `SSLComments`. -/
-theorem preprocess_none_ssl_comments_col0 (sc : ScannerState) (sp : SurfPos)
+lemma preprocess_none_ssl_comments_col0 (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
     (hcol : sp.col = 0)
     (hok : scanNextToken_preprocess sc = .ok none) :
@@ -330,7 +330,7 @@ theorem preprocess_none_ssl_comments_col0 (sc : ScannerState) (sp : SurfPos)
           · cases hok
 
 -- General version: no col=0 requirement.
-theorem preprocess_none_ssl_comments (sc : ScannerState) (sp : SurfPos)
+lemma preprocess_none_ssl_comments (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
     (hok : scanNextToken_preprocess sc = .ok none) :
     ∃ sp_final, SSLComments sp sp_final ∧ sp_final.chars = [] := by
@@ -387,7 +387,7 @@ theorem preprocess_none_ssl_comments (sc : ScannerState) (sp : SurfPos)
 
     Used by `accum_content_pending` for plain scalars, where the scanner
     advances past trailing whitespace that the grammar doesn't cover. -/
-theorem white_prepend_SSLComments {sp sp' sp_mid : SurfPos}
+lemma white_prepend_SSLComments {sp sp' sp_mid : SurfPos}
     (h_ws : GStar SSWhite sp sp')
     (h_ssl : SSLComments sp' sp_mid) :
     SSLComments sp sp_mid := by
@@ -434,7 +434,7 @@ theorem white_prepend_SSLComments {sp sp' sp_mid : SurfPos}
 
     `SSLComments` → `GStar SLComment` → `SLDocumentPrefix.comments`
     → `SLYamlStream.implicitContinue` with no explicit document. -/
-theorem ssl_comments_extend_stream
+lemma ssl_comments_extend_stream
     (sp_start sp sp_final : SurfPos)
     (h_stream : SLYamlStream sp_start sp)
     (h_ssl : SSLComments sp sp_final) :
@@ -460,7 +460,7 @@ theorem ssl_comments_extend_stream
     - `pendingDocStart`: apply `h_doc_builder` + `SLYamlStream.implicitContinue`
     - `pendingBlock`: close with `SBlockNode.emptyNode` via `h_close`
     - `pendingDirective`: uses `h_closable` field (like `pendingContent`) -/
-theorem PendingNode.close_with_ssl
+lemma PendingNode.close_with_ssl
     {sp_start sp_block sp_scan sp_mid : SurfPos}
     (h_pending : PendingNode sp_start sp_block sp_scan)
     (h_stream : SLYamlStream sp_start sp_block)
@@ -515,7 +515,7 @@ theorem PendingNode.close_with_ssl
 
 /-- When preprocessing returns `some` at col=0, extract `SSLComments` from the
     consumed characters plus `ScannerSurfCorr` for the resulting state. -/
-theorem preprocess_some_ssl_comments_col0 (sc : ScannerState) (sp : SurfPos)
+lemma preprocess_some_ssl_comments_col0 (sc : ScannerState) (sp : SurfPos)
     (s_prep : ScannerState) (c : Char)
     (hcorr : ScannerSurfCorr sc sp)
     (hcol : sp.col = 0)
@@ -562,7 +562,7 @@ theorem preprocess_some_ssl_comments_col0 (sc : ScannerState) (sp : SurfPos)
 /-- When `scanNextToken_preprocess` returns `some (s_prep, c)`, the resulting
     scanner state has `s_prep.peek? = some c`. This follows from the definition's
     final `match s.peek? with | some c => return some (s, c)`. -/
-theorem preprocess_some_peek {sc s_prep : ScannerState} {c : Char}
+lemma preprocess_some_peek {sc s_prep : ScannerState} {c : Char}
     (hok : scanNextToken_preprocess sc = .ok (some (s_prep, c))) :
     s_prep.peek? = some c := by
   unfold scanNextToken_preprocess at hok
@@ -581,7 +581,7 @@ theorem preprocess_some_peek {sc s_prep : ScannerState} {c : Char}
 
 -- The preprocessing character is never a line break. This follows from
 -- `skipToContentLoop` continuing past breaks and only stopping at non-break chars.
-theorem preprocess_some_not_break {sc s_prep : ScannerState} {c : Char}
+lemma preprocess_some_not_break {sc s_prep : ScannerState} {c : Char}
     (hok : scanNextToken_preprocess sc = .ok (some (s_prep, c))) :
     isLineBreakBool c = false := by
   have hpeek := preprocess_some_peek hok  -- s_prep.peek? = some c
@@ -632,7 +632,7 @@ theorem preprocess_some_not_break {sc s_prep : ScannerState} {c : Char}
     The contradiction requires connecting the scanner's `peek?` through
     `skipToContentComment` → `unwindIndents` → `saveSimpleKey` state
     preservation chain. Currently deferred as a non-structural sorry. -/
-theorem preprocess_some_separate_lines_0 (sc : ScannerState) (sp : SurfPos)
+lemma preprocess_some_separate_lines_0 (sc : ScannerState) (sp : SurfPos)
     (s_prep : ScannerState) (c : Char)
     (hcorr : ScannerSurfCorr sc sp)
     (hcol : sp.col = 0)
@@ -661,7 +661,7 @@ theorem preprocess_some_separate_lines_0 (sc : ScannerState) (sp : SurfPos)
 /-- General-column version of `preprocess_some_ssl_comments_col0`.
     When preprocessing returns `some`, extract `SSLComments` disjunction plus
     `GStar SSWhite` and `ScannerSurfCorr`. No col=0 requirement. -/
-theorem preprocess_some_ssl_comments_anyCol (sc : ScannerState) (sp : SurfPos)
+lemma preprocess_some_ssl_comments_anyCol (sc : ScannerState) (sp : SurfPos)
     (s_prep : ScannerState) (c : Char)
     (hcorr : ScannerSurfCorr sc sp)
     (hok : scanNextToken_preprocess sc = .ok (some (s_prep, c))) :
@@ -708,7 +708,7 @@ theorem preprocess_some_ssl_comments_anyCol (sc : ScannerState) (sp : SurfPos)
 /-- General-column `SSeparateLines 0` from preprocessing with content.
     Works at any starting column — uses nil `SSLComments` when no break consumed,
     and `SIndent 0` (zero-width) which has no column requirement. -/
-theorem preprocess_some_separate_0_anyCol (sc : ScannerState) (sp : SurfPos)
+lemma preprocess_some_separate_0_anyCol (sc : ScannerState) (sp : SurfPos)
     (s_prep : ScannerState) (c : Char)
     (hcorr : ScannerSurfCorr sc sp)
     (hok : scanNextToken_preprocess sc = .ok (some (s_prep, c))) :
@@ -763,7 +763,7 @@ theorem preprocess_some_separate_0_anyCol (sc : ScannerState) (sp : SurfPos)
     The non-nil stack/pending cases are downstream of §1b–§1e sorry. -/
 
 -- Helper: handles all PendingNode cases for EOF given stream at sp_block.
-theorem eof_pending (sc : ScannerState)
+lemma eof_pending (sc : ScannerState)
     (sp_start sp_block sp_scan : SurfPos)
     (h_stream_block : SLYamlStream sp_start sp_block)
     (h_pending : PendingNode sp_start sp_block sp_scan)
@@ -774,7 +774,7 @@ theorem eof_pending (sc : ScannerState)
     preprocess_none_ssl_comments sc sp_scan h_corr h_preprocess
   exact ⟨sp_final, h_pending.close_with_ssl h_stream_block h_ssl, h_empty⟩
 
-theorem preprocessing_eof_extends_stream (sc : ScannerState)
+lemma preprocessing_eof_extends_stream (sc : ScannerState)
     (sp_start sp_gram sp_block sp_flow sp_scan : SurfPos)
     (h_stream : SLYamlStream sp_start sp_gram)
     (h_stack : BlockStack sp_gram sp_block)
@@ -789,7 +789,7 @@ theorem preprocessing_eof_extends_stream (sc : ScannerState)
 
 -- Helper: `ScannerSurfCorr` is preserved by the `allowDirectives` flag update
 -- used between structural dispatch and block/flow/content dispatch.
-theorem corr_of_allowDirectives_update {sc : ScannerState} {sp : SurfPos}
+lemma corr_of_allowDirectives_update {sc : ScannerState} {sp : SurfPos}
     (hcorr : ScannerSurfCorr sc sp) :
     ScannerSurfCorr
       (if sc.allowDirectives then
@@ -811,7 +811,7 @@ theorem corr_of_allowDirectives_update {sc : ScannerState} {sp : SurfPos}
     `dispatchStructural_corr`. Opens appropriate pending state. -/
 
 -- Helper: structural dispatch preserves `ScannerSurfCorr` on `some` paths.
-theorem dispatchStructural_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
+lemma dispatchStructural_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
     {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc sp)
     (hok : scanNextToken_dispatchStructural sc c = .ok (some s')) :
@@ -866,7 +866,7 @@ theorem dispatchStructural_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
 -- `s.col = 0`, and the marker is either `SCDirectivesEnd` (for `---`) or
 -- `SCDocumentEnd` (for `...`). Directive (`%`) produces pendingDirective
 -- with `h_dir_acc` closure from `scanDirective_prod`.
-theorem structural_dispatch_to_pending
+lemma structural_dispatch_to_pending
     (s_prep s' : ScannerState) (c : Char) (sp_start sp : SurfPos)
     (hcorr : ScannerSurfCorr s_prep sp)
     (hpeek : s_prep.peek? = some c)
@@ -993,7 +993,7 @@ theorem structural_dispatch_to_pending
 -- `s.col = 0`. Standalone lemma breaking the circular dependency in
 -- `dispatch_new_pending` (where `structural_dispatch_to_pending` needs
 -- `SLYamlStream` which needs `sp_mid = sp_prep` which needs `sp.col = 0`).
-theorem dispatchStructural_col0
+lemma dispatchStructural_col0
     (s s' : ScannerState) (c : Char)
     (h : scanNextToken_dispatchStructural s c = .ok (some s')) :
     s.col = 0 := by
@@ -1033,7 +1033,7 @@ theorem dispatchStructural_col0
 -- Factors out the shared pattern: close the position gap between sp_mid (SSLComments
 -- endpoint) and sp_prep (ScannerSurfCorr position) using col=0 evidence, then
 -- construct the new PendingNode with correctly unified positions.
-theorem dispatch_new_pending
+lemma dispatch_new_pending
     (s_prep s' : ScannerState) (c : Char)
     (sp_start sp_mid sp_ws sp_gap sp_prep sp_scan' : SurfPos)
     (hcorr_prep : ScannerSurfCorr s_prep sp_prep)
@@ -1068,7 +1068,7 @@ theorem dispatch_new_pending
 
 -- Helper: handles all PendingNode cases given a stream at sp_block.
 -- Factored out so nil, seqLevel, and mapLevel all delegate here.
-theorem accum_structural_pending (sc : ScannerState)
+lemma accum_structural_pending (sc : ScannerState)
     (sp_start sp_block sp_scan : SurfPos)
     (s_prep s' : ScannerState) (c : Char)
     (h_stream_block : SLYamlStream sp_start sp_block)
@@ -1208,7 +1208,7 @@ theorem accum_structural_pending (sc : ScannerState)
                  (h_close_pending sp_mid h_ssl) hpeek h_dispatch,
                hcorr_result⟩)
 
-theorem accum_step_structural (sc : ScannerState)
+lemma accum_step_structural (sc : ScannerState)
     (sp_start sp_gram sp_block sp_flow sp_scan : SurfPos)
     (s_prep s' : ScannerState) (c : Char)
     (h_stream : SLYamlStream sp_start sp_gram)
@@ -1240,7 +1240,7 @@ theorem accum_step_structural (sc : ScannerState)
     dispatch + corr theorems at consumption time if needed. -/
 
 -- Helper: flow indicator dispatch preserves `ScannerSurfCorr` on `some` paths.
-theorem dispatchFlowIndicators_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
+lemma dispatchFlowIndicators_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
     {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc sp)
     (hok : scanNextToken_dispatchFlowIndicators sc c = .ok (some s')) :
@@ -1285,7 +1285,7 @@ theorem dispatchFlowIndicators_corr (sc : ScannerState) (sp : SurfPos) (c : Char
           · simp at hok
 
 -- Helper: handles all PendingNode cases for flow dispatch given stream at sp_block.
-theorem accum_flow_pending (sc : ScannerState)
+lemma accum_flow_pending (sc : ScannerState)
     (sp_start sp_block sp_scan : SurfPos)
     (s_prep s' : ScannerState) (c : Char)
     (h_stream_block : SLYamlStream sp_start sp_block)
@@ -1444,7 +1444,7 @@ theorem accum_flow_pending (sc : ScannerState)
                  PendingNode.pendingFlow sp_start sp_block sp_scan' h_stream_block,
                  hcorr_result⟩)
 
-theorem accum_step_flow (sc : ScannerState)
+lemma accum_step_flow (sc : ScannerState)
     (sp_start sp_gram sp_block sp_flow sp_scan : SurfPos)
     (s_prep s' : ScannerState) (c : Char)
     (h_stream : SLYamlStream sp_start sp_gram)
@@ -1488,7 +1488,7 @@ theorem accum_step_flow (sc : ScannerState)
     No pending to close. Block indicator opens `pendingBlock`. -/
 
 -- Helper: block indicator dispatch preserves `ScannerSurfCorr` on `some` paths.
-theorem dispatchBlockIndicators_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
+lemma dispatchBlockIndicators_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
     {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc sp)
     (hok : scanNextToken_dispatchBlockIndicators sc c = .ok (some s')) :
@@ -1524,7 +1524,7 @@ theorem dispatchBlockIndicators_corr (sc : ScannerState) (sp : SurfPos) (c : Cha
 -- 1) A literal dash character
 -- 2) Negative lookahead: the char after '-' is not ns-char
 -- 3) Scanner/surface correspondence after the dash
-theorem dispatchBlockEntry_full_prod (sc : ScannerState) (sp : SurfPos)
+lemma dispatchBlockEntry_full_prod (sc : ScannerState) (sp : SurfPos)
     {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek : sc.peek? = some '-')
@@ -1565,7 +1565,7 @@ theorem dispatchBlockEntry_full_prod (sc : ScannerState) (sp : SurfPos)
 -- Concentrates all block-dispatch catch-all sorry into close_with_ssl.
 -- Called for: whitespace-before-dash (cons), non-dash indicators (c≠'-'),
 -- col≠0 no-break, and n≠0 pending cases.
-theorem block_dispatch_deferred
+lemma block_dispatch_deferred
     (sp_start sp_X sp_scan' : SurfPos) (s' : ScannerState)
     (h_stream : SLYamlStream sp_start sp_X)
     (hcorr : ScannerSurfCorr s' sp_scan') :
@@ -1583,7 +1583,7 @@ theorem block_dispatch_deferred
 -- Block dispatch with noPending: fresh block entry.
 -- Handles '-' at col=0 with full closures; non-proven branches delegate
 -- to block_dispatch_deferred.
-theorem accum_block_on_noPending
+lemma accum_block_on_noPending
     (sc : ScannerState) (sp_start sp_block : SurfPos)
     (s_prep s' : ScannerState) (c : Char) (sp_prep sp_scan' : SurfPos)
     (h_stream_block : SLYamlStream sp_start sp_block)
@@ -1670,7 +1670,7 @@ theorem accum_block_on_noPending
 
 -- Block dispatch after closing old pending: '-' at col=0 opens new block sequence.
 -- Shared by pendingContent and pendingFlow constructors.
-theorem accum_block_on_closeThenBlock
+lemma accum_block_on_closeThenBlock
     (sc : ScannerState) (sp_start sp_block_ctx sp_scan : SurfPos)
     (s_prep s' : ScannerState) (c : Char) (sp_prep sp_scan' : SurfPos)
     (h_close_pending : ∀ sp_mid, SSLComments sp_scan sp_mid → SLYamlStream sp_start sp_mid)
@@ -1775,7 +1775,7 @@ theorem accum_block_on_closeThenBlock
         h_stream_fallback hcorr_result
 
 -- Block dispatch with pendingBlockContent: accumulate entries via h_entry_old.
-theorem accum_block_on_pendingBlockContent
+lemma accum_block_on_pendingBlockContent
     (sc : ScannerState) (sp_start sp_block sp_block_ctx sp_scan : SurfPos)
     (s_prep s' : ScannerState) (c : Char) (sp_prep sp_scan' : SurfPos)
     (h_stream_block : SLYamlStream sp_start sp_block)
@@ -1862,7 +1862,7 @@ theorem accum_block_on_pendingBlockContent
         h_stream_fallback hcorr_result
 
 -- Block dispatch with pendingBlock: accumulate entries via h_close_entry_old.
-theorem accum_block_on_pendingBlock
+lemma accum_block_on_pendingBlock
     (sc : ScannerState) (sp_start sp_block sp_block_ctx sp_scan : SurfPos)
     (s_prep s' : ScannerState) (c : Char) (sp_prep sp_scan' : SurfPos)
     (h_stream_block : SLYamlStream sp_start sp_block)
@@ -1951,7 +1951,7 @@ theorem accum_block_on_pendingBlock
         h_stream_fallback hcorr_result
 
 -- Helper: handles all PendingNode cases for block dispatch given stream at sp_block.
-theorem accum_block_pending (sc : ScannerState)
+lemma accum_block_pending (sc : ScannerState)
     (sp_start sp_block sp_scan : SurfPos)
     (s_prep s' : ScannerState) (c : Char)
     (h_stream_block : SLYamlStream sp_start sp_block)
@@ -2007,7 +2007,7 @@ theorem accum_block_pending (sc : ScannerState)
         hcorr_prep hcorr_result h_corr h_preprocess h_dispatch
     · exact block_dispatch_deferred sp_start sp_block sp_scan' s' h_stream_block hcorr_result
 
-theorem accum_step_block (sc : ScannerState)
+lemma accum_step_block (sc : ScannerState)
     (sp_start sp_gram sp_block sp_flow sp_scan : SurfPos)
     (s_prep s' : ScannerState) (c : Char)
     (h_stream : SLYamlStream sp_start sp_gram)
@@ -2051,7 +2051,7 @@ theorem accum_step_block (sc : ScannerState)
 -- Helper: content dispatch preserves `ScannerSurfCorr` on all `.ok` paths.
 -- Unfolds `scanNextToken_dispatchContent`, splits on character checks,
 -- and delegates to per-scanner `_corr` theorems.
-theorem dispatchContent_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
+lemma dispatchContent_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
     {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc sp)
     (hok : scanNextToken_dispatchContent sc c = .ok s') :
@@ -2127,7 +2127,7 @@ theorem dispatchContent_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
 -- Needed for Layer 4i h_closable composition (quoted scalar → SBlockNode → stream).
 -- Unfolds `scanNextToken_dispatchContent` for `c = '"'`, applies `scanDoubleQuoted_prod`,
 -- and handles the simpleKey endLine update that follows.
-theorem dispatchContent_doubleQuoted_prod (sc : ScannerState) (sp : SurfPos)
+lemma dispatchContent_doubleQuoted_prod (sc : ScannerState) (sp : SurfPos)
     {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek : sc.peek? = some '"')
@@ -2161,7 +2161,7 @@ theorem dispatchContent_doubleQuoted_prod (sc : ScannerState) (sp : SurfPos)
           · rename_i h_neq; exact absurd rfl h_neq
 
 -- Content dispatch for single-quoted: returns `SCSingleQuoted 0 .blockIn` grammar evidence.
-theorem dispatchContent_singleQuoted_prod (sc : ScannerState) (sp : SurfPos)
+lemma dispatchContent_singleQuoted_prod (sc : ScannerState) (sp : SurfPos)
     {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek : sc.peek? = some '\'')
@@ -2198,7 +2198,7 @@ theorem dispatchContent_singleQuoted_prod (sc : ScannerState) (sp : SurfPos)
 -- Alias is context-free: `SCNsAliasNode` has no `n`/`c` dependency, so
 -- `alias_flowNode` lifts directly to any desired context.
 -- Since A10 Except conversion, `.ok` guarantees non-empty name unconditionally.
-theorem dispatchContent_alias_prod (sc : ScannerState) (sp : SurfPos)
+lemma dispatchContent_alias_prod (sc : ScannerState) (sp : SurfPos)
     {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek : sc.peek? = some '*')
@@ -2228,7 +2228,7 @@ theorem dispatchContent_alias_prod (sc : ScannerState) (sp : SurfPos)
     · rename_i h_neq; exact absurd rfl h_neq
 
 -- Content dispatch for block scalar: returns `SCLLiteral 0 ∨ SCLFolded 0` grammar evidence.
-theorem dispatchContent_blockScalar_prod (sc : ScannerState) (sp : SurfPos)
+lemma dispatchContent_blockScalar_prod (sc : ScannerState) (sp : SurfPos)
     {s' : ScannerState} {c : Char}
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek : sc.peek? = some c)
@@ -2270,7 +2270,7 @@ theorem dispatchContent_blockScalar_prod (sc : ScannerState) (sp : SurfPos)
 -- If structural dispatch returns .ok none, the scanner is not at a document boundary
 -- when col=0.  This follows from the definition: the none path skips all doc marker
 -- checks, meaning atDocumentStart and atDocumentEnd were both false.
-theorem dispatchStructural_none_not_doc_boundary
+lemma dispatchStructural_none_not_doc_boundary
     {s : ScannerState} {c : Char}
     (h : scanNextToken_dispatchStructural s c = .ok none)
     (hcol : s.col = 0) : atDocumentBoundary s = false := by
@@ -2295,7 +2295,7 @@ theorem dispatchStructural_none_not_doc_boundary
 -- covers `sp_gram → sp'` (whitespace consumed by scanner but not in grammar),
 -- and `ScannerSurfCorr s' sp'` tracks the scanner position.
 -- Both the grammar and trailing WS are sorry'd pending `collectPlainScalarLoop_prod`.
-theorem dispatchContent_plainScalar_prod (sc : ScannerState) (sp : SurfPos)
+lemma dispatchContent_plainScalar_prod (sc : ScannerState) (sp : SurfPos)
     {s' : ScannerState} {c : Char}
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek : sc.peek? = some c)
@@ -2340,7 +2340,7 @@ theorem dispatchContent_plainScalar_prod (sc : ScannerState) (sp : SurfPos)
 -- Content dispatch for anchor: returns `SFlowNode 0 .flowOut` grammar evidence.
 -- Anchor `&name` produces `SCNsAnchorProperty` → `SCNsProperties.anchorFirst` → `SFlowNode.propsEmpty`.
 -- Since A10 Except conversion, `.ok` guarantees non-empty name unconditionally.
-theorem dispatchContent_anchor_prod (sc : ScannerState) (sp : SurfPos)
+lemma dispatchContent_anchor_prod (sc : ScannerState) (sp : SurfPos)
     {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek : sc.peek? = some '&')
@@ -2366,7 +2366,7 @@ theorem dispatchContent_anchor_prod (sc : ScannerState) (sp : SurfPos)
 -- Content dispatch for tag: returns `SFlowNode 0 .flowOut` grammar evidence.
 -- Tag `!` produces `SCNsTagProperty` → `SCNsProperties.tagFirst` → `SFlowNode.propsEmpty`.
 -- Secondary tag `!!suffix` is fully proven. Verbatim and named tags are sorry'd.
-theorem dispatchContent_tag_prod (sc : ScannerState) (sp : SurfPos)
+lemma dispatchContent_tag_prod (sc : ScannerState) (sp : SurfPos)
     {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek : sc.peek? = some '!')
@@ -2407,7 +2407,7 @@ theorem dispatchContent_tag_prod (sc : ScannerState) (sp : SurfPos)
 -- WS evidence bridging them. For non-plain-scalar paths, the WS is trivial
 -- (`GStar.nil`); for plain scalars, it covers the trailing whitespace gap.
 -- Proven ONCE, used by all PendingNode constructors.
-theorem dispatchContent_evidence (sc : ScannerState) (sp : SurfPos)
+lemma dispatchContent_evidence (sc : ScannerState) (sp : SurfPos)
     {s' : ScannerState} (c : Char)
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek : sc.peek? = some c)
@@ -2464,7 +2464,7 @@ theorem dispatchContent_evidence (sc : ScannerState) (sp : SurfPos)
 -- Content dispatch with stream at sp_block and separator already constructed.
 -- Shared by accum_content_on_noPending (SSeparateLines.commented) and
 -- accum_content_pending's transition-close arms (SSeparateLines.inline).
-theorem content_dispatch_after_close
+lemma content_dispatch_after_close
     (sp_start sp_block : SurfPos)
     (s_prep s' : ScannerState) (c : Char) (sp_prep sp_scan' : SurfPos)
     (h_stream_block : SLYamlStream sp_start sp_block)
@@ -2536,7 +2536,7 @@ theorem content_dispatch_after_close
            hcorr_result⟩
 
 -- Content dispatch with noPending: build separate lines + grammar evidence.
-theorem accum_content_on_noPending
+lemma accum_content_on_noPending
     (sc : ScannerState) (sp_start sp_block : SurfPos)
     (s_prep s' : ScannerState) (c : Char) (sp_prep sp_scan' : SurfPos)
     (h_stream_block : SLYamlStream sp_start sp_block)
@@ -2664,7 +2664,7 @@ theorem accum_content_on_noPending
              hcorr_result⟩
 
 -- Content dispatch with pendingBlock: compose content inside block entry.
-theorem accum_content_on_pendingBlock
+lemma accum_content_on_pendingBlock
     (sc : ScannerState) (sp_start sp_block sp_scan : SurfPos)
     (s_prep s' : ScannerState) (c : Char) (sp_prep sp_scan' : SurfPos)
     (h_stream_block : SLYamlStream sp_start sp_block)
@@ -2740,7 +2740,7 @@ theorem accum_content_on_pendingBlock
            hcorr_result⟩
 
 -- Helper: handles all PendingNode cases for content dispatch given stream at sp_block.
-theorem accum_content_pending (sc : ScannerState)
+lemma accum_content_pending (sc : ScannerState)
     (sp_start sp_block sp_scan : SurfPos)
     (s_prep s' : ScannerState) (c : Char)
     (h_stream_block : SLYamlStream sp_start sp_block)
@@ -2931,7 +2931,7 @@ theorem accum_content_pending (sc : ScannerState)
     · exact block_dispatch_deferred sp_start sp_block sp_scan' s'
         h_stream_block hcorr_result
 
-theorem accum_step_content (sc : ScannerState)
+lemma accum_step_content (sc : ScannerState)
     (sp_start sp_gram sp_block sp_flow sp_scan : SurfPos)
     (s_prep s' : ScannerState) (c : Char)
     (h_stream : SLYamlStream sp_start sp_gram)
@@ -2965,7 +2965,7 @@ theorem accum_step_content (sc : ScannerState)
     Unfold `scanNextToken`, split on preprocessing and dispatch results,
     and delegate to the per-dispatch sorry lemmas above. -/
 
-theorem scanNextToken_accum_step (sc : ScannerState)
+lemma scanNextToken_accum_step (sc : ScannerState)
     (sp_start sp_gram sp_block sp_flow sp_scan : SurfPos)
     (s' : ScannerState)
     (h_stream : SLYamlStream sp_start sp_gram)
@@ -3046,7 +3046,7 @@ theorem scanNextToken_accum_step (sc : ScannerState)
     `scanNextToken_preprocess` returning `none` (EOF detected).
     All BlockStack levels are unwound and PendingNode closed. -/
 
-theorem scanNextToken_none_stream (sc : ScannerState)
+lemma scanNextToken_none_stream (sc : ScannerState)
     (sp_start sp_gram sp_block sp_flow sp_scan : SurfPos)
     (h_stream : SLYamlStream sp_start sp_gram)
     (h_stack : BlockStack sp_gram sp_block)
@@ -3086,7 +3086,7 @@ theorem scanNextToken_none_stream (sc : ScannerState)
     Fuel induction threading the lagging quad:
     `SLYamlStream`, `BlockStack`, `PendingNode`, and `ScannerSurfCorr`. -/
 
-theorem scanLoop_grammar_prod (sc : ScannerState)
+lemma scanLoop_grammar_prod (sc : ScannerState)
     (sp_start sp_gram sp_block sp_flow sp_scan : SurfPos)
     (fuel : Nat) (tokens : Array (Positioned YamlToken))
     (h_stream : SLYamlStream sp_start sp_gram)
@@ -3126,7 +3126,7 @@ theorem scanLoop_grammar_prod (sc : ScannerState)
     no grammar gap, no active block collections. -/
 
 /-- BOM at position 0: `'\uFEFF'` gives `SLDocumentPrefix.bom`. -/
-theorem bom_advance_gives_prefix (input : String) (sp : SurfPos)
+lemma bom_advance_gives_prefix (input : String) (sp : SurfPos)
     (h_corr : ScannerSurfCorr ((ScannerState.mk' input).emit .streamStart) sp)
     (h_peek : ((ScannerState.mk' input).emit .streamStart).peek? = some '\uFEFF') :
     ∃ sp', SLDocumentPrefix sp sp' ∧
@@ -3151,7 +3151,7 @@ theorem bom_advance_gives_prefix (input : String) (sp : SurfPos)
          h_adv⟩
 
 /-- Initial stream: at position 0, the empty stream is valid. -/
-theorem initial_stream_and_prefix (input : String) :
+lemma initial_stream_and_prefix (input : String) :
     ∃ sp, SLYamlStream ⟨input.toList, 0⟩ sp ∧
           ScannerSurfCorr
             (match (ScannerState.mk' input |>.emit .streamStart).peek? with
@@ -3182,7 +3182,7 @@ theorem initial_stream_and_prefix (input : String) :
     Compose initial stream + scanLoop_grammar_prod to prove scan_content_gives_stream.
     Initial state uses `BlockStack.nil` and `PendingNode.noPending` — no gap. -/
 
-theorem scan_content_gives_stream_v2
+lemma scan_content_gives_stream_v2
     (input : String)
     (tokens : Array (Positioned YamlToken))
     (h : scan input = .ok tokens) :

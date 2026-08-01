@@ -27,7 +27,7 @@ open L4YAML.Proofs.ScalarCoupling
     This covers emitter output where `indents = #[]` (the default from `ScannerState.mk'`).
     `unwindIndentsLoop` checks `s.indents.size > 1` before unwinding; with size ≤ 1,
     the condition fails immediately and the state is returned unchanged. -/
-theorem unwindIndents_noop_short_stack (s : ScannerState)
+lemma unwindIndents_noop_short_stack (s : ScannerState)
     (h_stack : s.indents.size ≤ 1) :
     unwindIndents s (-1) = s := by
   unfold unwindIndents
@@ -46,7 +46,7 @@ theorem unwindIndents_noop_short_stack (s : ScannerState)
 
 /-- When a ScanChain starts from s₀ via scanFiltered, the token array equation.
     Combines `scanFiltered_of_chain_eq` with `unwindIndents` identity for emitter states. -/
-theorem scanFiltered_tokens_eq_of_chain_short_stack
+lemma scanFiltered_tokens_eq_of_chain_short_stack
     (input : String) (s₀ s_final : ScannerState) (n : Nat)
     (h_s0 : s₀ = (ScannerState.mk' input).emit .streamStart)
     (h_no_bom : (ScannerState.mk' input).peek? ≠ some '\uFEFF')
@@ -63,7 +63,7 @@ theorem scanFiltered_tokens_eq_of_chain_short_stack
 
 /-- `ScanChain` token array monotonicity: tokens array size grows (non-strictly)
     through any scan chain. -/
-theorem ScanChain_tokens_mono {s s' : ScannerState} {n : Nat}
+lemma ScanChain_tokens_mono {s s' : ScannerState} {n : Nat}
     (h_chain : ScanChain s n s') : s'.tokens.size ≥ s.tokens.size := by
   induction h_chain with
   | zero => exact Nat.le_refl _
@@ -84,7 +84,7 @@ theorem ScanChain_tokens_mono {s s' : ScannerState} {n : Nat}
 
     **Conclusion**: Returns both prefix preservation and `SimpleKeyAbove s' n`,
     enabling straightforward induction in `ScanChain_preserves_raw_prefix`. -/
-theorem scanNextToken_prefix_and_sk_inv (s s' : ScannerState)
+lemma scanNextToken_prefix_and_sk_inv (s s' : ScannerState)
     (h_next : scanNextToken s = .ok (some s'))
     (n : Nat) (h_n : n ≤ s.tokens.size)
     (h_inv : ScannerCorrectness.SimpleKeyAbove s n) :
@@ -101,7 +101,7 @@ theorem scanNextToken_prefix_and_sk_inv (s s' : ScannerState)
 
     The `SimpleKeyAbove` invariant is maintained through each step by
     `scanNextToken_prefix_and_sk_inv`, making the induction straightforward. -/
-theorem ScanChain_preserves_raw_prefix {s s' : ScannerState} {k : Nat}
+lemma ScanChain_preserves_raw_prefix {s s' : ScannerState} {k : Nat}
     (h_chain : ScanChain s k s')
     (n₀ : Nat) (h_n₀ : n₀ ≤ s.tokens.size)
     (h_inv : ScannerCorrectness.SimpleKeyAbove s n₀)
@@ -151,7 +151,7 @@ universal per-step lemma. -/
 
     Both call sites have `fl₀ = s₁.flowLevel = 1` with `s₁.simpleKeyStack.size = 1`,
     making `h_stack_floor` vacuously true (no `j` satisfies `1 ≤ j < 1`). -/
-theorem ScanChain_filtered_prefix {s s' : ScannerState} {n fl₀ : Nat}
+lemma ScanChain_filtered_prefix {s s' : ScannerState} {n fl₀ : Nat}
     (h_fmc : FlowMonoChain fl₀ s n s')
     (h_sk : s.simpleKey.possible = false)
     (h_sync : s.simpleKeyStack.size ≥ s.flowLevel)
@@ -166,14 +166,14 @@ theorem ScanChain_filtered_prefix {s s' : ScannerState} {n fl₀ : Nat}
       h_sync i hi)
 
 /-- `emitPairList` for non-empty pairs produces a non-empty string. -/
-theorem emitPairList_toList_ne_nil (p : YamlValue × YamlValue)
+lemma emitPairList_toList_ne_nil (p : YamlValue × YamlValue)
     (ps : List (YamlValue × YamlValue)) :
     (emit.emitPairList (p :: ps)).toList ≠ [] := by
   obtain ⟨c, rest', h_eq, _, _, _⟩ := emitPairList_first_char p ps
   rw [h_eq]; exact List.cons_ne_nil _ _
 
 /-- `scanFlowSequenceEnd` token array equation: pushes exactly one `.flowSequenceEnd` token. -/
-theorem scanFlowSequenceEnd_tokens_eq (s : ScannerState) :
+lemma scanFlowSequenceEnd_tokens_eq (s : ScannerState) :
     (scanFlowSequenceEnd s).tokens = s.tokens.push { pos := s.currentPos, val := .flowSequenceEnd } := by
   unfold scanFlowSequenceEnd
   dsimp only []
@@ -181,7 +181,7 @@ theorem scanFlowSequenceEnd_tokens_eq (s : ScannerState) :
   unfold ScannerState.emit; rfl
 
 /-- `scanFlowMappingEnd` token array equation: pushes exactly one `.flowMappingEnd` token. -/
-theorem scanFlowMappingEnd_tokens_eq (s : ScannerState) :
+lemma scanFlowMappingEnd_tokens_eq (s : ScannerState) :
     (scanFlowMappingEnd s).tokens = s.tokens.push { pos := s.currentPos, val := .flowMappingEnd } := by
   unfold scanFlowMappingEnd
   dsimp only []
@@ -194,7 +194,7 @@ theorem scanFlowMappingEnd_tokens_eq (s : ScannerState) :
     Traces through `saveSimpleKey` (adds only placeholders, filtered out) →
     `allowDirectives` (no token change) → `scanFlowSequenceEnd` (appends
     `.flowSequenceEnd` which passes the placeholder filter). -/
-theorem scanNextToken_flow_close_seq_outermost_ext (s : ScannerState)
+lemma scanNextToken_flow_close_seq_outermost_ext (s : ScannerState)
     (hcorr : ScannerSurfCorr s ⟨[']'], s.col⟩)
     (h_flow : s.inFlow = true)
     (h_indent : s.currentIndent < 0)
@@ -284,7 +284,7 @@ theorem scanNextToken_flow_close_seq_outermost_ext (s : ScannerState)
 
 /-- The close-brace step for outermost `}`: filtered token array is the input
     filtered array with `.flowMappingEnd` appended. -/
-theorem scanNextToken_flow_close_mapping_outermost_ext (s : ScannerState)
+lemma scanNextToken_flow_close_mapping_outermost_ext (s : ScannerState)
     (hcorr : ScannerSurfCorr s ⟨['}'], s.col⟩)
     (h_flow : s.inFlow = true)
     (h_indent : s.currentIndent < 0)
@@ -375,7 +375,7 @@ theorem scanNextToken_flow_close_mapping_outermost_ext (s : ScannerState)
 -- Every `scanFiltered` result has streamStart first, streamEnd last, size ≥ 2.
 -- Mirrors the proof of `scanFiltered_produces_valid_tokens` but returns a
 -- plain conjunction (avoiding the `ValidTokenStream` struct indirection).
-theorem scanFiltered_boundary_tokens (input : String)
+lemma scanFiltered_boundary_tokens (input : String)
     (tokens : Array (Positioned YamlToken))
     (h : Scanner.scanFiltered input = .ok tokens) :
     tokens.size ≥ 2 ∧

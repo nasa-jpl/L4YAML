@@ -42,7 +42,7 @@ open L4YAML.Proofs.ScalarCoupling
     free of both the `FlowNoOverwriteAt` side-condition and the single-target
     restriction: it covers the *whole* live prefix at once. This is the wrapper the
     blueprint sketched as `FlowMonoChain_preserves_position_when_no_colon_dispatch`. -/
-theorem NoColonDispatchChain_preserves_position
+lemma NoColonDispatchChain_preserves_position
     {fl₀ : Nat} {s s' : ScannerState} {n : Nat}
     (h : NoColonDispatchChain fl₀ s n s')
     (m : Nat) (h_m : m < s.tokens.size) :
@@ -61,7 +61,7 @@ theorem NoColonDispatchChain_preserves_position
     reaching a state where scanNextToken returns none (EOF),
     then scanFiltered on the input succeeds.
     Requires flowLevel = 0 and directivesPresent = false at the end. -/
-theorem scanFiltered_of_chain (input : String)
+lemma scanFiltered_of_chain (input : String)
     (s₀ s_final : ScannerState) (n : Nat)
     (h_s0 : s₀ = (ScannerState.mk' input).emit .streamStart)
     (h_no_bom : (ScannerState.mk' input).peek? ≠ some '\uFEFF')
@@ -94,7 +94,7 @@ theorem scanFiltered_of_chain (input : String)
 /-- **Equality version**: gives the exact filtered token array from a ScanChain.
     The output is the filtered version of the chain's final state tokens
     plus `streamEnd`, after unwinding indents. -/
-theorem scanFiltered_of_chain_eq (input : String)
+lemma scanFiltered_of_chain_eq (input : String)
     (s₀ s_final : ScannerState) (n : Nat)
     (h_s0 : s₀ = (ScannerState.mk' input).emit .streamStart)
     (h_no_bom : (ScannerState.mk' input).peek? ≠ some '\uFEFF')
@@ -122,7 +122,7 @@ theorem scanFiltered_of_chain_eq (input : String)
 
 -- If two states produce the same preprocessing result, scanNextToken gives the same result.
 -- This is because scanNextToken = bind (preprocess s) f where f doesn't capture s.
-theorem scanNextToken_eq_of_preprocess (s₁ s₂ : ScannerState)
+lemma scanNextToken_eq_of_preprocess (s₁ s₂ : ScannerState)
     (h : scanNextToken_preprocess s₁ = scanNextToken_preprocess s₂) :
     scanNextToken s₁ = scanNextToken s₂ := by
   unfold scanNextToken
@@ -131,7 +131,7 @@ theorem scanNextToken_eq_of_preprocess (s₁ s₂ : ScannerState)
 
 -- If scanNextToken gives the same result for two states, and the second has
 -- a ScanChain of length ≥ 1, then the first does too.
-theorem ScanChain_of_scanNextToken_eq {s₁ s₂ s' : ScannerState} {n : Nat}
+lemma ScanChain_of_scanNextToken_eq {s₁ s₂ s' : ScannerState} {n : Nat}
     (h_eq : scanNextToken s₁ = scanNextToken s₂)
     (h_chain : ScanChain s₂ (n + 1) s') :
     ScanChain s₁ (n + 1) s' := by
@@ -142,7 +142,7 @@ theorem ScanChain_of_scanNextToken_eq {s₁ s₂ s' : ScannerState} {n : Nat}
 /-- `FlowMonoChain` version of `ScanChain_of_scanNextToken_eq`: if scanNextToken gives
     the same result for two states, and the second has a FlowMonoChain of length ≥ 1,
     then the first does too (given the flow-level bound at the first state). -/
-theorem FlowMonoChain_of_scanNextToken_eq {fl₀ : Nat} {s₁ s₂ s' : ScannerState} {n : Nat}
+lemma FlowMonoChain_of_scanNextToken_eq {fl₀ : Nat} {s₁ s₂ s' : ScannerState} {n : Nat}
     (h_eq : scanNextToken s₁ = scanNextToken s₂)
     (h_fl : s₁.flowLevel ≥ fl₀)
     (h_chain : FlowMonoChain fl₀ s₂ (n + 1) s') :
@@ -162,7 +162,7 @@ theorem FlowMonoChain_of_scanNextToken_eq {fl₀ : Nat} {s₁ s₂ s' : ScannerS
 
     `s_ad` is the state after the allowDirectives update, defined as:
     `if s_pp.allowDirectives then { s_pp with allowDirectives := false, documentEverStarted := true } else s_pp` -/
-theorem scanNextToken_via_flow_dispatch (s s_pp s_ad s_result : ScannerState) (c : Char)
+lemma scanNextToken_via_flow_dispatch (s s_pp s_ad s_result : ScannerState) (c : Char)
     (h_pp : scanNextToken_preprocess s = .ok (some (s_pp, c)))
     (h_struct : scanNextToken_dispatchStructural s_pp c = .ok none)
     (h_ad_eq : s_ad = if s_pp.allowDirectives then
@@ -181,7 +181,7 @@ theorem scanNextToken_via_flow_dispatch (s s_pp s_ad s_result : ScannerState) (c
 -- None of advance/emitAt/consumeNewline/skipSpaces/skipWhitespace/processEscape/
 -- foldQuotedNewlines/collectDoubleQuotedLoop modify directivesPresent.
 
-theorem advance_preserves_dp (s : ScannerState) :
+lemma advance_preserves_dp (s : ScannerState) :
     s.advance.directivesPresent = s.directivesPresent := by
   unfold ScannerState.advance
   split
@@ -191,7 +191,7 @@ theorem advance_preserves_dp (s : ScannerState) :
     · split <;> rfl
   · rfl
 
-theorem consumeNewline_preserves_dp (s : ScannerState) :
+lemma consumeNewline_preserves_dp (s : ScannerState) :
     (consumeNewline s).directivesPresent = s.directivesPresent := by
   unfold consumeNewline
   split
@@ -202,7 +202,7 @@ theorem consumeNewline_preserves_dp (s : ScannerState) :
     · exact advance_preserves_dp s
   · rfl
 
-theorem skipSpaces_preserves_dp (s : ScannerState) :
+lemma skipSpaces_preserves_dp (s : ScannerState) :
     (skipSpaces s).directivesPresent = s.directivesPresent := by
   unfold skipSpaces
   generalize s.inputEnd - s.offset = fuel
@@ -213,7 +213,7 @@ theorem skipSpaces_preserves_dp (s : ScannerState) :
     · rw [IH, advance_preserves_dp]
     · rfl
 
-theorem skipWhitespace_preserves_dp (s : ScannerState) :
+lemma skipWhitespace_preserves_dp (s : ScannerState) :
     (skipWhitespace s).directivesPresent = s.directivesPresent := by
   unfold skipWhitespace
   generalize s.inputEnd - s.offset = fuel
@@ -226,11 +226,11 @@ theorem skipWhitespace_preserves_dp (s : ScannerState) :
       · rfl
     · rfl
 
-theorem emitAt_preserves_dp (s : ScannerState) (pos : YamlPos) (tok : YamlToken) :
+lemma emitAt_preserves_dp (s : ScannerState) (pos : YamlPos) (tok : YamlToken) :
     (s.emitAt pos tok).directivesPresent = s.directivesPresent := by
   unfold ScannerState.emitAt; rfl
 
-theorem collectHexDigitsLoop_preserves_dp (s : ScannerState) (hex : String) (n : Nat) :
+lemma collectHexDigitsLoop_preserves_dp (s : ScannerState) (hex : String) (n : Nat) :
     (collectHexDigitsLoop s hex n).snd.directivesPresent = s.directivesPresent := by
   induction n generalizing s hex with
   | zero => unfold collectHexDigitsLoop; rfl
@@ -242,7 +242,7 @@ theorem collectHexDigitsLoop_preserves_dp (s : ScannerState) (hex : String) (n :
       · rfl
     · rfl
 
-theorem parseHexEscape_preserves_dp (s : ScannerState) (digits : Nat)
+lemma parseHexEscape_preserves_dp (s : ScannerState) (digits : Nat)
     (result : Char × ScannerState) (h : parseHexEscape s digits = .ok result) :
     result.snd.directivesPresent = s.directivesPresent := by
   unfold parseHexEscape at h
@@ -254,7 +254,7 @@ theorem parseHexEscape_preserves_dp (s : ScannerState) (digits : Nat)
       exact collectHexDigitsLoop_preserves_dp s "" digits
     · contradiction
 
-theorem processEscape_preserves_dp (s : ScannerState) (result : Char × ScannerState)
+lemma processEscape_preserves_dp (s : ScannerState) (result : Char × ScannerState)
     (h : processEscape s = .ok result) :
     result.snd.directivesPresent = s.directivesPresent := by
   unfold processEscape at h
@@ -283,7 +283,7 @@ theorem processEscape_preserves_dp (s : ScannerState) (result : Char × ScannerS
   · simp only [] at h; exact parseHexEscape_preserves_dp _ _ _ h |>.trans (advance_preserves_dp s)
   · contradiction
 
-theorem foldQuotedNewlinesLoop_preserves_dp (s : ScannerState) (emptyCount fuel : Nat) :
+lemma foldQuotedNewlinesLoop_preserves_dp (s : ScannerState) (emptyCount fuel : Nat) :
     (foldQuotedNewlinesLoop s emptyCount fuel).fst.directivesPresent = s.directivesPresent := by
   induction fuel generalizing s emptyCount with
   | zero => unfold foldQuotedNewlinesLoop; rfl
@@ -296,7 +296,7 @@ theorem foldQuotedNewlinesLoop_preserves_dp (s : ScannerState) (emptyCount fuel 
       · rfl
     · rfl
 
-theorem foldQuotedNewlines_preserves_dp (s : ScannerState) (result : String × ScannerState)
+lemma foldQuotedNewlines_preserves_dp (s : ScannerState) (result : String × ScannerState)
     (h : foldQuotedNewlines s = .ok result) :
     result.snd.directivesPresent = s.directivesPresent := by
   unfold foldQuotedNewlines at h
@@ -318,7 +318,7 @@ theorem foldQuotedNewlines_preserves_dp (s : ScannerState) (result : String × S
       simp [skipWhitespace_preserves_dp, skipSpaces_preserves_dp,
             foldQuotedNewlinesLoop_preserves_dp, consumeNewline_preserves_dp]
 
-theorem collectDoubleQuotedLoop_preserves_dp (s : ScannerState) (content : String) (fuel : Nat)
+lemma collectDoubleQuotedLoop_preserves_dp (s : ScannerState) (content : String) (fuel : Nat)
     (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat)
     (result : String × ScannerState)
     (h : collectDoubleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd = .ok result) :
@@ -368,7 +368,7 @@ theorem collectDoubleQuotedLoop_preserves_dp (s : ScannerState) (content : Strin
         exact ih _ _ _ h |>.trans (advance_preserves_dp s)
 
 -- scanDoubleQuoted preserves directivesPresent (structural — only tokens/offset/line/col change)
-theorem scanDoubleQuoted_preserves_dp (s s' : ScannerState)
+lemma scanDoubleQuoted_preserves_dp (s s' : ScannerState)
     (h_ok : scanDoubleQuoted s = .ok s') :
     s'.directivesPresent = s.directivesPresent := by
   unfold scanDoubleQuoted at h_ok
@@ -388,7 +388,7 @@ theorem scanDoubleQuoted_preserves_dp (s s' : ScannerState)
 -- skipSpaces/skipWhitespace/processEscape/foldQuotedNewlines/collectDoubleQuotedLoop
 -- modify indents.
 
-theorem advance_preserves_indents (s : ScannerState) :
+lemma advance_preserves_indents (s : ScannerState) :
     s.advance.indents = s.indents := by
   unfold ScannerState.advance
   split
@@ -398,7 +398,7 @@ theorem advance_preserves_indents (s : ScannerState) :
     · split <;> rfl
   · rfl
 
-theorem consumeNewline_preserves_indents (s : ScannerState) :
+lemma consumeNewline_preserves_indents (s : ScannerState) :
     (consumeNewline s).indents = s.indents := by
   unfold consumeNewline
   split
@@ -409,7 +409,7 @@ theorem consumeNewline_preserves_indents (s : ScannerState) :
     · exact advance_preserves_indents s
   · rfl
 
-theorem skipSpaces_preserves_indents (s : ScannerState) :
+lemma skipSpaces_preserves_indents (s : ScannerState) :
     (skipSpaces s).indents = s.indents := by
   unfold skipSpaces
   generalize s.inputEnd - s.offset = fuel
@@ -420,7 +420,7 @@ theorem skipSpaces_preserves_indents (s : ScannerState) :
     · rw [ih, advance_preserves_indents]
     · rfl
 
-theorem skipWhitespace_preserves_indents (s : ScannerState) :
+lemma skipWhitespace_preserves_indents (s : ScannerState) :
     (skipWhitespace s).indents = s.indents := by
   unfold skipWhitespace
   generalize s.inputEnd - s.offset = fuel
@@ -433,7 +433,7 @@ theorem skipWhitespace_preserves_indents (s : ScannerState) :
       · rfl
     · rfl
 
-theorem collectHexDigitsLoop_preserves_indents (s : ScannerState) (hex : String) (n : Nat) :
+lemma collectHexDigitsLoop_preserves_indents (s : ScannerState) (hex : String) (n : Nat) :
     (collectHexDigitsLoop s hex n).snd.indents = s.indents := by
   induction n generalizing s hex with
   | zero => unfold collectHexDigitsLoop; rfl
@@ -445,7 +445,7 @@ theorem collectHexDigitsLoop_preserves_indents (s : ScannerState) (hex : String)
       · rfl
     · rfl
 
-theorem parseHexEscape_preserves_indents (s : ScannerState) (digits : Nat)
+lemma parseHexEscape_preserves_indents (s : ScannerState) (digits : Nat)
     (result : Char × ScannerState) (h : parseHexEscape s digits = .ok result) :
     result.snd.indents = s.indents := by
   unfold parseHexEscape at h
@@ -457,7 +457,7 @@ theorem parseHexEscape_preserves_indents (s : ScannerState) (digits : Nat)
       exact collectHexDigitsLoop_preserves_indents s "" digits
     · contradiction
 
-theorem processEscape_preserves_indents (s : ScannerState) (result : Char × ScannerState)
+lemma processEscape_preserves_indents (s : ScannerState) (result : Char × ScannerState)
     (h : processEscape s = .ok result) :
     result.snd.indents = s.indents := by
   unfold processEscape at h
@@ -486,7 +486,7 @@ theorem processEscape_preserves_indents (s : ScannerState) (result : Char × Sca
   · simp only [] at h; exact parseHexEscape_preserves_indents _ _ _ h |>.trans (advance_preserves_indents s)
   · contradiction
 
-theorem foldQuotedNewlinesLoop_preserves_indents (s : ScannerState) (emptyCount fuel : Nat) :
+lemma foldQuotedNewlinesLoop_preserves_indents (s : ScannerState) (emptyCount fuel : Nat) :
     (foldQuotedNewlinesLoop s emptyCount fuel).fst.indents = s.indents := by
   induction fuel generalizing s emptyCount with
   | zero => unfold foldQuotedNewlinesLoop; rfl
@@ -499,7 +499,7 @@ theorem foldQuotedNewlinesLoop_preserves_indents (s : ScannerState) (emptyCount 
       · rfl
     · rfl
 
-theorem foldQuotedNewlines_preserves_indents (s : ScannerState) (result : String × ScannerState)
+lemma foldQuotedNewlines_preserves_indents (s : ScannerState) (result : String × ScannerState)
     (h : foldQuotedNewlines s = .ok result) :
     result.snd.indents = s.indents := by
   unfold foldQuotedNewlines at h
@@ -521,7 +521,7 @@ theorem foldQuotedNewlines_preserves_indents (s : ScannerState) (result : String
       simp [skipWhitespace_preserves_indents, skipSpaces_preserves_indents,
             foldQuotedNewlinesLoop_preserves_indents, consumeNewline_preserves_indents]
 
-theorem collectDoubleQuotedLoop_preserves_indents (s : ScannerState) (content : String)
+lemma collectDoubleQuotedLoop_preserves_indents (s : ScannerState) (content : String)
     (fuel : Nat) (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat)
     (result : String × ScannerState)
     (h : collectDoubleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd = .ok result) :
@@ -565,7 +565,7 @@ theorem collectDoubleQuotedLoop_preserves_indents (s : ScannerState) (content : 
       · split at h <;> try contradiction
         exact (ih _ _ _ h).trans (advance_preserves_indents s)
 
-theorem scanDoubleQuoted_preserves_indents (s s' : ScannerState)
+lemma scanDoubleQuoted_preserves_indents (s s' : ScannerState)
     (h_ok : scanDoubleQuoted s = .ok s') :
     s'.indents = s.indents := by
   unfold scanDoubleQuoted at h_ok
@@ -587,7 +587,7 @@ theorem scanDoubleQuoted_preserves_indents (s s' : ScannerState)
 -- skipSpaces/skipWhitespace/processEscape/foldQuotedNewlines/collectDoubleQuotedLoop
 -- modify explicitKeyLine.
 
-theorem consumeNewline_preserves_ek (s : ScannerState) :
+lemma consumeNewline_preserves_ek (s : ScannerState) :
     (consumeNewline s).explicitKeyLine = s.explicitKeyLine := by
   unfold consumeNewline
   split
@@ -598,7 +598,7 @@ theorem consumeNewline_preserves_ek (s : ScannerState) :
     · exact advance_explicitKeyLine s
   · rfl
 
-theorem skipSpaces_preserves_ek (s : ScannerState) :
+lemma skipSpaces_preserves_ek (s : ScannerState) :
     (skipSpaces s).explicitKeyLine = s.explicitKeyLine := by
   unfold skipSpaces
   generalize s.inputEnd - s.offset = fuel
@@ -609,7 +609,7 @@ theorem skipSpaces_preserves_ek (s : ScannerState) :
     · rw [IH, advance_explicitKeyLine]
     · rfl
 
-theorem skipWhitespace_preserves_ek (s : ScannerState) :
+lemma skipWhitespace_preserves_ek (s : ScannerState) :
     (skipWhitespace s).explicitKeyLine = s.explicitKeyLine := by
   unfold skipWhitespace
   generalize s.inputEnd - s.offset = fuel
@@ -622,11 +622,11 @@ theorem skipWhitespace_preserves_ek (s : ScannerState) :
       · rfl
     · rfl
 
-theorem emitAt_preserves_ek (s : ScannerState) (pos : YamlPos) (tok : YamlToken) :
+lemma emitAt_preserves_ek (s : ScannerState) (pos : YamlPos) (tok : YamlToken) :
     (s.emitAt pos tok).explicitKeyLine = s.explicitKeyLine := by
   unfold ScannerState.emitAt; rfl
 
-theorem collectHexDigitsLoop_preserves_ek (s : ScannerState) (hex : String) (n : Nat) :
+lemma collectHexDigitsLoop_preserves_ek (s : ScannerState) (hex : String) (n : Nat) :
     (collectHexDigitsLoop s hex n).snd.explicitKeyLine = s.explicitKeyLine := by
   induction n generalizing s hex with
   | zero => unfold collectHexDigitsLoop; rfl
@@ -638,7 +638,7 @@ theorem collectHexDigitsLoop_preserves_ek (s : ScannerState) (hex : String) (n :
       · rfl
     · rfl
 
-theorem parseHexEscape_preserves_ek (s : ScannerState) (digits : Nat)
+lemma parseHexEscape_preserves_ek (s : ScannerState) (digits : Nat)
     (result : Char × ScannerState) (h : parseHexEscape s digits = .ok result) :
     result.snd.explicitKeyLine = s.explicitKeyLine := by
   unfold parseHexEscape at h
@@ -650,7 +650,7 @@ theorem parseHexEscape_preserves_ek (s : ScannerState) (digits : Nat)
       exact collectHexDigitsLoop_preserves_ek s "" digits
     · contradiction
 
-theorem processEscape_preserves_ek (s : ScannerState) (result : Char × ScannerState)
+lemma processEscape_preserves_ek (s : ScannerState) (result : Char × ScannerState)
     (h : processEscape s = .ok result) :
     result.snd.explicitKeyLine = s.explicitKeyLine := by
   unfold processEscape at h
@@ -679,7 +679,7 @@ theorem processEscape_preserves_ek (s : ScannerState) (result : Char × ScannerS
   · simp only [] at h; exact parseHexEscape_preserves_ek _ _ _ h |>.trans (advance_explicitKeyLine s)
   · contradiction
 
-theorem foldQuotedNewlinesLoop_preserves_ek (s : ScannerState) (emptyCount fuel : Nat) :
+lemma foldQuotedNewlinesLoop_preserves_ek (s : ScannerState) (emptyCount fuel : Nat) :
     (foldQuotedNewlinesLoop s emptyCount fuel).fst.explicitKeyLine = s.explicitKeyLine := by
   induction fuel generalizing s emptyCount with
   | zero => unfold foldQuotedNewlinesLoop; rfl
@@ -692,7 +692,7 @@ theorem foldQuotedNewlinesLoop_preserves_ek (s : ScannerState) (emptyCount fuel 
       · rfl
     · rfl
 
-theorem foldQuotedNewlines_preserves_ek (s : ScannerState) (result : String × ScannerState)
+lemma foldQuotedNewlines_preserves_ek (s : ScannerState) (result : String × ScannerState)
     (h : foldQuotedNewlines s = .ok result) :
     result.snd.explicitKeyLine = s.explicitKeyLine := by
   unfold foldQuotedNewlines at h
@@ -714,7 +714,7 @@ theorem foldQuotedNewlines_preserves_ek (s : ScannerState) (result : String × S
       simp [skipWhitespace_preserves_ek, skipSpaces_preserves_ek,
             foldQuotedNewlinesLoop_preserves_ek, consumeNewline_preserves_ek]
 
-theorem collectDoubleQuotedLoop_preserves_ek (s : ScannerState) (content : String) (fuel : Nat)
+lemma collectDoubleQuotedLoop_preserves_ek (s : ScannerState) (content : String) (fuel : Nat)
     (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat)
     (result : String × ScannerState)
     (h : collectDoubleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd = .ok result) :
@@ -763,7 +763,7 @@ theorem collectDoubleQuotedLoop_preserves_ek (s : ScannerState) (content : Strin
         exact ih _ _ _ h |>.trans (advance_explicitKeyLine s)
 
 -- scanDoubleQuoted preserves explicitKeyLine
-theorem scanDoubleQuoted_preserves_ek (s s' : ScannerState)
+lemma scanDoubleQuoted_preserves_ek (s s' : ScannerState)
     (h_ok : scanDoubleQuoted s = .ok s') :
     s'.explicitKeyLine = s.explicitKeyLine := by
   unfold scanDoubleQuoted at h_ok
@@ -780,7 +780,7 @@ theorem scanDoubleQuoted_preserves_ek (s s' : ScannerState)
 
 -- Helper: lastRealTokenVal? on array.push tok when tok.val ≠ .placeholder returns tok.val.
 -- Placed here (before scanDoubleQuoted_flow_ok) so it can be used in flow proofs.
-theorem lastRealTokenVal_push_non_ph'
+lemma lastRealTokenVal_push_non_ph'
     (tokens : Array (Positioned YamlToken))
     (tok : Positioned YamlToken) (h_nph : tok.val ≠ .placeholder) :
     lastRealTokenVal? (tokens.push tok) = some tok.val := by
@@ -795,7 +795,7 @@ theorem lastRealTokenVal_push_non_ph'
 
 -- `scanDoubleQuoted` succeeds in flow context (inFlow = true) with trailing input.
 -- Simpler than `scanDoubleQuoted_emitScalar_ok` because `validateTrailingContent` is skipped.
-theorem scanDoubleQuoted_flow_ok (sc : ScannerState)
+lemma scanDoubleQuoted_flow_ok (sc : ScannerState)
     (content : String) (rest : List Char)
     (hcorr : ScannerSurfCorr sc
       ⟨['"'] ++ (escapeString content).toList ++ ['"'] ++ rest, sc.col⟩)
@@ -898,7 +898,7 @@ theorem scanDoubleQuoted_flow_ok (sc : ScannerState)
     exact h_line_loop.trans h_line_adv
 
 -- Helper: skipWhitespace is identity when first char is not whitespace
-theorem skipWhitespace_of_not_ws (s : ScannerState) (c : Char)
+lemma skipWhitespace_of_not_ws (s : ScannerState) (c : Char)
     (h_pk : s.peek? = some c) (h_nws : isWhiteSpaceBool c = false)
     (h_more : s.offset < s.inputEnd) :
     skipWhitespace s = s := by
@@ -908,7 +908,7 @@ theorem skipWhitespace_of_not_ws (s : ScannerState) (c : Char)
   rw [hn]; unfold skipWhitespaceLoop; simp [h_pk, h_nws]
 
 -- Helper: skipSpaces is identity when first char is not a space
-theorem skipSpaces_of_not_space (s : ScannerState) (c : Char)
+lemma skipSpaces_of_not_space (s : ScannerState) (c : Char)
     (h_pk : s.peek? = some c) (h_ns : c ≠ ' ') :
     skipSpaces s = s := by
   unfold skipSpaces
@@ -924,7 +924,7 @@ theorem skipSpaces_of_not_space (s : ScannerState) (c : Char)
     · rfl
 
 -- Helper: skipToContent is identity when first char is content (not ws/lb/comment)
-theorem skipToContent_of_content_char (s : ScannerState) (c : Char)
+lemma skipToContent_of_content_char (s : ScannerState) (c : Char)
     (h_pk : s.peek? = some c)
     (h_nws : isWhiteSpaceBool c = false)
     (h_nlb : isLineBreakBool c = false)
@@ -959,7 +959,7 @@ theorem skipToContent_of_content_char (s : ScannerState) (c : Char)
   unfold skipToContentComment; rw [h_pk]; simp [h_nc, h_pk, h_nlb]
 
 -- Helper: saveSimpleKey preserves peek?
-theorem saveSimpleKey_preserves_peek (s : ScannerState) :
+lemma saveSimpleKey_preserves_peek (s : ScannerState) :
     (saveSimpleKey s).peek? = s.peek? := by
   unfold saveSimpleKey
   split
@@ -969,50 +969,50 @@ theorem saveSimpleKey_preserves_peek (s : ScannerState) :
     · rfl
 
 -- saveSimpleKey preserves all non-token/key fields
-@[simp] theorem saveSimpleKey_preserves_input (s : ScannerState) :
+@[simp] lemma saveSimpleKey_preserves_input (s : ScannerState) :
     (saveSimpleKey s).input = s.input := by
   unfold saveSimpleKey; split <;> (try rfl); split <;> rfl
-@[simp] theorem saveSimpleKey_preserves_offset (s : ScannerState) :
+@[simp] lemma saveSimpleKey_preserves_offset (s : ScannerState) :
     (saveSimpleKey s).offset = s.offset := by
   unfold saveSimpleKey; split <;> (try rfl); split <;> rfl
-@[simp] theorem saveSimpleKey_preserves_inputEnd (s : ScannerState) :
+@[simp] lemma saveSimpleKey_preserves_inputEnd (s : ScannerState) :
     (saveSimpleKey s).inputEnd = s.inputEnd := by
   unfold saveSimpleKey; split <;> (try rfl); split <;> rfl
-@[simp] theorem saveSimpleKey_preserves_col (s : ScannerState) :
+@[simp] lemma saveSimpleKey_preserves_col (s : ScannerState) :
     (saveSimpleKey s).col = s.col := by
   unfold saveSimpleKey; split <;> (try rfl); split <;> rfl
-@[simp] theorem saveSimpleKey_preserves_line (s : ScannerState) :
+@[simp] lemma saveSimpleKey_preserves_line (s : ScannerState) :
     (saveSimpleKey s).line = s.line := by
   unfold saveSimpleKey; split <;> (try rfl); split <;> rfl
-@[simp] theorem saveSimpleKey_preserves_inFlow (s : ScannerState) :
+@[simp] lemma saveSimpleKey_preserves_inFlow (s : ScannerState) :
     (saveSimpleKey s).inFlow = s.inFlow := by
   unfold saveSimpleKey; split <;> (try rfl); split <;> rfl
-@[simp] theorem saveSimpleKey_preserves_indents (s : ScannerState) :
+@[simp] lemma saveSimpleKey_preserves_indents (s : ScannerState) :
     (saveSimpleKey s).indents = s.indents := by
   unfold saveSimpleKey; split <;> (try rfl); split <;> rfl
-@[simp] theorem saveSimpleKey_preserves_allowDirectives (s : ScannerState) :
+@[simp] lemma saveSimpleKey_preserves_allowDirectives (s : ScannerState) :
     (saveSimpleKey s).allowDirectives = s.allowDirectives := by
   unfold saveSimpleKey; split <;> (try rfl); split <;> rfl
-@[simp] theorem saveSimpleKey_preserves_directivesPresent (s : ScannerState) :
+@[simp] lemma saveSimpleKey_preserves_directivesPresent (s : ScannerState) :
     (saveSimpleKey s).directivesPresent = s.directivesPresent := by
   unfold saveSimpleKey; split <;> (try rfl); split <;> rfl
-@[simp] theorem saveSimpleKey_preserves_flowStack (s : ScannerState) :
+@[simp] lemma saveSimpleKey_preserves_flowStack (s : ScannerState) :
     (saveSimpleKey s).flowStack = s.flowStack := by
   unfold saveSimpleKey; split <;> (try rfl); split <;> rfl
-@[simp] theorem saveSimpleKey_preserves_needIndentCheck (s : ScannerState) :
+@[simp] lemma saveSimpleKey_preserves_needIndentCheck (s : ScannerState) :
     (saveSimpleKey s).needIndentCheck = s.needIndentCheck := by
   unfold saveSimpleKey; split <;> (try rfl); split <;> rfl
-@[simp] theorem saveSimpleKey_preserves_flowLevel (s : ScannerState) :
+@[simp] lemma saveSimpleKey_preserves_flowLevel (s : ScannerState) :
     (saveSimpleKey s).flowLevel = s.flowLevel := by
   unfold saveSimpleKey; split <;> (try rfl); split <;> rfl
-@[simp] theorem saveSimpleKey_preserves_ek (s : ScannerState) :
+@[simp] lemma saveSimpleKey_preserves_ek (s : ScannerState) :
     (saveSimpleKey s).explicitKeyLine = s.explicitKeyLine := by
   unfold saveSimpleKey; split <;> (try rfl); split <;> rfl
 
 -- saveSimpleKey is the identity when simpleKeyAllowed = false and the
 -- flow-context explicit-key guard doesn't fire (explicitKeyLine ≠ some line).
 -- In our emitter context: inFlow = true, explicitKeyLine = none, simpleKeyAllowed = false.
-theorem saveSimpleKey_id_of_flow_ska_false_ek_none (s : ScannerState)
+lemma saveSimpleKey_id_of_flow_ska_false_ek_none (s : ScannerState)
     (h_flow : s.inFlow = true) (h_ska : s.simpleKeyAllowed = false)
     (h_ek : s.explicitKeyLine = none) :
     saveSimpleKey s = s := by
@@ -1022,7 +1022,7 @@ theorem saveSimpleKey_id_of_flow_ska_false_ek_none (s : ScannerState)
 
 -- scanValueValidate always succeeds when simpleKey.possible is false
 -- and explicitKeyLine is none: all 5 checks short-circuit.
-theorem scanValueValidate_ok_of_not_possible_ek_none (s : ScannerState)
+lemma scanValueValidate_ok_of_not_possible_ek_none (s : ScannerState)
     (h_ek : s.explicitKeyLine = none)
     (h_sk : s.simpleKey.possible = false) :
     scanValueValidate s = .ok () := by
@@ -1050,7 +1050,7 @@ def StackEndLineOnLine (s : ScannerState) (l : Nat) : Prop :=
 
 -- scanValueValidate succeeds in flow context when all tokens are on the same
 -- line as the scanner and endLine = line (when possible).
-theorem scanValueValidate_ok_of_flow_allTokensOnLine (s : ScannerState)
+lemma scanValueValidate_ok_of_flow_allTokensOnLine (s : ScannerState)
     (h_flow : s.inFlow = true)
     (h_ek : s.explicitKeyLine = none)
     (h_atol : AllTokensOnLine s s.line)
@@ -1083,7 +1083,7 @@ theorem scanValueValidate_ok_of_flow_allTokensOnLine (s : ScannerState)
                    decide_eq_false (by omega)]; rfl
 
 -- saveSimpleKey only adds placeholder tokens, so filtering them out is invariant.
-theorem saveSimpleKey_filter_placeholder (s : ScannerState) :
+lemma saveSimpleKey_filter_placeholder (s : ScannerState) :
     (saveSimpleKey s).tokens.filter (fun t => t.val != .placeholder)
     = s.tokens.filter (fun t => t.val != .placeholder) := by
   unfold saveSimpleKey
@@ -1097,7 +1097,7 @@ theorem saveSimpleKey_filter_placeholder (s : ScannerState) :
 -- ═══ AllTokensOnLine transfer lemmas ═══
 
 /-- Pushing one token at `currentPos` preserves AllTokensOnLine. -/
-theorem AllTokensOnLine_emit (s : ScannerState) (tok : YamlToken) (l : Nat)
+lemma AllTokensOnLine_emit (s : ScannerState) (tok : YamlToken) (l : Nat)
     (h_atol : AllTokensOnLine s l) (h_line : s.line = l) :
     AllTokensOnLine (s.emit tok) l := by
   intro i h_bound
@@ -1107,7 +1107,7 @@ theorem AllTokensOnLine_emit (s : ScannerState) (tok : YamlToken) (l : Nat)
   · simp [ScannerState.currentPos, h_line]
 
 /-- Advancing preserves AllTokensOnLine (tokens unchanged). -/
-theorem AllTokensOnLine_advance (s : ScannerState) (l : Nat)
+lemma AllTokensOnLine_advance (s : ScannerState) (l : Nat)
     (h_atol : AllTokensOnLine s l) :
     AllTokensOnLine s.advance l := by
   intro i h_bound
@@ -1115,7 +1115,7 @@ theorem AllTokensOnLine_advance (s : ScannerState) (l : Nat)
   exact h_atol i h_bound
 
 /-- saveSimpleKey preserves AllTokensOnLine (pushes 0 or 2 placeholders at currentPos). -/
-theorem AllTokensOnLine_saveSimpleKey (s : ScannerState) (l : Nat)
+lemma AllTokensOnLine_saveSimpleKey (s : ScannerState) (l : Nat)
     (h_atol : AllTokensOnLine s l) (h_line : s.line = l) :
     AllTokensOnLine (saveSimpleKey s) l := by
   unfold saveSimpleKey
@@ -1135,7 +1135,7 @@ theorem AllTokensOnLine_saveSimpleKey (s : ScannerState) (l : Nat)
 
 /-- saveSimpleKey establishes EndLineOnLine in flow context.
     Both endLine and pos.line are set from s.line when saving. -/
-theorem EndLineOnLine_saveSimpleKey_flow (s : ScannerState)
+lemma EndLineOnLine_saveSimpleKey_flow (s : ScannerState)
     (h_prev : EndLineOnLine s) :
     EndLineOnLine (saveSimpleKey s) := by
   unfold EndLineOnLine saveSimpleKey
@@ -1151,7 +1151,7 @@ theorem EndLineOnLine_saveSimpleKey_flow (s : ScannerState)
     · exact h_prev
 
 /-- emitAt with a pos on line l preserves AllTokensOnLine. -/
-theorem AllTokensOnLine_emitAt (s : ScannerState) (pos : YamlPos) (tok : YamlToken) (l : Nat)
+lemma AllTokensOnLine_emitAt (s : ScannerState) (pos : YamlPos) (tok : YamlToken) (l : Nat)
     (h_atol : AllTokensOnLine s l) (h_pos_line : pos.line = l) :
     AllTokensOnLine (s.emitAt pos tok) l := by
   intro i h_bound
@@ -1166,40 +1166,40 @@ theorem AllTokensOnLine_emitAt (s : ScannerState) (pos : YamlPos) (tok : YamlTok
 -- and are transparent to AllTokensOnLine by definitional equality.
 
 /-- scanFlowSequenceStart preserves AllTokensOnLine. -/
-theorem AllTokensOnLine_scanFlowSequenceStart (s : ScannerState) (l : Nat)
+lemma AllTokensOnLine_scanFlowSequenceStart (s : ScannerState) (l : Nat)
     (h_atol : AllTokensOnLine s l) (h_line : s.line = l) :
     AllTokensOnLine (scanFlowSequenceStart s) l := by
   unfold scanFlowSequenceStart
   exact AllTokensOnLine_advance _ l (AllTokensOnLine_emit _ _ l h_atol h_line)
 
 /-- scanFlowMappingStart preserves AllTokensOnLine. -/
-theorem AllTokensOnLine_scanFlowMappingStart (s : ScannerState) (l : Nat)
+lemma AllTokensOnLine_scanFlowMappingStart (s : ScannerState) (l : Nat)
     (h_atol : AllTokensOnLine s l) (h_line : s.line = l) :
     AllTokensOnLine (scanFlowMappingStart s) l := by
   unfold scanFlowMappingStart
   exact AllTokensOnLine_advance _ l (AllTokensOnLine_emit _ _ l h_atol h_line)
 
 /-- scanFlowSequenceStart sets simpleKey.possible to false. -/
-theorem scanFlowSequenceStart_simpleKey_not_possible (s : ScannerState) :
+lemma scanFlowSequenceStart_simpleKey_not_possible (s : ScannerState) :
     (scanFlowSequenceStart s).simpleKey.possible = false := by
   unfold scanFlowSequenceStart ScannerState.emit ScannerState.advance
   dsimp only []; split <;> (try split) <;> (try split) <;> rfl
 
 /-- scanFlowMappingStart sets simpleKey.possible to false. -/
-theorem scanFlowMappingStart_simpleKey_not_possible (s : ScannerState) :
+lemma scanFlowMappingStart_simpleKey_not_possible (s : ScannerState) :
     (scanFlowMappingStart s).simpleKey.possible = false := by
   unfold scanFlowMappingStart ScannerState.emit ScannerState.advance
   dsimp only []; split <;> (try split) <;> (try split) <;> rfl
 
 /-- scanFlowSequenceEnd preserves AllTokensOnLine. -/
-theorem AllTokensOnLine_scanFlowSequenceEnd (s : ScannerState) (l : Nat)
+lemma AllTokensOnLine_scanFlowSequenceEnd (s : ScannerState) (l : Nat)
     (h_atol : AllTokensOnLine s l) (h_line : s.line = l) :
     AllTokensOnLine (scanFlowSequenceEnd s) l := by
   unfold scanFlowSequenceEnd
   exact AllTokensOnLine_advance _ l (AllTokensOnLine_emit _ _ l h_atol h_line)
 
 /-- scanFlowMappingEnd preserves AllTokensOnLine. -/
-theorem AllTokensOnLine_scanFlowMappingEnd (s : ScannerState) (l : Nat)
+lemma AllTokensOnLine_scanFlowMappingEnd (s : ScannerState) (l : Nat)
     (h_atol : AllTokensOnLine s l) (h_line : s.line = l) :
     AllTokensOnLine (scanFlowMappingEnd s) l := by
   unfold scanFlowMappingEnd
@@ -1207,13 +1207,13 @@ theorem AllTokensOnLine_scanFlowMappingEnd (s : ScannerState) (l : Nat)
 
 /-- scanFlowEntry preserves AllTokensOnLine
     (emit .flowEntry → advance → set simpleKeyAllowed). -/
-theorem AllTokensOnLine_scanFlowEntry (s : ScannerState) (l : Nat)
+lemma AllTokensOnLine_scanFlowEntry (s : ScannerState) (l : Nat)
     (h_atol : AllTokensOnLine s l) (h_line : s.line = l) :
     AllTokensOnLine ({ (s.emit .flowEntry).advance with simpleKeyAllowed := true }) l := by
   exact AllTokensOnLine_advance _ l (AllTokensOnLine_emit _ _ l h_atol h_line)
 
 /-- allowDirectives struct update preserves AllTokensOnLine (no token changes). -/
-theorem AllTokensOnLine_allowDirectives (s : ScannerState) (l : Nat)
+lemma AllTokensOnLine_allowDirectives (s : ScannerState) (l : Nat)
     (h_atol : AllTokensOnLine s l) :
     AllTokensOnLine (if s.allowDirectives then
         { s with allowDirectives := false, documentEverStarted := true } else s) l := by
@@ -1222,7 +1222,7 @@ theorem AllTokensOnLine_allowDirectives (s : ScannerState) (l : Nat)
 /-- scanValuePrepare in flow context preserves AllTokensOnLine.
     When simpleKey.possible, setIfInBounds replaces a token whose new pos.line
     equals the current line (from EndLineOnLine's pos.line conjunct). -/
-theorem AllTokensOnLine_scanValuePrepare_flow (s : ScannerState) (l : Nat)
+lemma AllTokensOnLine_scanValuePrepare_flow (s : ScannerState) (l : Nat)
     (h_atol : AllTokensOnLine s l) (h_line : s.line = l)
     (h_flow : s.inFlow = true)
     (h_ek : s.explicitKeyLine = none)
@@ -1250,7 +1250,7 @@ theorem AllTokensOnLine_scanValuePrepare_flow (s : ScannerState) (l : Nat)
 
 /-- scanDoubleQuoted preserves AllTokensOnLine: the loop doesn't add tokens,
     and emitAt pushes one token at currentPos.line = s.line. -/
-theorem AllTokensOnLine_scanDoubleQuoted (s s' : ScannerState)
+lemma AllTokensOnLine_scanDoubleQuoted (s s' : ScannerState)
     (h_ok : scanDoubleQuoted s = .ok s')
     (h_flow : s.inFlow = true)
     (l : Nat) (h_atol : AllTokensOnLine s l) (h_line : s.line = l) :
@@ -1276,7 +1276,7 @@ theorem AllTokensOnLine_scanDoubleQuoted (s s' : ScannerState)
 
 /-- scanDoubleQuoted preserves simpleKey: the loop, advance, and emitAt
     don't modify simpleKey. -/
-theorem scanDoubleQuoted_preserves_simpleKey (s s' : ScannerState)
+lemma scanDoubleQuoted_preserves_simpleKey (s s' : ScannerState)
     (h_ok : scanDoubleQuoted s = .ok s') :
     s'.simpleKey = s.simpleKey :=
   ScannerCorrectness.scanDoubleQuoted_preserves_simpleKey s s' h_ok
@@ -1291,7 +1291,7 @@ theorem scanDoubleQuoted_preserves_simpleKey (s s' : ScannerState)
     `(s_pp, c)` with all position/metadata fields preserved.
 
     This is the common first step for all `scanNextToken_emit*_init` proofs. -/
-theorem scanNextToken_preprocess_init_state (input : String) (c : Char)
+lemma scanNextToken_preprocess_init_state (input : String) (c : Char)
     (rest : List Char)
     (h_toList : input.toList = c :: rest)
     (h_nws : isWhiteSpaceBool c = false)
@@ -1366,7 +1366,7 @@ theorem scanNextToken_preprocess_init_state (input : String) (c : Char)
 
 -- The first scanNextToken call on the initial emitScalar state
 -- dispatches to scanDoubleQuoted and succeeds.
-theorem scanNextToken_emitScalar_init (content : String) :
+lemma scanNextToken_emitScalar_init (content : String) :
     ∃ s₁, scanNextToken ((ScannerState.mk' (emitScalar content)).emit .streamStart) = .ok (some s₁)
       ∧ s₁.peek? = none ∧ s₁.flowLevel = 0 ∧ s₁.directivesPresent = false
       ∧ (∃ tok ∈ s₁.tokens, tok.val = .scalar content .doubleQuoted)
@@ -1535,7 +1535,7 @@ theorem scanNextToken_emitScalar_init (content : String) :
 
 /-- **Scalar case**: The scanner accepts any double-quoted scalar produced
     by the emitter. -/
-theorem scan_accepts_emitScalar (content : String) :
+lemma scan_accepts_emitScalar (content : String) :
     ∃ tokens, scanFiltered (emitScalar content) = .ok tokens := by
   simp only [scanFiltered]
   suffices h : ∃ toks, scan (emitScalar content) = .ok toks by
@@ -1571,19 +1571,19 @@ theorem scan_accepts_emitScalar (content : String) :
 -- Infrastructure for proving that the scanner accepts emitted flow collections.
 
 -- Test: can we evaluate scanFiltered on small flow collections?
-theorem scan_emptySeq_test :
+lemma scan_emptySeq_test :
     (Scanner.scanFiltered "[]").isOk = true := by native_decide
 
-theorem scan_emptyMap_test :
+lemma scan_emptyMap_test :
     (Scanner.scanFiltered "{}").isOk = true := by native_decide
 
-theorem scan_singleScalarSeq_test :
+lemma scan_singleScalarSeq_test :
     (Scanner.scanFiltered "[\"hello\"]").isOk = true := by native_decide
 
-theorem scan_twoScalarSeq_test :
+lemma scan_twoScalarSeq_test :
     (Scanner.scanFiltered "[\"a\", \"b\"]").isOk = true := by native_decide
 
-theorem scan_nestedSeq_test :
+lemma scan_nestedSeq_test :
     (Scanner.scanFiltered "[[\"a\"]]").isOk = true := by native_decide
 
 -- ═══ Flow-context preprocessing ═══
@@ -1594,7 +1594,7 @@ theorem scan_nestedSeq_test :
     2. `!s.inFlow = false` skips `unwindIndents`
     3. `indents.size` unchanged → trailing content check is false
     4. `saveSimpleKey` preserves peek -/
-theorem scanNextToken_preprocess_flow (s : ScannerState) (c : Char)
+lemma scanNextToken_preprocess_flow (s : ScannerState) (c : Char)
     (rest : List Char) (col : Nat)
     (hcorr : ScannerSurfCorr s ⟨c :: rest, col⟩)
     (h_flow : s.inFlow = true)
@@ -1623,7 +1623,7 @@ theorem scanNextToken_preprocess_flow (s : ScannerState) (c : Char)
 -- yields the same result as preprocessing of the post-space state.
 -- Key idea: skipToContent absorbs the space, reaching the same state s₁
 -- as skipToContent on s₁ (identity for non-ws first char).
-theorem scanNextToken_preprocess_flow_ws1 (s : ScannerState) (c : Char)
+lemma scanNextToken_preprocess_flow_ws1 (s : ScannerState) (c : Char)
     (rest : List Char)
     (hcorr : ScannerSurfCorr s ⟨' ' :: c :: rest, s.col⟩)
     (h_flow : s.inFlow = true)
@@ -1772,7 +1772,7 @@ theorem scanNextToken_preprocess_flow_ws1 (s : ScannerState) (c : Char)
 
 /-- `dispatchStructural` returns `none` for non-structural characters in flow
     context when the column is past any document boundary position. -/
-theorem dispatchStructural_none_flow (s : ScannerState) (c : Char)
+lemma dispatchStructural_none_flow (s : ScannerState) (c : Char)
     (h_flow : s.inFlow = true)
     (h_indent : s.currentIndent < 0)
     (h_col_pos : s.col > 0) :
@@ -1783,7 +1783,7 @@ theorem dispatchStructural_none_flow (s : ScannerState) (c : Char)
   simp [ScannerState.inFlow, h_fl_pos, show ¬(s.currentIndent ≥ (0 : Int)) from by omega, show ¬((s.col : Int) ≤ s.currentIndent) from by omega, show s.col ≠ 0 from by omega, pure, Except.pure]
 
 /-- `checkBlockFlowIndent` succeeds for non-bracket characters or when in flow. -/
-theorem checkBlockFlowIndent_ok_flow (s : ScannerState) (c : Char)
+lemma checkBlockFlowIndent_ok_flow (s : ScannerState) (c : Char)
     (h_flow : s.inFlow = true) :
     scanNextToken_checkBlockFlowIndent s c = .ok () := by
   have h_fl_pos : s.flowLevel > 0 := by
@@ -1792,7 +1792,7 @@ theorem checkBlockFlowIndent_ok_flow (s : ScannerState) (c : Char)
   simp [ScannerState.inFlow, h_fl_pos]
 
 /-- `dispatchFlowIndicators` returns `none` for non-flow-indicator characters. -/
-theorem dispatchFlowIndicators_none (s : ScannerState) (c : Char)
+lemma dispatchFlowIndicators_none (s : ScannerState) (c : Char)
     (h1 : c ≠ '[') (h2 : c ≠ ']') (h3 : c ≠ '{') (h4 : c ≠ '}') (h5 : c ≠ ',') :
     scanNextToken_dispatchFlowIndicators s c = .ok none := by
   unfold scanNextToken_dispatchFlowIndicators
@@ -1810,7 +1810,7 @@ theorem dispatchFlowIndicators_none (s : ScannerState) (c : Char)
           · rfl
 
 /-- `dispatchBlockIndicators` returns `none` for `'"'` (and many other chars). -/
-theorem dispatchBlockIndicators_none_quote (s : ScannerState) :
+lemma dispatchBlockIndicators_none_quote (s : ScannerState) :
     scanNextToken_dispatchBlockIndicators s '"' = .ok none := by
   unfold scanNextToken_dispatchBlockIndicators
   simp only [bind, Except.bind, pure, Except.pure]
@@ -1826,31 +1826,31 @@ theorem dispatchBlockIndicators_none_quote (s : ScannerState) :
 -- ═══ scanFlowSequenceStart detailed properties ═══
 
 -- Field preservation through scanFlowSequenceStart
-theorem scanFlowSequenceStart_preserves_dp (s : ScannerState) :
+lemma scanFlowSequenceStart_preserves_dp (s : ScannerState) :
     (scanFlowSequenceStart s).directivesPresent = s.directivesPresent := by
   unfold scanFlowSequenceStart; simp only [advance_preserves_dp, ScannerState.emit]
 
-theorem scanFlowSequenceStart_preserves_indents (s : ScannerState) :
+lemma scanFlowSequenceStart_preserves_indents (s : ScannerState) :
     (scanFlowSequenceStart s).indents = s.indents := by
   unfold scanFlowSequenceStart; simp only [advance_preserves_indents, ScannerState.emit]
 
-theorem scanFlowSequenceStart_preserves_ek (s : ScannerState) :
+lemma scanFlowSequenceStart_preserves_ek (s : ScannerState) :
     (scanFlowSequenceStart s).explicitKeyLine = s.explicitKeyLine := by
   unfold scanFlowSequenceStart; dsimp only []; simp only [advance_explicitKeyLine, ScannerState.emit]
 
-theorem scanFlowSequenceStart_line_eq (s : ScannerState) :
+lemma scanFlowSequenceStart_line_eq (s : ScannerState) :
     (scanFlowSequenceStart s).line = s.advance.line := by
   simp only [scanFlowSequenceStart, ScannerState.emit, ScannerState.advance]
   split <;> (try split <;> (try split)) <;> rfl
 
-theorem scanFlowSequenceStart_flowLevel_eq (s : ScannerState) :
+lemma scanFlowSequenceStart_flowLevel_eq (s : ScannerState) :
     (scanFlowSequenceStart s).flowLevel = s.flowLevel + 1 := by
   unfold scanFlowSequenceStart
   simp only [ScannerCorrectness.advance_preserves_flowLevel, ScannerCorrectness.emit_preserves_flowLevel]
 
 /-- `scanFlowSequenceStart` advances past `[`, giving specific ScannerSurfCorr
     and field preservation. -/
-theorem scanFlowSequenceStart_detail (s : ScannerState) (rest : List Char)
+lemma scanFlowSequenceStart_detail (s : ScannerState) (rest : List Char)
     (hcorr : ScannerSurfCorr s ⟨'[' :: rest, s.col⟩) :
     ScannerSurfCorr (scanFlowSequenceStart s) ⟨rest, s.col + 1⟩
     ∧ (scanFlowSequenceStart s).flowLevel = s.flowLevel + 1
@@ -1885,7 +1885,7 @@ theorem scanFlowSequenceStart_detail (s : ScannerState) (rest : List Char)
     returns `some s_result`.
 
     `s_ad` is the state after the allowDirectives update. -/
-theorem scanNextToken_via_content_dispatch (s s_pp s_ad s_result : ScannerState) (c : Char)
+lemma scanNextToken_via_content_dispatch (s s_pp s_ad s_result : ScannerState) (c : Char)
     (h_pp : scanNextToken_preprocess s = .ok (some (s_pp, c)))
     (h_struct : scanNextToken_dispatchStructural s_pp c = .ok none)
     (h_ad_eq : s_ad = if s_pp.allowDirectives then
@@ -1902,7 +1902,7 @@ theorem scanNextToken_via_content_dispatch (s s_pp s_ad s_result : ScannerState)
 
 /-- Error variant of `scanNextToken_via_content_dispatch`: when content
     dispatch errors, `scanNextToken` propagates that error. -/
-theorem scanNextToken_via_content_dispatch_error
+lemma scanNextToken_via_content_dispatch_error
     (s s_pp s_ad : ScannerState) (c : Char) (e : ScanError)
     (h_pp : scanNextToken_preprocess s = .ok (some (s_pp, c)))
     (h_struct : scanNextToken_dispatchStructural s_pp c = .ok none)
@@ -1922,7 +1922,7 @@ theorem scanNextToken_via_content_dispatch_error
     and block indicator dispatch produces a result, then scanNextToken
     returns that result. This is used for `:` (value indicator) in flow context,
     which goes through `scanNextToken_dispatchBlockIndicators`. -/
-theorem scanNextToken_via_block_dispatch (s s_pp s_ad s_result : ScannerState) (c : Char)
+lemma scanNextToken_via_block_dispatch (s s_pp s_ad s_result : ScannerState) (c : Char)
     (h_pp : scanNextToken_preprocess s = .ok (some (s_pp, c)))
     (h_struct : scanNextToken_dispatchStructural s_pp c = .ok none)
     (h_ad_eq : s_ad = if s_pp.allowDirectives then
@@ -1943,7 +1943,7 @@ theorem scanNextToken_via_block_dispatch (s s_pp s_ad s_result : ScannerState) (
     Combines preprocessing, all-none dispatches, and content dispatch.
 
     This is the flow-context analog of `scanNextToken_emitScalar_init`. -/
-theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
+lemma scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
     (content : String) (rest : List Char)
     (hcorr : ScannerSurfCorr s ⟨['"'] ++ (escapeString content).toList ++ ['"'] ++ rest, s.col⟩)
     (h_flow : s.inFlow = true)
@@ -2099,7 +2099,7 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
 -- ═══ scanNextToken for '[' from initial state ═══
 
 /-- Structural dispatch returns none for `[` at initial state. -/
-theorem dispatchStructural_none_bracket_init (s : ScannerState)
+lemma dispatchStructural_none_bracket_init (s : ScannerState)
     (h_fl : s.flowLevel = 0)
     (h_noDocStart : atDocumentStart s = false)
     (h_noDocEnd : atDocumentEnd s = false) :
@@ -2109,7 +2109,7 @@ theorem dispatchStructural_none_bracket_init (s : ScannerState)
 
 /-- checkBlockFlowIndent passes for `[` at initial state
     (currentIndent = -1 < 0, so the guard is false). -/
-theorem checkBlockFlowIndent_bracket_init (s : ScannerState)
+lemma checkBlockFlowIndent_bracket_init (s : ScannerState)
     (h_fl : s.flowLevel = 0)
     (h_indent : s.currentIndent = -1) :
     scanNextToken_checkBlockFlowIndent s '[' = .ok () := by
@@ -2117,7 +2117,7 @@ theorem checkBlockFlowIndent_bracket_init (s : ScannerState)
   simp [ScannerState.inFlow, h_fl, h_indent]
 
 /-- Flow dispatch for `[` returns `some (scanFlowSequenceStart s)`. -/
-theorem dispatchFlowIndicators_bracket (s : ScannerState) :
+lemma dispatchFlowIndicators_bracket (s : ScannerState) :
     scanNextToken_dispatchFlowIndicators s '[' = .ok (some (scanFlowSequenceStart s)) := by
   unfold scanNextToken_dispatchFlowIndicators
   simp [pure, Except.pure]
@@ -2127,7 +2127,7 @@ theorem dispatchFlowIndicators_bracket (s : ScannerState) :
 
     Result state has `flowLevel = 1` (i.e. `inFlow = true`),
     `currentIndent = -1`, `col = 1`, and ScannerSurfCorr at rest. -/
-theorem scanNextToken_flow_open_init (input : String) (rest : List Char)
+lemma scanNextToken_flow_open_init (input : String) (rest : List Char)
     (h_toList : input.toList = '[' :: rest) :
     let s₀ := (ScannerState.mk' input).emit .streamStart
     ∃ s', scanNextToken s₀ = .ok (some s')
@@ -2291,10 +2291,10 @@ theorem scanNextToken_flow_open_init (input : String) (rest : List Char)
          h_ska_final, h_ssv_final⟩
 
 -- Helper: Nat BEq with 0
-theorem nat_beq_zero_false (n : Nat) (h : n > 0) : (n == 0) = false := by
+lemma nat_beq_zero_false (n : Nat) (h : n > 0) : (n == 0) = false := by
   cases n with | zero => omega | succ => rfl
 
-theorem nat_beq_zero_true {n : Nat} (h : n = 0) : (n == 0) = true := by
+lemma nat_beq_zero_true {n : Nat} (h : n = 0) : (n == 0) = true := by
   subst h; rfl
 
 -- ═══ Nested flow open: `[` when already in flow context ═══
@@ -2302,7 +2302,7 @@ theorem nat_beq_zero_true {n : Nat} (h : n = 0) : (n == 0) = true := by
 /-- `scanNextToken` dispatches `[` in flow context to `scanFlowSequenceStart`,
     incrementing flowLevel. Similar to `scanNextToken_flow_open_init` but
     for the nested case where flowLevel > 0. -/
-theorem scanNextToken_flow_open_nested (s : ScannerState) (rest : List Char)
+lemma scanNextToken_flow_open_nested (s : ScannerState) (rest : List Char)
     (hcorr : ScannerSurfCorr s ⟨'[' :: rest, s.col⟩)
     (h_flow : s.inFlow = true)
     (h_indent : s.currentIndent < 0)
@@ -2421,7 +2421,7 @@ theorem scanNextToken_flow_open_nested (s : ScannerState) (rest : List Char)
 -- ═══ Block indicators: concrete none lemmas ═══
 
 /-- `dispatchBlockIndicators` returns `none` for `,`. -/
-theorem dispatchBlockIndicators_none_comma (s : ScannerState) :
+lemma dispatchBlockIndicators_none_comma (s : ScannerState) :
     scanNextToken_dispatchBlockIndicators s ',' = .ok none := by
   unfold scanNextToken_dispatchBlockIndicators
   simp only [bind, Except.bind, pure, Except.pure]
@@ -2434,7 +2434,7 @@ theorem dispatchBlockIndicators_none_comma (s : ScannerState) :
       · rfl
 
 /-- `dispatchBlockIndicators` returns `none` for `]`. -/
-theorem dispatchBlockIndicators_none_close_bracket (s : ScannerState) :
+lemma dispatchBlockIndicators_none_close_bracket (s : ScannerState) :
     scanNextToken_dispatchBlockIndicators s ']' = .ok none := by
   unfold scanNextToken_dispatchBlockIndicators
   simp only [bind, Except.bind, pure, Except.pure]
@@ -2449,14 +2449,14 @@ theorem dispatchBlockIndicators_none_close_bracket (s : ScannerState) :
 -- ═══ Flow comma: scanFlowEntry dispatch ═══
 
 /-- `checkBlockFlowIndent` passes for `,`  (the guard only fires for `[` or `{`). -/
-theorem checkBlockFlowIndent_ok_comma (s : ScannerState) :
+lemma checkBlockFlowIndent_ok_comma (s : ScannerState) :
     scanNextToken_checkBlockFlowIndent s ',' = .ok () := by
   unfold scanNextToken_checkBlockFlowIndent; split
   · exfalso; rename_i h; simp at h
   · rfl
 
 /-- `checkBlockFlowIndent` passes for `]`  (the guard only fires for `[` or `{`). -/
-theorem checkBlockFlowIndent_ok_close_bracket (s : ScannerState) :
+lemma checkBlockFlowIndent_ok_close_bracket (s : ScannerState) :
     scanNextToken_checkBlockFlowIndent s ']' = .ok () := by
   unfold scanNextToken_checkBlockFlowIndent; split
   · exfalso; rename_i h; simp at h
@@ -2465,7 +2465,7 @@ theorem checkBlockFlowIndent_ok_close_bracket (s : ScannerState) :
 /-- `scanFlowEntry` succeeds when the last real token is not a flow
     delimiter (flowSequenceStart, flowMappingStart, or flowEntry).
     This holds whenever we've just scanned a content token (scalar, etc.). -/
-theorem scanFlowEntry_ok (s : ScannerState)
+lemma scanFlowEntry_ok (s : ScannerState)
     (h_last : ∀ t, lastRealTokenVal? s.tokens = some t →
       t ≠ .flowSequenceStart ∧ t ≠ .flowMappingStart ∧ t ≠ .flowEntry) :
     scanFlowEntry s = .ok { (s.emit .flowEntry).advance with simpleKeyAllowed := true } := by
@@ -2491,7 +2491,7 @@ theorem scanFlowEntry_ok (s : ScannerState)
     simp_all
 
 /-- Field preservation through scanFlowEntry. -/
-theorem scanFlowEntry_detail (s : ScannerState) (rest : List Char)
+lemma scanFlowEntry_detail (s : ScannerState) (rest : List Char)
     (hcorr : ScannerSurfCorr s ⟨',' :: rest, s.col⟩)
     (h_last : ∀ t, lastRealTokenVal? s.tokens = some t →
       t ≠ .flowSequenceStart ∧ t ≠ .flowMappingStart ∧ t ≠ .flowEntry) :
@@ -2530,7 +2530,7 @@ theorem scanFlowEntry_detail (s : ScannerState) (rest : List Char)
     exact h_adv_corr.col_eq.symm
 
 -- Helper: lastRealTokenVal? on array.push tok when tok.val ≠ .placeholder returns tok.val.
-theorem lastRealTokenVal_push_non_ph
+lemma lastRealTokenVal_push_non_ph
     (tokens : Array (Positioned YamlToken))
     (tok : Positioned YamlToken) (h_nph : tok.val ≠ .placeholder) :
     lastRealTokenVal? (tokens.push tok) = some tok.val := by
@@ -2547,7 +2547,7 @@ theorem lastRealTokenVal_push_non_ph
 -- saveSimpleKey either leaves tokens unchanged or pushes exactly 2 .placeholder tokens.
 -- lastRealTokenVal? skips up to 2 trailing placeholders, so either reaches the same original
 -- token (which h_last covers) or returns .placeholder (which is trivially ≠ flow delimiters).
-theorem lastRealTokenVal_push_two_ph
+lemma lastRealTokenVal_push_two_ph
     (tokens : Array (Positioned YamlToken))
     (ph1 ph2 : Positioned YamlToken) (h1 : ph1.val = .placeholder) (h2 : ph2.val = .placeholder)
     (t : YamlToken)
@@ -2595,7 +2595,7 @@ theorem lastRealTokenVal_push_two_ph
       decide_true, decide_false] at ht
     injection ht with ht_val; exact .inr ht_val.symm
 
-theorem saveSimpleKey_preserves_lastRealTokenVal_ne_flow (s : ScannerState)
+lemma saveSimpleKey_preserves_lastRealTokenVal_ne_flow (s : ScannerState)
     (h_last : ∀ t, lastRealTokenVal? s.tokens = some t →
       t ≠ .flowSequenceStart ∧ t ≠ .flowMappingStart ∧ t ≠ .flowEntry)
     (t : YamlToken)
@@ -2621,7 +2621,7 @@ theorem saveSimpleKey_preserves_lastRealTokenVal_ne_flow (s : ScannerState)
     | inr h => subst h; exact ⟨by decide, by decide, by decide⟩
 
 /-- Flow dispatch for `,` returns `some (scanFlowEntry result)` when flowLevel > 0. -/
-theorem dispatchFlowIndicators_comma (s : ScannerState)
+lemma dispatchFlowIndicators_comma (s : ScannerState)
     (h_fl : s.flowLevel > 0)
     (h_last : ∀ t, lastRealTokenVal? s.tokens = some t →
       t ≠ .flowSequenceStart ∧ t ≠ .flowMappingStart ∧ t ≠ .flowEntry) :
@@ -2642,7 +2642,7 @@ theorem dispatchFlowIndicators_comma (s : ScannerState)
 /-- Full `scanNextToken` for `,` in flow context.
     Handles preprocessing (skips nothing for non-ws `,`),
     structural dispatch (none), flow dispatch (scanFlowEntry). -/
-theorem scanNextToken_flow_comma (s : ScannerState)
+lemma scanNextToken_flow_comma (s : ScannerState)
     (rest : List Char)
     (hcorr : ScannerSurfCorr s ⟨',' :: rest, s.col⟩)
     (h_flow : s.inFlow = true)
@@ -2756,21 +2756,21 @@ theorem scanNextToken_flow_comma (s : ScannerState)
 -- ═══ Flow close bracket: scanFlowSequenceEnd dispatch ═══
 
 /-- Field preservation through scanFlowSequenceEnd: directivesPresent. -/
-theorem scanFlowSequenceEnd_preserves_dp (s : ScannerState) :
+lemma scanFlowSequenceEnd_preserves_dp (s : ScannerState) :
     (scanFlowSequenceEnd s).directivesPresent = s.directivesPresent := by
   unfold scanFlowSequenceEnd; dsimp only []; simp only [advance_preserves_dp, ScannerState.emit]
 
 /-- Field preservation through scanFlowSequenceEnd: indents. -/
-theorem scanFlowSequenceEnd_preserves_indents (s : ScannerState) :
+lemma scanFlowSequenceEnd_preserves_indents (s : ScannerState) :
     (scanFlowSequenceEnd s).indents = s.indents := by
   unfold scanFlowSequenceEnd; dsimp only []; simp only [advance_preserves_indents, ScannerState.emit]
 
-theorem scanFlowSequenceEnd_preserves_ek (s : ScannerState) :
+lemma scanFlowSequenceEnd_preserves_ek (s : ScannerState) :
     (scanFlowSequenceEnd s).explicitKeyLine = s.explicitKeyLine := by
   unfold scanFlowSequenceEnd; dsimp only []; simp only [advance_explicitKeyLine, ScannerState.emit]
 
 /-- FlowLevel through scanFlowSequenceEnd: decremented by 1. -/
-theorem scanFlowSequenceEnd_flowLevel (s : ScannerState) :
+lemma scanFlowSequenceEnd_flowLevel (s : ScannerState) :
     (scanFlowSequenceEnd s).flowLevel =
       if s.flowLevel > 0 then s.flowLevel - 1 else 0 := by
   unfold scanFlowSequenceEnd; dsimp only []
@@ -2778,7 +2778,7 @@ theorem scanFlowSequenceEnd_flowLevel (s : ScannerState) :
              ScannerCorrectness.emit_preserves_flowLevel]
 
 /-- ScannerSurfCorr + properties through scanFlowSequenceEnd. -/
-theorem scanFlowSequenceEnd_detail (s : ScannerState) (rest : List Char)
+lemma scanFlowSequenceEnd_detail (s : ScannerState) (rest : List Char)
     (hcorr : ScannerSurfCorr s ⟨']' :: rest, s.col⟩) :
     ScannerSurfCorr (scanFlowSequenceEnd s) ⟨rest, s.col + 1⟩
     ∧ (scanFlowSequenceEnd s).flowLevel = (if s.flowLevel > 0 then s.flowLevel - 1 else 0)
@@ -2803,7 +2803,7 @@ theorem scanFlowSequenceEnd_detail (s : ScannerState) (rest : List Char)
          h_adv_corr.input_prefix, h_adv_corr.indent_cols_nonneg⟩
 
 /-- Token property: `scanFlowSequenceEnd` ends with `.flowSequenceEnd` as last real token. -/
-theorem scanFlowSequenceEnd_lastRealTokenVal (s : ScannerState) :
+lemma scanFlowSequenceEnd_lastRealTokenVal (s : ScannerState) :
     lastRealTokenVal? (scanFlowSequenceEnd s).tokens = some .flowSequenceEnd := by
   unfold scanFlowSequenceEnd; dsimp only []
   -- tokens = (s.emit .flowSequenceEnd).advance.tokens
@@ -2815,14 +2815,14 @@ theorem scanFlowSequenceEnd_lastRealTokenVal (s : ScannerState) :
   exact lastRealTokenVal_push_non_ph' s.tokens _ nofun
 
 /-- `validateFlowClose` passes when flowLevel > 0. -/
-theorem validateFlowClose_pass_nested (s : ScannerState) (h_fl : s.flowLevel > 0) :
+lemma validateFlowClose_pass_nested (s : ScannerState) (h_fl : s.flowLevel > 0) :
     validateFlowClose s = .ok () := by
   unfold validateFlowClose
   have := nat_beq_zero_false s.flowLevel (by omega : s.flowLevel > 0)
   simp [this, pure, Except.pure]
 
 /-- `skipTrailingSpaces` at EOF is a no-op. -/
-theorem skipTrailingSpaces_at_eof (s : ScannerState) (n : Nat) (h : s.peek? = none) :
+lemma skipTrailingSpaces_at_eof (s : ScannerState) (n : Nat) (h : s.peek? = none) :
     skipTrailingSpaces s n = s := by
   cases n with
   | zero => unfold skipTrailingSpaces; rfl
@@ -2835,7 +2835,7 @@ theorem skipTrailingSpaces_at_eof (s : ScannerState) (n : Nat) (h : s.peek? = no
     · rfl
 
 /-- `validateFlowClose` passes at flowLevel = 0 when peek? = none (EOF). -/
-theorem validateFlowClose_pass_eof (s : ScannerState)
+lemma validateFlowClose_pass_eof (s : ScannerState)
     (h_fl : s.flowLevel = 0) (h_eof : s.peek? = none) :
     validateFlowClose s = .ok () := by
   unfold validateFlowClose
@@ -2844,7 +2844,7 @@ theorem validateFlowClose_pass_eof (s : ScannerState)
 
 /-- Flow dispatch for `]` returns `some (scanFlowSequenceEnd s)` when
     flowLevel ≥ 2 (nested case — validateFlowClose is no-op). -/
-theorem dispatchFlowIndicators_close_bracket_nested (s : ScannerState)
+lemma dispatchFlowIndicators_close_bracket_nested (s : ScannerState)
     (h_fl : s.flowLevel ≥ 2) :
     scanNextToken_dispatchFlowIndicators s ']' = .ok (some (scanFlowSequenceEnd s)) := by
   unfold scanNextToken_dispatchFlowIndicators
@@ -2860,7 +2860,7 @@ theorem dispatchFlowIndicators_close_bracket_nested (s : ScannerState)
 
 /-- Full `scanNextToken` for `]` in flow context when flowLevel ≥ 2
     (nested flow close — no validateFlowClose concern). -/
-theorem scanNextToken_flow_close_seq_nested (s : ScannerState)
+lemma scanNextToken_flow_close_seq_nested (s : ScannerState)
     (rest : List Char)
     (hcorr : ScannerSurfCorr s ⟨']' :: rest, s.col⟩)
     (h_flow : s.inFlow = true)
@@ -2996,13 +2996,13 @@ theorem scanNextToken_flow_close_seq_nested (s : ScannerState)
 -- ═══ Outermost flow close: ] at flowLevel = 1 ═══
 
 /-- `scanFlowSequenceEnd` preserves `peek?` from the underlying advance. -/
-theorem scanFlowSequenceEnd_peek (s : ScannerState) :
+lemma scanFlowSequenceEnd_peek (s : ScannerState) :
     (scanFlowSequenceEnd s).peek? = (s.emit .flowSequenceEnd).advance.peek? := by
   unfold scanFlowSequenceEnd ScannerState.peek?; rfl
 
 /-- Flow dispatch for `]` when flowLevel = 1 and at EOF (outermost close).
     After scanFlowSequenceEnd, flowLevel = 0 and validateFlowClose passes. -/
-theorem dispatchFlowIndicators_close_bracket_outermost (s : ScannerState)
+lemma dispatchFlowIndicators_close_bracket_outermost (s : ScannerState)
     (h_fl : s.flowLevel = 1)
     (hcorr : ScannerSurfCorr s ⟨[']'], s.col⟩) :
     scanNextToken_dispatchFlowIndicators s ']' = .ok (some (scanFlowSequenceEnd s)) := by
@@ -3031,7 +3031,7 @@ theorem dispatchFlowIndicators_close_bracket_outermost (s : ScannerState)
 
 /-- Full `scanNextToken` for `]` at flowLevel = 1 (outermost flow close).
     The result has flowLevel = 0, directivesPresent = false. -/
-theorem scanNextToken_flow_close_seq_outermost (s : ScannerState)
+lemma scanNextToken_flow_close_seq_outermost (s : ScannerState)
     (hcorr : ScannerSurfCorr s ⟨[']'], s.col⟩)
     (h_flow : s.inFlow = true)
     (h_indent : s.currentIndent < 0)
@@ -3094,29 +3094,29 @@ theorem scanNextToken_flow_close_seq_outermost (s : ScannerState)
 -- ═══ Flow mapping: scanFlowMappingStart / scanFlowMappingEnd ═══
 -- Symmetric to scanFlowSequenceStart/End but for `{`/`}`.
 
-theorem scanFlowMappingStart_preserves_dp (s : ScannerState) :
+lemma scanFlowMappingStart_preserves_dp (s : ScannerState) :
     (scanFlowMappingStart s).directivesPresent = s.directivesPresent := by
   unfold scanFlowMappingStart; simp only [advance_preserves_dp, ScannerState.emit]
 
-theorem scanFlowMappingStart_preserves_indents (s : ScannerState) :
+lemma scanFlowMappingStart_preserves_indents (s : ScannerState) :
     (scanFlowMappingStart s).indents = s.indents := by
   unfold scanFlowMappingStart; simp only [advance_preserves_indents, ScannerState.emit]
 
-theorem scanFlowMappingStart_preserves_ek (s : ScannerState) :
+lemma scanFlowMappingStart_preserves_ek (s : ScannerState) :
     (scanFlowMappingStart s).explicitKeyLine = s.explicitKeyLine := by
   unfold scanFlowMappingStart; dsimp only []; simp only [advance_explicitKeyLine, ScannerState.emit]
 
-theorem scanFlowMappingStart_line_eq (s : ScannerState) :
+lemma scanFlowMappingStart_line_eq (s : ScannerState) :
     (scanFlowMappingStart s).line = s.advance.line := by
   simp only [scanFlowMappingStart, ScannerState.emit, ScannerState.advance]
   split <;> (try split <;> (try split)) <;> rfl
 
-theorem scanFlowMappingStart_flowLevel_eq (s : ScannerState) :
+lemma scanFlowMappingStart_flowLevel_eq (s : ScannerState) :
     (scanFlowMappingStart s).flowLevel = s.flowLevel + 1 := by
   unfold scanFlowMappingStart
   simp only [ScannerCorrectness.advance_preserves_flowLevel, ScannerCorrectness.emit_preserves_flowLevel]
 
-theorem scanFlowMappingStart_detail (s : ScannerState) (rest : List Char)
+lemma scanFlowMappingStart_detail (s : ScannerState) (rest : List Char)
     (hcorr : ScannerSurfCorr s ⟨'{' :: rest, s.col⟩) :
     ScannerSurfCorr (scanFlowMappingStart s) ⟨rest, s.col + 1⟩
     ∧ (scanFlowMappingStart s).flowLevel = s.flowLevel + 1
@@ -3141,7 +3141,7 @@ theorem scanFlowMappingStart_detail (s : ScannerState) (rest : List Char)
          scanFlowMappingStart_preserves_indents s,
          h_corr_final.col_eq.symm ▸ rfl⟩
 
-theorem dispatchFlowIndicators_brace (s : ScannerState) :
+lemma dispatchFlowIndicators_brace (s : ScannerState) :
     scanNextToken_dispatchFlowIndicators s '{' = .ok (some (scanFlowMappingStart s)) := by
   unfold scanNextToken_dispatchFlowIndicators; dsimp only []
   simp only [pure, Except.pure, bind, Except.bind,
@@ -3150,26 +3150,26 @@ theorem dispatchFlowIndicators_brace (s : ScannerState) :
     show ('{' == '{') = true from by decide,
     ite_true, ite_false, Bool.false_eq_true]
 
-theorem scanFlowMappingEnd_preserves_dp (s : ScannerState) :
+lemma scanFlowMappingEnd_preserves_dp (s : ScannerState) :
     (scanFlowMappingEnd s).directivesPresent = s.directivesPresent := by
   unfold scanFlowMappingEnd; dsimp only []; simp only [advance_preserves_dp, ScannerState.emit]
 
-theorem scanFlowMappingEnd_preserves_indents (s : ScannerState) :
+lemma scanFlowMappingEnd_preserves_indents (s : ScannerState) :
     (scanFlowMappingEnd s).indents = s.indents := by
   unfold scanFlowMappingEnd; dsimp only []; simp only [advance_preserves_indents, ScannerState.emit]
 
-theorem scanFlowMappingEnd_preserves_ek (s : ScannerState) :
+lemma scanFlowMappingEnd_preserves_ek (s : ScannerState) :
     (scanFlowMappingEnd s).explicitKeyLine = s.explicitKeyLine := by
   unfold scanFlowMappingEnd; dsimp only []; simp only [advance_explicitKeyLine, ScannerState.emit]
 
-theorem scanFlowMappingEnd_flowLevel (s : ScannerState) :
+lemma scanFlowMappingEnd_flowLevel (s : ScannerState) :
     (scanFlowMappingEnd s).flowLevel =
       if s.flowLevel > 0 then s.flowLevel - 1 else 0 := by
   unfold scanFlowMappingEnd; dsimp only []
   simp only [ScannerCorrectness.advance_preserves_flowLevel,
              ScannerCorrectness.emit_preserves_flowLevel]
 
-theorem scanFlowMappingEnd_detail (s : ScannerState) (rest : List Char)
+lemma scanFlowMappingEnd_detail (s : ScannerState) (rest : List Char)
     (hcorr : ScannerSurfCorr s ⟨'}' :: rest, s.col⟩) :
     ScannerSurfCorr (scanFlowMappingEnd s) ⟨rest, s.col + 1⟩
     ∧ (scanFlowMappingEnd s).flowLevel = (if s.flowLevel > 0 then s.flowLevel - 1 else 0)
@@ -3191,7 +3191,7 @@ theorem scanFlowMappingEnd_detail (s : ScannerState) (rest : List Char)
   exact ⟨h_adv_corr.chars_from, h_adv_corr.col_eq, h_adv_corr.end_eq,
          h_adv_corr.input_prefix, h_adv_corr.indent_cols_nonneg⟩
 
-theorem scanFlowMappingEnd_lastRealTokenVal (s : ScannerState) :
+lemma scanFlowMappingEnd_lastRealTokenVal (s : ScannerState) :
     lastRealTokenVal? (scanFlowMappingEnd s).tokens = some .flowMappingEnd := by
   unfold scanFlowMappingEnd; dsimp only []
   show lastRealTokenVal? (s.emit .flowMappingEnd).advance.tokens = _
@@ -3199,17 +3199,17 @@ theorem scanFlowMappingEnd_lastRealTokenVal (s : ScannerState) :
   show lastRealTokenVal? (s.tokens.push { pos := s.currentPos, val := .flowMappingEnd }) = _
   exact lastRealTokenVal_push_non_ph' s.tokens _ nofun
 
-theorem scanFlowMappingEnd_peek (s : ScannerState) :
+lemma scanFlowMappingEnd_peek (s : ScannerState) :
     (scanFlowMappingEnd s).peek? = (s.emit .flowMappingEnd).advance.peek? := by
   unfold scanFlowMappingEnd ScannerState.peek?; rfl
 
-theorem checkBlockFlowIndent_ok_close_brace (s : ScannerState) :
+lemma checkBlockFlowIndent_ok_close_brace (s : ScannerState) :
     scanNextToken_checkBlockFlowIndent s '}' = .ok () := by
   unfold scanNextToken_checkBlockFlowIndent; split
   · exfalso; rename_i h; simp at h
   · rfl
 
-theorem dispatchFlowIndicators_close_brace_nested (s : ScannerState)
+lemma dispatchFlowIndicators_close_brace_nested (s : ScannerState)
     (h_fl : s.flowLevel ≥ 2) :
     scanNextToken_dispatchFlowIndicators s '}' = .ok (some (scanFlowMappingEnd s)) := by
   unfold scanNextToken_dispatchFlowIndicators
@@ -3225,7 +3225,7 @@ theorem dispatchFlowIndicators_close_brace_nested (s : ScannerState)
   rw [validateFlowClose_pass_nested _ h_fl_after]
   simp
 
-theorem scanNextToken_flow_close_mapping_nested (s : ScannerState)
+lemma scanNextToken_flow_close_mapping_nested (s : ScannerState)
     (rest : List Char)
     (hcorr : ScannerSurfCorr s ⟨'}' :: rest, s.col⟩)
     (h_flow : s.inFlow = true)
@@ -3348,7 +3348,7 @@ theorem scanNextToken_flow_close_mapping_nested (s : ScannerState)
         Array.getElem?_eq_getElem (by have := ScannerCorrectness.saveSimpleKey_tokens_monotonic s; omega),
         Array.getElem?_eq_getElem hi, ScannerCorrectness.saveSimpleKey_preserves_prefix s i hi]
 
-theorem dispatchFlowIndicators_close_brace_outermost (s : ScannerState)
+lemma dispatchFlowIndicators_close_brace_outermost (s : ScannerState)
     (h_fl : s.flowLevel = 1)
     (hcorr : ScannerSurfCorr s ⟨['}'], s.col⟩) :
     scanNextToken_dispatchFlowIndicators s '}' = .ok (some (scanFlowMappingEnd s)) := by
@@ -3375,7 +3375,7 @@ theorem dispatchFlowIndicators_close_brace_outermost (s : ScannerState)
   rw [validateFlowClose_pass_eof _ h_fl_after h_eof]
   simp
 
-theorem scanNextToken_flow_close_mapping_outermost (s : ScannerState)
+lemma scanNextToken_flow_close_mapping_outermost (s : ScannerState)
     (hcorr : ScannerSurfCorr s ⟨['}'], s.col⟩)
     (h_flow : s.inFlow = true)
     (h_indent : s.currentIndent < 0)
@@ -3430,7 +3430,7 @@ theorem scanNextToken_flow_close_mapping_outermost (s : ScannerState)
   exact ⟨scanFlowMappingEnd s_ad, h_snt, h_result_fl, h_result_dp, h_result_eof⟩
 
 -- Nested flow open for `{`
-theorem scanNextToken_flow_open_mapping_nested (s : ScannerState) (rest : List Char)
+lemma scanNextToken_flow_open_mapping_nested (s : ScannerState) (rest : List Char)
     (hcorr : ScannerSurfCorr s ⟨'{' :: rest, s.col⟩)
     (h_flow : s.inFlow = true)
     (h_indent : s.currentIndent < 0)
@@ -3542,7 +3542,7 @@ theorem scanNextToken_flow_open_mapping_nested (s : ScannerState) (rest : List C
 -- ═══ Init flow open: `{` — mapping at top level ═══
 
 /-- Structural dispatch returns none for `{` at initial state. -/
-theorem dispatchStructural_none_brace_init (s : ScannerState)
+lemma dispatchStructural_none_brace_init (s : ScannerState)
     (h_fl : s.flowLevel = 0)
     (h_noDocStart : atDocumentStart s = false)
     (h_noDocEnd : atDocumentEnd s = false) :
@@ -3551,7 +3551,7 @@ theorem dispatchStructural_none_brace_init (s : ScannerState)
   simp [ScannerState.inFlow, h_fl, h_noDocStart, h_noDocEnd, pure, Except.pure]
 
 /-- checkBlockFlowIndent passes for `{` at initial state. -/
-theorem checkBlockFlowIndent_brace_init (s : ScannerState)
+lemma checkBlockFlowIndent_brace_init (s : ScannerState)
     (h_fl : s.flowLevel = 0)
     (h_indent : s.currentIndent = -1) :
     scanNextToken_checkBlockFlowIndent s '{' = .ok () := by
@@ -3561,7 +3561,7 @@ theorem checkBlockFlowIndent_brace_init (s : ScannerState)
 /-- `scanNextToken` on the initial scanner state at `{` dispatches to
     `scanFlowMappingStart`, entering flow context.
     Result state has `flowLevel = 1`, `col = 1`, and ScannerSurfCorr at rest. -/
-theorem scanNextToken_flow_open_mapping_init (input : String) (rest : List Char)
+lemma scanNextToken_flow_open_mapping_init (input : String) (rest : List Char)
     (h_toList : input.toList = '{' :: rest) :
     let s₀ := (ScannerState.mk' input).emit .streamStart
     ∃ s', scanNextToken s₀ = .ok (some s')

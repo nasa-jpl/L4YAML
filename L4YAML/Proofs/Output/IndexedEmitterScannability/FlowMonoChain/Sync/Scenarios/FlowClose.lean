@@ -85,7 +85,7 @@ variable {input : String}
 
 /-- Full `scanNextTokenIx` for `']'` at flowLevel ≥ 2.
     Indexed twin of `scanNextToken_flow_close_seq_nested` (legacy 4793). -/
-theorem scanNextTokenIx_flow_close_seq_nested (s : ScannerStateIx input)
+lemma scanNextTokenIx_flow_close_seq_nested (s : ScannerStateIx input)
     (rest : List Char)
     (hcorr : ScannerSurfCorrIx s ⟨']' :: rest, s.cursor.pos.col⟩)
     (h_flow : s.inFlow = true)
@@ -249,7 +249,7 @@ with `scanFlowMappingEndIx` and `.flowMappingEnd`. -/
 /-- Full `scanNextTokenIx` for `'}'` at flowLevel ≥ 2.
     Indexed twin of `scanNextToken_flow_close_mapping_nested`
     (legacy 5141). -/
-theorem scanNextTokenIx_flow_close_mapping_nested (s : ScannerStateIx input)
+lemma scanNextTokenIx_flow_close_mapping_nested (s : ScannerStateIx input)
     (rest : List Char)
     (hcorr : ScannerSurfCorrIx s ⟨'}' :: rest, s.cursor.pos.col⟩)
     (h_flow : s.inFlow = true)
@@ -396,7 +396,7 @@ inheriting the prior `EndLineOnLineIx s`. -/
 /-- Full `scanNextTokenIx` for `'{'` inside an existing flow context.
     Indexed twin of `scanNextToken_flow_open_mapping_nested`
     (legacy 5329). -/
-theorem scanNextTokenIx_flow_open_mapping_nested (s : ScannerStateIx input)
+lemma scanNextTokenIx_flow_open_mapping_nested (s : ScannerStateIx input)
     (rest : List Char)
     (hcorr : ScannerSurfCorrIx s ⟨'{' :: rest, s.cursor.pos.col⟩)
     (h_flow : s.inFlow = true)

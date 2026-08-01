@@ -70,7 +70,7 @@ match s.peek? with
 -/
 
 /-- `consumeNewline` preserves `indents` (universal). -/
-theorem consumeNewline_preserves_indents (s : ScannerState) :
+lemma consumeNewline_preserves_indents (s : ScannerState) :
     (consumeNewline s).indents = s.indents := by
   unfold consumeNewline
   split
@@ -87,7 +87,7 @@ theorem consumeNewline_preserves_indents (s : ScannerState) :
     rfl
 
 /-- `consumeNewline` preserves `flowLevel` (universal). -/
-theorem consumeNewline_preserves_flowLevel (s : ScannerState) :
+lemma consumeNewline_preserves_flowLevel (s : ScannerState) :
     (consumeNewline s).flowLevel = s.flowLevel := by
   unfold consumeNewline
   split
@@ -100,7 +100,7 @@ theorem consumeNewline_preserves_flowLevel (s : ScannerState) :
   · rfl
 
 /-- `consumeNewline` preserves `flowStack` (universal). -/
-theorem consumeNewline_preserves_flowStack (s : ScannerState) :
+lemma consumeNewline_preserves_flowStack (s : ScannerState) :
     (consumeNewline s).flowStack = s.flowStack := by
   unfold consumeNewline
   split
@@ -113,7 +113,7 @@ theorem consumeNewline_preserves_flowStack (s : ScannerState) :
   · rfl
 
 /-- `consumeNewline` preserves `simpleKeyStack` (universal). -/
-theorem consumeNewline_preserves_simpleKeyStack (s : ScannerState) :
+lemma consumeNewline_preserves_simpleKeyStack (s : ScannerState) :
     (consumeNewline s).simpleKeyStack = s.simpleKeyStack := by
   unfold consumeNewline
   split
@@ -126,7 +126,7 @@ theorem consumeNewline_preserves_simpleKeyStack (s : ScannerState) :
   · rfl
 
 /-- `consumeNewline` preserves `inputEnd` (universal). -/
-theorem consumeNewline_preserves_inputEnd (s : ScannerState) :
+lemma consumeNewline_preserves_inputEnd (s : ScannerState) :
     (consumeNewline s).inputEnd = s.inputEnd := by
   unfold consumeNewline
   split
@@ -139,7 +139,7 @@ theorem consumeNewline_preserves_inputEnd (s : ScannerState) :
   · rfl
 
 /-- `consumeNewline` preserves `input` (universal). -/
-theorem consumeNewline_preserves_input (s : ScannerState) :
+lemma consumeNewline_preserves_input (s : ScannerState) :
     (consumeNewline s).input = s.input := by
   unfold consumeNewline
   split

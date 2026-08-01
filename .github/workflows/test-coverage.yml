@@ -275,6 +275,32 @@ jobs:
           test -f docs/reports/stats.json
           grep -q 'statsJson? : Option String := some' doc/Doc/L4YAML/StatsData.lean
 
+      - name: Enforce proof-hygiene gates
+        # Three hard gates (Blueprint/06-discipline.md):
+        #   * keyword discipline — the `theorem` keyword is reserved for
+        #     @[capstone] declarations (scripts/capstones.txt whitelist);
+        #     everything else must use `lemma`. The tagged set itself is
+        #     pinned at build time by L4YAML/Capstones.lean.
+        #   * import closure — no orphan library modules; the
+        #     Tests/Reflections index must cover every reflection file.
+        #   * sorry/axiom freedom — kernel-accurate (Lean.collectAxioms
+        #     via collect-stats): zero theorems with (transitive) sorry,
+        #     zero custom axioms in the compiled environment.
+        run: |
+          bash scripts/check-theorem-keyword.sh
+          bash scripts/check-import-closure.sh
+          python3 - <<'EOF'
+          import json, sys
+          env = json.load(open('docs/reports/stats.json'))['env']
+          bad = {k: env[k] for k in
+                 ('theorems_with_transitive_sorry',
+                  'theorems_with_direct_sorry',
+                  'theorems_with_custom_axiom', 'axioms') if env[k] != 0}
+          if bad:
+              sys.exit(f"proof-hygiene gate failed: {bad}")
+          print(f"env clean: {env['theorems']} theorems, 0 sorries, 0 custom axioms")
+          EOF
+
       # -------------------------------------------------------
       # Phase 4: Build and generate documentation
       # -------------------------------------------------------

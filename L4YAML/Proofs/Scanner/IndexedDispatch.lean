@@ -70,7 +70,7 @@ namespace L4YAML.Indexed.IxCursor
 
 /-- `advanceN` is monotonic on the byte offset. Chained
     `advance_offset_monotonic` via induction on `n`. -/
-theorem advanceN_offset_monotonic {input : String} (c : IxCursor input) (n : Nat) :
+lemma advanceN_offset_monotonic {input : String} (c : IxCursor input) (n : Nat) :
     c.pos.offset ≤ (c.advanceN n).pos.offset := by
   induction n generalizing c with
   | zero => unfold advanceN; exact Nat.le_refl _
@@ -92,44 +92,44 @@ one-line `split`s. -/
 
 namespace ScannerStateIx
 
-@[simp] theorem emit_cursor {input : String} (s : ScannerStateIx input) (tok : YamlToken) :
+@[simp] lemma emit_cursor {input : String} (s : ScannerStateIx input) (tok : YamlToken) :
     (s.emit tok).cursor = s.cursor := rfl
 
-@[simp] theorem emitAt_cursor {input : String} (s : ScannerStateIx input)
+@[simp] lemma emitAt_cursor {input : String} (s : ScannerStateIx input)
     (startPos : YamlPos) (tok : YamlToken)
     (h : startPos.offset ≤ s.cursor.pos.offset) :
     (s.emitAt startPos tok h).cursor = s.cursor := rfl
 
-@[simp] theorem emitAtCursor_cursor {input : String} (s : ScannerStateIx input)
+@[simp] lemma emitAtCursor_cursor {input : String} (s : ScannerStateIx input)
     (sk : IxCursor input) (tok : YamlToken) :
     (s.emitAtCursor sk tok).cursor = s.cursor := rfl
 
-@[simp] theorem overwriteAtCursor_cursor {input : String} (s : ScannerStateIx input)
+@[simp] lemma overwriteAtCursor_cursor {input : String} (s : ScannerStateIx input)
     (i : Nat) (sk : IxCursor input) (tok : YamlToken) :
     (s.overwriteAtCursor i sk tok).cursor = s.cursor := rfl
 
-@[simp] theorem advance_cursor {input : String} (s : ScannerStateIx input) :
+@[simp] lemma advance_cursor {input : String} (s : ScannerStateIx input) :
     s.advance.cursor = s.cursor.advance := rfl
 
-theorem advance_offset_monotonic {input : String} (s : ScannerStateIx input) :
+lemma advance_offset_monotonic {input : String} (s : ScannerStateIx input) :
     s.cursor.pos.offset ≤ s.advance.cursor.pos.offset :=
   IxCursor.advance_offset_monotonic s.cursor
 
-@[simp] theorem advanceN_cursor {input : String} (s : ScannerStateIx input) (n : Nat) :
+@[simp] lemma advanceN_cursor {input : String} (s : ScannerStateIx input) (n : Nat) :
     (s.advanceN n).cursor = s.cursor.advanceN n := rfl
 
-theorem advanceN_offset_monotonic {input : String} (s : ScannerStateIx input) (n : Nat) :
+lemma advanceN_offset_monotonic {input : String} (s : ScannerStateIx input) (n : Nat) :
     s.cursor.pos.offset ≤ (s.advanceN n).cursor.pos.offset := by
   rw [advanceN_cursor]
   exact IxCursor.advanceN_offset_monotonic s.cursor n
 
-@[simp] theorem pushSequenceIndentIx_cursor {input : String} (s : ScannerStateIx input)
+@[simp] lemma pushSequenceIndentIx_cursor {input : String} (s : ScannerStateIx input)
     (col : Int) :
     (pushSequenceIndentIx s col).cursor = s.cursor := by
   unfold pushSequenceIndentIx
   split <;> rfl
 
-@[simp] theorem pushMappingIndentIx_cursor {input : String} (s : ScannerStateIx input)
+@[simp] lemma pushMappingIndentIx_cursor {input : String} (s : ScannerStateIx input)
     (col : Int) :
     (pushMappingIndentIx s col).cursor = s.cursor := by
   unfold pushMappingIndentIx
@@ -143,37 +143,37 @@ indents). This lets the post-advance `if (!s.inFlow)` in `scanBlockEntryIx`
 / `scanKeyIx` (Step 5b.2 tab-check) be reasoned about with the original
 state's `inFlow` after `rw [if_pos/if_neg]`. -/
 
-@[simp] theorem emit_flowLevel {input : String} (s : ScannerStateIx input)
+@[simp] lemma emit_flowLevel {input : String} (s : ScannerStateIx input)
     (tok : YamlToken) : (s.emit tok).flowLevel = s.flowLevel := rfl
 
-@[simp] theorem advance_flowLevel {input : String} (s : ScannerStateIx input) :
+@[simp] lemma advance_flowLevel {input : String} (s : ScannerStateIx input) :
     s.advance.flowLevel = s.flowLevel := rfl
 
-@[simp] theorem pushSequenceIndentIx_flowLevel {input : String}
+@[simp] lemma pushSequenceIndentIx_flowLevel {input : String}
     (s : ScannerStateIx input) (col : Int) :
     (pushSequenceIndentIx s col).flowLevel = s.flowLevel := by
   unfold pushSequenceIndentIx
   split <;> rfl
 
-@[simp] theorem pushMappingIndentIx_flowLevel {input : String}
+@[simp] lemma pushMappingIndentIx_flowLevel {input : String}
     (s : ScannerStateIx input) (col : Int) :
     (pushMappingIndentIx s col).flowLevel = s.flowLevel := by
   unfold pushMappingIndentIx
   split <;> rfl
 
-@[simp] theorem emit_inFlow {input : String} (s : ScannerStateIx input)
+@[simp] lemma emit_inFlow {input : String} (s : ScannerStateIx input)
     (tok : YamlToken) : (s.emit tok).inFlow = s.inFlow := rfl
 
-@[simp] theorem advance_inFlow {input : String} (s : ScannerStateIx input) :
+@[simp] lemma advance_inFlow {input : String} (s : ScannerStateIx input) :
     s.advance.inFlow = s.inFlow := rfl
 
-@[simp] theorem pushMappingIndentIx_inFlow {input : String}
+@[simp] lemma pushMappingIndentIx_inFlow {input : String}
     (s : ScannerStateIx input) (col : Int) :
     (pushMappingIndentIx s col).inFlow = s.inFlow := by
   unfold pushMappingIndentIx
   split <;> rfl
 
-@[simp] theorem unwindIndentsLoopIx_cursor {input : String} (s : ScannerStateIx input)
+@[simp] lemma unwindIndentsLoopIx_cursor {input : String} (s : ScannerStateIx input)
     (col : Int) (fuel : Nat) :
     (unwindIndentsLoopIx s col fuel).cursor = s.cursor := by
   induction fuel generalizing s with
@@ -184,19 +184,19 @@ state's `inFlow` after `rw [if_pos/if_neg]`. -/
     · exact ih _
     · rfl
 
-@[simp] theorem unwindIndentsIx_cursor {input : String} (s : ScannerStateIx input)
+@[simp] lemma unwindIndentsIx_cursor {input : String} (s : ScannerStateIx input)
     (col : Int) :
     (unwindIndentsIx s col).cursor = s.cursor :=
   unwindIndentsLoopIx_cursor s col s.indents.size
 
-@[simp] theorem saveSimpleKeyIx_cursor {input : String} (s : ScannerStateIx input) :
+@[simp] lemma saveSimpleKeyIx_cursor {input : String} (s : ScannerStateIx input) :
     (saveSimpleKeyIx s).cursor = s.cursor := by
   unfold saveSimpleKeyIx
   split
   · rfl
   · split <;> rfl
 
-@[simp] theorem scanValueClearKeyIx_cursor {input : String} (s : ScannerStateIx input) :
+@[simp] lemma scanValueClearKeyIx_cursor {input : String} (s : ScannerStateIx input) :
     (scanValueClearKeyIx s).cursor = s.cursor := by
   unfold scanValueClearKeyIx
   split
@@ -205,7 +205,7 @@ state's `inFlow` after `rw [if_pos/if_neg]`. -/
     · split <;> rfl
   · rfl
 
-@[simp] theorem scanValuePrepareIx_cursor {input : String} (s : ScannerStateIx input) :
+@[simp] lemma scanValuePrepareIx_cursor {input : String} (s : ScannerStateIx input) :
     (scanValuePrepareIx s).cursor = s.cursor := by
   unfold scanValuePrepareIx
   split
@@ -229,29 +229,29 @@ state's `inFlow` after `rw [if_pos/if_neg]`. -/
 through `skipSpaces` / `skipWhitespace` / `skipToContent`. Their
 state-level monotonicity follows directly. -/
 
-@[simp] theorem skipSpacesS_cursor {input : String} (s : ScannerStateIx input) :
+@[simp] lemma skipSpacesS_cursor {input : String} (s : ScannerStateIx input) :
     s.skipSpacesS.1.cursor = (L4YAML.Scanner.Indexed.skipSpaces s.cursor).1 := rfl
 
-theorem skipSpacesS_offset_monotonic {input : String} (s : ScannerStateIx input) :
+lemma skipSpacesS_offset_monotonic {input : String} (s : ScannerStateIx input) :
     s.cursor.pos.offset ≤ s.skipSpacesS.1.cursor.pos.offset := by
   rw [skipSpacesS_cursor]
   exact skipSpaces_offset_monotonic s.cursor
 
-@[simp] theorem skipWhitespaceS_cursor {input : String} (s : ScannerStateIx input) :
+@[simp] lemma skipWhitespaceS_cursor {input : String} (s : ScannerStateIx input) :
     s.skipWhitespaceS.cursor = L4YAML.Scanner.Indexed.skipWhitespace s.cursor := rfl
 
-theorem skipWhitespaceS_offset_monotonic {input : String} (s : ScannerStateIx input) :
+lemma skipWhitespaceS_offset_monotonic {input : String} (s : ScannerStateIx input) :
     s.cursor.pos.offset ≤ s.skipWhitespaceS.cursor.pos.offset := by
   rw [skipWhitespaceS_cursor]
   exact skipWhitespace_offset_monotonic s.cursor
 
-@[simp] theorem skipToContentS_cursor {input : String} (s : ScannerStateIx input) :
+@[simp] lemma skipToContentS_cursor {input : String} (s : ScannerStateIx input) :
     s.skipToContentS.cursor = L4YAML.Scanner.Indexed.skipToContent s.cursor := by
   unfold ScannerStateIx.skipToContentS
   dsimp only
   split <;> rfl
 
-theorem skipToContentS_offset_monotonic {input : String} (s : ScannerStateIx input) :
+lemma skipToContentS_offset_monotonic {input : String} (s : ScannerStateIx input) :
     s.cursor.pos.offset ≤ s.skipToContentS.cursor.pos.offset := by
   rw [skipToContentS_cursor]
   exact skipToContent_offset_monotonic s.cursor
@@ -272,7 +272,7 @@ open ScannerStateIx
 
 /-! ### Pattern A — always-`.ok` dispatchers -/
 
-theorem scanBlockEntryIx_offset_monotonic {input : String}
+lemma scanBlockEntryIx_offset_monotonic {input : String}
     {s s' : ScannerStateIx input} (h : scanBlockEntryIx s = .ok s') :
     s.cursor.pos.offset ≤ s'.cursor.pos.offset := by
   unfold scanBlockEntryIx at h
@@ -299,7 +299,7 @@ theorem scanBlockEntryIx_offset_monotonic {input : String}
     simp only [advance_cursor, emit_cursor]
     exact IxCursor.advance_offset_monotonic _
 
-theorem scanKeyIx_offset_monotonic {input : String}
+lemma scanKeyIx_offset_monotonic {input : String}
     {s s' : ScannerStateIx input} (h : scanKeyIx s = .ok s') :
     s.cursor.pos.offset ≤ s'.cursor.pos.offset := by
   unfold scanKeyIx at h
@@ -328,7 +328,7 @@ theorem scanKeyIx_offset_monotonic {input : String}
     simp only [advance_cursor, emit_cursor]
     exact IxCursor.advance_offset_monotonic _
 
-theorem scanValueIx_offset_monotonic {input : String}
+lemma scanValueIx_offset_monotonic {input : String}
     {s s' : ScannerStateIx input} (h : scanValueIx s = .ok s') :
     s.cursor.pos.offset ≤ s'.cursor.pos.offset := by
   unfold scanValueIx at h
@@ -344,7 +344,7 @@ theorem scanValueIx_offset_monotonic {input : String}
                  scanValueClearKeyIx_cursor]
       exact IxCursor.advance_offset_monotonic _
 
-theorem scanFlowEntryIx_offset_monotonic {input : String}
+lemma scanFlowEntryIx_offset_monotonic {input : String}
     {s s' : ScannerStateIx input} (h : scanFlowEntryIx s = .ok s') :
     s.cursor.pos.offset ≤ s'.cursor.pos.offset := by
   unfold scanFlowEntryIx at h
@@ -367,7 +367,7 @@ theorem scanFlowEntryIx_offset_monotonic {input : String}
 
 /-! ### Pattern B — state-returning dispatchers -/
 
-theorem scanDocumentStartIx_offset_monotonic {input : String}
+lemma scanDocumentStartIx_offset_monotonic {input : String}
     (s : ScannerStateIx input) :
     s.cursor.pos.offset ≤ (scanDocumentStartIx s).cursor.pos.offset := by
   unfold scanDocumentStartIx
@@ -375,7 +375,7 @@ theorem scanDocumentStartIx_offset_monotonic {input : String}
   simp only [advanceN_cursor, emit_cursor, unwindIndentsIx_cursor]
   exact IxCursor.advanceN_offset_monotonic _ _
 
-theorem scanFlowSequenceStartIx_offset_monotonic {input : String}
+lemma scanFlowSequenceStartIx_offset_monotonic {input : String}
     (s : ScannerStateIx input) :
     s.cursor.pos.offset ≤ (scanFlowSequenceStartIx s).cursor.pos.offset := by
   unfold scanFlowSequenceStartIx
@@ -383,7 +383,7 @@ theorem scanFlowSequenceStartIx_offset_monotonic {input : String}
   simp only [advance_cursor, emit_cursor]
   exact IxCursor.advance_offset_monotonic _
 
-theorem scanFlowSequenceEndIx_offset_monotonic {input : String}
+lemma scanFlowSequenceEndIx_offset_monotonic {input : String}
     (s : ScannerStateIx input) :
     s.cursor.pos.offset ≤ (scanFlowSequenceEndIx s).cursor.pos.offset := by
   unfold scanFlowSequenceEndIx
@@ -391,7 +391,7 @@ theorem scanFlowSequenceEndIx_offset_monotonic {input : String}
   simp only [advance_cursor, emit_cursor]
   exact IxCursor.advance_offset_monotonic _
 
-theorem scanFlowMappingStartIx_offset_monotonic {input : String}
+lemma scanFlowMappingStartIx_offset_monotonic {input : String}
     (s : ScannerStateIx input) :
     s.cursor.pos.offset ≤ (scanFlowMappingStartIx s).cursor.pos.offset := by
   unfold scanFlowMappingStartIx
@@ -399,7 +399,7 @@ theorem scanFlowMappingStartIx_offset_monotonic {input : String}
   simp only [advance_cursor, emit_cursor]
   exact IxCursor.advance_offset_monotonic _
 
-theorem scanFlowMappingEndIx_offset_monotonic {input : String}
+lemma scanFlowMappingEndIx_offset_monotonic {input : String}
     (s : ScannerStateIx input) :
     s.cursor.pos.offset ≤ (scanFlowMappingEndIx s).cursor.pos.offset := by
   unfold scanFlowMappingEndIx
@@ -422,7 +422,7 @@ We use `Except.bind_ok` / explicit `if_pos` / `if_neg` rewriting to
 peel the do-block, then close each surviving branch with
 `advanceN_offset_monotonic`. -/
 
-theorem scanDocumentEndIx_offset_monotonic {input : String}
+lemma scanDocumentEndIx_offset_monotonic {input : String}
     {s s' : ScannerStateIx input} (h : scanDocumentEndIx s = .ok s') :
     s.cursor.pos.offset ≤ s'.cursor.pos.offset := by
   unfold scanDocumentEndIx at h
@@ -473,7 +473,7 @@ same as 5b.1b.ii, with two new wrinkles:
 
 /-! ### Node properties — anchors, aliases, tags -/
 
-theorem scanAnchorOrAliasIx_offset_monotonic {input : String}
+lemma scanAnchorOrAliasIx_offset_monotonic {input : String}
     {s s' : ScannerStateIx input} {isAnchor : Bool}
     (h : scanAnchorOrAliasIx s isAnchor = .ok s') :
     s.cursor.pos.offset ≤ s'.cursor.pos.offset := by
@@ -493,7 +493,7 @@ theorem scanAnchorOrAliasIx_offset_monotonic {input : String}
     exact Nat.le_trans (IxCursor.advance_offset_monotonic _)
       (collectAnchorNameLoopIx_offset_monotonic _ _ _)
 
-theorem scanTagIx_offset_monotonic {input : String}
+lemma scanTagIx_offset_monotonic {input : String}
     {s s' : ScannerStateIx input}
     (h : scanTagIx s = .ok s') :
     s.cursor.pos.offset ≤ s'.cursor.pos.offset := by
@@ -537,7 +537,7 @@ theorem scanTagIx_offset_monotonic {input : String}
 
 /-! ### Directives -/
 
-theorem scanYamlDirectiveIx_offset_monotonic {input : String}
+lemma scanYamlDirectiveIx_offset_monotonic {input : String}
     {s s' : ScannerStateIx input} {cAfterWS : IxCursor input} {startPos : YamlPos}
     {hStart : startPos.offset ≤ cAfterWS.pos.offset}
     (h : scanYamlDirectiveIx s cAfterWS startPos hStart = .ok s') :
@@ -560,7 +560,7 @@ theorem scanYamlDirectiveIx_offset_monotonic {input : String}
           (skipWhitespace_offset_monotonic _))
     · simp at h
 
-theorem scanTagDirectiveIx_offset_monotonic {input : String}
+lemma scanTagDirectiveIx_offset_monotonic {input : String}
     {s s' : ScannerStateIx input} {cAfterWS : IxCursor input} {startPos : YamlPos}
     {hStart : startPos.offset ≤ cAfterWS.pos.offset}
     (h : scanTagDirectiveIx s cAfterWS startPos hStart = .ok s') :
@@ -575,7 +575,7 @@ theorem scanTagDirectiveIx_offset_monotonic {input : String}
       (Nat.le_trans (collectTagSuffixLoopIx_offset_monotonic _ _ _)
         (skipWhitespace_offset_monotonic _)))
 
-theorem scanDirectiveIx_offset_monotonic {input : String}
+lemma scanDirectiveIx_offset_monotonic {input : String}
     {s s' : ScannerStateIx input}
     (h : scanDirectiveIx s = .ok s') :
     s.cursor.pos.offset ≤ s'.cursor.pos.offset := by
@@ -637,49 +637,49 @@ The `_tokens` simp lemmas establish that the state's `tokens` field is
 *preserved* through cursor-only updates (`advance`, `advanceN`, the
 whitespace skips), and the `_tokens_size` lemmas count emits. -/
 
-@[simp] theorem skipToContentS_tokens {input : String} (s : ScannerStateIx input) :
+@[simp] lemma skipToContentS_tokens {input : String} (s : ScannerStateIx input) :
     s.skipToContentS.tokens = s.tokens := by
   unfold ScannerStateIx.skipToContentS
   dsimp only
   split <;> rfl
 
-@[simp] theorem skipSpacesS_tokens {input : String} (s : ScannerStateIx input) :
+@[simp] lemma skipSpacesS_tokens {input : String} (s : ScannerStateIx input) :
     s.skipSpacesS.1.tokens = s.tokens := rfl
 
-@[simp] theorem skipWhitespaceS_tokens {input : String} (s : ScannerStateIx input) :
+@[simp] lemma skipWhitespaceS_tokens {input : String} (s : ScannerStateIx input) :
     s.skipWhitespaceS.tokens = s.tokens := rfl
 
-@[simp] theorem advance_tokens {input : String} (s : ScannerStateIx input) :
+@[simp] lemma advance_tokens {input : String} (s : ScannerStateIx input) :
     s.advance.tokens = s.tokens := rfl
 
-@[simp] theorem advanceN_tokens {input : String} (s : ScannerStateIx input) (n : Nat) :
+@[simp] lemma advanceN_tokens {input : String} (s : ScannerStateIx input) (n : Nat) :
     (s.advanceN n).tokens = s.tokens := rfl
 
-@[simp] theorem emit_tokens_size {input : String} (s : ScannerStateIx input)
+@[simp] lemma emit_tokens_size {input : String} (s : ScannerStateIx input)
     (tok : YamlToken) :
     (s.emit tok).tokens.size = s.tokens.size + 1 := by
   show (s.tokens.tokens.push _).size = s.tokens.tokens.size + 1
   exact Array.size_push ..
 
-@[simp] theorem emitAt_tokens_size {input : String} (s : ScannerStateIx input)
+@[simp] lemma emitAt_tokens_size {input : String} (s : ScannerStateIx input)
     (startPos : YamlPos) (tok : YamlToken) (h : startPos.offset ≤ s.cursor.pos.offset) :
     (s.emitAt startPos tok h).tokens.size = s.tokens.size + 1 := by
   show (s.tokens.tokens.push _).size = s.tokens.tokens.size + 1
   exact Array.size_push ..
 
-@[simp] theorem emitAtCursor_tokens_size {input : String} (s : ScannerStateIx input)
+@[simp] lemma emitAtCursor_tokens_size {input : String} (s : ScannerStateIx input)
     (sk : IxCursor input) (tok : YamlToken) :
     (s.emitAtCursor sk tok).tokens.size = s.tokens.size + 1 := by
   show (s.tokens.tokens.push _).size = s.tokens.tokens.size + 1
   exact Array.size_push ..
 
-@[simp] theorem overwriteAtCursor_tokens_size {input : String} (s : ScannerStateIx input)
+@[simp] lemma overwriteAtCursor_tokens_size {input : String} (s : ScannerStateIx input)
     (i : Nat) (sk : IxCursor input) (tok : YamlToken) :
     (s.overwriteAtCursor i sk tok).tokens.size = s.tokens.size := by
   show (s.tokens.tokens.setIfInBounds i _).size = s.tokens.tokens.size
   exact Array.size_setIfInBounds ..
 
-theorem unwindIndentsLoopIx_tokens_size_le {input : String}
+lemma unwindIndentsLoopIx_tokens_size_le {input : String}
     (s : ScannerStateIx input) (col : Int) (fuel : Nat) :
     s.tokens.size ≤ (unwindIndentsLoopIx s col fuel).tokens.size := by
   induction fuel generalizing s with
@@ -691,12 +691,12 @@ theorem unwindIndentsLoopIx_tokens_size_le {input : String}
       simp
     · exact Nat.le_refl _
 
-theorem unwindIndentsIx_tokens_size_le {input : String}
+lemma unwindIndentsIx_tokens_size_le {input : String}
     (s : ScannerStateIx input) (col : Int) :
     s.tokens.size ≤ (unwindIndentsIx s col).tokens.size :=
   unwindIndentsLoopIx_tokens_size_le s col s.indents.size
 
-theorem pushSequenceIndentIx_tokens_size_le {input : String}
+lemma pushSequenceIndentIx_tokens_size_le {input : String}
     (s : ScannerStateIx input) (col : Int) :
     s.tokens.size ≤ (pushSequenceIndentIx s col).tokens.size := by
   unfold pushSequenceIndentIx
@@ -704,7 +704,7 @@ theorem pushSequenceIndentIx_tokens_size_le {input : String}
   · simp
   · exact Nat.le_refl _
 
-theorem pushMappingIndentIx_tokens_size_le {input : String}
+lemma pushMappingIndentIx_tokens_size_le {input : String}
     (s : ScannerStateIx input) (col : Int) :
     s.tokens.size ≤ (pushMappingIndentIx s col).tokens.size := by
   unfold pushMappingIndentIx
@@ -712,7 +712,7 @@ theorem pushMappingIndentIx_tokens_size_le {input : String}
   · simp
   · exact Nat.le_refl _
 
-theorem saveSimpleKeyIx_tokens_size_le {input : String} (s : ScannerStateIx input) :
+lemma saveSimpleKeyIx_tokens_size_le {input : String} (s : ScannerStateIx input) :
     s.tokens.size ≤ (saveSimpleKeyIx s).tokens.size := by
   unfold saveSimpleKeyIx
   split
@@ -721,7 +721,7 @@ theorem saveSimpleKeyIx_tokens_size_le {input : String} (s : ScannerStateIx inpu
     · simp; omega
     · exact Nat.le_refl _
 
-theorem scanValueClearKeyIx_tokens_size_le {input : String} (s : ScannerStateIx input) :
+lemma scanValueClearKeyIx_tokens_size_le {input : String} (s : ScannerStateIx input) :
     s.tokens.size ≤ (scanValueClearKeyIx s).tokens.size := by
   unfold scanValueClearKeyIx
   split
@@ -730,7 +730,7 @@ theorem scanValueClearKeyIx_tokens_size_le {input : String} (s : ScannerStateIx 
     · split <;> exact Nat.le_refl _
   · exact Nat.le_refl _
 
-theorem scanValuePrepareIx_tokens_size_le {input : String} (s : ScannerStateIx input) :
+lemma scanValuePrepareIx_tokens_size_le {input : String} (s : ScannerStateIx input) :
     s.tokens.size ≤ (scanValuePrepareIx s).tokens.size := by
   unfold scanValuePrepareIx
   split
@@ -753,7 +753,7 @@ the `.ok` result), and closes by `simp` over the `emit_tokens_size`
 `Nat.le_refl`. The `omega` tactic discharges arithmetic conclusions
 when emit counts vary by branch. -/
 
-theorem scanBlockEntryIx_tokens_size_le {input : String}
+lemma scanBlockEntryIx_tokens_size_le {input : String}
     {s s' : ScannerStateIx input} (h : scanBlockEntryIx s = .ok s') :
     s.tokens.size ≤ s'.tokens.size := by
   unfold scanBlockEntryIx at h
@@ -779,7 +779,7 @@ theorem scanBlockEntryIx_tokens_size_le {input : String}
     show s.tokens.size ≤ _
     simp
 
-theorem scanKeyIx_tokens_size_le {input : String}
+lemma scanKeyIx_tokens_size_le {input : String}
     {s s' : ScannerStateIx input} (h : scanKeyIx s = .ok s') :
     s.tokens.size ≤ s'.tokens.size := by
   unfold scanKeyIx at h
@@ -802,7 +802,7 @@ theorem scanKeyIx_tokens_size_le {input : String}
     show s.tokens.size ≤ _
     simp
 
-theorem scanValueIx_tokens_size_le {input : String}
+lemma scanValueIx_tokens_size_le {input : String}
     {s s' : ScannerStateIx input} (h : scanValueIx s = .ok s') :
     s.tokens.size ≤ s'.tokens.size := by
   unfold scanValueIx at h
@@ -819,7 +819,7 @@ theorem scanValueIx_tokens_size_le {input : String}
       show _ ≤ _
       simp
 
-theorem scanFlowEntryIx_tokens_size_le {input : String}
+lemma scanFlowEntryIx_tokens_size_le {input : String}
     {s s' : ScannerStateIx input} (h : scanFlowEntryIx s = .ok s') :
     s.tokens.size ≤ s'.tokens.size := by
   unfold scanFlowEntryIx at h
@@ -838,35 +838,35 @@ theorem scanFlowEntryIx_tokens_size_le {input : String}
     simp only [advance_tokens, emit_tokens_size]
     omega
 
-theorem scanFlowSequenceStartIx_tokens_size_le {input : String}
+lemma scanFlowSequenceStartIx_tokens_size_le {input : String}
     (s : ScannerStateIx input) :
     s.tokens.size ≤ (scanFlowSequenceStartIx s).tokens.size := by
   unfold scanFlowSequenceStartIx
   show s.tokens.size ≤ _
   simp
 
-theorem scanFlowSequenceEndIx_tokens_size_le {input : String}
+lemma scanFlowSequenceEndIx_tokens_size_le {input : String}
     (s : ScannerStateIx input) :
     s.tokens.size ≤ (scanFlowSequenceEndIx s).tokens.size := by
   unfold scanFlowSequenceEndIx
   show s.tokens.size ≤ _
   simp
 
-theorem scanFlowMappingStartIx_tokens_size_le {input : String}
+lemma scanFlowMappingStartIx_tokens_size_le {input : String}
     (s : ScannerStateIx input) :
     s.tokens.size ≤ (scanFlowMappingStartIx s).tokens.size := by
   unfold scanFlowMappingStartIx
   show s.tokens.size ≤ _
   simp
 
-theorem scanFlowMappingEndIx_tokens_size_le {input : String}
+lemma scanFlowMappingEndIx_tokens_size_le {input : String}
     (s : ScannerStateIx input) :
     s.tokens.size ≤ (scanFlowMappingEndIx s).tokens.size := by
   unfold scanFlowMappingEndIx
   show s.tokens.size ≤ _
   simp
 
-theorem scanDocumentStartIx_tokens_size_le {input : String}
+lemma scanDocumentStartIx_tokens_size_le {input : String}
     (s : ScannerStateIx input) :
     s.tokens.size ≤ (scanDocumentStartIx s).tokens.size := by
   unfold scanDocumentStartIx
@@ -874,7 +874,7 @@ theorem scanDocumentStartIx_tokens_size_le {input : String}
   refine Nat.le_trans (unwindIndentsIx_tokens_size_le s (-1)) ?_
   simp
 
-theorem scanDocumentEndIx_tokens_size_le {input : String}
+lemma scanDocumentEndIx_tokens_size_le {input : String}
     {s s' : ScannerStateIx input} (h : scanDocumentEndIx s = .ok s') :
     s.tokens.size ≤ s'.tokens.size := by
   unfold scanDocumentEndIx at h
@@ -897,7 +897,7 @@ theorem scanDocumentEndIx_tokens_size_le {input : String}
               simp)
            | (simp [Bind.bind, Except.bind] at h))
 
-theorem scanAnchorOrAliasIx_tokens_size_le {input : String}
+lemma scanAnchorOrAliasIx_tokens_size_le {input : String}
     {s s' : ScannerStateIx input} {isAnchor : Bool}
     (h : scanAnchorOrAliasIx s isAnchor = .ok s') :
     s.tokens.size ≤ s'.tokens.size := by
@@ -912,7 +912,7 @@ theorem scanAnchorOrAliasIx_tokens_size_le {input : String}
     show s.tokens.size ≤ _
     simp
 
-theorem scanTagIx_tokens_size_le {input : String}
+lemma scanTagIx_tokens_size_le {input : String}
     {s s' : ScannerStateIx input}
     (h : scanTagIx s = .ok s') :
     s.tokens.size ≤ s'.tokens.size := by
@@ -936,7 +936,7 @@ theorem scanTagIx_tokens_size_le {input : String}
     show s.tokens.size ≤ _
     simp
 
-theorem scanYamlDirectiveIx_tokens_size_le {input : String}
+lemma scanYamlDirectiveIx_tokens_size_le {input : String}
     {s s' : ScannerStateIx input} {cAfterWS : IxCursor input} {startPos : YamlPos}
     {hStart : startPos.offset ≤ cAfterWS.pos.offset}
     (h : scanYamlDirectiveIx s cAfterWS startPos hStart = .ok s') :
@@ -954,7 +954,7 @@ theorem scanYamlDirectiveIx_tokens_size_le {input : String}
       simp
     · simp at h
 
-theorem scanTagDirectiveIx_tokens_size_le {input : String}
+lemma scanTagDirectiveIx_tokens_size_le {input : String}
     {s s' : ScannerStateIx input} {cAfterWS : IxCursor input} {startPos : YamlPos}
     {hStart : startPos.offset ≤ cAfterWS.pos.offset}
     (h : scanTagDirectiveIx s cAfterWS startPos hStart = .ok s') :
@@ -965,7 +965,7 @@ theorem scanTagDirectiveIx_tokens_size_le {input : String}
   show s.tokens.size ≤ _
   simp
 
-theorem scanDirectiveIx_tokens_size_le {input : String}
+lemma scanDirectiveIx_tokens_size_le {input : String}
     {s s' : ScannerStateIx input}
     (h : scanDirectiveIx s = .ok s') :
     s.tokens.size ≤ s'.tokens.size := by
@@ -1027,7 +1027,7 @@ is the post-`skipToContentS` cursor (unaffected by `unwindIndentsIx` /
 `saveSimpleKeyIx`, both cursor-preserving), so `_offset_monotonic` chains
 through `skipToContentS_offset_monotonic`. -/
 
-theorem scanNextTokenIx_preprocess_offset_monotonic {input : String}
+lemma scanNextTokenIx_preprocess_offset_monotonic {input : String}
     {s s' : ScannerStateIx input} {c : Char}
     (h : scanNextTokenIx_preprocess s = .ok (some (s', c))) :
     s.cursor.pos.offset ≤ s'.cursor.pos.offset := by
@@ -1048,7 +1048,7 @@ theorem scanNextTokenIx_preprocess_offset_monotonic {input : String}
           simp only [saveSimpleKeyIx_cursor, unwindIndentsIx_cursor]
           exact skipToContentS_offset_monotonic s
 
-theorem scanNextTokenIx_preprocess_tokens_size_le {input : String}
+lemma scanNextTokenIx_preprocess_tokens_size_le {input : String}
     {s s' : ScannerStateIx input} {c : Char}
     (h : scanNextTokenIx_preprocess s = .ok (some (s', c))) :
     s.tokens.size ≤ s'.tokens.size := by
@@ -1092,7 +1092,7 @@ fired) contradicts `.ok (some s')` directly. -/
     join points whose `simp` reduction is incomplete; we peel each guard
     explicitly with `by_cases + rw [if_pos / if_neg]` and use `cases hSDE :
     scanDocumentEndIx s` to step through the bind. -/
-theorem scanNextTokenIx_dispatchStructural_ok_some_cases {input : String}
+lemma scanNextTokenIx_dispatchStructural_ok_some_cases {input : String}
     {s s' : ScannerStateIx input} {c : Char}
     (h : scanNextTokenIx_dispatchStructural s c = .ok (some s')) :
     s' = scanDocumentStartIx s ∨
@@ -1185,7 +1185,7 @@ theorem scanNextTokenIx_dispatchStructural_ok_some_cases {input : String}
           · rw [if_neg hg5] at h
             simp [Pure.pure, Except.pure] at h
 
-theorem scanNextTokenIx_dispatchStructural_offset_monotonic {input : String}
+lemma scanNextTokenIx_dispatchStructural_offset_monotonic {input : String}
     {s s' : ScannerStateIx input} {c : Char}
     (h : scanNextTokenIx_dispatchStructural s c = .ok (some s')) :
     s.cursor.pos.offset ≤ s'.cursor.pos.offset := by
@@ -1195,7 +1195,7 @@ theorem scanNextTokenIx_dispatchStructural_offset_monotonic {input : String}
   · exact scanDocumentEndIx_offset_monotonic hOk
   · exact scanDirectiveIx_offset_monotonic hOk
 
-theorem scanNextTokenIx_dispatchStructural_tokens_size_le {input : String}
+lemma scanNextTokenIx_dispatchStructural_tokens_size_le {input : String}
     {s s' : ScannerStateIx input} {c : Char}
     (h : scanNextTokenIx_dispatchStructural s c = .ok (some s')) :
     s.tokens.size ≤ s'.tokens.size := by
@@ -1211,7 +1211,7 @@ theorem scanNextTokenIx_dispatchStructural_tokens_size_le {input : String}
 match. The end-indicators (`]`, `}`, `,`) additionally throw when
 `s.flowLevel == 0`. Same by_cases pattern as structural. -/
 
-theorem scanNextTokenIx_dispatchFlowIndicators_ok_some_cases {input : String}
+lemma scanNextTokenIx_dispatchFlowIndicators_ok_some_cases {input : String}
     {s s' : ScannerStateIx input} {c : Char}
     (h : scanNextTokenIx_dispatchFlowIndicators s c = .ok (some s')) :
     s' = scanFlowSequenceStartIx s ∨
@@ -1274,7 +1274,7 @@ theorem scanNextTokenIx_dispatchFlowIndicators_ok_some_cases {input : String}
           · rw [if_neg hg5] at h
             simp [Pure.pure, Except.pure] at h
 
-theorem scanNextTokenIx_dispatchFlowIndicators_offset_monotonic {input : String}
+lemma scanNextTokenIx_dispatchFlowIndicators_offset_monotonic {input : String}
     {s s' : ScannerStateIx input} {c : Char}
     (h : scanNextTokenIx_dispatchFlowIndicators s c = .ok (some s')) :
     s.cursor.pos.offset ≤ s'.cursor.pos.offset := by
@@ -1286,7 +1286,7 @@ theorem scanNextTokenIx_dispatchFlowIndicators_offset_monotonic {input : String}
   · subst heq; exact scanFlowMappingEndIx_offset_monotonic s
   · exact scanFlowEntryIx_offset_monotonic hOk
 
-theorem scanNextTokenIx_dispatchFlowIndicators_tokens_size_le {input : String}
+lemma scanNextTokenIx_dispatchFlowIndicators_tokens_size_le {input : String}
     {s s' : ScannerStateIx input} {c : Char}
     (h : scanNextTokenIx_dispatchFlowIndicators s c = .ok (some s')) :
     s.tokens.size ≤ s'.tokens.size := by
@@ -1303,7 +1303,7 @@ theorem scanNextTokenIx_dispatchFlowIndicators_tokens_size_le {input : String}
 3 productions (`-`, `?`, `:`) each guarded by a character-and-context
 match; each binds through its `Except`-returning scanner. -/
 
-theorem scanNextTokenIx_dispatchBlockIndicators_ok_some_cases {input : String}
+lemma scanNextTokenIx_dispatchBlockIndicators_ok_some_cases {input : String}
     {s s' : ScannerStateIx input} {c : Char}
     (h : scanNextTokenIx_dispatchBlockIndicators s c = .ok (some s')) :
     scanBlockEntryIx s = .ok s' ∨
@@ -1348,7 +1348,7 @@ theorem scanNextTokenIx_dispatchBlockIndicators_ok_some_cases {input : String}
       · rw [if_neg hg3] at h
         simp [Pure.pure, Except.pure] at h
 
-theorem scanNextTokenIx_dispatchBlockIndicators_offset_monotonic {input : String}
+lemma scanNextTokenIx_dispatchBlockIndicators_offset_monotonic {input : String}
     {s s' : ScannerStateIx input} {c : Char}
     (h : scanNextTokenIx_dispatchBlockIndicators s c = .ok (some s')) :
     s.cursor.pos.offset ≤ s'.cursor.pos.offset := by
@@ -1357,7 +1357,7 @@ theorem scanNextTokenIx_dispatchBlockIndicators_offset_monotonic {input : String
   · exact scanKeyIx_offset_monotonic hOk
   · exact scanValueIx_offset_monotonic hOk
 
-theorem scanNextTokenIx_dispatchBlockIndicators_tokens_size_le {input : String}
+lemma scanNextTokenIx_dispatchBlockIndicators_tokens_size_le {input : String}
     {s s' : ScannerStateIx input} {c : Char}
     (h : scanNextTokenIx_dispatchBlockIndicators s c = .ok (some s')) :
     s.tokens.size ≤ s'.tokens.size := by
@@ -1378,7 +1378,7 @@ The block / quoted scalar productions are state-constructive on the
 package the per-case monotonicity (cursor + tokens-size) as a conjunctive
 helper, then derive each main theorem by `.1` / `.2`. -/
 
-theorem scanNextTokenIx_dispatchContent_ok_monotonic {input : String}
+lemma scanNextTokenIx_dispatchContent_ok_monotonic {input : String}
     {s s' : ScannerStateIx input} {c : Char}
     (h : scanNextTokenIx_dispatchContent s c = .ok s') :
     s.cursor.pos.offset ≤ s'.cursor.pos.offset ∧
@@ -1470,13 +1470,13 @@ theorem scanNextTokenIx_dispatchContent_ok_monotonic {input : String}
               · rw [if_neg hg7] at h
                 cases h
 
-theorem scanNextTokenIx_dispatchContent_offset_monotonic {input : String}
+lemma scanNextTokenIx_dispatchContent_offset_monotonic {input : String}
     {s s' : ScannerStateIx input} {c : Char}
     (h : scanNextTokenIx_dispatchContent s c = .ok s') :
     s.cursor.pos.offset ≤ s'.cursor.pos.offset :=
   (scanNextTokenIx_dispatchContent_ok_monotonic h).1
 
-theorem scanNextTokenIx_dispatchContent_tokens_size_le {input : String}
+lemma scanNextTokenIx_dispatchContent_tokens_size_le {input : String}
     {s s' : ScannerStateIx input} {c : Char}
     (h : scanNextTokenIx_dispatchContent s c = .ok s') :
     s.tokens.size ≤ s'.tokens.size :=
@@ -1491,7 +1491,7 @@ Chains `preprocess` (advances cursor / grows tokens) → optional dispatcher
 both cursor and tokens; the dispatcher chains close via the per-helper
 lemmas above. -/
 
-theorem scanNextTokenIx_ok_some_monotonic {input : String}
+lemma scanNextTokenIx_ok_some_monotonic {input : String}
     {s s' : ScannerStateIx input}
     (h : scanNextTokenIx s = .ok (some s')) :
     s.cursor.pos.offset ≤ s'.cursor.pos.offset ∧
@@ -1606,13 +1606,13 @@ theorem scanNextTokenIx_ok_some_monotonic {input : String}
                            have hCT := scanNextTokenIx_dispatchContent_tokens_size_le hCon
                            exact ⟨hCO, hCT⟩)
 
-theorem scanNextTokenIx_offset_monotonic {input : String}
+lemma scanNextTokenIx_offset_monotonic {input : String}
     {s s' : ScannerStateIx input}
     (h : scanNextTokenIx s = .ok (some s')) :
     s.cursor.pos.offset ≤ s'.cursor.pos.offset :=
   (scanNextTokenIx_ok_some_monotonic h).1
 
-theorem scanNextTokenIx_tokens_size_le {input : String}
+lemma scanNextTokenIx_tokens_size_le {input : String}
     {s s' : ScannerStateIx input}
     (h : scanNextTokenIx s = .ok (some s')) :
     s.tokens.size ≤ s'.tokens.size :=
@@ -1625,7 +1625,7 @@ claim is `s.tokens.size ≤ ts.size`: each loop iteration either
 terminates with `unwindIndents + emit streamEnd` (grows tokens) or
 recurses on a state whose tokens have grown via `scanNextTokenIx`. -/
 
-theorem scanLoopIx_tokens_size_le {input : String}
+lemma scanLoopIx_tokens_size_le {input : String}
     {s : ScannerStateIx input} {fuel : Nat} {ts : Indexed.TokenStream input}
     (h : scanLoopIx s fuel = .ok ts) :
     s.tokens.size ≤ ts.size := by

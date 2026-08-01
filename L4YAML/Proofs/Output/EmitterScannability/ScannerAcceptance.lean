@@ -54,7 +54,7 @@ The main technical content: proving the scanner accepts emitter output.
 -/
 
 -- Each character occupies at least 1 byte in UTF-8
-theorem CharsFromOffset_length_le {input : String} {offset : Nat} {chars : List Char}
+lemma CharsFromOffset_length_le {input : String} {offset : Nat} {chars : List Char}
     (h : CharsFromOffset input offset chars) :
     chars.length ≤ input.utf8ByteSize - offset := by
   induction h with
@@ -66,7 +66,7 @@ theorem CharsFromOffset_length_le {input : String} {offset : Nat} {chars : List 
     omega
 
 -- escapeChar produces at least 1 character
-theorem escapeChar_toList_length_pos (c : Char) :
+lemma escapeChar_toList_length_pos (c : Char) :
     (escapeChar c).toList.length ≥ 1 := by
   unfold escapeChar
   split
@@ -81,7 +81,7 @@ theorem escapeChar_toList_length_pos (c : Char) :
     simp [Char.toString, String.toList_singleton]
 
 -- escapeString preserves or grows the length
-theorem escapeString_length_ge (cs : List Char) :
+lemma escapeString_length_ge (cs : List Char) :
     (escapeString (String.ofList cs)).toList.length ≥ cs.length := by
   induction cs with
   | nil => simp [escapeString_nil]
@@ -92,7 +92,7 @@ theorem escapeString_length_ge (cs : List Char) :
     omega
 
 -- `validateTrailingContent` succeeds when peek? = none (at EOF)
-theorem validateTrailingContent_peek_none (s : ScannerState) (inputEnd : Nat)
+lemma validateTrailingContent_peek_none (s : ScannerState) (inputEnd : Nat)
     (h_peek : s.peek? = none) : validateTrailingContent s inputEnd = .ok () := by
   -- From peek? = none, derive offset ≥ inputEnd
   have h_not_lt : ¬(s.offset < s.inputEnd) := by
@@ -109,7 +109,7 @@ theorem validateTrailingContent_peek_none (s : ScannerState) (inputEnd : Nat)
   unfold validateTrailingContent; simp [h_sts, h_peek]; rfl
 
 -- `scanDoubleQuoted` succeeds using the loop lemma + EOF property
-theorem scanDoubleQuoted_emitScalar_ok (sc : ScannerState)
+lemma scanDoubleQuoted_emitScalar_ok (sc : ScannerState)
     (content : String)
     (hcorr : ScannerSurfCorr sc
       ⟨['"'] ++ (escapeString content).toList ++ ['"'], sc.col⟩)
@@ -172,7 +172,7 @@ theorem scanDoubleQuoted_emitScalar_ok (sc : ScannerState)
     rw [h_tok_pres]
 
 /-- If the surface position has empty remaining chars, then peek? = none. -/
-theorem peek_none_of_empty_surf (s : ScannerState) (col : Nat)
+lemma peek_none_of_empty_surf (s : ScannerState) (col : Nat)
     (hcorr : ScannerSurfCorr s ⟨[], col⟩) :
     s.peek? = none := by
   unfold ScannerState.peek?
@@ -182,7 +182,7 @@ theorem peek_none_of_empty_surf (s : ScannerState) (col : Nat)
   simp [show ¬(s.offset < s.inputEnd) from by omega]
 
 -- scanNextToken returns none when scanner is at EOF
-theorem scanNextToken_eof (s : ScannerState) (h_peek : s.peek? = none) :
+lemma scanNextToken_eof (s : ScannerState) (h_peek : s.peek? = none) :
     scanNextToken s = .ok none := by
   -- peek? = none → offset ≥ inputEnd
   have h_not_lt : ¬(s.offset < s.inputEnd) := by
@@ -215,7 +215,7 @@ theorem scanNextToken_eof (s : ScannerState) (h_peek : s.peek? = none) :
 -- The dispatch chain for '"' reaches scanDoubleQuoted.
 -- This captures the fact that all intermediate dispatchers (structural,
 -- flow indicators, block indicators) return none for '"'.
-theorem dispatchContent_quote (s : ScannerState) (c : Char) (hc : c = '"')
+lemma dispatchContent_quote (s : ScannerState) (c : Char) (hc : c = '"')
     (h_notFlow : s.flowLevel = 0)
     (h_indent : s.currentIndent = -1)
     (h_noDocStart : atDocumentStart s = false)
@@ -242,7 +242,7 @@ theorem dispatchContent_quote (s : ScannerState) (c : Char) (hc : c = '"')
 
 -- Transfer ScannerSurfCorr when only non-position fields change
 -- (tokens, simpleKey, flags, etc.)
-theorem ScannerSurfCorr_transfer {sc sc' : ScannerState}
+lemma ScannerSurfCorr_transfer {sc sc' : ScannerState}
     {sp : L4YAML.Surface.SurfPos}
     (hcorr : ScannerSurfCorr sc sp)
     (h_input : sc'.input = sc.input)
@@ -262,14 +262,14 @@ theorem ScannerSurfCorr_transfer {sc sc' : ScannerState}
     rw [heq]; exact hcorr.indent_cols_nonneg i hi' h0
 
 -- emitScalar decomposes as ['"'] ++ escaped ++ ['"']
-theorem emitScalar_toList (content : String) :
+lemma emitScalar_toList (content : String) :
     (emitScalar content).toList = ['"'] ++ (escapeString content).toList ++ ['"'] := by
   have h1 : ("\"" : String).toList = ['"'] := by native_decide
   show (("\"" ++ escapeString content) ++ "\"").toList = _
   simp only [String.toList_append, h1]
 
 -- emitScalar has at least 2 bytes
-theorem emitScalar_utf8ByteSize_ge (content : String) :
+lemma emitScalar_utf8ByteSize_ge (content : String) :
     (emitScalar content).utf8ByteSize ≥ 2 := by
   simp only [utf8ByteSize_eq_listByteSize, emitScalar_toList,
              listByteSize_append, listByteSize]
@@ -278,7 +278,7 @@ theorem emitScalar_utf8ByteSize_ge (content : String) :
 
 -- scanLoop with exactly 2 iterations (scanNextToken returns some then none)
 -- Returns the exact token array produced.
-theorem scanLoop_two_iter {s₀ s₁ : ScannerState} {fuel : Nat}
+lemma scanLoop_two_iter {s₀ s₁ : ScannerState} {fuel : Nat}
     (h_fuel : fuel ≥ 2)
     (h_snt0 : scanNextToken s₀ = .ok (some s₁))
     (h_snt1 : scanNextToken s₁ = .ok none)
@@ -296,7 +296,7 @@ theorem scanLoop_two_iter {s₀ s₁ : ScannerState} {fuel : Nat}
   rw [h1]; exact h2
 
 -- scanLoop actually computes to the concrete token array
-theorem scanLoop_two_iter_eq {s₀ s₁ : ScannerState} {fuel : Nat}
+lemma scanLoop_two_iter_eq {s₀ s₁ : ScannerState} {fuel : Nat}
     (h_fuel : fuel ≥ 2)
     (h_snt0 : scanNextToken s₀ = .ok (some s₁))
     (h_snt1 : scanNextToken s₁ = .ok none)
@@ -319,7 +319,7 @@ theorem scanLoop_two_iter_eq {s₀ s₁ : ScannerState} {fuel : Nat}
     This is the key compositionality lemma for scanner acceptance proofs:
     compose N steps backwards from `scanLoop_two_iter` (or `scanLoop_eof`)
     using repeated applications of `scanLoop_step_eq`. -/
-theorem scanLoop_step_eq {s₀ s₁ : ScannerState} {fuel : Nat}
+lemma scanLoop_step_eq {s₀ s₁ : ScannerState} {fuel : Nat}
     {toks : Array (Positioned YamlToken)}
     (h_snt : scanNextToken s₀ = .ok (some s₁))
     (h_loop : scanLoop s₁ fuel = .ok toks) :
@@ -327,7 +327,7 @@ theorem scanLoop_step_eq {s₀ s₁ : ScannerState} {fuel : Nat}
   simp only [scanLoop, h_snt]; exact h_loop
 
 /-- Existential version of `scanLoop_step_eq`. -/
-theorem scanLoop_step {s₀ s₁ : ScannerState} {fuel : Nat}
+lemma scanLoop_step {s₀ s₁ : ScannerState} {fuel : Nat}
     (h_snt : scanNextToken s₀ = .ok (some s₁))
     (h_loop : ∃ toks, scanLoop s₁ fuel = .ok toks) :
     ∃ toks, scanLoop s₀ (fuel + 1) = .ok toks := by
@@ -341,7 +341,7 @@ theorem scanLoop_step {s₀ s₁ : ScannerState} {fuel : Nat}
     Proof by induction on `fuel₁`. Each `scanLoop` iteration
     either terminates (EOF/error → fuel irrelevant) or recurses with
     one less fuel (→ inductive hypothesis). -/
-theorem scanLoop_fuel_mono {s : ScannerState} {fuel₁ fuel₂ : Nat}
+lemma scanLoop_fuel_mono {s : ScannerState} {fuel₁ fuel₂ : Nat}
     {toks : Array (Positioned YamlToken)}
     (h : scanLoop s fuel₁ = .ok toks) (h_le : fuel₁ ≤ fuel₂) :
     scanLoop s fuel₂ = .ok toks := by
@@ -363,7 +363,7 @@ theorem scanLoop_fuel_mono {s : ScannerState} {fuel₁ fuel₂ : Nat}
 
 /-- **Terminal step**: If `scanNextToken` returns `.ok none` (EOF),
     `scanLoop` with fuel ≥ 1 terminates successfully. -/
-theorem scanLoop_eof {s : ScannerState}
+lemma scanLoop_eof {s : ScannerState}
     (h_snt : scanNextToken s = .ok none)
     (h_fl : s.flowLevel = 0)
     (h_dp : s.directivesPresent = false) :
@@ -373,7 +373,7 @@ theorem scanLoop_eof {s : ScannerState}
 
 /-- **Terminal step (equality)**: If `scanNextToken` returns `.ok none` (EOF),
     `scanLoop` produces exactly the unwind+streamEnd tokens. -/
-theorem scanLoop_eof_eq {s : ScannerState} {fuel : Nat}
+lemma scanLoop_eof_eq {s : ScannerState} {fuel : Nat}
     (h_fuel : fuel ≥ 1)
     (h_snt : scanNextToken s = .ok none)
     (h_fl : s.flowLevel = 0)
@@ -397,7 +397,7 @@ inductive ScanChain : ScannerState → Nat → ScannerState → Prop where
          ScanChain s (n + 1) s'
 
 /-- Transitivity: concatenate two scan chains. -/
-theorem ScanChain.trans {s₁ s₂ s₃ : ScannerState} {n₁ n₂ : Nat}
+lemma ScanChain.trans {s₁ s₂ s₃ : ScannerState} {n₁ n₂ : Nat}
     (h1 : ScanChain s₁ n₁ s₂) (h2 : ScanChain s₂ n₂ s₃) :
     ScanChain s₁ (n₁ + n₂) s₃ := by
   induction h1 with
@@ -409,7 +409,7 @@ theorem ScanChain.trans {s₁ s₂ s₃ : ScannerState} {n₁ n₂ : Nat}
     exact .step h_snt h_ih
 
 /-- A single scanNextToken step as a ScanChain. -/
-theorem ScanChain.single {s s' : ScannerState}
+lemma ScanChain.single {s s' : ScannerState}
     (h : scanNextToken s = .ok (some s')) :
     ScanChain s 1 s' :=
   .step h .zero
@@ -417,7 +417,7 @@ theorem ScanChain.single {s s' : ScannerState}
 /-- Connect a ScanChain to scanLoop: if N steps succeed reaching s',
     and scanLoop s' fuel succeeds, then scanLoop s (fuel + N) succeeds
     with the same result. -/
-theorem ScanChain.to_scanLoop {s s' : ScannerState} {n fuel : Nat}
+lemma ScanChain.to_scanLoop {s s' : ScannerState} {n fuel : Nat}
     {toks : Array (Positioned YamlToken)}
     (h_chain : ScanChain s n s')
     (h_loop : scanLoop s' fuel = .ok toks) :
@@ -431,7 +431,7 @@ theorem ScanChain.to_scanLoop {s s' : ScannerState} {n fuel : Nat}
     exact scanLoop_step_eq h_snt h_ih
 
 /-- Connect a ScanChain to scanLoop (existential version). -/
-theorem ScanChain.to_scanLoop_exists {s s' : ScannerState} {n : Nat}
+lemma ScanChain.to_scanLoop_exists {s s' : ScannerState} {n : Nat}
     (h_chain : ScanChain s n s')
     (h_loop : ∃ fuel toks, scanLoop s' fuel = .ok toks) :
     ∃ fuel toks, scanLoop s fuel = .ok toks := by
@@ -455,7 +455,7 @@ theorem ScanChain.to_scanLoop_exists {s s' : ScannerState} {n : Nat}
 --   (b) `advance` respects `offset ≤ inputEnd` via `String.next` bounds
 --   (c) UTF-8 position validity (`IsValid`) is preserved through all operations
 -- Proof delegates to ScannerBound.scanNextToken_preserves_bound.
-theorem scanNextToken_preserves_bound (s s' : ScannerState)
+lemma scanNextToken_preserves_bound (s s' : ScannerState)
     (h : scanNextToken s = .ok (some s'))
     (h_le : s.offset ≤ s.inputEnd)
     (h_ie : s.inputEnd = s.input.utf8ByteSize)
@@ -465,7 +465,7 @@ theorem scanNextToken_preserves_bound (s s' : ScannerState)
   ScannerBound.scanNextToken_preserves_bound s s' h h_le h_ie h_iv
 
 -- Chain invariant: offset increases, stays bounded, inputEnd preserved
-theorem ScanChain.bound_invariant {s₀ s_final : ScannerState} {n : Nat}
+lemma ScanChain.bound_invariant {s₀ s_final : ScannerState} {n : Nat}
     (h_chain : ScanChain s₀ n s_final)
     (h_le : s₀.offset ≤ s₀.inputEnd)
     (h_ie : s₀.inputEnd = s₀.input.utf8ByteSize)
@@ -485,7 +485,7 @@ theorem ScanChain.bound_invariant {s₀ s_final : ScannerState} {n : Nat}
     have ⟨h_ge, h_le_final, h_ie_final⟩ := ih h_le' h_ie_mid h_iv_mid
     exact ⟨by omega, h_le_final, by rw [h_ie_final, h_ie']⟩
 
-theorem ScanChain.fuel_bound (input : String)
+lemma ScanChain.fuel_bound (input : String)
     (s₀ s_final : ScannerState) (n : Nat)
     (h_s0 : s₀ = (ScannerState.mk' input).emit .streamStart)
     (h_chain : ScanChain s₀ n s_final)
@@ -533,28 +533,28 @@ inductive FlowMonoChain (fl₀ : Nat) : ScannerState → Nat → ScannerState �
       FlowMonoChain fl₀ s (n + 1) s'
 
 /-- Degrade a `FlowMonoChain` to a plain `ScanChain` by forgetting flow-level bounds. -/
-theorem FlowMonoChain.toScanChain {fl₀ : Nat} {s s' : ScannerState} {n : Nat}
+lemma FlowMonoChain.toScanChain {fl₀ : Nat} {s s' : ScannerState} {n : Nat}
     (h : FlowMonoChain fl₀ s n s') : ScanChain s n s' := by
   induction h with
   | zero => exact .zero
   | step _ h_snt _h_rest ih => exact .step h_snt ih
 
 /-- The start state of a `FlowMonoChain` has `flowLevel ≥ fl₀`. -/
-theorem FlowMonoChain.flowLevel_ge_start {fl₀ : Nat} {s s' : ScannerState} {n : Nat}
+lemma FlowMonoChain.flowLevel_ge_start {fl₀ : Nat} {s s' : ScannerState} {n : Nat}
     (h : FlowMonoChain fl₀ s n s') : s.flowLevel ≥ fl₀ := by
   cases h with
   | zero h_fl => exact h_fl
   | step h_fl _ _ => exact h_fl
 
 /-- The end state of a `FlowMonoChain` has `flowLevel ≥ fl₀`. -/
-theorem FlowMonoChain.flowLevel_ge_end {fl₀ : Nat} {s s' : ScannerState} {n : Nat}
+lemma FlowMonoChain.flowLevel_ge_end {fl₀ : Nat} {s s' : ScannerState} {n : Nat}
     (h : FlowMonoChain fl₀ s n s') : s'.flowLevel ≥ fl₀ := by
   induction h with
   | zero h_fl => exact h_fl
   | step _ _ _ ih => exact ih
 
 /-- A single `scanNextToken` step as a `FlowMonoChain`. -/
-theorem FlowMonoChain.single {fl₀ : Nat} {s s' : ScannerState}
+lemma FlowMonoChain.single {fl₀ : Nat} {s s' : ScannerState}
     (h_snt : scanNextToken s = .ok (some s'))
     (h_fl : s.flowLevel ≥ fl₀)
     (h_fl' : s'.flowLevel ≥ fl₀) :
@@ -562,7 +562,7 @@ theorem FlowMonoChain.single {fl₀ : Nat} {s s' : ScannerState}
   .step h_fl h_snt (.zero h_fl')
 
 /-- Transitivity: concatenate two `FlowMonoChain`s with the same floor. -/
-theorem FlowMonoChain.trans {fl₀ : Nat} {s₁ s₂ s₃ : ScannerState} {n₁ n₂ : Nat}
+lemma FlowMonoChain.trans {fl₀ : Nat} {s₁ s₂ s₃ : ScannerState} {n₁ n₂ : Nat}
     (h1 : FlowMonoChain fl₀ s₁ n₁ s₂)
     (h2 : FlowMonoChain fl₀ s₂ n₂ s₃) :
     FlowMonoChain fl₀ s₁ (n₁ + n₂) s₃ := by
@@ -576,7 +576,7 @@ theorem FlowMonoChain.trans {fl₀ : Nat} {s₁ s₂ s₃ : ScannerState} {n₁ 
 
 /-- Weaken the flow-level floor: if `fl₀ ≤ fl₁`, a `FlowMonoChain fl₁` is also
     a `FlowMonoChain fl₀`. -/
-theorem FlowMonoChain.weaken {fl₀ fl₁ : Nat} {s s' : ScannerState} {n : Nat}
+lemma FlowMonoChain.weaken {fl₀ fl₁ : Nat} {s s' : ScannerState} {n : Nat}
     (h : FlowMonoChain fl₁ s n s') (h_le : fl₀ ≤ fl₁) :
     FlowMonoChain fl₀ s n s' := by
   induction h with
@@ -585,7 +585,7 @@ theorem FlowMonoChain.weaken {fl₀ fl₁ : Nat} {s s' : ScannerState} {n : Nat}
 
 /-- Token monotonicity for `FlowMonoChain`:
     tokens only grow through the chain (delegates to `ScanChain` version). -/
-theorem FlowMonoChain.tokens_mono {fl₀ : Nat} {s s' : ScannerState} {n : Nat}
+lemma FlowMonoChain.tokens_mono {fl₀ : Nat} {s s' : ScannerState} {n : Nat}
     (h : FlowMonoChain fl₀ s n s') : s'.tokens.size ≥ s.tokens.size := by
   induction h with
   | zero => omega
@@ -608,7 +608,7 @@ def SimpleKeyAboveFloor (s : ScannerState) (n : Nat) (stackFloor : Nat) : Prop :
 
 /-! #### SimpleKeyAboveFloor constructors -/
 
-theorem SimpleKeyAboveFloor_of_cleared_preserved (s_out s_in : ScannerState) (n fl₀ : Nat)
+lemma SimpleKeyAboveFloor_of_cleared_preserved (s_out s_in : ScannerState) (n fl₀ : Nat)
     (h_sk : s_out.simpleKey.possible = false)
     (h_stack : s_out.simpleKeyStack = s_in.simpleKeyStack)
     (h_inv : SimpleKeyAboveFloor s_in n fl₀) : SimpleKeyAboveFloor s_out n fl₀ :=
@@ -616,7 +616,7 @@ theorem SimpleKeyAboveFloor_of_cleared_preserved (s_out s_in : ScannerState) (n 
    fun j hfl hj hp => by simp only [h_stack] at hj hp ⊢; exact h_inv.2.1 j hfl hj hp,
    by rw [h_stack]; exact h_inv.2.2⟩
 
-theorem SimpleKeyAboveFloor_of_preserved (s_out s_in : ScannerState) (n fl₀ : Nat)
+lemma SimpleKeyAboveFloor_of_preserved (s_out s_in : ScannerState) (n fl₀ : Nat)
     (h_sk : s_out.simpleKey = s_in.simpleKey)
     (h_stack : s_out.simpleKeyStack = s_in.simpleKeyStack)
     (h_inv : SimpleKeyAboveFloor s_in n fl₀) : SimpleKeyAboveFloor s_out n fl₀ :=
@@ -624,7 +624,7 @@ theorem SimpleKeyAboveFloor_of_preserved (s_out s_in : ScannerState) (n fl₀ : 
    fun j hfl hj hp => by simp only [h_stack] at hj hp ⊢; exact h_inv.2.1 j hfl hj hp,
    by rw [h_stack]; exact h_inv.2.2⟩
 
-theorem SimpleKeyAboveFloor_of_endLine_update (s_out s_in : ScannerState) (n fl₀ : Nat)
+lemma SimpleKeyAboveFloor_of_endLine_update (s_out s_in : ScannerState) (n fl₀ : Nat)
     (h_poss : s_out.simpleKey.possible = s_in.simpleKey.possible)
     (h_idx : s_out.simpleKey.tokenIndex = s_in.simpleKey.tokenIndex)
     (h_stack : s_out.simpleKeyStack = s_in.simpleKeyStack)
@@ -635,7 +635,7 @@ theorem SimpleKeyAboveFloor_of_endLine_update (s_out s_in : ScannerState) (n fl�
    fun j hfl hj hp => by simp only [h_stack] at hj hp ⊢; exact h_inv.2.1 j hfl hj hp,
    by rw [h_stack]; exact h_inv.2.2⟩
 
-theorem SimpleKeyAboveFloor_of_flow_open (s_out s_in : ScannerState) (n fl₀ : Nat)
+lemma SimpleKeyAboveFloor_of_flow_open (s_out s_in : ScannerState) (n fl₀ : Nat)
     (h_sk : s_out.simpleKey.possible = false)
     (h_stack : s_out.simpleKeyStack = s_in.simpleKeyStack.push s_in.simpleKey)
     (h_inv : SimpleKeyAboveFloor s_in n fl₀) : SimpleKeyAboveFloor s_out n fl₀ := by
@@ -656,7 +656,7 @@ theorem SimpleKeyAboveFloor_of_flow_open (s_out s_in : ScannerState) (n fl₀ : 
       simp only [h_stack, Array.getElem_push, dif_neg hlt]; exact h_ge
   · simp only [h_stack, Array.size_push]; have := h_inv.2.2; omega
 
-theorem SimpleKeyAboveFloor_of_flow_close (s_out s_in : ScannerState) (n fl₀ : Nat)
+lemma SimpleKeyAboveFloor_of_flow_close (s_out s_in : ScannerState) (n fl₀ : Nat)
     (h_sk : s_out.simpleKey = s_in.simpleKeyStack.back?.getD {})
     (h_stack : s_out.simpleKeyStack = s_in.simpleKeyStack.pop)
     (h_inv : SimpleKeyAboveFloor s_in n fl₀)
@@ -696,7 +696,7 @@ theorem SimpleKeyAboveFloor_of_flow_close (s_out s_in : ScannerState) (n fl₀ :
 
 /-! #### SimpleKeyAboveFloor preprocess and dispatch maintenance -/
 
-theorem preprocess_preserves_flowLevel (s s1 : ScannerState) (c : Char)
+lemma preprocess_preserves_flowLevel (s s1 : ScannerState) (c : Char)
     (h : scanNextToken_preprocess s = .ok (some (s1, c))) :
     s1.flowLevel = s.flowLevel := by
   unfold scanNextToken_preprocess at h
@@ -726,7 +726,7 @@ theorem preprocess_preserves_flowLevel (s s1 : ScannerState) (c : Char)
             obtain ⟨rfl, _⟩ := h
             rw [ScannerCorrectness.saveSimpleKey_preserves_flowLevel]; exact h_fl_skip
 
-theorem preprocess_maintains_SimpleKeyAboveFloor (s s1 : ScannerState) (c : Char)
+lemma preprocess_maintains_SimpleKeyAboveFloor (s s1 : ScannerState) (c : Char)
     (h : scanNextToken_preprocess s = .ok (some (s1, c)))
     (n₀ fl₀ : Nat) (h_n₀ : n₀ ≤ s.tokens.size) (h_inv : SimpleKeyAboveFloor s n₀ fl₀) :
     SimpleKeyAboveFloor s1 n₀ fl₀ := by
@@ -739,7 +739,7 @@ theorem preprocess_maintains_SimpleKeyAboveFloor (s s1 : ScannerState) (c : Char
   · have h_stack := ScannerCorrectness.preprocess_preserves_simpleKeyStack s s1 c h
     rw [h_stack]; exact h_inv.2.2
 
-theorem dispatchStructural_maintains_SimpleKeyAboveFloor (s : ScannerState) (c : Char)
+lemma dispatchStructural_maintains_SimpleKeyAboveFloor (s : ScannerState) (c : Char)
     (s' : ScannerState)
     (h : scanNextToken_dispatchStructural s c = .ok (some s'))
     (n₀ fl₀ : Nat) (_h_n₀ : n₀ ≤ s.tokens.size) (h_inv : SimpleKeyAboveFloor s n₀ fl₀) :
@@ -764,7 +764,7 @@ theorem dispatchStructural_maintains_SimpleKeyAboveFloor (s : ScannerState) (c :
         (ScannerCorrectness.scanDirective_preserves_simpleKeyStack s _ h_eq) h_inv)
     | (simp_all; done)
 
-theorem dispatchFlowIndicators_maintains_SimpleKeyAboveFloor (s : ScannerState) (c : Char)
+lemma dispatchFlowIndicators_maintains_SimpleKeyAboveFloor (s : ScannerState) (c : Char)
     (s' : ScannerState)
     (h : scanNextToken_dispatchFlowIndicators s c = .ok (some s'))
     (n₀ fl₀ : Nat) (_h_n₀ : n₀ ≤ s.tokens.size) (h_inv : SimpleKeyAboveFloor s n₀ fl₀)
@@ -816,7 +816,7 @@ theorem dispatchFlowIndicators_maintains_SimpleKeyAboveFloor (s : ScannerState) 
            (ScannerCorrectness.scanFlowMappingEnd_simpleKey_restored s)
            (ScannerCorrectness.scanFlowMappingEnd_stack_popped s) h_inv h_gt)
 
-theorem dispatchBlockIndicators_maintains_SimpleKeyAboveFloor (s : ScannerState) (c : Char)
+lemma dispatchBlockIndicators_maintains_SimpleKeyAboveFloor (s : ScannerState) (c : Char)
     (s' : ScannerState)
     (h : scanNextToken_dispatchBlockIndicators s c = .ok (some s'))
     (n₀ fl₀ : Nat) (_h_n₀ : n₀ ≤ s.tokens.size) (h_inv : SimpleKeyAboveFloor s n₀ fl₀) :
@@ -841,7 +841,7 @@ theorem dispatchBlockIndicators_maintains_SimpleKeyAboveFloor (s : ScannerState)
         (ScannerCorrectness.scanValue_preserves_simpleKeyStack s _ h_eq) h_inv)
     | (simp_all; done)
 
-theorem dispatchContent_maintains_SimpleKeyAboveFloor (s : ScannerState) (c : Char)
+lemma dispatchContent_maintains_SimpleKeyAboveFloor (s : ScannerState) (c : Char)
     (s' : ScannerState)
     (h : scanNextToken_dispatchContent s c = .ok s')
     (n₀ fl₀ : Nat) (_h_n₀ : n₀ ≤ s.tokens.size) (h_inv : SimpleKeyAboveFloor s n₀ fl₀) :
@@ -921,7 +921,7 @@ theorem dispatchContent_maintains_SimpleKeyAboveFloor (s : ScannerState) (c : Ch
 -- (2) `s'.flowLevel ≥ fl₀` (from FlowMonoChain continuation — ensures close-bracket steps
 --     don't pop below the floor).
 set_option maxHeartbeats 400000 in
-theorem scanNextToken_maintains_SimpleKeyAboveFloor (s : ScannerState) (s' : ScannerState)
+lemma scanNextToken_maintains_SimpleKeyAboveFloor (s : ScannerState) (s' : ScannerState)
     (h_next : scanNextToken s = .ok (some s'))
     (n₀ fl₀ : Nat) (h_n₀ : n₀ ≤ s.tokens.size) (h_inv : SimpleKeyAboveFloor s n₀ fl₀)
     (h_sync : s.simpleKeyStack.size ≥ s.flowLevel)
@@ -1017,7 +1017,7 @@ its proof using just `SimpleKeyAboveFloor.1`. -/
 -- This is equivalent to `ScannerCorrectness.scanNextToken_preserves_prefix` but
 -- takes `SimpleKeyAboveFloor` instead of `SimpleKeyAbove`.
 set_option maxHeartbeats 400000 in
-theorem scanNextToken_preserves_prefix_of_skFloor (s s' : ScannerState)
+lemma scanNextToken_preserves_prefix_of_skFloor (s s' : ScannerState)
     (h_next : scanNextToken s = .ok (some s'))
     (n : Nat) (h_n : n ≤ s.tokens.size)
     (h_sk : s.simpleKey.possible = true → s.simpleKey.tokenIndex ≥ n)
@@ -1066,7 +1066,7 @@ theorem scanNextToken_preserves_prefix_of_skFloor (s s' : ScannerState)
 
 -- Per-step bundle: prefix preservation + SimpleKeyAboveFloor maintenance.
 -- Analogous to `scanNextToken_prefix_and_sk_inv` but for the floor-based invariant.
-theorem scanNextToken_prefix_and_skFloor_inv (s s' : ScannerState)
+lemma scanNextToken_prefix_and_skFloor_inv (s s' : ScannerState)
     (h_next : scanNextToken s = .ok (some s'))
     (n₀ fl₀ : Nat) (h_n₀ : n₀ ≤ s.tokens.size)
     (h_inv : SimpleKeyAboveFloor s n₀ fl₀)
@@ -1086,7 +1086,7 @@ theorem scanNextToken_prefix_and_skFloor_inv (s s' : ScannerState)
 -- Helper: flow indicator dispatch preserves the sync invariant.
 -- Flow opens push+increment, flow closes pop+decrement, flow entry preserves both.
 set_option maxHeartbeats 800000 in
-theorem dispatchFlowIndicators_preserves_sync (s s' : ScannerState) (c : Char)
+lemma dispatchFlowIndicators_preserves_sync (s s' : ScannerState) (c : Char)
     (h : scanNextToken_dispatchFlowIndicators s c = .ok (some s'))
     (h_sync : s.simpleKeyStack.size ≥ s.flowLevel) :
     s'.simpleKeyStack.size ≥ s'.flowLevel := by
@@ -1151,7 +1151,7 @@ theorem dispatchFlowIndicators_preserves_sync (s s' : ScannerState) (c : Char)
           · simp at h
 
 set_option maxHeartbeats 1200000 in
-theorem scanNextToken_preserves_sync (s s' : ScannerState)
+lemma scanNextToken_preserves_sync (s s' : ScannerState)
     (h_next : scanNextToken s = .ok (some s'))
     (h_sync : s.simpleKeyStack.size ≥ s.flowLevel) :
     s'.simpleKeyStack.size ≥ s'.flowLevel := by
@@ -1222,7 +1222,7 @@ theorem scanNextToken_preserves_sync (s s' : ScannerState)
 -- `SimpleKeyAbove`, enabling the proof when stack entries below floor have stale indices.
 -- The floor is the chain's `fl₀` (not the state's stack size), since `fl₀` is constant
 -- across chain steps and `scanNextToken_maintains_SimpleKeyAboveFloor` preserves it.
-theorem FlowMonoChain_preserves_raw_prefix {s s' : ScannerState} {n fl₀ : Nat}
+lemma FlowMonoChain_preserves_raw_prefix {s s' : ScannerState} {n fl₀ : Nat}
     (h_fmc : FlowMonoChain fl₀ s n s')
     (n₀ : Nat) (h_n₀ : n₀ ≤ s.tokens.size)
     (h_stack_floor : SimpleKeyAboveFloor s n₀ fl₀)
@@ -1279,7 +1279,7 @@ def NoOverwriteAt (s : ScannerState) (m : Nat) : Prop :=
 
 /-- If `s_out` clears the simple key and preserves the stack, then `NoOverwriteAt`
     transports. Parallel to `NoOverwriteAtIx_of_cleared_preserved`. -/
-theorem NoOverwriteAt_of_cleared_preserved
+lemma NoOverwriteAt_of_cleared_preserved
     (s_out s_in : ScannerState) (m : Nat)
     (h_sk : s_out.simpleKey.possible = false)
     (h_stack : s_out.simpleKeyStack = s_in.simpleKeyStack)
@@ -1290,7 +1290,7 @@ theorem NoOverwriteAt_of_cleared_preserved
 
 /-- If `s_out` preserves both `simpleKey` and `simpleKeyStack`, then `NoOverwriteAt`
     transports. Parallel to `NoOverwriteAtIx_of_preserved`. -/
-theorem NoOverwriteAt_of_preserved
+lemma NoOverwriteAt_of_preserved
     (s_out s_in : ScannerState) (m : Nat)
     (h_sk : s_out.simpleKey = s_in.simpleKey)
     (h_stack : s_out.simpleKeyStack = s_in.simpleKeyStack)
@@ -1301,7 +1301,7 @@ theorem NoOverwriteAt_of_preserved
 
 /-- Flow-open transport: `s_out` clears the current simple key and pushes the old
     `simpleKey` onto `simpleKeyStack`. Parallel to `NoOverwriteAtIx_of_flow_open`. -/
-theorem NoOverwriteAt_of_flow_open
+lemma NoOverwriteAt_of_flow_open
     (s_out s_in : ScannerState) (m : Nat)
     (h_sk : s_out.simpleKey.possible = false)
     (h_stack : s_out.simpleKeyStack = s_in.simpleKeyStack.push s_in.simpleKey)
@@ -1329,7 +1329,7 @@ theorem NoOverwriteAt_of_flow_open
     with `s_in.simpleKey` (only the `endLine` and `pos` fields may differ) and the
     stack is preserved. Needed for the double-quoted and single-quoted scalar
     dispatch, which updates the simpleKey's endLine field. -/
-theorem NoOverwriteAt_of_endLine_update
+lemma NoOverwriteAt_of_endLine_update
     (s_out s_in : ScannerState) (m : Nat)
     (h_poss : s_out.simpleKey.possible = s_in.simpleKey.possible)
     (h_idx : s_out.simpleKey.tokenIndex = s_in.simpleKey.tokenIndex)
@@ -1345,7 +1345,7 @@ theorem NoOverwriteAt_of_endLine_update
     and pops the stack. Parallel to `NoOverwriteAtIx_of_flow_close` — NO sync
     hypothesis needed (NoOverwriteAt's stack-entry conjunct covers ALL slots, so
     popping just reduces the universe of obligations). -/
-theorem NoOverwriteAt_of_flow_close
+lemma NoOverwriteAt_of_flow_close
     (s_out s_in : ScannerState) (m : Nat)
     (h_sk : s_out.simpleKey = s_in.simpleKeyStack.back?.getD {})
     (h_stack : s_out.simpleKeyStack = s_in.simpleKeyStack.pop)
@@ -1373,7 +1373,7 @@ theorem NoOverwriteAt_of_flow_close
     branch) or set to `st.tokens.size` (set branch), and both satisfy `≠ m` /
     `≠ m + 1` given `m < st.tokens.size`. Parallel to
     `saveSimpleKeyIx_simpleKey_pointwise_inv`. -/
-theorem saveSimpleKey_simpleKey_pointwise_inv (st : ScannerState) (m : Nat)
+lemma saveSimpleKey_simpleKey_pointwise_inv (st : ScannerState) (m : Nat)
     (h_tok : m < st.tokens.size)
     (h_inv : st.simpleKey.possible = true →
       m ≠ st.simpleKey.tokenIndex ∧ m ≠ st.simpleKey.tokenIndex + 1) :
@@ -1389,7 +1389,7 @@ theorem saveSimpleKey_simpleKey_pointwise_inv (st : ScannerState) (m : Nat)
 
 /-- `scanNextToken_preprocess` carries the simpleKey pointwise invariant. Parallel
     to `scanNextTokenIx_preprocess_simpleKey_pointwise_inv`. -/
-theorem preprocess_simpleKey_pointwise_inv (s s1 : ScannerState) (c : Char)
+lemma preprocess_simpleKey_pointwise_inv (s s1 : ScannerState) (c : Char)
     (h : scanNextToken_preprocess s = .ok (some (s1, c))) (m : Nat)
     (h_m : m < s.tokens.size)
     (h_inv : s.simpleKey.possible = true →
@@ -1447,7 +1447,7 @@ theorem preprocess_simpleKey_pointwise_inv (s s1 : ScannerState) (c : Char)
 
 /-- `scanNextToken_preprocess` maintains the full `NoOverwriteAt` invariant.
     Parallel to `scanNextTokenIx_preprocess_maintains_NoOverwriteAtIx`. -/
-theorem preprocess_maintains_NoOverwriteAt (s s1 : ScannerState) (c : Char)
+lemma preprocess_maintains_NoOverwriteAt (s s1 : ScannerState) (c : Char)
     (h : scanNextToken_preprocess s = .ok (some (s1, c)))
     (m : Nat) (h_m : m < s.tokens.size) (h_inv : NoOverwriteAt s m) :
     NoOverwriteAt s1 m := by
@@ -1462,7 +1462,7 @@ theorem preprocess_maintains_NoOverwriteAt (s s1 : ScannerState) (c : Char)
 
 /-- `scanNextToken_dispatchStructural` maintains `NoOverwriteAt`. Parallel to
     `dispatchStructural_maintains_SimpleKeyAboveFloor`. -/
-theorem dispatchStructural_maintains_NoOverwriteAt (s : ScannerState) (c : Char)
+lemma dispatchStructural_maintains_NoOverwriteAt (s : ScannerState) (c : Char)
     (s' : ScannerState)
     (h : scanNextToken_dispatchStructural s c = .ok (some s'))
     (m : Nat) (_h_m : m < s.tokens.size) (h_inv : NoOverwriteAt s m) :
@@ -1491,7 +1491,7 @@ theorem dispatchStructural_maintains_NoOverwriteAt (s : ScannerState) (c : Char)
     `dispatchFlowIndicators_maintains_SimpleKeyAboveFloor` but with NO sync or
     flow-level hypotheses needed (NoOverwriteAt's stack-entry conjunct covers ALL
     slots, so popping just reduces the universe of obligations). -/
-theorem dispatchFlowIndicators_maintains_NoOverwriteAt (s : ScannerState) (c : Char)
+lemma dispatchFlowIndicators_maintains_NoOverwriteAt (s : ScannerState) (c : Char)
     (s' : ScannerState)
     (h : scanNextToken_dispatchFlowIndicators s c = .ok (some s'))
     (m : Nat) (_h_m : m < s.tokens.size) (h_inv : NoOverwriteAt s m) :
@@ -1524,7 +1524,7 @@ theorem dispatchFlowIndicators_maintains_NoOverwriteAt (s : ScannerState) (c : C
 
 /-- `scanNextToken_dispatchBlockIndicators` maintains `NoOverwriteAt`. Parallel to
     `dispatchBlockIndicators_maintains_SimpleKeyAboveFloor`. -/
-theorem dispatchBlockIndicators_maintains_NoOverwriteAt (s : ScannerState) (c : Char)
+lemma dispatchBlockIndicators_maintains_NoOverwriteAt (s : ScannerState) (c : Char)
     (s' : ScannerState)
     (h : scanNextToken_dispatchBlockIndicators s c = .ok (some s'))
     (m : Nat) (_h_m : m < s.tokens.size) (h_inv : NoOverwriteAt s m) :
@@ -1551,7 +1551,7 @@ theorem dispatchBlockIndicators_maintains_NoOverwriteAt (s : ScannerState) (c : 
 
 /-- `scanNextToken_dispatchContent` maintains `NoOverwriteAt`. Parallel to
     `dispatchContent_maintains_SimpleKeyAboveFloor`. -/
-theorem dispatchContent_maintains_NoOverwriteAt (s : ScannerState) (c : Char)
+lemma dispatchContent_maintains_NoOverwriteAt (s : ScannerState) (c : Char)
     (s' : ScannerState)
     (h : scanNextToken_dispatchContent s c = .ok s')
     (m : Nat) (_h_m : m < s.tokens.size) (h_inv : NoOverwriteAt s m) :
@@ -1631,7 +1631,7 @@ set_option maxHeartbeats 400000 in
     `scanNextTokenIx_maintains_NoOverwriteAtIx` (substrate.c §5.4) — and to the
     non-indexed `scanNextToken_maintains_SimpleKeyAboveFloor` but with the
     pointwise (≠m) invariant and no sync/flow-level hypotheses. -/
-theorem scanNextToken_maintains_NoOverwriteAt (s s' : ScannerState)
+lemma scanNextToken_maintains_NoOverwriteAt (s s' : ScannerState)
     (h_next : scanNextToken s = .ok (some s'))
     (m : Nat) (h_m : m < s.tokens.size) (h_inv : NoOverwriteAt s m) :
     NoOverwriteAt s' m := by
@@ -1704,7 +1704,7 @@ theorem scanNextToken_maintains_NoOverwriteAt (s s' : ScannerState)
 
 /-- Pointwise (≠m) form of `scanValuePrepare_preserves_prefix`. Mirrors the
     prefix-form proof but uses the pointwise hypothesis directly. -/
-theorem scanValuePrepare_preserves_position_specific (s : ScannerState)
+lemma scanValuePrepare_preserves_position_specific (s : ScannerState)
     (m : Nat) (h_m : m < s.tokens.size)
     (h_inv : s.simpleKey.possible = true →
       m ≠ s.simpleKey.tokenIndex ∧ m ≠ s.simpleKey.tokenIndex + 1) :
@@ -1745,7 +1745,7 @@ theorem scanValuePrepare_preserves_position_specific (s : ScannerState)
         rfl
 
 /-- Pointwise (≠m) form of `scanValue_preserves_prefix`. -/
-theorem scanValue_preserves_position_specific (s s' : ScannerState)
+lemma scanValue_preserves_position_specific (s s' : ScannerState)
     (h_ok : scanValue s = .ok s')
     (m : Nat) (h_m : m < s.tokens.size)
     (h_inv : s.simpleKey.possible = true →
@@ -1791,7 +1791,7 @@ theorem scanValue_preserves_position_specific (s s' : ScannerState)
     block-indicators dispatcher is the only one of the four that can call
     `scanValue` (which overwrites via `scanValuePrepare`), hence the pointwise
     hypothesis is needed here specifically. -/
-theorem dispatchBlockIndicators_preserves_position_specific (s : ScannerState) (c : Char)
+lemma dispatchBlockIndicators_preserves_position_specific (s : ScannerState) (c : Char)
     (s' : ScannerState)
     (h : scanNextToken_dispatchBlockIndicators s c = .ok (some s'))
     (m : Nat) (h_m : m < s.tokens.size)
@@ -1819,7 +1819,7 @@ set_option maxHeartbeats 400000 in
     Parallel to `scanNextTokenIx_preserves_position_specific` but with the
     monolithic dispatcher case-analysis style of the non-indexed
     `scanNextToken_preserves_prefix_of_skFloor`. -/
-theorem scanNextToken_preserves_position_specific (s s' : ScannerState)
+lemma scanNextToken_preserves_position_specific (s s' : ScannerState)
     (h_next : scanNextToken s = .ok (some s'))
     (m : Nat) (h_m : m < s.tokens.size)
     (h_inv : s.simpleKey.possible = true →
@@ -1879,7 +1879,7 @@ theorem scanNextToken_preserves_position_specific (s s' : ScannerState)
     (substrate.c §5.6) and to `FlowMonoChain_preserves_raw_prefix` (the
     non-indexed SKAF-form), but with `NoOverwriteAt m` instead of
     `SimpleKeyAboveFloor`. -/
-theorem FlowMonoChain_preserves_position_specific
+lemma FlowMonoChain_preserves_position_specific
     {s s' : ScannerState} {n fl₀ : Nat}
     (h_fmc : FlowMonoChain fl₀ s n s')
     (m : Nat) (h_m : m < s.tokens.size)
@@ -1938,7 +1938,7 @@ def FlowNoOverwriteAt (s : ScannerState) (m : Nat) : Prop :=
 
 /-- If `s_out` clears the simple key and preserves the stack, then
     `FlowNoOverwriteAt` transports. Parallel to `NoOverwriteAt_of_cleared_preserved`. -/
-theorem FlowNoOverwriteAt_of_cleared_preserved
+lemma FlowNoOverwriteAt_of_cleared_preserved
     (s_out s_in : ScannerState) (m : Nat)
     (h_sk : s_out.simpleKey.possible = false)
     (h_stack : s_out.simpleKeyStack = s_in.simpleKeyStack)
@@ -1949,7 +1949,7 @@ theorem FlowNoOverwriteAt_of_cleared_preserved
 
 /-- If `s_out` preserves both `simpleKey` and `simpleKeyStack`, then
     `FlowNoOverwriteAt` transports. Parallel to `NoOverwriteAt_of_preserved`. -/
-theorem FlowNoOverwriteAt_of_preserved
+lemma FlowNoOverwriteAt_of_preserved
     (s_out s_in : ScannerState) (m : Nat)
     (h_sk : s_out.simpleKey = s_in.simpleKey)
     (h_stack : s_out.simpleKeyStack = s_in.simpleKeyStack)
@@ -1960,7 +1960,7 @@ theorem FlowNoOverwriteAt_of_preserved
 
 /-- Flow-open transport: `s_out` clears the current simple key and pushes the old
     `simpleKey` onto `simpleKeyStack`. Parallel to `NoOverwriteAt_of_flow_open`. -/
-theorem FlowNoOverwriteAt_of_flow_open
+lemma FlowNoOverwriteAt_of_flow_open
     (s_out s_in : ScannerState) (m : Nat)
     (h_sk : s_out.simpleKey.possible = false)
     (h_stack : s_out.simpleKeyStack = s_in.simpleKeyStack.push s_in.simpleKey)
@@ -1985,7 +1985,7 @@ theorem FlowNoOverwriteAt_of_flow_open
 /-- endLine-update transport: `s_out`'s simpleKey shares `possible` and `tokenIndex`
     with `s_in.simpleKey` (only the `endLine` and `pos` fields may differ) and the
     stack is preserved. Parallel to `NoOverwriteAt_of_endLine_update`. -/
-theorem FlowNoOverwriteAt_of_endLine_update
+lemma FlowNoOverwriteAt_of_endLine_update
     (s_out s_in : ScannerState) (m : Nat)
     (h_poss : s_out.simpleKey.possible = s_in.simpleKey.possible)
     (h_idx : s_out.simpleKey.tokenIndex = s_in.simpleKey.tokenIndex)
@@ -1999,7 +1999,7 @@ theorem FlowNoOverwriteAt_of_endLine_update
 
 /-- Flow-close transport: `s_out` restores `simpleKey` from `simpleKeyStack.back?`
     and pops the stack. Parallel to `NoOverwriteAt_of_flow_close`. -/
-theorem FlowNoOverwriteAt_of_flow_close
+lemma FlowNoOverwriteAt_of_flow_close
     (s_out s_in : ScannerState) (m : Nat)
     (h_sk : s_out.simpleKey = s_in.simpleKeyStack.back?.getD {})
     (h_stack : s_out.simpleKeyStack = s_in.simpleKeyStack.pop)
@@ -2024,7 +2024,7 @@ theorem FlowNoOverwriteAt_of_flow_close
 
 /-- One-clause `saveSimpleKey` pointwise maintenance. Parallel to
     `saveSimpleKey_simpleKey_pointwise_inv` but tracking only `≠ tokenIndex + 1`. -/
-theorem saveSimpleKey_simpleKey_pointwise_inv_flow (st : ScannerState) (m : Nat)
+lemma saveSimpleKey_simpleKey_pointwise_inv_flow (st : ScannerState) (m : Nat)
     (h_tok : m < st.tokens.size)
     (h_inv : st.simpleKey.possible = true →
       m ≠ st.simpleKey.tokenIndex + 1) :
@@ -2039,7 +2039,7 @@ theorem saveSimpleKey_simpleKey_pointwise_inv_flow (st : ScannerState) (m : Nat)
 
 /-- One-clause `scanNextToken_preprocess` simpleKey maintenance. Parallel to
     `preprocess_simpleKey_pointwise_inv`. -/
-theorem preprocess_simpleKey_pointwise_inv_flow (s s1 : ScannerState) (c : Char)
+lemma preprocess_simpleKey_pointwise_inv_flow (s s1 : ScannerState) (c : Char)
     (h : scanNextToken_preprocess s = .ok (some (s1, c))) (m : Nat)
     (h_m : m < s.tokens.size)
     (h_inv : s.simpleKey.possible = true →
@@ -2094,7 +2094,7 @@ theorem preprocess_simpleKey_pointwise_inv_flow (s s1 : ScannerState) (c : Char)
 
 /-- `scanNextToken_preprocess` maintains the full `FlowNoOverwriteAt` invariant.
     Parallel to `preprocess_maintains_NoOverwriteAt`. -/
-theorem preprocess_maintains_FlowNoOverwriteAt (s s1 : ScannerState) (c : Char)
+lemma preprocess_maintains_FlowNoOverwriteAt (s s1 : ScannerState) (c : Char)
     (h : scanNextToken_preprocess s = .ok (some (s1, c)))
     (m : Nat) (h_m : m < s.tokens.size) (h_inv : FlowNoOverwriteAt s m) :
     FlowNoOverwriteAt s1 m := by
@@ -2109,7 +2109,7 @@ theorem preprocess_maintains_FlowNoOverwriteAt (s s1 : ScannerState) (c : Char)
 
 /-- `scanNextToken_dispatchStructural` maintains `FlowNoOverwriteAt`. Parallel to
     `dispatchStructural_maintains_NoOverwriteAt`. -/
-theorem dispatchStructural_maintains_FlowNoOverwriteAt (s : ScannerState) (c : Char)
+lemma dispatchStructural_maintains_FlowNoOverwriteAt (s : ScannerState) (c : Char)
     (s' : ScannerState)
     (h : scanNextToken_dispatchStructural s c = .ok (some s'))
     (m : Nat) (_h_m : m < s.tokens.size) (h_inv : FlowNoOverwriteAt s m) :
@@ -2136,7 +2136,7 @@ theorem dispatchStructural_maintains_FlowNoOverwriteAt (s : ScannerState) (c : C
 
 /-- `scanNextToken_dispatchFlowIndicators` maintains `FlowNoOverwriteAt`. Parallel
     to `dispatchFlowIndicators_maintains_NoOverwriteAt`. -/
-theorem dispatchFlowIndicators_maintains_FlowNoOverwriteAt (s : ScannerState) (c : Char)
+lemma dispatchFlowIndicators_maintains_FlowNoOverwriteAt (s : ScannerState) (c : Char)
     (s' : ScannerState)
     (h : scanNextToken_dispatchFlowIndicators s c = .ok (some s'))
     (m : Nat) (_h_m : m < s.tokens.size) (h_inv : FlowNoOverwriteAt s m) :
@@ -2169,7 +2169,7 @@ theorem dispatchFlowIndicators_maintains_FlowNoOverwriteAt (s : ScannerState) (c
 
 /-- `scanNextToken_dispatchBlockIndicators` maintains `FlowNoOverwriteAt`. Parallel
     to `dispatchBlockIndicators_maintains_NoOverwriteAt`. -/
-theorem dispatchBlockIndicators_maintains_FlowNoOverwriteAt (s : ScannerState) (c : Char)
+lemma dispatchBlockIndicators_maintains_FlowNoOverwriteAt (s : ScannerState) (c : Char)
     (s' : ScannerState)
     (h : scanNextToken_dispatchBlockIndicators s c = .ok (some s'))
     (m : Nat) (_h_m : m < s.tokens.size) (h_inv : FlowNoOverwriteAt s m) :
@@ -2196,7 +2196,7 @@ theorem dispatchBlockIndicators_maintains_FlowNoOverwriteAt (s : ScannerState) (
 
 /-- `scanNextToken_dispatchContent` maintains `FlowNoOverwriteAt`. Parallel to
     `dispatchContent_maintains_NoOverwriteAt`. -/
-theorem dispatchContent_maintains_FlowNoOverwriteAt (s : ScannerState) (c : Char)
+lemma dispatchContent_maintains_FlowNoOverwriteAt (s : ScannerState) (c : Char)
     (s' : ScannerState)
     (h : scanNextToken_dispatchContent s c = .ok s')
     (m : Nat) (_h_m : m < s.tokens.size) (h_inv : FlowNoOverwriteAt s m) :
@@ -2274,7 +2274,7 @@ theorem dispatchContent_maintains_FlowNoOverwriteAt (s : ScannerState) (c : Char
 set_option maxHeartbeats 400000 in
 /-- Capstone: `scanNextToken` maintains `FlowNoOverwriteAt`. Parallel to
     `scanNextToken_maintains_NoOverwriteAt` (substrate.d §D.4). -/
-theorem scanNextToken_maintains_FlowNoOverwriteAt (s s' : ScannerState)
+lemma scanNextToken_maintains_FlowNoOverwriteAt (s s' : ScannerState)
     (h_next : scanNextToken s = .ok (some s'))
     (m : Nat) (h_m : m < s.tokens.size) (h_inv : FlowNoOverwriteAt s m) :
     FlowNoOverwriteAt s' m := by
@@ -2347,7 +2347,7 @@ theorem scanNextToken_maintains_FlowNoOverwriteAt (s s' : ScannerState)
 /-! ### §E.5  Step-level pointwise preservation (with `s.inFlow = true`) -/
 
 /-- `scanValueClearKey` preserves `flowLevel`. -/
-theorem scanValueClearKey_preserves_flowLevel (s : ScannerState) :
+lemma scanValueClearKey_preserves_flowLevel (s : ScannerState) :
     (scanValueClearKey s).flowLevel = s.flowLevel := by
   unfold scanValueClearKey
   split
@@ -2362,7 +2362,7 @@ theorem scanValueClearKey_preserves_flowLevel (s : ScannerState) :
     restricted to FLOW context. In flow, `scanValuePrepare` writes only at
     `idx + 1`, so the one-clause hypothesis suffices. Parallel to substrate.d's
     two-clause version (line 2508). -/
-theorem scanValuePrepare_preserves_position_specific_flow (s : ScannerState)
+lemma scanValuePrepare_preserves_position_specific_flow (s : ScannerState)
     (h_in_flow : s.inFlow = true)
     (m : Nat) (h_m : m < s.tokens.size)
     (h_inv : s.simpleKey.possible = true →
@@ -2395,7 +2395,7 @@ theorem scanValuePrepare_preserves_position_specific_flow (s : ScannerState)
 
 /-- Pointwise (≠ idx+1) form of `scanValue_preserves_position_specific`,
     restricted to FLOW context. -/
-theorem scanValue_preserves_position_specific_flow (s s' : ScannerState)
+lemma scanValue_preserves_position_specific_flow (s s' : ScannerState)
     (h_in_flow : s.inFlow = true)
     (h_ok : scanValue s = .ok s')
     (m : Nat) (h_m : m < s.tokens.size)
@@ -2444,7 +2444,7 @@ theorem scanValue_preserves_position_specific_flow (s s' : ScannerState)
 
 /-- Pointwise (≠ idx+1) version of `dispatchBlockIndicators_preserves_position_specific`,
     restricted to FLOW context. -/
-theorem dispatchBlockIndicators_preserves_position_specific_flow (s : ScannerState) (c : Char)
+lemma dispatchBlockIndicators_preserves_position_specific_flow (s : ScannerState) (c : Char)
     (s' : ScannerState)
     (h_in_flow : s.inFlow = true)
     (h : scanNextToken_dispatchBlockIndicators s c = .ok (some s'))
@@ -2473,7 +2473,7 @@ set_option maxHeartbeats 400000 in
 /-- Per-step pointwise preservation of position `m` through `scanNextToken`,
     restricted to FLOW context. Parallel to `scanNextToken_preserves_position_specific`
     (substrate.d §D.5) with the flow-relaxed hypothesis. -/
-theorem scanNextToken_preserves_position_specific_flow (s s' : ScannerState)
+lemma scanNextToken_preserves_position_specific_flow (s s' : ScannerState)
     (h_in_flow : s.inFlow = true)
     (h_next : scanNextToken s = .ok (some s'))
     (m : Nat) (h_m : m < s.tokens.size)
@@ -2551,7 +2551,7 @@ theorem scanNextToken_preserves_position_specific_flow (s s' : ScannerState)
     the chain has `inFlow = true`). Parallel to
     `FlowMonoChain_preserves_position_specific` (substrate.d §D.6) with the
     flow-relaxed hypothesis throughout. -/
-theorem FlowMonoChain_preserves_position_specific_flow
+lemma FlowMonoChain_preserves_position_specific_flow
     {s s' : ScannerState} {n fl₀ : Nat}
     (h_fl_pos : fl₀ ≥ 1)
     (h_fmc : FlowMonoChain fl₀ s n s')
@@ -2642,7 +2642,7 @@ inductive SavedKeyDoesntResolve (fl₀ n_target : Nat) :
 
 /-- Degrade a `SavedKeyDoesntResolve` to a plain `FlowMonoChain`.
     Parallel to `FlowMonoChain.toScanChain`. -/
-theorem SavedKeyDoesntResolve.toFlowMonoChain {fl₀ n_target : Nat}
+lemma SavedKeyDoesntResolve.toFlowMonoChain {fl₀ n_target : Nat}
     {s s' : ScannerState} {n : Nat}
     (h : SavedKeyDoesntResolve fl₀ n_target s n s') : FlowMonoChain fl₀ s n s' := by
   induction h with
@@ -2650,32 +2650,32 @@ theorem SavedKeyDoesntResolve.toFlowMonoChain {fl₀ n_target : Nat}
   | step h_fl h_snt _h_pres _h_rest ih => exact .step h_fl h_snt ih
 
 /-- Degrade to a plain `ScanChain` (through the FlowMonoChain). -/
-theorem SavedKeyDoesntResolve.toScanChain {fl₀ n_target : Nat}
+lemma SavedKeyDoesntResolve.toScanChain {fl₀ n_target : Nat}
     {s s' : ScannerState} {n : Nat}
     (h : SavedKeyDoesntResolve fl₀ n_target s n s') : ScanChain s n s' :=
   h.toFlowMonoChain.toScanChain
 
 /-- The start state of a `SavedKeyDoesntResolve` has `flowLevel ≥ fl₀`. -/
-theorem SavedKeyDoesntResolve.flowLevel_ge_start {fl₀ n_target : Nat}
+lemma SavedKeyDoesntResolve.flowLevel_ge_start {fl₀ n_target : Nat}
     {s s' : ScannerState} {n : Nat}
     (h : SavedKeyDoesntResolve fl₀ n_target s n s') : s.flowLevel ≥ fl₀ :=
   h.toFlowMonoChain.flowLevel_ge_start
 
 /-- The end state of a `SavedKeyDoesntResolve` has `flowLevel ≥ fl₀`. -/
-theorem SavedKeyDoesntResolve.flowLevel_ge_end {fl₀ n_target : Nat}
+lemma SavedKeyDoesntResolve.flowLevel_ge_end {fl₀ n_target : Nat}
     {s s' : ScannerState} {n : Nat}
     (h : SavedKeyDoesntResolve fl₀ n_target s n s') : s'.flowLevel ≥ fl₀ :=
   h.toFlowMonoChain.flowLevel_ge_end
 
 /-- Token monotonicity for `SavedKeyDoesntResolve`: tokens only grow
     through the chain (delegates to FlowMonoChain version). -/
-theorem SavedKeyDoesntResolve.tokens_mono {fl₀ n_target : Nat}
+lemma SavedKeyDoesntResolve.tokens_mono {fl₀ n_target : Nat}
     {s s' : ScannerState} {n : Nat}
     (h : SavedKeyDoesntResolve fl₀ n_target s n s') : s'.tokens.size ≥ s.tokens.size :=
   h.toFlowMonoChain.tokens_mono
 
 /-- A single `scanNextToken` step as a `SavedKeyDoesntResolve`. -/
-theorem SavedKeyDoesntResolve.single {fl₀ n_target : Nat} {s s' : ScannerState}
+lemma SavedKeyDoesntResolve.single {fl₀ n_target : Nat} {s s' : ScannerState}
     (h_snt : scanNextToken s = .ok (some s'))
     (h_fl : s.flowLevel ≥ fl₀)
     (h_fl' : s'.flowLevel ≥ fl₀)
@@ -2687,7 +2687,7 @@ theorem SavedKeyDoesntResolve.single {fl₀ n_target : Nat} {s s' : ScannerState
 
 /-- Transitivity: concatenate two `SavedKeyDoesntResolve`s with the same
     floor and target. -/
-theorem SavedKeyDoesntResolve.trans {fl₀ n_target : Nat}
+lemma SavedKeyDoesntResolve.trans {fl₀ n_target : Nat}
     {s₁ s₂ s₃ : ScannerState} {n₁ n₂ : Nat}
     (h1 : SavedKeyDoesntResolve fl₀ n_target s₁ n₁ s₂)
     (h2 : SavedKeyDoesntResolve fl₀ n_target s₂ n₂ s₃) :
@@ -2710,7 +2710,7 @@ theorem SavedKeyDoesntResolve.trans {fl₀ n_target : Nat}
 
     Sufficient (but not necessary) structural condition for establishing
     `SavedKeyDoesntResolve` step-by-step from input-shape reasoning. -/
-theorem SavedKeyDoesntResolve.step_of_tokenIndex_ne
+lemma SavedKeyDoesntResolve.step_of_tokenIndex_ne
     {fl₀ n_target : Nat} {s s_mid s' : ScannerState} {n : Nat}
     (h_fl_pos : fl₀ ≥ 1)
     (h_fl : s.flowLevel ≥ fl₀)
@@ -2738,7 +2738,7 @@ theorem SavedKeyDoesntResolve.step_of_tokenIndex_ne
     possible, the step preserves position `n_target + 1`. Specialization
     of `step_of_tokenIndex_ne` where the `tokenIndex ≠ n_target`
     hypothesis is vacuous. -/
-theorem SavedKeyDoesntResolve.step_of_simpleKey_not_possible
+lemma SavedKeyDoesntResolve.step_of_simpleKey_not_possible
     {fl₀ n_target : Nat} {s s_mid s' : ScannerState} {n : Nat}
     (h_fl_pos : fl₀ ≥ 1)
     (h_fl : s.flowLevel ≥ fl₀)
@@ -2761,7 +2761,7 @@ theorem SavedKeyDoesntResolve.step_of_simpleKey_not_possible
     falls outside `FlowNoOverwriteAt`'s expressivity. The two wrappers
     together (substrate.e for `m ≤ N`, substrate.f for `m = N + 1`) cover
     the full raw prefix `[0..N + 2)` needed by `.tokenshape.list`. -/
-theorem SavedKeyDoesntResolve_preserves_position_target
+lemma SavedKeyDoesntResolve_preserves_position_target
     {fl₀ n_target : Nat} {s s' : ScannerState} {n : Nat}
     (h_skdr : SavedKeyDoesntResolve fl₀ n_target s n s')
     (h_m : n_target + 1 < s.tokens.size) :
@@ -2830,7 +2830,7 @@ Ships in 4 sub-sections:
     hypothesis and no flow hypothesis. The only token-mutating branches that
     remain are `scanBlockEntry` (`-`) and `scanKey` (`?`), both of which
     preserve the full token prefix. -/
-theorem dispatchBlockIndicators_at_non_colon_preserves_positions (s : ScannerState)
+lemma dispatchBlockIndicators_at_non_colon_preserves_positions (s : ScannerState)
     (c : Char) (s' : ScannerState)
     (h_not_colon : c ≠ ':')
     (h : scanNextToken_dispatchBlockIndicators s c = .ok (some s'))
@@ -2866,7 +2866,7 @@ set_option maxHeartbeats 400000 in
     per-character `c ≠ ':'` hypothesis replacing the `simpleKey` side condition
     at the `dispatchBlockIndicators` case — every other dispatcher already
     preserves the prefix unconditionally. No flow hypothesis is required. -/
-theorem scanNextToken_at_non_colon_preserves_positions (s s' : ScannerState)
+lemma scanNextToken_at_non_colon_preserves_positions (s s' : ScannerState)
     (h_next : scanNextToken s = .ok (some s'))
     (h_not_colon : ∀ s1 c1, scanNextToken_preprocess s = .ok (some (s1, c1)) → c1 ≠ ':')
     (m : Nat) (h_m : m < s.tokens.size) :
@@ -2938,7 +2938,7 @@ inductive NoColonDispatchChain (fl₀ : Nat) :
       NoColonDispatchChain fl₀ s (n + 1) s'
 
 /-- Degrade a `NoColonDispatchChain` to a plain `FlowMonoChain`. -/
-theorem NoColonDispatchChain.toFlowMonoChain {fl₀ : Nat}
+lemma NoColonDispatchChain.toFlowMonoChain {fl₀ : Nat}
     {s s' : ScannerState} {n : Nat}
     (h : NoColonDispatchChain fl₀ s n s') : FlowMonoChain fl₀ s n s' := by
   induction h with
@@ -2946,31 +2946,31 @@ theorem NoColonDispatchChain.toFlowMonoChain {fl₀ : Nat}
   | step h_fl h_snt _h_nc _h_rest ih => exact .step h_fl h_snt ih
 
 /-- Degrade to a plain `ScanChain` (through the FlowMonoChain). -/
-theorem NoColonDispatchChain.toScanChain {fl₀ : Nat}
+lemma NoColonDispatchChain.toScanChain {fl₀ : Nat}
     {s s' : ScannerState} {n : Nat}
     (h : NoColonDispatchChain fl₀ s n s') : ScanChain s n s' :=
   h.toFlowMonoChain.toScanChain
 
 /-- The start state of a `NoColonDispatchChain` has `flowLevel ≥ fl₀`. -/
-theorem NoColonDispatchChain.flowLevel_ge_start {fl₀ : Nat}
+lemma NoColonDispatchChain.flowLevel_ge_start {fl₀ : Nat}
     {s s' : ScannerState} {n : Nat}
     (h : NoColonDispatchChain fl₀ s n s') : s.flowLevel ≥ fl₀ :=
   h.toFlowMonoChain.flowLevel_ge_start
 
 /-- The end state of a `NoColonDispatchChain` has `flowLevel ≥ fl₀`. -/
-theorem NoColonDispatchChain.flowLevel_ge_end {fl₀ : Nat}
+lemma NoColonDispatchChain.flowLevel_ge_end {fl₀ : Nat}
     {s s' : ScannerState} {n : Nat}
     (h : NoColonDispatchChain fl₀ s n s') : s'.flowLevel ≥ fl₀ :=
   h.toFlowMonoChain.flowLevel_ge_end
 
 /-- Token monotonicity for `NoColonDispatchChain` (delegates to FlowMonoChain). -/
-theorem NoColonDispatchChain.tokens_mono {fl₀ : Nat}
+lemma NoColonDispatchChain.tokens_mono {fl₀ : Nat}
     {s s' : ScannerState} {n : Nat}
     (h : NoColonDispatchChain fl₀ s n s') : s'.tokens.size ≥ s.tokens.size :=
   h.toFlowMonoChain.tokens_mono
 
 /-- A single non-`:`-dispatch `scanNextToken` step as a `NoColonDispatchChain`. -/
-theorem NoColonDispatchChain.single {fl₀ : Nat} {s s' : ScannerState}
+lemma NoColonDispatchChain.single {fl₀ : Nat} {s s' : ScannerState}
     (h_snt : scanNextToken s = .ok (some s'))
     (h_fl : s.flowLevel ≥ fl₀)
     (h_fl' : s'.flowLevel ≥ fl₀)
@@ -2979,7 +2979,7 @@ theorem NoColonDispatchChain.single {fl₀ : Nat} {s s' : ScannerState}
   .step h_fl h_snt h_no_colon (.zero h_fl')
 
 /-- Transitivity: concatenate two `NoColonDispatchChain`s with the same floor. -/
-theorem NoColonDispatchChain.trans {fl₀ : Nat}
+lemma NoColonDispatchChain.trans {fl₀ : Nat}
     {s₁ s₂ s₃ : ScannerState} {n₁ n₂ : Nat}
     (h1 : NoColonDispatchChain fl₀ s₁ n₁ s₂)
     (h2 : NoColonDispatchChain fl₀ s₂ n₂ s₃) :

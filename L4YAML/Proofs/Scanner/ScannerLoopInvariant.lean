@@ -55,7 +55,7 @@ and the character-list representation (`toList.map Char.utf8Size`).
 
 /-- For a string constructed from a character list, `utf8ByteSize` equals
     the sum of individual character byte widths. -/
-theorem utf8ByteSize_eq_sum_aux (cs : List Char) :
+lemma utf8ByteSize_eq_sum_aux (cs : List Char) :
     (String.ofList cs).utf8ByteSize = (cs.map Char.utf8Size).sum := by
   show (cs.flatMap String.utf8EncodeChar).toByteArray.size = (cs.map Char.utf8Size).sum
   rw [List.size_toByteArray, List.length_flatMap]
@@ -69,7 +69,7 @@ theorem utf8ByteSize_eq_sum_aux (cs : List Char) :
 /-- For any string, `utf8ByteSize` equals the sum of `utf8Size` over its
     characters.  This connects the byte-level size to the character-level
     representation used by `utf8GetAux`. -/
-theorem utf8ByteSize_eq_sum (s : String) :
+lemma utf8ByteSize_eq_sum (s : String) :
     s.utf8ByteSize = (s.toList.map Char.utf8Size).sum := by
   have h := utf8ByteSize_eq_sum_aux s.toList
   rw [String.ofList_toList] at h; exact h
@@ -87,7 +87,7 @@ These lemmas show how `utf8GetAux` navigates through a character list:
     This is the key induction lemma: it shows that `utf8GetAux` with
     target position `base + sum(cs₁.map utf8Size)` skips exactly past
     `cs₁` and starts scanning `cs₂`.  -/
-theorem utf8GetAux_skip (cs₁ cs₂ : List Char) (base : Nat) :
+lemma utf8GetAux_skip (cs₁ cs₂ : List Char) (base : Nat) :
     String.Pos.Raw.utf8GetAux (cs₁ ++ cs₂)
       (String.Pos.Raw.mk base) (String.Pos.Raw.mk (base + (cs₁.map Char.utf8Size).sum)) =
     String.Pos.Raw.utf8GetAux cs₂
@@ -116,7 +116,7 @@ theorem utf8GetAux_skip (cs₁ cs₂ : List Char) (base : Nat) :
 
 /-- Specialized version of `utf8GetAux_skip` with `base = 0`, matching
     the form that appears after unfolding `Raw.get`. -/
-theorem utf8GetAux_skip_zero (cs₁ cs₂ : List Char) :
+lemma utf8GetAux_skip_zero (cs₁ cs₂ : List Char) :
     String.Pos.Raw.utf8GetAux (cs₁ ++ cs₂)
       (String.Pos.Raw.mk 0) (String.Pos.Raw.mk (cs₁.map Char.utf8Size).sum) =
     String.Pos.Raw.utf8GetAux cs₂
@@ -125,7 +125,7 @@ theorem utf8GetAux_skip_zero (cs₁ cs₂ : List Char) :
   have h := utf8GetAux_skip cs₁ cs₂ 0; simp at h; exact h
 
 /-- At the head position, `utf8GetAux` returns the head character. -/
-theorem utf8GetAux_head (c : Char) (cs : List Char) (i : String.Pos.Raw) :
+lemma utf8GetAux_head (c : Char) (cs : List Char) (i : String.Pos.Raw) :
     String.Pos.Raw.utf8GetAux (c :: cs) i i = c := by
   simp [String.Pos.Raw.utf8GetAux]
 
@@ -143,7 +143,7 @@ Proof that advancing a valid UTF-8 position never overshoots the string end.
     `Raw.get` at position `p` is exactly `c` (via `utf8GetAux_skip` +
     `utf8GetAux_head`), and `c.utf8Size ≤ s₂.utf8ByteSize` since `c` is
     the first character of `s₂`. -/
-theorem raw_next_le_utf8ByteSize (s : String) (p : String.Pos.Raw)
+lemma raw_next_le_utf8ByteSize (s : String) (p : String.Pos.Raw)
     (hv : String.Pos.Raw.IsValid s p) (hlt : p.byteIdx < s.utf8ByteSize) :
     (String.Pos.Raw.next s p).byteIdx ≤ s.utf8ByteSize := by
   -- Decompose: s = s₁ ++ s₂, p = s₁.rawEndPos = ⟨s₁.utf8ByteSize⟩
@@ -180,7 +180,7 @@ When advancing from a valid position within the string, the resulting
 position is also valid (or at the string end). -/
 
 -- Helper: utf8ByteSize of singleton character
-theorem utf8ByteSize_singleton (c : Char) :
+lemma utf8ByteSize_singleton (c : Char) :
     (String.singleton c).utf8ByteSize = c.utf8Size := by
   rw [utf8ByteSize_eq_sum]; simp [String.toList_singleton]
 
@@ -191,7 +191,7 @@ theorem utf8ByteSize_singleton (c : Char) :
     `s₂` is non-empty, it has head `c` and tail `rest`. After `next`, the
     position is `s₁.utf8ByteSize + c.utf8Size = (s₁ ++ singleton c).utf8ByteSize`,
     which witnesses `IsValid` with `s₁' = s₁ ++ singleton c`, `s₂' = ofList rest`. -/
-theorem next_isValid (s : String) (p : String.Pos.Raw)
+lemma next_isValid (s : String) (p : String.Pos.Raw)
     (hv : String.Pos.Raw.IsValid s p) (hlt : p.byteIdx < s.utf8ByteSize) :
     String.Pos.Raw.IsValid s (String.Pos.Raw.next s p) := by
   rw [String.Pos.Raw.isValid_iff_exists_append] at hv ⊢
@@ -225,7 +225,7 @@ theorem next_isValid (s : String) (p : String.Pos.Raw)
 /-- `advance` preserves `IsValid` when the scanner has more input.
     Combined with `advance_offset_le`, this enables threading the
     bound invariant through scanner loops. -/
-theorem advance_preserves_isValid (s : ScannerState)
+lemma advance_preserves_isValid (s : ScannerState)
     (hv : String.Pos.Raw.IsValid s.input ⟨s.offset⟩)
     (hlt : s.offset < s.inputEnd)
     (hend : s.inputEnd = s.input.utf8ByteSize) :
@@ -243,7 +243,7 @@ theorem advance_preserves_isValid (s : ScannerState)
 
 /-- When `offset = inputEnd`, the position is valid (it's the end-of-string
     position, witnessed by s₁ = input, s₂ = ""). -/
-theorem isValid_at_inputEnd (s : ScannerState)
+lemma isValid_at_inputEnd (s : ScannerState)
     (h_eq : s.offset = s.inputEnd)
     (hend : s.inputEnd = s.input.utf8ByteSize) :
     String.Pos.Raw.IsValid s.input ⟨s.offset⟩ := by
@@ -251,12 +251,12 @@ theorem isValid_at_inputEnd (s : ScannerState)
   exact ⟨s.input, "", by simp, by rw [h_eq, hend]; rfl⟩
 
 /-- Position 0 is always valid (witnessed by s₁ = "", s₂ = s). -/
-theorem isValid_at_zero (s : String) : String.Pos.Raw.IsValid s ⟨0⟩ := by
+lemma isValid_at_zero (s : String) : String.Pos.Raw.IsValid s ⟨0⟩ := by
   rw [String.Pos.Raw.isValid_iff_exists_append]
   exact ⟨"", s, by simp, rfl⟩
 
 /-- When advance is identity (offset ≥ inputEnd), IsValid is preserved. -/
-theorem advance_isValid_of_ge (s : ScannerState)
+lemma advance_isValid_of_ge (s : ScannerState)
     (hv : String.Pos.Raw.IsValid s.input ⟨s.offset⟩)
     (hge : s.offset ≥ s.inputEnd) :
     String.Pos.Raw.IsValid s.advance.input ⟨s.advance.offset⟩ := by
@@ -266,7 +266,7 @@ theorem advance_isValid_of_ge (s : ScannerState)
   case isFalse _ => exact hv
 
 /-- Combined: advance preserves IsValid regardless of whether it advances. -/
-theorem advance_isValid (s : ScannerState)
+lemma advance_isValid (s : ScannerState)
     (hv : String.Pos.Raw.IsValid s.input ⟨s.offset⟩)
     (hend : s.inputEnd = s.input.utf8ByteSize) :
     String.Pos.Raw.IsValid s.advance.input ⟨s.advance.offset⟩ := by
@@ -280,7 +280,7 @@ Application of `raw_next_le_utf8ByteSize` to the scanner's `advance` function.
 -/
 
 /-- `advance` preserves the `indents` field (it only touches offset/line/col). -/
-theorem advance_indents (s : ScannerState) :
+lemma advance_indents (s : ScannerState) :
     s.advance.indents = s.indents := by
   unfold ScannerState.advance
   split <;> simp_all
@@ -289,7 +289,7 @@ theorem advance_indents (s : ScannerState) :
   · split <;> rfl
 
 /-- `advance` preserves the `flowLevel` field. -/
-theorem advance_flowLevel (s : ScannerState) :
+lemma advance_flowLevel (s : ScannerState) :
     s.advance.flowLevel = s.flowLevel := by
   unfold ScannerState.advance
   split <;> simp_all
@@ -298,7 +298,7 @@ theorem advance_flowLevel (s : ScannerState) :
   · split <;> rfl
 
 /-- `advance` preserves the `flowStack` field. -/
-theorem advance_flowStack (s : ScannerState) :
+lemma advance_flowStack (s : ScannerState) :
     s.advance.flowStack = s.flowStack := by
   unfold ScannerState.advance
   split <;> simp_all
@@ -307,7 +307,7 @@ theorem advance_flowStack (s : ScannerState) :
   · split <;> rfl
 
 /-- `advance` preserves the `simpleKeyStack` field. -/
-theorem advance_simpleKeyStack (s : ScannerState) :
+lemma advance_simpleKeyStack (s : ScannerState) :
     s.advance.simpleKeyStack = s.simpleKeyStack := by
   unfold ScannerState.advance
   split <;> simp_all
@@ -316,7 +316,7 @@ theorem advance_simpleKeyStack (s : ScannerState) :
   · split <;> rfl
 
 /-- `advance` preserves the `inputEnd` field. -/
-theorem advance_inputEnd (s : ScannerState) :
+lemma advance_inputEnd (s : ScannerState) :
     s.advance.inputEnd = s.inputEnd := by
   unfold ScannerState.advance
   split <;> simp_all
@@ -325,7 +325,7 @@ theorem advance_inputEnd (s : ScannerState) :
   · split <;> rfl
 
 /-- `advance` preserves the `input` field. -/
-theorem advance_input (s : ScannerState) :
+lemma advance_input (s : ScannerState) :
     s.advance.input = s.input := by
   unfold ScannerState.advance
   split <;> simp_all
@@ -339,7 +339,7 @@ theorem advance_input (s : ScannerState) :
     This is the main loop invariant: combined with `advance` preserving
     indents, flowLevel, and flowStack, it shows that `advance` preserves
     all four conjuncts of `WellFormed`. -/
-theorem advance_offset_le (s : ScannerState)
+lemma advance_offset_le (s : ScannerState)
     (hv : String.Pos.Raw.IsValid s.input ⟨s.offset⟩)
     (hwf : s.offset ≤ s.inputEnd)
     (hend : s.inputEnd = s.input.utf8ByteSize) :
@@ -360,7 +360,7 @@ theorem advance_offset_le (s : ScannerState)
 
 /-- `advance` preserves `WellFormed`, given that the current offset is
     at a valid UTF-8 character boundary and `inputEnd = input.utf8ByteSize`. -/
-theorem advance_preserves_wellFormed (s : ScannerState)
+lemma advance_preserves_wellFormed (s : ScannerState)
     (hwf : s.WellFormed)
     (hv : String.Pos.Raw.IsValid s.input ⟨s.offset⟩)
     (hend : s.inputEnd = s.input.utf8ByteSize) :
@@ -384,7 +384,7 @@ theorem advance_preserves_wellFormed (s : ScannerState)
 /-! ## §5  Emit Preserves WellFormed -/
 
 /-- `emit` preserves all six `WellFormed` conjuncts (it only modifies `tokens`). -/
-theorem emit_preserves_wellFormed (s : ScannerState) (tok : YamlToken)
+lemma emit_preserves_wellFormed (s : ScannerState) (tok : YamlToken)
     (hwf : s.WellFormed) : (s.emit tok).WellFormed := by
   obtain ⟨hind, hflow, hsk, hoff, hmono, hsent⟩ := hwf
   refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩

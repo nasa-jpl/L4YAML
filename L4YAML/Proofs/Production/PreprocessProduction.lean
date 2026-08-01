@@ -39,7 +39,7 @@ open L4YAML.Proofs.NodeProduction
 /-! ## §1 Helpers -/
 
 /-- `GStar SSWhite` gives `SSeparateInLine` (zero-width startOfLine if nil). -/
-theorem GStar_SSWhite_to_SSeparateInLine (sp sp' : SurfPos)
+lemma GStar_SSWhite_to_SSeparateInLine (sp sp' : SurfPos)
     (h_ws : GStar SSWhite sp sp') :
     SSeparateInLine sp sp' := by
   by_cases h : sp = sp'
@@ -47,7 +47,7 @@ theorem GStar_SSWhite_to_SSeparateInLine (sp sp' : SurfPos)
   · exact .whites sp sp' (GStar_to_GPlus h_ws h)
 
 /-- Strengthened `consumeNewline`: produces `SBBreak` and land at col=0. -/
-theorem consumeNewline_break_prod (sc : ScannerState) (sp : SurfPos) (c : Char)
+lemma consumeNewline_break_prod (sc : ScannerState) (sp : SurfPos) (c : Char)
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek : sc.peek? = some c)
     (hlb : isLineBreakBool c = true) :
@@ -88,10 +88,10 @@ theorem consumeNewline_break_prod (sc : ScannerState) (sp : SurfPos) (c : Char)
     is therefore col-monotone. When both endpoints are at col=0,
     GStar SSWhite and GOpt SCNbCommentText must be nil/none. -/
 
-theorem sswhite_col_succ (sp sp' : SurfPos) (h : SSWhite sp sp') : sp'.col = sp.col + 1 := by
+lemma sswhite_col_succ (sp sp' : SurfPos) (h : SSWhite sp sp') : sp'.col = sp.col + 1 := by
   cases h <;> rfl
 
-theorem gstar_sswhite_col_ge (sp sp' : SurfPos) (h : GStar SSWhite sp sp') :
+lemma gstar_sswhite_col_ge (sp sp' : SurfPos) (h : GStar SSWhite sp sp') :
     sp'.col ≥ sp.col := by
   induction h with
   | nil => exact Nat.le_refl _
@@ -100,7 +100,7 @@ theorem gstar_sswhite_col_ge (sp sp' : SurfPos) (h : GStar SSWhite sp sp') :
     omega
 
 /-- If GStar SSWhite starts and ends at the same column, it must be nil. -/
-theorem gstar_sswhite_col_eq_nil (sp sp' : SurfPos)
+lemma gstar_sswhite_col_eq_nil (sp sp' : SurfPos)
     (hcol : sp.col = sp'.col) (h : GStar SSWhite sp sp') : sp' = sp := by
   cases h with
   | nil => rfl
@@ -110,10 +110,10 @@ theorem gstar_sswhite_col_eq_nil (sp sp' : SurfPos)
     have h2 := gstar_sswhite_col_ge s₁ sp' hrest
     omega
 
-theorem snbchar_col_succ (sp sp' : SurfPos) (h : SNbChar sp sp') : sp'.col = sp.col + 1 := by
+lemma snbchar_col_succ (sp sp' : SurfPos) (h : SNbChar sp sp') : sp'.col = sp.col + 1 := by
   cases h <;> rfl
 
-theorem gstar_snbchar_col_ge (sp sp' : SurfPos) (h : GStar SNbChar sp sp') :
+lemma gstar_snbchar_col_ge (sp sp' : SurfPos) (h : GStar SNbChar sp sp') :
     sp'.col ≥ sp.col := by
   induction h with
   | nil => exact Nat.le_refl _
@@ -122,7 +122,7 @@ theorem gstar_snbchar_col_ge (sp sp' : SurfPos) (h : GStar SNbChar sp sp') :
     omega
 
 /-- SCNbCommentText strictly increments column (consumes '#' + body). -/
-theorem scnb_comment_col_gt (sp sp' : SurfPos)
+lemma scnb_comment_col_gt (sp sp' : SurfPos)
     (h : SCNbCommentText sp sp') : sp'.col > sp.col := by
   cases h
   rename_i rest col hstar
@@ -130,7 +130,7 @@ theorem scnb_comment_col_gt (sp sp' : SurfPos)
   dsimp only [] at this ⊢; omega
 
 /-- GOpt SCNbCommentText at same column implies none. -/
-theorem gopt_comment_col_eq_none (sp sp' : SurfPos)
+lemma gopt_comment_col_eq_none (sp sp' : SurfPos)
     (hcol : sp.col = sp'.col) (h : GOpt SCNbCommentText sp sp') : sp' = sp := by
   cases h
   · rfl
@@ -144,7 +144,7 @@ theorem gopt_comment_col_eq_none (sp sp' : SurfPos)
     (EOF/end-of-input) or `some c` where `c` is a line break. -/
 
 /-- After `collectCommentTextLoop`, the next character is a line break or EOF. -/
-theorem collectCommentTextLoop_stops_at_break_or_eof
+lemma collectCommentTextLoop_stops_at_break_or_eof
     (sc : ScannerState) (text : String) (fuel : Nat)
     (hfuel : fuel ≥ sc.inputEnd - sc.offset) :
     let s' := (collectCommentTextLoop sc text fuel).2
@@ -178,7 +178,7 @@ theorem collectCommentTextLoop_stops_at_break_or_eof
     been consumed, the resulting peek would be break or EOF. -/
 
 /-- `skipToContentComment sc = sc` when the output peek is non-break content. -/
-theorem skipToContentComment_identity_of_content_peek
+lemma skipToContentComment_identity_of_content_peek
     (sc : ScannerState) (c : Char)
     (hpeek : (skipToContentComment sc).peek? = some c)
     (hnlb : ¬(isLineBreakBool c = true)) :
@@ -255,7 +255,7 @@ theorem skipToContentComment_identity_of_content_peek
 -- BOM grammar gap (now closed): comment preceding whitespace at any column.
 -- With column-independent SSeparateInLine.startOfLine, zero-width separation
 -- suffices to build SSBComment.withSep.
-theorem bom_noWhitespace_ssbcomment (sp sp_cmt sp_end : SurfPos)
+lemma bom_noWhitespace_ssbcomment (sp sp_cmt sp_end : SurfPos)
     (h_cmtv : SCNbCommentText sp sp_cmt) (h_break : SBComment sp_cmt sp_end) :
     SSBComment sp sp_end :=
   .withSep sp sp sp_cmt sp_end (.startOfLine sp) (.some sp sp_cmt h_cmtv) h_break
@@ -276,7 +276,7 @@ theorem bom_noWhitespace_ssbcomment (sp sp_cmt sp_end : SurfPos)
     `sp_mid` is where comment lines end; `sp_ws` is after trailing whitespace;
     `sp'` is after optional comment. The gap `sp_mid → sp_ws → sp'` is the
     final iteration’s whitespace + comment that is NOT part of `GStar SLComment`. -/
-theorem skipToContentLoop_col0_prod
+lemma skipToContentLoop_col0_prod
     (sc : ScannerState) (sp : SurfPos) (fuel : Nat) (s_result : ScannerState)
     (hcorr : ScannerSurfCorr sc sp)
     (hcol : sp.col = 0)
@@ -371,7 +371,7 @@ theorem skipToContentLoop_col0_prod
                Or.inr hpeek_none⟩
 
 /-- Top-level: `skipToContent` at col=0 produces `GStar SLComment` + correspondence. -/
-theorem skipToContent_col0_prod
+lemma skipToContent_col0_prod
     (sc : ScannerState) (sp : SurfPos) (s_result : ScannerState)
     (hcorr : ScannerSurfCorr sc sp)
     (hcol : sp.col = 0)
@@ -388,7 +388,7 @@ theorem skipToContent_col0_prod
 /-- `skipToContent` at col=0 produces `SLDocumentPrefix` + correspondence.
     The `sp_mid` is where the prefix ends (after comment lines);
     `sp'` is the scanner position (after trailing whitespace). -/
-theorem skipToContent_documentPrefix_prod
+lemma skipToContent_documentPrefix_prod
     (sc : ScannerState) (sp : SurfPos) (s_result : ScannerState)
     (hcorr : ScannerSurfCorr sc sp)
     (hcol : sp.col = 0)
@@ -407,7 +407,7 @@ theorem skipToContent_documentPrefix_prod
     `SSBComment sp sp_after_break → skipToContentLoop → SSLComments sp sp'`. -/
 
 /-- `skipToContentLoop` after a break produces `SSLComments`. -/
-theorem skipToContentLoop_after_break_prod
+lemma skipToContentLoop_after_break_prod
     (sp : SurfPos) (sp_after_break : SurfPos)
     (sc : ScannerState) (fuel : Nat) (s_result : ScannerState)
     (h_sbcomment : SSBComment sp sp_after_break)
@@ -427,7 +427,7 @@ theorem skipToContentLoop_after_break_prod
 /-- `skipToContentLoop` at any column → `SSLComments` OR flat whitespace.
     Returns a disjunction: if a break was consumed, produces full `SSLComments`
     with `sp_mid.col = 0`; if not, `sp_mid = sp` (loop stopped on first iteration). -/
-theorem skipToContentLoop_anyCol_prod
+lemma skipToContentLoop_anyCol_prod
     (sc : ScannerState) (sp : SurfPos) (fuel : Nat) (s_result : ScannerState)
     (hcorr : ScannerSurfCorr sc sp)
     (hfuel : fuel ≥ sc.inputEnd - sc.offset + 1)
@@ -538,7 +538,7 @@ theorem skipToContentLoop_anyCol_prod
                  Or.inr hpeek_none⟩
 
 /-- `skipToContentLoop` starting at col=0 produces `SSLComments`. -/
-theorem skipToContentLoop_startOfLine_prod
+lemma skipToContentLoop_startOfLine_prod
     (sc : ScannerState) (sp : SurfPos) (fuel : Nat) (s_result : ScannerState)
     (hcorr : ScannerSurfCorr sc sp)
     (hcol : sp.col = 0)
@@ -555,7 +555,7 @@ theorem skipToContentLoop_startOfLine_prod
   exact ⟨sp_mid, sp_ws, sp', SSLComments.startOfLine chars sp_mid hstar_lc, hcol_mid, hws, hcmt, hcorr', h_pk⟩
 
 /-- `skipToContent` starting at col=0 produces `SSLComments`. -/
-theorem skipToContent_startOfLine_comments_prod
+lemma skipToContent_startOfLine_comments_prod
     (sc : ScannerState) (sp : SurfPos) (s_result : ScannerState)
     (hcorr : ScannerSurfCorr sc sp)
     (hcol : sp.col = 0)
@@ -568,7 +568,7 @@ theorem skipToContent_startOfLine_comments_prod
   exact skipToContentLoop_startOfLine_prod sc sp _ s_result hcorr hcol (by omega) hok
 
 /-- `skipToContent` at any column → `SSLComments` (with col=0) OR flat whitespace. -/
-theorem skipToContent_anyCol_prod
+lemma skipToContent_anyCol_prod
     (sc : ScannerState) (sp : SurfPos) (s_result : ScannerState)
     (hcorr : ScannerSurfCorr sc sp)
     (hok : skipToContent sc = .ok s_result) :
@@ -606,7 +606,7 @@ theorem skipToContent_anyCol_prod
 /-- Convert `SSBComment` to `SLComment` at any column.
     `SSBComment.withSep` already has `SSeparateInLine`; `SSBComment.noSep`
     gets `SSeparateInLine.startOfLine` (zero-width, column-independent). -/
-theorem SSBComment_to_SLComment (sp sp' : SurfPos)
+lemma SSBComment_to_SLComment (sp sp' : SurfPos)
     (h : SSBComment sp sp') : SLComment sp sp' := by
   cases h
   case withSep s₁ s₂ hsep hopt hbreak =>
@@ -619,7 +619,7 @@ theorem SSBComment_to_SLComment (sp sp' : SurfPos)
     `SSLComments.startOfLine` already carries `GStar SLComment`;
     `SSLComments.withComment` has `SSBComment` + `GStar SLComment`,
     and the `SSBComment` converts to `SLComment`. -/
-theorem SSLComments_to_GStar (sp sp' : SurfPos)
+lemma SSLComments_to_GStar (sp sp' : SurfPos)
     (h : SSLComments sp sp') : GStar SLComment sp sp' := by
   cases h
   case withComment s₁ hsbc hstar =>
@@ -638,7 +638,7 @@ theorem SSLComments_to_GStar (sp sp' : SurfPos)
       `SBComment.eof`, wraps in `SSLComments.startOfLine`.
     - Non-break iteration (peek? = some, not break): contradicts `heof`
       since the content character implies `hasMore`. -/
-theorem skipToContentLoop_eof_ssl_comments_col0
+lemma skipToContentLoop_eof_ssl_comments_col0
     (sc : ScannerState) (sp : SurfPos) (fuel : Nat) (s_result : ScannerState)
     (hcorr : ScannerSurfCorr sc sp)
     (hcol : sp.col = 0)
@@ -770,7 +770,7 @@ theorem skipToContentLoop_eof_ssl_comments_col0
           rfl⟩
 
 /-- Top-level: `skipToContent` at col=0, reaching EOF, produces `SSLComments`. -/
-theorem skipToContent_eof_ssl_comments_col0
+lemma skipToContent_eof_ssl_comments_col0
     (sc : ScannerState) (sp : SurfPos) (s_result : ScannerState)
     (hcorr : ScannerSurfCorr sc sp)
     (hcol : sp.col = 0)
@@ -786,7 +786,7 @@ theorem skipToContent_eof_ssl_comments_col0
     EOF theorem for `skipToContent` at any starting column. -/
 
 -- Append one SLComment to SSLComments.
-theorem SSLComments_snoc {sp sp_mid sp' : SurfPos}
+lemma SSLComments_snoc {sp sp_mid sp' : SurfPos}
     (h_ssl : SSLComments sp sp_mid) (h_lc : SLComment sp_mid sp') :
     SSLComments sp sp' := by
   cases h_ssl
@@ -796,7 +796,7 @@ theorem SSLComments_snoc {sp sp_mid sp' : SurfPos}
     exact .startOfLine chars _ (GStar_trans hgstar (.cons _ _ _ h_lc (.nil _)))
 
 -- `skipToContent` reaching EOF produces `SSLComments` at any starting column.
-theorem skipToContent_eof_ssl_comments
+lemma skipToContent_eof_ssl_comments
     (sc : ScannerState) (sp : SurfPos) (s_result : ScannerState)
     (hcorr : ScannerSurfCorr sc sp)
     (hok : skipToContent sc = .ok s_result)
@@ -859,7 +859,7 @@ theorem skipToContent_eof_ssl_comments
     When it returns with `peek? = some c`, `c` is NOT a line break. -/
 
 -- skipToContentLoop returns at non-break chars (given sufficient fuel).
-theorem skipToContentLoop_peek_not_break
+lemma skipToContentLoop_peek_not_break
     (sc : ScannerState) (fuel : Nat) (s_result : ScannerState) (c : Char)
     (hfuel : fuel ≥ sc.inputEnd - sc.offset + 1)
     (hok : skipToContentLoop sc fuel = .ok s_result)
@@ -915,7 +915,7 @@ theorem skipToContentLoop_peek_not_break
         rw [hpeek_none] at hpeek; exact absurd hpeek (by simp)
 
 -- skipToContent returns at non-break chars.
-theorem skipToContent_peek_not_break
+lemma skipToContent_peek_not_break
     (sc s_result : ScannerState) (c : Char)
     (hok : skipToContent sc = .ok s_result)
     (hpeek : s_result.peek? = some c) :

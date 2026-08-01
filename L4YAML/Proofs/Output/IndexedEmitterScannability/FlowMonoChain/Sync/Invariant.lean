@@ -94,7 +94,7 @@ verifies the lockstep via `omega` on the size-push/pop tracking
 identities. -/
 
 set_option maxHeartbeats 800000 in
-theorem scanNextTokenIx_dispatchFlowIndicators_preserves_sync
+lemma scanNextTokenIx_dispatchFlowIndicators_preserves_sync
     (s : ScannerStateIx input) (c : Char) (s' : ScannerStateIx input)
     (h : scanNextTokenIx_dispatchFlowIndicators s c = .ok (some s'))
     (h_sync : s.simpleKeyStack.size ≥ s.flowLevel) :
@@ -147,7 +147,7 @@ if-update (preserves both via record analysis), and the flow
 indicator dispatcher (preserves the joint inequality via §1). -/
 
 set_option maxHeartbeats 1200000 in
-theorem scanNextTokenIx_preserves_sync
+lemma scanNextTokenIx_preserves_sync
     (s s' : ScannerStateIx input)
     (h_next : scanNextTokenIx s = .ok (some s'))
     (h_sync : s.simpleKeyStack.size ≥ s.flowLevel) :
@@ -246,7 +246,7 @@ that actually reads the invariant is `scanValueIx_preserves_prefix`,
 and it requires only the simpleKey-bound projection. -/
 
 set_option maxHeartbeats 400000 in
-theorem scanNextTokenIx_preserves_prefix_of_simpleKey
+lemma scanNextTokenIx_preserves_prefix_of_simpleKey
     (s s' : ScannerStateIx input) (n : Nat) (h_n : n ≤ s.tokens.size)
     (h_sk : s.simpleKey.possible = true → s.simpleKey.tokenIndex ≥ n)
     (h_ok : scanNextTokenIx s = .ok (some s'))
@@ -394,7 +394,7 @@ theorem scanNextTokenIx_preserves_prefix_of_simpleKey
 /-- Bundle: per-step prefix preservation + `SimpleKeyAboveFloorIx`
     maintenance through one `scanNextTokenIx` call. Indexed twin of
     legacy `scanNextToken_prefix_and_skFloor_inv` (line 1866). -/
-theorem scanNextTokenIx_prefix_and_SKAFIx_inv
+lemma scanNextTokenIx_prefix_and_SKAFIx_inv
     (s s' : ScannerStateIx input)
     (h_next : scanNextTokenIx s = .ok (some s'))
     (n₀ fl₀ : Nat) (h_n₀ : n₀ ≤ s.tokens.size)
@@ -416,7 +416,7 @@ Token-prefix preservation through a `FlowMonoChainIx`, under
 (line 2022) — induct on the chain, threading the SKAFIx invariant and
 the sync invariant through each step. -/
 
-theorem FlowMonoChainIx_preserves_raw_prefix
+lemma FlowMonoChainIx_preserves_raw_prefix
     {s s' : ScannerStateIx input} {n fl₀ : Nat}
     (h_fmc : FlowMonoChainIx fl₀ s n s')
     (n₀ : Nat) (h_n₀ : n₀ ≤ s.tokens.size)
@@ -449,7 +449,7 @@ legacy `scanFiltered_of_chain` (line 2046) and the `_eq` variant
 The BOM precondition `(ScannerStateIx.mk' input).peek? ≠ some '﻿'`
 is needed to skip the optional advance in `scanIx`. -/
 
-theorem scanFilteredIx_of_chain (input : String)
+lemma scanFilteredIx_of_chain (input : String)
     (s₀ s_final : ScannerStateIx input) (n : Nat)
     (h_s0 : s₀ = (ScannerStateIx.mk' input).emit YamlToken.streamStart)
     (h_no_bom : (ScannerStateIx.mk' input).peek? ≠ some '﻿')
@@ -486,7 +486,7 @@ theorem scanFilteredIx_of_chain (input : String)
 
 /-- **Equality version**: gives the exact filtered token array from a
     `ScanChainIx`. Mirrors legacy `scanFiltered_of_chain_eq` (line 2079). -/
-theorem scanFilteredIx_of_chain_eq (input : String)
+lemma scanFilteredIx_of_chain_eq (input : String)
     (s₀ s_final : ScannerStateIx input) (n : Nat)
     (h_s0 : s₀ = (ScannerStateIx.mk' input).emit YamlToken.streamStart)
     (h_no_bom : (ScannerStateIx.mk' input).peek? ≠ some '﻿')
@@ -526,7 +526,7 @@ chain at the first state. -/
 /-- If two states produce the same preprocessing result, then
     `scanNextTokenIx` returns the same value on both. Indexed twin of
     legacy `scanNextToken_eq_of_preprocess` (line 2107). -/
-theorem scanNextTokenIx_eq_of_preprocess (s₁ s₂ : ScannerStateIx input)
+lemma scanNextTokenIx_eq_of_preprocess (s₁ s₂ : ScannerStateIx input)
     (h : scanNextTokenIx_preprocess s₁ = scanNextTokenIx_preprocess s₂) :
     scanNextTokenIx s₁ = scanNextTokenIx s₂ := by
   unfold scanNextTokenIx
@@ -537,7 +537,7 @@ theorem scanNextTokenIx_eq_of_preprocess (s₁ s₂ : ScannerStateIx input)
     second has a `ScanChainIx` of length ≥ 1, then the first does
     too. Indexed twin of legacy `ScanChain_of_scanNextToken_eq`
     (line 2116). -/
-theorem ScanChainIx_of_scanNextTokenIx_eq {s₁ s₂ s' : ScannerStateIx input} {n : Nat}
+lemma ScanChainIx_of_scanNextTokenIx_eq {s₁ s₂ s' : ScannerStateIx input} {n : Nat}
     (h_eq : scanNextTokenIx s₁ = scanNextTokenIx s₂)
     (h_chain : ScanChainIx s₂ (n + 1) s') :
     ScanChainIx s₁ (n + 1) s' := by
@@ -548,7 +548,7 @@ theorem ScanChainIx_of_scanNextTokenIx_eq {s₁ s₂ s' : ScannerStateIx input} 
 /-- `FlowMonoChainIx` version of `ScanChainIx_of_scanNextTokenIx_eq`.
     Indexed twin of legacy `FlowMonoChain_of_scanNextToken_eq`
     (line 2127). -/
-theorem FlowMonoChainIx_of_scanNextTokenIx_eq {fl₀ : Nat}
+lemma FlowMonoChainIx_of_scanNextTokenIx_eq {fl₀ : Nat}
     {s₁ s₂ s' : ScannerStateIx input} {n : Nat}
     (h_eq : scanNextTokenIx s₁ = scanNextTokenIx s₂)
     (h_fl : s₁.flowLevel ≥ fl₀)
@@ -569,7 +569,7 @@ single `scanNextTokenIx = .ok (some s_result)` conclusion. -/
     `checkBlockFlowIndent` succeeds, and the flow indicator dispatch
     produces a result, then `scanNextTokenIx` returns that result.
     Indexed twin of legacy `scanNextToken_via_flow_dispatch` (line 2147). -/
-theorem scanNextTokenIx_via_flow_dispatch
+lemma scanNextTokenIx_via_flow_dispatch
     (s s_pp s_ad s_result : ScannerStateIx input) (c : Char)
     (h_pp : scanNextTokenIx_preprocess s = .ok (some (s_pp, c)))
     (h_struct : scanNextTokenIx_dispatchStructural s_pp c = .ok none)

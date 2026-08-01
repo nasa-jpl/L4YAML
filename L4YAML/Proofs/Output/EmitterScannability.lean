@@ -100,20 +100,20 @@ affect content equivalence for scalars.
 -/
 
 -- resolveAliasesOrdered returns scalars unchanged (whatever binding it makes)
-theorem resolveAliasesOrdered_fst_scalar (s : Scalar)
+lemma resolveAliasesOrdered_fst_scalar (s : Scalar)
     (anchors : Array (String × YamlValue)) (env : List (String × YamlValue)) :
     ((YamlValue.scalar s).resolveAliasesOrdered anchors env).fst = .scalar s := by
   simp only [YamlValue.resolveAliasesOrdered]
 
 -- compose on a scalar document preserves the content field
-theorem compose_scalar_content (doc : YamlDocument) (s : Scalar)
+lemma compose_scalar_content (doc : YamlDocument) (s : Scalar)
     (h_val : doc.value = .scalar s) :
     (doc.compose).value = .scalar { s with anchor := none } := by
   unfold YamlDocument.compose; dsimp only []
   rw [h_val, resolveAliasesOrdered_fst_scalar, stripAnchors_scalar]
 
 -- contentEq through compose for scalars: original vs composed
-theorem contentEq_scalar_compose (s_orig : Scalar) (s_parsed : Scalar)
+lemma contentEq_scalar_compose (s_orig : Scalar) (s_parsed : Scalar)
     (h_content : s_orig.content = s_parsed.content) :
     contentEq (.scalar s_orig) (.scalar { s_parsed with anchor := none }) = true := by
   exact contentEq_scalar_content s_orig { s_parsed with anchor := none } h_content
@@ -122,7 +122,7 @@ theorem contentEq_scalar_compose (s_orig : Scalar) (s_parsed : Scalar)
     exactly 3 tokens: `streamStart`, `scalar content .doubleQuoted`, `streamEnd`.
     This follows from the scanner producing `[streamStart, ph, ph, scalar, streamEnd]`
     (where `ph` are saveSimpleKey placeholders) and filtering removes placeholders. -/
-theorem scanFiltered_emitScalar_vals (content : String) (tokens : Array (Positioned YamlToken))
+lemma scanFiltered_emitScalar_vals (content : String) (tokens : Array (Positioned YamlToken))
     (h_scan : scanFiltered (emitScalar content) = .ok tokens) :
     tokens.size = 3 ∧ tokens[0]!.val = .streamStart ∧
     tokens[1]!.val = .scalar content .doubleQuoted ∧ tokens[2]!.val = .streamEnd := by
@@ -193,7 +193,7 @@ theorem scanFiltered_emitScalar_vals (content : String) (tokens : Array (Positio
 -- `parseStream` produces exactly one document whose value is
 -- `YamlValue.scalar { content := content, style := .doubleQuoted }`.
 set_option maxHeartbeats 6400000 in
-theorem parseStream_three_tokens_scalar (content : String)
+lemma parseStream_three_tokens_scalar (content : String)
     (tokens : Array (Positioned YamlToken))
     (h_sz : tokens.size = 3)
     (h_t0 : tokens[0]!.val = .streamStart)
@@ -295,7 +295,7 @@ theorem parseStream_three_tokens_scalar (content : String)
 /-- **parseYamlRaw on emitScalar produces scalar value**: When `parseYamlRaw`
     succeeds on emitter scalar output, the first document's value is a scalar
     with the original content. -/
-theorem parseYamlRaw_emitScalar_value (content : String)
+lemma parseYamlRaw_emitScalar_value (content : String)
     (raw_docs : Array YamlDocument)
     (h_raw : parseYamlRaw (emitScalar content) = .ok raw_docs) :
     ∃ s : Scalar, raw_docs[0]!.value = .scalar s ∧ s.content = content := by
@@ -320,7 +320,7 @@ theorem parseYamlRaw_emitScalar_value (content : String)
     `compose_scalar_content` (compose leaves an anchor-free scalar unchanged).
     RIGHT SIDE of the per-element locality equation for scalar elements;
     verified-but-unconsumed until the outer-parse half (R595) lands. -/
-theorem parseYamlRaw_emitScalar_compose_value (content : String)
+lemma parseYamlRaw_emitScalar_compose_value (content : String)
     (rd : Array YamlDocument)
     (h_raw : parseYamlRaw (emitScalar content) = .ok rd)
     (h_sz : rd.size = 1) :
@@ -350,7 +350,7 @@ theorem parseYamlRaw_emitScalar_compose_value (content : String)
     pins the standalone result.  Position-generic (no constraint on `ps.pos`): the parser-side LEAF of
     the per-element span-locality.  Verified-but-unconsumed until the loop-locality producer threads it
     through `parseFlowSequenceLoop_push_pointwise` to close the Front-B sequence sorry. -/
-theorem parseNode_scalar_dq_eq_standalone
+lemma parseNode_scalar_dq_eq_standalone
     (ps : ParseState) (fuel : Nat)
     (content : String) (v : YamlValue) (ps' : ParseState)
     (h_peek : ps.peek? = some (.scalar content .doubleQuoted))
@@ -371,7 +371,7 @@ theorem parseNode_scalar_dq_eq_standalone
     - **Non-empty case**: proven via the `FlowSubrangesOk` structure chain
       (Track A, closed 2026-07-03) — each loop iteration consumes ≥1 token via
       `parseNode`, so fuel = `4 * tokens.size + 4` suffices. -/
-theorem parseStream_emitSequence (style : CollectionStyle) (items : Array YamlValue)
+lemma parseStream_emitSequence (style : CollectionStyle) (items : Array YamlValue)
     (tag anchor : Option String) {tokens : Array (Positioned YamlToken)}
     (h_scan : Scanner.scanFiltered (emit (.sequence style items tag anchor)) = .ok tokens)
     (h_items : ∀ (i : Fin items.size), Grammable items[i] (false || style == CollectionStyle.flow)) :
@@ -595,7 +595,7 @@ theorem parseStream_emitSequence (style : CollectionStyle) (items : Array YamlVa
       concrete 4-token stream `[streamStart, flowMappingStart, flowMappingEnd, streamEnd]`.
     - **Non-empty case**: proven via the `FlowSubrangesOk` structure chain
       (Track A, closed 2026-07-03), analogous to `parseStream_emitSequence`. -/
-theorem parseStream_emitMapping (style : CollectionStyle) (pairs : Array (YamlValue × YamlValue))
+lemma parseStream_emitMapping (style : CollectionStyle) (pairs : Array (YamlValue × YamlValue))
     (tag anchor : Option String) {tokens : Array (Positioned YamlToken)}
     (h_scan : Scanner.scanFiltered (emit (.mapping style pairs tag anchor)) = .ok tokens)
     (hk : ∀ (i : Fin pairs.size), Grammable pairs[i].fst (false || style == CollectionStyle.flow))
@@ -815,7 +815,7 @@ theorem parseStream_emitMapping (style : CollectionStyle) (pairs : Array (YamlVa
     `parseStream` also succeeds. The emitter's restricted output format
     (double-quoted scalars, flow-only collections, single implicit document)
     avoids all `parseStream` error conditions. -/
-theorem parseStream_accepts_emit_tokens (v : YamlValue) (hg : Grammable v false)
+lemma parseStream_accepts_emit_tokens (v : YamlValue) (hg : Grammable v false)
     (tokens : Array (Positioned YamlToken))
     (h_scan : Scanner.scanFiltered (emit v) = .ok tokens) :
     ∃ docs, parseStream tokens = .ok docs := by
@@ -842,7 +842,7 @@ theorem parseStream_accepts_emit_tokens (v : YamlValue) (hg : Grammable v false)
     multiple-document output), so `parseStreamLoop` produces `#[doc]`.
     This is needed for the universal round-trip theorem which asserts
     `docs.size = 1`. -/
-theorem emit_produces_single_document (v : YamlValue) (hg : Grammable v false)
+lemma emit_produces_single_document (v : YamlValue) (hg : Grammable v false)
     (docs : Array YamlDocument)
     (h : parseYamlRaw (emit v) = .ok docs) :
     docs.size = 1 := by
@@ -876,7 +876,7 @@ theorem emit_produces_single_document (v : YamlValue) (hg : Grammable v false)
     Composes Step 1 (`emit_produces_valid_yaml`: scanner acceptance) with
     Step 2 (`parseStream_accepts_emit_tokens`: parser acceptance) via
     `parseYamlRaw_pipeline` (scan + parse → pipeline success). -/
-theorem emit_parse_succeeds (v : YamlValue) (hg : Grammable v false) :
+lemma emit_parse_succeeds (v : YamlValue) (hg : Grammable v false) :
     ∃ docs, parseYamlRaw (emit v) = .ok docs := by
   obtain ⟨tokens, h_scan⟩ := emit_produces_valid_yaml v hg
   obtain ⟨docs, h_parse⟩ := parseStream_accepts_emit_tokens v hg tokens h_scan
@@ -884,7 +884,7 @@ theorem emit_parse_succeeds (v : YamlValue) (hg : Grammable v false) :
 
 /-- Package the standalone witness for a grammable element: parse success, single document,
     the pinned standalone tokens, the stream node witness, purity, and the composed-value pin. -/
-theorem stdElt_of_grammable (v : YamlValue) (hg : Grammable v false) : StdElt v := by
+lemma stdElt_of_grammable (v : YamlValue) (hg : Grammable v false) : StdElt v := by
   obtain ⟨rd, h_rd⟩ := emit_parse_succeeds v hg
   have h_rd_sz := emit_produces_single_document v hg rd h_rd
   obtain ⟨stdToks, h_scan_std, h_parse_std⟩ := Composition.parseYamlRaw_ok_decompose _ _ h_rd
@@ -927,7 +927,7 @@ theorem stdElt_of_grammable (v : YamlValue) (hg : Grammable v false) : StdElt v 
     Since the emitter produces no aliases (`Grammable` excludes `.alias`
     nodes), compose is effectively the identity on values, but the
     types require going through this step. -/
-theorem emit_parseYaml_succeeds (v : YamlValue) (hg : Grammable v false) :
+lemma emit_parseYaml_succeeds (v : YamlValue) (hg : Grammable v false) :
     ∃ docs, parseYaml (emit v) = .ok docs := by
   obtain ⟨raw_docs, h_raw⟩ := emit_parse_succeeds v hg
   exact ⟨raw_docs.map YamlDocument.compose, by simp only [parseYaml, h_raw]⟩
@@ -964,7 +964,7 @@ before writing the producer.  The locality target was grounded TRUE on real emis
     dropping to `false` is a structural weakening: scalars via `ScalarScannable_any_implies_false`,
     collections by recursion (flow-styled collections keep their children's flag `true`; block-styled
     collections weaken theirs along with the parent). -/
-theorem grammable_to_block {v : YamlValue} {b : Bool} (hg : Grammable v b) :
+lemma grammable_to_block {v : YamlValue} {b : Bool} (hg : Grammable v b) :
     Grammable v false := by
   induction hg with
   | scalar s b h_ss =>
@@ -987,7 +987,7 @@ theorem grammable_to_block {v : YamlValue} {b : Bool} (hg : Grammable v b) :
     the pure locality equation, discharging parse-success and single-document from the proven
     `emit_parse_succeeds` / `emit_produces_single_document`.  The hard producer is left owing only the
     locality (`(rd.map compose)[0]!.value = items''[i]!`). -/
-theorem reparse_deliverable_of_locality_seq
+lemma reparse_deliverable_of_locality_seq
     (items items'' : Array YamlValue)
     (h_gram : ∀ (i : Fin items.size), Grammable items[i] false)
     (h_loc : ∀ (i : Fin items.size) (rd : Array YamlDocument),
@@ -1002,7 +1002,7 @@ theorem reparse_deliverable_of_locality_seq
   exact ⟨rd, h_rd, h_sz, h_loc i rd h_rd h_sz⟩
 
 /-- **Mapping locality-reduction joint** (key + value mirror of `reparse_deliverable_of_locality_seq`). -/
-theorem reparse_deliverable_of_locality_pair
+lemma reparse_deliverable_of_locality_pair
     (pairs pairs'' : Array (YamlValue × YamlValue))
     (h_gram_k : ∀ (i : Fin pairs.size), Grammable pairs[i].fst false)
     (h_gram_v : ∀ (i : Fin pairs.size), Grammable pairs[i].snd false)
@@ -1029,7 +1029,7 @@ theorem reparse_deliverable_of_locality_pair
     exact ⟨rdv, h_rdv, h_szv, h_loc_v i rdv h_rdv h_szv⟩
 
 /-- Proves that parsing the emitted tokens for a flow sequence recovers a content-equivalent sequence. -/
-theorem emit_roundtrip_sequence_content_eq {inFlow : Bool} (style : CollectionStyle) (items : Array YamlValue)
+lemma emit_roundtrip_sequence_content_eq {inFlow : Bool} (style : CollectionStyle) (items : Array YamlValue)
     (tag anchor : Option String) (raw_docs : Array YamlDocument)
     (h_raw : parseYamlRaw (emit (.sequence style items tag anchor)) = .ok raw_docs)
     (h_size : raw_docs.size = 1)
@@ -1214,7 +1214,7 @@ theorem emit_roundtrip_sequence_content_eq {inFlow : Bool} (style : CollectionSt
         (fun i => grammable_to_block (h_items i)) h_loc)
 
 /-- Proves that parsing the emitted tokens for a flow mapping recovers a content-equivalent mapping. -/
-theorem emit_roundtrip_mapping_content_eq {inFlow : Bool} (style : CollectionStyle) (pairs : Array (YamlValue × YamlValue))
+lemma emit_roundtrip_mapping_content_eq {inFlow : Bool} (style : CollectionStyle) (pairs : Array (YamlValue × YamlValue))
     (tag anchor : Option String) (raw_docs : Array YamlDocument)
     (h_raw : parseYamlRaw (emit (.mapping style pairs tag anchor)) = .ok raw_docs)
     (h_size : raw_docs.size = 1)

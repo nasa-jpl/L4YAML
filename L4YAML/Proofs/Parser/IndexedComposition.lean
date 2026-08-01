@@ -95,27 +95,27 @@ Each entry exhibits `scanAndParseIx input = .ok docs` for a known
 - A block-style implicit key (2 docs in the current indexed
   parser, see the file docstring) -/
 
-theorem parses_empty : parsesToNDocs "" 0 = true := by native_decide
+lemma parses_empty : parsesToNDocs "" 0 = true := by native_decide
 
-theorem parses_plain_x : parsesToNDocs "x" 1 = true := by native_decide
+lemma parses_plain_x : parsesToNDocs "x" 1 = true := by native_decide
 
-theorem parses_plain_abc : parsesToNDocs "abc" 1 = true := by native_decide
+lemma parses_plain_abc : parsesToNDocs "abc" 1 = true := by native_decide
 
-theorem parses_block_seq_one : parsesToNDocs "- x" 1 = true := by native_decide
+lemma parses_block_seq_one : parsesToNDocs "- x" 1 = true := by native_decide
 
-theorem parses_flow_seq_empty : parsesToNDocs "[]" 1 = true := by native_decide
+lemma parses_flow_seq_empty : parsesToNDocs "[]" 1 = true := by native_decide
 
-theorem parses_flow_map_empty : parsesToNDocs "{}" 1 = true := by native_decide
+lemma parses_flow_map_empty : parsesToNDocs "{}" 1 = true := by native_decide
 
-theorem parses_flow_seq_three : parsesToNDocs "[1,2,3]" 1 = true := by native_decide
+lemma parses_flow_seq_three : parsesToNDocs "[1,2,3]" 1 = true := by native_decide
 
-theorem parses_block_map_one : parsesToNDocs "a: b" 1 = true := by native_decide
+lemma parses_block_map_one : parsesToNDocs "a: b" 1 = true := by native_decide
 
 /-- A two-line block mapping. After Step 6f.0 indexed parser parity,
     the indexed pipeline accepts this (was previously erroring; the
     file docstring noted "implicit-key" divergence is no longer
     observed). -/
-theorem parses_block_map_two_lines : parsesToNDocs "a: 1\nb: 2" 1 = true := by native_decide
+lemma parses_block_map_two_lines : parsesToNDocs "a: 1\nb: 2" 1 = true := by native_decide
 
 /-! ## §2  Error-case corpus
 
@@ -126,7 +126,7 @@ parser no longer errors on multi-line block mappings — the
 implicit-key divergence noted in the original Step 6e file
 docstring is closed. -/
 
-theorem parses_error_unterminated_flow_seq :
+lemma parses_error_unterminated_flow_seq :
     parsesError "[" = true := by native_decide
 
 /-! ## §3  Pipeline Decomposition (Step 6f.3b1)
@@ -148,7 +148,7 @@ indexed `parseStreamIx` operates on the input-indexed token stream.
     stages succeed, the result is the `parseStreamIx` output on the
     scanned tokens. Indexed twin of
     `L4YAML.Proofs.Composition.parseYamlRaw_pipeline`. -/
-theorem parseYamlRawIx_pipeline (input : String)
+lemma parseYamlRawIx_pipeline (input : String)
     (tokens : Indexed.TokenStream input)
     (docs : Array YamlDocument)
     (h_scan : scanFilteredIx input = .ok tokens)
@@ -160,7 +160,7 @@ theorem parseYamlRawIx_pipeline (input : String)
     `parseStreamIx` must have succeeded on some intermediate token
     stream. Indexed twin of
     `L4YAML.Proofs.Composition.parseYamlRaw_ok_decompose`. -/
-theorem parseYamlRawIx_ok_decompose (input : String) (docs : Array YamlDocument)
+lemma parseYamlRawIx_ok_decompose (input : String) (docs : Array YamlDocument)
     (h : parseYamlRawIx input = .ok docs) :
     ∃ tokens : Indexed.TokenStream input,
       scanFilteredIx input = .ok tokens ∧ parseStreamIx tokens = .ok docs := by
@@ -180,7 +180,7 @@ theorem parseYamlRawIx_ok_decompose (input : String) (docs : Array YamlDocument)
 /-- If `scanFilteredIx` fails, `parseYamlRawIx` fails with the same
     error. Indexed twin of
     `L4YAML.Proofs.Composition.parseYamlRaw_scan_error`. -/
-theorem parseYamlRawIx_scan_error (input : String) (e : ScanError)
+lemma parseYamlRawIx_scan_error (input : String) (e : ScanError)
     (h : scanFilteredIx input = .error e) :
     parseYamlRawIx input = .error e := by
   simp only [parseYamlRawIx, scanAndParseIx, h]
@@ -188,7 +188,7 @@ theorem parseYamlRawIx_scan_error (input : String) (e : ScanError)
 /-- If `scanFilteredIx` succeeds but `parseStreamIx` fails,
     `parseYamlRawIx` fails with the same parse error. Indexed twin of
     `L4YAML.Proofs.Composition.parseYamlRaw_parse_error`. -/
-theorem parseYamlRawIx_parse_error (input : String) (e : ScanError)
+lemma parseYamlRawIx_parse_error (input : String) (e : ScanError)
     (tokens : Indexed.TokenStream input)
     (h_scan : scanFilteredIx input = .ok tokens)
     (h_parse : parseStreamIx tokens = .error e) :
@@ -198,7 +198,7 @@ theorem parseYamlRawIx_parse_error (input : String) (e : ScanError)
 /-- If `parseYamlRawIx` succeeds, `parseYamlIx` succeeds with composed
     documents. Indexed twin of
     `L4YAML.Proofs.Composition.parseYaml_of_parseYamlRaw_ok`. -/
-theorem parseYamlIx_of_parseYamlRawIx_ok (input : String) (docs : Array YamlDocument)
+lemma parseYamlIx_of_parseYamlRawIx_ok (input : String) (docs : Array YamlDocument)
     (h : parseYamlRawIx input = .ok docs) :
     parseYamlIx input = .ok (docs.map YamlDocument.compose) := by
   simp only [parseYamlIx, h]
@@ -206,7 +206,7 @@ theorem parseYamlIx_of_parseYamlRawIx_ok (input : String) (docs : Array YamlDocu
 /-- If `parseYamlRawIx` fails, `parseYamlIx` fails with the same
     error. Indexed twin of
     `L4YAML.Proofs.Composition.parseYaml_of_parseYamlRaw_error`. -/
-theorem parseYamlIx_of_parseYamlRawIx_error (input : String) (e : ScanError)
+lemma parseYamlIx_of_parseYamlRawIx_error (input : String) (e : ScanError)
     (h : parseYamlRawIx input = .error e) :
     parseYamlIx input = .error e := by
   simp only [parseYamlIx, h]
@@ -215,7 +215,7 @@ theorem parseYamlIx_of_parseYamlRawIx_error (input : String) (e : ScanError)
     compose`. If scanning and parsing both succeed, `parseYamlIx`
     returns composed documents. Indexed twin of
     `L4YAML.Proofs.Composition.parseYaml_pipeline`. -/
-theorem parseYamlIx_pipeline (input : String)
+lemma parseYamlIx_pipeline (input : String)
     (tokens : Indexed.TokenStream input)
     (docs : Array YamlDocument)
     (h_scan : scanFilteredIx input = .ok tokens)
@@ -227,7 +227,7 @@ theorem parseYamlIx_pipeline (input : String)
 /-- `parseYamlIx input = .ok docs` iff there exist raw documents
     from `parseYamlRawIx` that compose to `docs`. Indexed twin of
     `L4YAML.Proofs.Completeness.parseYaml_ok_iff`. -/
-theorem parseYamlIx_ok_iff (input : String) (docs : Array YamlDocument) :
+lemma parseYamlIx_ok_iff (input : String) (docs : Array YamlDocument) :
     parseYamlIx input = .ok docs ↔
     ∃ rawDocs : Array YamlDocument,
       parseYamlRawIx input = .ok rawDocs ∧

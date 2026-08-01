@@ -119,32 +119,32 @@ instance {input : String} (r₂ r₁ : Range input) :
   unfold Contains; exact inferInstance
 
 /-- Reflexivity of `Contains`. -/
-@[simp] theorem Contains.refl {input : String} (r : Range input) :
+@[simp] lemma Contains.refl {input : String} (r : Range input) :
     Range.Contains r r :=
   ⟨Nat.le_refl _, Nat.le_refl _⟩
 
 /-- Transitivity of `Contains`. -/
-theorem Contains.trans {input : String} {r₃ r₂ r₁ : Range input}
+lemma Contains.trans {input : String} {r₃ r₂ r₁ : Range input}
     (h₁ : Range.Contains r₃ r₂) (h₂ : Range.Contains r₂ r₁) :
     Range.Contains r₃ r₁ :=
   ⟨Nat.le_trans h₁.1 h₂.1, Nat.le_trans h₂.2 h₁.2⟩
 
 /-- The empty range at offset `0` is contained in every range. -/
-theorem empty_contained {input : String} (r : Range input) :
+lemma empty_contained {input : String} (r : Range input) :
     Range.Contains (full input) r :=
   ⟨Nat.zero_le _, r.stopLEInput⟩
 
 /-- `byteSize` of the empty range is zero. -/
-@[simp] theorem byteSize_empty (input : String) :
+@[simp] lemma byteSize_empty (input : String) :
     byteSize (empty input) = 0 := rfl
 
 /-- `byteSize` of a `point` is zero. -/
-@[simp] theorem byteSize_point {input : String} (n : Nat) (h : n ≤ input.utf8ByteSize) :
+@[simp] lemma byteSize_point {input : String} (n : Nat) (h : n ≤ input.utf8ByteSize) :
     byteSize (point input n h) = 0 := by
   simp [byteSize, point]
 
 /-- `byteSize` of the full range equals the input's UTF-8 byte size. -/
-@[simp] theorem byteSize_full (input : String) :
+@[simp] lemma byteSize_full (input : String) :
     byteSize (full input) = input.utf8ByteSize := by
   simp [byteSize, full]
 

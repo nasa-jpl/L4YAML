@@ -165,7 +165,7 @@ lemmas the §5a bridge lemmas depend on. They operate on the
 underlying `Array (IxToken input)`, not on `TokenStream input`, so
 the §5a bridge lemmas pass `tokens.tokens` to access them. -/
 
-theorem flowNestingIx_go_oob (tokens : Array (IxToken input))
+lemma flowNestingIx_go_oob (tokens : Array (IxToken input))
     (pos target depth : Nat) (h : pos ≥ tokens.size) :
     flowNestingIx.go tokens pos target depth = depth := by
   generalize hk : target - pos = k
@@ -177,7 +177,7 @@ theorem flowNestingIx_go_oob (tokens : Array (IxToken input))
     simp only [show ¬(pos ≥ target) by omega, ite_false,
       show ¬(pos < tokens.size) by omega, dite_false]
 
-theorem flowNestingIx_go_step
+lemma flowNestingIx_go_step
     (tokens : Array (IxToken input))
     (pos target depth : Nat) (h_pos : pos < tokens.size) (h_tgt : pos < target) :
     flowNestingIx.go tokens pos target depth =
@@ -190,12 +190,12 @@ theorem flowNestingIx_go_step
           simp only [eq_false (show ¬(pos ≥ target) by omega), ite_false,
             eq_true h_pos, dite_true]
 
-theorem flowNestingIx_go_ge_target (tokens : Array (IxToken input))
+lemma flowNestingIx_go_ge_target (tokens : Array (IxToken input))
     (pos target depth : Nat) (h : pos ≥ target) :
     flowNestingIx.go tokens pos target depth = depth := by
   unfold flowNestingIx.go; simp [h]
 
-theorem flowNestingIx_go_split
+lemma flowNestingIx_go_split
     (tokens : Array (IxToken input))
     (pos mid target depth : Nat) (h1 : pos ≤ mid) (h2 : mid ≤ target) :
     flowNestingIx.go tokens pos target depth =
@@ -230,7 +230,7 @@ that analysis carries over verbatim to the indexed substrate.
     additional flow-context properties. Verbatim from
     `ParserWellBehaved.ScalarScannable_strengthen` — `Scalar` is not
     indexed by `input`. -/
-theorem ScalarScannable_strengthen (s : Scalar)
+lemma ScalarScannable_strengthen (s : Scalar)
     (h : ScalarScannable s false)
     (h_vpf : s.style = .plain → s.content.length > 0 →
       validPlainFirstProp s.content true)
@@ -246,7 +246,7 @@ theorem ScalarScannable_strengthen (s : Scalar)
 /-- A scalar `YamlValue` constructed from an indexed token satisfying
     `PlainScalarsValidIx` is `Scannable` at block context. Indexed twin
     of legacy `scalar_from_token_scannable`. -/
-theorem scalar_from_token_scannable_ix
+lemma scalar_from_token_scannable_ix
     (tokens : Indexed.TokenStream input)
     (h_psv : PlainScalarsValidIx tokens)
     (i : Nat) (hi : i < tokens.size)
@@ -265,7 +265,7 @@ theorem scalar_from_token_scannable_ix
 /-- A scalar from an indexed flow-context token satisfying
     `FlowAwarePSVIx` is `Scannable` at any flow context. Indexed twin
     of legacy `scalar_from_flow_token_scannable`. -/
-theorem scalar_from_flow_token_scannable_ix
+lemma scalar_from_flow_token_scannable_ix
     (tokens : Indexed.TokenStream input)
     (h_fpsv : FlowAwarePSVIx tokens)
     (i : Nat) (hi : i < tokens.size)
@@ -292,7 +292,7 @@ theorem scalar_from_flow_token_scannable_ix
 
 /-- Empty content scalar is trivially `Scannable` at any flow context.
     Verbatim port — no token dependency. -/
-theorem empty_scalar_scannable (tag anchor : Option String) (inFlow : Bool) :
+lemma empty_scalar_scannable (tag anchor : Option String) (inFlow : Bool) :
     Scannable (.scalar ⟨"", .plain, tag, anchor, none⟩) inFlow := by
   apply Scannable.scalar; intro _ hlen; simp at hlen
 
@@ -305,7 +305,7 @@ theorem empty_scalar_scannable (tag anchor : Option String) (inFlow : Bool) :
     `peek?` factors through `peekIx?` and `TokenStream.get?`, so the
     proof unfolds two more layers before reaching the underlying
     `Array.get?`. -/
-theorem peek_some_bounded_ix (ps : ParseStateIx input) (tok : YamlToken)
+lemma peek_some_bounded_ix (ps : ParseStateIx input) (tok : YamlToken)
     (h : ps.peek? = some tok) :
     ps.pos < ps.tokens.size ∧
     ∀ (h_lt : ps.pos < ps.tokens.size), (ps.tokens[ps.pos]'h_lt).token = tok := by
@@ -335,7 +335,7 @@ when advancing one token. Indexed twins of legacy
 
 /-- `flowNestingIx tokens (i+1)` factors as go-step from
     `flowNestingIx tokens i`. -/
-theorem flowNestingIx_split_step (tokens : Indexed.TokenStream input)
+lemma flowNestingIx_split_step (tokens : Indexed.TokenStream input)
     (i : Nat) (_hi : i < tokens.size) :
     flowNestingIx tokens (i + 1) =
     flowNestingIx.go tokens.tokens i (i + 1) (flowNestingIx tokens i) := by
@@ -344,7 +344,7 @@ theorem flowNestingIx_split_step (tokens : Indexed.TokenStream input)
   exact flowNestingIx_go_split tokens.tokens 0 i (i + 1) 0 (by omega) (by omega)
 
 /-- After consuming a flow-start token, `flowNestingIx` is positive. -/
-theorem flowNestingIx_pos_after_flow_start (tokens : Indexed.TokenStream input)
+lemma flowNestingIx_pos_after_flow_start (tokens : Indexed.TokenStream input)
     (i : Nat) (hi : i < tokens.size)
     (h : (tokens[i]'hi).token = .flowSequenceStart ∨
          (tokens[i]'hi).token = .flowMappingStart) :
@@ -360,7 +360,7 @@ theorem flowNestingIx_pos_after_flow_start (tokens : Indexed.TokenStream input)
   rcases h with h | h <;> simp [h] <;> omega
 
 /-- After consuming a flow-start token, `flowNestingIx` increases by exactly 1. -/
-theorem flowNestingIx_after_flow_start_eq (tokens : Indexed.TokenStream input)
+lemma flowNestingIx_after_flow_start_eq (tokens : Indexed.TokenStream input)
     (i : Nat) (hi : i < tokens.size)
     (h : (tokens[i]'hi).token = .flowSequenceStart ∨
          (tokens[i]'hi).token = .flowMappingStart) :
@@ -375,7 +375,7 @@ theorem flowNestingIx_after_flow_start_eq (tokens : Indexed.TokenStream input)
   rcases h with h | h <;> simp [h]
 
 /-- After consuming a flow-end token, `flowNestingIx` decreases by 1 (saturating). -/
-theorem flowNestingIx_after_flow_end (tokens : Indexed.TokenStream input)
+lemma flowNestingIx_after_flow_end (tokens : Indexed.TokenStream input)
     (i : Nat) (hi : i < tokens.size)
     (h : (tokens[i]'hi).token = .flowSequenceEnd ∨
          (tokens[i]'hi).token = .flowMappingEnd)
@@ -391,7 +391,7 @@ theorem flowNestingIx_after_flow_end (tokens : Indexed.TokenStream input)
   rcases h with h | h <;> simp [h, h_pos]
 
 /-- Advancing past a non-flow-boundary token preserves `flowNestingIx`. -/
-theorem flowNestingIx_non_flow_step (tokens : Indexed.TokenStream input)
+lemma flowNestingIx_non_flow_step (tokens : Indexed.TokenStream input)
     (i : Nat) (hi : i < tokens.size)
     (h1 : (tokens[i]'hi).token ≠ .flowSequenceStart)
     (h2 : (tokens[i]'hi).token ≠ .flowMappingStart)
@@ -409,7 +409,7 @@ theorem flowNestingIx_non_flow_step (tokens : Indexed.TokenStream input)
   cases tok <;> simp_all
 
 /-- `flowNestingIx` is constant for positions `≥ tokens.size`. -/
-theorem flowNestingIx_beyond_size (tokens : Indexed.TokenStream input)
+lemma flowNestingIx_beyond_size (tokens : Indexed.TokenStream input)
     (i : Nat) (hi : i ≥ tokens.size) :
     flowNestingIx tokens (i + 1) = flowNestingIx tokens i := by
   have hi' : i ≥ tokens.tokens.size := hi
@@ -424,7 +424,7 @@ lemmas are purely on `YamlValue` and `Scannable`; no token-shape
 dependency. -/
 
 /-- Flow-context scannability implies block-context scannability. -/
-theorem Scannable_true_implies_false :
+lemma Scannable_true_implies_false :
     (v : YamlValue) → Scannable v true → Scannable v false
   | .scalar s, .scalar _ _ h_ss =>
     .scalar s false (ScalarScannable_true_implies_false s h_ss)
@@ -456,7 +456,7 @@ decreasing_by
        omega)
 
 /-- `Scannable` at any `inFlow` implies `Scannable` at `false`. -/
-theorem Scannable_any_implies_false (v : YamlValue) (b : Bool) :
+lemma Scannable_any_implies_false (v : YamlValue) (b : Bool) :
     Scannable v b → Scannable v false := by
   cases b with
   | false => exact id
@@ -468,7 +468,7 @@ Adding or changing `tag`/`anchor` fields preserves `Scannable`. Verbatim
 port — purely on `YamlValue`. -/
 
 /-- Attaching properties (tag, anchor) to a collection preserves `Scannable`. -/
-theorem Scannable_attach_props (val : YamlValue) (inFlow : Bool)
+lemma Scannable_attach_props (val : YamlValue) (inFlow : Bool)
     (tag : Option String) (anchor : Option String)
     (h : Scannable val inFlow) :
     Scannable (match val with
@@ -497,7 +497,7 @@ these operations affect `val`'s scannability or the token stream. -/
 /-- The value produced by `applyNodeFinalization` is `Scannable` whenever
     the raw content value is `Scannable`. Indexed twin of legacy
     `applyNodeFinalization_scannable`. -/
-theorem applyNodeFinalization_scannable_ix
+lemma applyNodeFinalization_scannable_ix
     (val : YamlValue) (ps : ParseStateIx input) (props : NodeProperties)
     (nodeStartPos : YamlPos) (inFlow : Bool)
     (h : Scannable val inFlow) :
@@ -517,7 +517,7 @@ theorem applyNodeFinalization_scannable_ix
     exact .mapping style pairs props.tag props.anchor inFlow hk hv
 
 /-- `applyNodeFinalization` does not modify the token stream. -/
-theorem applyNodeFinalization_tokens_ix
+lemma applyNodeFinalization_tokens_ix
     (val : YamlValue) (ps : ParseStateIx input) (props : NodeProperties)
     (nodeStartPos : YamlPos) :
     (applyNodeFinalization val ps props nodeStartPos).2.tokens = ps.tokens := by
@@ -526,7 +526,7 @@ theorem applyNodeFinalization_tokens_ix
   all_goals (split <;> simp_all)
 
 /-- `applyNodeFinalization` preserves the parse position. -/
-theorem applyNodeFinalization_pos_ix
+lemma applyNodeFinalization_pos_ix
     (val : YamlValue) (ps : ParseStateIx input) (props : NodeProperties)
     (nodeStartPos : YamlPos) :
     (applyNodeFinalization val ps props nodeStartPos).2.pos = ps.pos := by
@@ -535,7 +535,7 @@ theorem applyNodeFinalization_pos_ix
   all_goals (split <;> simp_all)
 
 /-- `applyNodeFinalization` preserves `trackPositions`. -/
-theorem applyNodeFinalization_trackPositions_ix
+lemma applyNodeFinalization_trackPositions_ix
     (val : YamlValue) (ps : ParseStateIx input) (props : NodeProperties)
     (nodeStartPos : YamlPos) :
     (applyNodeFinalization val ps props nodeStartPos).2.trackPositions = ps.trackPositions := by
@@ -584,7 +584,7 @@ elab "unfold_loop_at_ix" h:ident : tactic => do
     legacy `ParserWellBehaved.ParseState.advance_tokens` placement.
     File-local name (`WB.` prefix) to avoid collision with the
     `L4YAML.TokenParser.Indexed.ParseStateIx` structure namespace. -/
-@[simp] theorem advance_tokens_eq_ix (ps : ParseStateIx input) :
+@[simp] lemma advance_tokens_eq_ix (ps : ParseStateIx input) :
     ps.advance.tokens = ps.tokens := rfl
 
 -- `parseNodeProperties` preserves the token stream. Indexed twin of
@@ -592,7 +592,7 @@ elab "unfold_loop_at_ix" h:ident : tactic => do
 set_option maxRecDepth 10000 in
 set_option maxHeartbeats 800000000 in
 set_option linter.unusedSimpArgs false in
-theorem parseNodeProperties_tokens_ix
+lemma parseNodeProperties_tokens_ix
     (ps : ParseStateIx input) (props : NodeProperties) (ps' : ParseStateIx input)
     (h : parseNodeProperties ps = .ok (props, ps')) :
     ps'.tokens = ps.tokens := by
@@ -687,7 +687,7 @@ theorem parseNodeProperties_tokens_ix
 
 /-- Advancing past a non-flow-boundary token preserves `flowNestingIx`.
     Indexed twin of legacy `advance_preserves_flowNesting`. -/
-theorem advance_preserves_flowNestingIx
+lemma advance_preserves_flowNestingIx
     (tokens : Indexed.TokenStream input) (ps : ParseStateIx input) {tok : YamlToken}
     (h_peek : ps.peek? = some tok) (h_eq : ps.tokens = tokens)
     (h1 : tok ≠ .flowSequenceStart) (h2 : tok ≠ .flowMappingStart)
@@ -702,7 +702,7 @@ theorem advance_preserves_flowNestingIx
 
 /-- Advancing past two non-flow-boundary tokens preserves `flowNestingIx`.
     Indexed twin of legacy `advance2_preserves_flowNesting`. -/
-theorem advance2_preserves_flowNestingIx
+lemma advance2_preserves_flowNestingIx
     (tokens : Indexed.TokenStream input) (ps : ParseStateIx input)
     {tok1 tok2 : YamlToken}
     (h_peek1 : ps.peek? = some tok1) (h_peek2 : ps.advance.peek? = some tok2)
@@ -725,7 +725,7 @@ theorem advance2_preserves_flowNestingIx
 set_option maxRecDepth 10000 in
 set_option maxHeartbeats 800000000 in
 set_option linter.unusedSimpArgs false in
-theorem parseNodeProperties_flowNesting_ix
+lemma parseNodeProperties_flowNesting_ix
     (tokens : Indexed.TokenStream input)
     (ps : ParseStateIx input) (props : NodeProperties) (ps' : ParseStateIx input)
     (h : parseNodeProperties ps = .ok (props, ps'))
@@ -834,7 +834,7 @@ the un-pathed forms because `currentPath` doesn't affect `peek?` or
 `advance`. -/
 
 /-- `tryConsume` preserves the token stream. -/
-theorem tryConsume_tokens_ix (ps : ParseStateIx input) (tok : YamlToken) :
+lemma tryConsume_tokens_ix (ps : ParseStateIx input) (tok : YamlToken) :
     (ps.tryConsume tok).2.tokens = ps.tokens := by
   unfold ParseStateIx.tryConsume
   split
@@ -844,7 +844,7 @@ theorem tryConsume_tokens_ix (ps : ParseStateIx input) (tok : YamlToken) :
   · rfl
 
 /-- `tryConsume` preserves `flowNestingIx` for non-flow-bracket tokens. -/
-theorem tryConsume_flowNesting_ix (tokens : Indexed.TokenStream input)
+lemma tryConsume_flowNesting_ix (tokens : Indexed.TokenStream input)
     (ps : ParseStateIx input) (tok : YamlToken)
     (h_eq : ps.tokens = tokens)
     (h1 : tok ≠ .flowSequenceStart) (h2 : tok ≠ .flowMappingStart)
@@ -862,7 +862,7 @@ theorem tryConsume_flowNesting_ix (tokens : Indexed.TokenStream input)
 
 /-- `tryConsume` on a currentPath-modified state preserves the original
     state's tokens (currentPath is independent of `peek?`/`advance`). -/
-theorem tryConsume_with_path_tokens_ix (ps : ParseStateIx input)
+lemma tryConsume_with_path_tokens_ix (ps : ParseStateIx input)
     (p : YamlPath) (tok : YamlToken) :
     ({ ps with currentPath := p }.tryConsume tok).2.tokens = ps.tokens := by
   unfold ParseStateIx.tryConsume
@@ -871,7 +871,7 @@ theorem tryConsume_with_path_tokens_ix (ps : ParseStateIx input)
   · rfl
 
 /-- `tryConsume` on a currentPath-modified state preserves `flowNestingIx`. -/
-theorem tryConsume_with_path_fn_ix (tokens : Indexed.TokenStream input)
+lemma tryConsume_with_path_fn_ix (tokens : Indexed.TokenStream input)
     (ps : ParseStateIx input) (p : YamlPath) (tok : YamlToken)
     (h_eq : ps.tokens = tokens)
     (h1 : tok ≠ .flowSequenceStart) (h2 : tok ≠ .flowMappingStart)
@@ -886,7 +886,7 @@ theorem tryConsume_with_path_fn_ix (tokens : Indexed.TokenStream input)
 stream. These facts are used by `parseDocument_tokens_preserved_ix`. -/
 
 /-- `parseDirectives` preserves the token stream. -/
-theorem parseDirectives_tokens_ix (ps : ParseStateIx input) :
+lemma parseDirectives_tokens_ix (ps : ParseStateIx input) :
     (parseDirectives ps).2.tokens = ps.tokens := by
   unfold parseDirectives
   simp only [Id.run]
@@ -959,7 +959,7 @@ def ParseNodeWBIx (tokens : Indexed.TokenStream input) (n : Nat) : Prop :=
 
 /-- Application variant of `ParseNodeWBIx` that accepts a non-destructured
     pair (matching how `split at h_ok` produces `parseNode` hypotheses). -/
-theorem parseNodeWBIx_apply {tokens : Indexed.TokenStream input} {n : Nat}
+lemma parseNodeWBIx_apply {tokens : Indexed.TokenStream input} {n : Nat}
     (h_ih : ParseNodeWBIx tokens n)
     {ps : ParseStateIx input} {m : Nat} {v : YamlValue × ParseStateIx input}
     (h_tok : ps.tokens = tokens)
@@ -972,7 +972,7 @@ theorem parseNodeWBIx_apply {tokens : Indexed.TokenStream input} {n : Nat}
   h_ih ps m v.1 v.2 h_le h_tok h_ok
 
 /-- Single-projection extractor for the block-context Scannable conjunct. -/
-theorem parseNode_scannable_false_ix {tokens : Indexed.TokenStream input} {n : Nat}
+lemma parseNode_scannable_false_ix {tokens : Indexed.TokenStream input} {n : Nat}
     (h_ih : ParseNodeWBIx tokens n)
     {ps : ParseStateIx input} {m : Nat} {v : YamlValue × ParseStateIx input}
     (h_ok : parseNode ps m = .ok v)
@@ -982,7 +982,7 @@ theorem parseNode_scannable_false_ix {tokens : Indexed.TokenStream input} {n : N
   (h_ih ps m v.1 v.2 h_le h_tok h_ok).1
 
 /-- Single-projection extractor for the flow-context Scannable conjunct. -/
-theorem parseNode_scannable_true_ix {tokens : Indexed.TokenStream input} {n : Nat}
+lemma parseNode_scannable_true_ix {tokens : Indexed.TokenStream input} {n : Nat}
     (h_ih : ParseNodeWBIx tokens n)
     {ps : ParseStateIx input} {m : Nat} {v : YamlValue × ParseStateIx input}
     (h_ok : parseNode ps m = .ok v)
@@ -992,7 +992,7 @@ theorem parseNode_scannable_true_ix {tokens : Indexed.TokenStream input} {n : Na
   (h_ih ps m v.1 v.2 h_le h_tok h_ok).2.1
 
 /-- Single-projection extractor for the flowNesting preservation conjunct. -/
-theorem parseNode_flowNesting_ix {tokens : Indexed.TokenStream input} {n : Nat}
+lemma parseNode_flowNesting_ix {tokens : Indexed.TokenStream input} {n : Nat}
     (h_ih : ParseNodeWBIx tokens n)
     {ps : ParseStateIx input} {m : Nat} {v : YamlValue × ParseStateIx input}
     (h_ok : parseNode ps m = .ok v)
@@ -1002,7 +1002,7 @@ theorem parseNode_flowNesting_ix {tokens : Indexed.TokenStream input} {n : Nat}
   (h_ih ps m v.1 v.2 h_le h_tok h_ok).2.2.1
 
 /-- Single-projection extractor for the token preservation conjunct. -/
-theorem parseNode_tokens_ix {tokens : Indexed.TokenStream input} {n : Nat}
+lemma parseNode_tokens_ix {tokens : Indexed.TokenStream input} {n : Nat}
     (h_ih : ParseNodeWBIx tokens n)
     {ps : ParseStateIx input} {m : Nat} {v : YamlValue × ParseStateIx input}
     (h_ok : parseNode ps m = .ok v)
@@ -1037,7 +1037,7 @@ state-type substitutions:
 
 /-- Helper: pushing a Scannable value onto an all-Scannable array
     preserves the all-Scannable property. Verbatim port. -/
-theorem push_all_scannable {items : Array YamlValue} {x : YamlValue}
+lemma push_all_scannable {items : Array YamlValue} {x : YamlValue}
     {inFlow : Bool}
     (h_items : ∀ i : Fin items.size, Scannable items[i] inFlow)
     (h_x : Scannable x inFlow) :
@@ -1051,7 +1051,7 @@ theorem push_all_scannable {items : Array YamlValue} {x : YamlValue}
 
 /-- Helper: pushing a pair onto an all-Scannable pair array preserves the
     Scannable property for both projections. Verbatim port. -/
-theorem push_pair_scannable {pairs : Array (YamlValue × YamlValue)}
+lemma push_pair_scannable {pairs : Array (YamlValue × YamlValue)}
     {kv : YamlValue × YamlValue} {inFlow : Bool}
     (h_pairs : ∀ i : Fin pairs.size, Scannable pairs[i].1 inFlow ∧ Scannable pairs[i].2 inFlow)
     (h_kv : Scannable kv.1 inFlow ∧ Scannable kv.2 inFlow) :
@@ -1070,7 +1070,7 @@ theorem push_pair_scannable {pairs : Array (YamlValue × YamlValue)}
 
 /-- Loop invariant for `parseBlockSequenceLoop`: accumulated items remain
     Scannable, flowNesting is preserved, and tokens unchanged. -/
-theorem parseBlockSequenceLoop_wb_ix (tokens : Indexed.TokenStream input)
+lemma parseBlockSequenceLoop_wb_ix (tokens : Indexed.TokenStream input)
     (n fuel : Nat) (h_fuel : fuel ≤ n)
     (_h_fpsv : FlowAwarePSVIx tokens)
     (h_ih : ParseNodeWBIx tokens n)
@@ -1166,7 +1166,7 @@ theorem parseBlockSequenceLoop_wb_ix (tokens : Indexed.TokenStream input)
       exact ⟨h_items_false, h_items_true, rfl, h_eq⟩
 
 /-- `parseBlockSequence` well-behaved given parseNode IH. -/
-theorem parseBlockSequence_wb_ix (tokens : Indexed.TokenStream input)
+lemma parseBlockSequence_wb_ix (tokens : Indexed.TokenStream input)
     (fuel : Nat) (h_fpsv : FlowAwarePSVIx tokens) (h_ih : ParseNodeWBIx tokens fuel)
     (ps : ParseStateIx input) (result : YamlValue × ParseStateIx input)
     (h_eq : ps.tokens = tokens)
@@ -1229,7 +1229,7 @@ theorem parseBlockSequence_wb_ix (tokens : Indexed.TokenStream input)
         · exact h_loop.2.2.2
 
 /-- Well-behavedness of `parseBlockMappingEntryValue`. -/
-theorem parseBlockMappingEntryValue_wb_ix (tokens : Indexed.TokenStream input)
+lemma parseBlockMappingEntryValue_wb_ix (tokens : Indexed.TokenStream input)
     (n fuel : Nat) (h_fuel : fuel ≤ n)
     (h_ih : ParseNodeWBIx tokens n)
     (ps : ParseStateIx input) (keyHasContent : Bool) (keyLine keyCol : Nat)
@@ -1286,7 +1286,7 @@ theorem parseBlockMappingEntryValue_wb_ix (tokens : Indexed.TokenStream input)
 
 /-- Alias for `parseBlockMappingEntryValue_wb_ix` (used by
     `handleBlockMappingKeyEntry_wb_ix`). -/
-theorem bevWBIx (tokens : Indexed.TokenStream input)
+lemma bevWBIx (tokens : Indexed.TokenStream input)
     (n fuel : Nat) (h_fuel : fuel ≤ n)
     (h_ih : ParseNodeWBIx tokens n)
     {ps : ParseStateIx input} {kc : Bool} {kl kcol : Nat}
@@ -1301,7 +1301,7 @@ theorem bevWBIx (tokens : Indexed.TokenStream input)
       ps kc kl kcol result h_eq h_ok
 
 /-- Well-behavedness of the `.key` branch entry handler. -/
-theorem handleBlockMappingKeyEntry_wb_ix (tokens : Indexed.TokenStream input)
+lemma handleBlockMappingKeyEntry_wb_ix (tokens : Indexed.TokenStream input)
     (n fuel : Nat) (h_fuel : fuel ≤ n)
     (h_ih : ParseNodeWBIx tokens n)
     (ps : ParseStateIx input) (pairIdx : Nat)
@@ -1367,7 +1367,7 @@ theorem handleBlockMappingKeyEntry_wb_ix (tokens : Indexed.TokenStream input)
            h_bev.2.2.2⟩)
 
 /-- Well-behavedness of the `.value` branch entry handler (implicit key). -/
-theorem handleBlockMappingValueEntry_wb_ix (tokens : Indexed.TokenStream input)
+lemma handleBlockMappingValueEntry_wb_ix (tokens : Indexed.TokenStream input)
     (n fuel : Nat) (h_fuel : fuel ≤ n)
     (h_ih : ParseNodeWBIx tokens n)
     (ps : ParseStateIx input) (pairIdx : Nat)
@@ -1415,7 +1415,7 @@ theorem handleBlockMappingValueEntry_wb_ix (tokens : Indexed.TokenStream input)
            h_wb.2.2.2⟩
 
 /-- Recursion helper for `parseBlockMappingLoop_wb_ix`. -/
-theorem mapping_recurse_ix (tokens : Indexed.TokenStream input)
+lemma mapping_recurse_ix (tokens : Indexed.TokenStream input)
     (ps : ParseStateIx input)
     (pairs : Array (YamlValue × YamlValue))
     (result : Array (YamlValue × YamlValue) × ParseStateIx input)
@@ -1464,7 +1464,7 @@ theorem mapping_recurse_ix (tokens : Indexed.TokenStream input)
   rw [h_fn_rec]; exact h_flow
 
 /-- Loop invariant for `parseBlockMappingLoop`. -/
-theorem parseBlockMappingLoop_wb_ix (tokens : Indexed.TokenStream input)
+lemma parseBlockMappingLoop_wb_ix (tokens : Indexed.TokenStream input)
     (n fuel : Nat) (h_fuel : fuel ≤ n)
     (h_ih : ParseNodeWBIx tokens n)
     (ps : ParseStateIx input) (pairs : Array (YamlValue × YamlValue))
@@ -1519,7 +1519,7 @@ theorem parseBlockMappingLoop_wb_ix (tokens : Indexed.TokenStream input)
       exact ⟨h_pairs_false, h_pairs_true, rfl, h_eq⟩
 
 /-- `parseBlockMapping` well-behaved given parseNode IH. -/
-theorem parseBlockMapping_wb_ix (tokens : Indexed.TokenStream input)
+lemma parseBlockMapping_wb_ix (tokens : Indexed.TokenStream input)
     (fuel : Nat) (h_ih : ParseNodeWBIx tokens fuel)
     (ps : ParseStateIx input) (result : YamlValue × ParseStateIx input)
     (h_eq : ps.tokens = tokens)
@@ -1586,7 +1586,7 @@ theorem parseBlockMapping_wb_ix (tokens : Indexed.TokenStream input)
         · exact h_loop.2.2.2
 
 /-- Loop invariant for `parseImplicitBlockSequenceLoop`. -/
-theorem parseImplicitBlockSequenceLoop_wb_ix (tokens : Indexed.TokenStream input)
+lemma parseImplicitBlockSequenceLoop_wb_ix (tokens : Indexed.TokenStream input)
     (n fuel : Nat) (h_fuel : fuel ≤ n)
     (h_ih : ParseNodeWBIx tokens n)
     (ps : ParseStateIx input) (items : Array YamlValue)
@@ -1681,7 +1681,7 @@ theorem parseImplicitBlockSequenceLoop_wb_ix (tokens : Indexed.TokenStream input
       exact ⟨h_items_false, h_items_true, rfl, h_eq⟩
 
 /-- `parseImplicitBlockSequence` well-behaved given parseNode IH. -/
-theorem parseImplicitBlockSequence_wb_ix (tokens : Indexed.TokenStream input)
+lemma parseImplicitBlockSequence_wb_ix (tokens : Indexed.TokenStream input)
     (fuel : Nat) (h_ih : ParseNodeWBIx tokens fuel)
     (ps : ParseStateIx input) (result : YamlValue × ParseStateIx input)
     (h_eq : ps.tokens = tokens)
@@ -1719,7 +1719,7 @@ theorem parseImplicitBlockSequence_wb_ix (tokens : Indexed.TokenStream input)
 
 set_option maxHeartbeats 800000 in
 /-- `parseSinglePairMapping` well-behaved given parseNode IH. -/
-theorem parseSinglePairMapping_wb_ix (tokens : Indexed.TokenStream input)
+lemma parseSinglePairMapping_wb_ix (tokens : Indexed.TokenStream input)
     (n fuel : Nat) (h_fuel : fuel ≤ n)
     (_h_fpsv : FlowAwarePSVIx tokens) (h_ih : ParseNodeWBIx tokens n)
     (ps : ParseStateIx input) (result : YamlValue × ParseStateIx input)
@@ -1818,7 +1818,7 @@ theorem parseSinglePairMapping_wb_ix (tokens : Indexed.TokenStream input)
 
 set_option maxHeartbeats 800000 in
 /-- Loop invariant for `parseFlowSequenceLoop`. -/
-theorem parseFlowSequenceLoop_wb_ix (tokens : Indexed.TokenStream input)
+lemma parseFlowSequenceLoop_wb_ix (tokens : Indexed.TokenStream input)
     (n fuel : Nat) (h_fuel : fuel ≤ n)
     (h_fpsv : FlowAwarePSVIx tokens) (h_ih : ParseNodeWBIx tokens n)
     (ps : ParseStateIx input) (items : Array YamlValue)
@@ -1922,7 +1922,7 @@ theorem parseFlowSequenceLoop_wb_ix (tokens : Indexed.TokenStream input)
             exact ⟨h_wb.1, h_wb.2.1.trans h4fn, h_wb.2.2⟩
 
 /-- `parseFlowSequence` well-behaved given parseNode IH. -/
-theorem parseFlowSequence_wb_ix (tokens : Indexed.TokenStream input)
+lemma parseFlowSequence_wb_ix (tokens : Indexed.TokenStream input)
     (fuel : Nat) (h_fpsv : FlowAwarePSVIx tokens) (h_ih : ParseNodeWBIx tokens fuel)
     (h_matched : FlowBracketsMatchedIx tokens)
     (ps : ParseStateIx input) (result : YamlValue × ParseStateIx input)
@@ -1986,7 +1986,7 @@ theorem parseFlowSequence_wb_ix (tokens : Indexed.TokenStream input)
       · simp at h_ok
 
 /-- Well-behavedness of `parseFlowMappingValue`. -/
-theorem parseFlowMappingValue_wb_ix (tokens : Indexed.TokenStream input)
+lemma parseFlowMappingValue_wb_ix (tokens : Indexed.TokenStream input)
     (n fuel : Nat) (h_fuel : fuel ≤ n)
     (h_ih : ParseNodeWBIx tokens n)
     (ps : ParseStateIx input) (savedPath : YamlPath) (keyContent : String)
@@ -2056,7 +2056,7 @@ theorem parseFlowMappingValue_wb_ix (tokens : Indexed.TokenStream input)
            h2r_fn, h2r_tok⟩
 
 /-- Token preservation for `parseFlowMappingValue`. -/
-theorem parseFlowMappingValue_tokens_preserved_ix (tokens : Indexed.TokenStream input)
+lemma parseFlowMappingValue_tokens_preserved_ix (tokens : Indexed.TokenStream input)
     (n : Nat) (h_ih : ParseNodeWBIx tokens n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n)
     (savedPath : YamlPath) (keyContent : String)
@@ -2085,7 +2085,7 @@ theorem parseFlowMappingValue_tokens_preserved_ix (tokens : Indexed.TokenStream 
   · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_tcr_tok
 
 /-- Token preservation for `parseExplicitKey`. -/
-theorem parseExplicitKey_tokens_preserved_ix (tokens : Indexed.TokenStream input)
+lemma parseExplicitKey_tokens_preserved_ix (tokens : Indexed.TokenStream input)
     (n : Nat) (h_ih : ParseNodeWBIx tokens n)
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≤ n)
     (result : YamlValue × ParseStateIx input)
@@ -2098,7 +2098,7 @@ theorem parseExplicitKey_tokens_preserved_ix (tokens : Indexed.TokenStream input
   exact (parseNodeWBIx_apply h_ih h_eq h_ok (by omega)).2.2.2
 
 /-- Well-behavedness of `parseExplicitKey`. -/
-theorem parseExplicitKey_wb_ix (tokens : Indexed.TokenStream input)
+lemma parseExplicitKey_wb_ix (tokens : Indexed.TokenStream input)
     (n fuel : Nat) (h_fuel : fuel ≤ n)
     (h_ih : ParseNodeWBIx tokens n)
     (ps : ParseStateIx input)
@@ -2124,7 +2124,7 @@ theorem parseExplicitKey_wb_ix (tokens : Indexed.TokenStream input)
 
 set_option maxHeartbeats 800000 in
 /-- Token preservation: `parseFlowMappingLoop` never mutates the token stream. -/
-theorem parseFlowMappingLoop_tokens_preserved_ix (tokens : Indexed.TokenStream input)
+lemma parseFlowMappingLoop_tokens_preserved_ix (tokens : Indexed.TokenStream input)
     (n : Nat)
     (_h_fpsv : FlowAwarePSVIx tokens)
     (h_ih : ParseNodeWBIx tokens n)
@@ -2181,7 +2181,7 @@ theorem parseFlowMappingLoop_tokens_preserved_ix (tokens : Indexed.TokenStream i
       exact ih_fuel _ (by omega) _ h_vt h_ok
 
 /-- Recursion helper for `parseFlowMappingLoop_wb_ix`. -/
-theorem flow_mapping_recurse_ix (tokens : Indexed.TokenStream input)
+lemma flow_mapping_recurse_ix (tokens : Indexed.TokenStream input)
     (ps : ParseStateIx input)
     (pairs : Array (YamlValue × YamlValue))
     (result : Array (YamlValue × YamlValue) × ParseStateIx input)
@@ -2223,7 +2223,7 @@ theorem flow_mapping_recurse_ix (tokens : Indexed.TokenStream input)
   exact ⟨h_wb.1, h_wb.2.1, h_wb.2.2.1.trans h_fn_rec, h_wb.2.2.2⟩
 
 /-- Helper: parseExplicitKey + parseFlowMappingValue + recurse. -/
-theorem explicitKey_val_recurse_ix (tokens : Indexed.TokenStream input)
+lemma explicitKey_val_recurse_ix (tokens : Indexed.TokenStream input)
     (n : Nat) (h_ih : ParseNodeWBIx tokens n)
     (ps : ParseStateIx input)
     (pairs : Array (YamlValue × YamlValue))
@@ -2276,7 +2276,7 @@ theorem explicitKey_val_recurse_ix (tokens : Indexed.TokenStream input)
     (h_vwb.2.2.1.trans (h_kwb.2.2.1.trans h_ek_fn)) h_vwb.2.2.2 h_ok ih_fuel
 
 /-- Helper: parseNode + parseFlowMappingValue + recurse (implicit key). -/
-theorem implicitKey_val_recurse_ix (tokens : Indexed.TokenStream input)
+lemma implicitKey_val_recurse_ix (tokens : Indexed.TokenStream input)
     (n : Nat) (h_ih : ParseNodeWBIx tokens n)
     (ps : ParseStateIx input)
     (pairs : Array (YamlValue × YamlValue))
@@ -2330,7 +2330,7 @@ theorem implicitKey_val_recurse_ix (tokens : Indexed.TokenStream input)
 
 set_option maxHeartbeats 800000 in
 /-- Loop invariant for `parseFlowMappingLoop`. -/
-theorem parseFlowMappingLoop_wb_ix
+lemma parseFlowMappingLoop_wb_ix
     (tokens : Indexed.TokenStream input)
     (n fuel : Nat) (h_fuel : fuel ≤ n)
     (h_ih : ParseNodeWBIx tokens n)
@@ -2440,7 +2440,7 @@ theorem parseFlowMappingLoop_wb_ix
              h_eq rfl heq_node _ val ps_rec heq_val h_ok (ih_fuel (by omega)))
 
 /-- `parseFlowMapping` well-behaved given parseNode IH. -/
-theorem parseFlowMapping_wb_ix (tokens : Indexed.TokenStream input)
+lemma parseFlowMapping_wb_ix (tokens : Indexed.TokenStream input)
     (fuel : Nat) (h_fpsv : FlowAwarePSVIx tokens) (h_ih : ParseNodeWBIx tokens fuel)
     (h_matched : FlowBracketsMatchedIx tokens)
     (ps : ParseStateIx input) (result : YamlValue × ParseStateIx input)
@@ -2513,7 +2513,7 @@ theorem parseFlowMapping_wb_ix (tokens : Indexed.TokenStream input)
 
 /-- Base case: at fuel 0, `parseNode` always returns error, so
     `ParseNodeWBIx tokens 0` is vacuously true. -/
-theorem parseNode_wb_zero_ix (tokens : Indexed.TokenStream input) :
+lemma parseNode_wb_zero_ix (tokens : Indexed.TokenStream input) :
     ParseNodeWBIx tokens 0 := by
   intro ps m val ps' hm h_eq h_ok
   have : m = 0 := by omega
@@ -2522,7 +2522,7 @@ theorem parseNode_wb_zero_ix (tokens : Indexed.TokenStream input) :
   simp at h_ok
 
 /-- Well-behavedness of `parseNodeContent`. -/
-theorem parseNodeContent_wb_ix (tokens : Indexed.TokenStream input)
+lemma parseNodeContent_wb_ix (tokens : Indexed.TokenStream input)
     (n fuel : Nat) (h_fuel : fuel ≤ n)
     (h_fpsv : FlowAwarePSVIx tokens) (h_ih : ParseNodeWBIx tokens n)
     (h_matched : FlowBracketsMatchedIx tokens)
@@ -2570,7 +2570,7 @@ theorem parseNodeContent_wb_ix (tokens : Indexed.TokenStream input)
            rfl, h_eq⟩
 
 /-- W1: Alias branch of `parseNode` preserves tokens. -/
-theorem parseNode_alias_tokens_ix (ps : ParseStateIx input) (fuel : Nat) (name : String)
+lemma parseNode_alias_tokens_ix (ps : ParseStateIx input) (fuel : Nat) (name : String)
     (h_peek : ps.peek? = some (.alias name))
     (result : YamlValue × ParseStateIx input)
     (h_ok : parseNode ps (fuel + 1) = .ok result) :
@@ -2585,7 +2585,7 @@ theorem parseNode_alias_tokens_ix (ps : ParseStateIx input) (fuel : Nat) (name :
     }
 
 /-- W2: Alias branch preserves flowNestingIx. -/
-theorem parseNode_alias_flowNesting_ix (tokens : Indexed.TokenStream input)
+lemma parseNode_alias_flowNesting_ix (tokens : Indexed.TokenStream input)
     (ps : ParseStateIx input) (fuel : Nat) (name : String)
     (h_peek : ps.peek? = some (.alias name))
     (h_eq : ps.tokens = tokens)
@@ -2608,7 +2608,7 @@ theorem parseNode_alias_flowNesting_ix (tokens : Indexed.TokenStream input)
 /-- **Key lemma**: `parseNode` is well-behaved at every fuel level.
     Proved by strong induction on fuel using all the sub-parser
     well-behavedness lemmas. -/
-theorem parseNode_wb_all_ix (tokens : Indexed.TokenStream input)
+lemma parseNode_wb_all_ix (tokens : Indexed.TokenStream input)
     (h_fpsv : FlowAwarePSVIx tokens)
     (h_matched : FlowBracketsMatchedIx tokens) :
     ∀ n, ParseNodeWBIx tokens n := by
@@ -2686,7 +2686,7 @@ theorem parseNode_wb_all_ix (tokens : Indexed.TokenStream input)
                   rw [h_fin_tok]; exact h_content.2.2.2⟩
 
 /-- `parseNode` preserves the token stream. -/
-theorem parseNode_tokens_preserved_ix
+lemma parseNode_tokens_preserved_ix
     (tokens : Indexed.TokenStream input)
     (h_fpsv : FlowAwarePSVIx tokens)
     (h_matched : FlowBracketsMatchedIx tokens)
@@ -2702,7 +2702,7 @@ theorem parseNode_tokens_preserved_ix
 /-! ### §5f  parseDocument output scannability — Indexed -/
 
 /-- `prepareDocumentState` preserves the token stream. -/
-theorem prepareDocumentState_tokens_preserved_ix
+lemma prepareDocumentState_tokens_preserved_ix
     (ps : ParseStateIx input) (dirs : Array Directive) (ps' : ParseStateIx input)
     (h_ok : prepareDocumentState ps = .ok (dirs, ps')) :
     ps'.tokens = ps.tokens := by
@@ -2736,7 +2736,7 @@ theorem prepareDocumentState_tokens_preserved_ix
     exact h_tok)
 
 /-- `parseDocument` preserves the token stream. -/
-theorem parseDocument_tokens_preserved_ix
+lemma parseDocument_tokens_preserved_ix
     (ps : ParseStateIx input) (doc : YamlDocument) (ps' : ParseStateIx input)
     (h_fpsv : FlowAwarePSVIx ps.tokens)
     (h_matched : FlowBracketsMatchedIx ps.tokens)
@@ -2771,7 +2771,7 @@ theorem parseDocument_tokens_preserved_ix
 
 /-- Factoring: `parseDocument`'s root value is either `emptyNode` or
     the result of `parseNode` on a state with preserved tokens. -/
-theorem parseDocument_value_cases_ix
+lemma parseDocument_value_cases_ix
     (ps : ParseStateIx input) (doc : YamlDocument) (ps' : ParseStateIx input)
     (h_ok : parseDocument ps = .ok (doc, ps')) :
     (doc.value = emptyNode) ∨
@@ -2804,7 +2804,7 @@ theorem parseDocument_value_cases_ix
       exact ⟨ps1, ps2, h_prep_tok, by rw [h_prep_tok] at h_pn; exact h_pn⟩
 
 /-- C2a·core: A document produced by `parseDocument` has a `Scannable` root. -/
-theorem parseDocument_scannable_ix
+lemma parseDocument_scannable_ix
     (tokens : Indexed.TokenStream input)
     (ps : ParseStateIx input) (doc : YamlDocument) (ps' : ParseStateIx input)
     (h_fpsv : FlowAwarePSVIx tokens)
@@ -2824,7 +2824,7 @@ theorem parseDocument_scannable_ix
 /-! ### §5g  parseStream loop decomposition — Indexed -/
 
 /-- `ParseStateIx.expect` preserves the token stream. -/
-theorem expect_tokens_ix (ps ps' : ParseStateIx input) (tok : YamlToken) (desc : String)
+lemma expect_tokens_ix (ps ps' : ParseStateIx input) (tok : YamlToken) (desc : String)
     (h : ps.expect tok desc = .ok ps') : ps'.tokens = ps.tokens := by
   unfold ParseStateIx.expect at h
   split at h
@@ -2835,7 +2835,7 @@ theorem expect_tokens_ix (ps ps' : ParseStateIx input) (tok : YamlToken) (desc :
 
 /-- Every document in `parseStreamLoop`'s output was either already in the
     accumulator or produced by `parseDocument` with the same token stream. -/
-theorem parseStreamLoop_docs_from_parseDocument_ix
+lemma parseStreamLoop_docs_from_parseDocument_ix
     (tokens : Indexed.TokenStream input)
     (h_fpsv : FlowAwarePSVIx tokens) (h_matched : FlowBracketsMatchedIx tokens)
     (ps : ParseStateIx input) (docs : Array YamlDocument)
@@ -2888,7 +2888,7 @@ theorem parseStreamLoop_docs_from_parseDocument_ix
 
 /-- Every document in `parseStreamIx`'s output was produced by `parseDocument`
     with the same token stream. -/
-theorem parseStream_doc_from_parseDocument_ix
+lemma parseStream_doc_from_parseDocument_ix
     (tokens : Indexed.TokenStream input)
     (h_fpsv : FlowAwarePSVIx tokens) (h_matched : FlowBracketsMatchedIx tokens)
     (docs : Array YamlDocument)
@@ -2908,7 +2908,7 @@ theorem parseStream_doc_from_parseDocument_ix
 
 /-- **C2a (indexed)**: Every document produced by `parseStreamIx` from scanner
     tokens has a `Scannable` value tree. -/
-theorem parseStream_output_scannable_ix
+lemma parseStream_output_scannable_ix
     (tokens : Indexed.TokenStream input)
     (docs : Array YamlDocument)
     (h_fpsv : FlowAwarePSVIx tokens)
@@ -2938,7 +2938,7 @@ def ParseNodePosMonoIx (n : Nat) : Prop :=
     m ≤ n → parseNode ps m = .ok (val, ps') → ps'.pos ≥ ps.pos
 
 /-- Projection helper for `ParseNodePosMonoIx`. -/
-theorem parseNodePosMonoIx_apply {n : Nat} (h_ih : ParseNodePosMonoIx (input := input) n)
+lemma parseNodePosMonoIx_apply {n : Nat} (h_ih : ParseNodePosMonoIx (input := input) n)
     {ps : ParseStateIx input} {m : Nat} {v : YamlValue × ParseStateIx input}
     (h_ok : parseNode ps m = .ok v)
     (h_le : m ≤ n := by omega) :
@@ -2946,7 +2946,7 @@ theorem parseNodePosMonoIx_apply {n : Nat} (h_ih : ParseNodePosMonoIx (input := 
   h_ih ps m v.1 v.2 h_le h_ok
 
 /-- `tryConsume` doesn't decrease position. -/
-theorem tryConsume_pos_mono_ix (ps : ParseStateIx input) (tok : YamlToken) :
+lemma tryConsume_pos_mono_ix (ps : ParseStateIx input) (tok : YamlToken) :
     (ps.tryConsume tok).2.pos ≥ ps.pos := by
   unfold ParseStateIx.tryConsume
   split
@@ -2959,7 +2959,7 @@ theorem tryConsume_pos_mono_ix (ps : ParseStateIx input) (tok : YamlToken) :
 set_option maxRecDepth 10000 in
 set_option maxHeartbeats 800000000 in
 set_option linter.unusedSimpArgs false in
-theorem parseNodeProperties_pos_mono_ix (ps : ParseStateIx input)
+lemma parseNodeProperties_pos_mono_ix (ps : ParseStateIx input)
     (props : NodeProperties) (ps' : ParseStateIx input)
     (h : parseNodeProperties ps = .ok (props, ps')) :
     ps'.pos ≥ ps.pos := by
@@ -3053,7 +3053,7 @@ theorem parseNodeProperties_pos_mono_ix (ps : ParseStateIx input)
 
 /-! #### Block sequence position monotonicity — Indexed -/
 
-theorem parseBlockSequenceLoop_pos_mono_ix (fuel : Nat)
+lemma parseBlockSequenceLoop_pos_mono_ix (fuel : Nat)
     (h_ih : ParseNodePosMonoIx (input := input) fuel)
     (ps : ParseStateIx input) (items : Array YamlValue)
     (result : Array YamlValue × ParseStateIx input)
@@ -3086,7 +3086,7 @@ theorem parseBlockSequenceLoop_pos_mono_ix (fuel : Nat)
     next => -- peek? ≠ blockEntry
       simp only [Except.ok.injEq] at h_ok; subst h_ok; exact Nat.le_refl _
 
-theorem parseBlockSequence_pos_mono_ix (fuel : Nat)
+lemma parseBlockSequence_pos_mono_ix (fuel : Nat)
     (h_ih : ParseNodePosMonoIx (input := input) fuel)
     (ps : ParseStateIx input) (result : YamlValue × ParseStateIx input)
     (h_ok : parseBlockSequence ps fuel = .ok result) :
@@ -3108,7 +3108,7 @@ theorem parseBlockSequence_pos_mono_ix (fuel : Nat)
 
 /-! #### Implicit block sequence position monotonicity — Indexed -/
 
-theorem parseImplicitBlockSequenceLoop_pos_mono_ix (fuel : Nat)
+lemma parseImplicitBlockSequenceLoop_pos_mono_ix (fuel : Nat)
     (h_ih : ParseNodePosMonoIx (input := input) fuel)
     (ps : ParseStateIx input) (items : Array YamlValue)
     (result : Array YamlValue × ParseStateIx input)
@@ -3141,7 +3141,7 @@ theorem parseImplicitBlockSequenceLoop_pos_mono_ix (fuel : Nat)
     next =>
       simp only [Except.ok.injEq] at h_ok; subst h_ok; exact Nat.le_refl _
 
-theorem parseImplicitBlockSequence_pos_mono_ix (fuel : Nat)
+lemma parseImplicitBlockSequence_pos_mono_ix (fuel : Nat)
     (h_ih : ParseNodePosMonoIx (input := input) fuel)
     (ps : ParseStateIx input) (result : YamlValue × ParseStateIx input)
     (h_ok : parseImplicitBlockSequence ps fuel = .ok result) :
@@ -3168,7 +3168,7 @@ layers. The proof scales up the legacy split count from ~12 to ~18 to peel
 all wrappers. -/
 
 set_option maxHeartbeats 1600000 in
-theorem parseBlockMappingEntryValue_pos_mono_ix (fuel : Nat)
+lemma parseBlockMappingEntryValue_pos_mono_ix (fuel : Nat)
     (h_ih : ParseNodePosMonoIx (input := input) fuel)
     (ps : ParseStateIx input) (keyHasContent : Bool) (keyLine keyCol : Nat)
     (result : YamlValue × ParseStateIx input)
@@ -3213,7 +3213,7 @@ theorem parseBlockMappingEntryValue_pos_mono_ix (fuel : Nat)
     simp only [Except.ok.injEq] at h_ok; subst h_ok; simp only []; omega
 
 set_option maxHeartbeats 1600000 in
-theorem handleBlockMappingKeyEntry_pos_mono_ix (fuel : Nat)
+lemma handleBlockMappingKeyEntry_pos_mono_ix (fuel : Nat)
     (h_ih : ParseNodePosMonoIx (input := input) fuel)
     (ps : ParseStateIx input) (pairIdx : Nat)
     (result : YamlValue × YamlValue × ParseStateIx input)
@@ -3244,7 +3244,7 @@ theorem handleBlockMappingKeyEntry_pos_mono_ix (fuel : Nat)
       _ _ _ _ _ (by assumption)
     simp [ParseStateIx.advance] at h_key h_bev ⊢; omega }
 
-theorem handleBlockMappingValueEntry_pos_mono_ix (fuel : Nat)
+lemma handleBlockMappingValueEntry_pos_mono_ix (fuel : Nat)
     (h_ih : ParseNodePosMonoIx (input := input) fuel)
     (ps : ParseStateIx input) (pairIdx : Nat)
     (result : YamlValue × ParseStateIx input)
@@ -3265,7 +3265,7 @@ theorem handleBlockMappingValueEntry_pos_mono_ix (fuel : Nat)
       have h_pn := parseNodePosMonoIx_apply h_ih heq_pn
       simp [ParseStateIx.advance] at h_pn ⊢; omega
 
-theorem parseBlockMappingLoop_pos_mono_ix (fuel : Nat)
+lemma parseBlockMappingLoop_pos_mono_ix (fuel : Nat)
     (h_ih : ParseNodePosMonoIx (input := input) fuel)
     (ps : ParseStateIx input) (pairs : Array (YamlValue × YamlValue))
     (result : Array (YamlValue × YamlValue) × ParseStateIx input)
@@ -3297,7 +3297,7 @@ theorem parseBlockMappingLoop_pos_mono_ix (fuel : Nat)
         simp only [] at h_entry; omega
     · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact Nat.le_refl _
 
-theorem parseBlockMapping_pos_mono_ix (fuel : Nat)
+lemma parseBlockMapping_pos_mono_ix (fuel : Nat)
     (h_ih : ParseNodePosMonoIx (input := input) fuel)
     (ps : ParseStateIx input) (result : YamlValue × ParseStateIx input)
     (h_ok : parseBlockMapping ps fuel = .ok result) :
@@ -3320,7 +3320,7 @@ theorem parseBlockMapping_pos_mono_ix (fuel : Nat)
 /-! #### Flow mapping helpers position monotonicity — Indexed -/
 
 set_option maxHeartbeats 1600000 in
-theorem parseFlowMappingValue_pos_mono_ix (fuel : Nat)
+lemma parseFlowMappingValue_pos_mono_ix (fuel : Nat)
     (h_ih : ParseNodePosMonoIx (input := input) fuel)
     (ps : ParseStateIx input) (savedPath : YamlPath) (keyContent : String)
     (result : YamlValue × ParseStateIx input)
@@ -3358,7 +3358,7 @@ theorem parseFlowMappingValue_pos_mono_ix (fuel : Nat)
               try simp only [] at h_tc1_pos h_tc2_pos h_ps1_pos h_pn
               omega } }
 
-theorem parseExplicitKey_pos_mono_ix (fuel : Nat)
+lemma parseExplicitKey_pos_mono_ix (fuel : Nat)
     (h_ih : ParseNodePosMonoIx (input := input) fuel)
     (ps : ParseStateIx input)
     (result : YamlValue × ParseStateIx input)
@@ -3371,7 +3371,7 @@ theorem parseExplicitKey_pos_mono_ix (fuel : Nat)
   next => exact parseNodePosMonoIx_apply h_ih h_ok
 
 set_option maxHeartbeats 3200000 in
-theorem parseSinglePairMapping_pos_mono_ix (fuel : Nat)
+lemma parseSinglePairMapping_pos_mono_ix (fuel : Nat)
     (h_ih : ParseNodePosMonoIx (input := input) fuel)
     (ps : ParseStateIx input) (result : YamlValue × ParseStateIx input)
     (h_ok : parseSinglePairMapping ps fuel = .ok result) :
@@ -3481,7 +3481,7 @@ theorem parseSinglePairMapping_pos_mono_ix (fuel : Nat)
 /-! #### Flow sequence position monotonicity — Indexed -/
 
 set_option maxHeartbeats 1600000 in
-theorem parseFlowSequenceLoop_pos_mono_ix (fuel : Nat)
+lemma parseFlowSequenceLoop_pos_mono_ix (fuel : Nat)
     (h_ih : ParseNodePosMonoIx (input := input) fuel)
     (ps : ParseStateIx input) (items : Array YamlValue)
     (result : Array YamlValue × ParseStateIx input)
@@ -3539,7 +3539,7 @@ theorem parseFlowSequenceLoop_pos_mono_ix (fuel : Nat)
               { ps_pn with currentPath := _ } _ h_ok
             simp at h_rec h_pn ⊢; omega
 
-theorem parseFlowSequence_pos_mono_ix (fuel : Nat)
+lemma parseFlowSequence_pos_mono_ix (fuel : Nat)
     (h_ih : ParseNodePosMonoIx (input := input) fuel)
     (ps : ParseStateIx input) (result : YamlValue × ParseStateIx input)
     (h_ok : parseFlowSequence ps fuel = .ok result) :
@@ -3564,7 +3564,7 @@ theorem parseFlowSequence_pos_mono_ix (fuel : Nat)
 /-! #### Flow mapping position monotonicity — Indexed -/
 
 set_option maxHeartbeats 1600000 in
-theorem parseFlowMappingLoop_pos_mono_ix (fuel : Nat)
+lemma parseFlowMappingLoop_pos_mono_ix (fuel : Nat)
     (h_ih : ParseNodePosMonoIx (input := input) fuel)
     (ps : ParseStateIx input) (pairs : Array (YamlValue × YamlValue))
     (result : Array (YamlValue × YamlValue) × ParseStateIx input)
@@ -3638,7 +3638,7 @@ theorem parseFlowMappingLoop_pos_mono_ix (fuel : Nat)
               have h_rec := ih_fuel h_ih_k ps_fmv _ h_ok
               simp at h_pn h_fmv ⊢; omega
 
-theorem parseFlowMapping_pos_mono_ix (fuel : Nat)
+lemma parseFlowMapping_pos_mono_ix (fuel : Nat)
     (h_ih : ParseNodePosMonoIx (input := input) fuel)
     (ps : ParseStateIx input) (result : YamlValue × ParseStateIx input)
     (h_ok : parseFlowMapping ps fuel = .ok result) :
@@ -3662,7 +3662,7 @@ theorem parseFlowMapping_pos_mono_ix (fuel : Nat)
 
 /-! #### Content dispatch and main induction — Indexed -/
 
-theorem parseNodeContent_pos_mono_ix (fuel : Nat)
+lemma parseNodeContent_pos_mono_ix (fuel : Nat)
     (h_ih : ParseNodePosMonoIx (input := input) fuel)
     (ps : ParseStateIx input) (props : NodeProperties)
     (result : YamlValue × ParseStateIx input)
@@ -3678,7 +3678,7 @@ theorem parseNodeContent_pos_mono_ix (fuel : Nat)
   · exact parseFlowMapping_pos_mono_ix fuel h_ih ps result h_ok
   · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact Nat.le_refl _
 
-theorem parseNode_pos_mono_all_ix : ∀ n, ParseNodePosMonoIx (input := input) n := by
+lemma parseNode_pos_mono_all_ix : ∀ n, ParseNodePosMonoIx (input := input) n := by
   intro n
   induction n with
   | zero =>
@@ -3731,7 +3731,7 @@ discharged at the loop body in
 `parseFlowSequenceLoop_emitter_ok` / `parseFlowMappingLoop_emitter_ok`. -/
 
 set_option maxHeartbeats 1600000 in
-theorem parseNode_emitter_advances_ix (ps : ParseStateIx input) (fuel : Nat)
+lemma parseNode_emitter_advances_ix (ps : ParseStateIx input) (fuel : Nat)
     (val : YamlValue) (ps' : ParseStateIx input)
     (h_ok : parseNode ps (fuel + 1) = .ok (val, ps'))
     (h_emit_tok : (∃ s, ps.peek? = some (.scalar s .doubleQuoted)) ∨
@@ -3857,7 +3857,7 @@ theorem parseNode_emitter_advances_ix (ps : ParseStateIx input) (fuel : Nat)
 set_option maxHeartbeats 800000 in
 /-- Monotonicity: indexed `parseFlowMappingLoop` never shrinks the pairs array.
     Indexed twin of legacy `parseFlowMappingLoop_pairs_grow`. -/
-theorem parseFlowMappingLoop_pairs_grow_ix
+lemma parseFlowMappingLoop_pairs_grow_ix
     (ps : ParseStateIx input) (fuel : Nat)
     (pairs : Array (YamlValue × YamlValue))
     (result : Array (YamlValue × YamlValue) × ParseStateIx input)
@@ -3911,7 +3911,7 @@ def flowBracketBalanceIx (tokens : Indexed.TokenStream input) (lo hi : Nat) : In
     let slice := tokens.tokens.toList.drop lo |>.take (hi - lo)
     slice.foldl (fun acc t => acc + flowBracketDelta t.token) 0
 
-theorem flowBracketBalanceIx_compose (tokens : Indexed.TokenStream input)
+lemma flowBracketBalanceIx_compose (tokens : Indexed.TokenStream input)
     (lo mid hi : Nat) (h_lm : lo ≤ mid) (h_mh : mid ≤ hi) :
     flowBracketBalanceIx tokens lo hi =
       flowBracketBalanceIx tokens lo mid + flowBracketBalanceIx tokens mid hi := by
@@ -3928,7 +3928,7 @@ theorem flowBracketBalanceIx_compose (tokens : Indexed.TokenStream input)
       congr 1
       rw [List.drop_drop, show lo + (mid - lo) = mid from by omega]
 
-theorem flowBracketBalanceIx_single (tokens : Indexed.TokenStream input)
+lemma flowBracketBalanceIx_single (tokens : Indexed.TokenStream input)
     (i : Nat) (h : i < tokens.tokens.toList.length) :
     flowBracketBalanceIx tokens i (i + 1) = flowBracketDelta tokens.tokens.toList[i].token := by
   simp only [flowBracketBalanceIx, show ¬(i ≥ i + 1) from by omega, ↓reduceIte,
@@ -3936,7 +3936,7 @@ theorem flowBracketBalanceIx_single (tokens : Indexed.TokenStream input)
   rw [List.drop_eq_getElem_cons h]
   simp [List.foldl]
 
-theorem flowBracketBalanceIx_compose_zero (tokens : Indexed.TokenStream input)
+lemma flowBracketBalanceIx_compose_zero (tokens : Indexed.TokenStream input)
     (body_start pos pos_after : Nat)
     (h_bs_pos : body_start ≤ pos)
     (h_pos_bound : pos < tokens.tokens.toList.length)
@@ -3952,7 +3952,7 @@ theorem flowBracketBalanceIx_compose_zero (tokens : Indexed.TokenStream input)
 /-- The indexed twin of `peek_some_val`: if `ps.peek? = some tok`,
     then `ps.pos < ps.tokens.size` and the token at `ps.pos` carries
     that value. Replaces legacy `.val` with indexed `.token`. -/
-theorem peek_some_val_ix {ps : ParseStateIx input} {tok : YamlToken}
+lemma peek_some_val_ix {ps : ParseStateIx input} {tok : YamlToken}
     (h_peek : ps.peek? = some tok) :
     ps.pos < ps.tokens.size ∧ (ps.tokens.tokens[ps.pos]!).token = tok := by
   unfold ParseStateIx.peek? ParseStateIx.peekIx? at h_peek
@@ -3982,7 +3982,7 @@ theorem peek_some_val_ix {ps : ParseStateIx input} {tok : YamlToken}
 /-- The indexed twin of `peek_of_pos_val`: if `ps.pos = k`, position
     `k` is in bounds, and the token at `k` has value `tok`, then
     `ps.peek? = some tok`. -/
-theorem peek_of_pos_val_ix {ps : ParseStateIx input} {k : Nat} {tok : YamlToken}
+lemma peek_of_pos_val_ix {ps : ParseStateIx input} {k : Nat} {tok : YamlToken}
     (h_pos : ps.pos = k) (h_bound : k < ps.tokens.size)
     (h_val : (ps.tokens.tokens[k]!).token = tok) :
     ps.peek? = some tok := by
@@ -4013,7 +4013,7 @@ def ParseNodeFlowSeqOkIx (tokens : Indexed.TokenStream input)
                (ps'.peek? = some .flowSequenceEnd ∧ ps'.pos = endPos)) ∧
               flowBracketBalanceIx tokens ps.pos ps'.pos = 0
 
-theorem ParseNodeFlowSeqOkIx.mono {tokens : Indexed.TokenStream input}
+lemma ParseNodeFlowSeqOkIx.mono {tokens : Indexed.TokenStream input}
     {endPos fuel fuel' body_start}
     (h : ParseNodeFlowSeqOkIx (input := input) tokens endPos fuel body_start)
     (h_le : fuel' ≤ fuel) :
@@ -4024,7 +4024,7 @@ theorem ParseNodeFlowSeqOkIx.mono {tokens : Indexed.TokenStream input}
     ⟨v, ps', hok, hadv, hbound, htok, htp, hpeek, hbal⟩
 
 set_option maxHeartbeats 3200000 in
-theorem parseFlowSequenceLoop_emitter_ok_ix (fuel : Nat)
+lemma parseFlowSequenceLoop_emitter_ok_ix (fuel : Nat)
     (ps : ParseStateIx input) (items_acc : Array YamlValue) (endPos : Nat)
     (body_start : Nat)
     (h_pn : ParseNodeFlowSeqOkIx (input := input) ps.tokens endPos fuel body_start)
@@ -4271,7 +4271,7 @@ def ParseEntryFlowMapOkIx (tokens : Indexed.TokenStream input)
            (val_ps.peek? = some .flowMappingEnd ∧ val_ps.pos = endPos)) ∧
           flowBracketBalanceIx tokens ps.pos val_ps.pos = 0
 
-theorem ParseEntryFlowMapOkIx.mono {tokens : Indexed.TokenStream input}
+lemma ParseEntryFlowMapOkIx.mono {tokens : Indexed.TokenStream input}
     {endPos fuel fuel' body_start}
     (h : ParseEntryFlowMapOkIx (input := input) tokens endPos fuel body_start)
     (h_le : fuel' ≤ fuel) :
@@ -4282,7 +4282,7 @@ theorem ParseEntryFlowMapOkIx.mono {tokens : Indexed.TokenStream input}
     ⟨kv, kps, hek, hadv, hbound, htok, htp, hfmv⟩
 
 set_option maxHeartbeats 6400000 in
-theorem parseFlowMappingLoop_emitter_ok_ix (fuel : Nat)
+lemma parseFlowMappingLoop_emitter_ok_ix (fuel : Nat)
     (ps : ParseStateIx input) (pairs_acc : Array (YamlValue × YamlValue)) (endPos : Nat)
     (body_start : Nat)
     (h_entry : ParseEntryFlowMapOkIx (input := input) ps.tokens endPos fuel body_start)
