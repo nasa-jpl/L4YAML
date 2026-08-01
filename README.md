@@ -566,6 +566,16 @@ maintenance pain).
 
 ## Next steps
 
+**Lift the `adaptForFlowContext → hasFlowIndicator` inductive gap.**
+The 2026-08-01 inductive-fibration re-run (`L4YAML.FGM`'s `#ifg`, see
+FGM's README Phase 4) reports its single non-aux gap on this call
+edge: `YamlValue.adaptForFlowContext` recurses on `YamlValue` and
+calls `hasFlowIndicator` (recursive on `List`), but no subject-aligned
+inductive lemma about the former consumes an inductive lemma about the
+latter. A `YamlValue`-induction lemma relating the two (e.g. how
+flow-adaptation interacts with `hasFlowIndicator` on scalar payloads)
+would close `#ifg` back to 0%.
+
 **Close the event-axis verification gap.** The event stream (the
 `+STR`/`+DOC`/`=VAL`… notation scored against the yaml-test-suite) currently
 has no formal coverage: nothing under [L4YAML/Proofs/](L4YAML/Proofs/)
