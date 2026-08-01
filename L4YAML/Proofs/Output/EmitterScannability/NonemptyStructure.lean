@@ -6,6 +6,17 @@ Released under Apache 2.0 license as described in the file LICENSE.
 import L4YAML.Proofs.Output.EmitterScannability.BlockProducers
 import L4YAML.Proofs.Parser.FlowParserAcceptance
 
+/-!
+# Non-empty flow structure of emitted collections
+
+Structure lemmas for the non-empty cases of `emitList`/`emitPairList`:
+the scanned token block of a non-empty emitted flow sequence/mapping is
+well-bracketed with the expected interior shape. Feeds the sequence and
+mapping acceptance branches of `EmitterScannability` (Group 6 capstones)
+via the deep-family producers `RecSeqBodyDeep`/`RecMapBodyDeep` and
+their `toFlat` mutual block.
+-/
+
 namespace L4YAML.Proofs.EmitterScannability
 
 open L4YAML

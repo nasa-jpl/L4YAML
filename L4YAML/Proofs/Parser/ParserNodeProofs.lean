@@ -1,6 +1,21 @@
+/-
+Copyright (c) 2026. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+-/
 import L4YAML.Spec.Grammar
 import L4YAML.Parser.Composition
 import L4YAML.Proofs.Parser.ParserGrammableBase
+
+/-!
+# Per-function parser node proofs (anchors-grow / aliases-resolve)
+
+The per-function mutual-induction scaffolding (`_ag`, `_aar` families)
+behind capstones 3.4 `parseNode_anchors_grow` and 3.5
+`parseNode_aliases_resolve`: every parser clique member grows the
+anchor environment monotonically and resolves aliases against it.
+Explicitly kept infrastructure per Blueprint/04-capstones.md
+("Decomposition: what is *not* a capstone").
+-/
 
 /-
 Copyright (c) 2026. All rights reserved.

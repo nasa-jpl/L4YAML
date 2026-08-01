@@ -1,5 +1,15 @@
 /-
-  Parser Security: Limits and Tag Validation
+Copyright (c) 2026. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+-/
+
+import L4YAML.Spec.Types
+import L4YAML.Token.Token
+import L4YAML.Scanner.Scanner
+import L4YAML.Parser.IndexedComposition
+
+/-!
+# Parser Security: Limits and Tag Validation
 
   YAML 1.2.2 §3.1 — Processes: The Load step (Parse + Compose) must be
   safe against adversarial input.  This module implements configurable
@@ -24,10 +34,7 @@
 
   See `LIMITS.md` for threat model and design rationale.
 -/
-import L4YAML.Spec.Types
-import L4YAML.Token.Token
-import L4YAML.Scanner.Scanner
-import L4YAML.Parser.IndexedComposition
+
 
 namespace L4YAML
 

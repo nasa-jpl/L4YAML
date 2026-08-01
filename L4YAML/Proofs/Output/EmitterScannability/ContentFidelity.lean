@@ -5,6 +5,15 @@ Released under Apache 2.0 license as described in the file LICENSE.
 
 import L4YAML.Proofs.Output.EmitterScannability.ScanChainGrowth
 
+/-!
+# Content fidelity of emitted scalars
+
+Pins the scanned content of emitted scalar tokens to the source value's
+content (escape round-trip through `escapeString`/`scanDoubleQuoted`),
+so the value-level `contentEq` closure of `emit_roundtrip_content_eq`
+can read scalar payloads directly off the token block.
+-/
+
 namespace L4YAML.Proofs.EmitterScannability
 
 open L4YAML

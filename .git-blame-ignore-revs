@@ -1,0 +1,4 @@
+# Bulk mechanical commits, excluded from blame:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+# theorem->lemma keyword rename (5232 sites, 2026-07-31)
+ae33568fa43ce0dcae77feccb6fc1995d3b425f4

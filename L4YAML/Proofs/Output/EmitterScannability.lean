@@ -30,6 +30,19 @@ import L4YAML.Proofs.Output.EmitterScannability.StreamNodeWitness
 import L4YAML.Proofs.Output.EmitterScannability.GeneralLocality
 
 /-!
+# Emitter scannability & the universal round-trip
+
+The keystone module of Blueprint Group 6: composes the scanner
+characterization of emitted output with parser acceptance to prove the
+capstones `emit_roundtrip_content_eq` (6.9) and `universal_roundtrip`
+(6.1/6.10) — for every `Grammable` value `v`, `parseYaml (emit v)`
+succeeds with a single document whose value is `contentEq` to `v`.
+Closed sorry-free 2026-07-04 (Track A `FlowSubrangesOk` via
+`DeepNavigator`; Track B span-locality via the general-locality chain);
+the supporting bricks live in `EmitterScannability/`.
+-/
+
+/-!
 # Emitter Scannability (Phase E, Steps 1–2)
 
 Step 1 — Proof that the canonical emitter's output is accepted by the scanner:

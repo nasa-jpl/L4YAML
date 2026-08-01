@@ -27,9 +27,14 @@ token. By B3.5, every plain scalar token satisfies `ScalarScannable _ false`.
 Non-plain scalars satisfy `ScalarScannable` vacuously (`style ≠ .plain`).
 Aliases satisfy `Scannable.alias` trivially.
 
-### Gap Analysis
+### Gap Analysis (historical — all three barriers closed)
 
-Three distinct barriers prevent full discharge of the C2 sorries:
+**Status (2026-07-31):** the C2 chain is fully discharged; the theorems
+named below are proven (`parseStream_output_aliases_resolve` and
+`parseStream_output_anchors_wellformed` are capstone rows 3.7/3.8 in
+`Blueprint/04-capstones.md`; see `SPEC-GAP-ANALYSIS.md` for how gaps
+#8/#9 were resolved). Kept as the record of the three barriers as they
+stood when this file was the frontier:
 
 1. **Flow context gap** (`parseStream_output_scannable`):
    `Scannable (.sequence .flow items ...) false` requires

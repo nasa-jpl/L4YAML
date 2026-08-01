@@ -42,7 +42,9 @@ tag := "parser-limits"
 %%%
 
 {index}[ParserLimits]
-The `ParserLimits` structure provides 11 configurable threat mitigations:
+The `ParserLimits` structure groups four limit families (`alias`,
+`structural`, `document`, `tag`) plus a master `enabled` switch
+(`L4YAML/Config/Limits.lean`):
 
 :::table +header
 *
@@ -50,50 +52,69 @@ The `ParserLimits` structure provides 11 configurable threat mitigations:
   * Default
   * Purpose
 *
-  * `nestingDepth`
-  * 250
-  * Maximum recursion depth — prevents billion-laugh expansion
+  * `structural.maxDepth`
+  * 100
+  * Maximum collection nesting depth
 *
-  * `maxStringLength`
+  * `structural.maxScalarBytes`
   * 10 MB
-  * Maximum scalar string length — DoS prevention
+  * Maximum scalar value length in bytes — DoS prevention
 *
-  * `maxArrayLength`
+  * `structural.maxSequenceLength`
   * 100,000
-  * Maximum sequence element count
+  * Maximum elements in a single sequence
 *
-  * `maxObjectSize`
-  * 10 MB
-  * Maximum total mapping size
+  * `structural.maxMappingSize`
+  * 100,000
+  * Maximum key-value pairs in a single mapping
 *
-  * `maxAliasDepth`
+  * `structural.maxTotalNodes`
+  * 1,000,000
+  * Maximum total nodes across all documents
+*
+  * `alias.maxAliasDepth`
   * 50
-  * Maximum alias chain depth — recursive cycle protection
+  * Maximum alias chain depth
 *
-  * `allowDuplicateKeys`
-  * `false`
-  * Whether duplicate mapping keys are accepted
+  * `alias.maxAliasExpansions`
+  * 10,000
+  * Maximum alias substitution steps — billion-laugh prevention
 *
-  * `allowedTagHandles`
-  * customizable
-  * Restricts which tag handles (`!`, `!!`, custom) are permitted
+  * `alias.maxResolvedNodes`
+  * 100,000
+  * Maximum nodes in the resolved tree
 *
-  * `forbiddenTags`
-  * customizable
-  * Explicit rejection of dangerous tags (e.g., `!!python/object`)
+  * `alias.rejectCycles`
+  * `true`
+  * Detect and reject cyclic aliases (`a: &a [*a]`)
 *
-  * `parseErrorPolicy`
-  * `strict`
-  * Whether non-conformant input is rejected or best-effort parsed
+  * `document.maxDocuments`
+  * 100
+  * Maximum documents in a stream
 *
-  * `commentEncoding`
-  * explicit
-  * Character encoding validation for comments
+  * `document.maxAnchors`
+  * 10,000
+  * Maximum anchors per document
 *
-  * `literalNewlineHandling`
-  * standard
-  * Newline normalization in literal scalars
+  * `document.maxInputBytes`
+  * 100 MB
+  * Maximum input size in bytes
+*
+  * `tag.policy`
+  * `coreSchemaOnly`
+  * Which tags are permitted (rejects e.g. `!!python/object`)
+*
+  * `tag.rejectLanguageTags`
+  * `true`
+  * Explicit rejection of language-specific object tags
+*
+  * `tag.maxTagLength`
+  * 1,024
+  * Maximum tag length in bytes
 :::
+
+(Duplicate-key acceptance is configured separately via
+`DuplicateKeyPolicy` in `LoadConfig`, not through `ParserLimits`.)
 
 # Preset Configurations
 %%%

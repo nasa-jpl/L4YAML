@@ -1,3 +1,7 @@
+/-
+Copyright (c) 2026. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+-/
 import L4YAML.Spec.Grammar
 import L4YAML.Parser.Composition
 import L4YAML.Proofs.Production.ScannerPlainScalarValid
@@ -5,6 +9,16 @@ import L4YAML.Proofs.Parser.ParserGrammableBase
 import L4YAML.Proofs.Parser.ParserNodeProofs
 import L4YAML.Algebra.Value
 import L4YAML.Proofs.Parser.ParserWfaProofs
+
+/-!
+# Anchor/alias resolution lifted to documents and streams
+
+Public wrappers and doc/stream-level lifts of the `ParserNodeProofs`
+scaffolding: capstones 3.5 `parseNode_aliases_resolve`, 3.6
+`parseDocument_aliases_resolve`, and 3.7
+`parseStream_output_aliases_resolve` (every `*alias` in parser output
+resolves to a previously defined `&anchor`).
+-/
 
 /-
 Copyright (c) 2026. All rights reserved.

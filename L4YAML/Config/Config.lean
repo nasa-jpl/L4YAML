@@ -1,5 +1,15 @@
 /-
-  Config Deserialization — FromYaml/ToYaml instances for ParserLimits and DumpConfig
+Copyright (c) 2026. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+-/
+
+import L4YAML.Config.Limits
+import L4YAML.Output.Dump
+import L4YAML.Schema.FromToYaml
+import L4YAML.Schema.Struct
+
+/-!
+# Config Deserialization — FromYaml/ToYaml instances for ParserLimits and DumpConfig
 
   Self-hosted configuration: the verified parser reads its own limit and
   dump configuration from YAML using the Schema FromYaml/ToYaml machinery,
@@ -34,10 +44,7 @@
   - `{whitelist: ["tag:yaml.org,2002:str", ...]}` → `.whitelist`
   - `{blacklist: ["!!python/"]}` → `.blacklist`
 -/
-import L4YAML.Config.Limits
-import L4YAML.Output.Dump
-import L4YAML.Schema.FromToYaml
-import L4YAML.Schema.Struct
+
 
 set_option autoImplicit false
 

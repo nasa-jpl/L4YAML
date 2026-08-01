@@ -1,3 +1,7 @@
+/-
+Copyright (c) 2026. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+-/
 import L4YAML.Proofs.Production.PreprocessProduction
 import L4YAML.Proofs.Scanner.ScanStrictCoupling
 import L4YAML.Proofs.Production.StructureProduction
@@ -3194,9 +3198,11 @@ lemma scan_content_gives_stream_v2
   exact scanLoop_grammar_prod _ ⟨input.toList, 0⟩ sp sp sp sp _ tokens
     h_stream (BlockStack.nil sp) (FlowStack.nil sp) (PendingNode.noPending ⟨input.toList, 0⟩ sp) h_corr h
 
-/-! ## §6 Gap Analysis
+/-! ## §6 Gap Analysis (historical — file is sorry-free)
 
-    Four sorry declarations remain in this file after Layer 4x consolidation.
+    This section dates from the Layer 4x consolidation, when four proof
+    obligations remained open here; all have since been discharged (the
+    file builds clean, and its chain feeds the proven Group-7 capstones).
     The lagging quint (SLYamlStream + BlockStack + FlowStack + PendingNode +
     ScannerSurfCorr) correctly models the multi-token protocol.
 

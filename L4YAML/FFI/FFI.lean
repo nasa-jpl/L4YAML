@@ -1,4 +1,8 @@
 /-
+Copyright (c) 2026. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+-/
+/-
   FFI Export Layer — C-callable wrappers for the verified YAML parser
 
   This module wraps the safe parsing and dumping API into functions
