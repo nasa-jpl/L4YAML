@@ -1,5 +1,7 @@
 # Plan: Proving `scanNextToken_preserves_ScanInv`
 
+> **Status (2026-07-31): DONE/HISTORICAL.** The goal below was achieved: the private axiom was replaced by a proven lemma, landed as `scanNextToken_preserves_ScanInv` at `L4YAML/Proofs/Scanner/ScannerCorrectness.lean:9276`. Campaign complete; the library is sorry-free since 2026-07-04 (see [Blueprint/04-capstones.md](../Blueprint/04-capstones.md), the proof-status SSOT). Paths and line numbers below may predate the 2026-04 folder reorganization and the 2026-07-31 theorem→lemma rename.
+
 ## Goal
 
 Convert the private axiom at `ScannerCorrectness.lean:5038` into a theorem:

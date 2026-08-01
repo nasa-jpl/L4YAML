@@ -12,7 +12,12 @@ The YAML specification (1.2.2) is inherently unsafe when combined with language-
 - **Schema enforcement**: Restricting documents to known-safe types
 - **Defense in depth**: Rejecting malicious patterns before they reach application code
 
-**Status**: **Implemented** in `L4YAML/Limits.lean` (v0.3.0). See `Tests/LimitTests.lean` for 43 passing tests across all limit categories.
+**Status**: **Implemented** in `L4YAML/Config/Limits.lean` (originally landed as `L4YAML/Limits.lean` in v0.3.0 and moved during the 2026-04 folder reorganization). See `Tests/LimitTests.lean` for 43 passing checks across all limit categories, and `doc/Doc/L4YAML/Security.lean` for the user-facing security chapter.
+
+> Note: code snippets and unqualified file paths below predate the 2026-04
+> folder reorganization (bare `Types.lean` is now `L4YAML/Spec/Types.lean`)
+> and the 2026-07-31 theorem→lemma rename (non-capstone `theorem`
+> declarations are now spelled `lemma`).
 
 ## Threat Model
 
@@ -50,8 +55,8 @@ Loads and executes remote code via Java's script engine.
 Triggers deserialization gadgets in Ruby's object system.
 
 **Current status in lean4-yaml-verified**:
-- Tags are **parsed and preserved** in `Scalar.tag`, `YamlValue.sequence.tag`, `YamlValue.mapping.tag` (Types.lean:141-183)
-- Directives are parsed: `%TAG !handle! prefix` defines custom tag shorthand (Types.lean:189-192)
+- Tags are **parsed and preserved** in `Scalar.tag`, `YamlValue.sequence.tag`, `YamlValue.mapping.tag` (`structure Scalar`, `L4YAML/Spec/Types.lean:215`)
+- Directives are parsed: `%TAG !handle! prefix` defines custom tag shorthand (`inductive Directive`, `L4YAML/Spec/Types.lean:301`)
 - **No validation**: All tags accepted, passed through to application
 
 **Attack surface**:
@@ -79,7 +84,7 @@ i: &i [*h,*h,*h,*h,*h,*h,*h,*h]
 
 Each level multiplies the result size by 8. Level 9 (`i`) expands to 8^9 = **134 million** copies of the string `"lol"`, consuming gigabytes of memory from a small input.
 
-**Current vulnerability**: `YamlValue.resolveAliases` (Types.lean:369) recursively expands all aliases without limits. An attacker can craft payloads that exhaust memory or CPU during the `YamlDocument.compose` step (Types.lean:432).
+**Current vulnerability**: `YamlValue.resolveAliases` (`L4YAML/Spec/Types.lean:481`) recursively expands all aliases without limits. An attacker can craft payloads that exhaust memory or CPU during the `YamlDocument.compose` step (`L4YAML/Spec/Types.lean:676`). This is mitigated by the limit-enforcing variant `resolveAliasesLimited` (`L4YAML/Config/Limits.lean:433`) described below.
 
 ### 3. Other DoS Vectors
 
@@ -1104,7 +1109,7 @@ theorem resolveAliasesLimited_terminates :
 
 **Proof strategy**: The expansion counter provides a decreasing metric. Each recursive call either makes progress (substituting an alias) or terminates (scalar, empty collection). The `maxAliasExpansions` bound guarantees finite recursion depth.
 
-This may allow removing `partial` from `resolveAliases` in Types.lean:369, making it a total `def` provably terminating under limits.
+**Update (2026-07-31)**: `YamlValue.resolveAliases` (`L4YAML/Spec/Types.lean:481`) is already a total `def`. The remaining `partial` in this area is the instrumented `resolveAliasesLimited` (`L4YAML/Config/Limits.lean:433`) — that is the declaration a termination-under-limits proof would target.
 
 ### Incremental Proof Strategy
 
@@ -1116,7 +1121,9 @@ To minimize disruption:
 4. **Phase 4**: Prove completeness preservation (no false negatives within limits)
 5. **Phase 5**: Prove termination (enable total functions, remove `partial`)
 
-**Recommendation**: Defer proof work until after core scanner/parser verification is complete (current focus). Add limits as **opt-in runtime protection** initially, with proofs as future work.
+**Recommendation (original)**: Defer proof work until after core scanner/parser verification is complete (then the current focus). Add limits as **opt-in runtime protection** initially, with proofs as future work.
+
+**Update (2026-07-31)**: the deferral condition is met — the library has been sorry-free since 2026-07-04 (see `Blueprint/04-capstones.md`, the proof-status SSOT). Limits shipped as runtime protection (Phases 1 of the strategy above); the limit-enforcement proofs (Phases 2–5) remain **open future work**.
 
 ## Error Handling Patterns
 
@@ -1593,132 +1600,26 @@ check "unlimited mode accepts all tags (UNSAFE)" do
 
 Ensure no false negatives: all 406 yaml-test-suite tests passing with `ParserLimits.permissive` should still pass.
 
-Run: `lake exe suite-runner --limits=permissive` (requires adding `--limits` CLI flag).
+Run: `lake exe suiterunner --limits permissive` (the `--limits` flag is implemented in `Tests/SuiteRunner/Main.lean`; presets: `default`, `strict`, `permissive`, `unlimited`, `safe_tags`).
 
-## Implementation Checklist
+## Implementation Checklist — Landed As (2026-07-31)
 
-### Phase 1: Error Types (Day 1)
-- [ ] Define error type hierarchy in Types.lean:
-  - [ ] `AliasLimitError` inductive with 4 variants
-  - [ ] `StructuralLimitError` inductive with 5 variants
-  - [ ] `DocumentLimitError` inductive with 3 variants
-  - [ ] `TagSecurityError` inductive with 7 variants
-  - [ ] `LimitError` composite type wrapping all four
-  - [ ] `ParseError` distinguishing syntax vs. limit/security errors
-- [ ] Add `toString` implementations for all error types
-- [ ] Add convenience constructors in `LimitError` namespace
-- [ ] Add `extractLanguage` helper for tag error reporting
+The phase-by-phase implementation checklist that originally occupied this
+section described planned work; the runtime portion (Phases 1–6) has since
+landed. Where each planned item ended up:
 
-### Phase 2: Limit Configuration (Day 1-2)
-- [ ] Define `ParserLimits` structure in Types.lean
-- [ ] Define nested limit structures (`AliasLimits`, `StructuralLimits`, `DocumentLimits`, `TagLimits`)
-- [ ] Define `TagPolicy` inductive (allowAll | rejectAll | whitelist | blacklist | coreSchemaOnly)
-- [ ] Define Core Schema whitelist constant
-- [ ] Define dangerous tag prefixes blacklist constant
-- [ ] Add predefined configurations (`.strict`, `.permissive`, `.unlimited`, `.safeTagsOnly`)
-- [ ] Add `Repr`, `BEq`, `Inhabited` instances
-
-### Phase 3: Core Implementation (Day 2-4)
-- [ ] **Resource limits**:
-  - [ ] Implement `YamlValue.resolveAliasesLimited` with `AliasTracker`
-  - [ ] Implement `resolveAliasesLimitedLifted` wrapper returning `LimitError`
-  - [ ] Update `YamlDocument.compose` signature to accept limits and return `Except LimitError`
-  - [ ] Add depth tracking to TokenParser state
-  - [ ] Add collection size checks in sequence/mapping parsers
-  - [ ] Add scalar size checks in block scalar / flow scalar parsers
-  - [ ] Add total node counter to parser state
-- [ ] **Tag security**:
-  - [ ] Implement tag validation function: `validateTag : String → TagLimits → Except TagSecurityError Unit`
-  - [ ] Add tag validation checks during scalar/sequence/mapping parsing
-  - [ ] Implement tag length checks when parsing tags
-  - [ ] Track unique tags per document in parser state
-  - [ ] Implement `%TAG` directive validation (handle prefix length checks)
-  - [ ] Add dangerous language tag pattern matching
-  - [ ] Implement Core Schema whitelist checking
-  - [ ] Implement custom whitelist/blacklist checking
-- [ ] Update `parseYamlRaw` to return `Except ParseError` and track all limits
-- [ ] Update `parseYaml` to return `Except ParseError` and compose with limits
-
-### Phase 4: Backward Compatibility (Day 3)
-- [ ] Add `parseYamlString` compatibility wrapper
-- [ ] Add `composeString` compatibility wrapper
-- [ ] Add `@[deprecated]` attributes to old functions
-- [ ] Update all internal call sites to use new error types
-
-### Phase 5: Testing (Day 5-7)
-- [ ] Add guard tests in `Tests/ValidationTests.lean`:
-  - [ ] Alias expansion limit tests
-  - [ ] Depth limit tests
-  - [ ] Scalar size limit tests
-  - [ ] Cycle detection tests
-  - [ ] **Tag security tests**:
-    - [ ] Python tag rejection
-    - [ ] Java tag rejection
-    - [ ] Ruby/PHP/Perl tag rejection
-    - [ ] Core Schema tag acceptance
-    - [ ] Non-Core-Schema tag rejection
-    - [ ] Tag length limit
-    - [ ] Custom handle rejection
-- [ ] Add runtime tests in `Tests/Main.lean`:
-  - [ ] Billion laugh attack detection
-  - [ ] Cyclic alias detection
-  - [ ] Valid YAML acceptance within limits
-  - [ ] Error context validation
-  - [ ] Unlimited mode bypass
-  - [ ] **Tag security runtime tests**:
-    - [ ] Python code execution tag blocked (!!python/object/apply:os.system)
-    - [ ] Java RCE tag blocked (!!javax.script.ScriptEngineManager)
-    - [ ] Ruby deserialization tag blocked (!ruby/object:Gem::Installer)
-    - [ ] Core Schema tags accepted
-    - [ ] Custom tags with whitelist policy
-    - [ ] Dangerous tags rejected even in whitelist if rejectLanguageTags=true
-    - [ ] Tag length enforcement
-    - [ ] Unlimited mode accepts all tags
-- [ ] Add attack payload generators in `Tests/Utils.lean`:
-  - [ ] Billion laugh payload generator
-  - [ ] Dangerous tag payload generator (Python, Java, Ruby variants)
-- [ ] Add error handling pattern tests
-- [ ] Run yaml-test-suite regression with `--limits=permissive`
-- [ ] Add security test suite for common attack patterns
-
-### Phase 6: Documentation & Polish (Day 7-8)
-- [ ] Document limits in README.md
-- [ ] Add SECURITY.md documenting tag security features
-- [ ] Update API documentation with error type examples
-- [ ] Add `--limits` CLI flag to `suite-runner` binary
-- [ ] Add `--tag-policy` CLI flag for tag validation mode
-- [ ] Update `Demo.lean` examples to show:
-  - [ ] Basic limit configuration
-  - [ ] Error pattern matching
-  - [ ] Fallback with relaxed limits
-  - [ ] **Tag security examples**:
-    - [ ] Parsing untrusted user input with strict tag validation
-    - [ ] Application-specific tag whitelists
-    - [ ] Conditional tag strictness based on source
-    - [ ] Security event logging for dangerous tags
-- [ ] Add migration guide for existing code
-- [ ] Document common attack patterns and mitigations
-
-### Phase 7: Verification (Deferred)
-- [ ] **Defer**: Prove soundness preservation with new error types
-- [ ] **Defer**: Prove limit enforcement correctness
-- [ ] **Defer**: Prove completeness preservation (no false negatives)
-- [ ] **Defer**: Prove termination under limits
-- [ ] **Defer**: Prove error type exhaustiveness (all limit violations caught)
-- [ ] **Defer**: Prove tag validation correctness:
-  - [ ] Core Schema whitelist is complete
-  - [ ] Dangerous tag blacklist matches known attack patterns
-  - [ ] Tag policy enforcement is sound (no bypasses)
-
-**Estimated implementation time** (runtime only, no proofs): 7-8 days
-- Days 1-2: Error types and configuration (includes tag security types)
-- Days 2-4: Core limit tracking + tag validation implementation
-- Day 4: Backward compatibility layer
-- Days 5-7: Comprehensive testing (resource + security)
-- Days 7-8: Documentation and examples
-
-**Estimated proof time**: 8–14 weeks (see Proof Burden below)
-- Tag security verification adds 2-3 weeks to proof burden
+| Planned item | Landed as |
+|---|---|
+| Error type hierarchy (`AliasLimitError`, `StructuralLimitError`, `DocumentLimitError`, `TagSecurityError`, `LimitError`, `ParseError`) | `L4YAML/Config/Limits.lean:188-311` |
+| `ParserLimits` + nested limit structures (`AliasLimits`, `StructuralLimits`, `DocumentLimits`, `TagLimits`) + `TagPolicy` | `L4YAML/Config/Limits.lean:45-131` |
+| Predefined configurations | `strict` / `permissive` / `unlimited` / `safeTagsOnly` (`L4YAML/Config/Limits.lean:138-176`) |
+| Limited alias resolution with tracker | `resolveAliasesLimited` (`L4YAML/Config/Limits.lean:433`) |
+| Tag validation | `validateTag` (`L4YAML/Config/Limits.lean:345`) |
+| Limit-aware entry point | `parseYamlSafe` (`L4YAML/Config/Limits.lean:628`) |
+| Guard/runtime tests | `Tests/LimitTests.lean` — 43 checks across all limit categories |
+| `--limits` CLI flag | `suiterunner` exe (`Tests/SuiteRunner/Main.lean`; presets `default` / `strict` / `permissive` / `unlimited` / `safe_tags`) |
+| Security documentation | `doc/Doc/L4YAML/Security.lean` (rendered manual chapter) |
+| Phase 7: Verification | **Still open** — the limit-enforcement proofs (soundness/completeness preservation, termination under limits, error-type exhaustiveness, tag-validation correctness) remain future work; see "Incremental Proof Strategy" above |
 
 ## References
 

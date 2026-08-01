@@ -1,8 +1,16 @@
 # YAML 1.2.2 Production Rule Cross-Reference
 
 This document maps every YAML 1.2.2 grammar production to its corresponding
-Lean4 definition in this project. It serves as the single source of truth
-for spec coverage.
+Lean4 definition in this project.
+
+> **Audit note (2026-07-31):** this file is **no longer the source of truth
+> for spec coverage.** That role belongs to the machine-checked
+> `Tests/ProductionCoverage.lean`, which catalogs all 211 YAML 1.2.2
+> productions and programmatically queries the `@[yaml_spec]` attribute
+> annotations carried by the library's declarations (708 annotation entries
+> in the last generated report, `docs/reports/production-coverage.html`).
+> The narrative and the token–grammar layer analysis below remain useful
+> design rationale; the hand-maintained mapping tables are historical.
 
 ## Status Legend
 
@@ -16,6 +24,15 @@ for spec coverage.
 | ◌ | TODO (planned but not yet implemented) |
 
 ## Chapter 5: Character Productions
+
+> **Historical: pre-scanner-rewrite mapping.** The chapter tables below (and
+> the Coverage Summary) map productions onto the original single-pass
+> character-level parser (`Block.*`, `Flow.*`, `Combinators.*`, `Scalar.*`,
+> `Document.*` combinator names). That parser was replaced by the two-pass
+> Scanner → TokenParser pipeline this document itself proposes in the
+> "Token–Grammar Layer Analysis" section below. For the current
+> production-to-declaration mapping, consult `Tests/ProductionCoverage.lean`
+> and the generated `docs/reports/production-coverage.html`.
 
 | # | Production | Status | Lean Definition(s) |
 |---|-----------|--------|-------------------|
@@ -97,11 +114,11 @@ for spec coverage.
 | [72](https://yaml.org/spec/1.2.2/#rule-s-flow-folded) | `s-flow-folded(n)` | ✓ P | `Scalar.foldQuotedNewlines` |
 | [73](https://yaml.org/spec/1.2.2/#rule-s-flow-line-prefix) | `s-flow-line-prefix(n)` | ✓ P | `Flow.flowWhitespace` |
 | [74](https://yaml.org/spec/1.2.2/#rule-l-comment) | `l-comment` | ✓ P | `Combinators.comment` + `Combinators.newline` |
-| [75](https://yaml.org/spec/1.2.2/#rule-c-nb-comment-text) | `c-nb-comment-text` | ✓ P† | `Combinators.comment` — **comment text discarded** (`dropMany`); Phase 8 will capture via `commentText` |
+| [75](https://yaml.org/spec/1.2.2/#rule-c-nb-comment-text) | `c-nb-comment-text` | ✓ P† | `Combinators.comment` — comment text was discarded (`dropMany`) at the time; **since resolved**: the scanner captures comment text via `skipToContentComment` (`L4YAML/Scanner/Whitespace.lean:226`) |
 | [76](https://yaml.org/spec/1.2.2/#rule-b-comment) | `b-comment` | ✓ P | `Combinators.newline` (at end of comment) — structural, no text to capture |
-| [77](https://yaml.org/spec/1.2.2/#rule-s-b-comment) | `s-b-comment` | ✓ P† | `Combinators.skipTrailing` — delegates to [75]; **comment text discarded** |
-| [78](https://yaml.org/spec/1.2.2/#rule-l-comment) | `l-comment` | ✓ P† | `Combinators.skipBlankLines` (comment-only lines) — delegates to [75]; **comment text discarded** |
-| [79](https://yaml.org/spec/1.2.2/#rule-s-l-comments) | `s-l-comments` | ✓ P† | `Combinators.skipTrailing` + `Combinators.skipBlankLines` — delegates to [75]; **comment text discarded** |
+| [77](https://yaml.org/spec/1.2.2/#rule-s-b-comment) | `s-b-comment` | ✓ P† | `Combinators.skipTrailing` — delegates to [75]; discard **since resolved** via `skipToContentComment` (see [75]) |
+| [78](https://yaml.org/spec/1.2.2/#rule-l-comment) | `l-comment` | ✓ P† | `Combinators.skipBlankLines` (comment-only lines) — delegates to [75]; discard **since resolved** via `skipToContentComment` (see [75]) |
+| [79](https://yaml.org/spec/1.2.2/#rule-s-l-comments) | `s-l-comments` | ✓ P† | `Combinators.skipTrailing` + `Combinators.skipBlankLines` — delegates to [75]; discard **since resolved** via `skipToContentComment` (see [75]) |
 | [80](https://yaml.org/spec/1.2.2/#rule-s-separate) | `s-separate(n,c)` | ✓ P | `Flow.flowWhitespace`, `Combinators.skipHWhitespace` |
 | [81](https://yaml.org/spec/1.2.2/#rule-s-separate-lines) | `s-separate-lines(n)` | ✓ P | `Combinators.skipToNextLine` + `Combinators.consumeIndent` |
 | [82](https://yaml.org/spec/1.2.2/#rule-l-directive) | `l-directive` | ✓ P | `Document.directive` |
@@ -277,9 +294,11 @@ This design choice in the specification has a direct consequence for parser
 implementations: **the parser must do character-level lookahead at grammar
 decision points where a tokenizer would have already resolved the ambiguity.**
 
-**Concrete example — the `detectMappingKeyImpl` false positive:**
+**Concrete example — the `detectMappingKeyImpl` false positive** *(historical:
+`detectMappingKeyImpl` was retired with the scanner rewrite and no longer
+exists in the codebase; the bug it caused is fixed by the token pipeline)*:
 
-Our parser's `detectMappingKeyImpl` (Block.lean line 1040) scans forward
+The pre-rewrite parser's `detectMappingKeyImpl` (then Block.lean line 1040) scans forward
 through raw characters looking for `: ` (mapping value indicator) to determine
 whether the current position starts a block mapping. This produces false
 positives when `: ` appears inside a scalar value:
@@ -527,7 +546,15 @@ are internal to the scanner's scalar tokenization logic.
 
 ### Architectural Implications for Our Parser
 
-#### Current architecture (single-pass, character-level)
+> **Historical rationale — the "proposed" architecture shipped.** The
+> "current architecture" described next is the pre-rewrite single-pass
+> parser; the "proposed" two-pass design is what the library actually runs
+> today: `Scanner.scan` (`L4YAML/Scanner/Scanner.lean:524`) produces the
+> token stream consumed by `parseStream`
+> (`L4YAML/Parser/TokenParser.lean:828`). This section is kept as the design
+> rationale for that rewrite.
+
+#### Current architecture (single-pass, character-level) — since replaced
 
 ```
 Character Stream ──→ [ Combined Parser ] ──→ YamlValue AST
@@ -539,7 +566,7 @@ Grammar-level decisions (e.g., "is this a mapping value indicator?") require
 character-level lookahead (`detectMappingKeyImpl`) that scans through content
 that should have already been tokenized.
 
-#### Proposed architecture (two-pass, token-level)
+#### Proposed architecture (two-pass, token-level) — shipped
 
 ```
 Character Stream ──→ [ Scanner/Tokenizer ] ──→ Token Stream ──→ [ Grammar Parser ] ──→ YamlValue AST
@@ -627,6 +654,10 @@ each subsequent proof phase easier.
 
 ## Boundary Test Coverage Gap Report (v0.2.13.5)
 
+> **Dated snapshot.** The gap counts below were hand-collected at v0.2.13.5;
+> current coverage is machine-generated — see `Tests/ProductionCoverage.lean`
+> and `docs/reports/production-coverage.html`.
+
 Cross-reference of indent-dependent productions against dedicated boundary tests.
 See `Tests/ProductionCoverage.lean` for the compile-time analysis.
 
@@ -673,10 +704,8 @@ See `Tests/ProductionCoverage.lean` for the compile-time analysis.
 
 ### `@[yaml_spec]` Annotation Coverage
 
-| File | Annotations | Layer |
-|------|------------|-------|
-| `Scanner.lean` | 46 | C + L layers |
-| `CharPredicates.lean` | 7 | C layer |
-| `Grammar.lean` | 9 | S layer (formal specs) |
-| `TokenParser.lean` | 13 | S layer (parser functions) |
-| **Total** | **75** | |
+A hand-counted per-file table (75 annotations at v0.2.13.5) previously lived
+here; it is long out of date. The authoritative, machine-generated breakdown —
+708 annotation entries across the library at the last report generation — is
+produced by `Tests/ProductionCoverage.lean` and rendered to
+`docs/reports/production-coverage.html`.

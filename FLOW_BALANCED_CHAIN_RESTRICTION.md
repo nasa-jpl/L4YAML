@@ -744,6 +744,18 @@ Build verification and documentation complete. Final Phase G results:
 2. **The 12-step plan was well-calibrated.** Every step completed successfully, no step required re-planning or fallback strategies. Risk assessments were accurate — the hardest steps (3, 10) were correctly marked MEDIUM-HIGH.
 3. **Phase G is the largest single phase of v0.4.7** (~770-1,410 LOC estimated, 12 steps, touching 3 proof files). The scaffolding-then-cleanup approach (introduce sorrys in Steps 1–5, eliminate in Steps 6–11) worked well — it allowed the core architectural work to proceed without being blocked on leaf proofs.
 
+***Postscript (2026-07-31)***
+
+The 7 residual EmitterScannability sorries this phase handed off (Phases H/I/J
+below) were subsequently closed; the library is sorry-free since 2026-07-04
+(see [Blueprint/04-capstones.md](Blueprint/04-capstones.md), the proof-status
+SSOT). Path map for readers of this record: `ScannerCorrectness.lean` and
+`ScannerBound.lean` now live under `L4YAML/Proofs/Scanner/`;
+`EmitterScannability.lean` was split into a hub
+(`L4YAML/Proofs/Output/EmitterScannability.lean`) plus the
+`EmitterScannability/` module folder; `ScanChain_filtered_prefix` now lives at
+`L4YAML/Proofs/Output/EmitterScannability/FilteredTracking.lean:154`.
+
 ---
 
 ## Sorry inventory (post-Step 5, pre-Step 6)

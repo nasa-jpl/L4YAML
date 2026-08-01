@@ -1,6 +1,19 @@
 # EmitterScannability.lean Remaining Work
 
-## Status: 7 sorry-using declarations remaining
+> **Status (2026-07-31): CLOSED/HISTORICAL.** Campaign complete; all 7 sorries
+> below were eliminated and the library is sorry-free since 2026-07-04 (see
+> [Blueprint/04-capstones.md](Blueprint/04-capstones.md), the proof-status SSOT).
+> The closure route was the DeepNavigator / Front-B general-locality campaign,
+> **not** this plan's Tier 2–4 program. The monolithic `EmitterScannability.lean`
+> has since been split into a 1,551-line hub
+> (`L4YAML/Proofs/Output/EmitterScannability.lean`) plus 20 modules under
+> `L4YAML/Proofs/Output/EmitterScannability/`. Paths and line numbers below
+> predate the 2026-04 folder reorganization and that file split.
+>
+> Code snippets below predate the 2026-07-31 theorem→lemma rename: non-capstone
+> `theorem` declarations are now spelled `lemma`.
+
+## Status: 7 sorry-using declarations remaining (historical)
 
 (Build-authoritative: `lake build L4YAML.Proofs.Output.EmitterScannability`
 flags warnings at lines 8716, 9213, 9309, 9392, 9610, 10326, 10365.

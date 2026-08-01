@@ -11,7 +11,7 @@ Both directions:
 - **Forward** (v0.4.6, proven): `parseYaml input = .ok docs → InYamlLanguage input`
 - **Converse** (v0.4.8, target): `InYamlLanguage input → ∃ docs, parseYaml input = .ok docs`
 
-## Status (as of 2026-04-25): NOT STARTED — BLOCKED on v0.4.7
+## Status (as of 2026-07-31): NOT STARTED — UNBLOCKED (v0.4.7 closed 2026-07-04)
 
 | Step | Status | Notes |
 |---|---|---|
@@ -22,10 +22,10 @@ Both directions:
 | 5. Prove the converse `grammar_completeness` | ❌ open | depends on Steps 0–4 |
 | 6. Assemble `parse_iff_grammar` biconditional | ❌ open | depends on Step 5 |
 
-**Blocker:** v0.4.7 is partial — see [VERSION-0.4.7.md](VERSION-0.4.7.md).
-0.4.8 work cannot begin until the EmitterScannability pocket closes
-(7 sorrys remaining as of 2026-04-25; the ParserWellBehaved pocket has
-been resolved by deleting dead code, see VERSION-0.4.7.md).
+**Blocker cleared (2026-07-04):** v0.4.7 is complete — `universal_roundtrip` is
+fully proven ([VERSION-0.4.7.md](VERSION-0.4.7.md); proof-status SSOT:
+[Blueprint/04-capstones.md](Blueprint/04-capstones.md)). This plan is now the
+only open proof frontier (capstone slot 7.7, `parse_iff_grammar`).
 
 The earlier framing of this document mentioned "28 sorrys in StreamAccum
 related to Fixes A and B" — that figure was an artifact of counting
@@ -34,21 +34,23 @@ tactics. **StreamAccum.lean currently has 0 sorry tactics** (the file
 builds clean); all 28 mentions are documentation prose describing the
 *future* sorry lemmas that the constructor-elimination work will introduce
 or close. The structural challenges this version addresses
-(`SFlowNode_context_lift`, h_closable construction, BOM col≠0 handling,
+(`SFlowNode_context_lift`, h_closable construction,
 orphaned directive resolution) are still open as proof obligations — they
-just haven't been written down as `sorry`-bearing skeletons yet.
+just haven't been written down as `sorry`-bearing skeletons yet. (The BOM
+col≠0 edge case, formerly listed here, has since been closed:
+`bom_noWhitespace_ssbcomment` at
+[L4YAML/Proofs/Production/PreprocessProduction.lean:258](L4YAML/Proofs/Production/PreprocessProduction.lean)
+builds `SSBComment.withSep` from the column-independent
+`SSeparateInLine.startOfLine`.)
 
 **Estimated effort:** ~150–600 LoC depending on Step 0 audit; the bulk lands
-in [Production/StreamAccum.lean](L4YAML/Proofs/Production/StreamAccum.lean) (currently 3,332 lines).
+in [Production/StreamAccum.lean](L4YAML/Proofs/Production/StreamAccum.lean) (currently 3,316 lines).
 
 ## Original framing (retained for context)
 
 **Status:** Open. Depends on v0.4.7 completion and on eliminating the two over-approximation constructors from `SLYamlStream`.
 
-**Codebase baseline (post-v0.4.7):** Assumes v0.4.7's round-trip proof is complete.
-
-> The "post-v0.4.7" baseline this section presupposes does not yet exist:
-> v0.4.7 is partial. See the status table above for the actual blocker set.
+**Codebase baseline (post-v0.4.7):** Assumes v0.4.7's round-trip proof is complete — true since 2026-07-04.
 
 ---
 
@@ -122,7 +124,7 @@ Rather than creating a parallel `StrictInYamlLanguage` definition, we **remove `
 - Every existing theorem using `InYamlLanguage` is automatically strengthened
 - `scan_strict_proof` is *harder* to prove (no escape hatches), but the theorem itself is *stronger*
 
-The work is concentrated in `StreamAccum.lean` (3,332 lines), which is the only file that constructs `SLYamlStream` values using the over-approximation constructors.
+The work is concentrated in `Proofs/Production/StreamAccum.lean` (3,316 lines), which is the only file that constructs `SLYamlStream` values using the over-approximation constructors.
 
 ### Impact Analysis
 
@@ -130,17 +132,17 @@ The work is concentrated in `StreamAccum.lean` (3,332 lines), which is the only 
 - `L4YAML/Surface/Document.lean` — remove `directiveDrop` and `scannerDrop` from the `SLYamlStream` inductive
 
 **Files that USE the constructors (must fix):**
-- `L4YAML/Proofs/StreamAccum.lean` — **all 13 usage sites** are here
+- `L4YAML/Proofs/Production/StreamAccum.lean` — **all 8 usage sites** are here (7 `directiveDrop` + 1 `scannerDrop`; re-counted 2026-07-31 — the earlier "13" figure predates the v0.4.7-era refactors)
 
 **Files that ONLY CONSUME `SLYamlStream` values (no change needed):**
-- `L4YAML/Proofs/DocumentProduction.lean` — `scan_strict_proof` delegates to `StreamAccum`; no case analysis on constructors
+- `L4YAML/Proofs/Production/DocumentProduction.lean` — `scan_strict_proof` delegates to `StreamAccum`; no case analysis on constructors
 - All other proof files — only thread `SLYamlStream` existentials, never pattern-match on constructors
 
 ---
 
 ## Precise Dependency Map
 
-### Usage site 1: `PendingNode.close_with_ssl` (line 465)
+### Usage site 1: `PendingNode.close_with_ssl` (line 477)
 
 The `pendingFlow` arm uses `scannerDrop`:
 
@@ -172,7 +174,7 @@ The `pendingDirective` arm uses `directiveDrop`:
 
 **Fix required**: Show that the scanner DOES form a document from orphaned directives — or show that this code path is unreachable (the scanner always errors or always emits `---` after directives). This requires auditing the scanner's directive handling to determine which case applies.
 
-### Usage sites 3–12: `accum_step_structural/flow/block/content` (lines 1129–2826)
+### Usage sites 3–8: `accum_structural_pending` / `accum_step_structural` / `accum_step_block` (lines 1134–2810)
 
 All `pendingDirective` transition cases use `directiveDrop`:
 
@@ -184,13 +186,13 @@ All `pendingDirective` transition cases use `directiveDrop`:
         h_stream_old (h_dir_acc_old sp_mid h_ssl)
 ```
 
-This pattern occurs **10 times** across 4 `accum_step_*` theorems (§1b through §1e), always in the `pendingDirective` case (both col=0 and col≠0 sub-cases).
+This pattern occurs **6 times** across 3 lemmas (`accum_structural_pending` lines 1134/1158, `accum_step_structural` lines 1330/1342, `accum_step_block` lines 2790/2810), always in the `pendingDirective` case (both col=0 and col≠0 sub-cases). (Earlier drafts counted 10 sites across 4 `accum_step_*` theorems; the count above was re-verified 2026-07-31 against the current file.)
 
 **Root cause**: Same as usage site 2 — closing pending directives without `---`.
 
-**Fix required**: Same resolution as usage site 2. Once `close_with_ssl` is fixed for `pendingDirective`, all 10 downstream sites are automatically fixed (they delegate to `close_with_ssl`).
+**Fix required**: Same resolution as usage site 2. Once `close_with_ssl` is fixed for `pendingDirective`, all 6 downstream sites are automatically fixed (they delegate to `close_with_ssl`).
 
-Wait — actually, only usage sites 3–12 construct `directiveDrop` directly, not through `close_with_ssl`. Let me verify:
+Wait — actually, only usage sites 3–8 construct `directiveDrop` directly, not through `close_with_ssl`. Let me verify:
 
 Actually, reviewing the code more carefully: the `accum_step_*` theorems construct `directiveDrop` directly (not via `close_with_ssl`). However, the fix is the same — once the directive-without-`---` case is resolved, the same construction replaces `directiveDrop` everywhere.
 
@@ -199,7 +201,7 @@ Actually, reviewing the code more carefully: the `accum_step_*` theorems constru
 | Fix | Constructor to eliminate | Usage sites | Root cause |
 |-----|------------------------|-------------|------------|
 | **Fix A** | `scannerDrop` | 1 site (line 477) | `pendingFlow` lacks grammar evidence for flow indicators |
-| **Fix B** | `directiveDrop` | 12 sites (lines 501, 1134, 1158, 1330, 1342, 2806, 2826, + 5 more) | Orphaned directives not mapped to grammar productions |
+| **Fix B** | `directiveDrop` | 7 sites (lines 501, 1134, 1158, 1330, 1342, 2790, 2810) | Orphaned directives not mapped to grammar productions |
 
 ---
 
@@ -352,14 +354,19 @@ theorem parse_iff_grammar (input : String) :
 
 The v0.4.6 proof suite constructs grammar derivation trees from successful parses. Key modules:
 
-| Module | Role | LOC |
+| Module | Role | LOC (2026-07-31) |
 |--------|------|-----|
-| `StreamAccum.lean` | Threads `SLYamlStream` through the scan loop (26 sub-layers) | 3,332 |
-| `DocumentProduction.lean` | Composes stream/document-level productions | ~200 |
-| `ScanStrictCoupling.lean` | Bridges scanner state to surface positions | ~1,500 |
-| `ScalarCoupling.lean` | Scalar `_prod` theorems (double/single/plain/block) | ~4,000 |
-| `StructureCoupling.lean` | Flow/block indicator productions | ~800 |
-| `StructureProduction.lean` | Node-level grammar composition | ~1,200 |
+| `Proofs/Production/StreamAccum.lean` | Threads `SLYamlStream` through the scan loop (26 sub-layers) | 3,316 |
+| `Proofs/Production/DocumentProduction.lean` | Composes stream/document-level productions | 257 |
+| `Proofs/Scanner/ScanStrictCoupling.lean` | Bridges scanner state to surface positions | 497 |
+| `Proofs/Coupling/ScalarCoupling.lean` | Scalar `_prod` theorems (double/single/plain/block) | 765 |
+| `Proofs/Coupling/StructureCoupling.lean` | Flow/block indicator productions | 652 |
+| `Proofs/Production/StructureProduction.lean` | Node-level grammar composition | 1,311 |
+
+Paths and LOC refreshed 2026-07-31: earlier drafts cited larger pre-reorg
+figures for coupling files whose content is now spread across
+`Proofs/Coupling/` (also `ScannerCoupling.lean`, `SurfaceCoupling.lean`,
+`CouplingBridge.lean`) and `Proofs/Scanner/`.
 
 ### Surface grammar: 77 inductive types
 
@@ -371,15 +378,21 @@ The v0.4.6 proof suite constructs grammar derivation trees from successful parse
 | `Node.lean` | 18 | Mutual block/flow collection types (11 mutually recursive) |
 | `Document.lean` | 10 | Document markers, types, stream-level rules |
 
-### `StreamAccum.lean` sorry inventory (v0.4.6)
+### `StreamAccum.lean` proof-obligation inventory (v0.4.6)
 
-The file has 6 sorry declarations across 24 source sites, concentrated in 3 root causes:
+The file's docstrings describe future proof obligations concentrated in root
+causes (these were **never written as `sorry` tactics** — the file builds
+clean; see the correction in the Status section above):
 
-| Root cause | Description | Sorry sites | Blocks |
+| Root cause | Description | Docstring mentions | Blocks |
 |------------|-------------|-------------|--------|
 | **h_closable construction** | `PendingNode` closures for content/flow dispatch need `_prod` → `SFlowNode` → `SBlockNode.flowInBlock` composition | ~16 | `scannerDrop` elimination (Fix A) |
-| **BOM col≠0** | SSeparateInLine at col=1 after BOM — genuine grammar edge case | ~6 | Neither constructor (independent) |
 | **Context parameter lifting** | `_prod` gives `SFlowNode 0 .blockIn`, need `SFlowNode (n+1) .flowOut` | blocked by | h_closable construction |
+
+(A third root cause, **BOM col≠0**, appeared in earlier drafts; it was closed
+by `bom_noWhitespace_ssbcomment` at
+[L4YAML/Proofs/Production/PreprocessProduction.lean:258](L4YAML/Proofs/Production/PreprocessProduction.lean),
+via the column-independent `SSeparateInLine.startOfLine`.)
 
 ---
 
@@ -389,7 +402,6 @@ The file has 6 sorry declarations across 24 source sites, concentrated in 3 root
 |------|-----------|--------|------------|
 | Context parameter lifting is harder than expected | Medium | HIGH | The grammar rules are structurally insensitive to `n`/`ctx`; mutual induction should work |
 | Orphaned directives ARE reachable in the scanner | Medium | Medium | Even if reachable, the fix is to construct proper grammar evidence, not to abandon the approach |
-| BOM col≠0 sorry is a genuine grammar limitation | High | Low | This sorry exists independently of the over-approximation constructors; it doesn't block Fix A or Fix B |
 | Removing constructors breaks downstream files | Low | Low | Verified: only `StreamAccum.lean` pattern-matches on the removed constructors |
 | Converse proof (Step 5) is very large | High | Medium | Grammar inversion requires ~77 lemmas; but many are mechanical |
 
@@ -397,7 +409,7 @@ The file has 6 sorry declarations across 24 source sites, concentrated in 3 root
 
 ## Dependencies
 
-- **v0.4.7 must be complete first.** The round-trip proof exercises the emit→scan→parse pipeline and may reveal issues relevant to the converse direction.
+- **v0.4.7 must be complete first — satisfied 2026-07-04.** The round-trip proof exercises the emit→scan→parse pipeline and may reveal issues relevant to the converse direction.
 - **Scanner audit (Step 0) determines Fix B scope.** This should be done early to reduce uncertainty.
 
 ---
@@ -409,7 +421,13 @@ The file has 6 sorry declarations across 24 source sites, concentrated in 3 root
 - `grammar_completeness` compiles with 0 sorry
 - `parse_iff_grammar` (biconditional) compiles with 0 sorry
 - All existing v0.4.6 and v0.4.7 proof files maintain 0 sorry
-- BOM col≠0 sorry may remain (independent of this version's goals)
+- `parse_iff_grammar` (and `grammar_completeness`, if it stays a top-level
+  declaration) added to the `theorem` whitelist in `scripts/capstones.txt`
+  (a commented slot for capstone 7.7 is already reserved there) and
+  `@[capstone]`-tagged with its axiom profile pinned in
+  `L4YAML/Capstones.lean` — every non-whitelisted declaration must use
+  `lemma` (see `Blueprint/06-discipline.md`; enforced by
+  `scripts/check-theorem-keyword.sh`)
 
 ---
 

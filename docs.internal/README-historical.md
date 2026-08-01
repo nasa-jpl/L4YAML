@@ -1,5 +1,7 @@
 # lean4-yaml-verified
 
+> **Archived snapshot (HISTORICAL).** This is the pre-reorganization README, moved here by commit `75e86913` (2026-04-19); the live README is [../README.md](../README.md). The library is sorry-free since 2026-07-04 (see [Blueprint/04-capstones.md](../Blueprint/04-capstones.md), the proof-status SSOT). Paths, line numbers, and metrics below may predate the 2026-04 folder reorganization and the 2026-07-31 theorem→lemma rename.
+
 A **fully verified** YAML 1.2.2 parser in Lean 4 — 2,309 machine-checked theorems, 2,124 compile-time guards, **zero axiom, zero partial def**. Proofs that the parser conforms to the [YAML specification](https://yaml.org/spec/1.2.2/) and the [yaml-test-suite](https://github.com/yaml/yaml-test-suite).
 
 ## Architecture
@@ -186,7 +188,7 @@ theorem parse_strict : parseYaml s = .ok docs → InYamlLanguage s
 
 In practice, fully formalizing 205 productions is a major undertaking. Version 0.2.11 introduces a **fourth layer** — systematic rejection testing — as the pragmatic complement: using the formal grammar structure to generate boundary-violation test cases that check rejection, even though rejection isn't proved. The generation is principled (grammar-directed, production-aware), the cross-validation is empirical (differential testing against libyaml), and the coverage is measured (production coverage analysis). This semi-formal bridge addresses the verification gap without requiring a full surface-syntax formalization.
 
-For more details, see [Proofs/README](./L4YAML/Proofs/README.md).
+For more details, see [Proofs/README](../L4YAML/Proofs/README.md).
 
 ## Security: Parser Limits (v0.3.0)
 
@@ -219,7 +221,7 @@ let result := parseYamlSingleSafe input          -- single-document variant
 let result := parseYaml input                    -- no limits
 ```
 
-Four preset configurations: `ParserLimits.strict` (web APIs), default `{}` (general untrusted), `ParserLimits.permissive` (trusted internal), `ParserLimits.unlimited` (testing). See [LIMITS.md](./LIMITS.md) for the full threat model.
+Four preset configurations: `ParserLimits.strict` (web APIs), default `{}` (general untrusted), `ParserLimits.permissive` (trusted internal), `ParserLimits.unlimited` (testing). See [LIMITS.md](../LIMITS.md) for the full threat model.
 
 ## Key Design Decisions
 
@@ -240,7 +242,7 @@ YAML1.2.2-compliant verified parser without resource limitations.
 #### Version 0.2 (completed 2026-03-20)
 <details>
 
-Improved type safety with explicit exception types for all APIs. See [EXCEPTIONS.md](EXCEPTIONS.md) for the full design and migration retrospective.
+Improved type safety with explicit exception types for all APIs. See [EXCEPTIONS.md](../EXCEPTIONS.md) for the full design and migration retrospective.
 
 **Problem:** The 5 top-level parser APIs and 13 Schema-layer functions returned `Except String`, losing structured error information. Internally, scanner/parser already used the well-designed `ScanError` inductive (32 constructors in [Token.lean](L4YAML/Token.lean)), but the `ScanError → String` boundary at the API surface discarded machine-inspectable error categories.
 
@@ -864,13 +866,13 @@ Security mechanisms to prevent **two critical vulnerability classes**:
 1. **Denial-of-Service (DoS) attacks**: Billion laugh attacks, resource exhaustion, and cyclic structures
 2. **Arbitrary code execution (ACE)**: Unsafe tags and directives that could execute code during deserialization
 
-See [LIMITS](LIMITS.md) for detailed analysis and mitigation strategies.
+See [LIMITS](../LIMITS.md) for detailed analysis and mitigation strategies.
 </details>
 
 #### Version 0.4.0 (completed 2026-03-25)
 <details>
 
-[Acceptance strictness](./STRICTNESS.md): formalize the YAML 1.2.2 surface syntax as parameterized inductive predicates and begin coupling the scanner implementation to the formal grammar.
+[Acceptance strictness](../STRICTNESS.md): formalize the YAML 1.2.2 surface syntax as parameterized inductive predicates and begin coupling the scanner implementation to the formal grammar.
 
 **Surface syntax grammar**: 6 new modules in `L4YAML/Surface/` (~1,100 lines) encode the full YAML 1.2.2 production set [1]–[211] as Lean 4 inductive `Prop`s over positioned character streams (`SurfPos = {chars : List Char, col : Nat}`).
 
@@ -1465,7 +1467,7 @@ where `InYamlLanguage s` means there exists a complete `SLYamlStream` derivation
 
 **Codebase:** 69k lines of Lean 4 (47k proof, 22k implementation + grammar). 2,268 theorems across 61 proof files.
 
-See [VERSION-0.4.6.md](VERSION-0.4.6.md) for the full layer-by-layer development log.
+See [VERSION-0.4.6.md](../VERSION-0.4.6.md) for the full layer-by-layer development log.
 
 </details>
 
@@ -1474,7 +1476,7 @@ See [VERSION-0.4.6.md](VERSION-0.4.6.md) for the full layer-by-layer development
 <details>
 <summary>Universal round-trip correctness (Phase E) — prove <code>∀ v, Grammable v → parseYaml (emit v) ≈ v</code></summary>
 
-See [VERSION-0.4.7.md](VERSION-0.4.7.md)
+See [VERSION-0.4.7.md](../VERSION-0.4.7.md)
 
 </details>
 
@@ -1483,7 +1485,7 @@ See [VERSION-0.4.7.md](VERSION-0.4.7.md)
 <details>
 <summary>Grammar completeness (converse acceptance strictness) — prove <code>InYamlLanguage input → ∃ docs, parseYaml input = .ok docs</code></summary>
 
-See [VERSION-0.4.8.md](VERSION-0.4.8.md)
+See [VERSION-0.4.8.md](../VERSION-0.4.8.md)
 
 </details>
 
@@ -1491,7 +1493,7 @@ See [VERSION-0.4.8.md](VERSION-0.4.8.md)
 
 <details>
 
-[C, Python, and Rust APIs for the safe parsing APIs](./C_PYTHON_RUST_APIs.md)
+[C, Python, and Rust APIs for the safe parsing APIs](../C_PYTHON_RUST_APIs.md)
 
 ##### Phase 1: Lean `@[export]` Wrappers
 
@@ -1604,7 +1606,7 @@ Two-crate Rust workspace (`rust/`): `l4yaml-sys` (raw `bindgen` FFI from `l4yaml
 
 Aeneas/Charon verification bridge (task 8c) and crates.io publish (task 8e) remain as stretch goals.
 
-See [C_PYTHON_RUST_APIs.md — Phase 4](C_PYTHON_RUST_APIs.md) for full design.
+See [C_PYTHON_RUST_APIs.md — Phase 4](../C_PYTHON_RUST_APIs.md) for full design.
 
 </details>
 
@@ -1655,14 +1657,14 @@ Rejection completeness: if an input does not belong to the formal grammar, the p
 <details>
 Schema-aware duplicate key detection with proofs of key equivalence.
 
-See [DUPLICATE_KEYS.md](DUPLICATE_KEYS.md)
+See [DUPLICATE_KEYS.md](../DUPLICATE_KEYS.md)
 </details>
 
 #### Version 0.8.0
 
 <details>
 
-YAML merge operation support, see [YAML_MERGE.md](YAML_MERGE.md)
+YAML merge operation support, see [YAML_MERGE.md](../YAML_MERGE.md)
 
 </details>
 
@@ -4214,7 +4216,7 @@ This follows the libyaml reference implementation, which already makes this spli
 
 **Upstream observation.** The YAML spec would benefit from explicitly differentiating token-level and grammar-level productions. libyaml already makes this distinction; formalizing it in the spec would help all implementations.
 
-Full analysis in [YAML_PRODUCTIONS.md](L4YAML/YAML_PRODUCTIONS.md) §Token–Grammar Layer Analysis.
+Full analysis in [YAML_PRODUCTIONS.md](../L4YAML/YAML_PRODUCTIONS.md) §Token–Grammar Layer Analysis.
 
 </details>
 

@@ -1,5 +1,19 @@
 # YAML Value Merge: Algebraic Semantics
 
+> **Audit note (2026-07-31):** This design remains a live candidate plan, but
+> its stated foundation has shifted. The `KeyEqPred` typeclass from
+> [DUPLICATE_KEYS.md](DUPLICATE_KEYS.md) was **never built** — key equality in
+> the library is the proved `LawfulBEq YamlValue` instance
+> (`L4YAML/Algebra/LawfulBEq.lean:266`). Any implementation should be re-based
+> on `LawfulBEq`: `==` is already a lawful (decidable) equivalence, which
+> subsumes the `KeyEqPred.refl`/`symm`/`trans` obligations invoked below. The
+> natural landing site is the `.merge` arm of `DuplicateKeyPolicy` in
+> `L4YAML/Config/LoadConfig.lean` — this document is the candidate design for
+> that combinator (`dedupMerge` is explicitly deferred in
+> `L4YAML/Algebra/Equivalence.lean` pending exactly such a parser-supplied
+> combinator; see `Blueprint/08-initiative-4-intrinsic-foundations.md`,
+> Phase 4).
+
 ## Motivation
 
 Configuration systems routinely need to combine multiple YAML files —
@@ -373,7 +387,7 @@ This guarantees that accidentally applying the same layer twice is harmless.
 |------|--------|--------|
 | `L4YAML/Merge.lean` | **NEW** | Core merge algorithm + config types |
 | `L4YAML/Proofs/MergeProofs.lean` | **NEW** | All merge theorems |
-| `L4YAML/FFI.lean` | New `@[export]` functions | Additive |
+| `L4YAML/FFI/FFI.lean` | New `@[export]` functions | Additive |
 | `Tests/Guards/MergeGuards.lean` | **NEW** | Compile-time `#guard` tests |
 | `Tests/test_python_ffi.py` | Add merge tests | Additive |
 | `ffi/l4yaml.h` | New C API functions | Additive |
@@ -410,6 +424,7 @@ This guarantees that accidentally applying the same layer twice is harmless.
   between the two features.
 
 - **`merge` is total**: No `Except`, no `Option` — merge always succeeds.
-  This is a deliberate departure from `resolveDuplicateKeys` which can fail
-  (via `rejectHandler`).  Merge is a pure structural combination; errors
-  belong to the validation layer.
+  This is a deliberate departure from the duplicate-key path, where the
+  spec-strict default `DuplicateKeyPolicy.error`
+  (`L4YAML/Config/LoadConfig.lean`) fails on duplicates.  Merge is a pure
+  structural combination; errors belong to the validation layer.

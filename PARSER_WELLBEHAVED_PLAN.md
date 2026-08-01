@@ -406,4 +406,30 @@ before deletion.
 
 - *(none currently flagged; audit pending — run
   `grep -rn "theorem_name"` across the project and sweep this file as a
-  batch task.)*
+  batch task.)* **[Folded into the closure below — the sweep happened as
+  part of the blueprint cleanup.]**
+
+## Closure (2026-07-31)
+
+The blueprint-driven reassessment this plan deferred to was executed, and the
+campaign is over:
+
+- The `parser_fuel_mono_succ` machinery (all 24 parts), its two
+  zero-caller consumers, and the plan's sorry-carrying helpers — including
+  `parseNode_flowSeqStart_in_seq` — were **deleted** as dead/unsound code;
+  none of these names appears in the current proof corpus (the
+  adversarial-instantiation harness in `Tests/AdversarialInstantiation.lean`
+  still exercises the `parseNode_flowSeqStart_in_seq` *behavior* by name in
+  its test labels — computational checks, not proofs).
+- The flow-acceptance results were re-landed proven on a sounder design:
+  the file (now `L4YAML/Proofs/Parser/ParserWellBehaved.lean`, post-2026-04
+  reorg) carries the fuel-adequacy predicate `ParseNodeFlowSeqOk` (:4176) and
+  `parseFlowSequenceLoop_emitter_ok` (:4235), and the span strong-induction
+  `flow_parser_ok_of_structure` lives proven at
+  `L4YAML/Proofs/Parser/FlowParserAcceptance.lean:883`.
+- The file — and the whole library — is sorry-free since 2026-07-04; the
+  proof-status SSOT is [Blueprint/04-capstones.md](Blueprint/04-capstones.md).
+
+Line numbers elsewhere in this plan index the pre-cleanup monolith, and code
+snippets predate the 2026-07-31 theorem→lemma rename (non-capstone `theorem`
+declarations are now spelled `lemma`).

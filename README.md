@@ -21,12 +21,12 @@ The library is composed of four layers, each pure, total, and kernel-reducible:
 
 | Layer | Source | Role |
 |---|---|---|
-| Scanner | [L4YAML/Scanner.lean](L4YAML/Scanner.lean) | Characters → tokens (YAML 1.2.2 L-layer) |
-| Token parser | [L4YAML/TokenParser.lean](L4YAML/TokenParser.lean) | Tokens → `YamlValue` AST (S-layer) |
-| Schema | [L4YAML/Schema.lean](L4YAML/Schema.lean), [L4YAML/Schema/](L4YAML/Schema/) | Implicit typing + `FromYaml`/`ToYaml` |
-| Dumper | [L4YAML/Dump.lean](L4YAML/Dump.lean) | `YamlValue` + `DumpConfig` → YAML text |
+| Scanner | [L4YAML/Scanner/](L4YAML/Scanner/Scanner.lean) | Characters → tokens (YAML 1.2.2 L-layer) |
+| Token parser | [L4YAML/Parser/TokenParser.lean](L4YAML/Parser/TokenParser.lean) | Tokens → `YamlValue` AST (S-layer) |
+| Schema | [L4YAML/Schema/](L4YAML/Schema/Schema.lean) | Implicit typing + `FromYaml`/`ToYaml` |
+| Dumper | [L4YAML/Output/Dump.lean](L4YAML/Output/Dump.lean) | `YamlValue` + `DumpConfig` → YAML text |
 
-Grammar and proofs live in [L4YAML/Grammar.lean](L4YAML/Grammar.lean) and
+Grammar and proofs live in [L4YAML/Spec/Grammar.lean](L4YAML/Spec/Grammar.lean) and
 [L4YAML/Proofs/](L4YAML/Proofs/).
 
 ## Unique features
@@ -38,28 +38,28 @@ Every function in the core library is a total `def` — **no `partial def`, no
 
 - **Soundness of parsing** — if `parseYaml` accepts an input, the output is a
   structurally valid YAML data model ([Proofs/Soundness.lean](L4YAML/Proofs/Soundness.lean),
-  [Proofs/ParserSoundness.lean](L4YAML/Proofs/ParserSoundness.lean)).
+  [Proofs/Parser/ParserSoundness.lean](L4YAML/Proofs/Parser/ParserSoundness.lean)).
 - **Parser completeness** — every well-formed token stream under the
   formalized grammar has a successful parse
   ([Proofs/Completeness.lean](L4YAML/Proofs/Completeness.lean),
-  [Proofs/ParserCompleteness.lean](L4YAML/Proofs/ParserCompleteness.lean)).
+  [Proofs/Parser/ParserCompleteness.lean](L4YAML/Proofs/Parser/ParserCompleteness.lean)).
 - **Pipeline composition** — the scanner → token parser composition is
   correct ([Proofs/Composition.lean](L4YAML/Proofs/Composition.lean)).
 - **Round-trip** — `parse ∘ emit` is the identity on well-formed values
-  ([Proofs/RoundTrip.lean](L4YAML/Proofs/RoundTrip.lean),
-  [Proofs/DumpRoundTrip.lean](L4YAML/Proofs/DumpRoundTrip.lean)).
+  ([Proofs/RoundTrip/RoundTrip.lean](L4YAML/Proofs/RoundTrip/RoundTrip.lean),
+  [Proofs/Output/DumpRoundTrip.lean](L4YAML/Proofs/Output/DumpRoundTrip.lean)).
 - **Scanner invariants** — indentation tracking, simple-key detection, flow
   collection balance, document boundaries
-  ([Proofs/ScannerIndent.lean](L4YAML/Proofs/ScannerIndent.lean),
-  [Proofs/ScannerSimpleKey.lean](L4YAML/Proofs/ScannerSimpleKey.lean),
-  [Proofs/ScannerFlowCollection.lean](L4YAML/Proofs/ScannerFlowCollection.lean),
-  [Proofs/ScannerDocument.lean](L4YAML/Proofs/ScannerDocument.lean)).
+  ([Proofs/Scanner/ScannerIndent.lean](L4YAML/Proofs/Scanner/ScannerIndent.lean),
+  [Proofs/Scanner/ScannerSimpleKey.lean](L4YAML/Proofs/Scanner/ScannerSimpleKey.lean),
+  [Proofs/Scanner/ScannerFlowCollection.lean](L4YAML/Proofs/Scanner/ScannerFlowCollection.lean),
+  [Proofs/Scanner/ScannerDocument.lean](L4YAML/Proofs/Scanner/ScannerDocument.lean)).
 - **Anchor/alias well-formedness** — every resolved alias refers to a
-  previously defined anchor ([Proofs/ParserAnchorProofs.lean](L4YAML/Proofs/ParserAnchorProofs.lean),
-  [Proofs/ParserNodeProofs.lean](L4YAML/Proofs/ParserNodeProofs.lean)).
+  previously defined anchor ([Proofs/Parser/ParserAnchorProofs.lean](L4YAML/Proofs/Parser/ParserAnchorProofs.lean),
+  [Proofs/Parser/ParserNodeProofs.lean](L4YAML/Proofs/Parser/ParserNodeProofs.lean)).
 - **Acceptance strictness** — accepted inputs lie in the formalized YAML
   surface language `InYamlLanguage`
-  ([Proofs/ScannerCorrectness.lean](L4YAML/Proofs/ScannerCorrectness.lean);
+  ([Proofs/Scanner/ScannerCorrectness.lean](L4YAML/Proofs/Scanner/ScannerCorrectness.lean);
   design note in [docs.internal/README-historical.md](docs.internal/README-historical.md)).
 - **Schema resolution** — the Core Schema resolver respects the §10.3
   precedence (null → bool → int → float → str)
@@ -83,6 +83,20 @@ theorem listed above (`#print axioms universal_roundtrip` reports no `sorryAx`).
 Beyond Lean's standard `propext` / `Classical.choice` / `Quot.sound`, a number of
 finite content-equivalence and character-class facts are discharged by
 `native_decide`, which additionally trusts Lean's compiled evaluator.
+
+**Proof discipline.** The `theorem` keyword is reserved for the 25
+`@[capstone]`-tagged headline results (whitelist:
+[scripts/capstones.txt](scripts/capstones.txt)); every other proof in the
+library — roughly 4,975 of them — is spelled `lemma` (macro in
+[L4YAML/Init.lean](L4YAML/Init.lean)). The tagged set and each capstone's
+axiom profile (18 pure, 7 `native_decide`-backed) are pinned at build time by
+`#guard_msgs` in [L4YAML/Capstones.lean](L4YAML/Capstones.lean), and CI
+enforces the discipline with `scripts/check-theorem-keyword.sh`,
+`scripts/check-import-closure.sh`, and a kernel-accurate
+zero-`sorry`/zero-custom-axiom assertion in
+[.github/workflows/test-coverage.yml](.github/workflows/test-coverage.yml).
+The rulebook is [Blueprint/06-discipline.md](Blueprint/06-discipline.md); the
+proof-status SSOT is [Blueprint/04-capstones.md](Blueprint/04-capstones.md).
 
 **Work in progress.** One converse theorem remains open — *grammar
 completeness*, that every string in the formalized surface language
@@ -120,8 +134,7 @@ thin shims that preserve the security and correctness guarantees:
 
 ### 3. Schema layer
 
-The Schema layer ([L4YAML/Schema.lean](L4YAML/Schema.lean),
-[L4YAML/Schema/](L4YAML/Schema/)) provides:
+The Schema layer ([L4YAML/Schema/](L4YAML/Schema/Schema.lean)) provides:
 
 - **YAML 1.2.2 Core Schema (§10.3)** — complete implicit resolution of
   `null`, `bool`, `int`, `float`, `str` with the specified precedence.
@@ -143,7 +156,7 @@ roadmap; open an issue if this is a blocker for your use case.
 
 The verified parser rejects adversarial and ambiguous input at well-defined
 boundaries. All limits are configurable via `ParserLimits`
-([L4YAML/Limits.lean](L4YAML/Limits.lean)) and documented in
+([L4YAML/Config/Limits.lean](L4YAML/Config/Limits.lean)) and documented in
 [LIMITS.md](LIMITS.md).
 
 | Threat | Limit | Default |
@@ -165,7 +178,7 @@ internal data), and `ParserLimits.unlimited` (testing only).
 
 ### 5. Configurable style-aware dumper
 
-[`L4YAML.Dump.dump`](L4YAML/Dump.lean) turns a `YamlValue` (plus optional
+[`L4YAML.Dump.dump`](L4YAML/Output/Dump.lean) turns a `YamlValue` (plus optional
 per-document comments) back into YAML text, with control over:
 
 - **Scalar style** — `plain`, `doubleQuoted`, `singleQuoted`, or `auto`
@@ -481,12 +494,26 @@ rather than failing the job.
 ## Project layout
 
 ```
-L4YAML/              Verified core library (scanner, parser, schema, dump, proofs)
-  Grammar.lean       Formal YAML 1.2.2 grammar
-  Proofs/            Machine-checked theorems
+L4YAML/              Verified core library
+  Scanner/           Scanner (+ indexed twin)
+  Parser/            Token parser (+ indexed twin)
+  Token/             Token type
+  Spec/              Formal YAML 1.2.2 grammar, character predicates, spec types
   Schema/            Typeclasses, deriving macros, typed API
+  Output/            Dumper, emitter, event/JSON test-matrix emitters
+  Config/            ParserLimits, safe-parse API, load config
   Surface/           Surface-syntax grammar (acceptance strictness)
+  Indexed/           Position-indexed foundations (CharStream, TokenStream, …)
+  Algebra/           Value/token algebra (LawfulBEq, equivalence, …)
+  FFI/               Lean side of the C ABI
+  Proofs/            Machine-checked theorems (Scanner/, Parser/, Production/,
+                     Coupling/, Output/, RoundTrip/, Schema/, …)
+  Init.lean          `lemma` macro (theorem keyword reserved for capstones)
+  Capstones.lean     @[capstone] set + per-capstone axiom-profile pins
 Tests/               Runtime tests and compile-time #guard suites
+Blueprint/           Methodology + proof-status SSOT (04-capstones.md)
+scripts/             CI gates (check-theorem-keyword, check-import-closure),
+                     bump-version.sh, report generators
 examples/            YAML 1.2.2 specification examples (§2–§10)
 yaml-test-suite/     Upstream yaml-test-suite (submodule)
 ffi/                 C ABI header, shim, and test driver
@@ -507,8 +534,8 @@ docs/                Generated documentation (Verso, PDF, coverage reports)
 
 L4YAML's version is declared independently in each language's package
 manifest, plus once in the Python package's `__init__` so the value is
-introspectable at runtime. **All five locations must be updated together**
-when cutting a release; there is no automation that propagates between them.
+introspectable at runtime. The five locations are kept in lockstep by
+[scripts/bump-version.sh](scripts/bump-version.sh).
 
 | Location | Field |
 |---|---|
@@ -518,12 +545,19 @@ when cutting a release; there is no automation that propagates between them.
 | [python/pyproject.toml](python/pyproject.toml) | `version = "..."` |
 | [python/l4yaml/\_\_init\_\_.py](python/l4yaml/__init__.py) | `__version__ = "..."` |
 
-A grep target for sanity-checking that nothing has drifted:
+To inspect or bump:
 
 ```sh
-grep -REn '^\s*version\s*:?=' lakefile.lean rust/*/Cargo.toml python/pyproject.toml
-grep -n  '^__version__' python/l4yaml/__init__.py
+scripts/bump-version.sh       # print the current version (errors on drift)
+scripts/bump-version.sh +p    # bump patch  (X.Y.Z -> X.Y.(Z+1))
+scripts/bump-version.sh +m    # bump minor  (X.Y.Z -> X.(Y+1).0)
+scripts/bump-version.sh +M    # bump major  (X.Y.Z -> (X+1).0.0)
 ```
+
+The script refuses to bump when the five sites disagree, so a divergence is
+fixed by hand rather than half-bumped. CI's YAML Test Matrix keys off the
+version: after a bump, commit, then `git tag vX.Y.Z` — the `v*` tag cuts the
+release and fires the matrix regeneration.
 
 The Lean side reads its version from the lakefile (no in-source constant);
 the Rust workspace currently declares `version` per-crate (it could be
@@ -584,14 +618,14 @@ lemmas can be stated from `Proofs/`.
    the forget-the-marks projection is just `MarkedDoc.doc`:
 
    ```lean
-   theorem parseYamlRawMarked_agrees (input : String) :
+   lemma parseYamlRawMarked_agrees (input : String) :
        (parseYamlRawMarked input).map (·.map (·.doc)) = parseYamlRaw input
    ```
 
    proved from a loop-level lemma by fuel induction:
 
    ```lean
-   theorem parseStreamMarkedLoop_agrees (ps acc ss fuel) :
+   lemma parseStreamMarkedLoop_agrees (ps acc ss fuel) :
        (parseStreamMarkedLoop ps acc ss fuel).map (·.map (·.doc))
          = parseStreamLoop ps (acc.map (·.doc)) ss fuel
    ```
@@ -604,6 +638,25 @@ lemmas can be stated from `Proofs/`.
    (`explicitStartAt` is a second copy of the directive grammar); those stay
    guarded by the step-1 pins, which check the `+DOC ---` / `-DOC ...`
    decorations byte-exactly.
+
+**Port the 100%-matrix fixes to the indexed twin.** The indexed pipeline
+(`L4YAML/Parser/TokenParserIx.lean`, `L4YAML/Scanner/IndexedScanner.lean`) is
+wired into the library build, but it still models the pre-campaign runtime
+behavior for four fixes from the 100% matrix campaign
+([YAML_MATRIX_100PCT_ASSESSMENT.md](YAML_MATRIX_100PCT_ASSESSMENT.md)); each
+port must also re-prove the corresponding `Indexed*` lemmas:
+
+- **C1** — the `some .documentEnd` suffix arm of the runtime
+  `parseStreamLoop` ([L4YAML/Parser/TokenParser.lean](L4YAML/Parser/TokenParser.lean));
+  the indexed `parseStreamLoop` has no such arm.
+- **C2** — the derived `isSeqEntry` empty-scalar gate in
+  `parseNode`/`parseNodeContent`; absent from the indexed twin.
+- **C3** — the retroactive-`key` skip in `parseBlockMappingEntryValue`
+  (§8.2.2 [191] explicit block-collection keys); the indexed else-branch
+  still returns an empty node unconditionally.
+- **B2** — the `protectedLen` boundary parameter of
+  `collectDoubleQuotedLoop` (escaped-trailing-tab trimming); the indexed
+  `collectDoubleQuotedLoopIx` has no such parameter.
 
 ## Contributing
 

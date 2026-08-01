@@ -6,10 +6,11 @@ dead infrastructure and false theorems. Enforce them.
 
 ## Rule 1 — No new theorem without a traceable capstone
 
-Every new top-level theorem must be **justified by traceable use**
+Every new top-level proof (`lemma` or `theorem` — see Rule 7 for
+which keyword) must be **justified by traceable use**
 (transitively) in a capstone listed in
 [`04-capstones.md`](04-capstones.md). Before proposing a new
-theorem:
+one:
 
 1. **Find the capstone** it's supposed to feed. Name it. Write the
    intended chain: "proves *X* → used by *Y* → used by capstone *Z*."
@@ -24,7 +25,7 @@ which have zero external callers. That's a ~1,000-hour write-off.
 
 ## Rule 2 — Adversarial instantiation before proof
 
-For every **new** theorem, add an adversarial-instantiation test
+For every **new** theorem or lemma, add an adversarial-instantiation test
 that would **refute** it if false, **before** attempting the proof.
 
 - The test lives in
@@ -73,24 +74,37 @@ input.
 
 ## Rule 3 — Sorry policy
 
-The library is `sorry`-free (0 active `sorry`s in `L4YAML/` as of
-2026-07-31; the lone `sorry` under `Tests/` is the deliberate
-demonstration in `Tests/Reflections/IllusorySorryFree.lean`). The
-policy going forward:
+The library is `sorry`-free (since 2026-07-04), and this is
+**CI-enforced**, not aspirational:
+[`test-coverage.yml`](../.github/workflows/test-coverage.yml) runs a
+kernel-accurate assertion (via `collect-stats`, which walks the
+compiled environment with `Lean.collectAxioms`) that there are
+**0 theorems with transitive `sorry` and 0 custom axioms**, and
+[`L4YAML/Capstones.lean`](../L4YAML/Capstones.lean)'s
+`#assert_capstone_axioms` independently hard-fails the build if any
+capstone acquires a `sorryAx` dependency. (The lone `sorry` under
+`Tests/` is the deliberate demonstration in
+`Tests/Reflections/IllusorySorryFree.lean`, outside the library
+environment.) Consequences:
 
-- A **new `sorry`** is allowed only if the theorem is listed in
-  [`04-capstones.md`](04-capstones.md) with status 🚧 or ⏳ **and** a
-  WIP branch is open against it.
+- A `sorry` **cannot land on the default branch** — it is a build
+  failure. A `sorry` may exist only on a WIP branch, and only
+  against a declaration listed in
+  [`04-capstones.md`](04-capstones.md); it must be discharged before
+  merge.
 - A `sorry` in a **helper lemma** (not a capstone) is not allowed.
   If the helper proof is hard, the capstone's plan doc (e.g.
   [`PARSER_WELLBEHAVED_PLAN.md`](../PARSER_WELLBEHAVED_PLAN.md))
   should list the helper as a dependency, and the helper should be
   promoted to capstone-track status before being `sorry`'d.
-- A `sorry` in any theorem that has **0 external callers** is an
+- A `sorry` in any declaration that has **0 external callers** is an
   immediate deletion candidate, not a proof TODO.
 
-Reason: `sorry`s in unused helpers are silent proof-debt. They
-don't break builds; they don't surface in CI; they just accumulate.
+Reason: `sorry`s in unused helpers are silent proof-debt — they
+don't break the build locally; they just accumulate. The 2026-07-04
+closure (see [`04-capstones.md`](04-capstones.md), the proof-status
+SSOT) converted this policy from a target into an enforced
+invariant.
 
 ## Rule 4 — One source of truth per claim
 
@@ -103,18 +117,31 @@ For every public-facing metric or guarantee:
 Examples:
 
 - Sorry count: primary = [`04-capstones.md`](04-capstones.md) (its
-  2026-07-01 Status snapshot). The Verso manual computes its own count
+  Status snapshot; `sorry`-free since 2026-07-04, CI-asserted per
+  Rule 3). The Verso manual computes its own count
   live from [`Stats.lean`](../doc/Doc/L4YAML/Stats.lean); the two
   should agree.
-- Capstone list: primary = [`04-capstones.md`](04-capstones.md),
-  mirrored by
-  [`L4YAML.FGM/KeyTheoremCatalogue.lean`](../../L4YAML.FGM/KeyTheoremCatalogue.lean)
-  for consumption by compiled tooling. **Gate**: `lake exe check-capstones`
-  (run in L4YAML.FGM CI via
-  [`generate-graphs.yml`](../../L4YAML.FGM/.github/workflows/generate-graphs.yml))
-  fails the PR if the two drift. So a PR that adds, renames, or
-  retires a ✅ capstone must update both places — `Verification.lean`
-  should continue to either link or mirror, not diverge.
+- Capstone list: primary = [`04-capstones.md`](04-capstones.md)
+  (prose), held in sync with two mirrors:
+  - **In-repo machine gate**: the `@[capstone]` attribute on each
+    capstone declaration, with the tagged set and per-capstone axiom
+    profiles pinned by `#guard_msgs` in
+    [`L4YAML/Capstones.lean`](../L4YAML/Capstones.lean), plus
+    [`scripts/capstones.txt`](../scripts/capstones.txt) driving
+    [`scripts/check-theorem-keyword.sh`](../scripts/check-theorem-keyword.sh)
+    (Rule 7).
+  - **External mirror**:
+    [`L4YAML.FGM/KeyTheoremCatalogue.lean`](../../L4YAML.FGM/KeyTheoremCatalogue.lean)
+    for consumption by compiled tooling. **Gate**: `lake exe check-capstones`
+    (run in L4YAML.FGM CI via
+    [`generate-graphs.yml`](../../L4YAML.FGM/.github/workflows/generate-graphs.yml))
+    fails the PR if catalogue and blueprint drift.
+
+  So a PR that adds, renames, or retires a capstone must update all
+  of: [`04-capstones.md`](04-capstones.md), the `@[capstone]` tag +
+  the `Capstones.lean` pins, `scripts/capstones.txt`, and the FGM
+  catalogue — `Verification.lean` should continue to either link or
+  mirror, not diverge.
 - Architecture pipeline: primary =
   [`02-architecture.md`](02-architecture.md). `Architecture.lean`
   should mirror.
@@ -153,7 +180,41 @@ Reason: the memory system is frozen at write time. A plan from
 approximately true (it referred to the helper, not the main
 theorem). A verifying grep would have caught this.
 
-## Checklist before merging a new theorem
+## Rule 7 — The `theorem` keyword is reserved for capstones
+
+Since 2026-07-31 (commit `ae33568f`), the `theorem` keyword is a
+**marker**: it may be used only by the `@[capstone]`-tagged
+blueprint capstones (currently 25 declarations; see
+[`04-capstones.md`](04-capstones.md)). **Every other proof is
+written with `lemma`** (~4,975 declarations), a synonym command
+provided by [`L4YAML/Init.lean`](../L4YAML/Init.lean), the project
+prelude imported by every library module. So `grep '^theorem '`
+over `L4YAML/` now answers "what does the library guarantee?" —
+the keyword itself carries Rule 1's traceability.
+
+- **Whitelist**: [`scripts/capstones.txt`](../scripts/capstones.txt)
+  — 19 named `file:decl` entries (some short names appear twice,
+  once for the classic and once for the indexed twin) plus the
+  `SIndent_*`/`GChar_*` wildcard families.
+- **Gates**:
+  [`scripts/check-theorem-keyword.sh`](../scripts/check-theorem-keyword.sh)
+  fails CI on any non-whitelisted `theorem` in `L4YAML/`;
+  [`scripts/check-import-closure.sh`](../scripts/check-import-closure.sh)
+  ensures no module dodges the gates by dropping out of the import
+  closure.
+- **Registry**: the `@[capstone]`-tagged set and each capstone's
+  axiom profile (18 `pure`, 7 `native`) are pinned by `#guard_msgs`
+  in [`L4YAML/Capstones.lean`](../L4YAML/Capstones.lean) — silently
+  gaining or losing a capstone, or a capstone silently acquiring a
+  `native_decide` dependency, fails the build.
+
+Promoting a proof to `theorem` therefore requires the full capstone
+path: justify it under Rule 1, add it to
+[`04-capstones.md`](04-capstones.md), tag it `@[capstone]`, and
+update the `Capstones.lean` pins + `scripts/capstones.txt` (and the
+FGM catalogue, per Rule 4).
+
+## Checklist before merging a new lemma or theorem
 
 Contributor self-check:
 
@@ -164,10 +225,13 @@ Contributor self-check:
       [`Tests/AdversarialInstantiation.lean`](../Tests/AdversarialInstantiation.lean)
       that would refute the theorem if false.
 - [ ] The test runs under `lake test` and reports no refutations.
-- [ ] The theorem is proved (no `sorry`), or is explicitly listed
-      as 🚧/⏳ in [`04-capstones.md`](04-capstones.md) with a
-      tracking issue.
-- [ ] No new theorem has zero external callers after this PR.
+- [ ] The proof is complete (no `sorry` — Rule 3's CI gate rejects
+      any `sorry` on the default branch); work in progress stays on
+      a WIP branch, listed in [`04-capstones.md`](04-capstones.md)
+      with a tracking issue.
+- [ ] The declaration uses `lemma` unless it is `@[capstone]`-tagged
+      (Rule 7).
+- [ ] No new declaration has zero external callers after this PR.
 
 ## Process for retiring theorems
 

@@ -204,6 +204,15 @@ execution.
    pattern likely applies to any verified scanner proving grammar
    conformance.
 
+> **Closure note (2026-07-31):** the lagging-accumulator resolution described
+> here was carried to completion. `L4YAML/Proofs/Production/StreamAccum.lean`
+> builds sorry-free (the "5 per-dispatch sorry lemmas" of Reflection 1 were all
+> discharged), and the chain now feeds the proven `@[capstone]` strictness
+> theorems `scan_strict_proof` / `parse_strict_proof` in
+> `L4YAML/Proofs/Production/DocumentProduction.lean` (see
+> Blueprint/04-capstones.md, Group 7). The library as a whole has been
+> sorry-free since 2026-07-04.
+
 ## Postscript: The Converse — When Boundaries Are Right
 
 The resolution of the mismatch (sub-layers 4d and 4e) produced an
@@ -271,6 +280,17 @@ to a proof requires restructuring existing proofs rather than extending
 them, the abstraction boundary may be misaligned. Conversely, if a new
 concern slots in as an independent component with only type-signature
 changes to the composition layer, the boundary is likely correct.
+
+**Later confirmation (2026-07-31):** the four-part product later grew to a
+five-part quint. During the flow-indicator work (sub-layer 4z), a `FlowStack`
+layer was inserted between `BlockStack` and `PendingNode`, giving the position
+chain `SLYamlStream → BlockStack → FlowStack → PendingNode → ScannerSurfCorr`
+(see §0b' of `L4YAML/Proofs/Production/StreamAccum.lean`). Exactly as the
+diagnostic criterion predicts, it slotted in as an independent component without
+restructuring the existing proofs — and after sub-layer 4z.1 it even collapsed
+to the trivial `nil`-only relation, with all flow-indicator evidence carried
+through `PendingNode.pendingFlow` instead. The boundary absorbed both the
+addition and the subsequent simplification, strengthening the thesis.
 
 ## References
 

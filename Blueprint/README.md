@@ -41,10 +41,17 @@ Read in order on first visit:
    current status, **practical significance**, and **risk if the
    proof were absent**. This file is now the single source of
    record for the sorry count and per-theorem status. As of
-   2026-07-01 the build is `sorry`-, `axiom`-, and `partial`-free
-   except for **five sites**, all in the universal-round-trip
-   cluster
-   [`Output/EmitterScannability/`](../L4YAML/Proofs/Output/); the
+   2026-07-04 the build is `sorry`- and `axiom`-free with **zero
+   exceptions**: the five former sites in the universal-round-trip
+   cluster [`Output/EmitterScannability/`](../L4YAML/Proofs/Output/)
+   are closed and `universal_roundtrip` is fully machine-checked.
+   CI asserts this kernel-accurately (0 theorems with transitive
+   `sorry`, 0 custom axioms, via `collect-stats` in
+   [`test-coverage.yml`](../.github/workflows/test-coverage.yml)).
+   The verified pipeline remains `partial`-free; the library's only
+   `partial def`s are eight auxiliary utilities in
+   `Config/Limits.lean` and `Output/{Events,Json}.lean`, outside
+   the proof chain. The
    `ParserWellBehaved.lean` fuel-monotonicity machinery once tracked
    separately was **deleted as dead code** (a
    `unified-dep-table --external-only` run showed zero
@@ -57,7 +64,8 @@ Read in order on first visit:
    governed by [`06-discipline.md`](06-discipline.md) Rule 4.
 5. [`06-discipline.md`](06-discipline.md) — the discipline going
    forward: blueprint-first theorem proposals, adversarial
-   instantiation before proof, sorry policy.
+   instantiation before proof, sorry policy, and the
+   `theorem`-keyword reservation for capstones (Rule 7).
 
 ## Relationship to existing documentation
 
@@ -317,7 +325,11 @@ PR; each leaves build green.
 [`Soundness.lean`](../L4YAML/Proofs/Soundness.lean),
 [`EndToEndCorrectness.lean`](../L4YAML/Proofs/EndToEndCorrectness.lean).
 
-**Final target layout** (post-PR-10):
+**Final target layout** (post-PR-10; April-2026 draft — the
+as-built layout, including the later `EmitterScannability/` split
+and the indexed clusters, is in
+[`03-code-organization.md`](03-code-organization.md) "Current state
+(2026-07-31)"):
 ```
 L4YAML/Proofs/
 ├── Foundation/   CharClass, LawfulBEq, StringProperties, ValueAlgebra
@@ -705,7 +717,14 @@ can be regenerated from the actual folder layout instead of
 hand-maintained; no top-level `.lean` file in `L4YAML/` besides
 the `L4YAML.lean` umbrella (i.e. the repo-root library entry
 point that re-exports submodules) — every other file lives inside
-a role-named folder.
+a role-named folder. *(Accepted exceptions as of 2026-07-31:
+[`Init.lean`](../L4YAML/Init.lean) — the project prelude providing
+the `lemma` command — plus
+[`CapstoneAttr.lean`](../L4YAML/CapstoneAttr.lean) and
+[`Capstones.lean`](../L4YAML/Capstones.lean), the machine-pinned
+capstone registry; see
+[`06-discipline.md`](06-discipline.md) Rule 7 and
+[`03-code-organization.md`](03-code-organization.md).)*
 
 </details>
 
@@ -739,6 +758,9 @@ against Lean's actual dependency DAG. Catch three classes of drift:
 | `DocVerificationBridge` | `doc-verification-bridge.ghe/DocVerificationBridge` | Lean ≤ 4.29.0 | **Not directly usable yet** — toolchain mismatch (L4YAML is on 4.30.0-rc2). Worth adopting later for the Four-Category Ontology classification. See Phase E. |
 | `FGM.KeyTheorem` | [`FGM`](../../FGM) (sibling checkout) | Matches `L4YAML.FGM` | Source of the `@[key_theorem]` attribute. |
 | Ad-hoc Lean script using `ConstantInfo.getUsedConstants` | — | any | Fallback if the above fall over. |
+
+*(Toolchain column as of the 2026-04-21 survey; L4YAML has since
+moved to `leanprover/lean4:v4.32.0`.)*
 
 **Current coverage**:
 [`L4YAML.FGM/KeyTheoremAnnotations.lean`](../../L4YAML.FGM/KeyTheoremAnnotations.lean)
@@ -936,12 +958,12 @@ present.
 
 **2. Headline slate** — ✅ *shipped*
 
-Seven headlines tagged in
+Eight headlines tagged in
 [`L4YAML.FGM/KeyTheoremCatalogue.lean`](../../L4YAML.FGM/KeyTheoremCatalogue.lean)
 with `tier := some { role := .headline }` and an explicit
-`category`. Group 4 carries three headlines (soundness,
-completeness, determinism) — admissible under Invariant 1b's
-"headlines are uncapped per category" clause, since all three are
+`category`. Group 4 carries four headlines (shallow and deep
+soundness, completeness, determinism) — admissible under Invariant
+1b's "headlines are uncapped per category" clause, since all are
 genuinely first-class public promises.
 
 | # | Headline | Category | Status | Why experts expect it | Plain-English summary |
@@ -952,12 +974,15 @@ genuinely first-class public promises.
 | 4.2 | `parse_complete`                             | `end-to-end` | ✅ | completeness | "every well-formed YAML is accepted" |
 | 4.3 | `parse_deterministic`                        | `end-to-end` | ✅ | functionality | "the parser is a function, not a relation" |
 | 5.1 | `validYaml_construct`                        | `values` | ✅ | value-level soundness | "every successful parse yields a `ValidYaml`" |
-| 6.1 | `universal_roundtrip`                        | `roundtrip` | 🚧 (sorry via 6.9) | round-trip | "emit then parse gives back the same content" |
-| 7.1 | `parse_strict_proof`                         | `grammar-production` | 🚧 (sorry via 7.2, 7.6) | strictness | "we never accept ill-formed input" |
+| 6.1 | `universal_roundtrip`                        | `roundtrip` | ✅ (2026-07-04) | round-trip | "emit then parse gives back the same content" |
+| 7.1 | `parse_strict_proof`                         | `grammar-production` | ✅ | strictness | "we never accept ill-formed input" |
 
-5 of 7 are ✅. The two 🚧 entries are front-page-admissible per
-the rule below, with their open sorry sites named in the status
-column and the description string.
+All eight are ✅ as of 2026-07-04: the last two closed with the
+universal-round-trip campaign — `universal_roundtrip` at
+[`Proofs/Output/EmitterScannability.lean:1540`](../L4YAML/Proofs/Output/EmitterScannability.lean)
+and `parse_strict_proof` at
+[`Proofs/Production/DocumentProduction.lean:237`](../L4YAML/Proofs/Production/DocumentProduction.lean)
+(see [`04-capstones.md`](04-capstones.md), the proof-status SSOT).
 
 **Categories without a headline** (Groups 1 pipeline, 2 scanner,
 8 surface-coupling) need a `role = categoryCapstone` pick in
@@ -1061,7 +1086,11 @@ headlines+capstones) is the wedge between "L4YAML doc page loads
 in seconds" and "doc page times out." Step 4 lands the CI artifact
 split that ships the trimmed tarball to the L4YAML doc build.
 
-**4. L4YAML.FGM release artifact split + Verso embedded consumption**
+**4. L4YAML.FGM release artifact split + Verso embedded consumption** — ✅ *shipped*
+(`generate-graphs.yml` publishes both `theorem-graphs-all.tar.gz`
+and `theorem-graphs-headlines.tar.gz`; L4YAML's `test-coverage.yml`
+fetches the headlines tarball and the Verso `theorem-graphs`
+sections embed the per-headline chain graphs)
 
 Two companion deliverables: the producer side publishes a trimmed
 tarball, and the consumer side (L4YAML's Verso doc) embeds its
@@ -1111,7 +1140,7 @@ Acceptance: headlines tarball fits in a small size budget (target
 headline graphs without leaving the Verso site. Full-catalogue
 per-module/per-group Verso pages are deferred to step 7.
 
-**5. Narrative file**
+**5. Narrative file** — ❌ *dropped*
 
 New `Blueprint/01-what-we-prove.md` (sits before `02-architecture.md`
 in the reading order). Walks the headlines top-down, links each
@@ -1122,13 +1151,21 @@ already unpacked). Written to be readable by a YAML user who is not
 a formal-methods expert, but precise enough for the expert to follow
 the links through.
 
+*(Never created: the `01` slot in the blueprint reading order went
+to [`01-terminology.md`](01-terminology.md); the non-expert front
+door is instead the Verso Verification page fed by the headlines
+tarball (step 4b) plus [`04-capstones.md`](04-capstones.md).)*
+
 **6. CI gates: `check-capstones` extension + `check-file-headers`**
 
 Two companion CI gates.
 
 *6a. `check-capstones --require-headlines-proven`*: fail CI if any
 headline entry has status 🚧 (partial) or 🗑 (deletion candidate).
-Stricter than the default ✅/🚧-agnostic check.
+Stricter than the default ✅/🚧-agnostic check. *(Not implemented —
+[`generate-graphs.yml`](../../L4YAML.FGM/.github/workflows/generate-graphs.yml)
+runs plain `lake exe check-capstones`; moot since 2026-07-04, when
+the last 🚧 headlines went ✅.)*
 
 *6b. `check-file-headers`* — shipped as a new
 [`lake exe check-file-headers`](../../L4YAML.FGM/tools/CheckFileHeaders.lean).
@@ -1192,6 +1229,7 @@ renders statically. Deferred because the sidecar model works and
 step 4b already gives the non-expert reader the front-door they
 need. Revisit once the headlines layer is in production and we
 have feedback on which deep-dive patterns readers actually follow.
+*(Still deferred as of 2026-07-31.)*
 
 **Acceptance**:
 

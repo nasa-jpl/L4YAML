@@ -1,5 +1,22 @@
 # Handling of Duplicate Keys in YAML Mappings
 
+> **Status (2026-07-31): SUPERSEDED** by Blueprint Initiative 4
+> (`Blueprint/08-initiative-4-intrinsic-foundations.md`, §"LoadConfig: bundled
+> configuration"). The landed form is the `DuplicateKeyPolicy` enum
+> (`error` / `first` / `last` / `merge`) bundled into `LoadConfig`
+> (`L4YAML/Config/LoadConfig.lean`), with first-occurrence normalisation
+> `dedupFirst` and its algebraic facts (`noDup_dedupFirst`, `dedupFirst_idem`)
+> in `L4YAML/Algebra/Equivalence.lean`. The `KeyEqPred` typeclass and the
+> `resolveDuplicateKeys` tree walk designed below were **not adopted** — key
+> equality is handled via the `LawfulBEq YamlValue` instance instead. The
+> "Current State" table below remains accurate; everything from "Design"
+> onward is historical rationale.
+>
+> Code snippets and file paths below predate the 2026-04 folder reorganization
+> and the 2026-07-31 theorem→lemma rename (non-capstone `theorem` declarations
+> are now spelled `lemma`); theorem counts cited below are as of the design
+> date — see `docs/reports/stats.json` for current figures.
+
 ## Motivation
 
 YAML 1.2.2 §3.2.1.3 (Node Comparison) specifies that mapping keys **MUST** be

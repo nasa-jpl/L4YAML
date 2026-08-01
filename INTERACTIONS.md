@@ -2,7 +2,7 @@
 
 ## Motivation
 
-During the proof of `parseSinglePairMapping_wb` (see BRIDGING.md,
+During the proof of `parseSinglePairMapping_wb` (see docs.internal/BRIDGING.md,
 `parseSinglePairMapping_wb` Reflections, 2026-03-15), we identified two
 code patterns that cause disproportionate proof difficulty:
 
@@ -23,6 +23,13 @@ analysis tool could detect these patterns **before** proof work begins,
 saving significant effort.
 
 ## Proposed Tool: `#check_wb_interactions`
+
+> **Status (2026-07-31):** `#check_wb_interactions` was **never implemented** —
+> no such command exists in the codebase, and the implementation plan below is
+> historical. The durable content of this document is the six-pattern catalog
+> and the (manually produced) analysis of the G5c functions. The proof campaign
+> the tool was meant to serve is complete: the library is sorry-free since
+> 2026-07-04 (see Blueprint/04-capstones.md).
 
 ### Architecture
 
@@ -481,13 +488,15 @@ def checkParametricClosing (decl : ConstantInfo) : MetaM (Array Warning) := do
   architecture, but the detection algorithms generalize
 
 **Out of scope (initially):**
-- Detecting `try`-based goal corruption (Lesson 6 in BRIDGING.md) —
+- Detecting `try`-based goal corruption (Lesson 6 in docs.internal/BRIDGING.md) —
   this is a tactic-composition problem requiring analysis of tactic
   scripts, not elaborated `Expr` trees
 - General "proof difficulty prediction" — the tool only detects known
   interaction patterns, not novel ones
 
 ### Implementation Plan
+
+*(Historical — never executed; see the status note above.)*
 
 | Phase | Deliverable | Effort |
 |-------|-------------|--------|
@@ -504,7 +513,8 @@ def checkParametricClosing (decl : ConstantInfo) : MetaM (Array Warning) := do
 
 ### Expected Results on Current Codebase
 
-Running the analysis on the 7 G5c-modified functions (BRIDGING.md §G5c):
+Running the analysis on the 7 G5c-modified functions
+(docs.internal/BRIDGING.md §G5c) — performed manually, not by the tool:
 
 | Function | P1 (struct-with) | P2 (flow return) | P3 (WHNF hazard) | P4 (loop explosion) | P5 (impasse) | P6 (parametric) |
 |----------|-----------------|-----------------|------------------|--------------------|--------------| 
@@ -1256,3 +1266,11 @@ The 2 remaining sorrys are genuine semantic spec gaps:
 - `parseStream_output_aliases_resolve` — scanner doesn't validate alias ordering
 - `parseStream_output_anchors_wellformed` — `∀ inFlow` is unsatisfiable for
   cross-context aliasing
+
+> **Closure (2026-07-31):** both spec-gap sorries were subsequently proven —
+> `parseStream_output_aliases_resolve` at
+> `L4YAML/Proofs/Parser/ParserAnchorProofs.lean:215` and
+> `parseStream_output_anchors_wellformed` at
+> `L4YAML/Proofs/Parser/ParserWfaProofs.lean:1691`. The library has been
+> sorry-free since 2026-07-04 (see Blueprint/04-capstones.md, the proof-status
+> SSOT).

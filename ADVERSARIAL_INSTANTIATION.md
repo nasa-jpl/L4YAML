@@ -1,5 +1,12 @@
 # Adversarial Instantiation — Auditing Sorry'd Theorems
 
+> **Status (2026-07-31): CLOSED/HISTORICAL.** Campaign complete; the library is
+> sorry-free since 2026-07-04 (see Blueprint/04-capstones.md, the proof-status
+> SSOT). Paths and line numbers below may predate the 2026-04 folder
+> reorganization and the 2026-07-31 theorem→lemma rename. The audit *method*
+> (first half of this document) remains valid reference; the sorry inventory and
+> per-priority campaign log are a historical record.
+
 **Purpose:** Detect false theorem statements before investing proof effort, by
 systematically instantiating sorry'd theorems on adversarial inputs via `#eval` / `#guard`.
 
@@ -60,8 +67,9 @@ try a nested/mixed input computationally before diagnosing the proof difficulty.
   pure result
 ```
 
-Place audit checks in a dedicated `Tests/SorryAudit/` directory
-for permanent harnesses. Do NOT place in proof files — audits are development-time tools.
+Place audit checks in a dedicated test module (in this project:
+`Tests/AdversarialInstantiation.lean`) for permanent harnesses. Do NOT place in
+proof files — audits are development-time tools.
 
 ### 4. Red flag patterns
 
@@ -179,7 +187,7 @@ proving a false statement.
 computationally tractable for testing — fall back to careful manual review of the
 statement.
 
-## Current Sorry Inventory: Triage Results (21 sorrys)
+## Sorry Inventory at Time of Campaign (historical): Triage Results (21 sorrys)
 
 ### Category 1: PROVE directly (11 theorems, ~$250 LOC)
 
@@ -277,7 +285,7 @@ is a content-start (scalar/flowSeqStart/flowMapStart) for sequences, or `.key` f
 ### Priority 1: Accomplishments
 
 **Test suite:** `Tests/AdversarialInstantiation.lean` — 188 checks, all passing.
-Integrated into CI via `lakefile.toml` (`adversarialinstantiation` target) and
+Integrated into CI via `lakefile.lean` (`adversarialinstantiation` target) and
 the suite runner's verified test suites.
 
 **Test coverage (9g — `emitList_body_filtered_characterization`):**
@@ -486,11 +494,17 @@ to maintain the inductive chain.
 
 **Theorems repaired (3):**
 
-| Theorem | Location | Fix |
+| Theorem | Location (then → now) | Fix |
 |---------|----------|-----|
-| `scanNextToken_prefix_and_sk_inv` | EmitterScannability.lean:6623 | Removed `∨ s.explicitKeyLine = none` from **precondition**. Conclusion's disjunction kept (needed for flow close). |
-| `ScanChain_preserves_raw_prefix` | EmitterScannability.lean:6644 | Removed `∨ s.explicitKeyLine = none` from **precondition**. Proof changed to `sorry` (was a structural proof relying on the false per-step theorem). |
-| `ScanChain_filtered_prefix` | EmitterScannability.lean:7436 | **Statement unchanged** (it IS correct). Proof changed to `sorry` — old proof went through `ScanChain_preserves_raw_prefix` with `n₀ = tokens.size`, which requires the now-removed disjunction. Needs restructuring via non-placeholder preservation argument. |
+| `scanNextToken_prefix_and_sk_inv` | EmitterScannability.lean:6623 → `L4YAML/Proofs/Output/EmitterScannability/FilteredTracking.lean:87` | Removed `∨ s.explicitKeyLine = none` from **precondition**. Conclusion's disjunction kept (needed for flow close). |
+| `ScanChain_preserves_raw_prefix` | EmitterScannability.lean:6644 → `FilteredTracking.lean:104` | Removed `∨ s.explicitKeyLine = none` from **precondition**. Proof changed to `sorry` (was a structural proof relying on the false per-step theorem). |
+| `ScanChain_filtered_prefix` | EmitterScannability.lean:7436 → `FilteredTracking.lean:154` | **Statement unchanged** (it IS correct). Proof changed to `sorry` — old proof went through `ScanChain_preserves_raw_prefix` with `n₀ = tokens.size`, which requires the now-removed disjunction. Needs restructuring via non-placeholder preservation argument. |
+
+*Update (2026-07-31): all three theorems were subsequently proven, including the
+re-sorried pair (`ScanChain_preserves_raw_prefix`, `ScanChain_filtered_prefix`).
+They now live sorry-free at the FilteredTracking.lean locations above (the
+EmitterScannability monolith was split into an `EmitterScannability/` module
+family); the library as a whole is sorry-free since 2026-07-04.*
 
 **Design decisions:**
 
@@ -500,7 +514,7 @@ to maintain the inductive chain.
 
 3. **Why `ScanChain_filtered_prefix`'s statement is correct despite the disjunction:** The filtered prefix (excluding `.placeholder` tokens) IS preserved even when `tokens[sk.tokenIndex]` is overwritten, because `tokens[sk.tokenIndex]` is always a `.placeholder` (filtered OUT in both states). The proof needs to use this insight rather than going through raw prefix preservation.
 
-**Sorry count impact:** 11 → 13 warnings. The 2 new sorrys (`ScanChain_preserves_raw_prefix`, `ScanChain_filtered_prefix`) were previously "proven" but relied on a false sorry'd theorem — their proofs compiled but were unsound. Making them explicit sorrys is the honest fix.
+**Sorry count impact:** 11 → 13 warnings. The 2 new sorrys (`ScanChain_preserves_raw_prefix`, `ScanChain_filtered_prefix`) were previously "proven" but relied on a false sorry'd theorem — their proofs compiled but were unsound. Making them explicit sorrys is the honest fix. *(Both were subsequently proven — see the update note above.)*
 
 **New adversarial tests added (20 chain-level checks):**
 - 10 representative inputs tested with a **fixed `n₀`** across all scanning steps
@@ -523,7 +537,7 @@ to maintain the inductive chain.
 All adversarial instantiation tests live in `Tests/AdversarialInstantiation.lean` and are
 integrated into CI:
 
-- **Build target:** `adversarialinstantiation` (in `lakefile.toml` `defaultTargets`)
+- **Build target:** `adversarialinstantiation` (`@[default_target]` `lean_exe` in `lakefile.lean`)
 - **Standalone runner:** `Tests/AdversarialInstantiation/Runner.lean` → `.lake/build/bin/adversarialinstantiation`
 - **Suite runner:** Included via `Tests.AdversarialInstantiation.collectTests` in `Tests/SuiteRunner/Main.lean`
 - **Report:** Appears in HTML/JSON reports as "Adversarial Instantiation Tests (sorry audit)"

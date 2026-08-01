@@ -9,7 +9,18 @@ theorem universal_roundtrip (v : YamlValue) (hg : Grammable v false) :
             contentEq v docs[0]!.value = true
 ```
 
-## Status (as of 2026-04-25): PARTIAL — one pocket remains
+## Status: COMPLETE — closed 2026-07-04 (assessed 2026-04-25 as PARTIAL)
+
+> **Closure addendum (2026-07-31).** The one remaining pocket (EmitterScannability
+> Step 8) was closed on 2026-07-04: `universal_roundtrip` is fully proven and
+> `@[capstone]`-tagged at
+> [L4YAML/Proofs/Output/EmitterScannability.lean:1540](L4YAML/Proofs/Output/EmitterScannability.lean),
+> and the former monolith has been split into a 1,551-line hub plus 20 modules under
+> `L4YAML/Proofs/Output/EmitterScannability/`. Proof-status SSOT:
+> [Blueprint/04-capstones.md](Blueprint/04-capstones.md). Everything below is the
+> campaign record; EmitterScannability sorry line numbers cited below index the
+> pre-split monolith. Code snippets also predate the 2026-07-31 theorem→lemma
+> rename: non-capstone `theorem` declarations are now spelled `lemma`.
 
 Steps 1–7 (the structural backbone of the round-trip proof) are complete in
 the codebase. The ParserWellBehaved pocket has been **cleared by deletion**:
@@ -30,12 +41,12 @@ is **the EmitterScannability Step 8 sorrys**.
 | 5b. Scanner + parser acceptance (Stubs 4–8) | ✅ done | scan_accepts_emitScalar, parseStream_accepts_emit_tokens complete |
 | 6. Parser acceptance + document properties (Stubs 6–8) | ✅ done | emit_produces_single_document, emit_parsed_grammable, emit_roundtrip_content_eq |
 | 7. Flow collection scanner/parser acceptance infrastructure | ✅ done | flow-specific lemmas + composition in place |
-| **8. Non-empty flow collection proofs** | ⏳ **PENDING** | **7 sorrys remaining in [EmitterScannability.lean](L4YAML/Proofs/Output/EmitterScannability.lean)** (lines 8170, 8666, 8758, 8840, 9058, 9774, 9813) |
+| **8. Non-empty flow collection proofs** | ✅ **done (2026-07-04)** | the 7 sorrys in [EmitterScannability.lean](L4YAML/Proofs/Output/EmitterScannability.lean) (pre-split monolith lines 8170, 8666, 8758, 8840, 9058, 9774, 9813) all closed; see [Blueprint/04-capstones.md](Blueprint/04-capstones.md) |
 | ~~Layer 2 parser acceptance~~ | ✅ **resolved by deletion** | the 16 sorry'd theorems in [ParserWellBehaved.lean](L4YAML/Proofs/Parser/ParserWellBehaved.lean) were dead code (proven via `unified-dep-table --external-only`) and removed; `lake build L4YAML` is green |
 
-### Path to completion
+### Path to completion (historical — pocket closed 2026-07-04)
 
-Single pocket remaining:
+Single pocket remaining at the time:
 
 **EmitterScannability.lean (7 sorrys)** — Step 8 non-empty flow collection
 cases. Layers 1, 1.1 (type system), and 1.2 (line preservation threading)
@@ -5164,6 +5175,15 @@ Net effect: 5 → 3 sorry warnings (−2), leaving only:
 3. parseEntry case in mapping body (~80-100 lines inline)
 
 This moves the work from Phase I to Phase J, where the fuel bounds align correctly.
+
+> **Superseded (2026-07-31 audit note).** The restructuring below never ran to
+> completion as written: the helper declarations (`parseNode_flowSeqStart_in_seq`,
+> `parseNode_flowMapStart_in_seq`, `parseEntry_in_flowMap`) were deleted as dead
+> code in the 2026-04-25 ParserWellBehaved cleanup (see the status section at the
+> top of this file), and `flow_parser_ok_of_structure` was later re-landed fully
+> proven at
+> [L4YAML/Proofs/Parser/FlowParserAcceptance.lean:883](L4YAML/Proofs/Parser/FlowParserAcceptance.lean).
+> The "Remaining Work" and "Next Steps" sections below are historical.
 
 ### Remaining Work (After Restructuring)
 

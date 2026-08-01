@@ -4840,4 +4840,9 @@ this structure.
 - All `stripAnnotations`-modulo proof architecture
 - `AnchorMap` and its algebraic laws
 
+---
+
+> **Closure note (2026-07-31, appended at end — this file is append-only: `Blueprint/08-initiative-4-intrinsic-foundations.md` cites it by line number, e.g. `BRIDGING.md:1500-1550`; do not insert or renumber above).**
+> **Status: CLOSED/HISTORICAL.** Campaign complete; the library is sorry-free since 2026-07-04 (see [Blueprint/04-capstones.md](../Blueprint/04-capstones.md), the proof-status SSOT), and `universal_roundtrip` is fully machine-checked. The formerly parked indexed track was wired into the library build and capstoned on 2026-07-31. Paths and line numbers above may predate the 2026-04 folder reorganization and the 2026-07-31 theorem→lemma rename (non-capstone `theorem` declarations are now spelled `lemma`).
+
 

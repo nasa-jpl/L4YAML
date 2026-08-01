@@ -1,8 +1,19 @@
 # Specification Gap Analysis: Remaining Sorry Theorems
 
-**Date:** 2026-03-18 (updated)
-**Status:** 330/330 build, 1 sorry warning (`parseStream_output_anchors_wellformed`).
-**Progress:** Gap #8 fully resolved — all three phases complete. Gap #9 remains (spec modeling gap). Only 1 sorry in entire project.
+**Date:** 2026-03-18 (updated); closure note 2026-07-31
+**Status:** **CLOSED** — Gap #8 proven (`parseStream_output_aliases_resolve`,
+`L4YAML/Proofs/Parser/ParserAnchorProofs.lean:201`) and Gap #9 proven
+(`parseStream_output_anchors_wellformed`, `L4YAML/Proofs/Parser/ParserWfaProofs.lean:1691`).
+The library is sorry-free since 2026-07-04 (see
+[Blueprint/04-capstones.md](Blueprint/04-capstones.md), the proof-status SSOT).
+This document is kept as the design rationale for the anchor/alias pipeline.
+
+> **Path map (2026-04 reorg):** file references below predate the folder
+> reorganization — `ParserNodeProofs.lean` → `L4YAML/Proofs/Parser/ParserNodeProofs.lean`;
+> the `addAnchor` definition (with its `adaptForFlowContext` call) →
+> `L4YAML/Parser/State.lean:140-141`; `adaptForFlowContext` →
+> `L4YAML/Spec/Types.lean:552`. Non-capstone `theorem` declarations are now
+> spelled `lemma` (2026-07-31 rename).
 
 ## Overview
 
@@ -176,6 +187,11 @@ theorem parseStream_output_anchors_wellformed
     (h_parse : parseStream tokens = .ok docs) :
     ∀ doc ∈ docs.toList, WellFormedAnchors doc.anchors
 ```
+
+> **As landed:** the proven lemma at
+> `L4YAML/Proofs/Parser/ParserWfaProofs.lean:1691` takes `FlowAwarePSV tokens`
+> and `FlowBracketsMatched tokens` as hypotheses in place of
+> `PlainScalarsValid tokens`.
 
 where:
 
@@ -475,7 +491,7 @@ semantically correct result.
    ScannerPlainScalarValid.lean (3 proofs)
 6. Guard test files updated (ScannerProgress, ScannerDocument, ScannerDispatch)
 
-**Outcome:** A standalone scanner theorem:
+**Intended outcome** (see correction below): a standalone scanner theorem:
 ```lean
 theorem scan_aliases_have_prior_anchors
     (tokens : Array (Positioned YamlToken))
@@ -490,6 +506,15 @@ theorem scan_aliases_have_prior_anchors
 This proves the scanner conforms to §7.1 independent of the parser,
 and makes Phase 1's parser-level validation redundant (but harmless
 as defense-in-depth).
+
+> **Correction (2026-07-31):** the `definedAnchors` *runtime* enforcement
+> described above did land (scanner-level alias validation, §7.1 rejection),
+> but the standalone theorem `scan_aliases_have_prior_anchors` was **never
+> formalized** — it does not exist in the proof corpus. Gap #8 was instead
+> closed entirely at the parser level: `parseStream_output_aliases_resolve`
+> (`L4YAML/Proofs/Parser/ParserAnchorProofs.lean:201`), whose proof rests on
+> the parser's own alias guard and anchor monotonicity, needing no scanner
+> precondition.
 
 ### Gap #9: Option B′ — `adaptForFlowContext` in `addAnchor` ✅ IMPLEMENTED
 
@@ -543,11 +568,10 @@ the `Grammable` predicate.
 | `adaptPairs_eq_map` | Where-clause `adaptPairs` = `List.map` over pairs |
 | `adaptForFlowContext_grammable_forall` | **Core lifting lemma**: `Grammable v b → ∀ inFlow, Grammable v.adaptForFlowContext inFlow` |
 
-**Remaining work for Gap #9:** The helper lemmas are fully proven.
-Discharging the actual `parseStream_output_anchors_wellformed` sorry
-requires threading `adaptForFlowContext_grammable_forall` through the
-parse loop invariant — showing that `addAnchor`'s call to
-`adaptForFlowContext` means `ps.anchors` satisfies `WellFormedAnchors`
-at document end. This requires a loop invariant over `parseStreamLoop`
-and `parseDocument` connecting individual `addAnchor` calls to the
-final anchor array.
+**Remaining work for Gap #9: DONE (2026-07).** The loop invariant described
+here was written and proven: `parseStreamLoop_wfa`
+(`L4YAML/Proofs/Parser/ParserWfaProofs.lean:1622`) threads
+`adaptForFlowContext_grammable_forall` through `parseStreamLoop` /
+`parseDocument`, and discharges `parseStream_output_anchors_wellformed`
+(`ParserWfaProofs.lean:1691`) — under `FlowAwarePSV` + `FlowBracketsMatched`
+hypotheses (see the Gap #9 statement note above). No sorry remains.

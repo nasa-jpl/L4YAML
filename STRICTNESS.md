@@ -7,11 +7,15 @@ encoding the YAML 1.2.2 surface syntax (productions [1]–[211]) as Lean 4
 parameterized inductive predicates over positioned character streams, and the
 target theorem `parse_strict : parseYaml s = .ok docs → InYamlLanguage s`.
 
-**Status**: Surface syntax grammar formalized in 6 modules (~1,100 lines),
-18 mutual inductives for the node/collection layer. Build: 391 jobs.
-Tests: 869 passed / 0 failed / 151 skipped (no regressions).
-Target theorems stated with `sorry`; coupling proof infrastructure built
-(3 modules, ~50 theorems, 0 sorry).
+**Status (2026-07-31)**: **Complete.** Surface syntax grammar formalized in 6
+modules, 18 mutual inductives for the node/collection layer. The target
+theorems `parse_strict` and `scan_strict` are **proven** (v0.4.6) as thin
+wrappers in `L4YAML/Surface/Surface.lean` over the `@[capstone]` theorems
+`parse_strict_proof` / `scan_strict_proof` in
+`L4YAML/Proofs/Production/DocumentProduction.lean` — see
+Blueprint/04-capstones.md, Group 7 (the proof-status SSOT). The build/test
+counts originally quoted here (391 jobs; 869 passed / 0 failed / 151 skipped;
+"~50 coupling theorems in 3 modules") were a v0.4.0 snapshot.
 
 ## Architecture
 
@@ -38,7 +42,7 @@ productions only look at column alignment, not line numbers.
 | `Surface/Scalars.lean` | ~300 | [104]–[175] | Double-quoted, single-quoted, plain scalars, alias nodes, block scalars |
 | `Surface/Node.lean` | ~370 | [134]–[199] | 18 mutual inductives: flow/block collections + node dispatchers |
 | `Surface/Document.lean` | ~140 | [200]–[211] | Document markers, document types, stream composition |
-| `Surface.lean` | ~120 | — | `InYamlLanguage`, `parse_strict`, `scan_strict` (sorry) |
+| `Surface.lean` | ~120 | — | `InYamlLanguage`, `parse_strict`, `scan_strict` |
 
 ### Mutual Inductive Design
 
@@ -81,13 +85,16 @@ acceptance for every YAML production.
 ## Target Theorems
 
 ```lean
-theorem parse_strict (input : String) (docs : Array YamlDocument)
+lemma parse_strict (input : String) (docs : Array YamlDocument)
     (h : parseYaml input = .ok docs) : InYamlLanguage input
 
-theorem scan_strict (input : String) (tokens : Array (Positioned YamlToken))
-    (h : scan input = .ok tokens) :
-    ∃ s', SLYamlStream ⟨input.toList, 0⟩ s'
+lemma scan_strict (input : String) (tokens : Array (Positioned YamlToken))
+    (h : scan input = .ok tokens) : InYamlLanguage input
 ```
+
+Both are proven (see Status above); the `scan_strict` conclusion was later
+strengthened from the originally planned `∃ s', SLYamlStream ⟨input.toList, 0⟩ s'`
+to full `InYamlLanguage input`.
 
 **Proof strategy** (bottom-up coupling):
 1. Scanner coupling: each scanner function, when successful, advances
@@ -96,24 +103,39 @@ theorem scan_strict (input : String) (tokens : Array (Positioned YamlToken))
    node-level productions
 3. Document composition: full pipeline produces `SLYamlStream`
 
-## What Remains
+## What Remains (resolved)
 
-- [x] Surface syntax coupling (SurfaceCoupling.lean): 20+ pure SurfPos-level theorems
-- [x] Scanner↔SurfPos bridge (CouplingBridge.lean): CharsFromOffset, ScannerSurfCorr,
-      peek/eof/advance correspondence, production coupling
-- [x] Scanner loop coupling (ScannerCoupling.lean): skipSpacesLoop → SIndent,
-      consumeNewline → SBBreak, fuel budget management
-- [ ] Coupling theorems for remaining scanner functions (skipWhitespace, skipToContent)
-- [ ] Coupling theorems for token parser → node productions
-- [ ] Proof of `scan_strict` (scanner → surface syntax)
-- [ ] Proof of `parse_strict` (full pipeline)
-- [ ] Verify production coverage against YAML 1.2.2 spec numbering
+All items are complete as of v0.4.6 — see Blueprint/04-capstones.md, Group 7.
+Where the work landed:
+
+- Coupling theorems for the remaining scanner functions:
+  `L4YAML/Proofs/Coupling/` (see table below).
+- Grammar-production layer (scanner/parser → productions):
+  `L4YAML/Proofs/Production/` — `NodeProduction.lean`,
+  `StructureProduction.lean`, `PreprocessProduction.lean`,
+  `ScalarProduction.lean`, with `StreamAccum.lean` composing the full
+  `SLYamlStream` derivation.
+- Proofs of `scan_strict` and `parse_strict`: `scan_strict_proof` /
+  `parse_strict_proof` (`@[capstone]`) in
+  `L4YAML/Proofs/Production/DocumentProduction.lean`.
+- Production coverage against the YAML 1.2.2 spec numbering:
+  machine-checked via `@[yaml_spec]` annotations, indexed in
+  `Tests/ProductionCoverage.lean`.
+
+The only open successor item is grammar completeness — the `parse_iff_grammar`
+converse (Group 7.7; see VERSION-0.4.8.md).
 
 ## Coupling Proof Modules
 
+The coupling modules now live under `L4YAML/Proofs/Coupling/` (post-reorg
+paths; the theorem counts below are the v0.4.0 snapshot — the modules have
+since grown, and two more were added):
+
 | Module | Theorems | Sorry | Description |
 |--------|----------|-------|-------------|
-| `Proofs/SurfaceCoupling.lean` | 20+ | 0 | Pure SurfPos-level properties: SIndent, SBBreak, SSWhite, GSeq, GStar, GOpt, comments, empty node |
-| `Proofs/CouplingBridge.lean` | 15+ | 0 | Scanner↔SurfPos bridge: `CharsFromOffset` inductive, `ScannerSurfCorr` struct, peek/eof/advance correspondence, production coupling, composition helpers |
-| `Proofs/ScannerCoupling.lean` | 8 | 0 | Scanner loop coupling: `skipSpacesLoop_corr` (induction on fuel → SIndent), `skipSpaces_corr` (top-level wrapper), `consumeNewline_{lf,crlf,cr}_corr` (line breaks → SBBreak), helper lemmas for peek/fuel budget |
+| `Proofs/Coupling/SurfaceCoupling.lean` | 20+ | 0 | Pure SurfPos-level properties: SIndent, SBBreak, SSWhite, GSeq, GStar, GOpt, comments, empty node |
+| `Proofs/Coupling/CouplingBridge.lean` | 15+ | 0 | Scanner↔SurfPos bridge: `CharsFromOffset` inductive, `ScannerSurfCorr` struct, peek/eof/advance correspondence, production coupling, composition helpers |
+| `Proofs/Coupling/ScannerCoupling.lean` | 8 | 0 | Scanner loop coupling: `skipSpacesLoop_corr` (induction on fuel → SIndent), `skipSpaces_corr` (top-level wrapper), `consumeNewline_{lf,crlf,cr}_corr` (line breaks → SBBreak), helper lemmas for peek/fuel budget |
+| `Proofs/Coupling/ScalarCoupling.lean` | — | 0 | (added later) Scalar collection coupling: scanner scalar-scanning loops → surface syntax scalar productions |
+| `Proofs/Coupling/StructureCoupling.lean` | — | 0 | (added later) Structure, document & directive coupling: flow/block indicators, node properties (anchors + tags), indentation management |
 

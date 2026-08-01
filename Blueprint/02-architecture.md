@@ -52,9 +52,17 @@ distinction.
 
 L4YAML's verification story has three concentric trust boundaries:
 
-1. **Lean kernel** — smallest, most trusted. Includes `propext`,
-   `Quot.sound`, `Classical.choice` (used in `noncomputable def`
-   witnesses in `ParserSoundness.lean`). Nothing else.
+1. **Lean kernel** — smallest, most trusted. The capstones carry a
+   **two-tier axiom profile**, machine-pinned by
+   `#assert_capstone_axioms` in
+   [`L4YAML/Capstones.lean`](../L4YAML/Capstones.lean): 18 are
+   **pure** — `propext`, `Quot.sound`, `Classical.choice` only (the
+   latter used in `noncomputable def` witnesses in
+   `ParserSoundness.lean`) — and 7 are **native** — additionally
+   `Lean.ofReduceBool`/`Lean.ofReduceNat`/`Lean.trustCompiler`,
+   backing `native_decide` reflected-decide leaves, which extends
+   trust to the compiler for those capstones. Nothing else: any
+   `sorryAx` or project-declared axiom fails the build.
 2. **L4YAML spec layer** — definitions in `Spec/Grammar.lean`,
    `Spec/YamlSpec.lean`, `Spec/Types.lean`, `Token/Token.lean`, and
    `Surface/*`. These encode the YAML 1.2.2 specification as Lean
@@ -64,7 +72,11 @@ L4YAML's verification story has three concentric trust boundaries:
 3. **L4YAML implementation** — `Scanner/Scanner.lean`,
    `Parser/TokenParser.lean`, `Schema/Schema.lean`,
    `Output/Emitter.lean`, `Output/Dump.lean`, `Config/Config.lean`,
-   `Config/Limits.lean`. Under verification against the layer above.
+   `Config/Limits.lean`; plus the indexed twins (`Indexed/*`,
+   `Scanner/Indexed*`, `Parser/*Ix.lean`,
+   `Parser/IndexedComposition.lean`) and the auxiliary emitters
+   `Output/Events.lean` / `Output/Json.lean`. Under verification
+   against the layer above.
 
 Capstone theorems (see [`04-capstones.md`](04-capstones.md)) bridge
 layers 2 and 3.
@@ -104,23 +116,53 @@ the monotonic-progress proof. See `ScannerProgress.lean`,
 
 ## Mutual recursion in the parser
 
-The 14 mutually recursive parser functions:
+The 18 mutually recursive parser functions:
 
-- `parseNode`
+- `parseNode`, `parseNodeContent`
 - `parseFlowSequence`, `parseFlowSequenceLoop`
-- `parseFlowMapping`, `parseFlowMappingLoop`
+- `parseFlowMapping`, `parseFlowMappingLoop`,
+  `parseFlowMappingValue`, `parseExplicitKey`
 - `parseBlockSequence`, `parseBlockSequenceLoop`
-- `parseBlockMapping`, `parseBlockMappingLoop`
+- `parseBlockMapping`, `parseBlockMappingLoop`,
+  `parseBlockMappingEntryValue`, `handleBlockMappingKeyEntry`,
+  `handleBlockMappingValueEntry`
 - `parseImplicitBlockSequence`, `parseImplicitBlockSequenceLoop`
 - `parseSinglePairMapping`
-- `parseNodeProperties`, `parseNodeContent`
 
 All live in one `mutual ... end` block in `TokenParser.lean`.
-Properties that must be proved by simultaneous induction (e.g.
-`AnchorsGrow`, `AllAliasesResolve`, `WellFormedAnchors`,
-`parser_fuel_mono_succ` if retained) follow the same mutual
-structure. See `ParserNodeProofs.lean`, `ParserAnchorProofs.lean`,
+(`parseNodeProperties` is a plain `def` in `Parser/State.lean`, not
+part of the mutual block.) Properties that must be proved by
+simultaneous induction (e.g. `AnchorsGrow`, `AllAliasesResolve`,
+`WellFormedAnchors`) follow the same mutual structure. See
+`ParserNodeProofs.lean`, `ParserAnchorProofs.lean`,
 `ParserWfaProofs.lean`, `ParserWellBehaved.lean`.
+
+## Indexed twin pipeline, Algebra, and auxiliary outputs
+
+Three later additions sit beside the classic pipeline (wired into
+the library build on 2026-07-31; history in
+[`08-initiative-4-intrinsic-foundations.md`](08-initiative-4-intrinsic-foundations.md)):
+
+- **Indexed (intrinsic) twin pipeline** — a position-indexed
+  re-implementation whose types carry the input string as an index:
+  `Indexed/` (`CharStream`, `Range`, `RepGraph`, `TokenStream`) →
+  `Scanner/IndexedScanner.lean` → `Parser/TokenParserIx.lean`
+  (`parseStreamIx`) → `Parser/IndexedComposition.lean`
+  (`parseYamlSingleIx`), with `Scanner/IndexedPresenter.lean`
+  rendering token streams back to text. Its correctness proofs are
+  the `Indexed*` twins under `Proofs/Scanner/` and `Proofs/Parser/`
+  (capstoned: `IndexedCompleteness.lean`), plus
+  `Proofs/Output/IndexedEmitterScannability/`.
+- **`Algebra/`** — a 13-module cross-cutting law library
+  (equivalence, idempotence, `LawfulBEq` instances,
+  fuel/indent/position/token-stream algebra) consumed by both
+  pipelines' proofs; factored out *before* the proofs that need it
+  (Initiative 4's "algebra before threading").
+- **`Output/Events.lean` and `Output/Json.lean`** — event-stream and
+  JSON emitters used by the cross-processor test-matrix comparison.
+  Auxiliary outputs outside the verified round-trip chain (together
+  with `Config/Limits.lean` they contain the library's only
+  `partial def`s).
 
 ## Module dependency sketch
 
@@ -191,7 +233,7 @@ fibration canary that cites the pipeline lemmas directly):
        yamlValue_has_witness    parseNode_anchors_grow / _aliases_resolve'
                                         │
                                         ▼
-                                  (mutual induction over 14 parsers)
+                                  (mutual induction over the 18 mutual parsers)
 ```
 
 Parallel DAGs exist for scanner correctness and round-trip

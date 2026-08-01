@@ -178,7 +178,13 @@ The **lexical-layer** function `scan : String → Except ScanError
 
 </summary>
 
-- **Module**: [`L4YAML/Scanner/Scanner.lean`](../L4YAML/Scanner/Scanner.lean) (~920 LoC).
+- **Module**: the [`L4YAML/Scanner/`](../L4YAML/Scanner/) folder —
+  [`Scanner.lean`](../L4YAML/Scanner/Scanner.lean) is the dispatch
+  umbrella over seven submodules (`State`, `Whitespace`, `Indent`,
+  `Document`, `NodeProperties`, `Scalar`, `SimpleKey`). An
+  intrinsically-indexed twin lives beside it (`IndexedScanner.lean`,
+  `IndexedState.lean`, `IndexedDispatch.lean`,
+  `IndexedPresenter.lean`; see *Indexed pipeline* below).
 - **State** (`ScannerState`): input offset, indentation stack, flow
   level, simple-key slot, anchor map, position cursor.
 - **Invariant**: `WellFormed` / `BoundInv` — offset ≤ inputEnd,
@@ -220,12 +226,20 @@ YamlToken) → Except ScanError (Array YamlDocument)`.
 
 </summary>
 
-- **Module**: [`L4YAML/Parser/TokenParser.lean`](../L4YAML/Parser/TokenParser.lean) (~800 LoC).
-- **Strategy**: hand-written recursive descent; 14 mutually-recursive
-  functions (`parseNode`, `parseFlowSequence`, `parseFlowMapping`,
-  `parseBlockSequence`, `parseBlockMapping`,
-  `parseImplicitBlockSequence`, `parseSinglePairMapping`, plus 5
-  `*Loop` helpers).
+- **Module**: [`L4YAML/Parser/TokenParser.lean`](../L4YAML/Parser/TokenParser.lean)
+  (~830 LoC; within the [`L4YAML/Parser/`](../L4YAML/Parser/)
+  folder, alongside `State.lean`, `Fuel.lean`, `Composition.lean`,
+  and the indexed twin `TokenParserIx.lean`).
+- **Strategy**: hand-written recursive descent; 18 mutually-recursive
+  functions — 7 top-level parsers (`parseNode`, `parseFlowSequence`,
+  `parseFlowMapping`, `parseBlockSequence`, `parseBlockMapping`,
+  `parseImplicitBlockSequence`, `parseSinglePairMapping`), 5
+  `*Loop` helpers, and 6 entry/value helpers (`parseNodeContent`,
+  `parseBlockMappingEntryValue`, `handleBlockMappingKeyEntry`,
+  `handleBlockMappingValueEntry`, `parseFlowMappingValue`,
+  `parseExplicitKey`). `parseNodeProperties` is a plain `def` in
+  [`Parser/State.lean`](../L4YAML/Parser/State.lean), outside the
+  mutual block.
 - **Termination**: fuel-based (`fuel : Nat`), initialized to
   `4 * tokens.size + 4` in `parseDocument`. No `partial def`.
 - **State** (`ParseState`): token array + cursor + anchor map +
@@ -246,8 +260,9 @@ scanFiltered`.
 
 - **Category**: impl
 - **Why central**: The object of the top-level theorems.
-- **Module**: [`L4YAML/Parser/TokenParser.lean`](../L4YAML/Parser/TokenParser.lean)
-  (`parseYaml`, `parseYamlRaw`); decomposition theorems in
+- **Module**: [`L4YAML/Parser/Composition.lean`](../L4YAML/Parser/Composition.lean)
+  (`parseYamlRaw` at line 73, `parseYaml` at line 86);
+  decomposition theorems in
   [`L4YAML/Proofs/Composition.lean`](../L4YAML/Proofs/Composition.lean).
 - **`parseYamlRaw`**: without schema resolution (scalars remain as
   strings).
@@ -390,8 +405,8 @@ arise from a valid grammar derivation."
 - **Bool flavor**: `Grammable v flow_context : Bool` in `Grammar.lean`.
 - **Prop flavor**: `GrammableProp`, relates to `∃ node, stripAnnotations
   (toYamlValue node) = v`.
-- **Bridging theorems** in [`ParserGrammable.lean`](../L4YAML/Proofs/ParserGrammable.lean) /
-  [`ParserSoundness.lean`](../L4YAML/Proofs/ParserSoundness.lean) discharge the
+- **Bridging theorems** in [`ParserGrammable.lean`](../L4YAML/Proofs/Parser/ParserGrammable.lean) /
+  [`ParserSoundness.lean`](../L4YAML/Proofs/Parser/ParserSoundness.lean) discharge the
   grammability hypothesis unconditionally for parser output.
 
 </details>
@@ -438,12 +453,67 @@ and `BoundInv`; each scanner step is proved to preserve them.
 
 **Resource bounds** — nesting depth, string length, collection
 cardinality. Configurable via `ParserLimits`; 4 built-in presets
-(`strict`, `default`, `relaxed`, `unlimited`).
+(`strict`, `permissive`, `unlimited`, `safeTagsOnly`).
 
 </summary>
 
 - **Modules**: [`L4YAML/Config/Config.lean`](../L4YAML/Config/Config.lean),
-  [`L4YAML/Config/Limits.lean`](../L4YAML/Config/Limits.lean).
+  [`L4YAML/Config/Limits.lean`](../L4YAML/Config/Limits.lean),
+  [`L4YAML/Config/LoadConfig.lean`](../L4YAML/Config/LoadConfig.lean)
+  (load-time policy: `LoadConfig` bundling `EqMode` +
+  `DuplicateKeyPolicy`).
+
+</details>
+
+### Indexed pipeline (intrinsic twin)
+
+<details>
+<summary>
+
+The **position-indexed re-implementation** of the scanner/parser
+pipeline, built on intrinsic indexed types in Initiative 4
+([`08-initiative-4-intrinsic-foundations.md`](08-initiative-4-intrinsic-foundations.md)).
+
+</summary>
+
+- **Category**: impl
+- **In Lean**: core types in [`L4YAML/Indexed/`](../L4YAML/Indexed/)
+  (`CharStream`, `Range`, `RepGraph`, `TokenStream`, all indexed by
+  the input string); scanner twin
+  [`Scanner/IndexedScanner.lean`](../L4YAML/Scanner/IndexedScanner.lean)
+  (+ `IndexedState`, `IndexedDispatch`, and the token-stream renderer
+  [`IndexedPresenter.lean`](../L4YAML/Scanner/IndexedPresenter.lean));
+  parser twin
+  [`Parser/TokenParserIx.lean`](../L4YAML/Parser/TokenParserIx.lean)
+  (`parseStreamIx`) with entry point `parseYamlSingleIx` in
+  [`Parser/IndexedComposition.lean`](../L4YAML/Parser/IndexedComposition.lean).
+- **Proofs**: the `Indexed*` twins under `Proofs/Scanner/`,
+  `Proofs/Parser/` — capstoned in
+  [`IndexedCompleteness.lean`](../L4YAML/Proofs/Parser/IndexedCompleteness.lean) —
+  and `Proofs/Output/IndexedEmitterScannability/`.
+- **Status**: wired into the library build since 2026-07-31
+  (formerly parked under Initiative 4's Guardrail 1).
+
+</details>
+
+### Algebra (law library)
+
+<details>
+<summary>
+
+**Reusable algebraic laws** factored out ahead of the proofs that
+consume them (Initiative 4 Phase 2 — "algebra before threading").
+
+</summary>
+
+- **Category**: bridge
+- **In Lean**: [`L4YAML/Algebra/`](../L4YAML/Algebra/) — 13 modules
+  (`AnchorMap`, `Combinators`, `Equivalence`, `Fuel`, `Idempotence`,
+  `Indent`, `LawfulBEq`, `Position`, `Schema`, `StringList`,
+  `Token`, `TokenStream`, `Value`).
+- **Absorbed**: the former `Proofs/Foundation/LawfulBEq.lean` and
+  `Proofs/Foundation/ValueAlgebra.lean` (now
+  `Algebra/LawfulBEq.lean`, `Algebra/Value.lean`).
 
 </details>
 

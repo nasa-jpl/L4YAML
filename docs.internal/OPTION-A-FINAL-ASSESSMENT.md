@@ -1,5 +1,7 @@
 # Option A Final Assessment — Structural Recursion for Verification
 
+> **Status (2026-07-31): CLOSED/HISTORICAL.** The Option A plan below was executed to completion; see [../PROGRESS.md](../PROGRESS.md) for the timeline. Campaign complete; the library is sorry-free since 2026-07-04 (see [Blueprint/04-capstones.md](../Blueprint/04-capstones.md), the proof-status SSOT). Paths and line numbers below may predate the 2026-04 folder reorganization and the 2026-07-31 theorem→lemma rename.
+
 ## Date: 2026-03-03
 ## Status: Phases 1-2 Complete, Path Forward Validated
 

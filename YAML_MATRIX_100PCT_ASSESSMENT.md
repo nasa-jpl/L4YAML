@@ -12,6 +12,11 @@ Generated 2026-07-02 · baseline: **event 362/402**, **json 240/279 valid**
 is closed** — the scorer's only remaining entries are the 3 phantom rejects (error tests shipping a
 stale `in.json`, correctly rejected).
 
+*(2026-07-31 note: the "pre-existing `EmitterScannability` sorries" that the build logs below
+repeatedly set aside — the NonAllScalarLocality workstream, then the only open proof frontier —
+were themselves closed on 2026-07-04; the library has been sorry-free since. See
+[Blueprint/04-capstones.md](Blueprint/04-capstones.md), the proof-status SSOT.)*
+
 ---
 
 ## Bottom line
@@ -323,6 +328,13 @@ untouched); see the ¶ correction above.
    with an `error` file (as the event branch effectively does via `err-ok`). That
    alone moves the reported JSON number from 240/282 to the true 240/279 and drops
    the 3 phantom "rejects."
+   **Done — but with err-ok semantics, not the skip variant proposed here:** the
+   landed scorer counts an error test as correct iff the processor rejects it
+   (`err-ok` in `scripts/matrix_score.py`, on the JSON axis too), so the JSON
+   denominator stays **282** (279 valid + 3 correctly-rejected error tests).
+   That is why [YAML_MATRIX_COMPARISON.md](YAML_MATRIX_COMPARISON.md) reports
+   **282/282** while this document says 279/279 valid — same measurement,
+   stronger denominator. Do not re-implement the skip variant.
 
 ---
 

@@ -8,7 +8,7 @@ The parser is verified in Lean 4 and enforces security limits (DoS, tag validati
 
 ## Lean API Surface (reference)
 
-### Safe Parsing — [Limits.lean](./L4YAML/Limits.lean)
+### Safe Parsing — [Config/Limits.lean](./L4YAML/Config/Limits.lean)
 
 ```lean
 def parseYamlSafe (input : String) (limits : ParserLimits := {})
@@ -23,7 +23,7 @@ def parseYamlSingleRawSafe (input : String) (limits : ParserLimits := {})
 
 Presets: `ParserLimits.strict`, `.permissive`, `.unlimited`, `.safeTagsOnly`.
 
-### Dumping — [Dump.lean](./L4YAML/Dump.lean)
+### Dumping — [Output/Dump.lean](./L4YAML/Output/Dump.lean)
 
 ```lean
 def dump (v : YamlValue) (cfg : DumpConfig := {}) : String
@@ -37,18 +37,18 @@ def dumpDocumentsWithComments (docs : Array YamlDocument) (cfg : DumpConfig := {
 
 Flight software (DO-178C, NASA Class A/B, ARINC 653) requires **no dynamic memory allocation after initialization**.  This constraint shaped every layer of the C/Python API design — the C header exposes pool initialization functions, the shim implements them via mimalloc's arena API, and the test plan includes pool exhaustion and fragmentation stress tests.
 
-Lean 4's runtime uses reference-counted objects allocated via mimalloc, with no built-in "arena mode."  However, the mimalloc allocator bundled with Lean 4.28 (mimalloc v2.23) **does** export arena reservation and OS-alloc-disabling APIs — and these symbols are present in `libleanshared.so`.
+Lean 4's runtime uses reference-counted objects allocated via mimalloc, with no built-in "arena mode."  However, the bundled mimalloc allocator (v2.23 as of Lean 4.28, when this analysis was written) **does** export arena reservation and OS-alloc-disabling APIs — and these symbols are present in `libleanshared.so`.
 
 ### Solution: mimalloc Exclusive Arena
 
-Lean 4.28's `libleanshared.so` exports every mimalloc API needed to implement a pre-allocated fixed-size memory pool.  The approach:
+Lean's `libleanshared.so` exports every mimalloc API needed to implement a pre-allocated fixed-size memory pool (verified on Lean 4.28; re-verified on the pinned v4.32.0 toolchain, 2026-08-01).  The approach:
 
 1. **At init time**: reserve a fixed-size OS memory region as a mimalloc arena
 2. **Disable further OS allocation**: set `mi_option_disallow_os_alloc` so mimalloc can only use the pre-reserved arena
 3. **All subsequent Lean allocations** (`mi_malloc_small`, `mi_malloc`) draw from the arena
 4. **If the pool is exhausted**: mimalloc returns `NULL`, Lean calls `lean_internal_panic_out_of_memory()` — deterministic, no silent fallback
 
-#### Verified exported symbols (Lean 4.28, `nm -D libleanshared.so`)
+#### Verified exported symbols (`nm -D libleanshared.so`; Lean 4.28, all six re-verified present on v4.32.0, 2026-08-01)
 
 ```
 mi_reserve_os_memory_ex    — reserve N bytes as exclusive arena
@@ -304,9 +304,9 @@ Pool initialization is **not needed** for Option B from Python — static buffer
 ```
 ┌──────────────────────────────────────────────────────────┐
 │  Lean 4  (verified core)                                 │
-│  L4YAML/Limits.lean   — parseYamlSafe, etc.           │
-│  L4YAML/Dump.lean     — dump, dumpDocument*, etc.     │
-│  L4YAML/FFI.lean      — @[export] wrappers            │
+│  L4YAML/Config/Limits.lean — parseYamlSafe, etc.      │
+│  L4YAML/Output/Dump.lean   — dump, dumpDocument*, etc.│
+│  L4YAML/FFI/FFI.lean       — @[export] wrappers       │
 └────────────────┬─────────────────────────────────────────┘
                  │  Lean 4 @[export] → C symbol
                  ▼
@@ -327,7 +327,7 @@ Pool initialization is **not needed** for Option B from Python — static buffer
 
 ---
 
-## Phase 1: Lean `@[export]` Wrappers (`L4YAML/FFI.lean`)
+## Phase 1: Lean `@[export]` Wrappers (`L4YAML/FFI/FFI.lean`)
 
 Create a new module that wraps the safe API into C-callable functions using Lean 4's `@[export]` attribute.  Every exported function operates on opaque handles or flat C-compatible types (pointers, `uint32_t`, `const char *`).
 
@@ -748,7 +748,7 @@ Usage:
 
 #### Config deserialization (self-hosted bootstrapping)
 
-Created [`L4YAML/Config.lean`](L4YAML/Config.lean) — `FromYaml`/`ToYaml` instances for all config types so the verified parser can parse its own `ParserLimits` and `DumpConfig` from YAML.
+Created [`L4YAML/Config/Config.lean`](L4YAML/Config/Config.lean) — `FromYaml`/`ToYaml` instances for all config types so the verified parser can parse its own `ParserLimits` and `DumpConfig` from YAML.
 
 **Types with `FromYaml`/`ToYaml` instances (9 types):**
 
@@ -867,7 +867,7 @@ Created `rust/` two-crate workspace with raw FFI bindings and a safe RAII wrappe
 
 **Thread safety:** `YamlValue`, `YamlDocument`, and `ParserLimitsHandle` are `!Send + !Sync` via `PhantomData<*mut ()>` (stable Rust, no nightly features required).
 
-**Build requirements:** Rust 1.88+, `libl4yaml.so` (Phase 2), `libleanshared.so` (Lean 4.28 sysroot). Tests must run single-threaded: `cargo test -- --test-threads=1`.
+**Build requirements:** Rust 1.88+, `libl4yaml.so` (Phase 2), `libleanshared.so` from the pinned Lean toolchain sysroot (v4.32.0; originally developed against 4.28). Tests must run single-threaded: `cargo test -- --test-threads=1`.
 
 **Verification:** 21/21 integration tests pass (0.06s). All public API functions exercised: `load`, `load_all`, `dump`, `load_configured`, value navigation (`kind`, `as_str`, `get`, `keys`, `items`, `as_list`, `seq_get`, `map_key`, `map_val`), iterators, `Display`, error handling.
 
@@ -1067,7 +1067,7 @@ and the existing `suiterunner` handles orchestration via `--backend` and `--limi
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| Lean 4.28 `@[export]` ABI stability | Symbol names or calling convention changes across Lean versions | Pin `lean-toolchain` to v4.28.0; test on CI |
+| Lean `@[export]` ABI stability | Symbol names or calling convention changes across Lean versions | Pin `lean-toolchain` (currently v4.32.0; v4.28.0 when this was written); test on CI |
 | GC interaction with long-lived C handles | Lean GC may relocate objects if handles are not properly retained | Use `lean_inc_ref` / `lean_dec_ref` consistently; all exported functions use `b_lean_obj_arg` (borrowed) or `lean_obj_arg` (consumed) correctly |
 | Python `__del__` non-determinism | Handles may outlive the Lean runtime if Python shutdown order is wrong | Register an `atexit` hook to finalize Lean runtime after all handles are freed |
 | Thread safety | Lean runtime is single-threaded by default | Document that all calls must be from a single thread, or initialize Lean's task manager for multi-threaded use |

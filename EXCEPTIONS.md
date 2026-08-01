@@ -4,6 +4,13 @@
 **Date:** 2026-03-11
 **Status:** Complete (2026-03-20) — All 5 phases done
 
+> **Path map (2026-04 reorg):** file references below predate the folder
+> reorganization — `Token.lean` → `L4YAML/Token/Token.lean`,
+> `TokenParser.lean` → `L4YAML/Parser/TokenParser.lean`,
+> `Schema.lean` → `L4YAML/Schema/Schema.lean`,
+> `Types.lean` → `L4YAML/Spec/Types.lean` (the `Schema/*.lean` sub-files are
+> unchanged). Line numbers are as of 2026-03.
+
 ## Executive Summary
 
 This document outlines a plan to refactor exception handling throughout the YAML library by replacing all `Except String ...` with explicit inductive exception types. This improves type safety, enables pattern matching on error conditions, and strengthens the formal verification properties of the codebase.
@@ -520,3 +527,11 @@ Refactoring to explicit exception types is a **high-value, manageable change** t
 - Improves API usability
 
 The proof impact is **largely mechanical** with opportunities for **stronger theorems**. The estimated 8-12 day effort is justified by long-term benefits to correctness, maintainability, and developer experience.
+
+## Postscript (2026-07-31)
+
+The error hierarchy above is unchanged, but the parse entry point behind the
+Schema API has moved once more: `parseAs` (`L4YAML/Schema/Api.lean:37`) now
+routes through the indexed parser via `TokenParser.Indexed.parseYamlSingleIx`
+(`L4YAML/Parser/IndexedComposition.lean:126`), still returning
+`Except YamlError α` with the same `ScanError`/`SchemaError` split.

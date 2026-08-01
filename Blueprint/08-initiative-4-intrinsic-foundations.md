@@ -1,21 +1,26 @@
 # Initiative 4 — Intrinsic Foundations
 
-**Status**: Phase 1 — Design **closed**. Phase 2 — Algebra library
-**closed** on `feature/intrinsic-foundations` (branched from `main`):
-all six clusters landed (foundation, small-independents, surface
-combinators, schema, equivalence, idempotence capstone). The 23-item
-inventory remains frozen; the Item 4 stress test confirmed
-Guardrail 2 closure. Phase 3 — Stage C (scanner) on indexed types:
-sub-plan decomposed into 6 sessions; **Steps 1–3 landed** with
-`lake build` green (385 jobs, 0 sorries in `L4YAML/Indexed/`,
-`L4YAML/Scanner/IndexedScanner.lean`,
-`L4YAML/Proofs/Scanner/IndexedWhitespace.lean`, and
-`L4YAML/Proofs/Scanner/IndexedIndent.lean`; the staging files are
-unimported from `L4YAML.lean` per Guardrail 1). The Step 2 →
-Step 3 deferred obligation (skip-loop termination + count = column
-delta) closed in `IndexedWhitespace.lean` before any Step 3
-production was added. See §Phase 2 status table and §Phase 3
-sub-plan below.
+**Status (2026-07-31): CLOSED — all phases complete; the indexed
+track is live.** Phase 1 (design) and Phase 2 (algebra library)
+closed as recorded below; the algebra clusters now live at
+`L4YAML/Algebra/` (13 modules). Phase 3's intrinsic (indexed) track
+is no longer parked: the Guardrail-1 quarantine was lifted on
+2026-07-31 and the whole track is wired into the library build via
+`L4YAML.lean` — `L4YAML/Indexed/`,
+`Scanner/IndexedScanner.lean`/`IndexedPresenter.lean`,
+`Parser/TokenParserIx.lean`/`IndexedComposition.lean`
+(`parseYamlSingleIx`), plus the proof twins under
+`Proofs/Scanner/Indexed*`, `Proofs/Parser/Indexed*`, and
+`Proofs/Output/IndexedEmitterScannability/`. The indexed parser is
+**capstoned**: `soundness_completeness_compose` and
+`grammar_value_roundtrip` in
+`L4YAML/Proofs/Parser/IndexedCompleteness.lean` are
+`@[capstone]`-tagged twins of the classic capstones, pinned in
+`L4YAML/Capstones.lean` (per-capstone status:
+[`04-capstones.md`](04-capstones.md), the proof-status SSOT; the
+library is sorry-free since 2026-07-04). Everything below is the
+working log as it stood mid-campaign; the per-phase status
+paragraphs it contains are **historical**.
 
 **Driver**: Initiative 3 was stopped 2026-05-03 (see
 `Blueprint/07-initiative-3-append-only.md` §Stop assessment).

@@ -1,5 +1,7 @@
 # Cross-Project Analysis: lean4-yaml → lean4-yaml-verified
 
+> **Status (2026-07-31): CLOSED/HISTORICAL.** Campaign complete; the library is sorry-free since 2026-07-04 (see [Blueprint/04-capstones.md](../Blueprint/04-capstones.md), the proof-status SSOT). Paths and line numbers below may predate the 2026-04 folder reorganization and the 2026-07-31 theorem→lemma rename. The `../lean-yaml/` sibling project and `LEAN4_STYLE.md` referenced below are external to this repository and not available here. This analysis dates from the pre-scanner-rewrite generation of the codebase.
+
 **Date**: 2026-02-15
 **Purpose**: Insights from the non-verified [lean4-yaml](../lean-yaml/) parser that inform the verified parser's development.
 

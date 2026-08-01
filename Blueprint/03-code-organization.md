@@ -1,67 +1,119 @@
 # Code organization
 
-A proposed **folder-based** refactor of the L4YAML code (not the
-proofs — that's a separate follow-up). Guiding principle: *a
-newcomer should be able to find the implementation of any
-terminology entry in ≤ 2 clicks from the top of `L4YAML/`*.
+The **folder-based** organization of the L4YAML code (proposed
+2026-04-21 as a refactor; executed April 2026, extended through
+July 2026). Guiding principle: *a newcomer should be able to find
+the implementation of any terminology entry in ≤ 2 clicks from the
+top of `L4YAML/`*.
 
-## Current state (post-Phase-1b, 2026-04-21)
+## Current state (2026-07-31)
+
+Regenerated from `find L4YAML -name '*.lean'`: **196 files** (65
+implementation + 131 proof), toolchain `leanprover/lean4:v4.32.0`.
 
 ```
 L4YAML/
-├── Spec/
-│   ├── CharPredicates.lean
-│   ├── Grammar.lean
-│   ├── Types.lean
-│   └── YamlSpec.lean
-├── Token/
-│   └── Token.lean
-├── Scanner/
-│   ├── Scanner.lean             -- umbrella, dispatch + main loop
-│   ├── State.lean               -- ScannerState + accessors
-│   ├── Whitespace.lean          -- s-white/s-space, s-l-comments
-│   ├── Indent.lean              -- virtual BLOCK-* generation
-│   ├── Document.lean            -- ---/... markers + %YAML/%TAG directives
-│   ├── NodeProperties.lean      -- anchors, aliases, tags (§6.9)
-│   ├── Scalar.lean              -- escapes + quoted/plain/block scalars
-│   └── SimpleKey.lean           -- simple-key resolution + scanBlockEntry/Key/Value
-├── Parser/
-│   ├── TokenParser.lean         -- mutual block + parseStream/parseDocument
-│   ├── State.lean               -- ParseState + accessors + NodeProperties + helpers
-│   ├── Fuel.lean                -- initialFuel := 4*N+4
-│   └── Composition.lean         -- umbrella: parseYaml*, scanAndParse, comment classification
-├── Output/
-│   ├── Dump.lean
-│   └── Emitter.lean
-├── Schema/
-│   ├── Api.lean
-│   ├── Deriving.lean
-│   ├── Dump.lean
-│   ├── FromToYaml.lean
-│   ├── Schema.lean              -- umbrella, shared namespace `L4YAML.Schema`
-│   └── Struct.lean
-├── Surface/
-│   ├── Basic.lean
-│   ├── Combinators.lean
-│   ├── Document.lean
-│   ├── Node.lean
-│   ├── Scalars.lean
-│   └── Surface.lean             -- umbrella, shared namespace `L4YAML.Surface`
-├── Config/
-│   ├── Config.lean
-│   └── Limits.lean
-├── FFI/
-│   └── FFI.lean
+├── Init.lean                    -- project prelude: the `lemma` command (imported everywhere)
+├── CapstoneAttr.lean            -- @[capstone] attribute + #capstones + #assert_capstone_axioms
+├── Capstones.lean               -- machine-pinned capstone registry (set + axiom profiles)
+├── Spec/         (4)            -- CharPredicates, Grammar, Types, YamlSpec
+├── Surface/      (6)            -- Basic, Combinators, Document, Node, Scalars, Surface (umbrella)
+├── Token/        (1)            -- Token
+├── Algebra/      (13)           -- law library (Initiative 4 Phase 2): AnchorMap, Combinators,
+│                                --   Equivalence, Fuel, Idempotence, Indent, LawfulBEq, Position,
+│                                --   Schema, StringList, Token, TokenStream, Value
+├── Indexed/      (4)            -- intrinsic indexed core (Initiative 4 Phase 3): CharStream,
+│                                --   Range, RepGraph, TokenStream
+├── Scanner/      (12)           -- Scanner (dispatch umbrella), State, Whitespace, Indent,
+│                                --   Document, NodeProperties, Scalar, SimpleKey
+│                                -- + indexed twin: IndexedScanner, IndexedState,
+│                                --   IndexedDispatch, IndexedPresenter
+├── Parser/       (8)            -- TokenParser (18-function mutual block), State, Fuel, Composition
+│                                -- + indexed twin: TokenParserIx, ParseStateIx, FuelIx,
+│                                --   IndexedComposition (parseYamlSingleIx)
+├── Schema/       (6)            -- Schema (umbrella), Api, Deriving, Dump, FromToYaml, Struct
+├── Output/       (4)            -- Emitter, Dump, Events, Json
+├── Config/       (3)            -- Config, Limits, LoadConfig
+├── FFI/          (1)            -- FFI
 ├── YAML_PRODUCTIONS.md
-└── Proofs/                      (2 flat + Foundation/ + Errors/ + Schema/ + Contracts/ + Production/ + Scanner/ + Output/ + Parser/ + Coupling/ + RoundTrip/ clusters; Phase 4 complete)
+└── Proofs/       (131)
+    ├── Composition.lean / EndToEndCorrectness.lean /
+    │   Completeness.lean / Soundness.lean
+    │                            -- capstone umbrellas, at Proofs/ root by design
+    ├── Foundation/  (2)         -- CharClass, StringProperties
+    ├── Errors/      (3)         -- ErrorProperties, EscapeResolution, FoldNewlines
+    ├── Schema/      (4)         -- SchemaComposition, SchemaDump, SchemaResolution, TagResolution
+    ├── Contracts/   (2)         -- BlockScalarContracts, DocumentContracts
+    ├── Production/  (8)         -- StreamAccum, StructureProduction, ScalarProduction,
+    │                            --   DocumentProduction, NodeProduction, PreprocessProduction,
+    │                            --   ScannerPlainScalarValid, IndexedScannerPlainScalarValid
+    ├── Scanner/     (31)        -- 18 classic (ScannerCorrectness … ScanStrictCoupling)
+    │                            --   + 13 indexed (IndexedScannerCorrectness hub + 6 submodules,
+    │                            --   IndexedRoundtrip, IndexedWhitespace, IndexedIndent, …)
+    ├── Parser/      (17)        -- 9 classic + FlowParserAcceptance
+    │                            --   + 7 indexed twins (IndexedCompleteness, IndexedCorrectness, …)
+    ├── Output/      (51)        -- EmitterScannability.lean (1,551-line hub) + EmitterScannability/
+    │                            --   (20 modules); IndexedEmitterScannability.lean hub +
+    │                            --   IndexedEmitterScannability/ (27 modules);
+    │                            --   ScannerEmitBridge, DumpRoundTrip
+    ├── Coupling/    (5)         -- CouplingBridge, ScannerCoupling, SurfaceCoupling,
+    │                            --   StructureCoupling, ScalarCoupling
+    └── RoundTrip/   (4)         -- RoundTrip, RoundTripComposition, CommentRoundTrip,
+                                 --   CommentProperties
 ```
+
+### Top-level exceptions: the keyword/registry layer
+
+Three files sit at the top of `L4YAML/` outside any role folder —
+the sanctioned exceptions to the "every file lives in a role-named
+folder" rule (and to Initiative 1's exit criterion in
+[`README.md`](README.md)):
+
+- [`Init.lean`](../L4YAML/Init.lean) — the project prelude,
+  imported (directly or transitively) by every library module.
+  Provides the `lemma` command: per
+  [`06-discipline.md`](06-discipline.md) Rule 7, the `theorem`
+  keyword is reserved for `@[capstone]` declarations and every other
+  proof is a `lemma`.
+- [`CapstoneAttr.lean`](../L4YAML/CapstoneAttr.lean) — the
+  `@[capstone]` attribute plus the `#capstones` and
+  `#assert_capstone_axioms` commands.
+- [`Capstones.lean`](../L4YAML/Capstones.lean) — imports the
+  capstone-bearing modules and pins the tagged set and per-capstone
+  axiom profiles (18 pure / 7 native) with `#guard_msgs`.
+
+They bracket the role folders in the import order — the prelude
+below everything, the registry above everything — which is why they
+are top-level rather than foldered. CI gates:
+[`scripts/check-theorem-keyword.sh`](../scripts/check-theorem-keyword.sh)
+(whitelist [`scripts/capstones.txt`](../scripts/capstones.txt)) and
+[`scripts/check-import-closure.sh`](../scripts/check-import-closure.sh)
+(no orphan modules).
+
+### File-size guideline
+
+Proof modules should stay below roughly **10,000 lines**; past
+that, split along lemma-cluster seams (the 2026-07
+`EmitterScannability` split — a 1,551-line hub + 20 modules — is
+the template). Current outliers, the standing future split
+candidates (line counts as of 2026-07-31):
+
+| File | Lines |
+|------|------:|
+| [`Proofs/Output/EmitterScannability/NonemptyStructure.lean`](../L4YAML/Proofs/Output/EmitterScannability/NonemptyStructure.lean) | 12,169 |
+| [`Proofs/Output/EmitterScannability/SeqInteriorSeparators.lean`](../L4YAML/Proofs/Output/EmitterScannability/SeqInteriorSeparators.lean) | 11,408 |
+| [`Proofs/Scanner/ScannerCorrectness.lean`](../L4YAML/Proofs/Scanner/ScannerCorrectness.lean) | 10,519 |
+
+## Reorganization log (April 2026, historical)
 
 Phase 1 (`ad12e204`) + Phase 1b (`573fa76e`) landed on 2026-04-21.
 What's done, what remains:
 
 - **Done**: 14 top-level files collapsed into 9 role-named folders.
   Every top-level file sits inside its matching folder; no more
-  orphan siblings.
+  orphan siblings. (Since 2026-07-31 there are three sanctioned
+  top-level exceptions — `Init.lean`, `CapstoneAttr.lean`,
+  `Capstones.lean`, the keyword/registry layer described above.)
 - **Done**: `Schema/Dump.lean` vs. top-level `Dump.lean` shadow
   resolved — now `Output/Dump.lean` vs. `Schema/Dump.lean`.
 - **Done (Phase 2, 2026-04-21)**: `Scanner/Scanner.lean` (~2761 LoC)
@@ -76,8 +128,9 @@ What's done, what remains:
   that other submodules already mirror named spec sections.
 - **Done (Phase 3, 2026-04-21)**: `Parser/TokenParser.lean` (~1191 LoC)
   split into four files: `State.lean` (ParseState + helpers),
-  `Fuel.lean` (`initialFuel := 4*N+4`), `TokenParser.lean` (the 14
-  mutually-recursive functions + `parseStream`/`parseDocument`), and
+  `Fuel.lean` (`initialFuel := 4*N+4`), `TokenParser.lean` (the
+  then-14 — now 18 — mutually-recursive functions +
+  `parseStream`/`parseDocument`), and
   `Composition.lean` (user-facing umbrella owning `parseYaml*`,
   `scanAndParse`, comment classification).  Importers redirected from
   `L4YAML.Parser.TokenParser` → `L4YAML.Parser.Composition` (49 files,
@@ -122,7 +175,13 @@ What's done, what remains:
   `Soundness.lean`) are the top-level capstone umbrellas and belong
   at `Proofs/` root by design per the target layout below.
 
-## Proposed target layout
+## Proposed target layout (April-2026 draft)
+
+> Retained for the record. The as-built layout — which additionally
+> grew `Algebra/`, `Indexed/`, the indexed `Scanner`/`Parser`
+> twins, `Output/{Events,Json}.lean`, `Config/LoadConfig.lean`, and
+> the top-level keyword/registry layer — is in
+> [Current state (2026-07-31)](#current-state-2026-07-31) above.
 
 ```
 L4YAML/
@@ -156,7 +215,7 @@ L4YAML/
 │   └── SimpleKey.lean           -- simple-key resolution + scanBlockEntry/Key/Value (§7.4, §8.2)
 │
 ├── Parser/                      -- syntactic layer
-│   ├── TokenParser.lean         -- the 14 mutually-recursive functions
+│   ├── TokenParser.lean         -- the mutual block (now 18 functions)
 │   ├── State.lean               -- ParseState + helpers
 │   ├── Fuel.lean                -- fuel abstractions, default bound
 │   └── Composition.lean         -- parseYaml / parseYamlRaw / compose
@@ -183,96 +242,40 @@ L4YAML/
 └── Proofs/                      -- see below
 ```
 
-## Proposed `Proofs/` reorganization (follow-up)
+## `Proofs/` reorganization — as built
 
-Not part of this refactor pass, but listed here so the direction is
-clear:
+The April-2026 draft layout for `Proofs/` was executed (Phase 4,
+clusters 1–10 below) with four deviations; the as-built tree is in
+[Current state (2026-07-31)](#current-state-2026-07-31) above.
+Deviations from the draft:
 
-```
-L4YAML/Proofs/
-├── Foundation/                  -- utilities used everywhere
-│   ├── CharClass.lean
-│   ├── LawfulBEq.lean
-│   ├── StringProperties.lean
-│   └── ValueAlgebra.lean
-│
-├── Surface/                     -- character-level coupling
-│   ├── SurfaceCoupling.lean
-│   ├── ScalarCoupling.lean
-│   └── StructureCoupling.lean
-│
-├── Scanner/                     -- lexer correctness
-│   ├── ScannerCorrectness.lean
-│   ├── ScannerProgress.lean
-│   ├── ScannerBound.lean
-│   ├── ScannerDispatch.lean
-│   ├── ScannerDocument.lean
-│   ├── ScannerSimpleKey.lean
-│   ├── ScannerLoopInvariant.lean
-│   ├── ScannerContracts.lean
-│   ├── Scanner{Whitespace,PlainScalar,DoubleQuoted,Scalar,FlowCollection,IndentStack,Indent}.lean
-│   ├── ScannerProofs.lean
-│   └── ScanStrictCoupling.lean
-│
-├── Parser/                      -- parser correctness
-│   ├── ParserSoundness.lean
-│   ├── ParserCompleteness.lean
-│   ├── ParserCorrectness.lean
-│   ├── ParserNodeProofs.lean
-│   ├── ParserAnchorProofs.lean
-│   ├── ParserWfaProofs.lean
-│   ├── ParserWellBehaved.lean   (de-crufted: fuel-mono machinery deleted — see 04-capstones.md)
-│   ├── ParserGrammable.lean
-│   └── ParserGrammableBase.lean
-│
-├── Production/                  -- grammar-derivation composition
-│   ├── StreamAccum.lean
-│   ├── StructureProduction.lean
-│   ├── ScalarProduction.lean
-│   ├── DocumentProduction.lean
-│   ├── NodeProduction.lean
-│   ├── PreprocessProduction.lean
-│   └── ScannerPlainScalarValid.lean
-│
-├── Schema/                      -- schema resolution
-│   ├── SchemaResolution.lean
-│   ├── SchemaComposition.lean
-│   ├── SchemaDump.lean
-│   └── TagResolution.lean
-│
-├── Output/                      -- emitter/dumper correctness
-│   ├── EmitterScannability.lean
-│   ├── ScannerEmitBridge.lean
-│   └── DumpRoundTrip.lean
-│
-├── RoundTrip/                   -- content equivalence cycle
-│   ├── ContentEqRefl.lean       (currently ContentEqRefl.lean is in Tests/)
-│   ├── RoundTrip.lean
-│   ├── RoundTripComposition.lean
-│   └── CommentRoundTrip.lean
-│
-├── Coupling/                    -- scan ↔ surface ↔ grammar
-│   ├── CouplingBridge.lean
-│   ├── ScannerCoupling.lean
-│   ├── SurfaceCoupling.lean
-│   ├── StructureCoupling.lean
-│   └── ScalarCoupling.lean
-│
-├── Errors/
-│   ├── ErrorProperties.lean
-│   ├── EscapeResolution.lean
-│   └── FoldNewlines.lean
-│
-├── Document/
-│   ├── BlockScalarContracts.lean
-│   ├── DocumentContracts.lean
-│   └── DumpRoundTrip.lean
-│
-├── Composition.lean             -- top-level pipeline
-├── EndToEndCorrectness.lean     -- capstones
-├── Completeness.lean            -- capstones
-└── Soundness.lean               -- capstones
-```
+- **`Surface/` cluster dropped** — the character-level coupling
+  proofs (`SurfaceCoupling.lean`, `ScalarCoupling.lean`,
+  `StructureCoupling.lean`) live in `Proofs/Coupling/` alongside
+  `CouplingBridge.lean` and `ScannerCoupling.lean`; no separate
+  `Proofs/Surface/` folder was created.
+- **`Document/` became `Contracts/`** — `BlockScalarContracts.lean`
+  and `DocumentContracts.lean` landed in `Proofs/Contracts/`;
+  `DumpRoundTrip.lean` went to `Proofs/Output/` with the other
+  emitter/dumper proofs.
+- **`Foundation/` shrank to 2 files** — `LawfulBEq.lean` and
+  `ValueAlgebra.lean` were absorbed into the top-level algebra
+  library (Initiative 4 Phase 2) as
+  [`L4YAML/Algebra/LawfulBEq.lean`](../L4YAML/Algebra/LawfulBEq.lean)
+  and [`L4YAML/Algebra/Value.lean`](../L4YAML/Algebra/Value.lean);
+  `CharClass.lean` and `StringProperties.lean` remain.
+- **The `ContentEqRefl.lean` move was abandoned** — it stays at
+  [`Tests/ContentEqRefl.lean`](../Tests/ContentEqRefl.lean).
+
+Post-April growth not in the draft: `Production/` gained
+`IndexedScannerPlainScalarValid.lean`; `Scanner/` and `Parser/`
+gained the indexed twins; `Parser/` gained
+`FlowParserAcceptance.lean`; `Output/` gained the 2026-07
+`EmitterScannability/` split (1,551-line hub + 20 modules) and the
+`IndexedEmitterScannability/` cluster (hub + 27 modules). The four
+capstone umbrellas (`Composition.lean`, `EndToEndCorrectness.lean`,
+`Completeness.lean`, `Soundness.lean`) remain at `Proofs/` root by
+design.
 
 ## Migration strategy
 
@@ -308,7 +311,8 @@ phase should leave the build green and the imports valid):
    `State.lean` (~285 LoC) holds `ParseState` + accessors +
    `NodeProperties` + `parseNodeProperties` + helpers; `Fuel.lean`
    (~50 LoC) factors out the `initialFuel := 4*N+4` formula;
-   `TokenParser.lean` (~535 LoC) keeps the 14-function mutual block
+   `TokenParser.lean` (~535 LoC) keeps the then-14-function (now
+   18-function, ~834 LoC) mutual block
    + `StreamState`/`validNextToken` + `parseDirectives` +
    `prepareDocumentState` + `parseDocument` + `parseStream`;
    `Composition.lean` (~205 LoC) becomes the user-facing umbrella

@@ -232,3 +232,9 @@ Because Lean 4 is glibc-based it is a **standalone Debian image**, not part of
 the Alpine `alpine-runtime-all` aggregate. The image builds from the published
 `nasa-jpl/L4YAML` `main` branch and its in-container testers score identically
 to the native binaries (event 402/402, json 282/282).
+
+The matrix is now also self-hosted: on every `v*` version tag this
+repository's CI packages the prebuilt testers for the commit under test into
+the runtime image, regenerates the full matrix, and publishes it to this
+repo's GitHub Pages at `/matrix/` — see [README.md §"L4YAML and the YAML Test
+Matrix"](README.md#l4yaml-and-the-yaml-test-matrix).

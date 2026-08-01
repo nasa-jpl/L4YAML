@@ -70,28 +70,30 @@ It takes adopting a radically unorthodox software engineering development paradi
 
 **One verified implementation. One proof of correctness. Native bindings to C, Python, and Rust.**
 
-The verified Lean parser compiles to C via Lean's code generator. A thin FFI layer exposes 26 C-callable functions. Python calls them via `ctypes`. Rust calls them via `bindgen`. **Every language gets the same proven guarantees** — termination, soundness, completeness, resource bounds — because they all execute the same verified code.
+The verified Lean parser compiles to C via Lean's code generator. A thin FFI layer exposes 33 C-callable functions. Python calls them via `ctypes`. Rust calls them via `bindgen`. **Every language gets the same proven guarantees** — termination, soundness, completeness, resource bounds — because they all execute the same verified code.
 
 ```
                     Lean 4 (verified source)
-                    ├── 1,769 machine-checked theorems
-                    ├── 0 axioms, 0 sorry, 0 partial def
+                    ├── 6,678 machine-checked theorems
+                    ├── 0 axioms, 0 sorry; 0 partial def in the verified core
                     └── Compiles to C via Lean IR
                               │
                     ┌─────────┼─────────┐
                     ▾         ▾         ▾
                 C API     Python      Rust
-              (26 fns)   (ctypes)   (bindgen)
+              (33 fns)   (ctypes)   (bindgen)
               libl4yaml.so ← shared verified core
 ```
 
-**This is not a toy demo.** It is a production YAML 1.2.2 parser:
-- **1,769 theorems** machine-checked by Lean 4's trusted kernel
-- **2,124 compile-time guards** — continuous verification at build time
-- **0 axioms, 0 `sorry`, 0 `partial def`** — zero "trust me" code
-- **100% YAML 1.2.2 test suite** (225/225 test IDs) — plus the mathematical proofs that make the test suite redundant
+**This is not a toy demo.** It is a production YAML 1.2.2 parser (all
+metrics below as of 2026-07-31, from `docs/reports/stats.json` — regenerated
+by CI's `collect-stats` — and the self-hosted YAML Test Matrix):
+- **6,678 theorems** machine-checked by Lean 4's trusted kernel — 0 with a (transitive) `sorry`, 0 depending on a custom axiom
+- **3,414 compile-time guards** — continuous verification at build time
+- **0 axioms, 0 `sorry`; 0 `partial def` in the verified core** — the only 8 `partial def`s in the library sit outside it, in the post-parse limit validators (`Config/Limits.lean`) and the event/JSON test-matrix emitters (`Output/Events.lean`, `Output/Json.lean`)
+- **100% on the YAML Test Matrix** — event 402/402 and JSON 282/282: all 308 valid event streams and all 279 JSON oracles match byte-for-byte, every invalid input is rejected — plus the mathematical proofs that make the test suite redundant
 - **Configurable security limits** — billion laughs protection, nesting bounds, scalar size caps, tag policy enforcement
-- **78 Python tests, 21 Rust tests** — all passing against the verified shared library
+- **128 Python tests, 21 Rust tests** — all passing against the verified shared library
 
 ---
 
@@ -103,7 +105,7 @@ lean4-yaml-verified is not a parser with a few spot-checks. It is a parser where
 
 | Property | Formal Statement | Why It Matters |
 |----------|-----------------|----------------|
-| **Termination** | Every `def` (zero `partial def`) — Lean's kernel rejects non-terminating code | The parser **cannot hang** on any input. No infinite loop DoS is possible, on any input, ever. This is not a test result — it is a mathematical impossibility. |
+| **Termination** | Every function in the verified core is a total `def` — Lean's kernel rejects non-terminating code | The verified parsing pipeline **cannot hang** on any input — a mathematical impossibility, not a test result. (8 `partial def`s exist outside the verified core — the post-parse limit validators in `Config/Limits.lean`, reachable from `parseYamlSafe`, and the event/JSON test-matrix emitters in `Output/` — their termination is not kernel-checked; see §4.) |
 | **Soundness** | `parseYaml s = .ok docs → ValidYaml s docs` | If the parser accepts input, the output is a **valid YAML 1.2.2 data structure**. No silent misinterpretation, no corrupted AST, no phantom keys or values. |
 | **Completeness** | `ValidYaml s docs → parseYaml s = .ok docs` (via `DecidableEq` + `native_decide`) | The parser **never rejects valid YAML**. If input conforms to the spec, it parses. No false negatives. |
 | **Acceptance strictness** | `parseYaml s = .ok docs → InYamlLanguage s` | If the parser accepts input, that input **belongs to the formal YAML 1.2.2 grammar** — all 205 productions. The parser doesn't silently accept malformed input. |
@@ -142,7 +144,7 @@ Small, well-written YAML parsers exist. [yaml-rust2](https://github.com/ethirari
 
 | Dimension | [yaml-rust2](https://github.com/ethiraric/yaml-rust2) (Rust) | [libfyaml](https://github.com/pantoniou/libfyaml) (C) | **lean4-yaml-verified** (Lean 4) |
 |-----------|------|--------|------|
-| **LOC** | ~5K | ~30K | ~2K parser + ~32K proofs |
+| **LOC** | ~5K | ~30K | ~5K scanner+parser + ~152K proofs |
 | **Language safety** | Memory-safe (borrow checker) | Manual memory mgmt (C) | Memory-safe + functionally verified |
 | **Termination** | Not proven — `loop`/`while` could hang on crafted input | Not proven — `while` loops, recursion | **Proven** — zero `partial def`, Lean kernel rejects non-terminating code |
 | **Soundness** | Tested on yaml-test-suite | Tested on yaml-test-suite | **Proven** — `parseYaml ok → ValidYaml` theorem |
@@ -150,15 +152,15 @@ Small, well-written YAML parsers exist. [yaml-rust2](https://github.com/ethirari
 | **Acceptance strictness** | Unknown — may accept invalid YAML | Unknown — may accept invalid YAML | **Proven** — `parseYaml ok → InYamlLanguage` |
 | **Round-trip** | Tested on examples | Tested on examples | **Proven** — `parse(emit(data)) = data` (58 theorems) |
 | **DoS protection** | Partial (some limits) | Partial (some limits) | **Proven** — configurable `ParserLimits` with enforcement proofs |
-| **Spec conformance** | yaml-test-suite (empirical) | yaml-test-suite (empirical) | yaml-test-suite (empirical) **+ 1,769 machine-checked theorems** |
+| **Spec conformance** | yaml-test-suite (empirical) | yaml-test-suite (empirical) | yaml-test-suite (empirical) **+ 6,678 machine-checked theorems** |
 | **Latent CVE risk** | Unknown — Rust prevents memory bugs but not logic bugs | Unknown — C has both memory and logic bug risk | **Zero parser logic CVEs possible** — all behaviors proven |
 | **Formal grammar coupling** | None — code is the spec | None — code is the spec | **205 YAML productions formalized** as Lean Props; scanner coupled to formal grammar |
 
 **The key insight**: yaml-rust2 and libfyaml are excellent engineering. Their test suites are thorough. But tests are **finite samples from an infinite input space**. Between any two tested inputs lies an untested region where bugs can hide — and have hidden, for years, in every YAML parser ever written (PyYAML: 8 years to CVE-2020-14343; snakeyaml: production deployment to CVE-2022-38749).
 
-lean4-yaml-verified's 1,769 theorems don't sample the input space — they **cover it entirely**. The termination proof doesn't check a billion inputs for hangs; it proves hanging is structurally impossible. The soundness theorem doesn't validate a thousand parse trees; it proves every parse tree is valid. This is the difference between "we looked hard and found nothing" and "there is nothing to find."
+lean4-yaml-verified's 6,678 theorems don't sample the input space — they **cover it entirely**. The termination proof doesn't check a billion inputs for hangs; it proves hanging is structurally impossible. The soundness theorem doesn't validate a thousand parse trees; it proves every parse tree is valid. This is the difference between "we looked hard and found nothing" and "there is nothing to find."
 
-**Compact code is not verified code.** yaml-rust2's 5K LOC is admirably small, but every line is an unverified claim about YAML semantics. lean4-yaml-verified's 2K LOC of parser code makes the same claims — and then proves each one with 32K LOC of machine-checked mathematical proof. The 16:1 proof-to-code ratio is the cost of certainty. For most applications, yaml-rust2's engineering quality is sufficient. For applications where "sufficient" means "provably correct" — avionics, medical devices, interstellar missions — it is not.
+**Compact code is not verified code.** yaml-rust2's 5K LOC is admirably small, but every line is an unverified claim about YAML semantics. lean4-yaml-verified's ~5K LOC of scanner+parser code makes the same claims — and then proves each one with ~152K LOC of machine-checked mathematical proof. That roughly 30:1 proof-to-parser ratio (about 7:1 against the full ~22K-line executable library) is the cost of certainty. For most applications, yaml-rust2's engineering quality is sufficient. For applications where "sufficient" means "provably correct" — avionics, medical devices, interstellar missions — it is not.
 
 ### Three Proof Layers — Each Eliminates a Vulnerability Class
 
@@ -215,26 +217,26 @@ Layer 3: Grammar-Level (Eliminates: Misinterpretation, silent corruption)
 
 ### Parser Verification (Complete)
 
-| Metric | Value |
+| Metric | Value (2026-07-31, `docs/reports/stats.json`) |
 |--------|-------|
-| **Theorems** | 1,769 machine-checked by Lean 4's trusted kernel |
-| **Compile-time guards** | 2,124 (including 362 auto-generated from yaml-test-suite) |
-| **Axioms** | 0 |
+| **Theorems** | 6,678 machine-checked by Lean 4's trusted kernel |
+| **Compile-time guards** | 3,414 (including 356 auto-generated from yaml-test-suite) |
+| **Custom axioms** | 0 |
 | **`sorry` (unproven gaps)** | 0 |
-| **`partial def` (non-terminating)** | 0 |
-| **YAML 1.2.2 test suite** | 225/225 test IDs (100%) |
+| **`partial def` (non-terminating)** | 0 in the verified core (8 total in the library, all outside it: `Config/Limits.lean` ×4, `Output/Events.lean` ×2, `Output/Json.lean` ×2) |
+| **YAML Test Matrix** | event 402/402, JSON 282/282 (100%) |
 | **YAML 1.2.2 spec examples** | 132/132 (100%) |
-| **Parser LOC** | ~2,000 |
-| **Proof LOC** | ~32,000 (47 proof modules) |
-| **Build jobs** | 341/341, 0 errors |
+| **Parser LOC** | ~5,000 (scanner + token parser; ~21,900 executable library total) |
+| **Proof LOC** | ~151,600 (131 proof files) |
+| **Build jobs** | 868/868, 0 errors |
 
 ### Multi-Language FFI (Complete)
 
 | Language | Binding | Tests | Status |
 |----------|---------|-------|--------|
-| **C** | 26 exported functions, opaque handle ABI, `libl4yaml.so` | Verified via `nm -D` | ✅ Production |
-| **Python** | `ctypes` package, 5 modules, full `YamlValue` API | 78 tests, 0.14s | ✅ Production |
-| **Rust** | 2-crate workspace (`l4yaml-sys` + `l4yaml`), safe RAII wrapper | 21 tests, 0.06s | ✅ Production |
+| **C** | 33 exported functions, opaque handle ABI, `libl4yaml.so` | Verified via `nm -D` | ✅ Production |
+| **Python** | `ctypes` package, 5 modules, full `YamlValue` API | 128 tests | ✅ Production |
+| **Rust** | 2-crate workspace (`l4yaml-sys` + `l4yaml`), safe RAII wrapper | 21 tests | ✅ Production |
 
 ### Security Limits (Complete)
 
@@ -255,11 +257,11 @@ Layer 3: Grammar-Level (Eliminates: Misinterpretation, silent corruption)
 | **seL4** | Verified OS kernel | ~200K LOC | ~480K LOC | 12–15 researchers (NICTA/Data61), ~20 person-years | 2004–2009 (5 yrs to first proof) | Defense systems |
 | **CompCert** | Verified C compiler | ~60K LOC | ~100K LOC | 7 core (INRIA, led by Leroy), ~6–8 person-years | 2005–2008 (3 yrs to first release) | Airbus avionics |
 | **AWS Cedar** | Verified authorization | ~20K LOC | ~40K LOC | 63 contributors, est. 5–15 core (AWS) | 2021–2023 (2+ yrs to announcement) | Cloud security |
-| **lean4-yaml-verified** | **Verified YAML parser** | **~2K LOC** | **~32K LOC** | **1 engineer + GenAI** | **2024–2025 (~18 months)** | **Aerospace configs (C, Python, Rust)** |
+| **lean4-yaml-verified** | **Verified YAML parser** | **~5K LOC** | **~152K LOC** | **1 engineer + GenAI** | **2024–2026** | **Aerospace configs (C, Python, Rust)** |
 
 Same class of rigor. Same trusted-kernel verification. **Only verified YAML parser in any language.**
 
-The comparison is stark: seL4 required 12–15 researchers and 20 person-years. CompCert required 7 core researchers and 6–8 person-years. **lean4-yaml-verified was built by one engineer with GenAI assistance in ~18 months.** The parser is smaller than a kernel or compiler, but the methodology — GenAI-accelerated proof engineering in Lean 4 — represents a step change in what is achievable by a small team.
+The comparison is stark: seL4 required 12–15 researchers and 20 person-years. CompCert required 7 core researchers and 6–8 person-years. **lean4-yaml-verified was built by one engineer with GenAI assistance (2024–2026).** The parser is smaller than a kernel or compiler, but the methodology — GenAI-accelerated proof engineering in Lean 4 — represents a step change in what is achievable by a small team.
 
 ---
 
@@ -330,7 +332,7 @@ Four converging forces:
 ```
 1. Specify — Write the mathematical specification in Lean (Prop-level definitions)
 2. Implement — Write the executable code in Lean (def-level functions)
-3. Prove — Bridge spec ↔ impl with machine-checked theorems (1,769 of them)
+3. Prove — Bridge spec ↔ impl with machine-checked theorems (6,678 of them)
 4. Compile — Lean IR → C → shared library (libl4yaml.so)
 5. Bind — C header + shim → Python ctypes / Rust bindgen
 6. Ship — Every consumer gets proven guarantees. Every build re-checks every proof.
@@ -348,7 +350,7 @@ YAML parsing is the **proof of concept** — a complex, security-sensitive probl
 
 ```
 Phase 1 (Complete): Verified YAML 1.2.2 Parser
-├── 1,769 theorems, 0 sorry, 0 axioms
+├── 6,678 theorems, 0 sorry, 0 axioms
 ├── C / Python / Rust bindings
 ├── Configurable security limits
 └── 100% spec conformance + mathematical proofs
@@ -377,7 +379,7 @@ Phase 4 (Vision): Verified Software Supply Chain
 
 **The problem**: JPL's current test-based V&V practices, while excellent for robotic exploration, cannot produce the evidence required for DO-178C Level A avionics, medical-grade certification, or the highest-assurance competitive bids. These markets demand mathematical proof of correctness — proof that testing fundamentally cannot provide.
 
-**The proof of concept**: A fully verified YAML 1.2.2 parser — 1,769 machine-checked theorems, zero axioms, zero unproven gaps — with production bindings to C, Python, and Rust. Built with Lean 4 and GenAI-assisted proof engineering. A complex, security-critical problem solved with the same mathematical rigor as seL4 and CompCert.
+**The proof of concept**: A fully verified YAML 1.2.2 parser — 6,678 machine-checked theorems, zero axioms, zero unproven gaps — with production bindings to C, Python, and Rust. Built with Lean 4 and GenAI-assisted proof engineering. A complex, security-critical problem solved with the same mathematical rigor as seL4 and CompCert.
 
 **The opportunity**: Adopt this paradigm — specify, implement, prove, compile, bind, ship — and JPL gains access to:
 - **DO-178C Level A**: Formal methods evidence for human-rated avionics software
@@ -386,6 +388,6 @@ Phase 4 (Vision): Verified Software Supply Chain
 
 **The bottom line**: This isn't "better testing." It is a **fundamental shift** from "we hope we found all the bugs" to "certain classes of bugs are mathematically impossible."
 
-Five years ago, this was science fiction. Today, it is a working system with 1,769 theorems, production multi-language bindings, and a clear path from YAML parsing to safety-critical autonomous systems.
+Five years ago, this was science fiction. Today, it is a working system with 6,678 theorems, production multi-language bindings, and a clear path from YAML parsing to safety-critical autonomous systems.
 
 **The revolution is here. The question is whether JPL will lead it.**
