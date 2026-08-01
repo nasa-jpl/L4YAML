@@ -560,12 +560,12 @@ structural and carries no fibration signal.
 tag := "theorem-graphs-roundtrip"
 %%%
 
-### `universal_roundtrip` — deep (🚧 sorry-reachable via 6.9)
+### `universal_roundtrip` — deep (✅ closed 2026-07-04)
 
 _6.1_ — the universal YAML round-trip property: emit ∘ parse is
 content-preserving up to `contentEq`.  Fibration-aligned against
-the emitter/parser composition; carries a sorry marker via 6.9
-pending the final stage's proof.
+the emitter/parser composition; fully machine-checked (no `sorryAx`
+on the closed path) since the Track-B general-locality closure.
 
 ![universal_roundtrip chain graph](graphs/L4YAML/Proofs/Output/EmitterScannability/universal_roundtrip.chain.svg)
 
@@ -577,11 +577,11 @@ pending the final stage's proof.
 tag := "theorem-graphs-production"
 %%%
 
-### `parse_strict_proof` — deep (🚧 sorry-reachable via 7.2, 7.6)
+### `parse_strict_proof` — deep (✅ proved in v0.4.6)
 
 _7.1_ — parser acceptance implies `InYamlLanguage`.  Bridges the
 parser-level chain to the grammar-production relation used by the
-Blueprint.  Sorry-reachable via the scanner-side 7.2/7.6 lemmas.
+Blueprint.  The scanner-side 7.2/7.6 supports are likewise ✅.
 
 ![parse_strict_proof chain graph](graphs/L4YAML/Proofs/Production/DocumentProduction/parse_strict_proof.chain.svg)
 

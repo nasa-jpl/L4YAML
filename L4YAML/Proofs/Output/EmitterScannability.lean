@@ -366,12 +366,11 @@ theorem parseNode_scalar_dq_eq_standalone
     Given that scanning the emitted sequence succeeds, the parser pipeline
     produces exactly one document.
 
-    - **Empty case** (`items = #[]`): Fully proven via `native_decide` on the
+    - **Empty case** (`items = #[]`): proven via `native_decide` on the
       concrete 4-token stream `[streamStart, flowSequenceStart, flowSequenceEnd, streamEnd]`.
-    - **Non-empty case**: Requires parser fuel sufficiency for `parseFlowSequenceLoop`
-      on well-bracketed tokens — each loop iteration consumes ≥1 token via `parseNode`,
-      so fuel = `4 * tokens.size + 4` suffices. Currently sorry'd pending position
-      monotonicity proof through `parseNode` dispatch. -/
+    - **Non-empty case**: proven via the `FlowSubrangesOk` structure chain
+      (Track A, closed 2026-07-03) — each loop iteration consumes ≥1 token via
+      `parseNode`, so fuel = `4 * tokens.size + 4` suffices. -/
 theorem parseStream_emitSequence (style : CollectionStyle) (items : Array YamlValue)
     (tag anchor : Option String) {tokens : Array (Positioned YamlToken)}
     (h_scan : Scanner.scanFiltered (emit (.sequence style items tag anchor)) = .ok tokens)
@@ -592,10 +591,10 @@ theorem parseStream_emitSequence (style : CollectionStyle) (items : Array YamlVa
 /-- Combined scanner characterization and parser acceptance for flow mappings.
     Analogous to `parseStream_emitSequence` but for `emit (.mapping ...)`.
 
-    - **Empty case** (`pairs = #[]`): Fully proven via `native_decide` on the
+    - **Empty case** (`pairs = #[]`): proven via `native_decide` on the
       concrete 4-token stream `[streamStart, flowMappingStart, flowMappingEnd, streamEnd]`.
-    - **Non-empty case**: Requires parser fuel sufficiency for `parseFlowMappingLoop`
-      on well-bracketed tokens. Currently sorry'd pending position monotonicity proof. -/
+    - **Non-empty case**: proven via the `FlowSubrangesOk` structure chain
+      (Track A, closed 2026-07-03), analogous to `parseStream_emitSequence`. -/
 theorem parseStream_emitMapping (style : CollectionStyle) (pairs : Array (YamlValue × YamlValue))
     (tag anchor : Option String) {tokens : Array (Positioned YamlToken)}
     (h_scan : Scanner.scanFiltered (emit (.mapping style pairs tag anchor)) = .ok tokens)

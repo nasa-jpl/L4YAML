@@ -84,16 +84,18 @@ now-retired `05-current-state.md` once carried, which described
 - Group 2.2, 5.2, and all of Group 7's forward direction have
   **closed** since April.
 
-**Two converse theorems remain open** — they are the entire
+**One converse theorem remains open** — it is the entire
 work-remaining frontier:
 
-1. **Universal round-trip** (Group 6.1, `universal_roundtrip`) — the
-   2 `sorry`s above. *Emit-then-parse recovers content.*
-2. **Grammar completeness** (Group 7.7, `parse_iff_grammar` converse)
-   — **not yet declared**; blocked on the round-trip work and on
-   removing two over-approximation grammar constructors
+1. **Grammar completeness** (Group 7.7, `parse_iff_grammar` converse)
+   — **not yet declared**; blocked on removing two over-approximation
+   grammar constructors
    ([`VERSION-0.4.8.md`](../VERSION-0.4.8.md)). *We accept **exactly**
    the YAML language, not merely a subset of well-formed inputs.*
+
+**Universal round-trip** (Group 6.1, `universal_roundtrip`) closed on
+2026-07-04 via Track B above — *emit-then-parse recovers content* is
+now fully machine-checked (see the Group 6 tables below).
 
 **Status legend**
 - ✅ proved (no `sorry`, kernel-checked)
@@ -116,9 +118,12 @@ categoryCapstone) is row `N.1`; supports follow.
 **Tooling note**: the `| # | `\`name\`` | module | status |` row shape
 is consumed by `check-capstones` (it diffs ✅ rows against the
 `@[key_theorem]` catalogue in the sibling `L4YAML.FGM` repo). Rows
-promoted from 🚧 to ✅ in this pass (2.2, 5.2, 7.1–7.6) now need
-matching catalogue annotations — a follow-up tagging task, flagged
-in [`README.md`](README.md) Initiative 2.
+promoted from 🚧 to ✅ since April (2.2, 5.2, 7.1–7.6, and the Group-6
+closure rows 6.1/6.9/6.10/6.13/6.14 flipped 2026-07-31) need matching
+catalogue annotations — a follow-up tagging task, flagged in
+[`README.md`](README.md) Initiative 2. In-repo, the same set is now
+also marked at the declaration site via the `@[capstone]` attribute
+and pinned in [`L4YAML/Capstones.lean`](../L4YAML/Capstones.lean).
 
 ## Proof file locations (Phase 4 complete)
 
@@ -434,14 +439,14 @@ The AST-to-value conversion faithfully implements the Core Schema.
 
 ---
 
-## Group 6 — Round-trip properties  *(work-remaining frontier)*
+## Group 6 — Round-trip properties  *(closed 2026-07-04)*
 
 `parseYaml ∘ emit` and `parseYaml ∘ dump` recover content-equivalent
 values.
 
 | # | Theorem | Module | Status |
 | - | ------- | ------ | ------ |
-| 6.1 | `universal_roundtrip` (headline) | [`EmitterScannability`](../L4YAML/Proofs/Output/EmitterScannability.lean) | 🚧 (5 `sorry`s) |
+| 6.1 | `universal_roundtrip` (headline) | [`EmitterScannability`](../L4YAML/Proofs/Output/EmitterScannability.lean) | ✅ |
 | 6.2 | `contentEq_refl` | [`RoundTrip`](../L4YAML/Proofs/RoundTrip/RoundTrip.lean) | ✅ |
 | 6.3 | `contentEq_symm` | `RoundTrip` | ✅ |
 | 6.4 | `contentEq_trans` | `RoundTrip` | ✅ |
@@ -449,45 +454,43 @@ values.
 | 6.6 | `escapeTag_roundtrip` | `RoundTrip` | ✅ |
 | 6.7 | `resolve_eq_of_resolveEq` (mutual) | [`RoundTripComposition`](../L4YAML/Proofs/RoundTrip/RoundTripComposition.lean) | ✅ |
 | 6.8 | `resolve_eq_of_contentEq_noTags` | `RoundTripComposition` | ✅ |
-| 6.9 | `emit_roundtrip_content_eq` (canonical-emitter closure) | `EmitterScannability` | 🚧 (residual: the 5 `sorry`s) |
-| 6.10 | `universal_roundtrip` — `∀ v, Grammable v false → ∃ docs, parseYaml (emit v) = .ok docs ∧ docs.size = 1 ∧ contentEq v docs[0]!.value = true` | `EmitterScannability` | 🚧 (now **declared** as 6.1; formerly aspirational) |
+| 6.9 | `emit_roundtrip_content_eq` (canonical-emitter closure) | `EmitterScannability` | ✅ |
+| 6.10 | `universal_roundtrip` — `∀ v, Grammable v false → ∃ docs, parseYaml (emit v) = .ok docs ∧ docs.size = 1 ∧ contentEq v docs[0]!.value = true` | `EmitterScannability` | ✅ (= 6.1, full statement) |
 | 6.11 | `dumpTyped_*`, `contentRoundTrips_*` | [`SchemaDump`](../L4YAML/Proofs/Schema/SchemaDump.lean), [`DumpRoundTrip`](../L4YAML/Proofs/Output/DumpRoundTrip.lean) | ✅ for concrete instances |
 | 6.12 | `resolve_toYaml_*`, `fromYaml_toYaml_*` type round-trips | [`SchemaComposition`](../L4YAML/Proofs/Schema/SchemaComposition.lean) | ✅ for concrete instances |
-| 6.13 | `emit_parse_succeeds` — emitter output parses via `parseYamlRaw` (existence half of 6.10) | `EmitterScannability` | 🚧 (sorry-reachable via 6.9) |
-| 6.14 | `emit_parseYaml_succeeds` — emitter output parses via `parseYaml` (existence half of 6.10, composed) | `EmitterScannability` | 🚧 (sorry-reachable via 6.9) |
+| 6.13 | `emit_parse_succeeds` — emitter output parses via `parseYamlRaw` (existence half of 6.10) | `EmitterScannability` | ✅ |
+| 6.14 | `emit_parseYaml_succeeds` — emitter output parses via `parseYaml` (existence half of 6.10, composed) | `EmitterScannability` | ✅ |
+| 6.15 | `canonical_roundtrip_conditional` — scanner-bridge round-trip, conditional form | [`ScannerEmitBridge`](../L4YAML/Proofs/Output/ScannerEmitBridge.lean) | ✅ |
 
-**The gap (2026-07-01)**: capstone 6.1/6.10 `universal_roundtrip` is
-now a **declared** theorem (`EmitterScannability.lean:1285`), but its
-proof is `sorry`-reachable through 6.9's canonical-emitter closure.
-The residual was exactly the **two `sorry`s** of the 2026-07-03 snapshot
-(both now closed by the general-locality chain above),
-split into two independent tracks:
+**Closure (2026-07-04)**: capstone 6.1/6.10 `universal_roundtrip` is
+fully machine-checked (`EmitterScannability.lean:1539`, no `sorryAx`
+anywhere on the closed path — see the Status snapshot at the top).
+The former residual split into two independent tracks, both closed:
 
 - **Track A — `FlowSubrangesOk`** (every balanced flow subrange is
-  well-formed), consumed by the sequence and mapping structure proofs
-  (sites 1, 2). All of Track A bottoms out at the single R447
-  navigator `seqBody_recseqbody_provider` (site 3, the **linchpin**);
-  the assembler chain that lifts it to `FlowSubrangesOk` is already
-  verified and waiting.
-- **Track B — `parseNode` span-locality** (sites 4, 5): the parser's
-  value output depends only on the tokens forward of its start
-  position, for the non-all-scalar flow collections. The all-scalar
-  branch already closes by canonical form.
+  well-formed): closed 2026-07-03 by the deep-family positional
+  navigator (`DeepNavigator.lean`), which reads per-window body
+  properties directly off the stored pair structure — no
+  interior-separator carrier on the closed path.
+- **Track B — `parseNode` span-locality** (the parser's value output
+  depends only on the tokens forward of its start position, for
+  non-all-scalar flow collections): closed 2026-07-04 by the
+  general-locality chain (`TokVals`, `TokValsPin`, `ValueLocality`,
+  `ValuePurity`, `StreamNodeWitness`, `GeneralLocality`).
 
 **Depends on**: Group 4 (parse), Group 5 (values).
 
 **Significance & risk**
 
-- **6.1 / 6.10 `universal_roundtrip`** *(headline, 🚧)* —
+- **6.1 / 6.10 `universal_roundtrip`** *(headline, ✅)* —
   *Significance:* emitting any grammable value and re-parsing it
   recovers a content-equivalent value — the left-inverse law that
   makes the dumper trustworthy for read-modify-write workflows. *Risk
   if absent:* the dumper could silently produce YAML that re-parses to
   something different — a configuration file written back would not
-  equal the one read in. **This is the single most consequential open
-  guarantee**; until it closes, round-trip safety holds only for the
-  scalar/all-scalar shapes and is `sorry`-gated for nested flow
-  collections.
+  equal the one read in. **This was the single most consequential
+  open guarantee** until its 2026-07-04 closure; round-trip safety now
+  covers nested flow collections, not just scalar/all-scalar shapes.
 - **6.2–6.4 `contentEq` refl / symm / trans** — *Significance:*
   content-equivalence is a genuine equivalence relation, which is what
   gives "same content" a sound meaning. *Risk if absent:* every
@@ -503,11 +506,10 @@ split into two independent tracks:
 - **6.7 / 6.8 `resolve_eq_*`** — *Significance:* alias resolution is
   stable under content-equivalence. *Risk if absent:* round-trip would
   break precisely on anchored/aliased documents.
-- **6.9 `emit_roundtrip_content_eq`** *(🚧)* — *Significance:* the
-  value-level canonical-emitter closure that 6.1 is built on; its
-  residual *is* the five `sorry`s. *Risk if absent:* the closure gap
-  means round-trip is proved only for leaf shapes, not for nested flow
-  structure.
+- **6.9 `emit_roundtrip_content_eq`** *(✅)* — *Significance:* the
+  value-level canonical-emitter closure that 6.1 is built on. *Risk if
+  absent:* round-trip would be proved only for leaf shapes, not for
+  nested flow structure.
 - **6.11 `dumpTyped_*` / `contentRoundTrips_*`** *(✅ concrete)* —
   *Significance:* typed dump-then-load round-trips for concrete types.
   *Risk if absent:* a derived `ToYaml`/`FromYaml` pair could fail to
@@ -516,10 +518,15 @@ split into two independent tracks:
   `fromYaml ∘ toYaml = id` for concrete instances. *Risk if absent:*
   serialization could silently lose fields on the typed API.
 - **6.13 / 6.14 `emit_parse_succeeds` / `emit_parseYaml_succeeds`**
-  *(🚧)* — *Significance:* the existence half — emitter output at
+  *(✅)* — *Significance:* the existence half — emitter output at
   least *parses* (before asking whether it parses to the same
   content). *Risk if absent:* the dumper could emit YAML that no
   parser, including our own, accepts.
+- **6.15 `canonical_roundtrip_conditional`** *(✅)* — *Significance:*
+  the scanner-bridge round-trip in conditional form — the stepping
+  stone between 6.5's emit-side invariance and the unconditional 6.1.
+  *Risk if absent:* no bridge-level handle for reasoning about the
+  emitter's token stream before the universal closure applies.
 
 ---
 
@@ -689,8 +696,8 @@ Still-standing infrastructure, kept because it genuinely contributes:
 - No adversarial coverage for Group 4 (end-to-end) as a whole.
 - No adversarial coverage for Group 5 (value semantics).
 - Group 6.1 (`universal_roundtrip`): partial via Priorities 1–2; the
-  non-all-scalar flow branches (the five open `sorry`s) are the
-  natural next fixtures — see
+  non-all-scalar flow branches (closed 2026-07-04) still deserve
+  dedicated round-trip fixtures — see
   [`Tests/Reflections/NonAllScalarLocality.lean`](../Tests/Reflections/NonAllScalarLocality.lean).
 - Group 7.7 (grammar completeness): none yet — natural, since the
   converse is not yet declared.

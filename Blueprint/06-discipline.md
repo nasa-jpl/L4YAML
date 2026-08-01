@@ -73,8 +73,10 @@ input.
 
 ## Rule 3 — Sorry policy
 
-The current codebase has ~90–100 active `sorry`s. The policy going
-forward:
+The library is `sorry`-free (0 active `sorry`s in `L4YAML/` as of
+2026-07-31; the lone `sorry` under `Tests/` is the deliberate
+demonstration in `Tests/Reflections/IllusorySorryFree.lean`). The
+policy going forward:
 
 - A **new `sorry`** is allowed only if the theorem is listed in
   [`04-capstones.md`](04-capstones.md) with status 🚧 or ⏳ **and** a
