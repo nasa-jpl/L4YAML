@@ -138,7 +138,7 @@ theorem r606_two_pair_fires
   obtain ⟨_n, s', block,
           _h_chain, h_corr',                             -- A1, A2
           _, _, _, _, _, _, _, _, _, _, _,               -- A3-A13 (11 fields)
-          _h_filt, h_len, h_pw, h_fe⟩ :=               -- A14, A15, A16, A17
+          _h_filt, h_len, h_pw, h_fe, _h_key, _h_val⟩ := -- A14-A19
     emitPairList_allScalar_body_content_at
       [(.scalar sk1, .scalar sv1), (.scalar sk2, .scalar sv2)]
       (List.cons_ne_nil _ _)
@@ -152,7 +152,7 @@ theorem r606_two_pair_fires
   obtain ⟨_, h_k2, _, h_v2⟩ := h_pw 1 (by simp) sk2 sv2 (by simp)
   obtain ⟨_, h_fe0⟩ := h_fe 0 (by simp)
   exact ⟨_n, s', block, h_corr',
-         by simp only [List.length_cons, List.length_singleton] at h_len ⊢; omega,
+         by simp only [List.length_cons] at h_len ⊢; omega,
          h_k1, h_v1, h_fe0, by simpa using h_k2, by simpa using h_v2⟩
 
 /-! ## Axiom audit: R606 depends on propext, Classical.choice, Quot.sound, and

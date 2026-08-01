@@ -17,7 +17,11 @@ but is NOT.  Judge "landed" by the axiom profile, never by the sorry keyword / w
 
 namespace IllusorySorryFree
 
-/-- A genuinely-unproven obligation: a literal `sorry`.  Lean WARNS "declaration uses 'sorry'". -/
+/-- warning: declaration uses `sorry` -/
+#guard_msgs in
+/-- A genuinely-unproven obligation: a literal `sorry`.  Lean WARNS "declaration uses `sorry`"
+    (captured by the surrounding `#guard_msgs` so the indexed build stays warning-clean —
+    the warning existing is the point). -/
 theorem hard_obligation : True ∧ True := by
   sorry
 

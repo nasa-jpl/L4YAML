@@ -7,25 +7,27 @@ import L4YAML.Proofs.Output.IndexedEmitterScannability.ScanChain
 import L4YAML.Proofs.Output.IndexedEmitterScannability.FlowMonoChain
 import L4YAML.Proofs.Output.IndexedEmitterScannability.FilteredGrowth
 import L4YAML.Proofs.Output.IndexedEmitterScannability.EmitScans
+import L4YAML.Proofs.Output.IndexedEmitterScannability.EmitScansStrong
 import L4YAML.Proofs.Output.IndexedEmitterScannability.ParseStream
 import L4YAML.Proofs.Output.IndexedEmitterScannability.RoundTrip
 
-/-! # `IndexedEmitterScannability` — parked parallel indexed track
+/-! # `IndexedEmitterScannability` — parallel indexed track (kept built)
 
-**Status (2026-05-31): PARKED parallel track — cutover deferred.** This was
-originally a staging aggregator for a "6f.3c cutover" that would rename these
-indexed-twin sub-files over the legacy `Proofs/Output/EmitterScannability.lean`.
-That plan predates two developments that make it stale:
+**Status (2026-07-31): the Option-2 plan this track was parked behind is
+complete** — the non-indexed keystone `universal_roundtrip` closed 0-sorry
+on 2026-07-04 (see `Blueprint/04-capstones.md`). The track remains a full
+parallel universe (Reflection 157: no transport between
+`ScannerStateIx`/`ParseStateIx` and `ScannerState`/`ParseState`), so it is
+not a drop-in for the legacy chain; it is now **wired into the library
+build** (including `EmitScansStrong`, formerly orphaned) so it cannot rot,
+per the import-closure gate (`scripts/check-import-closure.sh`).
 
-  1. The legacy file is no longer a 10741-LOC monolith — after the keystone-
-     reduction modularization it is ~950 LOC + a foundation chain under
-     `Proofs/Output/EmitterScannability/`.
-  2. The strategic decision (see Reflection 193) is **Option 2**: finish the
-     non-indexed keystone (`universal_roundtrip`, 5 remaining sorries) to a
-     0-sorry proof first. Reflection 157 established there is *no transport*
-     between `ScannerStateIx`/`ParseStateIx` (indexed) and
-     `ScannerState`/`ParseState` (concrete), so this track is a full parallel
-     universe (indexed scanner **and** parser), not a drop-in.
+Historical context (2026-05-31 parking rationale): this was originally a
+staging aggregator for a "6f.3c cutover" that would rename these
+indexed-twin sub-files over the legacy
+`Proofs/Output/EmitterScannability.lean`; the legacy file has since been
+modularized (~950 LOC + a foundation chain under
+`Proofs/Output/EmitterScannability/`) and the keystone finished first.
 
 This track is sorry-free but incomplete: it tops out at the body-token
 characterization (`..._characterizationIx_part1`) and has no

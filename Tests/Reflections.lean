@@ -276,6 +276,8 @@ import Tests.Reflections.EmitterTagPercentDecode
 import Tests.Reflections.EmptyNodePropsSeqEntry
 import Tests.Reflections.EscapedTrailingTab
 import Tests.Reflections.OrderAwareAlias
+import Tests.Reflections.IllusorySorryFree
+import Tests.Reflections.PairListBodyContentAt
 
 /-!
 # Reflections — runnable proof-engineering demonstrations

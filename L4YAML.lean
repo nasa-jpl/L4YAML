@@ -64,6 +64,7 @@ import L4YAML.Proofs.Parser.ParserSoundness
 import L4YAML.Proofs.Parser.ParserWellBehaved
 import L4YAML.Proofs.Parser.FlowParserAcceptance
 import L4YAML.Proofs.Parser.ParserWfaProofs
+import L4YAML.Proofs.Parser.IndexedCorrectness
 import L4YAML.Proofs.Production.PreprocessProduction
 import L4YAML.Proofs.RoundTrip.RoundTrip
 import L4YAML.Proofs.RoundTrip.RoundTripComposition
@@ -71,6 +72,7 @@ import L4YAML.Proofs.Coupling.ScalarCoupling
 import L4YAML.Proofs.Production.ScalarProduction
 import L4YAML.Proofs.Scanner.ScannerContracts
 import L4YAML.Proofs.Scanner.ScannerCorrectness
+import L4YAML.Proofs.Scanner.IndexedRoundtrip
 import L4YAML.Proofs.Coupling.ScannerCoupling
 import L4YAML.Proofs.Scanner.ScannerDispatch
 import L4YAML.Proofs.Scanner.ScannerDocument

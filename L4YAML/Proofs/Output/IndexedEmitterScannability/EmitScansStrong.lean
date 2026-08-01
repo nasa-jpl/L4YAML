@@ -614,7 +614,7 @@ theorem scanValuePrepareIx_flow_pointwise (s : ScannerStateIx input)
         rw [scanValuePrepareIx_flow_size_eq s h_sk h_flow]; exact h_lt)).token =
         YamlToken.key) ∧
     -- (rest) all positions `i ≠ idx + 1` are preserved.
-    (∀ (i : Nat) (hi : i < s.tokens.tokens.size) (h_ne : i ≠ s.simpleKey.tokenIndex + 1),
+    (∀ (i : Nat) (hi : i < s.tokens.tokens.size) (_h_ne : i ≠ s.simpleKey.tokenIndex + 1),
       ((scanValuePrepareIx s).tokens.tokens[i]'(by
         rw [scanValuePrepareIx_flow_size_eq s h_sk h_flow]; exact hi)) =
         s.tokens.tokens[i]'hi) := by
