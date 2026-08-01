@@ -43,16 +43,19 @@ These lemmas establish basic properties of the surface syntax
 combinators that are used throughout the coupling proofs. -/
 
 /-- `SIndent 0` is the identity (no characters consumed). -/
+@[capstone]
 theorem SIndent_zero (s : SurfPos) : SIndent 0 s s :=
   SIndent.zero s
 
 /-- `SIndent (n+1)` requires a leading space. -/
+@[capstone]
 theorem SIndent_succ (n : Nat) (rest : List Char) (col : Nat) (s' : SurfPos)
     (h : SIndent n ⟨rest, col + 1⟩ s') :
     SIndent (n + 1) ⟨' ' :: rest, col⟩ s' :=
   SIndent.succ n rest col s' h
 
 /-- `SIndent n` advances column by exactly `n`. -/
+@[capstone]
 theorem SIndent_col (n : Nat) (s s' : SurfPos)
     (h : SIndent n s s') : s'.col = s.col + n := by
   induction h with
@@ -60,6 +63,7 @@ theorem SIndent_col (n : Nat) (s s' : SurfPos)
   | succ k _ col _ _ ih => dsimp only [] at *; omega
 
 /-- `SIndent n` consumes exactly `n` characters. -/
+@[capstone]
 theorem SIndent_chars (n : Nat) (s s' : SurfPos)
     (h : SIndent n s s') : s'.chars = s.chars.drop n := by
   induction h with
@@ -67,6 +71,7 @@ theorem SIndent_chars (n : Nat) (s s' : SurfPos)
   | succ k rest _ _ _ ih => simp [List.drop_succ_cons] at ih ⊢; exact ih
 
 /-- `SIndent n` consumes `n` spaces from the front. -/
+@[capstone]
 theorem SIndent_all_spaces (n : Nat) (s s' : SurfPos)
     (h : SIndent n s s') : s.chars.take n = List.replicate n ' ' := by
   induction h with
@@ -74,6 +79,7 @@ theorem SIndent_all_spaces (n : Nat) (s s' : SurfPos)
   | succ k rest _ _ _ ih => simp [List.take_succ_cons, List.replicate_succ]; exact ih
 
 /-- `GChar p` advances column by 1. -/
+@[capstone]
 theorem GChar_col (p : Char → Prop) (s s' : SurfPos)
     (h : GChar p s s') : s'.col = s.col + 1 := by
   cases h; rfl

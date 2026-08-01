@@ -1,0 +1,49 @@
+# Capstone whitelist: declarations that keep the `theorem` keyword.
+# Everything else in L4YAML/ uses `lemma` (enforced by
+# scripts/check-theorem-keyword.sh; see Blueprint/06-discipline.md).
+#
+# Format: <repo-relative-file>:<declaration-name>; trailing `*` = prefix
+# wildcard (same convention as L4YAML.FGM's check-capstones).
+#
+# Source of truth for the *set*: Blueprint/04-capstones.md headline rows;
+# the @[capstone]-tagged set is pinned in L4YAML/Capstones.lean and must
+# stay in sync with this file.
+
+# Group 1 — pipeline composition
+L4YAML/Proofs/Composition.lean:parseYaml_pipeline
+
+# Group 2 — scanner correctness
+L4YAML/Proofs/Scanner/ScanStrictCoupling.lean:scan_full_consumption
+
+# Group 3 — parser correctness
+L4YAML/Proofs/EndToEndCorrectness.lean:parseStream_respects_grammar_unconditional
+L4YAML/Proofs/Parser/ParserCompleteness.lean:soundness_completeness_compose
+L4YAML/Proofs/Parser/ParserCompleteness.lean:grammar_value_roundtrip
+L4YAML/Proofs/Parser/IndexedCompleteness.lean:soundness_completeness_compose
+L4YAML/Proofs/Parser/IndexedCompleteness.lean:grammar_value_roundtrip
+
+# Group 4 — end-to-end correctness
+L4YAML/Proofs/EndToEndCorrectness.lean:parse_sound_shallow
+L4YAML/Proofs/EndToEndCorrectness.lean:parse_sound_deep
+L4YAML/Proofs/EndToEndCorrectness.lean:parse_complete
+L4YAML/Proofs/EndToEndCorrectness.lean:parse_deterministic
+
+# Group 5 — value semantics
+L4YAML/Proofs/Soundness.lean:validYaml_construct
+L4YAML/Proofs/Soundness.lean:toYamlValue_correct
+
+# Group 6 — round-trip
+L4YAML/Proofs/Output/EmitterScannability.lean:universal_roundtrip
+L4YAML/Proofs/Output/EmitterScannability.lean:emit_roundtrip_content_eq
+L4YAML/Proofs/Output/ScannerEmitBridge.lean:canonical_roundtrip_conditional
+L4YAML/Proofs/RoundTrip/RoundTrip.lean:escapeTag_roundtrip
+
+# Group 7 — acceptance strictness
+L4YAML/Proofs/Production/DocumentProduction.lean:parse_strict_proof
+L4YAML/Proofs/Production/DocumentProduction.lean:scan_strict_proof
+# (reserved for 7.7 when it lands)
+# L4YAML/Proofs/Production/???.lean:parse_iff_grammar
+
+# Group 8 — surface coupling (wildcard family)
+L4YAML/Proofs/Coupling/SurfaceCoupling.lean:SIndent_*
+L4YAML/Proofs/Coupling/SurfaceCoupling.lean:GChar_*

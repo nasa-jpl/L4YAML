@@ -217,6 +217,7 @@ if `NodeToValue n v`.
 This is the key lemma connecting the computable function to the
 inductive relation.
 -/
+@[capstone]
 theorem toYamlValue_correct (n : ValidNode) (v : YamlValue) :
     toYamlValue n = v ↔ NodeToValue n v := by
   constructor
@@ -384,6 +385,7 @@ theorem toYamlValue_produces_nodeToValue (n : ValidNode) :
 **ValidYaml construction**: given any `ValidNode`, we can construct
 a `ValidYaml` bundling the node with its canonical value.
 -/
+@[capstone]
 theorem validYaml_construct (input : String) (n : ValidNode) :
     ∃ vy : ValidYaml, vy.input = input ∧ vy.grammar = n
     ∧ vy.value = toYamlValue n := by

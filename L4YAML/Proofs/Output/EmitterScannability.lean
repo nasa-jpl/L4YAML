@@ -1488,6 +1488,7 @@ theorem emit_roundtrip_mapping_content_eq {inFlow : Bool} (style : CollectionSty
       The parser reconstructs the list from flow tokens.
     - Mapping: By IH each key/value round-trips content-equivalently.
       The parser reconstructs pairs from flow tokens. -/
+@[capstone]
 theorem emit_roundtrip_content_eq (v : YamlValue) {b : Bool} (hg : Grammable v b)
     (raw_docs : Array YamlDocument)
     (h_raw : parseYamlRaw (emit v) = .ok raw_docs)
@@ -1535,6 +1536,7 @@ theorem emit_roundtrip_content_eq (v : YamlValue) {b : Bool} (hg : Grammable v b
     - Step 2: `parseStream_accepts_emit_tokens` (parser accepts scanned tokens)
     - Step 3a: `emit_produces_single_document` (exactly one document)
     - Step 3b: `emit_roundtrip_content_eq` (content fidelity) -/
+@[capstone]
 theorem universal_roundtrip (v : YamlValue) (hg : Grammable v false) :
     ∃ docs, parseYaml (emit v) = .ok docs ∧
             docs.size = 1 ∧

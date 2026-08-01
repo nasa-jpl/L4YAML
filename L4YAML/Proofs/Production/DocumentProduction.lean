@@ -214,6 +214,7 @@ theorem stream_implicit_continue (s s₁ s₂ s₃ : SurfPos)
 --   scanNextToken_stream_step : extends StreamAccum for one token
 --   finalize_stream : StreamAccum at EOF → SLYamlStream
 
+@[capstone]
 theorem scan_strict_proof
     (input : String)
     (tokens : Array (Positioned YamlToken))
@@ -232,6 +233,7 @@ theorem scan_strict_proof
 
     Uses `Composition.parseYamlRaw_ok_decompose` to extract the scan
     step from the pipeline. -/
+@[capstone]
 theorem parse_strict_proof
     (input : String)
     (docs : Array L4YAML.YamlDocument)

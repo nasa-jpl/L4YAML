@@ -1,3 +1,6 @@
+import L4YAML.Init
+import L4YAML.CapstoneAttr
+import L4YAML.Capstones
 import L4YAML.Config.Config
 import L4YAML.Output.Dump
 import L4YAML.Output.Emitter
@@ -123,6 +126,8 @@ A YAML 1.2.2 parser with the goal of verified correctness.
 
 ```lean
 import L4YAML
+import L4YAML.Output.Events
+import L4YAML.Output.Json
 
 open L4YAML
 

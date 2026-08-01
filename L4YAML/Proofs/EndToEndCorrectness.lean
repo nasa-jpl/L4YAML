@@ -149,6 +149,7 @@ holds — i.e., the input decomposes into tokenization, parsing, and composition
 from `Proofs/Parser/IndexedComposition.lean` to extract the intermediate
 indexed token stream and raw documents.
 -/
+@[capstone]
 theorem parse_sound_shallow (input : String) (docs : Array YamlDocument)
     (h : parseYamlIx input = .ok docs) : ValidYamlProp input docs := by
   rw [parseYamlIx_ok_iff] at h
@@ -176,6 +177,7 @@ descends the call tree in lockstep with the proof tree.
 
 See the "Mind the Fibration Gap" section in the Verso verification doc.
 -/
+@[capstone]
 theorem parse_sound_deep (input : String) (docs : Array YamlDocument)
     (h : parseYamlIx input = .ok docs) :
     ∃ (tokens : Indexed.TokenStream input)
@@ -225,6 +227,7 @@ Since `ValidYamlProp` is defined as the existence of intermediate results
 that succeed, the proof simply recomposes those intermediate results via
 `parseYamlIx_pipeline`.
 -/
+@[capstone]
 theorem parse_complete (input : String) (docs : Array YamlDocument)
     (h : ValidYamlProp input docs) : parseYamlIx input = .ok docs := by
   obtain ⟨filtered_tokens, raw_docs, h_scan, h_parse, h_compose⟩ := h
@@ -332,6 +335,7 @@ theorem parseYamlIx_implies_valid_token_stream (input : String)
 If two parses of the same string succeed, they produce the same result.
 (Determinism of parsing)
 -/
+@[capstone]
 theorem parse_deterministic (input : String)
     (docs₁ docs₂ : Array YamlDocument)
     (h₁ : parseYamlIx input = .ok docs₁)
@@ -472,6 +476,7 @@ scanner, `parseStreamIx` output respects the grammar — no `FlowAwarePSVIx` /
 Re-export of `Indexed.Grammable.parseStreamIx_produces_valid_nodes_unconditional`
 into the `EndToEndCorrectness` namespace for doc-verification-bridge visibility.
 -/
+@[capstone]
 theorem parseStream_respects_grammar_unconditional
     {input : String}
     (tokens : Indexed.TokenStream input)

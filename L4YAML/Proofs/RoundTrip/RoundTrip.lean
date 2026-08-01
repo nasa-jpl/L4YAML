@@ -651,6 +651,7 @@ def escapeTag (c : Char) : Option Char :=
 
     This is the foundational building block of the full round-trip proof,
     connecting the emitter's escape logic to the parser's escape resolution. -/
+@[capstone]
 theorem escapeTag_roundtrip (c : Char) (tag : Char) (h : escapeTag c = some tag) :
     escapeChar c = "\\" ++ tag.toString ∧ resolveNamedEscape tag = some c := by
   unfold escapeTag at h

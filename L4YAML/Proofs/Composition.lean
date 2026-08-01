@@ -125,6 +125,7 @@ theorem parseYaml_of_parseYamlRaw_error (input : String) (e : ScanError)
 Full pipeline composition: Scanner.scan → parseStream → compose.
 If scanning and parsing both succeed, `parseYaml` returns composed documents.
 -/
+@[capstone]
 theorem parseYaml_pipeline (input : String)
     (tokens : Array (Positioned YamlToken))
     (docs : Array YamlDocument)

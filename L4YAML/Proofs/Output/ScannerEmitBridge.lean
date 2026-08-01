@@ -380,6 +380,7 @@ This is the conditional form of the target `canonical_roundtrip` theorem.
 The condition "`parseYamlRawIx` succeeds" is verified by `#guard` on
 concrete instances in §4.
 -/
+@[capstone]
 theorem canonical_roundtrip_conditional (n : ValidNode)
     (docs : Array YamlDocument)
     (h_parse : parseYamlRawIx (emit (toYamlValue n)) = .ok docs)

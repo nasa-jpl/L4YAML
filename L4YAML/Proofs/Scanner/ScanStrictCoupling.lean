@@ -470,6 +470,7 @@ theorem scanLoop_full_consumption (sc : ScannerState) (sp : SurfPos) (fuel : Nat
 -- Full consumption: when `scan` succeeds, all input characters are consumed.
 -- Proof: establish ScannerSurfCorr for the initial state (mk' + emit + BOM),
 -- then apply scanLoop_full_consumption.
+@[capstone]
 theorem scan_full_consumption (input : String)
     (tokens : Array (Positioned YamlToken))
     (h : scan input = .ok tokens) :

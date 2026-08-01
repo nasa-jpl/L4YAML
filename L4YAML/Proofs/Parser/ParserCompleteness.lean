@@ -174,6 +174,7 @@ The `inFlow` parameter and `Grammable` hypothesis are required because
 context-aware `Grammable` cannot be proven universally for all `ValidNode`
 values — only for those that are flow-context-consistent.
 -/
+@[capstone]
 theorem grammar_value_roundtrip (n : ValidNode) (inFlow : Bool)
     (hg : Grammable (toYamlValue n) inFlow) :
     ∃ n' : ValidNode,
@@ -220,6 +221,7 @@ there exists a `ValidNode` witness whose stripped form matches.
 This is the core bridge: the soundness direction (P10.8d) always finds
 a witness `n` from a grammable value `v`.
 -/
+@[capstone]
 theorem soundness_completeness_compose
     (v : YamlValue) (hg : Grammable v false) :
     ∃ n : ValidNode,
