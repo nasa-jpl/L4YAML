@@ -3,7 +3,7 @@ import L4YAML.Output.Events
 /-!
 # Reflection — INHABITATION / BOUNDARY probe for the escaped-trailing-tab fix (matrix defect B2)
 
-Matrix defect **B2** (`YAML_MATRIX_100PCT_ASSESSMENT.md`, DE56/00–03): a double-quoted scalar whose
+Matrix defect **B2** (100%-matrix campaign, 2026-07; DE56/00–03): a double-quoted scalar whose
 line ends in an **escaped** white character (`"…\t"` before a fold) lost that character, because the
 line-fold trim (`trimTrailingWS`) stripped the decoded tab as if it were layout `s-white`.  By fold
 time the escaped/literal distinction is gone — both are a bare `'\t'` in the accumulated content.

@@ -261,6 +261,23 @@ inductive DuplicateKeyPolicy where
 `compose`, and `construct`. The default value (`{}`) gives
 spec-strict behaviour (error on cycle, error on duplicate).
 
+Why a policy enum at all (folded from the retired `DUPLICATE_KEYS.md`
+design doc, 2026-08-01): YAML 1.2.2 §3.2.1.3 makes mapping-key
+**equality schema-dependent** — under the core schema `0o13` and
+`0xB` are the same key — so no single hard-coded duplicate behaviour
+can be spec-complete; the policy must be a caller decision. The open
+merge-key design consuming this is `YAML_MERGE.md`.
+
+Layer behaviour as shipped (the still-accurate "current state" from
+that doc): the scanner and parser keep **all** key/value pairs in
+document order; duplicate handling happens at lookup/conversion time,
+and the bindings disagree — Lean `findField` and the C
+`l4yaml_value_lookup` are **first-wins**, while Python `as_dict()`
+is **last-wins** (Python-ecosystem convention). A cross-binding
+consumer that round-trips through both sees different values for a
+duplicated key; unifying them behind `DuplicateKeyPolicy` is part of
+the merge-key work.
+
 </details>
 
 </details>
@@ -11959,8 +11976,9 @@ that re-scope the original 6d.1e.11 plan into two sub-sessions
    in `Scanner/IndexedScanner.lean` was missing the legacy's
    `s_after_fold.peek? = some '#' → terminate` arm — a provable
    `noSpaceHashProp` violation when a continuation line starts
-   with `#` after a single-line fold. Documented in
-   `docs.internal/BRIDGING.md:1500-1550` as "highest-risk branch
+   with `#` after a single-line fold. Documented in the legacy
+   proof log (BRIDGING.md §B3.3, retired 2026-08-01; its risk
+   callout is quoted in Reflection 80) as "highest-risk branch
    requiring scanner attention" but ignored in the Step 4b port.
    Fix landed: mirror the legacy's `match cAfterFold.peek?` arm
    in both `_linebreak_flow` and `_linebreak_block_some` branches.
@@ -21817,7 +21835,7 @@ The trick is `simp only [..., h_val_depth, h_orig_depth]` — folding both match
 
 **Why**: Step 6d.1e.11 attempted to port the legacy B3.3 `collectPlainScalarLoop_preserves_contentInv` proof to the indexed setting. The port assumes `noSpaceHashProp` is preserved through the line-break recursion via the `BoundaryHash` precondition (legacy: "after fold, the cursor doesn't peek `#`" — discharged via the explicit `some '#' => terminate` arm in `Scanner/Scalar.lean:495`). The indexed loop had lost this arm during the original Step 4b port (cf. `Scanner/IndexedScanner.lean` history) — the recursion just continued unconditionally after `handleBlockLineBreakIx` returned. Tracing the proof obligation revealed that without the check, the loop's output for `"foo\n# bar"` would be `"foo # bar"` (a literal space-hash sequence in content), violating the `ScalarScannable` contract.
 
-`docs.internal/BRIDGING.md:1500-1550` explicitly flags this case as "highest-risk branch" requiring scanner attention — the legacy fix (in `Scanner/Scalar.lean:495`) is documented as "exactly what makes the proof work". The indexed port had ignored this warning.
+The legacy proof log (BRIDGING.md §B3.3, retired 2026-08-01) explicitly flagged this case as the "highest-risk branch" requiring scanner attention. Its pre-proof risk flag, quoted for the record: *"After folding, `content' = content ++ " "` (single fold) … The `' '` from single-fold could create a `' #'` hazard if the continuation starts with `#`. … The latter case produces `content ++ " #"` — which would violate `noSpaceHash`. This may require a scanner fix or a more refined analysis… Investigation needed during implementation."* And its resolution: *"the B3.1 scanner fix — adding `match s'.peek? with | some '#' => terminate | _ => recurse` after `_handleBlockLineBreak` — is exactly what makes the proof work."* The legacy fix lives at the `some '#' => terminate` arms in `Scanner/Scalar.lean`. The indexed port had ignored this warning.
 
 **How to apply**:
 
@@ -21825,11 +21843,11 @@ The trick is `simp only [..., h_val_depth, h_orig_depth]` — folding both match
 
 2. **Layer F.4 branch lemmas split**: the `_linebreak_flow` and `_linebreak_block_some` lemmas in `Proofs/Scanner/IndexedScalar.lean` need to split into `_continue` and `_hash` variants reflecting the new scanner structure. `_continue` carries the precondition `cAfterFold.peek? ≠ some '#'`; `_hash` is the new terminator arm.
 
-3. **Cross-reference Step 4b**: any future "port the indexed scanner from legacy" steps should explicitly audit the legacy's case-split structure — missing arms become provable correctness bugs once the proof chain catches up. The BRIDGING.md callouts about "investigation needed" are best resolved during the initial port, not deferred.
+3. **Cross-reference Step 4b**: any future "port the indexed scanner from legacy" steps should explicitly audit the legacy's case-split structure — missing arms become provable correctness bugs once the proof chain catches up. The legacy log's "investigation needed" callouts are best resolved during the initial port, not deferred.
 
 4. **LOC budget for content-correctness ports**: Reflection 72's ~300 LOC estimate for 6d.1e.11 was a 4× underestimate (actual: ~1200 LOC for full discharge — ~280 LOC infrastructure + ~580 LOC remaining proof + ~200 LOC dispatcher discharge). When the legacy spans `ScannerPlainContent.lean` (~530 LOC) + `ScannerPlainScalar.lean` (~460 LOC) + `dispatchContent` (~200 LOC), the indexed port is comparable in size minus the `ScannerState` → `IxCursor` shape simplification (~20%). Future scopes for cross-substrate content-correctness ports should budget ~80% of the legacy LOC, not "~70 LOC for the culminating theorem".
 
-**Related** to Reflection 72 (the original §11h discharge plan that underestimated the helper-port cost); the BRIDGING.md callout at L1500-1550 (which explicitly flagged this branch as risk during the legacy proof work). The scanner fix is documented inline in `Scanner/IndexedScanner.lean::collectPlainScalarLoopIx`'s docstring.
+**Related** to Reflection 72 (the original §11h discharge plan that underestimated the helper-port cost); the legacy proof log's risk callout quoted above (which flagged this branch during the legacy proof work). The scanner fix is documented inline in `Scanner/IndexedScanner.lean::collectPlainScalarLoopIx`'s docstring.
 
 
 ### Reflection 81 — Status (this session):

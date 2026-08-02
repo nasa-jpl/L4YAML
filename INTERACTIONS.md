@@ -2,8 +2,7 @@
 
 ## Motivation
 
-During the proof of `parseSinglePairMapping_wb` (see docs.internal/BRIDGING.md,
-`parseSinglePairMapping_wb` Reflections, 2026-03-15), we identified two
+During the proof of `parseSinglePairMapping_wb` (2026-03-15), we identified two
 code patterns that cause disproportionate proof difficulty:
 
 1. **Struct `with`-updates before lemmatized method calls.** When a function
@@ -488,11 +487,30 @@ def checkParametricClosing (decl : ConstantInfo) : MetaM (Array Warning) := do
   architecture, but the detection algorithms generalize
 
 **Out of scope (initially):**
-- Detecting `try`-based goal corruption (Lesson 6 in docs.internal/BRIDGING.md) —
-  this is a tactic-composition problem requiring analysis of tactic
-  scripts, not elaborated `Expr` trees
+- Detecting `try`-based goal corruption — the legacy proof log's
+  Lesson 6, preserved here now that the log is retired (2026-08-01):
+  `try (exfalso; …; simp_all)` corrupts goals *silently*, because
+  Lean 4's `try` does **not** roll back when the inner tactics
+  succeed without closing the goal — `exfalso` turns a provable goal
+  into `⊢ False`, `simp_all` fails to close it, and `try` keeps the
+  damage. The fix is `done` inside the block
+  (`try (exfalso; …; simp_all; done)`) so failure-to-close throws
+  and `try` rolls back; this recovered 13 corrupted `⊢ False` goals.
+  Detecting it statically is a tactic-composition problem requiring
+  analysis of tactic scripts, not elaborated `Expr` trees
 - General "proof difficulty prediction" — the tool only detects known
-  interaction patterns, not novel ones
+  interaction patterns, not novel ones. One empirical rule from the
+  2026-07 100%-matrix campaign is worth recording: the predictor of
+  whether a code fix breaks proofs is **not** "content change vs
+  structural change of the spec" but **whether the fix changes the
+  definitional shape that proofs `unfold` and pattern-match on**.
+  Swapping in a different head symbol (e.g. `skipSpaces` →
+  `skipWhitespace`) broke ~40 structural lemmas mechanically;
+  content-only fixes behind an unchanged shape broke nothing in
+  `L4YAML/Proofs/`. Two corollaries: executable `#guard` files pin
+  *exact output* and always need updating when output legitimately
+  changes; and emitter-only fixes cannot break `L4YAML/Proofs/` at
+  all (the event emitter is outside the proof perimeter)
 
 ### Implementation Plan
 
@@ -513,8 +531,9 @@ def checkParametricClosing (decl : ConstantInfo) : MetaM (Array Warning) := do
 
 ### Expected Results on Current Codebase
 
-Running the analysis on the 7 G5c-modified functions
-(docs.internal/BRIDGING.md §G5c) — performed manually, not by the tool:
+Running the analysis on the 7 functions modified by the 2026-03
+comment-preservation campaign's `currentPath` save/restore edits —
+performed manually, not by the tool:
 
 | Function | P1 (struct-with) | P2 (flow return) | P3 (WHNF hazard) | P4 (loop explosion) | P5 (impasse) | P6 (parametric) |
 |----------|-----------------|-----------------|------------------|--------------------|--------------| 

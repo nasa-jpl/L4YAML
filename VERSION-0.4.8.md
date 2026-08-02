@@ -23,7 +23,7 @@ Both directions:
 | 6. Assemble `parse_iff_grammar` biconditional | ❌ open | depends on Step 5 |
 
 **Blocker cleared (2026-07-04):** v0.4.7 is complete — `universal_roundtrip` is
-fully proven ([VERSION-0.4.7.md](VERSION-0.4.7.md); proof-status SSOT:
+fully proven (proof-status SSOT:
 [Blueprint/04-capstones.md](Blueprint/04-capstones.md)). This plan is now the
 only open proof frontier (capstone slot 7.7, `parse_iff_grammar`).
 

@@ -4,7 +4,7 @@ import L4YAML.Output.Events
 /-!
 # Reflection — INHABITATION / BOUNDARY probe for order-aware alias resolution (matrix defect J2)
 
-Matrix defect **J2** (`YAML_MATRIX_100PCT_ASSESSMENT.md`, 3GZX): a document that REBINDS an anchor
+Matrix defect **J2** (100%-matrix campaign, 2026-07; 3GZX): a document that REBINDS an anchor
 name must resolve each alias against the definition in scope at the alias's own position
 (YAML 1.2.2 §7.1: an alias refers to the *most recent preceding* node with that anchor).  A global
 table cannot serve two aliases that need different values for the same name: first-wins broke

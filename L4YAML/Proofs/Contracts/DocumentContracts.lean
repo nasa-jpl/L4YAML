@@ -8,8 +8,9 @@ import L4YAML.Spec.Types
 /-!
 # Document Parser Assume/Guarantee Contracts (Layer 1f)
 
-Formal predicates for the three contracts identified in ANALYSIS.md §2.H
-for the document parser, plus structural properties of `DocumentResult`.
+Formal predicates for the three document-parser contracts (D1–D3,
+identified in the 2026-02 cross-project analysis of the pre-rewrite
+parser), plus structural properties of `DocumentResult`.
 
 ## Contracts
 

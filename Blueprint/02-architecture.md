@@ -114,6 +114,43 @@ invalidate previously-recorded positions — a property essential to
 the monotonic-progress proof. See `ScannerProgress.lean`,
 `ScannerSimpleKey.lean`.
 
+The scanner has exactly **four token-writing primitives** — `emit`,
+`emitAt`, `saveSimpleKey`, `setIfInBounds` — and every offset they
+write is either the scanner's current offset or a previously saved
+`startPos.offset ≤ offset`. That taxonomy is the fact behind the
+scan-invariant preservation lemma
+(`scanNextToken_preserves_ScanInv`,
+`Proofs/Scanner/ScannerCorrectness.lean`).
+
+## Scanner-level validation
+
+Spec-mandated well-formedness that *could* be deferred to later
+layers is instead enforced **at the scanner**, as `Except` errors
+(`emptyAnchorName`, `emptyVerbatimTagURI`,
+`unterminatedVerbatimTag`, …). The reason is proof economy, learned
+during the v0.4.6 strictness campaign: with the scanner rejecting
+degenerate inputs, downstream proofs discharge those branches by
+contradiction with the scanner's error, instead of retroactively
+proving non-emptiness or well-formedness of tokens that were already
+emitted.
+
+## Error model
+
+Three error types, placed by dependency direction:
+
+- `ScanError` (`Token/Token.lean`) — scanner/parser layer.
+- `SchemaError` (`Schema/Schema.lean`) — the typed-conversion layer.
+- `YamlError` (`Schema/Schema.lean`) — the unified top-level error,
+  with `Coe ScanError YamlError` and `Coe SchemaError YamlError`
+  instances so each layer keeps its own type internally.
+
+`SchemaError`/`YamlError` live in the schema layer (not next to
+`ScanError`) so the scanner layer never depends on schema types.
+The public `parseAs` (`Schema/Api.lean`) returns
+`Except YamlError α` and today routes through the indexed parser
+while keeping the same error split. Error-coverage lemmas live in
+`Proofs/Errors/ErrorProperties.lean`.
+
 ## Mutual recursion in the parser
 
 The 18 mutually recursive parser functions:

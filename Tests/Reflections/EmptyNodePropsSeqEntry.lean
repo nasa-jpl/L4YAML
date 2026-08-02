@@ -3,12 +3,12 @@ import L4YAML.Output.Events
 /-!
 # Reflection — INHABITATION / BOUNDARY probe for the empty-node seq-entry fix (matrix defect C2)
 
-Matrix defect **C2** (`YAML_MATRIX_100PCT_ASSESSMENT.md`, FH7J / PW8X): a node carrying only
+Matrix defect **C2** (100%-matrix campaign, 2026-07; FH7J / PW8X): a node carrying only
 properties (`- !!str`, `- &a`) that is followed by a *sibling* block entry at the same indent was
 parsed as an empty **sequence** that swallowed the siblings, instead of an empty **scalar** whose
 `blockEntry` belongs to the parent sequence.
 
-The obvious fix the assessment proposed — "if properties were present, return the empty scalar" —
+The obvious fix first proposed during that campaign — "if properties were present, return the empty scalar" —
 is **wrong**: it regresses `57H4` (Spec Example 8.22, *Block Collection Nodes*) and `SKE5` (*Anchor
 before a zero-indented sequence*), where a node's properties legitimately tag/anchor a same-indent
 block sequence that IS its content. Those two inputs have properties too, so `hadProps` cannot tell

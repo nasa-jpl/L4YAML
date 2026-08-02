@@ -84,7 +84,13 @@ partial def percentDecodeBytes
     resolution): `!e!tag%21` under `%TAG !e! tag:example.com,2000:app/` resolves
     to `tag:example.com,2000:app/tag%21`, whose `%21` decodes to `!`.  Verbatim
     `!<uri>` tags are NOT decoded (they are taken literally), so this is applied
-    only to shorthand-resolved tags. -/
+    only to shorthand-resolved tags.
+
+    Known limitation: the *whole* resolved URI is decoded, because the
+    prefix/suffix boundary is lost after `resolveTag`.  A `%TAG` prefix that
+    legitimately contains `%HH` itself (§6.8.2.2 allows this) would be
+    over-decoded; if that case ever matters, the decode must move into
+    `resolveTag`, where the suffix is still separate. -/
 def percentDecodeTag (s : String) : String :=
   match String.fromUTF8? (percentDecodeBytes s.toUTF8 0 ByteArray.empty) with
   | some out => out

@@ -1,8 +1,12 @@
 # YAML Value Merge: Algebraic Semantics
 
 > **Audit note (2026-07-31):** This design remains a live candidate plan, but
-> its stated foundation has shifted. The `KeyEqPred` typeclass from
-> [DUPLICATE_KEYS.md](DUPLICATE_KEYS.md) was **never built** — key equality in
+> its stated foundation has shifted. The `KeyEqPred` typeclass from the
+> retired `DUPLICATE_KEYS.md` design (deleted 2026-08-01; its surviving
+> rationale — §3.2.1.3 schema-dependent key equality and the per-binding
+> first-wins/last-wins table — is folded into
+> [Blueprint/08 §LoadConfig](Blueprint/08-initiative-4-intrinsic-foundations.md))
+> was **never built** — key equality in
 > the library is the proved `LawfulBEq YamlValue` instance
 > (`L4YAML/Algebra/LawfulBEq.lean:266`). Any implementation should be re-based
 > on `LawfulBEq`: `==` is already a lawful (decidable) equivalence, which
@@ -128,8 +132,9 @@ where
 
 ### Relationship to `KeyEqPred` (Duplicate Keys)
 
-The merge operation reuses the `KeyEqPred` typeclass from
-[DUPLICATE_KEYS.md](DUPLICATE_KEYS.md).  The same key equality predicate
+The merge operation was drafted against the `KeyEqPred` typeclass of the
+retired `DUPLICATE_KEYS.md` design (never built — re-base on `LawfulBEq`,
+per the audit note above).  The same key equality predicate
 determines both:
 
 - When two keys in a single mapping are "duplicates"

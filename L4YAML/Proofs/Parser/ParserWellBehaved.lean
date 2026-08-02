@@ -1578,8 +1578,7 @@ set_option maxHeartbeats 800000 in
     Returns `.mapping .flow #[(key, val)]` — both key and val are Scannable,
     flowNesting preserved, tokens preserved.
     Requires `flowNesting > 0` because `.mapping .flow` forces children to
-    `Scannable _ true` regardless of the outer context (see BRIDGING.md,
-    parseSinglePairMapping_wb Reflections). -/
+    `Scannable _ true` regardless of the outer context. -/
 lemma parseSinglePairMapping_wb (tokens : Array (Positioned YamlToken))
     (n fuel : Nat) (h_fuel : fuel ≤ n)
     (_h_fpsv : FlowAwarePSV tokens) (h_ih : ParseNodeWB tokens n)

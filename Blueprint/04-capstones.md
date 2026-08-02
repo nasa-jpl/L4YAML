@@ -77,7 +77,8 @@ now-retired `05-current-state.md` once carried, which described
   dead code were **deleted** after a `unified-dep-table
   --external-only` run proved they had zero out-of-namespace callers
   — validating the observation that motivated this blueprint (see
-  [`README.md`](README.md), [`VERSION-0.4.7.md`](../VERSION-0.4.7.md)).
+  [`README.md`](README.md); the full audit trail is in the retired
+  `VERSION-0.4.7.md` campaign record, recoverable from git history).
 - `StreamAccum.lean`'s "28 sorries" were **docstring artifacts**
   (narrative mentions of `sorry'd`), not tactics; the file builds
   clean.
@@ -651,14 +652,21 @@ support the theorems above and should be deletable if unused.
 fuel-monotonicity machinery and its ~24 sub-theorems
 (`_mono_step`, `_mono_zero`, `Parse*_succ`), together with
 `parseNode_fuel_mono_succ`, `parseSinglePairMapping_fuel_mono_succ`,
-the `parseEntry_in_flowMap` cluster, and `flow_parser_ok_of_structure`,
-have been **deleted** (~3,200 LoC, all sorries removed) — a
-`unified-dep-table --external-only` run proved zero out-of-namespace
-callers. `grep -rn parser_fuel_mono_succ L4YAML/Proofs` now returns
-nothing. This closes the deletion backlog that motivated the
-blueprint and validates its founding observation: theorems were being
-accumulated without a top-down anchor. See
-[`VERSION-0.4.7.md`](../VERSION-0.4.7.md).
+the `parseEntry_in_flowMap` cluster, and the original sorry'd
+`flow_parser_ok_of_structure`, have been **deleted** (~3,200 LoC,
+all sorries removed) — a `unified-dep-table --external-only` run
+proved zero out-of-namespace callers.
+`grep -rn parser_fuel_mono_succ L4YAML/Proofs` now returns nothing.
+The flow-acceptance *results* were later re-landed, proven on a
+sounder design: `flow_parser_ok_of_structure` at
+`Proofs/Parser/FlowParserAcceptance.lean:883`, with
+`ParseNodeFlowSeqOk` (`Proofs/Parser/ParserWellBehaved.lean:4180`)
+and `parseFlowSequenceLoop_emitter_ok` (ibid.:4239), consumed by
+`EmitterScannability.lean`. This closes the deletion backlog that
+motivated the blueprint and validates its founding observation:
+theorems were being accumulated without a top-down anchor. (Full
+audit trail: the retired `VERSION-0.4.7.md` campaign record, in git
+history.)
 
 Still-standing infrastructure, kept because it genuinely contributes:
 

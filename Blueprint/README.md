@@ -80,14 +80,16 @@ markdown is the medium.
 
 ## Relationship to existing plan docs
 
-[`../PARSER_WELLBEHAVED_PLAN.md`](../PARSER_WELLBEHAVED_PLAN.md),
-[`../EMITTER_SCANNABILITY_PLAN.md`](../EMITTER_SCANNABILITY_PLAN.md),
+[`../VERSION-0.4.8.md`](../VERSION-0.4.8.md),
+[`../YAML_MERGE.md`](../YAML_MERGE.md),
 and similar plan documents at the repository root are **tactical**
 plans tied to specific proof files. The blueprint is **strategic**:
 it says *which properties matter* and *why*, from which the tactical
 plans derive. When a tactical plan's premise no longer aligns with
-the blueprint (as happened with `parser_fuel_mono_succ`), the
-blueprint wins.
+the blueprint (as happened with `parser_fuel_mono_succ` in the
+since-retired `PARSER_WELLBEHAVED_PLAN.md`), the blueprint wins.
+Closed plans are deleted once their surviving content is folded into
+the blueprint (06-discipline Rule 5; history stays in git).
 
 ## Contributor workflow
 
@@ -412,7 +414,7 @@ Moved three error-domain proofs into
 - **Blast radius**: 3 renames + 3 touched importers
   (`L4YAML.lean`, `Tests/Guards/Proofs/EscapeResolution.lean`,
   `Tests/Guards/Proofs/FoldNewlines.lean`) + one narrative
-  reference in `EXCEPTIONS.md`.
+  reference in `EXCEPTIONS.md` (doc since retired, 2026-08-01).
 
 </details>
 
@@ -440,7 +442,8 @@ Moved four schema-domain proofs into
   `Tests/Guards/Proofs/SchemaDump.lean`,
   `Tests/Guards/Proofs/SchemaResolution.lean`) + narrative
   references in `README.md`, `Blueprint/01-terminology.md`,
-  `Blueprint/04-capstones.md`, and `EXCEPTIONS.md`.
+  `Blueprint/04-capstones.md`, and `EXCEPTIONS.md` (doc since
+  retired, 2026-08-01).
   
 </details>
 

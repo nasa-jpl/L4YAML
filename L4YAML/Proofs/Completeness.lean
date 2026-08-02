@@ -448,25 +448,15 @@ PlainScalarsValid       Grammable (unconditional)
 | 3 | Grammability discharge | `parseYaml_produces_valid_nodes` | ParserGrammable |
 | 4 | End-to-end composition | `parse_sound_shallow` + `parse_complete` | EndToEndCorrectness |
 
-### Open Obligation
+### Obligation 5 — Universal round-trip (closed 2026-07-04)
 
-| # | Obligation | Status | Module |
+| # | Obligation | Resolution | Module |
 |---|---|---|---|
-| 5 | Universal round-trip | Planned for v0.4.7 — see `VERSION-0.4.7.md` | RoundTrip, ScannerEmitBridge |
+| 5 | Universal round-trip | `universal_roundtrip` (`∀ v, Grammable v false → …contentEq…`) | EmitterScannability |
 
-The universal round-trip theorem (`∀ v, Grammable v false → ...contentEq...`)
-requires proving that `emit` produces scanner-accepted output. Current evidence:
-- 6 concrete `#guard` checks (RoundTrip.lean)
-- Per-character escape invertibility (`escapeTag_roundtrip`)
-- `contentEq` equivalence relation (refl/symm/trans)
-- `emit_stripAnnotations` and `contentEq_implies_emit_eq` (ScannerEmitBridge)
-
-**Approach for Phase E**: Prove `emit_produces_valid_yaml`:
-```
-∀ v, Grammable v false → ∃ tokens,
-  Scanner.scanFiltered (emit v) = .ok tokens
-```
-Then compose with `parseStream` totality and `contentEq_refl` to close.
+Closed by the v0.4.7 campaign: emitter output proven scanner-accepted
+and composed with `parseStream` totality. Proof-status SSOT:
+`Blueprint/04-capstones.md` (row 6.1).
 -/
 
 end L4YAML.Proofs.Completeness

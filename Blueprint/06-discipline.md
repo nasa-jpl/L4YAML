@@ -93,10 +93,11 @@ environment.) Consequences:
   [`04-capstones.md`](04-capstones.md); it must be discharged before
   merge.
 - A `sorry` in a **helper lemma** (not a capstone) is not allowed.
-  If the helper proof is hard, the capstone's plan doc (e.g.
-  [`PARSER_WELLBEHAVED_PLAN.md`](../PARSER_WELLBEHAVED_PLAN.md))
-  should list the helper as a dependency, and the helper should be
-  promoted to capstone-track status before being `sorry`'d.
+  If the helper proof is hard, the capstone's plan doc (the open
+  ones today: [`VERSION-0.4.8.md`](../VERSION-0.4.8.md),
+  [`YAML_MERGE.md`](../YAML_MERGE.md)) should list the helper as a
+  dependency, and the helper should be promoted to capstone-track
+  status before being `sorry`'d.
 - A `sorry` in any declaration that has **0 external callers** is an
   immediate deletion candidate, not a proof TODO.
 
@@ -151,19 +152,22 @@ vs. ~100 actual). Others probably exist.
 
 ## Rule 5 — When a plan conflicts with the blueprint, the blueprint wins
 
-The repository has several plan docs at the root
-(`PARSER_WELLBEHAVED_PLAN.md`, `EMITTER_SCANNABILITY_PLAN.md`,
-`SPEC-GAP-ANALYSIS.md`, `DUPLICATE_KEYS.md`, etc.). These are
-*tactical* — tied to concrete files.
+The repository keeps tactical plan and rationale docs at the root
+(today: `VERSION-0.4.8.md`, `YAML_MERGE.md`, `SPEC-GAP-ANALYSIS.md`;
+see [`DOCS.md`](../DOCS.md) for the index). These are *tactical* —
+tied to concrete files. Closed campaign logs are **deleted** once
+their surviving content is folded into this Blueprint (history stays
+in git; the 2026-08-01 purge is the precedent).
 
 If a plan calls for a theorem that the blueprint says is
 unreachable from a capstone (Rule 1), **stop the plan**, not the
 blueprint. Update the plan document with an audit-note ending; if
 the blueprint is wrong, argue to change the blueprint first.
 
-Reason: `PARSER_WELLBEHAVED_PLAN.md` Step 1 called for 24 proofs, 6
-of which are unsound. The plan was authoritative at the time; had
-the blueprint existed and demanded justification-by-capstone, the
+Reason: the retired `PARSER_WELLBEHAVED_PLAN.md` (deleted
+2026-08-01, in git history) Step 1 called for 24 proofs, 6 of which
+were unsound. The plan was authoritative at the time; had the
+blueprint existed and demanded justification-by-capstone, the
 unsoundness would have surfaced at plan time instead of mid-proof.
 
 ## Rule 6 — Verify before recommending from memory
@@ -238,7 +242,22 @@ Contributor self-check:
 When deleting a theorem (per the "Decomposition: what is *not* a
 capstone" list in [`04-capstones.md`](04-capstones.md)):
 
-1. Grep confirms **zero external callers**.
+1. Grep confirms **zero external callers**. For a whole subtree, the
+   stronger machine check is the `unified-dep-table` sweep that
+   justified the `parser_fuel_mono_succ` deletion — reproducible as:
+
+   ```sh
+   # From the repo root, with DocVerificationBridge built on a
+   # matching toolchain:
+   lake env /path/to/DocVerificationBridge/.lake/build/bin/unified-dep-table \
+     fresh --namespace L4YAML.Proofs.ParserWellBehaved \
+           --external-only --proof-dep-workers 4 \
+           --output dep-parser-wellbehaved.md \
+           L4YAML
+   ```
+
+   (`--external-only` lists out-of-namespace callers; an empty table
+   is the deletion licence.)
 2. PR description states the removal and links to the blueprint
    rationale ("per Blueprint/04-capstones.md, Decomposition: what
    is *not* a capstone").

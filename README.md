@@ -60,7 +60,7 @@ Every function in the core library is a total `def` — **no `partial def`, no
 - **Acceptance strictness** — accepted inputs lie in the formalized YAML
   surface language `InYamlLanguage`
   ([Proofs/Scanner/ScannerCorrectness.lean](L4YAML/Proofs/Scanner/ScannerCorrectness.lean);
-  design note in [docs.internal/README-historical.md](docs.internal/README-historical.md)).
+  design note in [STRICTNESS.md](STRICTNESS.md)).
 - **Schema resolution** — the Core Schema resolver respects the §10.3
   precedence (null → bool → int → float → str)
   ([Proofs/Schema/SchemaResolution.lean](L4YAML/Proofs/Schema/SchemaResolution.lean),
@@ -72,8 +72,9 @@ Every function in the core library is a total `def` — **no `partial def`, no
 **Universal round-trip is complete.** The output-side converse now holds and is
 `sorry`-free: for every grammable `YamlValue v`, re-parsing `emit v` returns a
 single document whose value is content-equivalent to `v`
-([`universal_roundtrip`](L4YAML/Proofs/Output/EmitterScannability.lean); design
-note in [VERSION-0.4.7.md](VERSION-0.4.7.md)). It composes scanner acceptance,
+([`universal_roundtrip`](L4YAML/Proofs/Output/EmitterScannability.lean);
+proof-status SSOT: [Blueprint/04-capstones.md](Blueprint/04-capstones.md),
+row 6.1). It composes scanner acceptance,
 parser acceptance, single-document production, and per-node content fidelity —
 closing the round-trip cluster under [Proofs/Output/](L4YAML/Proofs/Output/).
 
@@ -528,7 +529,9 @@ docs/                Generated documentation (Verso, PDF, coverage reports)
 - [C_PYTHON_RUST_APIs.md](C_PYTHON_RUST_APIs.md) — FFI design, memory model,
   flight-software integration
 - [docs/](docs/) — generated API documentation and coverage reports
-- [docs.internal/README-historical.md](docs.internal/README-historical.md) — full development log, phase-by-phase proof history, and design retrospectives
+- [DOCS.md](DOCS.md) — index of every kept document with its role and
+  status (development-history archive deleted 2026-08-01; recoverable
+  from git history)
 
 ## Versioning
 
@@ -652,8 +655,9 @@ lemmas can be stated from `Proofs/`.
 **Port the 100%-matrix fixes to the indexed twin.** The indexed pipeline
 (`L4YAML/Parser/TokenParserIx.lean`, `L4YAML/Scanner/IndexedScanner.lean`) is
 wired into the library build, but it still models the pre-campaign runtime
-behavior for four fixes from the 100% matrix campaign
-([YAML_MATRIX_100PCT_ASSESSMENT.md](YAML_MATRIX_100PCT_ASSESSMENT.md)); each
+behavior for four fixes from the 2026-07 100%-matrix campaign (the
+campaign log is retired; the C2/B2 discriminator rationale survives in the
+[Tests/Reflections/](Tests/Reflections/) probe docstrings); each
 port must also re-prove the corresponding `Indexed*` lemmas:
 
 - **C1** — the `some .documentEnd` suffix arm of the runtime

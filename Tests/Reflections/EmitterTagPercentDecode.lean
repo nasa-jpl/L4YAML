@@ -3,7 +3,7 @@ import L4YAML.Output.Events
 /-!
 # Reflection — INHABITATION / BIRTH probe for the tag percent-decode fix (matrix defect D, 6CK3)
 
-Matrix defect **D** (`YAML_MATRIX_100PCT_ASSESSMENT.md`): the event emitter rendered a
+Matrix defect **D** (100%-matrix campaign, 2026-07): the event emitter rendered a
 resolved tag suffix's percent-escape verbatim — `!e!tag%21` under
 `%TAG !e! tag:example.com,2000:app/` resolved to `tag:example.com,2000:app/tag%21` and was
 emitted with the literal `%21` instead of the decoded `!`. The fix adds

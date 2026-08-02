@@ -5,8 +5,7 @@ One line per kept document, so the corpus has a navigable map
 each entry names its role; status claims live in the SSOT it points at).
 
 Status tags: **[LIVE]** governs current work · **[REF]** maintained
-reference · **[PLAN]** open plan · **[CLOSED]** finished-campaign
-record · **[HIST]** archived history (`docs.internal/`).
+reference · **[PLAN]** open plan.
 
 ## Front door
 
@@ -14,7 +13,7 @@ record · **[HIST]** archived history (`docs.internal/`).
 - [SUMMARY.md](SUMMARY.md) [REF] — JPL-facing pitch narrative
 - [Blueprint/](Blueprint/README.md) [LIVE] — methodology + strategy; start at Blueprint/README.md
   (01 terminology · 02 architecture · 03 code map · **04 capstones = proof-status SSOT** ·
-  06 discipline rulebook · 07/08 initiative records [CLOSED])
+  06 discipline rulebook · 07/08 initiative records, closed)
 - [DOCS.md](DOCS.md) — this index
 
 ## Open issues & plans
@@ -31,48 +30,36 @@ record · **[HIST]** archived history (`docs.internal/`).
 - [LIMITS.md](LIMITS.md) [REF] — DoS threat model, `ParserLimits` presets, tag security
 - [C_PYTHON_RUST_APIs.md](C_PYTHON_RUST_APIs.md) [REF] — FFI design + v0.5.0 completion
   record, fixed-pool memory
-- [EXCEPTIONS.md](EXCEPTIONS.md) [CLOSED] — error-hierarchy design + retrospective
 - [L4YAML/YAML_PRODUCTIONS.md](L4YAML/YAML_PRODUCTIONS.md) [REF] — production cross-reference
   (machine-checked coverage: `Tests/ProductionCoverage.lean`)
 - [STRICTNESS.md](STRICTNESS.md) [REF] — Surface layer / `SurfPos` design;
   `parse_strict` & `scan_strict` (proven)
-- [SPEC-GAP-ANALYSIS.md](SPEC-GAP-ANALYSIS.md) [CLOSED] — anchor/alias gap rationale
-- [DUPLICATE_KEYS.md](DUPLICATE_KEYS.md) [CLOSED] — superseded design; landed form =
-  `DuplicateKeyPolicy`/`LoadConfig`
+- [SPEC-GAP-ANALYSIS.md](SPEC-GAP-ANALYSIS.md) [REF] — anchor/alias pipeline design
+  rationale: why `addAnchor` runs `adaptForFlowContext`, the shape of the
+  `WellFormedAnchors` capstone, and the precise scanner-level §7.1 scoping fact
+- [YAML_MATRIX_COMPARISON.md](YAML_MATRIX_COMPARISON.md) [REF] — 20-processor comparison;
+  **score-provenance SSOT** for the README/SUMMARY matrix claims (builds,
+  denominators, comparison-strictness caveats, reproduction commands)
 
 ## Methodology essays
 
-- [MISMATCH.md](MISMATCH.md) [CLOSED] — code/proof architecture-mismatch essay
-- [INTERACTIONS.md](INTERACTIONS.md) [REF] — six proof-breaking code patterns +
-  guard-refactoring log
+- [INTERACTIONS.md](INTERACTIONS.md) [REF] — six proof-breaking code patterns,
+  the proof-breakage predictor, `try`-goal-corruption lesson, guard-refactoring log
 - [ADVERSARIAL_INSTANTIATION.md](ADVERSARIAL_INSTANTIATION.md) [REF] — refute-before-prove
   method (Blueprint Rule 2) + campaign record
+- [MISMATCH.md](MISMATCH.md) [REF] — code/proof architecture-mismatch essay; the design
+  rationale for `StreamAccum.lean`'s lagging-accumulator invariant (cited from code)
 
-## Campaign records (root)
+## History
 
-- [PROGRESS.md](PROGRESS.md) [CLOSED, frozen 2026-03-19] — WFA/well-behavedness log
-- [VERSION-0.4.6.md](VERSION-0.4.6.md) / [VERSION-0.4.7.md](VERSION-0.4.7.md) [CLOSED] —
-  strictness & universal-round-trip campaigns
-- [EMITTER_SCANNABILITY_PLAN.md](EMITTER_SCANNABILITY_PLAN.md) /
-  [FLOW_BALANCED_CHAIN_RESTRICTION.md](FLOW_BALANCED_CHAIN_RESTRICTION.md) [CLOSED] —
-  tactical proof-campaign logs
-- [PARSER_WELLBEHAVED_PLAN.md](PARSER_WELLBEHAVED_PLAN.md) [CLOSED] — superseded plan;
-  the Blueprint Rule-5 case study
-- [YAML_MATRIX_COMPARISON.md](YAML_MATRIX_COMPARISON.md) [CLOSED] — 20-processor comparison,
-  score-provenance SSOT
-- [YAML_MATRIX_100PCT_ASSESSMENT.md](YAML_MATRIX_100PCT_ASSESSMENT.md) [CLOSED] —
-  100%-matrix campaign log
-
-## Archive — docs.internal/ [HIST]
-
-Thread terminals kept as history (satellite progress notes were deleted
-2026-08-01; each terminal carries a status banner):
-[README-historical.md](docs.internal/README-historical.md) ·
-[BRIDGING.md](docs.internal/BRIDGING.md) (line-pinned by Blueprint/08; append-only) ·
-[ANALYSIS.md](docs.internal/ANALYSIS.md) ·
-P10.11 terminals (FINAL-STATUS, a-REFLECTION, b/c-SUMMARY, d-FINAL, d-ATTEMPT-LOG,
-CASCADE-COMPLETE, COMPLETE-JOURNEY, OPTION2-FINAL-COMPLETE, PROGRESS-UPDATE,
-REFACTORING-COMPLETE, SCAN-FIRST-COMPLETE, SCANNEXTTOKEN-ANALYSIS,
-PLAN-scanNextToken-ScanInv) ·
-[OPTION-A-FINAL-ASSESSMENT.md](docs.internal/OPTION-A-FINAL-ASSESSMENT.md) ·
-[STRUCTURAL-THEOREMS-FINAL-STATUS.md](docs.internal/STRUCTURAL-THEOREMS-FINAL-STATUS.md)
+The development-history corpus (`docs.internal/` and the root campaign
+logs: `PROGRESS.md`, `VERSION-0.4.6.md`, `VERSION-0.4.7.md`,
+`PARSER_WELLBEHAVED_PLAN.md`, `EMITTER_SCANNABILITY_PLAN.md`,
+`FLOW_BALANCED_CHAIN_RESTRICTION.md`, `YAML_MATRIX_100PCT_ASSESSMENT.md`,
+`DUPLICATE_KEYS.md`, `EXCEPTIONS.md`) was **deleted on 2026-08-01** after
+folding the surviving content into the Blueprint (02 architecture: error
+model, scanner-level validation, token-write taxonomy · 04: re-landed
+flow-acceptance pointers · 06: `unified-dep-table` retirement sweep ·
+08: LoadConfig duplicate-key rationale, BRIDGING risk-callout quotes)
+and INTERACTIONS.md. Everything is recoverable from git history
+(deletion commit: see `git log -- docs.internal`).
