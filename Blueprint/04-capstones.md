@@ -91,7 +91,7 @@ work-remaining frontier:
 1. **Grammar completeness** (Group 7.7, `parse_iff_grammar` converse)
    — **not yet declared**; blocked on removing two over-approximation
    grammar constructors
-   ([`GRAMMAR_COMPLETENESS_PLAN.md`](../GRAMMAR_COMPLETENESS_PLAN.md)).
+   ([`DOCS.md` § Grammar completeness plan](../DOCS.md#grammar-completeness-plan)).
    *We accept **exactly** the YAML language, not merely a subset of
    well-formed inputs.*
 
@@ -593,7 +593,7 @@ specific derivation tree in the YAML 1.2.2 grammar."
   removing the two over-approximation constructors (`directiveDrop`,
   `scannerDrop`) that currently make `InYamlLanguage` strictly weaker
   than "parseable"
-  ([`GRAMMAR_COMPLETENESS_PLAN.md`](../GRAMMAR_COMPLETENESS_PLAN.md)). *Risk
+  ([`DOCS.md` § Grammar completeness plan](../DOCS.md#grammar-completeness-plan)). *Risk
   if absent:* we have proved we do not *over*-accept (7.1) but not that
   we accept the *whole* language — a future scanner/parser refactor
   could silently narrow the set of accepted YAML and no proof would

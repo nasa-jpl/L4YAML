@@ -80,10 +80,10 @@ markdown is the medium.
 
 ## Relationship to existing plan docs
 
-[`../GRAMMAR_COMPLETENESS_PLAN.md`](../GRAMMAR_COMPLETENESS_PLAN.md),
-[`../YAML_MERGE.md`](../YAML_MERGE.md),
-and similar plan documents at the repository root are **tactical**
-plans tied to specific proof files. The blueprint is **strategic**:
+The tactical plans (grammar completeness, merge semantics, the
+ns-char gap) live in
+[`../DOCS.md` § The Plan](../DOCS.md#the-plan-open-work); they are
+**tactical** — tied to specific proof files. The blueprint is **strategic**:
 it says *which properties matter* and *why*, from which the tactical
 plans derive. When a tactical plan's premise no longer aligns with
 the blueprint (as happened with `parser_fuel_mono_succ` in the

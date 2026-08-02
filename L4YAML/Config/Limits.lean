@@ -32,7 +32,8 @@ import L4YAML.Parser.IndexedComposition
   parseYaml input                    -- unchanged, no limits
   ```
 
-  See `LIMITS.md` for threat model and design rationale.
+  See `DOCS.md` ("Security limits and tag validation") for threat model
+  and design rationale.
 -/
 
 

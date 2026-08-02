@@ -14,7 +14,7 @@ import L4YAML.Proofs.Production.StructureProduction
     ## Architecture: The Lagging Invariant with Block Stack
 
     Scanner token boundaries don't align with grammar production boundaries
-    (see MISMATCH.md). Grammar productions like `SBlockNode.flowInBlock` require
+    (see DOCS.md, "Code-proof architecture mismatch"). Grammar productions like `SBlockNode.flowInBlock` require
     prefix (`SSeparate`) + content (`SFlowNode`) + postfix (`SSLComments`), but
     the postfix is consumed during the NEXT token's preprocessing.
 

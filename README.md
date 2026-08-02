@@ -60,7 +60,7 @@ Every function in the core library is a total `def` — **no `partial def`, no
 - **Acceptance strictness** — accepted inputs lie in the formalized YAML
   surface language `InYamlLanguage`
   ([Proofs/Scanner/ScannerCorrectness.lean](L4YAML/Proofs/Scanner/ScannerCorrectness.lean);
-  design note in [STRICTNESS.md](STRICTNESS.md)).
+  design note in [DOCS.md § Surface syntax formalization](DOCS.md#surface-syntax-formalization)).
 - **Schema resolution** — the Core Schema resolver respects the §10.3
   precedence (null → bool → int → float → str)
   ([Proofs/Schema/SchemaResolution.lean](L4YAML/Proofs/Schema/SchemaResolution.lean),
@@ -111,7 +111,7 @@ theorem parse_iff_grammar (input : String) :
 
 The forward direction (every accepted input lies in `InYamlLanguage`) is already
 proven; the converse is future work, tracked in
-[GRAMMAR_COMPLETENESS_PLAN.md](GRAMMAR_COMPLETENESS_PLAN.md). It carries no placeholder `sorry` in the
+[DOCS.md § Grammar completeness plan](DOCS.md#grammar-completeness-plan). It carries no placeholder `sorry` in the
 source — it is simply not yet attempted.
 
 Compile-time `#guard` tests in [Tests/](Tests/) — including auto-generated
@@ -158,7 +158,7 @@ roadmap; open an issue if this is a blocker for your use case.
 The verified parser rejects adversarial and ambiguous input at well-defined
 boundaries. All limits are configurable via `ParserLimits`
 ([L4YAML/Config/Limits.lean](L4YAML/Config/Limits.lean)) and documented in
-[LIMITS.md](LIMITS.md).
+[DOCS.md § Security limits and tag validation](DOCS.md#security-limits-and-tag-validation).
 
 | Threat | Limit | Default |
 |---|---|---|
@@ -525,13 +525,12 @@ docs/                Generated documentation (Verso, PDF, coverage reports)
 
 ## Further reading
 
-- [LIMITS.md](LIMITS.md) — threat model and limit design
+- [DOCS.md](DOCS.md) — the consolidated documentation corpus (threat
+  model & limits, matrix score provenance, methodology essays, and the
+  plan of open work)
 - [C_PYTHON_RUST_APIs.md](C_PYTHON_RUST_APIs.md) — FFI design, memory model,
   flight-software integration
 - [docs/](docs/) — generated API documentation and coverage reports
-- [DOCS.md](DOCS.md) — index of every kept document with its role and
-  status (development-history archive deleted 2026-08-01; recoverable
-  from git history)
 
 ## Versioning
 
@@ -623,7 +622,7 @@ lemmas can be stated from `Proofs/`.
    # Baseline on the pinned submodule (478062b9): 347/358 correct.
    # The 11 event-diffs are upstream suite-version skew, not defects.
    # (The full 402-test matrix runs against the suite's data-branch
-   # export; see YAML_MATRIX_COMPARISON.md.)
+   # export; see DOCS.md, "Test-matrix comparison".)
    ```
 
 3. **Prove the agreement theorem** welding the mirror to the verified

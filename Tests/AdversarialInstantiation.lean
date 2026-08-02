@@ -11,7 +11,7 @@ Computational verification of sorry'd theorem statements by systematically
 instantiating them on adversarial inputs. Detects false claims before
 investing proof effort.
 
-See `ADVERSARIAL_INSTANTIATION.md` for methodology and triage.
+See `DOCS.md` ("Adversarial instantiation") for methodology and triage.
 
 ## Priority 1 — Theorems 9g, 9h (emitList / emitPairList characterization)
 

@@ -266,7 +266,8 @@ design doc, 2026-08-01): YAML 1.2.2 §3.2.1.3 makes mapping-key
 **equality schema-dependent** — under the core schema `0o13` and
 `0xB` are the same key — so no single hard-coded duplicate behaviour
 can be spec-complete; the policy must be a caller decision. The open
-merge-key design consuming this is `YAML_MERGE.md`.
+merge-key design consuming this is the merge-semantics plan in
+`DOCS.md` (§ The Plan).
 
 Layer behaviour as shipped (the still-accurate "current state" from
 that doc): the scanner and parser keep **all** key/value pairs in

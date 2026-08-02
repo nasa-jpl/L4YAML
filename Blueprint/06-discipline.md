@@ -93,12 +93,12 @@ environment.) Consequences:
   [`04-capstones.md`](04-capstones.md); it must be discharged before
   merge.
 - A `sorry` in a **helper lemma** (not a capstone) is not allowed.
-  If the helper proof is hard, the capstone's plan doc (the open
-  ones today:
-  [`GRAMMAR_COMPLETENESS_PLAN.md`](../GRAMMAR_COMPLETENESS_PLAN.md),
-  [`YAML_MERGE.md`](../YAML_MERGE.md)) should list the helper as a
-  dependency, and the helper should be promoted to capstone-track
-  status before being `sorry`'d.
+  If the helper proof is hard, the capstone's plan (the open ones
+  today live in
+  [`DOCS.md` § The Plan](../DOCS.md#the-plan-open-work): the
+  grammar-completeness plan and the merge-semantics plan) should list
+  the helper as a dependency, and the helper should be promoted to
+  capstone-track status before being `sorry`'d.
 - A `sorry` in any declaration that has **0 external callers** is an
   immediate deletion candidate, not a proof TODO.
 
@@ -153,11 +153,12 @@ vs. ~100 actual). Others probably exist.
 
 ## Rule 5 — When a plan conflicts with the blueprint, the blueprint wins
 
-The repository keeps tactical plan and rationale docs at the root
-(today: `GRAMMAR_COMPLETENESS_PLAN.md`, `YAML_MERGE.md`,
-`SPEC-GAP-ANALYSIS.md`;
-see [`DOCS.md`](../DOCS.md) for the index). These are *tactical* —
-tied to concrete files. Closed campaign logs are **deleted** once
+The repository keeps its tactical plans and rationale consolidated in
+[`DOCS.md`](../DOCS.md) (since 2026-08-01: topic sections plus
+"The Plan" collecting all open work — grammar completeness, merge
+semantics, the ns-char gap, the security backlog). These are
+*tactical* — tied to concrete files. Closed campaign logs are
+**deleted** once
 their surviving content is folded into this Blueprint (history stays
 in git; the 2026-08-01 purge is the precedent).
 
