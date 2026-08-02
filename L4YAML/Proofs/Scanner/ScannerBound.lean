@@ -1232,7 +1232,7 @@ lemma collectBlockScalarLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
             split  -- peek? of s_after_line
             · split  -- isLineBreakBool
               · exact ih _ _ (consumeNewline_BoundInv _ h_lcl hend)
-              · exact ih _ _ h_lcl
+              · exact h_lcl
             · exact h_lcl
 
 set_option maxHeartbeats 6400000 in

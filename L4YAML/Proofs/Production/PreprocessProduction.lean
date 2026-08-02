@@ -114,10 +114,10 @@ lemma gstar_sswhite_col_eq_nil (sp sp' : SurfPos)
     have h2 := gstar_sswhite_col_ge s₁ sp' hrest
     omega
 
-lemma snbchar_col_succ (sp sp' : SurfPos) (h : SNbChar sp sp') : sp'.col = sp.col + 1 := by
+lemma snbchar_col_succ (sp sp' : SurfPos) (h : SCommentChar sp sp') : sp'.col = sp.col + 1 := by
   cases h <;> rfl
 
-lemma gstar_snbchar_col_ge (sp sp' : SurfPos) (h : GStar SNbChar sp sp') :
+lemma gstar_snbchar_col_ge (sp sp' : SurfPos) (h : GStar SCommentChar sp sp') :
     sp'.col ≥ sp.col := by
   induction h with
   | nil => exact Nat.le_refl _

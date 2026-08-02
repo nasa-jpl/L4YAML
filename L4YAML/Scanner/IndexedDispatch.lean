@@ -117,7 +117,8 @@ def collectDirectiveNameLoopIx {input : String} (c : IxCursor input)
   | fuel + 1 =>
     match c.peek? with
     | some ch =>
-      if !isWhiteSpaceBool ch && !isLineBreakBool ch then
+      if !isWhiteSpaceBool ch && !isLineBreakBool ch
+          && isPrintableBool ch && ch != '﻿' then
         collectDirectiveNameLoopIx c.advance (name.push ch) fuel
       else (name, c)
     | none => (name, c)

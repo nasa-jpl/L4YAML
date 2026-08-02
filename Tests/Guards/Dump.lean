@@ -23,6 +23,14 @@ open L4YAML L4YAML.Dump
 #guard !(isPlainSafe ("a" ++ String.singleton (Char.ofNat 0xFEFF) ++ "b"))
 #guard dump (.plainScalar ("a" ++ String.singleton (Char.ofNat 0x01) ++ "b"))
   == "\"a\\x01b\""
+-- nb-char [27]: multiline content with controls/BOM cannot be carried in a
+-- literal block scalar; falls back to double-quoted with escapes.
+#guard dump (.plainScalar ("a\nb" ++ String.singleton (Char.ofNat 0x01)))
+  == "\"a\\nb\\x01\""
+#guard dump (.plainScalar "a\nb") == "|\n  a\n  b"
+-- explicit single-quoted config with non-printables falls back to double-quoted
+#guard dump (.plainScalar ("a" ++ String.singleton (Char.ofNat 0x01)))
+    { scalarStyle := .singleQuoted } == "\"a\\x01\""
 #guard dump (.plainScalar ("a" ++ String.singleton (Char.ofNat 0xFEFF) ++ "b"))
   == "\"a" ++ String.singleton (Char.ofNat 0xFEFF) ++ "b\""
 #guard dump (.plainScalar "{flow}") == "\"{flow}\""

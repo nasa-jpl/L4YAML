@@ -777,17 +777,35 @@ lemma not_isLineBreak_not_newline (c : Char) (h : ¬isLineBreakBool c = true) : 
 lemma not_isLineBreak_not_cr (c : Char) (h : ¬isLineBreakBool c = true) : c ≠ '\r' := by
   intro heq; subst heq; simp [isLineBreakBool, isLineFeedBool, isCarriageReturnBool] at h
 
-/-- A non-line-break character satisfies `isNbChar`. -/
-lemma not_isLineBreak_isNbChar (c : Char) (h : ¬isLineBreakBool c = true) :
-    isNbChar c := by
+/-- A non-line-break character satisfies the loose comment-text
+    predicate (see `isCommentTextChar`). -/
+lemma not_isLineBreak_isCommentTextChar (c : Char) (h : ¬isLineBreakBool c = true) :
+    isCommentTextChar c := by
   intro hlb
   exact h ((isLineBreak_iff c).mpr hlb)
 
-/-- A non-line-break character gives `SNbChar` (= `GChar isNbChar`). -/
-lemma not_isLineBreak_gives_SNbChar (c : Char) (rest : List Char) (col : Nat)
+/-- A non-line-break character gives `SCommentChar` (= `GChar isCommentTextChar`). -/
+lemma not_isLineBreak_gives_SCommentChar (c : Char) (rest : List Char) (col : Nat)
     (h : ¬isLineBreakBool c = true) :
+    GChar isCommentTextChar ⟨c :: rest, col⟩ ⟨rest, col + 1⟩ :=
+  GChar.mk c rest col (not_isLineBreak_isCommentTextChar c h)
+
+/-- A non-line-break printable non-BOM character satisfies `isNbChar`
+    ([27] `c-printable - b-char - c-byte-order-mark`). -/
+lemma not_isLineBreak_isNbChar (c : Char) (h : ¬isLineBreakBool c = true)
+    (hpr : isPrintableBool c = true) (hbom : (c == '﻿') = false) :
+    isNbChar c := by
+  refine ⟨fun hlb => h ((isLineBreak_iff c).mpr hlb),
+          (isPrintable_iff c).mp hpr, ?_⟩
+  intro heq; subst heq; simp at hbom
+
+/-- A non-line-break printable non-BOM character gives `SNbChar`
+    (= `GChar isNbChar`). -/
+lemma not_isLineBreak_gives_SNbChar (c : Char) (rest : List Char) (col : Nat)
+    (h : ¬isLineBreakBool c = true)
+    (hpr : isPrintableBool c = true) (hbom : (c == '﻿') = false) :
     GChar isNbChar ⟨c :: rest, col⟩ ⟨rest, col + 1⟩ :=
-  GChar.mk c rest col (not_isLineBreak_isNbChar c h)
+  GChar.mk c rest col (not_isLineBreak_isNbChar c h hpr hbom)
 
 /-! ## §8 GStar Composition -/
 

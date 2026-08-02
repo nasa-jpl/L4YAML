@@ -35,8 +35,10 @@ open L4YAML (YamlContext)
 
 /-! ## Helper Character Predicates -/
 
-/-- [34] nb-char: non-break character (printable, not line break). -/
-def isNbChar (c : Char) : Prop := ¬isLineBreakProp c
+/-- [27] nb-char: non-break character
+    (`c-printable - b-char - c-byte-order-mark`). -/
+def isNbChar (c : Char) : Prop :=
+  ¬isLineBreakProp c ∧ isPrintableProp c ∧ c ≠ '﻿'
 
 /-- [34] ns-char: non-space character
     (`c-printable - b-char - c-byte-order-mark - s-white`). -/
@@ -85,8 +87,19 @@ inductive SSWhite : SurfPos → SurfPos → Prop where
   | tab (rest : List Char) (col : Nat) :
       SSWhite ⟨'\t' :: rest, col⟩ ⟨rest, col + 1⟩
 
-/-- [34] nb-char: non-break character. Column increments by 1. -/
+/-- [27] nb-char: non-break character. Column increments by 1. -/
 abbrev SNbChar : SurfPos → SurfPos → Prop := GChar isNbChar
+
+/-- Comment / directive-trailing body character: any non-break character.
+    **Deliberately looser than [27] nb-char** (no printable-range or BOM
+    check): comment and directive trailing text is stripped without
+    semantic effect, so the scanner accepts — and this grammar records —
+    any non-break character there. A spec-strict processor would reject
+    non-printables everywhere; recorded in DOCS.md § Other open items. -/
+def isCommentTextChar (c : Char) : Prop := ¬isLineBreakProp c
+
+/-- Comment / directive-trailing body character step. -/
+abbrev SCommentChar : SurfPos → SurfPos → Prop := GChar isCommentTextChar
 
 /-- ns-char: non-space character (non-break, non-whitespace). -/
 abbrev SNsChar : SurfPos → SurfPos → Prop := GChar isNsChar
@@ -148,10 +161,12 @@ inductive SLEmpty : Nat → YamlContext → SurfPos → SurfPos → Prop where
 
 /-! ## §5 Comments [75]–[81] -/
 
-/-- [75] c-nb-comment-text: '#' followed by nb-char*. -/
+/-- [75] c-nb-comment-text: '#' followed by comment-text chars.
+    Uses the deliberately loose `SCommentChar` (any non-break) rather than
+    strict nb-char [27]; see `isCommentTextChar`. -/
 inductive SCNbCommentText : SurfPos → SurfPos → Prop where
   | mk (rest : List Char) (col : Nat) (s' : SurfPos) :
-      GStar SNbChar ⟨rest, col + 1⟩ s' →
+      GStar SCommentChar ⟨rest, col + 1⟩ s' →
       SCNbCommentText ⟨'#' :: rest, col⟩ s'
 
 /-- [76] s-b-comment: optional (separation + optional comment) + b-comment. -/
@@ -203,11 +218,13 @@ the scanner/parser — the surface syntax just needs to recognize the shape. -/
 
 /-- [82] l-directive: directive line starting with '%'.
     Simplified encoding: '%' + non-break characters + s-l-comments.
-    Uses SNbChar (non-break) rather than SNsChar (non-space) because
-    directive content includes spaces (e.g., `%YAML 1.2`, `%TAG !e! prefix`). -/
+    Uses `SCommentChar` (any non-break; see `isCommentTextChar`) rather
+    than SNsChar (non-space) because directive content includes spaces
+    (e.g., `%YAML 1.2`, `%TAG !e! prefix`), and rather than strict
+    nb-char [27] because the trailing content is stripped unvalidated. -/
 inductive SLDirective : SurfPos → SurfPos → Prop where
   | mk (rest : List Char) (col : Nat) (s₁ s' : SurfPos) :
-      GStar SNbChar ⟨rest, col + 1⟩ s₁ →
+      GStar SCommentChar ⟨rest, col + 1⟩ s₁ →
       SSLComments s₁ s' →
       SLDirective ⟨'%' :: rest, col⟩ s'
 

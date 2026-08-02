@@ -194,7 +194,7 @@ A `#` followed by non-break characters to end of line matches
 
 /-- Comment text starting with `#` produces `SCNbCommentText`. -/
 lemma hash_comment (rest : List Char) (col : Nat) (s' : SurfPos)
-    (hBody : GStar (GChar isNbChar) ⟨rest, col + 1⟩ s') :
+    (hBody : GStar (GChar isCommentTextChar) ⟨rest, col + 1⟩ s') :
     SCNbCommentText ⟨'#' :: rest, col⟩ s' :=
   SCNbCommentText.mk rest col s' hBody
 

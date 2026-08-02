@@ -1106,8 +1106,17 @@ lemma collectLineContentLoop_nbchar_prod (sc : ScannerState) (sp : SurfPos)
       split
       · -- isLineBreakBool c: stop
         exact ⟨sp, GStar.nil sp, hcorr⟩
-      · -- not break: consume + recurse
-        rename_i hne_lb
+      · -- nb-char (not break, printable, not BOM): consume + recurse
+        rename_i hcond
+        have hne_lb : ¬isLineBreakBool c = true := fun h => hcond (by simp [h])
+        have hpr : isPrintableBool c = true := by
+          cases h : isPrintableBool c with
+          | true => rfl
+          | false => exact absurd (by simp [h]) hcond
+        have hbom : (c == '﻿') = false := by
+          cases h : (c == '﻿') with
+          | false => rfl
+          | true => exact absurd (by simp [h]) hcond
         obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek
         subst hsp_eq
         have hmore := peek_some_has_more hpeek
@@ -1117,7 +1126,7 @@ lemma collectLineContentLoop_nbchar_prod (sc : ScannerState) (sp : SurfPos)
         obtain ⟨sp', h_tail, hcorr'⟩ := ih sc.advance ⟨rest, sc.col + 1⟩ _ hcorr_adv
         exact ⟨sp',
                GStar.cons _ ⟨rest, sc.col + 1⟩ _
-                 (not_isLineBreak_gives_SNbChar c rest sc.col hne_lb) h_tail,
+                 (not_isLineBreak_gives_SNbChar c rest sc.col hne_lb hpr hbom) h_tail,
                hcorr'⟩
     · -- peek? = none: stop
       exact ⟨sp, GStar.nil sp, hcorr⟩
@@ -1133,7 +1142,9 @@ lemma gstar_to_gplus_from_first {P : SurfPos → SurfPos → Prop}
 lemma collectLineContentLoop_gplus_prod (sc : ScannerState) (sp : SurfPos)
     (c : Char) (content : String) (fuel : Nat)
     (hcorr : ScannerSurfCorr sc sp) (hpeek : sc.peek? = some c)
-    (hne_lb : ¬isLineBreakBool c = true) (hfuel : fuel ≥ 1) :
+    (hne_lb : ¬isLineBreakBool c = true)
+    (hpr : isPrintableBool c = true) (hbom : (c == '﻿') = false)
+    (hfuel : fuel ≥ 1) :
     ∃ sp', GPlus SNbChar sp sp' ∧
            ScannerSurfCorr (collectLineContentLoop sc content fuel).2 sp' := by
   obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek
@@ -1142,15 +1153,20 @@ lemma collectLineContentLoop_gplus_prod (sc : ScannerState) (sp : SurfPos)
   have h_not_nl := not_isLineBreak_not_newline c hne_lb
   have h_not_cr := not_isLineBreak_not_cr c hne_lb
   have hcorr_adv := advance_non_newline_corr sc c rest hcorr hmore h_not_nl h_not_cr
+  have hlb_f : isLineBreakBool c = false := by
+    cases h : isLineBreakBool c with
+    | false => rfl
+    | true => exact absurd h hne_lb
   -- With fuel ≥ 1, unfold one step: the first char is consumed
   match fuel, hfuel with
   | fuel' + 1, _ =>
     simp only [collectLineContentLoop]
     rw [hpeek]
-    simp only [hne_lb]
+    simp only [hlb_f, hpr, hbom, Bool.not_true, Bool.or_self,
+      Bool.false_eq_true, ↓reduceIte]
     obtain ⟨sp', h_tail, hcorr'⟩ :=
       collectLineContentLoop_nbchar_prod sc.advance ⟨rest, sc.col + 1⟩ _ fuel' hcorr_adv
-    have h_first := not_isLineBreak_gives_SNbChar c rest sc.col hne_lb
+    have h_first := not_isLineBreak_gives_SNbChar c rest sc.col hne_lb hpr hbom
     exact ⟨sp', gstar_to_gplus_from_first h_first h_tail, hcorr'⟩
 
 /-! ## §7 Plain Scalar Production (Layer 4b)
@@ -2371,7 +2387,7 @@ lemma SIndent_gives_GStar_SNbChar {n : Nat} {sp sp' : SurfPos}
   induction h with
   | zero => exact GStar.nil _
   | succ k rest col _ _ ih =>
-    exact GStar.cons _ _ _ (not_isLineBreak_gives_SNbChar ' ' rest col (by decide)) ih
+    exact GStar.cons _ _ _ (not_isLineBreak_gives_SNbChar ' ' rest col (by decide) (by decide) (by decide)) ih
 
 -- SIndentLe n converts to GStar SNbChar.
 lemma SIndentLe_gives_GStar_SNbChar {n : Nat} {sp sp' : SurfPos}
@@ -2529,34 +2545,64 @@ lemma collectBlockScalarLoop_literal_prod
             subst hsp_eq
             -- Content: collectLineContentLoop
             have hne_lb_bool : ¬isLineBreakBool c = true := hne_lb
-            -- GPlus SNbChar from content
-            obtain ⟨sp_content, h_gplus, hcorr_content⟩ :=
-              collectLineContentLoop_gplus_prod _ sp_spaces c ""
-                (inputEnd - (consumeExactSpaces sc contentIndent).2.offset + 1)
-                hcorr_spaces' hpeek hne_lb_bool (by omega)
-            -- Build SLNbLiteralText
-            have h_text_line : SLNbLiteralText contentIndent sp sp_content :=
-              SLNbLiteralText.mk contentIndent sp sp sp_content (GStar.nil sp)
-                (GSeq.mk sp sp_spaces sp_content h_sindent_full h_gplus)
-            -- Match on what follows: peek of result
-            split
-            · rename_i c' hpeek'
+            have hlb_f : isLineBreakBool c = false := by
+              cases h : isLineBreakBool c with
+              | false => rfl
+              | true => exact absurd h hne_lb_bool
+            by_cases hnb : (isPrintableBool c && c != '﻿') = true
+            · -- First char is nb-char: the line loop consumes ≥ 1 char.
+              have hpr : isPrintableBool c = true := (Bool.and_eq_true_iff.mp hnb).1
+              have hbom : (c == '﻿') = false := by
+                have h2 := (Bool.and_eq_true_iff.mp hnb).2
+                cases h : (c == '﻿') with
+                | false => rfl
+                | true => rw [bne, h] at h2; exact absurd h2 (by decide)
+              -- GPlus SNbChar from content
+              obtain ⟨sp_content, h_gplus, hcorr_content⟩ :=
+                collectLineContentLoop_gplus_prod _ sp_spaces c ""
+                  (inputEnd - (consumeExactSpaces sc contentIndent).2.offset + 1)
+                  hcorr_spaces' hpeek hne_lb_bool hpr hbom (by omega)
+              -- Build SLNbLiteralText
+              have h_text_line : SLNbLiteralText contentIndent sp sp_content :=
+                SLNbLiteralText.mk contentIndent sp sp sp_content (GStar.nil sp)
+                  (GSeq.mk sp sp_spaces sp_content h_sindent_full h_gplus)
+              -- Match on what follows: peek of result
               split
-              · -- Break after content: consume + recurse
-                rename_i hlb'
-                obtain ⟨sp_nl', h_break', hcorr_nl'⟩ :=
-                  consumeNewline_sbreak_corr _ sp_content c' hcorr_content hpeek' hlb'
-                obtain ⟨sp_end, h_tail, hcorr_end⟩ := ih _ sp_nl' _ hcorr_nl'
-                exact ⟨sp_end,
-                       content_break_tail_to_literal h_text_line h_break' h_tail,
-                       hcorr_end⟩
-              · -- No break after content: recurse (fuel exhaustion edge case)
-                obtain ⟨sp_end, h_tail, hcorr_end⟩ := ih _ sp_content _ hcorr_content
-                exact ⟨sp_end,
-                       prefix_text_literal_content h_text_line h_tail,
-                       hcorr_end⟩
-            · -- peek? = none after content: EOF
-              exact ⟨sp_content, content_only_to_literal h_text_line, hcorr_content⟩
+              · rename_i c' hpeek'
+                split
+                · -- Break after content: consume + recurse
+                  rename_i hlb'
+                  obtain ⟨sp_nl', h_break', hcorr_nl'⟩ :=
+                    consumeNewline_sbreak_corr _ sp_content c' hcorr_content hpeek' hlb'
+                  obtain ⟨sp_end, h_tail, hcorr_end⟩ := ih _ sp_nl' _ hcorr_nl'
+                  exact ⟨sp_end,
+                         content_break_tail_to_literal h_text_line h_break' h_tail,
+                         hcorr_end⟩
+                · -- Line stopped at a non-nb-char: block scalar ends here.
+                  exact ⟨sp_content, content_only_to_literal h_text_line, hcorr_content⟩
+              · -- peek? = none after content: EOF
+                exact ⟨sp_content, content_only_to_literal h_text_line, hcorr_content⟩
+            · -- First char is NOT nb-char: the line loop consumes nothing and
+              -- the block scalar ends after this line's indent.
+              have hcond : (isLineBreakBool c || !isPrintableBool c || c == '﻿') = true := by
+                cases hp : isPrintableBool c with
+                | false => simp [hp]
+                | true =>
+                  cases hb : (c == '﻿') with
+                  | true => simp [hb]
+                  | false => exact absurd (by simp [hp, bne, hb]) hnb
+              have hloop : collectLineContentLoop (consumeExactSpaces sc contentIndent).2 ""
+                  (inputEnd - (consumeExactSpaces sc contentIndent).2.offset + 1)
+                  = ("", (consumeExactSpaces sc contentIndent).2) := by
+                unfold collectLineContentLoop
+                simp only [hpeek, hcond, ↓reduceIte]
+              rw [hloop]
+              simp only [hpeek, hlb_f, Bool.false_eq_true, ↓reduceIte,
+                String.append_empty]
+              exact ⟨sp_spaces,
+                     indent_only_literal_content
+                       ⟨contentIndent, Nat.le_refl _, h_sindent_full⟩,
+                     hcorr_spaces'⟩
 
 /-! ## §8c Block Scalar Composition
 

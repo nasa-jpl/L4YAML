@@ -290,6 +290,15 @@ def singleQuotedRepresentable (s : String) : Bool :=
     (0x20 ≤ c.toNat && c.toNat != 0x7F &&
      !(0x80 ≤ c.toNat && c.toNat ≤ 0x9F)))
 
+/-- Whether content can be carried VERBATIM in a literal/folded block
+    scalar: every character must be `nb-char` [27] (printable, not BOM)
+    or LF. A raw CR would be normalized by `b-break` on re-scan (silent
+    corruption) and other non-printables are invalid YAML there;
+    double-quoting escapes them instead. -/
+def blockScalarRepresentable (s : String) : Bool :=
+  s.all (fun c => c == '\n' ||
+    (CharPredicates.isPrintableBool c && c != '﻿'))
+
 /-- Check if string content is unsafe as a plain scalar in flow context.
     Flow context forbids additional characters beyond what `isPlainSafe` checks:
     - Any `:` (not just `: `), since `:` followed by `,`, `}`, `]` is a mapping indicator
@@ -307,13 +316,15 @@ def chooseScalarStyle (s : Scalar) (cfg : DumpConfig)
     (ctx : DumpContext := .block) : ScalarStyle :=
   -- Honor explicit block scalar style when content has newlines AND we're in block context
   if (s.style == .literal || s.style == .folded) && hasNewlines s.content
-      && ctx == .block then
+      && ctx == .block && blockScalarRepresentable s.content then
     s.style
   else match cfg.scalarStyle with
     | .doubleQuoted => .doubleQuoted
     | .singleQuoted =>
-      -- Single-quoted cannot represent newlines
-      if hasNewlines s.content then .doubleQuoted else .singleQuoted
+      -- Single-quoted cannot represent newlines or non-printables
+      if hasNewlines s.content || !singleQuotedRepresentable s.content then
+        .doubleQuoted
+      else .singleQuoted
     | .plain =>
       if isPlainSafe s.content cfg.allowReservedPlain &&
           (ctx == .block || !isFlowUnsafe s.content) then
@@ -322,8 +333,9 @@ def chooseScalarStyle (s : Scalar) (cfg : DumpConfig)
     | .auto =>
       if s.content.isEmpty then .doubleQuoted
       else if hasNewlines s.content then
-        if ctx != .block then
-          -- Flow context: block scalars are invalid, force double-quoted
+        if ctx != .block || !blockScalarRepresentable s.content then
+          -- Flow context (block scalars invalid) or content a block scalar
+          -- cannot carry verbatim (nb-char [27]): force double-quoted
           .doubleQuoted
         else
           -- Block context: use block scalar style from annotation, or default to literal

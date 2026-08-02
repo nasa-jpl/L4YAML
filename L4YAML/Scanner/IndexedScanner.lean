@@ -860,7 +860,7 @@ def collectLineContentLoopIx {input : String} (c : IxCursor input)
   | fuel + 1 =>
     match c.peek? with
     | some ch =>
-      if isLineBreakBool ch then (content, c)
+      if isLineBreakBool ch || !isPrintableBool ch || ch == '﻿' then (content, c)
       else collectLineContentLoopIx c.advance (content.push ch) fuel
     | none    => (content, c)
 
@@ -940,13 +940,13 @@ def collectBlockScalarLoopIx {input : String} (c : IxCursor input)
                     input.utf8ByteSize).1).push lineFeedChar)
                 contentIndent fuel
             else
-              collectBlockScalarLoopIx
+              -- Line stopped at a non-printable/BOM char (not nb-char [27]):
+              -- end the block scalar here; dispatch rejects the char.
+              (rawContent ++
                 (collectLineContentLoopIx (consumeExactSpacesIx c contentIndent).2 ""
-                  input.utf8ByteSize).2
-                (rawContent ++
-                  (collectLineContentLoopIx (consumeExactSpacesIx c contentIndent).2 ""
-                    input.utf8ByteSize).1)
-                contentIndent fuel
+                  input.utf8ByteSize).1,
+               (collectLineContentLoopIx (consumeExactSpacesIx c contentIndent).2 ""
+                  input.utf8ByteSize).2)
           | none   =>
             (rawContent ++
               (collectLineContentLoopIx (consumeExactSpacesIx c contentIndent).2 ""

@@ -237,11 +237,11 @@ lemma skipWhitespace_corr (sc : ScannerState) (sp : SurfPos)
 /-! ## §5 skipToEndOfLineLoop Coupling -/
 
 /-- `skipToEndOfLineLoop` consumes non-break characters and preserves
-    correspondence.  Returns `GStar SNbChar` (= `GStar (GChar isNbChar)`). -/
+    correspondence.  Returns `GStar SCommentChar` (= `GStar (GChar isCommentTextChar)`). -/
 lemma skipToEndOfLineLoop_corr (sc : ScannerState) (sp : SurfPos) (fuel : Nat)
     (hcorr : ScannerSurfCorr sc sp)
     (hfuel : fuel ≥ sc.inputEnd - sc.offset) :
-    ∃ sp', GStar SNbChar sp sp' ∧ ScannerSurfCorr (skipToEndOfLineLoop sc fuel) sp' := by
+    ∃ sp', GStar SCommentChar sp sp' ∧ ScannerSurfCorr (skipToEndOfLineLoop sc fuel) sp' := by
   induction fuel generalizing sc sp with
   | zero =>
     simp [skipToEndOfLineLoop]
@@ -269,14 +269,14 @@ lemma skipToEndOfLineLoop_corr (sc : ScannerState) (sp : SurfPos) (fuel : Nat)
         have hadv := advance_non_newline_corr sc c rest hcorr hmore hnl hcr
         have hfuel' := advance_fuel_budget sc fuel' hmore hfuel
         obtain ⟨sp', hstar, hcorr'⟩ := ih sc.advance ⟨rest, sc.col + 1⟩ hadv hfuel'
-        exact ⟨sp', GStar.cons _ _ _ (not_isLineBreak_gives_SNbChar c rest sc.col hnlb) hstar, hcorr'⟩
+        exact ⟨sp', GStar.cons _ _ _ (not_isLineBreak_gives_SCommentChar c rest sc.col hnlb) hstar, hcorr'⟩
     · -- peek? = none
       exact ⟨sp, GStar.nil sp, hcorr⟩
 
 /-- Top-level coupling for `skipToEndOfLine`. -/
 lemma skipToEndOfLine_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) :
-    ∃ sp', GStar SNbChar sp sp' ∧ ScannerSurfCorr (skipToEndOfLine sc) sp' := by
+    ∃ sp', GStar SCommentChar sp sp' ∧ ScannerSurfCorr (skipToEndOfLine sc) sp' := by
   unfold skipToEndOfLine
   exact skipToEndOfLineLoop_corr sc sp _ hcorr (Nat.le_refl _)
 
@@ -289,7 +289,7 @@ lemma collectCommentTextLoop_corr (sc : ScannerState) (sp : SurfPos)
     (text : String) (fuel : Nat)
     (hcorr : ScannerSurfCorr sc sp)
     (hfuel : fuel ≥ sc.inputEnd - sc.offset) :
-    ∃ sp', GStar SNbChar sp sp' ∧
+    ∃ sp', GStar SCommentChar sp sp' ∧
            ScannerSurfCorr (collectCommentTextLoop sc text fuel).2 sp' := by
   induction fuel generalizing sc sp text with
   | zero =>
@@ -318,7 +318,7 @@ lemma collectCommentTextLoop_corr (sc : ScannerState) (sp : SurfPos)
         have hadv := advance_non_newline_corr sc c rest hcorr hmore hnl hcr
         have hfuel' := advance_fuel_budget sc fuel' hmore hfuel
         obtain ⟨sp', hstar, hcorr'⟩ := ih sc.advance ⟨rest, sc.col + 1⟩ (text.push c) hadv hfuel'
-        exact ⟨sp', GStar.cons _ _ _ (not_isLineBreak_gives_SNbChar c rest sc.col hnlb) hstar, hcorr'⟩
+        exact ⟨sp', GStar.cons _ _ _ (not_isLineBreak_gives_SCommentChar c rest sc.col hnlb) hstar, hcorr'⟩
     · -- peek? = none
       exact ⟨sp, GStar.nil sp, hcorr⟩
 

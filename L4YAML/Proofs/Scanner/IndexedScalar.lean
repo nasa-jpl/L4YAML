@@ -583,8 +583,8 @@ lemma collectBlockScalarLoopIx_offset_monotonic {input : String} (c : IxCursor i
                   consumeLineBreak_offset_monotonic _
                 exact Nat.le_trans hSp
                   (Nat.le_trans hLine (Nat.le_trans hCLB (ih _ _)))
-              · -- non-LF at end of line: recurse from cAfterLine
-                exact Nat.le_trans hSp (Nat.le_trans hLine (ih _ _))
+              · -- non-nb-char at end of line: return cAfterLine
+                exact Nat.le_trans hSp hLine
             · -- peek? = none after line: return cAfterLine
               exact Nat.le_trans hSp hLine
 

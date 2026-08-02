@@ -964,15 +964,15 @@ lemma scanDocumentEnd_prod (sc : ScannerState) (sp : SurfPos)
 
 /-! ## §12 Directive scanning — grammar evidence
 
-    Upgrade `scanDirective_prod` to return `GStar SNbChar` evidence:
+    Upgrade `scanDirective_prod` to return `GStar SCommentChar` evidence:
     all characters consumed after `%` are non-break.
 
     Each collect*Loop_prod is a fuel-induction mirror of the _corr version in
     StructureCoupling.lean, using `advance_non_newline_corr` (exact position)
     instead of `advance_corr` (existential position), and collecting
-    `GStar SNbChar` evidence at each step.
+    `GStar SCommentChar` evidence at each step.
 
-    The whitespace-to-nbchar bridge converts `GStar SSWhite → GStar SNbChar`
+    The whitespace-to-nbchar bridge converts `GStar SSWhite → GStar SCommentChar`
     (whitespace chars are non-break). -/
 
 -- After `skipToEndOfLine`, the scanner is at a line break or EOF.
@@ -1042,36 +1042,45 @@ lemma skipToEndOfLine_at_break_or_eof_chars (sc : ScannerState)
     obtain ⟨rest', rfl⟩ := peek_some_sp hcorr' hpeek
     exact Or.inr ⟨c, rest', rfl, hlb⟩
 
-lemma GStar_SSWhite_to_GStar_SNbChar {sp sp' : SurfPos}
-    (h : GStar SSWhite sp sp') : GStar SNbChar sp sp' := by
+lemma GStar_SSWhite_to_GStar_SCommentChar {sp sp' : SurfPos}
+    (h : GStar SSWhite sp sp') : GStar SCommentChar sp sp' := by
   induction h with
   | nil => exact GStar.nil _
   | cons _ _ _ hw _ ih =>
     cases hw with
     | space rest col =>
-      exact GStar.cons _ _ _ (not_isLineBreak_gives_SNbChar ' ' rest col (by decide)) ih
+      exact GStar.cons _ _ _ (not_isLineBreak_gives_SCommentChar ' ' rest col (by decide)) ih
     | tab rest col =>
-      exact GStar.cons _ _ _ (not_isLineBreak_gives_SNbChar '\t' rest col (by decide)) ih
+      exact GStar.cons _ _ _ (not_isLineBreak_gives_SCommentChar '\t' rest col (by decide)) ih
 
 lemma collectDirectiveNameLoop_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (name : String) (fuel : Nat) :
-    ∃ sp', GStar SNbChar sp sp' ∧
+    ∃ sp', GStar SCommentChar sp sp' ∧
       ScannerSurfCorr (collectDirectiveNameLoop sc name fuel).snd sp' := by
   induction fuel generalizing sc sp name with
   | zero => simp [collectDirectiveNameLoop]; exact ⟨sp, GStar.nil _, hcorr⟩
   | succ fuel' ih =>
     unfold collectDirectiveNameLoop; split
     · rename_i c hpeek; split
-      · -- !isWhiteSpaceBool c && !isLineBreakBool c = true → advance
+      · -- name char: ¬ws ∧ ¬lb ∧ printable ∧ ¬BOM → advance
         rename_i h_pred
         have h_nlb : ¬isLineBreakBool c = true := by
           intro h; simp [h] at h_pred
+        have hpr : isPrintableBool c = true := by
+          cases h : isPrintableBool c with
+          | true => rfl
+          | false => simp [h] at h_pred
+        have hbom : (c == '﻿') = false := by
+          cases h : (c == '﻿') with
+          | false => rfl
+          | true => simp [bne, h] at h_pred
         obtain ⟨rest, rfl⟩ := peek_some_sp hcorr hpeek
         have hmore := corr_nonempty_has_more hcorr
         have hadv := advance_non_newline_corr sc c rest hcorr hmore
           (not_isLineBreak_not_newline c h_nlb) (not_isLineBreak_not_cr c h_nlb)
         obtain ⟨sp', hstar, hcorr'⟩ := ih sc.advance ⟨rest, sc.col + 1⟩ hadv (name.push c)
-        exact ⟨sp', GStar.cons _ _ _ (not_isLineBreak_gives_SNbChar c rest sc.col h_nlb) hstar, hcorr'⟩
+        exact ⟨sp', GStar.cons _ _ _
+          (not_isLineBreak_gives_SCommentChar c rest sc.col h_nlb) hstar, hcorr'⟩
       · exact ⟨sp, GStar.nil _, hcorr⟩
     · exact ⟨sp, GStar.nil _, hcorr⟩
 
@@ -1082,9 +1091,53 @@ lemma isDigit_not_isLineBreak (c : Char) (h : c.isDigit = true) :
   | inl h1 => subst h1; simp [Char.isDigit] at h
   | inr h1 => subst h1; simp [Char.isDigit] at h
 
+-- Printable-ASCII bridges for the nb-char [27] conjuncts: every character
+-- class the directive/tag loops accept sits inside `[#x20-#x7E]`, hence is
+-- `c-printable` and not the BOM.
+lemma isPrintableBool_of_ascii {c : Char}
+    (h1 : 0x20 ≤ c.val) (h2 : c.val ≤ 0x7E) : isPrintableBool c = true := by
+  simp only [isPrintableBool, decide_eq_true_eq]
+  unfold isPrintableProp
+  exact Or.inr (Or.inl ⟨h1, h2⟩)
+
+lemma not_bom_of_ascii {c : Char} (h2 : c.val ≤ 0x7E) : (c == '﻿') = false := by
+  cases hb : (c == '﻿') with
+  | false => rfl
+  | true => exact absurd (eq_of_beq hb ▸ h2) (by decide)
+
+lemma isDigit_ascii (c : Char) (h : c.isDigit = true) :
+    0x20 ≤ c.val ∧ c.val ≤ 0x7E := by
+  simp only [Char.isDigit, Bool.and_eq_true, decide_eq_true_eq] at h
+  obtain ⟨h1, h2⟩ := h
+  exact ⟨UInt32.le_trans (by decide) h1, UInt32.le_trans h2 (by decide)⟩
+
+lemma isWordCharOrBang_ascii (c : Char)
+    (h : (isWordCharBool c || c == '!') = true) :
+    0x20 ≤ c.val ∧ c.val ≤ 0x7E := by
+  simp only [Bool.or_eq_true, isWordCharBool, decide_eq_true_eq, beq_iff_eq] at h
+  rcases h with h | rfl
+  · unfold isWordCharProp isAsciiLetterProp at h
+    rcases h with ⟨h1, h2⟩ | (⟨h1, h2⟩ | ⟨h1, h2⟩) | rfl
+    · exact ⟨UInt32.le_trans (by decide) h1, UInt32.le_trans h2 (by decide)⟩
+    · exact ⟨UInt32.le_trans (by decide) h1, UInt32.le_trans h2 (by decide)⟩
+    · exact ⟨UInt32.le_trans (by decide) h1, UInt32.le_trans h2 (by decide)⟩
+    · exact ⟨by decide, by decide⟩
+  · exact ⟨by decide, by decide⟩
+
+lemma isUriChar_ascii (c : Char) (h : isUriCharBool c = true) :
+    0x20 ≤ c.val ∧ c.val ≤ 0x7E := by
+  simp only [isUriCharBool, decide_eq_true_eq] at h
+  unfold isUriCharProp at h
+  rcases h with h | h
+  · exact isWordCharOrBang_ascii c (by simp [isWordCharBool, h])
+  · simp only [List.mem_cons, List.not_mem_nil, or_false] at h
+    rcases h with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl
+      | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
+      exact ⟨by decide, by decide⟩
+
 lemma collectVersionMajorLoop_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (major : String) (fuel : Nat) :
-    ∃ sp', GStar SNbChar sp sp' ∧
+    ∃ sp', GStar SCommentChar sp sp' ∧
       ScannerSurfCorr (collectVersionMajorLoop sc major fuel).snd sp' := by
   induction fuel generalizing sc sp major with
   | zero => simp [collectVersionMajorLoop]; exact ⟨sp, GStar.nil _, hcorr⟩
@@ -1096,24 +1149,26 @@ lemma collectVersionMajorLoop_prod (sc : ScannerState) (sp : SurfPos)
       have hmore := corr_nonempty_has_more hcorr
       have hadv := advance_non_newline_corr sc '.' rest hcorr hmore (by decide) (by decide)
       exact ⟨⟨rest, sc.col + 1⟩, GStar.cons _ _ _
-        (not_isLineBreak_gives_SNbChar '.' rest sc.col (by decide)) (GStar.nil _), hadv⟩
+        (not_isLineBreak_gives_SCommentChar '.' rest sc.col (by decide)) (GStar.nil _), hadv⟩
     · -- peek? = some c (c ≠ '.')
       rename_i c _ hpeek; split
       · -- isDigit
         rename_i h_dig
         have h_nlb := isDigit_not_isLineBreak c h_dig
+        have hascii := isDigit_ascii c h_dig
         obtain ⟨rest, rfl⟩ := peek_some_sp hcorr hpeek
         have hmore := corr_nonempty_has_more hcorr
         have hadv := advance_non_newline_corr sc c rest hcorr hmore
           (not_isLineBreak_not_newline c h_nlb) (not_isLineBreak_not_cr c h_nlb)
         obtain ⟨sp', hstar, hcorr'⟩ := ih sc.advance ⟨rest, sc.col + 1⟩ hadv _
-        exact ⟨sp', GStar.cons _ _ _ (not_isLineBreak_gives_SNbChar c rest sc.col h_nlb) hstar, hcorr'⟩
+        exact ⟨sp', GStar.cons _ _ _
+          (not_isLineBreak_gives_SCommentChar c rest sc.col h_nlb) hstar, hcorr'⟩
       · exact ⟨sp, GStar.nil _, hcorr⟩
     · exact ⟨sp, GStar.nil _, hcorr⟩
 
 lemma collectVersionMinorLoop_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (minor : String) (fuel : Nat) :
-    ∃ sp', GStar SNbChar sp sp' ∧
+    ∃ sp', GStar SCommentChar sp sp' ∧
       ScannerSurfCorr (collectVersionMinorLoop sc minor fuel).snd sp' := by
   induction fuel generalizing sc sp minor with
   | zero => simp [collectVersionMinorLoop]; exact ⟨sp, GStar.nil _, hcorr⟩
@@ -1122,12 +1177,14 @@ lemma collectVersionMinorLoop_prod (sc : ScannerState) (sp : SurfPos)
     · rename_i c hpeek; split
       · rename_i h_dig
         have h_nlb := isDigit_not_isLineBreak c h_dig
+        have hascii := isDigit_ascii c h_dig
         obtain ⟨rest, rfl⟩ := peek_some_sp hcorr hpeek
         have hmore := corr_nonempty_has_more hcorr
         have hadv := advance_non_newline_corr sc c rest hcorr hmore
           (not_isLineBreak_not_newline c h_nlb) (not_isLineBreak_not_cr c h_nlb)
         obtain ⟨sp', hstar, hcorr'⟩ := ih sc.advance ⟨rest, sc.col + 1⟩ hadv (minor.push c)
-        exact ⟨sp', GStar.cons _ _ _ (not_isLineBreak_gives_SNbChar c rest sc.col h_nlb) hstar, hcorr'⟩
+        exact ⟨sp', GStar.cons _ _ _
+          (not_isLineBreak_gives_SCommentChar c rest sc.col h_nlb) hstar, hcorr'⟩
       · exact ⟨sp, GStar.nil _, hcorr⟩
     · exact ⟨sp, GStar.nil _, hcorr⟩
 
@@ -1140,7 +1197,7 @@ lemma isWordCharOrBang_not_isLineBreak (c : Char)
 
 lemma collectTagHandleDirectiveLoop_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (handle : String) (fuel : Nat) :
-    ∃ sp', GStar SNbChar sp sp' ∧
+    ∃ sp', GStar SCommentChar sp sp' ∧
       ScannerSurfCorr (collectTagHandleDirectiveLoop sc handle fuel).snd sp' := by
   induction fuel generalizing sc sp handle with
   | zero => simp [collectTagHandleDirectiveLoop]; exact ⟨sp, GStar.nil _, hcorr⟩
@@ -1149,12 +1206,14 @@ lemma collectTagHandleDirectiveLoop_prod (sc : ScannerState) (sp : SurfPos)
     · rename_i c hpeek; split
       · rename_i h_pred
         have h_nlb := isWordCharOrBang_not_isLineBreak c h_pred
+        have hascii := isWordCharOrBang_ascii c h_pred
         obtain ⟨rest, rfl⟩ := peek_some_sp hcorr hpeek
         have hmore := corr_nonempty_has_more hcorr
         have hadv := advance_non_newline_corr sc c rest hcorr hmore
           (not_isLineBreak_not_newline c h_nlb) (not_isLineBreak_not_cr c h_nlb)
         obtain ⟨sp', hstar, hcorr'⟩ := ih sc.advance ⟨rest, sc.col + 1⟩ hadv (handle.push c)
-        exact ⟨sp', GStar.cons _ _ _ (not_isLineBreak_gives_SNbChar c rest sc.col h_nlb) hstar, hcorr'⟩
+        exact ⟨sp', GStar.cons _ _ _
+          (not_isLineBreak_gives_SCommentChar c rest sc.col h_nlb) hstar, hcorr'⟩
       · exact ⟨sp, GStar.nil _, hcorr⟩
     · exact ⟨sp, GStar.nil _, hcorr⟩
 
@@ -1167,7 +1226,7 @@ lemma isUriChar_not_isLineBreak (c : Char)
 
 lemma collectTagPrefixLoop_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (pfx : String) (fuel : Nat) :
-    ∃ sp', GStar SNbChar sp sp' ∧
+    ∃ sp', GStar SCommentChar sp sp' ∧
       ScannerSurfCorr (collectTagPrefixLoop sc pfx fuel).snd sp' := by
   induction fuel generalizing sc sp pfx with
   | zero => simp [collectTagPrefixLoop]; exact ⟨sp, GStar.nil _, hcorr⟩
@@ -1176,12 +1235,14 @@ lemma collectTagPrefixLoop_prod (sc : ScannerState) (sp : SurfPos)
     · rename_i c hpeek; split
       · rename_i h_pred
         have h_nlb := isUriChar_not_isLineBreak c h_pred
+        have hascii := isUriChar_ascii c h_pred
         obtain ⟨rest, rfl⟩ := peek_some_sp hcorr hpeek
         have hmore := corr_nonempty_has_more hcorr
         have hadv := advance_non_newline_corr sc c rest hcorr hmore
           (not_isLineBreak_not_newline c h_nlb) (not_isLineBreak_not_cr c h_nlb)
         obtain ⟨sp', hstar, hcorr'⟩ := ih sc.advance ⟨rest, sc.col + 1⟩ hadv (pfx.push c)
-        exact ⟨sp', GStar.cons _ _ _ (not_isLineBreak_gives_SNbChar c rest sc.col h_nlb) hstar, hcorr'⟩
+        exact ⟨sp', GStar.cons _ _ _
+          (not_isLineBreak_gives_SCommentChar c rest sc.col h_nlb) hstar, hcorr'⟩
       · exact ⟨sp, GStar.nil _, hcorr⟩
     · exact ⟨sp, GStar.nil _, hcorr⟩
 
@@ -1190,7 +1251,7 @@ lemma scanYamlDirective_prod (sc : ScannerState)
     (hcorr_ws : ScannerSurfCorr s_after_ws sp_ws)
     (startPos : YamlPos) (s' : ScannerState)
     (hok : scanYamlDirective sc s_after_ws startPos = .ok s') :
-    ∃ sp', GStar SNbChar sp_ws sp' ∧ ScannerSurfCorr s' sp' := by
+    ∃ sp', GStar SCommentChar sp_ws sp' ∧ ScannerSurfCorr s' sp' := by
   unfold scanYamlDirective at hok
   simp only [bind, Except.bind] at hok
   split at hok
@@ -1201,8 +1262,8 @@ lemma scanYamlDirective_prod (sc : ScannerState)
       collectVersionMinorLoop_prod _ sp_major hcorr_major "" _
     obtain ⟨sp_ws2, h_ws, hcorr_ws2⟩ :=
       skipWhitespace_corr _ sp_minor hcorr_minor
-    have h_nb_ws := GStar_SSWhite_to_GStar_SNbChar h_ws
-    -- Compose all GStar SNbChar evidence
+    have h_nb_ws := GStar_SSWhite_to_GStar_SCommentChar h_ws
+    -- Compose all GStar SCommentChar evidence
     have h_total := GStar_trans (GStar_trans h_nb_maj h_nb_min) (GStar_trans h_nb_ws (GStar.nil _))
     -- Validation doesn't change position
     split at hok
@@ -1222,20 +1283,20 @@ lemma scanTagDirective_prod
     (hcorr_ws : ScannerSurfCorr s_after_ws sp_ws)
     (sc : ScannerState) (startPos : YamlPos) (s' : ScannerState)
     (hok : scanTagDirective sc s_after_ws startPos = .ok s') :
-    ∃ sp', GStar SNbChar sp_ws sp' ∧ ScannerSurfCorr s' sp' := by
+    ∃ sp', GStar SCommentChar sp_ws sp' ∧ ScannerSurfCorr s' sp' := by
   unfold scanTagDirective at hok
   simp only [bind, Except.bind] at hok
   obtain ⟨sp_hdl, h_nb_hdl, hcorr_hdl⟩ :=
     collectTagHandleDirectiveLoop_prod s_after_ws sp_ws hcorr_ws "" _
   obtain ⟨sp_ws2, h_ws, hcorr_ws2⟩ :=
     skipWhitespace_corr _ sp_hdl hcorr_hdl
-  have h_nb_ws := GStar_SSWhite_to_GStar_SNbChar h_ws
+  have h_nb_ws := GStar_SSWhite_to_GStar_SCommentChar h_ws
   obtain ⟨sp_pfx, h_nb_pfx, hcorr_pfx⟩ :=
     collectTagPrefixLoop_prod _ sp_ws2 hcorr_ws2 "" _
   -- Trailing content validation (added in 4y.1)
   obtain ⟨sp_val, h_ws_val, hcorr_val⟩ :=
     skipWhitespace_corr _ sp_pfx hcorr_pfx
-  have h_nb_val := GStar_SSWhite_to_GStar_SNbChar h_ws_val
+  have h_nb_val := GStar_SSWhite_to_GStar_SCommentChar h_ws_val
   have h_total := GStar_trans h_nb_hdl (GStar_trans h_nb_ws (GStar_trans h_nb_pfx h_nb_val))
   -- Validation doesn't change position
   split at hok
@@ -1250,7 +1311,7 @@ lemma scanTagDirective_prod
   · have h := Except.ok.inj hok; subst h
     exact ⟨sp_val, h_total, ⟨hcorr_val.chars_from, hcorr_val.col_eq, hcorr_val.end_eq, hcorr_val.input_prefix, hcorr_val.indent_cols_nonneg⟩⟩
 
--- `scanDirective` produces `GStar SNbChar` evidence: all characters after `%`
+-- `scanDirective` produces `GStar SCommentChar` evidence: all characters after `%`
 -- up to the line break are non-break characters.  After 4y.1, all directive
 -- branches end with `skipToEndOfLine`, so the scanner is always at break/EOF.
 -- Requires `hpeek` (the caller dispatches on `sc.peek? = some '%'`).
@@ -1260,11 +1321,11 @@ lemma scanDirective_prod (sc : ScannerState) (sp : SurfPos)
     (s' : ScannerState) (hok : scanDirective sc = .ok s') :
     ∃ rest sp',
       sp.chars = '%' :: rest ∧
-      GStar SNbChar ⟨rest, sp.col + 1⟩ sp' ∧
+      GStar SCommentChar ⟨rest, sp.col + 1⟩ sp' ∧
       ScannerSurfCorr s' sp' ∧
       (sp'.chars = [] ∨ ∃ ch rest', sp'.chars = ch :: rest' ∧ isLineBreakBool ch = true) := by
   obtain ⟨rest, rfl⟩ := peek_some_sp hcorr hpeek
-  suffices h : ∃ sp', GStar SNbChar ⟨rest, sc.col + 1⟩ sp' ∧ ScannerSurfCorr s' sp' ∧
+  suffices h : ∃ sp', GStar SCommentChar ⟨rest, sc.col + 1⟩ sp' ∧ ScannerSurfCorr s' sp' ∧
       (sp'.chars = [] ∨ ∃ ch rest', sp'.chars = ch :: rest' ∧ isLineBreakBool ch = true) by
     obtain ⟨sp', hg, hc, hle⟩ := h; exact ⟨rest, sp', rfl, hg, hc, hle⟩
   unfold scanDirective at hok
@@ -1282,7 +1343,7 @@ lemma scanDirective_prod (sc : ScannerState) (sp : SurfPos)
     -- Thread through whitespace
     obtain ⟨sp_ws, h_ws, hcorr_ws⟩ :=
       skipWhitespace_corr _ sp_name hcorr_name
-    have h_nb_ws := GStar_SSWhite_to_GStar_SNbChar h_ws
+    have h_nb_ws := GStar_SSWhite_to_GStar_SCommentChar h_ws
     -- Compose name + whitespace GStar evidence
     have h_pre := GStar_trans h_nb_name h_nb_ws
     -- Branch on directive type

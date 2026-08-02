@@ -2784,7 +2784,8 @@ lemma collectBlockScalarLoop_preserves_flowLevel (s : ScannerState) (rawContent 
               split
               · split
                 · rw [ih, consumeNewline_preserves_flowLevel, h_fl_line, h_fl_spaces]
-                · rw [ih, h_fl_line, h_fl_spaces]
+                · dsimp only []
+                  rw [h_fl_line, h_fl_spaces]
               · rw [h_fl_line, h_fl_spaces]
 
 lemma collectCommentTextLoop_preserves_flowLevel (s : ScannerState) (text : String) (fuel : Nat) :

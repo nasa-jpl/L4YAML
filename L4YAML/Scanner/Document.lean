@@ -90,7 +90,8 @@ def collectDirectiveNameLoop (s : ScannerState) (name : String) (fuel : Nat) : S
   | fuel' + 1 =>
     match s.peek? with
     | some c =>
-      if !isWhiteSpaceBool c && !isLineBreakBool c then
+      if !isWhiteSpaceBool c && !isLineBreakBool c
+          && isPrintableBool c && c != '﻿' then
         collectDirectiveNameLoop s.advance (name.push c) fuel'
       else
         (name, s)

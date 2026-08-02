@@ -644,7 +644,8 @@ lemma collectBlockScalarLoop_corr (sc : ScannerState) (sp : SurfPos)
                 obtain ⟨sp_cn, hcorr_cn⟩ :=
                   consumeNewline_corr _ sp_line c2 hcorr_line hpeek2 hlb2
                 exact ih _ sp_cn _ hcorr_cn
-              · exact ih _ sp_line _ hcorr_line
+              · -- non-nb-char stop: loop returns directly
+                exact ⟨sp_line, hcorr_line⟩
             · exact ⟨sp_line, hcorr_line⟩  -- none after content
 
 /-- `parseBlockHeaderLoop` preserves correspondence (3rd component). -/

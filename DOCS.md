@@ -5533,12 +5533,34 @@ category, 8 checks incl. the leading-BOM and quoted-BOM acceptance
 cases) and `Tests/Guards/Dump.lean` (emitter `#guard`s incl. the
 `\x01` escape round-trip).
 
-### Residual looseness
+### Companion nb-char fix (2026-08-01, same day)
 
-`[27] nb-char` (`isNbChar := ¬linebreak`, `Surface/Basic.lean`) still
-omits the printable/BOM restriction, so comments and block-scalar
-bodies admit raw controls/BOM. Same fix pattern applies — recorded in
-[Other open items](#other-open-items).
+`[27] nb-char` (`isNbChar`, `Surface/Basic.lean`) was tightened the
+same way immediately after. Where it landed:
+
+- **Block-scalar bodies** ([171] `l-nb-literal-text` uses
+  `GPlus SNbChar`): `collectLineContentLoop`(+`Ix`) stops at
+  non-printables/BOM and the block-scalar loop then *ends the scalar
+  there* (the previously dead no-break recursion in
+  `collectBlockScalarLoop`(+`Ix`) became a direct stop), so dispatch
+  rejects the offending char with `unexpectedChar`.
+- **Directive names, version digits, tag handles/prefixes**: the
+  name loop tightened; digit/word/URI classes were already
+  printable-ASCII subsets (bridged by the `*_ascii` helpers in
+  `StructureProduction.lean`).
+- **Emitter**: `Dump.blockScalarRepresentable` guards literal/folded
+  emission (controls/BOM/CR force double-quoted, escaped), and the
+  explicit `.singleQuoted` config now falls back to double-quoted for
+  `singleQuotedRepresentable`-failing content.
+- **Comments and directive trailing text are deliberately loose**:
+  `SCNbCommentText` [75] and the simplified `SLDirective` [82] use the
+  named predicate `isCommentTextChar` (`¬linebreak` only,
+  `Surface/Basic.lean`) — comment text is stripped with no semantic
+  effect, and tightening it would have forced a weakened
+  stopped-at-garbage postcondition through the `skipToContent`
+  identity-lemma family that scanner correctness uses before every
+  token. The deviation is documented at the predicate and is **not**
+  open work.
 
 ### Related spec-fidelity corrections (2026-04, unchanged)
 
@@ -6501,12 +6523,13 @@ context):
 - **Pattern 6 factoring unrecorded** — the `accum_content_pending`
   evidence-extraction duplication (~200 lines, confirmed in the pattern
   analysis) has no recorded refactoring outcome.
-- **`nb-char` [27] still spec-loose** — `isNbChar`
-  (`L4YAML/Surface/Basic.lean`) is `¬linebreak` only, so comments and
-  block-scalar bodies admit raw control characters and BOM. The ns-char
-  fix (closed 2026-08-01, [The ns-char gap](#the-ns-char-gap)) is the
-  template: add the printable/¬BOM conjuncts, tighten the corresponding
-  scanner checks, sweep the scanner→grammar bridges.
+- ~~**`nb-char` [27] still spec-loose**~~ — **Fixed 2026-08-01** with
+  the ns-char fix (see the
+  [companion nb-char record](#companion-nb-char-fix-2026-08-01-same-day)):
+  `isNbChar` is now `[27]`-exact and block-scalar bodies reject raw
+  controls/BOM. Comment/directive-trailing text intentionally remains
+  loose via the named `isCommentTextChar` predicate (documented
+  deviation — stripped text, no semantic effect).
 - **Strategic roadmap** — from the
   [Executive summary](#executive-summary): Phase 2 (Next) verified
   configuration validators; Phase 3 (Future) verified state machines /

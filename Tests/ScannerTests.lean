@@ -222,6 +222,15 @@ def collectTests : IO VerifiedSuiteResult := do
   check ref "raw BOM in double-quoted accepted (nb-json)"
     (pipelineOk ("\"" ++ bom ++ "\""))
   check ref "escaped control in double-quoted accepted" (pipelineOk "\"\\u0001\"")
+  -- nb-char [27] tightening: block-scalar bodies reject raw controls/BOM;
+  -- comments deliberately stay loose (isCommentTextChar, stripped anyway).
+  check ref "control char in literal block scalar rejected"
+    (!pipelineOk ("k: |\n  a" ++ ctl ++ "b\n"))
+  check ref "BOM in literal block scalar rejected"
+    (!pipelineOk ("k: |\n  a" ++ bom ++ "b\n"))
+  check ref "clean literal block scalar accepted" (pipelineOk "k: |\n  ab\n")
+  check ref "control char in comment tolerated (loose by design)"
+    (pipelineOk ("a: 1 # x" ++ ctl ++ "y"))
 
   -- Build result
   let results ← finish ref
