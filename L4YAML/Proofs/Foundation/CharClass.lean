@@ -119,10 +119,10 @@ The `else` branch of `canStartPlainScalarBool` is context-independent:
 `!isIndicator c && !isWhiteSpace c && !isLineBreak c`.
 -/
 lemma canStartPlainScalar_base (c : Char) (next : Option Char) (inFlow : Bool)
-    (hDash : c ≠ '-') (hQ : c ≠ '?') (hColon : c ≠ ':') :
+    (hDash : c ≠ '-') (hQ : c ≠ '?') (hColon : c ≠ ':') (hBom : c ≠ '﻿') :
     isPrintableProp c ∧ ¬ isWhiteSpaceProp c ∧ ¬ isLineBreakProp c ∧ ¬ isIndicatorProp c →
     canStartPlainScalarBool c next inFlow = true := by
-  intro ⟨_, hNotWs, hNotLb, hNotInd⟩
+  intro ⟨hPr, hNotWs, hNotLb, hNotInd⟩
   unfold canStartPlainScalarBool
   have hNot : ¬(c = '-' ∨ c = '?' ∨ c = ':') := by
     rintro (rfl | rfl | rfl)
@@ -130,7 +130,8 @@ lemma canStartPlainScalar_base (c : Char) (next : Option Char) (inFlow : Bool)
     · exact hQ rfl
     · exact hColon rfl
   simp only [hNot, ite_false]
-  -- Goal: (!isIndicatorBool c && !isWhiteSpaceBool c && !isLineBreakBool c) = true
+  -- Goal: (!isIndicatorBool c && !isWhiteSpaceBool c && !isLineBreakBool c
+  --        && isPrintableBool c && c != '﻿') = true
   have hNotIndBool : isIndicatorBool c = false := by
     rw [Bool.eq_false_iff]
     intro h
@@ -143,7 +144,8 @@ lemma canStartPlainScalar_base (c : Char) (next : Option Char) (inFlow : Bool)
     rw [Bool.eq_false_iff]
     intro h
     exact hNotLb ((isLineBreak_correspondence c).mpr h)
-  simp [hNotIndBool, hNotWsBool, hNotLbBool]
+  have hPrBool : isPrintableBool c = true := (isPrintable_iff c).mpr hPr
+  simp [hNotIndBool, hNotWsBool, hNotLbBool, hPrBool, hBom]
 
 /-! ## canStartPlainScalar (exception for `-`, `?`, `:`)
 
@@ -159,10 +161,12 @@ is not whitespace and not a line break.
 lemma canStartPlainScalar_exception (c : Char) (n : Char)
     (hExc : c = '-' ∨ c = '?' ∨ c = ':')
     (hNotWs : isWhiteSpaceBool n = false)
-    (hNotLb : isLineBreakBool n = false) :
+    (hNotLb : isLineBreakBool n = false)
+    (hPr : isPrintableBool n = true)
+    (hBom : n ≠ '﻿') :
     canStartPlainScalarBool c (some n) false = true := by
   unfold canStartPlainScalarBool
-  rcases hExc with rfl | rfl | rfl <;> simp [hNotWs, hNotLb]
+  rcases hExc with rfl | rfl | rfl <;> simp [hNotWs, hNotLb, hPr, hBom]
 
 /--
 Exception characters in flow context: additionally requires the following
@@ -172,10 +176,12 @@ lemma canStartPlainScalar_exception_flow (c : Char) (n : Char)
     (hExc : c = '-' ∨ c = '?' ∨ c = ':')
     (hNotWs : isWhiteSpaceBool n = false)
     (hNotLb : isLineBreakBool n = false)
-    (hNotFlow : isFlowIndicatorBool n = false) :
+    (hNotFlow : isFlowIndicatorBool n = false)
+    (hPr : isPrintableBool n = true)
+    (hBom : n ≠ '﻿') :
     canStartPlainScalarBool c (some n) true = true := by
   unfold canStartPlainScalarBool
-  rcases hExc with rfl | rfl | rfl <;> simp [hNotWs, hNotLb, hNotFlow]
+  rcases hExc with rfl | rfl | rfl <;> simp [hNotWs, hNotLb, hNotFlow, hPr, hBom]
 
 /--
 Exception characters with no following character are rejected in any context.

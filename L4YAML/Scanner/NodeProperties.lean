@@ -58,7 +58,8 @@ def collectAnchorNameLoop (s : ScannerState) (name : String) (fuel : Nat) : Stri
   | fuel' + 1 =>
     match s.peek? with
     | some c =>
-      if !isFlowIndicatorBool c && !isWhiteSpaceBool c && !isLineBreakBool c then
+      if !isFlowIndicatorBool c && !isWhiteSpaceBool c && !isLineBreakBool c
+          && isPrintableBool c && c != '﻿' then
         collectAnchorNameLoop s.advance (name.push c) fuel'
       else
         (name, s)

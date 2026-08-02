@@ -298,7 +298,8 @@ lemma ScalarScannable_false_to_true_noFI (s : Scalar)
       · -- Exception in goal: upgrade ∧-conjunction with h_nfi
         have h_n_mem : n ∈ s.content.toList := by
           rw [hcl]; exact .tail _ (.head _)
-        exact ⟨hvpf.1, hvpf.2.1, fun _ => h_nfi n h_n_mem⟩
+        exact ⟨hvpf.1, hvpf.2.1, fun _ => h_nfi n h_n_mem,
+               hvpf.2.2.2.1, hvpf.2.2.2.2⟩
       · contradiction
     · -- Non-exception branch in hvpf: identical for both inFlow values
       split

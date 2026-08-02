@@ -505,7 +505,7 @@ lemma collectPlainScalarLoop_preserves_contentInv
                   content_noFlowIndicators := fun hflow => by
                     have hNotFI : ¬isFlowIndicatorProp c := by
                       have hp := hPlainSafe; rw [hflow] at hp
-                      simp [isPlainSafeProp] at hp; exact hp.2.2
+                      simp [isPlainSafeProp] at hp; exact hp.2.2.1
                     apply noFlowIndicatorsProp_append
                     · apply noFlowIndicatorsProp_append _ _
                           (inv.content_noFlowIndicators hflow)

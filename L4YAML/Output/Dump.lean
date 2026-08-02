@@ -1,5 +1,6 @@
 import Lean.Data.Json
 import L4YAML.Spec.Types
+import L4YAML.Spec.CharPredicates
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -178,7 +179,18 @@ def escapeChar (c : Char) : String :=
   | '\x1b' => "\\e"
   | '\\'   => "\\\\"
   | '"'    => "\\\""
-  | c      => c.toString
+  | c      =>
+    if CharPredicates.isPrintableBool c then c.toString
+    else
+      -- Non-printable (c-printable [1] excluded): YAML §5.7 numeric escapes.
+      -- Raw controls are invalid inside double quotes (nb-json [2]), so the
+      -- scanner would reject them; escape by code point instead.
+      let hex := fun (n w : Nat) =>
+        let ds := String.ofList ((Nat.toDigits 16 n).map Char.toUpper)
+        String.ofList (List.replicate (w - ds.length) '0') ++ ds
+      if c.toNat ≤ 0xFF then "\\x" ++ hex c.toNat 2
+      else if c.toNat ≤ 0xFFFF then "\\u" ++ hex c.toNat 4
+      else "\\U" ++ hex c.toNat 8
 
 /-- Escape a string for double-quoted context. -/
 def escapeString (s : String) : String :=
@@ -233,9 +245,12 @@ def isPlainSafe (s : String) (allowReserved : Bool := false) : Bool :=
     | c :: _ =>
       -- First character must not be a YAML indicator
       !isIndicator c &&
-      -- Must not contain flow indicators or newlines
+      -- Must not contain flow indicators or newlines; every char must be
+      -- ns-char [34] eligible (printable, not BOM) or the scanner would
+      -- terminate the plain scalar early on read-back
       !s.any (fun ch => ch == '{' || ch == '}' || ch == '[' || ch == ']' ||
-                         ch == ',' || ch == '\n' || ch == '\r') &&
+                         ch == ',' || ch == '\n' || ch == '\r' ||
+                         ch == '﻿' || !CharPredicates.isPrintableBool ch) &&
       -- Must not contain `: ` or ` #`
       !hasUnsafeSubsequence s &&
       -- Must not have leading/trailing whitespace or trailing `:`

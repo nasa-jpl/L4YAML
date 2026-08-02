@@ -636,6 +636,7 @@ Trailing whitespace is trimmed by the entry point `scanPlainScalarIx`. -/
     (inFlow : Bool) : Bool :=
   match c.peekAt? 1 with
   | some n => isBlankBool n || (inFlow && isFlowIndicatorBool n)
+              || !isPrintableBool n || n == '﻿'
   | none   => true
 
 /-! ### Layer F2 — document-boundary check + multi-line plain

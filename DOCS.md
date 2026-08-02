@@ -53,7 +53,7 @@ What intentionally lives **elsewhere**:
 
 **[The Plan (open work)](#the-plan-open-work)**
 
-- [The ns-char gap](#the-ns-char-gap) — **open** latent conformance bug + fix plan
+- [The ns-char gap](#the-ns-char-gap) — **fixed 2026-08-01**; closure record
 - [Grammar completeness plan](#grammar-completeness-plan) — capstone 7.7,
   the only open proof frontier
 - [Merge semantics plan](#merge-semantics-plan) — `DuplicateKeyPolicy.merge`
@@ -5461,7 +5461,7 @@ lives in [README.md](README.md) and is not duplicated here.)
 
 | Item | Status | Section |
 |---|---|---|
-| `ns-char` predicate spec-loose body | **Open** (latent bug; fix steps 2–5 remain) | [The ns-char gap](#the-ns-char-gap) |
+| `ns-char` predicate spec-loose body | **Fixed 2026-08-01** (predicates tightened; scanner + emitter conformant; regression-tested) | [The ns-char gap](#the-ns-char-gap) |
 | Grammar completeness (`parse_iff_grammar`, capstone 7.7) | **Open** (unblocked; Step-0 audit done) | [Grammar completeness plan](#grammar-completeness-plan) |
 | Merge semantics (`DuplicateKeyPolicy.merge`) | **Open** (design ready; re-base on `LawfulBEq`) | [Merge semantics plan](#merge-semantics-plan) |
 | Security limits: open questions + future work | **Open** (design questions; 3 unimplemented features) | [Security hardening backlog](#security-hardening-backlog) |
@@ -5469,103 +5469,80 @@ lives in [README.md](README.md) and is not duplicated here.)
 
 ## The ns-char gap
 
-*(was `NS-CHAR-PREDICATE-GAP.md` — "ns-char Predicate — Spec-Loose Body"; consolidated into this file 2026-08-01, file-level history in git)*
+*(was `NS-CHAR-PREDICATE-GAP.md` — "ns-char Predicate — Spec-Loose Body";
+consolidated into this file 2026-08-01; **closed 2026-08-01** — the fix
+landed the same day; closure record below, full plan history in git)*
 
-**Date:** 2026-04-28
-**Updated:** 2026-07-31 — line anchors refreshed; fix-plan step 1 landed
-(`isPrintableBool` / `isPrintable_iff` exist); steps 2–5 remain open.
-**Status:** Open. Predicate is strictly looser than spec; no test currently exercises the gap.
-**Severity:** Latent — correctness bug that does not flip any current test pass→fail.
+**Status:** Fixed. The predicates now implement
+`[34] ns-char ::= c-printable - b-char - c-byte-order-mark - s-white`
+exactly; scanner, emitter, and proofs updated; regression-tested.
 
-### Summary
+### What was wrong
 
-Two character predicates in this codebase approximate YAML 1.2.2 production
-[34] `ns-char` as `¬whitespace ∧ ¬linebreak`. The spec defines:
+`isNsChar` (`Surface/Basic.lean`), `isPlainSafeBool/Prop`, and
+`canStartPlainScalarBool/Prop` (`Spec/CharPredicates.lean`) approximated
+ns-char as `¬whitespace ∧ ¬linebreak`, admitting BOM (`U+FEFF`) and
+non-printable control characters in plain scalars and anchor names
+(latent since 2026-04-28; no valid YAML was affected).
 
-```
-[34] ns-char ::= c-printable - b-char - c-byte-order-mark - s-white
-```
+### The fix
 
-The current approximation is missing the **printable-range check** and the
-**BOM exclusion**. As a result, the predicates admit:
+Every predicate gained `isPrintableProp c ∧ c ≠ '﻿'` (Bool mirrors:
+`isPrintableBool c && c != '﻿'`). Note BOM sits inside c-printable's
+`[E000, FFFD]` range, so the printability conjunct alone does **not**
+exclude it — the explicit BOM conjunct is load-bearing.
 
-- BOM (`U+FEFF`) anywhere a plain-scalar continuation char is allowed.
-- Non-printable control characters (most of `0x00`–`0x1F` except tab/CR/LF,
-  plus `0x7F`).
+The real fix surface was wider than the predicates (the original
+blast-radius estimate missed all of these):
 
-### Affected definitions
+- **`canStartPlainScalarBool/Prop`** had to tighten with `isPlainSafe*`,
+  or the scanner would dispatch a BOM-first plain scalar whose grammar
+  derivation no longer exists (soundness would break, and the collect
+  loop would stall on an empty token).
+- **Scanner runtime, legacy + indexed twins**: the `':'`-adjacency check
+  (`collectPlainScalar_terminates?` in `Scanner/Scalar.lean`,
+  `colonTerminatesPlain` in `Scanner/IndexedScanner.lean`) gained
+  `|| !isPrintableBool n || n == '﻿'` — without it, `a:<BOM>` would emit
+  a trailing-`:` plain token with no `[130]` derivation. The anchor-name
+  loops (`Scanner/NodeProperties.lean`, `Scanner/IndexedDispatch.lean`)
+  tightened to match `[102] ns-anchor-char`. Mid-stream BOM/controls now
+  fail dispatch with `unexpectedChar`; leading BOM (`[202]` document
+  prefix) and BOM inside quoted scalars (`[2]` nb-json) remain valid.
+- **Emitter**: `Dump.isPlainSafe` rejects non-printables/BOM (style
+  falls back to double-quoted), and `Dump.escapeChar` now hex-escapes
+  all non-printables (`\xXX`/`\uXXXX`/`\UXXXXXXXX`). Previously it
+  emitted raw control bytes inside double quotes — invalid per nb-json
+  and rejected by the scanner (`invalidControlChar`); the loose plain
+  path had masked that latent emitter bug.
+- **Proof sweep** (~15 files, mechanical): the scanner→grammar bridges
+  (`not_blank_to_nsChar`, `colon_not_terminated_next`,
+  `colonTerminatesPlain_false_iff`, `isNsAnchorChar_of_scanner_cond`,
+  the `canStartPlainScalar_*` helper families in ScannerCorrectness /
+  IndexedScannerProgress / ScannerPlainScalar / CharClass) gained
+  printability/BOM hypotheses, fed exactly by the tightened runtime
+  checks. Conjunction-arity updates rippled through ScalarProduction,
+  StructureProduction, ScannerPlainContent, IndexedScalar,
+  ParserGrammableBase, ScannerPlainScalarValid.
 
-| Predicate | Location | Body |
-|-----------|----------|------|
-| `isNsChar` | [L4YAML/Surface/Basic.lean:42](L4YAML/Surface/Basic.lean#L42) | `¬isLineBreakProp ∧ ¬isWhiteSpaceProp` |
-| `isPlainSafeBool` / `isPlainSafeProp` | [L4YAML/Spec/CharPredicates.lean:1033,1048](L4YAML/Spec/CharPredicates.lean#L1033) | `¬whitespace ∧ ¬linebreak` (plus `¬flowIndicator` when `inFlow`) |
+Verification: all 197 library modules + full targets green, 4391/4391
+test checks, 0 sorries, 0 custom axioms, capstone pins unchanged, both
+CI gates green.
 
-`isNsPlainSafe` ([L4YAML/Surface/Scalars.lean:217](L4YAML/Surface/Scalars.lean#L217))
-inherits the bug via `isNsChar`.
+Regression tests: `Tests/ScannerTests.lean` ("ns-char tightening"
+category, 8 checks incl. the leading-BOM and quoted-BOM acceptance
+cases) and `Tests/Guards/Dump.lean` (emitter `#guard`s incl. the
+`\x01` escape round-trip).
 
-### What the fix looks like
+### Residual looseness
 
-Per spec, the body must additionally require `isPrintableProp c` (already
-defined in [L4YAML/Spec/CharPredicates.lean:789](L4YAML/Spec/CharPredicates.lean#L789))
-and exclude `c == '﻿'`.
+`[27] nb-char` (`isNbChar := ¬linebreak`, `Surface/Basic.lean`) still
+omits the printable/BOM restriction, so comments and block-scalar
+bodies admit raw controls/BOM. Same fix pattern applies — recorded in
+[Other open items](#other-open-items).
 
-The `Bool` counterpart `isPrintableBool` plus the `isPrintable_iff` coupling
-lemma needed to keep the scanner/spec drift mechanism intact **have since been
-added** ([L4YAML/Spec/CharPredicates.lean:802-805](L4YAML/Spec/CharPredicates.lean#L802),
-re-exported through `L4YAML/Spec/Grammar.lean:51`) — step 1 of the
-recommended approach below is done.
+### Related spec-fidelity corrections (2026-04, unchanged)
 
-### Blast radius
-
-- **Predicates to tighten:** 2 (`isNsChar`, `isPlainSafe*`).
-- **New predicates required:** `isPrintableBool` + `isPrintable_iff` — **done**
-  (see above).
-- **Proof obligations to update:** ~30 in `L4YAML/Proofs/Production/ScalarProduction.lean`,
-  ~7 across `L4YAML/Proofs/Scanner/{ScannerPlainScalar,ScannerPlainContent,ScannerBound,ScannerCorrectness}.lean`,
-  plus `isPlainSafe_iff` itself.
-  *Caveat (2026-07-31): these counts predate the wiring of the indexed scanner
-  track (`Proofs/Production/IndexedScannerPlainScalarValid.lean`,
-  `Proofs/Scanner/Indexed*`) and the 2026-04 folder reorganization — re-count
-  the obligations when this fix is scheduled.*
-- **Scanner runtime:** `collectPlainScalarLoop` ([L4YAML/Scanner/Scalar.lean:513](L4YAML/Scanner/Scalar.lean#L513))
-  terminates one character earlier when it hits a BOM or control char mid-scalar.
-  Strictly more conformant; no valid YAML changes outcome.
-
-### Test impact
-
-No current test exercises raw BOM or raw control chars inside a plain
-scalar body. `SpecExamples.lean` Example 5.2 already expects an error on
-mid-document BOM. Double-quoted control-char tests use *escaped* sequences
-(`\x00`), not raw bytes. Tightening the predicate should leave the test
-suite green.
-
-### Why this is a strict strengthening
-
-The new predicate accepts a strict subset of characters. Therefore every
-existing implication of the form `isPlainSafe c inFlow → P` remains valid
-(the antecedent grows weaker). Proofs that currently `simp`/`unfold` to
-`¬ws ∧ ¬lb` will need to additionally discharge an `isPrintable` (and
-`¬BOM`) conjunct. Estimate: ~3–5 theorem statements gain a printability
-side-condition; updates are mechanical (`decide` / `simp`).
-
-### Recommended approach
-
-1. ~~Add `isPrintableBool` and `isPrintable_iff` to `Spec/CharPredicates.lean`.~~
-   **Done** (CharPredicates.lean:802-805, exported via Grammar.lean:51).
-2. Tighten `isNsChar` in `Surface/Basic.lean` to add `isPrintableProp c ∧ c ≠ '﻿'`.
-3. Tighten `isPlainSafeBool/Prop` body the same way.
-4. Update `isPlainSafe_iff` proof for the new conjuncts.
-5. Sweep proof obligations that unfold these predicates; add the printability
-   side-condition where needed (mostly mechanical).
-
-Remaining work is steps 2–5. Estimated effort: an afternoon — but the estimate
-predates the indexed scanner track and the folder reorganization (see the
-blast-radius caveat above); re-validate the obligation count when this fix is
-scheduled.
-
-### Related
-
-The spec-fidelity cleanup that produced this issue also corrected:
+The cleanup that found this gap also corrected:
 
 - [110] `nb-double-text`, [119] `nb-single-text`, [131] `ns-plain` — body
   dispatch on `YamlContext` now enumerates all four spec contexts explicitly
@@ -6524,9 +6501,12 @@ context):
 - **Pattern 6 factoring unrecorded** — the `accum_content_pending`
   evidence-extraction duplication (~200 lines, confirmed in the pattern
   analysis) has no recorded refactoring outcome.
-- **`ns-char` gap test coverage** — no test exercises raw-BOM /
-  raw-control-char plain-scalar bodies; part of
-  [The ns-char gap](#the-ns-char-gap) fix plan.
+- **`nb-char` [27] still spec-loose** — `isNbChar`
+  (`L4YAML/Surface/Basic.lean`) is `¬linebreak` only, so comments and
+  block-scalar bodies admit raw control characters and BOM. The ns-char
+  fix (closed 2026-08-01, [The ns-char gap](#the-ns-char-gap)) is the
+  template: add the printable/¬BOM conjuncts, tighten the corresponding
+  scanner checks, sweep the scanner→grammar bridges.
 - **Strategic roadmap** — from the
   [Executive summary](#executive-summary): Phase 2 (Next) verified
   configuration validators; Phase 3 (Future) verified state machines /

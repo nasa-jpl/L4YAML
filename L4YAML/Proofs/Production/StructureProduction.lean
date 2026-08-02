@@ -192,12 +192,13 @@ lemma scanBlockEntry_prod (sc : ScannerState) (sp : SurfPos)
 -- Bridge: isBlankBool c → ¬isNsChar c (converse of not_blank_to_nsChar in ScalarProduction).
 lemma blank_to_not_nsChar {c : Char}
     (h : isBlankBool c = true) : ¬isNsChar c := by
-  simp [isNsChar, isLineBreakProp, isLineFeedProp, isCarriageReturnProp,
-    isWhiteSpaceProp, isSpaceProp, isTabProp,
-    isBlankBool, isWhiteSpaceBool, isSpaceBool, isTabBool,
-    isLineBreakBool, isLineFeedBool, isCarriageReturnBool, beq_iff_eq] at *
-  intro h1 h2 h3
-  rcases h with (rfl | rfl) | rfl | rfl <;> first | contradiction | rfl
+  intro hns
+  obtain ⟨hlb, hws, -, -⟩ := hns
+  simp [isBlankBool, isWhiteSpaceBool, isSpaceBool, isTabBool,
+    isLineBreakBool, isLineFeedBool, isCarriageReturnBool, beq_iff_eq] at h
+  simp [isWhiteSpaceProp, isSpaceProp, isTabProp] at hws
+  simp [isLineBreakProp, isLineFeedProp, isCarriageReturnProp] at hlb
+  rcases h with (rfl | rfl) | rfl | rfl <;> simp_all
 
 -- GNot SNsChar at position after block entry indicator, given isBlockEntryCandidate.
 -- The scanner checks `peekAt? 1` = blank/EOF. After advancing past `-`, the head
@@ -338,15 +339,16 @@ lemma bool_not_true_imp_false {b : Bool} (h : (!b) = true) :
 
 lemma isNsAnchorChar_of_scanner_cond {c : Char}
     (h : (!isFlowIndicatorBool c && !isWhiteSpaceBool c &&
-          !isLineBreakBool c) = true) :
+          !isLineBreakBool c && isPrintableBool c && (c != '﻿')) = true) :
     isNsAnchorChar c := by
-  have hab := Bool.and_eq_true_iff.mp h
-  have hfw := Bool.and_eq_true_iff.mp hab.1
-  have hfi := bool_not_true_imp_false hfw.1
-  have hws := bool_not_true_imp_false hfw.2
-  have hlb := bool_not_true_imp_false hab.2
+  simp only [Bool.and_eq_true, bne_iff_ne] at h
+  obtain ⟨⟨⟨⟨hnfi, hnws⟩, hnlb⟩, hpr⟩, hbom⟩ := h
+  have hfi := bool_not_true_imp_false hnfi
+  have hws := bool_not_true_imp_false hnws
+  have hlb := bool_not_true_imp_false hnlb
   exact ⟨⟨not_of_bool_false (isLineBreak_correspondence c) hlb,
-          not_of_bool_false (isWhiteSpace_correspondence c) hws⟩,
+          not_of_bool_false (isWhiteSpace_correspondence c) hws,
+          (isPrintable_iff c).mp hpr, hbom⟩,
          not_of_bool_false (isFlowIndicator_correspondence c) hfi⟩
 
 -- `collectAnchorNameLoop` produces `GStar (GChar isNsAnchorChar)`.
@@ -368,7 +370,10 @@ lemma collectAnchorNameLoop_prod (sc : ScannerState) (sp : SurfPos)
         have hmore := peek_some_has_more hpeek
         -- Extract isLineBreakBool c = false from conjunction
         have hlb : isLineBreakBool c = false :=
-          bool_not_true_imp_false (Bool.and_eq_true_iff.mp hcond).2
+          bool_not_true_imp_false
+            (Bool.and_eq_true_iff.mp
+              (Bool.and_eq_true_iff.mp
+                (Bool.and_eq_true_iff.mp hcond).1).1).2
         -- c ≠ newlines: rw substitutes the literal, native_decide finishes
         have hne_nl : c ≠ '\n' := by
           intro heq; rw [heq] at hlb; exact absurd hlb (by native_decide)

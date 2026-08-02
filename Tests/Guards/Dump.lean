@@ -16,6 +16,15 @@ open L4YAML L4YAML.Dump
 #guard dump (.plainScalar "") == "\"\""
 #guard dump (.plainScalar "key: value") == "\"key: value\""
 #guard dump (.plainScalar "has #comment") == "\"has #comment\""
+-- ns-char tightening (2026-08): non-printables and BOM are not plain-safe;
+-- non-printables are hex-escaped in double-quoted output (raw controls
+-- violate nb-json [2]), while BOM is nb-json-valid and stays raw.
+#guard !(isPlainSafe ("a" ++ String.singleton (Char.ofNat 0x01) ++ "b"))
+#guard !(isPlainSafe ("a" ++ String.singleton (Char.ofNat 0xFEFF) ++ "b"))
+#guard dump (.plainScalar ("a" ++ String.singleton (Char.ofNat 0x01) ++ "b"))
+  == "\"a\\x01b\""
+#guard dump (.plainScalar ("a" ++ String.singleton (Char.ofNat 0xFEFF) ++ "b"))
+  == "\"a" ++ String.singleton (Char.ofNat 0xFEFF) ++ "b\""
 #guard dump (.plainScalar "{flow}") == "\"{flow}\""
 #guard dump (.plainScalar "[array]") == "\"[array]\""
 #guard dump (.plainScalar "true") { allowReservedPlain := true } == "true"

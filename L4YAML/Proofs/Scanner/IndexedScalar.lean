@@ -1295,14 +1295,15 @@ open L4YAML.Proofs.ScannerPlainContent
 lemma colonTerminatesPlain_false_iff {input : String} (c : IxCursor input)
     (inFlow : Bool) (h : colonTerminatesPlain c inFlow = false) :
     ∃ n, c.peekAt? 1 = some n ∧ isBlankBool n = false ∧
-      (inFlow && isFlowIndicatorBool n) = false := by
+      (inFlow && isFlowIndicatorBool n) = false ∧
+      isPrintableBool n = true ∧ (n == '﻿') = false := by
   unfold colonTerminatesPlain at h
   match hpa : c.peekAt? 1 with
   | none => rw [hpa] at h; simp at h
   | some n =>
     rw [hpa] at h
-    simp only [Bool.or_eq_false_iff] at h
-    exact ⟨n, rfl, h.1, h.2⟩
+    simp only [Bool.or_eq_false_iff, Bool.not_eq_false'] at h
+    exact ⟨n, rfl, h.1.1.1, h.1.1.2, h.1.2, h.2⟩
 
 /-- `handleBlockLineBreakIx` returns either `" "` or
     `replicate '\n'` when it succeeds. Indexed twin of legacy
@@ -1962,7 +1963,7 @@ lemma collectPlainScalarLoopIx_preserves_contentInv {input : String}
           · intro hflow
             have hNotFI : ¬isFlowIndicatorProp ch := by
               have hp := hPSp; rw [hflow] at hp
-              simp [isPlainSafeProp] at hp; exact hp.2.2
+              simp [isPlainSafeProp] at hp; exact hp.2.2.1
             apply noFlowIndicatorsProp_append
             · apply noFlowIndicatorsProp_append _ _
                   (inv.content_noFlowIndicators hflow)
@@ -2017,7 +2018,7 @@ lemma collectPlainScalarLoopIx_validFirst_and_head {input : String}
       rw [hf] at h_ps
       have hpsp : isPlainSafeProp c0 true := (isPlainSafe_iff c0 true).mp h_ps
       simp only [isPlainSafeProp, ↓reduceIte] at hpsp
-      have hnf : ¬ isFlowIndicatorProp c0 := hpsp.2.2
+      have hnf : ¬ isFlowIndicatorProp c0 := hpsp.2.2.1
       cases hfi : isFlowIndicatorBool c0 with
       | false => rfl
       | true => exfalso; exact hnf ((isFlowIndicator_iff c0).mp hfi)
@@ -2155,7 +2156,7 @@ lemma collectPlainScalarLoopIx_validFirst_and_head {input : String}
                   rw [hf] at hps_n
                   have hpsp_n : isPlainSafeProp n true := (isPlainSafe_iff n true).mp hps_n
                   simp only [isPlainSafeProp, ↓reduceIte] at hpsp_n
-                  have hnf : ¬ isFlowIndicatorProp n := hpsp_n.2.2
+                  have hnf : ¬ isFlowIndicatorProp n := hpsp_n.2.2.1
                   cases hfi : isFlowIndicatorBool n with
                   | false => rfl
                   | true => exfalso; exact hnf ((isFlowIndicator_iff n).mp hfi)
@@ -2284,7 +2285,7 @@ lemma collectPlainScalarLoopIx_validFirst_and_head {input : String}
                   rw [hf] at hps_n
                   have hpsp_n : isPlainSafeProp n true := (isPlainSafe_iff n true).mp hps_n
                   simp only [isPlainSafeProp, ↓reduceIte] at hpsp_n
-                  have hnf : ¬ isFlowIndicatorProp n := hpsp_n.2.2
+                  have hnf : ¬ isFlowIndicatorProp n := hpsp_n.2.2.1
                   cases hfi : isFlowIndicatorBool n with
                   | false => rfl
                   | true => exfalso; exact hnf ((isFlowIndicator_iff n).mp hfi)

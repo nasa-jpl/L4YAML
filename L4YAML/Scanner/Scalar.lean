@@ -460,6 +460,7 @@ def collectPlainScalar_terminates? (c : Char) (s : ScannerState)
     let next := s.peekAt? 1
     let terminates := match next with
       | some n => isBlankBool n || (inFlow && isFlowIndicatorBool n)
+                  || !isPrintableBool n || n == '﻿'
       | none => true
     if terminates then
       some { content, spaces, state := s, terminated := true }

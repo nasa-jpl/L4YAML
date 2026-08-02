@@ -80,8 +80,7 @@ markdown is the medium.
 
 ## Relationship to existing plan docs
 
-The tactical plans (grammar completeness, merge semantics, the
-ns-char gap) live in
+The tactical plans (grammar completeness, merge semantics) live in
 [`../DOCS.md` § The Plan](../DOCS.md#the-plan-open-work); they are
 **tactical** — tied to specific proof files. The blueprint is **strategic**:
 it says *which properties matter* and *why*, from which the tactical

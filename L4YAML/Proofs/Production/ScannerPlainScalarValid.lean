@@ -68,7 +68,8 @@ lemma canStartPlainScalarProp_true_implies_false (c : Char) (next : Option Char)
   split
   · cases next with
     | none => exact id
-    | some n => intro ⟨h1, h2, _⟩; exact ⟨h1, h2, fun h => absurd h (by decide)⟩
+    | some n => intro ⟨h1, h2, _, h4, h5⟩
+                exact ⟨h1, h2, fun h => absurd h (by decide), h4, h5⟩
   · exact id
 
 lemma validPlainFirstProp_true_implies_false (content : String) :

@@ -156,7 +156,7 @@ vs. ~100 actual). Others probably exist.
 The repository keeps its tactical plans and rationale consolidated in
 [`DOCS.md`](../DOCS.md) (since 2026-08-01: topic sections plus
 "The Plan" collecting all open work — grammar completeness, merge
-semantics, the ns-char gap, the security backlog). These are
+semantics, the security backlog). These are
 *tactical* — tied to concrete files. Closed campaign logs are
 **deleted** once
 their surviving content is folded into this Blueprint (history stays

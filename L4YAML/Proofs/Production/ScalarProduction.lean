@@ -824,7 +824,7 @@ lemma isPlainSafe_block_to_nsChar {c : Char}
     (h : isPlainSafeBool c false = true) : isNsChar c := by
   have hp := (isPlainSafe_iff c false).mp h
   simp only [isPlainSafeProp] at hp
-  exact ⟨hp.2, hp.1⟩
+  exact ⟨hp.2.1, hp.1, hp.2.2.1, hp.2.2.2⟩
 
 -- Bool → surface Prop for blockIn: `isPlainSafeBool c false → isNsPlainSafe .blockIn c`.
 lemma isPlainSafe_to_nsPlainSafe_blockIn {c : Char}
@@ -841,16 +841,16 @@ lemma isPlainSafe_to_nsPlainSafe_flowIn {c : Char}
     (h : isPlainSafeBool c true = true) : isNsPlainSafe .flowIn c := by
   have hp := (isPlainSafe_iff c true).mp h
   simp only [isPlainSafeProp] at hp
-  exact ⟨⟨hp.2.1, hp.1⟩, hp.2.2⟩
+  exact ⟨⟨hp.2.1, hp.1, hp.2.2.2.1, hp.2.2.2.2⟩, hp.2.2.1⟩
 
 -- isPlainSafeBool c inFlow → c is not a linebreak (useful for advance proofs).
 lemma isPlainSafe_not_linebreak {c : Char} {inFlow : Bool}
     (h : isPlainSafeBool c inFlow = true) : ¬isLineBreakProp c := by
   have hp := (isPlainSafe_iff c inFlow).mp h
   cases inFlow
-  · -- false (block): hp : ¬isWhiteSpaceProp c ∧ ¬isLineBreakProp c
-    simp only [isPlainSafeProp] at hp; exact hp.2
-  · -- true (flow): hp : ¬isWhiteSpaceProp c ∧ ¬isLineBreakProp c ∧ ¬isFlowIndicatorProp c
+  · -- false (block): hp : ¬WS ∧ ¬LB ∧ printable ∧ ¬BOM
+    simp only [isPlainSafeProp] at hp; exact hp.2.1
+  · -- true (flow): hp : ¬WS ∧ ¬LB ∧ ¬flowInd ∧ printable ∧ ¬BOM
     simp only [isPlainSafeProp] at hp; exact hp.2.1
 
 -- isPlainSafeBool c inFlow → c ≠ '\n' ∧ c ≠ '\r' (for advance_non_newline_corr).
@@ -1239,22 +1239,23 @@ lemma canStartPlainScalar_to_SNsPlainFirst (c : Char) (rest : List Char)
     | some n =>
       obtain ⟨rest', hrst⟩ := hrest_head n rfl
       subst hrst
-      obtain ⟨h_nws, h_nlb, h_nfi⟩ := hprop
+      obtain ⟨h_nws, h_nlb, h_nfi, h_pr, h_nbom⟩ := hprop
       have h_safe : isNsPlainSafe (ctxOfInFlow inFlow) n := by
         cases inFlow with
-        | false => exact ⟨fun hlb => h_nlb hlb, fun hws => h_nws hws⟩
-        | true => exact ⟨⟨fun hlb => h_nlb hlb, fun hws => h_nws hws⟩, h_nfi rfl⟩
+        | false => exact ⟨fun hlb => h_nlb hlb, fun hws => h_nws hws, h_pr, h_nbom⟩
+        | true => exact ⟨⟨fun hlb => h_nlb hlb, fun hws => h_nws hws, h_pr, h_nbom⟩,
+                         h_nfi rfl⟩
       rcases hexc with rfl | rfl | rfl
       · exact SNsPlainFirst.dashSafe (ctxOfInFlow inFlow) n rest' col h_safe
       · exact SNsPlainFirst.questionSafe (ctxOfInFlow inFlow) n rest' col h_safe
       · exact SNsPlainFirst.colonSafe (ctxOfInFlow inFlow) n rest' col h_safe
   · -- Non-exception: non-indicator, non-whitespace, non-linebreak
-    obtain ⟨h_ni, h_nws, h_nlb⟩ := hprop
+    obtain ⟨h_ni, h_nws, h_nlb, h_pr, h_nbom⟩ := hprop
     have h_safe : isNsPlainSafe (ctxOfInFlow inFlow) c := by
       cases inFlow with
-      | false => exact ⟨fun hlb => h_nlb hlb, fun hws => h_nws hws⟩
+      | false => exact ⟨fun hlb => h_nlb hlb, fun hws => h_nws hws, h_pr, h_nbom⟩
       | true =>
-        exact ⟨⟨fun hlb => h_nlb hlb, fun hws => h_nws hws⟩,
+        exact ⟨⟨fun hlb => h_nlb hlb, fun hws => h_nws hws, h_pr, h_nbom⟩,
                fun hfi => h_ni (flowIndicatorProp_to_indicatorProp hfi)⟩
     exact SNsPlainFirst.nonIndicator (ctxOfInFlow inFlow) c rest col h_safe h_ni
 
@@ -1282,30 +1283,33 @@ lemma canStartPlainScalar_to_SNsPlainFirst (c : Char) (rest : List Char)
 lemma colon_not_terminated_next (sc : ScannerState) (content spaces : String) (inFlow : Bool)
     (h : collectPlainScalar_terminates? ':' sc content spaces inFlow = none) :
     ∃ n, sc.peekAt? 1 = some n ∧ isBlankBool n = false ∧
-         (inFlow = true → isFlowIndicatorBool n = false) := by
+         (inFlow = true → isFlowIndicatorBool n = false) ∧
+         isPrintableBool n = true ∧ (n == '﻿') = false := by
   simp [collectPlainScalar_terminates?] at h
   split at h
   · -- peekAt? 1 = some n
     rename_i n hn
+    simp only [Bool.or_eq_false_iff, Bool.not_eq_false'] at h
+    obtain ⟨⟨⟨hblank, hflow⟩, hpr⟩, hbom⟩ := h
+    refine ⟨n, hn, hblank, ?_, hpr, hbom⟩
     cases inFlow with
-    | false =>
-      simp only [Bool.false_and, Bool.or_false] at h
-      exact ⟨n, hn, h, fun h => absurd h (by decide)⟩
-    | true =>
-      simp only [Bool.true_and, Bool.or_eq_false_iff] at h
-      exact ⟨n, hn, h.1, fun _ => h.2⟩
+    | false => exact fun hh => absurd hh (by decide)
+    | true => simpa using hflow
   · -- peekAt? 1 = none → true = false → contradiction
     cases inFlow <;> simp at h
 
--- Bridge: ¬isBlankBool → isNsChar (for colonSafe)
-lemma not_blank_to_nsChar {c : Char} (h : isBlankBool c = false) : isNsChar c := by
+-- Bridge: ¬isBlankBool (+ printable, ¬BOM) → isNsChar (for colonSafe)
+lemma not_blank_to_nsChar {c : Char} (h : isBlankBool c = false)
+    (hpr : isPrintableBool c = true) (hbom : (c == '﻿') = false) : isNsChar c := by
+  have hpr' : isPrintableProp c := (isPrintable_iff c).mp hpr
+  have hbom' : c ≠ '﻿' := by simpa using hbom
   simp [isNsChar, isLineBreakProp, isLineFeedProp, isCarriageReturnProp,
     isWhiteSpaceProp, isSpaceProp, isTabProp,
     isBlankBool, isWhiteSpaceBool, isSpaceBool, isTabBool,
     isLineBreakBool, isLineFeedBool, isCarriageReturnBool,
-    beq_iff_eq, Bool.or_eq_false_iff] at *
+    beq_iff_eq, Bool.or_eq_false_iff, hpr', hbom'] at *
   -- h : (¬c = ' ' ∧ ¬c = '\t') ∧ ¬c = '\n' ∧ ¬c = '\r'
-  -- goal : (¬c = '\n' ∧ ¬c = '\r') ∧ ¬c = ' ' ∧ ¬c = '\t'
+  -- goal (after simp discharges printable/BOM): LB pair ∧ WS pair
   exact ⟨h.2, h.1⟩
 
 -- Helper: prepend a single whitespace char to inline continuation.
@@ -1598,7 +1602,7 @@ lemma collectPlainScalarLoop_prod (sc : ScannerState) (sp : SurfPos)
                 by_cases hcolon : c = ':'
                 · -- ':' followed by ns-plain-safe (colonSafe)
                   subst hcolon
-                  obtain ⟨n, hpn, hnb, hfi⟩ :=
+                  obtain ⟨n, hpn, hnb, hfi, hprn, hbomn⟩ :=
                     colon_not_terminated_next sc content spaces inFlow h_term_none
                   unfold ScannerState.peekAt? at hpn
                   obtain ⟨pre, rest', hcs, hlen⟩ :=
@@ -1613,9 +1617,9 @@ lemma collectPlainScalarLoop_prod (sc : ScannerState) (sp : SurfPos)
                   obtain ⟨ha', hrst⟩ := hcs; subst ha'; subst hrst
                   have h_ns_safe : isNsPlainSafe (ctxOfInFlow inFlow) n := by
                     cases inFlow with
-                    | false => exact not_blank_to_nsChar hnb
+                    | false => exact not_blank_to_nsChar hnb hprn hbomn
                     | true =>
-                      exact ⟨not_blank_to_nsChar hnb, fun hfp => by
+                      exact ⟨not_blank_to_nsChar hnb hprn hbomn, fun hfp => by
                         have h1 := hfi rfl
                         have h2 := (isFlowIndicator_iff n).mpr hfp
                         simp [h1] at h2⟩
@@ -1792,18 +1796,22 @@ lemma GStar_SSNsPlainNextLine_ctxOfInFlow_to_flowOut
 lemma canStartPlain_implies_safe {c : Char} {next : Option Char} {inFlow : Bool}
     (h : canStartPlainScalarBool c next inFlow = true) :
     isPlainSafeBool c inFlow = true := by
-  simp only [canStartPlainScalarBool] at h
-  cases inFlow with
-  | false =>
-    simp only [isPlainSafeBool]
-    split at h
-    · rename_i hexc; rcases hexc with rfl | rfl | rfl <;> native_decide
-    · revert h; cases isWhiteSpaceBool c <;> cases isLineBreakBool c <;> simp
-  | true =>
-    simp only [isPlainSafeBool, ite_true]
-    split at h
-    · rename_i hexc; rcases hexc with rfl | rfl | rfl <;> native_decide
-    · revert h; cases isWhiteSpaceBool c <;> cases isLineBreakBool c <;> simp_all [isFlowIndicatorBool, isIndicatorBool]
+  unfold canStartPlainScalarBool at h
+  split at h
+  · rename_i hexc
+    rcases hexc with rfl | rfl | rfl <;> cases inFlow <;> native_decide
+  · simp only [Bool.and_eq_true, Bool.not_eq_true'] at h
+    obtain ⟨⟨⟨⟨hind, hws⟩, hlb⟩, hpr⟩, hbom⟩ := h
+    have hfi : isFlowIndicatorBool c = false := by
+      cases h_fi : isFlowIndicatorBool c with
+      | false => rfl
+      | true =>
+        have hind' : isIndicatorBool c = true := by
+          simp [isFlowIndicatorBool, List.mem_cons] at h_fi
+          rcases h_fi with rfl | rfl | rfl | rfl | rfl <;> decide
+        simp [hind'] at hind
+    unfold isPlainSafeBool
+    split <;> simp [hws, hlb, hfi, hpr, hbom]
 
 -- canStartPlainScalar → not a line break (Bool form)
 lemma canStartPlain_not_linebreak {c : Char} {next : Option Char} {inFlow : Bool}

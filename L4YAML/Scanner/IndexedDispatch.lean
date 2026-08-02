@@ -64,7 +64,8 @@ def collectAnchorNameLoopIx {input : String} (c : IxCursor input)
   | fuel + 1 =>
     match c.peek? with
     | some ch =>
-      if !isFlowIndicatorBool ch && !isWhiteSpaceBool ch && !isLineBreakBool ch then
+      if !isFlowIndicatorBool ch && !isWhiteSpaceBool ch && !isLineBreakBool ch
+          && isPrintableBool ch && ch != '﻿' then
         collectAnchorNameLoopIx c.advance (name.push ch) fuel
       else (name, c)
     | none => (name, c)

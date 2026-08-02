@@ -10127,28 +10127,28 @@ lemma canStart_not_lb (c : Char) (next : Option Char) (inFlow : Bool)
     isLineBreakBool c = false := by
   unfold canStartPlainScalarBool at hcan; split at hcan
   · rename_i hc; rcases hc with rfl | rfl | rfl <;> decide
-  · simp only [Bool.and_eq_true, Bool.not_eq_true'] at hcan; exact hcan.2
+  · simp only [Bool.and_eq_true, Bool.not_eq_true'] at hcan; exact hcan.1.1.2
 
 lemma canStart_not_ws (c : Char) (next : Option Char) (inFlow : Bool)
     (hcan : canStartPlainScalarBool c next inFlow = true) :
     isWhiteSpaceBool c = false := by
   unfold canStartPlainScalarBool at hcan; split at hcan
   · rename_i hc; rcases hc with rfl | rfl | rfl <;> decide
-  · simp only [Bool.and_eq_true, Bool.not_eq_true'] at hcan; exact hcan.1.2
+  · simp only [Bool.and_eq_true, Bool.not_eq_true'] at hcan; exact hcan.1.1.1.2
 
 lemma canStart_plainSafe (c : Char) (next : Option Char) (inFlow : Bool)
     (hcan : canStartPlainScalarBool c next inFlow = true) :
     isPlainSafeBool c inFlow = true := by
-  have hws := canStart_not_ws c next inFlow hcan
-  have hlb := canStart_not_lb c next inFlow hcan
-  simp only [isPlainSafeBool]; split
-  · simp [hws, hlb]; cases h_fi : isFlowIndicatorBool c
-    · rfl
-    · unfold canStartPlainScalarBool at hcan; split at hcan
-      · rename_i hc; rcases hc with rfl | rfl | rfl <;> simp [isFlowIndicatorBool] at h_fi
-      · simp only [Bool.and_eq_true, Bool.not_eq_true'] at hcan
-        exact absurd (flowIndicator_isIndicator' c h_fi) (by simp [hcan.1.1])
-  · simp [hws, hlb]
+  unfold canStartPlainScalarBool at hcan; split at hcan
+  · rename_i hc
+    rcases hc with rfl | rfl | rfl <;> cases inFlow <;> decide
+  · simp only [Bool.and_eq_true, Bool.not_eq_true'] at hcan
+    obtain ⟨⟨⟨⟨hind, hws⟩, hlb⟩, hpr⟩, hbom⟩ := hcan
+    have hfi : isFlowIndicatorBool c = false := by
+      cases h_fi : isFlowIndicatorBool c
+      · rfl
+      · exact absurd (flowIndicator_isIndicator' c h_fi) (by simp [hind])
+    simp only [isPlainSafeBool]; split <;> simp [hws, hlb, hfi, hpr, hbom]
 
 set_option maxHeartbeats 1600000 in
 lemma canStart_terminates_none (c : Char) (s : ScannerState) (inFlow : Bool)
@@ -10180,8 +10180,9 @@ lemma canStart_terminates_none (c : Char) (s : ScannerState) (inFlow : Bool)
       unfold canStartPlainScalarBool at hcan
       rw [if_pos (Or.inr (Or.inr rfl)), hn] at hcan
       simp only [Bool.and_eq_true, Bool.not_eq_true'] at hcan
-      obtain ⟨⟨hws, hlb⟩, hflow⟩ := hcan
-      simp [isBlankBool, hws, hlb, hflow]
+      obtain ⟨⟨⟨⟨hws, hlb⟩, hflow⟩, hpr⟩, hbom⟩ := hcan
+      have hbom' : n ≠ '﻿' := bne_iff_ne.mp hbom
+      simp [isBlankBool, hws, hlb, hflow, hpr, hbom']
     · rename_i hn
       unfold canStartPlainScalarBool at hcan
       rw [if_pos (Or.inr (Or.inr rfl)), hn] at hcan

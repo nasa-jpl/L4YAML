@@ -518,7 +518,7 @@ lemma canStart_not_lb (c : Char) (next : Option Char) (inFlow : Bool)
     isLineBreakBool c = false := by
   unfold canStartPlainScalarBool at hcan; split at hcan
   · rename_i hc; rcases hc with rfl | rfl | rfl <;> decide
-  · simp only [Bool.and_eq_true, Bool.not_eq_true'] at hcan; exact hcan.2
+  · simp only [Bool.and_eq_true, Bool.not_eq_true'] at hcan; exact hcan.1.1.2
 
 /-- `canStart` implies not whitespace. -/
 lemma canStart_not_ws (c : Char) (next : Option Char) (inFlow : Bool)
@@ -526,22 +526,22 @@ lemma canStart_not_ws (c : Char) (next : Option Char) (inFlow : Bool)
     isWhiteSpaceBool c = false := by
   unfold canStartPlainScalarBool at hcan; split at hcan
   · rename_i hc; rcases hc with rfl | rfl | rfl <;> decide
-  · simp only [Bool.and_eq_true, Bool.not_eq_true'] at hcan; exact hcan.1.2
+  · simp only [Bool.and_eq_true, Bool.not_eq_true'] at hcan; exact hcan.1.1.1.2
 
 /-- `canStart` implies plain-safe. -/
 lemma canStart_plainSafe (c : Char) (next : Option Char) (inFlow : Bool)
     (hcan : canStartPlainScalarBool c next inFlow = true) :
     isPlainSafeBool c inFlow = true := by
-  have hws := canStart_not_ws c next inFlow hcan
-  have hlb := canStart_not_lb c next inFlow hcan
-  simp only [isPlainSafeBool]; split
-  · simp [hws, hlb]; cases h_fi : isFlowIndicatorBool c
-    · rfl
-    · unfold canStartPlainScalarBool at hcan; split at hcan
-      · rename_i hc; rcases hc with rfl | rfl | rfl <;> simp [isFlowIndicatorBool] at h_fi
-      · simp only [Bool.and_eq_true, Bool.not_eq_true'] at hcan
-        exact absurd (flowIndicator_isIndicator' c h_fi) (by simp [hcan.1.1])
-  · simp [hws, hlb]
+  unfold canStartPlainScalarBool at hcan; split at hcan
+  · rename_i hc
+    rcases hc with rfl | rfl | rfl <;> cases inFlow <;> decide
+  · simp only [Bool.and_eq_true, Bool.not_eq_true'] at hcan
+    obtain ⟨⟨⟨⟨hind, hws⟩, hlb⟩, hpr⟩, hbom⟩ := hcan
+    have hfi : isFlowIndicatorBool c = false := by
+      cases h_fi : isFlowIndicatorBool c
+      · rfl
+      · exact absurd (flowIndicator_isIndicator' c h_fi) (by simp [hind])
+    simp only [isPlainSafeBool]; split <;> simp [hws, hlb, hfi, hpr, hbom]
 
 /-- `canStart` implies not a flow indicator. -/
 lemma canStart_not_flowIndicator (c : Char) (next : Option Char) (inFlow : Bool)
@@ -575,9 +575,11 @@ lemma colonTerminatesPlain_false_of_canStart {input : String} (c : IxCursor inpu
     -- After `match (some n) with | some n => P n | none => false`, body reduces to `P n`.
     dsimp only at h_can
     simp only [Bool.and_eq_true, Bool.not_eq_true'] at h_can
-    obtain ⟨⟨hws, hlb⟩, hfi⟩ := h_can
-    -- Goal: (isBlankBool n || (inFlow && isFlowIndicatorBool n)) = false
-    simp [isBlankBool, hws, hlb, hfi]
+    obtain ⟨⟨⟨⟨hws, hlb⟩, hfi⟩, hpr⟩, hbom⟩ := h_can
+    have hbom' : n ≠ '﻿' := bne_iff_ne.mp hbom
+    -- Goal: (isBlankBool n || (inFlow && isFlowIndicatorBool n)
+    --        || !isPrintableBool n || n == '﻿') = false
+    simp [isBlankBool, hws, hlb, hfi, hpr, hbom']
   · -- none: canStart on ':' with no next char returns false; contradicts h_can = true
     rename_i h_p1
     rw [h_p1] at h_can

@@ -953,9 +953,11 @@ def canStartPlainScalarBool (c : Char) (next : Option Char) (inFlow : Bool) : Bo
   if c = '-' ∨ c = '?' ∨ c = ':' then
     match next with
     | some n => !isWhiteSpaceBool n && !isLineBreakBool n && !(inFlow && isFlowIndicatorBool n)
+                && isPrintableBool n && n != '﻿'
     | none => false
   else
     !isIndicatorBool c && !isWhiteSpaceBool c && !isLineBreakBool c
+    && isPrintableBool c && c != '﻿'
 
 /-- `[126] ns-plain-first(c)`: can character start a plain scalar? (Prop). -/
 @[yaml_spec "5.5" 34 "ns-char",
@@ -968,9 +970,11 @@ def canStartPlainScalarProp (c : Char) (next : Option Char) (inFlow : Bool) : Pr
     match next with
     | some n => ¬isWhiteSpaceProp n ∧ ¬isLineBreakProp n
                 ∧ (inFlow = true → ¬isFlowIndicatorProp n)
+                ∧ isPrintableProp n ∧ n ≠ '﻿'
     | none => False
   else
     ¬isIndicatorProp c ∧ ¬isWhiteSpaceProp c ∧ ¬isLineBreakProp c
+    ∧ isPrintableProp c ∧ c ≠ '﻿'
 
 instance (c : Char) (next : Option Char) (inFlow : Bool) :
     Decidable (canStartPlainScalarProp c next inFlow) := by
@@ -990,21 +994,24 @@ lemma canStartPlainScalar_iff (c : Char) (next : Option Char) (inFlow : Bool) :
     cases next with
     | none => simp
     | some n =>
-      simp only [Bool.and_eq_true,
+      simp only [Bool.and_eq_true, bne_iff_ne,
         not_bool_iff_not (isWhiteSpace_iff n),
-        not_bool_iff_not (isLineBreak_iff n)]
+        not_bool_iff_not (isLineBreak_iff n),
+        isPrintable_iff n]
       constructor
-      · rintro ⟨⟨h1, h2⟩, h3⟩
-        exact ⟨h1, h2, (not_and_bool_iff_imp_not (isFlowIndicator_iff n)).mp h3⟩
-      · rintro ⟨h1, h2, h3⟩
-        exact ⟨⟨h1, h2⟩, (not_and_bool_iff_imp_not (isFlowIndicator_iff n)).mpr h3⟩
+      · rintro ⟨⟨⟨⟨h1, h2⟩, h3⟩, h4⟩, h5⟩
+        exact ⟨h1, h2, (not_and_bool_iff_imp_not (isFlowIndicator_iff n)).mp h3, h4, h5⟩
+      · rintro ⟨h1, h2, h3, h4, h5⟩
+        exact ⟨⟨⟨⟨h1, h2⟩,
+          (not_and_bool_iff_imp_not (isFlowIndicator_iff n)).mpr h3⟩, h4⟩, h5⟩
   · -- regular branch
-    simp only [Bool.and_eq_true,
+    simp only [Bool.and_eq_true, bne_iff_ne,
       not_bool_iff_not (isIndicator_iff c),
       not_bool_iff_not (isWhiteSpace_iff c),
-      not_bool_iff_not (isLineBreak_iff c)]
-    exact ⟨fun ⟨⟨h1, h2⟩, h3⟩ => ⟨h1, h2, h3⟩,
-           fun ⟨h1, h2, h3⟩ => ⟨⟨h1, h2⟩, h3⟩⟩
+      not_bool_iff_not (isLineBreak_iff c),
+      isPrintable_iff c]
+    exact ⟨fun ⟨⟨⟨⟨h1, h2⟩, h3⟩, h4⟩, h5⟩ => ⟨h1, h2, h3, h4, h5⟩,
+           fun ⟨h1, h2, h3, h4, h5⟩ => ⟨⟨⟨⟨h1, h2⟩, h3⟩, h4⟩, h5⟩⟩
 
 /-! ## Plain Safe Character
 
@@ -1033,8 +1040,10 @@ In flow context: additionally not a flow indicator.
 def isPlainSafeBool (c : Char) (inFlow : Bool) : Bool :=
   if inFlow then
     !isWhiteSpaceBool c && !isLineBreakBool c && !isFlowIndicatorBool c
+    && isPrintableBool c && c != '﻿'
   else
     !isWhiteSpaceBool c && !isLineBreakBool c
+    && isPrintableBool c && c != '﻿'
 
 /-- `[127] ns-plain-safe(c)`: safe continuation character for plain scalars (Prop).
 
@@ -1048,8 +1057,9 @@ def isPlainSafeBool (c : Char) (inFlow : Bool) : Bool :=
 def isPlainSafeProp (c : Char) (inFlow : Bool) : Prop :=
   if inFlow then
     ¬isWhiteSpaceProp c ∧ ¬isLineBreakProp c ∧ ¬isFlowIndicatorProp c
+    ∧ isPrintableProp c ∧ c ≠ '﻿'
   else
-    ¬isWhiteSpaceProp c ∧ ¬isLineBreakProp c
+    ¬isWhiteSpaceProp c ∧ ¬isLineBreakProp c ∧ isPrintableProp c ∧ c ≠ '﻿'
 
 instance (c : Char) (inFlow : Bool) : Decidable (isPlainSafeProp c inFlow) := by
   unfold isPlainSafeProp; infer_instance
@@ -1059,16 +1069,20 @@ lemma isPlainSafe_iff (c : Char) (inFlow : Bool) :
   simp only [isPlainSafeBool, isPlainSafeProp]
   split
   · -- flow context
-    simp only [Bool.and_eq_true,
+    simp only [Bool.and_eq_true, bne_iff_ne,
       not_bool_iff_not (isWhiteSpace_iff c),
       not_bool_iff_not (isLineBreak_iff c),
-      not_bool_iff_not (isFlowIndicator_iff c)]
-    exact ⟨fun ⟨⟨h1, h2⟩, h3⟩ => ⟨h1, h2, h3⟩,
-           fun ⟨h1, h2, h3⟩ => ⟨⟨h1, h2⟩, h3⟩⟩
+      not_bool_iff_not (isFlowIndicator_iff c),
+      isPrintable_iff c]
+    exact ⟨fun ⟨⟨⟨⟨h1, h2⟩, h3⟩, h4⟩, h5⟩ => ⟨h1, h2, h3, h4, h5⟩,
+           fun ⟨h1, h2, h3, h4, h5⟩ => ⟨⟨⟨⟨h1, h2⟩, h3⟩, h4⟩, h5⟩⟩
   · -- block context
-    simp only [Bool.and_eq_true,
+    simp only [Bool.and_eq_true, bne_iff_ne,
       not_bool_iff_not (isWhiteSpace_iff c),
-      not_bool_iff_not (isLineBreak_iff c)]
+      not_bool_iff_not (isLineBreak_iff c),
+      isPrintable_iff c]
+    exact ⟨fun ⟨⟨⟨h1, h2⟩, h3⟩, h4⟩ => ⟨h1, h2, h3, h4⟩,
+           fun ⟨h1, h2, h3, h4⟩ => ⟨⟨⟨h1, h2⟩, h3⟩, h4⟩⟩
 
 /-! ## Valid Plain First (String-Level)
 

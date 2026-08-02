@@ -204,6 +204,25 @@ def collectTests : IO VerifiedSuiteResult := do
   check ref "hex escape \\x41" (singleContent "\"\\x41\"" == some "A")
   check ref "unicode \\u0041" (singleContent "\"\\u0041\"" == some "A")
 
+  -- ═══════════════════════════════════════════
+  setCategory ref "ns-char tightening (BOM / control chars)"
+  -- ═══════════════════════════════════════════
+
+  -- YAML 1.2.2 [34] ns-char excludes c-byte-order-mark and non-printables;
+  -- the 2026-08 predicate tightening makes the scanner reject them in
+  -- plain-scalar and anchor-name context (DOCS.md, "The ns-char gap").
+  let bom := String.singleton (Char.ofNat 0xFEFF)
+  let ctl := String.singleton (Char.ofNat 0x01)
+  check ref "leading BOM accepted (document prefix)" (pipelineOk (bom ++ "a: 1"))
+  check ref "BOM mid-plain-scalar rejected" (!scanOk ("a" ++ bom ++ "b"))
+  check ref "control char mid-plain-scalar rejected" (!scanOk ("a" ++ ctl ++ "b"))
+  check ref "BOM after colon rejected" (!scanOk ("a:" ++ bom ++ "b"))
+  check ref "BOM as mapping value rejected" (!pipelineOk ("k: " ++ bom ++ "v"))
+  check ref "BOM in anchor name rejected" (!scanOk ("&anc" ++ bom ++ " x"))
+  check ref "raw BOM in double-quoted accepted (nb-json)"
+    (pipelineOk ("\"" ++ bom ++ "\""))
+  check ref "escaped control in double-quoted accepted" (pipelineOk "\"\\u0001\"")
+
   -- Build result
   let results ← finish ref
   return {

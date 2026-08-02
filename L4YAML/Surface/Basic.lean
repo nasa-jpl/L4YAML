@@ -38,8 +38,10 @@ open L4YAML (YamlContext)
 /-- [34] nb-char: non-break character (printable, not line break). -/
 def isNbChar (c : Char) : Prop := ¬isLineBreakProp c
 
-/-- ns-char: non-space character (non-break and not white space). -/
-def isNsChar (c : Char) : Prop := ¬isLineBreakProp c ∧ ¬isWhiteSpaceProp c
+/-- [34] ns-char: non-space character
+    (`c-printable - b-char - c-byte-order-mark - s-white`). -/
+def isNsChar (c : Char) : Prop :=
+  ¬isLineBreakProp c ∧ ¬isWhiteSpaceProp c ∧ isPrintableProp c ∧ c ≠ '﻿'
 
 /-- ns-dec-digit: ASCII decimal digit 0–9. -/
 def isNsDecDigit (c : Char) : Prop := c ≥ '0' ∧ c ≤ '9'

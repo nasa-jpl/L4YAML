@@ -165,14 +165,14 @@ lemma canStart_isPlainSafe (c : Char) (next : Option Char) (inFlow : Bool)
   unfold canStartPlainScalarProp at hprop; unfold isPlainSafeProp
   split at hprop
   · rename_i hexc; rcases hexc with rfl | rfl | rfl
-    all_goals (split <;> simp_all [isWhiteSpaceProp, isSpaceProp, isTabProp,
+    all_goals (split <;> simp_all +decide [isWhiteSpaceProp, isSpaceProp, isTabProp,
                                     isLineBreakProp, isLineFeedProp, isCarriageReturnProp,
-                                    isFlowIndicatorProp])
-  · obtain ⟨h_ni, h_nws, h_nlb⟩ := hprop; split
+                                    isFlowIndicatorProp, isPrintableProp])
+  · obtain ⟨h_ni, h_nws, h_nlb, h_pr, h_nbom⟩ := hprop; split
     · exact ⟨h_nws, h_nlb, fun hfi =>
         h_ni ((isIndicator_iff c).mp (isFlowIndicator_implies_isIndicator c
-          ((isFlowIndicator_iff c).mpr hfi)))⟩
-    · exact ⟨h_nws, h_nlb⟩
+          ((isFlowIndicator_iff c).mpr hfi))), h_pr, h_nbom⟩
+    · exact ⟨h_nws, h_nlb, h_pr, h_nbom⟩
 
 /-- `canStartPlainScalarBool c _ inFlow = true` implies `c` is not whitespace. -/
 lemma canStart_not_whitespace (c : Char) (next : Option Char) (inFlow : Bool)
@@ -182,7 +182,7 @@ lemma canStart_not_whitespace (c : Char) (next : Option Char) (inFlow : Bool)
   split at h
   · rename_i hexc; rcases hexc with rfl | rfl | rfl <;> native_decide
   · simp only [Bool.and_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true] at h
-    obtain ⟨⟨_, h2⟩, _⟩ := h; exact h2
+    obtain ⟨⟨⟨⟨_, h2⟩, _⟩, _⟩, _⟩ := h; exact h2
 
 /-- `canStartPlainScalarBool c _ inFlow = true` implies `c` is not a linebreak. -/
 lemma canStart_not_linebreak (c : Char) (next : Option Char) (inFlow : Bool)
@@ -192,7 +192,7 @@ lemma canStart_not_linebreak (c : Char) (next : Option Char) (inFlow : Bool)
   split at h
   · rename_i hexc; rcases hexc with rfl | rfl | rfl <;> native_decide
   · simp only [Bool.and_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true] at h
-    obtain ⟨⟨_, _⟩, h3⟩ := h; exact h3
+    obtain ⟨⟨⟨⟨_, _⟩, h3⟩, _⟩, _⟩ := h; exact h3
 
 /-- For non-exception chars, `canStartPlainScalarProp` does not depend on `next`. -/
 lemma canStart_nonException_next_irrel (c : Char) (n1 n2 : Option Char) (inFlow : Bool)
@@ -233,14 +233,14 @@ lemma canStart_exception_next (c : Char) (next : Option Char) (inFlow : Bool)
   | none => simp at h
   | some n =>
     simp only [Bool.and_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true] at h
-    obtain ⟨⟨h_nws, h_nlb⟩, h_nfi⟩ := h
+    obtain ⟨⟨⟨⟨h_nws, h_nlb⟩, h_nfi⟩, h_pr⟩, h_bom⟩ := h
     refine ⟨n, rfl, ?_, h_nws, h_nlb⟩
     unfold isPlainSafeBool; split
     · rename_i hflow; rw [hflow] at h_nfi
       simp only [Bool.and_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true]
-      exact ⟨⟨h_nws, h_nlb⟩, h_nfi⟩
+      exact ⟨⟨⟨⟨h_nws, h_nlb⟩, h_nfi⟩, h_pr⟩, h_bom⟩
     · simp only [Bool.and_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true]
-      exact ⟨h_nws, h_nlb⟩
+      exact ⟨⟨⟨h_nws, h_nlb⟩, h_pr⟩, h_bom⟩
 
 /-- For exception chars, `validPlainFirstProp` for singletons is trivially `True`. -/
 lemma validPlainFirst_singleton_exception
