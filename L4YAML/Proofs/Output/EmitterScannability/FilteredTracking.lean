@@ -238,6 +238,7 @@ lemma scanNextToken_flow_close_seq_outermost_ext (s : ScannerState)
   have h_flow_disp := dispatchFlowIndicators_close_bracket_outermost s_ad
     (h_ad_fl ▸ h_fl) h_ad_corr
   have h_snt := scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl h_check h_flow_disp
+    ((saveSimpleKey_preserves_directivesPresent s).trans h_dp)
   -- s' = scanFlowSequenceEnd s_ad
   let s' := scanFlowSequenceEnd s_ad
   have h_result_fl : s'.flowLevel = 0 := by
@@ -328,6 +329,7 @@ lemma scanNextToken_flow_close_mapping_outermost_ext (s : ScannerState)
   have h_flow_disp := dispatchFlowIndicators_close_brace_outermost s_ad
     (h_ad_fl ▸ h_fl) h_ad_corr
   have h_snt := scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl h_check h_flow_disp
+    ((saveSimpleKey_preserves_directivesPresent s).trans h_dp)
   -- s' = scanFlowMappingEnd s_ad
   let s' := scanFlowMappingEnd s_ad
   have h_result_fl : s'.flowLevel = 0 := by

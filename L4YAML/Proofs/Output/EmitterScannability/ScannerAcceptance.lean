@@ -1189,6 +1189,8 @@ lemma scanNextToken_preserves_sync (s s' : ScannerState)
         { s1 with allowDirectives := false, documentEverStarted := true }
       else s1).flowLevel := by
       rw [h_allow_stack, h_allow_fl]; exact h_pre_sync
+    -- Pending-directives check (Fix B)
+    split at h_next <;> (try (simp at h_next; done))
     -- checkBlockFlowIndent
     split at h_next <;> (try (simp at h_next; done))
     -- Flow Except
@@ -1680,25 +1682,27 @@ lemma scanNextToken_maintains_NoOverwriteAt (s s' : ScannerState)
           · split at h_next
             · contradiction
             · split at h_next
-              · rename_i s'' hFlow
-                simp only [Except.ok.injEq, Option.some.injEq] at h_next
-                subst h_next
-                exact dispatchFlowIndicators_maintains_NoOverwriteAt _ _ _ hFlow m h_s2_m h_s2_inv
+              · contradiction
               · split at h_next
-                · contradiction
+                · rename_i s'' hFlow
+                  simp only [Except.ok.injEq, Option.some.injEq] at h_next
+                  subst h_next
+                  exact dispatchFlowIndicators_maintains_NoOverwriteAt _ _ _ hFlow m h_s2_m h_s2_inv
                 · split at h_next
-                  · rename_i s'' hBlock
-                    simp only [Except.ok.injEq, Option.some.injEq] at h_next
-                    subst h_next
-                    exact dispatchBlockIndicators_maintains_NoOverwriteAt _ _ _ hBlock
-                      m h_s2_m h_s2_inv
+                  · contradiction
                   · split at h_next
-                    · contradiction
-                    · rename_i sC hContent
+                    · rename_i s'' hBlock
                       simp only [Except.ok.injEq, Option.some.injEq] at h_next
                       subst h_next
-                      exact dispatchContent_maintains_NoOverwriteAt _ _ _ hContent
+                      exact dispatchBlockIndicators_maintains_NoOverwriteAt _ _ _ hBlock
                         m h_s2_m h_s2_inv
+                    · split at h_next
+                      · contradiction
+                      · rename_i sC hContent
+                        simp only [Except.ok.injEq, Option.some.injEq] at h_next
+                        subst h_next
+                        exact dispatchContent_maintains_NoOverwriteAt _ _ _ hContent
+                          m h_s2_m h_s2_inv
 
 /-! ### §D.5  Step-level pointwise preservation -/
 
@@ -2323,26 +2327,28 @@ lemma scanNextToken_maintains_FlowNoOverwriteAt (s s' : ScannerState)
           · split at h_next
             · contradiction
             · split at h_next
-              · rename_i s'' hFlow
-                simp only [Except.ok.injEq, Option.some.injEq] at h_next
-                subst h_next
-                exact dispatchFlowIndicators_maintains_FlowNoOverwriteAt _ _ _ hFlow
-                  m h_s2_m h_s2_inv
+              · contradiction
               · split at h_next
-                · contradiction
+                · rename_i s'' hFlow
+                  simp only [Except.ok.injEq, Option.some.injEq] at h_next
+                  subst h_next
+                  exact dispatchFlowIndicators_maintains_FlowNoOverwriteAt _ _ _ hFlow
+                    m h_s2_m h_s2_inv
                 · split at h_next
-                  · rename_i s'' hBlock
-                    simp only [Except.ok.injEq, Option.some.injEq] at h_next
-                    subst h_next
-                    exact dispatchBlockIndicators_maintains_FlowNoOverwriteAt _ _ _ hBlock
-                      m h_s2_m h_s2_inv
+                  · contradiction
                   · split at h_next
-                    · contradiction
-                    · rename_i sC hContent
+                    · rename_i s'' hBlock
                       simp only [Except.ok.injEq, Option.some.injEq] at h_next
                       subst h_next
-                      exact dispatchContent_maintains_FlowNoOverwriteAt _ _ _ hContent
+                      exact dispatchBlockIndicators_maintains_FlowNoOverwriteAt _ _ _ hBlock
                         m h_s2_m h_s2_inv
+                    · split at h_next
+                      · contradiction
+                      · rename_i sC hContent
+                        simp only [Except.ok.injEq, Option.some.injEq] at h_next
+                        subst h_next
+                        exact dispatchContent_maintains_FlowNoOverwriteAt _ _ _ hContent
+                          m h_s2_m h_s2_inv
 
 /-! ### §E.5  Step-level pointwise preservation (with `s.inFlow = true`) -/
 

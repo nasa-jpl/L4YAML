@@ -702,13 +702,16 @@ lemma scanYamlDirectiveIx_new_token_start {input : String}
   · rw [if_pos hd] at h_ok; simp [Bind.bind, Except.bind] at h_ok
   · rw [if_neg hd] at h_ok
     simp only [] at h_ok
-    split at h_ok
-    · simp only [Except.ok.injEq] at h_ok
-      subst h_ok
-      show ((s.tokens.tokens.push (IxToken.mk' startPos _
-          _ _ _))[s.tokens.tokens.size]'_).start = startPos
-      simp only [Array.getElem_push_eq, IxToken.mk']
-    · simp at h_ok
+    simp only [Bind.bind, Except.bind, pure, Except.pure, throw, throwThe,
+      MonadExceptOf.throw] at h_ok
+    repeat' split at h_ok
+    all_goals first
+      | (simp only [Except.ok.injEq] at h_ok
+         subst h_ok
+         show ((s.tokens.tokens.push (IxToken.mk' startPos _
+             _ _ _))[s.tokens.tokens.size]'_).start = startPos
+         simp only [Array.getElem_push_eq, IxToken.mk'])
+      | simp at h_ok
 
 lemma scanTagDirectiveIx_new_token_start {input : String}
     (s : ScannerStateIx input) (cAfterWS : IxCursor input) (startPos : YamlPos)
@@ -718,11 +721,16 @@ lemma scanTagDirectiveIx_new_token_start {input : String}
     (hj : s.tokens.size < s'.tokens.size) :
     (s'.tokens[s.tokens.size]'hj).start = startPos := by
   unfold scanTagDirectiveIx at h_ok
-  simp only [Except.ok.injEq] at h_ok
-  subst h_ok
-  show ((s.tokens.tokens.push (IxToken.mk' startPos _
-      _ _ _))[s.tokens.tokens.size]'_).start = startPos
-  simp only [Array.getElem_push_eq, IxToken.mk']
+  simp only [Bind.bind, Except.bind, pure, Except.pure, throw, throwThe,
+    MonadExceptOf.throw] at h_ok
+  repeat' split at h_ok
+  all_goals first
+    | (simp only [Except.ok.injEq] at h_ok
+       subst h_ok
+       show ((s.tokens.tokens.push (IxToken.mk' startPos _
+           _ _ _))[s.tokens.tokens.size]'_).start = startPos
+       simp only [Array.getElem_push_eq, IxToken.mk'])
+    | simp at h_ok
 
 /-! #### §8.7.10''  ScanInvIx for emit-at-prior-cursor helpers.
 
@@ -789,9 +797,12 @@ lemma scanYamlDirectiveIx_tokens_size_le_succ {input : String}
   · rw [if_pos hd] at h; simp [Bind.bind, Except.bind] at h
   · rw [if_neg hd] at h
     simp only [] at h
-    split at h
-    · simp only [Except.ok.injEq] at h; subst h; simp
-    · simp at h
+    simp only [Bind.bind, Except.bind, pure, Except.pure, throw, throwThe,
+      MonadExceptOf.throw] at h
+    repeat' split at h
+    all_goals first
+      | (simp only [Except.ok.injEq] at h; subst h; simp)
+      | simp at h
 
 /-- Upper bound: `scanTagDirectiveIx` adds at most one token. -/
 lemma scanTagDirectiveIx_tokens_size_le_succ {input : String}
@@ -800,7 +811,12 @@ lemma scanTagDirectiveIx_tokens_size_le_succ {input : String}
     (h : scanTagDirectiveIx s cAfterWS startPos hStart = .ok s') :
     s'.tokens.size ≤ s.tokens.size + 1 := by
   unfold scanTagDirectiveIx at h
-  simp only [Except.ok.injEq] at h; subst h; simp
+  simp only [Bind.bind, Except.bind, pure, Except.pure, throw, throwThe,
+    MonadExceptOf.throw] at h
+  repeat' split at h
+  all_goals first
+    | (simp only [Except.ok.injEq] at h; subst h; simp)
+    | simp at h
 
 /-- Upper bound: `scanDirectiveIx` adds at most one token across all
     three branches (YAML, TAG, reserved). -/
@@ -812,15 +828,21 @@ lemma scanDirectiveIx_tokens_size_le_succ {input : String}
   · simp at h_ok
   · simp only at h_ok
     split at h_ok
-    · -- YAML branch delegate.
-      have := scanYamlDirectiveIx_tokens_size_le_succ h_ok
-      show s'.tokens.size ≤ s.tokens.size + 1
-      exact this
+    · -- YAML branch delegate (through the skipToEndOfLineIx wrapper).
+      split at h_ok
+      · rename_i s_sub h_sub
+        simp only [Except.ok.injEq] at h_ok; subst h_ok
+        have h_succ := scanYamlDirectiveIx_tokens_size_le_succ h_sub
+        exact h_succ
+      · simp at h_ok
     · split at h_ok
-      · -- TAG branch delegate.
-        have := scanTagDirectiveIx_tokens_size_le_succ h_ok
-        show s'.tokens.size ≤ s.tokens.size + 1
-        exact this
+      · -- TAG branch delegate (through the skipToEndOfLineIx wrapper).
+        split at h_ok
+        · rename_i s_sub h_sub
+          simp only [Except.ok.injEq] at h_ok; subst h_ok
+          have h_succ := scanTagDirectiveIx_tokens_size_le_succ h_sub
+          exact h_succ
+        · simp at h_ok
       · -- Reserved: no token added.
         simp only [Except.ok.injEq] at h_ok; subst h_ok
         show s.tokens.size ≤ s.tokens.size + 1; omega
@@ -838,12 +860,21 @@ lemma scanDirectiveIx_new_token_start {input : String}
   · simp at h_ok
   · simp only at h_ok
     split at h_ok
-    · -- YAML branch: the inner state's tokens.size = s.tokens.size def-eq, so
-      -- the brick's conclusion matches.
-      exact scanYamlDirectiveIx_new_token_start _ _ s.cursor.pos _ s' h_ok hj
+    · -- YAML branch (through the skipToEndOfLineIx wrapper)
+      split at h_ok
+      · rename_i s_sub h_sub
+        simp only [Except.ok.injEq] at h_ok; subst h_ok
+        have h_brick := scanYamlDirectiveIx_new_token_start _ _ s.cursor.pos _ s_sub h_sub hj
+        exact h_brick
+      · simp at h_ok
     · split at h_ok
-      · -- TAG branch
-        exact scanTagDirectiveIx_new_token_start _ _ s.cursor.pos _ s' h_ok hj
+      · -- TAG branch (through the skipToEndOfLineIx wrapper)
+        split at h_ok
+        · rename_i s_sub h_sub
+          simp only [Except.ok.injEq] at h_ok; subst h_ok
+          have h_brick := scanTagDirectiveIx_new_token_start _ _ s.cursor.pos _ s_sub h_sub hj
+          exact h_brick
+        · simp at h_ok
       · -- Reserved-directive default: tokens unchanged → `hj` is impossible.
         simp only [Except.ok.injEq] at h_ok
         subst h_ok

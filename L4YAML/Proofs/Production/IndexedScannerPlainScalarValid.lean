@@ -3300,13 +3300,13 @@ lemma scanYamlDirectiveIx_preserves_PlainScalarsValidIx {input : String}
     (h_old : PlainScalarsValidIx s.tokens) :
     PlainScalarsValidIx s'.tokens := by
   unfold scanYamlDirectiveIx at h_ok
-  simp only [bind, Except.bind] at h_ok
-  split at h_ok
-  · simp at h_ok
-  · split at h_ok
-    · simp only [Except.ok.injEq] at h_ok; subst h_ok
-      exact emitAt_non_plain_preserves_PlainScalarsValidIx _ _ _ _ h_old (by trivial)
-    · simp at h_ok
+  simp only [bind, Except.bind, pure, Except.pure, throw, throwThe,
+    MonadExceptOf.throw] at h_ok
+  repeat' split at h_ok
+  all_goals first
+    | (simp only [Except.ok.injEq] at h_ok; subst h_ok
+       exact emitAt_non_plain_preserves_PlainScalarsValidIx _ _ _ _ h_old (by trivial))
+    | simp at h_ok
 
 lemma scanYamlDirectiveIx_preserves_FlowContextPSVIx {input : String}
     (s : ScannerStateIx input) (cAfterWS : IxCursor input) (startPos : YamlPos)
@@ -3315,13 +3315,13 @@ lemma scanYamlDirectiveIx_preserves_FlowContextPSVIx {input : String}
     (h_old : FlowContextPSVIx s.tokens) :
     FlowContextPSVIx s'.tokens := by
   unfold scanYamlDirectiveIx at h_ok
-  simp only [bind, Except.bind] at h_ok
-  split at h_ok
-  · simp at h_ok
-  · split at h_ok
-    · simp only [Except.ok.injEq] at h_ok; subst h_ok
-      exact emitAt_non_flow_non_plain_preserves_FlowContextPSVIx _ _ _ _ h_old (by trivial)
-    · simp at h_ok
+  simp only [bind, Except.bind, pure, Except.pure, throw, throwThe,
+    MonadExceptOf.throw] at h_ok
+  repeat' split at h_ok
+  all_goals first
+    | (simp only [Except.ok.injEq] at h_ok; subst h_ok
+       exact emitAt_non_flow_non_plain_preserves_FlowContextPSVIx _ _ _ _ h_old (by trivial))
+    | simp at h_ok
 
 lemma scanYamlDirectiveIx_preserves_FlowNestingInvIx {input : String}
     (s : ScannerStateIx input) (cAfterWS : IxCursor input) (startPos : YamlPos)
@@ -3330,15 +3330,15 @@ lemma scanYamlDirectiveIx_preserves_FlowNestingInvIx {input : String}
     (h_fni : FlowNestingInvIx s) :
     FlowNestingInvIx s' := by
   unfold scanYamlDirectiveIx at h_ok
-  simp only [bind, Except.bind] at h_ok
-  split at h_ok
-  · simp at h_ok
-  · split at h_ok
-    · simp only [Except.ok.injEq] at h_ok; subst h_ok
-      exact emitAt_non_flow_preserves_FlowNestingInvIx _ _ _ _ h_fni
-        (by intro h; cases h) (by intro h; cases h)
-        (by intro h; cases h) (by intro h; cases h)
-    · simp at h_ok
+  simp only [bind, Except.bind, pure, Except.pure, throw, throwThe,
+    MonadExceptOf.throw] at h_ok
+  repeat' split at h_ok
+  all_goals first
+    | (simp only [Except.ok.injEq] at h_ok; subst h_ok
+       exact emitAt_non_flow_preserves_FlowNestingInvIx _ _ _ _ h_fni
+         (by intro h; cases h) (by intro h; cases h)
+         (by intro h; cases h) (by intro h; cases h))
+    | simp at h_ok
 
 /-! ### §11d  `scanTagDirectiveIx` preservation — proven
 
@@ -3354,9 +3354,13 @@ lemma scanTagDirectiveIx_preserves_PlainScalarsValidIx {input : String}
     (h_old : PlainScalarsValidIx s.tokens) :
     PlainScalarsValidIx s'.tokens := by
   unfold scanTagDirectiveIx at h_ok
-  simp only [Except.ok.injEq] at h_ok
-  subst h_ok
-  exact emitAt_non_plain_preserves_PlainScalarsValidIx _ _ _ _ h_old (by trivial)
+  simp only [bind, Except.bind, pure, Except.pure, throw, throwThe,
+    MonadExceptOf.throw] at h_ok
+  repeat' split at h_ok
+  all_goals first
+    | (simp only [Except.ok.injEq] at h_ok; subst h_ok
+       exact emitAt_non_plain_preserves_PlainScalarsValidIx _ _ _ _ h_old (by trivial))
+    | simp at h_ok
 
 lemma scanTagDirectiveIx_preserves_FlowContextPSVIx {input : String}
     (s : ScannerStateIx input) (cAfterWS : IxCursor input) (startPos : YamlPos)
@@ -3365,9 +3369,13 @@ lemma scanTagDirectiveIx_preserves_FlowContextPSVIx {input : String}
     (h_old : FlowContextPSVIx s.tokens) :
     FlowContextPSVIx s'.tokens := by
   unfold scanTagDirectiveIx at h_ok
-  simp only [Except.ok.injEq] at h_ok
-  subst h_ok
-  exact emitAt_non_flow_non_plain_preserves_FlowContextPSVIx _ _ _ _ h_old (by trivial)
+  simp only [bind, Except.bind, pure, Except.pure, throw, throwThe,
+    MonadExceptOf.throw] at h_ok
+  repeat' split at h_ok
+  all_goals first
+    | (simp only [Except.ok.injEq] at h_ok; subst h_ok
+       exact emitAt_non_flow_non_plain_preserves_FlowContextPSVIx _ _ _ _ h_old (by trivial))
+    | simp at h_ok
 
 lemma scanTagDirectiveIx_preserves_FlowNestingInvIx {input : String}
     (s : ScannerStateIx input) (cAfterWS : IxCursor input) (startPos : YamlPos)
@@ -3376,11 +3384,15 @@ lemma scanTagDirectiveIx_preserves_FlowNestingInvIx {input : String}
     (h_fni : FlowNestingInvIx s) :
     FlowNestingInvIx s' := by
   unfold scanTagDirectiveIx at h_ok
-  simp only [Except.ok.injEq] at h_ok
-  subst h_ok
-  exact emitAt_non_flow_preserves_FlowNestingInvIx _ _ _ _ h_fni
-    (by intro h; cases h) (by intro h; cases h)
-    (by intro h; cases h) (by intro h; cases h)
+  simp only [bind, Except.bind, pure, Except.pure, throw, throwThe,
+    MonadExceptOf.throw] at h_ok
+  repeat' split at h_ok
+  all_goals first
+    | (simp only [Except.ok.injEq] at h_ok; subst h_ok
+       exact emitAt_non_flow_preserves_FlowNestingInvIx _ _ _ _ h_fni
+         (by intro h; cases h) (by intro h; cases h)
+         (by intro h; cases h) (by intro h; cases h))
+    | simp at h_ok
 
 /-! ### §11e  `scanDirectiveIx` preservation — proven
 
@@ -3400,9 +3412,19 @@ lemma scanDirectiveIx_preserves_PlainScalarsValidIx {input : String}
   · simp at h_ok
   · dsimp only [] at h_ok
     split at h_ok
-    · exact scanYamlDirectiveIx_preserves_PlainScalarsValidIx _ _ _ _ _ h_ok h_old
     · split at h_ok
-      · exact scanTagDirectiveIx_preserves_PlainScalarsValidIx _ _ _ _ _ h_ok h_old
+      · rename_i s_sub h_sub
+        simp only [Except.ok.injEq] at h_ok; subst h_ok
+        show PlainScalarsValidIx s_sub.tokens
+        exact scanYamlDirectiveIx_preserves_PlainScalarsValidIx _ _ _ _ _ h_sub h_old
+      · simp at h_ok
+    · split at h_ok
+      · split at h_ok
+        · rename_i s_sub h_sub
+          simp only [Except.ok.injEq] at h_ok; subst h_ok
+          show PlainScalarsValidIx s_sub.tokens
+          exact scanTagDirectiveIx_preserves_PlainScalarsValidIx _ _ _ _ _ h_sub h_old
+        · simp at h_ok
       · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_old
 
 lemma scanDirectiveIx_preserves_FlowContextPSVIx {input : String}
@@ -3414,9 +3436,19 @@ lemma scanDirectiveIx_preserves_FlowContextPSVIx {input : String}
   · simp at h_ok
   · dsimp only [] at h_ok
     split at h_ok
-    · exact scanYamlDirectiveIx_preserves_FlowContextPSVIx _ _ _ _ _ h_ok h_old
     · split at h_ok
-      · exact scanTagDirectiveIx_preserves_FlowContextPSVIx _ _ _ _ _ h_ok h_old
+      · rename_i s_sub h_sub
+        simp only [Except.ok.injEq] at h_ok; subst h_ok
+        show FlowContextPSVIx s_sub.tokens
+        exact scanYamlDirectiveIx_preserves_FlowContextPSVIx _ _ _ _ _ h_sub h_old
+      · simp at h_ok
+    · split at h_ok
+      · split at h_ok
+        · rename_i s_sub h_sub
+          simp only [Except.ok.injEq] at h_ok; subst h_ok
+          show FlowContextPSVIx s_sub.tokens
+          exact scanTagDirectiveIx_preserves_FlowContextPSVIx _ _ _ _ _ h_sub h_old
+        · simp at h_ok
       · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_old
 
 lemma scanDirectiveIx_preserves_FlowNestingInvIx {input : String}
@@ -3428,9 +3460,19 @@ lemma scanDirectiveIx_preserves_FlowNestingInvIx {input : String}
   · simp at h_ok
   · dsimp only [] at h_ok
     split at h_ok
-    · exact scanYamlDirectiveIx_preserves_FlowNestingInvIx _ _ _ _ _ h_ok h_fni
     · split at h_ok
-      · exact scanTagDirectiveIx_preserves_FlowNestingInvIx _ _ _ _ _ h_ok h_fni
+      · rename_i s_sub h_sub
+        simp only [Except.ok.injEq] at h_ok; subst h_ok
+        show FlowNestingInvIx s_sub
+        exact scanYamlDirectiveIx_preserves_FlowNestingInvIx _ _ _ _ _ h_sub h_fni
+      · simp at h_ok
+    · split at h_ok
+      · split at h_ok
+        · rename_i s_sub h_sub
+          simp only [Except.ok.injEq] at h_ok; subst h_ok
+          show FlowNestingInvIx s_sub
+          exact scanTagDirectiveIx_preserves_FlowNestingInvIx _ _ _ _ _ h_sub h_fni
+        · simp at h_ok
       · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_fni
 
 /-! ### §11f  `scanNextTokenIx_dispatchStructural` preservation — proven
@@ -4162,6 +4204,14 @@ lemma scanNextTokenIx_preserves_PlainScalarsValidIx {input : String}
               s_pp c s_str h_ds h_psv_pp
           | none =>
             dsimp only [] at h_ok
+            -- Pending-directives check (Fix B)
+            have h_npd : ∃ u, scanNextTokenIx_checkNoPendingDirectives s_pp = .ok u := by
+              cases hx : scanNextTokenIx_checkNoPendingDirectives s_pp with
+              | error e => rw [hx] at h_ok; simp at h_ok
+              | ok u => exact ⟨u, rfl⟩
+            obtain ⟨u, h_npd⟩ := h_npd
+            rw [h_npd] at h_ok
+            dsimp only [] at h_ok
             generalize h_dir_def : (if s_pp.allowDirectives = true then
                 { s_pp with allowDirectives := false, documentEverStarted := true }
               else s_pp) = s_dir at h_ok
@@ -4500,7 +4550,8 @@ lemma scanYamlDirectiveIx_preserves_simpleKey {input : String}
     (h : scanYamlDirectiveIx s cAfterWS startPos hStart = .ok s') :
     s'.simpleKey = s.simpleKey := by
   unfold scanYamlDirectiveIx at h
-  simp only [bind, Except.bind] at h
+  simp only [bind, Except.bind, pure, Except.pure, throw, throwThe,
+    MonadExceptOf.throw] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at h; subst h; rfl)
@@ -4512,7 +4563,8 @@ lemma scanYamlDirectiveIx_preserves_simpleKeyStack {input : String}
     (h : scanYamlDirectiveIx s cAfterWS startPos hStart = .ok s') :
     s'.simpleKeyStack = s.simpleKeyStack := by
   unfold scanYamlDirectiveIx at h
-  simp only [bind, Except.bind] at h
+  simp only [bind, Except.bind, pure, Except.pure, throw, throwThe,
+    MonadExceptOf.throw] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at h; subst h; rfl)
@@ -4524,7 +4576,11 @@ lemma scanTagDirectiveIx_preserves_simpleKey {input : String}
     (h : scanTagDirectiveIx s cAfterWS startPos hStart = .ok s') :
     s'.simpleKey = s.simpleKey := by
   unfold scanTagDirectiveIx at h
-  simp only [Except.ok.injEq] at h; subst h; rfl
+  simp only [bind, Except.bind, pure, Except.pure, throw, throwThe,
+    MonadExceptOf.throw] at h
+  repeat (any_goals (split at h))
+  all_goals (try contradiction)
+  all_goals (simp only [Except.ok.injEq] at h; subst h; rfl)
 
 lemma scanTagDirectiveIx_preserves_simpleKeyStack {input : String}
     (s : ScannerStateIx input) (cAfterWS : IxCursor input)
@@ -4533,7 +4589,11 @@ lemma scanTagDirectiveIx_preserves_simpleKeyStack {input : String}
     (h : scanTagDirectiveIx s cAfterWS startPos hStart = .ok s') :
     s'.simpleKeyStack = s.simpleKeyStack := by
   unfold scanTagDirectiveIx at h
-  simp only [Except.ok.injEq] at h; subst h; rfl
+  simp only [bind, Except.bind, pure, Except.pure, throw, throwThe,
+    MonadExceptOf.throw] at h
+  repeat (any_goals (split at h))
+  all_goals (try contradiction)
+  all_goals (simp only [Except.ok.injEq] at h; subst h; rfl)
 
 lemma scanDirectiveIx_preserves_simpleKey {input : String}
     (s s' : ScannerStateIx input) (h : scanDirectiveIx s = .ok s') :
@@ -4543,9 +4603,17 @@ lemma scanDirectiveIx_preserves_simpleKey {input : String}
   · simp at h
   · dsimp only [] at h
     split at h
-    · exact (scanYamlDirectiveIx_preserves_simpleKey _ _ _ _ _ h).trans rfl
     · split at h
-      · exact (scanTagDirectiveIx_preserves_simpleKey _ _ _ _ _ h).trans rfl
+      · rename_i s_sub h_sub
+        simp only [Except.ok.injEq] at h; subst h
+        exact (scanYamlDirectiveIx_preserves_simpleKey _ _ _ _ _ h_sub).trans rfl
+      · simp at h
+    · split at h
+      · split at h
+        · rename_i s_sub h_sub
+          simp only [Except.ok.injEq] at h; subst h
+          exact (scanTagDirectiveIx_preserves_simpleKey _ _ _ _ _ h_sub).trans rfl
+        · simp at h
       · simp only [Except.ok.injEq] at h; subst h; rfl
 
 lemma scanDirectiveIx_preserves_simpleKeyStack {input : String}
@@ -4556,9 +4624,17 @@ lemma scanDirectiveIx_preserves_simpleKeyStack {input : String}
   · simp at h
   · dsimp only [] at h
     split at h
-    · exact (scanYamlDirectiveIx_preserves_simpleKeyStack _ _ _ _ _ h).trans rfl
     · split at h
-      · exact (scanTagDirectiveIx_preserves_simpleKeyStack _ _ _ _ _ h).trans rfl
+      · rename_i s_sub h_sub
+        simp only [Except.ok.injEq] at h; subst h
+        exact (scanYamlDirectiveIx_preserves_simpleKeyStack _ _ _ _ _ h_sub).trans rfl
+      · simp at h
+    · split at h
+      · split at h
+        · rename_i s_sub h_sub
+          simp only [Except.ok.injEq] at h; subst h
+          exact (scanTagDirectiveIx_preserves_simpleKeyStack _ _ _ _ _ h_sub).trans rfl
+        · simp at h
       · simp only [Except.ok.injEq] at h; subst h; rfl
 
 lemma scanBlockEntryIx_preserves_simpleKey {input : String}
@@ -4992,11 +5068,14 @@ lemma scanYamlDirectiveIx_preserves_prefix {input : String}
     simp [Bind.bind, Except.bind] at h_ok
   · rw [if_neg hd] at h_ok
     simp only [] at h_ok
-    split at h_ok
-    · simp only [Except.ok.injEq] at h_ok
-      subst h_ok
-      apply emitAt_preserves_tokens_at
-    · simp at h_ok
+    simp only [Bind.bind, Except.bind, pure, Except.pure, throw, throwThe,
+      MonadExceptOf.throw] at h_ok
+    repeat' split at h_ok
+    all_goals first
+      | (simp only [Except.ok.injEq] at h_ok
+         subst h_ok
+         apply emitAt_preserves_tokens_at)
+      | simp at h_ok
 
 lemma scanTagDirectiveIx_preserves_prefix {input : String}
     (s : ScannerStateIx input) (cAfterWS : IxCursor input) (startPos : YamlPos)
@@ -5007,9 +5086,14 @@ lemma scanTagDirectiveIx_preserves_prefix {input : String}
     s'.tokens[i]'(by have := scanTagDirectiveIx_tokens_size_le h_ok; omega) =
     s.tokens[i]'h_bound := by
   unfold scanTagDirectiveIx at h_ok
-  simp only [Except.ok.injEq] at h_ok
-  subst h_ok
-  apply emitAt_preserves_tokens_at
+  simp only [Bind.bind, Except.bind, pure, Except.pure, throw, throwThe,
+    MonadExceptOf.throw] at h_ok
+  repeat' split at h_ok
+  all_goals first
+    | (simp only [Except.ok.injEq] at h_ok
+       subst h_ok
+       apply emitAt_preserves_tokens_at)
+    | simp at h_ok
 
 lemma scanDirectiveIx_preserves_prefix {input : String}
     (s : ScannerStateIx input) (s' : ScannerStateIx input)
@@ -5022,12 +5106,24 @@ lemma scanDirectiveIx_preserves_prefix {input : String}
   · simp at h_ok
   · simp only at h_ok
     split at h_ok
-    · -- YAML branch: delegate to scanYamlDirectiveIx
-      exact scanYamlDirectiveIx_preserves_prefix _ _ _ _ _ h_ok i h_bound
+    · -- YAML branch: sub-scan then skipToEndOfLineIx wrapper
+      split at h_ok
+      · rename_i s_sub h_sub
+        simp only [Except.ok.injEq] at h_ok
+        subst h_ok
+        show s_sub.tokens[i]'_ = s.tokens[i]'h_bound
+        exact scanYamlDirectiveIx_preserves_prefix _ _ _ _ _ h_sub i h_bound
+      · simp at h_ok
     · split at h_ok
-      · -- TAG branch: delegate to scanTagDirectiveIx
-        exact scanTagDirectiveIx_preserves_prefix _ _ _ _ _ h_ok i h_bound
-      · -- reserved-directive default: `.ok { sAdv with cursor := cAfterWS }` — tokens unchanged
+      · -- TAG branch: sub-scan then skipToEndOfLineIx wrapper
+        split at h_ok
+        · rename_i s_sub h_sub
+          simp only [Except.ok.injEq] at h_ok
+          subst h_ok
+          show s_sub.tokens[i]'_ = s.tokens[i]'h_bound
+          exact scanTagDirectiveIx_preserves_prefix _ _ _ _ _ h_sub i h_bound
+        · simp at h_ok
+      · -- reserved-directive default: tokens unchanged
         simp only [Except.ok.injEq] at h_ok
         subst h_ok
         rfl
@@ -5059,7 +5155,7 @@ lemma scanDocumentEndIx_preserves_prefix {input : String}
     s'.tokens[i]'(by have := scanDocumentEndIx_tokens_size_le h_ok; omega) =
     s.tokens[i]'h_bound := by
   unfold scanDocumentEndIx at h_ok
-  by_cases hd : (s.directivesPresent && !s.documentEverStarted) = true
+  by_cases hd : s.directivesPresent = true
   · rw [if_pos hd] at h_ok
     simp [Bind.bind, Except.bind] at h_ok
   · rw [if_neg hd] at h_ok
@@ -5926,6 +6022,14 @@ lemma scanNextTokenIx_preserves_AllKeysPlaceholderInvIx {input : String}
               s_pp s_str c h_akpi_pp h_ds
           | none =>
             dsimp only [] at h_ok
+            -- Pending-directives check (Fix B)
+            have h_npd : ∃ u, scanNextTokenIx_checkNoPendingDirectives s_pp = .ok u := by
+              cases hx : scanNextTokenIx_checkNoPendingDirectives s_pp with
+              | error e => rw [hx] at h_ok; simp at h_ok
+              | ok u => exact ⟨u, rfl⟩
+            obtain ⟨u, h_npd⟩ := h_npd
+            rw [h_npd] at h_ok
+            dsimp only [] at h_ok
             generalize h_dir_def : (if s_pp.allowDirectives = true then
                 { s_pp with allowDirectives := false, documentEverStarted := true }
               else s_pp) = s_dir at h_ok
@@ -6009,6 +6113,14 @@ lemma scanNextTokenIx_preserves_FlowContextPSVIx {input : String}
             exact scanNextTokenIx_dispatchStructural_preserves_FlowContextPSVIx
               s_pp c s_str h_ds h_old_pp
           | none =>
+            dsimp only [] at h_ok
+            -- Pending-directives check (Fix B)
+            have h_npd : ∃ u, scanNextTokenIx_checkNoPendingDirectives s_pp = .ok u := by
+              cases hx : scanNextTokenIx_checkNoPendingDirectives s_pp with
+              | error e => rw [hx] at h_ok; simp at h_ok
+              | ok u => exact ⟨u, rfl⟩
+            obtain ⟨u, h_npd⟩ := h_npd
+            rw [h_npd] at h_ok
             dsimp only [] at h_ok
             generalize h_dir_def : (if s_pp.allowDirectives = true then
                 { s_pp with allowDirectives := false, documentEverStarted := true }
@@ -6100,6 +6212,14 @@ lemma scanNextTokenIx_preserves_FlowNestingInvIx {input : String}
             exact scanNextTokenIx_dispatchStructural_preserves_FlowNestingInvIx
               s_pp c s_str h_ds h_fni_pp
           | none =>
+            dsimp only [] at h_ok
+            -- Pending-directives check (Fix B)
+            have h_npd : ∃ u, scanNextTokenIx_checkNoPendingDirectives s_pp = .ok u := by
+              cases hx : scanNextTokenIx_checkNoPendingDirectives s_pp with
+              | error e => rw [hx] at h_ok; simp at h_ok
+              | ok u => exact ⟨u, rfl⟩
+            obtain ⟨u, h_npd⟩ := h_npd
+            rw [h_npd] at h_ok
             dsimp only [] at h_ok
             generalize h_dir_def : (if s_pp.allowDirectives = true then
                 { s_pp with allowDirectives := false, documentEverStarted := true }

@@ -93,7 +93,8 @@ theorem r606_singleton_fires
     (h_flow : s.inFlow = true) (h_fl : s.flowLevel > 0) (h_indent : s.currentIndent < 0)
     (h_col : s.col > 0) (h_ek : s.explicitKeyLine = none)
     (h_atol : AllTokensOnLine s s.line) (h_endline : EndLineOnLine s)
-    (h_ska : s.simpleKeyAllowed = true) (h_sync : s.simpleKeyStack.size = s.flowLevel) :
+    (h_ska : s.simpleKeyAllowed = true) (h_sync : s.simpleKeyStack.size = s.flowLevel)
+    (h_dp : s.directivesPresent = false) :
     ∃ (_n : Nat) (s' : ScannerState) (block : List (Positioned YamlToken)),
       ScannerSurfCorr s' ⟨rest, s'.col⟩ ∧
       block.length = 4 ∧
@@ -108,7 +109,7 @@ theorem r606_singleton_fires
       (fun p hp => by
         simp only [List.mem_cons, List.mem_nil_iff, or_false] at hp
         exact ⟨sk, sv, by rw [hp], by rw [hp]⟩)
-      s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska h_sync
+      s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska h_sync h_dp
   obtain ⟨_, h_k_val, _, h_v_val⟩ :=
     h_pw 0 (by simp) sk sv (by simp)
   exact ⟨_n, s', block, h_corr',
@@ -126,7 +127,8 @@ theorem r606_two_pair_fires
     (h_flow : s.inFlow = true) (h_fl : s.flowLevel > 0) (h_indent : s.currentIndent < 0)
     (h_col : s.col > 0) (h_ek : s.explicitKeyLine = none)
     (h_atol : AllTokensOnLine s s.line) (h_endline : EndLineOnLine s)
-    (h_ska : s.simpleKeyAllowed = true) (h_sync : s.simpleKeyStack.size = s.flowLevel) :
+    (h_ska : s.simpleKeyAllowed = true) (h_sync : s.simpleKeyStack.size = s.flowLevel)
+    (h_dp : s.directivesPresent = false) :
     ∃ (_n : Nat) (s' : ScannerState) (block : List (Positioned YamlToken)),
       ScannerSurfCorr s' ⟨rest, s'.col⟩ ∧
       block.length = 9 ∧
@@ -147,7 +149,7 @@ theorem r606_two_pair_fires
         rcases hp with rfl | rfl
         · exact ⟨sk1, sv1, rfl, rfl⟩
         · exact ⟨sk2, sv2, rfl, rfl⟩)
-      s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska h_sync
+      s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska h_sync h_dp
   obtain ⟨_, h_k1, _, h_v1⟩ := h_pw 0 (by simp) sk1 sv1 (by simp)
   obtain ⟨_, h_k2, _, h_v2⟩ := h_pw 1 (by simp) sk2 sv2 (by simp)
   obtain ⟨_, h_fe0⟩ := h_fe 0 (by simp)

@@ -413,6 +413,20 @@ def scanNextToken_checkBlockFlowIndent (s : ScannerState) (c : Char) :
   else
     .ok ()
 
+/-- §9.1.5 [209]: directives must be followed by `c-directives-end` (`---`).
+    If directives are pending (`directivesPresent`) and ordinary content
+    arrives instead of `---`/`...`/another directive, the directives are
+    orphaned — a scan error.  Factored out (like
+    `scanNextToken_checkBlockFlowIndent`) so `unfold scanNextToken` exposes
+    a single extra bind-split to the proof engine. -/
+@[yaml_spec "9.1.5" 209 "l-directive-document"]
+def scanNextToken_checkNoPendingDirectives (s : ScannerState) :
+    Except ScanError Unit :=
+  if s.directivesPresent then
+    .error (.directiveWithoutDocument s.line)
+  else
+    .ok ()
+
 /-- Scan the next token from the input.
 
     **Implements**: Main dispatch loop for YAML token recognition.
@@ -442,6 +456,9 @@ def scanNextToken (s : ScannerState) : Except ScanError (Option ScannerState) :=
     match ← scanNextToken_dispatchStructural s c with
     | some s' => return some s'
     | none =>
+      -- §9.1.5 [209]: pending directives with no `---` before content
+      -- are orphaned — error (spec-exact since the nb-char/ns-char era).
+      scanNextToken_checkNoPendingDirectives s
       -- Any non-directive, non-document-marker content means we're in a document.
       -- Disallow directives until the next `...` document-end marker.
       let s := if s.allowDirectives then
@@ -492,8 +509,11 @@ def scanLoop (s : ScannerState) (fuel : Nat) :
       if s.flowLevel > 0 then
         -- §7.4: Unclosed flow collections are an error
         .error (.unterminatedFlowCollection '[' s.line)
-      else if s.directivesPresent && !s.documentEverStarted then
-        -- §6.8: Directives without document are an error
+      else if s.directivesPresent then
+        -- §9.1.5 [209]: directives with no following `---` are an error.
+        -- (`directivesPresent` is reset by both `---` and `...`, so a bare
+        -- check is exact; the old `&& !documentEverStarted` conjunct let
+        -- orphan directives in second documents slip through.)
         .error (.directiveWithoutDocument s.line)
       else
         -- Close all remaining block contexts and emit final token
@@ -552,7 +572,7 @@ def scanLoopFull (s : ScannerState) (fuel : Nat) : Except ScanError ScannerState
     | .ok none =>
       if s.flowLevel > 0 then
         .error (.unterminatedFlowCollection '[' s.line)
-      else if s.directivesPresent && !s.documentEverStarted then
+      else if s.directivesPresent then
         .error (.directiveWithoutDocument s.line)
       else
         -- Re-run skipToContent to collect trailing comments that

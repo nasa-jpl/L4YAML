@@ -850,37 +850,73 @@ lemma scanNextTokenIx_maintains_SKAFIx {input : String}
                   { s1 with allowDirectives := false, documentEverStarted := true }
                 else s1).tokens.size := by
             rw [h_allow_tok]; omega
-          -- Split on checkBlockFlowIndent
+          -- Split on checkNoPendingDirectives (Fix B)
           split at h_next
           · contradiction
-          · split at h_next
+          · -- Split on checkBlockFlowIndent
+            split at h_next
             · contradiction
             · split at h_next
-              · -- FlowIndicators dispatch produced some s''
-                rename_i s'' hFlow
-                simp only [Except.ok.injEq, Option.some.injEq] at h_next
-                subst h_next
-                exact scanNextTokenIx_dispatchFlowIndicators_maintains_SKAFIx _ _ _ hFlow
-                  n₀ fl₀ h_s2_tok h_s2_inv h_s2_sync h_fl_post
-              · -- FlowIndicators returned none → BlockIndicators
-                rename_i hFlowNone
-                split at h_next
-                · contradiction
-                · split at h_next
-                  · -- BlockIndicators dispatch produced some s''
-                    rename_i s'' hBlock
-                    simp only [Except.ok.injEq, Option.some.injEq] at h_next
-                    subst h_next
-                    exact scanNextTokenIx_dispatchBlockIndicators_maintains_SKAFIx _ _ _ hBlock
-                      n₀ fl₀ h_s2_tok h_s2_inv
-                  · -- BlockIndicators returned none → Content
-                    rename_i hBlockNone
-                    split at h_next
-                    · contradiction
-                    · rename_i sC hContent
+              · contradiction
+              · split at h_next
+                · -- FlowIndicators dispatch produced some s''
+                  rename_i s'' hFlow
+                  simp only [Except.ok.injEq, Option.some.injEq] at h_next
+                  subst h_next
+                  exact scanNextTokenIx_dispatchFlowIndicators_maintains_SKAFIx _ _ _ hFlow
+                    n₀ fl₀ h_s2_tok h_s2_inv h_s2_sync h_fl_post
+                · -- FlowIndicators returned none → BlockIndicators
+                  rename_i hFlowNone
+                  split at h_next
+                  · contradiction
+                  · split at h_next
+                    · -- BlockIndicators dispatch produced some s''
+                      rename_i s'' hBlock
                       simp only [Except.ok.injEq, Option.some.injEq] at h_next
                       subst h_next
-                      exact scanNextTokenIx_dispatchContent_maintains_SKAFIx _ _ _ hContent
+                      exact scanNextTokenIx_dispatchBlockIndicators_maintains_SKAFIx _ _ _ hBlock
                         n₀ fl₀ h_s2_tok h_s2_inv
+                    · -- BlockIndicators returned none → Content
+                      rename_i hBlockNone
+                      split at h_next
+                      · contradiction
+                      · rename_i sC hContent
+                        simp only [Except.ok.injEq, Option.some.injEq] at h_next
+                        subst h_next
+                        exact scanNextTokenIx_dispatchContent_maintains_SKAFIx _ _ _ hContent
+                          n₀ fl₀ h_s2_tok h_s2_inv
+
+/-! ## Fix-B pending-directives check helpers (indexed twins of
+`scanNextToken_checkNoPendingDirectives_ok` / `scanNextToken_ok_directivesPresent_false`). -/
+
+/-- The Fix-B pending-directives check passes when no directives are pending.
+    Stated as an atomic rewrite so `simp` does not rewrite `directivesPresent`
+    projections inside record-update expressions elsewhere in the goal. -/
+lemma scanNextTokenIx_checkNoPendingDirectives_ok {input : String}
+    (s : ScannerStateIx input) (h : s.directivesPresent = false) :
+    scanNextTokenIx_checkNoPendingDirectives s = .ok () := by
+  simp only [scanNextTokenIx_checkNoPendingDirectives, h, Bool.false_eq_true, ↓reduceIte]
+
+/-- Converse dp extraction (Fix B): if `scanNextTokenIx` succeeded and the
+    pipeline reached past structural dispatch, the pending-directives check
+    must have passed, so `s_pp.directivesPresent = false`. -/
+lemma scanNextTokenIx_ok_directivesPresent_false {input : String}
+    {s s_pp : ScannerStateIx input} {c : Char} {r : Option (ScannerStateIx input)}
+    (h_pp : scanNextTokenIx_preprocess s = .ok (some (s_pp, c)))
+    (h_struct : scanNextTokenIx_dispatchStructural s_pp c = .ok none)
+    (h_snt : scanNextTokenIx s = .ok r) :
+    s_pp.directivesPresent = false := by
+  cases h_dp : s_pp.directivesPresent
+  · rfl
+  · exfalso
+    have h_check_err : scanNextTokenIx_checkNoPendingDirectives s_pp
+        = .error (.directiveWithoutDocument s_pp.cursor.pos.line) := by
+      simp only [scanNextTokenIx_checkNoPendingDirectives, h_dp, ↓reduceIte]
+    have h_err : scanNextTokenIx s
+        = .error (.directiveWithoutDocument s_pp.cursor.pos.line) := by
+      unfold scanNextTokenIx
+      simp only [bind, Except.bind, h_pp, h_struct, h_check_err]
+    rw [h_err] at h_snt
+    injection h_snt
 
 end L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain

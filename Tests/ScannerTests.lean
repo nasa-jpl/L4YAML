@@ -232,6 +232,27 @@ def collectTests : IO VerifiedSuiteResult := do
   check ref "control char in comment tolerated (loose by design)"
     (pipelineOk ("a: 1 # x" ++ ctl ++ "y"))
 
+  -- ═══════════════════════════════════════════
+  setCategory ref "Directive strictness (Fix B)"
+  -- ═══════════════════════════════════════════
+
+  -- YAML 1.2.2 §9.1.5 [209]: directives require a following `---`.
+  -- The 2026-08 Fix B strengthening errors on all orphan shapes,
+  -- including second-document orphans the old sticky
+  -- `documentEverStarted` conjunct let through (DOCS.md, grammar
+  -- completeness plan).
+  check ref "directive then content rejected" (!scanOk "%YAML 1.2\nfoo: bar")
+  check ref "%TAG then content rejected" (!scanOk "%TAG !e! tag:x\nfoo: bar")
+  check ref "reserved directive then content rejected" (!scanOk "%FOO bar\na: b")
+  check ref "2nd-doc orphan at EOF rejected" (!scanOk "a\n...\n%YAML 1.2\n")
+  check ref "2nd-doc orphan before ... rejected" (!scanOk "a\n...\n%YAML 1.2\n...\n")
+  check ref "2nd-doc orphan before content rejected" (!scanOk "a\n...\n%YAML 1.2\nb")
+  check ref "2nd-doc directive document accepted" (pipelineOk "a\n...\n%YAML 1.2\n---\nb")
+  check ref "blank line before --- accepted" (pipelineOk "%YAML 1.2\n\t\n---\nx")
+  check ref "comment line before --- accepted" (pipelineOk "%YAML 1.2\n# c\n---\nx")
+  check ref "% as plain-scalar content accepted" (pipelineOk "---\nscalar\n%YAML 1.2\n")
+  check ref "empty version part rejected" (!scanOk "%YAML .2\n---\nx")
+
   -- Build result
   let results ← finish ref
   return {

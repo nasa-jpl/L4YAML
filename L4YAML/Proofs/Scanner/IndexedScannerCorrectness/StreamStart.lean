@@ -454,6 +454,14 @@ lemma scanNextTokenIx_maintains_SimpleKeyAboveIx {input : String}
               s_pp s_str c n h_inv_pp h_ds
           | none =>
             dsimp only [] at h_ok
+            -- Pending-directives check (Fix B)
+            have h_npd : ∃ u, scanNextTokenIx_checkNoPendingDirectives s_pp = .ok u := by
+              cases hx : scanNextTokenIx_checkNoPendingDirectives s_pp with
+              | error e => rw [hx] at h_ok; simp at h_ok
+              | ok u => exact ⟨u, rfl⟩
+            obtain ⟨u, h_npd⟩ := h_npd
+            rw [h_npd] at h_ok
+            dsimp only [] at h_ok
             generalize h_dir_def : (if s_pp.allowDirectives = true then
                 { s_pp with allowDirectives := false, documentEverStarted := true }
               else s_pp) = s_dir at h_ok
@@ -763,6 +771,14 @@ lemma scanNextTokenIx_preserves_prefix {input : String}
               exact ⟨h_sz, h_pref.trans h_pre_eq⟩
           | none =>
             dsimp only [] at h_ok
+            -- Pending-directives check (Fix B)
+            have h_npd : ∃ u, scanNextTokenIx_checkNoPendingDirectives s_pp = .ok u := by
+              cases hx : scanNextTokenIx_checkNoPendingDirectives s_pp with
+              | error e => rw [hx] at h_ok; simp at h_ok
+              | ok u => exact ⟨u, rfl⟩
+            obtain ⟨u, h_npd⟩ := h_npd
+            rw [h_npd] at h_ok
+            dsimp only [] at h_ok
             generalize h_dir_def : (if s_pp.allowDirectives = true then
                 { s_pp with allowDirectives := false, documentEverStarted := true }
               else s_pp) = s_dir at h_ok
@@ -892,7 +908,7 @@ lemma scanLoopIx_preserves_tokens {input : String}
         by_cases hFL : s.flowLevel > 0
         · rw [if_pos hFL] at h; cases h
         · rw [if_neg hFL] at h
-          by_cases hDS : (s.directivesPresent && !s.documentEverStarted) = true
+          by_cases hDS : s.directivesPresent = true
           · rw [if_pos hDS] at h; cases h
           · rw [if_neg hDS] at h
             cases h

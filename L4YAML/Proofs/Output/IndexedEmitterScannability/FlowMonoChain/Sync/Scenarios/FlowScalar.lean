@@ -164,7 +164,8 @@ lemma scanNextTokenIx_flow_scanDoubleQuoted (s : ScannerStateIx input)
     (h_indent : s.currentIndent < 0)
     (h_col_pos : s.cursor.pos.col > 0)
     (h_atol : AllTokensOnLineIx s s.cursor.pos.line)
-    (h_endline : EndLineOnLineIx s) :
+    (h_endline : EndLineOnLineIx s)
+    (h_dp : s.directivesPresent = false) :
     ∃ s', scanNextTokenIx s = .ok (some s')
       ∧ ScannerSurfCorrIx s' ⟨rest, s'.cursor.pos.col⟩
       ∧ s'.flowLevel = s.flowLevel
@@ -283,6 +284,7 @@ lemma scanNextTokenIx_flow_scanDoubleQuoted (s : ScannerStateIx input)
   have h_snt : scanNextTokenIx s = .ok (some s') :=
     scanNextTokenIx_via_content_dispatch s (saveSimpleKeyIx s) s_ad s' '"'
       h_pp h_struct h_s_ad_def h_check h_flow_none h_block_none h_dc
+      ((saveSimpleKeyIx_directivesPresent s).trans h_dp)
   -- ── line equality (used by several conjuncts)
   have h_s'_line_eq : s'.cursor.pos.line = s.cursor.pos.line := by
     rw [h_s'_cursor, h_line_cAfter]; exact h_ad_line

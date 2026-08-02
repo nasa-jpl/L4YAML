@@ -5599,16 +5599,71 @@ Both directions:
 - **Forward** (v0.4.6, proven): `parseYaml input = .ok docs → InYamlLanguage input`
 - **Converse** (this plan, target): `InYamlLanguage input → ∃ docs, parseYaml input = .ok docs`
 
-### Status (as of 2026-08-01): NOT STARTED — UNBLOCKED
+### Status (as of 2026-08-02): Fix B DONE — `directiveDrop` REMOVED
 
 | Step | Status | Notes |
 |---|---|---|
 | 0. Scanner audit for directive handling | ✅ done 2026-08-01 | findings under Fix B: mid-stream leniency **confirmed reachable** |
-| 1. Remove `directiveDrop` / `scannerDrop` constructors from `SLYamlStream` | ❌ open | both still present in [Surface/Document.lean](L4YAML/Surface/Document.lean) (lines 165, 175) |
-| Fix A: eliminate `scannerDrop` (flow indicator grammar evidence) | ❌ open | blocking lemma `SFlowNode_context_lift` not proven |
-| Fix B: eliminate `directiveDrop` (orphaned directive resolution) | ❌ open | audit done; recommended path = strengthen the scanner (option c) |
-| 5. Prove the converse `grammar_completeness` | ❌ open | depends on Steps 0–4 |
+| Fix B: eliminate `directiveDrop` (orphaned directive resolution) | ✅ **done 2026-08-02** | option (c) executed; see the progress record below |
+| 1a. Remove `directiveDrop` from `SLYamlStream` | ✅ **done 2026-08-02** | constructor deleted; `SLYamlStream` = 3 spec constructors + `scannerDrop` |
+| Fix A: eliminate `scannerDrop` (flow collection grammar evidence) | ❌ open | plan revised — see the 2026-08-02 findings under Fix A: the planned `SFlowNode_context_lift` is false-and-unneeded; real work = whole-flow-collection accumulation **plus a flow-adjacency scanner strictening** |
+| 1b. Remove `scannerDrop` from `SLYamlStream` | ❌ open | blocked on Fix A |
+| 5. Prove the converse `grammar_completeness` | ❌ open | depends on Fix A |
 | 6. Assemble `parse_iff_grammar` biconditional | ❌ open | depends on Step 5 |
+
+#### Progress record — Fix B (2026-08-02)
+
+Scanner (legacy + both indexed twins in lockstep):
+
+- New `scanNextToken_checkNoPendingDirectives` (and `…Ix` twin) between
+  structural dispatch and the `allowDirectives` update: content arriving
+  while `directivesPresent` is set is now
+  `ScanError.directiveWithoutDocument` ([209] mid-stream enforcement).
+- The EOF checks (`scanLoop`, `scanLoopFull`, `scanLoopIx`, `scanLoopIxWC`)
+  and the `scanDocumentEnd(Ix)` guard dropped the `&& !documentEverStarted`
+  conjunct — that flag is sticky across documents, so orphan directives in
+  *second* documents (`a\n...\n%YAML 1.2\n<eof|...|content>`) previously
+  slipped through all three checks. `documentEverStarted` is now write-only
+  (kept to minimize statement churn).
+- Reserved directives (`%FOO …`) now set `directivesPresent` ([82]/[209]:
+  they too require `---`).
+- `scanYamlDirective` rejects empty version parts (`%YAML .2`) instead of
+  feeding `String.toNat!` an empty string.
+- Indexed parity repairs (pre-existing bugs exposed by the campaign):
+  `scanTagDirectiveIx` mis-parsed the handle (treated the *leading* `!` as
+  its terminator, then re-scanned the directive line as content) and, like
+  `scanYamlDirectiveIx` and the reserved arm, never validated trailing
+  content nor skipped to end of line. All three now mirror the legacy
+  scanners (new `collectTagHandleDirectiveLoopIx`, `collectTagPrefixLoopIx`
+  — URI chars, not tag chars — and `skipToEndOfLineIx`).
+
+Proofs:
+
+- `PendingNode` gained a `Bool` index — `pendingDirective` is the sole
+  `true`-indexed constructor (its vestigial `h_at_line_end` field dropped),
+  and the accumulation invariant carries the coupling
+  `b = true → sc.directivesPresent = true` (`Prop`-sorted `PendingNode`
+  admits no discriminator function, so the kind must be data).
+- `close_with_ssl` takes `PendingNode false` — the `directiveDrop` arm is
+  type-impossible. The flow/block/content `pendingDirective` cases are
+  deleted (the mid-stream check makes them unreachable), and the EOF path
+  derives `b = false` from the strengthened `scanLoop` check.
+- The structural path got the real semantics `directiveDrop` was masking:
+  `structural_dispatch_after_directives` resolves an open directive run
+  against the incoming token — `---` now builds a genuine
+  **`SLDirectiveDocument`** ([209]) via the `pendingDocStart` builder
+  (previously even *valid* directive documents had their directives
+  dropped from the derivation), `%` extends the run via `GPlus_snoc`, and
+  `...` is refuted by `scanDocumentEnd_ok_directivesPresent`.
+- New helper family in `ScanStrictCoupling`: `preprocess_some_directivesPresent`
+  (dp-preservation through the skipToContent pipeline),
+  `scanDirective_directivesPresent`, `scanDocumentEnd_ok/result_dp`,
+  `scanDocumentStart_dp`, `GPlus_snoc`.
+- Behavioral flips: none in any test suite (verified by exhaustive sweep);
+  `examples/6/example-6.17.yaml` moves from lenient-accept to
+  expected-error (still ✓ in SpecExamples scoring). New regression
+  coverage: Tests/ScannerTests "Directive strictness (Fix B)" + parity
+  guards for the flip set in Tests/Guards/Parity/IndexedScanAndParse.lean.
 
 **Blocker cleared (2026-07-04):** v0.4.7 is complete — `universal_roundtrip` is
 fully proven (proof-status SSOT:
@@ -5658,7 +5713,8 @@ The converse — that every YAML-language string is accepted — is missing. Tog
 
 `InYamlLanguage` is defined via `SLYamlStream`
 ([Surface/Document.lean:136](L4YAML/Surface/Document.lean); `InYamlLanguage`
-at :186), which has **5 constructors**:
+at :186), which originally had **5 constructors** (4 since Fix B removed
+`directiveDrop` on 2026-08-02):
 
 ```lean
 inductive SLYamlStream : SurfPos → SurfPos → Prop where
@@ -5669,9 +5725,9 @@ inductive SLYamlStream : SurfPos → SurfPos → Prop where
   | scannerDrop      : SLYamlStream s s₁ → SSLComments s₂ s' → SLYamlStream s s'
 ```
 
-The first three correspond directly to YAML 1.2.2 §9.1 production [211]. The last two — `directiveDrop` (line 165) and `scannerDrop` (line 175) — are **over-approximations** added during the v0.4.6 `scan_strict` proof to accommodate scanner behaviour that doesn't map cleanly to spec productions:
+The first three correspond directly to YAML 1.2.2 §9.1 production [211]. The last two — `directiveDrop` (**removed 2026-08-02**) and `scannerDrop` (still present) — were **over-approximations** added during the v0.4.6 `scan_strict` proof to accommodate scanner behaviour that doesn't map cleanly to spec productions:
 
-- **`directiveDrop`**: absorbs orphaned directives (e.g., `%YAML 1.2` without a following document).
+- **`directiveDrop`** (removed): absorbed orphaned directives (e.g., `%YAML 1.2` without a following document).
 - **`scannerDrop`**: opaque gap matcher for characters consumed by the scanner (e.g., incomplete flow indicators) that don't fit a clean grammar production.
 
 #### Consequence for the converse
@@ -5799,13 +5855,48 @@ theorem SFlowNode_context_lift (n : Nat) (ctx : Context) :
 
 This is provable because flow content parsing doesn't depend on block indent level — the grammar rules for `SFlowSequence`, `SFlowMapping`, and `SFlowNode` (`Surface/Node.lean:291/349/245`) are insensitive to `n` and `ctx` at the character level.
 
-#### Estimated scope
+#### Revised findings (2026-08-02) — plan correction
 
-- Context lifting lemma: ~200 lines (one mutual induction over flow grammar types)
-- `h_closable` construction in `accum_step_flow`: ~100 lines
-- `pendingFlow` definition change: ~10 lines
-- `close_with_ssl` pendingFlow arm: ~5 lines (delegates to `h_closable`)
-- **Total: ~300–500 lines**
+The Fix-B campaign's understand pass invalidated the sketch above:
+
+1. **`SFlowNode_context_lift` is FALSE as stated** — the indent bump
+   `0 → n+1` fails on any multi-line witness (`SIndent n` demands
+   *exactly* n spaces; indent is only downward-monotone), **and it is
+   unnecessary**: `SBlockNode.flowInBlock` already takes `SFlowNode n
+   .flowOut` at the *same* n (the spec's `+1` is absorbed by the
+   `n_lean = n_spec + 1` offset), the whole StreamAccum pipeline runs at
+   `n = 0`, and `dispatchContent_evidence` already emits
+   `SFlowNode 0 .flowOut`.
+2. **No whole-flow-collection producer exists** — nothing in the library
+   concludes `SFlowSequence`/`SFlowMapping` from scanner evidence; flow
+   evidence exists only at single-token granularity, and `pendingFlow`
+   persists an opaque, growing gap. The real Fix-A work is an
+   entry-accumulation machine mirroring the block machinery: an
+   `SFlowSeqEntries`/`SFlowMapEntries` snoc, native-`.flowIn` producers
+   (do NOT lift `.flowOut → .flowIn` — false for plain scalars; delete
+   the lift calls from `scanPlainScalar_to_flowNode` instead), a
+   `GLit ','` upgrade of `scanFlowEntry_prod`, structured `pendingFlow`,
+   and col≠0 `SSeparateLines` preprocessing evidence. Context assignment
+   needs **zero lift lemmas**: `inFlowCtx` is a fixed point (`.flowIn`)
+   below the top level.
+3. **A flow-adjacency scanner strictening is a prerequisite** (found
+   2026-08-02 by probing): the scanner accepts adjacent flow entries
+   with no separator — `[[a][b]]`, `[[a]b]`, `["a""b"]`, `{a: b: c}`
+   all `scan`-ok (the parser rejects them) — and none of those spans
+   have `SFlowSequence` derivations, so `scan_strict_proof` would be
+   **false** without `scannerDrop`. Fix A therefore needs a Fix-B-style
+   runtime strengthening first (reject entry-adjacency without `,`/`:`
+   separators at scan time; no `parseYaml`-level behavior change), with
+   its own proof-repair sweep across the emitter-scannability towers.
+
+#### Estimated scope (revised)
+
+- Flow-adjacency scanner strictening + proof repair: ~300–800 lines
+- Entry snoc + native-`.flowIn` producers + `,` upgrade: ~300–500 lines
+- Flow accumulation through the four dispatch families +
+  `block_dispatch_deferred`'s 16 call sites + `close_with_ssl`: ~500–1,000 lines
+- **Total: ~1,100–2,300 lines** (the original ~300–500 estimate assumed
+  the context-lift sketch and no runtime work)
 
 ---
 

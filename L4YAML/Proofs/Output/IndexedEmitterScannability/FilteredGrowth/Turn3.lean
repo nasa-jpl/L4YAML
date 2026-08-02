@@ -170,10 +170,14 @@ lemma scanNextTokenIx_filtered_grows_in_flow
     simp only [s_ad]; split <;> exact h_sk_flow
   have h_check : scanNextTokenIx_checkBlockFlowIndent s_ad c = .ok () :=
     checkBlockFlowIndent_ok_flow _ _ (h_ad_flow ▸ h_flow)
+  -- Fix B: pending-directives check passes (dp = false is forced by h_snt's success).
+  have h_ndp_ok : scanNextTokenIx_checkNoPendingDirectives (saveSimpleKeyIx s) = .ok () :=
+    scanNextTokenIx_checkNoPendingDirectives_ok _
+      (scanNextTokenIx_ok_directivesPresent_false h_pp h_struct h_snt)
   -- Step 4: unfold scanNextTokenIx using the pinned dispatch info.
   unfold scanNextTokenIx at h_snt
   simp only [bind, pure, Pure.pure, Except.pure, Except.bind, h_pp, h_struct,
-             ← hs_ad, h_check] at h_snt
+             h_ndp_ok, ← hs_ad, h_check] at h_snt
   -- Step 5: case-analyze on dispatchFlowIndicators result.
   match h_flow_eq : scanNextTokenIx_dispatchFlowIndicators s_ad c with
   | .error _ => rw [h_flow_eq] at h_snt; simp at h_snt

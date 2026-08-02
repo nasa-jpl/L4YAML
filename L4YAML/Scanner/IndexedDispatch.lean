@@ -96,6 +96,51 @@ def collectTagSuffixLoopIx {input : String} (c : IxCursor input)
       else (suffix, c)
     | none => (suffix, c)
 
+/-- Collect TAG-directive handle characters (`ns-word-char` or `!`),
+    mirroring the legacy `collectTagHandleDirectiveLoop` ([89]-[92]):
+    the leading and trailing `!` are part of the handle. -/
+def collectTagHandleDirectiveLoopIx {input : String} (c : IxCursor input)
+    (handle : String) : Nat → String × IxCursor input
+  | 0 => (handle, c)
+  | fuel + 1 =>
+    match c.peek? with
+    | some ch =>
+      if isWordCharBool ch || ch == '!' then
+        collectTagHandleDirectiveLoopIx c.advance (handle.push ch) fuel
+      else (handle, c)
+    | none => (handle, c)
+
+/-- Collect TAG-directive prefix characters (`ns-uri-char`+ per [93]-[95]),
+    mirroring the legacy `collectTagPrefixLoop`. Broader than
+    `collectTagSuffixLoopIx`: URI chars include `!`, `,` and flow
+    indicators, which tag-suffix chars exclude. -/
+def collectTagPrefixLoopIx {input : String} (c : IxCursor input)
+    (pfx : String) : Nat → String × IxCursor input
+  | 0 => (pfx, c)
+  | fuel + 1 =>
+    match c.peek? with
+    | some ch =>
+      if isUriCharBool ch then
+        collectTagPrefixLoopIx c.advance (pfx.push ch) fuel
+      else (pfx, c)
+    | none => (pfx, c)
+
+/-- Skip to the end of the current line (stop before the line break),
+    mirroring the legacy `skipToEndOfLineLoop`. Used by directive
+    scanning to discard the validated remainder of a directive line. -/
+def skipToEndOfLineLoopIx {input : String} (c : IxCursor input) :
+    Nat → IxCursor input
+  | 0 => c
+  | fuel + 1 =>
+    match c.peek? with
+    | some ch =>
+      if isLineBreakBool ch then c else skipToEndOfLineLoopIx c.advance fuel
+    | none => c
+
+/-- Skip to end of line (fuel wrapper), mirroring `skipToEndOfLine`. -/
+def skipToEndOfLineIx {input : String} (c : IxCursor input) : IxCursor input :=
+  skipToEndOfLineLoopIx c (input.utf8ByteSize - c.pos.offset)
+
 /-- Collect a verbatim tag URI body until `>`. Returns
     (uri, found-close, cursor-after). -/
 def collectVerbatimTagLoopIx {input : String} (c : IxCursor input)
@@ -223,6 +268,56 @@ lemma collectTagSuffixLoopIx_offset_monotonic {input : String}
       · exact Nat.le_refl _
     · -- none
       exact Nat.le_refl _
+
+lemma collectTagHandleDirectiveLoopIx_offset_monotonic {input : String}
+    (c : IxCursor input) (handle : String) (fuel : Nat) :
+    c.pos.offset ≤ (collectTagHandleDirectiveLoopIx c handle fuel).2.pos.offset := by
+  induction fuel generalizing c handle with
+  | zero => unfold collectTagHandleDirectiveLoopIx; exact Nat.le_refl _
+  | succ fuel ih =>
+    unfold collectTagHandleDirectiveLoopIx
+    split
+    · -- some ch
+      split
+      · exact Nat.le_trans (IxCursor.advance_offset_monotonic c) (ih c.advance _)
+      · exact Nat.le_refl _
+    · -- none
+      exact Nat.le_refl _
+
+lemma collectTagPrefixLoopIx_offset_monotonic {input : String}
+    (c : IxCursor input) (pfx : String) (fuel : Nat) :
+    c.pos.offset ≤ (collectTagPrefixLoopIx c pfx fuel).2.pos.offset := by
+  induction fuel generalizing c pfx with
+  | zero => unfold collectTagPrefixLoopIx; exact Nat.le_refl _
+  | succ fuel ih =>
+    unfold collectTagPrefixLoopIx
+    split
+    · -- some ch
+      split
+      · exact Nat.le_trans (IxCursor.advance_offset_monotonic c) (ih c.advance _)
+      · exact Nat.le_refl _
+    · -- none
+      exact Nat.le_refl _
+
+lemma skipToEndOfLineLoopIx_offset_monotonic {input : String}
+    (c : IxCursor input) (fuel : Nat) :
+    c.pos.offset ≤ (skipToEndOfLineLoopIx c fuel).pos.offset := by
+  induction fuel generalizing c with
+  | zero => unfold skipToEndOfLineLoopIx; exact Nat.le_refl _
+  | succ fuel ih =>
+    unfold skipToEndOfLineLoopIx
+    split
+    · -- some ch
+      split
+      · exact Nat.le_refl _
+      · exact Nat.le_trans (IxCursor.advance_offset_monotonic c) (ih c.advance)
+    · -- none
+      exact Nat.le_refl _
+
+lemma skipToEndOfLineIx_offset_monotonic {input : String}
+    (c : IxCursor input) :
+    c.pos.offset ≤ (skipToEndOfLineIx c).pos.offset :=
+  skipToEndOfLineLoopIx_offset_monotonic c _
 
 lemma collectVerbatimTagLoopIx_offset_monotonic {input : String}
     (c : IxCursor input) (uri : String) (fuel : Nat) :
@@ -556,7 +651,7 @@ def scanDocumentStartIx {input : String} (s : ScannerStateIx input) :
 /-- Scan `...` document-end marker. -/
 def scanDocumentEndIx {input : String} (s : ScannerStateIx input) :
     Except ScanError (ScannerStateIx input) := do
-  if s.directivesPresent && !s.documentEverStarted then
+  if s.directivesPresent then
     throw (.directiveWithoutDocument s.cursor.pos.line)
   let s := unwindIndentsIx s (-1)
   let s := { s with simpleKey := { cursor := IxCursor.start input } }
@@ -596,23 +691,34 @@ def scanYamlDirectiveIx {input : String} (s : ScannerStateIx input)
   let rMin := collectVersionMinorLoopIx cAfterDot "" fuelN
   let minor := rMin.1
   let cAfterVer := rMin.2
+  let colBeforeWs := cAfterVer.pos.col
   let cAfterTW := skipWhitespace cAfterVer
+  -- Trailing-content validation (mirrors legacy `scanYamlDirective`):
+  -- after the version only whitespace, a separated comment, a line
+  -- break, or EOF may follow.
+  match cAfterTW.peek? with
+  | some '#' =>
+    if cAfterTW.pos.col == colBeforeWs then
+      throw (.directiveTrailingContent cAfterTW.pos.line cAfterTW.pos.col)
+  | some ch =>
+    if !isLineBreakBool ch then
+      throw (.directiveTrailingContent cAfterTW.pos.line cAfterTW.pos.col)
+  | none => pure ()
+  if major.isEmpty || minor.isEmpty then
+    throw (.directiveTrailingContent cAfterTW.pos.line cAfterTW.pos.col)
   let sAfter : ScannerStateIx input := { s with cursor := cAfterTW }
-  if !major.isEmpty && !minor.isEmpty then
-    let hBound : startPos.offset ≤ sAfter.cursor.pos.offset := by
-      show startPos.offset ≤ cAfterTW.pos.offset
-      have h2 : cAfterWS.pos.offset ≤ rMaj.2.pos.offset :=
-        collectVersionMajorLoopIx_offset_monotonic cAfterWS "" fuelM
-      have h3 : cAfterDot.pos.offset ≤ rMin.2.pos.offset :=
-        collectVersionMinorLoopIx_offset_monotonic cAfterDot "" fuelN
-      have h4 : cAfterVer.pos.offset ≤ cAfterTW.pos.offset :=
-        skipWhitespace_offset_monotonic cAfterVer
-      exact Nat.le_trans hStart (Nat.le_trans h2 (Nat.le_trans h3 h4))
-    let sEmit := sAfter.emitAt startPos
-      (YamlToken.versionDirective major.toNat! minor.toNat!) hBound
-    .ok { sEmit with seenYamlDirective := true, directivesPresent := true }
-  else
-    throw (.directiveTrailingContent sAfter.cursor.pos.line sAfter.cursor.pos.col)
+  let hBound : startPos.offset ≤ sAfter.cursor.pos.offset := by
+    show startPos.offset ≤ cAfterTW.pos.offset
+    have h2 : cAfterWS.pos.offset ≤ rMaj.2.pos.offset :=
+      collectVersionMajorLoopIx_offset_monotonic cAfterWS "" fuelM
+    have h3 : cAfterDot.pos.offset ≤ rMin.2.pos.offset :=
+      collectVersionMinorLoopIx_offset_monotonic cAfterDot "" fuelN
+    have h4 : cAfterVer.pos.offset ≤ cAfterTW.pos.offset :=
+      skipWhitespace_offset_monotonic cAfterVer
+    exact Nat.le_trans hStart (Nat.le_trans h2 (Nat.le_trans h3 h4))
+  let sEmit := sAfter.emitAt startPos
+    (YamlToken.versionDirective major.toNat! minor.toNat!) hBound
+  .ok { sEmit with seenYamlDirective := true, directivesPresent := true }
 
 /-- Scan a `%TAG !handle! prefix` directive. As with
     `scanYamlDirectiveIx`, the caller supplies the start-pos bound. -/
@@ -621,24 +727,34 @@ def scanTagDirectiveIx {input : String} (s : ScannerStateIx input)
     (hStart : startPos.offset ≤ cAfterWS.pos.offset) :
     Except ScanError (ScannerStateIx input) := do
   let fuelH := input.utf8ByteSize - cAfterWS.pos.offset
-  let r := collectTagHandleLoopIx cAfterWS "" fuelH
+  let r := collectTagHandleDirectiveLoopIx cAfterWS "" fuelH
   let handle := r.1
-  let cAfterHandle := r.2.2
+  let cAfterHandle := r.2
   let cAfterWS2 := skipWhitespace cAfterHandle
   let fuelP := input.utf8ByteSize - cAfterWS2.pos.offset
-  let r2 := collectTagSuffixLoopIx cAfterWS2 "" fuelP
+  let r2 := collectTagPrefixLoopIx cAfterWS2 "" fuelP
   let tagPrefix := r2.1
   let cAfterPrefix := r2.2
+  let colBeforeWs := cAfterPrefix.pos.col
   let cAfterTW := skipWhitespace cAfterPrefix
+  -- Trailing-content validation (mirrors legacy `scanTagDirective`).
+  match cAfterTW.peek? with
+  | some '#' =>
+    if cAfterTW.pos.col == colBeforeWs then
+      throw (.directiveTrailingContent cAfterTW.pos.line cAfterTW.pos.col)
+  | some ch =>
+    if !isLineBreakBool ch then
+      throw (.directiveTrailingContent cAfterTW.pos.line cAfterTW.pos.col)
+  | none => pure ()
   let sAfter : ScannerStateIx input := { s with cursor := cAfterTW }
   let hBound : startPos.offset ≤ sAfter.cursor.pos.offset := by
     show startPos.offset ≤ cAfterTW.pos.offset
     have h2 : cAfterWS.pos.offset ≤ cAfterHandle.pos.offset :=
-      collectTagHandleLoopIx_offset_monotonic cAfterWS "" fuelH
+      collectTagHandleDirectiveLoopIx_offset_monotonic cAfterWS "" fuelH
     have h3 : cAfterHandle.pos.offset ≤ cAfterWS2.pos.offset :=
       skipWhitespace_offset_monotonic cAfterHandle
     have h4 : cAfterWS2.pos.offset ≤ r2.2.pos.offset :=
-      collectTagSuffixLoopIx_offset_monotonic cAfterWS2 "" fuelP
+      collectTagPrefixLoopIx_offset_monotonic cAfterWS2 "" fuelP
     have h5 : cAfterPrefix.pos.offset ≤ cAfterTW.pos.offset :=
       skipWhitespace_offset_monotonic cAfterPrefix
     exact Nat.le_trans hStart
@@ -670,13 +786,21 @@ def scanDirectiveIx {input : String} (s : ScannerStateIx input) :
         skipWhitespace_offset_monotonic cAfterName
       exact Nat.le_trans h1 (Nat.le_trans h2 h3)
     if name == "YAML" then
-      scanYamlDirectiveIx ({ sAdv with cursor := cAfterName } : ScannerStateIx input)
-        cAfterWS startPos hStart
+      match scanYamlDirectiveIx ({ sAdv with cursor := cAfterName } : ScannerStateIx input)
+        cAfterWS startPos hStart with
+      | .ok s' => .ok { s' with cursor := skipToEndOfLineIx s'.cursor }
+      | .error e => .error e
     else if name == "TAG" then
-      scanTagDirectiveIx ({ sAdv with cursor := cAfterName } : ScannerStateIx input)
-        cAfterWS startPos hStart
+      match scanTagDirectiveIx ({ sAdv with cursor := cAfterName } : ScannerStateIx input)
+        cAfterWS startPos hStart with
+      | .ok s' => .ok { s' with cursor := skipToEndOfLineIx s'.cursor }
+      | .error e => .error e
     else
-      .ok ({ sAdv with cursor := cAfterWS } : ScannerStateIx input)
+      -- [83] ns-reserved-directive: skip its free-form parameters to end
+      -- of line and record the pending directive (mirrors legacy).
+      .ok ({ sAdv with
+              cursor := skipToEndOfLineIx cAfterWS,
+              directivesPresent := true } : ScannerStateIx input)
 
 /-! ## Node properties — anchors, aliases, tags -/
 
@@ -1056,6 +1180,15 @@ def scanNextTokenIx_checkBlockFlowIndent {input : String}
   else
     .ok ()
 
+/-- §9.1.5 [209]: pending directives require `---` before content.
+    Indexed twin of `scanNextToken_checkNoPendingDirectives`. -/
+def scanNextTokenIx_checkNoPendingDirectives {input : String}
+    (s : ScannerStateIx input) : Except ScanError Unit :=
+  if s.directivesPresent then
+    .error (.directiveWithoutDocument s.cursor.pos.line)
+  else
+    .ok ()
+
 /-- Scan one token (the per-iteration dispatcher). Returns `none`
     at EOF, `some s'` on a successful token, or an error. -/
 def scanNextTokenIx {input : String} (s : ScannerStateIx input) :
@@ -1066,6 +1199,7 @@ def scanNextTokenIx {input : String} (s : ScannerStateIx input) :
     match ← scanNextTokenIx_dispatchStructural s c with
     | some s' => return some s'
     | none =>
+      scanNextTokenIx_checkNoPendingDirectives s
       let s := if s.allowDirectives then
         { s with allowDirectives := false, documentEverStarted := true }
       else s
@@ -1090,7 +1224,7 @@ def scanLoopIx {input : String} (s : ScannerStateIx input) (fuel : Nat) :
     | .ok none =>
       if s.flowLevel > 0 then
         .error (.unterminatedFlowCollection '[' s.cursor.pos.line)
-      else if s.directivesPresent && !s.documentEverStarted then
+      else if s.directivesPresent then
         .error (.directiveWithoutDocument s.cursor.pos.line)
       else
         let s := unwindIndentsIx s (-1)
@@ -1176,6 +1310,7 @@ def scanNextTokenIxWC {input : String} (s : ScannerStateIx input) :
     match ← scanNextTokenIx_dispatchStructural s c with
     | some s' => return some s'
     | none =>
+      scanNextTokenIx_checkNoPendingDirectives s
       let s := if s.allowDirectives then
         { s with allowDirectives := false, documentEverStarted := true }
       else s
@@ -1208,7 +1343,7 @@ def scanLoopIxWC {input : String} (s : ScannerStateIx input) (fuel : Nat) :
     | .ok none =>
       if s.flowLevel > 0 then
         .error (.unterminatedFlowCollection '[' s.cursor.pos.line)
-      else if s.directivesPresent && !s.documentEverStarted then
+      else if s.directivesPresent then
         .error (.directiveWithoutDocument s.cursor.pos.line)
       else
         let s := s.skipToContentSWithComments

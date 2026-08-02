@@ -488,7 +488,7 @@ lemma scanLoopIx_success_emits_streamEnd {input : String} :
         by_cases hFL : s.flowLevel > 0
         · rw [if_pos hFL] at h; cases h
         · rw [if_neg hFL] at h
-          by_cases hDS : (s.directivesPresent && !s.documentEverStarted) = true
+          by_cases hDS : s.directivesPresent = true
           · rw [if_pos hDS] at h; cases h
           · rw [if_neg hDS] at h
             cases h
@@ -522,7 +522,7 @@ lemma scanLoopIx_increases_tokens {input : String}
         by_cases hFL : s.flowLevel > 0
         · rw [if_pos hFL] at h; cases h
         · rw [if_neg hFL] at h
-          by_cases hDS : (s.directivesPresent && !s.documentEverStarted) = true
+          by_cases hDS : s.directivesPresent = true
           · rw [if_pos hDS] at h; cases h
           · rw [if_neg hDS] at h
             cases h

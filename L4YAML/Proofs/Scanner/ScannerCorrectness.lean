@@ -7717,21 +7717,42 @@ lemma scanYamlDirective_preserves_ScanInv (s s_after_ws : ScannerState)
     · -- peek? = some '#'
       split at h_ok
       · simp at h_ok
-      · simp only [Except.ok.injEq] at h_ok; subst h_ok
-        apply field_update_preserves_ScanInv _ _ _ rfl rfl
-        apply emitAt_preserves_ScanInv
-        · exact skipWhitespace_preserves_ScanInv _
-            (collectVersionMinorLoop_preserves_ScanInv _ _ _
-              (collectVersionMajorLoop_preserves_ScanInv _ _ _ h_inv))
-        · exact Nat.le_trans h_pos_ge
-            (Nat.le_trans (collectVersionMajorLoop_offset_ge _ _ _)
-            (Nat.le_trans (collectVersionMinorLoop_offset_ge _ _ _)
-            (skipWhitespace_offset_ge _)))
-        · exact tokens_bounded_through_chain _ s_after_ws _ h_tok_bnd
-            (by rw [skipWhitespace_preserves_tokens,
-                     ScanHelpers.collectVersionMinorLoop_preserves_tokens,
-                     ScanHelpers.collectVersionMajorLoop_preserves_tokens])
+      · split at h_ok
+        · simp at h_ok
+        · simp only [Except.ok.injEq] at h_ok; subst h_ok
+          apply field_update_preserves_ScanInv _ _ _ rfl rfl
+          apply emitAt_preserves_ScanInv
+          · exact skipWhitespace_preserves_ScanInv _
+              (collectVersionMinorLoop_preserves_ScanInv _ _ _
+                (collectVersionMajorLoop_preserves_ScanInv _ _ _ h_inv))
+          · exact Nat.le_trans h_pos_ge
+              (Nat.le_trans (collectVersionMajorLoop_offset_ge _ _ _)
+              (Nat.le_trans (collectVersionMinorLoop_offset_ge _ _ _)
+              (skipWhitespace_offset_ge _)))
+          · exact tokens_bounded_through_chain _ s_after_ws _ h_tok_bnd
+              (by rw [skipWhitespace_preserves_tokens,
+                       ScanHelpers.collectVersionMinorLoop_preserves_tokens,
+                       ScanHelpers.collectVersionMajorLoop_preserves_tokens])
     · -- peek? = some c (not '#')
+      split at h_ok
+      · simp at h_ok
+      · split at h_ok
+        · simp at h_ok
+        · simp only [Except.ok.injEq] at h_ok; subst h_ok
+          apply field_update_preserves_ScanInv _ _ _ rfl rfl
+          apply emitAt_preserves_ScanInv
+          · exact skipWhitespace_preserves_ScanInv _
+              (collectVersionMinorLoop_preserves_ScanInv _ _ _
+                (collectVersionMajorLoop_preserves_ScanInv _ _ _ h_inv))
+          · exact Nat.le_trans h_pos_ge
+              (Nat.le_trans (collectVersionMajorLoop_offset_ge _ _ _)
+              (Nat.le_trans (collectVersionMinorLoop_offset_ge _ _ _)
+              (skipWhitespace_offset_ge _)))
+          · exact tokens_bounded_through_chain _ s_after_ws _ h_tok_bnd
+              (by rw [skipWhitespace_preserves_tokens,
+                       ScanHelpers.collectVersionMinorLoop_preserves_tokens,
+                       ScanHelpers.collectVersionMajorLoop_preserves_tokens])
+    · -- peek? = none
       split at h_ok
       · simp at h_ok
       · simp only [Except.ok.injEq] at h_ok; subst h_ok
@@ -7748,21 +7769,6 @@ lemma scanYamlDirective_preserves_ScanInv (s s_after_ws : ScannerState)
             (by rw [skipWhitespace_preserves_tokens,
                      ScanHelpers.collectVersionMinorLoop_preserves_tokens,
                      ScanHelpers.collectVersionMajorLoop_preserves_tokens])
-    · -- peek? = none
-      simp only [Except.ok.injEq] at h_ok; subst h_ok
-      apply field_update_preserves_ScanInv _ _ _ rfl rfl
-      apply emitAt_preserves_ScanInv
-      · exact skipWhitespace_preserves_ScanInv _
-          (collectVersionMinorLoop_preserves_ScanInv _ _ _
-            (collectVersionMajorLoop_preserves_ScanInv _ _ _ h_inv))
-      · exact Nat.le_trans h_pos_ge
-          (Nat.le_trans (collectVersionMajorLoop_offset_ge _ _ _)
-          (Nat.le_trans (collectVersionMinorLoop_offset_ge _ _ _)
-          (skipWhitespace_offset_ge _)))
-      · exact tokens_bounded_through_chain _ s_after_ws _ h_tok_bnd
-          (by rw [skipWhitespace_preserves_tokens,
-                   ScanHelpers.collectVersionMinorLoop_preserves_tokens,
-                   ScanHelpers.collectVersionMajorLoop_preserves_tokens])
 
 -- scanTagDirective preserves ScanInv.
 lemma scanTagDirective_preserves_ScanInv (s s_after_ws : ScannerState)
@@ -9212,6 +9218,8 @@ lemma scanNextToken_preserves_AllKeysValid :
     exact dispatchStructural_preserves_AllKeysValid s2 c _ (by assumption) h_akv2
   · -- structural Option: none → continue to flow/block/content
     have h_akv3 := allowDir_ite_preserves_AllKeysValid s2 h_akv2
+    -- Pending-directives check (Fix B)
+    split at h_ok <;> (try (simp at h_ok; done))
     -- Block→flow underindent check
     split at h_ok <;> (try (simp at h_ok; done))
     -- Flow Except split
@@ -9294,6 +9302,8 @@ lemma scanNextToken_preserves_ScanInv :
   · -- structural none → continue to flow/block/content
     have h_inv3 := allowDir_ite_preserves_ScanInv s2 h_inv2
     have h_skv3 := allowDir_ite_preserves_SimpleKeyValid s2 h_skv2
+    -- Pending-directives check (Fix B)
+    split at h_ok <;> (try (simp at h_ok; done))
     -- Block→flow underindent check
     split at h_ok <;> (try (simp at h_ok; done))
     -- Flow Except split
@@ -10455,68 +10465,71 @@ lemma scanNextToken_progress (s s' : ScannerState)
           rename_i h_struct
           have hnoDoc := dispatchStructural_none_noDoc sp c h_struct
           have h_peek := preprocess_peek_eq s sp c h_pre
-          -- Outermost match is checkBlockFlowIndent
+          -- Pending-directives check (Fix B)
           split at h
           · cases h
-          · -- Case-split on allowDirectives to resolve the if-expression
-            rcases h_ad : sp.allowDirectives with _ | _
-            <;> simp only [h_ad, Bool.false_eq_true, ↓reduceIte] at h
-            · -- false case: dispatchers use sp directly
-              generalize h_fi : scanNextToken_dispatchFlowIndicators sp c = fi at h
-              cases fi with
-              | error => cases h
-              | ok fi_opt =>
-                cases fi_opt with
-                | some s_fi =>
-                  simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
-                  have := dispatchFlowIndicators_offset_gt sp _ c h_hm h_fi; omega
-                | none =>
-                  generalize h_bi : scanNextToken_dispatchBlockIndicators sp c = bi at h
-                  cases bi with
-                  | error => cases h
-                  | ok bi_opt =>
-                    cases bi_opt with
-                    | some s_bi =>
-                      simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
-                      have := dispatchBlockIndicators_offset_gt sp _ c h_hm h_bi; omega
-                    | none =>
-                      generalize h_dc : scanNextToken_dispatchContent sp c = dc at h
-                      cases dc with
-                      | error => cases h
-                      | ok s_dc =>
-                        have h1 := @dispatchContent_offset_gt sp s_dc c h_hm h_peek hnoDoc h_dc
-                        simp only [Except.ok.injEq, Option.some.injEq] at h; subst h; omega
-            · -- true case: dispatchers use { sp with ... }
-              generalize h_sp2 : (({ sp with allowDirectives := false, documentEverStarted := true } : ScannerState)) = sp2 at h
-              have h_hm2 : sp2.offset < sp2.inputEnd := by rw [← h_sp2]; exact h_hm
-              have h_peek2 : sp2.peek? = some c := by rw [← h_sp2]; exact h_peek
-              have hnoDoc2 : (sp2.col == 0 && atDocumentBoundary sp2) = false := by
-                rw [← h_sp2]; exact hnoDoc
-              have h_sp2_off : sp2.offset = sp.offset := by rw [← h_sp2]
-              generalize h_fi : scanNextToken_dispatchFlowIndicators sp2 c = fi at h
-              cases fi with
-              | error => cases h
-              | ok fi_opt =>
-                cases fi_opt with
-                | some s_fi =>
-                  simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
-                  have := dispatchFlowIndicators_offset_gt sp2 _ c h_hm2 h_fi; omega
-                | none =>
-                  generalize h_bi : scanNextToken_dispatchBlockIndicators sp2 c = bi at h
-                  cases bi with
-                  | error => cases h
-                  | ok bi_opt =>
-                    cases bi_opt with
-                    | some s_bi =>
-                      simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
-                      have := dispatchBlockIndicators_offset_gt sp2 _ c h_hm2 h_bi; omega
-                    | none =>
-                      generalize h_dc : scanNextToken_dispatchContent sp2 c = dc at h
-                      cases dc with
-                      | error => cases h
-                      | ok s_dc =>
+          · -- Outermost match is checkBlockFlowIndent
+            split at h
+            · cases h
+            · -- Case-split on allowDirectives to resolve the if-expression
+              rcases h_ad : sp.allowDirectives with _ | _
+              <;> simp only [h_ad, Bool.false_eq_true, ↓reduceIte] at h
+              · -- false case: dispatchers use sp directly
+                generalize h_fi : scanNextToken_dispatchFlowIndicators sp c = fi at h
+                cases fi with
+                | error => cases h
+                | ok fi_opt =>
+                  cases fi_opt with
+                  | some s_fi =>
+                    simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+                    have := dispatchFlowIndicators_offset_gt sp _ c h_hm h_fi; omega
+                  | none =>
+                    generalize h_bi : scanNextToken_dispatchBlockIndicators sp c = bi at h
+                    cases bi with
+                    | error => cases h
+                    | ok bi_opt =>
+                      cases bi_opt with
+                      | some s_bi =>
                         simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
-                        have := dispatchContent_offset_gt sp2 _ c h_hm2 h_peek2 hnoDoc2 h_dc
-                        omega
+                        have := dispatchBlockIndicators_offset_gt sp _ c h_hm h_bi; omega
+                      | none =>
+                        generalize h_dc : scanNextToken_dispatchContent sp c = dc at h
+                        cases dc with
+                        | error => cases h
+                        | ok s_dc =>
+                          have h1 := @dispatchContent_offset_gt sp s_dc c h_hm h_peek hnoDoc h_dc
+                          simp only [Except.ok.injEq, Option.some.injEq] at h; subst h; omega
+              · -- true case: dispatchers use { sp with ... }
+                generalize h_sp2 : (({ sp with allowDirectives := false, documentEverStarted := true } : ScannerState)) = sp2 at h
+                have h_hm2 : sp2.offset < sp2.inputEnd := by rw [← h_sp2]; exact h_hm
+                have h_peek2 : sp2.peek? = some c := by rw [← h_sp2]; exact h_peek
+                have hnoDoc2 : (sp2.col == 0 && atDocumentBoundary sp2) = false := by
+                  rw [← h_sp2]; exact hnoDoc
+                have h_sp2_off : sp2.offset = sp.offset := by rw [← h_sp2]
+                generalize h_fi : scanNextToken_dispatchFlowIndicators sp2 c = fi at h
+                cases fi with
+                | error => cases h
+                | ok fi_opt =>
+                  cases fi_opt with
+                  | some s_fi =>
+                    simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+                    have := dispatchFlowIndicators_offset_gt sp2 _ c h_hm2 h_fi; omega
+                  | none =>
+                    generalize h_bi : scanNextToken_dispatchBlockIndicators sp2 c = bi at h
+                    cases bi with
+                    | error => cases h
+                    | ok bi_opt =>
+                      cases bi_opt with
+                      | some s_bi =>
+                        simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+                        have := dispatchBlockIndicators_offset_gt sp2 _ c h_hm2 h_bi; omega
+                      | none =>
+                        generalize h_dc : scanNextToken_dispatchContent sp2 c = dc at h
+                        cases dc with
+                        | error => cases h
+                        | ok s_dc =>
+                          simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+                          have := dispatchContent_offset_gt sp2 _ c h_hm2 h_peek2 hnoDoc2 h_dc
+                          omega
 
 end L4YAML.Proofs.ScannerCorrectness

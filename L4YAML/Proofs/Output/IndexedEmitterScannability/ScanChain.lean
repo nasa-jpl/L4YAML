@@ -211,7 +211,7 @@ lemma scanLoopIx_two_iter {s₀ s₁ : ScannerStateIx input} {fuel : Nat}
     rw [h_snt1]
     have h_flow_not : ¬ s₁.flowLevel > 0 := by omega
     rw [if_neg h_flow_not]
-    have h_dp_check : ¬ (s₁.directivesPresent && !s₁.documentEverStarted) = true := by
+    have h_dp_check : ¬ s₁.directivesPresent = true := by
       simp [h_dp]
     rw [if_neg h_dp_check]
     exact ⟨_, rfl⟩
@@ -234,7 +234,7 @@ lemma scanLoopIx_two_iter_eq {s₀ s₁ : ScannerStateIx input} {fuel : Nat}
   rw [h_snt1]
   have h_flow_not : ¬ s₁.flowLevel > 0 := by omega
   rw [if_neg h_flow_not]
-  have h_dp_check : ¬ (s₁.directivesPresent && !s₁.documentEverStarted) = true := by
+  have h_dp_check : ¬ s₁.directivesPresent = true := by
     simp [h_dp]
   rw [if_neg h_dp_check]
 
@@ -250,7 +250,7 @@ lemma scanLoopIx_eof {s : ScannerStateIx input}
   rw [h_snt]
   have h_flow_not : ¬ s.flowLevel > 0 := by omega
   rw [if_neg h_flow_not]
-  have h_dp_check : ¬ (s.directivesPresent && !s.documentEverStarted) = true := by
+  have h_dp_check : ¬ s.directivesPresent = true := by
     simp [h_dp]
   rw [if_neg h_dp_check]
   exact ⟨_, rfl⟩
@@ -268,7 +268,7 @@ lemma scanLoopIx_eof_eq {s : ScannerStateIx input} {fuel : Nat}
   rw [h_snt]
   have h_flow_not : ¬ s.flowLevel > 0 := by omega
   rw [if_neg h_flow_not]
-  have h_dp_check : ¬ (s.directivesPresent && !s.documentEverStarted) = true := by
+  have h_dp_check : ¬ s.directivesPresent = true := by
     simp [h_dp]
   rw [if_neg h_dp_check]
 

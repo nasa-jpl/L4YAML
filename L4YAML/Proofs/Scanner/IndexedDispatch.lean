@@ -427,7 +427,7 @@ lemma scanDocumentEndIx_offset_monotonic {input : String}
     s.cursor.pos.offset ≤ s'.cursor.pos.offset := by
   unfold scanDocumentEndIx at h
   -- Peel the early-throw guard.
-  by_cases hd : (s.directivesPresent && !s.documentEverStarted) = true
+  by_cases hd : s.directivesPresent = true
   · -- Early throw fires; do-block reduces to `.error _` — contradicts `.ok s'`.
     rw [if_pos hd] at h
     simp [Bind.bind, Except.bind] at h
@@ -549,16 +549,19 @@ lemma scanYamlDirectiveIx_offset_monotonic {input : String}
     simp [Bind.bind, Except.bind] at h
   · rw [if_neg hd] at h
     simp only [] at h
-    -- Remaining: `if !major.isEmpty && !minor.isEmpty then .ok ... else throw`.
-    split at h
-    · simp only [Except.ok.injEq] at h
-      subst h
-      show cAfterWS.pos.offset ≤ _
-      simp only [emitAt_cursor]
-      exact Nat.le_trans (collectVersionMajorLoopIx_offset_monotonic _ _ _)
-        (Nat.le_trans (collectVersionMinorLoopIx_offset_monotonic _ _ _)
-          (skipWhitespace_offset_monotonic _))
-    · simp at h
+    -- Peel: trailing-validation match/ites + version-emptiness ite.
+    simp only [Bind.bind, Except.bind, pure, Except.pure, throw, throwThe,
+      MonadExceptOf.throw] at h
+    repeat' split at h
+    all_goals first
+      | (simp only [Except.ok.injEq] at h
+         subst h
+         show cAfterWS.pos.offset ≤ _
+         simp only [emitAt_cursor]
+         exact Nat.le_trans (collectVersionMajorLoopIx_offset_monotonic _ _ _)
+           (Nat.le_trans (collectVersionMinorLoopIx_offset_monotonic _ _ _)
+             (skipWhitespace_offset_monotonic _)))
+      | simp at h
 
 lemma scanTagDirectiveIx_offset_monotonic {input : String}
     {s s' : ScannerStateIx input} {cAfterWS : IxCursor input} {startPos : YamlPos}
@@ -566,14 +569,20 @@ lemma scanTagDirectiveIx_offset_monotonic {input : String}
     (h : scanTagDirectiveIx s cAfterWS startPos hStart = .ok s') :
     cAfterWS.pos.offset ≤ s'.cursor.pos.offset := by
   unfold scanTagDirectiveIx at h
-  simp only [Except.ok.injEq] at h
-  subst h
-  show cAfterWS.pos.offset ≤ _
-  simp only [emitAt_cursor]
-  exact Nat.le_trans (collectTagHandleLoopIx_offset_monotonic _ _ _)
-    (Nat.le_trans (skipWhitespace_offset_monotonic _)
-      (Nat.le_trans (collectTagSuffixLoopIx_offset_monotonic _ _ _)
-        (skipWhitespace_offset_monotonic _)))
+  simp only [] at h
+  simp only [Bind.bind, Except.bind, pure, Except.pure, throw, throwThe,
+    MonadExceptOf.throw] at h
+  repeat' split at h
+  all_goals first
+    | (simp only [Except.ok.injEq] at h
+       subst h
+       show cAfterWS.pos.offset ≤ _
+       simp only [emitAt_cursor]
+       exact Nat.le_trans (collectTagHandleDirectiveLoopIx_offset_monotonic _ _ _)
+         (Nat.le_trans (skipWhitespace_offset_monotonic _)
+           (Nat.le_trans (collectTagPrefixLoopIx_offset_monotonic _ _ _)
+             (skipWhitespace_offset_monotonic _))))
+    | simp at h
 
 lemma scanDirectiveIx_offset_monotonic {input : String}
     {s s' : ScannerStateIx input}
@@ -586,26 +595,41 @@ lemma scanDirectiveIx_offset_monotonic {input : String}
   · -- else branch: zeta-reduce lets before nested `split` (R49).
     simp only at h
     split at h
-    · -- name == "YAML": delegate to scanYamlDirectiveIx_offset_monotonic
-      have hChain := scanYamlDirectiveIx_offset_monotonic h
-      refine Nat.le_trans ?_ hChain
-      simp only [advance_cursor]
-      exact Nat.le_trans (IxCursor.advance_offset_monotonic _)
-        (Nat.le_trans (collectDirectiveNameLoopIx_offset_monotonic _ _ _)
-          (skipWhitespace_offset_monotonic _))
-    · split at h
-      · -- name == "TAG": delegate to scanTagDirectiveIx_offset_monotonic
-        have hChain := scanTagDirectiveIx_offset_monotonic h
+    · -- name == "YAML": sub-scan then skipToEndOfLineIx wrapper
+      split at h
+      · rename_i s_sub h_sub
+        have hChain := scanYamlDirectiveIx_offset_monotonic h_sub
+        simp only [Except.ok.injEq] at h
+        subst h
+        show s.cursor.pos.offset ≤ (skipToEndOfLineIx s_sub.cursor).pos.offset
+        refine Nat.le_trans ?_ (skipToEndOfLineIx_offset_monotonic _)
         refine Nat.le_trans ?_ hChain
         simp only [advance_cursor]
         exact Nat.le_trans (IxCursor.advance_offset_monotonic _)
           (Nat.le_trans (collectDirectiveNameLoopIx_offset_monotonic _ _ _)
             (skipWhitespace_offset_monotonic _))
-      · -- reserved directive: .ok { sAdv with cursor := cAfterWS }
+      · simp at h
+    · split at h
+      · -- name == "TAG": sub-scan then skipToEndOfLineIx wrapper
+        split at h
+        · rename_i s_sub h_sub
+          have hChain := scanTagDirectiveIx_offset_monotonic h_sub
+          simp only [Except.ok.injEq] at h
+          subst h
+          show s.cursor.pos.offset ≤ (skipToEndOfLineIx s_sub.cursor).pos.offset
+          refine Nat.le_trans ?_ (skipToEndOfLineIx_offset_monotonic _)
+          refine Nat.le_trans ?_ hChain
+          simp only [advance_cursor]
+          exact Nat.le_trans (IxCursor.advance_offset_monotonic _)
+            (Nat.le_trans (collectDirectiveNameLoopIx_offset_monotonic _ _ _)
+              (skipWhitespace_offset_monotonic _))
+        · simp at h
+      · -- reserved: skipToEndOfLineIx + directivesPresent flag
         simp only [Except.ok.injEq] at h
         subst h
         show s.cursor.pos.offset ≤ _
         simp only [advance_cursor]
+        refine Nat.le_trans ?_ (skipToEndOfLineIx_offset_monotonic _)
         exact Nat.le_trans (IxCursor.advance_offset_monotonic _)
           (Nat.le_trans (collectDirectiveNameLoopIx_offset_monotonic _ _ _)
             (skipWhitespace_offset_monotonic _))
@@ -878,7 +902,7 @@ lemma scanDocumentEndIx_tokens_size_le {input : String}
     {s s' : ScannerStateIx input} (h : scanDocumentEndIx s = .ok s') :
     s.tokens.size ≤ s'.tokens.size := by
   unfold scanDocumentEndIx at h
-  by_cases hd : (s.directivesPresent && !s.documentEverStarted) = true
+  by_cases hd : s.directivesPresent = true
   · rw [if_pos hd] at h
     simp [Bind.bind, Except.bind] at h
   · rw [if_neg hd] at h
@@ -947,12 +971,15 @@ lemma scanYamlDirectiveIx_tokens_size_le {input : String}
     simp [Bind.bind, Except.bind] at h
   · rw [if_neg hd] at h
     simp only [] at h
-    split at h
-    · simp only [Except.ok.injEq] at h
-      subst h
-      show s.tokens.size ≤ _
-      simp
-    · simp at h
+    simp only [Bind.bind, Except.bind, pure, Except.pure, throw, throwThe,
+      MonadExceptOf.throw] at h
+    repeat' split at h
+    all_goals first
+      | (simp only [Except.ok.injEq] at h
+         subst h
+         show s.tokens.size ≤ _
+         simp)
+      | simp at h
 
 lemma scanTagDirectiveIx_tokens_size_le {input : String}
     {s s' : ScannerStateIx input} {cAfterWS : IxCursor input} {startPos : YamlPos}
@@ -960,10 +987,16 @@ lemma scanTagDirectiveIx_tokens_size_le {input : String}
     (h : scanTagDirectiveIx s cAfterWS startPos hStart = .ok s') :
     s.tokens.size ≤ s'.tokens.size := by
   unfold scanTagDirectiveIx at h
-  simp only [Except.ok.injEq] at h
-  subst h
-  show s.tokens.size ≤ _
-  simp
+  simp only [] at h
+  simp only [Bind.bind, Except.bind, pure, Except.pure, throw, throwThe,
+    MonadExceptOf.throw] at h
+  repeat' split at h
+  all_goals first
+    | (simp only [Except.ok.injEq] at h
+       subst h
+       show s.tokens.size ≤ _
+       simp)
+    | simp at h
 
 lemma scanDirectiveIx_tokens_size_le {input : String}
     {s s' : ScannerStateIx input}
@@ -974,14 +1007,24 @@ lemma scanDirectiveIx_tokens_size_le {input : String}
   · simp at h
   · simp only at h
     split at h
-    · -- YAML: delegate. `sAdv := s.advance` and `advance` preserves `tokens` (rfl).
-      have hChain := scanYamlDirectiveIx_tokens_size_le h
-      show s.tokens.size ≤ _
-      exact hChain
-    · split at h
-      · have hChain := scanTagDirectiveIx_tokens_size_le h
+    · -- YAML: delegate; cursor-only wrapper preserves tokens.
+      split at h
+      · rename_i s_sub h_sub
+        have hChain := scanYamlDirectiveIx_tokens_size_le h_sub
+        simp only [Except.ok.injEq] at h
+        subst h
         show s.tokens.size ≤ _
         exact hChain
+      · simp at h
+    · split at h
+      · split at h
+        · rename_i s_sub h_sub
+          have hChain := scanTagDirectiveIx_tokens_size_le h_sub
+          simp only [Except.ok.injEq] at h
+          subst h
+          show s.tokens.size ≤ _
+          exact hChain
+        · simp at h
       · simp only [Except.ok.injEq] at h
         subst h
         show s.tokens.size ≤ _
@@ -1526,6 +1569,13 @@ lemma scanNextTokenIx_ok_some_monotonic {input : String}
           suffices hChain : sp.cursor.pos.offset ≤ s'.cursor.pos.offset ∧
                             sp.tokens.size ≤ s'.tokens.size by
             exact ⟨Nat.le_trans hPpO hChain.1, Nat.le_trans hPpT hChain.2⟩
+          -- Pending-directives check (Fix B): peel it, keeping h's tail intact.
+          have hNPD : ∃ u, scanNextTokenIx_checkNoPendingDirectives sp = .ok u := by
+            cases hx : scanNextTokenIx_checkNoPendingDirectives sp with
+            | error e => rw [hx] at h; cases h
+            | ok u => exact ⟨u, rfl⟩
+          obtain ⟨u, hNPD⟩ := hNPD
+          rw [hNPD] at h
           by_cases hAD : sp.allowDirectives = true
           all_goals first
             | (rw [if_pos hAD] at h
@@ -1643,7 +1693,7 @@ lemma scanLoopIx_tokens_size_le {input : String}
         by_cases hFL : s.flowLevel > 0
         · rw [if_pos hFL] at h; cases h
         · rw [if_neg hFL] at h
-          by_cases hDS : (s.directivesPresent && !s.documentEverStarted) = true
+          by_cases hDS : s.directivesPresent = true
           · rw [if_pos hDS] at h; cases h
           · rw [if_neg hDS] at h
             -- h : .ok ((unwindIndentsIx s (-1)).emit streamEnd).tokens = .ok ts

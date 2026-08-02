@@ -156,6 +156,38 @@ lemma FlowMonoChain_of_scanNextToken_eq {fl₀ : Nat} {s₁ s₂ s' : ScannerSta
 --   preprocess → structural → allowDirectives → checkBlockFlowIndent → flow/block/content
 -- These factoring lemmas let us compose results from individual stages.
 
+/-- The Fix-B pending-directives check passes when no directives are pending.
+    Stated as an atomic rewrite so `simp` does not rewrite `directivesPresent`
+    projections inside record-update expressions elsewhere in the goal. -/
+lemma scanNextToken_checkNoPendingDirectives_ok (s : ScannerState)
+    (h : s.directivesPresent = false) :
+    scanNextToken_checkNoPendingDirectives s = .ok () := by
+  simp only [scanNextToken_checkNoPendingDirectives, h, Bool.false_eq_true, ↓reduceIte]
+
+/-- Converse dp extraction (Fix B): if `scanNextToken` succeeded and the pipeline
+    reached past structural dispatch, the pending-directives check must have
+    passed, so `s_pp.directivesPresent = false`.  Lets consumers that already
+    hold a `scanNextToken s = .ok r` witness discharge the new `h_ndp`
+    hypothesis of the `scanNextToken_via_*_dispatch` lemmas without adding a
+    dp hypothesis of their own. -/
+lemma scanNextToken_ok_directivesPresent_false
+    {s s_pp : ScannerState} {c : Char} {r : Option ScannerState}
+    (h_pp : scanNextToken_preprocess s = .ok (some (s_pp, c)))
+    (h_struct : scanNextToken_dispatchStructural s_pp c = .ok none)
+    (h_snt : scanNextToken s = .ok r) :
+    s_pp.directivesPresent = false := by
+  cases h_dp : s_pp.directivesPresent
+  · rfl
+  · exfalso
+    have h_check_err : scanNextToken_checkNoPendingDirectives s_pp
+        = .error (.directiveWithoutDocument s_pp.line) := by
+      simp only [scanNextToken_checkNoPendingDirectives, h_dp, ↓reduceIte]
+    have h_err : scanNextToken s = .error (.directiveWithoutDocument s_pp.line) := by
+      unfold scanNextToken; dsimp only []
+      simp only [bind, Except.bind, h_pp, h_struct, h_check_err]
+    rw [h_err] at h_snt
+    injection h_snt
+
 /-- When preprocessing succeeds, structural dispatch returns none, and flow
     indicator dispatch produces a result, then scanNextToken returns that result.
     This captures the common case for flow indicator characters [`[`, `]`, `{`, `}`, `,`].
@@ -168,10 +200,12 @@ lemma scanNextToken_via_flow_dispatch (s s_pp s_ad s_result : ScannerState) (c :
     (h_ad_eq : s_ad = if s_pp.allowDirectives then
       { s_pp with allowDirectives := false, documentEverStarted := true } else s_pp)
     (h_check : scanNextToken_checkBlockFlowIndent s_ad c = .ok ())
-    (h_flow : scanNextToken_dispatchFlowIndicators s_ad c = .ok (some s_result)) :
+    (h_flow : scanNextToken_dispatchFlowIndicators s_ad c = .ok (some s_result))
+    (h_ndp : s_pp.directivesPresent = false) :
     scanNextToken s = .ok (some s_result) := by
   unfold scanNextToken; dsimp only []
-  simp only [bind, Except.bind, h_pp, h_struct, pure, Except.pure]
+  simp only [bind, Except.bind, h_pp, h_struct, pure, Except.pure,
+    scanNextToken_checkNoPendingDirectives_ok _ h_ndp]
   -- After preprocessing and structural dispatch, the allowDirectives conditional
   -- and remaining dispatch stages are visible. Substitute s_ad.
   rw [← h_ad_eq]
@@ -1528,6 +1562,8 @@ lemma scanNextToken_emitScalar_init (content : String) :
   unfold scanNextToken
   simp only [bind, Except.bind, h_pp_eq]
   simp only [h_disp_s]
+  -- Pending-directives check (Fix B): passes since s_pp has no pending directives.
+  simp only [scanNextToken_checkNoPendingDirectives_ok _ h_dp_pp]
   simp only [show s_pp.allowDirectives = true from h_ad_pp, ite_true]
   -- Remaining dispatch steps use s_ad = { s_pp with allowDirectives := false, ... }
   -- which is definitionally equal to the expanded struct in the goal
@@ -1893,10 +1929,12 @@ lemma scanNextToken_via_content_dispatch (s s_pp s_ad s_result : ScannerState) (
     (h_check : scanNextToken_checkBlockFlowIndent s_ad c = .ok ())
     (h_flow : scanNextToken_dispatchFlowIndicators s_ad c = .ok none)
     (h_block : scanNextToken_dispatchBlockIndicators s_ad c = .ok none)
-    (h_content : scanNextToken_dispatchContent s_ad c = .ok s_result) :
+    (h_content : scanNextToken_dispatchContent s_ad c = .ok s_result)
+    (h_ndp : s_pp.directivesPresent = false) :
     scanNextToken s = .ok (some s_result) := by
   unfold scanNextToken; dsimp only []
-  simp only [bind, Except.bind, h_pp, h_struct, pure, Except.pure]
+  simp only [bind, Except.bind, h_pp, h_struct, pure, Except.pure,
+    scanNextToken_checkNoPendingDirectives_ok _ h_ndp]
   rw [← h_ad_eq]
   simp only [h_check, h_flow, h_block, h_content]
 
@@ -1911,10 +1949,12 @@ lemma scanNextToken_via_content_dispatch_error
     (h_check : scanNextToken_checkBlockFlowIndent s_ad c = .ok ())
     (h_flow : scanNextToken_dispatchFlowIndicators s_ad c = .ok none)
     (h_block : scanNextToken_dispatchBlockIndicators s_ad c = .ok none)
-    (h_content : scanNextToken_dispatchContent s_ad c = .error e) :
+    (h_content : scanNextToken_dispatchContent s_ad c = .error e)
+    (h_ndp : s_pp.directivesPresent = false) :
     scanNextToken s = .error e := by
   unfold scanNextToken; dsimp only []
-  simp only [bind, Except.bind, h_pp, h_struct, pure, Except.pure]
+  simp only [bind, Except.bind, h_pp, h_struct, pure, Except.pure,
+    scanNextToken_checkNoPendingDirectives_ok _ h_ndp]
   rw [← h_ad_eq]
   simp only [h_check, h_flow, h_block, h_content]
 
@@ -1929,10 +1969,12 @@ lemma scanNextToken_via_block_dispatch (s s_pp s_ad s_result : ScannerState) (c 
       { s_pp with allowDirectives := false, documentEverStarted := true } else s_pp)
     (h_check : scanNextToken_checkBlockFlowIndent s_ad c = .ok ())
     (h_flow : scanNextToken_dispatchFlowIndicators s_ad c = .ok none)
-    (h_block : scanNextToken_dispatchBlockIndicators s_ad c = .ok (some s_result)) :
+    (h_block : scanNextToken_dispatchBlockIndicators s_ad c = .ok (some s_result))
+    (h_ndp : s_pp.directivesPresent = false) :
     scanNextToken s = .ok (some s_result) := by
   unfold scanNextToken; dsimp only []
-  simp only [bind, Except.bind, h_pp, h_struct, pure, Except.pure]
+  simp only [bind, Except.bind, h_pp, h_struct, pure, Except.pure,
+    scanNextToken_checkNoPendingDirectives_ok _ h_ndp]
   rw [← h_ad_eq]
   simp only [h_check, h_flow, h_block]
 
@@ -1950,7 +1992,8 @@ lemma scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
     (h_indent : s.currentIndent < 0)
     (h_col_pos : s.col > 0)
     (h_atol : AllTokensOnLine s s.line)
-    (h_endline : EndLineOnLine s) :
+    (h_endline : EndLineOnLine s)
+    (h_dp : s.directivesPresent = false) :
     ∃ s', scanNextToken s = .ok (some s')
       ∧ ScannerSurfCorr s' ⟨rest, s'.col⟩
       ∧ s'.flowLevel = s.flowLevel
@@ -2092,7 +2135,9 @@ lemma scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
   obtain ⟨s_final, h_dc_eq, h_corr_f, h_fl_f, h_dp_f, h_ids_f, h_ek_f, h_col_f, h_tok_f, h_ska_f, h_line_f, h_atol_f, h_endline_f, h_stack_f⟩ := h_content
   -- Step 8: compose through scanNextToken
   exact ⟨s_final, scanNextToken_via_content_dispatch _ _ _ _ _ h_pp h_struct rfl h_check
-    h_flow_none h_block_none h_dc_eq, h_corr_f, h_fl_f, h_dp_f, h_ids_f, h_ek_f, h_col_f,
+    h_flow_none h_block_none h_dc_eq
+    ((saveSimpleKey_preserves_directivesPresent s).trans h_dp),
+    h_corr_f, h_fl_f, h_dp_f, h_ids_f, h_ek_f, h_col_f,
     fun t ht => by rw [h_tok_f] at ht; injection ht with ht; subst ht; exact ⟨nofun, nofun, nofun⟩,
     h_ska_f, h_line_f, (by rw [h_line_f]; exact h_atol_f), h_endline_f, h_stack_f⟩
 
@@ -2194,7 +2239,7 @@ lemma scanNextToken_flow_open_init (input : String) (rest : List Char)
   have h_flow := dispatchFlowIndicators_bracket s_ad
   -- Step 8: compose through scanNextToken
   have h_snt : scanNextToken s₀ = .ok (some (scanFlowSequenceStart s_ad)) :=
-    scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp_eq h_struct rfl h_check h_flow
+    scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp_eq h_struct rfl h_check h_flow h_dp_pp
   -- Step 9: field properties of scanFlowSequenceStart s_ad
   have h_ad_col : s_ad.col = 0 := by
     simp only [s_ad]; split <;> exact h_col_pp
@@ -2308,7 +2353,8 @@ lemma scanNextToken_flow_open_nested (s : ScannerState) (rest : List Char)
     (h_indent : s.currentIndent < 0)
     (h_col_pos : s.col > 0)
     (h_atol : AllTokensOnLine s s.line)
-    (h_endline : EndLineOnLine s) :
+    (h_endline : EndLineOnLine s)
+    (h_dp : s.directivesPresent = false) :
     ∃ s', scanNextToken s = .ok (some s')
       ∧ ScannerSurfCorr s' ⟨rest, s'.col⟩
       ∧ s'.flowLevel = s.flowLevel + 1
@@ -2347,6 +2393,7 @@ lemma scanNextToken_flow_open_nested (s : ScannerState) (rest : List Char)
   have h_flow_disp := dispatchFlowIndicators_bracket s_ad
   -- Step 6: compose through scanNextToken
   have h_snt := scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl h_check h_flow_disp
+    ((saveSimpleKey_preserves_directivesPresent s).trans h_dp)
   -- Step 7: properties of scanFlowSequenceStart s_ad
   have h_ad_fl : s_ad.flowLevel = s.flowLevel := by
     simp only [s_ad]; split <;> exact saveSimpleKey_preserves_flowLevel s
@@ -2651,7 +2698,8 @@ lemma scanNextToken_flow_comma (s : ScannerState)
     (h_last : ∀ t, lastRealTokenVal? s.tokens = some t →
       t ≠ .flowSequenceStart ∧ t ≠ .flowMappingStart ∧ t ≠ .flowEntry)
     (h_atol : AllTokensOnLine s s.line)
-    (h_endline : EndLineOnLine s) :
+    (h_endline : EndLineOnLine s)
+    (h_dp : s.directivesPresent = false) :
     ∃ s', scanNextToken s = .ok (some s')
       ∧ ScannerSurfCorr s' ⟨rest, s'.col⟩
       ∧ s'.flowLevel = s.flowLevel
@@ -2704,6 +2752,7 @@ lemma scanNextToken_flow_comma (s : ScannerState)
   have h_flow_disp := dispatchFlowIndicators_comma s_ad h_fl_pos h_ad_last
   -- Step 6: compose
   have h_snt := scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl h_check h_flow_disp
+    ((saveSimpleKey_preserves_directivesPresent s).trans h_dp)
   -- Step 7: extract properties
   have h_ad_dp : s_ad.directivesPresent = s.directivesPresent := by
     simp only [s_ad]; split <;> exact saveSimpleKey_preserves_directivesPresent s
@@ -2868,7 +2917,8 @@ lemma scanNextToken_flow_close_seq_nested (s : ScannerState)
     (h_col_pos : s.col > 0)
     (h_fl_ge2 : s.flowLevel ≥ 2)
     (h_atol : AllTokensOnLine s s.line)
-    (h_stack_endline : StackEndLineOnLine s s.line) :
+    (h_stack_endline : StackEndLineOnLine s s.line)
+    (h_dp : s.directivesPresent = false) :
     ∃ s', scanNextToken s = .ok (some s')
       ∧ ScannerSurfCorr s' ⟨rest, s'.col⟩
       ∧ s'.flowLevel = s.flowLevel - 1
@@ -2920,6 +2970,7 @@ lemma scanNextToken_flow_close_seq_nested (s : ScannerState)
   have h_flow_disp := dispatchFlowIndicators_close_bracket_nested s_ad h_ad_fl_ge2
   -- Step 6: compose
   have h_snt := scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl h_check h_flow_disp
+    ((saveSimpleKey_preserves_directivesPresent s).trans h_dp)
   -- Step 7: extract properties
   have h_ad_dp : s_ad.directivesPresent = s.directivesPresent := by
     simp only [s_ad]; split <;> exact saveSimpleKey_preserves_directivesPresent s
@@ -3075,6 +3126,7 @@ lemma scanNextToken_flow_close_seq_outermost (s : ScannerState)
   have h_flow_disp := dispatchFlowIndicators_close_bracket_outermost s_ad
     (h_ad_fl ▸ h_fl) h_ad_corr
   have h_snt := scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl h_check h_flow_disp
+    ((saveSimpleKey_preserves_directivesPresent s).trans h_dp)
   -- Extract properties
   have h_result_fl : (scanFlowSequenceEnd s_ad).flowLevel = 0 := by
     rw [scanFlowSequenceEnd_flowLevel, h_ad_fl, h_fl]
@@ -3233,7 +3285,8 @@ lemma scanNextToken_flow_close_mapping_nested (s : ScannerState)
     (h_col_pos : s.col > 0)
     (h_fl_ge2 : s.flowLevel ≥ 2)
     (h_atol : AllTokensOnLine s s.line)
-    (h_stack_endline : StackEndLineOnLine s s.line) :
+    (h_stack_endline : StackEndLineOnLine s s.line)
+    (h_dp : s.directivesPresent = false) :
     ∃ s', scanNextToken s = .ok (some s')
       ∧ ScannerSurfCorr s' ⟨rest, s'.col⟩
       ∧ s'.flowLevel = s.flowLevel - 1
@@ -3277,6 +3330,7 @@ lemma scanNextToken_flow_close_mapping_nested (s : ScannerState)
   have h_ad_fl_ge2 : s_ad.flowLevel ≥ 2 := by rw [h_ad_fl]; exact h_fl_ge2
   have h_flow_disp := dispatchFlowIndicators_close_brace_nested s_ad h_ad_fl_ge2
   have h_snt := scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl h_check h_flow_disp
+    ((saveSimpleKey_preserves_directivesPresent s).trans h_dp)
   have h_ad_dp : s_ad.directivesPresent = s.directivesPresent := by
     simp only [s_ad]; split <;> exact saveSimpleKey_preserves_directivesPresent s
   have h_ad_ids : s_ad.indents = s.indents := by
@@ -3414,6 +3468,7 @@ lemma scanNextToken_flow_close_mapping_outermost (s : ScannerState)
   have h_flow_disp := dispatchFlowIndicators_close_brace_outermost s_ad
     (h_ad_fl ▸ h_fl) h_ad_corr
   have h_snt := scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl h_check h_flow_disp
+    ((saveSimpleKey_preserves_directivesPresent s).trans h_dp)
   have h_result_fl : (scanFlowMappingEnd s_ad).flowLevel = 0 := by
     rw [scanFlowMappingEnd_flowLevel, h_ad_fl, h_fl]
     simp (config := { decide := true })
@@ -3436,7 +3491,8 @@ lemma scanNextToken_flow_open_mapping_nested (s : ScannerState) (rest : List Cha
     (h_indent : s.currentIndent < 0)
     (h_col_pos : s.col > 0)
     (h_atol : AllTokensOnLine s s.line)
-    (h_endline : EndLineOnLine s) :
+    (h_endline : EndLineOnLine s)
+    (h_dp : s.directivesPresent = false) :
     ∃ s', scanNextToken s = .ok (some s')
       ∧ ScannerSurfCorr s' ⟨rest, s'.col⟩
       ∧ s'.flowLevel = s.flowLevel + 1
@@ -3469,6 +3525,7 @@ lemma scanNextToken_flow_open_mapping_nested (s : ScannerState) (rest : List Cha
   have h_check := checkBlockFlowIndent_ok_flow s_ad '{' (h_ad_flow ▸ h_flow)
   have h_flow_disp := dispatchFlowIndicators_brace s_ad
   have h_snt := scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl h_check h_flow_disp
+    ((saveSimpleKey_preserves_directivesPresent s).trans h_dp)
   have h_ad_fl : s_ad.flowLevel = s.flowLevel := by
     simp only [s_ad]; split <;> exact saveSimpleKey_preserves_flowLevel s
   have h_ad_dp : s_ad.directivesPresent = s.directivesPresent := by
@@ -3627,7 +3684,7 @@ lemma scanNextToken_flow_open_mapping_init (input : String) (rest : List Char)
   have h_flow := dispatchFlowIndicators_brace s_ad
   -- Step 8: compose through scanNextToken
   have h_snt : scanNextToken s₀ = .ok (some (scanFlowMappingStart s_ad)) :=
-    scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp_eq h_struct rfl h_check h_flow
+    scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp_eq h_struct rfl h_check h_flow h_dp_pp
   -- Step 9: field properties of scanFlowMappingStart s_ad
   have h_ad_col : s_ad.col = 0 := by
     simp only [s_ad]; split <;> exact h_col_pp

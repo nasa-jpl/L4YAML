@@ -332,6 +332,7 @@ lemma scanNextTokenIx_flow_close_seq_outermost (s : ScannerStateIx input)
   have h_snt := scanNextTokenIx_via_flow_dispatch s (saveSimpleKeyIx s) s_ad
     (scanFlowSequenceEndIx s_ad) ']'
     h_pp h_struct h_s_ad_def h_check h_flow_disp
+    ((saveSimpleKeyIx_directivesPresent s).trans h_dp)
   -- Step 7: extract via scanFlowSequenceEndIx_detail (for s_ad at position [']']
   have h_ad_corr : ScannerSurfCorrIx s_ad ⟨[']'], s_ad.cursor.pos.col⟩ := by
     refine ⟨?_, rfl, ?_, ?_⟩
@@ -403,6 +404,7 @@ lemma scanNextTokenIx_flow_close_mapping_outermost (s : ScannerStateIx input)
   have h_snt := scanNextTokenIx_via_flow_dispatch s (saveSimpleKeyIx s) s_ad
     (scanFlowMappingEndIx s_ad) '}'
     h_pp h_struct h_s_ad_def h_check h_flow_disp
+    ((saveSimpleKeyIx_directivesPresent s).trans h_dp)
   have h_ad_corr : ScannerSurfCorrIx s_ad ⟨['}'], s_ad.cursor.pos.col⟩ := by
     refine ⟨?_, rfl, ?_, ?_⟩
     · rw [h_ad_cursor]; exact hcorr.chars_from
@@ -544,7 +546,7 @@ lemma scanNextTokenIx_flow_open_mapping_init (input : String) (rest : List Char)
   -- Step 9: compose via scanNextTokenIx_via_flow_dispatch
   have h_snt := scanNextTokenIx_via_flow_dispatch s₀ s_pp s_ad
     (scanFlowMappingStartIx s_ad) '{'
-    h_pp_eq h_struct h_s_ad_def h_check h_flow_disp
+    h_pp_eq h_struct h_s_ad_def h_check h_flow_disp h_dp_pp
   -- Step 10: extract via scanFlowMappingStartIx_detail
   have h_ad_corr : ScannerSurfCorrIx s_ad ⟨'{' :: rest, s_ad.cursor.pos.col⟩ := by
     refine ⟨?_, ?_, ?_, ?_⟩
@@ -757,7 +759,7 @@ lemma scanNextTokenIx_flow_open_seq_init (input : String) (rest : List Char)
   -- Step 9: compose via scanNextTokenIx_via_flow_dispatch
   have h_snt := scanNextTokenIx_via_flow_dispatch s₀ s_pp s_ad
     (scanFlowSequenceStartIx s_ad) '['
-    h_pp_eq h_struct h_s_ad_def h_check h_flow_disp
+    h_pp_eq h_struct h_s_ad_def h_check h_flow_disp h_dp_pp
   -- Step 10: extract via scanFlowSequenceStartIx_detail
   have h_ad_corr : ScannerSurfCorrIx s_ad ⟨'[' :: rest, s_ad.cursor.pos.col⟩ := by
     refine ⟨?_, ?_, ?_, ?_⟩

@@ -77,7 +77,8 @@ theorem r596_singleton_fires
     (h_flow : s.inFlow = true) (h_fl : s.flowLevel > 0) (h_indent : s.currentIndent < 0)
     (h_col : s.col > 0) (h_ek : s.explicitKeyLine = none)
     (h_atol : AllTokensOnLine s s.line) (h_endline : EndLineOnLine s)
-    (h_sync : s.simpleKeyStack.size = s.flowLevel) :
+    (h_sync : s.simpleKeyStack.size = s.flowLevel)
+    (h_dp : s.directivesPresent = false) :
     ∃ (_n : Nat) (s' : ScannerState) (block : List (Positioned YamlToken)),
       ScannerSurfCorr s' ⟨rest, s'.col⟩ ∧
       block.length = 1 ∧
@@ -89,7 +90,7 @@ theorem r596_singleton_fires
     emitList_allScalar_body_content_at [.scalar sc]
       (List.cons_ne_nil _ _)
       (fun v hv => by simp only [List.mem_singleton] at hv; exact ⟨sc, hv⟩)
-      s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sync
+      s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sync h_dp
   obtain ⟨_, h_val⟩ := h_pw 0 (by simp) sc (by simp)
   exact ⟨_n, s', block, h_corr', by simp only [List.length_singleton] at h_len ⊢; omega, h_val⟩
 
@@ -104,7 +105,8 @@ theorem r596_two_elem_fires
     (h_flow : s.inFlow = true) (h_fl : s.flowLevel > 0) (h_indent : s.currentIndent < 0)
     (h_col : s.col > 0) (h_ek : s.explicitKeyLine = none)
     (h_atol : AllTokensOnLine s s.line) (h_endline : EndLineOnLine s)
-    (h_sync : s.simpleKeyStack.size = s.flowLevel) :
+    (h_sync : s.simpleKeyStack.size = s.flowLevel)
+    (h_dp : s.directivesPresent = false) :
     ∃ (_n : Nat) (s' : ScannerState) (block : List (Positioned YamlToken)),
       ScannerSurfCorr s' ⟨rest, s'.col⟩ ∧
       block.length = 3 ∧
@@ -121,7 +123,7 @@ theorem r596_two_elem_fires
         rcases hv with rfl | rfl
         · exact ⟨sca, rfl⟩
         · exact ⟨scb, rfl⟩)
-      s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sync
+      s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sync h_dp
   obtain ⟨_, h_val0⟩ := h_pw 0 (by simp) sca (by simp)
   obtain ⟨_, h_val2⟩ := h_pw 1 (by simp) scb (by simp)
   exact ⟨_n, s', block, h_corr',

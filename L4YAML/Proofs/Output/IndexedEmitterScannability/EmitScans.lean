@@ -233,6 +233,7 @@ def EmitScansInFlowIx (v : YamlValue) : Prop :=
     s.explicitKeyLine = none →
     AllTokensOnLineIx s s.cursor.pos.line →
     EndLineOnLineIx s →
+    s.directivesPresent = false →
     ∃ n s', ScanChainGrewIx (fun t => t.token != .placeholder) s n s'
       ∧ ScannerSurfCorrIx s' ⟨rest, s'.cursor.pos.col⟩
       ∧ s'.flowLevel = s.flowLevel
@@ -265,6 +266,7 @@ def EmitListScansInFlowIx (items : List YamlValue) : Prop :=
     s.explicitKeyLine = none →
     AllTokensOnLineIx s s.cursor.pos.line →
     EndLineOnLineIx s →
+    s.directivesPresent = false →
     ∃ n s', ScanChainGrewIx (fun t => t.token != .placeholder) s n s'
       ∧ ScannerSurfCorrIx s' ⟨rest, s'.cursor.pos.col⟩
       ∧ s'.flowLevel = s.flowLevel
@@ -283,7 +285,7 @@ def EmitListScansInFlowIx (items : List YamlValue) : Prop :=
 /-- Empty list body is trivially scanned (0-step chain). Indexed twin of
     legacy `emitList_scans_empty` (lines 7059–7066). -/
 lemma emitList_scans_emptyIx : EmitListScansInFlowIx (input := input) [] := by
-  intro s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
+  intro s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_dp
   have h_eq : (L4YAML.Emit.emit.emitList ([] : List YamlValue)).toList ++ rest = rest := by
     simp only [L4YAML.Emit.emit.emitList]; rfl
   rw [h_eq] at hcorr
@@ -300,7 +302,7 @@ lemma emitList_scans_nonemptyIx (items : List YamlValue) (h_ne : items ≠ [])
   induction items with
   | nil => contradiction
   | cons v tail ih =>
-    intro s rest_chars hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
+    intro s rest_chars hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_dp
     match tail, ih with
     | [], _ =>
       -- Singleton [v]: emitList [v] = emit v
@@ -309,7 +311,7 @@ lemma emitList_scans_nonemptyIx (items : List YamlValue) (h_ne : items ≠ [])
       rw [h_eq] at hcorr
       obtain ⟨n, s', h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow', h_indent',
               h_line_v, _, _, h_atol', h_endline', h_stack', h_fmc'⟩ :=
-        h_all v (.head _) s rest_chars hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
+        h_all v (.head _) s rest_chars hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_dp
       exact ⟨n, s', h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow', h_indent',
              h_line_v, h_atol', h_endline', h_stack', h_fmc'⟩
     | v' :: vs, ih =>
@@ -324,13 +326,13 @@ lemma emitList_scans_nonemptyIx (items : List YamlValue) (h_ne : items ≠ [])
       obtain ⟨n₁, s₁, h_chain₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, h_flow₁,
               h_indent₁, _h_line₁, _, h_last₁, h_atol₁, h_endline₁, h_stack₁, h_fmc₁⟩ :=
         h_ev s ([',', ' '] ++ (L4YAML.Emit.emit.emitList (v' :: vs)).toList ++ rest_chars)
-          hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
+          hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_dp
       -- Step 2: scan ',' via scanNextTokenIx_flow_comma
       obtain ⟨s₂, h_snt₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, _h_line₂,
               h_atol₂, h_endline₂, h_stack₂⟩ :=
         scanNextTokenIx_flow_comma s₁
           (' ' :: (L4YAML.Emit.emit.emitList (v' :: vs)).toList ++ rest_chars)
-          h_corr₁ h_flow₁ h_indent₁ h_col₁ h_last₁ h_atol₁ h_endline₁
+          h_corr₁ h_flow₁ h_indent₁ h_col₁ h_last₁ h_atol₁ h_endline₁ (h_dp₁.trans h_dp)
       -- Step 3: handle the leading space via the preprocessing-equality twin
       obtain ⟨c, rest', h_first, h_nws, h_nlb, h_nc⟩ := emitList_first_char v' vs
       have h_corr₂_ws : ScannerSurfCorrIx s₂
@@ -369,6 +371,7 @@ lemma emitList_scans_nonemptyIx (items : List YamlValue) (h_ne : items ≠ [])
           (by rw [h_ek₃, h_ek₂, h_ek₁]; exact h_ek)
           (h_atol_transfer₃ h_atol₂)
           (h_endline_transfer₃ h_endline₂)
+          (by rw [h_dp₃, h_dp₂, h_dp₁]; exact h_dp)
       -- Step 5: lift chain for s₂ via the preprocessing equality
       have h_snt_eq : scanNextTokenIx s₂ = scanNextTokenIx s₃ :=
         scanNextTokenIx_eq_of_preprocess s₂ s₃ h_pp_eq
@@ -573,7 +576,8 @@ lemma scanNextToken_flow_valueIx (s : ScannerStateIx input)
     (h_col_pos : s.cursor.pos.col > 0)
     (h_ek : s.explicitKeyLine = none)
     (h_atol : AllTokensOnLineIx s s.cursor.pos.line)
-    (h_endline : EndLineOnLineIx s) :
+    (h_endline : EndLineOnLineIx s)
+    (h_dp : s.directivesPresent = false) :
     ∃ s', scanNextTokenIx s = .ok (some s')
       ∧ ScannerSurfCorrIx s' ⟨' ' :: rest', s'.cursor.pos.col⟩
       ∧ s'.flowLevel = s.flowLevel
@@ -694,6 +698,7 @@ lemma scanNextToken_flow_valueIx (s : ScannerStateIx input)
                   simpleKeyAllowed := true, explicitKeyLine := none }) :=
     scanNextTokenIx_via_block_dispatch s (saveSimpleKeyIx s) s_ad _ ':'
       h_pp h_struct h_s_ad_def h_check h_flow_none h_block
+      ((saveSimpleKeyIx_directivesPresent s).trans h_dp)
   -- Step 8: result-state field equalities (all via `@[simp]` cursor lemmas).
   have h_R_cursor :
       ({ (((scanValuePrepareIx s_ad).emit YamlToken.value).advance) with
@@ -824,6 +829,7 @@ def EmitPairListScansInFlowIx (pairs : List (YamlValue × YamlValue)) : Prop :=
     s.explicitKeyLine = none →
     AllTokensOnLineIx s s.cursor.pos.line →
     EndLineOnLineIx s →
+    s.directivesPresent = false →
     ∃ n s', ScanChainGrewIx (fun t => t.token != .placeholder) s n s'
       ∧ ScannerSurfCorrIx s' ⟨rest, s'.cursor.pos.col⟩
       ∧ s'.flowLevel = s.flowLevel
@@ -842,7 +848,7 @@ def EmitPairListScansInFlowIx (pairs : List (YamlValue × YamlValue)) : Prop :=
 /-- Empty pair list is trivially scanned (0-step chain). Indexed twin of
     legacy `emitPairList_scans_empty` (lines 7651–7655). -/
 lemma emitPairList_scans_emptyIx : EmitPairListScansInFlowIx (input := input) [] := by
-  intro s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
+  intro s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_dp
   have h_eq : (L4YAML.Emit.emit.emitPairList ([] : List (YamlValue × YamlValue))).toList ++ rest
       = rest := by
     simp only [L4YAML.Emit.emit.emitPairList]; rfl
@@ -864,7 +870,7 @@ lemma emitPairList_scans_nonemptyIx (pairs : List (YamlValue × YamlValue))
   induction pairs with
   | nil => contradiction
   | cons p tail ih =>
-    intro s rest_chars hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
+    intro s rest_chars hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_dp
     match tail, ih with
     | [], _ =>
       -- ══ Singleton [(k,v)]: emitPairList [(k,v)] = emit k ++ ": " ++ emit v ══
@@ -878,12 +884,13 @@ lemma emitPairList_scans_nonemptyIx (pairs : List (YamlValue × YamlValue))
       obtain ⟨n₁, s₁, h_chain₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁,
               h_flow₁, h_indent₁, _h_line₁, _ska₁, _h_last₁, h_atol₁, h_endline₁, h_stack₁, h_fmc₁⟩ :=
         h_ek_key s ([':', ' '] ++ (L4YAML.Emit.emit p.2).toList ++ rest_chars)
-          hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
+          hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_dp
       -- Step 2: scan ':' via scanNextToken_flow_valueIx (validate derived internally)
       obtain ⟨s₂, h_snt₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_col₂,
               h_flow₂, h_indent₂, h_ek₂, _h_line₂, h_atol₂, h_endline₂, h_stack_v₂⟩ :=
         scanNextToken_flow_valueIx s₁ ((L4YAML.Emit.emit p.2).toList ++ rest_chars)
           h_corr₁ h_flow₁ h_indent₁ h_col₁ (by rw [h_ek₁]; exact h_ek) h_atol₁ h_endline₁
+          (h_dp₁.trans h_dp)
       -- Step 3: handle the leading space before the value via the preprocess-eq twin
       obtain ⟨c_v, rest_v, h_first_v, h_nws_v, h_nlb_v, h_nc_v⟩ := emit_first_char p.2
       have h_corr₂_ws : ScannerSurfCorrIx s₂
@@ -919,6 +926,7 @@ lemma emitPairList_scans_nonemptyIx (pairs : List (YamlValue × YamlValue))
           (by rw [h_ek₃, h_ek₂])
           (h_atol_transfer₃ h_atol₂)
           (h_endline_transfer₃ h_endline₂)
+          (by rw [h_dp₃, h_dp₂, h_dp₁]; exact h_dp)
       -- Step 5: lift chain for s₂ via the preprocessing equality
       have h_snt_eq : scanNextTokenIx s₂ = scanNextTokenIx s₃ :=
         scanNextTokenIx_eq_of_preprocess s₂ s₃ h_pp_eq
@@ -992,7 +1000,7 @@ lemma emitPairList_scans_nonemptyIx (pairs : List (YamlValue × YamlValue))
               h_flow₁, h_indent₁, _h_line₁, _ska₁, _h_last₁, h_atol₁, h_endline₁, h_stack₁, h_fmc₁⟩ :=
         h_ek_key s ([':', ' '] ++ (L4YAML.Emit.emit p.2).toList ++
             [',', ' '] ++ (L4YAML.Emit.emit.emitPairList (p' :: ps)).toList ++ rest_chars)
-          hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
+          hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_dp
       -- Step 2: scan ':' via scanNextToken_flow_valueIx (validate derived internally)
       obtain ⟨s₂, h_snt₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_col₂,
               h_flow₂, h_indent₂, h_ek₂, _h_line₂, h_atol₂, h_endline₂, h_stack_v₂⟩ :=
@@ -1000,6 +1008,7 @@ lemma emitPairList_scans_nonemptyIx (pairs : List (YamlValue × YamlValue))
           ((L4YAML.Emit.emit p.2).toList ++
             [',', ' '] ++ (L4YAML.Emit.emit.emitPairList (p' :: ps)).toList ++ rest_chars)
           h_corr₁ h_flow₁ h_indent₁ h_col₁ (by rw [h_ek₁]; exact h_ek) h_atol₁ h_endline₁
+          (h_dp₁.trans h_dp)
       -- Step 3: handle the leading space before the value
       obtain ⟨c_v, rest_v, h_first_v, h_nws_v, h_nlb_v, h_nc_v⟩ := emit_first_char p.2
       have h_corr₂_ws : ScannerSurfCorrIx s₂
@@ -1050,6 +1059,7 @@ lemma emitPairList_scans_nonemptyIx (pairs : List (YamlValue × YamlValue))
           (by rw [h_ek₃, h_ek₂])
           (h_atol_transfer₃ h_atol₂)
           (h_endline_transfer₃ h_endline₂)
+          (by rw [h_dp₃, h_dp₂, h_dp₁]; exact h_dp)
       -- Lift value chain through preprocessing equality
       have h_snt_eq_v : scanNextTokenIx s₂ = scanNextTokenIx s₃ :=
         scanNextTokenIx_eq_of_preprocess s₂ s₃ h_pp_eq
@@ -1101,6 +1111,7 @@ lemma emitPairList_scans_nonemptyIx (pairs : List (YamlValue × YamlValue))
         scanNextTokenIx_flow_comma s_v
           (' ' :: (L4YAML.Emit.emit.emitPairList (p' :: ps)).toList ++ rest_chars)
           h_corr_v h_flow_v h_indent_v h_col_v h_last_v h_atol_v h_endline_v
+          (by rw [h_dp_v, h_dp₃, h_dp₂, h_dp₁]; exact h_dp)
       -- Step 7: handle the leading space before the next pair
       obtain ⟨c_p, rest_p, h_first_p, h_nws_p, h_nlb_p, h_nc_p⟩ :=
         emitPairList_first_charIx p' ps
@@ -1144,6 +1155,7 @@ lemma emitPairList_scans_nonemptyIx (pairs : List (YamlValue × YamlValue))
           (by rw [h_ek_pp, h_ek_c, h_ek_v, h_ek₃, h_ek₂])
           (h_atol_transfer_pp h_atol_c)
           (h_endline_transfer_pp h_endline_c)
+          (by rw [h_dp_pp, h_dp_c, h_dp_v, h_dp₃, h_dp₂, h_dp₁]; exact h_dp)
       -- Lift recursive chain through preprocessing equality
       have h_snt_eq_r : scanNextTokenIx s_c = scanNextTokenIx s_pp :=
         scanNextTokenIx_eq_of_preprocess s_c s_pp h_pp_eq_r
@@ -1262,7 +1274,7 @@ lemma emit_scans_in_flowIx (v : YamlValue) {inFlow : Bool}
   induction hg with
   | scalar s _ _ =>
     -- ══ Scalar case ══
-    intro s_state rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
+    intro s_state rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_dp
     -- emit (.scalar s) = "\"" ++ escapeString s.content ++ "\""
     have h_chars : (L4YAML.Emit.emit (.scalar s)).toList ++ rest =
         '"' :: ((L4YAML.Emit.escapeString s.content).toList ++ ['"'] ++ rest) := by
@@ -1274,7 +1286,7 @@ lemma emit_scans_in_flowIx (v : YamlValue) {inFlow : Bool}
     obtain ⟨s', h_snt, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_tok', h_ska',
             h_line', h_atol', h_endline', h_stack'⟩ :=
       scanNextTokenIx_flow_scanDoubleQuoted s_state s.content rest hcorr'
-        h_flow h_indent h_col h_atol h_endline
+        h_flow h_indent h_col h_atol h_endline h_dp
     -- Per-step filtered-growth witness
     have h_grew : (s'.tokens.tokens.filter (fun t => t.token != .placeholder)).size >
                   (s_state.tokens.tokens.filter (fun t => t.token != .placeholder)).size :=
@@ -1289,7 +1301,7 @@ lemma emit_scans_in_flowIx (v : YamlValue) {inFlow : Bool}
 
   | sequence style items _tag _anchor _ _ ih =>
     -- ══ Sequence case ══
-    intro s_state rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
+    intro s_state rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_dp
     -- emit (.sequence ...) = "[" ++ emitList items.toList ++ "]"
     have h_chars : (L4YAML.Emit.emit (.sequence style items _tag _anchor)).toList ++ rest =
         '[' :: ((L4YAML.Emit.emit.emitList items.toList).toList ++ [']'] ++ rest) := by
@@ -1302,7 +1314,7 @@ lemma emit_scans_in_flowIx (v : YamlValue) {inFlow : Bool}
             _h_line₁, h_atol₁, h_endline₁, h_stack_endline₁, h_stack_pop₁⟩ :=
       scanNextTokenIx_flow_open_seq_nested s_state
         ((L4YAML.Emit.emit.emitList items.toList).toList ++ [']'] ++ rest)
-        hcorr₀ h_flow h_indent h_col h_atol h_endline
+        hcorr₀ h_flow h_indent h_col h_atol h_endline h_dp
     have h_fl₁_ge2 : s₁.flowLevel ≥ 2 := by rw [h_fl₁]; omega
     have h_s1_inflow : s₁.inFlow = true := by
       unfold ScannerStateIx.inFlow; exact decide_eq_true (by rw [h_fl₁]; omega)
@@ -1326,6 +1338,7 @@ lemma emit_scans_in_flowIx (v : YamlValue) {inFlow : Bool}
             h_s2_inflow, h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂⟩ :=
       h_list_scan s₁ ([']'] ++ rest) h_corr₁_assoc h_s1_inflow (by rw [h_fl₁]; omega)
         h_s1_indent h_s1_col (by rw [h_ek₁]; exact h_ek) h_atol₁ h_endline₁
+        (by rw [h_dp₁]; exact h_dp)
     -- Step 3: ']' close (FlowClose §1)
     have h_fl₂_ge2 : s₂.flowLevel ≥ 2 := by rw [h_fl₂, h_fl₁]; omega
     have h_stack_endline₂ : StackEndLineOnLineIx s₂ s₂.cursor.pos.line := by
@@ -1334,7 +1347,7 @@ lemma emit_scans_in_flowIx (v : YamlValue) {inFlow : Bool}
     obtain ⟨s₃, h_snt₃, h_corr₃, h_fl₃, h_dp₃, h_ids₃, h_ek₃, h_col₃,
             h_tok₃, h_ska₃, _h_line₃, h_atol₃, h_endline₃, h_stack₃⟩ :=
       scanNextTokenIx_flow_close_seq_nested s₂ rest h_corr₂ h_s2_inflow h_s2_indent h_col₂
-        h_fl₂_ge2 h_atol₂ h_stack_endline₂
+        h_fl₂_ge2 h_atol₂ h_stack_endline₂ (by rw [h_dp₂, h_dp₁]; exact h_dp)
     -- FlowMonoChainIx composition: weaken body floor from fl+1 down to fl, sandwich.
     have h_fmc₂' : FlowMonoChainIx s_state.flowLevel s₁ n₂ s₂ :=
       h_fmc₂.weaken (by rw [h_fl₁]; omega)
@@ -1375,7 +1388,7 @@ lemma emit_scans_in_flowIx (v : YamlValue) {inFlow : Bool}
     · rw [h_stack₃, h_stack₂, h_stack_pop₁]
   | mapping style pairs _tag _anchor _ _ _ ihk ihv =>
     -- ══ Mapping case ══
-    intro s_state rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
+    intro s_state rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_dp
     -- emit (.mapping ...) = "{" ++ emitPairList pairs.toList ++ "}"
     have h_chars : (L4YAML.Emit.emit (.mapping style pairs _tag _anchor)).toList ++ rest =
         '{' :: ((L4YAML.Emit.emit.emitPairList pairs.toList).toList ++ ['}'] ++ rest) := by
@@ -1388,7 +1401,7 @@ lemma emit_scans_in_flowIx (v : YamlValue) {inFlow : Bool}
             _h_line₁, h_atol₁, h_endline₁, h_stack_endline₁, h_stack_pop₁⟩ :=
       scanNextTokenIx_flow_open_mapping_nested s_state
         ((L4YAML.Emit.emit.emitPairList pairs.toList).toList ++ ['}'] ++ rest)
-        hcorr₀ h_flow h_indent h_col h_atol h_endline
+        hcorr₀ h_flow h_indent h_col h_atol h_endline h_dp
     have h_fl₁_ge2 : s₁.flowLevel ≥ 2 := by rw [h_fl₁]; omega
     have h_s1_inflow : s₁.inFlow = true := by
       unfold ScannerStateIx.inFlow; exact decide_eq_true (by rw [h_fl₁]; omega)
@@ -1416,6 +1429,7 @@ lemma emit_scans_in_flowIx (v : YamlValue) {inFlow : Bool}
             h_s2_inflow, h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂⟩ :=
       h_pair_scan s₁ (['}'] ++ rest) h_corr₁_assoc h_s1_inflow (by rw [h_fl₁]; omega)
         h_s1_indent h_s1_col (by rw [h_ek₁]; exact h_ek) h_atol₁ h_endline₁
+        (by rw [h_dp₁]; exact h_dp)
     -- Step 3: '}' close (FlowClose §2)
     have h_fl₂_ge2 : s₂.flowLevel ≥ 2 := by rw [h_fl₂, h_fl₁]; omega
     have h_stack_endline₂ : StackEndLineOnLineIx s₂ s₂.cursor.pos.line := by
@@ -1424,7 +1438,7 @@ lemma emit_scans_in_flowIx (v : YamlValue) {inFlow : Bool}
     obtain ⟨s₃, h_snt₃, h_corr₃, h_fl₃, h_dp₃, h_ids₃, h_ek₃, h_col₃,
             h_tok₃, h_ska₃, _h_line₃, h_atol₃, h_endline₃, h_stack₃⟩ :=
       scanNextTokenIx_flow_close_mapping_nested s₂ rest h_corr₂ h_s2_inflow h_s2_indent h_col₂
-        h_fl₂_ge2 h_atol₂ h_stack_endline₂
+        h_fl₂_ge2 h_atol₂ h_stack_endline₂ (by rw [h_dp₂, h_dp₁]; exact h_dp)
     -- FlowMonoChainIx composition (mirror of sequence case)
     have h_fmc₂' : FlowMonoChainIx s_state.flowLevel s₁ n₂ s₂ :=
       h_fmc₂.weaken (by rw [h_fl₁]; omega)
@@ -1733,7 +1747,7 @@ lemma scanNextTokenIx_emitScalar_init (content : String) :
   -- ── Step 12: compose via the pipeline
   have h_snt : scanNextTokenIx s₀ = .ok (some s_final) :=
     scanNextTokenIx_via_content_dispatch s₀ s_pp s_ad s_final '"'
-      h_pp_eq h_struct h_s_ad_def h_check_ad h_flow_ad h_block_ad h_dc
+      h_pp_eq h_struct h_s_ad_def h_check_ad h_flow_ad h_block_ad h_dc h_dp_pp
   -- ── Step 13: extract conclusions
   refine ⟨s_final, h_snt, ?_, ?_, ?_, ?_, ?_⟩
   · -- peek? = none: post-quote surface has empty chars
@@ -1939,7 +1953,7 @@ lemma emit_produces_valid_yamlIx (v : YamlValue) {inFlow : Bool}
               _h_fmc₂⟩ :=
         h_list_scan s₁ [']'] h_corr₁ h_inflow₁ (by rw [h_fl₁]; omega)
           h_indent₁ (by rw [h_col₁]; omega) h_ek₁
-          (h_line₁ ▸ h_atol₁) h_endline₁
+          (h_line₁ ▸ h_atol₁) h_endline₁ h_dp₁
       -- Step 5: Scan ']' (outermost, flowLevel 1 → 0)
       obtain ⟨s₃, h_snt₃, h_fl₃, h_dp₃, h_peek₃⟩ :=
         scanNextTokenIx_flow_close_seq_outermost s₂ h_corr₂ h_inflow₂ h_indent₂
@@ -2009,7 +2023,7 @@ lemma emit_produces_valid_yamlIx (v : YamlValue) {inFlow : Bool}
               _h_fmc₂⟩ :=
         h_pair_scan s₁ ['}'] h_corr₁ h_inflow₁ (by rw [h_fl₁]; omega)
           h_indent₁ (by rw [h_col₁]; omega) h_ek₁
-          (h_line₁ ▸ h_atol₁) h_endline₁
+          (h_line₁ ▸ h_atol₁) h_endline₁ h_dp₁
       obtain ⟨s₃, h_snt₃, h_fl₃, h_dp₃, h_peek₃⟩ :=
         scanNextTokenIx_flow_close_mapping_outermost s₂ h_corr₂ h_inflow₂ h_indent₂
           h_col₂ (by rw [h_fl₂, h_fl₁]) (by rw [h_dp₂, h_dp₁])

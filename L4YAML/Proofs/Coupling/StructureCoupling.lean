@@ -573,16 +573,22 @@ lemma scanYamlDirective_corr (sc : ScannerState)
     · -- some '#'
       split at hok
       · exact absurd hok (by simp)
-      · have h := Except.ok.inj hok; subst h
-        exact ⟨sp_ws2, ⟨hcorr_ws2.chars_from, hcorr_ws2.col_eq, hcorr_ws2.end_eq, hcorr_ws2.input_prefix, hcorr_ws2.indent_cols_nonneg⟩⟩
+      · split at hok
+        · exact absurd hok (by simp)
+        · have h := Except.ok.inj hok; subst h
+          exact ⟨sp_ws2, ⟨hcorr_ws2.chars_from, hcorr_ws2.col_eq, hcorr_ws2.end_eq, hcorr_ws2.input_prefix, hcorr_ws2.indent_cols_nonneg⟩⟩
     · -- some c
+      split at hok
+      · exact absurd hok (by simp)
+      · split at hok
+        · exact absurd hok (by simp)
+        · have h := Except.ok.inj hok; subst h
+          exact ⟨sp_ws2, ⟨hcorr_ws2.chars_from, hcorr_ws2.col_eq, hcorr_ws2.end_eq, hcorr_ws2.input_prefix, hcorr_ws2.indent_cols_nonneg⟩⟩
+    · -- none
       split at hok
       · exact absurd hok (by simp)
       · have h := Except.ok.inj hok; subst h
         exact ⟨sp_ws2, ⟨hcorr_ws2.chars_from, hcorr_ws2.col_eq, hcorr_ws2.end_eq, hcorr_ws2.input_prefix, hcorr_ws2.indent_cols_nonneg⟩⟩
-    · -- none
-      have h := Except.ok.inj hok; subst h
-      exact ⟨sp_ws2, ⟨hcorr_ws2.chars_from, hcorr_ws2.col_eq, hcorr_ws2.end_eq, hcorr_ws2.input_prefix, hcorr_ws2.indent_cols_nonneg⟩⟩
 
 lemma scanTagDirective_corr (sc : ScannerState) (sp : SurfPos)
     (_hcorr : ScannerSurfCorr sc sp) (s_after_ws : ScannerState) (sp_ws : SurfPos)
@@ -644,9 +650,9 @@ lemma scanDirective_corr (sc : ScannerState) (sp : SurfPos)
           obtain ⟨sp', _, hcorr'⟩ := skipToEndOfLine_corr _ sp_tag hcorr_tag
           exact ⟨sp', hcorr'⟩
         · simp at hok
-      · -- reserved directive: skipToEndOfLine
+      · -- reserved directive: skipToEndOfLine + directivesPresent flag
         have h := Except.ok.inj hok; subst h
         obtain ⟨sp', _, hcorr'⟩ := skipToEndOfLine_corr _ sp_ws hcorr_ws
-        exact ⟨sp', hcorr'⟩
+        exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩⟩
 
 end L4YAML.Proofs.StructureCoupling

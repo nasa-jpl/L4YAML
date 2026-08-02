@@ -845,7 +845,8 @@ lemma emitList_body_recseqbodyDeep
     (h_ek : s.explicitKeyLine = none)
     (h_atol : AllTokensOnLine s s.line)
     (h_endline : EndLineOnLine s)
-    (h_sync : s.simpleKeyStack.size = s.flowLevel) :
+    (h_sync : s.simpleKeyStack.size = s.flowLevel)
+    (h_dp : s.directivesPresent = false) :
     let p := fun (t : Positioned YamlToken) => t.val != .placeholder
     let old_sz := (s.tokens.filter p).size
     ∃ n s', ScanChain s n s'
@@ -867,7 +868,7 @@ lemma emitList_body_recseqbodyDeep
           h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, h_block_eq, h_wb, h_wt,
           h_rec, _h_oa, _h_sa⟩ :=
     emitList_scans_recseqbodyDeep items h_ne h_all s rest h_corr h_flow h_fl h_indent h_col
-      h_ek h_atol h_endline h_sync
+      h_ek h_atol h_endline h_sync h_dp
   have h_drop : (s'.tokens.filter (fun t => t.val != .placeholder)).toList.drop
       (s.tokens.filter (fun t => t.val != .placeholder)).size = block := by
     rw [h_block_eq,
@@ -904,7 +905,7 @@ lemma seqRoot_recseqbodyDeep
           h_indent₂, h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂, h_rec₂⟩ :=
     emitList_body_recseqbodyDeep items.toList h_ne h_all s₁ [']']
       h_corr₁ h_inflow₁ (by rw [h_fl₁]; omega) h_indent₁ (by rw [h_col₁]; omega)
-      h_ek₁ (h_line₁ ▸ h_atol₁) h_endline₁ h_sync₁
+      h_ek₁ (h_line₁ ▸ h_atol₁) h_endline₁ h_sync₁ h_dp₁
   -- Close bracket → s₃
   obtain ⟨s₃, h_snt₃, h_fl₃, h_dp₃, h_peek₃, h_ids₃, ⟨tok_fse, h_tok_fse_val, h_filt₃⟩⟩ :=
     scanNextToken_flow_close_seq_outermost_ext s₂ h_corr₂ h_inflow₂ h_indent₂ h_col₂
@@ -1603,7 +1604,8 @@ lemma emitPairList_body_recmapbodyDeep
     (h_atol : AllTokensOnLine s s.line)
     (h_endline : EndLineOnLine s)
     (h_ska : s.simpleKeyAllowed = true)
-    (h_sync : s.simpleKeyStack.size = s.flowLevel) :
+    (h_sync : s.simpleKeyStack.size = s.flowLevel)
+    (h_dp : s.directivesPresent = false) :
     let p := fun (t : Positioned YamlToken) => t.val != .placeholder
     let old_sz := (s.tokens.filter p).size
     ∃ n s', ScanChain s n s'
@@ -1625,7 +1627,7 @@ lemma emitPairList_body_recmapbodyDeep
           h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, h_block_eq, h_wb, h_wt,
           h_rec, _h_oa, _h_sa, _h_n3⟩ :=
     emitPairList_scans_recmapbodyDeep pairs h_ne h_all_k h_all_v s rest h_corr h_flow h_fl
-      h_indent h_col h_ek h_atol h_endline h_ska h_sync
+      h_indent h_col h_ek h_atol h_endline h_ska h_sync h_dp
   have h_drop : (s'.tokens.filter (fun t => t.val != .placeholder)).toList.drop
       (s.tokens.filter (fun t => t.val != .placeholder)).size = block := by
     rw [h_block_eq,
@@ -1663,7 +1665,7 @@ lemma mapRoot_recmapbodydeep
           h_indent₂, h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂, h_rec₂⟩ :=
     emitPairList_body_recmapbodyDeep pairs.toList h_ne h_all_k h_all_v s₁ ['}']
       h_corr₁ h_inflow₁ (by rw [h_fl₁]; omega) h_indent₁ (by rw [h_col₁]; omega)
-      h_ek₁ (h_line₁ ▸ h_atol₁) h_endline₁ h_ska₁ h_sync₁
+      h_ek₁ (h_line₁ ▸ h_atol₁) h_endline₁ h_ska₁ h_sync₁ h_dp₁
   -- Close brace → s₃
   obtain ⟨s₃, h_snt₃, h_fl₃, h_dp₃, h_peek₃, h_ids₃, ⟨tok_fme, h_tok_fme_val, h_filt₃⟩⟩ :=
     scanNextToken_flow_close_mapping_outermost_ext s₂ h_corr₂ h_inflow₂ h_indent₂ h_col₂

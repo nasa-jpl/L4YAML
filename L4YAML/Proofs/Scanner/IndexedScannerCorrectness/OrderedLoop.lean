@@ -60,6 +60,14 @@ lemma scanNextTokenIx_preserves_ScanInvIx
           cases h_ok
           exact scanNextTokenIx_dispatchStructural_preserves_ScanInvIx h_sp hStr
         | none =>
+          -- Pending-directives check (Fix B): peel it, keeping h_ok's tail intact.
+          have h_npd : ∃ u, scanNextTokenIx_checkNoPendingDirectives sp = .ok u := by
+            cases hx : scanNextTokenIx_checkNoPendingDirectives sp with
+            | error e => rw [hx] at h_ok; cases h_ok
+            | ok u => exact ⟨u, rfl⟩
+          obtain ⟨u, h_npd⟩ := h_npd
+          rw [h_npd] at h_ok
+          simp only [] at h_ok
           by_cases hAD : sp.allowDirectives = true
           · -- allowDirectives = true: sadj has the field updates
             rw [if_pos hAD] at h_ok
@@ -156,6 +164,14 @@ lemma scanNextTokenIx_preserves_AllKeysValidIx
           cases h_ok
           exact scanNextTokenIx_dispatchStructural_preserves_AllKeysValidIx h_sp_akv hStr
         | none =>
+          -- Pending-directives check (Fix B): peel it, keeping h_ok's tail intact.
+          have h_npd : ∃ u, scanNextTokenIx_checkNoPendingDirectives sp = .ok u := by
+            cases hx : scanNextTokenIx_checkNoPendingDirectives sp with
+            | error e => rw [hx] at h_ok; cases h_ok
+            | ok u => exact ⟨u, rfl⟩
+          obtain ⟨u, h_npd⟩ := h_npd
+          rw [h_npd] at h_ok
+          simp only [] at h_ok
           by_cases hAD : sp.allowDirectives = true
           · rw [if_pos hAD] at h_ok
             let sadj : ScannerStateIx input :=
@@ -256,7 +272,7 @@ lemma scanLoopIx_ordered {s : ScannerStateIx input} {fuel : Nat}
         by_cases hFL : s.flowLevel > 0
         · rw [if_pos hFL] at h_ok; cases h_ok
         · rw [if_neg hFL] at h_ok
-          by_cases hDS : (s.directivesPresent && !s.documentEverStarted) = true
+          by_cases hDS : s.directivesPresent = true
           · rw [if_pos hDS] at h_ok; cases h_ok
           · rw [if_neg hDS] at h_ok
             cases h_ok

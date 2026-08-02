@@ -430,6 +430,7 @@ lemma scanNextToken_flow_close_seq_outermost_extIx {input : String}
   have h_snt : scanNextTokenIx s = .ok (some (scanFlowSequenceEndIx s_ad)) :=
     scanNextTokenIx_via_flow_dispatch s (saveSimpleKeyIx s) s_ad
       (scanFlowSequenceEndIx s_ad) ']' h_pp h_struct rfl h_check h_flow_disp
+      ((saveSimpleKeyIx_directivesPresent s).trans h_dp)
   -- §5: `scanFlowSequenceEndIx_detail` bundles SurfCorr / flowLevel / dp / indents / col.
   obtain ⟨h_corr_final, h_fl_final, h_dp_final, h_ind_final, _⟩ :=
     scanFlowSequenceEndIx_detail s_ad [] h_ad_corr
@@ -529,6 +530,7 @@ lemma scanNextToken_flow_close_mapping_outermost_extIx {input : String}
   have h_snt : scanNextTokenIx s = .ok (some (scanFlowMappingEndIx s_ad)) :=
     scanNextTokenIx_via_flow_dispatch s (saveSimpleKeyIx s) s_ad
       (scanFlowMappingEndIx s_ad) '}' h_pp h_struct rfl h_check h_flow_disp
+      ((saveSimpleKeyIx_directivesPresent s).trans h_dp)
   obtain ⟨h_corr_final, h_fl_final, h_dp_final, h_ind_final, _⟩ :=
     scanFlowMappingEndIx_detail s_ad [] h_ad_corr
   have h_result_fl : (scanFlowMappingEndIx s_ad).flowLevel = 0 := by
@@ -945,7 +947,8 @@ lemma emitList_body_filtered_characterizationIx_part1
     (h_indent : s.currentIndent < 0) (h_col : s.cursor.pos.col > 0)
     (h_ek : s.explicitKeyLine = none)
     (h_atol : AllTokensOnLineIx s s.cursor.pos.line)
-    (h_endline : EndLineOnLineIx s) :
+    (h_endline : EndLineOnLineIx s)
+    (h_dp : s.directivesPresent = false) :
     let p := fun (t : Indexed.IxToken input) => t.token != YamlToken.placeholder
     let old_sz := (s.tokens.tokens.filter p).size
     ∃ n s', ScanChainIx s n s'
@@ -968,7 +971,7 @@ lemma emitList_body_filtered_characterizationIx_part1
   have h_scan := emitList_scans_nonemptyIx items h_ne h_all
   obtain ⟨n, s', h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
           h_indent', h_line', h_atol', h_endline', h_stack', h_fmc⟩ :=
-    h_scan s rest h_corr h_flow h_fl h_indent h_col h_ek h_atol h_endline
+    h_scan s rest h_corr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_dp
   -- Strict chain growth: through n steps, filtered count grows by ≥ n.
   have h_grows := ScanChainGrewIx_filtered_grows h_chain
   -- n ≥ 1 because emitList of a non-empty list is non-empty.
@@ -1027,7 +1030,8 @@ lemma emitPairList_body_filtered_characterizationIx_part1
     (h_indent : s.currentIndent < 0) (h_col : s.cursor.pos.col > 0)
     (h_ek : s.explicitKeyLine = none)
     (h_atol : AllTokensOnLineIx s s.cursor.pos.line)
-    (h_endline : EndLineOnLineIx s) :
+    (h_endline : EndLineOnLineIx s)
+    (h_dp : s.directivesPresent = false) :
     let p := fun (t : Indexed.IxToken input) => t.token != YamlToken.placeholder
     let old_sz := (s.tokens.tokens.filter p).size
     ∃ n s', ScanChainIx s n s'
@@ -1050,7 +1054,7 @@ lemma emitPairList_body_filtered_characterizationIx_part1
   have h_scan := emitPairList_scans_nonemptyIx pairs h_ne h_all_k h_all_v
   obtain ⟨n, s', h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
           h_indent', h_line', h_atol', h_endline', h_stack', h_fmc⟩ :=
-    h_scan s rest h_corr h_flow h_fl h_indent h_col h_ek h_atol h_endline
+    h_scan s rest h_corr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_dp
   -- Strict chain growth: through n steps, filtered count grows by ≥ n.
   have h_grows := ScanChainGrewIx_filtered_grows h_chain
   -- n ≥ 1 because emitPairList of a non-empty list is non-empty.

@@ -93,7 +93,8 @@ lemma scanNextTokenIx_flow_close_seq_nested (s : ScannerStateIx input)
     (h_col_pos : s.cursor.pos.col > 0)
     (h_fl_ge2 : s.flowLevel ≥ 2)
     (h_atol : AllTokensOnLineIx s s.cursor.pos.line)
-    (h_stack_endline : StackEndLineOnLineIx s s.cursor.pos.line) :
+    (h_stack_endline : StackEndLineOnLineIx s s.cursor.pos.line)
+    (h_dp : s.directivesPresent = false) :
     ∃ s', scanNextTokenIx s = .ok (some s')
       ∧ ScannerSurfCorrIx s' ⟨rest, s'.cursor.pos.col⟩
       ∧ s'.flowLevel = s.flowLevel - 1
@@ -156,6 +157,7 @@ lemma scanNextTokenIx_flow_close_seq_nested (s : ScannerStateIx input)
   have h_snt := scanNextTokenIx_via_flow_dispatch s (saveSimpleKeyIx s) s_ad
     (scanFlowSequenceEndIx s_ad) ']'
     h_pp h_struct h_s_ad_def h_check h_flow_disp
+    ((saveSimpleKeyIx_directivesPresent s).trans h_dp)
   -- Step 8: extract via scanFlowSequenceEndIx_detail
   have h_ad_corr : ScannerSurfCorrIx s_ad ⟨']' :: rest, s_ad.cursor.pos.col⟩ := by
     refine ⟨?_, rfl, ?_, ?_⟩
@@ -257,7 +259,8 @@ lemma scanNextTokenIx_flow_close_mapping_nested (s : ScannerStateIx input)
     (h_col_pos : s.cursor.pos.col > 0)
     (h_fl_ge2 : s.flowLevel ≥ 2)
     (h_atol : AllTokensOnLineIx s s.cursor.pos.line)
-    (h_stack_endline : StackEndLineOnLineIx s s.cursor.pos.line) :
+    (h_stack_endline : StackEndLineOnLineIx s s.cursor.pos.line)
+    (h_dp : s.directivesPresent = false) :
     ∃ s', scanNextTokenIx s = .ok (some s')
       ∧ ScannerSurfCorrIx s' ⟨rest, s'.cursor.pos.col⟩
       ∧ s'.flowLevel = s.flowLevel - 1
@@ -313,6 +316,7 @@ lemma scanNextTokenIx_flow_close_mapping_nested (s : ScannerStateIx input)
   have h_snt := scanNextTokenIx_via_flow_dispatch s (saveSimpleKeyIx s) s_ad
     (scanFlowMappingEndIx s_ad) '}'
     h_pp h_struct h_s_ad_def h_check h_flow_disp
+    ((saveSimpleKeyIx_directivesPresent s).trans h_dp)
   have h_ad_corr : ScannerSurfCorrIx s_ad ⟨'}' :: rest, s_ad.cursor.pos.col⟩ := by
     refine ⟨?_, rfl, ?_, ?_⟩
     · rw [h_ad_cursor]; exact hcorr.chars_from
@@ -403,7 +407,8 @@ lemma scanNextTokenIx_flow_open_mapping_nested (s : ScannerStateIx input)
     (h_indent : s.currentIndent < 0)
     (h_col_pos : s.cursor.pos.col > 0)
     (h_atol : AllTokensOnLineIx s s.cursor.pos.line)
-    (h_endline : EndLineOnLineIx s) :
+    (h_endline : EndLineOnLineIx s)
+    (h_dp : s.directivesPresent = false) :
     ∃ s', scanNextTokenIx s = .ok (some s')
       ∧ ScannerSurfCorrIx s' ⟨rest, s'.cursor.pos.col⟩
       ∧ s'.flowLevel = s.flowLevel + 1
@@ -460,6 +465,7 @@ lemma scanNextTokenIx_flow_open_mapping_nested (s : ScannerStateIx input)
   have h_snt := scanNextTokenIx_via_flow_dispatch s (saveSimpleKeyIx s) s_ad
     (scanFlowMappingStartIx s_ad) '{'
     h_pp h_struct h_s_ad_def h_check h_flow_disp
+    ((saveSimpleKeyIx_directivesPresent s).trans h_dp)
   have h_ad_corr : ScannerSurfCorrIx s_ad ⟨'{' :: rest, s_ad.cursor.pos.col⟩ := by
     refine ⟨?_, rfl, ?_, ?_⟩
     · rw [h_ad_cursor]; exact hcorr.chars_from

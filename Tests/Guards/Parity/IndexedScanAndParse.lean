@@ -120,4 +120,24 @@ open L4YAML.TokenParser.Indexed
 #guard docs "---\nfoo\n...\n---\nbar\n"
 #guard docs "%YAML 1.2\n---\n42"
 
+/-! ### Directive strictness (Fix B, grammar-completeness Phase 1)
+
+Both scanners must agree on the orphan-directive flip set — directives
+with no following `---` are errors ([209]) — and on the surviving
+boundary shapes (blank/comment gaps before `---`, `%` as mid-document
+plain-scalar content, valid `%TAG` documents). -/
+#guard docs "%YAML 1.2\nfoo"
+#guard docs "%TAG !e! tag:x\nfoo: bar"
+#guard docs "%FOO bar\na: b"
+#guard docs "a\n...\n%YAML 1.2\n"
+#guard docs "a\n...\n%YAML 1.2\n...\n"
+#guard docs "a\n...\n%YAML 1.2\nb"
+#guard docs "a\n...\n%YAML 1.2\n---\nb"
+#guard docs "%TAG !e! tag:example.com,2000:app/\n---\n!e!foo bar"
+#guard docs "%YAML 1.2\n\t\n---\nx"
+#guard docs "%YAML 1.2\n# comment\n---\nx"
+#guard docs "---\nscalar\n%YAML 1.2\n"
+#guard docs "%YAML 1.2 trailing\n---\nx"
+#guard docs "%YAML .2\n---\nx"
+
 end L4YAML.Parity.Indexed

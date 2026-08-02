@@ -163,7 +163,10 @@ lemma scanTagDirectiveIx_preserves_flowLevel
     (h : scanTagDirectiveIx s cAfterWS startPos hStart = .ok s') :
     s'.flowLevel = s.flowLevel := by
   unfold scanTagDirectiveIx at h
-  simp only [Except.ok.injEq] at h; subst h; rfl
+  simp only [bind, Except.bind] at h
+  repeat (any_goals (split at h))
+  all_goals (try contradiction)
+  all_goals (simp only [Except.ok.injEq] at h; subst h; rfl)
 
 lemma scanDirectiveIx_preserves_flowLevel
     (s s' : ScannerStateIx input) (h : scanDirectiveIx s = .ok s') :
@@ -173,9 +176,19 @@ lemma scanDirectiveIx_preserves_flowLevel
   · simp at h
   · dsimp only [] at h
     split at h
-    · exact (scanYamlDirectiveIx_preserves_flowLevel _ _ _ _ _ h).trans rfl
+    · -- YAML directive: split the inner match on scanYamlDirectiveIx
+      split at h
+      · rename_i s'' hYaml
+        simp only [Except.ok.injEq] at h; subst h
+        exact (scanYamlDirectiveIx_preserves_flowLevel _ _ _ _ _ hYaml).trans rfl
+      · contradiction
     · split at h
-      · exact (scanTagDirectiveIx_preserves_flowLevel _ _ _ _ _ h).trans rfl
+      · -- TAG directive: split the inner match on scanTagDirectiveIx
+        split at h
+        · rename_i s'' hTag
+          simp only [Except.ok.injEq] at h; subst h
+          exact (scanTagDirectiveIx_preserves_flowLevel _ _ _ _ _ hTag).trans rfl
+        · contradiction
       · simp only [Except.ok.injEq] at h; subst h; rfl
 
 lemma scanBlockEntryIx_preserves_flowLevel

@@ -94,7 +94,7 @@ lemma scanDocumentEndIx_tokens_eq {s s' : ScannerStateIx input}
     (h : scanDocumentEndIx s = .ok s') :
     s'.tokens = ((unwindIndentsIx s (-1)).emit YamlToken.documentEnd).tokens := by
   unfold scanDocumentEndIx at h
-  by_cases hd : (s.directivesPresent && !s.documentEverStarted) = true
+  by_cases hd : s.directivesPresent = true
   · rw [if_pos hd] at h; simp [Bind.bind, Except.bind] at h
   · rw [if_neg hd] at h
     simp only [] at h
@@ -201,29 +201,28 @@ lemma scanYamlDirective_new_token_eqIx {s : ScannerStateIx input}
   by_cases hd : s.seenYamlDirective = true
   · rw [if_pos hd] at h; simp [Bind.bind, Except.bind] at h
   · rw [if_neg hd] at h
-    simp only [] at h
-    split at h
-    · simp only [Except.ok.injEq] at h
-      subst h
-      -- After subst, s' is `({{s with cursor:=...}.emitAt startPos (.versionDirective major minor) hBound}
-      --   with seenYamlDirective := true, directivesPresent := true)`. The record-update preserves
-      --   .tokens by Lean defeq; emitAt unfolds via `simp [ScannerStateIx.emitAt]`.
-      refine ⟨?_, ?_⟩
-      · -- Strict size
-        show s.tokens.tokens.size < _
-        simp only [ScannerStateIx.emitAt]
-        show s.tokens.tokens.size < (s.tokens.push _).tokens.size
-        rw [show ∀ (ts : Indexed.TokenStream input) (t : IxToken input),
-                (ts.push t).tokens.size = ts.tokens.size + 1 from
-              fun ts t => Array.size_push ..]
-        change s.tokens.tokens.size < s.tokens.tokens.size + 1
-        omega
-      · -- Token at s.tokens.size is `.versionDirective`, non-placeholder
-        intro h_pl
-        simp only [ScannerStateIx.emitAt, IxToken.mk', Indexed.TokenStream.push,
-                   Array.getElem_push_eq] at h_pl
-        contradiction
-    · simp at h
+    simp only [bind, Except.bind] at h
+    repeat (any_goals (split at h))
+    all_goals (try contradiction)
+    all_goals
+      (simp only [Except.ok.injEq] at h
+       subst h
+       -- s' is the emitAt-record-update; the record-update preserves .tokens by defeq.
+       refine ⟨?_, ?_⟩
+       · -- Strict size
+         show s.tokens.tokens.size < _
+         simp only [ScannerStateIx.emitAt]
+         show s.tokens.tokens.size < (s.tokens.push _).tokens.size
+         rw [show ∀ (ts : Indexed.TokenStream input) (t : IxToken input),
+                 (ts.push t).tokens.size = ts.tokens.size + 1 from
+               fun ts t => Array.size_push ..]
+         change s.tokens.tokens.size < s.tokens.tokens.size + 1
+         omega
+       · -- Token at s.tokens.size is non-placeholder
+         intro h_pl
+         simp only [ScannerStateIx.emitAt, IxToken.mk', Indexed.TokenStream.push,
+                    Array.getElem_push_eq] at h_pl
+         contradiction)
 
 /-! ## §4  `scanTagDirective_new_token_eqIx`
 
@@ -239,23 +238,27 @@ lemma scanTagDirective_new_token_eqIx {s : ScannerStateIx input}
     ∃ (h_lt : s.tokens.tokens.size < s'.tokens.tokens.size),
       (s'.tokens.tokens[s.tokens.tokens.size]'h_lt).token ≠ YamlToken.placeholder := by
   unfold scanTagDirectiveIx at h
-  simp only [Except.ok.injEq] at h
-  subst h
-  refine ⟨?_, ?_⟩
-  · -- Strict size
-    show s.tokens.tokens.size < _
-    simp only [ScannerStateIx.emitAt]
-    show s.tokens.tokens.size < (s.tokens.push _).tokens.size
-    rw [show ∀ (ts : Indexed.TokenStream input) (t : IxToken input),
-            (ts.push t).tokens.size = ts.tokens.size + 1 from
-          fun ts t => Array.size_push ..]
-    change s.tokens.tokens.size < s.tokens.tokens.size + 1
-    omega
-  · -- Token at s.tokens.size is `.tagDirective`, non-placeholder
-    intro h_pl
-    simp only [ScannerStateIx.emitAt, IxToken.mk', Indexed.TokenStream.push,
-               Array.getElem_push_eq] at h_pl
-    contradiction
+  simp only [bind, Except.bind] at h
+  repeat (any_goals (split at h))
+  all_goals (try contradiction)
+  all_goals
+    (simp only [Except.ok.injEq] at h
+     subst h
+     refine ⟨?_, ?_⟩
+     · -- Strict size
+       show s.tokens.tokens.size < _
+       simp only [ScannerStateIx.emitAt]
+       show s.tokens.tokens.size < (s.tokens.push _).tokens.size
+       rw [show ∀ (ts : Indexed.TokenStream input) (t : IxToken input),
+               (ts.push t).tokens.size = ts.tokens.size + 1 from
+             fun ts t => Array.size_push ..]
+       change s.tokens.tokens.size < s.tokens.tokens.size + 1
+       omega
+     · -- Token at s.tokens.size is non-placeholder
+       intro h_pl
+       simp only [ScannerStateIx.emitAt, IxToken.mk', Indexed.TokenStream.push,
+                  Array.getElem_push_eq] at h_pl
+       contradiction)
 
 /-! ## §5  `scanDirective_filtered_growsIx`
 
@@ -282,15 +285,23 @@ lemma scanDirective_filtered_growsIx {s s' : ScannerStateIx input}
     · simp at h
     · simp only at h
       split at h
-      · -- YAML branch: delegate to §3
-        obtain ⟨_, h_ne⟩ := scanYamlDirective_new_token_eqIx h
-        show (s'.tokens.tokens[s.tokens.tokens.size]'(by omega)).token != .placeholder
-        simp only [bne_iff_ne]; exact h_ne
-      · split at h
-        · -- TAG branch: delegate to §4
-          obtain ⟨_, h_ne⟩ := scanTagDirective_new_token_eqIx h
-          show (s'.tokens.tokens[s.tokens.tokens.size]'(by omega)).token != .placeholder
+      · -- YAML branch: split the inner match, delegate to §3
+        split at h
+        · rename_i s'' hYaml
+          simp only [Except.ok.injEq] at h; subst h
+          obtain ⟨h_lt', h_ne⟩ := scanYamlDirective_new_token_eqIx hYaml
+          show ((ScannerStateIx.tokens _).tokens[s.tokens.tokens.size]'(by omega)).token != .placeholder
           simp only [bne_iff_ne]; exact h_ne
+        · contradiction
+      · split at h
+        · -- TAG branch: split the inner match, delegate to §4
+          split at h
+          · rename_i s'' hTag
+            simp only [Except.ok.injEq] at h; subst h
+            obtain ⟨h_lt', h_ne⟩ := scanTagDirective_new_token_eqIx hTag
+            show ((ScannerStateIx.tokens _).tokens[s.tokens.tokens.size]'(by omega)).token != .placeholder
+            simp only [bne_iff_ne]; exact h_ne
+          · contradiction
         · -- Reserved branch: tokens unchanged, contradicts h_grew.
           exfalso
           simp only [Except.ok.injEq] at h

@@ -1269,14 +1269,20 @@ lemma scanYamlDirective_prod (sc : ScannerState)
     split at hok
     · split at hok
       · exact absurd hok (by simp)
-      · have h := Except.ok.inj hok; subst h
-        exact ⟨sp_ws2, h_total, ⟨hcorr_ws2.chars_from, hcorr_ws2.col_eq, hcorr_ws2.end_eq, hcorr_ws2.input_prefix, hcorr_ws2.indent_cols_nonneg⟩⟩
+      · split at hok
+        · exact absurd hok (by simp)
+        · have h := Except.ok.inj hok; subst h
+          exact ⟨sp_ws2, h_total, ⟨hcorr_ws2.chars_from, hcorr_ws2.col_eq, hcorr_ws2.end_eq, hcorr_ws2.input_prefix, hcorr_ws2.indent_cols_nonneg⟩⟩
+    · split at hok
+      · exact absurd hok (by simp)
+      · split at hok
+        · exact absurd hok (by simp)
+        · have h := Except.ok.inj hok; subst h
+          exact ⟨sp_ws2, h_total, ⟨hcorr_ws2.chars_from, hcorr_ws2.col_eq, hcorr_ws2.end_eq, hcorr_ws2.input_prefix, hcorr_ws2.indent_cols_nonneg⟩⟩
     · split at hok
       · exact absurd hok (by simp)
       · have h := Except.ok.inj hok; subst h
         exact ⟨sp_ws2, h_total, ⟨hcorr_ws2.chars_from, hcorr_ws2.col_eq, hcorr_ws2.end_eq, hcorr_ws2.input_prefix, hcorr_ws2.indent_cols_nonneg⟩⟩
-    · have h := Except.ok.inj hok; subst h
-      exact ⟨sp_ws2, h_total, ⟨hcorr_ws2.chars_from, hcorr_ws2.col_eq, hcorr_ws2.end_eq, hcorr_ws2.input_prefix, hcorr_ws2.indent_cols_nonneg⟩⟩
 
 lemma scanTagDirective_prod
     (s_after_ws : ScannerState) (sp_ws : SurfPos)
@@ -1371,11 +1377,12 @@ lemma scanDirective_prod (sc : ScannerState) (sp : SurfPos)
           exact ⟨sp', GStar_trans h_pre (GStar_trans h_nb_tag h_nb_eol), hcorr',
             skipToEndOfLine_at_break_or_eof_chars _ sp' hcorr'⟩
         · simp at hok
-      · -- Reserved: skipToEndOfLine (unchanged)
+      · -- Reserved: skipToEndOfLine + directivesPresent flag (Fix B)
         have h := Except.ok.inj hok; subst h
         obtain ⟨sp', h_nb_skip, hcorr'⟩ :=
           skipToEndOfLine_corr _ sp_ws hcorr_ws
-        exact ⟨sp', GStar_trans h_pre h_nb_skip, hcorr',
+        exact ⟨sp', GStar_trans h_pre h_nb_skip,
+          ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩,
           skipToEndOfLine_at_break_or_eof_chars _ sp' hcorr'⟩
 
 end L4YAML.Proofs.StructureProduction

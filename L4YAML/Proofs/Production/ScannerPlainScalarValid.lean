@@ -720,20 +720,26 @@ lemma scanYamlDirective_new_tok_not_plain (s s_after_ws : ScannerState) (startPo
     · split at h
       · split at h
         · contradiction
-        · injection h with h_eq; subst h_eq
-          simp only [ScannerState.emitAt, skipWhitespace_preserves_tokens,
-            collectVersionMinorLoop_preserves_tokens,
-            collectVersionMajorLoop_preserves_tokens, h_ws]
+        · split at h
+          · contradiction
+          · injection h with h_eq; subst h_eq
+            simp only [ScannerState.emitAt, skipWhitespace_preserves_tokens,
+              collectVersionMinorLoop_preserves_tokens,
+              collectVersionMajorLoop_preserves_tokens, h_ws]
+      · split at h
+        · contradiction
+        · split at h
+          · contradiction
+          · injection h with h_eq; subst h_eq
+            simp only [ScannerState.emitAt, skipWhitespace_preserves_tokens,
+              collectVersionMinorLoop_preserves_tokens,
+              collectVersionMajorLoop_preserves_tokens, h_ws]
       · split at h
         · contradiction
         · injection h with h_eq; subst h_eq
           simp only [ScannerState.emitAt, skipWhitespace_preserves_tokens,
             collectVersionMinorLoop_preserves_tokens,
             collectVersionMajorLoop_preserves_tokens, h_ws]
-      · injection h with h_eq; subst h_eq
-        simp only [ScannerState.emitAt, skipWhitespace_preserves_tokens,
-          collectVersionMinorLoop_preserves_tokens,
-          collectVersionMajorLoop_preserves_tokens, h_ws]
   simp only [h_toks, Array.size_push] at hj
   have h_j : j = s.tokens.size := by omega
   simp only [h_toks, h_j, Array.getElem_push_eq]
@@ -823,16 +829,32 @@ lemma scanYamlDirective_new_not_plain (s s_after_ws : ScannerState) (startPos : 
     · -- some '#'
       split at h
       · contradiction
-      · injection h with h_eq; subst h_eq; dsimp only []
-        have h_j : j = s.tokens.size := by
-          simp only [emitAt_tokens_size, skipWhitespace_preserves_tokens,
+      · split at h
+        · contradiction
+        · injection h with h_eq; subst h_eq; dsimp only []
+          have h_j : j = s.tokens.size := by
+            simp only [emitAt_tokens_size, skipWhitespace_preserves_tokens,
+              collectVersionMinorLoop_preserves_tokens,
+              collectVersionMajorLoop_preserves_tokens, h_ws] at hj; omega
+          subst h_j
+          simp only [ScannerState.emitAt, skipWhitespace_preserves_tokens,
             collectVersionMinorLoop_preserves_tokens,
-            collectVersionMajorLoop_preserves_tokens, h_ws] at hj; omega
-        subst h_j
-        simp only [ScannerState.emitAt, skipWhitespace_preserves_tokens,
-          collectVersionMinorLoop_preserves_tokens,
-          collectVersionMajorLoop_preserves_tokens, h_ws, Array.getElem_push_eq]
+            collectVersionMajorLoop_preserves_tokens, h_ws, Array.getElem_push_eq]
     · -- some c, not '#'
+      split at h
+      · contradiction
+      · split at h
+        · contradiction
+        · injection h with h_eq; subst h_eq; dsimp only []
+          have h_j : j = s.tokens.size := by
+            simp only [emitAt_tokens_size, skipWhitespace_preserves_tokens,
+              collectVersionMinorLoop_preserves_tokens,
+              collectVersionMajorLoop_preserves_tokens, h_ws] at hj; omega
+          subst h_j
+          simp only [ScannerState.emitAt, skipWhitespace_preserves_tokens,
+            collectVersionMinorLoop_preserves_tokens,
+            collectVersionMajorLoop_preserves_tokens, h_ws, Array.getElem_push_eq]
+    · -- none
       split at h
       · contradiction
       · injection h with h_eq; subst h_eq; dsimp only []
@@ -844,16 +866,6 @@ lemma scanYamlDirective_new_not_plain (s s_after_ws : ScannerState) (startPos : 
         simp only [ScannerState.emitAt, skipWhitespace_preserves_tokens,
           collectVersionMinorLoop_preserves_tokens,
           collectVersionMajorLoop_preserves_tokens, h_ws, Array.getElem_push_eq]
-    · -- none
-      injection h with h_eq; subst h_eq; dsimp only []
-      have h_j : j = s.tokens.size := by
-        simp only [emitAt_tokens_size, skipWhitespace_preserves_tokens,
-          collectVersionMinorLoop_preserves_tokens,
-          collectVersionMajorLoop_preserves_tokens, h_ws] at hj; omega
-      subst h_j
-      simp only [ScannerState.emitAt, skipWhitespace_preserves_tokens,
-        collectVersionMinorLoop_preserves_tokens,
-        collectVersionMajorLoop_preserves_tokens, h_ws, Array.getElem_push_eq]
 
 lemma scanTagDirective_new_not_plain (s s_after_ws : ScannerState) (startPos : YamlPos)
     (s' : ScannerState) (h : scanTagDirective s s_after_ws startPos = .ok s')
@@ -1229,6 +1241,8 @@ lemma scanNextToken_preserves_PlainScalarsValid :
     have h_peek3 : (if s2.allowDirectives then
         { s2 with allowDirectives := false, documentEverStarted := true }
       else s2).peek? = some c := by split <;> exact h_peek2
+    -- Pending-directives check (Fix B)
+    split at h_ok <;> (try (simp at h_ok; done))
     -- Block→flow underindent check
     split at h_ok <;> (try (simp at h_ok; done))
     split at h_ok <;> (try (simp at h_ok; done))
@@ -1982,22 +1996,28 @@ lemma scanDirective_preserves_flowLevel (s s' : ScannerState)
           · -- some '#'
             split at hm
             · contradiction
-            · simp only [Except.ok.injEq] at hm; subst hm; simp only []
-              rw [emitAt_preserves_flowLevel, skipWhitespace_preserves_flowLevel,
-                  collectVersionMinorLoop_preserves_flowLevel,
-                  collectVersionMajorLoop_preserves_flowLevel, h_ws_fl]
+            · split at hm
+              · contradiction
+              · simp only [Except.ok.injEq] at hm; subst hm; simp only []
+                rw [emitAt_preserves_flowLevel, skipWhitespace_preserves_flowLevel,
+                    collectVersionMinorLoop_preserves_flowLevel,
+                    collectVersionMajorLoop_preserves_flowLevel, h_ws_fl]
           · -- some c (not '#')
+            split at hm
+            · contradiction
+            · split at hm
+              · contradiction
+              · simp only [Except.ok.injEq] at hm; subst hm; simp only []
+                rw [emitAt_preserves_flowLevel, skipWhitespace_preserves_flowLevel,
+                    collectVersionMinorLoop_preserves_flowLevel,
+                    collectVersionMajorLoop_preserves_flowLevel, h_ws_fl]
+          · -- none
             split at hm
             · contradiction
             · simp only [Except.ok.injEq] at hm; subst hm; simp only []
               rw [emitAt_preserves_flowLevel, skipWhitespace_preserves_flowLevel,
                   collectVersionMinorLoop_preserves_flowLevel,
                   collectVersionMajorLoop_preserves_flowLevel, h_ws_fl]
-          · -- none
-            simp only [Except.ok.injEq] at hm; subst hm; simp only []
-            rw [emitAt_preserves_flowLevel, skipWhitespace_preserves_flowLevel,
-                collectVersionMinorLoop_preserves_flowLevel,
-                collectVersionMajorLoop_preserves_flowLevel, h_ws_fl]
       | error e => contradiction
     · split at h
       · -- name == "TAG": scanTagDirective (now wrapped with skipToEndOfLine)
@@ -2059,20 +2079,26 @@ lemma scanYamlDirective_new_tokens_not_flow (s s_after_ws : ScannerState) (start
       split at h
       · split at h
         · contradiction
-        · injection h with h_eq; subst h_eq
-          simp only [ScannerState.emitAt, skipWhitespace_preserves_tokens,
-            collectVersionMinorLoop_preserves_tokens,
-            collectVersionMajorLoop_preserves_tokens, h_ws]
+        · split at h
+          · contradiction
+          · injection h with h_eq; subst h_eq
+            simp only [ScannerState.emitAt, skipWhitespace_preserves_tokens,
+              collectVersionMinorLoop_preserves_tokens,
+              collectVersionMajorLoop_preserves_tokens, h_ws]
+      · split at h
+        · contradiction
+        · split at h
+          · contradiction
+          · injection h with h_eq; subst h_eq
+            simp only [ScannerState.emitAt, skipWhitespace_preserves_tokens,
+              collectVersionMinorLoop_preserves_tokens,
+              collectVersionMajorLoop_preserves_tokens, h_ws]
       · split at h
         · contradiction
         · injection h with h_eq; subst h_eq
           simp only [ScannerState.emitAt, skipWhitespace_preserves_tokens,
             collectVersionMinorLoop_preserves_tokens,
             collectVersionMajorLoop_preserves_tokens, h_ws]
-      · injection h with h_eq; subst h_eq
-        simp only [ScannerState.emitAt, skipWhitespace_preserves_tokens,
-          collectVersionMinorLoop_preserves_tokens,
-          collectVersionMajorLoop_preserves_tokens, h_ws]
     simp only [h_toks, Array.size_push] at hj
     have h_j : j = s.tokens.size := by omega
     simp only [h_toks, h_j, Array.getElem_push_eq]
@@ -5015,6 +5041,8 @@ lemma scanNextToken_preserves_FlowInv
     have h_peek3 : (if s2.allowDirectives then
         { s2 with allowDirectives := false, documentEverStarted := true }
       else s2).peek? = some c := by split <;> exact h_peek2
+    -- Pending-directives check (Fix B)
+    split at h_ok <;> (try (simp at h_ok; done))
     -- Block→flow underindent check
     split at h_ok <;> (try (simp at h_ok; done))
     split at h_ok <;> (try (simp at h_ok; done))

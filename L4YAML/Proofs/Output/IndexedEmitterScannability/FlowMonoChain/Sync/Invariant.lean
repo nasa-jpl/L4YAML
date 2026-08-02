@@ -195,6 +195,9 @@ lemma scanNextTokenIx_preserves_sync
                     { s1 with allowDirectives := false, documentEverStarted := true }
                   else s1).flowLevel := by
             rw [h_allow_stack, h_allow_fl]; exact h_pre_sync
+          -- Fix B pending-directives check: error arm contradicts h_next
+          split at h_next
+          · contradiction
           -- checkBlockFlowIndent
           split at h_next
           · contradiction
@@ -311,6 +314,9 @@ lemma scanNextTokenIx_preserves_prefix_of_simpleKey
                 s_dir.simpleKey.tokenIndex ≥ n := by
               rw [← h_dir_def]
               split <;> exact h_sk_pp
+            -- Fix B pending-directives check: error arm contradicts h_ok
+            split at h_ok
+            · contradiction
             generalize h_ck : scanNextTokenIx_checkBlockFlowIndent s_dir c = ck_res at h_ok
             cases ck_res with
             | error e => simp at h_ok
@@ -576,13 +582,16 @@ lemma scanNextTokenIx_via_flow_dispatch
     (h_ad_eq : s_ad = if s_pp.allowDirectives then
       { s_pp with allowDirectives := false, documentEverStarted := true } else s_pp)
     (h_check : scanNextTokenIx_checkBlockFlowIndent s_ad c = .ok ())
-    (h_flow : scanNextTokenIx_dispatchFlowIndicators s_ad c = .ok (some s_result)) :
+    (h_flow : scanNextTokenIx_dispatchFlowIndicators s_ad c = .ok (some s_result))
+    (h_ndp : s_pp.directivesPresent = false) :
     scanNextTokenIx s = .ok (some s_result) := by
   unfold scanNextTokenIx
   simp only [bind, Except.bind, pure, Pure.pure, Except.pure]
   rw [h_pp]
   dsimp only []
   rw [h_struct]
+  dsimp only []
+  rw [scanNextTokenIx_checkNoPendingDirectives_ok _ h_ndp]
   dsimp only []
   rw [← h_ad_eq]
   rw [h_check]

@@ -89,8 +89,9 @@ now-retired `05-current-state.md` once carried, which described
 work-remaining frontier:
 
 1. **Grammar completeness** (Group 7.7, `parse_iff_grammar` converse)
-   — **not yet declared**; blocked on removing two over-approximation
-   grammar constructors
+   — **not yet declared**; blocked on removing the remaining
+   over-approximation grammar constructor (`scannerDrop`;
+   `directiveDrop` was removed by the Fix-B campaign on 2026-08-02)
    ([`DOCS.md` § Grammar completeness plan](../DOCS.md#grammar-completeness-plan)).
    *We accept **exactly** the YAML language, not merely a subset of
    well-formed inputs.*
@@ -590,9 +591,10 @@ specific derivation tree in the YAML 1.2.2 grammar."
   in the YAML language *is* accepted. Together with 7.1 it would prove
   the parser accepts **exactly** the language, no more and no less —
   the gold-standard parser-correctness statement. Requires first
-  removing the two over-approximation constructors (`directiveDrop`,
-  `scannerDrop`) that currently make `InYamlLanguage` strictly weaker
-  than "parseable"
+  removing the over-approximation constructors that make
+  `InYamlLanguage` strictly weaker than "parseable" (`directiveDrop`
+  removed 2026-08-02; `scannerDrop` remains, blocked on flow-collection
+  accumulation)
   ([`DOCS.md` § Grammar completeness plan](../DOCS.md#grammar-completeness-plan)). *Risk
   if absent:* we have proved we do not *over*-accept (7.1) but not that
   we accept the *whole* language — a future scanner/parser refactor

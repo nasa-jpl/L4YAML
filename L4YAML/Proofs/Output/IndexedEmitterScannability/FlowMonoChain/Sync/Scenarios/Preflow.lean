@@ -287,7 +287,8 @@ lemma scanNextTokenIx_flow_comma (s : ScannerStateIx input)
       t ≠ YamlToken.flowSequenceStart ∧ t ≠ YamlToken.flowMappingStart
       ∧ t ≠ YamlToken.flowEntry)
     (h_atol : AllTokensOnLineIx s s.cursor.pos.line)
-    (h_endline : EndLineOnLineIx s) :
+    (h_endline : EndLineOnLineIx s)
+    (h_dp : s.directivesPresent = false) :
     ∃ s', scanNextTokenIx s = .ok (some s')
       ∧ ScannerSurfCorrIx s' ⟨rest, s'.cursor.pos.col⟩
       ∧ s'.flowLevel = s.flowLevel
@@ -358,6 +359,7 @@ lemma scanNextTokenIx_flow_comma (s : ScannerStateIx input)
   have h_snt := scanNextTokenIx_via_flow_dispatch s (saveSimpleKeyIx s) s_ad
     { (s_ad.emit YamlToken.flowEntry).advance with simpleKeyAllowed := true } ','
     h_pp h_struct h_s_ad_def h_check h_flow_disp
+    ((saveSimpleKeyIx_directivesPresent s).trans h_dp)
   -- Step 8: extract result properties using the field equalities for s_ad
   -- For the result state s' := { (s_ad.emit .flowEntry).advance with simpleKeyAllowed := true }
   -- Reach in via explicit `show` since s' is just a definitional sugar.

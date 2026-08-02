@@ -184,6 +184,10 @@ def scanYamlDirective (s : ScannerState) (s_after_ws : ScannerState) (startPos :
       throw (.directiveTrailingContent s_validated.line s_validated.col)
   | some c => if !isLineBreakBool c then throw (.directiveTrailingContent s_validated.line s_validated.col)
   | none => pure ()
+  -- [88] ns-yaml-version = digit+ '.' digit+ — empty parts are invalid
+  -- (also guards the `toNat!` below against panicking on "").
+  if major.isEmpty || minor.isEmpty then
+    throw (.directiveTrailingContent s_validated.line s_validated.col)
   let s_with_token := s_validated.emitAt startPos (.versionDirective major.toNat! minor.toNat!)
   .ok { s_with_token with seenYamlDirective := true, directivesPresent := true }
 
@@ -259,7 +263,9 @@ def scanDirective (s : ScannerState) : Except ScanError ScannerState :=
       | .ok s' => .ok (skipToEndOfLine s')
       | .error e => .error e
     else
-      .ok (skipToEndOfLine s_after_ws)
+      -- [83] ns-reserved-directive: also a directive per [82]/[209] — it
+      -- too requires a following `---`, so it must set `directivesPresent`.
+      .ok { skipToEndOfLine s_after_ws with directivesPresent := true }
 
 /-! ## Document Marker Scanning -/
 
@@ -316,7 +322,7 @@ def scanDocumentEnd (s : ScannerState) : Except ScanError ScannerState := do
   -- §9.1.2: Document end marker `...` requires an open document.
   -- If directives were present but no `---` followed, the `...` cannot
   -- close a document that was never opened.
-  if s.directivesPresent && !s.documentEverStarted then
+  if s.directivesPresent then
     throw (.directiveWithoutDocument s.line)
   let s_unwound := unwindIndents s (-1)
   let s_key_disabled := { s_unwound with simpleKey := { possible := false } }

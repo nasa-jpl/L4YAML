@@ -286,7 +286,7 @@ lemma scanDocumentEndIx_offset_lt {s s' : ScannerStateIx input}
     (h : scanDocumentEndIx s = .ok s') :
     s.cursor.pos.offset < s'.cursor.pos.offset := by
   unfold scanDocumentEndIx at h
-  by_cases hd : (s.directivesPresent && !s.documentEverStarted) = true
+  by_cases hd : s.directivesPresent = true
   · rw [if_pos hd] at h
     simp [Bind.bind, Except.bind] at h
   · rw [if_neg hd] at h
@@ -320,25 +320,40 @@ lemma scanDirectiveIx_offset_lt {s s' : ScannerStateIx input}
   · simp at h                                                -- !allowDirectives ⇒ .error
   · simp only at h
     split at h
-    · -- YAML directive arm: result.cursor ≥ skipWhitespace ∘ collectDirectiveNameLoopIx ∘ advance
-      have hChain := scanYamlDirectiveIx_offset_monotonic h
-      refine Nat.lt_of_lt_of_le h_adv (Nat.le_trans ?_ hChain)
-      simp only [advance_cursor]
-      exact Nat.le_trans (collectDirectiveNameLoopIx_offset_monotonic _ _ _)
-        (skipWhitespace_offset_monotonic _)
-    · split at h
-      · -- TAG directive arm
-        have hChain := scanTagDirectiveIx_offset_monotonic h
-        refine Nat.lt_of_lt_of_le h_adv (Nat.le_trans ?_ hChain)
+    · -- YAML directive arm: sub-scan then skipToEndOfLineIx wrapper
+      split at h
+      · rename_i s_sub h_sub
+        have hChain := scanYamlDirectiveIx_offset_monotonic h_sub
+        simp only [Except.ok.injEq] at h
+        subst h
+        show s.cursor.pos.offset < (skipToEndOfLineIx s_sub.cursor).pos.offset
+        refine Nat.lt_of_lt_of_le h_adv
+          (Nat.le_trans ?_ (Nat.le_trans hChain (skipToEndOfLineIx_offset_monotonic _)))
         simp only [advance_cursor]
         exact Nat.le_trans (collectDirectiveNameLoopIx_offset_monotonic _ _ _)
           (skipWhitespace_offset_monotonic _)
-      · -- reserved directive
+      · simp at h
+    · split at h
+      · -- TAG directive arm: sub-scan then skipToEndOfLineIx wrapper
+        split at h
+        · rename_i s_sub h_sub
+          have hChain := scanTagDirectiveIx_offset_monotonic h_sub
+          simp only [Except.ok.injEq] at h
+          subst h
+          show s.cursor.pos.offset < (skipToEndOfLineIx s_sub.cursor).pos.offset
+          refine Nat.lt_of_lt_of_le h_adv
+            (Nat.le_trans ?_ (Nat.le_trans hChain (skipToEndOfLineIx_offset_monotonic _)))
+          simp only [advance_cursor]
+          exact Nat.le_trans (collectDirectiveNameLoopIx_offset_monotonic _ _ _)
+            (skipWhitespace_offset_monotonic _)
+        · simp at h
+      · -- reserved directive: skipToEndOfLineIx + directivesPresent flag
         simp only [Except.ok.injEq] at h
         subst h
         show s.cursor.pos.offset < _
         simp only [advance_cursor]
         refine Nat.lt_of_lt_of_le h_adv ?_
+        refine Nat.le_trans ?_ (skipToEndOfLineIx_offset_monotonic _)
         exact Nat.le_trans (collectDirectiveNameLoopIx_offset_monotonic _ _ _)
           (skipWhitespace_offset_monotonic _)
 
@@ -908,6 +923,13 @@ lemma scanNextTokenIx_progress {input : String}
           -- Reduce to: sp.cursor.pos.offset < s'.cursor.pos.offset.
           suffices hChain : sp.cursor.pos.offset < s'.cursor.pos.offset by
             exact Nat.lt_of_le_of_lt hPpO hChain
+          -- Pending-directives check (Fix B): peel it, keeping h's tail intact.
+          have hNPD : ∃ u, scanNextTokenIx_checkNoPendingDirectives sp = .ok u := by
+            cases hx : scanNextTokenIx_checkNoPendingDirectives sp with
+            | error e => rw [hx] at h; cases h
+            | ok u => exact ⟨u, rfl⟩
+          obtain ⟨u, hNPD⟩ := hNPD
+          rw [hNPD] at h
           by_cases hAD : sp.allowDirectives = true
           · -- Positive case: `{ sp with allowDirectives := false,
             -- documentEverStarted := true }` has cursor = sp.cursor (defeq), so
