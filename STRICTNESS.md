@@ -123,7 +123,7 @@ Where the work landed:
   `Tests/ProductionCoverage.lean`.
 
 The only open successor item is grammar completeness — the `parse_iff_grammar`
-converse (Group 7.7; see VERSION-0.4.8.md).
+converse (Group 7.7; see GRAMMAR_COMPLETENESS_PLAN.md).
 
 ## Coupling Proof Modules
 

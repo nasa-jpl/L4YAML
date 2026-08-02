@@ -94,7 +94,8 @@ environment.) Consequences:
   merge.
 - A `sorry` in a **helper lemma** (not a capstone) is not allowed.
   If the helper proof is hard, the capstone's plan doc (the open
-  ones today: [`VERSION-0.4.8.md`](../VERSION-0.4.8.md),
+  ones today:
+  [`GRAMMAR_COMPLETENESS_PLAN.md`](../GRAMMAR_COMPLETENESS_PLAN.md),
   [`YAML_MERGE.md`](../YAML_MERGE.md)) should list the helper as a
   dependency, and the helper should be promoted to capstone-track
   status before being `sorry`'d.
@@ -153,7 +154,8 @@ vs. ~100 actual). Others probably exist.
 ## Rule 5 — When a plan conflicts with the blueprint, the blueprint wins
 
 The repository keeps tactical plan and rationale docs at the root
-(today: `VERSION-0.4.8.md`, `YAML_MERGE.md`, `SPEC-GAP-ANALYSIS.md`;
+(today: `GRAMMAR_COMPLETENESS_PLAN.md`, `YAML_MERGE.md`,
+`SPEC-GAP-ANALYSIS.md`;
 see [`DOCS.md`](../DOCS.md) for the index). These are *tactical* —
 tied to concrete files. Closed campaign logs are **deleted** once
 their surviving content is folded into this Blueprint (history stays

@@ -80,7 +80,7 @@ markdown is the medium.
 
 ## Relationship to existing plan docs
 
-[`../VERSION-0.4.8.md`](../VERSION-0.4.8.md),
+[`../GRAMMAR_COMPLETENESS_PLAN.md`](../GRAMMAR_COMPLETENESS_PLAN.md),
 [`../YAML_MERGE.md`](../YAML_MERGE.md),
 and similar plan documents at the repository root are **tactical**
 plans tied to specific proof files. The blueprint is **strategic**:

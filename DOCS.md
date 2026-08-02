@@ -20,8 +20,9 @@ reference · **[PLAN]** open plan.
 
 - [NS-CHAR-PREDICATE-GAP.md](NS-CHAR-PREDICATE-GAP.md) [LIVE] — the one open spec-fidelity gap
   (`ns-char` printable/BOM under-approximation) + fix plan
-- [VERSION-0.4.8.md](VERSION-0.4.8.md) [PLAN] — grammar completeness (`parse_iff_grammar`,
-  capstone row 7.7) roadmap; unblocked since the 0.4.7 closure
+- [GRAMMAR_COMPLETENESS_PLAN.md](GRAMMAR_COMPLETENESS_PLAN.md) [PLAN] — grammar completeness
+  (`parse_iff_grammar`, capstone row 7.7) roadmap; unblocked since the 0.4.7
+  closure (formerly `VERSION-0.4.8.md`; renamed 2026-08-01)
 - [YAML_MERGE.md](YAML_MERGE.md) [PLAN] — algebraic merge-key design; input to
   `DuplicateKeyPolicy.merge`
 

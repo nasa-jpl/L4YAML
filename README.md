@@ -111,7 +111,7 @@ theorem parse_iff_grammar (input : String) :
 
 The forward direction (every accepted input lies in `InYamlLanguage`) is already
 proven; the converse is future work, tracked in
-[VERSION-0.4.8.md](VERSION-0.4.8.md). It carries no placeholder `sorry` in the
+[GRAMMAR_COMPLETENESS_PLAN.md](GRAMMAR_COMPLETENESS_PLAN.md). It carries no placeholder `sorry` in the
 source — it is simply not yet attempted.
 
 Compile-time `#guard` tests in [Tests/](Tests/) — including auto-generated

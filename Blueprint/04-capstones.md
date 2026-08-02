@@ -91,8 +91,9 @@ work-remaining frontier:
 1. **Grammar completeness** (Group 7.7, `parse_iff_grammar` converse)
    — **not yet declared**; blocked on removing two over-approximation
    grammar constructors
-   ([`VERSION-0.4.8.md`](../VERSION-0.4.8.md)). *We accept **exactly**
-   the YAML language, not merely a subset of well-formed inputs.*
+   ([`GRAMMAR_COMPLETENESS_PLAN.md`](../GRAMMAR_COMPLETENESS_PLAN.md)).
+   *We accept **exactly** the YAML language, not merely a subset of
+   well-formed inputs.*
 
 **Universal round-trip** (Group 6.1, `universal_roundtrip`) closed on
 2026-07-04 via Track B above — *emit-then-parse recovers content* is
@@ -591,7 +592,8 @@ specific derivation tree in the YAML 1.2.2 grammar."
   the gold-standard parser-correctness statement. Requires first
   removing the two over-approximation constructors (`directiveDrop`,
   `scannerDrop`) that currently make `InYamlLanguage` strictly weaker
-  than "parseable" ([`VERSION-0.4.8.md`](../VERSION-0.4.8.md)). *Risk
+  than "parseable"
+  ([`GRAMMAR_COMPLETENESS_PLAN.md`](../GRAMMAR_COMPLETENESS_PLAN.md)). *Risk
   if absent:* we have proved we do not *over*-accept (7.1) but not that
   we accept the *whole* language — a future scanner/parser refactor
   could silently narrow the set of accepted YAML and no proof would
