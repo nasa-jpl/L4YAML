@@ -39,12 +39,12 @@ orphaned directive resolution) are still open as proof obligations — they
 just haven't been written down as `sorry`-bearing skeletons yet. (The BOM
 col≠0 edge case, formerly listed here, has since been closed:
 `bom_noWhitespace_ssbcomment` at
-[L4YAML/Proofs/Production/PreprocessProduction.lean:258](L4YAML/Proofs/Production/PreprocessProduction.lean)
+[L4YAML/Proofs/Production/PreprocessProduction.lean:262](L4YAML/Proofs/Production/PreprocessProduction.lean)
 builds `SSBComment.withSep` from the column-independent
 `SSeparateInLine.startOfLine`.)
 
 **Estimated effort:** ~150–600 LoC depending on Step 0 audit; the bulk lands
-in [Production/StreamAccum.lean](L4YAML/Proofs/Production/StreamAccum.lean) (currently 3,316 lines).
+in [Production/StreamAccum.lean](L4YAML/Proofs/Production/StreamAccum.lean) (currently 3,322 lines).
 
 ## Original framing (retained for context)
 
@@ -124,7 +124,7 @@ Rather than creating a parallel `StrictInYamlLanguage` definition, we **remove `
 - Every existing theorem using `InYamlLanguage` is automatically strengthened
 - `scan_strict_proof` is *harder* to prove (no escape hatches), but the theorem itself is *stronger*
 
-The work is concentrated in `Proofs/Production/StreamAccum.lean` (3,316 lines), which is the only file that constructs `SLYamlStream` values using the over-approximation constructors.
+The work is concentrated in `Proofs/Production/StreamAccum.lean` (3,322 lines), which is the only file that constructs `SLYamlStream` values using the over-approximation constructors.
 
 ### Impact Analysis
 
@@ -142,7 +142,7 @@ The work is concentrated in `Proofs/Production/StreamAccum.lean` (3,316 lines), 
 
 ## Precise Dependency Map
 
-### Usage site 1: `PendingNode.close_with_ssl` (line 477)
+### Usage site 1: `PendingNode.close_with_ssl` (line 481)
 
 The `pendingFlow` arm uses `scannerDrop`:
 
@@ -160,7 +160,7 @@ The `pendingFlow` arm uses `scannerDrop`:
 
 Option (b) is the most consistent with the existing architecture. This is listed as **Sorry Root Cause 1** in `StreamAccum.lean §6`.
 
-### Usage site 2: `PendingNode.close_with_ssl` (line 501)
+### Usage site 2: `PendingNode.close_with_ssl` (line 505)
 
 The `pendingDirective` arm uses `directiveDrop`:
 
@@ -174,7 +174,7 @@ The `pendingDirective` arm uses `directiveDrop`:
 
 **Fix required**: Show that the scanner DOES form a document from orphaned directives — or show that this code path is unreachable (the scanner always errors or always emits `---` after directives). This requires auditing the scanner's directive handling to determine which case applies.
 
-### Usage sites 3–8: `accum_structural_pending` / `accum_step_structural` / `accum_step_block` (lines 1134–2810)
+### Usage sites 3–8: `accum_structural_pending` / `accum_step_structural` / `accum_step_block` (lines 1138–2814)
 
 All `pendingDirective` transition cases use `directiveDrop`:
 
@@ -186,7 +186,7 @@ All `pendingDirective` transition cases use `directiveDrop`:
         h_stream_old (h_dir_acc_old sp_mid h_ssl)
 ```
 
-This pattern occurs **6 times** across 3 lemmas (`accum_structural_pending` lines 1134/1158, `accum_step_structural` lines 1330/1342, `accum_step_block` lines 2790/2810), always in the `pendingDirective` case (both col=0 and col≠0 sub-cases). (Earlier drafts counted 10 sites across 4 `accum_step_*` theorems; the count above was re-verified 2026-07-31 against the current file.)
+This pattern occurs **6 times** across 3 lemmas (`accum_structural_pending` lines 1138/1162, `accum_step_structural` lines 1334/1346, `accum_step_block` lines 2794/2814), always in the `pendingDirective` case (both col=0 and col≠0 sub-cases). (Earlier drafts counted 10 sites across 4 `accum_step_*` theorems; the count above was re-verified 2026-08-01 against the current file.)
 
 **Root cause**: Same as usage site 2 — closing pending directives without `---`.
 
@@ -356,7 +356,7 @@ The v0.4.6 proof suite constructs grammar derivation trees from successful parse
 
 | Module | Role | LOC (2026-07-31) |
 |--------|------|-----|
-| `Proofs/Production/StreamAccum.lean` | Threads `SLYamlStream` through the scan loop (26 sub-layers) | 3,316 |
+| `Proofs/Production/StreamAccum.lean` | Threads `SLYamlStream` through the scan loop (26 sub-layers) | 3,322 |
 | `Proofs/Production/DocumentProduction.lean` | Composes stream/document-level productions | 257 |
 | `Proofs/Scanner/ScanStrictCoupling.lean` | Bridges scanner state to surface positions | 497 |
 | `Proofs/Coupling/ScalarCoupling.lean` | Scalar `_prod` theorems (double/single/plain/block) | 765 |
@@ -391,7 +391,7 @@ clean; see the correction in the Status section above):
 
 (A third root cause, **BOM col≠0**, appeared in earlier drafts; it was closed
 by `bom_noWhitespace_ssbcomment` at
-[L4YAML/Proofs/Production/PreprocessProduction.lean:258](L4YAML/Proofs/Production/PreprocessProduction.lean),
+[L4YAML/Proofs/Production/PreprocessProduction.lean:262](L4YAML/Proofs/Production/PreprocessProduction.lean),
 via the column-independent `SSeparateInLine.startOfLine`.)
 
 ---
