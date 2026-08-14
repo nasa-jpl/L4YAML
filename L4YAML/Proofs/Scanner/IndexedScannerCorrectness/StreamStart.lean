@@ -970,10 +970,14 @@ lemma scanIx_first_is_streamStart {input : String}
   have h_s0_tok :
       (((ScannerStateIx.mk' input).emit YamlToken.streamStart).tokens[0]'h_s0_pos).token =
       YamlToken.streamStart := by
+    -- 4.33: the validity proof must be RESTATED at the pushed array (`by simp`),
+    -- not carried over as `h_s0_pos` (typed at the `emit` form) — a goal whose
+    -- getElem proof mentions the unreduced form is ill-typed at reducible
+    -- transparency and `rw [Array.getElem_push]` refuses to match.
     show (((ScannerStateIx.mk' input).tokens.tokens.push
       (IxToken.mk' (ScannerStateIx.mk' input).cursor.pos YamlToken.streamStart
         (ScannerStateIx.mk' input).cursor.pos (Nat.le_refl _)
-        (ScannerStateIx.mk' input).cursor.posBound))[0]'h_s0_pos).token =
+        (ScannerStateIx.mk' input).cursor.posBound))[0]'(by simp)).token =
         YamlToken.streamStart
     rw [Array.getElem_push]
     simp [h_mk_sz]

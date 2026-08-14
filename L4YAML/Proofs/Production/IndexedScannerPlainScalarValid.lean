@@ -3300,7 +3300,7 @@ lemma scanYamlDirectiveIx_preserves_PlainScalarsValidIx {input : String}
     (h_old : PlainScalarsValidIx s.tokens) :
     PlainScalarsValidIx s'.tokens := by
   unfold scanYamlDirectiveIx at h_ok
-  simp only [bind, Except.bind, pure, Except.pure, throw, throwThe,
+  simp only [bind, Except.bind, throw, throwThe,
     MonadExceptOf.throw] at h_ok
   repeat' split at h_ok
   all_goals first
@@ -3315,7 +3315,7 @@ lemma scanYamlDirectiveIx_preserves_FlowContextPSVIx {input : String}
     (h_old : FlowContextPSVIx s.tokens) :
     FlowContextPSVIx s'.tokens := by
   unfold scanYamlDirectiveIx at h_ok
-  simp only [bind, Except.bind, pure, Except.pure, throw, throwThe,
+  simp only [bind, Except.bind, throw, throwThe,
     MonadExceptOf.throw] at h_ok
   repeat' split at h_ok
   all_goals first
@@ -3330,7 +3330,7 @@ lemma scanYamlDirectiveIx_preserves_FlowNestingInvIx {input : String}
     (h_fni : FlowNestingInvIx s) :
     FlowNestingInvIx s' := by
   unfold scanYamlDirectiveIx at h_ok
-  simp only [bind, Except.bind, pure, Except.pure, throw, throwThe,
+  simp only [bind, Except.bind, throw, throwThe,
     MonadExceptOf.throw] at h_ok
   repeat' split at h_ok
   all_goals first
@@ -3354,7 +3354,7 @@ lemma scanTagDirectiveIx_preserves_PlainScalarsValidIx {input : String}
     (h_old : PlainScalarsValidIx s.tokens) :
     PlainScalarsValidIx s'.tokens := by
   unfold scanTagDirectiveIx at h_ok
-  simp only [bind, Except.bind, pure, Except.pure, throw, throwThe,
+  simp only [bind, Except.bind, throw, throwThe,
     MonadExceptOf.throw] at h_ok
   repeat' split at h_ok
   all_goals first
@@ -3369,7 +3369,7 @@ lemma scanTagDirectiveIx_preserves_FlowContextPSVIx {input : String}
     (h_old : FlowContextPSVIx s.tokens) :
     FlowContextPSVIx s'.tokens := by
   unfold scanTagDirectiveIx at h_ok
-  simp only [bind, Except.bind, pure, Except.pure, throw, throwThe,
+  simp only [bind, Except.bind, throw, throwThe,
     MonadExceptOf.throw] at h_ok
   repeat' split at h_ok
   all_goals first
@@ -3384,7 +3384,7 @@ lemma scanTagDirectiveIx_preserves_FlowNestingInvIx {input : String}
     (h_fni : FlowNestingInvIx s) :
     FlowNestingInvIx s' := by
   unfold scanTagDirectiveIx at h_ok
-  simp only [bind, Except.bind, pure, Except.pure, throw, throwThe,
+  simp only [bind, Except.bind, throw, throwThe,
     MonadExceptOf.throw] at h_ok
   repeat' split at h_ok
   all_goals first
@@ -4550,7 +4550,7 @@ lemma scanYamlDirectiveIx_preserves_simpleKey {input : String}
     (h : scanYamlDirectiveIx s cAfterWS startPos hStart = .ok s') :
     s'.simpleKey = s.simpleKey := by
   unfold scanYamlDirectiveIx at h
-  simp only [bind, Except.bind, pure, Except.pure, throw, throwThe,
+  simp only [bind, Except.bind, throw, throwThe,
     MonadExceptOf.throw] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
@@ -4563,7 +4563,7 @@ lemma scanYamlDirectiveIx_preserves_simpleKeyStack {input : String}
     (h : scanYamlDirectiveIx s cAfterWS startPos hStart = .ok s') :
     s'.simpleKeyStack = s.simpleKeyStack := by
   unfold scanYamlDirectiveIx at h
-  simp only [bind, Except.bind, pure, Except.pure, throw, throwThe,
+  simp only [bind, Except.bind, throw, throwThe,
     MonadExceptOf.throw] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
@@ -4576,7 +4576,7 @@ lemma scanTagDirectiveIx_preserves_simpleKey {input : String}
     (h : scanTagDirectiveIx s cAfterWS startPos hStart = .ok s') :
     s'.simpleKey = s.simpleKey := by
   unfold scanTagDirectiveIx at h
-  simp only [bind, Except.bind, pure, Except.pure, throw, throwThe,
+  simp only [bind, Except.bind, throw, throwThe,
     MonadExceptOf.throw] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
@@ -4589,7 +4589,7 @@ lemma scanTagDirectiveIx_preserves_simpleKeyStack {input : String}
     (h : scanTagDirectiveIx s cAfterWS startPos hStart = .ok s') :
     s'.simpleKeyStack = s.simpleKeyStack := by
   unfold scanTagDirectiveIx at h
-  simp only [bind, Except.bind, pure, Except.pure, throw, throwThe,
+  simp only [bind, Except.bind, throw, throwThe,
     MonadExceptOf.throw] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
@@ -5068,7 +5068,7 @@ lemma scanYamlDirectiveIx_preserves_prefix {input : String}
     simp [Bind.bind, Except.bind] at h_ok
   · rw [if_neg hd] at h_ok
     simp only [] at h_ok
-    simp only [Bind.bind, Except.bind, pure, Except.pure, throw, throwThe,
+    simp only [Bind.bind, Except.bind, throw, throwThe,
       MonadExceptOf.throw] at h_ok
     repeat' split at h_ok
     all_goals first
@@ -5086,7 +5086,7 @@ lemma scanTagDirectiveIx_preserves_prefix {input : String}
     s'.tokens[i]'(by have := scanTagDirectiveIx_tokens_size_le h_ok; omega) =
     s.tokens[i]'h_bound := by
   unfold scanTagDirectiveIx at h_ok
-  simp only [Bind.bind, Except.bind, pure, Except.pure, throw, throwThe,
+  simp only [Bind.bind, Except.bind, throw, throwThe,
     MonadExceptOf.throw] at h_ok
   repeat' split at h_ok
   all_goals first

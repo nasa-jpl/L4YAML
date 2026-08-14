@@ -1741,7 +1741,7 @@ lemma parseSinglePairMapping_wb_ix (tokens : Indexed.TokenStream input)
       advance_preserves_flowNestingIx tokens ps h_peek h_eq
         (by exact fun h => nomatch h) (by exact fun h => nomatch h)
         (by exact fun h => nomatch h) (by exact fun h => nomatch h)
-    simp only [emptyNode] at h_ok
+    -- 4.33: `emptyNode` stays folded — see the legacy twin.
     split at h_ok
     -- Cases 1-3: key = emptyNode
     all_goals (try (
@@ -3383,7 +3383,7 @@ lemma parseSinglePairMapping_pos_mono_ix (fuel : Nat)
   · rename_i k
     have h_ih_k : ParseNodePosMonoIx (input := input) k := fun ps' m v ps'' h_le h_pn =>
       h_ih ps' m v ps'' (by omega) h_pn
-    simp only [emptyNode] at h_ok
+    -- 4.33: `emptyNode` stays folded — see the legacy twin.
     split at h_ok <;> first | contradiction | skip
     all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
     all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)

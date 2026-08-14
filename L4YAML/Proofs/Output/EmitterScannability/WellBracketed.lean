@@ -228,7 +228,7 @@ lemma SafeBody_array_flowEntry {Q : YamlToken → Prop}
   -- body[k - lo].val = arr[k].val
   have h_drop_get : ((arr.toList.drop lo)[k - lo]'hj_lt).val = (arr[k]'hk).val := by
     rw [List.getElem_drop]
-    rw [Array.getElem_toList (by omega)]
+    rw [Array.getElem_toList (by simp only [Array.length_toList]; omega)]
     congr 2
     omega
   have h_fe' : ((arr.toList.drop lo)[k - lo]'hj_lt).val = .flowEntry := by
@@ -242,7 +242,7 @@ lemma SafeBody_array_flowEntry {Q : YamlToken → Prop}
   refine ⟨hk1, ?_⟩
   have h_get : ((arr.toList.drop lo)[(k - lo) + 1]'hj1).val = (arr[k+1]'hk1).val := by
     rw [List.getElem_drop]
-    rw [Array.getElem_toList (by omega)]
+    rw [Array.getElem_toList (by simp only [Array.length_toList]; omega)]
     congr 2
     omega
   rw [← h_get]; exact hQ
@@ -590,9 +590,9 @@ lemma OpenerAdj_array (arr : Array (Positioned YamlToken)) (lo : Nat)
   have hj0 : k - lo < (arr.toList.drop lo).length := by omega
   -- the slice element at the local offset equals the array element at the global index
   have h_get_k : ((arr.toList.drop lo)[k - lo]'hj0).val = arr[k]!.val := by
-    rw [getElem!_pos arr k hk0, List.getElem_drop, Array.getElem_toList (by omega)]; congr 2; omega
+    rw [getElem!_pos arr k hk0, List.getElem_drop, Array.getElem_toList (by simp only [Array.length_toList]; omega)]; congr 2; omega
   have h_get_k1 : ((arr.toList.drop lo)[(k - lo) + 1]'hj1).val = arr[k+1]!.val := by
-    rw [getElem!_pos arr (k+1) hk1, List.getElem_drop, Array.getElem_toList (by omega)]
+    rw [getElem!_pos arr (k+1) hk1, List.getElem_drop, Array.getElem_toList (by simp only [Array.length_toList]; omega)]
     congr 2; omega
   have hopen' : ((arr.toList.drop lo)[k - lo]'hj0).val = .flowSequenceStart := by
     rw [h_get_k]; exact hopen
@@ -703,9 +703,9 @@ lemma SepAdj_array (arr : Array (Positioned YamlToken)) (lo : Nat)
   have hj0 : k - lo < (arr.toList.drop lo).length := by omega
   -- the slice element at the local offset equals the array element at the global index
   have h_get_k : ((arr.toList.drop lo)[k - lo]'hj0).val = arr[k]!.val := by
-    rw [getElem!_pos arr k hk0, List.getElem_drop, Array.getElem_toList (by omega)]; congr 2; omega
+    rw [getElem!_pos arr k hk0, List.getElem_drop, Array.getElem_toList (by simp only [Array.length_toList]; omega)]; congr 2; omega
   have h_get_k1 : ((arr.toList.drop lo)[(k - lo) + 1]'hj1).val = arr[k+1]!.val := by
-    rw [getElem!_pos arr (k+1) hk1, List.getElem_drop, Array.getElem_toList (by omega)]
+    rw [getElem!_pos arr (k+1) hk1, List.getElem_drop, Array.getElem_toList (by simp only [Array.length_toList]; omega)]
     congr 2; omega
   have hsep' : ((arr.toList.drop lo)[k - lo]'hj0).val = .flowEntry := by
     rw [h_get_k]; exact hsep
@@ -1298,7 +1298,7 @@ lemma SafeBodyUnit_array_succ {Q : YamlToken → Prop}
   have hj_lt : k - lo < (arr.toList.drop lo).length := by rw [h_len]; omega
   have h_drop_get : ((arr.toList.drop lo)[k - lo]'hj_lt).val = (arr[k]'hk).val := by
     rw [List.getElem_drop]
-    rw [Array.getElem_toList (by omega)]
+    rw [Array.getElem_toList (by simp only [Array.length_toList]; omega)]
     congr 2
     omega
   have h_nfe' : ((arr.toList.drop lo)[k - lo]'hj_lt).val ≠ .flowEntry := by
@@ -1316,7 +1316,7 @@ lemma SafeBodyUnit_array_succ {Q : YamlToken → Prop}
     refine ⟨hk1, ?_⟩
     have h_get : ((arr.toList.drop lo)[(k - lo) + 1]'hj1).val = (arr[k+1]'hk1).val := by
       rw [List.getElem_drop]
-      rw [Array.getElem_toList (by omega)]
+      rw [Array.getElem_toList (by simp only [Array.length_toList]; omega)]
       congr 2
       omega
     rw [← h_get]; exact hfe1

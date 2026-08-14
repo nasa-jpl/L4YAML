@@ -701,7 +701,7 @@ lemma preprocess_some_directivesPresent {sc s_prep : ScannerState} {c : Char}
 lemma scanYamlDirective_directivesPresent {s s_ws s' : ScannerState} {sp : YamlPos}
     (h : scanYamlDirective s s_ws sp = .ok s') : s'.directivesPresent = true := by
   unfold scanYamlDirective at h
-  simp only [bind, Except.bind, pure, Except.pure, throw, throwThe,
+  simp only [bind, Except.bind, throw, throwThe,
     MonadExceptOf.throw] at h
   repeat' split at h
   all_goals first
@@ -712,7 +712,7 @@ lemma scanYamlDirective_directivesPresent {s s_ws s' : ScannerState} {sp : YamlP
 lemma scanTagDirective_directivesPresent {s s_ws s' : ScannerState} {sp : YamlPos}
     (h : scanTagDirective s s_ws sp = .ok s') : s'.directivesPresent = true := by
   unfold scanTagDirective at h
-  simp only [bind, Except.bind, pure, Except.pure, throw, throwThe,
+  simp only [bind, Except.bind, throw, throwThe,
     MonadExceptOf.throw] at h
   repeat' split at h
   all_goals first
@@ -765,7 +765,7 @@ lemma scanDocumentEnd_ok_directivesPresent {s s' : ScannerState}
 lemma scanDocumentEnd_result_dp {s s' : ScannerState}
     (h : scanDocumentEnd s = .ok s') : s'.directivesPresent = false := by
   unfold scanDocumentEnd at h
-  simp only [bind, Except.bind, pure, Except.pure, throw, throwThe,
+  simp only [bind, Except.bind, throw, throwThe,
     MonadExceptOf.throw] at h
   repeat' split at h
   all_goals first

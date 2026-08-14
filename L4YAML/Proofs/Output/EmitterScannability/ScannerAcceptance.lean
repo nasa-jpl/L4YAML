@@ -291,7 +291,7 @@ lemma scanLoop_two_iter {s₀ s₁ : ScannerState} {fuel : Nat}
     simp only [scanLoop, h_snt0]
   -- Second iteration: scanNextToken s₁ = .ok none → checks → ok
   have h2 : ∃ toks, scanLoop s₁ (f + 1) = .ok toks := by
-    simp only [scanLoop, h_snt1, h_flow, h_dp, Bool.false_and]
+    simp only [scanLoop, h_snt1, h_flow, h_dp]
     exact ⟨_, rfl⟩
   rw [h1]; exact h2
 
@@ -304,7 +304,7 @@ lemma scanLoop_two_iter_eq {s₀ s₁ : ScannerState} {fuel : Nat}
     (h_dp : s₁.directivesPresent = false) :
     scanLoop s₀ fuel = .ok ((unwindIndents s₁ (-1)).emit .streamEnd).tokens := by
   obtain ⟨f, rfl⟩ : ∃ n, fuel = n + 2 := ⟨fuel - 2, by omega⟩
-  simp only [scanLoop, h_snt0, h_snt1, h_flow, h_dp, Bool.false_and]
+  simp only [scanLoop, h_snt0, h_snt1, h_flow, h_dp]
   simp (config := { decide := true }) only [ite_false]
 
 -- ═══ scanLoop compositionality ═══

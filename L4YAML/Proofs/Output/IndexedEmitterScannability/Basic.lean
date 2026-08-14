@@ -116,7 +116,10 @@ lemma escapeChar_passthrough_is_valid (c : Char)
     exact h_ne h_not_escaped
   · rename_i h_ge; simp only [Nat.not_lt] at h_ge
     refine ⟨?_, ?_, ?_⟩
-    · simp only [isNbJsonBool, isNbJsonProp, decide_eq_true_eq]
+    · -- 4.33: `decide_eq_true_eq` first, `isNbJsonProp` after — see the legacy
+      -- twin (EmitterScannability/EscapeProperties.lean) for the mechanism.
+      simp only [isNbJsonBool, decide_eq_true_eq]
+      simp only [isNbJsonProp]
       right; constructor
       · show c.val.toNat ≥ 0x20; omega
       · show c.val.toNat ≤ 0x10FFFF

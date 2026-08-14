@@ -414,14 +414,19 @@ lemma scanTagIx_offset_lt {s s' : ScannerStateIx input}
     simp only [Except.ok.injEq] at h
     subst h
     show s.cursor.pos.offset < _
-    simp only [emitAt_cursor, advance_cursor]
-    refine Nat.lt_of_lt_of_le h_adv ?_
-    refine Nat.le_trans
-      (collectTagHandleLoopIx_offset_monotonic s.cursor.advance ""
-        (input.utf8ByteSize - s.cursor.advance.pos.offset)) ?_
+    -- 4.33: `split` BEFORE the `emitAt_cursor`/`advance_cursor` rewrites — see
+    -- scanTagIx_offset_monotonic in IndexedDispatch.lean for the mechanism.
     split
-    · exact collectTagSuffixLoopIx_offset_monotonic _ _ _
-    · exact Nat.le_refl _
+    · simp only [emitAt_cursor, advance_cursor]
+      refine Nat.lt_of_lt_of_le h_adv ?_
+      refine Nat.le_trans
+        (collectTagHandleLoopIx_offset_monotonic s.cursor.advance ""
+          (input.utf8ByteSize - s.cursor.advance.pos.offset)) ?_
+      exact collectTagSuffixLoopIx_offset_monotonic _ _ _
+    · simp only [emitAt_cursor, advance_cursor]
+      refine Nat.lt_of_lt_of_le h_adv ?_
+      exact collectTagHandleLoopIx_offset_monotonic s.cursor.advance ""
+        (input.utf8ByteSize - s.cursor.advance.pos.offset)
 
 /-! ### Block-scalar strict progress (cursor-level)
 

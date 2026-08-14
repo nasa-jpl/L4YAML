@@ -702,7 +702,7 @@ lemma scanYamlDirectiveIx_new_token_start {input : String}
   · rw [if_pos hd] at h_ok; simp [Bind.bind, Except.bind] at h_ok
   · rw [if_neg hd] at h_ok
     simp only [] at h_ok
-    simp only [Bind.bind, Except.bind, pure, Except.pure, throw, throwThe,
+    simp only [Bind.bind, Except.bind, throw, throwThe,
       MonadExceptOf.throw] at h_ok
     repeat' split at h_ok
     all_goals first
@@ -721,7 +721,7 @@ lemma scanTagDirectiveIx_new_token_start {input : String}
     (hj : s.tokens.size < s'.tokens.size) :
     (s'.tokens[s.tokens.size]'hj).start = startPos := by
   unfold scanTagDirectiveIx at h_ok
-  simp only [Bind.bind, Except.bind, pure, Except.pure, throw, throwThe,
+  simp only [Bind.bind, Except.bind, throw, throwThe,
     MonadExceptOf.throw] at h_ok
   repeat' split at h_ok
   all_goals first
@@ -797,7 +797,7 @@ lemma scanYamlDirectiveIx_tokens_size_le_succ {input : String}
   · rw [if_pos hd] at h; simp [Bind.bind, Except.bind] at h
   · rw [if_neg hd] at h
     simp only [] at h
-    simp only [Bind.bind, Except.bind, pure, Except.pure, throw, throwThe,
+    simp only [Bind.bind, Except.bind, throw, throwThe,
       MonadExceptOf.throw] at h
     repeat' split at h
     all_goals first
@@ -811,7 +811,7 @@ lemma scanTagDirectiveIx_tokens_size_le_succ {input : String}
     (h : scanTagDirectiveIx s cAfterWS startPos hStart = .ok s') :
     s'.tokens.size ≤ s.tokens.size + 1 := by
   unfold scanTagDirectiveIx at h
-  simp only [Bind.bind, Except.bind, pure, Except.pure, throw, throwThe,
+  simp only [Bind.bind, Except.bind, throw, throwThe,
     MonadExceptOf.throw] at h
   repeat' split at h
   all_goals first

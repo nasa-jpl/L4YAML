@@ -1876,7 +1876,11 @@ lemma scanFlowSequenceStart_preserves_ek (s : ScannerState) :
 
 lemma scanFlowSequenceStart_line_eq (s : ScannerState) :
     (scanFlowSequenceStart s).line = s.advance.line := by
-  simp only [scanFlowSequenceStart, ScannerState.emit, ScannerState.advance]
+  -- 4.33: unfold `emit` in its own simp pass before `advance` (a combined pass
+  -- leaves `advance`'s ite instances mentioning un-unfolded `emit`, the goal is
+  -- then ill-typed at reducible transparency, and `split` refuses).
+  simp only [scanFlowSequenceStart, ScannerState.emit]
+  simp only [ScannerState.advance]
   split <;> (try split <;> (try split)) <;> rfl
 
 lemma scanFlowSequenceStart_flowLevel_eq (s : ScannerState) :
@@ -3160,7 +3164,9 @@ lemma scanFlowMappingStart_preserves_ek (s : ScannerState) :
 
 lemma scanFlowMappingStart_line_eq (s : ScannerState) :
     (scanFlowMappingStart s).line = s.advance.line := by
-  simp only [scanFlowMappingStart, ScannerState.emit, ScannerState.advance]
+  -- 4.33: sequential unfolding — see scanFlowSequenceStart_line_eq above.
+  simp only [scanFlowMappingStart, ScannerState.emit]
+  simp only [ScannerState.advance]
   split <;> (try split <;> (try split)) <;> rfl
 
 lemma scanFlowMappingStart_flowLevel_eq (s : ScannerState) :

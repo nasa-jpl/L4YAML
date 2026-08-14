@@ -2586,10 +2586,10 @@ lemma collectBlockScalarLoop_literal_prod
               -- the block scalar ends after this line's indent.
               have hcond : (isLineBreakBool c || !isPrintableBool c || c == '﻿') = true := by
                 cases hp : isPrintableBool c with
-                | false => simp [hp]
+                | false => simp
                 | true =>
                   cases hb : (c == '﻿') with
-                  | true => simp [hb]
+                  | true => simp
                   | false => exact absurd (by simp [hp, bne, hb]) hnb
               have hloop : collectLineContentLoop (consumeExactSpaces sc contentIndent).2 ""
                   (inputEnd - (consumeExactSpaces sc contentIndent).2.offset + 1)

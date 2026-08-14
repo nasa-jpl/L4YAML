@@ -337,10 +337,9 @@ lemma scanBlockScalar_psv_match (s s_bs : ScannerState)
       simp only [Except.ok.injEq] at h_bs
       generalize h_gen : (s_bs.tokens[s.tokens.size]'hj).val = tok
       subst h_bs
-      dsimp only [] at h_gen
-      unfold ScannerState.emitAt at h_gen
-      dsimp only [] at h_gen
-      simp only [Array.getElem_push] at h_gen
+      -- 4.33: unfold `emitAt` inside the same simp call (a prior `unfold at` leaves
+      -- h_gen ill-typed at reducible transparency, so `Array.getElem_push` refuses).
+      simp only [ScannerState.emitAt, Array.getElem_push] at h_gen
       rw [collectBlockScalarLoop_preserves_tokens, h_tok] at h_gen
       simp only [Nat.lt_irrefl] at h_gen
       split at h_gen
@@ -366,14 +365,12 @@ lemma scanDoubleQuoted_psv_match (s s_dq : ScannerState)
   split at h_dq
   · split at h_dq <;> try contradiction
     injection h_dq with h_eq; subst h_eq
-    unfold ScannerState.emitAt at h_gen; dsimp only [] at h_gen
-    simp only [Array.getElem_push] at h_gen
+    simp only [ScannerState.emitAt, Array.getElem_push] at h_gen
     rw [h_collect, h_adv] at h_gen
     simp only [Nat.lt_irrefl] at h_gen
     subst h_gen; trivial
   · injection h_dq with h_eq; subst h_eq
-    unfold ScannerState.emitAt at h_gen; dsimp only [] at h_gen
-    simp only [Array.getElem_push] at h_gen
+    simp only [ScannerState.emitAt, Array.getElem_push] at h_gen
     rw [h_collect, h_adv] at h_gen
     simp only [Nat.lt_irrefl] at h_gen
     subst h_gen; trivial
@@ -396,14 +393,12 @@ lemma scanSingleQuoted_psv_match (s s_sq : ScannerState)
   split at h_sq
   · split at h_sq <;> try contradiction
     injection h_sq with h_eq; subst h_eq
-    unfold ScannerState.emitAt at h_gen; dsimp only [] at h_gen
-    simp only [Array.getElem_push] at h_gen
+    simp only [ScannerState.emitAt, Array.getElem_push] at h_gen
     rw [h_collect, h_adv] at h_gen
     simp only [Nat.lt_irrefl] at h_gen
     subst h_gen; trivial
   · injection h_sq with h_eq; subst h_eq
-    unfold ScannerState.emitAt at h_gen; dsimp only [] at h_gen
-    simp only [Array.getElem_push] at h_gen
+    simp only [ScannerState.emitAt, Array.getElem_push] at h_gen
     rw [h_collect, h_adv] at h_gen
     simp only [Nat.lt_irrefl] at h_gen
     subst h_gen; trivial

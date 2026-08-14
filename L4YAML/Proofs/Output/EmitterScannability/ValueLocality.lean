@@ -476,6 +476,12 @@ lemma parseSinglePairMapping_inv (ps : ParseState) (g : Nat) (v : YamlValue) (q 
     rename_i x heq
     have hk : pairKeyStep ps.advance g = .ok (emptyNode, ps.advance) := by
       unfold pairKeyStep; rw [heq]
+    -- 4.33: first reduce the stray key-content matcher application UNIFORMLY with
+    -- `rw` — kabstract reaches the ite's Decidable instance, whereas simp/dsimp
+    -- skip instance args, diverge the hypothesis, and `split at h` then refuses.
+    -- With no instance-side occurrence left, the `emptyNode` unfold is safe again.
+    rw [show (handleBlockMappingKeyEntry.match_4 (fun _ => String) emptyNode
+        (fun s => s.content) (fun _ => "0")) = "" from rfl] at h
     simp only [emptyNode] at h
     split at h
     · rename_i hc

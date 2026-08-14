@@ -307,11 +307,10 @@ lemma AllTokensOnLineIx_emit (s : ScannerStateIx input)
     (h_atol : AllTokensOnLineIx s l) (h_line : s.cursor.pos.line = l) :
     AllTokensOnLineIx (s.emit tok) l := by
   intro i h_bound
-  -- `(s.emit tok).tokens.tokens` is `s.tokens.tokens.push (new token)`.
-  change ((s.tokens.tokens.push
-      (IxToken.mk' s.cursor.pos tok s.cursor.pos (Nat.le_refl _) s.cursor.posBound))[i]'
-    (by change i < (s.tokens.tokens.push _).size; exact h_bound)).start.line = l
-  rw [Array.getElem_push]
+  -- 4.33: unfold `emit` inside a simp call — the former `change` carried
+  -- `h_bound` (typed at the emit form) into the getElem slot, leaving the goal
+  -- ill-typed at reducible transparency, so `rw [Array.getElem_push]` refused.
+  simp only [ScannerStateIx.emit, TokenStream.push, Array.getElem_push]
   split
   · rename_i hlt; exact h_atol i hlt
   · -- the new token: start = s.cursor.pos, line = h_line.
@@ -332,10 +331,8 @@ lemma AllTokensOnLineIx_emitAt (s : ScannerStateIx input)
     (h_atol : AllTokensOnLineIx s l) (h_pos_line : startPos.line = l) :
     AllTokensOnLineIx (s.emitAt startPos tok hOrder) l := by
   intro i h_bound
-  change ((s.tokens.tokens.push
-      (IxToken.mk' startPos tok s.cursor.pos hOrder s.cursor.posBound))[i]'
-    (by change i < (s.tokens.tokens.push _).size; exact h_bound)).start.line = l
-  rw [Array.getElem_push]
+  -- 4.33: unfold `emitAt` inside a simp call — see AllTokensOnLineIx_emit.
+  simp only [ScannerStateIx.emitAt, TokenStream.push, Array.getElem_push]
   split
   · rename_i hlt; exact h_atol i hlt
   · exact h_pos_line

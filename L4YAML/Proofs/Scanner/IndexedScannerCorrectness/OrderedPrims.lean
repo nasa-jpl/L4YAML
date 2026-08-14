@@ -64,8 +64,10 @@ lemma emit_preserves_ScanInvIx {input : String} (s : ScannerStateIx input)
         if h : k < s.tokens.tokens.size then (s.tokens.tokens[k]'h).start.offset
                                          else s.cursor.pos.offset := by
     intro k hk
-    show ((s.tokens.tokens.push _)[k]'hk).start.offset = _
-    rw [push_start_offset_eq]
+    -- 4.33: unfold `emit` inside the simp call — a `show` carrying the emit-typed
+    -- validity proof `hk` over to the pushed array leaves the goal ill-typed at
+    -- reducible transparency, and the rewrite refuses to match.
+    simp only [ScannerStateIx.emit, TokenStream.push, push_start_offset_eq]
     split <;> rfl
   have h_sz : (s.emit tok).tokens.tokens.size = s.tokens.tokens.size + 1 := by
     show (s.tokens.tokens.push _).size = _; exact Array.size_push ..
@@ -119,8 +121,8 @@ lemma emitAt_preserves_ScanInvIx {input : String} (s : ScannerStateIx input)
         if h : k < s.tokens.tokens.size then (s.tokens.tokens[k]'h).start.offset
                                          else startPos.offset := by
     intro k hk
-    show ((s.tokens.tokens.push _)[k]'hk).start.offset = _
-    rw [push_start_offset_eq]
+    -- 4.33: unfold `emitAt` inside the simp call — see emit_preserves_ScanInvIx.
+    simp only [ScannerStateIx.emitAt, TokenStream.push, push_start_offset_eq]
     split <;> rfl
   refine ⟨?_, ?_⟩
   · intro ⟨i, hi⟩ ⟨j, hj⟩ hij
@@ -249,9 +251,10 @@ lemma overwriteAtCursor_start_at_idx {input : String} (s : ScannerStateIx input)
     (i : Nat) (sk : IxCursor input) (tok : YamlToken)
     (h_i : i < (s.overwriteAtCursor i sk tok).tokens.tokens.size) :
     ((s.overwriteAtCursor i sk tok).tokens.tokens[i]'h_i).start = sk.pos := by
-  show ((s.tokens.tokens.setIfInBounds i
-      (IxToken.mk' (input := input) sk.pos tok sk.pos (Nat.le_refl _) sk.posBound))[i]'h_i).start = sk.pos
-  rw [Array.getElem_setIfInBounds_self]
+  -- 4.33: unfold `overwriteAtCursor` inside the simp call — see
+  -- emit_preserves_ScanInvIx above for the mechanism.
+  simp only [ScannerStateIx.overwriteAtCursor, TokenStream.setIfInBounds,
+    Array.getElem_setIfInBounds_self]
   rfl
 
 lemma overwriteAtCursor_preserves_other_start {input : String}

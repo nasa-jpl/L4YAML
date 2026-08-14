@@ -34,13 +34,13 @@ package L4YAML where
 -- config, so toggling it takes `lake -R` / a server restart to re-read.
 meta if (unsafeBaseIO (IO.getEnv "L4YAML_LEANCOPILOT")).isSome then
 require LeanCopilot from git
-  "https://github.com/lean-dojo/LeanCopilot.git" @ "v4.32.0"
+  "https://github.com/lean-dojo/LeanCopilot.git" @ "v4.33.0"
 
 require importGraph from git
-  "https://github.com/leanprover-community/import-graph" @ "v4.32.0"
+  "https://github.com/leanprover-community/import-graph" @ "v4.33.0"
 
 require DocGen4 from git
-  "https://github.com/leanprover/doc-gen4.git" @ "v4.32.0"
+  "https://github.com/leanprover/doc-gen4.git" @ "v4.33.0"
 
 
 @[default_target]

@@ -127,7 +127,12 @@ lemma scanFlowSequenceStart_preserves_indents (s : ScannerState)
     (h : s.indents.size ≥ 1) :
     (scanFlowSequenceStart s).indents.size ≥ 1 := by
   unfold scanFlowSequenceStart
-  simp only [ScannerState.emit, ScannerState.advance]
+  -- 4.33: unfold `emit` in its own simp pass before `advance`, so the `advance`
+  -- equation instantiates at an explicit structure literal. In a combined pass the
+  -- ite's Decidable instance keeps the un-unfolded `s.emit …` (simp skips instance
+  -- args), and the goal becomes ill-typed at reducible transparency — `split` refuses.
+  simp only [ScannerState.emit]
+  simp only [ScannerState.advance]
   split
   · split
     · exact h
@@ -139,7 +144,9 @@ lemma scanFlowMappingStart_preserves_indents (s : ScannerState)
     (h : s.indents.size ≥ 1) :
     (scanFlowMappingStart s).indents.size ≥ 1 := by
   unfold scanFlowMappingStart
-  simp only [ScannerState.emit, ScannerState.advance]
+  -- 4.33: sequential unfolding for the same reason as scanFlowSequenceStart above.
+  simp only [ScannerState.emit]
+  simp only [ScannerState.advance]
   split
   · split
     · exact h

@@ -6476,8 +6476,11 @@ lemma emit_preserves_ScanInv (s : ScannerState) (tok : YamlToken)
       exact h_bnd ⟨i, h_lt⟩
     · subst h_eq
       show ((s.emit tok).tokens[s.tokens.size]'hi).pos.offset ≤ s.offset
-      unfold ScannerState.emit
-      simp only [Array.getElem_push, dif_neg (by omega : ¬ s.tokens.size < s.tokens.size)]
+      -- 4.33: unfold `emit` inside the same simp call (an `unfold` first leaves the
+      -- getElem validity proof typed at `(s.emit tok).tokens.size`, making the goal
+      -- ill-typed at reducible transparency, so `Array.getElem_push` refuses to fire).
+      simp only [ScannerState.emit, Array.getElem_push,
+        dif_neg (by omega : ¬ s.tokens.size < s.tokens.size)]
       simp [ScannerState.currentPos]
 
 -- advance preserves ScanInv: offset increases, tokens unchanged.
@@ -6547,8 +6550,8 @@ lemma emitAt_preserves_ScanInv (s : ScannerState) (pos : YamlPos) (tok : YamlTok
     intro ⟨i, hi⟩ ⟨j, hj⟩ hij
     show ((s.emitAt pos tok).tokens[i]'hi).pos.offset ≤
          ((s.emitAt pos tok).tokens[j]'hj).pos.offset
-    unfold ScannerState.emitAt
-    simp only [Array.getElem_push]
+    -- 4.33: unfold `emitAt` inside the same simp call — see emit_preserves_ScanInv.
+    simp only [ScannerState.emitAt, Array.getElem_push]
     split <;> rename_i hi_lt
     · -- i in original array
       split <;> rename_i hj_lt
@@ -6572,12 +6575,12 @@ lemma emitAt_preserves_ScanInv (s : ScannerState) (pos : YamlPos) (tok : YamlTok
       have := hi; simp [ScannerState.emitAt, Array.size_push] at this; omega
     rcases h_sz with h_lt | h_eq
     · -- Old token: use getElem_push with i < s.tokens.size
-      unfold ScannerState.emitAt
-      simp only [Array.getElem_push, show i < s.tokens.size from h_lt, dite_true]
+      simp only [ScannerState.emitAt, Array.getElem_push,
+        show i < s.tokens.size from h_lt, dite_true]
       exact h_bnd ⟨i, h_lt⟩
     · subst h_eq
-      unfold ScannerState.emitAt
-      simp only [Array.getElem_push, dif_neg (by omega : ¬ s.tokens.size < s.tokens.size)]
+      simp only [ScannerState.emitAt, Array.getElem_push,
+        dif_neg (by omega : ¬ s.tokens.size < s.tokens.size)]
       exact h_pos
 
 -- Simplified emitAt_preserves_ScanInv: when pos.offset = s.offset (common case).

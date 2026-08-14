@@ -119,10 +119,14 @@ lemma applyNodeFinalization_ag
     · split <;> exact hi
     · split <;> rfl
   | some name =>
-    simp only [applyNodeFinalization, ParseState.addAnchor]
+    -- 4.33: keep `addAnchor` out of the pre-split simp — rewriting it inside the
+    -- trackPositions ite's condition (but not its Decidable instance, which simp
+    -- skips) leaves the goal ill-typed at reducible transparency and `split` refuses.
+    simp only [applyNodeFinalization]
     refine ⟨⟨i, ?_⟩, ?_⟩
-    · split <;> (simp [Array.size_push]; omega)
-    · split <;> (simp [Array.getElem_push, show i < ps.anchors.size from hi])
+    · split <;> split <;> (simp [ParseState.addAnchor, Array.size_push]; omega)
+    · split <;> split <;>
+        (simp [ParseState.addAnchor, Array.getElem_push, show i < ps.anchors.size from hi])
 
 /-! ## ParseNodeAG induction hypothesis -/
 
@@ -481,7 +485,9 @@ lemma parseSinglePairMapping_ag (h_ih : ParseNodeAG n)
   · rename_i k
     -- Split on key match (emptyNode vs parseNode)
     split at h_ok <;> first | contradiction | skip
-    all_goals (try (simp only [emptyNode] at h_ok))
+    -- 4.33: `emptyNode` must stay folded through the splits — unfolding it
+    -- rewrites ite conditions but not their Decidable instances (simp skips
+    -- instance args), and later `split at h_ok` calls then refuse.
     all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
     all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
     all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
@@ -969,7 +975,9 @@ lemma applyNodeFinalization_aar
         (applyNodeFinalization val ps props nodeStartPos).2.anchors := by
   rcases props with ⟨anchor, tag, dup⟩
   unfold applyNodeFinalization
-  simp only [ParseState.addAnchor]
+  -- 4.33: do NOT pre-unfold `ParseState.addAnchor` — simp reaches the ite's
+  -- condition but not its Decidable instance, and the diverged goal makes the
+  -- `split`s below refuse. `exact` unifies through `addAnchor` definitionally.
   cases val with
   | scalar =>
     cases anchor with
@@ -1428,7 +1436,9 @@ lemma parseSinglePairMapping_aar (h_ih_aar : ParseNodeAAR n) (h_ih_ag : ParseNod
   · rename_i k
     -- Blind split pattern (matching AG proof)
     split at h_ok <;> first | contradiction | skip
-    all_goals (try (simp only [emptyNode] at h_ok))
+    -- 4.33: `emptyNode` must stay folded through the splits — unfolding it
+    -- rewrites ite conditions but not their Decidable instances (simp skips
+    -- instance args), and later `split at h_ok` calls then refuse.
     all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
     all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
     all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)

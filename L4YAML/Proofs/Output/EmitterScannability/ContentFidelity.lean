@@ -809,9 +809,10 @@ lemma parseDocument_flowSeqStart_produces_sequence (ps : ParseState)
     unfold prepareDocumentState
     rw [h_pd]
     simp only [Array.filterMap_empty]
-    rw [show (({ ps with tagHandles := #[] } : ParseState).peek? == some YamlToken.documentStart)
-          = false from by rw [h_peek_a]; decide]
-    simp only [Bool.false_eq_true, ↓reduceIte]
+    -- 4.33: rewrite via simp (congruence), not `rw` — kabstract's motive over the
+    -- ite tree is not type correct once the condition is abstracted.
+    simp only [show (({ ps with tagHandles := #[] } : ParseState).peek? == some YamlToken.documentStart)
+          = false from by rw [h_peek_a]; decide, Bool.false_eq_true, ↓reduceIte]
     unfold ParseState.tryConsume
     rw [h_peek_a]
     simp only [show (BEq.beq YamlToken.flowSequenceStart YamlToken.documentStart) = false from by decide, Bool.false_eq_true, ↓reduceIte]
@@ -847,9 +848,10 @@ lemma parseDocument_flowMapStart_produces_mapping (ps : ParseState)
     unfold prepareDocumentState
     rw [h_pd]
     simp only [Array.filterMap_empty]
-    rw [show (({ ps with tagHandles := #[] } : ParseState).peek? == some YamlToken.documentStart)
-          = false from by rw [h_peek_a]; decide]
-    simp only [Bool.false_eq_true, ↓reduceIte]
+    -- 4.33: rewrite via simp (congruence), not `rw` — kabstract's motive over the
+    -- ite tree is not type correct once the condition is abstracted.
+    simp only [show (({ ps with tagHandles := #[] } : ParseState).peek? == some YamlToken.documentStart)
+          = false from by rw [h_peek_a]; decide, Bool.false_eq_true, ↓reduceIte]
     unfold ParseState.tryConsume
     rw [h_peek_a]
     simp only [show (BEq.beq YamlToken.flowMappingStart YamlToken.documentStart) = false from by decide, Bool.false_eq_true, ↓reduceIte]
@@ -1077,8 +1079,14 @@ lemma parseStream_flowSeqStart_loop_witness
   have h_pd_dir : parseDirectives ps_1 = (#[], ps_1) :=
     parseDirectives_skip ps_1 (by rw [h_ps1_peek]; trivial)
   have h_prep : prepareDocumentState ps_1 = .ok (#[], ({ ps_1 with tagHandles := #[] } : ParseState)) := by
-    unfold prepareDocumentState; rw [h_pd_dir]; simp only [Array.filterMap_empty]
-    rw [show (ps_th.peek? == some YamlToken.documentStart) = false from by rw [h_th_peek]; decide]
+    unfold prepareDocumentState; rw [h_pd_dir]
+    -- 4.33: `rw [Array.filterMap_empty]`, NOT `simp only` — simp rewrites the ite
+    -- conditions but skips their Decidable instance args, and the diverged goal
+    -- then breaks the next rewrite's motive; `rw` (kabstract) reaches both.
+    dsimp only []  -- uniform iota: substitute the directives match, instances included
+    rw [Array.filterMap_empty]
+    rw [show (ps_th.peek? == some YamlToken.documentStart) = false from by
+      rw [h_th_peek]; decide]
     simp only [Bool.false_eq_true, ↓reduceIte]
     unfold ParseState.tryConsume; rw [h_th_peek]
     simp only [show (BEq.beq YamlToken.flowSequenceStart YamlToken.documentStart) = false from by decide, Bool.false_eq_true, ↓reduceIte]
@@ -1205,8 +1213,14 @@ lemma parseStream_flowMapStart_loop_witness
   have h_pd_dir : parseDirectives ps_1 = (#[], ps_1) :=
     parseDirectives_skip ps_1 (by rw [h_ps1_peek]; trivial)
   have h_prep : prepareDocumentState ps_1 = .ok (#[], ({ ps_1 with tagHandles := #[] } : ParseState)) := by
-    unfold prepareDocumentState; rw [h_pd_dir]; simp only [Array.filterMap_empty]
-    rw [show (ps_th.peek? == some YamlToken.documentStart) = false from by rw [h_th_peek]; decide]
+    unfold prepareDocumentState; rw [h_pd_dir]
+    -- 4.33: `rw [Array.filterMap_empty]`, NOT `simp only` — simp rewrites the ite
+    -- conditions but skips their Decidable instance args, and the diverged goal
+    -- then breaks the next rewrite's motive; `rw` (kabstract) reaches both.
+    dsimp only []  -- uniform iota: substitute the directives match, instances included
+    rw [Array.filterMap_empty]
+    rw [show (ps_th.peek? == some YamlToken.documentStart) = false from by
+      rw [h_th_peek]; decide]
     simp only [Bool.false_eq_true, ↓reduceIte]
     unfold ParseState.tryConsume; rw [h_th_peek]
     simp only [show (BEq.beq YamlToken.flowMappingStart YamlToken.documentStart) = false from by decide, Bool.false_eq_true, ↓reduceIte]

@@ -57,9 +57,9 @@ theorem AdjA_array (arr : Array Nat) (lo : Nat) (h : AdjA (arr.toList.drop lo)) 
   have hj1 : (k - lo) + 1 < (arr.toList.drop lo).length := by rw [h_len]; omega
   have hj0 : k - lo < (arr.toList.drop lo).length := by omega
   have e_k : (arr.toList.drop lo)[k - lo]'hj0 = arr[k]! := by
-    rw [getElem!_pos arr k hk0, List.getElem_drop, Array.getElem_toList (by omega)]; congr 1; omega
+    rw [getElem!_pos arr k hk0, List.getElem_drop, Array.getElem_toList (by simp only [Array.length_toList]; omega)]; congr 1; omega
   have e_k1 : (arr.toList.drop lo)[(k - lo) + 1]'hj1 = arr[k+1]! := by
-    rw [getElem!_pos arr (k+1) hk1, List.getElem_drop, Array.getElem_toList (by omega)]; congr 1; omega
+    rw [getElem!_pos arr (k+1) hk1, List.getElem_drop, Array.getElem_toList (by simp only [Array.length_toList]; omega)]; congr 1; omega
   have key := h (k - lo) hj1 (by rw [e_k]; exact htrig)
   rw [e_k1] at key; exact key
 
@@ -74,9 +74,9 @@ theorem AdjB_array (arr : Array Nat) (lo : Nat) (h : AdjB (arr.toList.drop lo)) 
   have hj1 : (k - lo) + 1 < (arr.toList.drop lo).length := by rw [h_len]; omega
   have hj0 : k - lo < (arr.toList.drop lo).length := by omega
   have e_k : (arr.toList.drop lo)[k - lo]'hj0 = arr[k]! := by
-    rw [getElem!_pos arr k hk0, List.getElem_drop, Array.getElem_toList (by omega)]; congr 1; omega
+    rw [getElem!_pos arr k hk0, List.getElem_drop, Array.getElem_toList (by simp only [Array.length_toList]; omega)]; congr 1; omega
   have e_k1 : (arr.toList.drop lo)[(k - lo) + 1]'hj1 = arr[k+1]! := by
-    rw [getElem!_pos arr (k+1) hk1, List.getElem_drop, Array.getElem_toList (by omega)]; congr 1; omega
+    rw [getElem!_pos arr (k+1) hk1, List.getElem_drop, Array.getElem_toList (by simp only [Array.length_toList]; omega)]; congr 1; omega
   have key := h (k - lo) hj1 (by rw [e_k]; exact htrig)
   rw [e_k1] at key; exact key
 

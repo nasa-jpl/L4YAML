@@ -701,7 +701,9 @@ lemma parseSinglePairMapping_tok
   · rename_i k
     have h_tok_adv : ps.advance.tokens = tokens := (advance_tokens ps).trans h_tok
     split at h_ok <;> first | contradiction | skip
-    all_goals (try (simp only [emptyNode] at h_ok))
+    -- 4.33: `emptyNode` stays folded through the splits — unfolding it rewrites
+    -- ite conditions but not their Decidable instances, and later `split at h_ok`
+    -- calls then refuse (see ParserNodeProofs for the mechanism).
     all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
     all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
     all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
@@ -918,7 +920,9 @@ lemma parseSinglePairMapping_wfa
     have h_wfa_adv : WellFormedAnchors ps.advance.anchors := advance_anchors ps ▸ h_wfa
     have h_tok_adv : ps.advance.tokens = tokens := (advance_tokens ps).trans h_tok
     split at h_ok <;> first | contradiction | skip
-    all_goals (try (simp only [emptyNode] at h_ok))
+    -- 4.33: `emptyNode` stays folded through the splits — unfolding it rewrites
+    -- ite conditions but not their Decidable instances, and later `split at h_ok`
+    -- calls then refuse (see ParserNodeProofs for the mechanism).
     all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
     all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
     all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)

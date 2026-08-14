@@ -526,14 +526,24 @@ lemma scanTagIx_offset_monotonic {input : String}
     simp only [Except.ok.injEq] at h
     subst h
     show s.cursor.pos.offset ≤ _
-    simp only [emitAt_cursor, advance_cursor]
-    refine Nat.le_trans (IxCursor.advance_offset_monotonic _) ?_
-    refine Nat.le_trans
-      (collectTagHandleLoopIx_offset_monotonic s.cursor.advance ""
-        (input.utf8ByteSize - s.cursor.advance.pos.offset)) ?_
+    -- 4.33: `split` BEFORE rewriting with `emitAt_cursor`/`advance_cursor`. Those
+    -- rewrites reach the ite's condition but not its Decidable instance (simp skips
+    -- instance args), and the diverged goal is ill-typed at reducible transparency,
+    -- so a post-rewrite `split` refuses. Splitting the raw definition body first
+    -- keeps every ite self-consistent; the rewrite chain then runs per branch.
     split
-    · exact collectTagSuffixLoopIx_offset_monotonic _ _ _
-    · exact Nat.le_refl _
+    · simp only [emitAt_cursor, advance_cursor]
+      refine Nat.le_trans (IxCursor.advance_offset_monotonic _) ?_
+      refine Nat.le_trans
+        (collectTagHandleLoopIx_offset_monotonic s.cursor.advance ""
+          (input.utf8ByteSize - s.cursor.advance.pos.offset)) ?_
+      exact collectTagSuffixLoopIx_offset_monotonic _ _ _
+    · simp only [emitAt_cursor, advance_cursor]
+      refine Nat.le_trans (IxCursor.advance_offset_monotonic _) ?_
+      refine Nat.le_trans
+        (collectTagHandleLoopIx_offset_monotonic s.cursor.advance ""
+          (input.utf8ByteSize - s.cursor.advance.pos.offset)) ?_
+      exact Nat.le_refl _
 
 /-! ### Directives -/
 
@@ -550,7 +560,7 @@ lemma scanYamlDirectiveIx_offset_monotonic {input : String}
   · rw [if_neg hd] at h
     simp only [] at h
     -- Peel: trailing-validation match/ites + version-emptiness ite.
-    simp only [Bind.bind, Except.bind, pure, Except.pure, throw, throwThe,
+    simp only [Bind.bind, Except.bind, throw, throwThe,
       MonadExceptOf.throw] at h
     repeat' split at h
     all_goals first
@@ -570,7 +580,7 @@ lemma scanTagDirectiveIx_offset_monotonic {input : String}
     cAfterWS.pos.offset ≤ s'.cursor.pos.offset := by
   unfold scanTagDirectiveIx at h
   simp only [] at h
-  simp only [Bind.bind, Except.bind, pure, Except.pure, throw, throwThe,
+  simp only [Bind.bind, Except.bind, throw, throwThe,
     MonadExceptOf.throw] at h
   repeat' split at h
   all_goals first
@@ -971,7 +981,7 @@ lemma scanYamlDirectiveIx_tokens_size_le {input : String}
     simp [Bind.bind, Except.bind] at h
   · rw [if_neg hd] at h
     simp only [] at h
-    simp only [Bind.bind, Except.bind, pure, Except.pure, throw, throwThe,
+    simp only [Bind.bind, Except.bind, throw, throwThe,
       MonadExceptOf.throw] at h
     repeat' split at h
     all_goals first
@@ -988,7 +998,7 @@ lemma scanTagDirectiveIx_tokens_size_le {input : String}
     s.tokens.size ≤ s'.tokens.size := by
   unfold scanTagDirectiveIx at h
   simp only [] at h
-  simp only [Bind.bind, Except.bind, pure, Except.pure, throw, throwThe,
+  simp only [Bind.bind, Except.bind, throw, throwThe,
     MonadExceptOf.throw] at h
   repeat' split at h
   all_goals first

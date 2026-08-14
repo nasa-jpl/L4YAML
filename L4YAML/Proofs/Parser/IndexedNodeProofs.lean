@@ -137,10 +137,13 @@ lemma applyNodeFinalization_ag
     · split <;> exact hi
     · split <;> rfl
   | some name =>
-    simp only [applyNodeFinalization, ParseStateIx.addAnchor]
+    -- 4.33: keep `addAnchor` out of the pre-split simp — see the legacy twin
+    -- (ParserNodeProofs.applyNodeFinalization_ag) for the mechanism.
+    simp only [applyNodeFinalization]
     refine ⟨⟨i, ?_⟩, ?_⟩
-    · split <;> (simp [Array.size_push]; omega)
-    · split <;> (simp [Array.getElem_push, show i < ps.anchors.size from hi])
+    · split <;> split <;> (simp [ParseStateIx.addAnchor, Array.size_push]; omega)
+    · split <;> split <;>
+        (simp [ParseStateIx.addAnchor, Array.getElem_push, show i < ps.anchors.size from hi])
 
 /-! ## ParseNodeAG induction hypothesis -/
 
@@ -490,7 +493,7 @@ lemma parseSinglePairMapping_ag (h_ih : ParseNodeAG input n)
   · rename_i k
     -- Split on key match (emptyNode vs parseNode)
     split at h_ok <;> first | contradiction | skip
-    all_goals (try (simp only [emptyNode] at h_ok))
+    -- 4.33: `emptyNode` stays folded through the splits — see the legacy twin.
     all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
     all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
     all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
@@ -972,7 +975,7 @@ lemma applyNodeFinalization_aar
         (applyNodeFinalization val ps props nodeStartPos).2.anchors := by
   rcases props with ⟨anchor, tag, dup⟩
   unfold applyNodeFinalization
-  simp only [ParseStateIx.addAnchor]
+  -- 4.33: no pre-unfold of `addAnchor` — see the legacy twin for the mechanism.
   cases val with
   | scalar =>
     cases anchor with
@@ -1425,7 +1428,7 @@ lemma parseSinglePairMapping_aar (h_ih_aar : ParseNodeAAR input n) (h_ih_ag : Pa
   · rename_i k
     -- Blind split pattern (matching AG proof)
     split at h_ok <;> first | contradiction | skip
-    all_goals (try (simp only [emptyNode] at h_ok))
+    -- 4.33: `emptyNode` stays folded through the splits — see the legacy twin.
     all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
     all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
     all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
