@@ -107,21 +107,21 @@ lemma scanBlockEntryIx_tokens_eq {s s' : ScannerStateIx input}
         YamlToken.blockEntry).tokens := by
   unfold scanBlockEntryIx at h
   by_cases hi : (!s.inFlow) = true
-  · rw [if_pos hi] at h
+  · rw [ite_eq_left hi] at h
     by_cases ht : s.hasTabInPrecedingWhitespace = true
-    · rw [if_pos ht] at h; simp [Bind.bind, Except.bind] at h
-    · rw [if_neg ht] at h
+    · rw [ite_eq_left ht] at h; simp [Bind.bind, Except.bind] at h
+    · rw [ite_eq_right ht] at h
       simp only [] at h
-      rw [if_pos hi] at h
+      rw [ite_eq_left hi] at h
       simp only [Except.ok.injEq] at h
       subst h
-      simp only [if_pos hi, advance_tokens]
-  · rw [if_neg hi] at h
+      simp only [ite_eq_left hi, advance_tokens]
+  · rw [ite_eq_right hi] at h
     simp only [] at h
-    rw [if_neg hi] at h
+    rw [ite_eq_right hi] at h
     simp only [Except.ok.injEq] at h
     subst h
-    simp only [if_neg hi, advance_tokens]
+    simp only [ite_eq_right hi, advance_tokens]
 
 /-- `scanKeyIx`'s `tokens` field equals
     `((if !inFlow then pushMappingIndentIx else id).emit .key)`'s tokens
@@ -134,16 +134,16 @@ lemma scanKeyIx_tokens_eq {s s' : ScannerStateIx input}
         YamlToken.key).tokens := by
   unfold scanKeyIx at h
   by_cases hi : (!s.inFlow) = true
-  · simp only [if_pos hi, advance_inFlow, emit_inFlow, pushMappingIndentIx_inFlow] at h
+  · simp only [ite_eq_left hi, advance_inFlow, emit_inFlow, pushMappingIndentIx_inFlow] at h
     split at h
     · simp [Bind.bind, Except.bind] at h
     · simp only [Except.ok.injEq] at h
       subst h
-      simp only [if_pos hi, advance_tokens]
-  · simp only [if_neg hi, advance_inFlow, emit_inFlow] at h
+      simp only [ite_eq_left hi, advance_tokens]
+  · simp only [ite_eq_right hi, advance_inFlow, emit_inFlow] at h
     simp only [Except.ok.injEq] at h
     subst h
-    simp only [if_neg hi, advance_tokens]
+    simp only [ite_eq_right hi, advance_tokens]
 
 /-- `scanValuePrepareIx` is filter-monotone: every branch either leaves
     the token array unchanged, overwrites placeholder slots with
@@ -377,33 +377,33 @@ lemma dispatchContent_new_not_placeholderIx {s s' : ScannerStateIx input} {c : C
     (s'.tokens.tokens[s.tokens.tokens.size]'(by omega)).token ≠ YamlToken.placeholder := by
   unfold scanNextTokenIx_dispatchContent at h
   by_cases hg1 : (c == '&') = true
-  · rw [if_pos hg1] at h
+  · rw [ite_eq_left hg1] at h
     try simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
     cases hA : scanAnchorOrAliasIx s true with
     | error e => rw [hA] at h; cases h
     | ok v =>
       rw [hA] at h; simp only [Except.ok.injEq] at h; subst h
       exact scanAnchorOrAliasIx_new_not_placeholderIx s true v hA (by omega)
-  · rw [if_neg hg1] at h
+  · rw [ite_eq_right hg1] at h
     simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
     by_cases hg2 : (c == '*') = true
-    · rw [if_pos hg2] at h
+    · rw [ite_eq_left hg2] at h
       cases hA : scanAnchorOrAliasIx s false with
       | error e => rw [hA] at h; cases h
       | ok v =>
         rw [hA] at h; simp only [Except.ok.injEq] at h; subst h
         exact scanAnchorOrAliasIx_new_not_placeholderIx s false v hA (by omega)
-    · rw [if_neg hg2] at h
+    · rw [ite_eq_right hg2] at h
       by_cases hg3 : (c == '!') = true
-      · rw [if_pos hg3] at h
+      · rw [ite_eq_left hg3] at h
         cases hT : scanTagIx s with
         | error e => rw [hT] at h; cases h
         | ok v =>
           rw [hT] at h; simp only [Except.ok.injEq] at h; subst h
           exact scanTagIx_new_not_placeholderIx s v hT (by omega)
-      · rw [if_neg hg3] at h
+      · rw [ite_eq_right hg3] at h
         by_cases hg4 : (c == '|' || c == '>') = true
-        · rw [if_pos hg4] at h
+        · rw [ite_eq_left hg4] at h
           split at h
           · rename_i r hBS
             cases h
@@ -412,9 +412,9 @@ lemma dispatchContent_new_not_placeholderIx {s s' : ScannerStateIx input} {c : C
                        Array.getElem_push_eq] at hpl
             contradiction
           · cases h
-        · rw [if_neg hg4] at h
+        · rw [ite_eq_right hg4] at h
           by_cases hg5 : (c == '"') = true
-          · rw [if_pos hg5] at h
+          · rw [ite_eq_left hg5] at h
             split at h
             · rename_i r hDQ
               cases h
@@ -423,9 +423,9 @@ lemma dispatchContent_new_not_placeholderIx {s s' : ScannerStateIx input} {c : C
                          Array.getElem_push_eq] at hpl
               contradiction
             · cases h
-          · rw [if_neg hg5] at h
+          · rw [ite_eq_right hg5] at h
             by_cases hg6 : (c == '\'') = true
-            · rw [if_pos hg6] at h
+            · rw [ite_eq_left hg6] at h
               split at h
               · rename_i r hSQ
                 cases h
@@ -434,15 +434,15 @@ lemma dispatchContent_new_not_placeholderIx {s s' : ScannerStateIx input} {c : C
                            Array.getElem_push_eq] at hpl
                 contradiction
               · cases h
-            · rw [if_neg hg6] at h
+            · rw [ite_eq_right hg6] at h
               by_cases hg7 : canStartPlainScalarBool c (s.peekAt? 1) s.inFlow = true
-              · rw [if_pos hg7] at h
+              · rw [ite_eq_left hg7] at h
                 cases h
                 intro hpl
                 simp only [ScannerStateIx.emitAt, IxToken.mk', Indexed.TokenStream.push,
                            Array.getElem_push_eq] at hpl
                 contradiction
-              · rw [if_neg hg7] at h
+              · rw [ite_eq_right hg7] at h
                 cases h
 
 /-! ## §6  `dispatchContent_filtered_growsIx` (legacy 6725)
@@ -458,52 +458,52 @@ lemma dispatchContent_adds_one_tokenIx {s s' : ScannerStateIx input} {c : Char}
     s'.tokens.size = s.tokens.size + 1 := by
   unfold scanNextTokenIx_dispatchContent at h
   by_cases hg1 : (c == '&') = true
-  · rw [if_pos hg1] at h
+  · rw [ite_eq_left hg1] at h
     try simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
     cases hA : scanAnchorOrAliasIx s true with
     | error e => rw [hA] at h; cases h
     | ok v =>
       rw [hA] at h; simp only [Except.ok.injEq] at h; subst h
       exact scanAnchorOrAliasIx_adds_one_token s true v hA
-  · rw [if_neg hg1] at h
+  · rw [ite_eq_right hg1] at h
     simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
     by_cases hg2 : (c == '*') = true
-    · rw [if_pos hg2] at h
+    · rw [ite_eq_left hg2] at h
       cases hA : scanAnchorOrAliasIx s false with
       | error e => rw [hA] at h; cases h
       | ok v =>
         rw [hA] at h; simp only [Except.ok.injEq] at h; subst h
         exact scanAnchorOrAliasIx_adds_one_token s false v hA
-    · rw [if_neg hg2] at h
+    · rw [ite_eq_right hg2] at h
       by_cases hg3 : (c == '!') = true
-      · rw [if_pos hg3] at h
+      · rw [ite_eq_left hg3] at h
         cases hT : scanTagIx s with
         | error e => rw [hT] at h; cases h
         | ok v =>
           rw [hT] at h; simp only [Except.ok.injEq] at h; subst h
           exact scanTagIx_adds_one_token s v hT
-      · rw [if_neg hg3] at h
+      · rw [ite_eq_right hg3] at h
         by_cases hg4 : (c == '|' || c == '>') = true
-        · rw [if_pos hg4] at h
+        · rw [ite_eq_left hg4] at h
           split at h
           · rename_i r hBS; cases h; simp only [emitAt_tokens_size]
           · cases h
-        · rw [if_neg hg4] at h
+        · rw [ite_eq_right hg4] at h
           by_cases hg5 : (c == '"') = true
-          · rw [if_pos hg5] at h
+          · rw [ite_eq_left hg5] at h
             split at h
             · rename_i r hDQ; cases h; simp only [emitAt_tokens_size]
             · cases h
-          · rw [if_neg hg5] at h
+          · rw [ite_eq_right hg5] at h
             by_cases hg6 : (c == '\'') = true
-            · rw [if_pos hg6] at h
+            · rw [ite_eq_left hg6] at h
               split at h
               · rename_i r hSQ; cases h; simp only [emitAt_tokens_size]
               · cases h
-            · rw [if_neg hg6] at h
+            · rw [ite_eq_right hg6] at h
               by_cases hg7 : canStartPlainScalarBool c (s.peekAt? 1) s.inFlow = true
-              · rw [if_pos hg7] at h; cases h; simp only [emitAt_tokens_size]
-              · rw [if_neg hg7] at h; cases h
+              · rw [ite_eq_left hg7] at h; cases h; simp only [emitAt_tokens_size]
+              · rw [ite_eq_right hg7] at h; cases h
 
 lemma dispatchContent_filtered_growsIx {s s' : ScannerStateIx input} {c : Char}
     (h : scanNextTokenIx_dispatchContent s c = .ok s') :

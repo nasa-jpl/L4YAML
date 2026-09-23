@@ -146,7 +146,7 @@ lemma scanDoubleQuotedIx_escapeString_corr (c : IxCursor input)
   refine ⟨c', ?_, hcorr_c', h_col_c', ?_⟩
   · unfold scanDoubleQuotedIx
     rw [h_peek]
-    simp only [show isDoubleQuoteBool '"' = true from by decide, if_true]
+    simp only [show isDoubleQuoteBool '"' = true from by decide, ite_true]
     rw [h_loop, h_content_eq]
   · rw [h_line_c']
     exact advance_line_of_peekIx c '"' h_lt h_peek (by decide) (by decide)

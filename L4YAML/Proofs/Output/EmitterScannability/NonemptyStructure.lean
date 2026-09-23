@@ -1427,7 +1427,7 @@ lemma recseqbody_advance_general (tokens : Array (Positioned YamlToken)) (lo H p
   -- The separator token at window position `lo + e.length` is `fe` (a `.flowEntry`).
   have h_sep_q : tokens.toList[lo + e.length]? = some fe := by
     have hstep : ((tokens.toList.take H).drop lo)[e.length]? = tokens.toList[lo + e.length]? := by
-      rw [List.getElem?_drop, List.getElem?_take, if_pos h_sepH]
+      rw [List.getElem?_drop, List.getElem?_take, ite_eq_left h_sepH]
     rw [← hstep, h_eq, List.getElem?_append_right (Nat.le_refl _), Nat.sub_self]; rfl
   have h_sep_val : tokens[lo + e.length]!.val = .flowEntry := by
     have hg := List.getElem?_eq_getElem (l := tokens.toList) (i := lo + e.length)
@@ -1545,7 +1545,7 @@ lemma recseqbody_descend (tokens : Array (Positioned YamlToken)) (lo H p : Nat)
       have h_cl_q : tokens.toList[lo + 1]? = some cl := by
         have hstep : tokens.toList[lo + 1]?
             = (([] : List (Positioned YamlToken)) ++ [cl])[0]? := by
-          rw [h_tail, List.getElem?_take, if_pos (by omega), List.getElem?_drop]
+          rw [h_tail, List.getElem?_take, ite_eq_left (by omega), List.getElem?_drop]
         rw [hstep]; rfl
       have hcl : tokens.toList[lo + 1]'(by rw [h_tl_len]; exact h_close_sz) = cl := by
         have hg := List.getElem?_eq_getElem (l := tokens.toList) (i := lo + 1)
@@ -1585,7 +1585,7 @@ lemma recseqbody_descend (tokens : Array (Positioned YamlToken)) (lo H p : Nat)
         have h_cl_q : tokens.toList[lo + 1 + interior.length]? = some cl := by
           have hstep : ((tokens.toList.drop (lo + 1)).take (interior.length + 1))[interior.length]?
               = tokens.toList[lo + 1 + interior.length]? := by
-            rw [List.getElem?_take, if_pos (by omega), List.getElem?_drop]
+            rw [List.getElem?_take, ite_eq_left (by omega), List.getElem?_drop]
           rw [← hstep, ← h_tail, List.getElem?_append_right (Nat.le_refl _), Nat.sub_self]; rfl
         have hcl : tokens.toList[lo + 1 + interior.length]'(by rw [h_tl_len]; exact h_close_sz)
             = cl := by
@@ -8927,7 +8927,7 @@ lemma matchingClose_full_seq (tokens : Array (Positioned YamlToken)) (lo hi : Na
       flowBracketBalance tokens (lo + 1) j = 0 ∧
       (∀ i, lo < i → i ≤ j → flowBracketBalance tokens lo i ≥ 1) := by
   have h_k_depth : flowBracketBalance tokens lo lo = 0 := by
-    unfold flowBracketBalance; rw [if_pos (Nat.le_refl lo)]
+    unfold flowBracketBalance; rw [ite_eq_left (Nat.le_refl lo)]
   have h_open_delta : flowBracketDelta tokens[lo]!.val = 1 := by
     rw [h_open]; exact flowBracketDelta_flowSequenceStart
   -- generic locator (at `k := lo`): fixes the unique `j`, carries inner balance + positivity.
@@ -8970,7 +8970,7 @@ lemma matchingClose_full_map (tokens : Array (Positioned YamlToken)) (lo hi : Na
       flowBracketBalance tokens (lo + 1) j = 0 ∧
       (∀ i, lo < i → i ≤ j → flowBracketBalance tokens lo i ≥ 1) := by
   have h_k_depth : flowBracketBalance tokens lo lo = 0 := by
-    unfold flowBracketBalance; rw [if_pos (Nat.le_refl lo)]
+    unfold flowBracketBalance; rw [ite_eq_left (Nat.le_refl lo)]
   have h_open_delta : flowBracketDelta tokens[lo]!.val = 1 := by
     rw [h_open]; exact flowBracketDelta_flowMappingStart
   -- generic locator (at `k := lo`): fixes the unique `j`, carries inner balance + positivity.
@@ -9643,7 +9643,7 @@ lemma mapPairSkeleton_locate (tokens : Array (Positioned YamlToken)) (lo hi : Na
   -- the head is a `.key` (M1), and the empty-range balance at `lo` is `0`.
   have h_key : tokens[lo]!.val = .key := h_props.key_start h_lo_hi
   have h_lo_depth : flowBracketBalance tokens lo lo = 0 := by
-    unfold flowBracketBalance; rw [if_pos (Nat.le_refl lo)]
+    unfold flowBracketBalance; rw [ite_eq_left (Nat.le_refl lo)]
   -- the key's content-start at `lo+1` (M3), then dispatch by shape.
   obtain ⟨_h_lo1_hi, h_content⟩ :=
     h_props.key_content lo (Nat.le_refl _) h_lo_hi h_lo_depth h_key
@@ -9843,7 +9843,7 @@ lemma mapPairSubblocks_flowBodyWindow (tokens : Array (Positioned YamlToken)) (l
     rw [h_bal_lo_kv1, h_e_bal] at hc; omega
   -- KEY block non-empty: M3 puts a content-start at `lo+1`; `kv` holds a `.value`; classes disjoint.
   have h_lo_depth : flowBracketBalance tokens lo lo = 0 := by
-    unfold flowBracketBalance; rw [if_pos (Nat.le_refl lo)]
+    unfold flowBracketBalance; rw [ite_eq_left (Nat.le_refl lo)]
   obtain ⟨_h_lo1_hi, h_lo1_cs⟩ := h_props.key_content lo (Nat.le_refl _) h_lo_hi h_lo_depth h_key
   have h_lo1_kv : lo + 1 < kv := by
     rcases Nat.lt_or_ge (lo + 1) kv with h | h

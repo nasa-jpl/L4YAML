@@ -71,15 +71,15 @@ def navMove (off L a : Nat) : Move × Nat :=
   | .advance => (.advance, off + L + 1)
 
 theorem classify_leaf (off L a : Nat) (h : a = off + 1) : classifyMove off L a = .leaf := by
-  unfold classifyMove; rw [if_pos h]
+  unfold classifyMove; rw [ite_eq_left h]
 
 theorem classify_descend (off L a : Nat) (h1 : off + 1 < a) (h2 : a < off + L) :
     classifyMove off L a = .descend := by
-  unfold classifyMove; rw [if_neg (by omega), if_pos h2]
+  unfold classifyMove; rw [ite_eq_right (by omega), ite_eq_left h2]
 
 theorem classify_advance (off L a : Nat) (hL : 1 ≤ L) (h : off + L < a) :
     classifyMove off L a = .advance := by
-  unfold classifyMove; rw [if_neg (by omega), if_neg (by omega)]
+  unfold classifyMove; rw [ite_eq_right (by omega), ite_eq_right (by omega)]
 
 /-- The trichotomy is EXHAUSTIVE on valid windows (`a` is not the impossible close/separator position
     `off+L`): every valid `a ≥ off+1` classifies as exactly one of the three moves — pure `omega`. -/

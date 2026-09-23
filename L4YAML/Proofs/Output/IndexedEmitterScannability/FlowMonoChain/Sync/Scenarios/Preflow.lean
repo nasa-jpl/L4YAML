@@ -171,7 +171,7 @@ lemma skipToContent_one_space (c : IxCursor input) {ch : Char}
     unfold L4YAML.Scanner.Indexed.skipWhitespaceLoop
     have hpw_c : peekIsWhiteSpace c = true := by
       unfold peekIsWhiteSpace; rw [h_sp]; decide
-    simp only [hpw_c, if_true]
+    simp only [hpw_c, ite_true]
     have hpw_adv : peekIsWhiteSpace c.advance = false := by
       unfold peekIsWhiteSpace; rw [h_next]; exact h_nws
     cases n with
@@ -181,7 +181,7 @@ lemma skipToContent_one_space (c : IxCursor input) {ch : Char}
   unfold L4YAML.Scanner.Indexed.skipToContent L4YAML.Scanner.Indexed.skipToContentLoop
   simp only [hSW, h_next,
     show isCommentBool ch = false from by unfold isCommentBool; simp [h_nc],
-    h_nlb, Bool.false_eq_true, if_false]
+    h_nlb, Bool.false_eq_true, ite_false]
 
 /-- State-level: `skipToContentS` absorbs one leading space, yielding
     `s.advance`. The line is unchanged (advance past a space), so the

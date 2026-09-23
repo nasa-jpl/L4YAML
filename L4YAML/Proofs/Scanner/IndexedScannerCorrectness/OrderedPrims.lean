@@ -204,11 +204,11 @@ lemma overwriteAtCursor_preserves_ScanInvIx {input : String} (s : ScannerStateIx
       · subst h_ik
         rw [Array.getElem_set_self]
         simp [IxToken.mk']
-      · rw [Array.getElem_set_ne (h := h_ik), if_neg h_ik]
+      · rw [Array.getElem_set_ne (h := h_ik), ite_eq_right h_ik]
     · -- out-of-bounds: setIfInBounds = id; i ≠ k since k < size and i ≥ size.
       simp only [hi, dite_false]
       have h_ne : i ≠ k := fun h => by subst h; exact hi hk'
-      rw [if_neg h_ne]
+      rw [ite_eq_right h_ne]
   refine ⟨?_, ?_⟩
   · intro ⟨a, ha⟩ ⟨b, hb⟩ hab
     have hab' : a < b := hab

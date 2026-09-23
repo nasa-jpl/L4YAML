@@ -110,9 +110,9 @@ theorem migrationCallSite (b : Tok) (g : NewGuard Tok.op b) :
     Entry (if b = Tok.cl then [Tok.op, Tok.cl] else Tok.op :: b :: ([] : List Tok) ++ [Tok.cl]) := by
   by_cases hb : b = Tok.cl
   · -- TRUE: the restored arm — the constructor the classify already exposes.
-    rw [if_pos hb]; exact Entry.emptyE
+    rw [ite_eq_left hb]; exact Entry.emptyE
   · -- FALSE: the SAME `hb : b ≠ cl` is exactly `newProducer`'s supplied premise.
-    rw [if_neg hb]; exact newProducer b [] g hb
+    rw [ite_eq_right hb]; exact newProducer b [] g hb
 
 /-! ## Probes — the discriminator is the negation of the re-scoped guard's added premise -/
 

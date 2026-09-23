@@ -353,7 +353,7 @@ lemma parseYamlRaw_emitScalar_compose_value (content : String)
     show (if h : 0 < (rd.map YamlDocument.compose).size
           then (rd.map YamlDocument.compose)[0] else default).value =
          (if h : 0 < rd.size then rd[0] else default).compose.value
-    rw [dif_pos h0', dif_pos h0, Array.getElem_map]]
+    rw [dite_eq_left h0', dite_eq_left h0, Array.getElem_map]]
   exact compose_scalar_content rd[0]! (Scalar.mk content .doubleQuoted none none none) h_dv
 
 /-- **Scalar locality bridge at the leaf (R599).** The mid-stream `parseNode` value for a
@@ -1528,7 +1528,7 @@ theorem emit_roundtrip_content_eq (v : YamlValue) {b : Bool} (hg : Grammable v b
       show (if h : 0 < (raw_docs.map YamlDocument.compose).size
             then (raw_docs.map YamlDocument.compose)[0] else default).value =
            (if h : 0 < raw_docs.size then raw_docs[0] else default).compose.value
-      rw [dif_pos h0', dif_pos h0, Array.getElem_map]]
+      rw [dite_eq_left h0', dite_eq_left h0, Array.getElem_map]]
     rw [h_compose]
     exact contentEq_scalar_compose s { s_parsed with anchor := none } (by simp [h_content])
 

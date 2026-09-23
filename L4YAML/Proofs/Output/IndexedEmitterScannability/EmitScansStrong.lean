@@ -839,19 +839,19 @@ lemma NoOverwriteAtIx_of_flow_open
   simp only [h_stack, Array.size_push] at hj
   by_cases hlt : j < s_in.simpleKeyStack.size
   · have hp' : s_in.simpleKeyStack[j].possible = true := by
-      simp only [h_stack, Array.getElem_push, dif_pos hlt] at hp; exact hp
+      simp only [h_stack, Array.getElem_push, dite_eq_left hlt] at hp; exact hp
     have h_orig := h_inv.2 j hlt hp'
     show m ≠ s_out.simpleKeyStack[j].tokenIndex ∧
          m ≠ s_out.simpleKeyStack[j].tokenIndex + 1
-    simp only [h_stack, Array.getElem_push, dif_pos hlt]; exact h_orig
+    simp only [h_stack, Array.getElem_push, dite_eq_left hlt]; exact h_orig
   · have hj_eq : j = s_in.simpleKeyStack.size := by omega
     subst hj_eq
     have hp' : s_in.simpleKey.possible = true := by
-      simp only [h_stack, Array.getElem_push, dif_neg hlt] at hp; exact hp
+      simp only [h_stack, Array.getElem_push, dite_eq_right hlt] at hp; exact hp
     have h_orig := h_inv.1 hp'
     show m ≠ s_out.simpleKeyStack[s_in.simpleKeyStack.size].tokenIndex ∧
          m ≠ s_out.simpleKeyStack[s_in.simpleKeyStack.size].tokenIndex + 1
-    simp only [h_stack, Array.getElem_push, dif_neg hlt]; exact h_orig
+    simp only [h_stack, Array.getElem_push, dite_eq_right hlt]; exact h_orig
 
 /-- Flow-close transport: `s_out` restores `simpleKey` from
     `simpleKeyStack.back?` and pops the stack. Parallel to
@@ -1081,7 +1081,7 @@ lemma scanNextTokenIx_dispatchContent_maintains_NoOverwriteAtIx {input : String}
   unfold scanNextTokenIx_dispatchContent at h
   by_cases hg1 : (c == '&') = true
   · -- '&' anchor
-    rw [if_pos hg1] at h
+    rw [ite_eq_left hg1] at h
     try simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
     cases hA : scanAnchorOrAliasIx s true with
     | error e => rw [hA] at h; cases h
@@ -1091,11 +1091,11 @@ lemma scanNextTokenIx_dispatchContent_maintains_NoOverwriteAtIx {input : String}
       exact NoOverwriteAtIx_of_preserved _ s m
         (scanAnchorOrAliasIx_preserves_simpleKey s true v hA)
         (scanAnchorOrAliasIx_preserves_simpleKeyStack s true v hA) h_inv
-  · rw [if_neg hg1] at h
+  · rw [ite_eq_right hg1] at h
     simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
     by_cases hg2 : (c == '*') = true
     · -- '*' alias
-      rw [if_pos hg2] at h
+      rw [ite_eq_left hg2] at h
       cases hA : scanAnchorOrAliasIx s false with
       | error e => rw [hA] at h; cases h
       | ok v =>
@@ -1104,10 +1104,10 @@ lemma scanNextTokenIx_dispatchContent_maintains_NoOverwriteAtIx {input : String}
         exact NoOverwriteAtIx_of_preserved _ s m
           (scanAnchorOrAliasIx_preserves_simpleKey s false v hA)
           (scanAnchorOrAliasIx_preserves_simpleKeyStack s false v hA) h_inv
-    · rw [if_neg hg2] at h
+    · rw [ite_eq_right hg2] at h
       by_cases hg3 : (c == '!') = true
       · -- '!' tag
-        rw [if_pos hg3] at h
+        rw [ite_eq_left hg3] at h
         cases hT : scanTagIx s with
         | error e => rw [hT] at h; cases h
         | ok v =>
@@ -1116,31 +1116,31 @@ lemma scanNextTokenIx_dispatchContent_maintains_NoOverwriteAtIx {input : String}
           exact NoOverwriteAtIx_of_preserved _ s m
             (scanTagIx_preserves_simpleKey s v hT)
             (scanTagIx_preserves_simpleKeyStack s v hT) h_inv
-      · rw [if_neg hg3] at h
+      · rw [ite_eq_right hg3] at h
         by_cases hg4 : (c == '|' || c == '>') = true
         · -- block scalar
-          rw [if_pos hg4] at h
+          rw [ite_eq_left hg4] at h
           split at h
           · simp only [Except.ok.injEq] at h; subst h
             exact NoOverwriteAtIx_of_preserved _ s m rfl rfl h_inv
           · cases h
-        · rw [if_neg hg4] at h
+        · rw [ite_eq_right hg4] at h
           by_cases hg5 : (c == '"') = true
           · -- double-quoted
-            rw [if_pos hg5] at h
+            rw [ite_eq_left hg5] at h
             split at h
             · simp only [Except.ok.injEq] at h; subst h
               exact NoOverwriteAtIx_of_preserved _ s m rfl rfl h_inv
             · cases h
-          · rw [if_neg hg5] at h
+          · rw [ite_eq_right hg5] at h
             by_cases hg6 : (c == '\'') = true
             · -- single-quoted
-              rw [if_pos hg6] at h
+              rw [ite_eq_left hg6] at h
               split at h
               · simp only [Except.ok.injEq] at h; subst h
                 exact NoOverwriteAtIx_of_preserved _ s m rfl rfl h_inv
               · cases h
-            · rw [if_neg hg6] at h
+            · rw [ite_eq_right hg6] at h
               -- plain scalar (success) vs error: one small inner `if`
               split at h
               · simp only [Except.ok.injEq] at h; subst h

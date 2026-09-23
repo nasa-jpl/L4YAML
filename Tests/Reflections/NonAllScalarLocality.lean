@@ -440,8 +440,8 @@ theorem peek_eq_getElem_map (t : Array (Positioned YamlToken)) (p : Nat)
     ({ tokens := t, pos := p, anchors := a } : ParseState).peek? = t[p]?.map (·.val) := by
   unfold ParseState.peek?
   by_cases h : p < t.size
-  · simp only [if_pos h, getElem?_pos t p h, getElem!_pos t p h, Option.map_some]
-  · simp only [if_neg h, getElem?_neg t p h, Option.map_none]
+  · simp only [ite_eq_left h, getElem?_pos t p h, getElem!_pos t p h, Option.map_some]
+  · simp only [ite_eq_right h, getElem?_neg t p h, Option.map_none]
 
 /-- **The P2b SCALAR LEAF** — the scalar-head branch of `ParseNodeValueSpanLocal`, discharged
     `sorry`-free and WITHOUT the frame side-conditions or the `k ≥ 1` agreement.  From agreement at
@@ -711,8 +711,8 @@ theorem peek_eq_getElem_map' (ps : ParseState) :
     ps.peek? = ps.tokens[ps.pos]?.map (·.val) := by
   unfold ParseState.peek?
   by_cases h : ps.pos < ps.tokens.size
-  · simp only [if_pos h, getElem?_pos ps.tokens ps.pos h, getElem!_pos ps.tokens ps.pos h, Option.map_some]
-  · simp only [if_neg h, getElem?_neg ps.tokens ps.pos h, Option.map_none]
+  · simp only [ite_eq_left h, getElem?_pos ps.tokens ps.pos h, getElem!_pos ps.tokens ps.pos h, Option.map_some]
+  · simp only [ite_eq_right h, getElem?_neg ps.tokens ps.pos h, Option.map_none]
 
 /-- **Loop base branch 1 — fuel 0** (abstract-state).  The loop returns `(items, ps)` unmoved on both
     sides, so value (`items`) and relative advance (`0`) agree trivially.  No hypotheses needed. -/
@@ -993,7 +993,7 @@ theorem seq_scalar_first_reduce
   refine ⟨{ ps_node with currentPath := ps.currentPath }, h_pn_pos, h_pn_toks, h_pn_anch, ?_⟩
   unfold parseFlowSequenceLoop at h_ok
   simp only [h_head, bind, Except.bind, pure, Except.pure,
-    Array.size_empty, Nat.lt_irrefl, if_false, h_pn] at h_ok
+    Array.size_empty, Nat.lt_irrefl, ite_false, h_pn] at h_ok
   rw [h_val] at h_ok
   exact h_ok
 
@@ -1038,7 +1038,7 @@ theorem seq_scalar_step_reduce
   refine ⟨{ ps_node with currentPath := ps.advance.currentPath }, h_pn_pos, h_pn_toks, h_pn_anch, ?_⟩
   unfold parseFlowSequenceLoop at h_ok
   simp only [h_sep, bind, Except.bind, pure, Except.pure,
-    if_pos h_ne, h_elt, h_pn] at h_ok
+    ite_eq_left h_ne, h_elt, h_pn] at h_ok
   rw [h_val] at h_ok
   exact h_ok
 
@@ -1320,7 +1320,7 @@ theorem seq_scalar_first_reduce_fn
   refine ⟨{ ps_node with currentPath := ps.currentPath }, h_pn_pos, h_pn_toks, h_pn_anch, ?_⟩
   conv => lhs; unfold parseFlowSequenceLoop
   simp only [h_head, bind, Except.bind, pure, Except.pure,
-    Array.size_empty, Nat.lt_irrefl, if_false, h_pn]
+    Array.size_empty, Nat.lt_irrefl, ite_false, h_pn]
   rw [h_val]
 
 /-- **Producer of the step-provider's REDUCE branch (scalar head, first position).**  Given a scalar
@@ -1520,7 +1520,7 @@ theorem frameHead_classified (t : Array (Positioned YamlToken)) (p n : Nat)
   · have hge : flowBracketBalance t p (p + 1) ≥ 1 := h_int (p + 1) (by omega) (by omega)
     have hle : flowBracketDelta t[p]!.val ≤ 1 := flowBracketDelta_le_one _
     rw [hstep] at hge
-    rw [if_neg hn1]; omega
+    rw [ite_eq_right hn1]; omega
 
 /-- **Frame matching-close at the span end (`n ≥ 2`).**  For a flow-collection frame the matching close
     is the LAST token of the span: `t[p+n-1]` is a closer and the enclosed body `[p+1, p+n-1)` is itself
@@ -1537,7 +1537,7 @@ theorem frame_matching_close_at_end (t : Array (Positioned YamlToken)) (p n : Na
   have h_p_sz : p < t.size := by omega
   have h_open : flowBracketDelta t[p]!.val = 1 := by
     have hc := frameHead_classified t p n h_p_sz (by omega) h_zero h_int
-    rw [if_neg (by omega : ¬ n = 1)] at hc; exact hc
+    rw [ite_eq_right (by omega : ¬ n = 1)] at hc; exact hc
   have h_dyck : ∀ i, p ≤ i → i ≤ p + n → flowBracketBalance t p i ≥ 0 := by
     intro i h_lo h_hi
     rcases Nat.lt_or_ge p i with hpi | hpi

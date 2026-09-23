@@ -732,7 +732,7 @@ lemma deep_navigate_core (tokens : Array (Positioned YamlToken)) :
         have h_lo_d0 : flowBracketBalance tokens lo0 lo = 0 := by
           rw [← h_eq]
           unfold flowBracketBalance
-          rw [if_pos (Nat.le_refl lo0)]
+          rw [ite_eq_left (Nat.le_refl lo0)]
         have h_hi_eq : hi = hi0 := window_depth0_closer_ends_at_end tokens lo0 hi0 lo hi
           (Nat.le_of_lt h_hi0_sz) h_body_floor h_lo0_lo h_lo_hi h_hi_hi0 h_lo_d0 h_bal
           h_hi_closer
@@ -784,7 +784,7 @@ lemma deep_navigate_core (tokens : Array (Positioned YamlToken)) :
       · have h_lo_d0 : flowBracketBalance tokens lo0 lo = 0 := by
           rw [← h_eq]
           unfold flowBracketBalance
-          rw [if_pos (Nat.le_refl lo0)]
+          rw [ite_eq_left (Nat.le_refl lo0)]
         have h_hi_eq : hi = hi0 := window_depth0_closer_ends_at_end tokens lo0 hi0 lo hi
           (Nat.le_of_lt h_hi0_sz) h_body_floor h_lo0_lo h_lo_hi h_hi_hi0 h_lo_d0 h_bal
           h_hi_closer
@@ -1318,23 +1318,23 @@ lemma mapBodyProps_of_recmapbodydeep (tokens : Array (Positioned YamlToken)) (lo
             rw [show k + 2 = k + 1 + 1 from rfl]; exact h_cl⟩, ?_, by omega, by
             rw [show k + 2 + 1 = kv by omega]; exact h_vt, ?_⟩
         · unfold flowBracketBalance
-          rw [if_pos (Nat.le_refl _)]
+          rw [ite_eq_left (Nat.le_refl _)]
         · intro p hp1 hp2
           have : p = k + 2 := by omega
           subst this
           unfold flowBracketBalance
-          rw [if_pos (Nat.le_refl _)]
+          rw [ite_eq_left (Nat.le_refl _)]
           decide
       · refine ⟨k + 2, by omega, by omega, Or.inr ⟨h_op, by
             rw [show k + 2 = k + 1 + 1 from rfl]; exact h_cl⟩, ?_, by omega, by
             rw [show k + 2 + 1 = kv by omega]; exact h_vt, ?_⟩
         · unfold flowBracketBalance
-          rw [if_pos (Nat.le_refl _)]
+          rw [ite_eq_left (Nat.le_refl _)]
         · intro p hp1 hp2
           have : p = k + 2 := by omega
           subst this
           unfold flowBracketBalance
-          rw [if_pos (Nat.le_refl _)]
+          rw [ite_eq_left (Nat.le_refl _)]
           decide
       · -- `[ interior ]` key: own close at `kv - 1`, interior balanced + floored
         obtain ⟨h_int_bal, h_int_floor⟩ := wellBracketed_slice_positional tokens (k + 2) (kv - 1)
@@ -1412,23 +1412,23 @@ lemma mapBodyProps_of_recmapbodydeep (tokens : Array (Positioned YamlToken)) (lo
             rw [show k + 2 = k + 1 + 1 from rfl]; exact h_cl⟩, ?_, by omega, by
             rw [show k + 2 + 1 = e by omega]; exact h_succ.2, ?_⟩
         · unfold flowBracketBalance
-          rw [if_pos (Nat.le_refl _)]
+          rw [ite_eq_left (Nat.le_refl _)]
         · intro p hp1 hp2
           have : p = k + 2 := by omega
           subst this
           unfold flowBracketBalance
-          rw [if_pos (Nat.le_refl _)]
+          rw [ite_eq_left (Nat.le_refl _)]
           decide
       · refine ⟨k + 2, by omega, by omega, Or.inr ⟨h_op, by
             rw [show k + 2 = k + 1 + 1 from rfl]; exact h_cl⟩, ?_, by omega, by
             rw [show k + 2 + 1 = e by omega]; exact h_succ.2, ?_⟩
         · unfold flowBracketBalance
-          rw [if_pos (Nat.le_refl _)]
+          rw [ite_eq_left (Nat.le_refl _)]
         · intro p hp1 hp2
           have : p = k + 2 := by omega
           subst this
           unfold flowBracketBalance
-          rw [if_pos (Nat.le_refl _)]
+          rw [ite_eq_left (Nat.le_refl _)]
           decide
       · obtain ⟨h_int_bal, h_int_floor⟩ := wellBracketed_slice_positional tokens (k + 2) (e - 1)
           (by omega) (by omega) (RecSeqBodyDeep.toFlat h_int).toWellBracketed
@@ -1461,7 +1461,7 @@ lemma mapBodyProps_of_recmapbodydeep (tokens : Array (Positioned YamlToken)) (lo
       · rw [h_op0] at h_sc; cases h_sc
       · refine ⟨k + 1, by omega, by omega, h_cl, ?_⟩
         unfold flowBracketBalance
-        rw [if_pos (Nat.le_refl _)]
+        rw [ite_eq_left (Nat.le_refl _)]
       · rw [h_op0] at h_op; cases h_op
       · obtain ⟨h_int_bal, _⟩ := wellBracketed_slice_positional tokens (k + 1) (b - 1)
           (by omega) (by omega) (RecSeqBodyDeep.toFlat h_int).toWellBracketed
@@ -1481,7 +1481,7 @@ lemma mapBodyProps_of_recmapbodydeep (tokens : Array (Positioned YamlToken)) (lo
       · rw [h_op0] at h_op; cases h_op
       · refine ⟨k + 1, by omega, by omega, h_cl, ?_⟩
         unfold flowBracketBalance
-        rw [if_pos (Nat.le_refl _)]
+        rw [ite_eq_left (Nat.le_refl _)]
       · rw [h_op0] at h_op; cases h_op
       · obtain ⟨h_int_bal, _⟩ := wellBracketed_slice_positional tokens (k + 1) (b - 1)
           (by omega) (by omega) (RecMapBodyDeep.toFlat h_int).toWellBracketed

@@ -905,16 +905,16 @@ lemma structural_dispatch_to_pending
               exact doc_start_tac h_cond.2 (beq_iff_eq.mp h_cond.1) h.symm
             · -- atDocumentEnd (inFlow): use by_cases to preserve condition
               by_cases h_docEnd : (s_prep.col == 0 && atDocumentEnd s_prep) = true
-              · rw [if_pos h_docEnd] at h_dispatch
+              · rw [ite_eq_left h_docEnd] at h_dispatch
                 rw [Bool.and_eq_true] at h_docEnd
                 split at h_dispatch
                 · simp at h_dispatch
                 · rename_i s_de hde
                   have h := Except.ok.inj h_dispatch; injection h with h
                   exact doc_end_tac h_docEnd.2 s_de hde h.symm
-              · rw [if_neg h_docEnd] at h_dispatch
+              · rw [ite_eq_right h_docEnd] at h_dispatch
                 by_cases h_dir : (c == '%' && s_prep.col == 0) = true
-                · rw [if_pos h_dir] at h_dispatch
+                · rw [ite_eq_left h_dir] at h_dispatch
                   rw [Bool.and_eq_true] at h_dir
                   split at h_dispatch
                   · simp at h_dispatch
@@ -935,7 +935,7 @@ lemma structural_dispatch_to_pending
                     subst hchars
                     exact GPlus.mk _ sp_mid sp_mid
                       (SLDirective.mk rest sp_col sp_dir sp_mid hgstar hssl) (GStar.nil _)
-                · rw [if_neg h_dir] at h_dispatch
+                · rw [ite_eq_right h_dir] at h_dispatch
                   simp at h_dispatch
       · split at h_dispatch
         · simp at h_dispatch
@@ -947,16 +947,16 @@ lemma structural_dispatch_to_pending
             exact doc_start_tac h_cond.2 (beq_iff_eq.mp h_cond.1) h.symm
           · -- atDocumentEnd (not inFlow): use by_cases to preserve condition
             by_cases h_docEnd : (s_prep.col == 0 && atDocumentEnd s_prep) = true
-            · rw [if_pos h_docEnd] at h_dispatch
+            · rw [ite_eq_left h_docEnd] at h_dispatch
               rw [Bool.and_eq_true] at h_docEnd
               split at h_dispatch
               · simp at h_dispatch
               · rename_i s_de hde
                 have h := Except.ok.inj h_dispatch; injection h with h
                 exact doc_end_tac h_docEnd.2 s_de hde h.symm
-            · rw [if_neg h_docEnd] at h_dispatch
+            · rw [ite_eq_right h_docEnd] at h_dispatch
               by_cases h_dir : (c == '%' && s_prep.col == 0) = true
-              · rw [if_pos h_dir] at h_dispatch
+              · rw [ite_eq_left h_dir] at h_dispatch
                 rw [Bool.and_eq_true] at h_dir
                 split at h_dispatch
                 · simp at h_dispatch
@@ -977,7 +977,7 @@ lemma structural_dispatch_to_pending
                   subst hchars
                   exact GPlus.mk _ sp_mid sp_mid
                     (SLDirective.mk rest sp_col sp_dir sp_mid hgstar hssl) (GStar.nil _)
-              · rw [if_neg h_dir] at h_dispatch
+              · rw [ite_eq_right h_dir] at h_dispatch
                 simp at h_dispatch
     -- Proof of doc_end_tac
     intro hat s_de hde h_eq; subst h_eq
@@ -1019,10 +1019,10 @@ lemma dispatchStructural_col0
           rw [Bool.and_eq_true] at h_cond; exact beq_iff_eq.mp h_cond.1
         · by_cases hde : (s.col == 0 && atDocumentEnd s) = true
           · rw [Bool.and_eq_true] at hde; exact beq_iff_eq.mp hde.1
-          · rw [if_neg hde] at h
+          · rw [ite_eq_right hde] at h
             by_cases hdi : (c == '%' && s.col == 0) = true
             · rw [Bool.and_eq_true] at hdi; exact beq_iff_eq.mp hdi.2
-            · rw [if_neg hdi] at h; simp at h
+            · rw [ite_eq_right hdi] at h; simp at h
   · -- not inFlow
     split at h
     · simp at h
@@ -1032,10 +1032,10 @@ lemma dispatchStructural_col0
         rw [Bool.and_eq_true] at h_cond; exact beq_iff_eq.mp h_cond.1
       · by_cases hde : (s.col == 0 && atDocumentEnd s) = true
         · rw [Bool.and_eq_true] at hde; exact beq_iff_eq.mp hde.1
-        · rw [if_neg hde] at h
+        · rw [ite_eq_right hde] at h
           by_cases hdi : (c == '%' && s.col == 0) = true
           · rw [Bool.and_eq_true] at hdi; exact beq_iff_eq.mp hdi.2
-          · rw [if_neg hdi] at h; simp at h
+          · rw [ite_eq_right hdi] at h; simp at h
 
 -- Helper (Fix B): the SSLComments midpoint coincides with the corr position
 -- when structural dispatch succeeded (it requires col = 0; whitespace or a
@@ -1109,15 +1109,15 @@ lemma structural_dispatch_after_directives
                 have h := Except.ok.inj h_dispatch; injection h with h
                 exact doc_start_tac h_cond.2 (beq_iff_eq.mp h_cond.1) h.symm
               · by_cases h_docEnd : (s_prep.col == 0 && atDocumentEnd s_prep) = true
-                · rw [if_pos h_docEnd] at h_dispatch
+                · rw [ite_eq_left h_docEnd] at h_dispatch
                   split at h_dispatch
                   · simp at h_dispatch
                   · rename_i s_de hde
                     have h := Except.ok.inj h_dispatch; injection h with h
                     exact doc_end_tac s_de hde h.symm
-                · rw [if_neg h_docEnd] at h_dispatch
+                · rw [ite_eq_right h_docEnd] at h_dispatch
                   by_cases h_dir : (c == '%' && s_prep.col == 0) = true
-                  · rw [if_pos h_dir] at h_dispatch
+                  · rw [ite_eq_left h_dir] at h_dispatch
                     rw [Bool.and_eq_true] at h_dir
                     split at h_dispatch
                     · simp at h_dispatch
@@ -1125,7 +1125,7 @@ lemma structural_dispatch_after_directives
                       have h := Except.ok.inj h_dispatch; injection h with h
                       exact dir_tac s_dir h_dir_ok h.symm
                         (by rw [show c = '%' from beq_iff_eq.mp h_dir.1] at hpeek; exact hpeek)
-                  · rw [if_neg h_dir] at h_dispatch
+                  · rw [ite_eq_right h_dir] at h_dispatch
                     simp at h_dispatch
         · split at h_dispatch
           · simp at h_dispatch
@@ -1136,15 +1136,15 @@ lemma structural_dispatch_after_directives
               have h := Except.ok.inj h_dispatch; injection h with h
               exact doc_start_tac h_cond.2 (beq_iff_eq.mp h_cond.1) h.symm
             · by_cases h_docEnd : (s_prep.col == 0 && atDocumentEnd s_prep) = true
-              · rw [if_pos h_docEnd] at h_dispatch
+              · rw [ite_eq_left h_docEnd] at h_dispatch
                 split at h_dispatch
                 · simp at h_dispatch
                 · rename_i s_de hde
                   have h := Except.ok.inj h_dispatch; injection h with h
                   exact doc_end_tac s_de hde h.symm
-              · rw [if_neg h_docEnd] at h_dispatch
+              · rw [ite_eq_right h_docEnd] at h_dispatch
                 by_cases h_dir : (c == '%' && s_prep.col == 0) = true
-                · rw [if_pos h_dir] at h_dispatch
+                · rw [ite_eq_left h_dir] at h_dispatch
                   rw [Bool.and_eq_true] at h_dir
                   split at h_dispatch
                   · simp at h_dispatch
@@ -1152,7 +1152,7 @@ lemma structural_dispatch_after_directives
                     have h := Except.ok.inj h_dispatch; injection h with h
                     exact dir_tac s_dir h_dir_ok h.symm
                       (by rw [show c = '%' from beq_iff_eq.mp h_dir.1] at hpeek; exact hpeek)
-                · rw [if_neg h_dir] at h_dispatch
+                · rw [ite_eq_right h_dir] at h_dispatch
                   simp at h_dispatch
       -- dir_tac: extend the directive run
       intro s_dir h_dir_ok h_eq hpeek_pct; subst h_eq
@@ -1587,7 +1587,7 @@ lemma dispatchBlockEntry_full_prod (sc : ScannerState) (sp : SurfPos)
   · -- First branch failed: '-' ≠ '?' and '-' ≠ ':' means remaining dispatch returns none
     have hq : ('-' == '?' : Bool) = false := by native_decide
     have hc : ('-' == ':' : Bool) = false := by native_decide
-    simp only [hq, hc, Bool.false_and, if_neg Bool.false_ne_true] at hok
+    simp only [hq, hc, Bool.false_and, ite_eq_right Bool.false_ne_true] at hok
     simp at hok
 
 /-! #### Wadler-style per-constructor theorems for block dispatch (Layer 4o/4x)

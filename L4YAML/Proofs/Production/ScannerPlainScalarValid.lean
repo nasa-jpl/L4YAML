@@ -3969,7 +3969,7 @@ lemma flowNesting_go_setIfInBounds_non_flow
           flowNesting_go_step _ _ _ _ h_pos (by omega)]
       simp only [Array.getElem_setIfInBounds h_pos]
       by_cases h_eq : idx = pos
-      · subst h_eq; rw [if_pos rfl]
+      · subst h_eq; rw [ite_eq_left rfl]
         rcases h_val_nf with ⟨hv1, hv2, hv3, hv4⟩
         rcases h_orig_nf h_pos with ⟨ho1, ho2, ho3, ho4⟩
         have hd1 : (match val.val with
@@ -3984,7 +3984,7 @@ lemma flowNesting_go_setIfInBounds_non_flow
           generalize (tokens[idx]'h_pos).val = v at ho1 ho2 ho3 ho4; cases v <;> first | contradiction | rfl
         rw [hd1, hd2]
         exact ih (idx + 1) _ (by omega)
-      · rw [if_neg h_eq]
+      · rw [ite_eq_right h_eq]
         exact ih (pos + 1) _ (by omega)
     · rw [flowNesting_go_oob (tokens.setIfInBounds idx val) pos target depth
             (by rw [Array.size_setIfInBounds]; omega),
@@ -4023,9 +4023,9 @@ lemma FlowContextPSV_setIfInBounds
     rw [h_flow_eq] at h_flow
     simp only [Array.getElem_setIfInBounds h_i_lt]
     by_cases h_eq : idx = i
-    · subst h_eq; rw [if_pos rfl]
+    · subst h_eq; rw [ite_eq_left rfl]
       exact fpsv_of_not_plain val h_np
-    · rw [if_neg h_eq]
+    · rw [ite_eq_right h_eq]
       exact h_old i h_i_lt h_flow
   · have : tokens.setIfInBounds idx val = tokens := by
       unfold Array.setIfInBounds; simp [show ¬(idx < tokens.size) from h_idx]
@@ -4056,7 +4056,7 @@ lemma scanValuePrepare_preserves_FlowContextPSV
         · intro h_lt
           rw [Array.size_setIfInBounds] at h_lt
           simp only [Array.getElem_setIfInBounds h_lt,
-                     if_neg (show s.simpleKey.tokenIndex ≠ s.simpleKey.tokenIndex + 1 from by omega)]
+                     ite_eq_right (show s.simpleKey.tokenIndex ≠ s.simpleKey.tokenIndex + 1 from by omega)]
           rw [h_ph2 h_lt]; exact ⟨by nofun, by nofun, by nofun, by nofun⟩
         · apply FlowContextPSV_setIfInBounds _ h_old _ ⟨s.simpleKey.pos, .blockMappingStart, s.simpleKey.pos⟩
               (by trivial) ⟨by nofun, by nofun, by nofun, by nofun⟩
@@ -4095,7 +4095,7 @@ lemma scanValuePrepare_preserves_FlowContextPSV
           · -- col ≤ currentIndent: identity, tokens unchanged
             exfalso
             have : (pushMappingIndent s ↑s.col).tokens.size = s.tokens.size := by
-              unfold pushMappingIndent; rw [if_neg h_col]
+              unfold pushMappingIndent; rw [ite_eq_right h_col]
             omega
       · -- inFlow: identity
         exact h_old
@@ -4127,7 +4127,7 @@ lemma scanValuePrepare_preserves_FlowNestingInv
             (fun h_lt => by
               rw [Array.size_setIfInBounds] at h_lt
               simp only [Array.getElem_setIfInBounds h_lt,
-                         if_neg (show s.simpleKey.tokenIndex ≠ s.simpleKey.tokenIndex + 1 from by omega)]
+                         ite_eq_right (show s.simpleKey.tokenIndex ≠ s.simpleKey.tokenIndex + 1 from by omega)]
               rw [h_ph2 h_lt]; exact ⟨by nofun, by nofun, by nofun, by nofun⟩)]
         rw [flowNesting_setIfInBounds_non_flow _ _ ⟨s.simpleKey.pos, .blockMappingStart, s.simpleKey.pos⟩
             ⟨by nofun, by nofun, by nofun, by nofun⟩

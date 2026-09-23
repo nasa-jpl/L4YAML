@@ -643,17 +643,17 @@ lemma SimpleKeyAboveFloor_of_flow_open (s_out s_in : ScannerState) (n fl₀ : Na
   · simp only [h_stack, Array.size_push] at hj
     by_cases hlt : j < s_in.simpleKeyStack.size
     · have hp' : s_in.simpleKeyStack[j].possible = true := by
-        simp only [h_stack, Array.getElem_push, dif_pos hlt] at hp; exact hp
+        simp only [h_stack, Array.getElem_push, dite_eq_left hlt] at hp; exact hp
       have h_ge := h_inv.2.1 j hfl hlt hp'
       show s_out.simpleKeyStack[j].tokenIndex ≥ n
-      simp only [h_stack, Array.getElem_push, dif_pos hlt]; exact h_ge
+      simp only [h_stack, Array.getElem_push, dite_eq_left hlt]; exact h_ge
     · have hj_eq : j = s_in.simpleKeyStack.size := by omega
       subst hj_eq
       have hp' : s_in.simpleKey.possible = true := by
-        simp only [h_stack, Array.getElem_push, dif_neg hlt] at hp; exact hp
+        simp only [h_stack, Array.getElem_push, dite_eq_right hlt] at hp; exact hp
       have h_ge := h_inv.1 hp'
       show s_out.simpleKeyStack[s_in.simpleKeyStack.size].tokenIndex ≥ n
-      simp only [h_stack, Array.getElem_push, dif_neg hlt]; exact h_ge
+      simp only [h_stack, Array.getElem_push, dite_eq_right hlt]; exact h_ge
   · simp only [h_stack, Array.size_push]; have := h_inv.2.2; omega
 
 lemma SimpleKeyAboveFloor_of_flow_close (s_out s_in : ScannerState) (n fl₀ : Nat)
@@ -1313,19 +1313,19 @@ lemma NoOverwriteAt_of_flow_open
   simp only [h_stack, Array.size_push] at hj
   by_cases hlt : j < s_in.simpleKeyStack.size
   · have hp' : s_in.simpleKeyStack[j].possible = true := by
-      simp only [h_stack, Array.getElem_push, dif_pos hlt] at hp; exact hp
+      simp only [h_stack, Array.getElem_push, dite_eq_left hlt] at hp; exact hp
     have h_orig := h_inv.2 j hlt hp'
     show m ≠ s_out.simpleKeyStack[j].tokenIndex ∧
          m ≠ s_out.simpleKeyStack[j].tokenIndex + 1
-    simp only [h_stack, Array.getElem_push, dif_pos hlt]; exact h_orig
+    simp only [h_stack, Array.getElem_push, dite_eq_left hlt]; exact h_orig
   · have hj_eq : j = s_in.simpleKeyStack.size := by omega
     subst hj_eq
     have hp' : s_in.simpleKey.possible = true := by
-      simp only [h_stack, Array.getElem_push, dif_neg hlt] at hp; exact hp
+      simp only [h_stack, Array.getElem_push, dite_eq_right hlt] at hp; exact hp
     have h_orig := h_inv.1 hp'
     show m ≠ s_out.simpleKeyStack[s_in.simpleKeyStack.size].tokenIndex ∧
          m ≠ s_out.simpleKeyStack[s_in.simpleKeyStack.size].tokenIndex + 1
-    simp only [h_stack, Array.getElem_push, dif_neg hlt]; exact h_orig
+    simp only [h_stack, Array.getElem_push, dite_eq_right hlt]; exact h_orig
 
 /-- endLine-update transport: `s_out`'s simpleKey shares `possible` and `tokenIndex`
     with `s_in.simpleKey` (only the `endLine` and `pos` fields may differ) and the
@@ -1974,17 +1974,17 @@ lemma FlowNoOverwriteAt_of_flow_open
   simp only [h_stack, Array.size_push] at hj
   by_cases hlt : j < s_in.simpleKeyStack.size
   · have hp' : s_in.simpleKeyStack[j].possible = true := by
-      simp only [h_stack, Array.getElem_push, dif_pos hlt] at hp; exact hp
+      simp only [h_stack, Array.getElem_push, dite_eq_left hlt] at hp; exact hp
     have h_orig := h_inv.2 j hlt hp'
     show m ≠ s_out.simpleKeyStack[j].tokenIndex + 1
-    simp only [h_stack, Array.getElem_push, dif_pos hlt]; exact h_orig
+    simp only [h_stack, Array.getElem_push, dite_eq_left hlt]; exact h_orig
   · have hj_eq : j = s_in.simpleKeyStack.size := by omega
     subst hj_eq
     have hp' : s_in.simpleKey.possible = true := by
-      simp only [h_stack, Array.getElem_push, dif_neg hlt] at hp; exact hp
+      simp only [h_stack, Array.getElem_push, dite_eq_right hlt] at hp; exact hp
     have h_orig := h_inv.1 hp'
     show m ≠ s_out.simpleKeyStack[s_in.simpleKeyStack.size].tokenIndex + 1
-    simp only [h_stack, Array.getElem_push, dif_neg hlt]; exact h_orig
+    simp only [h_stack, Array.getElem_push, dite_eq_right hlt]; exact h_orig
 
 /-- endLine-update transport: `s_out`'s simpleKey shares `possible` and `tokenIndex`
     with `s_in.simpleKey` (only the `endLine` and `pos` fields may differ) and the

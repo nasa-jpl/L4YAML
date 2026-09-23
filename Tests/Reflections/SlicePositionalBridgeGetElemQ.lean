@@ -36,7 +36,7 @@ theorem head_bridge
   have h_eq : (l.take H).drop off = x :: xs := by rw [← h_slice]; exact h_cons
   -- transport ENTIRELY in `getElem?` — every step an unconditional equation, no bound proof to poison.
   have hc : ((l.take H).drop off)[0]? = some x := by rw [h_eq]; rfl
-  rw [List.getElem?_drop, List.getElem?_take, Nat.add_zero, if_pos (by omega : off < H)] at hc
+  rw [List.getElem?_drop, List.getElem?_take, Nat.add_zero, ite_eq_left (by omega : off < H)] at hc
   exact hc
 
 /-! ## POSITIVE — the separator bridge via `getElem?`. -/
@@ -54,7 +54,7 @@ theorem sep_bridge
   have h_eq : (l.take H).drop off = e ++ fe :: rest := by rw [← h_slice]; exact h_prefix
   have hc : ((l.take H).drop off)[e.length]? = some fe := by
     rw [h_eq, List.getElem?_append_right (Nat.le_refl e.length), Nat.sub_self]; rfl
-  rw [List.getElem?_drop, List.getElem?_take, if_pos (by omega : off + e.length < H)] at hc
+  rw [List.getElem?_drop, List.getElem?_take, ite_eq_left (by omega : off + e.length < H)] at hc
   exact hc
 
 /-! ## Cashing out `getElem?` → `getElem` in ONE final non-rewriting step. -/

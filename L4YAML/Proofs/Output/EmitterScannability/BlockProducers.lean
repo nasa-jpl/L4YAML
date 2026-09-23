@@ -67,15 +67,15 @@ lemma block_take_eq_of_getElem?
     intro j
     rw [List.getElem?_take]
     by_cases hj : j < N
-    · rw [if_pos hj, Array.getElem?_toList, Array.getElem?_toList, h_pref j hj]
-    · rw [if_neg hj,
+    · rw [ite_eq_left hj, Array.getElem?_toList, Array.getElem?_toList, h_pref j hj]
+    · rw [ite_eq_right hj,
         List.getElem?_eq_none_iff.mpr (by rw [Array.length_toList, h_base]; omega)]
   have h_lenN : N < arr.toList.length := by rwa [Array.length_toList]
   have h_getN : arr.toList[N]? = some (arr[N]'h_N1) := by
     rw [List.getElem?_eq_getElem h_lenN, Array.getElem_toList]
   rw [List.take_add_one, h_take, h_getN, Option.toList_some, List.filter_append,
       List.filter_cons]
-  simp only [h_ph, Bool.false_eq_true, if_false, List.filter_nil, List.append_nil]
+  simp only [h_ph, Bool.false_eq_true, ite_false, List.filter_nil, List.append_nil]
   exact (Array.toList_filter).symm
 
 /-! ### Open-`{` exposes `simpleKeyAllowed = true`

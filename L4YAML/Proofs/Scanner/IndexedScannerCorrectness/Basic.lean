@@ -486,11 +486,11 @@ lemma scanLoopIx_success_emits_streamEnd {input : String} :
       cases scRes with
       | none =>
         by_cases hFL : s.flowLevel > 0
-        · rw [if_pos hFL] at h; cases h
-        · rw [if_neg hFL] at h
+        · rw [ite_eq_left hFL] at h; cases h
+        · rw [ite_eq_right hFL] at h
           by_cases hDS : s.directivesPresent = true
-          · rw [if_pos hDS] at h; cases h
-          · rw [if_neg hDS] at h
+          · rw [ite_eq_left hDS] at h; cases h
+          · rw [ite_eq_right hDS] at h
             cases h
             exact ⟨unwindIndentsIx s (-1), rfl⟩
       | some s'' => exact ih s'' ts h
@@ -520,11 +520,11 @@ lemma scanLoopIx_increases_tokens {input : String}
       cases scRes with
       | none =>
         by_cases hFL : s.flowLevel > 0
-        · rw [if_pos hFL] at h; cases h
-        · rw [if_neg hFL] at h
+        · rw [ite_eq_left hFL] at h; cases h
+        · rw [ite_eq_right hFL] at h
           by_cases hDS : s.directivesPresent = true
-          · rw [if_pos hDS] at h; cases h
-          · rw [if_neg hDS] at h
+          · rw [ite_eq_left hDS] at h; cases h
+          · rw [ite_eq_right hDS] at h
             cases h
             -- ts = ((unwindIndentsIx s (-1)).emit streamEnd).tokens
             show s.tokens.size + 1 ≤ _

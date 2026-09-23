@@ -463,7 +463,7 @@ lemma scanNextToken_flow_close_seq_outermost_extIx {input : String}
     refine ⟨new_ixtok, rfl, ?_⟩
     rw [scanFlowSequenceEnd_tokens_eqIx s_ad, Array.filter_push]
     have h_keep : (new_ixtok.token != YamlToken.placeholder) = true := rfl
-    rw [if_pos h_keep, h_ad_tokens_filter]
+    rw [ite_eq_left h_keep, h_ad_tokens_filter]
   exact ⟨scanFlowSequenceEndIx s_ad, h_snt, h_result_fl, h_result_dp,
          h_result_eof, h_result_indents, h_result_tokens⟩
 
@@ -557,7 +557,7 @@ lemma scanNextToken_flow_close_mapping_outermost_extIx {input : String}
     refine ⟨new_ixtok, rfl, ?_⟩
     rw [scanFlowMappingEnd_tokens_eqIx s_ad, Array.filter_push]
     have h_keep : (new_ixtok.token != YamlToken.placeholder) = true := rfl
-    rw [if_pos h_keep, h_ad_tokens_filter]
+    rw [ite_eq_left h_keep, h_ad_tokens_filter]
   exact ⟨scanFlowMappingEndIx s_ad, h_snt, h_result_fl, h_result_dp,
          h_result_eof, h_result_indents, h_result_tokens⟩
 

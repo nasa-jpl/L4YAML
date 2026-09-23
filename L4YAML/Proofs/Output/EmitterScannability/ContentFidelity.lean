@@ -1073,7 +1073,7 @@ lemma parseStream_flowSeqStart_loop_witness
   have h_th_tok : ps_th.tokens = tokens := by simp [ps_th, h_tok]
   have h_th_pos : ps_th.pos = 1 := by simp [ps_th, h_pos]
   have h_ps1_peek : ps_1.peek? = some .flowSequenceStart := by
-    unfold ParseState.peek?; rw [h_pos, h_tok, if_pos h_lt, h_t1]
+    unfold ParseState.peek?; rw [h_pos, h_tok, ite_eq_left h_lt, h_t1]
   have h_th_peek : ps_th.peek? = some .flowSequenceStart := by
     simp only [ps_th]; exact h_ps1_peek
   have h_pd_dir : parseDirectives ps_1 = (#[], ps_1) :=
@@ -1164,7 +1164,7 @@ lemma parseStream_flowSeqStart_recovers_outer_shape
       (by rw [h_head]; intro h; cases h)
   have h_peek : ps.peek? = some .flowSequenceStart := by
     unfold ParseState.peek?
-    rw [h_ps_pos, h_ps_tok, if_pos h_lt, h_head]
+    rw [h_ps_pos, h_ps_tok, ite_eq_left h_lt, h_head]
   obtain ⟨items', h_doc_val⟩ :=
     parseDocument_flowSeqStart_produces_sequence ps raw_docs[0]! ps' h_peek h_pd
   obtain ⟨items'', h_comp⟩ := compose_preserves_flow_sequence raw_docs[0]! items' h_doc_val
@@ -1207,7 +1207,7 @@ lemma parseStream_flowMapStart_loop_witness
   have h_th_tok : ps_th.tokens = tokens := by simp [ps_th, h_tok]
   have h_th_pos : ps_th.pos = 1 := by simp [ps_th, h_pos]
   have h_ps1_peek : ps_1.peek? = some .flowMappingStart := by
-    unfold ParseState.peek?; rw [h_pos, h_tok, if_pos h_lt, h_t1]
+    unfold ParseState.peek?; rw [h_pos, h_tok, ite_eq_left h_lt, h_t1]
   have h_th_peek : ps_th.peek? = some .flowMappingStart := by
     simp only [ps_th]; exact h_ps1_peek
   have h_pd_dir : parseDirectives ps_1 = (#[], ps_1) :=
@@ -1290,7 +1290,7 @@ lemma parseStream_flowMapStart_recovers_outer_shape
       (by rw [h_head]; intro h; cases h)
   have h_peek : ps.peek? = some .flowMappingStart := by
     unfold ParseState.peek?
-    rw [h_ps_pos, h_ps_tok, if_pos h_lt, h_head]
+    rw [h_ps_pos, h_ps_tok, ite_eq_left h_lt, h_head]
   obtain ⟨pairs', h_doc_val⟩ :=
     parseDocument_flowMapStart_produces_mapping ps raw_docs[0]! ps' h_peek h_pd
   obtain ⟨pairs'', h_comp⟩ := compose_preserves_flow_mapping raw_docs[0]! pairs' h_doc_val
@@ -1816,7 +1816,7 @@ lemma parseFlowSeqLoop_allScalar_value_at_aux
     · -- EXIT: k = items.length, loop sees flowSequenceEnd
       subst h_keq
       have h_pos_val : ps.pos = 2 * items.length + 1 := by
-        rw [h_pos, if_neg h_ne_len]
+        rw [h_pos, ite_eq_right h_ne_len]
       have h_peek_fse : ps.peek? = some .flowSequenceEnd :=
         peek_of_pos_val h_pos_val (by rw [h_toks, h_sz]; omega)
           (by rw [h_toks]; exact h_fse_tok)
@@ -1844,7 +1844,7 @@ lemma parseFlowSeqLoop_allScalar_value_at_aux
         simp only [bind, Except.bind, pure, Except.pure] at h_ok
         split at h_ok  -- outer: fse vs wildcard
         · simp [h_peek] at *
-        · simp only [if_neg (show ¬ (acc.size > 0) from by omega)] at h_ok
+        · simp only [ite_eq_right (show ¬ (acc.size > 0) from by omega)] at h_ok
           split at h_ok  -- inner: key | fse | wildcard
           · simp [h_peek] at *
           · simp [h_peek] at *
@@ -1887,7 +1887,7 @@ lemma parseFlowSeqLoop_allScalar_value_at_aux
                 · exact h_vals_r j h_jpos h_lt⟩
       · -- k > 0: ps.pos = 2k+1, peek? = .flowEntry
         have h_kpos : 0 < k := by omega
-        simp only [if_neg h_k0] at h_pos
+        simp only [ite_eq_right h_k0] at h_pos
         have h_peek_fe : ps.peek? = some .flowEntry :=
           peek_of_pos_val h_pos (by rw [h_toks, h_sz]; omega)
             (by rw [h_toks]; exact h_fe_tok k h_kpos h_klt)
@@ -1904,7 +1904,7 @@ lemma parseFlowSeqLoop_allScalar_value_at_aux
         simp only [bind, Except.bind, pure, Except.pure] at h_ok
         split at h_ok  -- outer: fse vs wildcard
         · simp [h_peek_fe] at *
-        · simp only [if_pos (show acc.size > 0 from by rw [h_acc]; exact h_kpos)] at h_ok
+        · simp only [ite_eq_left (show acc.size > 0 from by rw [h_acc]; exact h_kpos)] at h_ok
           split at h_ok  -- flowEntry match: .flowEntry | wildcard
           · split at h_ok  -- inner (post-advance): key | fse | wildcard
             · simp [h_adv_peek] at *
@@ -1934,7 +1934,7 @@ lemma parseFlowSeqLoop_allScalar_value_at_aux
                     if k + 1 = 0 then 2 else 2 * (k + 1) + 1 := by
                   have : ({ ps_node with currentPath := ps.currentPath } : ParseState).pos
                       = ps_node.pos := rfl
-                  rw [this, h_node_pos, if_neg (Nat.succ_ne_zero k)]
+                  rw [this, h_node_pos, ite_eq_right (Nat.succ_ne_zero k)]
                 have h_fuel' : items.length - (k + 1) + 1 ≤ n := by omega
                 obtain ⟨h_sz_r, h_vals_r⟩ := ih h_kle' h_acc'
                   (show ({ ps_node with currentPath := ps.currentPath } : ParseState).tokens = tokens
@@ -2017,7 +2017,7 @@ lemma parseFlowMappingLoop_allScalar_pair_at_aux
     · -- EXIT: k = pairs.length, loop sees flowMappingEnd
       subst h_keq
       have h_pos_val : ps.pos = 5 * pairs.length + 1 := by
-        rw [h_pos, if_neg h_ne_len]
+        rw [h_pos, ite_eq_right h_ne_len]
       have h_peek_fme : ps.peek? = some .flowMappingEnd :=
         peek_of_pos_val h_pos_val (by rw [h_toks, h_sz]; omega)
           (by rw [h_toks]; exact h_fme_tok)
@@ -2043,7 +2043,7 @@ lemma parseFlowMappingLoop_allScalar_pair_at_aux
         simp only [bind, Except.bind, pure, Except.pure] at h_ok
         split at h_ok  -- outer: flowMappingEnd vs wildcard
         · simp [h_peek_key] at *
-        · simp only [if_neg (show ¬ (acc.size > 0) from by omega)] at h_ok
+        · simp only [ite_eq_right (show ¬ (acc.size > 0) from by omega)] at h_ok
           split at h_ok  -- 2nd peek: fme | .key | wildcard
           · simp [h_peek_key] at *
           · -- .key branch: ps.advance + parseExplicitKey + parseFlowMappingValue
@@ -2141,7 +2141,7 @@ lemma parseFlowMappingLoop_allScalar_pair_at_aux
           · simp [h_peek_key] at *
       · -- ── k > 0: ps.pos = 5k+1, peek? = .flowEntry ────────────────────────
         have h_kpos : 0 < k := by omega
-        simp only [if_neg h_k0] at h_pos
+        simp only [ite_eq_right h_k0] at h_pos
         have h_peek_fe : ps.peek? = some .flowEntry :=
           peek_of_pos_val h_pos (by rw [h_toks, h_sz]; omega)
             (by rw [h_toks]; exact h_fe_tok k h_kpos h_klt)
@@ -2155,7 +2155,7 @@ lemma parseFlowMappingLoop_allScalar_pair_at_aux
         simp only [bind, Except.bind, pure, Except.pure] at h_ok
         split at h_ok  -- outer: flowMappingEnd vs wildcard
         · simp [h_peek_fe] at *
-        · simp only [if_pos (show acc.size > 0 from by rw [h_acc]; exact h_kpos)] at h_ok
+        · simp only [ite_eq_left (show acc.size > 0 from by rw [h_acc]; exact h_kpos)] at h_ok
           split at h_ok  -- flowEntry | wildcard (for the separator match)
           · -- flowEntry consumed: ps.advance
             split at h_ok  -- 2nd peek: fme | .key | wildcard
@@ -2232,7 +2232,7 @@ lemma parseFlowMappingLoop_allScalar_pair_at_aux
                     have h_kle' : k + 1 ≤ pairs.length := h_klt
                     have h_acc' : (acc.push (key_k, val_k)).size = k + 1 := by simp [h_acc]
                     have h_pos' : ps_mv.pos = if k + 1 = 0 then 2 else 5 * (k + 1) + 1 := by
-                      rw [if_neg (Nat.succ_ne_zero k)]; omega
+                      rw [ite_eq_right (Nat.succ_ne_zero k)]; omega
                     have h_fuel' : pairs.length - (k + 1) + 1 ≤ n := by omega
                     obtain ⟨h_sz_r, h_vals_r⟩ := ih h_kle' h_acc' h_ps_mv_toks h_pos' h_fuel' h_ok
                     obtain ⟨h_idx_h, h_idx_eq⟩ := parseFlowMappingLoop_step_index ps n acc result h_ok_orig

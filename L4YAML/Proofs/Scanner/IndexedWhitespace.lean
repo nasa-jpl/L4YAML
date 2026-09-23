@@ -254,10 +254,10 @@ lemma advance_indent_col_succ {input : String} (c : IxCursor input)
     peekIsIndentChar_implies_hasMore c h
   have hCh : String.Pos.Raw.get input ⟨c.pos.offset⟩ = ' ' := by
     unfold peekIsIndentChar IxCursor.peek? at h
-    rw [if_pos hMore] at h
+    rw [ite_eq_left hMore] at h
     simpa [isIndentCharBool] using h
   unfold IxCursor.advance
-  simp [dif_pos hMore, hCh]
+  simp [dite_eq_left hMore, hCh]
 
 lemma skipSpacesLoop_col_eq_count {input : String} (c : IxCursor input)
     (fuel : Nat) :

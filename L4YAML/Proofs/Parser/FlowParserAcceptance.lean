@@ -339,13 +339,13 @@ lemma parseFlowMappingValue_scalar (ps : ParseState) (m : Nat) (h_m : 0 < m)
     have e2 : ({ ps with currentPath := savedPath.push (.key keyContent) } : ParseState).advance.tokens
         = ps.tokens := rfl
     unfold ParseState.peek?
-    rw [e1, e2, if_pos h_succ_lt, h_succ_scalar]
+    rw [e1, e2, ite_eq_left h_succ_lt, h_succ_scalar]
   obtain ⟨ps_d, h_node, h_pos_d, h_tok_d, h_tp_d⟩ :=
     parseNode_scalar_flow _ m h_m cv sv hpk2
   refine ⟨{ ps_d with currentPath := savedPath }, ?_, ?_, ?_, ?_⟩
   · -- Reduce the `do`-block: path push, two `tryConsume`s, scalar `parseNode`, path restore.
     simp only [parseFlowMappingValue, htck, htcv, hpk2, h_node,
-      bind, Except.bind, if_true]
+      bind, Except.bind, ite_true]
   · -- pos = ps.pos + 2.
     have e1 : ({ ps with currentPath := savedPath.push (.key keyContent) } : ParseState).advance.pos
         = ps.pos + 1 := rfl
@@ -758,7 +758,7 @@ lemma parseFlowMappingValue_flowSeqStart_of_parse (ps : ParseState) (m : Nat)
     have e2 : ({ ps with currentPath := savedPath.push (.key keyContent) } : ParseState).advance.tokens
         = ps.tokens := rfl
     unfold ParseState.peek?
-    rw [e1, e2, if_pos h_succ_lt, h_succ_seqStart]
+    rw [e1, e2, ite_eq_left h_succ_lt, h_succ_seqStart]
   -- §II: the bracket `parseNode` reduces to the inner `parseFlowSequence` success.
   have h_node := parseNode_flowSeqStart_of_parse _ ps' k v hpk2 h_parse
   -- The do-block result: finalized value, path restored to `savedPath`.
@@ -769,7 +769,7 @@ lemma parseFlowMappingValue_flowSeqStart_of_parse (ps : ParseState) (m : Nat)
            { (applyNodeFinalization v ps' {}
               (({ ps with currentPath := savedPath.push (.key keyContent) } : ParseState).advance.peekPos?.getD
                 { offset := 0, line := 0, col := 0 })).2 with currentPath := savedPath }) := by
-    simp only [parseFlowMappingValue, htck, htcv, hpk2, h_node, bind, Except.bind, if_true]
+    simp only [parseFlowMappingValue, htck, htcv, hpk2, h_node, bind, Except.bind, ite_true]
   refine ⟨_, _, h_eq, ?_, ?_, ?_⟩
   · show (applyNodeFinalization v ps' {} _).2.pos = ps'.pos
     rw [applyNodeFinalization_pos]
@@ -809,7 +809,7 @@ lemma parseFlowMappingValue_flowMapStart_of_parse (ps : ParseState) (m : Nat)
     have e2 : ({ ps with currentPath := savedPath.push (.key keyContent) } : ParseState).advance.tokens
         = ps.tokens := rfl
     unfold ParseState.peek?
-    rw [e1, e2, if_pos h_succ_lt, h_succ_mapStart]
+    rw [e1, e2, ite_eq_left h_succ_lt, h_succ_mapStart]
   have h_node := parseNode_flowMapStart_of_parse _ ps' k v hpk2 h_parse
   have h_eq : parseFlowMappingValue ps (k + 1) savedPath keyContent =
       .ok ((applyNodeFinalization v ps' {}
@@ -818,7 +818,7 @@ lemma parseFlowMappingValue_flowMapStart_of_parse (ps : ParseState) (m : Nat)
            { (applyNodeFinalization v ps' {}
               (({ ps with currentPath := savedPath.push (.key keyContent) } : ParseState).advance.peekPos?.getD
                 { offset := 0, line := 0, col := 0 })).2 with currentPath := savedPath }) := by
-    simp only [parseFlowMappingValue, htck, htcv, hpk2, h_node, bind, Except.bind, if_true]
+    simp only [parseFlowMappingValue, htck, htcv, hpk2, h_node, bind, Except.bind, ite_true]
   refine ⟨_, _, h_eq, ?_, ?_, ?_⟩
   · show (applyNodeFinalization v ps' {} _).2.pos = ps'.pos
     rw [applyNodeFinalization_pos]

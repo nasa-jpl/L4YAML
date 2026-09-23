@@ -611,10 +611,10 @@ lemma blockHeaderToBodyIx_offset_monotonic {input : String} (c : IxCursor input)
     by_cases hp :
         (match (skipWhitespace (parseBlockHeaderLoopIx c.advance .clip none 2).2.2).peek?
               with | some d => isCommentBool d | none => false) = true
-    · rw [if_pos hp]
+    · rw [ite_eq_left hp]
       exact Nat.le_trans (IxCursor.advance_offset_monotonic _)
         (skipCommentText_offset_monotonic _)
-    · rw [if_neg hp]
+    · rw [ite_eq_right hp]
       exact Nat.le_refl _
   have hCLB :
       (if (match (skipWhitespace (parseBlockHeaderLoopIx c.advance .clip none 2).2.2).peek?
@@ -702,7 +702,7 @@ lemma hexDigitValue_lt_16 {ch : Char} (h : isHexDigitBool ch = true) :
     have hLo := hLower.1
     have hHi := hLower.2
     rw [h61] at hLo; rw [h66] at hHi
-    rw [if_neg, if_pos]
+    rw [ite_eq_right, ite_eq_left]
     · omega
     · rw [h61]; omega
     · intro hCond; have hLe := hCond.2; rw [h39] at hLe; omega
@@ -712,14 +712,14 @@ lemma hexDigitValue_lt_16 {ch : Char} (h : isHexDigitBool ch = true) :
       have hLo := hDigit.1
       have hHi := hDigit.2
       rw [h30] at hLo; rw [h39] at hHi
-      rw [if_pos]
+      rw [ite_eq_left]
       · omega
       · rw [h30, h39]; exact ⟨hLo, hHi⟩
     | inr hUpper =>
       have hLo := hUpper.1
       have hHi := hUpper.2
       rw [h41] at hLo; rw [h46] at hHi
-      rw [if_neg, if_neg]
+      rw [ite_eq_right, ite_eq_right]
       · omega
       · intro hGe; rw [h61] at hGe; omega
       · intro hCond; have hLe := hCond.2; rw [h39] at hLe; omega

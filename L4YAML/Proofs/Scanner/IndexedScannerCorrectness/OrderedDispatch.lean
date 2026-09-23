@@ -699,8 +699,8 @@ lemma scanYamlDirectiveIx_new_token_start {input : String}
     (s'.tokens[s.tokens.size]'hj).start = startPos := by
   unfold scanYamlDirectiveIx at h_ok
   by_cases hd : s.seenYamlDirective = true
-  · rw [if_pos hd] at h_ok; simp [Bind.bind, Except.bind] at h_ok
-  · rw [if_neg hd] at h_ok
+  · rw [ite_eq_left hd] at h_ok; simp [Bind.bind, Except.bind] at h_ok
+  · rw [ite_eq_right hd] at h_ok
     simp only [] at h_ok
     simp only [Bind.bind, Except.bind, throw, throwThe,
       MonadExceptOf.throw] at h_ok
@@ -794,8 +794,8 @@ lemma scanYamlDirectiveIx_tokens_size_le_succ {input : String}
     s'.tokens.size ≤ s.tokens.size + 1 := by
   unfold scanYamlDirectiveIx at h
   by_cases hd : s.seenYamlDirective = true
-  · rw [if_pos hd] at h; simp [Bind.bind, Except.bind] at h
-  · rw [if_neg hd] at h
+  · rw [ite_eq_left hd] at h; simp [Bind.bind, Except.bind] at h
+  · rw [ite_eq_right hd] at h
     simp only [] at h
     simp only [Bind.bind, Except.bind, throw, throwThe,
       MonadExceptOf.throw] at h
@@ -1167,7 +1167,7 @@ lemma scanNextTokenIx_dispatchContent_preserves_ScanInvIx {input : String}
   unfold scanNextTokenIx_dispatchContent at h_ok
   by_cases hg1 : (c == '&') = true
   · -- '&' anchor
-    rw [if_pos hg1] at h_ok
+    rw [ite_eq_left hg1] at h_ok
     try simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h_ok
     cases hA : scanAnchorOrAliasIx s true with
     | error e => rw [hA] at h_ok; cases h_ok
@@ -1175,58 +1175,58 @@ lemma scanNextTokenIx_dispatchContent_preserves_ScanInvIx {input : String}
       rw [hA] at h_ok
       simp only [Except.ok.injEq] at h_ok; subst h_ok
       exact scanAnchorOrAliasIx_preserves_ScanInvIx s v true h hA
-  · rw [if_neg hg1] at h_ok
+  · rw [ite_eq_right hg1] at h_ok
     simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h_ok
     by_cases hg2 : (c == '*') = true
     · -- '*' alias
-      rw [if_pos hg2] at h_ok
+      rw [ite_eq_left hg2] at h_ok
       cases hA : scanAnchorOrAliasIx s false with
       | error e => rw [hA] at h_ok; cases h_ok
       | ok v =>
         rw [hA] at h_ok
         simp only [Except.ok.injEq] at h_ok; subst h_ok
         exact scanAnchorOrAliasIx_preserves_ScanInvIx s v false h hA
-    · rw [if_neg hg2] at h_ok
+    · rw [ite_eq_right hg2] at h_ok
       by_cases hg3 : (c == '!') = true
       · -- '!' tag
-        rw [if_pos hg3] at h_ok
+        rw [ite_eq_left hg3] at h_ok
         cases hT : scanTagIx s with
         | error e => rw [hT] at h_ok; cases h_ok
         | ok v =>
           rw [hT] at h_ok
           simp only [Except.ok.injEq] at h_ok; subst h_ok
           exact scanTagIx_preserves_ScanInvIx s v h hT
-      · rw [if_neg hg3] at h_ok
+      · rw [ite_eq_right hg3] at h_ok
         by_cases hg4 : (c == '|' || c == '>') = true
         · -- block scalar
-          rw [if_pos hg4] at h_ok
+          rw [ite_eq_left hg4] at h_ok
           split at h_ok
           · rename_i r hBS
             simp only [Except.ok.injEq] at h_ok; subst h_ok
             exact _scalar_emitAt_preserves_ScanInvIx s _ _
               (scanBlockScalarIx_offset_monotonic s.cursor _ hBS) h
           · cases h_ok
-        · rw [if_neg hg4] at h_ok
+        · rw [ite_eq_right hg4] at h_ok
           by_cases hg5 : (c == '"') = true
           · -- double-quoted
-            rw [if_pos hg5] at h_ok
+            rw [ite_eq_left hg5] at h_ok
             split at h_ok
             · rename_i r hDQ
               simp only [Except.ok.injEq] at h_ok; subst h_ok
               exact _scalar_emitAt_preserves_ScanInvIx s _ _
                 (Nat.le_of_lt (scanDoubleQuotedIx_offset_lt s.cursor hDQ)) h
             · cases h_ok
-          · rw [if_neg hg5] at h_ok
+          · rw [ite_eq_right hg5] at h_ok
             by_cases hg6 : (c == '\'') = true
             · -- single-quoted
-              rw [if_pos hg6] at h_ok
+              rw [ite_eq_left hg6] at h_ok
               split at h_ok
               · rename_i r hSQ
                 simp only [Except.ok.injEq] at h_ok; subst h_ok
                 exact _scalar_emitAt_preserves_ScanInvIx s _ _
                   (Nat.le_of_lt (scanSingleQuotedIx_offset_lt s.cursor hSQ)) h
               · cases h_ok
-            · rw [if_neg hg6] at h_ok
+            · rw [ite_eq_right hg6] at h_ok
               -- plain scalar (success) vs error: one small inner `if`
               split at h_ok
               · simp only [Except.ok.injEq] at h_ok; subst h_ok
@@ -1243,7 +1243,7 @@ lemma scanNextTokenIx_dispatchContent_preserves_AllKeysValidIx {input : String}
   unfold scanNextTokenIx_dispatchContent at h_ok
   by_cases hg1 : (c == '&') = true
   · -- '&' anchor
-    rw [if_pos hg1] at h_ok
+    rw [ite_eq_left hg1] at h_ok
     try simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h_ok
     cases hA : scanAnchorOrAliasIx s true with
     | error e => rw [hA] at h_ok; cases h_ok
@@ -1251,58 +1251,58 @@ lemma scanNextTokenIx_dispatchContent_preserves_AllKeysValidIx {input : String}
       rw [hA] at h_ok
       simp only [Except.ok.injEq] at h_ok; subst h_ok
       exact scanAnchorOrAliasIx_preserves_AllKeysValidIx s v true h_akv hA
-  · rw [if_neg hg1] at h_ok
+  · rw [ite_eq_right hg1] at h_ok
     simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h_ok
     by_cases hg2 : (c == '*') = true
     · -- '*' alias
-      rw [if_pos hg2] at h_ok
+      rw [ite_eq_left hg2] at h_ok
       cases hA : scanAnchorOrAliasIx s false with
       | error e => rw [hA] at h_ok; cases h_ok
       | ok v =>
         rw [hA] at h_ok
         simp only [Except.ok.injEq] at h_ok; subst h_ok
         exact scanAnchorOrAliasIx_preserves_AllKeysValidIx s v false h_akv hA
-    · rw [if_neg hg2] at h_ok
+    · rw [ite_eq_right hg2] at h_ok
       by_cases hg3 : (c == '!') = true
       · -- '!' tag
-        rw [if_pos hg3] at h_ok
+        rw [ite_eq_left hg3] at h_ok
         cases hT : scanTagIx s with
         | error e => rw [hT] at h_ok; cases h_ok
         | ok v =>
           rw [hT] at h_ok
           simp only [Except.ok.injEq] at h_ok; subst h_ok
           exact scanTagIx_preserves_AllKeysValidIx s v h_akv hT
-      · rw [if_neg hg3] at h_ok
+      · rw [ite_eq_right hg3] at h_ok
         by_cases hg4 : (c == '|' || c == '>') = true
         · -- block scalar
-          rw [if_pos hg4] at h_ok
+          rw [ite_eq_left hg4] at h_ok
           split at h_ok
           · rename_i r hBS
             simp only [Except.ok.injEq] at h_ok; subst h_ok
             exact _scalar_emitAt_preserves_AllKeysValidIx s _ _
               (scanBlockScalarIx_offset_monotonic s.cursor _ hBS) h_akv
           · cases h_ok
-        · rw [if_neg hg4] at h_ok
+        · rw [ite_eq_right hg4] at h_ok
           by_cases hg5 : (c == '"') = true
           · -- double-quoted
-            rw [if_pos hg5] at h_ok
+            rw [ite_eq_left hg5] at h_ok
             split at h_ok
             · rename_i r hDQ
               simp only [Except.ok.injEq] at h_ok; subst h_ok
               exact _scalar_emitAt_preserves_AllKeysValidIx s _ _
                 (Nat.le_of_lt (scanDoubleQuotedIx_offset_lt s.cursor hDQ)) h_akv
             · cases h_ok
-          · rw [if_neg hg5] at h_ok
+          · rw [ite_eq_right hg5] at h_ok
             by_cases hg6 : (c == '\'') = true
             · -- single-quoted
-              rw [if_pos hg6] at h_ok
+              rw [ite_eq_left hg6] at h_ok
               split at h_ok
               · rename_i r hSQ
                 simp only [Except.ok.injEq] at h_ok; subst h_ok
                 exact _scalar_emitAt_preserves_AllKeysValidIx s _ _
                   (Nat.le_of_lt (scanSingleQuotedIx_offset_lt s.cursor hSQ)) h_akv
               · cases h_ok
-            · rw [if_neg hg6] at h_ok
+            · rw [ite_eq_right hg6] at h_ok
               -- plain scalar (success) vs error: one small inner `if`
               split at h_ok
               · simp only [Except.ok.injEq] at h_ok; subst h_ok

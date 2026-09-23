@@ -95,8 +95,8 @@ lemma scanDocumentEndIx_tokens_eq {s s' : ScannerStateIx input}
     s'.tokens = ((unwindIndentsIx s (-1)).emit YamlToken.documentEnd).tokens := by
   unfold scanDocumentEndIx at h
   by_cases hd : s.directivesPresent = true
-  · rw [if_pos hd] at h; simp [Bind.bind, Except.bind] at h
-  · rw [if_neg hd] at h
+  · rw [ite_eq_left hd] at h; simp [Bind.bind, Except.bind] at h
+  · rw [ite_eq_right hd] at h
     simp only [] at h
     split at h
     all_goals first
@@ -199,8 +199,8 @@ lemma scanYamlDirective_new_token_eqIx {s : ScannerStateIx input}
       (s'.tokens.tokens[s.tokens.tokens.size]'h_lt).token ≠ YamlToken.placeholder := by
   unfold scanYamlDirectiveIx at h
   by_cases hd : s.seenYamlDirective = true
-  · rw [if_pos hd] at h; simp [Bind.bind, Except.bind] at h
-  · rw [if_neg hd] at h
+  · rw [ite_eq_left hd] at h; simp [Bind.bind, Except.bind] at h
+  · rw [ite_eq_right hd] at h
     simp only [bind, Except.bind] at h
     repeat (any_goals (split at h))
     all_goals (try contradiction)

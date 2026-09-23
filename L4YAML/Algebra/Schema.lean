@@ -86,7 +86,7 @@ lemma resolveImplicit_of_isBool {s : String} {b : Bool}
     resolveImplicit s = .bool b := by
   unfold resolveImplicit
   rw [h_null]
-  simp only [Bool.false_eq_true, if_false, h_bool]
+  simp only [Bool.false_eq_true, ite_false, h_bool]
 
 /-- **Int arm**: when `isNull` and `isBool` both fail and `isInt`
     produces `some i`, `resolveImplicit` produces `.int i`. -/
@@ -96,7 +96,7 @@ lemma resolveImplicit_of_isInt {s : String} {i : Int}
     resolveImplicit s = .int i := by
   unfold resolveImplicit
   rw [h_null]
-  simp only [Bool.false_eq_true, if_false, h_bool, h_int]
+  simp only [Bool.false_eq_true, ite_false, h_bool, h_int]
 
 /-- **Float arm**: when `isNull`/`isBool`/`isInt` all fail and
     `isFloat` produces `some f`, `resolveImplicit` produces `.float f`. -/
@@ -106,7 +106,7 @@ lemma resolveImplicit_of_isFloat {s : String} {f : FloatValue}
     resolveImplicit s = .float f := by
   unfold resolveImplicit
   rw [h_null]
-  simp only [Bool.false_eq_true, if_false, h_bool, h_int, h_float]
+  simp only [Bool.false_eq_true, ite_false, h_bool, h_int, h_float]
 
 /-- **Str fallback**: when every classifier fails, `resolveImplicit`
     falls through to `.str s`. -/
@@ -116,7 +116,7 @@ lemma resolveImplicit_str {s : String}
     resolveImplicit s = .str s := by
   unfold resolveImplicit
   rw [h_null]
-  simp only [Bool.false_eq_true, if_false, h_bool, h_int, h_float]
+  simp only [Bool.false_eq_true, ite_false, h_bool, h_int, h_float]
 
 /-! ## Item 16(b) — `resolveScalar` tag precedence
 

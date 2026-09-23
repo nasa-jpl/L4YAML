@@ -284,7 +284,7 @@ lemma scanFilteredIx_emitScalar_eq (content : String) :
       = s₁.tokens.tokens.push se_ix := rfl
   rw [h_se_eq, Array.filter_push] at h_eq
   have h_se_keep : (se_ix.token != YamlToken.placeholder) = true := rfl
-  rw [if_pos h_se_keep] at h_eq
+  rw [ite_eq_left h_se_keep] at h_eq
   -- Step 3: substitute h_filt1 (s₁.tokens.filter = ((mk' input).emit ss).tokens.filter.push tok_scalar).
   rw [h_filt1] at h_eq
   -- Step 4: explicit streamStart IxToken; (mk' input).tokens.tokens = #[], filter empty = empty.

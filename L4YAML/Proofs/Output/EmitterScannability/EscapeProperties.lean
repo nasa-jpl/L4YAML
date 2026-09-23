@@ -482,9 +482,9 @@ lemma processEscape_hex_ok (sc : ScannerState) (h1 h2 : Char)
   have h_collect : collectHexDigitsLoop sc.advance "" 2 =
       (("".push h1).push h2, sc.advance.advance.advance) := by
     unfold collectHexDigitsLoop; dsimp only []; rw [h_peek_h1]; dsimp only []
-    simp only [h_h1_hex, if_true]
+    simp only [h_h1_hex, ite_true]
     unfold collectHexDigitsLoop; dsimp only []; rw [h_peek_h2]; dsimp only []
-    simp only [h_h2_hex, if_true]
+    simp only [h_h2_hex, ite_true]
     unfold collectHexDigitsLoop; dsimp only []
   -- Step 6: show foldl value < 0x110000
   have h_val_lt := hex_two_foldl_bound ⟨h1.toNat, h_h1_lt128⟩ ⟨h2.toNat, h_h2_lt128⟩
@@ -622,7 +622,7 @@ lemma collectDoubleQuotedLoop_escapeString_succeeds
           rw [h_peek_tag]; dsimp only []
           -- Check: tag is not a linebreak
           have h_tag_nlb := escapeTag_not_linebreak c tag h_tag
-          rw [h_tag_nlb, if_neg Bool.false_ne_true]
+          rw [h_tag_nlb, ite_eq_right Bool.false_ne_true]
           -- processEscape succeeds with named tag and returns original char c
           have h_proc := processEscape_named_content sc.advance c tag h_tag h_peek_tag
           simp only [bind, Except.bind, h_proc]
@@ -682,7 +682,7 @@ lemma collectDoubleQuotedLoop_escapeString_succeeds
             (by decide) (by decide)
           have ⟨h_peek_x, _⟩ := peek_of_chars_cons sc.advance 'x' _ _ hcorr_bs
           rw [h_peek_x]; dsimp only []
-          rw [show isLineBreakBool 'x' = false from by decide, if_neg Bool.false_ne_true]
+          rw [show isLineBreakBool 'x' = false from by decide, ite_eq_right Bool.false_ne_true]
           -- processEscape handles 'x' → parseHexEscape
           have h_col_bs : (sc.col + 1 : Nat) = sc.advance.col := hcorr_bs.col_eq
           rw [h_col_bs] at hcorr_bs
@@ -728,9 +728,9 @@ lemma collectDoubleQuotedLoop_escapeString_succeeds
             have h_coll : collectHexDigitsLoop sc.advance.advance "" 2 =
                 (("".push d1).push d2, sc.advance.advance.advance.advance) := by
               unfold collectHexDigitsLoop; dsimp only []; rw [h_peek_d1']; dsimp only []
-              simp only [h_d1_hex', if_true]
+              simp only [h_d1_hex', ite_true]
               unfold collectHexDigitsLoop; dsimp only []; rw [h_peek_d2']; dsimp only []
-              simp only [h_d2_hex', if_true]
+              simp only [h_d2_hex', ite_true]
               unfold collectHexDigitsLoop; dsimp only []
             simp only [h_coll] at h_proc
             -- Step 5: Reduce length check and value bound
@@ -793,7 +793,7 @@ lemma collectDoubleQuotedLoop_escapeString_succeeds
           have h_nlb : isLineBreakBool c = false := by
             unfold isLineBreakBool isLineFeedBool isCarriageReturnBool
             simp [beq_eq_false_iff_ne, h_ne_nl, h_ne_cr]
-          rw [h_nlb, if_neg Bool.false_ne_true]
+          rw [h_nlb, ite_eq_right Bool.false_ne_true]
           -- isNbJsonBool c = true (c.val ≥ 0x20)
           have h_json : isNbJsonBool c = true := by
             have h_ascii : ∀ n : Fin 128, isEscapedChar (Char.ofNat n.val) = false →
@@ -811,7 +811,7 @@ lemma collectDoubleQuotedLoop_escapeString_succeeds
               · change (0x20 : Nat) ≤ c.val.toNat; omega
               · change c.val.toNat ≤ (0x10FFFF : Nat)
                 have := c.valid; unfold UInt32.isValidChar at this; omega
-          simp only [h_json, Bool.not_true]; rw [if_neg Bool.false_ne_true]
+          simp only [h_json, Bool.not_true]; rw [ite_eq_right Bool.false_ne_true]
           -- Advance and apply IH
           have hcorr_c := advance_non_newline_corr sc c _ hcorr h_lt_c
             (fun h => by subst h; exact absurd h_ef (by decide))

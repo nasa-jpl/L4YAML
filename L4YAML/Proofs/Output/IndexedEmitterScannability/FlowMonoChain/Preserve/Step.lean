@@ -328,7 +328,7 @@ lemma scanNextTokenIx_dispatchContent_preserves_flowLevel
   unfold scanNextTokenIx_dispatchContent at h
   by_cases hg1 : (c == '&') = true
   · -- '&' anchor
-    rw [if_pos hg1] at h
+    rw [ite_eq_left hg1] at h
     try simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
     cases hA : scanAnchorOrAliasIx s true with
     | error e => rw [hA] at h; cases h
@@ -336,49 +336,49 @@ lemma scanNextTokenIx_dispatchContent_preserves_flowLevel
       rw [hA] at h
       simp only [Except.ok.injEq] at h; subst h
       exact scanAnchorOrAliasIx_preserves_flowLevel s true v hA
-  · rw [if_neg hg1] at h
+  · rw [ite_eq_right hg1] at h
     simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
     by_cases hg2 : (c == '*') = true
     · -- '*' alias
-      rw [if_pos hg2] at h
+      rw [ite_eq_left hg2] at h
       cases hA : scanAnchorOrAliasIx s false with
       | error e => rw [hA] at h; cases h
       | ok v =>
         rw [hA] at h
         simp only [Except.ok.injEq] at h; subst h
         exact scanAnchorOrAliasIx_preserves_flowLevel s false v hA
-    · rw [if_neg hg2] at h
+    · rw [ite_eq_right hg2] at h
       by_cases hg3 : (c == '!') = true
       · -- '!' tag
-        rw [if_pos hg3] at h
+        rw [ite_eq_left hg3] at h
         cases hT : scanTagIx s with
         | error e => rw [hT] at h; cases h
         | ok v =>
           rw [hT] at h
           simp only [Except.ok.injEq] at h; subst h
           exact scanTagIx_preserves_flowLevel s v hT
-      · rw [if_neg hg3] at h
+      · rw [ite_eq_right hg3] at h
         by_cases hg4 : (c == '|' || c == '>') = true
         · -- block scalar
-          rw [if_pos hg4] at h
+          rw [ite_eq_left hg4] at h
           split at h
           · simp only [Except.ok.injEq] at h; subst h; rfl
           · cases h
-        · rw [if_neg hg4] at h
+        · rw [ite_eq_right hg4] at h
           by_cases hg5 : (c == '"') = true
           · -- double-quoted
-            rw [if_pos hg5] at h
+            rw [ite_eq_left hg5] at h
             split at h
             · simp only [Except.ok.injEq] at h; subst h; rfl
             · cases h
-          · rw [if_neg hg5] at h
+          · rw [ite_eq_right hg5] at h
             by_cases hg6 : (c == '\'') = true
             · -- single-quoted
-              rw [if_pos hg6] at h
+              rw [ite_eq_left hg6] at h
               split at h
               · simp only [Except.ok.injEq] at h; subst h; rfl
               · cases h
-            · rw [if_neg hg6] at h
+            · rw [ite_eq_right hg6] at h
               -- plain scalar (success) vs error: one small inner `if`
               split at h
               · simp only [Except.ok.injEq] at h; subst h; rfl
@@ -394,7 +394,7 @@ lemma scanNextTokenIx_dispatchContent_preserves_simpleKeyStack
   unfold scanNextTokenIx_dispatchContent at h
   by_cases hg1 : (c == '&') = true
   · -- '&' anchor
-    rw [if_pos hg1] at h
+    rw [ite_eq_left hg1] at h
     try simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
     cases hA : scanAnchorOrAliasIx s true with
     | error e => rw [hA] at h; cases h
@@ -402,49 +402,49 @@ lemma scanNextTokenIx_dispatchContent_preserves_simpleKeyStack
       rw [hA] at h
       simp only [Except.ok.injEq] at h; subst h
       exact scanAnchorOrAliasIx_preserves_simpleKeyStack s true v hA
-  · rw [if_neg hg1] at h
+  · rw [ite_eq_right hg1] at h
     simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
     by_cases hg2 : (c == '*') = true
     · -- '*' alias
-      rw [if_pos hg2] at h
+      rw [ite_eq_left hg2] at h
       cases hA : scanAnchorOrAliasIx s false with
       | error e => rw [hA] at h; cases h
       | ok v =>
         rw [hA] at h
         simp only [Except.ok.injEq] at h; subst h
         exact scanAnchorOrAliasIx_preserves_simpleKeyStack s false v hA
-    · rw [if_neg hg2] at h
+    · rw [ite_eq_right hg2] at h
       by_cases hg3 : (c == '!') = true
       · -- '!' tag
-        rw [if_pos hg3] at h
+        rw [ite_eq_left hg3] at h
         cases hT : scanTagIx s with
         | error e => rw [hT] at h; cases h
         | ok v =>
           rw [hT] at h
           simp only [Except.ok.injEq] at h; subst h
           exact scanTagIx_preserves_simpleKeyStack s v hT
-      · rw [if_neg hg3] at h
+      · rw [ite_eq_right hg3] at h
         by_cases hg4 : (c == '|' || c == '>') = true
         · -- block scalar
-          rw [if_pos hg4] at h
+          rw [ite_eq_left hg4] at h
           split at h
           · simp only [Except.ok.injEq] at h; subst h; rfl
           · cases h
-        · rw [if_neg hg4] at h
+        · rw [ite_eq_right hg4] at h
           by_cases hg5 : (c == '"') = true
           · -- double-quoted
-            rw [if_pos hg5] at h
+            rw [ite_eq_left hg5] at h
             split at h
             · simp only [Except.ok.injEq] at h; subst h; rfl
             · cases h
-          · rw [if_neg hg5] at h
+          · rw [ite_eq_right hg5] at h
             by_cases hg6 : (c == '\'') = true
             · -- single-quoted
-              rw [if_pos hg6] at h
+              rw [ite_eq_left hg6] at h
               split at h
               · simp only [Except.ok.injEq] at h; subst h; rfl
               · cases h
-            · rw [if_neg hg6] at h
+            · rw [ite_eq_right hg6] at h
               -- plain scalar (success) vs error: one small inner `if`
               split at h
               · simp only [Except.ok.injEq] at h; subst h; rfl

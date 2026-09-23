@@ -277,22 +277,22 @@ lemma scanBlockEntryIx_offset_monotonic {input : String}
     s.cursor.pos.offset ≤ s'.cursor.pos.offset := by
   unfold scanBlockEntryIx at h
   by_cases hi : (!s.inFlow) = true
-  · rw [if_pos hi] at h
+  · rw [ite_eq_left hi] at h
     by_cases ht : s.hasTabInPrecedingWhitespace = true
     · -- §6.1 tab-throw fires; do-block reduces to `.error _` — contradicts `.ok s'`.
-      rw [if_pos ht] at h
+      rw [ite_eq_left ht] at h
       simp [Bind.bind, Except.bind] at h
-    · rw [if_neg ht] at h
+    · rw [ite_eq_right ht] at h
       simp only [] at h
-      rw [if_pos hi] at h
+      rw [ite_eq_left hi] at h
       simp only [Except.ok.injEq] at h
       subst h
       show s.cursor.pos.offset ≤ _
       simp only [advance_cursor, emit_cursor, pushSequenceIndentIx_cursor]
       exact IxCursor.advance_offset_monotonic _
-  · rw [if_neg hi] at h
+  · rw [ite_eq_right hi] at h
     simp only [] at h
-    rw [if_neg hi] at h
+    rw [ite_eq_right hi] at h
     simp only [Except.ok.injEq] at h
     subst h
     show s.cursor.pos.offset ≤ _
@@ -308,7 +308,7 @@ lemma scanKeyIx_offset_monotonic {input : String}
     -- the post-state to `pushMappingIndentIx s c` and lets the inFlow
     -- preservation lemmas collapse the inner if's condition to `s.inFlow`,
     -- which the second `if_pos hi` then rewrites to its `then` branch.
-    simp only [if_pos hi, advance_inFlow, emit_inFlow,
+    simp only [ite_eq_left hi, advance_inFlow, emit_inFlow,
       pushMappingIndentIx_inFlow] at h
     -- `if let some '\t' := … then throw` is `match s.peek? with`.
     split at h
@@ -321,7 +321,7 @@ lemma scanKeyIx_offset_monotonic {input : String}
       simp only [advance_cursor, emit_cursor, pushMappingIndentIx_cursor]
       exact IxCursor.advance_offset_monotonic _
   · -- Flow context: outer if collapses to `s`; inner if also takes else.
-    simp only [if_neg hi, advance_inFlow, emit_inFlow] at h
+    simp only [ite_eq_right hi, advance_inFlow, emit_inFlow] at h
     simp only [Except.ok.injEq] at h
     subst h
     show s.cursor.pos.offset ≤ _
@@ -429,9 +429,9 @@ lemma scanDocumentEndIx_offset_monotonic {input : String}
   -- Peel the early-throw guard.
   by_cases hd : s.directivesPresent = true
   · -- Early throw fires; do-block reduces to `.error _` — contradicts `.ok s'`.
-    rw [if_pos hd] at h
+    rw [ite_eq_left hd] at h
     simp [Bind.bind, Except.bind] at h
-  · rw [if_neg hd] at h
+  · rw [ite_eq_right hd] at h
     -- Normalize the outer `pure ()`-bind so the match is the next destructible.
     simp only [] at h
     split at h
@@ -483,9 +483,9 @@ lemma scanAnchorOrAliasIx_offset_monotonic {input : String}
   -- the conditional with `by_cases` + `rw [if_pos/if_neg]` instead.
   by_cases hn : (collectAnchorNameLoopIx s.advance.cursor ""
       (input.utf8ByteSize - s.advance.cursor.pos.offset)).1.isEmpty = true
-  · rw [if_pos hn] at h
+  · rw [ite_eq_left hn] at h
     exact absurd h (by simp)
-  · rw [if_neg hn] at h
+  · rw [ite_eq_right hn] at h
     simp only [Except.ok.injEq] at h
     subst h
     show s.cursor.pos.offset ≤ _
@@ -555,9 +555,9 @@ lemma scanYamlDirectiveIx_offset_monotonic {input : String}
   unfold scanYamlDirectiveIx at h
   -- Peel the duplicate-directive throw guard.
   by_cases hd : s.seenYamlDirective = true
-  · rw [if_pos hd] at h
+  · rw [ite_eq_left hd] at h
     simp [Bind.bind, Except.bind] at h
-  · rw [if_neg hd] at h
+  · rw [ite_eq_right hd] at h
     simp only [] at h
     -- Peel: trailing-validation match/ites + version-emptiness ite.
     simp only [Bind.bind, Except.bind, throw, throwThe,
@@ -792,22 +792,22 @@ lemma scanBlockEntryIx_tokens_size_le {input : String}
     s.tokens.size ≤ s'.tokens.size := by
   unfold scanBlockEntryIx at h
   by_cases hi : (!s.inFlow) = true
-  · rw [if_pos hi] at h
+  · rw [ite_eq_left hi] at h
     by_cases ht : s.hasTabInPrecedingWhitespace = true
     · -- §6.1 tab-throw fires; contradicts `.ok s'`.
-      rw [if_pos ht] at h
+      rw [ite_eq_left ht] at h
       simp [Bind.bind, Except.bind] at h
-    · rw [if_neg ht] at h
+    · rw [ite_eq_right ht] at h
       simp only [] at h
-      rw [if_pos hi] at h
+      rw [ite_eq_left hi] at h
       simp only [Except.ok.injEq] at h
       subst h
       show s.tokens.size ≤ _
       refine Nat.le_trans (pushSequenceIndentIx_tokens_size_le s s.cursor.pos.col) ?_
       simp
-  · rw [if_neg hi] at h
+  · rw [ite_eq_right hi] at h
     simp only [] at h
-    rw [if_neg hi] at h
+    rw [ite_eq_right hi] at h
     simp only [Except.ok.injEq] at h
     subst h
     show s.tokens.size ≤ _
@@ -820,7 +820,7 @@ lemma scanKeyIx_tokens_size_le {input : String}
   by_cases hi : (!s.inFlow) = true
   · -- Block context: outer if rewrites; inFlow chains normalise the inner
     -- if's condition to `s.inFlow`; second if_pos hi rewrites the inner if.
-    simp only [if_pos hi, advance_inFlow, emit_inFlow,
+    simp only [ite_eq_left hi, advance_inFlow, emit_inFlow,
       pushMappingIndentIx_inFlow] at h
     split at h
     · simp [Bind.bind, Except.bind] at h
@@ -830,7 +830,7 @@ lemma scanKeyIx_tokens_size_le {input : String}
       refine Nat.le_trans (pushMappingIndentIx_tokens_size_le s s.cursor.pos.col) ?_
       simp
   · -- Flow context: outer if collapses to `s`; inner if takes else.
-    simp only [if_neg hi, advance_inFlow, emit_inFlow] at h
+    simp only [ite_eq_right hi, advance_inFlow, emit_inFlow] at h
     simp only [Except.ok.injEq] at h
     subst h
     show s.tokens.size ≤ _
@@ -913,9 +913,9 @@ lemma scanDocumentEndIx_tokens_size_le {input : String}
     s.tokens.size ≤ s'.tokens.size := by
   unfold scanDocumentEndIx at h
   by_cases hd : s.directivesPresent = true
-  · rw [if_pos hd] at h
+  · rw [ite_eq_left hd] at h
     simp [Bind.bind, Except.bind] at h
-  · rw [if_neg hd] at h
+  · rw [ite_eq_right hd] at h
     simp only [] at h
     split at h
     all_goals first
@@ -938,9 +938,9 @@ lemma scanAnchorOrAliasIx_tokens_size_le {input : String}
   unfold scanAnchorOrAliasIx at h
   by_cases hn : (collectAnchorNameLoopIx s.advance.cursor ""
       (input.utf8ByteSize - s.advance.cursor.pos.offset)).1.isEmpty = true
-  · rw [if_pos hn] at h
+  · rw [ite_eq_left hn] at h
     exact absurd h (by simp)
-  · rw [if_neg hn] at h
+  · rw [ite_eq_right hn] at h
     simp only [Except.ok.injEq] at h
     subst h
     show s.tokens.size ≤ _
@@ -977,9 +977,9 @@ lemma scanYamlDirectiveIx_tokens_size_le {input : String}
     s.tokens.size ≤ s'.tokens.size := by
   unfold scanYamlDirectiveIx at h
   by_cases hd : s.seenYamlDirective = true
-  · rw [if_pos hd] at h
+  · rw [ite_eq_left hd] at h
     simp [Bind.bind, Except.bind] at h
-  · rw [if_neg hd] at h
+  · rw [ite_eq_right hd] at h
     simp only [] at h
     simp only [Bind.bind, Except.bind, throw, throwThe,
       MonadExceptOf.throw] at h
@@ -1156,26 +1156,26 @@ lemma scanNextTokenIx_dispatchStructural_ok_some_cases {input : String}
   by_cases hg1 :
       (s.inFlow && decide (s.currentIndent ≥ 0) &&
        decide ((s.cursor.pos.col : Int) ≤ s.currentIndent)) = true
-  · rw [if_pos hg1] at h
+  · rw [ite_eq_left hg1] at h
     by_cases hg1' : (c != ']' && c != '}') = true
-    · rw [if_pos hg1'] at h
+    · rw [ite_eq_left hg1'] at h
       simp [Bind.bind, Except.bind] at h
-    · rw [if_neg hg1'] at h
+    · rw [ite_eq_right hg1'] at h
       -- Continue with productions
       by_cases hg2 : (s.cursor.pos.col == 0 && s.inFlow &&
                       (atDocumentStartIx s.cursor || atDocumentEndIx s.cursor)) = true
-      · rw [if_pos hg2] at h
+      · rw [ite_eq_left hg2] at h
         simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
-      · rw [if_neg hg2] at h
+      · rw [ite_eq_right hg2] at h
         by_cases hg3 : (s.cursor.pos.col == 0 && atDocumentStartIx s.cursor) = true
-        · rw [if_pos hg3] at h
+        · rw [ite_eq_left hg3] at h
           left
           show s' = _
           have := (Except.ok.injEq _ _).mp h
           exact ((Option.some.injEq _ _).mp this).symm
-        · rw [if_neg hg3] at h
+        · rw [ite_eq_right hg3] at h
           by_cases hg4 : (s.cursor.pos.col == 0 && atDocumentEndIx s.cursor) = true
-          · rw [if_pos hg4] at h
+          · rw [ite_eq_left hg4] at h
             right; left
             cases hSDE : scanDocumentEndIx s with
             | error e =>
@@ -1185,9 +1185,9 @@ lemma scanNextTokenIx_dispatchStructural_ok_some_cases {input : String}
               rw [hSDE] at h
               simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
               exact congrArg Except.ok h
-          · rw [if_neg hg4] at h
+          · rw [ite_eq_right hg4] at h
             by_cases hg5 : (c == '%' && s.cursor.pos.col == 0) = true
-            · rw [if_pos hg5] at h
+            · rw [ite_eq_left hg5] at h
               right; right
               cases hSD : scanDirectiveIx s with
               | error e =>
@@ -1197,23 +1197,23 @@ lemma scanNextTokenIx_dispatchStructural_ok_some_cases {input : String}
                 rw [hSD] at h
                 simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
                 exact congrArg Except.ok h
-            · rw [if_neg hg5] at h
+            · rw [ite_eq_right hg5] at h
               simp [Pure.pure, Except.pure] at h
-  · rw [if_neg hg1] at h
+  · rw [ite_eq_right hg1] at h
     by_cases hg2 : (s.cursor.pos.col == 0 && s.inFlow &&
                     (atDocumentStartIx s.cursor || atDocumentEndIx s.cursor)) = true
-    · rw [if_pos hg2] at h
+    · rw [ite_eq_left hg2] at h
       simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
-    · rw [if_neg hg2] at h
+    · rw [ite_eq_right hg2] at h
       by_cases hg3 : (s.cursor.pos.col == 0 && atDocumentStartIx s.cursor) = true
-      · rw [if_pos hg3] at h
+      · rw [ite_eq_left hg3] at h
         left
         show s' = _
         have := (Except.ok.injEq _ _).mp h
         exact ((Option.some.injEq _ _).mp this).symm
-      · rw [if_neg hg3] at h
+      · rw [ite_eq_right hg3] at h
         by_cases hg4 : (s.cursor.pos.col == 0 && atDocumentEndIx s.cursor) = true
-        · rw [if_pos hg4] at h
+        · rw [ite_eq_left hg4] at h
           right; left
           cases hSDE : scanDocumentEndIx s with
           | error e =>
@@ -1223,9 +1223,9 @@ lemma scanNextTokenIx_dispatchStructural_ok_some_cases {input : String}
             rw [hSDE] at h
             simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
             exact congrArg Except.ok h
-        · rw [if_neg hg4] at h
+        · rw [ite_eq_right hg4] at h
           by_cases hg5 : (c == '%' && s.cursor.pos.col == 0) = true
-          · rw [if_pos hg5] at h
+          · rw [ite_eq_left hg5] at h
             right; right
             cases hSD : scanDirectiveIx s with
             | error e =>
@@ -1235,7 +1235,7 @@ lemma scanNextTokenIx_dispatchStructural_ok_some_cases {input : String}
               rw [hSD] at h
               simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
               exact congrArg Except.ok h
-          · rw [if_neg hg5] at h
+          · rw [ite_eq_right hg5] at h
             simp [Pure.pure, Except.pure] at h
 
 lemma scanNextTokenIx_dispatchStructural_offset_monotonic {input : String}
@@ -1274,47 +1274,47 @@ lemma scanNextTokenIx_dispatchFlowIndicators_ok_some_cases {input : String}
     scanFlowEntryIx s = .ok s' := by
   unfold scanNextTokenIx_dispatchFlowIndicators at h
   by_cases hg1 : (c == '[') = true
-  · rw [if_pos hg1] at h
+  · rw [ite_eq_left hg1] at h
     left
     show s' = _
     have hi := (Except.ok.injEq _ _).mp h
     exact ((Option.some.injEq _ _).mp hi).symm
-  · rw [if_neg hg1] at h
+  · rw [ite_eq_right hg1] at h
     by_cases hg2 : (c == ']') = true
-    · rw [if_pos hg2] at h
+    · rw [ite_eq_left hg2] at h
       by_cases hg2' : (s.flowLevel == 0) = true
-      · rw [if_pos hg2'] at h
+      · rw [ite_eq_left hg2'] at h
         simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
-      · rw [if_neg hg2'] at h
+      · rw [ite_eq_right hg2'] at h
         right; left
         show s' = _
         have hi := (Except.ok.injEq _ _).mp h
         exact ((Option.some.injEq _ _).mp hi).symm
-    · rw [if_neg hg2] at h
+    · rw [ite_eq_right hg2] at h
       by_cases hg3 : (c == '{') = true
-      · rw [if_pos hg3] at h
+      · rw [ite_eq_left hg3] at h
         right; right; left
         show s' = _
         have hi := (Except.ok.injEq _ _).mp h
         exact ((Option.some.injEq _ _).mp hi).symm
-      · rw [if_neg hg3] at h
+      · rw [ite_eq_right hg3] at h
         by_cases hg4 : (c == '}') = true
-        · rw [if_pos hg4] at h
+        · rw [ite_eq_left hg4] at h
           by_cases hg4' : (s.flowLevel == 0) = true
-          · rw [if_pos hg4'] at h
+          · rw [ite_eq_left hg4'] at h
             simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
-          · rw [if_neg hg4'] at h
+          · rw [ite_eq_right hg4'] at h
             right; right; right; left
             show s' = _
             have hi := (Except.ok.injEq _ _).mp h
             exact ((Option.some.injEq _ _).mp hi).symm
-        · rw [if_neg hg4] at h
+        · rw [ite_eq_right hg4] at h
           by_cases hg5 : (c == ',') = true
-          · rw [if_pos hg5] at h
+          · rw [ite_eq_left hg5] at h
             by_cases hg5' : (s.flowLevel == 0) = true
-            · rw [if_pos hg5'] at h
+            · rw [ite_eq_left hg5'] at h
               simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
-            · rw [if_neg hg5'] at h
+            · rw [ite_eq_right hg5'] at h
               right; right; right; right
               cases hSFE : scanFlowEntryIx s with
               | error e =>
@@ -1324,7 +1324,7 @@ lemma scanNextTokenIx_dispatchFlowIndicators_ok_some_cases {input : String}
                 rw [hSFE] at h
                 simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
                 exact congrArg Except.ok h
-          · rw [if_neg hg5] at h
+          · rw [ite_eq_right hg5] at h
             simp [Pure.pure, Except.pure] at h
 
 lemma scanNextTokenIx_dispatchFlowIndicators_offset_monotonic {input : String}
@@ -1364,7 +1364,7 @@ lemma scanNextTokenIx_dispatchBlockIndicators_ok_some_cases {input : String}
     scanValueIx s = .ok s' := by
   unfold scanNextTokenIx_dispatchBlockIndicators at h
   by_cases hg1 : (c == '-' && !s.inFlow && isBlockEntryCandidateIx s) = true
-  · rw [if_pos hg1] at h
+  · rw [ite_eq_left hg1] at h
     left
     cases hBE : scanBlockEntryIx s with
     | error e =>
@@ -1374,9 +1374,9 @@ lemma scanNextTokenIx_dispatchBlockIndicators_ok_some_cases {input : String}
       rw [hBE] at h
       simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
       exact congrArg Except.ok h
-  · rw [if_neg hg1] at h
+  · rw [ite_eq_right hg1] at h
     by_cases hg2 : (c == '?' && isKeyCandidateIx s) = true
-    · rw [if_pos hg2] at h
+    · rw [ite_eq_left hg2] at h
       right; left
       cases hK : scanKeyIx s with
       | error e =>
@@ -1386,9 +1386,9 @@ lemma scanNextTokenIx_dispatchBlockIndicators_ok_some_cases {input : String}
         rw [hK] at h
         simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
         exact congrArg Except.ok h
-    · rw [if_neg hg2] at h
+    · rw [ite_eq_right hg2] at h
       by_cases hg3 : (c == ':' && isValueCandidateIx s) = true
-      · rw [if_pos hg3] at h
+      · rw [ite_eq_left hg3] at h
         right; right
         cases hV : scanValueIx s with
         | error e =>
@@ -1398,7 +1398,7 @@ lemma scanNextTokenIx_dispatchBlockIndicators_ok_some_cases {input : String}
           rw [hV] at h
           simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
           exact congrArg Except.ok h
-      · rw [if_neg hg3] at h
+      · rw [ite_eq_right hg3] at h
         simp [Pure.pure, Except.pure] at h
 
 lemma scanNextTokenIx_dispatchBlockIndicators_offset_monotonic {input : String}
@@ -1438,7 +1438,7 @@ lemma scanNextTokenIx_dispatchContent_ok_monotonic {input : String}
     s.tokens.size ≤ s'.tokens.size := by
   unfold scanNextTokenIx_dispatchContent at h
   by_cases hg1 : (c == '&') = true
-  · rw [if_pos hg1] at h
+  · rw [ite_eq_left hg1] at h
     -- 4.32.0 already reduces the anchor bind; the `cases`/`rw` below is robust either way
     try simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
     cases hA : scanAnchorOrAliasIx s true with
@@ -1447,28 +1447,28 @@ lemma scanNextTokenIx_dispatchContent_ok_monotonic {input : String}
       rw [hA] at h
       cases h
       exact ⟨scanAnchorOrAliasIx_offset_monotonic hA, scanAnchorOrAliasIx_tokens_size_le hA⟩
-  · rw [if_neg hg1] at h
+  · rw [ite_eq_right hg1] at h
     simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
     by_cases hg2 : (c == '*') = true
-    · rw [if_pos hg2] at h
+    · rw [ite_eq_left hg2] at h
       cases hA : scanAnchorOrAliasIx s false with
       | error e => rw [hA] at h; cases h
       | ok v =>
         rw [hA] at h
         cases h
         exact ⟨scanAnchorOrAliasIx_offset_monotonic hA, scanAnchorOrAliasIx_tokens_size_le hA⟩
-    · rw [if_neg hg2] at h
+    · rw [ite_eq_right hg2] at h
       by_cases hg3 : (c == '!') = true
-      · rw [if_pos hg3] at h
+      · rw [ite_eq_left hg3] at h
         cases hT : scanTagIx s with
         | error e => rw [hT] at h; cases h
         | ok v =>
           rw [hT] at h
           cases h
           exact ⟨scanTagIx_offset_monotonic hT, scanTagIx_tokens_size_le hT⟩
-      · rw [if_neg hg3] at h
+      · rw [ite_eq_right hg3] at h
         by_cases hg4 : (c == '|' || c == '>') = true
-        · rw [if_pos hg4] at h
+        · rw [ite_eq_left hg4] at h
           -- Use split at h to handle the dependent match's hBS witness.
           split at h
           · rename_i r hBS
@@ -1481,9 +1481,9 @@ lemma scanNextTokenIx_dispatchContent_ok_monotonic {input : String}
               simp only [emitAt_tokens_size]
               exact Nat.le_succ _
           · cases h
-        · rw [if_neg hg4] at h
+        · rw [ite_eq_right hg4] at h
           by_cases hg5 : (c == '"') = true
-          · rw [if_pos hg5] at h
+          · rw [ite_eq_left hg5] at h
             split at h
             · rename_i r hDQ
               cases h
@@ -1495,9 +1495,9 @@ lemma scanNextTokenIx_dispatchContent_ok_monotonic {input : String}
                 simp only [emitAt_tokens_size]
                 exact Nat.le_succ _
             · cases h
-          · rw [if_neg hg5] at h
+          · rw [ite_eq_right hg5] at h
             by_cases hg6 : (c == '\'') = true
-            · rw [if_pos hg6] at h
+            · rw [ite_eq_left hg6] at h
               split at h
               · rename_i r hSQ
                 cases h
@@ -1509,9 +1509,9 @@ lemma scanNextTokenIx_dispatchContent_ok_monotonic {input : String}
                   simp only [emitAt_tokens_size]
                   exact Nat.le_succ _
               · cases h
-            · rw [if_neg hg6] at h
+            · rw [ite_eq_right hg6] at h
               by_cases hg7 : canStartPlainScalarBool c (s.peekAt? 1) s.inFlow = true
-              · rw [if_pos hg7] at h
+              · rw [ite_eq_left hg7] at h
                 cases h
                 refine ⟨?_, ?_⟩
                 · show s.cursor.pos.offset ≤ _
@@ -1520,7 +1520,7 @@ lemma scanNextTokenIx_dispatchContent_ok_monotonic {input : String}
                 · show s.tokens.size ≤ _
                   simp only [emitAt_tokens_size]
                   exact Nat.le_succ _
-              · rw [if_neg hg7] at h
+              · rw [ite_eq_right hg7] at h
                 cases h
 
 lemma scanNextTokenIx_dispatchContent_offset_monotonic {input : String}
@@ -1588,7 +1588,7 @@ lemma scanNextTokenIx_ok_some_monotonic {input : String}
           rw [hNPD] at h
           by_cases hAD : sp.allowDirectives = true
           all_goals first
-            | (rw [if_pos hAD] at h
+            | (rw [ite_eq_left hAD] at h
                -- sadj := { sp with allowDirectives := false, documentEverStarted := true }
                -- cursor and tokens unchanged: prove via cases on each dispatcher
                cases hChk : scanNextTokenIx_checkBlockFlowIndent
@@ -1629,7 +1629,7 @@ lemma scanNextTokenIx_ok_some_monotonic {input : String}
                            have hCO := scanNextTokenIx_dispatchContent_offset_monotonic hCon
                            have hCT := scanNextTokenIx_dispatchContent_tokens_size_le hCon
                            exact ⟨hCO, hCT⟩)
-            | (rw [if_neg hAD] at h
+            | (rw [ite_eq_right hAD] at h
                -- sadj := sp; cursor and tokens are sp's
                cases hChk : scanNextTokenIx_checkBlockFlowIndent sp c with
                | error e => rw [hChk] at h; cases h
@@ -1701,11 +1701,11 @@ lemma scanLoopIx_tokens_size_le {input : String}
       | none =>
         -- Terminal arm: nested ifs then `unwindIndentsIx + emit streamEnd`.
         by_cases hFL : s.flowLevel > 0
-        · rw [if_pos hFL] at h; cases h
-        · rw [if_neg hFL] at h
+        · rw [ite_eq_left hFL] at h; cases h
+        · rw [ite_eq_right hFL] at h
           by_cases hDS : s.directivesPresent = true
-          · rw [if_pos hDS] at h; cases h
-          · rw [if_neg hDS] at h
+          · rw [ite_eq_left hDS] at h; cases h
+          · rw [ite_eq_right hDS] at h
             -- h : .ok ((unwindIndentsIx s (-1)).emit streamEnd).tokens = .ok ts
             cases h
             -- Goal: s.tokens.size ≤ ((unwindIndentsIx s (-1)).emit streamEnd).tokens.size

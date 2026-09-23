@@ -120,7 +120,7 @@ lemma find?_insert (m : AnchorMap) (name : String) (val : YamlValue) :
   intro ⟨n, v⟩ hmem
   have hfilt := (List.mem_filter.mp hmem).2
   simp only [bne_iff_ne, ne_eq, beq_iff_eq] at hfilt ⊢
-  exact if_neg hfilt
+  exact ite_eq_right hfilt
 
 /-- **Non-interference**: inserting under `k` does not affect lookups for `k' ≠ k`. -/
 lemma find?_insert_ne (m : AnchorMap) (name name' : String) (val : YamlValue)

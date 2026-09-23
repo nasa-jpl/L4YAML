@@ -233,7 +233,7 @@ lemma advance_offset_lt_of_hasMore {input : String} (c : IxCursor input)
   have hnext : c.pos.offset < (String.Pos.Raw.next input ⟨c.pos.offset⟩).byteIdx :=
     String.Pos.Raw.byteIdx_lt_byteIdx_next input ⟨c.pos.offset⟩
   unfold advance nextOffsetClamped
-  simp only [dif_pos h, Nat.min_def]
+  simp only [dite_eq_left h, Nat.min_def]
   split <;> omega
 
 /-- `advance` is monotonic on the byte offset (whether or not at end). -/
@@ -251,7 +251,7 @@ lemma advance_offset_eq_min_next {input : String} (c : IxCursor input)
     c.advance.pos.offset =
       Nat.min (String.Pos.Raw.next input ⟨c.pos.offset⟩).byteIdx input.utf8ByteSize := by
   unfold advance nextOffsetClamped
-  simp [dif_pos h]
+  simp [dite_eq_left h]
 
 /-- When the cursor has a current character, `peekAt? 1` (one ahead)
     agrees with the post-`advance` `peek?`. Foundation for the plain-
@@ -283,7 +283,7 @@ lemma advance_peek_eq_peekAt_one {input : String} (c : IxCursor input)
   show _ = (if c.pos.offset < input.utf8ByteSize then
               peekAt?Loop input (String.Pos.Raw.next input ⟨c.pos.offset⟩) 0
             else none)
-  rw [if_pos hlt]
+  rw [ite_eq_left hlt]
   show _ = (if (String.Pos.Raw.next input ⟨c.pos.offset⟩).byteIdx < input.utf8ByteSize then
               some (String.Pos.Raw.get input (String.Pos.Raw.next input ⟨c.pos.offset⟩))
             else none)
@@ -298,7 +298,7 @@ lemma advance_peek_eq_peekAt_one {input : String} (c : IxCursor input)
       rw [hoff_min]; exact Nat.min_eq_right (Nat.le_of_lt hgt)
     have h1 : ¬ c.advance.pos.offset < input.utf8ByteSize := by rw [h_adv_off]; omega
     have h2 : ¬ (String.Pos.Raw.next input ⟨c.pos.offset⟩).byteIdx < input.utf8ByteSize := by omega
-    rw [if_neg h1, if_neg h2]
+    rw [ite_eq_right h1, ite_eq_right h2]
 
 end IxCursor
 

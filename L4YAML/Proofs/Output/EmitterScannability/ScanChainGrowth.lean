@@ -792,7 +792,7 @@ lemma scanNextToken_flow_value (s : ScannerState)
         s_ad.tokens.setIfInBounds (s_ad.simpleKey.tokenIndex + 1)
           ⟨s_ad.simpleKey.pos, .key, s_ad.simpleKey.pos⟩ := by
       unfold scanValuePrepare
-      rw [if_pos h_ad_poss]
+      rw [ite_eq_left h_ad_poss]
       split
       · rename_i h_neg; simp [h_ad_inFlow] at h_neg
       · rfl
@@ -812,7 +812,7 @@ lemma scanNextToken_flow_value (s : ScannerState)
     refine ⟨?_, ?_⟩
     · -- s_final.tokens[idx+1]? = some .key
       rw [h_final_tok, Array.getElem?_push,
-          if_neg (by rw [h_prep_size]; omega : s.simpleKey.tokenIndex + 1 ≠
+          ite_eq_right (by rw [h_prep_size]; omega : s.simpleKey.tokenIndex + 1 ≠
             (scanValuePrepare s_ad).tokens.size),
           h_prep_eq',
           Array.getElem?_eq_getElem (by rw [Array.size_setIfInBounds]; omega),
@@ -820,7 +820,7 @@ lemma scanNextToken_flow_value (s : ScannerState)
     · -- other in-bounds positions unchanged
       intro i hi hne
       rw [h_final_tok, Array.getElem?_push,
-          if_neg (by rw [h_prep_size]; omega : i ≠ (scanValuePrepare s_ad).tokens.size),
+          ite_eq_right (by rw [h_prep_size]; omega : i ≠ (scanValuePrepare s_ad).tokens.size),
           h_prep_eq',
           Array.getElem?_eq_getElem (by rw [Array.size_setIfInBounds]; exact hi),
           Array.getElem?_eq_getElem hi,
@@ -851,7 +851,7 @@ lemma scanNextToken_flow_value (s : ScannerState)
     -- the pushed token sits at index `s.tokens.size = (scanValuePrepare s_ad).tokens.size`
     have h_idx_eq : s.tokens.size = (scanValuePrepare s_ad).tokens.size := by
       rw [h_prep_size_gen, h_adtok]
-    rw [h_final_tok, h_idx_eq, Array.getElem?_push, if_pos rfl]
+    rw [h_final_tok, h_idx_eq, Array.getElem?_push, ite_eq_left rfl]
 
 /-- **Colon filtered-LIST characterization** (the `(a1)` ASSEMBLE step toward
     legacy sorries 9646 / 9552). When the colon scans from a saved-key state
@@ -903,17 +903,17 @@ lemma scanNextToken_flow_value_block (s : ScannerState)
     intro i
     rw [Array.getElem?_push, Array.size_setIfInBounds, Array.getElem?_setIfInBounds]
     by_cases hi_sz : i = s.tokens.size
-    · rw [if_pos hi_sz, hi_sz]; exact h_val_at
-    · rw [if_neg hi_sz]
+    · rw [ite_eq_left hi_sz, hi_sz]; exact h_val_at
+    · rw [ite_eq_right hi_sz]
       by_cases hi_key : s.simpleKey.tokenIndex + 1 = i
-      · rw [if_pos hi_key, if_pos h_lt, ← hi_key]; exact h_key_at
-      · rw [if_neg hi_key]
+      · rw [ite_eq_left hi_key, ite_eq_left h_lt, ← hi_key]; exact h_key_at
+      · rw [ite_eq_right hi_key]
         by_cases hi_lt : i < s.tokens.size
         · exact h_pres i hi_lt (fun h => hi_key h.symm)
         · rw [Array.getElem?_eq_none (show s'.tokens.size ≤ i by omega),
               Array.getElem?_eq_none (show s.tokens.size ≤ i by omega)]
   rw [h_struct, Array.filter_push,
-      if_pos (show (fun t : Positioned YamlToken => t.val != .placeholder)
+      ite_eq_left (show (fun t : Positioned YamlToken => t.val != .placeholder)
                 ⟨pos_v, .value, pos_v⟩ = true from rfl),
       Array.toList_push]
   congr 1
@@ -1680,7 +1680,7 @@ lemma saveSimpleKey_getElem?_size_succ (s : ScannerState)
   have h_guard : (s.inFlow && s.explicitKeyLine == some s.line) = false := by rw [h_ek]; simp
   simp only [h_guard, Bool.false_eq_true, ↓reduceIte, h_ska]
   -- index N+1 is exactly the size of the inner push, so the outer push hits it
-  rw [Array.getElem?_push, if_pos (by rw [Array.size_push])]
+  rw [Array.getElem?_push, ite_eq_left (by rw [Array.size_push])]
 
 /-- Scalar key head facts: scanning a double-quoted scalar in flow from
     `simpleKeyAllowed = true` leaves the saved key alive at slot `N`. -/
@@ -1761,7 +1761,7 @@ lemma scanNextToken_flow_scalar_savedKey (s : ScannerState)
     have h_ad_lt : s.tokens.size < s_ad.tokens.size := by rw [h_ad_tokens, h_skz]; omega
     -- raw[N] = placeholder, via getElem? to dodge dependent-index rewrites
     have h_get? : s_dq.tokens[s.tokens.size]? = some ⟨s.currentPos, .placeholder, s.currentPos⟩ := by
-      rw [h_dq_tok, Array.getElem?_push, if_neg (by omega : s.tokens.size ≠ s_ad.tokens.size), h_ad_tokens]
+      rw [h_dq_tok, Array.getElem?_push, ite_eq_right (by omega : s.tokens.size ≠ s_ad.tokens.size), h_ad_tokens]
       exact saveSimpleKey_getElem?_size s h_ek h_ska
     have h_some : s_dq.tokens[s.tokens.size]? = some (s_dq.tokens[s.tokens.size]'h) :=
       Array.getElem?_eq_getElem h
@@ -1772,7 +1772,7 @@ lemma scanNextToken_flow_scalar_savedKey (s : ScannerState)
     have h_ad_lt : s.tokens.size + 1 < s_ad.tokens.size := by rw [h_ad_tokens, h_skz]; omega
     -- raw[N+1] = placeholder (the spare slot), same getElem? routing as raw[N]
     have h_get? : s_dq.tokens[s.tokens.size + 1]? = some ⟨s.currentPos, .placeholder, s.currentPos⟩ := by
-      rw [h_dq_tok, Array.getElem?_push, if_neg (by omega : s.tokens.size + 1 ≠ s_ad.tokens.size), h_ad_tokens]
+      rw [h_dq_tok, Array.getElem?_push, ite_eq_right (by omega : s.tokens.size + 1 ≠ s_ad.tokens.size), h_ad_tokens]
       exact saveSimpleKey_getElem?_size_succ s h_ek h_ska
     have h_some : s_dq.tokens[s.tokens.size + 1]? = some (s_dq.tokens[s.tokens.size + 1]'h) :=
       Array.getElem?_eq_getElem h
@@ -1815,10 +1815,10 @@ lemma scanNextToken_flow_open_seq_savedKey (s s' : ScannerState) (rest : List Ch
   refine ⟨?_, ?_, ?_⟩
   · rw [h_s', ScannerCorrectness.scanFlowSequenceStart_adds_one_token, h_ad_tokens, h_skz]
   · rw [h_s', h_tok, Array.getElem?_push,
-        if_neg (by rw [h_ad_tokens, h_skz]; omega : s.tokens.size ≠ s_ad.tokens.size), h_ad_tokens]
+        ite_eq_right (by rw [h_ad_tokens, h_skz]; omega : s.tokens.size ≠ s_ad.tokens.size), h_ad_tokens]
     exact saveSimpleKey_getElem?_size s h_ek h_ska
   · rw [h_s', h_tok, Array.getElem?_push,
-        if_neg (by rw [h_ad_tokens, h_skz]; omega : s.tokens.size + 1 ≠ s_ad.tokens.size), h_ad_tokens]
+        ite_eq_right (by rw [h_ad_tokens, h_skz]; omega : s.tokens.size + 1 ≠ s_ad.tokens.size), h_ad_tokens]
     exact saveSimpleKey_getElem?_size_succ s h_ek h_ska
 
 /-- Flow `{` open with a saved key (mapping analogue of the above). -/
@@ -1855,10 +1855,10 @@ lemma scanNextToken_flow_open_mapping_savedKey (s s' : ScannerState) (rest : Lis
   refine ⟨?_, ?_, ?_⟩
   · rw [h_s', ScannerCorrectness.scanFlowMappingStart_adds_one_token, h_ad_tokens, h_skz]
   · rw [h_s', h_tok, Array.getElem?_push,
-        if_neg (by rw [h_ad_tokens, h_skz]; omega : s.tokens.size ≠ s_ad.tokens.size), h_ad_tokens]
+        ite_eq_right (by rw [h_ad_tokens, h_skz]; omega : s.tokens.size ≠ s_ad.tokens.size), h_ad_tokens]
     exact saveSimpleKey_getElem?_size s h_ek h_ska
   · rw [h_s', h_tok, Array.getElem?_push,
-        if_neg (by rw [h_ad_tokens, h_skz]; omega : s.tokens.size + 1 ≠ s_ad.tokens.size), h_ad_tokens]
+        ite_eq_right (by rw [h_ad_tokens, h_skz]; omega : s.tokens.size + 1 ≠ s_ad.tokens.size), h_ad_tokens]
     exact saveSimpleKey_getElem?_size_succ s h_ek h_ska
 
 /-- `EmitScansInFlowSavedKey v`: scanning `emit v` in flow from a state where a
@@ -2324,7 +2324,7 @@ lemma keyshape_first_token_key
     rw [h_ref_filter, Array.size_push]; omega
   have h_ref_get : (((s.tokens.push tokN).push tokN1).filter (fun t => t.val != .placeholder))[
       (s.tokens.filter (fun t => t.val != .placeholder)).size]? = some tokN1 := by
-    rw [h_ref_filter, Array.getElem?_push, if_pos rfl]
+    rw [h_ref_filter, Array.getElem?_push, ite_eq_left rfl]
   -- Raw-prefix equality `ref` ⊑ `s_end.tokens` (sizes + pointwise, via `getElem?`).
   have h_ref_le : ((s.tokens.push tokN).push tokN1).size ≤ s_end.tokens.size := by
     rw [Array.size_push, Array.size_push]; omega
@@ -2337,14 +2337,14 @@ lemma keyshape_first_token_key
     have h_get? : s_end.tokens[i]? = ((s.tokens.push tokN).push tokN1)[i]? := by
       rw [Array.getElem?_push, Array.getElem?_push, Array.size_push]
       rcases Nat.lt_trichotomy i s.tokens.size with hlt | heq | hgt
-      · rw [if_neg (by omega), if_neg (by omega),
+      · rw [ite_eq_right (by omega), ite_eq_right (by omega),
             Array.getElem?_eq_getElem (show i < s_end.tokens.size by omega),
             Array.getElem?_eq_getElem hlt, h_prefix i hlt]
       · subst heq
-        rw [if_neg (by omega), if_pos rfl,
+        rw [ite_eq_right (by omega), ite_eq_left rfl,
             Array.getElem?_eq_getElem h_N_lt_end, htokN_def]
       · obtain rfl : i = s.tokens.size + 1 := by omega
-        rw [if_pos rfl, Array.getElem?_eq_getElem h_N1_lt_end, htokN1_def]
+        rw [ite_eq_left rfl, Array.getElem?_eq_getElem h_N1_lt_end, htokN1_def]
     rw [Array.getElem?_eq_getElem (show i < s_end.tokens.size by omega),
         Array.getElem?_eq_getElem hi] at h_get?
     exact Option.some.inj h_get?

@@ -70,7 +70,7 @@ lemma scanNextTokenIx_preserves_ScanInvIx
           simp only [] at h_ok
           by_cases hAD : sp.allowDirectives = true
           · -- allowDirectives = true: sadj has the field updates
-            rw [if_pos hAD] at h_ok
+            rw [ite_eq_left hAD] at h_ok
             let sadj : ScannerStateIx input :=
               { sp with allowDirectives := false, documentEverStarted := true }
             have h_sadj : ScanInvIx sadj :=
@@ -109,7 +109,7 @@ lemma scanNextTokenIx_preserves_ScanInvIx
                         cases h_ok
                         exact scanNextTokenIx_dispatchContent_preserves_ScanInvIx h_sadj hCon
           · -- allowDirectives = false: sadj = sp
-            rw [if_neg hAD] at h_ok
+            rw [ite_eq_right hAD] at h_ok
             cases hChk : scanNextTokenIx_checkBlockFlowIndent sp c with
             | error e => rw [hChk] at h_ok; cases h_ok
             | ok _ =>
@@ -173,7 +173,7 @@ lemma scanNextTokenIx_preserves_AllKeysValidIx
           rw [h_npd] at h_ok
           simp only [] at h_ok
           by_cases hAD : sp.allowDirectives = true
-          · rw [if_pos hAD] at h_ok
+          · rw [ite_eq_left hAD] at h_ok
             let sadj : ScannerStateIx input :=
               { sp with allowDirectives := false, documentEverStarted := true }
             have h_sadj_akv : AllKeysValidIx sadj := by
@@ -209,7 +209,7 @@ lemma scanNextTokenIx_preserves_AllKeysValidIx
                         rw [hCon] at h_ok
                         cases h_ok
                         exact scanNextTokenIx_dispatchContent_preserves_AllKeysValidIx h_sadj_akv hCon
-          · rw [if_neg hAD] at h_ok
+          · rw [ite_eq_right hAD] at h_ok
             cases hChk : scanNextTokenIx_checkBlockFlowIndent sp c with
             | error e => rw [hChk] at h_ok; cases h_ok
             | ok _ =>
@@ -270,11 +270,11 @@ lemma scanLoopIx_ordered {s : ScannerStateIx input} {fuel : Nat}
       cases scRes with
       | none =>
         by_cases hFL : s.flowLevel > 0
-        · rw [if_pos hFL] at h_ok; cases h_ok
-        · rw [if_neg hFL] at h_ok
+        · rw [ite_eq_left hFL] at h_ok; cases h_ok
+        · rw [ite_eq_right hFL] at h_ok
           by_cases hDS : s.directivesPresent = true
-          · rw [if_pos hDS] at h_ok; cases h_ok
-          · rw [if_neg hDS] at h_ok
+          · rw [ite_eq_left hDS] at h_ok; cases h_ok
+          · rw [ite_eq_right hDS] at h_ok
             cases h_ok
             -- ts = ((unwindIndentsIx s (-1)).emit streamEnd).tokens
             -- Apply: unwindIndentsIx preserves ScanInvIx → emit preserves ScanInvIx → extract ordering.

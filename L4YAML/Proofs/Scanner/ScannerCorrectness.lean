@@ -387,8 +387,8 @@ lemma saveSimpleKey_preserves_prefix (s : ScannerState)
   · split
     · -- simpleKeyAllowed: push 2 placeholders, preserves prefix
       dsimp only []
-      rw [Array.getElem_push, dif_pos (show i < (s.tokens.push _).size by simp; omega)]
-      rw [Array.getElem_push, dif_pos h_bound]
+      rw [Array.getElem_push, dite_eq_left (show i < (s.tokens.push _).size by simp; omega)]
+      rw [Array.getElem_push, dite_eq_left h_bound]
     · rfl
 
 /-- scanFlowSequenceStart adds exactly one token.
@@ -4353,17 +4353,17 @@ lemma SimpleKeyAbove_of_flow_open (s_out s_in : ScannerState) (n : Nat)
   simp only [h_stack, Array.size_push] at hj
   by_cases hlt : j < s_in.simpleKeyStack.size
   · have hp' : s_in.simpleKeyStack[j].possible = true := by
-      simp only [h_stack, Array.getElem_push, dif_pos hlt] at hp; exact hp
+      simp only [h_stack, Array.getElem_push, dite_eq_left hlt] at hp; exact hp
     have h_ge := h_inv.2 j hlt hp'
     show s_out.simpleKeyStack[j].tokenIndex ≥ n
-    simp only [h_stack, Array.getElem_push, dif_pos hlt]; exact h_ge
+    simp only [h_stack, Array.getElem_push, dite_eq_left hlt]; exact h_ge
   · have hj_eq : j = s_in.simpleKeyStack.size := by omega
     subst hj_eq
     have hp' : s_in.simpleKey.possible = true := by
-      simp only [h_stack, Array.getElem_push, dif_neg hlt] at hp; exact hp
+      simp only [h_stack, Array.getElem_push, dite_eq_right hlt] at hp; exact hp
     have h_ge := h_inv.1 hp'
     show s_out.simpleKeyStack[s_in.simpleKeyStack.size].tokenIndex ≥ n
-    simp only [h_stack, Array.getElem_push, dif_neg hlt]; exact h_ge
+    simp only [h_stack, Array.getElem_push, dite_eq_right hlt]; exact h_ge
 
 /-- Flow close: simpleKey restored from stack back, stack popped. -/
 lemma SimpleKeyAbove_of_flow_close (s_out s_in : ScannerState) (n : Nat)
@@ -6480,7 +6480,7 @@ lemma emit_preserves_ScanInv (s : ScannerState) (tok : YamlToken)
       -- getElem validity proof typed at `(s.emit tok).tokens.size`, making the goal
       -- ill-typed at reducible transparency, so `Array.getElem_push` refuses to fire).
       simp only [ScannerState.emit, Array.getElem_push,
-        dif_neg (by omega : ¬ s.tokens.size < s.tokens.size)]
+        dite_eq_right (by omega : ¬ s.tokens.size < s.tokens.size)]
       simp [ScannerState.currentPos]
 
 -- advance preserves ScanInv: offset increases, tokens unchanged.
@@ -6580,7 +6580,7 @@ lemma emitAt_preserves_ScanInv (s : ScannerState) (pos : YamlPos) (tok : YamlTok
       exact h_bnd ⟨i, h_lt⟩
     · subst h_eq
       simp only [ScannerState.emitAt, Array.getElem_push,
-        dif_neg (by omega : ¬ s.tokens.size < s.tokens.size)]
+        dite_eq_right (by omega : ¬ s.tokens.size < s.tokens.size)]
       exact h_pos
 
 -- Simplified emitAt_preserves_ScanInv: when pos.offset = s.offset (common case).
@@ -6670,7 +6670,7 @@ lemma setIfInBounds_twice_preserves_ScanInv' (tokens : Array (Positioned YamlTok
   have h_eq : (tokens.setIfInBounds idx1 v1)[idx2]'h_idx2' =
       tokens[idx2]'h_idx2 := by
     rw [Array.getElem_setIfInBounds h_idx2]
-    exact if_neg h_ne
+    exact ite_eq_right h_ne
   simp only [h_eq]; exact h_off2
 
 -- scanValuePrepare preserves ScanInv, given that simpleKey placeholders
@@ -10193,14 +10193,14 @@ lemma canStart_terminates_none (c : Char) (s : ScannerState) (inFlow : Bool)
     split
     · rename_i n hn
       unfold canStartPlainScalarBool at hcan
-      rw [if_pos (Or.inr (Or.inr rfl)), hn] at hcan
+      rw [ite_eq_left (Or.inr (Or.inr rfl)), hn] at hcan
       simp only [Bool.and_eq_true, Bool.not_eq_true'] at hcan
       obtain ⟨⟨⟨⟨hws, hlb⟩, hflow⟩, hpr⟩, hbom⟩ := hcan
       have hbom' : n ≠ '﻿' := bne_iff_ne.mp hbom
       simp [isBlankBool, hws, hlb, hflow, hpr, hbom']
     · rename_i hn
       unfold canStartPlainScalarBool at hcan
-      rw [if_pos (Or.inr (Or.inr rfl)), hn] at hcan
+      rw [ite_eq_left (Or.inr (Or.inr rfl)), hn] at hcan
       contradiction
 
 -- `scanPlainScalar` strictly advances offset when `offset < inputEnd`,

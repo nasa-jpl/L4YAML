@@ -116,7 +116,7 @@ theorem dispatcher_aux : ∀ (ts : List Tok) (d : Int) (fuel : Nat),
         rw [bal_cons t rest 0]; simp [bal]
       have hd' : ¬ (d + delta t < 0) := by rw [hbal1] at hstep1; omega
       simp only [runFrom]
-      rw [if_neg hd']
+      rw [ite_eq_right hd']
       apply ih (d + delta t) f
       · simp only [List.length_cons] at hlen; omega
       · intro i hi

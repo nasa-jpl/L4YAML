@@ -4802,7 +4802,7 @@ lemma nestedSeq_recseqentry_locate_head_pos
   have h_eq : (tokens.toList.take H).drop off = x :: xs := by rw [← h_slice]; exact h_cons
   have h_getq : tokens.toList[off]? = some x := by
     have hc : ((tokens.toList.take H).drop off)[0]? = some x := by rw [h_eq]; rfl
-    rw [List.getElem?_drop, List.getElem?_take, Nat.add_zero, if_pos (by omega : off < H)] at hc
+    rw [List.getElem?_drop, List.getElem?_take, Nat.add_zero, ite_eq_left (by omega : off < H)] at hc
     exact hc
   have h_elem : tokens.toList[off]'h_off_len = x := by
     have := List.getElem?_eq_getElem h_off_len
@@ -4839,7 +4839,7 @@ lemma nestedSeq_recseqentry_locate_sep_pos
   have h_getq : tokens.toList[off + e.length]? = some fe := by
     have hc : ((tokens.toList.take H).drop off)[e.length]? = some fe := by
       rw [h_eq, List.getElem?_append_right (Nat.le_refl e.length), Nat.sub_self]; rfl
-    rw [List.getElem?_drop, List.getElem?_take, if_pos (by omega : off + e.length < H)] at hc
+    rw [List.getElem?_drop, List.getElem?_take, ite_eq_left (by omega : off + e.length < H)] at hc
     exact hc
   have h_elem : tokens.toList[off + e.length]'h_m_len = fe := by
     have := List.getElem?_eq_getElem h_m_len

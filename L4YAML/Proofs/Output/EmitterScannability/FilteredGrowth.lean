@@ -709,7 +709,7 @@ lemma Array_filter_setIfInBounds_of_not_pass {α : Type} (a : Array α) (i : Nat
   have hi' : i < a.toList.length := by simpa [Array.length_toList] using hi
   have h_old' : p (a.toList[i]'hi') = false := by
     rw [Array.getElem_toList]; exact h_old
-  rw [Array.setIfInBounds, dif_pos hi, Array.toList_filter, Array.toList_set]
+  rw [Array.setIfInBounds, dite_eq_left hi, Array.toList_filter, Array.toList_set]
   exact List_filter_set_of_not_pass a.toList i v p hi' h_old' h_new
 
 /-- **Colon block-suffix identity.** If the filtered prefix `(l.take k).filter p`

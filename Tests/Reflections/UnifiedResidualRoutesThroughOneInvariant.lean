@@ -64,7 +64,7 @@ abbrev CS (n : Nat) : Prop := n = 99
     close position `j = 3` — the fact that lets it subsume the boundary case and shed the close marker. -/
 theorem floor : ∀ i, 1 ≤ i → i ≤ 3 → bal i ≥ 1 := by
   intro i h1 h2
-  have : bal i = 1 := if_pos (And.intro h1 h2)   -- constructive `if_pos`, no `Classical`
+  have : bal i = 1 := ite_eq_left (And.intro h1 h2)   -- constructive `if_pos`, no `Classical`
   omega
 
 /-- The typed opener `tokens[0] = .flowSequenceStart` is NOT a separator. -/

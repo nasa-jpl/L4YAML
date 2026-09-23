@@ -1807,7 +1807,7 @@ lemma scanNextTokenIx_emitScalar_init (content : String) :
                       (YamlToken.scalar content ScalarStyle.doubleQuoted)
                       cAfter.pos h_bound cAfter.posBound).token !=
                     YamlToken.placeholder) = true := rfl
-    rw [if_pos h_keep, h_ad_tokens_arr, h_pp_tokens_eq]
+    rw [ite_eq_left h_keep, h_ad_tokens_arr, h_pp_tokens_eq]
 
 /-! ### §3.3  `scan_accepts_emitScalarIx` (SS2 wrapper)
 
