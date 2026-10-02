@@ -5,8 +5,9 @@ import L4YAML.Scanner.Scanner
 # SerializationWellFormed runtime census
 
 Fixed-input measurement only.  This file intentionally uses execution to map
-the scope boundaries of the two stateful error families Nicolas identified.
-No generalized theorem depends on these measurements.
+the scope boundaries of the two stateful error families. The guards below
+fail the build if the selected runtime behavior changes. No generalized
+theorem depends on these measurements.
 -/
 
 namespace L4YAMLSerializationCensus
@@ -28,6 +29,16 @@ def classifyLoad (input : String) : String :=
   | .error (.undeclaredTagHandle handle line col) =>
       s!"load:undeclaredTagHandle({handle})@{line}:{col}"
   | .error e => s!"load:other:{repr e}"
+
+def rejectsUndefinedAlias (input : String) : Bool :=
+  match TokenParser.parseYaml input with
+  | .error (.undefinedAlias ..) => true
+  | _ => false
+
+def rejectsUndeclaredTagHandle (input : String) : Bool :=
+  match TokenParser.parseYaml input with
+  | .error (.undeclaredTagHandle ..) => true
+  | _ => false
 
 def aliasCases : List (String × String) := [
   ("unbound", "*x"),
@@ -53,5 +64,11 @@ def tagCases : List (String × String) := [
 
 #eval aliasCases.map fun (name, input) => (name, classifyScan input, classifyLoad input)
 #eval tagCases.map fun (name, input) => (name, classifyScan input, classifyLoad input)
+
+#guard rejectsUndefinedAlias "&x [*x]\n"
+#guard (TokenParser.parseYaml "[&x 1, *x]\n").isOk
+#guard rejectsUndefinedAlias "*x"
+#guard rejectsUndeclaredTagHandle "!h!x value\n"
+#guard (TokenParser.parseYaml "%TAG !h! tag:example.com,2026:\n---\n!h!x value\n").isOk
 
 end L4YAMLSerializationCensus

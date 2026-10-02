@@ -4,12 +4,13 @@ import L4YAML.Proofs.Serialization.SerializationWellFormed
 /-!
 # Executable anchor-commitment bridge
 
-The independent semantics says that an anchor becomes available only when its
-node completes.  L4YAML's parser implements exactly that boundary in
-applyNodeFinalization: the anchor is absent while content is parsed, then
-addAnchor is applied in the pure node-finalization tail.
+The independent semantics places anchor commitment at node completion.
+L4YAML's `applyNodeFinalization` calls `addAnchor` in its node-finalization
+tail. This file proves the name-set effect of that operation directly.
 
-This file proves the name-set effect of that runtime operation directly.
+The lemmas here do not establish a whole-parser trace theorem or show that
+every earlier parser state lacks the pending name. That correspondence remains
+open alongside the input-to-event extraction theorem.
 -/
 
 namespace L4YAMLSerializationAnchorRuntime

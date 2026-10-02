@@ -28,4 +28,16 @@ jobs:
           curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- -y --default-toolchain none
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
       - name: Kernel-check serialization proofs
-        run: lake build L4YAML.Proofs.Serialization
+        shell: bash
+        run: |
+          set -o pipefail
+          lake build L4YAML.Proofs.Serialization 2>&1 | tee serialization-build.log
+          python3 - <<'PY'
+          from pathlib import Path
+
+          log = Path('serialization-build.log').read_text()
+          markers = ('declaration uses `sorry`', 'sorryAx')
+          found = [marker for marker in markers if marker in log]
+          if found:
+              raise SystemExit(f'Proof placeholder found in build or axiom output: {found}')
+          PY
