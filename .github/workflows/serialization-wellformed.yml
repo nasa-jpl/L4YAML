@@ -8,7 +8,7 @@ on:
       - 'L4YAML/Proofs/Serialization/**'
       - '.github/workflows/serialization-wellformed.yml'
   push:
-    branches: [fix-a-grammar-completeness]
+    branches: [fix-a-grammar-completeness, heath-serialization-wellformed-v1]
     paths:
       - 'L4YAML/Proofs/Serialization.lean'
       - 'L4YAML/Proofs/Serialization/**'
