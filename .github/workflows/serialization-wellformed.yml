@@ -32,12 +32,27 @@ jobs:
         run: |
           set -o pipefail
           lake build L4YAML.Proofs.Serialization 2>&1 | tee serialization-build.log
+          cat > /tmp/SerializationSorryProbe.lean <<'LEAN'
+          theorem serializationSorryProbe : True := by
+            sorry
+          #print axioms serializationSorryProbe
+          LEAN
+          lake env lean /tmp/SerializationSorryProbe.lean 2>&1 | tee /tmp/serialization-sorry-probe.log
           python3 - <<'PY'
           from pathlib import Path
+          import re
 
           log = Path('serialization-build.log').read_text()
-          markers = ('declaration uses `sorry`', 'sorryAx')
-          found = [marker for marker in markers if marker in log]
-          if found:
-              raise SystemExit(f'Proof placeholder found in build or axiom output: {found}')
+          probe = Path('/tmp/serialization-sorry-probe.log').read_text()
+          headline = "'L4YAMLSerializationWellFormed.checkFrom_correct' depends on axioms:"
+          if headline not in log:
+              raise SystemExit('Headline axiom profile missing from focused build log')
+
+          def has_placeholder(output):
+              return 'sorryAx' in output or bool(re.search(r'declaration uses [`\']sorry[`\']', output))
+
+          if 'sorryAx' not in probe or not re.search(r'declaration uses [`\']sorry[`\']', probe):
+              raise SystemExit('Negative control did not expose both Lean placeholder signals')
+          if has_placeholder(log):
+              raise SystemExit('Proof placeholder found in focused build or axiom output')
           PY
