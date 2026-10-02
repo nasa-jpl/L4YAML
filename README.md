@@ -101,18 +101,42 @@ proof-status SSOT is [Blueprint/04-capstones.md](Blueprint/04-capstones.md).
 
 **Work in progress.** One converse theorem remains open — *grammar
 completeness*, that every string in the formalized surface language
-`InYamlLanguage` parses successfully, which would close the acceptance
-biconditional:
+`InYamlLanguage` parses successfully, which would close an acceptance
+biconditional over the two sides:
 
 ```lean
+-- NOT the target: this statement is false. See below.
 theorem parse_iff_grammar (input : String) :
     (∃ docs, parseYaml input = .ok docs) ↔ InYamlLanguage input
 ```
 
 The forward direction (every accepted input lies in `InYamlLanguage`) is already
-proven; the converse is future work, tracked in
-[DOCS.md § Grammar completeness plan](DOCS.md#grammar-completeness-plan). It carries no placeholder `sorry` in the
-source — it is simply not yet attempted.
+proven, and is not yet restrictive:
+`SLYamlStream.scannerDrop` ([L4YAML/Surface/Document.lean](L4YAML/Surface/Document.lean))
+over-approximates `[211] l-yaml-stream` far enough that `InYamlLanguage` holds of
+every string, so the forward theorem is true independently of its hypothesis.
+Retiring that constructor is what gives it content, and it is a prerequisite for
+the converse.
+
+~~The converse is future work. It carries no placeholder `sorry` in the source —
+it is simply not yet attempted.~~ **Corrected 2026-09-27: the converse is false
+as stated, and retiring the over-approximations does not make it true.**
+`parseYaml` enforces per-document conditions that are not syntactic — it rejects
+`*x` with `undefinedAlias` and `!h!x` with `undeclaredTagHandle` — while the
+surface grammar derives both strings. Every surface relation has type
+`SurfPos → SurfPos → Prop` and carries no environment, so `InYamlLanguage`
+cannot state "this alias has a preceding anchor" at any tightness, and no
+narrowing of a production reaches these inputs. Closing the biconditional
+therefore means changing its right-hand side: an exact surface language
+conjoined with an explicit serialization-well-formedness predicate carrying the
+stateful conditions YAML 1.2.2 imposes on anchors, aliases and tag handles. That
+predicate is not yet specified. The over-approximations, the counterexamples and
+the revised shape are tracked in
+[DOCS.md § Grammar completeness plan](DOCS.md#grammar-completeness-plan).
+
+The refutation is due to an independent audit of `main` at `16562a7` by Heath
+Sanchez of [Metalogic Labs](https://metalogiclabs.xyz/), who Lean-checked four
+counterexamples whose surface derivations avoid `scannerDrop`.
 
 Compile-time `#guard` tests in [Tests/](Tests/) — including auto-generated
 guards from the yaml-test-suite — back every proof with a kernel-evaluable
@@ -675,6 +699,16 @@ port must also re-prove the corresponding `Indexed*` lemmas:
 
 Issues and pull requests are welcome. Please open an issue before starting
 substantial work so we can discuss scope and proof strategy.
+
+## Acknowledgments
+
+**Heath Sanchez**, [Metalogic Labs](https://metalogiclabs.xyz/) — an independent
+Lean audit of the parser/grammar boundary at `16562a7`, which refuted the
+advertised `parse_iff_grammar` biconditional with four machine-checked
+counterexamples and identified the missing layer the corrected statement needs.
+The correction is recorded under
+[Machine-checked verification](#1-machine-checked-verification) above and in
+[DOCS.md § Grammar completeness plan](DOCS.md#grammar-completeness-plan).
 
 ## License
 

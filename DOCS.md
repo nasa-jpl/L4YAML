@@ -5591,13 +5591,39 @@ The cleanup that found this gap also corrected:
 **Goal:** Prove the grammar completeness theorem — that every string in the YAML 1.2.2 formal language parses successfully — and close the biconditional.
 
 ```lean
+-- NOT the target: this statement is false.  See the correction below.
 theorem parse_iff_grammar (input : String) :
     (∃ docs, parseYaml input = .ok docs) ↔ InYamlLanguage input
 ```
 
 Both directions:
 - **Forward** (v0.4.6, proven): `parseYaml input = .ok docs → InYamlLanguage input`
-- **Converse** (this plan, target): `InYamlLanguage input → ∃ docs, parseYaml input = .ok docs`
+- ~~**Converse** (this plan, target): `InYamlLanguage input → ∃ docs, parseYaml input = .ok docs`~~
+
+> **Corrected 2026-09-27 — the converse is false as stated, and no narrowing of
+> a production makes it true.** `parseYaml` enforces per-document conditions
+> that are not syntactic: it refuses `*x` with `undefinedAlias` and `!h!x` with
+> `undeclaredTagHandle`, while the surface grammar derives both strings. Every
+> relation in `L4YAML/Surface/` has type `SurfPos → SurfPos → Prop` and carries
+> no environment parameter, so `InYamlLanguage` cannot *state* "this alias has a
+> preceding anchor" at any tightness. This is a change of **layer**, not a
+> further over-approximation, and none of the steps below reaches it — Fix A and
+> `scannerDrop` included. Closing a biconditional therefore means changing its
+> right-hand side — an exact surface language conjoined with an explicit
+> serialization-well-formedness predicate carrying the stateful conditions
+> YAML 1.2.2 imposes on anchors, aliases and tag handles:
+>
+> ```lean
+> -- the revised shape; neither predicate is specified yet
+> (∃ docs, parseYaml input = .ok docs) ↔
+>   ExactSurfaceLanguage input ∧ SerializationWellFormed input
+> ```
+>
+> Refuted by an independent audit of `main` at `16562a7` by Heath Sanchez of
+> [Metalogic Labs](https://metalogiclabs.xyz/), with four Lean-checked
+> counterexamples whose surface derivations avoid `scannerDrop`. The revised
+> shape is not installed as the advertised target, because nothing proves it
+> yet; the active work is on branch `fix-a-grammar-completeness`.
 
 ### Status (as of 2026-08-02): Fix B DONE — `directiveDrop` REMOVED
 
@@ -5608,8 +5634,8 @@ Both directions:
 | 1a. Remove `directiveDrop` from `SLYamlStream` | ✅ **done 2026-08-02** | constructor deleted; `SLYamlStream` = 3 spec constructors + `scannerDrop` |
 | Fix A: eliminate `scannerDrop` (flow collection grammar evidence) | ❌ open | plan revised — see the 2026-08-02 findings under Fix A: the planned `SFlowNode_context_lift` is false-and-unneeded; real work = whole-flow-collection accumulation **plus a flow-adjacency scanner strictening** |
 | 1b. Remove `scannerDrop` from `SLYamlStream` | ❌ open | blocked on Fix A |
-| 5. Prove the converse `grammar_completeness` | ❌ open | depends on Fix A |
-| 6. Assemble `parse_iff_grammar` biconditional | ❌ open | depends on Step 5 |
+| 5. Prove the converse `grammar_completeness` | ❌ open | ~~depends on Fix A~~ **false as stated (2026-09-27)** — Fix A does not reach it; see the correction above |
+| 6. Assemble `parse_iff_grammar` biconditional | ❌ open | ~~depends on Step 5~~ **the right-hand side must change (2026-09-27)** — see the correction above |
 
 #### Progress record — Fix B (2026-08-02)
 
