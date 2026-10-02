@@ -1,0 +1,31 @@
+name: Serialization well-formedness proofs
+
+on:
+  pull_request:
+    branches: [fix-a-grammar-completeness]
+    paths:
+      - 'L4YAML/Proofs/Serialization.lean'
+      - 'L4YAML/Proofs/Serialization/**'
+      - '.github/workflows/serialization-wellformed.yml'
+  push:
+    branches: [fix-a-grammar-completeness]
+    paths:
+      - 'L4YAML/Proofs/Serialization.lean'
+      - 'L4YAML/Proofs/Serialization/**'
+      - '.github/workflows/serialization-wellformed.yml'
+  workflow_dispatch:
+
+jobs:
+  serialization-wellformed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install Elan
+        run: |
+          curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+      - name: Kernel-check serialization proofs
+        run: lake build L4YAML.Proofs.Serialization
