@@ -1,0 +1,58 @@
+name: Serialization well-formedness proofs
+
+on:
+  pull_request:
+    branches: [fix-a-grammar-completeness]
+    paths:
+      - 'L4YAML/Proofs/Serialization.lean'
+      - 'L4YAML/Proofs/Serialization/**'
+      - '.github/workflows/serialization-wellformed.yml'
+  push:
+    branches: [fix-a-grammar-completeness, heath-serialization-wellformed-v1]
+    paths:
+      - 'L4YAML/Proofs/Serialization.lean'
+      - 'L4YAML/Proofs/Serialization/**'
+      - '.github/workflows/serialization-wellformed.yml'
+  workflow_dispatch:
+
+jobs:
+  serialization-wellformed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install Elan
+        run: |
+          curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+      - name: Kernel-check serialization proofs
+        shell: bash
+        run: |
+          set -o pipefail
+          lake build L4YAML.Proofs.Serialization 2>&1 | tee serialization-build.log
+          cat > /tmp/SerializationSorryProbe.lean <<'LEAN'
+          theorem serializationSorryProbe : True := by
+            sorry
+          #print axioms serializationSorryProbe
+          LEAN
+          lake env lean /tmp/SerializationSorryProbe.lean 2>&1 | tee /tmp/serialization-sorry-probe.log
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          log = Path('serialization-build.log').read_text()
+          probe = Path('/tmp/serialization-sorry-probe.log').read_text()
+          headline = "'L4YAMLSerializationWellFormed.checkFrom_correct' depends on axioms:"
+          if headline not in log:
+              raise SystemExit('Headline axiom profile missing from focused build log')
+
+          def has_placeholder(output):
+              return 'sorryAx' in output or bool(re.search(r'declaration uses [`\']sorry[`\']', output))
+
+          if 'sorryAx' not in probe or not re.search(r'declaration uses [`\']sorry[`\']', probe):
+              raise SystemExit('Negative control did not expose both Lean placeholder signals')
+          if has_placeholder(log):
+              raise SystemExit('Proof placeholder found in focused build or axiom output')
+          PY
