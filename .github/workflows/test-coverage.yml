@@ -2,12 +2,12 @@ name: Build Documentation and Test Coverage
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, fix-a-grammar-completeness ]
     # Version tags additionally trigger the YAML Test Matrix (see the gated
     # "Generate YAML Test Matrix" step) and republish the site with it.
     tags: [ 'v*' ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main, master, fix-a-grammar-completeness ]
   workflow_dispatch:
 
 jobs:
@@ -135,6 +135,11 @@ jobs:
           else
             echo "::warning::could not parse lake job count — build_jobs will be null in stats.json"
           fi
+
+      - name: Kernel-check serialization proofs and exact axiom profiles
+        # Fresh #print axioms observations, both placeholder negative-control
+        # signals, and exact headline sets. Runs on every runtime dependency edit.
+        run: bash scripts/check-serialization-proofs.sh
 
       # -------------------------------------------------------
       # Phase 2: Run all test suites

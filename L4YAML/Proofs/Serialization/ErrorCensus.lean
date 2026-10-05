@@ -1,0 +1,108 @@
+/-
+Copyright (c) 2026. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+-/
+import L4YAML.Token.Token
+
+/-!
+# L4YAML rejection-boundary census
+
+This classifies every current structured ScanError constructor by the layer of
+the corrected load contract.
+
+The purpose is adversarial: do not assume anchor/alias ordering and tag-handle
+declarations exhaust SerializationWellFormed. Enumerate the executable
+rejection vocabulary and force every constructor into an explicit layer.
+
+Only two current constructors are classified as stateful serialization
+environment failures: undefinedAlias and undeclaredTagHandle. Resource/API
+guards are separated from language rejection rather than smuggled into either
+surface syntax or SerializationWellFormed.
+-/
+
+namespace L4YAML.Proofs.Serialization.ErrorCensus
+
+open L4YAML
+
+inductive RejectionLayer where
+  | surface
+  | serialization
+  | resourceOrAPI
+  deriving Repr, DecidableEq
+
+def rejectionLayer : ScanError → RejectionLayer
+  | .undefinedAlias .. => .serialization
+  | .undeclaredTagHandle .. => .serialization
+  | .fuelExhausted .. => .resourceOrAPI
+  | .nestingDepthExceeded .. => .resourceOrAPI
+  | .multipleDocuments .. => .resourceOrAPI
+  | .tabInIndentation .. => .surface
+  | .unexpectedChar .. => .surface
+  | .unterminatedScalar .. => .surface
+  | .unterminatedEscape .. => .surface
+  | .unknownEscape .. => .surface
+  | .invalidHexEscape .. => .surface
+  | .unicodeOutOfRange .. => .surface
+  | .expectedNewline .. => .surface
+  | .directiveTrailingContent .. => .surface
+  | .duplicateYamlDirective .. => .surface
+  | .directiveAfterContent .. => .surface
+  | .directiveWithoutDocument .. => .surface
+  | .documentMarkerInScalar .. => .surface
+  | .trailingContentAfterDocEnd .. => .surface
+  | .flowEndOutsideFlow .. => .surface
+  | .mismatchedFlowClose .. => .surface
+  | .blockScalarInFlow .. => .surface
+  | .invalidNodeProperties .. => .surface
+  | .underIndentedScalar .. => .surface
+  | .documentMarkerInFlow .. => .surface
+  | .underIndentedFlowContent .. => .surface
+  | .invalidControlChar .. => .surface
+  | .unseparatedValue .. => .surface
+  | .sameLineBlockCollection .. => .surface
+  | .nestedMappingOnLine .. => .surface
+  | .expectedToken .. => .surface
+  | .trailingContent .. => .surface
+  | .duplicateAnchor .. => .surface
+  | .contentOnDocumentStartLine .. => .surface
+  | .unterminatedFlowCollection .. => .surface
+  | .invalidFlowEntry .. => .surface
+  | .invalidImplicitKey .. => .surface
+  | .invalidBareDocument .. => .surface
+  | .blockScalarIndentMismatch .. => .surface
+  | .misindentedExplicitValue .. => .surface
+  | .sameLineExplicitValue .. => .surface
+  | .emptyAnchorName .. => .surface
+  | .emptyVerbatimTagURI .. => .surface
+  | .unterminatedVerbatimTag .. => .surface
+
+def isSerializationError (e : ScanError) : Prop :=
+  rejectionLayer e = .serialization
+
+lemma serialization_error_iff (e : ScanError) :
+    isSerializationError e ↔
+      (∃ name line col, e = .undefinedAlias name line col) ∨
+      (∃ handle line col, e = .undeclaredTagHandle handle line col) := by
+  cases e <;> simp [isSerializationError, rejectionLayer]
+
+lemma undefinedAlias_is_serialization (name : String) (line col : Nat) :
+    isSerializationError (.undefinedAlias name line col) := by
+  simp [isSerializationError, rejectionLayer]
+
+lemma undeclaredTagHandle_is_serialization (handle : String) (line col : Nat) :
+    isSerializationError (.undeclaredTagHandle handle line col) := by
+  simp [isSerializationError, rejectionLayer]
+
+/-- Error classification only, not a reachability claim for parseYaml.
+`multipleDocuments` belongs to the single-document API. A future capstone
+about parseYamlSingle must also account for that API constraint. -/
+lemma resource_guards_not_serialization :
+    (∀ line col, ¬ isSerializationError (.fuelExhausted line col)) ∧
+    (∀ line, ¬ isSerializationError (.nestingDepthExceeded line)) ∧
+    (∀ count, ¬ isSerializationError (.multipleDocuments count)) := by
+  simp [isSerializationError, rejectionLayer]
+
+end L4YAML.Proofs.Serialization.ErrorCensus
+
+#print axioms L4YAML.Proofs.Serialization.ErrorCensus.serialization_error_iff
+#print axioms L4YAML.Proofs.Serialization.ErrorCensus.resource_guards_not_serialization

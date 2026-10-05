@@ -13,6 +13,7 @@ import L4YAML.Proofs.RoundTrip.CommentProperties
 import L4YAML.Proofs.RoundTrip.CommentRoundTrip
 import L4YAML.Proofs.Completeness
 import L4YAML.Proofs.Composition
+import L4YAML.Proofs.Serialization
 import L4YAML.Proofs.Coupling.CouplingBridge
 import L4YAML.Proofs.Contracts.DocumentContracts
 import L4YAML.Proofs.Production.DocumentProduction
