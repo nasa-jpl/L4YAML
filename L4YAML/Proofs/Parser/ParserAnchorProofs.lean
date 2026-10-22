@@ -231,8 +231,4 @@ lemma parseStream_output_aliases_resolve
     exact parseStreamLoop_aliases_resolve ps_start #[] .initial tokens.size docs
       (by intro d hd; simp at hd) h_parse doc hdoc
 
--- C2c: Anchor values in parser output are well-formed.
--- parseStream_output_anchors_wellformed is now in ParserWfaProofs.lean
--- (with updated signature: FlowAwarePSV + FlowBracketsMatched)
-
 end L4YAML.Proofs.ParserAnchorProofs
