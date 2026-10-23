@@ -12,24 +12,47 @@ Two refutations of
 each a pair of hand-built derivations of the same span with different traces.
 
 1. `&xa` — anchor name non-maximal: `propsEmpty` reads the whole span as the
-   anchor `xa`; `propsContent` reads the anchor `x`, an EMPTY `s-separate`
-   (`SSeparateInLine.startOfLine` applies at any position), then the plain
-   scalar `a`.  Traces `[defineAnchor "xa"]` vs `[defineAnchor "x"]`.
+   anchor `xa`; the split reading (anchor `x`, an EMPTY `s-separate`, plain
+   `a`) needed `SSeparateInLine.startOfLine` off column 0, which `[66]` no
+   longer grants; `no_empty_sep_s1` records that the separation is refuted.
 2. `[a # b, &x⏎]` — plain-vs-comment: `#` after a space is a comment under
    `s-separate`, but `SNsPlainChar.hashAfterNs` (guard `col > 0`, not
    "preceded by ns-char") also admits it inside the plain scalar, so the
    same text is one entry `a` + comment, or two entries `a # b` and `&x`.
    Traces `[]` vs `[defineAnchor "x"]`.
-3. `[!t &x a]` — tag non-maximal: `!t` is a primary tag, or the non-specific
-   tag `!` followed by an EMPTY `s-separate` and the plain scalar `t &x a`
-   (`&` is plain-safe after the first character).  Traces
-   `[useTag "!", defineAnchor "x"]` vs `[useTag "!"]`. -/
+3. `[!t &x a]` — tag non-maximal: `!t` is a primary tag; the split reading
+   (non-specific tag `!`, an EMPTY `s-separate`, plain `t &x a`) needed the
+   same off-column-0 `startOfLine`; `no_empty_sep_u1` records its refutation.
+
+Refutations 1 and 3 were pairs of derivations; with `[66]` narrowed to the spec
+they are one derivation each plus the proof that the other does not exist. -/
 
 namespace L4YAML.Tests.Guards.TraceOfFlowAmbiguity
 
 open L4YAML L4YAML.Surface L4YAML.CharPredicates
 open L4YAML.Proofs.Serialization.SerializationWellFormed
 open L4YAML.Proofs.Serialization.TraceOf
+
+private lemma sswhite_col (a b : SurfPos) (h : SSWhite a b) : b.col = a.col + 1 := by
+  cases h <;> rfl
+
+private lemma gstar_sswhite_col_le (a b : SurfPos) (h : GStar SSWhite a b) : a.col ≤ b.col := by
+  induction h with
+  | nil _ => exact Nat.le_refl _
+  | cons _ _ _ hx _ ih => rw [sswhite_col _ _ hx] at ih; omega
+
+/-- A zero-width `[66]` forces column 0: `whites` is nonempty and raises the
+    column, `startOfLine` is the column-0 match. -/
+private lemma sep_refl_col0_false {s : SurfPos} (hne : s.col ≠ 0) : ¬ SSeparateInLine s s := by
+  intro h
+  cases h
+  · rename_i hp
+    match hp with
+    | .mk _ _ _ hw hrest =>
+      have h1 := sswhite_col _ _ hw
+      have h2 := gstar_sswhite_col_le _ _ hrest
+      omega
+  · exact hne rfl
 
 private lemma ns_x : isNsAnchorChar 'x' := by unfold isNsAnchorChar isNsChar; decide
 private lemma ns_a : isNsAnchorChar 'a' := by unfold isNsAnchorChar isNsChar; decide
@@ -54,29 +77,10 @@ lemma readAnchorXA : TFlowNode 0 .flowIn s0 s2 [Event.defineAnchor "xa"] :=
         (by decide))
       (TOpt.none _))
 
-/-- `&x` anchor, empty separation, plain `a`. -/
-lemma readAnchorX_plainA : TFlowNode 0 .flowIn s0 s2 [Event.defineAnchor "x"] :=
-  .propsContent 0 .flowIn s0 s1 s1 s2 [Event.defineAnchor "x"] []
-    (TCNsProperties.anchorFirst s0 s1 s1 [Event.defineAnchor "x"] []
-      (And.intro
-        (SCNsAnchorProperty.mk _ 1 s1
-          (GPlus.mk _ _ _ (GChar.mk 'x' _ 2 ns_x) (GStar.nil _)))
-        (by decide))
-      (TOpt.none _))
-    (SSeparateLines.inline 0 s1 s1 (.startOfLine s1))
-    (.plain 0 .flowIn s1 s2
-      (SNsPlainMultiLine.mk 0 .flowIn s1 s2 s2
-        (SNsPlainOneLine.mk .flowIn s1 s2 s2
-          (SNsPlainFirst.nonIndicator .flowIn 'a' _ 3 safe_a (by decide))
-          (GStar.nil _))
-        (GStar.nil _)))
-
-#guard ([Event.defineAnchor "xa"] == [Event.defineAnchor "x"]) = false
-
-/-- The statement of `tFlowNode_unique`, instantiated, is false. -/
-lemma tFlowNode_unique_false :
-    ¬ ∀ ev₁ ev₂, TFlowNode 0 .flowIn s0 s2 ev₁ → TFlowNode 0 .flowIn s0 s2 ev₂ → ev₁ = ev₂ :=
-  fun h => absurd (h _ _ readAnchorXA readAnchorX_plainA) (by decide)
+/-- A zero-width `[66]` exists only at column 0, so `&x` at column 1 cannot be
+followed by an empty separation at `s1` (column 3): the split reading of `&xa`
+has no derivation. -/
+lemma no_empty_sep_s1 : ¬ SSeparateInLine s1 s1 := sep_refl_col0_false (by decide)
 
 end AnchorSplit
 
@@ -214,37 +218,9 @@ lemma readTagAnchor : TFlowNode 0 .flowIn u0 u7 [Event.useTag "!", Event.defineA
           (SNsPlainFirst.nonIndicator .flowIn 'a' _ 7 safe_a (by decide)) (GStar.nil _))
         (GStar.nil _)))
 
-/-- Non-specific tag `!`, empty separation, plain `t &x a` (`&` is plain-safe
-after the first character). -/
-lemma readTagPlain : TFlowNode 0 .flowIn u0 u7 [Event.useTag "!"] :=
-  .propsContent 0 .flowIn u0 u1 u1 u7 [Event.useTag "!"] []
-    (TCNsProperties.tagFirst u0 u1 u1 [Event.useTag "!"] []
-      (And.intro (SCNsTagProperty.nonSpecific _ 1) (by decide))
-      (TOpt.none _))
-    (SSeparateLines.inline 0 u1 u1 (.startOfLine u1))
-    (.plain 0 .flowIn u1 u7
-      (SNsPlainMultiLine.mk 0 .flowIn u1 u7 u7
-        (SNsPlainOneLine.mk .flowIn u1 u2 u7
-          (SNsPlainFirst.nonIndicator .flowIn 't' _ 2 safe_t (by decide))
-          (GStar.cons u2 u4 u7
-            (SNbNsPlainInLineEntry.mk .flowIn u2 u3 u4
-              (GStar.cons _ _ _ (SSWhite.space _ 3) (GStar.nil _))
-              (SNsPlainChar.safe .flowIn '&' _ 4 safe_amp (by decide) (by decide)))
-          (GStar.cons u4 u5 u7
-            (SNbNsPlainInLineEntry.mk .flowIn u4 u4 u5 (GStar.nil _)
-              (SNsPlainChar.safe .flowIn 'x' _ 5 safe_x (by decide) (by decide)))
-          (GStar.cons u5 u7 u7
-            (SNbNsPlainInLineEntry.mk .flowIn u5 u6 u7
-              (GStar.cons _ _ _ (SSWhite.space _ 6) (GStar.nil _))
-              (SNsPlainChar.safe .flowIn 'a' _ 7 safe_a (by decide) (by decide)))
-            (GStar.nil _)))))
-        (GStar.nil _)))
-
-#guard ([Event.useTag "!", Event.defineAnchor "x"] == [Event.useTag "!"]) = false
-
-lemma tFlowNode_unique_false_tag :
-    ¬ ∀ ev₁ ev₂, TFlowNode 0 .flowIn u0 u7 ev₁ → TFlowNode 0 .flowIn u0 u7 ev₂ → ev₁ = ev₂ :=
-  fun h => absurd (h _ _ readTagAnchor readTagPlain) (by decide)
+/-- Likewise `!` followed by an empty separation at `u1` (column 2) has no
+derivation: the split reading of `!t` is gone. -/
+lemma no_empty_sep_u1 : ¬ SSeparateInLine u1 u1 := sep_refl_col0_false (by decide)
 
 end TagSplit
 

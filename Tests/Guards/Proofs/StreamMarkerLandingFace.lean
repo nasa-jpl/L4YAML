@@ -308,8 +308,7 @@ example {sp_mk sp_mid sp_prep : SurfPos}
     SSeparateLines 0 sp_mk sp_prep :=
   SSeparateLines.commented 0 sp_mk sp_mid sp_prep h_ssl_mk
     (SFlowLinePrefix.mk 0 sp_mid sp_mid sp_prep (SIndent.zero sp_mid)
-      (GOpt.some sp_mid sp_prep
-        (GStar_SSWhite_to_SSeparateInLine sp_mid sp_prep h_ws)))
+      (L4YAML.Proofs.ScalarProduction.gstar_sswhite_to_gopt_sep h_ws))
 
 -- The close the marker park still makes when NOTHING lands — `[208]`'s other
 -- alternative, which is what `---⏎...` and `---` at end of input take.

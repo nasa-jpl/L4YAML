@@ -218,10 +218,10 @@ lemma SNsPlain_at (n : Nat) {c : L4YAML.YamlContext} {s s' : SurfPos}
 /-- `[66] s-separate-in-line` as a white run (the `startOfLine` alternative is
     zero-width). -/
 lemma sSeparateInLine_to_gstar {s s' : SurfPos} (h : SSeparateInLine s s') :
-    GStar SSWhite s s' := by
-  cases h with
-  | whites _ hp => cases hp with | mk _ _ h1 h2 => exact GStar.cons _ _ _ h1 h2
-  | startOfLine => exact GStar.nil _
+    GStar SSWhite s s' :=
+  match h with
+  | .whites _ _ (.mk _ _ _ h1 h2) => GStar.cons _ _ _ h1 h2
+  | .startOfLine _ => GStar.nil _
 
 /-- **The separator lift**: a `[70] s-separate-lines(0)` re-reads at `n`
     unless it took the commented form and its landing under-runs

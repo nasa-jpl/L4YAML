@@ -64,14 +64,12 @@ premise through `close_with_ssl`, or eighteen through the producer — is not th
 cost of proving the step; it is the cost of establishing that the production
 starts where the stream ends.
 
-**The derivation leans on a documented deviation from the spec.**  [66]
-`s-separate-in-line` is `s-white+ | <start-of-line>`, and
-`SSeparateInLine.startOfLine` holds at EVERY position in this library
-(`L4YAML/Surface/Basic.lean`, which records the weakening and the ~20 proof
-sites it was taken to avoid).  `ssb_to_slcomment`'s `noSep` branch spends
-exactly that, and the pin below records the dependency rather than leaving it
-to a reader.  Under the spec's own column restriction the branch would need the
-comment run to begin at column 0.
+**The derivation spends `[66]`'s start-of-line arm.**  `s-separate-in-line` is
+`s-white+ | <start-of-line>`, and `SSeparateInLine.startOfLine` holds exactly at
+column 0 (`L4YAML/Surface/Basic.lean`).  `ssb_to_slcomment`'s `noSep` branch
+spends it, so the escape is available only where the comment run begins at
+column 0 — the `hcol` premise below — and the pin records the dependency rather
+than leaving it to a reader.
 -/
 
 namespace Tests.Guards.DispatchPrice
@@ -87,35 +85,37 @@ open Tests.Guards.RepairChoice (revEdges thread producer supplier)
 
 /-! ## §1 The connected escape -/
 
-lemma ssb_to_slcomment {a b : SurfPos} (h : SSBComment a b) : SLComment a b := by
+lemma ssb_to_slcomment {a b : SurfPos} (h : SSBComment a b) (hcol : a.col = 0) :
+    SLComment a b := by
   cases h
   case withSep =>
     rename_i s₁ s₂ hsep hopt hb
     exact SLComment.mk _ s₁ s₂ _ hsep hopt hb
   case noSep =>
     rename_i hb
-    exact SLComment.mk _ _ _ _ (SSeparateInLine.startOfLine _) (GOpt.none _) hb
+    exact SLComment.mk _ _ _ _ (SSeparateInLine.startOfLine_of_col0 hcol) (GOpt.none _) hb
 
-lemma sslcomments_to_prefix {a b : SurfPos} (h : SSLComments a b) :
+lemma sslcomments_to_prefix {a b : SurfPos} (h : SSLComments a b) (hcol : a.col = 0) :
     SLDocumentPrefix a b := by
   cases h
   case withComment =>
     rename_i s₁ hsb hstar
-    exact SLDocumentPrefix.comments _ _ (GStar.cons _ s₁ _ (ssb_to_slcomment hsb) hstar)
+    exact SLDocumentPrefix.comments _ _
+      (GStar.cons _ s₁ _ (ssb_to_slcomment hsb hcol) hstar)
   case startOfLine =>
     rename_i chars hstar
     exact SLDocumentPrefix.comments _ _ hstar
 
 lemma connected_drop {a b c : SurfPos}
-    (h : SLYamlStream a b) (hc : SSLComments b c) : SLYamlStream a c :=
+    (h : SLYamlStream a b) (hc : SSLComments b c) (hcol : b.col = 0) : SLYamlStream a c :=
   SLYamlStream.implicitContinue a b c c c h
-    (GStar.cons b c c (sslcomments_to_prefix hc) (GStar.nil c))
+    (GStar.cons b c c (sslcomments_to_prefix hc hcol) (GStar.nil c))
     (GOpt.none c) (GStar.nil c)
 
 lemma connected_drop_nd {a b c : SurfPos}
-    (h : StreamND a b) (hc : SSLComments b c) : StreamND a c :=
+    (h : StreamND a b) (hc : SSLComments b c) (hcol : b.col = 0) : StreamND a c :=
   StreamND.implicitContinue a b c c c h
-    (GStar.cons b c c (sslcomments_to_prefix hc) (GStar.nil c))
+    (GStar.cons b c c (sslcomments_to_prefix hc hcol) (GStar.nil c))
     (GOpt.none c) (GStar.nil c)
 
 /-! ## §2 The census -/

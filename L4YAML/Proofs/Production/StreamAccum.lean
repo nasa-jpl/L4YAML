@@ -3489,8 +3489,8 @@ lemma white_prepend_SSLComments {sp sp' sp_mid : SurfPos}
         case startOfLine =>
           -- Their sep is identity (s₂ = sp'), use our WS directly
           exact SSLComments.withComment sp s₁ sp_mid
-            (SSBComment.withSep sp sp' s₃ s₁
-              (SSeparateInLine.whites sp sp' h_gplus) h_opt h_break)
+            (SSBComment.withSep sp _ s₃ s₁
+              (SSeparateInLine.whites sp _ h_gplus) h_opt h_break)
             h_lcomments
       case noSep h_break =>
         -- No existing sep: add our WS as sep
@@ -8402,7 +8402,7 @@ lemma preprocess_some_separate_at_floor (n : Nat) (sc : ScannerState) (sp : Surf
       rcases gstar_white_take_sIndent n h_ws with ⟨sx, h_ind, h_rest⟩ | h_ur
       · refine ⟨sp_prep, hcorr_out, Or.inl ⟨SSeparateLines.commented n sp sp_mid sp_prep
           h_ssl_col.1 (SFlowLinePrefix.mk n sp_mid sx sp_prep h_ind
-            (GOpt.some _ _ (GStar_SSWhite_to_SSeparateInLine _ _ h_rest))), ?_⟩⟩
+            (ScalarProduction.gstar_sswhite_to_gopt_sep h_rest)), ?_⟩⟩
         refine preprocess_some_floor_at_landing hok h_floor.2 ?_
         have h_sx : sx.col = n := by
           have := SIndent_col' h_ind
@@ -22515,7 +22515,7 @@ lemma indicator_open_map {sc : ScannerState}
 lemma implicitKeyHead_to_SImplicitKey {s s₁ s' : SurfPos}
     (h : ImplicitKeyHead s s₁) (hws : GStar SSWhite s₁ s') : SImplicitKey s s' := by
   have hsep : GOpt SSeparateInLine s₁ s' :=
-    GOpt.some s₁ s' (GStar_SSWhite_to_SSeparateInLine s₁ s' hws)
+    ScalarProduction.gstar_sswhite_to_gopt_sep hws
   cases h with
   | yaml hp => exact SImplicitKey.yamlKey s s₁ s' hp hsep
   | json hn => exact SImplicitKey.jsonKey s s₁ s' hn hsep
@@ -22864,7 +22864,7 @@ lemma colon_open_map_props (sp_start sp_block sp_p sp_scan : SurfPos) (k : Nat)
   have h_ik : SImplicitKey sp_p sp_prep :=
     SImplicitKey.jsonKey sp_p sp_scan sp_prep
       (SFlowNode.propsEmpty 0 .blockKey sp_p sp_scan h_props)
-      (GOpt.some sp_scan sp_prep (GStar_SSWhite_to_SSeparateInLine sp_scan sp_prep h_ws))
+      (ScalarProduction.gstar_sswhite_to_gopt_sep h_ws)
   have hpf := scanValue_ok_park_facts (dispatchBlock_colon_scanValue h_dispatch)
     h_noflow_disp h_nic_disp hpeek_disp
   -- Item 125: the resolved key makes the stamp REAL (see
@@ -32411,7 +32411,7 @@ lemma indentedValue_reads_at_any_indent
           rw [h_pe]
           exact SSeparateLines.commented n _ _ _ h_land.1
             (SFlowLinePrefix.mk n sp_mid sx sp_ws h_ind
-              (GOpt.some _ _ (GStar_SSWhite_to_SSeparateInLine _ _ h_rest)))
+              (ScalarProduction.gstar_sswhite_to_gopt_sep h_rest))
         refine Or.inl ⟨h_sep, Or.inr trivial, ?_⟩
         refine preprocess_some_floor_at_landing h_preprocess h_floor.2 ?_
         -- the landing's own indent: `n` columns past a column-0 start, and
@@ -34464,8 +34464,7 @@ lemma accum_content_pending (sc : ScannerState)
           h_stream_mid
           (SSeparateLines.commented 0 sp_mk sp_mid sp_prep h_ssl_mk
             (SFlowLinePrefix.mk 0 sp_mid sp_mid sp_prep (SIndent.zero sp_mid)
-              (GOpt.some sp_mid sp_prep
-                (GStar_SSWhite_to_SSeparateInLine sp_mid sp_prep h_ws))))
+              (ScalarProduction.gstar_sswhite_to_gopt_sep h_ws)))
           (nic_false_of_flow_disp h_preprocess h_flow_disp)
           hcorr_prep hcorr_result h_not_doc
           (preprocess_some_peek h_preprocess) h_flow_disp h_dispatch (fun _ => mkroute) h_keyctx
@@ -34486,7 +34485,7 @@ lemma accum_content_pending (sc : ScannerState)
           (Or.inr trivial)
           (Or.inr trivial)
       have h_sep := SSeparateLines.inline 0 sp_mid sp_prep
-        (GStar_SSWhite_to_SSeparateInLine sp_mid sp_prep h_ws)
+        (GStar_SSWhite_to_SSeparateInLine sp_mid sp_prep h_ws (fun _ => hcol_mid))
       -- Item 117: a `...` park routes the completed node into the open arm's
       -- own slot; every other park keeps the bare-document route
       -- (`content_dispatch_after_close`'s, written out here because the
@@ -34589,8 +34588,7 @@ lemma accum_content_pending (sc : ScannerState)
             h_stream_mid
             (SSeparateLines.commented 0 sp_mk sp_mid sp_prep h_ssl_mk
               (SFlowLinePrefix.mk 0 sp_mid sp_mid sp_prep (SIndent.zero sp_mid)
-                (GOpt.some sp_mid sp_prep
-                  (GStar_SSWhite_to_SSeparateInLine sp_mid sp_prep h_ws))))
+                (ScalarProduction.gstar_sswhite_to_gopt_sep h_ws)))
             (nic_false_of_flow_disp h_preprocess h_flow_disp)
             hcorr_prep hcorr_result h_not_doc
             (preprocess_some_peek h_preprocess) h_flow_disp h_dispatch (fun _ => mkroute) h_keyctx
@@ -34608,7 +34606,7 @@ lemma accum_content_pending (sc : ScannerState)
             (Or.inr trivial)
             (Or.inr trivial)
         have h_sep := SSeparateLines.inline 0 sp_mid sp_prep
-          (GStar_SSWhite_to_SSeparateInLine sp_mid sp_prep h_ws)
+          (GStar_SSWhite_to_SSeparateInLine sp_mid sp_prep h_ws (fun _ => hcol_mid.1))
         -- Item 117: as at the column-0 landing.
         have h_route_mid : ContentRouteGate s' c → ∀ sp_m,
             SBlockNode 0 .blockIn sp_mid sp_m → SLYamlStream sp_start sp_m :=
@@ -34885,7 +34883,7 @@ lemma accum_content_pending (sc : ScannerState)
           (landing_or_park_ska h_noflow_prep hcol_mid.2 (Or.inr h_col0_p) h_preprocess))
         sp_mid h_ssl
       have h_sep := SSeparateLines.inline 0 sp_mid sp_prep
-        (GStar_SSWhite_to_SSeparateInLine sp_mid sp_prep h_ws)
+        (GStar_SSWhite_to_SSeparateInLine sp_mid sp_prep h_ws (fun _ => hcol_mid.1))
       -- Item 114: the run closes `propsEmpty` at ANY landing — one node,
       -- and whichever resume face the park kept spends at it, so the landed
       -- key resumes the level its width names instead of re-opening

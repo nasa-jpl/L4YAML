@@ -103,11 +103,12 @@ namespace Tests.Guards.ParkGapCensus
     fall back on. -/
 lemma corr_pair_closes {sc : ScannerState} {sp_start sp_block sp_scan sp_mid : SurfPos}
     (h_block : ScannerSurfCorr sc sp_block) (h_scan : ScannerSurfCorr sc sp_scan)
-    (h_stream : StreamND sp_start sp_block) (h_ssl : SSLComments sp_scan sp_mid) :
+    (h_stream : StreamND sp_start sp_block) (h_ssl : SSLComments sp_scan sp_mid)
+    (hcol : sp_scan.col = 0) :
     StreamND sp_start sp_mid := by
   have heq := ScannerSurfCorr_unique h_block h_scan
   subst heq
-  exact connected_drop_nd h_stream h_ssl
+  exact connected_drop_nd h_stream h_ssl hcol
 
 /-- **…and its price is the park's own content.**  The same pair forces the two
     positions equal, so a park that held both would have absorbed no characters

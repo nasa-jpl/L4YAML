@@ -168,14 +168,14 @@ lemma sepResidue_false_at_zero_width (ch : Char) (rest : List Char) :
     exact absurd (hpre ▸ hmem) (by simp)
   · exact absurd he (by simp [atEnd])
 
-/-- **…and where it still does, volunteered.**  At the end of the input every
-    separation is inline and `atEnd` holds, so the two disjuncts are both true
-    there.  That span is one a key consumer is never at — a key is followed by
-    a `:` — which is why the residue is refutable although it is not
-    disjoint. -/
-lemma sepResidue_overlaps_at_eof (col : Nat) :
-    SSeparate 0 .blockKey ⟨[], col⟩ ⟨[], col⟩ ∧ SepResidue ⟨[], col⟩ ⟨[], col⟩ :=
-  ⟨SSeparateInLine.startOfLine _, Or.inr rfl⟩
+/-- **…and where it still does, volunteered.**  At the end of the input, at
+    column 0, the zero-width separation is inline and `atEnd` holds, so the two
+    disjuncts are both true there.  That span is one a key consumer is never at
+    — a key is followed by a `:` — which is why the residue is refutable
+    although it is not disjoint. -/
+lemma sepResidue_overlaps_at_eof :
+    SSeparate 0 .blockKey ⟨[], 0⟩ ⟨[], 0⟩ ∧ SepResidue ⟨[], 0⟩ ⟨[], 0⟩ :=
+  ⟨SSeparateInLine.startOfLine [], Or.inr rfl⟩
 
 /-! ## §2b Is the new residue itself vacuous?
 

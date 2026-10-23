@@ -729,10 +729,10 @@ lemma cr_gives_SBBreak (sp : SurfPos) (rest : List Char)
 
 /-! ## §6 Composition Helpers -/
 
-/-- Start-of-line gives `SSeparateInLine` (zero-width, any column). -/
+/-- Start-of-line gives `SSeparateInLine` (zero-width, at column 0). -/
 lemma start_of_line_gives_SSeparateInLine (rest : List Char) :
     SSeparateInLine ⟨rest, 0⟩ ⟨rest, 0⟩ :=
-  SSeparateInLine.startOfLine ⟨rest, 0⟩
+  SSeparateInLine.startOfLine rest
 
 /-- Space gives `SSeparateInLine`. -/
 lemma space_gives_SSeparateInLine (rest : List Char) (col : Nat) :

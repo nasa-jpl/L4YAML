@@ -131,14 +131,21 @@ def SIndentLe (n : Nat) (s s' : SurfPos) : Prop :=
 /-! ## §4 Line Prefixes [67]–[73] -/
 
 /-- [66] s-separate-in-line: one or more whitespace chars, or start of line.
-    Start of line is represented by the zero-width match.
-    Note: The YAML spec restricts start-of-line to col=0, but the scanner
-    treats BOM as transparent for separation (§5.2), allowing comments at
-    col>0 after BOM. We weaken the column constraint to avoid a proof gap
-    at ~20 sorry sites while remaining sound (the scanner validates separation). -/
+    Start of line is the zero-width match at column 0 and nowhere else, as the
+    spec has it.  The scanner's BOM transparency (§5.2) needs no extra arm:
+    `ScannerState.consumeBOM` advances past the BOM and puts the column back to
+    0, and it runs only at stream start, so every position after a BOM that a
+    separator is spent at already has `col = 0`. -/
 inductive SSeparateInLine : SurfPos → SurfPos → Prop where
   | whites (s s' : SurfPos) : GPlus SSWhite s s' → SSeparateInLine s s'
-  | startOfLine (s : SurfPos) : SSeparateInLine s s
+  | startOfLine (chars : List Char) : SSeparateInLine ⟨chars, 0⟩ ⟨chars, 0⟩
+
+/-- `startOfLine` at a position known to sit at column 0. -/
+lemma SSeparateInLine.startOfLine_of_col0 {s : SurfPos} (h : s.col = 0) :
+    SSeparateInLine s s := by
+  obtain ⟨chars, col⟩ := s
+  simp only at h; subst h
+  exact .startOfLine chars
 
 /-- [71] s-flow-line-prefix(n): indent + optional inline separation. -/
 inductive SFlowLinePrefix : Nat → SurfPos → SurfPos → Prop where

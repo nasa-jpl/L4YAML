@@ -905,11 +905,11 @@ lemma gstar_of_gplus {P : SurfPos → SurfPos → Prop} {a b : SurfPos}
   | .mk _ _ _ hx hrest => exact GStar.cons _ _ _ hx hrest
 
 /-- **`[66] s-separate-in-line` IS `GStar SSWhite`**, one direction. -/
-lemma separateInLine_of_whites {a b : SurfPos} (h : GStar SSWhite a b) :
-    SSeparateInLine a b := by
-  match h with
-  | .nil _ => exact .startOfLine _
-  | .cons s₁ s₂ s₃ hx hrest => exact .whites s₁ s₃ (GPlus.mk s₁ s₂ s₃ hx hrest)
+lemma separateInLine_of_whites {a b : SurfPos} (h : GStar SSWhite a b)
+    (h0 : a = b → a.col = 0) : SSeparateInLine a b := by
+  cases h with
+  | nil _ => exact .startOfLine_of_col0 (h0 rfl)
+  | cons _ s₂ _ hx hrest => exact .whites _ _ (GPlus.mk _ s₂ _ hx hrest)
 
 /-- …and the other: the `startOfLine` arm is the empty run. -/
 lemma whites_of_separateInLine {a b : SurfPos} (h : SSeparateInLine a b) :
@@ -918,13 +918,21 @@ lemma whites_of_separateInLine {a b : SurfPos} (h : SSeparateInLine a b) :
   | .whites _ _ hp => exact gstar_of_gplus hp
   | .startOfLine _ => exact .nil _
 
+/-- A run of whites in front of an inline separation is one inline separation;
+    the empty run adds nothing and asks for nothing. -/
+lemma separateInLine_of_whites_trans {a b c : SurfPos} (h : GStar SSWhite a b)
+    (h₂ : SSeparateInLine b c) : SSeparateInLine a c := by
+  cases h with
+  | nil _ => exact h₂
+  | cons _ s₂ _ hx hrest =>
+    exact .whites _ _ (GPlus.mk _ s₂ _ hx (gstar_append hrest (whites_of_separateInLine h₂)))
+
 /-- **The concatenation lemma for `[66]`.**  Two inline separations end to end
     are one, which is what lets `[71]`'s indent and its optional tail be read
     as a single separation. -/
 lemma separateInLine_trans {a b c : SurfPos}
     (h₁ : SSeparateInLine a b) (h₂ : SSeparateInLine b c) : SSeparateInLine a c :=
-  separateInLine_of_whites
-    (gstar_append (whites_of_separateInLine h₁) (whites_of_separateInLine h₂))
+  separateInLine_of_whites_trans (whites_of_separateInLine h₁) h₂
 
 /-- **`[63] s-indent(n)` is a run of whites** — the spaces it consumes are
     `[33] s-white`s, at every `n`. -/
@@ -938,13 +946,12 @@ lemma sIndent_whites {n : Nat} {a b : SurfPos} (h : SIndent n a b) :
 /-- **`[71] s-flow-line-prefix(n)` is an inline separation**, at every `n`.
     This is why the residue below comes from `[79]` alone. -/
 lemma sFlowLinePrefix_separateInLine {n : Nat} {a b : SurfPos}
-    (h : SFlowLinePrefix n a b) : SSeparateInLine a b := by
+    (h : SFlowLinePrefix n a b) (h0 : a = b → a.col = 0) : SSeparateInLine a b := by
   match h with
   | .mk _ _ _ _ hind hopt =>
     match hopt with
-    | .none _ => exact separateInLine_of_whites (sIndent_whites hind)
-    | .some _ _ hsil =>
-      exact separateInLine_trans (separateInLine_of_whites (sIndent_whites hind)) hsil
+    | .none _ => exact separateInLine_of_whites (sIndent_whites hind) h0
+    | .some _ _ hsil => exact separateInLine_of_whites_trans (sIndent_whites hind) hsil
 
 /-- **The end of the input is forward-closed.**  `atEnd` (`Surface.atEnd`, the
     predicate `s.chars = []`) propagates along every production, because every
@@ -1012,17 +1019,17 @@ lemma gstarComment_breakOrEnd {a b : SurfPos} (h : GStar SLComment a b) :
       (gstar_suffix (fun _ _ => slComment_suffix) hrest) (slComment_breakOrEnd hx))
 
 /-- **`[79] s-l-comments` is zero-width, or it leaves a residue.**  Zero-width
-    is `startOfLine` with no comments; every other derivation reaches a `[77]`.
-    -/
+    is `startOfLine` with no comments, so it sits at column 0; every other
+    derivation reaches a `[77]`. -/
 lemma sslComments_inline_or_breakOrEnd {a b : SurfPos} (h : SSLComments a b) :
-    SSeparateInLine a b ∨ (BreakBetween a b ∨ atEnd b) := by
+    (b = a ∧ a.col = 0) ∨ (BreakBetween a b ∨ atEnd b) := by
   match h with
   | .withComment _ _ _ hsb hstar =>
     exact Or.inr (breakOrEnd_extend_right
       (gstar_suffix (fun _ _ => slComment_suffix) hstar) (ssbComment_breakOrEnd hsb))
   | .startOfLine _ _ hstar =>
     rcases gstarComment_breakOrEnd hstar with rfl | hout
-    · exact Or.inl (SSeparateInLine.startOfLine _)
+    · exact Or.inl ⟨rfl, rfl⟩
     · exact Or.inr hout
 
 /-- **THE TRICHOTOMY.**  `[70] s-separate-lines(n)` is an inline separation,
@@ -1036,8 +1043,8 @@ lemma separateLines_inline_or_breakOrEnd {n : Nat} {a b : SurfPos}
   match h with
   | .inline _ _ _ hsil => exact Or.inl hsil
   | .commented _ _ _ _ hcom hpre =>
-    rcases sslComments_inline_or_breakOrEnd hcom with hsil | hout
-    · exact Or.inl (separateInLine_trans hsil (sFlowLinePrefix_separateInLine hpre))
+    rcases sslComments_inline_or_breakOrEnd hcom with ⟨rfl, hcol⟩ | hout
+    · exact Or.inl (sFlowLinePrefix_separateInLine hpre (fun _ => hcol))
     · exact Or.inr (breakOrEnd_extend_right (sFlowLinePrefix_suffix hpre) hout)
 
 /-- **`[69] s-separate(n,c)` at the four non-key contexts**, which is the form

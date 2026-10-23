@@ -883,17 +883,9 @@ def SFlowMapEntries_addTrailingComma {n : Nat} {c : YamlContext}
 
     In flow contexts (`.flowOut`/`.flowIn`) `s-separate(n,c)` [69] unfolds to
     `s-separate-lines(n)` [70], whose `inline` case wraps `s-separate-in-line`
-    [66]. Because `SSeparateInLine.startOfLine` was deliberately weakened to
-    hold at ANY column (dodging the BOM col≠0 proof gap — see `SSeparateInLine`),
-    a zero-width flow separation is available at every position, and a run of
-    whitespace gives a non-empty one. These are the separators threaded between
+    [66]: a run of whitespace is a flow separation, and the zero-width one
+    exists only at column 0.  These are the separators threaded between
     flow-collection tokens (`[`, entries, `,`, `]`). -/
-
-/-- Zero-width flow separation at any position (spec start-of-line, weakened). -/
-lemma SSeparate_flow_refl (n : Nat) {c : YamlContext}
-    (hc : c = .flowOut ∨ c = .flowIn) (sp : SurfPos) : SSeparate n c sp sp := by
-  rcases hc with rfl | rfl <;>
-    exact SSeparateLines.inline n sp sp (SSeparateInLine.startOfLine sp)
 
 /-- A run of whitespace is a flow separation. -/
 lemma SSeparate_flow_of_whites (n : Nat) {c : YamlContext} {sp sp' : SurfPos}

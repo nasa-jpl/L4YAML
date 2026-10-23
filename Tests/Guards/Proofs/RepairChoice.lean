@@ -128,11 +128,12 @@ open Tests.Guards.DropDependents (usesAll rawRefs census sorted)
     through `[202] l-document-prefix`'s comment alternative and needs no
     escape.  This is `ssl_comments_extend_stream`'s proof, transported to the
     relation β.5 leaves behind — so the weak repair is a repair, not a hope. -/
-lemma nd_ssl_extend (a b c : SurfPos) (h : StreamND a b) (h_ssl : SSLComments b c) :
+lemma nd_ssl_extend (a b c : SurfPos) (h : StreamND a b) (h_ssl : SSLComments b c)
+    (hcol : b.col = 0) :
     StreamND a c :=
   StreamND.implicitContinue a b c c c h
     (GStar.cons b c c
-      (SLDocumentPrefix.comments b c (SSLComments_to_GStar b c h_ssl))
+      (SLDocumentPrefix.comments b c (SSLComments_to_GStar b c h_ssl hcol))
       (GStar.nil _))
     (GOpt.none _) (GStar.nil _)
 

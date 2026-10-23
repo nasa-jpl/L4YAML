@@ -253,9 +253,8 @@ inductive SLYamlStream : SurfPos → SurfPos → Prop where
       check that the derivation is not circular.  So the reproofs β.5 owes
       need no new grammar lemma: what the repairs above price is the
       CONNECTION, not the proof.  The derivation spends
-      `SSeparateInLine.startOfLine`, which holds at every position in this
-      library rather than only at column 0 (`L4YAML/Surface/Basic.lean`
-      records that weakening of [66] and what it was taken to avoid):
+      `SSeparateInLine.startOfLine`, which holds only at column 0, so the
+      escape is available exactly where the comment sits at a line start:
       `Tests/Guards/Proofs/DispatchPrice.lean` (DOCS item 242).
 
       **The connected form closes none of the sites that spend this arm.**
