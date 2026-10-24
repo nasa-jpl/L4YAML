@@ -28209,7 +28209,7 @@ lemma accum_block_pending (sc : ScannerState)
       -- Item 208: the park's own indent check, read at the block landing.
       h_nic0B h_live290 h_runBC h_gateBC
   | pendingBlock _ _ _ n_old _h_close h_close_entry_old h_floor208 h_sk_old h_col_old h_kslot92
-      _ _ h_seqF167 h_kslotUp190 h_closeFV198 h_top208 h_nextB =>
+      _ _ h_seqF167 h_kslotUp190 h_closeFV198 h_top208 _ h_nextB =>
     exact accum_block_on_pendingBlock sc sp_start sp_block sp_scan s_prep s' c sp_prep
       sp_scan' n_old h_stream_block h_close_pending h_close_entry_old h_kslot92
       h_sk_old h_col_old hcorr_prep hcorr_result h_corr h_noflow h_nextB h_preprocess h_dispatch h_bare
