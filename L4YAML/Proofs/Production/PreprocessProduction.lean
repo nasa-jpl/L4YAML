@@ -1653,6 +1653,126 @@ lemma scanAnchorOrAlias_peekBack {sc : ScannerState} {sp : SurfPos} {marker : Ch
         rw [heq]; exact hpb0, hmk⟩
     · exact ⟨c, hpb, hflag⟩
 
+
+/-! ### Tag parks: the last consumed character fails the comment gate -/
+
+lemma advance_peekBack_of_peek {sc : ScannerState} {sp : SurfPos} {c : Char}
+    (hcorr : ScannerSurfCorr sc sp) (hpeek : sc.peek? = some c)
+    (hnl : c ≠ '\n') (hcr : c ≠ '\r') : sc.advance.peekBack? = some c := by
+  obtain ⟨rest, hsp_eq⟩ := L4YAML.Proofs.ScalarProduction.peek_some_sp hcorr hpeek
+  subst hsp_eq
+  exact advance_peekBack_eq_peek hcorr
+    (L4YAML.Proofs.ScalarProduction.peek_some_has_more hpeek) hnl hcr
+
+lemma isUriChar_flag_false (c : Char) (h : isUriCharBool c = true) :
+    (isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF') = false := by
+  have hlb : isLineBreakBool c = false := by
+    have := L4YAML.Proofs.StructureProduction.isUriChar_not_isLineBreak c h; simpa using this
+  rw [hlb]
+  simp only [isUriCharBool, decide_eq_true_eq] at h
+  by_cases hs : c = ' '
+  · subst hs; simp [isUriCharProp, isWordCharProp, isAsciiLetterProp] at h
+  by_cases ht : c = '\t'
+  · subst ht; simp [isUriCharProp, isWordCharProp, isAsciiLetterProp] at h
+  by_cases hb : c = '\uFEFF'
+  · subst hb; simp [isUriCharProp, isWordCharProp, isAsciiLetterProp] at h
+  simp [isWhiteSpaceBool, isSpaceBool, isTabBool, hs, ht, hb]
+
+lemma isTagChar_flag_false (c : Char) (h : isTagCharBool c = true) :
+    (isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF') = false :=
+  isUriChar_flag_false c ((isUriChar_iff c).2 ((isTagChar_iff c).1 h).1)
+
+lemma isWordChar_flag_false (c : Char) (h : isWordCharBool c = true) :
+    (isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF') = false :=
+  isUriChar_flag_false c ((isUriChar_iff c).2 (Or.inl ((isWordChar_iff c).1 h)))
+
+lemma collectVerbatimTagLoop_peekBack (fuel : Nat) :
+    ∀ (sc : ScannerState) (sp : SurfPos) (uri : String), ScannerSurfCorr sc sp →
+    (collectVerbatimTagLoop sc uri fuel).2.2 = sc ∨
+    ∃ c, (collectVerbatimTagLoop sc uri fuel).2.2.peekBack? = some c ∧
+      (isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF') = false := by
+  induction fuel with
+  | zero => intro sc sp uri _; simp [collectVerbatimTagLoop]
+  | succ fuel' ih =>
+    intro sc sp uri hcorr
+    unfold collectVerbatimTagLoop
+    split
+    · have hpk : sc.peek? = some '>' := by assumption
+      exact Or.inr ⟨'>', advance_peekBack_of_peek hcorr hpk (by decide) (by decide), by decide⟩
+    · rename_i c _ _
+      have hpk : sc.peek? = some c := by assumption
+      split
+      · rename_i hguard
+        have hflag := isUriChar_flag_false c hguard
+        have hpb := advance_peekBack_of_peek hcorr hpk
+          (fun h => by subst h; exact absurd hflag (by decide))
+          (fun h => by subst h; exact absurd hflag (by decide))
+        obtain ⟨sp', hcorr'⟩ := L4YAML.Proofs.ScalarCoupling.advance_corr sc sp hcorr
+        rcases ih sc.advance sp' (uri.push c) hcorr' with heq | ⟨c2, hpb2, hflag2⟩
+        · exact Or.inr ⟨c, by rw [heq]; exact hpb, hflag⟩
+        · exact Or.inr ⟨c2, hpb2, hflag2⟩
+      · exact Or.inl rfl
+    · exact Or.inl rfl
+
+lemma collectTagSuffixLoop_peekBack (fuel : Nat) :
+    ∀ (sc : ScannerState) (sp : SurfPos) (suffix : String), ScannerSurfCorr sc sp →
+    (collectTagSuffixLoop sc suffix fuel).snd = sc ∨
+    ∃ c, (collectTagSuffixLoop sc suffix fuel).snd.peekBack? = some c ∧
+      (isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF') = false := by
+  induction fuel with
+  | zero => intro sc sp suffix _; simp [collectTagSuffixLoop]
+  | succ fuel' ih =>
+    intro sc sp suffix hcorr
+    unfold collectTagSuffixLoop
+    split
+    · rename_i c _
+      have hpk : sc.peek? = some c := by assumption
+      split
+      · rename_i hguard
+        have hflag := isTagChar_flag_false c hguard
+        have hpb := advance_peekBack_of_peek hcorr hpk
+          (fun h => by subst h; exact absurd hflag (by decide))
+          (fun h => by subst h; exact absurd hflag (by decide))
+        obtain ⟨sp', hcorr'⟩ := L4YAML.Proofs.ScalarCoupling.advance_corr sc sp hcorr
+        rcases ih sc.advance sp' (suffix.push c) hcorr' with heq | ⟨c2, hpb2, hflag2⟩
+        · exact Or.inr ⟨c, by rw [heq]; exact hpb, hflag⟩
+        · exact Or.inr ⟨c2, hpb2, hflag2⟩
+      · exact Or.inl rfl
+    · exact Or.inl rfl
+
+lemma collectTagHandleLoop_peekBack (fuel : Nat) :
+    ∀ (sc : ScannerState) (sp : SurfPos) (chars : String), ScannerSurfCorr sc sp →
+    (∃ sp', ScannerSurfCorr (collectTagHandleLoop sc chars fuel).2.2 sp') ∧
+    ((collectTagHandleLoop sc chars fuel).2.2 = sc ∨
+    ∃ c, (collectTagHandleLoop sc chars fuel).2.2.peekBack? = some c ∧
+      (isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF') = false) := by
+  induction fuel with
+  | zero => intro sc sp chars hcorr; simp [collectTagHandleLoop]; exact ⟨sp, hcorr⟩
+  | succ fuel' ih =>
+    intro sc sp chars hcorr
+    unfold collectTagHandleLoop
+    split
+    · have hpk : sc.peek? = some '!' := by assumption
+      obtain ⟨sp', hcorr'⟩ := L4YAML.Proofs.ScalarCoupling.advance_corr sc sp hcorr
+      exact ⟨⟨sp', hcorr'⟩,
+        Or.inr ⟨'!', advance_peekBack_of_peek hcorr hpk (by decide) (by decide), by decide⟩⟩
+    · rename_i c _ _
+      have hpk : sc.peek? = some c := by assumption
+      split
+      · rename_i hguard
+        have hflag := isWordChar_flag_false c hguard
+        have hpb := advance_peekBack_of_peek hcorr hpk
+          (fun h => by subst h; exact absurd hflag (by decide))
+          (fun h => by subst h; exact absurd hflag (by decide))
+        obtain ⟨sp', hcorr'⟩ := L4YAML.Proofs.ScalarCoupling.advance_corr sc sp hcorr
+        obtain ⟨hc, hrest⟩ := ih sc.advance sp' (chars.push c) hcorr'
+        refine ⟨hc, ?_⟩
+        rcases hrest with heq | ⟨c2, hpb2, hflag2⟩
+        · exact Or.inr ⟨c, by rw [heq]; exact hpb, hflag⟩
+        · exact Or.inr ⟨c2, hpb2, hflag2⟩
+      · exact ⟨⟨sp, hcorr⟩, Or.inl rfl⟩
+    · exact ⟨⟨sp, hcorr⟩, Or.inl rfl⟩
+
 end L4YAML.Proofs.PreprocessProduction
 
 end Blanket
