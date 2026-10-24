@@ -6557,6 +6557,61 @@ lemma PendingNode.close_with_ssl {sc : ScannerState}
     -- `[72] e-node` is indent-inert, so the SHIFTED index (item 179) is free.
     exact h_close sp_mid (SBlockNode.emptyNode (n + 1) .blockIn sp_scan sp_mid h_ssl)
 
+/-- **The frame-boundary conversion**: the landing exactly as preprocessing
+    produced it (`SSLCommentsFrom` at the park, with the scanner's `commentOk`
+    witness), discharged with the park's own swallowed run and gate.  A content
+    park spends its run as the `[66]` separator of the comment; every other
+    park sits before a separator (`NextIsSep`) and refutes the glued shape. -/
+lemma PendingNode.close_with_sslFrom {sc : ScannerState}
+    {sp_start sp_block sp_scan sp_mid : SurfPos}
+    (h_pending : PendingNode sc false sp_start sp_block sp_scan)
+    (h_stream : SLYamlStream sp_start sp_block)
+    (h_nd : danglingNodePos? sc = none)
+    (h_ui : underIndentedFlowValuePos? sc = none)
+    (h_noflow : sc.inFlow = false)
+    (h_corr : ScannerSurfCorr sc sp_scan)
+    (h_from : SSLCommentsFrom sp_scan sp_mid)
+    (h_ok : SSLComments sp_scan sp_mid ∨ CommentOk sc) :
+    SLYamlStream sp_start sp_mid := by
+  cases h_pending with
+  | noPending _ _ _ _ _ _ _ h_gate =>
+    exact ssl_comments_extend_stream sp_start sp_block sp_mid h_stream
+      (SSLCommentsFrom_at_park h_corr (GStar.nil _)
+        (fun _ => gate_sc h_corr (h_gate h_noflow)) h_from h_ok)
+  | pendingContent _ _ _ _ _ h_closable _ _ _ _ _ _ _ _ _ _ h_run h_gate _ =>
+    exact h_closable h_nd h_ui sp_mid (SSLCommentsFrom_at_park h_corr h_run h_gate h_from h_ok)
+  | pendingProps _ _ _ ha ht sp_node sp_p n h_sep h_run h_nic h_real h_anchor h_tag h_route
+      _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ h_next =>
+    exact PendingNode.propsClose h_sep h_run (h_route h_nd)
+      (SSLCommentsFrom_at_park h_corr (GStar.nil _) (fun _ _ => (h_next h_noflow).gate) h_from h_ok)
+  | pendingFlow _ _ _ _ _ _ _ _ h_gate =>
+    obtain ⟨sp_g, h_run, h_g⟩ := h_gate
+    exact SLYamlStream.scannerDrop sp_start sp_block sp_g sp_mid h_stream
+      (SSLCommentsFrom_at_park h_corr h_run h_g h_from h_ok)
+  | pendingBlockContent _ _ _ _ _ _ h_closable _ _ _ _ _ _ _ _ _ _ _ _ h_run h_gate _ =>
+    exact h_closable h_nd sp_mid (SSLCommentsFrom_at_park h_corr h_run h_gate h_from h_ok)
+  | pendingDocEnd _ _ _ _ h_marker _ _ _ _ h_next =>
+    have h_ssl := SSLCommentsFrom_at_park h_corr (GStar.nil _)
+      (fun _ _ => (h_next h_noflow).gate) h_from h_ok
+    exact SLYamlStream.suffixContinue sp_start sp_block sp_mid sp_mid sp_mid sp_mid
+      h_stream (GPlus.mk sp_block sp_mid sp_mid
+        (SLDocumentSuffix.mk sp_block sp_scan sp_mid h_marker h_ssl) (GStar.nil _))
+      (GStar.nil _) (GOpt.none _) (GStar.nil _)
+  | pendingDocStart _ _ _ h_doc_route _ _ _ _ _ _ _ _ h_next =>
+    have h_ssl := SSLCommentsFrom_at_park h_corr (GStar.nil _)
+      (fun _ _ => (h_next h_noflow).gate) h_from h_ok
+    exact h_doc_route sp_mid
+      (GAlt.right sp_scan sp_mid
+        (GSeq.mk sp_scan sp_scan sp_mid (GEps.mk sp_scan) h_ssl))
+  | pendingBlock _ _ _ n h_close _ _ _ _ _ _ _ _ _ _ _ _ h_next =>
+    have h_ssl := SSLCommentsFrom_at_park h_corr (GStar.nil _)
+      (fun _ _ => (h_next h_noflow).gate) h_from h_ok
+    exact h_close sp_mid (SBlockIndented.empty n .blockIn sp_scan sp_mid h_ssl)
+  | pendingMapValue _ _ _ n h_close _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ h_next =>
+    have h_ssl := SSLCommentsFrom_at_park h_corr (GStar.nil _)
+      (fun _ _ => (h_next h_noflow).gate) h_from h_ok
+    exact h_close sp_mid (SBlockNode.emptyNode (n + 1) .blockIn sp_scan sp_mid h_ssl)
+
 /-! ## §0d Preprocessing → SSLComments for `some` result at col=0
 
     When `scanNextToken_preprocess` returns `some (s_prep, c)` and the
