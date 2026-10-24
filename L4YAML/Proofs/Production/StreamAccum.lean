@@ -26040,8 +26040,9 @@ lemma colon_fires_implicit_key
 -- production still owed at this park.
 lemma accum_block_on_pendingContent
     (sc : ScannerState) (sp_start sp_block sp_scan : SurfPos)
-    (s_prep s' : ScannerState) (c : Char) (sp_prep sp_scan' : SurfPos)
+    (s_prep s' : ScannerState) (c : Char) (sp_prep sp_scan' sp_gram : SurfPos)
     (h_stream_block : SLYamlStream sp_start sp_block)
+    (h_run : GStar SSWhite sp_gram sp_scan)
     (h_close_pending : danglingNodePos? sc = none →
       underIndentedFlowValuePos? sc = none →
       ∀ sp_mid, SSLComments sp_scan sp_mid → SLYamlStream sp_start sp_mid)
@@ -34826,7 +34827,7 @@ lemma accum_content_on_pendingMapValue_indented
                     ⟨lo, _, hb, h_cov_step lo (FrameLevel.map n :: ks) hc⟩) id,
                   fun sp_mid h_ssl =>
                   closeF sp_mid (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gramf
-                    sp_mid h_sep_all h_node_f (white_prepend_SSLComments h_tws_f h_ssl))⟩
+                    sp_mid h_sep_all h_node_f h_ssl)⟩
               | Or.inr _ => Or.inr trivial)
              (match h_closeFV108 with
               | Or.inl ⟨nv, ks, _, h_cov, closeFV⟩ => Or.inl ⟨nv, ks,
