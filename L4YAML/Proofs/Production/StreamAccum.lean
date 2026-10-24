@@ -4013,9 +4013,10 @@ lemma white_prepend_SSLComments {sp sp' sp_mid : SurfPos}
 lemma ssl_comments_extend_stream
     (sp_start sp sp_final : SurfPos)
     (h_stream : SLYamlStream sp_start sp)
+    (hcol : sp.col = 0)
     (h_ssl : SSLComments sp sp_final) :
     SLYamlStream sp_start sp_final := by
-  have h_gstar := SSLComments_to_GStar sp sp_final h_ssl
+  have h_gstar := SSLComments_to_GStar sp sp_final h_ssl hcol
   exact SLYamlStream.implicitContinue sp_start sp sp_final sp_final sp_final
     h_stream
     (GStar.cons sp sp_final sp_final (SLDocumentPrefix.comments sp sp_final h_gstar) (GStar.nil _))
@@ -4030,11 +4031,12 @@ lemma ssl_comments_extend_stream
     landing `nodocMapRoute` spends it at. -/
 lemma ssl_comments_extend_prefixes {sp_start sp sp_final : SurfPos}
     (h_pre : GStar SLDocumentPrefix sp_start sp)
+    (hcol : sp.col = 0)
     (h_ssl : SSLComments sp sp_final) :
     GStar SLDocumentPrefix sp_start sp_final :=
   GStar_trans h_pre
     (GStar.cons sp sp_final sp_final
-      (SLDocumentPrefix.comments sp sp_final (SSLComments_to_GStar sp sp_final h_ssl))
+      (SLDocumentPrefix.comments sp sp_final (SSLComments_to_GStar sp sp_final h_ssl hcol))
       (GStar.nil _))
 
 /-- **The suffix state's open decomposition** (item 117): the accumulated
@@ -13526,7 +13528,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
     -- node opened here keeps riding it (β.5 retires this with pendingFlow, R3).
     -- Item 293: the key the open pushes is live, off the park's `flag ∨ live`.
     exact main h_gateF.choose_spec.1 h_gateF.choose_spec.2 (fun _ _ sp_mid h_ssl => SLYamlStream.scannerDrop sp_start sp_block h_gateF.choose sp_mid h_stream_block h_ssl)
-      (opaque_resume (preprocess_possible_of_live0 h_live0F h_noflow_prep h_preprocess (gate_sc h_corr (h_gateN (noflow_of_fl0 h_fl0)))))
+      (opaque_resume (preprocess_possible_of_live0 h_live0F h_noflow_prep h_preprocess))
       (Or.inr trivial) (Or.inr trivial)
       (Or.inr trivial) (Or.inr trivial)
   | pendingProps _ _ _ ha ht sp_node sp_p n h_sep_run h_run h_nic_p h_real_p h_anchor_p h_tag_p
@@ -26446,6 +26448,7 @@ lemma accum_block_on_pendingBlockContent {sp_gram : SurfPos}
     (hcorr_result : ScannerSurfCorr s' sp_scan')
     (h_corr : ScannerSurfCorr sc sp_scan)
     (h_noflow : s_prep.inFlow = false)
+    (h_next : sc.inFlow = false → NextIsSep sc)
     -- **Item 77 — the park's own arm**, as at `accum_block_on_closeThenBlock`:
     -- this park is a CONTENT one, and its constructor field says the content
     -- scan either re-armed or spent a column (`content_park_arm`) — with the
@@ -27043,7 +27046,7 @@ lemma accum_block_on_pendingBlock
   -- opened is empty either way (`-⏎- b` as much as a column-0 park), and the
   -- snoc route is the same.
   obtain ⟨sp_mid, sp_ws, sp_sc, h_land, hws, hcmt, hcorr_sc, h_pk, hsuf_mid⟩ :=
-    preprocess_some_ssl_comments_landing sc sp_scan s_prep c h_corr h_preprocess
+    preprocess_some_ssl_comments_landing sc sp_scan s_prep c h_corr h_preprocess (GStar.nil _) (fun _ _ => (h_next h_noflow).gate)
   have hsp_sc_eq := ScannerSurfCorr_unique hcorr_sc hcorr_prep
   subst hsp_sc_eq
   have h_eq := h_pk.resolve_right (by simp [preprocess_some_peek h_preprocess])
@@ -33080,7 +33083,7 @@ lemma accum_content_on_noPending
     -- Item 293: the flag itself — the one caller passes it (`h_arm`'s armed
     -- half), and the routed content reads the fresh save off it.
     (h_park : sc.simpleKeyAllowed = true)
-    (h_gateN : sc.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#'))
+    (h_colN : sp_block.col = 0)
     -- Item 340: the park's dead register (noPending's `h_noek`), the flip's premise.
     (h_alt : PackAlt sc)
     (h_not_doc : (if s_prep.allowDirectives then
@@ -33121,6 +33124,8 @@ lemma accum_content_on_noPending
         { s_prep with allowDirectives := false, documentEverStarted := true }
       else s_prep).flowLevel from by split <;> rfl]
     exact h_flow_disp
+  have h_gateN : sc.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#') :=
+    gate_sc h_corr (fun hc => absurd h_colN hc)
   have h_keyctx := keyctx_of_preprocess sc sp_block sp_prep s_prep c h_corr hcorr_prep
     (fun _ _ sp_mid h_ssl => ssl_comments_extend_stream sp_start sp_block sp_mid
       h_stream_block h_ssl)
@@ -33145,8 +33150,9 @@ lemma accum_content_on_noPending
       -- Item 174: no held run stands behind a virgin park.
       (Or.inr trivial)
       (Or.inr trivial)
-  · obtain ⟨sp_sep, h_sep, hcorr_sep⟩ :=
-      preprocess_some_separate_0_anyCol sc sp_block s_prep c h_corr h_preprocess
+  · obtain ⟨sp_sep, h_sep_or, hcorr_sep⟩ :=
+      preprocess_some_separate_0_anyCol sc sp_block s_prep c h_corr h_preprocess (GStar.nil _) (fun _ => h_gateN)
+    have h_sep := h_sep_or.resolve_right (fun _ => hcol h_colN)
     have hsp_eq := ScannerSurfCorr_unique hcorr_prep hcorr_sep; subst hsp_eq
     exact content_dispatch_routed (h_alt := PackAlt.step_preprocess h_preprocess h_alt) (h_possD := (preprocess_saved_key_fresh h_park (noflow_of_noflow_disp h_flow_disp) h_preprocess).1) (h_src := h_src) sp_start sp_block sp_block s_prep s' c sp_prep sp_scan'
       h_stream_block h_sep (nic_false_of_flow_disp h_preprocess h_flow_disp)
@@ -35622,12 +35628,12 @@ lemma accum_content_pending (sc : ScannerState)
       | inr h_mid =>
         exact h_noBreak hcol sp_ws (h_mid.1 ▸ h_ws) h_pk h_mid.2.2.1 h_mid.2.2.2.2
   cases h_pending with
-  | noPending _ _ _ h_arm76 h_nodoc h_noek76 h_ntop76 =>
+  | noPending _ _ h_col76 h_arm76 h_nodoc h_noek76 h_ntop76 =>
     -- ═══ Item 136: the virgin park pays the HEAD arm.  The content this
     -- dispatch starts is the stream's FIRST document, so it lands in
     -- `single`'s own `l-any-document?` slot instead of the implicit
     -- continuation of a stream that has started nothing. ═══
-    exact accum_content_on_noPending (h_gateN := gate_sc h_corr (h_gateN (noflow_of_fl0 h_fl0))) (h_alt := PackAlt.ofRefused (h_noek76 h_scflow)) (h_src := slotGateAt_of_noPending h_base h_mono (h_ntop76 h_scflow) h_preprocess) sc sp_start sp_block s_prep s' c sp_prep sp_scan'
+    exact accum_content_on_noPending (h_colN := h_col76.resolve_right (by simp [noflow_of_fl0 h_fl0])) (h_alt := PackAlt.ofRefused (h_noek76 h_scflow)) (h_src := slotGateAt_of_noPending h_base h_mono (h_ntop76 h_scflow) h_preprocess) sc sp_start sp_block s_prep s' c sp_prep sp_scan'
       h_stream_block hcorr_prep hcorr_result h_corr h_preprocess h_dn h_fv
       (h_arm76.resolve_right (by rw [h_scflow]; simp)).left
       h_not_doc h_flow_disp h_dispatch
