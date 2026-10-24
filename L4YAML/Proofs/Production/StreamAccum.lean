@@ -126,6 +126,64 @@ lemma scanFlowMappingEnd_peekBack {s : ScannerState} {sp : SurfPos}
     (by decide) (by decide)
   first | exact h | simpa [scanFlowMappingEnd, ScannerState.peekBack?] using h
 
+/-- `peekBack?` reads only `offset`/`input`: a state sitting where `(s.emit tok).advance`
+    sits has the advanced char behind it. -/
+lemma peekBack_of_emit_advance {s t : ScannerState} {sp : SurfPos} {c : Char}
+    (tok : YamlToken) (hcorr : ScannerSurfCorr s sp) (hpk : s.peek? = some c)
+    (hnl : c ≠ '\n') (hcr : c ≠ '\r')
+    (hoff : t.offset = ((s.emit tok).advance).offset) (hin : t.input = s.input) :
+    t.peekBack? = some c := by
+  have h := advance_peekBack_of_peek
+    (L4YAML.Proofs.StructureCoupling.corr_of_emit tok hcorr) hpk hnl hcr
+  have hin' : ((s.emit tok).advance).input = s.input :=
+    L4YAML.Proofs.CouplingBridge.advance_input _
+  unfold ScannerState.peekBack? at h ⊢
+  rw [hoff, hin, ← hin']; exact h
+
+/-- `advance` reads only `offset`/`input`/`inputEnd`. -/
+lemma advance_offset_input_congr {a b : ScannerState}
+    (ho : a.offset = b.offset) (hi : a.input = b.input) (he : a.inputEnd = b.inputEnd) :
+    a.advance.offset = b.advance.offset ∧ a.advance.input = b.advance.input := by
+  simp only [ScannerState.advance, ho, hi, he]
+  repeat' split
+  all_goals first | exact ⟨rfl, rfl⟩ | simp_all
+
+/-- `-` is the last consumed char at a block-entry park. -/
+lemma scanBlockEntry_peekBack {s s' : ScannerState} {sp : SurfPos}
+    (hcorr : ScannerSurfCorr s sp) (h_noflow : s.inFlow = false) (hpk : s.peek? = some '-')
+    (hok : scanBlockEntry s = .ok s') : s'.peekBack? = some '-' := by
+  unfold scanBlockEntry at hok
+  simp only [bind, Except.bind, h_noflow, Bool.not_false, ite_true] at hok
+  split at hok
+  · simp at hok
+  · split at hok
+    · simp at hok
+    split at hok
+    · simp at hok
+    simp only [Except.ok.injEq] at hok
+    subst hok
+    have hps : (pushSequenceIndent s ↑s.col).offset = s.offset ∧
+        (pushSequenceIndent s ↑s.col).input = s.input ∧
+        (pushSequenceIndent s ↑s.col).inputEnd = s.inputEnd := by
+      unfold pushSequenceIndent; split <;> exact ⟨rfl, rfl, rfl⟩
+    have hc := advance_offset_input_congr (a := (pushSequenceIndent s ↑s.col).emit .blockEntry)
+      (b := s.emit .blockEntry) hps.1 hps.2.1 hps.2.2
+    have hin' : ((s.emit .blockEntry).advance).input = s.input :=
+      L4YAML.Proofs.CouplingBridge.advance_input _
+    exact peekBack_of_emit_advance .blockEntry hcorr hpk (by decide) (by decide) hc.1
+      (hc.2.trans hin')
+
+/-- The park comment gate from a next char that is not `#`. -/
+lemma park_gate_of_peek {s : ScannerState} (h : s.peek? ≠ some '#') :
+    s.col ≠ 0 → ¬ (CommentOk s ∧ s.peek? = some '#') :=
+  fun _ hh => h hh.2
+
+/-- The park comment gate from a non-white last consumed char. -/
+lemma park_gate_of_peekBack {s : ScannerState} {c : Char} (hpb : s.peekBack? = some c)
+    (hc : (isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF') = false) :
+    s.col ≠ 0 → ¬ (CommentOk s ∧ s.peek? = some '#') :=
+  fun hcol hh => CommentOk_false_of_peekBack hcol hpb hc hh.1
+
 
 /-! ## §0a PendingNode — Immediate Pending State
 
