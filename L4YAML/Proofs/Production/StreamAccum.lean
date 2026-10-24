@@ -2634,7 +2634,7 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       -- item 198 left out because nothing read it; `KeyFrames.seqLevel` reads it
       -- when the nested `-` pushes this entry's own level on the stack.
       (h_closeFV : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width < n) ∧
-        ∀ sp_mid : SurfPos, SSLComments sp_scan sp_mid →
+        ∀ sp_mid : SurfPos, SSLComments sp_gram sp_mid →
         ∀ sp_end : SurfPos, SCompactSeqTail n sp_mid sp_end →
         KeyFrames (ExplValueLine sp_start nv) ks sp_end) ∨ PackAlt sc)
       -- **Item 207 — the park's own INDENT CHECK** (LAST, so the patterns
