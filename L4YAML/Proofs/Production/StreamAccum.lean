@@ -6814,6 +6814,13 @@ lemma preprocess_preserves_flowLevel (s s1 : ScannerState) (c : Char)
             try peel_stale
             rw [ScannerCorrectness.saveSimpleKey_preserves_flowLevel]; exact h_fl_skip
 
+/-- Preprocessing keeps the flow level, so the park is in block context too. -/
+lemma sc_noflow_of_prep {sc s_prep : ScannerState} {c : Char}
+    (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
+    (h_noflow : s_prep.inFlow = false) : sc.inFlow = false := by
+  unfold ScannerState.inFlow at h_noflow ⊢
+  rw [← preprocess_preserves_flowLevel sc s_prep c h_preprocess]; exact h_noflow
+
 /-- **The fresh save, from the WALK's flag instead of the PARK's** (item 76).
 
     Item 74's `preprocess_saved_key_col` is this lemma read through
@@ -11495,7 +11502,8 @@ lemma flowKeyRoute_of_open {n nc m : Nat} {g : Option ScannerState} {cc : YamlCo
     (h_park : sc.simpleKeyAllowed = true ∨ 0 < sp_scan.col)
     (h_corr : ScannerSurfCorr sc sp_scan)
     (hcorr_prep : ScannerSurfCorr s_prep sp_prep)
-    (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c))) :
+    (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
+    (h_gate : sc.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#')) :
     (∃ (k : Nat) (sp_key : SurfPos),
       (∀ sp_v, SBlockMapEntry k sp_key sp_v → SLYamlStream sp_start sp_v) ∧
       (∀ sp_end, SFlowContent m .flowOut sp_prep sp_end →
@@ -11566,12 +11574,13 @@ lemma flowKeyRoute_of_open {n nc m : Nat} {g : Option ScannerState} {cc : YamlCo
     obtain ⟨w, h_ind⟩ := h_ind0
     cases h_disj with
     | inl h_land =>
+      have h_landS := SSLCommentsFrom_at_park h_corr (GStar.nil _) (fun _ => h_gate) h_land.1 h_land.2.2.1
       by_cases hnw : n ≤ w
       · have h_ind' : SIndent w sp_mid sp_prep := by rw [h_pe]; exact h_ind
         -- Item 96: the landing branch's pair stays with the deferral — the
         -- entry nests as `[199]`/`[187]` under the awaited node, which is the
         -- landed-nesting residue (item 93's boundary), not the compact kind's.
-        refine Or.inl ⟨w, sp_prep, valueMapRoute hnw h_node h_land.1 h_ind', flowKeyHead, ?_,
+        refine Or.inl ⟨w, sp_prep, valueMapRoute hnw h_node h_landS h_ind', flowKeyHead, ?_,
           Or.inr trivial,
           -- **Item 202: the landing's entries-level twin.**  `valueMapRouteF`
           -- is `valueMapRoute` with the collection folded over the tail
@@ -11580,7 +11589,7 @@ lemma flowKeyRoute_of_open {n nc m : Nat} {g : Option ScannerState} {cc : YamlCo
           -- entry's node closes once, at the end.  Nothing stands below it —
           -- the node was what the park awaited — so the stack is empty.
           Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
-            valueMapRouteF hnw h_node h_land.1 h_ind'⟩,
+            valueMapRouteF hnw h_node h_landS h_ind'⟩,
           Or.inr trivial⟩
         rw [landing_or_park_save h_noflow h_land.2.2.2 h_park h_preprocess,
           ← hcorr_prep.col_eq]
@@ -11683,6 +11692,7 @@ lemma flowKeyRoute_of_root {m : Nat} {g : Option ScannerState} {sp_start sp_scan
     (h_corr : ScannerSurfCorr sc sp_scan)
     (hcorr_prep : ScannerSurfCorr s_prep sp_prep)
     (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
+    (h_gate : sc.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#'))
     -- Item 118: the park's open suffix arm (the skeleton's face, item 117,
     -- read at the flow open) — when the closed park was a `...`, the mapping
     -- this collection keys is the awaited document itself, so its entry route
@@ -11777,6 +11787,7 @@ lemma flowKeyRoute_of_root {m : Nat} {g : Option ScannerState} {sp_start sp_scan
     obtain ⟨w, h_ind⟩ := h_ind0
     cases h_disj with
     | inl h_land =>
+      have h_landS := SSLCommentsFrom_at_park h_corr (GStar.nil _) (fun _ => h_gate) h_land.1 h_land.2.2.1
       have h_ind' : SIndent w sp_mid sp_prep := by rw [h_pe]; exact h_ind
       -- Item 143: the fallback arm is a LANDING, so it takes item 142's guard.
       have h_ska_land : s_prep.simpleKeyAllowed = true :=
@@ -11794,7 +11805,7 @@ lemma flowKeyRoute_of_root {m : Nat} {g : Option ScannerState} {sp_start sp_scan
             ResumeFrames (SLYamlStream sp_start) ks' sp_end) ∨ True := by
         rcases h_mapF with ⟨ks, fS⟩ | _
         · by_cases hmem : FrameLevel.map w ∈ ks
-          · obtain ⟨ks', h_w, cont⟩ := (fS sp_mid h_land.1).resumeAt hmem
+          · obtain ⟨ks', h_w, cont⟩ := (fS sp_mid h_landS).resumeAt hmem
             exact Or.inl ⟨ks', h_w.lt, cont⟩
           · exact Or.inr trivial
         · exact Or.inr trivial
@@ -11809,19 +11820,19 @@ lemma flowKeyRoute_of_root {m : Nat} {g : Option ScannerState} {sp_start sp_scan
             KeyFrames (ExplValueLine sp_start nv) ks' sp_end) ∨ PackAlt sc := by
         rcases h_mapFV with ⟨nv, ks, fV⟩ | h_alt
         · by_cases hmem : FrameLevel.map w ∈ ks
-          · obtain ⟨ks', h_w, cont⟩ := (fV sp_mid h_land.1).resumeAtMap hmem
+          · obtain ⟨ks', h_w, cont⟩ := (fV sp_mid h_landS).resumeAtMap hmem
             exact Or.inl ⟨nv, ks', h_w.lt, cont⟩
           · exact Or.inr trivial
         · exact Or.inr h_alt
       refine Or.inl ⟨w, sp_prep,
         (match h_res_land, h_sfx, h_nodoc with
          | Or.inl ⟨_, _, cont⟩, _, _ => resumeMapRoute h_ind' cont
-         | Or.inr _, Or.inl sfx, _ => suffixMapRoute h_land.2.1 (sfx sp_mid h_land.1) h_ind'
-         | Or.inr _, Or.inr _, Or.inl nd => nodocMapRoute h_land.2.1 (nd sp_mid h_land.1) h_ind'
+         | Or.inr _, Or.inl sfx, _ => suffixMapRoute h_land.2.1 (sfx sp_mid h_landS) h_ind'
+         | Or.inr _, Or.inr _, Or.inl nd => nodocMapRoute h_land.2.1 (nd sp_mid h_landS) h_ind'
          | Or.inr _, Or.inr _, Or.inr _ =>
              rootMapRoute_or_refused h_ref_land h_land.2.1
                (h_close (dangling_none_of_check h_dn h_ska_land)
-                 (underIndented_none_of_check h_fv h_ska_land) sp_mid h_land.1) h_ind'),
+                 (underIndented_none_of_check h_fv h_ska_land) sp_mid h_landS) h_ind'),
         flowKeyHead, ?_,
         -- **Item 201: the value-line PAIR, closed off the resume below.**
         -- `ResumeFrames.close` runs every level down with its empty tail and
@@ -11846,15 +11857,15 @@ lemma flowKeyRoute_of_root {m : Nat} {g : Option ScannerState} {sp_start sp_scan
              Or.inl ⟨ks', h_lt, resumeMapRouteF h_ind' cont⟩
          | Or.inr _, Or.inl sfx, _ =>
              Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
-               suffixMapRouteF h_land.2.1 (sfx sp_mid h_land.1) h_ind'⟩
+               suffixMapRouteF h_land.2.1 (sfx sp_mid h_landS) h_ind'⟩
          | Or.inr _, Or.inr _, Or.inl nd =>
              Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
-               nodocMapRouteF h_land.2.1 (nd sp_mid h_land.1) h_ind'⟩
+               nodocMapRouteF h_land.2.1 (nd sp_mid h_landS) h_ind'⟩
          | Or.inr _, Or.inr _, Or.inr _ =>
              Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
                rootMapRouteF_or_refused h_ref_land h_land.2.1
                  (h_close (dangling_none_of_check h_dn h_ska_land)
-                   (underIndented_none_of_check h_fv h_ska_land) sp_mid h_land.1) h_ind'⟩),
+                   (underIndented_none_of_check h_fv h_ska_land) sp_mid h_landS) h_ind'⟩),
         -- **Item 201: and the VALUE-LINE twin of the line above**, off the
         -- park's own `h_framesV`/`h_closeFV` rather than off `h_mapF` — which
         -- is why item 197 could name this conjunct and not pay it: the input
@@ -12909,7 +12920,8 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
   -- parameterized (item 10) by the pending's own NO-BREAK continuation: a
   -- refutation for the completed constructs, the `scannerDrop` ride for the
   -- deferred one.
-  have main : (danglingNodePos? sc = none →
+  have main : (sc.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#')) →
+      (danglingNodePos? sc = none →
         underIndentedFlowValuePos? sc = none →
         ∀ sp_mid, SSLComments sp_scan sp_mid → SLYamlStream sp_start sp_mid) →
       (sp_scan.col ≠ 0 → GStar SSWhite sp_scan sp_prep →
@@ -12957,8 +12969,8 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
         ((1 : Nat) ≥ 1 →
           InteriorGap s' (tailOf s'.tokens) sp_flow' sp_scan' ∧
           LastTokenReal s'.tokens ∧ s'.allowDirectives = false) := by
-    intro h_close h_nobreak h_sfx h_tail143 h_mapF176 h_mapFV201
-    rcases preprocess_flow_thread sc sp_scan sp_prep s_prep c h_corr hcorr_prep h_preprocess
+    intro h_gateM h_close h_nobreak h_sfx h_tail143 h_mapF176 h_mapFV201
+    rcases preprocess_flow_thread sc sp_scan sp_prep s_prep c h_corr hcorr_prep h_preprocess h_gateM
         h_noflow_prep h_park with
       ⟨sp_mid, h_ssl, hws, h_ska⟩ | ⟨hcol, hws⟩
     · have h_stream_mid : SLYamlStream sp_start sp_mid :=
@@ -13225,7 +13237,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                (Or.inl ⟨h_col0, fun sp_m h_ssl =>
                  ssl_comments_extend_prefixes (h_nodoc h_scflow) h_ssl⟩)
                h_noflow_prep h_park h_close_pending h_dn h_fv
-               h_corr hcorr_prep h_preprocess (Or.inr trivial)
+               h_corr hcorr_prep h_preprocess (gate_sc h_corr (h_gateN (noflow_of_fl0 h_fl0))) (Or.inr trivial)
                (Or.inl (fun sp_m h_ssl =>
                  ssl_comments_extend_prefixes (h_nodoc h_scflow) h_ssl))
                h_bare h_base (Or.inr trivial) (Or.inr trivial) (Or.inr (PackAlt.ofRefused (h_noekN h_scflow))),
@@ -13250,13 +13262,13 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
       (Or.inr trivial) (Or.inl h_tail143)
       (h_frS176.imp (fun ⟨ks, _, f⟩ => ⟨ks, f⟩) id)
       (h_frV201.imp (fun ⟨nv, ks, _, f⟩ => ⟨nv, ks, f⟩) id)
-  | pendingDocEnd _ _ _ h_line h_marker _ _ _ h_noekE =>
+  | pendingDocEnd _ _ _ h_line h_marker _ _ _ h_noekE h_nextE =>
     -- Item 36: `[204]`'s suffix set weakens to item 10's at the CONSUMER.
     -- ═══ Item 118: the `...` park pays the flow open's suffix face — the
     -- marker plus the landing's `[79] s-l-comments` is `[205]
     -- l-document-suffix`, so `...⏎[1, 2]` lands its collection in
     -- `suffixContinue`'s own slot. ═══
-    exact main h_close_pending (refuted (h_line.imp id LineTailSuffix.toLineNoOpen))
+    exact main (fun _ => (h_nextE (noflow_of_fl0 h_fl0)).gate) h_close_pending (refuted (h_line.imp id LineTailSuffix.toLineNoOpen))
       (Or.inl (fun sp_m h_ssl =>
         ⟨sp_block, sp_m, h_stream_block,
          GPlus.mk sp_block sp_m sp_m
@@ -13294,7 +13306,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
     -- node opened here keeps riding it (β.5 retires this with pendingFlow, R3).
     -- Item 293: the key the open pushes is live, off the park's `flag ∨ live`.
     exact main h_close_pending
-      (opaque_resume (preprocess_possible_of_live0 h_live0F h_noflow_prep h_preprocess))
+      (opaque_resume (preprocess_possible_of_live0 h_live0F h_noflow_prep h_preprocess (gate_sc h_corr (h_gateN (noflow_of_fl0 h_fl0)))))
       (Or.inr trivial) (Or.inr trivial)
       (Or.inr trivial) (Or.inr trivial)
   | pendingProps _ _ _ ha ht sp_node sp_p n h_sep_run h_run h_nic_p h_real_p h_anchor_p h_tag_p
@@ -13417,7 +13429,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                 -- route stands where the run's cannot.  Its faces are punted:
                 -- the fresh-document reading, not item 174's `+MAP &p` ride.
                 | _, _ => flowKeyRoute_of_root (Or.inr trivial) h_noflow_prep h_park
-                    h_close_pending h_dn h_fv h_corr hcorr_prep h_preprocess (Or.inr trivial)
+                    h_close_pending h_dn h_fv h_corr hcorr_prep h_preprocess (fun _ => (h_gateP (noflow_of_fl0 h_fl0)).gate) (Or.inr trivial)
                     (Or.inr trivial) h_bare h_base (Or.inr trivial) (Or.inr trivial)
                     (Or.inr trivial)),
                -- Item 96: the run's value line — the collection completes the
@@ -13484,7 +13496,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
              -- content on document-start line"), so only the landing reading is
              -- owed and the compact half punts.
              flowKeyRoute_of_open (nc := 0) (cc := .blockIn) h_docnode (Or.inr trivial) (Or.inr (PackAlt.ofRefused h_noekS))
-               h_noflow_prep h_park h_corr hcorr_prep h_preprocess,
+               h_noflow_prep h_park h_corr hcorr_prep h_preprocess (fun _ => (h_gateD (noflow_of_fl0 h_fl0)).gate),
              Or.inr trivial⟩),
            PendingNode.noPending sp_start sp_open (Or.inr (inFlow_of_flowLevel_eq h_fl1))
                (Or.inr (inFlow_of_flowLevel_eq h_fl1))
@@ -13540,7 +13552,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                  -- break and builds from that half alone, and `arm_or_col`
                  -- reads this park's COLUMN (`arm_tight_or_col`).
                  h_noflow_prep (Or.inl h_sk_old) h_corr hcorr_prep
-                 h_preprocess,
+                 h_preprocess (fun _ => (h_gateB (noflow_of_fl0 h_fl0)).gate),
                -- Item 96: the entry's value line, off the same twin — the
                -- completed collection is the `-`'s node, the entry heads the
                -- `?`'s compact-SEQUENCE key, and the landed `:` closes it
@@ -13643,7 +13655,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                             h_qlit h_bo h_iv h_lit h_sbi))⟩
                   | Or.inr h_alt => Or.inr h_alt)
                  -- Item 295: the park's own FLAG, as at `pendingBlock`.
-                 h_noflow_prep (Or.inl h_sk_mv) h_corr hcorr_prep h_preprocess,
+                 h_noflow_prep (Or.inl h_sk_mv) h_corr hcorr_prep h_preprocess (fun _ => (h_gateMV (noflow_of_fl0 h_fl0)).gate),
                -- …and under an open `?` the collection is the KEY half of the
                -- `[188]` entry that `h_expl` routes (`? [1]⏎: v`).
                -- Item 96: an IMPLICIT park has no `?` of its own, but the twin
@@ -24218,7 +24230,8 @@ lemma accum_block_on_noPending
     -- so the root's frames are covered at floor 0 — the one floor every dedent
     -- width is at or right of, and the one no other producer can name (item
     -- 254).  The caller has carried it since item 147.
-    (h_mono : IndentStackMono.Mono sc) :
+    (h_mono : IndentStackMono.Mono sc)
+    (h_gate : sc.inFlow = false → sp_block.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#')) :
     ∃ sp_gram' sp_block' sp_flow' sp_scan',
       SLYamlStream sp_start sp_gram' ∧
       BlockStack sp_gram' sp_block' ∧
@@ -24234,7 +24247,8 @@ lemma accum_block_on_noPending
   -- the landing lemma supplies the same `SSLComments` without it.  What is left
   -- is the inline residue — the same one the other three lemmas defer.
   obtain ⟨sp_mid, sp_ws, sp_sc, h_land, hws, hcmt, hcorr_sc, h_pk⟩ :=
-    preprocess_some_ssl_comments_landing sc sp_block s_prep c h_corr h_preprocess
+    preprocess_some_ssl_comments_landing sc sp_block s_prep c h_corr h_preprocess (GStar.nil _)
+      (fun _ => gate_sc h_corr (h_gate (sc_noflow_of_prep h_preprocess h_noflow)))
   have hsp_sc_eq := ScannerSurfCorr_unique hcorr_sc hcorr_prep
   subst hsp_sc_eq
   -- Item 35: the residue is a STATE the machine never parks in.  With nothing
