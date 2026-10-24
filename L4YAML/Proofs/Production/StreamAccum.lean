@@ -12467,6 +12467,39 @@ lemma content_park_nic_any {s_prep s' : ScannerState} {sp' : SurfPos} {c : Char}
   · exact h
   · rw [hcorr'.col_eq] at hcol; omega
 
+/-- The content park's own comment gate, with the run it swallowed: the token's
+    grammar endpoint `sp_g`, the whites to the scanner position, and `#` refused
+    there when the run is empty — `dispatchContent_evidence` read at the dispatch. -/
+lemma content_park_gate {s_prep s' : ScannerState} {sp_prep sp' : SurfPos} {c : Char}
+    (hpeek : s_prep.peek? = some c)
+    (h_flow_disp : (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep).inFlow = false)
+    (h_not_doc : (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep).col = 0 →
+      atDocumentBoundary (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) = false)
+    (h_dispatch : scanNextToken_dispatchContent
+        (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) c = .ok s')
+    (hcorr_prep : ScannerSurfCorr s_prep sp_prep)
+    (hcorr' : ScannerSurfCorr s' sp') :
+    ∃ sp_g, GStar SSWhite sp_g sp' ∧
+      (sp_g = sp' → s'.col ≠ 0 → ¬ (CommentOk s' ∧ s'.peek? = some '#')) := by
+  have hpk : (if s_prep.allowDirectives then
+      { s_prep with allowDirectives := false, documentEverStarted := true }
+    else s_prep).peek? = some c := by
+    split
+    · show s_prep.peek? = some c; exact hpeek
+    · exact hpeek
+  obtain ⟨sp_g, sp'', _, h_run, h_gate, hcorr''⟩ :=
+    dispatchContent_evidence _ sp_prep c (corr_of_allowDirectives_update hcorr_prep) hpk h_not_doc h_dispatch
+  obtain rfl := ScannerSurfCorr_unique hcorr'' hcorr'
+  exact ⟨sp_g, h_run, h_gate⟩
+
 /-- **The BLOCK dispatch's own answer to the same question** (item 206), and
     the one the escape spends.  A `-`, `?` or `:` is one character and none of
     them is a break, so the park the indicator opens stands one column right of
@@ -35840,6 +35873,8 @@ lemma accum_content_pending (sc : ScannerState)
       (content_park_nic_any (preprocess_some_peek h_preprocess)
         h_flow_disp h_not_doc h_dispatch hcorr_result)
       (content_live0 h_live0F h_preprocess h_flow_disp h_dispatch)
+      (content_park_gate (preprocess_some_peek h_preprocess) h_flow_disp h_not_doc h_dispatch
+        hcorr_prep hcorr_result)
   | pendingProps _ _ _ ha ht sp_node sp_p n h_sep_run h_run h_nic_p h_real_p h_anchor_p h_tag_p h_route h_key_p h_floor_p h_col0_p h_ncol_p h_ska_p h_kslot_p h_routeE_p h_kslotE_p h_closeFE_p h_closeFS_p h_closeFVS_p _h_nodir_p h_closeFEV_p h_slot_p h_possP h_nextP =>
     -- ═══ Item 12: a held depth-0 run meets a CONTENT character — the
     -- content-dispatch escape RETIRES.  Across a break the run closes as
