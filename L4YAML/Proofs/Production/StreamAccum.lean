@@ -4061,11 +4061,12 @@ def SuffixRun (sp_start sp : SurfPos) : Prop :=
     `[202] l-document-prefix`'s own, so the run stays open across them. -/
 lemma ssl_comments_extend_suffixRun {sp_start sp sp_final : SurfPos}
     (h_sfx : SuffixRun sp_start sp)
+    (hcol : sp.col = 0)
     (h_ssl : SSLComments sp sp_final) :
     SuffixRun sp_start sp_final :=
   match h_sfx with
   | ⟨sp₁, sp₂, h_stream, h_plus, h_pre⟩ =>
-    ⟨sp₁, sp₂, h_stream, h_plus, ssl_comments_extend_prefixes h_pre h_ssl⟩
+    ⟨sp₁, sp₂, h_stream, h_plus, ssl_comments_extend_prefixes h_pre hcol h_ssl⟩
 
 /-- **The directive-eligible park's `[211]` arm** (item 138).
 
@@ -30555,6 +30556,7 @@ lemma nodocctx_of_preprocess (sc : ScannerState) (sp sp_prep : SurfPos)
     (h_corr : ScannerSurfCorr sc sp)
     (hcorr_prep : ScannerSurfCorr s_prep sp_prep)
     (h_nodoc : GStar SLDocumentPrefix sp_start sp)
+    (hcol : sp.col = 0)
     (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c))) :
     ((∃ (k : Nat) (sp_land : SurfPos),
         sp_land.col = 0 ∧ GStar SLDocumentPrefix sp_start sp_land ∧
@@ -30580,7 +30582,7 @@ lemma nodocctx_of_preprocess (sc : ScannerState) (sp sp_prep : SurfPos)
       cases h_disj with
       | inl hssl =>
         exact Or.inl ⟨⟨k, sp_mid, hssl.2.1,
-          ssl_comments_extend_prefixes h_nodoc hssl.1, h_ind'⟩, h_sk.1, h_sk.2⟩
+          ssl_comments_extend_prefixes h_nodoc hcol (hssl.1.toSSL hcol), h_ind'⟩, h_sk.1, h_sk.2⟩
       | inr hmid =>
         by_cases hc0 : sp.col = 0
         · exact Or.inl ⟨⟨k, sp, hc0, h_nodoc, hmid.1 ▸ h_ind'⟩, h_sk.1, h_sk.2⟩
@@ -33135,7 +33137,7 @@ lemma accum_content_on_noPending
   -- landed key would open belongs to the first document too, so `a: 1` and
   -- `# c⏎a: 1` route their `[187]` through `single` as well.
   have h_nodocctx := nodocctx_of_preprocess sc sp_block sp_prep s_prep c h_corr hcorr_prep
-    h_nodoc h_preprocess
+    h_nodoc h_colN h_preprocess
   by_cases hcol : sp_block.col = 0
   · obtain ⟨sp_sep, h_sep, hcorr_sep⟩ :=
       preprocess_some_separate_lines_0 sc sp_block s_prep c h_corr hcol h_preprocess
