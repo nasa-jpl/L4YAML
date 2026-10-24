@@ -12998,10 +12998,11 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
   -- parameterized (item 10) by the pending's own NO-BREAK continuation: a
   -- refutation for the completed constructs, the `scannerDrop` ride for the
   -- deferred one.
-  have main : (sc.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#')) →
+  have main : ∀ {sp_g : SurfPos}, GStar SSWhite sp_g sp_scan →
+      (sp_g = sp_scan → sc.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#')) →
       (danglingNodePos? sc = none →
         underIndentedFlowValuePos? sc = none →
-        ∀ sp_mid, SSLComments sp_scan sp_mid → SLYamlStream sp_start sp_mid) →
+        ∀ sp_mid, SSLComments sp_g sp_mid → SLYamlStream sp_start sp_mid) →
       (sp_scan.col ≠ 0 → GStar SSWhite sp_scan sp_prep →
         ∃ sp_gram' sp_block' sp_flow' sp_scan',
           SLYamlStream sp_start sp_gram' ∧
@@ -13047,9 +13048,9 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
         ((1 : Nat) ≥ 1 →
           InteriorGap s' (tailOf s'.tokens) sp_flow' sp_scan' ∧
           LastTokenReal s'.tokens ∧ s'.allowDirectives = false) := by
-    intro h_gateM h_close h_nobreak h_sfx h_tail143 h_mapF176 h_mapFV201
+    intro sp_g h_trail h_gateM h_close h_nobreak h_sfx h_tail143 h_mapF176 h_mapFV201
     rcases preprocess_flow_thread sc sp_scan sp_prep s_prep c h_corr hcorr_prep h_preprocess
-        h_noflow_prep h_park with
+        h_noflow_prep h_park h_trail h_gateM with
       ⟨sp_mid, h_ssl, hws, h_ska⟩ | ⟨hcol, hws⟩
     · have h_stream_mid : SLYamlStream sp_start sp_mid :=
         h_close (dangling_none_of_check h_dn h_ska)
@@ -30938,6 +30939,8 @@ lemma dedent_cover_of_landing {sc s_prep s' : ScannerState} {c : Char}
 lemma entryKeyPack_of_dispatch
     (sc : ScannerState) (sp_start sp_scan : SurfPos) (n : Nat)
     (s_prep s' : ScannerState) (c : Char) (sp_prep sp_scan' : SurfPos)
+    {sp_g : SurfPos} (h_trail : GStar SSWhite sp_g sp_scan)
+    (h_gate : sp_g = sp_scan → sc.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#'))
     -- Item 179: `n` is the RAW entry column throughout; the node-domain
     -- hypotheses read at the SHIFTED index `n + 1`, where the awaited
     -- `SBlockNode` now sits.
@@ -31024,7 +31027,7 @@ lemma entryKeyPack_of_dispatch
       -- the two existentials are different lists.
       ((∃ lo : Nat, IndentStackCover.Floor lo n ks ∧
         IndentStackCover.Covered lo ks sc) ∨ True) ∧
-      ∀ sp_m : SurfPos, SSLComments sp_scan sp_m →
+      ∀ sp_m : SurfPos, SSLComments sp_g sp_m →
       ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True)
     -- Item 108: the same two faces under an open `[186]` explicit KEY,
     -- bottomed at the frame's value line.  `h_nodeFV` is what the NESTED
@@ -31043,7 +31046,7 @@ lemma entryKeyPack_of_dispatch
       -- landing pays.
       ((∃ lo : Nat, IndentStackCover.Floor lo (n + 1) ks ∧
         IndentStackCover.Covered lo ks sc) ∨ True) ∧
-      ∀ sp_m : SurfPos, SSLComments sp_scan sp_m →
+      ∀ sp_m : SurfPos, SSLComments sp_g sp_m →
       KeyFrames (ExplValueLine sp_start nv) ks sp_m) ∨ PackAlt sc)
     -- **Item 149: the stack's own two readings**, the pair item 147 gave the
     -- indicator lane (`indicator_open_map`'s `h_cov`), now in the CONTENT lane.
@@ -31143,7 +31146,7 @@ lemma entryKeyPack_of_dispatch
         ((IndentStackCover.preprocess_cover h_preprocess hc).of_indents_eq
           (by split <;> rfl))
   obtain ⟨sp_mid, sp_ws, sp_prep2, h_disj, h_ws, _h_cmt, hcorr_prep2, h_pk, _⟩ :=
-    preprocess_some_ssl_comments_anyCol sc sp_scan s_prep c h_corr h_preprocess
+    preprocess_some_ssl_comments_landing sc sp_scan s_prep c h_corr h_preprocess h_trail h_gate
   have hsp_eq2 := ScannerSurfCorr_unique hcorr_prep hcorr_prep2
   have h_eq : sp_prep2 = sp_ws := by
     cases h_pk with
@@ -31327,7 +31330,7 @@ lemma entryKeyPack_of_dispatch
               have h_pay : ∀ ks' : List FrameLevel, ResumeWidths ks ks' w →
                   ((∃ lo : Nat, IndentStackCover.Floor lo w (FrameLevel.map w :: ks') ∧
                     IndentStackCover.Covered lo (FrameLevel.map w :: ks') s') ∨ True) :=
-                dedent_cover_of_landing h_cov h_dcov hmem h_land.2.2.2 h_scol
+                dedent_cover_of_landing h_cov h_dcov hmem h_land.2.2 h_scol
                   h_preprocess
                   (by
                     rw [IndentStackBase.dispatchContent_preserves_indents h_dispatch]
@@ -31346,7 +31349,7 @@ lemma entryKeyPack_of_dispatch
                     ((∃ lo : Nat, IndentStackCover.Floor lo w (FrameLevel.map w :: ks') ∧
                       IndentStackCover.Covered lo (FrameLevel.map w :: ks') s') ∨ True) :=
                 fun _ h_cv hmemV =>
-                  dedent_cover_of_landing h_cov h_cv hmemV h_land.2.2.2 h_scol
+                  dedent_cover_of_landing h_cov h_cv hmemV h_land.2.2 h_scol
                     h_preprocess
                     (by
                       rw [IndentStackBase.dispatchContent_preserves_indents h_dispatch]
@@ -31618,6 +31621,8 @@ lemma entryKeyPack_of_dispatch
 lemma entryPropsKeyPack_of_dispatch
     (sc : ScannerState) (sp_start sp_scan : SurfPos) (n : Nat)
     (s_prep s' : ScannerState) (c : Char) (sp_prep sp_scan' : SurfPos)
+    {sp_g : SurfPos} (h_trail : GStar SSWhite sp_g sp_scan)
+    (h_gate : sp_g = sp_scan → sc.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#'))
     -- Item 179: `n` is the RAW entry column; node-domain hypotheses read at
     -- the SHIFTED index, as at `entryKeyPack_of_dispatch`.
     (h_node : ∀ sp, SBlockNode (n + 1) .blockIn sp_scan sp → SLYamlStream sp_start sp)
@@ -31665,7 +31670,7 @@ lemma entryPropsKeyPack_of_dispatch
       -- the two existentials are different lists.
       ((∃ lo : Nat, IndentStackCover.Floor lo n ks ∧
         IndentStackCover.Covered lo ks sc) ∨ True) ∧
-      ∀ sp_m : SurfPos, SSLComments sp_scan sp_m →
+      ∀ sp_m : SurfPos, SSLComments sp_g sp_m →
       ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True)
     (h_nodeFV : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ n) ∧
       -- Item 150: the NESTED branch's value-line cover.
@@ -31678,7 +31683,7 @@ lemma entryPropsKeyPack_of_dispatch
       -- landing pays.
       ((∃ lo : Nat, IndentStackCover.Floor lo (n + 1) ks ∧
         IndentStackCover.Covered lo ks sc) ∨ True) ∧
-      ∀ sp_m : SurfPos, SSLComments sp_scan sp_m →
+      ∀ sp_m : SurfPos, SSLComments sp_g sp_m →
       KeyFrames (ExplValueLine sp_start nv) ks sp_m) ∨ PackAlt sc)
     -- **Item 149: the stack's own two readings**, the pair item 147 gave the
     -- indicator lane (`indicator_open_map`'s `h_cov`), now in the CONTENT lane.
@@ -31754,7 +31759,7 @@ lemma entryPropsKeyPack_of_dispatch
       (IndentStackCover.preprocess_cover h_preprocess hc).of_indents_eq
         (h_indents.trans (by split <;> rfl))
   obtain ⟨sp_mid, sp_ws, sp_prep2, h_disj, h_ws, _h_cmt, hcorr_prep2, h_pk, _⟩ :=
-    preprocess_some_ssl_comments_anyCol sc sp_scan s_prep c h_corr h_preprocess
+    preprocess_some_ssl_comments_landing sc sp_scan s_prep c h_corr h_preprocess h_trail h_gate
   have hsp_eq2 := ScannerSurfCorr_unique hcorr_prep hcorr_prep2
   have h_eq : sp_prep2 = sp_ws := by
     cases h_pk with
@@ -31900,7 +31905,7 @@ lemma entryPropsKeyPack_of_dispatch
             have h_pay : ∀ ks' : List FrameLevel, ResumeWidths ks ks' w →
                 ((∃ lo : Nat, IndentStackCover.Floor lo w (FrameLevel.map w :: ks') ∧
                   IndentStackCover.Covered lo (FrameLevel.map w :: ks') s') ∨ True) :=
-              dedent_cover_of_landing h_cov h_dcov hmem h_land.2.2.2 h_scol
+              dedent_cover_of_landing h_cov h_dcov hmem h_land.2.2 h_scol
                 h_preprocess (h_indents.trans (by split <;> rfl)) h_noflow h_cov_step
             -- Item 150: and the value-line stack's, as at
             -- `entryKeyPack_of_dispatch`'s own dedent branch.
@@ -31911,7 +31916,7 @@ lemma entryPropsKeyPack_of_dispatch
                   ((∃ lo : Nat, IndentStackCover.Floor lo w (FrameLevel.map w :: ks') ∧
                     IndentStackCover.Covered lo (FrameLevel.map w :: ks') s') ∨ True) :=
               fun _ h_cv hmemV =>
-                dedent_cover_of_landing h_cov h_cv hmemV h_land.2.2.2 h_scol
+                dedent_cover_of_landing h_cov h_cv hmemV h_land.2.2 h_scol
                   h_preprocess (h_indents.trans (by split <;> rfl)) h_noflow h_cov_step
             obtain ⟨ks', h_w', cont'⟩ :=
               (dframes sp_mid h_land.1).resumeAt hmem
@@ -34562,7 +34567,7 @@ lemma accum_content_on_pendingMapValue_indented
                           (SBlockNode_blockIn_to_blockOut
                             (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gram sp_m
                               h_sep_all (h_flow_all (n + 1))
-                              (white_prepend_SSLComments h_trailing_ws h_ssl))))
+                              h_ssl)))
                         h_ind h_lit h_sbi))⟩
                 | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
                -- Item 93: the park's twin, as at the root arm
@@ -34573,7 +34578,7 @@ lemma accum_content_on_pendingMapValue_indented
                       kslot nv hmem sp_m
                         (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gram sp_m
                           h_sep_all (h_flow_all (n + 1))
-                          (white_prepend_SSLComments h_trailing_ws h_ssl))
+                          h_ssl)
                         sp_i sp_c h_ind h_lit sp_v h_sbi)⟩
                 | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h)))
               (content_park_arm (preprocess_some_peek h_preprocess)
@@ -34860,7 +34865,7 @@ lemma accum_content_on_pendingMapValue_indented
                           (SBlockNode_blockIn_to_blockOut
                             (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gramf sp_m
                               h_sep_all h_node_f
-                              (white_prepend_SSLComments h_tws_f h_ssl))))
+                              h_ssl)))
                         h_ind h_lit h_sbi))⟩
                 | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
                -- Item 93: the park's twin, the multi-line node folded in as
@@ -34871,7 +34876,7 @@ lemma accum_content_on_pendingMapValue_indented
                       kslot nv hmem sp_m
                         (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gramf sp_m
                           h_sep_all h_node_f
-                          (white_prepend_SSLComments h_tws_f h_ssl))
+                          h_ssl)
                         sp_i sp_c h_ind h_lit sp_v h_sbi)⟩
                 | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h)))
               (content_park_arm (preprocess_some_peek h_preprocess)
@@ -34893,7 +34898,7 @@ lemma accum_content_on_pendingMapValue_indented
                     ⟨lo, _, hb, h_cov_step lo ks hc⟩) id,
                   fun sp_mid h_ssl =>
                   closeFV sp_mid (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gramf
-                    sp_mid h_sep_all h_node_f (white_prepend_SSLComments h_tws_f h_ssl))⟩
+                    sp_mid h_sep_all h_node_f h_ssl)⟩
               | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
              (nodir_of_content_dispatch h_dispatch)
              (completedTail_of_dispatch h_dispatch hna hnt)
@@ -34913,7 +34918,7 @@ lemma accum_content_on_pendingMapValue_indented
                     seqF sp_final
                       (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gramf sp_final
                         h_sep_all h_node_f
-                        (white_prepend_SSLComments h_tws_f h_ssl))
+                        h_ssl)
                       sp_e h_tail⟩
               | Or.inr _ => Or.inr trivial),
            hcorr_result⟩
