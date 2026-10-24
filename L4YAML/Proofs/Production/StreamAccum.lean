@@ -35115,30 +35115,34 @@ lemma accum_content_pending (sc : ScannerState)
       -- does — index existential, forgotten at the hop — and the PAYMENT is the
       -- skeleton's own (`h_pay_res` below), off the `SentinelBase` and `Mono`
       -- this lemma already carries.  So a park has only to say what it kept.
-      ∀ (h_fS : (∃ ks : List FrameLevel,
+      ∀ {sp_g : SurfPos} (h_trail : GStar SSWhite sp_g sp_scan)
+        (h_gate : sp_g = sp_scan → sc.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#'))
+        (h_close_g : danglingNodePos? sc = none → underIndentedFlowValuePos? sc = none →
+          ∀ sp_mid, SSLComments sp_g sp_mid → SLYamlStream sp_start sp_mid)
+        (h_fS : (∃ ks : List FrameLevel,
             ((∃ lo n : Nat, IndentStackCover.Floor lo n ks ∧
               IndentStackCover.Covered lo ks sc) ∨ True) ∧
-            ∀ sp_m : SurfPos, SSLComments sp_scan sp_m →
+            ∀ sp_m : SurfPos, SSLComments sp_g sp_m →
             ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True)
         (h_fV : (∃ (nv : Nat) (ks : List FrameLevel),
             ((∃ lo n : Nat, IndentStackCover.Floor lo n ks ∧
               IndentStackCover.Covered lo ks sc) ∨ True) ∧
             ∀ sp_m : SurfPos,
-            SSLComments sp_scan sp_m →
+            SSLComments sp_g sp_m →
             KeyFrames (ExplValueLine sp_start nv) ks sp_m) ∨ PackAlt sc)
         -- **Item 117: and the skeleton takes the park's OPEN suffix arm.**
         -- Closing is also what folds a `...` into the empty-slot
         -- `suffixContinue`; a park that hands the arm open lets the landed
         -- document take `suffixContinue`'s own `l-any-document?` slot.  Only
         -- `pendingDocEnd` pays.
-        (h_sfx : (∀ sp_m : SurfPos, SSLComments sp_scan sp_m →
+        (h_sfx : (∀ sp_m : SurfPos, SSLComments sp_g sp_m →
             SuffixRun sp_start sp_m) ∨ True)
         -- **Item 137: and the park's MARKER arm.**  Closing is also what turns
         -- a `---` park's still-open explicit document into a finished one with
         -- an `e-node` body; a park that hands the arm open keeps the document
         -- open, and the node this dispatch starts becomes its content.  Only
         -- `pendingDocStart` pays.
-        (h_mk : (∀ sp_m : SurfPos, SSLComments sp_scan sp_m →
+        (h_mk : (∀ sp_m : SurfPos, SSLComments sp_g sp_m →
             MarkerNodeRoute sp_start sp_m) ∨ True)
         -- **Item 139: and the park's own §9.2 FACE.**  Where the four arms above
         -- do not fire, the landed node appends a second BARE document, and that
@@ -35177,7 +35181,7 @@ lemma accum_content_pending (sc : ScannerState)
         -- Item 169: with the levels below `kk` listed, so a park two mapping
         -- levels inside the entry reaches the collection the same way.
         (h_fQ : (∃ (ke kk : Nat) (ksq : List FrameLevel), (∀ fr ∈ ksq, fr.width < kk) ∧
-            ∀ sp_m : SurfPos, SSLComments sp_scan sp_m →
+            ∀ sp_m : SurfPos, SSLComments sp_g sp_m →
             ∀ sp_e : SurfPos, SCompactMapTail kk sp_m sp_e →
             ResumeFrames (SeqEntryTail sp_start ke) ksq sp_e) ∨ True),
       (sp_scan.col ≠ 0 → ∀ sp_ws, GStar SSWhite sp_scan sp_ws →
@@ -35207,10 +35211,11 @@ lemma accum_content_pending (sc : ScannerState)
         FlowStackB sp_start 0 0 none 0 #[] #[] .sep sp_block' sp_flow' ∧
         PendingNode s' false sp_start sp_flow' sp_scan' ∧
         ScannerSurfCorr s' sp_scan' := by
-    intro h_fS h_fV h_sfx h_mk h_tail139 h_nic0 h_fQ h_noBreak h_srcP
+    intro sp_g h_trail h_gate h_close_g h_fS h_fV h_sfx h_mk h_tail139 h_nic0 h_fQ h_noBreak h_srcP
     by_cases hcol : sp_scan.col = 0
     · obtain ⟨sp_mid, sp_ws, sp_prep2, h_ssl, hcol_mid, h_ws, h_cmt, hcorr_prep2, h_pk⟩ :=
         preprocess_some_ssl_comments_col0 sc sp_scan s_prep c h_corr hcol h_preprocess
+      have h_ssl := white_prepend_SSLComments h_trail h_ssl
       have hsp_eq2 := ScannerSurfCorr_unique hcorr_prep hcorr_prep2; subst hsp_eq2
       have h_eq : sp_prep = sp_ws := by
         cases h_pk with
@@ -35224,7 +35229,7 @@ lemma accum_content_pending (sc : ScannerState)
       have h_ska : s_prep.simpleKeyAllowed = true :=
         preprocess_simpleKeyAllowed_mono
           ((h_pending.arm_or_col h_scflow).resolve_right (by omega)) h_preprocess
-      have h_stream_mid := h_close_pending (dangling_none_of_check h_dn h_ska)
+      have h_stream_mid := h_close_g (dangling_none_of_check h_dn h_ska)
         (underIndented_none_of_check h_fv h_ska) sp_mid h_ssl
       -- …and the bundle the root fallback inside `content_dispatch_routed` takes.
       have h_ref_land : BareLandingFacts sc s_prep c ∨ True :=
@@ -35337,7 +35342,7 @@ lemma accum_content_pending (sc : ScannerState)
         (Or.inr trivial)
     · -- col≠0: use anyCol, close pending if SSLComments available.
       obtain ⟨sp_mid, sp_ws, sp_prep2, h_disj, h_ws, h_cmt, hcorr_prep2, h_pk, _⟩ :=
-        preprocess_some_ssl_comments_anyCol sc sp_scan s_prep c h_corr h_preprocess
+        preprocess_some_ssl_comments_landing sc sp_scan s_prep c h_corr h_preprocess h_trail h_gate
       have hsp_eq2 := ScannerSurfCorr_unique hcorr_prep hcorr_prep2; subst hsp_eq2
       cases h_disj with
       | inl h_ssl_col =>
@@ -35350,8 +35355,8 @@ lemma accum_content_pending (sc : ScannerState)
         -- Item 144: as at the column-0 landing, with the flag off the WALK
         -- instead of off the park — this branch crossed the break that re-arms
         -- it (item 76's own datum, read at the flag).
-        have h_ska : s_prep.simpleKeyAllowed = true := (hcol_mid.2.2 hcol h_noflow_prep).2.2.1
-        have h_stream_mid := h_close_pending (dangling_none_of_check h_dn h_ska)
+        have h_ska : s_prep.simpleKeyAllowed = true := (hcol_mid.2 hcol h_noflow_prep).2.2.1
+        have h_stream_mid := h_close_g (dangling_none_of_check h_dn h_ska)
           (underIndented_none_of_check h_fv h_ska) sp_mid h_ssl
         have h_ref_land : BareLandingFacts sc s_prep c ∨ True :=
           h_tail139.imp (fun h_tl =>
@@ -35457,7 +35462,7 @@ lemma accum_content_pending (sc : ScannerState)
       (h_arm76.resolve_right (by rw [h_scflow]; simp)).left
       h_not_doc h_flow_disp h_dispatch
       (h_nodoc h_scflow)
-  | pendingDocEnd _ _ _ h_line h_marker _ h_nic0E h_offerE h_noekE =>
+  | pendingDocEnd _ _ _ h_line h_marker _ h_nic0E h_offerE h_noekE h_nextE =>
     -- ═══ Item 42: the no-break arm is EMPTY.  `[204]` stops the marker's line
     -- at a break or a `#`, and the content dispatch returns `.ok` on neither
     -- (`...#foo` never scans a marker at all — `[206] c-forbidden` wants a
@@ -35470,7 +35475,7 @@ lemma accum_content_pending (sc : ScannerState)
     -- faces are, and the stream behind the marker is the invariant's own.  So
     -- `...⏎a: 1` and `a: 1⏎...⏎b: 2` land their next document in
     -- `suffixContinue`'s own slot instead of a fresh `implicitContinue` one. ═══
-    exact h_defer_split (h_srcP := Or.inr h_offerE) (Or.inr trivial) (Or.inr (PackAlt.ofRefused h_noekE))
+    exact h_defer_split (h_srcP := Or.inr h_offerE) (GStar.nil _) (fun _ _ => (h_nextE (noflow_of_fl0 h_fl0)).gate) h_close_pending (Or.inr trivial) (Or.inr (PackAlt.ofRefused h_noekE))
       (Or.inl (fun sp_m h_ssl =>
         ⟨sp_block, sp_m, h_stream_block,
          GPlus.mk sp_block sp_m sp_m
@@ -35505,7 +35510,7 @@ lemma accum_content_pending (sc : ScannerState)
     -- where `?⏎  a: b⏎  c: d⏎: - w`'s `c` was re-opened at the root; with the
     -- park's own frames the landed key resumes the width-2 level instead, and
     -- the `?`'s value line is still owed when `: - w` arrives. ═══
-    refine h_defer_split (h_srcP := Or.inl h_tail139c) (h_fS109.imp (fun ⟨ks, hc, f⟩ => ⟨ks, hc, fun sp_m h => f sp_m (white_prepend_SSLComments h_runA h)⟩) id) (h_fV109.imp (fun ⟨nv, ks, hc, f⟩ => ⟨nv, ks, hc, fun sp_m h => f sp_m (white_prepend_SSLComments h_runA h)⟩) id) (Or.inr trivial) (Or.inr trivial)
+    refine h_defer_split (h_srcP := Or.inl h_tail139c) h_runA _h_gateA _h_closable h_fS109 h_fV109 (Or.inr trivial) (Or.inr trivial)
       -- ═══ Item 139: and the park pays its §9.2 face.  A completed content
       -- park's last real token IS a node body, so a landing off it with the
       -- stack at the sentinel alone is the second bare document the scanner
@@ -35578,7 +35583,7 @@ lemma accum_content_pending (sc : ScannerState)
     subst h_colon
     exact absurd h_adj
       (checkAdjacentValue_refutes_stale (h_stale h_res) h_flow_disp h_pay h_pay_sk)
-  | pendingDocStart _ _ _ h_doc_route h_nicS h_realS h_markerS h_armS _ h_nic0S h_doclineS h_noekS =>
+  | pendingDocStart _ _ _ h_doc_route h_nicS h_realS h_markerS h_armS _ h_nic0S h_doclineS h_noekS h_nextS =>
     -- ═══ Item 43: `--- a` — `[208] l-explicit-document`'s one-line body.
     -- A mid-line park cannot close first, so the dispatch runs ROUTED: the
     -- node anchors at the park (just after the `---`), the crossed whites are
@@ -35592,7 +35597,7 @@ lemma accum_content_pending (sc : ScannerState)
     -- same route this branch has spent on the marker's own line since item 43,
     -- now stated over the landing's `[79] s-l-comments` so `---⏎hello` and
     -- `---⏎a: 1` are one explicit document each instead of two. ═══
-    refine h_defer_split (h_srcP := Or.inr (offerPred_of_docStart h_realS h_markerS)) (Or.inr trivial) (Or.inr (PackAlt.ofRefused h_noekS)) (Or.inr trivial)
+    refine h_defer_split (h_srcP := Or.inr (offerPred_of_docStart h_realS h_markerS)) (GStar.nil _) (fun _ _ => (h_nextS (noflow_of_fl0 h_fl0)).gate) h_close_pending (Or.inr trivial) (Or.inr (PackAlt.ofRefused h_noekS)) (Or.inr trivial)
       (Or.inl (fun sp_m h_ssl => ⟨sp_scan, h_ssl, fun sp h_bn =>
         h_doc_route sp (GAlt.left sp_scan sp (SLBareDocument.mk sp_scan sp h_bn))⟩))
       -- Item 139: a `---` park's tail is a `.documentStart` token — excluded
