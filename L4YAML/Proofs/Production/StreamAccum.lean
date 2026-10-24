@@ -27640,8 +27640,8 @@ lemma accum_block_pending (sc : ScannerState)
       h_ntop208 h_base
       -- Item 256: and its shape, which with the empty stack pays the root's
       -- resume frames at floor 0.
-      h_mono
-  | pendingDocEnd _ _ _ h_line h_marker h_arm77 h_nic0E _ h_noekE =>
+      h_mono (fun hnf hcol => absurd (h_col.resolve_right (by simp [hnf])) hcol)
+  | pendingDocEnd _ _ _ h_line h_marker h_arm77 h_nic0E _ h_noekE h_nextE =>
     -- Item 36: `[204] l-document-suffix` ends the marker with `s-l-comments`,
     -- so a `-`/`?`/`:` on the marker's own line is a state the scanner refuses
     -- (`trailingContentAfterDocEnd`).  The escape is REFUSED here, not paid.
@@ -27671,8 +27671,8 @@ lemma accum_block_pending (sc : ScannerState)
       h_bare h_dn h_fv h_base h_mono (Or.inr trivial) (Or.inr trivial) (Or.inr trivial)
       (Or.inr trivial) (Or.inr trivial) (Or.inr (PackAlt.ofRefused h_noekE)) (Or.inr (PackAlt.ofRefused h_noekE))
       -- Item 208: item 207's field.
-      h_nic0E
-  | pendingDocStart _ _ _ h_doc_route h_nic48 h_real48 _ h_arm77 _ h_nic0S h_docline48 h_noekS =>
+      h_nic0E (GStar.nil _) (fun _ _ => (h_nextE (sc_noflow_of_prep h_preprocess h_noflow)).gate)
+  | pendingDocStart _ _ _ h_doc_route h_nic48 h_real48 _ h_arm77 _ h_nic0S h_docline48 h_noekS h_nextS =>
     -- ═══ Item 48: the marker still on the line refutes all three indicators
     -- — B1/B2's `markerOnLine` for `-`/`?`, B4 for `:` — so the arm's
     -- inline residue is EMPTY and only the landed close remains. ═══
@@ -27702,7 +27702,7 @@ lemma accum_block_pending (sc : ScannerState)
       h_bare h_dn h_fv h_base h_mono (Or.inr trivial) (Or.inr trivial) (Or.inr trivial)
       (Or.inr trivial) (Or.inr trivial) (Or.inr (PackAlt.ofRefused h_noekS)) (Or.inr (PackAlt.ofRefused h_noekS))
       -- Item 208: item 207's field.
-      h_nic0S
+      h_nic0S (GStar.nil _) (fun _ _ => (h_nextS (sc_noflow_of_prep h_preprocess h_noflow)).gate)
   | pendingContent _ _ _ sp_gramO h_line h_closableO h_key h_stale47 h_vpack51 h_arm77 h_framesS109
       h_framesV108 _ h_tail139 h_nic0C h_seqF168 h_runO h_gateO h_live290 =>
     -- Item 15: the same-line `:` may fire the implicit-key coupling.
@@ -27726,7 +27726,7 @@ lemma accum_block_pending (sc : ScannerState)
       -- unconditional reading), for the closed-park landing below.
       h_nic0C h_live290
   | pendingProps _ _ _ ha ht sp_node sp_p n_p h_sep_p h_run h_nic48 h_real48 h_anchor48 h_tag48
-      h_route48 h_key48 _ h_col0_p _ h_ska79 h_kslot91 _ _ _ _ h_closeFV_p =>
+      h_route48 h_key48 _ h_col0_p _ h_ska79 h_kslot91 _ _ _ _ h_closeFV_p  _ _ h_nextP =>
     -- ═══ Item 48: a `-`/`?` behind a parked property run is refused by the
     -- scanner (`[200]` separates a node's properties from its collection),
     -- and the run's own trailing-token fact is the check's read.  Item 49:
@@ -27819,7 +27819,7 @@ lemma accum_block_pending (sc : ScannerState)
          | Or.inr h_alt => Or.inr h_alt)
         (Or.inr trivial)
         -- Item 208: a property run holds a column, so the premise is refuted.
-        (nic0_of_col_pos h_col0_p)
+        (nic0_of_col_pos h_col0_p) (GStar.nil _) (fun _ _ => (h_nextP (sc_noflow_of_prep h_preprocess h_noflow)).gate)
   | pendingFlow _ _ _ _ h_arm77 _ h_nic0F _ h_gateF =>
     exact accum_block_on_closeThenBlock sc sp_start sp_scan s_prep s' c sp_prep sp_scan'
       h_close_pending (Or.inr trivial) (Or.inr (fun h_res _ => block_dispatch_deferred_inline sp_start sp_block sp_scan' h_stream_block h_preprocess h_dispatch hcorr_result h_res h_gateF)) hcorr_prep
@@ -27836,9 +27836,9 @@ lemma accum_block_pending (sc : ScannerState)
       (Or.inr trivial) (Or.inr trivial) (Or.inr trivial) (Or.inr trivial)
       (Or.inr trivial) (Or.inr trivial) (Or.inr trivial)
       -- Item 208: item 206's field.
-      h_nic0F
+      h_nic0F h_gateF.choose_spec.1 h_gateF.choose_spec.2
   | pendingMapValue _ _ _ nmv _ _ h_nic48 h_real48 h_ivl48 h_expl51 h_vslot51 h_sk58 h_col0_mv _
-      h_kslot93 h_closeF155 h_frames173 h_closeFV108 h_framesV108 _ _ h_explUp190 =>
+      h_kslot93 h_closeF155 h_frames173 h_closeFV108 h_framesV108 _ _ h_explUp190  _ h_nextM =>
     -- ═══ Item 48: an IMPLICIT `:` stamped its line, and B1/B2/B3 all read
     -- the stamp — the inline residue is EMPTY there.  Item 51: an OPEN
     -- explicit frame serves the rest — the `?`'s own slot takes the compact
@@ -27900,7 +27900,7 @@ lemma accum_block_pending (sc : ScannerState)
         -- stacks from one step. ═══
         (h_closeFV108.imp (fun ⟨nv, ks, h_le, _, fV⟩ => ⟨nmv, nv, ks, h_le, fV⟩) id)
         -- Item 208: refuted from the park's own column, as above.
-        (nic0_of_col_pos h_col0_mv)
+        (nic0_of_col_pos h_col0_mv) (GStar.nil _) (fun _ _ => (h_nextM (sc_noflow_of_prep h_preprocess h_noflow)).gate)
     · exact accum_block_on_closeThenBlock sc sp_start sp_scan s_prep s' c sp_prep sp_scan'
         h_close_pending
         -- ═══ **Item 192: this park's OWN frame and the one above it, in ONE
@@ -27998,7 +27998,7 @@ lemma accum_block_pending (sc : ScannerState)
         -- Item 198: the explicit twin pays the close face too.
         (h_closeFV108.imp (fun ⟨nv, ks, h_le, _, fV⟩ => ⟨nmv, nv, ks, h_le, fV⟩) id)
         -- Item 208: a value park is never at column 0, so the premise is refuted.
-        (nic0_of_col_pos h_col0_mv)
+        (nic0_of_col_pos h_col0_mv) (GStar.nil _) (fun _ _ => (h_nextM (sc_noflow_of_prep h_preprocess h_noflow)).gate)
   | pendingBlockContent _ _ _ _ n_old h_line _h_closable h_entry_old h_key_old h_stale47 h_arm77
       h_kslot92 h_closeF99 _ h_tail139 h_seqF167 h_kslotUp190 h_closeFV198 h_nic0B h_live290 =>
     -- Item 22: the pending's own entry index rides through; the `n ≠ 0`
