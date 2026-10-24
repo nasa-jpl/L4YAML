@@ -12970,7 +12970,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
           InteriorGap s' (tailOf s'.tokens) sp_flow' sp_scan' ∧
           LastTokenReal s'.tokens ∧ s'.allowDirectives = false) := by
     intro h_gateM h_close h_nobreak h_sfx h_tail143 h_mapF176 h_mapFV201
-    rcases preprocess_flow_thread sc sp_scan sp_prep s_prep c h_corr hcorr_prep h_preprocess h_gateM
+    rcases preprocess_flow_thread sc sp_scan sp_prep s_prep c h_corr hcorr_prep h_preprocess
         h_noflow_prep h_park with
       ⟨sp_mid, h_ssl, hws, h_ska⟩ | ⟨hcol, hws⟩
     · have h_stream_mid : SLYamlStream sp_start sp_mid :=
@@ -13000,7 +13000,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                -- LANDING reading applies here — this branch is the one that
                -- crossed a break, and the other never reaches `mk`.
                flowKeyRoute_of_root (Or.inr trivial) h_noflow_prep h_park h_close h_dn h_fv h_corr
-                 hcorr_prep h_preprocess h_sfx (Or.inr trivial) h_bare h_base h_tail143
+                 hcorr_prep h_preprocess h_gateM h_sfx (Or.inr trivial) h_bare h_base h_tail143
                  h_mapF176 h_mapFV201,
                -- **Item 201: `vslot` stays punted here, and the reason is the
                -- PARK's shape rather than a missing field.**  The lane's seven
