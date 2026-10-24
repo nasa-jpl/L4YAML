@@ -8421,8 +8421,8 @@ lemma preprocess_some_separate_at_floor (n : Nat) (sc : ScannerState) (sp : Surf
         omega
       · exact ⟨sp_prep, hcorr_out,
           Or.inr ⟨sp_mid, h_ssl_col.1, h_ssl_col.2.1, h_ur, h_ltsl,
-            fun hc hf => (h_ssl_col.2.2 hc hf).2.2.2,
-            fun hc hf => (h_ssl_col.2.2 hc hf).2.2.1⟩⟩
+            fun hc hf => (h_ssl_col.2.2.2 hc hf).2.2.2,
+            fun hc hf => (h_ssl_col.2.2.2 hc hf).2.2.1⟩⟩
     | inr h_mid_eq =>
       rw [h_mid_eq.1] at h_ws
       refine ⟨sp_prep, hcorr_out, Or.inl ⟨(GStar_SSWhite_sep_or_eps h_ws).imp
@@ -8607,7 +8607,7 @@ lemma preprocess_flow_thread (sc : ScannerState) (sp_scan sp_prep : SurfPos)
     have h_ska : s_prep.simpleKeyAllowed = true := by
       rcases h_park with hp | hp
       · exact preprocess_simpleKeyAllowed_mono hp h_preprocess
-      · exact (h.2.2 (by omega) h_noflow).2.2.1
+      · exact (h.2.2.2 (by omega) h_noflow).2.2.1
     exact Or.inl ⟨sp_mid, h.1, hws, h_ska⟩
   | inr h_eq =>
     rw [h_eq.1] at hws
@@ -9553,7 +9553,7 @@ lemma accum_structural_pending (sc : ScannerState)
               s_prep.simpleKeyAllowed = true ∧
               (s_prep.currentIndent ≤ (s_prep.col : Int) ∨ s_prep.indents.size ≤ 1)) := by
           cases h_disj with
-          | inl h => exact ⟨h.1, h.2.1, h.2.2⟩
+          | inl h => exact ⟨h.1, h.2.1, h.2.2.2⟩
           | inr h_eq =>
             exfalso
             have h_gap_eq := ScannerSurfCorr_unique hcorr_gap hcorr_prep
@@ -11174,7 +11174,7 @@ lemma flowKeyRoute_of_open {n nc m : Nat} {g : Option ScannerState} {cc : YamlCo
           Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
             valueMapRouteF hnw h_node h_land.1 h_ind'⟩,
           Or.inr trivial⟩
-        rw [landing_or_park_save h_noflow h_land.2.2 h_park h_preprocess,
+        rw [landing_or_park_save h_noflow h_land.2.2.2 h_park h_preprocess,
           ← hcorr_prep.col_eq]
         have := SIndent_col' h_ind'
         rw [h_land.2.1] at this
@@ -11372,7 +11372,7 @@ lemma flowKeyRoute_of_root {m : Nat} {g : Option ScannerState} {sp_start sp_scan
       have h_ind' : SIndent w sp_mid sp_prep := by rw [h_pe]; exact h_ind
       -- Item 143: the fallback arm is a LANDING, so it takes item 142's guard.
       have h_ska_land : s_prep.simpleKeyAllowed = true :=
-        landing_or_park_ska h_noflow h_land.2.2 h_park h_preprocess
+        landing_or_park_ska h_noflow h_land.2.2.2 h_park h_preprocess
       have h_ref_land : BareLandingFacts sc s_prep c ∨ True :=
         h_tail143.imp (fun h_tl =>
           ⟨h_bare, h_preprocess, h_noflow, h_ska_land, h_tl, h_base⟩) id
@@ -11456,7 +11456,7 @@ lemma flowKeyRoute_of_root {m : Nat} {g : Option ScannerState} {sp_start sp_scan
          | Or.inl ⟨nv, ks', h_lt, cont⟩ =>
              Or.inl ⟨nv, ks', h_lt, resumeMapRouteK h_ind' cont⟩
          | Or.inr _ => Or.inr trivial)⟩
-      rw [landing_or_park_save h_noflow h_land.2.2 h_park h_preprocess,
+      rw [landing_or_park_save h_noflow h_land.2.2.2 h_park h_preprocess,
         ← hcorr_prep.col_eq]
       have := SIndent_col' h_ind'
       rw [h_land.2.1] at this
@@ -12300,7 +12300,7 @@ lemma propsPark_open_gate {sc s_prep s' : ScannerState} {sp_scan : SurfPos} {c :
       (GateOf g → danglingNodePos? sc = none) := by
   obtain ⟨_, _, _, h_disj, _⟩ :=
     preprocess_some_ssl_comments_anyCol sc sp_scan s_prep c h_corr h_pre
-  rcases h_disj with ⟨-, -, h_land⟩ | ⟨-, -, h_ind_st, h_stale⟩
+  rcases h_disj with ⟨-, -, -, h_land⟩ | ⟨-, -, h_ind_st, h_stale, -⟩
   · exact ⟨none, trivial,
       fun _ => dangling_none_of_check h_dn (h_land (by omega) h_noflow_prep).2.2.1⟩
   · obtain ⟨-, h_tok_st, -, -⟩ := h_stale h_nic h_ska
@@ -15552,7 +15552,7 @@ lemma propsPark_stale_dangling {sc s_prep : ScannerState} {sp_scan : SurfPos} {c
       (s_prep.tokens = sc.tokens ∧ s_prep.indents = sc.indents) := by
   obtain ⟨_, _, _, h_disj, _⟩ :=
     preprocess_some_ssl_comments_anyCol sc sp_scan s_prep c h_corr h_pre
-  rcases h_disj with ⟨-, -, h_land⟩ | ⟨-, -, h_ind_st, h_stale⟩
+  rcases h_disj with ⟨-, -, -, h_land⟩ | ⟨-, -, h_ind_st, h_stale, -⟩
   · exact Or.inl (dangling_none_of_check h_dn (h_land (by omega) h_noflow_prep).2.2.1)
   · exact Or.inr ⟨(h_stale h_nic h_ska).2.1, h_ind_st h_nic⟩
 
@@ -25112,7 +25112,7 @@ lemma colon_fires_props_key (sc : ScannerState)
       | inr h_mid =>
         exfalso
         obtain ⟨h_line_eq, -, -, -⟩ := h_mid.2.1 h_st.1 h_st.2.2
-        obtain ⟨h_sk_eq, -, -, -⟩ := h_mid.2.2.2 h_st.1 h_st.2.1
+        obtain ⟨h_sk_eq, -, -, -⟩ := h_mid.2.2.2.1 h_st.1 h_st.2.1
         have h_inp : s_prep.input = sc.input := preprocess_input h_preprocess
         refine scanValue_tab_keyrun_ne (s := if s_prep.allowDirectives then
             { s_prep with allowDirectives := false, documentEverStarted := true }
@@ -25152,7 +25152,7 @@ lemma colon_fires_props_key (sc : ScannerState)
       -- Item 80: the inherit, from the park's own flags through the no-break
       -- transport's stale conjunct.  Item 81: the same conjuncts place the
       -- key on the `:`'s line and strictly behind its cursor.
-      obtain ⟨h_inh, -, h_off_ge, -⟩ := h_mid.2.2.2 h_nic h_ska
+      obtain ⟨h_inh, -, h_off_ge, -⟩ := h_mid.2.2.2.1 h_nic h_ska
       obtain ⟨h_line_pp, -, -, -⟩ := h_mid.2.1 h_nic h_real
       exact colon_open_map_props sp_start sp_block sp_p sp_scan k sc s_prep s'
         sp_prep sp_scan' h_route h_kslot_pk
@@ -25299,7 +25299,7 @@ lemma colon_fires_implicit_key
           | tab h_run h_st =>
             exfalso
             obtain ⟨h_line_eq, -, -, -⟩ := h_mid.2.1 h_st.1 h_st.2.2
-            obtain ⟨h_sk_eq, -, -, -⟩ := h_mid.2.2.2 h_st.1 h_st.2.1
+            obtain ⟨h_sk_eq, -, -, -⟩ := h_mid.2.2.2.1 h_st.1 h_st.2.1
             have h_inp : s_prep.input = sc.input := preprocess_input h_preprocess
             refine scanValue_tab_keyrun_ne (s := if s_prep.allowDirectives then
                 { s_prep with allowDirectives := false, documentEverStarted := true }
@@ -25359,7 +25359,7 @@ lemma colon_fires_implicit_key
           rw [h_mid.1] at h_ws
           have h_st := h_stale ⟨by omega, _, h_ws,
             head_of_peek hcorr_prep (preprocess_some_peek h_preprocess)⟩
-          obtain ⟨h_inh, -, h_off_ge, -⟩ := h_mid.2.2.2 h_st.1 h_st.2.1
+          obtain ⟨h_inh, -, h_off_ge, -⟩ := h_mid.2.2.2.1 h_st.1 h_st.2.1
           -- Item 81: the same no-break conjuncts place the key on the `:`'s
           -- line, and `KeysBehindCursor` strictly behind its cursor.
           obtain ⟨h_line_pp, -, -, -⟩ := h_mid.2.1 h_st.1 h_st.2.2.1
@@ -25434,7 +25434,7 @@ lemma colon_fires_implicit_key
         rw [h_mid.1] at h_ws
         have h_st := h_stale ⟨by omega, _, h_ws,
           head_of_peek hcorr_prep (preprocess_some_peek h_preprocess)⟩
-        obtain ⟨h_inh, -, h_off_ge, -⟩ := h_mid.2.2.2 h_st.1 h_st.2.1
+        obtain ⟨h_inh, -, h_off_ge, -⟩ := h_mid.2.2.2.1 h_st.1 h_st.2.1
         obtain ⟨h_line_pp, -, -, -⟩ := h_mid.2.1 h_st.1 h_st.2.2.1
         by_cases hek : s_prep.explicitKeyLine = some sc.simpleKey.pos.line ∧
             (s_prep.col : Int) = s_prep.currentIndent
@@ -28488,10 +28488,11 @@ lemma dispatchContent_plainScalar_prod (sc : ScannerState) (sp : SurfPos)
             · -- canStartPlainScalarBool branch: either plain scalar succeeds or error
               split at hok
               · -- canStartPlainScalarBool = true: scanPlainScalar returns directly
-                exact scanPlainScalar_to_flowNode sc sp hcorr hpeek
+                obtain ⟨g, p, h, hw, -, hc⟩ := scanPlainScalar_to_flowNode sc sp hcorr hpeek
                   (by assumption)
                   h_not_doc
                   (by assumption)
+                exact ⟨g, p, h, hw, hc⟩
               · -- canStartPlainScalarBool = false: .error
                 simp at hok
 
@@ -28605,10 +28606,12 @@ lemma dispatchContent_plainScalar_content_prod (sc : ScannerState) (sp : SurfPos
           · split at hok
             · rename_i h_eq; exact absurd (beq_iff_eq.mp h_eq) hnotSQ
             · split at hok
-              · exact ScalarProduction.scanPlainScalar_to_flowContent sc sp hcorr hpeek
-                  (by assumption)
-                  h_not_doc
-                  (by assumption)
+              · obtain ⟨g, p, h, hw, -, hc⟩ :=
+                  ScalarProduction.scanPlainScalar_to_flowContent sc sp hcorr hpeek
+                    (by assumption)
+                    h_not_doc
+                    (by assumption)
+                exact ⟨g, p, h, hw, hc⟩
               · simp at hok
 
 -- The BLOCK-KEY twin (item 15): the same ladder, ending at the ONE-LINE
@@ -28651,8 +28654,10 @@ lemma dispatchContent_plainScalar_key_prod (sc : ScannerState) (sp : SurfPos)
             · split at hok
               · refine ⟨ScannerCorrectness.scanPlainScalar_preserves_simpleKey sc s' hok,
                         fun h_line => ?_⟩
-                exact ScalarProduction.scanPlainScalar_to_blockKey_oneLine sc sp hcorr hpeek
-                  (by assumption) h_not_doc h_flow h_line hok
+                obtain ⟨g, p, h, hw, -, hc⟩ :=
+                  ScalarProduction.scanPlainScalar_to_blockKey_oneLine sc sp hcorr hpeek
+                    (by assumption) h_not_doc h_flow h_line hok
+                exact ⟨g, p, h, hw, hc⟩
               · simp at hok
 
 -- The `.flowIn` twin (β.3).  Same walk down `scanNextToken_dispatchContent`;
@@ -28692,7 +28697,7 @@ lemma dispatchContent_plainScalar_flowIn_prod (sc : ScannerState) (sp : SurfPos)
           · split at hok
             · rename_i h_eq; exact absurd (beq_iff_eq.mp h_eq) hnotSQ
             · split at hok
-              · obtain ⟨sp_gram, sp'', h_pl, h_ws, hcorr'⟩ :=
+              · obtain ⟨sp_gram, sp'', h_pl, h_ws, -, hcorr'⟩ :=
                   scanPlainScalar_to_multiLine_native sc sp hcorr hpeek
                     (by assumption) h_not_doc (by assumption)
                 rw [h_inflow] at h_pl
@@ -29573,9 +29578,9 @@ lemma keyctx_of_preprocess (sc : ScannerState) (sp sp_prep : SurfPos)
       | inl hssl =>
         exact Or.inl ⟨⟨k, sp_mid, hssl.2.1,
           h_close (dangling_none_of_check h_dn
-            (landing_or_park_ska h_noflow hssl.2.2 h_park h_preprocess))
+            (landing_or_park_ska h_noflow hssl.2.2.2 h_park h_preprocess))
             (underIndented_none_of_check h_fv
-              (landing_or_park_ska h_noflow hssl.2.2 h_park h_preprocess)) sp_mid hssl.1,
+              (landing_or_park_ska h_noflow hssl.2.2.2 h_park h_preprocess)) sp_mid hssl.1,
           h_ind'⟩, h_sk.1, h_sk.2⟩
       | inr hmid =>
         by_cases hc0 : sp.col = 0
@@ -30533,7 +30538,7 @@ lemma entryKeyPack_of_dispatch
               have h_pay : ∀ ks' : List FrameLevel, ResumeWidths ks ks' w →
                   ((∃ lo : Nat, IndentStackCover.Floor lo w (FrameLevel.map w :: ks') ∧
                     IndentStackCover.Covered lo (FrameLevel.map w :: ks') s') ∨ True) :=
-                dedent_cover_of_landing h_cov h_dcov hmem h_land.2.2 h_scol
+                dedent_cover_of_landing h_cov h_dcov hmem h_land.2.2.2 h_scol
                   h_preprocess
                   (by
                     rw [IndentStackBase.dispatchContent_preserves_indents h_dispatch]
@@ -30552,7 +30557,7 @@ lemma entryKeyPack_of_dispatch
                     ((∃ lo : Nat, IndentStackCover.Floor lo w (FrameLevel.map w :: ks') ∧
                       IndentStackCover.Covered lo (FrameLevel.map w :: ks') s') ∨ True) :=
                 fun _ h_cv hmemV =>
-                  dedent_cover_of_landing h_cov h_cv hmemV h_land.2.2 h_scol
+                  dedent_cover_of_landing h_cov h_cv hmemV h_land.2.2.2 h_scol
                     h_preprocess
                     (by
                       rw [IndentStackBase.dispatchContent_preserves_indents h_dispatch]
@@ -31106,7 +31111,7 @@ lemma entryPropsKeyPack_of_dispatch
             have h_pay : ∀ ks' : List FrameLevel, ResumeWidths ks ks' w →
                 ((∃ lo : Nat, IndentStackCover.Floor lo w (FrameLevel.map w :: ks') ∧
                   IndentStackCover.Covered lo (FrameLevel.map w :: ks') s') ∨ True) :=
-              dedent_cover_of_landing h_cov h_dcov hmem h_land.2.2 h_scol
+              dedent_cover_of_landing h_cov h_dcov hmem h_land.2.2.2 h_scol
                 h_preprocess (h_indents.trans (by split <;> rfl)) h_noflow h_cov_step
             -- Item 150: and the value-line stack's, as at
             -- `entryKeyPack_of_dispatch`'s own dedent branch.
@@ -31117,7 +31122,7 @@ lemma entryPropsKeyPack_of_dispatch
                   ((∃ lo : Nat, IndentStackCover.Floor lo w (FrameLevel.map w :: ks') ∧
                     IndentStackCover.Covered lo (FrameLevel.map w :: ks') s') ∨ True) :=
               fun _ h_cv hmemV =>
-                dedent_cover_of_landing h_cov h_cv hmemV h_land.2.2 h_scol
+                dedent_cover_of_landing h_cov h_cv hmemV h_land.2.2.2 h_scol
                   h_preprocess (h_indents.trans (by split <;> rfl)) h_noflow h_cov_step
             obtain ⟨ks', h_w', cont'⟩ :=
               (dframes sp_mid h_land.1).resumeAt hmem
@@ -33442,7 +33447,7 @@ lemma accum_content_on_pendingBlock_indented
           IndentStackCover.Covered lo (FrameLevel.map w :: ksw') s_prep) ∨ True) := by
       intro w ksw ksw' h_cv hmemw h_ww h_scolw
       rcases h_cv with ⟨lo, _, h_fl, h_cv0⟩ | _
-      · rcases h_disj_land with ⟨_, _, h_larm⟩ | _
+      · rcases h_disj_land with ⟨_, _, _, h_larm⟩ | _
         · have h_floor := landing_floor_of_arm h_noflow_land h_larm
             (by omega) h_base h_preprocess
           exact Or.inl (dedent_cover_of_floor
@@ -34156,7 +34161,7 @@ lemma accum_content_on_pendingMapValue_indented
           IndentStackCover.Covered lo (FrameLevel.map w :: ksw') s_prep) ∨ True) := by
       intro w ksw ksw' h_cv hmemw h_ww h_scolw
       rcases h_cv with ⟨lo, _, h_fl, h_cv0⟩ | _
-      · rcases h_disj_land with ⟨_, _, h_larm⟩ | _
+      · rcases h_disj_land with ⟨_, _, _, h_larm⟩ | _
         · have h_floor := landing_floor_of_arm h_noflow_land h_larm
             (by omega) h_base h_preprocess
           exact Or.inl (dedent_cover_of_floor
@@ -34553,7 +34558,7 @@ lemma accum_content_pending (sc : ScannerState)
         -- Item 144: as at the column-0 landing, with the flag off the WALK
         -- instead of off the park — this branch crossed the break that re-arms
         -- it (item 76's own datum, read at the flag).
-        have h_ska : s_prep.simpleKeyAllowed = true := (hcol_mid.2 hcol h_noflow_prep).2.2.1
+        have h_ska : s_prep.simpleKeyAllowed = true := (hcol_mid.2.2 hcol h_noflow_prep).2.2.1
         have h_stream_mid := h_close_pending (dangling_none_of_check h_dn h_ska)
           (underIndented_none_of_check h_fv h_ska) sp_mid h_ssl
         have h_ref_land : BareLandingFacts sc s_prep c ∨ True :=
@@ -34577,7 +34582,7 @@ lemma accum_content_pending (sc : ScannerState)
               IndentStackCover.Covered lo (FrameLevel.map w :: ksw') s_prep) ∨ True) := by
           intro w ksw ksw' h_cv hmemw h_ww h_scolw
           rcases h_cv with ⟨lo, _, h_fl, h_cv0⟩ | _
-          · have h_floor := landing_floor_of_arm h_noflow_prep hcol_mid.2 hcol
+          · have h_floor := landing_floor_of_arm h_noflow_prep hcol_mid.2.2 hcol
               h_base h_preprocess
             exact Or.inl (dedent_cover_of_floor
               (IndentStackMono.preprocess_mono h_preprocess h_mono)
@@ -34886,9 +34891,9 @@ lemma accum_content_pending (sc : ScannerState)
       -- Item 157: a `[96]` park sits past column 0 by construction, so this
       -- landing is the break-crossed one and its re-arm pays the park's face.
       have h_stream_mid := h_close_pending (dangling_none_of_check h_dn
-        (landing_or_park_ska h_noflow_prep hcol_mid.2 (Or.inr h_col0_p) h_preprocess))
+        (landing_or_park_ska h_noflow_prep hcol_mid.2.2 (Or.inr h_col0_p) h_preprocess))
         (underIndented_none_of_check h_fv
-          (landing_or_park_ska h_noflow_prep hcol_mid.2 (Or.inr h_col0_p) h_preprocess))
+          (landing_or_park_ska h_noflow_prep hcol_mid.2.2 (Or.inr h_col0_p) h_preprocess))
         sp_mid h_ssl
       have h_sep := SSeparateLines.inline 0 sp_mid sp_prep
         (GStar_SSWhite_to_SSeparateInLine sp_mid sp_prep h_ws (fun _ => hcol_mid.1))
@@ -34943,7 +34948,7 @@ lemma accum_content_pending (sc : ScannerState)
             IndentStackCover.Covered lo (FrameLevel.map w :: ksw') s_prep) ∨ True) := by
         intro w ksw ksw' h_cv hmemw h_ww h_scolw
         rcases h_cv with ⟨lo, _, h_fl, h_cv0⟩ | _
-        · have h_floor := landing_floor_of_arm h_noflow_prep hcol_mid.2
+        · have h_floor := landing_floor_of_arm h_noflow_prep hcol_mid.2.2
             (by omega) h_base h_preprocess
           exact Or.inl (dedent_cover_of_floor
             (IndentStackMono.preprocess_mono h_preprocess h_mono)
@@ -34974,7 +34979,7 @@ lemma accum_content_pending (sc : ScannerState)
             · refine Or.inl ⟨⟨kk, sp_mid, hcol_mid.1,
                 ⟨sp_node, sp_p, sp_scan,
                  fun sp h_bn => h_route (dangling_none_of_check h_dn
-                   (landing_or_park_ska h_noflow_prep hcol_mid.2 (Or.inr h_col0_p)
+                   (landing_or_park_ska h_noflow_prep hcol_mid.2.2 (Or.inr h_col0_p)
                      h_preprocess)) sp h_bn,
                  h_sep_run, h_run.toProperties, h_ssl,
                  SSeparateLines.commented 0 sp_scan sp_mid sp_prep h_ssl
@@ -34987,7 +34992,7 @@ lemma accum_content_pending (sc : ScannerState)
                 h_indk⟩, hkc.2.1, hkc.2.2⟩
             · exact Or.inr trivial
         · exact Or.inr trivial
-      exact content_dispatch_after_close (h_possD := preprocess_saved_key_possible_post (landing_or_park_ska h_noflow_prep hcol_mid.2 (Or.inr h_col0_p) h_preprocess) h_noflow_prep h_preprocess) (h_src := slotGateAt_of_propsPark h_slot_p (dangling_none_of_check h_dn (landing_or_park_ska h_noflow_prep hcol_mid.2 (Or.inr h_col0_p) h_preprocess)) ((propsPark_prevReal_prop h_real_p h_run h_anchor_p h_tag_p).imp (fun _ h => ⟨h.1, h.2.1⟩)) h_base h_preprocess) sp_start sp_mid s_prep s' c sp_prep sp_scan'
+      exact content_dispatch_after_close (h_possD := preprocess_saved_key_possible_post (landing_or_park_ska h_noflow_prep hcol_mid.2.2 (Or.inr h_col0_p) h_preprocess) h_noflow_prep h_preprocess) (h_src := slotGateAt_of_propsPark h_slot_p (dangling_none_of_check h_dn (landing_or_park_ska h_noflow_prep hcol_mid.2.2 (Or.inr h_col0_p) h_preprocess)) ((propsPark_prevReal_prop h_real_p h_run h_anchor_p h_tag_p).imp (fun _ h => ⟨h.1, h.2.1⟩)) h_base h_preprocess) sp_start sp_mid s_prep s' c sp_prep sp_scan'
         h_stream_mid h_sep (nic_false_of_flow_disp h_preprocess h_flow_disp)
         hcorr_prep hcorr_result h_not_doc
           (preprocess_some_peek h_preprocess) h_flow_disp h_dispatch h_keyctx
@@ -35010,7 +35015,7 @@ lemma accum_content_pending (sc : ScannerState)
           -- Item 174: and the ONE caller that pays the ride.
           h_ride
     | inr h_mid =>
-      obtain ⟨h_mid_eq, h_facts0, h_indents0, h_stale0⟩ := h_mid
+      obtain ⟨h_mid_eq, h_facts0, h_indents0, h_stale0, -⟩ := h_mid
       obtain ⟨h_line_pp, h_nic_pp, h_lastr, h_penr⟩ := h_facts0 h_nic_p h_real_p
       -- **Item 79: the step INHERITED the key.**  A `[96]` scan leaves the flag
       -- down (`h_ska_p`) and this is the no-break arm, so `saveSimpleKey`
