@@ -35008,6 +35008,13 @@ lemma accum_content_pending (sc : ScannerState)
       ∀ sp_mid, SSLComments sp_scan sp_mid → SLYamlStream sp_start sp_mid :=
     fun h_nd h_ui sp_mid h_ssl =>
       h_pending.close_with_ssl h_stream_block h_nd h_ui h_ssl
+  have h_close_from : danglingNodePos? sc = none →
+      underIndentedFlowValuePos? sc = none →
+      ∀ sp_mid, SSLCommentsFrom sp_scan sp_mid → (SSLComments sp_scan sp_mid ∨ CommentOk sc) →
+        SLYamlStream sp_start sp_mid :=
+    fun h_nd h_ui sp_mid h_from h_ok =>
+      h_pending.close_with_sslFrom h_stream_block h_nd h_ui (noflow_of_fl0 h_fl0)
+        h_corr h_from h_ok
   have h_flow_disp : (if s_prep.allowDirectives then
       { s_prep with allowDirectives := false, documentEverStarted := true }
     else s_prep).inFlow = false := by
