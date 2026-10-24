@@ -1968,12 +1968,12 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       (h_framesS : (∃ ks : List FrameLevel,
         ((∃ lo n : Nat, IndentStackCover.Floor lo n ks ∧
           IndentStackCover.Covered lo ks sc) ∨ True) ∧
-        ∀ sp_mid : SurfPos, SSLComments sp_scan sp_mid →
+        ∀ sp_mid : SurfPos, SSLComments sp_gram sp_mid →
         ResumeFrames (SLYamlStream sp_start) ks sp_mid) ∨ True)
       (h_framesV : (∃ (nv : Nat) (ks : List FrameLevel),
         ((∃ lo n : Nat, IndentStackCover.Floor lo n ks ∧
           IndentStackCover.Covered lo ks sc) ∨ True) ∧
-        ∀ sp_mid : SurfPos, SSLComments sp_scan sp_mid →
+        ∀ sp_mid : SurfPos, SSLComments sp_gram sp_mid →
         KeyFrames (ExplValueLine sp_start nv) ks sp_mid) ∨ PackAlt sc)
       (h_nodir : sc.allowDirectives = false)
       -- **Item 139 — the park's own §9.2 face** (LAST, so the patterns naming
@@ -2033,7 +2033,7 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       -- completion of a `pendingMapValue` that carries one; every other
       -- producer punts.
       (h_seqF : (∃ (ke kk : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width < kk) ∧
-        ∀ sp_mid : SurfPos, SSLComments sp_scan sp_mid →
+        ∀ sp_mid : SurfPos, SSLComments sp_gram sp_mid →
         ∀ sp_e : SurfPos, SCompactMapTail kk sp_mid sp_e →
         ResumeFrames (SeqEntryTail sp_start ke) ks sp_e) ∨ True)
       -- `[66]` narrowed to col 0: the park's grammar endpoint `sp_gram` is where
