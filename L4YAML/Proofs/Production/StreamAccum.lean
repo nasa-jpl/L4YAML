@@ -9216,8 +9216,8 @@ lemma eof_pending (sc : ScannerState)
   obtain ⟨sp_final, h_ssl, h_empty⟩ :=
     preprocess_none_ssl_comments sc sp_scan h_corr h_preprocess
   exact ⟨sp_final,
-    h_pending.close_with_ssl h_stream_block (dangling_none_of_eof h_dn)
-      (underIndented_none_of_eof h_fv) h_ssl, h_empty⟩
+    h_pending.close_with_sslFrom h_stream_block (dangling_none_of_eof h_dn)
+      (underIndented_none_of_eof h_fv) h_noflow h_corr h_from h_ok, h_empty⟩
 
 lemma preprocessing_eof_extends_stream {g : Option ScannerState} (sc : ScannerState)
     (sp_start sp_gram sp_block sp_flow sp_scan : SurfPos)
@@ -36826,9 +36826,9 @@ lemma accum_content_pending (sc : ScannerState)
                   -- rides (`? - &p a⏎  - y⏎: v`).
                   exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
                          BlockStack.nil sp_block, FlowStackB.nil sp_block .sep,
-                         PendingNode.pendingBlockContent (h_run := ‹_›) (h_gate := ‹_›) (h_live := live_of_dispatch h_dispatch hamp hbang (by rw [allowDirectives_update_simpleKey, h_inherit]; exact h_possP) hcorr_result) sp_start sp_block sp_scan' k
+                         PendingNode.pendingBlockContent (h_run := ‹_›) (h_gate := ‹_›) (h_live := live_of_dispatch h_dispatch hamp hbang (by rw [allowDirectives_update_simpleKey, h_inherit]; exact h_possP) hcorr_result) sp_start sp_block sp_scan' _ k
                            h_line
-                           (fun h_nd sp_mid h_ssl => h_route (h_nd_rel h_nd) sp_mid (h_nodeAt sp_mid h_ssl))
+                           (fun h_nd sp_mid h_ssl => h_route (h_nd_rel h_nd) sp_mid (h_nodeAtG sp_mid h_ssl))
                            (fun sp_mid h_ssl sp_end h_tail =>
                              routeE sp_mid (h_nodeAtG sp_mid h_ssl) sp_end h_tail)
                            h_key
@@ -36961,9 +36961,9 @@ lemma accum_content_pending (sc : ScannerState)
                 | inl routeE =>
                   exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
                          BlockStack.nil sp_block, FlowStackB.nil sp_block .sep,
-                         PendingNode.pendingBlockContent (h_run := ‹_›) (h_gate := ‹_›) (h_live := live_of_dispatch h_dispatch hamp hbang (by rw [allowDirectives_update_simpleKey, h_inherit]; exact h_possP) hcorr_result) sp_start sp_block sp_scan' k
+                         PendingNode.pendingBlockContent (h_run := ‹_›) (h_gate := ‹_›) (h_live := live_of_dispatch h_dispatch hamp hbang (by rw [allowDirectives_update_simpleKey, h_inherit]; exact h_possP) hcorr_result) sp_start sp_block sp_scan' _ k
                            h_line
-                           (fun h_nd sp_mid h_ssl => h_route (h_nd_rel h_nd) sp_mid (h_nodeAt sp_mid h_ssl))
+                           (fun h_nd sp_mid h_ssl => h_route (h_nd_rel h_nd) sp_mid (h_nodeAtG sp_mid h_ssl))
                            (fun sp_mid h_ssl sp_end h_tail =>
                              routeE sp_mid (h_nodeAtG sp_mid h_ssl) sp_end h_tail)
                            (fun h_poss _ => absurd h_poss
@@ -37088,9 +37088,9 @@ lemma accum_content_pending (sc : ScannerState)
                   -- multi-line value (`k:⏎  - &p "a⏎    b"⏎  - y`).
                   exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
                          BlockStack.nil sp_block, FlowStackB.nil sp_block .sep,
-                         PendingNode.pendingBlockContent (h_run := ‹_›) (h_gate := ‹_›) (h_live := live_of_dispatch h_dispatch hamp hbang (by rw [allowDirectives_update_simpleKey, h_inherit]; exact h_possP) hcorr_result) sp_start sp_block sp_scan' k
+                         PendingNode.pendingBlockContent (h_run := ‹_›) (h_gate := ‹_›) (h_live := live_of_dispatch h_dispatch hamp hbang (by rw [allowDirectives_update_simpleKey, h_inherit]; exact h_possP) hcorr_result) sp_start sp_block sp_scan' _ k
                            h_line
-                           (fun h_nd sp_mid h_ssl => h_route (h_nd_rel h_nd) sp_mid (h_nodeAt sp_mid h_ssl))
+                           (fun h_nd sp_mid h_ssl => h_route (h_nd_rel h_nd) sp_mid (h_nodeAtG sp_mid h_ssl))
                            (fun sp_mid h_ssl sp_end h_tail =>
                              routeE sp_mid (h_nodeAtG sp_mid h_ssl) sp_end h_tail)
                            h_key
