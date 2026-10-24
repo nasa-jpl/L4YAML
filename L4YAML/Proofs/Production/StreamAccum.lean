@@ -8698,7 +8698,10 @@ lemma preprocess_some_ssl_comments_landing (sc : ScannerState) (sp : SurfPos)
         -- `block_dispatch_deferred_stamp_compact` could not be spent where it
         -- was proved.  It is the same conjunct `preprocess_some_ssl_comments_
         -- anyCol` has always concluded; only the repackaging lost it.
-        (sc.needIndentCheck = false → s_prep.indents = sc.indents)) ∧
+        (sc.needIndentCheck = false → s_prep.indents = sc.indents) ∧
+        (sc.needIndentCheck = false → sc.simpleKeyAllowed = false →
+          s_prep.simpleKey = sc.simpleKey ∧ s_prep.tokens = sc.tokens ∧
+          sc.offset ≤ s_prep.offset ∧ s_prep.simpleKeyAllowed = false)) ∧
       GStar SSWhite sp_mid sp_ws ∧ GOpt SCNbCommentText sp_ws sp_prep ∧
       ScannerSurfCorr s_prep sp_prep ∧
       (sp_prep = sp_ws ∨ s_prep.peek? = none) ∧
@@ -8715,7 +8718,7 @@ lemma preprocess_some_ssl_comments_landing (sc : ScannerState) (sp : SurfPos)
         exact Or.inl ⟨by rw [h.1, hg]; exact sslComments_refl_of_col0 hcol,
                       by rw [h.1]; exact hcol,
                       fun hne _ => absurd hcol hne⟩
-      · exact Or.inr ⟨h.1, hcol, h.2.1, h.2.2.1⟩
+      · exact Or.inr ⟨h.1, hcol, h.2.1, h.2.2.1, h.2.2.2.1⟩
   · cases h_disj with
     | inl h => exact sslCommentsFrom_suffix h.1
     | inr h => rw [h.1]; exact List.suffix_refl _
@@ -35460,7 +35463,7 @@ lemma accum_content_pending (sc : ScannerState)
           (Or.inr trivial)
           (Or.inr trivial)
       | inr h_mid =>
-        exact h_noBreak hcol sp_ws (h_mid.1 ▸ h_ws) h_pk h_mid.2.2.1 h_mid.2.2.2
+        exact h_noBreak hcol sp_ws (h_mid.1 ▸ h_ws) h_pk h_mid.2.2.1 h_mid.2.2.2.2
   cases h_pending with
   | noPending _ _ _ h_arm76 h_nodoc h_noek76 h_ntop76 =>
     -- ═══ Item 136: the virgin park pays the HEAD arm.  The content this
