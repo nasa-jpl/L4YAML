@@ -9210,6 +9210,7 @@ lemma eof_pending (sc : ScannerState)
     -- 1234/1239 and 1306/1309), so the caller that supplies `h_dn` stands
     -- where this one was computed too.
     (h_fv : scanLoop_checkFlowValueIndent sc = .ok ())
+    (h_noflow : sc.inFlow = false)
     (h_preprocess : scanNextToken_preprocess sc = .ok none) :
     ∃ sp_final, SLYamlStream sp_start sp_final ∧ sp_final.chars = [] := by
   obtain ⟨sp_final, h_ssl, h_empty⟩ :=
@@ -9229,11 +9230,12 @@ lemma preprocessing_eof_extends_stream {g : Option ScannerState} (sc : ScannerSt
     (h_dn : scanLoop_checkDanglingNode sc = .ok ())
     -- Item 275: §8.1's silence rides beside §9.2's the whole way up.
     (h_fv : scanLoop_checkFlowValueIndent sc = .ok ())
+    (h_noflow : sc.inFlow = false)
     (h_preprocess : scanNextToken_preprocess sc = .ok none) :
     ∃ sp_final, SLYamlStream sp_start sp_final ∧ sp_final.chars = [] := by
   exact eof_pending sc sp_start sp_flow sp_scan
     (absorb_stacksB sp_start sp_gram sp_block sp_flow h_stream h_stack h_flow)
-    h_pending h_corr h_dn h_fv h_preprocess
+    h_pending h_corr h_dn h_fv h_noflow h_preprocess
 
 -- Helper: `ScannerSurfCorr` is preserved by the `allowDirectives` flag update
 -- used between structural dispatch and block/flow/content dispatch.
@@ -36828,7 +36830,7 @@ lemma accum_content_pending (sc : ScannerState)
                            h_line
                            (fun h_nd sp_mid h_ssl => h_route (h_nd_rel h_nd) sp_mid (h_nodeAt sp_mid h_ssl))
                            (fun sp_mid h_ssl sp_end h_tail =>
-                             routeE sp_mid (h_nodeAt sp_mid h_ssl) sp_end h_tail)
+                             routeE sp_mid (h_nodeAtG sp_mid h_ssl) sp_end h_tail)
                            h_key
                            (stale_of_dispatch h_dispatch hamp hbang
                              (by split <;> exact nic_false_of_flow_disp (sc := sc) (s_prep := s_prep) h_preprocess h_flow_disp)
@@ -36913,13 +36915,13 @@ lemma accum_content_pending (sc : ScannerState)
                           | Or.inl ⟨ks, h_cov, closeFS⟩ => Or.inl ⟨ks,
                               h_cov.imp (fun ⟨lo, m, hb, hc⟩ =>
                                 ⟨lo, m, hb, h_cov_step lo ks hc⟩) id,
-                              fun sp_mid h_ssl => closeFS sp_mid (h_nodeAt sp_mid h_ssl)⟩
+                              fun sp_mid h_ssl => closeFS sp_mid (h_nodeAtG sp_mid h_ssl)⟩
                           | Or.inr _ => Or.inr trivial)
                          (match h_closeFVS_p with
                           | Or.inl ⟨nv, ks, h_cov, closeFVS⟩ => Or.inl ⟨nv, ks,
                               h_cov.imp (fun ⟨lo, m, hb, hc⟩ =>
                                 ⟨lo, m, hb, h_cov_step lo ks hc⟩) id,
-                              fun sp_mid h_ssl => closeFVS sp_mid (h_nodeAt sp_mid h_ssl)⟩
+                              fun sp_mid h_ssl => closeFVS sp_mid (h_nodeAtG sp_mid h_ssl)⟩
                           | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
                          (nodir_of_content_dispatch h_dispatch)
                          (completedTail_of_dispatch h_dispatch hamp hbang)
@@ -36946,6 +36948,15 @@ lemma accum_content_pending (sc : ScannerState)
                     (fun h_fld' => folded_blockNode h_sep_run
                       (GOpt.some _ _ (GSeq.mk _ _ _ h_run.toPropertiesBlockIn h_sep2))
                       h_fld')
+                have h_nodeAtG : ∀ sp_m : SurfPos, SSLComments sp_ne sp_m →
+                    SBlockNode (k + 1) .blockIn sp_node sp_m := fun sp_m h_ssl =>
+                  (h_absorb95k sp_m h_ssl).elim
+                    (fun h_lit' => literal_blockNode h_sep_run
+                      (GOpt.some _ _ (GSeq.mk _ _ _ h_run.toPropertiesBlockIn h_sep2))
+                      h_lit')
+                    (fun h_fld' => folded_blockNode h_sep_run
+                      (GOpt.some _ _ (GSeq.mk _ _ _ h_run.toPropertiesBlockIn h_sep2))
+                      h_fld')
                 cases h_routeE_k with
                 | inl routeE =>
                   exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
@@ -36954,7 +36965,7 @@ lemma accum_content_pending (sc : ScannerState)
                            h_line
                            (fun h_nd sp_mid h_ssl => h_route (h_nd_rel h_nd) sp_mid (h_nodeAt sp_mid h_ssl))
                            (fun sp_mid h_ssl sp_end h_tail =>
-                             routeE sp_mid (h_nodeAt sp_mid h_ssl) sp_end h_tail)
+                             routeE sp_mid (h_nodeAtG sp_mid h_ssl) sp_end h_tail)
                            (fun h_poss _ => absurd h_poss
                              (by rw [dispatchContent_blockScalar_simpleKey_false hbs h_dispatch]
                                  simp))
@@ -37020,7 +37031,7 @@ lemma accum_content_pending (sc : ScannerState)
                          (match h_kslot_p with
                           | Or.inl ⟨ns, kslot⟩ => Or.inl ⟨ns, fun nv hmem =>
                               (fun sp_mid sp_i sp_c h_ssl h_ind h_lit sp_v h_sbi =>
-                                kslot nv hmem sp_mid (h_nodeAt sp_mid h_ssl)
+                                kslot nv hmem sp_mid (h_nodeAtG sp_mid h_ssl)
                                   sp_i sp_c h_ind h_lit sp_v h_sbi)⟩
                           | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
                            (content_park_arm (preprocess_some_peek h_preprocess)
@@ -37040,13 +37051,13 @@ lemma accum_content_pending (sc : ScannerState)
                           | Or.inl ⟨ks, h_cov, closeFS⟩ => Or.inl ⟨ks,
                               h_cov.imp (fun ⟨lo, m, hb, hc⟩ =>
                                 ⟨lo, m, hb, h_cov_step lo ks hc⟩) id,
-                              fun sp_mid h_ssl => closeFS sp_mid (h_nodeAt sp_mid h_ssl)⟩
+                              fun sp_mid h_ssl => closeFS sp_mid (h_nodeAtG sp_mid h_ssl)⟩
                           | Or.inr _ => Or.inr trivial)
                          (match h_closeFVS_p with
                           | Or.inl ⟨nv, ks, h_cov, closeFVS⟩ => Or.inl ⟨nv, ks,
                               h_cov.imp (fun ⟨lo, m, hb, hc⟩ =>
                                 ⟨lo, m, hb, h_cov_step lo ks hc⟩) id,
-                              fun sp_mid h_ssl => closeFVS sp_mid (h_nodeAt sp_mid h_ssl)⟩
+                              fun sp_mid h_ssl => closeFVS sp_mid (h_nodeAtG sp_mid h_ssl)⟩
                           | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
                          (nodir_of_content_dispatch h_dispatch)
                          (completedTail_of_dispatch h_dispatch hamp hbang)
@@ -37081,7 +37092,7 @@ lemma accum_content_pending (sc : ScannerState)
                            h_line
                            (fun h_nd sp_mid h_ssl => h_route (h_nd_rel h_nd) sp_mid (h_nodeAt sp_mid h_ssl))
                            (fun sp_mid h_ssl sp_end h_tail =>
-                             routeE sp_mid (h_nodeAt sp_mid h_ssl) sp_end h_tail)
+                             routeE sp_mid (h_nodeAtG sp_mid h_ssl) sp_end h_tail)
                            h_key
                            (stale_of_dispatch h_dispatch hamp hbang
                              (by split <;> exact nic_false_of_flow_disp (sc := sc) (s_prep := s_prep) h_preprocess h_flow_disp)
@@ -37139,7 +37150,7 @@ lemma accum_content_pending (sc : ScannerState)
                          (match h_kslot_p with
                           | Or.inl ⟨ns, kslot⟩ => Or.inl ⟨ns, fun nv hmem =>
                               (fun sp_mid sp_i sp_c h_ssl h_ind h_lit sp_v h_sbi =>
-                                kslot nv hmem sp_mid (h_nodeAt sp_mid h_ssl)
+                                kslot nv hmem sp_mid (h_nodeAtG sp_mid h_ssl)
                                   sp_i sp_c h_ind h_lit sp_v h_sbi)⟩
                           | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
                            (content_park_arm (preprocess_some_peek h_preprocess)
@@ -37159,13 +37170,13 @@ lemma accum_content_pending (sc : ScannerState)
                           | Or.inl ⟨ks, h_cov, closeFS⟩ => Or.inl ⟨ks,
                               h_cov.imp (fun ⟨lo, m, hb, hc⟩ =>
                                 ⟨lo, m, hb, h_cov_step lo ks hc⟩) id,
-                              fun sp_mid h_ssl => closeFS sp_mid (h_nodeAt sp_mid h_ssl)⟩
+                              fun sp_mid h_ssl => closeFS sp_mid (h_nodeAtG sp_mid h_ssl)⟩
                           | Or.inr _ => Or.inr trivial)
                          (match h_closeFVS_p with
                           | Or.inl ⟨nv, ks, h_cov, closeFVS⟩ => Or.inl ⟨nv, ks,
                               h_cov.imp (fun ⟨lo, m, hb, hc⟩ =>
                                 ⟨lo, m, hb, h_cov_step lo ks hc⟩) id,
-                              fun sp_mid h_ssl => closeFVS sp_mid (h_nodeAt sp_mid h_ssl)⟩
+                              fun sp_mid h_ssl => closeFVS sp_mid (h_nodeAtG sp_mid h_ssl)⟩
                           | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
                          (nodir_of_content_dispatch h_dispatch)
                          (completedTail_of_dispatch h_dispatch hamp hbang)
@@ -38278,7 +38289,7 @@ lemma scanNextToken_none_stream (sc : ScannerState)
   · split at h_ok
     · rename_i h_pre
       exact preprocessing_eof_extends_stream sc sp_start sp_gram sp_block sp_flow sp_scan
-        h_stream h_stack h_flow h_pending h_corr h_dn h_fv h_pre
+        h_stream h_stack h_flow h_pending h_corr h_dn h_fv (noflow_of_fl0 h_fl0) h_pre
     · -- §9.2 dangling-node check (item 133)
       split at h_ok
       · simp at h_ok
