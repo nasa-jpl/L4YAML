@@ -3839,6 +3839,13 @@ lemma preprocess_none_ssl_comments (sc : ScannerState) (sp : SurfPos)
 
     Used by `accum_content_pending` for plain scalars, where the scanner
     advances past trailing whitespace that the grammar doesn't cover. -/
+lemma sslCommentsFrom_suffix {sp sp_mid : SurfPos} (h : SSLCommentsFrom sp sp_mid) :
+    sp_mid.chars <:+ sp.chars := by
+  rcases h with h | ⟨_, sp_cmt, sp_brk, hct, hbc, hlc⟩
+  · exact sslComments_suffix h
+  · exact ((gstar_suffix (fun _ _ h => slComment_suffix h) hlc).trans
+      (sbComment_suffix hbc)).trans (scNbCommentText_suffix hct)
+
 lemma white_prepend_SSLComments {sp sp' sp_mid : SurfPos}
     (h_ws : GStar SSWhite sp sp')
     (h_ssl : SSLComments sp' sp_mid) :
@@ -8694,20 +8701,24 @@ lemma preprocess_some_ssl_comments_landing (sc : ScannerState) (sp : SurfPos)
         (sc.needIndentCheck = false → s_prep.indents = sc.indents)) ∧
       GStar SSWhite sp_mid sp_ws ∧ GOpt SCNbCommentText sp_ws sp_prep ∧
       ScannerSurfCorr s_prep sp_prep ∧
-      (sp_prep = sp_ws ∨ s_prep.peek? = none) := by
+      (sp_prep = sp_ws ∨ s_prep.peek? = none) ∧
+      sp_mid.chars <:+ sp.chars := by
   obtain ⟨sp_mid, sp_ws, sp_p, h_disj, hws, hcmt, hcorr_p, h_pk, _⟩ :=
     preprocess_some_ssl_comments_anyCol sc sp s_prep c hcorr hok
-  refine ⟨sp_mid, sp_ws, sp_p, ?_, hws, hcmt, hcorr_p, h_pk⟩
-  cases h_disj with
-  | inl h =>
-    exact Or.inl ⟨SSLCommentsFrom_at_park hcorr h_trail h_gate h.1 h.2.2.1, h.2.1, h.2.2.2⟩
-  | inr h =>
-    by_cases hcol : sp.col = 0
-    · have hg : sp_gram = sp := gstar_sswhite_nil_of_col0 h_trail hcol
-      exact Or.inl ⟨by rw [h.1, hg]; exact sslComments_refl_of_col0 hcol,
-                    by rw [h.1]; exact hcol,
-                    fun hne _ => absurd hcol hne⟩
-    · exact Or.inr ⟨h.1, hcol, h.2.1, h.2.2.1⟩
+  refine ⟨sp_mid, sp_ws, sp_p, ?_, hws, hcmt, hcorr_p, h_pk, ?_⟩
+  · cases h_disj with
+    | inl h =>
+      exact Or.inl ⟨SSLCommentsFrom_at_park hcorr h_trail h_gate h.1 h.2.2.1, h.2.1, h.2.2.2⟩
+    | inr h =>
+      by_cases hcol : sp.col = 0
+      · have hg : sp_gram = sp := gstar_sswhite_nil_of_col0 h_trail hcol
+        exact Or.inl ⟨by rw [h.1, hg]; exact sslComments_refl_of_col0 hcol,
+                      by rw [h.1]; exact hcol,
+                      fun hne _ => absurd hcol hne⟩
+      · exact Or.inr ⟨h.1, hcol, h.2.1, h.2.2.1⟩
+  · cases h_disj with
+    | inl h => exact sslCommentsFrom_suffix h.1
+    | inr h => rw [h.1]
 
 /-- General-column `SSeparateLines 0` from preprocessing with content.
     Works at any starting column — uses nil `SSLComments` when no break consumed,
@@ -20015,7 +20026,7 @@ lemma tab_refutes_dispatch {sc s_prep s' : ScannerState} {sp sp_land sp_ind : Su
     {c : Char}
     (h_noflow : s_prep.inFlow = false)
     (h_corr : ScannerSurfCorr sc sp)
-    (h_ssl : SSLComments sp sp_land)
+    (hsuf_land : sp_land.chars <:+ sp.chars)
     (hcol0 : sp_land.col = 0)
     (hcorr_prep : ScannerSurfCorr s_prep sp_ind)
     (hws : GStar SSWhite sp_land sp_ind)
@@ -20028,7 +20039,7 @@ lemma tab_refutes_dispatch {sc s_prep s' : ScannerState} {sp sp_land sp_ind : Su
         else s_prep) c = .ok (some s')) : False := by
   have h_inp : s_prep.input = sc.input := preprocess_input h_preprocess
   have hsuf : sp_land.chars <:+ s_prep.input.toList := by
-    rw [h_inp]; exact (sslComments_suffix h_ssl).trans (corr_chars_suffix h_corr)
+    rw [h_inp]; exact hsuf_land.trans (corr_chars_suffix h_corr)
   obtain ⟨h_run, h_line⟩ := tabIndent_scans_of_located hcorr_prep hsuf hcol0 hws htab
   -- The allow-directives update writes neither the string nor the cursor.
   have h_fl : (if s_prep.allowDirectives then
@@ -24308,7 +24319,7 @@ lemma accum_block_on_noPending
   -- landing.  Only `preprocess_some_ssl_comments_col0` wanted the column, and
   -- the landing lemma supplies the same `SSLComments` without it.  What is left
   -- is the inline residue — the same one the other three lemmas defer.
-  obtain ⟨sp_mid, sp_ws, sp_sc, h_land, hws, hcmt, hcorr_sc, h_pk⟩ :=
+  obtain ⟨sp_mid, sp_ws, sp_sc, h_land, hws, hcmt, hcorr_sc, h_pk, hsuf_mid⟩ :=
     preprocess_some_ssl_comments_landing sc sp_block s_prep c h_corr h_preprocess (GStar.nil _)
       (fun _ => gate_sc h_corr (h_gate (sc_noflow_of_prep h_preprocess h_noflow)))
   have hsp_sc_eq := ScannerSurfCorr_unique hcorr_sc hcorr_prep
@@ -24337,7 +24348,7 @@ lemma accum_block_on_noPending
   -- Item 32: the tab disjunct is LOCATED, so it names a character inside the
   -- run the scanner walks backwards — and every indicator refuses it there.
   refine (gstar_white_sIndent_or_tab hws).elim (fun h_ind => ?_) (fun h_tab =>
-    (tab_refutes_dispatch h_noflow h_corr h_ssl_pre hcol_mid hcorr_prep hws h_tab
+    (tab_refutes_dispatch h_noflow h_corr (sslComments_suffix h_ssl_pre) hcol_mid hcorr_prep hws h_tab
       h_preprocess h_dispatch).elim)
   obtain ⟨k, h_ind⟩ := h_ind
   by_cases hc : c = '-'
@@ -24768,7 +24779,7 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
   -- the pending was parked at.  A mid-line park that crosses a break lands at
   -- the identical column-0 line start a column-0 park reaches directly, so
   -- both feed one body; what still defers is the inline residue alone.
-  obtain ⟨sp_mid, sp_ws, sp_sc, h_land, hws, hcmt, hcorr_sc, h_pk⟩ :=
+  obtain ⟨sp_mid, sp_ws, sp_sc, h_land, hws, hcmt, hcorr_sc, h_pk, hsuf_mid⟩ :=
     preprocess_some_ssl_comments_landing sc sp_scan s_prep c h_corr h_preprocess h_run h_gate
   have hsp_sc_eq := ScannerSurfCorr_unique hcorr_sc hcorr_prep
   subst hsp_sc_eq
@@ -25074,7 +25085,7 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
   subst h_eq
   -- Item 32: the tab is located in that run, and the scanner refused it.
   refine (gstar_white_sIndent_or_tab hws).elim (fun h_ind => ?_) (fun h_tab =>
-    (tab_refutes_dispatch h_noflow h_corr h_ssl hcol_mid hcorr_prep hws h_tab
+    (tab_refutes_dispatch h_noflow h_corr hsuf_mid hcol_mid hcorr_prep hws h_tab
       h_preprocess h_dispatch).elim)
   obtain ⟨k, h_ind⟩ := h_ind
   -- ═══ Item 173: the landing's RESUME face — the closed park's still-open
@@ -26366,7 +26377,7 @@ lemma accum_block_on_pendingBlockContent
     -- Item 19: gate on the landing, not on the park — a sibling entry reached
     -- across a break (`- a⏎- b`) snocs through the SAME `h_entry_old` route a
     -- column-0 park uses.
-    obtain ⟨sp_mid, sp_ws, sp_sc, h_land, hws, hcmt, hcorr_sc, h_pk⟩ :=
+    obtain ⟨sp_mid, sp_ws, sp_sc, h_land, hws, hcmt, hcorr_sc, h_pk, hsuf_mid⟩ :=
       preprocess_some_ssl_comments_landing sc sp_scan s_prep c h_corr h_preprocess
     have hsp_sc_eq := ScannerSurfCorr_unique hcorr_sc hcorr_prep
     subst hsp_sc_eq
@@ -26387,7 +26398,7 @@ lemma accum_block_on_pendingBlockContent
     subst h_eq
     -- Item 32: the tab is located in that run, and the scanner refused it.
     refine (gstar_white_sIndent_or_tab hws).elim (fun h_ind => ?_) (fun h_tab =>
-      (tab_refutes_dispatch h_noflow h_corr h_ssl hcol_mid hcorr_prep hws h_tab
+      (tab_refutes_dispatch h_noflow h_corr hsuf_mid hcol_mid hcorr_prep hws h_tab
         h_preprocess h_dispatch).elim)
     obtain ⟨k, h_ind⟩ := h_ind
     by_cases hc : c = '-'
@@ -26846,7 +26857,7 @@ lemma accum_block_on_pendingBlock
   -- Item 19: gate on the landing, not on the park — the entry a bare `-`
   -- opened is empty either way (`-⏎- b` as much as a column-0 park), and the
   -- snoc route is the same.
-  obtain ⟨sp_mid, sp_ws, sp_sc, h_land, hws, hcmt, hcorr_sc, h_pk⟩ :=
+  obtain ⟨sp_mid, sp_ws, sp_sc, h_land, hws, hcmt, hcorr_sc, h_pk, hsuf_mid⟩ :=
     preprocess_some_ssl_comments_landing sc sp_scan s_prep c h_corr h_preprocess
   have hsp_sc_eq := ScannerSurfCorr_unique hcorr_sc hcorr_prep
   subst hsp_sc_eq
@@ -26868,7 +26879,7 @@ lemma accum_block_on_pendingBlock
       (landing_or_park_ska h_noflow h_larm (Or.inl h_sk) h_preprocess)
   -- Item 32: the tab is located in that run, and the scanner refused it.
   refine (gstar_white_sIndent_or_tab hws).elim (fun h_ind => ?_) (fun h_tab =>
-    (tab_refutes_dispatch h_noflow h_corr h_ssl hcol_mid hcorr_prep hws h_tab
+    (tab_refutes_dispatch h_noflow h_corr hsuf_mid hcol_mid hcorr_prep hws h_tab
       h_preprocess h_dispatch).elim)
   obtain ⟨k, h_ind⟩ := h_ind
   by_cases hc : c = '-'
