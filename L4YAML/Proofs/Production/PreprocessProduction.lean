@@ -1773,6 +1773,73 @@ lemma collectTagHandleLoop_peekBack (fuel : Nat) :
       · exact ⟨⟨sp, hcorr⟩, Or.inl rfl⟩
     · exact ⟨⟨sp, hcorr⟩, Or.inl rfl⟩
 
+
+/-- A tag park's last consumed character is `!`, `<`, `>` or a tag/URI/word
+    character: never white, break or BOM. -/
+lemma scanTag_peekBack {sc : ScannerState} {sp : SurfPos}
+    (hcorr : ScannerSurfCorr sc sp) (hpeek : sc.peek? = some '!')
+    {s' : ScannerState} (hok : scanTag sc = .ok s') :
+    ∃ c, s'.peekBack? = some c ∧
+      (isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF') = false := by
+  have hpb_bang := advance_peekBack_of_peek hcorr hpeek (by decide) (by decide)
+  obtain ⟨sp1, hcorr1⟩ := L4YAML.Proofs.ScalarCoupling.advance_corr sc sp hcorr
+  unfold scanTag at hok; dsimp only [] at hok
+  split at hok
+  · -- `!<uri>`
+    have hpk : sc.advance.peek? = some '<' := by assumption
+    have hpb_lt := advance_peekBack_of_peek hcorr1 hpk (by decide) (by decide)
+    obtain ⟨sp2, hcorr2⟩ := L4YAML.Proofs.ScalarCoupling.advance_corr _ _ hcorr1
+    have hloop := collectVerbatimTagLoop_peekBack
+      (sc.currentPos.offset + sc.advance.inputEnd - sc.advance.advance.offset)
+      sc.advance.advance sp2 "" hcorr2
+    unfold scanVerbatimTag at hok; dsimp only [] at hok
+    split at hok
+    · simp [bind, Except.bind] at hok
+    · split at hok
+      · simp [bind, Except.bind] at hok
+      · simp only [bind, Except.bind, pure, Except.pure, Except.ok.injEq] at hok
+        subst hok
+        rcases hloop with heq | ⟨c, hpb, hflag⟩
+        · exact ⟨'<', by
+            show (collectVerbatimTagLoop sc.advance.advance "" _).2.2.peekBack? = some '<'
+            rw [heq]; exact hpb_lt, by decide⟩
+        · exact ⟨c, hpb, hflag⟩
+  · -- `!!suffix`
+    have hpk : sc.advance.peek? = some '!' := by assumption
+    have hpb_bang2 := advance_peekBack_of_peek hcorr1 hpk (by decide) (by decide)
+    obtain ⟨sp2, hcorr2⟩ := L4YAML.Proofs.ScalarCoupling.advance_corr _ _ hcorr1
+    have hloop := collectTagSuffixLoop_peekBack
+      (sc.currentPos.offset + sc.advance.inputEnd - sc.advance.advance.offset)
+      sc.advance.advance sp2 "" hcorr2
+    have h := Except.ok.inj hok; subst h
+    unfold scanSecondaryTag; dsimp only []
+    rcases hloop with heq | ⟨c, hpb, hflag⟩
+    · exact ⟨'!', by
+        show (collectTagSuffixLoop sc.advance.advance "" _).snd.peekBack? = some '!'
+        rw [heq]; exact hpb_bang2, by decide⟩
+    · exact ⟨c, hpb, hflag⟩
+  · -- `!suffix` / `!handle!suffix`
+    have h := Except.ok.inj hok; subst h
+    unfold scanNamedTag; dsimp only []
+    obtain ⟨⟨sph, hcorrh⟩, hh⟩ := collectTagHandleLoop_peekBack _ sc.advance sp1 "" hcorr1
+    rcases hl : collectTagHandleLoop sc.advance "" (sc.inputEnd - sc.advance.offset)
+      with ⟨chars, fb, sh⟩
+    rw [hl] at hh hcorrh
+    dsimp only [] at hh hcorrh ⊢
+    cases fb
+    · simp only [Bool.false_eq_true, ↓reduceIte]
+      rcases hh with heq | ⟨c, hpb, hflag⟩
+      · exact ⟨'!', by rw [heq]; exact hpb_bang, by decide⟩
+      · exact ⟨c, hpb, hflag⟩
+    · simp only [↓reduceIte]
+      have hloop := collectTagSuffixLoop_peekBack (sc.inputEnd - sh.offset) sh sph "" hcorrh
+      rcases hloop with heq | ⟨c, hpb, hflag⟩
+      · rw [heq]
+        rcases hh with heq' | ⟨c, hpb, hflag⟩
+        · exact ⟨'!', by rw [heq']; exact hpb_bang, by decide⟩
+        · exact ⟨c, hpb, hflag⟩
+      · exact ⟨c, hpb, hflag⟩
+
 end L4YAML.Proofs.PreprocessProduction
 
 end Blanket
