@@ -36976,24 +36976,15 @@ lemma accum_content_pending (sc : ScannerState)
                     (fun h_fld' => folded_blockNode h_sep_run
                       (GOpt.some _ _ (GSeq.mk _ _ _ h_run.toPropertiesBlockIn h_sep2))
                       h_fld')
-                have h_nodeAtG : ∀ sp_m : SurfPos, SSLComments sp_ne sp_m →
-                    SBlockNode (k + 1) .blockIn sp_node sp_m := fun sp_m h_ssl =>
-                  (h_absorb95k sp_m h_ssl).elim
-                    (fun h_lit' => literal_blockNode h_sep_run
-                      (GOpt.some _ _ (GSeq.mk _ _ _ h_run.toPropertiesBlockIn h_sep2))
-                      h_lit')
-                    (fun h_fld' => folded_blockNode h_sep_run
-                      (GOpt.some _ _ (GSeq.mk _ _ _ h_run.toPropertiesBlockIn h_sep2))
-                      h_fld')
                 cases h_routeE_k with
                 | inl routeE =>
                   exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
                          BlockStack.nil sp_block, FlowStackB.nil sp_block .sep,
-                         PendingNode.pendingBlockContent (h_run := ‹_›) (h_gate := ‹_›) (h_live := live_of_dispatch h_dispatch hamp hbang (by rw [allowDirectives_update_simpleKey, h_inherit]; exact h_possP) hcorr_result) sp_start sp_block sp_scan' _ k
+                         PendingNode.pendingBlockContent (h_run := GStar.nil _) (h_gate := fun _ hcol h => (scanBlockScalar_park (dispatchContent_blockScalar_scan _ sp_prep (corr_of_allowDirectives_update hcorr_prep) (by split <;> exact (preprocess_some_peek h_preprocess : s_prep.peek? = some _)) hbs h_dispatch)).elim (fun h0 => hcol h0) (fun hne => hne h.2)) (h_live := live_of_dispatch h_dispatch hamp hbang (by rw [allowDirectives_update_simpleKey, h_inherit]; exact h_possP) hcorr_result) sp_start sp_block sp_scan' _ k
                            h_line
-                           (fun h_nd sp_mid h_ssl => h_route (h_nd_rel h_nd) sp_mid (h_nodeAtG sp_mid h_ssl))
+                           (fun h_nd sp_mid h_ssl => h_route (h_nd_rel h_nd) sp_mid (h_nodeAt sp_mid h_ssl))
                            (fun sp_mid h_ssl sp_end h_tail =>
-                             routeE sp_mid (h_nodeAtG sp_mid h_ssl) sp_end h_tail)
+                             routeE sp_mid (h_nodeAt sp_mid h_ssl) sp_end h_tail)
                            (fun h_poss _ => absurd h_poss
                              (by rw [dispatchContent_blockScalar_simpleKey_false hbs h_dispatch]
                                  simp))
