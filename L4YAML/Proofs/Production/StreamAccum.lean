@@ -9241,7 +9241,7 @@ lemma eof_pending (sc : ScannerState)
     (h_noflow : sc.inFlow = false)
     (h_preprocess : scanNextToken_preprocess sc = .ok none) :
     ∃ sp_final, SLYamlStream sp_start sp_final ∧ sp_final.chars = [] := by
-  obtain ⟨sp_final, h_ssl, h_empty⟩ :=
+  obtain ⟨sp_final, h_from, h_empty, h_ok⟩ :=
     preprocess_none_ssl_comments sc sp_scan h_corr h_preprocess
   exact ⟨sp_final,
     h_pending.close_with_sslFrom h_stream_block (dangling_none_of_eof h_dn)
@@ -28136,7 +28136,7 @@ lemma accum_block_pending (sc : ScannerState)
         (h_closeFV108.imp (fun ⟨nv, ks, h_le, _, fV⟩ => ⟨nmv, nv, ks, h_le, fV⟩) id)
         -- Item 208: a value park is never at column 0, so the premise is refuted.
         (nic0_of_col_pos h_col0_mv) (GStar.nil _) (fun _ _ => (h_nextM (sc_noflow_of_prep h_preprocess h_noflow)).gate)
-  | pendingBlockContent _ _ _ _ n_old h_line h_closableBC h_entry_old h_key_old h_stale47 h_arm77 h_kslot92 h_closeF99 _ h_tail139 h_seqF167 h_kslotUp190 h_closeFV198 h_nic0B h_runBC h_gateBC _ =>
+  | pendingBlockContent _ _ _ _ n_old h_line h_closableBC h_entry_old h_key_old h_stale47 h_arm77 h_kslot92 h_closeF99 _ h_tail139 h_seqF167 h_kslotUp190 h_closeFV198 h_nic0B h_runBC h_gateBC h_live290 =>
     -- Item 22: the pending's own entry index rides through; the `n ≠ 0`
     -- deferral this arm used to open is gone with it.
     -- Item 37: and what is left of the escape is `[154]`'s `:`.
