@@ -33542,7 +33542,7 @@ lemma accum_content_on_pendingBlock_indented
       KeyFrames (ExplValueLine sp_start nv) ks sp_end) ∨ PackAlt sc)
     -- Item 284: what the token behind this landing pays a property run's
     -- slot face with (`SlotGateAt`).
-    (h_gate : sc.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#'))
+    (h_gatePark : sc.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#'))
     (h_src : SlotGateAt s_prep) :
     ∃ sp_gram' sp_block' sp_flow' sp_scan',
       SLYamlStream sp_start sp_gram' ∧
@@ -33581,7 +33581,7 @@ lemma accum_content_on_pendingBlock_indented
                    (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gram sp_final
                      h_sep_all (h_flow_all (n + 1))
                      h_ssl)))
-             (entryKeyPack_of_dispatch (h_gate := h_gate) (h_alt := trivial) sc sp_start sp_scan n s_prep s' c sp_prep sp_scan'
+             (entryKeyPack_of_dispatch (h_gate := h_gatePark) (h_alt := trivial) sc sp_start sp_scan n s_prep s' c sp_prep sp_scan'
                (fun sp h_bn => h_close_old sp (SBlockIndented.node n .blockIn sp_scan sp h_bn))
                -- Item 106: the same field on the LANDED face — the key's
                -- mapping is nested in the `-` entry's content instead of
@@ -33774,11 +33774,11 @@ lemma accum_content_on_pendingBlock_indented
              h_sep_all (h_run_all (n + 1)) h_nic_s h_real_s h_anchor_s h_tag_s
              (fun _ sp_m h_bn => h_close_old sp_m
                (SBlockIndented.node n .blockIn sp_scan sp_m h_bn))
-             (entryPropsKeyPack_of_dispatch (h_gate := h_gate) (h_alt := trivial) sc sp_start sp_scan n s_prep s' c
+             (entryPropsKeyPack_of_dispatch (h_gate := h_gatePark) (h_alt := trivial) sc sp_start sp_scan n s_prep s' c
                sp_prep sp_scan'
                (fun sp_m h_bn => h_close_old sp_m
                  (SBlockIndented.node n .blockIn sp_scan sp_m h_bn))
-               -- Item 106: the LANDED twin, as at the `entryKeyPack_of_dispatch (h_gate := h_gate)`
+               -- Item 106: the LANDED twin, as at the `entryKeyPack_of_dispatch (h_gate := h_gatePark)`
                -- site above (`? -⏎    &p a: 1⏎: - w`).
                (match h_kslot_old with
                 | Or.inl ⟨nv, kslot⟩ => Or.inl ⟨[nv], frameChainOne (a := nv)
@@ -33789,7 +33789,7 @@ lemma accum_content_on_pendingBlock_indented
                 | Or.inr h => Or.inr h)
                -- Item 94: the entry's own value-line pack (item 92's field)
                -- serves the frame face, `nil` sequence tail — as at the
-               -- `entryKeyPack_of_dispatch (h_gate := h_gate)` site above (`? - &p a: 1⏎: - w`).
+               -- `entryKeyPack_of_dispatch (h_gate := h_gatePark)` site above (`? - &p a: 1⏎: - w`).
                (Or.inl ⟨h_close_old, h_col_old,
                  match h_kslot_old with
                  | Or.inl ⟨nv, kslot⟩ => Or.inl ⟨[nv], frameChainOne (a := nv)
@@ -33798,7 +33798,7 @@ lemma accum_content_on_pendingBlock_indented
                          sp_i sp_c h_iv h_lit sp_v h_sbi)⟩
                  | Or.inr h => Or.inr h⟩)
                -- Item 115: items 99/108's faces, as at the
-               -- `entryKeyPack_of_dispatch (h_gate := h_gate)` site above — the run-headed key's
+               -- `entryKeyPack_of_dispatch (h_gate := h_gatePark)` site above — the run-headed key's
                -- mapping (or the empty entry) closes this entry, the nil tail
                -- closes the sequence, and the levels below ride through
                -- (`k:⏎  -⏎&p b: 2` pops).
@@ -34037,7 +34037,7 @@ lemma accum_content_on_pendingBlock_indented
                    (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gramf sp_final
                      h_sep_all h_node_f
                      h_ssl)))
-             (entryKeyPack_of_dispatch (h_gate := h_gate) (h_alt := trivial) sc sp_start sp_scan n s_prep s' c sp_prep sp_scan'
+             (entryKeyPack_of_dispatch (h_gate := h_gatePark) (h_alt := trivial) sc sp_start sp_scan n s_prep s' c sp_prep sp_scan'
                (fun sp h_bn => h_close_old sp (SBlockIndented.node n .blockIn sp_scan sp h_bn))
                -- Item 106: the same field on the LANDED face — the key's
                -- mapping is nested in the `-` entry's content instead of
@@ -34419,7 +34419,7 @@ lemma accum_content_on_pendingMapValue_indented
       ResumeFrames (SeqEntryTail sp_start ke) ks sp_e) ∨ True)
     -- Item 284: what the token behind this landing pays a property run's
     -- slot face with (`SlotGateAt`).
-    (h_gate : sc.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#'))
+    (h_gatePark : sc.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#'))
     (h_src : SlotGateAt s_prep) :
     ∃ sp_gram' sp_block' sp_flow' sp_scan',
       SLYamlStream sp_start sp_gram' ∧
@@ -34497,18 +34497,18 @@ lemma accum_content_on_pendingMapValue_indented
     -- a property of this ARM: at an indented pending a landing can be a DEDENT
     -- (`  : v⏎a: 1` ends the enclosing entry instead of nesting inside its
     -- value), and there the datum is false.  Item 40: it is false at the
-    -- dedent, not at the arm — `entryKeyPack_of_dispatch (h_gate := h_gate)` decides `n ≤ w` from
+    -- dedent, not at the arm — `entryKeyPack_of_dispatch (h_gate := h_gatePark)` decides `n ≤ w` from
     -- the two numbers it already holds, so `  :⏎    a: 1` composes and only the
     -- dedent ~~takes the deferral~~ takes the pack's dedent branch (Reflection
     -- 666; served there since items 99, 296 and 297).
     exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
            BlockStack.nil sp_block, FlowStackB.nil sp_block .sep,
-           PendingNode.pendingContent (sp_gram := sp_gram) (h_run := h_trailing_ws) (h_gate := h_gate) (h_live := live_of_dispatch h_dispatch hna hnt (by rw [allowDirectives_update_simpleKey]; exact (preprocess_saved_key_fresh h_ska (noflow_of_noflow_disp h_flow_disp) h_preprocess).1) hcorr_result) sp_start sp_block sp_scan' h_line
+           PendingNode.pendingContent (sp_gram := sp_gram) (h_run := h_trailing_ws) (h_gate := h_gatePark) (h_live := live_of_dispatch h_dispatch hna hnt (by rw [allowDirectives_update_simpleKey]; exact (preprocess_saved_key_fresh h_ska (noflow_of_noflow_disp h_flow_disp) h_preprocess).1) hcorr_result) sp_start sp_block sp_scan' h_line
              (fun _ _ sp_final h_ssl =>
                h_close_old sp_final
                  (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gram sp_final
                    h_sep_all (h_flow_all (n + 1)) h_ssl))
-             (entryKeyPack_of_dispatch (h_gate := h_gate) (h_alt := trivial) sc sp_start sp_scan n s_prep s' c sp_prep sp_scan'
+             (entryKeyPack_of_dispatch (h_gate := h_gatePark) (h_alt := trivial) sc sp_start sp_scan n s_prep s' c sp_prep sp_scan'
                h_close_old (explFrameValueLine h_expl h_kslot)
                h_compact_vslot h_ivl_pack
                -- Item 99: the frames feed the pack's resume twin — level `n`
@@ -34648,11 +34648,11 @@ lemma accum_content_on_pendingMapValue_indented
            PendingNode.pendingProps (h_poss := by rw [h_sk_s, allowDirectives_update_simpleKey]; exact (preprocess_saved_key_fresh h_ska (noflow_of_noflow_disp h_flow_disp) h_preprocess).1) (h_slot := h_slot_s) sp_start sp_block sp_scan' ha ht sp_scan sp_prep (n + 1)
              h_sep_all (h_run_all (n + 1)) h_nic_s h_real_s h_anchor_s h_tag_s
              (fun _ => h_close_old)
-             (entryPropsKeyPack_of_dispatch (h_gate := h_gate) (h_alt := trivial) sc sp_start sp_scan n s_prep s' c
+             (entryPropsKeyPack_of_dispatch (h_gate := h_gatePark) (h_alt := trivial) sc sp_start sp_scan n s_prep s' c
                sp_prep sp_scan' h_close_old (explFrameValueLine h_expl h_kslot)
                h_compact_vslot
                -- Item 115: the park's own frames — level `n` rides on top for
-               -- the transport face, as at the `entryKeyPack_of_dispatch (h_gate := h_gate)`
+               -- the transport face, as at the `entryKeyPack_of_dispatch (h_gate := h_gatePark)`
                -- arms beside this one, so `k:⏎  a:⏎&p b: 2` pops and
                -- `k:⏎  a:⏎    &p b: c⏎    d: e⏎  f: 2` resumes then pops.
                (match h_closeF99 with
@@ -34812,7 +34812,7 @@ lemma accum_content_on_pendingMapValue_indented
                h_close_old sp_final
                  (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gramf sp_final
                    h_sep_all h_node_f h_ssl))
-             (entryKeyPack_of_dispatch (h_gate := h_gate) (h_alt := trivial) sc sp_start sp_scan n s_prep s' c sp_prep sp_scan'
+             (entryKeyPack_of_dispatch (h_gate := h_gatePark) (h_alt := trivial) sc sp_start sp_scan n s_prep s' c sp_prep sp_scan'
                h_close_old (explFrameValueLine h_expl h_kslot)
                h_compact_vslot h_ivl_pack
                -- Item 99: the frames feed the pack's resume twin — level `n`
@@ -37117,7 +37117,7 @@ lemma accum_content_pending (sc : ScannerState)
     -- index, the root's extra readings (the props run, the block scalar) have
     -- been its cases since items 24/26, and the root entry is the `n = 0`
     -- instance — faces included.
-    exact accum_content_on_pendingBlock_indented (h_gate := (h_nextB (noflow_of_fl0 h_fl0)).gate) (h_src := slotGateAt_of_offerPred h_offer_b h_base h_preprocess) sc sp_start sp_block sp_scan n_old
+    exact accum_content_on_pendingBlock_indented (h_gatePark := (h_nextB (noflow_of_fl0 h_fl0)).gate) (h_src := slotGateAt_of_offerPred h_offer_b h_base h_preprocess) sc sp_start sp_block sp_scan n_old
       s_prep s' c sp_prep sp_scan' h_stream_block h_close_old h_close_entry_old h_kslot92
       h_closeF99 h_seqF167 h_floor_old h_col_old h_sk_old
       hcorr_prep hcorr_result h_corr h_preprocess h_not_doc h_flow_disp h_dispatch
@@ -37130,7 +37130,7 @@ lemma accum_content_pending (sc : ScannerState)
     -- Item 179 retired the 0/nonzero split, as at the `pendingBlock` arm
     -- above: the mapping twin answers at every index and the root entry is
     -- the `n = 0` instance.
-    exact accum_content_on_pendingMapValue_indented (h_gate := (h_nextMV (noflow_of_fl0 h_fl0)).gate) (h_src := slotGateAt_of_offerPred h_offer_mv h_base h_preprocess) sc sp_start sp_block sp_scan n_old
+    exact accum_content_on_pendingMapValue_indented (h_gatePark := (h_nextMV (noflow_of_fl0 h_fl0)).gate) (h_src := slotGateAt_of_offerPred h_offer_mv h_base h_preprocess) sc sp_start sp_block sp_scan n_old
       s_prep s' c sp_prep sp_scan' h_stream_block h_close_old h_floor_old h_col0_old
       -- Item 209: the content lane reads the SLOT and not the top beside it,
       -- so the top is projected away here rather than restated downstream — a
@@ -38561,7 +38561,8 @@ lemma scan_content_gives_stream_v2
           rw [currentIndent_of_indents_eq
             (ScannerLoopInvariant.advance_indents _)]
           exact h_emit
-        · exact h_emit))
+        · exact h_emit)
+      (fun _ hne => absurd h_col hne))
     (fun hb => Bool.noConfusion hb) h_corr
     (fun hge => absurd hge (by
       -- the seed scanner is at flow level 0, so the flow-interior conjunct is vacuous
