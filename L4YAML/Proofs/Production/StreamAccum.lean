@@ -1527,7 +1527,7 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       content, or col ≠ 0).  The guard's two
       hypotheses are decidable on `sc`, so the same-line `:` consumer fires
       the field by classical case split alone. -/
-  | pendingContent (sp_start sp_block sp_scan : SurfPos)
+  | pendingContent (sp_start sp_block sp_scan sp_gram : SurfPos)
       (h_line : sp_scan.col = 0 ∨ LineNodeStop sp_scan.chars)
       -- **Item 275: §8.1's silence, beside §9.2's.**  The close's own floor
       -- reading, carried where the dangling reading already sits.  Item 274
@@ -1540,7 +1540,7 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       -- line after the check `h_nd` already comes from.
       (h_closable : danglingNodePos? sc = none →
         underIndentedFlowValuePos? sc = none → ∀ sp_mid,
-        SSLComments sp_scan sp_mid →
+        SSLComments sp_gram sp_mid →
         SLYamlStream sp_start sp_mid)
       (h_key : sc.simpleKey.possible = true → sc.simpleKey.pos.line = sc.line →
         ImplicitKeyPack sc sp_start sp_scan ∨ KeyPackPunt sc)
@@ -1694,6 +1694,13 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
         ∀ sp_mid : SurfPos, SSLComments sp_scan sp_mid →
         ∀ sp_e : SurfPos, SCompactMapTail kk sp_mid sp_e →
         ResumeFrames (SeqEntryTail sp_start ke) ks sp_e) ∨ True)
+      -- `[66]` narrowed to col 0: the park's grammar endpoint `sp_gram` is where
+      -- the content ends; the swallowed trailing whites `h_run` are the
+      -- following separator's `[66].whites`, and `h_gate` is the scanner's
+      -- own comment gate at the park (an empty run off a line start never
+      -- parks before `#`), which refutes the separator-less comment shape.
+      (h_run : GStar SSWhite sp_gram sp_scan)
+      (h_gate : sp_gram = sp_scan → sc.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#'))
       -- **Item 293 — an inline `:` finds a LIVE key** (LAST, so the patterns
       -- naming the older fields still bind them): `h_stale`'s twin, under the
       -- same residue.  A content scan keeps the dispatch state's saved key,
@@ -2855,7 +2862,7 @@ lemma PendingNode.arm_tight_or_col {sc : ScannerState}
   | pendingBlock => exact Or.inr (by omega)
   | pendingMapValue => exact Or.inr (by assumption)
   -- Item 80: the two content parks state the tight arm outright…
-  | pendingContent _ _ _ _ _ _ _ _ h_arm => exact h_arm
+  | pendingContent _ _ _ _ _ _ _ _ _ h_arm => exact h_arm
   | pendingBlockContent _ _ _ _ _ _ _ _ _ h_arm => exact h_arm
   -- Item 222: …and so does the escape…
   | pendingFlow _ _ _ _ h_arm _ _ => exact h_arm
@@ -6153,8 +6160,8 @@ lemma PendingNode.close_with_ssl {sc : ScannerState}
   cases h_pending with
   | noPending =>
     exact ssl_comments_extend_stream sp_start sp_block sp_mid h_stream h_ssl
-  | pendingContent _ _ _ _ h_closable _ _ _ _ =>
-    exact h_closable h_nd h_ui sp_mid h_ssl
+  | pendingContent _ _ _ _ _ h_closable _ _ _ _ _ _ _ _ _ _ h_run _ =>
+    exact h_closable h_nd h_ui sp_mid (white_prepend_SSLComments h_run h_ssl)
   | pendingProps _ _ _ ha ht sp_node sp_p n h_sep h_run h_nic h_real h_anchor h_tag h_route =>
     -- Item 165: the run's route takes §9.2's verdict, and this consumer is
     -- handed one by its own caller.
@@ -12819,7 +12826,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                (Or.inr (inFlow_of_flowLevel_eq h_fl1))
                (nodoc_of_flowLevel_succ h_fl1) (noek_of_flowLevel_succ h_fl1)
                (ntop_of_flowLevel_succ h_fl1), hcorr_open, fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol, h_real, h_ad⟩⟩
-  | pendingContent _ _ _ h_line _ _ _ _ _ h_frS176 h_frV201 _ h_tail143 =>
+  | pendingContent _ _ _ _ h_line _ _ _ _ _ h_frS176 h_frV201 _ h_tail143 =>
     -- Item 37: §7.5's set weakens to item 10's here, exactly as `[204]`'s does.
     -- Item 143: …and this park's producer finished a node, so it PAYS §9.2's
     -- tail reading (`"x"⏎[1, 2]`, `a⏎# c⏎[1, 2]`).
@@ -27120,7 +27127,7 @@ lemma accum_block_pending (sc : ScannerState)
       (Or.inr trivial) (Or.inr trivial) (Or.inr (PackAlt.ofRefused h_noekS)) (Or.inr (PackAlt.ofRefused h_noekS))
       -- Item 208: item 207's field.
       h_nic0S
-  | pendingContent _ _ _ h_line _ h_key h_stale47 h_vpack51 h_arm77 h_framesS109
+  | pendingContent _ _ _ _ h_line _ h_key h_stale47 h_vpack51 h_arm77 h_framesS109
       h_framesV108 _ h_tail139 h_nic0C h_seqF168 h_live290 =>
     -- Item 15: the same-line `:` may fire the implicit-key coupling.
     -- Item 37: what the caller still owes is the `:` alone.
@@ -28221,7 +28228,8 @@ lemma dispatchContent_doubleQuoted_key_prod (sc : ScannerState) (sp : SurfPos)
     (hok : scanNextToken_dispatchContent sc '"' = .ok s') :
     s'.simpleKey.pos = sc.simpleKey.pos ∧
     (s'.line = sc.line →
-      ∃ sp', SCDoubleQuoted 0 .blockKey sp sp' ∧ ScannerSurfCorr s' sp') := by
+      ∃ sp', SCDoubleQuoted 0 .blockKey sp sp' ∧ s'.peekBack? = some '"' ∧
+        ScannerSurfCorr s' sp') := by
   unfold scanNextToken_dispatchContent at hok
   simp only [bind, Except.bind, pure, Except.pure] at hok
   split at hok
@@ -28242,11 +28250,13 @@ lemma dispatchContent_doubleQuoted_key_prod (sc : ScannerState) (sp : SurfPos)
               have hl : s_dq.line = sc.line := by rw [← h_line]; split <;> rfl
               obtain ⟨sp', h_gram, hcorr'⟩ :=
                 ScalarProduction.scanDoubleQuoted_to_blockKey_oneLine sc sp hcorr hpeek hl hdq
-              exact ⟨sp', h_gram, by
+              obtain ⟨_, _, h_pb, _⟩ := scanDoubleQuoted_prod sc sp hcorr hpeek hdq
+              refine ⟨sp', h_gram, ?_, by
                 split
                 · exact ⟨hcorr'.chars_from, hcorr'.col_eq,
                          hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩
                 · exact hcorr'⟩
+              split <;> first | exact h_pb | simpa [ScannerState.peekBack?] using h_pb
           · rename_i h_neq; exact absurd rfl h_neq
 
 lemma dispatchContent_singleQuoted_key_prod (sc : ScannerState) (sp : SurfPos)
@@ -28256,7 +28266,8 @@ lemma dispatchContent_singleQuoted_key_prod (sc : ScannerState) (sp : SurfPos)
     (hok : scanNextToken_dispatchContent sc '\'' = .ok s') :
     s'.simpleKey.pos = sc.simpleKey.pos ∧
     (s'.line = sc.line →
-      ∃ sp', SCSingleQuoted 0 .blockKey sp sp' ∧ ScannerSurfCorr s' sp') := by
+      ∃ sp', SCSingleQuoted 0 .blockKey sp sp' ∧ s'.peekBack? = some '\'' ∧
+        ScannerSurfCorr s' sp') := by
   unfold scanNextToken_dispatchContent at hok
   simp only [bind, Except.bind, pure, Except.pure] at hok
   split at hok
@@ -28279,11 +28290,13 @@ lemma dispatchContent_singleQuoted_key_prod (sc : ScannerState) (sp : SurfPos)
                 have hl : s_sq.line = sc.line := by rw [← h_line]; split <;> rfl
                 obtain ⟨sp', h_gram, hcorr'⟩ :=
                   ScalarProduction.scanSingleQuoted_to_blockKey_oneLine sc sp hcorr hpeek hl hsq
-                exact ⟨sp', h_gram, by
+                obtain ⟨_, _, h_pb, _⟩ := scanSingleQuoted_prod sc sp hcorr hpeek hsq
+                refine ⟨sp', h_gram, ?_, by
                   split
                   · exact ⟨hcorr'.chars_from, hcorr'.col_eq,
                            hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩
                   · exact hcorr'⟩
+                split <;> first | exact h_pb | simpa [ScannerState.peekBack?] using h_pb
             · rename_i h_neq; exact absurd rfl h_neq
 
 -- Content dispatch for alias: returns `SFlowNode n ctx` grammar evidence in ANY
@@ -28631,6 +28644,7 @@ lemma dispatchContent_plainScalar_content_prod (sc : ScannerState) (sp : SurfPos
     (hok : scanNextToken_dispatchContent sc c = .ok s') :
     ∃ sp_gram sp', SFlowContent 0 .flowOut sp sp_gram ∧
                    GStar SSWhite sp_gram sp' ∧
+                   (sp_gram = sp' → s'.peek? ≠ some '#') ∧
                    ScannerSurfCorr s' sp' := by
   unfold scanNextToken_dispatchContent at hok
   simp only [bind, Except.bind, pure, Except.pure] at hok
@@ -28651,12 +28665,12 @@ lemma dispatchContent_plainScalar_content_prod (sc : ScannerState) (sp : SurfPos
           · split at hok
             · rename_i h_eq; exact absurd (beq_iff_eq.mp h_eq) hnotSQ
             · split at hok
-              · obtain ⟨g, p, h, hw, -, hc⟩ :=
+              · obtain ⟨g, p, h, hw, hh, hc⟩ :=
                   ScalarProduction.scanPlainScalar_to_flowContent sc sp hcorr hpeek
                     (by assumption)
                     h_not_doc
                     (by assumption)
-                exact ⟨g, p, h, hw, hc⟩
+                exact ⟨g, p, h, hw, hh, hc⟩
               · simp at hok
 
 -- The BLOCK-KEY twin (item 15): the same ladder, ending at the ONE-LINE
@@ -28677,6 +28691,7 @@ lemma dispatchContent_plainScalar_key_prod (sc : ScannerState) (sp : SurfPos)
     (s'.line = sc.line →
       ∃ sp_gram sp', SNsPlainOneLine .blockKey sp sp_gram ∧
                      GStar SSWhite sp_gram sp' ∧
+                     (sp_gram = sp' → s'.peek? ≠ some '#') ∧
                      ScannerSurfCorr s' sp') := by
   unfold scanNextToken_dispatchContent at hok
   simp only [bind, Except.bind, pure, Except.pure] at hok
@@ -28699,10 +28714,10 @@ lemma dispatchContent_plainScalar_key_prod (sc : ScannerState) (sp : SurfPos)
             · split at hok
               · refine ⟨ScannerCorrectness.scanPlainScalar_preserves_simpleKey sc s' hok,
                         fun h_line => ?_⟩
-                obtain ⟨g, p, h, hw, -, hc⟩ :=
+                obtain ⟨g, p, h, hw, hh, hc⟩ :=
                   ScalarProduction.scanPlainScalar_to_blockKey_oneLine sc sp hcorr hpeek
                     (by assumption) h_not_doc h_flow h_line hok
-                exact ⟨g, p, h, hw, hc⟩
+                exact ⟨g, p, h, hw, hh, hc⟩
               · simp at hok
 
 -- The `.flowIn` twin (β.3).  Same walk down `scanNextToken_dispatchContent`;
@@ -29015,22 +29030,26 @@ lemma dispatchContent_evidence_content_oneLine (sc : ScannerState) (sp : SurfPos
     ∃ sp_gram sp',
       (∀ n : Nat, SFlowContent n .flowOut sp sp_gram) ∧
       GStar SSWhite sp_gram sp' ∧
+      (sp_gram = sp' → s'.col ≠ 0 → ¬ (CommentOk s' ∧ s'.peek? = some '#')) ∧
       ScannerSurfCorr s' sp' := by
   by_cases hc_dq : c = '"'
   · subst hc_dq
     obtain ⟨_, h_cond⟩ := dispatchContent_doubleQuoted_key_prod sc sp hcorr hpeek hok
-    obtain ⟨sp', h_dq, hcorr'⟩ := h_cond h_line
-    exact ⟨sp', sp', fun n => SFlowContent_doubleQ_of_key n h_dq, GStar.nil _, hcorr'⟩
+    obtain ⟨sp', h_dq, h_pb, hcorr'⟩ := h_cond h_line
+    exact ⟨sp', sp', fun n => SFlowContent_doubleQ_of_key n h_dq, GStar.nil _,
+           fun _ hcol h => CommentOk_false_of_peekBack hcol h_pb (by decide) h.1, hcorr'⟩
   · by_cases hc_sq : c = '\''
     · subst hc_sq
       obtain ⟨_, h_cond⟩ := dispatchContent_singleQuoted_key_prod sc sp hcorr hpeek hok
-      obtain ⟨sp', h_sq, hcorr'⟩ := h_cond h_line
-      exact ⟨sp', sp', fun n => SFlowContent_singleQ_of_key n h_sq, GStar.nil _, hcorr'⟩
+      obtain ⟨sp', h_sq, h_pb, hcorr'⟩ := h_cond h_line
+      exact ⟨sp', sp', fun n => SFlowContent_singleQ_of_key n h_sq, GStar.nil _,
+             fun _ hcol h => CommentOk_false_of_peekBack hcol h_pb (by decide) h.1, hcorr'⟩
     · obtain ⟨_, h_cond⟩ :=
         dispatchContent_plainScalar_key_prod sc sp hcorr hpeek h_flow
           h_amp h_star h_bang h_pipe h_gt hc_dq hc_sq h_not_doc hok
-      obtain ⟨sp_gram, sp', h_ol, h_ws, hcorr'⟩ := h_cond h_line
-      exact ⟨sp_gram, sp', fun n => SFlowContent_plain_of_keyOneLine n h_ol, h_ws, hcorr'⟩
+      obtain ⟨sp_gram, sp', h_ol, h_ws, h_nohash, hcorr'⟩ := h_cond h_line
+      exact ⟨sp_gram, sp', fun n => SFlowContent_plain_of_keyOneLine n h_ol, h_ws,
+             fun heq _ h => h_nohash heq h.2, hcorr'⟩
 
 /-- `[161] ns-flow-node(n,flow-out)` at every index: the content reading above
     plus `[104] c-ns-alias-node`, which carries neither an indent nor a
@@ -29052,7 +29071,7 @@ lemma dispatchContent_evidence_oneLine (sc : ScannerState) (sp : SurfPos)
   · subst hc_alias
     obtain ⟨sp', h_alias, -, hcorr'⟩ := dispatchContent_aliasNode_prod sc sp hcorr hpeek hok
     exact ⟨sp', sp', fun n => alias_flowNode h_alias, GStar.nil _, hcorr'⟩
-  · obtain ⟨sp_gram, sp', h_all, h_ws, hcorr'⟩ :=
+  · obtain ⟨sp_gram, sp', h_all, h_ws, -, hcorr'⟩ :=
       dispatchContent_evidence_content_oneLine sc sp c hcorr hpeek h_flow h_not_doc
         h_amp hc_alias h_bang h_pipe h_gt h_line hok
     exact ⟨sp_gram, sp', fun n => flowContent_flowNode (h_all n), h_ws, hcorr'⟩
@@ -29265,27 +29284,33 @@ lemma dispatchContent_evidence_content (sc : ScannerState) (sp : SurfPos)
           (∀ sp_mid : SurfPos, SSLComments sp_gram sp_mid →
             SCLLiteral 0 sp sp_mid ∨ SCLFolded 0 sp sp_mid))) ∧
       GStar SSWhite sp_gram sp' ∧
+      (sp_gram = sp' → s'.col ≠ 0 → ¬ (CommentOk s' ∧ s'.peek? = some '#')) ∧
       ScannerSurfCorr s' sp' := by
   by_cases hc_dq : c = '"'
   · subst hc_dq
-    obtain ⟨sp', h_gram, -, hcorr'⟩ := dispatchContent_doubleQuoted_prod sc sp hcorr hpeek hok
+    obtain ⟨sp', h_gram, h_pb, hcorr'⟩ := dispatchContent_doubleQuoted_prod sc sp hcorr hpeek hok
     exact ⟨sp', sp', Or.inl (SFlowContent_doubleQ_ctx_lift h_gram (by decide) (by decide)),
-           GStar.nil _, hcorr'⟩
+           GStar.nil _,
+           fun _ hcol h => CommentOk_false_of_peekBack hcol h_pb (by decide) h.1, hcorr'⟩
   · by_cases hc_sq : c = '\''
     · subst hc_sq
-      obtain ⟨sp', h_gram, -, hcorr'⟩ := dispatchContent_singleQuoted_prod sc sp hcorr hpeek hok
+      obtain ⟨sp', h_gram, h_pb, hcorr'⟩ := dispatchContent_singleQuoted_prod sc sp hcorr hpeek hok
       exact ⟨sp', sp', Or.inl (SFlowContent_singleQ_ctx_lift h_gram (by decide) (by decide)),
-             GStar.nil _, hcorr'⟩
+             GStar.nil _,
+             fun _ hcol h => CommentOk_false_of_peekBack hcol h_pb (by decide) h.1, hcorr'⟩
     · by_cases hc_bs : c = '|' ∨ c = '>'
       · obtain ⟨sp', h_gram, hcorr', h_absorb⟩ :=
           dispatchContent_blockScalar_prod sc sp hcorr hpeek hc_bs hok
-        exact ⟨sp', sp', Or.inr ⟨h_gram, h_absorb⟩, GStar.nil _, hcorr'⟩
+        have h_park := scanBlockScalar_park
+          (dispatchContent_blockScalar_scan sc sp hcorr hpeek hc_bs hok)
+        exact ⟨sp', sp', Or.inr ⟨h_gram, h_absorb⟩, GStar.nil _,
+               fun _ hcol h => h_park.elim (fun h0 => hcol h0) (fun hne => hne h.2), hcorr'⟩
       · have hnotPipe : c ≠ '|' := fun h => hc_bs (Or.inl h)
         have hnotGt : c ≠ '>' := fun h => hc_bs (Or.inr h)
-        obtain ⟨sp_gram, sp', h_gram, h_ws, hcorr'⟩ :=
+        obtain ⟨sp_gram, sp', h_gram, h_ws, h_nohash, hcorr'⟩ :=
           dispatchContent_plainScalar_content_prod sc sp hcorr hpeek
             h_amp h_star h_bang hnotPipe hnotGt hc_dq hc_sq h_not_doc hok
-        exact ⟨sp_gram, sp', Or.inl h_gram, h_ws, hcorr'⟩
+        exact ⟨sp_gram, sp', Or.inl h_gram, h_ws, fun heq _ h => h_nohash heq h.2, hcorr'⟩
 
 /-! #### The content dispatch's three property guards, inverted (β.3)
 
@@ -30037,7 +30062,7 @@ lemma implicitKeyHead_of_dispatch
     obtain ⟨h_pp, h_cond⟩ :=
       dispatchContent_doubleQuoted_key_prod _ sp_prep
         (corr_of_allowDirectives_update hcorr_prep) hpeek_disp h_dispatch
-    obtain ⟨sp_res2, h_dq, hcorr2⟩ := h_cond (h_line_scan h_pp)
+    obtain ⟨sp_res2, h_dq, -, hcorr2⟩ := h_cond (h_line_scan h_pp)
     have hsp2 := ScannerSurfCorr_unique hcorr2 hcorr_result
     rw [hsp2] at h_dq
     exact ⟨sp_scan',
@@ -30051,7 +30076,7 @@ lemma implicitKeyHead_of_dispatch
       obtain ⟨h_pp, h_cond⟩ :=
         dispatchContent_singleQuoted_key_prod _ sp_prep
           (corr_of_allowDirectives_update hcorr_prep) hpeek_disp h_dispatch
-      obtain ⟨sp_res2, h_sq, hcorr2⟩ := h_cond (h_line_scan h_pp)
+      obtain ⟨sp_res2, h_sq, -, hcorr2⟩ := h_cond (h_line_scan h_pp)
       have hsp2 := ScannerSurfCorr_unique hcorr2 hcorr_result
       rw [hsp2] at h_sq
       exact ⟨sp_scan',
@@ -30064,7 +30089,7 @@ lemma implicitKeyHead_of_dispatch
         dispatchContent_plainScalar_key_prod _ sp_prep
           (corr_of_allowDirectives_update hcorr_prep) hpeek_disp h_flow_disp
           hna hnStar hnt hnPipe hnGt hdq hsq h_not_doc h_dispatch
-      obtain ⟨sp_gram2, sp_res2, h_ol, h_tws2, hcorr2⟩ :=
+      obtain ⟨sp_gram2, sp_res2, h_ol, h_tws2, -, hcorr2⟩ :=
         h_cond (h_line_scan (by rw [h_sk_pres]))
       have hsp2 := ScannerSurfCorr_unique hcorr2 hcorr_result
       rw [hsp2] at h_tws2
@@ -34761,7 +34786,7 @@ lemma accum_content_pending (sc : ScannerState)
       absurd (inline_residue_of_landing ⟨rfl, hcol⟩ h_ws h_pk hcorr_prep
           (preprocess_some_peek h_preprocess))
         (docEnd_refutes_content_residue h_line h_dispatch))
-  | pendingContent _ _ _ h_line _h_closable _h_key h_stale _ _ h_fS109 h_fV109 _
+  | pendingContent _ _ _ _ h_line _h_closable _h_key h_stale _ _ h_fS109 h_fV109 _
       h_tail139c h_nic0c h_seqF168c =>
     -- ═══ Item 47: §7.5's rung at the content dispatch, CLOSED.  Item 42
     -- narrowed the survivors to `[154]`'s `:` with a non-blank follower
@@ -35589,7 +35614,7 @@ lemma accum_content_pending (sc : ScannerState)
                     obtain ⟨h_pp, h_cond⟩ :=
                       dispatchContent_doubleQuoted_key_prod _ sp_prep
                         (corr_of_allowDirectives_update hcorr_prep) hpeek_disp h_dispatch
-                    obtain ⟨sp_res2, h_dq, hcorr2⟩ := h_cond (h_line_scan h_pp)
+                    obtain ⟨sp_res2, h_dq, -, hcorr2⟩ := h_cond (h_line_scan h_pp)
                     have hsp2 := ScannerSurfCorr_unique hcorr2 hcorr_result
                     rw [hsp2] at h_dq
                     -- Item 94: a props-HEADED key's route is `PropsKeyPack`'s,
@@ -35616,7 +35641,7 @@ lemma accum_content_pending (sc : ScannerState)
                       obtain ⟨h_pp, h_cond⟩ :=
                         dispatchContent_singleQuoted_key_prod _ sp_prep
                           (corr_of_allowDirectives_update hcorr_prep) hpeek_disp h_dispatch
-                      obtain ⟨sp_res2, h_sq, hcorr2⟩ := h_cond (h_line_scan h_pp)
+                      obtain ⟨sp_res2, h_sq, -, hcorr2⟩ := h_cond (h_line_scan h_pp)
                       have hsp2 := ScannerSurfCorr_unique hcorr2 hcorr_result
                       rw [hsp2] at h_sq
                       exact Or.inl ⟨k, sp_p, sp_scan', h_route_k,
@@ -35637,7 +35662,7 @@ lemma accum_content_pending (sc : ScannerState)
                         dispatchContent_plainScalar_key_prod _ sp_prep
                           (corr_of_allowDirectives_update hcorr_prep) hpeek_disp h_flow_disp
                           hamp hstar hbang hnPipe hnGt hdq hsq h_not_doc h_dispatch
-                      obtain ⟨sp_gram2, sp_res2, h_ol, h_tws2, hcorr2⟩ :=
+                      obtain ⟨sp_gram2, sp_res2, h_ol, h_tws2, -, hcorr2⟩ :=
                         h_cond (h_line_scan (by rw [h_sk_pres]))
                       have hsp2 := ScannerSurfCorr_unique hcorr2 hcorr_result
                       rw [hsp2] at h_tws2

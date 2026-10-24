@@ -2086,7 +2086,7 @@ lemma terminates_hash_spaces_pos (s : ScannerState) (content spaces : String)
     simp [hz, isFlowIndicatorBool] at h
     omega
 
-private lemma gstar_sswhite_col_ge' (sp sp' : SurfPos) (h : GStar SSWhite sp sp') :
+lemma gstar_sswhite_col_ge' (sp sp' : SurfPos) (h : GStar SSWhite sp sp') :
     sp'.col ≥ sp.col := by
   induction h with
   | nil => exact Nat.le_refl _
