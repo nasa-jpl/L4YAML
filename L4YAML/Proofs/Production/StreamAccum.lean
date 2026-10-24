@@ -13016,7 +13016,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
       -- Item 118: the park's open suffix arm (item 117's skeleton face at the
       -- flow open) — a `...` park lands the completed collection in
       -- `suffixContinue`'s own slot; only `pendingDocEnd`'s arm pays.
-      ((∀ sp_m, SSLComments sp_scan sp_m → SuffixRun sp_start sp_m) ∨ True) →
+      ((∀ sp_m, SSLComments sp_g sp_m → SuffixRun sp_start sp_m) ∨ True) →
       -- Item 143: the park's own TAIL, the fifth reading §9.2's refutation
       -- needs.  Only the two content parks finished a node, so only they pay;
       -- `pendingFlow`'s tail is a block indicator and the two marker parks take
@@ -13028,7 +13028,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
       -- content parks pay (`h_framesS`, `h_closeF` at the empty tail); the
       -- marker parks take their own arms and `pendingFlow` has nothing.
       ((∃ ks : List FrameLevel,
-        ∀ sp_m : SurfPos, SSLComments sp_scan sp_m →
+        ∀ sp_m : SurfPos, SSLComments sp_g sp_m →
         ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True) →
       -- **Item 201: the same levels under an open `[186]` explicit key.**  The
       -- shared landing hands `flowKeyRoute_of_root` both bottoms now, so a
@@ -13037,7 +13037,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
       -- two content parks pay (`h_framesV`, `h_closeFV` at the empty tail);
       -- the marker parks take their own arms and `pendingFlow` has nothing.
       ((∃ (nv : Nat) (ks : List FrameLevel),
-        ∀ sp_m : SurfPos, SSLComments sp_scan sp_m →
+        ∀ sp_m : SurfPos, SSLComments sp_g sp_m →
         KeyFrames (ExplValueLine sp_start nv) ks sp_m) ∨ PackAlt sc) →
       ∃ sp_gram' sp_block' sp_flow' sp_scan',
         SLYamlStream sp_start sp_gram' ∧
@@ -13326,7 +13326,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                (nodoc_of_flowLevel_succ h_fl1) (noek_of_flowLevel_succ h_fl1)
                (ntop_of_flowLevel_succ h_fl1)
            (noPending_gate_of_inFlow (inFlow_of_flowLevel_eq h_fl1)), hcorr_open, fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol, h_real, h_ad⟩⟩
-  | pendingContent _ _ _ _ h_line _ _ _ _ _ h_frS176 h_frV201 _ h_tail143 =>
+  | pendingContent _ _ _ _ h_line h_closableA _ _ _ _ h_frS176 h_frV201 _ h_tail143 _ _ h_runA h_gateA _ =>
     -- Item 37: §7.5's set weakens to item 10's here, exactly as `[204]`'s does.
     -- Item 143: …and this park's producer finished a node, so it PAYS §9.2's
     -- tail reading (`"x"⏎[1, 2]`, `a⏎# c⏎[1, 2]`).
@@ -13337,7 +13337,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
     -- item 198's census found bound to `_` right here (`h_framesV`, paid since
     -- item 108): `?⏎  a: 1⏎  [1]: b⏎: w` keys the level the landing names and
     -- still owes the frame's `: w`.
-    exact main h_close_pending (refuted (h_line.imp id LineNodeStop.toLineNoOpen))
+    exact main h_runA h_gateA h_closableA (refuted (h_line.imp id LineNodeStop.toLineNoOpen))
       (Or.inr trivial) (Or.inl h_tail143)
       (h_frS176.imp (fun ⟨ks, _, f⟩ => ⟨ks, f⟩) id)
       (h_frV201.imp (fun ⟨nv, ks, _, f⟩ => ⟨nv, ks, f⟩) id)
@@ -13347,7 +13347,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
     -- marker plus the landing's `[79] s-l-comments` is `[205]
     -- l-document-suffix`, so `...⏎[1, 2]` lands its collection in
     -- `suffixContinue`'s own slot. ═══
-    exact main (fun _ => (h_nextE (noflow_of_fl0 h_fl0)).gate) h_close_pending (refuted (h_line.imp id LineTailSuffix.toLineNoOpen))
+    exact main (GStar.nil _) (fun _ _ => (h_nextE (noflow_of_fl0 h_fl0)).gate) h_close_pending (refuted (h_line.imp id LineTailSuffix.toLineNoOpen))
       (Or.inl (fun sp_m h_ssl =>
         ⟨sp_block, sp_m, h_stream_block,
          GPlus.mk sp_block sp_m sp_m
@@ -13360,12 +13360,12 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
       -- closed the document — so the suffix face above is the honest route.
       -- Item 201: and no `?` frame stands over a closed document either.
       (Or.inr trivial) (Or.inr (PackAlt.ofRefused h_noekE))
-  | pendingBlockContent _ _ _ _ n176 h_line _ _ _ _ _ _ h_closeF176 _ h_tail143 _ _
-      h_cFV201 =>
+  | pendingBlockContent _ _ _ _ n176 h_line h_closableB _ _ _ _ _ h_closeF176 _ h_tail143 _ _ h_cFV201 _ h_runB h_gateB _ =>
+
     -- Item 176: the entry-level face read at the EMPTY tail is the
     -- landing-level face (item 110's own spend), so `k:⏎  - x⏎[1]: b`
     -- resumes the level the sequence stands in.
-    exact main h_close_pending (refuted (h_line.imp id LineNodeStop.toLineNoOpen))
+    exact main h_runB h_gateB (fun hd _ => h_closableB hd) (refuted (h_line.imp id LineNodeStop.toLineNoOpen))
       (Or.inr trivial) (Or.inl h_tail143)
       (h_closeF176.imp (fun ⟨ks, _, _, closeF⟩ =>
         ⟨ks, fun sp_m h_ssl => closeF sp_m h_ssl sp_m (SCompactSeqTail.nil n176 sp_m)⟩) id)
@@ -13380,11 +13380,11 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
         ⟨nv, FrameLevel.seq n176 :: ks, fun sp_m h_ssl =>
           KeyFrames.seqLevel n176 ks sp_m h_ltk (fun sp_end h_tail =>
             closeFV sp_m h_ssl sp_end h_tail)⟩) id)
-  | pendingFlow _ _ _ _ _ _ _ h_live0F =>
+  | pendingFlow _ _ _ _ _ _ _ h_live0F h_gateF =>
     -- The deferred state: its own closing strategy is the drop, and the flow
     -- node opened here keeps riding it (β.5 retires this with pendingFlow, R3).
     -- Item 293: the key the open pushes is live, off the park's `flag ∨ live`.
-    exact main h_close_pending
+    exact main h_gateF.choose_spec.1 h_gateF.choose_spec.2 (fun _ _ sp_mid h_ssl => SLYamlStream.scannerDrop sp_start sp_block h_gateF.choose sp_mid h_stream_block h_ssl)
       (opaque_resume (preprocess_possible_of_live0 h_live0F h_noflow_prep h_preprocess (gate_sc h_corr (h_gateN (noflow_of_fl0 h_fl0)))))
       (Or.inr trivial) (Or.inr trivial)
       (Or.inr trivial) (Or.inr trivial)
