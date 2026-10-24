@@ -27745,7 +27745,7 @@ lemma accum_block_on_pendingBlock
             -- top in the slot's place. ═══
             exact (compact_deferral_refuted ⟨rfl, h_col_ne.1⟩ hws h_pk hcorr_prep
               (preprocess_some_peek h_preprocess) h_col_old
-              (h_col_ne.2.2 h_nic_old) h_top_old
+              (h_col_ne.2.2.1 h_nic_old) h_top_old
               (explicit_at_indent_of_dispatch (hc_colon ▸ h_dispatch)
                 (noflow_disp_of_noflow h_noflow) h_src)).elim
         · exact h_fill (fun h => absurd (hc_q.symm.trans h) (by decide))
@@ -34104,7 +34104,7 @@ lemma accum_content_on_pendingBlock_indented
         (fun h_fld' => folded_blockNode h_sep_all (GOpt.none sp_prep) h_fld')
     exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
            BlockStack.nil sp_block, FlowStackB.nil sp_block .sep,
-           PendingNode.pendingBlockContent (h_run := ‹_›) (h_gate := ‹_›) (h_live := live_of_dispatch h_dispatch hna hnt (by rw [allowDirectives_update_simpleKey]; exact (preprocess_saved_key_fresh h_ska (noflow_of_noflow_disp h_flow_disp) h_preprocess).1) hcorr_result) sp_start sp_block sp_scan' _ n h_line
+           PendingNode.pendingBlockContent (h_run := h_trailing_ws) (h_gate := h_gate) (h_live := live_of_dispatch h_dispatch hna hnt (by rw [allowDirectives_update_simpleKey]; exact (preprocess_saved_key_fresh h_ska (noflow_of_noflow_disp h_flow_disp) h_preprocess).1) hcorr_result) sp_start sp_block sp_scan' _ n h_line
              (fun _ sp_final h_ssl =>
                h_close_old sp_final
                  (SBlockIndented.node n .blockIn sp_scan sp_final
