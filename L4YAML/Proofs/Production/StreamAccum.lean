@@ -28464,6 +28464,7 @@ lemma dispatchContent_plainScalar_prod (sc : ScannerState) (sp : SurfPos)
     (hok : scanNextToken_dispatchContent sc c = .ok s') :
     ∃ sp_gram sp', SFlowNode 0 .flowOut sp sp_gram ∧
                    GStar SSWhite sp_gram sp' ∧
+                   (sp_gram = sp' → s'.peek? ≠ some '#') ∧
                    ScannerSurfCorr s' sp' := by
   unfold scanNextToken_dispatchContent at hok
   simp only [bind, Except.bind, pure, Except.pure] at hok
@@ -28488,11 +28489,10 @@ lemma dispatchContent_plainScalar_prod (sc : ScannerState) (sp : SurfPos)
             · -- canStartPlainScalarBool branch: either plain scalar succeeds or error
               split at hok
               · -- canStartPlainScalarBool = true: scanPlainScalar returns directly
-                obtain ⟨g, p, h, hw, -, hc⟩ := scanPlainScalar_to_flowNode sc sp hcorr hpeek
+                exact scanPlainScalar_to_flowNode sc sp hcorr hpeek
                   (by assumption)
                   h_not_doc
                   (by assumption)
-                exact ⟨g, p, h, hw, hc⟩
               · -- canStartPlainScalarBool = false: .error
                 simp at hok
 
@@ -28901,7 +28901,7 @@ lemma dispatchContent_evidence (sc : ScannerState) (sp : SurfPos)
               obtain ⟨sp', h_gram, hcorr'⟩ := dispatchContent_tag_prod 0 sc sp .flowOut hcorr hpeek hok
               exact ⟨sp', sp', Or.inl h_gram, GStar.nil _, hcorr'⟩
             · -- Plain scalar (or error — but .ok means it succeeded)
-              obtain ⟨sp_gram, sp', h_gram, h_ws, hcorr'⟩ :=
+              obtain ⟨sp_gram, sp', h_gram, h_ws, -, hcorr'⟩ :=
                 dispatchContent_plainScalar_prod sc sp hcorr hpeek
                   hc_amp hc_alias hc_bang hnotPipe hnotGt hc_dq hc_sq h_not_doc hok
               exact ⟨sp_gram, sp', Or.inl h_gram, h_ws, hcorr'⟩
