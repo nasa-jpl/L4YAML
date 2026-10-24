@@ -12951,6 +12951,13 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
       ∀ sp_mid, SSLComments sp_scan sp_mid → SLYamlStream sp_start sp_mid :=
     fun h_nd h_ui sp_mid h_ssl =>
       h_pending.close_with_ssl h_stream_block h_nd h_ui h_ssl
+  have h_close_from : danglingNodePos? sc = none →
+      underIndentedFlowValuePos? sc = none →
+      ∀ sp_mid, SSLCommentsFrom sp_scan sp_mid → (SSLComments sp_scan sp_mid ∨ CommentOk sc) →
+        SLYamlStream sp_start sp_mid :=
+    fun h_nd h_ui sp_mid h_from h_ok =>
+      h_pending.close_with_sslFrom h_stream_block h_nd h_ui (noflow_of_fl0 h_fl0)
+        h_corr h_from h_ok
   -- The dispatched char, read back at the surface: preprocessing stopped ON it.
   have h_head : sp_prep.chars.head? = some c :=
     head_of_peek hcorr_prep (preprocess_some_peek h_preprocess)
@@ -27599,6 +27606,13 @@ lemma accum_block_pending (sc : ScannerState)
       ∀ sp_mid, SSLComments sp_scan sp_mid → SLYamlStream sp_start sp_mid :=
     fun h_nd h_ui sp_mid h_ssl =>
       h_pending.close_with_ssl h_stream_block h_nd h_ui h_ssl
+  have h_close_from : danglingNodePos? sc = none →
+      underIndentedFlowValuePos? sc = none →
+      ∀ sp_mid, SSLCommentsFrom sp_scan sp_mid → (SSLComments sp_scan sp_mid ∨ CommentOk sc) →
+        SLYamlStream sp_start sp_mid :=
+    fun h_nd h_ui sp_mid h_from h_ok =>
+      h_pending.close_with_sslFrom h_stream_block h_nd h_ui (sc_noflow_of_prep h_preprocess h_noflow)
+        h_corr h_from h_ok
   cases h_pending with
   | noPending _ _ h_col h_arm h_nodoc h_noek h_ntop208 =>
     exact accum_block_on_noPending sc sp_start sp_block s_prep s' c sp_prep sp_scan'
