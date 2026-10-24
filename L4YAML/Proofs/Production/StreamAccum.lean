@@ -9942,7 +9942,7 @@ lemma structural_dispatch_after_directives
       obtain ⟨rest, sp_dir, hchars, hgstar, hcorr_dir, _⟩ :=
         scanDirective_prod s_prep sp_prep hcorr hpeek_pct _ h_dir_ok
       refine ⟨sp_dir, true,
-        PendingNode.pendingDirective sp_start sp_block sp_dir
+        PendingNode.pendingDirective (h_next := fun _ => scanDirective_next h_dir_ok) sp_start sp_block sp_dir
           (fun sp_mid hssl => GPlus_snoc h_dirs ?_)
           h_stream h_dir_route,
         fun _ => scanDirective_directivesPresent h_dir_ok,
@@ -36868,7 +36868,7 @@ lemma accum_content_pending (sc : ScannerState)
                            (match h_kslotE_k with
                             | Or.inl ⟨nv, kslotE⟩ => Or.inl ⟨nv,
                                 fun sp_m h_ssl sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi =>
-                                  kslotE sp_m (h_nodeAt sp_m h_ssl)
+                                  kslotE sp_m (h_nodeAtG sp_m h_ssl)
                                     sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi⟩
                             | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
                            (match h_closeFE_k with
@@ -36878,7 +36878,7 @@ lemma accum_content_pending (sc : ScannerState)
                                 -- beside it.
                                 h_cv.imp (fun ⟨lo, hb, hc⟩ => ⟨lo, hb, h_cov_step lo ks hc⟩) id,
                                 fun sp_mid h_ssl sp_end h_tail =>
-                                  closeFE sp_mid (h_nodeAt sp_mid h_ssl) sp_end h_tail⟩
+                                  closeFE sp_mid (h_nodeAtG sp_mid h_ssl) sp_end h_tail⟩
                             | Or.inr _ => Or.inr trivial)
                            (nodir_of_content_dispatch h_dispatch)
                            (completedTail_of_dispatch h_dispatch hamp hbang) (Or.inr trivial)
@@ -36888,7 +36888,7 @@ lemma accum_content_pending (sc : ScannerState)
                             | Or.inl ⟨nv, kslotE⟩ => Or.inl ⟨[nv],
                                 fun nv' hmem sp_m h_ssl sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi => by
                                   obtain rfl := List.mem_singleton.mp hmem
-                                  exact kslotE sp_m (h_nodeAt sp_m h_ssl)
+                                  exact kslotE sp_m (h_nodeAtG sp_m h_ssl)
                                     sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi⟩
                             | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
                            -- ═══ ~~**Item 198: the PROPS lane's entry face has no
@@ -36901,7 +36901,7 @@ lemma accum_content_pending (sc : ScannerState)
                            (match h_closeFEV_k with
                             | Or.inl ⟨nv, ks, h_ltk, closeFEV⟩ => Or.inl ⟨nv, ks, h_ltk,
                                 fun sp_mid h_ssl sp_end h_tail =>
-                                  closeFEV sp_mid (h_nodeAt sp_mid h_ssl) sp_end h_tail⟩
+                                  closeFEV sp_mid (h_nodeAtG sp_mid h_ssl) sp_end h_tail⟩
                             | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
                             -- **Item 207: and the park's own indent check.**  The entry-level park
                             -- is the same content dispatch one slot in, so the same five arguments
@@ -37130,7 +37130,7 @@ lemma accum_content_pending (sc : ScannerState)
                            (match h_kslotE_k with
                             | Or.inl ⟨nv, kslotE⟩ => Or.inl ⟨nv,
                                 fun sp_m h_ssl sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi =>
-                                  kslotE sp_m (h_nodeAt sp_m h_ssl)
+                                  kslotE sp_m (h_nodeAtG sp_m h_ssl)
                                     sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi⟩
                             | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
                            (match h_closeFE_k with
@@ -37140,7 +37140,7 @@ lemma accum_content_pending (sc : ScannerState)
                                 -- beside it.
                                 h_cv.imp (fun ⟨lo, hb, hc⟩ => ⟨lo, hb, h_cov_step lo ks hc⟩) id,
                                 fun sp_mid h_ssl sp_end h_tail =>
-                                  closeFE sp_mid (h_nodeAt sp_mid h_ssl) sp_end h_tail⟩
+                                  closeFE sp_mid (h_nodeAtG sp_mid h_ssl) sp_end h_tail⟩
                             | Or.inr _ => Or.inr trivial)
                            (nodir_of_content_dispatch h_dispatch)
                            (completedTail_of_dispatch h_dispatch hamp hbang) (Or.inr trivial)
@@ -37150,14 +37150,14 @@ lemma accum_content_pending (sc : ScannerState)
                             | Or.inl ⟨nv, kslotE⟩ => Or.inl ⟨[nv],
                                 fun nv' hmem sp_m h_ssl sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi => by
                                   obtain rfl := List.mem_singleton.mp hmem
-                                  exact kslotE sp_m (h_nodeAt sp_m h_ssl)
+                                  exact kslotE sp_m (h_nodeAtG sp_m h_ssl)
                                     sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi⟩
                             | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
                            -- Item 199: as above — the same fold, the same field.
                            (match h_closeFEV_k with
                             | Or.inl ⟨nv, ks, h_ltk, closeFEV⟩ => Or.inl ⟨nv, ks, h_ltk,
                                 fun sp_mid h_ssl sp_end h_tail =>
-                                  closeFEV sp_mid (h_nodeAt sp_mid h_ssl) sp_end h_tail⟩
+                                  closeFEV sp_mid (h_nodeAtG sp_mid h_ssl) sp_end h_tail⟩
                             | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
                             -- **Item 207: and the park's own indent check.**  The entry-level park
                             -- is the same content dispatch one slot in, so the same five arguments
