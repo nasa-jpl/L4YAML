@@ -6709,8 +6709,6 @@ lemma PendingNode.nil_gate_of_allowDirectives {sc : ScannerState} {b : Bool}
   | .pendingBlockContent (h_nodir := hd) .. => fun _ => absurd (hd ▸ hA) Bool.noConfusion
   | .pendingFlow (h_nodir := hd) .. => fun _ => absurd (hd ▸ hA) Bool.noConfusion
 
-/-- When preprocessing returns `some` at col=0, extract `SSLComments` from the
-    consumed characters plus `ScannerSurfCorr` for the resulting state. -/
 
 /-! ## §0d Preprocessing → SSLComments for `some` result at col=0
 
@@ -6724,6 +6722,8 @@ lemma PendingNode.nil_gate_of_allowDirectives {sc : ScannerState} {b : Bool}
     end), and `sp_prep` is the scanner's final position (which may be past
     `sp_mid` due to trailing whitespace from the last `skipToContent` iteration). -/
 
+/-- When preprocessing returns `some` at col=0, extract `SSLComments` from the
+    consumed characters plus `ScannerSurfCorr` for the resulting state. -/
 lemma preprocess_some_ssl_comments_col0 (sc : ScannerState) (sp : SurfPos)
     (s_prep : ScannerState) (c : Char)
     (hcorr : ScannerSurfCorr sc sp)
