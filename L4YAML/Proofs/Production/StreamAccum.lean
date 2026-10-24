@@ -37222,7 +37222,7 @@ lemma accum_content_pending (sc : ScannerState)
     -- index, the root's extra readings (the props run, the block scalar) have
     -- been its cases since items 24/26, and the root entry is the `n = 0`
     -- instance — faces included.
-    exact accum_content_on_pendingBlock_indented (h_gatePark := (h_nextB (noflow_of_fl0 h_fl0)).gate) (h_src := slotGateAt_of_offerPred h_offer_b h_base h_preprocess) sc sp_start sp_block sp_scan n_old
+    exact accum_content_on_pendingBlock_indented (h_gatePark := fun _ => (h_nextB (noflow_of_fl0 h_fl0)).gate) (h_src := slotGateAt_of_offerPred h_offer_b h_base h_preprocess) sc sp_start sp_block sp_scan n_old
       s_prep s' c sp_prep sp_scan' h_stream_block h_close_old h_close_entry_old h_kslot92
       h_closeF99 h_seqF167 h_floor_old h_col_old h_sk_old
       hcorr_prep hcorr_result h_corr h_preprocess h_not_doc h_flow_disp h_dispatch
@@ -37235,7 +37235,7 @@ lemma accum_content_pending (sc : ScannerState)
     -- Item 179 retired the 0/nonzero split, as at the `pendingBlock` arm
     -- above: the mapping twin answers at every index and the root entry is
     -- the `n = 0` instance.
-    exact accum_content_on_pendingMapValue_indented (h_gatePark := (h_nextMV (noflow_of_fl0 h_fl0)).gate) (h_src := slotGateAt_of_offerPred h_offer_mv h_base h_preprocess) sc sp_start sp_block sp_scan n_old
+    exact accum_content_on_pendingMapValue_indented (h_gatePark := fun _ => (h_nextMV (noflow_of_fl0 h_fl0)).gate) (h_src := slotGateAt_of_offerPred h_offer_mv h_base h_preprocess) sc sp_start sp_block sp_scan n_old
       s_prep s' c sp_prep sp_scan' h_stream_block h_close_old h_floor_old h_col0_old
       -- Item 209: the content lane reads the SLOT and not the top beside it,
       -- so the top is projected away here rather than restated downstream — a
