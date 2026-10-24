@@ -37601,7 +37601,7 @@ lemma accum_step_content (sc : ScannerState)
       -- `collectPlainScalarLoop` then consumes), so the step's leading separation
       -- is derived at the cursor and walked back.
       have h_lead : SSeparateLines 0 sp_flow sp_prep :=
-        SSeparateLines_prepend_white h_white h_lead0
+        SSeparateLines_prepend_white h_white ((h_lead_at 0).resolve_right (fun h => h (Nat.zero_le _)))
       have h_ad_sync : frameTokenVal? s_ad.tokens = lastRealTokenVal? s_ad.tokens := by
         rw [← h_ad_def, allowDirectives_update_tokens]
         exact preprocess_preserves_sync_inFlow (by omega) h_real_sc h_preprocess h_sync_sc
