@@ -6700,12 +6700,12 @@ lemma PendingNode.close_with_sslFrom {sc : ScannerState}
     end), and `sp_prep` is the scanner's final position (which may be past
     `sp_mid` due to trailing whitespace from the last `skipToContent` iteration). -/
 
-/-- When preprocessing returns `some` at col=0, extract `SSLComments` from the
-    consumed characters plus `ScannerSurfCorr` for the resulting state. -/
-
 /-- N3: while directives are still allowed the park is an indicator park or a
     line start, so an empty `[66]` before a `#` there is refuted by the park's
     own follower (`h_next`) or its column; content parks have `h_nodir`. -/
+/-- When preprocessing returns `some` at col=0, extract `SSLComments` from the
+    consumed characters plus `ScannerSurfCorr` for the resulting state. -/
+
 lemma PendingNode.nil_gate_of_allowDirectives {sc : ScannerState} {b : Bool}
     {sp_start sp_block sp_scan : SurfPos}
     (h : PendingNode sc b sp_start sp_block sp_scan) (hnf : sc.inFlow = false)
