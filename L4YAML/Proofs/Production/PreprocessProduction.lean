@@ -1840,6 +1840,186 @@ lemma scanTag_peekBack {sc : ScannerState} {sp : SurfPos}
         · exact ⟨c, hpb, hflag⟩
       · exact ⟨c, hpb, hflag⟩
 
+/-! ### Where a block scalar parks
+
+`collectBlockScalarLoop` returns at a line start (a shorter-indented line is
+handed back untouched, as is a document boundary), at end of input, or on the
+non-printable/BOM character that stopped `collectLineContentLoop`.  A `#` off a
+line start is therefore never the block scalar's park — the fact the frame's
+comment gate needs for the `|`/`>` arm. -/
+
+lemma collectLineContentLoop_stop (fuel : Nat) :
+    ∀ (s : ScannerState) (content : String),
+    s.inputEnd - s.offset < fuel →
+    (collectLineContentLoop s content fuel).2.peek? = none ∨
+    ∃ c, (collectLineContentLoop s content fuel).2.peek? = some c ∧
+      (isLineBreakBool c || !isPrintableBool c || c == '\uFEFF') = true := by
+  induction fuel with
+  | zero => intro s _ hb; omega
+  | succ fuel' ih =>
+    intro s content hb
+    unfold collectLineContentLoop
+    split
+    · rename_i c hpk
+      split
+      · rename_i hstop
+        exact Or.inr ⟨c, hpk, hstop⟩
+      · have hlt : s.offset < s.inputEnd :=
+          L4YAML.Proofs.ScalarProduction.peek_some_has_more hpk
+        have hadv := L4YAML.Proofs.ScannerProgress.advance_offset_lt s hlt
+        have hend := advance_inputEnd s
+        exact ih s.advance (content.push c) (by omega)
+    · rename_i hpk
+      exact Or.inl hpk
+
+private lemma consumeNewline_col_zero {s : ScannerState} {c : Char}
+    (hpk : s.peek? = some c) (hbr : isLineBreakBool c = true) :
+    (consumeNewline s).col = 0 := by
+  have hlt : s.offset < s.inputEnd := L4YAML.Proofs.ScalarProduction.peek_some_has_more hpk
+  have hget : String.Pos.Raw.get s.input ⟨s.offset⟩ = c := by
+    unfold ScannerState.peek? at hpk
+    rw [if_pos hlt] at hpk
+    exact Option.some.inj hpk
+  unfold consumeNewline
+  rw [hpk]
+  split
+  · rename_i heq
+    injection heq with hc'
+    subst hc'
+    exact advance_col_newline s hlt (by rw [hget]; rfl)
+  · rename_i heq
+    injection heq with hc'
+    subst hc'
+    have hcol0 : s.advance.col = 0 := advance_col_cr s hlt (by rw [hget]; rfl)
+    dsimp only []
+    split
+    all_goals exact hcol0
+  · rename_i hne1 hne2
+    simp only [isLineBreakBool, isLineFeedBool, isCarriageReturnBool,
+      Bool.or_eq_true, beq_iff_eq] at hbr
+    rcases hbr with rfl | rfl <;> simp_all
+
+private lemma peek_none_ne_hash {s : ScannerState} (h : s.peek? = none) :
+    s.peek? ≠ some '#' := by
+  intro h'; rw [h] at h'; cases h'
+
+lemma collectBlockScalarLoop_park (fuel : Nat) :
+    ∀ (s : ScannerState) (raw : String) (ci ie : Nat),
+    s.inputEnd ≤ ie →
+    (s.col = 0 ∨ s.peek? = none) →
+    (collectBlockScalarLoop s raw fuel ci ie).2.col = 0 ∨
+    (collectBlockScalarLoop s raw fuel ci ie).2.peek? ≠ some '#' := by
+  induction fuel with
+  | zero =>
+    intro s raw ci ie _ hinv
+    rcases hinv with h0 | hn
+    · exact Or.inl h0
+    · exact Or.inr (peek_none_ne_hash hn)
+  | succ fuel' ih =>
+    intro s raw ci ie hie hinv
+    unfold collectBlockScalarLoop
+    split
+    · rcases hinv with h0 | hn
+      · exact Or.inl h0
+      · exact Or.inr (peek_none_ne_hash hn)
+    · generalize hsp : consumeExactSpaces s ci = pr
+      obtain ⟨k, sa⟩ := pr
+      have hsa_end : sa.inputEnd = s.inputEnd := by
+        have h := L4YAML.Proofs.ScalarProduction.consumeExactSpaces_inputEnd s ci
+        rw [hsp] at h; exact h
+      try dsimp only []
+      split
+      · rename_i hnone
+        exact Or.inr (peek_none_ne_hash hnone)
+      · rename_i c hpk
+        split
+        · rename_i hbr
+          try dsimp only []
+          apply ih
+          · rw [consumeNewline_inputEnd]; omega
+          · exact Or.inl (consumeNewline_col_zero hpk hbr)
+        · rename_i hbr
+          split
+          · rcases hinv with h0 | hn
+            · exact Or.inl h0
+            · exact Or.inr (peek_none_ne_hash hn)
+          · generalize hl : collectLineContentLoop sa "" (ie - sa.offset + 1) = lr
+            obtain ⟨lc, sal⟩ := lr
+            have hsal_end : sal.inputEnd = sa.inputEnd := by
+              have h := L4YAML.Proofs.ScalarProduction.collectLineContentLoop_inputEnd sa "" (ie - sa.offset + 1)
+              rw [hl] at h; exact h
+            have hstop := collectLineContentLoop_stop (ie - sa.offset + 1) sa "" (by omega)
+            rw [hl] at hstop
+            try dsimp only [] at hstop
+            try dsimp only []
+            split
+            · rename_i c' hpk'
+              split
+              · rename_i hbr'
+                try dsimp only []
+                apply ih
+                · rw [consumeNewline_inputEnd]; omega
+                · exact Or.inl (consumeNewline_col_zero hpk' hbr')
+              · rename_i hbr'
+                refine Or.inr ?_
+                rcases hstop with hn | ⟨c'', hpk'', hflag⟩
+                · rw [hn] at hpk'; cases hpk'
+                · rw [hpk'] at hpk''
+                  cases hpk''
+                  intro hhash
+                  rw [hpk'] at hhash
+                  cases hhash
+                  simp only [hbr', Bool.false_or, Bool.or_eq_true, Bool.not_eq_eq_eq_not,
+                    Bool.not_true, beq_iff_eq] at hflag
+                  rcases hflag with h | h
+                  · exact absurd h (by decide)
+                  · exact absurd h (by decide)
+            · rename_i hnone
+              exact Or.inr (peek_none_ne_hash hnone)
+
+lemma scanBlockScalarConsumeNewline_park {s s' : ScannerState}
+    (h : scanBlockScalarConsumeNewline s = .ok s') :
+    (s'.col = 0 ∨ s'.peek? = none) ∧ s'.inputEnd = s.inputEnd := by
+  unfold scanBlockScalarConsumeNewline at h
+  split at h
+  · rename_i c hpk
+    split at h
+    · rename_i hbr
+      have he := Except.ok.inj h; subst he
+      exact ⟨Or.inl (consumeNewline_col_zero hpk hbr), consumeNewline_inputEnd s⟩
+    · split at h
+      · rename_i hnm
+        have he := Except.ok.inj h; subst he
+        refine ⟨Or.inr ?_, rfl⟩
+        unfold ScannerState.peek?
+        simp only [Bool.not_eq_eq_eq_not, Bool.not_true, ScannerState.hasMore,
+          decide_eq_false_iff_not] at hnm
+        simp [hnm]
+      · cases h
+  · rename_i hpk
+    have he := Except.ok.inj h; subst he
+    exact ⟨Or.inr hpk, rfl⟩
+
+/-- A block scalar never parks on `#` off a line start. -/
+lemma scanBlockScalar_park {s s' : ScannerState}
+    (hok : scanBlockScalar s = .ok s') :
+    s'.col = 0 ∨ s'.peek? ≠ some '#' := by
+  unfold scanBlockScalar at hok
+  try dsimp only at hok
+  split at hok
+  · cases hok
+  · rename_i s_nl hcn
+    obtain ⟨hinv, _⟩ := scanBlockScalarConsumeNewline_park hcn
+    have hle : s_nl.inputEnd ≤ s.inputEnd :=
+      L4YAML.Proofs.ScalarProduction.scanBlockScalar_afterNewline_inputEnd hcn
+    unfold scanBlockScalarBody at hok
+    try simp only [] at hok
+    repeat (any_goals (split at hok))
+    all_goals (try contradiction)
+    all_goals (simp only [Except.ok.injEq] at hok; subst hok; dsimp only [])
+    all_goals (unfold ScannerState.emitAt)
+    all_goals (exact collectBlockScalarLoop_park _ _ _ _ _ hle hinv)
+
 end L4YAML.Proofs.PreprocessProduction
 
 end Blanket
