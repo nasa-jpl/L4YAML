@@ -10216,7 +10216,7 @@ lemma accum_structural_pending (sc : ScannerState)
     exact main h_close_pending
   | true =>
     cases h_pending with
-    | pendingDirective (h_next := h_next_dir) _ _ _ h_dir_acc_old h_stream_old h_dir_route_old =>
+    | pendingDirective _ _ _ h_dir_acc_old h_stream_old h_dir_route_old h_next_dir =>
       -- Fix B: resolve the open directive run against the structural token.
       have h_dp_prep : s_prep.directivesPresent = true := by
         rw [preprocess_some_directivesPresent h_preprocess]; exact h_dir_flag rfl
@@ -33349,7 +33349,11 @@ lemma indentedValue_reads_at_any_indent
       -- untouched, so the pending's own floor transports.
       have h_sep : SSeparateLines n sp_scan sp_prep := by
         rw [h_pe, ← h_mid.1]
-        exact SSeparateLines.inline n _ _ (GStar_SSWhite_to_SSeparateInLine _ _ h_ws)
+        exact SSeparateLines.inline n _ _ (GStar_SSWhite_to_SSeparateInLine _ _ h_ws (fun h_eq => by
+          rw [h_mid.1]
+          exact NextIsSep.eps_col0 h_next h_corr (corr_of_allowDirectives_update hcorr_prep)
+            (peek_eq_of_corr_same (corr_of_allowDirectives_update hcorr_prep) hcorr_prep hpeek)
+            h_dispatch (by rw [← h_mid.1, h_eq, h_pe])))
       refine Or.inl ⟨h_sep, Or.inl h_mid.2.2.1, ?_⟩
       rw [minContentIndentOf_congr (h_mid.2.2.1 h_floor.1)]
       exact h_floor.2
