@@ -29949,7 +29949,7 @@ lemma implicitKeyHead_of_dispatch
     -- reading to prove and no line hypothesis to discharge.  The production is
     -- context-free, so it reads at `.blockKey` directly.
     subst hstar
-    obtain ⟨sp_res2, h_al, hcorr2⟩ :=
+    obtain ⟨sp_res2, h_al, -, hcorr2⟩ :=
       dispatchContent_alias_prod 0 _ sp_prep .blockKey
         (corr_of_allowDirectives_update hcorr_prep) hpeek_disp h_dispatch
     have hsp2 := ScannerSurfCorr_unique hcorr2 hcorr_result
@@ -31632,7 +31632,7 @@ lemma content_dispatch_routed
     cases hprops with
     | inl h =>
       subst h
-      obtain ⟨sp_p, ha_ev, hc⟩ := dispatchContent_anchorProp_prod _ sp_prep
+      obtain ⟨sp_p, ha_ev, -, hc⟩ := dispatchContent_anchorProp_prod _ sp_prep
         (corr_of_allowDirectives_update hcorr_prep) hpeek_disp h_dispatch
       have hsp_eq := ScannerSurfCorr_unique hc hcorr_result
       rw [hsp_eq] at ha_ev
@@ -31673,7 +31673,7 @@ lemma content_dispatch_routed
              hcorr_result⟩
     | inr h =>
       subst h
-      obtain ⟨sp_p, ht_ev, hc⟩ := dispatchContent_tagProp_prod _ sp_prep
+      obtain ⟨sp_p, ht_ev, -, hc⟩ := dispatchContent_tagProp_prod _ sp_prep
         (corr_of_allowDirectives_update hcorr_prep) hpeek_disp h_dispatch
       have hsp_eq := ScannerSurfCorr_unique hc hcorr_result
       rw [hsp_eq] at ht_ev
@@ -32484,7 +32484,7 @@ lemma indentedValue_reads_at_any_indent
       cases hprops with
       | inl h =>
         subst h
-        obtain ⟨sp_a, ha_ev, hc⟩ := dispatchContent_anchorProp_prod _ sp_prep
+        obtain ⟨sp_a, ha_ev, -, hc⟩ := dispatchContent_anchorProp_prod _ sp_prep
           (corr_of_allowDirectives_update hcorr_prep) hpeek_disp h_dispatch
         have hsp_eq2 := ScannerSurfCorr_unique hc hcorr_result
         rw [hsp_eq2] at ha_ev
@@ -32508,7 +32508,7 @@ lemma indentedValue_reads_at_any_indent
           slotGateAt_spend h_src (Or.inl rfl) h_flow_disp h_dispatch⟩)
       | inr h =>
         subst h
-        obtain ⟨sp_t, ht_ev, hc⟩ := dispatchContent_tagProp_prod _ sp_prep
+        obtain ⟨sp_t, ht_ev, -, hc⟩ := dispatchContent_tagProp_prod _ sp_prep
           (corr_of_allowDirectives_update hcorr_prep) hpeek_disp h_dispatch
         have hsp_eq2 := ScannerSurfCorr_unique hc hcorr_result
         rw [hsp_eq2] at ht_ev
@@ -35122,7 +35122,7 @@ lemma accum_content_pending (sc : ScannerState)
             have hcontra := trailingPropertyRunOnLine_head h_t2_last h_t2_prop h_t2_line hpa
             rw [h_no_anchor] at hcontra
             exact Bool.noConfusion hcontra
-        obtain ⟨sp_new, h_prop, hcorr_new⟩ :=
+        obtain ⟨sp_new, h_prop, -, hcorr_new⟩ :=
           dispatchContent_anchorProp_prod _ sp_prep
             (corr_of_allowDirectives_update hcorr_prep) hpeek_disp h_dispatch
         have hsp_eq3 := ScannerSurfCorr_unique hcorr_new hcorr_result
@@ -35272,7 +35272,7 @@ lemma accum_content_pending (sc : ScannerState)
               have hcontra := trailingPropertyRunOnLine_head h_t2_last h_t2_prop h_t2_line hpt
               rw [h_no_tag] at hcontra
               exact Bool.noConfusion hcontra
-          obtain ⟨sp_new, h_prop, hcorr_new⟩ :=
+          obtain ⟨sp_new, h_prop, -, hcorr_new⟩ :=
             dispatchContent_tagProp_prod _ sp_prep
               (corr_of_allowDirectives_update hcorr_prep) hpeek_disp h_dispatch
           have hsp_eq3 := ScannerSurfCorr_unique hcorr_new hcorr_result
@@ -36684,7 +36684,7 @@ lemma accum_step_content (sc : ScannerState)
         -- consistent with both.  The decision belongs to the step that reads the
         -- NEXT character, so the run is held in the gap until then.
         subst hamp
-        obtain ⟨sp_new, h_prop, hcorr_new⟩ :=
+        obtain ⟨sp_new, h_prop, -, hcorr_new⟩ :=
           dispatchContent_anchorProp_prod s_ad sp_prep hcorr_ad hpeek h_dispatch
         obtain ⟨name, hname⟩ := dispatchContent_anchor_tokens h_dispatch
         have h_tl' : tailOf s'.tokens = tl := by
@@ -36746,7 +36746,7 @@ lemma accum_step_content (sc : ScannerState)
       · by_cases hbang : c = '!'
         · -- ═══ `!`: the tag half, same hold (`[a, !t`) ═══
           subst hbang
-          obtain ⟨sp_new, h_prop, hcorr_new⟩ :=
+          obtain ⟨sp_new, h_prop, -, hcorr_new⟩ :=
             dispatchContent_tagProp_prod s_ad sp_prep hcorr_ad hpeek h_dispatch
           obtain ⟨handle, suffix, hname⟩ := dispatchContent_tag_tokens h_dispatch
           have h_tl' : tailOf s'.tokens = tl := by
@@ -36927,7 +36927,7 @@ lemma accum_step_content (sc : ScannerState)
                 = true := by
               rw [← h_ad_run]; exact trailingPropertyRun_head h_t2_last h_t2_prop hpa
             rw [h_no_anchor] at hcontra; simp at hcontra
-        obtain ⟨sp_new, h_prop, hcorr_new⟩ :=
+        obtain ⟨sp_new, h_prop, -, hcorr_new⟩ :=
           dispatchContent_anchorProp_prod s_ad sp_prep hcorr_ad hpeek h_dispatch
         obtain ⟨name, hname⟩ := dispatchContent_anchor_tokens h_dispatch
         have h_tl' : tailOf s'.tokens = tl := by
@@ -37023,7 +37023,7 @@ lemma accum_step_content (sc : ScannerState)
                   = true := by
                 rw [← h_ad_run]; exact trailingPropertyRun_head h_t2_last h_t2_prop hpt
               rw [h_no_tag] at hcontra; simp at hcontra
-          obtain ⟨sp_new, h_prop, hcorr_new⟩ :=
+          obtain ⟨sp_new, h_prop, -, hcorr_new⟩ :=
             dispatchContent_tagProp_prod s_ad sp_prep hcorr_ad hpeek h_dispatch
           obtain ⟨handle, suffix, hname⟩ := dispatchContent_tag_tokens h_dispatch
           have h_tl' : tailOf s'.tokens = tl := by
