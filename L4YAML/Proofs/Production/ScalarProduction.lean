@@ -2774,6 +2774,7 @@ lemma scanPlainScalar_to_multiLine_native (sc : ScannerState) (sp : SurfPos)
     (hok : scanPlainScalar sc = .ok s') :
     ∃ sp_gram sp', SNsPlainMultiLine 0 (ctxOfInFlow sc.inFlow) sp sp_gram ∧
                    GStar SSWhite sp_gram sp' ∧
+                   (sp_gram = sp' → s'.peek? ≠ some '#') ∧
                    ScannerSurfCorr s' sp' := by
   obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek
   have hrest_head : ∀ n, sc.peekAt? 1 = some n → ∃ rest', rest = n :: rest' := by
@@ -2836,6 +2837,10 @@ lemma scanPlainScalar_to_multiLine_native (sc : ScannerState) (sp : SurfPos)
           h_first h_entries)
         _h_next_lines,
       h_trail,
+      fun heq hpk => h_hash
+        (collectPlainScalarLoop_terminated_of_fuel _ sc "" "" sc.inFlow _ sc.inputEnd result hloop
+            (by omega))
+        heq hpk,
       corr_of_simpleKeyAllowed_needIndentCheck_update false false (corr_of_emitAt _ _ hcorr_result)⟩
 
 /-! ## §7' The BLOCK-KEY one-line reading (item 15)
@@ -2909,6 +2914,7 @@ lemma scanPlainScalar_to_blockKey_oneLine (sc : ScannerState) (sp : SurfPos)
     (hok : scanPlainScalar sc = .ok s') :
     ∃ sp_gram sp', SNsPlainOneLine .blockKey sp sp_gram ∧
                    GStar SSWhite sp_gram sp' ∧
+                   (sp_gram = sp' → s'.peek? ≠ some '#') ∧
                    ScannerSurfCorr s' sp' := by
   obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek
   have hrest_head : ∀ n, sc.peekAt? 1 = some n → ∃ rest', rest = n :: rest' := by
@@ -2982,6 +2988,13 @@ lemma scanPlainScalar_to_blockKey_oneLine (sc : ScannerState) (sp : SurfPos)
       SNsPlainOneLine_blockIn_to_blockKey
         (SNsPlainOneLine.mk .blockIn _ ⟨rest, sc.col + 1⟩ sp_entries h_first' h_entries'),
       h_trail,
+      fun heq hpk => h_hash
+        (collectPlainScalarLoop_terminated_of_fuel _ sc "" "" sc.inFlow _ sc.inputEnd result hloop
+            (by omega))
+        (h_pos_eq.trans heq) (by
+          have h := Except.ok.inj hok
+          rw [← h] at hpk
+          exact hpk),
       h_corr_final⟩
 
 /-! ## §7'' The BLOCK-KEY one-line reading of a QUOTED scalar (item 16)
@@ -3501,13 +3514,14 @@ lemma scanPlainScalar_to_flowNode (sc : ScannerState) (sp : SurfPos)
     (hok : scanPlainScalar sc = .ok s') :
     ∃ sp_gram sp', SFlowNode 0 .flowOut sp sp_gram ∧
                    GStar SSWhite sp_gram sp' ∧
+                   (sp_gram = sp' → s'.peek? ≠ some '#') ∧
                    ScannerSurfCorr s' sp' := by
-  obtain ⟨sp_gram, sp', h_ml, h_trail, hcorr'⟩ :=
+  obtain ⟨sp_gram, sp', h_ml, h_trail, h_hash, hcorr'⟩ :=
     scanPlainScalar_to_multiLine_native sc sp hcorr hpeek hstart h_not_doc hok
   exact ⟨sp_gram, sp',
     SFlowNode.content 0 .flowOut _ _
       (SFlowContent.plain 0 .flowOut _ _ (SNsPlainMultiLine_ctxOfInFlow_to_flowOut h_ml)),
-    h_trail, hcorr'⟩
+    h_trail, h_hash, hcorr'⟩
 
 -- Content-level `.flowOut` sibling of `scanPlainScalar_to_flowNode` (item 12):
 -- exposes the `SFlowContent` before the `SFlowNode.content` wrap, which is what
@@ -3522,12 +3536,13 @@ lemma scanPlainScalar_to_flowContent (sc : ScannerState) (sp : SurfPos)
     (hok : scanPlainScalar sc = .ok s') :
     ∃ sp_gram sp', SFlowContent 0 .flowOut sp sp_gram ∧
                    GStar SSWhite sp_gram sp' ∧
+                   (sp_gram = sp' → s'.peek? ≠ some '#') ∧
                    ScannerSurfCorr s' sp' := by
-  obtain ⟨sp_gram, sp', h_ml, h_trail, hcorr'⟩ :=
+  obtain ⟨sp_gram, sp', h_ml, h_trail, h_hash, hcorr'⟩ :=
     scanPlainScalar_to_multiLine_native sc sp hcorr hpeek hstart h_not_doc hok
   exact ⟨sp_gram, sp',
     SFlowContent.plain 0 .flowOut _ _ (SNsPlainMultiLine_ctxOfInFlow_to_flowOut h_ml),
-    h_trail, hcorr'⟩
+    h_trail, h_hash, hcorr'⟩
 
 -- Flow-interior production: scanPlainScalar → SFlowNode 0 .flowIn + trailing WS
 -- + corr, for a plain scalar scanned INSIDE a flow collection (`inFlow = true`).
@@ -3544,54 +3559,39 @@ lemma scanPlainScalar_to_flowNode_flowIn (sc : ScannerState) (sp : SurfPos)
     (hok : scanPlainScalar sc = .ok s') :
     ∃ sp_gram sp', SFlowNode 0 .flowIn sp sp_gram ∧
                    GStar SSWhite sp_gram sp' ∧
+                   (sp_gram = sp' → s'.peek? ≠ some '#') ∧
                    ScannerSurfCorr s' sp' := by
-  obtain ⟨sp_gram, sp', h_ml, h_trail, hcorr'⟩ :=
+  obtain ⟨sp_gram, sp', h_ml, h_trail, h_hash, hcorr'⟩ :=
     scanPlainScalar_to_multiLine_native sc sp hcorr hpeek hstart h_not_doc hok
   rw [hInFlow] at h_ml
   exact ⟨sp_gram, sp',
     SFlowNode.content 0 .flowIn _ _ (SFlowContent.plain 0 .flowIn _ _ h_ml),
-    h_trail, hcorr'⟩
+    h_trail, h_hash, hcorr'⟩
 
+/-- `scanPlainScalar` in block context reads `[131] ns-plain(0, block-in)` up to
+    its grammar endpoint `sp_gram`; the scanner parks at `sp'` past the
+    trailing `s-white*` it swallowed (`a #b`).  When nothing was swallowed the
+    walk did NOT stop on `#` (`collectPlainScalar_terminates?` needs buffered
+    whites for that), so a comment can only follow across the run. -/
 lemma scanPlainScalar_prod (sc : ScannerState) (sp : SurfPos)
     {s' : ScannerState} {c : Char}
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek : sc.peek? = some c)
     (hstart : canStartPlainScalarBool c (sc.peekAt? 1) false = true)
+    (hflow : sc.inFlow = false)
+    (h_not_doc : sc.col = 0 → atDocumentBoundary sc = false)
     (hok : scanPlainScalar sc = .ok s') :
     ∃ sp_gram sp', SNsPlain 0 .blockIn sp sp_gram ∧
+                   GStar SSWhite sp_gram sp' ∧
+                   (sp_gram = sp' → s'.peek? ≠ some '#') ∧
                    ScannerSurfCorr s' sp' := by
-  -- Extract surface position structure from peek
-  obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek
-  -- Bridge: peekAt? 1 connects to rest list structure
-  have hrest_head : ∀ n, sc.peekAt? 1 = some n → ∃ rest', rest = n :: rest' := by
-    intro n hn
-    unfold ScannerState.peekAt? at hn
-    have hcorr' := hsp_eq ▸ hcorr
-    obtain ⟨pre, rest', hcs, hlen⟩ :=
-      peekAtLoop_some_chars hcorr'.end_eq hn (c :: rest) hcorr'.chars_from
-    have hp : ∃ a, pre = [a] := by
-      cases pre with
-      | nil => simp at hlen
-      | cons a as =>
-        cases as with
-        | nil => exact ⟨a, rfl⟩
-        | cons => simp at hlen
-    obtain ⟨a, rfl⟩ := hp
-    simp at hcs; obtain ⟨_, rfl⟩ := hcs
-    exact ⟨rest', rfl⟩
-  -- Get SNsPlainFirst for the first character
-  rw [hsp_eq]
-  have h_first : SNsPlainFirst .blockIn ⟨c :: rest, sc.col⟩ ⟨rest, sc.col + 1⟩ :=
-    canStartPlainScalar_to_SNsPlainFirst c rest sc.col (sc.peekAt? 1) false hstart hrest_head
-  -- Grammar: wrap first char in SNsPlainOneLine → SNsPlainMultiLine = SNsPlain 0 .blockIn
-  -- This is a valid (minimal) derivation covering at least the first character.
-  have h_gram : SNsPlainMultiLine 0 .blockIn ⟨c :: rest, sc.col⟩ ⟨rest, sc.col + 1⟩ :=
-    SNsPlainMultiLine.mk 0 .blockIn _ _ _
-      (SNsPlainOneLine.mk .blockIn _ _ _ h_first (GStar.nil _))
-      (GStar.nil _)
-  -- Scanner correspondence from scanPlainScalar_corr (sorry-free)
-  obtain ⟨sp', hcorr'⟩ := scanPlainScalar_corr sc sp hcorr hok
-  exact ⟨⟨rest, sc.col + 1⟩, sp', h_gram, hcorr'⟩
+  have hstart' : canStartPlainScalarBool c (sc.peekAt? 1) sc.inFlow = true := by
+    rw [hflow]; exact hstart
+  obtain ⟨sp_gram, sp', h_ml, h_trail, h_hash, hcorr'⟩ :=
+    scanPlainScalar_to_multiLine_native sc sp hcorr hpeek hstart' h_not_doc hok
+  have h_ctx : ctxOfInFlow sc.inFlow = .blockIn := by rw [hflow]; rfl
+  rw [h_ctx] at h_ml
+  exact ⟨sp_gram, sp', h_ml, h_trail, h_hash, hcorr'⟩
 
 /-! ## §8 Block Scalar Production (Layer 4b)
 
