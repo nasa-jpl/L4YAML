@@ -6688,12 +6688,12 @@ lemma PendingNode.close_with_sslFrom {sc : ScannerState}
       (fun _ _ => (h_next h_noflow).gate) h_from h_ok
     exact h_close sp_mid (SBlockNode.emptyNode (n + 1) .blockIn sp_scan sp_mid h_ssl)
 
-/-- N3: while directives are still allowed the park is an indicator park or a
-    line start, so an empty `[66]` before a `#` there is refuted by the park's
-    own follower (`h_next`) or its column; content parks have `h_nodir`. -/
 /-- When preprocessing returns `some` at col=0, extract `SSLComments` from the
     consumed characters plus `ScannerSurfCorr` for the resulting state. -/
 
+/-- N3: while directives are still allowed the park is an indicator park or a
+    line start, so an empty `[66]` before a `#` there is refuted by the park's
+    own follower (`h_next`) or its column; content parks have `h_nodir`. -/
 lemma PendingNode.nil_gate_of_allowDirectives {sc : ScannerState} {b : Bool}
     {sp_start sp_block sp_scan : SurfPos}
     (h : PendingNode sc b sp_start sp_block sp_scan) (hnf : sc.inFlow = false)
