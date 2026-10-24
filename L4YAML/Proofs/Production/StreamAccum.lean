@@ -4090,10 +4090,10 @@ lemma PendingNode.dirRoute {sc : ScannerState} {sp_start sp_block sp_scan : Surf
     ∀ sp_mid, SSLComments sp_scan sp_mid →
       ∀ sp_end, SLDirectiveDocument sp_mid sp_end → SLYamlStream sp_start sp_end := by
   cases h with
-  | noPending _ _ _ _ h_nodoc =>
+  | noPending _ _ h_col _ h_nodoc =>
     exact fun sp_mid h_ssl sp_end h_dd =>
       SLYamlStream.single sp_start sp_mid sp_end sp_end
-        (ssl_comments_extend_prefixes (h_nodoc h_noflow) h_ssl)
+        (ssl_comments_extend_prefixes (h_nodoc h_noflow) (h_col.resolve_right (by simp [h_noflow])) h_ssl)
         (GOpt.some sp_mid sp_end (SLAnyDocument.directive sp_mid sp_end h_dd))
         (GStar.nil _)
   | pendingDocEnd _ _ _ _ h_marker _ _ =>
@@ -6700,8 +6700,8 @@ lemma PendingNode.close_with_sslFrom {sc : ScannerState}
     (h_ok : SSLComments sp_scan sp_mid ∨ CommentOk sc) :
     SLYamlStream sp_start sp_mid := by
   cases h_pending with
-  | noPending _ _ _ _ _ _ _ h_gate =>
-    exact ssl_comments_extend_stream sp_start sp_block sp_mid h_stream
+  | noPending _ _ h_col _ _ _ _ h_gate =>
+    exact ssl_comments_extend_stream sp_start sp_block sp_mid h_stream (h_col.resolve_right (by simp [h_noflow]))
       (SSLCommentsFrom_at_park h_corr (GStar.nil _)
         (fun _ => gate_sc h_corr (h_gate h_noflow)) h_from h_ok)
   | pendingContent _ _ _ _ _ h_closable _ _ _ _ _ _ _ _ _ _ h_run h_gate _ =>
@@ -13457,11 +13457,11 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
              -- construction, so the raw fallback it used to guard is gone.
              flowKeyRoute_of_root
                (Or.inl ⟨h_col0, fun sp_m h_ssl =>
-                 ssl_comments_extend_prefixes (h_nodoc h_scflow) h_ssl⟩)
+                 ssl_comments_extend_prefixes (h_nodoc h_scflow) h_col0 h_ssl⟩)
                h_noflow_prep h_park h_close_pending h_dn h_fv
                h_corr hcorr_prep h_preprocess (gate_sc h_corr (h_gateN (noflow_of_fl0 h_fl0))) (Or.inr trivial)
                (Or.inl (fun sp_m h_ssl =>
-                 ssl_comments_extend_prefixes (h_nodoc h_scflow) h_ssl))
+                 ssl_comments_extend_prefixes (h_nodoc h_scflow) h_col0 h_ssl))
                h_bare h_base (Or.inr trivial) (Or.inr trivial) (Or.inr (PackAlt.ofRefused (h_noekN h_scflow))),
              Or.inr trivial⟩),
            PendingNode.noPending sp_start sp_open (Or.inr (inFlow_of_flowLevel_eq h_fl1))
@@ -24444,6 +24444,7 @@ lemma accum_block_on_noPending
     (sc : ScannerState) (sp_start sp_block : SurfPos)
     (s_prep s' : ScannerState) (c : Char) (sp_prep sp_scan' : SurfPos)
     (h_stream_block : SLYamlStream sp_start sp_block)
+    (h_colN : sp_block.col = 0)
     (hcorr_prep : ScannerSurfCorr s_prep sp_prep)
     (hcorr_result : ScannerSurfCorr s' sp_scan')
     (h_corr : ScannerSurfCorr sc sp_block)
@@ -24633,7 +24634,7 @@ lemma accum_block_on_noPending
               { s_prep with allowDirectives := false, documentEverStarted := true }
             else s_prep).explicitKeyCol) =>
         indicator_open_map sp_start sp_mid _ k c hcv s_prep s' sp_scan'
-          (ssl_comments_extend_stream sp_start sp_block _ h_stream_block h_ssl_pre)
+          (ssl_comments_extend_stream sp_start sp_block _ h_stream_block h_colN h_ssl_pre)
           hcol_mid h_ind hcorr_prep hcorr_result
           -- Item 76: the seed's flag, not the landing's break — this park is
           -- the line start `h_col` names, so it measures at EVERY input.
@@ -24647,7 +24648,7 @@ lemma accum_block_on_noPending
           -- in the stream's FIRST document (`: v`, `? k`, `# c⏎: v`), so the
           -- route is `nodocMapRoute`'s `single` — the `-` arm's swap (item
           -- 135) at the other two `[188]` alternatives. ═══
-          (Or.inl (ssl_comments_extend_prefixes (h_nodoc h_scflow) h_ssl_pre))
+          (Or.inl (ssl_comments_extend_prefixes (h_nodoc h_scflow) h_colN h_ssl_pre))
           -- Item 137: a virgin park is not a marker park — `pendingDocStart`
           -- has its own arm and this one has started no document at all.
           (Or.inr trivial)
@@ -26448,7 +26449,6 @@ lemma accum_block_on_pendingBlockContent {sp_gram : SurfPos}
     (hcorr_result : ScannerSurfCorr s' sp_scan')
     (h_corr : ScannerSurfCorr sc sp_scan)
     (h_noflow : s_prep.inFlow = false)
-    (h_next : sc.inFlow = false → NextIsSep sc)
     -- **Item 77 — the park's own arm**, as at `accum_block_on_closeThenBlock`:
     -- this park is a CONTENT one, and its constructor field says the content
     -- scan either re-armed or spent a column (`content_park_arm`) — with the
@@ -26975,6 +26975,7 @@ lemma accum_block_on_pendingBlock
     (hcorr_result : ScannerSurfCorr s' sp_scan')
     (h_corr : ScannerSurfCorr sc sp_scan)
     (h_noflow : s_prep.inFlow = false)
+    (h_next : sc.inFlow = false → NextIsSep sc)
     (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
     (h_dispatch : scanNextToken_dispatchBlockIndicators
         (if s_prep.allowDirectives then
@@ -33128,7 +33129,7 @@ lemma accum_content_on_noPending
     gate_sc h_corr (fun hc => absurd h_colN hc)
   have h_keyctx := keyctx_of_preprocess sc sp_block sp_prep s_prep c h_corr hcorr_prep
     (fun _ _ sp_mid h_ssl => ssl_comments_extend_stream sp_start sp_block sp_mid
-      h_stream_block h_ssl)
+      h_stream_block h_colN h_ssl)
     (GStar.nil _) (fun _ => h_gateN) h_dn h_fv h_noflow_prep (Or.inl h_park) h_preprocess
   -- Item 136: and the same landing read at the stream's HEAD — the entry a
   -- landed key would open belongs to the first document too, so `a: 1` and
