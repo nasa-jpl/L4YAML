@@ -1526,7 +1526,10 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       -- Eight is the instrument's number (`scripts/park_top_price.py
       -- noPending`), not item 116's sentence, which said the same thing and
       -- was spent four times before anything re-derived it.
-      (h_ntop : sc.inFlow = false → sc.currentIndent < 0) :
+      (h_ntop : sc.inFlow = false → sc.currentIndent < 0)
+      -- `[66]` narrowed to col 0: the scanner's comment gate at this park, off a
+      -- line start — the token that parked here is the last consumed char.
+      (h_gate : sp.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#')) :
       PendingNode sc false sp_start sp sp
   /-- Content token scanned (scalar, anchor, alias, tag).
       The gap sp_block → sp_scan contains SSeparate + content.
@@ -1962,7 +1965,10 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       -- save and its scans keep the key (`dispatchContent_anchor_simpleKey`,
       -- `…_tag_simpleKey`), so the content it decorates inherits a possible
       -- key — which is what `pendingContent.h_live` asks at that content's park.
-      (h_poss : sc.simpleKey.possible = true) :
+      (h_poss : sc.simpleKey.possible = true)
+      -- `[66]` narrowed to col 0: the scanner's comment gate at this park, off a
+      -- line start — the indicator that parked here is the last consumed char.
+      (h_gate : sp_scan.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#')) :
       PendingNode sc false sp_start sp_block sp_scan
   /-- Document end `...` scanned. The gap contains SCDocumentEnd.
       Awaiting SSLComments to form SLDocumentSuffix.
@@ -1998,7 +2004,10 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       -- Item 320: the park's register, DEAD — `scanDocumentEnd` ends every open node, the
       -- `?` frame among them (item 317), so a `:` landing on this park is never a class-A
       -- value; lane (e)'s carrier, paid by `scanDocumentEnd_explicitKeyLine`.
-      (h_noek : sc.explicitKeyLine = none) :
+      (h_noek : sc.explicitKeyLine = none)
+      -- `[66]` narrowed to col 0: the scanner's comment gate at this park, off a
+      -- line start — the indicator that parked here is the last consumed char.
+      (h_gate : sp_scan.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#')) :
       PendingNode sc false sp_start sp_block sp_scan
   /-- Document start `---` scanned. The gap contains SCDirectivesEnd
       (possibly preceded by directives). Awaiting content or SSLComments
@@ -2054,7 +2063,10 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       -- token form above cannot (item 300).
       (h_docline : sc.docStartLine = some sc.line)
       -- Item 320: the register, dead after `---` as after `...` (item 317; lane (e)).
-      (h_noek : sc.explicitKeyLine = none) :
+      (h_noek : sc.explicitKeyLine = none)
+      -- `[66]` narrowed to col 0: the scanner's comment gate at this park, off a
+      -- line start — the indicator that parked here is the last consumed char.
+      (h_gate : sp_scan.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#')) :
       PendingNode sc false sp_start sp_block sp_scan
   /-- Directive `%` scanned. The gap contains directive content.
       Awaiting next `%` (accumulate) or `---` (form directive document).
@@ -2087,7 +2099,10 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       -- reshaped `pendingDocStart.h_doc_route`: given the finished directive
       -- document, this produces the extended stream.
       (h_dir_route : ∀ sp_end,
-        SLDirectiveDocument sp_block sp_end → SLYamlStream sp_start sp_end) :
+        SLDirectiveDocument sp_block sp_end → SLYamlStream sp_start sp_end)
+      -- `[66]` narrowed to col 0: the scanner's comment gate at this park, off a
+      -- line start — the indicator that parked here is the last consumed char.
+      (h_gate : sp_scan.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#')) :
       PendingNode sc true sp_start sp_block sp_scan
   /-- Flow indicator scanned (`]`, `}`, `,`), or deferred block dispatch.
       Carries stream at block level. Closing requires grammar composition
@@ -2131,7 +2146,10 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       -- **Item 293 — the park reads `flag ∨ live`** (LAST): a block
       -- indicator leaves the flag up, and content at this park keeps a
       -- live key or ends armed, so a flow open here pushes a live key.
-      (h_live0 : sc.simpleKeyAllowed = true ∨ sc.simpleKey.possible = true) :
+      (h_live0 : sc.simpleKeyAllowed = true ∨ sc.simpleKey.possible = true)
+      -- `[66]` narrowed to col 0: the scanner's comment gate at this park, off a
+      -- line start — the indicator that parked here is the last consumed char.
+      (h_gate : sp_scan.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#')) :
       PendingNode sc false sp_start sp_block sp_scan
   /-- Content token scanned INSIDE a block entry (e.g., `- "hello"`).
       Like `pendingContent`, but additionally carries entry-level evidence
@@ -2164,7 +2182,7 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       break opens a mapping NESTED in the entry (`-⏎  a: 1`), which is
       `[185]`'s block-node alternative rather than its compact one and the same
       route lemma the mapping VALUE's pending uses. -/
-  | pendingBlockContent (sp_start sp_block sp_scan : SurfPos) (n : Nat)
+  | pendingBlockContent (sp_start sp_block sp_scan sp_gram : SurfPos) (n : Nat)
       (h_line : sp_scan.col = 0 ∨ LineNodeStop sp_scan.chars)
       -- **Item 159: the face, on this park too.**  `pendingContent.h_closable`
       -- has carried §9.2's reading since item 157, and the run's ride into an
@@ -2173,10 +2191,10 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       -- costs its producers nothing (they ignore it) and its ONE consumer,
       -- `PendingNode.close_with_ssl`, carries `h_nd` already.
       (h_closable : danglingNodePos? sc = none → ∀ sp_mid,
-        SSLComments sp_scan sp_mid →
+        SSLComments sp_gram sp_mid →
         SLYamlStream sp_start sp_mid)
       (h_closable_entry : ∀ sp_mid,
-        SSLComments sp_scan sp_mid →
+        SSLComments sp_gram sp_mid →
         ∀ sp_end, SCompactSeqTail n sp_mid sp_end → SLYamlStream sp_start sp_end)
       (h_key : sc.simpleKey.possible = true → sc.simpleKey.pos.line = sc.line →
         ImplicitKeyPack sc sp_start sp_scan ∨ KeyPackPunt sc)
@@ -2309,6 +2327,10 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       (h_nic0 : sp_scan.col = 0 → sc.needIndentCheck = true)
       -- Item 293: `pendingContent.h_live`'s twin at the entry-level park,
       -- paid the same way by the same producers.
+      -- `[66]` narrowed to col 0: grammar endpoint, swallowed run and the
+      -- scanner's comment gate at the park, as on `pendingContent`.
+      (h_run : GStar SSWhite sp_gram sp_scan)
+      (h_gate : sp_gram = sp_scan → sc.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#'))
       (h_live : InlineResidue sp_scan ':' → sc.simpleKey.possible = true) :
       PendingNode sc false sp_start sp_block sp_scan
   /-- Block indicator scanned (`-`, `?`, `:`).
@@ -2507,7 +2529,10 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       -- **Item 284 — the indicator this park stands on OFFERS a slot** (LAST,
       -- same reason).  A run started off this park and an open dispatched from
       -- it read their slot face off the token the dispatch just pushed.
-      (h_offer : OfferPred sc.tokens) :
+      (h_offer : OfferPred sc.tokens)
+      -- `[66]` narrowed to col 0: the scanner's comment gate at this park, off a
+      -- line start — the indicator that parked here is the last consumed char.
+      (h_gate : sp_scan.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#')) :
       PendingNode sc false sp_start sp_block sp_scan
   /-- A KEYLESS block-mapping entry opened at column 0, depth 0, one node
       awaited — the mapping twin of `pendingBlock` (item 13).  The whole entry
@@ -2799,7 +2824,10 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       -- **Item 284 — the indicator this park stands on OFFERS a slot** (LAST,
       -- same reason).  A run started off this park and an open dispatched from
       -- it read their slot face off the token the dispatch just pushed.
-      (h_offer : OfferPred sc.tokens) :
+      (h_offer : OfferPred sc.tokens)
+      -- `[66]` narrowed to col 0: the scanner's comment gate at this park, off a
+      -- line start — the indicator that parked here is the last consumed char.
+      (h_gate : sp_scan.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#')) :
       PendingNode sc false sp_start sp_block sp_scan
 
 /-- **The flag's vacuous half, named** (item 207).
@@ -2881,7 +2909,7 @@ lemma PendingNode.arm_tight_or_col {sc : ScannerState}
   | pendingMapValue => exact Or.inr (by assumption)
   -- Item 80: the two content parks state the tight arm outright…
   | pendingContent _ _ _ _ _ _ _ _ _ h_arm => exact h_arm
-  | pendingBlockContent _ _ _ _ _ _ _ _ _ h_arm => exact h_arm
+  | pendingBlockContent _ _ _ _ _ _ _ _ _ _ h_arm => exact h_arm
   -- Item 222: …and so does the escape…
   | pendingFlow _ _ _ _ h_arm _ _ => exact h_arm
   -- Item 223: …and so do the two document markers, whose scans clear the saved
@@ -6187,8 +6215,8 @@ lemma PendingNode.close_with_ssl {sc : ScannerState}
   | pendingFlow =>
     -- Absorb opaque scanner content (flow/block indicators) via scannerDrop.
     exact SLYamlStream.scannerDrop sp_start sp_block sp_scan sp_mid h_stream h_ssl
-  | pendingBlockContent _ _ _ _ _ h_closable _ _ _ _ =>
-    exact h_closable h_nd sp_mid h_ssl
+  | pendingBlockContent _ _ _ _ _ _ h_closable _ _ _ _ _ _ _ _ _ _ _ _ h_run _ =>
+    exact h_closable h_nd sp_mid (white_prepend_SSLComments h_run h_ssl)
   | pendingDocEnd _ _ _ _ h_marker _ _ =>
     exact SLYamlStream.suffixContinue sp_start sp_block sp_mid sp_mid sp_mid sp_mid
       h_stream (GPlus.mk sp_block sp_mid sp_mid
@@ -12878,7 +12906,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
       -- closed the document — so the suffix face above is the honest route.
       -- Item 201: and no `?` frame stands over a closed document either.
       (Or.inr trivial) (Or.inr (PackAlt.ofRefused h_noekE))
-  | pendingBlockContent _ _ _ n176 h_line _ _ _ _ _ _ h_closeF176 _ h_tail143 _ _
+  | pendingBlockContent _ _ _ _ n176 h_line _ _ _ _ _ _ h_closeF176 _ h_tail143 _ _
       h_cFV201 =>
     -- Item 176: the entry-level face read at the EMPTY tail is the
     -- landing-level face (item 110's own spend), so `k:⏎  - x⏎[1]: b`
@@ -27441,7 +27469,7 @@ lemma accum_block_pending (sc : ScannerState)
         (h_closeFV108.imp (fun ⟨nv, ks, h_le, _, fV⟩ => ⟨nmv, nv, ks, h_le, fV⟩) id)
         -- Item 208: a value park is never at column 0, so the premise is refuted.
         (nic0_of_col_pos h_col0_mv)
-  | pendingBlockContent _ _ _ n_old h_line _h_closable h_entry_old h_key_old h_stale47 h_arm77
+  | pendingBlockContent _ _ _ _ n_old h_line _h_closable h_entry_old h_key_old h_stale47 h_arm77
       h_kslot92 h_closeF99 _ h_tail139 h_seqF167 h_kslotUp190 h_closeFV198 h_nic0B h_live290 =>
     -- Item 22: the pending's own entry index rides through; the `n ≠ 0`
     -- deferral this arm used to open is gone with it.
@@ -34856,7 +34884,7 @@ lemma accum_content_pending (sc : ScannerState)
     subst h_colon
     exact absurd h_adj
       (checkAdjacentValue_refutes_stale (h_stale h_res) h_flow_disp h_pay h_pay_sk)
-  | pendingBlockContent _ _ _ n h_line _h_closable _h_closable_entry _h_key h_stale _
+  | pendingBlockContent _ _ _ _ n h_line _h_closable _h_closable_entry _h_key h_stale _
       _h_kslot h_closeF110 _ h_tail139b _ _ h_closeFV110 h_nic0B =>
     -- ═══ Item 47: same rung, entry-parked (`- "a" :b`) — same refutation. ═══
     --
