@@ -302,6 +302,47 @@ lemma NextIsSep.not_open {s : ScannerState} {c : Char} (h : NextIsSep s)
   unfold NextIsSep at h; rw [hpk] at h
   rcases hc with rfl | rfl <;> exact absurd h (by decide)
 
+/-- N3: the content dispatcher never accepts a separator character — blanks and
+    the flow closers `,` `]` `}` fail `canStartPlainScalarBool` and match no other arm. -/
+lemma dispatchContent_not_sep {s s' : ScannerState} {c : Char}
+    (hc : (isBlankBool c || c == ',' || c == ']' || c == '}') = true)
+    (hok : scanNextToken_dispatchContent s c = .ok s') : False := by
+  have hcs : c = ' ' ∨ c = '\t' ∨ c = '\n' ∨ c = '\r' ∨ c = ',' ∨ c = ']' ∨ c = '}' := by
+    simp only [isBlankBool, isWhiteSpaceBool, isLineBreakBool, isSpaceBool, isTabBool,
+      isLineFeedBool, isCarriageReturnBool, Bool.or_eq_true, beq_iff_eq] at hc
+    rcases hc with ((((h | h) | (h | h)) | h) | h) | h <;> simp_all
+  rcases hcs with rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
+    simp [scanNextToken_dispatchContent, canStartPlainScalarBool, isIndicatorBool,
+      isWhiteSpaceBool, isLineBreakBool, isSpaceBool, isTabBool, isLineFeedBool,
+      isCarriageReturnBool] at hok
+
+/-- Two scanner states at the same surface position read the same next character. -/
+lemma peek_eq_of_corr_same {s t : ScannerState} {sp : SurfPos} {c : Char}
+    (hs : ScannerSurfCorr s sp) (ht : ScannerSurfCorr t sp) (hpk : t.peek? = some c) :
+    s.peek? = some c := by
+  have hmore : t.offset < t.inputEnd := by
+    unfold ScannerState.peek? at hpk; split at hpk
+    · assumption
+    · cases hpk
+  obtain ⟨c', rest, hchars, hpk'⟩ := peek_corr t sp ht hmore
+  rw [hpk] at hpk'; cases hpk'
+  have : sp = ⟨c :: rest, sp.col⟩ := by cases sp; simp_all
+  rw [this] at hs
+  exact peek_of_corr_cons hs
+
+/-- N3: a park whose follower is a separator cannot be glued to the content the
+    dispatcher just accepted — so an empty `[66]` there is refuted, which is what
+    the hub's `nil → col 0` side condition asks for. -/
+lemma NextIsSep.eps_col0 {sc t s' : ScannerState} {sp sp_prep : SurfPos} {c : Char}
+    (hnext : NextIsSep sc) (hcorr : ScannerSurfCorr sc sp) (hcorr_t : ScannerSurfCorr t sp_prep)
+    (hpeek : t.peek? = some c) (hok : scanNextToken_dispatchContent t c = .ok s')
+    (h_eq : sp = sp_prep) : sp.col = 0 := by
+  exfalso
+  subst h_eq
+  have hpk := peek_eq_of_corr_same hcorr hcorr_t hpeek
+  unfold NextIsSep at hnext; rw [hpk] at hnext
+  exact dispatchContent_not_sep hnext hok
+
 /-- A flow open glued to a separator-expecting park is not what the scanner read. -/
 lemma eps_refuted_of_next {sc s_prep : ScannerState} {sp sp_prep : SurfPos} {c : Char}
     (h_next : NextIsSep sc) (h_corr : ScannerSurfCorr sc sp)
@@ -35637,7 +35678,7 @@ lemma accum_content_pending (sc : ScannerState)
     subst h_eq
     have h_sep : SSeparateLines 0 sp_scan sp_prep :=
       SSeparateLines.inline 0 sp_scan sp_prep
-        (GStar_SSWhite_to_SSeparateInLine sp_scan sp_prep h_ws)
+        (GStar_SSWhite_to_SSeparateInLine sp_scan sp_prep h_ws (NextIsSep.eps_col0 (h_nextS (noflow_of_fl0 h_fl0)) h_corr (corr_of_allowDirectives_update hcorr_prep) (by split <;> exact preprocess_some_peek h_preprocess) h_dispatch))
     exact content_dispatch_routed (h_alt := PackAlt.step_preprocess h_preprocess (PackAlt.ofRefused h_noekS)) (h_possD := (preprocess_saved_key_fresh h_armS.1 h_noflow_prep h_preprocess).1) (h_src := slotGateAt_of_offerPred (offerPred_of_docStart h_realS h_markerS) h_base h_preprocess) sp_start sp_scan sp_block s_prep s' c sp_prep sp_scan'
       h_stream_block h_sep (nic_false_of_flow_disp h_preprocess h_flow_disp)
       hcorr_prep hcorr_result h_not_doc (preprocess_some_peek h_preprocess)
@@ -35845,7 +35886,7 @@ lemma accum_content_pending (sc : ScannerState)
       -- one more span whose derivation never mentions the parameter.
       have h_sep2 : SSeparateLines n sp_scan sp_prep :=
         SSeparateLines.inline n sp_scan sp_prep
-          (GStar_SSWhite_to_SSeparateInLine sp_scan sp_prep h_ws)
+          (GStar_SSWhite_to_SSeparateInLine sp_scan sp_prep h_ws (NextIsSep.eps_col0 (h_nextP (noflow_of_fl0 h_fl0)) h_corr (corr_of_allowDirectives_update hcorr_prep) (by split <;> exact preprocess_some_peek h_preprocess) h_dispatch))
       -- dispatch-state transports: the `allowDirectives` update touches
       -- neither the tokens, the line, nor the flag.
       have h_ad_toks : (if s_prep.allowDirectives then
@@ -36006,7 +36047,7 @@ lemma accum_content_pending (sc : ScannerState)
                            h_cov.imp (fun ⟨lo, hb, hc⟩ =>
                              ⟨lo, hb, h_cov_step lo (FrameLevel.map k :: ks) hc⟩) id, r⟩) (PackAlt.step_content h_preprocess h_dispatch))⟩,
                        h_run.blockKey_addAnchor
-                         (GStar_SSWhite_to_SSeparateInLine sp_scan sp_prep h_ws) h_prop, ?_,
+                         (GStar_SSWhite_to_SSeparateInLine sp_scan sp_prep h_ws (NextIsSep.eps_col0 (h_nextP (noflow_of_fl0 h_fl0)) h_corr (corr_of_allowDirectives_update hcorr_prep) (by split <;> exact preprocess_some_peek h_preprocess) h_dispatch)) h_prop, ?_,
                        by
                          rw [(dispatchContent_anchor_simpleKey h_dispatch).1,
                              allowDirectives_update_simpleKey]
@@ -36152,7 +36193,7 @@ lemma accum_content_pending (sc : ScannerState)
                            h_cov.imp (fun ⟨lo, hb, hc⟩ =>
                              ⟨lo, hb, h_cov_step lo (FrameLevel.map k :: ks) hc⟩) id, r⟩) (PackAlt.step_content h_preprocess h_dispatch))⟩,
                          h_run.blockKey_addTag
-                           (GStar_SSWhite_to_SSeparateInLine sp_scan sp_prep h_ws) h_prop, ?_,
+                           (GStar_SSWhite_to_SSeparateInLine sp_scan sp_prep h_ws (NextIsSep.eps_col0 (h_nextP (noflow_of_fl0 h_fl0)) h_corr (corr_of_allowDirectives_update hcorr_prep) (by split <;> exact preprocess_some_peek h_preprocess) h_dispatch)) h_prop, ?_,
                          by
                            rw [(dispatchContent_tag_simpleKey h_dispatch).1,
                                allowDirectives_update_simpleKey]
@@ -36325,7 +36366,7 @@ lemma accum_content_pending (sc : ScannerState)
                 · have hnPipe : c ≠ '|' := fun h => hc5 (Or.inl h)
                   have hnGt : c ≠ '>' := fun h => hc5 (Or.inr h)
                   have h_sep_bk : SSeparate 0 .blockKey sp_scan sp_prep :=
-                    GStar_SSWhite_to_SSeparateInLine sp_scan sp_prep h_ws
+                    GStar_SSWhite_to_SSeparateInLine sp_scan sp_prep h_ws (NextIsSep.eps_col0 (h_nextP (noflow_of_fl0 h_fl0)) h_corr (corr_of_allowDirectives_update hcorr_prep) (by split <;> exact preprocess_some_peek h_preprocess) h_dispatch)
                   have h_line_scan : s'.simpleKey.pos = (if s_prep.allowDirectives then
                       { s_prep with allowDirectives := false, documentEverStarted := true }
                     else s_prep).simpleKey.pos →
