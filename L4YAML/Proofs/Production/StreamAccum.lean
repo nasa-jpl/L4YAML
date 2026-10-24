@@ -13654,7 +13654,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                 -- route stands where the run's cannot.  Its faces are punted:
                 -- the fresh-document reading, not item 174's `+MAP &p` ride.
                 | _, _ => flowKeyRoute_of_root (Or.inr trivial) h_noflow_prep h_park
-                    h_close_pending h_dn h_fv h_corr hcorr_prep h_preprocess (fun _ => (h_gateP (noflow_of_fl0 h_fl0)).gate) (Or.inr trivial)
+                    h_close_pending h_dn h_fv h_corr hcorr_prep h_preprocess (GStar.nil _) (fun _ _ => (h_gateP (noflow_of_fl0 h_fl0)).gate) (Or.inr trivial)
                     (Or.inr trivial) h_bare h_base (Or.inr trivial) (Or.inr trivial)
                     (Or.inr trivial)),
                -- Item 96: the run's value line — the collection completes the
