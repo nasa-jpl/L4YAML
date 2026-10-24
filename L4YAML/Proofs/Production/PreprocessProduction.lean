@@ -1491,6 +1491,76 @@ lemma SFlowMapEntries_extendSep {n : Nat} {c : YamlContext} {s s_e s' : SurfPos}
     exact ⟨.consMore _ _ _ _ _ _ _ _ he hsep hcomma hsep' tail',
            .consMore he hsep hcomma hsep' tail' h_cl'⟩
 
+
+/-! ## N3: the frame's one conversion at a park -/
+
+/-- A park whose characters begin with `c` has `c` under the scanner's cursor. -/
+lemma peek_of_corr_cons {sc : ScannerState} {c : Char} {rest : List Char} {col : Nat}
+    (hcorr : ScannerSurfCorr sc ⟨c :: rest, col⟩) : sc.peek? = some c := by
+  have hmore : sc.offset < sc.inputEnd := by
+    rcases Nat.lt_or_ge sc.offset sc.inputEnd with h | h
+    · exact h
+    · exfalso
+      have h2 := eof_corr sc _ hcorr (Nat.not_lt.mpr h)
+      simp at h2
+  obtain ⟨c', rest', hch, hpk⟩ := peek_corr sc _ hcorr hmore
+  simp only [List.cons.injEq] at hch
+  rw [← hch.1] at hpk
+  exact hpk
+
+/-- The scanner's comment gate FAILS right after it consumed a character that
+    is neither white, break nor BOM, away from column 0: `peekBack?` is that
+    character.  The uniform refutation for indicator and closing-quote parks. -/
+lemma CommentOk_false_of_advance {sc : ScannerState} {c : Char} {rest : List Char}
+    (hcorr : ScannerSurfCorr sc ⟨c :: rest, sc.col⟩)
+    (hmore : sc.offset < sc.inputEnd)
+    (hnl : c ≠ '\n') (hcr : c ≠ '\r')
+    (hcol : sc.advance.col ≠ 0)
+    (hc : (isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF') = false) :
+    ¬ CommentOk sc.advance := by
+  intro h
+  have hpb := advance_peekBack_eq_peek hcorr hmore hnl hcr
+  rcases h with h | h | ⟨c', hc', hw⟩
+  · exact hcol h
+  · rw [hpb] at h; cases h
+  · rw [hpb] at hc'
+    cases hc'
+    rw [hc] at hw
+    cases hw
+
+/-- **The frame's one conversion.**  A landing read from the scanner park
+    `sp_scan` becomes `[79] s-l-comments` from the GRAMMAR endpoint `sp_gram`:
+    the whites the token swallowed are the comment's `[66]` separator, and with
+    no whites the separator-less shape is refuted by the park's own comment
+    gate (`h_gate`: plain parks never stop on `#` without whites, indicator
+    parks fail `commentOk`). -/
+lemma SSLCommentsFrom_at_park {sc : ScannerState} {sp_gram sp_scan sp_mid : SurfPos}
+    (hcorr : ScannerSurfCorr sc sp_scan)
+    (h_run : GStar SSWhite sp_gram sp_scan)
+    (h_gate : sp_gram = sp_scan → ¬ (CommentOk sc ∧ sc.peek? = some '#'))
+    (h_from : SSLCommentsFrom sp_scan sp_mid)
+    (h_ok : SSLComments sp_scan sp_mid ∨ CommentOk sc) :
+    SSLComments sp_gram sp_mid := by
+  have h_ord : SSLComments sp_scan sp_mid → SSLComments sp_gram sp_mid := by
+    intro h
+    by_cases h_eq : sp_gram = sp_scan
+    · subst h_eq; exact h
+    · exact SSLComments_prepend_inline
+        (GStar_SSWhite_to_SSeparateInLine _ _ h_run (fun he => absurd he h_eq)) h
+  rcases h_ok with h | hcok
+  · exact h_ord h
+  · rcases h_from with h | ⟨_, sp_cmt, sp_brk, h_cmt, h_bc, h_rest⟩
+    · exact h_ord h
+    · have hpk : sc.peek? = some '#' := by
+        cases h_cmt with
+        | mk rest col s' _ => exact peek_of_corr_cons hcorr
+      by_cases h_eq : sp_gram = sp_scan
+      · exact absurd ⟨hcok, hpk⟩ (h_gate h_eq)
+      · exact .withComment _ sp_brk _
+          (.withSep sp_gram sp_scan sp_cmt sp_brk
+            (.whites _ _ (GStar_to_GPlus h_run h_eq)) (.some _ _ h_cmt) h_bc) h_rest
+
+
 end L4YAML.Proofs.PreprocessProduction
 
 end Blanket
