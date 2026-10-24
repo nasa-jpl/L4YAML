@@ -1911,6 +1911,157 @@ lemma collectPlainScalarLoop_line_le (sc : ScannerState) (content spaces : Strin
 -- Parameterized over `inFlow` for both block and flow contexts.
 -- Item 15 adds the ONE-LINE conjunct: a walk that exits on its entry line
 -- appended no `s-ns-plain-next-line` — `sp_next = sp_entries`.
+/-- Every `some` arm of `collectPlainScalar_terminates?` is TERMINATED. -/
+lemma terminates?_terminated {c : Char} {s : ScannerState} {content spaces : String}
+    {inFlow : Bool} {r : PlainScalarResult}
+    (h : collectPlainScalar_terminates? c s content spaces inFlow = some r) :
+    r.terminated = true := by
+  unfold collectPlainScalar_terminates? at h
+  split at h
+  · injection h with h; subst h; rfl
+  · split at h
+    · simp only [] at h
+      split at h <;> split at h <;>
+        first
+          | (injection h with h; subst h; rfl)
+          | cases h
+    · split at h
+      · injection h with h; subst h; rfl
+      · split at h
+        · injection h with h; subst h; rfl
+        · cases h
+
+private lemma foldQuotedNewlines_progress {s s' : ScannerState} {folded : String} {c : Char}
+    (hpk : s.peek? = some c) (hbr : isLineBreakBool c = true)
+    (h : foldQuotedNewlines s = .ok (folded, s')) : s.offset < s'.offset := by
+  have hcn := (consumeNewline_offset_advance s c hpk hbr).1
+  have h1 := ScannerCorrectness.foldQuotedNewlinesLoop_offset_ge (consumeNewline s) 0
+    (s.inputEnd - (consumeNewline s).offset + 1)
+  have h2 := ScannerCorrectness.skipSpaces_offset_ge (foldQuotedNewlinesLoop (consumeNewline s) 0
+    (s.inputEnd - (consumeNewline s).offset + 1)).1
+  have h3 := ScannerCorrectness.skipWhitespace_offset_ge (skipSpaces (foldQuotedNewlinesLoop (consumeNewline s) 0
+    (s.inputEnd - (consumeNewline s).offset + 1)).1)
+  unfold foldQuotedNewlines at h
+  dsimp only at h
+  have hs' : s' = skipWhitespace (skipSpaces
+      (foldQuotedNewlinesLoop (consumeNewline s) 0
+        (s.inputEnd - (consumeNewline s).offset + 1)).1) → s.offset < s'.offset := by
+    intro he; rw [he]; omega
+  split at h
+  · split at h
+    · simp only [pure, Except.pure] at h
+      split at h <;> contradiction
+    · exact hs' (by
+        split at h <;>
+          (simp only [pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at h; exact h.2.symm))
+  · exact hs' (by
+      split at h <;>
+        (simp only [pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at h; exact h.2.symm))
+
+private lemma handleBlockLineBreak_progress' {s s' : ScannerState} {content content' : String}
+    {ci ie : Nat} {c : Char}
+    (hpk : s.peek? = some c) (hbr : isLineBreakBool c = true)
+    (h : collectPlainScalar_handleBlockLineBreak s content ci ie = some (content', s')) :
+    s.offset < s'.offset := by
+  have hcn := (consumeNewline_offset_advance s c hpk hbr).1
+  have h1 := ScannerCorrectness.skipBlankLinesLoop_offset_ge (consumeNewline s) 0
+    (ie - (consumeNewline s).offset + 1) ie
+  have h2 := ScannerCorrectness.skipSpaces_offset_ge (skipBlankLinesLoop (consumeNewline s) 0
+    (ie - (consumeNewline s).offset + 1) ie).2
+  have h3 := ScannerCorrectness.skipWhitespace_offset_ge (skipSpaces (skipBlankLinesLoop (consumeNewline s) 0
+    (ie - (consumeNewline s).offset + 1) ie).2)
+  unfold collectPlainScalar_handleBlockLineBreak at h
+  dsimp only at h
+  split at h
+  · cases h
+  · split at h
+    · cases h
+    · have hs' : s' = skipWhitespace (skipSpaces
+          (skipBlankLinesLoop (consumeNewline s) 0
+            (ie - (consumeNewline s).offset + 1) ie).2) := by
+        split at h <;>
+          (simp only [Option.some.injEq, Prod.mk.injEq] at h; exact h.2.symm)
+      rw [hs']; omega
+
+/-- With more fuel than remaining bytes the plain-scalar walk never exits on
+    fuel: its result is TERMINATED (`scanPlainScalar` supplies twice the input). -/
+lemma collectPlainScalarLoop_terminated_of_fuel (fuel : Nat) :
+    ∀ (s : ScannerState) (content spaces : String) (inFlow : Bool) (ci ie : Nat)
+      (r : PlainScalarResult),
+    collectPlainScalarLoop s content spaces fuel inFlow ci ie = .ok r →
+    s.inputEnd - s.offset < fuel →
+    r.terminated = true := by
+  induction fuel with
+  | zero => intro s _ _ _ _ _ r _ hb; omega
+  | succ fuel' ih =>
+    intro s content spaces inFlow ci ie r hok hb
+    unfold collectPlainScalarLoop at hok
+    split at hok
+    · injection hok with h_eq; subst h_eq; rfl
+    · rename_i c hpk
+      have hlt : s.offset < s.inputEnd := peek_some_has_more hpk
+      split at hok
+      · rename_i hterm
+        injection hok with h_eq; subst h_eq
+        exact terminates?_terminated hterm
+      · split at hok
+        · -- line break
+          rename_i hbr
+          split at hok
+          · -- flow context: fold
+            simp only [bind, Except.bind] at hok
+            split at hok <;> try contradiction
+            rename_i fold_result heq
+            cases fold_result with
+            | mk folded s_fold =>
+              split at hok
+              · injection hok with h_eq; subst h_eq; rfl
+              · split at hok
+                · cases hok
+                generalize h_loop : collectPlainScalarLoop s_fold _ "" fuel' inFlow ci ie
+                  = cont at hok
+                cases cont with
+                | ok inner =>
+                  dsimp only [] at hok
+                  split at hok
+                  · injection hok with h_eq; subst h_eq; rfl
+                  · have h_eq := Except.ok.inj hok; subst h_eq
+                    have hprog := foldQuotedNewlines_progress hpk hbr heq
+                    have hend := foldQuotedNewlines_inputEnd heq
+                    exact ih s_fold _ "" inFlow ci ie _ h_loop (by omega)
+                | error e => simp at hok
+          · -- block context
+            split at hok
+            · injection hok with h_eq; subst h_eq; rfl
+            · rename_i content' s2 hblk
+              have hprog := handleBlockLineBreak_progress' hpk hbr hblk
+              have hend := handleBlockLineBreak_inputEnd hblk
+              split at hok
+              · injection hok with h_eq; subst h_eq; rfl
+              · dsimp only [] at hok
+                generalize h_loop : collectPlainScalarLoop s2 content' "" fuel' inFlow ci ie
+                  = cont at hok
+                cases cont with
+                | ok inner =>
+                  dsimp only [] at hok
+                  split at hok
+                  · injection hok with h_eq; subst h_eq; rfl
+                  · have h_eq := Except.ok.inj hok; subst h_eq
+                    exact ih s2 content' "" inFlow ci ie _ h_loop (by omega)
+                | error e => simp at hok
+        · split at hok
+          · -- whitespace: advance
+            have hadv := advance_offset_lt s hlt
+            have hend2 := advance_inputEnd s
+            exact ih s.advance content _ inFlow ci ie r hok (by omega)
+          · split at hok
+            · injection hok with h_eq; subst h_eq; rfl
+            · -- plain-safe content: advance
+              simp only [] at hok
+              have hadv := advance_offset_lt s hlt
+              have hend2 := advance_inputEnd s
+              exact ih s.advance _ "" inFlow ci ie r hok (by omega)
+
 /-- `collectPlainScalar_terminates?` stops on `#` only with buffered whites
     (its other arms need `:`, a flow indicator, or a document marker). -/
 lemma terminates_hash_spaces_pos (s : ScannerState) (content spaces : String)
