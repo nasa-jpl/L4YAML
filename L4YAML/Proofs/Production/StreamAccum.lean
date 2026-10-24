@@ -35534,7 +35534,7 @@ lemma accum_content_pending (sc : ScannerState)
     exact absurd h_adj
       (checkAdjacentValue_refutes_stale (h_stale h_res) h_flow_disp h_pay h_pay_sk)
   | pendingBlockContent _ _ _ _ n h_line _h_closable _h_closable_entry _h_key h_stale _
-      _h_kslot h_closeF110 _ h_tail139b _ _ h_closeFV110 h_nic0B =>
+      _h_kslot h_closeF110 _ h_tail139b _ _ h_closeFV110 h_nic0B h_runB _h_gateB _ =>
     -- ═══ Item 47: same rung, entry-parked (`- "a" :b`) — same refutation. ═══
     --
     -- ═══ Item 110: and the landing arms get this park's frames, from the
@@ -35544,7 +35544,7 @@ lemma accum_content_pending (sc : ScannerState)
     -- entries; the root context could only give its `b` a second bare
     -- document.  No new field: item 99 sized this one at the entry level for
     -- exactly this reason. ═══
-    refine h_defer_split (h_srcP := Or.inl h_tail139b)
+    refine h_defer_split (h_srcP := Or.inl h_tail139b) h_runB _h_gateB (fun hd _ => _h_closable hd)
       (match h_closeF110 with
        | Or.inl ⟨ks, _, h_cv, closeF⟩ =>
            -- ~~Item 152: the cover punts — `pendingBlockContent.h_closeF` carries
