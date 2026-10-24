@@ -25075,7 +25075,7 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
               -- `h_ids` is the conjunct the repackaging lost. ═══
               exact (compact_deferral_refuted ⟨rfl, h_col_ne⟩ hws h_pk hcorr_prep
                 (preprocess_some_peek h_preprocess) h_col_vslot
-                (h_ids h_nic_slot) h_top_slot
+                (h_ids.1 h_nic_slot) h_top_slot
                 (explicit_at_indent_of_dispatch (hc_colon ▸ h_dispatch)
                   (noflow_disp_of_noflow h_noflow) h_src)).elim
           · exact h_fill (fun h => absurd (hc_q.symm.trans h) (by decide))
