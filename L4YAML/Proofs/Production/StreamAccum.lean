@@ -28297,7 +28297,7 @@ lemma dispatchContent_aliasNode_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek : sc.peek? = some '*')
     (hok : scanNextToken_dispatchContent sc '*' = .ok s') :
-    ∃ sp', SCNsAliasNode sp sp' ∧ ScannerSurfCorr s' sp' := by
+    ∃ sp', SCNsAliasNode sp sp' ∧ (∃ c, s'.peekBack? = some c ∧ (isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF') = false) ∧ ScannerSurfCorr s' sp' := by
   unfold scanNextToken_dispatchContent at hok
   simp only [bind, Except.bind, pure, Except.pure] at hok
   -- Skip '&' check
@@ -28321,9 +28321,10 @@ lemma dispatchContent_aliasNode_prod (sc : ScannerState) (sp : SurfPos)
         | ok s_anch =>
           try dsimp only [] at hok
           simp only [Except.ok.injEq] at hok; subst hok
-          obtain ⟨sp', h_alias, hcorr'⟩ :=
+          obtain ⟨sp', h_alias_g, hcorr'⟩ :=
             scanAnchorOrAlias_aliasNode_prod sc sp hcorr hpeek s_anch h_alias
-          exact ⟨sp', h_alias, hcorr'⟩
+          exact ⟨sp', h_alias_g,
+            scanAnchorOrAlias_peekBack hcorr hpeek (by decide) (by decide) (by decide) h_alias, hcorr'⟩
     · rename_i h_neq; exact absurd rfl h_neq
 
 lemma dispatchContent_alias_prod (n : Nat) (sc : ScannerState) (sp : SurfPos)
@@ -28331,9 +28332,9 @@ lemma dispatchContent_alias_prod (n : Nat) (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek : sc.peek? = some '*')
     (hok : scanNextToken_dispatchContent sc '*' = .ok s') :
-    ∃ sp', SFlowNode n ctx sp sp' ∧ ScannerSurfCorr s' sp' := by
-  obtain ⟨sp', h_alias, hcorr'⟩ := dispatchContent_aliasNode_prod sc sp hcorr hpeek hok
-  exact ⟨sp', alias_flowNode h_alias, hcorr'⟩
+    ∃ sp', SFlowNode n ctx sp sp' ∧ (∃ c, s'.peekBack? = some c ∧ (isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF') = false) ∧ ScannerSurfCorr s' sp' := by
+  obtain ⟨sp', h_alias, h_pb, hcorr'⟩ := dispatchContent_aliasNode_prod sc sp hcorr hpeek hok
+  exact ⟨sp', alias_flowNode h_alias, h_pb, hcorr'⟩
 
 -- Content dispatch for block scalar: returns `SCLLiteral 0 ∨ SCLFolded 0` grammar evidence.
 lemma dispatchContent_blockScalar_prod (sc : ScannerState) (sp : SurfPos)
@@ -28760,7 +28761,7 @@ lemma dispatchContent_anchorProp_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek : sc.peek? = some '&')
     (hok : scanNextToken_dispatchContent sc '&' = .ok s') :
-    ∃ sp', SCNsAnchorProperty sp sp' ∧ ScannerSurfCorr s' sp' := by
+    ∃ sp', SCNsAnchorProperty sp sp' ∧ (∃ c, s'.peekBack? = some c ∧ (isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF') = false) ∧ ScannerSurfCorr s' sp' := by
   unfold scanNextToken_dispatchContent at hok
   simp only [bind, Except.bind, pure, Except.pure] at hok
   -- '&' == '&' = true: anchor branch
@@ -28776,7 +28777,9 @@ lemma dispatchContent_anchorProp_prod (sc : ScannerState) (sp : SurfPos)
       have h := Except.ok.inj hok; subst h
       obtain ⟨sp', h_anchor, hcorr'⟩ :=
         scanAnchorOrAlias_anchorProp_prod sc sp hcorr hpeek s_anch h_anch
-      exact ⟨sp', h_anchor,
+      obtain ⟨c, hpb, hflag⟩ :=
+        scanAnchorOrAlias_peekBack hcorr hpeek (by decide) (by decide) (by decide) h_anch
+      exact ⟨sp', h_anchor, ⟨c, hpb, hflag⟩,
         ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix,
           hcorr'.indent_cols_nonneg⟩⟩
   · rename_i h_neq; exact absurd rfl h_neq
@@ -28791,10 +28794,10 @@ lemma dispatchContent_anchor_prod (n : Nat) (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek : sc.peek? = some '&')
     (hok : scanNextToken_dispatchContent sc '&' = .ok s') :
-    ∃ sp', SFlowNode n ctx sp sp' ∧ ScannerSurfCorr s' sp' := by
-  obtain ⟨sp', h_anchor, hcorr'⟩ := dispatchContent_anchorProp_prod sc sp hcorr hpeek hok
+    ∃ sp', SFlowNode n ctx sp sp' ∧ (∃ c, s'.peekBack? = some c ∧ (isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF') = false) ∧ ScannerSurfCorr s' sp' := by
+  obtain ⟨sp', h_anchor, h_pb, hcorr'⟩ := dispatchContent_anchorProp_prod sc sp hcorr hpeek hok
   exact ⟨sp', SFlowNode.propsEmpty n ctx sp sp'
-    (SCNsProperties.anchorFirst n ctx sp sp' sp' h_anchor (GOpt.none _)), hcorr'⟩
+    (SCNsProperties.anchorFirst n ctx sp sp' sp' h_anchor (GOpt.none _)), h_pb, hcorr'⟩
 
 /-- **Content dispatch for `!`, stopped at the PROPERTY** — the tag sibling of
     `dispatchContent_anchorProp_prod`.  All four `[97]` forms are covered
@@ -28804,7 +28807,7 @@ lemma dispatchContent_tagProp_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek : sc.peek? = some '!')
     (hok : scanNextToken_dispatchContent sc '!' = .ok s') :
-    ∃ sp', SCNsTagProperty sp sp' ∧ ScannerSurfCorr s' sp' := by
+    ∃ sp', SCNsTagProperty sp sp' ∧ (∃ c, s'.peekBack? = some c ∧ (isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF') = false) ∧ ScannerSurfCorr s' sp' := by
   unfold scanNextToken_dispatchContent at hok
   simp only [bind, Except.bind, pure, Except.pure] at hok
   -- Skip '&' check
@@ -28827,13 +28830,15 @@ lemma dispatchContent_tagProp_prod (sc : ScannerState) (sp : SurfPos)
           · -- Secondary tag `!!suffix`
             obtain ⟨sp', h_tag_prop, hcorr'⟩ :=
               scanTag_secondary_prod sc sp hcorr hpeek hpeek2 s_tag h_tag
-            exact ⟨sp', h_tag_prop,
+            obtain ⟨c, hpb, hflag⟩ := scanTag_peekBack hcorr hpeek h_tag
+            exact ⟨sp', h_tag_prop, ⟨c, hpb, hflag⟩,
               ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix,
                 hcorr'.indent_cols_nonneg⟩⟩
           · -- Verbatim `!<uri>` or named `!handle!suffix` or non-specific `!`
             obtain ⟨sp', h_tag_prop, hcorr'⟩ :=
               scanTag_nonSecondary_prod sc sp hcorr hpeek hpeek2 s_tag h_tag
-            exact ⟨sp', h_tag_prop,
+            obtain ⟨c, hpb, hflag⟩ := scanTag_peekBack hcorr hpeek h_tag
+            exact ⟨sp', h_tag_prop, ⟨c, hpb, hflag⟩,
               ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix,
                 hcorr'.indent_cols_nonneg⟩⟩
       · rename_i h_neq; exact absurd rfl h_neq
@@ -28846,10 +28851,10 @@ lemma dispatchContent_tag_prod (n : Nat) (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek : sc.peek? = some '!')
     (hok : scanNextToken_dispatchContent sc '!' = .ok s') :
-    ∃ sp', SFlowNode n ctx sp sp' ∧ ScannerSurfCorr s' sp' := by
-  obtain ⟨sp', h_tag_prop, hcorr'⟩ := dispatchContent_tagProp_prod sc sp hcorr hpeek hok
+    ∃ sp', SFlowNode n ctx sp sp' ∧ (∃ c, s'.peekBack? = some c ∧ (isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF') = false) ∧ ScannerSurfCorr s' sp' := by
+  obtain ⟨sp', h_tag_prop, h_pb, hcorr'⟩ := dispatchContent_tagProp_prod sc sp hcorr hpeek hok
   exact ⟨sp', SFlowNode.propsEmpty n ctx sp sp'
-    (SCNsProperties.tagFirst n ctx sp sp' sp' h_tag_prop (GOpt.none _)), hcorr'⟩
+    (SCNsProperties.tagFirst n ctx sp sp' sp' h_tag_prop (GOpt.none _)), h_pb, hcorr'⟩
 
 -- Unified content evidence extraction (Wadler-style "theorems for free").
 -- All content dispatch paths either produce `SFlowNode 0 .flowOut` (flow content:
@@ -28881,7 +28886,7 @@ lemma dispatchContent_evidence (sc : ScannerState) (sp : SurfPos)
              GStar.nil _, hcorr'⟩
     · by_cases hc_alias : c = '*'
       · subst hc_alias
-        obtain ⟨sp', h_gram, hcorr'⟩ := dispatchContent_alias_prod 0 sc sp .flowOut hcorr hpeek hok
+        obtain ⟨sp', h_gram, -, hcorr'⟩ := dispatchContent_alias_prod 0 sc sp .flowOut hcorr hpeek hok
         exact ⟨sp', sp', Or.inl h_gram, GStar.nil _, hcorr'⟩
       · by_cases hc_bs : c = '|' ∨ c = '>'
         · obtain ⟨sp', h_gram, hcorr', _⟩ :=
@@ -28893,12 +28898,12 @@ lemma dispatchContent_evidence (sc : ScannerState) (sp : SurfPos)
           by_cases hc_amp : c = '&'
           · -- Anchor: SCNsAnchorProperty → SCNsProperties.anchorFirst → SFlowNode.propsEmpty
             subst hc_amp
-            obtain ⟨sp', h_gram, hcorr'⟩ := dispatchContent_anchor_prod 0 sc sp .flowOut hcorr hpeek hok
+            obtain ⟨sp', h_gram, -, hcorr'⟩ := dispatchContent_anchor_prod 0 sc sp .flowOut hcorr hpeek hok
             exact ⟨sp', sp', Or.inl h_gram, GStar.nil _, hcorr'⟩
           · by_cases hc_bang : c = '!'
             · -- Tag: SCNsTagProperty → SCNsProperties.tagFirst → SFlowNode.propsEmpty
               subst hc_bang
-              obtain ⟨sp', h_gram, hcorr'⟩ := dispatchContent_tag_prod 0 sc sp .flowOut hcorr hpeek hok
+              obtain ⟨sp', h_gram, -, hcorr'⟩ := dispatchContent_tag_prod 0 sc sp .flowOut hcorr hpeek hok
               exact ⟨sp', sp', Or.inl h_gram, GStar.nil _, hcorr'⟩
             · -- Plain scalar (or error — but .ok means it succeeded)
               obtain ⟨sp_gram, sp', h_gram, h_ws, -, hcorr'⟩ :=
@@ -28988,7 +28993,7 @@ lemma dispatchContent_evidence_oneLine (sc : ScannerState) (sp : SurfPos)
       ScannerSurfCorr s' sp' := by
   by_cases hc_alias : c = '*'
   · subst hc_alias
-    obtain ⟨sp', h_alias, hcorr'⟩ := dispatchContent_aliasNode_prod sc sp hcorr hpeek hok
+    obtain ⟨sp', h_alias, -, hcorr'⟩ := dispatchContent_aliasNode_prod sc sp hcorr hpeek hok
     exact ⟨sp', sp', fun n => alias_flowNode h_alias, GStar.nil _, hcorr'⟩
   · obtain ⟨sp_gram, sp', h_all, h_ws, hcorr'⟩ :=
       dispatchContent_evidence_content_oneLine sc sp c hcorr hpeek h_flow h_not_doc
@@ -29040,15 +29045,15 @@ lemma dispatchContent_evidence_flowIn (sc : ScannerState) (sp : SurfPos)
              GStar.nil _, hcorr'⟩
     · by_cases hc_alias : c = '*'
       · subst hc_alias
-        obtain ⟨sp', h_gram, hcorr'⟩ := dispatchContent_alias_prod 0 sc sp .flowIn hcorr hpeek hok
+        obtain ⟨sp', h_gram, -, hcorr'⟩ := dispatchContent_alias_prod 0 sc sp .flowIn hcorr hpeek hok
         exact ⟨sp', sp', h_gram, GStar.nil _, hcorr'⟩
       · by_cases hc_amp : c = '&'
         · subst hc_amp
-          obtain ⟨sp', h_gram, hcorr'⟩ := dispatchContent_anchor_prod 0 sc sp .flowIn hcorr hpeek hok
+          obtain ⟨sp', h_gram, -, hcorr'⟩ := dispatchContent_anchor_prod 0 sc sp .flowIn hcorr hpeek hok
           exact ⟨sp', sp', h_gram, GStar.nil _, hcorr'⟩
         · by_cases hc_bang : c = '!'
           · subst hc_bang
-            obtain ⟨sp', h_gram, hcorr'⟩ := dispatchContent_tag_prod 0 sc sp .flowIn hcorr hpeek hok
+            obtain ⟨sp', h_gram, -, hcorr'⟩ := dispatchContent_tag_prod 0 sc sp .flowIn hcorr hpeek hok
             exact ⟨sp', sp', h_gram, GStar.nil _, hcorr'⟩
           · obtain ⟨sp_gram, sp'', h_c, h_ws, hcorr'⟩ :=
               dispatchContent_plainScalar_flowIn_prod sc sp hcorr hpeek h_inflow
@@ -29125,17 +29130,17 @@ lemma dispatchContent_evidence_flowIn_at (n : Nat) (sc : ScannerState) (sp : Sur
              GStar.nil _, hcorr'⟩
     · by_cases hc_alias : c = '*'
       · subst hc_alias
-        obtain ⟨sp', h_gram, hcorr'⟩ :=
+        obtain ⟨sp', h_gram, -, hcorr'⟩ :=
           dispatchContent_alias_prod n sc sp .flowIn hcorr hpeek hok
         exact ⟨sp', sp', h_gram, GStar.nil _, hcorr'⟩
       · by_cases hc_amp : c = '&'
         · subst hc_amp
-          obtain ⟨sp', h_gram, hcorr'⟩ :=
+          obtain ⟨sp', h_gram, -, hcorr'⟩ :=
             dispatchContent_anchor_prod n sc sp .flowIn hcorr hpeek hok
           exact ⟨sp', sp', h_gram, GStar.nil _, hcorr'⟩
         · by_cases hc_bang : c = '!'
           · subst hc_bang
-            obtain ⟨sp', h_gram, hcorr'⟩ :=
+            obtain ⟨sp', h_gram, -, hcorr'⟩ :=
               dispatchContent_tag_prod n sc sp .flowIn hcorr hpeek hok
             exact ⟨sp', sp', h_gram, GStar.nil _, hcorr'⟩
           · obtain ⟨sp_gram, sp'', h_c, h_ws, hcorr'⟩ :=
