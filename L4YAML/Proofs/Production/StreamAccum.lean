@@ -24677,7 +24677,7 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
     (h_valF : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width < nv) ∧
       ((∃ lo : Nat, IndentStackCover.Floor lo nv (FrameLevel.map nv :: ks) ∧
         IndentStackCover.Covered lo (FrameLevel.map nv :: ks) sc) ∨ True) ∧
-      ∀ sp_mid : SurfPos, SBlockNode (nv + 1) .blockIn sp_scan sp_mid →
+      ∀ sp_mid : SurfPos, SBlockNode (nv + 1) .blockIn sp_gram sp_mid →
       ResumeFrames (SLYamlStream sp_start) (FrameLevel.map nv :: ks) sp_mid) ∨ True)
     -- **Item 167 (LAST): the closed park's ENCLOSING collection.**  Item 166
     -- measured this lemma's `-` arm and found the surviving branch is not
@@ -24745,7 +24745,7 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
     -- `h_closeFV`'s widths already run to the park's own level inclusive, so
     -- nothing is consed on the way across. ═══
     (h_valFV : (∃ (nn nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ nn) ∧
-      ∀ sp_mid : SurfPos, SBlockNode (nn + 1) .blockIn sp_scan sp_mid →
+      ∀ sp_mid : SurfPos, SBlockNode (nn + 1) .blockIn sp_gram sp_mid →
       KeyFrames (ExplValueLine sp_start nv) ks sp_mid) ∨ PackAlt sc)
     -- **Item 208 (LAST): the park's own INDENT CHECK where it stands AT a line
     -- start** — item 154's field, made unconditional at item 207 and read here
@@ -26053,7 +26053,7 @@ lemma accum_block_on_pendingContent
     (h_key : sc.simpleKey.possible = true → sc.simpleKey.pos.line = sc.line →
       ImplicitKeyPack sc sp_start sp_scan ∨ KeyPackPunt sc)
     -- Item 51: the pending's explicit-entry value pack, threaded to the
-    -- landed `:` (see `accum_block_on_closeThenBlock`).  **Item 192: the h_run h_gate
+    -- landed `:` (see `accum_block_on_closeThenBlock`).  **Item 192: the
     -- park's whole chain of frames**, which is what a flow collection that
     -- closed into this park hands it.
     (h_vpack : (∃ ns : List Nat, ∀ nv ∈ ns,
@@ -26071,7 +26071,7 @@ lemma accum_block_on_pendingContent
     (h_scf : StaleCursorFloor.StaleKeyCursorFloor sc)
     -- Item 80: the park's stale tail, threaded to the `:`'s re-save question.
     (h_stale : InlineResidue sp_scan ':' → StaleNodeTail sc)
-    -- **Item 77 — the park's own arm**, as at `accum_block_on_closeThenBlock`: h_run h_gate
+    -- **Item 77 — the park's own arm**, as at `accum_block_on_closeThenBlock`:
     -- this park is a CONTENT one, and its constructor field says the content
     -- scan either re-armed or spent a column (`content_park_arm`) — with the
     -- armed side carrying the cleared key since item 80.
@@ -26105,7 +26105,7 @@ lemma accum_block_on_pendingContent
     -- corpus's dedenting `-` actually meets: 75 of item 167's 76 stand after a
     -- mapping value.  The landing closes the innermost level with an empty
     -- tail, which is what turns the park's face into
-    -- `accum_block_on_closeThenBlock`'s — the collection's remaining tail owed h_run h_gate
+    -- `accum_block_on_closeThenBlock`'s — the collection's remaining tail owed
     -- at the landing's comments, and nothing else.
     (h_seqF168 : (∃ (ke kk : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width < kk) ∧
       ∀ sp_mid : SurfPos, SSLComments sp_gram sp_mid →
