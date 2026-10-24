@@ -6650,11 +6650,12 @@ lemma PendingNode.close_with_ssl {sc : ScannerState}
     -- Item 275: §8.1's silence, relayed to `pendingContent`'s face.  Only that
     -- arm reads it; `pendingBlockContent`'s own `h_closable` is unchanged.
     (h_ui : underIndentedFlowValuePos? sc = none)
+    (h_noflow : sc.inFlow = false)
     (h_ssl : SSLComments sp_scan sp_mid) :
     SLYamlStream sp_start sp_mid := by
   cases h_pending with
-  | noPending =>
-    exact ssl_comments_extend_stream sp_start sp_block sp_mid h_stream h_ssl
+  | noPending _ _ h_col _ _ _ _ _ =>
+    exact ssl_comments_extend_stream sp_start sp_block sp_mid h_stream (h_col.resolve_right (by simp [h_noflow])) h_ssl
   | pendingContent _ _ _ _ _ h_closable _ _ _ _ _ _ _ _ _ _ h_run _ =>
     exact h_closable h_nd h_ui sp_mid (white_prepend_SSLComments h_run h_ssl)
   | pendingProps _ _ _ ha ht sp_node sp_p n h_sep h_run h_nic h_real h_anchor h_tag h_route =>
@@ -13110,7 +13111,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
       underIndentedFlowValuePos? sc = none →
       ∀ sp_mid, SSLComments sp_scan sp_mid → SLYamlStream sp_start sp_mid :=
     fun h_nd h_ui sp_mid h_ssl =>
-      h_pending.close_with_ssl h_stream_block h_nd h_ui h_ssl
+      h_pending.close_with_ssl h_stream_block h_nd h_ui (noflow_of_fl0 h_fl0) h_ssl
   have h_close_from : danglingNodePos? sc = none →
       underIndentedFlowValuePos? sc = none →
       ∀ sp_mid, SSLCommentsFrom sp_scan sp_mid → (SSLComments sp_scan sp_mid ∨ CommentOk sc) →
@@ -27048,7 +27049,7 @@ lemma accum_block_on_pendingBlock
   -- opened is empty either way (`-⏎- b` as much as a column-0 park), and the
   -- snoc route is the same.
   obtain ⟨sp_mid, sp_ws, sp_sc, h_land, hws, hcmt, hcorr_sc, h_pk, hsuf_mid⟩ :=
-    preprocess_some_ssl_comments_landing sc sp_scan s_prep c h_corr h_preprocess (GStar.nil _) (fun _ _ => (h_next h_noflow).gate)
+    preprocess_some_ssl_comments_landing sc sp_scan s_prep c h_corr h_preprocess (GStar.nil _) (fun _ _ => (h_next (sc_noflow_of_prep h_preprocess h_noflow)).gate)
   have hsp_sc_eq := ScannerSurfCorr_unique hcorr_sc hcorr_prep
   subst hsp_sc_eq
   have h_eq := h_pk.resolve_right (by simp [preprocess_some_peek h_preprocess])
@@ -27810,7 +27811,7 @@ lemma accum_block_pending (sc : ScannerState)
       underIndentedFlowValuePos? sc = none →
       ∀ sp_mid, SSLComments sp_scan sp_mid → SLYamlStream sp_start sp_mid :=
     fun h_nd h_ui sp_mid h_ssl =>
-      h_pending.close_with_ssl h_stream_block h_nd h_ui h_ssl
+      h_pending.close_with_ssl h_stream_block h_nd h_ui (sc_noflow_of_prep h_preprocess h_noflow) h_ssl
   have h_close_from : danglingNodePos? sc = none →
       underIndentedFlowValuePos? sc = none →
       ∀ sp_mid, SSLCommentsFrom sp_scan sp_mid → (SSLComments sp_scan sp_mid ∨ CommentOk sc) →
@@ -27823,7 +27824,7 @@ lemma accum_block_pending (sc : ScannerState)
     exact accum_block_on_noPending sc sp_start sp_block s_prep s' c sp_prep sp_scan'
       -- Item 223: the landing wants the flag alone; the park now carries the
       -- cleared register beside it and this site projects it off.
-      h_stream_block hcorr_prep hcorr_result h_corr h_col (h_arm.imp_left And.left)
+      h_stream_block (h_col.resolve_right (by simp [sc_noflow_of_prep h_preprocess h_noflow])) hcorr_prep hcorr_result h_corr h_col (h_arm.imp_left And.left)
       h_nodoc h_noek h_noflow
       h_preprocess h_dispatch
       -- Item 208: the seed's EMPTY stack, and the base it is read against.
@@ -28208,10 +28209,10 @@ lemma accum_block_pending (sc : ScannerState)
       -- Item 208: the park's own indent check, read at the block landing.
       h_nic0B h_live290 h_runBC h_gateBC
   | pendingBlock _ _ _ n_old _h_close h_close_entry_old h_floor208 h_sk_old h_col_old h_kslot92
-      _ _ h_seqF167 h_kslotUp190 h_closeFV198 h_top208 =>
+      _ _ h_seqF167 h_kslotUp190 h_closeFV198 h_top208 h_nextB =>
     exact accum_block_on_pendingBlock sc sp_start sp_block sp_scan s_prep s' c sp_prep
       sp_scan' n_old h_stream_block h_close_pending h_close_entry_old h_kslot92
-      h_sk_old h_col_old hcorr_prep hcorr_result h_corr h_noflow h_preprocess h_dispatch h_bare
+      h_sk_old h_col_old hcorr_prep hcorr_result h_corr h_noflow h_nextB h_preprocess h_dispatch h_bare
       h_dn h_fv h_base h_mono h_seqF167
       -- Item 190: the park's second frame, relayed as its first is.
       h_kslotUp190
@@ -35232,7 +35233,7 @@ lemma accum_content_pending (sc : ScannerState)
       underIndentedFlowValuePos? sc = none →
       ∀ sp_mid, SSLComments sp_scan sp_mid → SLYamlStream sp_start sp_mid :=
     fun h_nd h_ui sp_mid h_ssl =>
-      h_pending.close_with_ssl h_stream_block h_nd h_ui h_ssl
+      h_pending.close_with_ssl h_stream_block h_nd h_ui (noflow_of_fl0 h_fl0) h_ssl
   have h_close_from : danglingNodePos? sc = none →
       underIndentedFlowValuePos? sc = none →
       ∀ sp_mid, SSLCommentsFrom sp_scan sp_mid → (SSLComments sp_scan sp_mid ∨ CommentOk sc) →
