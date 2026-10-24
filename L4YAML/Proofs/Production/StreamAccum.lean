@@ -27316,6 +27316,7 @@ lemma accum_block_on_pendingBlock
                    sp_m (SCompactSeqTail.nil n sp_m)).close sp_i sp_c h_iv h_lit sp_v h_sbi⟩
            | Or.inr h_alt => Or.inr h_alt)
           (Or.inr (fun h_res _ => (sslComments_refutes_inline_residue h_ssl (Or.inl rfl) h_res).elim)) hcorr_prep hcorr_result
+          (GStar.nil _) (fun _ => (h_next (sc_noflow_of_prep h_preprocess h_noflow)).gate)
           h_corr h_noflow (Or.inr (by omega)) h_preprocess h_dispatch (Or.inr trivial)
           (Or.inr trivial) h_bare h_dn h_fv h_base h_mono (Or.inr trivial) (Or.inr trivial)
           -- **Item 167: the enclosing collection, spent at the dedent.**  The
