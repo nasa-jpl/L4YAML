@@ -1561,6 +1561,57 @@ lemma SSLCommentsFrom_at_park {sc : ScannerState} {sp_gram sp_scan sp_mid : Surf
             (.whites _ _ (GStar_to_GPlus h_run h_eq)) (.some _ _ h_cmt) h_bc) h_rest
 
 
+
+/-- The anchor/alias name walk only consumes characters that FAIL the scanner's
+    comment gate (`ns-anchor-char`: no white, break or BOM), so after a
+    nonempty name the park's `peekBack?` is such a character. -/
+lemma collectAnchorNameLoop_peekBack (fuel : Nat) :
+    ∀ (sc : ScannerState) (sp : SurfPos) (name : String),
+    ScannerSurfCorr sc sp →
+    (collectAnchorNameLoop sc name fuel).snd = sc ∨
+    ∃ c, (collectAnchorNameLoop sc name fuel).snd.peekBack? = some c ∧
+      (isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF') = false := by
+  induction fuel with
+  | zero => intro sc sp name _; simp [collectAnchorNameLoop]
+  | succ fuel' ih =>
+    intro sc sp name hcorr
+    unfold collectAnchorNameLoop
+    split
+    · rename_i c hpeek
+      split
+      · rename_i hguard
+        have hmore : sc.offset < sc.inputEnd := by
+          by_cases h : sc.offset < sc.inputEnd
+          · exact h
+          · exfalso
+            have hz := eof_corr sc sp hcorr h
+            obtain ⟨c', rest', hch, hpk⟩ := peek_corr sc sp hcorr (by
+              -- peek? = some c forces hasMore
+              unfold ScannerState.peek? at hpeek
+              split at hpeek
+              · assumption
+              · cases hpeek)
+            rw [hz] at hch; cases hch
+        obtain ⟨c', rest, hch, hpk⟩ := peek_corr sc sp hcorr hmore
+        rw [hpeek] at hpk; cases hpk
+        have hcorr_c : ScannerSurfCorr sc ⟨c :: rest, sc.col⟩ := by
+          have hsp : sp = ⟨c :: rest, sc.col⟩ := by
+            cases sp; simp only [SurfPos.mk.injEq]; exact ⟨hch, hcorr.col_eq⟩
+          exact hsp ▸ hcorr
+        simp only [Bool.and_eq_true, Bool.not_eq_true', bne_iff_ne, ne_eq] at hguard
+        obtain ⟨⟨⟨⟨-, hws⟩, hbr⟩, -⟩, hbom⟩ := hguard
+        have hnl : c ≠ '\n' := fun h => by subst h; exact absurd hbr (by decide)
+        have hcr : c ≠ '\r' := fun h => by subst h; exact absurd hbr (by decide)
+        have hpb := advance_peekBack_eq_peek hcorr_c hmore hnl hcr
+        have hflag : (isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF') = false := by
+          simp [hws, hbr, hbom]
+        obtain ⟨sp', hcorr'⟩ := L4YAML.Proofs.ScalarCoupling.advance_corr sc sp hcorr
+        rcases ih sc.advance sp' (name.push c) hcorr' with heq | ⟨c2, hpb2, hflag2⟩
+        · exact Or.inr ⟨c, by rw [heq]; exact hpb, hflag⟩
+        · exact Or.inr ⟨c2, hpb2, hflag2⟩
+      · exact Or.inl rfl
+    · exact Or.inl rfl
+
 end L4YAML.Proofs.PreprocessProduction
 
 end Blanket
