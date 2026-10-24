@@ -26443,7 +26443,7 @@ lemma accum_block_on_pendingBlockContent {sp_gram : SurfPos}
         have h_cont := h_entry_old sp_mid h_ssl
         exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
                BlockStack.nil sp_block, FlowStackB.nil sp_block .sep,
-               PendingNode.pendingBlock (h_next := fun _ => dispatchBlock_dash_next h_noflow_disp hpeek_disp h_dispatch) (h_offer := dispatchBlock_dash_offerPred h_dispatch) sp_start sp_block sp_scan' k
+               PendingNode.pendingBlock (h_next := fun _ => dispatchBlock_dash_next (noflow_disp_of_noflow h_noflow) hpeek_disp h_dispatch) (h_offer := dispatchBlock_dash_offerPred h_dispatch) sp_start sp_block sp_scan' k
                  (fun sp_final (h_indented : SBlockIndented k .blockIn sp_scan' sp_final) =>
                    h_cont sp_final (SCompactSeqTail.cons k sp_mid _ sp_scan' sp_final sp_final
                      h_ind h_dash2 h_gnot2 h_indented (SCompactSeqTail.nil k sp_final)))
@@ -26556,7 +26556,7 @@ lemma accum_block_on_pendingBlockContent {sp_gram : SurfPos}
           -- the constructor instead.
           (Or.inr trivial)
           -- Item 208: the park's own indent check, handed across.
-          h_nic0
+          h_nic0 h_run h_gate
     · -- c ≠ '-' at the landing: a ':' opens `[189]`'s empty-key entry there
       -- (item 13), a '?' opens `[186]`'s explicit-key one (item 20) — one arm.
       by_cases hcv : c = ':' ∨ c = '?'
@@ -26669,12 +26669,12 @@ lemma accum_block_on_pendingBlockContent {sp_gram : SurfPos}
         -- falls back to the generic close-and-reopen.
         by_cases hc_colon : c = ':'
         · subst hc_colon
-          have h_explicit := fun (kslot : ∀ sp_m : SurfPos, SSLComments sp_scan sp_m →
+          have h_explicit := fun (kslot : ∀ sp_m : SurfPos, SSLComments sp_gram sp_m →
               ∀ sp_e : SurfPos, SCompactSeqTail n sp_m sp_e →
               ∀ sp_i sp_c : SurfPos, SIndent k sp_e sp_i → GLit ':' sp_i sp_c →
               ∀ sp_v : SurfPos, SBlockIndented k .blockOut sp_c sp_v →
               SLYamlStream sp_start sp_v) =>
-            colon_open_map_explicit sp_start sp_scan sp_mid _ k s_prep s'
+            colon_open_map_explicit sp_start sp_gram sp_mid _ k s_prep s'
               sp_scan' (h_close_pending h_nd_land h_ui_land _ h_ssl)
               (fun sp_m sp_i sp_c h_ssl_m h_iv h_lit sp_v h_sbi =>
                 kslot sp_m h_ssl_m sp_m (SCompactSeqTail.nil n sp_m)
@@ -26705,7 +26705,7 @@ lemma accum_block_on_pendingBlockContent {sp_gram : SurfPos}
           -- in two open `?`s carries both at two different columns.  Reading it
           -- once here is what lets all four fallbacks below try it without
           -- casing twice — item 189's `h_upPack`, one production down. ═══
-          have h_upSpend : (∀ sp_m : SurfPos, SSLComments sp_scan sp_m →
+          have h_upSpend : (∀ sp_m : SurfPos, SSLComments sp_gram sp_m →
               ∀ sp_e : SurfPos, SCompactSeqTail n sp_m sp_e →
               ∀ sp_i sp_c : SurfPos, SIndent k sp_e sp_i → GLit ':' sp_i sp_c →
               ∀ sp_v : SurfPos, SBlockIndented k .blockOut sp_c sp_v →
