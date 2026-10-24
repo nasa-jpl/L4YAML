@@ -33561,19 +33561,19 @@ lemma accum_content_on_pendingBlock_indented
     ⟨sp_gramf, h_node_f, h_tws_f, h_gate_f, h_sep_all, h_line, hna, hnt⟩ | h_ded
   · exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
            BlockStack.nil sp_block, FlowStackB.nil sp_block .sep,
-           PendingNode.pendingBlockContent (h_live := live_of_dispatch h_dispatch hna hnt (by rw [allowDirectives_update_simpleKey]; exact (preprocess_saved_key_fresh h_ska (noflow_of_noflow_disp h_flow_disp) h_preprocess).1) hcorr_result) sp_start sp_block sp_scan' n h_line
+           PendingNode.pendingBlockContent (h_run := ‹_›) (h_gate := ‹_›) (h_live := live_of_dispatch h_dispatch hna hnt (by rw [allowDirectives_update_simpleKey]; exact (preprocess_saved_key_fresh h_ska (noflow_of_noflow_disp h_flow_disp) h_preprocess).1) hcorr_result) sp_start sp_block sp_scan' n h_line
              (fun _ sp_final h_ssl =>
                h_close_old sp_final
                  (SBlockIndented.node n .blockIn sp_scan sp_final
                    (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gram sp_final
                      h_sep_all (h_flow_all (n + 1))
-                     (white_prepend_SSLComments h_trailing_ws h_ssl))))
+                     h_ssl)))
              (fun sp_final h_ssl =>
                h_close_entry_old sp_final
                  (SBlockIndented.node n .blockIn sp_scan sp_final
                    (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gram sp_final
                      h_sep_all (h_flow_all (n + 1))
-                     (white_prepend_SSLComments h_trailing_ws h_ssl))))
+                     h_ssl)))
              (entryKeyPack_of_dispatch (h_alt := trivial) sc sp_start sp_scan n s_prep s' c sp_prep sp_scan'
                (fun sp h_bn => h_close_old sp (SBlockIndented.node n .blockIn sp_scan sp h_bn))
                -- Item 106: the same field on the LANDED face — the key's
@@ -33686,7 +33686,7 @@ lemma accum_content_on_pendingBlock_indented
                         (SBlockIndented.node n .blockIn sp_scan sp_m
                           (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gram sp_m
                             h_sep_all (h_flow_all (n + 1))
-                            (white_prepend_SSLComments h_trailing_ws h_ssl)))
+                            h_ssl))
                         sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi⟩
                 | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
              -- Item 110: `h_close_entry_old`'s RESUME face, transported the
@@ -33703,7 +33703,7 @@ lemma accum_content_on_pendingBlock_indented
                       (SBlockIndented.node n .blockIn sp_scan sp_final
                         (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gram sp_final
                           h_sep_all (h_flow_all (n + 1))
-                          (white_prepend_SSLComments h_trailing_ws h_ssl)))⟩
+                          h_ssl))⟩
               | Or.inr _ => Or.inr trivial)
              (nodir_of_content_dispatch h_dispatch)
              (completedTail_of_dispatch h_dispatch hna hnt)
@@ -33719,7 +33719,7 @@ lemma accum_content_on_pendingBlock_indented
                       (SBlockIndented.node n .blockIn sp_scan sp_final
                         (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gram sp_final
                           h_sep_all (h_flow_all (n + 1))
-                          (white_prepend_SSLComments h_trailing_ws h_ssl)))⟩
+                          h_ssl))⟩
               | Or.inr _ => Or.inr trivial)
              -- Item 190: the park's second frame rides the same fold.
              (match h_kslotUp_old with
@@ -33729,7 +33729,7 @@ lemma accum_content_on_pendingBlock_indented
                       (SBlockIndented.node n .blockIn sp_scan sp_m
                         (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gram sp_m
                           h_sep_all (h_flow_all (n + 1))
-                          (white_prepend_SSLComments h_trailing_ws h_ssl)))
+                          h_ssl))
                       sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi⟩
               | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
              -- **Item 198: the value-line stack, relayed with the content.**
@@ -33744,7 +33744,7 @@ lemma accum_content_on_pendingBlock_indented
                       (SBlockIndented.node n .blockIn sp_scan sp_final
                         (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gram sp_final
                           h_sep_all (h_flow_all (n + 1))
-                          (white_prepend_SSLComments h_trailing_ws h_ssl)))⟩
+                          h_ssl))⟩
               | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
               -- **Item 207: and the park's own indent check.**  The entry-level park
               -- is the same content dispatch one slot in, so the same five arguments
@@ -33936,7 +33936,7 @@ lemma accum_content_on_pendingBlock_indented
         (fun h_fld' => folded_blockNode h_sep_all (GOpt.none sp_prep) h_fld')
     exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
            BlockStack.nil sp_block, FlowStackB.nil sp_block .sep,
-           PendingNode.pendingBlockContent (h_live := live_of_dispatch h_dispatch hna hnt (by rw [allowDirectives_update_simpleKey]; exact (preprocess_saved_key_fresh h_ska (noflow_of_noflow_disp h_flow_disp) h_preprocess).1) hcorr_result) sp_start sp_block sp_scan' n h_line
+           PendingNode.pendingBlockContent (h_run := ‹_›) (h_gate := ‹_›) (h_live := live_of_dispatch h_dispatch hna hnt (by rw [allowDirectives_update_simpleKey]; exact (preprocess_saved_key_fresh h_ska (noflow_of_noflow_disp h_flow_disp) h_preprocess).1) hcorr_result) sp_start sp_block sp_scan' n h_line
              (fun _ sp_final h_ssl =>
                h_close_old sp_final
                  (SBlockIndented.node n .blockIn sp_scan sp_final
@@ -34017,19 +34017,19 @@ lemma accum_content_on_pendingBlock_indented
     -- the entry's own index; arm 1's park with the fixed-index node.
     exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
            BlockStack.nil sp_block, FlowStackB.nil sp_block .sep,
-           PendingNode.pendingBlockContent (h_live := live_of_dispatch h_dispatch hna hnt (by rw [allowDirectives_update_simpleKey]; exact (preprocess_saved_key_fresh h_ska (noflow_of_noflow_disp h_flow_disp) h_preprocess).1) hcorr_result) sp_start sp_block sp_scan' n h_line
+           PendingNode.pendingBlockContent (h_run := ‹_›) (h_gate := ‹_›) (h_live := live_of_dispatch h_dispatch hna hnt (by rw [allowDirectives_update_simpleKey]; exact (preprocess_saved_key_fresh h_ska (noflow_of_noflow_disp h_flow_disp) h_preprocess).1) hcorr_result) sp_start sp_block sp_scan' n h_line
              (fun _ sp_final h_ssl =>
                h_close_old sp_final
                  (SBlockIndented.node n .blockIn sp_scan sp_final
                    (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gramf sp_final
                      h_sep_all h_node_f
-                     (white_prepend_SSLComments h_tws_f h_ssl))))
+                     h_ssl)))
              (fun sp_final h_ssl =>
                h_close_entry_old sp_final
                  (SBlockIndented.node n .blockIn sp_scan sp_final
                    (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gramf sp_final
                      h_sep_all h_node_f
-                     (white_prepend_SSLComments h_tws_f h_ssl))))
+                     h_ssl)))
              (entryKeyPack_of_dispatch (h_alt := trivial) sc sp_start sp_scan n s_prep s' c sp_prep sp_scan'
                (fun sp h_bn => h_close_old sp (SBlockIndented.node n .blockIn sp_scan sp h_bn))
                -- Item 106: the same field on the LANDED face — the key's
@@ -34142,7 +34142,7 @@ lemma accum_content_on_pendingBlock_indented
                         (SBlockIndented.node n .blockIn sp_scan sp_m
                           (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gramf sp_m
                             h_sep_all h_node_f
-                            (white_prepend_SSLComments h_tws_f h_ssl)))
+                            h_ssl))
                         sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi⟩
                 | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
              -- Item 110: the multi-line value's face, exactly as above
@@ -34155,7 +34155,7 @@ lemma accum_content_on_pendingBlock_indented
                       (SBlockIndented.node n .blockIn sp_scan sp_final
                         (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gramf sp_final
                           h_sep_all h_node_f
-                          (white_prepend_SSLComments h_tws_f h_ssl)))⟩
+                          h_ssl))⟩
               | Or.inr _ => Or.inr trivial)
              (nodir_of_content_dispatch h_dispatch)
              (completedTail_of_dispatch h_dispatch hna hnt)
@@ -34171,7 +34171,7 @@ lemma accum_content_on_pendingBlock_indented
                       (SBlockIndented.node n .blockIn sp_scan sp_final
                         (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gramf sp_final
                           h_sep_all h_node_f
-                          (white_prepend_SSLComments h_tws_f h_ssl)))⟩
+                          h_ssl))⟩
               | Or.inr _ => Or.inr trivial)
              -- Item 190: the park's second frame rides the same fold.
              (match h_kslotUp_old with
@@ -34181,7 +34181,7 @@ lemma accum_content_on_pendingBlock_indented
                       (SBlockIndented.node n .blockIn sp_scan sp_m
                         (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gramf sp_m
                           h_sep_all h_node_f
-                          (white_prepend_SSLComments h_tws_f h_ssl)))
+                          h_ssl))
                       sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi⟩
               | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
              -- Item 198: same relay, the multi-line value's node.
@@ -34192,7 +34192,7 @@ lemma accum_content_on_pendingBlock_indented
                       (SBlockIndented.node n .blockIn sp_scan sp_final
                         (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gramf sp_final
                           h_sep_all h_node_f
-                          (white_prepend_SSLComments h_tws_f h_ssl)))⟩
+                          h_ssl))⟩
               | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
               -- **Item 207: and the park's own indent check.**  The entry-level park
               -- is the same content dispatch one slot in, so the same five arguments
@@ -35696,9 +35696,9 @@ lemma accum_content_pending (sc : ScannerState)
       -- Item 157: a `[96]` park sits past column 0 by construction, so this
       -- landing is the break-crossed one and its re-arm pays the park's face.
       have h_stream_mid := h_close_pending (dangling_none_of_check h_dn
-        (landing_or_park_ska h_noflow_prep hcol_mid.2.2 (Or.inr h_col0_p) h_preprocess))
+        (landing_or_park_ska h_noflow_prep hcol_mid.2 (Or.inr h_col0_p) h_preprocess))
         (underIndented_none_of_check h_fv
-          (landing_or_park_ska h_noflow_prep hcol_mid.2.2 (Or.inr h_col0_p) h_preprocess))
+          (landing_or_park_ska h_noflow_prep hcol_mid.2 (Or.inr h_col0_p) h_preprocess))
         sp_mid h_ssl
       have h_sep := SSeparateLines.inline 0 sp_mid sp_prep
         (GStar_SSWhite_to_SSeparateInLine sp_mid sp_prep h_ws (fun _ => hcol_mid.1))
@@ -35753,7 +35753,7 @@ lemma accum_content_pending (sc : ScannerState)
             IndentStackCover.Covered lo (FrameLevel.map w :: ksw') s_prep) ∨ True) := by
         intro w ksw ksw' h_cv hmemw h_ww h_scolw
         rcases h_cv with ⟨lo, _, h_fl, h_cv0⟩ | _
-        · have h_floor := landing_floor_of_arm h_noflow_prep hcol_mid.2.2
+        · have h_floor := landing_floor_of_arm h_noflow_prep hcol_mid.2
             (by omega) h_base h_preprocess
           exact Or.inl (dedent_cover_of_floor
             (IndentStackMono.preprocess_mono h_preprocess h_mono)
@@ -35784,7 +35784,7 @@ lemma accum_content_pending (sc : ScannerState)
             · refine Or.inl ⟨⟨kk, sp_mid, hcol_mid.1,
                 ⟨sp_node, sp_p, sp_scan,
                  fun sp h_bn => h_route (dangling_none_of_check h_dn
-                   (landing_or_park_ska h_noflow_prep hcol_mid.2.2 (Or.inr h_col0_p)
+                   (landing_or_park_ska h_noflow_prep hcol_mid.2 (Or.inr h_col0_p)
                      h_preprocess)) sp h_bn,
                  h_sep_run, h_run.toProperties, h_ssl,
                  SSeparateLines.commented 0 sp_scan sp_mid sp_prep h_ssl
@@ -35797,7 +35797,7 @@ lemma accum_content_pending (sc : ScannerState)
                 h_indk⟩, hkc.2.1, hkc.2.2⟩
             · exact Or.inr trivial
         · exact Or.inr trivial
-      exact content_dispatch_after_close (h_possD := preprocess_saved_key_possible_post (landing_or_park_ska h_noflow_prep hcol_mid.2.2 (Or.inr h_col0_p) h_preprocess) h_noflow_prep h_preprocess) (h_src := slotGateAt_of_propsPark h_slot_p (dangling_none_of_check h_dn (landing_or_park_ska h_noflow_prep hcol_mid.2.2 (Or.inr h_col0_p) h_preprocess)) ((propsPark_prevReal_prop h_real_p h_run h_anchor_p h_tag_p).imp (fun _ h => ⟨h.1, h.2.1⟩)) h_base h_preprocess) sp_start sp_mid s_prep s' c sp_prep sp_scan'
+      exact content_dispatch_after_close (h_possD := preprocess_saved_key_possible_post (landing_or_park_ska h_noflow_prep hcol_mid.2 (Or.inr h_col0_p) h_preprocess) h_noflow_prep h_preprocess) (h_src := slotGateAt_of_propsPark h_slot_p (dangling_none_of_check h_dn (landing_or_park_ska h_noflow_prep hcol_mid.2 (Or.inr h_col0_p) h_preprocess)) ((propsPark_prevReal_prop h_real_p h_run h_anchor_p h_tag_p).imp (fun _ h => ⟨h.1, h.2.1⟩)) h_base h_preprocess) sp_start sp_mid s_prep s' c sp_prep sp_scan'
         h_stream_mid h_sep (nic_false_of_flow_disp h_preprocess h_flow_disp)
         hcorr_prep hcorr_result h_not_doc
           (preprocess_some_peek h_preprocess) h_flow_disp h_dispatch (h_keyctx (GStar.nil _) (fun _ _ => (h_nextP (noflow_of_fl0 h_fl0)).gate) h_close_pending)
