@@ -26323,7 +26323,7 @@ lemma accum_block_on_pendingContent
         -- `-` arm spends off a CLOSED value park has no payer here.
         (Or.inr trivial)
         -- Item 208: the park's own indent check, handed across.
-        h_nic0 h_run h_gate) h_run h_gate
+        h_nic0 h_run h_gate)
       hcorr_prep hcorr_result h_corr h_noflow h_preprocess h_dispatch
   · -- Item 37: `c ≠ ':'` at a park that follows a complete node — §7.5 left
     -- the rest of the line at `NodeStop`, and neither remaining indicator is
@@ -37050,7 +37050,7 @@ lemma accum_content_pending (sc : ScannerState)
                          (match h_kslot_p with
                           | Or.inl ⟨ns, kslot⟩ => Or.inl ⟨ns, fun nv hmem =>
                               (fun sp_mid sp_i sp_c h_ssl h_ind h_lit sp_v h_sbi =>
-                                kslot nv hmem sp_mid (h_nodeAtG sp_mid h_ssl)
+                                kslot nv hmem sp_mid (h_nodeAt sp_mid h_ssl)
                                   sp_i sp_c h_ind h_lit sp_v h_sbi)⟩
                           | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
                            (content_park_arm (preprocess_some_peek h_preprocess)
@@ -37070,13 +37070,13 @@ lemma accum_content_pending (sc : ScannerState)
                           | Or.inl ⟨ks, h_cov, closeFS⟩ => Or.inl ⟨ks,
                               h_cov.imp (fun ⟨lo, m, hb, hc⟩ =>
                                 ⟨lo, m, hb, h_cov_step lo ks hc⟩) id,
-                              fun sp_mid h_ssl => closeFS sp_mid (h_nodeAtG sp_mid h_ssl)⟩
+                              fun sp_mid h_ssl => closeFS sp_mid (h_nodeAt sp_mid h_ssl)⟩
                           | Or.inr _ => Or.inr trivial)
                          (match h_closeFVS_p with
                           | Or.inl ⟨nv, ks, h_cov, closeFVS⟩ => Or.inl ⟨nv, ks,
                               h_cov.imp (fun ⟨lo, m, hb, hc⟩ =>
                                 ⟨lo, m, hb, h_cov_step lo ks hc⟩) id,
-                              fun sp_mid h_ssl => closeFVS sp_mid (h_nodeAtG sp_mid h_ssl)⟩
+                              fun sp_mid h_ssl => closeFVS sp_mid (h_nodeAt sp_mid h_ssl)⟩
                           | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
                          (nodir_of_content_dispatch h_dispatch)
                          (completedTail_of_dispatch h_dispatch hamp hbang)
