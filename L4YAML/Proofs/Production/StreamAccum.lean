@@ -34105,7 +34105,7 @@ lemma accum_content_on_pendingBlock_indented
         (fun h_fld' => folded_blockNode h_sep_all (GOpt.none sp_prep) h_fld')
     exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
            BlockStack.nil sp_block, FlowStackB.nil sp_block .sep,
-           PendingNode.pendingBlockContent (h_run := h_trailing_ws) (h_gate := h_gate) (h_live := live_of_dispatch h_dispatch hna hnt (by rw [allowDirectives_update_simpleKey]; exact (preprocess_saved_key_fresh h_ska (noflow_of_noflow_disp h_flow_disp) h_preprocess).1) hcorr_result) sp_start sp_block sp_scan' _ n h_line
+           PendingNode.pendingBlockContent (h_run := GStar.nil _) (h_gate := fun _ => hbs) (h_live := live_of_dispatch h_dispatch hna hnt (by rw [allowDirectives_update_simpleKey]; exact (preprocess_saved_key_fresh h_ska (noflow_of_noflow_disp h_flow_disp) h_preprocess).1) hcorr_result) sp_start sp_block sp_scan' _ n h_line
              (fun _ sp_final h_ssl =>
                h_close_old sp_final
                  (SBlockIndented.node n .blockIn sp_scan sp_final
