@@ -10251,7 +10251,7 @@ lemma accum_structural_pending (sc : ScannerState)
           preprocess_some_ssl_comments_anyCol sc sp_scan s_prep c h_corr h_preprocess
         have ⟨h_ssl, hcol_mid⟩ : SSLComments sp_scan sp_mid ∧ sp_mid.col = 0 := by
           cases h_disj with
-          | inl h => exact ⟨SSLCommentsFrom_at_park h_corr (GStar.nil _) (fun _ => (h_next_dir h_noflow).gate) h.1 h.2.2.1, h.2.1⟩
+          | inl h => exact ⟨SSLCommentsFrom_at_park h_corr (GStar.nil _) (fun _ _ => (h_next_dir h_noflow).gate) h.1 h.2.2.1, h.2.1⟩
           | inr h_eq =>
             exfalso
             have h_gap_eq := ScannerSurfCorr_unique hcorr_gap hcorr_prep
@@ -33080,6 +33080,7 @@ lemma accum_content_on_noPending
     -- Item 293: the flag itself — the one caller passes it (`h_arm`'s armed
     -- half), and the routed content reads the fresh save off it.
     (h_park : sc.simpleKeyAllowed = true)
+    (h_gateN : sc.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#'))
     -- Item 340: the park's dead register (noPending's `h_noek`), the flip's premise.
     (h_alt : PackAlt sc)
     (h_not_doc : (if s_prep.allowDirectives then
@@ -33123,7 +33124,7 @@ lemma accum_content_on_noPending
   have h_keyctx := keyctx_of_preprocess sc sp_block sp_prep s_prep c h_corr hcorr_prep
     (fun _ _ sp_mid h_ssl => ssl_comments_extend_stream sp_start sp_block sp_mid
       h_stream_block h_ssl)
-    h_dn h_fv h_noflow_prep (Or.inl h_park) h_preprocess
+    (GStar.nil _) (fun _ => h_gateN) h_dn h_fv h_noflow_prep (Or.inl h_park) h_preprocess
   -- Item 136: and the same landing read at the stream's HEAD — the entry a
   -- landed key would open belongs to the first document too, so `a: 1` and
   -- `# c⏎a: 1` route their `[187]` through `single` as well.
@@ -33362,7 +33363,7 @@ lemma indentedValue_reads_at_any_indent
       rcases gstar_white_take_sIndent n h_ws with ⟨sx, h_ind, h_rest⟩ | h_ur
       · have h_sep : SSeparateLines n sp_scan sp_prep := by
           rw [h_pe]
-          exact SSeparateLines.commented n _ _ _ h_land.1
+          exact SSeparateLines.commented n _ _ _ (SSLCommentsFrom_at_park h_corr (GStar.nil _) (fun _ _ => h_next.gate) h_land.1 h_land.2.2.1)
             (SFlowLinePrefix.mk n sp_mid sx sp_ws h_ind
               (ScalarProduction.gstar_sswhite_to_gopt_sep h_rest))
         refine Or.inl ⟨h_sep, Or.inr trivial, ?_⟩
@@ -33385,7 +33386,7 @@ lemma indentedValue_reads_at_any_indent
           -- a line start.
           exact absurd (hmid ▸ h_land.2.1) (by omega)
         · rcases hend with hrun | htab
-          · exact Or.inr (fun _ => ⟨sp_mid, j, h_land.1, h_land.2.1, hj,
+          · exact Or.inr (fun _ => ⟨sp_mid, j, (SSLCommentsFrom_at_park h_corr (GStar.nil _) (fun _ _ => h_next.gate) h_land.1 h_land.2.2.1), h_land.2.1, hj,
               by rw [h_pe, ← hrun]; exact h_ind⟩)
           · refine Or.inr (fun hfloor => ?_)
             exfalso
@@ -35626,7 +35627,7 @@ lemma accum_content_pending (sc : ScannerState)
     -- dispatch starts is the stream's FIRST document, so it lands in
     -- `single`'s own `l-any-document?` slot instead of the implicit
     -- continuation of a stream that has started nothing. ═══
-    exact accum_content_on_noPending (h_alt := PackAlt.ofRefused (h_noek76 h_scflow)) (h_src := slotGateAt_of_noPending h_base h_mono (h_ntop76 h_scflow) h_preprocess) sc sp_start sp_block s_prep s' c sp_prep sp_scan'
+    exact accum_content_on_noPending (h_gateN := gate_sc h_corr (h_gateN (noflow_of_fl0 h_fl0))) (h_alt := PackAlt.ofRefused (h_noek76 h_scflow)) (h_src := slotGateAt_of_noPending h_base h_mono (h_ntop76 h_scflow) h_preprocess) sc sp_start sp_block s_prep s' c sp_prep sp_scan'
       h_stream_block hcorr_prep hcorr_result h_corr h_preprocess h_dn h_fv
       (h_arm76.resolve_right (by rw [h_scflow]; simp)).left
       h_not_doc h_flow_disp h_dispatch
