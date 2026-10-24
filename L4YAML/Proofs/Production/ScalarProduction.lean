@@ -486,6 +486,7 @@ lemma collectDoubleQuotedLoop_prod (sc : ScannerState) (sp : SurfPos)
     ∃ sp_body sp_close,
       SNbDoubleMultiLine 0 sp sp_body ∧
       GLit '"' sp_body sp_close ∧
+      s'.peekBack? = some '"' ∧
       ScannerSurfCorr s' sp_close := by
   -- protectedLen (default 0) generalised so the IH covers the fold shift (B2).
   suffices H : ∀ (p : Nat) (sc : ScannerState) (sp : SurfPos) (content : String),
@@ -495,6 +496,7 @@ lemma collectDoubleQuotedLoop_prod (sc : ScannerState) (sp : SurfPos)
       (∃ sp_body sp_close,
         SNbDoubleMultiLine 0 sp sp_body ∧
         GLit '"' sp_body sp_close ∧
+        s'.peekBack? = some '"' ∧
         ScannerSurfCorr s' sp_close) by
     exact H 0 sc sp content hcorr hok
   clear hok hcorr
@@ -514,6 +516,7 @@ lemma collectDoubleQuotedLoop_prod (sc : ScannerState) (sp : SurfPos)
       exact ⟨⟨'"' :: rest, sc.col⟩, ⟨rest, sc.col + 1⟩,
              SNbDoubleMultiLine.single 0 _ _ (GStar.nil _),
              GLit.mk rest sc.col,
+             advance_peekBack_eq_peek hcorr (peek_some_has_more hpeek) (by decide) (by decide),
              advance_non_newline_corr sc '"' rest hcorr
                (peek_some_has_more hpeek) (by decide) (by decide)⟩
     · -- peek? = some '\\': escape sequence
@@ -541,7 +544,7 @@ lemma collectDoubleQuotedLoop_prod (sc : ScannerState) (sp : SurfPos)
             repeat' split at hok
             all_goals first
               | contradiction
-              | (obtain ⟨sp_body, sp_close, h_body, h_glit, h_corr⟩ :=
+              | (obtain ⟨sp_body, sp_close, h_body, h_glit, h_pb, h_corr⟩ :=
                    ih _ _ sp_fold _ hcorr_fold hok
                  have h_escaped : SSDoubleEscaped 0 ⟨'\\' :: rest, sc.col⟩ sp_fold :=
                    SSDoubleEscaped.mk 0
@@ -556,7 +559,7 @@ lemma collectDoubleQuotedLoop_prod (sc : ScannerState) (sp : SurfPos)
                           (GStar.nil _)
                           (SSDoubleBreak.escaped 0 _ _ h_escaped)
                           h_body,
-                        h_glit, h_corr⟩)
+                        h_glit, h_pb, h_corr⟩)
         · -- not line break: processEscape → SNbDoubleChar
           simp only [bind, Except.bind] at hok
           split at hok
@@ -564,11 +567,11 @@ lemma collectDoubleQuotedLoop_prod (sc : ScannerState) (sp : SurfPos)
           · rename_i esc_result hproc
             obtain ⟨sp_esc, h_dq_char, hcorr_esc⟩ :=
               processEscape_prod sc.advance rest sc.col hcorr_adv hproc
-            obtain ⟨sp_body, sp_close, h_body, h_glit, h_corr⟩ :=
+            obtain ⟨sp_body, sp_close, h_body, h_glit, h_pb, h_corr⟩ :=
               ih _ _ sp_esc _ hcorr_esc hok
             exact ⟨sp_body, sp_close,
                    SNbDoubleMultiLine_prepend _ _ _ h_dq_char h_body,
-                   h_glit, h_corr⟩
+                   h_glit, h_pb, h_corr⟩
       · exact absurd hok (by simp)  -- none → error
     · -- peek? = some c (regular char, c ≠ '"', c ≠ '\\')
       rename_i _opt c hne_dq hne_bs hpeek
@@ -592,7 +595,7 @@ lemma collectDoubleQuotedLoop_prod (sc : ScannerState) (sp : SurfPos)
               -- recurse); close each via the IH, error branch (if any) via simp
               split at hok <;>
                 first
-                  | (obtain ⟨sp_body, sp_close, h_body, h_glit, h_corr⟩ :=
+                  | (obtain ⟨sp_body, sp_close, h_body, h_glit, h_pb, h_corr⟩ :=
                        ih _ _ sp_fold _ hcorr_fold hok
                      exact ⟨sp_body, sp_close,
                             SNbDoubleMultiLine.multi 0
@@ -602,7 +605,7 @@ lemma collectDoubleQuotedLoop_prod (sc : ScannerState) (sp : SurfPos)
                               (SSDoubleBreak.flowFold 0 _ sp_cn sp_loop _
                                 h_sbreak h_gstar_empty h_flp)
                               h_body,
-                            h_glit, h_corr⟩)
+                            h_glit, h_pb, h_corr⟩)
                   | simp at hok
       · -- not line break: control char check
         split at hok
@@ -613,14 +616,14 @@ lemma collectDoubleQuotedLoop_prod (sc : ScannerState) (sp : SurfPos)
           have h_not_cr : c ≠ '\r' := not_isLineBreak_not_cr c hne_lb
           have hcorr_adv :=
             advance_non_newline_corr sc c rest hcorr hmore h_not_nl h_not_cr
-          obtain ⟨sp_body, sp_close, h_body, h_glit, h_corr⟩ :=
+          obtain ⟨sp_body, sp_close, h_body, h_glit, h_pb, h_corr⟩ :=
             ih _ sc.advance ⟨rest, sc.col + 1⟩ _ hcorr_adv hok
           have h_dq_char : SNbDoubleChar ⟨c :: rest, sc.col⟩ ⟨rest, sc.col + 1⟩ :=
             SNbDoubleChar.plain c rest sc.col
               (not_lineBreak_bool_to_prop hne_lb) hne_bs hne_dq
           exact ⟨sp_body, sp_close,
                  SNbDoubleMultiLine_prepend _ _ _ h_dq_char h_body,
-                 h_glit, h_corr⟩
+                 h_glit, h_pb, h_corr⟩
 
 -- `scanDoubleQuoted` success produces a complete `SCDoubleQuoted 0 .blockIn`.
 -- Precondition: `sc.peek? = some '"'` (from scanner dispatch).
@@ -629,7 +632,7 @@ lemma scanDoubleQuoted_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek_dq : sc.peek? = some '"')
     (hok : scanDoubleQuoted sc = .ok s') :
-    ∃ sp', SCDoubleQuoted 0 .blockIn sp sp' ∧ ScannerSurfCorr s' sp' := by
+    ∃ sp', SCDoubleQuoted 0 .blockIn sp sp' ∧ s'.peekBack? = some '"' ∧ ScannerSurfCorr s' sp' := by
   unfold scanDoubleQuoted at hok
   simp only [bind, Except.bind] at hok
   -- Extract opening quote position
@@ -644,7 +647,7 @@ lemma scanDoubleQuoted_prod (sc : ScannerState) (sp : SurfPos)
   · rename_i pair hloop
     obtain ⟨content, s_after_close⟩ := pair
     simp only [] at hloop hok
-    obtain ⟨sp_body, sp_close, h_body, h_glit_close, hcorr_close⟩ :=
+    obtain ⟨sp_body, sp_close, h_body, h_glit_close, h_pb_close, hcorr_close⟩ :=
       collectDoubleQuotedLoop_prod sc.advance ⟨rest, sc.col + 1⟩ "" _ _ _ _ _
         hcorr_adv hloop
     -- validateTrailingContent: do-notation bind on Except Unit
@@ -656,12 +659,14 @@ lemma scanDoubleQuoted_prod (sc : ScannerState) (sp : SurfPos)
         exact ⟨sp_close,
                SCDoubleQuoted.mk 0 .blockIn _ _ _ _
                  (GLit.mk rest sc.col) h_body h_glit_close,
-               corr_of_simpleKeyAllowed_needIndentCheck_update false false (corr_of_emitAt _ _ hcorr_close)⟩
+               h_pb_close,
+             corr_of_simpleKeyAllowed_needIndentCheck_update false false (corr_of_emitAt _ _ hcorr_close)⟩
     · -- !inFlow = false: no validate; `hok` is a direct `.ok` equality now
       have h := Except.ok.inj hok; subst h
       exact ⟨sp_close,
              SCDoubleQuoted.mk 0 .blockIn _ _ _ _
                (GLit.mk rest sc.col) h_body h_glit_close,
+             h_pb_close,
              corr_of_simpleKeyAllowed_needIndentCheck_update false false (corr_of_emitAt _ _ hcorr_close)⟩
 
 /-! ## §4 Single-Quoted Scalar -/
@@ -693,6 +698,7 @@ lemma collectSingleQuotedLoop_prod (sc : ScannerState) (sp : SurfPos)
     ∃ sp_body sp_close,
       SNbSingleMultiLine 0 sp sp_body ∧
       GLit '\'' sp_body sp_close ∧
+      s'.peekBack? = some '\'' ∧
       ScannerSurfCorr s' sp_close := by
   induction fuel generalizing sc sp content with
   | zero => simp [collectSingleQuotedLoop] at hok
@@ -720,19 +726,20 @@ lemma collectSingleQuotedLoop_prod (sc : ScannerState) (sp : SurfPos)
         have hcorr_adv2 :=
           advance_non_newline_corr sc.advance '\'' rest2 hcorr_adv hmore2 (by decide) (by decide)
         rw [show sc.advance.col + 1 = sc.col + 2 from by omega] at hcorr_adv2
-        obtain ⟨sp_body, sp_close, h_body, h_glit, h_corr⟩ :=
+        obtain ⟨sp_body, sp_close, h_body, h_glit, h_pb, h_corr⟩ :=
           ih sc.advance.advance ⟨rest2, sc.col + 2⟩ _ hcorr_adv2 hok
         have h_esc : SNbSingleChar ⟨'\'' :: '\'' :: rest2, sc.col⟩ ⟨rest2, sc.col + 2⟩ :=
           SNbSingleChar.escapedQuote rest2 sc.col
         exact ⟨sp_body, sp_close,
                SNbSingleMultiLine_prepend _ _ _ h_esc h_body,
-               h_glit, h_corr⟩
+               h_glit, h_pb, h_corr⟩
       · -- closing quote (next peek ≠ '\'')
         simp only [Except.ok.injEq, Prod.mk.injEq] at hok
         obtain ⟨-, rfl⟩ := hok
         exact ⟨⟨'\'' :: rest, sc.col⟩, ⟨rest, sc.col + 1⟩,
                SNbSingleMultiLine.single 0 _ _ (GStar.nil _),
                GLit.mk rest sc.col,
+               advance_peekBack_eq_peek hcorr hmore (by decide) (by decide),
                advance_non_newline_corr sc '\'' rest hcorr hmore (by decide) (by decide)⟩
     · -- peek? = some c (not '\'')
       rename_i c hne_sq hpeek
@@ -753,7 +760,7 @@ lemma collectSingleQuotedLoop_prod (sc : ScannerState) (sp : SurfPos)
           · split at hok  -- underIndented guard
             · simp at hok
             · -- 4.32.0: `hok` is directly the recursive call; recurse via IH
-              obtain ⟨sp_body, sp_close, h_body, h_glit, h_corr⟩ :=
+              obtain ⟨sp_body, sp_close, h_body, h_glit, h_pb, h_corr⟩ :=
                 ih _ sp_fold _ hcorr_fold hok
               exact ⟨sp_body, sp_close,
                      SNbSingleMultiLine.multi 0
@@ -762,7 +769,7 @@ lemma collectSingleQuotedLoop_prod (sc : ScannerState) (sp : SurfPos)
                        (GStar.nil _)
                        h_sbreak h_gstar_empty h_flp
                        h_body,
-                     h_glit, h_corr⟩
+                     h_glit, h_pb, h_corr⟩
       · split at hok
         · simp at hok  -- invalid control char → error
         · -- valid char: advance + recurse
@@ -771,14 +778,14 @@ lemma collectSingleQuotedLoop_prod (sc : ScannerState) (sp : SurfPos)
           have h_not_cr : c ≠ '\r' := not_isLineBreak_not_cr c hne_lb
           have hcorr_adv :=
             advance_non_newline_corr sc c rest hcorr hmore h_not_nl h_not_cr
-          obtain ⟨sp_body, sp_close, h_body, h_glit, h_corr⟩ :=
+          obtain ⟨sp_body, sp_close, h_body, h_glit, h_pb, h_corr⟩ :=
             ih sc.advance ⟨rest, sc.col + 1⟩ _ hcorr_adv hok
           have h_sq_char : SNbSingleChar ⟨c :: rest, sc.col⟩ ⟨rest, sc.col + 1⟩ :=
             SNbSingleChar.plain c rest sc.col
               (not_lineBreak_bool_to_prop hne_lb) hne_sq
           exact ⟨sp_body, sp_close,
                  SNbSingleMultiLine_prepend _ _ _ h_sq_char h_body,
-                 h_glit, h_corr⟩
+                 h_glit, h_pb, h_corr⟩
 
 -- `scanSingleQuoted` success produces a complete `SCSingleQuoted 0 .blockIn`.
 -- Precondition: `sc.peek? = some '\''` (from scanner dispatch).
@@ -787,7 +794,7 @@ lemma scanSingleQuoted_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek_sq : sc.peek? = some '\'')
     (hok : scanSingleQuoted sc = .ok s') :
-    ∃ sp', SCSingleQuoted 0 .blockIn sp sp' ∧ ScannerSurfCorr s' sp' := by
+    ∃ sp', SCSingleQuoted 0 .blockIn sp sp' ∧ s'.peekBack? = some '\'' ∧ ScannerSurfCorr s' sp' := by
   unfold scanSingleQuoted at hok
   simp only [bind, Except.bind] at hok
   -- Extract opening quote position
@@ -802,7 +809,7 @@ lemma scanSingleQuoted_prod (sc : ScannerState) (sp : SurfPos)
   · rename_i pair hloop
     obtain ⟨content, s_after_close⟩ := pair
     simp only [] at hloop hok
-    obtain ⟨sp_body, sp_close, h_body, h_glit_close, hcorr_close⟩ :=
+    obtain ⟨sp_body, sp_close, h_body, h_glit_close, h_pb_close, hcorr_close⟩ :=
       collectSingleQuotedLoop_prod sc.advance ⟨rest, sc.col + 1⟩ "" _ _ _ _ _
         hcorr_adv hloop
     -- SNbSingleText 0 .blockIn = SNbSingleMultiLine 0
@@ -816,12 +823,14 @@ lemma scanSingleQuoted_prod (sc : ScannerState) (sp : SurfPos)
         exact ⟨sp_close,
                SCSingleQuoted.mk 0 .blockIn _ _ _ _
                  (GLit.mk rest sc.col) h_text h_glit_close,
-               corr_of_simpleKeyAllowed_needIndentCheck_update false false (corr_of_emitAt _ _ hcorr_close)⟩
+               h_pb_close,
+             corr_of_simpleKeyAllowed_needIndentCheck_update false false (corr_of_emitAt _ _ hcorr_close)⟩
     · -- !inFlow = false: no validate; `hok` is a direct `.ok` equality now
       have h := Except.ok.inj hok; subst h
       exact ⟨sp_close,
              SCSingleQuoted.mk 0 .blockIn _ _ _ _
                (GLit.mk rest sc.col) h_text h_glit_close,
+             h_pb_close,
              corr_of_simpleKeyAllowed_needIndentCheck_update false false (corr_of_emitAt _ _ hcorr_close)⟩
 
 /-! ## §5 Plain-safe bridge (Layer 4a)
