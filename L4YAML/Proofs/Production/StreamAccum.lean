@@ -26105,7 +26105,7 @@ lemma accum_block_on_pendingContent
     -- `accum_block_on_closeThenBlock`'s — the collection's remaining tail owed
     -- at the landing's comments, and nothing else.
     (h_seqF168 : (∃ (ke kk : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width < kk) ∧
-      ∀ sp_mid : SurfPos, SSLComments sp_scan sp_mid →
+      ∀ sp_mid : SurfPos, SSLComments sp_gram sp_mid →
       ∀ sp_e : SurfPos, SCompactMapTail kk sp_mid sp_e →
       ResumeFrames (SeqEntryTail sp_start ke) ks sp_e) ∨ True)
     -- **Item 173 (LAST, so the existing argument order stands): the park's
@@ -26113,7 +26113,7 @@ lemma accum_block_on_pendingContent
     -- their way to the landed `:`/`?` — the sibling entry resumes the level
     -- the landing's width names (`a: 1⏎: 2`, `? a⏎: 1⏎? b⏎: 2`).
     (h_mapF109 : (∃ ks : List FrameLevel,
-      ∀ sp_m : SurfPos, SSLComments sp_scan sp_m →
+      ∀ sp_m : SurfPos, SSLComments sp_gram sp_m →
       ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True)
     -- **Item 197 (LAST): the same levels at the VALUE-LINE bottom**
     -- (`pendingContent.h_framesV`, item 108), which has stood beside
@@ -26123,7 +26123,7 @@ lemma accum_block_on_pendingContent
     -- level closes onto (`?⏎  ?⏎    a: b⏎  ? c⏎: w`) — the residue item 194
     -- named as a BOTTOM.
     (h_mapFV108 : (∃ (nv : Nat) (ks : List FrameLevel),
-      ∀ sp_m : SurfPos, SSLComments sp_scan sp_m →
+      ∀ sp_m : SurfPos, SSLComments sp_gram sp_m →
       KeyFrames (ExplValueLine sp_start nv) ks sp_m) ∨ PackAlt sc)
     -- **Item 208 (LAST): the park's own INDENT CHECK**, item 154's field made
     -- unconditional at item 207, handed straight across to the closed-park
@@ -26137,6 +26137,10 @@ lemma accum_block_on_pendingContent
       FlowStackB sp_start 0 0 none 0 #[] #[] .sep sp_block' sp_flow' ∧
       PendingNode s' false sp_start sp_flow' sp_scan' ∧
       ScannerSurfCorr s' sp_scan' := by
+  have h_seqF168 := h_seqF168.imp (fun ⟨ke, kk, ks, hw, f⟩ => ⟨ke, kk, ks, hw, fun sp_m h => f sp_m (white_prepend_SSLComments h_run h)⟩) id
+  have h_mapF109 := h_mapF109.imp (fun ⟨ks, f⟩ => ⟨ks, fun sp_m h => f sp_m (white_prepend_SSLComments h_run h)⟩) id
+  have h_mapFV108 := h_mapFV108.imp (fun ⟨nv, ks, f⟩ => ⟨nv, ks, fun sp_m h => f sp_m (white_prepend_SSLComments h_run h)⟩) id
+  have h_seqF := h_seqF.imp (fun ⟨ke, f⟩ => ⟨ke, fun sp_m h => f sp_m (white_prepend_SSLComments h_run h)⟩) id
   -- Item 168: the face read at the EMPTY tail of the level the park stands in,
   -- which is the shape the landing arm takes.  A `-` at the collection's width
   -- ends every level above it, so `nil` is the honest tail and the index `kk`
@@ -35441,8 +35445,8 @@ lemma accum_content_pending (sc : ScannerState)
       absurd (inline_residue_of_landing ⟨rfl, hcol⟩ h_ws h_pk hcorr_prep
           (preprocess_some_peek h_preprocess))
         (docEnd_refutes_content_residue h_line h_dispatch))
-  | pendingContent _ _ _ _ h_line _h_closable _h_key h_stale _ _ h_fS109 h_fV109 _
-      h_tail139c h_nic0c h_seqF168c =>
+  | pendingContent _ _ _ sp_gramA h_line _h_closable _h_key h_stale _ _ h_fS109 h_fV109 _
+      h_tail139c h_nic0c h_seqF168c h_runA _h_gateA _h_liveA =>
     -- ═══ Item 47: §7.5's rung at the content dispatch, CLOSED.  Item 42
     -- narrowed the survivors to `[154]`'s `:` with a non-blank follower
     -- (`"a" :b`); the scanner now refuses that `:` where `isValueCandidate`
@@ -35455,7 +35459,7 @@ lemma accum_content_pending (sc : ScannerState)
     -- where `?⏎  a: b⏎  c: d⏎: - w`'s `c` was re-opened at the root; with the
     -- park's own frames the landed key resumes the width-2 level instead, and
     -- the `?`'s value line is still owed when `: - w` arrives. ═══
-    refine h_defer_split (h_srcP := Or.inl h_tail139c) h_fS109 h_fV109 (Or.inr trivial) (Or.inr trivial)
+    refine h_defer_split (h_srcP := Or.inl h_tail139c) (h_fS109.imp (fun ⟨ks, hc, f⟩ => ⟨ks, hc, fun sp_m h => f sp_m (white_prepend_SSLComments h_runA h)⟩) id) (h_fV109.imp (fun ⟨nv, ks, hc, f⟩ => ⟨nv, ks, hc, fun sp_m h => f sp_m (white_prepend_SSLComments h_runA h)⟩) id) (Or.inr trivial) (Or.inr trivial)
       -- ═══ Item 139: and the park pays its §9.2 face.  A completed content
       -- park's last real token IS a node body, so a landing off it with the
       -- stack at the sentinel alone is the second bare document the scanner
