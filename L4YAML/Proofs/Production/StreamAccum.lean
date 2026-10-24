@@ -1917,7 +1917,7 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       -- collection and `flowVPack_of_close` hands it on.
       (h_vpack : (∃ ns : List Nat, ∀ nv ∈ ns,
         ∀ sp_mid sp_i sp_c : SurfPos,
-          SSLComments sp_scan sp_mid → SIndent nv sp_mid sp_i →
+          SSLComments sp_gram sp_mid → SIndent nv sp_mid sp_i →
           GLit ':' sp_i sp_c →
           ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →
           SLYamlStream sp_start sp_v) ∨ PackAlt sc)
@@ -26251,21 +26251,21 @@ lemma accum_block_on_pendingContent
 -- **The escape is the `:` alone** (item 37), for the same reason as at
 -- `pendingContent`: this pending's content is a COMPLETE node too, so its
 -- `h_line` is §7.5's set and `- "a" - b` / `- [1] ? b` are refuted here.
-lemma accum_block_on_pendingBlockContent
+lemma accum_block_on_pendingBlockContent {sp_gram : SurfPos}
     (sc : ScannerState) (sp_start sp_block sp_scan : SurfPos)
     (s_prep s' : ScannerState) (c : Char) (sp_prep sp_scan' : SurfPos) (n : Nat)
     (h_stream_block : SLYamlStream sp_start sp_block)
     (h_close_pending : danglingNodePos? sc = none →
       underIndentedFlowValuePos? sc = none →
-      ∀ sp_mid, SSLComments sp_scan sp_mid → SLYamlStream sp_start sp_mid)
+      ∀ sp_mid, SSLComments sp_gram sp_mid → SLYamlStream sp_start sp_mid)
     (h_line : sp_scan.col = 0 ∨ LineNodeStop sp_scan.chars)
-    (h_entry_old : ∀ (sp : SurfPos), SSLComments sp_scan sp →
+    (h_entry_old : ∀ (sp : SurfPos), SSLComments sp_gram sp →
       ∀ (sp_end : SurfPos), SCompactSeqTail n sp sp_end → SLYamlStream sp_start sp_end)
     -- Item 92: the park's value-line pack (`pendingBlockContent.h_kslot`) —
     -- `h_entry_old`'s twin.  The landed `:` at the frame's own column spends
     -- it (`? - a⏎: - w`), and a sibling `-` re-parks it with the tail consed.
     (h_kslot : (∃ nv : Nat,
-      ∀ sp_m : SurfPos, SSLComments sp_scan sp_m →
+      ∀ sp_m : SurfPos, SSLComments sp_gram sp_m →
       ∀ sp_e : SurfPos, SCompactSeqTail n sp_m sp_e →
       ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →
       ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →
@@ -26313,7 +26313,7 @@ lemma accum_block_on_pendingBlockContent
     -- **Item 167 (LAST): the park's ENCLOSING collection**
     -- (`pendingBlockContent.h_seqF`), spent at the `k ≠ n` arm below.
     (h_seqF_old : (∃ ke : Nat, ∀ sp_mid : SurfPos,
-      SSLComments sp_scan sp_mid →
+      SSLComments sp_gram sp_mid →
       ∀ sp_end : SurfPos, SCompactSeqTail n sp_mid sp_end →
       SeqEntryTail sp_start ke sp_end) ∨ True)
     -- **Item 190 (LAST): the park's SECOND frame** (`pendingBlockContent.h_kslotUp`),
@@ -26323,7 +26323,7 @@ lemma accum_block_on_pendingBlockContent
     -- **Item 191: a LIST of ancestors**, and the `_stamp_offcol` branch decides
     -- membership at the landing's own column.
     (h_kslotUp : (∃ ns : List Nat, ∀ nv ∈ ns,
-      ∀ sp_m : SurfPos, SSLComments sp_scan sp_m →
+      ∀ sp_m : SurfPos, SSLComments sp_gram sp_m →
       ∀ sp_e : SurfPos, SCompactSeqTail n sp_m sp_e →
       ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →
       ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →
@@ -26338,7 +26338,7 @@ lemma accum_block_on_pendingBlockContent
     (h_closeF_old : (∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width < n) ∧
       ((∃ lo : Nat, IndentStackCover.Floor lo n ks ∧
         IndentStackCover.Covered lo ks sc) ∨ True) ∧
-      ∀ sp_mid : SurfPos, SSLComments sp_scan sp_mid →
+      ∀ sp_mid : SurfPos, SSLComments sp_gram sp_mid →
       ∀ sp_end : SurfPos, SCompactSeqTail n sp_mid sp_end →
       ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ True)
     -- **Item 198 (LAST): `h_closeF_old`'s twin at the VALUE-LINE bottom**
@@ -26347,7 +26347,7 @@ lemma accum_block_on_pendingBlockContent
     -- closes the enclosing `?` with an `e-node` and one that leaves its line
     -- owed.  Spent at the `:`/`?` arm's `h_mapFV` (item 197).
     (h_closeFV_old : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width < n) ∧
-      ∀ sp_mid : SurfPos, SSLComments sp_scan sp_mid →
+      ∀ sp_mid : SurfPos, SSLComments sp_gram sp_mid →
       ∀ sp_end : SurfPos, SCompactSeqTail n sp_mid sp_end →
       KeyFrames (ExplValueLine sp_start nv) ks sp_end) ∨ PackAlt sc)
     -- **Item 208 (LAST): the park's own INDENT CHECK where it stands AT a line
@@ -26360,7 +26360,9 @@ lemma accum_block_on_pendingBlockContent
     -- is what `PendingNode.nic0` does for eight of the nine at once.
     (h_nic0 : sp_scan.col = 0 → sc.needIndentCheck = true)
     -- Item 293: the park's `h_live`, for the `:` consumer's `¬ possible` arm.
-    (h_live : InlineResidue sp_scan ':' → sc.simpleKey.possible = true) :
+    (h_live : InlineResidue sp_scan ':' → sc.simpleKey.possible = true)
+    (h_run : GStar SSWhite sp_gram sp_scan)
+    (h_gate : sp_gram = sp_scan → sc.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#')) :
     ∃ sp_gram' sp_block' sp_flow' sp_scan',
       SLYamlStream sp_start sp_gram' ∧
       BlockStack sp_gram' sp_block' ∧
@@ -26397,7 +26399,7 @@ lemma accum_block_on_pendingBlockContent
     -- across a break (`- a⏎- b`) snocs through the SAME `h_entry_old` route a
     -- column-0 park uses.
     obtain ⟨sp_mid, sp_ws, sp_sc, h_land, hws, hcmt, hcorr_sc, h_pk, hsuf_mid⟩ :=
-      preprocess_some_ssl_comments_landing sc sp_scan s_prep c h_corr h_preprocess
+      preprocess_some_ssl_comments_landing sc sp_scan s_prep c h_corr h_preprocess h_run h_gate
     have hsp_sc_eq := ScannerSurfCorr_unique hcorr_sc hcorr_prep
     subst hsp_sc_eq
     refine h_land.elim (fun h_landed => ?_) (fun h_mid =>
@@ -27803,7 +27805,7 @@ lemma accum_block_pending (sc : ScannerState)
            | Or.inr h_alt => Or.inr h_alt)
           (Or.inr trivial)
           -- Item 208: refuted from the park's own column, as above.
-          (nic0_of_col_pos h_col0_p)) (GStar.nil _) (fun _ _ => (h_nextP (sc_noflow_of_prep h_preprocess h_noflow)).gate)
+          (nic0_of_col_pos h_col0_p) (GStar.nil _) (fun _ _ => (h_nextP (sc_noflow_of_prep h_preprocess h_noflow)).gate))
         hcorr_prep hcorr_result h_corr h_noflow h_preprocess h_dispatch
     · have h_prop : lastTokenIsNodePropertyOnLine sc.tokens sc.line = true := by
         rcases PropsRun.ha_or_ht h_run with hha | hht
@@ -28018,8 +28020,7 @@ lemma accum_block_pending (sc : ScannerState)
         (h_closeFV108.imp (fun ⟨nv, ks, h_le, _, fV⟩ => ⟨nmv, nv, ks, h_le, fV⟩) id)
         -- Item 208: a value park is never at column 0, so the premise is refuted.
         (nic0_of_col_pos h_col0_mv) (GStar.nil _) (fun _ _ => (h_nextM (sc_noflow_of_prep h_preprocess h_noflow)).gate)
-  | pendingBlockContent _ _ _ _ n_old h_line _h_closable h_entry_old h_key_old h_stale47 h_arm77
-      h_kslot92 h_closeF99 _ h_tail139 h_seqF167 h_kslotUp190 h_closeFV198 h_nic0B h_live290 =>
+  | pendingBlockContent _ _ _ _ n_old h_line _h_closable h_entry_old h_key_old h_stale47 h_arm77 h_kslot92 h_closeF99 _ h_tail139 h_seqF167 h_kslotUp190 h_closeFV198 h_nic0B h_runBC h_gateBC _ =>
     -- Item 22: the pending's own entry index rides through; the `n ≠ 0`
     -- deferral this arm used to open is gone with it.
     -- Item 37: and what is left of the escape is `[154]`'s `:`.
@@ -28036,7 +28037,7 @@ lemma accum_block_pending (sc : ScannerState)
       -- opener's arm has been waiting for since item 197.
       h_closeFV198
       -- Item 208: the park's own indent check, read at the block landing.
-      h_nic0B h_live290
+      h_nic0B h_live290 h_runBC h_gateBC
   | pendingBlock _ _ _ n_old _h_close h_close_entry_old h_floor208 h_sk_old h_col_old h_kslot92
       _ _ h_seqF167 h_kslotUp190 h_closeFV198 h_top208 =>
     exact accum_block_on_pendingBlock sc sp_start sp_block sp_scan s_prep s' c sp_prep
