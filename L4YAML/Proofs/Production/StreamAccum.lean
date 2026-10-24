@@ -8718,7 +8718,7 @@ lemma preprocess_some_ssl_comments_landing (sc : ScannerState) (sp : SurfPos)
       · exact Or.inr ⟨h.1, hcol, h.2.1, h.2.2.1⟩
   · cases h_disj with
     | inl h => exact sslCommentsFrom_suffix h.1
-    | inr h => rw [h.1]
+    | inr h => rw [h.1]; exact List.suffix_refl _
 
 /-- General-column `SSeparateLines 0` from preprocessing with content.
     Works at any starting column — uses nil `SSLComments` when no break consumed,
