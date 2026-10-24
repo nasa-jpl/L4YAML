@@ -11888,7 +11888,7 @@ lemma flowKeyRoute_of_open {n nc m : Nat} {g : Option ScannerState} {cc : YamlCo
 lemma flowKeyRoute_of_root {m : Nat} {g : Option ScannerState} {sp_start sp_scan sp_prep : SurfPos}
     {sp_g : SurfPos} {sc s_prep : ScannerState} {c : Char}
     (h_col : (sp_scan.col = 0 ∧
-      ∀ sp_m, SSLComments sp_scan sp_m → GStar SLDocumentPrefix sp_start sp_m) ∨ True)
+      ∀ sp_m, SSLComments sp_g sp_m → GStar SLDocumentPrefix sp_start sp_m) ∨ True)
     -- Item 78: `flowKeyRoute_of_open`'s datum, and the ROOT spends it without a
     -- second premise.  Both of its arms measure `[63]`'s width from a column-0
     -- line start; the landing arm has the walk's re-arm, and the no-break arm
@@ -11914,14 +11914,14 @@ lemma flowKeyRoute_of_root {m : Nat} {g : Option ScannerState} {sp_start sp_scan
     -- read at the flow open) — when the closed park was a `...`, the mapping
     -- this collection keys is the awaited document itself, so its entry route
     -- is `suffixMapRoute`'s instead of `rootMapRoute`'s.
-    (h_sfx : (∀ sp_m, SSLComments sp_scan sp_m → SuffixRun sp_start sp_m) ∨
+    (h_sfx : (∀ sp_m, SSLComments sp_g sp_m → SuffixRun sp_start sp_m) ∨
       True)
     -- Item 136: the park's HEAD arm, the same face read at the other end —
     -- when the park has started no document, the mapping this collection keys
     -- IS the stream's first one, so its entry route is `nodocMapRoute`'s
     -- (`[1]: b` at the seed) rather than `rootMapRoute`'s continuation of a
     -- stream with nothing in it.
-    (h_nodoc : (∀ sp_m, SSLComments sp_scan sp_m → GStar SLDocumentPrefix sp_start sp_m) ∨
+    (h_nodoc : (∀ sp_m, SSLComments sp_g sp_m → GStar SLDocumentPrefix sp_start sp_m) ∨
       True)
     -- Item 143: §9.2's landing refusal, at the flow open's KEY side.  The
     -- bundle `bareDocument_refutes_landing` wants is all but one conjunct in
@@ -11945,7 +11945,7 @@ lemma flowKeyRoute_of_root {m : Nat} {g : Option ScannerState} {sp_start sp_scan
     -- `pendingContent.h_framesS` and `pendingBlockContent.h_closeF` (read at
     -- the empty tail); every other caller punts.
     (h_mapF : (∃ ks : List FrameLevel,
-      ∀ sp_m : SurfPos, SSLComments sp_scan sp_m →
+      ∀ sp_m : SurfPos, SSLComments sp_g sp_m →
       ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True)
     -- **Item 201: and the VALUE-LINE-bottomed twin beside it, which is what
     -- the conclusion's own two punts were waiting for.**  Item 176 gave this
@@ -11959,7 +11959,7 @@ lemma flowKeyRoute_of_root {m : Nat} {g : Option ScannerState} {sp_start sp_scan
     -- payers are `pendingContent.h_framesV` and `pendingBlockContent.h_closeFV`
     -- (read at the empty tail), exactly as `h_mapF`'s are their stream twins.
     (h_mapFV : (∃ (nv : Nat) (ks : List FrameLevel),
-      ∀ sp_m : SurfPos, SSLComments sp_scan sp_m →
+      ∀ sp_m : SurfPos, SSLComments sp_g sp_m →
       KeyFrames (ExplValueLine sp_start nv) ks sp_m) ∨ PackAlt sc) :
     (∃ (k : Nat) (sp_key : SurfPos),
       (∀ sp_v, SBlockMapEntry k sp_key sp_v → SLYamlStream sp_start sp_v) ∧
@@ -13485,7 +13485,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
             ⟨KeyFloor.cleared h_opsk, fun i hlo hhi => absurd hhi (by omega)⟩⟩
            (mk (some s_prep) 0 sp_block ⟨(fun hg => absurd hg.2 (by rw [hska]; simp)),
              flowKeyRoute_of_root (Or.inr trivial) h_noflow_prep h_park h_close_pending h_dn h_fv
-               h_corr hcorr_prep h_preprocess (GStar.nil _) (fun _ => h_gateS) (Or.inr trivial) h_bare h_base
+               h_corr hcorr_prep h_preprocess (GStar.nil _) (fun _ => h_gateS) (Or.inr trivial) (Or.inr trivial) h_bare h_base
                (Or.inr trivial) (Or.inr trivial) (Or.inr trivial),
              Or.inr trivial⟩),
          PendingNode.noPending sp_start sp_open (Or.inr (inFlow_of_flowLevel_eq h_fl1))
@@ -13752,7 +13752,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
       -- the frame carries (item 295).
       -- The TAB half is §6.1's own refusal and stands (item 68).
       rcases h_ur with ⟨j, sx, hj, h_ind, _h_ws2, h_end | h_tab⟩
-      · exact slot_ride (h_gateP (noflow_of_fl0 h_fl0)).gate
+      · exact slot_ride (fun _ => (h_gateP (noflow_of_fl0 h_fl0)).gate)
           (underRunEnd_landing_on_stack h_preprocess h_base h_floor_p h_col02 hj h_ind h_end
             hcorr_prep (h_landed_ur (Nat.ne_of_gt h_col0_p) h_noflow_prep))
           (slotRun_of_dn h_slot_p h_dn (h_ska_ur (Nat.ne_of_gt h_col0_p) h_noflow_prep) h_floor_p hj h_base
@@ -13890,7 +13890,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
       -- location refutes.
       rcases h_ur with ⟨j, sx, hj, h_ind, _h_ws2, h_end | h_tab⟩
       · -- Item 172: the deferred floor — the open step scans; nothing to spend.
-        exact slot_ride (h_gateB (noflow_of_fl0 h_fl0)).gate
+        exact slot_ride (fun _ => (h_gateB (noflow_of_fl0 h_fl0)).gate)
           (underRunEnd_landing_on_stack h_preprocess h_base h_floor_old h_col02 hj h_ind h_end
             hcorr_prep (h_landed_ur (h_col59 ▸ Nat.succ_ne_zero n_old) h_noflow_prep))
           (slotRun_of_offer h_offer_b h_preprocess)
@@ -14011,7 +14011,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
       -- (`k:⏎  a:⏎[1]` is §9.2's dangling reading, three steps on).
       rcases h_ur with ⟨j, sx, hj, h_ind, _h_ws2, h_end | h_tab⟩
       · -- Item 172: the deferred floor — the open step scans; nothing to spend.
-        exact slot_ride (h_gateMV (noflow_of_fl0 h_fl0)).gate
+        exact slot_ride (fun _ => (h_gateMV (noflow_of_fl0 h_fl0)).gate)
           (underRunEnd_landing_on_stack h_preprocess h_base h_floor_mv h_col02 hj h_ind h_end
             hcorr_prep (h_landed_ur (Nat.ne_of_gt h_col0_mv) h_noflow_prep))
           (slotRun_of_offer h_offer_mv h_preprocess)
@@ -27415,7 +27415,7 @@ lemma accum_block_on_pendingBlock
            | Or.inr h_alt => Or.inr h_alt)
           -- Item 208: this park sits at `n + 1`, so the premise is refuted.
           (nic0_of_col_pos (by omega))
-          (GStar.nil _) (fun _ => (h_next (sc_noflow_of_prep h_preprocess h_noflow)).gate)
+          (GStar.nil _) (fun _ _ => (h_next (sc_noflow_of_prep h_preprocess h_noflow)).gate)
   · -- c ≠ '-' at the landing: a ':' opens `[189]`'s empty-key entry there
     -- (item 13), a '?' opens `[186]`'s explicit-key one (item 20) — one arm.
     by_cases hcv : c = ':' ∨ c = '?'
