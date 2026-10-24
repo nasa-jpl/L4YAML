@@ -35460,7 +35460,7 @@ lemma accum_content_pending (sc : ScannerState)
           (Or.inr trivial)
           (Or.inr trivial)
       | inr h_mid =>
-        exact h_noBreak hcol sp_ws (h_mid.1 ▸ h_ws) h_pk h_mid.2.1 h_mid.2.2.2
+        exact h_noBreak hcol sp_ws (h_mid.1 ▸ h_ws) h_pk h_mid.2.2.1 h_mid.2.2.2
   cases h_pending with
   | noPending _ _ _ h_arm76 h_nodoc h_noek76 h_ntop76 =>
     -- ═══ Item 136: the virgin park pays the HEAD arm.  The content this
