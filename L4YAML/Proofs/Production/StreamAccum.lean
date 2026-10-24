@@ -21134,6 +21134,25 @@ lemma dispatchBlock_dash_next {s s' : ScannerState} (h_noflow : s.inFlow = false
     · cases h
   exact nextIsSep_of_scanBlockEntry h_noflow hpk hcand hv
 
+/-- Any block indicator the dispatcher accepts in block context is followed by
+    a separator (`NextIsSep`), by the three per-indicator facts above. -/
+lemma dispatchBlock_next_of_some {s_prep s' : ScannerState} {c : Char}
+    (h_noflow : s_prep.inFlow = false) (hpk : s_prep.peek? = some c)
+    (h_dispatch : scanNextToken_dispatchBlockIndicators
+        (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) c = .ok (some s')) : NextIsSep s' := by
+  have hpkd : (if s_prep.allowDirectives then
+      { s_prep with allowDirectives := false, documentEverStarted := true }
+    else s_prep).peek? = some c := by split <;> exact hpk
+  have hnf : (if s_prep.allowDirectives then
+      { s_prep with allowDirectives := false, documentEverStarted := true }
+    else s_prep).inFlow = false := by split <;> exact h_noflow
+  rcases dispatchBlockIndicators_indicator_of_some h_dispatch with rfl | rfl | rfl
+  · exact dispatchBlock_dash_next hnf hpkd h_dispatch
+  · exact dispatchBlock_question_next hnf hpkd h_dispatch
+  · exact dispatchBlock_colon_next hnf hpkd h_dispatch
+
 lemma dispatchBlock_dash_offerPred {s s' : ScannerState}
     (h : scanNextToken_dispatchBlockIndicators s '-' = .ok (some s')) : OfferPred s'.tokens :=
   scanBlockEntry_offerPred (dispatchBlock_dash_scanBlockEntry h)
@@ -27726,7 +27745,7 @@ lemma accum_block_pending (sc : ScannerState)
       -- unconditional reading), for the closed-park landing below.
       h_nic0C h_live290
   | pendingProps _ _ _ ha ht sp_node sp_p n_p h_sep_p h_run h_nic48 h_real48 h_anchor48 h_tag48
-      h_route48 h_key48 _ h_col0_p _ h_ska79 h_kslot91 _ _ _ _ h_closeFV_p  _ _ h_nextP =>
+      h_route48 h_key48 _ h_col0_p _ h_ska79 h_kslot91 _ _ _ _ h_closeFV_p _ _ _ _ h_nextP =>
     -- ═══ Item 48: a `-`/`?` behind a parked property run is refused by the
     -- scanner (`[200]` separates a node's properties from its collection),
     -- and the run's own trailing-token fact is the check's read.  Item 49:
@@ -27784,7 +27803,7 @@ lemma accum_block_pending (sc : ScannerState)
            | Or.inr h_alt => Or.inr h_alt)
           (Or.inr trivial)
           -- Item 208: refuted from the park's own column, as above.
-          (nic0_of_col_pos h_col0_p))
+          (nic0_of_col_pos h_col0_p)) (GStar.nil _) (fun _ _ => (h_nextP (sc_noflow_of_prep h_preprocess h_noflow)).gate)
         hcorr_prep hcorr_result h_corr h_noflow h_preprocess h_dispatch
     · have h_prop : lastTokenIsNodePropertyOnLine sc.tokens sc.line = true := by
         rcases PropsRun.ha_or_ht h_run with hha | hht
@@ -27822,7 +27841,7 @@ lemma accum_block_pending (sc : ScannerState)
         (nic0_of_col_pos h_col0_p) (GStar.nil _) (fun _ _ => (h_nextP (sc_noflow_of_prep h_preprocess h_noflow)).gate)
   | pendingFlow _ _ _ _ h_arm77 _ h_nic0F _ h_gateF =>
     exact accum_block_on_closeThenBlock sc sp_start sp_scan s_prep s' c sp_prep sp_scan'
-      h_close_pending (Or.inr trivial) (Or.inr (fun h_res _ => block_dispatch_deferred_inline sp_start sp_block sp_scan' h_stream_block h_preprocess h_dispatch hcorr_result h_res h_gateF)) hcorr_prep
+      h_close_pending (Or.inr trivial) (Or.inr (fun h_res _ => block_dispatch_deferred_inline sp_start sp_block sp_scan' h_stream_block h_preprocess h_dispatch hcorr_result h_res ⟨sp_scan', GStar.nil _, fun _ _ => (dispatchBlock_next_of_some h_noflow (preprocess_some_peek h_preprocess) h_dispatch).gate⟩)) hcorr_prep
       hcorr_result h_corr h_noflow h_arm77 h_preprocess h_dispatch
       (Or.inr trivial)
       (Or.inr trivial) h_bare h_dn h_fv h_base h_mono
