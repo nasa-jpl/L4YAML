@@ -149,7 +149,7 @@ lemma scanDoubleQuoted_flowContent_prod (sc : ScannerState) (sp : SurfPos)
     (hpeek_dq : sc.peek? = some '"')
     (hok : scanDoubleQuoted sc = .ok s') :
     ∃ sp', SFlowContent 0 .blockIn sp sp' ∧ ScannerSurfCorr s' sp' := by
-  obtain ⟨sp', h_dq, hcorr'⟩ := scanDoubleQuoted_prod sc sp hcorr hpeek_dq hok
+  obtain ⟨sp', h_dq, -, hcorr'⟩ := scanDoubleQuoted_prod sc sp hcorr hpeek_dq hok
   exact ⟨sp', doubleQuoted_flowContent h_dq, hcorr'⟩
 
 -- `scanSingleQuoted` success → `SFlowContent 0 .blockIn`.
@@ -159,7 +159,7 @@ lemma scanSingleQuoted_flowContent_prod (sc : ScannerState) (sp : SurfPos)
     (hpeek_sq : sc.peek? = some '\'')
     (hok : scanSingleQuoted sc = .ok s') :
     ∃ sp', SFlowContent 0 .blockIn sp sp' ∧ ScannerSurfCorr s' sp' := by
-  obtain ⟨sp', h_sq, hcorr'⟩ := scanSingleQuoted_prod sc sp hcorr hpeek_sq hok
+  obtain ⟨sp', h_sq, -, hcorr'⟩ := scanSingleQuoted_prod sc sp hcorr hpeek_sq hok
   exact ⟨sp', singleQuoted_flowContent h_sq, hcorr'⟩
 
 /-! ## §5 Scanner-to-SFlowNode Production (n=0, c=.blockIn) -/

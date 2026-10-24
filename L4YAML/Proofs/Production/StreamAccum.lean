@@ -28093,7 +28093,7 @@ lemma dispatchContent_doubleQuoted_prod (sc : ScannerState) (sp : SurfPos)
             · simp at hok
             · rename_i s_dq hdq
               have h := Except.ok.inj hok; subst h
-              obtain ⟨sp', h_gram, hcorr'⟩ :=
+              obtain ⟨sp', h_gram, -, hcorr'⟩ :=
                 scanDoubleQuoted_prod sc sp hcorr hpeek hdq
               exact ⟨sp', h_gram, by
                 -- simpleKey endLine update preserves ScannerSurfCorr
@@ -28128,7 +28128,7 @@ lemma dispatchContent_singleQuoted_prod (sc : ScannerState) (sp : SurfPos)
               · simp at hok
               · rename_i s_sq hsq
                 have h := Except.ok.inj hok; subst h
-                obtain ⟨sp', h_gram, hcorr'⟩ :=
+                obtain ⟨sp', h_gram, -, hcorr'⟩ :=
                   scanSingleQuoted_prod sc sp hcorr hpeek hsq
                 exact ⟨sp', h_gram, by
                   split
