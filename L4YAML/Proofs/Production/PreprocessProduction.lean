@@ -1625,6 +1625,34 @@ lemma CommentOk_false_of_peekBack {sc : ScannerState} {c : Char}
   · rw [hpb] at hnone; cases hnone
   · rw [hpb] at hc'; cases hc'; rw [hc] at hflag; cases hflag
 
+
+/-- An anchor/alias park's last consumed character is the marker or an
+    `ns-anchor-char`: never white, break or BOM. -/
+lemma scanAnchorOrAlias_peekBack {sc : ScannerState} {sp : SurfPos} {marker : Char}
+    (hcorr : ScannerSurfCorr sc sp) (hpeek : sc.peek? = some marker)
+    (hmk : (isWhiteSpaceBool marker || isLineBreakBool marker || marker == '\uFEFF') = false)
+    (hnl : marker ≠ '\n') (hcr : marker ≠ '\r')
+    {isAnchor : Bool} {s' : ScannerState}
+    (hok : scanAnchorOrAlias sc isAnchor = .ok s') :
+    ∃ c, s'.peekBack? = some c ∧
+      (isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF') = false := by
+  obtain ⟨rest, hsp_eq⟩ := L4YAML.Proofs.ScalarProduction.peek_some_sp hcorr hpeek
+  subst hsp_eq
+  have hmore := L4YAML.Proofs.ScalarProduction.peek_some_has_more hpeek
+  have hpb0 := advance_peekBack_eq_peek hcorr hmore hnl hcr
+  obtain ⟨sp_adv, hcorr_adv⟩ := L4YAML.Proofs.ScalarCoupling.advance_corr sc _ hcorr
+  have hloop := collectAnchorNameLoop_peekBack (sc.inputEnd - sc.advance.offset)
+    sc.advance sp_adv "" hcorr_adv
+  unfold scanAnchorOrAlias at hok; dsimp only [] at hok
+  split at hok
+  · exact absurd hok (by simp)
+  · have h := Except.ok.inj hok; subst h
+    rcases hloop with heq | ⟨c, hpb, hflag⟩
+    · exact ⟨marker, by
+        show (collectAnchorNameLoop sc.advance "" _).snd.peekBack? = some marker
+        rw [heq]; exact hpb0, hmk⟩
+    · exact ⟨c, hpb, hflag⟩
+
 end L4YAML.Proofs.PreprocessProduction
 
 end Blanket
