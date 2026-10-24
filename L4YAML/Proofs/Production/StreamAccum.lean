@@ -24689,7 +24689,7 @@ lemma accum_block_on_closeThenBlock
     -- SEQUENCE-lane callers pay (`accum_block_on_pendingBlock`'s dedent and
     -- `accum_block_on_pendingBlockContent`'s `k ≠ n`, both from their park's
     -- own `h_seqF`); every other caller punts.
-    (h_seqF : (∃ ke : Nat, ∀ sp_mid : SurfPos, SSLComments sp_scan sp_mid →
+    (h_seqF : (∃ ke : Nat, ∀ sp_mid : SurfPos, SSLComments sp_gram sp_mid →
       SeqEntryTail sp_start ke sp_mid) ∨ True)
     -- **Item 173 (LAST, so the existing argument order stands): the closed
     -- park's still-open MAPPING levels.**  The `:`/`?` arm reads them at the
@@ -34538,7 +34538,7 @@ lemma accum_content_on_pendingMapValue_indented
                   fun sp_mid h_ssl =>
                   closeF sp_mid (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gram
                     sp_mid h_sep_all (h_flow_all (n + 1))
-                    (white_prepend_SSLComments h_trailing_ws h_ssl))⟩
+                    h_ssl)⟩
               | Or.inr _ => Or.inr trivial)
              (match h_closeFV108 with
               | Or.inl ⟨nv, ks, _, h_cov, closeFV⟩ => Or.inl ⟨nv, ks,
@@ -34547,7 +34547,7 @@ lemma accum_content_on_pendingMapValue_indented
                   fun sp_mid h_ssl =>
                   closeFV sp_mid (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gram
                     sp_mid h_sep_all (h_flow_all (n + 1))
-                    (white_prepend_SSLComments h_trailing_ws h_ssl))⟩
+                    h_ssl)⟩
               | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
              (nodir_of_content_dispatch h_dispatch)
              (completedTail_of_dispatch h_dispatch hna hnt)
@@ -34564,7 +34564,7 @@ lemma accum_content_on_pendingMapValue_indented
                     seqF sp_final
                       (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gram sp_final
                         h_sep_all (h_flow_all (n + 1))
-                        (white_prepend_SSLComments h_trailing_ws h_ssl))
+                        h_ssl)
                       sp_e h_tail⟩
               | Or.inr _ => Or.inr trivial),
            hcorr_result⟩
