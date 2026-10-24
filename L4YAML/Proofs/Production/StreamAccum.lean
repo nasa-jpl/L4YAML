@@ -24525,12 +24525,12 @@ lemma accum_block_on_noPending
 -- own conclusion now and rides `h_vslot`'s right disjunct, where the park holds
 -- no open slot: the caller refutes the residue, or applies the escape at the
 -- reason it stands for, and nothing here applies it.
-lemma accum_block_on_closeThenBlock
+lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
     (sc : ScannerState) (sp_start sp_scan : SurfPos)
     (s_prep s' : ScannerState) (c : Char) (sp_prep sp_scan' : SurfPos)
     (h_close_pending : danglingNodePos? sc = none →
       underIndentedFlowValuePos? sc = none →
-      ∀ sp_mid, SSLComments sp_scan sp_mid → SLYamlStream sp_start sp_mid)
+      ∀ sp_mid, SSLComments sp_gram sp_mid → SLYamlStream sp_start sp_mid)
     -- Item 51: the two ways an open `[188]` explicit entry reaches this
     -- dispatch.  `h_vpack` is the entry's VALUE PACK (the key half completes
     -- from this park's own content at the landing, then `s-indent(nv) ':'`
@@ -24550,7 +24550,7 @@ lemma accum_block_on_closeThenBlock
     -- site that paid `h_vpackUp` appends instead. ═══
     (h_vpack : (∃ ns : List Nat, ∀ nv ∈ ns,
       ∀ sp_m sp_i sp_c : SurfPos,
-        SSLComments sp_scan sp_m → SIndent nv sp_m sp_i → GLit ':' sp_i sp_c →
+        SSLComments sp_gram sp_m → SIndent nv sp_m sp_i → GLit ':' sp_i sp_c →
         ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →
         SLYamlStream sp_start sp_v) ∨ PackAlt sc)
     -- Item 58: the slot travels with the park's own simple-key coordinate.
@@ -24631,14 +24631,14 @@ lemma accum_block_on_closeThenBlock
     -- opens is the next DOCUMENT, so a `...` park routes it into
     -- `suffixContinue`'s own `l-any-document?` slot instead of a fresh
     -- `implicitContinue` one.  Only `pendingDocEnd`'s caller pays.
-    (h_sfx : (∀ sp_m, SSLComments sp_scan sp_m → SuffixRun sp_start sp_m) ∨
+    (h_sfx : (∀ sp_m, SSLComments sp_gram sp_m → SuffixRun sp_start sp_m) ∨
       True)
     -- Item 137: the park's MARKER arm.  A `---` park's landing opens the
     -- collection of the marker's OWN document — `[208]`'s `l-bare-document`
     -- alternative — so `---⏎- y`, `---⏎: v` and `---⏎? k` route through
     -- `h_doc_route` instead of closing the explicit document with `e-node` and
     -- appending a second one.  Only `pendingDocStart`'s caller pays.
-    (h_mk : (∀ sp_m, SSLComments sp_scan sp_m → MarkerNodeRoute sp_start sp_m) ∨
+    (h_mk : (∀ sp_m, SSLComments sp_gram sp_m → MarkerNodeRoute sp_start sp_m) ∨
       True)
     -- ═══ Item 142: §9.2's landing refusal, threaded to the BLOCK landing.
     -- `h_bare` is the scanner's verdict at this landing — the check runs
@@ -24701,7 +24701,7 @@ lemma accum_block_on_closeThenBlock
     -- those fields carry is forgotten at this door — the resume arm's park
     -- punts its cover, the recorded residue); every other caller punts.
     (h_mapF : (∃ ks : List FrameLevel,
-      ∀ sp_m : SurfPos, SSLComments sp_scan sp_m →
+      ∀ sp_m : SurfPos, SSLComments sp_gram sp_m →
       ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True)
     -- **Item 175 (LAST): the closed park's held `[96]` RUN, read as the landed
     -- collection's own properties.**  A sentinel-level props park's
@@ -24714,7 +24714,7 @@ lemma accum_block_on_closeThenBlock
     -- the close's own is; `pendingProps`' caller pays at `n = 0`, and the
     -- ENCLOSING park keeps the propsEmpty close — the honest reading there.
     (h_pr : (danglingNodePos? sc = none →
-      ∀ sp_m, SSLComments sp_scan sp_m → PropsNodeRoute sp_start sp_m) ∨
+      ∀ sp_m, SSLComments sp_gram sp_m → PropsNodeRoute sp_start sp_m) ∨
       True)
     -- **Item 197 (LAST): `h_mapF`'s twin at the VALUE-LINE bottom.**  The same
     -- still-open mapping levels, held as the stack that closes onto an
@@ -24727,7 +24727,7 @@ lemma accum_block_on_closeThenBlock
     -- which has carried this stack since item 108 and had no arm to spend it
     -- into; every other caller punts.
     (h_mapFV : (∃ (nv : Nat) (ks : List FrameLevel),
-      ∀ sp_m : SurfPos, SSLComments sp_scan sp_m →
+      ∀ sp_m : SurfPos, SSLComments sp_gram sp_m →
       KeyFrames (ExplValueLine sp_start nv) ks sp_m) ∨ PackAlt sc)
     -- ═══ **Item 198 (LAST): `h_valF`'s twin at the VALUE-LINE bottom.**  Item
     -- 155 gave this lemma the closed park's AWAITED NODE read as frames, and
@@ -24755,7 +24755,9 @@ lemma accum_block_on_closeThenBlock
     -- what runs the unwind instead.  Parks that can never stand at column 0
     -- pay by refuting the hypothesis from a column they already carry, which
     -- is what `PendingNode.nic0` does for eight of the nine at once.
-    (h_nic0 : sp_scan.col = 0 → sc.needIndentCheck = true) :
+    (h_nic0 : sp_scan.col = 0 → sc.needIndentCheck = true)
+    (h_run : GStar SSWhite sp_gram sp_scan)
+    (h_gate : sp_gram = sp_scan → sc.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#')) :
     ∃ sp_gram' sp_block' sp_flow' sp_scan',
       SLYamlStream sp_start sp_gram' ∧
       BlockStack sp_gram' sp_block' ∧
@@ -24767,7 +24769,7 @@ lemma accum_block_on_closeThenBlock
   -- the identical column-0 line start a column-0 park reaches directly, so
   -- both feed one body; what still defers is the inline residue alone.
   obtain ⟨sp_mid, sp_ws, sp_sc, h_land, hws, hcmt, hcorr_sc, h_pk⟩ :=
-    preprocess_some_ssl_comments_landing sc sp_scan s_prep c h_corr h_preprocess
+    preprocess_some_ssl_comments_landing sc sp_scan s_prep c h_corr h_preprocess h_run h_gate
   have hsp_sc_eq := ScannerSurfCorr_unique hcorr_sc hcorr_prep
   subst hsp_sc_eq
   -- The inline residue — no break from a mid-line park — cannot close here
@@ -26051,7 +26053,7 @@ lemma accum_block_on_pendingContent
     (h_key : sc.simpleKey.possible = true → sc.simpleKey.pos.line = sc.line →
       ImplicitKeyPack sc sp_start sp_scan ∨ KeyPackPunt sc)
     -- Item 51: the pending's explicit-entry value pack, threaded to the
-    -- landed `:` (see `accum_block_on_closeThenBlock`).  **Item 192: the
+    -- landed `:` (see `accum_block_on_closeThenBlock`).  **Item 192: the h_run h_gate
     -- park's whole chain of frames**, which is what a flow collection that
     -- closed into this park hands it.
     (h_vpack : (∃ ns : List Nat, ∀ nv ∈ ns,
@@ -26069,7 +26071,7 @@ lemma accum_block_on_pendingContent
     (h_scf : StaleCursorFloor.StaleKeyCursorFloor sc)
     -- Item 80: the park's stale tail, threaded to the `:`'s re-save question.
     (h_stale : InlineResidue sp_scan ':' → StaleNodeTail sc)
-    -- **Item 77 — the park's own arm**, as at `accum_block_on_closeThenBlock`:
+    -- **Item 77 — the park's own arm**, as at `accum_block_on_closeThenBlock`: h_run h_gate
     -- this park is a CONTENT one, and its constructor field says the content
     -- scan either re-armed or spent a column (`content_park_arm`) — with the
     -- armed side carrying the cleared key since item 80.
@@ -26103,7 +26105,7 @@ lemma accum_block_on_pendingContent
     -- corpus's dedenting `-` actually meets: 75 of item 167's 76 stand after a
     -- mapping value.  The landing closes the innermost level with an empty
     -- tail, which is what turns the park's face into
-    -- `accum_block_on_closeThenBlock`'s — the collection's remaining tail owed
+    -- `accum_block_on_closeThenBlock`'s — the collection's remaining tail owed h_run h_gate
     -- at the landing's comments, and nothing else.
     (h_seqF168 : (∃ (ke kk : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width < kk) ∧
       ∀ sp_mid : SurfPos, SSLComments sp_gram sp_mid →
@@ -26175,7 +26177,7 @@ lemma accum_block_on_pendingContent
         -- `-` arm spends off a CLOSED value park has no payer here.
         (Or.inr trivial)
         -- Item 208: the park's own indent check, handed across.
-        h_nic0)
+        h_nic0) h_run h_gate
       hcorr_prep hcorr_result h_corr h_noflow h_preprocess h_dispatch
   · -- Item 37: `c ≠ ':'` at a park that follows a complete node — §7.5 left
     -- the rest of the line at `NodeStop`, and neither remaining indicator is
@@ -26209,7 +26211,7 @@ lemma accum_block_on_pendingContent
       (Or.inr trivial)
 
       -- Item 208: the park's own indent check, handed across.
-      h_nic0
+      h_nic0 h_run h_gate
 -- Block dispatch with pendingBlockContent: accumulate entries via h_entry_old.
 -- Item 22: the entry index `n` is the pending's own, not a hardcoded 0 — a
 -- sibling `-` snocs when the landing leaves the SAME indentation the
