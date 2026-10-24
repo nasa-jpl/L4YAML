@@ -13384,7 +13384,8 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
       (opaque_resume (preprocess_possible_of_live0 h_live0F h_noflow_prep h_preprocess (gate_sc h_corr (h_gateN (noflow_of_fl0 h_fl0)))))
       (Or.inr trivial) (Or.inr trivial)
       (Or.inr trivial) (Or.inr trivial)
-  | pendingProps _ _ _ ha ht sp_node sp_p n h_sep_run h_run h_nic_p h_real_p h_anchor_p h_tag_p h_route h_pkey h_floor_p h_col0_p h_ncol_p h_ska_p h_kslot_p _ _ _ _ _ _ _ h_slot_p h_possP0 h_nextP =>
+  | pendingProps _ _ _ ha ht sp_node sp_p n h_sep_run h_run h_nic_p h_real_p h_anchor_p h_tag_p
+      h_route h_pkey h_floor_p h_col0_p h_ncol_p h_ska_p h_kslot_p _ _ _ _ _ _ _ h_slot_p h_possP0 h_gateP =>
     -- Items 9h/10, site 5's legal inhabitant: the held `[96]` run rides INTO
     -- the flow node.  The separation preprocessing crossed (break or not —
     -- `&a [b]` and `&a⏎[b]` alike) becomes the run→content `s-separate`, and
@@ -35666,9 +35667,7 @@ lemma accum_content_pending (sc : ScannerState)
       (content_park_nic_any (preprocess_some_peek h_preprocess)
         h_flow_disp h_not_doc h_dispatch hcorr_result)
       (content_live0 h_live0F h_preprocess h_flow_disp h_dispatch)
-  | pendingProps _ _ _ ha ht sp_node sp_p n h_sep_run h_run h_nic_p h_real_p h_anchor_p h_tag_p
-      h_route h_key_p h_floor_p h_col0_p h_ncol_p h_ska_p h_kslot_p
-      h_routeE_p h_kslotE_p h_closeFE_p h_closeFS_p h_closeFVS_p _h_nodir_p h_closeFEV_p h_slot_p h_possP =>
+  | pendingProps _ _ _ ha ht sp_node sp_p n h_sep_run h_run h_nic_p h_real_p h_anchor_p h_tag_p h_route h_key_p h_floor_p h_col0_p h_ncol_p h_ska_p h_kslot_p h_routeE_p h_kslotE_p h_closeFE_p h_closeFS_p h_closeFVS_p _h_nodir_p h_closeFEV_p h_slot_p h_possP h_nextP =>
     -- ═══ Item 12: a held depth-0 run meets a CONTENT character — the
     -- content-dispatch escape RETIRES.  Across a break the run closes as
     -- `propsEmpty` (the parked couplings go stale with the line, and are not
@@ -35684,7 +35683,7 @@ lemma accum_content_pending (sc : ScannerState)
       · show s_prep.peek? = some c; exact preprocess_some_peek h_preprocess
       · exact preprocess_some_peek h_preprocess
     obtain ⟨sp_mid, sp_ws, sp_prep2, h_disj, h_ws, h_cmt, hcorr_prep2, h_pk, _⟩ :=
-      preprocess_some_ssl_comments_anyCol sc sp_scan s_prep c h_corr h_preprocess
+      preprocess_some_ssl_comments_landing sc sp_scan s_prep c h_corr h_preprocess (GStar.nil _) (fun _ _ => (h_nextP (noflow_of_fl0 h_fl0)).gate)
     have hsp_eq2 := ScannerSurfCorr_unique hcorr_prep hcorr_prep2; subst hsp_eq2
     have h_eq : sp_prep = sp_ws := by
       cases h_pk with
@@ -35778,7 +35777,7 @@ lemma accum_content_pending (sc : ScannerState)
         s_prep.simpleKey.pos = s_prep.currentPos) ∨ True := by
         rcases Nat.eq_zero_or_pos n with hn | _
         · subst hn
-          cases h_keyctx with
+          cases h_keyctx (GStar.nil _) (fun _ _ => (h_nextP (noflow_of_fl0 h_fl0)).gate) h_close_pending with
           | inr _ => exact Or.inr trivial
           | inl hkc =>
             rcases gstar_white_sIndent_or_tab h_ws with ⟨kk, h_indk⟩ | _
@@ -35801,7 +35800,7 @@ lemma accum_content_pending (sc : ScannerState)
       exact content_dispatch_after_close (h_possD := preprocess_saved_key_possible_post (landing_or_park_ska h_noflow_prep hcol_mid.2.2 (Or.inr h_col0_p) h_preprocess) h_noflow_prep h_preprocess) (h_src := slotGateAt_of_propsPark h_slot_p (dangling_none_of_check h_dn (landing_or_park_ska h_noflow_prep hcol_mid.2.2 (Or.inr h_col0_p) h_preprocess)) ((propsPark_prevReal_prop h_real_p h_run h_anchor_p h_tag_p).imp (fun _ h => ⟨h.1, h.2.1⟩)) h_base h_preprocess) sp_start sp_mid s_prep s' c sp_prep sp_scan'
         h_stream_mid h_sep (nic_false_of_flow_disp h_preprocess h_flow_disp)
         hcorr_prep hcorr_result h_not_doc
-          (preprocess_some_peek h_preprocess) h_flow_disp h_dispatch h_keyctx
+          (preprocess_some_peek h_preprocess) h_flow_disp h_dispatch (h_keyctx (GStar.nil _) (fun _ _ => (h_nextP (noflow_of_fl0 h_fl0)).gate) h_close_pending)
           -- ~~Item 152: the props park punts the cover~~ — **item 153: it pays**.
           -- The faces arrive with the cover on them and the payer was never the
           -- obstacle here, so both halves go through whole and a landed sibling
