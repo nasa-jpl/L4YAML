@@ -33138,7 +33138,8 @@ lemma indentedValue_reads_at_any_indent
           { s_prep with allowDirectives := false, documentEverStarted := true }
         else s_prep).implicitValueLine ∧
       -- Item 284: the new park's slot face, paid from the landing's gate.
-      (danglingNodePos? s' = none → s'.indents.size ≤ 1 ∨ SlotFace s'.tokens)) ∨
+      (danglingNodePos? s' = none → s'.indents.size ≤ 1 ∨ SlotFace s'.tokens) ∧
+      NextIsSep s') ∨
     ((SCLLiteral n sp_prep sp_scan' ∨ SCLFolded n sp_prep sp_scan') ∧
       -- Item 95: the landing walk at the scalar's stop, absorbable into the
       -- SAME node through `[169] l-trail-comments` (or forced empty by the
@@ -33293,7 +33294,8 @@ lemma indentedValue_reads_at_any_indent
           Or.inr rfl, (dispatchContent_anchor_simpleKey h_dispatch).1, h_line',
           (dispatchContent_anchor_simpleKey h_dispatch).2,
           dispatchContent_implicitValueLine h_dispatch,
-          slotGateAt_spend h_src (Or.inl rfl) h_flow_disp h_dispatch⟩)
+          slotGateAt_spend h_src (Or.inl rfl) h_flow_disp h_dispatch,
+          dispatchContent_anchor_next h_dispatch⟩)
       | inr h =>
         subst h
         obtain ⟨sp_t, ht_ev, -, hc⟩ := dispatchContent_tagProp_prod _ sp_prep
@@ -33316,7 +33318,8 @@ lemma indentedValue_reads_at_any_indent
           Or.inl rfl, (dispatchContent_tag_simpleKey h_dispatch).1, h_line',
           (dispatchContent_tag_simpleKey h_dispatch).2,
           dispatchContent_implicitValueLine h_dispatch,
-          slotGateAt_spend h_src (Or.inr rfl) h_flow_disp h_dispatch⟩)
+          slotGateAt_spend h_src (Or.inr rfl) h_flow_disp h_dispatch,
+          dispatchContent_tag_next h_dispatch⟩)
     · by_cases hbs : c = '|' ∨ c = '>'
       · -- Item 26: a block scalar is not a one-line reading and never will be,
         -- but it does not need to be — `[170]`/`[174]` bind their content indent
@@ -33563,7 +33566,7 @@ lemma accum_content_on_pendingBlock_indented
       h_floor_old (by omega) hcorr_prep hcorr_result h_corr h_preprocess h_not_doc h_flow_disp h_dispatch with
     ⟨sp_gram, h_sep_all, h_flow_all, h_trailing_ws, h_gate, h_line, hna, hnt⟩ |
     ⟨ha, ht, h_sep_all, h_run_all, h_nic_s, h_real_s, h_anchor_s, h_tag_s, h_ind_s,
-      h_single, h_sk_s, h_line_s, h_ska_s, h_ivl_s, h_slot_s⟩ |
+      h_single, h_sk_s, h_line_s, h_ska_s, h_ivl_s, h_slot_s, h_next_s⟩ |
     ⟨h_read, h_absorb95, h_sep_all, h_line, ⟨hna, hnt⟩, hbs⟩ |
     ⟨sp_gramf, h_node_f, h_tws_f, h_gate_f, h_sep_all, h_line, hna, hnt⟩ | h_ded
   · exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
@@ -33770,7 +33773,7 @@ lemma accum_content_on_pendingBlock_indented
     -- optional argument item 40 gave the scalar pack.
     exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
            BlockStack.nil sp_block, FlowStackB.nil sp_block .sep,
-           PendingNode.pendingProps (h_poss := by rw [h_sk_s, allowDirectives_update_simpleKey]; exact (preprocess_saved_key_fresh h_ska (noflow_of_noflow_disp h_flow_disp) h_preprocess).1) (h_slot := h_slot_s) sp_start sp_block sp_scan' ha ht sp_scan sp_prep (n + 1)
+           PendingNode.pendingProps (h_next := fun _ => h_next_s) (h_poss := by rw [h_sk_s, allowDirectives_update_simpleKey]; exact (preprocess_saved_key_fresh h_ska (noflow_of_noflow_disp h_flow_disp) h_preprocess).1) (h_slot := h_slot_s) sp_start sp_block sp_scan' ha ht sp_scan sp_prep (n + 1)
              h_sep_all (h_run_all (n + 1)) h_nic_s h_real_s h_anchor_s h_tag_s
              (fun _ sp_m h_bn => h_close_old sp_m
                (SBlockIndented.node n .blockIn sp_scan sp_m h_bn))
@@ -34490,7 +34493,7 @@ lemma accum_content_on_pendingMapValue_indented
       h_floor_old h_col0_old hcorr_prep hcorr_result h_corr h_preprocess h_not_doc h_flow_disp h_dispatch with
     ⟨sp_gram, h_sep_all, h_flow_all, h_trailing_ws, h_gate, h_line, hna, hnt⟩ |
     ⟨ha, ht, h_sep_all, h_run_all, h_nic_s, h_real_s, h_anchor_s, h_tag_s, h_ind_s,
-      h_single, h_sk_s, h_line_s, h_ska_s, h_ivl_s, h_slot_s⟩ |
+      h_single, h_sk_s, h_line_s, h_ska_s, h_ivl_s, h_slot_s, h_next_s⟩ |
     ⟨h_read, h_absorb95, h_sep_all, h_line, ⟨hna, hnt⟩, hbs⟩ |
     ⟨sp_gramf, h_node_f, h_tws_f, h_gate_f, h_sep_all, h_line, hna, hnt⟩ | h_ded
   · -- Item 39 stopped here, reading the value route's side condition `n ≤ k` as
@@ -34645,7 +34648,7 @@ lemma accum_content_on_pendingMapValue_indented
     -- arm above instead.
     exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
            BlockStack.nil sp_block, FlowStackB.nil sp_block .sep,
-           PendingNode.pendingProps (h_poss := by rw [h_sk_s, allowDirectives_update_simpleKey]; exact (preprocess_saved_key_fresh h_ska (noflow_of_noflow_disp h_flow_disp) h_preprocess).1) (h_slot := h_slot_s) sp_start sp_block sp_scan' ha ht sp_scan sp_prep (n + 1)
+           PendingNode.pendingProps (h_next := fun _ => h_next_s) (h_poss := by rw [h_sk_s, allowDirectives_update_simpleKey]; exact (preprocess_saved_key_fresh h_ska (noflow_of_noflow_disp h_flow_disp) h_preprocess).1) (h_slot := h_slot_s) sp_start sp_block sp_scan' ha ht sp_scan sp_prep (n + 1)
              h_sep_all (h_run_all (n + 1)) h_nic_s h_real_s h_anchor_s h_tag_s
              (fun _ => h_close_old)
              (entryPropsKeyPack_of_dispatch (h_gate := h_gatePark) (h_alt := trivial) sc sp_start sp_scan n s_prep s' c
