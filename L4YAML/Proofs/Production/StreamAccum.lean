@@ -11886,7 +11886,7 @@ lemma flowKeyRoute_of_open {n nc m : Nat} {g : Option ScannerState} {cc : YamlCo
     route, and the raw `rootMapRoute` application item 171's census counted
     here is gone rather than guarded. -/
 lemma flowKeyRoute_of_root {m : Nat} {g : Option ScannerState} {sp_start sp_scan sp_prep : SurfPos}
-    {sc s_prep : ScannerState} {c : Char}
+    {sp_g : SurfPos} {sc s_prep : ScannerState} {c : Char}
     (h_col : (sp_scan.col = 0 ∧
       ∀ sp_m, SSLComments sp_scan sp_m → GStar SLDocumentPrefix sp_start sp_m) ∨ True)
     -- Item 78: `flowKeyRoute_of_open`'s datum, and the ROOT spends it without a
