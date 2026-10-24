@@ -22464,7 +22464,7 @@ lemma question_open_map {sc : ScannerState} (sp_start sp_land sp_ind : SurfPos) 
        | Or.inr h_alt => Or.inr h_alt)
   exact ⟨sp_land, sp_land, sp_land, sp_scan', h_stream_land,
          BlockStack.nil sp_land, FlowStackB.nil sp_land .sep,
-         PendingNode.pendingMapValue (h_next := fun _ => dispatchBlock_question_next (noflow_disp_of_noflow h_noflow) hpeek_disp h_dispatch) (h_offer := dispatchBlock_question_offerPred h_dispatch) sp_start sp_land sp_scan' k
+         PendingNode.pendingMapValue (h_next := fun _ => dispatchBlock_question_next _h_noflow_disp hpeek_disp h_dispatch) (h_offer := dispatchBlock_question_offerPred h_dispatch) sp_start sp_land sp_scan' k
            (fun sp_k h_node =>
              h_route51 sp_k
                (SBlockMapEntry.explicitEmpty k sp_ind sp_scan' sp_k h_lit
@@ -33457,7 +33457,7 @@ lemma indentedValue_reads_at_any_indent
         · have h_line := col0_or_lineStop
             (dispatchContent_restNodeStop h_flow_disp hna hnt hcorr_result.end_eq h_dispatch)
             hcorr_result
-          obtain ⟨sp_gram, sp_ev, h_flow_all, h_trailing_ws, h_gate_ev, -, hcorr_ev⟩ :=
+          obtain ⟨sp_gram, sp_ev, h_flow_all, h_trailing_ws, h_gate_ev, hcorr_ev⟩ :=
             dispatchContent_evidence_oneLine _ sp_prep c
               (corr_of_allowDirectives_update hcorr_prep) hpeek_disp h_flow_disp h_not_doc
               hna hnt hnp hng hline_eq h_dispatch
