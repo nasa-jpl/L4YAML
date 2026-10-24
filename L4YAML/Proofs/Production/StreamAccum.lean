@@ -173,6 +173,58 @@ lemma scanBlockEntry_peekBack {s s' : ScannerState} {sp : SurfPos}
     exact peekBack_of_emit_advance .blockEntry hcorr hpk (by decide) (by decide) hc.1
       (hc.2.trans hin')
 
+/-- `?` is the last consumed char at an explicit-key park. -/
+lemma scanKey_peekBack {s s' : ScannerState} {sp : SurfPos}
+    (hcorr : ScannerSurfCorr s sp) (hpk : s.peek? = some '?')
+    (hok : scanKey s = .ok s') : s'.peekBack? = some '?' := by
+  have hpm : (pushMappingIndent s ↑s.col).offset = s.offset ∧
+      (pushMappingIndent s ↑s.col).input = s.input ∧
+      (pushMappingIndent s ↑s.col).inputEnd = s.inputEnd := by
+    unfold pushMappingIndent; split <;> exact ⟨rfl, rfl, rfl⟩
+  have hin' : ((s.emit .key).advance).input = s.input :=
+    L4YAML.Proofs.CouplingBridge.advance_input _
+  unfold scanKey at hok
+  simp only [bind, Except.bind] at hok
+  repeat (any_goals (split at hok))
+  all_goals (try contradiction)
+  all_goals (simp only [Except.ok.injEq] at hok; subst hok)
+  all_goals first
+    | exact peekBack_of_emit_advance .key hcorr hpk (by decide) (by decide) rfl hin'
+    | (have hc := advance_offset_input_congr (a := (pushMappingIndent s ↑s.col).emit .key)
+        (b := s.emit .key) hpm.1 hpm.2.1 hpm.2.2
+       exact peekBack_of_emit_advance .key hcorr hpk (by decide) (by decide) hc.1
+         (hc.2.trans hin'))
+
+/-- `:` is the last consumed char at a value-indicator park. -/
+lemma scanValue_peekBack {s s' : ScannerState} {sp : SurfPos}
+    (hcorr : ScannerSurfCorr s sp) (hpk : s.peek? = some ':')
+    (hok : scanValue s = .ok s') : s'.peekBack? = some ':' := by
+  have hsv : (scanValuePrepare (scanValueClearKey s)).offset = s.offset ∧
+      (scanValuePrepare (scanValueClearKey s)).input = s.input ∧
+      (scanValuePrepare (scanValueClearKey s)).inputEnd = s.inputEnd := by
+    refine ⟨by rw [L4YAML.Proofs.ScannerCorrectness.svp_offset,
+                  L4YAML.Proofs.ScannerCorrectness.svck_offset], ?_,
+            by rw [L4YAML.Proofs.ScannerCorrectness.svp_inputEnd,
+                  L4YAML.Proofs.ScannerCorrectness.svck_inputEnd]⟩
+    have hpmi : ∀ (t : ScannerState) (c : Int), (pushMappingIndent t c).input = t.input := by
+      intro t c; unfold pushMappingIndent; split <;> rfl
+    unfold scanValuePrepare scanValueClearKey
+    repeat' split
+    all_goals first | rfl | simp [hpmi]
+  have hin' : ((s.emit .value).advance).input = s.input :=
+    L4YAML.Proofs.CouplingBridge.advance_input _
+  have hc := advance_offset_input_congr
+    (a := (scanValuePrepare (scanValueClearKey s)).emit .value)
+    (b := s.emit .value) hsv.1 hsv.2.1 hsv.2.2
+  unfold scanValue at hok
+  simp only [bind, Except.bind] at hok
+  repeat (any_goals (split at hok))
+  all_goals (try contradiction)
+  all_goals (simp only [Except.ok.injEq] at hok; subst hok)
+  all_goals (refine peekBack_of_emit_advance .value hcorr hpk (by decide) (by decide) ?_ ?_
+             · exact hc.1
+             · exact hc.2.trans hin')
+
 /-- The park comment gate from a next char that is not `#`. -/
 lemma park_gate_of_peek {s : ScannerState} (h : s.peek? ≠ some '#') :
     s.col ≠ 0 → ¬ (CommentOk s ∧ s.peek? = some '#') :=

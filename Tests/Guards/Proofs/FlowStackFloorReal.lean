@@ -53,7 +53,8 @@ example {n : Nat} {sc s_prep : ScannerState} {sp : SurfPos} {c : Char}
     (hcorr : ScannerSurfCorr sc sp)
     (hok : scanNextToken_preprocess sc = .ok (some (s_prep, c))) :
     ∃ sp_prep, ScannerSurfCorr s_prep sp_prep ∧
-      ((SSeparateLines n sp sp_prep ∧ n ≤ minContentIndentOf s_prep) ∨
+      (((SSeparateLines n sp sp_prep ∨ (sp_prep = sp ∧ 0 < sp.col)) ∧
+          n ≤ minContentIndentOf s_prep) ∨
         ∃ sp_mid, SSLComments sp sp_mid ∧ sp_mid.col = 0 ∧
           WhiteRunUnderRun n sp_mid sp_prep ∧
           LandingTabFacts sc.currentIndent sc.needIndentCheck s_prep.peek? sp sp_mid ∧

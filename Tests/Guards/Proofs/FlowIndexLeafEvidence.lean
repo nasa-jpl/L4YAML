@@ -101,7 +101,7 @@ example (n : Nat) (sc : ScannerState) (sp : SurfPos) (s_prep : ScannerState)
     (c : Char) (hcorr : ScannerSurfCorr sc sp)
     (hok : scanNextToken_preprocess sc = .ok (some (s_prep, c))) :
     ∃ sp_prep, ScannerSurfCorr s_prep sp_prep ∧
-      (SSeparateLines n sp sp_prep ∨
+      ((SSeparateLines n sp sp_prep ∨ (sp_prep = sp ∧ 0 < sp.col)) ∨
         ∃ sp_mid, SSLComments sp sp_mid ∧ sp_mid.col = 0 ∧
           WhiteRunUnderRun n sp_mid sp_prep ∧
           Proofs.LandingTab.LandingTabFacts sc.currentIndent sc.needIndentCheck s_prep.peek? sp sp_mid) :=
