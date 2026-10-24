@@ -11901,14 +11901,15 @@ lemma flowKeyRoute_of_root {m : Nat} {g : Option ScannerState} {sp_start sp_scan
     -- own re-arm across the break, the park's own at column 0.
     (h_close : danglingNodePos? sc = none →
       underIndentedFlowValuePos? sc = none →
-      ∀ sp_mid, SSLComments sp_scan sp_mid → SLYamlStream sp_start sp_mid)
+      ∀ sp_mid, SSLComments sp_g sp_mid → SLYamlStream sp_start sp_mid)
     (h_dn : scanNextToken_checkDanglingNode sc s_prep = .ok ())
     -- Item 275: §8.1's check, carried beside §9.2's.
     (h_fv : scanNextToken_checkFlowValueIndent sc s_prep = .ok ())
     (h_corr : ScannerSurfCorr sc sp_scan)
     (hcorr_prep : ScannerSurfCorr s_prep sp_prep)
     (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
-    (h_gate : sc.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#'))
+    (h_run : GStar SSWhite sp_g sp_scan)
+    (h_gate : sp_g = sp_scan → sc.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#'))
     -- Item 118: the park's open suffix arm (the skeleton's face, item 117,
     -- read at the flow open) — when the closed park was a `...`, the mapping
     -- this collection keys is the awaited document itself, so its entry route
@@ -12003,7 +12004,7 @@ lemma flowKeyRoute_of_root {m : Nat} {g : Option ScannerState} {sp_start sp_scan
     obtain ⟨w, h_ind⟩ := h_ind0
     cases h_disj with
     | inl h_land =>
-      have h_landS := SSLCommentsFrom_at_park h_corr (GStar.nil _) (fun _ => h_gate) h_land.1 h_land.2.2.1
+      have h_landS := SSLCommentsFrom_at_park h_corr h_run h_gate h_land.1 h_land.2.2.1
       have h_ind' : SIndent w sp_mid sp_prep := by rw [h_pe]; exact h_ind
       -- Item 143: the fallback arm is a LANDING, so it takes item 142's guard.
       have h_ska_land : s_prep.simpleKeyAllowed = true :=
@@ -13224,7 +13225,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                -- LANDING reading applies here — this branch is the one that
                -- crossed a break, and the other never reaches `mk`.
                flowKeyRoute_of_root (Or.inr trivial) h_noflow_prep h_park h_close h_dn h_fv h_corr
-                 hcorr_prep h_preprocess h_gateM h_sfx (Or.inr trivial) h_bare h_base h_tail143
+                 hcorr_prep h_preprocess h_trail h_gateM h_sfx (Or.inr trivial) h_bare h_base h_tail143
                  h_mapF176 h_mapFV201,
                -- **Item 201: `vslot` stays punted here, and the reason is the
                -- PARK's shape rather than a missing field.**  The lane's seven
