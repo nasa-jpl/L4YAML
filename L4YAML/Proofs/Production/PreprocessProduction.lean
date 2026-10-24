@@ -1537,7 +1537,7 @@ lemma CommentOk_false_of_advance {sc : ScannerState} {c : Char} {rest : List Cha
 lemma SSLCommentsFrom_at_park {sc : ScannerState} {sp_gram sp_scan sp_mid : SurfPos}
     (hcorr : ScannerSurfCorr sc sp_scan)
     (h_run : GStar SSWhite sp_gram sp_scan)
-    (h_gate : sp_gram = sp_scan → ¬ (CommentOk sc ∧ sc.peek? = some '#'))
+    (h_gate : sp_gram = sp_scan → sc.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#'))
     (h_from : SSLCommentsFrom sp_scan sp_mid)
     (h_ok : SSLComments sp_scan sp_mid ∨ CommentOk sc) :
     SSLComments sp_gram sp_mid := by
@@ -1549,13 +1549,13 @@ lemma SSLCommentsFrom_at_park {sc : ScannerState} {sp_gram sp_scan sp_mid : Surf
         (GStar_SSWhite_to_SSeparateInLine _ _ h_run (fun he => absurd he h_eq)) h
   rcases h_ok with h | hcok
   · exact h_ord h
-  · rcases h_from with h | ⟨_, sp_cmt, sp_brk, h_cmt, h_bc, h_rest⟩
+  · rcases h_from with h | ⟨hpos, sp_cmt, sp_brk, h_cmt, h_bc, h_rest⟩
     · exact h_ord h
     · have hpk : sc.peek? = some '#' := by
         cases h_cmt with
         | mk rest col s' _ => exact peek_of_corr_cons hcorr
       by_cases h_eq : sp_gram = sp_scan
-      · exact absurd ⟨hcok, hpk⟩ (h_gate h_eq)
+      · exact absurd ⟨hcok, hpk⟩ (h_gate h_eq (by rw [← hcorr.col_eq]; omega))
       · exact .withComment _ sp_brk _
           (.withSep sp_gram sp_scan sp_cmt sp_brk
             (.whites _ _ (GStar_to_GPlus h_run h_eq)) (.some _ _ h_cmt) h_bc) h_rest
@@ -1611,6 +1611,19 @@ lemma collectAnchorNameLoop_peekBack (fuel : Nat) :
         · exact Or.inr ⟨c2, hpb2, hflag2⟩
       · exact Or.inl rfl
     · exact Or.inl rfl
+
+
+/-- A park whose last consumed character is neither white, break nor BOM fails
+    the scanner's comment gate off a line start. -/
+lemma CommentOk_false_of_peekBack {sc : ScannerState} {c : Char}
+    (hcol : sc.col ≠ 0) (hpb : sc.peekBack? = some c)
+    (hc : (isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF') = false) :
+    ¬ CommentOk sc := by
+  intro h
+  rcases h with h0 | hnone | ⟨c', hc', hflag⟩
+  · exact hcol h0
+  · rw [hpb] at hnone; cases hnone
+  · rw [hpb] at hc'; cases hc'; rw [hc] at hflag; cases hflag
 
 end L4YAML.Proofs.PreprocessProduction
 
