@@ -6688,18 +6688,6 @@ lemma PendingNode.close_with_sslFrom {sc : ScannerState}
       (fun _ _ => (h_next h_noflow).gate) h_from h_ok
     exact h_close sp_mid (SBlockNode.emptyNode (n + 1) .blockIn sp_scan sp_mid h_ssl)
 
-/-! ## §0d Preprocessing → SSLComments for `some` result at col=0
-
-    When `scanNextToken_preprocess` returns `some (s_prep, c)` and the
-    scanner starts at col=0, the characters consumed by `skipToContent`
-    form `SSLComments`. This is the key building block for closing pending
-    nodes: the SSLComments is provided to `h_closable` of the previous
-    `PendingNode` to extend the stream.
-
-    The `sp_mid` returned is the SSLComments boundary (where comment lines
-    end), and `sp_prep` is the scanner's final position (which may be past
-    `sp_mid` due to trailing whitespace from the last `skipToContent` iteration). -/
-
 /-- N3: while directives are still allowed the park is an indicator park or a
     line start, so an empty `[66]` before a `#` there is refuted by the park's
     own follower (`h_next`) or its column; content parks have `h_nodir`. -/
@@ -6723,6 +6711,18 @@ lemma PendingNode.nil_gate_of_allowDirectives {sc : ScannerState} {b : Bool}
   | .pendingContent (h_nodir := hd) .. => fun _ => absurd (hd ▸ hA) Bool.noConfusion
   | .pendingBlockContent (h_nodir := hd) .. => fun _ => absurd (hd ▸ hA) Bool.noConfusion
   | .pendingFlow (h_nodir := hd) .. => fun _ => absurd (hd ▸ hA) Bool.noConfusion
+
+/-! ## §0d Preprocessing → SSLComments for `some` result at col=0
+
+    When `scanNextToken_preprocess` returns `some (s_prep, c)` and the
+    scanner starts at col=0, the characters consumed by `skipToContent`
+    form `SSLComments`. This is the key building block for closing pending
+    nodes: the SSLComments is provided to `h_closable` of the previous
+    `PendingNode` to extend the stream.
+
+    The `sp_mid` returned is the SSLComments boundary (where comment lines
+    end), and `sp_prep` is the scanner's final position (which may be past
+    `sp_mid` due to trailing whitespace from the last `skipToContent` iteration). -/
 
 lemma preprocess_some_ssl_comments_col0 (sc : ScannerState) (sp : SurfPos)
     (s_prep : ScannerState) (c : Char)
