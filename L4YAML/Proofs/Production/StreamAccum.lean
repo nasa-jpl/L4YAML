@@ -26221,7 +26221,7 @@ lemma accum_block_on_pendingContent
         -- `-` arm spends off a CLOSED value park has no payer here.
         (Or.inr trivial)
         -- Item 208: the park's own indent check, handed across.
-        h_nic0) h_run h_gate
+        h_nic0 h_run h_gate) h_run h_gate
       hcorr_prep hcorr_result h_corr h_noflow h_preprocess h_dispatch
   · -- Item 37: `c ≠ ':'` at a park that follows a complete node — §7.5 left
     -- the rest of the line at `NodeStop`, and neither remaining indicator is
