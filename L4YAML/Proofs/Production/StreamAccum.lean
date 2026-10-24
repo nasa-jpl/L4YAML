@@ -302,6 +302,34 @@ lemma NextIsSep.not_open {s : ScannerState} {c : Char} (h : NextIsSep s)
   unfold NextIsSep at h; rw [hpk] at h
   rcases hc with rfl | rfl <;> exact absurd h (by decide)
 
+/-- N3: skipping to the end of a line parks on a break or at EOF. -/
+lemma nextIsSep_of_skipToEndOfLine (s : ScannerState) : NextIsSep (skipToEndOfLine s) := by
+  unfold NextIsSep
+  rcases skipToEndOfLine_at_break_or_eof s with h | ⟨c, hc, hb⟩
+  · rw [h]; trivial
+  · rw [hc]; simp [isBlankBool, hb]
+
+/-- N3: a directive park sits at its line's end. -/
+lemma scanDirective_next {s s' : ScannerState} (hok : scanDirective s = .ok s') :
+    NextIsSep s' := by
+  unfold scanDirective at hok
+  split at hok
+  · cases hok
+  · simp only at hok
+    split at hok
+    · split at hok
+      · cases hok; exact nextIsSep_of_skipToEndOfLine _
+      · cases hok
+    · split at hok
+      · split at hok
+        · cases hok; exact nextIsSep_of_skipToEndOfLine _
+        · cases hok
+      · cases hok
+        have := nextIsSep_of_skipToEndOfLine
+          (skipWhitespace (collectDirectiveNameLoop s.advance "" (s.inputEnd - s.advance.offset)).2)
+        unfold NextIsSep at this ⊢
+        exact this
+
 /-- N3: the content dispatcher never accepts a separator character — blanks and
     the flow closers `,` `]` `}` fail `canStartPlainScalarBool` and match no other arm. -/
 lemma dispatchContent_not_sep {s s' : ScannerState} {c : Char}
@@ -9720,7 +9748,7 @@ lemma structural_dispatch_to_pending
                   obtain ⟨rest, sp_dir, hchars, hgstar, hcorr_dir, h_at_break⟩ :=
                     scanDirective_prod s_prep sp hcorr hpeek_pct s_dir h_dir_ok
                   refine ⟨sp_dir, true, hcol,
-                    PendingNode.pendingDirective sp_start sp sp_dir
+                    PendingNode.pendingDirective (h_next := fun _ => scanDirective_next h_dir_ok) sp_start sp sp_dir
                       (fun sp_mid hssl => ?_)
                       h_stream
                       (h_dir_route

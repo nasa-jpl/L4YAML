@@ -904,7 +904,6 @@ lemma GStar_SLComment_end_col0_or_eof {a b : SurfPos} (h : GStar SLComment a b)
   | nil _ => exact ha
   | cons _ _ _ hx _ ih => exact ih (SLComment_end_col0_or_eof hx)
 
-/-- Where `[79] s-l-comments` ends: at column 0 or at the end of the input. -/
 /-- N3: `[202] l-document-prefix` ends at a line start or at EOF (a BOM leaves the
     column alone, comment lines end after their break). -/
 lemma GStar_SLDocumentPrefix_end_col0_or_eof {a b : SurfPos} (h : GStar SLDocumentPrefix a b)
@@ -921,6 +920,7 @@ lemma GStar_SLDocumentPrefix_end_col0_or_eof {a b : SurfPos} (h : GStar SLDocume
       · exact h0
       · cases h0
 
+/-- Where `[79] s-l-comments` ends: at column 0 or at the end of the input. -/
 lemma SSLComments_end_col0_or_eof {a b : SurfPos} (h : SSLComments a b) :
     b.col = 0 ∨ b.chars = [] := by
   cases h with
