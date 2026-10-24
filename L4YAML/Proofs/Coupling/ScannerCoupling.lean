@@ -329,6 +329,16 @@ lemma collectCommentTextLoop_corr (sc : ScannerState) (sp : SurfPos)
 
 /-! ## §7 skipToContentComment Coupling -/
 
+/-- The scanner's own comment-start gate (`commentOk` in
+    `skipToContentComment`): column 0, start of input, or a previous char that
+    is white, a break, or the BOM.  Exported so a `#` the scanner accepted
+    at `col > 0` with no whites of its own is traceable to the white the
+    PREVIOUS token consumed (`a #b`). -/
+def CommentOk (sc : ScannerState) : Prop :=
+  sc.col = 0 ∨ sc.peekBack? = none ∨
+    ∃ c, sc.peekBack? = some c ∧
+      (isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF') = true
+
 /-- `skipToContentComment` optionally consumes a `#`-comment and preserves
     correspondence.  When `#` is matched and the comment is valid, produces
     `SCNbCommentText`; otherwise identity (`GOpt.none`).
@@ -338,7 +348,8 @@ lemma collectCommentTextLoop_corr (sc : ScannerState) (sp : SurfPos)
 lemma skipToContentComment_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) :
     ∃ sp', GOpt SCNbCommentText sp sp' ∧
-           ScannerSurfCorr (skipToContentComment sc) sp' := by
+           ScannerSurfCorr (skipToContentComment sc) sp' ∧
+           (sp' = sp ∨ CommentOk sc) := by
   unfold skipToContentComment
   -- Inline let bindings so split targets matches/ifs cleanly
   dsimp only []
@@ -349,10 +360,15 @@ lemma skipToContentComment_corr (sc : ScannerState) (sp : SurfPos)
     -- split targets match sc.peekBack? inside the commentOk condition
     split
     · -- peekBack? = some c
-      rename_i c
+      rename_i c hpb
       -- split targets if commentOk
       split
       · -- commentOk = true: process comment
+        rename_i hok
+        have hcok : CommentOk sc := by
+          rcases Bool.or_eq_true_iff.mp hok with h | h
+          · exact Or.inl (by simpa using h)
+          · exact Or.inr (Or.inr ⟨c, hpb, h⟩)
         have hmore := peek_some_hasMore sc '#' hpeek
         obtain ⟨rest, hchars⟩ := peek_some_chars sc sp '#' hcorr hpeek
         have hcol := hcorr.col_eq
@@ -367,13 +383,15 @@ lemma skipToContentComment_corr (sc : ScannerState) (sp : SurfPos)
         obtain ⟨sp', hstar, hcorr'⟩ :=
           collectCommentTextLoop_corr sc.advance ⟨rest, sc.col + 1⟩ "" _ hadv hfuel
         exact ⟨sp', GOpt.some _ _ (SCNbCommentText.mk rest sc.col sp' hstar),
-               corr_of_comments_update _ hcorr'⟩
+               corr_of_comments_update _ hcorr', Or.inr hcok⟩
       · -- commentOk = false: identity
-        exact ⟨sp, GOpt.none sp, hcorr⟩
+        exact ⟨sp, GOpt.none sp, hcorr, Or.inl rfl⟩
     · -- peekBack? = none
+      rename_i hpb
       -- commentOk = sc.col == 0 || true, so split on if
       split
       · -- commentOk = true: process comment (same as above)
+        have hcok : CommentOk sc := Or.inr (Or.inl hpb)
         have hmore := peek_some_hasMore sc '#' hpeek
         obtain ⟨rest, hchars⟩ := peek_some_chars sc sp '#' hcorr hpeek
         have hcol := hcorr.col_eq
@@ -388,11 +406,11 @@ lemma skipToContentComment_corr (sc : ScannerState) (sp : SurfPos)
         obtain ⟨sp', hstar, hcorr'⟩ :=
           collectCommentTextLoop_corr sc.advance ⟨rest, sc.col + 1⟩ "" _ hadv hfuel
         exact ⟨sp', GOpt.some _ _ (SCNbCommentText.mk rest sc.col sp' hstar),
-               corr_of_comments_update _ hcorr'⟩
+               corr_of_comments_update _ hcorr', Or.inr hcok⟩
       · -- commentOk = false: impossible (condition is _ || true)
         rename_i h; exfalso; simp [Bool.or_true] at h
   · -- peek? ≠ some '#'
-    exact ⟨sp, GOpt.none sp, hcorr⟩
+    exact ⟨sp, GOpt.none sp, hcorr, Or.inl rfl⟩
 
 /-! ## §8 skipToContentWs Coupling
 
@@ -406,6 +424,37 @@ preserves correspondence and the consumed characters form valid whitespace
     On every `.ok s'` return, the scanner state `s'` has a corresponding
     surface position `sp'` that is reachable from `sp` via indentation
     spaces (`SIndent`) and/or whitespace (`GStar SSWhite`). -/
+private lemma skipSpacesLoop_input' (s : ScannerState) (fuel : Nat) :
+    (skipSpacesLoop s fuel).input = s.input := by
+  induction fuel generalizing s with
+  | zero => unfold skipSpacesLoop; rfl
+  | succ fuel' ih =>
+    unfold skipSpacesLoop
+    split
+    · rw [ih, advance_input]
+    · rfl
+
+/-- `skipToContentWs` never changes the input; with `ScannerSurfCorr_same_offset`
+    this pins the entry state's `peekBack?` from the exit state's. -/
+lemma skipToContentWs_input (sc s' : ScannerState)
+    (hok : skipToContentWs sc = .ok s') : s'.input = sc.input := by
+  unfold skipToContentWs at hok
+  dsimp only [] at hok
+  split at hok
+  · split at hok
+    · split at hok
+      · split at hok
+        · cases hok; exact (skipWhitespace_input _).trans (skipSpacesLoop_input' _ _)
+        · split at hok
+          · cases hok; exact (skipWhitespace_input _).trans (skipSpacesLoop_input' _ _)
+          · split at hok
+            · cases hok; exact (skipWhitespace_input _).trans (skipSpacesLoop_input' _ _)
+            · cases hok
+        · cases hok; exact (skipWhitespace_input _).trans (skipSpacesLoop_input' _ _)
+      · cases hok; exact skipSpacesLoop_input' _ _
+    · cases hok; exact (skipWhitespace_input _).trans (skipSpacesLoop_input' _ _)
+  · cases hok; exact skipWhitespace_input _
+
 lemma skipToContentWs_ok_corr (sc : ScannerState) (sp : SurfPos) (s' : ScannerState)
     (hcorr : ScannerSurfCorr sc sp)
     (hok : skipToContentWs sc = .ok s') :
@@ -845,7 +894,7 @@ lemma skipToContentLoop_ok_corr (sc : ScannerState) (sp : SurfPos) (fuel : Nat)
     · -- skipToContentWs = .ok s1
       rename_i s1 hok_ws
       obtain ⟨sp1, _, hcorr1⟩ := skipToContentWs_ok_corr sc sp s1 hcorr hok_ws
-      obtain ⟨sp2, _, hcorr2⟩ := skipToContentComment_corr s1 sp1 hcorr1
+      obtain ⟨sp2, _, hcorr2, _⟩ := skipToContentComment_corr s1 sp1 hcorr1
       -- Split on peek of (skipToContentComment s1)
       split at hok
       · -- peek? = some c
