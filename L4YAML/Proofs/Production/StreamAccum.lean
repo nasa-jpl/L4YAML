@@ -13399,6 +13399,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
   -- rather than the sibling entry the events emit; that sibling waits on the
   -- three parks' own mapping levels (`h_mapF`).
   have slot_ride :
+      (sc.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#')) →
       (s_prep.indents.any fun e => e.column == (s_prep.col : Int)) = true →
       SlotFace s_prep.tokens → s_prep.simpleKeyAllowed = true →
       ∃ sp_gram' sp_block' sp_flow' sp_scan',
@@ -13410,7 +13411,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
         ((1 : Nat) ≥ 1 →
           InteriorGap s' (tailOf s'.tokens) sp_flow' sp_scan' ∧
           LastTokenReal s'.tokens ∧ s'.allowDirectives = false) :=
-    fun hmem hrun hska =>
+    fun h_gateS hmem hrun hska =>
       match h_optok with
       | ⟨_, htok, hop, hpos⟩ =>
         ⟨sp_block, sp_block, sp_open, sp_open, h_stream_block, BlockStack.nil _,
@@ -13420,7 +13421,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
             ⟨KeyFloor.cleared h_opsk, fun i hlo hhi => absurd hhi (by omega)⟩⟩
            (mk (some s_prep) 0 sp_block ⟨(fun hg => absurd hg.2 (by rw [hska]; simp)),
              flowKeyRoute_of_root (Or.inr trivial) h_noflow_prep h_park h_close_pending h_dn h_fv
-               h_corr hcorr_prep h_preprocess (Or.inr trivial) (Or.inr trivial) h_bare h_base
+               h_corr hcorr_prep h_preprocess (GStar.nil _) (fun _ => h_gateS) (Or.inr trivial) h_bare h_base
                (Or.inr trivial) (Or.inr trivial) (Or.inr trivial),
              Or.inr trivial⟩),
          PendingNode.noPending sp_start sp_open (Or.inr (inFlow_of_flowLevel_eq h_fl1))
@@ -13462,7 +13463,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                (Or.inl ⟨h_col0, fun sp_m h_ssl =>
                  ssl_comments_extend_prefixes (h_nodoc h_scflow) h_col0 h_ssl⟩)
                h_noflow_prep h_park h_close_pending h_dn h_fv
-               h_corr hcorr_prep h_preprocess (gate_sc h_corr (h_gateN (noflow_of_fl0 h_fl0))) (Or.inr trivial)
+               h_corr hcorr_prep h_preprocess (GStar.nil _) (fun _ => gate_sc h_corr (h_gateN (noflow_of_fl0 h_fl0))) (Or.inr trivial)
                (Or.inl (fun sp_m h_ssl =>
                  ssl_comments_extend_prefixes (h_nodoc h_scflow) h_col0 h_ssl))
                h_bare h_base (Or.inr trivial) (Or.inr trivial) (Or.inr (PackAlt.ofRefused (h_noekN h_scflow))),
@@ -13687,7 +13688,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
       -- the frame carries (item 295).
       -- The TAB half is §6.1's own refusal and stands (item 68).
       rcases h_ur with ⟨j, sx, hj, h_ind, _h_ws2, h_end | h_tab⟩
-      · exact slot_ride
+      · exact slot_ride (h_gateP (noflow_of_fl0 h_fl0)).gate
           (underRunEnd_landing_on_stack h_preprocess h_base h_floor_p h_col02 hj h_ind h_end
             hcorr_prep (h_landed_ur (Nat.ne_of_gt h_col0_p) h_noflow_prep))
           (slotRun_of_dn h_slot_p h_dn (h_ska_ur (Nat.ne_of_gt h_col0_p) h_noflow_prep) h_floor_p hj h_base
@@ -13825,7 +13826,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
       -- location refutes.
       rcases h_ur with ⟨j, sx, hj, h_ind, _h_ws2, h_end | h_tab⟩
       · -- Item 172: the deferred floor — the open step scans; nothing to spend.
-        exact slot_ride
+        exact slot_ride (h_gateB (noflow_of_fl0 h_fl0)).gate
           (underRunEnd_landing_on_stack h_preprocess h_base h_floor_old h_col02 hj h_ind h_end
             hcorr_prep (h_landed_ur (h_col59 ▸ Nat.succ_ne_zero n_old) h_noflow_prep))
           (slotRun_of_offer h_offer_b h_preprocess)
@@ -13946,7 +13947,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
       -- (`k:⏎  a:⏎[1]` is §9.2's dangling reading, three steps on).
       rcases h_ur with ⟨j, sx, hj, h_ind, _h_ws2, h_end | h_tab⟩
       · -- Item 172: the deferred floor — the open step scans; nothing to spend.
-        exact slot_ride
+        exact slot_ride (h_gateMV (noflow_of_fl0 h_fl0)).gate
           (underRunEnd_landing_on_stack h_preprocess h_base h_floor_mv h_col02 hj h_ind h_end
             hcorr_prep (h_landed_ur (Nat.ne_of_gt h_col0_mv) h_noflow_prep))
           (slotRun_of_offer h_offer_mv h_preprocess)
