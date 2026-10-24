@@ -2470,8 +2470,7 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       (h_live0 : sc.simpleKeyAllowed = true ∨ sc.simpleKey.possible = true)
       -- `[66]` narrowed to col 0: the scanner's comment gate at this park, off a
       -- line start — the indicator that parked here is the last consumed char.
-      (h_gate : ∃ sp_g, GStar SSWhite sp_g sp_scan ∧
-        (sp_g = sp_scan → sc.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#'))) :
+      (h_gate : sc.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#')) :
       PendingNode sc false sp_start sp_block sp_scan
   /-- Content token scanned INSIDE a block entry (e.g., `- "hello"`).
       Like `pendingContent`, but additionally carries entry-level evidence
@@ -23639,6 +23638,22 @@ lemma sslComments_refutes_inline_residue {sp sp_mid : SurfPos} {c : Char}
       (by rcases hc with rfl | rfl | rfl <;> decide)
     rcases hc with rfl | rfl | rfl <;> rcases hst with h | h | h <;> exact absurd h (by decide)
 
+/-- The separator-less comment arm of `SSLCommentsFrom` refutes an inline
+    residue too: the cursor holds `#`, not an indicator or a white. -/
+lemma sslCommentsFrom_refutes_inline_residue {sp sp_mid : SurfPos} {c : Char}
+    (h : SSLCommentsFrom sp sp_mid) (hc : c = '-' ∨ c = ':' ∨ c = '?')
+    (h_res : InlineResidue sp c) : False := by
+  rcases h with h | ⟨_, sp_cmt, sp_brk, hct, _, _⟩
+  · exact sslComments_refutes_inline_residue h hc h_res
+  · obtain ⟨_, sp_ws, hws, h_head⟩ := h_res
+    cases hct with
+    | mk rest col s' _ =>
+      cases hws with
+      | nil _ =>
+        simp only [List.head?_cons, Option.some.injEq] at h_head
+        rcases hc with rfl | rfl | rfl <;> cases h_head
+      | cons _ s₂ _ hw _ => cases hw
+
 /-- The residue's premise, assembled from `preprocess_some_ssl_comments_landing`'s
     right disjunct: the park is off column 0, the step crossed only `s-white`,
     and the dispatched character is the head it reached. -/
@@ -23917,8 +23932,7 @@ lemma block_dispatch_deferred
     -- flag up (`block_indicator_arm`), and content at the park keeps a live
     -- key or ends armed (`content_live0`).
     (h_live0 : s'.simpleKeyAllowed = true ∨ s'.simpleKey.possible = true)
-    (h_gate : ∃ sp_g, GStar SSWhite sp_g sp_scan' ∧
-        (sp_g = sp_scan' → s'.col ≠ 0 → ¬ (CommentOk s' ∧ s'.peek? = some '#'))) :
+    (h_gate : s'.col ≠ 0 → ¬ (CommentOk s' ∧ s'.peek? = some '#')) :
     ∃ sp_gram' sp_block' sp_flow' sp_scan',
       SLYamlStream sp_start sp_gram' ∧
       BlockStack sp_gram' sp_block' ∧
@@ -24098,8 +24112,7 @@ lemma block_dispatch_deferred_stamp_offcol
     (_h_ne : k ∉ ns)
     (h_nic0 : sp_scan'.col = 0 → s'.needIndentCheck = true)
     (h_live0 : s'.simpleKeyAllowed = true ∨ s'.simpleKey.possible = true)
-    (h_gate : ∃ sp_g, GStar SSWhite sp_g sp_scan' ∧
-        (sp_g = sp_scan' → s'.col ≠ 0 → ¬ (CommentOk s' ∧ s'.peek? = some '#'))) :
+    (h_gate : s'.col ≠ 0 → ¬ (CommentOk s' ∧ s'.peek? = some '#')) :
     ∃ sp_gram' sp_block' sp_flow' sp_scan',
       SLYamlStream sp_start sp_gram' ∧
       BlockStack sp_gram' sp_block' ∧
@@ -24166,8 +24179,7 @@ lemma block_dispatch_deferred_stamp_nopack
     (_h_park : sc.explicitKeyLine ≠ none)
     (h_nic0 : sp_scan'.col = 0 → s'.needIndentCheck = true)
     (h_live0 : s'.simpleKeyAllowed = true ∨ s'.simpleKey.possible = true)
-    (h_gate : ∃ sp_g, GStar SSWhite sp_g sp_scan' ∧
-        (sp_g = sp_scan' → s'.col ≠ 0 → ¬ (CommentOk s' ∧ s'.peek? = some '#'))) :
+    (h_gate : s'.col ≠ 0 → ¬ (CommentOk s' ∧ s'.peek? = some '#')) :
     ∃ sp_gram' sp_block' sp_flow' sp_scan',
       SLYamlStream sp_start sp_gram' ∧
       BlockStack sp_gram' sp_block' ∧
@@ -24211,8 +24223,7 @@ lemma block_dispatch_deferred_inline
         else s_prep) c = .ok (some s'))
     (hcorr : ScannerSurfCorr s' sp_scan')
     (_h_res : InlineResidue sp_park c)
-    (h_gate : ∃ sp_g, GStar SSWhite sp_g sp_scan' ∧
-        (sp_g = sp_scan' → s'.col ≠ 0 → ¬ (CommentOk s' ∧ s'.peek? = some '#'))) :
+    (h_gate : s'.col ≠ 0 → ¬ (CommentOk s' ∧ s'.peek? = some '#')) :
     ∃ sp_gram' sp_block' sp_flow' sp_scan',
       SLYamlStream sp_start sp_gram' ∧
       BlockStack sp_gram' sp_block' ∧
@@ -24615,16 +24626,16 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
     (h_vslot : (∃ (nv : Nat) (sp_a : SurfPos), SLYamlStream sp_start sp_a ∧
       sc.currentIndent ≤ (nv : Int) ∧ sc.needIndentCheck = false ∧
       sc.simpleKeyAllowed = true ∧ sp_scan.col = nv + 1 ∧
-      (∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_scan sp_v →
+      (∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_gram sp_v →
         SLYamlStream sp_start sp_v) ∧
-      ((∀ sp_m : SurfPos, SBlockIndented nv .blockOut sp_scan sp_m →
+      ((∀ sp_m : SurfPos, SBlockIndented nv .blockOut sp_gram sp_m →
         ∀ sp_i sp_c : SurfPos, SIndent nv sp_m sp_i → GLit ':' sp_i sp_c →
         ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →
         SLYamlStream sp_start sp_v) ∨ PackAlt sc) ∧
       -- **Item 191: a LIST of ancestors** — the park may stand inside several
       -- open `?` frames at once and the landing names one of them.
       ((∃ nsU : List Nat, ∀ nvU ∈ nsU,
-        ∀ sp_m : SurfPos, SBlockIndented nv .blockOut sp_scan sp_m →
+        ∀ sp_m : SurfPos, SBlockIndented nv .blockOut sp_gram sp_m →
         ∀ sp_i sp_c : SurfPos, SIndent nvU sp_m sp_i → GLit ':' sp_i sp_c →
         ∀ sp_v : SurfPos, SBlockIndented nvU .blockOut sp_c sp_v →
         SLYamlStream sp_start sp_v) ∨ PackAlt sc)) ∨
@@ -25512,10 +25523,10 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
         -- `[187]`'s `s-indent(n)` is exact — and any other shape falls back to
         -- the generic close-and-reopen.
         have h_explicit := fun (hvp : ∀ sp_m sp_i sp_c : SurfPos,
-            SSLComments sp_scan sp_m → SIndent k sp_m sp_i → GLit ':' sp_i sp_c →
+            SSLComments sp_gram sp_m → SIndent k sp_m sp_i → GLit ':' sp_i sp_c →
             ∀ sp_v : SurfPos, SBlockIndented k .blockOut sp_c sp_v →
             SLYamlStream sp_start sp_v) =>
-          colon_open_map_explicit sp_start sp_scan sp_mid _ k s_prep s'
+          colon_open_map_explicit sp_start sp_gram sp_mid _ k s_prep s'
             sp_scan' h_stream_new hvp h_ssl hcol_mid h_ind hcorr_prep hcorr_result
             -- Item 76: the explicit VALUE line measures on the same datum the
             -- keyless opener does — `h_vpack` carries no flag, and the
@@ -25677,7 +25688,7 @@ lemma colon_fires_props_key (sc : ScannerState)
       cases h_disj with
       -- A break intervened, so the stamped line is behind us and the `:` is a
       -- landed one — the caller's own escape, as on the pack side below.
-      | inl h_l => exact h_punt (fun h_res _ => (sslComments_refutes_inline_residue h_l.1 (Or.inr (Or.inl rfl)) h_res).elim)
+      | inl h_l => exact h_punt (fun h_res _ => (sslCommentsFrom_refutes_inline_residue h_l.1 (Or.inr (Or.inl rfl)) h_res).elim)
       | inr h_mid =>
         exact (dispatch_refutes_sameLine h_nic h_real (Or.inl h_ivl)
           (preprocess_preserves_implicitValueLine sc s_prep ':' h_preprocess)
@@ -25690,7 +25701,7 @@ lemma colon_fires_props_key (sc : ScannerState)
       obtain ⟨_sp_mid, _sp_ws, _sp_prep2, h_disj, _h_ws, _h_cmt, hcorr_prep2, _h_pk, _⟩ :=
         preprocess_some_ssl_comments_anyCol sc sp_scan s_prep ':' h_corr h_preprocess
       cases h_disj with
-      | inl h_l => exact h_punt (fun h_res _ => (sslComments_refutes_inline_residue h_l.1 (Or.inr (Or.inl rfl)) h_res).elim)
+      | inl h_l => exact h_punt (fun h_res _ => (sslCommentsFrom_refutes_inline_residue h_l.1 (Or.inr (Or.inl rfl)) h_res).elim)
       | inr h_mid =>
         exact (dispatch_refutes_sameLine h_nic h_real (Or.inr (Or.inl h_doc))
           (preprocess_preserves_implicitValueLine sc s_prep ':' h_preprocess)
@@ -25701,7 +25712,7 @@ lemma colon_fires_props_key (sc : ScannerState)
         preprocess_some_ssl_comments_anyCol sc sp_scan s_prep ':' h_corr h_preprocess
       have hsp_eq2 := ScannerSurfCorr_unique hcorr_prep hcorr_prep2; subst hsp_eq2
       cases h_disj with
-      | inl h_l => exact h_punt (fun h_res _ => (sslComments_refutes_inline_residue h_l.1 (Or.inr (Or.inl rfl)) h_res).elim)
+      | inl h_l => exact h_punt (fun h_res _ => (sslCommentsFrom_refutes_inline_residue h_l.1 (Or.inr (Or.inl rfl)) h_res).elim)
       | inr h_mid =>
         exfalso
         obtain ⟨h_line_eq, -, -, -⟩ := h_mid.2.1 h_st.1 h_st.2.2
@@ -25723,7 +25734,7 @@ lemma colon_fires_props_key (sc : ScannerState)
             else s_prep).input = sc.input := by split <;> exact h_inp
           rw [h_i, allowDirectives_update_simpleKey, h_sk_eq]
           exact h_run
-    | noKeyContext => exact h_punt (fun h_res _ => block_dispatch_deferred_inline sp_start sp_block sp_scan' h_stream_block h_preprocess h_dispatch hcorr_result h_res)
+    | noKeyContext => exact h_punt (fun h_res _ => block_dispatch_deferred_inline sp_start sp_block sp_scan' h_stream_block h_preprocess h_dispatch hcorr_result h_res (dispatchBlock_next_of_some h_noflow (preprocess_some_peek h_preprocess) h_dispatch).gate)
   | inl pack =>
     obtain ⟨⟨k, h_route, h_kcol, h_kslot_pk, h_resF_pk, h_resFV_pk⟩,
       h_props, h_skline, h_poss⟩ := pack
@@ -25934,7 +25945,7 @@ lemma colon_fires_implicit_key
                 (preprocess_preserves_implicitValueLine sc s_prep ':' h_preprocess)
                 (preprocess_preserves_docStartLine sc s_prep ':' h_preprocess)
                 (noflow_disp_of_noflow h_noflow) h_mid.2.1 h_dispatch).elim)
-          | noKeyContext => exact h_punt (fun h_res _ => block_dispatch_deferred_inline sp_start sp_block sp_scan' h_stream_block h_preprocess h_dispatch hcorr_result h_res)
+          | noKeyContext => exact h_punt (fun h_res _ => block_dispatch_deferred_inline sp_start sp_block sp_scan' h_stream_block h_preprocess h_dispatch hcorr_result h_res (dispatchBlock_next_of_some h_noflow (preprocess_some_peek h_preprocess) h_dispatch).gate)
         | inl pack =>
           obtain ⟨k, sp_key, sp_gram, h_route, h_ol, h_tws, h_kcol, h_kslot_pk, h_rfr_pk,
             h_rfrV_pk, h_rseq_pk⟩ := pack
@@ -26020,7 +26031,7 @@ lemma colon_fires_implicit_key
         | inr h => rw [preprocess_some_peek h_preprocess] at h; cases h
       subst h_eq
       cases h_disj with
-      | inl h_l => exact h_punt (fun h_res _ => (sslComments_refutes_inline_residue h_l.1 (Or.inr (Or.inl rfl)) h_res).elim)
+      | inl h_l => exact h_punt (fun h_res _ => (sslCommentsFrom_refutes_inline_residue h_l.1 (Or.inr (Or.inl rfl)) h_res).elim)
       | inr h_mid =>
         rcases h_arm with ⟨_, h_poss_f⟩ | h_colpos
         · exact absurd h_poss (by rw [h_poss_f]; exact Bool.false_ne_true)
@@ -26762,7 +26773,7 @@ lemma accum_block_on_pendingBlockContent {sp_gram : SurfPos}
                       (noflow_disp_of_noflow h_noflow) h_src)
                     (ns := nv :: nsU)
                     (fun hm => (List.mem_cons.mp hm).elim (fun h => hknv h.symm) hU)
-                    (nic0_of_block_dispatch h_preprocess h_dispatch hcorr_result) (Or.inl (block_indicator_arm h_dispatch)) ⟨sp_scan', GStar.nil _, fun _ _ => (dispatchBlock_next_of_some h_noflow (preprocess_some_peek h_preprocess) h_dispatch).gate⟩
+                    (nic0_of_block_dispatch h_preprocess h_dispatch hcorr_result) (Or.inl (block_indicator_arm h_dispatch)) (dispatchBlock_next_of_some h_noflow (preprocess_some_peek h_preprocess) h_dispatch).gate
             · -- Item 185: the park carries NO pack.
               exact block_dispatch_deferred_stamp_nopack sp_start sp_mid sp_scan' s'
                 (h_close_pending h_nd_land h_ui_land _ h_ssl)
@@ -26771,7 +26782,7 @@ lemma accum_block_on_pendingBlockContent {sp_gram : SurfPos}
                 (explicit_at_indent_of_dispatch h_dispatch
                   (noflow_disp_of_noflow h_noflow) h_src)
                 (fun h => h_src (Or.inl (ekl_disp_none_of_park_none h_preprocess h)))
-                (nic0_of_block_dispatch h_preprocess h_dispatch hcorr_result) (Or.inl (block_indicator_arm h_dispatch)) ⟨sp_scan', GStar.nil _, fun _ _ => (dispatchBlock_next_of_some h_noflow (preprocess_some_peek h_preprocess) h_dispatch).gate⟩
+                (nic0_of_block_dispatch h_preprocess h_dispatch hcorr_result) (Or.inl (block_indicator_arm h_dispatch)) (dispatchBlock_next_of_some h_noflow (preprocess_some_peek h_preprocess) h_dispatch).gate
         · exact h_gen (fun h => absurd h hc_colon)
       · exact (block_indicator_exhausted h_dispatch hc hcv).elim
   by_cases hc0 : c = ':'
@@ -27843,7 +27854,7 @@ lemma accum_block_pending (sc : ScannerState)
         (nic0_of_col_pos h_col0_p) (GStar.nil _) (fun _ _ => (h_nextP (sc_noflow_of_prep h_preprocess h_noflow)).gate)
   | pendingFlow _ _ _ _ h_arm77 _ h_nic0F _ h_gateF =>
     exact accum_block_on_closeThenBlock sc sp_start sp_scan s_prep s' c sp_prep sp_scan'
-      h_close_pending (Or.inr trivial) (Or.inr (fun h_res _ => block_dispatch_deferred_inline sp_start sp_block sp_scan' h_stream_block h_preprocess h_dispatch hcorr_result h_res ⟨sp_scan', GStar.nil _, fun _ _ => (dispatchBlock_next_of_some h_noflow (preprocess_some_peek h_preprocess) h_dispatch).gate⟩)) hcorr_prep
+      h_close_pending (Or.inr trivial) (Or.inr (fun h_res _ => block_dispatch_deferred_inline sp_start sp_block sp_scan' h_stream_block h_preprocess h_dispatch hcorr_result h_res (dispatchBlock_next_of_some h_noflow (preprocess_some_peek h_preprocess) h_dispatch).gate)) hcorr_prep
       hcorr_result h_corr h_noflow h_arm77 h_preprocess h_dispatch
       (Or.inr trivial)
       (Or.inr trivial) h_bare h_dn h_fv h_base h_mono
@@ -27857,7 +27868,7 @@ lemma accum_block_pending (sc : ScannerState)
       (Or.inr trivial) (Or.inr trivial) (Or.inr trivial) (Or.inr trivial)
       (Or.inr trivial) (Or.inr trivial) (Or.inr trivial)
       -- Item 208: item 206's field.
-      h_nic0F h_gateF.choose_spec.1 h_gateF.choose_spec.2
+      h_nic0F (GStar.nil _) (fun _ => h_gateF)
   | pendingMapValue _ _ _ nmv _ _ h_nic48 h_real48 h_ivl48 h_expl51 h_vslot51 h_sk58 h_col0_mv _
       h_kslot93 h_closeF155 h_frames173 h_closeFV108 h_framesV108 _ _ h_explUp190  _ h_nextM =>
     -- ═══ Item 48: an IMPLICIT `:` stamped its line, and B1/B2/B3 all read
@@ -28020,12 +28031,12 @@ lemma accum_block_pending (sc : ScannerState)
         (h_closeFV108.imp (fun ⟨nv, ks, h_le, _, fV⟩ => ⟨nmv, nv, ks, h_le, fV⟩) id)
         -- Item 208: a value park is never at column 0, so the premise is refuted.
         (nic0_of_col_pos h_col0_mv) (GStar.nil _) (fun _ _ => (h_nextM (sc_noflow_of_prep h_preprocess h_noflow)).gate)
-  | pendingBlockContent _ _ _ _ n_old h_line _h_closable h_entry_old h_key_old h_stale47 h_arm77 h_kslot92 h_closeF99 _ h_tail139 h_seqF167 h_kslotUp190 h_closeFV198 h_nic0B h_runBC h_gateBC _ =>
+  | pendingBlockContent _ _ _ _ n_old h_line h_closableBC h_entry_old h_key_old h_stale47 h_arm77 h_kslot92 h_closeF99 _ h_tail139 h_seqF167 h_kslotUp190 h_closeFV198 h_nic0B h_runBC h_gateBC _ =>
     -- Item 22: the pending's own entry index rides through; the `n ≠ 0`
     -- deferral this arm used to open is gone with it.
     -- Item 37: and what is left of the escape is `[154]`'s `:`.
     exact accum_block_on_pendingBlockContent sc sp_start sp_block sp_scan s_prep s' c
-      sp_prep sp_scan' n_old h_stream_block h_close_pending h_line
+      sp_prep sp_scan' n_old h_stream_block h_closableBC h_line
       h_entry_old h_kslot92 h_key_old h_stale47 h_kbc h_scf hcorr_prep hcorr_result h_corr h_noflow
       h_arm77 h_preprocess h_dispatch h_bare h_dn h_fv h_base h_mono h_tail139 h_seqF167
       -- Item 190: the park's second frame, relayed as its first is.
