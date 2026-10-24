@@ -6674,6 +6674,28 @@ lemma PendingNode.close_with_sslFrom {sc : ScannerState}
 
 /-- When preprocessing returns `some` at col=0, extract `SSLComments` from the
     consumed characters plus `ScannerSurfCorr` for the resulting state. -/
+
+/-- N3: while directives are still allowed the park is an indicator park or a
+    line start, so an empty `[66]` before a `#` there is refuted by the park's
+    own follower (`h_next`) or its column; content parks have `h_nodir`. -/
+lemma PendingNode.nil_gate_of_allowDirectives {sc : ScannerState} {b : Bool}
+    {sp_start sp_block sp_scan : SurfPos}
+    (h : PendingNode sc b sp_start sp_block sp_scan) (hnf : sc.inFlow = false)
+    (hcorr : ScannerSurfCorr sc sp_scan) (hA : sc.allowDirectives = true) :
+    sc.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#') :=
+  match h with
+  | .noPending (h_col := hc) .. => fun hne =>
+      absurd (hcorr.col_eq ▸ hc.resolve_right (by rw [hnf]; decide)) hne
+  | .pendingDocEnd (h_next := hn) .. => fun _ => (hn hnf).gate
+  | .pendingDocStart (h_next := hn) .. => fun _ => (hn hnf).gate
+  | .pendingDirective (h_next := hn) .. => fun _ => (hn hnf).gate
+  | .pendingProps (h_next := hn) .. => fun _ => (hn hnf).gate
+  | .pendingBlock (h_next := hn) .. => fun _ => (hn hnf).gate
+  | .pendingMapValue (h_next := hn) .. => fun _ => (hn hnf).gate
+  | .pendingContent (h_nodir := hd) .. => fun _ => absurd (hd ▸ hA) Bool.noConfusion
+  | .pendingBlockContent (h_nodir := hd) .. => fun _ => absurd (hd ▸ hA) Bool.noConfusion
+  | .pendingFlow (h_nodir := hd) .. => fun _ => absurd (hd ▸ hA) Bool.noConfusion
+
 lemma preprocess_some_ssl_comments_col0 (sc : ScannerState) (sp : SurfPos)
     (s_prep : ScannerState) (c : Char)
     (hcorr : ScannerSurfCorr sc sp)
@@ -9134,7 +9156,7 @@ lemma preprocess_flow_thread (sc : ScannerState) (sp_scan sp_prep : SurfPos) {sp
     have h_ska : s_prep.simpleKeyAllowed = true := by
       rcases h_park with hp | hp
       · exact preprocess_simpleKeyAllowed_mono hp h_preprocess
-      · exact (h.2.2.2 (by omega) h_noflow).2.2.1
+      · exact (h.2.2 (by omega) h_noflow).2.2.1
     exact Or.inl ⟨sp_mid, h.1, hws, h_ska⟩
   | inr h_eq =>
     rw [h_eq.1] at hws
@@ -9146,8 +9168,8 @@ lemma preprocess_flow_thread (sc : ScannerState) (sp_scan sp_prep : SurfPos) {sp
       obtain ⟨chars, colv⟩ := sp_scan
       have hc0 : colv = 0 := hcol
       subst hc0
-      exact Or.inl ⟨⟨chars, 0⟩, SSLComments.startOfLine chars ⟨chars, 0⟩ (GStar.nil _),
-        hws, h_ska⟩
+      exact Or.inl ⟨⟨chars, 0⟩, white_prepend_SSLComments h_trail
+        (SSLComments.startOfLine chars ⟨chars, 0⟩ (GStar.nil _)), hws, h_ska⟩
     · exact Or.inr ⟨hcol, hws⟩
 
 /-! ## §1 Per-Dispatch Grammar Accumulator Lemmas
@@ -30426,7 +30448,7 @@ lemma keyctx_of_preprocess (sc : ScannerState) (sp sp_prep : SurfPos) {sp_g : Su
                 h_preprocess))
               (underIndented_none_of_check h_fv
                 (preprocess_simpleKeyAllowed_mono (h_park.resolve_right (by omega))
-                  h_preprocess)) sp h_ssl_zero, hmid.1 ▸ h_ind'⟩,
+                  h_preprocess)) sp (white_prepend_SSLComments h_trail h_ssl_zero), hmid.1 ▸ h_ind'⟩,
             h_sk.1, h_sk.2⟩
         · exact Or.inr trivial
 
@@ -31550,7 +31572,7 @@ lemma entryKeyPack_of_dispatch
           obtain ⟨h_ivl0, h_nic0, h_real0⟩ := h_stamp
           -- The park's line is the preprocessing's (no break crossed) and the
           -- preprocessing's is the value indicator's.
-          have h_line_pp : s_prep.line = sc.line := (h_mid.2.1 h_nic0 h_real0).1
+          have h_line_pp : s_prep.line = sc.line := (h_mid.2.2.1 h_nic0 h_real0).1
           have h_line_s' : s'.line = s_prep.line := by
             have h := h_kline
             rw [h_pp, allowDirectives_update_simpleKey, h_sk.2] at h
@@ -32072,7 +32094,7 @@ lemma entryPropsKeyPack_of_dispatch
         -- the PROPERTY scan (`h_ivl_post`) exactly as it survives a value
         -- one — so `k: &p a: 1` is refused where `?⏎: &p a: 1` is read. ═══
         obtain ⟨h_ivl0, h_nic0, h_real0⟩ := h_stamp
-        have h_line_pp : s_prep.line = sc.line := (h_mid.2.1 h_nic0 h_real0).1
+        have h_line_pp : s_prep.line = sc.line := (h_mid.2.2.1 h_nic0 h_real0).1
         have h_ad_ivl : (if s_prep.allowDirectives then
             { s_prep with allowDirectives := false, documentEverStarted := true }
           else s_prep).implicitValueLine = s_prep.implicitValueLine := by
@@ -34547,7 +34569,7 @@ lemma accum_content_on_pendingMapValue_indented
     -- 666; served there since items 99, 296 and 297).
     exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
            BlockStack.nil sp_block, FlowStackB.nil sp_block .sep,
-           PendingNode.pendingContent (sp_gram := sp_gram) (h_run := h_trailing_ws) (h_gate := h_gatePark) (h_live := live_of_dispatch h_dispatch hna hnt (by rw [allowDirectives_update_simpleKey]; exact (preprocess_saved_key_fresh h_ska (noflow_of_noflow_disp h_flow_disp) h_preprocess).1) hcorr_result) sp_start sp_block sp_scan' h_line
+           PendingNode.pendingContent (sp_gram := sp_gram) (h_run := h_trailing_ws) (h_gate := h_gate) (h_live := live_of_dispatch h_dispatch hna hnt (by rw [allowDirectives_update_simpleKey]; exact (preprocess_saved_key_fresh h_ska (noflow_of_noflow_disp h_flow_disp) h_preprocess).1) hcorr_result) sp_start sp_block sp_scan' h_line
              (fun _ _ sp_final h_ssl =>
                h_close_old sp_final
                  (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gram sp_final
@@ -34784,7 +34806,7 @@ lemma accum_content_on_pendingMapValue_indented
         (fun h_fld' => folded_blockNode h_sep_all (GOpt.none sp_prep) h_fld')
     exact ⟨sp_scan', sp_scan', sp_scan', sp_scan', h_stream',
            BlockStack.nil sp_scan', FlowStackB.nil sp_scan' .sep,
-           PendingNode.pendingContent (sp_gram := sp_scan') (h_run := GStar.nil _) (h_gate := fun _ hcol h => (scanBlockScalar_park (dispatchContent_blockScalar_scan _ sp_prep (corr_of_allowDirectives_update hcorr_prep) (by split <;> exact preprocess_some_peek h_preprocess) hbs h_dispatch)).elim (fun h0 => hcol h0) (fun hne => hne h.2)) (h_live := live_of_dispatch h_dispatch hna hnt (by rw [allowDirectives_update_simpleKey]; exact (preprocess_saved_key_fresh h_ska (noflow_of_noflow_disp h_flow_disp) h_preprocess).1) hcorr_result) sp_start sp_scan' sp_scan' h_line
+           PendingNode.pendingContent (sp_gram := sp_scan') (h_run := GStar.nil _) (h_gate := fun _ hcol h => (scanBlockScalar_park (dispatchContent_blockScalar_scan _ sp_prep (corr_of_allowDirectives_update hcorr_prep) (by split <;> exact (preprocess_some_peek h_preprocess : s_prep.peek? = some _)) hbs h_dispatch)).elim (fun h0 => hcol h0) (fun hne => hne h.2)) (h_live := live_of_dispatch h_dispatch hna hnt (by rw [allowDirectives_update_simpleKey]; exact (preprocess_saved_key_fresh h_ska (noflow_of_noflow_disp h_flow_disp) h_preprocess).1) hcorr_result) sp_start sp_scan' sp_scan' h_line
              (fun _ _ sp_final h_ssl => h_close_old sp_final (h_nodeAt sp_final h_ssl))
              (fun h_poss _ => absurd h_poss
                (by rw [dispatchContent_blockScalar_simpleKey_false hbs h_dispatch]; simp))
@@ -35678,7 +35700,7 @@ lemma accum_content_pending (sc : ScannerState)
     subst h_eq
     have h_sep : SSeparateLines 0 sp_scan sp_prep :=
       SSeparateLines.inline 0 sp_scan sp_prep
-        (GStar_SSWhite_to_SSeparateInLine sp_scan sp_prep h_ws (NextIsSep.eps_col0 (h_nextS (noflow_of_fl0 h_fl0)) h_corr (corr_of_allowDirectives_update hcorr_prep) (by split <;> exact preprocess_some_peek h_preprocess) h_dispatch))
+        (GStar_SSWhite_to_SSeparateInLine sp_scan sp_prep h_ws (NextIsSep.eps_col0 (h_nextS (noflow_of_fl0 h_fl0)) h_corr (corr_of_allowDirectives_update hcorr_prep) (by split <;> exact (preprocess_some_peek h_preprocess : s_prep.peek? = some _)) h_dispatch))
     exact content_dispatch_routed (h_alt := PackAlt.step_preprocess h_preprocess (PackAlt.ofRefused h_noekS)) (h_possD := (preprocess_saved_key_fresh h_armS.1 h_noflow_prep h_preprocess).1) (h_src := slotGateAt_of_offerPred (offerPred_of_docStart h_realS h_markerS) h_base h_preprocess) sp_start sp_scan sp_block s_prep s' c sp_prep sp_scan'
       h_stream_block h_sep (nic_false_of_flow_disp h_preprocess h_flow_disp)
       hcorr_prep hcorr_result h_not_doc (preprocess_some_peek h_preprocess)
@@ -35886,7 +35908,7 @@ lemma accum_content_pending (sc : ScannerState)
       -- one more span whose derivation never mentions the parameter.
       have h_sep2 : SSeparateLines n sp_scan sp_prep :=
         SSeparateLines.inline n sp_scan sp_prep
-          (GStar_SSWhite_to_SSeparateInLine sp_scan sp_prep h_ws (NextIsSep.eps_col0 (h_nextP (noflow_of_fl0 h_fl0)) h_corr (corr_of_allowDirectives_update hcorr_prep) (by split <;> exact preprocess_some_peek h_preprocess) h_dispatch))
+          (GStar_SSWhite_to_SSeparateInLine sp_scan sp_prep h_ws (NextIsSep.eps_col0 (h_nextP (noflow_of_fl0 h_fl0)) h_corr (corr_of_allowDirectives_update hcorr_prep) (by split <;> exact (preprocess_some_peek h_preprocess : s_prep.peek? = some _)) h_dispatch))
       -- dispatch-state transports: the `allowDirectives` update touches
       -- neither the tokens, the line, nor the flag.
       have h_ad_toks : (if s_prep.allowDirectives then
@@ -36047,7 +36069,7 @@ lemma accum_content_pending (sc : ScannerState)
                            h_cov.imp (fun ⟨lo, hb, hc⟩ =>
                              ⟨lo, hb, h_cov_step lo (FrameLevel.map k :: ks) hc⟩) id, r⟩) (PackAlt.step_content h_preprocess h_dispatch))⟩,
                        h_run.blockKey_addAnchor
-                         (GStar_SSWhite_to_SSeparateInLine sp_scan sp_prep h_ws (NextIsSep.eps_col0 (h_nextP (noflow_of_fl0 h_fl0)) h_corr (corr_of_allowDirectives_update hcorr_prep) (by split <;> exact preprocess_some_peek h_preprocess) h_dispatch)) h_prop, ?_,
+                         (GStar_SSWhite_to_SSeparateInLine sp_scan sp_prep h_ws (NextIsSep.eps_col0 (h_nextP (noflow_of_fl0 h_fl0)) h_corr (corr_of_allowDirectives_update hcorr_prep) (by split <;> exact (preprocess_some_peek h_preprocess : s_prep.peek? = some _)) h_dispatch)) h_prop, ?_,
                        by
                          rw [(dispatchContent_anchor_simpleKey h_dispatch).1,
                              allowDirectives_update_simpleKey]
@@ -36193,7 +36215,7 @@ lemma accum_content_pending (sc : ScannerState)
                            h_cov.imp (fun ⟨lo, hb, hc⟩ =>
                              ⟨lo, hb, h_cov_step lo (FrameLevel.map k :: ks) hc⟩) id, r⟩) (PackAlt.step_content h_preprocess h_dispatch))⟩,
                          h_run.blockKey_addTag
-                           (GStar_SSWhite_to_SSeparateInLine sp_scan sp_prep h_ws (NextIsSep.eps_col0 (h_nextP (noflow_of_fl0 h_fl0)) h_corr (corr_of_allowDirectives_update hcorr_prep) (by split <;> exact preprocess_some_peek h_preprocess) h_dispatch)) h_prop, ?_,
+                           (GStar_SSWhite_to_SSeparateInLine sp_scan sp_prep h_ws (NextIsSep.eps_col0 (h_nextP (noflow_of_fl0 h_fl0)) h_corr (corr_of_allowDirectives_update hcorr_prep) (by split <;> exact (preprocess_some_peek h_preprocess : s_prep.peek? = some _)) h_dispatch)) h_prop, ?_,
                          by
                            rw [(dispatchContent_tag_simpleKey h_dispatch).1,
                                allowDirectives_update_simpleKey]
@@ -36366,7 +36388,7 @@ lemma accum_content_pending (sc : ScannerState)
                 · have hnPipe : c ≠ '|' := fun h => hc5 (Or.inl h)
                   have hnGt : c ≠ '>' := fun h => hc5 (Or.inr h)
                   have h_sep_bk : SSeparate 0 .blockKey sp_scan sp_prep :=
-                    GStar_SSWhite_to_SSeparateInLine sp_scan sp_prep h_ws (NextIsSep.eps_col0 (h_nextP (noflow_of_fl0 h_fl0)) h_corr (corr_of_allowDirectives_update hcorr_prep) (by split <;> exact preprocess_some_peek h_preprocess) h_dispatch)
+                    GStar_SSWhite_to_SSeparateInLine sp_scan sp_prep h_ws (NextIsSep.eps_col0 (h_nextP (noflow_of_fl0 h_fl0)) h_corr (corr_of_allowDirectives_update hcorr_prep) (by split <;> exact (preprocess_some_peek h_preprocess : s_prep.peek? = some _)) h_dispatch)
                   have h_line_scan : s'.simpleKey.pos = (if s_prep.allowDirectives then
                       { s_prep with allowDirectives := false, documentEverStarted := true }
                     else s_prep).simpleKey.pos →
@@ -36802,7 +36824,7 @@ lemma accum_content_pending (sc : ScannerState)
                   -- rides (`? - &p a⏎  - y⏎: v`).
                   exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
                          BlockStack.nil sp_block, FlowStackB.nil sp_block .sep,
-                         PendingNode.pendingBlockContent (h_live := live_of_dispatch h_dispatch hamp hbang (by rw [allowDirectives_update_simpleKey, h_inherit]; exact h_possP) hcorr_result) sp_start sp_block sp_scan' k
+                         PendingNode.pendingBlockContent (h_run := ‹_›) (h_gate := ‹_›) (h_live := live_of_dispatch h_dispatch hamp hbang (by rw [allowDirectives_update_simpleKey, h_inherit]; exact h_possP) hcorr_result) sp_start sp_block sp_scan' k
                            h_line
                            (fun h_nd sp_mid h_ssl => h_route (h_nd_rel h_nd) sp_mid (h_nodeAt sp_mid h_ssl))
                            (fun sp_mid h_ssl sp_end h_tail =>
@@ -36928,7 +36950,7 @@ lemma accum_content_pending (sc : ScannerState)
                 | inl routeE =>
                   exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
                          BlockStack.nil sp_block, FlowStackB.nil sp_block .sep,
-                         PendingNode.pendingBlockContent (h_live := live_of_dispatch h_dispatch hamp hbang (by rw [allowDirectives_update_simpleKey, h_inherit]; exact h_possP) hcorr_result) sp_start sp_block sp_scan' k
+                         PendingNode.pendingBlockContent (h_run := ‹_›) (h_gate := ‹_›) (h_live := live_of_dispatch h_dispatch hamp hbang (by rw [allowDirectives_update_simpleKey, h_inherit]; exact h_possP) hcorr_result) sp_start sp_block sp_scan' k
                            h_line
                            (fun h_nd sp_mid h_ssl => h_route (h_nd_rel h_nd) sp_mid (h_nodeAt sp_mid h_ssl))
                            (fun sp_mid h_ssl sp_end h_tail =>
@@ -37055,7 +37077,7 @@ lemma accum_content_pending (sc : ScannerState)
                   -- multi-line value (`k:⏎  - &p "a⏎    b"⏎  - y`).
                   exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
                          BlockStack.nil sp_block, FlowStackB.nil sp_block .sep,
-                         PendingNode.pendingBlockContent (h_live := live_of_dispatch h_dispatch hamp hbang (by rw [allowDirectives_update_simpleKey, h_inherit]; exact h_possP) hcorr_result) sp_start sp_block sp_scan' k
+                         PendingNode.pendingBlockContent (h_run := ‹_›) (h_gate := ‹_›) (h_live := live_of_dispatch h_dispatch hamp hbang (by rw [allowDirectives_update_simpleKey, h_inherit]; exact h_possP) hcorr_result) sp_start sp_block sp_scan' k
                            h_line
                            (fun h_nd sp_mid h_ssl => h_route (h_nd_rel h_nd) sp_mid (h_nodeAt sp_mid h_ssl))
                            (fun sp_mid h_ssl sp_end h_tail =>
