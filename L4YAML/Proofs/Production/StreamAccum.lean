@@ -26043,9 +26043,10 @@ lemma accum_block_on_pendingContent
     (s_prep s' : ScannerState) (c : Char) (sp_prep sp_scan' sp_gram : SurfPos)
     (h_stream_block : SLYamlStream sp_start sp_block)
     (h_run : GStar SSWhite sp_gram sp_scan)
+    (h_gate : sp_gram = sp_scan → sc.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#'))
     (h_close_pending : danglingNodePos? sc = none →
       underIndentedFlowValuePos? sc = none →
-      ∀ sp_mid, SSLComments sp_scan sp_mid → SLYamlStream sp_start sp_mid)
+      ∀ sp_mid, SSLComments sp_gram sp_mid → SLYamlStream sp_start sp_mid)
     (h_line : sp_scan.col = 0 ∨ LineNodeStop sp_scan.chars)
     (h_key : sc.simpleKey.possible = true → sc.simpleKey.pos.line = sc.line →
       ImplicitKeyPack sc sp_start sp_scan ∨ KeyPackPunt sc)
@@ -26055,7 +26056,7 @@ lemma accum_block_on_pendingContent
     -- closed into this park hands it.
     (h_vpack : (∃ ns : List Nat, ∀ nv ∈ ns,
       ∀ sp_m sp_i sp_c : SurfPos,
-        SSLComments sp_scan sp_m → SIndent nv sp_m sp_i → GLit ':' sp_i sp_c →
+        SSLComments sp_gram sp_m → SIndent nv sp_m sp_i → GLit ':' sp_i sp_c →
         ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →
         SLYamlStream sp_start sp_v) ∨ PackAlt sc)
     (hcorr_prep : ScannerSurfCorr s_prep sp_prep)
@@ -26137,10 +26138,6 @@ lemma accum_block_on_pendingContent
       FlowStackB sp_start 0 0 none 0 #[] #[] .sep sp_block' sp_flow' ∧
       PendingNode s' false sp_start sp_flow' sp_scan' ∧
       ScannerSurfCorr s' sp_scan' := by
-  have h_seqF168 := h_seqF168.imp (fun ⟨ke, kk, ks, hw, f⟩ => ⟨ke, kk, ks, hw, fun sp_m h => f sp_m (white_prepend_SSLComments h_run h)⟩) id
-  have h_mapF109 := h_mapF109.imp (fun ⟨ks, f⟩ => ⟨ks, fun sp_m h => f sp_m (white_prepend_SSLComments h_run h)⟩) id
-  have h_mapFV108 := h_mapFV108.imp (fun ⟨nv, ks, f⟩ => ⟨nv, ks, fun sp_m h => f sp_m (white_prepend_SSLComments h_run h)⟩) id
-  have h_seqF := h_seqF.imp (fun ⟨ke, f⟩ => ⟨ke, fun sp_m h => f sp_m (white_prepend_SSLComments h_run h)⟩) id
   -- Item 168: the face read at the EMPTY tail of the level the park stands in,
   -- which is the shape the landing arm takes.  A `-` at the collection's width
   -- ends every level above it, so `nil` is the honest tail and the index `kk`
@@ -27693,7 +27690,7 @@ lemma accum_block_pending (sc : ScannerState)
       (Or.inr trivial) (Or.inr trivial) (Or.inr (PackAlt.ofRefused h_noekS)) (Or.inr (PackAlt.ofRefused h_noekS))
       -- Item 208: item 207's field.
       h_nic0S
-  | pendingContent _ _ _ sp_gramO h_line _ h_key h_stale47 h_vpack51 h_arm77 h_framesS109
+  | pendingContent _ _ _ sp_gramO h_line h_closableO h_key h_stale47 h_vpack51 h_arm77 h_framesS109
       h_framesV108 _ h_tail139 h_nic0C h_seqF168 h_runO h_gateO h_live290 =>
     -- Item 15: the same-line `:` may fire the implicit-key coupling.
     -- Item 37: what the caller still owes is the `:` alone.
@@ -27703,8 +27700,8 @@ lemma accum_block_pending (sc : ScannerState)
     -- `h_framesS` (the cover is forgotten at the door; the resume arm's park
     -- punts its own, the recorded residue).
     exact accum_block_on_pendingContent sc sp_start sp_block sp_scan s_prep s' c
-      sp_prep sp_scan' sp_gramO h_stream_block h_runO
-      h_close_pending h_line h_key h_vpack51 hcorr_prep hcorr_result h_corr
+      sp_prep sp_scan' sp_gramO h_stream_block h_runO h_gateO
+      h_closableO h_line h_key h_vpack51 hcorr_prep hcorr_result h_corr
       h_noflow h_kbc h_scf h_stale47 h_arm77 h_preprocess h_dispatch h_bare h_dn h_fv h_base h_mono
       h_tail139 h_seqF168
       (h_framesS109.imp (fun ⟨ks, _, fS⟩ => ⟨ks, fS⟩) id)
