@@ -27689,8 +27689,8 @@ lemma accum_block_pending (sc : ScannerState)
       (Or.inr trivial) (Or.inr trivial) (Or.inr (PackAlt.ofRefused h_noekS)) (Or.inr (PackAlt.ofRefused h_noekS))
       -- Item 208: item 207's field.
       h_nic0S
-  | pendingContent _ _ _ _ h_line _ h_key h_stale47 h_vpack51 h_arm77 h_framesS109
-      h_framesV108 _ h_tail139 h_nic0C h_seqF168 h_live290 =>
+  | pendingContent _ _ _ sp_gramO h_line _ h_key h_stale47 h_vpack51 h_arm77 h_framesS109
+      h_framesV108 _ h_tail139 h_nic0C h_seqF168 h_runO h_gateO h_live290 =>
     -- Item 15: the same-line `:` may fire the implicit-key coupling.
     -- Item 37: what the caller still owes is the `:` alone.
     -- Item 142: and this park is one of the two that PAY §9.2's refusal — its
@@ -27699,7 +27699,7 @@ lemma accum_block_pending (sc : ScannerState)
     -- `h_framesS` (the cover is forgotten at the door; the resume arm's park
     -- punts its own, the recorded residue).
     exact accum_block_on_pendingContent sc sp_start sp_block sp_scan s_prep s' c
-      sp_prep sp_scan' h_stream_block
+      sp_prep sp_scan' sp_gramO h_stream_block h_runO
       h_close_pending h_line h_key h_vpack51 hcorr_prep hcorr_result h_corr
       h_noflow h_kbc h_scf h_stale47 h_arm77 h_preprocess h_dispatch h_bare h_dn h_fv h_base h_mono
       h_tail139 h_seqF168
@@ -27806,9 +27806,9 @@ lemma accum_block_pending (sc : ScannerState)
         (Or.inr trivial)
         -- Item 208: a property run holds a column, so the premise is refuted.
         (nic0_of_col_pos h_col0_p)
-  | pendingFlow _ _ _ _ h_arm77 _ h_nic0F =>
+  | pendingFlow _ _ _ _ h_arm77 _ h_nic0F _ h_gateF =>
     exact accum_block_on_closeThenBlock sc sp_start sp_scan s_prep s' c sp_prep sp_scan'
-      h_close_pending (Or.inr trivial) (Or.inr (fun h_res _ => block_dispatch_deferred_inline sp_start sp_block sp_scan' h_stream_block h_preprocess h_dispatch hcorr_result h_res)) hcorr_prep
+      h_close_pending (Or.inr trivial) (Or.inr (fun h_res _ => block_dispatch_deferred_inline sp_start sp_block sp_scan' h_stream_block h_preprocess h_dispatch hcorr_result h_res h_gateF)) hcorr_prep
       hcorr_result h_corr h_noflow h_arm77 h_preprocess h_dispatch
       (Or.inr trivial)
       (Or.inr trivial) h_bare h_dn h_fv h_base h_mono
