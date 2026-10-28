@@ -11,6 +11,8 @@ public import L4YAML.Proofs.Scanner.RegisterWitness
 public import L4YAML.Proofs.Scanner.FlowAdjacency
 public import L4YAML.Proofs.Scanner.FlowAdjacencyIx
 public import L4YAML.Proofs.Serialization.TraceOf.Leaves
+public import L4YAML.Proofs.Serialization.SerializationWellFormed
+public import L4YAML.Proofs.Serialization.TokenEvents
 public import Tests.VerifiedResult
 
 @[expose] public section Blanket
@@ -6325,6 +6327,126 @@ def testDeeperLandingResidueArm (state : IO.Ref TestCollector) : IO Unit := do
     checkM state s!"deeper landing: slot vs residue arm {label}" (got == expected)
       s!"(documents, root keys, first value rendered) = {repr got}; expected {repr expected}"
 
+
+/-- **Priority 51 (S5 slice 1, EVENTSOF-CONCEPT §9): the parser's serialization verdict vs
+    `checkFrom {} (tokenEvents tokens)`.**  S5(→) claims that every `parseStream` run the parser
+    accepts is a run `checkFrom` accepts on the tokens it consumed.  Rows pair the parser's verdict
+    on `scanFiltered input` with the checker's on the same tokens (`none` = the scanner refused
+    before either could speak); a `(true, false)` row anywhere refutes the lemma and fails the
+    build.  The scanner-shape premises the lemma carries (`TagUsesShaped`: tag-use handles are
+    `""`/`!`/`!!`/`!w+!`; `DirectivesClosed`: a directive run ends at `---`) and the
+    `streamEnd`-last shape that makes the consumed prefix the whole array are read as Booleans
+    on every scanned row, so the lemma's conclusion is exactly `checkFrom {} (tokenEvents ts)`
+    there.  Four hand-built token arrays pin the token-level GAP the premises exist for
+    (`parseStream` ok, `checkFrom` false): a `%TAG !h` handle without its closing `!`, the loop's
+    no-progress exit at a bare `key`, tokens after `streamEnd`, and a directive run with no `---`.
+    Closing or widening that gap (a parser, scanner or `tokenEvents` change) fails this grid. -/
+def s5Verdict (input : String) : Option (Bool × Bool) :=
+  match Scanner.scanFiltered input with
+  | .error _ => none
+  | .ok ts =>
+    let parserOk := match parseStream ts with | .ok _ => true | .error _ => false
+    some (parserOk, L4YAML.Proofs.Serialization.SerializationWellFormed.checkFrom {}
+      (L4YAML.Proofs.Serialization.TokenEvents.tokenEvents ts))
+
+def s5TokVerdict (ts : Array (Positioned YamlToken)) : Bool × Bool :=
+  let parserOk := match parseStream ts with | .ok _ => true | .error _ => false
+  (parserOk, L4YAML.Proofs.Serialization.SerializationWellFormed.checkFrom {}
+    (L4YAML.Proofs.Serialization.TokenEvents.tokenEvents ts))
+
+def s5TagUsesShaped (ts : Array (Positioned YamlToken)) : Bool :=
+  ts.all fun p => match p.val with
+    | .tag h _ => h == "" || h == "!" || h == "!!" || L4YAML.Proofs.Serialization.TokenEvents.isNamedHandle h
+    | _ => true
+
+def s5IsDirective : Option YamlToken → Bool
+  | some (.versionDirective ..) | some (.tagDirective ..) => true
+  | _ => false
+
+def s5DirectivesClosed (ts : Array (Positioned YamlToken)) : Bool :=
+  (List.range ts.size).all fun i =>
+    !s5IsDirective (ts[i]?.map (·.val)) ||
+      s5IsDirective (ts[i+1]?.map (·.val)) || (ts[i+1]?.map (·.val)) == some .documentStart
+
+def s5StreamEndLast (ts : Array (Positioned YamlToken)) : Bool :=
+  ts.size > 0 && (ts[ts.size - 1]?.map (·.val)) == some .streamEnd
+
+def s5Tok (t : YamlToken) : Positioned YamlToken := { val := t, pos := { offset := 0, line := 0, col := 0 } }
+
+def testParseOkCheckFrom (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 51: S5 slice 1 — parser verdict vs checkFrom {} (tokenEvents ts) on scanFiltered input (a (true,false) row refutes parse_ok_checkFrom); scanner-shape premises read as Booleans; the token-level gap A–D pinned as parseStream ok ∧ checkFrom false"
+  let accept : Option (Bool × Bool) := some (true, true)
+  let reject : Option (Bool × Bool) := some (false, false)
+  let rows : List (String × String × Option (Bool × Bool)) :=
+    [ ("empty stream", "", accept),
+      ("one bare document", "a", accept),
+      ("one explicit document", "--- a\n", accept),
+      ("two documents with `...` and `---` resets", "--- a\n...\n--- b\n", accept),
+      ("two documents, `---` only", "a\n---\nb", accept),
+      ("&x a (anchor, no alias)", "&x a", accept),
+      ("[&x a, *x] (alias after its anchor)", "[&x a, *x]", accept),
+      ("&x [*x] (self-reference: declaration-set reading)", "&x [*x]", accept),
+      ("&x [*x, *x]", "&x [*x, *x]", accept),
+      ("{&x a: *x}", "{&x a: *x}", accept),
+      ("%TAG !t! declared then used", "%TAG !t! tag:x,2000:\n--- !t!a b", accept),
+      ("%TAG !t! re-declared in document 2", "%TAG !t! tag:x,2000:\n--- !t!a b\n...\n%TAG !t! tag:y,2000:\n--- !t!c d", accept),
+      ("!!str a (secondary handle)", "!!str a", accept),
+      ("! a (non-specific tag)", "! a", accept),
+      ("!<tag:x> a (verbatim tag)", "!<tag:x> a", accept),
+      ("!a b (primary handle with suffix)", "!a b", accept),
+      ("%TAG !h … then !h x (use scans as `!` + `h`)", "%TAG !h tag:x,2000:\n--- !h x", accept),
+      ("%TAG !! redefined", "%TAG !! tag:x,2000:\n--- !!a b", accept),
+      ("%TAG ! redefined", "%TAG ! tag:x,2000:\n--- !a b", accept),
+      ("duplicate anchor across `...` reset", "--- &x a\n...\n--- &x b", accept),
+      ("duplicate anchor across `---` reset", "--- &x a\n--- &x b", accept),
+      ("%YAML 1.2 then document", "%YAML 1.2\n--- a", accept),
+      ("%TAG declared, never used", "%TAG !t! tag:x,2000:\n--- a", accept),
+      ("? a (explicit key)", "? a", accept),
+      ("!t!a without a declaration", "--- !t!a b", reject),
+      ("!t! used in document 2 after `...` (declaration does not survive the reset)", "%TAG !t! tag:x,2000:\n--- !t!a b\n...\n--- !t!c d", reject),
+      ("!t! used in document 2 after `---`", "%TAG !t! tag:x,2000:\n--- a\n--- !t!b", reject),
+      ("!t! used after `...` with no `---`", "%TAG !t! tag:x,2000:\n--- !t!a\n...\n!t!b", reject),
+      ("!a-b!c d (undeclared named handle)", "!a-b!c d", reject),
+      (": !t!a", ": !t!a", reject),
+      ("- !t!x", "- !t!x", reject),
+      ("a: !t!x", "a: !t!x", reject),
+      ("*x undeclared (scanner refuses)", "*x", none),
+      ("*x in document 2 after `...`", "--- &x a\n...\n--- *x", none),
+      ("*x in document 2 after `---`", "&x a\n--- *x", none),
+      ("[*x, &x a] (alias before its anchor)", "[*x, &x a]", none),
+      ("&a &b x (two anchors)", "&a &b x", none),
+      ("%TAG !a_b! (malformed handle)", "%TAG !a_b! tag:x,2000:\n--- a", none),
+      ("stray `]`", "]", none),
+      ("stray `}`", "}", none),
+      ("stray `, a`", ", a", none) ]
+  for (label, src, expected) in rows do
+    let got := s5Verdict src
+    checkM state s!"S5 verdict {label}" (got == expected)
+      s!"(parser ok, checkFrom) = {repr got}; expected {repr expected}"
+    checkM state s!"S5(→) never parser-ok/checker-false {label}" (got != some (true, false))
+      s!"parser accepted what checkFrom rejects: {repr got}"
+    match Scanner.scanFiltered src with
+    | .error _ => pure ()
+    | .ok ts =>
+      checkM state s!"S5 scanner shape (TagUsesShaped ∧ DirectivesClosed ∧ streamEnd last) {label}"
+        (s5TagUsesShaped ts && s5DirectivesClosed ts && s5StreamEndLast ts)
+        s!"tokens = {repr (ts.map (·.val)).toList}"
+  let gap : List (String × Array (Positioned YamlToken)) :=
+    [ ("A: `%TAG !h` handle without its closing `!` (parser registers it, tokenEvents declares only named handles)",
+        #[s5Tok .streamStart, s5Tok (.tagDirective "!h" "p"), s5Tok .documentStart, s5Tok (.tag "!h" "x"), s5Tok .streamEnd]),
+      ("B1: no-progress exit at a bare `key` before a tag use", #[s5Tok .streamStart, s5Tok .key, s5Tok (.tag "!t!" "x"), s5Tok .streamEnd]),
+      ("B2: no-progress exit at a bare `key` before an undeclared alias",
+        #[s5Tok .streamStart, s5Tok (.scalar "a" .plain), s5Tok .key, s5Tok (.alias "x"), s5Tok .streamEnd]),
+      ("C: tokens after `streamEnd`", #[s5Tok .streamStart, s5Tok .streamEnd, s5Tok (.tag "!t!" "x")]),
+      ("D: directive run with no `---`", #[s5Tok .streamStart, s5Tok (.tagDirective "!t!" "p"), s5Tok (.tag "!t!" "x"), s5Tok .streamEnd]) ]
+  for (label, ts) in gap do
+    let got := s5TokVerdict ts
+    checkM state s!"S5 token-level gap pinned {label}" (got == (true, false))
+      s!"(parser ok, checkFrom) = {repr got}; expected (true, false) — the premises of parseStream_ok_checkFrom exist for this gap"
+    checkM state s!"S5 token-level gap is outside the premises {label}"
+      (!(s5TagUsesShaped ts && s5DirectivesClosed ts && s5StreamEndLast ts) || label.startsWith "B")
+      s!"the gap input satisfies the scanner-shape premises; only the no-progress rows (B) may"
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -6388,6 +6510,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testNoPopAfterClosedNode state
   testDeeperLandingResidueArm state
   testDeeperLandingOnMapPark state
+  testParseOkCheckFrom state
   testBlockScalarTailEof state
   let results ← finish state
   return { name := "adversarialinstantiation",

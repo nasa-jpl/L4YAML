@@ -147,7 +147,7 @@ capstonesInTp={b.capstonesInTrans.size}"
     one.
     260 on 2026-10-23 (after `Serialization.EventsOf` and `RefLex`), when `Proofs.Production.Acceptance.Quoted` joined the
     library — the one-line quoted-scalar scanner converses. -/
-def expectedClosure : Nat := 272  -- +1: `Proofs.Serialization.TraceOf.UniqueFlow` (slice 2)
+def expectedClosure : Nat := 273  -- +1: `Proofs.Serialization.ParseCheckFrom` (S5 slice 1)
 
 /-- The park's populations beside the arm's, from one pass. -/
 -- 2026-10-24 (B3 [66] col-0 threading): see the dated note on `expectedDirect` below.

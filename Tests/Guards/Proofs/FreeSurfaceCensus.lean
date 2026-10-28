@@ -85,7 +85,8 @@ def expectedUnread : List Name :=
   [`L4YAML.Output.Events, `L4YAML.Output.EventsIx,
    `L4YAML.Output.Json, `L4YAML.Output.JsonIx]
 
-def expectedClosure : String := "modulesSeen=265"
+def expectedClosure : String := "modulesSeen=266"
+-- 265 → 266 on 2026-10-28: `Proofs.Serialization.ParseCheckFrom` (S5 slice 1, `parse_ok_checkFrom`)
 -- 252 → 253 on 2026-10-23: `Proofs.Production.Acceptance.Quoted`, the one-line
 -- quoted-scalar scanner converses.  -- 253 → 255 on 2026-10-23: `Proofs.Parser.TokenGrammar`, `StreamCompleteness` (Stream D)
 -- 255 → 256 on 2026-10-23: `Proofs.Production.Acceptance.Plain`, the one-line plain-scalar
