@@ -15,6 +15,7 @@ public import L4YAML.Proofs.Scanner.FlowAdjacencyIx
 public import L4YAML.Proofs.Serialization.TraceOf.Leaves
 public import L4YAML.Proofs.Serialization.SerializationWellFormed
 public import L4YAML.Proofs.Serialization.TokenEvents
+public import L4YAML.Proofs.Serialization.ParseCheckFrom
 public import Tests.VerifiedResult
 
 @[expose] public section Blanket
@@ -6556,6 +6557,83 @@ def testTokenEventExtractorsSeam (state : IO.Ref TestCollector) : IO Unit := do
   checkM state "P55 R1/R3 refute `TokenGrammar ∧ checkFrom {} (tokenEvents ts) → parseStream ok`"
     ((trows.filter (fun r => r.2.2.2.1 && r.2.2.2.2.2 && !r.2.2.1)).length == 2) "expected exactly R1 and R3"
 
+/-- **Priority 54 (S5 slice 1 review, EVENTSOF-CONCEPT §9): `ParseNodeCF` instantiated
+directly — `parseNode` from a hand-built parse state at EVERY position of short block and
+flow streams, fuel 0/1/2/3 and "enough".**  Rule 2 for `parseNode_cf_all : ∀ n, ParseNodeCF n`
+(7.7 `parse_iff_grammar` via S5), whose scope is any parser state and any fuel, not the
+whole-input verdicts Priority 51 compares.  For each `(ts, p, fuel)` the state is
+`{ tokens := ts, pos := p }` (and, for the alias rows, the same state with `x` declared), the
+hypothesis is `parseNode ps fuel = .ok (_, ps')` together with `TagUsesShaped ts`, and the
+claim is `CF ps ps'` run executably: same tokens, `ps.pos ≤ ps'.pos`, tag table unchanged,
+in-range stays in-range, and `runToks (seg ts ps.pos ps'.pos)` from the state the entry sits
+below (its declared anchors and named handles) succeeds at a state the exit sits below.
+Rows whose hypothesis fails (`parseNode` errors — fuel out, position on a closer, an
+undeclared alias — or an unshaped tag use) are counted as **failed-hypothesis**, apart from
+the **theorem-holds** rows; the grid requires both buckets non-empty and the hypothesis to
+hold at fuel 1 and 2 somewhere, so the claim is exercised, not vacuous. -/
+def testParseNodeCF (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 54: S5 slice 1 — ParseNodeCF at every position of short streams, fuel 0/1/2/3/enough (theorem-holds vs failed-hypothesis)"
+  let named (hs : Array (String × String)) : List String := (hs.toList.map (·.1)).filter L4YAML.Proofs.Serialization.TokenEvents.isNamedHandle
+  let shaped (ts : Array (Positioned YamlToken)) : Bool := ts.all fun t => match t.val with
+    | .tag h _ => h == "" || h == "!" || h == "!!" || L4YAML.Proofs.Serialization.TokenEvents.isNamedHandle h
+    | _ => true
+  let cfTwin (ps ps' : ParseState) : Bool :=
+    ps'.tokens.size == ps.tokens.size &&
+    (List.zip ps'.tokens.toList ps.tokens.toList).all (fun ab => ab.1.val == ab.2.val) &&
+    decide (ps.pos ≤ ps'.pos) && ps'.tagHandles == ps.tagHandles &&
+    (!decide (ps.pos ≤ ps.tokens.size) || decide (ps'.pos ≤ ps.tokens.size)) &&
+    (let s₀ : L4YAML.Proofs.Serialization.ParseCheckFrom.CS :=
+       ({ anchors := ps.declaredAnchors.toList, tagHandles := named ps.tagHandles }, [])
+     match L4YAML.Proofs.Serialization.ParseCheckFrom.runToks
+         (L4YAML.Proofs.Serialization.ParseCheckFrom.seg ps.tokens ps.pos ps'.pos) s₀ with
+     | some s' => ps'.declaredAnchors.all (fun a => s'.1.anchors.contains a) &&
+                  (named ps'.tagHandles).all (fun h => s'.1.tagHandles.contains h)
+     | none => false)
+  let srcs : List String :=
+    [ "a", "&x a", "[&x a, *x]", "{a: &y b, c: *y}", "- a\n- &x b\n- *x", 
+      "!!str a", "! a", "!<tag:x> a", "%TAG !t! tag:x,2000:\n--- !t!a b",
+      "&x [*x, {k: *x}]", "- [a, b]\n- {c: d}", "? a\n: b",  
+      "- &x\n  - a\n- *x", "a:\n  b: &x c\n  d: *x", "--- !!map {a: !!str b}", "[&x a, &x b, *x]" ]
+  let mk (t : YamlToken) : Positioned YamlToken := { val := t, pos := { offset := 0, line := 0, col := 0 } }
+  let hand : List (String × Array (Positioned YamlToken)) :=
+    [ ("A unshaped %TAG !h + use", #[mk .streamStart, mk (.tagDirective "!h" "p"), mk .documentStart, mk (.tag "!h" "x"), mk .streamEnd]),
+      ("E unshaped !a_b!", #[mk .streamStart, mk (.tagDirective "!a_b!" "p"), mk .documentStart, mk (.tag "!a_b!" "x"), mk .streamEnd]),
+      ("alias then anchor", #[mk .streamStart, mk .flowSequenceStart, mk (.alias "x"), mk .flowEntry, mk (.anchor "x"), mk (.scalar "a" .plain), mk .flowSequenceEnd, mk .streamEnd]),
+      -- undeclared aliases are refused by the scanner, so they only exist as token rows
+      ("map value alias undeclared", #[mk .streamStart, mk .blockMappingStart, mk .key, mk (.scalar "a" .plain), mk .value, mk (.scalar "b" .plain), mk .key, mk (.scalar "c" .plain), mk .value, mk (.alias "x"), mk .blockEnd, mk .streamEnd]),
+      ("alias across ---", #[mk .streamStart, mk .documentStart, mk (.anchor "x"), mk (.scalar "a" .plain), mk .documentEnd, mk .documentStart, mk (.alias "x"), mk .streamEnd]),
+      ("nested flow alias before anchor", #[mk .streamStart, mk .flowSequenceStart, mk (.scalar "a" .plain), mk .flowEntry, mk .flowSequenceStart, mk (.scalar "b" .plain), mk .flowEntry, mk (.alias "x"), mk .flowSequenceEnd, mk .flowEntry, mk (.anchor "x"), mk (.scalar "c" .plain), mk .flowSequenceEnd, mk .streamEnd]) ]
+  let holds ← IO.mkRef (0 : Nat)
+  let failed ← IO.mkRef (0 : Nat)
+  let fuel12 ← IO.mkRef (0 : Nat)
+  let streams : List (String × Array (Positioned YamlToken)) ←
+    (srcs.filterMapM fun src => do
+      match Scanner.scanFiltered src with
+      | .ok ts => pure (some (s!"{repr src}", ts))
+      | .error e => checkM state s!"P54 {repr src} scans" false s!"scan error {repr e}"; pure none)
+  for (label, ts) in streams ++ hand do
+    for p in List.range (ts.size + 1) do
+      for fuel in [0, 1, 2, 3, 60] do
+        for (seed, ps) in [("", ({ tokens := ts, pos := p } : ParseState)),
+                           (" +&x", ({ tokens := ts, pos := p } : ParseState).declareAnchor "x")] do
+          let row := s!"P54 {label} pos={p} fuel={fuel}{seed}"
+          if !shaped ts then
+            failed.modify (· + 1)
+            checkM state s!"{row}: failed-hypothesis (TagUsesShaped)" true ""
+          else
+            match TokenParser.parseNode ps fuel with
+            | .error _ =>
+              failed.modify (· + 1)
+              checkM state s!"{row}: failed-hypothesis (parseNode errors)" true ""
+            | .ok (_, ps') =>
+              holds.modify (· + 1)
+              if fuel == 1 || fuel == 2 then fuel12.modify (· + 1)
+              checkM state s!"{row}: theorem-holds — CF ps ps'" (cfTwin ps ps')
+                s!"CF refuted: pos {ps.pos} → {ps'.pos}, declared {repr ps'.declaredAnchors}, tags {repr ps'.tagHandles}"
+  let (h, f, f12) := (← holds.get, ← failed.get, ← fuel12.get)
+  checkM state s!"P54 buckets: theorem-holds={h} failed-hypothesis={f} (hypothesis holds at fuel 1/2 on {f12} rows)"
+    (h ≥ 100 && f ≥ 100 && f12 ≥ 20) "the grid is vacuous on one bucket"
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -6621,6 +6699,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testDeeperLandingPaid state
   testDeeperLandingOnMapPark state
   testParseOkCheckFrom state
+  testParseNodeCF state
   testBlockScalarTailEof state
   testTokenEventExtractorsSeam state
   let results ← finish state
