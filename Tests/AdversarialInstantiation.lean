@@ -6486,7 +6486,7 @@ def testDeeperLandingPaid (state : IO.Ref TestCollector) : IO Unit := do
 /-- **Priority 55 (S5 slice 2 Rule-2 guard, EVENTSOF-CONCEPT §9): the two token-event
 extractors on the guard inputs of `Tests/Guards/Proofs/TokenEventExtractors.lean`.**  Every
 row runs the parser (`parseStream`), `checkTokenGrammar`, the OLD state verdict
-(`checkTokenState`, over `TokenGrammar.tokenEventsOf`), the NEW one
+(the retired checkTokenState over tokenEventsOf, recorded as literals), the NEW one
 (`checkFrom {} (tokenEvents ts)`, over `TokenEvents.tokenEvents`) and whether the two traces
 are equal.  Scanner rows: parser and both verdicts agree on all 32, the traces agree on 31 —
 the scanner-reachable witness `%TAG !h …⏎--- !h x` is the one trace seam (verdicts still
@@ -6496,9 +6496,7 @@ hold while the parser REFUSES — the refutation of ruling (c) under the un-narr
 `TG.DocStart` that the guard file records. -/
 def testTokenEventExtractorsSeam (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 55: S5 slice 2 guard — tokenEventsOf vs tokenEvents: parser / TG / old / new verdicts and trace equality on the %TAG seam, A/B/C/D/D'/E and R1–R6"
-  let ev₁ (ts : Array (Positioned YamlToken)) := L4YAML.Proofs.TokenGrammar.tokenEventsOf ts
   let ev₂ (ts : Array (Positioned YamlToken)) := L4YAML.Proofs.Serialization.TokenEvents.tokenEvents ts
-  let oldV (ts : Array (Positioned YamlToken)) : Bool := L4YAML.Proofs.TokenGrammar.checkTokenState ts
   let newV (ts : Array (Positioned YamlToken)) : Bool :=
     L4YAML.Proofs.Serialization.SerializationWellFormed.checkFrom {} (ev₂ ts)
   let pOk (ts : Array (Positioned YamlToken)) : Bool := match TokenParser.parseStream ts with | .ok _ => true | .error _ => false
@@ -6528,36 +6526,37 @@ def testTokenEventExtractorsSeam (state : IO.Ref TestCollector) : IO Unit := do
     match Scanner.scanFiltered src with
     | .error e => checkM state s!"P55 scanner row scans {repr src}" false s!"scan error {repr e}"
     | .ok ts =>
-      checkM state s!"P55 {repr src}: parser={ep} old=new={ev} traces-equal={eq}"
-        (pOk ts == ep && oldV ts == ev && newV ts == ev && (ev₁ ts == ev₂ ts) == eq)
-        s!"got parser={pOk ts} old={oldV ts} new={newV ts} equal={ev₁ ts == ev₂ ts}"
+      -- `eq` records whether the retired extractor agreed with `tokenEvents` here (false only on the
+      -- `%TAG !h` witness); the live checks are the parser's and the surviving verdict's
+      checkM state s!"P55 {repr src}: parser={ep} new={ev} (retired extractor agreed={eq})"
+        (pOk ts == ep && newV ts == ev) s!"got parser={pOk ts} new={newV ts}"
   let mk (t : YamlToken) : Positioned YamlToken := { val := t, pos := { offset := 0, line := 0, col := 0 } }
-  -- token rows: (label, tokens, parser ok, TG, old verdict, new verdict)
+  -- token rows: (label, tokens, parser ok, TG (narrowed, spec [209]), retired-extractor verdict as a literal, new verdict)
   let trows : List (String × Array (Positioned YamlToken) × Bool × Bool × Bool × Bool) :=
     [ ("A %TAG !h + use", #[mk .streamStart, mk (.tagDirective "!h" "p"), mk .documentStart, mk (.tag "!h" "x"), mk .streamEnd], true, true, true, false),
       ("B1 key at doc start", #[mk .streamStart, mk .key, mk (.tag "!t!" "x"), mk .streamEnd], true, false, false, false),
       ("B2 scalar key alias", #[mk .streamStart, mk (.scalar "a" .plain), mk .key, mk (.alias "x"), mk .streamEnd], true, false, false, false),
       ("C after streamEnd", #[mk .streamStart, mk .streamEnd, mk (.tag "!t!" "x")], true, false, false, false),
-      ("D directives, no ---, use", #[mk .streamStart, mk (.tagDirective "!t!" "p"), mk (.tag "!t!" "x"), mk .streamEnd], true, true, true, false),
-      ("D' directive then streamEnd", #[mk .streamStart, mk (.tagDirective "!t!" "p"), mk .streamEnd], true, true, true, true),
+      ("D directives, no ---, use", #[mk .streamStart, mk (.tagDirective "!t!" "p"), mk (.tag "!t!" "x"), mk .streamEnd], true, false, true, false),
+      ("D' directive then streamEnd", #[mk .streamStart, mk (.tagDirective "!t!" "p"), mk .streamEnd], true, false, true, true),
       ("E %TAG !a_b!", #[mk .streamStart, mk (.tagDirective "!a_b!" "p"), mk .documentStart, mk (.tag "!a_b!" "x"), mk .streamEnd], true, true, true, false),
-      ("R1 --- &x a %TAG *x", #[mk .streamStart, mk .documentStart, mk (.anchor "x"), mk (.scalar "a" .plain), mk (.tagDirective "!t!" "p"), mk (.alias "x"), mk .streamEnd], false, true, false, true),
-      ("R2 --- &x a ... %TAG *x", #[mk .streamStart, mk .documentStart, mk (.anchor "x"), mk (.scalar "a" .plain), mk .documentEnd, mk (.tagDirective "!t!" "p"), mk (.alias "x"), mk .streamEnd], false, true, false, false),
-      ("R3 --- &x a %YAML *x", #[mk .streamStart, mk .documentStart, mk (.anchor "x"), mk (.scalar "a" .plain), mk (.versionDirective 1 2), mk (.alias "x"), mk .streamEnd], false, true, false, true),
+      ("R1 --- &x a %TAG *x", #[mk .streamStart, mk .documentStart, mk (.anchor "x"), mk (.scalar "a" .plain), mk (.tagDirective "!t!" "p"), mk (.alias "x"), mk .streamEnd], false, false, false, true),
+      ("R2 --- &x a ... %TAG *x", #[mk .streamStart, mk .documentStart, mk (.anchor "x"), mk (.scalar "a" .plain), mk .documentEnd, mk (.tagDirective "!t!" "p"), mk (.alias "x"), mk .streamEnd], false, false, false, false),
+      ("R3 --- &x a %YAML *x", #[mk .streamStart, mk .documentStart, mk (.anchor "x"), mk (.scalar "a" .plain), mk (.versionDirective 1 2), mk (.alias "x"), mk .streamEnd], false, false, false, true),
       ("R4 &x a %TAG --- *x", #[mk .streamStart, mk (.anchor "x"), mk (.scalar "a" .plain), mk (.tagDirective "!t!" "p"), mk .documentStart, mk (.alias "x"), mk .streamEnd], false, true, false, false),
-      ("R5 %TAG !t!x a (no ---)", #[mk .streamStart, mk (.tagDirective "!t!" "p"), mk (.tag "!t!" "x"), mk (.scalar "a" .plain), mk .streamEnd], true, true, true, false),
-      ("R6 --- a %TAG !t!x b (no ---)", #[mk .streamStart, mk .documentStart, mk (.scalar "a" .plain), mk (.tagDirective "!t!" "p"), mk (.tag "!t!" "x"), mk (.scalar "b" .plain), mk .streamEnd], true, true, true, false) ]
+      ("R5 %TAG !t!x a (no ---)", #[mk .streamStart, mk (.tagDirective "!t!" "p"), mk (.tag "!t!" "x"), mk (.scalar "a" .plain), mk .streamEnd], true, false, true, false),
+      ("R6 --- a %TAG !t!x b (no ---)", #[mk .streamStart, mk .documentStart, mk (.scalar "a" .plain), mk (.tagDirective "!t!" "p"), mk (.tag "!t!" "x"), mk (.scalar "b" .plain), mk .streamEnd], true, false, true, false) ]
   for (label, ts, ep, etg, eold, enew) in trows do
-    checkM state s!"P55 {label}: parser={ep} TG={etg} old={eold} new={enew}"
-      (pOk ts == ep && tg ts == etg && oldV ts == eold && newV ts == enew)
-      s!"got parser={pOk ts} TG={tg ts} old={oldV ts} new={newV ts}"
+    checkM state s!"P55 {label}: parser={ep} TG={etg} new={enew} (retired verdict was {eold})"
+      (pOk ts == ep && tg ts == etg && newV ts == enew)
+      s!"got parser={pOk ts} TG={tg ts} new={newV ts}"
   -- the parser's registration follows the OLD extractor: wherever old and new differ, old = parser
-  for (label, ts, ep, _etg, eold, enew) in trows do
+  for (label, ts, _ep, _etg, eold, enew) in trows do
     if eold != enew then
-      checkM state s!"P55 {label}: parser follows tokEvents" (eold == ep) s!"parser={ep} old={eold}"
+      checkM state s!"P55 {label}: parser follows the retired reading" (pOk ts == eold) s!"parser={pOk ts} recorded={eold}"
   -- R1/R3: `TG ∧ new verdict` with the parser refusing — ruling (c) refuted as stated
-  checkM state "P55 R1/R3 refute `TokenGrammar ∧ checkFrom {} (tokenEvents ts) → parseStream ok`"
-    ((trows.filter (fun r => r.2.2.2.1 && r.2.2.2.2.2 && !r.2.2.1)).length == 2) "expected exactly R1 and R3"
+  checkM state "P55 no row has TokenGrammar ∧ checkFrom (tokenEvents ts) with parseStream refusing (R1/R3 closed by [209])"
+    ((trows.filter (fun r => tg r.2.1 && newV r.2.1 && !pOk r.2.1)).length == 0) "parseStream_accepts refuted"
 
 /-- **Priority 54 (S5 slice 1 review, EVENTSOF-CONCEPT §9): `ParseNodeCF` instantiated
 directly — `parseNode` from a hand-built parse state at EVERY position of short block and

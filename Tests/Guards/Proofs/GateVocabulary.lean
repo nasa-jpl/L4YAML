@@ -99,9 +99,7 @@ namespace L4YAML.Tests.Guards.GateVocabulary
 -- name, so a gate to this census) is retired with its extractor; `TokenStateOk` is stated over
 -- `TokenEvents.tokenEvents` directly.  (Not spelled here: it would move `self`.)
 def expectedGateVocab : String :=
-def expectedGateVocab : String :=
-def expectedGateVocab : String :=
-  "names=113 mentions=482 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
+  "names=112 mentions=482 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
 
 end L4YAML.Tests.Guards.GateVocabulary
 
