@@ -280,7 +280,9 @@ def expected : List String :=
    "seq/frames/occ=2  ×9",
    "seq/other/occ=2  ×3",
    "stream/frames/occ=1  ×3",
-   "stream/frames/occ=2  ×8",
+   -- item 385: `deeperLandingResume`/`deeperLandingResumeSeq` conclude the openers'
+   -- `ResumeFrames (SLYamlStream sp_start) ks` resume binder
+   "stream/frames/occ=2  ×10",
    "stream/frames/occ=3  ×7",
    -- item 369: `accum_block_on_pendingBlock.h_closeF_old` (the `-` park's frames,
    -- `pendingBlock.h_closeF` threaded) is one more stream-bottom frames carrier
@@ -291,8 +293,9 @@ def expected : List String :=
    "stream/other/occ=1  ×27",
    "stream/other/occ=2  ×14",
    "stream/other/occ=3  ×6",
-   "stream/other/occ=4  ×4",
-   "stream/other/occ=6  ×1",
+   "stream/other/occ=4  ×5",
+   -- item 385: the helpers' literal `map nv :: ks` / `ks` frame lists
+   "stream/other/occ=6  ×2",
    "stream/other/occ=8  ×1",
    "valueline/bottom/occ=1  ×34",
    "valueline/frames/occ=1  ×2",

@@ -287,7 +287,9 @@ def isSurfFace (env : Environment) (lhs : Expr) : MetaM Bool := do
 -- 2026-10-24 (item 350): binders 163 → 159, faces 61 → 59, heads 19 → 18 — `h_expl`/`h_explUp`
 -- stopped being optional faces (their alternative is `NotQuestionPark sc`, paid by the `:` producers).
 -- 2026-10-26 (item 369): binders=165 → binders=166 — `accum_block_on_pendingBlock.h_closeF_old` (the `-` park's frames, read at the `:`/`?` landing for `h_res_land`).
-def expectedFaceTally : String := "binders=166 faces=62 heads=20"
+-- 2026-10-28 (item 385): binders 166 → 167
+-- — `deeperLandingResume.h_valF`, one more optional binder.
+def expectedFaceTally : String := "binders=167 faces=62 heads=20"
 
 /-- The conclusion head of every left disjunct.  `FVAR 2` is `frameChainUnion`,
     whose face is schematic in `P` — the two rows no census of any kind can
@@ -325,7 +327,7 @@ def expectedHeadCensus : List String :=
    "Sound 2",
    "SuffixRun 6",
    "le 11",
-   "lt 29"]
+   "lt 30"]
 
 /-! ## §3  The rung-1 census: which faces are vacuous on their own
 
@@ -373,7 +375,9 @@ which of four reasons applies. -/
 -- `flowOpen_marker.h_doc`) name scanner state alone, so `state` 25 → 27.
 -- 2026-10-24 (item 350): binders 163 → 159, surf 136 → 132 — `h_expl`/`h_explUp` left the optional population.
 -- 2026-10-26 (item 369): binders=165 → binders=166, surf=134 → surf=135 — `accum_block_on_pendingBlock.h_closeF_old` (the `-` park's frames, read at the `:`/`?` landing for `h_res_land`).
-def expectedFidelity : String := "binders=166 surf=135 state=31"
+-- 2026-10-28 (item 385): binders 166 → 167, surf 135 → 136
+-- — `deeperLandingResume.h_valF`: one more surface-shaped optional binder.
+def expectedFidelity : String := "binders=167 surf=136 state=31"
 
 /-- The 25 faces a state census COULD evaluate — 27 since item 300 — which is
     the population the mandate's instrument is actually defined over.  Two of them
@@ -683,7 +687,9 @@ rather than as a count. -/
 -- `∨ True` to the syntactic count (the lemma states the family's alternative generically).
 -- 2026-10-24 (item 350): syntactic 156 → 153, population 158 → 155 — as the face tally.
 -- 2026-10-26 (item 369): syntactic=157 → syntactic=158, population=159 → population=160 — `accum_block_on_pendingBlock.h_closeF_old` (the `-` park's frames, read at the `:`/`?` landing for `h_res_land`).
-def expectedHiddenTally : String := "hiddenDefs=1 syntactic=158 hiddenOnly=2 population=160"
+-- 2026-10-28 (item 385): syntactic 158 → 159, population 160 → 161
+-- — the same binder, syntactically optional.
+def expectedHiddenTally : String := "hiddenDefs=1 syntactic=159 hiddenOnly=2 population=161"
 
 def expectedHiddenDefs : List String := ["ResumeKeyCtx"]
 
@@ -864,7 +870,9 @@ one unfolding, and §6 is the item where those two disagreed about binders. -/
 -- 2026-10-26 (item 367 review): `collectTagHandleDirectiveLoop_inputEnd` removed (no caller): theorems 6326 → 6325.
 -- 2026-10-27 (item 371): `ResumeFrames.one` added: theorems 6325 → 6326.
 -- Item 372 (2026-10-27): `SeqTopKey.of_eq` and `seqTopKey_refuted_at_colon` (+2).
-def expectedNoopTally : String := "theorems=6335 byElab=15 byWhnf=15 elabOnly=0 whnfOnly=0"
+-- 2026-10-28 (item 385): theorems 6335 → 6337, byElab 15 → 17, byWhnf 15 → 17
+-- — the two item-385 helpers conclude the openers' `(∃ ks, …) ∨ True` binder shape, a §8 no-op conclusion by this census; their worth is the three site leaves they route, not their statements (read at RelaySupplyCensus's SPLIT BRANCH: DECLINE-closed 103 → 100).
+def expectedNoopTally : String := "theorems=6337 byElab=17 byWhnf=17 elabOnly=0 whnfOnly=0"
 -- 5302 → 5344 on 2026-10-18 (plan row 20's close, closure-log item 280): the
 -- parse-side alias obligation moved to §7.1's DECLARATION set, so the carrier
 -- grew and the predicate gained its tools.  What is new in kind: `AG` carries
@@ -941,6 +949,8 @@ def expectedNoopConclusions : List String :=
    "FlowBaseRoutes.vslot",
    "PreprocessIndentStable.IndentFloor.transport",
    "dedent_cover_of_landing",
+   "deeperLandingResume",
+   "deeperLandingResumeSeq",
    "flowKeyHead",
    "flowKeyRoute_of_open",
    "flowKeyRoute_of_root",

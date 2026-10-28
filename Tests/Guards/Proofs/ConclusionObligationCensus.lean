@@ -292,7 +292,9 @@ partial def scanTerm (e : Expr) (seen : Std.HashSet Expr) (r i : Nat) :
 -- 2026-10-20 (item 309): `rows` 18 → 15, `res` 59 → 57 — `frameChainUnion`, `flowVPack_of_close` and `explFrameValueLine`
 -- conclude in `∨ alt` (generic in the alternative) and leave the `∨ True` survey.
 -- Item 374: res 54 → 56 — the resume context's face disjunct and `h_build`'s route disjunct.
-def expectedLedgerTally : String := "rows=15 res=56"
+-- 2026-10-28 (item 385): rows 15 → 17, res 56 → 59
+-- — the two item-385 helpers conclude `(∃ ks, …) ∨ True`: two rows, three `Or.inr trivial` residues (the dedent at each, the frameless park at the mapping one).
+def expectedLedgerTally : String := "rows=17 res=59"
 
 /-- The rows, machine-produced, sorted by `res` then `prem` descending.  Three
     rows are all-zero — the proof never reaches the right arm by any route —
@@ -321,9 +323,10 @@ def expectedLedgerTally : String := "rows=15 res=56"
 -- 2026-10-24 (B3 [66] col-0 threading): `flowKeyRoute_of_root`/`_of_open` are restated from the park's
 -- `sp_gram` with the run + gate; the residual/implicit counts move with the new premises.
 -- Item 374: `resumectx_of_landing` res 9 → 11 (the face's two `Or.inl (Or.inr …)` conclusions).
+-- 2026-10-28 (item 385): rows 15 → 17 — `deeperLandingResume` (res=2) and `deeperLandingResumeSeq` (res=1), the
+-- helpers' own dedent/frameless declines; no existing row moved.
 def expectedLedger : List String :=
-  [
-   "res=11 imp=100 prem=6 proj=0 flowKeyRoute_of_root",
+  ["res=11 imp=100 prem=6 proj=0 flowKeyRoute_of_root",
    "res=11 imp=74 prem=3 proj=0 resumectx_of_landing",
    "res=9 imp=86 prem=2 proj=0 flowKeyRoute_of_open",
    "res=4 imp=7 prem=1 proj=0 markerctx_of_landing",
@@ -333,12 +336,13 @@ def expectedLedger : List String :=
    "res=3 imp=5 prem=1 proj=0 flowOpen_stamp",
    "res=3 imp=12 prem=0 proj=0 keyctx_of_preprocess",
    "res=3 imp=12 prem=0 proj=0 nodocctx_of_preprocess",
+   "res=2 imp=15 prem=1 proj=0 deeperLandingResume",
    "res=1 imp=4 prem=1 proj=0 PreprocessIndentStable.IndentFloor.transport",
    "res=1 imp=4 prem=1 proj=0 flowOpen_floor_at_prep",
+   "res=1 imp=1 prem=0 proj=0 deeperLandingResumeSeq",
    "res=0 imp=0 prem=0 proj=0 flowKeyHead",
    "res=0 imp=0 prem=0 proj=1 FlowBaseRoutes.key",
-   "res=0 imp=0 prem=0 proj=1 FlowBaseRoutes.vslot",
-  ]
+   "res=0 imp=0 prem=0 proj=1 FlowBaseRoutes.vslot"]
 
 /-! ## §4 What stopped the other five, and what it cost
 

@@ -1148,6 +1148,8 @@ def expectedUnborn : List String := [
 -- 2026-10-25 (#99 review): liteNodes=598322 → liteNodes=598322 — the dead `FlowLead` + two lemmas deleted; `leadFree`/`closeFree` are `Bool` (walked-term total).
 -- 2026-10-26 (item 367, `[82]`): module-wide tallies only (StreamAccum directive sites apply `scannedDirective_toSL`; three `s-l-comments` lemmas added); origins/routes unchanged: alts 5209 → 5203, nodes 13722 → 13686, liteNodes 621993 → 621478.
 -- 2026-10-26 (item 370): one more frame fact at the sibling `-` arm (`h_closeF_old` relayed into `pendingBlock.h_closeF`).
+-- 2026-10-28 (item 385): liteNodes 634791 → 634748
+-- — tree-size counts only (the two item-385 helpers and their three call sites); no origin row moved.
 def expectedLine : String :=
   -- 2026-10-25 (item 359): punt 12 → 11, stamp 39 → 40 — the `noPending` value-park face pays `PackAlt.ofRefused (h_noek …)`;
   -- lapps 806 → 807, liteNodes 607398 → 607407 — that one application and its term.
@@ -1163,7 +1165,7 @@ def expectedLine : String :=
 -- `ResumeFrames`; `question_open_map`'s `h_expl`/`h_closeFV`/`h_framesV` come from the bound tail route `h_route51F`.
 -- Item 372 (2026-10-27): the Or-shaped route conjunct of `ImplicitKeyPack` (summary mirrors the five `(Or)` rows).
 -- Item 374: lets=647 → 648, lapps=821 → 822, alts=5234 → 5243, nodes=13694 → 13696, liteNodes=630069 → 632322 — the resume context's face disjunct and `resumectx_of_landing`'s `h_base`.
-  "positions=49 packaged=7 packConsts=[ImplicitKeyPack,PropsKeyPack] rows=184 ctorRows=98 paramRows=86 packagedRows=29 punt=7 stamp=44 built=133 origins=67 originRows=32 route=12 frames=29 tail=14 other=0 concl=8 invariant=4 heldOrigins=15 allHeld=3 someHeld=36 noneHeld=66 unbornRows=13 relayedPunt=0 relayedStamp=11 relayedAbsurd=4 relayedFact=0 deadRows=0 unbornPos=5 rounds=5 follows=360 lets=652 lapps=822 alts=5277 nodes=13696 liteNodes=634791"
+  "positions=49 packaged=7 packConsts=[ImplicitKeyPack,PropsKeyPack] rows=184 ctorRows=98 paramRows=86 packagedRows=29 punt=7 stamp=44 built=133 origins=67 originRows=32 route=12 frames=29 tail=14 other=0 concl=8 invariant=4 heldOrigins=15 allHeld=3 someHeld=36 noneHeld=66 unbornRows=13 relayedPunt=0 relayedStamp=11 relayedAbsurd=4 relayedFact=0 deadRows=0 unbornPos=5 rounds=5 follows=360 lets=652 lapps=822 alts=5277 nodes=13696 liteNodes=634748"
 
 /-! ## §4 The reading -/
 

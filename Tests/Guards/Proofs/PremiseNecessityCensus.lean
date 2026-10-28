@@ -356,6 +356,8 @@ declarations' own binders and not by a rescoring of an existing one.
 -- 2026-10-26 (item 367, `[82]`): the three `s-l-comments` composition lemmas join StreamAccum: decls 1317 → 1320, FIELD +2, READ +4, RELAY +4.
 -- 2026-10-26 (item 369): READ=1375 → READ=1376 — `accum_block_on_pendingBlock.h_closeF_old` (the `-` park's frames, read at the `:`/`?` landing for `h_res_land`).
 -- Item 374: `h_base` on `resumectx_of_landing` and the resume context's face disjunct — constants/decls +2, READ +6, RELAY +1.
+-- 2026-10-28 (item 385): constants 1701 → 1703, decls 1338 → 1340, READ 1421 → 1424, RELAY 2660 → 2662
+-- — the two item-385 helpers; `deeperLandingResume.h_valF` is one more optional context (READ inside the helper).
 def expectedModuleTallyP : String :=
   -- 2026-10-24 (item 350): constants 1424 → 1430, decls 1132 → 1137, READ 1207 → 1209, RELAY 2233 → 2237,
   -- RETURN 139 → 140 — `NotQuestionPark` and its three lemmas; `explFrameValueLine`'s split alternative.
@@ -370,7 +372,7 @@ def expectedModuleTallyP : String :=
 -- Item 372 (2026-10-27): `SeqTopKey`, `SeqTopKey.of_eq`, `seqTopKey_refuted_at_colon` and the exit (a) face (+5 constants, +4 decls).
   -- 2026-10-28 (item 380, PR #146 review): READ 1408 → 1421, RELAY 2673 → 2660 — `Or.elim` is a two-arm split
   -- (`RelaySupplyCensus.isTwoArm`): the thirteen premises handed to a `Classical.em … |>.elim` are read at the site.
-  "constants=1701 decls=1338 eta=442 FIELD=192 READ=1421 RELAY=2660 RETURN=168 UNUSED=27"
+  "constants=1703 decls=1340 eta=442 FIELD=192 READ=1424 RELAY=2662 RETURN=168 UNUSED=27"
 
 -- Item 287: `accum_block_on_closeThenBlock`'s `h_vslot`, a READ one, left the
 -- `_ ∨ True` population — its sibling's move, under this peel.  Item 288: and
@@ -380,11 +382,13 @@ def expectedModuleTallyP : String :=
 -- 2026-10-20 (item 307): `READ` 86 → 87, `RELAY` 38 → 37 — `accum_block_on_pendingContent`'s `h_mapFV108` is READ
 -- (a `match`) where it was RELAYed; as `HypothesisReaderCensus.expectedOptTally`.
 -- 2026-10-26 (item 369): total=165 → total=166, READ=88 → READ=89 — `accum_block_on_pendingBlock.h_closeF_old` (the `-` park's frames, read at the `:`/`?` landing for `h_res_land`).
+-- 2026-10-28 (item 385): total 166 → 167, READ 91 → 92
+-- — the two item-385 helpers; `deeperLandingResume.h_valF` is one more optional context (READ inside the helper).
 def expectedOptTallyP : String :=
   -- 2026-10-24 (item 350): total 163 → 159, ETA 33 → 31, READ 87 → 85 — the `h_expl`/`h_explUp` `inr`
   -- arms pay an empty chain and no longer read their alternative.
   -- 2026-10-28 (item 380, PR #146 review): READ 89 → 91, RELAY 40 → 38 — the two optional contexts eliminated by `Or.elim`.
-  "total=166 ETA=31 FIELD=4 READ=91 RELAY=38 RETURN=2"
+  "total=167 ETA=31 FIELD=4 READ=92 RELAY=38 RETURN=2"
 
 run_cmd do
   let env ← getEnv
@@ -858,9 +862,11 @@ lemma opt_premise_is_no_premise {A P : Prop} : (A ∨ True → P) ↔ P :=
 -- (`{alt : Prop}`), so its two `∨ alt` premises leave the literal-optional population, as the three generic helpers'
 -- did at item 309; `total` stands at 163.
 -- 2026-10-26 (item 369): total=165 → total=166, optTy=157 → optTy=158 — `accum_block_on_pendingBlock.h_closeF_old` (the `-` park's frames, read at the `:`/`?` landing for `h_res_land`).
+-- 2026-10-28 (item 385): total 166 → 167, optTy 158 → 159
+-- — the two item-385 helpers; `deeperLandingResume.h_valF` is one more optional context (READ inside the helper).
 def expectedOptPopulation : String :=
   -- 2026-10-24 (item 350): total 163 → 159, optTy 156 → 153, ctorFields 33 → 31 — as above.
-  "total=166 optTy=158 ctorFields=31"
+  "total=167 optTy=159 ctorFields=31"
 
 run_cmd do
   let env ← getEnv
