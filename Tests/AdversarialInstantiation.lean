@@ -6251,11 +6251,14 @@ def testRootSiblingResumes (state : IO.Ref TestCollector) : IO Unit := do
     it is a `:`/`?` at an unchanged stack after a closed node: refused after a closed scalar or flow
     node, while `? b` after a plain scalar is the scalar's own continuation and `: b` after an
     EMPTY entry node is the node itself (`[189]`'s empty-key entry) — the first run refuted the
-    two predictions that said otherwise; read
+    two predictions that said otherwise.  SCOPE (§7): these rows read the parser's VERDICT and
+    the root's SHAPE; WHICH park's arm receives the indicator is not observable from the parser
+    and is not what the rows claim — that is read off the proof terms (the refuting build's type,
+    `h_ssl : SSLComments`, and `OpenerFallbackReach`'s builder-split leaves).  Read
     off `L4YAML.TokenParser.parseYaml` as `rootKeys` (verdict + root shape), predictions in the
     rows. -/
 def testNoPopAfterClosedNode (state : IO.Ref TestCollector) : IO Unit := do
-  setCategory state "Priority 49: item 381 — a `:`/`?` after a CLOSED sequence-entry node at an unchanged stack is refused (scalar/flow node), is the scalar's continuation (`? b`), or IS the node (`: b` after an empty entry); the compact-mapping sibling lands on the mapping's own park, not on the `-` park"
+  setCategory state "Priority 49: item 381 — parser VERDICT + root SHAPE only: a `:`/`?` after a CLOSED sequence-entry node at an unchanged stack is refused (scalar/flow node), is the scalar's continuation (`? b`), or IS the node (`: b` after an empty entry); the compact-mapping sibling and the explicit entry's value are accepted — WHICH park's arm receives them is a term-level fact (§7), read off the proof terms, not here"
   let rows : List (String × String × Option (Nat × List String × List String)) :=
     [ ("- a⏎  : b (`:` after a closed plain scalar, deeper, no pop)", "- a\n  : b", none),
       ("- a⏎  ? b (`? b` CONTINUES the plain scalar — the node is not closed; accepted as one scalar)", "- a\n  ? b", some (1, [], [])),
