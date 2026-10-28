@@ -1,9 +1,13 @@
 module
 
 public import L4YAML.Proofs.Parser.TokenGrammar
+-- `go`/`tokenEvent` are sealed by their producer; `import all` unseals their bodies for
+-- `perTokenTrace_eq_tokenEvents` (precedent: Proofs/Output/*Scannability).
+import all L4YAML.Proofs.Serialization.TokenEvents
 public import L4YAML.Proofs.Parser.ParserWellBehaved
 
-@[expose] public section
+/-! Module-private by default: only `parseStream_accepts` is exported; the per-token
+scaffolding below and every lemma over it stay internal (EVENTSOF-CONCEPT §9, S5 slice 2). -/
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -24,6 +28,7 @@ open L4YAML
 open L4YAML.TokenParser
 open L4YAML.Proofs.ParserWellBehaved
 open L4YAML.Proofs.Serialization.SerializationWellFormed
+open L4YAML.Proofs.Serialization.TokenEvents
 
 /-! ## Environments along the token array -/
 
@@ -51,12 +56,51 @@ lemma wf_append {env : Env} {a b : List Event} (h : WellFormedFrom env (a ++ b))
       simp only [envAfter, List.foldl_cons, stepEnv] <;>
       first | exact ih h | exact ih h.2
 
+/-! ## Proof-internal per-token trace (scaffolding, not a model)
+
+`TokenStateOk` is stated over `TokenEvents.tokenEvents`, which keeps a document's
+`%TAG` handles pending until its `---`.  The environment bookkeeping below needs a
+trace that is compositional token by token, so it uses a PRIVATE per-token twin
+(`perTokenEvents`/`perTokenTrace`): a document begins at its first directive (or at
+a `---` not preceded by directives), a `%TAG` declares its handle on the spot.  The
+two traces are EQUAL on every `TokenGrammar` stream (`perTokenTrace_eq_tokenEvents`,
+via spec [209]'s `---` after a non-empty directive run), which is the one bridge
+`perTokenOk_of_tokenStateOk` from the public premise to this scaffolding; nothing
+outside this file sees it (EVENTSOF-CONCEPT §9, S5 slice 2; 7.7 `parse_iff_grammar`). -/
+
+/-- Is the token before `p` a directive?  (Proof-internal, with `perTokenEvents`.) -/
+def prevDirAt (ts : Toks) : Nat → Bool
+  | 0 => false
+  | k + 1 => isDirective (tok ts k)
+
+/-- Events denoted by token `p` (see the section header; proof-internal). -/
+def perTokenEvents (ts : Toks) (p : Nat) : List Event :=
+  let prevDir : Bool := prevDirAt ts p
+  let begin : List Event := if prevDir then [] else [.beginDocument]
+  match tok ts p with
+  | some (.versionDirective ..) => begin
+  | some (.tagDirective h _) => if isNamedHandle h then begin ++ [.declareTag h] else begin
+  | some .documentStart => begin
+  | some .documentEnd => [.endDocument]
+  | some (.anchor n) => [.defineAnchor n]
+  | some (.alias n) => [.useAlias n]
+  | some (.tag h _) => if h = "" then [] else [.useTag h]
+  | _ => []
+
+/-- The whole per-token trace (proof-internal). -/
+def perTokenTrace (ts : Toks) : List Event :=
+  (List.range ts.size).flatMap (perTokenEvents ts)
+
+/-- `TokenStateOk` read through the per-token trace (proof-internal). -/
+def PerTokenOk (ts : Toks) : Prop :=
+  SerializationWellFormed (perTokenTrace ts)
+
 /-- Environment after the events of tokens `[0, i)`. -/
 def envAt (ts : Toks) (i : Nat) : Env :=
-  envAfter {} ((List.range i).flatMap (tokEvents ts))
+  envAfter {} ((List.range i).flatMap (perTokenEvents ts))
 
 lemma envAt_succ (ts : Toks) (i : Nat) :
-    envAt ts (i + 1) = envAfter (envAt ts i) (tokEvents ts i) := by
+    envAt ts (i + 1) = envAfter (envAt ts i) (perTokenEvents ts i) := by
   simp [envAt, List.range_succ, List.flatMap_append, envAfter_append]
 
 lemma envAt_zero (ts : Toks) : envAt ts 0 = {} := rfl
@@ -79,27 +123,27 @@ lemma tok_some_lt {ts : Toks} {p : Nat} {t : YamlToken} (h : tok ts p = some t) 
 lemma tok_none_of_ge {ts : Toks} {p : Nat} (h : ts.size ≤ p) : tok ts p = none := by
   simp [tok, Array.getElem?_eq_none h]
 
-lemma stateOk_at {ts : Toks} (h : TokenStateOk ts) {p : Nat} (hp : p < ts.size) :
-    ∃ rest, WellFormedFrom (envAt ts p) (tokEvents ts p ++ rest) := by
-  obtain ⟨rest, hr⟩ := flatMap_range_split (tokEvents ts) hp
+lemma stateOk_at {ts : Toks} (h : PerTokenOk ts) {p : Nat} (hp : p < ts.size) :
+    ∃ rest, WellFormedFrom (envAt ts p) (perTokenEvents ts p ++ rest) := by
+  obtain ⟨rest, hr⟩ := flatMap_range_split (perTokenEvents ts) hp
   refine ⟨rest, ?_⟩
-  unfold TokenStateOk tokenEventsOf SerializationWellFormed at h
+  unfold PerTokenOk perTokenTrace SerializationWellFormed at h
   rw [hr] at h
   exact wf_append h
 
-lemma alias_ok {ts : Toks} (h : TokenStateOk ts) {p : Nat} {n : String}
+lemma alias_ok {ts : Toks} (h : PerTokenOk ts) {p : Nat} {n : String}
     (ht : tok ts p = some (.alias n)) : n ∈ (envAt ts p).anchors := by
   obtain ⟨rest, hw⟩ := stateOk_at h (tok_some_lt ht)
-  have he : tokEvents ts p = [.useAlias n] := by simp [tokEvents, ht]
+  have he : perTokenEvents ts p = [.useAlias n] := by simp [perTokenEvents, prevDirAt, ht]
   rw [he] at hw
   exact hw.1
 
-lemma tag_ok {ts : Toks} (h : TokenStateOk ts) {p : Nat} {hd s : String}
+lemma tag_ok {ts : Toks} (h : PerTokenOk ts) {p : Nat} {hd s : String}
     (ht : tok ts p = some (.tag hd s)) : TagHandleAllowed (envAt ts p) hd := by
   by_cases h0 : hd = ""
   · exact Or.inl (Or.inl h0)
   obtain ⟨rest, hw⟩ := stateOk_at h (tok_some_lt ht)
-  have he : tokEvents ts p = [.useTag hd] := by simp [tokEvents, ht, h0]
+  have he : perTokenEvents ts p = [.useTag hd] := by simp [perTokenEvents, prevDirAt, ht, h0]
   rw [he] at hw
   exact hw.1
 
@@ -108,7 +152,7 @@ lemma envAt_succ_content {ts : Toks} {p : Nat} (h : isDirective (tok ts p) = fal
     (h1 : tok ts p ≠ some .documentStart) (h2 : tok ts p ≠ some .documentEnd)
     (h3 : isAnchor (tok ts p) = false) : envAt ts (p + 1) = envAt ts p := by
   rw [envAt_succ]
-  unfold tokEvents
+  unfold perTokenEvents prevDirAt
   cases ho : tok ts p with
   | none => rfl
   | some t =>
@@ -183,7 +227,7 @@ lemma Inv.same {ts ps i} (h : Inv ts ps i) {ps' : ParseState} (ht : ps'.tokens =
 
 lemma envAt_succ_anchor {ts : Toks} {p : Nat} {n : String} (h : tok ts p = some (.anchor n)) :
     envAt ts (p + 1) = { envAt ts p with anchors := n :: (envAt ts p).anchors } := by
-  rw [envAt_succ]; simp [tokEvents, h, envAfter, stepEnv]
+  rw [envAt_succ]; simp [perTokenEvents, prevDirAt, h, envAfter, stepEnv]
 
 lemma Inv.declare {ts ps i} (h : Inv ts ps i) {ps' : ParseState} {j : Nat} (n : String)
     (ht : ps'.tokens = ts) (hp : ps'.pos = j) (hb : j ≤ ts.size)
@@ -215,7 +259,7 @@ lemma tag_guard {env : Env} {hd : String} {arr : Array (String × String)}
 
 set_option maxHeartbeats 3200000 in
 /-- `parseNodeProperties` on a `props` span: succeeds, no duplicate anchor, lands at `j`. -/
-lemma props_ok {ts : Toks} {ps : ParseState} {i j : Nat} (hS : TokenStateOk ts)
+lemma props_ok {ts : Toks} {ps : ParseState} {i j : Nat} (hS : PerTokenOk ts)
     (hp : TG ts .props i j) (hinv : Inv ts ps i) :
     ∃ props ps', parseNodeProperties ps = .ok (props, ps') ∧ Inv ts ps' j ∧
       props.hadDuplicateAnchor = false := by
@@ -323,8 +367,8 @@ lemma props_ok {ts : Toks} {ps : ParseState} {i j : Nat} (hS : TokenStateOk ts)
 lemma tg_le {ts : Toks} {s : Sym} {i j : Nat} (h : TG ts s i j) : i ≤ j := by
   induction h <;> try omega
   all_goals first
-    | (obtain hd := ‹DocStart _ _ _›; unfold DocStart at hd
-       rcases hd with ⟨_, rfl, _⟩ | ⟨_, rfl⟩ <;> omega)
+    | (obtain hd := ‹DocStart _ _ _ _›; unfold DocStart at hd
+       rcases hd with ⟨_, rfl, _⟩ | ⟨_, rfl, _⟩ <;> omega)
     | (obtain hd := ‹FlowSep _ _ _ _›; unfold FlowSep at hd
        rcases hd with ⟨_, rfl⟩ | ⟨_, _, rfl⟩ <;> omega)
     | (rcases ‹(_ ∧ _) ∨ (_ ∧ _)› with ⟨_, rfl⟩ | ⟨_, rfl⟩ <;> omega)
@@ -541,7 +585,7 @@ def contentTok : YamlToken → Bool
 lemma envAt_succ_content' {ts : Toks} {p : Nat} {t : YamlToken} (h : tok ts p = some t)
     (hc : contentTok t = true) : envAt ts (p + 1) = envAt ts p := by
   rw [envAt_succ]
-  unfold tokEvents
+  unfold perTokenEvents prevDirAt
   rw [h]
   cases t <;> simp_all [contentTok, envAfter, stepEnv] <;> split <;> simp [stepEnv]
 
@@ -771,7 +815,7 @@ lemma valueProps_loop_ok {ts ps m kc} (hinv : Inv ts ps (m + 1)) (hvp : ValuePro
       | simp only [pure, Except.pure, bind, Except.bind]
 
 set_option maxHeartbeats 2000000 in
-lemma tg_parse {ts : Toks} (hS : TokenStateOk ts) {s : Sym} {i j : Nat} (h : TG ts s i j) :
+lemma tg_parse {ts : Toks} (hS : PerTokenOk ts) {s : Sym} {i j : Nat} (h : TG ts s i j) :
     ParseOk ts s i j := by
   induction h with
   | stream_end _ => trivial
@@ -1489,7 +1533,7 @@ def DirEnvOk (ts : Toks) (lo i : Nat) : Prop :=
 
 /-- The `declareTag` event of a directive-like token. -/
 def decl : YamlToken → List Event
-  | .tagDirective h _ => if BuiltinTagHandle h then [] else [.declareTag h]
+  | .tagDirective h _ => if isNamedHandle h then [.declareTag h] else []
   | _ => []
 
 lemma envAt_succ_begin_reset {ts : Toks} {i : Nat} {t : YamlToken} (hi : 0 < i)
@@ -1497,7 +1541,7 @@ lemma envAt_succ_begin_reset {ts : Toks} {i : Nat} {t : YamlToken} (hi : 0 < i)
     (hb : t = .documentStart ∨ isDirective (some t) = true) :
     envAt ts (i + 1) = envAfter {} (decl t) := by
   rw [envAt_succ]
-  unfold tokEvents
+  unfold perTokenEvents prevDirAt
   rw [ho]
   obtain ⟨k, rfl⟩ : ∃ k, i = k + 1 := ⟨i - 1, by omega⟩
   unfold NotDirBefore at hnd
@@ -1506,7 +1550,7 @@ lemma envAt_succ_begin_reset {ts : Toks} {i : Nat} {t : YamlToken} (hi : 0 < i)
   · simp [hnd, envAfter, stepEnv, decl]
   · cases t with
     | tagDirective h _ =>
-      by_cases hb : BuiltinTagHandle h <;> simp [hnd, hb, envAfter, stepEnv, decl]
+      by_cases hb : isNamedHandle h = true <;> simp [hnd, hb, envAfter, stepEnv, decl]
     | _ => simp [isDirective] at hd <;> simp [hnd, envAfter, stepEnv, decl]
 
 lemma envAt_succ_begin_keep {ts : Toks} {i : Nat} {t : YamlToken} (hi : 0 < i)
@@ -1514,7 +1558,7 @@ lemma envAt_succ_begin_keep {ts : Toks} {i : Nat} {t : YamlToken} (hi : 0 < i)
     (hb : t = .documentStart ∨ isDirective (some t) = true) :
     envAt ts (i + 1) = envAfter (envAt ts i) (decl t) := by
   rw [envAt_succ]
-  unfold tokEvents
+  unfold perTokenEvents prevDirAt
   rw [ho]
   obtain ⟨k, rfl⟩ : ∃ k, i = k + 1 := ⟨i - 1, by omega⟩
   simp only [Nat.add_sub_cancel] at hpd
@@ -1535,14 +1579,14 @@ lemma dirEnvOk_of_decl {ts : Toks} {lo i : Nat} {t : YamlToken} {env : Env}
     rintro h ⟨p, pre, h1, h2, h3⟩; exact ⟨p, pre, h1, by omega, h3⟩
   cases t with
   | tagDirective h pre =>
-    by_cases hb : BuiltinTagHandle h
+    by_cases hb : isNamedHandle h = true
+    · refine ⟨by simp [envAfter, stepEnv, decl, hb, ha], ?_⟩
+      intro h' hm
+      simp only [envAfter, decl, hb, ↓reduceIte, List.foldl, stepEnv, List.mem_cons] at hm
+      rcases hm with rfl | hm
+      · exact ⟨i, pre, hlo, by omega, ho⟩
+      · exact mono _ (hg _ hm)
     · exact ⟨by simp [envAfter, decl, hb, ha], fun h' hm => mono _ (hg _ (by simpa [envAfter, decl, hb] using hm))⟩
-    refine ⟨by simp [envAfter, stepEnv, decl, hb, ha], ?_⟩
-    intro h' hm
-    simp only [envAfter, decl, hb, ↓reduceIte, List.foldl, stepEnv, List.mem_cons] at hm
-    rcases hm with rfl | hm
-    · exact ⟨i, pre, hlo, by omega, ho⟩
-    · exact mono _ (hg _ hm)
   | _ => exact ⟨by simp [envAfter, decl, ha], fun h hm => mono _ (hg _ (by simpa [envAfter, decl] using hm))⟩
 
 lemma dirEnvOk_reset {ts : Toks} {lo i : Nat} {t : YamlToken} (hi : 0 < i) (hlo : lo ≤ i)
@@ -1602,7 +1646,7 @@ lemma directives_bound {ts : Toks} {i d : Nat} (h : TG ts .directives i d) (hi :
 /-- The environment at the root node of a document: reset by the first
 `%`/`---` token (or already clean), then extended only by this document's `%TAG`s. -/
 lemma doc_env {ts : Toks} {i d e : Nat} (hi : 0 < i) (hd : TG ts .directives i d)
-    (hds : DocStart ts d e) (hnd : i < e → NotDirBefore ts i) (hre : i = e → EnvReset ts i) :
+    (hds : DocStart ts i d e) (hnd : i < e → NotDirBefore ts i) (hre : i = e → EnvReset ts i) :
     DirEnvOk ts i e := by
   have hle := tg_le hd
   rcases Nat.lt_or_eq_of_le hle with hlt | heq
@@ -1619,18 +1663,18 @@ lemma doc_env {ts : Toks} {i d e : Nat} (hi : 0 < i) (hd : TG ts .directives i d
       | directives_nil hn => omega
       | directives_cons hd' _ => exact hd'
     have hnd' : NotDirBefore ts i := hnd (by
-      rcases hds with ⟨_, rfl, _⟩ | ⟨_, rfl⟩ <;> omega)
+      rcases hds with ⟨_, rfl, _⟩ | ⟨_, rfl, _⟩ <;> omega)
     have h1 : DirEnvOk ts i (i + 1) := dirEnvOk_reset hi (Nat.le_refl _) hnd' ho (Or.inr (ho ▸ hd1))
     have hrest : TG ts .directives (i + 1) d := by
       cases hd with
       | directives_nil hn => omega
       | directives_cons _ hr => exact hr
     have h2 : DirEnvOk ts i d := (dirs_facts hrest).2.2.2 i hi (by omega) h1
-    rcases hds with ⟨hds, rfl, _⟩ | ⟨_, rfl⟩
+    rcases hds with ⟨hds, rfl, _⟩ | ⟨_, rfl, _⟩
     · exact dirEnvOk_keep (by omega) (by omega) ((dirs_facts hd).2.2.1 hlt) hds (Or.inl rfl) h2
     · exact h2
   · subst heq
-    rcases hds with ⟨hds, rfl, _⟩ | ⟨_, rfl⟩
+    rcases hds with ⟨hds, rfl, _⟩ | ⟨_, rfl, _⟩
     · exact dirEnvOk_reset hi (Nat.le_refl _) (hnd (by omega)) hds (Or.inl rfl)
     · obtain ⟨ha, hg⟩ := hre rfl
       exact ⟨ha, fun h hm => by rw [hg] at hm; cases hm⟩
@@ -1752,11 +1796,11 @@ lemma tryConsume_docStart_hit' {ts : Toks} {m : Nat} {ps : ParseState} (htk : ps
   rfl
 
 lemma prepare_ok {ts : Toks} {ps : ParseState} {i d e : Nat} (hd : TG ts .directives i d)
-    (hds : DocStart ts d e) (htk : ps.tokens = ts) (hp : ps.pos = i) (hb : d ≤ ts.size)
+    (hds : DocStart ts i d e) (htk : ps.tokens = ts) (hp : ps.pos = i) (hb : d ≤ ts.size)
     (henv : DirEnvOk ts i e) :
     ∃ dirs ps', prepareDocumentState ps = .ok (dirs, ps') ∧ Inv ts ps' e := by
   obtain ⟨dirs, hdirs, hmem⟩ := parseDirectives_ok hd htk hp hb
-  have hde : e ≤ d + 1 := by rcases hds with ⟨_, rfl, _⟩ | ⟨_, rfl⟩ <;> omega
+  have hde : e ≤ d + 1 := by rcases hds with ⟨_, rfl, _⟩ | ⟨_, rfl, _⟩ <;> omega
   unfold prepareDocumentState
   rw [hdirs]
   simp only [bind, Except.bind, pure, Except.pure]
@@ -1773,7 +1817,7 @@ lemma prepare_ok {ts : Toks} {ps : ParseState} {i d e : Nat} (hd : TG ts .direct
     exact Array.any_eq_true'.2 ⟨(h, pre), Array.mem_filterMap.2 ⟨Directive.tag h pre, hin, rfl⟩, by simp⟩
   have hanc : ∀ n, n ∈ (envAt ts e).anchors → False := fun n hn => by
     rw [henv.1] at hn; cases hn
-  rcases hds with ⟨hds, rfl, hline⟩ | ⟨hne, rfl⟩
+  rcases hds with ⟨hds, rfl, hline⟩ | ⟨hne, rfl, _⟩
   · have hlt : d < ts.size := tok_some_lt hds
     have hpkR : ({ ps with pos := d, tagHandles := T } : ParseState).peek? = tok ts d := by rw [peek_tok (ps := ({ ps with pos := d, tagHandles := T } : ParseState)) htk]
     have hpp : ({ ps with pos := d, tagHandles := T } : ParseState).peekPos? = some (posAt ts d) := peekPos_some htk hlt
@@ -1811,7 +1855,7 @@ def DocPre (ts : Toks) (i : Nat) : Prop :=
   NotDirBefore ts i ∧
     (EnvReset ts i ∨ tok ts i = some .documentStart ∨ isDirective (tok ts i) = true)
 
-lemma parseDocument_ok {ts : Toks} {ps : ParseState} {i m : Nat} (hS : TokenStateOk ts)
+lemma parseDocument_ok {ts : Toks} {ps : ParseState} {i m : Nat} (hS : PerTokenOk ts)
     (hdoc : TG ts .document i m) (htk : ps.tokens = ts) (hp : ps.pos = i) (hm : m ≤ ts.size)
     (hi : 0 < i) (hpre : DocPre ts i) :
     ∃ doc ps', parseDocument ps = .ok (doc, ps') ∧ ps'.tokens = ts ∧ ps'.pos = m := by
@@ -1820,7 +1864,7 @@ lemma parseDocument_ok {ts : Toks} {ps : ParseState} {i m : Nat} (hS : TokenStat
     rename_i d e
     have hid := tg_le hd
     have hem := tg_le hn
-    have hde : d ≤ e := by rcases hds with ⟨_, rfl, _⟩ | ⟨_, rfl⟩ <;> omega
+    have hde : d ≤ e := by rcases hds with ⟨_, rfl, _⟩ | ⟨_, rfl, _⟩ <;> omega
     have hb : d ≤ ts.size := by omega
     have henv : DirEnvOk ts i e := doc_env hi hd hds (fun _ => hpre.1) (fun hie => by
       rcases hpre.2 with h | h | h
@@ -1861,14 +1905,14 @@ lemma envReset_after_docEnd {ts : Toks} {m : Nat} (h : tok ts m = some .document
     EnvReset ts (m + 1) := by
   unfold EnvReset
   rw [envAt_succ]
-  unfold tokEvents
+  unfold perTokenEvents prevDirAt
   rw [h]
   simp [envAfter, stepEnv]
 
 lemma envReset_one {ts : Toks} (h : tok ts 0 = some .streamStart) : EnvReset ts 1 := by
   unfold EnvReset
   rw [envAt_succ, envAt_zero]
-  unfold tokEvents
+  unfold perTokenEvents prevDirAt
   rw [h]
   simp [envAfter]
 
@@ -1907,7 +1951,7 @@ lemma doc_empty_of {ts : Toks} {i m : Nat} (hdoc : TG ts .document i m)
       | directives_nil _ => rfl
       | directives_cons h _ => rw [hnd] at h; cases h
     subst hdi
-    rcases hds with ⟨h, _, _⟩ | ⟨_, rfl⟩
+    rcases hds with ⟨h, _, _⟩ | ⟨_, rfl, _⟩
     · exact absurd h hns
     · exact node_empty_of hn hsn
 
@@ -1947,11 +1991,11 @@ lemma doc_after {ts : Toks} {i m : Nat} (hdoc : TG ts .document i m) (hlt : i < 
     rcases Nat.lt_or_eq_of_le hem with hlt' | heq
     · exact Or.inl (last_not_directive hn hlt')
     · subst heq
-      rcases hds with ⟨hds, rfl, _⟩ | ⟨hne, rfl⟩
+      rcases hds with ⟨hds, rfl, _⟩ | ⟨hne, rfl, _⟩
       · exact Or.inl (notDirBefore_of hds rfl)
       · exact Or.inr ⟨directives_last hd, hne⟩
 
-lemma stream_ok {ts : Toks} {s : Sym} {i j : Nat} (hS : TokenStateOk ts) (h : TG ts s i j) :
+lemma stream_ok {ts : Toks} {s : Sym} {i j : Nat} (hS : PerTokenOk ts) (h : TG ts s i j) :
     (match s with
       | .stream st => ∀ ps docs fuel, SInv ts ps i st → j - i ≤ fuel → j ≤ ts.size →
           ∃ docs', parseStreamLoop ps docs st fuel = .ok docs'
@@ -2018,7 +2062,7 @@ lemma stream_ok {ts : Toks} {s : Sym} {i j : Nat} (hS : TokenStateOk ts) (h : TG
       | exact absurd rfl hne2
       | (simp only [hvalid, Bool.not_true, Bool.false_eq_true, ↓reduceIte, hpd]
          rw [tryConsume_docEnd_hit' (ps := resetDoc ps') htk' hp' hend]
-         simp only [eq_self_iff_true, ↓reduceIte]
+         simp only [↓reduceIte]
          split
          · exact ⟨_, rfl⟩
          · refine ihr _ (docs.push doc) f ?_ (by omega) hj
@@ -2026,12 +2070,414 @@ lemma stream_ok {ts : Toks} {s : Sym} {i j : Nat} (hS : TokenStateOk ts) (h : TG
              notDirBefore_of hend rfl, envReset_after_docEnd hend⟩)
   | _ => trivial
 
+/-! ## The bridge: `TokenStateOk` → `PerTokenOk` on `TokenGrammar` streams -/
+
+/-- Every directive is followed by a directive or `---` (spec [209]); the hypothesis under
+which the per-token trace equals `tokenEvents` (7.7 `parse_iff_grammar`, via S5 slice 2). -/
+def DirRunsClosed (ts : Toks) : Prop :=
+  ∀ q, isDirective (tok ts q) = true →
+    isDirective (tok ts (q + 1)) = true ∨ tok ts (q + 1) = some .documentStart
+
+/-- `tok` at an in-range index (7.7 `parse_iff_grammar`, via S5 slice 2). -/
+lemma tok_of_lt {ts : Toks} {p : Nat} (hp : p < ts.size) : tok ts p = some ts[p].val := by
+  simp [tok, hp]
+
+/-- `TokenEvents.go` from token `p` on, against the per-token trace: with a directive just
+before `p`, `go` owes a `beginDocument` and the pending handles; otherwise the traces agree.
+7.7 `parse_iff_grammar`, via S5 slice 2 (proof-internal scaffolding). -/
+lemma go_drop (ts : Toks) (hC : DirRunsClosed ts) :
+    ∀ n p pending, p + n = ts.size →
+      (prevDirAt ts p = true →
+        go (ts.toList.drop p) pending =
+          .beginDocument :: (pending.reverse.map .declareTag ++
+            (List.range' p n).flatMap (perTokenEvents ts))) ∧
+      (prevDirAt ts p = false → pending = [] →
+        go (ts.toList.drop p) pending = (List.range' p n).flatMap (perTokenEvents ts)) := by
+  intro n
+  induction n with
+  | zero =>
+    intro p pending hp
+    have hd : ts.toList.drop p = [] := List.drop_of_length_le (by simp; omega)
+    refine ⟨fun hpd => ?_, fun _ hpend => ?_⟩
+    · exfalso
+      cases p with
+      | zero => simp [prevDirAt] at hpd
+      | succ k =>
+        have hnone : tok ts (k + 1) = none := tok_none_of_ge (by omega)
+        rcases hC k (by simpa [prevDirAt] using hpd) with h | h <;> simp [hnone, isDirective] at h
+    · subst hpend; simp [hd, go]
+  | succ n ih =>
+    intro p pending hp
+    have hlt : p < ts.size := by omega
+    have hdrop : ts.toList.drop p = ts[p] :: ts.toList.drop (p + 1) := by
+      rw [List.drop_eq_getElem_cons (by simpa using hlt)]; simp
+    have htok : tok ts p = some ts[p].val := tok_of_lt hlt
+    have hprev : prevDirAt ts (p + 1) = isDirective (tok ts p) := rfl
+    have hpe : perTokenEvents ts p =
+        (let begin : List Event := if prevDirAt ts p then [] else [.beginDocument]
+         match some ts[p].val with
+         | some (.versionDirective ..) => begin
+         | some (.tagDirective h _) => if isNamedHandle h then begin ++ [.declareTag h] else begin
+         | some .documentStart => begin
+         | some .documentEnd => [.endDocument]
+         | some (.anchor n) => [.defineAnchor n]
+         | some (.alias n) => [.useAlias n]
+         | some (.tag h _) => if h = "" then [] else [.useTag h]
+         | _ => []) := by
+      unfold perTokenEvents; rw [htok]
+    rw [hdrop, List.range'_succ, List.flatMap_cons, hpe]
+    have ih' : ∀ pend, _ := fun pend => ih (p + 1) pend (by omega)
+    simp only [go]
+    generalize hv : ts[p].val = v at htok hpe ⊢
+    refine ⟨fun hpd => ?_, fun hpd hpend => ?_⟩
+    · -- previous token is a directive: this one is a directive or `---`
+      obtain ⟨k, rfl⟩ : ∃ k, p = k + 1 := ⟨p - 1, by cases p <;> simp [prevDirAt] at hpd ⊢⟩
+      have hcl := hC k (by simpa [prevDirAt] using hpd)
+      rw [htok] at hcl
+      simp only [hpd, ↓reduceIte]
+      cases v <;> simp [isDirective] at hcl
+      all_goals dsimp only
+      case documentStart =>
+        have h2 := (ih' []).2
+        simp only [prevDirAt, htok, isDirective, true_implies] at h2
+        simp [h2]
+      case versionDirective =>
+        have h1 := (ih' pending).1
+        simp only [prevDirAt, htok, isDirective, true_implies] at h1
+        simp [tokenEvent, h1]
+      case tagDirective h pre =>
+        have h1 := (ih' (h :: pending)).1
+        have h1' := (ih' pending).1
+        simp only [prevDirAt, htok, isDirective, true_implies] at h1 h1'
+        by_cases hn : isNamedHandle h = true
+        · simp [hn, h1]
+        · simp only [Bool.not_eq_true] at hn
+          simp [hn, h1']
+    · subst hpend
+      simp only [hpd, Bool.false_eq_true, ↓reduceIte]
+      cases v <;> dsimp only <;> try simp only [tokenEvent]
+      case tagDirective h pre =>
+        have h1 := (ih' [h]).1
+        have h1' := (ih' []).1
+        simp only [prevDirAt, htok, isDirective, true_implies] at h1 h1'
+        by_cases hn : isNamedHandle h = true
+        · simp [hn, h1]
+        · simp only [Bool.not_eq_true] at hn
+          simp [hn, h1']
+      case versionDirective =>
+        have h1 := (ih' []).1
+        simp only [prevDirAt, htok, isDirective, true_implies] at h1
+        simp [h1]
+      case tag h sfx =>
+        have h2 := (ih' []).2
+        simp only [prevDirAt, htok, isDirective, true_implies] at h2
+        by_cases he : h = ""
+        · subst he; simp [h2]
+        · simp [he, String.isEmpty_iff, h2]
+      all_goals
+        have h2 := (ih' []).2
+        simp only [prevDirAt, htok, isDirective, true_implies] at h2
+        simp [h2]
+
+/-- The per-token trace IS `tokenEvents` once every directive run is `---`-closed
+(7.7 `parse_iff_grammar`, via S5 slice 2). -/
+lemma perTokenTrace_eq_tokenEvents (ts : Toks) (hC : DirRunsClosed ts) :
+    perTokenTrace ts = tokenEvents ts := by
+  unfold perTokenTrace tokenEvents
+  have := (go_drop ts hC ts.size 0 [] (by simp)).2 (by simp [prevDirAt]) rfl
+  simpa [List.range_eq_range'] using this.symm
+
+/-- No directive and no `---` inside `[i, j)` (7.7 `parse_iff_grammar`, via S5 slice 2). -/
+def NoDir (ts : Toks) (i j : Nat) : Prop :=
+  ∀ q, i ≤ q → q < j → isDirective (tok ts q) = false ∧ tok ts q ≠ some .documentStart
+
+/-- Every directive inside `[i, j)` is followed by a directive or `---`
+(7.7 `parse_iff_grammar`, via S5 slice 2). -/
+def Closed (ts : Toks) (i j : Nat) : Prop :=
+  ∀ q, i ≤ q → q < j → isDirective (tok ts q) = true →
+    isDirective (tok ts (q + 1)) = true ∨ tok ts (q + 1) = some .documentStart
+
+/-- A known non-directive, non-`---` token closes a `NoDir` position
+(7.7 `parse_iff_grammar`, via S5 slice 2). -/
+lemma nd_of_tok {ts : Toks} {q : Nat} {t : YamlToken} (h : tok ts q = some t)
+    (hd : isDirective (some t) = false) (hs : t ≠ .documentStart) :
+    isDirective (tok ts q) = false ∧ tok ts q ≠ some .documentStart := by
+  rw [h]; exact ⟨hd, by intro e; exact hs (Option.some.inj e)⟩
+
+/-- Close a `NoDir` goal at a position whose token is known (`tok ts _ = some _` in context). -/
+macro "ndt" : tactic => `(tactic| (first
+  | exact nd_of_tok ‹tok _ _ = some (.scalar _ _)› (by simp [isDirective]) (by simp)
+  | exact nd_of_tok ‹tok _ _ = some (.alias _)› (by simp [isDirective]) (by simp)
+  | exact nd_of_tok ‹tok _ _ = some (.anchor _)› (by simp [isDirective]) (by simp)
+  | exact nd_of_tok ‹tok _ _ = some (.tag _ _)› (by simp [isDirective]) (by simp)
+  | exact nd_of_tok ‹tok _ _ = some .blockEntry› (by simp [isDirective]) (by simp)
+  | exact nd_of_tok ‹tok _ _ = some .blockSequenceStart› (by simp [isDirective]) (by simp)
+  | exact nd_of_tok ‹tok _ _ = some .blockMappingStart› (by simp [isDirective]) (by simp)
+  | exact nd_of_tok ‹tok _ _ = some .blockEnd› (by simp [isDirective]) (by simp)
+  | exact nd_of_tok ‹tok _ _ = some .key› (by simp [isDirective]) (by simp)
+  | exact nd_of_tok ‹tok _ _ = some .value› (by simp [isDirective]) (by simp)
+  | exact nd_of_tok ‹tok _ _ = some .flowEntry› (by simp [isDirective]) (by simp)
+  | exact nd_of_tok ‹tok _ _ = some .flowSequenceStart› (by simp [isDirective]) (by simp)
+  | exact nd_of_tok ‹tok _ _ = some .flowSequenceEnd› (by simp [isDirective]) (by simp)
+  | exact nd_of_tok ‹tok _ _ = some .flowMappingStart› (by simp [isDirective]) (by simp)
+  | exact nd_of_tok ‹tok _ _ = some .flowMappingEnd› (by simp [isDirective]) (by simp)))
+
+/-- Directive tokens live only in `.directives` spans, each closed by `---` (spec [209];
+7.7 `parse_iff_grammar`, via S5 slice 2). -/
+lemma tg_closed {ts : Toks} {s : Sym} {i j : Nat} (h : TG ts s i j) :
+    (match s with
+      | .directives => ∀ q, i ≤ q → q < j → isDirective (tok ts q) = true
+      | .document | .stream _ => Closed ts i j
+      | _ => NoDir ts i j) := by
+  induction h with
+  | stream_end _ => intro q h1 h2; omega
+  | stream_docEnd hd _ ih =>
+    intro q h1 h2 hq
+    rcases Nat.eq_or_lt_of_le h1 with rfl | h1'
+    · simp [hd, isDirective] at hq
+    · exact ih q h1' h2 hq
+  | stream_doc _ _ _ _ _ _ _ _ ih1 ih2 =>
+    intro q h1 h2 hq
+    exact (Nat.lt_or_ge q _).elim (fun h => ih1 q h1 h hq) (fun h => ih2 q h h2 hq)
+  | stream_docTerminated _ _ _ _ _ hm _ ih1 ih2 =>
+    intro q h1 h2 hq
+    rcases Nat.lt_or_ge q _ with h | h
+    · exact ih1 q h1 h hq
+    · rcases Nat.eq_or_lt_of_le h with rfl | h'
+      · simp [hm, isDirective] at hq
+      · exact ih2 q h' h2 hq
+  | document hd hds hn ihd ihn =>
+    rename_i i d e m
+    intro q h1 h2 hq
+    rcases hds with ⟨hds, rfl, _⟩ | ⟨hne, rfl, rfl⟩
+    · -- directives `[i, d)`, `---` at `d`, node after
+      rcases Nat.lt_or_ge q d with h | h
+      · rcases Nat.lt_or_ge (q + 1) d with h' | h'
+        · exact Or.inl (ihd (q + 1) (by omega) h')
+        · exact Or.inr (by simpa [show q + 1 = d by omega] using hds)
+      · rcases Nat.eq_or_lt_of_le h with h' | h'
+        · rw [h'] at hds; simp [hds, isDirective] at hq
+        · exact absurd hq (by simpa using (ihn q h' h2).1)
+    · -- no directives (`i = d`), node from `i`
+      exact absurd hq (by simpa using (ihn q h1 h2).1)
+  | directives_nil _ => intro q h1 h2; omega
+  | directives_cons hd _ ih =>
+    intro q h1 h2
+    rcases Nat.eq_or_lt_of_le h1 with rfl | h1'
+    · exact hd
+    · exact ih q h1' h2
+  | node_alias ht => intro q h1 h2; rcases Nat.eq_or_lt_of_le h1 with rfl | h <;> first | ndt | omega
+  | node _ _ _ ihp ihc =>
+    intro q h1 h2
+    exact (Nat.lt_or_ge q _).elim (fun h => ihp q h1 h) (fun h => ihc q h h2)
+  | props_none _ => intro q h1 h2; omega
+  | props_anchor ht _ => intro q h1 h2; rcases Nat.eq_or_lt_of_le h1 with rfl | h <;> first | ndt | omega
+  | props_tag ht _ => intro q h1 h2; rcases Nat.eq_or_lt_of_le h1 with rfl | h <;> first | ndt | omega
+  | props_anchorTag ht ht' =>
+    intro q h1 h2
+    rcases Nat.eq_or_lt_of_le h1 with rfl | h
+    · ndt
+    · rcases Nat.eq_or_lt_of_le h with rfl | h' <;> first | ndt | omega
+  | props_tagAnchor ht ht' =>
+    intro q h1 h2
+    rcases Nat.eq_or_lt_of_le h1 with rfl | h
+    · ndt
+    · rcases Nat.eq_or_lt_of_le h with rfl | h' <;> first | ndt | omega
+  | content_scalar ht => intro q h1 h2; rcases Nat.eq_or_lt_of_le h1 with rfl | h <;> first | ndt | omega
+  | content_blockSeq _ ih => exact ih
+  | content_blockMap _ ih => exact ih
+  | content_seqEntryEmpty _ => intro q h1 h2; omega
+  | content_implicitSeq _ _ ih => exact ih
+  | content_flowSeq _ ih => exact ih
+  | content_flowMap _ ih => exact ih
+  | content_empty _ => intro q h1 h2; omega
+  | blockSeq ht _ hk ih =>
+    intro q h1 h2
+    rcases Nat.eq_or_lt_of_le h1 with rfl | h
+    · ndt
+    · rcases Nat.lt_or_ge q _ with h' | h'
+      · exact ih q h h'
+      · rcases Nat.eq_or_lt_of_le h' with rfl | h'' <;> first | ndt | omega
+  | seqEntries_nil _ => intro q h1 h2; omega
+  | seqEntries_cons ht _ _ ih1 ih2 =>
+    intro q h1 h2
+    rcases Nat.eq_or_lt_of_le h1 with rfl | h
+    · ndt
+    · exact (Nat.lt_or_ge q _).elim (fun h' => ih1 q h h') (fun h' => ih2 q h' h2)
+  | blockMap ht _ hk ih =>
+    intro q h1 h2
+    rcases Nat.eq_or_lt_of_le h1 with rfl | h
+    · ndt
+    · rcases Nat.lt_or_ge q _ with h' | h'
+      · exact ih q h h'
+      · rcases Nat.eq_or_lt_of_le h' with rfl | h'' <;> first | ndt | omega
+  | mapEntries_nil _ _ => intro q h1 h2; omega
+  | mapEntries_key ht _ _ ih1 ih2 =>
+    intro q h1 h2
+    exact (Nat.lt_or_ge q _).elim (fun h => ih1 q h1 h) (fun h => ih2 q h h2)
+  | mapEntries_value ht _ _ ih1 ih2 =>
+    intro q h1 h2
+    rcases Nat.eq_or_lt_of_le h1 with rfl | h
+    · ndt
+    · exact (Nat.lt_or_ge q _).elim (fun h' => ih1 q h h') (fun h' => ih2 q h' h2)
+  | keyEntry ht _ _ ih1 ih2 =>
+    intro q h1 h2
+    rcases Nat.eq_or_lt_of_le h1 with rfl | h
+    · ndt
+    · exact (Nat.lt_or_ge q _).elim (fun h' => ih1 q h h') (fun h' => ih2 q h' h2)
+  | entryValue_value ht _ _ _ ih =>
+    intro q h1 h2
+    rcases Nat.eq_or_lt_of_le h1 with rfl | h
+    · ndt
+    · exact ih q h h2
+  | entryValue_retro ht ht' _ ih =>
+    intro q h1 h2
+    rcases Nat.eq_or_lt_of_le h1 with rfl | h
+    · ndt
+    · rcases Nat.eq_or_lt_of_le h with h' | h'
+      · rw [← h']; ndt
+      · exact ih q h' h2
+  | entryValue_none _ _ => intro q h1 h2; omega
+  | flowSeq ht _ hk ih =>
+    intro q h1 h2
+    rcases Nat.eq_or_lt_of_le h1 with rfl | h
+    · ndt
+    · rcases Nat.lt_or_ge q _ with h' | h'
+      · exact ih q h h'
+      · rcases Nat.eq_or_lt_of_le h' with rfl | h'' <;> first | ndt | omega
+  | flowSeqItems_end _ => intro q h1 h2; omega
+  | flowSeqItems_trailing ht ht' =>
+    intro q h1 h2
+    rcases Nat.eq_or_lt_of_le h1 with rfl | h
+    · ndt
+    · omega
+  | flowSeqItems_pair _ hsep hq _ _ ih1 ih2 =>
+    intro q h1 h2
+    rcases hsep with ⟨rfl, rfl⟩ | ⟨rfl, hfe, rfl⟩
+    · exact (Nat.lt_or_ge q _).elim (fun h => ih1 q h1 h) (fun h => ih2 q h h2)
+    · rcases Nat.eq_or_lt_of_le h1 with rfl | h
+      · ndt
+      · exact (Nat.lt_or_ge q _).elim (fun h' => ih1 q h h') (fun h' => ih2 q h' h2)
+  | flowSeqItems_node _ hsep _ _ _ _ ih1 ih2 =>
+    intro q h1 h2
+    rcases hsep with ⟨rfl, rfl⟩ | ⟨rfl, hfe, rfl⟩
+    · exact (Nat.lt_or_ge q _).elim (fun h => ih1 q h1 h) (fun h => ih2 q h h2)
+    · rcases Nat.eq_or_lt_of_le h1 with rfl | h
+      · ndt
+      · exact (Nat.lt_or_ge q _).elim (fun h' => ih1 q h h') (fun h' => ih2 q h' h2)
+  | singlePair_value ht _ hv _ ih1 ih2 =>
+    intro q h1 h2
+    rcases Nat.eq_or_lt_of_le h1 with rfl | h
+    · ndt
+    · rcases Nat.lt_or_ge q _ with h' | h'
+      · exact ih1 q h h'
+      · rcases Nat.eq_or_lt_of_le h' with h'' | h''
+        · rw [← h'']; ndt
+        · exact ih2 q h'' h2
+  | singlePair_noValue ht _ _ ih =>
+    intro q h1 h2
+    rcases Nat.eq_or_lt_of_le h1 with rfl | h
+    · ndt
+    · exact ih q h h2
+  | flowMap ht _ hk ih =>
+    intro q h1 h2
+    rcases Nat.eq_or_lt_of_le h1 with rfl | h
+    · ndt
+    · rcases Nat.lt_or_ge q _ with h' | h'
+      · exact ih q h h'
+      · rcases Nat.eq_or_lt_of_le h' with rfl | h'' <;> first | ndt | omega
+  | flowMapEntries_end _ => intro q h1 h2; omega
+  | flowMapEntries_trailing ht ht' =>
+    intro q h1 h2
+    rcases Nat.eq_or_lt_of_le h1 with rfl | h
+    · ndt
+    · omega
+  | flowMapEntries_explicit _ hsep hq _ _ _ ih1 ih2 ih3 =>
+    intro q h1 h2
+    rcases hsep with ⟨rfl, rfl⟩ | ⟨rfl, hfe, rfl⟩
+    · rcases Nat.eq_or_lt_of_le h1 with rfl | h
+      · ndt
+      · rcases Nat.lt_or_ge q _ with h' | h'
+        · exact ih1 q h h'
+        · exact (Nat.lt_or_ge q _).elim (fun h'' => ih2 q h' h'') (fun h'' => ih3 q h'' h2)
+    · rcases Nat.eq_or_lt_of_le h1 with rfl | h
+      · ndt
+      · rcases Nat.eq_or_lt_of_le h with h' | h'
+        · rw [← h']; ndt
+        · rcases Nat.lt_or_ge q _ with h'' | h''
+          · exact ih1 q h' h''
+          · exact (Nat.lt_or_ge q _).elim (fun h3 => ih2 q h'' h3) (fun h3 => ih3 q h3 h2)
+  | flowMapEntries_implicit _ hsep _ _ _ _ _ ih1 ih2 ih3 =>
+    intro q h1 h2
+    rcases hsep with ⟨rfl, rfl⟩ | ⟨rfl, hfe, rfl⟩
+    · rcases Nat.lt_or_ge q _ with h | h
+      · exact ih1 q h1 h
+      · exact (Nat.lt_or_ge q _).elim (fun h' => ih2 q h h') (fun h' => ih3 q h' h2)
+    · rcases Nat.eq_or_lt_of_le h1 with rfl | h
+      · ndt
+      · rcases Nat.lt_or_ge q _ with h' | h'
+        · exact ih1 q h h'
+        · exact (Nat.lt_or_ge q _).elim (fun h'' => ih2 q h' h'') (fun h'' => ih3 q h'' h2)
+  | flowMapValue_value hk hv _ ih =>
+    intro q h1 h2
+    rcases hk with ⟨hk, rfl⟩ | ⟨hk, rfl⟩
+    · rcases Nat.eq_or_lt_of_le h1 with rfl | h
+      · ndt
+      · rcases Nat.eq_or_lt_of_le h with h' | h'
+        · rw [← h']; ndt
+        · exact ih q h' h2
+    · rcases Nat.eq_or_lt_of_le h1 with rfl | h
+      · ndt
+      · exact ih q h h2
+  | flowMapValue_none hk _ =>
+    intro q h1 h2
+    rcases hk with ⟨hk, rfl⟩ | ⟨hk, rfl⟩
+    · rcases Nat.eq_or_lt_of_le h1 with rfl | h <;> first | ndt | omega
+    · omega
+
+/-- A `.stream` span ends on a non-directive token (`streamEnd` or past the end;
+7.7 `parse_iff_grammar`, via S5 slice 2). -/
+lemma tg_stream_last {ts : Toks} {s : Sym} {i j : Nat} (h : TG ts s i j) :
+    (match s with | .stream _ => isDirective (tok ts j) = false | _ => True) := by
+  induction h with
+  | stream_end h => rcases h with h | h <;> simp [h, isDirective]
+  | stream_docEnd _ _ ih => exact ih
+  | stream_doc _ _ _ _ _ _ _ _ _ ih => exact ih
+  | stream_docTerminated _ _ _ _ _ _ _ _ ih => exact ih
+  | _ => trivial
+
+/-- `TokenGrammar` streams close every directive run with `---` (spec [209];
+7.7 `parse_iff_grammar`, via S5 slice 2). -/
+lemma tokenGrammar_directivesClosed {ts : Toks} (hG : TokenGrammar ts) : DirRunsClosed ts := by
+  obtain ⟨h0, j, hs, hj⟩ := hG
+  intro q hq
+  have hc : Closed ts 1 j := tg_closed hs
+  have hl : isDirective (tok ts j) = false := tg_stream_last hs
+  cases q with
+  | zero => simp [h0, isDirective] at hq
+  | succ k =>
+    rcases Nat.lt_or_ge (k + 1) j with h | h
+    · exact hc (k + 1) (by omega) h hq
+    · rcases Nat.eq_or_lt_of_le h with h' | h'
+      · rw [h'] at hl; simp [hl] at hq
+      · rw [tok_none_of_ge (by omega)] at hq; simp [isDirective] at hq
+
+/-- THE bridge from the public state premise to the proof-internal one: on a `TokenGrammar`
+stream the per-token trace is `tokenEvents`, so `TokenStateOk` is `PerTokenOk`
+(EVENTSOF-CONCEPT §9 S5 slice 2; 7.7 `parse_iff_grammar`). -/
+lemma perTokenOk_of_tokenStateOk {ts : Toks} (hG : TokenGrammar ts) (h : TokenStateOk ts) :
+    PerTokenOk ts := by
+  unfold PerTokenOk
+  rw [perTokenTrace_eq_tokenEvents ts (tokenGrammar_directivesClosed hG)]
+  exact h
+
 /-- **Stream D, parser half of the converse**: a token array of the right shape
 (`TokenGrammar`) under the right per-document state (`TokenStateOk`) is accepted by
 `parseStream`. -/
-lemma parseStream_accepts (ts : Array (Positioned YamlToken))
+public lemma parseStream_accepts (ts : Array (Positioned YamlToken))
     (h_shape : TokenGrammar ts) (h_state : TokenStateOk ts) :
     ∃ docs, parseStream ts = .ok docs := by
+  have h_state := perTokenOk_of_tokenStateOk h_shape h_state
   obtain ⟨h0, j, hstream, hj⟩ := h_shape
   unfold parseStream
   simp only [bind, Except.bind, pure, Except.pure]

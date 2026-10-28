@@ -2,6 +2,7 @@ module
 
 public import L4YAML.Parser.TokenParser
 public import L4YAML.Proofs.Serialization.SerializationWellFormed
+public import L4YAML.Proofs.Serialization.TokenEvents
 
 @[expose] public section
 
@@ -20,8 +21,9 @@ the parser; it mirrors the productions `parseStream`/`parseNode`/… follow
 
 `TokenStateOk ts` is the stateful half: the per-document anchor/tag-handle
 discipline, stated as `SerializationWellFormed` of the event trace the
-tokens denote (`tokenEventsOf`), so §3.2.2.2 is read off the existing
-`Event`/`Env` vocabulary rather than re-invented. -/
+tokens denote (`TokenEvents.tokenEvents`, the serialization layer's own
+extractor), so §3.2.2.2 is read off the existing `Event`/`Env` vocabulary
+rather than re-invented. -/
 
 namespace L4YAML.Proofs.TokenGrammar
 
@@ -91,10 +93,13 @@ def KeyLineOk (ts : Toks) (p : Nat) (keyHasContent : Bool) (keyLine : Nat) : Pro
 def DocStartLineOk (ts : Toks) (d : Nat) : Prop :=
   isBlockStart (tok ts (d + 1)) = true → lineAt ts (d + 1) ≠ lineAt ts d
 
-/-- Optional `---` at `d`, ending at `e`. -/
-def DocStart (ts : Toks) (d e : Nat) : Prop :=
+/-- `---` at `d` (ending at `e = d + 1`), or no `---` and NO directive run before it
+(`i = d`: the run `[i, d)` is empty).  Spec [209] `l-directive-document`: a non-empty
+directive run MUST be followed by `---`; narrowed to the spec for 7.7 `parse_iff_grammar`
+(S5 slice 2 — the parser's leniency on a `---`-less run is no longer a `TG` shape). -/
+def DocStart (ts : Toks) (i d e : Nat) : Prop :=
   (tok ts d = some .documentStart ∧ e = d + 1 ∧ DocStartLineOk ts d) ∨
-  (tok ts d ≠ some .documentStart ∧ e = d)
+  (tok ts d ≠ some .documentStart ∧ e = d ∧ i = d)
 
 /-- Separator before a flow item: none for the first item, `,` afterwards. -/
 def FlowSep (ts : Toks) (first : Bool) (i q : Nat) : Prop :=
@@ -147,7 +152,7 @@ inductive TG (ts : Toks) : Sym → Nat → Nat → Prop where
       TG ts (.stream .afterDocumentEnd) (m + 1) j → TG ts (.stream st) i j
   -- document (§9.1 [210]): directives, optional `---`, root node
   | document {i d e m} :
-      TG ts .directives i d → DocStart ts d e → TG ts .node e m → TG ts .document i m
+      TG ts .directives i d → DocStart ts i d e → TG ts .node e m → TG ts .document i m
   | directives_nil {i} : isDirective (tok ts i) = false → TG ts .directives i i
   | directives_cons {i j} :
       isDirective (tok ts i) = true → TG ts .directives (i + 1) j → TG ts .directives i j
@@ -265,35 +270,14 @@ def TokenGrammar (ts : Toks) : Prop :=
 
 /-! ## State: the token array as an event trace -/
 
-/-- Events denoted by token `p`.  A document begins at its first directive or
-    at a `---` not preceded by directives; it ends at `...`.  A verbatim tag
-    (`!<…>`, empty handle) and a `%TAG` for a builtin handle denote no event. -/
-def tokEvents (ts : Toks) (p : Nat) : List Event :=
-  let prevDir : Bool := match p with | 0 => false | k + 1 => isDirective (tok ts k)
-  let begin : List Event := if prevDir then [] else [.beginDocument]
-  match tok ts p with
-  | some (.versionDirective ..) => begin
-  | some (.tagDirective h _) => if BuiltinTagHandle h then begin else begin ++ [.declareTag h]
-  | some .documentStart => begin
-  | some .documentEnd => [.endDocument]
-  | some (.anchor n) => [.defineAnchor n]
-  | some (.alias n) => [.useAlias n]
-  | some (.tag h _) => if h = "" then [] else [.useTag h]
-  | _ => []
-
-/-- The whole trace, token by token.  To be replaced by `TokenEvents.tokenEvents`
-    (the serialization layer's token trace) once that module lands. -/
-def tokenEventsOf (ts : Toks) : List Event :=
-  (List.range ts.size).flatMap (tokEvents ts)
-
 /-- The state half: every alias names an anchor committed earlier in its
-    document, every tag handle is built in or `%TAG`-declared in its document. -/
+    document, every tag handle is built in or `%TAG`-declared in its document —
+    stated over the serialization layer's token trace `TokenEvents.tokenEvents`
+    (EVENTSOF-CONCEPT §9 S2; S5 slice 2 retired the per-token twin that lived here,
+    for 7.7 `parse_iff_grammar`).  Executable form: `checkFrom {} (tokenEvents ts)`
+    via `serializationWellFormed_iff_check`. -/
 def TokenStateOk (ts : Toks) : Prop :=
-  SerializationWellFormed (tokenEventsOf ts)
-
-/-- Executable form of `TokenStateOk` (via `checkFrom_correct`). -/
-def checkTokenState (ts : Toks) : Bool :=
-  checkFrom {} (tokenEventsOf ts)
+  SerializationWellFormed (L4YAML.Proofs.Serialization.TokenEvents.tokenEvents ts)
 
 /-! ## Executable checker
 
@@ -379,7 +363,7 @@ def check (ts : Toks) : Nat → Sym → Nat → Option Nat
     | some d =>
       if isDocStart (tok ts d) then
         if docStartLineOk ts d then check ts f .node (d + 1) else none
-      else check ts f .node d
+      else if d == i then check ts f .node d else none
     | none => none
   | f + 1, .directives, i =>
     if isDirective (tok ts i) then check ts f .directives (i + 1) else some i
@@ -654,9 +638,12 @@ lemma check_sound (ts : Toks) : ∀ f s i j, check ts f s i = some j → TG ts s
           · exact .document (ih _ _ _ hdir)
               (Or.inl ⟨(isDocStart_iff _).1 hds, rfl, docStartLineOk_sound ‹_›⟩) (ih _ _ _ h)
           · cases h
-        · exact .document (ih _ _ _ hdir)
-            (Or.inr ⟨fun hc => ‹¬ isDocStart (tok ts d) = true› ((isDocStart_iff _).2 hc), rfl⟩)
-            (ih _ _ _ h)
+        · split at h
+          · exact .document (ih _ _ _ hdir)
+              (Or.inr ⟨fun hc => ‹¬ isDocStart (tok ts d) = true› ((isDocStart_iff _).2 hc), rfl,
+                (show i = d from (by simpa using (‹(d == i) = true›) : d = i).symm)⟩)
+              (ih _ _ _ h)
+          · cases h
       · cases h
     | directives =>
       simp only [check] at h
@@ -898,9 +885,5 @@ lemma checkTokenGrammar_sound {ts : Toks} (h : checkTokenGrammar ts = true) : To
     · exact ⟨‹_›, _, check_sound ts _ _ _ _ ‹_›, by simpa using h⟩
     · cases h
   · cases h
-
-/-- `checkTokenState` decides the state half exactly. -/
-lemma checkTokenState_iff (ts : Toks) : checkTokenState ts = true ↔ TokenStateOk ts :=
-  checkFrom_correct _ _
 
 end L4YAML.Proofs.TokenGrammar
