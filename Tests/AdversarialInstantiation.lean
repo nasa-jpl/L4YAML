@@ -6146,6 +6146,51 @@ def testLiveRegisterSeqTop (state : IO.Ref TestCollector) : IO Unit := do
     checkM state s!"live register's `:` on a sequence top {label}" (got == expected && got.1 == 0 && ok == accepted)
       s!"(liveSeqTopOk, liveSeqTopRefused, liveClearOk, liveClearRefused, visited) = {repr got} accepted={ok}; expected {repr expected} accepted={accepted}"
 
+/-- One line-start pause read for item 380 (Priority 48): did the break POP the indent stack
+    (`sp.indents ≠ s.indents`), and does the landing stand at the pre-state's own level
+    (`sp.col = s.currentIndent`)?  The root sibling `b: 2` after `a: 1` is the NO-POP, OWN-LEVEL
+    landing — item 378's named residue at the two builders, which the own-level re-read of
+    item 380 pays from the park's compact tail, not from a frame below the level. -/
+def rootSiblingLevelWalk (input : String) (fuel : Nat := 64) : Nat × Nat × Nat × Nat := Id.run do
+  let mut s := ScannerState.mk' input
+  let mut noPopOwn := 0
+  let mut noPopOther := 0
+  let mut popped := 0
+  let mut visited := 0
+  for _ in [:fuel] do
+    match scanNextToken_preprocess s with
+    | .ok (some (sp, _)) =>
+      if sp.line != s.line then
+        visited := visited + 1
+        let shape : ScannerState → Array (Int × Bool) := fun st => st.indents.map fun e => (e.column, e.isSequence)
+        if shape sp == shape s then
+          if (sp.col : Int) == s.currentIndent then noPopOwn := noPopOwn + 1 else noPopOther := noPopOther + 1
+        else popped := popped + 1
+    | _ => break
+    match scanNextToken s with
+    | .ok (some s') => s := s'
+    | _ => break
+  return (noPopOwn, noPopOther, popped, visited)
+
+def testRootSiblingLevel (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 48: item 380 — the accepted root sibling LANDS with no pop at the park's OWN level (the entry's compact tail), never a level below it; this walk reads the scanner's landing only — WHICH ARM the two splitting builders take is a term-level fact, pinned by Tests/Guards/Proofs/OpenerFallbackReach.lean's builder-split leaves (PR #146 review)"
+  -- Predicted before the run: every root sibling row has noPopOwn ≥ 1 and the parser reads ONE
+  -- document (Priority 44's reading); counts pinned from the run.
+  let rows : List (String × String × (Nat × Nat × Nat × Nat) × Bool) :=
+    [ ("a: 1⏎b: 2", "a: 1\nb: 2", (1, 0, 0, 1), true),
+      ("a: 1⏎b: 2⏎c: 3", "a: 1\nb: 2\nc: 3", (2, 0, 0, 2), true),
+      ("? a⏎b: 2", "? a\nb: 2", (1, 0, 0, 1), true),
+      ("a: [1, 2]⏎b: 2", "a: [1, 2]\nb: 2", (1, 0, 0, 1), true),
+      ("a:⏎  x: 1⏎b: 2 (the sibling after a dedent: a POP, not the own level)", "a:\n  x: 1\nb: 2", (0, 1, 1, 2), true),
+      ("k:⏎  a: 1⏎  b: 2 (nested sibling at the nested level)", "k:\n  a: 1\n  b: 2", (1, 1, 0, 2), true),
+      ("- a: 1⏎  b: 2 (sibling inside a sequence entry)", "- a: 1\n  b: 2", (1, 0, 0, 1), true),
+      ("a: 1⏎⏎b: 2 (blank line between)", "a: 1\n\nb: 2", (1, 0, 0, 1), true) ]
+  for (label, src, expected, accepted) in rows do
+    let got := rootSiblingLevelWalk src
+    let ok := match L4YAML.TokenParser.parseYaml src with | .ok _ => true | .error _ => false
+    checkM state s!"root sibling at the own level {label}" (got == expected && ok == accepted)
+      s!"(noPopOwn, noPopOther, popped, visited) = {repr got} accepted={ok}; expected {repr expected} accepted={accepted}"
+
 /-- The root's KEYS: (documents, the first document's root keys as text in order, the root's first
     item rendered).  Arity is not identity (PR #141 review): a result that duplicated the first pair or
     dropped `b: 2` would still have two entries, so the test reads WHICH keys survive — `["a", "b"]`, in
@@ -6255,6 +6300,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testDeadRegisterIdentity state
   testCursorFaceScope state
   testLiveRegisterSeqTop state
+  testRootSiblingLevel state
   testRootSiblingResumes state
   testBlockScalarTailEof state
   let results ← finish state

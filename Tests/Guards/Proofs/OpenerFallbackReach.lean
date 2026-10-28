@@ -154,4 +154,57 @@ run_cmd do
     throwError "OpenerFallbackReach moved.\nexpected: {expectedSummary}\ngot:      {got}\nPaste-ready rows:\n{
       "\n".intercalate (rows.toList.map (fun r => s!"   \"{r}\","))}"
 
+
+/-! ## The two splitting builders' `h_res_land` (item 380, PR #146 review follow-up)
+
+`accum_block_on_pendingBlock` / `accum_block_on_pendingBlockContent` hand the opener (through
+`indicator_open_map`) an `h_res_land` built by a CASE SPLIT, and WHICH arm a proof takes is a
+term-level fact (§7): Priority 48's walk reads the LANDING (no pop, own level), not the arm.
+This pin reads the arms off the proof terms, with the edge walker, per builder: every leaf of
+the split, NAMED BY ITS PATH through the nested splitters (`Edge.leafPath`, `<splitter>#<arm>`
+per hop) with its kind and source.  The split is `Or.casesOn` on the park's `h_closeF`: arm 1
+is the frameless park (`DECLINE`, `closed`); arm 0 opens `dite` on `hmem` — its arm 0 the
+resume `Or.inl ⟨ks', …⟩` from the park's `closeF` + `resumeAt` (`PAY`, `free`) and its arm 1
+the `Classical.em (s_prep.indents = sc.indents)` read as `Or.elim` (a two-arm split since this
+item, `RelaySupplyCensus.isTwoArm`), whose arm 0 is the NO-POP landing — `Or.inr trivial`,
+where the accepted root sibling `a: 1⏎b: 2` lands (item 380's re-read) — and whose arm 1
+holds item 378's popped landing: the uncovered park and `lo > k` (`DECLINE`), the two `absurd`
+refutations of the sequence top (`VIA absurd`), and the live register's `:` (`DECLINE`).  Item
+381 pays the no-pop arm from the park's own `closeF` on a non-nil compact tail: exactly the
+`…>Or.elim#0` leaf flips `DECLINE` → `PAY` at both builders, and no other leaf moves.  This pin
+is the baseline that payment is read against (§10: re-run before spending). -/
+
+def builders : List Name := [`accum_block_on_pendingBlock, `accum_block_on_pendingBlockContent]
+
+/-- Per builder, the ONE edge that supplies `indicator_open_map`'s `h_res_land`: its `how`
+(`SPLIT <splitter>`), the split's leaves by kind, and the sources of its leaves (the
+constant each arm's witness comes from — the resume arm's `resumeAt`, the declined arms'
+`trivial`).  Read off the proof term, never off the scanner. -/
+def builderSplitRows : CommandElabM (Array String) := do
+  let env ← getEnv
+  let callee := ns ++ `indicator_open_map
+  let (es, _) ← edges callee
+  let mut rows := #[]
+  for b in builders do
+    let full := ns ++ b
+    for e in es do
+      if e.caller == full && e.callee == callee && binderName env callee e.idx == `h_res_land then
+        let named := (Array.range e.leaves.size).map (fun i =>
+          s!"{e.leafPath[i]?.getD "?"}={e.leaves[i]?.getD "?"}:{e.leafSrc[i]?.getD "?"}")
+        let summary := " ".intercalate named.qsort.toList
+        let row := s!"{b} → h_res_land: {e.how} [{summary}]"
+        if rows.contains row then continue
+        rows := rows.push row
+  return rows
+
+def expectedBuilderSplit : List String :=
+  ["accum_block_on_pendingBlock → h_res_land: SPLIT Or.casesOn [Or.casesOn#0>dite#0=PAY:free Or.casesOn#0>dite#1>Or.elim#0=DECLINE:closed Or.casesOn#0>dite#1>Or.elim#1>accum_block_on_pendingBlock.match_1_27#0>dite#0>accum_block_on_pendingBlock.match_1_25#0=VIA absurd: Or.casesOn#0>dite#1>Or.elim#1>accum_block_on_pendingBlock.match_1_27#0>dite#0>accum_block_on_pendingBlock.match_1_25#1>Or.elim#0=VIA absurd: Or.casesOn#0>dite#1>Or.elim#1>accum_block_on_pendingBlock.match_1_27#0>dite#0>accum_block_on_pendingBlock.match_1_25#1>Or.elim#1=DECLINE:closed Or.casesOn#0>dite#1>Or.elim#1>accum_block_on_pendingBlock.match_1_27#0>dite#1=DECLINE:closed Or.casesOn#0>dite#1>Or.elim#1>accum_block_on_pendingBlock.match_1_27#1=DECLINE:closed Or.casesOn#1=DECLINE:closed]",
+   "accum_block_on_pendingBlockContent → h_res_land: SPLIT Or.casesOn [Or.casesOn#0>dite#0=PAY:free Or.casesOn#0>dite#1>Or.elim#0=DECLINE:closed Or.casesOn#0>dite#1>Or.elim#1>accum_block_on_pendingBlockContent.match_1_20#0>dite#0>accum_block_on_pendingBlockContent.match_1_18#0=VIA absurd: Or.casesOn#0>dite#1>Or.elim#1>accum_block_on_pendingBlockContent.match_1_20#0>dite#0>accum_block_on_pendingBlockContent.match_1_18#1>Or.elim#0=VIA absurd: Or.casesOn#0>dite#1>Or.elim#1>accum_block_on_pendingBlockContent.match_1_20#0>dite#0>accum_block_on_pendingBlockContent.match_1_18#1>Or.elim#1=DECLINE:closed Or.casesOn#0>dite#1>Or.elim#1>accum_block_on_pendingBlockContent.match_1_20#0>dite#1=DECLINE:closed Or.casesOn#0>dite#1>Or.elim#1>accum_block_on_pendingBlockContent.match_1_20#1=DECLINE:closed Or.casesOn#1=DECLINE:closed]"]
+
+run_cmd do
+  let rows ← builderSplitRows
+  if rows.toList != expectedBuilderSplit then
+    throwError "the builders' h_res_land split moved.\nexpected: {expectedBuilderSplit}\nPaste-ready rows:\n{
+      "\n".intercalate (rows.toList.map (fun r => s!"   \"{r}\","))}"
+
 end L4YAML.Tests.Guards.OpenerFallbackReach

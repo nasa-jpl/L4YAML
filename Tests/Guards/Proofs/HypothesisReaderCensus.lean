@@ -614,7 +614,7 @@ def expectedModuleTally : String :=
   -- `dispatchBlock_colon_notQuestion` and `explFrameValueLine`'s split alternative.
   -- 2026-10-26 (item 366): RELAY 2836 → 2838 — `h_sound` passed whole into the two new `Sound sc` binders.
   -- 2026-10-27 (item 371): constants/decls +1, READ +1 — `ResumeFrames.one` (its `h_tail` is read once).
-  "constants=1701 decls=1338 eta=442 FIELD=168 READ=1344 RELAY=2875 RETURN=54 \
+  "constants=1701 decls=1338 eta=442 FIELD=168 READ=1357 RELAY=2862 RETURN=54 \
 UNUSED=27"
 -- 2026-10-25 (#112 review): the `FlowStackK` `MarkedColsIn` carrier reverted (Rule 8: a projection of the closed state is decided at the close by `Classical.em`); the two transport helpers and `h_pk'` go (constants 1683 → 1681, decls 1322 → 1320, READ 1325 → 1323, RELAY 2838 → 2830); `Mono sc` stays on `accum_step_flow`.
 -- 2026-10-25 (item 363): the flow OPEN lane read off the block state (`h_refused`, one `Classical.em`; five `match` blocks deleted): the five deleted `match` auxiliaries: constants 1681 → 1676, decls 1320 → 1315, READ 1323 → 1306.
@@ -725,7 +725,7 @@ inherit their parents' binders filtered out so the denominator is declarations. 
 -- `inr` arms no longer read their alternative (they pay an empty chain instead).
 -- 2026-10-26 (item 369): total=165 → total=166, READ=88 → READ=89 — `accum_block_on_pendingBlock.h_closeF_old`
 -- (the `-` park's frames, read by the `:`/`?` landing for `h_res_land`).
-def expectedOptTally : String := "total=166 ETA=31 READ=89 RELAY=46"
+def expectedOptTally : String := "total=166 ETA=31 READ=91 RELAY=44"
 
 /-- The six item 212 enumerated, by verdict — seven since item 300.  Six are
     read in `content_dispatch_routed`'s own term (`h_markerline`, the marker
@@ -795,6 +795,9 @@ third terminal, `SPLIT@Eq.ndrec#9`, is the pipe: item 226 peels it and two
 remain.) -/
 
 -- 2026-10-24 (B3 [66] col-0 threading): binder indices shift with the new park fields.
+-- 2026-10-28 (item 380, PR #146 review): 11 → 9 — `colon_open_map_explicit#21` and `compact_open_map#29` (both
+-- `h_outer`) leave the shortlist: their chase ended at a `Classical.em … |>.elim` terminal, which is a two-arm
+-- split now (`RelaySupplyCensus.isTwoArm`), i.e. a READ at the site and no terminal at all.
 def expectedCoreTerminal : List String :=
   -- Item 287: the three `accum_block_on_*` rows read two binders earlier, past
   -- the retired `sp_block_ctx` and `h_stream_fallback`.
@@ -803,9 +806,7 @@ def expectedCoreTerminal : List String :=
     "accum_block_on_pendingContent#33 (h_seqF168)",
     "accum_content_on_pendingMapValue_indented#14 (h_ncol_old)",
     "colon_open_map#24 (h_cov_in)",
-    "colon_open_map_explicit#21 (h_outer)",
-    "compact_open_map#29 (h_outer)",
-    "flowKeyRoute_of_root#24 (h_tail143)",  -- item 311: `{g}` precedes it
+      "flowKeyRoute_of_root#24 (h_tail143)",  -- item 311: `{g}` precedes it
     "indicator_open_map#26 (h_ref_land)",
     "question_open_map#23 (h_cov_in)",
     "question_open_map#24 (h_cov_nil)" ]
@@ -907,7 +908,14 @@ is a PIPE; peel it and `restates_by_imp` reads `RETURN` — the premise IS the
 conclusion, weakened — while `reads_by_elim` still reads `RELAY` into a
 constant that eliminates.  The two exhibits below are kept and still pinned at
 the SAME verdict, because that pin is what says this walk is the blind one;
-`PremiseNecessityCensus` pins them apart. -/
+`PremiseNecessityCensus` pins them apart.
+
+**Item 380 (PR #146 review) told them apart here too.**  `Or.elim` is a two-arm
+SPLIT for the supply walker now (`RelaySupplyCensus.isTwoArm`: the site decides,
+on the disjunction's two arms), so `reads_by_elim` READS its premise — the
+`Or.elim` is the site's own `casesOn` — while `restates_by_imp` still RELAYS it
+into the pipe.  The pin keeps both verdicts, now different: the blind spot this
+section exhibited is closed on the `elim` side and open on the `imp` side. -/
 
 lemma reads_by_elim {a b c : Prop} (h : a ∨ b) (f : a → c) (g : b → c) : c :=
   h.elim f g
@@ -915,15 +923,16 @@ lemma reads_by_elim {a b c : Prop} (h : a ∨ b) (f : a → c) (g : b → c) : c
 lemma restates_by_imp {a b c : Prop} (h : a ∨ b) (f : a → c) : c ∨ b :=
   h.imp_left f
 
+-- 2026-10-28 (item 380, PR #146 review): `reads_by_elim#3` RELAY → READ — `Or.elim` is a two-arm split.
 def expectedIndistinguishable : String :=
-  "reads_by_elim#3=RELAY restates_by_imp#3=RELAY"
+  "reads_by_elim#3=READ restates_by_imp#3=RELAY"
 
 run_cmd do
   let env ← getEnv
   let got := s!"reads_by_elim#3={verdict env ``reads_by_elim 3} restates_by_imp#3={
     verdict env ``restates_by_imp 3}"
   if got != expectedIndistinguishable then
-    throwError "§7's two relays are no longer indistinguishable.\nexpected: {
+    throwError "§7's two relays moved (item 380 reads the `elim` side, the `imp` side stays blind).\nexpected: {
       expectedIndistinguishable}\ngot:      {got}"
 
 end Tests.Guards.HypothesisReaderCensus

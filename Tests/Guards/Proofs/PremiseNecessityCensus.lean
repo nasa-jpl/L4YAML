@@ -368,7 +368,9 @@ def expectedModuleTallyP : String :=
   -- 2026-10-26 (item 370): constants/decls +1 (the sibling `-` arm's `match h_closeF_old` auxiliary), READ 1376 → 1379.
 -- Item 371: constants/decls +1, READ +1 — `ResumeFrames.one` (the restated value-line pack's one-level bottom).
 -- Item 372 (2026-10-27): `SeqTopKey`, `SeqTopKey.of_eq`, `seqTopKey_refuted_at_colon` and the exit (a) face (+5 constants, +4 decls).
-  "constants=1701 decls=1338 eta=442 FIELD=192 READ=1408 RELAY=2673 RETURN=168 UNUSED=27"
+  -- 2026-10-28 (item 380, PR #146 review): READ 1408 → 1421, RELAY 2673 → 2660 — `Or.elim` is a two-arm split
+  -- (`RelaySupplyCensus.isTwoArm`): the thirteen premises handed to a `Classical.em … |>.elim` are read at the site.
+  "constants=1701 decls=1338 eta=442 FIELD=192 READ=1421 RELAY=2660 RETURN=168 UNUSED=27"
 
 -- Item 287: `accum_block_on_closeThenBlock`'s `h_vslot`, a READ one, left the
 -- `_ ∨ True` population — its sibling's move, under this peel.  Item 288: and
@@ -381,7 +383,8 @@ def expectedModuleTallyP : String :=
 def expectedOptTallyP : String :=
   -- 2026-10-24 (item 350): total 163 → 159, ETA 33 → 31, READ 87 → 85 — the `h_expl`/`h_explUp` `inr`
   -- arms pay an empty chain and no longer read their alternative.
-  "total=166 ETA=31 FIELD=4 READ=89 RELAY=40 RETURN=2"
+  -- 2026-10-28 (item 380, PR #146 review): READ 89 → 91, RELAY 40 → 38 — the two optional contexts eliminated by `Or.elim`.
+  "total=166 ETA=31 FIELD=4 READ=91 RELAY=38 RETURN=2"
 
 run_cmd do
   let env ← getEnv
@@ -476,14 +479,15 @@ also counted passes vacuously. -/
 -- `h_stream_fallback` retired from all four.
 -- 2026-10-24 (B3): binder indices shift with the new park fields (pendingBlock 27→28, pendingBlockContent 32→33,
 -- pendingContent 30→33, flowKeyRoute_of_root 21→24); the readers are unchanged.
+-- 2026-10-28 (item 380, PR #146 review): back to nine — `colon_open_map_explicit#21` / `compact_open_map#29`
+-- (`h_outer`, item 360's two rows) are READ now: their `Classical.em … |>.elim` is a two-arm split
+-- (`RelaySupplyCensus.isTwoArm`), the site's own decision, not a relay into a library elimination.
 def expectedNineResolved : List String :=
   [ "accum_block_on_pendingBlock#29 (h_seqF_old) => ELIM@L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock#28>Or.casesOn#3",
     "accum_block_on_pendingBlockContent#34 (h_seqF_old) => ELIM@L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock#28>Or.casesOn#3",
     "accum_block_on_pendingContent#33 (h_seqF168) => RETURN@L4YAML.Proofs.StreamAccum.accum_block_on_pendingContent#33",
     "accum_content_on_pendingMapValue_indented#14 (h_ncol_old) => FIELD@L4YAML.Proofs.StreamAccum.PendingNode.pendingProps#19",
     "colon_open_map#24 (h_cov_in) => FIELD@And.intro#2",
-    "colon_open_map_explicit#21 (h_outer) => ELIM@Or.elim#3>Or.elim.match_1_1#3",
-    "compact_open_map#29 (h_outer) => ELIM@Or.elim#3>Or.elim.match_1_1#3",
     "flowKeyRoute_of_root#24 (h_tail143) => RETURN@L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root#24",  -- item 311: `{g}` precedes it
     "indicator_open_map#26 (h_ref_land) => ELIM@L4YAML.Proofs.StreamAccum.rootMapRouteF_or_refused#7>L4YAML.Proofs.StreamAccum.rootMapRouteF_or_refused.match_1_1#4, ELIM@L4YAML.Proofs.StreamAccum.rootMapRoute_or_refused#7>L4YAML.Proofs.StreamAccum.rootMapRoute_or_refused.match_1_1#4",
     "question_open_map#23 (h_cov_in) => FIELD@And.intro#2",
@@ -500,8 +504,7 @@ run_cmd do
   let nine : List (Name × Nat) :=
     [ (``accum_block_on_pendingBlock, 29), (``accum_block_on_pendingBlockContent, 34),
       (``accum_block_on_pendingContent, 33), (``accum_content_on_pendingMapValue_indented, 14),
-      (``colon_open_map, 24), (``colon_open_map_explicit, 21), (``compact_open_map, 29),
-      (``flowKeyRoute_of_root, 24), (``indicator_open_map, 26),
+      (``colon_open_map, 24), (``flowKeyRoute_of_root, 24), (``indicator_open_map, 26),
       (``question_open_map, 23), (``question_open_map, 24) ]
   if nine.length != expectedCoreTerminal.length then
     throwError "item 225's shortlist is no longer nine rows"
@@ -514,11 +517,11 @@ run_cmd do
     throwError "the resolved nine moved.\nexpected:\n{
       String.intercalate "\n" expectedNineResolved}\ngot:\n{
       String.intercalate "\n" got}"
-  -- …and re-derived, the shortlist is EMPTY, asserted as a count — until item
-  -- 360: `colon_open_map_explicit.h_outer` and `compact_open_map.h_outer` are
-  -- conditional carriers whose only reader is their own `Or.elim` (the paid
-  -- branch feeds `PackAlt.ofRefused` inside the lambda, which the peel does not
-  -- follow), so the peeled shortlist is exactly those two rows.
+  -- …and re-derived, the shortlist is EMPTY, asserted as a count — item 360
+  -- had `colon_open_map_explicit.h_outer` and `compact_open_map.h_outer` on it
+  -- (conditional carriers whose only reader is their own `Or.elim`), and item 380
+  -- (PR #146 review) reads that `Or.elim` as the site's two-arm split, so the two
+  -- are READ and the peeled shortlist is empty again.
   let mut core : Nat := 0
   for (nm, ci) in env.constants.toList do
     -- Filter the USER name: the library's generated auxiliaries are private under
@@ -535,8 +538,8 @@ run_cmd do
       if verdictP env nm i != "RELAY" then continue
       if (chaseP env 30 nm i).toList.all (fun t => !isLibTerminal t) then
         core := core + 1
-  if core != 2 then
-    throwError "the peeled core-terminal shortlist is not item 360's two h_outer rows: {core}"
+  if core != 0 then
+    throwError "the peeled core-terminal shortlist is not empty: {core}"
   let refT := (chaseP env 30 ``content_dispatch_routed 24).toList.mergeSort
     (fun a b => a < b)
   if refT != expectedRefTerminalsP then
@@ -548,10 +551,12 @@ run_cmd do
 
 `Or.elim` reads and `Or.imp_left` re-states, and with the pipe peeled the
 census says so: the read RELAYS into a constant that eliminates, the
-re-statement RETURNS the premise weakened.  Item 225's debt row is retired. -/
+re-statement RETURNS the premise weakened.  Item 225's debt row is retired.
+Item 380 (PR #146 review) made `Or.elim` a two-arm split, so the read is a
+READ at the site now; the re-statement still RETURNS. -/
 
 def expectedDistinguished : String :=
-  "reads_by_elim#3=RELAY restates_by_imp#3=RETURN"
+  "reads_by_elim#3=READ restates_by_imp#3=RETURN"
 
 run_cmd do
   let env ← getEnv

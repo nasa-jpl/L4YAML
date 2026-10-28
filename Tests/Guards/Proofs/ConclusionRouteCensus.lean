@@ -484,7 +484,10 @@ def expectedPipeSplit : String :=
 -- 2026-10-25 (item 363): the flow OPEN lane read off the block state (`h_refused`, one `Classical.em`; five `match` blocks deleted): PIPE producers 46 → 47, total 109 → 110 (`h_refused` is one more Or.elim producer).
   -- 2026-10-26 (item 366): producers 47 → 49, total 110 → 112 — the two `h_outer` arguments of
   -- `accum_block_on_closeThenBlock` now carry a produced witness (`Classical.em … |>.elim`).
-  "pipes=0/0 producers=49/11 landed=63 landed-producers=0 total=112"
+  -- 2026-10-28 (item 380, PR #146 review): producers 49/11 → 32/10, landed 63 → 68, total 112 → 100 — `Or.elim` is a
+  -- two-arm split now: its 17 `VIA` edges leave the producer surface (the distinct producer `Or.elim` with them); the
+  -- five whose arms disagree land as splits, the twelve whose arms agree are collapsed edges and are counted nowhere here.
+  "pipes=0/0 producers=32/10 landed=68 landed-producers=0 total=100"
 
 end L4YAML.Tests.Guards.ConclusionRouteCensus
 

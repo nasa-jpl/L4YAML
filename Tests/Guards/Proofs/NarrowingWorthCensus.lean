@@ -522,8 +522,9 @@ def chainKeySet : Std.HashSet String :=
 -- `MarkedColsIn`-domained ctor faces and the two domained content twins are no longer provable by the empty chain.
 -- 2026-10-26 (item 369): pairs=35 → pairs=36, splits=103 → splits=104, sup=98 → sup=99, innerPairs=12 → innerPairs=13, innerSplits=55 → innerSplits=56 — `accum_block_on_pendingBlock.h_closeF_old` (the `-` park's frames, read at the `:`/`?` landing for `h_res_land`).
 -- 2026-10-26 (item 370): splits 104 → 105, innerSplits 56 → 57 — the sibling `-` arm's split of `h_closeF_old`.
+-- 2026-10-28 (item 380, PR #146 review): splits 105 → 108 — `h_kslotUp`'s `Or.elim` decisions (see the ledger); pairs/sup unchanged.
 def expectedWorthTally : String :=
-  "pairs=36 splits=105 sup=99 chainPairs=0 chainSplits=0 innerPairs=13 \
+  "pairs=36 splits=108 sup=99 chainPairs=0 chainSplits=0 innerPairs=13 \
 innerSplits=57"
 
 /-- The ledger, worth-first.  `chain` is §3's verdict — a narrowing here lands
@@ -562,16 +563,20 @@ def expectedWorthLedger : List String :=
    "splits=7 sup=1 - h_kslot_old :: accum_content_on_pendingBlock_indented#13",
    "splits=7 sup=1 inner h_closeF99 :: accum_content_on_pendingMapValue_indented#18",
    "splits=7 sup=1 inner h_closeFV_old :: accum_block_on_pendingBlock#31",
+   -- 2026-10-28 (item 380, PR #146 review): `h_kslotUp` splits 3 → 5 at pendingBlock, 1 → 2 at pendingBlockContent —
+   -- `Or.elim` is a two-arm split (`RelaySupplyCensus.isTwoArm`): the `Classical.em … |>.elim` decisions rooted at
+   -- the key-slot premise count as splits; worth (`sup`, inner/-) unchanged.
+   "splits=5 sup=1 - h_kslotUp :: accum_block_on_pendingBlock#30",
    "splits=5 sup=1 - h_seqF168 :: accum_content_on_pendingMapValue_indented#38",
    "splits=4 sup=1 inner h_closeFV108 :: accum_content_on_pendingMapValue_indented#20",
    "splits=4 sup=1 inner h_closeFV_old :: accum_block_on_pendingBlockContent#37",
    "splits=3 sup=4 - h_cov :: indicator_open_map#27",
    "splits=3 sup=1 - h_kslot :: accum_block_on_pendingBlock#13",
    "splits=3 sup=1 - h_kslot :: accum_content_on_pendingMapValue_indented#17",
-   "splits=3 sup=1 - h_kslotUp :: accum_block_on_pendingBlock#30",
    "splits=3 sup=1 - h_kslotUp_old :: accum_content_on_pendingBlock_indented#31",
    "splits=3 sup=1 - h_seqF_old :: accum_content_on_pendingBlock_indented#15",
    "splits=3 sup=1 - h_vslot :: accum_content_on_pendingMapValue_indented#16",
+   "splits=2 sup=1 - h_kslotUp :: accum_block_on_pendingBlockContent#35",
    "splits=2 sup=1 - h_resV_land :: colon_open_map#26",
    -- 2026-10-26 (item 370): splits 1 → 2 — the sibling `-` arm splits `h_closeF_old` too (row moves from the splits=1 group).
    "splits=2 sup=1 inner h_closeF_old :: accum_block_on_pendingBlock#32",
@@ -590,7 +595,6 @@ def expectedWorthLedger : List String :=
    "splits=1 sup=1 - h_kslot :: accum_block_on_pendingBlockContent#15",
    "splits=1 sup=1 - h_kslotD :: colon_open_map_implicit#29",
    "splits=1 sup=1 - h_kslotD :: colon_open_map_props#29",
-   "splits=1 sup=1 - h_kslotUp :: accum_block_on_pendingBlockContent#35",
    "splits=1 sup=1 - h_mapFV108 :: accum_block_on_pendingContent#35",
    "splits=1 sup=1 - h_resV_land :: question_open_map#27",
    "splits=1 sup=1 - h_routeS :: colon_open_map_implicit#27"]
@@ -608,7 +612,8 @@ def expectedWorthLedger : List String :=
 -- 2026-10-24 (item 350): branchPairs 36 → 34, splits 108 → 104 — the two `h_expl` pairs left.
 -- 2026-10-26 (item 369): branchPairs=35 → branchPairs=36, splits=103 → splits=104 — `accum_block_on_pendingBlock.h_closeF_old` (the `-` park's frames, read at the `:`/`?` landing for `h_res_land`).
 -- 2026-10-26 (item 370): splits 104 → 105 — the sibling `-` arm's split of `h_closeF_old`.
-def expectedBranchReach : String := "branchPairs=36 stateReachable=1 splits=105 stateSplits=3"
+-- 2026-10-28 (item 380, PR #146 review): splits 105 → 108, same cause; reach unchanged.
+def expectedBranchReach : String := "branchPairs=36 stateReachable=1 splits=108 stateSplits=3"
 
 open Meta in
 run_cmd do
