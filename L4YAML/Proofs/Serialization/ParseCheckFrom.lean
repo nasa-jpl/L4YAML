@@ -173,7 +173,8 @@ lemma mem_of_getElem? {ts : Toks} {i : Nat} {p : Positioned YamlToken} (h : ts[i
 /-! ## The parser-side order -/
 
 /-- Scanner fact A, as a token predicate: a used handle is builtin or `!word!`
-(`Scanner/NodeProperties.lean`'s `scanTag` emits nothing else). -/
+(`Scanner/NodeProperties.lean`'s `scanTag` emits nothing else).
+-- S3 obligation (a): `scanFiltered input = .ok ts → TagUsesShaped ts`. -/
 def TagUsesShaped (ts : Toks) : Prop :=
   ∀ p ∈ ts, ∀ h suf, p.val = .tag h suf → BuiltinTagHandle h ∨ isNamedHandle h = true
 
@@ -182,7 +183,8 @@ def isDirectiveTok : Option YamlToken → Bool
   | _ => false
 
 /-- Scanner fact D, as a token predicate: a directive run ends in `---`
-(the scanner's `directiveWithoutDocument`). -/
+(the scanner's `directiveWithoutDocument`).
+-- S3 obligation (b): `scanFiltered input = .ok ts → DirectivesClosed ts`. -/
 def DirectivesClosed (ts : Toks) : Prop :=
   ∀ i, isDirectiveTok (tok ts i) = true →
     isDirectiveTok (tok ts (i + 1)) = true ∨ tok ts (i + 1) = some .documentStart
@@ -1324,7 +1326,10 @@ lemma parseNode_cf (ps : ParseState) (m : Nat) (val : YamlValue) (ps' : ParseSta
 
 /-- A position `k` at which `parseDocument` can consume nothing: the token is
 one `parseNodeContent` treats as an empty node, or a `-` right after a `-`
-(the sequence-entry empty node). -/
+(the sequence-entry empty node).
+-- S3 obligation (d): the scanner never puts a `StuckAt` token at a document
+-- start (`TG.stream_doc`'s `i < m`), so `parseStreamLoop`'s no-progress exit
+-- is unreachable from `scanFiltered` output. -/
 def StuckAt (ts : Toks) (k : Nat) : Prop :=
   emptyFollowerTok (tok ts k) = true ∨
     (tok ts k = some .blockEntry ∧ 0 < k ∧ tok ts (k - 1) = some .blockEntry)
@@ -1848,6 +1853,9 @@ the position `k` where the loop stopped: `checkFrom {} (tokenEvents (ts.extract 
 `k` is the end of input, a `streamEnd`, or a `StuckAt` position (the loop's
 no-progress exit). Under scanner-shaped tokens (`TagUsesShaped`,
 `DirectivesClosed`), the parser's anchor/tag guards compose to the checker.
+-- S3 obligation (c): `scanFiltered` output ends in `.streamEnd` with nothing
+-- after it (`TokenGrammar`'s `j + 1 = ts.size`), so with (d) the only reachable
+-- disjunct is `k = ts.size` and the conclusion is `checkFrom {} (tokenEvents ts)`.
 Capstone 7.7 `parse_iff_grammar` via S5 (EVENTSOF-CONCEPT §9). -/
 lemma parseStream_ok_checkFrom (ts : Toks) (docs : Array YamlDocument)
     (hT : TagUsesShaped ts) (hD : DirectivesClosed ts)
