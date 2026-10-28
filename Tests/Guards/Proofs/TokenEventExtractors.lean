@@ -79,25 +79,22 @@ def mk (t : YamlToken) : Positioned YamlToken := { val := t, pos := { offset := 
 
 def s1 : String := "%TAG !h tag:x,2000:\n--- !h x"
 
-/-- The scanner accepts `s1` and the parser accepts its tokens.
+/- The scanner accepts `s1` and the parser accepts its tokens.
 Capstone 7.7 via S5 (slice 2's refutation). -/
-lemma s1_scans_and_parses : (scanFiltered s1).isOk = true ∧ parserOk (scanOr s1) = true := by
-  native_decide
+#guard (scanFiltered s1).isOk = true ∧ parserOk (scanOr s1) = true
 
-/-- The parser registers the unclosed handle `!h`. -/
-lemma s1_parser_registers : parserHandles (scanOr s1) = ["!h"] := by native_decide
+/- The parser registers the unclosed handle `!h`. -/
+#guard parserHandles (scanOr s1) = ["!h"]
 
-/-- `tokEvents` declares it, `tokenEvents` does not: `tokenEventsOf ≠ tokenEvents`
+/- `tokEvents` declares it, `tokenEvents` does not: `tokenEventsOf ≠ tokenEvents`
 on scanner output.  Capstone 7.7 via S5 — refutes slice 2's `tokenEventsOf ts = tokenEvents ts`. -/
-lemma s1_traces_differ :
+#guard
     ev₁ (scanOr s1) = [.beginDocument, .declareTag "!h", .useTag "!"] ∧
-    ev₂ (scanOr s1) = [.beginDocument, .useTag "!"] := by
-  native_decide
+    ev₂ (scanOr s1) = [.beginDocument, .useTag "!"]
 
-/-- Both checkers nevertheless accept `s1` (the handle is never used). -/
-lemma s1_checkers_agree :
-    checkFrom {} (ev₁ (scanOr s1)) = true ∧ checkFrom {} (ev₂ (scanOr s1)) = true := by
-  native_decide
+/- Both checkers nevertheless accept `s1` (the handle is never used). -/
+#guard
+    checkFrom {} (ev₁ (scanOr s1)) = true ∧ checkFrom {} (ev₂ (scanOr s1)) = true
 
 /-! ## Shapes 2–4 — token level: verdicts differ -/
 
@@ -110,28 +107,25 @@ def tsD' : Array (Positioned YamlToken) :=
 def tsE : Array (Positioned YamlToken) :=
   #[mk .streamStart, mk (.tagDirective "!a_b!" "p"), mk .documentStart, mk (.tag "!a_b!" "x"), mk .streamEnd]
 
-/-- On A, D, E the parser and `checkTokenState` accept and `checkFrom {} (tokenEvents ts)`
+/- On A, D, E the parser and `checkTokenState` accept and `checkFrom {} (tokenEvents ts)`
 rejects: `TokenStateOk ts ↔ checkFrom {} (tokenEvents ts) = true` is false on token
 arrays.  Capstone 7.7 via S5. -/
-lemma verdicts_differ :
+#guard
     (parserOk tsA && L4YAML.Proofs.TokenGrammar.checkTokenState tsA && !checkFrom {} (ev₂ tsA)) = true ∧
     (parserOk tsD && L4YAML.Proofs.TokenGrammar.checkTokenState tsD && !checkFrom {} (ev₂ tsD)) = true ∧
-    (parserOk tsE && L4YAML.Proofs.TokenGrammar.checkTokenState tsE && !checkFrom {} (ev₂ tsE)) = true := by
-  native_decide
+    (parserOk tsE && L4YAML.Proofs.TokenGrammar.checkTokenState tsE && !checkFrom {} (ev₂ tsE)) = true
 
-/-- On D' both accept but `tokEvents` has begun a document before declaring the
-handle while `tokenEvents` flushes the pending handle at the end of input with no
-`beginDocument`. -/
-lemma d'_traces_differ :
+/- On D' both accept but `tokEvents` has begun a document before
+declaring the handle while `tokenEvents` flushes the pending handle at the end of input
+with no `beginDocument`. -/
+#guard
     ev₁ tsD' = [.beginDocument, .declareTag "!t!"] ∧ ev₂ tsD' = [.declareTag "!t!"] ∧
-    checkFrom {} (ev₁ tsD') = true ∧ checkFrom {} (ev₂ tsD') = true := by
-  native_decide
+    checkFrom {} (ev₁ tsD') = true ∧ checkFrom {} (ev₂ tsD') = true
 
-/-- The parser's registration follows `tokEvents` on all four shapes. -/
-lemma parser_follows_tokEvents :
+/- The parser's registration follows `tokEvents` on all four shapes. -/
+#guard
     parserHandles tsA = ["!h"] ∧ parserHandles tsD = ["!t!"] ∧ parserHandles tsD' = ["!t!"] ∧
-    parserHandles tsE = ["!a_b!"] := by
-  native_decide
+    parserHandles tsE = ["!a_b!"]
 
 /-! ## The strongest true statement the grid supports -/
 
@@ -152,12 +146,11 @@ def agreeing : List String :=
     "? a", "a: !t!x", "%TAG !t! tag:x,2000:\n---\n...\n--- !t!a",
     "%TAG !t! tag:x,2000:\n--- !t!a\n---\n!t!b" ]
 
-/-- On the `%TAG`-before-`---`, duplicate-directive and redeclared-handle rows
+/- On the `%TAG`-before-`---`, duplicate-directive and redeclared-handle rows
 (and the anchor/alias rows) the two extractors agree, so `TokenStateOk` and
 `checkFrom {} (tokenEvents ts)` coincide there.  Capstone 7.7 via S5. -/
-lemma extractors_agree_on_grid :
-    agreeing.all (fun s => (scanFiltered s).isOk && ev₁ (scanOr s) == ev₂ (scanOr s)) = true := by
-  native_decide
+#guard
+    agreeing.all (fun s => (scanFiltered s).isOk && ev₁ (scanOr s) == ev₂ (scanOr s)) = true
 
 
 /-! ## Ruling (c) as stated — refuted before restating
@@ -179,27 +172,25 @@ def tsR3 : Array (Positioned YamlToken) :=
   #[mk .streamStart, mk .documentStart, mk (.anchor "x"), mk (.scalar "a" .plain),
     mk (.versionDirective 1 2), mk (.alias "x"), mk .streamEnd]
 
-/-- `TokenGrammar` true, `checkFrom {} (tokenEvents ts)` true, parser refuses:
+/- `TokenGrammar` true, `checkFrom {} (tokenEvents ts)` true, parser refuses:
 the restated `parseStream_accepts` is false on R1/R3; the current `checkTokenState`
 refuses both.  Capstone 7.7 via S5 (slice 2's refutation of ruling (c) as stated). -/
-lemma rulingC_refuted :
+#guard
     (L4YAML.Proofs.TokenGrammar.checkTokenGrammar tsR1 && checkFrom {} (ev₂ tsR1) &&
       !parserOk tsR1 && !L4YAML.Proofs.TokenGrammar.checkTokenState tsR1) = true ∧
     (L4YAML.Proofs.TokenGrammar.checkTokenGrammar tsR3 && checkFrom {} (ev₂ tsR3) &&
-      !parserOk tsR3 && !L4YAML.Proofs.TokenGrammar.checkTokenState tsR3) = true := by
-  native_decide
+      !parserOk tsR3 && !L4YAML.Proofs.TokenGrammar.checkTokenState tsR3) = true
 
 /-- With `...` before the directive run (R2) or `---` after it (R4) both checkers
 refuse with the parser: the seam is exactly the `---`-less directive run. -/
-lemma rulingC_seam_is_missing_docStart :
-    let tsR2 : Array (Positioned YamlToken) :=
-      #[mk .streamStart, mk .documentStart, mk (.anchor "x"), mk (.scalar "a" .plain), mk .documentEnd,
-        mk (.tagDirective "!t!" "p"), mk (.alias "x"), mk .streamEnd]
-    let tsR4 : Array (Positioned YamlToken) :=
-      #[mk .streamStart, mk (.anchor "x"), mk (.scalar "a" .plain), mk (.tagDirective "!t!" "p"),
-        mk .documentStart, mk (.alias "x"), mk .streamEnd]
+def tsR2 : Array (Positioned YamlToken) :=
+  #[mk .streamStart, mk .documentStart, mk (.anchor "x"), mk (.scalar "a" .plain), mk .documentEnd,
+    mk (.tagDirective "!t!" "p"), mk (.alias "x"), mk .streamEnd]
+def tsR4 : Array (Positioned YamlToken) :=
+  #[mk .streamStart, mk (.anchor "x"), mk (.scalar "a" .plain), mk (.tagDirective "!t!" "p"),
+    mk .documentStart, mk (.alias "x"), mk .streamEnd]
+#guard
     (!parserOk tsR2 && !checkFrom {} (ev₂ tsR2) && !L4YAML.Proofs.TokenGrammar.checkTokenState tsR2) = true ∧
-    (!parserOk tsR4 && !checkFrom {} (ev₂ tsR4) && !L4YAML.Proofs.TokenGrammar.checkTokenState tsR4) = true := by
-  native_decide
+    (!parserOk tsR4 && !checkFrom {} (ev₂ tsR4) && !L4YAML.Proofs.TokenGrammar.checkTokenState tsR4) = true
 
 end L4YAML.Tests.Guards.TokenEventExtractors
