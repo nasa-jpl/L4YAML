@@ -6303,6 +6303,28 @@ def testDeeperLandingOnMapPark (state : IO.Ref TestCollector) : IO Unit := do
     checkM state s!"deeper landing vs root sibling on a mapping park {label}" (got == expected)
       s!"(documents, root keys, first value rendered) = {repr got}; expected {repr expected}"
 
+/-- Priority 51 (item 383): the deeper landing's two parks, read as parser VERDICT + root SHAPE only
+    (§7 — WHICH arm of `h_vslot` receives the landing is a term-level fact, read off the proof terms).
+    Rows: the SLOT arm (empty value, deeper `:`/`?`/`-` is `a`'s value node — accepted) against the
+    RESIDUE arm (value already inline — `a: x⏎  b: 2` — the deeper landing is REFUSED). -/
+def testDeeperLandingResidueArm (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 51: item 383 — parser VERDICT + root SHAPE only: a deeper `:`/`?`/`-` after an EMPTY mapping value is `a`'s value node (the slot arm, accepted); after an INLINE value (scalar, flow, quoted, with a trailing comment) the same landing is refused (the residue arm — `h_vslot`'s second disjunct, which carries no route); the sibling after an inline value is accepted (the resume arm) — which arm receives each is a term-level fact (§7), read off the proof terms, not here"
+  let rows : List (String × String × Option (Nat × List String × List String)) :=
+    [ ("a:⏎  b: 2 (SLOT arm: empty value, deeper `:` — `a`'s value node, a nested mapping)", "a:\n  b: 2", some (1, ["a"], ["b"])),
+      ("a:⏎  ? b⏎  : c (slot arm: deeper explicit entry)", "a:\n  ? b\n  : c", some (1, ["a"], ["b"])),
+      ("a:⏎  - x (slot arm: deeper sequence value — `firstItem` renders the sequence's items)", "a:\n  - x", some (1, ["a"], ["x"])),
+      ("a: x⏎  b: 2 (RESIDUE arm: plain scalar already inline, deeper `:` — refused)", "a: x\n  b: 2", none),
+      ("a: 'x'⏎  b: 2 (residue arm: quoted scalar inline — refused)", "a: 'x'\n  b: 2", none),
+      ("a: [x]⏎  b: 2 (residue arm: flow value inline — refused)", "a: [x]\n  b: 2", none),
+      ("a: x # c⏎  b: 2 (residue arm: inline scalar with a trailing comment — refused)", "a: x # c\n  b: 2", none),
+      ("a: x⏎  ? b⏎  : c (residue arm: deeper `?` after an inline scalar — refused)", "a: x\n  ? b\n  : c", none),
+      ("a: x⏎  - y (NOT a landing: the plain scalar continues — `a: \"x - y\"`, one key)", "a: x\n  - y", some (1, ["a"], [])),
+      ("a: x⏎b: 2 (the SIBLING after an inline value: the resume arm, one mapping of two keys)", "a: x\nb: 2", some (1, ["a", "b"], [])) ]
+  for (label, input, expected) in rows do
+    let got := rootKeys input
+    checkM state s!"deeper landing: slot vs residue arm {label}" (got == expected)
+      s!"(documents, root keys, first value rendered) = {repr got}; expected {repr expected}"
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -6364,6 +6386,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testRootSiblingLevel state
   testRootSiblingResumes state
   testNoPopAfterClosedNode state
+  testDeeperLandingResidueArm state
   testDeeperLandingOnMapPark state
   testBlockScalarTailEof state
   let results ← finish state
