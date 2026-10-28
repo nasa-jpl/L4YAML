@@ -957,7 +957,7 @@ def expectedTally : String :=
   -- 2026-10-26 (item 369): edges 664 → 665, DECLINE 256 → 255, FIELD 55 → 56, SPLIT 160 → 161 —
   -- `pendingBlock.h_closeF` threaded into `accum_block_on_pendingBlock` (one FIELD edge) and the
   -- `:`/`?` landing's `h_res_land` there read off those frames instead of `Or.inr trivial`.
-  "edges=667 skipped=39 [DECLINE=265, FIELD=56, LOCAL=27, PAY=55, RELAY=65, \
+  "edges=669 skipped=39 [DECLINE=265, FIELD=56, LOCAL=27, PAY=55, RELAY=67, \
 SPLIT=167, VIA=32]"
 
 /-- **The row item 211 read off the compiler's error text and got wrong.**  All
@@ -1117,13 +1117,14 @@ Or.imp⇒RELAY=16, Or.imp⇒SPLIT=4, dite⇒SPLIT=5]"
 -- 2026-10-28 (item 380, PR #146 review): survived 162 → 167, collapsed 14 → 26 (the twelve agreeing `Or.elim`s), leaves 358 → 384,
 -- DECLINE 177 → 197, PAY 174 → 179, VIA 7 → 8 — the arms the `VIA Or.elim` leaves hid, read.
 def expectedSplitLanding : String :=
-  "survived=167 collapsed=26 leaves=384 elsewhere=8 [DECLINE=197, PAY=179, \
-VIA=8] [DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|PAY|VIA|VIA=2, \
+  "survived=167 collapsed=26 leaves=384 elsewhere=11 [DECLINE=194, PAY=179, \
+VIA=11] [DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|PAY|VIA|VIA=1, \
 DECLINE|DECLINE|DECLINE|DECLINE|PAY|PAY|PAY|PAY|PAY=1, \
+DECLINE|DECLINE|DECLINE|DECLINE|PAY|VIA|VIA|VIA=1, \
 DECLINE|DECLINE|DECLINE|PAY=2, DECLINE|DECLINE|DECLINE|PAY|PAY|PAY=1, \
-DECLINE|DECLINE|DECLINE|PAY|VIA=3, DECLINE|DECLINE|PAY=5, \
+DECLINE|DECLINE|DECLINE|PAY|VIA=3, DECLINE|DECLINE|PAY=4, \
 DECLINE|DECLINE|PAY|PAY=1, DECLINE|DECLINE|PAY|PAY|PAY=2, DECLINE|PAY=148, \
-DECLINE|PAY|PAY=1, PAY|VIA=1]"
+DECLINE|PAY|PAY=1, PAY|VIA=1, PAY|VIA|VIA=1]"
 
 /-- **Which BRANCH is taken (DOCS item 217).**  Item 216 resolved what a split
     WRITES — both answers, one per arm.  What it could not say was which arm the
@@ -1217,8 +1218,11 @@ DECLINE|PAY|PAY=1, PAY|VIA=1]"
 -- disagree), leaves 358 → 384, siteDecided 9 → 11 (two `Classical.em … |>.elim` whose major the site derives),
 -- optionalRoot 105 → 108; `VIA Or.elim` 3 → 0 (now arms), `VIA absurd` 3 → 7 and `DECLINE-closed` 84 → 103 (the
 -- arms it hid: item 378's refutations and the declined no-pop / `lo > k` / uncovered arms at the two builders).
+-- 2026-10-28 (item 385): DECLINE-closed 103 → 100; VIA deeperLandingResume = 2, VIA deeperLandingResumeSeq = 1 —
+-- the three paid no-pop leaves (`closeThenBlock`'s two `h_res_land` arms, `pendingBlock`'s `s_prep.indents = sc.indents` arm)
+-- are helper applications now; the helpers' own dedent declines are counted at the helpers, not at the sites.
 def expectedSplitBranch : String :=
-  "splits=167 leaves=384 relayRooted=156 siteDecided=11 optionalRoot=108 plainRoot=48 agree=110/110 disagree=0 [DECLINE-closed=103, DECLINE-free=94, PAY-free=179, VIA L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root-=1, VIA absurd-=7]"
+  "splits=167 leaves=384 relayRooted=156 siteDecided=11 optionalRoot=108 plainRoot=48 agree=110/110 disagree=0 [DECLINE-closed=100, DECLINE-free=94, PAY-free=179, VIA L4YAML.Proofs.StreamAccum.deeperLandingResume-=2, VIA L4YAML.Proofs.StreamAccum.deeperLandingResumeSeq-=1, VIA L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root-=1, VIA absurd-=7]"
 
 /-- **The ten splits the site decides for itself**, which is the whole residue
     of the branch question after `expectedSplitBranch`.  Four are a `dite` on a
@@ -1341,11 +1345,13 @@ def expectedBranchPremises : List String :=
 -- 2026-10-26 (item 369): pairs 35 → 36, closureDecline 33 → 34, liveSplits 99 → 100, nodes 162 → 163, fieldEdges 55 → 56,
 -- parkHop 21 → 22 — one more field-fed split (`pendingBlock.h_closeF` → `accum_block_on_pendingBlock.h_closeF_old`).
 -- 2026-10-26 (item 370): liveSplits 100 → 101 — the sibling `-` arm's split of `h_closeF_old` is live (PAY arm reached).
+-- 2026-10-28 (item 385): accounted 667/667 → 669/669, nodes 163 → 164
+-- — `deeperLandingResume` is one more node; its two `h_valF` relay edges are accounted.
 def expectedDeclineReach : String :=
 -- Item 372 (2026-10-27): two more edges — `ImplicitKeyPack`'s route conjunct is now an Or (the `SeqTopKey` face), split at the producer's exit (a) and resolved at `colon_fires_implicit_key`.
 -- 2026-10-28 (item 380, PR #146 review): liveSplits 101 → 104 — `Or.elim` read as a two-arm split: three of the
 -- five disagreeing `Classical.em … |>.elim` decisions stand on a live (reachable) decline path; nothing else moved.
-  "pairs=36 orphan=2 direct=9 closureDecline=34 dead=0 maxDepth=2 liveSplits=104 deadSplits=0 accounted=667/667 nodes=163 fieldEdges=56 fieldResolved=56 withCycle=8 declineWriters=19 parkHop=22"
+  "pairs=36 orphan=2 direct=9 closureDecline=34 dead=0 maxDepth=2 liveSplits=104 deadSplits=0 accounted=669/669 nodes=164 fieldEdges=56 fieldResolved=56 withCycle=8 declineWriters=19 parkHop=22"
 
 /-- **Every branch premise, with what its own callers supply and where that
     bottoms out.**  `⇐` names the FIRST hop — for a park field, the field

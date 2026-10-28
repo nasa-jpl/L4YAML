@@ -281,6 +281,10 @@ def expected : List String :=
   ["back_col inl=0,inr=0 inl=0,inr=0 | un=0,0",
    "close_col_of_base inl=0,inr=0 inl=0,inr=0 | un=0,0",
    "dedent_cover_of_landing inl=1,inr=3 | un=0,0",
+   -- item 385: the deeper landing's node route at the mapping park (`h_valF`) and
+   -- the `-` park (`closeF`); the `inr`s are the dedent (and the frameless park)
+   "deeperLandingResume inl=1,inr=2 | un=0,0",
+   "deeperLandingResumeSeq inl=1,inr=1 | un=0,0",
    "flowKeyHead inl=0,inr=0 | un=0,0",
    "flowKeyRoute_of_open inl=2,inr=4 inl=0,inr=0 inl=1,inr=2 inl=2,inr=0 inl=1,inr=2 | un=3,3",
    "flowKeyRoute_of_root inl=2,inr=2 inl=0,inr=0 inl=1,inr=2 inl=5,inr=0 inl=1,inr=2 | un=3,5",

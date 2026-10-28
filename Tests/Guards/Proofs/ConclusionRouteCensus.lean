@@ -408,6 +408,9 @@ def expectedRows : List String :=
    "close_col_of_base#0 :: FIELD of VIA KmSound.back_col",
    "close_col_of_base#1 :: FIELD of VIA KmSound.back_col",
    "dedent_cover_of_landing#0 :: DECLINE | DECLINE | DECLINE | PAY",
+   -- item 385: the deeper landing's node route, paid from the park's own field
+   "deeperLandingResume#0 :: DECLINE | DECLINE | PAY",
+   "deeperLandingResumeSeq#0 :: DECLINE | PAY",
    "flowKeyHead#0 :: VIA L4YAML.Proofs.FlowKeyLift.flowNode_toBlockKey",
    "flowKeyRoute_of_open#0 :: DECLINE | DECLINE | DECLINE | DECLINE | PAY | PAY",
    "flowKeyRoute_of_open#1 :: UNREACHABLE under →/∀",
@@ -440,8 +443,10 @@ PARENT-DECLINED | PARENT-DECLINED | PAY",
     (`flowOpen_marker#0`, the stamp lemma's twin). -/
 -- 2026-10-20 (item 309): `positions` 27 → 24, `SPLIT` 19 → 17, `VIA` 2 → 1 — `frameChainUnion`, `flowVPack_of_close` and
 -- `explFrameValueLine` conclude in `∨ alt` and leave the `∨ True` survey.
+-- 2026-10-28 (item 385): positions 24 → 26, SPLIT 17, → 19,
+-- — the two item-385 helpers conclude by a split (`by_cases` on the landing's width).
 def expectedTally : String :=
-  "positions=24 skipped=0 [FIELD=4, SPLIT=17, UNREACHABLE=2, VIA=1]"
+  "positions=26 skipped=0 [FIELD=4, SPLIT=19, UNREACHABLE=2, VIA=1]"
 
 /-- **The cross-instrument control.**  Route PAY-arms against `ConclusionCensus`'s
     `inl`, route DECLINE-arms against its `inr`, conjunct by conjunct under that
@@ -452,8 +457,9 @@ def expectedTally : String :=
     paying and punting, and the other reads a lemma that pays and punts as
     neither. -/
 -- 2026-10-20 (item 309): `agree` 23 → 21 and `explFrameValueLine`'s row gone — its conclusion is `∨ alt`, outside the survey.
+-- 2026-10-28 (item 385): `agree` 21 → 23 — the two helpers read alike under both instruments (route = term reading).
 def expectedCross : List String :=
-  ["agree=21",
+  ["agree=23",
    "scanValue_ok_park_facts#0 route=1+1 term=0+0"]
 
 /-- **Item 212's producer surface, split by the pipe test**, re-derived from that

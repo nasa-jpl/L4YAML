@@ -26819,6 +26819,67 @@ lemma accum_block_on_noPending
           (h_noek (noflow_park_of_noflow h_preprocess h_noflow)))))
     · exact (block_indicator_exhausted h_dispatch hc hcv).elim
 
+/-- **Item 385: the DEEPER landing on a mapping park, paid from the park's own
+    value node.**  `h_valF` is the closed park's awaited node read as frames
+    (item 155): any block node of level `nv + 1` at the park's `sp_gram` closes
+    the stream with the park's frames `map nv :: ks` still open.  A `:`/`?`
+    landing at width `k ≥ nv + 1` on the next line IS that node — the compact
+    mapping of the landing line (`a:⏎  b: 2`) wrapped by `nestedBlockMap`; an
+    empty tail is the empty node closed by the comments run.  The dedent
+    (`k ≤ nv`) and the frameless park stay declined here. -/
+lemma deeperLandingResume {sp_start sp_gram sp_mid : SurfPos} {sc : ScannerState} {k : Nat}
+    (h_valF : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width < nv) ∧
+      ((∃ lo : Nat, IndentStackCover.Floor lo nv (FrameLevel.map nv :: ks) ∧
+        IndentStackCover.Covered lo (FrameLevel.map nv :: ks) sc) ∨ True) ∧
+      ∀ sp_mid : SurfPos, SBlockNode (nv + 1) .blockIn sp_gram sp_mid →
+      ResumeFrames (SLYamlStream sp_start) (FrameLevel.map nv :: ks) sp_mid) ∨ True)
+    (h_ssl : SSLComments sp_gram sp_mid) :
+    (∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width < k) ∧
+      ∀ sp_end : SurfPos, SCompactMapTail k sp_mid sp_end →
+        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ True := by
+  rcases h_valF with ⟨nv, ks, h_lt, _, route⟩ | _
+  · by_cases hnk : nv + 1 ≤ k
+    · refine Or.inl ⟨FrameLevel.map nv :: ks, ?_, fun sp_end h_tail => ?_⟩
+      · intro fr hfr
+        rcases List.mem_cons.mp hfr with rfl | hfr
+        · show nv < k; omega
+        · exact Nat.lt_trans (h_lt fr hfr) (by omega)
+      · cases h_tail with
+        | nil _ _ => exact route sp_mid (SBlockNode.emptyNode _ _ _ _ h_ssl)
+        | cons _ _ s₁ s₂ _ h_ind h_entry h_tail' =>
+          exact route sp_end (nestedBlockMap hnk h_ssl
+            (SBlockMapEntries_of_compactTail h_ind h_entry h_tail'))
+    · exact Or.inr trivial
+  · exact Or.inr trivial
+
+/-- **Item 385, the `-` park's twin.**  The awaited entry's node is the park's
+    own route (`pendingBlock.h_closeF`); a `:`/`?` landing at width `k ≥ n + 1`
+    on the next line is that node — `SBlockIndented.node` over the landing
+    line's compact mapping — closing with an empty sequence tail.  The dedent
+    (`k ≤ n`) stays declined here. -/
+lemma deeperLandingResumeSeq {sp_start sp_scan sp_mid : SurfPos} {n k : Nat}
+    {ks : List FrameLevel}
+    (closeF : ∀ sp_m : SurfPos, SBlockIndented n .blockIn sp_scan sp_m →
+      ∀ sp_end : SurfPos, SCompactSeqTail n sp_m sp_end →
+      ResumeFrames (SLYamlStream sp_start) ks sp_end)
+    (h_lt : ∀ fr ∈ ks, fr.width < n)
+    (h_ssl : SSLComments sp_scan sp_mid) :
+    (∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width < k) ∧
+      ∀ sp_end : SurfPos, SCompactMapTail k sp_mid sp_end →
+        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ True := by
+  by_cases hnk : n + 1 ≤ k
+  · refine Or.inl ⟨ks, fun fr hfr => Nat.lt_trans (h_lt fr hfr) (by omega),
+      fun sp_end h_tail => ?_⟩
+    cases h_tail with
+    | nil _ _ =>
+      exact closeF sp_mid (SBlockIndented.empty n .blockIn sp_scan sp_mid h_ssl)
+        sp_mid (SCompactSeqTail.nil n sp_mid)
+    | cons _ _ s₁ s₂ _ h_ind h_entry h_tail' =>
+      exact closeF sp_end (SBlockIndented.node n .blockIn sp_scan sp_end
+          (nestedBlockMap hnk h_ssl (SBlockMapEntries_of_compactTail h_ind h_entry h_tail')))
+        sp_end (SCompactSeqTail.nil n sp_end)
+  · exact Or.inr trivial
+
 -- Block dispatch after closing old pending: '-' at col=0 opens new block sequence.
 -- Shared by pendingContent and pendingFlow constructors.
 --
@@ -27422,8 +27483,8 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
     · by_cases hmem : FrameLevel.map k ∈ ks
       · obtain ⟨ks', h_w, cont⟩ := (fS sp_mid h_ssl).resumeAt hmem
         exact Or.inl ⟨ks', h_w.lt, cont⟩
-      · exact Or.inr trivial
-    · exact Or.inr trivial
+      · exact deeperLandingResume h_valF h_ssl
+    · exact deeperLandingResume h_valF h_ssl
   -- ═══ Item 197: and the same hop at the VALUE-LINE bottom.  `resumeAt` is
   -- already indifferent to what the stack stands on (item 108's parameter), so
   -- the term is item 173's verbatim; what differs is which face the opener
@@ -29642,7 +29703,7 @@ lemma accum_block_on_pendingBlock
           -- conses onto that level's tail (item 173's punt, paid as
           -- `accum_block_on_pendingBlockContent` pays its own).
           (by
-            rcases h_closeF_old with ⟨ks, _, h_cvO, closeF⟩ | _
+            rcases h_closeF_old with ⟨ks, h_ltF, h_cvO, closeF⟩ | _
             · by_cases hmem : FrameLevel.map k ∈ ks
               · obtain ⟨ks', hw, cont⟩ :=
                   (closeF sp_mid (SBlockIndented.empty n .blockIn sp_scan sp_mid h_ssl)
@@ -29657,7 +29718,8 @@ lemma accum_block_on_pendingBlock
                   have := SIndent_col h_ind
                   rw [hcol_mid] at this
                   omega
-                exact (Classical.em (s_prep.indents = sc.indents)).elim (fun _ => Or.inr trivial)
+                exact (Classical.em (s_prep.indents = sc.indents)).elim
+                  (fun _ => deeperLandingResumeSeq closeF h_ltF h_ssl)
                   (fun h_pop =>
                     match h_cvO with
                     | Or.inl ⟨lo, _, hc⟩ =>

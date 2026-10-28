@@ -6447,6 +6447,37 @@ def testParseOkCheckFrom (state : IO.Ref TestCollector) : IO Unit := do
       (!(s5TagUsesShaped ts && s5DirectivesClosed ts && s5StreamEndLast ts) || label.startsWith "B")
       s!"the gap input satisfies the scanner-shape premises; only the no-progress rows (B) may"
 
+/-- Priority 52 (item 385): the deeper landing PAID at the two parks' no-pop arms, read as parser
+    VERDICT + root SHAPE only (§7 — which arm pays is a term-level fact, read off `deeperLandingResume`
+    and `deeperLandingResumeSeq`).  Rows: the mapping park's deeper `:`/`?` after an EMPTY value is
+    `a`'s value node (paid from `h_valF`); the `-` park's deeper `:` on the next line is the awaited
+    entry's node (paid from `pendingBlock.h_closeF`); the dedent rows the helpers still decline are
+    the SIBLING (resume arm, item 382) and the popped landing (item 378), not the deeper one.
+    §7 SCOPE: these rows read the PARSER (verdict + shape) and cannot see which route a proof
+    term takes — a helper whose body were `Or.inr trivial` would leave them green.  The
+    helpers' informative side is pinned where it is observable, on the proof terms:
+    `Tests/Guards/Proofs/ConclusionRouteCensus.lean` (`deeperLandingResume#0 :: DECLINE | DECLINE | PAY`,
+    `deeperLandingResumeSeq#0 :: DECLINE | PAY` — a declining body reads `DECLINE` alone and fails the pin),
+    `ConclusionCensus` (`inl=1`), `RelaySupplyCensus` (SPLIT BRANCH `VIA deeperLandingResume = 2`,
+    `VIA deeperLandingResumeSeq = 1`) and `OpenerFallbackReach` (the `pendingBlock` leaf). -/
+def testDeeperLandingPaid (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 52: item 385 — parser VERDICT + root SHAPE only: the deeper `:`/`?` landing after an empty mapping value or a bare `-` is the park's own node"
+  let rows : List (String × String × Option (Nat × List String × List String)) :=
+    [ ("a:⏎  b: 2 (mapping park, deeper `:` — `a`'s value is a nested mapping)", "a:\n  b: 2", some (1, ["a"], ["b"])),
+      ("a:⏎  b: 2⏎  c: 3 (mapping park, deeper mapping of two keys — the compact tail)", "a:\n  b: 2\n  c: 3", some (1, ["a"], ["b", "c"])),
+      ("a:⏎  ? b⏎  : c (mapping park, deeper explicit entry)", "a:\n  ? b\n  : c", some (1, ["a"], ["b"])),
+      ("a:⏎    b: 2 (mapping park, deeper by more than one level — any k ≥ nv + 1)", "a:\n    b: 2", some (1, ["a"], ["b"])),
+      ("-⏎  a: 1 (`-` park, deeper `:` on the next line — the entry's node is a mapping)", "-\n  a: 1", some (1, [], ["a"])),
+      ("-⏎  a: 1⏎  b: 2 (`-` park, deeper mapping of two keys)", "-\n  a: 1\n  b: 2", some (1, [], ["a", "b"])),
+      ("-⏎  ? a⏎  : 1 (`-` park, deeper explicit entry)", "-\n  ? a\n  : 1", some (1, [], ["a"])),
+      ("a:⏎b: 2 (the SIBLING — resume arm, item 382: declined by the helpers, paid upstream)", "a:\nb: 2", some (1, ["a", "b"], [])),
+      ("a:⏎  b:⏎c: 3 (popped landing after a deeper empty value — item 378's arm)", "a:\n  b:\nc: 3", some (1, ["a", "c"], ["b"])),
+      ("a:⏎ b: 2 (deeper by ONE column: k = nv + 1 exactly, the helpers' boundary)", "a:\n b: 2", some (1, ["a"], ["b"])) ]
+  for (label, input, expected) in rows do
+    let got := rootKeys input
+    checkM state s!"deeper landing paid: {label}" (got == expected)
+      s!"(documents, root keys, first value rendered) = {repr got}; expected {repr expected}"
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -6509,6 +6540,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testRootSiblingResumes state
   testNoPopAfterClosedNode state
   testDeeperLandingResidueArm state
+  testDeeperLandingPaid state
   testDeeperLandingOnMapPark state
   testParseOkCheckFrom state
   testBlockScalarTailEof state
