@@ -372,7 +372,9 @@ def expectedModuleTallyP : String :=
 -- Item 372 (2026-10-27): `SeqTopKey`, `SeqTopKey.of_eq`, `seqTopKey_refuted_at_colon` and the exit (a) face (+5 constants, +4 decls).
   -- 2026-10-28 (item 380, PR #146 review): READ 1408 → 1421, RELAY 2673 → 2660 — `Or.elim` is a two-arm split
   -- (`RelaySupplyCensus.isTwoArm`): the thirteen premises handed to a `Classical.em … |>.elim` are read at the site.
-  "constants=1703 decls=1340 eta=442 FIELD=192 READ=1424 RELAY=2662 RETURN=168 UNUSED=27"
+  -- 2026-10-28 (item 386): constants/decls +2 (`IndentFloor.int_le_of_succ`, the level relays), READ +5, RELAY +2
+  -- (the helpers' new premises `h_floor`/`h_nk`, the openers' `h_lvl_old`/`h_floor_mv`); UNUSED unchanged.
+  "constants=1705 decls=1342 eta=442 FIELD=192 READ=1429 RELAY=2664 RETURN=168 UNUSED=27"
 
 -- Item 287: `accum_block_on_closeThenBlock`'s `h_vslot`, a READ one, left the
 -- `_ ∨ True` population — its sibling's move, under this peel.  Item 288: and

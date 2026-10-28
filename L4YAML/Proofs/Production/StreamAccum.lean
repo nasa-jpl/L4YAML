@@ -26825,19 +26825,32 @@ lemma accum_block_on_noPending
     the stream with the park's frames `map nv :: ks` still open.  A `:`/`?`
     landing at width `k ≥ nv + 1` on the next line IS that node — the compact
     mapping of the landing line (`a:⏎  b: 2`) wrapped by `nestedBlockMap`; an
-    empty tail is the empty node closed by the comments run.  The dedent
-    (`k ≤ nv`) and the frameless park stay declined here. -/
-lemma deeperLandingResume {sp_start sp_gram sp_mid : SurfPos} {sc : ScannerState} {k : Nat}
+    empty tail is the empty node closed by the comments run.
+
+    **Item 386 (L1): the dedent under a NO-POP landing.**  `h_valF` now names the
+    park's level at or below the scanner's top (`pendingMapValue.h_floor`, read
+    through `IndentFloor.int_le_of_succ`), and `h_floor` is the landing's own
+    floor — an unwind stops at or left of the column it unwound to — so a landing
+    that popped nothing sits at `k ≥ nv`: `k = nv` is the SIBLING at the park's own
+    level (empty value, then `resumeAt` the head frame), `k < nv` is absurd.  What
+    stays declined: the POPPED dedent off the frames (the cover is `∨ True` at
+    `colon_open_map_explicit`), the col-0 park (dead at both producers), and the
+    frameless park. -/
+lemma deeperLandingResume {sp_start sp_gram sp_scan sp_mid : SurfPos} {sc s_prep : ScannerState}
+    {k : Nat}
     (h_valF : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width < nv) ∧
+      (nv : Int) ≤ sc.currentIndent ∧
       ((∃ lo : Nat, IndentStackCover.Floor lo nv (FrameLevel.map nv :: ks) ∧
         IndentStackCover.Covered lo (FrameLevel.map nv :: ks) sc) ∨ True) ∧
       ∀ sp_mid : SurfPos, SBlockNode (nv + 1) .blockIn sp_gram sp_mid →
       ResumeFrames (SLYamlStream sp_start) (FrameLevel.map nv :: ks) sp_mid) ∨ True)
-    (h_ssl : SSLComments sp_gram sp_mid) :
+    (h_ssl : SSLComments sp_gram sp_mid)
+    (h_floor : s_prep.indents = sc.indents → 0 < sp_scan.col →
+      s_prep.currentIndent ≤ (k : Int)) :
     (∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width < k) ∧
       ∀ sp_end : SurfPos, SCompactMapTail k sp_mid sp_end →
         ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ True := by
-  rcases h_valF with ⟨nv, ks, h_lt, _, route⟩ | _
+  rcases h_valF with ⟨nv, ks, h_lt, h_lvl, _, route⟩ | _
   · by_cases hnk : nv + 1 ≤ k
     · refine Or.inl ⟨FrameLevel.map nv :: ks, ?_, fun sp_end h_tail => ?_⟩
       · intro fr hfr
@@ -26849,21 +26862,41 @@ lemma deeperLandingResume {sp_start sp_gram sp_mid : SurfPos} {sc : ScannerState
         | cons _ _ s₁ s₂ _ h_ind h_entry h_tail' =>
           exact route sp_end (nestedBlockMap hnk h_ssl
             (SBlockMapEntries_of_compactTail h_ind h_entry h_tail'))
-    · exact Or.inr trivial
+    · by_cases hk : k = nv
+      · -- The sibling: the awaited value closes empty and the landing conses
+        -- onto the park's own tail (the head frame).
+        subst hk
+        obtain ⟨ks', h_w, cont⟩ :=
+          (route sp_mid (SBlockNode.emptyNode _ _ _ _ h_ssl)).resumeAt
+            (List.mem_cons.mpr (Or.inl rfl))
+        exact Or.inl ⟨ks', h_w.lt, cont⟩
+      · -- `k < nv`: under a no-pop landing off a line start, absurd (the top is
+        -- at or below `k` and at or above `nv`); the popped dedent and the col-0
+        -- park stay declined.
+        exact (Classical.em (s_prep.indents = sc.indents ∧ 0 < sp_scan.col)).elim
+          (fun ⟨h_eq, hc⟩ => absurd (h_floor h_eq hc)
+            (by rw [currentIndent_of_indents_eq h_eq]; omega))
+          (fun _ => Or.inr trivial)
   · exact Or.inr trivial
 
 /-- **Item 385, the `-` park's twin.**  The awaited entry's node is the park's
     own route (`pendingBlock.h_closeF`); a `:`/`?` landing at width `k ≥ n + 1`
     on the next line is that node — `SBlockIndented.node` over the landing
-    line's compact mapping — closing with an empty sequence tail.  The dedent
-    (`k ≤ n`) stays declined here. -/
+    line's compact mapping — closing with an empty sequence tail.
+
+    **Item 386 (L1):** the caller's no-pop landing sits at `k ≥ n` (`h_nk`: the
+    park's level is at or below the top, the top at or left of the landing), so
+    `k < n` is gone; what stays declined is `k = n` — a `:`/`?` at the `-`'s own
+    column, a SEQUENCE TOP the dispatcher refuses (`-⏎a: 1`), but the park holds
+    no fact that its top entry is the sequence it pushed. -/
 lemma deeperLandingResumeSeq {sp_start sp_scan sp_mid : SurfPos} {n k : Nat}
     {ks : List FrameLevel}
     (closeF : ∀ sp_m : SurfPos, SBlockIndented n .blockIn sp_scan sp_m →
       ∀ sp_end : SurfPos, SCompactSeqTail n sp_m sp_end →
       ResumeFrames (SLYamlStream sp_start) ks sp_end)
     (h_lt : ∀ fr ∈ ks, fr.width < n)
-    (h_ssl : SSLComments sp_scan sp_mid) :
+    (h_ssl : SSLComments sp_scan sp_mid)
+    (h_nk : n ≤ k) :
     (∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width < k) ∧
       ∀ sp_end : SurfPos, SCompactMapTail k sp_mid sp_end →
         ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ True := by
@@ -26878,7 +26911,9 @@ lemma deeperLandingResumeSeq {sp_start sp_scan sp_mid : SurfPos} {n k : Nat}
       exact closeF sp_end (SBlockIndented.node n .blockIn sp_scan sp_end
           (nestedBlockMap hnk h_ssl (SBlockMapEntries_of_compactTail h_ind h_entry h_tail')))
         sp_end (SCompactSeqTail.nil n sp_end)
-  · exact Or.inr trivial
+  · -- `k = n`: the sequence top, declined (see the docstring).
+    have _hk : k = n := by omega
+    exact Or.inr trivial
 
 -- Block dispatch after closing old pending: '-' at col=0 opens new block sequence.
 -- Shared by pendingContent and pendingFlow constructors.
@@ -27046,6 +27081,8 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
     -- Item 179: the awaited node reads at the SHIFTED index; the frame widths
     -- stay raw — they name scanner levels, not node indices.
     (h_valF : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width < nv) ∧
+      -- Item 386: the park's level at or below the scanner's top (`h_floor`).
+      (nv : Int) ≤ sc.currentIndent ∧
       ((∃ lo : Nat, IndentStackCover.Floor lo nv (FrameLevel.map nv :: ks) ∧
         IndentStackCover.Covered lo (FrameLevel.map nv :: ks) sc) ∨ True) ∧
       ∀ sp_mid : SurfPos, SBlockNode (nv + 1) .blockIn sp_gram sp_mid →
@@ -27479,12 +27516,24 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
   have h_res_land : (∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width < k) ∧
       ∀ sp_end : SurfPos, SCompactMapTail k sp_mid sp_end →
         ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ True := by
+    -- Item 386: the landing's floor for the helper — off a line start, the walk
+    -- armed the indent check and preprocessing's unwind stopped at or left of `k`.
+    have h_floor_k : s_prep.indents = sc.indents → 0 < sp_scan.col →
+        s_prep.currentIndent ≤ (k : Int) := fun _ hc => by
+      have h_scol : s_prep.col = k := by
+        rw [← hcorr_prep.col_eq]
+        have := SIndent_col h_ind
+        rw [hcol_mid] at this
+        omega
+      have := landing_floor_of_arm h_noflow h_larm (Nat.pos_iff_ne_zero.mp hc) h_base h_preprocess
+      rw [h_scol] at this
+      exact this
     rcases h_mapF with ⟨ks, fS⟩ | _
     · by_cases hmem : FrameLevel.map k ∈ ks
       · obtain ⟨ks', h_w, cont⟩ := (fS sp_mid h_ssl).resumeAt hmem
         exact Or.inl ⟨ks', h_w.lt, cont⟩
-      · exact deeperLandingResume h_valF h_ssl
-    · exact deeperLandingResume h_valF h_ssl
+      · exact deeperLandingResume h_valF h_ssl h_floor_k
+    · exact deeperLandingResume h_valF h_ssl h_floor_k
   -- ═══ Item 197: and the same hop at the VALUE-LINE bottom.  `resumeAt` is
   -- already indifferent to what the stack stands on (item 108's parameter), so
   -- the term is item 173's verbatim; what differs is which face the opener
@@ -27622,7 +27671,7 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
         ∀ sp_mid : SurfPos, SBlockIndented k .blockIn sp_scan' sp_mid →
         ∀ sp_end : SurfPos, SCompactSeqTail k sp_mid sp_end →
         ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ True := by
-      rcases h_valF with ⟨nv, ksv, h_ltv, h_cvv, closeF⟩ | _
+      rcases h_valF with ⟨nv, ksv, h_ltv, _, h_cvv, closeF⟩ | _
       · by_cases hnv : nv < k
         · exact Or.inl ⟨FrameLevel.map nv :: ksv, (fun k' hk' => by
               rcases List.mem_cons.mp hk' with rfl | h'
@@ -29329,6 +29378,10 @@ lemma accum_block_on_pendingBlock
       ∀ sp_end : SurfPos, SCompactSeqTail n sp_mid sp_end →
       ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ True)
     (h_top_old : sc.currentIndent ≤ (n : Int))
+    -- **Item 386: and the park's level at or below that top** (`h_floor`'s second
+    -- conjunct, `IndentFloor.int_le_of_succ`) — with the landing's floor, a no-pop
+    -- landing sits at or right of the awaited entry's column.
+    (h_lvl_old : (n : Int) ≤ sc.currentIndent)
     -- **Item 209 (LAST): the park's own INDENT CHECK, down.**  `pendingBlock`'s
     -- `h_floor` has carried it since item 21 (`IndentFloor`'s first conjunct);
     -- this is that reading handed across, and it is what turns the landing
@@ -29719,7 +29772,10 @@ lemma accum_block_on_pendingBlock
                   rw [hcol_mid] at this
                   omega
                 exact (Classical.em (s_prep.indents = sc.indents)).elim
-                  (fun _ => deeperLandingResumeSeq closeF h_ltF h_ssl)
+                  (fun h_eq => deeperLandingResumeSeq closeF h_ltF h_ssl (by
+                    have := landing_floor_of_arm h_noflow h_larm (by omega) h_base h_preprocess
+                    rw [currentIndent_of_indents_eq h_eq, h_scol] at this
+                    omega))
                   (fun h_pop =>
                     match h_cvO with
                     | Or.inl ⟨lo, _, hc⟩ =>
@@ -30471,7 +30527,7 @@ lemma accum_block_pending (sc : ScannerState)
       (Or.inr trivial) (Or.inr trivial) (Or.inr trivial)
       -- Item 208: item 206's field.
       h_nic0F h_gateF.choose_spec.1 h_gateF.choose_spec.2 h_mcstep
-  | pendingMapValue _ _ _ nmv _ _ h_nic48 h_real48 h_ivl48 h_expl51 h_vslot51 h_sk58 h_col0_mv _
+  | pendingMapValue _ _ _ nmv _ h_floor_mv h_nic48 h_real48 h_ivl48 h_expl51 h_vslot51 h_sk58 h_col0_mv _
       h_kslot93 h_closeF155 h_frames173 h_closeFV108 h_framesV108 _ _ h_explUp190  _ h_nextM =>
     -- ═══ Item 48: an IMPLICIT `:` stamped its line, and B1/B2/B3 all read
     -- the stamp — the inline residue is EMPTY there.  Item 51: an OPEN
@@ -30510,7 +30566,8 @@ lemma accum_block_pending (sc : ScannerState)
         -- collection it opens fills the node, and `FrameLevel.map n :: ks` are the mapping
         -- levels still open underneath.  The index goes existential and
         -- nothing else moves — cover included (`k:⏎  - a⏎b: 2`).
-        (h_closeF155.imp (fun h => ⟨nmv, h⟩) id) (Or.inr trivial)
+        (h_closeF155.imp (fun ⟨ks, hlt, hcov, r⟩ =>
+          ⟨nmv, ks, hlt, IndentFloor.int_le_of_succ h_floor_mv, hcov, r⟩) id) (Or.inr trivial)
         -- Item 173: this park is the sibling swap's SECOND payer — the
         -- awaited entry closes empty on the landing's comments and the
         -- still-open levels resume (`k:⏎: 2` = `{k: null, null: 2}`, one
@@ -30622,7 +30679,8 @@ lemma accum_block_pending (sc : ScannerState)
         (Or.inr trivial) (Or.inr trivial) h_bare h_dn h_fv h_base h_mono (Or.inr trivial)
         -- Item 155: the explicit-frame twin of the branch above — same field,
         -- same hand-over (`?⏎  k:⏎    - a⏎  b: 2`).
-        (h_closeF155.imp (fun h => ⟨nmv, h⟩) id) (Or.inr trivial)
+        (h_closeF155.imp (fun ⟨ks, hlt, hcov, r⟩ =>
+          ⟨nmv, ks, hlt, IndentFloor.int_le_of_succ h_floor_mv, hcov, r⟩) id) (Or.inr trivial)
         -- Item 173: the explicit twin pays the same resume field.
         (h_frames173.imp (fun ⟨ks, _, fS⟩ => ⟨ks, fS⟩) id)
         -- Item 175: the explicit twin holds no property run either.
@@ -30664,6 +30722,8 @@ lemma accum_block_pending (sc : ScannerState)
 
       -- Item 208: and the park's own TOP, which the INLINE arm spends.
       h_top208
+      -- Item 386: and the park's level at or below it, off its floor.
+      (IndentFloor.int_le_of_succ h_floor208)
       -- Item 209: and the park's own indent check, read off its floor — what
       -- turns the mid-line step's stack conjunct into a fact.
       h_floor208.1 h_mcstep h_mcstep_ne

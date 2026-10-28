@@ -1055,9 +1055,11 @@ Or.imp⇒RELAY=16, Or.imp⇒SPLIT=4, dite⇒SPLIT=5]"
 
     `resolve` enters every arm now.  An arm's answer is an answer per BRANCH, so
     the only split that can be reported as one answer is one whose arms agree —
-    and exactly ONE of the 156 does, a chain of six splitters
-    (`Or.casesOn→Exists.casesOn→Exists.casesOn→And.casesOn→And.casesOn→dite`)
-    that all land on `PAY`.  The other 155 keep the `SPLIT` label and carry
+    and exactly ONE of the 156 does, a chain of splitters
+    (`Or.casesOn→Exists.casesOn→Exists.casesOn→And.casesOn→And.casesOn→And.casesOn→dite`
+    — seven since item 386 added `h_valF`'s level conjunct; the dispatcher's two
+    `fun ⟨ks, hlt, hcov, r⟩` producers also renumber `accum_block_pending`'s match
+    auxiliaries by two) that all land on `PAY`.  The other 155 keep the `SPLIT` label and carry
     their leaves, which is what the shape list below counts.
 
     **That one is named in `expectedCollapsedEdge` as of item 218**, and naming
@@ -1517,8 +1519,8 @@ accum_content_pending → PendingNode.pendingBlockContent#17 (h_kslotUp) = DECLI
 colon_open_map_explicit → PendingNode.pendingMapValue#15 (h_kslot) = DECLINE via Or.elim; \
 colon_open_map_explicit → PendingNode.pendingMapValue#18 (h_closeFV) = DECLINE via Or.elim; \
 colon_open_map_explicit → PendingNode.pendingMapValue#19 (h_framesV) = DECLINE via Or.elim; \
-accum_block_pending → frameChainUnion#2 (h₁) = PAY via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_block_pending.match_1_21; \
-accum_block_pending → frameChainUnion#3 (h₂) = PAY via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_block_pending.match_1_23; \
+accum_block_pending → frameChainUnion#2 (h₁) = PAY via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_block_pending.match_1_23; \
+accum_block_pending → frameChainUnion#3 (h₂) = PAY via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_block_pending.match_1_25; \
 accum_step_flow → PendingNode.pendingContent#9 (h_vpack) = DECLINE via Or.elim; \
 accum_step_flow → PendingNode.pendingContent#12 (h_framesV) = DECLINE via Or.elim; \
 accum_step_flow → PendingNode.pendingContent#9 (h_vpack) = DECLINE via Or.elim; \
@@ -1529,8 +1531,8 @@ accum_content_on_pendingMapValue_indented → frameChainUnionD#3 (h₁) = DECLIN
 explFrameValueLine → frameChainUnion#2 (h₁) = PAY via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.explFrameValueLine.match_1_1; \
 accum_content_on_pendingBlock_indented → PendingNode.pendingProps#21 (h_kslot) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_content_on_pendingBlock_indented.match_1_2; \
 colon_open_map → PendingNode.pendingMapValue#15 (h_kslot) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.colon_open_map.match_1_5; \
-accum_block_on_closeThenBlock → PendingNode.pendingBlock#11 (h_closeF) = PAY via Or.casesOn→Exists.casesOn→Exists.casesOn→And.casesOn→And.casesOn→dite; \
-accum_block_on_closeThenBlock → PendingNode.pendingBlock#14 (h_kslotUp) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock.match_1_27→dite; \
+accum_block_on_closeThenBlock → PendingNode.pendingBlock#11 (h_closeF) = PAY via Or.casesOn→Exists.casesOn→Exists.casesOn→And.casesOn→And.casesOn→And.casesOn→dite; \
+accum_block_on_closeThenBlock → PendingNode.pendingBlock#14 (h_kslotUp) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock.match_1_28→dite; \
 accum_block_on_closeThenBlock → PendingNode.pendingBlock#14 (h_kslotUp) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock.match_1_3"
 
 /-- **Read off the TYPE, not off a list.**  Item 211's falsification script

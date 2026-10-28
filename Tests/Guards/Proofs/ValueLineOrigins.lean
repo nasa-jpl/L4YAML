@@ -1165,7 +1165,8 @@ def expectedLine : String :=
 -- `ResumeFrames`; `question_open_map`'s `h_expl`/`h_closeFV`/`h_framesV` come from the bound tail route `h_route51F`.
 -- Item 372 (2026-10-27): the Or-shaped route conjunct of `ImplicitKeyPack` (summary mirrors the five `(Or)` rows).
 -- Item 374: lets=647 → 648, lapps=821 → 822, alts=5234 → 5243, nodes=13694 → 13696, liteNodes=630069 → 632322 — the resume context's face disjunct and `resumectx_of_landing`'s `h_base`.
-  "positions=49 packaged=7 packConsts=[ImplicitKeyPack,PropsKeyPack] rows=184 ctorRows=98 paramRows=86 packagedRows=29 punt=7 stamp=44 built=133 origins=67 originRows=32 route=12 frames=29 tail=14 other=0 concl=8 invariant=4 heldOrigins=15 allHeld=3 someHeld=36 noneHeld=66 unbornRows=13 relayedPunt=0 relayedStamp=11 relayedAbsurd=4 relayedFact=0 deadRows=0 unbornPos=5 rounds=5 follows=360 lets=652 lapps=822 alts=5277 nodes=13696 liteNodes=634748"
+  -- 2026-10-28 (item 386): lets 652 → 657, alts 5277 → 5280, nodes 13696 → 13706, liteNodes 634748 → 635676 — the `-` opener's `h_lvl_old` and its `omega` spend at the no-pop arm; no origin row moved.
+  "positions=49 packaged=7 packConsts=[ImplicitKeyPack,PropsKeyPack] rows=184 ctorRows=98 paramRows=86 packagedRows=29 punt=7 stamp=44 built=133 origins=67 originRows=32 route=12 frames=29 tail=14 other=0 concl=8 invariant=4 heldOrigins=15 allHeld=3 someHeld=36 noneHeld=66 unbornRows=13 relayedPunt=0 relayedStamp=11 relayedAbsurd=4 relayedFact=0 deadRows=0 unbornPos=5 rounds=5 follows=360 lets=657 lapps=822 alts=5280 nodes=13706 liteNodes=635676"
 
 /-! ## §4 The reading -/
 

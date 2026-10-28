@@ -608,6 +608,9 @@ adds.**   `constants` counts the module's non-internal constants, generated ones
 -- READ 1314 → 1317 — `h_closeF_old`, `h_node_old` and the cover read once more at the re-park.
 -- 2026-10-28 (item 385): constants 1701 → 1703, decls 1338 → 1340, READ 1357 → 1360, RELAY 2862 → 2864
 -- — the two item-385 helpers (`deeperLandingResume`, `deeperLandingResumeSeq`): two constants/decls, their `h_valF`/`closeF` READs and the relays at the three call sites.
+-- 2026-10-28 (item 386): constants/decls +2 (`IndentFloor.int_le_of_succ`'s use sites: the two helpers'
+-- new premises), READ +5 (`h_lvl`/`h_floor`/`h_nk`/`h_floor_mv`/`h_floor208`), RELAY +2 (`h_nk` spent
+-- through `omega`, `h_lvl_old` relayed); UNUSED unchanged — `h_nk` is read (`have _hk : k = n`).
 def expectedModuleTally : String :=
   -- 2026-10-26 (item 365): RELAY 2830 → 2836 — `h_sound` ×3, `h_fl0` ×2 and `h_alt` ×1 passed whole from
   -- `accum_step_content`/`accum_content_pending`/the `_indented` pair to the content lane's payers.
@@ -616,7 +619,7 @@ def expectedModuleTally : String :=
   -- `dispatchBlock_colon_notQuestion` and `explFrameValueLine`'s split alternative.
   -- 2026-10-26 (item 366): RELAY 2836 → 2838 — `h_sound` passed whole into the two new `Sound sc` binders.
   -- 2026-10-27 (item 371): constants/decls +1, READ +1 — `ResumeFrames.one` (its `h_tail` is read once).
-  "constants=1703 decls=1340 eta=442 FIELD=168 READ=1360 RELAY=2864 RETURN=54 UNUSED=27"
+  "constants=1705 decls=1342 eta=442 FIELD=168 READ=1365 RELAY=2866 RETURN=54 UNUSED=27"
 -- 2026-10-25 (#112 review): the `FlowStackK` `MarkedColsIn` carrier reverted (Rule 8: a projection of the closed state is decided at the close by `Classical.em`); the two transport helpers and `h_pk'` go (constants 1683 → 1681, decls 1322 → 1320, READ 1325 → 1323, RELAY 2838 → 2830); `Mono sc` stays on `accum_step_flow`.
 -- 2026-10-25 (item 363): the flow OPEN lane read off the block state (`h_refused`, one `Classical.em`; five `match` blocks deleted): the five deleted `match` auxiliaries: constants 1681 → 1676, decls 1320 → 1315, READ 1323 → 1306.
 

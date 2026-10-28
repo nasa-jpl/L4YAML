@@ -1094,7 +1094,8 @@ def expectedLine : String :=
 -- `ResumeFrames`; `question_open_map`'s `h_expl`/`h_closeFV`/`h_framesV` come from the bound tail route `h_route51F`.
 -- Item 372 (2026-10-27): `ImplicitKeyPack`'s route conjunct is an Or (`∨ SeqTopKey sc`); the pack walker reads the stream route on its left side.
 -- Item 374: nodes=13663 → 13665 — the resume context's face disjunct and `resumectx_of_landing`'s `h_base`.
-  "packs=11 framesOn=7 params=31 paramLemmas=19 apps=51 rows=155 ctorRows=74 paramRows=81 punt=30 stamp=21 empty=0 relay=25 step=10 via=10 chain=45 route=2 frames=3 tail=2 other=0 alt=7 held=7 levelVar=37 none=25 spendTail=5 lemmas=21 helpers=[explFrameValueLine,frameChainCons,frameChainOne,frameChainUnion,frameChainUnionD] touched=125 nodes=13665"
+  -- 2026-10-28 (item 386): nodes 13665 → 13675 — the `-` opener's `h_lvl_old` beside the value-line packs it walks; no pack/row moved.
+  "packs=11 framesOn=7 params=31 paramLemmas=19 apps=51 rows=155 ctorRows=74 paramRows=81 punt=30 stamp=21 empty=0 relay=25 step=10 via=10 chain=45 route=2 frames=3 tail=2 other=0 alt=7 held=7 levelVar=37 none=25 spendTail=5 lemmas=21 helpers=[explFrameValueLine,frameChainCons,frameChainOne,frameChainUnion,frameChainUnionD] touched=125 nodes=13675"
 
 /-! ## §4 The reading -/
 

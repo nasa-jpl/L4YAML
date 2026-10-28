@@ -1064,10 +1064,12 @@ def expectedTrees : List String :=
    "mapValue: positions=8 rows=13 leaves[cover-punt=1 open:fnparam:colon_fires_implicit_key.h_key=1 open:fnparam:colon_fires_props_key.h_key=1 paid=2 punt=1] open=2"]
 -- 2026-10-26 (item 369): `accum_block_on_pendingBlock` row re-read — `h_closeF_old` (the `-` park's frames) joins its binders.
 def expectedEight : List String :=
-  ["accum_block_on_pendingBlock indicator_open_map.h_stream_land indents=0 top=1(h_top_old) floor=0 minCI=0 nic=1(h_nic_old) prep=1(h_preprocess) base=1(h_base) mono=1(h_mono) cover=2(h_closeFV_old@2,h_closeF_old@2)",
-   "accum_block_on_pendingBlock colon_open_map_explicit.h_stream_mid indents=0 top=1(h_top_old) floor=0 minCI=0 nic=1(h_nic_old) prep=1(h_preprocess) base=1(h_base) mono=1(h_mono) cover=2(h_closeFV_old@2,h_closeF_old@2)",
-   "accum_block_on_pendingBlock block_dispatch_deferred_stamp_offcol.h_stream indents=0 top=1(h_top_old) floor=0 minCI=0 nic=1(h_nic_old) prep=1(h_preprocess) base=1(h_base) mono=1(h_mono) cover=2(h_closeFV_old@2,h_closeF_old@2)",
-   "accum_block_on_pendingBlock block_dispatch_deferred_stamp_nopack.h_stream indents=0 top=1(h_top_old) floor=0 minCI=0 nic=1(h_nic_old) prep=1(h_preprocess) base=1(h_base) mono=1(h_mono) cover=2(h_closeFV_old@2,h_closeF_old@2)",
+  -- item 386: `top=2` — the `-` opener reads the park's LEVEL at or below the top
+  -- (`h_lvl_old`, `IndentFloor`'s second conjunct) beside the top's bound (`h_top_old`).
+  ["accum_block_on_pendingBlock indicator_open_map.h_stream_land indents=0 top=2(h_top_old,h_lvl_old) floor=0 minCI=0 nic=1(h_nic_old) prep=1(h_preprocess) base=1(h_base) mono=1(h_mono) cover=2(h_closeFV_old@2,h_closeF_old@2)",
+   "accum_block_on_pendingBlock colon_open_map_explicit.h_stream_mid indents=0 top=2(h_top_old,h_lvl_old) floor=0 minCI=0 nic=1(h_nic_old) prep=1(h_preprocess) base=1(h_base) mono=1(h_mono) cover=2(h_closeFV_old@2,h_closeF_old@2)",
+   "accum_block_on_pendingBlock block_dispatch_deferred_stamp_offcol.h_stream indents=0 top=2(h_top_old,h_lvl_old) floor=0 minCI=0 nic=1(h_nic_old) prep=1(h_preprocess) base=1(h_base) mono=1(h_mono) cover=2(h_closeFV_old@2,h_closeF_old@2)",
+   "accum_block_on_pendingBlock block_dispatch_deferred_stamp_nopack.h_stream indents=0 top=2(h_top_old,h_lvl_old) floor=0 minCI=0 nic=1(h_nic_old) prep=1(h_preprocess) base=1(h_base) mono=1(h_mono) cover=2(h_closeFV_old@2,h_closeF_old@2)",
    "accum_block_on_pendingBlockContent indicator_open_map.h_stream_land indents=0 top=0 floor=0 minCI=0 nic=1(h_nic0) prep=1(h_preprocess) base=1(h_base) mono=1(h_mono) cover=2(h_closeF_old@2,h_closeFV_old@2)",
    "accum_block_on_pendingBlockContent colon_open_map_explicit.h_stream_mid indents=0 top=0 floor=0 minCI=0 nic=1(h_nic0) prep=1(h_preprocess) base=1(h_base) mono=1(h_mono) cover=2(h_closeF_old@2,h_closeFV_old@2)",
    "accum_block_on_pendingBlockContent block_dispatch_deferred_stamp_offcol.h_stream indents=0 top=0 floor=0 minCI=0 nic=1(h_nic0) prep=1(h_preprocess) base=1(h_base) mono=1(h_mono) cover=2(h_closeF_old@2,h_closeFV_old@2)",
@@ -1231,7 +1233,8 @@ def expectedLine : String :=
 -- Item 371 (pmvPunt=1 → 0, pmvCoverPunt=0 → 1, contentPunt=14 → 13, contentCoverPunt=2 → 3, entryPunt=14 → 13, entryCoverPunt=2 → 3, nodes=117865 → 119846): the value-line packs end in the one-level
 -- `ResumeFrames`; `question_open_map`'s `h_expl`/`h_closeFV`/`h_framesV` come from the bound tail route `h_route51F`.
 -- Item 372 (2026-10-27): exit (a)'s cover spend on `preprocess_landing_mem_or_seq` (one more lemma relay row).
-  "positions=24 ctorFields=13 lemParams=36 lemmas=19 walked=26 doors=9 rows=206 ctorRows=92 lemRows=80 localRows=5 fnRows=19 fnpRows=8 valRows=2 coverTypes=4 mentions=0 pbc=6 pbcRelay=6 pbcPaid=0 pbcPunt=0 pbcCoverPunt=0 pb=7 pbRelay=3 pbPaid=4 pbPunt=0 pbCoverPunt=0 pmv=6 pmvRelay=4 pmvPaid=1 pmvPunt=0 pmvCoverPunt=1 valF=11 valFRelay=2 valFPaid=0 valFPunt=9 contentPaid=6 contentPunt=13 contentCoverPunt=3 contentLemma=0 contentOpen=2 contentPos=17 entryPaid=6 entryPunt=13 entryCoverPunt=3 entryLemma=0 entryOpen=2 entryPos=17 eight=8 eightPB=4 eightPBC=4 eightIndents=0 eightTop=4 eightFloor=0 eightMinCI=0 eightNic=8 eightPrep=8 eightCover=8 doorUses=49 doorKept=17 doorForgotten=8 doorDropped=24 doorsOther=5 nodes=120403"
+-- Item 386 (2026-10-28): nodes 120403 → 121047 — the level conjunct in `h_valF`, the `-` opener's `h_lvl_old`, the helpers' sibling/absurd terms; no row moved.
+  "positions=24 ctorFields=13 lemParams=36 lemmas=19 walked=26 doors=9 rows=206 ctorRows=92 lemRows=80 localRows=5 fnRows=19 fnpRows=8 valRows=2 coverTypes=4 mentions=0 pbc=6 pbcRelay=6 pbcPaid=0 pbcPunt=0 pbcCoverPunt=0 pb=7 pbRelay=3 pbPaid=4 pbPunt=0 pbCoverPunt=0 pmv=6 pmvRelay=4 pmvPaid=1 pmvPunt=0 pmvCoverPunt=1 valF=11 valFRelay=2 valFPaid=0 valFPunt=9 contentPaid=6 contentPunt=13 contentCoverPunt=3 contentLemma=0 contentOpen=2 contentPos=17 entryPaid=6 entryPunt=13 entryCoverPunt=3 entryLemma=0 entryOpen=2 entryPos=17 eight=8 eightPB=4 eightPBC=4 eightIndents=0 eightTop=4 eightFloor=0 eightMinCI=0 eightNic=8 eightPrep=8 eightCover=8 doorUses=49 doorKept=17 doorForgotten=8 doorDropped=24 doorsOther=5 nodes=121047"
 
 /-! ## §6 The reading -/
 

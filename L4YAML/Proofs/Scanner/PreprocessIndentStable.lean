@@ -481,6 +481,13 @@ lemma IndentFloor.of_succ {sc : ScannerState} {n : Nat}
     (h : IndentFloor sc (n + 1)) : IndentFloor sc n :=
   ⟨h.1, Nat.le_of_succ_le h.2⟩
 
+/-- The shifted floor's second conjunct read back as the LEVEL (item 386): the
+    park's index is at or below the stack top, `minContentIndentOf` being the top
+    plus one.  The converse of `succ_le_minContentIndentOf_of_int_le`. -/
+lemma IndentFloor.int_le_of_succ {sc : ScannerState} {n : Nat}
+    (h : IndentFloor sc (n + 1)) : (n : Int) ≤ sc.currentIndent := by
+  have h2 := h.2; unfold minContentIndentOf at h2; omega
+
 /-- The carried inequality, in the SHIFTED floor's shape (item 179): a stack
     top at or above the entry column admits the awaited node's index, because
     the scalar floor is the top plus one. -/

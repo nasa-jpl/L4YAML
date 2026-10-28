@@ -408,8 +408,11 @@ def expectedRows : List String :=
    "close_col_of_base#0 :: FIELD of VIA KmSound.back_col",
    "close_col_of_base#1 :: FIELD of VIA KmSound.back_col",
    "dedent_cover_of_landing#0 :: DECLINE | DECLINE | DECLINE | PAY",
-   -- item 385: the deeper landing's node route, paid from the park's own field
-   "deeperLandingResume#0 :: DECLINE | DECLINE | PAY",
+   -- item 385: the deeper landing's node route, paid from the park's own field.
+   -- item 386: the second PAY is the sibling at `k = nv` (empty value, `resumeAt`);
+   -- the `SPLIT Or.elim` is `Classical.em (no-pop ∧ 0 < sp_scan.col)` — absurd on the
+   -- left, the popped/col-0 dedent's decline on the right.
+   "deeperLandingResume#0 :: DECLINE | PAY | PAY | SPLIT Or.elim",
    "deeperLandingResumeSeq#0 :: DECLINE | PAY",
    "flowKeyHead#0 :: VIA L4YAML.Proofs.FlowKeyLift.flowNode_toBlockKey",
    "flowKeyRoute_of_open#0 :: DECLINE | DECLINE | DECLINE | DECLINE | PAY | PAY",
@@ -458,8 +461,12 @@ def expectedTally : String :=
     neither. -/
 -- 2026-10-20 (item 309): `agree` 23 → 21 and `explFrameValueLine`'s row gone — its conclusion is `∨ alt`, outside the survey.
 -- 2026-10-28 (item 385): `agree` 21 → 23 — the two helpers read alike under both instruments (route = term reading).
+-- 2026-10-28 (item 386): `agree` 23 → 22 — `deeperLandingResume`'s `k < nv` arm is a `Classical.em`
+-- split the route reading leaves unresolved (`SPLIT Or.elim`): the term reading sees its `inr`
+-- (the popped/col-0 dedent's decline) and the sibling's `inl`; the route reading sees two PAYs, one DECLINE.
 def expectedCross : List String :=
-  ["agree=23",
+  ["agree=22",
+   "deeperLandingResume#0 route=2+1 term=2+2",
    "scanValue_ok_park_facts#0 route=1+1 term=0+0"]
 
 /-- **Item 212's producer surface, split by the pipe test**, re-derived from that

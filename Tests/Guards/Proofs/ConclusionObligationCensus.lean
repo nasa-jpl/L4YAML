@@ -336,7 +336,8 @@ def expectedLedger : List String :=
    "res=3 imp=5 prem=1 proj=0 flowOpen_stamp",
    "res=3 imp=12 prem=0 proj=0 keyctx_of_preprocess",
    "res=3 imp=12 prem=0 proj=0 nodocctx_of_preprocess",
-   "res=2 imp=15 prem=1 proj=0 deeperLandingResume",
+   -- 2026-10-28 (item 386): imp 15 → 26 — the mapping helper's `h_floor` premise (two implications) and the level conjunct widen its premise surface; res=2 unchanged (the two `∨ True` arms).
+   "res=2 imp=26 prem=1 proj=0 deeperLandingResume",
    "res=1 imp=4 prem=1 proj=0 PreprocessIndentStable.IndentFloor.transport",
    "res=1 imp=4 prem=1 proj=0 flowOpen_floor_at_prep",
    "res=1 imp=1 prem=0 proj=0 deeperLandingResumeSeq",

@@ -6721,6 +6721,34 @@ def testTokenStateOkRestatement (state : IO.Ref TestCollector) : IO Unit := do
   let n ← live.get
   checkM state s!"P53 live rows (TG ∧ new both true): {n} ≥ 25" (n ≥ 25) s!"only {n} live rows"
 
+/-- Priority 53 (item 386): L1 at the helpers — under a NO-POP landing the dedent `k < level` is
+    absurd and `k = level` is the SIBLING (mapping park) or the SEQUENCE TOP the dispatcher refuses
+    (`-` park), read as parser VERDICT + root SHAPE only (§7: which route the helper takes is pinned
+    on the proof terms — `ConclusionRouteCensus` `deeperLandingResume#0 :: DECLINE | DECLINE | PAY | PAY`
+    — not here).  Rows: the sibling at the park's own level (`a:⏎a2: 1`, accepted, two root keys);
+    the sibling one level in (`a:⏎  b:⏎  c: 2`); a `:`/`?` at the `-`'s own column is refused
+    (`-⏎a: 1`, `-⏎: y`, `- x⏎: y` — the k = n leaf the `-` helper still declines, named for item 387);
+    a dedent INSIDE the park's level is a POPPED landing the parser refuses (`  a:⏎ b: 1`); controls:
+    deeper by one, the sequence sibling, a mid-document sibling after an empty value.  Predictions
+    pinned before the first run. -/
+def testNoPopDedentL1 (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 53: item 386 — parser VERDICT + root SHAPE only: under a no-pop landing the dedent is gone — k = level is the sibling (mapping park) or the refused sequence top (`-` park)"
+  let rows : List (String × String × Option (Nat × List String × List String)) :=
+    [ ("a:⏎a2: 1 (mapping park, k = nv: the SIBLING at the park's own level — empty value, then the own tail)", "a:\na2: 1", some (1, ["a", "a2"], [])),
+      ("a:⏎  b:⏎  c: 2 (inner mapping park `b:`, k = nv one level in — the sibling under the deeper landing)", "a:\n  b:\n  c: 2", some (1, ["a"], ["b", "c"])),
+      ("a:⏎  b: 1⏎  c:⏎  d: 2 (inner park after a filled sibling, k = nv)", "a:\n  b: 1\n  c:\n  d: 2", some (1, ["a"], ["b", "c", "d"])),
+      ("a: 1⏎b:⏎c: 2 (mid-document sibling after an empty value, k = nv = 0)", "a: 1\nb:\nc: 2", some (1, ["a", "b", "c"], [])),
+      ("  a:⏎ b: 1 (dedent INSIDE the park's level: a POPPED landing — refused as trailing content)", "  a:\n b: 1", none),
+      ("-⏎a: 1 (`-` park, k = n: a `:` at the `-`'s own column is a SEQUENCE TOP — refused)", "-\na: 1", none),
+      ("-⏎: y (`-` park, k = n: a bare `:` at the `-`'s column — refused)", "-\n: y", none),
+      ("- x⏎: y (`-` park with an inline scalar, `:` at the `-`'s column — refused)", "- x\n: y", none),
+      ("-⏎- b (`-` park, the SEQUENCE sibling: not a `:`/`?` landing, not these helpers)", "-\n- b", some (1, [], [])),
+      ("a:⏎ a2: 1 (deeper by ONE column: k = nv + 1, item 385's boundary, still paid)", "a:\n a2: 1", some (1, ["a"], ["a2"])) ]
+  for (label, input, expected) in rows do
+    let got := rootKeys input
+    checkM state s!"L1 no-pop dedent: {label}" (got == expected)
+      s!"(documents, root keys, first value rendered) = {repr got}; expected {repr expected}"
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -6784,6 +6812,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testNoPopAfterClosedNode state
   testDeeperLandingResidueArm state
   testDeeperLandingPaid state
+  testNoPopDedentL1 state
   testDeeperLandingOnMapPark state
   testParseOkCheckFrom state
   testParseNodeCF state
