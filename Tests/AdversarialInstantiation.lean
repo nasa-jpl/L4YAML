@@ -6452,7 +6452,14 @@ def testParseOkCheckFrom (state : IO.Ref TestCollector) : IO Unit := do
     and `deeperLandingResumeSeq`).  Rows: the mapping park's deeper `:`/`?` after an EMPTY value is
     `a`'s value node (paid from `h_valF`); the `-` park's deeper `:` on the next line is the awaited
     entry's node (paid from `pendingBlock.h_closeF`); the dedent rows the helpers still decline are
-    the SIBLING (resume arm, item 382) and the popped landing (item 378), not the deeper one. -/
+    the SIBLING (resume arm, item 382) and the popped landing (item 378), not the deeper one.
+    §7 SCOPE: these rows read the PARSER (verdict + shape) and cannot see which route a proof
+    term takes — a helper whose body were `Or.inr trivial` would leave them green.  The
+    helpers' informative side is pinned where it is observable, on the proof terms:
+    `Tests/Guards/Proofs/ConclusionRouteCensus.lean` (`deeperLandingResume#0 :: DECLINE | DECLINE | PAY`,
+    `deeperLandingResumeSeq#0 :: DECLINE | PAY` — a declining body reads `DECLINE` alone and fails the pin),
+    `ConclusionCensus` (`inl=1`), `RelaySupplyCensus` (SPLIT BRANCH `VIA deeperLandingResume = 2`,
+    `VIA deeperLandingResumeSeq = 1`) and `OpenerFallbackReach` (the `pendingBlock` leaf). -/
 def testDeeperLandingPaid (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 52: item 385 — parser VERDICT + root SHAPE only: the deeper `:`/`?` landing after an empty mapping value or a bare `-` is the park's own node"
   let rows : List (String × String × Option (Nat × List String × List String)) :=
