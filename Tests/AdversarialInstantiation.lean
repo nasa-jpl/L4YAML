@@ -6286,6 +6286,7 @@ def testNoPopAfterClosedNode (state : IO.Ref TestCollector) : IO Unit := do
     proof-term fact — the flip's types and `OpenerFallbackReach`'s builder-split leaves — not
     something a parser row observes.  Predictions in the rows. -/
 def testDeeperLandingOnMapPark (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 50: item 382 — parser VERDICT + root SHAPE only: a root sibling after an EMPTY mapping value (`a:⏎b: 2`, through comments, explicit entry) is ONE mapping of two keys; a DEEPER `:`/`?`/`-`/scalar landing is `a`'s VALUE node; a root sibling after a nested value lands after a pop — WHICH park's arm receives each (resume / no-pop / popped) is a term-level fact (§7), read off the proof terms, not here"
   let rows : List (String × String × Option (Nat × List String × List String)) :=
     [ ("a:⏎b: 2 (root sibling after an EMPTY value: the park's own level is the head frame — RESUME arm; one mapping)", "a:\nb: 2", some (1, ["a", "b"], [])),
       ("? a⏎:⏎b: 2 (explicit entry, empty value, root sibling — resume)", "? a\n:\nb: 2", some (1, ["a", "b"], [])),
