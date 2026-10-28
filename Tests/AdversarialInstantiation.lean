@@ -6273,6 +6273,35 @@ def testNoPopAfterClosedNode (state : IO.Ref TestCollector) : IO Unit := do
     checkM state s!"no-pop after a closed node {label}" (got == expected)
       s!"(documents, root keys, first item rendered) = {repr got}; expected {repr expected}"
 
+/-- **Priority 50 (item 382): the MAPPING park's NO-POP arm receives the DEEPER landing — the
+    awaited VALUE node — while the root sibling takes the RESUME arm.**  `flip_own_tail.py` read
+    that every birth of `pendingMapValue` already supplies `h_frames` with the park's own level as
+    the head frame (`ResumeFrames.level k ksF …` over the empty value, item 147/197), so at
+    `accum_block_on_closeThenBlock` the `hmem` test is TRUE for a sibling at the park's level
+    (`a:⏎b: 2`): the resume arm, not the no-pop one.  What reaches the no-pop arm (`hmem` false,
+    stack unchanged) is a `:`/`?` landing DEEPER than the park — the value node of `a:` — which the
+    openers' tail-shaped `h_res_land` cannot resume: the design question item 382 names.  Scope
+    (§7): the rows read `L4YAML.TokenParser.parseYaml`'s VERDICT and the root's SHAPE as `rootKeys`
+    (verdict + root keys + the first value's rendering); which park's arm receives a landing is a
+    proof-term fact — the flip's types and `OpenerFallbackReach`'s builder-split leaves — not
+    something a parser row observes.  Predictions in the rows. -/
+def testDeeperLandingOnMapPark (state : IO.Ref TestCollector) : IO Unit := do
+  let rows : List (String × String × Option (Nat × List String × List String)) :=
+    [ ("a:⏎b: 2 (root sibling after an EMPTY value: the park's own level is the head frame — RESUME arm; one mapping)", "a:\nb: 2", some (1, ["a", "b"], [])),
+      ("? a⏎:⏎b: 2 (explicit entry, empty value, root sibling — resume)", "? a\n:\nb: 2", some (1, ["a", "b"], [])),
+      ("a:⏎# c⏎b: 2 (a comment line inside the comments run before the sibling)", "a:\n# c\nb: 2", some (1, ["a", "b"], [])),
+      ("a:⏎b: (two empty values)", "a:\nb:", some (1, ["a", "b"], [])),
+      ("a:⏎  b: 2 (DEEPER `:` landing: the value NODE of `a`, nested mapping — the no-pop arm's domain)", "a:\n  b: 2", some (1, ["a"], ["b"])),
+      ("a:⏎  ? b⏎  : c (deeper `?` landing: the value node, explicit entry)", "a:\n  ? b\n  : c", some (1, ["a"], ["b"])),
+      ("a:⏎  - b (deeper `-`: the value node is a sequence)", "a:\n  - b", some (1, ["a"], ["b"])),
+      ("a:⏎  b (deeper scalar: the value is the scalar `b`)", "a:\n  b", some (1, ["a"], [])),
+      ("a:⏎ b: 2⏎ c: 3 (one-space deeper landing + its own sibling: nested mapping of two)", "a:\n b: 2\n c: 3", some (1, ["a"], ["b", "c"])),
+      ("a:⏎  b: 2⏎c: 3 (deeper landing, then the ROOT sibling after a pop: the popped arm)", "a:\n  b: 2\nc: 3", some (1, ["a", "c"], ["b"])) ]
+  for (label, input, expected) in rows do
+    let got := rootKeys input
+    checkM state s!"deeper landing vs root sibling on a mapping park {label}" (got == expected)
+      s!"(documents, root keys, first value rendered) = {repr got}; expected {repr expected}"
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -6334,6 +6363,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testRootSiblingLevel state
   testRootSiblingResumes state
   testNoPopAfterClosedNode state
+  testDeeperLandingOnMapPark state
   testBlockScalarTailEof state
   let results ← finish state
   return { name := "adversarialinstantiation",
