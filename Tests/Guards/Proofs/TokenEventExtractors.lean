@@ -157,17 +157,14 @@ def agreeing : List String :=
     agreeing.all (fun s => (scanFiltered s).isOk && (checkFrom {} (ev₂ (scanOr s)) == parserOk (scanOr s))) = true
 
 
-/-! ## Ruling (c) as stated — refuted before restating
+/-! ## Ruling (c) as stated — refuted under the old `TG.DocStart`, closed by narrowing it
 
-Restating `TokenStateOk ts := SerializationWellFormed (tokenEvents ts)` would make
-`parseStream_accepts` (`TokenGrammar ts → TokenStateOk ts → parseStream ok`) false:
-`TG.DocStart` admits a directive run with NO `---` (the parser's leniency), while
-`tokenEvents` emits `beginDocument` only at `---` and so never resets the anchors of
-that document — the parser does.  R1/R3 below: `TokenGrammar` true, the restated
-state true, `parseStream` refuses the alias.  The scanner refuses every `---`-less
-directive run (`directiveWithoutDocument`), so the shape is token-level only; the
-fix is either `TG.DocStart` requiring `---` after a non-empty directive run (spec
-[209]) or a `DirectivesClosed` premise. -/
+Restating `TokenStateOk ts := SerializationWellFormed (tokenEvents ts)` under the OLD grammar made
+`parseStream_accepts` false: `TG.DocStart` admitted a directive run with no `---`, `tokenEvents`
+emits `beginDocument` only at `---` and so never reset that document's anchors — the parser does.
+S5 slice 2 narrowed `DocStart` to spec [209]; R1/R3 below now pin that the grammar EXCLUDES the
+shape (`checkTokenGrammar = false`) while the surviving state verdict still accepts it and the
+parser still refuses it — the shape is token-level only (the scanner refuses `---`-less runs). -/
 
 def tsR1 : Array (Positioned YamlToken) :=
   #[mk .streamStart, mk .documentStart, mk (.anchor "x"), mk (.scalar "a" .plain),
@@ -176,9 +173,11 @@ def tsR3 : Array (Positioned YamlToken) :=
   #[mk .streamStart, mk .documentStart, mk (.anchor "x"), mk (.scalar "a" .plain),
     mk (.versionDirective 1 2), mk (.alias "x"), mk .streamEnd]
 
-/- `TokenGrammar` true, `checkFrom {} (tokenEvents ts)` true, parser refuses:
-the restated `parseStream_accepts` is false on R1/R3; the current the retired checkTokenState
-refuses both.  Capstone 7.7 via S5 (slice 2's refutation of ruling (c) as stated). -/
+/- R1/R3 after S5 slice 2: `checkFrom {} (tokenEvents ts)` is true and the parser refuses, but
+`TokenGrammar` is now FALSE on both — `TG.DocStart` requires `---` after a non-empty directive run
+(spec [209]), so the shape that refuted the restated `parseStream_accepts` under the old grammar is
+outside the grammar and the lemma's premises never meet it.  (History: under the old `DocStart` both
+rows had `TokenGrammar` true, and the retired per-token checker refused them.)  Capstone 7.7 via S5. -/
 #guard
     (!L4YAML.Proofs.TokenGrammar.checkTokenGrammar tsR1 && checkFrom {} (ev₂ tsR1) && !parserOk tsR1) = true ∧
     (!L4YAML.Proofs.TokenGrammar.checkTokenGrammar tsR3 && checkFrom {} (ev₂ tsR3) && !parserOk tsR3) = true

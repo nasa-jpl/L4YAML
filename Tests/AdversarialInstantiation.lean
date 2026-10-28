@@ -6526,10 +6526,15 @@ def testTokenEventExtractorsSeam (state : IO.Ref TestCollector) : IO Unit := do
     match Scanner.scanFiltered src with
     | .error e => checkM state s!"P55 scanner row scans {repr src}" false s!"scan error {repr e}"
     | .ok ts =>
-      -- `eq` records whether the retired extractor agreed with `tokenEvents` here (false only on the
-      -- `%TAG !h` witness); the live checks are the parser's and the surviving verdict's
+      -- `eq = false` marks the one row where the retired extractor's reading differed (the `%TAG !h`
+      -- witness): there the surviving trace is asserted literally, against the retired reading's literal
       checkM state s!"P55 {repr src}: parser={ep} new={ev} (retired extractor agreed={eq})"
         (pOk ts == ep && newV ts == ev) s!"got parser={pOk ts} new={newV ts}"
+      if !eq then
+        checkM state s!"P55 {repr src}: tokenEvents = [beginDocument, useTag !] ≠ retired [beginDocument, declareTag !h, useTag !]"
+          (ev₂ ts == [.beginDocument, .useTag "!"] &&
+           ev₂ ts != [.beginDocument, .declareTag "!h", .useTag "!"])
+          s!"got {repr (ev₂ ts)}"
   let mk (t : YamlToken) : Positioned YamlToken := { val := t, pos := { offset := 0, line := 0, col := 0 } }
   -- token rows: (label, tokens, parser ok, TG (narrowed, spec [209]), retired-extractor verdict as a literal, new verdict)
   let trows : List (String × Array (Positioned YamlToken) × Bool × Bool × Bool × Bool) :=
