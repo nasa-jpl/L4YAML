@@ -45,9 +45,9 @@ reading.  Four shapes:
 4. `%TAG !a_b!` (malformed named handle, scanner-refused): `¬ BuiltinTagHandle`
    but not `isNamedHandle` — declared by one extractor, not the other.
 
-What DOES hold on the grid: the two extractors agree on every scanner-shaped
-input whose `%TAG` handles are builtin or `!word!` and whose directive runs end
-at `---` — `%TAG` before `---`, two `%TAG`s, a duplicated `%TAG`, a handle
+What DOES hold on the grid — on the listed rows only (`agreeing` below), no claim is
+made beyond them: the two extractors agree on each of these scanner-shaped inputs,
+whose `%TAG` handles are builtin or `!word!` and whose directive runs end at `---` — `%TAG` before `---`, two `%TAG`s, a duplicated `%TAG`, a handle
 redeclared after `...`, `%YAML` + `%TAG` in either order (pinned below as the
 strongest true statement the grid supports). -/
 
