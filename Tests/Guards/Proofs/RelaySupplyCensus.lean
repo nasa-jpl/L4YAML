@@ -280,6 +280,12 @@ structure Res where
   rootTgt : Option Nat := none
   /-- One entry per entry of `leaves`: `orArgRefs` at that leaf. -/
   leafSrc : Array String := #[]
+  /-- One entry per entry of `leaves`: the leaf's PATH through the nested
+      splitters, `<splitter>#<arm>` per hop (item 380, PR #146 review) — what
+      names ONE declined arm among several, e.g. the two builders' no-pop arm
+      `Or.casesOn#0>Or.elim#0` against the four other `DECLINE` leaves of the
+      same split. -/
+  leafPath : Array String := #[]
   /-- Item 218: the constructor field a `FIELD` answer was carved from. -/
   fldTgt  : Option (Name × Nat) := none
 deriving Inhabited
@@ -329,6 +335,13 @@ def altCtorField (env : Environment) (g : Name) (alt : Nat) (i : Nat) :
         | none => none
     | _ => none
   | _ => none
+
+/-- The last two components of a (de-privatised) name: `Or.casesOn`,
+    `accum_content_pending.match_1_55`, `dite` — the splitter as a leaf path hop. -/
+def tailName (c : Name) : String :=
+  match Lean.privateToUserName c with
+  | .str (.str _ a) b => s!"{a}.{b}"
+  | u => u.toString
 
 /-- What supplies an argument.  `d` is the number of binders in scope where the
     argument lives; `st` is the binder stack OUTERMOST first, so the enclosing
@@ -424,8 +437,17 @@ partial def resolve (env : Environment) (isMech : Name → Bool) (st : Array Bnd
                       (if r.leaves.isEmpty then
                          (if r.leafSrc.isEmpty then #[""] else r.leafSrc)
                        else r.leafSrc)) #[]
+                    let lp := Id.run do
+                      let mut acc : Array String := #[]
+                      for h : k in [:arms.size] do
+                        let r := arms[k]
+                        if r.leaves.isEmpty then acc := acc.push s!"{tailName c}#{k}"
+                        else
+                          for i in [:r.leaves.size] do
+                            acc := acc.push s!"{tailName c}#{k}>{r.leafPath[i]?.getD "?"}"
+                      return acc
                     return { how := s!"SPLIT {c}", pipes := pipes0, leaves := lv,
-                             disc := dchain, rootTgt := rootTgt, leafSrc := ls }
+                             disc := dchain, rootTgt := rootTgt, leafSrc := ls, leafPath := lp }
             else { how := s!"VIA {c}" }
       | .bvar k =>
           if d - 1 - k < st.size ∧ k < d then
@@ -472,6 +494,7 @@ structure Edge where
   pipes  : List String := []
   splits : List String := []
   leaves : Array String := #[]
+  leafPath : Array String := #[]
   disc    : String := ""
   rootTgt : Option Nat := none
   leafSrc : Array String := #[]
@@ -490,7 +513,7 @@ def appEdges (env : Environment) (isMech : Name → Bool) (self : Name) (n : Nat
         out := out.push { caller := self, callee := g, idx := i, how := r.how,
                           tgt := r.tgt, pipes := r.pipes, splits := r.splits,
                           leaves := r.leaves, disc := r.disc, rootTgt := r.rootTgt,
-                          leafSrc := r.leafSrc, fldTgt := r.fldTgt }
+                          leafSrc := r.leafSrc, leafPath := r.leafPath, fldTgt := r.fldTgt }
       else out := out.push { caller := self, callee := g, idx := i, how := "UNDERAPPLIED" }
     return out
 
