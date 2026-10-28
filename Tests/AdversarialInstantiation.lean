@@ -6676,7 +6676,7 @@ def testTokenStateOkRestatement (state : IO.Ref TestCollector) : IO Unit := do
   let implication (label : String) (ts : Array (Positioned YamlToken)) : IO Unit := do
     let (g, n, p) := (tg ts, newV ts, pOk ts)
     if g && n then live.modify (· + 1)
-    checkM state s!"P53 {label}: TokenGrammar ∧ checkFrom {} (tokenEvents ts) → parseStream ok (live: TG={g} new={n})"
+    checkM state s!"P53 {label}: TokenGrammar ∧ checkFrom (tokenEvents ts) → parseStream ok (live: TG={g} new={n})"
       (!(g && n) || p) s!"parseStream_accepts refuted: TG={g} new={n} parser={p}"
   for (src, ep, ev) in srows do
     match Scanner.scanFiltered src with
@@ -6686,7 +6686,7 @@ def testTokenStateOkRestatement (state : IO.Ref TestCollector) : IO Unit := do
         s!"got parser={pOk ts} new={newV ts}"
       -- scanner output IS in the grammar wherever the parser accepts it (StreamCompleteness's converse)
       checkM state s!"P53 {repr src}: parser ok → TokenGrammar" (!(pOk ts) || tg ts) s!"parser ok but TG={tg ts}"
-      implication (repr src) ts
+      implication s!"{repr src}" ts
   let mk (t : YamlToken) : Positioned YamlToken := { val := t, pos := { offset := 0, line := 0, col := 0 } }
   -- token rows: (label, tokens, parser ok, TG after narrowing, old verdict, new verdict)
   let trows : List (String × Array (Positioned YamlToken) × Bool × Bool × Bool × Bool) :=
