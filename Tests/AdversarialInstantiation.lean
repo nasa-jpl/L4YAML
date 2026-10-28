@@ -6749,6 +6749,45 @@ def testNoPopDedentL1 (state : IO.Ref TestCollector) : IO Unit := do
     checkM state s!"L1 no-pop dedent: {label}" (got == expected)
       s!"(documents, root keys, first value rendered) = {repr got}; expected {repr expected}"
 
+open L4YAML.Proofs.PreprocessIndentStable in
+/-- Priority 53, Rule 2 for the new floor lemma (PR #157 review): `IndentFloor.int_le_of_succ`
+    — `IndentFloor sc (n + 1) → (n : Int) ≤ sc.currentIndent` — instantiated over scanner states
+    with an EMPTY stack, the sentinel alone, a singleton level (column 0, mapping and sequence),
+    a nested stack (`-1 / 0 / 2`) and a stack whose top is a deeper sequence, at `n ∈ {0, 1, 2, 3}`
+    and both indent-check flags.  Each row checks the implication AND pins its bucket — the
+    hypothesis `needIndentCheck = false ∧ n + 1 ≤ minContentIndentOf sc` is predicted to hold
+    exactly when the flag is down and `n ≤ top` (`-1` for an empty stack), so a vacuous pass is
+    visible: 56 rows, 12 **theorem-holds**, 44 **failed-hypothesis**. -/
+def testFloorLevelInstances (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 53: item 386 — IndentFloor.int_le_of_succ instantiated over scanner states (empty / sentinel / singleton / nested / sequence tops; n = 0..3; both flags)"
+  let base := ScannerState.mk' "x"
+  let sent : IndentEntry := { column := -1, isSequence := false }
+  let stacks : List (String × Array IndentEntry) :=
+    [ ("empty", #[]),
+      ("sentinel", #[sent]),
+      ("map@0", #[sent, { column := 0, isSequence := false }]),
+      ("seq@0", #[sent, { column := 0, isSequence := true }]),
+      ("map@0/map@2", #[sent, { column := 0, isSequence := false }, { column := 2, isSequence := false }]),
+      ("map@0/seq@2", #[sent, { column := 0, isSequence := false }, { column := 2, isSequence := true }]),
+      ("map@0/map@2/map@3", #[sent, { column := 0, isSequence := false }, { column := 2, isSequence := false }, { column := 3, isSequence := false }]) ]
+  let mut holds := 0
+  let mut failed := 0
+  for (label, st) in stacks do
+    for nic in [false, true] do
+      let sc : ScannerState := { base with indents := st, needIndentCheck := nic }
+      let top : Int := (st.back?.map (·.column)).getD (-1)
+      for n in [0, 1, 2, 3] do
+        let hyp := !sc.needIndentCheck && decide (n + 1 ≤ minContentIndentOf sc)
+        let concl := decide ((n : Int) ≤ sc.currentIndent)
+        checkM state s!"IndentFloor.int_le_of_succ {label} nic={nic} n={n}: hyp → (n : Int) ≤ currentIndent"
+          (!hyp || concl) s!"hyp={hyp} concl={concl} top={top} currentIndent={sc.currentIndent}"
+        -- The bucket, predicted: the flag down and `n ≤ top`.
+        checkM state s!"IndentFloor.int_le_of_succ {label} nic={nic} n={n}: bucket = {if hyp then "theorem-holds" else "failed-hypothesis"}"
+          (hyp == (!nic && decide ((n : Int) ≤ top))) s!"top={top}"
+        if hyp then holds := holds + 1 else failed := failed + 1
+  checkM state s!"IndentFloor.int_le_of_succ buckets: theorem-holds={holds} failed-hypothesis={failed}"
+    (holds == 12 && failed == 44) ""
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -6813,6 +6852,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testDeeperLandingResidueArm state
   testDeeperLandingPaid state
   testNoPopDedentL1 state
+  testFloorLevelInstances state
   testDeeperLandingOnMapPark state
   testParseOkCheckFrom state
   testParseNodeCF state
