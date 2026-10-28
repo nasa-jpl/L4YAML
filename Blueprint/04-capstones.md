@@ -551,7 +551,7 @@ grammar derivation tree — the structural, strongest form of Group 2.2.
 | 7.4 | Per-function `*_prod` theorems (flow/block/document start/end, anchor/alias, tag, directive) | [`StructureProduction`](../L4YAML/Proofs/Production/StructureProduction.lean) / [`DocumentProduction`](../L4YAML/Proofs/Production/DocumentProduction.lean) / [`ScalarProduction`](../L4YAML/Proofs/Production/ScalarProduction.lean) / [`NodeProduction`](../L4YAML/Proofs/Production/NodeProduction.lean) | ✅ |
 | 7.5 | `parseYaml_implies_valid_token_stream` (bridge to Group 4) | `EndToEndCorrectness` | ✅ |
 | 7.6 | `scan_strict_proof` — scanner acceptance implies `InYamlLanguage input`; **vacuous while `scannerDrop` stands** | `DocumentProduction` | ✅ |
-| 7.7 | `parse_iff_grammar` **converse** — grammar completeness: `InYamlLanguage input → ∃ docs, parseYaml input = .ok docs` (closes the biconditional) | (target: `Production` / `Completeness`) | ⏳ not started |
+| 7.7 | `parse_iff_grammar` **converse** — grammar completeness: `InYamlLanguage input → ∃ docs, parseYaml input = .ok docs` (closes the biconditional) | (target: `Production` / `Completeness`); serialization stream S5(→): `L4YAML/Proofs/Serialization/ParseCheckFrom.lean` (`parse_ok_checkFrom`, `parseStream_ok_checkFrom`) | ⏳ not started — S5(→) slice 1 landed (EVENTSOF-CONCEPT §9 S5) |
 
 **Change since April**: the whole forward direction (7.1–7.6) is now
 ✅. The "28 `sorry`s in `StreamAccum`" reported in April were docstring
