@@ -6242,6 +6242,37 @@ def testRootSiblingResumes (state : IO.Ref TestCollector) : IO Unit := do
     checkM state s!"root sibling {label}" (got == expected)
       s!"(documents, root keys, first item rendered) = {repr got}; expected {repr expected}"
 
+/-- **Priority 49 (item 381): the `-` park's NO-POP `:`/`?` arm receives a key indicator after a
+    CLOSED entry node.**  Item 380's mandate asked the two splitting builders to pay the no-pop
+    landing by continuing the awaited node's compact mapping; the build refuted it at the type —
+    at both builders the node is already closed (`h_ssl` is the comments run `SSLComments sp_gram
+    sp_mid`, the node itself is closed over inside `h_closeF_old`).  So the sibling of
+    `- a: 1⏎  b: 2` never reaches that arm: it lands on the mapping's own park.  What does reach
+    it is a `:`/`?` at an unchanged stack after a closed node: refused after a closed scalar or flow
+    node, while `? b` after a plain scalar is the scalar's own continuation and `: b` after an
+    EMPTY entry node is the node itself (`[189]`'s empty-key entry) — the first run refuted the
+    two predictions that said otherwise.  SCOPE (§7): these rows read the parser's VERDICT and
+    the root's SHAPE; WHICH park's arm receives the indicator is not observable from the parser
+    and is not what the rows claim — that is read off the proof terms (the refuting build's type,
+    `h_ssl : SSLComments`, and `OpenerFallbackReach`'s builder-split leaves).  Read
+    off `L4YAML.TokenParser.parseYaml` as `rootKeys` (verdict + root shape), predictions in the
+    rows. -/
+def testNoPopAfterClosedNode (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 49: item 381 — parser VERDICT + root SHAPE only: a `:`/`?` after a CLOSED sequence-entry node at an unchanged stack is refused (scalar/flow node), is the scalar's continuation (`? b`), or IS the node (`: b` after an empty entry); the compact-mapping sibling and the explicit entry's value are accepted — WHICH park's arm receives them is a term-level fact (§7), read off the proof terms, not here"
+  let rows : List (String × String × Option (Nat × List String × List String)) :=
+    [ ("- a⏎  : b (`:` after a closed plain scalar, deeper, no pop)", "- a\n  : b", none),
+      ("- a⏎  ? b (`? b` CONTINUES the plain scalar — the node is not closed; accepted as one scalar)", "- a\n  ? b", some (1, [], [])),
+      ("-⏎  : b (after an EMPTY entry node the `:` IS the node: `[189]`'s empty-key entry, accepted)", "-\n  : b", some (1, [], [""])),
+      ("- a⏎  : (bare `:` after a closed scalar)", "- a\n  :", none),
+      ("- \"a\"⏎  : b (`:` after a closed quoted scalar)", "- \"a\"\n  : b", none),
+      ("- [a]⏎  : b (`:` after a closed flow node)", "- [a]\n  : b", none),
+      ("- a: 1⏎  b: 2 (the compact mapping's sibling: the MAPPING park's, accepted)", "- a: 1\n  b: 2", some (1, [], ["a", "b"])),
+      ("- ? a⏎  : b (the explicit entry's value: the `?` park's, accepted)", "- ? a\n  : b", some (1, [], ["a"])) ]
+  for (label, src, expected) in rows do
+    let got := rootKeys src
+    checkM state s!"no-pop after a closed node {label}" (got == expected)
+      s!"(documents, root keys, first item rendered) = {repr got}; expected {repr expected}"
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -6302,6 +6333,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testLiveRegisterSeqTop state
   testRootSiblingLevel state
   testRootSiblingResumes state
+  testNoPopAfterClosedNode state
   testBlockScalarTailEof state
   let results ← finish state
   return { name := "adversarialinstantiation",
