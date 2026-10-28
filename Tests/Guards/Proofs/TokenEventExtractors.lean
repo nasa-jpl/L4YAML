@@ -159,4 +159,47 @@ lemma extractors_agree_on_grid :
     agreeing.all (fun s => (scanFiltered s).isOk && ev₁ (scanOr s) == ev₂ (scanOr s)) = true := by
   native_decide
 
+
+/-! ## Ruling (c) as stated — refuted before restating
+
+Restating `TokenStateOk ts := SerializationWellFormed (tokenEvents ts)` would make
+`parseStream_accepts` (`TokenGrammar ts → TokenStateOk ts → parseStream ok`) false:
+`TG.DocStart` admits a directive run with NO `---` (the parser's leniency), while
+`tokenEvents` emits `beginDocument` only at `---` and so never resets the anchors of
+that document — the parser does.  R1/R3 below: `TokenGrammar` true, the restated
+state true, `parseStream` refuses the alias.  The scanner refuses every `---`-less
+directive run (`directiveWithoutDocument`), so the shape is token-level only; the
+fix is either `TG.DocStart` requiring `---` after a non-empty directive run (spec
+[209]) or a `DirectivesClosed` premise. -/
+
+def tsR1 : Array (Positioned YamlToken) :=
+  #[mk .streamStart, mk .documentStart, mk (.anchor "x"), mk (.scalar "a" .plain),
+    mk (.tagDirective "!t!" "p"), mk (.alias "x"), mk .streamEnd]
+def tsR3 : Array (Positioned YamlToken) :=
+  #[mk .streamStart, mk .documentStart, mk (.anchor "x"), mk (.scalar "a" .plain),
+    mk (.versionDirective 1 2), mk (.alias "x"), mk .streamEnd]
+
+/-- `TokenGrammar` true, `checkFrom {} (tokenEvents ts)` true, parser refuses:
+the restated `parseStream_accepts` is false on R1/R3; the current `checkTokenState`
+refuses both.  Capstone 7.7 via S5 (slice 2's refutation of ruling (c) as stated). -/
+lemma rulingC_refuted :
+    (L4YAML.Proofs.TokenGrammar.checkTokenGrammar tsR1 && checkFrom {} (ev₂ tsR1) &&
+      !parserOk tsR1 && !L4YAML.Proofs.TokenGrammar.checkTokenState tsR1) = true ∧
+    (L4YAML.Proofs.TokenGrammar.checkTokenGrammar tsR3 && checkFrom {} (ev₂ tsR3) &&
+      !parserOk tsR3 && !L4YAML.Proofs.TokenGrammar.checkTokenState tsR3) = true := by
+  native_decide
+
+/-- With `...` before the directive run (R2) or `---` after it (R4) both checkers
+refuse with the parser: the seam is exactly the `---`-less directive run. -/
+lemma rulingC_seam_is_missing_docStart :
+    let tsR2 : Array (Positioned YamlToken) :=
+      #[mk .streamStart, mk .documentStart, mk (.anchor "x"), mk (.scalar "a" .plain), mk .documentEnd,
+        mk (.tagDirective "!t!" "p"), mk (.alias "x"), mk .streamEnd]
+    let tsR4 : Array (Positioned YamlToken) :=
+      #[mk .streamStart, mk (.anchor "x"), mk (.scalar "a" .plain), mk (.tagDirective "!t!" "p"),
+        mk .documentStart, mk (.alias "x"), mk .streamEnd]
+    (!parserOk tsR2 && !checkFrom {} (ev₂ tsR2) && !L4YAML.Proofs.TokenGrammar.checkTokenState tsR2) = true ∧
+    (!parserOk tsR4 && !checkFrom {} (ev₂ tsR4) && !L4YAML.Proofs.TokenGrammar.checkTokenState tsR4) = true := by
+  native_decide
+
 end L4YAML.Tests.Guards.TokenEventExtractors

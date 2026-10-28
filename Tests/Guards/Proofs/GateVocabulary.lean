@@ -91,10 +91,10 @@ namespace L4YAML.Tests.Guards.GateVocabulary
 -- 2026-10-23 (item 348): 468 → 469 — the `DispatchPrice`/`ParkGapWidth` pin notes name the preprocess step
 -- function once more (`preprocess_col0_dead` holds its equation).
 -- 2026-10-23 (item 349): 469 → 470 — the item-349 record names a gate in its Gates paragraph.
--- S5 slice 2 (2026-10-28): mentions 476 → 478 — `Tests/Guards/Proofs/TokenEventExtractors.lean` cites two gates in its finding.
+-- S5 slice 2 (2026-10-28): mentions 476 → 479 — `Tests/Guards/Proofs/TokenEventExtractors.lean` cites three gates in its findings.
 -- Item 373 (2026-10-27): mentions 472 → 475 — the entry's prose cites three more gates.
 def expectedGateVocab : String :=
-  "names=113 mentions=478 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
+  "names=113 mentions=479 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
 
 end L4YAML.Tests.Guards.GateVocabulary
 
