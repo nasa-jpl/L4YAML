@@ -3,10 +3,12 @@
 NODE ROUTE as a third arm on the three openers' `h_res_land` binders —
   ∨ (∀ s₁ s₂ sp_end, SIndent k sp_land s₁ → SBlockMapEntry k s₁ s₂ → SCompactMapTail k s₂ sp_end
        → SLYamlStream sp_start sp_end)
-— inserted before the `∨ True`.  Changing only the binders breaks every PRODUCER
-(`Or.inr trivial : _ ∨ True` no longer typechecks against the three-armed type) and every
-CONSUMER (the openers' `rcases`), so ONE build of `L4YAML` reads the whole roster.
-Read-only: edits StreamAccum.lean, builds, runs scripts/flip_census.py, restores; md5 both sides.
+— inserted before the `∨ True`.  Changing only the binders breaks the PRODUCERS
+(`Or.inr trivial : _ ∨ True` no longer typechecks against the three-armed type); the openers'
+`Or.inr _` matches absorb the new arm WITHOUT breaking (item 383's reading: the consumer
+price is zero, the binder change unneeded), so ONE build of `L4YAML` is a floor for the
+producer roster only.
+Read-only: edits StreamAccum.lean, builds once, runs scripts/flip_census.py, restores; md5 both sides.
 `--dry` lists the sites without editing; `--keep` leaves the flipped tree (for the pay)."""
 import hashlib, subprocess, sys
 from pathlib import Path

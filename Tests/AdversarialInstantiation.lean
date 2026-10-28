@@ -6318,7 +6318,7 @@ def testDeeperLandingResidueArm (state : IO.Ref TestCollector) : IO Unit := do
       ("a: [x]⏎  b: 2 (residue arm: flow value inline — refused)", "a: [x]\n  b: 2", none),
       ("a: x # c⏎  b: 2 (residue arm: inline scalar with a trailing comment — refused)", "a: x # c\n  b: 2", none),
       ("a: x⏎  ? b⏎  : c (residue arm: deeper `?` after an inline scalar — refused)", "a: x\n  ? b\n  : c", none),
-      ("a: x⏎  - y (NOT a landing: the plain scalar continues — `a: \"x - y\"`, one key)", "a: x\n  - y", some (1, ["a"], [])),
+      ("a: x⏎  - y (NOT a landing: the plain scalar continues onto the next line — ACCEPTED, one key, a scalar value; the reader does not see scalar contents, the `\"x - y\"` reading is the probe's)", "a: x\n  - y", some (1, ["a"], [])),
       ("a: x⏎b: 2 (the SIBLING after an inline value: the resume arm, one mapping of two keys)", "a: x\nb: 2", some (1, ["a", "b"], [])) ]
   for (label, input, expected) in rows do
     let got := rootKeys input
