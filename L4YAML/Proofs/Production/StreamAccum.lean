@@ -29306,7 +29306,7 @@ lemma accum_block_on_pendingBlockContent {sp_gram : SurfPos}
                       fun sp_m h_bi sp_e h_tail =>
                         closeF sp_mid h_ssl sp_e
                           (SCompactSeqTail.cons k sp_mid _ sp_scan' sp_m sp_e
-                            h_ind h_dash2 h_gnot2 h_bi h_tail), Or.inr trivial⟩
+                            h_ind h_dash2 h_gnot2 h_bi h_tail), (if hci : s_prep.currentIndent < (k : Int) then Or.inl (fun hp => (pushedBirth_not_mapTop (k := k) (by have := SIndent_col h_ind; omega) hcorr_prep hci h_dispatch hp).elim) else Or.inr trivial)⟩
                   | Or.inr _ => Or.inr trivial)
                  (nodir_of_block_dispatch h_dispatch) (Or.inr trivial)
                  -- Item 190: the second frame rides the sibling too — the cons
@@ -29864,7 +29864,7 @@ lemma accum_block_on_pendingBlock
                   fun sp_m h_bi sp_e h_tail =>
                     closeF sp_mid h_node_old sp_e
                       (SCompactSeqTail.cons k sp_mid _ sp_scan' sp_m sp_e
-                        h_ind h_dash2 h_gnot2 h_bi h_tail), Or.inr trivial⟩
+                        h_ind h_dash2 h_gnot2 h_bi h_tail), (if hci : s_prep.currentIndent < (k : Int) then Or.inl (fun hp => (pushedBirth_not_mapTop (k := k) (by have := SIndent_col h_ind; omega) hcorr_prep hci h_dispatch hp).elim) else h_mt.imp (fun r hp => let ⟨ks', hw, route⟩ := r (mapTop_of_indents_eq ((noPushBirth_indents (k := k) (by have := SIndent_col h_ind; omega) hcorr_prep (Int.not_lt.mp hci) h_dispatch).trans (preprocess_indents_eq_of_le h_preprocess h_mono (by have := preprocess_currentIndent_le h_preprocess h_mono h_base; omega))).symm hp); ⟨ks', hw, fun sp_m h_bi sp_e h_tail sp_fin h_mt' => route sp_mid h_node_old sp_e (SCompactSeqTail.cons k sp_mid _ sp_scan' sp_m sp_e h_ind h_dash2 h_gnot2 h_bi h_tail) sp_fin h_mt'⟩) id)⟩
               | Or.inr _ => Or.inr trivial)
                (nodir_of_block_dispatch h_dispatch) (Or.inr trivial)
                -- Item 190: the empty sibling carries the second frame too.
