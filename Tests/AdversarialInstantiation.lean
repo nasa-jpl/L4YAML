@@ -6721,7 +6721,7 @@ def testTokenStateOkRestatement (state : IO.Ref TestCollector) : IO Unit := do
   let n ← live.get
   checkM state s!"P53 live rows (TG ∧ new both true): {n} ≥ 25" (n ≥ 25) s!"only {n} live rows"
 
-/-- Priority 53 (item 386): L1 at the helpers — under a NO-POP landing the dedent `k < level` is
+/-- Priority 56 (item 386): L1 at the helpers — under a NO-POP landing the dedent `k < level` is
     absurd and `k = level` is the SIBLING (mapping park) or the SEQUENCE TOP the dispatcher refuses
     (`-` park), read as parser VERDICT + root SHAPE only (§7: which route the helper takes is pinned
     on the proof terms — `ConclusionRouteCensus` `deeperLandingResume#0 :: DECLINE | DECLINE | PAY | PAY`
@@ -6732,7 +6732,7 @@ def testTokenStateOkRestatement (state : IO.Ref TestCollector) : IO Unit := do
     deeper by one, the sequence sibling, a mid-document sibling after an empty value.  Predictions
     pinned before the first run. -/
 def testNoPopDedentL1 (state : IO.Ref TestCollector) : IO Unit := do
-  setCategory state "Priority 53: item 386 — parser VERDICT + root SHAPE only: under a no-pop landing the dedent is gone — k = level is the sibling (mapping park) or the refused sequence top (`-` park)"
+  setCategory state "Priority 56: item 386 — parser VERDICT + root SHAPE only: under a no-pop landing the dedent is gone — k = level is the sibling (mapping park) or the refused sequence top (`-` park)"
   let rows : List (String × String × Option (Nat × List String × List String)) :=
     [ ("a:⏎a2: 1 (mapping park, k = nv: the SIBLING at the park's own level — empty value, then the own tail)", "a:\na2: 1", some (1, ["a", "a2"], [])),
       ("a:⏎  b:⏎  c: 2 (inner mapping park `b:`, k = nv one level in — the sibling under the deeper landing)", "a:\n  b:\n  c: 2", some (1, ["a"], ["b", "c"])),
@@ -6750,7 +6750,7 @@ def testNoPopDedentL1 (state : IO.Ref TestCollector) : IO Unit := do
       s!"(documents, root keys, first value rendered) = {repr got}; expected {repr expected}"
 
 open L4YAML.Proofs.PreprocessIndentStable in
-/-- Priority 53, Rule 2 for the new floor lemma (PR #157 review): `IndentFloor.int_le_of_succ`
+/-- Priority 56, Rule 2 for the new floor lemma (PR #157 review): `IndentFloor.int_le_of_succ`
     — `IndentFloor sc (n + 1) → (n : Int) ≤ sc.currentIndent` — instantiated over scanner states
     with an EMPTY stack, the sentinel alone, a singleton level (column 0, mapping and sequence),
     a nested stack (`-1 / 0 / 2`) and a stack whose top is a deeper sequence, at `n ∈ {0, 1, 2, 3}`
@@ -6759,7 +6759,7 @@ open L4YAML.Proofs.PreprocessIndentStable in
     exactly when the flag is down and `n ≤ top` (`-1` for an empty stack), so a vacuous pass is
     visible: 56 rows, 12 **theorem-holds**, 44 **failed-hypothesis**. -/
 def testFloorLevelInstances (state : IO.Ref TestCollector) : IO Unit := do
-  setCategory state "Priority 53: item 386 — IndentFloor.int_le_of_succ instantiated over scanner states (empty / sentinel / singleton / nested / sequence tops; n = 0..3; both flags)"
+  setCategory state "Priority 56: item 386 — IndentFloor.int_le_of_succ instantiated over scanner states (empty / sentinel / singleton / nested / sequence tops; n = 0..3; both flags)"
   let base := ScannerState.mk' "x"
   let sent : IndentEntry := { column := -1, isSequence := false }
   let stacks : List (String × Array IndentEntry) :=
