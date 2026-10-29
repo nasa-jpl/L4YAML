@@ -884,6 +884,15 @@ lemma ResumeWidths.sub {ks ks' : List FrameLevel} {j : Nat} (h : ResumeWidths ks
 lemma ResumeWidths.keep {ks ks' : List FrameLevel} {j : Nat} (h : ResumeWidths ks ks' j) :
     ∀ fr ∈ ks, fr.width < j → fr ∈ ks' := fun fr hk' hlt => (h fr).mpr ⟨hk', hlt⟩
 
+
+/-- One level, read DOWN (item 389): after the node, the mapping at `k` goes on with
+    its compact tail and the frames beneath resume. -/
+lemma ResumeFrames.level_inv {P : SurfPos → Prop} {k : Nat} {ks : List FrameLevel} {sp : SurfPos}
+    (h : ResumeFrames P (FrameLevel.map k :: ks) sp) :
+    ∀ sp_end, SCompactMapTail k sp sp_end → ResumeFrames P ks sp_end := by
+  cases h with
+  | level _ _ _ _ h_cont => exact h_cont
+
 /-- **The dedent's spend**: pop the levels strictly above `j` (their tails are
     empty — the landing ended them) and hand back the `j` level's own
     continuation, with the popped stack's levels named exactly (`ResumeWidths`).
@@ -27824,7 +27833,7 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
           ∀ sp_end : SurfPos, SCompactSeqTail k sp_mid sp_end →
           ∀ sp_fin : SurfPos, SCompactMapTail k sp_end sp_fin →
           ResumeFrames (SLYamlStream sp_start) ks' sp_fin) ∨ True)) ∨ True := by
-      rcases h_valF with ⟨nv, ksv, h_ltv, _, h_cvv, closeF⟩ | _
+      rcases h_valF with ⟨nv, ksv, h_ltv, _, h_cvv, closeF⟩ | h_tr
       · by_cases hnv : nv < k
         · exact Or.inl ⟨FrameLevel.map nv :: ksv, (fun k' hk' => by
               rcases List.mem_cons.mp hk' with rfl | h'
@@ -27845,11 +27854,18 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
           · exact Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil), Or.inr trivial,
               fun sp_final h_indented sp_end h_tail => ResumeFrames.bottom sp_end
                 (closeF sp_end (valueLandedSeq hnk h_ssl
-                  (SBlockSeqEntries_of_compactTail h_ind h_dash h_gnot h_indented h_tail))).close, Or.inr trivial⟩
+                  (SBlockSeqEntries_of_compactTail h_ind h_dash h_gnot h_indented h_tail))).close,
+              -- Item 389: the mapping at `nv = k` is the stack TOP (no push), and its
+              -- sibling after the sequence is `h_valF`'s own level, read down.
+              Or.inl (fun _ => ⟨ksv, (fun fr hf => Nat.lt_of_lt_of_le (h_ltv fr hf) hnk),
+                fun sp_final h_indented sp_end h_tail sp_fin h_mt =>
+                  (closeF sp_end (valueLandedSeq hnk h_ssl
+                    (SBlockSeqEntries_of_compactTail h_ind h_dash h_gnot h_indented h_tail))).level_inv
+                    sp_fin (by obtain rfl : nv = k := (by omega); exact h_mt)⟩)⟩
           · exact Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
               Or.inr trivial, h_seqBottom, Or.inr trivial⟩
       · exact Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
-          Or.inr trivial, h_seqBottom, Or.inr trivial⟩
+          Or.inr trivial, h_seqBottom, Or.inr h_tr⟩
     -- ═══ **Item 198: the same step at the VALUE-LINE bottom.**  `h_valFV` is
     -- `h_valF`'s twin and `nestedBlockSeq` is indifferent to what the stack
     -- stands on, so the term is the branch above verbatim with two things
@@ -29973,7 +29989,22 @@ lemma accum_block_on_pendingBlock
                             h_noflow (preprocess_saved_key_col h_sk h_noflow h_preprocess).2
                             (preprocess_saved_key_col h_sk h_noflow h_preprocess).1 h_surv h_dispatch)
                           (by simp [hseq]))
-                        (fun _ => Or.inr trivial))
+                        -- Item 389: a MAPPING top is the enclosing mapping at `n`, and its
+                        -- sibling is the park's `h_mt` conjunct (paid at the landed birth);
+                        -- what stays declined is the `:` whose saved key the live register
+                        -- clears on a sequence top (`? - a⏎: b`'s explicit value).
+                        (fun _ => by
+                          obtain rfl : n = k := (by omega)
+                          by_cases hmap : atSequenceIndent s_prep = false
+                          · rcases h_mt with r | h_tr
+                            · obtain ⟨ks', hw', route⟩ := r (mapTop_of_indents_eq h_eq.symm
+                                (mapTop_of_atSequenceIndent_false (IndentStackBase.preprocess_base h_preprocess h_base)
+                                  (by rw [currentIndent_of_indents_eq h_eq, h_scol]; omega) hmap))
+                              exact Or.inl ⟨ks', hw', fun sp_fin h_mt' =>
+                                route sp_mid (SBlockIndented.empty n .blockIn sp_scan sp_mid h_ssl)
+                                  sp_mid (SCompactSeqTail.nil n sp_mid) sp_fin h_mt'⟩
+                            · exact Or.inr h_tr
+                          · exact Or.inr trivial))
                   (fun h_pop =>
                     match h_cvO with
                     | Or.inl ⟨lo, _, hc⟩ =>
