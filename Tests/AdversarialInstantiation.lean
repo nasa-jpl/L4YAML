@@ -7215,7 +7215,9 @@ lower the top leaves the stack unchanged), `pushedBirth_not_mapTop` (a `-` dispa
 `col ≤ currentIndent` leaves the stack unchanged) and `dispatchContent_preserves_indents` (the
 content arm, the step `contentLanding_indents_eq` reads).  A violation is a build failure. -/
 
-/-- One walk: `(pauses, prepViol, eqViol, pushed, pushViol, noPush, noPushViol, contentViol)`. -/
+/-- One walk: `(pauses, prepViol, eqViol, pushed, pushViol, noPush, noPushViol, contentViol)`; a pause is
+    counted only where `scanNextToken` itself accepts the step, and each dispatcher result's stack is also
+    compared with that step's (`pushViol`/`contentViol`). -/
 def mapTopLemmaWalk (input : String) (fuel : Nat := 64) :
     Nat × Nat × Nat × Nat × Nat × Nat × Nat × Nat := Id.run do
   let mut s := ScannerState.mk' input
@@ -7229,8 +7231,11 @@ def mapTopLemmaWalk (input : String) (fuel : Nat := 64) :
   let mut contentViol := 0
   let shape : ScannerState → Array (Int × Bool) := fun st => st.indents.map fun e => (e.column, e.isSequence)
   for _ in [:fuel] do
-    match scanNextToken_preprocess s with
-    | .ok (some (sp, c)) =>
+    -- PR #161 review: a dispatch is counted only when the scanner's OWN step on the same
+    -- state succeeds (`scanNextToken` = preprocess + the earlier checks + the dispatch), and
+    -- the dispatcher's stack is compared with the step's — so every tally is on the accepted path.
+    match scanNextToken s, scanNextToken_preprocess s with
+    | .ok (some sN), .ok (some (sp, c)) =>
       pauses := pauses + 1
       if !(decide (sp.currentIndent ≤ s.currentIndent)) then prepViol := prepViol + 1
       if decide (s.currentIndent ≤ sp.currentIndent) && shape sp != shape s then eqViol := eqViol + 1
@@ -7239,6 +7244,7 @@ def mapTopLemmaWalk (input : String) (fuel : Nat := 64) :
       if c == '-' then
         match scanNextToken_dispatchBlockIndicators sd '-' with
         | .ok (some s') =>
+          if shape s' != shape sN then pushViol := pushViol + 1
           if decide (sd.currentIndent < (sd.col : Int)) then
             pushed := pushed + 1
             if s'.indents.back?.map (fun e => (e.column, e.isSequence)) != some ((sd.col : Int), true) then
@@ -7249,12 +7255,10 @@ def mapTopLemmaWalk (input : String) (fuel : Nat := 64) :
         | _ => pure ()
       else if c != ':' && c != '?' then
         match scanNextToken_dispatchContent sd c with
-        | .ok s' => if shape s' != shape sd then contentViol := contentViol + 1
+        | .ok s' => if shape s' != shape sd || shape s' != shape sN then contentViol := contentViol + 1
         | _ => pure ()
-    | _ => break
-    match scanNextToken s with
-    | .ok (some s') => s := s'
-    | _ => break
+      s := sN
+    | _, _ => break
   return (pauses, prepViol, eqViol, pushed, pushViol, noPush, noPushViol, contentViol)
 
 def testMapTopLemmaWalk (state : IO.Ref TestCollector) : IO Unit := do
