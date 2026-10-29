@@ -22931,6 +22931,34 @@ lemma preprocess_indents_eq_of_le {s s' : ScannerState} {c : Char}
             obtain ⟨rfl, _⟩ := hok
             rw [(closeStaleExplicitKey_indents _).trans (saveSimpleKey_preserves_indents _), h_skip_ids]
 
+/-- **A content landing on the `-` park pops nothing** (item 389): the park's top
+    is at or left of `n` and `[80]`'s separation puts the content at `n + 1` or
+    deeper, so the unwind has nothing to close and the content scan touches no
+    indent — the new park's stack IS the `-` park's. -/
+lemma contentLanding_indents_eq {sc s_prep s' : ScannerState} {c : Char}
+    {sp_scan sp_prep : SurfPos} {n : Nat}
+    (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
+    (h_dispatch : scanNextToken_dispatchContent
+        (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) c = .ok s')
+    (h_mono : IndentStackMono.Mono sc) (h_base : IndentStackBase.SentinelBase sc)
+    (h_top : sc.currentIndent ≤ (n : Int)) (hcorr_prep : ScannerSurfCorr s_prep sp_prep)
+    (h_sep : SSeparate (n + 1) .flowOut sp_scan sp_prep) (h_col : sp_scan.col = n + 1) :
+    s'.indents = sc.indents := by
+  rw [IndentStackBase.dispatchContent_preserves_indents h_dispatch]
+  have h_upd : (if s_prep.allowDirectives then
+      { s_prep with allowDirectives := false, documentEverStarted := true }
+    else s_prep).indents = s_prep.indents := by split <;> rfl
+  rw [h_upd]
+  rcases preprocess_indents_or_underIndent h_preprocess with h | h
+  · exact h
+  · exfalso
+    have h1 := preprocess_currentIndent_le h_preprocess h_mono h_base
+    have h2 : n + 1 ≤ sp_prep.col := separate_col_ge h_sep (by omega)
+    have h3 := hcorr_prep.col_eq
+    omega
+
 
 /-- **The dash's TOP** (item 205) — `indicator_floor_dash_at_col`'s twin on the
     other side of the same number.
@@ -36823,6 +36851,7 @@ lemma accum_content_on_pendingBlock_indented
       SeqEntryTail sp_start ke sp_end) ∨ True)
     -- Item 179: the floor at the SHIFTED index, `pendingBlock`'s own field.
     (h_floor_old : IndentFloor sc (n + 1))
+    (h_top_old : sc.currentIndent ≤ (n : Int))
     (h_col_old : sp_scan.col = n + 1)
     -- Item 90: the park's own flag (item 34), handed to the pack lemmas.
     (h_ska : sc.simpleKeyAllowed = true)
@@ -37052,7 +37081,7 @@ lemma accum_content_on_pendingBlock_indented
                       (SBlockIndented.node n .blockIn sp_scan sp_final
                         (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gram sp_final
                           h_sep_all (h_flow_all (n + 1))
-                          h_ssl)), Or.inr trivial⟩
+                          h_ssl)), h_mt.imp (fun r hp => let ⟨ks', hw, route⟩ := r (mapTop_of_indents_eq (contentLanding_indents_eq h_preprocess h_dispatch h_mono h_base h_top_old hcorr_prep h_sep_all h_col_old).symm hp); ⟨ks', hw, fun sp_final h_ssl sp_fin h_mt' => route sp_final (SBlockIndented.node n .blockIn sp_scan sp_final (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gram sp_final h_sep_all (h_flow_all (n + 1)) h_ssl)) sp_fin h_mt'⟩) id⟩
               | Or.inr _ => Or.inr trivial)
              (nodir_of_content_dispatch h_dispatch)
              (completedTail_of_dispatch h_dispatch hna hnt)
@@ -37251,7 +37280,7 @@ lemma accum_content_on_pendingBlock_indented
                   h_cvS.imp (fun ⟨lo, hb, hc⟩ => ⟨lo, hb, h_cov_step lo ks hc⟩) id,
                   fun sp_m h_bn sp_end h_tail =>
                     closeF sp_m (SBlockIndented.node n .blockIn sp_scan sp_m h_bn)
-                      sp_end h_tail, Or.inr trivial⟩
+                      sp_end h_tail, h_mt.imp (fun r hp => let ⟨ks', hw, route⟩ := r (mapTop_of_indents_eq (contentLanding_indents_eq h_preprocess h_dispatch h_mono h_base h_top_old hcorr_prep h_sep_all h_col_old).symm hp); ⟨ks', hw, fun sp_m h_bn sp_end h_tail sp_fin h_mt' => route sp_m (SBlockIndented.node n .blockIn sp_scan sp_m h_bn) sp_end h_tail sp_fin h_mt'⟩) id⟩
               | Or.inr _ => Or.inr trivial)
              -- Item 114: the node-domain pair is the MAPPING producers' —
              -- this park's completion takes the entries-chain park instead.
@@ -37321,7 +37350,7 @@ lemma accum_content_on_pendingBlock_indented
                   fun sp_final h_ssl =>
                     closeF sp_final
                       (SBlockIndented.node n .blockIn sp_scan sp_final
-                        (h_nodeAt sp_final h_ssl)), Or.inr trivial⟩
+                        (h_nodeAt sp_final h_ssl)), h_mt.imp (fun r hp => let ⟨ks', hw, route⟩ := r (mapTop_of_indents_eq (contentLanding_indents_eq h_preprocess h_dispatch h_mono h_base h_top_old hcorr_prep h_sep_all h_col_old).symm hp); ⟨ks', hw, fun sp_final h_ssl sp_fin h_mt' => route sp_final (SBlockIndented.node n .blockIn sp_scan sp_final (h_nodeAt sp_final h_ssl)) sp_fin h_mt'⟩) id⟩
               | Or.inr _ => Or.inr trivial)
              (nodir_of_content_dispatch h_dispatch)
              (completedTail_of_dispatch h_dispatch hna hnt)
@@ -37503,7 +37532,7 @@ lemma accum_content_on_pendingBlock_indented
                       (SBlockIndented.node n .blockIn sp_scan sp_final
                         (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gramf sp_final
                           h_sep_all h_node_f
-                          h_ssl)), Or.inr trivial⟩
+                          h_ssl)), h_mt.imp (fun r hp => let ⟨ks', hw, route⟩ := r (mapTop_of_indents_eq (contentLanding_indents_eq h_preprocess h_dispatch h_mono h_base h_top_old hcorr_prep h_sep_all h_col_old).symm hp); ⟨ks', hw, fun sp_final h_ssl sp_fin h_mt' => route sp_final (SBlockIndented.node n .blockIn sp_scan sp_final (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gramf sp_final h_sep_all h_node_f h_ssl)) sp_fin h_mt'⟩) id⟩
               | Or.inr _ => Or.inr trivial)
              (nodir_of_content_dispatch h_dispatch)
              (completedTail_of_dispatch h_dispatch hna hnt)
@@ -40442,7 +40471,7 @@ lemma accum_content_pending (sc : ScannerState)
                          (content_park_nic_any (preprocess_some_peek h_preprocess)
                            h_flow_disp h_not_doc h_dispatch hcorr_result) (Or.inr trivial),
                        hcorr_result⟩
-  | pendingBlock _ _ _ n_old h_close_old h_close_entry_old h_floor_old h_sk_old h_col_old h_kslot92 h_closeF99 _ h_seqF167 h_kslotUp190 h_closeFV198 _ h_offer_b h_nextB =>
+  | pendingBlock _ _ _ n_old h_close_old h_close_entry_old h_floor_old h_sk_old h_col_old h_kslot92 h_closeF99 _ h_seqF167 h_kslotUp190 h_closeFV198 h_park_top_old h_offer_b h_nextB =>
     -- Item 22 split this arm on the pending's own index because every content
     -- reading was stated at 0; item 23 gave the nonzero side its own arm, and
     -- item 179 retired the split: the indented arm's splitter answers at every
@@ -40451,7 +40480,7 @@ lemma accum_content_pending (sc : ScannerState)
     -- instance — faces included.
     exact accum_content_on_pendingBlock_indented (h_dead := h_dead) (h_sound := h_sound) (h_fl0 := h_fl0) (h_next := h_nextB (noflow_of_fl0 h_fl0)) (h_src := slotGateAt_of_offerPred h_offer_b h_base h_preprocess) sc sp_start sp_block sp_scan n_old
       s_prep s' c sp_prep sp_scan' h_stream_block h_close_old h_close_entry_old h_kslot92
-      h_closeF99 h_seqF167 h_floor_old h_col_old h_sk_old
+      h_closeF99 h_seqF167 h_floor_old h_park_top_old h_col_old h_sk_old
       hcorr_prep hcorr_result h_corr h_preprocess h_not_doc h_flow_disp h_dispatch
       h_base h_mono
       -- Item 190: the park's second frame, relayed as its first is.
