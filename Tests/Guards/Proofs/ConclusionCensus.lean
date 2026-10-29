@@ -277,6 +277,7 @@ def attribControl : CommandElabM (Array String) := do
     as item 201's second `cases` was. -/
 -- 2026-10-20 (item 309): 17 → 14 — `frameChainUnion`, `flowVPack_of_close` and `explFrameValueLine`
 -- conclude in `∨ alt` (generic in the alternative) and leave the `∨ True` survey.
+-- 2026-10-29 (item 396): flowOpen_floor_at_prep deleted (zero callers; the ∨-True audit's one never-supplied binder) — its row goes.
 def expected : List String :=
   ["back_col inl=0,inr=0 inl=0,inr=0 | un=0,0",
    "close_col_of_base inl=0,inr=0 inl=0,inr=0 | un=0,0",
@@ -293,8 +294,7 @@ def expected : List String :=
    "flowKeyHead inl=0,inr=0 | un=0,0",
    "flowKeyRoute_of_open inl=2,inr=4 inl=0,inr=0 inl=1,inr=2 inl=2,inr=0 inl=1,inr=2 | un=3,3",
    "flowKeyRoute_of_root inl=2,inr=2 inl=0,inr=0 inl=1,inr=2 inl=5,inr=0 inl=1,inr=2 | un=3,5",
-   "flowOpen_floor_at_prep inl=1,inr=1 | un=0,0",
-   "flowOpen_marker inl=1,inr=2 | un=1,1",
+      "flowOpen_marker inl=1,inr=2 | un=1,1",
    "flowOpen_stamp inl=1,inr=2 | un=1,1",
    "keyctx_of_preprocess inl=2,inr=3 | un=0,0",
    "markerctx_of_landing inl=1,inr=3 | un=1,1",

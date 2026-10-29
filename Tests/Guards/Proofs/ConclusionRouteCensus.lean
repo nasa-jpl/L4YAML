@@ -402,6 +402,7 @@ namespace L4YAML.Tests.Guards.ConclusionRouteCensus
     producer until it is named a pipe above. -/
 -- 2026-10-20 (item 309): 27 → 24 — `frameChainUnion`, `flowVPack_of_close` and `explFrameValueLine` conclude in
 -- `∨ alt` (generic in the alternative) and leave the `∨ True` survey.
+-- 2026-10-29 (item 396): flowOpen_floor_at_prep deleted (zero callers) — its route row goes (25 → 24).
 def expectedRows : List String :=
   ["back_col#0 :: FIELD of premise#3",
    "back_col#1 :: FIELD of premise#3",
@@ -429,7 +430,6 @@ PARENT-DECLINED | PARENT-DECLINED | PAY",
    "flowKeyRoute_of_root#2 :: DECLINE | DECLINE | PARENT-DECLINED | PARENT-DECLINED | PAY",
    "flowKeyRoute_of_root#3 :: PARENT-DECLINED | PARENT-DECLINED | PAY | PAY | PAY | PAY | PAY",
    "flowKeyRoute_of_root#4 :: DECLINE | DECLINE | PARENT-DECLINED | PARENT-DECLINED | PAY",
-   "flowOpen_floor_at_prep#0 :: DECLINE | PAY",
    "flowOpen_marker#0 :: DECLINE | DECLINE | PAY",
    "flowOpen_stamp#0 :: DECLINE | DECLINE | PAY",
    "keyctx_of_preprocess#0 :: DECLINE | DECLINE | DECLINE | PAY | PAY",
@@ -450,7 +450,7 @@ PARENT-DECLINED | PARENT-DECLINED | PAY",
 -- 2026-10-28 (item 385): positions 24 → 26, SPLIT 17, → 19,
 -- — the two item-385 helpers conclude by a split (`by_cases` on the landing's width).
 def expectedTally : String :=
-  "positions=25 skipped=0 [FIELD=4, SPLIT=18, UNREACHABLE=2, VIA=1]"
+  "positions=24 skipped=0 [FIELD=4, SPLIT=17, UNREACHABLE=2, VIA=1]"
 
 /-- **The cross-instrument control.**  Route PAY-arms against `ConclusionCensus`'s
     `inl`, route DECLINE-arms against its `inr`, conjunct by conjunct under that
@@ -466,8 +466,9 @@ def expectedTally : String :=
 -- split the route reading leaves unresolved (`SPLIT Or.elim`): the term reading sees its `inr`
 -- (the popped/col-0 dedent's decline) and the sibling's `inl`; the route reading sees two PAYs, one DECLINE.
 -- 2026-10-29 (item 387): agree 22 → 21 — `deeperLandingResumeSeq` left both instruments (plain conclusion).
+-- 2026-10-29 (item 396): flowOpen_floor_at_prep deleted — one agreeing conclusion fewer (agree 21 → 20).
 def expectedCross : List String :=
-  ["agree=21",
+  ["agree=20",
    "deeperLandingResume#0 route=2+1 term=2+2",
    "scanValue_ok_park_facts#0 route=1+1 term=0+0"]
 

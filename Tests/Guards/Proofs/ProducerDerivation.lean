@@ -257,6 +257,7 @@ def readDecl (n : Name) : MetaM Readings := do
     the auto-detect loop and `scanBlockScalar_accepts`, each taking a correspondence
     (Stream E). -/
 -- 2026-10-26 (item 367, `[82]`): `directiveStop_of_validated` (StructureProduction) reads two `ScannerSurfCorr` hypotheses: `corrHyp` 583 → 584; the stream-conclusion counts are unchanged.
+-- 2026-10-29 (item 396): flowOpen_floor_at_prep deleted — one ScannerSurfCorr hypothesis fewer (corrHyp 587 → 586).
 def expectedCensus : String :=
 -- 2026-10-23 ([147] glued value): corrHyp 545 → 546 — `flowGluedCollectionValue_false_of_corr_colon_blank` reads
 -- the `": "` surface through a `ScannerSurfCorr` hypothesis; the thread, held and pair rows are unchanged.
@@ -266,7 +267,7 @@ def expectedCensus : String :=
   -- one-level `ResumeFrames`, not head-`SLYamlStream` (the restated pack).
     -- 2026-10-29 (item 389): corrHyp 584 → 587 — `pushedBirth_not_mapTop`, `noPushBirth_indents`,
   -- `contentLanding_indents_eq` read the cursor through a `ScannerSurfCorr` hypothesis.
-  "corrHyp=587 streamConcl=88 both=41 free=0 pairConcl=1 held=3 pairAny=8"
+  "corrHyp=586 streamConcl=88 both=41 free=0 pairConcl=1 held=3 pairAny=8"
 
 /-- The one conclusion that pairs them, and it is the stream's origin. -/
 def expectedSeedConcl : List Name :=

@@ -366,6 +366,7 @@ declarations' own binders and not by a rescoring of an existing one.
 -- 2026-10-29 (item 394, option B): +4 constants / decls (unwindIndentsLoop_mem, unwindIndents_mem,
 -- preprocess_indents_subset, FlowStackK's widened pack); READ +6 / RELAY +1 / eta +1 from the
 -- `sc.indents = s0.indents` relays — the same move HypothesisReaderCensus read.
+-- 2026-10-29 (item 396): flowOpen_floor_at_prep deleted; content_dispatch_after_close's four contexts restated (the peeled module, optional-context and optional-population counts follow HypothesisReaderCensus's move).
 def expectedModuleTallyP : String :=
   -- 2026-10-24 (item 350): constants 1424 → 1430, decls 1132 → 1137, READ 1207 → 1209, RELAY 2233 → 2237,
   -- RETURN 139 → 140 — `NotQuestionPark` and its three lemmas; `explFrameValueLine`'s split alternative.
@@ -383,7 +384,7 @@ def expectedModuleTallyP : String :=
   -- 2026-10-28 (item 386): constants/decls +2 (`IndentFloor.int_le_of_succ`, the level relays), READ +5, RELAY +2
   -- (the helpers' new premises `h_floor`/`h_nk`, the openers' `h_lvl_old`/`h_floor_mv`); UNUSED unchanged.
   -- 2026-10-29 (item 394): `FlowBaseRoutes.valueF` (+3 constants: the field, its projection, the structure's new arity), five more premise reads at the births and closes.
-  "constants=1732 decls=1367 eta=446 FIELD=194 READ=1449 RELAY=2703 RETURN=172 UNUSED=27"
+  "constants=1731 decls=1366 eta=446 FIELD=194 READ=1447 RELAY=2696 RETURN=172 UNUSED=27"
 
 -- Item 287: `accum_block_on_closeThenBlock`'s `h_vslot`, a READ one, left the
 -- `_ ∨ True` population — its sibling's move, under this peel.  Item 288: and
@@ -399,7 +400,7 @@ def expectedOptTallyP : String :=
   -- 2026-10-24 (item 350): total 163 → 159, ETA 33 → 31, READ 87 → 85 — the `h_expl`/`h_explUp` `inr`
   -- arms pay an empty chain and no longer read their alternative.
   -- 2026-10-28 (item 380, PR #146 review): READ 89 → 91, RELAY 40 → 38 — the two optional contexts eliminated by `Or.elim`.
-  "total=167 ETA=31 FIELD=4 READ=92 RELAY=38 RETURN=2"
+  "total=162 ETA=31 FIELD=4 READ=91 RELAY=34 RETURN=2"
 
 run_cmd do
   let env ← getEnv
@@ -877,7 +878,7 @@ lemma opt_premise_is_no_premise {A P : Prop} : (A ∨ True → P) ↔ P :=
 -- — the two item-385 helpers; `deeperLandingResume.h_valF` is one more optional context (READ inside the helper).
 def expectedOptPopulation : String :=
   -- 2026-10-24 (item 350): total 163 → 159, optTy 156 → 153, ctorFields 33 → 31 — as above.
-  "total=167 optTy=159 ctorFields=31"
+  "total=162 optTy=154 ctorFields=31"
 
 run_cmd do
   let env ← getEnv
