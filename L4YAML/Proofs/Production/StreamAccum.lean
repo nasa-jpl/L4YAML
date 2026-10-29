@@ -3084,11 +3084,16 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       awaited — the mapping twin of `pendingBlock` (item 13).  The whole entry
       frame is pre-composed inside `h_close` by the producer (`[187]
       l+block-mapping` + `[199]` + bare document + implicit continuation), so
-      consumption only ever supplies the NODE.  The closure is typed at
-      `.blockIn` — the context every content/flow-open consumer in this file
-      composes — and the producer converts it to `.blockOut` with
-      `SBlockNode_blockIn_to_blockOut` (inert at n = 0), which is what lets
-      every consumer arm be `pendingBlock`'s verbatim.  No entry-level
+      consumption only ever supplies the NODE.  **The closure is typed at
+      `.blockOut`** (item 388) — the context `[187]`'s implicit value
+      (`SBlockMapEntry.implicitKeyNode`) and `[185]`'s slots demand — so the
+      births pass the node they build as it stands, and it is the CONSUMERS
+      that compose in `.blockIn` (the content/flow-open arms) that weaken
+      their node with `SBlockNode_blockIn_to_blockOut` before calling.  Until
+      item 388 the field was `.blockIn` and the births weakened instead; that
+      one word kept `a:⏎- b` (`seq-spaces(n + 1, block-out) = n`, the `-` at
+      the mapping's own column) off this route — see `valueLandedSeq`.
+      No entry-level
       (snoc) closure: a following sibling (`: a⏎: b`) closes this map and
       opens the next as a bare-document continuation, which `[211]`'s
       over-approximate `implicitContinue` admits — the entries-level
@@ -3102,10 +3107,10 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       producers, one pending and one set of consumers.
 
       `n` is the entry indent, exactly as in `pendingBlock` (item 22).  The
-      producer's conversion into `[189]`/`[186]`'s `.blockOut` slot is no
-      longer restricted to `n = 0` either: `seq-spaces`' one-step disagreement
-      between the two block contexts is absorbed by `[183]`'s `m`, which is
-      what generalized `SBlockNode_blockIn_to_blockOut`.
+      consumers' weakening into this `.blockOut` slot is not restricted to
+      `n = 0`: `seq-spaces`' one-step disagreement between the two block
+      contexts is absorbed by `[183]`'s `m`, which is what generalized
+      `SBlockNode_blockIn_to_blockOut`.
 
       **The awaited node is `SBlockNode (n + 1)`, not `n`** (item 179):
       `n` is a raw column and `SBlockNode` is the one type indexed
@@ -3113,8 +3118,13 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       the five node-domain fields — `h_close`, `h_kslot`, `h_closeF`,
       `h_closeFV`, `h_seqF` — all await the entry's value at the SHIFTED
       index, which is what `[189]`'s `s-l+block-node(n, block-out)` slot now
-      demands of the producers' closures.  The `SBlockIndented`/
-      `SBlockMapEntry` slots (`h_ivl`, `h_vslot`, `h_expl`) stay raw.
+      demands of the producers' closures.  They do NOT share one context:
+      the VALUE routes `h_close` / `h_closeF` are `.blockOut` (item 388),
+      while `h_kslot`, `h_closeFV` and `h_seqF` stay `.blockIn` — their node
+      is `[184]`'s ENTRY node under a `?` frame or the outer sequence entry,
+      which `SBlockIndented.node` composes in `.blockIn`.  The
+      `SBlockIndented`/`SBlockMapEntry` slots (`h_ivl`, `h_vslot`, `h_expl`)
+      stay raw.
 
       `h_floor` is `pendingBlock`'s (item 27), and UNCONDITIONAL since item 82:
       `?` and the explicit `:` push `[187]`'s indent at their own column, and
