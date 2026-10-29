@@ -7685,7 +7685,15 @@ def testLiveKeyTopInvariant (state : IO.Ref TestCollector) : IO Unit := do
       ("'a' - b (REFUSED)", "'a' - b\n", 0, false),
       ("a:⏎  b: [1,⏎2]⏎  c: 3 (REFUSED: an under-indented flow line)", "a:\n  b: [1,\n2]\n  c: 3\n", 7, true),
       ("|⏎ a⏎- b (REFUSED after the block scalar: its one pause clears the key)", "|\n a\n- b\n", 1, false),
-      ("a: >⏎ b⏎- c (a folded value, then a root sequence)", "a: >\n b\n- c\n", 3, true) ]
+      ("a: >⏎ b⏎- c (a folded value, then a root sequence)", "a: >\n b\n- c\n", 3, true),
+      -- Item 399: the `-` after a same-line ALIAS key (an alias saves a simple key; `*al - b` alone is
+      -- `undefinedAlias`, so these define the anchor first).  Read on the scratch walk before pinning.
+      ("a: &x 1⏎*x - b (REFUSED: sameLineBlockCollection after the alias)", "a: &x 1\n*x - b\n", 4, true),
+      ("- &x 1⏎- *x - b (REFUSED)", "- &x 1\n- *x - b\n", 4, true),
+      ("a: &x 1⏎k: *x - b (REFUSED)", "a: &x 1\nk: *x - b\n", 6, true),
+      ("a: &x 1⏎*x: b (an alias as an implicit key)", "a: &x 1\n*x: b\n", 4, true),
+      ("&x a - b (REFUSED after the anchored key's pause)", "&x a - b\n", 2, true),
+      ("? &x 1⏎: *x - b (REFUSED)", "? &x 1\n: *x - b\n", 4, true) ]
   for (label, input, expectedPauses, armedExpected) in inputs do
     let (pauses, viol, armed) := liveKeyTopStateWalk input
     check state s!"P65 LiveKeyTop at every pause of {label}: pauses={pauses} viol={viol} armed={armed}"
