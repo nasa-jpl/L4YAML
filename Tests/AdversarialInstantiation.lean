@@ -7602,6 +7602,94 @@ def testIndentSubsetLemmas (state : IO.Ref TestCollector) : IO Unit := do
     check state s!"preprocess_indents_subset over {label}: pauses={pauses} viol={viol} unwound={unwound}"
       (viol == 0 && unwound == expectedUnwound)
 
+/-! ## Priority 65 — item 398: the live-key-top invariant (item 391 §5) STATED and read at every accepted pause
+
+`LiveKeyTop` as a STATE predicate, not a `:`-site reading (Priority 61 read it only at live colons): (key) in
+block context a live simple key saved on the CURRENT line stands at or right of `currentIndent`; (stack)
+every key on `simpleKeyStack` saved on the current line likewise (a flow start parks the key there, a flow
+end restores it, and `currentIndent` does not move inside flow).  Read after every `scanNextToken` pause.
+`armed` counts the pauses where a clause's hypothesis holds, so a row reads theorem-holds, not
+failed-hypothesis.  Predicted before the run: viol = 0 on every row; armed > 0 wherever pauses > 0 — REFUTED on two
+rows whose only pause is an indicator or a block scalar (no key is ever saved), pinned `armed = 0`.  The
+grid: the implicit-key births' inputs, flow keys and stacked keys, `?`/`-` after properties and quoted
+scalars (the `-` is the one writer that pushes WITHOUT clearing the key — the states are refused upstream),
+dedents, document markers, block scalars, under-indented flow continuation lines. -/
+
+def liveKeyTopOk (s : L4YAML.Scanner.ScannerState) : Bool × Bool := Id.run do
+  let keyArmed := decide (s.inFlow = false) && s.simpleKey.possible && s.simpleKey.pos.line == s.line
+  let keyOk := !keyArmed || decide (s.currentIndent ≤ (s.simpleKey.pos.col : Int))
+  let stackArmed := s.simpleKeyStack.any fun k => k.possible && k.pos.line == s.line
+  let stackOk := s.simpleKeyStack.all fun k =>
+    !(k.possible && k.pos.line == s.line) || decide (s.currentIndent ≤ (k.pos.col : Int))
+  return (keyOk && stackOk, keyArmed || stackArmed)
+
+/-- Every accepted pause of the real scanner: `(pauses, violations, armed pauses)`. -/
+def liveKeyTopStateWalk (input : String) (fuel : Nat := 128) : Nat × Nat × Nat := Id.run do
+  let mut s := L4YAML.Scanner.ScannerState.mk' input
+  let mut pauses := 0
+  let mut viol := 0
+  let mut armed := 0
+  for _ in [:fuel] do
+    match L4YAML.Scanner.scanNextToken s with
+    | .ok (some sN) =>
+      pauses := pauses + 1
+      let (ok, isArmed) := liveKeyTopOk sN
+      if !ok then viol := viol + 1
+      if isArmed then armed := armed + 1
+      s := sN
+    | _ => break
+  return (pauses, viol, armed)
+
+def testLiveKeyTopInvariant (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 65: item 398 — the live-key-top invariant (item 391 §5) as a state predicate, read at every accepted scanner pause: block live same-line key and every stacked key at or right of currentIndent"
+  -- Predicted before the run: viol = 0 on every row; armed > 0 on every row with pauses > 0 (two rows
+  -- refuted that: a `?` or a block-scalar header as the only pause never saves a key — pinned 0).
+  -- Pauses per row were read on a scratch walk first and are pinned here (a moved count is a scanner change).
+  let inputs : List (String × String × Nat × Bool) :=
+    [ ("a: 1 (the implicit key)", "a: 1\n", 3, true),
+      ("\"a\" - b (REFUSED: trailing content after a quoted key)", "\"a\" - b\n", 0, false),
+      ("&x - b (REFUSED after the anchor's pause: sameLineBlockCollection)", "&x - b\n", 1, true),
+      ("!t - b (REFUSED after the tag's pause)", "!t - b\n", 1, true),
+      ("*al - b (REFUSED)", "*al - b\n", 0, false),
+      ("a: [1] (a flow value)", "a: [1]\n", 5, true),
+      ("[a]: b (a flow key: the stacked key clause)", "[a]: b\n", 5, true),
+      ("{a: 1}: b", "{a: 1}: b\n", 7, true),
+      ("? a⏎: b (explicit key)", "? a\n: b\n", 4, true),
+      ("- - a: 1 (two sequence pushes before the key)", "- - a: 1\n", 5, true),
+      ("a:⏎  b: 1⏎c: 2 (the dedent)", "a:\n  b: 1\nc: 2\n", 8, true),
+      ("\"a\": 1 (a quoted key)", "\"a\": 1\n", 3, true),
+      ("- \"a\" - b (REFUSED)", "- \"a\" - b\n", 1, true),
+      ("x:⏎  y: [a,⏎b: c] (flow continuation at column 0)", "x:\n  y: [a,\nb: c]\n", 7, true),
+      ("x:⏎  y: [a,⏎  b: c] (flow continuation at the key's column)", "x:\n  y: [a,\n  b: c]\n", 7, true),
+      ("a # c⏎- b (a comment, then a sequence at the root)", "a # c\n- b\n", 1, true),
+      ("a:⏎  - b⏎  - c: d (a mapping inside a sequence entry)", "a:\n  - b\n  - c: d\n", 8, true),
+      ("? - a⏎: - b (sequences under an explicit key and its value)", "? - a\n: - b\n", 6, true),
+      ("a: &x b: c (REFUSED: a same-line nested key)", "a: &x b: c\n", 4, true),
+      ("--- a: 1 (a key on the marker line)", "--- a: 1\n", 2, true),
+      ("a: b⏎  c: d (REFUSED: a deeper key after a scalar value)", "a: b\n  c: d\n", 3, true),
+      ("k:⏎  \"q\" ? x (REFUSED)", "k:\n  \"q\" ? x\n", 2, true),
+      ("a:   # c⏎  b: 1 (a comment on the key line)", "a:   # c\n  b: 1\n", 5, true),
+      ("- a: 1⏎  b: 2 (the compact mapping in a sequence entry)", "- a: 1\n  b: 2\n", 7, true),
+      ("a: [b, {c: d}]: e (REFUSED: a flow value as a key)", "a: [b, {c: d}]: e\n", 11, true),
+      ("[a: b]: c (a flow mapping key)", "[a: b]: c\n", 7, true),
+      ("x:⏎  [a,⏎  b]: c (a flow key over two lines)", "x:\n  [a,\n  b]: c\n", 7, true),
+      ("x:⏎  [a,⏎b]: c (REFUSED: an under-indented flow line)", "x:\n  [a,\nb]: c\n", 5, true),
+      ("&a &b c: d (REFUSED: two anchors)", "&a &b c: d\n", 1, true),
+      ("a: 1 - b (a plain scalar containing ` - `)", "a: 1 - b\n", 3, true),
+      ("\"a\" ? b (REFUSED)", "\"a\" ? b\n", 0, false),
+      ("\"a\": - b (REFUSED: a same-line sequence value)", "\"a\": - b\n", 2, true),
+      ("? \"a\" - b (REFUSED at the quoted key: the one pause is the `?`, no key saved)", "? \"a\" - b\n", 1, false),
+      ("a:⏎- b (a sequence value at the key's column)", "a:\n- b\n", 4, true),
+      ("a:⏎ -b (a plain scalar `-b` at column 1)", "a:\n -b\n", 3, true),
+      ("'a' - b (REFUSED)", "'a' - b\n", 0, false),
+      ("a:⏎  b: [1,⏎2]⏎  c: 3 (REFUSED: an under-indented flow line)", "a:\n  b: [1,\n2]\n  c: 3\n", 7, true),
+      ("|⏎ a⏎- b (REFUSED after the block scalar: its one pause clears the key)", "|\n a\n- b\n", 1, false),
+      ("a: >⏎ b⏎- c (a folded value, then a root sequence)", "a: >\n b\n- c\n", 3, true) ]
+  for (label, input, expectedPauses, armedExpected) in inputs do
+    let (pauses, viol, armed) := liveKeyTopStateWalk input
+    check state s!"P65 LiveKeyTop at every pause of {label}: pauses={pauses} viol={viol} armed={armed}"
+      (viol == 0 && pauses == expectedPauses && (if armedExpected then armed > 0 else armed == 0))
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -7677,6 +7765,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testFlowParkFrames state
   testFlowFramesChain state
   testIndentSubsetLemmas state
+  testLiveKeyTopInvariant state
   testDeeperLandingOnMapPark state
   testParseOkCheckFrom state
   testParseNodeCF state
