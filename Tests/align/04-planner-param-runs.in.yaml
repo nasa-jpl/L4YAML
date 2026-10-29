@@ -1,121 +1,26 @@
-demo_planner:
-  # Parameter reference: see the planner's parameters header in its package.
-  # For important sections, see the comments prefixed with '##'
+planner:
+  # Runs are separated by blank lines (-g run); each run aligns on its own,
+  # comment lines inside a run do not split it.
   ros__parameters:
 
-    models:
-      battery:
-        # Nominal capacity from the power model used by the simulator.
-        capacity_whrs: 1000.0
+    ## Timing
 
-    scheduler:
-      queries:
-        enable_duration_update: true
+    period_sec: 1
+    window_sec: 5
+    # must exceed the worst-case cycle
+    timeout_sec: 30
 
-    ## Scheduling parameters
+    # a one-line run keeps a single space
+    retry_count: 3
 
-    plan_repair: false
-
-    # used when plan_repair=true
-    place_invalid_tasks: false
-
-    plan_optimize: false
+    max_tasks: 200
     
-    reschedule_from_scratch: true
+    ## Output
 
-    durations_to_try: 5
+    flush: true
+    dump_plan: true
+    dump_partial_plan: false
 
-    prefer_start_over_duration: false
-
-    # 1=SEARCH_SIMPLE_PRIORITY
-    # 2=SEARCH_RESCHEDULE_PRIORITY
-    # 3=SEARCH_DECOMP_PRIORITY
-    search_algo: 2 
-    continual_planning: true
-
-    # delay loading task networks until this many seconds after the planner started
-    load_tasknets_delay: 2
-
-    # Minimum time since the end of the previous scheduling cycle.
-    # If a cycle takes N seconds, consecutive cycles are at least N + min_time_between_scheduling_sec apart.
-    min_time_between_scheduling_sec: 5
-
-    # suggest plan_period == ctrl_period
-    plan_period: 1
-
-    # Should be greater than the worst-case scheduling cycle time; ideally 2x.
-    # Sensitive to the number of waypoints, the available communication window, and how much history is saved.
-    commit_window: 5
-    
-    schedule_supporting_tasks: true
-
-    # The default value is MAX_NUM_TASKS=200
-    max_priority_scheduling_cycles: 200
-
-    ## History related parameters
-  
-    # See completed_task_expiration_sec for the retention of completed tasks.
-    delete_tasks_on_completion: true
-
-    # A completed task is deleted once its end is this far in the past.
-    # How much history do we want to retain in the bags?
-    # For now, we will use 2 minutes = 120 seconds
-    
-    completed_task_expiration_sec: 120
-
-    suppress_updates_dur_sec: 5
-
-    # Based on a sample route with 15 waypoints (max drive duration is 84 seconds).
-    # Allow scheduling at least 3 drives = 3x84 = 252 seconds
-    schedule_window_sec: 252
-    
-    # Must be greater than the longest task duration; otherwise history consolidation could
-    # truncate the timelines of a running task and produce constraint violations.
-    # 0 or -1 means no history consolidation
-    # consolidate_impacts_min_interval_sec: -1
-    consolidate_impacts_min_interval_sec: 200
-
-    ## output-related parameters
-
-    # when true, flushes stdout when some important output was emitted.
-    plan_flush: true
-
-    # plan*.js before scheduling
-    dump_initial_plan: true
-    # plan*.js after scheduling
-    dump_final_plan: true
-    
-    # Useful for debugging scheduling problems; turn off on the flight computer
-    dump_partial_plan: true
-
-    generate_plan_dp: false
-    generate_task_event_dp: false
-    generate_timeline_dp: false
-    generate_all_timeline_results: false
-    generate_plan_evrs: false
-    
-    SHOW_DECOMP: false
-    SHOW_JSON_FILES: true
-    SHOW_PARTIAL_JSON_FILES: false
-    SHOW_MULTI_AGENT: false
-    SHOW_REPAIR: false
-    SHOW_DISPATCH: false
-
-    # essential
     SHOW_PLAN: true
-
-    # shows commit, reply & task state update
-    SHOW_CTRL: false
-
-    # essential
-    SHOW_SCHEDULE_TASK: true
-
-    # use the pretty-printer for before/after scheduling plan*.js files
-    SHOW_SBS: true
-
-    # helps with detecting scheduling errors
-    SHOW_VALID_TIMES: true
-
-    # used for (verbose) debugging
-    SHOW_VALID_DETAIL: false
-    SHOW_PLAN_DETAIL: true
+    SHOW_SCHEDULE: false
+    SHOW_DETAIL: false

@@ -150,6 +150,7 @@ lean_exe «l4yaml-fmt» where
   root := `Tests.L4YamlFmt
 
 -- aligntest: golden/idempotence/token-shape tests for l4yaml-fmt (Tests/align).
+@[default_target]
 lean_exe aligntest where
   root := `Tests.AlignTest
 
