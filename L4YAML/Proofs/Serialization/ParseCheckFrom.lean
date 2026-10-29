@@ -174,7 +174,8 @@ lemma mem_of_getElem? {ts : Toks} {i : Nat} {p : Positioned YamlToken} (h : ts[i
 
 /-- Scanner fact A, as a token predicate: a used handle is builtin or `!word!`
 (`Scanner/NodeProperties.lean`'s `scanTag` emits nothing else).
--- S3 obligation (a): `scanFiltered input = .ok ts → TagUsesShaped ts`. -/
+-- S3 obligation (a): `scanFiltered input = .ok ts → TagUsesShaped ts`; the scanner now enforces
+-- the handle shape itself (spec [89], `isTagHandleShaped` / `invalidTagHandle`). -/
 def TagUsesShaped (ts : Toks) : Prop :=
   ∀ p ∈ ts, ∀ h suf, p.val = .tag h suf → BuiltinTagHandle h ∨ isNamedHandle h = true
 

@@ -626,6 +626,8 @@ lemma scanTagDirective_corr (sc : ScannerState) (sp : SurfPos)
   obtain ⟨sp_val, _, hcorr_val⟩ :=
     skipWhitespace_corr _ sp_pfx hcorr_pfx
   split at hok
+  · contradiction  -- [89]: a malformed `%TAG` handle is refused
+  split at hok
   · split at hok
     · exact absurd hok (by simp)
     · have h := Except.ok.inj hok; subst h

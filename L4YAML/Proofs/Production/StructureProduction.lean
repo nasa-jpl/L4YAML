@@ -1702,6 +1702,8 @@ lemma scanTagDirective_prod
       ScannerSurfCorr { s_v.emitAt startPos (.tagDirective h t) with directivesPresent := true } sp_v :=
     fun _ _ hc _ _ _ => ⟨hc.chars_from, hc.col_eq, hc.end_eq, hc.input_prefix, hc.indent_cols_nonneg⟩
   split at hok
+  · contradiction  -- [89]: a malformed `%TAG` handle is refused
+  split at hok
   · rename_i hpeek
     split at hok
     · exact absurd hok (by simp)

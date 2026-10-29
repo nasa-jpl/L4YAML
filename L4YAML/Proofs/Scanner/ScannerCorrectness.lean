@@ -1938,6 +1938,8 @@ lemma scanTagDirective_monotonic (s : ScannerState) (s_after_ws : ScannerState) 
   dsimp only [] at h
   simp only [bind, Except.bind] at h
   split at h
+  · contradiction  -- [89]: a malformed `%TAG` handle is refused
+  split at h
   · -- some '#'
     split at h
     · contradiction
@@ -2627,6 +2629,8 @@ lemma scanTagDirective_preserves_prefix (s s_after_ws : ScannerState)
     = s.tokens[i] := by
   unfold scanTagDirective at h; dsimp only [] at h
   simp only [bind, Except.bind] at h
+  split at h
+  · contradiction  -- [89]: a malformed `%TAG` handle is refused
   split at h
   · -- some '#'
     split at h
@@ -6704,6 +6708,8 @@ lemma scanDirective_preserves_simpleKey (s : ScannerState) (s' : ScannerState)
           unfold scanTagDirective at h_inner
           dsimp only [] at h_inner
           simp only [bind, Except.bind] at h_inner
+          split at h_inner
+          · contradiction  -- [89]: a malformed `%TAG` handle is refused
           split at h_inner <;> try (split at h_inner <;> try contradiction)
           all_goals (try contradiction)
           all_goals (simp only [Except.ok.injEq] at h_inner; subst h_inner)
@@ -6750,6 +6756,8 @@ lemma scanDirective_preserves_simpleKeyStack (s : ScannerState) (s' : ScannerSta
           unfold scanTagDirective at h_inner
           dsimp only [] at h_inner
           simp only [bind, Except.bind] at h_inner
+          split at h_inner
+          · contradiction  -- [89]: a malformed `%TAG` handle is refused
           split at h_inner <;> try (split at h_inner <;> try contradiction)
           all_goals (try contradiction)
           all_goals (simp only [Except.ok.injEq] at h_inner; subst h_inner)
@@ -6795,6 +6803,8 @@ lemma scanDirective_preserves_flowLevel (s : ScannerState) (s' : ScannerState)
           unfold scanTagDirective at h_inner
           dsimp only [] at h_inner
           simp only [bind, Except.bind] at h_inner
+          split at h_inner
+          · contradiction  -- [89]: a malformed `%TAG` handle is refused
           split at h_inner <;> try (split at h_inner <;> try contradiction)
           all_goals (try contradiction)
           all_goals (simp only [Except.ok.injEq] at h_inner; subst h_inner)
@@ -9906,6 +9916,8 @@ lemma scanTagDirective_preserves_ScanInv (s s_after_ws : ScannerState)
   unfold scanTagDirective at h_ok
   dsimp only [] at h_ok
   simp only [bind, Except.bind] at h_ok
+  split at h_ok
+  · contradiction  -- [89]: a malformed `%TAG` handle is refused
   split at h_ok
   · -- some '#'
     split at h_ok
