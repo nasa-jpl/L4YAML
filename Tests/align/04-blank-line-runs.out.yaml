@@ -1,12 +1,12 @@
-planner:
+settings:
   # Runs are separated by blank lines (-g run); each run aligns on its own,
   # comment lines inside a run do not split it.
   ros__parameters:
 
     ## Timing
 
-    period_sec: 1
-    window_sec: 5
+    period_sec:  1
+    window_sec:  5
     # must exceed the worst-case cycle
     timeout_sec: 30
 
@@ -17,10 +17,10 @@ planner:
     
     ## Output
 
-    flush: true
-    dump_plan: true
+    flush:             true
+    dump_plan:         true
     dump_partial_plan: false
 
-    SHOW_PLAN: true
+    SHOW_PLAN:     true
     SHOW_SCHEDULE: false
-    SHOW_DETAIL: false
+    SHOW_DETAIL:   false
