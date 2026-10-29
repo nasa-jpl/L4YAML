@@ -827,9 +827,11 @@ sixth component (`nodes` 95163 → 96024). -/
 -- `accum_content_pending`'s `h_defer_split` now case on the park's `h_closeFV`.
 -- 2026-10-25 (item 358): 167 → 185 rows — the cover rides `h_closeFV_old` (×3) and `closeThenBlock.h_mapFV`
 -- (relay rows at every consumer) and `landing_frame_of_cover.h_cov` is fed through `preprocess_cover`/`of_indents_eq`.
+-- 2026-10-29 (item 388): `closeThenBlock.h_seqFrames` gains the `nv ≤ k` arm (the value route); `accum_content_pending`
+-- relays the mapping park's `.blockOut` `h_closeF` through `.imp` (the node weakened) — two rows reshaped, none added.
 def expectedRows : List String :=
   ["accum_block_on_closeThenBlock #1 fn:accum_block_on_closeThenBlock.h_cov_step := via:IndentStackCover.scanBlockEntry_cover(via:Covered.of_indents_eq(via:IndentStackCover.preprocess_cover(relay(fnp:accum_block_on_closeThenBlock.h_cov_step.hc))))",
-   "accum_block_on_closeThenBlock #1 local:accum_block_on_closeThenBlock.h_seqFrames := cases[ite[paid{cover=step(relay(param:accum_block_on_closeThenBlock.h_valF))}|paid{cover=punt}]|paid{cover=punt}]",
+   "accum_block_on_closeThenBlock #1 local:accum_block_on_closeThenBlock.h_seqFrames := cases[ite[paid{cover=step(relay(param:accum_block_on_closeThenBlock.h_valF))}|ite[paid{cover=punt}|paid{cover=punt}]]|paid{cover=punt}]",
    "accum_block_on_closeThenBlock #1 ctor:pendingBlock.h_closeF := relay(local:accum_block_on_closeThenBlock.h_seqFrames)",
    "accum_block_on_closeThenBlock #2 ctor:pendingBlock.h_closeF := paid{cover=lit(lo=nv + 1,idx=nv + 1 + m,ks=[],by=via:IndentStackCover.scanBlockEntry_cover(via:Covered.of_indents_eq(via:IndentStackCover.preprocess_cover(lemma(IndentStackCover.covered_nil_of_top_le)))))}",
     -- 2026-10-28 (item 385): the no-pop leaves of `h_res_land` relay the park's own value-node frames
@@ -941,7 +943,7 @@ def expectedRows : List String :=
    "accum_content_pending #4 fnp:accum_content_pending.h_defer_split.h_fS := match[paid{cover=step(relay(door:pendingBlockContent.h_closeF))}|punt]",
    "accum_content_pending #4 fnp:accum_content_pending.h_defer_split.h_fV := match[paid{cover=punt}|punt]",
    "accum_content_pending #1 param:accum_content_on_pendingBlock_indented.h_closeF_old := relay(door:pendingBlock.h_closeF)",
-   "accum_content_pending #1 param:accum_content_on_pendingMapValue_indented.h_closeF99 := relay(door:pendingMapValue.h_closeF)",
+   "accum_content_pending #1 param:accum_content_on_pendingMapValue_indented.h_closeF99 := imp:door:pendingMapValue.h_closeF{relay(door:pendingMapValue.h_closeF)}",
    "accum_content_pending #1 param:accum_content_on_pendingMapValue_indented.h_frames99 := relay(door:pendingMapValue.h_frames)",
    "accum_content_pending #1 param:accum_content_on_pendingMapValue_indented.h_closeFV108 := relay(door:pendingMapValue.h_closeFV)",
    "accum_content_pending #1 param:accum_content_on_pendingMapValue_indented.h_framesV108 := relay(door:pendingMapValue.h_framesV)",
@@ -1057,9 +1059,11 @@ def expectedRows : List String :=
 -- arm's `pendingBlock.h_closeF` relay of `h_closeF_old`.
 -- Item 371: the paid `h_closeF`/`h_frames` at `colon_open_map_explicit`/`compact_open_map` carry a punted
 -- cover conjunct (`Or.inr trivial`) — the trees read them as `cover-punt`, one fewer plain punt each.
+-- 2026-10-29 (item 388): content/entry trees cover-punt 3 → 4 — the landed birth's `nv ≤ k` arm carries the
+-- frames' cover as `Or.inr trivial` (frames `[]`, nothing to cover), one more punt leaf on each tree.
 def expectedTrees : List String :=
-  ["content: positions=17 rows=48 leaves[cover-punt=3 open:fnparam:colon_fires_implicit_key.h_key=1 open:fnparam:colon_fires_props_key.h_key=1 paid=6 punt=13] open=2",
-   "entry: positions=17 rows=48 leaves[cover-punt=3 open:fnparam:colon_fires_implicit_key.h_key=1 open:fnparam:colon_fires_props_key.h_key=1 paid=6 punt=13] open=2",
+  ["content: positions=17 rows=48 leaves[cover-punt=4 open:fnparam:colon_fires_implicit_key.h_key=1 open:fnparam:colon_fires_props_key.h_key=1 paid=6 punt=13] open=2",
+   "entry: positions=17 rows=48 leaves[cover-punt=4 open:fnparam:colon_fires_implicit_key.h_key=1 open:fnparam:colon_fires_props_key.h_key=1 paid=6 punt=13] open=2",
    "valF: positions=9 rows=24 leaves[cover-punt=1 open:fnparam:colon_fires_implicit_key.h_key=1 open:fnparam:colon_fires_props_key.h_key=1 paid=2 punt=10] open=2",
    "mapValue: positions=8 rows=13 leaves[cover-punt=1 open:fnparam:colon_fires_implicit_key.h_key=1 open:fnparam:colon_fires_props_key.h_key=1 paid=2 punt=1] open=2"]
 -- 2026-10-26 (item 369): `accum_block_on_pendingBlock` row re-read — `h_closeF_old` (the `-` park's frames) joins its binders.
@@ -1225,6 +1229,7 @@ def expectedDoor : List String :=
 -- — `deeperLandingResume` is one more walked lemma (its `h_valF` param, relayed at `closeThenBlock`'s two no-pop leaves).
 -- 2026-10-29 (item 387): nodes 121047 → 121051 — the no-pop arm's `dite n < k` at
 -- `accum_block_on_pendingBlock` (the helper now takes the strict bound; `k = n` splits on the sequence top).
+-- 2026-10-29 (item 388): summary contentCoverPunt 3 → 4, entryCoverPunt 3 → 4, nodes 121051 → 121397 — the `nv ≤ k` arm (see expectedRows/expectedTrees).
 def expectedLine : String :=
 -- 2026-10-25 (#112 review): the `FlowStackK` `MarkedColsIn` carrier reverted (Rule 8: a projection of the closed state is decided at the close by `Classical.em`); nodes 117690 → 117529 (walked-term total; the `elim[punt|punt]` face rows unchanged).
 -- 2026-10-25 (item 363): the flow OPEN lane read off the block state (`h_refused`, one `Classical.em`); the three `match h_kslot_* with` blocks go — nodes 117529 → 117431 (walked-term total).
@@ -1236,7 +1241,7 @@ def expectedLine : String :=
 -- `ResumeFrames`; `question_open_map`'s `h_expl`/`h_closeFV`/`h_framesV` come from the bound tail route `h_route51F`.
 -- Item 372 (2026-10-27): exit (a)'s cover spend on `preprocess_landing_mem_or_seq` (one more lemma relay row).
 -- Item 386 (2026-10-28): nodes 120403 → 121047 — the level conjunct in `h_valF`, the `-` opener's `h_lvl_old`, the helpers' sibling/absurd terms; no row moved.
-  "positions=24 ctorFields=13 lemParams=36 lemmas=19 walked=26 doors=9 rows=206 ctorRows=92 lemRows=80 localRows=5 fnRows=19 fnpRows=8 valRows=2 coverTypes=4 mentions=0 pbc=6 pbcRelay=6 pbcPaid=0 pbcPunt=0 pbcCoverPunt=0 pb=7 pbRelay=3 pbPaid=4 pbPunt=0 pbCoverPunt=0 pmv=6 pmvRelay=4 pmvPaid=1 pmvPunt=0 pmvCoverPunt=1 valF=11 valFRelay=2 valFPaid=0 valFPunt=9 contentPaid=6 contentPunt=13 contentCoverPunt=3 contentLemma=0 contentOpen=2 contentPos=17 entryPaid=6 entryPunt=13 entryCoverPunt=3 entryLemma=0 entryOpen=2 entryPos=17 eight=8 eightPB=4 eightPBC=4 eightIndents=0 eightTop=4 eightFloor=0 eightMinCI=0 eightNic=8 eightPrep=8 eightCover=8 doorUses=49 doorKept=17 doorForgotten=8 doorDropped=24 doorsOther=5 nodes=121051"
+  "positions=24 ctorFields=13 lemParams=36 lemmas=19 walked=26 doors=9 rows=206 ctorRows=92 lemRows=80 localRows=5 fnRows=19 fnpRows=8 valRows=2 coverTypes=4 mentions=0 pbc=6 pbcRelay=6 pbcPaid=0 pbcPunt=0 pbcCoverPunt=0 pb=7 pbRelay=3 pbPaid=4 pbPunt=0 pbCoverPunt=0 pmv=6 pmvRelay=4 pmvPaid=1 pmvPunt=0 pmvCoverPunt=1 valF=11 valFRelay=2 valFPaid=0 valFPunt=9 contentPaid=6 contentPunt=13 contentCoverPunt=4 contentLemma=0 contentOpen=2 contentPos=17 entryPaid=6 entryPunt=13 entryCoverPunt=4 entryLemma=0 entryOpen=2 entryPos=17 eight=8 eightPB=4 eightPBC=4 eightIndents=0 eightTop=4 eightFloor=0 eightMinCI=0 eightNic=8 eightPrep=8 eightCover=8 doorUses=49 doorKept=17 doorForgotten=8 doorDropped=24 doorsOther=5 nodes=121397"
 
 /-! ## §6 The reading -/
 

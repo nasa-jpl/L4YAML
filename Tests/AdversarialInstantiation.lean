@@ -6962,6 +6962,57 @@ def testSeqTopLeDispatchWalk (state : IO.Ref TestCollector) : IO Unit := do
     check state s!"seqTop_le premises over the accepted dispatches of {label}: (inScope, inViol, noPop, outside, outViol, cleared) = {got}; expected {expected}" (got == expected)
   checkM state s!"seqTop_le: nonvacuous no-pop in-scope dispatches across the rows = {noPopTotal} (predicted 4)" (noPopTotal == 4) s!"got {noPopTotal}"
 
+/-- Priority 59, Rule 2 for item 388 — the mapping park's value route typed `.blockOut` (the
+    grammar's `[187]` context, `SBlockMapEntry.implicitKeyNode`) and `valueLandedSeq`: a `-` at the
+    enclosing mapping's OWN column is that mapping's VALUE (`[185]` `seq-spaces(n + 1, block-out) =
+    n`), not a bare root node.  Parser rows (verdict + documents; §7: they cannot see which route
+    fired — the route's informative side is the frame-list pin `RelaySupplyCensus` and the
+    `h_seqBottom` leaf of `OpenerFallbackReach`): the no-push `-` under an EMPTY `a:` is one
+    document on every row; after a FILLED value (`a: 1⏎- b`) or under `? a` it is refused; a
+    document end (`...`) makes two.  Lemma rows: `valueLandedSeq`'s side condition `nv ≤ k` read as
+    the `seqSpaces` arithmetic it discharges (`seqSpaces (nv + 1) .blockOut + (k - nv) = k`) beside
+    `nestedBlockSeq`'s `.blockIn` twin (`seqSpaces (nv + 1) .blockIn + (k - (nv + 1)) = k` iff
+    `nv + 1 ≤ k`): the one column the `.blockIn` typing cost, over `nv, k ∈ 0..3`.  All 16 parser
+    verdicts were read by `parseYaml` before the rows were written; the lemma rows predict 10 of 16
+    `(nv, k)` pairs in `.blockOut`'s domain and 6 in `.blockIn`'s. -/
+def testValueLandedSeq (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 59: item 388 — a `-` at the mapping's own column is the mapping's VALUE ([185] seq-spaces, .blockOut): parser verdicts + documents on the no-push rows; valueLandedSeq's nv ≤ k beside nestedBlockSeq's nv + 1 ≤ k"
+  let rows : List (String × String × Option Nat) :=
+    [ ("a:⏎- b (the value: one document)", "a:\n- b", some 1),
+      ("a:⏎-⏎c: 1 (the mapping's sibling after the empty entry)", "a:\n-\nc: 1", some 1),
+      ("a:⏎- b⏎- c⏎d: 1 (two entries, then the sibling)", "a:\n- b\n- c\nd: 1", some 1),
+      ("a:⏎  b:⏎  -⏎  c: 1 (one level down)", "a:\n  b:\n  -\n  c: 1", some 1),
+      ("- a:⏎  -⏎  c: 1 (inside a sequence entry's mapping)", "- a:\n  -\n  c: 1", some 1),
+      ("-⏎c: 1 (a bare root `-`: no mapping — refused, trailing content)", "-\nc: 1", none),
+      ("a:⏎-⏎? c (the sibling as an explicit key)", "a:\n-\n? c", some 1),
+      ("a:⏎-⏎: v (the sibling as an empty key)", "a:\n-\n: v", some 1),
+      ("a: &x⏎- b⏎c: 1 (properties on the value line)", "a: &x\n- b\nc: 1", some 1),
+      ("a: # c⏎- b⏎c: 1 (a comment on the value line)", "a: # c\n- b\nc: 1", some 1),
+      ("a:⏎- b⏎...⏎c: 1 (a document end between: two documents)", "a:\n- b\n...\nc: 1", some 2),
+      ("? a⏎-⏎c: 1 (under an explicit KEY the `-` is bare document content — refused)", "? a\n-\nc: 1", none),
+      ("a:⏎-⏎  c: 1 (the entry's own node, deeper)", "a:\n-\n  c: 1", some 1),
+      ("a:⏎ -⏎c: 1 (the pushed case nv < k, then the dedent sibling)", "a:\n -\nc: 1", some 1),
+      ("a: 1⏎- b (after a FILLED value: bare document content — refused)", "a: 1\n- b", none),
+      ("a:⏎- b⏎  c: 1 (a deeper `c:` continues the plain scalar: invalid implicit key)", "a:\n- b\n  c: 1", none) ]
+  for (label, input, expected) in rows do
+    let got : Option Nat := match L4YAML.TokenParser.parseYaml input with
+      | .ok d => some d.size | .error _ => none
+    checkM state s!"P59 {label}: documents = {repr expected}" (got == expected) s!"got {repr got}"
+  let mut outDom := 0
+  let mut inDom := 0
+  for nv in [0, 1, 2, 3] do
+    for k in [0, 1, 2, 3] do
+      let outOk := L4YAML.Surface.seqSpaces (nv + 1) .blockOut + (k - nv) == k
+      let inOk := L4YAML.Surface.seqSpaces (nv + 1) .blockIn + (k - (nv + 1)) == k
+      if outOk then outDom := outDom + 1
+      if inOk then inDom := inDom + 1
+      checkM state s!"P59 valueLandedSeq side condition nv={nv} k={k}: seqSpaces arithmetic ↔ nv ≤ k"
+        (outOk == decide (nv ≤ k)) s!"outOk={outOk}"
+      checkM state s!"P59 nestedBlockSeq (.blockIn) twin nv={nv} k={k}: arithmetic ↔ nv + 1 ≤ k"
+        (inOk == decide (nv + 1 ≤ k)) s!"inOk={inOk}"
+  checkM state s!"P59 domains: .blockOut pairs = {outDom} (predicted 10), .blockIn pairs = {inDom} (predicted 6)"
+    (outDom == 10 && inDom == 6) s!"{outDom}/{inDom}"
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -7029,6 +7080,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testFloorLevelInstances state
   testSeqTopNoPopFaces state
   testSeqTopLeDispatchWalk state
+  testValueLandedSeq state
   testDeeperLandingOnMapPark state
   testParseOkCheckFrom state
   testParseNodeCF state

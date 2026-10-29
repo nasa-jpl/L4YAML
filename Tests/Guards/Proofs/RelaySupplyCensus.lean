@@ -1044,8 +1044,10 @@ def expectedProducers : List String :=
 -- through `.imp id (PackAlt.step_blockEntry h_preprocess h_dispatch)` into the new park's split field (the relay item 319's
 -- payments surfaced); producers and the other landings stand.
 -- 2026-10-28 (item 380, PR #146 review): piped 63 → 68, `Or.elim⇒SPLIT=5` — the five disagreeing `Or.elim`s land as splits.
+-- 2026-10-29 (item 388): piped 68 → 69, Or.imp⇒FIELD 33 → 34 — `accum_content_pending` relays the mapping
+-- park's `h_closeF` (now `.blockOut`) into the content lane's `.blockIn` binder by `.imp`, weakening the node.
 def expectedPipeLanding : String :=
-  "piped=68 producers=0 [Or.elim⇒SPLIT=5, Or.imp⇒FIELD=33, Or.imp⇒LOCAL=5, \
+  "piped=69 producers=0 [Or.elim⇒SPLIT=5, Or.imp⇒FIELD=34, Or.imp⇒LOCAL=5, \
 Or.imp⇒RELAY=16, Or.imp⇒SPLIT=4, dite⇒SPLIT=5]"
 
 /-- What the SPLITs decide (DOCS item 216), and the row that matters is
