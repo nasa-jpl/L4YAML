@@ -22746,6 +22746,191 @@ lemma mapTop_of_indents_eq {s s' : ScannerState} (heq : s'.indents = s.indents)
     ∃ e, s'.indents.back? = some e ∧ e.isSequence = false := by
   rw [heq]; exact h
 
+/-- Preprocessing only POPS (item 389): the landing's top is at or below the park's. -/
+lemma preprocess_currentIndent_le {s s' : ScannerState} {c : Char}
+    (hok : scanNextToken_preprocess s = .ok (some (s', c))) (h : IndentStackMono.Mono s)
+    (h_base : IndentStackBase.SentinelBase s) :
+    s'.currentIndent ≤ s.currentIndent := by
+  unfold scanNextToken_preprocess at hok
+  simp only [bind, pure, Pure.pure, Except.pure, Except.bind] at hok
+  split at hok
+  · contradiction
+  · rename_i s_skip h_skip
+    have h_skip_ids : s_skip.indents = s.indents :=
+      skipToContent_preserves_indents s s_skip h_skip
+    have h_c : IndentStackMono.Mono s_skip := h.of_indents_eq h_skip_ids
+    have h_ci : s_skip.currentIndent = s.currentIndent := currentIndent_of_indents_eq h_skip_ids
+    split at hok
+    · simp at hok
+    · split at hok
+      · split at hok
+        · contradiction
+        · split at hok
+          · simp at hok
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at hok
+            obtain ⟨rfl, _⟩ := hok
+            rw [currentIndent_of_indents_eq ((closeStaleExplicitKey_indents _).trans (saveSimpleKey_preserves_indents _))]
+            show ({ unwindIndents s_skip (s_skip.col : Int) with needIndentCheck := false } : ScannerState).currentIndent ≤ _
+            rw [← h_ci]
+            unfold ScannerState.currentIndent
+            cases hb : (unwindIndents s_skip (s_skip.col : Int)).indents.back? with
+            | none =>
+              simp only
+              have hsent : ({ column := -1, isSequence := false } : IndentEntry) ∈ s_skip.indents := by
+                rw [h_skip_ids]; exact Array.mem_of_getElem? h_base
+              have := h_c.le_currentIndent _ hsent
+              show (-1 : Int) ≤ s_skip.currentIndent
+              exact this
+            | some e =>
+              simp only
+              have hmem := unwindIndents_back_mem s_skip (s_skip.col : Int) e hb
+              exact h_c.le_currentIndent e hmem
+      · split at hok
+        · contradiction
+        · split at hok
+          · simp at hok
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at hok
+            obtain ⟨rfl, _⟩ := hok
+            rw [currentIndent_of_indents_eq ((closeStaleExplicitKey_indents _).trans (saveSimpleKey_preserves_indents _)), h_ci]
+            exact Int.le_refl _
+
+/-- **A pushed `-` birth has a SEQUENCE on top** (item 389): when the landing's
+    cursor stands right of the stack top, `[183]`'s push puts the new sequence
+    entry on top, so the new park's mapping-top premise is refuted outright. -/
+lemma pushedBirth_not_mapTop {s_prep s' : ScannerState} {sp_prep : SurfPos} {k : Nat}
+    (hcol_prep : sp_prep.col = k)
+    (hcorr_prep : ScannerSurfCorr s_prep sp_prep)
+    (hlt : s_prep.currentIndent < (k : Int))
+    (h_dispatch : scanNextToken_dispatchBlockIndicators
+        (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) '-' = .ok (some s')) :
+    ¬ (∃ e, s'.indents.back? = some e ∧ e.isSequence = false) := by
+  have h_upd_ind : (if s_prep.allowDirectives then
+      { s_prep with allowDirectives := false, documentEverStarted := true }
+    else s_prep).indents = s_prep.indents := by split <;> rfl
+  have h_upd_col : (if s_prep.allowDirectives then
+      { s_prep with allowDirectives := false, documentEverStarted := true }
+    else s_prep).col = s_prep.col := by split <;> rfl
+  have h_col : s_prep.col = k := by rw [← hcorr_prep.col_eq, hcol_prep]
+  have hlt' : (if s_prep.allowDirectives then
+      { s_prep with allowDirectives := false, documentEverStarted := true }
+    else s_prep).currentIndent < ((if s_prep.allowDirectives then
+      { s_prep with allowDirectives := false, documentEverStarted := true }
+    else s_prep).col : Int) := by
+    rw [currentIndent_of_indents_eq h_upd_ind, h_upd_col, h_col]; exact hlt
+  exact not_mapTop_of_seqTop (dispatchBlockEntry_seqTop_of_lt h_dispatch hlt')
+
+/-- The no-push twin: at or left of the top, `[183]` pushes nothing and the
+    new park's stack IS the landing's. -/
+lemma noPushBirth_indents {s_prep s' : ScannerState} {sp_prep : SurfPos} {k : Nat}
+    (hcol_prep : sp_prep.col = k)
+    (hcorr_prep : ScannerSurfCorr s_prep sp_prep)
+    (hle : (k : Int) ≤ s_prep.currentIndent)
+    (h_dispatch : scanNextToken_dispatchBlockIndicators
+        (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) '-' = .ok (some s')) :
+    s'.indents = s_prep.indents := by
+  have h_upd_ind : (if s_prep.allowDirectives then
+      { s_prep with allowDirectives := false, documentEverStarted := true }
+    else s_prep).indents = s_prep.indents := by split <;> rfl
+  have h_upd_col : (if s_prep.allowDirectives then
+      { s_prep with allowDirectives := false, documentEverStarted := true }
+    else s_prep).col = s_prep.col := by split <;> rfl
+  have h_col : s_prep.col = k := by rw [← hcorr_prep.col_eq, hcol_prep]
+  have hle' : (((if s_prep.allowDirectives then
+      { s_prep with allowDirectives := false, documentEverStarted := true }
+    else s_prep).col : Int)) ≤ (if s_prep.allowDirectives then
+      { s_prep with allowDirectives := false, documentEverStarted := true }
+    else s_prep).currentIndent := by
+    rw [currentIndent_of_indents_eq h_upd_ind, h_upd_col, h_col]; exact hle
+  rw [dispatchBlockEntry_indents_of_le h_dispatch hle', h_upd_ind]
+
+/-- One pop of the unwind loop, named so the loop's step can be read off it. -/
+def popStep (s : ScannerState) : ScannerState :=
+  { s.emit .blockEnd with
+      indents := (s.emit .blockEnd).indents.pop,
+      pendingKeys := (s.emit .blockEnd).pendingKeys.pop }
+
+lemma popStep_indents (s : ScannerState) : (popStep s).indents = s.indents.pop := rfl
+
+lemma popStep_mono {s : ScannerState} (h : IndentStackMono.Mono s) : IndentStackMono.Mono (popStep s) := by
+  show IndentStackMono.MonoArr (popStep s).indents
+  rw [popStep_indents]; exact IndentStackMono.monoArr_pop h
+
+/-- A pop on a monotone stack lowers the top strictly (item 389). -/
+lemma popStep_lt {s : ScannerState} (h : IndentStackMono.Mono s) (hsz : 1 < s.indents.size) :
+    (popStep s).currentIndent < s.currentIndent := by
+  have hpos1 : 0 < (popStep s).indents.size := by
+    rw [popStep_indents, Array.size_pop]; omega
+  rw [IndentStackMono.currentIndent_eq_last hpos1, IndentStackMono.currentIndent_eq_last (by omega)]
+  have hsz1 : (popStep s).indents.size = s.indents.size - 1 := by
+    rw [popStep_indents, Array.size_pop]
+  have hget : ((popStep s).indents[(popStep s).indents.size - 1]'(by omega)) =
+      s.indents[s.indents.size - 1 - 1]'(by omega) := by
+    simp only [popStep_indents, Array.getElem_pop, Array.size_pop]
+  rw [hget]
+  have := h (s.indents.size - 1 - 1) (by omega)
+  have heq : s.indents.size - 1 - 1 + 1 = s.indents.size - 1 := by omega
+  simp only [heq] at this
+  exact this
+
+lemma unwindIndentsLoop_shrink_lt (s : ScannerState) (col : Int) (fuel : Nat) (h : IndentStackMono.Mono s)
+    (h_sh : (unwindIndentsLoop s col fuel).indents.size < s.indents.size) :
+    (unwindIndentsLoop s col fuel).currentIndent < s.currentIndent := by
+  induction fuel generalizing s with
+  | zero => unfold unwindIndentsLoop at h_sh; omega
+  | succ fuel ih =>
+    unfold unwindIndentsLoop at h_sh ⊢
+    split at h_sh
+    · rename_i hcond
+      simp only [hcond, ↓reduceIte]
+      simp only [Bool.and_eq_true, decide_eq_true_eq] at hcond
+      show (unwindIndentsLoop (popStep s) col fuel).currentIndent < s.currentIndent
+      rcases unwindIndentsLoop_shrink_or_eq (popStep s) col fuel with h2 | h2
+      · exact Int.lt_trans (ih _ (popStep_mono h) h2) (popStep_lt h hcond.2)
+      · rw [currentIndent_of_indents_eq h2]; exact popStep_lt h hcond.2
+    · omega
+
+/-- Preprocessing that does not lower the top did not pop: the stack is the caller's. -/
+lemma preprocess_indents_eq_of_le {s s' : ScannerState} {c : Char}
+    (hok : scanNextToken_preprocess s = .ok (some (s', c))) (h : IndentStackMono.Mono s)
+    (hge : s.currentIndent ≤ s'.currentIndent) :
+    s'.indents = s.indents := by
+  unfold scanNextToken_preprocess at hok
+  simp only [bind, pure, Pure.pure, Except.pure, Except.bind] at hok
+  split at hok
+  · contradiction
+  · rename_i s_skip h_skip
+    have h_skip_ids : s_skip.indents = s.indents :=
+      skipToContent_preserves_indents s s_skip h_skip
+    have h_c : IndentStackMono.Mono s_skip := h.of_indents_eq h_skip_ids
+    have h_ci : s_skip.currentIndent = s.currentIndent := currentIndent_of_indents_eq h_skip_ids
+    split at hok
+    · simp at hok
+    · split at hok
+      · split at hok
+        · contradiction
+        · split at hok
+          · simp at hok
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at hok
+            obtain ⟨rfl, _⟩ := hok
+            have hids : ({ unwindIndents s_skip (s_skip.col : Int) with needIndentCheck := false } : ScannerState).indents = (unwindIndents s_skip (s_skip.col : Int)).indents := rfl
+            rw [currentIndent_of_indents_eq ((closeStaleExplicitKey_indents _).trans (saveSimpleKey_preserves_indents _))] at hge
+            rw [(closeStaleExplicitKey_indents _).trans (saveSimpleKey_preserves_indents _), hids, ← h_skip_ids]
+            rw [currentIndent_of_indents_eq hids, ← h_ci] at hge
+            rcases unwindIndents_shrink_or_eq s_skip (s_skip.col : Int) with h_sh | h_eq
+            · exact absurd hge (Int.not_le.mpr (unwindIndentsLoop_shrink_lt s_skip _ _ h_c h_sh))
+            · exact h_eq
+      · split at hok
+        · contradiction
+        · split at hok
+          · simp at hok
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at hok
+            obtain ⟨rfl, _⟩ := hok
+            rw [(closeStaleExplicitKey_indents _).trans (saveSimpleKey_preserves_indents _), h_skip_ids]
+
 
 /-- **The dash's TOP** (item 205) — `indicator_floor_dash_at_col`'s twin on the
     other side of the same number.
@@ -26868,7 +27053,7 @@ lemma accum_block_on_noPending
                        (IndentStackCover.covered_nil_of_ntop h_mono (h_ntop h_scflow))).of_indents_eq
                      (by split <;> rfl))⟩,
                fun sp_m h_indented sp_e h_tail =>
-                 ResumeFrames.bottom sp_e (h_rootTail sp_m h_indented sp_e h_tail), Or.inr trivial⟩)
+                 ResumeFrames.bottom sp_e (h_rootTail sp_m h_indented sp_e h_tail), Or.inl (fun hp => (pushedBirth_not_mapTop (k := k) (by have := SIndent_col h_ind; omega) hcorr_prep (by have := preprocess_currentIndent_le h_preprocess h_mono h_base; have := h_ntop h_scflow; omega) h_dispatch hp).elim)⟩)
              (nodir_of_block_dispatch h_dispatch) (Or.inr trivial)
              -- Item 190: nor a second one above it.
              (Or.inr (PackAlt.step_blockEntry h_preprocess h_dispatch (PackAlt.ofRefused (h_noek (noflow_park_of_noflow h_preprocess h_noflow)))))
@@ -27448,7 +27633,7 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
                        (hvs sp_e
                          (SBlockIndented.compactSeq nv .blockOut m sp_mid _ sp_e h_ind
                            (SCompactSeq.mk (nv + 1 + m) _ sp_scan' sp_m sp_e
-                             h_dash2 h_gnot2 h_bi h_tail))), Or.inr trivial⟩)
+                             h_dash2 h_gnot2 h_bi h_tail))), Or.inl (fun hp => (pushedBirth_not_mapTop (k := nv + 1 + m) (by have := SIndent_col h_ind; omega) hcorr_prep (by have := preprocess_currentIndent_le h_preprocess h_mono h_base; omega) h_dispatch hp).elim)⟩)
                  (nodir_of_block_dispatch h_dispatch) (Or.inr trivial)
                  -- ═══ **Item 190: the OUTER frame's line rides the same fill.**
                  -- The compact sequence completes the slot exactly as above;
@@ -29801,7 +29986,7 @@ lemma accum_block_on_pendingBlock
                    fun sp_m h_bi sp_e h_tail =>
                      ResumeFrames.bottom sp_e
                        (h_close_inner sp_e
-                         (SBlockSeqEntries_of_compactTail h_ind h_dash2 h_gnot2 h_bi h_tail)), Or.inr trivial⟩)
+                         (SBlockSeqEntries_of_compactTail h_ind h_dash2 h_gnot2 h_bi h_tail)), Or.inl (fun hp => (pushedBirth_not_mapTop (k := k) (by have := SIndent_col h_ind; omega) hcorr_prep (by have := preprocess_currentIndent_le h_preprocess h_mono h_base; omega) h_dispatch hp).elim)⟩)
                  (nodir_of_block_dispatch h_dispatch)
                  -- **Item 167: the enclosing collection, handed down.**  The
                  -- inner sequence this `-` opens IS the outer entry's node, so
@@ -30302,7 +30487,7 @@ lemma accum_block_on_pendingBlock
                      (h_close_old sp_e
                        (SBlockIndented.compactSeq n .blockIn m sp_mid sp_sc sp_e h_ind
                          (SCompactSeq.mk (n + 1 + m) sp_sc sp_scan' sp_m sp_e
-                           h_dash2 h_gnot2 h_bi h_tail))), Or.inr trivial⟩)
+                           h_dash2 h_gnot2 h_bi h_tail))), Or.inl (fun hp => (pushedBirth_not_mapTop (k := n + 1 + m) (by have := SIndent_col h_ind; omega) hcorr_prep (by have := preprocess_currentIndent_le h_preprocess h_mono h_base; omega) h_dispatch hp).elim)⟩)
                (nodir_of_block_dispatch h_dispatch) (Or.inr trivial)
                -- Item 190: the second frame rides the inner compact too.
                (match h_kslotUp with
