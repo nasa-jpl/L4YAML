@@ -7422,6 +7422,38 @@ e: 3
     check state s!"P61 live-key top bound over {label}: pauses={pauses} liveColons={liveColons} preViol={preViol} postViol={postViol} keyless={keyless} keylessViol={keylessViol}"
       (preViol == 0 && postViol == 0 && keylessViol == 0 && (liveColons, keyless) == expected)
 
+
+/-! ## Priority 62 — item 392: the second (α) flip PRICED (`flip_root_frame_supply.py`) and the lever RE-READ
+
+Item 391's NEXT: price the root births SUPPLYING `[FrameLevel.map 0]`.  Stage A (the `ResumeFrames.level`
+stagger `<` → `≤` + the three (α) bounds) reads 9 declarations / 21 sites; stage B (A + item 380's 37
+frameless births) 16 / 68 = A + item 380's 11 / 47 exactly.  The parser is read here at every input the
+(α) lane names — root siblings after a closed value, an empty value, a flow value, a `?` key, a props run,
+a marker line, a dedent to a column no stack level holds — so the lane's inputs carry their verdict, not a
+recollection.  Verdicts read before the rows were written (item 392 ledger): 10/12 HELD; R6 REFUTED on the
+VERDICT (`--- a: 1⏎b: 2` is refused: a block mapping cannot open on the marker line — the marker face at
+column 0 has no root-sibling input after a closed value); R8's third component corrected on the reader
+(`rootKeys` renders a flow sequence's items). -/
+
+def testRootFrameSupply (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 62: item 392 — the second (α) flip PRICED (stage A 9/21, stage B 16/68 = A + item 380's 11/47) and the lever RE-READ: parser verdicts at every input the (α) lane names"
+  let rows : List (String × String × Option (Nat × List String × List String)) :=
+    [ ("R1 a: 1⏎b: 2 — the root sibling after a CLOSED value (the eight lines' named input, Priority 44)", "a: 1\nb: 2\n", some (1, ["a", "b"], [])),
+      ("R2 a: 1⏎ b: 2 — a sibling at column 1, no stack level: REFUSED", "a: 1\n b: 2\n", none),
+      ("R3 a:⏎  b: 1⏎c: 2 — the root sibling after a NESTED mapping (the dedent spends resumeAt at 0)", "a:\n  b: 1\nc: 2\n", some (1, ["a", "c"], ["b"])),
+      ("R4 a:⏎  b: 1⏎ c: 2 — dedent to column 1, no stack level: REFUSED", "a:\n  b: 1\n c: 2\n", none),
+      ("R5 ? a⏎b: 2 — the root sibling after an explicit key with no value", "? a\nb: 2\n", some (1, ["a", "b"], [])),
+      ("R6 --- a: 1⏎b: 2 — a block mapping on the marker line: REFUSED (prediction `accepted` REFUTED; the marker face has no root-sibling input here)", "--- a: 1\nb: 2\n", none),
+      ("R7 !!map⏎a: 1⏎b: 2 — the root sibling under a props run at column 0", "!!map\na: 1\nb: 2\n", some (1, ["a", "b"], [])),
+      ("R8 a: [1]⏎b: 2 — the root sibling after a FLOW value (the flow park's frames: `flowKeyRoute_of_root`'s hmem arm)", "a: [1]\nb: 2\n", some (1, ["a", "b"], ["1"])),
+      ("R9 a: 1⏎---⏎b: 2 — a marker between: TWO documents (the explicit route, not a sibling)", "a: 1\n---\nb: 2\n", some (2, ["a"], [])),
+      ("R10 a:⏎b: 2 — the root sibling after an EMPTY value (item 382's resume arm)", "a:\nb: 2\n", some (1, ["a", "b"], [])),
+      ("R11 - a: 1⏎  b: 2 — the sibling inside a compact mapping (level 2, not root)", "- a: 1\n  b: 2\n", some (1, [], ["a", "b"])),
+      ("R12 a: 1⏎- b — a `-` at the filled mapping's column: REFUSED (item 389's refuser)", "a: 1\n- b\n", none) ]
+  for (label, input, expected) in rows do
+    let got := rootKeys input
+    checkM state s!"P62 {label}: {repr expected}" (got == expected) s!"got {repr got}"
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -7493,6 +7525,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testMapTopSibling state
   testMapTopLemmaWalk state
   testLandedNoPushHalf state
+  testRootFrameSupply state
   testDeeperLandingOnMapPark state
   testParseOkCheckFrom state
   testParseNodeCF state
