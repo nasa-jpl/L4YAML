@@ -50,6 +50,7 @@ def rejectionLayer : ScanError → RejectionLayer
   | .unicodeOutOfRange .. => .surface
   | .expectedNewline .. => .surface
   | .directiveTrailingContent .. => .surface
+  | .invalidTagHandle .. => .surface
   | .duplicateYamlDirective .. => .surface
   | .directiveAfterContent .. => .surface
   | .directiveWithoutDocument .. => .surface

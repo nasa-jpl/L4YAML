@@ -783,6 +783,8 @@ lemma scanTagDirective_new_tok_not_plain (s s_after_ws : ScannerState) (startPos
     (collectTagPrefixLoop (skipWhitespace (collectTagHandleDirectiveLoop s_after_ws "" (s.inputEnd - s_after_ws.offset)).snd) ""
       (s.inputEnd - (skipWhitespace (collectTagHandleDirectiveLoop s_after_ws "" (s.inputEnd - s_after_ws.offset)).snd).offset)).fst, startPos⟩ := by
     split at h
+    · contradiction  -- [89]: a malformed `%TAG` handle is refused
+    split at h
     · split at h
       · contradiction
       · simp only [Except.ok.injEq] at h; subst h
@@ -901,6 +903,8 @@ lemma scanTagDirective_new_not_plain (s s_after_ws : ScannerState) (startPos : Y
   unfold scanTagDirective at h
   dsimp only [] at h
   simp only [bind, Except.bind] at h
+  split at h
+  · contradiction  -- [89]: a malformed `%TAG` handle is refused
   split at h
   · -- some '#'
     split at h
@@ -2090,6 +2094,8 @@ lemma scanDirective_preserves_flowLevel (s s' : ScannerState)
           dsimp only [] at hm
           simp only [bind, Except.bind] at hm
           split at hm
+          · contradiction  -- [89]: a malformed `%TAG` handle is refused
+          split at hm
           · -- some '#'
             split at hm
             · contradiction
@@ -2179,6 +2185,8 @@ lemma scanTagDirective_new_tokens_not_flow (s s_after_ws : ScannerState) (startP
     (collectTagHandleDirectiveLoop s_after_ws "" (s.inputEnd - s_after_ws.offset)).fst
     (collectTagPrefixLoop (skipWhitespace (collectTagHandleDirectiveLoop s_after_ws "" (s.inputEnd - s_after_ws.offset)).snd) ""
       (s.inputEnd - (skipWhitespace (collectTagHandleDirectiveLoop s_after_ws "" (s.inputEnd - s_after_ws.offset)).snd).offset)).fst, startPos⟩ := by
+    split at h
+    · contradiction  -- [89]: a malformed `%TAG` handle is refused
     split at h
     · split at h
       · contradiction

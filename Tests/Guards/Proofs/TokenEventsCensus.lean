@@ -29,13 +29,17 @@ def agree (s : String) : Bool :=
 
 def agreeing : List String := [
   "", "a", "&x [*x]", "&x {a: *x}", "&x\n- *x", "\"&x\"", "# *x", "a # *x",
-  "%TAG ! !x\n--- !a", "%TAG ! !x\n\n--- a", "%TAG !e! tag:x,2000:\n--- !e!a", "%TAG !! tag:y\n--- !!str a", "%TAG !h tag:x\n---", "!<tag:x> a", "!<tag:x>", "&a !<tag:x> b", "%YAML 1.2\n# c\n---", "%YAML 1.2\r\n---",
+  "%TAG ! !x\n--- !a", "%TAG ! !x\n\n--- a", "%TAG !e! tag:x,2000:\n--- !e!a", "%TAG !! tag:y\n--- !!str a", "!<tag:x> a", "!<tag:x>", "&a !<tag:x> b", "%YAML 1.2\n# c\n---", "%YAML 1.2\r\n---",
   "---\n---", "--- a\n...\n--- b", "...", "a\n...", "!!str a", "!h!item",   "- &a x\n- *a", "? a\n: b", "a: >-\n  x\n", "'a''b'",
   "\"a\\\"b\"", "a:\n  - b\n  -\n    c", "{a: [b, {c: d}]}", "[a,\n b]", "a\r\nb",
   "a\rb\r...", "- - - a", "...\n--- a", "&a !t x"
 ]
 
 #guard agreeing.all agree
+
+-- `%TAG !h` is not a [89] `c-tag-handle` (`!`, `!!`, `!word!`): the scanner refuses it
+-- (`invalidTagHandle`); the reference lexer's trace is the skeleton reading only.
+#guard (both "%TAG !h tag:x\n---").1 = none
 
 -- `scan` refuses an alias before its anchor and properties on an alias; the
 -- skeleton still has a trace there (the surface conjunct, not this one, rejects).

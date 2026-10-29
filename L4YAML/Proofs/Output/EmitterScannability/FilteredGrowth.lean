@@ -1002,6 +1002,8 @@ lemma scanTagDirective_new_token_eq (s s_after_ws : ScannerState) (startPos : Ya
   dsimp only [] at h
   simp only [bind, Except.bind] at h
   split at h
+  · contradiction  -- [89]: a malformed `%TAG` handle is refused
+  split at h
   · -- some '#'
     split at h
     · contradiction

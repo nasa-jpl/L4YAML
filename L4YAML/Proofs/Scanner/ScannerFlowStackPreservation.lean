@@ -942,6 +942,8 @@ lemma scanDirective_preserves_flowStack (s : ScannerState) (s' : ScannerState)
           unfold scanTagDirective at h_inner
           dsimp only [] at h_inner
           simp only [bind, Except.bind] at h_inner
+          split at h_inner
+          · contradiction  -- [89]: a malformed `%TAG` handle is refused
           split at h_inner <;> try (split at h_inner <;> try contradiction)
           all_goals (try contradiction)
           all_goals (simp only [Except.ok.injEq] at h_inner; subst h_inner)

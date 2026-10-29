@@ -133,6 +133,13 @@ def collectVersionMinorLoop (s : ScannerState) (minor : String) (fuel : Nat) : S
         (minor, s)
     | none => (minor, s)
 
+/-- Spec [89] `c-tag-handle`: `!`, `!!`, or `!` ns-word-char+ `!`. -/
+def isTagHandleShaped (h : String) : Bool :=
+  h == "!" || h == "!!" ||
+  (match h.toList with
+   | '!' :: rest => rest.length ≥ 2 && rest.getLast? == some '!' && rest.dropLast.all isWordCharBool
+   | _ => false)
+
 -- Helper: Collect TAG directive handle: '!' delimiters + ns-word-char [38] per [89]-[92].
 @[yaml_spec "6.8.2" 89 "c-tag-handle",
   yaml_spec "5.6" 38 "ns-word-char"]
@@ -214,6 +221,10 @@ def scanTagDirective (s : ScannerState) (s_after_ws : ScannerState) (startPos : 
   let result := collectTagHandleDirectiveLoop s_after_ws "" fuel_handle
   let handle := result.1
   let s_after_handle := result.2
+  -- [89] c-tag-handle: `!` | `!!` | `!` ns-word-char+ `!` — any other handle is refused here, so the
+  -- parser's tag table only ever holds handles a `.tag` token can name (S3 obligation (a)).
+  if !isTagHandleShaped handle then
+    throw (.invalidTagHandle handle s_after_ws.line s_after_ws.col)
   let s_after_ws2 := skipWhitespace s_after_handle
   let fuel_prefix := s.inputEnd - s_after_ws2.offset
   let result2 := collectTagPrefixLoop s_after_ws2 "" fuel_prefix

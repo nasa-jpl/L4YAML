@@ -571,6 +571,7 @@ inductive ScanError where
   /-- Bare document (no `---`) after a previous document without `...` — §9.2 [211] violation.
       YAML streams allow bare documents only as the first document or after `...`. -/
   | invalidBareDocument (line col : Nat)
+  | invalidTagHandle (handle : String) (line col : Nat)  -- `%TAG` handle not `!`/`!!`/`!word!` (§6.8.2.2 [89])
   /-- Tag shorthand handle used without a corresponding `%TAG` directive — §6.8.2.2 violation.
       Named handles (e.g., `!prefix!`) are local to the document and must be declared. -/
   | undeclaredTagHandle (handle : String) (line col : Nat)  /-- Whitespace-only line in block scalar exceeds detected content indent — §8.1.3. -/
@@ -645,6 +646,7 @@ def ScanError.toString : ScanError → String
   | .invalidFlowEntry l c      => s!"invalid comma in flow collection at line {l}, column {c}"
   | .invalidImplicitKey l      => s!"invalid implicit key at line {l}"
   | .invalidBareDocument l c   => s!"bare document content at line {l}, column {c} — expected '---' or '...' before new document (§9.2)"
+  | .invalidTagHandle h l c => s!"invalid tag handle '{h}' at line {l}, column {c} — a handle is '!', '!!' or '!word!' (§6.8.2.2 [89])"
   | .undeclaredTagHandle h l c => s!"undeclared tag handle '{h}' at line {l}, column {c} — use %TAG directive to declare it (§6.8.2.2)"
   | .blockScalarIndentMismatch l c => s!"whitespace-only line exceeds detected block scalar content indent at line {l}, column {c} (§8.1.3)"
   | .undefinedAlias name l c => s!"undefined alias '*{name}' at line {l}, column {c} — no preceding '&{name}' anchor in this document (§7.1)"

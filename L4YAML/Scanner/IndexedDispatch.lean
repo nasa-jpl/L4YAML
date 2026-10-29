@@ -1051,6 +1051,9 @@ def scanTagDirectiveIx {input : String} (s : ScannerStateIx input)
   let r := collectTagHandleDirectiveLoopIx cAfterWS "" fuelH
   let handle := r.1
   let cAfterHandle := r.2
+  -- [89] c-tag-handle (twin of `scanTagDirective`)
+  if !isTagHandleShaped handle then
+    throw (.invalidTagHandle handle cAfterWS.pos.line cAfterWS.pos.col)
   let cAfterWS2 := skipWhitespace cAfterHandle
   let fuelP := input.utf8ByteSize - cAfterWS2.pos.offset
   let r2 := collectTagPrefixLoopIx cAfterWS2 "" fuelP

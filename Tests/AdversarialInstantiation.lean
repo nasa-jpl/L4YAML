@@ -6399,7 +6399,7 @@ def testParseOkCheckFrom (state : IO.Ref TestCollector) : IO Unit := do
       ("! a (non-specific tag)", "! a", accept),
       ("!<tag:x> a (verbatim tag)", "!<tag:x> a", accept),
       ("!a b (primary handle with suffix)", "!a b", accept),
-      ("%TAG !h … then !h x (use scans as `!` + `h`)", "%TAG !h tag:x,2000:\n--- !h x", accept),
+      ("%TAG !h … (unclosed handle: scanner refuses since spec [89] is enforced)", "%TAG !h tag:x,2000:\n--- !h x", none),
       ("%TAG !! redefined", "%TAG !! tag:x,2000:\n--- !!a b", accept),
       ("%TAG ! redefined", "%TAG ! tag:x,2000:\n--- !a b", accept),
       ("duplicate anchor across `...` reset", "--- &x a\n...\n--- &x b", accept),
@@ -6514,7 +6514,6 @@ def testTokenEventExtractorsSeam (state : IO.Ref TestCollector) : IO Unit := do
       ("%TAG !t! tag:x,2000:\n--- !t!a b\n...\n--- !t!c d", false, false, true),
       ("%TAG !t! tag:x,2000:\n--- a\n--- !t!b", false, false, true),
       ("%TAG !t! tag:x,2000:\n--- !t!a\n...\n!t!b", false, false, true),
-      ("%TAG !h tag:x,2000:\n--- !h x", true, true, false),
       ("%TAG !! tag:x,2000:\n--- !!a b", true, true, true), ("%TAG ! tag:x,2000:\n--- !a b", true, true, true),
       ("%TAG !t! tag:x,2000:\n--- a", true, true, true), ("--- !t!a b", false, false, true), ("!!str a", true, true, true),
       ("! a", true, true, true), ("!<tag:x> a", true, true, true), ("!a b", true, true, true), ("&x a", true, true, true),
@@ -6522,6 +6521,10 @@ def testTokenEventExtractorsSeam (state : IO.Ref TestCollector) : IO Unit := do
       ("--- &x a\n...\n--- &x b", true, true, true), ("--- &x a\n--- &x b", true, true, true), ("? a", true, true, true),
       ("a: !t!x", false, false, true), ("%TAG !t! tag:x,2000:\n---\n...\n--- !t!a", false, false, true),
       ("%TAG !t! tag:x,2000:\n--- !t!a\n---\n!t!b", false, false, true) ]
+  -- the `%TAG !h` witness no longer scans: spec [89] `c-tag-handle` is enforced (`invalidTagHandle`)
+  checkM state "P55 %TAG !h witness: scanner refuses with invalidTagHandle"
+    (match Scanner.scanFiltered "%TAG !h tag:x,2000:\n--- !h x" with
+     | .error (.invalidTagHandle "!h" _ _) => true | _ => false) "unclosed handle still scans"
   for (src, ep, ev, eq) in srows do
     match Scanner.scanFiltered src with
     | .error e => checkM state s!"P55 scanner row scans {repr src}" false s!"scan error {repr e}"
@@ -6668,7 +6671,6 @@ def testTokenStateOkRestatement (state : IO.Ref TestCollector) : IO Unit := do
       ("%TAG !t! tag:x,2000:\n--- !t!a b\n...\n--- !t!c d", false, false),
       ("%TAG !t! tag:x,2000:\n--- a\n--- !t!b", false, false),
       ("%TAG !t! tag:x,2000:\n--- !t!a\n...\n!t!b", false, false),
-      ("%TAG !h tag:x,2000:\n--- !h x", true, true),
       ("%TAG !! tag:x,2000:\n--- !!a b", true, true), ("%TAG ! tag:x,2000:\n--- !a b", true, true),
       ("%TAG !t! tag:x,2000:\n--- a", true, true), ("--- !t!a b", false, false), ("!!str a", true, true),
       ("! a", true, true), ("!<tag:x> a", true, true), ("!a b", true, true), ("&x a", true, true),
@@ -6682,6 +6684,10 @@ def testTokenStateOkRestatement (state : IO.Ref TestCollector) : IO Unit := do
     if g && n then live.modify (· + 1)
     checkM state s!"P53 {label}: TokenGrammar ∧ checkFrom (tokenEvents ts) → parseStream ok (live: TG={g} new={n})"
       (!(g && n) || p) s!"parseStream_accepts refuted: TG={g} new={n} parser={p}"
+  -- the `%TAG !h` witness no longer scans: spec [89] `c-tag-handle` is enforced (`invalidTagHandle`)
+  checkM state "P53 %TAG !h witness: scanner refuses with invalidTagHandle"
+    (match Scanner.scanFiltered "%TAG !h tag:x,2000:\n--- !h x" with
+     | .error (.invalidTagHandle "!h" _ _) => true | _ => false) "unclosed handle still scans"
   for (src, ep, ev) in srows do
     match Scanner.scanFiltered src with
     | .error e => checkM state s!"P53 scanner row scans {repr src}" false s!"scan error {repr e}"
@@ -6788,6 +6794,34 @@ def testFloorLevelInstances (state : IO.Ref TestCollector) : IO Unit := do
   checkM state s!"IndentFloor.int_le_of_succ buckets: theorem-holds={holds} failed-hypothesis={failed}"
     (holds == 12 && failed == 44) ""
 
+/-- **Priority 57 (spec [89] `c-tag-handle`): the scanner refuses every `%TAG` handle that is not
+`!`, `!!` or `!word!`.**  Rule 2 for the `[89]` refusal (`isTagHandleShaped`, `invalidTagHandle`,
+S5's S3 obligation (a) discharged at the scanner): every handle shape × the scanner's verdict, the
+parser's verdict on what scans, and `isTagHandleShaped`/`isNamedHandle` agreement on the named
+shapes; a shaped handle must still scan and parse exactly as before. -/
+def testTagHandleShape (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 57: spec [89] c-tag-handle — %TAG handle shapes: refused iff not !, !! or !word!"
+  let shaped := L4YAML.Scanner.isTagHandleShaped
+  let named := L4YAML.Proofs.Serialization.TokenEvents.isNamedHandle
+  -- (handle, shaped?, use that must parse when shaped)
+  let rows : List (String × Bool × String) :=
+    [ ("!", true, "!a b"), ("!!", true, "!!str b"), ("!t!", true, "!t!a b"), ("!a-b!", true, "!a-b!a b"),
+      ("!9!", true, "!9!a b"), ("!A!", true, "!A!a b"), ("!h", false, "!h x"), ("!a_b!", false, "!a_b!a b"),
+      ("!t!t!", false, "!t!a b"), ("!!x", false, "!!x b"), ("h", false, "a"), ("!-!", true, "!-!a b"),
+      ("!", true, "a") ]
+  for (h, sh, use) in rows do
+    let src := s!"%TAG {h} tag:x,2000:\n--- {use}"
+    checkM state s!"P57 isTagHandleShaped {repr h} = {sh}" (shaped h == sh) s!"got {shaped h}"
+    if h != "!" && h != "!!" then
+      checkM state s!"P57 {repr h}: named-handle readings agree" (named h == sh) s!"isNamedHandle={named h}"
+    match Scanner.scanFiltered src with
+    | .error (.invalidTagHandle h' _ _) =>
+      checkM state s!"P57 {repr src}: refused as invalidTagHandle {repr h'}" (!sh && h' == h) s!"shaped={sh}"
+    | .error e => checkM state s!"P57 {repr src}: unexpected scan error" false s!"{repr e}"
+    | .ok ts =>
+      let pOk := match TokenParser.parseStream ts with | .ok _ => true | .error _ => false
+      checkM state s!"P57 {repr src}: scans and parses" (sh && pOk) s!"shaped={sh} parser={pOk}"
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -6858,6 +6892,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testParseNodeCF state
   testBlockScalarTailEof state
   testTokenEventExtractorsSeam state
+  testTagHandleShape state
   testTokenStateOkRestatement state
   let results ← finish state
   return { name := "adversarialinstantiation",

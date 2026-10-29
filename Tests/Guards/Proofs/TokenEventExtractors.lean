@@ -31,7 +31,7 @@ The **parser** registers every `%TAG` handle `prepareDocumentState` sees
 (`ParseState.tagHandles`), whether or not a `---` follows — the `tokEvents`
 reading.  Four shapes:
 
-1. `"%TAG !h tag:x,2000:\n--- !h x"` — SCANNER-REACHABLE.  The scanner copies
+1. `"%TAG !h tag:x,2000:\n--- !h x"` — was scanner-reachable until the [89] fix (now `invalidTagHandle`).  The scanner copies
    the `%TAG` handle `!h` without checking its closing `!`, the parser
    registers `!h`, `tokEvents` declares it, `tokenEvents` does not.  Both
    checkers accept (`!h x` scans as the non-specific tag `!` plus a scalar, so
@@ -85,20 +85,13 @@ def s1 : String := "%TAG !h tag:x,2000:\n--- !h x"
 
 /- The scanner accepts `s1` and the parser accepts its tokens.
 Capstone 7.7 via S5 (slice 2's refutation). -/
-#guard (scanFiltered s1).isOk = true ∧ parserOk (scanOr s1) = true
+-- Since the spec [89] fix the scanner REFUSES `s1` (`invalidTagHandle "!h"`): the seam is no longer
+-- scanner-reachable; its token-level shapes (A, E below) remain the record.
+#guard (match scanFiltered s1 with | .error (.invalidTagHandle "!h" _ _) => true | _ => false) = true
 
-/- The parser registers the unclosed handle `!h`. -/
-#guard parserHandles (scanOr s1) = ["!h"]
-
-/- `tokEvents` declares it, `tokenEvents` does not: tokenEventsOf ≠ tokenEvents
-on scanner output.  Capstone 7.7 via S5 — refutes slice 2's the equality tokenEventsOf ts = tokenEvents ts. -/
-#guard
-    -- the retired `TokenGrammar` extractor read `[.beginDocument, .declareTag "!h", .useTag "!"]`
-    ev₂ (scanOr s1) = [.beginDocument, .useTag "!"]
-
-/- Both checkers nevertheless accept `s1` (the handle is never used). -/
-#guard
-    checkFrom {} (ev₂ (scanOr s1)) = true
+/- History (before the [89] fix): the scanner copied `!h`, the parser registered `["!h"]`, the retired
+extractor read `[.beginDocument, .declareTag "!h", .useTag "!"]`, `tokenEvents` read
+`[.beginDocument, .useTag "!"]`, and both checkers accepted.  Kept as prose; nothing to run. -/
 
 /-! ## Shapes 2–4 — token level: verdicts differ -/
 
