@@ -1,0 +1,66 @@
+# For now, we replaced $ROVER_COMPUTER with ernest@ernest
+# TODO: How do we handle variables in a CALM manner?
+
+# TODO: 2025-03-26: Add buttons to launch SHM node on the ground computer when we're in a "robot" mode.
+buttons:
+  - name: deploy config
+    cmd: >
+         rsync -avh --progress --delete
+         ~/endurance_ws/config 
+         ernest@ernest:~/endurance_ws
+    icon: :/icons/cloud_sync.png
+    row: 5
+    column: 0
+    use_terminal: true
+
+  - name: deploy install
+    cmd: >
+         rsync -avh --progress --delete
+         ~/endurance_ws/install 
+         ernest@ernest:~/endurance_ws/
+    icon: :/icons/cloud_sync.png
+    row: 5
+    column: 1
+    use_terminal: true
+
+  - name: check time sync
+    cmd: >
+         gnome-terminal . --working-directory endurance_ws -- tmux -2 new-session -A -s TIME_SYNC
+         && tmux send-keys -t TIME_SYNC.0 "ssh -t ernest@ernest chronyc tracking" Enter  
+         #cmd: >
+         #     ssh -t ernest@ernest chronyc tracking  
+    icon: :/icons/cloud_sync.png
+    row: 6
+    column: 0
+    use_terminal: true
+
+  - name: plotjuggler
+    cmd: ros2 run plotjuggler plotjuggler --layout $ROS_WS/src/rover/visualization/plotjuggler/thermal_test_plot_config.xml
+    icon: :/icons/plot.png
+    row: 6
+    column: 1
+    use_terminal: true
+
+      #- name: deploy shared/uplink
+      #  cmd: >
+      #       rsync -avh --progress --delete
+      #       ~/endurance_ws/shared/uplink  
+      #       ernest@ernest:~/endurance_ws/shared/
+      #  icon: :/icons/cloud_sync.png
+      #  row: 7
+      #  column: 0
+      #  use_terminal: true
+
+      #- name: deploy maps
+      #  cmd: $ROS_WS/src/ground/uplink/scripts/create_and_deploy_maps_to_rover.py ernest@ernest
+      #  icon: :/icons/map.png
+      #  row: 7
+      #  column: 1
+      #  use_terminal: true
+
+      #- name: deploy tasknet
+      #  cmd: $ROS_WS/src/ground/uplink/scripts/deploy_tasknet_to_rover.py ernest@ernest
+      #  icon: :/icons/line.png
+      #  row: 8
+      #  column: 0
+      #  use_terminal: true

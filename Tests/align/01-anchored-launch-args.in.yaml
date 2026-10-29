@@ -1,0 +1,6 @@
+# To launch a given node under the debugger or valgring, where it is available,
+# run with a launch_args_overrides:=<debug.yaml> file to configure the desired node-specific flags.
+global_launch_args:
+
+  debug_mexec_plan_enable:        &debug_mexec_plan_enable        true
+  breakpoints_mexec_plan:         &breakpoints_mexec_plan         "$(find-pkg-share system_autonomy)/config/mexec_plan_breakpoints.gdb"

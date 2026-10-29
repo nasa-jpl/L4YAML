@@ -143,6 +143,16 @@ lean_exe eventscore where
 lean_exe tryscan where
   root := `Tests.TryScan
 
+-- l4yaml-fmt: whitespace-only column aligner for block-mapping values
+-- (see L4YAML/Output/Align.lean).
+@[default_target]
+lean_exe «l4yaml-fmt» where
+  root := `Tests.L4YamlFmt
+
+-- aligntest: golden/idempotence/token-shape tests for l4yaml-fmt (Tests/align).
+lean_exe aligntest where
+  root := `Tests.AlignTest
+
 -- Item 219: the DECLINE-REACH census (controls + enumerated domain always; the
 -- 402-leaf corpus half when the yaml-test-suite data directory is passed).
 @[default_target]

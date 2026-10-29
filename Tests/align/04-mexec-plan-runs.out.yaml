@@ -1,0 +1,127 @@
+mexec_plan:
+  # for mexec planner, see: src/thirdparty/mexec_ros_root/mexec_core_root/mexec_plan/mexec_plan_parameters.h
+  # For important sections, see the comments prefixed with '##'
+  ros__parameters:
+
+    models:
+      battery:
+        # See: https://fornat1.jpl.nasa.gov/tlr/simulation/MuseDartsModels/-/blob/feature/thermal_power/Battery.mdl?ref_type=heads#L9-L12
+        # See: https://fornat1.jpl.nasa.gov/tlr/simulation/MuseDarts/-/blob/feature/thermal_power/python/ErnestDAssembly.py?ref_type=heads#L370
+        capacity_whrs: 1000.0
+
+    scheduler:
+      queries:
+        enable_duration_update: true
+
+    ## Scheduling parameters
+
+    mexec_plan_repair: false
+
+    # used when mexec_plan_repair=true
+    place_invalid_tasks: false
+
+    mexec_plan_optimize: false
+    
+    reschedule_from_scratch: true
+
+    durations_to_try: 5
+
+    prefer_start_over_duration: false
+
+    # 1=MEXEC_PLAN_SEARCH_SIMPLE_PRIORITY
+    # 2=MEXEC_PLAN_SEARCH_RESCHEDULE_PRIORITY
+    # 3=MEXEC_PLAN_SEARCH_DECOMP_PRIORITY
+    search_algo:        2 
+    continual_planning: true
+
+    # ROS parameter to delay loading task networks until after the delay seconds since planner started
+    load_tasknets_delay: 2
+
+    # This is the min time since the end of the previous scheduling cycle.
+    # This means that if the scheduling cycle takes N seconds, then the time between scheduling cycles is at least >= N + min_time_between_scheduling_sec seconds.
+    # See https://docs.google.com/presentation/d/1zo_tttQiPIpNCtnSw17BD8kluQJk8VA0TsHTCq89MGk/edit#slide=id.g33f39fa4402_0_0
+    min_time_between_scheduling_sec: 5
+
+    # suggest plan_period == ctrl_period
+    plan_period: 1
+
+    # Should be > than the worst-case scheduling cycle time; ideally 2x.
+    # sensitive to the number of WPs and orbiter available window and flags that control dumping plans (initial/partial/final) and how much history is saved
+    commit_window: 5
+    
+    schedule_supporting_tasks: true
+
+    # The default value is MEXEC_MAX_NUM_TASKS=200
+    max_priority_scheduling_cycles: 200
+
+    ## SBS & history related parameters
+  
+    # See completed_task_expiration_sec for the retention of completed tasks.
+    delete_tasks_on_completion: true
+
+    # A task has completed sometime in the past; eventually, we want to delete it.
+    # This parameter determines how far in the past is the end of the completed task before it is deleted.
+    # See https://docs.google.com/presentation/d/1Xyf-Ep3nlREBtquEHk0smNKzKhbUkkhz02GyH92_rRA/edit?slide=id.g335adedab40_3_0#slide=id.g335adedab40_3_0
+    # How much history do we want to retain in ROS2 bags?
+    # For now,we will use 10 minutes = 600 seconds
+    
+    completed_task_expiration_sec: 120
+
+    suppress_updates_dur_sec: 5
+
+    # See https://docs.google.com/presentation/d/1Xyf-Ep3nlREBtquEHk0smNKzKhbUkkhz02GyH92_rRA/edit?slide=id.g335adedab40_3_0#slide=id.g335adedab40_3_0
+    # spiral3: Based on MarsYard 100WP route from 1st to 15th WP (max duration is 84 seconds)
+    # Allow scheduling at least 3 WP drives = 3x84 = 252 seconds
+    schedule_window_sec: 252
+    
+    # The value must be greater than the longest duration task otherwise, history consolidation could
+    # truncate the history of timelines affecting a running task in a way that results in scheduling constraint violations.
+    # 0 or -1 means no history consolidation
+    # consolidate_impacts_min_interval_sec: -1
+    # spiral3: Based on MarsYard 100WP route from 1st to 15th WP (max duration is 84 seconds)
+    consolidate_impacts_min_interval_sec: 200
+
+    ## output-related parameters
+
+    # when true, flushes stdout when some important output was emitted.
+    plan_flush: true
+
+    # plan*.js before scheduling
+    dump_initial_plan: true
+    # plan*.js after scheduling
+    dump_final_plan:   true
+    
+    # Useful for debugging scheduling problems; turn off when running on the NUC
+    dump_partial_plan: true
+
+    generate_plan_dp:              false
+    generate_task_event_dp:        false
+    generate_timeline_dp:          false
+    generate_all_timeline_results: false
+    generate_plan_evrs:            false
+    
+    MEXEC_PLAN_SHOW_DECOMP:             false
+    MEXEC_PLAN_SHOW_JSON_FILES:         true
+    MEXEC_PLAN_SHOW_PARTIAL_JSON_FILES: false
+    MEXEC_PLAN_SHOW_MULTI_AGENT:        false
+    MEXEC_PLAN_SHOW_REPAIR:             false
+    MEXEC_PLAN_SHOW_DISPATCH:           false
+
+    # essential
+    MEXEC_PLAN_SHOW_PLAN: true
+
+    # shows commit, reply & task state upate
+    MEXEC_PLAN_SHOW_CTRL: false
+
+    # essential
+    MEXEC_PLAN_SHOW_SCHEDULE_TASK: true
+
+    # use CTV for before/after scheduling plan*.js files
+    MEXEC_PLAN_SHOW_SBS: true
+
+    # helps with detecting scheduling errors
+    MEXEC_PLAN_SHOW_VALID_TIMES: true
+
+    # used for (verbose) debugging
+    MEXEC_PLAN_SHOW_VALID_DETAIL: false
+    MEXEC_PLAN_SHOW_PLAN_DETAIL:  true

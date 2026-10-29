@@ -55,6 +55,7 @@ run_suite "limittests"          "limittests"
 run_suite "flowregressioncheck" "flowregressioncheck"
 run_suite "errorstagediag"      "errorstagediag"
 run_suite "scalarstagediag"     "scalarstagediag"
+run_suite "aligntest"           "aligntest"
 
 # ---- HTML coverage reports from suiterunner ----
 # NB: --html mode always exits 0 (report generation succeeded); per-test
