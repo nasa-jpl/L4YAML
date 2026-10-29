@@ -6934,7 +6934,7 @@ def seqTopLeDispatchWalk (input : String) (fuel : Nat := 64) :
   return (inScope, inViol, noPop, outside, outViol, cleared)
 
 def testSeqTopLeDispatchWalk (state : IO.Ref TestCollector) : IO Unit := do
-  setCategory state "Priority 57b: item 387 (PR #159 review) — seqTop_refuted_at_indicator_le's premises read at every accepted `:`/`?` dispatch: the bound col ≤ currentIndent puts the NO-POP landing at the top's own column in scope; the refutation holds at every in-scope pause, pop or no pop"
+  setCategory state "Priority 58b: item 387 (PR #159 review) — seqTop_refuted_at_indicator_le's premises read at every accepted `:`/`?` dispatch: the bound col ≤ currentIndent puts the NO-POP landing at the top's own column in scope; the refutation holds at every in-scope pause, pop or no pop"
   -- Predicted before the run: `inViol = outViol = 0` on every row; `noPop ≥ 1` on the three
   -- no-push rows (`a:⏎- b⏎: c`, `a:⏎-⏎? x`, `a:⏎  b:⏎  -⏎  : c`) and 0 on the popped row
   -- `k:⏎  - a⏎: b` (item 378's domain, `inScope = 1`); a mid-line `:` is always outside
