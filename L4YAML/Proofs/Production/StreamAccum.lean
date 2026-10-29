@@ -3125,7 +3125,7 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       measurement `  ? |` always did, and Reflection 653 §3's `True` is gone. -/
   | pendingMapValue (sp_start sp_block sp_scan : SurfPos) (n : Nat)
       (h_close : ∀ sp_mid,
-        SBlockNode (n + 1) .blockIn sp_scan sp_mid →
+        SBlockNode (n + 1) .blockOut sp_scan sp_mid →
         SLYamlStream sp_start sp_mid)
       -- Item 179: measured at the shifted index, as on `pendingBlock` — the
       -- `?`/`:` push put `[187]`'s level at the indicator's own column.
@@ -3268,7 +3268,7 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
         -- beside the widths that branch names.
         ((∃ lo : Nat, IndentStackCover.Floor lo n (FrameLevel.map n :: ks) ∧
           IndentStackCover.Covered lo (FrameLevel.map n :: ks) sc) ∨ True) ∧
-        ∀ sp_mid : SurfPos, SBlockNode (n + 1) .blockIn sp_scan sp_mid →
+        ∀ sp_mid : SurfPos, SBlockNode (n + 1) .blockOut sp_scan sp_mid →
         ResumeFrames (SLYamlStream sp_start) (FrameLevel.map n :: ks) sp_mid) ∨ True)
       (h_frames : (∃ ks : List FrameLevel,
         -- **Item 147: the frames' own COVER**, beside them rather than over
@@ -7289,7 +7289,7 @@ lemma PendingNode.close_with_ssl {sc : ScannerState}
   | pendingMapValue _ _ _ n h_close _ _ _ _ _ _ =>
     -- `[189]`'s `( e-node s-l-comments )` value: the entry closes empty.
     -- `[72] e-node` is indent-inert, so the SHIFTED index (item 179) is free.
-    exact h_close sp_mid (SBlockNode.emptyNode (n + 1) .blockIn sp_scan sp_mid h_ssl)
+    exact h_close sp_mid (SBlockNode.emptyNode (n + 1) .blockOut sp_scan sp_mid h_ssl)
 
 /-- **The frame-boundary conversion**: the landing exactly as preprocessing
     produced it (`SSLCommentsFrom` at the park, with the scanner's `commentOk`
@@ -7343,7 +7343,7 @@ lemma PendingNode.close_with_sslFrom {sc : ScannerState}
   | pendingMapValue _ _ _ n h_close _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ h_next =>
     have h_ssl := SSLCommentsFrom_at_park h_corr (GStar.nil _)
       (fun _ _ => (h_next h_noflow).gate) h_from h_ok
-    exact h_close sp_mid (SBlockNode.emptyNode (n + 1) .blockIn sp_scan sp_mid h_ssl)
+    exact h_close sp_mid (SBlockNode.emptyNode (n + 1) .blockOut sp_scan sp_mid h_ssl)
 
 /-- N3: while directives are still allowed the park is an indicator park or a
     line start, so an empty `[66]` before a `#` there is refuted by the park's
@@ -14810,7 +14810,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                (preprocess_saved_key_fresh h_sk_mv h_noflow_prep h_preprocess).1
                (openFloorT h_floor_prep) trivial
                (mk none (n_old + 1) sp_block ⟨(fun _ sp_ne sp_m h_content h_ssl =>
-               h_close sp_m (SBlockNode.flowInBlock (n_old + 1) .blockIn sp_scan sp_prep sp_ne sp_m
+               h_close sp_m (SBlockNode.flowInBlock (n_old + 1) .blockOut sp_scan sp_prep sp_ne sp_m
                  h_sep (SFlowNode.content _ _ _ _ h_content) h_ssl)),
                -- Item 56: `k:⏎  [1]: b` — the mapping the key opens nests in the
                -- value this pending awaits; on the LINE it is the compact
@@ -14820,7 +14820,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                -- compact map this key opens IS the `?`'s key content, and the
                -- landed `:` closes the `[188]` entry `h_expl` routes
                -- (`? [1]: b⏎: - w`).
-               flowKeyRoute_of_open h_close (h_vslot.imp (fun h => ⟨h.2.2, h.2.1⟩) (fun _ => trivial))
+               flowKeyRoute_of_open (fun sp h => h_close sp (SBlockNode_blockIn_to_blockOut h)) (h_vslot.imp (fun h => ⟨h.2.2, h.2.1⟩) (fun _ => trivial))
                  (match h_expl with
                   | Or.inl ⟨sp_q, h_qlit, route⟩ => Or.inl ⟨n_old, [],
                       frameChainOne (a := n_old)
@@ -22251,6 +22251,20 @@ lemma slotLandedSeq {nv k : Nat} (hnk : nv ≤ k) {s s₂ s' : SurfPos}
           simp only [seqSpaces]; omega
         rw [h]; exact h_entries))
 
+/-- **`[185]`'s `seq-spaces` at the MAPPING's own column** (item 388): a block sequence whose
+    `-` stands at the enclosing mapping's column is that mapping's VALUE — `[187]`'s
+    `s-l+block-node(n, block-out)` with `seq-spaces(n + 1, block-out) = n`.  `nestedBlockSeq`'s
+    `.blockOut` twin: the side condition is `nv ≤ k`, not `nv + 1 ≤ k`, so `a:⏎- b` (`nv = k = 0`)
+    is in its domain — the value route the `.blockIn` typing of `h_valF` kept it off. -/
+lemma valueLandedSeq {nv k : Nat} (hnk : nv ≤ k) {s s₂ s' : SurfPos}
+    (h_ssl : SSLComments s s₂) (h_entries : SBlockSeqEntries k s₂ s') :
+    SBlockNode (nv + 1) .blockOut s s' :=
+  SBlockNode.blockSeq (nv + 1) .blockOut (k - nv) s s s₂ s' (GOpt.none s) h_ssl
+    (by
+      have h : seqSpaces (nv + 1) .blockOut + (k - nv) = k := by
+        simp only [seqSpaces]; omega
+      rw [h]; exact h_entries)
+
 /-- **The same slot filled by a landed MAPPING, and the `-1` is NOT there**
     (item 189).
 
@@ -24213,7 +24227,7 @@ lemma colon_open_map {sc : ScannerState} (sp_start sp_land sp_ind : SurfPos) (k 
            (fun sp_v h_node =>
              h_routeE sp_v
                (SBlockMapEntry.emptyKeyNode k sp_ind sp_scan' sp_v h_lit
-                 (SBlockNode_blockIn_to_blockOut h_node)))
+                 h_node))
            h_floor_in hpf.1 hpf.2.1
            -- Item 125: the stamp is REAL — the caller's `h_src` says the `:`
            -- could not consume an explicit pair, so the epilogue stamped.
@@ -24247,7 +24261,7 @@ lemma colon_open_map {sc : ScannerState} (sp_start sp_land sp_ind : SurfPos) (k 
                ResumeFrames.level k ksF sp_v h_ltF
                  (h_routeF sp_v
                    (SBlockMapEntry.emptyKeyNode k sp_ind sp_scan' sp_v h_lit
-                     (SBlockNode_blockIn_to_blockOut h_node)))⟩)
+                     h_node))⟩)
            (Or.inl ⟨FrameLevel.map k :: ksF,
              -- Item 147: and the stack under it — the landing floored the top
              -- and the `:` pushed at the same column, so the open mapping
@@ -24538,7 +24552,7 @@ lemma question_open_map {sc : ScannerState} (sp_start sp_land sp_ind : SurfPos) 
              h_route51 sp_k
                (SBlockMapEntry.explicitEmpty k sp_ind sp_scan' sp_k h_lit
                  (SBlockIndented.node k .blockOut sp_scan' sp_k
-                   (SBlockNode_blockIn_to_blockOut h_node))))
+                   h_node)))
            h_floor_in hpk.1 hpk.2
            -- Item 125: a `?` does not stamp — it pays the face instead, the
            -- same `[186]` KEY slot `h_vslot` carries below.
@@ -24601,7 +24615,7 @@ lemma question_open_map {sc : ScannerState} (sp_start sp_land sp_ind : SurfPos) 
                  (h_routeF sp_v
                    (SBlockMapEntry.explicitEmpty k sp_ind sp_scan' sp_v h_lit
                      (SBlockIndented.node k .blockOut sp_scan' sp_v
-                       (SBlockNode_blockIn_to_blockOut h_node))))⟩)
+                       h_node)))⟩)
            (Or.inl ⟨FrameLevel.map k :: ksF,
              -- Item 147: the `?`'s own `[187]` push stands at its column too.
              h_covF,
@@ -24741,7 +24755,7 @@ lemma colon_open_map_explicit (sp_start sp_scan sp_mid sp_ind : SurfPos) (nv : N
          PendingNode.pendingMapValue (h_next := fun _ => dispatchBlock_colon_next h_noflow_disp hpeek_disp h_dispatch) (h_offer := dispatchBlock_colon_offerPred h_dispatch) sp_start sp_mid sp_scan' nv
            (fun sp_v h_node =>
              h_slot sp_v (SBlockIndented.node nv .blockOut sp_scan' sp_v
-               (SBlockNode_blockIn_to_blockOut h_node)))
+               h_node))
            h_floor_in hpf.1 hpf.2.1
            -- Item 125: the explicit `:` does not stamp — it pays the face,
            -- the same `[185]` value slot `h_vslot` carries below.
@@ -24761,7 +24775,7 @@ lemma colon_open_map_explicit (sp_start sp_scan sp_mid sp_ind : SurfPos) (nv : N
              (Or.inl ⟨[], fun _ h => absurd h List.not_mem_nil, Or.inr trivial,
                fun sp_m h_node => hvp sp_mid sp_ind sp_scan' h_ssl h_ind h_lit sp_m
                  (SBlockIndented.node nv .blockOut sp_scan' sp_m
-                   (SBlockNode_blockIn_to_blockOut h_node))⟩)
+                   h_node)⟩)
              (Or.inl ⟨[FrameLevel.map nv], Or.inr trivial,
                fun sp_m h_ssl' => hvp sp_mid sp_ind sp_scan' h_ssl h_ind h_lit sp_m
                  (SBlockIndented.empty nv .blockOut sp_scan' sp_m h_ssl')⟩)
@@ -24927,7 +24941,7 @@ lemma compact_open_map (sp_start sp_entry sp_ind : SurfPos) (n m : Nat)
     · exact hpeek
   -- One `[188]` entry per indicator; from there the two arms are identical.
   -- Item 179: the entry's awaited node reads at the SHIFTED index.
-  have h_entry_of : ∀ sp_v, SBlockNode (n + 1 + m + 1) .blockIn sp_scan' sp_v →
+  have h_entry_of : ∀ sp_v, SBlockNode (n + 1 + m + 1) .blockOut sp_scan' sp_v →
       SBlockMapEntry (n + 1 + m) sp_ind sp_v := by
     cases hc with
     | inl h =>
@@ -24939,7 +24953,7 @@ lemma compact_open_map (sp_start sp_entry sp_ind : SurfPos) (n m : Nat)
       rw [hsp_eq] at h_lit
       exact fun sp_v h_node =>
         SBlockMapEntry.emptyKeyNode (n + 1 + m) sp_ind sp_scan' sp_v h_lit
-          (SBlockNode_blockIn_to_blockOut h_node)
+          h_node
     | inr h =>
       subst h
       obtain ⟨sp_q, h_lit, hcorr_q⟩ :=
@@ -24950,7 +24964,7 @@ lemma compact_open_map (sp_start sp_entry sp_ind : SurfPos) (n m : Nat)
       exact fun sp_v h_node =>
         SBlockMapEntry.explicitEmpty (n + 1 + m) sp_ind sp_scan' sp_v h_lit
           (SBlockIndented.node (n + 1 + m) .blockOut sp_scan' sp_v
-            (SBlockNode_blockIn_to_blockOut h_node))
+            h_node)
   -- Item 68: the park is the character past the indicator, whichever indicator
   -- this is — the one fact both `[188]` alternatives share.
   -- Item 371: the same entry when the awaited node is EMPTY — nothing but
@@ -25506,7 +25520,7 @@ lemma colon_open_map_implicit {alt : Prop} (sp_start sp_block sp_key sp_gram sp_
            (fun sp_v h_node =>
              h_route sp_v
                (SBlockMapEntry.implicitKeyNode k sp_key sp_ws sp_scan' sp_v h_ik h_lit
-                 (SBlockNode_blockIn_to_blockOut h_node)))
+                 h_node))
            h_floor hpf.1 hpf.2.1 (Or.inl h_stamp) (Or.inr (dispatchBlock_colon_notQuestion h_dispatch)) (Or.inr h_stamp)
            (scanValue_simpleKeyAllowed (dispatchBlock_colon_scanValue h_dispatch))
            -- Item 68: the `:` is a character, so the park is past column 0.  The
@@ -25540,7 +25554,7 @@ lemma colon_open_map_implicit {alt : Prop} (sp_start sp_block sp_key sp_gram sp_
                       (fun sp_end h_tail =>
                         routeF sp_mid
                           (SBlockMapEntry.implicitKeyNode k sp_key sp_ws sp_scan' sp_mid
-                            h_ik h_lit (SBlockNode_blockIn_to_blockOut h_node))
+                            h_ik h_lit h_node)
                           sp_end h_tail)⟩
               | Or.inr _ => Or.inr trivial)
              (match h_routeF with
@@ -25731,7 +25745,7 @@ lemma colon_open_map_props (sp_start sp_block sp_p sp_scan : SurfPos) (k : Nat)
            (fun sp_v h_node =>
              h_route sp_v
                (SBlockMapEntry.implicitKeyNode k sp_p sp_prep sp_scan' sp_v h_ik h_lit
-                 (SBlockNode_blockIn_to_blockOut h_node)))
+                 h_node))
            (implicit_key_floor h_poss h_kcol h_inh h_kline h_behind
              h_noflow h_preprocess h_dispatch)
            hpf.1 hpf.2.1 (Or.inl h_stamp) (Or.inr (dispatchBlock_colon_notQuestion h_dispatch)) (Or.inr h_stamp)
@@ -25766,7 +25780,7 @@ lemma colon_open_map_props (sp_start sp_block sp_p sp_scan : SurfPos) (k : Nat)
                       (fun sp_end h_tail =>
                         routeF sp_mid
                           (SBlockMapEntry.implicitKeyNode k sp_p sp_prep sp_scan' sp_mid
-                            h_ik h_lit (SBlockNode_blockIn_to_blockOut h_node))
+                            h_ik h_lit h_node)
                           sp_end h_tail)⟩
               | Or.inr _ => Or.inr trivial)
              (match h_routeF with
@@ -26868,7 +26882,7 @@ lemma deeperLandingResume {sp_start sp_gram sp_scan sp_mid : SurfPos} {sc s_prep
       (nv : Int) ≤ sc.currentIndent ∧
       ((∃ lo : Nat, IndentStackCover.Floor lo nv (FrameLevel.map nv :: ks) ∧
         IndentStackCover.Covered lo (FrameLevel.map nv :: ks) sc) ∨ True) ∧
-      ∀ sp_mid : SurfPos, SBlockNode (nv + 1) .blockIn sp_gram sp_mid →
+      ∀ sp_mid : SurfPos, SBlockNode (nv + 1) .blockOut sp_gram sp_mid →
       ResumeFrames (SLYamlStream sp_start) (FrameLevel.map nv :: ks) sp_mid) ∨ True)
     (h_ssl : SSLComments sp_gram sp_mid)
     (h_floor : s_prep.indents = sc.indents → 0 < sp_scan.col →
@@ -26886,8 +26900,8 @@ lemma deeperLandingResume {sp_start sp_gram sp_scan sp_mid : SurfPos} {sc s_prep
       · cases h_tail with
         | nil _ _ => exact route sp_mid (SBlockNode.emptyNode _ _ _ _ h_ssl)
         | cons _ _ s₁ s₂ _ h_ind h_entry h_tail' =>
-          exact route sp_end (nestedBlockMap hnk h_ssl
-            (SBlockMapEntries_of_compactTail h_ind h_entry h_tail'))
+          exact route sp_end (SBlockNode_blockIn_to_blockOut (nestedBlockMap hnk h_ssl
+            (SBlockMapEntries_of_compactTail h_ind h_entry h_tail')))
     · by_cases hk : k = nv
       · -- The sibling: the awaited value closes empty and the landing conses
         -- onto the park's own tail (the head frame).
@@ -27114,7 +27128,7 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
       (nv : Int) ≤ sc.currentIndent ∧
       ((∃ lo : Nat, IndentStackCover.Floor lo nv (FrameLevel.map nv :: ks) ∧
         IndentStackCover.Covered lo (FrameLevel.map nv :: ks) sc) ∨ True) ∧
-      ∀ sp_mid : SurfPos, SBlockNode (nv + 1) .blockIn sp_gram sp_mid →
+      ∀ sp_mid : SurfPos, SBlockNode (nv + 1) .blockOut sp_gram sp_mid →
       ResumeFrames (SLYamlStream sp_start) (FrameLevel.map nv :: ks) sp_mid) ∨ True)
     -- **Item 167 (LAST): the closed park's ENCLOSING collection.**  Item 166
     -- measured this lemma's `-` arm and found the surviving branch is not
@@ -27710,10 +27724,20 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
             h_cvv.imp (fun ⟨lo, hb, hc⟩ =>
               ⟨lo, hb.mono_index (Nat.le_of_lt hnv), h_cov_step lo _ hc⟩) id,
             fun sp_final h_indented sp_end h_tail =>
-              closeF sp_end (nestedBlockSeq hnv h_ssl
-                (SBlockSeqEntries_of_compactTail h_ind h_dash h_gnot h_indented h_tail))⟩
-        · exact Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
-            Or.inr trivial, h_seqBottom⟩
+              closeF sp_end (SBlockNode_blockIn_to_blockOut (nestedBlockSeq hnv h_ssl
+                (SBlockSeqEntries_of_compactTail h_ind h_dash h_gnot h_indented h_tail)))⟩
+        · -- Item 388: a `-` at the mapping's OWN column (`a:⏎- b`, `nv = k`) is the
+          -- mapping's VALUE (`[185]` seq-spaces, `valueLandedSeq`), routed through
+          -- `h_valF` and closed — no longer `h_seqBottom`'s bare root node.  The
+          -- frames stay `[]`: `FrameLevel.map nv` has width `k`, which `h_lt` forbids;
+          -- the mapping's sibling after the sequence is the park's `h_mapTop` (priced).
+          by_cases hnk : nv ≤ k
+          · exact Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil), Or.inr trivial,
+              fun sp_final h_indented sp_end h_tail => ResumeFrames.bottom sp_end
+                (closeF sp_end (valueLandedSeq hnk h_ssl
+                  (SBlockSeqEntries_of_compactTail h_ind h_dash h_gnot h_indented h_tail))).close⟩
+          · exact Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
+              Or.inr trivial, h_seqBottom⟩
       · exact Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
           Or.inr trivial, h_seqBottom⟩
     -- ═══ **Item 198: the same step at the VALUE-LINE bottom.**  `h_valFV` is
@@ -40095,12 +40119,12 @@ lemma accum_content_pending (sc : ScannerState)
     -- above: the mapping twin answers at every index and the root entry is
     -- the `n = 0` instance.
     exact accum_content_on_pendingMapValue_indented (h_dead := h_dead) (h_sound := h_sound) (h_fl0 := h_fl0) (h_next := h_nextMV (noflow_of_fl0 h_fl0)) (h_src := slotGateAt_of_offerPred h_offer_mv h_base h_preprocess) sc sp_start sp_block sp_scan n_old
-      s_prep s' c sp_prep sp_scan' h_stream_block h_close_old h_floor_old h_col0_old
+      s_prep s' c sp_prep sp_scan' h_stream_block (fun sp h => h_close_old sp (SBlockNode_blockIn_to_blockOut h)) h_floor_old h_col0_old
       -- Item 209: the content lane reads the SLOT and not the top beside it,
       -- so the top is projected away here rather than restated downstream — a
       -- lemma that asks for more than it reads is a lemma nobody can call.
       h_ncol_old h_expl51 (h_vslot51.imp (fun h => ⟨h.2.1, h.2.2⟩) (fun _ => trivial))
-      h_kslot93 h_closeF99 h_frames99
+      h_kslot93 (h_closeF99.imp (fun ⟨ks, hlt, hcov, f⟩ => ⟨ks, hlt, hcov, fun sp h => f sp (SBlockNode_blockIn_to_blockOut h)⟩) id) h_frames99
       h_closeFV108 h_framesV108 h_sk58
       h_ivl101 h_nic101 h_real101 h_mono h_base
       hcorr_prep hcorr_result h_corr h_preprocess h_not_doc h_flow_disp h_dispatch
