@@ -148,7 +148,7 @@ example {sp_start sp_before sp_br sp_open sp_key : SurfPos}
     (h_open : GLit '[' sp_br sp_open) :
     FlowStackB sp_start 2 3 none 1 #[true] #[false] .sep sp_before sp_open :=
   FlowStackB.openSeqBase false
-    ⟨fun _ => value, Or.inl ⟨3, sp_key, route, fun _ _ => Or.inr trivial, rfl, Or.inr trivial,
+    ⟨fun _ _ => Or.inr trivial, fun _ => value, Or.inl ⟨3, sp_key, route, fun _ _ => Or.inr trivial, rfl, Or.inr trivial,
       Or.inr trivial, Or.inr trivial⟩,
      Or.inr trivial⟩
     h_open (GOpt.none sp_open)

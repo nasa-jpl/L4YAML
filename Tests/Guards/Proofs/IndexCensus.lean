@@ -280,7 +280,8 @@ def expected : List String :=
   ["seq/bottom/occ=1  ×9",
    "seq/frames/occ=2  ×9",
    "seq/other/occ=2  ×3",
-   "stream/frames/occ=1  ×3",
+  -- 2026-10-29 (item 394): `FlowBaseRoutes.valueF` and its two close relays read `ResumeFrames (SLYamlStream sp_start) ks` once each (×3 → ×5).
+   "stream/frames/occ=1  ×5",
    "stream/frames/occ=2  ×10",
    "stream/frames/occ=3  ×7",
    "stream/frames/occ=4  ×6",

@@ -349,10 +349,11 @@ those heads and `expectedChainFaces` not naming a single one of them. -/
 -- 2026-10-24 (item 350): `explFrameValueLine#5` → `#6` — the helper takes `{alt alt' : Prop}` now.
 -- 2026-10-24 (B3 [66] col-0 threading): binder indices shift with the park's new `sp_gram`/run/gate fields; faces unchanged.
 -- 2026-10-24 (B3 [66] col-0 threading): re-read on the item-354 base (binder indices).
+-- 2026-10-29 (item 394): `valueF` inserted before `key`/`vslot`; the constructor index of `vslot` moves 7 → 8.
 def expectedChainFaces : List String :=
   -- Item 357: the marked-column domain reaches the `:`/`?` producers (`h_kslotD`, `h_explUp_chainD`) and the
   -- block-step `h_kslotUp` twins; the rung-1 faces read off the build.
-  ["FlowBaseRoutes.mk#7 (vslot)",
+  ["FlowBaseRoutes.mk#8 (vslot)",
    "accum_block_on_closeThenBlock#10 (h_vpack)",
    "accum_block_on_pendingContent#16 (h_vpack)",
    "entryKeyPack_of_dispatch#11 (h_nodeV)",
@@ -881,7 +882,7 @@ one unfolding, and §6 is the item where those two disagreed about binders. -/
 -- two independent moves; the rebased build confirms it.
 -- 2026-10-29 (item 388): theorems 6342 → 6343 (`valueLandedSeq`); no no-op conclusion moved.
 -- 2026-10-29 (item 389): theorems 6343 → 6358 — the item-389 helpers and Priority 60.
-def expectedNoopTally : String := "theorems=6358 byElab=16 byWhnf=16 elabOnly=0 whnfOnly=0"
+def expectedNoopTally : String := "theorems=6359 byElab=17 byWhnf=17 elabOnly=0 whnfOnly=0"
 -- 5302 → 5344 on 2026-10-18 (plan row 20's close, closure-log item 280): the
 -- parse-side alias obligation moved to §7.1's DECLARATION set, so the carrier
 -- grew and the predicate gained its tools.  What is new in kind: `AG` carries
@@ -955,6 +956,8 @@ def expectedNoopTally : String := "theorems=6358 byElab=16 byWhnf=16 elabOnly=0 
 -- 2026-10-20 (item 309): the three generic helpers conclude in `∨ alt` and are no `∨ True` no-ops.
 def expectedNoopConclusions : List String :=
   ["FlowBaseRoutes.key",
+   -- 2026-10-29 (item 394): `FlowBaseRoutes.valueF` — a `∨ True` conclusion (§8: `Or.inr trivial` proves it; the informative side is what the flow closes relay).
+   "FlowBaseRoutes.valueF",
    "FlowBaseRoutes.vslot",
    "PreprocessIndentStable.IndentFloor.transport",
    "dedent_cover_of_landing",

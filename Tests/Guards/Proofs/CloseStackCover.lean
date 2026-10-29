@@ -947,9 +947,10 @@ def expectedRows : List String :=
    "accum_content_pending #1 param:accum_content_on_pendingMapValue_indented.h_frames99 := relay(door:pendingMapValue.h_frames)",
    "accum_content_pending #1 param:accum_content_on_pendingMapValue_indented.h_closeFV108 := relay(door:pendingMapValue.h_closeFV)",
    "accum_content_pending #1 param:accum_content_on_pendingMapValue_indented.h_framesV108 := relay(door:pendingMapValue.h_framesV)",
-   "accum_step_flow #1 ctor:pendingContent.h_framesS := punt",
+   -- 2026-10-29 (item 394): both flow closes relay `FlowBaseRoutes.valueF` into `h_framesS` (`.imp` over the field; its own `∨ True` is the punt the reader names).
+   "accum_step_flow #1 ctor:pendingContent.h_framesS := imp:ret:valueF{punt}",
    "accum_step_flow #1 ctor:pendingContent.h_framesV := elim[punt|punt]",
-   "accum_step_flow #2 ctor:pendingContent.h_framesS := punt",
+   "accum_step_flow #2 ctor:pendingContent.h_framesS := imp:ret:valueF{punt}",
    "accum_step_flow #2 ctor:pendingContent.h_framesV := elim[punt|punt]",
    "colon_fires_implicit_key #1 param:colon_open_map_implicit.h_routeF := cases[paid{cover=step(relay(fnparam:colon_fires_implicit_key.h_key))}|punt]",
    "colon_fires_implicit_key #1 param:colon_open_map_implicit.h_routeFV := cases[paid{cover=step(relay(fnparam:colon_fires_implicit_key.h_key))}|punt]",
@@ -1104,7 +1105,7 @@ def expectedDoor : List String :=
    "accum_flow_open_depth0: door:pendingBlockContent.h_closeF → local:main.a✝ forgotten",
    "accum_flow_open_depth0: door:pendingContent.h_framesS → local:main.a✝ forgotten",
    "accum_flow_open_depth0: door:pendingContent.h_framesV → local:main.a✝ forgotten",
-   "accum_flow_open_depth0: door:pendingMapValue.h_closeF dropped",
+   -- 2026-10-29 (item 394): `accum_flow_open_depth0`'s mapping arm now READS `pendingMapValue.h_closeF` (it supplies `FlowBaseRoutes.valueF`); the dropped-door row is gone (doors 49 → 48).
    "accum_flow_open_depth0: door:pendingMapValue.h_closeFV dropped",
    "accum_flow_open_depth0: door:pendingMapValue.h_frames dropped",
    "accum_flow_open_depth0: door:pendingMapValue.h_framesV dropped",
@@ -1242,7 +1243,8 @@ def expectedLine : String :=
 -- `ResumeFrames`; `question_open_map`'s `h_expl`/`h_closeFV`/`h_framesV` come from the bound tail route `h_route51F`.
 -- Item 372 (2026-10-27): exit (a)'s cover spend on `preprocess_landing_mem_or_seq` (one more lemma relay row).
 -- Item 386 (2026-10-28): nodes 120403 → 121047 — the level conjunct in `h_valF`, the `-` opener's `h_lvl_old`, the helpers' sibling/absurd terms; no row moved.
-  "positions=24 ctorFields=13 lemParams=36 lemmas=19 walked=26 doors=9 rows=206 ctorRows=92 lemRows=80 localRows=5 fnRows=19 fnpRows=8 valRows=2 coverTypes=4 mentions=0 pbc=6 pbcRelay=6 pbcPaid=0 pbcPunt=0 pbcCoverPunt=0 pb=7 pbRelay=3 pbPaid=4 pbPunt=0 pbCoverPunt=0 pmv=6 pmvRelay=4 pmvPaid=1 pmvPunt=0 pmvCoverPunt=1 valF=11 valFRelay=2 valFPaid=0 valFPunt=9 contentPaid=6 contentPunt=13 contentCoverPunt=4 contentLemma=0 contentOpen=2 contentPos=17 entryPaid=6 entryPunt=13 entryCoverPunt=4 entryLemma=0 entryOpen=2 entryPos=17 eight=8 eightPB=4 eightPBC=4 eightIndents=0 eightTop=4 eightFloor=0 eightMinCI=0 eightNic=8 eightPrep=8 eightCover=8 doorUses=49 doorKept=17 doorForgotten=8 doorDropped=24 doorsOther=5 nodes=122297"
+  -- 2026-10-29 (item 394): `pendingMapValue.h_closeF` is READ at the flow open (doorUses 49 → 48, doorDropped 24 → 23); the valueF supply and relays grow the term (nodes 122297 → 122509).
+  "positions=24 ctorFields=13 lemParams=36 lemmas=19 walked=26 doors=9 rows=206 ctorRows=92 lemRows=80 localRows=5 fnRows=19 fnpRows=8 valRows=2 coverTypes=4 mentions=0 pbc=6 pbcRelay=6 pbcPaid=0 pbcPunt=0 pbcCoverPunt=0 pb=7 pbRelay=3 pbPaid=4 pbPunt=0 pbCoverPunt=0 pmv=6 pmvRelay=4 pmvPaid=1 pmvPunt=0 pmvCoverPunt=1 valF=11 valFRelay=2 valFPaid=0 valFPunt=9 contentPaid=6 contentPunt=13 contentCoverPunt=4 contentLemma=0 contentOpen=2 contentPos=17 entryPaid=6 entryPunt=13 entryCoverPunt=4 entryLemma=0 entryOpen=2 entryPos=17 eight=8 eightPB=4 eightPBC=4 eightIndents=0 eightTop=4 eightFloor=0 eightMinCI=0 eightNic=8 eightPrep=8 eightCover=8 doorUses=48 doorKept=17 doorForgotten=8 doorDropped=23 doorsOther=5 nodes=122509"
 
 /-! ## §6 The reading -/
 

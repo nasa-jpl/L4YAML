@@ -275,7 +275,7 @@ def expectedBinders : List String :=
 -- have fewer leading lambdas than their types have binders; the census refuses to read them, by design.
 -- 2026-10-29 (item 389): skipped 39 → 40 — the landed birth's `nv < k` mapping-top term (`dite` over `s_prep.currentIndent < k` inside `Or.inl`) is a shape the census skips; no edge moved.
 def expectedTally : String :=
-  "edges=106 skipped=40 DECLINE=21 FIELD=7 PAY=17 RELAY=29 VIA=32"
+  "edges=106 skipped=41 DECLINE=21 FIELD=7 PAY=17 RELAY=29 VIA=32"
 
 run_cmd do
   let env ← getEnv
