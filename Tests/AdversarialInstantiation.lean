@@ -7285,6 +7285,143 @@ def testMapTopLemmaWalk (state : IO.Ref TestCollector) : IO Unit := do
     check state s!"item 389 scanner lemmas over {label}: pauses={pauses} prepViol={prepViol} eqViol={eqViol} pushed={pushed} pushViol={pushViol} noPush={noPush} noPushViol={noPushViol} contentViol={contentViol}; expected (pushed, noPush) = {expected}, every violation 0"
       (prepViol == 0 && eqViol == 0 && pushViol == 0 && noPushViol == 0 && contentViol == 0 && (pushed, noPush) == expected)
 
+/-! ## Priority 61 — item 390: the landed `nv < k` NO-PUSH half PRICED and STOPPED (STARVED births)
+
+Item 389 left `accum_block_on_closeThenBlock`'s landed birth under `nv < k` with its push half
+refuted (`pushedBirth_not_mapTop`) and its no-push half declined.  Item 390 reads that half as
+UNREACHABLE once `h_valF` carries the mapping park's top ABOVE by its level
+(`sc.currentIndent ≤ nv`: then `k ≤ s_prep.currentIndent ≤ sc.currentIndent ≤ nv < k`), prices the
+conjunct (`flip_valf_top.py --stage 1`: 3 declarations / 10 sites) and the `pendingMapValue` field that
+would feed it (`--stage 2`: 10 declarations / 92 sites), and STOPS: two of the six births — the
+implicit-key `:` (`colon_open_map_implicit`, `colon_open_map_props`) — have no upper bound on the top
+in scope.  The `:` pushes at the KEY's column (`value_key_floor` is the LOWER bound) and nothing in the
+tree says a live simple key stands at or right of the current top.
+
+Rows below: (1) the parser at the inputs the half is read against — the second `-` of
+`a:⏎  - x⏎  - y` lands on the `-` PARK (Priority 60's `k = n` arm), not on `closeThenBlock`; a `-` at a
+filled mapping's own column is refused; a `-` at an awaiting key's column is that key's value
+(`nv = k`, not `nv < k`); (2) `liveKeyTopWalk`, the MISSING invariant read at every accepted pause of
+the real scanner: at a `:` with a live same-line key behind the cursor, the top is at or left of the
+key's column BEFORE and AFTER the dispatch; at a keyless `:`/`?`, the top after is at or left of its
+column.  Every violation counter is predicted 0 — the fact is TRUE on every pause read and UNPROVED,
+which is what makes the two births STARVED rather than REFUTED.  Verdicts were read before the rows
+were written (ledger); three `rootKeys` triples were corrected on the reader (it renders a mapping
+value's KEYS and a sequence value's items — item 387's lesson), no verdict moved. -/
+
+def liveKeyTopWalk (input : String) (fuel : Nat := 64) : Nat × Nat × Nat × Nat × Nat × Nat := Id.run do
+  let mut s := L4YAML.Scanner.ScannerState.mk' input
+  let mut pauses := 0
+  let mut liveColons := 0
+  let mut preViol := 0
+  let mut postViol := 0
+  let mut keyless := 0
+  let mut keylessViol := 0
+  for _ in [:fuel] do
+    match L4YAML.Scanner.scanNextToken s, L4YAML.Scanner.scanNextToken_preprocess s with
+    | .ok (some sN), .ok (some (sp, c)) =>
+      pauses := pauses + 1
+      if c == ':' && sp.simpleKey.possible && sp.simpleKey.pos.line == sp.line
+          && sp.simpleKey.pos.offset != sp.offset then
+        liveColons := liveColons + 1
+        if !(decide (sp.currentIndent ≤ (sp.simpleKey.pos.col : Int))) then preViol := preViol + 1
+        if !(decide (sN.currentIndent ≤ (sp.simpleKey.pos.col : Int))) then postViol := postViol + 1
+      else if (c == ':' || c == '?') && !sp.inFlow then
+        keyless := keyless + 1
+        if !(decide (sN.currentIndent ≤ (sp.col : Int))) then keylessViol := keylessViol + 1
+      s := sN
+    | _, _ => break
+  return (pauses, liveColons, preViol, postViol, keyless, keylessViol)
+
+def testLandedNoPushHalf (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 61: item 390 — the landed nv < k no-push half PRICED and STOPPED: parser verdicts at the half's inputs; the missing upper bound (a live key at or right of the top) read at every accepted pause"
+  -- Verdicts read before the rows were written (item 390 ledger): 8/8 HELD; the third component
+  -- of R3/R5/R8 corrected on the reader (`rootKeys` renders a mapping value's keys / a sequence's items).
+  let rows : List (String × String × Option (Nat × List String × List String)) :=
+    [ ("R1 a:⏎  - x⏎  - y — pushed `-`, then its sibling lands on the `-` PARK (not closeThenBlock)", "a:
+  - x
+  - y
+", some (1, ["a"], ["x", "y"])),
+      ("R2 a:⏎  b: 1⏎  - y — a `-` at a FILLED mapping's own column: REFUSED (scanBlockEntryValidate)", "a:
+  b: 1
+  - y
+", none),
+      ("R3 a:⏎  b:⏎  - y — a `-` at an AWAITING key's column is that key's value (b's park, nv = k)", "a:
+  b:
+  - y
+", some (1, ["a"], ["b"])),
+      ("R4 a:⏎  - x⏎  b: 1 — a key on a sequence top: REFUSED", "a:
+  - x
+  b: 1
+", none),
+      ("R5 - a:⏎  - y — the compact mapping's own column (nv = k)", "- a:
+  - y
+", some (1, [], ["a"])),
+      ("R6 a:⏎    - x⏎  - y — dedent to a column no stack entry names: REFUSED", "a:
+    - x
+  - y
+", none),
+      ("R7 a:⏎  - x⏎c: 1 — pushed `-` then the root sibling", "a:
+  - x
+c: 1
+", some (1, ["a", "c"], ["x"])),
+      ("R8 ? a⏎:⏎  - y — explicit value, pushed under the `:` at 0", "? a
+:
+  - y
+", some (1, ["a"], ["y"])) ]
+  for (label, input, expected) in rows do
+    let got := rootKeys input
+    checkM state s!"P61 {label}: {repr expected}" (got == expected) s!"got {repr got}"
+  -- The missing invariant, read at every accepted pause: every violation counter 0 (predicted),
+  -- (liveColons, keyless) as labelled, pauses read.
+  let walks : List (String × String × (Nat × Nat)) :=
+    [ ("a:⏎  - x⏎  - y", "a:
+  - x
+  - y
+", (1, 0)),
+      ("a: 1⏎b: 2", "a: 1
+b: 2
+", (2, 0)),
+      ("- a:⏎    b: 1⏎- c", "- a:
+    b: 1
+- c
+", (2, 0)),
+      ("a:⏎  b:⏎  - y", "a:
+  b:
+  - y
+", (2, 0)),
+      ("? a⏎: b (keyless `?` and `:`)", "? a
+: b
+", (0, 2)),
+      ("a:⏎  b: 1⏎c: 2", "a:
+  b: 1
+c: 2
+", (3, 0)),
+      ("- - a: 1⏎  - b: 2 (keys inside compact sequences)", "- - a: 1
+  - b: 2
+", (2, 0)),
+      (": x (the empty-key `:` at column 0)", ": x
+", (0, 1)),
+      ("a: &x b⏎c: !!str d (properties on the values)", "a: &x b
+c: !!str d
+", (2, 0)),
+      ("a:⏎  b:⏎    c: 1⏎  d: 2⏎e: 3 (three levels, two dedents)", "a:
+  b:
+    c: 1
+  d: 2
+e: 3
+", (5, 0)),
+      ("? - a⏎: b (explicit key holding a sequence)", "? - a
+: b
+", (0, 2)),
+      ("- a⏎- b: 1⏎  c: 2 (a mapping inside a sequence entry)", "- a
+- b: 1
+  c: 2
+", (2, 0)) ]
+  for (label, input, expected) in walks do
+    let (pauses, liveColons, preViol, postViol, keyless, keylessViol) := liveKeyTopWalk input
+    check state s!"P61 live-key top bound over {label}: pauses={pauses} liveColons={liveColons} preViol={preViol} postViol={postViol} keyless={keyless} keylessViol={keylessViol}"
+      (preViol == 0 && postViol == 0 && keylessViol == 0 && (liveColons, keyless) == expected)
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -7355,6 +7492,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testValueLandedSeq state
   testMapTopSibling state
   testMapTopLemmaWalk state
+  testLandedNoPushHalf state
   testDeeperLandingOnMapPark state
   testParseOkCheckFrom state
   testParseNodeCF state
