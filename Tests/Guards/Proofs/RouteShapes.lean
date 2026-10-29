@@ -670,11 +670,9 @@ def walk (table : Std.HashMap Name (Array Closure)) (c : Name) :
 -- 2026-10-24 (B3 [66] col-0 threading): re-read on the item-355 base.
 -- Item 371: every value-line pack's closure ends `⇒ Resume(map(_)::[])▹Stream`, not `⇒ Stream`
 -- (the restated pack); `pendingMapValue.h_expl`'s route carries its `SCompactMapTail` tail.
+-- 2026-10-29 (item 389): the `-` park's h_closeF (pendingBlock, pendingBlockContent) and the props park's h_closeFE carry the mapping-top conjunct — the mapping sibling's route (SCompactMapTail(n) after the entry's compact tail) as a second shape inside the informative side.
 def expectedClosures : List String :=
-   -- 2026-10-24 (item 350): `h_expl`/`h_explUp` read `req`, no longer `opt` — their alternative is
-   -- `NotQuestionPark sc` (a scanner fact the `:` producers pay), not a `PackAlt`/`True` escape.
   ["pendingContent.h_closable[] req+guard: sp_gram: SSLComments ⇒ Stream",
-    -- Item 372 (2026-10-27): the pack's route conjunct is an Or (`∨ SeqTopKey sc`); the stream route is its LEFT side (`L`).
    "pendingContent.h_key[λλLEEE1L] req+guard+pack: [col(pos(simpleKey(sc)))=_; line(pos(simpleKey(sc)))=line(sc)] _: SBlockMapEntry(_) ⇒ Stream",
    "pendingContent.h_key[λλLEEE5LE] opt+guard+pack: [col(pos(simpleKey(sc)))=_; line(pos(simpleKey(sc)))=line(sc)] _: SBlockMapEntry(_) > SCompactMapTail(_) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream",
    "pendingContent.h_key[λλLEEE6LE3] opt+guard+pack: [col(pos(simpleKey(sc)))=_; line(pos(simpleKey(sc)))=line(sc)] _: SBlockMapEntry(_) > SCompactMapTail(_) ⇒ Resume(_)▹Stream",
@@ -693,6 +691,7 @@ def expectedClosures : List String :=
    "pendingProps.h_routeE[LE2] opt: [n=_+1] sp_node: SBlockNode(n,blockIn) > SCompactSeqTail(_) ⇒ Stream",
    "pendingProps.h_kslotE[LEE2] opt: [n=_+1] sp_node: SBlockNode(n,blockIn) > SCompactSeqTail(_) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream",
    "pendingProps.h_closeFE[LEE4] opt: [n=_+1] sp_node: SBlockNode(n,blockIn) > SCompactSeqTail(_) ⇒ Resume(_)▹Stream",
+   "pendingProps.h_closeFE[LEE5L] opt+guard: [n=_+1] sp_node: SBlockNode(n,blockIn) > SCompactSeqTail(_) > SCompactMapTail(_) ⇒ Resume(_)▹Stream",
    "pendingProps.h_closeF[LE2] opt: sp_node: SBlockNode(n,blockIn) ⇒ Resume(_)▹Stream",
    "pendingProps.h_closeFV[LEE2] opt: sp_node: SBlockNode(n,blockIn) ⇒ Key(_)▹ExplValueLine(_)",
    "pendingProps.h_closeFEV[LEEE3] opt: [n=_+1] sp_node: SBlockNode(n,blockIn) > SCompactSeqTail(_) ⇒ Key(_)▹ExplValueLine(_)",
@@ -707,6 +706,7 @@ def expectedClosures : List String :=
    "pendingBlockContent.h_key[λλLEEE8LEE2] opt+guard+pack: [col(pos(simpleKey(sc)))=_; line(pos(simpleKey(sc)))=line(sc)] _: SBlockMapEntry(_) > SCompactMapTail(_) ⇒ Resume(_)▹SeqEntryTail(_)",
    "pendingBlockContent.h_kslot[LE] opt: sp_gram: SSLComments > SCompactSeqTail(n) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream",
    "pendingBlockContent.h_closeF[LE3] opt: sp_gram: SSLComments > SCompactSeqTail(n) ⇒ Resume(_)▹Stream",
+   "pendingBlockContent.h_closeF[LE4L] opt+guard: sp_gram: SSLComments > SCompactSeqTail(n) > SCompactMapTail(n) ⇒ Resume(_)▹Stream",
    "pendingBlockContent.h_seqF[LE] opt: sp_gram: SSLComments > SCompactSeqTail(n) ⇒ SeqEntryTail(_)",
    "pendingBlockContent.h_kslotUp[LE2] opt: sp_gram: SSLComments > SCompactSeqTail(n) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream",
    "pendingBlockContent.h_closeFV[LEE3] opt: sp_gram: SSLComments > SCompactSeqTail(n) ⇒ Key(_)▹ExplValueLine(_)",
@@ -714,6 +714,7 @@ def expectedClosures : List String :=
    "pendingBlock.h_close_entry[] req: sp_scan: SBlockIndented(n,blockIn) > SCompactSeqTail(n) ⇒ Stream",
    "pendingBlock.h_kslot[LE] opt: sp_scan: SBlockIndented(n,blockIn) > SCompactSeqTail(n) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream",
    "pendingBlock.h_closeF[LE3] opt: sp_scan: SBlockIndented(n,blockIn) > SCompactSeqTail(n) ⇒ Resume(_)▹Stream",
+   "pendingBlock.h_closeF[LE4L] opt+guard: sp_scan: SBlockIndented(n,blockIn) > SCompactSeqTail(n) > SCompactMapTail(n) ⇒ Resume(_)▹Stream",
    "pendingBlock.h_seqF[LE] opt: sp_scan: SBlockIndented(n,blockIn) > SCompactSeqTail(n) ⇒ SeqEntryTail(_)",
    "pendingBlock.h_kslotUp[LE2] opt: sp_scan: SBlockIndented(n,blockIn) > SCompactSeqTail(n) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream",
    "pendingBlock.h_closeFV[LEE3] opt: sp_scan: SBlockIndented(n,blockIn) > SCompactSeqTail(n) ⇒ Key(_)▹ExplValueLine(_)",
@@ -744,8 +745,8 @@ def expectedClosures : List String :=
 -- Item 371: the value-line spines end `⇒ Resume(map(_)::[])▹Stream` (the restated pack);
 -- `pendingMapValue.h_expl`'s spine gains its `SCompactMapTail` tail and `question_open_map` pays it
 -- from a bound route (`h_route51F`), not the stream parameter (stream 1 → 0, carry 1 → 2).
+-- 2026-10-29 (item 389): the mapping-top conjunct is a second spine under pendingBlock.h_closeF (carry 3, closed 4: the pushed births refute it), pendingBlockContent.h_closeF (carry 6: relayed) and pendingProps.h_closeFE (punt 3: declared, not supplied).
 def expectedSpines : List String :=
-  -- Item 305: `pendingBlock.h_closeFV`'s spine — the compact arm pays it (one site fewer punts, one more carried).
   ["  stream=0 carry=16 fwd=0 punt=0 closed=0 SSLComments ⇒ Stream  ← pendingContent.h_closable, pendingBlockContent.h_closable",
    "  stream=0 carry=18 fwd=0 punt=0 closed=4 [col(pos(simpleKey(_)))=_; line(pos(simpleKey(_)))=line(_)] SBlockMapEntry(_) ⇒ Stream  ← pendingContent.h_key, pendingProps.h_key, pendingBlockContent.h_key",
    "  stream=0 carry=18 fwd=0 punt=0 closed=4 [col(pos(simpleKey(_)))=_; line(pos(simpleKey(_)))=line(_)] SBlockMapEntry(_) > SCompactMapTail(_) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream  ← pendingContent.h_key, pendingProps.h_key, pendingBlockContent.h_key",
@@ -761,6 +762,7 @@ def expectedSpines : List String :=
    "  stream=0 carry=3 fwd=0 punt=3 closed=0 [_=_+1] SBlockNode(_,blockIn) > SCompactSeqTail(_) ⇒ Stream  ← pendingProps.h_routeE",
    "  stream=0 carry=3 fwd=0 punt=3 closed=0 [_=_+1] SBlockNode(_,blockIn) > SCompactSeqTail(_) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream  ← pendingProps.h_kslotE",
    "  stream=0 carry=3 fwd=0 punt=3 closed=0 [_=_+1] SBlockNode(_,blockIn) > SCompactSeqTail(_) ⇒ Resume(_)▹Stream  ← pendingProps.h_closeFE",
+   "  stream=0 carry=3 fwd=0 punt=3 closed=0 [_=_+1] SBlockNode(_,blockIn) > SCompactSeqTail(_) > SCompactMapTail(_) ⇒ Resume(_)▹Stream  ← pendingProps.h_closeFE",
    "  stream=0 carry=3 fwd=0 punt=3 closed=0 SBlockNode(_,blockIn) ⇒ Resume(_)▹Stream  ← pendingProps.h_closeF",
    "  stream=0 carry=3 fwd=0 punt=3 closed=0 SBlockNode(_,blockIn) ⇒ Key(_)▹ExplValueLine(_)  ← pendingProps.h_closeFV",
    "  stream=0 carry=3 fwd=0 punt=3 closed=0 [_=_+1] SBlockNode(_,blockIn) > SCompactSeqTail(_) ⇒ Key(_)▹ExplValueLine(_)  ← pendingProps.h_closeFEV",
@@ -769,14 +771,14 @@ def expectedSpines : List String :=
    "  stream=0 carry=6 fwd=0 punt=0 closed=0 SSLComments > SCompactSeqTail(_) ⇒ Stream  ← pendingBlockContent.h_closable_entry",
    "  stream=0 carry=12 fwd=0 punt=0 closed=0 SSLComments > SCompactSeqTail(_) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream  ← pendingBlockContent.h_kslot, pendingBlockContent.h_kslotUp",
    "  stream=0 carry=6 fwd=0 punt=0 closed=0 SSLComments > SCompactSeqTail(_) ⇒ Resume(_)▹Stream  ← pendingBlockContent.h_closeF",
+   "  stream=0 carry=6 fwd=0 punt=0 closed=0 SSLComments > SCompactSeqTail(_) > SCompactMapTail(_) ⇒ Resume(_)▹Stream  ← pendingBlockContent.h_closeF",
    "  stream=0 carry=3 fwd=0 punt=3 closed=0 SSLComments > SCompactSeqTail(_) ⇒ SeqEntryTail(_)  ← pendingBlockContent.h_seqF",
    "  stream=0 carry=6 fwd=0 punt=0 closed=0 SSLComments > SCompactSeqTail(_) ⇒ Key(_)▹ExplValueLine(_)  ← pendingBlockContent.h_closeFV",
    "  stream=0 carry=7 fwd=0 punt=0 closed=0 SBlockIndented(_,blockIn) ⇒ Stream  ← pendingBlock.h_close",
    "  stream=0 carry=7 fwd=0 punt=0 closed=0 SBlockIndented(_,blockIn) > SCompactSeqTail(_) ⇒ Stream  ← pendingBlock.h_close_entry",
    "  stream=0 carry=12 fwd=0 punt=2 closed=0 SBlockIndented(_,blockIn) > SCompactSeqTail(_) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream  ← pendingBlock.h_kslot, pendingBlock.h_kslotUp",
-   -- 2026-10-26 (item 370): the sibling `-` arm of `accum_block_on_pendingBlock` carries
-   -- `h_closeF_old` into the re-parked `pendingBlock.h_closeF` (one site fewer punts, one more carried).
    "  stream=0 carry=7 fwd=0 punt=0 closed=0 SBlockIndented(_,blockIn) > SCompactSeqTail(_) ⇒ Resume(_)▹Stream  ← pendingBlock.h_closeF",
+   "  stream=0 carry=3 fwd=0 punt=0 closed=4 SBlockIndented(_,blockIn) > SCompactSeqTail(_) > SCompactMapTail(_) ⇒ Resume(_)▹Stream  ← pendingBlock.h_closeF",
    "  stream=0 carry=1 fwd=0 punt=6 closed=0 SBlockIndented(_,blockIn) > SCompactSeqTail(_) ⇒ SeqEntryTail(_)  ← pendingBlock.h_seqF",
    "  stream=0 carry=6 fwd=0 punt=1 closed=0 SBlockIndented(_,blockIn) > SCompactSeqTail(_) ⇒ Key(_)▹ExplValueLine(_)  ← pendingBlock.h_closeFV",
    "  stream=2 carry=4 fwd=0 punt=0 closed=0 SBlockNode(_+1,blockOut) ⇒ Stream  ← pendingMapValue.h_close",
@@ -799,43 +801,42 @@ def expectedSpines : List String :=
 -- Item 371: `colon_open_map_explicit` and `compact_open_map` CARRY `h_closeF`/`h_frames` from the restated
 -- value-line pack (were punts); `question_open_map`'s `h_expl`/`h_closeFV`/`h_framesV` read as carried from the
 -- bound tail route `h_route51F`, not the stream parameter.
+-- 2026-10-29 (item 389): the `-` park's exits read h_closeF twice (route conjunct + mapping-top conjunct): carry/closed per site as the births relay or refute it.
 def expectedSites : List String :=
-  -- Item 305: the compact arm's `h_closeFV` hand-off is a carry (the `?` slot's bottom), not a punt.
-  ["  accum_block_on_closeThenBlock: nil park=pendingBlock stream=bound:h_stream_new:=param:h_close_pending closedBy=[SSLComments ⇒ Stream] h_close=carry,h_close_entry=carry,h_kslot=carry,h_closeF=carry,h_seqF=punt,h_kslotUp=carry,h_closeFV=carry",
-   "  accum_block_on_closeThenBlock: nil park=pendingBlock stream=bound:h_stream_a closedBy=[obtained] h_close=carry,h_close_entry=carry,h_kslot=carry,h_closeF=carry,h_seqF=punt,h_kslotUp=carry,h_closeFV=carry",
+  ["  accum_block_on_closeThenBlock: nil park=pendingBlock stream=bound:h_stream_new:=param:h_close_pending closedBy=[SSLComments ⇒ Stream] h_close=carry,h_close_entry=carry,h_kslot=carry,h_closeF=carry,h_closeF=carry,h_seqF=punt,h_kslotUp=carry,h_closeFV=carry",
+   "  accum_block_on_closeThenBlock: nil park=pendingBlock stream=bound:h_stream_a closedBy=[obtained] h_close=carry,h_close_entry=carry,h_kslot=carry,h_closeF=carry,h_closeF=closed,h_seqF=punt,h_kslotUp=carry,h_closeFV=carry",
    "  compact_open_map: nil park=pendingMapValue stream=param:h_stream_block closedBy=[] h_close=carry,h_ivl=carry,h_expl=carry,h_vslot=carry,h_kslot=closed,h_closeF=carry,h_frames=carry,h_closeFV=closed,h_framesV=closed,h_seqF=punt,h_explUp=carry",
    "  block_dispatch_deferred: nil park=pendingFlow stream=param:h_stream closedBy=[] ",
    "  colon_open_map_explicit: nil park=pendingMapValue stream=param:h_stream_mid closedBy=[] h_close=carry,h_ivl=carry,h_expl=punt,h_vslot=carry,h_kslot=closed,h_closeF=carry,h_frames=carry,h_closeFV=closed,h_framesV=closed,h_seqF=punt,h_explUp=punt",
    "  question_open_map: nil park=pendingMapValue stream=param:h_stream_land closedBy=[] h_close=stream,h_ivl=stream,h_expl=carry,h_vslot=stream,h_kslot=stream,h_closeF=carry,h_frames=carry,h_closeFV=carry,h_framesV=carry,h_seqF=punt,h_explUp=carry",
    "  colon_open_map: nil park=pendingMapValue stream=param:h_stream_land closedBy=[] h_close=stream,h_ivl=punt,h_expl=punt,h_vslot=punt,h_kslot=carry,h_closeF=carry,h_frames=carry,h_closeFV=carry,h_framesV=carry,h_seqF=punt,h_explUp=punt",
-   "  accum_block_on_noPending: nil park=pendingBlock stream=param:h_stream_block closedBy=[] h_close=carry,h_close_entry=carry,h_kslot=punt,h_closeF=carry,h_seqF=punt,h_kslotUp=punt,h_closeFV=punt",
-   -- 2026-10-26 (item 370): the sibling `-` arm hands `h_closeF` on as a carry (item 369's `h_closeF_old`), no longer a punt.
-   "  accum_block_on_pendingBlock: nil park=pendingBlock stream=param:h_stream_block closedBy=[] h_close=carry,h_close_entry=carry,h_kslot=carry,h_closeF=carry,h_seqF=punt,h_kslotUp=carry,h_closeFV=carry",
-   "  accum_block_on_pendingBlock: nil park=pendingBlock stream=param:h_stream_block closedBy=[] h_close=carry,h_close_entry=carry,h_kslot=carry,h_closeF=carry,h_seqF=carry,h_kslotUp=carry,h_closeFV=carry",
-   "  accum_block_on_pendingBlock: nil park=pendingBlock stream=param:h_stream_block closedBy=[] h_close=carry,h_close_entry=carry,h_kslot=carry,h_closeF=carry,h_seqF=punt,h_kslotUp=carry,h_closeFV=carry",
-   "  accum_block_on_pendingBlockContent: nil park=pendingBlock stream=param:h_stream_block closedBy=[] h_close=carry,h_close_entry=carry,h_kslot=carry,h_closeF=carry,h_seqF=punt,h_kslotUp=carry,h_closeFV=carry",
+   "  accum_block_on_noPending: nil park=pendingBlock stream=param:h_stream_block closedBy=[] h_close=carry,h_close_entry=carry,h_kslot=punt,h_closeF=carry,h_closeF=closed,h_seqF=punt,h_kslotUp=punt,h_closeFV=punt",
+   "  accum_block_on_pendingBlock: nil park=pendingBlock stream=param:h_stream_block closedBy=[] h_close=carry,h_close_entry=carry,h_kslot=carry,h_closeF=carry,h_closeF=carry,h_seqF=punt,h_kslotUp=carry,h_closeFV=carry",
+   "  accum_block_on_pendingBlock: nil park=pendingBlock stream=param:h_stream_block closedBy=[] h_close=carry,h_close_entry=carry,h_kslot=carry,h_closeF=carry,h_closeF=closed,h_seqF=carry,h_kslotUp=carry,h_closeFV=carry",
+   "  accum_block_on_pendingBlock: nil park=pendingBlock stream=param:h_stream_block closedBy=[] h_close=carry,h_close_entry=carry,h_kslot=carry,h_closeF=carry,h_closeF=closed,h_seqF=punt,h_kslotUp=carry,h_closeFV=carry",
+   "  accum_block_on_pendingBlockContent: nil park=pendingBlock stream=param:h_stream_block closedBy=[] h_close=carry,h_close_entry=carry,h_kslot=carry,h_closeF=carry,h_closeF=carry,h_seqF=punt,h_kslotUp=carry,h_closeFV=carry",
    "  colon_open_map_implicit: nil park=pendingMapValue stream=param:h_stream_block closedBy=[] h_close=carry,h_ivl=punt,h_expl=punt,h_vslot=punt,h_kslot=carry,h_closeF=carry,h_frames=carry,h_closeFV=carry,h_framesV=carry,h_seqF=carry,h_explUp=punt",
-   "  accum_content_on_pendingBlock_indented: nil park=pendingBlockContent stream=param:h_stream_block closedBy=[] h_closable=carry,h_closable_entry=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_kslot=carry,h_closeF=carry,h_seqF=carry,h_kslotUp=carry,h_closeFV=carry",
-   "  accum_content_on_pendingBlock_indented: nil park=pendingProps stream=param:h_stream_block closedBy=[] h_route=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_kslot=carry,h_routeE=carry,h_kslotE=carry,h_closeFE=carry,h_closeF=punt,h_closeFV=punt,h_closeFEV=carry",
-   "  accum_content_on_pendingBlock_indented: nil park=pendingBlockContent stream=param:h_stream_block closedBy=[] h_closable=carry,h_closable_entry=carry,h_key=closed,h_key=closed,h_key=closed,h_key=closed,h_key=closed,h_kslot=carry,h_closeF=carry,h_seqF=carry,h_kslotUp=carry,h_closeFV=carry",
-   "  accum_content_on_pendingBlock_indented: nil park=pendingBlockContent stream=param:h_stream_block closedBy=[] h_closable=carry,h_closable_entry=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_kslot=carry,h_closeF=carry,h_seqF=carry,h_kslotUp=carry,h_closeFV=carry",
-   "  content_dispatch_routed: nil park=pendingProps stream=param:h_stream_res closedBy=[] h_route=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_kslot=punt,h_routeE=punt,h_kslotE=punt,h_closeFE=punt,h_closeF=punt,h_closeFV=punt,h_closeFEV=punt",
-   "  content_dispatch_routed: nil park=pendingProps stream=param:h_stream_res closedBy=[] h_route=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_kslot=punt,h_routeE=punt,h_kslotE=punt,h_closeFE=punt,h_closeF=punt,h_closeFV=punt,h_closeFEV=punt",
+   "  accum_content_on_pendingBlock_indented: nil park=pendingBlockContent stream=param:h_stream_block closedBy=[] h_closable=carry,h_closable_entry=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_kslot=carry,h_closeF=carry,h_closeF=carry,h_seqF=carry,h_kslotUp=carry,h_closeFV=carry",
+   "  accum_content_on_pendingBlock_indented: nil park=pendingProps stream=param:h_stream_block closedBy=[] h_route=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_kslot=carry,h_routeE=carry,h_kslotE=carry,h_closeFE=carry,h_closeFE=carry,h_closeF=punt,h_closeFV=punt,h_closeFEV=carry",
+   "  accum_content_on_pendingBlock_indented: nil park=pendingBlockContent stream=param:h_stream_block closedBy=[] h_closable=carry,h_closable_entry=carry,h_key=closed,h_key=closed,h_key=closed,h_key=closed,h_key=closed,h_kslot=carry,h_closeF=carry,h_closeF=carry,h_seqF=carry,h_kslotUp=carry,h_closeFV=carry",
+   "  accum_content_on_pendingBlock_indented: nil park=pendingBlockContent stream=param:h_stream_block closedBy=[] h_closable=carry,h_closable_entry=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_kslot=carry,h_closeF=carry,h_closeF=carry,h_seqF=carry,h_kslotUp=carry,h_closeFV=carry",
+   "  content_dispatch_routed: nil park=pendingProps stream=param:h_stream_res closedBy=[] h_route=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_kslot=punt,h_routeE=punt,h_kslotE=punt,h_closeFE=punt,h_closeFE=punt,h_closeF=punt,h_closeFV=punt,h_closeFEV=punt",
+   "  content_dispatch_routed: nil park=pendingProps stream=param:h_stream_res closedBy=[] h_route=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_kslot=punt,h_routeE=punt,h_kslotE=punt,h_closeFE=punt,h_closeFE=punt,h_closeF=punt,h_closeFV=punt,h_closeFEV=punt",
    "  content_dispatch_routed: nil park=pendingContent stream=param:h_stream_res closedBy=[] h_closable=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_vpack=punt,h_framesS=punt,h_framesV=punt,h_seqF=punt",
    "  content_dispatch_routed: nil park=pendingContent stream=param:h_stream_res closedBy=[] h_closable=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_vpack=punt,h_framesS=punt,h_framesV=punt,h_seqF=punt",
    "  accum_content_on_pendingMapValue_indented: nil park=pendingContent stream=param:h_stream_block closedBy=[] h_closable=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_vpack=carry,h_framesS=carry,h_framesV=carry,h_seqF=carry",
-   "  accum_content_on_pendingMapValue_indented: nil park=pendingProps stream=param:h_stream_block closedBy=[] h_route=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_kslot=carry,h_routeE=punt,h_kslotE=punt,h_closeFE=punt,h_closeF=carry,h_closeFV=carry,h_closeFEV=punt",
+   "  accum_content_on_pendingMapValue_indented: nil park=pendingProps stream=param:h_stream_block closedBy=[] h_route=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_kslot=carry,h_routeE=punt,h_kslotE=punt,h_closeFE=punt,h_closeFE=punt,h_closeF=carry,h_closeFV=carry,h_closeFEV=punt",
    "  accum_content_on_pendingMapValue_indented: nil park=pendingContent stream=bound:h_stream':=param:h_close_old closedBy=[SBlockNode(_+1,blockIn) ⇒ Stream] h_closable=carry,h_key=closed,h_key=closed,h_key=closed,h_key=closed,h_key=closed,h_vpack=carry,h_framesS=carry,h_framesV=carry,h_seqF=carry",
    "  accum_content_on_pendingMapValue_indented: nil park=pendingContent stream=param:h_stream_block closedBy=[] h_closable=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_vpack=carry,h_framesS=carry,h_framesV=carry,h_seqF=carry",
-   "  accum_content_pending: nil park=pendingProps stream=param:h_stream_block closedBy=[] h_route=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_kslot=carry,h_routeE=carry,h_kslotE=carry,h_closeFE=carry,h_closeF=carry,h_closeFV=carry,h_closeFEV=carry",
-   "  accum_content_pending: nil park=pendingProps stream=param:h_stream_block closedBy=[] h_route=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_kslot=carry,h_routeE=carry,h_kslotE=carry,h_closeFE=carry,h_closeF=carry,h_closeFV=carry,h_closeFEV=carry",
+   "  accum_content_pending: nil park=pendingProps stream=param:h_stream_block closedBy=[] h_route=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_kslot=carry,h_routeE=carry,h_kslotE=carry,h_closeFE=carry,h_closeFE=carry,h_closeF=carry,h_closeFV=carry,h_closeFEV=carry",
+   "  accum_content_pending: nil park=pendingProps stream=param:h_stream_block closedBy=[] h_route=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_kslot=carry,h_routeE=carry,h_kslotE=carry,h_closeFE=carry,h_closeFE=carry,h_closeF=carry,h_closeFV=carry,h_closeFEV=carry",
    "  accum_content_pending: nil park=pendingContent stream=param:h_stream_block closedBy=[] h_closable=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_vpack=carry,h_framesS=carry,h_framesV=carry,h_seqF=punt",
    "  accum_content_pending: nil park=pendingContent stream=param:h_stream_block closedBy=[] h_closable=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_vpack=carry,h_framesS=carry,h_framesV=carry,h_seqF=punt",
-   "  accum_content_pending: nil park=pendingBlockContent stream=param:h_stream_block closedBy=[] h_closable=carry,h_closable_entry=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_kslot=carry,h_closeF=carry,h_seqF=punt,h_kslotUp=carry,h_closeFV=carry",
+   "  accum_content_pending: nil park=pendingBlockContent stream=param:h_stream_block closedBy=[] h_closable=carry,h_closable_entry=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_kslot=carry,h_closeF=carry,h_closeF=carry,h_seqF=punt,h_kslotUp=carry,h_closeFV=carry",
    "  accum_content_pending: nil park=pendingContent stream=param:h_stream_block closedBy=[] h_closable=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_vpack=carry,h_framesS=carry,h_framesV=carry,h_seqF=punt",
-   "  accum_content_pending: nil park=pendingBlockContent stream=param:h_stream_block closedBy=[] h_closable=carry,h_closable_entry=carry,h_key=closed,h_key=closed,h_key=closed,h_key=closed,h_key=closed,h_kslot=carry,h_closeF=carry,h_seqF=punt,h_kslotUp=carry,h_closeFV=carry",
+   "  accum_content_pending: nil park=pendingBlockContent stream=param:h_stream_block closedBy=[] h_closable=carry,h_closable_entry=carry,h_key=closed,h_key=closed,h_key=closed,h_key=closed,h_key=closed,h_kslot=carry,h_closeF=carry,h_closeF=carry,h_seqF=punt,h_kslotUp=carry,h_closeFV=carry",
    "  accum_content_pending: nil park=pendingContent stream=param:h_stream_block closedBy=[] h_closable=carry,h_key=closed,h_key=closed,h_key=closed,h_key=closed,h_key=closed,h_vpack=carry,h_framesS=carry,h_framesV=carry,h_seqF=punt",
-   "  accum_content_pending: nil park=pendingBlockContent stream=param:h_stream_block closedBy=[] h_closable=carry,h_closable_entry=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_kslot=carry,h_closeF=carry,h_seqF=punt,h_kslotUp=carry,h_closeFV=carry",
+   "  accum_content_pending: nil park=pendingBlockContent stream=param:h_stream_block closedBy=[] h_closable=carry,h_closable_entry=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_kslot=carry,h_closeF=carry,h_closeF=carry,h_seqF=punt,h_kslotUp=carry,h_closeFV=carry",
    "  accum_content_pending: nil park=pendingContent stream=param:h_stream_block closedBy=[] h_closable=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_key=carry,h_vpack=carry,h_framesS=carry,h_framesV=carry,h_seqF=punt",
    "  accum_flow_open_depth0: nil park=noPending stream=bound:h_stream_mid:=bound:h_close closedBy=[SSLComments ⇒ Stream]  flow[value=carry,key=carry,key=carry,key=carry,key=carry,vslot=punt]",
    "  accum_flow_open_depth0: nil park=noPending stream=bound:h_stream_block:=L4YAML.Proofs.StreamAccum.absorb_stacksB closedBy=[lemma:absorb_stacksB]  flow=bound:h_kpkg:=Exists.intro",
@@ -943,9 +944,10 @@ def expectedK : List String :=
 -- a first production no other park's closure shares (the others stay `.blockIn`).
 -- Same item: firstsFromStream 2 → 3, closedIn 2 → 1, routeCarry 57 → 60, routeFwd 51 → 48 — the six mapping-park
 -- births no longer forward their node through `SBlockNode_blockIn_to_blockOut`; the closure is carried as built.
+-- 2026-10-29 (item 389): closures 54 → 57, optional 38 → 41, guarded 13 → 16, bySpine 39 → 42, closureSlots 255 → 274, carry 180 → 192, punt 64 → 67, closed 6 → 10 — the mapping-top conjunct under pendingBlock.h_closeF / pendingBlockContent.h_closeF / pendingProps.h_closeFE.
 def expectedLine : String :=
   -- Item 372 (2026-10-27): `ImplicitKeyPack`'s route conjunct is an Or (the `SeqTopKey` face): the pack's route slot reads as a guarded alternative, not a bare stream route.
-  "closures=54 packed=14 optional=38 guarded=13 facts=3 others=4 byHead=6 byFirst=9 bySpine=39 flowRoutes=6 flowSpinesNew=6 slots=62 nil=44 parkedCtor=35 closureSlots=255 stream=5 carry=180 fwd=0 punt=64 closed=6 mandatory[stream=4 carry=54 fwd=0 punt=14 closed=0] optional[stream=1 carry=126 fwd=0 punt=50 closed=6] packSlots=104 pack[stream=0 carry=84 fwd=0 punt=0 closed=20] spinesFromStream=3 spinesCarried=34 spinesTouched=37 firstsFromStream=3 headsFromStream=2 streamSites=2 closings=11 closedDistinct=3 closedIn=1 absorbed=4 obtained=2 flowSites=7 flowSlots=42 flow[stream=8 carry=29 fwd=0 punt=4 closed=1] routeArgs=163 routeStream=16 routeCarry=60 routeFwd=48 routeClosed=39 routeToWalked=100 routeStreamToWalked=11 viaObtained=0 viaSites=0 builders=13 builds=170 buildSlots=1101 build[stream=14 carry=295 fwd=697 punt=68 closed=27] buildStreamSlots=14 buildSpines=8 routePairs=7 routeSpines=5 k=12 kHeads=6 streamBuilders=8"
+  "closures=57 packed=14 optional=41 guarded=16 facts=3 others=4 byHead=6 byFirst=9 bySpine=42 flowRoutes=6 flowSpinesNew=6 slots=62 nil=44 parkedCtor=35 closureSlots=274 stream=5 carry=192 fwd=0 punt=67 closed=10 mandatory[stream=4 carry=54 fwd=0 punt=14 closed=0] optional[stream=1 carry=138 fwd=0 punt=53 closed=10] packSlots=104 pack[stream=0 carry=84 fwd=0 punt=0 closed=20] spinesFromStream=3 spinesCarried=37 spinesTouched=40 firstsFromStream=3 headsFromStream=2 streamSites=2 closings=11 closedDistinct=3 closedIn=1 absorbed=4 obtained=2 flowSites=7 flowSlots=42 flow[stream=8 carry=29 fwd=0 punt=4 closed=1] routeArgs=163 routeStream=16 routeCarry=60 routeFwd=48 routeClosed=39 routeToWalked=100 routeStreamToWalked=11 viaObtained=0 viaSites=0 builders=13 builds=170 buildSlots=1159 build[stream=14 carry=307 fwd=736 punt=71 closed=31] buildStreamSlots=14 buildSpines=8 routePairs=7 routeSpines=5 k=12 kHeads=6 streamBuilders=8"
 
 set_option maxHeartbeats 4000000 in
 run_cmd Lean.Elab.Command.liftTermElabM do

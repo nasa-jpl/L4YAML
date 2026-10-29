@@ -1085,6 +1085,7 @@ def expectedPerPos : List String := [
 -- 2026-10-24 (B3 [66] col-0 threading): re-read on the #98/#100 base.
 -- 2026-10-26 (item 367, `[82]`): module-wide tallies only (the two directive sites apply `scannedDirective_toSL`; three `s-l-comments` lemmas join StreamAccum); the pack rows are unchanged: nodes 13691 → 13655.
 -- 2026-10-29 (item 388): nodes 13675 → 13679 — the landed birth's `nv ≤ k` arm and the `.blockOut` wraps; no pack moved.
+-- 2026-10-29 (item 389): nodes 13679 → 13681 — proof-term size only (the content door's new `h_top_old` premise); no pack row moved.
 def expectedLine : String :=
 -- 2026-10-25 (#112 review): the `FlowStackK` `MarkedColsIn` carrier reverted (Rule 8: a projection of the closed state is decided at the close by `Classical.em`); nodes 13689 → 13658 (walked-term total; rows unchanged).
 -- 2026-10-25 (item 363): the flow OPEN lane read off the block state (`h_refused`, one `Classical.em`; five `match` blocks deleted): nodes 13658 → 13660 (walked-term total).
@@ -1096,7 +1097,7 @@ def expectedLine : String :=
 -- Item 372 (2026-10-27): `ImplicitKeyPack`'s route conjunct is an Or (`∨ SeqTopKey sc`); the pack walker reads the stream route on its left side.
 -- Item 374: nodes=13663 → 13665 — the resume context's face disjunct and `resumectx_of_landing`'s `h_base`.
   -- 2026-10-28 (item 386): nodes 13665 → 13675 — the `-` opener's `h_lvl_old` beside the value-line packs it walks; no pack/row moved.
-  "packs=11 framesOn=7 params=31 paramLemmas=19 apps=51 rows=155 ctorRows=74 paramRows=81 punt=30 stamp=21 empty=0 relay=25 step=10 via=10 chain=45 route=2 frames=3 tail=2 other=0 alt=7 held=7 levelVar=37 none=25 spendTail=5 lemmas=21 helpers=[explFrameValueLine,frameChainCons,frameChainOne,frameChainUnion,frameChainUnionD] touched=125 nodes=13679"
+  "packs=11 framesOn=7 params=31 paramLemmas=19 apps=51 rows=155 ctorRows=74 paramRows=81 punt=30 stamp=21 empty=0 relay=25 step=10 via=10 chain=45 route=2 frames=3 tail=2 other=0 alt=7 held=7 levelVar=37 none=25 spendTail=5 lemmas=21 helpers=[explFrameValueLine,frameChainCons,frameChainOne,frameChainUnion,frameChainUnionD] touched=125 nodes=13681"
 
 /-! ## §4 The reading -/
 

@@ -534,6 +534,7 @@ corrBlock=0 corrScan=1 via="]
 -- 2026-10-24 (B3 [66] col-0 threading): holders 110/146/224 → 114/157/240 (gate / NextIsSep / JSON-key /
 -- reservation lemmas); the block-indicator and content dispatchers each gain one `sp_gram` edge;
 -- preprocess chain 6 → 3 — three carriers read the edge directly (holders re-read on the item-355 base).
+-- 2026-10-29 (item 389): dispatchBlockIndicators holders 127 → 131 (`pushedBirth_not_mapTop`, `noPushBirth_indents` and their two site uses hold the `-` dispatch), dispatchContent 159 → 160 (`contentLanding_indents_eq`), preprocess 243 → 246, edge 17 → 18 (`preprocess_currentIndent_le`, `preprocess_indents_eq_of_le`, `contentLanding_indents_eq`).
 def expectedLadder : List String :=
 -- 2026-10-24 (item 350): holders=112 → 113 — `dispatchBlock_colon_notQuestion` reads the `:`
 -- dispatch equation to hand every `:` producer `NotQuestionPark`.
@@ -543,9 +544,9 @@ def expectedLadder : List String :=
 -- 2026-10-25 (item 360): holders=120 → 121 — `refused_of_outer_disp` (the K7 bridge) holds the dispatch.
   -- Item 372 (2026-10-27): `seqTopKey_refuted_at_colon` holds the `:` dispatch (+1 holder).
   -- Item 387 (2026-10-29): `seqTop_refuted_at_indicator_le` holds the `:`/`?` dispatch (+1 holder).
-  ["scanNextToken_dispatchBlockIndicators holders=127 edge=1 chain=0",
-   "scanNextToken_dispatchContent holders=159 edge=3 chain=1",
-   "scanNextToken_preprocess holders=243 edge=17 chain=3"]
+  ["scanNextToken_dispatchBlockIndicators holders=131 edge=1 chain=0",
+   "scanNextToken_dispatchContent holders=160 edge=3 chain=1",
+   "scanNextToken_preprocess holders=246 edge=18 chain=3"]
 
 /-- **What §1's proofs spend.**  `drop=false` is the non-circularity check
     items 242 and 243 also carry: a measurement of what the escape costs may

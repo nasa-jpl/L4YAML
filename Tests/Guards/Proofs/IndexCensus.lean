@@ -275,28 +275,21 @@ def surfaceControl : CommandElabM (Array String) := do
 -- Item 305: `valueline/frames/occ=1` 10 → 3 and `occ=2` 8 → 15, `valueline/other/occ=1` → `occ=3` —
 -- the width bound `∀ k' ∈ ks, k' < n` on the two sequence fields, their three restating premises,
 -- `pendingProps.h_closeFEV` and `closeThenBlock`'s `h_valFV` names `ks` (and `n`) once more in the binder's own type.
+-- 2026-10-29 (item 389): stream frame/other occurrence classes re-counted after the mapping-top conjunct joined the three route faces (it resumes the park's own `ks`: occ=4 ×12 → ×6 and a new occ=5 ×6 class, no new binder).
 def expected : List String :=
   ["seq/bottom/occ=1  ×9",
    "seq/frames/occ=2  ×9",
    "seq/other/occ=2  ×3",
    "stream/frames/occ=1  ×3",
-   -- item 385: `deeperLandingResume`/`deeperLandingResumeSeq` conclude the openers'
-   -- `ResumeFrames (SLYamlStream sp_start) ks` resume binder
    "stream/frames/occ=2  ×10",
    "stream/frames/occ=3  ×7",
-   -- item 369: `accum_block_on_pendingBlock.h_closeF_old` (the `-` park's frames,
-   -- `pendingBlock.h_closeF` threaded) is one more stream-bottom frames carrier
-   "stream/frames/occ=4  ×12",
-   -- item 371: every value-line pack now ends in the one-level
-   -- `ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv]` — a literal
-   -- frame list, no `ks`, so the census reads it as stream/other (58 sites)
+   "stream/frames/occ=4  ×6",
+   "stream/frames/occ=5  ×6",
    "stream/other/occ=1  ×27",
    "stream/other/occ=2  ×14",
    "stream/other/occ=3  ×6",
-   "stream/other/occ=4  ×5",
-   -- item 385: the helpers' literal `map nv :: ks` / `ks` frame lists;
-   -- item 386: one more occurrence each — the mapping helper's `h_floor` premise
-   -- and `h_valF`'s level conjunct name the landing width / the park's level again
+   "stream/other/occ=4  ×4",
+   "stream/other/occ=6  ×1",
    "stream/other/occ=7  ×2",
    "stream/other/occ=8  ×1",
    "valueline/bottom/occ=1  ×34",

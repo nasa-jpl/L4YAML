@@ -289,7 +289,8 @@ def isSurfFace (env : Environment) (lhs : Expr) : MetaM Bool := do
 -- 2026-10-26 (item 369): binders=165 → binders=166 — `accum_block_on_pendingBlock.h_closeF_old` (the `-` park's frames, read at the `:`/`?` landing for `h_res_land`).
 -- 2026-10-28 (item 385): binders 166 → 167
 -- — `deeperLandingResume.h_valF`, one more optional binder.
-def expectedFaceTally : String := "binders=167 faces=62 heads=20"
+-- 2026-10-29 (item 389): faces 62 → 63 — the mapping-top conjunct is one more narrowing face on the `-` park's route fields.
+def expectedFaceTally : String := "binders=167 faces=63 heads=20"
 
 /-- The conclusion head of every left disjunct.  `FVAR 2` is `frameChainUnion`,
     whose face is schematic in `P` — the two rows no census of any kind can
@@ -559,10 +560,11 @@ innerSplits=57"
 -- 2026-10-24 (B3 [66] col-0 threading): binder indices shift with the new park fields; verdicts unchanged.
 -- 2026-10-24 (B3 [66] col-0 threading): re-read on the item-354 base (binder indices).
 -- 2026-10-26 (item 369): worth census re-read — `accum_block_on_pendingBlock.h_closeF_old` (the `-` park's frames, read at the `:`/`?` landing for `h_res_land`).
+-- 2026-10-29 (item 389): binder indices only — `accum_content_on_pendingBlock_indented` gains `h_top_old`, so its `h_closeFV_old`/`h_kslotUp_old` rows move one index (#32 → #33, #31 → #32); no worth moved.
 def expectedWorthLedger : List String :=
   [
    -- 2026-10-26 (item 365): binder index #30 → #32 (`h_sound`/`h_fl0` inserted after `h_dead`); worth unchanged.
-   "splits=11 sup=1 inner h_closeFV_old :: accum_content_on_pendingBlock_indented#32",
+   "splits=11 sup=1 inner h_closeFV_old :: accum_content_on_pendingBlock_indented#33",
    "splits=11 sup=1 inner h_closeF_old :: accum_content_on_pendingBlock_indented#14",
    "splits=7 sup=1 - h_kslot_old :: accum_content_on_pendingBlock_indented#13",
    "splits=7 sup=1 inner h_closeF99 :: accum_content_on_pendingMapValue_indented#18",
@@ -577,7 +579,7 @@ def expectedWorthLedger : List String :=
    "splits=3 sup=4 - h_cov :: indicator_open_map#27",
    "splits=3 sup=1 - h_kslot :: accum_block_on_pendingBlock#13",
    "splits=3 sup=1 - h_kslot :: accum_content_on_pendingMapValue_indented#17",
-   "splits=3 sup=1 - h_kslotUp_old :: accum_content_on_pendingBlock_indented#31",
+   "splits=3 sup=1 - h_kslotUp_old :: accum_content_on_pendingBlock_indented#32",
    "splits=3 sup=1 - h_seqF_old :: accum_content_on_pendingBlock_indented#15",
    "splits=3 sup=1 - h_vslot :: accum_content_on_pendingMapValue_indented#16",
    "splits=2 sup=1 - h_kslotUp :: accum_block_on_pendingBlockContent#35",
@@ -878,7 +880,8 @@ one unfolding, and §6 is the item where those two disagreed about binders. -/
 -- `… ∨ True` (restated on `n < k`, plain conclusion), so one no-op leaves.  Predicted as the sum of the
 -- two independent moves; the rebased build confirms it.
 -- 2026-10-29 (item 388): theorems 6342 → 6343 (`valueLandedSeq`); no no-op conclusion moved.
-def expectedNoopTally : String := "theorems=6343 byElab=16 byWhnf=16 elabOnly=0 whnfOnly=0"
+-- 2026-10-29 (item 389): theorems 6343 → 6358 — the item-389 helpers and Priority 60.
+def expectedNoopTally : String := "theorems=6358 byElab=16 byWhnf=16 elabOnly=0 whnfOnly=0"
 -- 5302 → 5344 on 2026-10-18 (plan row 20's close, closure-log item 280): the
 -- parse-side alias obligation moved to §7.1's DECLARATION set, so the carrier
 -- grew and the predicate gained its tools.  What is new in kind: `AG` carries

@@ -1230,6 +1230,7 @@ def expectedDoor : List String :=
 -- 2026-10-29 (item 387): nodes 121047 → 121051 — the no-pop arm's `dite n < k` at
 -- `accum_block_on_pendingBlock` (the helper now takes the strict bound; `k = n` splits on the sequence top).
 -- 2026-10-29 (item 388): summary contentCoverPunt 3 → 4, entryCoverPunt 3 → 4, nodes 121051 → 121397 — the `nv ≤ k` arm (see expectedRows/expectedTrees).
+-- 2026-10-29 (item 389): nodes 122973 → 122297 (from the pre-review 122973) — proof-term size only: the `-` park births' relays and refutations, the conjunct resuming the park's own `ks` after review; no cover row moved.
 def expectedLine : String :=
 -- 2026-10-25 (#112 review): the `FlowStackK` `MarkedColsIn` carrier reverted (Rule 8: a projection of the closed state is decided at the close by `Classical.em`); nodes 117690 → 117529 (walked-term total; the `elim[punt|punt]` face rows unchanged).
 -- 2026-10-25 (item 363): the flow OPEN lane read off the block state (`h_refused`, one `Classical.em`); the three `match h_kslot_* with` blocks go — nodes 117529 → 117431 (walked-term total).
@@ -1241,7 +1242,7 @@ def expectedLine : String :=
 -- `ResumeFrames`; `question_open_map`'s `h_expl`/`h_closeFV`/`h_framesV` come from the bound tail route `h_route51F`.
 -- Item 372 (2026-10-27): exit (a)'s cover spend on `preprocess_landing_mem_or_seq` (one more lemma relay row).
 -- Item 386 (2026-10-28): nodes 120403 → 121047 — the level conjunct in `h_valF`, the `-` opener's `h_lvl_old`, the helpers' sibling/absurd terms; no row moved.
-  "positions=24 ctorFields=13 lemParams=36 lemmas=19 walked=26 doors=9 rows=206 ctorRows=92 lemRows=80 localRows=5 fnRows=19 fnpRows=8 valRows=2 coverTypes=4 mentions=0 pbc=6 pbcRelay=6 pbcPaid=0 pbcPunt=0 pbcCoverPunt=0 pb=7 pbRelay=3 pbPaid=4 pbPunt=0 pbCoverPunt=0 pmv=6 pmvRelay=4 pmvPaid=1 pmvPunt=0 pmvCoverPunt=1 valF=11 valFRelay=2 valFPaid=0 valFPunt=9 contentPaid=6 contentPunt=13 contentCoverPunt=4 contentLemma=0 contentOpen=2 contentPos=17 entryPaid=6 entryPunt=13 entryCoverPunt=4 entryLemma=0 entryOpen=2 entryPos=17 eight=8 eightPB=4 eightPBC=4 eightIndents=0 eightTop=4 eightFloor=0 eightMinCI=0 eightNic=8 eightPrep=8 eightCover=8 doorUses=49 doorKept=17 doorForgotten=8 doorDropped=24 doorsOther=5 nodes=121397"
+  "positions=24 ctorFields=13 lemParams=36 lemmas=19 walked=26 doors=9 rows=206 ctorRows=92 lemRows=80 localRows=5 fnRows=19 fnpRows=8 valRows=2 coverTypes=4 mentions=0 pbc=6 pbcRelay=6 pbcPaid=0 pbcPunt=0 pbcCoverPunt=0 pb=7 pbRelay=3 pbPaid=4 pbPunt=0 pbCoverPunt=0 pmv=6 pmvRelay=4 pmvPaid=1 pmvPunt=0 pmvCoverPunt=1 valF=11 valFRelay=2 valFPaid=0 valFPunt=9 contentPaid=6 contentPunt=13 contentCoverPunt=4 contentLemma=0 contentOpen=2 contentPos=17 entryPaid=6 entryPunt=13 entryCoverPunt=4 entryLemma=0 entryOpen=2 entryPos=17 eight=8 eightPB=4 eightPBC=4 eightIndents=0 eightTop=4 eightFloor=0 eightMinCI=0 eightNic=8 eightPrep=8 eightCover=8 doorUses=49 doorKept=17 doorForgotten=8 doorDropped=24 doorsOther=5 nodes=122297"
 
 /-! ## §6 The reading -/
 
