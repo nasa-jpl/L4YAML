@@ -16,6 +16,8 @@ public import L4YAML.Proofs.Serialization.TraceOf.Leaves
 public import L4YAML.Proofs.Serialization.SerializationWellFormed
 public import L4YAML.Proofs.Serialization.TokenEvents
 public import L4YAML.Proofs.Serialization.ParseCheckFrom
+public import L4YAML.Proofs.Parser.TokenGrammar
+public import L4YAML.Proofs.Serialization.TokenEvents
 public import Tests.VerifiedResult
 
 @[expose] public section Blanket
@@ -6484,7 +6486,7 @@ def testDeeperLandingPaid (state : IO.Ref TestCollector) : IO Unit := do
 /-- **Priority 55 (S5 slice 2 Rule-2 guard, EVENTSOF-CONCEPT §9): the two token-event
 extractors on the guard inputs of `Tests/Guards/Proofs/TokenEventExtractors.lean`.**  Every
 row runs the parser (`parseStream`), `checkTokenGrammar`, the OLD state verdict
-(`checkTokenState`, over `TokenGrammar.tokenEventsOf`), the NEW one
+(the retired checkTokenState over tokenEventsOf, recorded as literals), the NEW one
 (`checkFrom {} (tokenEvents ts)`, over `TokenEvents.tokenEvents`) and whether the two traces
 are equal.  Scanner rows: parser and both verdicts agree on all 32, the traces agree on 31 —
 the scanner-reachable witness `%TAG !h …⏎--- !h x` is the one trace seam (verdicts still
@@ -6494,9 +6496,7 @@ hold while the parser REFUSES — the refutation of ruling (c) under the un-narr
 `TG.DocStart` that the guard file records. -/
 def testTokenEventExtractorsSeam (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 55: S5 slice 2 guard — tokenEventsOf vs tokenEvents: parser / TG / old / new verdicts and trace equality on the %TAG seam, A/B/C/D/D'/E and R1–R6"
-  let ev₁ (ts : Array (Positioned YamlToken)) := L4YAML.Proofs.TokenGrammar.tokenEventsOf ts
   let ev₂ (ts : Array (Positioned YamlToken)) := L4YAML.Proofs.Serialization.TokenEvents.tokenEvents ts
-  let oldV (ts : Array (Positioned YamlToken)) : Bool := L4YAML.Proofs.TokenGrammar.checkTokenState ts
   let newV (ts : Array (Positioned YamlToken)) : Bool :=
     L4YAML.Proofs.Serialization.SerializationWellFormed.checkFrom {} (ev₂ ts)
   let pOk (ts : Array (Positioned YamlToken)) : Bool := match TokenParser.parseStream ts with | .ok _ => true | .error _ => false
@@ -6526,36 +6526,42 @@ def testTokenEventExtractorsSeam (state : IO.Ref TestCollector) : IO Unit := do
     match Scanner.scanFiltered src with
     | .error e => checkM state s!"P55 scanner row scans {repr src}" false s!"scan error {repr e}"
     | .ok ts =>
-      checkM state s!"P55 {repr src}: parser={ep} old=new={ev} traces-equal={eq}"
-        (pOk ts == ep && oldV ts == ev && newV ts == ev && (ev₁ ts == ev₂ ts) == eq)
-        s!"got parser={pOk ts} old={oldV ts} new={newV ts} equal={ev₁ ts == ev₂ ts}"
+      -- `eq = false` marks the one row where the retired extractor's reading differed (the `%TAG !h`
+      -- witness): there the surviving trace is asserted literally, against the retired reading's literal
+      checkM state s!"P55 {repr src}: parser={ep} new={ev} (retired extractor agreed={eq})"
+        (pOk ts == ep && newV ts == ev) s!"got parser={pOk ts} new={newV ts}"
+      if !eq then
+        checkM state s!"P55 {repr src}: tokenEvents = [beginDocument, useTag !] ≠ retired [beginDocument, declareTag !h, useTag !]"
+          (ev₂ ts == [.beginDocument, .useTag "!"] &&
+           ev₂ ts != [.beginDocument, .declareTag "!h", .useTag "!"])
+          s!"got {repr (ev₂ ts)}"
   let mk (t : YamlToken) : Positioned YamlToken := { val := t, pos := { offset := 0, line := 0, col := 0 } }
-  -- token rows: (label, tokens, parser ok, TG, old verdict, new verdict)
+  -- token rows: (label, tokens, parser ok, TG (narrowed, spec [209]), retired-extractor verdict as a literal, new verdict)
   let trows : List (String × Array (Positioned YamlToken) × Bool × Bool × Bool × Bool) :=
     [ ("A %TAG !h + use", #[mk .streamStart, mk (.tagDirective "!h" "p"), mk .documentStart, mk (.tag "!h" "x"), mk .streamEnd], true, true, true, false),
       ("B1 key at doc start", #[mk .streamStart, mk .key, mk (.tag "!t!" "x"), mk .streamEnd], true, false, false, false),
       ("B2 scalar key alias", #[mk .streamStart, mk (.scalar "a" .plain), mk .key, mk (.alias "x"), mk .streamEnd], true, false, false, false),
       ("C after streamEnd", #[mk .streamStart, mk .streamEnd, mk (.tag "!t!" "x")], true, false, false, false),
-      ("D directives, no ---, use", #[mk .streamStart, mk (.tagDirective "!t!" "p"), mk (.tag "!t!" "x"), mk .streamEnd], true, true, true, false),
-      ("D' directive then streamEnd", #[mk .streamStart, mk (.tagDirective "!t!" "p"), mk .streamEnd], true, true, true, true),
+      ("D directives, no ---, use", #[mk .streamStart, mk (.tagDirective "!t!" "p"), mk (.tag "!t!" "x"), mk .streamEnd], true, false, true, false),
+      ("D' directive then streamEnd", #[mk .streamStart, mk (.tagDirective "!t!" "p"), mk .streamEnd], true, false, true, true),
       ("E %TAG !a_b!", #[mk .streamStart, mk (.tagDirective "!a_b!" "p"), mk .documentStart, mk (.tag "!a_b!" "x"), mk .streamEnd], true, true, true, false),
-      ("R1 --- &x a %TAG *x", #[mk .streamStart, mk .documentStart, mk (.anchor "x"), mk (.scalar "a" .plain), mk (.tagDirective "!t!" "p"), mk (.alias "x"), mk .streamEnd], false, true, false, true),
-      ("R2 --- &x a ... %TAG *x", #[mk .streamStart, mk .documentStart, mk (.anchor "x"), mk (.scalar "a" .plain), mk .documentEnd, mk (.tagDirective "!t!" "p"), mk (.alias "x"), mk .streamEnd], false, true, false, false),
-      ("R3 --- &x a %YAML *x", #[mk .streamStart, mk .documentStart, mk (.anchor "x"), mk (.scalar "a" .plain), mk (.versionDirective 1 2), mk (.alias "x"), mk .streamEnd], false, true, false, true),
+      ("R1 --- &x a %TAG *x", #[mk .streamStart, mk .documentStart, mk (.anchor "x"), mk (.scalar "a" .plain), mk (.tagDirective "!t!" "p"), mk (.alias "x"), mk .streamEnd], false, false, false, true),
+      ("R2 --- &x a ... %TAG *x", #[mk .streamStart, mk .documentStart, mk (.anchor "x"), mk (.scalar "a" .plain), mk .documentEnd, mk (.tagDirective "!t!" "p"), mk (.alias "x"), mk .streamEnd], false, false, false, false),
+      ("R3 --- &x a %YAML *x", #[mk .streamStart, mk .documentStart, mk (.anchor "x"), mk (.scalar "a" .plain), mk (.versionDirective 1 2), mk (.alias "x"), mk .streamEnd], false, false, false, true),
       ("R4 &x a %TAG --- *x", #[mk .streamStart, mk (.anchor "x"), mk (.scalar "a" .plain), mk (.tagDirective "!t!" "p"), mk .documentStart, mk (.alias "x"), mk .streamEnd], false, true, false, false),
-      ("R5 %TAG !t!x a (no ---)", #[mk .streamStart, mk (.tagDirective "!t!" "p"), mk (.tag "!t!" "x"), mk (.scalar "a" .plain), mk .streamEnd], true, true, true, false),
-      ("R6 --- a %TAG !t!x b (no ---)", #[mk .streamStart, mk .documentStart, mk (.scalar "a" .plain), mk (.tagDirective "!t!" "p"), mk (.tag "!t!" "x"), mk (.scalar "b" .plain), mk .streamEnd], true, true, true, false) ]
+      ("R5 %TAG !t!x a (no ---)", #[mk .streamStart, mk (.tagDirective "!t!" "p"), mk (.tag "!t!" "x"), mk (.scalar "a" .plain), mk .streamEnd], true, false, true, false),
+      ("R6 --- a %TAG !t!x b (no ---)", #[mk .streamStart, mk .documentStart, mk (.scalar "a" .plain), mk (.tagDirective "!t!" "p"), mk (.tag "!t!" "x"), mk (.scalar "b" .plain), mk .streamEnd], true, false, true, false) ]
   for (label, ts, ep, etg, eold, enew) in trows do
-    checkM state s!"P55 {label}: parser={ep} TG={etg} old={eold} new={enew}"
-      (pOk ts == ep && tg ts == etg && oldV ts == eold && newV ts == enew)
-      s!"got parser={pOk ts} TG={tg ts} old={oldV ts} new={newV ts}"
+    checkM state s!"P55 {label}: parser={ep} TG={etg} new={enew} (retired verdict was {eold})"
+      (pOk ts == ep && tg ts == etg && newV ts == enew)
+      s!"got parser={pOk ts} TG={tg ts} new={newV ts}"
   -- the parser's registration follows the OLD extractor: wherever old and new differ, old = parser
-  for (label, ts, ep, _etg, eold, enew) in trows do
+  for (label, ts, _ep, _etg, eold, enew) in trows do
     if eold != enew then
-      checkM state s!"P55 {label}: parser follows tokEvents" (eold == ep) s!"parser={ep} old={eold}"
+      checkM state s!"P55 {label}: parser follows the retired reading" (pOk ts == eold) s!"parser={pOk ts} recorded={eold}"
   -- R1/R3: `TG ∧ new verdict` with the parser refusing — ruling (c) refuted as stated
-  checkM state "P55 R1/R3 refute `TokenGrammar ∧ checkFrom {} (tokenEvents ts) → parseStream ok`"
-    ((trows.filter (fun r => r.2.2.2.1 && r.2.2.2.2.2 && !r.2.2.1)).length == 2) "expected exactly R1 and R3"
+  checkM state "P55 no row has TokenGrammar ∧ checkFrom (tokenEvents ts) with parseStream refusing (R1/R3 closed by [209])"
+    ((trows.filter (fun r => tg r.2.1 && newV r.2.1 && !pOk r.2.1)).length == 0) "parseStream_accepts refuted"
 
 /-- **Priority 54 (S5 slice 1 review, EVENTSOF-CONCEPT §9): `ParseNodeCF` instantiated
 directly — `parseNode` from a hand-built parse state at EVERY position of short block and
@@ -6634,6 +6640,87 @@ def testParseNodeCF (state : IO.Ref TestCollector) : IO Unit := do
   checkM state s!"P54 buckets: theorem-holds={h} failed-hypothesis={f} (hypothesis holds at fuel 1/2 on {f12} rows)"
     (h ≥ 100 && f ≥ 100 && f12 ≥ 20) "the grid is vacuous on one bucket"
 
+/-- **Priority 53 (S5 slice 2, EVENTSOF-CONCEPT §9): `TokenStateOk` before and after its
+restatement over `TokenEvents.tokenEvents`.**  Rule 2 before the restatement: every row
+records the parser verdict, `checkTokenGrammar`, the OLD state verdict (the per-token
+`tokEvents` reading, as a literal — the public definition disappears) and the NEW one
+(`checkFrom {} (tokenEvents ts)`).  Scanner rows must agree before/after; the token-level
+rows A/D/E/R5/R6 flip true → false (the `%TAG` seam: unclosed handle, `---`-less directive
+run — vacuous for `parseStream_accepts`), D' stays true, and R1/R3 flip false → TRUE with
+the parser REFUSING — the refutation of the restatement under the un-narrowed `TG.DocStart`,
+closed by narrowing `DocStart` to spec [209] (`---` after a non-empty directive run), which
+this grid pins as `TG = false` on R1/R3. -/
+def testTokenStateOkRestatement (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 53: S5 slice 2 — TokenStateOk over tokenEvents: parser / TG / old / new verdicts on the %TAG seam, the ---less directive run (R1–R6) and A/D/D'/E"
+  let newV (ts : Array (Positioned YamlToken)) : Bool :=
+    L4YAML.Proofs.Serialization.SerializationWellFormed.checkFrom {} (L4YAML.Proofs.Serialization.TokenEvents.tokenEvents ts)
+  let pOk (ts : Array (Positioned YamlToken)) : Bool := match TokenParser.parseStream ts with | .ok _ => true | .error _ => false
+  let tg (ts : Array (Positioned YamlToken)) : Bool := L4YAML.Proofs.TokenGrammar.checkTokenGrammar ts
+  -- scanner rows: (input, parser ok, old = new verdict)
+  let srows : List (String × Bool × Bool) :=
+    [ ("", true, true), ("a", true, true), ("--- a\n", true, true), ("--- a\n...\n--- b\n", true, true), ("a\n---\nb", true, true),
+      ("%TAG !t! tag:x,2000:\n--- !t!a b", true, true),
+      ("%TAG !t! tag:x,2000:\n%TAG !u! tag:y,2000:\n--- !u!a b", true, true),
+      ("%TAG !t! tag:x,2000:\n%TAG !t! tag:y,2000:\n--- !t!a b", true, true),
+      ("%YAML 1.2\n%TAG !t! tag:x,2000:\n--- !t!a b", true, true),
+      ("%TAG !t! tag:x,2000:\n%YAML 1.2\n--- !t!a b", true, true),
+      ("%TAG !t! tag:x,2000:\n--- !t!a b\n...\n%TAG !t! tag:y,2000:\n--- !t!c d", true, true),
+      ("%TAG !t! tag:x,2000:\n--- !t!a b\n...\n--- !t!c d", false, false),
+      ("%TAG !t! tag:x,2000:\n--- a\n--- !t!b", false, false),
+      ("%TAG !t! tag:x,2000:\n--- !t!a\n...\n!t!b", false, false),
+      ("%TAG !h tag:x,2000:\n--- !h x", true, true),
+      ("%TAG !! tag:x,2000:\n--- !!a b", true, true), ("%TAG ! tag:x,2000:\n--- !a b", true, true),
+      ("%TAG !t! tag:x,2000:\n--- a", true, true), ("--- !t!a b", false, false), ("!!str a", true, true),
+      ("! a", true, true), ("!<tag:x> a", true, true), ("!a b", true, true), ("&x a", true, true),
+      ("[&x a, *x]", true, true), ("&x [*x]", true, true), ("{&x a: *x}", true, true),
+      ("--- &x a\n...\n--- &x b", true, true), ("--- &x a\n--- &x b", true, true), ("? a", true, true),
+      ("a: !t!x", false, false), ("%TAG !t! tag:x,2000:\n---\n...\n--- !t!a", false, false),
+      ("%TAG !t! tag:x,2000:\n--- !t!a\n---\n!t!b", false, false) ]
+  let live ← IO.mkRef (0 : Nat)   -- rows on which BOTH premises of `parseStream_accepts` hold
+  let implication (label : String) (ts : Array (Positioned YamlToken)) : IO Unit := do
+    let (g, n, p) := (tg ts, newV ts, pOk ts)
+    if g && n then live.modify (· + 1)
+    checkM state s!"P53 {label}: TokenGrammar ∧ checkFrom (tokenEvents ts) → parseStream ok (live: TG={g} new={n})"
+      (!(g && n) || p) s!"parseStream_accepts refuted: TG={g} new={n} parser={p}"
+  for (src, ep, ev) in srows do
+    match Scanner.scanFiltered src with
+    | .error e => checkM state s!"P53 scanner row scans {repr src}" false s!"scan error {repr e}"
+    | .ok ts =>
+      checkM state s!"P53 {repr src}: parser={ep} old=new={ev}" (pOk ts == ep && newV ts == ev)
+        s!"got parser={pOk ts} new={newV ts}"
+      -- scanner output IS in the grammar wherever the parser accepts it (StreamCompleteness's converse)
+      checkM state s!"P53 {repr src}: parser ok → TokenGrammar" (!(pOk ts) || tg ts) s!"parser ok but TG={tg ts}"
+      implication s!"{repr src}" ts
+  let mk (t : YamlToken) : Positioned YamlToken := { val := t, pos := { offset := 0, line := 0, col := 0 } }
+  -- token rows: (label, tokens, parser ok, TG after narrowing, old verdict, new verdict)
+  let trows : List (String × Array (Positioned YamlToken) × Bool × Bool × Bool × Bool) :=
+    [ ("A %TAG !h + use", #[mk .streamStart, mk (.tagDirective "!h" "p"), mk .documentStart, mk (.tag "!h" "x"), mk .streamEnd], true, true, true, false),
+      ("B1 key at doc start", #[mk .streamStart, mk .key, mk (.tag "!t!" "x"), mk .streamEnd], true, false, false, false),
+      ("B2 scalar key alias", #[mk .streamStart, mk (.scalar "a" .plain), mk .key, mk (.alias "x"), mk .streamEnd], true, false, false, false),
+      ("C after streamEnd", #[mk .streamStart, mk .streamEnd, mk (.tag "!t!" "x")], true, false, false, false),
+      ("D directives, no ---, use", #[mk .streamStart, mk (.tagDirective "!t!" "p"), mk (.tag "!t!" "x"), mk .streamEnd], true, false, true, false),
+      ("D' directive then streamEnd", #[mk .streamStart, mk (.tagDirective "!t!" "p"), mk .streamEnd], true, false, true, true),
+      ("E %TAG !a_b!", #[mk .streamStart, mk (.tagDirective "!a_b!" "p"), mk .documentStart, mk (.tag "!a_b!" "x"), mk .streamEnd], true, true, true, false),
+      ("R1 --- &x a %TAG *x", #[mk .streamStart, mk .documentStart, mk (.anchor "x"), mk (.scalar "a" .plain), mk (.tagDirective "!t!" "p"), mk (.alias "x"), mk .streamEnd], false, false, false, true),
+      ("R2 --- &x a ... %TAG *x", #[mk .streamStart, mk .documentStart, mk (.anchor "x"), mk (.scalar "a" .plain), mk .documentEnd, mk (.tagDirective "!t!" "p"), mk (.alias "x"), mk .streamEnd], false, false, false, false),
+      ("R3 --- &x a %YAML *x", #[mk .streamStart, mk .documentStart, mk (.anchor "x"), mk (.scalar "a" .plain), mk (.versionDirective 1 2), mk (.alias "x"), mk .streamEnd], false, false, false, true),
+      ("R4 &x a %TAG --- *x", #[mk .streamStart, mk (.anchor "x"), mk (.scalar "a" .plain), mk (.tagDirective "!t!" "p"), mk .documentStart, mk (.alias "x"), mk .streamEnd], false, true, false, false),
+      ("R5 %TAG !t!x a (no ---)", #[mk .streamStart, mk (.tagDirective "!t!" "p"), mk (.tag "!t!" "x"), mk (.scalar "a" .plain), mk .streamEnd], true, false, true, false),
+      ("R6 --- a %TAG !t!x b (no ---)", #[mk .streamStart, mk .documentStart, mk (.scalar "a" .plain), mk (.tagDirective "!t!" "p"), mk (.tag "!t!" "x"), mk (.scalar "b" .plain), mk .streamEnd], true, false, true, false),
+      -- both premises TRUE (the live cases of `parseStream_accepts`): a `---`-closed `%TAG` run, two
+      -- documents re-declaring an anchor across `...`/`---`, an alias inside its own node
+      ("L1 %TAG !t! --- !t!x a", #[mk .streamStart, mk (.tagDirective "!t!" "p"), mk .documentStart, mk (.tag "!t!" "x"), mk (.scalar "a" .plain), mk .streamEnd], true, true, true, true),
+      ("L2 --- &x a ... --- &x *x", #[mk .streamStart, mk .documentStart, mk (.anchor "x"), mk (.scalar "a" .plain), mk .documentEnd, mk .documentStart, mk (.anchor "x"), mk (.scalar "b" .plain), mk .streamEnd], true, true, true, true),
+      ("L3 %YAML %TAG --- &x [*x]", #[mk .streamStart, mk (.versionDirective 1 2), mk (.tagDirective "!t!" "p"), mk .documentStart, mk (.anchor "x"), mk .flowSequenceStart, mk (.alias "x"), mk .flowSequenceEnd, mk .streamEnd], true, true, true, true),
+      ("L4 --- &x a --- *x (alias across ---)", #[mk .streamStart, mk .documentStart, mk (.anchor "x"), mk (.scalar "a" .plain), mk .documentStart, mk (.alias "x"), mk .streamEnd], false, true, false, false) ]
+  for (label, ts, ep, etg, _old, enew) in trows do
+    checkM state s!"P53 {label}: parser={ep} TG(narrowed)={etg} new={enew}" (pOk ts == ep && tg ts == etg && newV ts == enew)
+      s!"got parser={pOk ts} TG={tg ts} new={newV ts}"
+    implication label ts
+  -- the implication must have been exercised with both premises true, not vacuously
+  let n ← live.get
+  checkM state s!"P53 live rows (TG ∧ new both true): {n} ≥ 25" (n ≥ 25) s!"only {n} live rows"
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -6702,6 +6789,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testParseNodeCF state
   testBlockScalarTailEof state
   testTokenEventExtractorsSeam state
+  testTokenStateOkRestatement state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",

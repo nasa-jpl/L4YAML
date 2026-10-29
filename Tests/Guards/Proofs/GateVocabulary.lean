@@ -95,8 +95,13 @@ namespace L4YAML.Tests.Guards.GateVocabulary
 -- Item 373 (2026-10-27): mentions 472 → 475 — the entry's prose cites three more gates.
 -- S5 slice 2 guard, review round (2026-10-28): mentions 479 → 482 — the Priority 52 bucket's docstring names
 -- the grammar and state checkers it runs.
+-- S5 slice 2 (2026-10-28): names 113 → 112 — the per-token state checker of `TokenGrammar` (a check-prefixed
+-- name, so a gate to this census) is retired with its extractor; `TokenStateOk` is stated over
+-- `TokenEvents.tokenEvents` directly.  (Not spelled here: it would move `self`.)
+-- S5 slice 2 landing (2026-10-28): mentions 482 → 478 — the seam record's prose spells the retired
+-- check-prefixed name without backticks (it no longer resolves) and drops its `ev₁` rows.
 def expectedGateVocab : String :=
-  "names=113 mentions=482 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
+  "names=112 mentions=478 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
 
 end L4YAML.Tests.Guards.GateVocabulary
 

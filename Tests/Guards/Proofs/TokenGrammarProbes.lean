@@ -7,7 +7,7 @@ public meta import L4YAML.Proofs.Parser.TokenGrammar
 
 /-! # Rule-2 probes for `TokenGrammar` / `TokenStateOk` against `parseStream`
 
-Each probe records the triple `(parseStream ok, checkTokenGrammar, checkTokenState)`.
+Each probe records the triple `(parseStream ok, checkTokenGrammar, checkFrom {} (tokenEvents ts))`.
 The lemma under test is `parseStream_accepts`: `TokenGrammar ts → TokenStateOk ts →
 parseStream ts = .ok _`, so the forbidden outcome is `(false, true, true)` — none
 occurs.  Scanner-produced streams agree exactly; the hand-written arrays record the
@@ -20,7 +20,9 @@ open L4YAML
 open L4YAML.Proofs.TokenGrammar
 
 def verdict (ts : Toks) : Bool × Bool × Bool :=
-  ((TokenParser.parseStream ts).toOption.isSome, checkTokenGrammar ts, checkTokenState ts)
+  ((TokenParser.parseStream ts).toOption.isSome, checkTokenGrammar ts,
+    L4YAML.Proofs.Serialization.SerializationWellFormed.checkFrom {}
+      (L4YAML.Proofs.Serialization.TokenEvents.tokenEvents ts))
 
 /-- Scanner-produced probe; `none` when the scanner itself rejects the text. -/
 def scanned (y : String) : Option (Bool × Bool × Bool) :=
@@ -101,11 +103,13 @@ def mk (l : List YamlToken) : Toks :=
   = (false, false, true)
 #guard verdict (mk [.streamStart, .anchor "a", .tag "!" "t", .anchor "b", .scalar "x" .plain,
   .streamEnd]) = (false, false, true)
--- Token-level checks the parser does not make (the scanner does): both accept.
+-- Token-level checks the parser does not make (the scanner does): a duplicate `%YAML` is
+-- accepted by both; a `---`-less directive run is accepted by the parser only — `TG.DocStart`
+-- is narrowed to spec [209] (S5 slice 2), the scanner refuses it (`directiveWithoutDocument`).
 #guard verdict (mk [.streamStart, .versionDirective 1 2, .versionDirective 1 2, .documentStart,
   .streamEnd]) = (true, true, true)
 #guard verdict (mk [.streamStart, .versionDirective 1 2, .scalar "a" .plain, .streamEnd])
-  = (true, true, true)
+  = (true, false, true)
 -- Verbatim tags (empty handle) and `%TAG` on a builtin handle denote no event.
 #guard scanned "!<tag:x> a" = some (true, true, true)
 #guard verdict (mk [.streamStart, .tag "" "tag:x", .scalar "a" .plain, .streamEnd])
