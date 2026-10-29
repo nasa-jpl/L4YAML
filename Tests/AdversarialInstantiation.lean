@@ -7822,6 +7822,105 @@ def testAlignLemmas (state : IO.Ref TestCollector) : IO Unit := do
     (viol == 0 && rows > 0)
 
 
+/-! ## Priority 67 — item 400: the four input-ahead exports READ before they are stated
+
+The live-key-top invariant's `-` case (items 398/399) closes only from what the cursor PEEKS after
+a same-line token that saved a simple key.  Item 399 priced four exports and the owner ruled for
+them ("go with (ii)"); this bucket reads each one at every accepted pause BEFORE a lemma is stated:
+(a) after a block-context PLAIN scalar on the current line the cursor (past whitespace) peeks
+EOF, `:`, `#` or a break — `collectPlainScalar_terminates?`'s stop set (`a - b` is one plain
+scalar, so a block `-` is never the follower); (b) after a block-context QUOTED scalar the same
+set (`validateTrailingContent`); (d) after a block-context ALIAS the same set (`validateAliasClose`);
+(c) after an ANCHOR or TAG on the line `lastTokenIsNodePropertyOnLine` holds, which is the guard
+`scanBlockEntry` refuses by.  Flow-context pauses are counted apart (the exports hypothesise
+`inFlow = false`; `,` `]` `}` follow there).  A violation is a build failure. -/
+
+/-- One pause's reading: `(class, ok)` — class 0 none / 1 plain / 2 quoted / 3 alias /
+    4 property / 5 flow-context (skipped). -/
+def inputAheadOk (sN : L4YAML.Scanner.ScannerState) : Nat × Bool :=
+  match sN.tokens.back? with
+  | none => (0, true)
+  | some t =>
+    if t.pos.line != sN.line then (0, true)
+    else
+      let follower := (L4YAML.Scanner.skipWhitespace sN).peek?
+      let followerOk := match follower with
+        | none => true
+        | some c => c == ':' || c == '#' || L4YAML.CharPredicates.isLineBreakBool c
+            || !L4YAML.CharPredicates.isPrintableBool c || c == '\uFEFF'
+      match t.val with
+      | .scalar _ .plain => if sN.inFlow then (5, true) else (1, followerOk)
+      | .scalar _ .doubleQuoted => if sN.inFlow then (5, true) else (2, followerOk)
+      | .scalar _ .singleQuoted => if sN.inFlow then (5, true) else (2, followerOk)
+      | .alias _ => if sN.inFlow then (5, true) else (3, followerOk)
+      | .anchor _ => (4, L4YAML.Scanner.lastTokenIsNodePropertyOnLine sN.tokens sN.line)
+      | .tag _ _ => (4, L4YAML.Scanner.lastTokenIsNodePropertyOnLine sN.tokens sN.line)
+      | _ => (0, true)
+
+/-- `(counts per class 1..5, violations)` over every accepted pause of `input`. -/
+def inputAheadWalk (input : String) (fuel : Nat := 128) : Array Nat × Nat := Id.run do
+  let mut s := L4YAML.Scanner.ScannerState.mk' input
+  let mut counts : Array Nat := #[0, 0, 0, 0, 0, 0]
+  let mut viol := 0
+  for _ in [:fuel] do
+    match L4YAML.Scanner.scanNextToken s with
+    | .ok (some sN) =>
+      let (cls, ok) := inputAheadOk sN
+      counts := counts.modify cls (· + 1)
+      if !ok then viol := viol + 1
+      s := sN
+    | _ => break
+  return (counts, viol)
+
+def inputAheadInputs : List String :=
+  [ "a: b\n", "a:\n", "a #c\n", "a: b #c\n", "a: b   \n", "a: b", "a", "a - b: c\n", "a: b - c\n",
+    "key with spaces: v\n", "a:b: c\n", "a: b:c\n", "a:\n  b: c\n", "a: b\nc: d\n", "a: b\r\nc: d\r\n",
+    "\"a\": b\n", "'a' #c\n", "a: \"b\"\n", "a: 'b'  \n", "\"a\"", "\"a\" : b\n", "- \"a\"\n", "\"a\":\n  b: c\n",
+    "a: &x b\n*x: c\n", "a: &x b\n*x : c\n", "a: &x b\nk: *x\n", "a: &x b\nk: *x #c\n", "- &x a\n- *x\n",
+    "&x a: b\n", "!t a: b\n", "a: !t b\n", "&x !t a: b\n", "- &x a\n", "- !t a\n", "? &x a\n: b\n", "&x\na: b\n",
+    "? a\n: b\n", "- a\n", "- a: b\n", "- - a\n", "--- a\n", "a\n...\n", "%YAML 1.2\n---\na: b\n",
+    "[a, b]\n", "{a: b}\n", "[a, \"b\", 'c']\n", "a: [b, c]\n", "- [a]\n", "a: &x b\nc: [*x, d]\n", "{a: &x b, c: *x}\n",
+    "a: |\n  b\nc: d\n", "a: >\n  b\n", "a: b\n  c\n", "a\n b\n", "\tbad: a\n", "a:\tb\n", "a: b\t#c\n", "a\uFEFF: b\n", "\"a\"\uFEFFb\n" ]
+
+def testInputAheadExports (state : IO.Ref TestCollector) : IO Unit := do
+  -- Run 1 (60 rows) predicted plain ≥ 40 / quoted ≥ 10 / alias ≥ 6 / property ≥ 8 / flow ≥ 3: read
+  -- 87/8/4/16/16 (quoted, alias REFUTED — the grid holds fewer same-line pauses than guessed).
+  -- Run 2 adds the two BOM rows; predicted 88/8/4/16/16, pinned exactly.
+  let mut total : Array Nat := #[0, 0, 0, 0, 0, 0]
+  for input in inputAheadInputs do
+    let (counts, viol) := inputAheadWalk input
+    total := (List.range 6).foldl (fun acc i => acc.set! i (acc[i]! + counts[i]!)) total
+    check state s!"P67 input-ahead followers at every pause of {repr input}: counts={counts} viol={viol}"
+      (viol == 0)
+  check state s!"P67 totals plain/quoted/alias/property/flow = {total[1]!}/{total[2]!}/{total[3]!}/{total[4]!}/{total[5]!}"
+    (total[1]! == 88 && total[2]! == 8 && total[3]! == 4 && total[4]! == 16 && total[5]! == 16)
+  -- 67b — the transport lemmas (`advance_io_congr`, `peek_congr`, `skipTrailingSpaces_peek_congr`,
+  -- `TrailingFollower.congr`): at every accepted pause, a twin state with the tokens cleared and
+  -- the key flags flipped probes the same follower at fuel 0 / 1 / 2 / full.  Predicted before the
+  -- run: viol = 0, rows > 0.
+  let mut rows := 0
+  let mut viol := 0
+  for input in inputAheadInputs do
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:128] do
+      match L4YAML.Scanner.scanNextToken s with
+      | .ok (some sN) =>
+        let twin : L4YAML.Scanner.ScannerState :=
+          { sN with tokens := #[], simpleKeyAllowed := !sN.simpleKeyAllowed,
+                    needIndentCheck := !sN.needIndentCheck }
+        for fuel in [0, 1, 2, sN.inputEnd - sN.offset + 1] do
+          rows := rows + 1
+          let a := (L4YAML.Scanner.skipTrailingSpaces sN fuel).peek?
+          let b := (L4YAML.Scanner.skipTrailingSpaces twin fuel).peek?
+          if a != b then viol := viol + 1
+        if sN.advance.offset != twin.advance.offset || sN.advance.peek? != twin.advance.peek? then
+          viol := viol + 1
+        s := sN
+      | _ => break
+  check state s!"P67b skipTrailingSpaces / advance read the input alone: rows={rows} viol={viol}"
+    (viol == 0 && rows > 0)
+
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -7898,6 +7997,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testFlowFramesChain state
   testIndentSubsetLemmas state
   testLiveKeyTopInvariant state
+  testInputAheadExports state
   testDeeperLandingOnMapPark state
   testParseOkCheckFrom state
   testParseNodeCF state
