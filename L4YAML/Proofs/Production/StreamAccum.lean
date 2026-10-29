@@ -28057,7 +28057,7 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
               ⟨lo, hb.mono_index (Nat.le_of_lt hnv), h_cov_step lo _ hc⟩) id,
             fun sp_final h_indented sp_end h_tail =>
               closeF sp_end (SBlockNode_blockIn_to_blockOut (nestedBlockSeq hnv h_ssl
-                (SBlockSeqEntries_of_compactTail h_ind h_dash h_gnot h_indented h_tail))), Or.inr trivial⟩
+                (SBlockSeqEntries_of_compactTail h_ind h_dash h_gnot h_indented h_tail))), (if hci : s_prep.currentIndent < (k : Int) then Or.inl (fun hp => (pushedBirth_not_mapTop (k := k) (by have := SIndent_col h_ind; omega) hcorr_prep hci h_dispatch hp).elim) else Or.inr trivial)⟩
         · -- Item 388: a `-` at the mapping's OWN column (`a:⏎- b`, `nv = k`) is the
           -- mapping's VALUE (`[185]` seq-spaces, `valueLandedSeq`), routed through
           -- `h_valF` and closed — no longer `h_seqBottom`'s bare root node.  The
@@ -29334,6 +29334,7 @@ lemma accum_block_on_pendingBlockContent {sp_gram : SurfPos}
                       fun sp_m h_bi sp_e h_tail =>
                         closeF sp_mid h_ssl sp_e
                           (SCompactSeqTail.cons k sp_mid _ sp_scan' sp_m sp_e
+                            -- Item 389: the push half is refuted (a pushed `-` has a sequence on top); the no-push half declines — the content twin carries no top bound.
                             h_ind h_dash2 h_gnot2 h_bi h_tail), (if hci : s_prep.currentIndent < (k : Int) then Or.inl (fun hp => (pushedBirth_not_mapTop (k := k) (by have := SIndent_col h_ind; omega) hcorr_prep hci h_dispatch hp).elim) else Or.inr trivial)⟩
                   | Or.inr _ => Or.inr trivial)
                  (nodir_of_block_dispatch h_dispatch) (Or.inr trivial)
@@ -30217,6 +30218,7 @@ lemma accum_block_on_pendingBlock
                                 route sp_mid (SBlockIndented.empty n .blockIn sp_scan sp_mid h_ssl)
                                   sp_mid (SCompactSeqTail.nil n sp_mid) sp_fin h_mt'⟩
                             · exact Or.inr h_tr
+                          -- Item 389: a `:` on a sequence top (`? - a⏎: b`) stays declined; only the mapping-top sibling is routed above.
                           · exact Or.inr trivial))
                   (fun h_pop =>
                     match h_cvO with
@@ -39405,6 +39407,7 @@ lemma accum_content_pending (sc : ScannerState)
                    (h_routeE_p.imp id (PackAlt.step_content h_preprocess h_dispatch)) (h_kslotE_p.imp id (PackAlt.step_content h_preprocess h_dispatch))
                    -- Item 155: the ENTRY face steps with them, on the same reading.
                    (h_closeFE_p.imp (fun ⟨ne, ks, hne, h_lt, h_cv, r, _⟩ => ⟨ne, ks, hne, h_lt,
+                     -- Item 389: pendingProps.h_closeFE carries no mapping-top conjunct (the 12/101 rung, unpaid), so none rides the extension.
                      h_cv.imp (fun ⟨lo, hb, hc⟩ => ⟨lo, hb, h_cov_step lo ks hc⟩) id, r, Or.inr trivial⟩) id)
                    -- Item 153: the cover rides the EXTENSION too.  The run grew, so
                    -- the park's state moved, and the step is the one items 148/150
@@ -39549,6 +39552,7 @@ lemma accum_content_pending (sc : ScannerState)
                      (h_routeE_p.imp id (PackAlt.step_content h_preprocess h_dispatch)) (h_kslotE_p.imp id (PackAlt.step_content h_preprocess h_dispatch))
                      -- Item 155: the ENTRY face steps with them, on the same reading.
                      (h_closeFE_p.imp (fun ⟨ne, ks, hne, h_lt, h_cv, r, _⟩ => ⟨ne, ks, hne, h_lt,
+                       -- Item 389: as at `&` — no mapping-top conjunct on the props park to ride.
                        h_cv.imp (fun ⟨lo, hb, hc⟩ => ⟨lo, hb, h_cov_step lo ks hc⟩) id, r, Or.inr trivial⟩) id)
                      -- Item 153: the cover rides the EXTENSION too.  The run grew, so
                      -- the park's state moved, and the step is the one items 148/150
@@ -40155,6 +40159,7 @@ lemma accum_content_pending (sc : ScannerState)
                                 -- beside it.
                                 h_cv.imp (fun ⟨lo, hb, hc⟩ => ⟨lo, hb, h_cov_step lo ks hc⟩) id,
                                 fun sp_mid h_ssl sp_end h_tail =>
+                                  -- Item 389: the props park's entry face has no mapping-top conjunct to relay (12/101 rung, unpaid).
                                   closeFE sp_mid (h_nodeAtG sp_mid h_ssl) sp_end h_tail, Or.inr trivial⟩
                             | Or.inr _ => Or.inr trivial)
                            (nodir_of_content_dispatch h_dispatch)
@@ -40279,6 +40284,7 @@ lemma accum_content_pending (sc : ScannerState)
                                 -- beside it.
                                 h_cv.imp (fun ⟨lo, hb, hc⟩ => ⟨lo, hb, h_cov_step lo ks hc⟩) id,
                                 fun sp_mid h_ssl sp_end h_tail =>
+                                  -- Item 389: no mapping-top conjunct on the props park to relay (12/101 rung, unpaid).
                                   closeFE sp_mid (h_nodeAt sp_mid h_ssl) sp_end h_tail, Or.inr trivial⟩
                             | Or.inr _ => Or.inr trivial)
                            (nodir_of_content_dispatch h_dispatch)
@@ -40400,6 +40406,7 @@ lemma accum_content_pending (sc : ScannerState)
                                 -- beside it.
                                 h_cv.imp (fun ⟨lo, hb, hc⟩ => ⟨lo, hb, h_cov_step lo ks hc⟩) id,
                                 fun sp_mid h_ssl sp_end h_tail =>
+                                  -- Item 389: no mapping-top conjunct on the props park to relay (12/101 rung, unpaid).
                                   closeFE sp_mid (h_nodeAtG sp_mid h_ssl) sp_end h_tail, Or.inr trivial⟩
                             | Or.inr _ => Or.inr trivial)
                            (nodir_of_content_dispatch h_dispatch)
