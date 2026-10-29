@@ -542,7 +542,8 @@ def expectedLadder : List String :=
 -- 2026-10-25 (item 358): holders=119 → 120 — `landing_frame_of_cover` (the K1 bridge) holds the dispatch.
 -- 2026-10-25 (item 360): holders=120 → 121 — `refused_of_outer_disp` (the K7 bridge) holds the dispatch.
   -- Item 372 (2026-10-27): `seqTopKey_refuted_at_colon` holds the `:` dispatch (+1 holder).
-  ["scanNextToken_dispatchBlockIndicators holders=126 edge=1 chain=0",
+  -- Item 387 (2026-10-29): `seqTop_refuted_at_indicator_le` holds the `:`/`?` dispatch (+1 holder).
+  ["scanNextToken_dispatchBlockIndicators holders=127 edge=1 chain=0",
    "scanNextToken_dispatchContent holders=159 edge=3 chain=1",
    "scanNextToken_preprocess holders=243 edge=17 chain=3"]
 

@@ -294,7 +294,7 @@ partial def scanTerm (e : Expr) (seen : Std.HashSet Expr) (r i : Nat) :
 -- Item 374: res 54 → 56 — the resume context's face disjunct and `h_build`'s route disjunct.
 -- 2026-10-28 (item 385): rows 15 → 17, res 56 → 59
 -- — the two item-385 helpers conclude `(∃ ks, …) ∨ True`: two rows, three `Or.inr trivial` residues (the dedent at each, the frameless park at the mapping one).
-def expectedLedgerTally : String := "rows=17 res=59"
+def expectedLedgerTally : String := "rows=16 res=58"
 
 /-- The rows, machine-produced, sorted by `res` then `prem` descending.  Three
     rows are all-zero — the proof never reaches the right arm by any route —
@@ -340,7 +340,8 @@ def expectedLedger : List String :=
    "res=2 imp=26 prem=1 proj=0 deeperLandingResume",
    "res=1 imp=4 prem=1 proj=0 PreprocessIndentStable.IndentFloor.transport",
    "res=1 imp=4 prem=1 proj=0 flowOpen_floor_at_prep",
-   "res=1 imp=1 prem=0 proj=0 deeperLandingResumeSeq",
+   -- 2026-10-29 (item 387): `deeperLandingResumeSeq` left the ledger (rows 17 → 16, res 59 → 58): restated on
+   -- `n < k` with a plain conclusion — its one residue is now the site's named `k = n` mapping-sibling decline.
    "res=0 imp=0 prem=0 proj=0 flowKeyHead",
    "res=0 imp=0 prem=0 proj=1 FlowBaseRoutes.key",
    "res=0 imp=0 prem=0 proj=1 FlowBaseRoutes.vslot"]

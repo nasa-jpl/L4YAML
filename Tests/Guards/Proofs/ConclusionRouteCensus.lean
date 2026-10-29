@@ -413,7 +413,8 @@ def expectedRows : List String :=
    -- the `SPLIT Or.elim` is `Classical.em (no-pop ∧ 0 < sp_scan.col)` — absurd on the
    -- left, the popped/col-0 dedent's decline on the right.
    "deeperLandingResume#0 :: DECLINE | PAY | PAY | SPLIT Or.elim",
-   "deeperLandingResumeSeq#0 :: DECLINE | PAY",
+   -- 2026-10-29 (item 387): `deeperLandingResumeSeq` leaves the census — restated on `n < k` with a plain
+   -- conclusion (no `Or`); its former DECLINE (`k = n`) is split at `accum_block_on_pendingBlock` (`OpenerFallbackReach`).
    "flowKeyHead#0 :: VIA L4YAML.Proofs.FlowKeyLift.flowNode_toBlockKey",
    "flowKeyRoute_of_open#0 :: DECLINE | DECLINE | DECLINE | DECLINE | PAY | PAY",
    "flowKeyRoute_of_open#1 :: UNREACHABLE under →/∀",
@@ -449,7 +450,7 @@ PARENT-DECLINED | PARENT-DECLINED | PAY",
 -- 2026-10-28 (item 385): positions 24 → 26, SPLIT 17, → 19,
 -- — the two item-385 helpers conclude by a split (`by_cases` on the landing's width).
 def expectedTally : String :=
-  "positions=26 skipped=0 [FIELD=4, SPLIT=19, UNREACHABLE=2, VIA=1]"
+  "positions=25 skipped=0 [FIELD=4, SPLIT=18, UNREACHABLE=2, VIA=1]"
 
 /-- **The cross-instrument control.**  Route PAY-arms against `ConclusionCensus`'s
     `inl`, route DECLINE-arms against its `inr`, conjunct by conjunct under that
@@ -464,8 +465,9 @@ def expectedTally : String :=
 -- 2026-10-28 (item 386): `agree` 23 → 22 — `deeperLandingResume`'s `k < nv` arm is a `Classical.em`
 -- split the route reading leaves unresolved (`SPLIT Or.elim`): the term reading sees its `inr`
 -- (the popped/col-0 dedent's decline) and the sibling's `inl`; the route reading sees two PAYs, one DECLINE.
+-- 2026-10-29 (item 387): agree 22 → 21 — `deeperLandingResumeSeq` left both instruments (plain conclusion).
 def expectedCross : List String :=
-  ["agree=22",
+  ["agree=21",
    "deeperLandingResume#0 route=2+1 term=2+2",
    "scanValue_ok_park_facts#0 route=1+1 term=0+0"]
 

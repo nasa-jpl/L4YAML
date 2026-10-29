@@ -803,6 +803,8 @@ def expectedNamed : String :=
 -- 2026-10-28 (item 385): rows 204 → 206, nodes 120362 → 120403
 -- 2026-10-28 (item 386): nodes 120403 → 121047 (the level conjunct, `h_lvl_old`, the helpers' sibling/absurd terms); no row moved.
 -- — the two `deeperLandingResume` relay rows of `h_valF` (CloseStackCover 204 → 206) read here too.
+-- 2026-10-29 (item 387): nodes 121047 → 121051 — `accum_block_on_pendingBlock`'s no-pop arm
+-- splits `n < k` (helper) from `k = n` (sequence top refuted / mapping sibling declined).
 def expectedLine : String :=
 -- 2026-10-25 (#112 review): the `FlowStackK` `MarkedColsIn` carrier reverted (Rule 8: a projection of the closed state is decided at the close by `Classical.em`); nodes 117690 → 117529 (walked-term total).
 -- 2026-10-25 (item 363): the flow OPEN lane read off the block state (`h_refused`, one `Classical.em`); the three `match h_kslot_* with` blocks go — nodes 117529 → 117431 (walked-term total).
@@ -814,7 +816,7 @@ def expectedLine : String :=
 -- `ResumeFrames`; `question_open_map`'s `h_expl`/`h_closeFV`/`h_framesV` come from the bound tail route `h_route51F`.
 -- Item 372 (2026-10-27): exit (a)'s sequence-top face (`SeqTopKey`) reads at the dedent key's punt.
 -- Item 374: rows=200 → 202, nodes=119962 → 120158 — `resumectx_of_landing` gains `h_base`, read at the props park's relay.
-  "sites=3 pb=0 pmv=0 props=3 idx0=2 mono=1 monoOpt=0 base=1 baseOpt=0 prep=1 dispB=0 dispC=3 hc=2 chr=2 dash=0 corr=3 noflow=3 save=1 fl=0 top=0 larm=0 floor=1 nic=3 armed=0 col0=1 ids=0 coverSites=1 coverBinders=4 coverFnSites=3 full=0 fullB=0 missMono=2 missBase=2 missPrep=2 missFloorSrc=3 own=0 empty=0 relay=1 relayEntries=4 bounds=0 below=0 belowSyn=0 belowArm=0 at=0 atSyn=0 atArm=0 undecided=0 bOwn=0 bOld=0 landedBelow=0 inlineBelow=0 payable=0 lack=2 lackCallers=16 lackSupplied=0 lackSuppliedB=0 lackLow=0 lackPayable=0 vacuous=2 bottomBelow=0 paidRows=16 bottomPaidBelow=5 bottomPaidRelay=9 named=8 rows=206 nodes=121047"
+  "sites=3 pb=0 pmv=0 props=3 idx0=2 mono=1 monoOpt=0 base=1 baseOpt=0 prep=1 dispB=0 dispC=3 hc=2 chr=2 dash=0 corr=3 noflow=3 save=1 fl=0 top=0 larm=0 floor=1 nic=3 armed=0 col0=1 ids=0 coverSites=1 coverBinders=4 coverFnSites=3 full=0 fullB=0 missMono=2 missBase=2 missPrep=2 missFloorSrc=3 own=0 empty=0 relay=1 relayEntries=4 bounds=0 below=0 belowSyn=0 belowArm=0 at=0 atSyn=0 atArm=0 undecided=0 bOwn=0 bOld=0 landedBelow=0 inlineBelow=0 payable=0 lack=2 lackCallers=16 lackSupplied=0 lackSuppliedB=0 lackLow=0 lackPayable=0 vacuous=2 bottomBelow=0 paidRows=16 bottomPaidBelow=5 bottomPaidRelay=9 named=8 rows=206 nodes=121051"
 
 /-! ## §3 The reading -/
 

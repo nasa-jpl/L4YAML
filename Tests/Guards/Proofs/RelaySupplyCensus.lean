@@ -1118,11 +1118,13 @@ Or.imp⇒RELAY=16, Or.imp⇒SPLIT=4, dite⇒SPLIT=5]"
 -- 2026-10-26 (item 370): survived 161 → 162, leaves 356 → 358 — `h_closeF_old` split once more at the sibling `-` arm.
 -- 2026-10-28 (item 380, PR #146 review): survived 162 → 167, collapsed 14 → 26 (the twelve agreeing `Or.elim`s), leaves 358 → 384,
 -- DECLINE 177 → 197, PAY 174 → 179, VIA 7 → 8 — the arms the `VIA Or.elim` leaves hid, read.
+-- 2026-10-29 (item 387): leaves 384 → 386, DECLINE 194 → 195, PAY 179 → 180 — `accum_block_on_pendingBlock`'s
+-- no-pop arm splits `n < k` (PAY via the helper) from `k = n` (sequence top refuted / mapping sibling DECLINE).
 def expectedSplitLanding : String :=
-  "survived=167 collapsed=26 leaves=384 elsewhere=11 [DECLINE=194, PAY=179, \
-VIA=11] [DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|PAY|VIA|VIA=1, \
+  "survived=167 collapsed=26 leaves=386 elsewhere=11 [DECLINE=195, PAY=180, \
+VIA=11] [DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|PAY|PAY|VIA|VIA|VIA=1, \
+DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|PAY|VIA|VIA=1, \
 DECLINE|DECLINE|DECLINE|DECLINE|PAY|PAY|PAY|PAY|PAY=1, \
-DECLINE|DECLINE|DECLINE|DECLINE|PAY|VIA|VIA|VIA=1, \
 DECLINE|DECLINE|DECLINE|PAY=2, DECLINE|DECLINE|DECLINE|PAY|PAY|PAY=1, \
 DECLINE|DECLINE|DECLINE|PAY|VIA=3, DECLINE|DECLINE|PAY=4, \
 DECLINE|DECLINE|PAY|PAY=1, DECLINE|DECLINE|PAY|PAY|PAY=2, DECLINE|PAY=148, \
@@ -1223,8 +1225,11 @@ DECLINE|PAY|PAY=1, PAY|VIA=1, PAY|VIA|VIA=1]"
 -- 2026-10-28 (item 385): DECLINE-closed 103 → 100; VIA deeperLandingResume = 2, VIA deeperLandingResumeSeq = 1 —
 -- the three paid no-pop leaves (`closeThenBlock`'s two `h_res_land` arms, `pendingBlock`'s `s_prep.indents = sc.indents` arm)
 -- are helper applications now; the helpers' own dedent declines are counted at the helpers, not at the sites.
+-- 2026-10-29 (item 387): leaves 384 → 386; `VIA deeperLandingResumeSeq` 1 → 0 (the helper is now the `n < k` arm's
+-- PAY-free, +1); `VIA absurd` 7 → 8 (the `k = n` sequence top, refuted by `seqTop_refuted_at_indicator_le`);
+-- DECLINE-closed 100 → 101 (the `k = n` mapping top: the enclosing mapping's sibling, declined, named).
 def expectedSplitBranch : String :=
-  "splits=167 leaves=384 relayRooted=156 siteDecided=11 optionalRoot=108 plainRoot=48 agree=110/110 disagree=0 [DECLINE-closed=100, DECLINE-free=94, PAY-free=179, VIA L4YAML.Proofs.StreamAccum.deeperLandingResume-=2, VIA L4YAML.Proofs.StreamAccum.deeperLandingResumeSeq-=1, VIA L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root-=1, VIA absurd-=7]"
+  "splits=167 leaves=386 relayRooted=156 siteDecided=11 optionalRoot=108 plainRoot=48 agree=110/110 disagree=0 [DECLINE-closed=101, DECLINE-free=94, PAY-free=180, VIA L4YAML.Proofs.StreamAccum.deeperLandingResume-=2, VIA L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root-=1, VIA absurd-=8]"
 
 /-- **The ten splits the site decides for itself**, which is the whole residue
     of the branch question after `expectedSplitBranch`.  Four are a `dite` on a

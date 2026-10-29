@@ -6829,6 +6829,58 @@ def testTagHandleShape (state : IO.Ref TestCollector) : IO Unit := do
       let pOk := match TokenParser.parseStream ts with | .ok _ => true | .error _ => false
       checkM state s!"P57 {repr src}: scans and parses" (sh && pOk) s!"shaped={sh} parser={pOk}"
 
+/-- Priority 58, Rule 2 for item 387 — parser VERDICT + root SHAPE only (§7: the rows cannot see
+    which proof route fired; the informative side is pinned on the proof terms by
+    `ConclusionRouteCensus` / `RelaySupplyCensus` / `OpenerFallbackReach`).  The `-` park's `k = n`
+    landing is TWO inputs: a `:`/`?` at a SEQUENCE top is refused by the dispatcher (the paid half),
+    a `:` at a MAPPING top is that mapping's sibling — a `-` at the mapping's own column pushes no
+    sequence entry (`pushSequenceIndent` guards `col > currentIndent`), so `a:⏎- b` leaves the mapping
+    at `n` on top and `a:⏎-⏎c: 1` is ACCEPTED (the declined half, no route among the park's frames).
+    The reader's third component is the root's FIRST ITEM rendered (`a: [b]` reads `["b"]`, an empty
+    entry reads `""`); the first run mispredicted it as `[]` on five rows — a reader-side error,
+    corrected here; every verdict and key list HELD on the first run. -/
+def testSeqTopNoPopFaces (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 58: item 387 — parser VERDICT + root SHAPE only: the `-` park's k = n landing is a refused SEQUENCE top or an accepted MAPPING sibling (the `-` at the mapping's own column pushed nothing)"
+  let rows : List (String × String × Option (Nat × List String × List String)) :=
+    [ ("a:⏎- b (the `-` at the mapping's own column: no push, the mapping stays on top; a sequence value)", "a:\n- b", some (1, ["a"], ["b"])),
+      ("a:⏎-⏎c: 1 (k = n at a MAPPING top: the enclosing mapping's SIBLING — accepted, the declined half)", "a:\n-\nc: 1", some (1, ["a", "c"], [""])),
+      ("a:⏎- b⏎c: 1 (same sibling after a filled entry)", "a:\n- b\nc: 1", some (1, ["a", "c"], ["b"])),
+      ("a:⏎-⏎- c (k = n, a second `-`: the SEQUENCE sibling, not a `:`/`?` landing)", "a:\n-\n- c", some (1, ["a"], ["", "c"])),
+      ("-⏎a: 1 (k = n at a SEQUENCE top, bare park: refused — the paid half)", "-\na: 1", none),
+      ("-⏎? x (k = n at a SEQUENCE top, the `?` indicator: refused)", "-\n? x", none),
+      ("- a⏎- b (the sequence sibling at a bare park: accepted, not these helpers)", "- a\n- b", some (1, [], [])),
+      ("a:⏎  -⏎  c: 1 (the `-` DEEPER than the mapping pushes a sequence at 2; a `:` at 2 is a sequence top: refused)", "a:\n  -\n  c: 1", none),
+      ("a:⏎  b:⏎  -⏎  c: 1 (the `-` at the inner mapping's own column pushes nothing; `c:` at 2 is its sibling: accepted)", "a:\n  b:\n  -\n  c: 1", some (1, ["a"], ["b", "c"])),
+      ("-⏎ a: 1 (k = n + 1 at a bare `-` park: the deeper landing, item 385's route)", "-\n a: 1", some (1, [], ["a"])) ]
+  for (label, input, expected) in rows do
+    let got := rootKeys input
+    checkM state s!"seq-top vs mapping-sibling at k = n: {label}" (got == expected)
+      s!"(documents, root keys, first value rendered) = {repr got}; expected {repr expected}"
+  -- The scanner face the site splits on, instantiated: `atSequenceIndent` at a cursor standing
+  -- AT the top's column reads the top's KIND — true at a sequence top (the refutation
+  -- `seqTop_refuted_at_indicator_le` bites), false at a mapping top (nothing to refute: the
+  -- declined half) — and false one column right of the top at either kind (`k = n + 1`,
+  -- the helper's domain).  12 rows, 2 predicted sequence-top faces.
+  let base := ScannerState.mk' "x"
+  let sent : IndentEntry := { column := -1, isSequence := false }
+  let stacks : List (String × Array IndentEntry × Nat × Bool) :=
+    [ ("map@0", #[sent, { column := 0, isSequence := false }], 0, false),
+      ("seq@0", #[sent, { column := 0, isSequence := true }], 0, true),
+      ("map@0/map@2", #[sent, { column := 0, isSequence := false }, { column := 2, isSequence := false }], 2, false),
+      ("map@0/seq@2", #[sent, { column := 0, isSequence := false }, { column := 2, isSequence := true }], 2, true) ]
+  let mut seqFaces := 0
+  for (label, st, top, isSeq) in stacks do
+    for dk in [0, 1, 2] do
+      let sc : ScannerState := { base with indents := st, col := top + dk }
+      let face := atSequenceIndent sc
+      let hle := decide ((sc.col : Int) ≤ sc.currentIndent)
+      checkM state s!"atSequenceIndent {label} col=top+{dk}: face = (sequence top ∧ at its column)"
+        (face == (isSeq && dk == 0)) s!"face={face} currentIndent={sc.currentIndent}"
+      checkM state s!"seqTop_refuted_at_indicator_le premise {label} col=top+{dk}: col ≤ currentIndent ↔ dk = 0"
+        (hle == (dk == 0)) s!"hle={hle}"
+      if face then seqFaces := seqFaces + 1
+  checkM state s!"atSequenceIndent faces at the top's column: sequence tops = {seqFaces}" (seqFaces == 2) ""
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -6894,6 +6946,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testDeeperLandingPaid state
   testNoPopDedentL1 state
   testFloorLevelInstances state
+  testSeqTopNoPopFaces state
   testDeeperLandingOnMapPark state
   testParseOkCheckFrom state
   testParseNodeCF state
