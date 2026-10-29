@@ -171,13 +171,82 @@ partial def inrTrivialGo (e : Expr) : StateM (Std.HashSet Expr × Nat) Unit := d
 
 def inrTrivial (e : Expr) : Nat := ((inrTrivialGo e).run ({}, 0)).2.2
 
+/-- How a declaration's OWN value uses its binder `i` — the downward side of a position.
+    `cased`: the binder is an argument of `Or.casesOn` / `Or.elim` / `Or.rec` / `Or.imp` /
+    `Or.resolve_left` / `Or.resolve_right` or of a matcher (the disjunction is inspected there);
+    `passed`: an argument of any other application, a `have`'s value, a bare occurrence (handed
+    on).  Keyed `(subterm, depth)` so a shared open subterm is read once per binding depth. -/
+partial def usesGo (env : Environment) (n : Nat) (extra : Nat) (e : Expr) :
+    StateM (Std.HashSet (Expr × Nat) × Std.HashMap Nat (Nat × Nat)) Unit := do
+  if (← get).1.contains (e, extra) then return
+  modify fun (seen, m) => (seen.insert (e, extra), m)
+  let topIdx? (x : Expr) : Option Nat :=
+    match x.consumeMData with
+    | .bvar k => if k ≥ extra && k - extra < n then some (n - 1 - (k - extra)) else none
+    | _ => none
+  let record (i : Nat) (cased : Bool) : StateM (Std.HashSet (Expr × Nat) × Std.HashMap Nat (Nat × Nat)) Unit :=
+    modify fun (seen, m) =>
+      let (c, pa) := m.getD i (0, 0)
+      (seen, m.insert i (if cased then (c + 1, pa) else (c, pa + 1)))
+  match e with
+  | .app .. =>
+      let f := e.getAppFn
+      let args := e.getAppArgs
+      let casing := match f with
+        | .const c _ => c == ``Or.casesOn || c == ``Or.elim || c == ``Or.rec || c == ``Or.imp
+            || c == ``Or.resolve_left || c == ``Or.resolve_right || isMechanism env c
+        | _ => false
+      for a in args do
+        match topIdx? a with
+        | some i => record i casing
+        | none => usesGo env n extra a
+      match topIdx? f with
+      | some i => record i false
+      | none => usesGo env n extra f
+  | .lam _ t b _ => do usesGo env n extra t; usesGo env n (extra + 1) b
+  | .forallE _ t b _ => do usesGo env n extra t; usesGo env n (extra + 1) b
+  | .letE _ t v b _ => do
+      usesGo env n extra t
+      match topIdx? v with
+      | some i => record i false
+      | none => usesGo env n extra v
+      usesGo env n (extra + 1) b
+  | .mdata _ e => usesGo env n extra e
+  | .proj _ _ e =>
+      match topIdx? e with
+      | some i => record i false
+      | none => usesGo env n extra e
+  | .bvar _ =>
+      match topIdx? e with
+      | some i => record i false
+      | none => pure ()
+  | _ => pure ()
+
+/-- `(cased, passed)` per top binder of `nm`, or `none` when the value has fewer leading
+    lambdas than the type has binders (unreadable, as `RelaySupplyCensus` skips it). -/
+def usesOf (env : Environment) (nm : Name) : Option (Std.HashMap Nat (Nat × Nat)) := do
+  let ci ← env.find? nm
+  let v ← ci.value? (allowOpaque := true)
+  let n := Id.run do
+    let mut t := ci.type; let mut i := 0
+    repeat match t with
+      | .forallE _ _ b _ => i := i + 1; t := b
+      | _ => break
+    return i
+  let mut body := v
+  for _ in [0:n] do
+    match body with
+    | .lam _ _ b _ => body := b
+    | _ => none
+  some ((usesGo env n 0 body).run ({}, {})).2.2
+
 def posLine (p : Pos) : String := s!"{p.decl}{p.site} {p.kind} ∨ {p.alt}"
 
 /-! ## The pins -/
 
 -- 2026-10-29 (item 395): the first reading, pinned as the roster the retirement lane works from.
 def expectedSummary : String :=
-  "positions=272 top=172 nested=100 True=201 PackAlt=62 PackAltG=9 modules=2 supply: paid=28 relayed=116 declined-only=10 never-supplied=1 conclusions=12 writers=42 inrTrivial=514"
+  "positions=272 top=172 nested=100 True=201 PackAlt=62 PackAltG=9 modules=2 supply: paid=28 relayed=116 declined-only=5 never-supplied=1 unresolved=8 conclusions=12 consumers: spent=103 relayed=19 unused=0 unreadable=36 writers=42 inrTrivial=514"
 
 def expectedPositions : List String :=
   [ "L4YAML.Proofs.PreprocessIndentStable.IndentFloor.transport[3].h_floor top ∨ True",
@@ -524,7 +593,7 @@ def expectedSupply : List String :=
     "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented[21].h_framesV108 relayed [FIELD=1]",
     "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented[38].h_seqF168 relayed [FIELD=1]",
     "L4YAML.Proofs.StreamAccum.bareNodeRoute_or_refused[11].h_tail relayed [RELAY=1]",
-    "L4YAML.Proofs.StreamAccum.bareNodeRoute_or_refused_content[12].h_tail other [LOCAL=2]",
+    "L4YAML.Proofs.StreamAccum.bareNodeRoute_or_refused_content[12].h_tail unresolved [LOCAL=2]",
     "L4YAML.Proofs.StreamAccum.colon_open_map[19].h_sfx_land relayed [RELAY=1]",
     "L4YAML.Proofs.StreamAccum.colon_open_map[20].h_nodoc_land relayed [RELAY=1]",
     "L4YAML.Proofs.StreamAccum.colon_open_map[21].h_mk_land relayed [RELAY=1]",
@@ -580,11 +649,11 @@ def expectedSupply : List String :=
     "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_open[13].h_compact_pair relayed [DECLINE=1 SPLIT=2]",
     "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_open[ret] conclusion",
     "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[9].h_col paid [DECLINE=3 PAY=1]",
-    "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[20].h_sfx declined-only [DECLINE=3 LOCAL=1]",
+    "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[20].h_sfx unresolved [DECLINE=3 LOCAL=1]",
     "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[21].h_nodoc paid [DECLINE=3 PAY=1]",
-    "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[24].h_tail143 declined-only [DECLINE=3 LOCAL=1]",
-    "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[25].h_mapF declined-only [DECLINE=3 LOCAL=1]",
-    "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[26].h_mapFV declined-only [DECLINE=3 LOCAL=1]",
+    "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[24].h_tail143 unresolved [DECLINE=3 LOCAL=1]",
+    "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[25].h_mapF unresolved [DECLINE=3 LOCAL=1]",
+    "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[26].h_mapFV unresolved [DECLINE=3 LOCAL=1]",
     "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[ret] conclusion",
     "L4YAML.Proofs.StreamAccum.flowOpen_floor_at_prep[10].h_floor never-supplied []",
     "L4YAML.Proofs.StreamAccum.flowOpen_floor_at_prep[ret] conclusion",
@@ -619,12 +688,178 @@ def expectedSupply : List String :=
     "L4YAML.Proofs.StreamAccum.question_open_map[29].h_explUp_chainD relayed [RELAY=1]",
     "L4YAML.Proofs.StreamAccum.resumectx_of_landing[13].h_fS relayed [LOCAL=4 RELAY=1 SPLIT=2]",
     "L4YAML.Proofs.StreamAccum.resumectx_of_landing[14].h_fV relayed [LOCAL=4 RELAY=1 SPLIT=2]",
-    "L4YAML.Proofs.StreamAccum.resumectx_of_landing[16].h_fQ declined-only [DECLINE=3 LOCAL=4]",
+    "L4YAML.Proofs.StreamAccum.resumectx_of_landing[16].h_fQ unresolved [DECLINE=3 LOCAL=4]",
     "L4YAML.Proofs.StreamAccum.rootMapRouteF_or_refused[7].h_ref relayed [DECLINE=4 RELAY=5]",
     "L4YAML.Proofs.StreamAccum.rootMapRoute_or_refused[7].h_ref relayed [DECLINE=6 RELAY=5]",
-    "L4YAML.Proofs.StreamAccum.suffixctx_of_landing[11].h_sfx other [LOCAL=2]",
+    "L4YAML.Proofs.StreamAccum.suffixctx_of_landing[11].h_sfx unresolved [LOCAL=2]",
     "L4YAML.Proofs.StreamAccum.suffixctx_of_landing[ret] conclusion",
-    "L4YAML.Proofs.StreamAccum.topLevelFlowResumeSep_or_refused[6].h_ref other [LOCAL=1]"
+    "L4YAML.Proofs.StreamAccum.topLevelFlowResumeSep_or_refused[6].h_ref unresolved [LOCAL=1]"
+  ]
+
+/-- The ceilings: a mechanical shrink-only, independent of the equality pins below.  Raising
+    one needs the owner's word in the item that does it. -/
+def ceilingPositions : Nat := 272
+def ceilingWrites : Nat := 514
+
+def expectedConsumers : List String :=
+  [ "L4YAML.Proofs.StreamAccum.FlowBaseRoutes.mk[8].key unreadable [cased=0 passed=0]",
+    "L4YAML.Proofs.StreamAccum.FlowBaseRoutes.mk[9].vslot unreadable [cased=0 passed=0]",
+    "L4YAML.Proofs.StreamAccum.PendingNode.pendingContent[9].h_vpack unreadable [cased=0 passed=0]",
+    "L4YAML.Proofs.StreamAccum.PendingNode.pendingContent[11].h_framesS unreadable [cased=0 passed=0]",
+    "L4YAML.Proofs.StreamAccum.PendingNode.pendingContent[12].h_framesV unreadable [cased=0 passed=0]",
+    "L4YAML.Proofs.StreamAccum.PendingNode.pendingContent[16].h_seqF unreadable [cased=0 passed=0]",
+    "L4YAML.Proofs.StreamAccum.PendingNode.pendingProps[19].h_ncol unreadable [cased=0 passed=0]",
+    "L4YAML.Proofs.StreamAccum.PendingNode.pendingProps[21].h_kslot unreadable [cased=0 passed=0]",
+    "L4YAML.Proofs.StreamAccum.PendingNode.pendingProps[22].h_routeE unreadable [cased=0 passed=0]",
+    "L4YAML.Proofs.StreamAccum.PendingNode.pendingProps[23].h_kslotE unreadable [cased=0 passed=0]",
+    "L4YAML.Proofs.StreamAccum.PendingNode.pendingProps[24].h_closeFE unreadable [cased=0 passed=0]",
+    "L4YAML.Proofs.StreamAccum.PendingNode.pendingProps[25].h_closeF unreadable [cased=0 passed=0]",
+    "L4YAML.Proofs.StreamAccum.PendingNode.pendingProps[26].h_closeFV unreadable [cased=0 passed=0]",
+    "L4YAML.Proofs.StreamAccum.PendingNode.pendingProps[28].h_closeFEV unreadable [cased=0 passed=0]",
+    "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlockContent[12].h_kslot unreadable [cased=0 passed=0]",
+    "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlockContent[13].h_closeF unreadable [cased=0 passed=0]",
+    "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlockContent[16].h_seqF unreadable [cased=0 passed=0]",
+    "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlockContent[17].h_kslotUp unreadable [cased=0 passed=0]",
+    "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlockContent[18].h_closeFV unreadable [cased=0 passed=0]",
+    "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[10].h_kslot unreadable [cased=0 passed=0]",
+    "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[11].h_closeF unreadable [cased=0 passed=0]",
+    "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[13].h_seqF unreadable [cased=0 passed=0]",
+    "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[14].h_kslotUp unreadable [cased=0 passed=0]",
+    "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[15].h_closeFV unreadable [cased=0 passed=0]",
+    "L4YAML.Proofs.StreamAccum.PendingNode.pendingMapValue[14].h_ncol unreadable [cased=0 passed=0]",
+    "L4YAML.Proofs.StreamAccum.PendingNode.pendingMapValue[15].h_kslot unreadable [cased=0 passed=0]",
+    "L4YAML.Proofs.StreamAccum.PendingNode.pendingMapValue[16].h_closeF unreadable [cased=0 passed=0]",
+    "L4YAML.Proofs.StreamAccum.PendingNode.pendingMapValue[17].h_frames unreadable [cased=0 passed=0]",
+    "L4YAML.Proofs.StreamAccum.PendingNode.pendingMapValue[18].h_closeFV unreadable [cased=0 passed=0]",
+    "L4YAML.Proofs.StreamAccum.PendingNode.pendingMapValue[19].h_framesV unreadable [cased=0 passed=0]",
+    "L4YAML.Proofs.StreamAccum.PendingNode.pendingMapValue[21].h_seqF unreadable [cased=0 passed=0]",
+    "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock[10].h_vpack spent [cased=3 passed=0]",
+    "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock[19].h_sfx spent [cased=2 passed=0]",
+    "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock[20].h_mk spent [cased=2 passed=0]",
+    "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock[26].h_tail139 spent [cased=1 passed=1]",
+    "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock[27].h_valF spent [cased=2 passed=2]",
+    "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock[28].h_seqF spent [cased=2 passed=0]",
+    "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock[29].h_mapF spent [cased=2 passed=0]",
+    "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock[30].h_pr spent [cased=2 passed=0]",
+    "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock[31].h_mapFV spent [cased=3 passed=0]",
+    "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock[32].h_valFV spent [cased=2 passed=0]",
+    "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlock[13].h_kslot spent [cased=7 passed=0]",
+    "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlock[29].h_seqF_old spent [cased=3 passed=0]",
+    "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlock[30].h_kslotUp spent [cased=7 passed=0]",
+    "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlock[31].h_closeFV_old spent [cased=7 passed=0]",
+    "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlock[32].h_closeF_old spent [cased=3 passed=0]",
+    "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlockContent[15].h_kslot spent [cased=3 passed=0]",
+    "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlockContent[34].h_seqF_old spent [cased=2 passed=0]",
+    "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlockContent[35].h_kslotUp spent [cased=3 passed=0]",
+    "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlockContent[36].h_closeF_old spent [cased=2 passed=0]",
+    "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlockContent[37].h_closeFV_old spent [cased=4 passed=0]",
+    "L4YAML.Proofs.StreamAccum.accum_block_on_pendingContent[16].h_vpack relayed [cased=0 passed=1]",
+    "L4YAML.Proofs.StreamAccum.accum_block_on_pendingContent[33].h_seqF168 spent [cased=1 passed=0]",
+    "L4YAML.Proofs.StreamAccum.accum_block_on_pendingContent[34].h_mapF109 relayed [cased=0 passed=2]",
+    "L4YAML.Proofs.StreamAccum.accum_block_on_pendingContent[35].h_mapFV108 spent [cased=3 passed=0]",
+    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingBlock_indented[13].h_kslot_old spent [cased=11 passed=0]",
+    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingBlock_indented[14].h_closeF_old spent [cased=11 passed=0]",
+    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingBlock_indented[15].h_seqF_old spent [cased=3 passed=0]",
+    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingBlock_indented[32].h_kslotUp_old spent [cased=3 passed=0]",
+    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingBlock_indented[33].h_closeFV_old spent [cased=11 passed=0]",
+    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented[14].h_ncol_old spent [cased=1 passed=0]",
+    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented[16].h_vslot spent [cased=1 passed=0]",
+    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented[17].h_kslot spent [cased=7 passed=0]",
+    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented[18].h_closeF99 spent [cased=7 passed=0]",
+    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented[19].h_frames99 spent [cased=1 passed=3]",
+    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented[20].h_closeFV108 spent [cased=4 passed=3]",
+    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented[21].h_framesV108 spent [cased=1 passed=3]",
+    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented[38].h_seqF168 spent [cased=5 passed=0]",
+    "L4YAML.Proofs.StreamAccum.bareNodeRoute_or_refused[11].h_tail unreadable [cased=0 passed=0]",
+    "L4YAML.Proofs.StreamAccum.bareNodeRoute_or_refused_content[12].h_tail unreadable [cased=0 passed=0]",
+    "L4YAML.Proofs.StreamAccum.colon_open_map[19].h_sfx_land spent [cased=2 passed=0]",
+    "L4YAML.Proofs.StreamAccum.colon_open_map[20].h_nodoc_land spent [cased=2 passed=0]",
+    "L4YAML.Proofs.StreamAccum.colon_open_map[21].h_mk_land spent [cased=2 passed=0]",
+    "L4YAML.Proofs.StreamAccum.colon_open_map[22].h_res_land spent [cased=2 passed=0]",
+    "L4YAML.Proofs.StreamAccum.colon_open_map[23].h_ref_land relayed [cased=0 passed=2]",
+    "L4YAML.Proofs.StreamAccum.colon_open_map[24].h_cov_in spent [cased=1 passed=0]",
+    "L4YAML.Proofs.StreamAccum.colon_open_map[25].h_pr_land spent [cased=2 passed=0]",
+    "L4YAML.Proofs.StreamAccum.colon_open_map[26].h_resV_land spent [cased=3 passed=0]",
+    "L4YAML.Proofs.StreamAccum.colon_open_map_explicit[21].h_outer spent [cased=1 passed=0]",
+    "L4YAML.Proofs.StreamAccum.colon_open_map_implicit[12].h_routeF spent [cased=2 passed=0]",
+    "L4YAML.Proofs.StreamAccum.colon_open_map_implicit[27].h_routeS spent [cased=1 passed=0]",
+    "L4YAML.Proofs.StreamAccum.colon_open_map_props[11].h_routeF spent [cased=2 passed=0]",
+    "L4YAML.Proofs.StreamAccum.colon_open_map_props[12].h_routeFV spent [cased=2 passed=0]",
+    "L4YAML.Proofs.StreamAccum.colon_open_map_props[29].h_kslotD spent [cased=1 passed=0]",
+    "L4YAML.Proofs.StreamAccum.compact_open_map[29].h_outer spent [cased=1 passed=0]",
+    "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[16].h_keyctx relayed [cased=0 passed=1]",
+    "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[18].h_suffixctx relayed [cased=0 passed=1]",
+    "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[19].h_nodocctx relayed [cased=0 passed=1]",
+    "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[20].h_markerctx relayed [cased=0 passed=1]",
+    "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[22].h_ref relayed [cased=0 passed=1]",
+    "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[23].h_propsctx relayed [cased=0 passed=1]",
+    "L4YAML.Proofs.StreamAccum.content_dispatch_routed[18].h_keyctx spent [cased=2 passed=8]",
+    "L4YAML.Proofs.StreamAccum.content_dispatch_routed[20].h_suffixctx spent [cased=2 passed=8]",
+    "L4YAML.Proofs.StreamAccum.content_dispatch_routed[21].h_nodocctx spent [cased=2 passed=8]",
+    "L4YAML.Proofs.StreamAccum.content_dispatch_routed[22].h_markerctx spent [cased=2 passed=8]",
+    "L4YAML.Proofs.StreamAccum.content_dispatch_routed[24].h_ref spent [cased=2 passed=4]",
+    "L4YAML.Proofs.StreamAccum.content_dispatch_routed[25].h_propsctx spent [cased=3 passed=4]",
+    "L4YAML.Proofs.StreamAccum.content_dispatch_routed[26].h_markerline spent [cased=2 passed=8]",
+    "L4YAML.Proofs.StreamAccum.dedent_cover_of_landing[8].h_cov spent [cased=1 passed=0]",
+    "L4YAML.Proofs.StreamAccum.dedent_cover_of_landing[9].h_dcov spent [cased=1 passed=0]",
+    "L4YAML.Proofs.StreamAccum.deeperLandingResume[7].h_valF spent [cased=1 passed=0]",
+    "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch[11].h_nodeV spent [cased=1 passed=0]",
+    "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch[12].h_compact spent [cased=1 passed=0]",
+    "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch[14].h_nodeF spent [cased=1 passed=0]",
+    "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch[15].h_dframes spent [cased=1 passed=0]",
+    "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch[16].h_nodeFV spent [cased=1 passed=0]",
+    "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch[17].h_dframesV spent [cased=2 passed=0]",
+    "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch[18].h_cov spent [cased=1 passed=2]",
+    "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch[30].h_nodeS spent [cased=1 passed=0]",
+    "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch[31].h_nodeSF spent [cased=1 passed=0]",
+    "L4YAML.Proofs.StreamAccum.entryPropsKeyPack_of_dispatch[11].h_nodeV spent [cased=1 passed=0]",
+    "L4YAML.Proofs.StreamAccum.entryPropsKeyPack_of_dispatch[12].h_compact spent [cased=1 passed=0]",
+    "L4YAML.Proofs.StreamAccum.entryPropsKeyPack_of_dispatch[13].h_nodeF spent [cased=1 passed=0]",
+    "L4YAML.Proofs.StreamAccum.entryPropsKeyPack_of_dispatch[14].h_dframes spent [cased=1 passed=0]",
+    "L4YAML.Proofs.StreamAccum.entryPropsKeyPack_of_dispatch[15].h_nodeFV spent [cased=1 passed=0]",
+    "L4YAML.Proofs.StreamAccum.entryPropsKeyPack_of_dispatch[16].h_dframesV spent [cased=2 passed=0]",
+    "L4YAML.Proofs.StreamAccum.entryPropsKeyPack_of_dispatch[17].h_cov relayed [cased=0 passed=2]",
+    "L4YAML.Proofs.StreamAccum.flowKeyPack_of_close[7].h_key spent [cased=1 passed=0]",
+    "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_open[12].h_compact spent [cased=1 passed=4]",
+    "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_open[13].h_compact_pair spent [cased=2 passed=4]",
+    "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[9].h_col spent [cased=1 passed=4]",
+    "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[20].h_sfx spent [cased=2 passed=0]",
+    "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[21].h_nodoc spent [cased=2 passed=0]",
+    "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[24].h_tail143 spent [cased=1 passed=0]",
+    "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[25].h_mapF spent [cased=1 passed=0]",
+    "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[26].h_mapFV spent [cased=1 passed=0]",
+    "L4YAML.Proofs.StreamAccum.flowOpen_floor_at_prep[10].h_floor spent [cased=1 passed=0]",
+    "L4YAML.Proofs.StreamAccum.flowOpen_marker[4].h_doc spent [cased=1 passed=4]",
+    "L4YAML.Proofs.StreamAccum.flowOpen_stamp[4].h_ivl spent [cased=1 passed=4]",
+    "L4YAML.Proofs.StreamAccum.indicator_open_map[22].h_sfx_land relayed [cased=0 passed=2]",
+    "L4YAML.Proofs.StreamAccum.indicator_open_map[23].h_nodoc_land relayed [cased=0 passed=2]",
+    "L4YAML.Proofs.StreamAccum.indicator_open_map[24].h_mk_land relayed [cased=0 passed=2]",
+    "L4YAML.Proofs.StreamAccum.indicator_open_map[25].h_res_land relayed [cased=0 passed=2]",
+    "L4YAML.Proofs.StreamAccum.indicator_open_map[26].h_ref_land spent [cased=2 passed=0]",
+    "L4YAML.Proofs.StreamAccum.indicator_open_map[27].h_cov spent [cased=1 passed=0]",
+    "L4YAML.Proofs.StreamAccum.indicator_open_map[28].h_pr_land relayed [cased=0 passed=2]",
+    "L4YAML.Proofs.StreamAccum.indicator_open_map[29].h_explUp_chain relayed [cased=0 passed=1]",
+    "L4YAML.Proofs.StreamAccum.indicator_open_map[30].h_resV_land relayed [cased=0 passed=2]",
+    "L4YAML.Proofs.StreamAccum.indicator_open_map[32].h_explUp_chainD relayed [cased=0 passed=1]",
+    "L4YAML.Proofs.StreamAccum.markerctx_of_landing[11].h_mk spent [cased=1 passed=4]",
+    "L4YAML.Proofs.StreamAccum.question_open_map[18].h_sfx_land spent [cased=2 passed=0]",
+    "L4YAML.Proofs.StreamAccum.question_open_map[19].h_nodoc_land spent [cased=2 passed=0]",
+    "L4YAML.Proofs.StreamAccum.question_open_map[20].h_mk_land spent [cased=2 passed=0]",
+    "L4YAML.Proofs.StreamAccum.question_open_map[21].h_res_land spent [cased=3 passed=0]",
+    "L4YAML.Proofs.StreamAccum.question_open_map[22].h_ref_land relayed [cased=0 passed=2]",
+    "L4YAML.Proofs.StreamAccum.question_open_map[23].h_cov_in spent [cased=2 passed=0]",
+    "L4YAML.Proofs.StreamAccum.question_open_map[24].h_cov_nil spent [cased=2 passed=0]",
+    "L4YAML.Proofs.StreamAccum.question_open_map[25].h_pr_land spent [cased=2 passed=0]",
+    "L4YAML.Proofs.StreamAccum.question_open_map[26].h_explUp_chain spent [cased=1 passed=1]",
+    "L4YAML.Proofs.StreamAccum.question_open_map[27].h_resV_land spent [cased=2 passed=0]",
+    "L4YAML.Proofs.StreamAccum.question_open_map[29].h_explUp_chainD spent [cased=2 passed=0]",
+    "L4YAML.Proofs.StreamAccum.resumectx_of_landing[13].h_fS spent [cased=1 passed=4]",
+    "L4YAML.Proofs.StreamAccum.resumectx_of_landing[14].h_fV spent [cased=1 passed=0]",
+    "L4YAML.Proofs.StreamAccum.resumectx_of_landing[16].h_fQ spent [cased=1 passed=0]",
+    "L4YAML.Proofs.StreamAccum.rootMapRouteF_or_refused[7].h_ref unreadable [cased=0 passed=0]",
+    "L4YAML.Proofs.StreamAccum.rootMapRoute_or_refused[7].h_ref unreadable [cased=0 passed=0]",
+    "L4YAML.Proofs.StreamAccum.suffixctx_of_landing[11].h_sfx spent [cased=1 passed=4]",
+    "L4YAML.Proofs.StreamAccum.topLevelFlowResumeSep_or_refused[6].h_ref unreadable [cased=0 passed=0]"
   ]
 
 def expectedWriters : List String :=
@@ -695,7 +930,9 @@ run_cmd do
       let t := tallies.getD k {}
       tallies := tallies.insert k (t.insert how ((t.getD how 0) + 1))
     let mut supply : Array String := #[]
-    let mut nPaid := 0; let mut nRelayed := 0; let mut nDeclined := 0; let mut nNever := 0; let mut nConcl := 0
+    let mut nPaid := 0; let mut nRelayed := 0; let mut nDeclined := 0; let mut nNever := 0; let mut nConcl := 0; let mut nUnres := 0
+    let mut consumers : Array String := #[]
+    let mut nSpent := 0; let mut nCRelayed := 0; let mut nUnused := 0; let mut nUnread := 0
     for p in poss do
       unless p.kind == "top" && p.module == "L4YAML.Proofs.Production.StreamAccum" do continue
       if p.site == "[ret]" then
@@ -706,27 +943,45 @@ run_cmd do
       let k := s!"{p.decl}[{idx}]"
       let t := tallies.getD k {}
       let g (h : String) := t.getD h 0
+      let total := t.fold (fun acc _ v => acc + v) 0
+      -- `declined-only` means EVERY edge is an `Or.inr`; a `LOCAL` edge (an argument the
+      -- supply census could not follow) leaves the position `unresolved`, not declined.
       let cls :=
         if t.isEmpty then "never-supplied"
         else if g "PAY" > 0 then "paid"
+        else if g "DECLINE" == total then "declined-only"
         else if g "RELAY" + g "VIA" + g "FIELD" + g "SPLIT" + g "READ" + g "RETURN" > 0 then "relayed"
-        else if g "DECLINE" > 0 then "declined-only"
-        else "other"
+        else "unresolved"
       match cls with
       | "paid" => nPaid := nPaid + 1
       | "relayed" => nRelayed := nRelayed + 1
       | "declined-only" => nDeclined := nDeclined + 1
       | "never-supplied" => nNever := nNever + 1
-      | _ => pure ()
+      | _ => nUnres := nUnres + 1
       let hows := (t.toList.map fun (h, n) => s!"{h}={n}").toArray.qsort (· < ·)
       supply := supply.push s!"{p.decl}{p.site} {cls} [{" ".intercalate hows.toList}]"
+      -- the downward side: how the declaration's own value uses the binder
+      let declName := (p.decl.splitOn ".").foldl (fun (acc : Name) c => acc.str c) Name.anonymous
+      let real := env.constants.toList.find? (fun (nm, _) => Lean.privateToUserName nm == declName) |>.map (·.1)
+      let ccls := match real.bind (usesOf env) with
+        | none => ("unreadable", 0, 0)
+        | some m =>
+            let (c, pa) := m.getD idx.toNat! (0, 0)
+            (if c > 0 then "spent" else if pa > 0 then "relayed" else "unused", c, pa)
+      match ccls.1 with
+      | "spent" => nSpent := nSpent + 1
+      | "relayed" => nCRelayed := nCRelayed + 1
+      | "unused" => nUnused := nUnused + 1
+      | _ => nUnread := nUnread + 1
+      consumers := consumers.push s!"{p.decl}{p.site} {ccls.1} [cased={ccls.2.1} passed={ccls.2.2}]"
     let top := poss.filter (·.kind == "top")
     let nested := poss.filter (·.kind == "nested")
     let byAlt (a : String) := (poss.filter (·.alt == a)).size
     let mods := (poss.map (·.module)).toList.eraseDups
     let summary := s!"positions={poss.size} top={top.size} nested={nested.size} True={byAlt "True"} \
 PackAlt={byAlt "PackAlt"} PackAltG={byAlt "PackAltG"} modules={mods.length} \
-supply: paid={nPaid} relayed={nRelayed} declined-only={nDeclined} never-supplied={nNever} conclusions={nConcl} \
+supply: paid={nPaid} relayed={nRelayed} declined-only={nDeclined} never-supplied={nNever} unresolved={nUnres} conclusions={nConcl} \
+consumers: spent={nSpent} relayed={nCRelayed} unused={nUnused} unreadable={nUnread} \
 writers={writers.size} inrTrivial={nWrites}"
     let posLines := (poss.map posLine).toList
     let mut moved : Array String := #[]
@@ -736,6 +991,12 @@ writers={writers.size} inrTrivial={nWrites}"
       moved := moved.push s!"the ∨-True POSITIONS moved (shrink-only: a retirement re-pins DOWN with the disposition; a new position needs the owner's word).\nexpected ({expectedPositions.length}), got ({posLines.length}):\n{String.intercalate "\n" posLines}"
     if supply.toList != expectedSupply then
       moved := moved.push s!"the ∨-True SUPPLY classes moved.\nexpected ({expectedSupply.length}), got ({supply.size}):\n{String.intercalate "\n" supply.toList}"
+    if poss.size > ceilingPositions then
+      moved := moved.push s!"the ∨-True roster GREW: {poss.size} positions over the ceiling {ceilingPositions} — a new position needs the owner's word."
+    if nWrites > ceilingWrites then
+      moved := moved.push s!"the Or.inr trivial writes GREW: {nWrites} over the ceiling {ceilingWrites}."
+    if consumers.toList != expectedConsumers then
+      moved := moved.push s!"the ∨-True CONSUMER classes moved.\nexpected ({expectedConsumers.length}), got ({consumers.size}):\n{String.intercalate "\n" consumers.toList}"
     if writers.toList != expectedWriters then
       moved := moved.push s!"the Or.inr trivial WRITERS moved (shrink-only).\nexpected ({expectedWriters.length}), got ({writers.size}):\n{String.intercalate "\n" writers.toList}"
     unless moved.isEmpty do
