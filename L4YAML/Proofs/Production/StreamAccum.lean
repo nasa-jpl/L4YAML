@@ -23185,6 +23185,37 @@ lemma seqTop_refuted_at_indicator_core {s s' : ScannerState} {c : Char}
     · exact h_p
   · exact seqTop_refuted_at_question h_dispatch h_noflow
 
+/-- **Item 387: a `:`/`?` that dispatched with the cursor at or under `currentIndent`
+    stands on no sequence top.**  Item 378's refutation with the cursor bound as its
+    premise: a POPPED landing has it from `preprocess_indents_or_underIndent`
+    (`seqTop_refuted_at_indicator`), a NO-POP landing at the `-` park's own column
+    has it from the park (`pendingBlock.h_floor`: the park's level is at or below the
+    top, and the landing is at that level).  The line start saved the key at the
+    cursor, and the builders hold the dispatch over the directive-reset twin. -/
+lemma seqTop_refuted_at_indicator_le {s_prep s' : ScannerState} {c : Char}
+    (hcv : c = ':' ∨ c = '?')
+    (h_le : (s_prep.col : Int) ≤ s_prep.currentIndent)
+    (h_noflow : s_prep.inFlow = false)
+    (h_key : s_prep.simpleKey.pos.col = s_prep.col)
+    (h_poss : s_prep.simpleKey.possible = true)
+    (h_surv : c = ':' → (if s_prep.allowDirectives then
+        { s_prep with allowDirectives := false, documentEverStarted := true }
+      else s_prep).explicitKeyLine = none ∨
+      (scanValueClearKey (if s_prep.allowDirectives then
+        { s_prep with allowDirectives := false, documentEverStarted := true }
+      else s_prep)).simpleKey.possible = true)
+    (h_dispatch : scanNextToken_dispatchBlockIndicators
+        (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) c = .ok (some s')) :
+    atSequenceIndent s_prep = false := by
+  rw [← atSequenceIndent_disp s_prep]
+  by_cases had : s_prep.allowDirectives = true
+  · simp only [had, ↓reduceIte] at h_dispatch h_surv ⊢
+    exact seqTop_refuted_at_indicator_core hcv h_dispatch h_noflow h_le h_key h_poss h_surv
+  · simp only [had, Bool.false_eq_true, ↓reduceIte] at h_dispatch h_surv ⊢
+    exact seqTop_refuted_at_indicator_core hcv h_dispatch h_noflow h_le h_key h_poss h_surv
+
 /-- **Item 378: at a POPPED landing, a `:`/`?` that dispatched stands on no sequence
     top.**  The pop puts the cursor at or under `currentIndent`
     (`preprocess_indents_or_underIndent`), the line start saved the key at the cursor,
@@ -23206,15 +23237,10 @@ lemma seqTop_refuted_at_indicator {sc s_prep s' : ScannerState} {c : Char}
         (if s_prep.allowDirectives then
           { s_prep with allowDirectives := false, documentEverStarted := true }
         else s_prep) c = .ok (some s')) :
-    atSequenceIndent s_prep = false := by
-  have h_le : (s_prep.col : Int) ≤ s_prep.currentIndent :=
-    (preprocess_indents_or_underIndent h_preprocess).resolve_left h_pop
-  rw [← atSequenceIndent_disp s_prep]
-  by_cases had : s_prep.allowDirectives = true
-  · simp only [had, ↓reduceIte] at h_dispatch h_surv ⊢
-    exact seqTop_refuted_at_indicator_core hcv h_dispatch h_noflow h_le h_key h_poss h_surv
-  · simp only [had, Bool.false_eq_true, ↓reduceIte] at h_dispatch h_surv ⊢
-    exact seqTop_refuted_at_indicator_core hcv h_dispatch h_noflow h_le h_key h_poss h_surv
+    atSequenceIndent s_prep = false :=
+  seqTop_refuted_at_indicator_le hcv
+    ((preprocess_indents_or_underIndent h_preprocess).resolve_left h_pop)
+    h_noflow h_key h_poss h_surv h_dispatch
 
 /-- The three block indicators park before a separator (§8.2.1/§8.2.2 lookahead). -/
 lemma dispatchBlock_colon_next {s s' : ScannerState} (h_noflow : s.inFlow = false)
@@ -26886,9 +26912,17 @@ lemma deeperLandingResume {sp_start sp_gram sp_scan sp_mid : SurfPos} {sc s_prep
 
     **Item 386 (L1):** the caller's no-pop landing sits at `k ≥ n` (`h_nk`: the
     park's level is at or below the top, the top at or left of the landing), so
-    `k < n` is gone; what stays declined is `k = n` — a `:`/`?` at the `-`'s own
-    column, a SEQUENCE TOP the dispatcher refuses (`-⏎a: 1`), but the park holds
-    no fact that its top entry is the sequence it pushed. -/
+    `k < n` is gone.
+
+    **Item 387:** `k = n` is the CALLER's split, not this helper's — the landing
+    stands AT the park's column, which is the stack top (`pendingBlock.h_park_top`
+    and `h_floor` together: `sc.currentIndent = n`; the field item 386 mandated is
+    already carried).  A SEQUENCE top refutes the dispatched `:`/`?`
+    (`seqTop_refuted_at_indicator_le`, `-⏎a: 1`); a MAPPING top is the enclosing
+    mapping's own column (`a:⏎- b` pushes nothing at `col = currentIndent`), so the
+    `:` is that mapping's SIBLING (`a:⏎-⏎c: 1`), whose route is not among this
+    park's frames (widths `< n`) — the caller's one declined face.  This helper
+    takes `n < k` and has no decline left: its conclusion is the route itself. -/
 lemma deeperLandingResumeSeq {sp_start sp_scan sp_mid : SurfPos} {n k : Nat}
     {ks : List FrameLevel}
     (closeF : ∀ sp_m : SurfPos, SBlockIndented n .blockIn sp_scan sp_m →
@@ -26896,24 +26930,19 @@ lemma deeperLandingResumeSeq {sp_start sp_scan sp_mid : SurfPos} {n k : Nat}
       ResumeFrames (SLYamlStream sp_start) ks sp_end)
     (h_lt : ∀ fr ∈ ks, fr.width < n)
     (h_ssl : SSLComments sp_scan sp_mid)
-    (h_nk : n ≤ k) :
-    (∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width < k) ∧
+    (h_nk : n < k) :
+    ∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width < k) ∧
       ∀ sp_end : SurfPos, SCompactMapTail k sp_mid sp_end →
-        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ True := by
-  by_cases hnk : n + 1 ≤ k
-  · refine Or.inl ⟨ks, fun fr hfr => Nat.lt_trans (h_lt fr hfr) (by omega),
-      fun sp_end h_tail => ?_⟩
-    cases h_tail with
-    | nil _ _ =>
-      exact closeF sp_mid (SBlockIndented.empty n .blockIn sp_scan sp_mid h_ssl)
-        sp_mid (SCompactSeqTail.nil n sp_mid)
-    | cons _ _ s₁ s₂ _ h_ind h_entry h_tail' =>
-      exact closeF sp_end (SBlockIndented.node n .blockIn sp_scan sp_end
-          (nestedBlockMap hnk h_ssl (SBlockMapEntries_of_compactTail h_ind h_entry h_tail')))
-        sp_end (SCompactSeqTail.nil n sp_end)
-  · -- `k = n`: the sequence top, declined (see the docstring).
-    have _hk : k = n := by omega
-    exact Or.inr trivial
+        ResumeFrames (SLYamlStream sp_start) ks sp_end := by
+  refine ⟨ks, fun fr hfr => Nat.lt_trans (h_lt fr hfr) h_nk, fun sp_end h_tail => ?_⟩
+  cases h_tail with
+  | nil _ _ =>
+    exact closeF sp_mid (SBlockIndented.empty n .blockIn sp_scan sp_mid h_ssl)
+      sp_mid (SCompactSeqTail.nil n sp_mid)
+  | cons _ _ s₁ s₂ _ h_ind h_entry h_tail' =>
+    exact closeF sp_end (SBlockIndented.node n .blockIn sp_scan sp_end
+        (nestedBlockMap h_nk h_ssl (SBlockMapEntries_of_compactTail h_ind h_entry h_tail')))
+      sp_end (SCompactSeqTail.nil n sp_end)
 
 -- Block dispatch after closing old pending: '-' at col=0 opens new block sequence.
 -- Shared by pendingContent and pendingFlow constructors.
@@ -29772,10 +29801,33 @@ lemma accum_block_on_pendingBlock
                   rw [hcol_mid] at this
                   omega
                 exact (Classical.em (s_prep.indents = sc.indents)).elim
-                  (fun h_eq => deeperLandingResumeSeq closeF h_ltF h_ssl (by
-                    have := landing_floor_of_arm h_noflow h_larm (by omega) h_base h_preprocess
-                    rw [currentIndent_of_indents_eq h_eq, h_scol] at this
-                    omega))
+                  (fun h_eq =>
+                    have h_nk : n ≤ k := by
+                      have := landing_floor_of_arm h_noflow h_larm (by omega) h_base h_preprocess
+                      rw [currentIndent_of_indents_eq h_eq, h_scol] at this
+                      omega
+                    if hnk : n < k then Or.inl (deeperLandingResumeSeq closeF h_ltF h_ssl hnk)
+                    else
+                      -- Item 387: `k = n` — the landing stands AT the park's column, which IS the
+                      -- stack top (`h_lvl_old` with `h_top_old`).  A SEQUENCE top refutes the
+                      -- dispatched `:`/`?` (`-⏎a: 1`); a MAPPING top is the enclosing mapping's own
+                      -- column (`a:⏎- b` pushed nothing), so the `:` is that mapping's sibling
+                      -- (`a:⏎-⏎c: 1`), whose route is not among this park's frames — declined, with
+                      -- the `:` whose saved key the live register clears.
+                      (Classical.em (atSequenceIndent s_prep = true ∧ (c = ':' →
+                          (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep).explicitKeyLine = none ∨
+                          (scanValueClearKey (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep)).simpleKey.possible = true))).elim
+                        (fun ⟨hseq, h_surv⟩ => absurd
+                          (seqTop_refuted_at_indicator_le hcv
+                            (by rw [currentIndent_of_indents_eq h_eq, h_scol]; omega)
+                            h_noflow (preprocess_saved_key_col h_sk h_noflow h_preprocess).2
+                            (preprocess_saved_key_col h_sk h_noflow h_preprocess).1 h_surv h_dispatch)
+                          (by simp [hseq]))
+                        (fun _ => Or.inr trivial))
                   (fun h_pop =>
                     match h_cvO with
                     | Or.inl ⟨lo, _, hc⟩ =>

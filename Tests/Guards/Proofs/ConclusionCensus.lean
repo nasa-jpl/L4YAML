@@ -286,8 +286,10 @@ def expected : List String :=
    -- item 386: the mapping helper's second `inl` is the SIBLING at `k = nv` (empty
    -- value, `resumeAt` the head frame); its `inr`s are now the popped/col-0 dedent
    -- and the frameless park — the no-pop dedent closes by `absurd`.
+   -- item 387: `deeperLandingResumeSeq` leaves the census — it takes `n < k` and
+   -- concludes the route itself (no `∨ True`); its former `inr` (`k = n`) is the
+   -- caller's split on `atSequenceIndent` (sequence top refuted, mapping sibling declined).
    "deeperLandingResume inl=2,inr=2 | un=0,0",
-   "deeperLandingResumeSeq inl=1,inr=1 | un=0,0",
    "flowKeyHead inl=0,inr=0 | un=0,0",
    "flowKeyRoute_of_open inl=2,inr=4 inl=0,inr=0 inl=1,inr=2 inl=2,inr=0 inl=1,inr=2 | un=3,3",
    "flowKeyRoute_of_root inl=2,inr=2 inl=0,inr=0 inl=1,inr=2 inl=5,inr=0 inl=1,inr=2 | un=3,5",

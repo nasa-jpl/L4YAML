@@ -329,6 +329,8 @@ def expectedAlphabet : String := "prodTyped=169 prodSurf=96 prodSpec=58"
 -- 2026-10-24 (Row 12, item 350): `stepHolders` 1821 → 1823, `dispHolders` 334 → 335 —
 -- `scanValue_notQuestion` and `dispatchBlock_colon_notQuestion` hold the `:` step/dispatch equations.
 -- 2026-10-24 (B3 [66] col-0 threading): re-read on the item-355 base.
+-- 2026-10-29 (item 387): stepHolders 1894 → 1895, dispHolders 362 → 363 — `seqTop_refuted_at_indicator_le`
+-- (item 378's refutation with the cursor bound as its premise) holds the dispatch over the directive-reset twin.
 def expectedSteps : String :=
 -- 2026-10-24 (B3 [66] col-0 threading): stepHolders 1819 → 1874, dispHolders 332 → 348, dispTwoCorr 29 → 31 —
 -- the gate/JSON-key/reservation lemmas hold the preprocess and dispatch step equations (1878/351 on the
@@ -336,7 +338,7 @@ def expectedSteps : String :=
 -- 2026-10-25 (item 359): stepHolders 1887 → 1888 — `scanValue_refused_of_outer` (RegisterWitness) holds the
 -- `scanValue s = .ok s'` step equation.
 -- Item 372 (2026-10-27): `seqTopKey_refuted_at_colon` holds the `:` dispatch step (+1 step/disp holder).
-  "stepHolders=1894 dispHolders=362 dispTwoCorr=31 fns=73 fnsIx=26"
+  "stepHolders=1895 dispHolders=363 dispTwoCorr=31 fns=73 fnsIx=26"
 
 /-- **The ladder, at each population.**  `edge` is a production whose right
     endpoint is the step's output; `chain` requires a path to it from another

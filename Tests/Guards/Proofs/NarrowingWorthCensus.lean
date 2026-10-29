@@ -873,7 +873,11 @@ one unfolding, and §6 is the item where those two disagreed about binders. -/
 -- 2026-10-28 (item 385): theorems 6335 → 6337, byElab 15 → 17, byWhnf 15 → 17
 -- — the two item-385 helpers conclude the openers' `(∃ ks, …) ∨ True` binder shape, a §8 no-op conclusion by this census; their worth is the three site leaves they route, not their statements (read at RelaySupplyCensus's SPLIT BRANCH: DECLINE-closed 103 → 100).
 -- 2026-10-28 (item 386): theorems 6337 → 6338 — `IndentFloor.int_le_of_succ`; the helpers' `∨ True` conclusions stay §8 no-ops (17/17).
-def expectedNoopTally : String := "theorems=6341 byElab=17 byWhnf=17 elabOnly=0 whnfOnly=0"
+-- 2026-10-29 (item 387, rebased over S5's [89] fix): theorems 6341 → 6342 (`seqTop_refuted_at_indicator_le` on
+-- top of the base's 6338 → 6341); byElab/byWhnf 17 → 16 — `deeperLandingResumeSeq` no longer concludes
+-- `… ∨ True` (restated on `n < k`, plain conclusion), so one no-op leaves.  Predicted as the sum of the
+-- two independent moves; the rebased build confirms it.
+def expectedNoopTally : String := "theorems=6342 byElab=16 byWhnf=16 elabOnly=0 whnfOnly=0"
 -- 5302 → 5344 on 2026-10-18 (plan row 20's close, closure-log item 280): the
 -- parse-side alias obligation moved to §7.1's DECLARATION set, so the carrier
 -- grew and the predicate gained its tools.  What is new in kind: `AG` carries
@@ -951,7 +955,7 @@ def expectedNoopConclusions : List String :=
    "PreprocessIndentStable.IndentFloor.transport",
    "dedent_cover_of_landing",
    "deeperLandingResume",
-   "deeperLandingResumeSeq",
+   -- 2026-10-29 (item 387): `deeperLandingResumeSeq` left — restated on `n < k` with a plain conclusion.
    "flowKeyHead",
    "flowKeyRoute_of_open",
    "flowKeyRoute_of_root",

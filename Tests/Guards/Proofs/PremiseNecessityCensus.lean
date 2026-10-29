@@ -358,6 +358,8 @@ declarations' own binders and not by a rescoring of an existing one.
 -- Item 374: `h_base` on `resumectx_of_landing` and the resume context's face disjunct — constants/decls +2, READ +6, RELAY +1.
 -- 2026-10-28 (item 385): constants 1701 → 1703, decls 1338 → 1340, READ 1421 → 1424, RELAY 2660 → 2662
 -- — the two item-385 helpers; `deeperLandingResume.h_valF` is one more optional context (READ inside the helper).
+-- 2026-10-29 (item 387): constants 1705 → 1707, decls 1342 → 1344 (`seqTop_refuted_at_indicator_le` + the restated
+-- `deeperLandingResumeSeq`'s match), READ +2, RELAY +7 — the `_le` lemma relays its premises to `_core`.
 def expectedModuleTallyP : String :=
   -- 2026-10-24 (item 350): constants 1424 → 1430, decls 1132 → 1137, READ 1207 → 1209, RELAY 2233 → 2237,
   -- RETURN 139 → 140 — `NotQuestionPark` and its three lemmas; `explFrameValueLine`'s split alternative.
@@ -374,7 +376,7 @@ def expectedModuleTallyP : String :=
   -- (`RelaySupplyCensus.isTwoArm`): the thirteen premises handed to a `Classical.em … |>.elim` are read at the site.
   -- 2026-10-28 (item 386): constants/decls +2 (`IndentFloor.int_le_of_succ`, the level relays), READ +5, RELAY +2
   -- (the helpers' new premises `h_floor`/`h_nk`, the openers' `h_lvl_old`/`h_floor_mv`); UNUSED unchanged.
-  "constants=1705 decls=1342 eta=442 FIELD=192 READ=1429 RELAY=2664 RETURN=168 UNUSED=27"
+  "constants=1707 decls=1344 eta=442 FIELD=192 READ=1431 RELAY=2671 RETURN=168 UNUSED=27"
 
 -- Item 287: `accum_block_on_closeThenBlock`'s `h_vslot`, a READ one, left the
 -- `_ ∨ True` population — its sibling's move, under this peel.  Item 288: and
