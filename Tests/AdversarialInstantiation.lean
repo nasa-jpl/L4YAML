@@ -7480,6 +7480,44 @@ def testFlowParkFrames (state : IO.Ref TestCollector) : IO Unit := do
     let got := rootKeys input
     checkM state s!"P63 {label}: {repr expected}" (got == expected) s!"got {repr got}"
 
+/-! ## Priority 64 — item 394: the flow value's frames CHAIN PAID (`FlowBaseRoutes.valueF`)
+
+Item 393 sited the flow lane's escape at `pendingFlow`; the tree re-read in item 394 sites it at the flow
+CLOSE: `accum_step_flow`'s `]`/`}` arms build `PendingNode.pendingContent` with `h_framesS := Or.inr
+trivial`, so `accum_block_pending`'s content arm relayed no frames into `closeThenBlock.h_mapF` and the
+root sibling `b` of `a: [1]⏎b: 2` rode `rootMapRoute`.  Item 394 adds `FlowBaseRoutes.valueF` (the
+value route's frames twin), born at `accum_flow_open_depth0`'s `pendingMapValue` arm from
+`pendingMapValue.h_closeF` over `SBlockNode.flowInBlock`, declined (`fun _ _ => Or.inr trivial`) at the
+seven other flow-open births, and relayed at both closes into `h_framesS` — so `b` takes the resume arm
+on `FrameLevel.map 0 :: ks`.  The rows are Priority 63's eight plus the nested park's dedent the mandate
+named (`a:⏎  b: [1]⏎c: 2`) and seven more shapes along the paid chain: a third sibling, the column-1
+sibling after a flow MAPPING, a blank line between, two flow values in a row, a nested flow mapping value
+before the dedent, a dedent to a column neither mapping holds, and a `-` after the flow value.  Verdicts
+read before the rows were written (`scratch/p64probe.lean`, item 394 ledger): 8/8 new rows HELD. -/
+
+def testFlowFramesChain (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 64: item 394 — the flow value's frames chain PAID (FlowBaseRoutes.valueF born at the mapping arm's flow open from h_closeF, relayed at both flow closes into pendingContent.h_framesS): parser verdicts at Priority 63's inputs, the nested park's dedent, and seven more shapes on the paid chain"
+  let rows : List (String × String × Option (Nat × List String × List String)) :=
+    [ ("R1 a: [1]⏎b: 2 — the root sibling after a FLOW value (now the resume arm on map 0 :: ks)", "a: [1]\nb: 2\n", some (1, ["a", "b"], ["1"])),
+      ("R2 [1]⏎b: 2 — a root flow then a key: REFUSED (the root births decline valueF; the scanner refuses the input)", "[1]\nb: 2\n", none),
+      ("R3 a: {x: 1}⏎b: 2 — the same after a flow MAPPING value (the `}` close relays too)", "a: {x: 1}\nb: 2\n", some (1, ["a", "b"], ["x"])),
+      ("R4 ? [1]⏎: 2⏎b: 3 — the explicit key's flow node (h_compact_pair; the `?` birth declines valueF)", "? [1]\n: 2\nb: 3\n", some (1, ["<non-scalar>", "b"], [])),
+      ("R5 a:⏎  b: [1]⏎  c: 2⏎d: 3 — the nested park: valueF carries map 2 :: [map 0]", "a:\n  b: [1]\n  c: 2\nd: 3\n", some (1, ["a", "d"], ["b", "c"])),
+      ("R6 a: [1]⏎ b: 2 — a sibling at column 1, no stack level: REFUSED", "a: [1]\n b: 2\n", none),
+      ("R7 a: [1] # c⏎b: 2 — comments between the closed value and the sibling (valueF's SSLComments)", "a: [1] # c\nb: 2\n", some (1, ["a", "b"], ["1"])),
+      ("R8 a: [1]⏎b — a bare scalar after the mapping: REFUSED (trailing content)", "a: [1]\nb\n", none),
+      ("R9 a:⏎  b: [1]⏎c: 2 — the nested park's DEDENT (the mandate's row): the frames list's tail map 0 resumes c", "a:\n  b: [1]\nc: 2\n", some (1, ["a", "c"], ["b"])),
+      ("R10 a: [1]⏎b: 2⏎c: 3 — a third sibling after the resumed mapping", "a: [1]\nb: 2\nc: 3\n", some (1, ["a", "b", "c"], ["1"])),
+      ("R11 a: {x: 1}⏎ b: 2 — column 1 after a flow MAPPING value: REFUSED", "a: {x: 1}\n b: 2\n", none),
+      ("R12 a: [1]⏎⏎b: 2 — a blank line inside the SSLComments run", "a: [1]\n\nb: 2\n", some (1, ["a", "b"], ["1"])),
+      ("R13 a: [1, 2]⏎b: [3]⏎c: 2 — two flow values in a row: the chain is born twice", "a: [1, 2]\nb: [3]\nc: 2\n", some (1, ["a", "b", "c"], ["1", "2"])),
+      ("R14 a:⏎  b: [1]⏎  c: {y: 2}⏎d: 3 — a nested flow MAPPING value before the dedent", "a:\n  b: [1]\n  c: {y: 2}\nd: 3\n", some (1, ["a", "d"], ["b", "c"])),
+      ("R15 a:⏎  b: [1]⏎ c: 2 — a dedent to column 1, held by neither mapping: REFUSED", "a:\n  b: [1]\n c: 2\n", none),
+      ("R16 a: [1]⏎- b — a `-` after the flow value at the mapping's column: REFUSED", "a: [1]\n- b\n", none) ]
+  for (label, input, expected) in rows do
+    let got := rootKeys input
+    checkM state s!"P64 {label}: {repr expected}" (got == expected) s!"got {repr got}"
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -7553,6 +7591,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testLandedNoPushHalf state
   testRootFrameSupply state
   testFlowParkFrames state
+  testFlowFramesChain state
   testDeeperLandingOnMapPark state
   testParseOkCheckFrom state
   testParseNodeCF state
