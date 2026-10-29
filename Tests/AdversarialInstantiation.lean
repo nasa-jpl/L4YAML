@@ -7454,6 +7454,32 @@ def testRootFrameSupply (state : IO.Ref TestCollector) : IO Unit := do
     let got := rootKeys input
     checkM state s!"P62 {label}: {repr expected}" (got == expected) s!"got {repr got}"
 
+
+/-! ## Priority 63 — item 393: (α) at the FLOW park PRICED (`flip_flow_frames_field.py`) and the site RE-READ
+
+The root sibling after a FLOW value (`a: [1]⏎b: 2`) closes into `PendingNode.pendingFlow`, whose only
+route is the stream (`h_stream`): `accum_block_pending`'s `pendingFlow` arm hands `closeThenBlock` every
+face as `Or.inr trivial`, so `b` rides `rootMapRoute`.  The rows read the parser at every input the flow
+lane names — the value-then-sibling shapes, the root flow then a key (refused: `invalidBareDocument`,
+`flowKeyRoute_of_root`'s refutation), the explicit `? [1]` key (paid today through `h_compact_pair`),
+the nested park, the column-1 sibling, comments between, trailing content.  Verdicts read before the
+rows were written (item 393 ledger, `scratch/p63probe.lean`): 8/8 HELD. -/
+
+def testFlowParkFrames (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 63: item 393 — (α) at the FLOW park PRICED (pendingFlow.h_frF 6/11, born only at block_dispatch_deferred; STARVED until FlowBaseRoutes carries the frames) and the site RE-READ: parser verdicts at every input the flow lane names"
+  let rows : List (String × String × Option (Nat × List String × List String)) :=
+    [ ("R1 a: [1]⏎b: 2 — the root sibling after a FLOW value (the flow park's live input)", "a: [1]\nb: 2\n", some (1, ["a", "b"], ["1"])),
+      ("R2 [1]⏎b: 2 — a root flow then a key: REFUSED (invalidBareDocument; flowKeyRoute_of_root's hmem arm is a refutation)", "[1]\nb: 2\n", none),
+      ("R3 a: {x: 1}⏎b: 2 — the same after a flow MAPPING value", "a: {x: 1}\nb: 2\n", some (1, ["a", "b"], ["x"])),
+      ("R4 ? [1]⏎: 2⏎b: 3 — the explicit key's flow node (h_compact_pair, paid today)", "? [1]\n: 2\nb: 3\n", some (1, ["<non-scalar>", "b"], [])),
+      ("R5 a:⏎  b: [1]⏎  c: 2⏎d: 3 — the nested park: the frames `map 2 :: [map 0]` the face must carry", "a:\n  b: [1]\n  c: 2\nd: 3\n", some (1, ["a", "d"], ["b", "c"])),
+      ("R6 a: [1]⏎ b: 2 — a sibling at column 1, no stack level: REFUSED", "a: [1]\n b: 2\n", none),
+      ("R7 a: [1] # c⏎b: 2 — comments between the closed value and the sibling (the face's SSLComments)", "a: [1] # c\nb: 2\n", some (1, ["a", "b"], ["1"])),
+      ("R8 a: [1]⏎b — a bare scalar after the mapping: REFUSED (trailing content)", "a: [1]\nb\n", none) ]
+  for (label, input, expected) in rows do
+    let got := rootKeys input
+    checkM state s!"P63 {label}: {repr expected}" (got == expected) s!"got {repr got}"
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -7526,6 +7552,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testMapTopLemmaWalk state
   testLandedNoPushHalf state
   testRootFrameSupply state
+  testFlowParkFrames state
   testDeeperLandingOnMapPark state
   testParseOkCheckFrom state
   testParseNodeCF state
