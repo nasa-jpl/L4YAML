@@ -362,6 +362,7 @@ declarations' own binders and not by a rescoring of an existing one.
 -- `deeperLandingResumeSeq`'s match), READ +2, RELAY +7 — the `_le` lemma relays its premises to `_core`.
 -- 2026-10-29 (item 388): constants 1707 → 1709, decls 1344 → 1346, FIELD/READ/RELAY/RETURN +1/+2/+1/+1 —
 -- `valueLandedSeq` and the restated `h_entry_of`; no premise class moved by the `.blockOut` typing.
+-- 2026-10-29 (item 389): the eight item-389 scanner/stack helpers and the mapping-top relays at the `-` park's births (constants 1709 → 1727, decls 1346 → 1362, READ 1433 → 1442, RELAY 2672 → 2702, RETURN 169 → 172).
 def expectedModuleTallyP : String :=
   -- 2026-10-24 (item 350): constants 1424 → 1430, decls 1132 → 1137, READ 1207 → 1209, RELAY 2233 → 2237,
   -- RETURN 139 → 140 — `NotQuestionPark` and its three lemmas; `explFrameValueLine`'s split alternative.
@@ -378,7 +379,7 @@ def expectedModuleTallyP : String :=
   -- (`RelaySupplyCensus.isTwoArm`): the thirteen premises handed to a `Classical.em … |>.elim` are read at the site.
   -- 2026-10-28 (item 386): constants/decls +2 (`IndentFloor.int_le_of_succ`, the level relays), READ +5, RELAY +2
   -- (the helpers' new premises `h_floor`/`h_nk`, the openers' `h_lvl_old`/`h_floor_mv`); UNUSED unchanged.
-  "constants=1709 decls=1346 eta=442 FIELD=193 READ=1433 RELAY=2672 RETURN=169 UNUSED=27"
+  "constants=1727 decls=1362 eta=443 FIELD=194 READ=1442 RELAY=2702 RETURN=172 UNUSED=27"
 
 -- Item 287: `accum_block_on_closeThenBlock`'s `h_vslot`, a READ one, left the
 -- `_ ∨ True` population — its sibling's move, under this peel.  Item 288: and

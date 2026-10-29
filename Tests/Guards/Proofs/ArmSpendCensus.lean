@@ -273,8 +273,9 @@ def expectedBinders : List String :=
 -- `gate_of_blockEntry`, `gate_of_key`, `gate_of_value`, `blockScalar_park_gate`, `noPending_gate_of_inFlow`,
 -- `PendingNode.nil_gate_of_allowDirectives`, `FlowBaseRoutes.value`) return functions, so their values
 -- have fewer leading lambdas than their types have binders; the census refuses to read them, by design.
+-- 2026-10-29 (item 389): skipped 39 → 40 — the landed birth's `nv < k` mapping-top term (`dite` over `s_prep.currentIndent < k` inside `Or.inl`) is a shape the census skips; no edge moved.
 def expectedTally : String :=
-  "edges=106 skipped=39 DECLINE=21 FIELD=7 PAY=17 RELAY=29 VIA=32"
+  "edges=106 skipped=40 DECLINE=21 FIELD=7 PAY=17 RELAY=29 VIA=32"
 
 run_cmd do
   let env ← getEnv
