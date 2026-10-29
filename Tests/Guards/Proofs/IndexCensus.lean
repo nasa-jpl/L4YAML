@@ -294,8 +294,10 @@ def expected : List String :=
    "stream/other/occ=2  ×14",
    "stream/other/occ=3  ×6",
    "stream/other/occ=4  ×5",
-   -- item 385: the helpers' literal `map nv :: ks` / `ks` frame lists
-   "stream/other/occ=6  ×2",
+   -- item 385: the helpers' literal `map nv :: ks` / `ks` frame lists;
+   -- item 386: one more occurrence each — the mapping helper's `h_floor` premise
+   -- and `h_valF`'s level conjunct name the landing width / the park's level again
+   "stream/other/occ=7  ×2",
    "stream/other/occ=8  ×1",
    "valueline/bottom/occ=1  ×34",
    "valueline/frames/occ=1  ×2",
