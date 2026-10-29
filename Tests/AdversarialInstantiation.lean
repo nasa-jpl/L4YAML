@@ -7518,6 +7518,90 @@ def testFlowFramesChain (state : IO.Ref TestCollector) : IO Unit := do
     let got := rootKeys input
     checkM state s!"P64 {label}: {repr expected}" (got == expected) s!"got {repr got}"
 
+/-! ## Priority 64b — item 394 option B's indent-stack lemmas read on real stacks (PR #166 review)
+
+Option B carries `pendingMapValue.h_closeF`'s cover from the mapping park to the flow opener with no
+top fact: `Covered` is anti-monotone in the stack, so it suffices that the preprocess step only POPS.
+Three lemmas say so — `unwindIndentsLoop_mem` (every entry the loop leaves was on the incoming
+stack, any fuel), `unwindIndents_mem` (the same at the loop's own fuel `s.indents.size`) and
+`preprocess_indents_subset` (`scanNextToken_preprocess sc = .ok (some (s_prep, c)) → ∀ e ∈ s_prep.indents,
+e ∈ sc.indents`).  Rule 2 below instantiates them where their premises hold: the loop on empty /
+singleton / nested stacks at fuel 0, 1, 2 and `size`, against columns below, at and above the top
+(vacuous rows — nothing popped — and nonvacuous rows both counted); the preprocess lemma at every
+accepted pause of the scanner on inputs with and without an unwind.  A violation is a build failure. -/
+
+/-- One synthetic stack walk: `(rows, viol, popped)` — every `(fuel, col)` pair is one row; `viol`
+    counts an entry of the result that was NOT on the incoming stack; `popped` counts the rows that
+    actually removed something (the nonvacuous instances). -/
+def unwindMemWalk (stack : Array (Int × Bool)) : Nat × Nat × Nat := Id.run do
+  let base : ScannerState := { ScannerState.mk' "" with
+    indents := stack.map fun (c, b) => ⟨c, b⟩ }
+  let shape : ScannerState → Array (Int × Bool) := fun st => st.indents.map fun e => (e.column, e.isSequence)
+  let mut rows := 0
+  let mut viol := 0
+  let mut popped := 0
+  let cols : List Int := [-1, 0, 1, 2, 3, 5]
+  let fuels : List Nat := [0, 1, 2, base.indents.size]
+  for col in cols do
+    for fuel in fuels do
+      rows := rows + 1
+      let s' := unwindIndentsLoop base col fuel
+      if (shape s').any (fun e => !(shape base).contains e) then viol := viol + 1
+      if s'.indents.size < base.indents.size then popped := popped + 1
+    -- `unwindIndents` itself (the loop at `size`)
+    rows := rows + 1
+    let s'' := unwindIndents base col
+    if (shape s'').any (fun e => !(shape base).contains e) then viol := viol + 1
+    if s''.indents.size < base.indents.size then popped := popped + 1
+  return (rows, viol, popped)
+
+/-- One scanner walk: `(pauses, viol, unwound)` — at every accepted pause the preprocess result's
+    stack is checked against the incoming one (`preprocess_indents_subset`); `unwound` counts the
+    pauses where the preprocess popped (the nonvacuous instances). -/
+def preprocessSubsetWalk (input : String) (fuel : Nat := 64) : Nat × Nat × Nat := Id.run do
+  let mut s := ScannerState.mk' input
+  let mut pauses := 0
+  let mut viol := 0
+  let mut unwound := 0
+  let shape : ScannerState → Array (Int × Bool) := fun st => st.indents.map fun e => (e.column, e.isSequence)
+  for _ in [:fuel] do
+    match scanNextToken s, scanNextToken_preprocess s with
+    | .ok (some sN), .ok (some (sp, _)) =>
+      pauses := pauses + 1
+      if (shape sp).any (fun e => !(shape s).contains e) then viol := viol + 1
+      if sp.indents.size < s.indents.size then unwound := unwound + 1
+      s := sN
+    | _, _ => break
+  return (pauses, viol, unwound)
+
+def testIndentSubsetLemmas (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 64b: item 394 option B (PR #166 review) — the indent-stack lemmas behind the cover's park → opener transport read on real stacks: unwindIndentsLoop_mem / unwindIndents_mem over empty, singleton and nested stacks at fuel 0, 1, 2 and size; preprocess_indents_subset at every accepted pause with and without an unwind"
+  -- Predicted before the run: viol = 0 on every row.  `popped` per stack: the empty and the
+  -- singleton stack pop NOTHING at any fuel or column (the loop keeps `size > 1`) — all rows
+  -- vacuous; the nested stack pops only at fuel ≥ 1 and col below the top.
+  let stacks : List (String × Array (Int × Bool) × Bool) :=
+    [ ("empty stack (fuel 0/1/2/0: every row vacuous)", #[], false),
+      ("singleton ⟨-1, map⟩ (the sentinel is never popped: every row vacuous)", #[(-1, false)], false),
+      ("nested ⟨-1⟩ ⟨0 map⟩ ⟨2 seq⟩ ⟨4 map⟩ (pops below the top at fuel ≥ 1)", #[(-1, false), (0, false), (2, true), (4, false)], true),
+      ("two sequences ⟨-1⟩ ⟨0 seq⟩ ⟨2 seq⟩", #[(-1, false), (0, true), (2, true)], true) ]
+  for (label, stack, nonvacuous) in stacks do
+    let (rows, viol, popped) := unwindMemWalk stack
+    check state s!"unwindIndentsLoop_mem / unwindIndents_mem over {label}: rows={rows} viol={viol} popped={popped}"
+      (viol == 0 && (if nonvacuous then popped > 0 else popped == 0))
+  -- Predicted before the run: viol = 0 at every pause; `unwound` as labelled.
+  let inputs : List (String × String × Nat) :=
+    [ ("a: 1⏎b: 2 (no unwind at any pause)", "a: 1\nb: 2\n", 0),
+      ("a:⏎  b: 1⏎c: 2 (one dedent: one unwound pause)", "a:\n  b: 1\nc: 2\n", 1),
+      ("a:⏎  b:⏎    c: 1⏎d: 2 (two levels closed at one pause)", "a:\n  b:\n    c: 1\nd: 2\n", 1),
+      ("a: [1]⏎b: 2 (item 394's live input: no unwind)", "a: [1]\nb: 2\n", 0),
+      ("a:⏎  b: [1]⏎c: 2 (the nested flow park, then the dedent)", "a:\n  b: [1]\nc: 2\n", 1),
+      ("- a⏎- b (sequence siblings: no unwind)", "- a\n- b\n", 0),
+      ("a:⏎  - x⏎b: 1 (a pushed sequence closed by the dedent)", "a:\n  - x\nb: 1\n", 1) ]
+  for (label, input, expectedUnwound) in inputs do
+    let (pauses, viol, unwound) := preprocessSubsetWalk input
+    check state s!"preprocess_indents_subset over {label}: pauses={pauses} viol={viol} unwound={unwound}"
+      (viol == 0 && unwound == expectedUnwound)
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -7592,6 +7676,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testRootFrameSupply state
   testFlowParkFrames state
   testFlowFramesChain state
+  testIndentSubsetLemmas state
   testDeeperLandingOnMapPark state
   testParseOkCheckFrom state
   testParseNodeCF state
