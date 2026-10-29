@@ -5130,7 +5130,10 @@ def testDirectiveLine (state : IO.Ref TestCollector) : IO Unit := do
       ("%YAML1.2", "reserved", 1, 0, 0), ("%YAMLX 1.2", "reserved", 1, 0, 0),
       -- %TAG: accepted shapes
       ("%TAG ! tag:x,2000:", "tag", 1, 0, 0), ("%TAG !e! http://x/y\n", "tag", 1, 0, 0),
-      ("%TAG !e!", "tag", 1, 0, 0), ("%TAG", "tag", 1, 0, 0), ("%TAG\n", "tag", 1, 0, 0),
+      ("%TAG !e!", "tag", 1, 0, 0),
+      -- [89]: the scanner refuses the EMPTY handle (`invalidTagHandle`); `SLDirective.tag` models [82]
+      -- without [89] and still derives, so the relation is WIDER than the scanner on these two rows
+      ("%TAG", "tag", 0, 1, 0), ("%TAG\n", "tag", 0, 1, 0),
       ("%TAG !e! x # c", "tag", 1, 0, 0), ("%TAG !! !x\n", "tag", 1, 0, 0),
       ("%TAG !e!\t!a,b%20c", "tag", 1, 0, 0),
       -- `#` is a `[39] ns-uri-char`: `x#c` is the prefix, not a comment (first written as refused; REFUTED by the run)
@@ -5264,17 +5267,19 @@ def testDirectiveLoops (state : IO.Ref TestCollector) : IO Unit := do
   checkM state "loop short rows (withdrawn fuel breaks maximality — hypothesis load-bearing)"
     (short == 344) s!"got {short}"
   -- partition: the scanner's token fields against the constructor's spine.  `none` = refused.
+  -- [89] (`isTagHandleShaped`): a collected handle that is not `!`, `!!` or `!word!` is refused
+  -- (`invalidTagHandle`), so the maximal-run rows `!e!x`, `!e!x!`, `!a!!b!`, `!e!!x!`, `x`, `` are `none`.
   let partRows : List (String × Option (String × String)) :=
-    [ ("%TAG !e!x", some ("!e!x", "")), ("%TAG !e! x", some ("!e!", "x")),
-      ("%TAG !e!x!", some ("!e!x!", "")), ("%TAG ! !", some ("!", "!")),
-      ("%TAG !a!!b! c", some ("!a!!b!", "c")), ("%TAG !e!%20", some ("!e!", "%20")),
+    [ ("%TAG !e!x", none), ("%TAG !e! x", some ("!e!", "x")),
+      ("%TAG !e!x!", none), ("%TAG ! !", some ("!", "!")),
+      ("%TAG !a!!b! c", none), ("%TAG !e!%20", some ("!e!", "%20")),
       -- the reviewer's shape: the handle run is MAXIMAL, so `!e!x` is the handle and `y` the prefix
       -- (first written as refused; REFUTED by the run — the scanner accepts it)
-      ("%TAG !e!x y", some ("!e!x", "y")), ("%TAG !e!\tx\n", some ("!e!", "x")),
-      ("%TAG", some ("", "")), ("%TAG x", some ("x", "")),
+      ("%TAG !e!x y", none), ("%TAG !e!\tx\n", some ("!e!", "x")),
+      ("%TAG", none), ("%TAG x", none),
       -- `[` is a `[39] ns-uri-char`: a prefix, not trailing content (first written as refused; REFUTED)
       ("%TAG !e! [", some ("!e!", "[")),
-      ("%TAG !e!,x", some ("!e!", ",x")), ("%TAG !e!!x! y", some ("!e!!x!", "y")) ]
+      ("%TAG !e!,x", some ("!e!", ",x")), ("%TAG !e!!x! y", none) ]
   for (input, expected) in partRows do
     let got := scannerTagPartition input
     checkM state s!"partition/{repr input}: scanner token" (got == expected)
@@ -6816,7 +6821,9 @@ def testTagHandleShape (state : IO.Ref TestCollector) : IO Unit := do
       checkM state s!"P57 {repr h}: named-handle readings agree" (named h == sh) s!"isNamedHandle={named h}"
     match Scanner.scanFiltered src with
     | .error (.invalidTagHandle h' _ _) =>
-      checkM state s!"P57 {repr src}: refused as invalidTagHandle {repr h'}" (!sh && h' == h) s!"shaped={sh}"
+      -- the refused handle is the run of word-chars/`!` the scanner collected (`!a_b!` stops at `_` → `!a`)
+      checkM state s!"P57 {repr src}: refused as invalidTagHandle {repr h'}" (!sh && h.startsWith h' && !shaped h')
+        s!"shaped={sh}"
     | .error e => checkM state s!"P57 {repr src}: unexpected scan error" false s!"{repr e}"
     | .ok ts =>
       let pOk := match TokenParser.parseStream ts with | .ok _ => true | .error _ => false
