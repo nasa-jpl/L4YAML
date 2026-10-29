@@ -13,3 +13,5 @@ wide:
     deeper_key:  [a, b]
   i: # comment after colon
     - 1
+  j_is_a_long_key_with_an_anchor_beyond_the_cap:  &lk  9
+  k:  &sk         10

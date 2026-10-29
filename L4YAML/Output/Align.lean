@@ -201,9 +201,12 @@ def isProperty : YamlToken → Bool
   | _ => false
 
 /-- Character index of the start of every line, following the scanner's line
-    counting (`\n`, `\r\n` and a lone `\r` each end a line). -/
+    counting (`\n`, `\r\n` and a lone `\r` each end a line). A leading byte-order
+    mark is skipped by the scanner before it starts counting columns, so the
+    first line starts after it. -/
 def lineStarts (chars : Array Char) : Array Nat := Id.run do
-  let mut starts : Array Nat := #[0]
+  let bom := if chars.size > 0 && chars[0]! == '\uFEFF' then 1 else 0
+  let mut starts : Array Nat := #[bom]
   let mut i := 0
   while i < chars.size do
     let c := chars[i]!
@@ -334,23 +337,27 @@ def planGroup (cfg : AlignConfig) (starts : Array Nat) (group : Array Entry) : A
   let t1 := groupTarget cells cfg.maxCell cfg.round
   let mut edits : Array Edit := #[]
   -- first column: the value (or its first property)
-  let mut placed : Array (Entry × Nat) := #[]   -- entry with its new first column
+  let mut placed : Array (Entry × Nat × Bool) := #[]   -- entry, new first column, fits
   for e in group do
     let cell := keyCell cfg e
     let fits := cell ≤ cfg.maxCell && t1.isSome
     let w := gapWidth fits (t1.getD 0) (e.colonCol + 1 - e.keyCol) cfg.minGap
     let ls := starts.getD e.line 0
     edits := edits.push { start := ls + e.colonCol + 1, stop := ls + e.firstCol, width := w }
-    placed := placed.push (e, e.colonCol + 1 + w)
-  -- second column: the node after the properties
-  let withProps := placed.filterMap fun (e, vcol) =>
-    e.propNode.map fun (propEnd, nodeCol) => (e, vcol, propEnd - e.firstCol, nodeCol)
-  let cells2 := withProps.toList.map fun (e, vcol, pw, _) => vcol + pw + cfg.minGap - e.keyCol
-  let fits2 := withProps.toList.filterMap fun (e, vcol, pw, _) =>
-    if pw + cfg.minGap ≤ cfg.maxCell then some (vcol + pw + cfg.minGap - e.keyCol) else none
+    placed := placed.push (e, e.colonCol + 1 + w, fits)
+  -- second column: the node after the properties. An entry takes part only if
+  -- it took part in the first column (an outlier key must not drag the node
+  -- column either) and its property cell is itself within the cap.
+  let withProps := placed.filterMap fun (e, vcol, fits1) =>
+    e.propNode.map fun (propEnd, nodeCol) =>
+      let pw := propEnd - e.firstCol
+      (e, vcol, pw, nodeCol, fits1 && pw + cfg.minGap ≤ cfg.maxCell)
+  let cells2 := withProps.toList.map fun (e, vcol, pw, _, _) => vcol + pw + cfg.minGap - e.keyCol
+  let fits2 := withProps.toList.filterMap fun (e, vcol, pw, _, ok) =>
+    if ok then some (vcol + pw + cfg.minGap - e.keyCol) else none
   let t2 := groupTarget fits2 (cells2.foldl max 0) cfg.round
-  for (e, vcol, pw, nodeCol) in withProps do
-    let fits := pw + cfg.minGap ≤ cfg.maxCell && t2.isSome
+  for (e, vcol, pw, nodeCol, ok) in withProps do
+    let fits := ok && t2.isSome
     let w := gapWidth fits (t2.getD 0) (vcol + pw - e.keyCol) cfg.minGap
     let ls := starts.getD e.line 0
     let propEnd := e.firstCol + pw

@@ -1,6 +1,7 @@
 module
 
 public import L4YAML.Output.Align
+public meta import L4YAML.CapstoneAttr
 
 @[expose] public section Blanket
 
@@ -132,6 +133,28 @@ lemma minGap_le_gap (cells : List Nat) (maxCell round used minGap t : Nat)
     minGap ≤ gapWidth true t used minGap :=
   minGap_le_gapWidth true t used minGap
     (fun _ => le_groupTarget cells maxCell round _ t hc hfit ht)
+
+/-- A successful `format` keeps the line count (`\n` is never blank). -/
+lemma format_ok_count_newline (cfg : AlignConfig) (s out : String)
+    (h : format cfg s = .ok out) :
+    out.toList.count '\n' = s.toList.count '\n' := by
+  have hf := format_ok_filter cfg s out h
+  have hnl : nonBlank '\n' = true := by decide
+  rw [← count_filter_of_pos nonBlank '\n' hnl, hf, count_filter_of_pos nonBlank '\n' hnl]
+
+/-- Capstone (Blueprint 6.16): a successful `format` is a whitespace-only reformat — the
+    non-blank characters survive in order, the line count is unchanged, and the scanner sees
+    the same tokens and comments. Chain: `applyEditsFrom_filter` → `applyEdits_filter` →
+    `alignText_filter` → `format_ok_filter` → `format_ok_count_newline`; the fail-closed
+    re-scan in `format` → `format_ok_scanShape`. -/
+@[capstone]
+theorem format_whitespace_only (cfg : AlignConfig) (s out : String)
+    (h : format cfg s = .ok out) :
+    out.toList.filter nonBlank = s.toList.filter nonBlank ∧
+    out.toList.count '\n' = s.toList.count '\n' ∧
+    scanShape out = scanShape s :=
+  ⟨format_ok_filter cfg s out h, format_ok_count_newline cfg s out h,
+   format_ok_scanShape cfg s out h⟩
 
 end L4YAML.Align
 

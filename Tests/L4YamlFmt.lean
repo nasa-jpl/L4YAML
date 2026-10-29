@@ -76,6 +76,20 @@ def formatInput (o : Options) (name text : String) : IO (Option String) := do
     IO.eprintln s!"l4yaml-fmt: {name}: {e}"
     pure none
 
+
+/-- Replace `f` with `out` through a sibling temporary file and a rename, so an
+    interrupted or failed write never leaves `f` truncated. -/
+def replaceFile (f : String) (out : String) : IO Bool := do
+  let tmp := f ++ ".l4yaml-fmt.tmp"
+  try
+    IO.FS.writeFile tmp out
+    IO.FS.rename tmp f
+    pure true
+  catch e =>
+    IO.eprintln s!"l4yaml-fmt: {f}: {e}"
+    try IO.FS.removeFile tmp catch _ => pure ()
+    pure false
+
 def main (args : List String) : IO UInt32 := do
   match parseArgs args {} with
   | .error msg =>
@@ -100,8 +114,11 @@ def main (args : List String) : IO UInt32 := do
         (← IO.getStdout).putStr out
         return 0
     for f in o.files do
-      let text ← try IO.FS.readFile f catch e =>
-        IO.eprintln s!"l4yaml-fmt: {f}: {e}"; pure ""
+      let read? ← try pure (some (← IO.FS.readFile f)) catch e =>
+        IO.eprintln s!"l4yaml-fmt: {f}: {e}"; pure none
+      match read? with
+      | none => status := max status 3
+      | some text =>
       match ← formatInput o f text with
       | none => status := max status 3
       | some out =>
@@ -111,8 +128,8 @@ def main (args : List String) : IO UInt32 := do
             status := max status 1
         else if o.write then
           if out != text then
-            IO.FS.writeFile f out
-            IO.eprintln s!"{f}: reformatted"
+            if ← replaceFile f out then IO.eprintln s!"{f}: reformatted"
+            else status := max status 3
         else
           (← IO.getStdout).putStr out
     return status

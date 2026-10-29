@@ -468,6 +468,7 @@ values.
 | 6.13 | `emit_parse_succeeds` — emitter output parses via `parseYamlRaw` (existence half of 6.10) | `EmitterScannability` | ✅ |
 | 6.14 | `emit_parseYaml_succeeds` — emitter output parses via `parseYaml` (existence half of 6.10, composed) | `EmitterScannability` | ✅ |
 | 6.15 | `canonical_roundtrip_conditional` — scanner-bridge round-trip, conditional form | [`ScannerEmitBridge`](../L4YAML/Proofs/Output/ScannerEmitBridge.lean) | ✅ |
+| 6.16 | `format_whitespace_only` — a successful `l4yaml-fmt` pass (`Align.format cfg s = .ok out`) keeps the non-blank characters in order, the line count and the scanned tokens/comments (`scanShape`); the user-visible guarantee that the column aligner cannot change a document's meaning | [`AlignProofs`](../L4YAML/Proofs/Output/AlignProofs.lean) | ✅ |
 
 **Closure (2026-07-04)**: capstone 6.1/6.10 `universal_roundtrip` is
 fully machine-checked (`EmitterScannability.lean:1539`, no `sorryAx`

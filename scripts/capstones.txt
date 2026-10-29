@@ -36,6 +36,7 @@ L4YAML/Proofs/Soundness.lean:toYamlValue_correct
 L4YAML/Proofs/Output/EmitterScannability.lean:universal_roundtrip
 L4YAML/Proofs/Output/EmitterScannability.lean:emit_roundtrip_content_eq
 L4YAML/Proofs/Output/ScannerEmitBridge.lean:canonical_roundtrip_conditional
+L4YAML/Proofs/Output/AlignProofs.lean:format_whitespace_only
 L4YAML/Proofs/RoundTrip/RoundTrip.lean:escapeTag_roundtrip
 
 # Group 7 — acceptance strictness
