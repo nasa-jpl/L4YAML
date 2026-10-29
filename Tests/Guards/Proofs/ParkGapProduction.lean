@@ -96,10 +96,10 @@ lemma blockStack_refl {a b : SurfPos} (h : BlockStack a b) : a = b := by
     position its flow stack reaches are the same point.  A `GLit` spent here has
     nowhere to land: the flow forms that END at a block indicator (§3) all need
     a frame, and this stack is at depth zero. -/
-lemma park_carriers_absorb_nothing {sp_start sp_gram sp_block sp_flow : SurfPos}
+lemma park_carriers_absorb_nothing {s0 : ScannerState} {sp_start sp_gram sp_block sp_flow : SurfPos}
     {tl : FrameTail}
     (hb : BlockStack sp_gram sp_block)
-    (hf : FlowStackB sp_start 0 0 none 0 #[] #[] tl sp_block sp_flow) :
+    (hf : FlowStackB sp_start 0 0 none s0 0 #[] #[] tl sp_block sp_flow) :
     sp_gram = sp_flow := by
   rw [blockStack_refl hb, FlowStackB.pos_eq_of_depth_zero hf]
 

@@ -338,6 +338,31 @@ lemma unwindIndents_back_mem (s : ScannerState) (col : Int) (e : IndentEntry) :
     (unwindIndents s col).indents.back? = some e → e ∈ s.indents :=
   unwindIndentsLoop_back_mem s col s.indents.size e
 
+/-- …and EVERY entry it leaves was on the incoming stack — the loop only pops. -/
+lemma unwindIndentsLoop_mem (s : ScannerState) (col : Int) (fuel : Nat)
+    (e : IndentEntry) :
+    e ∈ (unwindIndentsLoop s col fuel).indents → e ∈ s.indents := by
+  induction fuel generalizing s with
+  | zero =>
+    rw [show unwindIndentsLoop s col 0 = s by unfold unwindIndentsLoop; rfl]
+    exact id
+  | succ fuel ih =>
+    unfold unwindIndentsLoop
+    split
+    · intro h
+      have hm := ih _ h
+      have he : ({ s.emit .blockEnd with
+          indents := (s.emit .blockEnd).indents.pop,
+          pendingKeys := (s.emit .blockEnd).pendingKeys.pop } : ScannerState).indents
+          = s.indents.pop := by simp [ScannerState.emit]
+      rw [he] at hm
+      exact indents_mem_of_mem_pop hm
+    · exact id
+
+lemma unwindIndents_mem (s : ScannerState) (col : Int) (e : IndentEntry) :
+    e ∈ (unwindIndents s col).indents → e ∈ s.indents :=
+  unwindIndentsLoop_mem s col s.indents.size e
+
 /-- **…and the level it rests on is a MAPPING level** — §8.2.1, read off the
     `:`'s own validation.  A saved key at or left of the floor whose column is
     the top entry's own column is refused when that entry is a SEQUENCE

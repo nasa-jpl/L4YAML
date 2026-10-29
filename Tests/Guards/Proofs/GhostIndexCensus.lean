@@ -268,11 +268,16 @@ it may only shrink. -/
 -- disjunct, no ghost row.
 -- Item 374: `ResumeKeyCtx` gains the sequence-top face disjunct (or 101 → 102; ghost unchanged).
 -- 2026-10-29 (item 389): the mapping-top conjunct inside `pendingBlock.h_closeF` / `pendingBlockContent.h_closeF` / `pendingProps.h_closeFE` adds its own `∨ True` (or 102 → 105) and NO binder: it resumes the park's own `ks` (PR #161 review dropped the first draft's `∃ ks'`; ghost stays 72).
-def expectedSummary : String := "carriers=60 snapshot=9 ghost=72 or=105"
+def expectedSummary : String := "carriers=60 snapshot=9 ghost=73 or=106"
 
 -- 2026-10-24 (B3 [66] col-0 threading): carriers 61 → 62 — `SSLCommentsFrom` (the separator-less comment product).
 -- 2026-10-25 (#99 landed): the `FlowLead`/`leadFree`/`closeFree` tally rows go with the deleted carrier and
 -- the two `Bool` projections (the summary above was already re-read; the tally was not).
+-- 2026-10-29 (item 394, option B): the flow stack's new state index `s0` (FlowBaseRoutes /
+-- FlowOpenStack / FlowStackB state 0 → 1; FlowStackK state 1 → 2 and prop 4 → 5 for the
+-- `sc.indents = s0.indents` conjunct); valueF's cover adds the scalar `lo` (FlowBaseRoutes
+-- scalar 8 → 9); pendingMapValue.h_closeF's cover lost its ghost level `m` (PendingNode
+-- scalar 63 → 62) — the cover is now `Floor lo n ks` at the park's own level.
 def expectedTally : List String :=
   ["BareLandingFacts: surface=0 state=2 prop=0 scalar=1 snapshot=0 ghost=0 or=0",
    "BlockStack: surface=2 state=0 prop=0 scalar=0 snapshot=0 ghost=0 or=0",
@@ -283,12 +288,12 @@ def expectedTally : List String :=
    "ExplValueLine: surface=5 state=0 prop=3 scalar=1 snapshot=0 ghost=0 or=0",
    "ExplicitValueRefused: surface=0 state=1 prop=0 scalar=0 snapshot=0 ghost=0 or=0",
    "FlowBaseAnchor: surface=0 state=5 prop=0 scalar=4 snapshot=2 ghost=0 or=0",
-   "FlowBaseRoutes: surface=21 state=0 prop=26 scalar=8 snapshot=1 ghost=4 or=6",
+   "FlowBaseRoutes: surface=23 state=1 prop=29 scalar=9 snapshot=1 ghost=5 or=7",
    "FlowOpenHeld: surface=0 state=0 prop=0 scalar=3 snapshot=0 ghost=2 or=0",
-   "FlowOpenStack: surface=31 state=0 prop=28 scalar=9 snapshot=1 ghost=11 or=2",
+   "FlowOpenStack: surface=31 state=1 prop=28 scalar=9 snapshot=1 ghost=11 or=2",
    "FlowStack: surface=2 state=0 prop=0 scalar=0 snapshot=0 ghost=0 or=0",
-   "FlowStackB: surface=6 state=0 prop=1 scalar=4 snapshot=1 ghost=7 or=0",
-   "FlowStackK: surface=5 state=1 prop=4 scalar=5 snapshot=1 ghost=3 or=2",
+   "FlowStackB: surface=6 state=1 prop=1 scalar=4 snapshot=1 ghost=7 or=0",
+   "FlowStackK: surface=5 state=2 prop=5 scalar=5 snapshot=1 ghost=3 or=2",
    "GateOf: surface=0 state=1 prop=0 scalar=1 snapshot=2 ghost=0 or=0",
    "ImplicitKeyHead: surface=2 state=0 prop=2 scalar=0 snapshot=0 ghost=0 or=0",
    "ImplicitKeyPack: surface=16 state=1 prop=16 scalar=9 snapshot=0 ghost=4 or=7",
@@ -315,7 +320,7 @@ def expectedTally : List String :=
    "ParkSlot: surface=0 state=2 prop=3 scalar=7 snapshot=0 ghost=0 or=1",
    -- Item 371: `pendingMapValue.h_expl`'s route carries its tail — one more surface binder
    -- (`sp_e`) and one more `Prop` premise (`SCompactMapTail`); ghost 22 and or 60 unchanged.
-   "PendingNode: surface=135 state=1 prop=274 scalar=63 snapshot=0 ghost=22 or=63",
+   "PendingNode: surface=135 state=1 prop=274 scalar=62 snapshot=0 ghost=22 or=63",
    "PropsKeyPack: surface=13 state=1 prop=13 scalar=7 snapshot=0 ghost=3 or=5",
    "PropsNodeRoute: surface=6 state=0 prop=1 scalar=0 snapshot=0 ghost=0 or=0",
    "PropsRideRoute: surface=7 state=0 prop=1 scalar=0 snapshot=0 ghost=0 or=0",
@@ -343,36 +348,39 @@ def expectedTally : List String :=
     `tokens` already; `KmSound.body xs` is the array the mask's `[i]` reads.  The
     rest are the frame lists, the value-line chains, the kinds and the mask, the
     frame tail, and the open-time snapshot `g`. -/
+-- 2026-10-29 (item 394, option B): the roster is unchanged in content (82 rows); FlowBaseRoutes'
+-- constructor indices shift by one for the new state parameter `s0` (mk[5] → mk[6], …).
 def expectedGhost : List String :=
   [ "FlowBaseAnchor.type[0].a a : Option ScannerState",
     "FlowBaseAnchor.body x : Option ScannerState",
     "FlowBaseRoutes.type[4].g g : Option ScannerState",
-    "FlowBaseRoutes.mk[6].key ns : List Nat",
-    "FlowBaseRoutes.mk[6].key ks : List IndentStackCover.FrameLevel",
-    "FlowBaseRoutes.mk[6].key ks : List IndentStackCover.FrameLevel",
-    "FlowBaseRoutes.mk[7].vslot ns : List Nat",
+    "FlowBaseRoutes.mk[6].valueF ks : List IndentStackCover.FrameLevel",
+    "FlowBaseRoutes.mk[8].key ns : List Nat",
+    "FlowBaseRoutes.mk[8].key ks : List IndentStackCover.FrameLevel",
+    "FlowBaseRoutes.mk[8].key ks : List IndentStackCover.FrameLevel",
+    "FlowBaseRoutes.mk[9].vslot ns : List Nat",
     "FlowOpenHeld.type[3].S S : List Nat",
     "FlowOpenHeld.body T : List Nat",
     "FlowOpenStack.type[3].g g : Option ScannerState",
-    "FlowOpenStack.type[5].a a : Array Bool",
     "FlowOpenStack.type[6].a a : Array Bool",
-    "FlowOpenStack.type[7].a a : FrameTail",
-    "FlowOpenStack.seqBase[10].tl tl : FrameTail",
-    "FlowOpenStack.mapBase[10].tl tl : FrameTail",
-    "FlowOpenStack.seqNest[5].ks ks : Array Bool",
-    "FlowOpenStack.seqNest[6].km km : Array Bool",
-    "FlowOpenStack.seqNest[8].tl tl : FrameTail",
-    "FlowOpenStack.mapNest[5].ks ks : Array Bool",
-    "FlowOpenStack.mapNest[6].km km : Array Bool",
-    "FlowOpenStack.mapNest[8].tl tl : FrameTail",
+    "FlowOpenStack.type[7].a a : Array Bool",
+    "FlowOpenStack.type[8].a a : FrameTail",
+    "FlowOpenStack.seqBase[11].tl tl : FrameTail",
+    "FlowOpenStack.mapBase[11].tl tl : FrameTail",
+    "FlowOpenStack.seqNest[6].ks ks : Array Bool",
+    "FlowOpenStack.seqNest[7].km km : Array Bool",
+    "FlowOpenStack.seqNest[9].tl tl : FrameTail",
+    "FlowOpenStack.mapNest[6].ks ks : Array Bool",
+    "FlowOpenStack.mapNest[7].km km : Array Bool",
+    "FlowOpenStack.mapNest[9].tl tl : FrameTail",
     "FlowStackB.type[3].g g : Option ScannerState",
-    "FlowStackB.type[5].a a : Array Bool",
     "FlowStackB.type[6].a a : Array Bool",
-    "FlowStackB.type[7].a a : FrameTail",
-    "FlowStackB.nil[5].tl tl : FrameTail",
-    "FlowStackB.open[5].ks ks : Array Bool",
-    "FlowStackB.open[6].km km : Array Bool",
-    "FlowStackB.open[7].tl tl : FrameTail",
+    "FlowStackB.type[7].a a : Array Bool",
+    "FlowStackB.type[8].a a : FrameTail",
+    "FlowStackB.nil[6].tl tl : FrameTail",
+    "FlowStackB.open[6].ks ks : Array Bool",
+    "FlowStackB.open[7].km km : Array Bool",
+    "FlowStackB.open[8].tl tl : FrameTail",
     "FlowStackK.type[3].ks ks : Array Bool",
     "FlowStackK.type[4].tl tl : FrameTail",
     "FlowStackK.body km : Array Bool",
@@ -424,27 +432,31 @@ def expectedGhost : List String :=
     "ResumeKeyCtx.body ksq : List IndentStackCover.FrameLevel",
     "ResumeWidths.type[0].ks ks : List IndentStackCover.FrameLevel",
     "ResumeWidths.type[1].ks' ks' : List IndentStackCover.FrameLevel",
-    "SeqFrame.type[2].a a : FrameTail" ]
+    "SeqFrame.type[2].a a : FrameTail"
+  ]
 
 /-- Every `∨` inside a carrier's statements, keyed by field (Devin Review on
     PR #7: a binder-free alternative added to a field moved no binder row).  Like
     `expectedGhost`, a row joining this list is Rule 8's question. -/
 -- 2026-10-25 (#99 review): `leadFree`/`closeFree` made `Bool` — still 98 disjuncts; `InteriorGap.props[8].h_lead` now reads `tl.leadFree = true` (the coercion is explicit) and the rows re-order with the carrier roster (read off the environment, `FlowLead` gone).
 -- 2026-10-29 (item 389): the mapping-top conjunct's own `∨ True` inside the three route fields (one more disjunct each; or 102 → 105).
+-- 2026-10-29 (item 394): `FlowBaseRoutes.valueF` — the flow value's frames twin, `∃ ks` relaying `pendingMapValue.h_closeF`'s list (Rule 8: a RELAY of an existing frames list, the one binder the field needs) with its own `∨ True` (ghost 72 → 73, or 105 → 106).
+-- 2026-10-29 (item 394, option B): 106 rows unchanged in count; FlowBaseRoutes' indices shift for
+-- `s0` and FlowStackK's colon-route disjunct now names `s0` in the FlowStackB it promises.
 def expectedDisjuncts : List String :=
   [ "CommentStop.body ∨ c = '\\n' ∨ c = '\\x0d'",
     "CommentStop.body ∨ c = '\\x0d'",
-    "FlowBaseRoutes.mk[6].key ∨ True",
-    "FlowBaseRoutes.mk[6].key ∨ True",
-    "FlowBaseRoutes.mk[6].key ∨ PackAltG g",
-    "FlowBaseRoutes.mk[6].key ∨ True",
-    "FlowBaseRoutes.mk[6].key ∨ PackAltG g",
-    "FlowBaseRoutes.mk[7].vslot ∨ PackAltG g",
-    "FlowOpenStack.seqNest[14].promise ∨ sp_prep = sp_ne",
-    "FlowOpenStack.mapNest[14].promise ∨ sp_prep = sp_ne",
-    "FlowStackK.body ∨ ∀ (sp_prep sp_tok : SurfPos), SSeparateLines n sp_flow sp_prep ∨ sp_prep = sp_flow → GLit ':' sp_prep sp_tok → FlowStackB sp_start n kc g fl ks km (FrameTail.colon kj) sp_block sp_tok",
+    "FlowBaseRoutes.mk[6].valueF ∨ True",
+    "FlowBaseRoutes.mk[8].key ∨ True",
+    "FlowBaseRoutes.mk[8].key ∨ True",
+    "FlowBaseRoutes.mk[8].key ∨ PackAltG g",
+    "FlowBaseRoutes.mk[8].key ∨ True",
+    "FlowBaseRoutes.mk[8].key ∨ PackAltG g",
+    "FlowBaseRoutes.mk[9].vslot ∨ PackAltG g",
+    "FlowOpenStack.seqNest[15].promise ∨ sp_prep = sp_ne",
+    "FlowOpenStack.mapNest[15].promise ∨ sp_prep = sp_ne",
+    "FlowStackK.body ∨ ∀ (sp_prep sp_tok : SurfPos), SSeparateLines n sp_flow sp_prep ∨ sp_prep = sp_flow → GLit ':' sp_prep sp_tok → FlowStackB sp_start n kc g s0 fl ks km (FrameTail.colon kj) sp_block sp_tok",
     "FlowStackK.body ∨ sp_prep = sp_flow",
-    -- Item 372 (2026-10-27): the route conjunct's sequence-top face.
     "ImplicitKeyPack.body ∨ SeqTopKey sc",
     "ImplicitKeyPack.body ∨ PackAlt sc",
     "ImplicitKeyPack.body ∨ True",
@@ -530,7 +542,6 @@ def expectedDisjuncts : List String :=
     "PropsKeyPack.body ∨ PackAlt sc",
     "PropsKeyPack.body ∨ True",
     "ResumeKeyCtx.body ∨ True",
-    -- Item 374: the sequence-top face disjunct on the resume context.
     "ResumeKeyCtx.body ∨ (∃ k sp_land, sp_land.col = 0 ∧ SIndent k sp_land sp_prep ∧ SeqTopKey s_prep) ∧ s_prep.simpleKey.possible = true ∧ s_prep.simpleKey.pos = s_prep.currentPos",
     "ResumeKeyCtx.body ∨ True",
     "ResumeKeyCtx.body ∨ PackAlt s_prep",
@@ -538,7 +549,8 @@ def expectedDisjuncts : List String :=
     "ResumeKeyCtx.body ∨ True",
     "SlotFace.body ∨ ∃ j, prevRealIdx? ts (propsRunStart ts ts.size) = some j ∧ ts[j]!.val.offersNodeSlot = true",
     "SlotGateAt.body ∨ SlotFace t.tokens",
-    "SlotResv.body ∨ p.val = YamlToken.key"]
+    "SlotResv.body ∨ p.val = YamlToken.key"
+  ]
 
 run_cmd liftTermElabM do
   let mut tally : Array String := #[]

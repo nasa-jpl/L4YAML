@@ -274,8 +274,11 @@ def expectedBinders : List String :=
 -- `PendingNode.nil_gate_of_allowDirectives`, `FlowBaseRoutes.value`) return functions, so their values
 -- have fewer leading lambdas than their types have binders; the census refuses to read them, by design.
 -- 2026-10-29 (item 389): skipped 39 → 40 — the landed birth's `nv < k` mapping-top term (`dite` over `s_prep.currentIndent < k` inside `Or.inl`) is a shape the census skips; no edge moved.
+-- 2026-10-29 (item 394, option B): skipped 41 → 42 — the mapping arm's valueF supply is an
+-- `Or.elim` over the park's cover (informative → carried, punted → declined), a shape the
+-- arm-payment reader skips (RelaySupply's tally skipped 41 → 42 the same way).
 def expectedTally : String :=
-  "edges=106 skipped=40 DECLINE=21 FIELD=7 PAY=17 RELAY=29 VIA=32"
+  "edges=106 skipped=42 DECLINE=21 FIELD=7 PAY=17 RELAY=29 VIA=32"
 
 run_cmd do
   let env ← getEnv

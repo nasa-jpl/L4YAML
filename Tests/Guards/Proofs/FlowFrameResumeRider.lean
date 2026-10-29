@@ -126,7 +126,7 @@ example {sc : ScannerState} {kc : Nat} {sp_start sp_br sp_tok sp_key : SurfPos}
 -- §3 …and the frame type itself admits the paid key (the structure's field
 -- accepts what the props arm now builds), spent through `ofValue`'s twin
 -- shape: a fully-paid key is a valid `FlowBaseRoutes`.
-example {sp_start sp_br sp_key : SurfPos} {kc : Nat}
+example {s0 : ScannerState} {sp_start sp_br sp_key : SurfPos} {kc : Nat}
     (value : ∀ sp_ne sp_mid, SFlowContent 0 .flowOut sp_br sp_ne →
       SSLComments sp_ne sp_mid → SLYamlStream sp_start sp_mid)
     (route : ∀ sp_v, SBlockMapEntry kc sp_key sp_v → SLYamlStream sp_start sp_v)
@@ -140,8 +140,8 @@ example {sp_start sp_br sp_key : SurfPos} {kc : Nat}
       ∀ sp_v : SurfPos, SBlockMapEntry kc sp_key sp_v →
       ∀ sp_e : SurfPos, SCompactMapTail kc sp_v sp_e →
       KeyFrames (ExplValueLine sp_start nv) ks sp_e) :
-    FlowBaseRoutes sp_start 0 sp_br kc none :=
-  ⟨fun _ => value,
+    FlowBaseRoutes sp_start 0 sp_br kc none s0 :=
+  ⟨fun _ _ => Or.inr trivial, fun _ => value,
    Or.inl ⟨kc, sp_key, route, head, rfl, Or.inr trivial,
      Or.inl tw99, Or.inl tw108⟩,
    Or.inr trivial⟩

@@ -206,7 +206,7 @@ example (sp_start sp_X sp_scan' : SurfPos) (s' s_dis : ScannerState)
     ∃ sp_gram' sp_block' sp_flow' sp_scan'',
       SLYamlStream sp_start sp_gram' ∧
       BlockStack sp_gram' sp_block' ∧
-      FlowStackB sp_start 0 0 none 0 #[] #[] .sep sp_block' sp_flow' ∧
+      FlowStackB sp_start 0 0 none s' 0 #[] #[] .sep sp_block' sp_flow' ∧
       PendingNode s' false sp_start sp_flow' sp_scan'' ∧
       ScannerSurfCorr s' sp_scan'' :=
   block_dispatch_deferred_stamp_offcol sp_start sp_X sp_scan' s' h_stream h_arm
@@ -232,7 +232,7 @@ example (sp_start sp_X sp_scan' : SurfPos) (s' sc s_dis : ScannerState)
     ∃ sp_gram' sp_block' sp_flow' sp_scan'',
       SLYamlStream sp_start sp_gram' ∧
       BlockStack sp_gram' sp_block' ∧
-      FlowStackB sp_start 0 0 none 0 #[] #[] .sep sp_block' sp_flow' ∧
+      FlowStackB sp_start 0 0 none s' 0 #[] #[] .sep sp_block' sp_flow' ∧
       PendingNode s' false sp_start sp_flow' sp_scan'' ∧
       ScannerSurfCorr s' sp_scan'' :=
   block_dispatch_deferred_stamp_nopack sp_start sp_X sp_scan' s' h_stream h_arm
@@ -276,7 +276,7 @@ example (sp_start sp_X sp_scan' sp_park : SurfPos) {sc s_prep s' : ScannerState}
     ∃ sp_gram' sp_block' sp_flow' sp_scan'',
       SLYamlStream sp_start sp_gram' ∧
       BlockStack sp_gram' sp_block' ∧
-      FlowStackB sp_start 0 0 none 0 #[] #[] .sep sp_block' sp_flow' ∧
+      FlowStackB sp_start 0 0 none s' 0 #[] #[] .sep sp_block' sp_flow' ∧
       PendingNode s' false sp_start sp_flow' sp_scan'' ∧
       ScannerSurfCorr s' sp_scan'' :=
   block_dispatch_deferred_inline sp_start sp_X sp_scan' h_stream h_preprocess h_dispatch
