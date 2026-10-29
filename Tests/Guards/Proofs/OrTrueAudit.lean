@@ -245,8 +245,9 @@ def posLine (p : Pos) : String := s!"{p.decl}{p.site} {p.kind} ∨ {p.alt}"
 /-! ## The pins -/
 
 -- 2026-10-29 (item 395): the first reading, pinned as the roster the retirement lane works from.
+-- 2026-10-29 (item 396): 272 → 266 positions (flowOpen_floor_at_prep deleted: 1 never-supplied + its conclusion; content_dispatch_after_close's four declined-and-uninspected contexts restated away); writers 42 → 41, Or.inr trivial 514 → 505.
 def expectedSummary : String :=
-  "positions=272 top=172 nested=100 True=201 PackAlt=62 PackAltG=9 modules=2 supply: paid=28 relayed=116 declined-only=5 never-supplied=1 unresolved=8 conclusions=12 consumers: spent=103 relayed=19 unused=0 unreadable=36 writers=42 inrTrivial=514"
+  "positions=266 top=166 nested=100 True=195 PackAlt=62 PackAltG=9 modules=2 supply: paid=28 relayed=115 declined-only=1 never-supplied=0 unresolved=9 conclusions=11 consumers: spent=102 relayed=15 unused=0 unreadable=36 writers=41 inrTrivial=505"
 
 def expectedPositions : List String :=
   [ "L4YAML.Proofs.PreprocessIndentStable.IndentFloor.transport[3].h_floor top ∨ True",
@@ -403,11 +404,7 @@ def expectedPositions : List String :=
     "L4YAML.Proofs.StreamAccum.colon_open_map_props[29].h_kslotD top ∨ PackAlt",
     "L4YAML.Proofs.StreamAccum.compact_open_map[29].h_outer top ∨ True",
     "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[16].h_keyctx top ∨ True",
-    "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[18].h_suffixctx top ∨ True",
-    "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[19].h_nodocctx top ∨ True",
-    "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[20].h_markerctx top ∨ True",
-    "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[22].h_ref top ∨ True",
-    "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[23].h_propsctx top ∨ True",
+    "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[19].h_propsctx top ∨ True",
     "L4YAML.Proofs.StreamAccum.content_dispatch_routed[18].h_keyctx top ∨ True",
     "L4YAML.Proofs.StreamAccum.content_dispatch_routed[20].h_suffixctx top ∨ True",
     "L4YAML.Proofs.StreamAccum.content_dispatch_routed[21].h_nodocctx top ∨ True",
@@ -475,8 +472,6 @@ def expectedPositions : List String :=
     "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[ret] nested ∨ PackAltG",
     "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[ret] nested ∨ True",
     "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[ret] nested ∨ PackAltG",
-    "L4YAML.Proofs.StreamAccum.flowOpen_floor_at_prep[10].h_floor top ∨ True",
-    "L4YAML.Proofs.StreamAccum.flowOpen_floor_at_prep[ret] top ∨ True",
     "L4YAML.Proofs.StreamAccum.flowOpen_marker[4].h_doc top ∨ True",
     "L4YAML.Proofs.StreamAccum.flowOpen_marker[ret] top ∨ True",
     "L4YAML.Proofs.StreamAccum.flowOpen_stamp[4].h_ivl top ∨ True",
@@ -593,7 +588,7 @@ def expectedSupply : List String :=
     "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented[21].h_framesV108 relayed [FIELD=1]",
     "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented[38].h_seqF168 relayed [FIELD=1]",
     "L4YAML.Proofs.StreamAccum.bareNodeRoute_or_refused[11].h_tail relayed [RELAY=1]",
-    "L4YAML.Proofs.StreamAccum.bareNodeRoute_or_refused_content[12].h_tail unresolved [LOCAL=2]",
+    "L4YAML.Proofs.StreamAccum.bareNodeRoute_or_refused_content[12].h_tail unresolved [LOCAL(h_tail139)=2]",
     "L4YAML.Proofs.StreamAccum.colon_open_map[19].h_sfx_land relayed [RELAY=1]",
     "L4YAML.Proofs.StreamAccum.colon_open_map[20].h_nodoc_land relayed [RELAY=1]",
     "L4YAML.Proofs.StreamAccum.colon_open_map[21].h_mk_land relayed [RELAY=1]",
@@ -610,20 +605,16 @@ def expectedSupply : List String :=
     "L4YAML.Proofs.StreamAccum.colon_open_map_props[29].h_kslotD declined-only [DECLINE=1]",
     "L4YAML.Proofs.StreamAccum.compact_open_map[29].h_outer relayed [SPLIT=2]",
     "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[16].h_keyctx paid [PAY=2 VIA=1]",
-    "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[18].h_suffixctx declined-only [DECLINE=3]",
-    "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[19].h_nodocctx declined-only [DECLINE=3]",
-    "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[20].h_markerctx declined-only [DECLINE=3]",
-    "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[22].h_ref declined-only [DECLINE=3]",
-    "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[23].h_propsctx relayed [DECLINE=2 SPLIT=1]",
+    "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[19].h_propsctx relayed [DECLINE=2 SPLIT=1]",
     "L4YAML.Proofs.StreamAccum.content_dispatch_routed[18].h_keyctx relayed [DECLINE=1 RELAY=1 VIA=6]",
-    "L4YAML.Proofs.StreamAccum.content_dispatch_routed[20].h_suffixctx relayed [DECLINE=5 RELAY=1 VIA=2]",
-    "L4YAML.Proofs.StreamAccum.content_dispatch_routed[21].h_nodocctx relayed [DECLINE=5 RELAY=1 VIA=2]",
-    "L4YAML.Proofs.StreamAccum.content_dispatch_routed[22].h_markerctx relayed [DECLINE=5 RELAY=1 VIA=2]",
-    "L4YAML.Proofs.StreamAccum.content_dispatch_routed[24].h_ref relayed [DECLINE=3 LOCAL=4 RELAY=1]",
+    "L4YAML.Proofs.StreamAccum.content_dispatch_routed[20].h_suffixctx relayed [DECLINE=6 VIA=2]",
+    "L4YAML.Proofs.StreamAccum.content_dispatch_routed[21].h_nodocctx relayed [DECLINE=6 VIA=2]",
+    "L4YAML.Proofs.StreamAccum.content_dispatch_routed[22].h_markerctx relayed [DECLINE=6 VIA=2]",
+    "L4YAML.Proofs.StreamAccum.content_dispatch_routed[24].h_ref unresolved [DECLINE=4 LOCAL(h_tail139)=4]",
     "L4YAML.Proofs.StreamAccum.content_dispatch_routed[25].h_propsctx relayed [DECLINE=7 RELAY=1]",
     "L4YAML.Proofs.StreamAccum.content_dispatch_routed[26].h_markerline paid [DECLINE=7 PAY=1]",
     "L4YAML.Proofs.StreamAccum.dedent_cover_of_landing[8].h_cov relayed [RELAY=4]",
-    "L4YAML.Proofs.StreamAccum.dedent_cover_of_landing[9].h_dcov relayed [FIELD=2 LOCAL=2]",
+    "L4YAML.Proofs.StreamAccum.dedent_cover_of_landing[9].h_dcov relayed [FIELD=2 LOCAL(h_cv)=2]",
     "L4YAML.Proofs.StreamAccum.dedent_cover_of_landing[ret] conclusion",
     "L4YAML.Proofs.StreamAccum.deeperLandingResume[7].h_valF relayed [RELAY=2]",
     "L4YAML.Proofs.StreamAccum.deeperLandingResume[ret] conclusion",
@@ -649,14 +640,12 @@ def expectedSupply : List String :=
     "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_open[13].h_compact_pair relayed [DECLINE=1 SPLIT=2]",
     "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_open[ret] conclusion",
     "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[9].h_col paid [DECLINE=3 PAY=1]",
-    "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[20].h_sfx unresolved [DECLINE=3 LOCAL=1]",
+    "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[20].h_sfx unresolved [DECLINE=3 LOCAL(h_sfx)=1]",
     "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[21].h_nodoc paid [DECLINE=3 PAY=1]",
-    "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[24].h_tail143 unresolved [DECLINE=3 LOCAL=1]",
-    "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[25].h_mapF unresolved [DECLINE=3 LOCAL=1]",
-    "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[26].h_mapFV unresolved [DECLINE=3 LOCAL=1]",
+    "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[24].h_tail143 unresolved [DECLINE=3 LOCAL(h_tail143)=1]",
+    "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[25].h_mapF unresolved [DECLINE=3 LOCAL(h_mapF176)=1]",
+    "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[26].h_mapFV unresolved [DECLINE=3 LOCAL(h_mapFV201)=1]",
     "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[ret] conclusion",
-    "L4YAML.Proofs.StreamAccum.flowOpen_floor_at_prep[10].h_floor never-supplied []",
-    "L4YAML.Proofs.StreamAccum.flowOpen_floor_at_prep[ret] conclusion",
     "L4YAML.Proofs.StreamAccum.flowOpen_marker[4].h_doc paid [PAY=2]",
     "L4YAML.Proofs.StreamAccum.flowOpen_marker[ret] conclusion",
     "L4YAML.Proofs.StreamAccum.flowOpen_stamp[4].h_ivl paid [FIELD=1 PAY=1]",
@@ -686,20 +675,22 @@ def expectedSupply : List String :=
     "L4YAML.Proofs.StreamAccum.question_open_map[26].h_explUp_chain relayed [RELAY=1]",
     "L4YAML.Proofs.StreamAccum.question_open_map[27].h_resV_land relayed [RELAY=1]",
     "L4YAML.Proofs.StreamAccum.question_open_map[29].h_explUp_chainD relayed [RELAY=1]",
-    "L4YAML.Proofs.StreamAccum.resumectx_of_landing[13].h_fS relayed [LOCAL=4 RELAY=1 SPLIT=2]",
-    "L4YAML.Proofs.StreamAccum.resumectx_of_landing[14].h_fV relayed [LOCAL=4 RELAY=1 SPLIT=2]",
-    "L4YAML.Proofs.StreamAccum.resumectx_of_landing[16].h_fQ unresolved [DECLINE=3 LOCAL=4]",
+    "L4YAML.Proofs.StreamAccum.resumectx_of_landing[13].h_fS relayed [LOCAL(h_fS)=4 RELAY=1 SPLIT=2]",
+    "L4YAML.Proofs.StreamAccum.resumectx_of_landing[14].h_fV relayed [LOCAL(h_fV)=4 RELAY=1 SPLIT=2]",
+    "L4YAML.Proofs.StreamAccum.resumectx_of_landing[16].h_fQ unresolved [DECLINE=3 LOCAL(h_fQ)=4]",
     "L4YAML.Proofs.StreamAccum.rootMapRouteF_or_refused[7].h_ref relayed [DECLINE=4 RELAY=5]",
     "L4YAML.Proofs.StreamAccum.rootMapRoute_or_refused[7].h_ref relayed [DECLINE=6 RELAY=5]",
-    "L4YAML.Proofs.StreamAccum.suffixctx_of_landing[11].h_sfx unresolved [LOCAL=2]",
+    "L4YAML.Proofs.StreamAccum.suffixctx_of_landing[11].h_sfx unresolved [LOCAL(h_sfx)=2]",
     "L4YAML.Proofs.StreamAccum.suffixctx_of_landing[ret] conclusion",
-    "L4YAML.Proofs.StreamAccum.topLevelFlowResumeSep_or_refused[6].h_ref unresolved [LOCAL=1]"
+    "L4YAML.Proofs.StreamAccum.topLevelFlowResumeSep_or_refused[6].h_ref unresolved [LOCAL(h_tail143)=1]"
   ]
 
 /-- The ceilings: a mechanical shrink-only, independent of the equality pins below.  Raising
     one needs the owner's word in the item that does it. -/
-def ceilingPositions : Nat := 272
-def ceilingWrites : Nat := 514
+-- 2026-10-29 (item 396): lowered with the first retirements (flowOpen_floor_at_prep deleted,
+-- content_dispatch_after_close's four contexts restated).
+def ceilingPositions : Nat := 266
+def ceilingWrites : Nat := 505
 
 def expectedConsumers : List String :=
   [ "L4YAML.Proofs.StreamAccum.FlowBaseRoutes.mk[8].key unreadable [cased=0 passed=0]",
@@ -788,11 +779,7 @@ def expectedConsumers : List String :=
     "L4YAML.Proofs.StreamAccum.colon_open_map_props[29].h_kslotD spent [cased=1 passed=0]",
     "L4YAML.Proofs.StreamAccum.compact_open_map[29].h_outer spent [cased=1 passed=0]",
     "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[16].h_keyctx relayed [cased=0 passed=1]",
-    "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[18].h_suffixctx relayed [cased=0 passed=1]",
-    "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[19].h_nodocctx relayed [cased=0 passed=1]",
-    "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[20].h_markerctx relayed [cased=0 passed=1]",
-    "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[22].h_ref relayed [cased=0 passed=1]",
-    "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[23].h_propsctx relayed [cased=0 passed=1]",
+    "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[19].h_propsctx relayed [cased=0 passed=1]",
     "L4YAML.Proofs.StreamAccum.content_dispatch_routed[18].h_keyctx spent [cased=2 passed=8]",
     "L4YAML.Proofs.StreamAccum.content_dispatch_routed[20].h_suffixctx spent [cased=2 passed=8]",
     "L4YAML.Proofs.StreamAccum.content_dispatch_routed[21].h_nodocctx spent [cased=2 passed=8]",
@@ -828,7 +815,6 @@ def expectedConsumers : List String :=
     "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[24].h_tail143 spent [cased=1 passed=0]",
     "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[25].h_mapF spent [cased=1 passed=0]",
     "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[26].h_mapFV spent [cased=1 passed=0]",
-    "L4YAML.Proofs.StreamAccum.flowOpen_floor_at_prep[10].h_floor spent [cased=1 passed=0]",
     "L4YAML.Proofs.StreamAccum.flowOpen_marker[4].h_doc spent [cased=1 passed=4]",
     "L4YAML.Proofs.StreamAccum.flowOpen_stamp[4].h_ivl spent [cased=1 passed=4]",
     "L4YAML.Proofs.StreamAccum.indicator_open_map[22].h_sfx_land relayed [cased=0 passed=2]",
@@ -872,9 +858,9 @@ def expectedWriters : List String :=
     "L4YAML.Proofs.StreamAccum.accum_block_on_pendingContent ×12 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.accum_block_pending ×43 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.accum_content_on_noPending ×12 (StreamAccum)",
-    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingBlock_indented ×33 (StreamAccum)",
-    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented ×34 (StreamAccum)",
-    "L4YAML.Proofs.StreamAccum.accum_content_pending ×82 (StreamAccum)",
+    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingBlock_indented ×29 (StreamAccum)",
+    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented ×30 (StreamAccum)",
+    "L4YAML.Proofs.StreamAccum.accum_content_pending ×78 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.accum_flow_open_depth0 ×65 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.accum_step_flow ×6 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.colon_fires_implicit_key ×1 (StreamAccum)",
@@ -884,7 +870,7 @@ def expectedWriters : List String :=
     "L4YAML.Proofs.StreamAccum.colon_open_map_implicit ×4 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.colon_open_map_props ×4 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.compact_open_map ×7 (StreamAccum)",
-    "L4YAML.Proofs.StreamAccum.content_dispatch_after_close ×1 (StreamAccum)",
+    "L4YAML.Proofs.StreamAccum.content_dispatch_after_close ×5 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.content_dispatch_routed ×25 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.dedent_cover_of_landing ×3 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.deeperLandingResume ×2 (StreamAccum)",
@@ -893,7 +879,6 @@ def expectedWriters : List String :=
     "L4YAML.Proofs.StreamAccum.flowKeyPack_of_close ×3 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_open ×7 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root ×9 (StreamAccum)",
-    "L4YAML.Proofs.StreamAccum.flowOpen_floor_at_prep ×1 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.flowOpen_marker ×2 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.flowOpen_stamp ×2 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.indentedValue_reads_at_any_indent ×1 (StreamAccum)",
@@ -926,7 +911,11 @@ run_cmd do
     let mut tallies : Std.HashMap String (Std.HashMap String Nat) := {}
     for e in es do
       let k := s!"{Lean.privateToUserName e.callee}[{e.idx}]"
-      let how := (e.how.splitOn " ").head!
+      -- a `LOCAL` edge keeps the caller's binder NAME (item 396): the unresolved
+      -- positions are followed by it — every one is an `:opt` local of its caller.
+      let how := if e.how.startsWith "LOCAL " then
+          s!"LOCAL({((e.how.splitOn " ")[1]!.splitOn ":").head!})"
+        else (e.how.splitOn " ").head!
       let t := tallies.getD k {}
       tallies := tallies.insert k (t.insert how ((t.getD how 0) + 1))
     let mut supply : Array String := #[]

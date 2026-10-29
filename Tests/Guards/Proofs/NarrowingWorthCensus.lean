@@ -290,7 +290,8 @@ def isSurfFace (env : Environment) (lhs : Expr) : MetaM Bool := do
 -- 2026-10-28 (item 385): binders 166 → 167
 -- — `deeperLandingResume.h_valF`, one more optional binder.
 -- 2026-10-29 (item 389): faces 62 → 63 — the mapping-top conjunct is one more narrowing face on the `-` park's route fields.
-def expectedFaceTally : String := "binders=167 faces=63 heads=20"
+-- 2026-10-29 (item 396): after_close's four optional contexts restated (binders 167 → 162, syntactic 159 → 154); flowOpen_floor_at_prep deleted (theorems 6362 → 6361, its DECLINE|PAY conclusion was one of the 17 no-op pairs).
+def expectedFaceTally : String := "binders=162 faces=63 heads=20"
 
 /-- The conclusion head of every left disjunct.  `FVAR 2` is `frameChainUnion`,
     whose face is schematic in `P` — the two rows no census of any kind can
@@ -307,14 +308,14 @@ def expectedHeadCensus : List String :=
   -- three restating premises, `≤` on `closeThenBlock`'s `h_valFV`) is that conjunct at six sites.
   -- Item 350: `GLit 4` left — the four `GLit '?'` faces were `h_expl`/`h_explUp`'s optional reading;
   -- the field is required now (its alternative is `NotQuestionPark sc`, paid by the `:` producers).
-  ["BareLandingFacts 8",
+  ["BareLandingFacts 7",
    "CompletedTail 4",
    "Covered 3",
-   "Eq 19",
+   "Eq 16",
    "FVAR 2",
    "Floor 16",
    "GStar 4",
-   "IndentFloor 2",
+   "IndentFloor 1",
    "KeyFrames 2",
    "MarkedColsIn 15",
    "MarkerNodeRoute 5",
@@ -380,7 +381,7 @@ which of four reasons applies. -/
 -- 2026-10-26 (item 369): binders=165 → binders=166, surf=134 → surf=135 — `accum_block_on_pendingBlock.h_closeF_old` (the `-` park's frames, read at the `:`/`?` landing for `h_res_land`).
 -- 2026-10-28 (item 385): binders 166 → 167, surf 135 → 136
 -- — `deeperLandingResume.h_valF`: one more surface-shaped optional binder.
-def expectedFidelity : String := "binders=167 surf=136 state=31"
+def expectedFidelity : String := "binders=162 surf=133 state=29"
 
 /-- The 25 faces a state census COULD evaluate — 27 since item 300 — which is
     the population the mandate's instrument is actually defined over.  Two of them
@@ -398,7 +399,6 @@ def expectedStateFaces : List String :=
    "colon_open_map#24",
    "colon_open_map_explicit#21",
    "compact_open_map#29",
-   "content_dispatch_after_close#22",
    "content_dispatch_routed#24",
    "content_dispatch_routed#26",
    "dedent_cover_of_landing#8",
@@ -406,7 +406,6 @@ def expectedStateFaces : List String :=
    "entryKeyPack_of_dispatch#18",
    "entryPropsKeyPack_of_dispatch#17",
    "flowKeyRoute_of_root#24",  -- item 311: `{g}` precedes it
-   "flowOpen_floor_at_prep#10",
    "flowOpen_marker#4",
    "flowOpen_stamp#4",
    "frameChainUnion#2",
@@ -693,7 +692,7 @@ rather than as a count. -/
 -- 2026-10-26 (item 369): syntactic=157 → syntactic=158, population=159 → population=160 — `accum_block_on_pendingBlock.h_closeF_old` (the `-` park's frames, read at the `:`/`?` landing for `h_res_land`).
 -- 2026-10-28 (item 385): syntactic 158 → 159, population 160 → 161
 -- — the same binder, syntactically optional.
-def expectedHiddenTally : String := "hiddenDefs=1 syntactic=159 hiddenOnly=2 population=161"
+def expectedHiddenTally : String := "hiddenDefs=1 syntactic=154 hiddenOnly=2 population=156"
 
 def expectedHiddenDefs : List String := ["ResumeKeyCtx"]
 
@@ -884,7 +883,7 @@ one unfolding, and §6 is the item where those two disagreed about binders. -/
 -- 2026-10-29 (item 388): theorems 6342 → 6343 (`valueLandedSeq`); no no-op conclusion moved.
 -- 2026-10-29 (item 389): theorems 6343 → 6358 — the item-389 helpers and Priority 60.
 -- 2026-10-29 (item 394, option B): no-op conclusion tally re-read after the s0 index.
-def expectedNoopTally : String := "theorems=6362 byElab=17 byWhnf=17 elabOnly=0 whnfOnly=0"
+def expectedNoopTally : String := "theorems=6361 byElab=16 byWhnf=16 elabOnly=0 whnfOnly=0"
 -- 5302 → 5344 on 2026-10-18 (plan row 20's close, closure-log item 280): the
 -- parse-side alias obligation moved to §7.1's DECLARATION set, so the carrier
 -- grew and the predicate gained its tools.  What is new in kind: `AG` carries
@@ -968,7 +967,6 @@ def expectedNoopConclusions : List String :=
    "flowKeyHead",
    "flowKeyRoute_of_open",
    "flowKeyRoute_of_root",
-   "flowOpen_floor_at_prep",
    "flowOpen_marker",
    "flowOpen_stamp",
    "keyctx_of_preprocess",

@@ -953,13 +953,16 @@ def hopName (env : Environment) (e : Edge) : String :=
 -- splits `h_closeF_old` into the re-parked `pendingBlock.h_closeF` instead of declining it.
 -- 2026-10-28 (item 380, PR #146 review): `Or.elim` read as a two-arm split — VIA 49 → 32 (its 17 leaves), DECLINE 253 → 265
 -- (the 12 whose arms agree collapse to one DECLINE each), SPLIT 162 → 167 (the 5 whose arms disagree).
+-- 2026-10-29 (item 396): content_dispatch_after_close's four declined contexts restated — the
+-- three callers' 12 DECLINE edges and the lemma's 4 RELAY edges go (edges 669 → 657, DECLINE
+-- 263 → 255, RELAY 67 → 63); the four Or.inr trivial now written inside the lemma are no edge.
 def expectedTally : String :=
   -- 2026-10-26 (item 366): DECLINE 258 → 256, VIA 47 → 49 — the two `h_outer` arguments of
   -- `accum_block_on_closeThenBlock` (compact and explicit `:`) pay under `Classical.em (MarkedColsIn sc [col])`.
   -- 2026-10-26 (item 369): edges 664 → 665, DECLINE 256 → 255, FIELD 55 → 56, SPLIT 160 → 161 —
   -- `pendingBlock.h_closeF` threaded into `accum_block_on_pendingBlock` (one FIELD edge) and the
   -- `:`/`?` landing's `h_res_land` there read off those frames instead of `Or.inr trivial`.
-  "edges=669 skipped=42 [DECLINE=263, FIELD=56, LOCAL=27, PAY=55, RELAY=67, \
+  "edges=657 skipped=42 [DECLINE=255, FIELD=56, LOCAL=27, PAY=55, RELAY=63, \
 SPLIT=167, VIA=34]"
 
 /-- **The row item 211 read off the compiler's error text and got wrong.**  All
@@ -1362,11 +1365,12 @@ def expectedBranchPremises : List String :=
 -- 2026-10-26 (item 370): liveSplits 100 → 101 — the sibling `-` arm's split of `h_closeF_old` is live (PAY arm reached).
 -- 2026-10-28 (item 385): accounted 667/667 → 669/669, nodes 163 → 164
 -- — `deeperLandingResume` is one more node; its two `h_valF` relay edges are accounted.
+-- 2026-10-29 (item 396): after_close's four declined contexts restated — their decline leaves are no longer reached through the three callers.
 def expectedDeclineReach : String :=
 -- Item 372 (2026-10-27): two more edges — `ImplicitKeyPack`'s route conjunct is now an Or (the `SeqTopKey` face), split at the producer's exit (a) and resolved at `colon_fires_implicit_key`.
 -- 2026-10-28 (item 380, PR #146 review): liveSplits 101 → 104 — `Or.elim` read as a two-arm split: three of the
 -- five disagreeing `Classical.em … |>.elim` decisions stand on a live (reachable) decline path; nothing else moved.
-  "pairs=36 orphan=2 direct=9 closureDecline=34 dead=0 maxDepth=2 liveSplits=104 deadSplits=0 accounted=669/669 nodes=164 fieldEdges=56 fieldResolved=56 withCycle=8 declineWriters=19 parkHop=22"
+  "pairs=36 orphan=2 direct=9 closureDecline=34 dead=0 maxDepth=2 liveSplits=104 deadSplits=0 accounted=657/657 nodes=160 fieldEdges=56 fieldResolved=56 withCycle=8 declineWriters=19 parkHop=22"
 
 /-- **Every branch premise, with what its own callers supply and where that
     bottoms out.**  `⇐` names the FIRST hop — for a park field, the field

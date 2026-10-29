@@ -13792,30 +13792,6 @@ lemma InteriorGap.col_pos {sc : ScannerState} {tl : FrameTail} {sp_flow sp_scan 
     exact propsRun_col_gt ((h_run 0).resolve_right (fun h => h (Nat.zero_le _)))
       (Nat.zero_le _)
 
-/-- **The flow open's floor** (item 67).  The stack the open pushes reads at
-    the pending's index for the whole collection, so the index has to still
-    measure against the state the OPEN runs at — one preprocessing step past
-    the park.  Item 60's `preprocess_some_floor_at_landing` is the whole
-    argument: either nothing was popped, or the landing's own column is what
-    preprocessing's trailing-content check let through, and the separator the
-    open already holds is where that column comes from.
-
-    `h_start` is the park's own column, which is why this is available at a
-    `pendingBlock` (item 59 put it on the constructor) and not yet at the two
-    parks that carry no column — the same boundary item 66 measured. -/
-lemma flowOpen_floor_at_prep {n : Nat} {sc s_prep : ScannerState} {c : Char}
-    {sp sp_prep : SurfPos}
-    (hcorr_prep : ScannerSurfCorr s_prep sp_prep)
-    (hok : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
-    (h_sep : SSeparateLines n sp sp_prep)
-    (h_start : n ≤ sp.col)
-    (h_floor : IndentFloor sc n ∨ True) :
-    n ≤ minContentIndentOf s_prep ∨ True := by
-  rcases h_floor with ⟨-, h_le⟩ | _
-  · exact Or.inl (preprocess_some_floor_at_landing hok h_le
-      (by rw [← hcorr_prep.col_eq]; exact separateLines_col_ge h_sep h_start))
-  · exact Or.inr trivial
-
 /-- **The stamp a depth-0 flow OPEN records** (item 103), and the `by_cases`
     that decides it.
 
@@ -36239,36 +36215,7 @@ lemma content_dispatch_after_close
     -- Item 109: forwarded unchanged — the anchor this instance picks is the
     -- CLOSED stream's landing, which is where a resuming context is stated too.
     (h_resumectx : ResumeKeyCtx s_prep sp_start sp_prep)
-    -- Item 117: forwarded unchanged, for the same reason.
-    (h_suffixctx : ((∃ (k : Nat) (sp_land : SurfPos),
-        sp_land.col = 0 ∧ SuffixRun sp_start sp_land ∧ SIndent k sp_land sp_prep) ∧
-      s_prep.simpleKey.possible = true ∧
-      s_prep.simpleKey.pos = s_prep.currentPos) ∨ True)
-    -- Item 136: forwarded unchanged, for the third time and the same reason.
-    -- A caller that can pay this one has no business here at all — the head's
-    -- own route is `nodocNodeRoute`, and `accum_content_on_noPending` spends
-    -- it through `content_dispatch_routed` directly — but the key context is
-    -- independent of the node route (the entry's document and the parked
-    -- node's are different documents), so the parameter rides.
-    (h_nodocctx : ((∃ (k : Nat) (sp_land : SurfPos),
-        sp_land.col = 0 ∧ GStar SLDocumentPrefix sp_start sp_land ∧
-        SIndent k sp_land sp_prep) ∧
-      s_prep.simpleKey.possible = true ∧
-      s_prep.simpleKey.pos = s_prep.currentPos) ∨ True)
-    -- Item 137: forwarded unchanged, and for a sharper version of item 136's
-    -- reason — a marker park does not reach this lemma at all now, because its
-    -- landing anchors the node at the MARKER and `content_dispatch_routed` is
-    -- where the anchor is a parameter.  The key context rides anyway: it is
-    -- independent of the node route.
-    (h_markerctx : ((∃ (k : Nat) (sp_land : SurfPos),
-        sp_land.col = 0 ∧ MarkerNodeRoute sp_start sp_land ∧
-        SIndent k sp_land sp_prep) ∧
-      s_prep.simpleKey.possible = true ∧
-      s_prep.simpleKey.pos = s_prep.currentPos) ∨ True)
-    -- Item 144: forwarded, and ALWAYS `Or.inr` at the three call sites — see
-    -- the note on `bareNodeRoute` in the body below.
     (sc : ScannerState)
-    (h_ref : BareLandingFacts sc s_prep c ∨ True)
     -- Item 174: forwarded — the props landing is one of this lemma's three
     -- callers, and the SENTINEL-indexed park is the one that pays.  The ride
     -- re-enters by the park's own route, so the bare-document route below is
@@ -36321,7 +36268,11 @@ lemma content_dispatch_after_close
     -- the landing's column.  All three inputs parse.  What is left here is a
     -- ROUTE — the enclosing park's own — and not a refutation of any kind.
     (fun _ => bareNodeRoute h_stream_block)
-    h_keyctx h_resumectx h_suffixctx h_nodocctx h_markerctx sc h_ref h_propsctx
+    -- Item 396: the suffix / no-document / marker contexts and the §9.2 refusal
+    -- were binders every caller declined (the ∨-True audit: declined at every
+    -- edge, inspected by no consumer) — declined here once instead.
+    h_keyctx h_resumectx (Or.inr trivial) (Or.inr trivial) (Or.inr trivial) sc
+    (Or.inr trivial) h_propsctx
     -- Item 300: a close is not a `---` park; the marker premise declines.
     (Or.inr trivial)
 
@@ -37723,12 +37674,7 @@ lemma accum_content_on_pendingBlock_indented
                (SCompactSeqTail.nil n sp_m)⟩
          | Or.inr h_alt => Or.inr h_alt)
         h_pay_seq (Or.inr trivial))
-      (Or.inr trivial)
-      (Or.inr trivial) (Or.inr trivial)
-      -- Item 144: a `-` park's tail is `blockEntry`, which `completesFlowValue`
-      -- excludes — §9.2 stands aside here on its token reading, and on the
-      -- indent stack too (`k:⏎␣␣-⏎␣␣␣␣b` lands at `sz=3`).
-      sc (Or.inr trivial)
+      sc
       -- Item 174: no held run stands behind a `-` park.
       (Or.inr trivial)
 
@@ -38420,9 +38366,7 @@ lemma accum_content_on_pendingMapValue_indented
         (h_framesV108.imp (fun ⟨nv, ks, hc, r⟩ =>
           ⟨nv, ks, hc.imp (fun ⟨lo, hb, hcv⟩ => ⟨lo, n + 1, hb, hcv⟩) id, r⟩) id)
         h_pay_res (Or.inr trivial))
-      (Or.inr trivial) (Or.inr trivial) (Or.inr trivial)
-      -- Item 144: a `:` park's tail is `value`, excluded for the same reason.
-      sc (Or.inr trivial)
+      sc
       -- Item 174: no held run stands behind a `:` park.
       (Or.inr trivial)
 
@@ -39256,13 +39200,7 @@ lemma accum_content_pending (sc : ScannerState)
             h_fS h_fV h_pay_props
             -- Item 168: a `[96]` run's park has no mapping level of its own.
             (Or.inr trivial))
-          (Or.inr trivial) (Or.inr trivial) (Or.inr trivial)
-          -- **Item 144: the props landing IS at the sentinel** (`&p⏎# c⏎b`
-          -- lands at `sz=1`) and §9.2 stands aside anyway, because the run's
-          -- tail is an anchor/tag token and `completesFlowValue` excludes
-          -- those.  This is the one of the three `after_close` callers whose
-          -- emptiness is NOT the indent stack's doing.
-          sc (Or.inr trivial)
+          sc
           -- Item 174: and the ONE caller that pays the ride.
           h_ride
     | inr h_mid =>

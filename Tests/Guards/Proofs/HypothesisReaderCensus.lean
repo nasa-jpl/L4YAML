@@ -616,6 +616,8 @@ adds.**   `constants` counts the module's non-internal constants, generated ones
 -- 2026-10-29 (item 394, option B): +4 constants / decls — unwindIndentsLoop_mem, unwindIndents_mem,
 -- preprocess_indents_subset and FlowStackK's widened pack; READ +6 / RELAY +1 / eta +1 from the
 -- `sc.indents = s0.indents` relays.
+-- 2026-10-29 (item 396): flowOpen_floor_at_prep deleted (constants −1); content_dispatch_after_close's four
+-- contexts restated (READ −2, RELAY −7; the optional-context census total 167 → 162, RELAY 44 → 40).
 def expectedModuleTally : String :=
   -- 2026-10-26 (item 365): RELAY 2830 → 2836 — `h_sound` ×3, `h_fl0` ×2 and `h_alt` ×1 passed whole from
   -- `accum_step_content`/`accum_content_pending`/the `_indented` pair to the content lane's payers.
@@ -624,7 +626,7 @@ def expectedModuleTally : String :=
   -- `dispatchBlock_colon_notQuestion` and `explFrameValueLine`'s split alternative.
   -- 2026-10-26 (item 366): RELAY 2836 → 2838 — `h_sound` passed whole into the two new `Sound sc` binders.
   -- 2026-10-27 (item 371): constants/decls +1, READ +1 — `ResumeFrames.one` (its `h_tail` is read once).
-  "constants=1732 decls=1367 eta=446 FIELD=169 READ=1385 RELAY=2910 RETURN=54 \
+  "constants=1731 decls=1366 eta=446 FIELD=169 READ=1383 RELAY=2903 RETURN=54 \
 UNUSED=27"
 -- 2026-10-25 (#112 review): the `FlowStackK` `MarkedColsIn` carrier reverted (Rule 8: a projection of the closed state is decided at the close by `Classical.em`); the two transport helpers and `h_pk'` go (constants 1683 → 1681, decls 1322 → 1320, READ 1325 → 1323, RELAY 2838 → 2830); `Mono sc` stays on `accum_step_flow`.
 -- 2026-10-25 (item 363): the flow OPEN lane read off the block state (`h_refused`, one `Classical.em`; five `match` blocks deleted): the five deleted `match` auxiliaries: constants 1681 → 1676, decls 1320 → 1315, READ 1323 → 1306.
@@ -737,7 +739,7 @@ inherit their parents' binders filtered out so the denominator is declarations. 
 -- (the `-` park's frames, read by the `:`/`?` landing for `h_res_land`).
 -- 2026-10-28 (item 385): total 166 → 167, READ 91 → 92
 -- — `deeperLandingResume.h_valF` is one more optional context, READ (destructured) inside the helper.
-def expectedOptTally : String := "total=167 ETA=31 READ=92 RELAY=44"
+def expectedOptTally : String := "total=162 ETA=31 READ=91 RELAY=40"
 
 /-- The six item 212 enumerated, by verdict — seven since item 300.  Six are
     read in `content_dispatch_routed`'s own term (`h_markerline`, the marker
