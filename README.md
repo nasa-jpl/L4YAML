@@ -215,6 +215,36 @@ per-document comments) back into YAML text, with control over:
 Every dump configuration is deterministic and participates in the round-trip
 proofs.
 
+### 6. Column-aligning formatter (`l4yaml-fmt`)
+
+[`L4YAML.Align.format`](L4YAML/Output/Align.lean) and its CLI `l4yaml-fmt`
+line up the values of `key: value` entries inside each block mapping — and,
+as a second column, the nodes of `key: &anchor value` / `key: !tag value`
+entries — by rewriting only the blanks after `:` and after node properties.
+Comments, blank lines, block-scalar bodies, flow collections and quoting are
+copied byte for byte, and the result is re-scanned: unless it yields the same
+tokens and comments the tool refuses and leaves the input alone.
+
+```bash
+lake build l4yaml-fmt
+.lake/build/bin/l4yaml-fmt < params.yaml              # stdin → stdout
+.lake/build/bin/l4yaml-fmt -w -r 8 config/*.yaml      # in place, cells padded to multiples of 8
+.lake/build/bin/l4yaml-fmt --check config/*.yaml      # exit 1 if anything would change
+```
+
+Options: `-g run` splits a mapping into groups at blank lines (default: the
+whole mapping is one group); `-c N` caps the key cell at `N` columns so one
+very long key does not push the rest of the group right (default 40); `-r N`
+rounds cells up to a multiple of `N`; `-s N` sets the minimum gap. Aliases
+must be defined in the same input, since the scanner rejects undefined ones.
+
+[`AlignProofs`](L4YAML/Proofs/Output/AlignProofs.lean) proves that edit
+application preserves every non-blank character in order (hence the line
+structure), that a successful `format` has the same token values and comments
+as its input, and that aligned cells never fall below the minimum gap.
+`lake exe aligntest` checks the fixtures under `Tests/align/` for golden
+output, idempotence and token-shape equality.
+
 ## Quick start
 
 ### Lean

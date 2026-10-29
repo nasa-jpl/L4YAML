@@ -11,6 +11,7 @@ public import L4YAML.Proofs.Serialization.TokenEvents
 public import L4YAML.Proofs.Production.StreamAccum
 public import L4YAML.Proofs.Scanner.RegisterWitness
 public import L4YAML.Proofs.Scanner.FlowAdjacency
+public import L4YAML.Proofs.Output.AlignProofs
 public import L4YAML.Proofs.Scanner.FlowAdjacencyIx
 public import L4YAML.Proofs.Serialization.TraceOf.Leaves
 public import L4YAML.Proofs.Serialization.SerializationWellFormed
@@ -7690,6 +7691,129 @@ def testLiveKeyTopInvariant (state : IO.Ref TestCollector) : IO Unit := do
     check state s!"P65 LiveKeyTop at every pause of {label}: pauses={pauses} viol={viol} armed={armed}"
       (viol == 0 && pauses == expectedPauses && (if armedExpected then armed > 0 else armed == 0))
 
+/-! ## Priority 66 — `l4yaml-fmt` (PR #169 review): the aligner's lemmas read at their boundaries
+
+`L4YAML/Proofs/Output/AlignProofs.lean` feeds capstone 6.16 `format_whitespace_only`:
+`applyEditsFrom_filter` / `applyEdits_count_newline` (edit application keeps the non-blank
+characters and the line count for ANY edit list — empty, zero-width, reversed, overlapping,
+out of range, or over non-blank text), `format_ok_filter` / `format_ok_count_newline` /
+`format_ok_scanShape` (a successful `format` is a whitespace-only reformat with the same
+tokens and comments) and `minGap_le_gap` (an aligned cell keeps at least `minGap`).  Rule 2
+below instantiates them on edit lists the planner never emits, on empty / one-entry / BOM /
+CRLF / tab / block-scalar / flow / anchored / commented inputs under every configuration
+boundary (`maxCell` 0 and 1, `round` 0, `minGap` 0, both groupings), and on cell lists with
+and without outliers.  Idempotence (`format cfg out = .ok out`) is CHECKED here, not proved.
+A violation is a build failure. -/
+
+/-- `(rows, viol)` — every edit list below applied to `input`; `viol` counts a result whose
+    non-blank characters or line count differ from the input's. -/
+def alignEditsWalk (input : String) : Nat × Nat := Id.run do
+  let n := input.length
+  let mk : Nat → Nat → Nat → L4YAML.Align.Edit := fun a b w => { start := a, stop := b, width := w }
+  let lists : List (Array L4YAML.Align.Edit) :=
+    [ #[], #[mk 0 0 0], #[mk 0 0 3], #[mk 0 n 1], #[mk n n 2], #[mk (n + 5) (n + 9) 1],
+      #[mk 2 1 1], #[mk 1 2 0], #[mk 1 2 4], #[mk 0 1 1, mk 0 1 2], #[mk 1 3 1, mk 2 4 1],
+      #[mk 3 2 1, mk 0 1 1], #[mk 0 n 0, mk 0 n 0], #[mk 4 5 2, mk 1 2 2, mk 7 8 0] ]
+  let nb := input.toList.filter L4YAML.Align.nonBlank
+  let nl := input.toList.count '\n'
+  let mut rows := 0
+  let mut viol := 0
+  for es in lists do
+    rows := rows + 1
+    let out := L4YAML.Align.applyEdits es input
+    if out.toList.filter L4YAML.Align.nonBlank != nb || out.toList.count '\n' != nl then
+      viol := viol + 1
+  return (rows, viol)
+
+/-- `(viol, ok)` — `format cfg input`; when it succeeds, `viol` counts a broken conjunct of
+    `format_whitespace_only` plus a failed idempotence re-run; `ok = false` means `format`
+    refused the input (an error is allowed; a wrong success is not). -/
+def alignFormatWalk (cfg : L4YAML.Align.AlignConfig) (input : String) : Nat × Bool := Id.run do
+  match L4YAML.Align.format cfg input with
+  | .error _ => return (0, false)
+  | .ok out =>
+    let mut viol := 0
+    if out.toList.filter L4YAML.Align.nonBlank != input.toList.filter L4YAML.Align.nonBlank then
+      viol := viol + 1
+    if out.toList.count '\n' != input.toList.count '\n' then viol := viol + 1
+    if L4YAML.Align.scanShape out != L4YAML.Align.scanShape input then viol := viol + 1
+    match L4YAML.Align.format cfg out with
+    | .ok out2 => if out2 != out then viol := viol + 1
+    | .error _ => viol := viol + 1
+    return (viol, true)
+
+/-- `(rows, viol)` — `minGap_le_gap` at every cell that fits, over cell lists with and without
+    outliers and every `maxCell` / `round` / `minGap` boundary. -/
+def alignGapWalk : Nat × Nat := Id.run do
+  let cellLists : List (List Nat) := [[], [3], [3, 10], [41, 2], [40], [1, 1, 1], [7, 8, 9, 50], [0]]
+  let mut rows := 0
+  let mut viol := 0
+  for cells in cellLists do
+    for maxCell in ([0, 1, 20, 40] : List Nat) do
+      for round in ([0, 1, 4, 8] : List Nat) do
+        for minGap in ([0, 1, 3] : List Nat) do
+          match L4YAML.Align.groupTarget cells maxCell round with
+          | none => pure ()
+          | some t =>
+            for c in cells do
+              if c ≤ maxCell && minGap ≤ c then
+                rows := rows + 1
+                if L4YAML.Align.gapWidth true t (c - minGap) minGap < minGap then viol := viol + 1
+  return (rows, viol)
+
+def testAlignLemmas (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 66: l4yaml-fmt (PR #169 review) — applyEditsFrom_filter / applyEdits_count_newline on edit lists the planner never emits; format_whitespace_only's three conjuncts plus idempotence on boundary inputs under every configuration boundary; minGap_le_gap on cell lists with and without outliers"
+  -- Predicted before the run: viol = 0 on every row (the lemmas are unconditional in the edits).
+  let editInputs : List (String × String) :=
+    [ ("empty input", ""), ("one char", "a"), ("blanks only", "  \t "),
+      ("a: 1 (no newline)", "a: 1"), ("two lines", "a: 1\nbb:  2\n"),
+      ("CRLF lines", "a: 1\r\nbb: 2\r\n"), ("tabs between", "a:\t\t1\n") ]
+  for (label, input) in editInputs do
+    let (rows, viol) := alignEditsWalk input
+    check state s!"applyEdits keeps non-blanks and line count on {label}: rows={rows} viol={viol}"
+      (viol == 0 && rows == 14)
+  -- Predicted before the run: every accepted input satisfies all three conjuncts and is a fixed
+  -- point of a second pass; the undefined alias and the bad dedent are refused under every cfg.
+  -- Read after the first run: `minGap 0` glues `a:1`, which rescans as one plain scalar, so the
+  -- fail-closed re-scan refuses every non-empty input — the guard firing, kept as a row
+  -- (the CLI rejects `-s 0` for the same reason).
+  let cfgs : List (String × L4YAML.Align.AlignConfig) :=
+    [ ("default", {}), ("maxCell 0", { maxCell := 0 }), ("maxCell 1", { maxCell := 1 }),
+      ("round 0", { round := 0 }), ("round 8", { round := 8 }), ("minGap 0", { minGap := 0 }),
+      ("minGap 3", { minGap := 3 }), ("group run", { grouping := .run }),
+      ("round 8 minGap 0 maxCell 1", { maxCell := 1, round := 8, minGap := 0 }) ]
+  let inputs : List (String × String × Bool) :=
+    [ ("empty", "", true), ("a: 1 (no newline)", "a: 1", true), ("a: 1⏎", "a: 1\n", true),
+      ("BOM a: 1⏎bbbb: 2", "\uFEFFa: 1\nbbbb: 2\n", true),
+      ("BOM with anchors", "\uFEFFlong_key: &lk 1\nb: *lk\n", true),
+      ("tab after colon", "a:\tb\nbb: c\n", true),
+      ("CRLF", "a: 1\r\nbb: 2\r\n", true),
+      ("anchor and alias", "k: &x 1\nkk: *x\n", true),
+      ("tag then anchor", "a: !!str x\nbb: &y !!int 7\n", true),
+      ("sequence of mappings", "- a: 1\n  bb: 2\n- ccc: 3\n", true),
+      ("literal block", "a: |\n  x  y\nbb: 2\n", true),
+      ("folded block after long key", "cmd: >\n  one\n  two\nk: 1\n", true),
+      ("flow values", "a: {b: 1}\nlong_key: [1, 2]\n", true),
+      ("comments and blank lines", "# c\na: 1 # t\n\nbb: 2\n", true),
+      ("key: # comment then nested", "a: # c\n  - 1\nbb: 2\n", true),
+      ("quoted with spaces", "a: \"x   y\"\nbb: 'p  q'\n", true),
+      ("explicit key", "? a\n: 1\nbb: 2\n", true),
+      ("nested mappings", "a:\n  b: 1\n  cc: 2\nd: 3\n", true),
+      ("outlier key with short anchor", "a_very_long_key_that_exceeds_the_cap: &b 2\nshort: &a 1\n", true),
+      ("undefined alias (refused)", "a: *nope\n", false),
+      ("bad dedent (refused)", "a:\n  b: 1\n c: 2\n", false) ]
+  for (clabel, cfg) in cfgs do
+    for (label, input, accepted) in inputs do
+      let (viol, ok) := alignFormatWalk cfg input
+      let expectOk := accepted && (cfg.minGap > 0 || input.isEmpty)
+      check state s!"format_whitespace_only + idempotence [{clabel}] on {label}: viol={viol} ok={ok}"
+        (viol == 0 && ok == expectOk)
+  -- Predicted before the run: viol = 0; rows > 0 (the nonvacuous instances exist).
+  let (rows, viol) := alignGapWalk
+  check state s!"minGap_le_gap over cell lists with and without outliers: rows={rows} viol={viol}"
+    (viol == 0 && rows > 0)
+
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -7773,6 +7897,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testTokenEventExtractorsSeam state
   testTagHandleShape state
   testTokenStateOkRestatement state
+  testAlignLemmas state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",

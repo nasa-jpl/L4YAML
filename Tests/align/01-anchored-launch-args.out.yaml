@@ -1,0 +1,7 @@
+# To launch a node under a debugger, pass an overrides file that sets
+# the node-specific flags below (the anchors are reused by the launch file).
+global_launch_args:
+
+  debug_planner_enable:   &debug_planner_enable   true
+  planner_breakpoints:    &planner_breakpoints    "$(find-pkg-share demo_bringup)/config/planner_breakpoints.gdb"
+  debug_mapper_enable:    &debug_mapper_enable    false

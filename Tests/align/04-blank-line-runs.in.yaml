@@ -1,0 +1,26 @@
+settings:
+  # Runs are separated by blank lines (-g run); each run aligns on its own,
+  # comment lines inside a run do not split it.
+  ros__parameters:
+
+    ## Timing
+
+    period_sec: 1
+    window_sec: 5
+    # must exceed the worst-case cycle
+    timeout_sec: 30
+
+    # a one-line run keeps a single space
+    retry_count: 3
+
+    max_tasks: 200
+    
+    ## Output
+
+    flush: true
+    dump_plan: true
+    dump_partial_plan: false
+
+    SHOW_PLAN: true
+    SHOW_SCHEDULE: false
+    SHOW_DETAIL: false

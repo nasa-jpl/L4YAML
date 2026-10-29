@@ -5,6 +5,8 @@ public import L4YAML.CapstoneAttr
 public import L4YAML.Capstones
 public import L4YAML.Config.Config
 public import L4YAML.Output.Dump
+public import L4YAML.Output.Align
+public import L4YAML.Proofs.Output.AlignProofs
 public import L4YAML.Output.Emitter
 public import L4YAML.FFI.FFI
 public import L4YAML.Spec.Grammar
