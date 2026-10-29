@@ -53,8 +53,8 @@ open L4YAML L4YAML.Scanner L4YAML.Surface L4YAML.Proofs.StreamAccum
 `FlowStackB` has TWO constructors.  A `match` that covers them is total, which
 is what pins the deletion: were `shape` still there, this would not elaborate. -/
 
-example {sp_start : SurfPos} {n kc d : Nat} {ks km : Array Bool} {tl : FrameTail}
-    {a b : SurfPos} (h : FlowStackB sp_start n kc none d ks km tl a b) : True :=
+example {s0 : ScannerState} {sp_start : SurfPos} {n kc d : Nat} {ks km : Array Bool} {tl : FrameTail}
+    {a b : SurfPos} (h : FlowStackB sp_start n kc none s0 d ks km tl a b) : True :=
   match h with
   | .nil _ _ => trivial
   | .«open» _ _ _ _ _ _ _ => trivial
@@ -65,9 +65,9 @@ example {sp_start : SurfPos} {n kc d : Nat} {ks km : Array Bool} {tl : FrameTail
 type is the pin: while the collapse existed this returned a disjunction, and
 every consumer split on it. -/
 
-example {sp_start : SurfPos} {n kc d : Nat} {ks km : Array Bool} {tl : FrameTail}
-    {a b : SurfPos} (h : FlowStackB sp_start n kc none (d + 1) ks km tl a b) :
-    FlowOpenStack sp_start n kc none (d + 1) ks km tl a b := h.open_of_succ
+example {s0 : ScannerState} {sp_start : SurfPos} {n kc d : Nat} {ks km : Array Bool} {tl : FrameTail}
+    {a b : SurfPos} (h : FlowStackB sp_start n kc none s0 (d + 1) ks km tl a b) :
+    FlowOpenStack sp_start n kc none s0 (d + 1) ks km tl a b := h.open_of_succ
 
 /-! ## §3  The families that ride the real lane
 

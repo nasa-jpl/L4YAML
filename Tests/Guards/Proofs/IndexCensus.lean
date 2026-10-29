@@ -276,14 +276,17 @@ def surfaceControl : CommandElabM (Array String) := do
 -- the width bound `∀ k' ∈ ks, k' < n` on the two sequence fields, their three restating premises,
 -- `pendingProps.h_closeFEV` and `closeThenBlock`'s `h_valFV` names `ks` (and `n`) once more in the binder's own type.
 -- 2026-10-29 (item 389): stream frame/other occurrence classes re-counted after the mapping-top conjunct joined the three route faces (it resumes the park's own `ks`: occ=4 ×12 → ×6 and a new occ=5 ×6 class, no new binder).
+-- 2026-10-29 (item 394, option B): FlowBaseRoutes.valueF's frame list now occurs three
+-- times in its position (Floor, Covered, the resume route) instead of once — two
+-- stream/frames positions move occ=1 → occ=3 (×5 → ×3, ×7 → ×9).
 def expected : List String :=
   ["seq/bottom/occ=1  ×9",
    "seq/frames/occ=2  ×9",
    "seq/other/occ=2  ×3",
   -- 2026-10-29 (item 394): `FlowBaseRoutes.valueF` and its two close relays read `ResumeFrames (SLYamlStream sp_start) ks` once each (×3 → ×5).
-   "stream/frames/occ=1  ×5",
+   "stream/frames/occ=1  ×3",
    "stream/frames/occ=2  ×10",
-   "stream/frames/occ=3  ×7",
+   "stream/frames/occ=3  ×9",
    "stream/frames/occ=4  ×6",
    "stream/frames/occ=5  ×6",
    "stream/other/occ=1  ×27",

@@ -229,6 +229,9 @@ def expectedPayments : List String :=
   ["R4 relay accum_content_on_pendingMapValue_indented #1 ctor:pendingProps.h_closeFE idx=n + 1 src=h_frames99@2:Floor(n,ks) tgt=bound(ks<ne) Floor(ne,ks) eq(n=ne + 1) := match[paid{cover=step(relay(param:accum_content_on_pendingMapValue_indented.h_frames99))}|punt]"]
 -- 2026-10-25 (item 358): 30 → 33 — the cover conjunct on the `h_closeFV_old` twins and the two `h_closeFV_old`
 -- relays into `closeThenBlock.h_mapFV` read as `Floor lo n ks` literals.
+-- 2026-10-29 (item 394, option B): pendingMapValue.h_closeF's cover restated `∃ lo, Floor lo n ks` — the
+-- floor literals now read the park's own level as the index (34 → 39 rows: the relays that used to
+-- bind the ghost `m` now name `n`); valueF's cover adds its literal at the mapping arm.
 def expectedFloorLits : List String :=
   ["accum_block_on_closeThenBlock lo=lo idx=k ks=map(…) :: ksv var ×1",
    "accum_block_on_closeThenBlock lo=nv + 1 idx=nv + 1 + m ks=[] lit ×2",
@@ -243,12 +246,9 @@ def expectedFloorLits : List String :=
    "accum_content_on_pendingBlock_indented lo=lo idx=n ks=ks var ×8",
    "accum_content_on_pendingMapValue_indented lo=lo idx=n + 1 ks=ks var ×5",
    "accum_content_on_pendingMapValue_indented lo=lo idx=n ks=ks var ×1",
-   "accum_content_on_pendingMapValue_indented lo=lo idx=n ks=map(…) :: ks var ×4",
-   "accum_content_pending lo=lo idx=k ks=map(…) :: ks var ×10",
+      "accum_content_pending lo=lo idx=k ks=map(…) :: ks var ×10",
    "accum_content_pending lo=lo idx=k ks=ks var ×3",
-   "accum_content_pending lo=lo idx=m ks=ks var ×14",
-   "accum_content_pending lo=lo idx=n ks=ks var ×1",
-   "accum_content_pending lo=lo idx=ne ks=ks var ×3",
+         "accum_content_pending lo=lo idx=ne ks=ks var ×3",
    "colon_fires_implicit_key lo=lo idx=k ks=map(…) :: ks var ×2",
    "colon_fires_props_key lo=lo idx=k ks=map(…) :: ks var ×2",
    "colon_open_map lo=k idx=k ks=map(…) :: [] own ×5",
@@ -266,10 +266,20 @@ def expectedFloorLits : List String :=
    "question_open_map lo=k idx=k ks=map(…) :: [] own ×5",
    "accum_block_on_pendingBlock lo=lo idx=n ks=ks var ×1",
    "accum_block_on_pendingBlockContent lo=lo idx=n ks=ks var ×1",
-   "accum_block_pending lo=lo idx=nmv + 1 ks=ks var ×2"
+   "accum_block_pending lo=lo idx=nmv + 1 ks=ks var ×2",
+   "accum_content_on_pendingMapValue_indented lo=lo idx=n + 1 ks=map(…) :: ks var ×1",
+   "accum_content_on_pendingMapValue_indented lo=lo idx=n ks=map(…) :: ks var ×3",
+   "accum_content_pending lo=lo idx=0 ks=ks var ×2",
+   "accum_content_pending lo=lo idx=k + 1 ks=ks var ×3",
+   "accum_content_pending lo=lo idx=m ks=ks var ×7",
+   "accum_content_pending lo=lo idx=n ks=ks var ×4",
+   "accum_flow_open_depth0 lo=lo idx=n_old + 1 ks=map(…) :: ks var ×1",
+   "accum_step_flow lo=lo idx=nn ks=ks var ×2"
   ]
+-- 2026-10-29 (item 394, option B): Floor.mono_index gains two uses — the mapping arm lifts the park's
+-- cover to the flow level (n_old + 1) for valueF, and the closed-content birth lifts n → n + 1.
 def expectedTransports : List String :=
-  ["Floor.mono_index: 9 in 5 [accum_block_on_closeThenBlock=1, colon_open_map_implicit=2, colon_open_map_props=2, entryKeyPack_of_dispatch=2, entryPropsKeyPack_of_dispatch=2]",
+  ["Floor.mono_index: 11 in 7 [accum_block_on_closeThenBlock=1, accum_content_on_pendingMapValue_indented=1, accum_flow_open_depth0=1, colon_open_map_implicit=2, colon_open_map_props=2, entryKeyPack_of_dispatch=2, entryPropsKeyPack_of_dispatch=2]",
    "Floor.cons: 4 in 2 [entryKeyPack_of_dispatch=2, entryPropsKeyPack_of_dispatch=2]",
    "Floor.pop_to: 1 in 1 [dedent_cover_of_floor=1]",
    "Floor.le_of_mem: 0 in 0 []",
@@ -366,6 +376,7 @@ def expectedTransports : List String :=
 -- 2026-10-29 (item 388): baseContent 17/6/13/3/2 → 17/6/13/4/2, allContent 19/6/12/5/2 → 19/6/12/6/2, baseEntry 17/6/13/3/2 → 17/6/13/4/2, allEntry 19/6/12/5/2 → 19/6/12/6/2, floorNodes 30646 → 30769 — the landed birth's `nv ≤ k` arm (cover `Or.inr trivial`, frames `[]`) and the `.blockOut` wraps.
 -- 2026-10-29 (item 389): floorNodes 30769 → 30810, nodes 121397 → 122297 — proof-term size only (the `-` park births' relays and refutations); no leaf turned.
 -- 2026-10-29 (item 394): the term grew with `FlowBaseRoutes.valueF`'s supply and relays; no leaf row moved.
+-- 2026-10-29 (item 394, option B): floor literals 34 → 39 rows and Floor.mono_index +2 (the summary's totals follow).
 def expectedLine : String :=
 -- 2026-10-25 (#112 review): the `FlowStackK` `MarkedColsIn` carrier reverted (Rule 8: a projection of the closed state is decided at the close by `Classical.em`); nodes 117690 → 117529, floorNodes 28226 → 28222 (walked-term totals).
 -- 2026-10-25 (item 363): the flow OPEN lane read off the block state (`h_refused`, one `Classical.em`); the three `match h_kslot_* with` blocks go — nodes 117529 → 117431 (walked-term total; floorNodes read from the build).
@@ -381,7 +392,7 @@ def expectedLine : String :=
 -- Item 372 (2026-10-27): exit (a)'s sequence-top face: one more lemma row at `entryKeyPack_of_dispatch` (the CloseStackCover row mirrored).
 -- Item 374: rows=200 → 202, nodes=119962 → 120158, floorNodes=29792 → 30376 — the resume context's face disjunct and `resumectx_of_landing`'s `h_base`.
   -- 2026-10-28 (item 386): nodes 120403 → 121047, floorNodes 30466 → 30646 — the level conjunct/binder and the helpers' sibling/absurd terms; no leaf delta row moved.
-  "rows=206 payments=1 literal=0 relay=1 scenarios=2 baseContent=17/6/13/4/2 allContent=19/6/12/6/2 baseEntry=17/6/13/4/2 allEntry=19/6/12/6/2 turnedPaidContent=0 turnedPaidEntry=0 originsBaseContent=6 originsAllContent=6 originsBaseEntry=6 originsAllEntry=6 puntContent=-1 puntEntry=-1 coverPuntContent=+2 coverPuntEntry=+2 mergedBase=true mergedAll=true floorLits=97 own=12 lit=6 var=79 ownLemmas=2 scanned=35 monoIndex=9 monoIndexLemmas=5 floorCons=4 floorConsLemmas=2 floorPopTo=1 floorPopToLemmas=1 leOfMem=0 coveredPopTo=1 coveredPopToLemmas=1 raiseFloor=0 dedupHead=2 dedupHeadLemmas=2 coveredCons=4 rootMonoCaller=1 rootMonoSite=1 rootNtop=1 nodes=122509 floorNodes=30943"
+  "rows=206 payments=1 literal=0 relay=1 scenarios=2 baseContent=17/6/13/4/2 allContent=19/6/12/6/2 baseEntry=17/6/13/4/2 allEntry=19/6/12/6/2 turnedPaidContent=0 turnedPaidEntry=0 originsBaseContent=6 originsAllContent=6 originsBaseEntry=6 originsAllEntry=6 puntContent=-1 puntEntry=-1 coverPuntContent=+2 coverPuntEntry=+2 mergedBase=true mergedAll=true floorLits=101 own=12 lit=6 var=83 ownLemmas=2 scanned=36 monoIndex=11 monoIndexLemmas=7 floorCons=4 floorConsLemmas=2 floorPopTo=1 floorPopToLemmas=1 leOfMem=0 coveredPopTo=1 coveredPopToLemmas=1 raiseFloor=0 dedupHead=2 dedupHeadLemmas=2 coveredCons=4 rootMonoCaller=1 rootMonoSite=1 rootNtop=1 nodes=123416 floorNodes=31317"
 
 /-! ## §4 The reading -/
 

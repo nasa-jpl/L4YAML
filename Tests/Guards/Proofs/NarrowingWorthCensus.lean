@@ -350,10 +350,11 @@ those heads and `expectedChainFaces` not naming a single one of them. -/
 -- 2026-10-24 (B3 [66] col-0 threading): binder indices shift with the park's new `sp_gram`/run/gate fields; faces unchanged.
 -- 2026-10-24 (B3 [66] col-0 threading): re-read on the item-354 base (binder indices).
 -- 2026-10-29 (item 394): `valueF` inserted before `key`/`vslot`; the constructor index of `vslot` moves 7 → 8.
+-- 2026-10-29 (item 394, option B): FlowBaseRoutes' constructor indices shift by one for `s0` (mk#8 → mk#9).
 def expectedChainFaces : List String :=
   -- Item 357: the marked-column domain reaches the `:`/`?` producers (`h_kslotD`, `h_explUp_chainD`) and the
   -- block-step `h_kslotUp` twins; the rung-1 faces read off the build.
-  ["FlowBaseRoutes.mk#8 (vslot)",
+  ["FlowBaseRoutes.mk#9 (vslot)",
    "accum_block_on_closeThenBlock#10 (h_vpack)",
    "accum_block_on_pendingContent#16 (h_vpack)",
    "entryKeyPack_of_dispatch#11 (h_nodeV)",
@@ -882,7 +883,8 @@ one unfolding, and §6 is the item where those two disagreed about binders. -/
 -- two independent moves; the rebased build confirms it.
 -- 2026-10-29 (item 388): theorems 6342 → 6343 (`valueLandedSeq`); no no-op conclusion moved.
 -- 2026-10-29 (item 389): theorems 6343 → 6358 — the item-389 helpers and Priority 60.
-def expectedNoopTally : String := "theorems=6359 byElab=17 byWhnf=17 elabOnly=0 whnfOnly=0"
+-- 2026-10-29 (item 394, option B): no-op conclusion tally re-read after the s0 index.
+def expectedNoopTally : String := "theorems=6362 byElab=17 byWhnf=17 elabOnly=0 whnfOnly=0"
 -- 5302 → 5344 on 2026-10-18 (plan row 20's close, closure-log item 280): the
 -- parse-side alias obligation moved to §7.1's DECLARATION set, so the carrier
 -- grew and the predicate gained its tools.  What is new in kind: `AG` carries

@@ -64,27 +64,27 @@ open L4YAML L4YAML.Scanner L4YAML.Surface L4YAML.Proofs.StreamAccum
 A base open built at `g` yields a stack at `g`; a nest neither reads it nor
 changes it, which is why the re-index cost signatures and not occurrences. -/
 
-example {sp_start sp_before sp_br sp_open sp_es : SurfPos} {n kc : Nat}
+example {s0 : ScannerState} {sp_start sp_before sp_br sp_open sp_es : SurfPos} {n kc : Nat}
     {g : Option ScannerState} (b : Bool)
-    (resume : FlowBaseRoutes sp_start n sp_br kc g)
+    (resume : FlowBaseRoutes sp_start n sp_br kc g s0)
     (h_open : GLit '[' sp_br sp_open)
     (h_sep : GOpt (SSeparate n .flowOut) sp_open sp_es) :
-    FlowStackB sp_start n kc g 1 #[true] #[b] .sep sp_before sp_es :=
+    FlowStackB sp_start n kc g s0 1 #[true] #[b] .sep sp_before sp_es :=
   FlowStackB.openSeqBase b resume h_open h_sep
 
-example {sp_start sp_before sp_br sp_open sp_es : SurfPos} {n kc : Nat}
+example {s0 : ScannerState} {sp_start sp_before sp_br sp_open sp_es : SurfPos} {n kc : Nat}
     {g : Option ScannerState} (b : Bool)
-    (resume : FlowBaseRoutes sp_start n sp_br kc g)
+    (resume : FlowBaseRoutes sp_start n sp_br kc g s0)
     (h_open : GLit '{' sp_br sp_open)
     (h_sep : GOpt (SSeparate n .flowOut) sp_open sp_es) :
-    FlowStackB sp_start n kc g 1 #[false] #[b] .sep sp_before sp_es :=
+    FlowStackB sp_start n kc g s0 1 #[false] #[b] .sep sp_before sp_es :=
   FlowStackB.openMapBase b resume h_open h_sep
 
 /-- A closed stack names a gate too, and `none` is the one it names: with no
     frame there is no park to be anchored to.  This is the shape all 32 of the
     depth-0 accum-step conclusions took. -/
-example {sp_start sp : SurfPos} {tl : FrameTail} :
-    FlowStackB sp_start 0 0 none 0 #[] #[] tl sp sp :=
+example {s0 : ScannerState} {sp_start sp : SurfPos} {tl : FrameTail} :
+    FlowStackB sp_start 0 0 none s0 0 #[] #[] tl sp sp :=
   FlowStackB.nil sp tl
 
 /-! ## §2  What `none` is worth

@@ -324,6 +324,8 @@ def splitShape (env : Environment) (g : Name) : Option Shape :=
     (item 218): all **58** `FIELD` edges in this module resolve, so the census
     does not currently need the matcher case — which is a fact about this
     module and not a property of the instrument. -/
+-- 2026-10-29 (item 394, option B): accum_content_pending's match auxiliary renumbered
+-- (match_1_55 → match_1_57) by the cover relays' new `match` arms; the edge itself is unchanged.
 def altCtorField (env : Environment) (g : Name) (alt : Nat) (i : Nat) :
     Option (Name × Nat) :=
   match g with
@@ -337,7 +339,7 @@ def altCtorField (env : Environment) (g : Name) (alt : Nat) (i : Nat) :
   | _ => none
 
 /-- The last two components of a (de-privatised) name: `Or.casesOn`,
-    `accum_content_pending.match_1_55`, `dite` — the splitter as a leaf path hop. -/
+    `accum_content_pending.match_1_57`, `dite` — the splitter as a leaf path hop. -/
 def tailName (c : Name) : String :=
   match Lean.privateToUserName c with
   | .str (.str _ a) b => s!"{a}.{b}"
@@ -957,7 +959,7 @@ def expectedTally : String :=
   -- 2026-10-26 (item 369): edges 664 → 665, DECLINE 256 → 255, FIELD 55 → 56, SPLIT 160 → 161 —
   -- `pendingBlock.h_closeF` threaded into `accum_block_on_pendingBlock` (one FIELD edge) and the
   -- `:`/`?` landing's `h_res_land` there read off those frames instead of `Or.inr trivial`.
-  "edges=669 skipped=41 [DECLINE=263, FIELD=56, LOCAL=27, PAY=55, RELAY=67, \
+  "edges=669 skipped=42 [DECLINE=263, FIELD=56, LOCAL=27, PAY=55, RELAY=67, \
 SPLIT=167, VIA=34]"
 
 /-- **The row item 211 read off the compiler's error text and got wrong.**  All
@@ -1515,9 +1517,9 @@ def expectedCollapsedEdge : String :=
     compact_open_map → PendingNode.pendingMapValue#19 (h_framesV) = DECLINE via Or.elim; \
     accum_flow_open_depth0 → flowKeyRoute_of_root#26 (h_mapFV) = DECLINE via Or.elim; \
     accum_flow_open_depth0 → flowKeyRoute_of_root#26 (h_mapFV) = DECLINE via Or.elim; \
-    accum_content_pending → PendingNode.pendingBlockContent#17 (h_kslotUp) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_content_pending.match_1_55; \
-    accum_content_pending → PendingNode.pendingBlockContent#17 (h_kslotUp) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_content_pending.match_1_55; \
-    accum_content_pending → PendingNode.pendingBlockContent#17 (h_kslotUp) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_content_pending.match_1_55; \
+    accum_content_pending → PendingNode.pendingBlockContent#17 (h_kslotUp) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_content_pending.match_1_57; \
+    accum_content_pending → PendingNode.pendingBlockContent#17 (h_kslotUp) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_content_pending.match_1_57; \
+    accum_content_pending → PendingNode.pendingBlockContent#17 (h_kslotUp) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_content_pending.match_1_57; \
     colon_open_map_explicit → PendingNode.pendingMapValue#15 (h_kslot) = DECLINE via Or.elim; \
     colon_open_map_explicit → PendingNode.pendingMapValue#18 (h_closeFV) = DECLINE via Or.elim; \
     colon_open_map_explicit → PendingNode.pendingMapValue#19 (h_framesV) = DECLINE via Or.elim; \

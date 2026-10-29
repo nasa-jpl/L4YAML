@@ -1155,6 +1155,7 @@ def expectedUnborn : List String := [
 -- 2026-10-29 (item 388): lapps 822 → 826, alts 5289 → 5291, nodes 13706 → 13710, liteNodes 636417 → 636818 — the landed birth's `nv ≤ k` arm (cover `Or.inr trivial`, frames `[]`) and the `.blockOut` wraps.
 -- 2026-10-29 (item 389): alts 5306 → 5299, lapps 843 → 844, lets 672 → 679, liteNodes 644591 → 641338 against the pre-review pin — term-size counters only (the conjunct resumes the park's own `ks` after PR #161 review; no `let`-destructured witness); no origin row moved.
 -- 2026-10-29 (item 394): the term grew with `FlowBaseRoutes.valueF`'s supply and relays; no origin row moved.
+-- 2026-10-29 (item 394, option B): the flow stack's s0 index and valueF's cover (walked-term total).
 def expectedLine : String :=
   -- 2026-10-25 (item 359): punt 12 → 11, stamp 39 → 40 — the `noPending` value-park face pays `PackAlt.ofRefused (h_noek …)`;
   -- lapps 806 → 807, liteNodes 607398 → 607407 — that one application and its term.
@@ -1171,7 +1172,7 @@ def expectedLine : String :=
 -- Item 372 (2026-10-27): the Or-shaped route conjunct of `ImplicitKeyPack` (summary mirrors the five `(Or)` rows).
 -- Item 374: lets=647 → 648, lapps=821 → 822, alts=5234 → 5243, nodes=13694 → 13696, liteNodes=630069 → 632322 — the resume context's face disjunct and `resumectx_of_landing`'s `h_base`.
   -- 2026-10-28 (item 386): lets 652 → 657, alts 5277 → 5280, nodes 13696 → 13706, liteNodes 634748 → 635676 — the `-` opener's `h_lvl_old` and its `omega` spend at the no-pop arm; no origin row moved.
-  "positions=49 packaged=7 packConsts=[ImplicitKeyPack,PropsKeyPack] rows=184 ctorRows=98 paramRows=86 packagedRows=29 punt=7 stamp=44 built=133 origins=67 originRows=32 route=12 frames=29 tail=14 other=0 concl=8 invariant=4 heldOrigins=15 allHeld=3 someHeld=36 noneHeld=66 unbornRows=13 relayedPunt=0 relayedStamp=11 relayedAbsurd=4 relayedFact=0 deadRows=0 unbornPos=5 rounds=5 follows=360 lets=679 lapps=845 alts=5310 nodes=13721 liteNodes=642338"
+  "positions=49 packaged=7 packConsts=[ImplicitKeyPack,PropsKeyPack] rows=184 ctorRows=98 paramRows=86 packagedRows=29 punt=7 stamp=44 built=133 origins=67 originRows=32 route=12 frames=29 tail=14 other=0 concl=8 invariant=4 heldOrigins=15 allHeld=3 someHeld=36 noneHeld=66 unbornRows=13 relayedPunt=0 relayedStamp=11 relayedAbsurd=4 relayedFact=0 deadRows=0 unbornPos=5 rounds=5 follows=360 lets=681 lapps=846 alts=5491 nodes=13748 liteNodes=661905"
 
 /-! ## §4 The reading -/
 

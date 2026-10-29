@@ -671,6 +671,8 @@ def walk (table : Std.HashMap Name (Array Closure)) (c : Name) :
 -- Item 371: every value-line pack's closure ends `⇒ Resume(map(_)::[])▹Stream`, not `⇒ Stream`
 -- (the restated pack); `pendingMapValue.h_expl`'s route carries its `SCompactMapTail` tail.
 -- 2026-10-29 (item 389): the `-` park's h_closeF (pendingBlock, pendingBlockContent) and the props park's h_closeFE carry the mapping-top conjunct — the mapping sibling's route (SCompactMapTail(n) after the entry's compact tail) as a second shape inside the informative side.
+-- 2026-10-29 (item 394, option B): `mk.valueF` [λλLE] → [λλLE2]: the cover `∃ lo, Floor lo n ks ∧
+-- Covered lo ks s0` sits between the frames binder and the resume route.
 def expectedClosures : List String :=
   ["pendingContent.h_closable[] req+guard: sp_gram: SSLComments ⇒ Stream",
    "pendingContent.h_key[λλLEEE1L] req+guard+pack: [col(pos(simpleKey(sc)))=_; line(pos(simpleKey(sc)))=line(sc)] _: SBlockMapEntry(_) ⇒ Stream",
@@ -730,7 +732,7 @@ def expectedClosures : List String :=
    "pendingMapValue.h_seqF[LEE2] opt: sp_scan: SBlockNode(n+1,blockIn) > SCompactMapTail(n) ⇒ Resume(_)▹SeqEntryTail(_)",
    "pendingMapValue.h_explUp[LEE2] req: _: SBlockMapEntry(n) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream",
    -- 2026-10-29 (item 394): `FlowBaseRoutes.valueF` — the flow value's frames twin, an optional `Resume` closure beside `mk.value` (flowRoutes 6 → 7).
-   "mk.valueF[λλLE] opt: _: SSLComments ⇒ Resume(_)▹Stream",
+   "mk.valueF[λλLE2] opt: _: SSLComments ⇒ Resume(_)▹Stream",
    "mk.value[] req+guard: sp_br: SFlowContent(n,flowOut) > SSLComments ⇒ Stream",
    "mk.key[LEE1] opt: [kc=_] _: SBlockMapEntry(_) ⇒ Stream",
    "mk.key[LEE4LE] opt: [kc=_] _: SBlockMapEntry(_) > SCompactMapTail(_) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream",

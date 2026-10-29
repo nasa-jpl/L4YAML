@@ -829,6 +829,9 @@ sixth component (`nodes` 95163 → 96024). -/
 -- (relay rows at every consumer) and `landing_frame_of_cover.h_cov` is fed through `preprocess_cover`/`of_indents_eq`.
 -- 2026-10-29 (item 388): `closeThenBlock.h_seqFrames` gains the `nv ≤ k` arm (the value route); `accum_content_pending`
 -- relays the mapping park's `.blockOut` `h_closeF` through `.imp` (the node weakened) — two rows reshaped, none added.
+-- 2026-10-29 (item 394, option B): accum_step_flow's two h_framesS relays now carry the cover
+-- from valueF (paid, not punted); accum_content_pending's h_fS local re-read with the restated
+-- h_closeF cover (`∃ lo, Floor lo n ks`).
 def expectedRows : List String :=
   ["accum_block_on_closeThenBlock #1 fn:accum_block_on_closeThenBlock.h_cov_step := via:IndentStackCover.scanBlockEntry_cover(via:Covered.of_indents_eq(via:IndentStackCover.preprocess_cover(relay(fnp:accum_block_on_closeThenBlock.h_cov_step.hc))))",
    "accum_block_on_closeThenBlock #1 local:accum_block_on_closeThenBlock.h_seqFrames := cases[ite[paid{cover=step(relay(param:accum_block_on_closeThenBlock.h_valF))}|ite[paid{cover=punt}|paid{cover=punt}]]|paid{cover=punt}]",
@@ -909,7 +912,7 @@ def expectedRows : List String :=
    "accum_content_pending #1 fn:accum_content_pending.h_pay_res := cases[lit(lo=—,idx=w,ks=map(…) :: ksw',by=via:StreamAccum.dedent_cover_of_floor(via:IndentStackCover.preprocess_cover(relay(fnp:accum_content_pending.h_pay_res.h_cv))))|punt]",
    "accum_content_pending #1 fnp:accum_content_pending.h_defer_split.h_fS := relay(door:pendingContent.h_framesS)",
    "accum_content_pending #1 fnp:accum_content_pending.h_defer_split.h_fV := relay(door:pendingContent.h_framesV)",
-   "accum_content_pending #1 local:accum_content_pending.h_fS := match[paid{cover=step(relay(door:pendingProps.h_closeFE))}|paid{cover=relay(door:pendingProps.h_closeFE)}|punt]",
+   "accum_content_pending #1 local:accum_content_pending.h_fS := match[paid{cover=step(relay(door:pendingProps.h_closeFE))}|paid{cover=step(relay(door:pendingProps.h_closeFE))}|punt]",
    "accum_content_pending #1 local:accum_content_pending.h_fV := match[paid{cover=relay(door:pendingProps.h_closeFV)}|punt]",
    "accum_content_pending #1 fn:accum_content_pending.h_pay_props := cases[lit(lo=—,idx=w,ks=map(…) :: ksw',by=via:StreamAccum.dedent_cover_of_floor(via:IndentStackCover.preprocess_cover(relay(fnp:accum_content_pending.h_pay_props.h_cv))))|punt]",
    "accum_content_pending #1 param:resumectx_of_landing.h_fS := relay(local:accum_content_pending.h_fS)",
@@ -948,9 +951,9 @@ def expectedRows : List String :=
    "accum_content_pending #1 param:accum_content_on_pendingMapValue_indented.h_closeFV108 := relay(door:pendingMapValue.h_closeFV)",
    "accum_content_pending #1 param:accum_content_on_pendingMapValue_indented.h_framesV108 := relay(door:pendingMapValue.h_framesV)",
    -- 2026-10-29 (item 394): both flow closes relay `FlowBaseRoutes.valueF` into `h_framesS` (`.imp` over the field; its own `∨ True` is the punt the reader names).
-   "accum_step_flow #1 ctor:pendingContent.h_framesS := imp:ret:valueF{punt}",
+   "accum_step_flow #1 ctor:pendingContent.h_framesS := imp:ret:valueF{lit(lo=lo,idx=lo,ks=x✝,by=other(Exists.intro))}",
    "accum_step_flow #1 ctor:pendingContent.h_framesV := elim[punt|punt]",
-   "accum_step_flow #2 ctor:pendingContent.h_framesS := imp:ret:valueF{punt}",
+   "accum_step_flow #2 ctor:pendingContent.h_framesS := imp:ret:valueF{lit(lo=lo,idx=lo,ks=x✝,by=other(Exists.intro))}",
    "accum_step_flow #2 ctor:pendingContent.h_framesV := elim[punt|punt]",
    "colon_fires_implicit_key #1 param:colon_open_map_implicit.h_routeF := cases[paid{cover=step(relay(fnparam:colon_fires_implicit_key.h_key))}|punt]",
    "colon_fires_implicit_key #1 param:colon_open_map_implicit.h_routeFV := cases[paid{cover=step(relay(fnparam:colon_fires_implicit_key.h_key))}|punt]",
@@ -1080,6 +1083,8 @@ def expectedEight : List String :=
    "accum_block_on_pendingBlockContent block_dispatch_deferred_stamp_offcol.h_stream indents=0 top=0 floor=0 minCI=0 nic=1(h_nic0) prep=1(h_preprocess) base=1(h_base) mono=1(h_mono) cover=2(h_closeF_old@2,h_closeFV_old@2)",
    "accum_block_on_pendingBlockContent block_dispatch_deferred_stamp_nopack.h_stream indents=0 top=0 floor=0 minCI=0 nic=1(h_nic0) prep=1(h_preprocess) base=1(h_base) mono=1(h_mono) cover=2(h_closeF_old@2,h_closeFV_old@2)"]
 -- 2026-10-26 (item 369): the `-` park's `h_closeF` now feeds `accum_block_on_pendingBlock` (was dropped).
+-- 2026-10-29 (item 394, option B): +1 door — accum_flow_open_depth0 reads pendingMapValue.h_closeF's
+-- cover through Covered.of_subset (preprocess_indents_subset) into FlowBaseRoutes.valueF.
 def expectedDoor : List String :=
   ["accum_block_pending: door:pendingBlock.h_closeF → accum_block_on_pendingBlock.h_closeF_old kept",
    "accum_block_pending: door:pendingBlockContent.h_closeF → accum_block_on_pendingBlockContent.h_closeF_old kept",
@@ -1132,7 +1137,9 @@ def expectedDoor : List String :=
    "accum_flow_open_depth0: door:pendingBlock.h_closeFV dropped",
    "accum_flow_open_depth0: door:pendingBlockContent.h_closeFV → local:main.a✝ forgotten",
    "accum_structural_pending: door:pendingBlock.h_closeFV dropped",
-   "accum_structural_pending: door:pendingBlockContent.h_closeFV dropped"]
+   "accum_structural_pending: door:pendingBlockContent.h_closeFV dropped",
+   "accum_flow_open_depth0: door:pendingMapValue.h_closeF → of_subset.h kept"
+  ]
 /-- **The walk's own line.**  `nodes` is the proof-term size of the twenty-four
     declarations walked, and it is the one reading item 272 moves: carrying
     item 147's floor gives `preprocess_some_separate_at_floor`'s under-run
@@ -1232,6 +1239,8 @@ def expectedDoor : List String :=
 -- `accum_block_on_pendingBlock` (the helper now takes the strict bound; `k = n` splits on the sequence top).
 -- 2026-10-29 (item 388): summary contentCoverPunt 3 → 4, entryCoverPunt 3 → 4, nodes 121051 → 121397 — the `nv ≤ k` arm (see expectedRows/expectedTrees).
 -- 2026-10-29 (item 389): nodes 122973 → 122297 (from the pre-review 122973) — proof-term size only: the `-` park births' relays and refutations, the conjunct resuming the park's own `ks` after review; no cover row moved.
+-- 2026-10-29 (item 394, option B): h_framesS paid at both flow closes (valueF's cover), the
+-- of_subset door into valueF; the summary's paid/punt and door counts move accordingly.
 def expectedLine : String :=
 -- 2026-10-25 (#112 review): the `FlowStackK` `MarkedColsIn` carrier reverted (Rule 8: a projection of the closed state is decided at the close by `Classical.em`); nodes 117690 → 117529 (walked-term total; the `elim[punt|punt]` face rows unchanged).
 -- 2026-10-25 (item 363): the flow OPEN lane read off the block state (`h_refused`, one `Classical.em`); the three `match h_kslot_* with` blocks go — nodes 117529 → 117431 (walked-term total).
@@ -1244,7 +1253,7 @@ def expectedLine : String :=
 -- Item 372 (2026-10-27): exit (a)'s cover spend on `preprocess_landing_mem_or_seq` (one more lemma relay row).
 -- Item 386 (2026-10-28): nodes 120403 → 121047 — the level conjunct in `h_valF`, the `-` opener's `h_lvl_old`, the helpers' sibling/absurd terms; no row moved.
   -- 2026-10-29 (item 394): `pendingMapValue.h_closeF` is READ at the flow open (doorUses 49 → 48, doorDropped 24 → 23); the valueF supply and relays grow the term (nodes 122297 → 122509).
-  "positions=24 ctorFields=13 lemParams=36 lemmas=19 walked=26 doors=9 rows=206 ctorRows=92 lemRows=80 localRows=5 fnRows=19 fnpRows=8 valRows=2 coverTypes=4 mentions=0 pbc=6 pbcRelay=6 pbcPaid=0 pbcPunt=0 pbcCoverPunt=0 pb=7 pbRelay=3 pbPaid=4 pbPunt=0 pbCoverPunt=0 pmv=6 pmvRelay=4 pmvPaid=1 pmvPunt=0 pmvCoverPunt=1 valF=11 valFRelay=2 valFPaid=0 valFPunt=9 contentPaid=6 contentPunt=13 contentCoverPunt=4 contentLemma=0 contentOpen=2 contentPos=17 entryPaid=6 entryPunt=13 entryCoverPunt=4 entryLemma=0 entryOpen=2 entryPos=17 eight=8 eightPB=4 eightPBC=4 eightIndents=0 eightTop=4 eightFloor=0 eightMinCI=0 eightNic=8 eightPrep=8 eightCover=8 doorUses=48 doorKept=17 doorForgotten=8 doorDropped=23 doorsOther=5 nodes=122509"
+  "positions=24 ctorFields=13 lemParams=36 lemmas=19 walked=26 doors=9 rows=206 ctorRows=92 lemRows=80 localRows=5 fnRows=19 fnpRows=8 valRows=2 coverTypes=5 mentions=0 pbc=6 pbcRelay=6 pbcPaid=0 pbcPunt=0 pbcCoverPunt=0 pb=7 pbRelay=3 pbPaid=4 pbPunt=0 pbCoverPunt=0 pmv=6 pmvRelay=4 pmvPaid=1 pmvPunt=0 pmvCoverPunt=1 valF=11 valFRelay=2 valFPaid=0 valFPunt=9 contentPaid=6 contentPunt=13 contentCoverPunt=4 contentLemma=0 contentOpen=2 contentPos=17 entryPaid=6 entryPunt=13 entryCoverPunt=4 entryLemma=0 entryOpen=2 entryPos=17 eight=8 eightPB=4 eightPBC=4 eightIndents=0 eightTop=4 eightFloor=0 eightMinCI=0 eightNic=8 eightPrep=8 eightCover=8 doorUses=49 doorKept=18 doorForgotten=8 doorDropped=23 doorsOther=5 nodes=123416"
 
 /-! ## §6 The reading -/
 

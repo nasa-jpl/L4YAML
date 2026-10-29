@@ -137,7 +137,7 @@ example {sp_start : SurfPos} {sc : ScannerState} {fl : Nat} {ks : Array Bool}
     {tl : FrameTail} {a b : SurfPos}
     (h : FlowStackK sp_start sc fl ks tl a b) (hfl : 0 < fl) :
     ∃ g, FlowBaseAnchor g sc (fl - 1) := by
-  obtain ⟨n, kc, km, g, -, -, -, h_prom⟩ := h
+  obtain ⟨n, kc, km, g, _, -, -, -, -, h_prom⟩ := h
   exact ⟨g, (h_prom hfl).2.1⟩
 
 /-! ## §4  The gate, now paid
@@ -147,8 +147,8 @@ nothing — `GateOf none` reduces to `True` — and the two base closes pay with
 anchor the invariant carries. -/
 
 /-- An ungated frame's node route is free. -/
-example {sp_start sp_br sp_ne sp_mid : SurfPos} {n kc : Nat}
-    (r : FlowBaseRoutes sp_start n sp_br kc none)
+example {s0 : ScannerState} {sp_start sp_br sp_ne sp_mid : SurfPos} {n kc : Nat}
+    (r : FlowBaseRoutes sp_start n sp_br kc none s0)
     (h : SFlowContent n .flowOut sp_br sp_ne) (hs : SSLComments sp_ne sp_mid) :
     SLYamlStream sp_start sp_mid :=
   r.value trivial sp_ne sp_mid h hs
