@@ -6962,6 +6962,201 @@ def testSeqTopLeDispatchWalk (state : IO.Ref TestCollector) : IO Unit := do
     check state s!"seqTop_le premises over the accepted dispatches of {label}: (inScope, inViol, noPop, outside, outViol, cleared) = {got}; expected {expected}" (got == expected)
   checkM state s!"seqTop_le: nonvacuous no-pop in-scope dispatches across the rows = {noPopTotal} (predicted 4)" (noPopTotal == 4) s!"got {noPopTotal}"
 
+/-! ## Priority 59b — `valueLandedSeq` INSTANTIATED on constructed derivations (PR #160 review)
+
+Priority 59's 32 lemma rows read only the `seqSpaces` arithmetic the side condition discharges;
+a wrong COMPOSITION (the node consuming a different range than its entries) would pass them.
+Rule 2 for a `Prop`-valued lemma is a constructed witness (§7: the informative side is
+reachability, not a pin): below, `SSLComments` and `SBlockSeqEntries` derivations are BUILT
+from characters (as `entryQ`/`streamQ` were for item 343), `valueLandedSeq` is applied, and
+its conclusion is pinned at the EXACT endpoint the entries reached — empty entry, two entries,
+a nested compact entry, the pushed `nv < k` entry (whose witness also serves `nv = k = 1`), and
+an EOF-terminated entry (endpoint at the entry's own column, not reset).  Each `GLit`/`SBBreak`
+step is deterministic on its characters, so the endpoint is the one the characters force.
+The `nv > k` corner has NO instance: its side condition and its arithmetic are refuted by
+`decide`.  Parser mirrors of every witnessed text (the mapping prefix at column `nv`) and of
+the `nv > k` dedent were read by `parseYaml` BEFORE the rows were written. -/
+section ValueLandedSeqWitnesses
+open L4YAML.Surface L4YAML.CharPredicates L4YAML.Proofs.StreamAccum
+
+/-- `GNot SNsChar` at a line feed: `'\n'` is a break, hence not an ns-char. -/
+lemma gnotLf (rest : List Char) (col : Nat) : GNot SNsChar ⟨'\n' :: rest, col⟩ := by
+  intro s' h
+  cases h with
+  | mk c _ _ hp => exact hp.1 (Or.inl (by simp [isLineFeedProp]))
+
+/-- `GNot SNsChar` at a space: white space is not an ns-char. -/
+lemma gnotSpace (rest : List Char) (col : Nat) : GNot SNsChar ⟨' ' :: rest, col⟩ := by
+  intro s' h
+  cases h with
+  | mk c _ _ hp => exact hp.2.1 (Or.inl (by simp [isSpaceProp]))
+
+/-- `GNot SNsChar` at end of input: no character matches. -/
+lemma gnotEof (col : Nat) : GNot SNsChar ⟨[], col⟩ := fun _ h => nomatch h
+
+/-- `s-l-comments` across a line feed at ANY column (generalizes `sslBreak1`). -/
+lemma sslBreakAt (rest : List Char) (col : Nat) : SSLComments ⟨'\n' :: rest, col⟩ ⟨rest, 0⟩ :=
+  SSLComments.withComment _ _ _ (SSBComment.noSep _ _ (SBComment.break _ _ (SBBreak.lf rest col)))
+    (GStar.nil _)
+
+/-- `s-l-comments` at end of input: the `eof` comment, zero width. -/
+lemma sslEof (col : Nat) : SSLComments ⟨[], col⟩ ⟨[], col⟩ :=
+  SSLComments.withComment _ _ _ (SSBComment.noSep _ _ (SBComment.eof col)) (GStar.nil _)
+
+/-- W1 — the EMPTY entry `-⏎` at column 0: `[183]` with `k = 0`, ending at the next line start. -/
+lemma entriesDash : SBlockSeqEntries 0 ⟨['-', '\n'], 0⟩ ⟨[], 0⟩ :=
+  SBlockSeqEntries.single 0 _ ⟨['-', '\n'], 0⟩ ⟨['\n'], 1⟩ ⟨[], 0⟩ _ (SIndent.zero _)
+    (GLit.mk ['\n'] 0) (gnotLf [] 1) (SBlockIndented.empty 0 .blockIn _ _ (sslBreakAt [] 1))
+
+/-- W1 applied: `valueLandedSeq` at `nv = k = 0` — the `a:⏎-⏎` value, `SBlockNode 1 .blockOut`
+    over exactly the entry's characters. -/
+lemma valueDash : SBlockNode 1 .blockOut ⟨['-', '\n'], 0⟩ ⟨[], 0⟩ :=
+  valueLandedSeq (nv := 0) (k := 0) (Nat.le_refl 0)
+    (SSLComments.startOfLine _ _ (GStar.nil _)) entriesDash
+
+/-- W2 — TWO entries `-⏎-⏎` (`cons` onto W1). -/
+lemma entriesDashDash : SBlockSeqEntries 0 ⟨['-', '\n', '-', '\n'], 0⟩ ⟨[], 0⟩ :=
+  SBlockSeqEntries.cons 0 _ ⟨['-', '\n', '-', '\n'], 0⟩ ⟨['\n', '-', '\n'], 1⟩ ⟨['-', '\n'], 0⟩ _
+    (SIndent.zero _) (GLit.mk ['\n', '-', '\n'] 0) (gnotLf ['-', '\n'] 1)
+    (SBlockIndented.empty 0 .blockIn _ _ (sslBreakAt ['-', '\n'] 1)) entriesDash
+
+/-- W2 applied: the node spans both entries, ending where the second does. -/
+lemma valueDashDash : SBlockNode 1 .blockOut ⟨['-', '\n', '-', '\n'], 0⟩ ⟨[], 0⟩ :=
+  valueLandedSeq (nv := 0) (k := 0) (Nat.le_refl 0)
+    (SSLComments.startOfLine _ _ (GStar.nil _)) entriesDashDash
+
+/-- W3 — the PUSHED entry ` -⏎` (`k = 1`): `s-indent(1)` then the dash. -/
+lemma entriesIndDash : SBlockSeqEntries 1 ⟨[' ', '-', '\n'], 0⟩ ⟨[], 0⟩ :=
+  SBlockSeqEntries.single 1 _ ⟨['-', '\n'], 1⟩ ⟨['\n'], 2⟩ ⟨[], 0⟩ _
+    (SIndent.succ 0 ['-', '\n'] 0 _ (SIndent.zero _)) (GLit.mk ['\n'] 1) (gnotLf [] 2)
+    (SBlockIndented.empty 1 .blockIn _ _ (sslBreakAt [] 2))
+
+/-- W3 applied at `nv = 0 < k = 1` (`a:⏎ -⏎`, the pushed case): `SBlockNode 1 .blockOut`. -/
+lemma valueIndDashPushed : SBlockNode 1 .blockOut ⟨[' ', '-', '\n'], 0⟩ ⟨[], 0⟩ :=
+  valueLandedSeq (nv := 0) (k := 1) (Nat.zero_le 1)
+    (SSLComments.startOfLine _ _ (GStar.nil _)) entriesIndDash
+
+/-- W3 applied at `nv = k = 1` (` a:⏎ -⏎`, the mapping at column 1): the SAME entries are the
+    value of a mapping one column over — `SBlockNode 2 .blockOut`, same endpoint. -/
+lemma valueIndDashOwn : SBlockNode 2 .blockOut ⟨[' ', '-', '\n'], 0⟩ ⟨[], 0⟩ :=
+  valueLandedSeq (nv := 1) (k := 1) (Nat.le_refl 1)
+    (SSLComments.startOfLine _ _ (GStar.nil _)) entriesIndDash
+
+/-- W4 — a NESTED compact entry `- -⏎`: the outer entry's node is `[185]`'s `compactSeq` at
+    `m = 1`, its inner `[183]` at index `0 + 1 + 1 = 2`. -/
+lemma entriesNested : SBlockSeqEntries 0 ⟨['-', ' ', '-', '\n'], 0⟩ ⟨[], 0⟩ :=
+  SBlockSeqEntries.single 0 _ ⟨['-', ' ', '-', '\n'], 0⟩ ⟨[' ', '-', '\n'], 1⟩ ⟨[], 0⟩ _
+    (SIndent.zero _) (GLit.mk [' ', '-', '\n'] 0) (gnotSpace ['-', '\n'] 1)
+    (SBlockIndented.compactSeq 0 .blockIn 1 _ ⟨['-', '\n'], 2⟩ _
+      (SIndent.succ 0 ['-', '\n'] 1 _ (SIndent.zero _))
+      (SCompactSeq.mk 2 _ ⟨['\n'], 3⟩ ⟨[], 0⟩ _ (GLit.mk ['\n'] 2) (gnotLf [] 3)
+        (SBlockIndented.empty 2 .blockIn _ _ (sslBreakAt [] 3)) (SCompactSeqTail.nil 2 _)))
+
+/-- W4 applied at `nv = k = 0`: the node spans the nested entry too. -/
+lemma valueNested : SBlockNode 1 .blockOut ⟨['-', ' ', '-', '\n'], 0⟩ ⟨[], 0⟩ :=
+  valueLandedSeq (nv := 0) (k := 0) (Nat.le_refl 0)
+    (SSLComments.startOfLine _ _ (GStar.nil _)) entriesNested
+
+/-- W5 — an entry closed by END OF INPUT, `-` with no break: the endpoint is `⟨[], 1⟩`, the
+    entry's own column, NOT a line start. -/
+lemma entriesDashEof : SBlockSeqEntries 0 ⟨['-'], 0⟩ ⟨[], 1⟩ :=
+  SBlockSeqEntries.single 0 _ ⟨['-'], 0⟩ ⟨[], 1⟩ ⟨[], 1⟩ _ (SIndent.zero _)
+    (GLit.mk [] 0) (gnotEof 1) (SBlockIndented.empty 0 .blockIn _ _ (sslEof 1))
+
+/-- W5 applied: the node ends at column 1 of the exhausted input. -/
+lemma valueDashEof : SBlockNode 1 .blockOut ⟨['-'], 0⟩ ⟨[], 1⟩ :=
+  valueLandedSeq (nv := 0) (k := 0) (Nat.le_refl 0)
+    (SSLComments.startOfLine _ _ (GStar.nil _)) entriesDashEof
+
+/-- The `nv > k` corner is REFUTED, not instantiated: no `hnk`, and the arithmetic the proof
+    rewrites through is false (`seqSpaces 2 .blockOut + (0 - 1) = 1 ≠ 0`, `3 .blockOut + (1 - 2) = 2 ≠ 1`). -/
+example : ¬ (1 ≤ 0) ∧ ¬ (2 ≤ 1) := by decide
+example : seqSpaces (1 + 1) .blockOut + (0 - 1) ≠ 0 ∧ seqSpaces (2 + 1) .blockOut + (1 - 2) ≠ 1 := by
+  decide
+
+/-- The five conclusions, named together so a destructuring failure cannot hide one (§7). -/
+example : SBlockNode 1 .blockOut ⟨['-', '\n'], 0⟩ ⟨[], 0⟩ ∧
+    SBlockNode 1 .blockOut ⟨['-', '\n', '-', '\n'], 0⟩ ⟨[], 0⟩ ∧
+    SBlockNode 1 .blockOut ⟨[' ', '-', '\n'], 0⟩ ⟨[], 0⟩ ∧
+    SBlockNode 2 .blockOut ⟨[' ', '-', '\n'], 0⟩ ⟨[], 0⟩ ∧
+    SBlockNode 1 .blockOut ⟨['-', ' ', '-', '\n'], 0⟩ ⟨[], 0⟩ ∧
+    SBlockNode 1 .blockOut ⟨['-'], 0⟩ ⟨[], 1⟩ :=
+  ⟨valueDash, valueDashDash, valueIndDashPushed, valueIndDashOwn, valueNested, valueDashEof⟩
+
+end ValueLandedSeqWitnesses
+
+/-- Priority 59, Rule 2 for item 388 — the mapping park's value route typed `.blockOut` (the
+    grammar's `[187]` context, `SBlockMapEntry.implicitKeyNode`) and `valueLandedSeq`: a `-` at the
+    enclosing mapping's OWN column is that mapping's VALUE (`[185]` `seq-spaces(n + 1, block-out) =
+    n`), not a bare root node.  Parser rows (verdict + documents; §7: they cannot see which route
+    fired — the route's informative side is the frame-list pin `RelaySupplyCensus` and the
+    `h_seqBottom` leaf of `OpenerFallbackReach`): the no-push `-` under an EMPTY `a:` is one
+    document on every row; after a FILLED value (`a: 1⏎- b`) or under `? a` it is refused; a
+    document end (`...`) makes two.  Lemma rows: `valueLandedSeq`'s side condition `nv ≤ k` read as
+    the `seqSpaces` arithmetic it discharges (`seqSpaces (nv + 1) .blockOut + (k - nv) = k`) beside
+    `nestedBlockSeq`'s `.blockIn` twin (`seqSpaces (nv + 1) .blockIn + (k - (nv + 1)) = k` iff
+    `nv + 1 ≤ k`): the one column the `.blockIn` typing cost, over `nv, k ∈ 0..3`.  All 16 parser
+    verdicts were read by `parseYaml` before the rows were written; the lemma rows predict 10 of 16
+    `(nv, k)` pairs in `.blockOut`'s domain and 6 in `.blockIn`'s. -/
+def testValueLandedSeq (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 59: item 388 — a `-` at the mapping's own column is the mapping's VALUE ([185] seq-spaces, .blockOut): parser verdicts + documents on the no-push rows; valueLandedSeq's nv ≤ k beside nestedBlockSeq's nv + 1 ≤ k"
+  let rows : List (String × String × Option Nat) :=
+    [ ("a:⏎- b (the value: one document)", "a:\n- b", some 1),
+      ("a:⏎-⏎c: 1 (the mapping's sibling after the empty entry)", "a:\n-\nc: 1", some 1),
+      ("a:⏎- b⏎- c⏎d: 1 (two entries, then the sibling)", "a:\n- b\n- c\nd: 1", some 1),
+      ("a:⏎  b:⏎  -⏎  c: 1 (one level down)", "a:\n  b:\n  -\n  c: 1", some 1),
+      ("- a:⏎  -⏎  c: 1 (inside a sequence entry's mapping)", "- a:\n  -\n  c: 1", some 1),
+      ("-⏎c: 1 (a bare root `-`: no mapping — refused, trailing content)", "-\nc: 1", none),
+      ("a:⏎-⏎? c (the sibling as an explicit key)", "a:\n-\n? c", some 1),
+      ("a:⏎-⏎: v (the sibling as an empty key)", "a:\n-\n: v", some 1),
+      ("a: &x⏎- b⏎c: 1 (properties on the value line)", "a: &x\n- b\nc: 1", some 1),
+      ("a: # c⏎- b⏎c: 1 (a comment on the value line)", "a: # c\n- b\nc: 1", some 1),
+      ("a:⏎- b⏎...⏎c: 1 (a document end between: two documents)", "a:\n- b\n...\nc: 1", some 2),
+      ("? a⏎-⏎c: 1 (under an explicit KEY the `-` is bare document content — refused)", "? a\n-\nc: 1", none),
+      ("a:⏎-⏎  c: 1 (the entry's own node, deeper)", "a:\n-\n  c: 1", some 1),
+      ("a:⏎ -⏎c: 1 (the pushed case nv < k, then the dedent sibling)", "a:\n -\nc: 1", some 1),
+      ("a: 1⏎- b (after a FILLED value: bare document content — refused)", "a: 1\n- b", none),
+      ("a:⏎- b⏎  c: 1 (a deeper `c:` continues the plain scalar: invalid implicit key)", "a:\n- b\n  c: 1", none) ]
+  for (label, input, expected) in rows do
+    let got : Option Nat := match L4YAML.TokenParser.parseYaml input with
+      | .ok d => some d.size | .error _ => none
+    checkM state s!"P59 {label}: documents = {repr expected}" (got == expected) s!"got {repr got}"
+  let mut outDom := 0
+  let mut inDom := 0
+  for nv in [0, 1, 2, 3] do
+    for k in [0, 1, 2, 3] do
+      let outOk := L4YAML.Surface.seqSpaces (nv + 1) .blockOut + (k - nv) == k
+      let inOk := L4YAML.Surface.seqSpaces (nv + 1) .blockIn + (k - (nv + 1)) == k
+      if outOk then outDom := outDom + 1
+      if inOk then inDom := inDom + 1
+      checkM state s!"P59 valueLandedSeq side condition nv={nv} k={k}: seqSpaces arithmetic ↔ nv ≤ k"
+        (outOk == decide (nv ≤ k)) s!"outOk={outOk}"
+      checkM state s!"P59 nestedBlockSeq (.blockIn) twin nv={nv} k={k}: arithmetic ↔ nv + 1 ≤ k"
+        (inOk == decide (nv + 1 ≤ k)) s!"inOk={inOk}"
+  checkM state s!"P59 domains: .blockOut pairs = {outDom} (predicted 10), .blockIn pairs = {inDom} (predicted 6)"
+    (outDom == 10 && inDom == 6) s!"{outDom}/{inDom}"
+  -- Priority 59b: the witnessed texts, mirrored at the parser with the mapping prefix at column
+  -- `nv` (verdicts read by `parseYaml` before the rows were written); the `nv > k` corner's
+  -- mirror (`  a:⏎-⏎`, k = 0 < nv = 2) is the dedent the parser refuses.
+  let wit : List (String × String × Nat × Nat × Nat × Option Nat) :=
+    [ ("W1 -⏎ (valueDash)", "-\n", 0, 0, 0, some 1),
+      ("W2 -⏎-⏎ (valueDashDash)", "-\n-\n", 0, 0, 0, some 1),
+      ("W3 ␣-⏎ pushed (valueIndDashPushed)", " -\n", 0, 1, 0, some 1),
+      ("W3 ␣-⏎ own column (valueIndDashOwn)", " -\n", 1, 1, 0, some 1),
+      ("W4 - -⏎ nested (valueNested)", "- -\n", 0, 0, 0, some 1),
+      ("W5 - at EOF (valueDashEof)", "-", 0, 0, 1, some 1),
+      ("nv > k: ␣␣a:⏎-⏎ REFUTED (no witness; trailing content)", "-\n", 2, 0, 0, none) ]
+  let mut built := 0
+  for (label, text, nv, k, endCol, expected) in wit do
+    let input := String.ofList (List.replicate nv ' ') ++ "a:\n" ++ text
+    let got : Option Nat := match L4YAML.TokenParser.parseYaml input with
+      | .ok d => some d.size | .error _ => none
+    let sideOk := decide (nv ≤ k)
+    if sideOk then built := built + 1
+    checkM state s!"P59b {label}: nv={nv} k={k} endCol={endCol} side={sideOk} parser documents = {repr expected}"
+      (got == expected && (sideOk == expected.isSome)) s!"got {repr got}"
+  checkM state s!"P59b witnesses built = {built} (predicted 6: W1, W2, W3×2, W4, W5)" (built == 6) s!"{built}"
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -7029,6 +7224,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testFloorLevelInstances state
   testSeqTopNoPopFaces state
   testSeqTopLeDispatchWalk state
+  testValueLandedSeq state
   testDeeperLandingOnMapPark state
   testParseOkCheckFrom state
   testParseNodeCF state

@@ -495,6 +495,8 @@ def expectedCross : List String :=
 -- `Or.imp` pipes with `PackAlt.step_content` on the right, landing in the park the content step builds.
 -- 2026-10-21 (item 320): `landed` 54 → 55, `total` 91 → 92 — `accum_block_on_closeThenBlock`'s `h_seqFramesV` lands in the
 -- new park through `.imp id (PackAlt.step_blockEntry …)`, the relay item 319's payments surfaced; producers stand.
+-- 2026-10-29 (item 388): landed 68 → 69 — `accum_content_pending`'s `.imp` relay of the mapping park's
+-- `.blockOut` `h_closeF` into the content lane's `.blockIn` binder is one more landed pipe.
 def expectedPipeSplit : String :=
 -- 2026-10-25 (item 363): the flow OPEN lane read off the block state (`h_refused`, one `Classical.em`; five `match` blocks deleted): PIPE producers 46 → 47, total 109 → 110 (`h_refused` is one more Or.elim producer).
   -- 2026-10-26 (item 366): producers 47 → 49, total 110 → 112 — the two `h_outer` arguments of
@@ -502,7 +504,7 @@ def expectedPipeSplit : String :=
   -- 2026-10-28 (item 380, PR #146 review): producers 49/11 → 32/10, landed 63 → 68, total 112 → 100 — `Or.elim` is a
   -- two-arm split now: its 17 `VIA` edges leave the producer surface (the distinct producer `Or.elim` with them); the
   -- five whose arms disagree land as splits, the twelve whose arms agree are collapsed edges and are counted nowhere here.
-  "pipes=0/0 producers=32/10 landed=68 landed-producers=0 total=100"
+  "pipes=0/0 producers=32/10 landed=69 landed-producers=0 total=101"
 
 end L4YAML.Tests.Guards.ConclusionRouteCensus
 

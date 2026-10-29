@@ -215,14 +215,16 @@ partial def scanFloors (st : IO.Ref FS) (lem : Name) (stk : Stack) (e : Expr) : 
 
 -- 2026-10-26 (item 370): the `content:`/`entry:` trees gain one position and one row and lose one punt — the sibling `-`
 -- arm's `pendingBlock.h_closeF` relay of `h_closeF_old`.
+-- 2026-10-29 (item 388): cover-punt 3 → 4 (none) and 5 → 6 (R4) on both trees — the `nv ≤ k` arm's `Or.inr trivial`
+-- cover (frames `[]`); the deltas are unchanged.
 def expectedTrees255 : List String :=
   ["none merged=true",
    "R4 merged=true",
    -- Item 371: the restated value-line pack (`⇒ Resume(map(_)::[])▹Stream`, `ResumeFrames.one`'s level)
-   "none content: positions=17 rows=48 paid=6 punt=13 cover-punt=3 open=2 origins=6 Δ(paid=+0 punt=+0 cover-punt=+0 open=+0 positions=+0)",
-   "none entry: positions=17 rows=48 paid=6 punt=13 cover-punt=3 open=2 origins=6 Δ(paid=+0 punt=+0 cover-punt=+0 open=+0 positions=+0)",
-   "R4 content: positions=19 rows=55 paid=6 punt=12 cover-punt=5 open=2 origins=6 Δ(paid=+0 punt=-1 cover-punt=+2 open=+0 positions=+2)",
-   "R4 entry: positions=19 rows=55 paid=6 punt=12 cover-punt=5 open=2 origins=6 Δ(paid=+0 punt=-1 cover-punt=+2 open=+0 positions=+2)"]
+   "none content: positions=17 rows=48 paid=6 punt=13 cover-punt=4 open=2 origins=6 Δ(paid=+0 punt=+0 cover-punt=+0 open=+0 positions=+0)",
+   "none entry: positions=17 rows=48 paid=6 punt=13 cover-punt=4 open=2 origins=6 Δ(paid=+0 punt=+0 cover-punt=+0 open=+0 positions=+0)",
+   "R4 content: positions=19 rows=55 paid=6 punt=12 cover-punt=6 open=2 origins=6 Δ(paid=+0 punt=-1 cover-punt=+2 open=+0 positions=+2)",
+   "R4 entry: positions=19 rows=55 paid=6 punt=12 cover-punt=6 open=2 origins=6 Δ(paid=+0 punt=-1 cover-punt=+2 open=+0 positions=+2)"]
 def expectedPayments : List String :=
   ["R4 relay accum_content_on_pendingMapValue_indented #1 ctor:pendingProps.h_closeFE idx=n + 1 src=h_frames99@2:Floor(n,ks) tgt=bound(ks<ne) Floor(ne,ks) eq(n=ne + 1) := match[paid{cover=step(relay(param:accum_content_on_pendingMapValue_indented.h_frames99))}|punt]"]
 -- 2026-10-25 (item 358): 30 → 33 — the cover conjunct on the `h_closeFV_old` twins and the two `h_closeFV_old`
@@ -360,6 +362,8 @@ def expectedTransports : List String :=
 -- — the two `deeperLandingResume` relay rows of `h_valF` (CloseStackCover 204 → 206) read here too.
 -- 2026-10-29 (item 387): nodes 121047 → 121051 — term size only: `accum_block_on_pendingBlock`'s no-pop
 -- arm gained the `dite n < k` (helper on the strict side; `k = n` splits on the sequence top). No row moved.
+-- 2026-10-29 (item 388): nodes 121051 → 121397 — the landed birth's `nv ≤ k` arm and the `.blockOut` wraps; no row moved.
+-- 2026-10-29 (item 388): baseContent 17/6/13/3/2 → 17/6/13/4/2, allContent 19/6/12/5/2 → 19/6/12/6/2, baseEntry 17/6/13/3/2 → 17/6/13/4/2, allEntry 19/6/12/5/2 → 19/6/12/6/2, floorNodes 30646 → 30769 — the landed birth's `nv ≤ k` arm (cover `Or.inr trivial`, frames `[]`) and the `.blockOut` wraps.
 def expectedLine : String :=
 -- 2026-10-25 (#112 review): the `FlowStackK` `MarkedColsIn` carrier reverted (Rule 8: a projection of the closed state is decided at the close by `Classical.em`); nodes 117690 → 117529, floorNodes 28226 → 28222 (walked-term totals).
 -- 2026-10-25 (item 363): the flow OPEN lane read off the block state (`h_refused`, one `Classical.em`); the three `match h_kslot_* with` blocks go — nodes 117529 → 117431 (walked-term total; floorNodes read from the build).
@@ -375,7 +379,7 @@ def expectedLine : String :=
 -- Item 372 (2026-10-27): exit (a)'s sequence-top face: one more lemma row at `entryKeyPack_of_dispatch` (the CloseStackCover row mirrored).
 -- Item 374: rows=200 → 202, nodes=119962 → 120158, floorNodes=29792 → 30376 — the resume context's face disjunct and `resumectx_of_landing`'s `h_base`.
   -- 2026-10-28 (item 386): nodes 120403 → 121047, floorNodes 30466 → 30646 — the level conjunct/binder and the helpers' sibling/absurd terms; no leaf delta row moved.
-  "rows=206 payments=1 literal=0 relay=1 scenarios=2 baseContent=17/6/13/3/2 allContent=19/6/12/5/2 baseEntry=17/6/13/3/2 allEntry=19/6/12/5/2 turnedPaidContent=0 turnedPaidEntry=0 originsBaseContent=6 originsAllContent=6 originsBaseEntry=6 originsAllEntry=6 puntContent=-1 puntEntry=-1 coverPuntContent=+2 coverPuntEntry=+2 mergedBase=true mergedAll=true floorLits=97 own=12 lit=6 var=79 ownLemmas=2 scanned=35 monoIndex=9 monoIndexLemmas=5 floorCons=4 floorConsLemmas=2 floorPopTo=1 floorPopToLemmas=1 leOfMem=0 coveredPopTo=1 coveredPopToLemmas=1 raiseFloor=0 dedupHead=2 dedupHeadLemmas=2 coveredCons=4 rootMonoCaller=1 rootMonoSite=1 rootNtop=1 nodes=121051 floorNodes=30646"
+  "rows=206 payments=1 literal=0 relay=1 scenarios=2 baseContent=17/6/13/4/2 allContent=19/6/12/6/2 baseEntry=17/6/13/4/2 allEntry=19/6/12/6/2 turnedPaidContent=0 turnedPaidEntry=0 originsBaseContent=6 originsAllContent=6 originsBaseEntry=6 originsAllEntry=6 puntContent=-1 puntEntry=-1 coverPuntContent=+2 coverPuntEntry=+2 mergedBase=true mergedAll=true floorLits=97 own=12 lit=6 var=79 ownLemmas=2 scanned=35 monoIndex=9 monoIndexLemmas=5 floorCons=4 floorConsLemmas=2 floorPopTo=1 floorPopToLemmas=1 leOfMem=0 coveredPopTo=1 coveredPopToLemmas=1 raiseFloor=0 dedupHead=2 dedupHeadLemmas=2 coveredCons=4 rootMonoCaller=1 rootMonoSite=1 rootNtop=1 nodes=121397 floorNodes=30769"
 
 /-! ## §4 The reading -/
 
