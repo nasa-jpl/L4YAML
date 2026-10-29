@@ -6881,6 +6881,87 @@ def testSeqTopNoPopFaces (state : IO.Ref TestCollector) : IO Unit := do
       if face then seqFaces := seqFaces + 1
   checkM state s!"atSequenceIndent faces at the top's column: sequence tops = {seqFaces}" (seqFaces == 2) ""
 
+
+/-- Item 387 (PR #159 review): `seqTop_refuted_at_indicator_le`'s premises read at every ACCEPTED
+    `:`/`?` dispatch of `input` (the pause `scanNextToken_preprocess` returns, dispatched on its
+    directive-reset twin exactly as the lemma states it).  The lemma's cursor premise is the
+    BOUND `col ≤ currentIndent` — not item 378's pop — so a no-pop landing at the top's own
+    column is in scope for the first time.  Returns `(inScope, inViol, noPop, outside, outViol,
+    cleared)`: pauses where every premise holds (`h_le`, no flow, the saved key at the cursor and
+    possible, the `:` surviving `scanValueClearKey` or no explicit key open), those among them at
+    which the refutation `atSequenceIndent sp = false` FAILS (a refutation of the lemma), the
+    in-scope pauses whose stack is UNCHANGED by preprocessing (the new no-pop domain — the tally
+    the site's `k = n` split spends), pauses outside the premises (failed-hypothesis rows: a
+    mid-line `:` has `col > currentIndent`), those outside at which the face is nonetheless a
+    sequence top (reported, not a refutation), and the outside pauses that failed on the
+    live-register conjunct alone (`:` after an open `?`, the key cleared). -/
+def seqTopLeDispatchWalk (input : String) (fuel : Nat := 64) :
+    Nat × Nat × Nat × Nat × Nat × Nat := Id.run do
+  let mut s := ScannerState.mk' input
+  let mut inScope := 0
+  let mut inViol := 0
+  let mut noPop := 0
+  let mut outside := 0
+  let mut outViol := 0
+  let mut cleared := 0
+  let shape : ScannerState → Array (Int × Bool) := fun st => st.indents.map fun e => (e.column, e.isSequence)
+  for _ in [:fuel] do
+    match scanNextToken_preprocess s with
+    | .ok (some (sp, c)) =>
+      if c == ':' || c == '?' then
+        let sd := if sp.allowDirectives then
+          { sp with allowDirectives := false, documentEverStarted := true } else sp
+        match scanNextToken_dispatchBlockIndicators sd c with
+        | .ok (some _) =>
+          let hle := decide ((sp.col : Int) ≤ sp.currentIndent)
+          let surv := c != ':' || sd.explicitKeyLine.isNone || (scanValueClearKey sd).simpleKey.possible
+          let premises := hle && !sp.inFlow && sp.simpleKey.pos.col == sp.col
+            && sp.simpleKey.possible && surv
+          let refuted := !atSequenceIndent sp
+          if premises then
+            inScope := inScope + 1
+            if shape sp == shape s then noPop := noPop + 1
+            if !refuted then inViol := inViol + 1
+          else
+            outside := outside + 1
+            if !surv then cleared := cleared + 1
+            if !refuted then outViol := outViol + 1
+        | _ => pure ()
+    | _ => break
+    match scanNextToken s with
+    | .ok (some s') => s := s'
+    | _ => break
+  return (inScope, inViol, noPop, outside, outViol, cleared)
+
+def testSeqTopLeDispatchWalk (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 57b: item 387 (PR #159 review) — seqTop_refuted_at_indicator_le's premises read at every accepted `:`/`?` dispatch: the bound col ≤ currentIndent puts the NO-POP landing at the top's own column in scope; the refutation holds at every in-scope pause, pop or no pop"
+  -- Predicted before the run: `inViol = outViol = 0` on every row; `noPop ≥ 1` on the three
+  -- no-push rows (`a:⏎- b⏎: c`, `a:⏎-⏎? x`, `a:⏎  b:⏎  -⏎  : c`) and 0 on the popped row
+  -- `k:⏎  - a⏎: b` (item 378's domain, `inScope = 1`); a mid-line `:` is always outside
+  -- (`col > currentIndent`); the `:` of an explicit pair is outside on the live-register
+  -- conjunct (`cleared`); a `:`/`?` the dispatcher refuses is no pause at all.  Counts pinned
+  -- from the run where the prediction was only a sign.  First run 12/13: the `-⏎a: 1` row
+  -- predicted one outside pause and read none (the scanner refuses that `:` itself).
+  let rows : List (String × String × (Nat × Nat × Nat × Nat × Nat × Nat)) :=
+    [ ("a:⏎- b⏎: c (`:` at the mapping's own column after a no-push `-`: NO-POP, in scope, refuted)", "a:\n- b\n: c", (1, 0, 1, 1, 0, 0)),
+      ("a:⏎-⏎? x (`?` at the mapping's own column after an empty no-push `-`: NO-POP, in scope)", "a:\n-\n? x", (1, 0, 1, 1, 0, 0)),
+      ("a:⏎  b:⏎  -⏎  : c (the same one level down)", "a:\n  b:\n  -\n  : c", (1, 0, 1, 2, 0, 0)),
+      ("k:⏎  - a⏎: b (the POPPED landing: item 378's domain, in scope, no no-pop)", "k:\n  - a\n: b", (1, 0, 0, 1, 0, 0)),
+      ("k:⏎  - a⏎  : b (`:` ON the sequence top: the dispatcher refuses it — no accepted pause)", "k:\n  - a\n  : b", (0, 0, 0, 1, 0, 0)),
+      ("- a⏎: b (root sequence top: refused, no pause)", "- a\n: b", (0, 0, 0, 0, 0, 0)),
+      ("-⏎a: 1 (the paid half's input; REFUTED (0, 0, 0, 1, 0, 0): the SCANNER refuses the content-lane key on the sequence top at its `:` (Priority 45's `- a⏎b: 1`), so the `:` is no accepted pause at all — the row has no dispatch to read)", "-\na: 1", (0, 0, 0, 0, 0, 0)),
+      ("a:⏎-⏎c: 1 (the declined half's input: both `:` mid-line, outside)", "a:\n-\nc: 1", (0, 0, 0, 2, 0, 0)),
+      ("a: 1⏎b: 2 (no indicator line)", "a: 1\nb: 2", (0, 0, 0, 2, 0, 0)),
+      ("? a⏎: b (the explicit pair: `?` on the empty stack is outside (-1 < 0), the `:` cleared)", "? a\n: b", (0, 0, 0, 2, 0, 1)),
+      ("? a⏎:⏎? b⏎: c (second `?` at the explicit mapping's column: no-pop, in scope; both `:` cleared)", "? a\n:\n? b\n: c", (1, 0, 1, 3, 0, 2)),
+      ("- ? a⏎  : b (compact explicit pair in a sequence: the `:` cleared)", "- ? a\n  : b", (0, 0, 0, 2, 0, 1)) ]
+  let mut noPopTotal := 0
+  for (label, input, expected) in rows do
+    let got := seqTopLeDispatchWalk input
+    noPopTotal := noPopTotal + got.2.2.1
+    check state s!"seqTop_le premises over the accepted dispatches of {label}: (inScope, inViol, noPop, outside, outViol, cleared) = {got}; expected {expected}" (got == expected)
+  checkM state s!"seqTop_le: nonvacuous no-pop in-scope dispatches across the rows = {noPopTotal} (predicted 4)" (noPopTotal == 4) s!"got {noPopTotal}"
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -6947,6 +7028,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testNoPopDedentL1 state
   testFloorLevelInstances state
   testSeqTopNoPopFaces state
+  testSeqTopLeDispatchWalk state
   testDeeperLandingOnMapPark state
   testParseOkCheckFrom state
   testParseNodeCF state

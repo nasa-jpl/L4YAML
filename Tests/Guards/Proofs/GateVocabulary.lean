@@ -100,8 +100,10 @@ namespace L4YAML.Tests.Guards.GateVocabulary
 -- `TokenEvents.tokenEvents` directly.  (Not spelled here: it would move `self`.)
 -- S5 slice 2 landing (2026-10-28): mentions 482 → 478 — the seam record's prose spells the retired
 -- check-prefixed name without backticks (it no longer resolves) and drops its `ev₁` rows.
+-- Item 387 review round (2026-10-29): mentions 478 → 479 — the Priority 57b paragraph names the
+-- scanner preprocess entry it walks once more; no name added or retired.
 def expectedGateVocab : String :=
-  "names=112 mentions=478 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
+  "names=112 mentions=479 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
 
 end L4YAML.Tests.Guards.GateVocabulary
 
