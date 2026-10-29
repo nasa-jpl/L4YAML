@@ -43,7 +43,11 @@ def patch(text, stage):
     return new, sites
 def main():
     dry, keep = "--dry" in sys.argv, "--keep" in sys.argv
-    stage = sys.argv[sys.argv.index("--stage") + 1] if "--stage" in sys.argv else "A"
+    stage = "A"
+    if "--stage" in sys.argv:
+        i = sys.argv.index("--stage") + 1
+        if i >= len(sys.argv) or sys.argv[i] not in ("A", "B"): sys.exit("expected --stage A or --stage B")
+        stage = sys.argv[i]
     if subprocess.run(["git", "status", "--porcelain", str(SRC)], cwd=ROOT, capture_output=True, text=True).stdout.strip():
         sys.exit("StreamAccum.lean is not clean; refusing to flip")
     before = md5(SRC); orig = SRC.read_text(); new, sites = patch(orig, stage)
