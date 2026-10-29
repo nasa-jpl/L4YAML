@@ -267,8 +267,8 @@ it may only shrink. -/
 -- — a Bool projection of the pack's own state, so one more carrier and one more
 -- disjunct, no ghost row.
 -- Item 374: `ResumeKeyCtx` gains the sequence-top face disjunct (or 101 → 102; ghost unchanged).
--- 2026-10-29 (item 389): the mapping-top conjunct inside `pendingBlock.h_closeF` / `pendingBlockContent.h_closeF` / `pendingProps.h_closeFE` binds a frame list `ks'` (ghost 72 → 75) under its own `∨ True` (or 102 → 105).
-def expectedSummary : String := "carriers=60 snapshot=9 ghost=75 or=105"
+-- 2026-10-29 (item 389): the mapping-top conjunct inside `pendingBlock.h_closeF` / `pendingBlockContent.h_closeF` / `pendingProps.h_closeFE` adds its own `∨ True` (or 102 → 105) and NO binder: it resumes the park's own `ks` (PR #161 review dropped the first draft's `∃ ks'`; ghost stays 72).
+def expectedSummary : String := "carriers=60 snapshot=9 ghost=72 or=105"
 
 -- 2026-10-24 (B3 [66] col-0 threading): carriers 61 → 62 — `SSLCommentsFrom` (the separator-less comment product).
 -- 2026-10-25 (#99 landed): the `FlowLead`/`leadFree`/`closeFree` tally rows go with the deleted carrier and
@@ -315,7 +315,7 @@ def expectedTally : List String :=
    "ParkSlot: surface=0 state=2 prop=3 scalar=7 snapshot=0 ghost=0 or=1",
    -- Item 371: `pendingMapValue.h_expl`'s route carries its tail — one more surface binder
    -- (`sp_e`) and one more `Prop` premise (`SCompactMapTail`); ghost 22 and or 60 unchanged.
-   "PendingNode: surface=135 state=1 prop=277 scalar=66 snapshot=0 ghost=25 or=63",
+   "PendingNode: surface=135 state=1 prop=274 scalar=63 snapshot=0 ghost=22 or=63",
    "PropsKeyPack: surface=13 state=1 prop=13 scalar=7 snapshot=0 ghost=3 or=5",
    "PropsNodeRoute: surface=6 state=0 prop=1 scalar=0 snapshot=0 ghost=0 or=0",
    "PropsRideRoute: surface=7 state=0 prop=1 scalar=0 snapshot=0 ghost=0 or=0",
@@ -398,16 +398,13 @@ def expectedGhost : List String :=
     "PendingNode.pendingContent[16].h_seqF ks : List IndentStackCover.FrameLevel",
     "PendingNode.pendingProps[21].h_kslot ns : List Nat",
     "PendingNode.pendingProps[24].h_closeFE ks : List IndentStackCover.FrameLevel",
-    "PendingNode.pendingProps[24].h_closeFE ks' : List IndentStackCover.FrameLevel",
     "PendingNode.pendingProps[25].h_closeF ks : List IndentStackCover.FrameLevel",
     "PendingNode.pendingProps[26].h_closeFV ks : List IndentStackCover.FrameLevel",
     "PendingNode.pendingProps[28].h_closeFEV ks : List IndentStackCover.FrameLevel",
     "PendingNode.pendingBlockContent[13].h_closeF ks : List IndentStackCover.FrameLevel",
-    "PendingNode.pendingBlockContent[13].h_closeF ks' : List IndentStackCover.FrameLevel",
     "PendingNode.pendingBlockContent[17].h_kslotUp ns : List Nat",
     "PendingNode.pendingBlockContent[18].h_closeFV ks : List IndentStackCover.FrameLevel",
     "PendingNode.pendingBlock[11].h_closeF ks : List IndentStackCover.FrameLevel",
-    "PendingNode.pendingBlock[11].h_closeF ks' : List IndentStackCover.FrameLevel",
     "PendingNode.pendingBlock[14].h_kslotUp ns : List Nat",
     "PendingNode.pendingBlock[15].h_closeFV ks : List IndentStackCover.FrameLevel",
     "PendingNode.pendingMapValue[15].h_kslot ns : List Nat",

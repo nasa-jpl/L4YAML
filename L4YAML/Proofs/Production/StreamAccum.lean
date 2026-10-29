@@ -2455,11 +2455,10 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
         -- of `ks`, so it rides beside them.  The premise reads the TOP's kind off the
         -- stack (`atSequenceIndent` is false at every `-` park: the cursor is one past).
         (((∃ e, sc.indents.back? = some e ∧ e.isSequence = false) →
-          ∃ ks' : List FrameLevel, (∀ fr ∈ ks', fr.width < ne) ∧
           ∀ sp_mid : SurfPos, SBlockNode n .blockIn sp_node sp_mid →
           ∀ sp_end : SurfPos, SCompactSeqTail ne sp_mid sp_end →
           ∀ sp_fin : SurfPos, SCompactMapTail ne sp_end sp_fin →
-          ResumeFrames (SLYamlStream sp_start) ks' sp_fin) ∨ True)) ∨ True)
+          ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)) ∨ True)
       --
       -- **Item 153: and these two carry the COVER**, in the shape a landing
       -- reads it.  The index is existential for item 152's reason and buys the
@@ -2809,11 +2808,10 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
         -- of `ks`, so it rides beside them.  The premise reads the TOP's kind off the
         -- stack (`atSequenceIndent` is false at every `-` park: the cursor is one past).
         (((∃ e, sc.indents.back? = some e ∧ e.isSequence = false) →
-          ∃ ks' : List FrameLevel, (∀ fr ∈ ks', fr.width < n) ∧
           ∀ sp_mid : SurfPos, SSLComments sp_gram sp_mid →
           ∀ sp_end : SurfPos, SCompactSeqTail n sp_mid sp_end →
           ∀ sp_fin : SurfPos, SCompactMapTail n sp_end sp_fin →
-          ResumeFrames (SLYamlStream sp_start) ks' sp_fin) ∨ True)) ∨ True)
+          ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)) ∨ True)
       (h_nodir : sc.allowDirectives = false)
       -- **Item 139 — the park's own §9.2 face** (LAST, so the patterns naming
       -- the older fields still bind them).  Every producer of this park is a
@@ -3027,11 +3025,10 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
         -- of `ks`, so it rides beside them.  The premise reads the TOP's kind off the
         -- stack (`atSequenceIndent` is false at every `-` park: the cursor is one past).
         (((∃ e, sc.indents.back? = some e ∧ e.isSequence = false) →
-          ∃ ks' : List FrameLevel, (∀ fr ∈ ks', fr.width < n) ∧
           ∀ sp_mid : SurfPos, SBlockIndented n .blockIn sp_scan sp_mid →
           ∀ sp_end : SurfPos, SCompactSeqTail n sp_mid sp_end →
           ∀ sp_fin : SurfPos, SCompactMapTail n sp_end sp_fin →
-          ResumeFrames (SLYamlStream sp_start) ks' sp_fin) ∨ True)) ∨ True)
+          ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)) ∨ True)
       (h_nodir : sc.allowDirectives = false)
       -- **Item 167 — the ENCLOSING collection's tail** (LAST, so the patterns
       -- naming the older fields still bind them).  `h_close_entry` closes the
@@ -28041,11 +28038,10 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
         ∀ sp_end : SurfPos, SCompactSeqTail k sp_mid sp_end →
         ResumeFrames (SLYamlStream sp_start) ks sp_end) ∧
         (((∃ e, s'.indents.back? = some e ∧ e.isSequence = false) →
-          ∃ ks' : List FrameLevel, (∀ fr ∈ ks', fr.width < k) ∧
           ∀ sp_mid : SurfPos, SBlockIndented k .blockIn sp_scan' sp_mid →
           ∀ sp_end : SurfPos, SCompactSeqTail k sp_mid sp_end →
           ∀ sp_fin : SurfPos, SCompactMapTail k sp_end sp_fin →
-          ResumeFrames (SLYamlStream sp_start) ks' sp_fin) ∨ True)) ∨ True := by
+          ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)) ∨ True := by
       rcases h_valF with ⟨nv, ksv, h_ltv, _, h_cvv, closeF⟩ | h_tr
       · by_cases hnv : nv < k
         · exact Or.inl ⟨FrameLevel.map nv :: ksv, (fun k' hk' => by
@@ -28064,17 +28060,21 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
           -- frames stay `[]`: `FrameLevel.map nv` has width `k`, which `h_lt` forbids;
           -- the mapping's sibling after the sequence is the park's `h_mapTop` (priced).
           by_cases hnk : nv ≤ k
-          · exact Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil), Or.inr trivial,
-              fun sp_final h_indented sp_end h_tail => ResumeFrames.bottom sp_end
+          · exact Or.inl ⟨ksv, fun fr hf => Nat.lt_of_lt_of_le (h_ltv fr hf) hnk, Or.inr trivial,
+              -- Item 389 (PR #161 review): the park resumes the MAPPING's own frames
+              -- `ksv` (widths < nv = k): the sequence closes the mapping's value and
+              -- the empty map tail hands over to `ksv` — no `[]` + `.bottom`.
+              fun sp_final h_indented sp_end h_tail =>
                 (closeF sp_end (valueLandedSeq hnk h_ssl
-                  (SBlockSeqEntries_of_compactTail h_ind h_dash h_gnot h_indented h_tail))).close,
+                  (SBlockSeqEntries_of_compactTail h_ind h_dash h_gnot h_indented h_tail))).level_inv
+                  sp_end (SCompactMapTail.nil nv sp_end),
               -- Item 389: the mapping at `nv = k` is the stack TOP (no push), and its
-              -- sibling after the sequence is `h_valF`'s own level, read down.
-              Or.inl (fun _ => ⟨ksv, (fun fr hf => Nat.lt_of_lt_of_le (h_ltv fr hf) hnk),
-                fun sp_final h_indented sp_end h_tail sp_fin h_mt =>
-                  (closeF sp_end (valueLandedSeq hnk h_ssl
-                    (SBlockSeqEntries_of_compactTail h_ind h_dash h_gnot h_indented h_tail))).level_inv
-                    sp_fin (by obtain rfl : nv = k := (by omega); exact h_mt)⟩)⟩
+              -- sibling after the sequence is `h_valF`'s own level, read down — on the
+              -- SAME `ksv` the route above resumes (no second frame list).
+              Or.inl (fun _ sp_final h_indented sp_end h_tail sp_fin h_mt =>
+                (closeF sp_end (valueLandedSeq hnk h_ssl
+                  (SBlockSeqEntries_of_compactTail h_ind h_dash h_gnot h_indented h_tail))).level_inv
+                  sp_fin (by obtain rfl : nv = k := (by omega); exact h_mt))⟩
           · exact Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
               Or.inr trivial, h_seqBottom, Or.inr trivial⟩
       · exact Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
@@ -29180,11 +29180,10 @@ lemma accum_block_on_pendingBlockContent {sp_gram : SurfPos}
       ∀ sp_end : SurfPos, SCompactSeqTail n sp_mid sp_end →
       ResumeFrames (SLYamlStream sp_start) ks sp_end) ∧
       (((∃ e, sc.indents.back? = some e ∧ e.isSequence = false) →
-        ∃ ks' : List FrameLevel, (∀ fr ∈ ks', fr.width < n) ∧
         ∀ sp_mid : SurfPos, SSLComments sp_gram sp_mid →
         ∀ sp_end : SurfPos, SCompactSeqTail n sp_mid sp_end →
         ∀ sp_fin : SurfPos, SCompactMapTail n sp_end sp_fin →
-        ResumeFrames (SLYamlStream sp_start) ks' sp_fin) ∨ True)) ∨ True)
+        ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)) ∨ True)
     -- **Item 198 (LAST): `h_closeF_old`'s twin at the VALUE-LINE bottom**
     -- (`pendingBlockContent.h_closeFV`).  Same stack, same hop; what differs is
     -- what it stands on, and that is the whole difference between a dedent that
@@ -29777,11 +29776,10 @@ lemma accum_block_on_pendingBlock
       ∀ sp_end : SurfPos, SCompactSeqTail n sp_mid sp_end →
       ResumeFrames (SLYamlStream sp_start) ks sp_end) ∧
       (((∃ e, sc.indents.back? = some e ∧ e.isSequence = false) →
-        ∃ ks' : List FrameLevel, (∀ fr ∈ ks', fr.width < n) ∧
         ∀ sp_mid : SurfPos, SBlockIndented n .blockIn sp_scan sp_mid →
         ∀ sp_end : SurfPos, SCompactSeqTail n sp_mid sp_end →
         ∀ sp_fin : SurfPos, SCompactMapTail n sp_end sp_fin →
-        ResumeFrames (SLYamlStream sp_start) ks' sp_fin) ∨ True)) ∨ True)
+        ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)) ∨ True)
     (h_top_old : sc.currentIndent ≤ (n : Int))
     -- **Item 386: and the park's level at or below that top** (`h_floor`'s second
     -- conjunct, `IndentFloor.int_le_of_succ`) — with the landing's floor, a no-pop
@@ -29893,7 +29891,7 @@ lemma accum_block_on_pendingBlock
                   fun sp_m h_bi sp_e h_tail =>
                     closeF sp_mid h_node_old sp_e
                       (SCompactSeqTail.cons k sp_mid _ sp_scan' sp_m sp_e
-                        h_ind h_dash2 h_gnot2 h_bi h_tail), (if hci : s_prep.currentIndent < (k : Int) then Or.inl (fun hp => (pushedBirth_not_mapTop (k := k) (by have := SIndent_col h_ind; omega) hcorr_prep hci h_dispatch hp).elim) else h_mt.imp (fun r hp => let ⟨ks', hw, route⟩ := r (mapTop_of_indents_eq ((noPushBirth_indents (k := k) (by have := SIndent_col h_ind; omega) hcorr_prep (Int.not_lt.mp hci) h_dispatch).trans (preprocess_indents_eq_of_le h_preprocess h_mono (by have := preprocess_currentIndent_le h_preprocess h_mono h_base; omega))).symm hp); ⟨ks', hw, fun sp_m h_bi sp_e h_tail sp_fin h_mt' => route sp_mid h_node_old sp_e (SCompactSeqTail.cons k sp_mid _ sp_scan' sp_m sp_e h_ind h_dash2 h_gnot2 h_bi h_tail) sp_fin h_mt'⟩) id)⟩
+                        h_ind h_dash2 h_gnot2 h_bi h_tail), (if hci : s_prep.currentIndent < (k : Int) then Or.inl (fun hp => (pushedBirth_not_mapTop (k := k) (by have := SIndent_col h_ind; omega) hcorr_prep hci h_dispatch hp).elim) else h_mt.imp (fun r hp => let route := r (mapTop_of_indents_eq ((noPushBirth_indents (k := k) (by have := SIndent_col h_ind; omega) hcorr_prep (Int.not_lt.mp hci) h_dispatch).trans (preprocess_indents_eq_of_le h_preprocess h_mono (by have := preprocess_currentIndent_le h_preprocess h_mono h_base; omega))).symm hp); (fun sp_m h_bi sp_e h_tail sp_fin h_mt' => route sp_mid h_node_old sp_e (SCompactSeqTail.cons k sp_mid _ sp_scan' sp_m sp_e h_ind h_dash2 h_gnot2 h_bi h_tail) sp_fin h_mt')) id)⟩
               | Or.inr _ => Or.inr trivial)
                (nodir_of_block_dispatch h_dispatch) (Or.inr trivial)
                -- Item 190: the empty sibling carries the second frame too.
@@ -30211,10 +30209,10 @@ lemma accum_block_on_pendingBlock
                           obtain rfl : n = k := (by omega)
                           by_cases hmap : atSequenceIndent s_prep = false
                           · rcases h_mt with r | h_tr
-                            · obtain ⟨ks', hw', route⟩ := r (mapTop_of_indents_eq h_eq.symm
+                            · have route := r (mapTop_of_indents_eq h_eq.symm
                                 (mapTop_of_atSequenceIndent_false (IndentStackBase.preprocess_base h_preprocess h_base)
                                   (by rw [currentIndent_of_indents_eq h_eq, h_scol]; omega) hmap))
-                              exact Or.inl ⟨ks', hw', fun sp_fin h_mt' =>
+                              exact Or.inl ⟨ks, fun fr hf => by have := h_ltF fr hf; omega, fun sp_fin h_mt' =>
                                 route sp_mid (SBlockIndented.empty n .blockIn sp_scan sp_mid h_ssl)
                                   sp_mid (SCompactSeqTail.nil n sp_mid) sp_fin h_mt'⟩
                             · exact Or.inr h_tr
@@ -36837,11 +36835,10 @@ lemma accum_content_on_pendingBlock_indented
       ∀ sp_end : SurfPos, SCompactSeqTail n sp_mid sp_end →
       ResumeFrames (SLYamlStream sp_start) ks sp_end) ∧
       (((∃ e, sc.indents.back? = some e ∧ e.isSequence = false) →
-        ∃ ks' : List FrameLevel, (∀ fr ∈ ks', fr.width < n) ∧
         ∀ sp_mid : SurfPos, SBlockIndented n .blockIn sp_scan sp_mid →
         ∀ sp_end : SurfPos, SCompactSeqTail n sp_mid sp_end →
         ∀ sp_fin : SurfPos, SCompactMapTail n sp_end sp_fin →
-        ResumeFrames (SLYamlStream sp_start) ks' sp_fin) ∨ True)) ∨ True)
+        ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)) ∨ True)
     -- **Item 167: the park's ENCLOSING collection** (`pendingBlock.h_seqF`),
     -- threaded so the entry's CONTENT park carries it too.  It rides exactly
     -- as `h_close_entry_old` rides — the content becomes the entry's node and
@@ -37083,7 +37080,7 @@ lemma accum_content_on_pendingBlock_indented
                       (SBlockIndented.node n .blockIn sp_scan sp_final
                         (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gram sp_final
                           h_sep_all (h_flow_all (n + 1))
-                          h_ssl)), h_mt.imp (fun r hp => let ⟨ks', hw, route⟩ := r (mapTop_of_indents_eq (contentLanding_indents_eq h_preprocess h_dispatch h_mono h_base h_top_old hcorr_prep h_sep_all h_col_old).symm hp); ⟨ks', hw, fun sp_final h_ssl sp_fin h_mt' => route sp_final (SBlockIndented.node n .blockIn sp_scan sp_final (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gram sp_final h_sep_all (h_flow_all (n + 1)) h_ssl)) sp_fin h_mt'⟩) id⟩
+                          h_ssl)), h_mt.imp (fun r hp => let route := r (mapTop_of_indents_eq (contentLanding_indents_eq h_preprocess h_dispatch h_mono h_base h_top_old hcorr_prep h_sep_all h_col_old).symm hp); (fun sp_final h_ssl sp_fin h_mt' => route sp_final (SBlockIndented.node n .blockIn sp_scan sp_final (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gram sp_final h_sep_all (h_flow_all (n + 1)) h_ssl)) sp_fin h_mt')) id⟩
               | Or.inr _ => Or.inr trivial)
              (nodir_of_content_dispatch h_dispatch)
              (completedTail_of_dispatch h_dispatch hna hnt)
@@ -37282,7 +37279,7 @@ lemma accum_content_on_pendingBlock_indented
                   h_cvS.imp (fun ⟨lo, hb, hc⟩ => ⟨lo, hb, h_cov_step lo ks hc⟩) id,
                   fun sp_m h_bn sp_end h_tail =>
                     closeF sp_m (SBlockIndented.node n .blockIn sp_scan sp_m h_bn)
-                      sp_end h_tail, h_mt.imp (fun r hp => let ⟨ks', hw, route⟩ := r (mapTop_of_indents_eq (contentLanding_indents_eq h_preprocess h_dispatch h_mono h_base h_top_old hcorr_prep h_sep_all h_col_old).symm hp); ⟨ks', hw, fun sp_m h_bn sp_end h_tail sp_fin h_mt' => route sp_m (SBlockIndented.node n .blockIn sp_scan sp_m h_bn) sp_end h_tail sp_fin h_mt'⟩) id⟩
+                      sp_end h_tail, h_mt.imp (fun r hp => let route := r (mapTop_of_indents_eq (contentLanding_indents_eq h_preprocess h_dispatch h_mono h_base h_top_old hcorr_prep h_sep_all h_col_old).symm hp); (fun sp_m h_bn sp_end h_tail sp_fin h_mt' => route sp_m (SBlockIndented.node n .blockIn sp_scan sp_m h_bn) sp_end h_tail sp_fin h_mt')) id⟩
               | Or.inr _ => Or.inr trivial)
              -- Item 114: the node-domain pair is the MAPPING producers' —
              -- this park's completion takes the entries-chain park instead.
@@ -37352,7 +37349,7 @@ lemma accum_content_on_pendingBlock_indented
                   fun sp_final h_ssl =>
                     closeF sp_final
                       (SBlockIndented.node n .blockIn sp_scan sp_final
-                        (h_nodeAt sp_final h_ssl)), h_mt.imp (fun r hp => let ⟨ks', hw, route⟩ := r (mapTop_of_indents_eq (contentLanding_indents_eq h_preprocess h_dispatch h_mono h_base h_top_old hcorr_prep h_sep_all h_col_old).symm hp); ⟨ks', hw, fun sp_final h_ssl sp_fin h_mt' => route sp_final (SBlockIndented.node n .blockIn sp_scan sp_final (h_nodeAt sp_final h_ssl)) sp_fin h_mt'⟩) id⟩
+                        (h_nodeAt sp_final h_ssl)), h_mt.imp (fun r hp => let route := r (mapTop_of_indents_eq (contentLanding_indents_eq h_preprocess h_dispatch h_mono h_base h_top_old hcorr_prep h_sep_all h_col_old).symm hp); (fun sp_final h_ssl sp_fin h_mt' => route sp_final (SBlockIndented.node n .blockIn sp_scan sp_final (h_nodeAt sp_final h_ssl)) sp_fin h_mt')) id⟩
               | Or.inr _ => Or.inr trivial)
              (nodir_of_content_dispatch h_dispatch)
              (completedTail_of_dispatch h_dispatch hna hnt)
@@ -37534,7 +37531,7 @@ lemma accum_content_on_pendingBlock_indented
                       (SBlockIndented.node n .blockIn sp_scan sp_final
                         (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gramf sp_final
                           h_sep_all h_node_f
-                          h_ssl)), h_mt.imp (fun r hp => let ⟨ks', hw, route⟩ := r (mapTop_of_indents_eq (contentLanding_indents_eq h_preprocess h_dispatch h_mono h_base h_top_old hcorr_prep h_sep_all h_col_old).symm hp); ⟨ks', hw, fun sp_final h_ssl sp_fin h_mt' => route sp_final (SBlockIndented.node n .blockIn sp_scan sp_final (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gramf sp_final h_sep_all h_node_f h_ssl)) sp_fin h_mt'⟩) id⟩
+                          h_ssl)), h_mt.imp (fun r hp => let route := r (mapTop_of_indents_eq (contentLanding_indents_eq h_preprocess h_dispatch h_mono h_base h_top_old hcorr_prep h_sep_all h_col_old).symm hp); (fun sp_final h_ssl sp_fin h_mt' => route sp_final (SBlockIndented.node n .blockIn sp_scan sp_final (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gramf sp_final h_sep_all h_node_f h_ssl)) sp_fin h_mt')) id⟩
               | Or.inr _ => Or.inr trivial)
              (nodir_of_content_dispatch h_dispatch)
              (completedTail_of_dispatch h_dispatch hna hnt)

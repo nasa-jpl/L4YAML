@@ -7204,6 +7204,83 @@ def testMapTopSibling (state : IO.Ref TestCollector) : IO Unit := do
   let u1 := L4YAML.Scanner.unwindIndents s3 1
   checkM state "P60 unwind [sent,0,2] to col 1 pops the 2 only: top 0 (shrink ⇒ strictly below the old top)" (u1.indents.size == 2 && u1.currentIndent == 0) s!"size {u1.indents.size} top {u1.currentIndent}"
 
+/-! ## Priority 60b — item 389's scanner lemmas read at every pause (PR #161 review)
+
+Priority 60's rows read the parser and the stack operations, not the lemmas' own premises.
+Below, every pause of the real scanner is walked (as Priority 58b walks the `:`/`?` dispatches)
+and each of item 389's scanner lemmas is CHECKED where its premises hold: `preprocess_currentIndent_le`
+(the preprocess step never raises the top), `preprocess_indents_eq_of_le` (a step that does not
+lower the top leaves the stack unchanged), `pushedBirth_not_mapTop` (a `-` dispatched with
+`currentIndent < col` leaves `⟨col, true⟩` on top), `noPushBirth_indents` (a `-` dispatched with
+`col ≤ currentIndent` leaves the stack unchanged) and `dispatchContent_preserves_indents` (the
+content arm, the step `contentLanding_indents_eq` reads).  A violation is a build failure. -/
+
+/-- One walk: `(pauses, prepViol, eqViol, pushed, pushViol, noPush, noPushViol, contentViol)`. -/
+def mapTopLemmaWalk (input : String) (fuel : Nat := 64) :
+    Nat × Nat × Nat × Nat × Nat × Nat × Nat × Nat := Id.run do
+  let mut s := ScannerState.mk' input
+  let mut pauses := 0
+  let mut prepViol := 0
+  let mut eqViol := 0
+  let mut pushed := 0
+  let mut pushViol := 0
+  let mut noPush := 0
+  let mut noPushViol := 0
+  let mut contentViol := 0
+  let shape : ScannerState → Array (Int × Bool) := fun st => st.indents.map fun e => (e.column, e.isSequence)
+  for _ in [:fuel] do
+    match scanNextToken_preprocess s with
+    | .ok (some (sp, c)) =>
+      pauses := pauses + 1
+      if !(decide (sp.currentIndent ≤ s.currentIndent)) then prepViol := prepViol + 1
+      if decide (s.currentIndent ≤ sp.currentIndent) && shape sp != shape s then eqViol := eqViol + 1
+      let sd := if sp.allowDirectives then
+        { sp with allowDirectives := false, documentEverStarted := true } else sp
+      if c == '-' then
+        match scanNextToken_dispatchBlockIndicators sd '-' with
+        | .ok (some s') =>
+          if decide (sd.currentIndent < (sd.col : Int)) then
+            pushed := pushed + 1
+            if s'.indents.back?.map (fun e => (e.column, e.isSequence)) != some ((sd.col : Int), true) then
+              pushViol := pushViol + 1
+          else
+            noPush := noPush + 1
+            if shape s' != shape sd then noPushViol := noPushViol + 1
+        | _ => pure ()
+      else if c != ':' && c != '?' then
+        match scanNextToken_dispatchContent sd c with
+        | .ok s' => if shape s' != shape sd then contentViol := contentViol + 1
+        | _ => pure ()
+    | _ => break
+    match scanNextToken s with
+    | .ok (some s') => s := s'
+    | _ => break
+  return (pauses, prepViol, eqViol, pushed, pushViol, noPush, noPushViol, contentViol)
+
+def testMapTopLemmaWalk (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 60b: item 389 (PR #161 review) — the scanner lemmas behind the mapping-top pay read at every real pause: preprocess never raises the top and keeps the stack when it does not lower it; a pushed `-` leaves ⟨col, true⟩ on top, a no-push `-` and every content dispatch leave the stack unchanged"
+  -- Predicted before the run: every violation counter 0 on every row; (pushed, noPush) as
+  -- labelled — a `-` pushes exactly when its column exceeds the current indent (the root
+  -- `-` on the sentinel -1, a `-` under a mapping at a deeper column, a compact `- -`'s inner
+  -- dash) and pushes nothing at the mapping's own column; the refused `a: 1⏎- b` dispatch is
+  -- no accepted pause.  Pause counts are read, not predicted (printed in the message).
+  let rows : List (String × String × (Nat × Nat)) :=
+    [ ("a:⏎- b⏎- c⏎d: 1 (two no-push entries, the paid route)", "a:\n- b\n- c\nd: 1\n", (0, 2)),
+      ("- a⏎- b (root sequence: the first `-` pushes on the sentinel, the second is its sibling)", "- a\n- b\n", (1, 1)),
+      ("a:⏎  - x⏎  - y (pushed under the mapping, then its no-push sibling)", "a:\n  - x\n  - y\n", (1, 1)),
+      ("a:⏎- - b⏎- c (compact: the outer dash no-push, the inner pushed)", "a:\n- - b\n- c\n", (1, 2)),
+      ("a:⏎  b:⏎  - x⏎c: 1 (no-push one level down, then a dedent)", "a:\n  b:\n  - x\nc: 1\n", (0, 1)),
+      ("a: 1⏎- b (CLOSED content park: the `-` dispatch is refused — no accepted dispatch)", "a: 1\n- b\n", (0, 0)),
+      ("- - a (two pushes on one line)", "- - a\n", (2, 0)),
+      ("a:⏎-⏎c: 1 (empty no-push entry, then the mapping's sibling)", "a:\n-\nc: 1\n", (0, 1)),
+      ("- a:⏎    b: 1⏎- c (mapping inside a pushed sequence, then the sibling entry)", "- a:\n    b: 1\n- c\n", (1, 1)),
+      ("a: 1⏎b: 2 (no indicator at all: content dispatches only)", "a: 1\nb: 2\n", (0, 0)) ]
+  for (label, input, expected) in rows do
+    let got := mapTopLemmaWalk input
+    let (pauses, prepViol, eqViol, pushed, pushViol, noPush, noPushViol, contentViol) := got
+    check state s!"item 389 scanner lemmas over {label}: pauses={pauses} prepViol={prepViol} eqViol={eqViol} pushed={pushed} pushViol={pushViol} noPush={noPush} noPushViol={noPushViol} contentViol={contentViol}; expected (pushed, noPush) = {expected}, every violation 0"
+      (prepViol == 0 && eqViol == 0 && pushViol == 0 && noPushViol == 0 && contentViol == 0 && (pushed, noPush) == expected)
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -7273,6 +7350,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testSeqTopLeDispatchWalk state
   testValueLandedSeq state
   testMapTopSibling state
+  testMapTopLemmaWalk state
   testDeeperLandingOnMapPark state
   testParseOkCheckFrom state
   testParseNodeCF state
