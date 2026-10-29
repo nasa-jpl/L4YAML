@@ -3,60 +3,60 @@ _anchors:
   world_frame: &world_frame world
   baselink_frame: &baselink_frame base_link
   global_frame: &global_frame map
-  sim_start_year: &sim_start_year 2025
-  sim_start_month: &sim_start_month 3
-  sim_start_day: &sim_start_day 26
+  sim_start_year: &sim_start_year 2000
+  sim_start_month: &sim_start_month 1
+  sim_start_day: &sim_start_day 1
   sim_start_hour: &sim_start_hour 12
   sim_start_minute: &sim_start_minute 0
   sim_start_seconds: &sim_start_seconds 0.0
-  illuminator_intensity: &illuminator_intensity 1.0
-  map_tif: &map_tif "$(env ROS_WS)/maps/speed.tif"
+  lamp_intensity: &lamp_intensity 1.0
+  map_image: &map_image "$(env ROS_WS)/maps/demo_map.tif"
 
-optical_global_localization:
+demo_localizer:
   ros__parameters:
     use_sim_time: *use_sim_time
 
-    # How long will GL execute for (placeholder for optical GL stub)
-    gl_duration: 31.0
+    # How long the localization activity runs (placeholder for the stub)
+    activity_duration: 31.0
 
-    # Probability of GL success (placeholder for optical GL stub)
+    # Probability of success (placeholder for the stub)
     success_rate: 1.0
 
-    # Wait time before preparing for optical GL activity
-    pre_gl_wait_duration: 3.0
+    # Wait time before preparing for the activity
+    pre_activity_wait_duration: 3.0
 
-    # Wait time after optical GL activity cleanup
-    post_gl_wait_duration: 4.0
+    # Wait time after activity cleanup
+    post_activity_wait_duration: 4.0
 
-    # Path to optical global localization inputs
-    gl_folder_path: "$(env ROS_LOG_DIR)/node_logs/absolute_localization/optical_global_localization"
+    # Path to localization inputs
+    input_folder_path: "$(env ROS_LOG_DIR)/node_logs/demo_localizer"
 
-    # use gblc or simulated wait for GL
-    use_gblc: true
+    # use the solver or a simulated wait
+    use_solver: true
 
-    # use vio to query apriori position (else ground truth used)
-    gblc_vio_input: true
+    # use odometry to query the a-priori position (else ground truth is used)
+    solver_odometry_input: true
 
-    # Path to the gblc executable invoked as a subprocess
-    gblc_binary_path: "$(env ROS_WS)/install/gblc/bin/gblc"
+    # Path to the solver executable invoked as a subprocess
+    solver_binary_path: "$(env ROS_WS)/install/demo_solver/bin/demo_solver"
 
-    # Path to GBLC settings / reference-map directory passed to the gblc binary
-    gl_settings_path: "$(env ROS_WS)/src/thirdparty/gblc/input_data/endurance_settings"
-    #gl_settings_path: "$(env ROS_WS)/src/thirdparty/gblc/input_data/endurance_apollo_settings"
+    # Path to the solver settings / reference-map directory
+    settings_path: "$(env ROS_WS)/src/demo_solver/input_data/default_settings"
+    #settings_path: "$(env ROS_WS)/src/demo_solver/input_data/alternate_settings"
 
-    # Interval (s) between action feedback updates during GL execution
+    # Interval (s) between action feedback updates
     feedback_interval: 0.5
 
-    # Feed the GBLC estimate back to the system (true) or ground truth (false)
-    closed_loop_gl: true
+    # Feed the estimate back to the system (true) or ground truth (false)
+    closed_loop: true
 
-    # A-priori position uncertainty (m) written into the GBLC input file
+    # A-priori position uncertainty (m) written into the solver input file
     input_current_pos_uncertainty: 30.0
 
-    # VIO availability check tuning (used during post-GL cleanup)
-    vio_wait_timeout: 30.0
-    vio_check_interval: 5.0
-    vio_max_msg_age: 2.0
+    # Odometry availability check tuning (used during cleanup)
+    odometry_wait_timeout: 30.0
+    odometry_check_interval: 5.0
+    odometry_max_msg_age: 2.0
 
     # ############################
     # #         Frame IDs        #
@@ -73,18 +73,18 @@ optical_global_localization:
     sim_start_minute: *sim_start_minute
     sim_start_seconds: *sim_start_seconds
 
-    #illuminator intensity to use
-    illuminator_intensity_on: *illuminator_intensity
-    illuminator_intensity_off: 1e-6
+    # lamp intensity to use
+    lamp_intensity_on: *lamp_intensity
+    lamp_intensity_off: 1e-6
 
-# Debug/visualization node that overlays the traversed path on the SPEED map
-# (launched only when the path_overlay_map node is enabled in absolute_localization.launch.xml)
-path_overlay_map:
+# Debug/visualization node that overlays the traversed path on the map image
+# (launched only when the path_overlay node is enabled in the launch file)
+path_overlay:
   ros__parameters:
     use_sim_time: *use_sim_time
 
-    # SPEED map image the path is drawn on
-    map_image_path: *map_tif
+    # map image the path is drawn on
+    map_image_path: *map_image
 
     # Map resolution in meters/pixel
     map_resolution: 0.5
