@@ -334,6 +334,7 @@ def expectedAlphabet : String := "prodTyped=169 prodSurf=96 prodSpec=58"
 -- 2026-10-29 (item 389): stepHolders 1895 → 1902, dispHolders 363 → 368 — `pushedBirth_not_mapTop`, `noPushBirth_indents`, `contentLanding_indents_eq` and the `popStep`/unwind lemmas hold the `-`/content dispatch and the preprocess step as hypotheses.
 -- 2026-10-29 (item 394, option B): +1 step holder — `preprocess_indents_subset` (the
 -- preprocess only pops the indent stack; the cover's transport to the flow opener).
+-- 2026-10-29 (item 396): flowOpen_floor_at_prep deleted — one scanNextToken_preprocess holder fewer.
 def expectedSteps : String :=
 -- 2026-10-24 (B3 [66] col-0 threading): stepHolders 1819 → 1874, dispHolders 332 → 348, dispTwoCorr 29 → 31 —
 -- the gate/JSON-key/reservation lemmas hold the preprocess and dispatch step equations (1878/351 on the
@@ -341,7 +342,7 @@ def expectedSteps : String :=
 -- 2026-10-25 (item 359): stepHolders 1887 → 1888 — `scanValue_refused_of_outer` (RegisterWitness) holds the
 -- `scanValue s = .ok s'` step equation.
 -- Item 372 (2026-10-27): `seqTopKey_refuted_at_colon` holds the `:` dispatch step (+1 step/disp holder).
-  "stepHolders=1903 dispHolders=368 dispTwoCorr=31 fns=73 fnsIx=26"
+  "stepHolders=1902 dispHolders=368 dispTwoCorr=31 fns=73 fnsIx=26"
 
 /-- **The ladder, at each population.**  `edge` is a production whose right
     endpoint is the step's output; `chain` requires a path to it from another
@@ -353,9 +354,10 @@ def expectedSteps : String :=
 -- the grammar endpoint `sp_gram` directly, so three chain-only correspondences became edges and the
 -- explicit JSON-key twins add two.
 -- 2026-10-29 (item 389): TYPED edge 22 → 23, SURF edge 20 → 21 — `contentLanding_indents_eq` holds the content dispatch typed through `ScannerSurfCorr`.
+-- 2026-10-29 (item 396): flowOpen_floor_at_prep deleted — one TYPED and one SURF holder fewer on the ladder.
 def expectedLadder : List String :=
-  ["TYPED edge=23 chain=4 fnEdge=4 fnChain=2",
-   "SURF edge=21 chain=3 fnEdge=3 fnChain=2",
+  ["TYPED edge=22 chain=4 fnEdge=4 fnChain=2",
+   "SURF edge=20 chain=3 fnEdge=3 fnChain=2",
    "SPEC edge=4 chain=1 fnEdge=2 fnChain=1"]
 
 /-- The six that carry a Surface path across a scanner step.  Five are
@@ -420,7 +422,7 @@ def expectedChainSpec : List Name :=
 -- 2026-10-29 (item 389): dispatchContent decls 159 → 160 (`contentLanding_indents_eq`), preprocess 243 → 246 (it plus `preprocess_currentIndent_le`, `preprocess_indents_eq_of_le`).
 def expectedPerFn : List String :=
   ["scanNextToken_dispatchContent decls=160 chain=1",
-   "scanNextToken_preprocess decls=247 chain=3"]
+   "scanNextToken_preprocess decls=246 chain=3"]
 
 /-- **The one worked precedent is outside the work.**  It is not in item 238's
     transitive set and not on either repair thread, so β.5 neither pays for it
