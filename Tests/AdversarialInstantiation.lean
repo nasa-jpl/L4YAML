@@ -7920,6 +7920,107 @@ def testInputAheadExports (state : IO.Ref TestCollector) : IO Unit := do
   check state s!"P67b skipTrailingSpaces / advance read the input alone: rows={rows} viol={viol}"
     (viol == 0 && rows > 0)
 
+  -- 67c (PR #174 review) — the lemmas' own functions called under their own premises, not read
+  -- off `scanNextToken`'s output.  Predicted before the run: at fuel 0 the loop never terminates
+  -- (the vacuous arm); at full fuel it always terminates (item 401's obligation, read here);
+  -- every `terminated` result stands on `PlainFollower`; `scanBlockEntry` errors at EVERY
+  -- same-line-property pause and succeeds at some `-` pause without one; both quoted scans and
+  -- the alias close leave a `TrailingFollower` state whenever they succeed.
+  let mut t0 := 0;  let mut nt0 := 0   -- fuel 0: terminated / not
+  let mut tF := 0;  let mut ntF := 0   -- full fuel: terminated / not
+  let mut t12 := 0; let mut nt12 := 0  -- fuel 1, 2
+  let mut pviol := 0                   -- terminated result off PlainFollower
+  let mut propErr := 0; let mut propOk := 0; let mut dashOk := 0
+  let mut qOk := 0; let mut qErr := 0; let mut qViol := 0
+  let mut aOk := 0; let mut aErr := 0; let mut aViol := 0
+  let plainFollower : L4YAML.Scanner.ScannerState → Bool := fun st =>
+    match st.peek? with
+    | none => true
+    | some c => c == ':' || c == '#' || L4YAML.CharPredicates.isLineBreakBool c
+        || !L4YAML.CharPredicates.isPrintableBool c || c == '\uFEFF'
+        || (st.col == 0 && L4YAML.Scanner.atDocumentBoundary st)
+  let trailingFollower : L4YAML.Scanner.ScannerState → Nat → Bool := fun st ie =>
+    match (L4YAML.Scanner.skipTrailingSpaces st (ie - st.offset + 1)).peek? with
+    | none => true
+    | some c => L4YAML.CharPredicates.isLineBreakBool c || c == '#' || c == ':'
+  for input in inputAheadInputs do
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    -- the quoted scans at the input's start (an initial state is never a pause)
+    for sQ in [L4YAML.Scanner.skipWhitespace s] do
+      if sQ.peek? == some '"' then
+        match L4YAML.Scanner.scanDoubleQuoted sQ with
+        | .ok s' =>
+          qOk := qOk + 1
+          if !trailingFollower s' sQ.inputEnd then qViol := qViol + 1
+        | .error _ => qErr := qErr + 1
+      if sQ.peek? == some '\'' then
+        match L4YAML.Scanner.scanSingleQuoted sQ with
+        | .ok s' =>
+          qOk := qOk + 1
+          if !trailingFollower s' sQ.inputEnd then qViol := qViol + 1
+        | .error _ => qErr := qErr + 1
+    for _ in [:128] do
+      match L4YAML.Scanner.scanNextToken s with
+      | .ok (some sN) =>
+        if !sN.inFlow then
+          let ci := (max 0 (sN.currentIndent + 1)).toNat
+          let full := (sN.inputEnd - sN.offset + 1) * 2
+          for fuel in [0, 1, 2, full].eraseDups do
+            match L4YAML.Scanner.collectPlainScalarLoop sN "" "" fuel false ci sN.inputEnd with
+            | .ok r =>
+              if fuel == 0 then
+                if r.terminated then t0 := t0 + 1 else nt0 := nt0 + 1
+              else if fuel == full then
+                if r.terminated then tF := tF + 1 else ntF := ntF + 1
+              else
+                if r.terminated then t12 := t12 + 1 else nt12 := nt12 + 1
+              if r.terminated && !plainFollower r.state then pviol := pviol + 1
+            | .error _ => pure ()
+          if L4YAML.Scanner.lastTokenIsNodePropertyOnLine sN.tokens sN.line then
+            match L4YAML.Scanner.scanBlockEntry sN with
+            | .error _ => propErr := propErr + 1
+            | .ok _ => propOk := propOk + 1
+          let sW := L4YAML.Scanner.skipWhitespace sN
+          if sW.peek? == some '"' then
+            match L4YAML.Scanner.scanDoubleQuoted sW with
+            | .ok s' =>
+              qOk := qOk + 1
+              if !trailingFollower s' sN.inputEnd then qViol := qViol + 1
+            | .error _ => qErr := qErr + 1
+          if sW.peek? == some '\'' then
+            match L4YAML.Scanner.scanSingleQuoted sW with
+            | .ok s' =>
+              qOk := qOk + 1
+              if !trailingFollower s' sN.inputEnd then qViol := qViol + 1
+            | .error _ => qErr := qErr + 1
+          match sN.tokens.back? with
+          | some t =>
+            match t.val with
+            | .alias _ =>
+              if t.pos.line == sN.line then
+                match L4YAML.Scanner.validateAliasClose sN with
+                | .ok _ =>
+                  aOk := aOk + 1
+                  if !trailingFollower sN sN.inputEnd then aViol := aViol + 1
+                | .error _ => aErr := aErr + 1
+            | _ => pure ()
+          | none => pure ()
+        s := sN
+      | _ => break
+  -- The contrast for (c): a fresh block state on `-` with no property on its line is accepted.
+  for input in ["- a\n", "-\n", "- - a\n"] do
+    match L4YAML.Scanner.scanBlockEntry (L4YAML.Scanner.ScannerState.mk' input) with
+    | .ok _ => dashOk := dashOk + 1
+    | .error _ => pure ()
+  check state s!"P67c collectPlainScalarLoop direct: fuel0 term/not={t0}/{nt0} fuel1,2={t12}/{nt12} full={tF}/{ntF} PlainFollower viol={pviol}"
+    (t0 == 0 && nt0 == 189 && tF == 189 && ntF == 0 && t12 == 215 && nt12 == 159 && pviol == 0)
+  check state s!"P67c scanBlockEntry direct: same-line property err/ok={propErr}/{propOk}, dash without property ok={dashOk}"
+    (propErr == 15 && propOk == 0 && dashOk == 3)
+  check state s!"P67c quoted scans direct: ok={qOk} err={qErr} TrailingFollower viol={qViol}"
+    (qOk == 8 && qErr == 1 && qViol == 0)
+  check state s!"P67c validateAliasClose direct: ok={aOk} err={aErr} TrailingFollower viol={aViol}"
+    (aOk == 4 && aErr == 0 && aViol == 0)
+
 
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
