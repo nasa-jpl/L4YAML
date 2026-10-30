@@ -12,7 +12,10 @@ marked columns (the field's own item-190 note) — so the flip restates the fiel
 
 and reads who pays: every birth now owes the domain (a relay of the enclosing park's, or a
 STARVED fresh singleton) and every consumer destructures `⟨ns, hdom, kslot⟩`.  Read-only: patch,
-one `lake build L4YAML` (a FLOOR), `scripts/flip_census.py`, restore; md5 both sides.  `--dry`/`--keep`.
+one `lake build L4YAML` (a FLOOR), `scripts/flip_census.py`, restore; md5 both sides.  `--dry`/`--keep`;
+`--round N` (1–4, default 1) applies rounds 1..N CUMULATIVELY — round 2 adds the three lemma
+premises, round 3 the `hkvUp` face, round 4 the `h_explUp` field; the sites line lists every head
+patched, so round 4 always shows the six-site ladder.
 """
 import hashlib, re, subprocess, sys
 from pathlib import Path
@@ -21,41 +24,47 @@ SRC = ROOT / "L4YAML/Proofs/Production/StreamAccum.lean"
 CTOR = "  | pendingBlock (sp_start sp_block sp_scan : SurfPos) (n : Nat)\n"
 OLD = "      (h_kslot : (∃ nv : Nat,\n"
 NEW = "      (h_kslot : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,\n"
-# --round2: the three lemma PREMISES that restate the field (the callers that pattern-match the
+# round 2: the three lemma PREMISES that restate the field (the callers that pattern-match the
 # constructor and hand `h_kslot92` on break first otherwise, hiding every consumer behind them).
 PREMS = [("lemma accum_block_on_pendingBlockContent", "    (h_kslot : (∃ nv : Nat,\n"),
          ("lemma accum_block_on_pendingBlock", "    (h_kslot : (∃ nv : Nat,\n"),
          ("lemma accum_content_on_pendingBlock_indented", "    (h_kslot_old : (∃ nv : Nat,\n")]
 def dom(old): return old.replace("(∃ nv : Nat,", "(∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,")
-# --round3: the supply question round 2 exposes — the `?`-park births inside
+# round 3: the supply question round 2 exposes — the `?`-park births inside
 # `accum_block_on_closeThenBlock` build the field off its `h_vslot` premise's ancestor chain
 # `hkvUp` (`∃ nsU, ∀ nvU ∈ nsU, …`), which carries no domain.  Domain it over the landed slot
 # and the chain, `MarkedColsIn sc (nv :: nsU)`, and read which of the eleven callers can pay.
 HKVUP = "      ((∃ nsU : List Nat, ∀ nvU ∈ nsU,\n"
 HKVUP_D = "      ((∃ nsU : List Nat, RegisterWitness.MarkedColsIn sc (nv :: nsU) ∧ ∀ nvU ∈ nsU,\n"
-# --round4: hkvUp's own supplier at the mapping-value park is the field `pendingMapValue.h_explUp`
+# round 4: hkvUp's own supplier at the mapping-value park is the field `pendingMapValue.h_explUp`
 # (the chain above a `?` park, item 191), undomained; domain it over the park's level and its chain.
 EXPLUP = "      (h_explUp : (∃ (sp_q : SurfPos) (ns : List Nat), GLit '?' sp_q sp_scan ∧\n"
 EXPLUP_D = "      (h_explUp : (∃ (sp_q : SurfPos) (ns : List Nat), GLit '?' sp_q sp_scan ∧ RegisterWitness.MarkedColsIn sc (n :: ns) ∧\n"
 def md5(p): return hashlib.md5(p.read_bytes()).hexdigest()
-def patch(text):
+def round_of(argv):
+    if "--round" in argv:
+        n = int(argv[argv.index("--round") + 1])
+        if not 1 <= n <= 4: sys.exit(f"--round takes 1..4, got {n}")
+        return n
+    return 1
+def patch(text, rnd=1):
     lines = text.splitlines(keepends=True)
     c = [i for i, l in enumerate(lines) if l == CTOR]
     if len(c) != 1: sys.exit(f"expected one pendingBlock constructor head, matched {c}")
     h = next(i for i in range(c[0], c[0] + 60) if lines[i] == OLD)
     lines[h] = NEW
     sites = [("pendingBlock.h_kslot → chain + domain", h + 1)]
-    if "--round2" in sys.argv:
+    if rnd >= 2:
         for anchor, old in PREMS:
             d = [i for i, l in enumerate(lines) if re.match(r"(public |private )?" + re.escape(anchor) + r"\b", l)]
             if len(d) != 1: sys.exit(f"expected one {anchor}, matched {d}")
             k = next(i for i in range(d[0], d[0] + 200) if lines[i] == old)
             lines[k] = dom(old); sites.append((anchor.split()[1] + " premise", k + 1))
-    if "--round3" in sys.argv:
+    if rnd >= 3:
         u = [i for i, l in enumerate(lines) if l == HKVUP]
         if len(u) != 1: sys.exit(f"expected one hkvUp head, matched {u}")
         lines[u[0]] = HKVUP_D; sites.append(("closeThenBlock.h_vslot hkvUp → domained", u[0] + 1))
-    if "--round4" in sys.argv:
+    if rnd >= 4:
         e = [i for i, l in enumerate(lines) if l == EXPLUP]
         if len(e) != 1: sys.exit(f"expected one h_explUp head, matched {e}")
         lines[e[0]] = EXPLUP_D; sites.append(("pendingMapValue.h_explUp → domained", e[0] + 1))
@@ -64,8 +73,9 @@ def main():
     dry, keep = "--dry" in sys.argv, "--keep" in sys.argv
     if subprocess.run(["git", "status", "--porcelain", str(SRC)], cwd=ROOT, capture_output=True, text=True).stdout.strip():
         sys.exit("StreamAccum.lean is not clean; refusing to flip")
-    before = md5(SRC); orig = SRC.read_text(); new, sites = patch(orig)
-    print(f"md5 before: {before}\nsites: " + ", ".join(f"{n}@{ln}" for n, ln in sites))
+    rnd = round_of(sys.argv)
+    before = md5(SRC); orig = SRC.read_text(); new, sites = patch(orig, rnd)
+    print(f"md5 before: {before}\nround: {rnd}\nsites: " + ", ".join(f"{n}@{ln}" for n, ln in sites))
     if dry: return
     SRC.write_text(new)
     try:
