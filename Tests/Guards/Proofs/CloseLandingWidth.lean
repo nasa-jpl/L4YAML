@@ -510,7 +510,7 @@ def expectedSpends : List String :=
    "accum_block_on_pendingBlock spend:comments @sp_mid arg=prem:SSLComments width=ind[ws:hws,col:hcol_mid,ind:h_ind] index=direct[slot:n,tail:n,col:n,cur:n] cmp=no",
    "keyctx_of_preprocess spend:comments @sp_mid arg=lemma:left(prem:And) width=ind[ws:h_ws,ind:h_ind,ind:h_ind'] index=none cmp=no",
    "slotChainMap spend:node @sp_v arg=SBlockIndented.node(SBlockNode.blockMap(GOpt.none,prem:SSLComments,SBlockMapEntries.single(prem:SIndent,prem:SBlockMapEntry))) width=none index=direct[cur:nv] cmp=no",
-   "accum_block_on_closeThenBlock spend:comments @sp_mid arg=prem:SSLComments width=ws[ws:hws,col:hcol_mid] index=packed[cur:h_vslot,slot:h_vslot,slot:h_valF,slot:h_valFV] cmp=no",
+   "accum_block_on_closeThenBlock spend:comments @sp_mid arg=prem:SSLComments width=ws[ws:hws,col:hcol_mid] index=packed[cur:h_vslot,slot:h_vslot,cur:h_valF,slot:h_valF,slot:h_valFV] cmp=no",
    "accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.node(SBlockNode.blockSeq(GOpt.none,prem:SSLComments,lemma:SBlockSeqEntries_of_compactTail(prem:SIndent,prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail))) width=none index=direct[cur:nv,slot:nv] cmp=no",
    "accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.node(SBlockNode.blockSeq(GOpt.none,prem:SSLComments,lemma:SBlockSeqEntries_of_compactTail(prem:SIndent,prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail))) width=none index=direct[cur:nv,slot:nv] cmp=no",
    "accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.node(SBlockNode.blockSeq(GOpt.none,prem:SSLComments,lemma:SBlockSeqEntries_of_compactTail(prem:SIndent,prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail))) width=none index=direct[cur:nv,slot:nv] cmp=no",

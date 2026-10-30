@@ -1516,17 +1516,17 @@ def expectedDeclineWriters : List String :=
 -- `colon_open_map_explicit` (3), `accum_step_flow` (4) and `accum_flow_open_depth0` (2) — before, one `VIA` leaf each.
 -- 2026-10-29 (item 389): a match-index rename only — `accum_block_on_closeThenBlock`'s `h_kslotUp` decline is now behind `match_1_31` (was `match_1_28`): the landed birth's `nv < k` split added matches before it; no edge moved.
 def expectedCollapsedEdge : String :=
-  "compact_open_map → PendingNode.pendingMapValue#15 (h_kslot) = DECLINE via Or.elim; \
-    compact_open_map → PendingNode.pendingMapValue#18 (h_closeFV) = DECLINE via Or.elim; \
-    compact_open_map → PendingNode.pendingMapValue#19 (h_framesV) = DECLINE via Or.elim; \
+  "compact_open_map → PendingNode.pendingMapValue#16 (h_kslot) = DECLINE via Or.elim; \
+    compact_open_map → PendingNode.pendingMapValue#19 (h_closeFV) = DECLINE via Or.elim; \
+    compact_open_map → PendingNode.pendingMapValue#20 (h_framesV) = DECLINE via Or.elim; \
     accum_flow_open_depth0 → flowKeyRoute_of_root#26 (h_mapFV) = DECLINE via Or.elim; \
     accum_flow_open_depth0 → flowKeyRoute_of_root#26 (h_mapFV) = DECLINE via Or.elim; \
     accum_content_pending → PendingNode.pendingBlockContent#17 (h_kslotUp) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_content_pending.match_1_57; \
     accum_content_pending → PendingNode.pendingBlockContent#17 (h_kslotUp) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_content_pending.match_1_57; \
     accum_content_pending → PendingNode.pendingBlockContent#17 (h_kslotUp) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_content_pending.match_1_57; \
-    colon_open_map_explicit → PendingNode.pendingMapValue#15 (h_kslot) = DECLINE via Or.elim; \
-    colon_open_map_explicit → PendingNode.pendingMapValue#18 (h_closeFV) = DECLINE via Or.elim; \
-    colon_open_map_explicit → PendingNode.pendingMapValue#19 (h_framesV) = DECLINE via Or.elim; \
+    colon_open_map_explicit → PendingNode.pendingMapValue#16 (h_kslot) = DECLINE via Or.elim; \
+    colon_open_map_explicit → PendingNode.pendingMapValue#19 (h_closeFV) = DECLINE via Or.elim; \
+    colon_open_map_explicit → PendingNode.pendingMapValue#20 (h_framesV) = DECLINE via Or.elim; \
     accum_block_pending → frameChainUnion#2 (h₁) = PAY via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_block_pending.match_1_23; \
     accum_block_pending → frameChainUnion#3 (h₂) = PAY via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_block_pending.match_1_25; \
     accum_step_flow → PendingNode.pendingContent#9 (h_vpack) = DECLINE via Or.elim; \
@@ -1538,9 +1538,9 @@ def expectedCollapsedEdge : String :=
     accum_content_on_pendingMapValue_indented → frameChainUnionD#3 (h₁) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented.match_1_1; \
     explFrameValueLine → frameChainUnion#2 (h₁) = PAY via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.explFrameValueLine.match_1_1; \
     accum_content_on_pendingBlock_indented → PendingNode.pendingProps#21 (h_kslot) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_content_on_pendingBlock_indented.match_1_2; \
-    colon_open_map → PendingNode.pendingMapValue#15 (h_kslot) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.colon_open_map.match_1_5; \
-    accum_block_on_closeThenBlock → PendingNode.pendingBlock#11 (h_closeF) = PAY via Or.casesOn→Exists.casesOn→Exists.casesOn→And.casesOn→And.casesOn→And.casesOn→dite; \
-    accum_block_on_closeThenBlock → PendingNode.pendingBlock#14 (h_kslotUp) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock.match_1_31→dite; \
+    colon_open_map → PendingNode.pendingMapValue#16 (h_kslot) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.colon_open_map.match_1_5; \
+    accum_block_on_closeThenBlock → PendingNode.pendingBlock#11 (h_closeF) = PAY via Or.casesOn→Exists.casesOn→Exists.casesOn→And.casesOn→And.casesOn→And.casesOn→And.casesOn→dite; \
+    accum_block_on_closeThenBlock → PendingNode.pendingBlock#14 (h_kslotUp) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock.match_1_32→dite; \
     accum_block_on_closeThenBlock → PendingNode.pendingBlock#14 (h_kslotUp) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock.match_1_3"
 
 /-- **Read off the TYPE, not off a list.**  Item 211's falsification script

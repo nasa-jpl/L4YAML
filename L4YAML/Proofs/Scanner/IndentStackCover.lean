@@ -789,6 +789,60 @@ lemma scanValueClearKey_arm {s : ScannerState} (h : s.simpleKey.possible = true)
       · exact Or.inl ⟨h, rfl⟩
   · exact Or.inl ⟨h, rfl⟩
 
+/-- **The implicit `:`'s own column bound** (item 402): a live block-context key at
+    or right of the stack top keeps the top at or left of the KEY's column through
+    `scanValuePrepare` — the push lands exactly at the key's column, and the no-push
+    branch (key at or left of the top) collapses to equality under the premise. -/
+lemma scanValuePrepare_top_le_key {s : ScannerState}
+    (h_poss : s.simpleKey.possible = true) (h_noflow : s.inFlow = false)
+    (h_floor : s.currentIndent ≤ (s.simpleKey.pos.col : Int)) :
+    (scanValuePrepare s).currentIndent ≤ (s.simpleKey.pos.col : Int) := by
+  unfold scanValuePrepare
+  split
+  · split
+    · split
+      · show ((_ : ScannerState)).currentIndent ≤ _
+        simp only [ScannerState.currentIndent]
+        rw [Array.back?_push]
+        simp only []
+        exact Int.le_refl _
+      · exact h_floor
+    · rename_i h
+      exact absurd h (by simp [h_noflow])
+  · rename_i h
+    exact absurd h_poss h
+
+/-- The `:`'s whole step under a live key (item 402), `scanValue_top_le`'s twin for
+    the IMPLICIT key: the clear either keeps the key (and the prepare pushes at its
+    column) or drops it for an explicit `?` line (and the prepare moves nothing). -/
+lemma scanValue_top_le_key {s s' : ScannerState}
+    (hok : scanValue s = .ok s')
+    (h_poss : s.simpleKey.possible = true) (h_noflow : s.inFlow = false)
+    (h_floor : s.currentIndent ≤ (s.simpleKey.pos.col : Int)) :
+    s'.currentIndent ≤ (s.simpleKey.pos.col : Int) := by
+  unfold scanValue at hok
+  simp only [bind, Except.bind] at hok
+  split at hok <;> try contradiction
+  split at hok <;> try contradiction
+  split at hok <;> try contradiction
+  simp only [Except.ok.injEq] at hok; subst hok
+  have key : (scanValuePrepare (scanValueClearKey s)).currentIndent ≤ (s.simpleKey.pos.col : Int) := by
+    have harm := scanValueClearKey_arm h_poss
+    rcases scanValueClearKey_id_or_clear s with h | h
+    · rw [h]; exact scanValuePrepare_top_le_key h_poss h_noflow h_floor
+    · rw [h] at harm ⊢
+      rcases harm with ⟨hp, _⟩ | ⟨_, hek⟩
+      · exact absurd hp (by simp)
+      · unfold scanValuePrepare
+        simp only [hek, Bool.false_eq_true, ite_false, ite_true]
+        exact h_floor
+  show (((scanValuePrepare (scanValueClearKey s)).emit _).advance).currentIndent ≤ _
+  rw [currentIndent_of_indents_eq
+    (by simp [ScannerLoopInvariant.advance_indents, emit_indents] :
+      (((scanValuePrepare (scanValueClearKey s)).emit YamlToken.value).advance).indents
+        = (scanValuePrepare (scanValueClearKey s)).indents)]
+  exact key
+
 /-- **The `:` opens at the KEY's own column** (item 148) — the named form of
     `scanValuePrepare_cover`.  That lemma reports the opened level with an
     existential, which is all a step-generic caller can say; a caller that holds

@@ -1537,4 +1537,1840 @@ lemma seed_bom_sound (input : String) :
     (L4YAML.Proofs.ScannerCorrectness.advance_preserves_flowLevel _) (L4YAML.Proofs.ExplicitKeyCoupling.advance_preserves_explicitKeyLine _)
     (L4YAML.Proofs.ExplicitKeyCoupling.advance_preserves_explicitKeyCol _) (L4YAML.Proofs.ScannerCorrectness.advance_preserves_explicitKeyStack _)
 
+
+/-! ## §9  Item 402 — the live-key-top step
+
+`LiveKeyTop` (item 401, `ScalarWalkColFloor`) rides one token step.  Five stages mirror
+`StaleKeyCursorFloor`'s: the preprocess, then the structural, flow, block and content dispatchers.
+The preprocess hands the dispatchers `PreLKT`; the fresh save's top is `dispatchStructural_floor`. -/
+
+section StepOpen
+open L4YAML.Proofs.EntryBoundaryLayout L4YAML.Proofs.PreprocessIndentStable L4YAML.Proofs.ScannerCorrectness
+open L4YAML.Scanner L4YAML.CharPredicates
+open L4YAML.Proofs.ScalarWalkColFloor
+
+/-- The space loop followed by the whitespace loop is the whitespace loop on the summed fuel. -/
+lemma skipWhitespaceLoop_skipSpacesLoop (s : ScannerState) (f g : Nat) :
+    skipWhitespaceLoop s (f + g) =
+      skipWhitespaceLoop (skipSpacesLoop s f) (f + g - ((skipSpacesLoop s f).offset - s.offset)) := by
+  induction f generalizing s with
+  | zero => simp [skipSpacesLoop]
+  | succ f ih =>
+    rw [skipSpacesLoop]
+    split
+    · rename_i hpk
+      have hoff : s.advance.offset = s.offset + 1 := by
+        have hb : s.offset < s.inputEnd := by
+          unfold ScannerState.peek? at hpk
+          split at hpk <;> first | assumption | exact absurd hpk (by simp)
+        have hc : String.Pos.Raw.get s.input ⟨s.offset⟩ = ' ' := by
+          unfold ScannerState.peek? at hpk
+          split at hpk <;> first | exact Option.some.inj hpk | exact absurd hpk (by simp)
+        unfold ScannerState.advance
+        simp [hb, hc, String.Pos.Raw.next] <;> decide
+      have hge := L4YAML.Proofs.ScannerCorrectness.skipSpacesLoop_offset_ge s.advance f
+      have hws : isWhiteSpaceBool ' ' = true := by decide
+      have : skipWhitespaceLoop s (f + 1 + g) = skipWhitespaceLoop s.advance (f + g) := by
+        rw [show f + 1 + g = (f + g) + 1 by omega, skipWhitespaceLoop, hpk]; simp [hws]
+      rw [this, ih s.advance]
+      congr 1
+      rw [hoff]
+      omega
+    · simp
+
+lemma skipWhitespace_skipSpaces (s : ScannerState) :
+    skipWhitespace (skipSpaces s) = skipWhitespace s := by
+  unfold skipWhitespace skipSpaces
+  have h := skipWhitespaceLoop_skipSpacesLoop s (s.inputEnd - s.offset) 0
+  rw [Nat.add_zero] at h
+  rw [h]
+  congr 1
+  have h1 := L4YAML.Proofs.ScannerCorrectness.skipSpacesLoop_offset_ge s (s.inputEnd - s.offset)
+  have h2 : (skipSpacesLoop s (s.inputEnd - s.offset)).inputEnd = s.inputEnd := skipSpaces_inputEnd s
+  omega
+
+
+lemma skipSpacesLoop_peek_ne_space (f : Nat) : ∀ s : ScannerState, s.inputEnd - s.offset ≤ f →
+    (skipSpacesLoop s f).peek? ≠ some ' ' := by
+  induction f with
+  | zero =>
+    intro s hf hpk
+    unfold skipSpacesLoop at hpk
+    unfold ScannerState.peek? at hpk
+    split at hpk
+    · omega
+    · cases hpk
+  | succ f ih =>
+    intro s hf
+    rw [skipSpacesLoop]
+    split
+    · rename_i hpk
+      apply ih
+      have hb : s.offset < s.inputEnd := by
+        unfold ScannerState.peek? at hpk
+        split at hpk <;> first | assumption | exact absurd hpk (by simp)
+      have hie : s.advance.inputEnd = s.inputEnd := advance_inputEnd s
+      have hlt := L4YAML.Proofs.ScannerCorrectness.advance_increases_offset s (by
+        unfold ScannerState.hasMore; exact decide_eq_true hb)
+      omega
+    · assumption
+
+lemma skipSpaces_peek_ne_space (s : ScannerState) : (skipSpaces s).peek? ≠ some ' ' :=
+  skipSpacesLoop_peek_ne_space _ s (Nat.le_refl _)
+
+lemma skipWhitespace_eq_of_peek_none {s : ScannerState} (hpk : s.peek? = none) :
+    skipWhitespace s = s := by
+  unfold skipWhitespace skipWhitespaceLoop
+  split
+  · rfl
+  · rw [hpk]
+
+/-- (L1) the whitespace step of `skipToContent` is `skipWhitespace` whenever it succeeds. -/
+lemma skipToContentWs_ok_eq {s t : ScannerState} (h : skipToContentWs s = .ok t) :
+    t = skipWhitespace s := by
+  unfold skipToContentWs at h
+  split at h
+  · dsimp only at h
+    simp only [skipWhitespace_skipSpaces] at h
+    split at h
+    · split at h
+      · split at h
+        · exact (Except.ok.inj h).symm
+        · split at h
+          · exact (Except.ok.inj h).symm
+          · split at h
+            · exact (Except.ok.inj h).symm
+            · cases h
+        · exact (Except.ok.inj h).symm
+      · rename_i hnt
+        have ht : t = skipSpaces s := (Except.ok.inj h).symm
+        rw [ht, ← skipWhitespace_skipSpaces s]
+        cases hp : (skipSpaces s).peek? with
+        | none => exact (skipWhitespace_eq_of_peek_none hp).symm
+        | some c =>
+          have hns : c ≠ ' ' := fun hc => skipSpaces_peek_ne_space s (hc ▸ hp)
+          have hnt' : c ≠ '\t' := fun hc => hnt (hc ▸ hp)
+          refine (skipWhitespace_eq_of_not_ws hp ?_).symm
+          simp [isWhiteSpaceBool, isSpaceBool, isTabBool, hns, hnt']
+    · exact (Except.ok.inj h).symm
+  · exact (Except.ok.inj h).symm
+
+
+/-- The whitespace step is the identity on a cursor standing on content. -/
+lemma skipToContentWs_id_of_content {s : ScannerState} {c : Char} (hpk : s.peek? = some c)
+    (hws : isWhiteSpaceBool c = false) : skipToContentWs s = .ok s := by
+  have hss : skipSpaces s = s := by
+    unfold skipSpaces skipSpacesLoop
+    split
+    · rfl
+    · rw [hpk]
+      split
+      · rename_i h
+        have hc : c = ' ' := Option.some.inj h
+        subst hc; simp [isWhiteSpaceBool, isSpaceBool] at hws
+      · rfl
+  have hsw : skipWhitespace s = s := skipWhitespace_eq_of_not_ws hpk hws
+  unfold skipToContentWs
+  split
+  · dsimp only
+    rw [hss, hsw]
+    split
+    · rw [hpk]
+      split
+      · rename_i h
+        have hc : c = '\t' := Option.some.inj h
+        subst hc; simp [isWhiteSpaceBool, isTabBool] at hws
+      · rfl
+    · rfl
+  · rw [hsw]
+
+/-- (L3) `skipToContent` is the identity on a state whose cursor stands on content. -/
+lemma skipToContent_id_of_content {s t : ScannerState} {c : Char} (h : skipToContent s = .ok t)
+    (hpk : s.peek? = some c) (hws : isWhiteSpaceBool c = false) (hcm : isCommentBool c = false)
+    (hbr : isLineBreakBool c = false) : t = s := by
+  have hcm' : skipToContentComment s = s := by
+    unfold skipToContentComment
+    rw [hpk]
+    split
+    · rename_i h
+      have hc : c = '#' := Option.some.inj h
+      subst hc; simp [isCommentBool] at hcm
+    · rfl
+  unfold skipToContent skipToContentLoop at h
+  simp only [skipToContentWs_id_of_content hpk hws, hcm', hpk, hbr, Bool.false_eq_true,
+    ite_false] at h
+  exact (Except.ok.inj h).symm
+
+
+/-- A comment walk with enough fuel stops at a break or at the end of input. -/
+lemma collectCommentTextLoop_peek (fuel : Nat) : ∀ (s : ScannerState) (text : String),
+    s.inputEnd - s.offset ≤ fuel →
+    (collectCommentTextLoop s text fuel).2.peek? = none ∨
+      ∃ c, (collectCommentTextLoop s text fuel).2.peek? = some c ∧ isLineBreakBool c = true := by
+  induction fuel with
+  | zero =>
+    intro s text hf
+    left
+    unfold collectCommentTextLoop
+    dsimp only
+    unfold ScannerState.peek?
+    split
+    · omega
+    · rfl
+  | succ fuel ih =>
+    intro s text hf
+    rw [collectCommentTextLoop]
+    split
+    · rename_i c hpk
+      split
+      · right; exact ⟨c, hpk, by assumption⟩
+      · apply ih
+        have hb : s.offset < s.inputEnd := by
+          unfold ScannerState.peek? at hpk
+          split at hpk <;> first | assumption | exact absurd hpk (by simp)
+        have hie : s.advance.inputEnd = s.inputEnd := advance_inputEnd s
+        have hlt := L4YAML.Proofs.ScannerCorrectness.advance_increases_offset s (by
+          unfold ScannerState.hasMore; exact decide_eq_true hb)
+        omega
+    · left; assumption
+
+
+lemma advance_break_line {s : ScannerState} {c : Char} (hpk : s.peek? = some c)
+    (hc : c = '\n' ∨ c = '\r') : s.advance.line = s.line + 1 := by
+  have hb : s.offset < s.inputEnd := by
+    unfold ScannerState.peek? at hpk
+    split at hpk <;> first | assumption | exact absurd hpk (by simp)
+  have hget : String.Pos.Raw.get s.input ⟨s.offset⟩ = c := by
+    unfold ScannerState.peek? at hpk
+    split at hpk <;> first | exact Option.some.inj hpk | exact absurd hpk (by simp)
+  unfold ScannerState.advance
+  rcases hc with hc | hc <;> subst hc <;> simp [hb, hget]
+
+lemma consumeNewline_line_gt {s : ScannerState} {c : Char} (hpk : s.peek? = some c)
+    (hbr : isLineBreakBool c = true) : s.line < (consumeNewline s).line := by
+  have hb : s.offset < s.inputEnd := by
+    unfold ScannerState.peek? at hpk
+    split at hpk <;> first | assumption | exact absurd hpk (by simp)
+  have hget : String.Pos.Raw.get s.input ⟨s.offset⟩ = c := by
+    unfold ScannerState.peek? at hpk
+    split at hpk <;> first | exact Option.some.inj hpk | exact absurd hpk (by simp)
+  unfold consumeNewline
+  rw [hpk]
+  simp only [isLineBreakBool, isLineFeedBool, isCarriageReturnBool, Bool.or_eq_true,
+    beq_iff_eq] at hbr
+  rcases hbr with hc | hc <;> subst hc
+  · show s.line < ({ s.advance with needIndentCheck := true }).line
+    dsimp only
+    rw [advance_break_line hpk (Or.inl rfl)]; omega
+  · have hadv := advance_break_line hpk (Or.inr rfl)
+    show s.line < (match s.advance.peek? with
+      | some '\n' => { s.advance with
+          offset := (String.Pos.Raw.next s.advance.input ⟨s.advance.offset⟩).byteIdx,
+          needIndentCheck := true }
+      | _ => { s.advance with needIndentCheck := true }).line
+    split <;> dsimp only <;> rw [hadv] <;> omega
+
+/-- The comment step either leaves the cursor alone or consumes a comment to a break or EOF. -/
+lemma skipToContentComment_peek (u : ScannerState) :
+    (skipToContentComment u).peek? = u.peek? ∨
+      (u.peek? = some '#' ∧ ((skipToContentComment u).peek? = none ∨
+        ∃ c, (skipToContentComment u).peek? = some c ∧ isLineBreakBool c = true)) := by
+  unfold skipToContentComment
+  split
+  · rename_i hpk
+    have hcp := collectCommentTextLoop_peek (u.advance.inputEnd - u.advance.offset) u.advance ""
+      (Nat.le_refl _)
+    split <;> dsimp only <;> split
+    all_goals first
+      | (left; rfl)
+      | (right
+         refine ⟨hpk, ?_⟩
+         generalize hcl : collectCommentTextLoop u.advance "" (u.advance.inputEnd - u.advance.offset)
+           = r at hcp ⊢
+         obtain ⟨text, s'⟩ := r
+         dsimp only at hcp ⊢
+         rcases hcp with h | ⟨c, hc, hbr⟩
+         · left; unfold ScannerState.peek? at h ⊢; exact h
+         · right; exact ⟨c, by unfold ScannerState.peek? at hc ⊢; exact hc, hbr⟩)
+  · left; rfl
+
+/-- (L2) `skipToContent` that stays on its line reads the whitespace-skipped cursor's character,
+    or swallowed a comment up to the end of input. -/
+lemma skipToContent_same_line_peek {s t : ScannerState} (h : skipToContent s = .ok t)
+    (hl : t.line = s.line) :
+    t.peek? = (skipWhitespace s).peek? ∨
+      ((skipWhitespace s).peek? = some '#' ∧ t.peek? = none) := by
+  unfold skipToContent skipToContentLoop at h
+  cases hws : skipToContentWs s with
+  | error e => rw [hws] at h; exact absurd h (by simp)
+  | ok s1 =>
+    rw [hws] at h
+    have hs1 : s1 = skipWhitespace s := skipToContentWs_ok_eq hws
+    subst hs1
+    have hl1 : (skipWhitespace s).line = s.line := skipWhitespace_preserves_line s
+    have hl2 : (skipToContentComment (skipWhitespace s)).line = (skipWhitespace s).line :=
+      skipToContentComment_preserves_line _
+    dsimp only at h
+    split at h
+    · rename_i c hpk
+      split at h
+      · exfalso
+        rename_i hbr
+        have hgt := consumeNewline_line_gt hpk hbr
+        have hge : ∀ {u : ScannerState}, skipToContentLoop u (s.inputEnd - s.offset) = .ok t →
+            u.line ≤ t.line := fun hu => L4YAML.Proofs.StaleCursorFloor.skipToContentLoop_line_ge _ hu
+        split at h <;> have := hge h <;> (try dsimp only at this) <;> omega
+      · have ht : t = skipToContentComment (skipWhitespace s) := (Except.ok.inj h).symm
+        subst ht
+        rcases skipToContentComment_peek (skipWhitespace s) with h1 | ⟨h1, h2 | ⟨d, hd, hbd⟩⟩
+        · left; exact h1
+        · right; exact ⟨h1, h2⟩
+        · exfalso; rw [hpk] at hd; have := Option.some.inj hd; subst this
+          rename_i hnb; rw [hbd] at hnb; exact hnb rfl
+    · have ht : t = skipToContentComment (skipWhitespace s) := (Except.ok.inj h).symm
+      subst ht
+      rcases skipToContentComment_peek (skipWhitespace s) with h1 | ⟨h1, h2 | ⟨d, hd, hbd⟩⟩
+      · left; exact h1
+      · right; exact ⟨h1, h2⟩
+      · exfalso; rename_i hn; rw [hn] at hd; cases hd
+
+
+/-- The unwind is the identity when the top indent is already at or left of the column. -/
+lemma unwindIndents_id_of_le {s : ScannerState} {col : Int} (h : s.currentIndent ≤ col) :
+    unwindIndents s col = s := by
+  unfold unwindIndents unwindIndentsLoop
+  split
+  · rfl
+  · have hng : ¬ (s.currentIndent > col) := Int.not_lt.mpr h
+    simp [hng]
+
+
+/-- `closeStaleExplicitKey` only rewrites the pending-key bookkeeping. -/
+lemma closeStaleExplicitKey_shape (s : ScannerState) :
+    ∃ pk el ec, closeStaleExplicitKey s =
+      { s with pendingKeys := pk, explicitKeyLine := el, explicitKeyCol := ec } := by
+  unfold closeStaleExplicitKey
+  split
+  · exact ⟨s.pendingKeys, s.explicitKeyLine, s.explicitKeyCol, rfl⟩
+  · split
+    · split
+      · exact ⟨_, _, _, rfl⟩
+      · exact ⟨s.pendingKeys, s.explicitKeyLine, s.explicitKeyCol, rfl⟩
+    · exact ⟨s.pendingKeys, s.explicitKeyLine, s.explicitKeyCol, rfl⟩
+
+/-- `saveSimpleKey` is the identity or a fresh save at the cursor touching only `tokens` and
+    `simpleKey`. -/
+lemma saveSimpleKey_shape (st : ScannerState) :
+    (saveSimpleKey st = st ∧ (st.inFlow = false → st.simpleKeyAllowed = false)) ∨
+      ∃ toks sk, sk.possible = true ∧ sk.pos = st.currentPos ∧
+        saveSimpleKey st = { st with tokens := toks, simpleKey := sk } := by
+  unfold saveSimpleKey
+  split
+  · left
+    refine ⟨rfl, fun hnf => ?_⟩
+    rename_i hc
+    simp only [Bool.and_eq_true] at hc
+    rw [hnf] at hc
+    cases hc.1
+  · split
+    · right; exact ⟨_, _, rfl, rfl, rfl⟩
+    · left
+      refine ⟨rfl, fun _ => ?_⟩
+      simpa using (show ¬ (st.simpleKeyAllowed = true) by assumption)
+
+lemma skipWhitespaceLoop_peek_not_ws (f : Nat) : ∀ (s : ScannerState) (c : Char),
+    s.inputEnd - s.offset ≤ f → (skipWhitespaceLoop s f).peek? = some c →
+    isWhiteSpaceBool c = false := by
+  induction f with
+  | zero =>
+    intro s c hf hpk
+    unfold skipWhitespaceLoop ScannerState.peek? at hpk
+    split at hpk
+    · omega
+    · exact absurd hpk (by simp)
+  | succ f ih =>
+    intro s c hf
+    rw [skipWhitespaceLoop]
+    split
+    · rename_i d hpk
+      split
+      · intro hpk'
+        apply ih _ _ _ hpk'
+        have hb : s.offset < s.inputEnd := by
+          unfold ScannerState.peek? at hpk
+          split at hpk <;> first | assumption | exact absurd hpk (by simp)
+        have hie : s.advance.inputEnd = s.inputEnd := advance_inputEnd s
+        have hlt := L4YAML.Proofs.ScannerCorrectness.advance_increases_offset s (by
+          unfold ScannerState.hasMore; exact decide_eq_true hb)
+        omega
+      · intro hpk'
+        rw [hpk] at hpk'
+        have := Option.some.inj hpk'
+        subst this
+        rename_i hnw
+        exact Bool.eq_false_iff.mpr hnw
+    · intro hpk'; rename_i hn; rw [hn] at hpk'; cases hpk'
+
+lemma skipWhitespace_peek_not_ws {s : ScannerState} {c : Char}
+    (hpk : (skipWhitespace s).peek? = some c) : isWhiteSpaceBool c = false :=
+  skipWhitespaceLoop_peek_not_ws _ s c (Nat.le_refl _) hpk
+
+
+/-- The unwind never moves the cursor: it only emits `blockEnd`s and pops indents. -/
+lemma unwindIndentsLoop_cursor (f : Nat) : ∀ (s : ScannerState) (col : Int),
+    (unwindIndentsLoop s col f).offset = s.offset ∧ (unwindIndentsLoop s col f).input = s.input ∧
+    (unwindIndentsLoop s col f).inputEnd = s.inputEnd ∧ (unwindIndentsLoop s col f).col = s.col ∧
+    (unwindIndentsLoop s col f).line = s.line := by
+  induction f with
+  | zero => intro s col; unfold unwindIndentsLoop; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
+  | succ f ih =>
+    intro s col
+    rw [unwindIndentsLoop]
+    split
+    · exact ih _ _
+    · exact ⟨rfl, rfl, rfl, rfl, rfl⟩
+
+lemma unwindIndents_peek (s : ScannerState) (col : Int) :
+    (unwindIndents s col).peek? = s.peek? := by
+  obtain ⟨h1, h2, h3, -, -⟩ := unwindIndentsLoop_cursor s.indents.size s col
+  unfold unwindIndents at *
+  unfold ScannerState.peek?
+  rw [h1, h2, h3]
+
+lemma unwindIndents_col (s : ScannerState) (col : Int) : (unwindIndents s col).col = s.col :=
+  (unwindIndentsLoop_cursor s.indents.size s col).2.2.2.1
+
+/-- Stage 1, core: the live-key-top facts after the save-and-close tail of the preprocess, from
+    the state the skip (and optional unwind) produced. -/
+lemma preprocess_LiveKeyTop_core {s s_u sp : ScannerState}
+    (hsp : sp = closeStaleExplicitKey (saveSimpleKey s_u))
+    (hkey : s_u.simpleKey = s.simpleKey) (hstk : s_u.simpleKeyStack = s.simpleKeyStack)
+    (hfl : s_u.flowLevel = s.flowLevel) (hline : s.line ≤ s_u.line)
+    (hcol : s_u.line = s.line → s.col ≤ s_u.col)
+    (hci : s.currentIndent ≤ (s_u.col : Int) → s_u.currentIndent ≤ s.currentIndent)
+    (htok : s.currentIndent ≤ (s_u.col : Int) → s_u.tokens = s.tokens)
+    (hal : s.simpleKeyAllowed = true → s_u.simpleKeyAllowed = true)
+    (hpeek : s_u.line = s.line →
+      s_u.peek? = (skipWhitespace s).peek? ∨
+        ((skipWhitespace s).peek? = some '#' ∧ s_u.peek? = none))
+    (hinv : LiveKeyTop s) (hcf : ColFloor s) :
+    (sp.simpleKey.possible = true → sp.simpleKey.pos.line = sp.line →
+      sp.simpleKey.pos = sp.currentPos ∨
+      (sp.currentIndent ≤ (sp.simpleKey.pos.col : Int) ∧ (sp.inFlow = false → KeyFollower sp))) ∧
+    (∀ k ∈ sp.simpleKeyStack, k.possible = true → k.pos.line = sp.line →
+      sp.currentIndent ≤ (k.pos.col : Int)) ∧
+    sp.simpleKeyStack.size = sp.flowLevel ∧
+    (sp.inFlow = false → sp.simpleKeyAllowed = true → sp.simpleKey.pos = sp.currentPos) := by
+  obtain ⟨pk, el, ec, hcs⟩ := closeStaleExplicitKey_shape (saveSimpleKey s_u)
+  have hstack : ∀ k ∈ s_u.simpleKeyStack, k.possible = true → k.pos.line = s_u.line →
+      s_u.currentIndent ≤ (k.pos.col : Int) := by
+    intro k hk hkp hkl
+    rw [hstk] at hk
+    obtain ⟨j, hj, hjk⟩ := Array.getElem_of_mem hk
+    have hbeh := hcf.stack j hj (hjk ▸ hkp)
+    rw [hjk] at hbeh
+    have hsl : s_u.line = s.line := by
+      rcases hbeh with hlt | ⟨heq, -⟩ <;> omega
+    have hfl0 := hinv.2.1 k hk hkp (hkl.trans hsl)
+    have hkc : k.pos.col ≤ s.col := by
+      rcases hbeh with hlt | ⟨-, hle⟩ <;> omega
+    have hc := hcol hsl
+    exact Int.le_trans (hci (by omega)) hfl0
+  have hsize : s_u.simpleKeyStack.size = s_u.flowLevel := by rw [hstk, hfl]; exact hinv.2.2
+  rcases saveSimpleKey_shape s_u with ⟨hid, hna⟩ | ⟨toks, sk, hskp, hskpos, hfresh⟩
+  · rw [hcs, hid] at hsp
+    subst hsp
+    refine ⟨?_, ?_, ?_, ?_⟩
+    · intro hposs hline'
+      change s_u.simpleKey.possible = true at hposs
+      change s_u.simpleKey.pos.line = s_u.line at hline'
+      right
+      rw [hkey] at hposs hline'
+      have hbeh := hcf.key hposs
+      have hsl : s_u.line = s.line := by
+        rcases hbeh with hlt | ⟨heq, -⟩ <;> omega
+      obtain ⟨hfl0, hkf⟩ := hinv.1 hposs (hline'.trans hsl)
+      have hkc : s.simpleKey.pos.col ≤ s.col := by
+        rcases hbeh with hlt | ⟨-, hle⟩ <;> omega
+      have hc := hcol hsl
+      have hcib : s.currentIndent ≤ (s_u.col : Int) := by omega
+      refine ⟨?_, ?_⟩
+      · change s_u.currentIndent ≤ (s_u.simpleKey.pos.col : Int)
+        rw [hkey]; exact Int.le_trans (hci hcib) hfl0
+      · intro hflow
+        change s_u.inFlow = false at hflow
+        have hflow_s : s.inFlow = false := by
+          unfold ScannerState.inFlow at hflow ⊢; rw [← hfl]; exact hflow
+        have htk := htok hcib
+        have hpl : ({ s_u with pendingKeys := pk, explicitKeyLine := el, explicitKeyCol := ec } :
+            ScannerState).peek? = s_u.peek? := rfl
+        have hsw : (skipWhitespace
+            { s_u with pendingKeys := pk, explicitKeyLine := el, explicitKeyCol := ec }).peek? =
+            s_u.peek? := by
+          rcases hp : s_u.peek? with _ | d
+          · rw [skipWhitespace_eq_of_peek_none (hpl.trans hp)]; exact hpl.trans hp
+          · have hd : isWhiteSpaceBool d = false := by
+              rcases hpeek hsl with h1 | ⟨-, h2⟩
+              · exact skipWhitespace_peek_not_ws (h1.symm.trans hp)
+              · rw [h2] at hp; cases hp
+            rw [skipWhitespace_eq_of_not_ws (hpl.trans hp) hd]; exact hpl.trans hp
+        unfold KeyFollower
+        dsimp only
+        rw [hsw, htk, hkey]
+        rcases hkf hflow_s with h1 | ⟨t, ht, htv, htp, hta⟩ | h3 | ⟨c, hc3, hset⟩
+        · left; rw [hsl]; exact h1
+        · right; left; exact ⟨t, ht, htv, htp, hal hta⟩
+        · right; right; left
+          rcases hpeek hsl with h1 | ⟨h2, -⟩
+          · rw [h1]; exact h3
+          · rw [h2] at h3; cases h3
+        · rcases hpeek hsl with h1 | ⟨h2, h4⟩
+          · right; right; right; exact ⟨c, h1.trans hc3, hset⟩
+          · right; right; left; exact h4
+    · intro k hk hkp hkl
+      exact hstack k hk hkp hkl
+    · exact hsize
+    · intro hnf hal
+      exfalso
+      change s_u.inFlow = false at hnf
+      change s_u.simpleKeyAllowed = true at hal
+      rw [hna hnf] at hal
+      cases hal
+  · rw [hcs, hfresh] at hsp
+    subst hsp
+    refine ⟨?_, ?_, ?_, ?_⟩
+    · intro _ _
+      left
+      exact hskpos
+    · intro k hk hkp hkl
+      exact hstack k hk hkp hkl
+    · exact hsize
+    · intro _ _
+      exact hskpos
+
+/-- Stage 1 (preprocess): the live-key-top facts survive the preprocess, the fresh save excepted,
+    whose top the dispatcher supplies. -/
+lemma preprocess_LiveKeyTop {s sp : ScannerState} {c : Char}
+    (hok : scanNextToken_preprocess s = .ok (some (sp, c)))
+    (hinv : LiveKeyTop s) (hcf : ColFloor s) :
+    (sp.simpleKey.possible = true → sp.simpleKey.pos.line = sp.line →
+      sp.simpleKey.pos = sp.currentPos ∨
+      (sp.currentIndent ≤ (sp.simpleKey.pos.col : Int) ∧ (sp.inFlow = false → KeyFollower sp))) ∧
+    (∀ k ∈ sp.simpleKeyStack, k.possible = true → k.pos.line = sp.line →
+      sp.currentIndent ≤ (k.pos.col : Int)) ∧
+    sp.simpleKeyStack.size = sp.flowLevel ∧
+    (sp.inFlow = false → sp.simpleKeyAllowed = true → sp.simpleKey.pos = sp.currentPos) := by
+  obtain ⟨s_u, s_skip, hskip, hsp, hu⟩ := L4YAML.Proofs.EntryBoundaryLayout.preprocess_save_elim hok
+  have hsk_key := skipToContent_preserves_simpleKey s s_skip hskip
+  have hsk_stk := skipToContent_preserves_simpleKeyStack s s_skip hskip
+  have hsk_fl := skipToContent_preserves_flowLevel s s_skip hskip
+  have hsk_tok := skipToContent_preserves_tokens s s_skip hskip
+  have hsk_ind := skipToContent_preserves_indents s s_skip hskip
+  have hsk_line : s.line ≤ s_skip.line := by
+    unfold skipToContent at hskip
+    exact L4YAML.Proofs.StaleCursorFloor.skipToContentLoop_line_ge _ hskip
+  have hsk_col : s_skip.line = s.line → s.col ≤ s_skip.col := fun hl =>
+    L4YAML.Proofs.StaleCursorFloor.skipToContent_col_ge_of_line_eq hskip hl
+  have hsk_ci : s_skip.currentIndent = s.currentIndent := by
+    unfold ScannerState.currentIndent; rw [hsk_ind]
+  have hsk_al : s.simpleKeyAllowed = true → s_skip.simpleKeyAllowed = true := fun ha =>
+    skipToContent_simpleKeyAllowed_mono s s_skip ha hskip
+  have hsk_peek : s_skip.line = s.line →
+      s_skip.peek? = (skipWhitespace s).peek? ∨
+        ((skipWhitespace s).peek? = some '#' ∧ s_skip.peek? = none) :=
+    fun hl => skipToContent_same_line_peek hskip hl
+  rcases hu with rfl | rfl
+  · exact preprocess_LiveKeyTop_core hsp hsk_key hsk_stk hsk_fl hsk_line hsk_col
+      (fun _ => Int.le_of_eq hsk_ci) (fun _ => hsk_tok) hsk_al hsk_peek hinv hcf
+  · have hcol := unwindIndents_col s_skip s_skip.col
+    have hpk := unwindIndents_peek s_skip s_skip.col
+    have hidle : s.currentIndent ≤ (s_skip.col : Int) → unwindIndents s_skip s_skip.col = s_skip :=
+      fun hle => unwindIndents_id_of_le (by rw [hsk_ci]; exact hle)
+    refine preprocess_LiveKeyTop_core hsp ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ hinv hcf
+    · show (unwindIndents s_skip s_skip.col).simpleKey = _
+      rw [unwindIndents_preserves_simpleKey, hsk_key]
+    · show (unwindIndents s_skip s_skip.col).simpleKeyStack = _
+      rw [unwindIndents_preserves_simpleKeyStack, hsk_stk]
+    · show (unwindIndents s_skip s_skip.col).flowLevel = _
+      rw [unwindIndents_preserves_flowLevel, hsk_fl]
+    · show s.line ≤ (unwindIndents s_skip s_skip.col).line
+      rw [unwindIndents_preserves_line]; exact hsk_line
+    · intro hl
+      change (unwindIndents s_skip s_skip.col).line = s.line at hl
+      rw [unwindIndents_preserves_line] at hl
+      show s.col ≤ (unwindIndents s_skip s_skip.col).col
+      rw [hcol]; exact hsk_col hl
+    · intro hle
+      change s.currentIndent ≤ ((unwindIndents s_skip s_skip.col).col : Int) at hle
+      rw [hcol] at hle
+      show (unwindIndents s_skip s_skip.col).currentIndent ≤ _
+      rw [hidle hle, hsk_ci]
+      exact Int.le_refl _
+    · intro hle
+      change s.currentIndent ≤ ((unwindIndents s_skip s_skip.col).col : Int) at hle
+      rw [hcol] at hle
+      show (unwindIndents s_skip s_skip.col).tokens = _
+      rw [hidle hle, hsk_tok]
+    · intro ha
+      show (unwindIndents s_skip s_skip.col).simpleKeyAllowed = true
+      rw [unwindIndents_preserves_simpleKeyAllowed]; exact hsk_al ha
+    · intro hl
+      change (unwindIndents s_skip s_skip.col).line = s.line at hl
+      rw [unwindIndents_preserves_line] at hl
+      have hpl : ({ unwindIndents s_skip s_skip.col with needIndentCheck := false } :
+          ScannerState).peek? = s_skip.peek? := by
+        show (unwindIndents s_skip s_skip.col).peek? = _
+        exact hpk
+      rw [hpl]; exact hsk_peek hl
+
+
+/-! ### Whitespace-skip normalisation for the follower bridge -/
+
+lemma skipWhitespaceLoop_stop (f : Nat) : ∀ (s : ScannerState) (g : Nat), f ≤ g →
+    ((skipWhitespaceLoop s f).peek? = none ∨
+      ∃ c, (skipWhitespaceLoop s f).peek? = some c ∧ isWhiteSpaceBool c = false) →
+    skipWhitespaceLoop s g = skipWhitespaceLoop s f := by
+  induction f with
+  | zero =>
+    intro s g _ hstop
+    simp only [skipWhitespaceLoop] at hstop
+    cases g with
+    | zero => rfl
+    | succ g =>
+      simp only [skipWhitespaceLoop]
+      split
+      · rename_i c hpk
+        split
+        · rename_i hws
+          exfalso
+          rcases hstop with h | ⟨d, hd, hdw⟩
+          · rw [hpk] at h; cases h
+          · rw [hpk] at hd; have := Option.some.inj hd; subst this; rw [hws] at hdw; cases hdw
+        · rfl
+      · rfl
+  | succ f ih =>
+    intro s g hfg hstop
+    cases g with
+    | zero => omega
+    | succ g =>
+      simp only [skipWhitespaceLoop] at hstop ⊢
+      cases hp : s.peek? with
+      | none => simp only
+      | some c =>
+        simp only [hp] at hstop ⊢
+        by_cases hws : isWhiteSpaceBool c = true
+        · simp only [hws, ↓reduceIte] at hstop ⊢
+          exact ih _ _ (Nat.le_of_succ_le_succ hfg) hstop
+        · simp only [hws, Bool.false_eq_true, ↓reduceIte]
+
+lemma skipWhitespaceLoop_saturate (s : ScannerState) (f : Nat) (hf : s.inputEnd - s.offset ≤ f) :
+    skipWhitespaceLoop s f = skipWhitespace s := by
+  unfold skipWhitespace
+  apply skipWhitespaceLoop_stop _ s f hf
+  cases hp : (skipWhitespaceLoop s (s.inputEnd - s.offset)).peek? with
+  | none => left; rfl
+  | some c => right; exact ⟨c, rfl, skipWhitespaceLoop_peek_not_ws _ s c (Nat.le_refl _) hp⟩
+
+lemma skipTrailingSpaces_eq (f : Nat) : ∀ s : ScannerState,
+    skipTrailingSpaces s f = skipWhitespaceLoop s f := by
+  induction f with
+  | zero => intro s; simp only [skipTrailingSpaces, skipWhitespaceLoop]
+  | succ f ih =>
+    intro s
+    simp only [skipTrailingSpaces, skipWhitespaceLoop]
+    split
+    · rename_i c _
+      have hc : (c == ' ' || c == '\t') = isWhiteSpaceBool c := by
+        simp [isWhiteSpaceBool, isSpaceBool, isTabBool]
+      rw [hc]
+      split
+      · exact ih _
+      · rfl
+    · rfl
+
+lemma isWhiteSpaceBool_false_of_break {c : Char} (h : isLineBreakBool c = true) :
+    isWhiteSpaceBool c = false := by
+  simp only [isLineBreakBool, isLineFeedBool, isCarriageReturnBool, Bool.or_eq_true,
+    beq_iff_eq] at h
+  rcases h with h | h <;> subst h <;> decide
+
+/-- The trailing-content probe read through `skipWhitespace`: the two skips agree at the probe's
+    stop because the stop character is never white space. -/
+lemma TrailingFollower.skipWhitespace_peek {s : ScannerState} {ie : Nat} (h : TrailingFollower s ie) :
+    (skipWhitespace s).peek? = none ∨
+      ∃ c, (skipWhitespace s).peek? = some c ∧ (isLineBreakBool c = true ∨ c = '#' ∨ c = ':') := by
+  unfold TrailingFollower at h
+  rw [skipTrailingSpaces_eq] at h
+  have hstop : (skipWhitespaceLoop s (ie - s.offset + 1)).peek? = none ∨
+      ∃ c, (skipWhitespaceLoop s (ie - s.offset + 1)).peek? = some c ∧
+        isWhiteSpaceBool c = false := by
+    rcases h with h | ⟨c, hc, hset⟩
+    · exact Or.inl h
+    · right
+      refine ⟨c, hc, ?_⟩
+      rcases hset with hb | hb | hb
+      · exact isWhiteSpaceBool_false_of_break hb
+      · subst hb; decide
+      · subst hb; decide
+  rcases Nat.le_total (ie - s.offset + 1) (s.inputEnd - s.offset) with hle | hge
+  · have := skipWhitespaceLoop_stop _ s _ hle hstop
+    unfold skipWhitespace
+    rw [this]; exact h
+  · rw [← skipWhitespaceLoop_saturate s _ hge]; exact h
+
+/-- `skipToEndOfLine` parks on a break or at the end of input. -/
+lemma skipToEndOfLineLoop_peek (f : Nat) : ∀ s : ScannerState, s.inputEnd - s.offset ≤ f →
+    (skipToEndOfLineLoop s f).peek? = none ∨
+      ∃ c, (skipToEndOfLineLoop s f).peek? = some c ∧ isLineBreakBool c = true := by
+  induction f with
+  | zero =>
+    intro s hf
+    left
+    unfold skipToEndOfLineLoop ScannerState.peek?
+    split
+    · omega
+    · rfl
+  | succ f ih =>
+    intro s hf
+    rw [skipToEndOfLineLoop]
+    split
+    · rename_i c hpk
+      split
+      · right; exact ⟨c, hpk, by assumption⟩
+      · apply ih
+        have hb : s.offset < s.inputEnd := by
+          unfold ScannerState.peek? at hpk
+          split at hpk <;> first | assumption | exact absurd hpk (by simp)
+        have hie : s.advance.inputEnd = s.inputEnd := advance_inputEnd s
+        have hlt := L4YAML.Proofs.ScannerCorrectness.advance_increases_offset s (by
+          unfold ScannerState.hasMore; exact decide_eq_true hb)
+        omega
+    · left; assumption
+
+lemma skipToEndOfLine_peek (s : ScannerState) :
+    (skipToEndOfLine s).peek? = none ∨
+      ∃ c, (skipToEndOfLine s).peek? = some c ∧ isLineBreakBool c = true :=
+  skipToEndOfLineLoop_peek _ s (Nat.le_refl _)
+
+
+/-! ### Node-property arms: the emitted property is the last real token on the line -/
+
+lemma scanAnchorOrAlias_property_last {s s' : ScannerState}
+    (hok : scanAnchorOrAlias s true = .ok s') :
+    lastTokenIsNodePropertyOnLine s'.tokens s.line = true := by
+  unfold scanAnchorOrAlias at hok
+  dsimp only at hok
+  generalize hcol : collectAnchorNameLoop s.advance "" (s.inputEnd - s.advance.offset) = r at hok
+  obtain ⟨name, sa⟩ := r
+  dsimp only at hok
+  split at hok
+  · cases hok
+  · have hs' := Except.ok.inj hok
+    subst hs'
+    apply L4YAML.Proofs.PropsRunLineCoupling.lastTokenIsNodePropertyOnLine_of_last
+      (t := { pos := s.currentPos, val := YamlToken.anchor name })
+    · exact L4YAML.Proofs.PropsRunLineCoupling.lastRealToken_push (by simp)
+    · rfl
+    · rfl
+
+lemma scanTag_property_last {s s' : ScannerState} (hok : scanTag s = .ok s') :
+    lastTokenIsNodePropertyOnLine s'.tokens s.line = true := by
+  unfold scanTag at hok
+  dsimp only at hok
+  split at hok
+  · -- verbatim
+    unfold scanVerbatimTag at hok
+    dsimp only at hok
+    generalize hcol : collectVerbatimTagLoop s.advance.advance ""
+      (s.currentPos.offset + s.advance.inputEnd - s.advance.advance.offset) = r at hok
+    obtain ⟨uri, foundClose, su⟩ := r
+    dsimp only at hok
+    split at hok
+    · cases hok
+    · split at hok
+      · cases hok
+      · simp only [bind, Except.bind, pure, Except.pure] at hok
+        have hs' := Except.ok.inj hok
+        subst hs'
+        apply L4YAML.Proofs.PropsRunLineCoupling.lastTokenIsNodePropertyOnLine_of_last
+          (t := { pos := s.currentPos, val := YamlToken.tag "" uri })
+        · exact L4YAML.Proofs.PropsRunLineCoupling.lastRealToken_push (by simp)
+        · rfl
+        · rfl
+  · -- secondary
+    have hs' := Except.ok.inj hok
+    subst hs'
+    unfold scanSecondaryTag
+    dsimp only
+    generalize hcol : collectTagSuffixLoop s.advance.advance ""
+      (s.currentPos.offset + s.advance.inputEnd - s.advance.advance.offset) = r
+    obtain ⟨suffix, su⟩ := r
+    dsimp only
+    apply L4YAML.Proofs.PropsRunLineCoupling.lastTokenIsNodePropertyOnLine_of_last
+      (t := { pos := s.currentPos, val := YamlToken.tag "!!" suffix })
+    · exact L4YAML.Proofs.PropsRunLineCoupling.lastRealToken_push (by simp)
+    · rfl
+    · rfl
+  · -- named
+    have hs' := Except.ok.inj hok
+    subst hs'
+    unfold scanNamedTag
+    dsimp only
+    generalize hcol : collectTagHandleLoop s.advance "" (s.inputEnd - s.advance.offset) = r
+    obtain ⟨chars, foundBang, sh⟩ := r
+    dsimp only
+    split <;> (
+      generalize hcol2 : collectTagSuffixLoop sh _ (s.inputEnd - sh.offset) = r2
+      obtain ⟨suffix, su⟩ := r2
+      dsimp only
+      apply L4YAML.Proofs.PropsRunLineCoupling.lastTokenIsNodePropertyOnLine_of_last
+        (t := { pos := s.currentPos, val := YamlToken.tag _ suffix })
+      · exact L4YAML.Proofs.PropsRunLineCoupling.lastRealToken_push (by simp)
+      · rfl
+      · rfl)
+
+
+/-! ### Cursor facts for the dispatch arms -/
+
+lemma scanDoubleQuoted_line_ge {s s' : ScannerState} (hpk : s.peek? = some '"')
+    (hok : scanDoubleQuoted s = .ok s') : s.line ≤ s'.line := by
+  unfold scanDoubleQuoted at hok
+  simp only [bind, Except.bind] at hok
+  split at hok
+  · cases hok
+  · rename_i res h_loop
+    have h_fields : s'.line = res.2.line := by
+      repeat (any_goals (split at hok))
+      all_goals (try contradiction)
+      all_goals (first
+        | (rw [← Except.ok.inj hok]; done)
+        | (rw [← Except.ok.inj hok]; simp only [ScannerState.emitAt]; done)
+        | (simp only [Except.ok.injEq] at hok; rw [← hok]; done)
+        | (simp only [Except.ok.injEq] at hok; rw [← hok]; simp only [ScannerState.emitAt]))
+    rw [h_fields]
+    have h1 := L4YAML.Proofs.ScalarProduction.collectDoubleQuotedLoop_line_ge s.advance "" _ s.currentPos
+      s.inFlow s.currentIndent s.inputEnd 0 h_loop
+    have h2 := (Forward.advance_of_nb hpk (by decide)).1
+    omega
+
+lemma scanSingleQuoted_line_ge {s s' : ScannerState} (hpk : s.peek? = some '\'')
+    (hok : scanSingleQuoted s = .ok s') : s.line ≤ s'.line := by
+  unfold scanSingleQuoted at hok
+  simp only [bind, Except.bind] at hok
+  split at hok
+  · cases hok
+  · rename_i res h_loop
+    have h_fields : s'.line = res.2.line := by
+      repeat (any_goals (split at hok))
+      all_goals (try contradiction)
+      all_goals (first
+        | (rw [← Except.ok.inj hok]; done)
+        | (rw [← Except.ok.inj hok]; simp only [ScannerState.emitAt]; done)
+        | (simp only [Except.ok.injEq] at hok; rw [← hok]; done)
+        | (simp only [Except.ok.injEq] at hok; rw [← hok]; simp only [ScannerState.emitAt]))
+    rw [h_fields]
+    have h1 := L4YAML.Proofs.ScalarProduction.collectSingleQuotedLoop_line_ge s.advance "" _ s.currentPos
+      s.inFlow s.currentIndent s.inputEnd h_loop
+    have h2 := (Forward.advance_of_nb hpk (by decide)).1
+    omega
+
+lemma pushSequenceIndent_currentPos (s : ScannerState) (col : Int) :
+    (pushSequenceIndent s col).currentPos = s.currentPos := by
+  unfold pushSequenceIndent
+  split <;> rfl
+
+lemma scanBlockEntry_back {s s' : ScannerState} (h_noflow : s.inFlow = false)
+    (hok : scanBlockEntry s = .ok s') :
+    s'.tokens.back? = some { pos := s.currentPos, val := YamlToken.blockEntry } := by
+  unfold scanBlockEntry at hok
+  simp only [h_noflow, Bool.not_false, bind, Except.bind, ↓reduceIte] at hok
+  split at hok
+  · cases hok
+  · split at hok
+    · cases hok
+    · cases hv : scanBlockEntryValidate s with
+      | error e => rw [hv] at hok; cases hok
+      | ok u =>
+        rw [hv] at hok
+        have hs' := Except.ok.inj hok
+        subst hs'
+        show (((pushSequenceIndent s (s.col : Int)).emit .blockEntry).advance).tokens.back? = _
+        rw [advance_preserves_tokens]
+        unfold ScannerState.emit
+        dsimp only
+        rw [Array.back?_push, pushSequenceIndent_currentPos]
+
+lemma scanFlowEntry_line {s s' : ScannerState} (hpk : s.peek? = some ',')
+    (hok : scanFlowEntry s = .ok s') : s'.line = s.line := by
+  unfold scanFlowEntry at hok
+  simp only [bind, Except.bind] at hok
+  repeat (any_goals (split at hok))
+  any_goals contradiction
+  all_goals
+    have hs' := Except.ok.inj hok
+    subst hs'
+    exact (emit_advance_cursor hpk (by decide)).1
+
+lemma scanKey_line {s s' : ScannerState} (hpk : s.peek? = some '?')
+    (hok : scanKey s = .ok s') : s'.line = s.line := by
+  obtain ⟨m, hm, hl, -, -, -⟩ := scanKey_shape hok
+  have hmpk : m.peek? = some '?' := by
+    rcases hm with rfl | rfl
+    · rw [(pushMappingIndent_cursor s _).2.2]; exact hpk
+    · exact hpk
+  have hml : m.line = s.line := by
+    rcases hm with rfl | rfl
+    · exact (pushMappingIndent_cursor s _).1
+    · rfl
+  rw [hl, (emit_advance_cursor hmpk (by decide)).1, hml]
+
+
+lemma scanValue_line {s s' : ScannerState} (hpk : s.peek? = some ':')
+    (hok : scanValue s = .ok s') : s'.line = s.line := by
+  obtain ⟨hkl, hkc, hkpk, -, -, -⟩ := scanValueClearKey_fields s
+  obtain ⟨hpl, hpc, hppk, -, -⟩ := scanValuePrepare_fields (scanValueClearKey s)
+  unfold scanValue at hok
+  simp only [bind, Except.bind] at hok
+  have hval : ∃ u, scanValueValidate (scanValueClearKey s) = .ok u := by
+    cases hx : scanValueValidate (scanValueClearKey s) with
+    | error e => rw [hx] at hok; simp at hok
+    | ok u => exact ⟨u, rfl⟩
+  obtain ⟨u, hval⟩ := hval
+  split at hok <;> try contradiction
+  split at hok <;> try contradiction
+  split at hok <;> try contradiction
+  have hok' := Except.ok.inj hok
+  have hsl : s'.line = ((scanValuePrepare (scanValueClearKey s)).emit .value).advance.line := by
+    rw [← hok']
+  have hadv := Forward.advance_of_nb (s := (scanValuePrepare (scanValueClearKey s)).emit .value)
+    (c := ':') (by rw [emit_peek, hppk, hkpk]; exact hpk) (by decide)
+  exact ((hsl.trans hadv.1).trans hpl).trans hkl
+
+/-! ### The plain walk's column-0 exit is off its entry line -/
+
+lemma collectPlainScalarLoop_sameline_eq (fuel : Nat) :
+    ∀ (s : ScannerState) (content spaces : String) (ci ie : Nat) (r : PlainScalarResult),
+    collectPlainScalarLoop s content spaces fuel false ci ie = .ok r →
+    r.state.line = s.line → r.state.col = s.col → r.state = s := by
+  induction fuel with
+  | zero =>
+    intro s content spaces ci ie r hok _ _
+    unfold collectPlainScalarLoop at hok
+    injection hok with h_eq; subst h_eq
+    rfl
+  | succ fuel' ih =>
+    intro s content spaces ci ie r hok h_line h_col
+    unfold collectPlainScalarLoop at hok
+    split at hok
+    · injection hok with h_eq; subst h_eq; rfl
+    · rename_i c hpk
+      split at hok
+      · rename_i hterm'
+        injection hok with h_eq; subst h_eq
+        exact terminates?_state hterm'
+      · split at hok
+        · rename_i hlb
+          split at hok
+          · rename_i hflow; simp at hflow
+          · split at hok
+            · injection hok with h_eq; subst h_eq; rfl
+            · rename_i content' s2 hblk
+              split at hok
+              · injection hok with h_eq; subst h_eq; rfl
+              · dsimp only [] at hok
+                generalize h_loop :
+                  collectPlainScalarLoop s2 content' "" fuel' false ci ie = cont at hok
+                cases cont with
+                | ok inner =>
+                  dsimp only [] at hok
+                  split at hok
+                  · injection hok with h_eq; subst h_eq; rfl
+                  · have h_eq := Except.ok.inj hok; subst h_eq
+                    exfalso
+                    have h1 := L4YAML.Proofs.ScalarProduction.handleBlockLineBreak_line_lt hpk hlb hblk
+                    have h2 := L4YAML.Proofs.ScalarProduction.collectPlainScalarLoop_line_le s2 content' ""
+                      fuel' false ci ie h_loop
+                    omega
+                | error e => simp at hok
+        · rename_i hbr
+          have hnb : isLineBreakBool c = false := by simpa using hbr
+          have h_adv_line : s.advance.line = s.line :=
+            L4YAML.Scanner.advance_preserves_line_of_ne_break s c hpk
+              (by intro hc; rw [hc] at hnb; cases hnb)
+              (by intro hc; rw [hc] at hnb; cases hnb)
+          have h_adv_col : s.advance.col = s.col + 1 := advance_col_succ_of_peek hpk hnb
+          split at hok
+          · have := collectPlainScalarLoop_col_ge_of_line_eq _ s.advance content _ ci ie r hok
+              (by rw [h_line, h_adv_line])
+            omega
+          · split at hok
+            · injection hok with h_eq; subst h_eq; rfl
+            · have := collectPlainScalarLoop_col_ge_of_line_eq _ s.advance _ "" ci ie r hok
+                (by rw [h_line, h_adv_line])
+              omega
+
+lemma scanPlainScalar_sameline_samecol {s s' : ScannerState} (h_noflow : s.inFlow = false)
+    (hok : scanPlainScalar s = .ok s') (h_line : s'.line = s.line) (h_col : s'.col = s.col) :
+    s'.offset = s.offset ∧ s'.input = s.input ∧ s'.inputEnd = s.inputEnd := by
+  unfold scanPlainScalar at hok
+  simp only [h_noflow, bind, Except.bind, Bool.false_eq_true, ↓reduceIte] at hok
+  split at hok
+  · cases hok
+  · rename_i r h_loop
+    have h_eq := Except.ok.inj hok
+    have hst := collectPlainScalarLoop_sameline_eq _ s "" "" _ _ r h_loop
+      (by rw [← h_eq] at h_line; exact h_line) (by rw [← h_eq] at h_col; exact h_col)
+    rw [← h_eq]
+    show r.state.offset = s.offset ∧ r.state.input = s.input ∧ r.state.inputEnd = s.inputEnd
+    rw [hst]; exact ⟨rfl, rfl, rfl⟩
+
+lemma atDocumentBoundary_congr {s t : ScannerState} (ho : s.offset = t.offset)
+    (hi : s.input = t.input) (he : s.inputEnd = t.inputEnd) (hc : s.col = t.col) :
+    atDocumentBoundary s = atDocumentBoundary t := by
+  simp only [atDocumentBoundary, atDocumentStart, atDocumentEnd, ScannerState.peekAt?, ho, hi, he, hc]
+
+lemma dispatchStructural_none_not_boundary {s : ScannerState} {c : Char}
+    (h : scanNextToken_dispatchStructural s c = .ok none) :
+    (s.col == 0 && atDocumentBoundary s) = false := by
+  unfold scanNextToken_dispatchStructural at h
+  simp only [bind, Except.bind, pure, Except.pure] at h
+  cases hne : (s.col == 0 && atDocumentBoundary s) with
+  | false => rfl
+  | true =>
+    exfalso
+    simp only [Bool.and_eq_true, beq_iff_eq, atDocumentBoundary, Bool.or_eq_true] at hne
+    obtain ⟨hc0, hb⟩ := hne
+    rcases hb with hb | hb <;> simp only [hc0, hb, beq_self_eq_true, Bool.true_and, Bool.and_true,
+      Bool.true_or, Bool.or_true, ↓reduceIte] at h <;>
+      repeat (any_goals (split at h)) <;> all_goals simp_all
+
+/-! ### The pre-dispatch invariant and the shape lemmas -/
+
+/-- What the dispatch stages know about the preprocessed state: the live same-line key stands at or
+    right of the top and, in block context, is either the fresh save at the cursor or stands on a
+    `KeyFollower`; stacked keys stand at or right of the top; the stack is in sync with the flow
+    level; and in block context an enabled save IS the fresh save. -/
+def PreLKT (sp : ScannerState) : Prop :=
+  (sp.simpleKey.possible = true → sp.simpleKey.pos.line = sp.line →
+    sp.currentIndent ≤ (sp.simpleKey.pos.col : Int) ∧
+      (sp.inFlow = false → (sp.simpleKey.pos = sp.currentPos ∨ KeyFollower sp))) ∧
+  (∀ k ∈ sp.simpleKeyStack, k.possible = true → k.pos.line = sp.line →
+    sp.currentIndent ≤ (k.pos.col : Int)) ∧
+  sp.simpleKeyStack.size = sp.flowLevel ∧
+  (sp.inFlow = false → sp.simpleKeyAllowed = true → sp.simpleKey.pos = sp.currentPos)
+
+lemma flowLevel_eq_zero_of_not_inFlow {s : ScannerState} (h : s.inFlow = false) : s.flowLevel = 0 := by
+  unfold ScannerState.inFlow at h
+  simp at h
+  omega
+
+lemma stack_empty_of_not_inFlow {s : ScannerState} (h : PreLKT s) (hnf : s.inFlow = false) :
+    ∀ k, k ∈ s.simpleKeyStack → False := by
+  intro k hk
+  obtain ⟨j, hj, -⟩ := Array.getElem_of_mem hk
+  have := h.2.2.1
+  have := flowLevel_eq_zero_of_not_inFlow hnf
+  omega
+
+lemma scanDirective_peek {s s' : ScannerState} (hok : scanDirective s = .ok s') :
+    s'.peek? = none ∨ ∃ c, s'.peek? = some c ∧ isLineBreakBool c = true := by
+  unfold scanDirective at hok
+  split at hok
+  · cases hok
+  · dsimp only at hok
+    generalize hn : collectDirectiveNameLoop s.advance "" (s.inputEnd - s.advance.offset) = r at hok
+    obtain ⟨name, sn⟩ := r
+    dsimp only at hok
+    split at hok
+    · split at hok
+      · have := Except.ok.inj hok; subst this; exact skipToEndOfLine_peek _
+      · cases hok
+    · split at hok
+      · split at hok
+        · have := Except.ok.inj hok; subst this; exact skipToEndOfLine_peek _
+        · cases hok
+      · have := Except.ok.inj hok; subst this
+        exact skipToEndOfLine_peek _
+
+/-- A state parked at a break or the end of input is a `KeyFollower` state. -/
+lemma KeyFollower.of_break_or_eof {s : ScannerState}
+    (h : s.peek? = none ∨ ∃ c, s.peek? = some c ∧ isLineBreakBool c = true) : KeyFollower s := by
+  rcases h with h | ⟨c, hc, hb⟩
+  · right; right; left; rw [skipWhitespace_eq_of_peek_none h]; exact h
+  · right; right; right
+    refine ⟨c, ?_, Or.inr (Or.inr (Or.inl hb))⟩
+    rw [skipWhitespace_eq_of_not_ws hc (isWhiteSpaceBool_false_of_break hb)]; exact hc
+
+/-- A state whose trailing probe stops on a break, `#` or `:` (or the end of input) is a
+    `KeyFollower` state. -/
+lemma KeyFollower.of_trailing {s : ScannerState} {ie : Nat} (h : TrailingFollower s ie) :
+    KeyFollower s := by
+  rcases TrailingFollower.skipWhitespace_peek h with h | ⟨c, hc, hset⟩
+  · right; right; left; exact h
+  · right; right; right
+    refine ⟨c, hc, ?_⟩
+    rcases hset with h | h | h
+    · exact Or.inr (Or.inr (Or.inl h))
+    · exact Or.inr (Or.inl h)
+    · exact Or.inl h
+
+lemma scanDocumentStart_LiveKeyTop {sp : ScannerState} (h : PreLKT sp) (hnf : sp.inFlow = false) :
+    LiveKeyTop (scanDocumentStart sp) := by
+  refine ⟨fun hp => ?_, fun k hk => ?_, ?_⟩
+  · rw [L4YAML.Proofs.LineOpenGuard.scanDocumentStart_simpleKey_false] at hp; cases hp
+  · rw [scanDocumentStart_preserves_simpleKeyStack] at hk
+    exact (stack_empty_of_not_inFlow h hnf k hk).elim
+  · rw [scanDocumentStart_preserves_simpleKeyStack, scanDocumentStart_preserves_flowLevel]
+    exact h.2.2.1
+
+lemma scanDocumentEnd_LiveKeyTop {sp s' : ScannerState} (hok : scanDocumentEnd sp = .ok s')
+    (h : PreLKT sp) (hnf : sp.inFlow = false) : LiveKeyTop s' := by
+  refine ⟨fun hp => ?_, fun k hk => ?_, ?_⟩
+  · rw [L4YAML.Proofs.LineOpenGuard.scanDocumentEnd_simpleKey_false hok] at hp; cases hp
+  · rw [scanDocumentEnd_preserves_simpleKeyStack sp s' hok] at hk
+    exact (stack_empty_of_not_inFlow h hnf k hk).elim
+  · rw [scanDocumentEnd_preserves_simpleKeyStack sp s' hok, scanDocumentEnd_preserves_flowLevel sp s' hok]
+    exact h.2.2.1
+
+lemma scanDirective_LiveKeyTop {sp s' : ScannerState} (hpk : sp.peek? = some '%')
+    (hok : scanDirective sp = .ok s') (h : PreLKT sp) : LiveKeyTop s' := by
+  obtain ⟨hl, hind⟩ := L4YAML.Proofs.StaleCursorFloor.scanDirective_line_ind hpk hok
+  have hci : s'.currentIndent = sp.currentIndent := currentIndent_of_indents_eq hind
+  have hkey := scanDirective_preserves_simpleKey sp s' hok
+  have hstk := scanDirective_preserves_simpleKeyStack sp s' hok
+  have hfl := scanDirective_preserves_flowLevel sp s' hok
+  refine ⟨fun hp hline => ?_, fun k hk hkp hkl => ?_, ?_⟩
+  · rw [hkey] at hp hline ⊢
+    rw [hl] at hline
+    refine ⟨by rw [hci]; exact (h.1 hp hline).1, fun _ => ?_⟩
+    exact KeyFollower.of_break_or_eof (scanDirective_peek hok)
+  · rw [hstk] at hk; rw [hl] at hkl; rw [hci]; exact h.2.1 k hk hkp hkl
+  · rw [hstk, hfl]; exact h.2.2.1
+
+
+/-! ### Flow arms -/
+
+lemma mem_of_mem_pop {α : Type} {a : Array α} {x : α} (h : x ∈ a.pop) : x ∈ a := by
+  obtain ⟨i, hi, rfl⟩ := Array.getElem_of_mem h
+  rw [Array.getElem_pop]
+  exact Array.getElem_mem _
+
+lemma scanFlowSequenceStart_fields {sp : ScannerState} (hpk : sp.peek? = some '[') :
+    (scanFlowSequenceStart sp).simpleKeyStack = sp.simpleKeyStack.push sp.simpleKey ∧
+    (scanFlowSequenceStart sp).line = sp.line ∧
+    (scanFlowSequenceStart sp).indents = sp.indents := by
+  have hcur := emit_advance_cursor (s := { sp with simpleKey := { possible := false } })
+    (t := .flowSequenceStart) hpk (by decide)
+  unfold scanFlowSequenceStart
+  dsimp only
+  refine ⟨?_, hcur.1, ?_⟩
+  · rw [L4YAML.Proofs.ScannerContracts.advance_preserves_simpleKeyStack]; rfl
+  · rw [L4YAML.Proofs.ScannerLoopInvariant.advance_indents]; rfl
+
+lemma scanFlowMappingStart_fields {sp : ScannerState} (hpk : sp.peek? = some '{') :
+    (scanFlowMappingStart sp).simpleKeyStack = sp.simpleKeyStack.push sp.simpleKey ∧
+    (scanFlowMappingStart sp).line = sp.line ∧
+    (scanFlowMappingStart sp).indents = sp.indents := by
+  have hcur := emit_advance_cursor (s := { sp with simpleKey := { possible := false } })
+    (t := .flowMappingStart) hpk (by decide)
+  unfold scanFlowMappingStart
+  dsimp only
+  refine ⟨?_, hcur.1, ?_⟩
+  · rw [L4YAML.Proofs.ScannerContracts.advance_preserves_simpleKeyStack]; rfl
+  · rw [L4YAML.Proofs.ScannerLoopInvariant.advance_indents]; rfl
+
+lemma scanFlowSequenceEnd_fields (sp : ScannerState) :
+    (scanFlowSequenceEnd sp).simpleKeyStack = sp.simpleKeyStack.pop ∧
+    (scanFlowSequenceEnd sp).indents = sp.indents := by
+  unfold scanFlowSequenceEnd
+  dsimp only
+  constructor
+  · rw [L4YAML.Proofs.ScannerContracts.advance_preserves_simpleKeyStack]; rfl
+  · rw [L4YAML.Proofs.ScannerLoopInvariant.advance_indents]; rfl
+
+lemma scanFlowMappingEnd_fields (sp : ScannerState) :
+    (scanFlowMappingEnd sp).simpleKeyStack = sp.simpleKeyStack.pop ∧
+    (scanFlowMappingEnd sp).indents = sp.indents := by
+  unfold scanFlowMappingEnd
+  dsimp only
+  constructor
+  · rw [L4YAML.Proofs.ScannerContracts.advance_preserves_simpleKeyStack]; rfl
+  · rw [L4YAML.Proofs.ScannerLoopInvariant.advance_indents]; rfl
+
+/-- A flow opener: the live key is pushed, the stack gains the top it had, the sync moves with it. -/
+lemma flowStart_LiveKeyTop {sp s' : ScannerState} (h : PreLKT sp)
+    (hkey : s'.simpleKey.possible = false)
+    (hstk : s'.simpleKeyStack = sp.simpleKeyStack.push sp.simpleKey)
+    (hl : s'.line = sp.line) (hind : s'.indents = sp.indents)
+    (hfl : s'.flowLevel = sp.flowLevel + 1) : LiveKeyTop s' := by
+  have hci : s'.currentIndent = sp.currentIndent := currentIndent_of_indents_eq hind
+  refine ⟨fun hp => ?_, fun k hk hkp hkl => ?_, ?_⟩
+  · rw [hkey] at hp; cases hp
+  · rw [hstk] at hk; rw [hl] at hkl; rw [hci]
+    rcases Array.mem_push.mp hk with hk | hk
+    · exact h.2.1 k hk hkp hkl
+    · subst hk; exact (h.1 hkp hkl).1
+  · rw [hstk, hfl, Array.size_push]; exact congrArg (· + 1) h.2.2.1
+
+/-- A flow close: the restored key is the stacked one, at or right of the top by the stack clause;
+    back at block level the close's trailing probe is its follower. -/
+lemma flowEnd_LiveKeyTop {sp s' : ScannerState} (h : PreLKT sp)
+    (hkey : s'.simpleKey = sp.simpleKeyStack.back?.getD {})
+    (hstk : s'.simpleKeyStack = sp.simpleKeyStack.pop)
+    (hl : s'.line = sp.line) (hind : s'.indents = sp.indents)
+    (hfl : s'.flowLevel = sp.flowLevel - 1)
+    (hv : validateFlowClose s' = .ok ()) : LiveKeyTop s' := by
+  have hci : s'.currentIndent = sp.currentIndent := currentIndent_of_indents_eq hind
+  refine ⟨fun hp hline => ?_, fun k hk hkp hkl => ?_, ?_⟩
+  · rw [hkey] at hp hline ⊢
+    cases hb : sp.simpleKeyStack.back? with
+    | none => rw [hb] at hp; simp at hp
+    | some k =>
+      rw [hb, Option.getD_some] at hp hline
+      rw [Option.getD_some]
+      have hk : k ∈ sp.simpleKeyStack := by
+        rw [Array.back?_eq_getElem?] at hb; exact Array.mem_of_getElem? hb
+      rw [hl] at hline
+      refine ⟨by rw [hci]; exact h.2.1 k hk hp hline, fun hnf => ?_⟩
+      exact KeyFollower.of_trailing (validateFlowClose_follower hv (flowLevel_eq_zero_of_not_inFlow hnf))
+  · rw [hstk] at hk; rw [hl] at hkl; rw [hci]
+    exact h.2.1 k (mem_of_mem_pop hk) hkp hkl
+  · rw [hstk, hfl, Array.size_pop, h.2.2.1]
+
+lemma scanFlowEntry_LiveKeyTop {sp s' : ScannerState} (hpk : sp.peek? = some ',')
+    (hok : scanFlowEntry sp = .ok s') (h : PreLKT sp) : LiveKeyTop s' := by
+  have hl := scanFlowEntry_line hpk hok
+  have hci : s'.currentIndent = sp.currentIndent :=
+    currentIndent_of_indents_eq (L4YAML.Proofs.FlowIndentStable.scanFlowEntry_preserves_indents hok)
+  have hstk := scanFlowEntry_preserves_simpleKeyStack sp s' hok
+  have hfl := scanFlowEntry_preserves_flowLevel sp s' hok
+  refine ⟨fun hp => ?_, fun k hk hkp hkl => ?_, ?_⟩
+  · rw [scanFlowEntry_clears_simpleKey sp s' hok] at hp; cases hp
+  · rw [hstk] at hk; rw [hl] at hkl; rw [hci]; exact h.2.1 k hk hkp hkl
+  · rw [hstk, hfl]; exact h.2.2.1
+
+lemma dispatchFlowIndicators_LiveKeyTop {sp s' : ScannerState} {c : Char} (hpk : sp.peek? = some c)
+    (hok : scanNextToken_dispatchFlowIndicators sp c = .ok (some s')) (h : PreLKT sp) :
+    LiveKeyTop s' := by
+  unfold scanNextToken_dispatchFlowIndicators at hok
+  simp only [bind, Except.bind, pure, Except.pure] at hok
+  repeat (any_goals (split at hok))
+  all_goals (try contradiction)
+  all_goals (try (simp only [Except.ok.injEq, Option.some.injEq] at hok; subst hok))
+  all_goals first
+    | (have hc : (c == '[') = true := by assumption
+       have hc' : c = '[' := by simpa using hc
+       subst hc'
+       obtain ⟨h1, h2, h3⟩ := scanFlowSequenceStart_fields hpk
+       exact flowStart_LiveKeyTop h (scanFlowSequenceStart_simpleKey_cleared sp) h1 h2 h3
+         (L4YAML.Proofs.ScannerContracts.scanFlowSequenceStart_flowLevel sp))
+    | (have hc : (c == '{') = true := by assumption
+       have hc' : c = '{' := by simpa using hc
+       subst hc'
+       obtain ⟨h1, h2, h3⟩ := scanFlowMappingStart_fields hpk
+       exact flowStart_LiveKeyTop h (scanFlowMappingStart_simpleKey_cleared sp) h1 h2 h3
+         (L4YAML.Proofs.ScannerContracts.scanFlowMappingStart_flowLevel sp))
+    | (have hc : (c == ']') = true := by assumption
+       have hc' : c = ']' := by simpa using hc
+       subst hc'
+       have hpos : sp.flowLevel > 0 := by
+         have hz : ¬ ((sp.flowLevel == 0) = true) := by assumption
+         simp at hz; omega
+       obtain ⟨h1, h3⟩ := scanFlowSequenceEnd_fields sp
+       exact flowEnd_LiveKeyTop h (scanFlowSequenceEnd_simpleKey_restored sp) h1
+         (L4YAML.Proofs.StaleCursorFloor.scanFlowSequenceEnd_cursor hpk).1 h3
+         (L4YAML.Proofs.ScannerFlowCollection.scanFlowSequenceEnd_flowLevel_pos sp hpos) (by assumption))
+    | (have hc : (c == '}') = true := by assumption
+       have hc' : c = '}' := by simpa using hc
+       subst hc'
+       have hpos : sp.flowLevel > 0 := by
+         have hz : ¬ ((sp.flowLevel == 0) = true) := by assumption
+         simp at hz; omega
+       obtain ⟨h1, h3⟩ := scanFlowMappingEnd_fields sp
+       exact flowEnd_LiveKeyTop h (scanFlowMappingEnd_simpleKey_restored sp) h1
+         (L4YAML.Proofs.StaleCursorFloor.scanFlowMappingEnd_cursor hpk).1 h3
+         (L4YAML.Proofs.ScannerFlowCollection.scanFlowMappingEnd_flowLevel_pos sp hpos) (by assumption))
+    | (have hc : (c == ',') = true := by assumption
+       have hc' : c = ',' := by simpa using hc
+       subst hc'; exact scanFlowEntry_LiveKeyTop hpk (by assumption) h)
+    | simp_all
+
+
+/-! ### Block arms -/
+
+/-- The `-` case read off the follower alone (item 401's `dash_case`, without the invariant
+    wrapper): a `-` dispatched on a live key's line means the key is the fresh save at the cursor. -/
+lemma KeyFollower.dash_fresh {s : ScannerState} (hf : KeyFollower s)
+    (hpk : s.peek? = some '-')
+    (hnp : lastTokenIsNodePropertyOnLine s.tokens s.line = false)
+    (hfresh : s.simpleKeyAllowed = true → s.simpleKey.pos = s.currentPos) :
+    s.simpleKey.pos = s.currentPos := by
+  have hid := skipWhitespace_eq_of_not_ws hpk (by decide)
+  rcases hf with hp | ⟨t, -, -, -, hal⟩ | hn | ⟨c, hc, hset⟩
+  · rw [hnp] at hp; cases hp
+  · exact hfresh hal
+  · rw [hid, hpk] at hn; cases hn
+  · rw [hid, hpk] at hc
+    have : c = '-' := (Option.some.inj hc).symm
+    subst this
+    exfalso
+    rcases hset with h | h | h | h | h <;>
+      first | cases h | (revert h; decide)
+
+lemma scanBlockEntry_LiveKeyTop {sp s' : ScannerState} (hpk : sp.peek? = some '-')
+    (hnf : sp.inFlow = false) (hok : scanBlockEntry sp = .ok s') (h : PreLKT sp) :
+    LiveKeyTop s' := by
+  have hkey := scanBlockEntry_preserves_simpleKey sp s' hok
+  obtain ⟨hl, -⟩ := L4YAML.Proofs.StaleCursorFloor.scanBlockEntry_line_col hnf hpk hok
+  have hind := L4YAML.Proofs.PreprocessIndentStable.scanBlockEntry_indents hnf hok
+  have hal := L4YAML.Proofs.PreprocessIndentStable.scanBlockEntry_simpleKeyAllowed hok
+  have hback := scanBlockEntry_back hnf hok
+  have hnp := scanBlockEntry_not_property hok hnf
+  have hstk := scanBlockEntry_preserves_simpleKeyStack sp s' hok
+  have hfl := scanBlockEntry_preserves_flowLevel sp s' hok
+  refine ⟨fun hp hline => ?_, fun k hk => ?_, ?_⟩
+  · rw [hkey] at hp hline ⊢
+    rw [hl] at hline
+    obtain ⟨hfl0, hfol⟩ := h.1 hp hline
+    have hposeq : sp.simpleKey.pos = sp.currentPos := by
+      rcases hfol hnf with hfr | hkf
+      · exact hfr
+      · exact KeyFollower.dash_fresh hkf hpk hnp (h.2.2.2 hnf)
+    have hcol : sp.simpleKey.pos.col = sp.col := by rw [hposeq]; rfl
+    refine ⟨?_, fun _ => ?_⟩
+    · rw [currentIndent_of_indents_eq hind, hcol]
+      rcases L4YAML.Proofs.StaleCursorFloor.pushSequenceIndent_currentIndent_ub sp (sp.col : Int)
+        with hub | hub
+      · rw [hub]; exact Int.le_refl _
+      · rw [hub, ← hcol]; exact hfl0
+    · right; left
+      refine ⟨_, hback, rfl, ?_, hal⟩
+      show sp.currentPos = s'.simpleKey.pos
+      rw [hkey, hposeq]
+  · rw [hstk] at hk
+    exact (stack_empty_of_not_inFlow h hnf k hk).elim
+  · rw [hstk, hfl]; exact h.2.2.1
+
+/-- A key-clearing indicator (`?`, `:`): the top clause is vacuous; stacked keys keep their top
+    because in flow the indents are untouched and in block the stack is empty. -/
+lemma cleared_LiveKeyTop {sp s' : ScannerState} (h : PreLKT sp)
+    (hkey : s'.simpleKey.possible = false)
+    (hstk : s'.simpleKeyStack = sp.simpleKeyStack) (hfl : s'.flowLevel = sp.flowLevel)
+    (hl : s'.line = sp.line) (hind : sp.inFlow = true → s'.indents = sp.indents) : LiveKeyTop s' := by
+  refine ⟨fun hp => ?_, fun k hk hkp hkl => ?_, ?_⟩
+  · rw [hkey] at hp; cases hp
+  · rw [hstk] at hk; rw [hl] at hkl
+    cases hnf : sp.inFlow with
+    | false => exact (stack_empty_of_not_inFlow h hnf k hk).elim
+    | true => rw [currentIndent_of_indents_eq (hind hnf)]; exact h.2.1 k hk hkp hkl
+  · rw [hstk, hfl]; exact h.2.2.1
+
+lemma scanKey_LiveKeyTop {sp s' : ScannerState} (hpk : sp.peek? = some '?')
+    (hok : scanKey sp = .ok s') (h : PreLKT sp) : LiveKeyTop s' :=
+  cleared_LiveKeyTop h (scanKey_clears_simpleKey sp s' hok) (scanKey_preserves_simpleKeyStack sp s' hok)
+    (scanKey_preserves_flowLevel sp s' hok) (scanKey_line hpk hok)
+    (fun hf => L4YAML.Proofs.FlowIndentStable.scanKey_indents_of_inFlow hf hok)
+
+lemma scanValue_LiveKeyTop {sp s' : ScannerState} (hpk : sp.peek? = some ':')
+    (hok : scanValue sp = .ok s') (h : PreLKT sp) : LiveKeyTop s' :=
+  cleared_LiveKeyTop h (scanValue_clears_simpleKey sp s' hok) (scanValue_preserves_simpleKeyStack sp s' hok)
+    (scanValue_preserves_flowLevel sp s' hok) (scanValue_line hpk hok)
+    (fun hf => L4YAML.Proofs.FlowIndentStable.scanValue_indents_of_inFlow hf hok)
+
+lemma dispatchBlockIndicators_LiveKeyTop {sp s' : ScannerState} {c : Char} (hpk : sp.peek? = some c)
+    (hok : scanNextToken_dispatchBlockIndicators sp c = .ok (some s')) (h : PreLKT sp) :
+    LiveKeyTop s' := by
+  unfold scanNextToken_dispatchBlockIndicators at hok
+  simp only [bind, pure, Pure.pure, Except.pure, Except.bind] at hok
+  repeat (any_goals (split at hok))
+  any_goals contradiction
+  all_goals (try simp only [Except.ok.injEq, Option.some.injEq] at *)
+  any_goals contradiction
+  all_goals (try subst_vars)
+  all_goals (first
+    | (rename_i hcond _ _ hbe
+       simp only [Bool.and_eq_true, beq_iff_eq, Bool.not_eq_true'] at hcond
+       obtain ⟨⟨hc, hnf⟩, _⟩ := hcond
+       subst hc
+       exact scanBlockEntry_LiveKeyTop hpk hnf hbe h)
+    | (rename_i _ hcond _ _ hk
+       simp only [Bool.and_eq_true, beq_iff_eq] at hcond
+       obtain ⟨⟨⟨hc, _⟩, _⟩, _⟩ := hcond
+       subst hc
+       exact scanKey_LiveKeyTop hpk hk h)
+    | (rename_i _ _ hcond _ _ hv
+       simp only [Bool.and_eq_true, beq_iff_eq] at hcond
+       obtain ⟨hc, _⟩ := hcond
+       subst hc
+       exact scanValue_LiveKeyTop hpk hv h))
+
+
+/-! ### Content arms -/
+
+lemma content_LiveKeyTop {sp s' : ScannerState} (h : PreLKT sp) (hcf : ColFloor sp)
+    (hkey : (s'.simpleKey.possible = sp.simpleKey.possible ∧ s'.simpleKey.pos = sp.simpleKey.pos) ∨
+      s'.simpleKey.possible = false)
+    (hstk : s'.simpleKeyStack = sp.simpleKeyStack) (hfl : s'.flowLevel = sp.flowLevel)
+    (hline : sp.line ≤ s'.line) (hind : s'.indents = sp.indents)
+    (hfol : s'.inFlow = false → s'.line = sp.line → s'.simpleKey.possible = true → KeyFollower s') :
+    LiveKeyTop s' := by
+  have hci : s'.currentIndent = sp.currentIndent := currentIndent_of_indents_eq hind
+  refine ⟨fun hp hl => ?_, fun k hk hkp hkl => ?_, ?_⟩
+  · rcases hkey with ⟨hpos, hp2⟩ | hfalse
+    · have hp' : sp.simpleKey.possible = true := by rw [← hpos]; exact hp
+      rw [hp2] at hl ⊢
+      have hbeh := hcf.key hp'
+      have hsl : s'.line = sp.line := by rcases hbeh with hlt | ⟨heq, -⟩ <;> omega
+      rw [hsl] at hl
+      exact ⟨by rw [hci]; exact (h.1 hp' hl).1, fun hnf => hfol hnf hsl hp⟩
+    · rw [hfalse] at hp; cases hp
+  · rw [hstk] at hk
+    obtain ⟨j, hj, hjk⟩ := Array.getElem_of_mem hk
+    have hbeh := hcf.stack j hj (hjk ▸ hkp)
+    rw [hjk] at hbeh
+    have hsl : s'.line = sp.line := by rcases hbeh with hlt | ⟨heq, -⟩ <;> omega
+    rw [hsl] at hkl; rw [hci]; exact h.2.1 k hk hkp hkl
+  · rw [hstk, hfl]; exact h.2.2.1
+
+lemma cleared_block_LiveKeyTop {sp s' : ScannerState} (h : PreLKT sp) (hnf : sp.inFlow = false)
+    (hkey : s'.simpleKey.possible = false)
+    (hstk : s'.simpleKeyStack = sp.simpleKeyStack) (hfl : s'.flowLevel = sp.flowLevel) :
+    LiveKeyTop s' := by
+  refine ⟨fun hp => ?_, fun k hk => ?_, ?_⟩
+  · rw [hkey] at hp; cases hp
+  · rw [hstk] at hk; exact (stack_empty_of_not_inFlow h hnf k hk).elim
+  · rw [hstk, hfl]; exact h.2.2.1
+
+/-- Export (a)'s stop set is a `KeyFollower` away from the column-0 document boundary. -/
+lemma PlainFollower.keyFollower {s : ScannerState} (hp : PlainFollower s)
+    (hnb : ¬ (s.col = 0 ∧ atDocumentBoundary s = true)) : KeyFollower s := by
+  rcases hp with h | ⟨c, hc, hset⟩ | ⟨hc0, hb⟩
+  · right; right; left; rw [skipWhitespace_eq_of_peek_none h]; exact h
+  · have hws : isWhiteSpaceBool c = false := by
+      rcases hset with h | h | h | h | h
+      · subst h; decide
+      · subst h; decide
+      · exact isWhiteSpaceBool_false_of_break h
+      · cases hw : isWhiteSpaceBool c with
+        | false => rfl
+        | true =>
+          exfalso
+          simp only [isWhiteSpaceBool, isSpaceBool, isTabBool, Bool.or_eq_true, beq_iff_eq] at hw
+          rcases hw with rfl | rfl <;> (revert h; decide)
+      · subst h; decide
+    right; right; right
+    refine ⟨c, ?_, ?_⟩
+    · rw [skipWhitespace_eq_of_not_ws hc hws]; exact hc
+    · rcases hset with h | h | h | h | h
+      · exact Or.inl h
+      · exact Or.inr (Or.inl h)
+      · exact Or.inr (Or.inr (Or.inl h))
+      · exact Or.inr (Or.inr (Or.inr (Or.inl h)))
+      · exact Or.inr (Or.inr (Or.inr (Or.inr h)))
+  · exact (hnb ⟨hc0, hb⟩).elim
+
+lemma scanPlainScalar_LiveKeyTop {sp s' : ScannerState} (hok : scanPlainScalar sp = .ok s')
+    (h : PreLKT sp) (hcf : ColFloor sp)
+    (hnd : (sp.col == 0 && atDocumentBoundary sp) = false) : LiveKeyTop s' := by
+  have hsk := scanPlainScalar_preserves_simpleKey sp s' hok
+  have hst := scanPlainScalar_preserves_simpleKeyStack sp s' hok
+  have hfl := scanPlainScalar_preserves_flowLevel sp s' hok
+  have hind := L4YAML.Proofs.FlowIndentStable.scanPlainScalar_preserves_indents hok
+  have hflow : s'.inFlow = sp.inFlow := by unfold ScannerState.inFlow; rw [hfl]
+  have hline : sp.line ≤ s'.line := by
+    unfold scanPlainScalar at hok
+    simp only [bind, Except.bind] at hok
+    split at hok
+    · cases hok
+    · rename_i r h_loop
+      have h_eq := Except.ok.inj hok
+      have h_line : s'.line = r.state.line := by rw [← h_eq]; rfl
+      rw [h_line]
+      exact L4YAML.Proofs.ScalarProduction.collectPlainScalarLoop_line_le sp "" "" _ sp.inFlow _
+        sp.inputEnd h_loop
+  refine content_LiveKeyTop h hcf (Or.inl ⟨by rw [hsk], by rw [hsk]⟩) hst hfl hline hind ?_
+  intro hnf hl _
+  rw [hflow] at hnf
+  apply PlainFollower.keyFollower (scanPlainScalar_follower hok hnf)
+  rintro ⟨hc0, hb⟩
+  have hcge := scanPlainScalar_sameline_col_ge hnf hok hl
+  have hcol : s'.col = sp.col := by omega
+  have hc0' : sp.col = 0 := by omega
+  obtain ⟨ho, hi, he⟩ := scanPlainScalar_sameline_samecol hnf hok hl hcol
+  rw [atDocumentBoundary_congr ho hi he hcol] at hb
+  simp [hc0', hb] at hnd
+
+lemma quoted_LiveKeyTop {sp s' s'' : ScannerState} (h : PreLKT sp) (hcf : ColFloor sp)
+    (hsk : s'.simpleKey = sp.simpleKey) (hst : s'.simpleKeyStack = sp.simpleKeyStack)
+    (hfl : s'.flowLevel = sp.flowLevel) (hline : sp.line ≤ s'.line) (hind : s'.indents = sp.indents)
+    (htf : sp.inFlow = false → TrailingFollower s' sp.inputEnd)
+    (hs'' : s'' = (if s'.simpleKey.possible then
+      { s' with simpleKey := { s'.simpleKey with endLine := s'.line } } else s')) :
+    LiveKeyTop s'' := by
+  have hfields : s''.simpleKey.possible = s'.simpleKey.possible ∧
+      s''.simpleKey.pos = s'.simpleKey.pos ∧ s''.simpleKeyStack = s'.simpleKeyStack ∧
+      s''.flowLevel = s'.flowLevel ∧ s''.line = s'.line ∧ s''.indents = s'.indents ∧
+      s''.input = s'.input ∧ s''.offset = s'.offset ∧ s''.inputEnd = s'.inputEnd := by
+    subst hs''; split <;> exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9⟩ := hfields
+  have hflow : s''.inFlow = sp.inFlow := by unfold ScannerState.inFlow; rw [h4, hfl]
+  refine content_LiveKeyTop h hcf (Or.inl ⟨by rw [h1, hsk], by rw [h2, hsk]⟩) (h3.trans hst)
+    (h4.trans hfl) (by rw [h5]; exact hline) (h6.trans hind) ?_
+  intro hnf _ _
+  rw [hflow] at hnf
+  exact KeyFollower.of_trailing ((htf hnf).congr h7.symm h8.symm h9.symm)
+
+lemma property_LiveKeyTop {sp s' : ScannerState} (h : PreLKT sp) (hcf : ColFloor sp)
+    (hsk : s'.simpleKey = sp.simpleKey) (hst : s'.simpleKeyStack = sp.simpleKeyStack)
+    (hfl : s'.flowLevel = sp.flowLevel) (hl : s'.line = sp.line) (hind : s'.indents = sp.indents)
+    (hprop : lastTokenIsNodePropertyOnLine s'.tokens sp.line = true) : LiveKeyTop s' :=
+  content_LiveKeyTop h hcf (Or.inl ⟨by rw [hsk], by rw [hsk]⟩) hst hfl (Nat.le_of_eq hl.symm) hind
+    (fun _ _ _ => Or.inl (by rw [hl]; exact hprop))
+
+lemma dispatchContent_LiveKeyTop {sp s' : ScannerState} {c : Char}
+    (hpk : sp.peek? = some c) (hnb : isLineBreakBool c = false)
+    (hok : scanNextToken_dispatchContent sp c = .ok s')
+    (h : PreLKT sp) (hcf : ColFloor sp)
+    (hnd : (sp.col == 0 && atDocumentBoundary sp) = false) : LiveKeyTop s' := by
+  unfold scanNextToken_dispatchContent at hok
+  simp only [bind, Except.bind, pure, Except.pure] at hok
+  split at hok
+  · -- '&'
+    split at hok
+    · simp at hok
+    split at hok
+    · simp at hok
+    · rename_i s_a h_anch
+      simp only [Except.ok.injEq] at hok; subst hok
+      obtain ⟨hl, -, hi⟩ := L4YAML.Proofs.StaleCursorFloor.scanAnchorOrAlias_cursor hpk hnb h_anch
+      have e1 := scanAnchorOrAlias_preserves_simpleKey sp true s_a h_anch
+      have e2 := scanAnchorOrAlias_preserves_simpleKeyStack sp true s_a h_anch
+      have e3 := scanAnchorOrAlias_preserves_flowLevel sp true s_a h_anch
+      have e4 := scanAnchorOrAlias_property_last h_anch
+      refine property_LiveKeyTop h hcf ?_ ?_ ?_ ?_ ?_ ?_
+      · exact e1
+      · exact e2
+      · exact e3
+      · exact hl
+      · exact hi
+      · exact e4
+  · split at hok
+    · -- '*'
+      split at hok
+      · simp at hok
+      split at hok
+      · simp at hok
+      · generalize h_al : scanAnchorOrAlias sp false = al at hok
+        cases al with
+        | error e => simp at hok
+        | ok s_a =>
+          have hv : validateAliasClose s_a = .ok () ∧ s_a = s' := by
+            split at hok
+            all_goals first
+              | (rename_i u h_u
+                 have hu : s_a = u := Except.ok.inj h_u
+                 subst hu
+                 split at hok
+                 all_goals first
+                   | (rename_i v h_v; exact ⟨by rw [h_v], Except.ok.inj hok⟩)
+                   | cases hok)
+              | cases hok
+          obtain ⟨h_v, hs⟩ := hv
+          subst hs
+          · obtain ⟨hl, -, hi⟩ := L4YAML.Proofs.StaleCursorFloor.scanAnchorOrAlias_cursor hpk hnb h_al
+            have hfl := scanAnchorOrAlias_preserves_flowLevel sp false s_a h_al
+            have hflow : s_a.inFlow = sp.inFlow := by unfold ScannerState.inFlow; rw [hfl]
+            refine content_LiveKeyTop h hcf (Or.inl ⟨?_, ?_⟩)
+              (scanAnchorOrAlias_preserves_simpleKeyStack sp false s_a h_al) hfl
+              (Nat.le_of_eq hl.symm) hi ?_
+            · rw [scanAnchorOrAlias_preserves_simpleKey sp false s_a h_al]
+            · rw [scanAnchorOrAlias_preserves_simpleKey sp false s_a h_al]
+            · intro hnf _ _
+              exact KeyFollower.of_trailing (validateAliasClose_follower h_v hnf)
+    · split at hok
+      · -- '!'
+        rename_i h_c
+        split at hok
+        · simp at hok
+        · have h_cq : c = '!' := by simpa using h_c
+          subst h_cq
+          obtain ⟨hl, -, hi⟩ := L4YAML.Proofs.StaleCursorFloor.scanTag_cursor hpk hok
+          exact property_LiveKeyTop h hcf (scanTag_preserves_simpleKey sp s' hok)
+            (scanTag_preserves_simpleKeyStack sp s' hok) (scanTag_preserves_flowLevel sp s' hok) hl hi
+            (scanTag_property_last hok)
+      · split at hok
+        · -- '|' / '>'
+          have hbs : sp.inFlow = false ∧ scanBlockScalar sp = .ok s' := by
+            split at hok
+            · simp at hok
+            · rename_i hf
+              exact ⟨by simpa using hf, hok⟩
+          exact cleared_block_LiveKeyTop h hbs.1
+            (L4YAML.Proofs.LineOpenGuard.scanBlockScalar_simpleKey_false hbs.2)
+            (scanBlockScalar_preserves_simpleKeyStack sp s' hbs.2)
+            (scanBlockScalar_preserves_flowLevel sp s' hbs.2)
+        · split at hok
+          · -- '"'
+            rename_i h_c
+            split at hok
+            · simp at hok
+            · rename_i s_dq h_dq
+              have h_cq : c = '"' := by simpa using h_c
+              subst h_cq
+              have hs'' := (Except.ok.inj hok).symm
+              exact quoted_LiveKeyTop h hcf (scanDoubleQuoted_preserves_simpleKey sp s_dq h_dq)
+                (scanDoubleQuoted_preserves_simpleKeyStack sp s_dq h_dq)
+                (scanDoubleQuoted_preserves_flowLevel sp s_dq h_dq) (scanDoubleQuoted_line_ge hpk h_dq)
+                (L4YAML.Proofs.EmitterScannability.scanDoubleQuoted_preserves_indents sp s_dq h_dq)
+                (fun hnf => scanDoubleQuoted_follower h_dq hnf) hs''
+          · split at hok
+            · -- '\''
+              rename_i h_c
+              split at hok
+              · simp at hok
+              · rename_i s_sq h_sq
+                have h_cq : c = '\'' := by simpa using h_c
+                subst h_cq
+                have hs'' := (Except.ok.inj hok).symm
+                exact quoted_LiveKeyTop h hcf (scanSingleQuoted_preserves_simpleKey sp s_sq h_sq)
+                  (scanSingleQuoted_preserves_simpleKeyStack sp s_sq h_sq)
+                  (scanSingleQuoted_preserves_flowLevel sp s_sq h_sq) (scanSingleQuoted_line_ge hpk h_sq)
+                  (L4YAML.Proofs.FlowIndentStable.scanSingleQuoted_preserves_indents h_sq)
+                  (fun hnf => scanSingleQuoted_follower h_sq hnf) hs''
+            · split at hok
+              · exact scanPlainScalar_LiveKeyTop hok h hcf hnd
+              · simp at hok
+
+
+/-! ### The step -/
+
+lemma PreLKT.of_preprocess {sp : ScannerState}
+    (h1 : (sp.simpleKey.possible = true → sp.simpleKey.pos.line = sp.line →
+      sp.simpleKey.pos = sp.currentPos ∨
+      (sp.currentIndent ≤ (sp.simpleKey.pos.col : Int) ∧ (sp.inFlow = false → KeyFollower sp))) ∧
+    (∀ k ∈ sp.simpleKeyStack, k.possible = true → k.pos.line = sp.line →
+      sp.currentIndent ≤ (k.pos.col : Int)) ∧
+    sp.simpleKeyStack.size = sp.flowLevel ∧
+    (sp.inFlow = false → sp.simpleKeyAllowed = true → sp.simpleKey.pos = sp.currentPos))
+    (hfl : sp.currentIndent ≤ (sp.col : Int)) : PreLKT sp := by
+  obtain ⟨ht, hs, hz, hf⟩ := h1
+  refine ⟨fun hp hl => ?_, hs, hz, hf⟩
+  rcases ht hp hl with hfr | ⟨hfl0, hkf⟩
+  · refine ⟨?_, fun _ => Or.inl hfr⟩
+    rw [hfr]; exact hfl
+  · exact ⟨hfl0, fun hnf => Or.inr (hkf hnf)⟩
+
+lemma advance_ad (s : ScannerState) :
+    ({ s with allowDirectives := false, documentEverStarted := true } : ScannerState).advance =
+      { s.advance with allowDirectives := false, documentEverStarted := true } := by
+  unfold ScannerState.advance
+  dsimp only
+  split <;> (try split) <;> (try split) <;> rfl
+
+lemma skipWhitespaceLoop_ad (f : Nat) : ∀ s : ScannerState,
+    skipWhitespaceLoop { s with allowDirectives := false, documentEverStarted := true } f =
+      { skipWhitespaceLoop s f with allowDirectives := false, documentEverStarted := true } := by
+  induction f with
+  | zero => intro s; simp only [skipWhitespaceLoop]
+  | succ f ih =>
+    intro s
+    simp only [skipWhitespaceLoop]
+    have hpk : ({ s with allowDirectives := false, documentEverStarted := true } :
+        ScannerState).peek? = s.peek? := rfl
+    rw [hpk]
+    split
+    · split
+      · rw [advance_ad, ih]
+      · rfl
+    · rfl
+
+lemma skipWhitespace_ad_peek (s : ScannerState) :
+    (skipWhitespace { s with allowDirectives := false, documentEverStarted := true }).peek? =
+      (skipWhitespace s).peek? := by
+  unfold skipWhitespace
+  show (skipWhitespaceLoop { s with allowDirectives := false, documentEverStarted := true }
+    (s.inputEnd - s.offset)).peek? = _
+  rw [skipWhitespaceLoop_ad]; rfl
+
+lemma KeyFollower.ad {s : ScannerState} (h : KeyFollower s) :
+    KeyFollower { s with allowDirectives := false, documentEverStarted := true } := by
+  unfold KeyFollower at h ⊢
+  dsimp only
+  rw [skipWhitespace_ad_peek]
+  exact h
+
+lemma PreLKT.ad {s : ScannerState} (h : PreLKT s) :
+    PreLKT { s with allowDirectives := false, documentEverStarted := true } := by
+  obtain ⟨h1, h2, h3, h4⟩ := h
+  refine ⟨fun hp hl => ?_, h2, h3, h4⟩
+  obtain ⟨hf, hk⟩ := h1 hp hl
+  exact ⟨hf, fun hnf => (hk hnf).elim Or.inl (fun hkf => Or.inr (KeyFollower.ad hkf))⟩
+
+lemma dispatchStructural_LiveKeyTop {sp s' : ScannerState} {c : Char} (hpk : sp.peek? = some c)
+    (hok : scanNextToken_dispatchStructural sp c = .ok (some s')) (h : PreLKT sp) :
+    LiveKeyTop s' := by
+  unfold scanNextToken_dispatchStructural at hok
+  simp only [bind, pure, Pure.pure, Except.pure, Except.bind] at hok
+  repeat (any_goals (split at hok))
+  any_goals contradiction
+  all_goals (try simp only [Except.ok.injEq, Option.some.injEq] at *)
+  any_goals contradiction
+  all_goals (try subst_vars)
+  all_goals first
+    | (have hnf : sp.inFlow = false := by
+         cases hf : sp.inFlow
+         · rfl
+         · exfalso; simp_all
+       exact scanDocumentStart_LiveKeyTop h hnf)
+    | (have hnf : sp.inFlow = false := by
+         cases hf : sp.inFlow
+         · rfl
+         · exfalso; simp_all
+       exact scanDocumentEnd_LiveKeyTop (by assumption) h hnf)
+    | (have hcond : (c == '%' && sp.col == 0) = true := by assumption
+       simp only [Bool.and_eq_true, beq_iff_eq] at hcond
+       obtain ⟨hc, hc0⟩ := hcond
+       subst hc
+       exact scanDirective_LiveKeyTop hpk (by assumption) h)
+
+/-- **Item 402 — the step.**  `LiveKeyTop` rides one token step (with `ColFloor` and the
+    sentinel base, which `scanNextToken_colfloor` carries alongside). -/
+lemma scanNextToken_preserves_LiveKeyTop (s s' : ScannerState)
+    (h : scanNextToken s = .ok (some s'))
+    (h_inv : LiveKeyTop s) (hcf : ColFloor s)
+    (hbase : L4YAML.Proofs.IndentStackBase.SentinelBase s) : LiveKeyTop s' := by
+  unfold scanNextToken at h
+  simp only [bind, Except.bind, pure, Except.pure, Bind.bind, Pure.pure] at h
+  split at h
+  · cases h
+  · split at h
+    · simp at h
+    · rename_i sp c h_pre
+      have hcfp : ColFloor sp := preprocess_colfloor h_pre hcf hbase
+      have hpk : sp.peek? = some c := preprocess_peek_eq s sp c h_pre
+      have hnb : isLineBreakBool c = false := preprocess_not_break h_pre
+      have hnic : sp.inFlow = false → sp.needIndentCheck = false := by
+        intro hnf
+        have hfl := L4YAML.Proofs.EmitterScannability.preprocess_preserves_flowLevel s sp c h_pre
+        have hnf0 : s.inFlow = false := by
+          first
+            | simpa [ScannerState.inFlow, hfl] using hnf
+            | simpa [ScannerState.inFlow, ← hfl] using hnf
+        exact L4YAML.Proofs.PropsRunLineCoupling.preprocess_some_needIndentCheck_false hnf0 h_pre
+      have hpre := preprocess_LiveKeyTop h_pre h_inv hcf
+      split at h
+      · cases h
+      split at h
+      · cases h
+      split at h
+      · cases h
+      · split at h
+        · rename_i s_ds h_ds
+          simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+          exact dispatchStructural_LiveKeyTop hpk h_ds
+            (PreLKT.of_preprocess hpre (dispatchStructural_floor h_ds hcfp hnic))
+        · rename_i h_ds
+          have hfl : sp.currentIndent ≤ (sp.col : Int) := dispatchStructural_floor h_ds hcfp hnic
+          have hP : PreLKT sp := PreLKT.of_preprocess hpre hfl
+          have hnd := dispatchStructural_none_not_boundary h_ds
+          split at h
+          · cases h
+          split at h
+          · cases h
+          · rcases h_ad : sp.allowDirectives with _ | _
+            <;> simp only [h_ad, Bool.false_eq_true, ↓reduceIte] at h
+            · generalize h_fi : scanNextToken_dispatchFlowIndicators sp c = fi at h
+              cases fi with
+              | error => cases h
+              | ok fi_opt =>
+                cases fi_opt with
+                | some s_fi =>
+                  simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+                  exact dispatchFlowIndicators_LiveKeyTop hpk h_fi hP
+                | none =>
+                  generalize h_bi : scanNextToken_dispatchBlockIndicators sp c = bi at h
+                  cases bi with
+                  | error => cases h
+                  | ok bi_opt =>
+                    cases bi_opt with
+                    | some s_bi =>
+                      simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+                      exact dispatchBlockIndicators_LiveKeyTop hpk h_bi hP
+                    | none =>
+                      generalize h_av : scanNextToken_checkAdjacentValue sp c = av at h
+                      cases av with
+                      | error => cases h
+                      | ok _ =>
+                      generalize h_dc : scanNextToken_dispatchContent sp c = dc at h
+                      cases dc with
+                      | error => cases h
+                      | ok s_dc =>
+                        simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+                        exact dispatchContent_LiveKeyTop hpk hnb h_dc hP hcfp hnd
+            · generalize h_sp2 :
+                (({ sp with allowDirectives := false, documentEverStarted := true }
+                  : ScannerState)) = sp2 at h
+              have hP2 : PreLKT sp2 := by rw [← h_sp2]; exact hP.ad
+              have hcf2 : ColFloor sp2 := by
+                rw [← h_sp2]; exact hcfp.of_fields_eq rfl rfl rfl rfl rfl rfl
+              have hpk2 : sp2.peek? = some c := by rw [← h_sp2]; exact hpk
+              have hnd2 : (sp2.col == 0 && atDocumentBoundary sp2) = false := by
+                rw [← h_sp2]; exact hnd
+              generalize h_fi : scanNextToken_dispatchFlowIndicators sp2 c = fi at h
+              cases fi with
+              | error => cases h
+              | ok fi_opt =>
+                cases fi_opt with
+                | some s_fi =>
+                  simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+                  exact dispatchFlowIndicators_LiveKeyTop hpk2 h_fi hP2
+                | none =>
+                  generalize h_bi : scanNextToken_dispatchBlockIndicators sp2 c = bi at h
+                  cases bi with
+                  | error => cases h
+                  | ok bi_opt =>
+                    cases bi_opt with
+                    | some s_bi =>
+                      simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+                      exact dispatchBlockIndicators_LiveKeyTop hpk2 h_bi hP2
+                    | none =>
+                      generalize h_av : scanNextToken_checkAdjacentValue sp2 c = av at h
+                      cases av with
+                      | error => cases h
+                      | ok _ =>
+                      generalize h_dc : scanNextToken_dispatchContent sp2 c = dc at h
+                      cases dc with
+                      | error => cases h
+                      | ok s_dc =>
+                        simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+                        exact dispatchContent_LiveKeyTop hpk2 hnb h_dc hP2 hcf2 hnd2
+
+/-! ### The `scan` seed carries `LiveKeyTop` (item 402): `mk'` saves no key, holds an
+    empty key stack at flow level 0, and the `streamStart` emission and §5.2's BOM
+    advance keep all three. -/
+
+lemma seed_LiveKeyTop (input : String) :
+    LiveKeyTop ((ScannerState.mk' input).emit .streamStart) := by
+  refine ⟨fun h _ => absurd h ?_, fun k hk => absurd hk ?_, ?_⟩
+  · simp [ScannerState.emit, ScannerState.mk']
+  · simp [ScannerState.emit, ScannerState.mk']
+  · simp [ScannerState.emit, ScannerState.mk']
+
+lemma seed_bom_LiveKeyTop (input : String) :
+    LiveKeyTop ((ScannerState.mk' input).emit .streamStart).consumeBOM := by
+  refine ⟨fun h _ => absurd h ?_, fun k hk => absurd hk ?_, ?_⟩
+  · show (((ScannerState.mk' input).emit .streamStart).advance).simpleKey.possible ≠ true
+    rw [L4YAML.Proofs.ScannerCorrectness.advance_preserves_simpleKey]
+    simp [ScannerState.emit, ScannerState.mk']
+  · show k ∉ (((ScannerState.mk' input).emit .streamStart).advance).simpleKeyStack
+    rw [L4YAML.Proofs.ScannerCorrectness.advance_preserves_simpleKeyStack]
+    simp [ScannerState.emit, ScannerState.mk']
+  · show (((ScannerState.mk' input).emit .streamStart).advance).simpleKeyStack.size =
+      (((ScannerState.mk' input).emit .streamStart).advance).flowLevel
+    rw [L4YAML.Proofs.ScannerCorrectness.advance_preserves_simpleKeyStack,
+      L4YAML.Proofs.ScannerContracts.advance_preserves_flowLevel]
+    simp [ScannerState.emit, ScannerState.mk']
+
+end StepOpen
+
 end L4YAML.Proofs.ColFloor
