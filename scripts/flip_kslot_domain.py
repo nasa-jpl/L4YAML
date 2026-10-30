@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Price item 397 (DOCS item 396's NEXT, re-sited): `h_kslotD`'s informative side at the two
+"""Price item 397 (re-anchored 2026-10-30, item 406: the props `:` birth's decline line (inside `colon_fires_props_key`, the `colon_open_map_props` application) now reads `h_dispatch (Or.inr trivial) h_cf h_lkt` on the #179 base) (DOCS item 396's NEXT, re-sited): `h_kslotD`'s informative side at the two
 implicit-key `:` births.  `colon_open_map_implicit.h_kslotD` / `colon_open_map_props.h_kslotD` ask
 `∃ ns, MarkedColsIn s' ns ∧ ∀ nv ∈ ns, …` and both producers (`colon_fires_implicit_key`,
 `colon_fires_props_key`) pass `Or.inr trivial`, because the packs' value-line faces
@@ -23,7 +23,7 @@ HEAD_D = "    ((∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv
 HEAD6 = "      ((∃ ns : List Nat, ∀ nv ∈ ns,\n"
 NODEV = "    (h_nodeV : (∃ ns : List Nat, ∀ nv ∈ ns,\n"
 NODEV_D = "    (h_nodeV : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,\n"
-DECL_PROPS = "        h_dispatch (Or.inr trivial)\n"
+DECL_PROPS = "        h_dispatch (Or.inr trivial) h_cf h_lkt\n"
 DECL_IMPL = "            (PackAlt.step_value h_preprocess h_dispatch h_noflow) (Or.inr trivial)\n"
 def md5(p): return hashlib.md5(p.read_bytes()).hexdigest()
 def patch(text):
@@ -47,7 +47,9 @@ def patch(text):
     for old, tag in ((DECL_PROPS, "props h_kslotD"), (DECL_IMPL, "implicit h_kslotD")):
         k = [i for i, l in enumerate(lines) if l == old]
         if len(k) != 1: sys.exit(f"expected one {tag} decline, matched {k}")
-        lines[k[0]] = old.replace("(Or.inr trivial)\n", "(sorry)\n"); sites.append((f"{tag} → sorry", k[0] + 1))
+        new = old.replace("(Or.inr trivial)", "(sorry)", 1)
+        if new == old: sys.exit(f"{tag} decline line did not change: {old!r}")
+        lines[k[0]] = new; sites.append((f"{tag} → sorry", k[0] + 1))
     return "".join(lines), sites
 def main():
     dry, keep = "--dry" in sys.argv, "--keep" in sys.argv

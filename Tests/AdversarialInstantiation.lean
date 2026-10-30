@@ -8597,6 +8597,36 @@ def testKslotDomain (state : IO.Ref TestCollector) : IO Unit := do
   check state s!"P69d markedCols projection: states={states} markedCols_mem mismatches={memBad} MarkedColsIn.self misses={selfBad} relay violations={relayBad}; negative control broke={negBroke}/{negN}; own mark last at ? pauses: violations={lastBad} two-mark pauses={lastTwo}; own mark present after a ? dispatch: misses={ownMiss}/{ownN}"
     (states > 7 && memBad == 0 && selfBad == 0 && relayBad == 0 && negN > 0 && negBroke == negN && lastBad == 0 && lastTwo > 0 && ownN > 0 && ownMiss == 0)
 
+  -- 70 (item 406, PRICED) — the flow-open KEY FACE's chain (`FlowBaseRoutes.key`) is FABRICATED at
+  -- `flowKeyRoute_of_root` (`⟨[nv], …⟩` once, `⟨[], …⟩` four times).  Domaining it
+  -- (`flip_kslot_domain.py --round2`) would owe `MarkedColsIn s0 []` / `[nv]` — so read which
+  -- block-context flow opens stand under marks (the fabrication is honest only at `markless`).
+  let flowOpens : List String :=
+    [ "[a]: b", "{a: 1}: b", "[1]\n[2]: b", "? [a]: b", "? [a]\n: b", "? - [1]\n: w",
+      "?\n  ? [x]: y\n  : z\n: w", "? {a: 1}: b\n: c", "- ? [a]: b", "k:\n  ? [a]: b\n  : c",
+      "? [a, b]: c\n? [d]: e", "?\n  [a]: b\n: c" ]
+  let mut opens := 0
+  let mut openMarked := 0
+  let mut openTwo := 0
+  let mut openBare := 0
+  for input in flowOpens do
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:64] do
+      match L4YAML.Scanner.scanNextToken s with
+      | .ok (some sN) =>
+        match L4YAML.Scanner.scanNextToken_preprocess s with
+        | .ok (some (sP, c)) =>
+          if (c == '[' || c == '{') && !sP.inFlow then
+            opens := opens + 1
+            let mc := L4YAML.Proofs.RegisterWitness.markedCols sN
+            if mc.isEmpty then openBare := openBare + 1 else openMarked := openMarked + 1
+            if mc.length ≥ 2 then openTwo := openTwo + 1
+        | _ => pure ()
+        s := sN
+      | _ => break
+  check state s!"P70 flow-open key face domain (item 406): block-context flow opens={opens} under marks={openMarked} (two or more={openTwo}) markless={openBare}"
+    (opens > 0 && openMarked > 0 && openTwo > 0 && openBare > 0)
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
