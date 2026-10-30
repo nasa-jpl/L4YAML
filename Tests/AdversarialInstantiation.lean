@@ -8384,6 +8384,84 @@ def testInputAheadExports (state : IO.Ref TestCollector) : IO Unit := do
   check state s!"P68g the fold's other statements direct: scanValuePrepare_top_le_key rows={spRows} viol={spViol} (vacuous {spVac}); seed_LiveKeyTop/seed_bom_LiveKeyTop states={seedStates} viol={seedViol} armed={seedArmed}"
     (spRows == 10 && spViol == 0 && spVac == 0 && seedStates == 12 && seedViol == 0 && seedArmed == 0)
 
+  -- 69 (item 404) — the `?`-park field's DOMAIN shape, read before the flip: `MarkedColsIn sc ns`
+  -- says every marked slot's column (`pendingKeys[i] = some _` ⇒ `indents[i].column`) is in `ns`.
+  -- A SINGLETON domain `[nv]` for `pendingBlock.h_kslot` is refutable iff some accepted `-` pause
+  -- in block context under open `?` frames has two DISTINCT marked columns.  Rows: every accepted
+  -- pause whose preprocess hands a `-` to the block dispatcher, on nested-`?` inputs (predicted:
+  -- ≥ 1 pause with 2 distinct marked columns) and single-`?` inputs (predicted: none).
+  let nestedQ : List String := ["?\n  ? -\n: w\n", "? - ? - a\n  : b\n: c\n", "?\n  ?\n    -\n    - b\n  ? c\n: w\n", "? ? - a\n  : b\n: c\n", "- ? - a\n  : b\n"]
+  let singleQ : List String := ["? - a\n: b\n", "?\n  - a\n  - b\n: w\n", "k:\n  ? - a\n  : b\n", "? -\n: w\n"]
+  let markedCols (s : L4YAML.Scanner.ScannerState) : List Int := Id.run do
+    let mut cols : List Int := []
+    for i in [:s.pendingKeys.size] do
+      match s.pendingKeys[i]?, s.indents[i]? with
+      | some (some _), some e => if !(cols.contains e.column) then cols := e.column :: cols
+      | _, _ => pure ()
+    return cols
+  let mut dashN := 0
+  let mut twoN := 0
+  let mut dashS := 0
+  let mut twoS := 0
+  for (inputs, nested) in [(nestedQ, true), (singleQ, false)] do
+    for input in inputs do
+      let mut s := L4YAML.Scanner.ScannerState.mk' input
+      for _ in [:64] do
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) =>
+          match L4YAML.Scanner.scanNextToken_preprocess s with
+          | .ok (some (sP, '-')) =>
+            if !sP.inFlow then
+              let k := (markedCols sP).length
+              if nested then
+                dashN := dashN + 1
+                if k ≥ 2 then twoN := twoN + 1
+              else
+                dashS := dashS + 1
+                if k ≥ 2 then twoS := twoS + 1
+          | _ => pure ()
+          s := sN
+        | _ => break
+  check state s!"P69 the ?-park field's domain shape: nested-? `-` pauses={dashN} with ≥2 marked columns={twoN}; single-? `-` pauses={dashS} with ≥2={twoS}"
+    (dashN == 8 && twoN == 5 && dashS == 5 && twoS == 0)
+
+  -- 69b (item 404) — the fallback the lane's round 4 exposes: a mapping-value park that is NOT a
+  -- `?` park (`NotQuestionPark`) standing under an OUTER `?` has a mark at the outer column, so
+  -- `MarkedColsIn sc [nmv]` (nmv = the park's own level) is false there.  Rows: accepted `-`
+  -- pauses in block context whose TOP indent level carries no mark while a lower one does, and
+  -- whose marked columns are not all the top column.  Predicted: > 0 such pauses on the
+  -- outer-`?`-over-mapping inputs, 0 on inputs with no `?`.
+  let outerQ : List String := ["? k:\n    - a\n: w\n", "?\n  k:\n    - a\n    - b\n: w\n", "? - k:\n      - a\n: w\n", "?\n  k: v\n  m:\n    - a\n: w\n"]
+  let noQ : List String := ["k:\n  - a\n  - b\n", "- k:\n    - a\n", "a:\n  b:\n    - c\n"]
+  let mut fbN := 0
+  let mut fbHit := 0
+  let mut fbZ := 0
+  let mut fbZHit := 0
+  for (inputs, outer) in [(outerQ, true), (noQ, false)] do
+    for input in inputs do
+      let mut s := L4YAML.Scanner.ScannerState.mk' input
+      for _ in [:64] do
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) =>
+          match L4YAML.Scanner.scanNextToken_preprocess s with
+          | .ok (some (sP, '-')) =>
+            if !sP.inFlow then
+              let cols := markedCols sP
+              let topUnmarked := match sP.pendingKeys.back? with | some none => true | _ => false
+              let topCol := (sP.indents.back?.map (·.column)).getD (-1)
+              let offTop := cols.any (· != topCol)
+              if outer then
+                fbN := fbN + 1
+                if topUnmarked && !cols.isEmpty && offTop then fbHit := fbHit + 1
+              else
+                fbZ := fbZ + 1
+                if !cols.isEmpty then fbZHit := fbZHit + 1
+          | _ => pure ()
+          s := sN
+        | _ => break
+  check state s!"P69b the NotQuestionPark fallback under an outer ?: `-` pauses={fbN} with an off-level mark={fbHit}; no-? pauses={fbZ} marked={fbZHit}"
+    (fbN == 6 && fbHit == 5 && fbZ == 5 && fbZHit == 0)
+
 
 
 
