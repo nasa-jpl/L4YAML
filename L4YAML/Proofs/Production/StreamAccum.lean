@@ -7241,6 +7241,8 @@ def FlowStackK (sp_start : SurfPos) (sc : ScannerState) (fl : Nat) (ks : Array B
   ∃ n kc km g s0, FlowStackB sp_start n kc g s0 fl ks km tl sp_block sp_flow ∧
     ks.size = fl ∧
     (0 < fl → sc.indents = s0.indents) ∧
+    -- Item 407: the carrier's `pendingKeys` twin — `MarkedColsIn.transport` needs both.
+    (0 < fl → sc.pendingKeys = s0.pendingKeys) ∧
     -- Item 84: the floor is REAL.  The depth-0 stack is at 0 and every OPEN
     -- measures now — the parks' own
     -- floors are unconditional (items 73/82/83) and the landing derives its
@@ -7269,14 +7271,14 @@ def FlowStackK (sp_start : SurfPos) (sc : ScannerState) (fl : Nat) (ks : Array B
 /-- The depth-0 `FlowStackK`: `nil` with an empty mask and vacuous couplings. -/
 lemma FlowStackK.nil (sp_start : SurfPos) (sc : ScannerState) (sp : SurfPos)
     (tl : FrameTail) : FlowStackK sp_start sc 0 #[] tl sp sp :=
-  ⟨0, 0, #[], none, sc, FlowStackB.nil sp tl, rfl, fun h => absurd h (by omega), Nat.zero_le _, fun h => absurd h (by omega)⟩
+  ⟨0, 0, #[], none, sc, FlowStackB.nil sp tl, rfl, fun h => absurd h (by omega), fun h => absurd h (by omega), Nat.zero_le _, fun h => absurd h (by omega)⟩
 
 /-- Re-index a depth-0 `FlowStackK` at any frame tail. -/
 lemma FlowStackK.retail {sp_start : SurfPos} {sc : ScannerState} {ks : Array Bool}
     {tl tl' : FrameTail} {a b : SurfPos} (h : FlowStackK sp_start sc 0 ks tl a b) :
     FlowStackK sp_start sc 0 ks tl' a b := by
-  obtain ⟨nn, kc, km, gt, s0, h_b, hsz, -, h_fl, -⟩ := h
-  exact ⟨nn, kc, km, gt, s0, h_b.retail, hsz, fun h => absurd h (by omega), h_fl, fun h => absurd h (by omega)⟩
+  obtain ⟨nn, kc, km, gt, s0, h_b, hsz, -, -, h_fl, -⟩ := h
+  exact ⟨nn, kc, km, gt, s0, h_b.retail, hsz, fun h => absurd h (by omega), fun h => absurd h (by omega), h_fl, fun h => absurd h (by omega)⟩
 
 /-- **The flow stack's floor, transported** (item 67).  A step that leaves the
     indent stack alone carries the reading index's floor forward unchanged —
@@ -10069,6 +10071,12 @@ lemma allowDirectives_update_indents (s : ScannerState) :
     else s).indents = s.indents := by
   split <;> rfl
 
+lemma allowDirectives_update_pendingKeys (s : ScannerState) :
+    (if s.allowDirectives then
+      { s with allowDirectives := false, documentEverStarted := true }
+    else s).pendingKeys = s.pendingKeys := by
+  split <;> rfl
+
 /-- …and the implicit value's stamp (item 103). -/
 lemma allowDirectives_update_implicitValueLine (s : ScannerState) :
     (if s.allowDirectives then
@@ -11005,7 +11013,7 @@ lemma accum_step_structural (sc : ScannerState)
         InteriorGap s' (tailOf s'.tokens) sp_flow' sp_scan' ∧
           LastTokenReal s'.tokens ∧ s'.allowDirectives = false) := by
   -- B.4β: the flow stack is indexed by the scanner's `flowLevel`.
-  obtain ⟨nn, kc, km, gt, s0, h_flow, h_ksz, h_ind0, h_floorK, h_kprom⟩ := h_flowK
+  obtain ⟨nn, kc, km, gt, s0, h_flow, h_ksz, h_ind0, h_pk0, h_floorK, h_kprom⟩ := h_flowK
   rcases Nat.eq_zero_or_pos sc.flowLevel with h0 | hpos
   · -- depth 0 (no open flow collection): the existing depth-0 proof.
     rw [h0] at h_flow
@@ -11022,7 +11030,7 @@ lemma accum_step_structural (sc : ScannerState)
         (absorb_stacksB sp_start sp_gram sp_block sp_flow h_stream h_stack h_flow)
         (h_pending h0) h_dir_flag h_corr
         (by unfold ScannerState.inFlow; simp; omega) h_dn h_fv h_preprocess h_dispatch
-    exact ⟨g', bl', fl', sn', b', q1, q2, ⟨0, 0, #[], none, _, q3.retail, rfl, fun h => absurd h (by omega), Nat.zero_le _, fun h => absurd h (by omega)⟩,
+    exact ⟨g', bl', fl', sn', b', q1, q2, ⟨0, 0, #[], none, _, q3.retail, rfl, fun h => absurd h (by omega), fun h => absurd h (by omega), Nat.zero_le _, fun h => absurd h (by omega)⟩,
            fun _ => q4, q5, q6, fun h => absurd h (by omega)⟩
   · -- ═══ DEPTH ≥ 1: VACUOUS. ═══
     -- `scanNextToken_dispatchStructural` has no success arm inside a flow; see
@@ -14086,7 +14094,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
       (tailOf s'.tokens) sp_b sp_f →
       FlowStackK sp_start s' 1 s'.flowStack (tailOf s'.tokens) sp_b sp_f :=
     fun g n _ _ h_st h_mk h_kp hfl h_anch h_b =>
-      ⟨n, _, #[false], g, s', h_b, h_ks1, fun _ => rfl, hfl,
+      ⟨n, _, #[false], g, s', h_b, h_ks1, fun _ => rfl, fun _ => rfl, hfl,
         fun _ => ⟨h_km0 h_st h_mk h_kp, h_anch, fun kj hv => absurd hv (h_nv kj),
           s'.simpleKeyStack.size, by simp, ResvOk.top h_opsk⟩⟩
   -- Item 67: the pending's floor, carried onto the stack the open pushes.  It
@@ -20029,7 +20037,7 @@ lemma accum_step_flow (sc : ScannerState)
   --
   -- The dispatch runs on `s_ad` = the allowDirectives-updated preprocessed state,
   -- whose `flowLevel` equals `sc.flowLevel`.
-  obtain ⟨nn, kc, km, gt, s0, h_flow, h_ksz, h_ind0, h_floorK, h_kprom⟩ := h_flowK
+  obtain ⟨nn, kc, km, gt, s0, h_flow, h_ksz, h_ind0, h_pk0, h_floorK, h_kprom⟩ := h_flowK
   rcases Nat.eq_zero_or_pos sc.flowLevel with h0 | hpos
   · -- ═══ DEPTH 0 (no flow open): only `[`/`{` reach `.ok (some s')`; the closing
     -- and separator indicators error at `flowLevel = 0`. ═══
@@ -20296,6 +20304,11 @@ lemma accum_step_flow (sc : ScannerState)
       exact (allowDirectives_update_indents _).trans
         (FlowIndentStable.preprocess_indents_of_inFlow h_sc_inflow h_preprocess)
     have h_ind_park : sc.indents = s0.indents := h_ind0 (by omega)
+    have h_pk_ad : s_ad.pendingKeys = sc.pendingKeys := by
+      rw [← h_ad_def]
+      exact (allowDirectives_update_pendingKeys _).trans
+        (L4YAML.Proofs.PendingKeysStable.preprocess_pendingKeys_of_inFlow h_sc_inflow h_preprocess)
+    have h_pk_park : sc.pendingKeys = s0.pendingKeys := h_pk0 (by omega)
     -- ═══ THE INTERIOR GAP, RESOLVED ONCE (β.3) ═══
     -- Both cases hand the five arms the same five things, which is why no arm
     -- below has to know whether a `[96] c-ns-properties` run was being held.
@@ -20461,7 +20474,7 @@ lemma accum_step_flow (sc : ScannerState)
             (fun sp_ne hc => h_inj (Or.inl rfl) h_tail true sp_ne (scFlowJsonContent_toFlowContent hc) (fun _ => hc))
             h_open_lit (GOpt.none sp_tok)
             (.betweenEmpty sp_tok)),
-         (by simp [h_ksz']), (fun _ => (L4YAML.Proofs.EmitterScannability.scanFlowSequenceStart_preserves_indents s_ad).trans (h_ind_ad.trans h_ind_park)), h_floorK',
+         (by simp [h_ksz']), (fun _ => (L4YAML.Proofs.EmitterScannability.scanFlowSequenceStart_preserves_indents s_ad).trans (h_ind_ad.trans h_ind_park)), (fun _ => (L4YAML.Proofs.PendingKeysStable.scanFlowSequenceStart_preserves_pendingKeys s_ad).trans (h_pk_ad.trans h_pk_park)), h_floorK',
          fun _ => ⟨km_push_at_open (by omega) h_km h_preprocess h_ad_def
              (ScannerCorrectness.scanFlowSequenceStart_stack_pushed s_ad)
              (ScannerCorrectness.scanFlowSequenceStart_simpleKey_cleared s_ad)
@@ -20538,7 +20551,7 @@ lemma accum_step_flow (sc : ScannerState)
                 have h_seq := SeqFrame.closeLead h_open h_sep st (h_lead₂.imp (fun h => ⟨h, h⟩) id) h_close_lit
                 rw [show (#[true] : Array Bool).pop = #[] from rfl]
                 exact ⟨sp_gram, sp_block, sp_block, sp_tok, h_stream, h_stack,
-                  ⟨0, 0, #[], none, sc, FlowStackB.nil sp_block _, rfl, fun h => absurd h (by omega), Nat.zero_le _,
+                  ⟨0, 0, #[], none, sc, FlowStackB.nil sp_block _, rfl, fun h => absurd h (by omega), fun h => absurd h (by omega), Nat.zero_le _,
                      fun h => absurd h (by omega)⟩,
                   (fun _ => PendingNode.pendingContent (sp_gram := sp_tok) (h_run := GStar.nil _) (h_gate := fun _ hcol h => CommentOk_false_of_peekBack hcol (scanFlowSequenceEnd_peekBack hcorr_ad (hpeek_ad.trans (preprocess_some_peek h_preprocess))) (by decide) h.1) (h_live := fun _ => close_poss_of_base (by omega) h_km rfl h_preprocess h_ad_def (ScannerCorrectness.scanFlowSequenceEnd_simpleKey_restored s_ad) ⟨_, scanFlowSequenceEnd_tokens s_ad⟩) sp_start sp_block sp_tok
                     (Or.inr ((restNodeStop_of_validateFlowClose hcorr_tok.end_eq
@@ -20607,6 +20620,7 @@ lemma accum_step_flow (sc : ScannerState)
                     (SCFlowJsonContent.flowSeq _ _ _ _ h_seq)),
                    (by simp at h_ksz'; omega),
                    fun _ => (L4YAML.Proofs.EmitterScannability.scanFlowSequenceEnd_preserves_indents s_ad).trans (h_ind_ad.trans h_ind_park),
+                   fun _ => (L4YAML.Proofs.PendingKeysStable.scanFlowSequenceEnd_preserves_pendingKeys s_ad).trans (h_pk_ad.trans h_pk_park),
                    h_floorK',
                    fun _ => ⟨close_km_pop (by omega) h_km h_preprocess h_ad_def
                        (ScannerCorrectness.scanFlowSequenceEnd_stack_popped s_ad)
@@ -20707,7 +20721,7 @@ lemma accum_step_flow (sc : ScannerState)
                 (fun sp_ne hc => h_inj (Or.inr rfl) h_tail true sp_ne (scFlowJsonContent_toFlowContent hc) (fun _ => hc))
                 h_open_lit (GOpt.none sp_tok)
                 (.betweenEmpty sp_tok)),
-             (by simp [h_ksz']), (fun _ => (L4YAML.Proofs.EmitterScannability.scanFlowMappingStart_preserves_indents s_ad).trans (h_ind_ad.trans h_ind_park)), h_floorK',
+             (by simp [h_ksz']), (fun _ => (L4YAML.Proofs.EmitterScannability.scanFlowMappingStart_preserves_indents s_ad).trans (h_ind_ad.trans h_ind_park)), (fun _ => (L4YAML.Proofs.PendingKeysStable.scanFlowMappingStart_preserves_pendingKeys s_ad).trans (h_pk_ad.trans h_pk_park)), h_floorK',
              fun _ => ⟨km_push_at_open (by omega) h_km h_preprocess h_ad_def
                  (ScannerCorrectness.scanFlowMappingStart_stack_pushed s_ad)
                  (ScannerCorrectness.scanFlowMappingStart_simpleKey_cleared s_ad)
@@ -20781,7 +20795,7 @@ lemma accum_step_flow (sc : ScannerState)
                     have h_map := MapFrame.closeLead h_open h_sep st (h_lead₂.imp (fun h => ⟨h, h⟩) id) h_close_lit
                     rw [show (#[false] : Array Bool).pop = #[] from rfl]
                     exact ⟨sp_gram, sp_block, sp_block, sp_tok, h_stream, h_stack,
-                      ⟨0, 0, #[], none, sc, FlowStackB.nil sp_block _, rfl, fun h => absurd h (by omega), Nat.zero_le _,
+                      ⟨0, 0, #[], none, sc, FlowStackB.nil sp_block _, rfl, fun h => absurd h (by omega), fun h => absurd h (by omega), Nat.zero_le _,
                      fun h => absurd h (by omega)⟩,
                       (fun _ => PendingNode.pendingContent (sp_gram := sp_tok) (h_run := GStar.nil _) (h_gate := fun _ hcol h => CommentOk_false_of_peekBack hcol (scanFlowMappingEnd_peekBack hcorr_ad (hpeek_ad.trans (preprocess_some_peek h_preprocess))) (by decide) h.1) (h_live := fun _ => close_poss_of_base (by omega) h_km rfl h_preprocess h_ad_def (ScannerCorrectness.scanFlowMappingEnd_simpleKey_restored s_ad) ⟨_, scanFlowMappingEnd_tokens s_ad⟩) sp_start sp_block sp_tok
                         (Or.inr ((restNodeStop_of_validateFlowClose hcorr_tok.end_eq
@@ -20837,6 +20851,7 @@ lemma accum_step_flow (sc : ScannerState)
                         (SCFlowJsonContent.flowMap _ _ _ _ h_map)),
                        (by simp at h_ksz'; omega),
                        fun _ => (L4YAML.Proofs.EmitterScannability.scanFlowMappingEnd_preserves_indents s_ad).trans (h_ind_ad.trans h_ind_park),
+                       fun _ => (L4YAML.Proofs.PendingKeysStable.scanFlowMappingEnd_preserves_pendingKeys s_ad).trans (h_pk_ad.trans h_pk_park),
                        h_floorK',
                        fun _ => ⟨close_km_pop (by omega) h_km h_preprocess h_ad_def
                            (ScannerCorrectness.scanFlowMappingEnd_stack_popped s_ad)
@@ -20913,7 +20928,7 @@ lemma accum_step_flow (sc : ScannerState)
                     exact ⟨sp_gram, sp_block, sp_tok, sp_tok, h_stream, h_stack,
                       ⟨nn, kc, _, gt, s0, .open _ _ _ _ sp_block sp_tok (.seqBase _ _ _ _ _ _ _ resume h_open h_sep
                         (st.holdCommaLead h_tail h_lead₂ h_comma_lit)),
-                       h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.scanFlowEntry_preserves_indents hfe).trans (h_ind_ad.trans h_ind_park)), h_floorK',
+                       h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.scanFlowEntry_preserves_indents hfe).trans (h_ind_ad.trans h_ind_park)), (fun _ => (L4YAML.Proofs.PendingKeysStable.scanFlowEntry_preserves_pendingKeys hfe).trans (h_pk_ad.trans h_pk_park)), h_floorK',
                        fun _ => ⟨comma_km_transport (by omega) h_km h_preprocess h_ad_def (by
                            have hpk := hpeek_ad.trans (preprocess_some_peek h_preprocess)
                            unfold ScannerState.peek? at hpk
@@ -20941,7 +20956,7 @@ lemma accum_step_flow (sc : ScannerState)
                     exact ⟨sp_gram, sp_block, sp_tok, sp_tok, h_stream, h_stack,
                       ⟨nn, kc, _, gt, s0, .open _ _ _ _ sp_block sp_tok (.mapBase _ _ _ _ _ _ _ resume h_open h_sep
                         (st.holdCommaLead h_tail h_lead₂ h_comma_lit)),
-                       h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.scanFlowEntry_preserves_indents hfe).trans (h_ind_ad.trans h_ind_park)), h_floorK',
+                       h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.scanFlowEntry_preserves_indents hfe).trans (h_ind_ad.trans h_ind_park)), (fun _ => (L4YAML.Proofs.PendingKeysStable.scanFlowEntry_preserves_pendingKeys hfe).trans (h_pk_ad.trans h_pk_park)), h_floorK',
                        fun _ => ⟨comma_km_transport (by omega) h_km h_preprocess h_ad_def (by
                            have hpk := hpeek_ad.trans (preprocess_some_peek h_preprocess)
                            unfold ScannerState.peek? at hpk
@@ -20969,7 +20984,7 @@ lemma accum_step_flow (sc : ScannerState)
                     exact ⟨sp_gram, sp_block, sp_tok, sp_tok, h_stream, h_stack,
                       ⟨nn, kc, _, gt, s0, .open _ _ _ _ sp_block sp_tok (.seqNest _ _ _ _ _ _ _ _ _ _ promise inject h_open h_sep
                         (st.holdCommaLead h_tail h_lead₂ h_comma_lit)),
-                       h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.scanFlowEntry_preserves_indents hfe).trans (h_ind_ad.trans h_ind_park)), h_floorK',
+                       h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.scanFlowEntry_preserves_indents hfe).trans (h_ind_ad.trans h_ind_park)), (fun _ => (L4YAML.Proofs.PendingKeysStable.scanFlowEntry_preserves_pendingKeys hfe).trans (h_pk_ad.trans h_pk_park)), h_floorK',
                        fun _ => ⟨comma_km_transport (by omega) h_km h_preprocess h_ad_def (by
                            have hpk := hpeek_ad.trans (preprocess_some_peek h_preprocess)
                            unfold ScannerState.peek? at hpk
@@ -20997,7 +21012,7 @@ lemma accum_step_flow (sc : ScannerState)
                     exact ⟨sp_gram, sp_block, sp_tok, sp_tok, h_stream, h_stack,
                       ⟨nn, kc, _, gt, s0, .open _ _ _ _ sp_block sp_tok (.mapNest _ _ _ _ _ _ _ _ _ _ promise inject h_open h_sep
                         (st.holdCommaLead h_tail h_lead₂ h_comma_lit)),
-                       h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.scanFlowEntry_preserves_indents hfe).trans (h_ind_ad.trans h_ind_park)), h_floorK',
+                       h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.scanFlowEntry_preserves_indents hfe).trans (h_ind_ad.trans h_ind_park)), (fun _ => (L4YAML.Proofs.PendingKeysStable.scanFlowEntry_preserves_pendingKeys hfe).trans (h_pk_ad.trans h_pk_park)), h_floorK',
                        fun _ => ⟨comma_km_transport (by omega) h_km h_preprocess h_ad_def (by
                            have hpk := hpeek_ad.trans (preprocess_some_peek h_preprocess)
                            unfold ScannerState.peek? at hpk
@@ -31364,7 +31379,7 @@ lemma accum_step_block (sc : ScannerState)
         InteriorGap s' (tailOf s'.tokens) sp_flow' sp_scan' ∧
           LastTokenReal s'.tokens ∧ s'.allowDirectives = false) := by
   -- B.4β: the flow stack is indexed by the scanner's `flowLevel`.
-  obtain ⟨nn, kc, km, gt, s0, h_flow, h_ksz, h_ind0, h_floorK, h_kprom⟩ := h_flowK
+  obtain ⟨nn, kc, km, gt, s0, h_flow, h_ksz, h_ind0, h_pk0, h_floorK, h_kprom⟩ := h_flowK
   rcases Nat.eq_zero_or_pos sc.flowLevel with h0 | hpos
   · -- depth 0 (no open flow collection): the existing depth-0 proof.
     rw [h0] at h_flow
@@ -31390,7 +31405,7 @@ lemma accum_step_block (sc : ScannerState)
         (absorb_stacksB sp_start sp_gram sp_block sp_flow h_stream h_stack h_flow)
         h_kbc h_scf (h_pending h0) h_corr h_noflow h_preprocess h_dispatch h_bare h_dn h_fv h_base
         h_mono h_sound h_cf h_lkt
-    exact ⟨g', bl', fl', sn', q1, q2, ⟨0, 0, #[], none, _, q3.retail, rfl, fun h => absurd h (by omega), Nat.zero_le _, fun h => absurd h (by omega)⟩, fun _ => q4, q5,
+    exact ⟨g', bl', fl', sn', q1, q2, ⟨0, 0, #[], none, _, q3.retail, rfl, fun h => absurd h (by omega), fun h => absurd h (by omega), Nat.zero_le _, fun h => absurd h (by omega)⟩, fun _ => q4, q5,
            fun h => absurd h (by omega)⟩
   · -- ═══ DEPTH ≥ 1: three arms — one free, one BUILT here, one NOT. ═══
     --
@@ -31499,6 +31514,11 @@ lemma accum_step_block (sc : ScannerState)
       exact (allowDirectives_update_indents _).trans
         (FlowIndentStable.preprocess_indents_of_inFlow h_sc_inflow h_preprocess)
     have h_ind_park : sc.indents = s0.indents := h_ind0 (by omega)
+    have h_pk_ad : s_ad.pendingKeys = sc.pendingKeys := by
+      rw [← h_ad_def]
+      exact (allowDirectives_update_pendingKeys _).trans
+        (L4YAML.Proofs.PendingKeysStable.preprocess_pendingKeys_of_inFlow h_sc_inflow h_preprocess)
+    have h_pk_park : sc.pendingKeys = s0.pendingKeys := h_pk0 (by omega)
     split at h_dispatch
     · -- ═══ `-` — REFUTED FOR FREE. ═══
       -- `[184] c-l-block-seq-entry` is a BLOCK production and the arm says so:
@@ -31590,7 +31610,7 @@ lemma accum_step_block (sc : ScannerState)
               -- Item 84: the floor refutes the lift's negative arm here too.
               · exact absurd h_floorK h_nofloor
           exact ⟨sp_gram, sp_block, sp_tok, sp_tok, h_stream, h_stack,
-            ⟨nn, kc, km, gt, s0, h_stk, h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.scanKey_indents_of_inFlow h_ad_inflow hk).trans (h_ind_ad.trans h_ind_park)), h_floorK',
+            ⟨nn, kc, km, gt, s0, h_stk, h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.scanKey_indents_of_inFlow h_ad_inflow hk).trans (h_ind_ad.trans h_ind_park)), (fun _ => (L4YAML.Proofs.PendingKeysStable.scanKey_pendingKeys_of_inFlow h_ad_inflow hk).trans (h_pk_ad.trans h_pk_park)), h_floorK',
              fun _ => ⟨scanKey_km_transport (by omega) h_ad_inflow h_km h_preprocess
                  h_ad_def (by
                    have hpk := hpeek_ad.trans (preprocess_some_peek h_preprocess)
@@ -31823,7 +31843,7 @@ lemma accum_step_block (sc : ScannerState)
                   | props _ _ _ h_tail_p => exact absurd h_tl_case (h_tail_p _)
                 rw [h_kj] at h_bundle ⊢
                 exact ⟨sp_gram, sp_block, sp_tok, sp_tok, h_stream, h_stack,
-                  ⟨nn, kc, km, gt, s0, h_cl, h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.scanValue_indents_of_inFlow h_ad_inflow hsv).trans (h_ind_ad.trans h_ind_park)), h_floorK', fun _ => ⟨h_km_v, h_panch_v, fun _ hv => absurd hv (by simp), h_resv_v⟩⟩,
+                  ⟨nn, kc, km, gt, s0, h_cl, h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.scanValue_indents_of_inFlow h_ad_inflow hsv).trans (h_ind_ad.trans h_ind_park)), (fun _ => (L4YAML.Proofs.PendingKeysStable.scanValue_pendingKeys_of_inFlow h_ad_inflow hsv).trans (h_pk_ad.trans h_pk_park)), h_floorK', fun _ => ⟨h_km_v, h_panch_v, fun _ hv => absurd hv (by simp), h_resv_v⟩⟩,
                   nofun, hcorr_tok, h_bundle⟩
             | colon kj =>
               -- the `.colon` cells are scan-refuted, white and props alike
@@ -31857,7 +31877,7 @@ lemma accum_step_block (sc : ScannerState)
                           (h_lead0'.imp id (fun h => ⟨h.1.trans h.2.symm, leadFree_of_eq_sep h_tl_case⟩)) h_colon_lit)
                     · exact absurd h_floorK h_nofloor
                 exact ⟨sp_gram, sp_block, sp_tok, sp_tok, h_stream, h_stack,
-                  ⟨nn, kc, km, gt, s0, h_stk, h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.scanValue_indents_of_inFlow h_ad_inflow hsv).trans (h_ind_ad.trans h_ind_park)), h_floorK',
+                  ⟨nn, kc, km, gt, s0, h_stk, h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.scanValue_indents_of_inFlow h_ad_inflow hsv).trans (h_ind_ad.trans h_ind_park)), (fun _ => (L4YAML.Proofs.PendingKeysStable.scanValue_pendingKeys_of_inFlow h_ad_inflow hsv).trans (h_pk_ad.trans h_pk_park)), h_floorK',
                    fun _ => ⟨h_km_v, h_panch_v, fun _ hv => absurd hv (by simp), h_resv_v⟩⟩,
                   nofun, hcorr_tok, h_bundle⟩
               | props ha ht sp_p h_tail_p h_lead_p h_run_p _ _ h_colon_p h_gate_p =>
@@ -31875,7 +31895,7 @@ lemma accum_step_block (sc : ScannerState)
                       · exact absurd h_floorK h_nofloor
                     · exact absurd h_floorK h_nofloor
                 exact ⟨sp_gram, sp_block, sp_tok, sp_tok, h_stream, h_stack,
-                  ⟨nn, kc, km, gt, s0, h_stk, h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.scanValue_indents_of_inFlow h_ad_inflow hsv).trans (h_ind_ad.trans h_ind_park)), h_floorK',
+                  ⟨nn, kc, km, gt, s0, h_stk, h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.scanValue_indents_of_inFlow h_ad_inflow hsv).trans (h_ind_ad.trans h_ind_park)), (fun _ => (L4YAML.Proofs.PendingKeysStable.scanValue_pendingKeys_of_inFlow h_ad_inflow hsv).trans (h_pk_ad.trans h_pk_park)), h_floorK',
                    fun _ => ⟨h_km_v, h_panch_v, fun _ hv => absurd hv (by simp), h_resv_v⟩⟩,
                   nofun, hcorr_tok, h_bundle⟩
             | question =>
@@ -31900,7 +31920,7 @@ lemma accum_step_block (sc : ScannerState)
                             exact absurd hcf Bool.false_ne_true⟩)) h_colon_lit)
                     · exact absurd h_floorK h_nofloor
                 exact ⟨sp_gram, sp_block, sp_tok, sp_tok, h_stream, h_stack,
-                  ⟨nn, kc, km, gt, s0, h_stk, h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.scanValue_indents_of_inFlow h_ad_inflow hsv).trans (h_ind_ad.trans h_ind_park)), h_floorK',
+                  ⟨nn, kc, km, gt, s0, h_stk, h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.scanValue_indents_of_inFlow h_ad_inflow hsv).trans (h_ind_ad.trans h_ind_park)), (fun _ => (L4YAML.Proofs.PendingKeysStable.scanValue_pendingKeys_of_inFlow h_ad_inflow hsv).trans (h_pk_ad.trans h_pk_park)), h_floorK',
                    fun _ => ⟨h_km_v, h_panch_v, fun _ hv => absurd hv (by simp), h_resv_v⟩⟩,
                   nofun, hcorr_tok, h_bundle⟩
               | props ha ht sp_p h_tail_p h_lead_p h_run_p _ _ h_colon_p h_gate_p =>
@@ -31918,7 +31938,7 @@ lemma accum_step_block (sc : ScannerState)
                       · exact absurd h_floorK h_nofloor
                     · exact absurd h_floorK h_nofloor
                 exact ⟨sp_gram, sp_block, sp_tok, sp_tok, h_stream, h_stack,
-                  ⟨nn, kc, km, gt, s0, h_stk, h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.scanValue_indents_of_inFlow h_ad_inflow hsv).trans (h_ind_ad.trans h_ind_park)), h_floorK',
+                  ⟨nn, kc, km, gt, s0, h_stk, h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.scanValue_indents_of_inFlow h_ad_inflow hsv).trans (h_ind_ad.trans h_ind_park)), (fun _ => (L4YAML.Proofs.PendingKeysStable.scanValue_pendingKeys_of_inFlow h_ad_inflow hsv).trans (h_pk_ad.trans h_pk_park)), h_floorK',
                    fun _ => ⟨h_km_v, h_panch_v, fun _ hv => absurd hv (by simp), h_resv_v⟩⟩,
                   nofun, hcorr_tok, h_bundle⟩
         · -- fallthrough: dispatch returns `.ok none`, not `.ok (some s')`.
@@ -40800,7 +40820,7 @@ lemma accum_step_content (sc : ScannerState)
         InteriorGap s' (tailOf s'.tokens) sp_flow' sp_scan' ∧
           LastTokenReal s'.tokens ∧ s'.allowDirectives = false) := by
   -- B.4β: the flow stack is indexed by the scanner's `flowLevel`.
-  obtain ⟨nn, kc, km, gt, s0, h_flow, h_ksz, h_ind0, h_floorK, h_kprom⟩ := h_flowK
+  obtain ⟨nn, kc, km, gt, s0, h_flow, h_ksz, h_ind0, h_pk0, h_floorK, h_kprom⟩ := h_flowK
   rcases Nat.eq_zero_or_pos sc.flowLevel with h0 | hpos
   · -- depth 0 (no open flow collection): the existing depth-0 proof.
     rw [h0] at h_flow
@@ -40830,7 +40850,7 @@ lemma accum_step_content (sc : ScannerState)
       accum_content_pending (h_dead := h_dead) (h_sound := h_sound) sc sp_start sp_flow sp_scan h0 s_prep s' c
         (absorb_stacksB sp_start sp_gram sp_block sp_flow h_stream h_stack h_flow)
         (h_pending h0) h_corr h_preprocess h_adj h_bare h_dn h_fv h_base h_mono h_not_doc h_dispatch
-    exact ⟨g', bl', fl', sn', q1, q2, ⟨0, 0, #[], none, _, q3.retail, rfl, fun h => absurd h (by omega), Nat.zero_le _, fun h => absurd h (by omega)⟩, fun _ => q4, q5,
+    exact ⟨g', bl', fl', sn', q1, q2, ⟨0, 0, #[], none, _, q3.retail, rfl, fun h => absurd h (by omega), fun h => absurd h (by omega), Nat.zero_le _, fun h => absurd h (by omega)⟩, fun _ => q4, q5,
            fun h => absurd h (by omega)⟩
   · -- ═══ DEPTH ≥ 1: the four value-completing arms CLOSE; `&`/`!` do not. ═══
     -- The route is `FlowOpenStack.receiveNode`, and four scanner gaps had to be
@@ -40964,6 +40984,11 @@ lemma accum_step_content (sc : ScannerState)
       exact (allowDirectives_update_indents _).trans
         (FlowIndentStable.preprocess_indents_of_inFlow h_sc_inflow h_preprocess)
     have h_ind_park : sc.indents = s0.indents := h_ind0 (by omega)
+    have h_pk_ad : s_ad.pendingKeys = sc.pendingKeys := by
+      rw [← h_ad_def]
+      exact (allowDirectives_update_pendingKeys _).trans
+        (L4YAML.Proofs.PendingKeysStable.preprocess_pendingKeys_of_inFlow h_sc_inflow h_preprocess)
+    have h_pk_park : sc.pendingKeys = s0.pendingKeys := h_pk0 (by omega)
     -- Item 164: …and across the content dispatch itself, which item 158
     -- already proved pushes exactly one node token — no bracket, and the
     -- pending reservation either stands or is cleared.
@@ -41043,7 +41068,7 @@ lemma accum_step_content (sc : ScannerState)
         have h_stk : FlowStackB sp_start nn kc gt s0 (d + 1) ks km tl sp_block sp_flow := by
           · exact .open (d + 1) ks km tl sp_block sp_flow h_fos
         exact ⟨sp_gram, sp_block, sp_flow, sp_new, h_stream, h_stack,
-          ⟨nn, kc, km, gt, s0, h_stk, h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.dispatchContent_preserves_indents h_ad_inflow h_dispatch).trans (h_ind_ad.trans h_ind_park)), h_floorK',
+          ⟨nn, kc, km, gt, s0, h_stk, h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.dispatchContent_preserves_indents h_ad_inflow h_dispatch).trans (h_ind_ad.trans h_ind_park)), (fun _ => (L4YAML.Proofs.PendingKeysStable.dispatchContent_preserves_pendingKeys h_ad_inflow h_dispatch).trans (h_pk_ad.trans h_pk_park)), h_floorK',
            fun _ => ⟨content_km_transport hpos h_km h_preprocess h_ad_def h_dispatch
                ⟨congrArg SimpleKeyState.possible (dispatchContent_anchor_simpleKey h_dispatch).1,
                 congrArg SimpleKeyState.tokenIndex (dispatchContent_anchor_simpleKey h_dispatch).1⟩
@@ -41133,7 +41158,7 @@ lemma accum_step_content (sc : ScannerState)
           have h_stk : FlowStackB sp_start nn kc gt s0 (d + 1) ks km tl sp_block sp_flow := by
             · exact .open (d + 1) ks km tl sp_block sp_flow h_fos
           exact ⟨sp_gram, sp_block, sp_flow, sp_new, h_stream, h_stack,
-            ⟨nn, kc, km, gt, s0, h_stk, h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.dispatchContent_preserves_indents h_ad_inflow h_dispatch).trans (h_ind_ad.trans h_ind_park)), h_floorK',
+            ⟨nn, kc, km, gt, s0, h_stk, h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.dispatchContent_preserves_indents h_ad_inflow h_dispatch).trans (h_ind_ad.trans h_ind_park)), (fun _ => (L4YAML.Proofs.PendingKeysStable.dispatchContent_preserves_pendingKeys h_ad_inflow h_dispatch).trans (h_pk_ad.trans h_pk_park)), h_floorK',
              fun _ => ⟨content_km_transport hpos h_km h_preprocess h_ad_def h_dispatch
                  ⟨congrArg SimpleKeyState.possible (dispatchContent_tag_simpleKey h_dispatch).1,
                   congrArg SimpleKeyState.tokenIndex (dispatchContent_tag_simpleKey h_dispatch).1⟩
@@ -41270,7 +41295,7 @@ lemma accum_step_content (sc : ScannerState)
             ⟨nn, kc, km, gt, s0, .open (d + 1) ks km (.value kj) sp_block sp_ne
               (FlowOpenStack.receiveNode h_fos h_tail h_lead' sp_ne kj h_node'
                 (fun h => .content _ _ _ _ (h_json (hkj h)))),
-             h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.dispatchContent_preserves_indents h_ad_inflow h_dispatch).trans (h_ind_ad.trans h_ind_park)), h_floorK',
+             h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.dispatchContent_preserves_indents h_ad_inflow h_dispatch).trans (h_ind_ad.trans h_ind_park)), (fun _ => (L4YAML.Proofs.PendingKeysStable.dispatchContent_preserves_pendingKeys h_ad_inflow h_dispatch).trans (h_pk_ad.trans h_pk_park)), h_floorK',
              fun _ => ⟨content_km_transport hpos h_km h_preprocess h_ad_def h_dispatch
                  ⟨((dispatchContent_value_key_facts h_dispatch hamp hbang hnotPipe hnotGt).1).1,
                   ((dispatchContent_value_key_facts h_dispatch hamp hbang hnotPipe hnotGt).1).2.1⟩
@@ -41365,7 +41390,7 @@ lemma accum_step_content (sc : ScannerState)
         have h_stk : FlowStackB sp_start nn kc gt s0 (d + 1) ks km tl sp_block sp_flow := by
           · exact .open (d + 1) ks km tl sp_block sp_flow h_fos
         exact ⟨sp_gram, sp_block, sp_flow, sp_new, h_stream, h_stack,
-          ⟨nn, kc, km, gt, s0, h_stk, h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.dispatchContent_preserves_indents h_ad_inflow h_dispatch).trans (h_ind_ad.trans h_ind_park)), h_floorK',
+          ⟨nn, kc, km, gt, s0, h_stk, h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.dispatchContent_preserves_indents h_ad_inflow h_dispatch).trans (h_ind_ad.trans h_ind_park)), (fun _ => (L4YAML.Proofs.PendingKeysStable.dispatchContent_preserves_pendingKeys h_ad_inflow h_dispatch).trans (h_pk_ad.trans h_pk_park)), h_floorK',
            fun _ => ⟨content_km_transport hpos h_km h_preprocess h_ad_def h_dispatch
                ⟨congrArg SimpleKeyState.possible (dispatchContent_anchor_simpleKey h_dispatch).1,
                 congrArg SimpleKeyState.tokenIndex (dispatchContent_anchor_simpleKey h_dispatch).1⟩
@@ -41489,7 +41514,7 @@ lemma accum_step_content (sc : ScannerState)
           have h_stk : FlowStackB sp_start nn kc gt s0 (d + 1) ks km tl sp_block sp_flow := by
             · exact .open (d + 1) ks km tl sp_block sp_flow h_fos
           exact ⟨sp_gram, sp_block, sp_flow, sp_new, h_stream, h_stack,
-            ⟨nn, kc, km, gt, s0, h_stk, h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.dispatchContent_preserves_indents h_ad_inflow h_dispatch).trans (h_ind_ad.trans h_ind_park)), h_floorK',
+            ⟨nn, kc, km, gt, s0, h_stk, h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.dispatchContent_preserves_indents h_ad_inflow h_dispatch).trans (h_ind_ad.trans h_ind_park)), (fun _ => (L4YAML.Proofs.PendingKeysStable.dispatchContent_preserves_pendingKeys h_ad_inflow h_dispatch).trans (h_pk_ad.trans h_pk_park)), h_floorK',
              fun _ => ⟨content_km_transport hpos h_km h_preprocess h_ad_def h_dispatch
                  ⟨congrArg SimpleKeyState.possible (dispatchContent_tag_simpleKey h_dispatch).1,
                   congrArg SimpleKeyState.tokenIndex (dispatchContent_tag_simpleKey h_dispatch).1⟩
@@ -41653,7 +41678,7 @@ lemma accum_step_content (sc : ScannerState)
             exact ⟨sp_gram, sp_block, sp_ne, sp_res, h_stream, h_stack,
               ⟨nn, kc, km, gt, s0, .open (d + 1) ks km (.value kj) sp_block sp_ne
                 (h_fos.receivePropsContent (hjson := fun h => h_json (hkj h)) h_tail h_lead_p' h_run' h_sep h_content'),
-               h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.dispatchContent_preserves_indents h_ad_inflow h_dispatch).trans (h_ind_ad.trans h_ind_park)), h_floorK',
+               h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.dispatchContent_preserves_indents h_ad_inflow h_dispatch).trans (h_ind_ad.trans h_ind_park)), (fun _ => (L4YAML.Proofs.PendingKeysStable.dispatchContent_preserves_pendingKeys h_ad_inflow h_dispatch).trans (h_pk_ad.trans h_pk_park)), h_floorK',
                fun _ => ⟨content_km_transport hpos h_km h_preprocess h_ad_def h_dispatch
                    ⟨((dispatchContent_value_key_facts h_dispatch hamp hbang hnotPipe hnotGt).1).1,
                     ((dispatchContent_value_key_facts h_dispatch hamp hbang hnotPipe hnotGt).1).2.1⟩
@@ -42286,12 +42311,14 @@ lemma scan_content_gives_stream_v2
     exact ⟨0, 0, #[], none, ScannerState.mk' input, FlowStackB.nil sp _,
       (by simp [ScannerCorrectness.emit_preserves_flowLevel, ScannerState.mk']),
       fun h => absurd h (by simp [ScannerCorrectness.emit_preserves_flowLevel, ScannerState.mk']),
+      fun h => absurd h (by simp [ScannerCorrectness.emit_preserves_flowLevel, ScannerState.mk']),
       Nat.zero_le _,
       fun h => absurd h (by
       simp [ScannerCorrectness.emit_preserves_flowLevel, ScannerState.mk'])⟩
   · rw [ScannerCorrectness.emit_preserves_flowStack]
     exact ⟨0, 0, #[], none, ScannerState.mk' input, FlowStackB.nil sp _,
       (by simp [ScannerCorrectness.emit_preserves_flowLevel, ScannerState.mk']),
+      fun h => absurd h (by simp [ScannerCorrectness.emit_preserves_flowLevel, ScannerState.mk']),
       fun h => absurd h (by simp [ScannerCorrectness.emit_preserves_flowLevel, ScannerState.mk']),
       Nat.zero_le _,
       fun h => absurd h (by

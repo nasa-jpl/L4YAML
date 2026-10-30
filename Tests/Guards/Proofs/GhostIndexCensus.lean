@@ -279,6 +279,7 @@ def expectedSummary : String := "carriers=60 snapshot=9 ghost=73 or=107"
 -- `sc.indents = s0.indents` conjunct); valueF's cover adds the scalar `lo` (FlowBaseRoutes
 -- scalar 8 → 9); pendingMapValue.h_closeF's cover lost its ghost level `m` (PendingNode
 -- scalar 63 → 62) — the cover is now `Floor lo n ks` at the park's own level.
+-- 2026-10-30 (item 407, flow carrier `pendingKeys` conjunct): FlowStackK prop 5 → 6 — the carrier gains `(0 < fl → sc.pendingKeys = s0.pendingKeys)`, an implication whose body is a STATE equality (classed `prop` like its indents twin); ghost 3 → 3, no proof-side list.
 def expectedTally : List String :=
   ["BareLandingFacts: surface=0 state=2 prop=0 scalar=1 snapshot=0 ghost=0 or=0",
    "BlockStack: surface=2 state=0 prop=0 scalar=0 snapshot=0 ghost=0 or=0",
@@ -294,7 +295,7 @@ def expectedTally : List String :=
    "FlowOpenStack: surface=31 state=1 prop=28 scalar=9 snapshot=1 ghost=11 or=2",
    "FlowStack: surface=2 state=0 prop=0 scalar=0 snapshot=0 ghost=0 or=0",
    "FlowStackB: surface=6 state=1 prop=1 scalar=4 snapshot=1 ghost=7 or=0",
-   "FlowStackK: surface=5 state=2 prop=5 scalar=5 snapshot=1 ghost=3 or=2",
+   "FlowStackK: surface=5 state=2 prop=6 scalar=5 snapshot=1 ghost=3 or=2",
    "GateOf: surface=0 state=1 prop=0 scalar=1 snapshot=2 ghost=0 or=0",
    "ImplicitKeyHead: surface=2 state=0 prop=2 scalar=0 snapshot=0 ghost=0 or=0",
    "ImplicitKeyPack: surface=16 state=1 prop=16 scalar=9 snapshot=0 ghost=4 or=7",
