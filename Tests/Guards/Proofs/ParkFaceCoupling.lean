@@ -83,7 +83,7 @@ example {sc : ScannerState} {sp_start sp_block sp_scan : SurfPos}
     (h : L4YAML.Proofs.StreamAccum.PendingNode sc false sp_start sp_block sp_scan) :
     True := by
   cases h with
-  | pendingMapValue _ _ _ n _ _ _ _ h_ivl =>
+  | pendingMapValue _ _ _ n _ _ _ _ _ h_ivl =>
     have : sc.implicitValueLine = some sc.line ∨
         (sp_scan.col = n + 1 ∧ ∀ sp_v : SurfPos,
           SBlockIndented n .blockOut sp_scan sp_v → SLYamlStream sp_start sp_v) := h_ivl

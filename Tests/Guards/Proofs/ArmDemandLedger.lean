@@ -173,7 +173,8 @@ lemma colon_fires_from_any_park
     (h_dispatch : scanNextToken_dispatchBlockIndicators
         (if s_prep.allowDirectives then
           { s_prep with allowDirectives := false, documentEverStarted := true }
-        else s_prep) ':' = .ok (some s')) :
+        else s_prep) ':' = .ok (some s'))
+    (h_cf : ColFloor.ColFloor sc) (h_lkt : ScalarWalkColFloor.LiveKeyTop sc) :
     ∃ sp_gram' sp_block' sp_flow' sp_scan',
       SLYamlStream sp_start sp_gram' ∧
       BlockStack sp_gram' sp_block' ∧
@@ -189,6 +190,6 @@ lemma colon_fires_from_any_park
     (PendingNode.arm_tight_or_col h_noflow_sc h_pending)
     -- Item 287: the consumer takes the punt as a builder, told what an inline
     -- residue at the park is; this route's punt is already the conclusion.
-    h_kbc h_scf h_live (fun _ => h_punt) hcorr_prep hcorr_result h_corr h_noflow h_preprocess h_dispatch
+    h_kbc h_scf h_live (fun _ => h_punt) hcorr_prep hcorr_result h_corr h_noflow h_preprocess h_dispatch h_cf h_lkt
 
 end Tests.Guards.ArmDemandLedger

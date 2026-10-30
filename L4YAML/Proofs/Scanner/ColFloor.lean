@@ -3345,6 +3345,32 @@ lemma scanNextToken_preserves_LiveKeyTop (s s' : ScannerState)
                         simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
                         exact dispatchContent_LiveKeyTop hpk2 hnb h_dc hP2 hcf2 hnd2
 
+/-! ### The `scan` seed carries `LiveKeyTop` (item 402): `mk'` saves no key, holds an
+    empty key stack at flow level 0, and the `streamStart` emission and §5.2's BOM
+    advance keep all three. -/
+
+lemma seed_LiveKeyTop (input : String) :
+    LiveKeyTop ((ScannerState.mk' input).emit .streamStart) := by
+  refine ⟨fun h _ => absurd h ?_, fun k hk => absurd hk ?_, ?_⟩
+  · simp [ScannerState.emit, ScannerState.mk']
+  · simp [ScannerState.emit, ScannerState.mk']
+  · simp [ScannerState.emit, ScannerState.mk']
+
+lemma seed_bom_LiveKeyTop (input : String) :
+    LiveKeyTop ((ScannerState.mk' input).emit .streamStart).consumeBOM := by
+  refine ⟨fun h _ => absurd h ?_, fun k hk => absurd hk ?_, ?_⟩
+  · show (((ScannerState.mk' input).emit .streamStart).advance).simpleKey.possible ≠ true
+    rw [L4YAML.Proofs.ScannerCorrectness.advance_preserves_simpleKey]
+    simp [ScannerState.emit, ScannerState.mk']
+  · show k ∉ (((ScannerState.mk' input).emit .streamStart).advance).simpleKeyStack
+    rw [L4YAML.Proofs.ScannerCorrectness.advance_preserves_simpleKeyStack]
+    simp [ScannerState.emit, ScannerState.mk']
+  · show (((ScannerState.mk' input).emit .streamStart).advance).simpleKeyStack.size =
+      (((ScannerState.mk' input).emit .streamStart).advance).flowLevel
+    rw [L4YAML.Proofs.ScannerCorrectness.advance_preserves_simpleKeyStack,
+      L4YAML.Proofs.ScannerContracts.advance_preserves_flowLevel]
+    simp [ScannerState.emit, ScannerState.mk']
+
 end StepOpen
 
 end L4YAML.Proofs.ColFloor

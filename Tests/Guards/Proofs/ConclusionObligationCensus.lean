@@ -338,7 +338,7 @@ def expectedLedger : List String :=
     "res=3 imp=5 prem=1 proj=0 flowOpen_stamp",
     "res=3 imp=12 prem=0 proj=0 keyctx_of_preprocess",
     "res=3 imp=12 prem=0 proj=0 nodocctx_of_preprocess",
-    "res=2 imp=26 prem=1 proj=0 deeperLandingResume",
+    "res=2 imp=29 prem=1 proj=0 deeperLandingResume",
     "res=1 imp=4 prem=1 proj=0 PreprocessIndentStable.IndentFloor.transport",
     "res=0 imp=0 prem=0 proj=0 flowKeyHead",
     "res=0 imp=0 prem=0 proj=1 FlowBaseRoutes.key",

@@ -39,6 +39,8 @@ example {sc : ScannerState} {sp_start sp_block sp_scan : SurfPos} {n : Nat}
     (h_close : ∀ sp_mid, SBlockNode (n + 1) .blockOut sp_scan sp_mid →
       SLYamlStream sp_start sp_mid)
     (h_floor : IndentFloor sc (n + 1))
+    -- Item 402: the park's top at or left of its level (`h_top`), beside the floor.
+    (h_top : sc.currentIndent ≤ (n : Int))
     (h_nic : sc.needIndentCheck = false)
     (h_real : LastTokenReal sc.tokens)
     (h_sk : sc.simpleKeyAllowed = true)
@@ -56,7 +58,7 @@ example {sc : ScannerState} {sp_start sp_block sp_scan : SurfPos} {n : Nat}
     (h_alt : PackAlt sc)
     (h_next : sc.inFlow = false → NextIsSep sc) :
     PendingNode sc false sp_start sp_block sp_scan :=
-  PendingNode.pendingMapValue (h_next := h_next) (h_offer := h_offer) sp_start sp_block sp_scan n h_close h_floor
+  PendingNode.pendingMapValue (h_next := h_next) (h_offer := h_offer) sp_start sp_block sp_scan n h_close h_floor h_top
     -- Item 288: the slot's decline names the stamp this pin carries.
     h_nic h_real (Or.inl h_ivl) (Or.inr h_nq) (Or.inr h_ivl)
     h_sk h_col0 (Or.inr trivial) (Or.inr h_alt)

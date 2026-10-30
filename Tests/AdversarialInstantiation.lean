@@ -8300,6 +8300,54 @@ def testInputAheadExports (state : IO.Ref TestCollector) : IO Unit := do
   check state s!"P68e the generic §9 whitespace laws direct: rows={cnt[0]!} sum-law viol={cnt[1]!} trailing-eq viol={cnt[2]!} ad-transfer viol={cnt[3]!} saturate viol={cnt[4]!} (vacuous {cnt[5]!}) stop viol={cnt[6]!} (vacuous {cnt[7]!}) peek-laws viol={cnt[8]!} (vacuous {cnt[9]!}) unwind-cursor viol={cnt[10]!}"
     (cnt[0]! == 360 && cnt[1]! == 0 && cnt[2]! == 0 && cnt[3]! == 0 && cnt[4]! == 0 && cnt[6]! == 0 && cnt[8]! == 0 && cnt[10]! == 0 && cnt[5]! == 35 && cnt[7]! == 177 && cnt[9]! == 35)
 
+  -- 68f (item 402, B fold) — `pendingMapValue.h_top`'s supply at the implicit-key births:
+  -- (i) `scanValue_top_le_key` DIRECT on crafted states (live key at column k, top ≤ k: the push
+  -- branch k > top, the no-push branch k = top, and the `?`-line clear with an explicit key line);
+  -- (ii) `implicit_colon_top_le` at every accepted pause whose preprocess hands a `:` to a live
+  -- same-line key BEHIND the cursor in block context: `scanValue` must keep the top ≤ the key's
+  -- column.  Predicted before the run: 0 violations on both; (ii) armed > 0.
+  let mut sfRows := 0
+  let mut sfViol := 0
+  for (input, kcol, top) in [("a: 1", 0, -1), ("  b: 2", 2, 0), ("  b: 2", 2, 2), ("x: y", 0, 0), ("- a: 1", 2, 0)] do
+    let s0 := L4YAML.Scanner.ScannerState.mk' input
+    let ci := input.toList.findIdx (· == ':')
+    let kpos : L4YAML.YamlPos := { offset := 0, line := 0, col := kcol }
+    let s1 : L4YAML.Scanner.ScannerState :=
+      { s0 with offset := ci, col := ci,
+                indents := #[{ column := -1, isSequence := false }].push { column := top, isSequence := false },
+                simpleKey := { possible := true, tokenIndex := 0, pos := kpos } }
+    for ekl in [none, some (0 : Nat)] do
+      let s2 := { s1 with explicitKeyLine := ekl }
+      if s2.peek? == some ':' && s2.currentIndent ≤ (kcol : Int) then
+        sfRows := sfRows + 1
+        match L4YAML.Scanner.scanValue s2 with
+        | .ok s3 => if !(s3.currentIndent ≤ (kcol : Int)) then sfViol := sfViol + 1
+        | .error _ => pure ()
+  let mut icArmed := 0
+  let mut icViol := 0
+  for input in inputAheadInputs ++ ["a: 1\n", "  b:\n    c: 2\n", "- a: 1\n  b: 2\n", "? x\n: y\n", "a:\n  b: 1\n  c: 2\n", "&x a: 1\n", "\"q\": 1\n", "a: &y b: 1\n"] do
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:128] do
+      match L4YAML.Scanner.scanNextToken s with
+      | .ok (some sN) =>
+        match L4YAML.Scanner.scanNextToken_preprocess s with
+        | .ok (some (sP, ':')) =>
+          if sP.simpleKey.possible && sP.simpleKey.pos.line == sP.line && sP.simpleKey.pos.offset != sP.offset
+              && !sP.inFlow && sP.currentIndent ≤ (sP.simpleKey.pos.col : Int) then
+            let sD : L4YAML.Scanner.ScannerState :=
+              if sP.allowDirectives then { sP with allowDirectives := false, documentEverStarted := true } else sP
+            match L4YAML.Scanner.scanValue sD with
+            | .ok s' =>
+              icArmed := icArmed + 1
+              if !(s'.currentIndent ≤ (sP.simpleKey.pos.col : Int)) then icViol := icViol + 1
+            | .error _ => pure ()
+        | _ => pure ()
+        s := sN
+      | _ => break
+  check state s!"P68f h_top's supply: scanValue_top_le_key direct rows={sfRows} viol={sfViol}; implicit_colon_top_le at `:` pauses armed={icArmed} viol={icViol}"
+    (sfRows == 10 && sfViol == 0 && icArmed == 56 && icViol == 0)
+
+
 
 
 def collectTests : IO VerifiedSuiteResult := do
