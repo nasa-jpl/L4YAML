@@ -387,7 +387,7 @@ def expectedModuleTallyP : String :=
   -- 2026-10-28 (item 386): constants/decls +2 (`IndentFloor.int_le_of_succ`, the level relays), READ +5, RELAY +2
   -- (the helpers' new premises `h_floor`/`h_nk`, the openers' `h_lvl_old`/`h_floor_mv`); UNUSED unchanged.
   -- 2026-10-29 (item 394): `FlowBaseRoutes.valueF` (+3 constants: the field, its projection, the structure's new arity), five more premise reads at the births and closes.
-  "constants=1735 decls=1371 eta=447 FIELD=196 READ=1460 RELAY=2724 RETURN=172 UNUSED=27"
+  "constants=1739 decls=1374 eta=447 FIELD=196 READ=1465 RELAY=2732 RETURN=172 UNUSED=27"
 
 -- Item 287: `accum_block_on_closeThenBlock`'s `h_vslot`, a READ one, left the
 -- `_ ∨ True` population — its sibling's move, under this peel.  Item 288: and
@@ -403,7 +403,7 @@ def expectedOptTallyP : String :=
   -- 2026-10-24 (item 350): total 163 → 159, ETA 33 → 31, READ 87 → 85 — the `h_expl`/`h_explUp` `inr`
   -- arms pay an empty chain and no longer read their alternative.
   -- 2026-10-28 (item 380, PR #146 review): READ 89 → 91, RELAY 40 → 38 — the two optional contexts eliminated by `Or.elim`.
-  "total=162 ETA=31 FIELD=4 READ=91 RELAY=34 RETURN=2"
+  "total=161 ETA=31 FIELD=4 READ=91 RELAY=33 RETURN=2"
 
 run_cmd do
   let env ← getEnv
@@ -710,7 +710,7 @@ def expectedDead : List String :=
    "L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_offcol#13 (_h_ne) [class marker]",
    "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch#28 (h_alt) [promised step]",
    "L4YAML.Proofs.StreamAccum.entryPropsKeyPack_of_dispatch#31 (h_alt) [promised step]",
-   "L4YAML.Proofs.StreamAccum.entryPropsKeyPack_of_dispatch#32 (h_dispatch) [promised step]",
+   -- Item 409 (2026-10-30): `entryPropsKeyPack_of_dispatch.h_dispatch` is read now (the `MarkedColsIn` transport).
    "L4YAML.Proofs.StreamAccum.flowKeyPack_of_close#11 (_) [conclusion binder]",
    "L4YAML.Proofs.StreamAccum.gate_of_peek#3 (_) [family uniformity]",
    "L4YAML.Proofs.StreamAccum.park_gate_of_peek#2 (_) [family uniformity]",
@@ -768,7 +768,7 @@ def deadReason : String → String
 -- wrappers; `entryPropsKeyPack_of_dispatch`'s `h_dispatch` moved from #30 to #31 behind the new binder.
 -- 2026-10-23 (item 349): `dead` 32 → 31, `RELAY` 5 → 4 — `content_dispatch_routed#29 (h_alt)` is read at the `k = 0` payment.
 -- 2026-10-24 (B3 [66] col-0 threading): dead 33 → 32 — `content_dispatch_routed#29 (h_alt)` is read on the item-354 base.
-def expectedDeadTally : String := "dead=32 RELAY=4 UNUSED=28 RELAY=4"  -- 2026-10-24 (B3): see `expectedDead`
+def expectedDeadTally : String := "dead=31 RELAY=3 UNUSED=28 RELAY=3"  -- 2026-10-24 (B3): see `expectedDead`
 
 run_cmd do
   let env ← getEnv
@@ -881,7 +881,7 @@ lemma opt_premise_is_no_premise {A P : Prop} : (A ∨ True → P) ↔ P :=
 -- — the two item-385 helpers; `deeperLandingResume.h_valF` is one more optional context (READ inside the helper).
 def expectedOptPopulation : String :=
   -- 2026-10-24 (item 350): total 163 → 159, optTy 156 → 153, ctorFields 33 → 31 — as above.
-  "total=162 optTy=154 ctorFields=31"
+  "total=161 optTy=154 ctorFields=31"
 
 run_cmd do
   let env ← getEnv

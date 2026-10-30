@@ -168,6 +168,7 @@ lemma colon_fires_from_any_park
     (hcorr_prep : ScannerSurfCorr s_prep sp_prep)
     (hcorr_result : ScannerSurfCorr s' sp_scan')
     (h_corr : ScannerSurfCorr sc sp_scan)
+    (h_sound : L4YAML.Proofs.PendingKeySound.Sound sc) (h_mono : L4YAML.Proofs.IndentStackMono.Mono sc)
     (h_noflow : s_prep.inFlow = false)
     (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, ':')))
     (h_dispatch : scanNextToken_dispatchBlockIndicators
@@ -190,6 +191,6 @@ lemma colon_fires_from_any_park
     (PendingNode.arm_tight_or_col h_noflow_sc h_pending)
     -- Item 287: the consumer takes the punt as a builder, told what an inline
     -- residue at the park is; this route's punt is already the conclusion.
-    h_kbc h_scf h_live (fun _ => h_punt) hcorr_prep hcorr_result h_corr h_noflow h_preprocess h_dispatch h_cf h_lkt
+    h_kbc h_scf h_live (fun _ => h_punt) hcorr_prep hcorr_result h_corr h_sound h_mono h_noflow h_preprocess h_dispatch h_cf h_lkt
 
 end Tests.Guards.ArmDemandLedger
