@@ -1016,6 +1016,235 @@ lemma scanSingleQuoted_follower {s s' : ScannerState} (h : scanSingleQuoted s = 
       have hv : validateTrailingContent sac s.inputEnd = .ok () := by cases u; exact hval
       exact (validateTrailingContent_follower hv).congr rfl rfl rfl
 
+/-! ### Item 401 — the fuel half of export (a)
+
+`scanPlainScalar` hands the loop `2·(inputEnd − offset + 1)` units of fuel; every step that
+does not stop consumes a byte of a cursor that was strictly before the end, so a result with
+`terminated = false` would need `fuel ≤ inputEnd − offset`.  No `offset ≤ inputEnd` invariant
+is needed: the bound is read off the LAST consuming step's source state. -/
+
+/-- Every terminator result stops the walk. -/
+lemma terminates?_terminated {c : Char} {s : ScannerState} {content spaces : String}
+    {inFlow : Bool} {r : PlainScalarResult}
+    (h : collectPlainScalar_terminates? c s content spaces inFlow = some r) :
+    r.terminated = true := by
+  unfold collectPlainScalar_terminates? at h
+  split at h
+  · injection h with h; subst h; rfl
+  · split at h
+    · simp only [] at h
+      split at h <;> split at h <;> first
+        | (injection h with h; subst h; rfl)
+        | cases h
+    · split at h
+      · injection h with h; subst h; rfl
+      · split at h
+        · injection h with h; subst h; rfl
+        · cases h
+
+lemma peek_some_lt {s : ScannerState} {c : Char} (hpk : s.peek? = some c) :
+    s.offset < s.inputEnd := by
+  unfold ScannerState.peek? at hpk
+  by_cases h : s.offset < s.inputEnd
+  · exact h
+  · rw [ite_eq_right h] at hpk; cases hpk
+
+lemma advance_inputEnd (s : ScannerState) : s.advance.inputEnd = s.inputEnd := by
+  unfold ScannerState.advance
+  split <;> dsimp only <;> (try split) <;> (try split) <;> simp
+
+lemma advance_offset_gt_of_peek {s : ScannerState} {c : Char} (hpk : s.peek? = some c) :
+    s.offset < s.advance.offset :=
+  L4YAML.Proofs.ScannerCorrectness.advance_increases_offset s (by
+    unfold ScannerState.hasMore; simpa using peek_some_lt hpk)
+
+lemma consumeNewline_inputEnd (s : ScannerState) :
+    (consumeNewline s).inputEnd = s.inputEnd := by
+  unfold consumeNewline
+  split <;> dsimp only <;> (try split) <;> simp [advance_inputEnd]
+
+lemma consumeNewline_offset_gt {s : ScannerState} {c : Char}
+    (hpk : s.peek? = some c) (hbr : isLineBreakBool c = true) :
+    s.offset < (consumeNewline s).offset := by
+  have hadv := advance_offset_gt_of_peek hpk
+  unfold consumeNewline
+  rw [hpk]
+  split
+  · exact hadv
+  · dsimp only
+    split
+    · rename_i hpk2
+      have h2 : s.advance.offset <
+          (String.Pos.Raw.next s.advance.input ⟨s.advance.offset⟩).byteIdx :=
+        String.Pos.Raw.lt_next s.advance.input ⟨s.advance.offset⟩
+      simp only
+      omega
+    · exact hadv
+  · rename_i hn hr
+    exfalso
+    have : c = '\n' ∨ c = '\r' := by
+      simp [isLineBreakBool, isLineFeedBool, isCarriageReturnBool] at hbr
+      rcases hbr with h | h <;> simp [h]
+    rcases this with h | h
+    · exact hn (by rw [h])
+    · exact hr (by rw [h])
+
+lemma skipWhitespaceLoop_inputEnd (fuel : Nat) : ∀ s : ScannerState,
+    (skipWhitespaceLoop s fuel).inputEnd = s.inputEnd := by
+  induction fuel with
+  | zero => intro s; simp [skipWhitespaceLoop]
+  | succ fuel' ih =>
+    intro s
+    unfold skipWhitespaceLoop
+    split
+    · split
+      · rw [ih, advance_inputEnd]
+      · rfl
+    · rfl
+
+lemma skipWhitespace_inputEnd (s : ScannerState) : (skipWhitespace s).inputEnd = s.inputEnd := by
+  unfold skipWhitespace; exact skipWhitespaceLoop_inputEnd _ s
+
+lemma skipSpacesLoop_inputEnd (fuel : Nat) : ∀ s : ScannerState,
+    (skipSpacesLoop s fuel).inputEnd = s.inputEnd := by
+  induction fuel with
+  | zero => intro s; simp [skipSpacesLoop]
+  | succ fuel' ih =>
+    intro s
+    unfold skipSpacesLoop
+    split
+    · rw [ih, advance_inputEnd]
+    · rfl
+
+lemma skipSpaces_inputEnd (s : ScannerState) : (skipSpaces s).inputEnd = s.inputEnd := by
+  unfold skipSpaces; exact skipSpacesLoop_inputEnd _ s
+
+lemma skipBlankLinesLoop_inputEnd (fuel : Nat) : ∀ (s : ScannerState) (cnt ie : Nat),
+    (skipBlankLinesLoop s cnt fuel ie).snd.inputEnd = s.inputEnd := by
+  induction fuel with
+  | zero => intro s cnt ie; rfl
+  | succ fuel' ih =>
+    intro s cnt ie
+    unfold skipBlankLinesLoop
+    dsimp only
+    split
+    · split
+      · split
+        · rfl
+        · rw [ih, consumeNewline_inputEnd, skipWhitespace_inputEnd]
+      · rfl
+    · rfl
+
+/-- A block line break the plain walk folds over consumes at least the break. -/
+lemma handleBlockLineBreak_progress {s s2 : ScannerState} {content content' : String}
+    {ci ie : Nat} {c : Char}
+    (h : collectPlainScalar_handleBlockLineBreak s content ci ie = some (content', s2))
+    (hpk : s.peek? = some c) (hbr : isLineBreakBool c = true) :
+    s.offset < s2.offset ∧ s2.inputEnd = s.inputEnd := by
+  unfold collectPlainScalar_handleBlockLineBreak at h
+  dsimp only at h
+  split at h
+  · cases h
+  · split at h
+    · cases h
+    · simp only [Option.some.injEq, Prod.mk.injEq] at h
+      obtain ⟨-, rfl⟩ := h
+      refine ⟨?_, ?_⟩
+      · have h1 := consumeNewline_offset_gt hpk hbr
+        have h2 := L4YAML.Proofs.ScannerCorrectness.skipBlankLinesLoop_offset_ge (consumeNewline s) 0
+          (ie - (consumeNewline s).offset + 1) ie
+        have h3 := L4YAML.Proofs.ScannerCorrectness.skipSpaces_offset_ge (skipBlankLinesLoop (consumeNewline s) 0
+          (ie - (consumeNewline s).offset + 1) ie).snd
+        have h4 := L4YAML.Proofs.ScannerCorrectness.skipWhitespace_offset_ge (skipSpaces (skipBlankLinesLoop (consumeNewline s) 0
+          (ie - (consumeNewline s).offset + 1) ie).snd)
+        omega
+      · rw [skipWhitespace_inputEnd, skipSpaces_inputEnd, skipBlankLinesLoop_inputEnd,
+          consumeNewline_inputEnd]
+
+/-- **The fuel bound.**  A block-context walk that runs out of fuel had at most
+    `inputEnd − offset` units to begin with. -/
+lemma collectPlainScalarLoop_fuel_le_of_not_terminated (fuel : Nat) :
+    ∀ (s : ScannerState) (content spaces : String) (ci ie : Nat) (r : PlainScalarResult),
+    collectPlainScalarLoop s content spaces fuel false ci ie = .ok r →
+    r.terminated = false → fuel ≤ s.inputEnd - s.offset := by
+  induction fuel with
+  | zero => intros; exact Nat.zero_le _
+  | succ fuel' ih =>
+    intro s content spaces ci ie r hok hterm
+    unfold collectPlainScalarLoop at hok
+    split at hok
+    · injection hok with h_eq; subst h_eq; simp at hterm
+    · rename_i c hpk
+      have hlt := peek_some_lt hpk
+      split at hok
+      · rename_i hterm'
+        injection hok with h_eq; subst h_eq
+        rw [terminates?_terminated hterm'] at hterm; cases hterm
+      · split at hok
+        · rename_i hbr
+          split at hok
+          · rename_i hflow; simp at hflow
+          · split at hok
+            · injection hok with h_eq; subst h_eq; simp at hterm
+            · rename_i content' s2 hblk
+              split at hok
+              · injection hok with h_eq; subst h_eq; simp at hterm
+              · dsimp only [] at hok
+                generalize h_loop :
+                  collectPlainScalarLoop s2 content' "" fuel' false ci ie = cont at hok
+                cases cont with
+                | ok inner =>
+                  dsimp only [] at hok
+                  split at hok
+                  · injection hok with h_eq; subst h_eq; simp at hterm
+                  · have h_eq := Except.ok.inj hok; subst h_eq
+                    have hb := ih s2 content' "" ci ie _ h_loop hterm
+                    obtain ⟨hoff, hie⟩ := handleBlockLineBreak_progress hblk hpk hbr
+                    omega
+                | error e => simp at hok
+        · rename_i hbr
+          have hadv := advance_offset_gt_of_peek hpk
+          have hie := advance_inputEnd s
+          split at hok
+          · have hb := ih s.advance content _ ci ie r hok hterm
+            omega
+          · split at hok
+            · injection hok with h_eq; subst h_eq; simp at hterm
+            · have hb := ih s.advance _ "" ci ie r hok hterm
+              omega
+
+/-- `PlainFollower` reads the cursor and the column alone: the token array and the key flags
+    a scalar's close updates do not move it. -/
+lemma PlainFollower.congr {s t : ScannerState} (h : PlainFollower s) (hi : s.input = t.input)
+    (ho : s.offset = t.offset) (he : s.inputEnd = t.inputEnd) (hc : s.col = t.col) :
+    PlainFollower t := by
+  unfold PlainFollower at h ⊢
+  have hpk := peek_congr hi ho he
+  have hdoc : atDocumentBoundary s = atDocumentBoundary t := by
+    simp [atDocumentBoundary, atDocumentStart, atDocumentEnd, ScannerState.peekAt?, hi, ho, he, hc]
+  rw [← hpk, ← hdoc, ← hc]
+  exact h
+
+/-- **Export (a), closed.**  A block-context plain scalar leaves the cursor on `PlainFollower`
+    — the `terminated` hypothesis of `collectPlainScalarLoop_terminated_follower` discharged by
+    the fuel bound. -/
+lemma scanPlainScalar_follower {s s' : ScannerState} (h : scanPlainScalar s = .ok s')
+    (hflow : s.inFlow = false) : PlainFollower s' := by
+  unfold scanPlainScalar at h
+  simp only [hflow, bind, Except.bind] at h
+  split at h
+  · cases h
+  · rename_i r hloop
+    have hs' := Except.ok.inj h; subst hs'
+    cases hterm : r.terminated with
+    | true =>
+      exact (collectPlainScalarLoop_terminated_follower _ s "" "" _ _ r hloop hterm).congr
+        rfl rfl rfl rfl
+    | false =>
+      exfalso
+      have hb := collectPlainScalarLoop_fuel_le_of_not_terminated _ s "" "" _ _ r hloop hterm
+      omega
+
 end L4YAML.Proofs.ScalarWalkColFloor
 
 end Blanket
