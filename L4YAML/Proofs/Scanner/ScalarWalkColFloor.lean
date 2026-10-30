@@ -1284,17 +1284,22 @@ def KeyFollower (s : ScannerState) : Prop :=
 /-- Item 391 §5: a live simple key saved on the current line stands at or right of the
     indentation top (in BOTH contexts — item 402's step needs the flow half, since a key saved
     inside a flow collection is pushed by a nested opener and restored at the close), and so does
-    every stacked one; in block context the live key's cursor stands on a `KeyFollower`. -/
+    every stacked one; in block context the live key's cursor stands on a `KeyFollower`.  The
+    third conjunct is the stack's sync with the flow level (item 402: without it a block push
+    could stand above a stacked key; the scanner keeps the two in step, so it is read, not
+    assumed). -/
 def LiveKeyTop (s : ScannerState) : Prop :=
   (s.simpleKey.possible = true → s.simpleKey.pos.line = s.line →
     s.currentIndent ≤ (s.simpleKey.pos.col : Int) ∧ (s.inFlow = false → KeyFollower s)) ∧
   (∀ k ∈ s.simpleKeyStack, k.possible = true → k.pos.line = s.line →
-    s.currentIndent ≤ (k.pos.col : Int))
+    s.currentIndent ≤ (k.pos.col : Int)) ∧
+  s.simpleKeyStack.size = s.flowLevel
 
 lemma LiveKeyTop.initial (input : String) : LiveKeyTop (ScannerState.mk' input) := by
-  refine ⟨fun h _ => ?_, fun k hk => ?_⟩
+  refine ⟨fun h _ => ?_, fun k hk => ?_, ?_⟩
   · exact absurd h (by unfold ScannerState.mk'; simp)
   · exact absurd hk (by unfold ScannerState.mk'; simp)
+  · unfold ScannerState.mk'; rfl
 
 /-- `skipWhitespace` is the identity on a non-blank cursor. -/
 lemma skipWhitespace_eq_of_not_ws {s : ScannerState} {c : Char} (hpk : s.peek? = some c)

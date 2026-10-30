@@ -7622,7 +7622,8 @@ def liveKeyTopOk (s : L4YAML.Scanner.ScannerState) : Bool × Bool := Id.run do
   let stackArmed := s.simpleKeyStack.any fun k => k.possible && k.pos.line == s.line
   let stackOk := s.simpleKeyStack.all fun k =>
     !(k.possible && k.pos.line == s.line) || decide (s.currentIndent ≤ (k.pos.col : Int))
-  return (keyOk && stackOk, keyArmed || stackArmed)
+  let syncOk := s.simpleKeyStack.size == s.flowLevel
+  return (keyOk && stackOk && syncOk, keyArmed || stackArmed)
 
 /-- Every accepted pause of the real scanner: `(pauses, violations, armed pauses)`. -/
 def liveKeyTopStateWalk (input : String) (fuel : Nat := 128) : Nat × Nat × Nat := Id.run do
@@ -8199,6 +8200,36 @@ def testInputAheadExports (state : IO.Ref TestCollector) : IO Unit := do
       | _ => break
   check state s!"P68c dash_case (restated: the live key at a `-` dispatch is the fresh save at the cursor) direct: armed={dcArmed} ok={dcOk} err={dcErr} viol={dcViol} vacuous={dcVac}"
     (dcArmed == 11 && dcOk == 11 && dcErr == 0 && dcViol == 0 && dcVac == 155)
+
+  -- 68d (item 402) — the step `scanNextToken_preserves_LiveKeyTop` under its own premise: at every
+  -- accepted pause whose state satisfies `LiveKeyTop` (read by `liveKeyTopOk`), the next accepted
+  -- pause must too.  Rows count the premise armed/not; the preprocess's hand-off is read as well
+  -- (`PreLKT`'s fourth clause: in block context a saved key with `simpleKeyAllowed` sits at the
+  -- cursor).  Predicted before the run: every pause armed (P65 reads 0 violations, so the premise
+  -- always holds), 0 step violations, 0 hand-off violations; the initial state satisfies the
+  -- invariant on every input (`LiveKeyTop.initial`).
+  let mut stArmed := 0; let mut stVac := 0; let mut stViol := 0; let mut hoRows := 0; let mut hoViol := 0
+  let mut initViol := 0
+  for input in inputAheadInputs ++ extra ++ ["- - \"a\"\n", "- - - a\n", "[a] - b\n", "{a: 1}\n"] do
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    if !(liveKeyTopOk s).1 then initViol := initViol + 1
+    for _ in [:128] do
+      match L4YAML.Scanner.scanNextToken s with
+      | .ok (some sN) =>
+        if (liveKeyTopOk s).1 then
+          stArmed := stArmed + 1
+          if !(liveKeyTopOk sN).1 then stViol := stViol + 1
+        else stVac := stVac + 1
+        match L4YAML.Scanner.scanNextToken_preprocess s with
+        | .ok (some (sP, _)) =>
+          if !sP.inFlow && sP.simpleKeyAllowed && sP.simpleKey.possible then
+            hoRows := hoRows + 1
+            if sP.simpleKey.pos != sP.currentPos then hoViol := hoViol + 1
+        | _ => pure ()
+        s := sN
+      | _ => break
+  check state s!"P68d the step direct: armed={stArmed} vacuous={stVac} viol={stViol}; preprocess hand-off rows={hoRows} viol={hoViol}; initial viol={initViol}"
+    (stArmed == 286 && stVac == 0 && stViol == 0 && hoRows == 164 && hoViol == 0 && initViol == 0)
 
 
 def collectTests : IO VerifiedSuiteResult := do
