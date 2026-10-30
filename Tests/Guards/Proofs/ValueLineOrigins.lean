@@ -576,6 +576,7 @@ def pinned : Bool := true
 -- 2026-10-24 (B3 [66] col-0 threading): follows CloseLandingWidth — the content/block parks close from `sp_gram` (run + gate).
 -- 2026-10-24 (B3 [66] col-0 threading): re-read on the item-354 base.
 -- 2026-10-24 (B3 [66] col-0 threading): re-read on the #98/#100 base.
+-- 2026-10-30 (item 405): the `?`-park field, its content twin and `h_explUp` read the head-form chain / the `MarkedColsIn` conjunct (ruling "405 a").
 def expectedPositions : List String :=
   ["ctor:pendingMapValue.h_ivl arm=r/stamp path=∨R∧R lvl=(sp_scan.col=n + 1) premises=[SBlockIndented(n)] ⊢ SLYamlStream tail=no",
     "ctor:pendingMapValue.h_vslot arm=l/stamp path=∨L∧R∧R lvl=(sc.currentIndent≤n)(sp_scan.col=n + 1) premises=[SBlockIndented(n)] ⊢ SLYamlStream tail=no",
@@ -591,23 +592,23 @@ def expectedPositions : List String :=
    "ctor:pendingProps.h_kslot arm=l path=∨L∃∧R→→→→→→→→ lvl=∃ns(MarkedColsIn)∀nv∈ns premises=[SBlockNode(n),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
    "ctor:pendingProps.h_kslotE arm=l path=∨L∃∃∧R→→→→→→→→ lvl=∃ne∃nv(n=ne + 1) premises=[SBlockNode(n),SCompactSeqTail(ne),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
    "ctor:pendingBlockContent.h_key packaged arm=l path=→→∨Lδ∃∃∃∧R∧R∧R∧R∧L∨L∃→→→→→→→→→→ lvl=(possible(…)=true)→(line(…)=line(…))→δImplicitKeyPack∃k∃sp_key∃sp_gram(Or)(ImplicitKeyHead)(GStar)(col(…)=k)(And)∃ns∀nv∈ns premises=[SBlockMapEntry(k),SCompactMapTail(k),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=before",
-   "ctor:pendingBlockContent.h_kslot arm=l path=∨L∃→→→→→→→→ lvl=∃nv premises=[SSLComments,SCompactSeqTail(n),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
+   "ctor:pendingBlockContent.h_kslot arm=l path=∨L∃∃∧R→→→→→→→→→→ lvl=∃nv0∃ns(MarkedColsIn)∀nv∈nv0 :: ns premises=[SSLComments,SCompactSeqTail(n),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
    "ctor:pendingBlockContent.h_kslotUp arm=l path=∨L∃∧R→→→→→→→→→→ lvl=∃ns(MarkedColsIn)∀nv∈ns premises=[SSLComments,SCompactSeqTail(n),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
-   "ctor:pendingBlock.h_kslot arm=l path=∨L∃→→→→→→→→ lvl=∃nv premises=[SBlockIndented(n),SCompactSeqTail(n),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
+   "ctor:pendingBlock.h_kslot arm=l path=∨L∃∃∧R→→→→→→→→→→ lvl=∃nv0∃ns(MarkedColsIn)∀nv∈nv0 :: ns premises=[SBlockIndented(n),SCompactSeqTail(n),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
    "ctor:pendingBlock.h_kslotUp arm=l path=∨L∃∧R→→→→→→→→→→ lvl=∃ns(MarkedColsIn)∀nv∈ns premises=[SBlockIndented(n),SCompactSeqTail(n),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
    "ctor:pendingMapValue.h_kslot arm=l path=∨L∃∧R→→→→→→→→ lvl=∃ns(MarkedColsIn)∀nv∈ns premises=[SBlockNode(n + 1),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
-   "ctor:pendingMapValue.h_explUp arm=l/stamp path=∨L∃∃∧R→→→→→→→→ lvl=∃sp_q∃ns(GLit('?'))∀nv∈ns premises=[SBlockMapEntry(n),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
+   "ctor:pendingMapValue.h_explUp arm=l/stamp path=∨L∃∃∧R∧R→→→→→→→→ lvl=∃sp_q∃ns(GLit('?'))(MarkedColsIn)∀nv∈ns premises=[SBlockMapEntry(n),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
    "param:accum_block_on_closeThenBlock.h_vpack arm=l path=∨L∃→→→→→→→→ lvl=∃ns∀nv∈ns premises=[SSLComments,SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
-   "param:accum_block_on_closeThenBlock.h_vslot arm=l/stamp path=∨L∃∃∧R∧R∧R∧R∧R∧R∧R∧R∨L∃→→→→→→→→ lvl=∃nv∃sp_a(SLYamlStream(sp_start))(sc.currentIndent≤nv)(needIndentCheck(…)=false)(simpleKeyAllowed(…)=true)(sp_gram=sp_scan)(sp_scan.col=nv + 1)(?)(Or)∃nsU∀nvU∈nsU premises=[SBlockIndented(nv),SIndent(nvU),GLit(':'),SBlockIndented(nvU)] ⊢ ResumeFrames tail=no",
-   "param:accum_block_on_pendingBlock.h_kslot arm=l path=∨L∃→→→→→→→→ lvl=∃nv premises=[SBlockIndented(n),SCompactSeqTail(n),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
+   "param:accum_block_on_closeThenBlock.h_vslot arm=l/stamp path=∨L∃∃∧R∧R∧R∧R∧R∧R∧R∧R∨L∃∧R→→→→→→→→ lvl=∃nv∃sp_a(SLYamlStream(sp_start))(sc.currentIndent≤nv)(needIndentCheck(…)=false)(simpleKeyAllowed(…)=true)(sp_gram=sp_scan)(sp_scan.col=nv + 1)(?)(Or)∃nsU(MarkedColsIn)∀nvU∈nsU premises=[SBlockIndented(nv),SIndent(nvU),GLit(':'),SBlockIndented(nvU)] ⊢ ResumeFrames tail=no",
+   "param:accum_block_on_pendingBlock.h_kslot arm=l path=∨L∃∃∧R→→→→→→→→→→ lvl=∃nv0∃ns(MarkedColsIn)∀nv∈nv0 :: ns premises=[SBlockIndented(n),SCompactSeqTail(n),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
    "param:accum_block_on_pendingBlock.h_kslotUp arm=l path=∨L∃∧R→→→→→→→→→→ lvl=∃ns(MarkedColsIn)∀nv∈ns premises=[SBlockIndented(n),SCompactSeqTail(n),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
    "param:accum_block_on_pendingBlockContent.h_key packaged arm=l path=→→∨Lδ∃∃∃∧R∧R∧R∧R∧L∨L∃→→→→→→→→→→ lvl=(possible(…)=true)→(line(…)=line(…))→δImplicitKeyPack∃k∃sp_key∃sp_gram(Or)(ImplicitKeyHead)(GStar)(col(…)=k)(And)∃ns∀nv∈ns premises=[SBlockMapEntry(k),SCompactMapTail(k),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=before",
-   "param:accum_block_on_pendingBlockContent.h_kslot arm=l path=∨L∃→→→→→→→→ lvl=∃nv premises=[SSLComments,SCompactSeqTail(n),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
+   "param:accum_block_on_pendingBlockContent.h_kslot arm=l path=∨L∃∃∧R→→→→→→→→→→ lvl=∃nv0∃ns(MarkedColsIn)∀nv∈nv0 :: ns premises=[SSLComments,SCompactSeqTail(n),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
    "param:accum_block_on_pendingBlockContent.h_kslotUp arm=l path=∨L∃∧R→→→→→→→→→→ lvl=∃ns(MarkedColsIn)∀nv∈ns premises=[SSLComments,SCompactSeqTail(n),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
    "param:accum_block_on_pendingContent.h_key packaged arm=l path=→→∨Lδ∃∃∃∧R∧R∧R∧R∧L∨L∃→→→→→→→→→→ lvl=(possible(…)=true)→(line(…)=line(…))→δImplicitKeyPack∃k∃sp_key∃sp_gram(Or)(ImplicitKeyHead)(GStar)(col(…)=k)(And)∃ns∀nv∈ns premises=[SBlockMapEntry(k),SCompactMapTail(k),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=before",
    "param:accum_block_on_pendingContent.h_vpack arm=l path=∨L∃→→→→→→→→ lvl=∃ns∀nv∈ns premises=[SSLComments,SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
    "param:accum_content_on_pendingBlock_indented.h_kslotUp_old arm=l path=∨L∃∧R→→→→→→→→→→ lvl=∃ns(MarkedColsIn)∀nv∈ns premises=[SBlockIndented(n),SCompactSeqTail(n),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
-   "param:accum_content_on_pendingBlock_indented.h_kslot_old arm=l path=∨L∃→→→→→→→→ lvl=∃nv premises=[SBlockIndented(n),SCompactSeqTail(n),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
+   "param:accum_content_on_pendingBlock_indented.h_kslot_old arm=l path=∨L∃∃∧R→→→→→→→→→→ lvl=∃nv0∃ns(MarkedColsIn)∀nv∈nv0 :: ns premises=[SBlockIndented(n),SCompactSeqTail(n),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
    "param:accum_content_on_pendingMapValue_indented.h_kslot arm=l path=∨L∃∧R→→→→→→→→ lvl=∃ns(MarkedColsIn)∀nv∈ns premises=[SBlockNode(n + 1),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
    "param:colon_fires_implicit_key.h_key packaged arm=l path=→→∨Lδ∃∃∃∧R∧R∧R∧R∧L∨L∃→→→→→→→→→→ lvl=(possible(…)=true)→(line(…)=line(…))→δImplicitKeyPack∃k∃sp_key∃sp_gram(Or)(ImplicitKeyHead)(GStar)(col(…)=k)(And)∃ns∀nv∈ns premises=[SBlockMapEntry(k),SCompactMapTail(k),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=before",
    "param:colon_fires_props_key.h_key packaged arm=l/stamp path=∨Lδ∧L∃∧R∧R∧L∨L∃→→→→→→→→→→ lvl=δPropsKeyPack(And)∃k(?)(col(…)=k)(And)∃ns∀nv∈ns premises=[SBlockMapEntry(k),SCompactMapTail(k),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=before",
@@ -634,21 +635,22 @@ def expectedPositions : List String :=
 -- 2026-10-20 (item 307): 73 → 76 — the three γ roots' `h_vpack` are origins now (two `frames(h_closeFV_old)`,
 -- one `step(h_mapFV108)`), each at its `accum_block_on_closeThenBlock.h_vpack` position; the rows after them renumber.
 -- 2026-10-20 (item 307, second chain): the content route's `h_vpack` origin reads `⊢ none` under the `match` form.
+-- 2026-10-30 (item 405): origins follow `expectedPositions` (head-form chain; `closeThenBlock` births `hkv`+`hkvUp`; declines of ruling "405 a").
 def expectedOrigins : List String := [
   "O0 accum_block_on_pendingBlock #1 param:accum_block_on_closeThenBlock.h_vpack ← frames(param:accum_block_on_pendingBlock.h_closeFV_old) lvl=n ⊢ none | @n:none → unheld",
   "O1 accum_block_on_pendingBlockContent #1 param:accum_block_on_closeThenBlock.h_vpack ← frames(param:accum_block_on_pendingBlockContent.h_closeFV_old) lvl=n ⊢ none | @n:none → unheld",
   "O2 accum_block_on_pendingContent #2 param:accum_block_on_closeThenBlock.h_vpack ← frames(param:accum_block_on_pendingContent.h_mapFV108) lvl=— ⊢ none → unheld",
-  "O4 accum_content_on_pendingBlock_indented #1 ctor:pendingBlockContent.h_key ← route(param:accum_content_on_pendingBlock_indented.h_close_old) lvl=n ⊢ held(h_closeF_old,h_closeFV_old) | @n:none → unheld",
-  "O5 accum_content_on_pendingBlock_indented #1 ctor:pendingBlockContent.h_key ← frames(param:accum_content_on_pendingBlock_indented.h_closeF_old) lvl=n ⊢ held(h_closeF_old,h_closeFV_old) | @n:none → unheld",
-  "O6 accum_content_on_pendingBlock_indented #1 ctor:pendingBlockContent.h_key ← frames(param:accum_content_on_pendingBlock_indented.h_closeFV_old) lvl=n ⊢ held(h_closeF_old,h_closeFV_old) | @n:none → unheld",
-  "O7 accum_content_on_pendingBlock_indented #1 ctor:pendingBlockContent.h_key ← route(param:accum_content_on_pendingBlock_indented.h_close_entry_old) lvl=n ⊢ held(h_closeF_old,h_closeFV_old) | @n:none → unheld",
-  "O8 accum_content_on_pendingBlock_indented #1 ctor:pendingProps.h_key ← route(param:accum_content_on_pendingBlock_indented.h_close_old) lvl=n ⊢ held(h_closeF_old,h_closeFV_old) | @n:none → unheld",
-  "O9 accum_content_on_pendingBlock_indented #1 ctor:pendingProps.h_key ← frames(param:accum_content_on_pendingBlock_indented.h_closeF_old) lvl=n ⊢ held(h_closeF_old,h_closeFV_old) | @n:none → unheld",
-  "O10 accum_content_on_pendingBlock_indented #1 ctor:pendingProps.h_key ← frames(param:accum_content_on_pendingBlock_indented.h_closeFV_old) lvl=n ⊢ held(h_closeF_old,h_closeFV_old) | @n:none → unheld",
-  "O11 accum_content_on_pendingBlock_indented #3 ctor:pendingBlockContent.h_key ← route(param:accum_content_on_pendingBlock_indented.h_close_old) lvl=n ⊢ held(h_closeF_old,h_closeFV_old) | @n:none → unheld",
-  "O12 accum_content_on_pendingBlock_indented #3 ctor:pendingBlockContent.h_key ← frames(param:accum_content_on_pendingBlock_indented.h_closeF_old) lvl=n ⊢ held(h_closeF_old,h_closeFV_old) | @n:none → unheld",
-  "O13 accum_content_on_pendingBlock_indented #3 ctor:pendingBlockContent.h_key ← frames(param:accum_content_on_pendingBlock_indented.h_closeFV_old) lvl=n ⊢ held(h_closeF_old,h_closeFV_old) | @n:none → unheld",
-  "O14 accum_content_on_pendingBlock_indented #3 ctor:pendingBlockContent.h_key ← route(param:accum_content_on_pendingBlock_indented.h_close_entry_old) lvl=n ⊢ held(h_closeF_old,h_closeFV_old) | @n:none → unheld",
+  "O4 accum_content_on_pendingBlock_indented #1 ctor:pendingBlockContent.h_key ← route(param:accum_content_on_pendingBlock_indented.h_close_old) lvl=n ⊢ none | @n:none → unheld",
+  "O5 accum_content_on_pendingBlock_indented #1 ctor:pendingBlockContent.h_key ← frames(param:accum_content_on_pendingBlock_indented.h_closeF_old) lvl=n ⊢ none | @n:none → unheld",
+  "O6 accum_content_on_pendingBlock_indented #1 ctor:pendingBlockContent.h_key ← frames(param:accum_content_on_pendingBlock_indented.h_closeFV_old) lvl=n ⊢ none | @n:none → unheld",
+  "O7 accum_content_on_pendingBlock_indented #1 ctor:pendingBlockContent.h_key ← route(param:accum_content_on_pendingBlock_indented.h_close_entry_old) lvl=n ⊢ none | @n:none → unheld",
+  "O8 accum_content_on_pendingBlock_indented #1 ctor:pendingProps.h_key ← route(param:accum_content_on_pendingBlock_indented.h_close_old) lvl=n ⊢ none | @n:none → unheld",
+  "O9 accum_content_on_pendingBlock_indented #1 ctor:pendingProps.h_key ← frames(param:accum_content_on_pendingBlock_indented.h_closeF_old) lvl=n ⊢ none | @n:none → unheld",
+  "O10 accum_content_on_pendingBlock_indented #1 ctor:pendingProps.h_key ← frames(param:accum_content_on_pendingBlock_indented.h_closeFV_old) lvl=n ⊢ none | @n:none → unheld",
+  "O11 accum_content_on_pendingBlock_indented #3 ctor:pendingBlockContent.h_key ← route(param:accum_content_on_pendingBlock_indented.h_close_old) lvl=n ⊢ none | @n:none → unheld",
+  "O12 accum_content_on_pendingBlock_indented #3 ctor:pendingBlockContent.h_key ← frames(param:accum_content_on_pendingBlock_indented.h_closeF_old) lvl=n ⊢ none | @n:none → unheld",
+  "O13 accum_content_on_pendingBlock_indented #3 ctor:pendingBlockContent.h_key ← frames(param:accum_content_on_pendingBlock_indented.h_closeFV_old) lvl=n ⊢ none | @n:none → unheld",
+  "O14 accum_content_on_pendingBlock_indented #3 ctor:pendingBlockContent.h_key ← route(param:accum_content_on_pendingBlock_indented.h_close_entry_old) lvl=n ⊢ none | @n:none → unheld",
   "O15 accum_content_on_pendingMapValue_indented #1 ctor:pendingContent.h_key ← route(param:accum_content_on_pendingMapValue_indented.h_close_old) lvl=n + 1 ⊢ held(h_frames99,h_closeFV108,h_framesV108) | @n + 1:none → unheld",
   "O17 accum_content_on_pendingMapValue_indented #1 ctor:pendingContent.h_key ← frames(param:accum_content_on_pendingMapValue_indented.h_closeF99) lvl=n + 1 ⊢ held(h_frames99,h_closeFV108,h_framesV108) | @n + 1:none → unheld",
   "O18 accum_content_on_pendingMapValue_indented #1 ctor:pendingContent.h_key ← frames(param:accum_content_on_pendingMapValue_indented.h_frames99) lvl=— ⊢ held(h_frames99,h_closeFV108,h_framesV108) → unheld",
@@ -702,7 +704,7 @@ def expectedOrigins : List String := [
    "O63 question_open_map #1 ctor:pendingMapValue.h_vslot ← concl(concl:propsMapRoute) lvl=— ⊢ held(h_res_land,h_resV_land,h✝,right✝,h_routeF,h_route51F) → held",
    "O64 question_open_map #1 ctor:pendingMapValue.h_vslot ← route(param:question_open_map.h_stream_land) lvl=— ⊢ held(h_res_land,h_resV_land,h✝,right✝,h_routeF,h_route51F) → held",
    "O65 question_open_map #1 ctor:pendingMapValue.h_kslot ← frames(param:question_open_map.h_res_land) lvl=k ⊢ held(h_res_land,h_resV_land,h✝,right✝,h_routeF,h_route51F) | @k:held(h_res_land,h_resV_land,h✝,right✝,h_routeF,h_route51F) → held",
-   "O66 question_open_map #1 ctor:pendingMapValue.h_explUp ← frames(param:question_open_map.h_resV_land) lvl=k ⊢ level-var | @k:held(h_res_land,h_resV_land,h✝,right✝,h_routeF,h_route51F) → unheld"]
+   "O66 question_open_map #1 ctor:pendingMapValue.h_explUp ← frames(param:question_open_map.h_explUp_chainD) lvl=k ⊢ none | @k:held(h_res_land,h_resV_land,h✝,right✝,h_routeF,h_route51F) → unheld"]
 -- Item 287: the eleven writers of `accum_block_on_closeThenBlock.h_vslot`, read
 -- as `ValueLinePacks.expectedWriters` reads them — the ten `punt`s are `stamp`s,
 -- and the value park's split writes both.  Item 288: the four writers of
@@ -751,6 +753,7 @@ def expectedOrigins : List String := [
 -- 2026-10-24 (B3 [66] col-0 threading): follows CloseLandingWidth — the content/block parks close from `sp_gram` (run + gate).
 -- 2026-10-24 (B3 [66] col-0 threading): re-read on the item-354 base.
 -- 2026-10-24 (B3 [66] col-0 threading): re-read on the #98/#100 base.
+-- 2026-10-30 (item 405): rows follow `expectedOrigins` (the `?`-park chain ladder PAID, ruling "405 a").
 def expectedRows : List String :=
   ["accum_block_on_noPending #1 ctor:pendingBlock.h_kslot := punt/stamp pos=[] origins=[] none=[stamp] ⊢ —",
    "accum_block_on_noPending #1 ctor:pendingBlock.h_kslotUp := punt/stamp pos=[] origins=[] none=[stamp] ⊢ —",
@@ -806,10 +809,10 @@ def expectedRows : List String :=
     "colon_open_map_explicit #1 ctor:pendingMapValue.h_explUp := stamp/stamp pos=[] origins=[] none=[stamp] ⊢ —",
     "colon_open_map_implicit #1 ctor:pendingMapValue.h_explUp := stamp/stamp pos=[] origins=[] none=[stamp] ⊢ —",
     "colon_open_map_props #1 ctor:pendingMapValue.h_explUp := stamp/stamp pos=[] origins=[] none=[stamp] ⊢ —",
-    "compact_open_map #1 ctor:pendingMapValue.h_explUp := alt/built pos=[] origins=[] none=[stamp,absurd] ⊢ stamp*",
+    "compact_open_map #1 ctor:pendingMapValue.h_explUp := alt/stamp pos=[] origins=[] none=[stamp] ⊢ —",
     "accum_block_on_closeThenBlock #1 ctor:pendingBlock.h_kslotUp := punt/stamp pos=[] origins=[] none=[punt,stamp] ⊢ —",
     "accum_block_on_closeThenBlock #2 ctor:pendingBlock.h_kslotUp := punt/stamp pos=[] origins=[] none=[punt,stamp] ⊢ —",
-    "accum_block_on_pendingBlock #2 param:entryChainMap.up := via/built pos=[param:accum_block_on_pendingBlock.h_kslotUp] origins=[] ⊢ unborn",
+    "accum_block_on_pendingBlock #2 param:entryChainMap.up := relay/built pos=[param:accum_block_on_pendingBlock.h_kslot] origins=[O66] ⊢ none-held 0/1",
     "accum_content_on_pendingBlock_indented #1 ctor:pendingBlockContent.h_kslotUp := paid:chain/built pos=[param:accum_content_on_pendingBlock_indented.h_kslotUp_old] origins=[] none=[stamp] ⊢ unborn",
     "accum_content_on_pendingBlock_indented #1 ctor:pendingProps.h_kslot := punt/stamp pos=[] origins=[] none=[punt,stamp] ⊢ —",
     "accum_content_on_pendingBlock_indented #2 ctor:pendingBlockContent.h_kslotUp := paid:chain/built pos=[param:accum_content_on_pendingBlock_indented.h_kslotUp_old] origins=[] none=[stamp] ⊢ unborn",
@@ -847,20 +850,20 @@ def expectedRows : List String :=
     "colon_open_map_implicit #1 ctor:pendingMapValue.h_kslot := paid:chain/built pos=[param:colon_open_map_implicit.h_kslotD] origins=[] none=[stamp] ⊢ unborn",
     "colon_open_map_props #1 ctor:pendingMapValue.h_kslot := paid:chain/built pos=[param:colon_open_map_props.h_kslotD] origins=[] none=[stamp] ⊢ unborn",
    -- Item 371: the restated value-line pack (`⇒ Resume(map(_)::[])▹Stream`, `ResumeFrames.one`'s level)
-   "accum_block_on_closeThenBlock #1 ctor:pendingBlock.h_kslot := alt/built pos=[param:accum_block_on_closeThenBlock.h_vslot] origins=[O66] none=[stamp,punt,fact] ⊢ none-held 0/1",
+   "accum_block_on_closeThenBlock #1 ctor:pendingBlock.h_kslot := paid:chain/built pos=[param:accum_block_on_closeThenBlock.h_vslot] origins=[O66] none=[punt] ⊢ none-held 0/1",
    "accum_block_on_closeThenBlock #1 param:indicator_open_map.h_explUp_chain := alt/built pos=[param:accum_block_on_closeThenBlock.h_vslot] origins=[O66] none=[stamp,punt] ⊢ none-held 0/1",
    "accum_block_on_closeThenBlock #1 param:slotChainMap.up := paid:chain/built pos=[param:accum_block_on_closeThenBlock.h_vslot] origins=[O66] ⊢ none-held 0/1",
    "accum_block_on_closeThenBlock #2 param:slotChainMap.up := paid:chain/built pos=[param:accum_block_on_closeThenBlock.h_vslot] origins=[O66] none=[absurd] ⊢ none-held 0/1",
    "accum_block_on_closeThenBlock #3 param:slotChainMap.up := relay/built pos=[param:accum_block_on_closeThenBlock.h_vslot] origins=[O66] ⊢ none-held 0/1",
    "accum_block_on_closeThenBlock #1 param:colon_open_map_explicit.hvp := relay/built pos=[param:accum_block_on_closeThenBlock.h_vpack] origins=[O0,O1,O2,O3,O65,O66] ⊢ some-held 2/6",
-   "accum_block_on_closeThenBlock #2 ctor:pendingBlock.h_kslot := paid:chain/built pos=[param:accum_block_on_closeThenBlock.h_vslot] origins=[O66] none=[stamp] ⊢ none-held 0/1",
+   "accum_block_on_closeThenBlock #2 ctor:pendingBlock.h_kslot := paid:chain/built pos=[param:accum_block_on_closeThenBlock.h_vslot] origins=[O66] none=[punt,stamp] ⊢ none-held 0/1",
    "accum_block_on_pendingBlock #1 ctor:pendingBlock.h_kslot := paid:chain/built pos=[param:accum_block_on_pendingBlock.h_kslot] origins=[O66] none=[stamp] ⊢ none-held 0/1",
    "accum_block_on_pendingBlock #2 ctor:pendingBlock.h_kslot := paid:chain/built pos=[param:accum_block_on_pendingBlock.h_kslot] origins=[O66] none=[stamp] ⊢ none-held 0/1",
-   "accum_block_on_pendingBlock #1 param:indicator_open_map.h_explUp_chain := alt/built pos=[param:accum_block_on_pendingBlock.h_kslotUp,param:accum_block_on_pendingBlock.h_kslot] origins=[O66] none=[stamp,punt] ⊢ none-held 0/1",
-   "accum_block_on_pendingBlock #1 param:indicator_open_map.h_explUp_chainD := alt/built pos=[param:accum_block_on_pendingBlock.h_kslotUp,param:accum_block_on_pendingBlock.h_kslot] origins=[O66] none=[punt] ⊢ none-held 0/1",
-   "accum_block_on_pendingBlock #1 param:entryChainMap.up := via/built pos=[param:accum_block_on_pendingBlock.h_kslotUp,param:accum_block_on_pendingBlock.h_kslot] origins=[O66] ⊢ none-held 0/1",
+   "accum_block_on_pendingBlock #1 param:indicator_open_map.h_explUp_chain := alt/built pos=[param:accum_block_on_pendingBlock.h_kslot] origins=[O66] none=[stamp,punt] ⊢ none-held 0/1",
+   "accum_block_on_pendingBlock #1 param:indicator_open_map.h_explUp_chainD := alt/built pos=[param:accum_block_on_pendingBlock.h_kslot] origins=[O66] none=[punt] ⊢ none-held 0/1",
+   "accum_block_on_pendingBlock #1 param:entryChainMap.up := paid:chain/built pos=[param:accum_block_on_pendingBlock.h_kslot] origins=[O66] ⊢ none-held 0/1",
    "accum_block_on_pendingBlock #3 param:entryChainMap.up := relay/built pos=[param:accum_block_on_pendingBlock.h_kslot] origins=[O66] ⊢ none-held 0/1",
-   "accum_block_on_pendingBlock #4 param:entryChainMap.up := via/built pos=[param:accum_block_on_pendingBlock.h_kslotUp,param:accum_block_on_pendingBlock.h_kslot] origins=[O66] ⊢ none-held 0/1",
+   "accum_block_on_pendingBlock #4 param:entryChainMap.up := paid:chain/built pos=[param:accum_block_on_pendingBlock.h_kslot] origins=[O66] ⊢ none-held 0/1",
    "accum_block_on_pendingBlock #5 param:entryChainMap.up := relay/built pos=[param:accum_block_on_pendingBlock.h_kslot] origins=[O66] ⊢ none-held 0/1",
    "accum_block_on_pendingBlock #1 param:colon_open_map_explicit.hvp := paid:chain/built pos=[param:accum_block_on_pendingBlock.h_kslot,param:accum_block_on_pendingBlock.h_kslotUp] origins=[O66] none=[stamp] ⊢ none-held 0/1",
    "accum_block_on_pendingBlock #3 ctor:pendingBlock.h_kslot := paid:chain/built pos=[param:accum_block_on_pendingBlock.h_kslot] origins=[O66] none=[stamp] ⊢ none-held 0/1",
@@ -879,7 +882,7 @@ def expectedRows : List String :=
    "accum_block_pending #1 param:accum_block_on_pendingBlock.h_kslot := relay/built pos=[ctor:pendingBlock.h_kslot] origins=[O66] ⊢ none-held 0/1",
    "accum_block_pending #6 param:accum_block_on_closeThenBlock.h_vpack := paid:chain/built pos=[ctor:pendingMapValue.h_kslot] origins=[O65,O66] none=[stamp] ⊢ some-held 1/2",
    "accum_block_pending #7 param:accum_block_on_closeThenBlock.h_vpack := via/built pos=[ctor:pendingMapValue.h_kslot,ctor:pendingMapValue.h_explUp] origins=[O3,O65,O66] none=[fact] ⊢ some-held 2/3",
-   "accum_block_pending #7 param:accum_block_on_closeThenBlock.h_vslot := alt/built pos=[ctor:pendingMapValue.h_explUp] origins=[O66] none=[absurd,stamp] ⊢ none-held 0/1",
+   "accum_block_pending #7 param:accum_block_on_closeThenBlock.h_vslot := alt/built pos=[ctor:pendingMapValue.h_explUp] origins=[O66] none=[punt,stamp] ⊢ none-held 0/1",
    "accum_content_on_pendingBlock_indented #1 ctor:pendingBlockContent.h_key := via/built pos=[param:accum_content_on_pendingBlock_indented.h_kslot_old] origins=[O4,O5,O6,O7,O66] none=[fact] ⊢ none-held 0/5",
    "accum_content_on_pendingBlock_indented #1 ctor:pendingBlockContent.h_kslot := paid:chain/built pos=[param:accum_content_on_pendingBlock_indented.h_kslot_old] origins=[O66] none=[stamp] ⊢ none-held 0/1",
    "accum_content_on_pendingBlock_indented #1 param:entryKeyPack_of_dispatch.h_nodeV := paid:chain/built pos=[param:accum_content_on_pendingBlock_indented.h_kslot_old] origins=[O66] none=[stamp] ⊢ none-held 0/1",
@@ -921,11 +924,11 @@ def expectedRows : List String :=
    "accum_content_pending #2 ctor:pendingProps.h_kslotE := step/built pos=[ctor:pendingProps.h_kslotE] origins=[O66] ⊢ none-held 0/1",
    "accum_content_pending #1 ctor:pendingContent.h_vpack := paid:chain/built pos=[ctor:pendingProps.h_kslot] origins=[O65,O66] none=[stamp] ⊢ some-held 1/2",
    "accum_content_pending #2 ctor:pendingContent.h_vpack := paid:chain/built pos=[ctor:pendingProps.h_kslot] origins=[O65,O66] none=[stamp] ⊢ some-held 1/2",
-   "accum_content_pending #1 ctor:pendingBlockContent.h_kslot := paid:chain/built pos=[ctor:pendingProps.h_kslotE] origins=[O66] none=[stamp] ⊢ none-held 0/1",
+   "accum_content_pending #1 ctor:pendingBlockContent.h_kslot := punt/stamp pos=[] origins=[] none=[punt,stamp] ⊢ —",
    "accum_content_pending #3 ctor:pendingContent.h_vpack := paid:chain/built pos=[ctor:pendingProps.h_kslot] origins=[O65,O66] none=[stamp] ⊢ some-held 1/2",
-   "accum_content_pending #2 ctor:pendingBlockContent.h_kslot := paid:chain/built pos=[ctor:pendingProps.h_kslotE] origins=[O66] none=[stamp] ⊢ none-held 0/1",
+   "accum_content_pending #2 ctor:pendingBlockContent.h_kslot := punt/stamp pos=[] origins=[] none=[punt,stamp] ⊢ —",
    "accum_content_pending #4 ctor:pendingContent.h_vpack := paid:chain/built pos=[ctor:pendingProps.h_kslot] origins=[O65,O66] none=[stamp] ⊢ some-held 1/2",
-   "accum_content_pending #3 ctor:pendingBlockContent.h_kslot := paid:chain/built pos=[ctor:pendingProps.h_kslotE] origins=[O66] none=[stamp] ⊢ none-held 0/1",
+   "accum_content_pending #3 ctor:pendingBlockContent.h_kslot := punt/stamp pos=[] origins=[] none=[punt,stamp] ⊢ —",
    "accum_content_pending #5 ctor:pendingContent.h_vpack := paid:chain/built pos=[ctor:pendingProps.h_kslot] origins=[O65,O66] none=[stamp] ⊢ some-held 1/2",
    "accum_content_pending #1 param:accum_content_on_pendingBlock_indented.h_kslot_old := relay/built pos=[ctor:pendingBlock.h_kslot] origins=[O66] ⊢ none-held 0/1",
    "accum_content_pending #1 param:accum_content_on_pendingMapValue_indented.h_vslot := step/built pos=[ctor:pendingMapValue.h_vslot] origins=[O0,O1,O2,O3,O50,O59,O60,O61,O62,O63,O64,O65,O66] ⊢ some-held 8/13",
@@ -938,7 +941,7 @@ def expectedRows : List String :=
    "indicator_open_map #1 param:question_open_map.h_explUp_chain := relay/built pos=[param:indicator_open_map.h_explUp_chain] origins=[O66] ⊢ none-held 0/1",
    "indicator_open_map #1 param:question_open_map.h_explUp_chainD := relay/built pos=[param:indicator_open_map.h_explUp_chainD] origins=[O66] ⊢ none-held 0/1",
    "question_open_map #1 ctor:pendingMapValue.h_kslot := paid:tail/built pos=[param:question_open_map.h_explUp_chainD] origins=[O65,O66] none=[punt] ⊢ some-held 1/2",
-   "question_open_map #1 ctor:pendingMapValue.h_explUp := alt/built pos=[param:question_open_map.h_explUp_chain] origins=[O66] none=[fact,absurd] ⊢ none-held 0/1"]
+   "question_open_map #1 ctor:pendingMapValue.h_explUp := alt/built pos=[param:question_open_map.h_explUp_chainD] origins=[O66] none=[stamp] ⊢ none-held 0/1"]
 -- 2026-10-20 (item 306): the positions' origin sets re-read with the three new origins
 -- (`O3`, `O7`, `O10`) and the renumbering behind them; no position is born or dies.
 -- 2026-10-20 (item 307): the positions' origin sets re-read (three new origins, renumbered).
@@ -953,6 +956,7 @@ def expectedRows : List String :=
 -- `compact_open_map`/`question_open_map` split on the alternative.
 -- Item 371: the value-line packs end in the one-level `ResumeFrames`; `question_open_map`'s chain
 -- is bottomed on the bound tail route `h_route51F` (set re-pinned).
+-- 2026-10-30 (item 405): per-position classes follow `expectedRows`.
 def expectedPerPos : List String := [
   "ctor:pendingBlockContent.h_kslotUp writers=6 punt=0 stamp=3 built=3 unborn=3 dead=0 allHeld=0 someHeld=0 noneHeld=0 origins=[] ⊢ unborn",
   "param:accum_block_on_pendingBlock.h_kslotUp writers=1 punt=0 stamp=0 built=1 unborn=1 dead=0 allHeld=0 someHeld=0 noneHeld=0 origins=[] ⊢ unborn",
@@ -969,12 +973,12 @@ def expectedPerPos : List String := [
   "ctor:pendingProps.h_kslot writers=6 punt=0 stamp=3 built=3 unborn=0 dead=0 allHeld=0 someHeld=3 noneHeld=0 origins=[O65,O66] ⊢ 1/2 held",
   "ctor:pendingProps.h_kslotE writers=6 punt=1 stamp=2 built=3 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=3 origins=[O66] ⊢ 0/1 held",
   "ctor:pendingBlockContent.h_key packaged writers=6 punt=0 stamp=0 built=6 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=2 origins=[O4,O5,O6,O7,O11,O12,O13,O14,O66] ⊢ 0/9 held",
-  "ctor:pendingBlockContent.h_kslot writers=6 punt=0 stamp=0 built=6 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=6 origins=[O66] ⊢ 0/1 held",
+  "ctor:pendingBlockContent.h_kslot writers=6 punt=0 stamp=3 built=3 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=3 origins=[O66] ⊢ 0/1 held",
   "ctor:pendingBlock.h_kslot writers=7 punt=0 stamp=1 built=6 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=6 origins=[O66] ⊢ 0/1 held",
   "ctor:pendingMapValue.h_ivl writers=6 punt=0 stamp=3 built=3 unborn=0 dead=0 allHeld=1 someHeld=1 noneHeld=1 origins=[O0,O1,O2,O3,O49,O53,O54,O55,O56,O57,O58,O65,O66] ⊢ 8/13 held",
   "ctor:pendingMapValue.h_vslot writers=6 punt=0 stamp=3 built=3 unborn=0 dead=0 allHeld=1 someHeld=1 noneHeld=1 origins=[O0,O1,O2,O3,O50,O59,O60,O61,O62,O63,O64,O65,O66] ⊢ 8/13 held",
   "ctor:pendingMapValue.h_kslot writers=6 punt=0 stamp=3 built=3 unborn=2 dead=0 allHeld=0 someHeld=1 noneHeld=0 origins=[O65,O66] ⊢ 1/2 held",
-  "ctor:pendingMapValue.h_explUp writers=6 punt=0 stamp=4 built=2 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=1 origins=[O66] ⊢ 0/1 held",
+  "ctor:pendingMapValue.h_explUp writers=6 punt=0 stamp=5 built=1 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=1 origins=[O66] ⊢ 0/1 held",
   "param:accum_block_on_closeThenBlock.h_vpack writers=11 punt=1 stamp=2 built=8 unborn=0 dead=0 allHeld=0 someHeld=5 noneHeld=3 origins=[O0,O1,O2,O3,O65,O66] ⊢ 2/6 held",
   "param:accum_block_on_closeThenBlock.h_vslot writers=11 punt=0 stamp=10 built=1 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=1 origins=[O66] ⊢ 0/1 held",
   "param:accum_block_on_pendingBlock.h_kslot writers=1 punt=0 stamp=0 built=1 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=1 origins=[O66] ⊢ 0/1 held",
@@ -989,7 +993,7 @@ def expectedPerPos : List String := [
   "param:colon_fires_implicit_key.h_key packaged writers=2 punt=0 stamp=0 built=2 unborn=0 dead=0 allHeld=0 someHeld=1 noneHeld=1 origins=[O4,O5,O6,O7,O11,O12,O13,O14,O15,O16,O17,O18,O19,O20,O21,O34,O35,O36,O37,O38,O39,O40,O45,O47,O51,O52,O65,O66] ⊢ 1/28 held",
   "param:colon_fires_props_key.h_key packaged writers=1 punt=0 stamp=0 built=1 unborn=0 dead=0 allHeld=0 someHeld=1 noneHeld=0 origins=[O8,O9,O10,O25,O26,O27,O28,O29,O30,O65,O66] ⊢ 1/11 held",
   "param:colon_open_map_explicit.hvp writers=3 punt=0 stamp=0 built=3 unborn=0 dead=0 allHeld=0 someHeld=1 noneHeld=2 origins=[O0,O1,O2,O3,O65,O66] ⊢ 2/6 held",
-  "param:entryChainMap.up writers=5 punt=0 stamp=0 built=5 unborn=1 dead=0 allHeld=0 someHeld=0 noneHeld=4 origins=[O66] ⊢ 0/1 held",
+  "param:entryChainMap.up writers=5 punt=0 stamp=0 built=5 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=5 origins=[O66] ⊢ 0/1 held",
   "param:entryKeyPack_of_dispatch.h_compact writers=4 punt=0 stamp=0 built=4 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=4 origins=[O23,O42,O66] ⊢ 0/3 held",
   "param:entryKeyPack_of_dispatch.h_ivl writers=4 punt=0 stamp=0 built=4 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=4 origins=[O24,O43,O66] ⊢ 0/3 held",
   "param:entryKeyPack_of_dispatch.h_nodeV writers=4 punt=0 stamp=0 built=4 unborn=0 dead=0 allHeld=0 someHeld=2 noneHeld=2 origins=[O22,O41,O65,O66] ⊢ 1/4 held",
@@ -1157,6 +1161,7 @@ def expectedUnborn : List String := [
 -- 2026-10-29 (item 394): the term grew with `FlowBaseRoutes.valueF`'s supply and relays; no origin row moved.
 -- 2026-10-29 (item 394, option B): the flow stack's s0 index and valueF's cover (walked-term total).
 -- 2026-10-29 (item 396): node counts follow flowOpen_floor_at_prep's deletion and content_dispatch_after_close's restatement.
+-- 2026-10-30 (item 405): see `expectedPositions`/`expectedRows` (the `?`-park chain ladder PAID).
 def expectedLine : String :=
   -- 2026-10-25 (item 359): punt 12 → 11, stamp 39 → 40 — the `noPending` value-park face pays `PackAlt.ofRefused (h_noek …)`;
   -- lapps 806 → 807, liteNodes 607398 → 607407 — that one application and its term.
@@ -1173,7 +1178,7 @@ def expectedLine : String :=
 -- Item 372 (2026-10-27): the Or-shaped route conjunct of `ImplicitKeyPack` (summary mirrors the five `(Or)` rows).
 -- Item 374: lets=647 → 648, lapps=821 → 822, alts=5234 → 5243, nodes=13694 → 13696, liteNodes=630069 → 632322 — the resume context's face disjunct and `resumectx_of_landing`'s `h_base`.
   -- 2026-10-28 (item 386): lets 652 → 657, alts 5277 → 5280, nodes 13696 → 13706, liteNodes 634748 → 635676 — the `-` opener's `h_lvl_old` and its `omega` spend at the no-pop arm; no origin row moved.
-  "positions=49 packaged=7 packConsts=[ImplicitKeyPack,PropsKeyPack] rows=184 ctorRows=98 paramRows=86 packagedRows=29 punt=7 stamp=44 built=133 origins=67 originRows=32 route=12 frames=29 tail=14 other=0 concl=8 invariant=4 heldOrigins=15 allHeld=3 someHeld=36 noneHeld=66 unbornRows=13 relayedPunt=0 relayedStamp=11 relayedAbsurd=4 relayedFact=0 deadRows=0 unbornPos=5 rounds=5 follows=360 lets=683 lapps=846 alts=5493 nodes=13790 liteNodes=662162"
+  "positions=49 packaged=7 packConsts=[ImplicitKeyPack,PropsKeyPack] rows=184 ctorRows=98 paramRows=86 packagedRows=29 punt=7 stamp=48 built=129 origins=67 originRows=32 route=12 frames=29 tail=14 other=0 concl=8 invariant=4 heldOrigins=15 allHeld=3 someHeld=36 noneHeld=64 unbornRows=12 relayedPunt=0 relayedStamp=10 relayedAbsurd=4 relayedFact=0 deadRows=0 unbornPos=5 rounds=5 follows=365 lets=685 lapps=856 alts=5506 nodes=13816 liteNodes=665425"
 
 /-! ## §4 The reading -/
 

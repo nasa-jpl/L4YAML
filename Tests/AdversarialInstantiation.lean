@@ -8384,6 +8384,9 @@ def testInputAheadExports (state : IO.Ref TestCollector) : IO Unit := do
   check state s!"P68g the fold's other statements direct: scanValuePrepare_top_le_key rows={spRows} viol={spViol} (vacuous {spVac}); seed_LiveKeyTop/seed_bom_LiveKeyTop states={seedStates} viol={seedViol} armed={seedArmed}"
     (spRows == 10 && spViol == 0 && spVac == 0 && seedStates == 12 && seedViol == 0 && seedArmed == 0)
 
+/-- Priorities 69/69b (item 404) and 69c (item 405): the `?`-park field's chain domain, its fallback,
+and the paid ladder's scanner-side claims — split from `testInputAheadExports` (LCNF compile budget). -/
+def testKslotDomain (state : IO.Ref TestCollector) : IO Unit := do
   -- 69 (item 404) — the `?`-park field's DOMAIN shape, read before the flip: `MarkedColsIn sc ns`
   -- says every marked slot's column (`pendingKeys[i] = some _` ⇒ `indents[i].column`) is in `ns`.
   -- A SINGLETON domain `[nv]` for `pendingBlock.h_kslot` is refutable iff some accepted `-` pause
@@ -8462,8 +8465,51 @@ def testInputAheadExports (state : IO.Ref TestCollector) : IO Unit := do
   check state s!"P69b the NotQuestionPark fallback under an outer ?: `-` pauses={fbN} with an off-level mark={fbHit}; no-? pauses={fbZ} marked={fbZHit}"
     (fbN == 6 && fbHit == 5 && fbZ == 5 && fbZHit == 0)
 
-
-
+  -- 69c (item 405) — the PAID ladder's two scanner-side claims, read at every accepted pause of
+  -- the Priority 69/69b corpus plus the inputs the item's declines NAME (node properties inside a
+  -- `?` key: the props park's explicit-key slot `h_kslotE_k` carries no domain, so its three
+  -- content relays decline).  (i) `h_mcstep_ne`: a block dispatch on a char other than `?` marks
+  -- no new column — the marked set after the step is a subset of the marked set before it
+  -- (predicted: 0 violations).  (ii) `h_mcstep`: a `?` dispatch marks at most the preprocessed
+  -- column — the marked set after is a subset of {s_prep.col} ∪ before (predicted: 0 violations).
+  -- (iii) the named declines are route narrowings, not refusals: every props-in-`?` input still
+  -- scans to its end (predicted: all accepted, ≥ 1 non-`?` block pause each).  REFUTED at one row
+  -- before the pin: `? &p - a⏎: w` is REFUSED by the scanner — a node property before a same-line
+  -- `-` is export (c) of item 400 (`scanBlockEntry` refutes a same-line property), so that input
+  -- never reaches the declined relays; the three props-in-`?` inputs that are accepted are the
+  -- narrowed class.  Pinned 3 of 4, with the refused row kept as the negative control.
+  let propsQ : List String := ["? &p a\n: w\n", "? !!str a\n: w\n", "? - &p a\n  - y\n: v\n", "? &p - a\n: w\n"]
+  let mut neN := 0
+  let mut neBad := 0
+  let mut qN := 0
+  let mut qBad := 0
+  let mut propsOk := 0
+  for input in nestedQ ++ singleQ ++ outerQ ++ propsQ do
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    let mut ended := false
+    let mut blockPauses := 0
+    for _ in [:64] do
+      match L4YAML.Scanner.scanNextToken s with
+      | .ok (some sN) =>
+        match L4YAML.Scanner.scanNextToken_preprocess s with
+        | .ok (some (sP, c)) =>
+          if !sP.inFlow then
+            let before := markedCols sP
+            let after := markedCols sN
+            if c == '?' then
+              qN := qN + 1
+              if after.any (fun x => x != (sP.col : Int) && !before.contains x) then qBad := qBad + 1
+            else
+              neN := neN + 1
+              blockPauses := blockPauses + 1
+              if after.any (fun x => !before.contains x) then neBad := neBad + 1
+        | _ => pure ()
+        s := sN
+      | .ok none => ended := true; break
+      | .error _ => break
+    if propsQ.contains input && ended && blockPauses ≥ 1 then propsOk := propsOk + 1
+  check state s!"P69c h_mcstep_ne/h_mcstep read at every block pause: non-? pauses={neN} new marks={neBad}; ? pauses={qN} off-column marks={qBad}; props-in-? inputs accepted={propsOk}/{propsQ.length}"
+    (neN > 0 && neBad == 0 && qN > 0 && qBad == 0 && propsOk == 3 && propsQ.length == 4)
 
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
@@ -8497,6 +8543,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testNotQuestionPark state
   testMarkedColsDomain state
   testColZeroParks state
+  testKslotDomain state
 
   testQuestionMarkColumn state
   testK1Lanes state

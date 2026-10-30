@@ -488,14 +488,16 @@ def expectedCloses : List String :=
 -- value-line stack at the landed-`-` arm (`h_slotV`) and at the compact arm, both the slot's
 -- inner pack under `KeyFrames.bottom`: `spends` 8 → 10.
 -- 2026-10-24 (B3 [66] col-0 threading): follows StreamCompositions — the content/block parks close from `sp_gram` (run + gate).
+-- 2026-10-30 (item 405): `closeThenBlock.h_vslot` is spent twice more — the compact fill and the resume branch now destructure `hkvUp`'s domain beside `hkv` (spends 8 → 10).
 def expectedSites : List String :=
   ["accum_block_pending→accum_block_on_closeThenBlock.h_close_pending → accum_block_on_closeThenBlock.h_close_pending: spends=1 (node 0) handoffs=0 carries=0 WIDTH reach=1 reachJudged=1 reachBoth=false",
-   "accum_block_pending→accum_block_on_closeThenBlock.h_vslot → accum_block_on_closeThenBlock.h_vslot: spends=8 (node 8) handoffs=3 carries=1 NEITHER reach=2 reachJudged=4 reachBoth=false",
+   "accum_block_pending→accum_block_on_closeThenBlock.h_vslot → accum_block_on_closeThenBlock.h_vslot: spends=10 (node 10) handoffs=3 carries=1 NEITHER reach=2 reachJudged=4 reachBoth=false",
    "accum_block_pending→accum_block_on_pendingBlock.h_close_pending → accum_block_on_pendingBlock.h_close_pending: spends=4 (node 0) handoffs=1 carries=0 BOTH reach=2 reachJudged=6 reachBoth=false",
    "accum_content_on_noPending→keyctx_of_preprocess.h_close → keyctx_of_preprocess.h_close: spends=2 (node 1) handoffs=0 carries=0 WIDTH reach=1 reachJudged=1 reachBoth=false",
    "accum_flow_open_depth0→flowKeyRoute_of_root.h_close → flowKeyRoute_of_root.h_close: spends=2 (node 2) handoffs=0 carries=0 NEITHER reach=1 reachJudged=0 reachBoth=false"]
 -- 2026-10-24 (B3 [66] col-0 threading): follows StreamCompositions — the content/block parks close from `sp_gram` (run + gate).
 -- 2026-10-24 (B3 [66] col-0 threading): re-read on the item-355 base.
+-- 2026-10-30 (item 405): the two `closeThenBlock` births destructure `hkv` beside `hkvUp` and apply the slot route per chain member (`rcases List.mem_cons`): the node spends are read once per branch (the slot's own head and the ancestors'), with the chain index `cur:nv` only.
 def expectedSpends : List String :=
   -- Item 305: two spends more at `closeThenBlock` — the slot's inner pack through `slotLandedSeq`
   -- for the first entry's stack (`h_slotV`, the landed arm) and through the compact fill for the
@@ -523,7 +525,9 @@ def expectedSpends : List String :=
    "accum_block_on_closeThenBlock spend:node @sp arg=prem:SBlockIndented width=none index=direct[cur:nv,slot:nv] cmp=no",
    "keyctx_of_preprocess spend:node @sp arg=lemma:white_prepend_SSLComments(prem:GStar,SSLComments.startOfLine(GStar.nil)) width=ind[ws~:h_ws,ind~:h_ind,ind~:h_ind',col:hc0] index=none cmp=no",
    "flowKeyRoute_of_root spend:node @sp_mid arg=lemma:SSLCommentsFrom_at_park(prem:ScannerSurfCorr,prem:GStar,prem:∀→Not,lemma:left(prem:And),lemma:left(lemma:right(lemma:right(prem:And)))) width=ind[ws:h_ws,ind:h_ind,ind:h_ind'] index=none cmp=no",
-   "flowKeyRoute_of_root spend:node @sp_mid arg=lemma:SSLCommentsFrom_at_park(prem:ScannerSurfCorr,prem:GStar,prem:∀→Not,lemma:left(prem:And),lemma:left(lemma:right(lemma:right(prem:And)))) width=ind[ws:h_ws,ind:h_ind,ind:h_ind'] index=none cmp=no"]
+   "flowKeyRoute_of_root spend:node @sp_mid arg=lemma:SSLCommentsFrom_at_park(prem:ScannerSurfCorr,prem:GStar,prem:∀→Not,lemma:left(prem:And),lemma:left(lemma:right(lemma:right(prem:And)))) width=ind[ws:h_ws,ind:h_ind,ind:h_ind'] index=none cmp=no",
+   "accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.node(SBlockNode.blockSeq(GOpt.none,prem:SSLComments,lemma:SBlockSeqEntries_of_compactTail(prem:SIndent,prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail))) width=none index=direct[cur:nv] cmp=no",
+   "accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.compactSeq(prem:SIndent,SCompactSeq.mk(prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail)) width=ind[ind:h_iv] index=direct[cur:nv] cmp=no"]
 -- 2026-10-24 (B3 [66] col-0 threading): follows StreamCompositions — the content/block parks close from `sp_gram` (run + gate).
 def expectedEdges : List String :=
   ["accum_block_on_closeThenBlock → slotChainMap.up",
@@ -589,10 +593,11 @@ def expectedEmpties : List String :=
 -- 2026-10-26 (item 369): empties=24 → 25, emptyInd=11 → 12 — the `:`/`?` landing in
 -- `accum_block_on_pendingBlock` closes the awaited entry EMPTY once more to read `h_res_land` off `pendingBlock.h_closeF`.
 -- 2026-10-29 (item 389): empties 27 → 28, emptyInd 12 → 13, emptyCmp 4 → 5 — the paid k = n mapping-top arm's empty node at sp_mid (width from h_ind, compared n ≤ k).
+-- 2026-10-30 (item 405): spends 18 → 20 (spendsN 12 → 14): see `expectedSpends`.
 def expectedLine : String :=
 -- Item 371 (empties=25 → 27, emptyLemmas=6 → 8): the value-line packs end in the one-level
 -- `ResumeFrames`; `question_open_map`'s `h_expl`/`h_closeFV`/`h_framesV` come from the bound tail route `h_route51F`.
-  "closeSites=5 closePairs=6 closePairsD=8 viaClose=3 params=5 spends=18 spendsC=6 spendsE=0 spendsN=12 handoffs=4 carries=1 untyped=0 edges=2 paramsWalked=6 widthInd=5 widthWs=1 widthNone=0 idxDirect=4 idxPacked=1 idxNone=1 cmp=0 cmpSame=0 both=4 bothCmp=0 handInd=4 handDirect=4 handCmp=4 sitesBoth=1 sitesWidth=2 sitesNeither=2 sitesBothAll=0 empties=28 emptyLemmas=8 emptyInd=13 emptyCmp=5 emptySame=2 emptyClose=2 sites=20 pairs=20 pairs21=19 pairs18=17 nonANoDrop=8 reach=38"
+  "closeSites=5 closePairs=6 closePairsD=8 viaClose=3 params=5 spends=20 spendsC=6 spendsE=0 spendsN=14 handoffs=4 carries=1 untyped=0 edges=2 paramsWalked=6 widthInd=5 widthWs=1 widthNone=0 idxDirect=4 idxPacked=1 idxNone=1 cmp=0 cmpSame=0 both=4 bothCmp=0 handInd=4 handDirect=4 handCmp=4 sitesBoth=1 sitesWidth=2 sitesNeither=2 sitesBothAll=0 empties=28 emptyLemmas=8 emptyInd=13 emptyCmp=5 emptySame=2 emptyClose=2 sites=20 pairs=20 pairs21=19 pairs18=17 nonANoDrop=8 reach=38"
 
 /-! ## §5 The reading -/
 

@@ -291,7 +291,8 @@ def isSurfFace (env : Environment) (lhs : Expr) : MetaM Bool := do
 -- — `deeperLandingResume.h_valF`, one more optional binder.
 -- 2026-10-29 (item 389): faces 62 → 63 — the mapping-top conjunct is one more narrowing face on the `-` park's route fields.
 -- 2026-10-29 (item 396): after_close's four optional contexts restated (binders 167 → 162, syntactic 159 → 154); flowOpen_floor_at_prep deleted (theorems 6362 → 6361, its DECLINE|PAY conclusion was one of the 17 no-op pairs).
-def expectedFaceTally : String := "binders=162 faces=63 heads=20"
+-- 2026-10-30 (item 405): faces 63 → 64 — `pendingMapValue.h_explUp`'s new `∨ PackAlt sc` arm (ruling "405 a").
+def expectedFaceTally : String := "binders=162 faces=64 heads=20"
 
 /-- The conclusion head of every left disjunct.  `FVAR 2` is `frameChainUnion`,
     whose face is schematic in `P` — the two rows no census of any kind can
@@ -300,6 +301,7 @@ def expectedFaceTally : String := "binders=162 faces=63 heads=20"
 -- headed `SLYamlStream`; it left the population.  Item 288:
 -- `PendingNode.pendingMapValue.h_vslot`'s face, headed by its `≤`, left too.
 -- 2026-10-26 (item 369): head census re-read — `accum_block_on_pendingBlock.h_closeF_old` (the `-` park's frames, read at the `:`/`?` landing for `h_res_land`).
+-- 2026-10-30 (item 405): five value-line binders now head on `MarkedColsIn` (the head-form chain's first conjunct) instead of `ResumeFrames` — MarkedColsIn 15 → 20, ResumeFrames 18 → 13.
 def expectedHeadCensus : List String :=
   -- Item 300: `Eq` 17 → 19, the two new optional binders (`h_markerline`, `h_marker_new`).
   -- Item 304: `ResumeFrames` 12 → 3 and `KeyFrames` 9 — the value-line stacks' heads.
@@ -317,13 +319,13 @@ def expectedHeadCensus : List String :=
    "GStar 4",
    "IndentFloor 1",
    "KeyFrames 2",
-   "MarkedColsIn 15",
+   "MarkedColsIn 20",
    "MarkerNodeRoute 5",
    "Mono 4",
    "PropsNodeRoute 4",
    -- 2026-10-27 (item 371): ResumeFrames 3 → 18, SLYamlStream 20 → 5 — every value-line pack's
    -- conclusion is a singleton `ResumeFrames` over the stream.
-   "ResumeFrames 18",
+   "ResumeFrames 13",
    "SLYamlStream 5",
    "SeqEntryTail 7",
    "Sound 2",
