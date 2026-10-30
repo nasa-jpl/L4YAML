@@ -671,6 +671,8 @@ def walk (table : Std.HashMap Name (Array Closure)) (c : Name) :
 -- Item 371: every value-line pack's closure ends `⇒ Resume(map(_)::[])▹Stream`, not `⇒ Stream`
 -- (the restated pack); `pendingMapValue.h_expl`'s route carries its `SCompactMapTail` tail.
 -- 2026-10-29 (item 389): the `-` park's h_closeF (pendingBlock, pendingBlockContent) and the props park's h_closeFE carry the mapping-top conjunct — the mapping sibling's route (SCompactMapTail(n) after the entry's compact tail) as a second shape inside the informative side.
+-- 2026-10-30 (item 408): `mk.key` [LEE4LE] → [LEE4L]: the value-line pair's `∃ ns` binder is gone —
+-- the face is `∀ nv ∈ markedCols s0, …` (a scanner-state projection), so the pair's shape loses one E.
 -- 2026-10-29 (item 394, option B): `mk.valueF` [λλLE] → [λλLE2]: the cover `∃ lo, Floor lo n ks ∧
 -- Covered lo ks s0` sits between the frames binder and the resume route.
 -- 2026-10-30 (item 405, Rule 8 fix): the `?`-park field and its content twin are re-indexed by the projection `markedCols sc` (path LE → L: `∀ nv ∈ markedCols sc, …`, no `∃` binder) and `pendingMapValue.h_explUp` gains the `∨ PackAlt sc` arm (LEE2 → LEE3).
@@ -736,7 +738,7 @@ def expectedClosures : List String :=
    "mk.valueF[λλLE2] opt: _: SSLComments ⇒ Resume(_)▹Stream",
    "mk.value[] req+guard: sp_br: SFlowContent(n,flowOut) > SSLComments ⇒ Stream",
    "mk.key[LEE1] opt: [kc=_] _: SBlockMapEntry(_) ⇒ Stream",
-   "mk.key[LEE4LE] opt: [kc=_] _: SBlockMapEntry(_) > SCompactMapTail(_) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream",
+   "mk.key[LEE4L] opt: [kc=_] _: SBlockMapEntry(_) > SCompactMapTail(_) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream",
    "mk.key[LEE5LE2] opt: [kc=_] _: SBlockMapEntry(_) > SCompactMapTail(_) ⇒ Resume(_)▹Stream",
    "mk.key[LEE6LEE2] opt: [kc=_] _: SBlockMapEntry(_) > SCompactMapTail(_) ⇒ Key(_)▹ExplValueLine(_)",
    "mk.vslot[LE] opt: sp_br: SFlowContent(n,flowOut) > SSLComments > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream"]

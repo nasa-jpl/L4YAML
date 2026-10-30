@@ -269,7 +269,7 @@ it may only shrink. -/
 -- Item 374: `ResumeKeyCtx` gains the sequence-top face disjunct (or 101 → 102; ghost unchanged).
 -- 2026-10-29 (item 389): the mapping-top conjunct inside `pendingBlock.h_closeF` / `pendingBlockContent.h_closeF` / `pendingProps.h_closeFE` adds its own `∨ True` (or 102 → 105) and NO binder: it resumes the park's own `ks` (PR #161 review dropped the first draft's `∃ ks'`; ghost stays 72).
 -- 2026-10-30 (item 405, Rule 8 fix): the `?`-park chain fields `pendingBlock.h_kslot`/`pendingBlockContent.h_kslot` are RE-INDEXED by the projection `RegisterWitness.markedCols sc` (`∀ nv ∈ markedCols sc, …`, no `∃ ns`): the two ghost rows the head-form chain had added leave the roster (ghost 75 → 73, back to item 404's reading); `h_explUp` keeps its one new `∨ PackAlt sc` disjunct (or 106 → 107).
-def expectedSummary : String := "carriers=60 snapshot=9 ghost=73 or=107"
+def expectedSummary : String := "carriers=60 snapshot=9 ghost=72 or=107"
 
 -- 2026-10-24 (B3 [66] col-0 threading): carriers 61 → 62 — `SSLCommentsFrom` (the separator-less comment product).
 -- 2026-10-25 (#99 landed): the `FlowLead`/`leadFree`/`closeFree` tally rows go with the deleted carrier and
@@ -290,7 +290,7 @@ def expectedTally : List String :=
    "ExplValueLine: surface=5 state=0 prop=3 scalar=1 snapshot=0 ghost=0 or=0",
    "ExplicitValueRefused: surface=0 state=1 prop=0 scalar=0 snapshot=0 ghost=0 or=0",
    "FlowBaseAnchor: surface=0 state=5 prop=0 scalar=4 snapshot=2 ghost=0 or=0",
-   "FlowBaseRoutes: surface=23 state=1 prop=29 scalar=9 snapshot=1 ghost=5 or=7",
+   "FlowBaseRoutes: surface=23 state=1 prop=29 scalar=9 snapshot=1 ghost=4 or=7",
    "FlowOpenHeld: surface=0 state=0 prop=0 scalar=3 snapshot=0 ghost=2 or=0",
    "FlowOpenStack: surface=31 state=1 prop=28 scalar=9 snapshot=1 ghost=11 or=2",
    "FlowStack: surface=2 state=0 prop=0 scalar=0 snapshot=0 ghost=0 or=0",
@@ -357,7 +357,6 @@ def expectedGhost : List String :=
     "FlowBaseAnchor.body x : Option ScannerState",
     "FlowBaseRoutes.type[4].g g : Option ScannerState",
     "FlowBaseRoutes.mk[6].valueF ks : List IndentStackCover.FrameLevel",
-    "FlowBaseRoutes.mk[8].key ns : List Nat",
     "FlowBaseRoutes.mk[8].key ks : List IndentStackCover.FrameLevel",
     "FlowBaseRoutes.mk[8].key ks : List IndentStackCover.FrameLevel",
     "FlowBaseRoutes.mk[9].vslot ns : List Nat",

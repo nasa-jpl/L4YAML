@@ -103,7 +103,7 @@ namespace L4YAML.Tests.Guards.GateVocabulary
 -- Item 387 review round (2026-10-29): mentions 478 → 479 — the Priority 58b paragraph names the
 -- scanner preprocess entry it walks once more; no name added or retired.
 def expectedGateVocab : String :=
-  "names=113 mentions=481 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
+  "names=113 mentions=484 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
 
 end L4YAML.Tests.Guards.GateVocabulary
 

@@ -670,11 +670,13 @@ def expectedSpends : List String :=
 -- sequence as the mapping's VALUE (`valueLandedSeq`, `.blockOut`) instead of `h_seqBottom`'s bare root node.
 -- 2026-10-29 (item 389): 51 → 56 — the landed birth's `nv < k` arm splits on `s_prep.currentIndent < k` (pushed → refuted by `pushedBirth_not_mapTop`, no-push → declined) and the `-` park's k = n arm reads the mapping-top conjunct `h_mt` beside item 387's `atSequenceIndent` split (mapping top paid, sequence top punt).
 -- 2026-10-30 (item 405): the `closeThenBlock` resume-branch decision reads the chain birth (`hkv` + `hkvUp` destructured, `h_resKslot` declined).
+-- 2026-10-30 (item 408): `flowKeyRoute_of_root`'s value-line pair no longer spends the resumed landing's
+-- `nv` (one route cannot fund `∀ nv ∈ markedCols s_prep`): that `match h_resV_land` arm is a punt on both sides.
 def expectedDecisions : List String :=
   [ "flowKeyRoute_of_root dite kmem [Proofs.IndentStackCover.FrameLevel.map w ∈ ks] → E:other(lemma:SSLCommentsFrom_at_park(prem:ScannerSurfCorr,prem:GStar,prem:∀→Not,lemma:left(prem:And),lemma:left(lemma:right(lemma:right(…)))))|punt pos=—",
     "flowKeyRoute_of_root dite kmem [Proofs.IndentStackCover.FrameLevel.map w ∈ ks] → E:other(lemma:SSLCommentsFrom_at_park(prem:ScannerSurfCorr,prem:GStar,prem:∀→Not,lemma:left(prem:And),lemma:left(lemma:right(lemma:right(…)))))|punt pos=—",
     "flowKeyRoute_of_root match k∃ [h_res_land,h_sfx,h_nodoc:((∃ ks', (∀ (fr : Proofs.IndentStackCover.FrameLevel), fr ∈ ks' → fr.wid…] → —|—|—|P:spend pos=—",
-    "flowKeyRoute_of_root match k∃ [h_resV_land:(∃ nv ks', (∀ (fr : Proofs.IndentStackCover.FrameLevel), fr ∈ ks' → fr.w…] → paid|punt pos=—",
+    "flowKeyRoute_of_root match k∃ [h_resV_land:(∃ nv ks', (∀ (fr : Proofs.IndentStackCover.FrameLevel), fr ∈ ks' → fr.w…] → punt|punt pos=—",
     "flowKeyRoute_of_root match k∃ [h_res_land,h_sfx,h_nodoc:((∃ ks', (∀ (fr : Proofs.IndentStackCover.FrameLevel), fr ∈ ks' → fr.wid…] → paid|paid|paid|paid,P:spend pos=—",
     "flowKeyRoute_of_root match k∃ [h_resV_land:(∃ nv ks', (∀ (fr : Proofs.IndentStackCover.FrameLevel), fr ∈ ks' → fr.w…] → paid|punt pos=—",
     "accum_block_on_closeThenBlock dite kmem [Proofs.IndentStackCover.FrameLevel.map k ∈ ks] → E:comments|— pos=—",

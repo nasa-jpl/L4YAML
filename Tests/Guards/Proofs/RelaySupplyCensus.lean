@@ -963,8 +963,8 @@ def expectedTally : String :=
   -- 2026-10-26 (item 369): edges 664 → 665, DECLINE 256 → 255, FIELD 55 → 56, SPLIT 160 → 161 —
   -- `pendingBlock.h_closeF` threaded into `accum_block_on_pendingBlock` (one FIELD edge) and the
   -- `:`/`?` landing's `h_res_land` there read off those frames instead of `Or.inr trivial`.
-  "edges=657 skipped=42 [DECLINE=258, FIELD=56, LOCAL=27, PAY=55, RELAY=63, \
-SPLIT=164, VIA=34]"
+  "edges=657 skipped=42 [DECLINE=259, FIELD=56, LOCAL=27, PAY=55, RELAY=63, \
+SPLIT=163, VIA=34]"
 
 /-- **The row item 211 read off the compiler's error text and got wrong.**  All
     eight of these print `h_keyctx` when the premise is narrowed; six of them
@@ -1055,8 +1055,8 @@ def expectedProducers : List String :=
 -- 2026-10-29 (item 388): piped 68 → 69, Or.imp⇒FIELD 33 → 34 — `accum_content_pending` relays the mapping
 -- park's `h_closeF` (now `.blockOut`) into the content lane's `.blockIn` binder by `.imp`, weakening the node.
 def expectedPipeLanding : String :=
-  "piped=71 producers=2 [Or.elim⇒SPLIT=5, Or.imp⇒FIELD=34, Or.imp⇒LOCAL=5, \
-Or.imp⇒RELAY=16, Or.imp⇒SPLIT=4, Or.imp⇒VIA=2, dite⇒SPLIT=5]"
+  "piped=79 producers=10 [Eq.rec⇒VIA=8, Or.elim⇒SPLIT=5, Or.imp⇒FIELD=34, \
+Or.imp⇒LOCAL=5, Or.imp⇒RELAY=16, Or.imp⇒SPLIT=4, Or.imp⇒VIA=2, dite⇒SPLIT=5]"
 
 /-- What the SPLITs decide (DOCS item 216), and the row that matters is
     `elsewhere=0`: **not one leaf of any case split in this module is decided
@@ -1132,13 +1132,13 @@ Or.imp⇒RELAY=16, Or.imp⇒SPLIT=4, Or.imp⇒VIA=2, dite⇒SPLIT=5]"
 -- no-pop arm splits `n < k` (PAY via the helper) from `k = n` (sequence top refuted / mapping sibling DECLINE).
 -- 2026-10-30 (item 405): the `?`-park chain PAID through its ladder — three `h_kslotE_k` content relays and the `h_resKslot`/`hkvUp`-starved `closeThenBlock` births DECLINE (ruling (a)); SPLIT 167 → 164, DECLINE 255 → 258 (edges 657 unchanged).  Rule 8 fix (same item): the chain re-indexed by the projection `markedCols sc`; the two head consumers (`flowKeyRoute_of_open`'s compact pair, the props park's entry-level pack) split on `markedCols sc` and DECLINE at the markless projection — leaves 381 → 383, DECLINE 194 → 196 (DECLINE|PAY 144 → 142, DECLINE|DECLINE|PAY 6 → 8).
 def expectedSplitLanding : String :=
-  "survived=164 collapsed=29 leaves=383 elsewhere=11 [DECLINE=196, PAY=176, \
+  "survived=163 collapsed=30 leaves=380 elsewhere=11 [DECLINE=194, PAY=175, \
 VIA=11] \
 [DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|PAY|PAY|PAY|VIA|VIA|VIA=1, \
 DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|PAY|VIA|VIA=1, \
 DECLINE|DECLINE|DECLINE|DECLINE|PAY|PAY|PAY|PAY|PAY=1, \
 DECLINE|DECLINE|DECLINE|PAY=2, DECLINE|DECLINE|DECLINE|PAY|PAY|PAY=1, \
-DECLINE|DECLINE|DECLINE|PAY|VIA=3, DECLINE|DECLINE|PAY=8, \
+DECLINE|DECLINE|DECLINE|PAY|VIA=3, DECLINE|DECLINE|PAY=7, \
 DECLINE|DECLINE|PAY|PAY=1, DECLINE|DECLINE|PAY|PAY|PAY=1, DECLINE|PAY=142, \
 DECLINE|PAY|PAY=1, PAY|VIA=1, PAY|VIA|VIA=1]"
 
@@ -1243,7 +1243,7 @@ DECLINE|PAY|PAY=1, PAY|VIA=1, PAY|VIA|VIA=1]"
 -- 2026-10-29 (item 389): leaves 386 → 388, DECLINE-free 94 → 95, PAY-free 180 → 181 — the `-` park's k = n mapping-top arm is a PAY leaf now; its sequence-top half stays a decline.
 -- 2026-10-30 (item 405): the `?`-park chain PAID through its ladder — three `h_kslotE_k` content relays and the `h_resKslot`/`hkvUp`-starved `closeThenBlock` births DECLINE (ruling (a)); SPLIT 167 → 164, DECLINE 255 → 258 (edges 657 unchanged).
 def expectedSplitBranch : String :=
-  "splits=164 leaves=383 relayRooted=153 siteDecided=11 optionalRoot=108 plainRoot=45 agree=110/110 disagree=0 [DECLINE-closed=106, DECLINE-free=90, PAY-free=176, VIA L4YAML.Proofs.StreamAccum.deeperLandingResume-=2, VIA L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root-=1, VIA absurd-=8]"
+  "splits=163 leaves=380 relayRooted=152 siteDecided=11 optionalRoot=108 plainRoot=44 agree=110/110 disagree=0 [DECLINE-closed=105, DECLINE-free=89, PAY-free=175, VIA L4YAML.Proofs.StreamAccum.deeperLandingResume-=2, VIA L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root-=1, VIA absurd-=8]"
 
 /-- **The ten splits the site decides for itself**, which is the whole residue
     of the branch question after `expectedSplitBranch`.  Four are a `dite` on a
@@ -1520,36 +1520,39 @@ def expectedDeclineWriters : List String :=
 -- `colon_open_map_explicit` (3), `accum_step_flow` (4) and `accum_flow_open_depth0` (2) — before, one `VIA` leaf each.
 -- 2026-10-29 (item 389): a match-index rename only — `accum_block_on_closeThenBlock`'s `h_kslotUp` decline is now behind `match_1_31` (was `match_1_28`): the landed birth's `nv < k` split added matches before it; no edge moved.
 -- 2026-10-30 (item 405): see `expectedTally`.  Rule 8 fix (same item): the chain re-indexed by the projection `markedCols sc` — the two head consumers' `match markedCols sc with | [] => Or.inr trivial` arms are new collapsed DECLINE edges (see `expectedSplitLanding`).
+-- 2026-10-30 (item 408): `accum_flow_open_depth0 → flowKeyRoute_of_open#13 (h_compact_pair)` joins the collapsed
+-- edges: the `pendingMapValue` arm's fabricated singleton pair `[n_old]` is DECLINED under the projection face.
 def expectedCollapsedEdge : String :=
   "compact_open_map → PendingNode.pendingMapValue#16 (h_kslot) = DECLINE via Or.elim; \
-    compact_open_map → PendingNode.pendingMapValue#19 (h_closeFV) = DECLINE via Or.elim; \
-    compact_open_map → PendingNode.pendingMapValue#20 (h_framesV) = DECLINE via Or.elim; \
-    accum_flow_open_depth0 → flowKeyRoute_of_root#26 (h_mapFV) = DECLINE via Or.elim; \
-    accum_flow_open_depth0 → flowKeyRoute_of_root#26 (h_mapFV) = DECLINE via Or.elim; \
-    accum_content_pending → PendingNode.pendingBlockContent#12 (h_kslot) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_content_pending.match_1_57; \
-    accum_content_pending → PendingNode.pendingBlockContent#17 (h_kslotUp) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_content_pending.match_1_57; \
-    accum_content_pending → PendingNode.pendingBlockContent#12 (h_kslot) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_content_pending.match_1_57; \
-    accum_content_pending → PendingNode.pendingBlockContent#17 (h_kslotUp) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_content_pending.match_1_57; \
-    accum_content_pending → PendingNode.pendingBlockContent#12 (h_kslot) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_content_pending.match_1_57; \
-    accum_content_pending → PendingNode.pendingBlockContent#17 (h_kslotUp) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_content_pending.match_1_57; \
-    colon_open_map_explicit → PendingNode.pendingMapValue#16 (h_kslot) = DECLINE via Or.elim; \
-    colon_open_map_explicit → PendingNode.pendingMapValue#19 (h_closeFV) = DECLINE via Or.elim; \
-    colon_open_map_explicit → PendingNode.pendingMapValue#20 (h_framesV) = DECLINE via Or.elim; \
-    accum_block_pending → frameChainUnion#2 (h₁) = PAY via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_block_pending.match_1_23; \
-    accum_block_pending → frameChainUnion#3 (h₂) = PAY via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_block_pending.match_1_25; \
-    accum_step_flow → PendingNode.pendingContent#9 (h_vpack) = DECLINE via Or.elim; \
-    accum_step_flow → PendingNode.pendingContent#12 (h_framesV) = DECLINE via Or.elim; \
-    accum_step_flow → PendingNode.pendingContent#9 (h_vpack) = DECLINE via Or.elim; \
-    accum_step_flow → PendingNode.pendingContent#12 (h_framesV) = DECLINE via Or.elim; \
-    accum_content_on_pendingMapValue_indented → frameChainUnionD#3 (h₁) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented.match_1_1; \
-    accum_content_on_pendingMapValue_indented → frameChainUnionD#3 (h₁) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented.match_1_1; \
-    accum_content_on_pendingMapValue_indented → frameChainUnionD#3 (h₁) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented.match_1_1; \
-    explFrameValueLine → frameChainUnion#2 (h₁) = PAY via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.explFrameValueLine.match_1_1; \
-    accum_content_on_pendingBlock_indented → PendingNode.pendingProps#21 (h_kslot) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_content_on_pendingBlock_indented.match_1_2; \
-    colon_open_map → PendingNode.pendingMapValue#16 (h_kslot) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.colon_open_map.match_1_5; \
-    accum_block_on_closeThenBlock → PendingNode.pendingBlock#11 (h_closeF) = PAY via Or.casesOn→Exists.casesOn→Exists.casesOn→And.casesOn→And.casesOn→And.casesOn→And.casesOn→dite; \
-    accum_block_on_closeThenBlock → PendingNode.pendingBlock#14 (h_kslotUp) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock.match_1_34→dite; \
-    accum_block_on_closeThenBlock → PendingNode.pendingBlock#14 (h_kslotUp) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock.match_1_3"
+  compact_open_map → PendingNode.pendingMapValue#19 (h_closeFV) = DECLINE via Or.elim; \
+  compact_open_map → PendingNode.pendingMapValue#20 (h_framesV) = DECLINE via Or.elim; \
+  accum_flow_open_depth0 → flowKeyRoute_of_root#26 (h_mapFV) = DECLINE via Or.elim; \
+  accum_flow_open_depth0 → flowKeyRoute_of_root#26 (h_mapFV) = DECLINE via Or.elim; \
+  accum_flow_open_depth0 → flowKeyRoute_of_open#13 (h_compact_pair) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_flow_open_depth0.match_1_36; \
+  accum_content_pending → PendingNode.pendingBlockContent#12 (h_kslot) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_content_pending.match_1_57; \
+  accum_content_pending → PendingNode.pendingBlockContent#17 (h_kslotUp) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_content_pending.match_1_57; \
+  accum_content_pending → PendingNode.pendingBlockContent#12 (h_kslot) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_content_pending.match_1_57; \
+  accum_content_pending → PendingNode.pendingBlockContent#17 (h_kslotUp) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_content_pending.match_1_57; \
+  accum_content_pending → PendingNode.pendingBlockContent#12 (h_kslot) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_content_pending.match_1_57; \
+  accum_content_pending → PendingNode.pendingBlockContent#17 (h_kslotUp) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_content_pending.match_1_57; \
+  colon_open_map_explicit → PendingNode.pendingMapValue#16 (h_kslot) = DECLINE via Or.elim; \
+  colon_open_map_explicit → PendingNode.pendingMapValue#19 (h_closeFV) = DECLINE via Or.elim; \
+  colon_open_map_explicit → PendingNode.pendingMapValue#20 (h_framesV) = DECLINE via Or.elim; \
+  accum_block_pending → frameChainUnion#2 (h₁) = PAY via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_block_pending.match_1_23; \
+  accum_block_pending → frameChainUnion#3 (h₂) = PAY via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_block_pending.match_1_25; \
+  accum_step_flow → PendingNode.pendingContent#9 (h_vpack) = DECLINE via Or.elim; \
+  accum_step_flow → PendingNode.pendingContent#12 (h_framesV) = DECLINE via Or.elim; \
+  accum_step_flow → PendingNode.pendingContent#9 (h_vpack) = DECLINE via Or.elim; \
+  accum_step_flow → PendingNode.pendingContent#12 (h_framesV) = DECLINE via Or.elim; \
+  accum_content_on_pendingMapValue_indented → frameChainUnionD#3 (h₁) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented.match_1_1; \
+  accum_content_on_pendingMapValue_indented → frameChainUnionD#3 (h₁) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented.match_1_1; \
+  accum_content_on_pendingMapValue_indented → frameChainUnionD#3 (h₁) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented.match_1_1; \
+  explFrameValueLine → frameChainUnion#2 (h₁) = PAY via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.explFrameValueLine.match_1_1; \
+  accum_content_on_pendingBlock_indented → PendingNode.pendingProps#21 (h_kslot) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_content_on_pendingBlock_indented.match_1_2; \
+  colon_open_map → PendingNode.pendingMapValue#16 (h_kslot) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.colon_open_map.match_1_5; \
+  accum_block_on_closeThenBlock → PendingNode.pendingBlock#11 (h_closeF) = PAY via Or.casesOn→Exists.casesOn→Exists.casesOn→And.casesOn→And.casesOn→And.casesOn→And.casesOn→dite; \
+  accum_block_on_closeThenBlock → PendingNode.pendingBlock#14 (h_kslotUp) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock.match_1_34→dite; \
+  accum_block_on_closeThenBlock → PendingNode.pendingBlock#14 (h_kslotUp) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock.match_1_3"
 
 /-- **Read off the TYPE, not off a list.**  Item 211's falsification script
     enumerated five optional contexts of `content_dispatch_routed` by hand;
