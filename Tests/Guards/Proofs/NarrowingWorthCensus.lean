@@ -292,7 +292,7 @@ def isSurfFace (env : Environment) (lhs : Expr) : MetaM Bool := do
 -- 2026-10-29 (item 389): faces 62 → 63 — the mapping-top conjunct is one more narrowing face on the `-` park's route fields.
 -- 2026-10-29 (item 396): after_close's four optional contexts restated (binders 167 → 162, syntactic 159 → 154); flowOpen_floor_at_prep deleted (theorems 6362 → 6361, its DECLINE|PAY conclusion was one of the 17 no-op pairs).
 -- 2026-10-30 (item 405): faces 63 → 64 — `pendingMapValue.h_explUp`'s new `∨ PackAlt sc` arm (ruling "405 a").
-def expectedFaceTally : String := "binders=162 faces=64 heads=20"
+def expectedFaceTally : String := "binders=161 faces=64 heads=20"
 
 /-- The conclusion head of every left disjunct.  `FVAR 2` is `frameChainUnion`,
     whose face is schematic in `P` — the two rows no census of any kind can
@@ -319,13 +319,15 @@ def expectedHeadCensus : List String :=
    "GStar 4",
    "IndentFloor 1",
    "KeyFrames 2",
-   "MarkedColsIn 15",
+   -- Item 409 (2026-10-30): the pack faces carry a `MarkedColsIn` head (+2); `explFrameValueLine`'s
+   -- three `ResumeFrames` heads are gone (18 → 15).
+   "MarkedColsIn 17",
    "MarkerNodeRoute 5",
    "Mono 4",
    "PropsNodeRoute 4",
    -- 2026-10-27 (item 371): ResumeFrames 3 → 18, SLYamlStream 20 → 5 — every value-line pack's
    -- conclusion is a singleton `ResumeFrames` over the stream.
-   "ResumeFrames 18",
+   "ResumeFrames 15",
    "SLYamlStream 5",
    "SeqEntryTail 7",
    "Sound 2",
@@ -360,9 +362,8 @@ def expectedChainFaces : List String :=
   ["FlowBaseRoutes.mk#9 (vslot)",
    "accum_block_on_closeThenBlock#10 (h_vpack)",
    "accum_block_on_pendingContent#16 (h_vpack)",
-   "entryKeyPack_of_dispatch#11 (h_nodeV)",
-   "entryPropsKeyPack_of_dispatch#11 (h_nodeV)",
-   "explFrameValueLine#6 (h_kslot)",
+   -- Item 409 (2026-10-30): the two `h_nodeV` faces left rung 1 (they carry `MarkedColsIn` now);
+   -- `explFrameValueLine` deleted (11 → 8).
    "flowVPack_of_close#5 (h_vslot)",
    "frameChainUnion#2 (h₁)",
    "frameChainUnion#3 (h₂)",
@@ -383,7 +384,7 @@ which of four reasons applies. -/
 -- 2026-10-26 (item 369): binders=165 → binders=166, surf=134 → surf=135 — `accum_block_on_pendingBlock.h_closeF_old` (the `-` park's frames, read at the `:`/`?` landing for `h_res_land`).
 -- 2026-10-28 (item 385): binders 166 → 167, surf 135 → 136
 -- — `deeperLandingResume.h_valF`: one more surface-shaped optional binder.
-def expectedFidelity : String := "binders=162 surf=133 state=29"
+def expectedFidelity : String := "binders=161 surf=132 state=29"
 
 /-- The 25 faces a state census COULD evaluate — 27 since item 300 — which is
     the population the mandate's instrument is actually defined over.  Two of them
@@ -887,7 +888,7 @@ one unfolding, and §6 is the item where those two disagreed about binders. -/
 -- 2026-10-29 (item 394, option B): no-op conclusion tally re-read after the s0 index.
 -- 2026-10-30 (item 405, Rule 8 fix): theorems 6480 → 6484 — `RegisterWitness.markedCols`, `markedCols_mem`, `MarkedColsIn.self`, `MarkedColsIn.relay`.
 -- 2026-10-30 (item 407, flow carrier `pendingKeys` conjunct): theorems 6484 → 6487 — `closeStaleExplicitKey_pendingKeys_of_inFlow`, `preprocess_pendingKeys_of_inFlow`, `allowDirectives_update_pendingKeys`.
-def expectedNoopTally : String := "theorems=6488 byElab=16 byWhnf=16 elabOnly=0 whnfOnly=0"
+def expectedNoopTally : String := "theorems=6489 byElab=16 byWhnf=16 elabOnly=0 whnfOnly=0"
 -- 5302 → 5344 on 2026-10-18 (plan row 20's close, closure-log item 280): the
 -- parse-side alias obligation moved to §7.1's DECLARATION set, so the carrier
 -- grew and the predicate gained its tools.  What is new in kind: `AG` carries

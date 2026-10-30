@@ -142,25 +142,8 @@ second argument is the park's own `h_kslot`, the frames it stands INSIDE —
 ~~so the two funders are one datum~~ and since item 196 both of them leave
 together, as a chain the landing picks from by column. -/
 
-example {sp_start sp_scan : SurfPos} {n : Nat}
-    -- Item 371: the `?` route carries its tail (the restated value-line pack).
-    (h_expl : (∃ sp_q : SurfPos, GLit '?' sp_q sp_scan ∧
-      ∀ sp_v : SurfPos, SBlockMapEntry n sp_q sp_v →
-      ∀ sp_e : SurfPos, SCompactMapTail n sp_v sp_e →
-        SLYamlStream sp_start sp_e) ∨ True)
-    -- Item 179: the awaited key node reads at the SHIFTED index.
-    -- Item 196: and the ancestor index is a LIST.
-    (h_kslot : (∃ ns : List Nat, ∀ nv ∈ ns,
-      ∀ sp_m : SurfPos, SBlockNode (n + 1) .blockIn sp_scan sp_m →
-      ∀ sp_i sp_c : SurfPos, SIndent nv sp_m sp_i → GLit ':' sp_i sp_c →
-      ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →
-      ResumeFrames (SLYamlStream sp_start) [L4YAML.Proofs.IndentStackCover.FrameLevel.map nv] sp_v) ∨ True) :
-    (∃ ns : List Nat, ∀ nv ∈ ns,
-      ∀ sp_m : SurfPos, SBlockNode (n + 1) .blockIn sp_scan sp_m →
-      ∀ sp_i sp_c : SurfPos, SIndent nv sp_m sp_i → GLit ':' sp_i sp_c →
-      ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →
-      ResumeFrames (SLYamlStream sp_start) [L4YAML.Proofs.IndentStackCover.FrameLevel.map nv] sp_v) ∨ True :=
-  explFrameValueLine h_expl h_kslot
+-- 2026-10-30 (item 409): `explFrameValueLine` was deleted — its three callers pass the `?` park's
+-- domained chain (`h_kslot`) straight to `entryKeyPack_of_dispatch`; the reader below it stays.
 
 -- A `?` frame really does fund it, and this is the half that carries content:
 -- the LEFT disjunct's payload is derivable from the frame alone.  (The

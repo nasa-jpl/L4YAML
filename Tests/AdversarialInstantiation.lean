@@ -8599,6 +8599,41 @@ def testKslotDomain (state : IO.Ref TestCollector) : IO Unit := do
 
 
 /-- Priority 70/71: the flow carrier (items 406/407) — split from `testKslotDomain` (LCNF timeout). -/
+def testKslotPay (state : IO.Ref TestCollector) : IO Unit := do
+  -- 73 (item 409) — `MarkedColsIn.step_value` as a STATEMENT: a block-context `:` dispatch adds no mark,
+  -- so every mark after the `:` was a mark before it (`MarkedColsIn` is a COVER: the chain at the park
+  -- still covers the state after the `:`); negative control: a block `?` dispatch adds its own mark.
+  let mut cPauses := 0
+  let mut cBad := 0
+  let mut cShrink := 0
+  let mut qPauses := 0
+  let mut qGrow := 0
+  let corpus : List String :=
+    ["a: 1\n", "a: [1, 2]\n", "? a\n: b\n", "- ? a: 1\n  : b\n", "? ? a\n  : b\n: c\n", "? - a\n  - b\n: c\n",
+     "a:\n  ? b\n  : c\n", "? [a]: b\n: c\n", "? a\n? b\n: c\n", "k: ? a\n   : b\n", "? &p a: b\n: - w\n",
+     "- a: 1\n  b: 2\n", "? a\n:\n  - b\n", "{a: 1}\n", "? {a: 1}\n: 2\n"]
+  for input in corpus do
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:64] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) =>
+          let before := L4YAML.Proofs.RegisterWitness.markedCols s
+          let after := L4YAML.Proofs.RegisterWitness.markedCols sN
+          if c == ':' && sP.flowLevel == 0 then
+            cPauses := cPauses + 1
+            if !(after.all (fun nv => before.contains nv)) then cBad := cBad + 1
+            if after.length < before.length then cShrink := cShrink + 1
+          if c == '?' && sP.flowLevel == 0 then
+            qPauses := qPauses + 1
+            if after.length > before.length then qGrow := qGrow + 1
+          s := sN
+        | _ => break
+      | _ => break
+  check state s!"P73 MarkedColsIn.step_value (item 409): block `:` pauses={cPauses} new mark after `:`={cBad} (marks dropped at {cShrink}); block `?` pauses={qPauses} mark added={qGrow}"
+    (cPauses > 0 && cBad == 0 && qPauses > 0 && qGrow > 0)
+
 def testFlowCarrier (state : IO.Ref TestCollector) : IO Unit := do
   let nestedQ : List String := ["?\n  ? -\n: w\n", "? - ? - a\n  : b\n: c\n", "?\n  ?\n    -\n    - b\n  ? c\n: w\n", "? ? - a\n  : b\n: c\n", "- ? - a\n  : b\n"]
   let singleQ : List String := ["? - a\n: b\n", "?\n  - a\n  - b\n: w\n", "k:\n  ? - a\n  : b\n", "? -\n: w\n"]
@@ -8790,6 +8825,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testColZeroParks state
   testKslotDomain state
   testFlowCarrier state
+  testKslotPay state
 
   testQuestionMarkColumn state
   testK1Lanes state

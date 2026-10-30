@@ -511,7 +511,7 @@ def expectedPipeSplit : String :=
   -- two-arm split now: its 17 `VIA` edges leave the producer surface (the distinct producer `Or.elim` with them); the
   -- five whose arms disagree land as splits, the twelve whose arms agree are collapsed edges and are counted nowhere here.
   -- 2026-10-29 (item 394): `FlowBaseRoutes.valueF` is a new producer relayed VIA at both flow closes (producers 32/10 → 34/11, landed 69 → 71, landed-producers 0 → 2).
-  "pipes=0/0 producers=34/11 landed=79 landed-producers=10 total=113"
+  "pipes=0/0 producers=31/10 landed=78 landed-producers=10 total=109"
 
 end L4YAML.Tests.Guards.ConclusionRouteCensus
 

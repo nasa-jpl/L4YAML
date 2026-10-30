@@ -679,7 +679,9 @@ def walk (table : Std.HashMap Name (Array Closure)) (c : Name) :
 def expectedClosures : List String :=
   ["pendingContent.h_closable[] req+guard: sp_gram: SSLComments ⇒ Stream",
    "pendingContent.h_key[λλLEEE1L] req+guard+pack: [col(pos(simpleKey(sc)))=_; line(pos(simpleKey(sc)))=line(sc)] _: SBlockMapEntry(_) ⇒ Stream",
-   "pendingContent.h_key[λλLEEE5LE] opt+guard+pack: [col(pos(simpleKey(sc)))=_; line(pos(simpleKey(sc)))=line(sc)] _: SBlockMapEntry(_) > SCompactMapTail(_) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream",
+   -- Item 409 (2026-10-30): the pack faces' value-line pair gains the `MarkedColsIn` domain conjunct
+   -- (ImplicitKeyPack / PropsKeyPack): `[…LE]` → `[…LE2]` at the three `h_key` pair rows.
+   "pendingContent.h_key[λλLEEE5LE2] opt+guard+pack: [col(pos(simpleKey(sc)))=_; line(pos(simpleKey(sc)))=line(sc)] _: SBlockMapEntry(_) > SCompactMapTail(_) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream",
    "pendingContent.h_key[λλLEEE6LE3] opt+guard+pack: [col(pos(simpleKey(sc)))=_; line(pos(simpleKey(sc)))=line(sc)] _: SBlockMapEntry(_) > SCompactMapTail(_) ⇒ Resume(_)▹Stream",
    "pendingContent.h_key[λλLEEE7LEE3] opt+guard+pack: [col(pos(simpleKey(sc)))=_; line(pos(simpleKey(sc)))=line(sc)] _: SBlockMapEntry(_) > SCompactMapTail(_) ⇒ Key(_)▹ExplValueLine(_)",
    "pendingContent.h_key[λλLEEE8LEE2] opt+guard+pack: [col(pos(simpleKey(sc)))=_; line(pos(simpleKey(sc)))=line(sc)] _: SBlockMapEntry(_) > SCompactMapTail(_) ⇒ Resume(_)▹SeqEntryTail(_)",
@@ -689,7 +691,7 @@ def expectedClosures : List String :=
    "pendingContent.h_seqF[LEEE2] opt: sp_gram: SSLComments > SCompactMapTail(_) ⇒ Resume(_)▹SeqEntryTail(_)",
    "pendingProps.h_route[] req+guard: sp_node: SBlockNode(n,blockIn) ⇒ Stream",
    "pendingProps.h_key[L1E1] req+pack: [col(pos(simpleKey(sc)))=_; line(pos(simpleKey(sc)))=line(sc)] sp_p: SBlockMapEntry(_) ⇒ Stream",
-   "pendingProps.h_key[L1E3LE] opt+pack: [col(pos(simpleKey(sc)))=_; line(pos(simpleKey(sc)))=line(sc)] sp_p: SBlockMapEntry(_) > SCompactMapTail(_) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream",
+   "pendingProps.h_key[L1E3LE2] opt+pack: [col(pos(simpleKey(sc)))=_; line(pos(simpleKey(sc)))=line(sc)] sp_p: SBlockMapEntry(_) > SCompactMapTail(_) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream",
    "pendingProps.h_key[L1E4LE3] opt+pack: [col(pos(simpleKey(sc)))=_; line(pos(simpleKey(sc)))=line(sc)] sp_p: SBlockMapEntry(_) > SCompactMapTail(_) ⇒ Resume(_)▹Stream",
    "pendingProps.h_key[L1E5LEE3] opt+pack: [col(pos(simpleKey(sc)))=_; line(pos(simpleKey(sc)))=line(sc)] sp_p: SBlockMapEntry(_) > SCompactMapTail(_) ⇒ Key(_)▹ExplValueLine(_)",
    "pendingProps.h_kslot[LE2] opt: sp_node: SBlockNode(n,blockIn) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream",
@@ -705,7 +707,7 @@ def expectedClosures : List String :=
    "pendingBlockContent.h_closable[] req+guard: sp_gram: SSLComments ⇒ Stream",
    "pendingBlockContent.h_closable_entry[] req: sp_gram: SSLComments > SCompactSeqTail(n) ⇒ Stream",
    "pendingBlockContent.h_key[λλLEEE1L] req+guard+pack: [col(pos(simpleKey(sc)))=_; line(pos(simpleKey(sc)))=line(sc)] _: SBlockMapEntry(_) ⇒ Stream",
-   "pendingBlockContent.h_key[λλLEEE5LE] opt+guard+pack: [col(pos(simpleKey(sc)))=_; line(pos(simpleKey(sc)))=line(sc)] _: SBlockMapEntry(_) > SCompactMapTail(_) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream",
+   "pendingBlockContent.h_key[λλLEEE5LE2] opt+guard+pack: [col(pos(simpleKey(sc)))=_; line(pos(simpleKey(sc)))=line(sc)] _: SBlockMapEntry(_) > SCompactMapTail(_) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream",
    "pendingBlockContent.h_key[λλLEEE6LE3] opt+guard+pack: [col(pos(simpleKey(sc)))=_; line(pos(simpleKey(sc)))=line(sc)] _: SBlockMapEntry(_) > SCompactMapTail(_) ⇒ Resume(_)▹Stream",
    "pendingBlockContent.h_key[λλLEEE7LEE3] opt+guard+pack: [col(pos(simpleKey(sc)))=_; line(pos(simpleKey(sc)))=line(sc)] _: SBlockMapEntry(_) > SCompactMapTail(_) ⇒ Key(_)▹ExplValueLine(_)",
    "pendingBlockContent.h_key[λλLEEE8LEE2] opt+guard+pack: [col(pos(simpleKey(sc)))=_; line(pos(simpleKey(sc)))=line(sc)] _: SBlockMapEntry(_) > SCompactMapTail(_) ⇒ Resume(_)▹SeqEntryTail(_)",
@@ -950,7 +952,7 @@ def expectedK : List String :=
 -- 2026-10-30 (item 405): `compact_open_map` closes `pendingMapValue.h_explUp` with the new `PackAlt` arm instead of carrying an empty chain (carry 192 → 191, closed 10 → 11; the route-argument walk loses that one forwarded edge).
 def expectedLine : String :=
   -- Item 372 (2026-10-27): `ImplicitKeyPack`'s route conjunct is an Or (the `SeqTopKey` face): the pack's route slot reads as a guarded alternative, not a bare stream route.
-  "closures=57 packed=14 optional=41 guarded=16 facts=3 others=4 byHead=6 byFirst=9 bySpine=42 flowRoutes=7 flowSpinesNew=6 slots=62 nil=44 parkedCtor=35 closureSlots=274 stream=5 carry=191 fwd=0 punt=67 closed=11 mandatory[stream=4 carry=53 fwd=0 punt=14 closed=1] optional[stream=1 carry=138 fwd=0 punt=53 closed=10] packSlots=104 pack[stream=0 carry=84 fwd=0 punt=0 closed=20] spinesFromStream=3 spinesCarried=37 spinesTouched=40 firstsFromStream=3 headsFromStream=2 streamSites=2 closings=11 closedDistinct=3 closedIn=1 absorbed=4 obtained=2 flowSites=7 flowSlots=49 flow[stream=8 carry=30 fwd=0 punt=10 closed=1] routeArgs=162 routeStream=16 routeCarry=60 routeFwd=47 routeClosed=39 routeToWalked=100 routeStreamToWalked=11 viaObtained=0 viaSites=0 builders=13 builds=170 buildSlots=1166 build[stream=14 carry=307 fwd=736 punt=77 closed=32] buildStreamSlots=14 buildSpines=8 routePairs=7 routeSpines=5 k=12 kHeads=6 streamBuilders=8"
+  "closures=57 packed=14 optional=41 guarded=16 facts=3 others=4 byHead=6 byFirst=9 bySpine=42 flowRoutes=7 flowSpinesNew=6 slots=62 nil=44 parkedCtor=35 closureSlots=274 stream=5 carry=191 fwd=0 punt=67 closed=11 mandatory[stream=4 carry=53 fwd=0 punt=14 closed=1] optional[stream=1 carry=138 fwd=0 punt=53 closed=10] packSlots=104 pack[stream=0 carry=84 fwd=0 punt=0 closed=20] spinesFromStream=3 spinesCarried=37 spinesTouched=40 firstsFromStream=3 headsFromStream=2 streamSites=2 closings=11 closedDistinct=3 closedIn=1 absorbed=4 obtained=2 flowSites=7 flowSlots=49 flow[stream=8 carry=30 fwd=0 punt=10 closed=1] routeArgs=160 routeStream=16 routeCarry=60 routeFwd=47 routeClosed=37 routeToWalked=100 routeStreamToWalked=11 viaObtained=0 viaSites=0 builders=13 builds=170 buildSlots=1166 build[stream=14 carry=307 fwd=736 punt=77 closed=32] buildStreamSlots=14 buildSpines=8 routePairs=7 routeSpines=5 k=12 kHeads=6 streamBuilders=8"
 
 set_option maxHeartbeats 4000000 in
 run_cmd Lean.Elab.Command.liftTermElabM do
