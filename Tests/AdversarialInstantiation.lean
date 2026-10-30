@@ -8135,6 +8135,35 @@ def testInputAheadExports (state : IO.Ref TestCollector) : IO Unit := do
   check state s!"P68b validateFlowClose direct at block-level flow closes: ok={fcOk} err={fcErr} viol={fcViol}"
     (fcOk == 13 && fcErr == 0 && fcViol == 0)
 
+  -- 68c (review) — `LiveKeyTop.dash_case` under its own premises: at every block-context pause
+  -- with a live same-line key whose cursor (past whitespace, the preprocess) peeks `-`, call
+  -- `scanBlockEntry` and check the conclusion — the line's last token is a block entry at the
+  -- saved key's position — on every success.  Predicted before the run: armed ≥ 1 (the `- - a`
+  -- rows), every armed call accepted, 0 conclusion violations; vacuous (live key, no `-`) ≥ 140.
+  let mut dcArmed := 0; let mut dcOk := 0; let mut dcErr := 0; let mut dcViol := 0; let mut dcVac := 0
+  for input in inputAheadInputs ++ extra ++ ["- - \"a\"\n", "- - - a\n", "- - &x a\n", "a:\n- - b\n"] do
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:128] do
+      match L4YAML.Scanner.scanNextToken s with
+      | .ok (some sN) =>
+        if !sN.inFlow && sN.simpleKey.possible && sN.simpleKey.pos.line == sN.line then
+          let sP := L4YAML.Scanner.skipWhitespace sN
+          if sP.peek? == some '-' then
+            dcArmed := dcArmed + 1
+            match L4YAML.Scanner.scanBlockEntry sP with
+            | .ok _ =>
+              dcOk := dcOk + 1
+              let concl := match sP.tokens.back? with
+                | some t => (match t.val with | .blockEntry => true | _ => false) && t.pos == sP.simpleKey.pos
+                | none => false
+              if !concl then dcViol := dcViol + 1
+            | .error _ => dcErr := dcErr + 1
+          else dcVac := dcVac + 1
+        s := sN
+      | _ => break
+  check state s!"P68c dash_case direct: armed={dcArmed} ok={dcOk} err={dcErr} viol={dcViol} vacuous={dcVac}"
+    (dcArmed == 7 && dcOk == 7 && dcErr == 0 && dcViol == 0 && dcVac == 159)
+
 
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
