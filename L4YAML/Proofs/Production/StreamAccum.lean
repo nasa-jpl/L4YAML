@@ -1748,7 +1748,7 @@ lemma frameChainCons {P : Nat → Prop} {a : Nat} {ns : List Nat}
 
 /-- **Two optional funders, one chain** (item 192).  Where a park holds both
     its own frame's value line and the frame above it — which is the shape item
-    189 found shadowed, `explFrameValueLine` answering with one of the two — the
+    189 found shadowed, `explFrameValueLine` (since deleted, item 409) answering with one of the two — the
     list carries BOTH and the landing chooses by column.  Each funder stays in
     its own `match`, so neither body is written twice. -/
 lemma frameChainUnion {P : Nat → Prop} {alt : Prop}
@@ -3295,7 +3295,8 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       -- is what this field carries.  The two frames are open at two different
       -- columns, so they cannot share one `∃ nv` — which is why
       -- `accum_block_on_closeThenBlock` takes them as `h_vpack` and
-      -- `h_vpackUp` rather than as `explFrameValueLine`'s single answer.
+      -- `h_vpackUp` rather than as `explFrameValueLine`'s single answer (that
+      -- helper was deleted in item 409; callers pass the park's chain).
       (h_kslot : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,
         ∀ sp_m : SurfPos, SBlockNode (n + 1) .blockIn sp_scan sp_m →
         ∀ sp_i sp_c : SurfPos, SIndent nv sp_m sp_i → GLit ':' sp_i sp_c →
@@ -26648,7 +26649,7 @@ lemma block_dispatch_deferred
       shape of that**: one reason `nv ≠ k` is that the park stands inside a
       SECOND frame and offered the wrong one — `?⏎  ?⏎: w` holds `[187]`s at
       columns 2 and 0 and the landed `:` is on the outer — and the two could
-      not share one `∃ nv` because `explFrameValueLine` reads the park's two
+      not share one `∃ nv` because `explFrameValueLine` (deleted, item 409) read the park's two
       funders as one datum, `h_expl` shadowing `h_kslot`.  Splitting them
       (`h_vpackUp`, tried at `k` after `h_vpack`) is checked green both ways
       round, so the shadowing was a policy; the carrier is `slotLandedMap`, at
@@ -34373,8 +34374,9 @@ lemma entryKeyPack_of_dispatch
     -- explicit KEY the landed `:` still has the frame's own value line to
     -- close (`?⏎  a: b⏎: - w`).  The route is the same `nestedBlockMap` the
     -- branch already builds, ending in this twin instead of in `h_node`.
-    -- Callers derive it with `explFrameValueLine`; those whose frame has no
-    -- value line pass `Or.inr trivial`.
+    -- Callers pass the `?` park's own domained chain (`pendingBlock.h_kslot`, item 409;
+    -- `explFrameValueLine` was deleted then); those whose frame has no value line
+    -- pass `Or.inr trivial`.
     (h_nodeV : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,
       ∀ sp_m : SurfPos, SBlockNode (n + 1) .blockIn sp_scan sp_m →
       ∀ sp_i sp_c : SurfPos, SIndent nv sp_m sp_i → GLit ':' sp_i sp_c →
@@ -38188,7 +38190,7 @@ lemma accum_content_on_pendingMapValue_indented
              -- Item 93: the park's own `?` entry, and where there is none the
              -- park's own twin has the same domain and passes through
              -- (`k:⏎  ? a: &x b⏎  : - w`).  **Item 196: this arm spelled
-             -- `explFrameValueLine` out inline, shadow and all** — it is that
+             -- `explFrameValueLine` (deleted in item 409) out inline, shadow and all** — it is that
              -- lemma's body verbatim, so it is that lemma's call now, and both
              -- funders ride out together.  Item 355: the `?` funder's `[n]` is
              -- an uncovered singleton under the marked-column domain, so only the
