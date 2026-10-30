@@ -403,6 +403,9 @@ namespace L4YAML.Tests.Guards.ConclusionRouteCensus
 -- 2026-10-20 (item 309): 27 → 24 — `frameChainUnion`, `flowVPack_of_close` and `explFrameValueLine` conclude in
 -- `∨ alt` (generic in the alternative) and leave the `∨ True` survey.
 -- 2026-10-29 (item 396): flowOpen_floor_at_prep deleted (zero callers) — its route row goes (25 → 24).
+-- 2026-10-30 (item 408): `flowKeyRoute_of_open#4` / `flowKeyRoute_of_root#2` — the value-line pair on the
+-- projection face: one more DECLINE each (the markless ks twin; the resumed landing's single route), of_root's
+-- pair no longer PAYs.
 def expectedRows : List String :=
   ["back_col#0 :: FIELD of premise#3",
    "back_col#1 :: FIELD of premise#3",
@@ -423,11 +426,11 @@ def expectedRows : List String :=
 PARENT-DECLINED | PARENT-DECLINED | PAY",
    "flowKeyRoute_of_open#3 :: PARENT-DECLINED | PARENT-DECLINED | PARENT-DECLINED | \
 PARENT-DECLINED | PAY | PAY",
-   "flowKeyRoute_of_open#4 :: DECLINE | DECLINE | PARENT-DECLINED | PARENT-DECLINED | \
+   "flowKeyRoute_of_open#4 :: DECLINE | DECLINE | DECLINE | PARENT-DECLINED | PARENT-DECLINED | \
 PARENT-DECLINED | PARENT-DECLINED | PAY",
    "flowKeyRoute_of_root#0 :: DECLINE | DECLINE | PAY | PAY",
    "flowKeyRoute_of_root#1 :: UNREACHABLE under →/∀",
-   "flowKeyRoute_of_root#2 :: DECLINE | DECLINE | PARENT-DECLINED | PARENT-DECLINED | PAY",
+   "flowKeyRoute_of_root#2 :: DECLINE | DECLINE | DECLINE | PARENT-DECLINED | PARENT-DECLINED",
    "flowKeyRoute_of_root#3 :: PARENT-DECLINED | PARENT-DECLINED | PAY | PAY | PAY | PAY | PAY",
    "flowKeyRoute_of_root#4 :: DECLINE | DECLINE | PARENT-DECLINED | PARENT-DECLINED | PAY",
    "flowOpen_marker#0 :: DECLINE | DECLINE | PAY",
@@ -498,6 +501,8 @@ def expectedCross : List String :=
 -- new park through `.imp id (PackAlt.step_blockEntry …)`, the relay item 319's payments surfaced; producers stand.
 -- 2026-10-29 (item 388): landed 68 → 69 — `accum_content_pending`'s `.imp` relay of the mapping park's
 -- `.blockOut` `h_closeF` into the content lane's `.blockIn` binder is one more landed pipe.
+-- 2026-10-30 (item 408): landed 71 → 79, landed-producers 2 → 10 — the eight `markedCols_congr … ▸` bridges
+-- (Eq.rec pipes) that move the projection face from `s_prep` to the open's `s'`.
 def expectedPipeSplit : String :=
 -- 2026-10-25 (item 363): the flow OPEN lane read off the block state (`h_refused`, one `Classical.em`; five `match` blocks deleted): PIPE producers 46 → 47, total 109 → 110 (`h_refused` is one more Or.elim producer).
   -- 2026-10-26 (item 366): producers 47 → 49, total 110 → 112 — the two `h_outer` arguments of
@@ -506,7 +511,7 @@ def expectedPipeSplit : String :=
   -- two-arm split now: its 17 `VIA` edges leave the producer surface (the distinct producer `Or.elim` with them); the
   -- five whose arms disagree land as splits, the twelve whose arms agree are collapsed edges and are counted nowhere here.
   -- 2026-10-29 (item 394): `FlowBaseRoutes.valueF` is a new producer relayed VIA at both flow closes (producers 32/10 → 34/11, landed 69 → 71, landed-producers 0 → 2).
-  "pipes=0/0 producers=34/11 landed=71 landed-producers=2 total=105"
+  "pipes=0/0 producers=34/11 landed=79 landed-producers=10 total=113"
 
 end L4YAML.Tests.Guards.ConclusionRouteCensus
 

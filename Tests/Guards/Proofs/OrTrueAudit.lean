@@ -247,8 +247,11 @@ def posLine (p : Pos) : String := s!"{p.decl}{p.site} {p.kind} ∨ {p.alt}"
 -- 2026-10-29 (item 395): the first reading, pinned as the roster the retirement lane works from.
 -- 2026-10-29 (item 396): 272 → 266 positions (flowOpen_floor_at_prep deleted: 1 never-supplied + its conclusion; content_dispatch_after_close's four declined-and-uninspected contexts restated away); writers 42 → 41, Or.inr trivial 514 → 505.
 -- 2026-10-30 (item 405): ONE new position, on the owner's word — the ruling "405 a" (2026-10-30, verbatim) gave `pendingMapValue.h_explUp` a `∨ PackAlt sc` arm so the three STARVED empty-chain births of item 404 DECLINE instead of fabricating a domain (positions 266 → 267, nested +1, PackAlt +1); nine `Or.inr trivial` writes are the ladder's declines (inrTrivial 500 → 509): `compact_open_map`, `question_open_map` (declined upstream), `accum_block_on_closeThenBlock` ×4 (compact fill with `hkvUp` declined; resume branch without `hkvUp`, and `h_resKslot` ×2), the three `h_kslotE_k` content relays.
+-- 2026-10-30 (item 408): inrTrivial=511 → inrTrivial=513 — the flow key faces restated on the
+-- projection `markedCols`: four fabricated births DECLINE (`Or.inr trivial` writers into `PackAltG`/`PackAlt`
+-- positions), none paid; positions unchanged.
 def expectedSummary : String :=
-  "positions=267 top=166 nested=101 True=195 PackAlt=63 PackAltG=9 modules=2 supply: paid=28 relayed=115 declined-only=1 never-supplied=0 unresolved=9 conclusions=11 consumers: spent=102 relayed=15 unused=0 unreadable=36 writers=41 inrTrivial=511"
+  "positions=267 top=166 nested=101 True=195 PackAlt=63 PackAltG=9 modules=2 supply: paid=28 relayed=115 declined-only=1 never-supplied=0 unresolved=9 conclusions=11 consumers: spent=102 relayed=15 unused=0 unreadable=36 writers=41 inrTrivial=513"
 
 def expectedPositions : List String :=
   [ "L4YAML.Proofs.PreprocessIndentStable.IndentFloor.transport[3].h_floor top ∨ True",
@@ -520,6 +523,8 @@ def expectedPositions : List String :=
     "L4YAML.Proofs.StreamAccum.topLevelFlowResumeSep_or_refused[6].h_ref top ∨ True"
   ]
 
+-- 2026-10-30 (item 408): `flowKeyRoute_of_open[13].h_compact_pair` [DECLINE=1 SPLIT=2] → [DECLINE=2 SPLIT=1] — the
+-- `pendingMapValue` arm's fabricated singleton pair DECLINES under the projection face (the `-` arm still splits).
 def expectedSupply : List String :=
   [ "L4YAML.Proofs.StreamAccum.FlowBaseRoutes.mk[8].key relayed [DECLINE=1 SPLIT=1 VIA=6]",
     "L4YAML.Proofs.StreamAccum.FlowBaseRoutes.mk[9].vslot relayed [DECLINE=5 SPLIT=1 VIA=2]",
@@ -639,7 +644,7 @@ def expectedSupply : List String :=
     "L4YAML.Proofs.StreamAccum.flowKeyHead[ret] conclusion",
     "L4YAML.Proofs.StreamAccum.flowKeyPack_of_close[7].h_key relayed [VIA=2]",
     "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_open[12].h_compact paid [DECLINE=1 FIELD=1 PAY=1]",
-    "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_open[13].h_compact_pair relayed [DECLINE=1 SPLIT=2]",
+    "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_open[13].h_compact_pair relayed [DECLINE=2 SPLIT=1]",
     "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_open[ret] conclusion",
     "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[9].h_col paid [DECLINE=3 PAY=1]",
     "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[20].h_sfx unresolved [DECLINE=3 LOCAL(h_sfx)=1]",
@@ -696,7 +701,11 @@ def ceilingPositions : Nat := 267
 -- 2026-10-30 (item 405, Rule 8 fix): two more `Or.inr trivial` writers (509 → 511) — the two head consumers of the `?`-park chain
 -- (`flowKeyRoute_of_open`'s compact pair, the props park's entry-level pack) split on the projection `markedCols sc` and DECLINE at the
 -- markless list (never a `?` park, unprovable at the face); positions and supply classes unchanged.
-def ceilingWrites : Nat := 511
+-- 2026-10-30 (item 408): two more `Or.inr trivial` writers (511 → 513) — the flow key faces on the projection
+-- `markedCols` DECLINE two births that fabricated a chain: `flowKeyRoute_of_root`'s resumed-landing pair (one route
+-- for `nv` cannot fund every marked column) and `accum_flow_open_depth0`'s props pair (`PropsKeyPack`'s `∃ ns` is
+-- undomained until item 409 domains the packs). Both are PACK-family declines the census schedules for payment.
+def ceilingWrites : Nat := 513
 
 def expectedConsumers : List String :=
   [ "L4YAML.Proofs.StreamAccum.FlowBaseRoutes.mk[8].key unreadable [cased=0 passed=0]",
@@ -856,6 +865,8 @@ def expectedConsumers : List String :=
 -- 2026-10-30 (item 405, Rule 8 fix): the two markless-projection declines are writers at `accum_flow_open_depth0` (65 → 66, the compact pair)
 -- and `accum_content_on_pendingBlock_indented` (29 → 30, the props park's entry-level pack); see `ceilingWrites`.
 
+-- 2026-10-30 (item 408): `accum_flow_open_depth0` ×66 → ×67 (the props pair DECLINES) and `flowKeyRoute_of_open`
+-- ×7 → ×8 (the markless ks twin DECLINES) — the two new writers behind `ceilingWrites` 511 → 513.
 def expectedWriters : List String :=
   [ "L4YAML.Proofs.PreprocessIndentStable.IndentFloor.transport ×1 (PreprocessIndentStable)",
     "L4YAML.Proofs.StreamAccum.FlowBaseRoutes.ofValue ×3 (StreamAccum)",
@@ -869,7 +880,7 @@ def expectedWriters : List String :=
     "L4YAML.Proofs.StreamAccum.accum_content_on_pendingBlock_indented ×30 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented ×30 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.accum_content_pending ×81 (StreamAccum)",
-    "L4YAML.Proofs.StreamAccum.accum_flow_open_depth0 ×66 (StreamAccum)",
+    "L4YAML.Proofs.StreamAccum.accum_flow_open_depth0 ×67 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.accum_step_flow ×6 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.colon_fires_implicit_key ×1 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.colon_fires_props_key ×1 (StreamAccum)",
@@ -885,7 +896,7 @@ def expectedWriters : List String :=
     "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch ×14 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.entryPropsKeyPack_of_dispatch ×7 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.flowKeyPack_of_close ×3 (StreamAccum)",
-    "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_open ×7 (StreamAccum)",
+    "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_open ×8 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root ×9 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.flowOpen_marker ×2 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.flowOpen_stamp ×2 (StreamAccum)",

@@ -292,8 +292,8 @@ def expected : List String :=
    -- caller's split on `atSequenceIndent` (sequence top refuted, mapping sibling declined).
    "deeperLandingResume inl=2,inr=2 | un=0,0",
    "flowKeyHead inl=0,inr=0 | un=0,0",
-   "flowKeyRoute_of_open inl=2,inr=4 inl=0,inr=0 inl=1,inr=2 inl=2,inr=0 inl=1,inr=2 | un=3,3",
-   "flowKeyRoute_of_root inl=2,inr=2 inl=0,inr=0 inl=1,inr=2 inl=5,inr=0 inl=1,inr=2 | un=3,5",
+   "flowKeyRoute_of_open inl=2,inr=4 inl=0,inr=0 inl=1,inr=2 inl=2,inr=0 inl=1,inr=3 | un=3,3",
+   "flowKeyRoute_of_root inl=2,inr=2 inl=0,inr=0 inl=0,inr=3 inl=5,inr=0 inl=1,inr=2 | un=3,5",
       "flowOpen_marker inl=1,inr=2 | un=1,1",
    "flowOpen_stamp inl=1,inr=2 | un=1,1",
    "keyctx_of_preprocess inl=2,inr=3 | un=0,0",
@@ -311,7 +311,7 @@ def expected : List String :=
     here would mean the grammar key had stopped earning its keep; a longer one,
     that a second lemma had started computing its key. -/
 def expectedControl : List String :=
-  ["flowKeyRoute_of_open raw=3+6 grm=6+8"]
+  ["flowKeyRoute_of_open raw=3+6 grm=6+9"]
 
 run_cmd do
   let got ← census

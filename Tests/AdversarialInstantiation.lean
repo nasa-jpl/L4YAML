@@ -8689,6 +8689,34 @@ def testFlowCarrier (state : IO.Ref TestCollector) : IO Unit := do
   check state s!"P71 (ii) preprocess_pendingKeys_of_inFlow direct: in-flow preprocess results={preN} pendingKeys changed={preBad}; preprocess-only states (dispatch then fails)={preOnly}"
     (preN > 0 && preBad == 0 && preOnly > 0)
 
+  -- 72 (item 408, before the proof) — the flow key face on the PROJECTION: `markedCols` at the flow
+  -- OPEN equals `markedCols` at every accepted pause while the flow is open, incl. the CLOSE
+  -- (`markedCols_congr` over 407's `pendingKeys` conjunct and `h_ind_park`): predicted 0 violations.
+  let mut mcPauses := 0
+  let mut mcBad := 0
+  let mut mcCloses := 0
+  for input in flowBodies ++ nestedQ ++ singleQ do
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    let mut openMc : Option (List Nat) := none
+    for _ in [:64] do
+      match L4YAML.Scanner.scanNextToken s with
+      | .ok (some sN) =>
+        match openMc with
+        | some mc =>
+          if sN.flowLevel > 0 then
+            mcPauses := mcPauses + 1
+            if L4YAML.Proofs.RegisterWitness.markedCols sN != mc then mcBad := mcBad + 1
+          else
+            mcCloses := mcCloses + 1
+            if L4YAML.Proofs.RegisterWitness.markedCols sN != mc then mcBad := mcBad + 1
+            openMc := none
+        | none =>
+          if sN.flowLevel > 0 then openMc := some (L4YAML.Proofs.RegisterWitness.markedCols sN)
+        s := sN
+      | _ => break
+  check state s!"P72 flow key face projection (item 408): in-flow pauses={mcPauses} closes={mcCloses} markedCols ≠ open's={mcBad}"
+    (mcPauses > 0 && mcCloses > 0 && mcBad == 0)
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state

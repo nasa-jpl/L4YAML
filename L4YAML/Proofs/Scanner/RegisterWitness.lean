@@ -124,6 +124,14 @@ lemma markedCols_mem {sc : ScannerState} {x : Nat} :
   · rintro ⟨i, l, c, hpk, hc, rfl⟩
     exact ⟨i, (Array.getElem?_eq_some_iff.mp hpk).1, by rw [hpk, hc]⟩
 
+/-- `markedCols` reads `pendingKeys` and `indents` only (item 408): two states that agree on both
+    project the same chain — the flow carrier's two conjuncts move it from the open to the close. -/
+lemma markedCols_congr {s s' : ScannerState}
+    (hpk : s'.pendingKeys = s.pendingKeys) (hind : s'.indents = s.indents) :
+    markedCols s' = markedCols s := by
+  unfold markedCols ScannerState.indentColumns
+  rw [hpk, hind]
+
 /-- The projection IS a domain: every mark's column is in it. -/
 lemma MarkedColsIn.self (sc : ScannerState) : MarkedColsIn sc (markedCols sc) :=
   fun i l c hi hc => markedCols_mem.mpr ⟨i, l, c, hi, hc, rfl⟩

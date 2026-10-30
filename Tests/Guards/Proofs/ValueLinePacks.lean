@@ -760,6 +760,9 @@ def expectedFramesOn : List String := [
 -- 2026-10-24 (B3 [66] col-0 threading): follows CloseLandingWidth — the content/block parks close from `sp_gram` (run + gate).
 -- 2026-10-24 (B3 [66] col-0 threading): re-read on the #98/#100 base.
 -- 2026-10-30 (item 405, Rule 8 fix): the three `h_kslot` parameters read `lvl=∀nv∈markedCols(…)` (projection, no `∃nv0∃ns`).
+-- 2026-10-30 (item 408): `flowKeyPack_of_close.h_key` lvl `∃ns∀nv∈ns` → `∀nv∈markedCols(…)` and
+-- `flowKeyRoute_of_open.h_compact_pair` lvl `∃nv0∃ns∀nv∈nv0 :: ns` → `∀nv∈markedCols(…)`: the pair rides the
+-- scanner-state projection, not a proof-side list (Rule 8).
 def expectedParams : List String :=
   ["accum_content_on_pendingMapValue_indented.h_ivl_mv arm=r/stamp lvl=(sp_scan.col=n + 1) premises=[SBlockIndented(n)] ⊢ SLYamlStream tail=no",
     "accum_content_on_pendingMapValue_indented.h_vslot arm=l lvl=(sp_scan.col=n + 1) premises=[SBlockIndented(n)] ⊢ SLYamlStream tail=no",
@@ -786,8 +789,8 @@ def expectedParams : List String :=
    "entryPropsKeyPack_of_dispatch.h_ivl arm=r/stamp lvl=(?)(sp_scan.col=n + 1)∃ns∀nv∈ns premises=[SBlockIndented(n),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
    "entryPropsKeyPack_of_dispatch.h_nodeV arm=l lvl=∃ns∀nv∈ns premises=[SBlockNode(n + 1),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
    "explFrameValueLine.h_kslot arm=l/stamp lvl=∃ns∀nv∈ns premises=[SBlockNode(n + 1),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
-   "flowKeyPack_of_close.h_key arm=l lvl=∃k∃sp_key(?)(?)(kc=k)(And)∃ns∀nv∈ns premises=[SBlockMapEntry(k),SCompactMapTail(k),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
-   "flowKeyRoute_of_open.h_compact_pair arm=l lvl=∃nv0∃ns∀nv∈nv0 :: ns premises=[SBlockIndented(nc),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
+   "flowKeyPack_of_close.h_key arm=l lvl=∃k∃sp_key(?)(?)(kc=k)(And)∀nv∈markedCols(…) premises=[SBlockMapEntry(k),SCompactMapTail(k),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
+   "flowKeyRoute_of_open.h_compact_pair arm=l lvl=∀nv∈markedCols(…) premises=[SBlockIndented(nc),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
    "flowVPack_of_close.h_vslot arm=l/stamp lvl=∃ns∀nv∈ns premises=[SFlowContent(n),SSLComments,SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
    "indicator_open_map.h_explUp_chain arm=l lvl=∃ns∀nv∈ns premises=[SBlockMapEntry(k),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
    "indicator_open_map.h_explUp_chainD arm=l lvl=∃ns(MarkedColsIn)∀nv∈ns premises=[SBlockMapEntry(k),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
@@ -826,6 +829,8 @@ def expectedParams : List String :=
 -- 2026-10-26 (item 369): 18 rows re-read — `pendingBlock.h_closeF` is kept into `accum_block_on_pendingBlock.h_closeF_old` (the `-` park's frames), so every writer under that lemma holds one more frame fact.
 -- 2026-10-30 (item 405): the chain writers read the head-form chain (`ns=nv0,ns`), the `closeThenBlock` births `hkv`+`hkvUp`, and the declines (`punt`/`stamp`) of ruling "405 a".
 -- 2026-10-30 (item 405, Rule 8 fix): the chain writers read the projection — `paid:chain ns=markedCols(…)`/`ns=nv,nsU` through `MarkedColsIn.relay`, the relays into the `∃ ns` faces pass `markedCols sc`, and the two head consumers split on `markedCols sc` (`alt[paid:chain|punt]`).
+-- 2026-10-30 (item 408): `accum_flow_open_depth0`'s `h_compact_pair` writers — the `pendingMapValue` arm's fabricated
+-- singleton chain is now a DECLINE; the `-` arm passes its projection routes directly (no head split).
 def expectedWriters : List String := [
   "accum_block_on_noPending #1 ctor:pendingBlock.h_kslot idx=k := punt ns=— spend=— holds=[] ⊢ —",
   "accum_block_on_noPending #1 ctor:pendingBlock.h_kslotUp idx=k := punt ns=— spend=— holds=[] ⊢ —",
@@ -967,9 +972,9 @@ def expectedWriters : List String := [
    "accum_content_pending #1 param:accum_content_on_pendingMapValue_indented.h_vslot idx=— := step(door:pendingMapValue.h_vslot) ns=— spend=— holds=[h_defer_split:frames(ks)←landing; h_expl51:tail(n_old)←SBlockMapEntry(n_old); h_kslot93:frames(map(…) :: [])←SBlockIndented(nv); h_closeF99:frames(map(…) :: ks)←SBlockNode(n_old + 1); h_frames99:frames(ks)←landing; h_closeFV108:frames(ks)@ExplValueLine(nv)←SBlockNode(n_old + 1); h_framesV108:frames(ks)@ExplValueLine(nv)←landing; h_seqF168:tail(n_old)←SBlockNode(n_old + 1); h_explUp✝:frames(map(…) :: [])←SBlockIndented(nv)] ⊢ —",
    "accum_content_pending #1 param:accum_content_on_pendingMapValue_indented.h_kslot idx=— := relay:chain(door:pendingMapValue.h_kslot) ns=— spend=— holds=[h_defer_split:frames(ks)←landing; h_expl51:tail(n_old)←SBlockMapEntry(n_old); h_kslot93:frames(map(…) :: [])←SBlockIndented(nv); h_closeF99:frames(map(…) :: ks)←SBlockNode(n_old + 1); h_frames99:frames(ks)←landing; h_closeFV108:frames(ks)@ExplValueLine(nv)←SBlockNode(n_old + 1); h_framesV108:frames(ks)@ExplValueLine(nv)←landing; h_seqF168:tail(n_old)←SBlockNode(n_old + 1); h_explUp✝:frames(map(…) :: [])←SBlockIndented(nv)] ⊢ —",
    "accum_content_pending #1 param:accum_content_on_pendingMapValue_indented.h_ivl_mv idx=— := relay:chain(door:pendingMapValue.h_ivl) ns=— spend=— holds=[h_defer_split:frames(ks)←landing; h_expl51:tail(n_old)←SBlockMapEntry(n_old); h_kslot93:frames(map(…) :: [])←SBlockIndented(nv); h_closeF99:frames(map(…) :: ks)←SBlockNode(n_old + 1); h_frames99:frames(ks)←landing; h_closeFV108:frames(ks)@ExplValueLine(nv)←SBlockNode(n_old + 1); h_framesV108:frames(ks)@ExplValueLine(nv)←landing; h_seqF168:tail(n_old)←SBlockNode(n_old + 1); h_explUp✝:frames(map(…) :: [])←SBlockIndented(nv)] ⊢ —",
-   "accum_flow_open_depth0 #2 param:flowKeyRoute_of_open.h_compact_pair idx=— := paid:chain ns=nv,ns spend=kslot←door:pendingBlock.h_kslot holds=[main:frames(ks)←landing; h_kslot_old:frames(map(…) :: [])←SBlockIndented(nv); h_closeF✝:frames(ks)←SCompactSeqTail(n_old); h_kslotUp_old:frames(map(…) :: [])←SBlockIndented(nv); h_closeFV✝:frames(ks)@ExplValueLine(nv)←SCompactSeqTail(n_old)] ⊢ level-var",
+   "accum_flow_open_depth0 #2 param:flowKeyRoute_of_open.h_compact_pair idx=— := paid:chain ns=— spend=kslot←door:pendingBlock.h_kslot holds=[main:frames(ks)←landing; h_kslot_old:frames(map(…) :: [])←SBlockIndented(nv); h_closeF✝:frames(ks)←SCompactSeqTail(n_old); h_kslotUp_old:frames(map(…) :: [])←SBlockIndented(nv); h_closeFV✝:frames(ks)@ExplValueLine(nv)←SCompactSeqTail(n_old)] ⊢ level-var",
    -- 2026-10-29 (item 394): the mapping arm names `h_closeF_mv` (it supplies `FlowBaseRoutes.valueF`); the writer row reads the binder by name.
-   "accum_flow_open_depth0 #3 param:flowKeyRoute_of_open.h_compact_pair idx=— := paid:tail ns=n_old,[] spend=frameChainOne(one(route←door:pendingMapValue.h_expl))⊣tail holds=[main:frames(ks)←landing; h_expl:tail(n_old)←SBlockMapEntry(n_old); h_kslot_mv:frames(map(…) :: [])←SBlockIndented(nv); h_closeF_mv:frames(map(…) :: ks)←SBlockNode(n_old + 1); h_frames✝:frames(ks)←landing; h_closeFV✝:frames(ks)@ExplValueLine(nv)←SBlockNode(n_old + 1); h_framesV✝:frames(ks)@ExplValueLine(nv)←landing; h_seqF✝:tail(n_old)←SBlockNode(n_old + 1); h_explUp_mv:frames(map(…) :: [])←SBlockIndented(nv)] ⊢ held(h_expl,h_seqF✝)",
+   "accum_flow_open_depth0 #3 param:flowKeyRoute_of_open.h_compact_pair idx=— := punt ns=— spend=— holds=[main:frames(ks)←landing; h_expl:tail(n_old)←SBlockMapEntry(n_old); h_kslot_mv:frames(map(…) :: [])←SBlockIndented(nv); h_closeF_mv:frames(map(…) :: ks)←SBlockNode(n_old + 1); h_frames✝:frames(ks)←landing; h_closeFV✝:frames(ks)@ExplValueLine(nv)←SBlockNode(n_old + 1); h_framesV✝:frames(ks)@ExplValueLine(nv)←landing; h_seqF✝:tail(n_old)←SBlockNode(n_old + 1); h_explUp_mv:frames(map(…) :: [])←SBlockIndented(nv)] ⊢ —",
    "colon_open_map_explicit #1 ctor:pendingMapValue.h_ivl idx=nv := paid:chain ns=— spend=h_slot←let:h_slot holds=[hvp:frames(map(…) :: [])←SBlockIndented(nv)] ⊢ none",
    "colon_open_map_explicit #1 ctor:pendingMapValue.h_vslot idx=nv := paid:chain ns=— spend=h_slot←let:h_slot holds=[hvp:frames(map(…) :: [])←SBlockIndented(nv)] ⊢ none",
    "colon_open_map_explicit #1 ctor:pendingMapValue.h_kslot idx=nv := punt ns=— spend=— holds=[hvp:frames(map(…) :: [])←SBlockIndented(nv)] ⊢ —",
@@ -1039,7 +1044,7 @@ def expectedPerPos : List String := [
    -- Item 371: the restated value-line pack (`⇒ Resume(map(_)::[])▹Stream`, `ResumeFrames.one`'s level)
    "ctor:pendingMapValue.h_kslot writers=6 punt=3 stamp=0 empty=0 relay=0 step=0 via=0 chain=2 route=0 frames=0 tail=1 other=0 alt=0 held=1 levelVar=2 none=0 touched=3",
    "ctor:pendingMapValue.h_explUp writers=6 punt=0 stamp=4 empty=0 relay=0 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=2 held=1 levelVar=0 none=1 touched=6",
-   "param:flowKeyRoute_of_open.h_compact_pair writers=3 punt=1 stamp=0 empty=0 relay=0 step=0 via=0 chain=1 route=0 frames=0 tail=1 other=0 alt=0 held=1 levelVar=1 none=0 touched=2"]
+   "param:flowKeyRoute_of_open.h_compact_pair writers=3 punt=2 stamp=0 empty=0 relay=0 step=0 via=0 chain=1 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=1 none=0 touched=1"]
 -- 2026-10-18 (item 284): `nodes` 12296 → 12374 and nothing else.  The walk
 -- counts nodes only while it follows a value-line pack, so this is item 284's
 -- additions inside pack-carrying terms; the old `pendingFlow` arm restored alone
@@ -1110,7 +1115,7 @@ def expectedLine : String :=
 -- Item 372 (2026-10-27): `ImplicitKeyPack`'s route conjunct is an Or (`∨ SeqTopKey sc`); the pack walker reads the stream route on its left side.
 -- Item 374: nodes=13663 → 13665 — the resume context's face disjunct and `resumectx_of_landing`'s `h_base`.
   -- 2026-10-28 (item 386): nodes 13665 → 13675 — the `-` opener's `h_lvl_old` beside the value-line packs it walks; no pack/row moved.
-  "packs=11 framesOn=7 params=31 paramLemmas=19 apps=51 rows=155 ctorRows=74 paramRows=81 punt=33 stamp=21 empty=0 relay=26 step=10 via=7 chain=39 route=2 frames=3 tail=2 other=6 alt=6 held=8 levelVar=41 none=16 spendTail=6 lemmas=21 helpers=[explFrameValueLine,frameChainUnion,frameChainUnionD] touched=122 nodes=13787"
+  "packs=11 framesOn=7 params=31 paramLemmas=19 apps=51 rows=155 ctorRows=74 paramRows=81 punt=34 stamp=21 empty=0 relay=26 step=10 via=7 chain=39 route=2 frames=3 tail=1 other=6 alt=6 held=7 levelVar=41 none=16 spendTail=5 lemmas=21 helpers=[explFrameValueLine,frameChainUnion,frameChainUnionD] touched=121 nodes=13791"
 
 /-! ## §4 The reading -/
 
