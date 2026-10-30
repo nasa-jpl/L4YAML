@@ -8021,6 +8021,120 @@ def testInputAheadExports (state : IO.Ref TestCollector) : IO Unit := do
   check state s!"P67c validateAliasClose direct: ok={aOk} err={aErr} TrailingFollower viol={aViol}"
     (aOk == 4 && aErr == 0 && aViol == 0)
 
+  -- Priority 68 (item 401) — the fuel half of export (a) and its helpers, called directly.
+  -- Predicted before the run: 0 violations everywhere; the fuel bound's nonvacuous rows are the
+  -- fuel-1/2 non-terminated results (159); `scanPlainScalar` accepted ≥ 60 times, every result
+  -- on `PlainFollower`; `handleBlockLineBreak` both arms populated.
+  let mut fuelViol := 0; let mut fuelRows := 0
+  let mut nlRows := 0; let mut nlViol := 0
+  let mut hbSome := 0; let mut hbNone := 0; let mut hbViol := 0
+  let mut ieViol := 0
+  let mut psOk := 0; let mut psErr := 0; let mut psViol := 0
+  let plainStart : Char → Bool := fun c =>
+    !(c == '-' || c == '?' || c == ':' || c == ',' || c == '[' || c == ']' || c == '{' || c == '}'
+      || c == '#' || c == '&' || c == '*' || c == '!' || c == '|' || c == '>' || c == '\'' || c == '"'
+      || c == '%' || c == '@' || c == '`' || L4YAML.CharPredicates.isWhiteSpaceBool c
+      || L4YAML.CharPredicates.isLineBreakBool c)
+  let probePlain : L4YAML.Scanner.ScannerState → Nat × Nat × Nat := fun sP =>
+    match sP.peek? with
+    | some c =>
+      if plainStart c && !sP.inFlow then
+        match L4YAML.Scanner.scanPlainScalar sP with
+        | .ok s' => (1, 0, if plainFollower s' then 0 else 1)
+        | .error _ => (0, 1, 0)
+      else (0, 0, 0)
+    | none => (0, 0, 0)
+  for input in inputAheadInputs do
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    let (o, e, v) := probePlain (L4YAML.Scanner.skipWhitespace s)
+    psOk := psOk + o; psErr := psErr + e; psViol := psViol + v
+    for _ in [:128] do
+      match L4YAML.Scanner.scanNextToken s with
+      | .ok (some sN) =>
+        if !sN.inFlow then
+          let ci := (max 0 (sN.currentIndent + 1)).toNat
+          let full := (sN.inputEnd - sN.offset + 1) * 2
+          for fuel in [0, 1, 2, full].eraseDups do
+            match L4YAML.Scanner.collectPlainScalarLoop sN "" "" fuel false ci sN.inputEnd with
+            | .ok r =>
+              if !r.terminated then
+                fuelRows := fuelRows + 1
+                if !(fuel ≤ sN.inputEnd - sN.offset) then fuelViol := fuelViol + 1
+            | .error _ => pure ()
+          match sN.peek? with
+          | some c =>
+            if L4YAML.CharPredicates.isLineBreakBool c then
+              nlRows := nlRows + 1
+              let sC := L4YAML.Scanner.consumeNewline sN
+              if !(sN.offset < sC.offset && sC.inputEnd == sN.inputEnd) then nlViol := nlViol + 1
+              match L4YAML.Scanner.collectPlainScalar_handleBlockLineBreak sN "" ci sN.inputEnd with
+              | some (_, s2) =>
+                hbSome := hbSome + 1
+                if !(sN.offset < s2.offset && s2.inputEnd == sN.inputEnd) then hbViol := hbViol + 1
+              | none => hbNone := hbNone + 1
+          | none => pure ()
+          if (L4YAML.Scanner.skipWhitespace sN).inputEnd != sN.inputEnd
+              || (L4YAML.Scanner.skipSpaces sN).inputEnd != sN.inputEnd then ieViol := ieViol + 1
+          for fuel in [0, 1, 2, sN.inputEnd - sN.offset + 1] do
+            if (L4YAML.Scanner.skipBlankLinesLoop sN 0 fuel sN.inputEnd).snd.inputEnd != sN.inputEnd then
+              ieViol := ieViol + 1
+          let (o, e, v) := probePlain (L4YAML.Scanner.skipWhitespace sN)
+          psOk := psOk + o; psErr := psErr + e; psViol := psViol + v
+        s := sN
+      | _ => break
+  check state s!"P68 fuel bound (fuel ≤ inputEnd − offset when not terminated): rows={fuelRows} viol={fuelViol}"
+    (fuelRows > 0 && fuelViol == 0)
+  check state s!"P68 consumeNewline / handleBlockLineBreak progress at break pauses: nl={nlRows}/{nlViol} hb some/none/viol={hbSome}/{hbNone}/{hbViol}"
+    (nlRows > 0 && nlViol == 0 && hbSome > 0 && hbNone > 0 && hbViol == 0)
+  check state s!"P68 inputEnd kept by skipWhitespace / skipSpaces / skipBlankLinesLoop: viol={ieViol}" (ieViol == 0)
+  check state s!"P68 scanPlainScalar direct → PlainFollower: ok={psOk} err={psErr} viol={psViol}"
+    (psOk > 0 && psViol == 0)
+
+  -- 68b — `LiveKeyTop`'s follower conjunct (`KeyFollower`) at every pause with a live same-line
+  -- key in block context, and `validateFlowClose` under its premise.  Run 1 (predicted 0
+  -- violations, armed ≥ 100) REFUTED the conjunct as first stated: 11 / 145 — every one a `-`
+  -- recording its own position as the live key; the block-entry arm was added.  Run 2 predicted
+  -- 0 violations, armed ≥ 145; flow-close probes ≥ 5, every success a `TrailingFollower`.
+  let mut kfArmed := 0; let mut kfViol := 0
+  let mut fcOk := 0; let mut fcErr := 0; let mut fcViol := 0
+  let keyFollower : L4YAML.Scanner.ScannerState → Bool := fun st =>
+    L4YAML.Scanner.lastTokenIsNodePropertyOnLine st.tokens st.line ||
+    (match st.tokens.back? with
+     | some t => (match t.val with | .blockEntry => true | _ => false) && t.pos == st.simpleKey.pos
+     | none => false) ||
+    (match (L4YAML.Scanner.skipWhitespace st).peek? with
+     | none => true
+     | some c => c == ':' || c == '#' || L4YAML.CharPredicates.isLineBreakBool c
+         || !L4YAML.CharPredicates.isPrintableBool c || c == '\uFEFF')
+  let extra : List String := ["[a] - b\n", "{a: 1} - b\n", "a: [x] - b\n", "- [a] - b\n", "[a]: b\n",
+    "[a] : b\n", "[a] #c\n- b\n", "[a]\n- b\n", "a: [b, c]: d\n", "? [a]\n: b\n", "? \"a\"\n", "? &x a\n", "- - a\n"]
+  for input in inputAheadInputs ++ extra do
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:128] do
+      match L4YAML.Scanner.scanNextToken s with
+      | .ok (some sN) =>
+        if !sN.inFlow && sN.simpleKey.possible && sN.simpleKey.pos.line == sN.line then
+          kfArmed := kfArmed + 1
+          if !keyFollower sN then kfViol := kfViol + 1
+        if sN.flowLevel == 0 then
+          match sN.tokens.back? with
+          | some t =>
+            match t.val with
+            | .flowSequenceEnd | .flowMappingEnd =>
+              match L4YAML.Scanner.validateFlowClose sN with
+              | .ok _ =>
+                fcOk := fcOk + 1
+                if !trailingFollower sN sN.inputEnd then fcViol := fcViol + 1
+              | .error _ => fcErr := fcErr + 1
+            | _ => pure ()
+          | none => pure ()
+        s := sN
+      | _ => break
+  check state s!"P68b KeyFollower at every live same-line key pause: armed={kfArmed} viol={kfViol}"
+    (kfArmed == 151 && kfViol == 0)
+  check state s!"P68b validateFlowClose direct at block-level flow closes: ok={fcOk} err={fcErr} viol={fcViol}"
+    (fcOk == 13 && fcErr == 0 && fcViol == 0)
+
 
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
