@@ -1130,16 +1130,16 @@ Or.imp⇒RELAY=16, Or.imp⇒SPLIT=4, Or.imp⇒VIA=2, dite⇒SPLIT=5]"
 -- DECLINE 177 → 197, PAY 174 → 179, VIA 7 → 8 — the arms the `VIA Or.elim` leaves hid, read.
 -- 2026-10-29 (item 387): leaves 384 → 386, DECLINE 194 → 195, PAY 179 → 180 — `accum_block_on_pendingBlock`'s
 -- no-pop arm splits `n < k` (PAY via the helper) from `k = n` (sequence top refuted / mapping sibling DECLINE).
--- 2026-10-30 (item 405): the `?`-park chain PAID through its ladder — three `h_kslotE_k` content relays and the `h_resKslot`/`hkvUp`-starved `closeThenBlock` births DECLINE (ruling (a)); SPLIT 167 → 164, DECLINE 255 → 258 (edges 657 unchanged).
+-- 2026-10-30 (item 405): the `?`-park chain PAID through its ladder — three `h_kslotE_k` content relays and the `h_resKslot`/`hkvUp`-starved `closeThenBlock` births DECLINE (ruling (a)); SPLIT 167 → 164, DECLINE 255 → 258 (edges 657 unchanged).  Rule 8 fix (same item): the chain re-indexed by the projection `markedCols sc`; the two head consumers (`flowKeyRoute_of_open`'s compact pair, the props park's entry-level pack) split on `markedCols sc` and DECLINE at the markless projection — leaves 381 → 383, DECLINE 194 → 196 (DECLINE|PAY 144 → 142, DECLINE|DECLINE|PAY 6 → 8).
 def expectedSplitLanding : String :=
-  "survived=164 collapsed=29 leaves=381 elsewhere=11 [DECLINE=194, PAY=176, \
+  "survived=164 collapsed=29 leaves=383 elsewhere=11 [DECLINE=196, PAY=176, \
 VIA=11] \
 [DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|PAY|PAY|PAY|VIA|VIA|VIA=1, \
 DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|PAY|VIA|VIA=1, \
 DECLINE|DECLINE|DECLINE|DECLINE|PAY|PAY|PAY|PAY|PAY=1, \
 DECLINE|DECLINE|DECLINE|PAY=2, DECLINE|DECLINE|DECLINE|PAY|PAY|PAY=1, \
-DECLINE|DECLINE|DECLINE|PAY|VIA=3, DECLINE|DECLINE|PAY=6, \
-DECLINE|DECLINE|PAY|PAY=1, DECLINE|DECLINE|PAY|PAY|PAY=1, DECLINE|PAY=144, \
+DECLINE|DECLINE|DECLINE|PAY|VIA=3, DECLINE|DECLINE|PAY=8, \
+DECLINE|DECLINE|PAY|PAY=1, DECLINE|DECLINE|PAY|PAY|PAY=1, DECLINE|PAY=142, \
 DECLINE|PAY|PAY=1, PAY|VIA=1, PAY|VIA|VIA=1]"
 
 /-- **Which BRANCH is taken (DOCS item 217).**  Item 216 resolved what a split
@@ -1243,7 +1243,7 @@ DECLINE|PAY|PAY=1, PAY|VIA=1, PAY|VIA|VIA=1]"
 -- 2026-10-29 (item 389): leaves 386 → 388, DECLINE-free 94 → 95, PAY-free 180 → 181 — the `-` park's k = n mapping-top arm is a PAY leaf now; its sequence-top half stays a decline.
 -- 2026-10-30 (item 405): the `?`-park chain PAID through its ladder — three `h_kslotE_k` content relays and the `h_resKslot`/`hkvUp`-starved `closeThenBlock` births DECLINE (ruling (a)); SPLIT 167 → 164, DECLINE 255 → 258 (edges 657 unchanged).
 def expectedSplitBranch : String :=
-  "splits=164 leaves=381 relayRooted=153 siteDecided=11 optionalRoot=108 plainRoot=45 agree=110/110 disagree=0 [DECLINE-closed=104, DECLINE-free=90, PAY-free=176, VIA L4YAML.Proofs.StreamAccum.deeperLandingResume-=2, VIA L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root-=1, VIA absurd-=8]"
+  "splits=164 leaves=383 relayRooted=153 siteDecided=11 optionalRoot=108 plainRoot=45 agree=110/110 disagree=0 [DECLINE-closed=106, DECLINE-free=90, PAY-free=176, VIA L4YAML.Proofs.StreamAccum.deeperLandingResume-=2, VIA L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root-=1, VIA absurd-=8]"
 
 /-- **The ten splits the site decides for itself**, which is the whole residue
     of the branch question after `expectedSplitBranch`.  Four are a `dite` on a
@@ -1519,7 +1519,7 @@ def expectedDeclineWriters : List String :=
 -- Or.elim`: the `Classical.em … |>.elim` decisions whose two arms AGREE (both DECLINE) at `compact_open_map` (3),
 -- `colon_open_map_explicit` (3), `accum_step_flow` (4) and `accum_flow_open_depth0` (2) — before, one `VIA` leaf each.
 -- 2026-10-29 (item 389): a match-index rename only — `accum_block_on_closeThenBlock`'s `h_kslotUp` decline is now behind `match_1_31` (was `match_1_28`): the landed birth's `nv < k` split added matches before it; no edge moved.
--- 2026-10-30 (item 405): see `expectedTally`.
+-- 2026-10-30 (item 405): see `expectedTally`.  Rule 8 fix (same item): the chain re-indexed by the projection `markedCols sc` — the two head consumers' `match markedCols sc with | [] => Or.inr trivial` arms are new collapsed DECLINE edges (see `expectedSplitLanding`).
 def expectedCollapsedEdge : String :=
   "compact_open_map → PendingNode.pendingMapValue#16 (h_kslot) = DECLINE via Or.elim; \
     compact_open_map → PendingNode.pendingMapValue#19 (h_closeFV) = DECLINE via Or.elim; \
@@ -1545,7 +1545,7 @@ def expectedCollapsedEdge : String :=
     accum_content_on_pendingMapValue_indented → frameChainUnionD#3 (h₁) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented.match_1_1; \
     accum_content_on_pendingMapValue_indented → frameChainUnionD#3 (h₁) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented.match_1_1; \
     explFrameValueLine → frameChainUnion#2 (h₁) = PAY via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.explFrameValueLine.match_1_1; \
-    accum_content_on_pendingBlock_indented → PendingNode.pendingProps#21 (h_kslot) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_content_on_pendingBlock_indented.match_1_14; \
+    accum_content_on_pendingBlock_indented → PendingNode.pendingProps#21 (h_kslot) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_content_on_pendingBlock_indented.match_1_2; \
     colon_open_map → PendingNode.pendingMapValue#16 (h_kslot) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.colon_open_map.match_1_5; \
     accum_block_on_closeThenBlock → PendingNode.pendingBlock#11 (h_closeF) = PAY via Or.casesOn→Exists.casesOn→Exists.casesOn→And.casesOn→And.casesOn→And.casesOn→And.casesOn→dite; \
     accum_block_on_closeThenBlock → PendingNode.pendingBlock#14 (h_kslotUp) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock.match_1_34→dite; \

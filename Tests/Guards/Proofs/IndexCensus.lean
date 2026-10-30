@@ -289,9 +289,9 @@ def expected : List String :=
    "stream/frames/occ=3  ×9",
    "stream/frames/occ=4  ×6",
    "stream/frames/occ=5  ×6",
-  -- 2026-10-30 (item 405): `pendingBlock.h_kslot`/`pendingBlockContent.h_kslot` restated as the head-form chain (`∃ nv0 ns, MarkedColsIn sc (nv0 :: ns) ∧ ∀ nv ∈ nv0 :: ns, …`): the route binder `nv` is now a bounded ∀ under the ∃-head, so the stream/other histogram shifts (occ=1 27 → 25, occ=2 14 → 26, occ=3 6 → 1, occ=8 3 → 2, occ=9 +1).
+  -- 2026-10-30 (item 405, Rule 8 fix): `pendingBlock.h_kslot`/`pendingBlockContent.h_kslot` re-indexed by the projection `markedCols sc` (no `∃ ns` binder): the ten `⟨nv0 :: ns, …⟩` relays into the `∃ ns` faces now pass `markedCols sc`, so the stream-class binders read twice fall 26 → 16.
    "stream/other/occ=1  ×25",
-   "stream/other/occ=2  ×26",
+   "stream/other/occ=2  ×16",
    "stream/other/occ=3  ×1",
    "stream/other/occ=4  ×4",
    "stream/other/occ=6  ×1",

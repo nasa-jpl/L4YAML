@@ -2769,7 +2769,7 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       -- `:` closes the awaited entry as the frame's KEY and reads its own
       -- line as `[190] s-indent(nv) ':' s-l+block-indented(nv, block-out)`
       -- (`? - a⏎: - w`).
-      (h_kslot : (∃ (nv0 : Nat) (ns : List Nat), RegisterWitness.MarkedColsIn sc (nv0 :: ns) ∧ ∀ nv ∈ nv0 :: ns,
+      (h_kslot : (∀ nv ∈ RegisterWitness.markedCols sc,
         ∀ sp_m : SurfPos, SSLComments sp_gram sp_m →
         ∀ sp_e : SurfPos, SCompactSeqTail n sp_m sp_e →
         ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →
@@ -2991,7 +2991,7 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       -- alternatives of `[185]` are the two arms of one lemma, not a paid
       -- case and a deferred one.  What still punts is a landed `-` off a park
       -- with no slot at all, or one left of the frame's own index.
-      (h_kslot : (∃ (nv0 : Nat) (ns : List Nat), RegisterWitness.MarkedColsIn sc (nv0 :: ns) ∧ ∀ nv ∈ nv0 :: ns,
+      (h_kslot : (∀ nv ∈ RegisterWitness.markedCols sc,
         ∀ sp_m : SurfPos, SBlockIndented n .blockIn sp_scan sp_m →
         ∀ sp_e : SurfPos, SCompactSeqTail n sp_m sp_e →
         ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →
@@ -14792,11 +14792,17 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                  -- chain — this lane's ancestors ride `h_kslotUp` next door.
                  -- Item 203: `[nv]` IS `nv :: []`, so the head the premise
                  -- now names is the one this lane already had.
+                 -- Item 405 (Rule 8): the chain is the PROJECTION `markedCols sc`;
+                 -- its head is the face's own index when a mark exists, and
+                 -- the markless projection (never a `?` park) declines.
                  (match h_kslot_old with
-                  | Or.inl ⟨nv, ns, _, kslot⟩ => Or.inl ⟨nv, ns,
-                      fun x hx sp h_bi sp_i sp_c h_iv h_lit sp_v h_sbi =>
-                        kslot x hx sp h_bi sp (SCompactSeqTail.nil n_old sp)
-                          sp_i sp_c h_iv h_lit sp_v h_sbi⟩
+                  | Or.inl kslot =>
+                      match hmc : RegisterWitness.markedCols sc with
+                      | nv :: ns => Or.inl ⟨nv, ns,
+                          fun x hx sp h_bi sp_i sp_c h_iv h_lit sp_v h_sbi =>
+                            kslot x (hmc ▸ hx) sp h_bi sp (SCompactSeqTail.nil n_old sp)
+                              sp_i sp_c h_iv h_lit sp_v h_sbi⟩
+                      | [] => Or.inr trivial
                   | Or.inr h_alt => Or.inr h_alt)
                  -- Item 295: the park's own FLAG — the compact arm crosses no
                  -- break and builds from that half alone, and `arm_or_col`
@@ -14821,7 +14827,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                -- deeper is accepted with no largest member. ═══
                (frameChainUnion
                  (match h_kslot_old with
-                  | Or.inl ⟨nv0, ns, _, kslot⟩ => Or.inl ⟨nv0 :: ns,
+                  | Or.inl kslot => Or.inl ⟨RegisterWitness.markedCols sc,
                       (fun nv hmem sp_end h_content sp_m sp_i sp_c h_ssl h_iv h_lit sp_v h_sbi =>
                         kslot nv hmem sp_m
                           (SBlockIndented.node n_old .blockIn sp_scan sp_m
@@ -27732,8 +27738,8 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
                  -- (`hkvUp`) follow it, and the DOMAIN is the slot's, unchanged by
                  -- a `-` (`h_mcstep_ne`); an undomained ancestor chain DECLINES.
                  (match hkv, hkvUp with
-                  | Or.inl kv, Or.inl ⟨nsU, hdomU, kvU⟩ => Or.inl ⟨nv, nsU,
-                      h_mcstep_ne (by decide) _ hdomU, by
+                  | Or.inl kv, Or.inl ⟨nsU, hdomU, kvU⟩ => Or.inl (RegisterWitness.MarkedColsIn.relay
+                      (h_mcstep_ne (by decide) _ hdomU) <| by
                       rintro x hx
                       rcases List.mem_cons.mp hx with hxe | hx'
                       · rw [hxe]
@@ -27748,7 +27754,7 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
                           (SBlockIndented.compactSeq nv .blockOut m sp_mid _ sp_e h_ind
                             (SCompactSeq.mk (nv + 1 + m) _ sp_scan' sp_m sp_e
                               h_dash2 h_gnot2 h_bi h_tail))
-                          sp_i sp_c h_iv h_lit sp_v h_sbi⟩
+                          sp_i sp_c h_iv h_lit sp_v h_sbi)
                   | Or.inl _, Or.inr _ => Or.inr trivial
                   | Or.inr h_alt, _ => Or.inr (PackAlt.step_blockEntry h_preprocess h_dispatch h_alt))
                  -- ═══ **Item 257: the compact fill's resume frames, PAID, from
@@ -28321,13 +28327,13 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
              (match h_vslot with
               | Or.inl ⟨nv, _, _, _, _, _, _, _, _, Or.inl hkv, Or.inl ⟨nsU, hdomU, kvU⟩⟩ =>
                   if hnk : nv ≤ k then
-                    Or.inl ⟨nv, nsU, h_mcstep_ne (by decide) _ hdomU, by
+                    Or.inl (RegisterWitness.MarkedColsIn.relay (h_mcstep_ne (by decide) _ hdomU) <| by
                       rintro x hx _ h_indented sp_e h_tail
                       rcases List.mem_cons.mp hx with hxe | hx'
                       · rw [hxe]; exact hkv sp_e (slotLandedSeq hnk h_ssl
                           (SBlockSeqEntries_of_compactTail h_ind h_dash h_gnot h_indented h_tail))
                       · exact kvU x hx' sp_e (slotLandedSeq hnk h_ssl
-                          (SBlockSeqEntries_of_compactTail h_ind h_dash h_gnot h_indented h_tail))⟩
+                          (SBlockSeqEntries_of_compactTail h_ind h_dash h_gnot h_indented h_tail)))
                   -- Item 307/405: behind the slot, the resumed stack's slot route
                   -- (`h_resKslot`) is a singleton with no domain — DECLINED (ruling (a)).
                   else Or.inr trivial
@@ -29240,7 +29246,7 @@ lemma accum_block_on_pendingBlockContent {sp_gram : SurfPos}
     -- Item 92: the park's value-line pack (`pendingBlockContent.h_kslot`) —
     -- `h_entry_old`'s twin.  The landed `:` at the frame's own column spends
     -- it (`? - a⏎: - w`), and a sibling `-` re-parks it with the tail consed.
-    (h_kslot : (∃ (nv0 : Nat) (ns : List Nat), RegisterWitness.MarkedColsIn sc (nv0 :: ns) ∧ ∀ nv ∈ nv0 :: ns,
+    (h_kslot : (∀ nv ∈ RegisterWitness.markedCols sc,
       ∀ sp_m : SurfPos, SSLComments sp_gram sp_m →
       ∀ sp_e : SurfPos, SCompactSeqTail n sp_m sp_e →
       ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →
@@ -29446,12 +29452,12 @@ lemma accum_block_on_pendingBlockContent {sp_gram : SurfPos}
                  -- Item 92: the sibling rides the pack with its own entry
                  -- consed onto the tail (`? - a⏎  - b⏎: - w`).
                  (match h_kslot with
-                  | Or.inl ⟨nv0, ns, hdom, kslot⟩ => Or.inl ⟨nv0, ns, h_mcstep_ne (by decide) (nv0 :: ns) hdom,
+                  | Or.inl kslot => Or.inl (RegisterWitness.MarkedColsIn.relay (h_mcstep_ne (by decide) _ (RegisterWitness.MarkedColsIn.self sc))
                       fun nv hmem sp_m h_bi sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi =>
                         kslot nv hmem sp_mid h_ssl sp_e
                           (SCompactSeqTail.cons k sp_mid _ sp_scan' sp_m sp_e
                             h_ind h_dash2 h_gnot2 h_bi h_tail)
-                          sp_i sp_c h_iv h_lit sp_v h_sbi⟩
+                          sp_i sp_c h_iv h_lit sp_v h_sbi)
                   | Or.inr h_alt => Or.inr (PackAlt.step_blockEntry h_preprocess h_dispatch h_alt))
                  -- **Item 256: the resume frames, RELAYED from this park's own
                  -- field** at the unchanged index — the sibling conses its entry
@@ -29773,8 +29779,8 @@ lemma accum_block_on_pendingBlockContent {sp_gram : SurfPos}
             else s_prep).col : Int) ≠ (if s_prep.allowDirectives then
               { s_prep with allowDirectives := false, documentEverStarted := true }
             else s_prep).explicitKeyCol
-          · rcases h_kslot with ⟨nv0, ns, _, kslot⟩ | _
-            · by_cases hknv : k ∈ nv0 :: ns
+          · rcases h_kslot with kslot | _
+            · by_cases hknv : k ∈ RegisterWitness.markedCols sc
               · exact h_explicit (kslot k hknv)
               · rcases h_upSpend with hup | _
                 · exact h_explicit hup
@@ -29782,8 +29788,8 @@ lemma accum_block_on_pendingBlockContent {sp_gram : SurfPos}
             · rcases h_upSpend with hup | _
               · exact h_explicit hup
               · exact h_gen (fun _ => h_src)
-          · rcases h_kslot with ⟨nv0, ns, _, kslot⟩ | _
-            · by_cases hknv : k ∈ nv0 :: ns
+          · rcases h_kslot with kslot | _
+            · by_cases hknv : k ∈ RegisterWitness.markedCols sc
               · exact h_explicit (kslot k hknv)
               · -- Item 185: the pack is OFF the landing's column.
                 -- **Item 190: …so the frame ABOVE it is tried before deferring**
@@ -29798,7 +29804,7 @@ lemma accum_block_on_pendingBlockContent {sp_gram : SurfPos}
                     (nodir_of_block_dispatch h_dispatch) h_src
                     (explicit_at_indent_of_dispatch h_dispatch
                       (noflow_disp_of_noflow h_noflow) h_src)
-                    (ns := (nv0 :: ns) ++ nsU)
+                    (ns := RegisterWitness.markedCols sc ++ nsU)
                     (fun hm => (List.mem_append.mp hm).elim hknv hU)
                     (nic0_of_block_dispatch h_preprocess h_dispatch hcorr_result) (Or.inl (block_indicator_arm h_dispatch)) ⟨sp_scan', GStar.nil _, fun _ _ => (dispatchBlock_next_of_some h_noflow (preprocess_some_peek h_preprocess) h_dispatch).gate⟩
             · -- Item 185: the park carries NO pack.
@@ -29834,7 +29840,7 @@ lemma accum_block_on_pendingBlock
     -- `h_close_entry_old`'s twin.  The landed `:` closes the awaited entry
     -- empty and spends it (`? -⏎: - w`); the sibling, nested and inline `-`
     -- arms re-park it with their own entry folded in.
-    (h_kslot : (∃ (nv0 : Nat) (ns : List Nat), RegisterWitness.MarkedColsIn sc (nv0 :: ns) ∧ ∀ nv ∈ nv0 :: ns,
+    (h_kslot : (∀ nv ∈ RegisterWitness.markedCols sc,
       ∀ sp_m : SurfPos, SBlockIndented n .blockIn sp_scan sp_m →
       ∀ sp_e : SurfPos, SCompactSeqTail n sp_m sp_e →
       ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →
@@ -30005,12 +30011,12 @@ lemma accum_block_on_pendingBlock
                -- rides the pack with its own entry consed on (`? -⏎  -⏎: v`
                -- at the compact index).
                (match h_kslot with
-                | Or.inl ⟨nv0, ns, hdom, kslot⟩ => Or.inl ⟨nv0, ns, h_mcstep_ne (by decide) (nv0 :: ns) hdom,
+                | Or.inl kslot => Or.inl (RegisterWitness.MarkedColsIn.relay (h_mcstep_ne (by decide) _ (RegisterWitness.MarkedColsIn.self sc))
                     fun nv hmem sp_m h_bi sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi =>
                       kslot nv hmem sp_mid h_node_old sp_e
                         (SCompactSeqTail.cons k sp_mid _ sp_scan' sp_m sp_e
                           h_ind h_dash2 h_gnot2 h_bi h_tail)
-                        sp_i sp_c h_iv h_lit sp_v h_sbi⟩
+                        sp_i sp_c h_iv h_lit sp_v h_sbi)
                 -- Item 318: the sibling `-` carries the park's alternative through `step_blockEntry`
                 -- (the block lane's transport; item 319 pays the other dash and colon arms this way).
                 | Or.inr h_alt => Or.inr (PackAlt.step_blockEntry h_preprocess h_dispatch h_alt))
@@ -30115,7 +30121,7 @@ lemma accum_block_on_pendingBlock
                  -- Item 92: the inner collection is the outer entry's node, so
                  -- the pack rides at the outer tail's nil (`? -⏎    - a⏎: v`).
                  (match h_kslot with
-                  | Or.inl ⟨nv0, ns, hdom, kslot⟩ => Or.inl ⟨nv0, ns, h_mcstep_ne (by decide) (nv0 :: ns) hdom,
+                  | Or.inl kslot => Or.inl (RegisterWitness.MarkedColsIn.relay (h_mcstep_ne (by decide) _ (RegisterWitness.MarkedColsIn.self sc))
                       fun nv hmem sp_m h_bi sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi =>
                         kslot nv hmem sp_e
                           (SBlockIndented.node n .blockIn sp_scan sp_e
@@ -30123,7 +30129,7 @@ lemma accum_block_on_pendingBlock
                               (SBlockSeqEntries_of_compactTail h_ind h_dash2 h_gnot2
                                 h_bi h_tail)))
                           sp_e (SCompactSeqTail.nil n sp_e)
-                          sp_i sp_c h_iv h_lit sp_v h_sbi⟩
+                          sp_i sp_c h_iv h_lit sp_v h_sbi)
                   | Or.inr h_alt => Or.inr (PackAlt.step_blockEntry h_preprocess h_dispatch h_alt))
                  -- ═══ **Item 258: the nested landing's resume frames, PAID, from
                  -- the OLD park's top.**  A break was crossed here, but the bound
@@ -30404,11 +30410,11 @@ lemma accum_block_on_pendingBlock
           -- the separate payment was a prefix of this one. ═══
           (if hnk : n + 1 ≤ k then
             match h_kslot, h_kslotUp with
-            | Or.inl ⟨nv0, ns, _, kslot⟩, Or.inl ⟨nsU, _, kslotU⟩ =>
-                Or.inl ⟨(nv0 :: ns) ++ nsU, entryChainMap hnk h_ssl h_ind
+            | Or.inl kslot, Or.inl ⟨nsU, _, kslotU⟩ =>
+                Or.inl ⟨RegisterWitness.markedCols sc ++ nsU, entryChainMap hnk h_ssl h_ind
                   (fun x hx => (List.mem_append.mp hx).elim (kslot x) (kslotU x))⟩
-            | Or.inl ⟨nv0, ns, _, kslot⟩, Or.inr _ =>
-                Or.inl ⟨nv0 :: ns, entryChainMap hnk h_ssl h_ind kslot⟩
+            | Or.inl kslot, Or.inr _ =>
+                Or.inl ⟨RegisterWitness.markedCols sc, entryChainMap hnk h_ssl h_ind kslot⟩
             | Or.inr _, Or.inl ⟨nsU, _, kslotU⟩ =>
                 Or.inl ⟨nsU, entryChainMap hnk h_ssl h_ind kslotU⟩
             | Or.inr h_alt, Or.inr _ => Or.inr h_alt
@@ -30445,8 +30451,8 @@ lemma accum_block_on_pendingBlock
           (landing_floor_of_arm h_noflow h_larm (by omega) h_base h_preprocess)
           (if hnk : n + 1 ≤ k then
             match h_kslot, h_kslotUp with
-            | Or.inl ⟨nv0, ns, hdom, kslot⟩, Or.inl ⟨nsU, hdomU, kslotU⟩ =>
-                Or.inl ⟨(nv0 :: ns) ++ nsU, hdom.union_left,
+            | Or.inl kslot, Or.inl ⟨nsU, hdomU, kslotU⟩ =>
+                Or.inl ⟨RegisterWitness.markedCols sc ++ nsU, (RegisterWitness.MarkedColsIn.self sc).union_left,
                   entryChainMap hnk h_ssl h_ind (fun x hx => (List.mem_append.mp hx).elim (kslot x) (kslotU x))⟩
             | Or.inr _, Or.inl ⟨nsU, hdomU, kslotU⟩ =>
                 Or.inl ⟨nsU, hdomU, entryChainMap hnk h_ssl h_ind kslotU⟩
@@ -30520,8 +30526,8 @@ lemma accum_block_on_pendingBlock
           else s_prep).col : Int) ≠ (if s_prep.allowDirectives then
             { s_prep with allowDirectives := false, documentEverStarted := true }
           else s_prep).explicitKeyCol
-        · rcases h_kslot with ⟨nv0, ns, _, kslot⟩ | _
-          · by_cases hknv : k ∈ nv0 :: ns
+        · rcases h_kslot with kslot | _
+          · by_cases hknv : k ∈ RegisterWitness.markedCols sc
             · exact h_explicit (kslot k hknv)
             · rcases h_upSpend with hup | _
               · exact h_explicit hup
@@ -30529,8 +30535,8 @@ lemma accum_block_on_pendingBlock
           · rcases h_upSpend with hup | _
             · exact h_explicit hup
             · exact h_gen (fun _ => h_src)
-        · rcases h_kslot with ⟨nv0, ns, _, kslot⟩ | _
-          · by_cases hknv : k ∈ nv0 :: ns
+        · rcases h_kslot with kslot | _
+          · by_cases hknv : k ∈ RegisterWitness.markedCols sc
             · exact h_explicit (kslot k hknv)
             · -- Item 185: the pack is OFF the landing's column.
               -- **Item 190: …so the frame ABOVE it is tried before deferring.**
@@ -30544,7 +30550,7 @@ lemma accum_block_on_pendingBlock
                   (nodir_of_block_dispatch h_dispatch) h_src
                   (explicit_at_indent_of_dispatch h_dispatch
                     (noflow_disp_of_noflow h_noflow) h_src)
-                  (ns := (nv0 :: ns) ++ nsU)
+                  (ns := RegisterWitness.markedCols sc ++ nsU)
                   (fun hm => (List.mem_append.mp hm).elim hknv hU)
                   (nic0_of_block_dispatch h_preprocess h_dispatch hcorr_result) (Or.inl (block_indicator_arm h_dispatch)) ⟨sp_scan', GStar.nil _, fun _ _ => (dispatchBlock_next_of_some h_noflow (preprocess_some_peek h_preprocess) h_dispatch).gate⟩
           · -- Item 185: the park carries NO pack.
@@ -30614,14 +30620,14 @@ lemma accum_block_on_pendingBlock
                -- own node, so the pack rides at the outer tail's nil
                -- (`? - - a⏎: - w`).
                (match h_kslot with
-                | Or.inl ⟨nv0, ns, hdom, kslot⟩ => Or.inl ⟨nv0, ns, h_mcstep_ne (by decide) (nv0 :: ns) hdom,
+                | Or.inl kslot => Or.inl (RegisterWitness.MarkedColsIn.relay (h_mcstep_ne (by decide) _ (RegisterWitness.MarkedColsIn.self sc))
                     fun nv hmem sp_m h_bi sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi =>
                       kslot nv hmem sp_e
                         (SBlockIndented.compactSeq n .blockIn m sp_mid sp_sc sp_e h_ind
                           (SCompactSeq.mk (n + 1 + m) sp_sc sp_scan' sp_m sp_e
                             h_dash2 h_gnot2 h_bi h_tail))
                         sp_e (SCompactSeqTail.nil n sp_e)
-                        sp_i sp_c h_iv h_lit sp_v h_sbi⟩
+                        sp_i sp_c h_iv h_lit sp_v h_sbi)
                 | Or.inr h_alt => Or.inr (PackAlt.step_blockEntry h_preprocess h_dispatch h_alt))
                -- ═══ **Item 258: the compact nested `-`'s resume frames, PAID,
                -- from the park's OWN top.**  No break was crossed, so the stack
@@ -36935,7 +36941,7 @@ lemma accum_content_on_pendingBlock_indented
     -- Item 92: the park's value-line pack, transported onto whatever this
     -- content step parks — the entry's node rides in exactly as it does for
     -- `h_close_entry_old` (`? - a⏎: - w`, `? - &a x⏎: - w`).
-    (h_kslot_old : (∃ (nv0 : Nat) (ns : List Nat), RegisterWitness.MarkedColsIn sc (nv0 :: ns) ∧ ∀ nv ∈ nv0 :: ns,
+    (h_kslot_old : (∀ nv ∈ RegisterWitness.markedCols sc,
       ∀ sp_m : SurfPos, SBlockIndented n .blockIn sp_scan sp_m →
       ∀ sp_e : SurfPos, SCompactSeqTail n sp_m sp_e →
       ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →
@@ -37076,7 +37082,7 @@ lemma accum_content_on_pendingBlock_indented
                -- reads and the sequence tail is `nil` exactly as below
                -- (`? -⏎    a: 1⏎: - w`).
                (match h_kslot_old with
-                | Or.inl ⟨nv0, ns, _, kslot⟩ => Or.inl ⟨nv0 :: ns,
+                | Or.inl kslot => Or.inl ⟨RegisterWitness.markedCols sc,
                     (fun nv hmem sp h_bn sp_i sp_c h_iv h_lit sp_v h_sbi =>
                       kslot nv hmem sp (SBlockIndented.node n .blockIn sp_scan sp h_bn)
                         sp (SCompactSeqTail.nil n sp)
@@ -37088,7 +37094,7 @@ lemma accum_content_on_pendingBlock_indented
                -- (`? - a: 1⏎: - w`).
                (Or.inl ⟨h_close_old, h_col_old,
                  match h_kslot_old with
-                 | Or.inl ⟨nv0, ns, _, kslot⟩ => Or.inl ⟨nv0 :: ns,
+                 | Or.inl kslot => Or.inl ⟨RegisterWitness.markedCols sc,
                      (fun nv hmem sp h_bi sp_i sp_c h_iv h_lit sp_v h_sbi =>
                        kslot nv hmem sp h_bi sp (SCompactSeqTail.nil n sp)
                          sp_i sp_c h_iv h_lit sp_v h_sbi)⟩
@@ -37097,7 +37103,7 @@ lemma accum_content_on_pendingBlock_indented
                -- the field's face is the same frame `h_compact` carries above.
                (Or.inr ⟨h_close_old, h_col_old,
                  match h_kslot_old with
-                 | Or.inl ⟨nv0, ns, _, kslot⟩ => Or.inl ⟨nv0 :: ns,
+                 | Or.inl kslot => Or.inl ⟨RegisterWitness.markedCols sc,
                      (fun nv hmem sp h_bi sp_i sp_c h_iv h_lit sp_v h_sbi =>
                        kslot nv hmem sp h_bi sp (SCompactSeqTail.nil n sp)
                          sp_i sp_c h_iv h_lit sp_v h_sbi)⟩
@@ -37174,14 +37180,14 @@ lemma accum_content_on_pendingBlock_indented
                -- Item 92: the pack rides through, the entry's node folded in
                -- exactly as `h_close_entry_old` folds it (`? - a⏎: - w`).
                (match h_kslot_old with
-                | Or.inl ⟨nv0, ns, hdom, kslot⟩ => Or.inl ⟨nv0, ns, MarkedColsIn.step_content h_preprocess h_dispatch hdom,
+                | Or.inl kslot => Or.inl (RegisterWitness.MarkedColsIn.relay (MarkedColsIn.step_content h_preprocess h_dispatch (RegisterWitness.MarkedColsIn.self sc))
                     fun nv hmem sp_m h_ssl sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi =>
                       kslot nv hmem sp_m
                         (SBlockIndented.node n .blockIn sp_scan sp_m
                           (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gram sp_m
                             h_sep_all (h_flow_all (n + 1))
                             h_ssl))
-                        sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi⟩
+                        sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi)
                 | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
              -- Item 110: `h_close_entry_old`'s RESUME face, transported the
              -- same way that closure is — the entry's node folds in, the
@@ -37269,7 +37275,7 @@ lemma accum_content_on_pendingBlock_indented
                -- Item 106: the LANDED twin, as at the `entryKeyPack_of_dispatch (h_gate := h_gatePark)`
                -- site above (`? -⏎    &p a: 1⏎: - w`).
                (match h_kslot_old with
-                | Or.inl ⟨nv0, ns, _, kslot⟩ => Or.inl ⟨nv0 :: ns,
+                | Or.inl kslot => Or.inl ⟨RegisterWitness.markedCols sc,
                     (fun nv hmem sp h_bn sp_i sp_c h_iv h_lit sp_v h_sbi =>
                       kslot nv hmem sp (SBlockIndented.node n .blockIn sp_scan sp h_bn)
                         sp (SCompactSeqTail.nil n sp)
@@ -37280,7 +37286,7 @@ lemma accum_content_on_pendingBlock_indented
                -- `entryKeyPack_of_dispatch (h_gate := h_gatePark)` site above (`? - &p a: 1⏎: - w`).
                (Or.inl ⟨h_close_old, h_col_old,
                  match h_kslot_old with
-                 | Or.inl ⟨nv0, ns, _, kslot⟩ => Or.inl ⟨nv0 :: ns,
+                 | Or.inl kslot => Or.inl ⟨RegisterWitness.markedCols sc,
                      (fun nv hmem sp h_bi sp_i sp_c h_iv h_lit sp_v h_sbi =>
                        kslot nv hmem sp h_bi sp (SCompactSeqTail.nil n sp)
                          sp_i sp_c h_iv h_lit sp_v h_sbi)⟩
@@ -37354,7 +37360,7 @@ lemma accum_content_on_pendingBlock_indented
                -- carries, `nil`-tailed exactly as there.
                (Or.inr ⟨h_close_old, h_col_old,
                  match h_kslot_old with
-                 | Or.inl ⟨nv0, ns, _, kslot⟩ => Or.inl ⟨nv0 :: ns,
+                 | Or.inl kslot => Or.inl ⟨RegisterWitness.markedCols sc,
                      (fun nv hmem sp h_bi sp_i sp_c h_iv h_lit sp_v h_sbi =>
                        kslot nv hmem sp h_bi sp (SCompactSeqTail.nil n sp)
                          sp_i sp_c h_iv h_lit sp_v h_sbi)⟩
@@ -37373,7 +37379,7 @@ lemma accum_content_on_pendingBlock_indented
              -- run's node closes the entry with a nil tail and the frame
              -- reads the `:` line (`? - &a x⏎: - w`).
              (match h_kslot_old with
-              | Or.inl ⟨nv, kslot⟩ => Or.inr trivial
+              | Or.inl _ => Or.inr trivial
               | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
              -- Item 114: the ENTRY's chain — the run's node fills `[184]`'s
              -- slot and the tail rides (`k:⏎  - &p a⏎  - y`).  Item 179: the
@@ -37384,10 +37390,15 @@ lemma accum_content_on_pendingBlock_indented
              -- Item 114: the entry-level pack, tail RIDING — item 113's shape
              -- at the props park (`? - &p a⏎  - y⏎: v`).
              (match h_kslot_old with
-              | Or.inl ⟨nv, _, _, kslot⟩ => Or.inl ⟨n, nv, rfl,
-                  fun sp_m h_bn sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi =>
-                    kslot nv (List.mem_cons.mpr (Or.inl rfl)) sp_m (SBlockIndented.node n .blockIn sp_scan sp_m h_bn)
-                      sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi⟩
+              | Or.inl kslot =>
+                  -- Item 405 (Rule 8): the head of the PROJECTION `markedCols sc`
+                  -- is the index; the markless projection declines.
+                  match hmc : RegisterWitness.markedCols sc with
+                  | nv :: _ => Or.inl ⟨n, nv, rfl,
+                      fun sp_m h_bn sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi =>
+                        kslot nv (hmc ▸ List.mem_cons_self ..) sp_m (SBlockIndented.node n .blockIn sp_scan sp_m h_bn)
+                          sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi⟩
+                  | [] => Or.inr trivial
               | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
              -- Item 114: the entry-level resume frames — item 110's landing
              -- spend rides the run (`k:⏎  - &p a⏎b: 2` pops).
@@ -37450,12 +37461,12 @@ lemma accum_content_on_pendingBlock_indented
              -- `:` line spends), where item 95's content park could only
              -- close it `nil` (`? - |⏎    x⏎: - w`).
              (match h_kslot_old with
-              | Or.inl ⟨nv0, ns, hdom, kslot⟩ => Or.inl ⟨nv0, ns, MarkedColsIn.step_content h_preprocess h_dispatch hdom,
+              | Or.inl kslot => Or.inl (RegisterWitness.MarkedColsIn.relay (MarkedColsIn.step_content h_preprocess h_dispatch (RegisterWitness.MarkedColsIn.self sc))
                   fun nv hmem sp_m h_ssl sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi =>
                     kslot nv hmem sp_m
                       (SBlockIndented.node n .blockIn sp_scan sp_m
                         (h_nodeAt sp_m h_ssl))
-                      sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi⟩
+                      sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi)
               | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
              -- Item 110: `h_close_entry_old`'s RESUME face, the re-read node
              -- folded in exactly as that closure folds it — the landing pops
@@ -37531,7 +37542,7 @@ lemma accum_content_on_pendingBlock_indented
                -- reads and the sequence tail is `nil` exactly as below
                -- (`? -⏎    a: 1⏎: - w`).
                (match h_kslot_old with
-                | Or.inl ⟨nv0, ns, _, kslot⟩ => Or.inl ⟨nv0 :: ns,
+                | Or.inl kslot => Or.inl ⟨RegisterWitness.markedCols sc,
                     (fun nv hmem sp h_bn sp_i sp_c h_iv h_lit sp_v h_sbi =>
                       kslot nv hmem sp (SBlockIndented.node n .blockIn sp_scan sp h_bn)
                         sp (SCompactSeqTail.nil n sp)
@@ -37543,7 +37554,7 @@ lemma accum_content_on_pendingBlock_indented
                -- (`? - a: 1⏎: - w`).
                (Or.inl ⟨h_close_old, h_col_old,
                  match h_kslot_old with
-                 | Or.inl ⟨nv0, ns, _, kslot⟩ => Or.inl ⟨nv0 :: ns,
+                 | Or.inl kslot => Or.inl ⟨RegisterWitness.markedCols sc,
                      (fun nv hmem sp h_bi sp_i sp_c h_iv h_lit sp_v h_sbi =>
                        kslot nv hmem sp h_bi sp (SCompactSeqTail.nil n sp)
                          sp_i sp_c h_iv h_lit sp_v h_sbi)⟩
@@ -37552,7 +37563,7 @@ lemma accum_content_on_pendingBlock_indented
                -- the field's face is the same frame `h_compact` carries above.
                (Or.inr ⟨h_close_old, h_col_old,
                  match h_kslot_old with
-                 | Or.inl ⟨nv0, ns, _, kslot⟩ => Or.inl ⟨nv0 :: ns,
+                 | Or.inl kslot => Or.inl ⟨RegisterWitness.markedCols sc,
                      (fun nv hmem sp h_bi sp_i sp_c h_iv h_lit sp_v h_sbi =>
                        kslot nv hmem sp h_bi sp (SCompactSeqTail.nil n sp)
                          sp_i sp_c h_iv h_lit sp_v h_sbi)⟩
@@ -37629,14 +37640,14 @@ lemma accum_content_on_pendingBlock_indented
                -- Item 92: the pack rides through, the multi-line node folded
                -- in as `h_close_entry_old` folds it (`? - "p⏎    q"⏎: - w`).
                (match h_kslot_old with
-                | Or.inl ⟨nv0, ns, hdom, kslot⟩ => Or.inl ⟨nv0, ns, MarkedColsIn.step_content h_preprocess h_dispatch hdom,
+                | Or.inl kslot => Or.inl (RegisterWitness.MarkedColsIn.relay (MarkedColsIn.step_content h_preprocess h_dispatch (RegisterWitness.MarkedColsIn.self sc))
                     fun nv hmem sp_m h_ssl sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi =>
                       kslot nv hmem sp_m
                         (SBlockIndented.node n .blockIn sp_scan sp_m
                           (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gramf sp_m
                             h_sep_all h_node_f
                             h_ssl))
-                        sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi⟩
+                        sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi)
                 | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
              -- Item 110: the multi-line value's face, exactly as above
              -- (`k:⏎  - "p⏎    q"⏎b: 2`).

@@ -368,6 +368,7 @@ declarations' own binders and not by a rescoring of an existing one.
 -- `sc.indents = s0.indents` relays — the same move HypothesisReaderCensus read.
 -- 2026-10-29 (item 396): flowOpen_floor_at_prep deleted; content_dispatch_after_close's four contexts restated (the peeled module, optional-context and optional-population counts follow HypothesisReaderCensus's move).
 -- 2026-10-30 (item 405): `h_mcstep_ne` premises on `accum_block_on_closeThenBlock`/`accum_block_on_pendingContent` (decls 1367 → 1370, READ +14, RELAY +1).
+-- 2026-10-30 (item 405, Rule 8 fix): follows HypothesisReaderCensus — the `?`-park chain re-indexed by `markedCols sc` (READ 1461 → 1457, RELAY 2721 → 2723).
 def expectedModuleTallyP : String :=
   -- 2026-10-24 (item 350): constants 1424 → 1430, decls 1132 → 1137, READ 1207 → 1209, RELAY 2233 → 2237,
   -- RETURN 139 → 140 — `NotQuestionPark` and its three lemmas; `explFrameValueLine`'s split alternative.
@@ -385,7 +386,7 @@ def expectedModuleTallyP : String :=
   -- 2026-10-28 (item 386): constants/decls +2 (`IndentFloor.int_le_of_succ`, the level relays), READ +5, RELAY +2
   -- (the helpers' new premises `h_floor`/`h_nk`, the openers' `h_lvl_old`/`h_floor_mv`); UNUSED unchanged.
   -- 2026-10-29 (item 394): `FlowBaseRoutes.valueF` (+3 constants: the field, its projection, the structure's new arity), five more premise reads at the births and closes.
-  "constants=1733 decls=1370 eta=447 FIELD=196 READ=1461 RELAY=2721 RETURN=172 UNUSED=27"
+  "constants=1733 decls=1370 eta=447 FIELD=196 READ=1457 RELAY=2723 RETURN=172 UNUSED=27"
 
 -- Item 287: `accum_block_on_closeThenBlock`'s `h_vslot`, a READ one, left the
 -- `_ ∨ True` population — its sibling's move, under this peel.  Item 288: and

@@ -8,7 +8,7 @@ marked columns (the field's own item-190 note) — so the flip restates the fiel
 `h_kslotUp`'s CHAIN shape:
 
     (h_kslot : (∃ nv : Nat, ∀ sp_m …)                              -- before
-    (h_kslot : (∃ (nv0 : Nat) (ns : List Nat), RegisterWitness.MarkedColsIn sc (nv0 :: ns) ∧ ∀ nv ∈ nv0 :: ns, ∀ sp_m …)  -- after (item 405: the HEAD is the park's own slot, which every birth knows; a bare chain left the single-slot consumers no head)
+    (h_kslot : (∀ nv ∈ RegisterWitness.markedCols sc, ∀ sp_m …)  -- after (item 405, Rule 8: the chain is the PROJECTION `markedCols sc` read off the scanner state — no `∃ ns` binder; a bare `∃ ns` chain was satisfiable at `[]` and grew the ghost roster)
 
 and reads who pays: every birth now owes the domain (a relay of the enclosing park's, or a
 STARVED fresh singleton) and every consumer destructures `⟨ns, hdom, kslot⟩`.  Read-only: patch,
@@ -23,14 +23,14 @@ ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "L4YAML/Proofs/Production/StreamAccum.lean"
 CTOR = "  | pendingBlock (sp_start sp_block sp_scan : SurfPos) (n : Nat)\n"
 OLD = "      (h_kslot : (∃ nv : Nat,\n"
-NEW = "      (h_kslot : (∃ (nv0 : Nat) (ns : List Nat), RegisterWitness.MarkedColsIn sc (nv0 :: ns) ∧ ∀ nv ∈ nv0 :: ns,\n"
+NEW = "      (h_kslot : (∀ nv ∈ RegisterWitness.markedCols sc,\n"
 CTOR2 = "  | pendingBlockContent (sp_start sp_block sp_scan sp_gram : SurfPos) (n : Nat)\n"
 # round 2: the three lemma PREMISES that restate the field (the callers that pattern-match the
 # constructor and hand `h_kslot92` on break first otherwise, hiding every consumer behind them).
 PREMS = [("lemma accum_block_on_pendingBlockContent", "    (h_kslot : (∃ nv : Nat,\n"),
          ("lemma accum_block_on_pendingBlock", "    (h_kslot : (∃ nv : Nat,\n"),
          ("lemma accum_content_on_pendingBlock_indented", "    (h_kslot_old : (∃ nv : Nat,\n")]
-def dom(old): return old.replace("(∃ nv : Nat,", "(∃ (nv0 : Nat) (ns : List Nat), RegisterWitness.MarkedColsIn sc (nv0 :: ns) ∧ ∀ nv ∈ nv0 :: ns,")
+def dom(old): return old.replace("(∃ nv : Nat,", "(∀ nv ∈ RegisterWitness.markedCols sc,")
 # round 3: the supply question round 2 exposes — the `?`-park births inside
 # `accum_block_on_closeThenBlock` build the field off its `h_vslot` premise's ancestor chain
 # `hkvUp` (`∃ nsU, ∀ nvU ∈ nsU, …`), which carries no domain.  Domain it over the landed slot

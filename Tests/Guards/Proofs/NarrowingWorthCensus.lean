@@ -301,7 +301,7 @@ def expectedFaceTally : String := "binders=162 faces=64 heads=20"
 -- headed `SLYamlStream`; it left the population.  Item 288:
 -- `PendingNode.pendingMapValue.h_vslot`'s face, headed by its `≤`, left too.
 -- 2026-10-26 (item 369): head census re-read — `accum_block_on_pendingBlock.h_closeF_old` (the `-` park's frames, read at the `:`/`?` landing for `h_res_land`).
--- 2026-10-30 (item 405): five value-line binders now head on `MarkedColsIn` (the head-form chain's first conjunct) instead of `ResumeFrames` — MarkedColsIn 15 → 20, ResumeFrames 18 → 13.
+-- 2026-10-30 (item 405, Rule 8 fix): the `?`-park chain is re-indexed by the projection `markedCols sc` (`∀ nv ∈ markedCols sc, …`), so the five value-line binders that had briefly headed on `MarkedColsIn` (the head-form chain's first conjunct) head on `ResumeFrames` again — MarkedColsIn 15 / ResumeFrames 18, item 404's reading.
 def expectedHeadCensus : List String :=
   -- Item 300: `Eq` 17 → 19, the two new optional binders (`h_markerline`, `h_marker_new`).
   -- Item 304: `ResumeFrames` 12 → 3 and `KeyFrames` 9 — the value-line stacks' heads.
@@ -319,13 +319,13 @@ def expectedHeadCensus : List String :=
    "GStar 4",
    "IndentFloor 1",
    "KeyFrames 2",
-   "MarkedColsIn 20",
+   "MarkedColsIn 15",
    "MarkerNodeRoute 5",
    "Mono 4",
    "PropsNodeRoute 4",
    -- 2026-10-27 (item 371): ResumeFrames 3 → 18, SLYamlStream 20 → 5 — every value-line pack's
    -- conclusion is a singleton `ResumeFrames` over the stream.
-   "ResumeFrames 13",
+   "ResumeFrames 18",
    "SLYamlStream 5",
    "SeqEntryTail 7",
    "Sound 2",
@@ -885,7 +885,8 @@ one unfolding, and §6 is the item where those two disagreed about binders. -/
 -- 2026-10-29 (item 388): theorems 6342 → 6343 (`valueLandedSeq`); no no-op conclusion moved.
 -- 2026-10-29 (item 389): theorems 6343 → 6358 — the item-389 helpers and Priority 60.
 -- 2026-10-29 (item 394, option B): no-op conclusion tally re-read after the s0 index.
-def expectedNoopTally : String := "theorems=6480 byElab=16 byWhnf=16 elabOnly=0 whnfOnly=0"
+-- 2026-10-30 (item 405, Rule 8 fix): theorems 6480 → 6484 — `RegisterWitness.markedCols`, `markedCols_mem`, `MarkedColsIn.self`, `MarkedColsIn.relay`.
+def expectedNoopTally : String := "theorems=6484 byElab=16 byWhnf=16 elabOnly=0 whnfOnly=0"
 -- 5302 → 5344 on 2026-10-18 (plan row 20's close, closure-log item 280): the
 -- parse-side alias obligation moved to §7.1's DECLARATION set, so the carrier
 -- grew and the predicate gained its tools.  What is new in kind: `AG` carries

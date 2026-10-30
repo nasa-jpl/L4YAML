@@ -248,7 +248,7 @@ def posLine (p : Pos) : String := s!"{p.decl}{p.site} {p.kind} ∨ {p.alt}"
 -- 2026-10-29 (item 396): 272 → 266 positions (flowOpen_floor_at_prep deleted: 1 never-supplied + its conclusion; content_dispatch_after_close's four declined-and-uninspected contexts restated away); writers 42 → 41, Or.inr trivial 514 → 505.
 -- 2026-10-30 (item 405): ONE new position, on the owner's word — the ruling "405 a" (2026-10-30, verbatim) gave `pendingMapValue.h_explUp` a `∨ PackAlt sc` arm so the three STARVED empty-chain births of item 404 DECLINE instead of fabricating a domain (positions 266 → 267, nested +1, PackAlt +1); nine `Or.inr trivial` writes are the ladder's declines (inrTrivial 500 → 509): `compact_open_map`, `question_open_map` (declined upstream), `accum_block_on_closeThenBlock` ×4 (compact fill with `hkvUp` declined; resume branch without `hkvUp`, and `h_resKslot` ×2), the three `h_kslotE_k` content relays.
 def expectedSummary : String :=
-  "positions=267 top=166 nested=101 True=195 PackAlt=63 PackAltG=9 modules=2 supply: paid=28 relayed=115 declined-only=1 never-supplied=0 unresolved=9 conclusions=11 consumers: spent=102 relayed=15 unused=0 unreadable=36 writers=41 inrTrivial=509"
+  "positions=267 top=166 nested=101 True=195 PackAlt=63 PackAltG=9 modules=2 supply: paid=28 relayed=115 declined-only=1 never-supplied=0 unresolved=9 conclusions=11 consumers: spent=102 relayed=15 unused=0 unreadable=36 writers=41 inrTrivial=511"
 
 def expectedPositions : List String :=
   [ "L4YAML.Proofs.PreprocessIndentStable.IndentFloor.transport[3].h_floor top ∨ True",
@@ -693,7 +693,10 @@ def expectedSupply : List String :=
 -- content_dispatch_after_close's four contexts restated).
 -- 2026-10-30 (item 405): raised on the owner's word (ruling "405 a": the `h_explUp` PackAlt arm) — see `expectedSummary`.
 def ceilingPositions : Nat := 267
-def ceilingWrites : Nat := 509
+-- 2026-10-30 (item 405, Rule 8 fix): two more `Or.inr trivial` writers (509 → 511) — the two head consumers of the `?`-park chain
+-- (`flowKeyRoute_of_open`'s compact pair, the props park's entry-level pack) split on the projection `markedCols sc` and DECLINE at the
+-- markless list (never a `?` park, unprovable at the face); positions and supply classes unchanged.
+def ceilingWrites : Nat := 511
 
 def expectedConsumers : List String :=
   [ "L4YAML.Proofs.StreamAccum.FlowBaseRoutes.mk[8].key unreadable [cased=0 passed=0]",
@@ -850,6 +853,8 @@ def expectedConsumers : List String :=
     "L4YAML.Proofs.StreamAccum.suffixctx_of_landing[11].h_sfx spent [cased=1 passed=4]",
     "L4YAML.Proofs.StreamAccum.topLevelFlowResumeSep_or_refused[6].h_ref unreadable [cased=0 passed=0]"
   ]
+-- 2026-10-30 (item 405, Rule 8 fix): the two markless-projection declines are writers at `accum_flow_open_depth0` (65 → 66, the compact pair)
+-- and `accum_content_on_pendingBlock_indented` (29 → 30, the props park's entry-level pack); see `ceilingWrites`.
 
 def expectedWriters : List String :=
   [ "L4YAML.Proofs.PreprocessIndentStable.IndentFloor.transport ×1 (PreprocessIndentStable)",
@@ -861,10 +866,10 @@ def expectedWriters : List String :=
     "L4YAML.Proofs.StreamAccum.accum_block_on_pendingContent ×12 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.accum_block_pending ×40 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.accum_content_on_noPending ×12 (StreamAccum)",
-    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingBlock_indented ×29 (StreamAccum)",
+    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingBlock_indented ×30 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented ×30 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.accum_content_pending ×81 (StreamAccum)",
-    "L4YAML.Proofs.StreamAccum.accum_flow_open_depth0 ×65 (StreamAccum)",
+    "L4YAML.Proofs.StreamAccum.accum_flow_open_depth0 ×66 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.accum_step_flow ×6 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.colon_fires_implicit_key ×1 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.colon_fires_props_key ×1 (StreamAccum)",

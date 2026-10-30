@@ -4618,7 +4618,9 @@ def expectedPackResidue : String :=
   -- 2026-10-26 (item 365): sites 74 → 76, decls 18 → 17, decline 70 → 72, leaf 46 → 59, uncond 24 → 13 — the same
   -- eleven sites and the three stepped `content_dispatch_after_close` arguments, read as `nested-?` leaves (K8c-b).
   -- 2026-10-30 (item 405): decline 72 → 82 as read on this tree (`--alt refused`: sites 86, decls 18, leaf 66, uncond 16) — the `?`-park chain ladder PAID with nine declines (ruling "405 a"); items 403/404 quoted decline=73 off the same script (the pinned 72 was one reading behind).
-  "sites=86 decls=18 rounds=2 decline=82 relayTrue=0 relayState=4 leaf=66 uncond=16 stubs=1 promised=6"
+  -- 2026-10-30 (item 405, Rule 8 fix): decline 82 → 84, sites 86 → 88, leaf 66 → 68 — the two head consumers of the `?`-park
+  -- chain split on the projection `markedCols sc` and decline at the markless list.
+  "sites=88 decls=18 rounds=2 decline=84 relayTrue=0 relayState=4 leaf=68 uncond=16 stubs=1 promised=6"
 
 /-! **The 32 roots (29 since item 307), by what the register does there** — a READING of each site
 (the compiler prices it when the construction is attempted, §1):

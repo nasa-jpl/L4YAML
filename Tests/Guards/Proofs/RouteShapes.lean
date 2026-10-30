@@ -673,7 +673,7 @@ def walk (table : Std.HashMap Name (Array Closure)) (c : Name) :
 -- 2026-10-29 (item 389): the `-` park's h_closeF (pendingBlock, pendingBlockContent) and the props park's h_closeFE carry the mapping-top conjunct — the mapping sibling's route (SCompactMapTail(n) after the entry's compact tail) as a second shape inside the informative side.
 -- 2026-10-29 (item 394, option B): `mk.valueF` [λλLE] → [λλLE2]: the cover `∃ lo, Floor lo n ks ∧
 -- Covered lo ks s0` sits between the frames binder and the resume route.
--- 2026-10-30 (item 405): the `?`-park field and its content twin take the head-form chain (path LE → LEE2: ∃ nv0, ∃ ns, ∧, ∀ nv ∈ …) and `pendingMapValue.h_explUp` gains the `∨ PackAlt sc` arm (LEE2 → LEE3).
+-- 2026-10-30 (item 405, Rule 8 fix): the `?`-park field and its content twin are re-indexed by the projection `markedCols sc` (path LE → L: `∀ nv ∈ markedCols sc, …`, no `∃` binder) and `pendingMapValue.h_explUp` gains the `∨ PackAlt sc` arm (LEE2 → LEE3).
 def expectedClosures : List String :=
   ["pendingContent.h_closable[] req+guard: sp_gram: SSLComments ⇒ Stream",
    "pendingContent.h_key[λλLEEE1L] req+guard+pack: [col(pos(simpleKey(sc)))=_; line(pos(simpleKey(sc)))=line(sc)] _: SBlockMapEntry(_) ⇒ Stream",
@@ -707,7 +707,7 @@ def expectedClosures : List String :=
    "pendingBlockContent.h_key[λλLEEE6LE3] opt+guard+pack: [col(pos(simpleKey(sc)))=_; line(pos(simpleKey(sc)))=line(sc)] _: SBlockMapEntry(_) > SCompactMapTail(_) ⇒ Resume(_)▹Stream",
    "pendingBlockContent.h_key[λλLEEE7LEE3] opt+guard+pack: [col(pos(simpleKey(sc)))=_; line(pos(simpleKey(sc)))=line(sc)] _: SBlockMapEntry(_) > SCompactMapTail(_) ⇒ Key(_)▹ExplValueLine(_)",
    "pendingBlockContent.h_key[λλLEEE8LEE2] opt+guard+pack: [col(pos(simpleKey(sc)))=_; line(pos(simpleKey(sc)))=line(sc)] _: SBlockMapEntry(_) > SCompactMapTail(_) ⇒ Resume(_)▹SeqEntryTail(_)",
-   "pendingBlockContent.h_kslot[LEE2] opt: sp_gram: SSLComments > SCompactSeqTail(n) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream",
+   "pendingBlockContent.h_kslot[L] opt: sp_gram: SSLComments > SCompactSeqTail(n) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream",
    "pendingBlockContent.h_closeF[LE3] opt: sp_gram: SSLComments > SCompactSeqTail(n) ⇒ Resume(_)▹Stream",
    "pendingBlockContent.h_closeF[LE4L] opt+guard: sp_gram: SSLComments > SCompactSeqTail(n) > SCompactMapTail(n) ⇒ Resume(_)▹Stream",
    "pendingBlockContent.h_seqF[LE] opt: sp_gram: SSLComments > SCompactSeqTail(n) ⇒ SeqEntryTail(_)",
@@ -715,7 +715,7 @@ def expectedClosures : List String :=
    "pendingBlockContent.h_closeFV[LEE3] opt: sp_gram: SSLComments > SCompactSeqTail(n) ⇒ Key(_)▹ExplValueLine(_)",
    "pendingBlock.h_close[] req: sp_scan: SBlockIndented(n,blockIn) ⇒ Stream",
    "pendingBlock.h_close_entry[] req: sp_scan: SBlockIndented(n,blockIn) > SCompactSeqTail(n) ⇒ Stream",
-   "pendingBlock.h_kslot[LEE2] opt: sp_scan: SBlockIndented(n,blockIn) > SCompactSeqTail(n) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream",
+   "pendingBlock.h_kslot[L] opt: sp_scan: SBlockIndented(n,blockIn) > SCompactSeqTail(n) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream",
    "pendingBlock.h_closeF[LE3] opt: sp_scan: SBlockIndented(n,blockIn) > SCompactSeqTail(n) ⇒ Resume(_)▹Stream",
    "pendingBlock.h_closeF[LE4L] opt+guard: sp_scan: SBlockIndented(n,blockIn) > SCompactSeqTail(n) > SCompactMapTail(n) ⇒ Resume(_)▹Stream",
    "pendingBlock.h_seqF[LE] opt: sp_scan: SBlockIndented(n,blockIn) > SCompactSeqTail(n) ⇒ SeqEntryTail(_)",
