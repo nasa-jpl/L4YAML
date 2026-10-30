@@ -8,14 +8,14 @@ marked columns (the field's own item-190 note) — so the flip restates the fiel
 `h_kslotUp`'s CHAIN shape:
 
     (h_kslot : (∃ nv : Nat, ∀ sp_m …)                              -- before
-    (h_kslot : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns, ∀ sp_m …)  -- after
+    (h_kslot : (∀ nv ∈ RegisterWitness.markedCols sc, ∀ sp_m …)  -- after (item 405, Rule 8: the chain is the PROJECTION `markedCols sc` read off the scanner state — no `∃ ns` binder; a bare `∃ ns` chain was satisfiable at `[]` and grew the ghost roster)
 
 and reads who pays: every birth now owes the domain (a relay of the enclosing park's, or a
 STARVED fresh singleton) and every consumer destructures `⟨ns, hdom, kslot⟩`.  Read-only: patch,
 one `lake build L4YAML` (a FLOOR), `scripts/flip_census.py`, restore; md5 both sides.  `--dry`/`--keep`;
 `--round N` (1–4, default 1) applies rounds 1..N CUMULATIVELY — round 2 adds the three lemma
 premises, round 3 the `hkvUp` face, round 4 the `h_explUp` field; the sites line lists every head
-patched, so round 4 always shows the six-site ladder.
+patched, so round 4 always shows the seven-site ladder (item 405 added the content twin's field).
 """
 import hashlib, re, subprocess, sys
 from pathlib import Path
@@ -23,13 +23,14 @@ ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "L4YAML/Proofs/Production/StreamAccum.lean"
 CTOR = "  | pendingBlock (sp_start sp_block sp_scan : SurfPos) (n : Nat)\n"
 OLD = "      (h_kslot : (∃ nv : Nat,\n"
-NEW = "      (h_kslot : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,\n"
+NEW = "      (h_kslot : (∀ nv ∈ RegisterWitness.markedCols sc,\n"
+CTOR2 = "  | pendingBlockContent (sp_start sp_block sp_scan sp_gram : SurfPos) (n : Nat)\n"
 # round 2: the three lemma PREMISES that restate the field (the callers that pattern-match the
 # constructor and hand `h_kslot92` on break first otherwise, hiding every consumer behind them).
 PREMS = [("lemma accum_block_on_pendingBlockContent", "    (h_kslot : (∃ nv : Nat,\n"),
          ("lemma accum_block_on_pendingBlock", "    (h_kslot : (∃ nv : Nat,\n"),
          ("lemma accum_content_on_pendingBlock_indented", "    (h_kslot_old : (∃ nv : Nat,\n")]
-def dom(old): return old.replace("(∃ nv : Nat,", "(∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,")
+def dom(old): return old.replace("(∃ nv : Nat,", "(∀ nv ∈ RegisterWitness.markedCols sc,")
 # round 3: the supply question round 2 exposes — the `?`-park births inside
 # `accum_block_on_closeThenBlock` build the field off its `h_vslot` premise's ancestor chain
 # `hkvUp` (`∃ nsU, ∀ nvU ∈ nsU, …`), which carries no domain.  Domain it over the landed slot
@@ -54,6 +55,11 @@ def patch(text, rnd=1):
     h = next(i for i in range(c[0], c[0] + 60) if lines[i] == OLD)
     lines[h] = NEW
     sites = [("pendingBlock.h_kslot → chain + domain", h + 1)]
+    c2 = [i for i, l in enumerate(lines) if l == CTOR2]
+    if len(c2) != 1: sys.exit(f"expected one pendingBlockContent constructor head, matched {c2}")
+    h2 = next(i for i in range(c2[0], c2[0] + 60) if lines[i] == OLD)
+    lines[h2] = NEW
+    sites.append(("pendingBlockContent.h_kslot → chain + domain (item 405: the content twin rides the ladder)", h2 + 1))
     if rnd >= 2:
         for anchor, old in PREMS:
             d = [i for i, l in enumerate(lines) if re.match(r"(public |private )?" + re.escape(anchor) + r"\b", l)]

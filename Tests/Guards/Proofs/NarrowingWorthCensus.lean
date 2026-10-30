@@ -291,7 +291,8 @@ def isSurfFace (env : Environment) (lhs : Expr) : MetaM Bool := do
 -- — `deeperLandingResume.h_valF`, one more optional binder.
 -- 2026-10-29 (item 389): faces 62 → 63 — the mapping-top conjunct is one more narrowing face on the `-` park's route fields.
 -- 2026-10-29 (item 396): after_close's four optional contexts restated (binders 167 → 162, syntactic 159 → 154); flowOpen_floor_at_prep deleted (theorems 6362 → 6361, its DECLINE|PAY conclusion was one of the 17 no-op pairs).
-def expectedFaceTally : String := "binders=162 faces=63 heads=20"
+-- 2026-10-30 (item 405): faces 63 → 64 — `pendingMapValue.h_explUp`'s new `∨ PackAlt sc` arm (ruling "405 a").
+def expectedFaceTally : String := "binders=162 faces=64 heads=20"
 
 /-- The conclusion head of every left disjunct.  `FVAR 2` is `frameChainUnion`,
     whose face is schematic in `P` — the two rows no census of any kind can
@@ -300,6 +301,7 @@ def expectedFaceTally : String := "binders=162 faces=63 heads=20"
 -- headed `SLYamlStream`; it left the population.  Item 288:
 -- `PendingNode.pendingMapValue.h_vslot`'s face, headed by its `≤`, left too.
 -- 2026-10-26 (item 369): head census re-read — `accum_block_on_pendingBlock.h_closeF_old` (the `-` park's frames, read at the `:`/`?` landing for `h_res_land`).
+-- 2026-10-30 (item 405, Rule 8 fix): the `?`-park chain is re-indexed by the projection `markedCols sc` (`∀ nv ∈ markedCols sc, …`), so the five value-line binders that had briefly headed on `MarkedColsIn` (the head-form chain's first conjunct) head on `ResumeFrames` again — MarkedColsIn 15 / ResumeFrames 18, item 404's reading.
 def expectedHeadCensus : List String :=
   -- Item 300: `Eq` 17 → 19, the two new optional binders (`h_markerline`, `h_marker_new`).
   -- Item 304: `ResumeFrames` 12 → 3 and `KeyFrames` 9 — the value-line stacks' heads.
@@ -883,7 +885,8 @@ one unfolding, and §6 is the item where those two disagreed about binders. -/
 -- 2026-10-29 (item 388): theorems 6342 → 6343 (`valueLandedSeq`); no no-op conclusion moved.
 -- 2026-10-29 (item 389): theorems 6343 → 6358 — the item-389 helpers and Priority 60.
 -- 2026-10-29 (item 394, option B): no-op conclusion tally re-read after the s0 index.
-def expectedNoopTally : String := "theorems=6480 byElab=16 byWhnf=16 elabOnly=0 whnfOnly=0"
+-- 2026-10-30 (item 405, Rule 8 fix): theorems 6480 → 6484 — `RegisterWitness.markedCols`, `markedCols_mem`, `MarkedColsIn.self`, `MarkedColsIn.relay`.
+def expectedNoopTally : String := "theorems=6484 byElab=16 byWhnf=16 elabOnly=0 whnfOnly=0"
 -- 5302 → 5344 on 2026-10-18 (plan row 20's close, closure-log item 280): the
 -- parse-side alias obligation moved to §7.1's DECLARATION set, so the carrier
 -- grew and the predicate gained its tools.  What is new in kind: `AG` carries

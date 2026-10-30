@@ -92,6 +92,52 @@ def MarkedColsIn (sc : ScannerState) (ns : List Nat) : Prop :=
   ∀ (i l : Nat) (c : Int), sc.pendingKeys[i]? = some (some l) →
     sc.indentColumns[i]? = some c → c.toNat ∈ ns
 
+/-- Item 405 (Rule 8): the marked columns READ OFF the state — the projection that
+    re-indexes the `?`-park chain fields (`pendingBlock.h_kslot` and its content twin),
+    so they carry no `∃ ns` binder: every slot `i` whose `pendingKeys` entry is a mark
+    contributes its indent column. -/
+def markedCols (sc : ScannerState) : List Nat :=
+  (List.range sc.pendingKeys.size).filterMap fun i =>
+    match sc.pendingKeys[i]?, sc.indentColumns[i]? with
+    | some (some _), some c => some c.toNat
+    | _, _ => none
+
+lemma markedCols_mem {sc : ScannerState} {x : Nat} :
+    x ∈ markedCols sc ↔ ∃ (i l : Nat) (c : Int),
+      sc.pendingKeys[i]? = some (some l) ∧ sc.indentColumns[i]? = some c ∧ c.toNat = x := by
+  simp only [markedCols, List.mem_filterMap, List.mem_range]
+  constructor
+  · rintro ⟨i, _, h⟩
+    revert h
+    cases hpk : sc.pendingKeys[i]? with
+    | none => simp
+    | some pk =>
+      cases pk with
+      | none => simp
+      | some l =>
+        cases hc : sc.indentColumns[i]? with
+        | none => simp
+        | some c =>
+          intro h
+          simp only [Option.some.injEq] at h
+          exact ⟨i, l, c, hpk, hc, h⟩
+  · rintro ⟨i, l, c, hpk, hc, rfl⟩
+    exact ⟨i, (Array.getElem?_eq_some_iff.mp hpk).1, by rw [hpk, hc]⟩
+
+/-- The projection IS a domain: every mark's column is in it. -/
+lemma MarkedColsIn.self (sc : ScannerState) : MarkedColsIn sc (markedCols sc) :=
+  fun i l c hi hc => markedCols_mem.mpr ⟨i, l, c, hi, hc, rfl⟩
+
+/-- Spend a chain's routes at the projection: a domain `ns` of `s'` and a route for
+    every member of `ns` give a route for every marked column of `s'`.  Births use it
+    with `s' = sc` and the chain they hold; relays with `MarkedColsIn.self` transported
+    across the step. -/
+lemma MarkedColsIn.relay {s' : ScannerState} {ns : List Nat} {P : Nat → Prop}
+    (h : MarkedColsIn s' ns) (hP : ∀ nv ∈ ns, P nv) : ∀ nv ∈ markedCols s', P nv := by
+  intro nv hnv
+  obtain ⟨i, l, c, hi, hc, rfl⟩ := markedCols_mem.mp hnv
+  exact hP _ (h i l c hi hc)
+
 /-- A domain is kept by any superset. -/
 lemma MarkedColsIn.mono {sc : ScannerState} {ns ns' : List Nat}
     (h : MarkedColsIn sc ns) (hsub : ∀ x, x ∈ ns → x ∈ ns') : MarkedColsIn sc ns' :=

@@ -8384,6 +8384,9 @@ def testInputAheadExports (state : IO.Ref TestCollector) : IO Unit := do
   check state s!"P68g the fold's other statements direct: scanValuePrepare_top_le_key rows={spRows} viol={spViol} (vacuous {spVac}); seed_LiveKeyTop/seed_bom_LiveKeyTop states={seedStates} viol={seedViol} armed={seedArmed}"
     (spRows == 10 && spViol == 0 && spVac == 0 && seedStates == 12 && seedViol == 0 && seedArmed == 0)
 
+/-- Priorities 69/69b (item 404) and 69c (item 405): the `?`-park field's chain domain, its fallback,
+and the paid ladder's scanner-side claims — split from `testInputAheadExports` (LCNF compile budget). -/
+def testKslotDomain (state : IO.Ref TestCollector) : IO Unit := do
   -- 69 (item 404) — the `?`-park field's DOMAIN shape, read before the flip: `MarkedColsIn sc ns`
   -- says every marked slot's column (`pendingKeys[i] = some _` ⇒ `indents[i].column`) is in `ns`.
   -- A SINGLETON domain `[nv]` for `pendingBlock.h_kslot` is refutable iff some accepted `-` pause
@@ -8462,8 +8465,137 @@ def testInputAheadExports (state : IO.Ref TestCollector) : IO Unit := do
   check state s!"P69b the NotQuestionPark fallback under an outer ?: `-` pauses={fbN} with an off-level mark={fbHit}; no-? pauses={fbZ} marked={fbZHit}"
     (fbN == 6 && fbHit == 5 && fbZ == 5 && fbZHit == 0)
 
+  -- 69c (item 405) — the PAID ladder's two scanner-side claims, read at every accepted pause of
+  -- the Priority 69/69b corpus plus the inputs the item's declines NAME (node properties inside a
+  -- `?` key: the props park's explicit-key slot `h_kslotE_k` carries no domain, so its three
+  -- content relays decline).  (i) `h_mcstep_ne`: a block dispatch on a char other than `?` marks
+  -- no new column — the marked set after the step is a subset of the marked set before it
+  -- (predicted: 0 violations).  (ii) `h_mcstep`: a `?` dispatch marks at most the preprocessed
+  -- column — the marked set after is a subset of {s_prep.col} ∪ before (predicted: 0 violations).
+  -- (iii) the named declines are route narrowings, not refusals: every props-in-`?` input still
+  -- scans to its end (predicted: all accepted, ≥ 1 non-`?` block pause each).  REFUTED at one row
+  -- before the pin: `? &p - a⏎: w` is REFUSED by the scanner — a node property before a same-line
+  -- `-` is export (c) of item 400 (`scanBlockEntry` refutes a same-line property), so that input
+  -- never reaches the declined relays; the three props-in-`?` inputs that are accepted are the
+  -- narrowed class.  Pinned 3 of 4, with the refused row kept as the negative control.
+  let propsQ : List String := ["? &p a\n: w\n", "? !!str a\n: w\n", "? - &p a\n  - y\n: v\n", "? &p - a\n: w\n"]
+  let mut neN := 0
+  let mut neBad := 0
+  let mut qN := 0
+  let mut qBad := 0
+  let mut propsOk := 0
+  for input in nestedQ ++ singleQ ++ outerQ ++ propsQ do
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    let mut ended := false
+    let mut blockPauses := 0
+    for _ in [:64] do
+      match L4YAML.Scanner.scanNextToken s with
+      | .ok (some sN) =>
+        match L4YAML.Scanner.scanNextToken_preprocess s with
+        | .ok (some (sP, c)) =>
+          if !sP.inFlow then
+            let before := markedCols sP
+            let after := markedCols sN
+            if c == '?' then
+              qN := qN + 1
+              if after.any (fun x => x != (sP.col : Int) && !before.contains x) then qBad := qBad + 1
+            else
+              neN := neN + 1
+              blockPauses := blockPauses + 1
+              if after.any (fun x => !before.contains x) then neBad := neBad + 1
+        | _ => pure ()
+        s := sN
+      | .ok none => ended := true; break
+      | .error _ => break
+    if propsQ.contains input && ended && blockPauses ≥ 1 then propsOk := propsOk + 1
+  check state s!"P69c h_mcstep_ne/h_mcstep read at every block pause: non-? pauses={neN} new marks={neBad}; ? pauses={qN} off-column marks={qBad}; props-in-? inputs accepted={propsOk}/{propsQ.length}"
+    (neN > 0 && neBad == 0 && qN > 0 && qBad == 0 && propsOk == 3 && propsQ.length == 4)
 
-
+  -- 69d (item 405, Rule 8 fix) — the PROJECTION `RegisterWitness.markedCols` and its three lemmas
+  -- instantiated as statements, not read off a transition.  (i) `markedCols_mem` both ways: the
+  -- library projection equals the brute-force marked-column list (`markedColsOf`) on hand-built
+  -- states — empty, singleton marked/unmarked, nested, and MISALIGNED arrays (`pendingKeys` longer
+  -- than `indents` and shorter) — and at every accepted pause of the Priority 69 corpus
+  -- (predicted: 0 mismatches).  (ii) `MarkedColsIn.self`: every marked slot's column is a member
+  -- (0 misses).  (iii) `MarkedColsIn.relay`, informative: with a REAL domain `ns` (the marks plus
+  -- a stray column) and `P := (· ∈ ns)` the conclusion holds at every member of the projection
+  -- (0 violations); negative control: dropping the FIRST mark from `ns` breaks the domain premise
+  -- at every marked state (predicted: every nonempty state).  (iv) the head consumers split on
+  -- `(markedCols sc).reverse`: the projection lists marks OUTERMOST first, so the most recent
+  -- still-marked `?` (the park's own) must be its LAST element at every pause (0 violations,
+  -- ≥ 1 nested pause where the list has two entries).
+  let base : L4YAML.Scanner.ScannerState := L4YAML.Scanner.ScannerState.mk' ""
+  let mk (pks : Array (Option Nat)) (cols : Array Int) : L4YAML.Scanner.ScannerState :=
+    { base with pendingKeys := pks, indents := cols.map (fun c => { column := c, isSequence := false }) }
+  let hand : List L4YAML.Scanner.ScannerState :=
+    [ mk #[] #[], mk #[some 1] #[0], mk #[none] #[0], mk #[none, some 3, some 7] #[0, 2, 4],
+      mk #[some 1, some 2, some 3] #[0, 2], mk #[some 5] #[0, 2, 4], mk #[none, none] #[0, 2] ]
+  let memOk (s : L4YAML.Scanner.ScannerState) : Bool :=
+    L4YAML.Proofs.RegisterWitness.markedCols s == markedColsOf s.pendingKeys s.indentColumns
+  let selfOk (s : L4YAML.Scanner.ScannerState) : Bool := Id.run do
+    let mc := L4YAML.Proofs.RegisterWitness.markedCols s
+    for i in [:s.pendingKeys.size] do
+      match s.pendingKeys[i]?, s.indentColumns[i]? with
+      | some (some _), some c => if !mc.contains c.toNat then return false
+      | _, _ => pure ()
+    return true
+  let isDomain (s : L4YAML.Scanner.ScannerState) (ns : List Nat) : Bool := Id.run do
+    for i in [:s.pendingKeys.size] do
+      match s.pendingKeys[i]?, s.indentColumns[i]? with
+      | some (some _), some c => if !ns.contains c.toNat then return false
+      | _, _ => pure ()
+    return true
+  let mut memBad := 0
+  let mut selfBad := 0
+  let mut relayBad := 0
+  let mut negN := 0
+  let mut negBroke := 0
+  let mut states := 0
+  for s in hand do
+    states := states + 1
+    if !memOk s then memBad := memBad + 1
+    if !selfOk s then selfBad := selfBad + 1
+    let mc := L4YAML.Proofs.RegisterWitness.markedCols s
+    let ns := mc ++ [99]
+    if !isDomain s ns then relayBad := relayBad + 1
+    if mc.any (fun nv => !ns.contains nv) then relayBad := relayBad + 1
+    if !mc.isEmpty then
+      negN := negN + 1
+      if !isDomain s (mc.drop 1) then negBroke := negBroke + 1
+  -- (v) the own mark is PRESENT where it must be: the state a block `?` dispatch produces holds
+  -- the mark at the dispatched column (predicted: 0 misses) — so (iv)'s `mc.contains q` guard
+  -- can only skip pauses AFTER the park's `:` consumed its mark, never a missing own mark.
+  let mut lastBad := 0
+  let mut lastTwo := 0
+  let mut ownN := 0
+  let mut ownMiss := 0
+  for input in nestedQ ++ singleQ do
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    let mut lastQ : Option Nat := none
+    for _ in [:64] do
+      match L4YAML.Scanner.scanNextToken s with
+      | .ok (some sN) =>
+        let mc := L4YAML.Proofs.RegisterWitness.markedCols sN
+        match L4YAML.Scanner.scanNextToken_preprocess s with
+        | .ok (some (sP, c)) =>
+          if c == '?' && !sP.inFlow then
+            lastQ := some sP.col
+            ownN := ownN + 1
+            if !mc.contains sP.col then ownMiss := ownMiss + 1
+        | _ => pure ()
+        states := states + 1
+        if !memOk sN then memBad := memBad + 1
+        if !selfOk sN then selfBad := selfBad + 1
+        match lastQ with
+        | some q =>
+          if mc.contains q then
+            if mc.getLast? != some q then lastBad := lastBad + 1
+            if mc.length ≥ 2 then lastTwo := lastTwo + 1
+        | none => pure ()
+        s := sN
+      | _ => break
+  check state s!"P69d markedCols projection: states={states} markedCols_mem mismatches={memBad} MarkedColsIn.self misses={selfBad} relay violations={relayBad}; negative control broke={negBroke}/{negN}; own mark last at ? pauses: violations={lastBad} two-mark pauses={lastTwo}; own mark present after a ? dispatch: misses={ownMiss}/{ownN}"
+    (states > 7 && memBad == 0 && selfBad == 0 && relayBad == 0 && negN > 0 && negBroke == negN && lastBad == 0 && lastTwo > 0 && ownN > 0 && ownMiss == 0)
 
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
@@ -8497,6 +8629,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testNotQuestionPark state
   testMarkedColsDomain state
   testColZeroParks state
+  testKslotDomain state
 
   testQuestionMarkColumn state
   testK1Lanes state
