@@ -6,6 +6,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 module
 
 public import L4YAML.Proofs.Production.ScalarProduction
+import L4YAML.Scanner.Scanner
 
 @[expose] public section Blanket
 
@@ -772,6 +773,248 @@ lemma scanSingleQuoted_sameline_col_ge {s s' : ScannerState}
       s.currentPos s.inFlow s.currentIndent s.inputEnd h_loop
       (by rw [← h_fields.1, h_line, ← h_adv_line])
     omega
+
+/-! ## Item 400 — the input-ahead exports
+
+What the cursor stands on after a block-context token that may have saved a simple key.
+The live-key-top invariant's `-` case (items 398/399) spends these: a block `-` is never
+the follower of a same-line plain, quoted or alias token, and after a node property on the
+line `scanBlockEntry` itself refuses. -/
+
+/-- The stop set of a block-context plain walk: EOF, `:`, `#`, a break, a non-printable or the
+    BOM (the `isPlainSafeBool` refusals), or the column-0 document boundary. -/
+def PlainFollower (st : ScannerState) : Prop :=
+  st.peek? = none ∨
+  (∃ c, st.peek? = some c ∧
+    (c = ':' ∨ c = '#' ∨ isLineBreakBool c = true ∨ isPrintableBool c = false ∨ c = '\uFEFF')) ∨
+  (st.col = 0 ∧ atDocumentBoundary st = true)
+
+/-- `validateTrailingContent`'s admitted set, read past the trailing spaces. -/
+def TrailingFollower (s : ScannerState) (ie : Nat) : Prop :=
+  (skipTrailingSpaces s (ie - s.offset + 1)).peek? = none ∨
+  ∃ c, (skipTrailingSpaces s (ie - s.offset + 1)).peek? = some c ∧
+    (isLineBreakBool c = true ∨ c = '#' ∨ c = ':')
+
+/-- In block context the terminator test fires only at `#`, `:` or the column-0 boundary. -/
+lemma terminates?_block_cases {c : Char} {s : ScannerState} {content spaces : String}
+    {r : PlainScalarResult}
+    (h : collectPlainScalar_terminates? c s content spaces false = some r) :
+    c = '#' ∨ c = ':' ∨ (s.col = 0 ∧ atDocumentBoundary s = true) := by
+  unfold collectPlainScalar_terminates? at h
+  split at h
+  · rename_i hc
+    simp only [Bool.and_eq_true, beq_iff_eq] at hc
+    exact Or.inl hc.1
+  · split at h
+    · rename_i _ hc
+      exact Or.inr (Or.inl (by simpa using hc))
+    · split at h
+      · rename_i hfl
+        simp at hfl
+      · split at h
+        · rename_i hb
+          simp only [Bool.and_eq_true, beq_iff_eq] at hb
+          exact Or.inr (Or.inr hb)
+        · cases h
+
+/-- A block-context character the plain walk refuses, which is neither space nor break, is
+    non-printable or the BOM. -/
+lemma isPlainSafeBool_block_false {c : Char} (h : isPlainSafeBool c false = false)
+    (hws : isWhiteSpaceBool c = false) (hnb : isLineBreakBool c = false) :
+    isPrintableBool c = false ∨ c = '\uFEFF' := by
+  simp only [isPlainSafeBool, Bool.false_eq_true, ite_false, hws, hnb, Bool.not_false,
+    Bool.true_and, Bool.and_eq_false_iff, bne_eq_false_iff_eq] at h
+  exact h
+
+/-- **Export (a).**  A block-context plain walk that stops (`terminated = true`) stands on
+    `PlainFollower` — in particular never on a block `-`. -/
+lemma collectPlainScalarLoop_terminated_follower (fuel : Nat) :
+    ∀ (s : ScannerState) (content spaces : String) (ci ie : Nat) (r : PlainScalarResult),
+    collectPlainScalarLoop s content spaces fuel false ci ie = .ok r →
+    r.terminated = true → PlainFollower r.state := by
+  induction fuel with
+  | zero =>
+    intro s content spaces ci ie r hok hterm
+    unfold collectPlainScalarLoop at hok
+    injection hok with h_eq; subst h_eq
+    simp at hterm
+  | succ fuel' ih =>
+    intro s content spaces ci ie r hok hterm
+    unfold collectPlainScalarLoop at hok
+    split at hok
+    · rename_i hpk
+      injection hok with h_eq; subst h_eq
+      exact Or.inl hpk
+    · rename_i c hpk
+      split at hok
+      · rename_i hterm'
+        injection hok with h_eq; subst h_eq
+        rw [terminates?_state hterm']
+        rcases terminates?_block_cases hterm' with hc | hc | hc
+        · exact Or.inr (Or.inl ⟨c, hpk, Or.inr (Or.inl hc)⟩)
+        · exact Or.inr (Or.inl ⟨c, hpk, Or.inl hc⟩)
+        · exact Or.inr (Or.inr hc)
+      · split at hok
+        · rename_i hbr
+          have hbrk : PlainFollower s :=
+            Or.inr (Or.inl ⟨c, hpk, Or.inr (Or.inr (Or.inl hbr))⟩)
+          split at hok
+          · rename_i hflow
+            simp at hflow
+          · split at hok
+            · injection hok with h_eq; subst h_eq
+              exact hbrk
+            · rename_i content' s2 hblk
+              split at hok
+              · injection hok with h_eq; subst h_eq
+                exact hbrk
+              · dsimp only [] at hok
+                generalize h_loop :
+                  collectPlainScalarLoop s2 content' "" fuel' false ci ie = cont at hok
+                cases cont with
+                | ok inner =>
+                  dsimp only [] at hok
+                  split at hok
+                  · injection hok with h_eq; subst h_eq
+                    exact hbrk
+                  · have h_eq := Except.ok.inj hok; subst h_eq
+                    exact ih s2 content' "" ci ie _ h_loop hterm
+                | error e => simp at hok
+        · rename_i hbr
+          have hnb : isLineBreakBool c = false := by simpa using hbr
+          split at hok
+          · exact ih s.advance content _ ci ie r hok hterm
+          · rename_i hws
+            have hws' : isWhiteSpaceBool c = false := by simpa using hws
+            split at hok
+            · rename_i hsafe
+              injection hok with h_eq; subst h_eq
+              have h1 : isPlainSafeBool c false = false := by simpa using hsafe
+              rcases isPlainSafeBool_block_false h1 hws' hnb with h | h
+              · exact Or.inr (Or.inl ⟨c, hpk, Or.inr (Or.inr (Or.inr (Or.inl h)))⟩)
+              · exact Or.inr (Or.inl ⟨c, hpk, Or.inr (Or.inr (Or.inr (Or.inr h)))⟩)
+            · exact ih s.advance _ "" ci ie r hok hterm
+
+/-- **Exports (b)/(d), the core.**  A passing `validateTrailingContent` leaves the probe on
+    EOF, a break, `#` or `:`. -/
+lemma validateTrailingContent_follower {s : ScannerState} {ie : Nat}
+    (h : validateTrailingContent s ie = .ok ()) : TrailingFollower s ie := by
+  unfold validateTrailingContent at h
+  dsimp only at h
+  unfold TrailingFollower
+  split at h
+  · rename_i hc
+    exact Or.inl hc
+  · rename_i c hc
+    split at h
+    · rename_i hok
+      refine Or.inr ⟨c, hc, ?_⟩
+      simp only [Bool.or_eq_true, beq_iff_eq] at hok
+      rcases hok with (h | h) | h
+      · exact Or.inl h
+      · exact Or.inr (Or.inl h)
+      · exact Or.inr (Or.inr h)
+    · cases h
+
+/-- **Export (d).**  In block context the alias close is the trailing-content probe. -/
+lemma validateAliasClose_follower {s : ScannerState} (h : validateAliasClose s = .ok ())
+    (hflow : s.inFlow = false) : TrailingFollower s s.inputEnd := by
+  unfold validateAliasClose at h
+  rw [hflow] at h
+  exact validateTrailingContent_follower (by simpa using h)
+
+/-- **Export (c).**  A block `-` is never dispatched after a node property on its line:
+    `scanBlockEntry` refuses by `lastTokenIsNodePropertyOnLine`. -/
+lemma scanBlockEntry_not_property {s s' : ScannerState} (h : scanBlockEntry s = .ok s')
+    (hflow : s.inFlow = false) :
+    lastTokenIsNodePropertyOnLine s.tokens s.line = false := by
+  cases hcase : lastTokenIsNodePropertyOnLine s.tokens s.line with
+  | false => rfl
+  | true =>
+    exfalso
+    unfold scanBlockEntry at h
+    simp [hflow, hcase, bind, Except.bind] at h
+    split at h <;> simp [throw, throwThe, MonadExceptOf.throw] at h
+
+/-- `advance` moves the cursor by the input alone. -/
+lemma advance_io_congr {s t : ScannerState} (hi : s.input = t.input) (ho : s.offset = t.offset)
+    (he : s.inputEnd = t.inputEnd) :
+    s.advance.input = t.advance.input ∧ s.advance.offset = t.advance.offset ∧
+      s.advance.inputEnd = t.advance.inputEnd := by
+  unfold ScannerState.advance
+  simp only [hi, ho, he]
+  split <;> (try split) <;> (try split) <;> simp [hi, ho, he]
+
+/-- `peek?` reads only the input, offset and end. -/
+lemma peek_congr {s t : ScannerState} (hi : s.input = t.input) (ho : s.offset = t.offset)
+    (he : s.inputEnd = t.inputEnd) : s.peek? = t.peek? := by
+  unfold ScannerState.peek?
+  rw [hi, ho, he]
+
+/-- `skipTrailingSpaces` reads only the input, offset and end — the token array and the
+    flags a scalar's close updates do not move its probe. -/
+lemma skipTrailingSpaces_peek_congr (fuel : Nat) :
+    ∀ (s t : ScannerState), s.input = t.input → s.offset = t.offset → s.inputEnd = t.inputEnd →
+    (skipTrailingSpaces s fuel).peek? = (skipTrailingSpaces t fuel).peek? := by
+  induction fuel with
+  | zero =>
+    intro s t hi ho he
+    simp only [skipTrailingSpaces]
+    exact peek_congr hi ho he
+  | succ fuel' ih =>
+    intro s t hi ho he
+    have hpk : s.peek? = t.peek? := peek_congr hi ho he
+    unfold skipTrailingSpaces
+    rw [hpk]
+    split
+    · split
+      · obtain ⟨hi', ho', he'⟩ := advance_io_congr hi ho he
+        exact ih _ _ hi' ho' he'
+      · exact hpk
+    · exact hpk
+
+/-- The probe's verdict transports to any state with the same input, offset and end. -/
+lemma TrailingFollower.congr {s t : ScannerState} {ie : Nat} (h : TrailingFollower s ie)
+    (hi : s.input = t.input) (ho : s.offset = t.offset) (he : s.inputEnd = t.inputEnd) :
+    TrailingFollower t ie := by
+  unfold TrailingFollower at h ⊢
+  rw [← ho, ← skipTrailingSpaces_peek_congr (ie - s.offset + 1) s t hi ho he]
+  exact h
+
+/-- **Export (b), double quotes.**  In block context the state a double-quoted scalar returns
+    stands (past trailing spaces) on EOF, a break, `#` or `:`. -/
+lemma scanDoubleQuoted_follower {s s' : ScannerState} (h : scanDoubleQuoted s = .ok s')
+    (hflow : s.inFlow = false) : TrailingFollower s' s.inputEnd := by
+  unfold scanDoubleQuoted at h
+  simp only [hflow, Bool.not_false, ite_true, bind, Except.bind] at h
+  split at h
+  · cases h
+  · rename_i pr hloop
+    obtain ⟨content, sac⟩ := pr
+    dsimp only at h
+    split at h
+    · cases h
+    · rename_i u hval
+      have hs' := Except.ok.inj h; subst hs'
+      have hv : validateTrailingContent sac s.inputEnd = .ok () := by cases u; exact hval
+      exact (validateTrailingContent_follower hv).congr rfl rfl rfl
+
+/-- **Export (b), single quotes.** -/
+lemma scanSingleQuoted_follower {s s' : ScannerState} (h : scanSingleQuoted s = .ok s')
+    (hflow : s.inFlow = false) : TrailingFollower s' s.inputEnd := by
+  unfold scanSingleQuoted at h
+  simp only [hflow, Bool.not_false, ite_true, bind, Except.bind] at h
+  split at h
+  · cases h
+  · rename_i pr hloop
+    obtain ⟨content, sac⟩ := pr
+    dsimp only at h
+    split at h
+    · cases h
+    · rename_i u hval
+      have hs' := Except.ok.inj h; subst hs'
+      have hv : validateTrailingContent sac s.inputEnd = .ok () := by cases u; exact hval
+      exact (validateTrailingContent_follower hv).congr rfl rfl rfl
 
 end L4YAML.Proofs.ScalarWalkColFloor
 
