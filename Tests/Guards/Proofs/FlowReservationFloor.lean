@@ -137,7 +137,7 @@ example {sp_start : SurfPos} {sc : ScannerState} {fl : Nat} {ks : Array Bool}
     {tl : FrameTail} {a b : SurfPos}
     (h : FlowStackK sp_start sc fl ks tl a b) (hfl : 0 < fl) :
     ∃ g, FlowBaseAnchor g sc (fl - 1) := by
-  obtain ⟨n, kc, km, g, _, -, -, -, -, h_prom⟩ := h
+  obtain ⟨n, kc, km, g, _, -, -, -, -, -, h_prom⟩ := h
   exact ⟨g, (h_prom hfl).2.1⟩
 
 /-! ## §4  The gate, now paid

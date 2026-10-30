@@ -8627,6 +8627,37 @@ def testKslotDomain (state : IO.Ref TestCollector) : IO Unit := do
   check state s!"P70 flow-open key face domain (item 406): block-context flow opens={opens} under marks={openMarked} (two or more={openTwo}) markless={openBare}"
     (opens > 0 && openMarked > 0 && openTwo > 0 && openBare > 0)
 
+  -- 71 (item 407, the flow carrier's pendingKeys conjunct, read BEFORE the proof) — from the state a
+  -- block-context `[` / `{` dispatch produces to every accepted pause while the flow is open,
+  -- `pendingKeys` is the open's (predicted: 0 violations); negative control: a block interior
+  -- (a `?` or `-` dispatch) does change it at some pause (predicted: > 0).
+  let flowBodies : List String :=
+    [ "[a]: b", "{a: 1}: b", "[a, [b, c], {d: e}]: f", "? [a,\n  b]: c", "? - [1, {x: y}]\n: w",
+      "k: [a, b]\nq: c", "[\n  a,\n  b\n]: c", "{a: [1, 2], b: {c: d}}", "? {a: 1}: b\n: c",
+      "- [a]\n- {b: c}", "k:\n  ? [a]: b\n  : c", "&x [a, *x]" ]
+  let mut flowPauses := 0
+  let mut flowBad := 0
+  let mut blockChanged := 0
+  for input in flowBodies ++ nestedQ ++ singleQ do
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    let mut openPk : Option (Array (Option Nat)) := none
+    for _ in [:64] do
+      match L4YAML.Scanner.scanNextToken s with
+      | .ok (some sN) =>
+        match openPk with
+        | some pk =>
+          if sN.flowLevel > 0 then
+            flowPauses := flowPauses + 1
+            if sN.pendingKeys != pk then flowBad := flowBad + 1
+          else openPk := none
+        | none =>
+          if sN.flowLevel > 0 then openPk := some sN.pendingKeys
+          else if sN.pendingKeys != s.pendingKeys then blockChanged := blockChanged + 1
+        s := sN
+      | _ => break
+  check state s!"P71 flow carrier pendingKeys (item 407): flow-interior pauses={flowPauses} pendingKeys ≠ open's={flowBad}; block pauses that changed pendingKeys={blockChanged}"
+    (flowPauses > 0 && flowBad == 0 && blockChanged > 0)
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state

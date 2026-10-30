@@ -1135,6 +1135,50 @@ lemma saveSimpleKey_preserves_pendingKeys (s : ScannerState) :
   · rfl
   · split <;> rfl
 
+/-! ## §9  The preprocess step leaves `pendingKeys` alone inside a flow (item 407)
+
+`scanNextToken_preprocess` touches `pendingKeys` only through `unwindIndents` (block lines) and
+`closeStaleExplicitKey` (block context, `inFlow = false`); inside a flow both are no-ops, so the
+flow carrier's `pendingKeys` conjunct (`FlowStackK`) rides the preprocess the way `indents` does
+(`FlowIndentStable.preprocess_indents_of_inFlow`). -/
+
+lemma closeStaleExplicitKey_pendingKeys_of_inFlow {s : ScannerState} (h_flow : s.inFlow = true) :
+    (closeStaleExplicitKey s).pendingKeys = s.pendingKeys := by
+  unfold closeStaleExplicitKey
+  simp [h_flow]
+
+lemma preprocess_pendingKeys_of_inFlow {sc s_prep : ScannerState} {c : Char}
+    (h_flow : sc.inFlow = true)
+    (h : scanNextToken_preprocess sc = .ok (some (s_prep, c))) :
+    s_prep.pendingKeys = sc.pendingKeys := by
+  unfold scanNextToken_preprocess at h
+  simp only [bind, Except.bind, pure, Except.pure] at h
+  split at h
+  · exact absurd h (by simp)
+  · rename_i s_skip h_skip
+    have h_pk_skip : s_skip.pendingKeys = sc.pendingKeys :=
+      skipToContent_preserves_pendingKeys sc s_skip h_skip
+    have h_flow_skip : s_skip.inFlow = true := by
+      unfold ScannerState.inFlow at h_flow ⊢
+      rw [ScannerCorrectness.skipToContent_preserves_flowLevel sc s_skip h_skip]
+      exact h_flow
+    have hcond : (!s_skip.inFlow && s_skip.needIndentCheck) = false := by
+      simp [h_flow_skip]
+    simp only [hcond, ite_eq_right Bool.false_ne_true] at h
+    split at h
+    · exact absurd h (by simp)
+    · split at h
+      · exact absurd h (by simp)
+      · split at h
+        · exact absurd h (by simp)
+        · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
+          obtain ⟨rfl, -⟩ := h
+          have h_flow_save : (saveSimpleKey s_skip).inFlow = true := by
+            unfold ScannerState.inFlow at h_flow_skip ⊢
+            rw [ScannerCorrectness.saveSimpleKey_preserves_flowLevel]; exact h_flow_skip
+          exact (closeStaleExplicitKey_pendingKeys_of_inFlow h_flow_save).trans
+            ((saveSimpleKey_preserves_pendingKeys s_skip).trans h_pk_skip)
+
 end L4YAML.Proofs.PendingKeysStable
 
 end Blanket

@@ -537,6 +537,7 @@ corrBlock=0 corrScan=1 via="]
 -- 2026-10-29 (item 389): dispatchBlockIndicators holders 127 → 131 (`pushedBirth_not_mapTop`, `noPushBirth_indents` and their two site uses hold the `-` dispatch), dispatchContent 159 → 160 (`contentLanding_indents_eq`), preprocess 243 → 246, edge 17 → 18 (`preprocess_currentIndent_le`, `preprocess_indents_eq_of_le`, `contentLanding_indents_eq`).
 -- 2026-10-29 (item 394, option B): +1 preprocess holder — `preprocess_indents_subset`.
 -- 2026-10-29 (item 396): `scanNextToken_preprocess holders` 247 → 246, edge 18 → 17 — flowOpen_floor_at_prep deleted.
+-- 2026-10-30 (item 407, flow carrier `pendingKeys` conjunct): preprocess holders 248 → 249 — `preprocess_pendingKeys_of_inFlow`.
 def expectedLadder : List String :=
 -- 2026-10-24 (item 350): holders=112 → 113 — `dispatchBlock_colon_notQuestion` reads the `:`
 -- dispatch equation to hand every `:` producer `NotQuestionPark`.
@@ -548,7 +549,7 @@ def expectedLadder : List String :=
   -- Item 387 (2026-10-29): `seqTop_refuted_at_indicator_le` holds the `:`/`?` dispatch (+1 holder).
   ["scanNextToken_dispatchBlockIndicators holders=133 edge=1 chain=0",
    "scanNextToken_dispatchContent holders=161 edge=3 chain=1",
-   "scanNextToken_preprocess holders=248 edge=17 chain=3"]
+   "scanNextToken_preprocess holders=249 edge=17 chain=3"]
 
 /-- **What §1's proofs spend.**  `drop=false` is the non-circularity check
     items 242 and 243 also carry: a measurement of what the escape costs may
