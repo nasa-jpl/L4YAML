@@ -8562,21 +8562,30 @@ def testKslotDomain (state : IO.Ref TestCollector) : IO Unit := do
     if !mc.isEmpty then
       negN := negN + 1
       if !isDomain s (mc.drop 1) then negBroke := negBroke + 1
+  -- (v) the own mark is PRESENT where it must be: the state a block `?` dispatch produces holds
+  -- the mark at the dispatched column (predicted: 0 misses) — so (iv)'s `mc.contains q` guard
+  -- can only skip pauses AFTER the park's `:` consumed its mark, never a missing own mark.
   let mut lastBad := 0
   let mut lastTwo := 0
+  let mut ownN := 0
+  let mut ownMiss := 0
   for input in nestedQ ++ singleQ do
     let mut s := L4YAML.Scanner.ScannerState.mk' input
     let mut lastQ : Option Nat := none
     for _ in [:64] do
       match L4YAML.Scanner.scanNextToken s with
       | .ok (some sN) =>
+        let mc := L4YAML.Proofs.RegisterWitness.markedCols sN
         match L4YAML.Scanner.scanNextToken_preprocess s with
-        | .ok (some (sP, c)) => if c == '?' && !sP.inFlow then lastQ := some sP.col
+        | .ok (some (sP, c)) =>
+          if c == '?' && !sP.inFlow then
+            lastQ := some sP.col
+            ownN := ownN + 1
+            if !mc.contains sP.col then ownMiss := ownMiss + 1
         | _ => pure ()
         states := states + 1
         if !memOk sN then memBad := memBad + 1
         if !selfOk sN then selfBad := selfBad + 1
-        let mc := L4YAML.Proofs.RegisterWitness.markedCols sN
         match lastQ with
         | some q =>
           if mc.contains q then
@@ -8585,8 +8594,8 @@ def testKslotDomain (state : IO.Ref TestCollector) : IO Unit := do
         | none => pure ()
         s := sN
       | _ => break
-  check state s!"P69d markedCols projection: states={states} markedCols_mem mismatches={memBad} MarkedColsIn.self misses={selfBad} relay violations={relayBad}; negative control broke={negBroke}/{negN}; own mark last at ? pauses: violations={lastBad} two-mark pauses={lastTwo}"
-    (states > 7 && memBad == 0 && selfBad == 0 && relayBad == 0 && negN > 0 && negBroke == negN && lastBad == 0 && lastTwo > 0)
+  check state s!"P69d markedCols projection: states={states} markedCols_mem mismatches={memBad} MarkedColsIn.self misses={selfBad} relay violations={relayBad}; negative control broke={negBroke}/{negN}; own mark last at ? pauses: violations={lastBad} two-mark pauses={lastTwo}; own mark present after a ? dispatch: misses={ownMiss}/{ownN}"
+    (states > 7 && memBad == 0 && selfBad == 0 && relayBad == 0 && negN > 0 && negBroke == negN && lastBad == 0 && lastTwo > 0 && ownN > 0 && ownMiss == 0)
 
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
