@@ -8608,6 +8608,16 @@ def testKslotPay (state : IO.Ref TestCollector) : IO Unit := do
   let mut cShrink := 0
   let mut qPauses := 0
   let mut qGrow := 0
+  -- hypothesis buckets (Rule 2): `step_value` wants `Sound sc`, `Mono sc` and `MarkedColsIn sc ns`
+  -- at the PRE-state — count the pauses where they hold (eligible), read the conclusion for the
+  -- chain `markedCols s` AND a strict superset cover, and refute the domain's vacuity: `[]`
+  -- is NOT a cover at a marked pause.
+  let mut cEligible := 0
+  let mut cIneligible := 0
+  let mut cSuperBad := 0
+  let mut cEmptyNotCover := 0
+  let coverB (s : ScannerState) (ns : List Nat) : Bool :=
+    (L4YAML.Proofs.RegisterWitness.markedCols s).all (fun c => ns.contains c)
   let corpus : List String :=
     ["a: 1\n", "a: [1, 2]\n", "? a\n: b\n", "- ? a: 1\n  : b\n", "? ? a\n  : b\n: c\n", "? - a\n  - b\n: c\n",
      "a:\n  ? b\n  : c\n", "? [a]: b\n: c\n", "? a\n? b\n: c\n", "k: ? a\n   : b\n", "? &p a: b\n: - w\n",
@@ -8625,14 +8635,20 @@ def testKslotPay (state : IO.Ref TestCollector) : IO Unit := do
             cPauses := cPauses + 1
             if !(after.all (fun nv => before.contains nv)) then cBad := cBad + 1
             if after.length < before.length then cShrink := cShrink + 1
+            if soundB s && monoB s then
+              cEligible := cEligible + 1
+              if !(coverB sN before) then cBad := cBad + 1
+              if !(coverB sN (97 :: before)) then cSuperBad := cSuperBad + 1
+              if !before.isEmpty && !(coverB s []) then cEmptyNotCover := cEmptyNotCover + 1
+            else cIneligible := cIneligible + 1
           if c == '?' && sP.flowLevel == 0 then
             qPauses := qPauses + 1
             if after.length > before.length then qGrow := qGrow + 1
           s := sN
         | _ => break
       | _ => break
-  check state s!"P73 MarkedColsIn.step_value (item 409): block `:` pauses={cPauses} new mark after `:`={cBad} (marks dropped at {cShrink}); block `?` pauses={qPauses} mark added={qGrow}"
-    (cPauses > 0 && cBad == 0 && qPauses > 0 && qGrow > 0)
+  check state s!"P73 MarkedColsIn.step_value (item 409): block `:` pauses={cPauses} (eligible: Sound ∧ Mono={cEligible}, ineligible={cIneligible}) new mark after `:`={cBad} superset cover broken={cSuperBad} (marks dropped at {cShrink}; `[]` not a cover at {cEmptyNotCover} marked pauses); block `?` pauses={qPauses} mark added={qGrow}"
+    (cPauses > 0 && cEligible > 0 && cBad == 0 && cSuperBad == 0 && cEmptyNotCover > 0 && qPauses > 0 && qGrow > 0)
 
 def testFlowCarrier (state : IO.Ref TestCollector) : IO Unit := do
   let nestedQ : List String := ["?\n  ? -\n: w\n", "? - ? - a\n  : b\n: c\n", "?\n  ?\n    -\n    - b\n  ? c\n: w\n", "? ? - a\n  : b\n: c\n", "- ? - a\n  : b\n"]
