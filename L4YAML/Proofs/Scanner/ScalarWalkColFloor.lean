@@ -1245,6 +1245,87 @@ lemma scanPlainScalar_follower {s s' : ScannerState} (h : scanPlainScalar s = .o
       have hb := collectPlainScalarLoop_fuel_le_of_not_terminated _ s "" "" _ _ r hloop hterm
       omega
 
+/-! ### Item 401 — `LiveKeyTop`, the live-key-top invariant (item 391 §5) STATED
+
+Sited here rather than beside `StaleKeyCursorFloor` because its follower conjunct is spent
+from this file's exports (a)–(e); the step proof is item 402's. -/
+
+/-- **Export (e).**  A flow close back at block level is the trailing-content probe. -/
+lemma validateFlowClose_follower {s : ScannerState} (h : validateFlowClose s = .ok ())
+    (hlvl : s.flowLevel = 0) : TrailingFollower s s.inputEnd := by
+  unfold validateFlowClose at h
+  simp only [hlvl, beq_self_eq_true, ite_true] at h
+  unfold TrailingFollower
+  split at h
+  · rename_i hc; exact Or.inl hc
+  · rename_i c hc
+    split at h
+    · rename_i hok
+      refine Or.inr ⟨c, hc, ?_⟩
+      simp only [Bool.or_eq_true, beq_iff_eq] at hok
+      rcases hok with (h | h) | h
+      · exact Or.inl h
+      · exact Or.inr (Or.inl h)
+      · exact Or.inr (Or.inr h)
+    · simp at h
+
+/-- What the cursor may stand on while a simple key saved on this line is live: a node
+    property is the last token of the line; or the key is a block entry's own position (the
+    `-` records itself, cleared or re-saved by the next token); or (past whitespace) a follower
+    no block `-` is. -/
+def KeyFollower (s : ScannerState) : Prop :=
+  lastTokenIsNodePropertyOnLine s.tokens s.line = true ∨
+  (∃ t, s.tokens.back? = some t ∧ t.val = .blockEntry ∧ t.pos = s.simpleKey.pos ∧
+    s.simpleKeyAllowed = true) ∨
+  (skipWhitespace s).peek? = none ∨
+  ∃ c, (skipWhitespace s).peek? = some c ∧
+    (c = ':' ∨ c = '#' ∨ isLineBreakBool c = true ∨ isPrintableBool c = false ∨ c = '\uFEFF')
+
+/-- Item 391 §5: a live simple key saved on the current line stands at or right of the
+    indentation top (in BOTH contexts — item 402's step needs the flow half, since a key saved
+    inside a flow collection is pushed by a nested opener and restored at the close), and so does
+    every stacked one; in block context the live key's cursor stands on a `KeyFollower`. -/
+def LiveKeyTop (s : ScannerState) : Prop :=
+  (s.simpleKey.possible = true → s.simpleKey.pos.line = s.line →
+    s.currentIndent ≤ (s.simpleKey.pos.col : Int) ∧ (s.inFlow = false → KeyFollower s)) ∧
+  (∀ k ∈ s.simpleKeyStack, k.possible = true → k.pos.line = s.line →
+    s.currentIndent ≤ (k.pos.col : Int))
+
+lemma LiveKeyTop.initial (input : String) : LiveKeyTop (ScannerState.mk' input) := by
+  refine ⟨fun h _ => ?_, fun k hk => ?_⟩
+  · exact absurd h (by unfold ScannerState.mk'; simp)
+  · exact absurd hk (by unfold ScannerState.mk'; simp)
+
+/-- `skipWhitespace` is the identity on a non-blank cursor. -/
+lemma skipWhitespace_eq_of_not_ws {s : ScannerState} {c : Char} (hpk : s.peek? = some c)
+    (hws : isWhiteSpaceBool c = false) : skipWhitespace s = s := by
+  unfold skipWhitespace skipWhitespaceLoop
+  split
+  · rfl
+  · rw [hpk]; simp [hws]
+
+/-- **The `-` arm of the step, read from the conjunct (restated in item 402):** a block `-`
+    dispatched while a key saved on its line is live means that key is the FRESH save at the
+    cursor — an inherited key is refuted on every `KeyFollower` arm (the property arm by export
+    (c), the block-entry arm because `simpleKeyAllowed` forces a fresh save, the follower arms
+    because the cursor peeks `-`). -/
+lemma LiveKeyTop.dash_case {s : ScannerState} (hinv : LiveKeyTop s) (hflow : s.inFlow = false)
+    (hposs : s.simpleKey.possible = true) (hline : s.simpleKey.pos.line = s.line)
+    (hpk : s.peek? = some '-') (hnp : lastTokenIsNodePropertyOnLine s.tokens s.line = false)
+    (hfresh : s.simpleKeyAllowed = true → s.simpleKey.pos = s.currentPos) :
+    s.simpleKey.pos = s.currentPos := by
+  obtain ⟨-, hf⟩ := hinv.1 hposs hline
+  have hid := skipWhitespace_eq_of_not_ws hpk (by decide)
+  rcases hf hflow with hp | ⟨t, -, -, -, hal⟩ | hn | ⟨c, hc, hset⟩
+  · rw [hnp] at hp; cases hp
+  · exact hfresh hal
+  · rw [hid, hpk] at hn; cases hn
+  · rw [hid, hpk] at hc
+    have : c = '-' := (Option.some.inj hc).symm
+    subst this
+    exfalso
+    rcases hset with h | h | h | h | h <;> first | cases h | (revert h; decide)
+
 end L4YAML.Proofs.ScalarWalkColFloor
 
 end Blanket

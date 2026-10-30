@@ -7617,7 +7617,7 @@ scalars (the `-` is the one writer that pushes WITHOUT clearing the key — the 
 dedents, document markers, block scalars, under-indented flow continuation lines. -/
 
 def liveKeyTopOk (s : L4YAML.Scanner.ScannerState) : Bool × Bool := Id.run do
-  let keyArmed := decide (s.inFlow = false) && s.simpleKey.possible && s.simpleKey.pos.line == s.line
+  let keyArmed := s.simpleKey.possible && s.simpleKey.pos.line == s.line
   let keyOk := !keyArmed || decide (s.currentIndent ≤ (s.simpleKey.pos.col : Int))
   let stackArmed := s.simpleKeyStack.any fun k => k.possible && k.pos.line == s.line
   let stackOk := s.simpleKeyStack.all fun k =>
@@ -8089,6 +8089,116 @@ def testInputAheadExports (state : IO.Ref TestCollector) : IO Unit := do
   check state s!"P68 inputEnd kept by skipWhitespace / skipSpaces / skipBlankLinesLoop: viol={ieViol}" (ieViol == 0)
   check state s!"P68 scanPlainScalar direct → PlainFollower: ok={psOk} err={psErr} viol={psViol}"
     (psOk > 0 && psViol == 0)
+  -- 68b — `LiveKeyTop`'s follower conjunct (`KeyFollower`) at every pause with a live same-line
+  -- key in block context, and `validateFlowClose` under its premise.  Run 1 (predicted 0
+  -- violations, armed ≥ 100) REFUTED the conjunct as first stated: 11 / 145 — every one a `-`
+  -- recording its own position as the live key; the block-entry arm was added.  Run 2 predicted
+  -- 0 violations, armed ≥ 145; flow-close probes ≥ 5, every success a `TrailingFollower`.
+  let mut kfArmed := 0; let mut kfViol := 0
+  let mut fcOk := 0; let mut fcErr := 0; let mut fcViol := 0
+  let keyFollower : L4YAML.Scanner.ScannerState → Bool := fun st =>
+    L4YAML.Scanner.lastTokenIsNodePropertyOnLine st.tokens st.line ||
+    (match st.tokens.back? with
+     | some t => (match t.val with | .blockEntry => true | _ => false) && t.pos == st.simpleKey.pos
+         && st.simpleKeyAllowed
+     | none => false) ||
+    (match (L4YAML.Scanner.skipWhitespace st).peek? with
+     | none => true
+     | some c => c == ':' || c == '#' || L4YAML.CharPredicates.isLineBreakBool c
+         || !L4YAML.CharPredicates.isPrintableBool c || c == '\uFEFF')
+  let extra : List String := ["[a] - b\n", "{a: 1} - b\n", "a: [x] - b\n", "- [a] - b\n", "[a]: b\n",
+    "[a] : b\n", "[a] #c\n- b\n", "[a]\n- b\n", "a: [b, c]: d\n", "? [a]\n: b\n", "? \"a\"\n", "? &x a\n", "- - a\n"]
+  for input in inputAheadInputs ++ extra do
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:128] do
+      match L4YAML.Scanner.scanNextToken s with
+      | .ok (some sN) =>
+        if !sN.inFlow && sN.simpleKey.possible && sN.simpleKey.pos.line == sN.line then
+          kfArmed := kfArmed + 1
+          if !keyFollower sN then kfViol := kfViol + 1
+        if sN.flowLevel == 0 then
+          match sN.tokens.back? with
+          | some t =>
+            match t.val with
+            | .flowSequenceEnd | .flowMappingEnd =>
+              match L4YAML.Scanner.validateFlowClose sN with
+              | .ok _ =>
+                fcOk := fcOk + 1
+                if !trailingFollower sN sN.inputEnd then fcViol := fcViol + 1
+              | .error _ => fcErr := fcErr + 1
+            | _ => pure ()
+          | none => pure ()
+        s := sN
+      | _ => break
+  -- 68b (review flag, item 402) — FRESH close states, not the pauses `scanNextToken` already
+  -- accepted: the preprocess output at the `]`/`}` is closed by `scanFlowSequenceEnd` /
+  -- `scanFlowMappingEnd` directly and `validateFlowClose` is read on it.  Predicted: every
+  -- trailing-content row rejected, every allowed follower accepted with a `TrailingFollower`.
+  let mut fcFreshRej := 0; let mut fcFreshOk := 0; let mut fcFreshViol := 0; let mut fcFreshMiss := 0
+  let freshClose : L4YAML.Scanner.ScannerState → Option (Except L4YAML.ScanError Unit × L4YAML.Scanner.ScannerState) :=
+    fun s0 => Id.run do
+      let mut s := s0
+      for _ in [:128] do
+        match L4YAML.Scanner.scanNextToken_preprocess s with
+        | .ok (some (sp, ']')) =>
+          if sp.flowLevel == 1 then
+            let s' := L4YAML.Scanner.scanFlowSequenceEnd sp
+            return some (L4YAML.Scanner.validateFlowClose s', s')
+        | .ok (some (sp, '}')) =>
+          if sp.flowLevel == 1 then
+            let s' := L4YAML.Scanner.scanFlowMappingEnd sp
+            return some (L4YAML.Scanner.validateFlowClose s', s')
+        | _ => pure ()
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) => s := sN
+        | _ => return none
+      return none
+  for input in ["[a] - b\n", "[a] x\n", "[a] [b]\n", "{a: 1} - b\n"] do
+    match freshClose (L4YAML.Scanner.ScannerState.mk' input) with
+    | some (.error _, _) => fcFreshRej := fcFreshRej + 1
+    | some (.ok _, _) => fcFreshViol := fcFreshViol + 1
+    | none => fcFreshMiss := fcFreshMiss + 1
+  for input in ["[a]: b\n", "[a] #c\n", "[a]\n", "[a]"] do
+    match freshClose (L4YAML.Scanner.ScannerState.mk' input) with
+    | some (.ok _, s') =>
+      fcFreshOk := fcFreshOk + 1
+      if !trailingFollower s' s'.inputEnd then fcFreshViol := fcFreshViol + 1
+    | some (.error _, _) => fcFreshViol := fcFreshViol + 1
+    | none => fcFreshMiss := fcFreshMiss + 1
+  check state s!"P68b KeyFollower at every live same-line key pause: armed={kfArmed} viol={kfViol}"
+    (kfArmed == 151 && kfViol == 0)
+  check state s!"P68b validateFlowClose on FRESH closes: rejected={fcFreshRej} accepted={fcFreshOk} viol={fcFreshViol} missed={fcFreshMiss}"
+    (fcFreshRej == 4 && fcFreshOk == 4 && fcFreshViol == 0 && fcFreshMiss == 0)
+  check state s!"P68b validateFlowClose direct at block-level flow closes: ok={fcOk} err={fcErr} viol={fcViol}"
+    (fcOk == 13 && fcErr == 0 && fcViol == 0)
+
+  -- 68c (review) — `LiveKeyTop.dash_case` under its own premises: at every block-context pause
+  -- with a live same-line key whose cursor (past whitespace, the preprocess) peeks `-`, call
+  -- `scanBlockEntry` and check the conclusion — the line's last token is a block entry at the
+  -- saved key's position — on every success.  Predicted before the run: armed ≥ 1 (the `- - a`
+  -- rows), every armed call accepted, 0 conclusion violations; vacuous (live key, no `-`) ≥ 140.
+  let mut dcArmed := 0; let mut dcOk := 0; let mut dcErr := 0; let mut dcViol := 0; let mut dcVac := 0
+  for input in inputAheadInputs ++ extra ++ ["- - \"a\"\n", "- - - a\n", "- - &x a\n", "a:\n- - b\n"] do
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:128] do
+      match L4YAML.Scanner.scanNextToken s with
+      | .ok (some sN) =>
+        if !sN.inFlow && sN.simpleKey.possible && sN.simpleKey.pos.line == sN.line then
+          match L4YAML.Scanner.scanNextToken_preprocess sN with
+          | .ok (some (sP, '-')) =>
+            if !sP.inFlow && sP.simpleKey.possible && sP.simpleKey.pos.line == sP.line then
+              dcArmed := dcArmed + 1
+              match L4YAML.Scanner.scanBlockEntry sP with
+              | .ok _ =>
+                dcOk := dcOk + 1
+                if sP.simpleKey.pos != sP.currentPos then dcViol := dcViol + 1
+              | .error _ => dcErr := dcErr + 1
+            else dcVac := dcVac + 1
+          | _ => dcVac := dcVac + 1
+        s := sN
+      | _ => break
+  check state s!"P68c dash_case (restated: the live key at a `-` dispatch is the fresh save at the cursor) direct: armed={dcArmed} ok={dcOk} err={dcErr} viol={dcViol} vacuous={dcVac}"
+    (dcArmed == 11 && dcOk == 11 && dcErr == 0 && dcViol == 0 && dcVac == 155)
 
 
 def collectTests : IO VerifiedSuiteResult := do
