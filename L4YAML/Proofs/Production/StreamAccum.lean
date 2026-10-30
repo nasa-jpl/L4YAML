@@ -14797,10 +14797,12 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                  -- the markless projection (never a `?` park) declines.
                  (match h_kslot_old with
                   | Or.inl kslot =>
-                      match hmc : RegisterWitness.markedCols sc with
+                      -- The projection lists the marks OUTERMOST first (slot order), so
+                      -- the park's OWN mark — the innermost — heads its REVERSE.
+                      match hmc : (RegisterWitness.markedCols sc).reverse with
                       | nv :: ns => Or.inl ⟨nv, ns,
                           fun x hx sp h_bi sp_i sp_c h_iv h_lit sp_v h_sbi =>
-                            kslot x (hmc ▸ hx) sp h_bi sp (SCompactSeqTail.nil n_old sp)
+                            kslot x (List.mem_reverse.mp (hmc ▸ hx)) sp h_bi sp (SCompactSeqTail.nil n_old sp)
                               sp_i sp_c h_iv h_lit sp_v h_sbi⟩
                       | [] => Or.inr trivial
                   | Or.inr h_alt => Or.inr h_alt)
@@ -37393,10 +37395,11 @@ lemma accum_content_on_pendingBlock_indented
               | Or.inl kslot =>
                   -- Item 405 (Rule 8): the head of the PROJECTION `markedCols sc`
                   -- is the index; the markless projection declines.
-                  match hmc : RegisterWitness.markedCols sc with
+                  -- (outermost first in the projection, so the own mark heads its REVERSE).
+                  match hmc : (RegisterWitness.markedCols sc).reverse with
                   | nv :: _ => Or.inl ⟨n, nv, rfl,
                       fun sp_m h_bn sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi =>
-                        kslot nv (hmc ▸ List.mem_cons_self ..) sp_m (SBlockIndented.node n .blockIn sp_scan sp_m h_bn)
+                        kslot nv (List.mem_reverse.mp (hmc ▸ List.mem_cons_self ..)) sp_m (SBlockIndented.node n .blockIn sp_scan sp_m h_bn)
                           sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi⟩
                   | [] => Or.inr trivial
               | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))

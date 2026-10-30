@@ -1165,6 +1165,7 @@ def expectedUnborn : List String := [
 -- 2026-10-29 (item 396): node counts follow flowOpen_floor_at_prep's deletion and content_dispatch_after_close's restatement.
 -- 2026-10-30 (item 405): see `expectedPositions`/`expectedRows` (the `?`-park chain ladder PAID).
 -- 2026-10-30 (item 405, Rule 8 fix): follows 365 → 373, alts 5506 → 5496, nodes 13816 → 13807, liteNodes 665425 → 662944 — the `h_kslot` writers pass the projection `markedCols sc` (`paid:other`) and spend `MarkedColsIn.self` (`fact`).
+-- 2026-10-30 (item 405, Rule 8 fix, review re-read): liteNodes 662944 → 663000 — the two head consumers split on `(markedCols sc).reverse`.
 def expectedLine : String :=
   -- 2026-10-25 (item 359): punt 12 → 11, stamp 39 → 40 — the `noPending` value-park face pays `PackAlt.ofRefused (h_noek …)`;
   -- lapps 806 → 807, liteNodes 607398 → 607407 — that one application and its term.
@@ -1181,7 +1182,7 @@ def expectedLine : String :=
 -- Item 372 (2026-10-27): the Or-shaped route conjunct of `ImplicitKeyPack` (summary mirrors the five `(Or)` rows).
 -- Item 374: lets=647 → 648, lapps=821 → 822, alts=5234 → 5243, nodes=13694 → 13696, liteNodes=630069 → 632322 — the resume context's face disjunct and `resumectx_of_landing`'s `h_base`.
   -- 2026-10-28 (item 386): lets 652 → 657, alts 5277 → 5280, nodes 13696 → 13706, liteNodes 634748 → 635676 — the `-` opener's `h_lvl_old` and its `omega` spend at the no-pop arm; no origin row moved.
-  "positions=49 packaged=7 packConsts=[ImplicitKeyPack,PropsKeyPack] rows=184 ctorRows=98 paramRows=86 packagedRows=29 punt=7 stamp=48 built=129 origins=67 originRows=32 route=12 frames=29 tail=14 other=0 concl=8 invariant=4 heldOrigins=15 allHeld=3 someHeld=36 noneHeld=64 unbornRows=12 relayedPunt=0 relayedStamp=10 relayedAbsurd=4 relayedFact=0 deadRows=0 unbornPos=5 rounds=5 follows=373 lets=685 lapps=856 alts=5496 nodes=13807 liteNodes=662944"
+  "positions=49 packaged=7 packConsts=[ImplicitKeyPack,PropsKeyPack] rows=184 ctorRows=98 paramRows=86 packagedRows=29 punt=7 stamp=48 built=129 origins=67 originRows=32 route=12 frames=29 tail=14 other=0 concl=8 invariant=4 heldOrigins=15 allHeld=3 someHeld=36 noneHeld=64 unbornRows=12 relayedPunt=0 relayedStamp=10 relayedAbsurd=4 relayedFact=0 deadRows=0 unbornPos=5 rounds=5 follows=373 lets=685 lapps=856 alts=5496 nodes=13807 liteNodes=663000"
 
 /-! ## §4 The reading -/
 
