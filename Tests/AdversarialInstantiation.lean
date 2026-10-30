@@ -8597,6 +8597,11 @@ def testKslotDomain (state : IO.Ref TestCollector) : IO Unit := do
   check state s!"P69d markedCols projection: states={states} markedCols_mem mismatches={memBad} MarkedColsIn.self misses={selfBad} relay violations={relayBad}; negative control broke={negBroke}/{negN}; own mark last at ? pauses: violations={lastBad} two-mark pauses={lastTwo}; own mark present after a ? dispatch: misses={ownMiss}/{ownN}"
     (states > 7 && memBad == 0 && selfBad == 0 && relayBad == 0 && negN > 0 && negBroke == negN && lastBad == 0 && lastTwo > 0 && ownN > 0 && ownMiss == 0)
 
+
+/-- Priority 70/71: the flow carrier (items 406/407) — split from `testKslotDomain` (LCNF timeout). -/
+def testFlowCarrier (state : IO.Ref TestCollector) : IO Unit := do
+  let nestedQ : List String := ["?\n  ? -\n: w\n", "? - ? - a\n  : b\n: c\n", "?\n  ?\n    -\n    - b\n  ? c\n: w\n", "? ? - a\n  : b\n: c\n", "- ? - a\n  : b\n"]
+  let singleQ : List String := ["? - a\n: b\n", "?\n  - a\n  - b\n: w\n", "k:\n  ? - a\n  : b\n", "? -\n: w\n"]
   -- 70 (item 406, PRICED) — the flow-open KEY FACE's chain (`FlowBaseRoutes.key`) is FABRICATED at
   -- `flowKeyRoute_of_root` (`⟨[nv], …⟩` once, `⟨[], …⟩` four times).  Domaining it
   -- (`flip_kslot_domain.py --round2`) would owe `MarkedColsIn s0 []` / `[nv]` — so read which
@@ -8658,6 +8663,32 @@ def testKslotDomain (state : IO.Ref TestCollector) : IO Unit := do
   check state s!"P71 flow carrier pendingKeys (item 407): flow-interior pauses={flowPauses} pendingKeys ≠ open's={flowBad}; block pauses that changed pendingKeys={blockChanged}"
     (flowPauses > 0 && flowBad == 0 && blockChanged > 0)
 
+  -- 71 (ii) — `preprocess_pendingKeys_of_inFlow` as a STATEMENT (review flag): at every in-flow state,
+  -- `scanNextToken_preprocess` itself is called and its `pendingKeys` compared, INCLUDING states whose
+  -- subsequent dispatch fails (`[a: ]]`, `[ , ]`, `{a}` …), which the walk above never reaches.
+  let flowBroken : List String :=
+    [ "[a: ]]", "[ , ]", "{a}", "[a, b", "{a: 1,, b: 2}", "? [a: b]]\n: c", "[&x a, *y]", "{a: [1, 2}" ]
+  let mut preN := 0
+  let mut preBad := 0
+  let mut preOnly := 0
+  for input in flowBodies ++ flowBroken ++ nestedQ do
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:64] do
+      if s.flowLevel > 0 then
+        match L4YAML.Scanner.scanNextToken_preprocess s with
+        | .ok (some (sP, _)) =>
+          preN := preN + 1
+          if sP.pendingKeys != s.pendingKeys then preBad := preBad + 1
+          match L4YAML.Scanner.scanNextToken s with
+          | .ok (some _) => pure ()
+          | _ => preOnly := preOnly + 1
+        | _ => pure ()
+      match L4YAML.Scanner.scanNextToken s with
+      | .ok (some sN) => s := sN
+      | _ => break
+  check state s!"P71 (ii) preprocess_pendingKeys_of_inFlow direct: in-flow preprocess results={preN} pendingKeys changed={preBad}; preprocess-only states (dispatch then fails)={preOnly}"
+    (preN > 0 && preBad == 0 && preOnly > 0)
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -8691,6 +8722,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testMarkedColsDomain state
   testColZeroParks state
   testKslotDomain state
+  testFlowCarrier state
 
   testQuestionMarkColumn state
   testK1Lanes state

@@ -8,7 +8,8 @@ every interior state `sc`; `MarkedColsIn.transport` (RegisterWitness) also needs
 constructors/relays of `FlowStackK` break — every break is a site that must SUPPLY the equality
 (from `PendingKeysStable`'s per-dispatch lemmas, or a new `preprocess_pendingKeys_of_inFlow`).
 Read-only: patch, one `lake build L4YAML` (a FLOOR), `scripts/flip_census.py`, restore; md5 both sides.
-`--dry` prints the site; `--keep` leaves the patched tree for the pay.
+`--dry` prints the site; `--keep` leaves the patched tree for the pay.  On a tree where the carrier is
+already PAID (item 407) the script refuses instead of inserting a duplicate conjunct.
 """
 import hashlib, subprocess, sys
 from pathlib import Path
@@ -21,7 +22,13 @@ def patch(text):
     lines = text.splitlines(keepends=True)
     d = [i for i, l in enumerate(lines) if l.startswith("def FlowStackK ")]
     if len(d) != 1: sys.exit(f"expected one def FlowStackK, matched {d}")
-    h = next(i for i in range(d[0], d[0] + 12) if lines[i] == IND)
+    head = lines[d[0]:d[0] + 14]
+    if any("sc.pendingKeys = s0.pendingKeys" in l for l in head):
+        sys.exit("FlowStackK already carries the pendingKeys conjunct (item 407 PAID); nothing to price — "
+                 "the flip's reading is recorded in DOCS item 407 (8 declarations / 25 sites)")
+    hs = [i for i in range(d[0], d[0] + 14) if lines[i] == IND]
+    if len(hs) != 1: sys.exit(f"expected one indents conjunct in FlowStackK, matched {hs}")
+    h = hs[0]
     lines[h] = IND_PK
     return "".join(lines), [("FlowStackK pendingKeys conjunct", h + 1)]
 def main():
