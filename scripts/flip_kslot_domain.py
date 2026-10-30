@@ -47,7 +47,9 @@ def patch(text):
     for old, tag in ((DECL_PROPS, "props h_kslotD"), (DECL_IMPL, "implicit h_kslotD")):
         k = [i for i, l in enumerate(lines) if l == old]
         if len(k) != 1: sys.exit(f"expected one {tag} decline, matched {k}")
-        lines[k[0]] = old.replace("(Or.inr trivial)\n", "(sorry)\n"); sites.append((f"{tag} → sorry", k[0] + 1))
+        new = old.replace("(Or.inr trivial)", "(sorry)", 1)
+        if new == old: sys.exit(f"{tag} decline line did not change: {old!r}")
+        lines[k[0]] = new; sites.append((f"{tag} → sorry", k[0] + 1))
     return "".join(lines), sites
 def main():
     dry, keep = "--dry" in sys.argv, "--keep" in sys.argv
