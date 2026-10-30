@@ -8231,6 +8231,76 @@ def testInputAheadExports (state : IO.Ref TestCollector) : IO Unit := do
   check state s!"P68d the step direct: armed={stArmed} vacuous={stVac} viol={stViol}; preprocess hand-off rows={hoRows} viol={hoViol}; initial viol={initViol}"
     (stArmed == 286 && stVac == 0 && stViol == 0 && hoRows == 164 && hoViol == 0 && initViol == 0)
 
+  -- 68e (item 402, review) — the generic §9 whitespace laws under their OWN premises, with the fuels
+  -- as free arguments (fuel 0/1/2 pairs; inputs empty, spaces only, space-then-content, tab, content
+  -- first, break, comment, and the EOF state).  States are compared on their observable projection.
+  -- Predicted before the run: 0 mismatches on every law; saturation/stop/peek rows with the fuel
+  -- premise failing are counted as hypothesis-failed, not as violations.
+  let proj (t : L4YAML.Scanner.ScannerState) : String :=
+    s!"{t.offset},{t.col},{t.line},{t.inputEnd},{t.allowDirectives},{t.documentEverStarted},{t.indents.size}"
+  let mut weStates : Array L4YAML.Scanner.ScannerState := #[]
+  let mut cnt : Array Nat := Array.replicate 11 0
+  for input in ["", " ", "   ", "  x", "\t x", "x", " \n", "  #c", "\t\t", " - a"] do
+    let s0 := L4YAML.Scanner.ScannerState.mk' input
+    weStates := weStates.push s0
+    weStates := weStates.push (s0.advance)
+    weStates := weStates.push { s0 with offset := s0.inputEnd }
+  for s in weStates do
+    for f in [0, 1, 2, s.inputEnd - s.offset] do
+      for g in [0, 1, 2] do
+        cnt := cnt.modify 0 (· + 1)
+        -- skipWhitespaceLoop_skipSpacesLoop
+        let sp := L4YAML.Scanner.skipSpacesLoop s f
+        if proj (L4YAML.Scanner.skipWhitespaceLoop s (f + g)) !=
+            proj (L4YAML.Scanner.skipWhitespaceLoop sp (f + g - (sp.offset - s.offset))) then
+          cnt := cnt.modify 1 (· + 1)
+        -- skipWhitespaceLoop_stop (f ≤ g, stopped at f)
+        let sf := L4YAML.Scanner.skipWhitespaceLoop s f
+        let stopped := match sf.peek? with
+          | none => true
+          | some c => !L4YAML.CharPredicates.isWhiteSpaceBool c
+        if f ≤ g && stopped then
+          if proj (L4YAML.Scanner.skipWhitespaceLoop s g) != proj sf then cnt := cnt.modify 6 (· + 1)
+        else cnt := cnt.modify 7 (· + 1)
+      -- skipTrailingSpaces_eq
+      if proj (L4YAML.Scanner.skipTrailingSpaces s f) != proj (L4YAML.Scanner.skipWhitespaceLoop s f) then
+        cnt := cnt.modify 2 (· + 1)
+      -- skipWhitespaceLoop_ad
+      let sa : L4YAML.Scanner.ScannerState := { s with allowDirectives := false, documentEverStarted := true }
+      let lhs := L4YAML.Scanner.skipWhitespaceLoop sa f
+      let rhs : L4YAML.Scanner.ScannerState :=
+        { L4YAML.Scanner.skipWhitespaceLoop s f with allowDirectives := false, documentEverStarted := true }
+      if proj lhs != proj rhs || lhs.peek? != rhs.peek? then cnt := cnt.modify 3 (· + 1)
+      -- saturation + the peek laws, under `inputEnd - offset ≤ f`
+      if s.inputEnd - s.offset ≤ f then
+        if proj (L4YAML.Scanner.skipWhitespaceLoop s f) != proj (L4YAML.Scanner.skipWhitespace s) then
+          cnt := cnt.modify 4 (· + 1)
+        if (L4YAML.Scanner.skipSpacesLoop s f).peek? == some ' ' then cnt := cnt.modify 8 (· + 1)
+        match (L4YAML.Scanner.skipWhitespaceLoop s f).peek? with
+        | some c => if L4YAML.CharPredicates.isWhiteSpaceBool c then cnt := cnt.modify 8 (· + 1)
+        | none => pure ()
+        match (L4YAML.Scanner.skipToEndOfLineLoop s f).peek? with
+        | some c => if !L4YAML.CharPredicates.isLineBreakBool c then cnt := cnt.modify 8 (· + 1)
+        | none => pure ()
+        match (L4YAML.Scanner.collectCommentTextLoop s "" f).2.peek? with
+        | some c => if !L4YAML.CharPredicates.isLineBreakBool c then cnt := cnt.modify 8 (· + 1)
+        | none => pure ()
+      else
+        cnt := cnt.modify 5 (· + 1)
+        cnt := cnt.modify 9 (· + 1)
+      -- unwindIndentsLoop_cursor at columns -1 / 0 / 2 on a state with pushed indents
+      let pushed : Array L4YAML.Scanner.IndentEntry :=
+        (s.indents.push { column := 0, isSequence := false }).push { column := 2, isSequence := true }
+      let sI : L4YAML.Scanner.ScannerState := { s with indents := pushed }
+      for col in [(-1 : Int), 0, 2, 5] do
+        let u := L4YAML.Scanner.unwindIndentsLoop sI col f
+        if u.offset != sI.offset || u.input != sI.input || u.inputEnd != sI.inputEnd ||
+            u.col != sI.col || u.line != sI.line then
+          cnt := cnt.modify 10 (· + 1)
+  check state s!"P68e the generic §9 whitespace laws direct: rows={cnt[0]!} sum-law viol={cnt[1]!} trailing-eq viol={cnt[2]!} ad-transfer viol={cnt[3]!} saturate viol={cnt[4]!} (vacuous {cnt[5]!}) stop viol={cnt[6]!} (vacuous {cnt[7]!}) peek-laws viol={cnt[8]!} (vacuous {cnt[9]!}) unwind-cursor viol={cnt[10]!}"
+    (cnt[0]! == 360 && cnt[1]! == 0 && cnt[2]! == 0 && cnt[3]! == 0 && cnt[4]! == 0 && cnt[6]! == 0 && cnt[8]! == 0 && cnt[10]! == 0 && cnt[5]! == 35 && cnt[7]! == 177 && cnt[9]! == 35)
+
+
 
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
