@@ -8347,6 +8347,43 @@ def testInputAheadExports (state : IO.Ref TestCollector) : IO Unit := do
   check state s!"P68f h_top's supply: scanValue_top_le_key direct rows={sfRows} viol={sfViol}; implicit_colon_top_le at `:` pauses armed={icArmed} viol={icViol}"
     (sfRows == 10 && sfViol == 0 && icArmed == 56 && icViol == 0)
 
+  -- 68g (item 402, review) — the fold's two other new statements DIRECT: (i) `scanValuePrepare_top_le_key`
+  -- on the crafted states above (push branch k > top, no-push branch k = top, with and without an explicit
+  -- key line), the premise checked apart from the conclusion; (ii) the two seeds `seed_LiveKeyTop` /
+  -- `seed_bom_LiveKeyTop`: `LiveKeyTop` read (`liveKeyTopOk`) on `(mk' input).emit .streamStart` and on
+  -- its `consumeBOM`, for inputs with and without a leading BOM, empty and non-empty.  Predicted before the
+  -- run: prepare rows = 10, 0 violations; seeds 12 states, 0 violations.
+  let mut spRows := 0
+  let mut spViol := 0
+  let mut spVac := 0
+  for (input, kcol, top) in [("a: 1", 0, -1), ("  b: 2", 2, 0), ("  b: 2", 2, 2), ("x: y", 0, 0), ("- a: 1", 2, 0)] do
+    let s0 := L4YAML.Scanner.ScannerState.mk' input
+    let ci := input.toList.findIdx (· == ':')
+    let kpos : L4YAML.YamlPos := { offset := 0, line := 0, col := kcol }
+    let s1 : L4YAML.Scanner.ScannerState :=
+      { s0 with offset := ci, col := ci,
+                indents := #[{ column := -1, isSequence := false }].push { column := top, isSequence := false },
+                simpleKey := { possible := true, tokenIndex := 0, pos := kpos } }
+    for ekl in [none, some (0 : Nat)] do
+      let s2 := { s1 with explicitKeyLine := ekl }
+      if s2.simpleKey.possible && !s2.inFlow && s2.currentIndent ≤ (s2.simpleKey.pos.col : Int) then
+        spRows := spRows + 1
+        if !((L4YAML.Scanner.scanValuePrepare s2).currentIndent ≤ (s2.simpleKey.pos.col : Int)) then
+          spViol := spViol + 1
+      else spVac := spVac + 1
+  let mut seedStates := 0
+  let mut seedViol := 0
+  let mut seedArmed := 0
+  for input in ["", "\uFEFF", "a: 1", "\uFEFFa: 1", "\uFEFF- a", "- a\n"] do
+    let sE := (L4YAML.Scanner.ScannerState.mk' input).emit .streamStart
+    for sX in [sE, sE.consumeBOM] do
+      seedStates := seedStates + 1
+      let (ok, armed) := liveKeyTopOk sX
+      if !ok then seedViol := seedViol + 1
+      if armed then seedArmed := seedArmed + 1
+  check state s!"P68g the fold's other statements direct: scanValuePrepare_top_le_key rows={spRows} viol={spViol} (vacuous {spVac}); seed_LiveKeyTop/seed_bom_LiveKeyTop states={seedStates} viol={seedViol} armed={seedArmed}"
+    (spRows == 10 && spViol == 0 && spVac == 0 && seedStates == 12 && seedViol == 0 && seedArmed == 0)
+
 
 
 
