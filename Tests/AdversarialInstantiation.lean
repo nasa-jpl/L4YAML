@@ -8717,6 +8717,45 @@ def testFlowCarrier (state : IO.Ref TestCollector) : IO Unit := do
   check state s!"P72 flow key face projection (item 408): in-flow pauses={mcPauses} closes={mcCloses} markedCols ≠ open's={mcBad}"
     (mcPauses > 0 && mcCloses > 0 && mcBad == 0)
 
+  -- 72 (ii) — `markedCols_congr` as a STATEMENT (review): arbitrary state PAIRS under its two hypotheses
+  -- (`pendingKeys` equal, `indents` equal) with every OTHER field free to differ — empty, singleton and
+  -- nested marked slots, block and flow states alike — must project the same chain; and a negative
+  -- control: pairs whose `pendingKeys` or `indents` DIFFER must be able to project different chains.
+  let mut cgPairs := 0
+  let mut cgEmpty := 0
+  let mut cgMulti := 0
+  let mut cgBad := 0
+  let mut cgNeg := 0
+  let mut cgNegDiff := 0
+  let mut prev : Option L4YAML.Scanner.ScannerState := none
+  for input in flowBodies ++ nestedQ ++ singleQ ++ ["", "a", "? a\n? b\n: c", "- ? a\n  : b"] do
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:64] do
+      -- the pair: `s` and `s` with unrelated fields moved (both hypotheses hold by construction)
+      let s2 : L4YAML.Scanner.ScannerState :=
+        { s with allowDirectives := !s.allowDirectives, flowLevel := s.flowLevel + 3,
+                 documentEverStarted := !s.documentEverStarted }
+      if s2.pendingKeys == s.pendingKeys && s2.indentColumns == s.indentColumns then
+        cgPairs := cgPairs + 1
+        let mc := L4YAML.Proofs.RegisterWitness.markedCols s
+        if mc.isEmpty then cgEmpty := cgEmpty + 1
+        if mc.length ≥ 2 then cgMulti := cgMulti + 1
+        if L4YAML.Proofs.RegisterWitness.markedCols s2 != mc then cgBad := cgBad + 1
+      -- negative control: consecutive pauses whose `pendingKeys` or `indents` differ
+      match prev with
+      | some p =>
+        if p.pendingKeys != s.pendingKeys || p.indentColumns != s.indentColumns then
+          cgNeg := cgNeg + 1
+          if L4YAML.Proofs.RegisterWitness.markedCols p != L4YAML.Proofs.RegisterWitness.markedCols s then
+            cgNegDiff := cgNegDiff + 1
+      | none => pure ()
+      prev := some s
+      match L4YAML.Scanner.scanNextToken s with
+      | .ok (some sN) => s := sN
+      | _ => break
+  check state s!"P72 (ii) markedCols_congr direct: pairs={cgPairs} (empty={cgEmpty} two-or-more={cgMulti}) projections differ={cgBad}; negative pairs={cgNeg} of which chains differ={cgNegDiff}"
+    (cgPairs > 0 && cgEmpty > 0 && cgMulti > 0 && cgBad == 0 && cgNeg > 0 && cgNegDiff > 0)
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
