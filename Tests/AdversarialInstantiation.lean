@@ -8772,9 +8772,11 @@ def testCompactCover (state : IO.Ref TestCollector) : IO Unit := do
 def testEntryChain (state : IO.Ref TestCollector) : IO Unit := do
   -- 76 (item 412, PAID) — the `?` park's chain ONE FRAME UP over its own entry, carried in
   -- `pendingMapValue.h_expl` and supplied by `question_open_map` from `h_explUp_chainD` through
-  -- `h_mcstep` / `hk`: at every block-context `?` dispatch the post-state's projection is the
-  -- `?`'s own column CONSED onto the pre-state's (`markedCols sN = sP.col :: markedCols sP`), so a
-  -- mark of the park's state is its own column or an ancestor's — the case split the supply makes.
+  -- `h_mcstep` / `hk`: at every block-context `?` dispatch the post-state's projection COVERS the
+  -- pre-state's plus the `?`'s own column (every post mark is the own column or a pre mark, and
+  -- the own column is a post mark) — the membership case split the supply makes of
+  -- `MarkedColsIn sN (k :: nsU)`.  The own column's POSITION is only a reading (it lands at the
+  -- tail: `markedCols` walks the indent stack in index order), never asserted.
   -- Negative control: a block `:` dispatch adds no mark.  End to end: the inputs the routed arms
   -- now serve (an ancestor's `:` after an inner `?` key, compact or not) parse, and so does the
   -- one input class the `NotQuestionPark` arms still decline (the explicit `:` park's compact
