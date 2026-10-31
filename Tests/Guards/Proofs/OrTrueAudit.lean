@@ -251,7 +251,7 @@ def posLine (p : Pos) : String := s!"{p.decl}{p.site} {p.kind} ∨ {p.alt}"
 -- projection `markedCols`: four fabricated births DECLINE (`Or.inr trivial` writers into `PackAltG`/`PackAlt`
 -- positions), none paid; positions unchanged.
 def expectedSummary : String :=
-  "positions=267 top=166 nested=101 True=195 PackAlt=63 PackAltG=9 modules=2 supply: paid=28 relayed=116 declined-only=0 never-supplied=0 unresolved=9 conclusions=11 consumers: spent=102 relayed=15 unused=0 unreadable=36 writers=39 inrTrivial=512"
+  "positions=269 top=166 nested=103 True=195 PackAlt=65 PackAltG=9 modules=2 supply: paid=28 relayed=116 declined-only=0 never-supplied=0 unresolved=9 conclusions=11 consumers: spent=102 relayed=15 unused=0 unreadable=36 writers=39 inrTrivial=514"
 
 def expectedPositions : List String :=
   [ "L4YAML.Proofs.PreprocessIndentStable.IndentFloor.transport[3].h_floor top ∨ True",
@@ -309,6 +309,7 @@ def expectedPositions : List String :=
     "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[14].h_kslotUp top ∨ PackAlt",
     "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[15].h_closeFV top ∨ PackAlt",
     "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[15].h_closeFV nested ∨ True",
+    "L4YAML.Proofs.StreamAccum.PendingNode.pendingMapValue[11].h_expl nested ∨ PackAlt",
     "L4YAML.Proofs.StreamAccum.PendingNode.pendingMapValue[15].h_ncol top ∨ True",
     "L4YAML.Proofs.StreamAccum.PendingNode.pendingMapValue[16].h_kslot top ∨ PackAlt",
     "L4YAML.Proofs.StreamAccum.PendingNode.pendingMapValue[17].h_closeF top ∨ True",
@@ -374,6 +375,7 @@ def expectedPositions : List String :=
     "L4YAML.Proofs.StreamAccum.accum_content_on_pendingBlock_indented[33].h_closeFV_old top ∨ PackAlt",
     "L4YAML.Proofs.StreamAccum.accum_content_on_pendingBlock_indented[33].h_closeFV_old nested ∨ True",
     "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented[14].h_ncol_old top ∨ True",
+    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented[15].h_expl nested ∨ PackAlt",
     "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented[16].h_vslot top ∨ PackAlt",
     "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented[17].h_kslot top ∨ PackAlt",
     "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented[18].h_closeF99 top ∨ True",
@@ -697,7 +699,10 @@ def expectedSupply : List String :=
 -- 2026-10-29 (item 396): lowered with the first retirements (flowOpen_floor_at_prep deleted,
 -- content_dispatch_after_close's four contexts restated).
 -- 2026-10-30 (item 405): raised on the owner's word (ruling "405 a": the `h_explUp` PackAlt arm) — see `expectedSummary`.
-def ceilingPositions : Nat := 267
+-- 2026-10-31 (item 412): TWO new positions on the owner's word — item 411's (α) ruling, taken by default on a
+-- quiet merge of #185 — `pendingMapValue.h_expl`'s `?` disjunct carries the chain ONE FRAME UP over the park's own
+-- entry with a `∨ PackAlt sc` alternative (the field and the consumer lemma's premise copy of it); 267 → 269.
+def ceilingPositions : Nat := 269
 -- 2026-10-30 (item 405, Rule 8 fix): two more `Or.inr trivial` writers (509 → 511) — the two head consumers of the `?`-park chain
 -- (`flowKeyRoute_of_open`'s compact pair, the props park's entry-level pack) split on the projection `markedCols sc` and DECLINE at the
 -- markless list (never a `?` park, unprovable at the face); positions and supply classes unchanged.
@@ -705,7 +710,10 @@ def ceilingPositions : Nat := 267
 -- `markedCols` DECLINE two births that fabricated a chain: `flowKeyRoute_of_root`'s resumed-landing pair (one route
 -- for `nv` cannot fund every marked column) and `accum_flow_open_depth0`'s props pair (`PropsKeyPack`'s `∃ ns` is
 -- undomained until item 409 domains the packs). Both are PACK-family declines the census schedules for payment.
-def ceilingWrites : Nat := 513
+-- 2026-10-31 (item 412): 513 → 514 — the two new declines (compact_open_map's STARVED supply, question_open_map's
+-- re-decline of an upstream-declined chain) write; the consumer's four retired cover arms were PACK declines, not
+-- `Or.inr trivial` writes, so its ×32 stands (roster below).
+def ceilingWrites : Nat := 514
 
 def expectedConsumers : List String :=
   [ "L4YAML.Proofs.StreamAccum.FlowBaseRoutes.mk[8].key unreadable [cased=0 passed=0]",
@@ -768,14 +776,14 @@ def expectedConsumers : List String :=
     "L4YAML.Proofs.StreamAccum.accum_content_on_pendingBlock_indented[15].h_seqF_old spent [cased=3 passed=0]",
     "L4YAML.Proofs.StreamAccum.accum_content_on_pendingBlock_indented[32].h_kslotUp_old spent [cased=3 passed=0]",
     "L4YAML.Proofs.StreamAccum.accum_content_on_pendingBlock_indented[33].h_closeFV_old spent [cased=11 passed=0]",
-    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented[14].h_ncol_old spent [cased=1 passed=0]",
-    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented[16].h_vslot spent [cased=1 passed=0]",
-    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented[17].h_kslot spent [cased=4 passed=3]",
-    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented[18].h_closeF99 spent [cased=7 passed=0]",
-    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented[19].h_frames99 spent [cased=1 passed=3]",
-    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented[20].h_closeFV108 spent [cased=4 passed=3]",
-    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented[21].h_framesV108 spent [cased=1 passed=3]",
-    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented[38].h_seqF168 spent [cased=5 passed=0]",
+    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented[14].h_ncol_old spent [cased=3 passed=0]",
+    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented[16].h_vslot spent [cased=3 passed=0]",
+    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented[17].h_kslot spent [cased=6 passed=3]",
+    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented[18].h_closeF99 spent [cased=9 passed=0]",
+    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented[19].h_frames99 spent [cased=3 passed=3]",
+    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented[20].h_closeFV108 spent [cased=6 passed=3]",
+    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented[21].h_framesV108 spent [cased=3 passed=3]",
+    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented[38].h_seqF168 spent [cased=7 passed=0]",
     "L4YAML.Proofs.StreamAccum.bareNodeRoute_or_refused[11].h_tail unreadable [cased=0 passed=0]",
     "L4YAML.Proofs.StreamAccum.bareNodeRoute_or_refused_content[12].h_tail unreadable [cased=0 passed=0]",
     "L4YAML.Proofs.StreamAccum.colon_open_map[19].h_sfx_land spent [cased=2 passed=0]",
@@ -853,7 +861,7 @@ def expectedConsumers : List String :=
     "L4YAML.Proofs.StreamAccum.question_open_map[25].h_pr_land spent [cased=2 passed=0]",
     "L4YAML.Proofs.StreamAccum.question_open_map[26].h_explUp_chain spent [cased=1 passed=1]",
     "L4YAML.Proofs.StreamAccum.question_open_map[27].h_resV_land spent [cased=3 passed=0]",
-    "L4YAML.Proofs.StreamAccum.question_open_map[29].h_explUp_chainD spent [cased=3 passed=0]",
+    "L4YAML.Proofs.StreamAccum.question_open_map[29].h_explUp_chainD spent [cased=4 passed=0]",
     "L4YAML.Proofs.StreamAccum.resumectx_of_landing[13].h_fS spent [cased=1 passed=4]",
     "L4YAML.Proofs.StreamAccum.resumectx_of_landing[14].h_fV spent [cased=1 passed=0]",
     "L4YAML.Proofs.StreamAccum.resumectx_of_landing[16].h_fQ spent [cased=1 passed=0]",
@@ -887,7 +895,7 @@ def expectedWriters : List String :=
     "L4YAML.Proofs.StreamAccum.colon_open_map_implicit ×4 (StreamAccum)",
     -- Item 409 (2026-10-30): the two `:` consumers' `h_kslotD` writers PAID (colon_fires_* rows gone, 41 → 39).
     "L4YAML.Proofs.StreamAccum.colon_open_map_props ×4 (StreamAccum)",
-    "L4YAML.Proofs.StreamAccum.compact_open_map ×8 (StreamAccum)",
+    "L4YAML.Proofs.StreamAccum.compact_open_map ×9 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.content_dispatch_after_close ×5 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.content_dispatch_routed ×25 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.dedent_cover_of_landing ×3 (StreamAccum)",
@@ -904,7 +912,7 @@ def expectedWriters : List String :=
     "L4YAML.Proofs.StreamAccum.keyctx_of_preprocess ×3 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.markerctx_of_landing ×3 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.nodocctx_of_preprocess ×3 (StreamAccum)",
-    "L4YAML.Proofs.StreamAccum.question_open_map ×4 (StreamAccum)",
+    "L4YAML.Proofs.StreamAccum.question_open_map ×5 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.resumectx_of_landing ×9 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.scanValue_ok_park_facts ×1 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.suffixctx_of_landing ×3 (StreamAccum)"
