@@ -8943,6 +8943,59 @@ def testCompactChain (state : IO.Ref TestCollector) : IO Unit := do
     (cPauses > 0 && preMarked > 0 && preMarkless > 0 && coverOK == cPauses && colOK == cPauses &&
      dashPauses > 0 && dashAdds == 0 && routedAcc == routed.length)
 
+def testRefusedAtParks (state : IO.Ref TestCollector) : IO Unit := do
+  -- 78 (item 414, PRICED) — `PackAlt sc := ExplicitValueRefused sc` (`sc.explicitKeyLine = none`)
+  -- read at every park the residue's 85 declines stand on.  Hypothesis bucket: a `?` dispatch
+  -- ARMS the register (`scanKeyIx` writes `explicitKeyLine := some line`, block and flow alike), so
+  -- the refusal is FALSE at every post-`?` state — the `?`-park fields (`h_kslot`, `h_kslotUp`,
+  -- `h_explUp_chain*`, the openers' chains) can never pay it; a `:` at the register's line clears
+  -- it (`scanValue`) UNLESS an enclosing `?` is pending — then the `:` re-arms the register from
+  -- the innermost pending key (`readPendingKey`); a `-` / content step carries it.  Refutation bucket for the pay as stated:
+  -- a dead register at a non-`?` park (`-` entry, implicit key) — where `PackAlt.ofRefused` IS
+  -- available — must be the ONLY state kind the predicate holds at.
+  let corpus : List String :=
+    ["? a\n: b\n", "? ? a\n  : b\n: c\n", "- ? a: 1\n  : b\n", "? - a\n  - b\n: c\n", "a:\n  ? b\n  : c\n",
+     "? a\n? b\n: c\n", "k: ? a\n   : b\n", "?\n  ? -\n: w\n", "- ? - a\n  : b\n", "k:\n  ? - a\n  : b\n",
+     "? -\n: w\n", "? - ? - a\n  : b\n: c\n", "? ? ? a\n    : b\n  : c\n: d\n", "- a\n- b\n", "a: 1\nb: 2\n",
+     "- - a\n  - b\n", "k:\n  - a\n  - b\n", "[? a : b]\n", "{? a : b}\n", "- ? a\n  : b\n- c\n"]
+  let mut qPauses := 0
+  let mut qArmedAfter := 0
+  let mut colonPauses := 0
+  let mut colonClears := 0
+  let mut colonRestores := 0
+  let mut colonArmedBefore := 0
+  let mut dashPauses := 0
+  let mut dashCarries := 0
+  let mut deadParks := 0
+  let mut armedParks := 0
+  for input in corpus do
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:64] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) =>
+          if c == '?' then
+            qPauses := qPauses + 1
+            if sN.explicitKeyLine.isSome then qArmedAfter := qArmedAfter + 1
+          else if c == ':' && sP.flowLevel == 0 then
+            colonPauses := colonPauses + 1
+            if sP.explicitKeyLine.isSome then colonArmedBefore := colonArmedBefore + 1
+            if sP.explicitKeyLine.isSome && sN.explicitKeyLine.isNone then colonClears := colonClears + 1
+            if sP.explicitKeyLine.isSome && sN.explicitKeyLine.isSome &&
+                sN.pendingKeys.toList.contains sN.explicitKeyLine then colonRestores := colonRestores + 1
+          else if c == '-' && sP.flowLevel == 0 then
+            dashPauses := dashPauses + 1
+            if sN.explicitKeyLine == sP.explicitKeyLine then dashCarries := dashCarries + 1
+          if sP.flowLevel == 0 then
+            if sP.explicitKeyLine.isNone then deadParks := deadParks + 1 else armedParks := armedParks + 1
+          s := sN
+        | _ => break
+      | _ => break
+  check state s!"P78 refusal at parks (item 414): `?` pauses={qPauses} register ARMED after=({qArmedAfter} — must be all: `ExplicitValueRefused` is FALSE at every `?` park, the ns-class residue cannot pay it); block `:` pauses={colonPauses} armed before={colonArmedBefore} cleared by the `:`={colonClears} RE-ARMED from an enclosing `?` (`readPendingKey`)={colonRestores} (cleared + re-armed must equal armed-before — the naive `a `:` clears` was REFUTED by the nested-`?` inputs); block `-` pauses={dashPauses} carrying the register unchanged={dashCarries} (must be all); block pauses standing on a DEAD register={deadParks} on an ARMED one={armedParks}"
+    (qPauses > 0 && qArmedAfter == qPauses && colonPauses > 0 && colonClears + colonRestores == colonArmedBefore &&
+     dashPauses > 0 && dashCarries == dashPauses && deadParks > 0 && armedParks > 0)
+
 def testFlowCarrier (state : IO.Ref TestCollector) : IO Unit := do
   let nestedQ : List String := ["?\n  ? -\n: w\n", "? - ? - a\n  : b\n: c\n", "?\n  ?\n    -\n    - b\n  ? c\n: w\n", "? ? - a\n  : b\n: c\n", "- ? - a\n  : b\n"]
   let singleQ : List String := ["? - a\n: b\n", "?\n  - a\n  - b\n: w\n", "k:\n  ? - a\n  : b\n", "? -\n: w\n"]
@@ -9139,6 +9192,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testCompactCover state
   testEntryChain state
   testCompactChain state
+  testRefusedAtParks state
 
   testQuestionMarkColumn state
   testK1Lanes state
