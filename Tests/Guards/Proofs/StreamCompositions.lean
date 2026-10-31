@@ -632,7 +632,7 @@ perturbed by `perturb.sh`, and each perturbation must throw. -/
 def expectedSites : List String :=
   [ "question_open_map:pendingMapValue.h_close [SBlockNode(_+1,blockOut) ⇒ Stream] segments=2 comps=1",
     "question_open_map:pendingMapValue.h_ivl [[col(_)=_+1] SBlockIndented(_,blockOut) ⇒ Stream] segments=2 comps=1",
-    "question_open_map:pendingMapValue.h_expl [SBlockMapEntry(_) > SCompactMapTail(_) ⇒ Stream] segments=2 comps=1 NEW",
+    "question_open_map:pendingMapValue.h_expl [SBlockMapEntry(_) > SCompactMapTail(_) ⇒ Stream | SBlockMapEntry(_) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream] segments=2 comps=1 NEW",
     "question_open_map:pendingMapValue.h_vslot [[col(_)=_+1] SBlockIndented(_,blockOut) ⇒ Stream] segments=2 comps=1",
     "question_open_map:pendingMapValue.h_closeF [SBlockNode(_+1,blockOut) ⇒ Resume(map(_)::_)▹Stream] segments=2 comps=1 NEW",
     "question_open_map:pendingMapValue.h_frames [SSLComments ⇒ Resume(_)▹Stream] segments=2 comps=1 NEW",
@@ -723,7 +723,8 @@ def expectedShapeComps : List String :=
    "SBlockNode(_+1,blockIn) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S]",
    "SBlockNode(_+1,blockIn) ⇒ Key(_)▹ExplValueLine(_) ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ▹ KeyFrames.bottom[S]",
    "SSLComments ⇒ Key(_)▹ExplValueLine(_) ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ▹ KeyFrames.bottom[S]",
-   "[col(_)=_+1] SBlockIndented(_,blockOut) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream ⟶ (fact)"]
+   "[col(_)=_+1] SBlockIndented(_,blockOut) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream ⟶ (fact)",
+   "SBlockMapEntry(_) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S]"]
 /-- 2026-10-18 (item 284): `unmarked` 218 -> 206 and nothing else.  The twelve are
     `accum_content_pending`'s `pendingFlow` arm, whose landings ran through the
     shared builder's four routes and now defer to the escape at every landing:
@@ -783,7 +784,7 @@ def expectedShapeComps : List String :=
 def expectedLine : String :=
 -- Item 371 (comps=12 → 14, byCtor=9 → 11, obtainedSites=4 → 8, prev=17 → 14, new=4 → 7, prevStyle=17 → 14, newVsStyle=4 → 7, segHops=9 → 10, hops=11 → 12): the value-line compositions end in
 -- the one-level `ResumeFrames`; `question_open_map`'s `h_expl`/`h_closeFV`/`h_framesV` are obtained from the bound tail route.
-  "sites=20 genuine=20 pairs=20 viaSites=0 segments=40 genuineSegs=39 facts=1 stacked=0 comps=14 byCtor=11 byFull=39 shapes=13 shapeComps=19 shapeCompsNoDrop=17 obtainedSites=8 approxSites=0 prev=14 new=7 missing=1 prevStyle=14 prevStyleOff=0 newVsStyle=7 styleOnly=1 segHops=10 segAbsorb=3 single=0 dropClose=1 directive=1 hops=12 hopMax=3 approx=37 dead=6 opaque=0 unmarked=157 reach=38"
+  "sites=20 genuine=20 pairs=20 viaSites=0 segments=40 genuineSegs=39 facts=1 stacked=0 comps=14 byCtor=11 byFull=39 shapes=14 shapeComps=20 shapeCompsNoDrop=18 obtainedSites=8 approxSites=0 prev=14 new=7 missing=1 prevStyle=14 prevStyleOff=0 newVsStyle=7 styleOnly=1 segHops=10 segAbsorb=3 single=0 dropClose=1 directive=1 hops=12 hopMax=3 approx=37 dead=6 opaque=0 unmarked=157 reach=38"
 
 /-! ## §5 The reading -/
 

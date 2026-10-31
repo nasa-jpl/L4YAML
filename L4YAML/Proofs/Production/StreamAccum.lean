@@ -3218,10 +3218,23 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       -- neither: `[189]`'s slots are `s-l+block-node`, which has no compact
       -- alternative, and their same-line indicators are refused through
       -- `h_ivl`'s stamp instead.
+      -- ═══ **Item 412: the chain ONE FRAME UP over this park's own ENTRY** (the fourth
+      -- component).  An ancestor `?`'s value line is read AFTER this entry closes: the
+      -- entry (`SBlockMapEntry n sp_q _`, with or without its own value), then the
+      -- ancestor's `:` at its column `nv` and its `[185]` value.  Stated on the projection
+      -- (`∀ nv ∈ markedCols sc`, no `∃`), for every mark but the park's own; the compact
+      -- builder routes its own mark by the compact route and the rest by this chain,
+      -- whichever width its slot has — the route is over the ENTRY, so it does not care
+      -- (item 411's obstacle).  `question_open_map` supplies it from `h_explUp_chainD`. ═══
       (h_expl : (∃ sp_q : SurfPos, GLit '?' sp_q sp_scan ∧
-        ∀ sp_v : SurfPos, SBlockMapEntry n sp_q sp_v →
+        (∀ sp_v : SurfPos, SBlockMapEntry n sp_q sp_v →
         ∀ sp_e : SurfPos, SCompactMapTail n sp_v sp_e →
-          SLYamlStream sp_start sp_e) ∨ NotQuestionPark sc)
+          SLYamlStream sp_start sp_e) ∧
+        ((∀ nv ∈ RegisterWitness.markedCols sc, nv ≠ n →
+          ∀ sp_v : SurfPos, SBlockMapEntry n sp_q sp_v →
+          ∀ sp_i sp_c : SurfPos, SIndent nv sp_v sp_i → GLit ':' sp_i sp_c →
+          ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →
+          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc)) ∨ NotQuestionPark sc)
       -- Item 59: the slot travels with the park's own COLUMN.  Only a `?` or
       -- an explicit `:` opens one, and both stand AT the entry's index, so the
       -- park is one past it — which is what lets the compact fill measure the
@@ -14881,7 +14894,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                (frameChainUnion
                  (frameChainUnion
                    (match h_expl with
-                    | Or.inl ⟨sp_q, h_qlit, route⟩ => Or.inl ⟨[n_old], frameChainOne (a := n_old)
+                    | Or.inl ⟨sp_q, h_qlit, route, _⟩ => Or.inl ⟨[n_old], frameChainOne (a := n_old)
                         (fun sp_end h_content sp_m sp_i sp_c h_ssl h_ind h_lit sp_v h_sbi =>
                           ResumeFrames.one (route sp_v (SBlockMapEntry.explicit n_old sp_q sp_scan sp_m sp_i sp_c sp_v
                             h_qlit
@@ -24956,7 +24969,22 @@ lemma question_open_map {sc : ScannerState} (sp_start sp_land sp_ind : SurfPos) 
            -- Item 51: the `?` literal + the entry route (`h_expl`), and the
            -- KEY slot itself (`h_vslot`) — `[186]`'s `s-l+block-indented`,
            -- compact alternatives included (`? - a`, `? ? b`, `? : v`).
-           (Or.inl ⟨sp_ind, h_lit, h_route51F⟩)
+           (Or.inl ⟨sp_ind, h_lit, h_route51F,
+             -- Item 412: the chain ONE FRAME UP over this `?`'s own entry, from
+             -- `h_explUp_chainD` read on the post-state's projection: a mark of `s'` is this
+             -- `?`'s own column (`h_mcstep`, `hk`) or one of the pre-state's, which the
+             -- chain routes.
+             match h_explUp_chainD with
+             | Or.inl ⟨nsU, hdomU, up⟩ => Or.inl (fun nv hnv hne sp_v h_entry sp_i sp_c h_iv h_clit sp_w h_sbi => by
+                 obtain ⟨i, l, c, hi, hc, rfl⟩ := RegisterWitness.markedCols_mem.mp hnv
+                 have hmem : c.toNat ∈ k :: nsU := by
+                   have h := h_mcstep nsU hdomU; rw [hk] at h; exact h i l c hi hc
+                 rcases List.mem_cons.1 hmem with h | h
+                 · exact absurd h hne
+                 · exact up _ h sp_v h_entry sp_i sp_c h_iv h_clit sp_w h_sbi)
+             -- Item 412: the ancestors' chain was declined upstream — re-declined here (a `?`
+             -- ARMS the register, so no refusal transports across it).
+             | Or.inr _ => Or.inr trivial⟩)
            -- Item 209: and the slot's own stack top, the caller's measurement.
            (Or.inl ⟨h_top_in, park_col_of_indicator hcol_land h_ind h_lit,
              fun sp_v h_sbi =>
@@ -25489,16 +25517,25 @@ lemma compact_open_map (sp_start sp_entry sp_ind : SurfPos) (n m : Nat)
   -- entry of its own — its same-line key is refused from the stamp instead
   -- (item 101), which is the field `hpk.2.2.1` carries. ═══
   have h_expl105 : (∃ sp_q : SurfPos, GLit '?' sp_q sp_scan' ∧
-      ∀ sp_v : SurfPos, SBlockMapEntry (n + 1 + m) sp_q sp_v →
+      (∀ sp_v : SurfPos, SBlockMapEntry (n + 1 + m) sp_q sp_v →
       ∀ sp_e : SurfPos, SCompactMapTail (n + 1 + m) sp_v sp_e →
-        SLYamlStream sp_start sp_e) ∨ NotQuestionPark s' :=
+        SLYamlStream sp_start sp_e) ∧
+      ((∀ nv ∈ RegisterWitness.markedCols s', nv ≠ (n + 1 + m) →
+        ∀ sp_v : SurfPos, SBlockMapEntry (n + 1 + m) sp_q sp_v →
+        ∀ sp_i sp_c : SurfPos, SIndent nv sp_v sp_i → GLit ':' sp_i sp_c →
+        ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →
+        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt s')) ∨ NotQuestionPark s' :=
     match hc with
     | Or.inl h => Or.inr (dispatchBlock_colon_notQuestion (h ▸ h_dispatch))
     -- Item 371: the compact `?`'s route WITH its tail — the compact mapping the
     -- entry heads goes on with its siblings before the awaited node closes.
     | Or.inr h => Or.inl ⟨sp_ind, h_qlit h, fun sp_v h_entry sp_e h_tail =>
         h_close_old sp_e (SBlockIndented.compactMap n ctx m sp_entry sp_ind sp_e h_ind
-          (SCompactMap.mk (n + 1 + m) sp_ind sp_v sp_e h_entry h_tail))⟩
+          (SCompactMap.mk (n + 1 + m) sp_ind sp_v sp_e h_entry h_tail)),
+        -- Item 412: no chain one frame up reaches this opener yet — the `-` park's
+        -- `h_kslotUp` (over the entry's content and tail) is the supply, relayed by both
+        -- callers with a mark step for the compact `?`'s push (item 413): DECLINES.
+        Or.inr trivial⟩
   have h_vslot105 : (s'.currentIndent ≤ ((n + 1 + m : Nat) : Int) ∧
       sp_scan'.col = (n + 1 + m) + 1 ∧ ∀ sp_v : SurfPos,
       SBlockIndented (n + 1 + m) .blockOut sp_scan' sp_v →
@@ -31192,7 +31229,7 @@ lemma accum_block_pending (sc : ScannerState)
         (frameChainUnion
           (frameChainUnion
             (match h_expl51 with
-             | Or.inl ⟨sp_q, h_qlit, route⟩ => Or.inl ⟨[nmv], frameChainOne (a := nmv)
+             | Or.inl ⟨sp_q, h_qlit, route, _⟩ => Or.inl ⟨[nmv], frameChainOne (a := nmv)
                  (fun sp_m sp_i sp_c h_ssl h_ind h_lit sp_v h_sbi =>
                    ResumeFrames.one (route sp_v (SBlockMapEntry.explicit nmv sp_q sp_scan sp_m sp_i sp_c sp_v
                      h_qlit (SBlockIndented.empty nmv .blockOut sp_scan sp_m h_ssl)
@@ -31228,7 +31265,7 @@ lemma accum_block_pending (sc : ScannerState)
              -- compact fill — the completed KEY node closes the `?` entry
              -- through `[188]`'s explicit constructor (`? - a⏎: - w`).
              (match h_expl51 with
-              | Or.inl ⟨sp_q, h_qlit, route⟩ => Or.inl
+              | Or.inl ⟨sp_q, h_qlit, route, _⟩ => Or.inl
                   (fun sp_m h_bo sp_i sp_c h_iv h_lit sp_v h_sbi =>
                     ResumeFrames.one (route sp_v (SBlockMapEntry.explicit nmv sp_q sp_scan sp_m sp_i sp_c
                       sp_v h_qlit h_bo h_iv h_lit h_sbi)))
@@ -37817,9 +37854,14 @@ lemma accum_content_on_pendingMapValue_indented
     -- Item 51: the pending's `[187]` explicit frame at the entry's index
     -- (`k:⏎  ? a` — the nested `?`), threaded exactly as at the root arm.
     (h_expl : (∃ sp_q : SurfPos, GLit '?' sp_q sp_scan ∧
-      ∀ sp_v : SurfPos, SBlockMapEntry n sp_q sp_v →
+      (∀ sp_v : SurfPos, SBlockMapEntry n sp_q sp_v →
       ∀ sp_e : SurfPos, SCompactMapTail n sp_v sp_e →
-        SLYamlStream sp_start sp_e) ∨ NotQuestionPark sc)
+        SLYamlStream sp_start sp_e) ∧
+      ((∀ nv ∈ RegisterWitness.markedCols sc, nv ≠ n →
+        ∀ sp_v : SurfPos, SBlockMapEntry n sp_q sp_v →
+        ∀ sp_i sp_c : SurfPos, SIndent nv sp_v sp_i → GLit ':' sp_i sp_c →
+        ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →
+        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc)) ∨ NotQuestionPark sc)
     -- Item 89: the pending's OPEN `[185]` slot at the entry's index, threaded
     -- exactly as at the root arm (`k:⏎  ? a: b`'s `a`).
     (h_vslot : (sp_scan.col = n + 1 ∧ ∀ sp_v : SurfPos,
@@ -37970,10 +38012,23 @@ lemma accum_content_on_pendingMapValue_indented
         -- node `h_kslot` premises, so the ancestors cannot fund it and the
         -- park's own frame is still the only answer — as a one-element chain.
         match h_expl with
-        -- Item 409: `[n]` is the `?` park's own column — marked in fact, but no face here says
-        -- so (the own-mark scanner lemma is unpaid), so under the domain this birth DECLINES.
-        | Or.inl _ => Or.inr trivial
-        -- …and `[]` would claim the park holds NO mark (`MarkedColsIn` is a cover): DECLINES.
+        -- Item 412: PAID on the projection.  The park's own mark rides its compact route (the
+        -- `?` entry WITH its value, `SBlockMapEntry.explicit`); an ancestor's rides the chain
+        -- ONE FRAME UP over the park's own entry closed WITHOUT a value (`explicitEmpty`: the
+        -- inner `?` key, then the outer `:` at the ancestor's column).  The chain's
+        -- alternative is relayed, not re-declined.
+        | Or.inl ⟨sp_q, h_qlit, route, chainUp⟩ => (match chainUp with
+            | Or.inl up => Or.inl ⟨RegisterWitness.markedCols sc, RegisterWitness.MarkedColsIn.self sc,
+                fun nv hnv sp h_bi sp_i sp_c h_iv h_lit sp_v h_sbi =>
+                  if hn : nv = n then by
+                    subst hn
+                    exact ResumeFrames.one (route sp_v (SBlockMapEntry.explicit _ sp_q sp_scan sp sp_i sp_c sp_v
+                      h_qlit (SBlockIndented_blockIn_to_blockOut h_bi) h_iv h_lit h_sbi))
+                  else up nv hnv hn sp (SBlockMapEntry.explicitEmpty n sp_q sp_scan sp h_qlit
+                    (SBlockIndented_blockIn_to_blockOut h_bi)) sp_i sp_c h_iv h_lit sp_v h_sbi⟩
+            | Or.inr h => Or.inr h)
+        -- Item 412: the explicit `:` park's compact value under an outer `?` has no entry head
+        -- here (`? ? a⏎  : - b⏎: c`, `NotQuestionPark`): DECLINES.
         | Or.inr _ => Or.inr trivial⟩
   have h_compact_vslot : ((∀ sp, SBlockIndented n .blockIn sp_scan sp →
       SLYamlStream sp_start sp) ∧ sp_scan.col = n + 1 ∧
@@ -37989,10 +38044,23 @@ lemma accum_content_on_pendingMapValue_indented
         -- node `h_kslot` premises, so the ancestors cannot fund it and the
         -- park's own frame is still the only answer — as a one-element chain.
         match h_expl with
-        -- Item 409: `[n]` is the `?` park's own column — marked in fact, but no face here says
-        -- so (the own-mark scanner lemma is unpaid), so under the domain this birth DECLINES.
-        | Or.inl _ => Or.inr trivial
-        -- …and `[]` would claim the park holds NO mark (`MarkedColsIn` is a cover): DECLINES.
+        -- Item 412: PAID on the projection.  The park's own mark rides its compact route (the
+        -- `?` entry WITH its value, `SBlockMapEntry.explicit`); an ancestor's rides the chain
+        -- ONE FRAME UP over the park's own entry closed WITHOUT a value (`explicitEmpty`: the
+        -- inner `?` key, then the outer `:` at the ancestor's column).  The chain's
+        -- alternative is relayed, not re-declined.
+        | Or.inl ⟨sp_q, h_qlit, route, chainUp⟩ => (match chainUp with
+            | Or.inl up => Or.inl ⟨RegisterWitness.markedCols sc, RegisterWitness.MarkedColsIn.self sc,
+                fun nv hnv sp h_bi sp_i sp_c h_iv h_lit sp_v h_sbi =>
+                  if hn : nv = n then by
+                    subst hn
+                    exact ResumeFrames.one (route sp_v (SBlockMapEntry.explicit _ sp_q sp_scan sp sp_i sp_c sp_v
+                      h_qlit (SBlockIndented_blockIn_to_blockOut h_bi) h_iv h_lit h_sbi))
+                  else up nv hnv hn sp (SBlockMapEntry.explicitEmpty n sp_q sp_scan sp h_qlit
+                    (SBlockIndented_blockIn_to_blockOut h_bi)) sp_i sp_c h_iv h_lit sp_v h_sbi⟩
+            | Or.inr h => Or.inr h)
+        -- Item 412: the explicit `:` park's compact value under an outer `?` has no entry head
+        -- here (`? ? a⏎  : - b⏎: c`, `NotQuestionPark`): DECLINES.
         | Or.inr _ => Or.inr trivial⟩
     | Or.inr _ => Or.inr trivial
   rcases indentedValue_reads_at_any_indent (h_src := h_src) sc sp_scan (n + 1) s_prep s' c sp_prep sp_scan'
@@ -38068,7 +38136,7 @@ lemma accum_content_on_pendingMapValue_indented
              -- finding, one production over.  The chain takes both.
              (frameChainUnionD
                (match h_expl with
-                | Or.inl ⟨sp_q, h_qlit, route⟩ => Or.inr trivial
+                | Or.inl ⟨sp_q, h_qlit, route, _⟩ => Or.inr trivial
                 | Or.inr _ => Or.inr trivial)
                -- Item 93: the park's twin, as at the root arm
                -- (`k:⏎  ? a: b⏎  : - w`).
@@ -38258,7 +38326,7 @@ lemma accum_content_on_pendingMapValue_indented
              -- recorded is what the chain replaces.
              (frameChainUnionD
                (match h_expl with
-                | Or.inl ⟨sp_q, h_qlit, route⟩ => Or.inr trivial
+                | Or.inl ⟨sp_q, h_qlit, route, _⟩ => Or.inr trivial
                 | Or.inr _ => Or.inr trivial)
                (match h_kslot with
                 | Or.inl ⟨ns, hd, kslot⟩ => Or.inl ⟨ns, MarkedColsIn.step_content h_preprocess h_dispatch hd, fun nv hmem =>
@@ -38353,7 +38421,7 @@ lemma accum_content_on_pendingMapValue_indented
              -- Item 192: both funders, as at the two arms above.
              (frameChainUnionD
                (match h_expl with
-                | Or.inl ⟨sp_q, h_qlit, route⟩ => Or.inr trivial
+                | Or.inl ⟨sp_q, h_qlit, route, _⟩ => Or.inr trivial
                 | Or.inr _ => Or.inr trivial)
                -- Item 93: the park's twin, the multi-line node folded in as
                -- the closure folds it (`k:⏎  ? a: "p⏎      q"⏎  : - w`).

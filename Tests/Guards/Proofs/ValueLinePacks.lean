@@ -742,7 +742,10 @@ def expectedPacks : List String := [
   "pendingMapValue.h_kslot arm=l lvl=∃ns(MarkedColsIn)∀nv∈ns premises=[SBlockNode(n + 1),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
   -- 2026-10-24 (item 350): `arm=l` → `arm=l/stamp` — the alternative is the scanner fact
   -- `NotQuestionPark sc` now, which the census reads as a stamp, not a `PackAlt` escape.
-  "pendingMapValue.h_explUp arm=l/stamp lvl=∃sp_q∃ns(GLit('?'))(MarkedColsIn)∀nv∈ns premises=[SBlockMapEntry(n),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no"]
+  "pendingMapValue.h_explUp arm=l/stamp lvl=∃sp_q∃ns(GLit('?'))(MarkedColsIn)∀nv∈ns premises=[SBlockMapEntry(n),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
+  -- 2026-10-31 (item 412): the `?` park's route one frame up — `h_expl`'s chain is read over the park's OWN ENTRY
+  -- (`SBlockMapEntry n`), projected on `markedCols sc` minus the own mark (`Ne`), and declines into `PackAlt sc`.
+  "pendingMapValue.h_expl arm=l/stamp lvl=∃sp_q(GLit('?'))(?)∀nv∈markedCols(…) premises=[Ne,SBlockMapEntry(n),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no"]
 def expectedFramesOn : List String := [
   "pendingContent.h_framesV frames(ks)@ExplValueLine(nv)←landing",
   "pendingProps.h_closeFV frames(ks)@ExplValueLine(nv)←SBlockNode(n)",
@@ -796,7 +799,9 @@ def expectedParams : List String :=
    "indicator_open_map.h_explUp_chain arm=l lvl=∃ns∀nv∈ns premises=[SBlockMapEntry(k),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
    "indicator_open_map.h_explUp_chainD arm=l lvl=∃ns(MarkedColsIn)∀nv∈ns premises=[SBlockMapEntry(k),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
    "question_open_map.h_explUp_chain arm=l lvl=∃ns∀nv∈ns premises=[SBlockMapEntry(k),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
-   "question_open_map.h_explUp_chainD arm=l lvl=∃ns(MarkedColsIn)∀nv∈ns premises=[SBlockMapEntry(k),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no"]
+   "question_open_map.h_explUp_chainD arm=l lvl=∃ns(MarkedColsIn)∀nv∈ns premises=[SBlockMapEntry(k),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
+  -- 2026-10-31 (item 412): the consumer reads the entry-shaped `h_expl` (its twin of the pack row).
+  "accum_content_on_pendingMapValue_indented.h_expl arm=l/stamp lvl=∃sp_q(GLit('?'))(?)∀nv∈markedCols(…) premises=[Ne,SBlockMapEntry(n),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no"]
 -- The nine rows carrying a `(h_vslot)`-style binder list after `<param:…` read
 -- the list through `letLabel`'s `privateToUserName`.  Without it the module
 -- system's name for a generated matcher (`_private.<module>.0.<name>`) fails a
@@ -986,7 +991,16 @@ def expectedWriters : List String := [
    "question_open_map #1 ctor:pendingMapValue.h_ivl idx=k := paid:route ns=— spend=h_route51←let:h_route51<param:question_open_map.h_res_land(h_res_land,h_sfx_land,h_nodoc_land,h_mk_land,h_pr_land) holds=[h_res_land:tail(k)←landing; h_explUp_chain:frames(map(…) :: [])←SBlockIndented(nv); h_resV_land:tail(k)←landing; h_explUp_chainD:frames(map(…) :: [])←SBlockIndented(nv); h✝:tail(k)←SBlockMapEntry(k); right✝:tail(k)←SBlockMapEntry(k); h_routeF:tail(k)←SBlockMapEntry(k); h_route51F:tail(k)←SBlockMapEntry(k); h_upAll:frames(map(…) :: [])←SBlockIndented(nv)] ⊢ held(h_res_land,h_resV_land,h✝,right✝,h_routeF,h_route51F)",
    "question_open_map #1 ctor:pendingMapValue.h_vslot idx=k := paid:route ns=— spend=h_route51←let:h_route51<param:question_open_map.h_res_land(h_res_land,h_sfx_land,h_nodoc_land,h_mk_land,h_pr_land) holds=[h_res_land:tail(k)←landing; h_explUp_chain:frames(map(…) :: [])←SBlockIndented(nv); h_resV_land:tail(k)←landing; h_explUp_chainD:frames(map(…) :: [])←SBlockIndented(nv); h✝:tail(k)←SBlockMapEntry(k); right✝:tail(k)←SBlockMapEntry(k); h_routeF:tail(k)←SBlockMapEntry(k); h_route51F:tail(k)←SBlockMapEntry(k); h_upAll:frames(map(…) :: [])←SBlockIndented(nv)] ⊢ held(h_res_land,h_resV_land,h✝,right✝,h_routeF,h_route51F)",
    "question_open_map #1 ctor:pendingMapValue.h_kslot idx=k := paid:tail ns=k :: nsU spend=alt[one(h_route51F←let:h_route51F)|up←param:question_open_map.h_explUp_chainD]⊣tail holds=[h_res_land:tail(k)←landing; h_explUp_chain:frames(map(…) :: [])←SBlockIndented(nv); h_resV_land:tail(k)←landing; h_explUp_chainD:frames(map(…) :: [])←SBlockIndented(nv); h✝:tail(k)←SBlockMapEntry(k); right✝:tail(k)←SBlockMapEntry(k); h_routeF:tail(k)←SBlockMapEntry(k); h_route51F:tail(k)←SBlockMapEntry(k); h_upAll:frames(map(…) :: [])←SBlockIndented(nv)] ⊢ held(h_res_land,h_resV_land,h✝,right✝,h_routeF,h_route51F)",
-   "question_open_map #1 ctor:pendingMapValue.h_explUp idx=k := alt[paid:frames|paid:chain|stamp] ns=nv :: nsD|nsD|— spend=alt[resumeFrameRouteK(contV←param:question_open_map.h_explUp_chainD)|upD←param:question_open_map.h_explUp_chainD]|upD←param:question_open_map.h_explUp_chainD|—⊣tail holds=[h_res_land:tail(k)←landing; h_explUp_chain:frames(map(…) :: [])←SBlockIndented(nv); h_resV_land:tail(k)←landing; h_explUp_chainD:frames(map(…) :: [])←SBlockIndented(nv); h✝:tail(k)←SBlockMapEntry(k); right✝:tail(k)←SBlockMapEntry(k); h_routeF:tail(k)←SBlockMapEntry(k); h_route51F:tail(k)←SBlockMapEntry(k); h_upAll:frames(map(…) :: [])←SBlockIndented(nv)] ⊢ none"]
+   "question_open_map #1 ctor:pendingMapValue.h_explUp idx=k := alt[paid:frames|paid:chain|stamp] ns=nv :: nsD|nsD|— spend=alt[resumeFrameRouteK(contV←param:question_open_map.h_explUp_chainD)|upD←param:question_open_map.h_explUp_chainD]|upD←param:question_open_map.h_explUp_chainD|—⊣tail holds=[h_res_land:tail(k)←landing; h_explUp_chain:frames(map(…) :: [])←SBlockIndented(nv); h_resV_land:tail(k)←landing; h_explUp_chainD:frames(map(…) :: [])←SBlockIndented(nv); h✝:tail(k)←SBlockMapEntry(k); right✝:tail(k)←SBlockMapEntry(k); h_routeF:tail(k)←SBlockMapEntry(k); h_route51F:tail(k)←SBlockMapEntry(k); h_upAll:frames(map(…) :: [])←SBlockIndented(nv)] ⊢ none",
+  -- 2026-10-31 (item 412): seven writers of the entry-shaped `h_expl` — the consumer's relay, the four `:` openers'
+  -- stamps, compact_open_map's chain relay off `hc`, and question_open_map's pay from `h_explUp_chainD`.
+  "accum_content_pending #1 param:accum_content_on_pendingMapValue_indented.h_expl idx=— := relay:chain(door:pendingMapValue.h_expl) ns=— spend=— holds=[h_defer_split:frames(ks)←landing; h_expl51:tail(n_old)←SBlockMapEntry(n_old); h_kslot93:frames(map(…) :: [])←SBlockIndented(nv); h_closeF99:frames(map(…) :: ks)←SBlockNode(n_old + 1); h_frames99:frames(ks)←landing; h_closeFV108:frames(ks)@ExplValueLine(nv)←SBlockNode(n_old + 1); h_framesV108:frames(ks)@ExplValueLine(nv)←landing; h_seqF168:tail(n_old)←SBlockNode(n_old + 1); h_explUp✝:frames(map(…) :: [])←SBlockIndented(nv)] ⊢ —",
+  "colon_open_map #1 ctor:pendingMapValue.h_expl idx=k := stamp ns=— spend=— holds=[h_res_land:tail(k)←landing; h_resV_land:tail(k)←landing; h✝:tail(k)←SBlockMapEntry(k); right✝:tail(k)←SBlockMapEntry(k); h_routeF:tail(k)←SBlockMapEntry(k)] ⊢ —",
+  "colon_open_map_explicit #1 ctor:pendingMapValue.h_expl idx=nv := stamp ns=— spend=— holds=[hvp:frames(map(…) :: [])←SBlockIndented(nv)] ⊢ —",
+  "colon_open_map_implicit #1 ctor:pendingMapValue.h_expl idx=k := stamp ns=— spend=— holds=[h_routeF:tail(k)←SBlockMapEntry(k); h_routeFV:tail(k)←SBlockMapEntry(k); h_routeS:tail(k)←SBlockMapEntry(k); h_kslotD:tail(k)←SBlockMapEntry(k)] ⊢ —",
+  "colon_open_map_props #1 ctor:pendingMapValue.h_expl idx=k := stamp ns=— spend=— holds=[h_routeF:tail(k)←SBlockMapEntry(k); h_routeFV:tail(k)←SBlockMapEntry(k); h_kslotD:tail(k)←SBlockMapEntry(k)] ⊢ —",
+  "compact_open_map #1 ctor:pendingMapValue.h_expl idx=n + 1 + m := relay:chain(let:h_expl105<param:compact_open_map.hc(hc)) ns=— spend=— holds=[h_expl105:tail(n + 1 + m)←SBlockMapEntry(n + 1 + m)] ⊢ —",
+  "question_open_map #1 ctor:pendingMapValue.h_expl idx=k := paid:chain ns=— spend=up←param:question_open_map.h_explUp_chainD holds=[h_res_land:tail(k)←landing; h_explUp_chain:frames(map(…) :: [])←SBlockIndented(nv); h_resV_land:tail(k)←landing; h_explUp_chainD:frames(map(…) :: [])←SBlockIndented(nv); h✝:tail(k)←SBlockMapEntry(k); right✝:tail(k)←SBlockMapEntry(k); h_routeF:tail(k)←SBlockMapEntry(k); h_route51F:tail(k)←SBlockMapEntry(k); h_upAll:frames(map(…) :: [])←SBlockIndented(nv)] ⊢ held(h_res_land,h_resV_land,h✝,right✝,h_routeF,h_route51F)"]
 -- 2026-10-20 (item 307): re-read — the three γ roots' `h_vpack` are paid and `closeThenBlock`'s landed arm
 -- resumes the closed park's stack; the rows citing them re-read.
 -- 2026-10-21 (item 313): `pendingProps.h_kslot` and `h_kslotE` read `step` where they read `relay` (and one `via`): the
@@ -1041,7 +1055,10 @@ def expectedPerPos : List String := [
    -- Item 371: the restated value-line pack (`⇒ Resume(map(_)::[])▹Stream`, `ResumeFrames.one`'s level)
    "ctor:pendingMapValue.h_kslot writers=6 punt=3 stamp=0 empty=0 relay=0 step=0 via=0 chain=2 route=0 frames=0 tail=1 other=0 alt=0 held=1 levelVar=2 none=0 touched=3",
    "ctor:pendingMapValue.h_explUp writers=6 punt=0 stamp=4 empty=0 relay=0 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=2 held=1 levelVar=0 none=1 touched=6",
-   "param:flowKeyRoute_of_open.h_compact_pair writers=3 punt=2 stamp=0 empty=0 relay=0 step=0 via=0 chain=1 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=1 none=0 touched=1"]
+   "param:flowKeyRoute_of_open.h_compact_pair writers=3 punt=2 stamp=0 empty=0 relay=0 step=0 via=0 chain=1 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=1 none=0 touched=1",
+  -- 2026-10-31 (item 412): the entry-shaped `h_expl` as a ctor position (6 writers) and as the consumer's param position.
+  "ctor:pendingMapValue.h_expl writers=6 punt=0 stamp=4 empty=0 relay=1 step=0 via=0 chain=1 route=0 frames=0 tail=0 other=0 alt=0 held=1 levelVar=0 none=0 touched=6",
+  "param:accum_content_on_pendingMapValue_indented.h_expl writers=1 punt=0 stamp=0 empty=0 relay=1 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=0 touched=1"]
 -- 2026-10-18 (item 284): `nodes` 12296 → 12374 and nothing else.  The walk
 -- counts nodes only while it follows a value-line pack, so this is item 284's
 -- additions inside pack-carrying terms; the old `pendingFlow` arm restored alone
@@ -1112,7 +1129,7 @@ def expectedLine : String :=
 -- Item 372 (2026-10-27): `ImplicitKeyPack`'s route conjunct is an Or (`∨ SeqTopKey sc`); the pack walker reads the stream route on its left side.
 -- Item 374: nodes=13663 → 13665 — the resume context's face disjunct and `resumectx_of_landing`'s `h_base`.
   -- 2026-10-28 (item 386): nodes 13665 → 13675 — the `-` opener's `h_lvl_old` beside the value-line packs it walks; no pack/row moved.
-  "packs=11 framesOn=7 params=30 paramLemmas=18 apps=51 rows=152 ctorRows=74 paramRows=78 punt=33 stamp=20 empty=0 relay=29 step=9 via=4 chain=39 route=2 frames=3 tail=1 other=6 alt=6 held=7 levelVar=38 none=16 spendTail=5 lemmas=21 helpers=[frameChainUnion,frameChainUnionD] touched=119 nodes=13778"
+  "packs=12 framesOn=7 params=31 paramLemmas=18 apps=51 rows=159 ctorRows=80 paramRows=79 punt=33 stamp=24 empty=0 relay=31 step=9 via=4 chain=40 route=2 frames=3 tail=1 other=6 alt=6 held=8 levelVar=38 none=16 spendTail=5 lemmas=21 helpers=[frameChainUnion,frameChainUnionD] touched=126 nodes=13778"
 
 /-! ## §4 The reading -/
 
@@ -1245,7 +1262,9 @@ run_cmd Lean.Elab.Command.liftTermElabM do
   logInfo s!"params:\n{String.intercalate "\n" paramLines.toList}"
   logInfo s!"writers:\n{String.intercalate "\n" writerLines.toList}"
   logInfo s!"perPos:\n{String.intercalate "\n" perLines.toList}"
-  unless packKeys.size == 11 do throwError "the packs moved under this pass: packs={packKeys.size}"
+  -- 2026-10-31 (item 412): packs 11 → 12 — `pendingMapValue.h_expl` is entry-shaped now, its chain one frame up
+  -- (`∀ nv ∈ markedCols sc, nv ≠ n → … ⊢ ResumeFrames`) declining into `PackAlt sc`: a pack by this census's reading.
+  unless packKeys.size == 12 do throwError "the packs moved under this pass: packs={packKeys.size}"
   unless pinned do return
   let check (name : String) (gotL : Array String) (exp : List String) : MetaM Unit := do
     let gotL := gotL.map (·.trimAscii.toString)

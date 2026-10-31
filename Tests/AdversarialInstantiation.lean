@@ -8769,6 +8769,55 @@ def testCompactCover (state : IO.Ref TestCollector) : IO Unit := do
     (implAcc == 0 && explAcc == explicitCompact.length && nodeAcc == implicitNode.length &&
      qPauses > 0 && ownLast == qPauses && markless == 0 && ownOnly > 0 && nested > 0)
 
+def testEntryChain (state : IO.Ref TestCollector) : IO Unit := do
+  -- 76 (item 412, PAID) — the `?` park's chain ONE FRAME UP over its own entry, carried in
+  -- `pendingMapValue.h_expl` and supplied by `question_open_map` from `h_explUp_chainD` through
+  -- `h_mcstep` / `hk`: at every block-context `?` dispatch the post-state's projection is the
+  -- `?`'s own column CONSED onto the pre-state's (`markedCols sN = sP.col :: markedCols sP`), so a
+  -- mark of the park's state is its own column or an ancestor's — the case split the supply makes.
+  -- Negative control: a block `:` dispatch adds no mark.  End to end: the inputs the routed arms
+  -- now serve (an ancestor's `:` after an inner `?` key, compact or not) parse, and so does the
+  -- one input class the `NotQuestionPark` arms still decline (the explicit `:` park's compact
+  -- value under an outer `?`) — a decline is not a refusal.
+  let accepts (input : String) : Bool := match parseYaml input with | .ok _ => true | .error _ => false
+  let routed : List String :=
+    ["? ? a\n  : b\n: c\n", "? - ? a\n    : b\n: c\n", "? ? - a\n  : b\n: c\n", "?\n  ? a: 1\n  : b\n: c\n",
+     "? ? a\n: c\n", "k:\n  ? ? a\n    : b\n  : c\n"]
+  let declined : List String := ["? ? a\n  : - b\n: c\n", "? ? a\n  : b: 1\n: c\n"]
+  let routedAcc := (routed.filter accepts).length
+  let declinedAcc := (declined.filter accepts).length
+  let corpus : List String :=
+    ["? a\n: b\n", "? ? a\n  : b\n: c\n", "- ? a: 1\n  : b\n", "? - a\n  - b\n: c\n", "a:\n  ? b\n  : c\n",
+     "? a\n? b\n: c\n", "k: ? a\n   : b\n", "? &p a: b\n: - w\n", "?\n  ? -\n: w\n", "- ? - a\n  : b\n",
+     "k:\n  ? - a\n  : b\n", "? -\n: w\n", "? - ? - a\n  : b\n: c\n", "?\n  ?\n    -\n    - b\n  ? c\n: w\n",
+     "? a\n:\n  ? b\n  : c\n", "? ? ? a\n    : b\n  : c\n: d\n"]
+  let mut qPauses := 0
+  let mut consShape := 0
+  let mut colonPauses := 0
+  let mut colonAdds := 0
+  for input in corpus do
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:64] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) =>
+          if sP.flowLevel == 0 then
+            let before := L4YAML.Proofs.RegisterWitness.markedCols sP
+            let after := L4YAML.Proofs.RegisterWitness.markedCols sN
+            if c == '?' then
+              qPauses := qPauses + 1
+              if after == before ++ [sP.col] || after == sP.col :: before then consShape := consShape + 1
+            else if c == ':' then
+              colonPauses := colonPauses + 1
+              if after.length > before.length then colonAdds := colonAdds + 1
+          s := sN
+        | _ => break
+      | _ => break
+  check state s!"P76 entry chain (item 412): block `?` pauses={qPauses} post marks = own column + pre marks={consShape}; block `:` pauses={colonPauses} adding a mark={colonAdds} (must be 0); routed inputs accepted={routedAcc}/{routed.length} declined-class inputs accepted={declinedAcc}/{declined.length}"
+    (qPauses > 0 && consShape == qPauses && colonPauses > 0 && colonAdds == 0 &&
+     routedAcc == routed.length && declinedAcc == declined.length)
+
 def testFlowCarrier (state : IO.Ref TestCollector) : IO Unit := do
   let nestedQ : List String := ["?\n  ? -\n: w\n", "? - ? - a\n  : b\n: c\n", "?\n  ?\n    -\n    - b\n  ? c\n: w\n", "? ? - a\n  : b\n: c\n", "- ? - a\n  : b\n"]
   let singleQ : List String := ["? - a\n: b\n", "?\n  - a\n  - b\n: w\n", "k:\n  ? - a\n  : b\n", "? -\n: w\n"]
@@ -8963,6 +9012,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testKslotPay state
   testOwnMark state
   testCompactCover state
+  testEntryChain state
 
   testQuestionMarkColumn state
   testK1Lanes state

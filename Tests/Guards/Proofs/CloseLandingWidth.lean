@@ -597,7 +597,7 @@ def expectedEmpties : List String :=
 def expectedLine : String :=
 -- Item 371 (empties=25 → 27, emptyLemmas=6 → 8): the value-line packs end in the one-level
 -- `ResumeFrames`; `question_open_map`'s `h_expl`/`h_closeFV`/`h_framesV` come from the bound tail route `h_route51F`.
-  "closeSites=5 closePairs=6 closePairsD=8 viaClose=3 params=5 spends=20 spendsC=6 spendsE=0 spendsN=14 handoffs=4 carries=1 untyped=0 edges=2 paramsWalked=6 widthInd=5 widthWs=1 widthNone=0 idxDirect=4 idxPacked=1 idxNone=1 cmp=0 cmpSame=0 both=4 bothCmp=0 handInd=4 handDirect=4 handCmp=4 sitesBoth=1 sitesWidth=2 sitesNeither=2 sitesBothAll=0 empties=28 emptyLemmas=8 emptyInd=13 emptyCmp=5 emptySame=2 emptyClose=2 sites=20 pairs=20 pairs21=19 pairs18=17 nonANoDrop=8 reach=38"
+  "closeSites=5 closePairs=6 closePairsD=8 viaClose=3 params=5 spends=20 spendsC=6 spendsE=0 spendsN=14 handoffs=4 carries=1 untyped=0 edges=2 paramsWalked=6 widthInd=5 widthWs=1 widthNone=0 idxDirect=4 idxPacked=1 idxNone=1 cmp=0 cmpSame=0 both=4 bothCmp=0 handInd=4 handDirect=4 handCmp=4 sitesBoth=1 sitesWidth=2 sitesNeither=2 sitesBothAll=0 empties=28 emptyLemmas=8 emptyInd=13 emptyCmp=5 emptySame=2 emptyClose=2 sites=20 pairs=20 pairs21=20 pairs18=18 nonANoDrop=8 reach=38"
 
 /-! ## §5 The reading -/
 
@@ -771,9 +771,12 @@ sites={sites.size} pairs={pairs.size} pairs21={shapeComps.size} pairs18={noDrop.
   logInfo s!"empties:\n{String.intercalate "\n" emptyLines.toList}"
   -- the cross-instrument checks: items 249's and 250's frames, re-derived here
   -- (2026-10-24, B3 [66] col-0 threading: 23/21/21/18 → 19/19/18/16, as StreamCompositions pins)
-  unless sites.size == 20 && pairs.size == 20 && shapeComps.size == 19 && noDrop.size == 17 do
+  -- (2026-10-31, item 412: shapeComps 19 → 20, noDrop 17 → 18 — question_open_map's h_expl gains the chain one frame up,
+  --  one new composition shape, as StreamCompositions pins)
+  unless sites.size == 20 && pairs.size == 20 && shapeComps.size == 20 && noDrop.size == 18 do
     throwError "item 249's frame moved under this pass: sites={sites.size} pairs={pairs.size} shapeComps={shapeComps.size} noDrop={noDrop.size}"
-  unless aPairs.size == 9 && nonANoDrop.size == 8 do
+  -- (2026-10-31, item 412: aPairs 9 → 10 — the chain one frame up is a new A-pair, as OpenEntryRoute pins)
+  unless aPairs.size == 10 && nonANoDrop.size == 8 do
     throwError "item 250's frame moved under this pass: aPairs={aPairs.size} nonANoDrop={nonANoDrop.size}"
   let check (name : String) (gotL : Array String) (exp : List String) : MetaM Unit := do
     let gotL := gotL.map (·.trimAscii.toString)
