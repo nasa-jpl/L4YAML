@@ -251,7 +251,7 @@ def posLine (p : Pos) : String := s!"{p.decl}{p.site} {p.kind} ∨ {p.alt}"
 -- projection `markedCols`: four fabricated births DECLINE (`Or.inr trivial` writers into `PackAltG`/`PackAlt`
 -- positions), none paid; positions unchanged.
 def expectedSummary : String :=
-  "positions=267 top=166 nested=101 True=195 PackAlt=63 PackAltG=9 modules=2 supply: paid=28 relayed=116 declined-only=0 never-supplied=0 unresolved=9 conclusions=11 consumers: spent=102 relayed=15 unused=0 unreadable=36 writers=39 inrTrivial=513"
+  "positions=267 top=166 nested=101 True=195 PackAlt=63 PackAltG=9 modules=2 supply: paid=28 relayed=116 declined-only=0 never-supplied=0 unresolved=9 conclusions=11 consumers: spent=102 relayed=15 unused=0 unreadable=36 writers=39 inrTrivial=512"
 
 def expectedPositions : List String :=
   [ "L4YAML.Proofs.PreprocessIndentStable.IndentFloor.transport[3].h_floor top ∨ True",
@@ -877,7 +877,7 @@ def expectedWriters : List String :=
     "L4YAML.Proofs.StreamAccum.accum_block_on_pendingContent ×12 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.accum_block_pending ×40 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.accum_content_on_noPending ×12 (StreamAccum)",
-    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingBlock_indented ×30 (StreamAccum)",
+    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingBlock_indented ×29 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented ×32 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.accum_content_pending ×81 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.accum_flow_open_depth0 ×67 (StreamAccum)",
