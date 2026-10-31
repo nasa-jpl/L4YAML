@@ -8698,6 +8698,59 @@ def testOwnMark (state : IO.Ref TestCollector) : IO Unit := do
   check state s!"P74 refused_of_markedCols_eq_nil (item 410): block pauses eligible Sound={cEligible} (ineligible={cIneligible}) markless={cMarkless} live register at a markless pause={cLiveAtMarkless} (marked={cMarked}, live there={cMarkedLive}) block `?` pauses={qPauses} markless after={qMarkless}"
     (cEligible > 0 && cMarkless > 0 && cLiveAtMarkless == 0 && cMarked > 0 && cMarkedLive == cMarked && qPauses > 0 && qMarkless == 0)
 
+def testCompactCover (state : IO.Ref TestCollector) : IO Unit := do
+  -- 75 (item 411, PRICED) — the compact builder's four cover arms.  The payable witness is
+  -- `markedCols sc` with a route per mark; the park's OWN mark rides `h_expl`'s compact route
+  -- (`nv = n`), an ANCESTOR's mark needs `h_kslot`'s route, whose premise is the awaited NODE
+  -- (`SBlockNode (n + 1) .blockIn`) while the face asks the wider `[185]` slot
+  -- (`SBlockIndented n .blockIn`).  Two readings price the gap.  (i) The slot's width is the
+  -- GRAMMAR's, not the proof's: an explicit key's value may be a compact collection
+  -- (`? - a⏎: b`), an implicit key's may not (`a: - b` — `[192]` is `s-l+block-node` only), so the
+  -- implicit-key openers (`colon_open_map_implicit` / `_props`) have no route for the compact
+  -- forms — the stage-B obstacle.  (ii) At every block `?` dispatch the post-state's marks: the
+  -- `?`'s own column is the LAST mark (0 misses); own-only parks (a singleton) are the class a
+  -- decidable `markedCols sc = [n]` split would pay, nested parks (≥ 2 marks) the class it leaves.
+  let accepts (input : String) : Bool := match parseYaml input with | .ok _ => true | .error _ => false
+  let implicitCompact : List String :=
+    ["a: - b\n", "a: ? b\n   : c\n", "- a: - b\n", "a: &p - b\n", "k:\n  a: - b\n", "a: - b\n   - c\n"]
+  let explicitCompact : List String :=
+    ["? - a\n: b\n", "? a: 1\n: b\n", "- ? - a\n  : b\n", "? ? a\n  : b\n: c\n", "k:\n  ? - a\n  : b\n", "? - a\n  - b\n: c\n"]
+  let implicitNode : List String := ["a:\n  - b\n", "a: b\n", "a:\n  ? b\n  : c\n", "- a:\n    - b\n"]
+  let implAcc := (implicitCompact.filter accepts).length
+  let explAcc := (explicitCompact.filter accepts).length
+  let nodeAcc := (implicitNode.filter accepts).length
+  let corpus : List String :=
+    ["? a\n: b\n", "- ? a: 1\n  : b\n", "? ? a\n  : b\n: c\n", "? - a\n  - b\n: c\n", "a:\n  ? b\n  : c\n",
+     "? [a]: b\n: c\n", "? a\n? b\n: c\n", "k: ? a\n   : b\n", "? &p a: b\n: - w\n", "? a\n:\n  - b\n",
+     "? {a: 1}\n: 2\n", "? a\n: b\n? c\n: d\n", "?\n  ? -\n: w\n", "- ? - a\n  : b\n", "k:\n  ? - a\n  : b\n",
+     "? -\n: w\n", "---\n? a\n: b\n...\n", "? - ? - a\n  : b\n: c\n", "?\n  ?\n    -\n    - b\n  ? c\n: w\n",
+     "?\n  ? [x]: y\n  : z\n: w\n", "? a\n:\n  ? b\n  : c\n"]
+  let mut qPauses := 0
+  let mut ownLast := 0
+  let mut ownOnly := 0
+  let mut nested := 0
+  let mut markless := 0
+  for input in corpus do
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:64] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) =>
+          if c == '?' && sP.flowLevel == 0 then
+            qPauses := qPauses + 1
+            let marks := L4YAML.Proofs.RegisterWitness.markedCols sN
+            if marks.getLast? == some sP.col then ownLast := ownLast + 1
+            if marks.length == 1 then ownOnly := ownOnly + 1
+            else if marks.length ≥ 2 then nested := nested + 1
+            else markless := markless + 1
+          s := sN
+        | _ => break
+      | _ => break
+  check state s!"P75 compact cover (item 411): implicit-key compact values accepted={implAcc}/{implicitCompact.length} (must be 0) explicit-key compact values accepted={explAcc}/{explicitCompact.length} implicit-key node values accepted={nodeAcc}/{implicitNode.length}; block `?` pauses={qPauses} own mark last={ownLast} own-only={ownOnly} nested={nested} markless={markless}"
+    (implAcc == 0 && explAcc == explicitCompact.length && nodeAcc == implicitNode.length &&
+     qPauses > 0 && ownLast == qPauses && markless == 0 && ownOnly > 0 && nested > 0)
+
 def testFlowCarrier (state : IO.Ref TestCollector) : IO Unit := do
   let nestedQ : List String := ["?\n  ? -\n: w\n", "? - ? - a\n  : b\n: c\n", "?\n  ?\n    -\n    - b\n  ? c\n: w\n", "? ? - a\n  : b\n: c\n", "- ? - a\n  : b\n"]
   let singleQ : List String := ["? - a\n: b\n", "?\n  - a\n  - b\n: w\n", "k:\n  ? - a\n  : b\n", "? -\n: w\n"]
@@ -8891,6 +8944,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testFlowCarrier state
   testKslotPay state
   testOwnMark state
+  testCompactCover state
 
   testQuestionMarkColumn state
   testK1Lanes state
