@@ -25355,7 +25355,14 @@ lemma compact_open_map (sp_start sp_entry sp_ind : SurfPos) (n m : Nat)
     (h_mono : IndentStackMono.Mono sc)
     (h_top : sc.currentIndent ≤ (n : Int))
     (h_outer : (PendingKeySound.Sound s_prep ∧ RegisterWitness.MarkedColsIn s_prep [n + 1 + m] ∧
-      (s_prep.simpleKey.possible = true → s_prep.simpleKey.pos.col = s_prep.col)) ∨ True) :
+      (s_prep.simpleKey.possible = true → s_prep.simpleKey.pos.col = s_prep.col)) ∨ True)
+    (h_chainUp : (∀ nv ∈ RegisterWitness.markedCols sc,
+      ∀ sp_m : SurfPos, SBlockIndented n ctx sp_entry sp_m →
+      ∀ sp_i sp_c : SurfPos, SIndent nv sp_m sp_i → GLit ':' sp_i sp_c →
+      ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →
+      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)
+    (h_mcstep : ∀ ns : List Nat, RegisterWitness.MarkedColsIn sc ns →
+      RegisterWitness.MarkedColsIn s' ((s_prep.col : Int).toNat :: ns)) :
     ∃ sp_gram' sp_block' sp_flow' sp_scan',
       SLYamlStream sp_start sp_gram' ∧
       BlockStack sp_gram' sp_block' ∧
@@ -25532,10 +25539,27 @@ lemma compact_open_map (sp_start sp_entry sp_ind : SurfPos) (n m : Nat)
     | Or.inr h => Or.inl ⟨sp_ind, h_qlit h, fun sp_v h_entry sp_e h_tail =>
         h_close_old sp_e (SBlockIndented.compactMap n ctx m sp_entry sp_ind sp_e h_ind
           (SCompactMap.mk (n + 1 + m) sp_ind sp_v sp_e h_entry h_tail)),
-        -- Item 412: no chain one frame up reaches this opener yet — the `-` park's
-        -- `h_kslotUp` (over the entry's content and tail) is the supply, relayed by both
-        -- callers with a mark step for the compact `?`'s push (item 413): DECLINES.
-        Or.inr trivial⟩
+        -- Item 413: the chain ONE FRAME UP, supplied from the `-` (or slot) park's chain over
+        -- this entry's CONTENT (`h_chainUp`): the entry closed with no sibling IS the content
+        -- (`compactMap` over a `nil` tail), and a mark of `s'` is this `?`'s own column —
+        -- excluded — or one of `sc`'s (`h_mcstep` on the projection).  Declined upstream →
+        -- re-declined: a `?` ARMS the register, so no refusal transports across it.
+        match h_chainUp with
+        | Or.inl up => Or.inl (fun nv hnv hne sp_v h_entry sp_i sp_c h_iv h_clit sp_w h_sbi => by
+            obtain ⟨i, l, cc, hi, hcc, rfl⟩ := RegisterWitness.markedCols_mem.mp hnv
+            have hmem : cc.toNat ∈ ((s_prep.col : Nat) : Int).toNat :: RegisterWitness.markedCols sc :=
+              h_mcstep _ (RegisterWitness.MarkedColsIn.self sc) i l cc hi hcc
+            have hk : ((s_prep.col : Nat) : Int).toNat = n + 1 + m := by
+              have h1 := hcorr_prep.col_eq
+              have h2 := SIndent_col h_ind
+              rw [Int.toNat_natCast]; omega
+            rw [hk] at hmem
+            rcases List.mem_cons.1 hmem with h | h
+            · exact absurd h hne
+            · exact up _ h sp_v (SBlockIndented.compactMap n ctx m sp_entry sp_ind sp_v h_ind
+                (SCompactMap.mk (n + 1 + m) sp_ind sp_v sp_v h_entry (SCompactMapTail.nil (n + 1 + m) sp_v)))
+                sp_i sp_c h_iv h_clit sp_w h_sbi)
+        | Or.inr _ => Or.inr trivial⟩
   have h_vslot105 : (s'.currentIndent ≤ ((n + 1 + m : Nat) : Int) ∧
       sp_scan'.col = (n + 1 + m) + 1 ∧ ∀ sp_v : SurfPos,
       SBlockIndented (n + 1 + m) .blockOut sp_scan' sp_v →
@@ -27940,6 +27964,18 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
                     RegisterWitness.preprocess_markedCols h_preprocess hdom,
                     fun _ => (preprocess_saved_key_col hp.1 h_noflow h_preprocess).2⟩)
                 (fun _ => Or.inr trivial)) (fun _ => Or.inr trivial))
+              -- Item 413: the chain one frame up over the SLOT's content — its own route (`hkv`)
+              -- heads it, the ancestors' (`hkvUp`) follow, on the slot's domain `nv :: nsU`; a
+              -- declined half is RELAYED, not re-written.
+              (match hkv, hkvUp with
+               | Or.inl kv, Or.inl ⟨nsU, hdomU, kvU⟩ => Or.inl (RegisterWitness.MarkedColsIn.relay hdomU <| by
+                   rintro x hx
+                   rcases List.mem_cons.mp hx with hxe | hx'
+                   · rw [hxe]; exact kv
+                   · exact kvU x hx')
+               | Or.inl _, Or.inr h => Or.inr h
+               | Or.inr h, _ => Or.inr h)
+              h_mcstep
           -- Item 125: the compact `:` decides its own stamp source; the one
           -- undecided shape (a live register at the `:`'s own column) stays
           -- the deferral it already was, and the `?` never reads it.
@@ -30787,6 +30823,13 @@ lemma accum_block_on_pendingBlock
                 (RegisterWitness.preprocess_markedCols h_preprocess hdom).mono (fun x hx => List.mem_singleton.2 (hns x hx)),
                 fun _ => (preprocess_saved_key_col h_sk h_noflow h_preprocess).2⟩
               else Or.inr trivial) (fun _ => Or.inr trivial))
+            -- Item 413: the chain one frame up over the `-` park's content — the compact mapping
+            -- closes the entry with no sibling (`SCompactSeqTail.nil`); a declined chain is RELAYED.
+            (match h_kslotUp with
+             | Or.inl ⟨ns, hdom, up⟩ => Or.inl (RegisterWitness.MarkedColsIn.relay hdom fun nv hnv sp_m h_bi =>
+                 up nv hnv sp_m h_bi sp_m (SCompactSeqTail.nil n sp_m))
+             | Or.inr h => Or.inr h)
+            h_mcstep
         -- Item 125: the compact `:`'s own stamp source, decided here; the
         -- undecided shape stays the deferral, and the `?` never reads it.
         refine hcv.elim (fun hc_colon => ?_) (fun hc_q => ?_)

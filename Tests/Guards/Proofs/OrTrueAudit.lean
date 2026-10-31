@@ -251,7 +251,7 @@ def posLine (p : Pos) : String := s!"{p.decl}{p.site} {p.kind} ∨ {p.alt}"
 -- projection `markedCols`: four fabricated births DECLINE (`Or.inr trivial` writers into `PackAltG`/`PackAlt`
 -- positions), none paid; positions unchanged.
 def expectedSummary : String :=
-  "positions=269 top=166 nested=103 True=195 PackAlt=65 PackAltG=9 modules=2 supply: paid=28 relayed=116 declined-only=0 never-supplied=0 unresolved=9 conclusions=11 consumers: spent=102 relayed=15 unused=0 unreadable=36 writers=39 inrTrivial=514"
+  "positions=270 top=167 nested=103 True=195 PackAlt=66 PackAltG=9 modules=2 supply: paid=28 relayed=117 declined-only=0 never-supplied=0 unresolved=9 conclusions=11 consumers: spent=103 relayed=15 unused=0 unreadable=36 writers=39 inrTrivial=514"
 
 def expectedPositions : List String :=
   [ "L4YAML.Proofs.PreprocessIndentStable.IndentFloor.transport[3].h_floor top ∨ True",
@@ -410,6 +410,7 @@ def expectedPositions : List String :=
     "L4YAML.Proofs.StreamAccum.colon_open_map_props[12].h_routeFV nested ∨ True",
     "L4YAML.Proofs.StreamAccum.colon_open_map_props[29].h_kslotD top ∨ PackAlt",
     "L4YAML.Proofs.StreamAccum.compact_open_map[29].h_outer top ∨ True",
+    "L4YAML.Proofs.StreamAccum.compact_open_map[30].h_chainUp top ∨ PackAlt",
     "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[16].h_keyctx top ∨ True",
     "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[19].h_propsctx top ∨ True",
     "L4YAML.Proofs.StreamAccum.content_dispatch_routed[18].h_keyctx top ∨ True",
@@ -613,6 +614,7 @@ def expectedSupply : List String :=
     "L4YAML.Proofs.StreamAccum.colon_open_map_props[12].h_routeFV relayed [SPLIT=1]",
     "L4YAML.Proofs.StreamAccum.colon_open_map_props[29].h_kslotD relayed [FIELD=1]",
     "L4YAML.Proofs.StreamAccum.compact_open_map[29].h_outer relayed [SPLIT=2]",
+    "L4YAML.Proofs.StreamAccum.compact_open_map[30].h_chainUp relayed [SPLIT=2]",
     "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[16].h_keyctx paid [PAY=2 VIA=1]",
     "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[19].h_propsctx relayed [DECLINE=2 SPLIT=1]",
     "L4YAML.Proofs.StreamAccum.content_dispatch_routed[18].h_keyctx relayed [DECLINE=1 RELAY=1 VIA=6]",
@@ -702,7 +704,11 @@ def expectedSupply : List String :=
 -- 2026-10-31 (item 412): TWO new positions on the owner's word — item 411's (α) ruling, taken by default on a
 -- quiet merge of #185 — `pendingMapValue.h_expl`'s `?` disjunct carries the chain ONE FRAME UP over the park's own
 -- entry with a `∨ PackAlt sc` alternative (the field and the consumer lemma's premise copy of it); 267 → 269.
-def ceilingPositions : Nat := 269
+-- 2026-10-31 (item 413): ONE new position on the owner's word — his ruling "(ii)" (fold 413 into #186) was taken
+-- after the predicted 267 → 270 was put to him: `compact_open_map[30].h_chainUp`, the RELAY parameter carrying the `-` /
+-- slot park's chain one frame up (`∨ PackAlt sc`) to the opener's supply; no write is added (the declined half is relayed,
+-- the opener's existing re-decline stays).  `positions` cannot fall while `PackAlt` is `True` — item 414 makes it informative.
+def ceilingPositions : Nat := 270
 -- 2026-10-30 (item 405, Rule 8 fix): two more `Or.inr trivial` writers (509 → 511) — the two head consumers of the `?`-park chain
 -- (`flowKeyRoute_of_open`'s compact pair, the props park's entry-level pack) split on the projection `markedCols sc` and DECLINE at the
 -- markless list (never a `?` park, unprovable at the face); positions and supply classes unchanged.
@@ -801,6 +807,7 @@ def expectedConsumers : List String :=
     "L4YAML.Proofs.StreamAccum.colon_open_map_props[12].h_routeFV spent [cased=2 passed=0]",
     "L4YAML.Proofs.StreamAccum.colon_open_map_props[29].h_kslotD spent [cased=1 passed=0]",
     "L4YAML.Proofs.StreamAccum.compact_open_map[29].h_outer spent [cased=1 passed=0]",
+    "L4YAML.Proofs.StreamAccum.compact_open_map[30].h_chainUp spent [cased=1 passed=0]",
     "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[16].h_keyctx relayed [cased=0 passed=1]",
     "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[19].h_propsctx relayed [cased=0 passed=1]",
     "L4YAML.Proofs.StreamAccum.content_dispatch_routed[18].h_keyctx spent [cased=2 passed=8]",

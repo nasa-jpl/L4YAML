@@ -292,7 +292,7 @@ def isSurfFace (env : Environment) (lhs : Expr) : MetaM Bool := do
 -- 2026-10-29 (item 389): faces 62 → 63 — the mapping-top conjunct is one more narrowing face on the `-` park's route fields.
 -- 2026-10-29 (item 396): after_close's four optional contexts restated (binders 167 → 162, syntactic 159 → 154); flowOpen_floor_at_prep deleted (theorems 6362 → 6361, its DECLINE|PAY conclusion was one of the 17 no-op pairs).
 -- 2026-10-30 (item 405): faces 63 → 64 — `pendingMapValue.h_explUp`'s new `∨ PackAlt sc` arm (ruling "405 a").
-def expectedFaceTally : String := "binders=161 faces=64 heads=20"
+def expectedFaceTally : String := "binders=162 faces=64 heads=20"
 
 /-- The conclusion head of every left disjunct.  `FVAR 2` is `frameChainUnion`,
     whose face is schematic in `P` — the two rows no census of any kind can
@@ -327,7 +327,7 @@ def expectedHeadCensus : List String :=
    "PropsNodeRoute 4",
    -- 2026-10-27 (item 371): ResumeFrames 3 → 18, SLYamlStream 20 → 5 — every value-line pack's
    -- conclusion is a singleton `ResumeFrames` over the stream.
-   "ResumeFrames 15",
+   "ResumeFrames 16",
    "SLYamlStream 5",
    "SeqEntryTail 7",
    "Sound 2",
@@ -384,7 +384,7 @@ which of four reasons applies. -/
 -- 2026-10-26 (item 369): binders=165 → binders=166, surf=134 → surf=135 — `accum_block_on_pendingBlock.h_closeF_old` (the `-` park's frames, read at the `:`/`?` landing for `h_res_land`).
 -- 2026-10-28 (item 385): binders 166 → 167, surf 135 → 136
 -- — `deeperLandingResume.h_valF`: one more surface-shaped optional binder.
-def expectedFidelity : String := "binders=161 surf=132 state=29"
+def expectedFidelity : String := "binders=162 surf=133 state=29"
 
 /-- The 25 faces a state census COULD evaluate — 27 since item 300 — which is
     the population the mandate's instrument is actually defined over.  Two of them
@@ -533,7 +533,7 @@ def chainKeySet : Std.HashSet String :=
 -- 2026-10-26 (item 370): splits 104 → 105, innerSplits 56 → 57 — the sibling `-` arm's split of `h_closeF_old`.
 -- 2026-10-28 (item 380, PR #146 review): splits 105 → 108 — `h_kslotUp`'s `Or.elim` decisions (see the ledger); pairs/sup unchanged.
 def expectedWorthTally : String :=
-  "pairs=36 splits=108 sup=99 chainPairs=0 chainSplits=0 innerPairs=13 \
+  "pairs=36 splits=109 sup=99 chainPairs=0 chainSplits=0 innerPairs=13 \
 innerSplits=57"
 
 /-- The ledger, worth-first.  `chain` is §3's verdict — a narrowing here lands
@@ -576,7 +576,7 @@ def expectedWorthLedger : List String :=
    -- 2026-10-28 (item 380, PR #146 review): `h_kslotUp` splits 3 → 5 at pendingBlock, 1 → 2 at pendingBlockContent —
    -- `Or.elim` is a two-arm split (`RelaySupplyCensus.isTwoArm`): the `Classical.em … |>.elim` decisions rooted at
    -- the key-slot premise count as splits; worth (`sup`, inner/-) unchanged.
-   "splits=5 sup=1 - h_kslotUp :: accum_block_on_pendingBlock#30",
+   "splits=6 sup=1 - h_kslotUp :: accum_block_on_pendingBlock#30",
    "splits=5 sup=1 - h_seqF168 :: accum_content_on_pendingMapValue_indented#38",
    "splits=4 sup=1 inner h_closeFV108 :: accum_content_on_pendingMapValue_indented#20",
    "splits=4 sup=1 inner h_closeFV_old :: accum_block_on_pendingBlockContent#37",
@@ -623,7 +623,7 @@ def expectedWorthLedger : List String :=
 -- 2026-10-26 (item 369): branchPairs=35 → branchPairs=36, splits=103 → splits=104 — `accum_block_on_pendingBlock.h_closeF_old` (the `-` park's frames, read at the `:`/`?` landing for `h_res_land`).
 -- 2026-10-26 (item 370): splits 104 → 105 — the sibling `-` arm's split of `h_closeF_old`.
 -- 2026-10-28 (item 380, PR #146 review): splits 105 → 108, same cause; reach unchanged.
-def expectedBranchReach : String := "branchPairs=36 stateReachable=1 splits=108 stateSplits=3"
+def expectedBranchReach : String := "branchPairs=36 stateReachable=1 splits=109 stateSplits=3"
 
 open Meta in
 run_cmd do
@@ -695,7 +695,7 @@ rather than as a count. -/
 -- 2026-10-26 (item 369): syntactic=157 → syntactic=158, population=159 → population=160 — `accum_block_on_pendingBlock.h_closeF_old` (the `-` park's frames, read at the `:`/`?` landing for `h_res_land`).
 -- 2026-10-28 (item 385): syntactic 158 → 159, population 160 → 161
 -- — the same binder, syntactically optional.
-def expectedHiddenTally : String := "hiddenDefs=1 syntactic=154 hiddenOnly=2 population=156"
+def expectedHiddenTally : String := "hiddenDefs=1 syntactic=155 hiddenOnly=2 population=157"
 
 def expectedHiddenDefs : List String := ["ResumeKeyCtx"]
 

@@ -8829,6 +8829,120 @@ def testEntryChain (state : IO.Ref TestCollector) : IO Unit := do
     (qPauses > 0 && coverOK == qPauses && colonPauses > 0 && colonAdds == 0 &&
      routedAcc == routed.length && declinedAcc == declined.length)
 
+-- 77, grammar half (item 413) — the surface ROUTE `h_chainUp` carries, challenged off the
+-- constructors (a refutation is a build failure).  `compact_open_map` states the chain over the
+-- `-` / slot park's CONTENT `SBlockIndented n ctx`, not over its own entry: these examples pin
+-- (a) the wrapper the supply builds — a lone compact `?` entry IS that content through
+-- `SCompactMapTail.nil`; (b) the discharge — an ancestor `:` at a marked column `nv` after that
+-- content resumes `[map nv]` under the route both callers hold; (c) the `-` park's relay — its
+-- `h_kslotUp` (content in `.blockIn` + a compact-sequence tail) reaches the same route at the `nil`
+-- tail; (d) the refutation bucket — a compact-map tail that MOVES has a sibling entry, which the
+-- lone-entry wrapper never builds (`cases` over `SCompactMapTail`'s two constructors).
+section CompactChainGrammar
+open L4YAML.Surface L4YAML.Proofs.IndentStackCover L4YAML.Proofs.StreamAccum
+
+example (n m : Nat) (ctx : YamlContext) (sp_e sp_i sp_v : SurfPos)
+    (h_ind : SIndent m sp_e sp_i) (h_entry : SBlockMapEntry (n + 1 + m) sp_i sp_v) :
+    SBlockIndented n ctx sp_e sp_v :=
+  SBlockIndented.compactMap n ctx m sp_e sp_i sp_v h_ind
+    (SCompactMap.mk (n + 1 + m) sp_i sp_v sp_v h_entry (SCompactMapTail.nil (n + 1 + m) sp_v))
+
+example (n m nv : Nat) (ctx : YamlContext) (sp_start sp_e sp_i sp_v sp_c sp_c' sp_w : SurfPos)
+    (h_ind : SIndent m sp_e sp_i) (h_entry : SBlockMapEntry (n + 1 + m) sp_i sp_v)
+    (h_ci : SIndent nv sp_v sp_c) (h_colon : GLit ':' sp_c sp_c')
+    (h_val : SBlockIndented nv .blockOut sp_c' sp_w)
+    (route : ∀ sp_m : SurfPos, SBlockIndented n ctx sp_e sp_m →
+      ∀ sp_i sp_c : SurfPos, SIndent nv sp_m sp_i → GLit ':' sp_i sp_c →
+      ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →
+      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) :
+    ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w :=
+  route sp_v
+    (SBlockIndented.compactMap n ctx m sp_e sp_i sp_v h_ind
+      (SCompactMap.mk (n + 1 + m) sp_i sp_v sp_v h_entry (SCompactMapTail.nil (n + 1 + m) sp_v)))
+    sp_c sp_c' h_ci h_colon sp_w h_val
+
+example (n nv : Nat) (sp_start sp_scan : SurfPos)
+    (h_kslotUp : ∀ sp_m : SurfPos, SBlockIndented n .blockIn sp_scan sp_m →
+      ∀ sp_e : SurfPos, SCompactSeqTail n sp_m sp_e →
+      ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →
+      ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →
+      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) :
+    ∀ sp_m : SurfPos, SBlockIndented n .blockIn sp_scan sp_m →
+      ∀ sp_i sp_c : SurfPos, SIndent nv sp_m sp_i → GLit ':' sp_i sp_c →
+      ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →
+      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v :=
+  fun sp_m h_m => h_kslotUp sp_m h_m sp_m (SCompactSeqTail.nil n sp_m)
+
+example (k : Nat) (s s' : SurfPos) (h : SCompactMapTail k s s') (hne : s ≠ s') :
+    ∃ s₁ s₂ : SurfPos, SIndent k s s₁ ∧ SBlockMapEntry k s₁ s₂ := by
+  cases h with
+  | nil => exact absurd rfl hne
+  | cons _ _ s₁ s₂ _ h_ind h_entry _ => exact ⟨s₁, s₂, h_ind, h_entry⟩
+
+end CompactChainGrammar
+
+def testCompactChain (state : IO.Ref TestCollector) : IO Unit := do
+  -- 77 (item 413, PAID) — `compact_open_map`'s chain ONE FRAME UP, supplied from the `-` / slot
+  -- park's chain over the entry's CONTENT (`h_chainUp`, on the PRE-state's projection) through the
+  -- compact `?`'s own mark step (`h_mcstep`).  What the supply reads at every COMPACT `?` dispatch
+  -- (a `?` on the line of the `-` / `?` / `:` that parked the pending): (i) the cover — every post
+  -- mark is the own column or a pre mark, and the own column is a post mark (so a post mark OTHER
+  -- than the own column is a pre mark: the `nv ≠ n + 1 + m` case hands `up` a member of
+  -- `markedCols sc`); (ii) the own column read off the pre-state (`hk`) IS the `?`'s surface column.
+  -- Hypothesis buckets: compact pauses whose pre-state holds a mark (the chain's domain is
+  -- non-empty — the informative case) vs markless (the chain is vacuous there).  Refutation
+  -- bucket: a compact `-` dispatch adds no mark (its chain rides the UNCHANGED domain,
+  -- `h_mcstep_ne`).  End to end: inputs whose ancestor `:` lands after a compact `?` entry parse.
+  let accepts (input : String) : Bool := match parseYaml input with | .ok _ => true | .error _ => false
+  let routed : List String :=
+    ["? - ? a\n    : b\n: c\n", "- ? a\n  : b\n", "? ? ? a\n    : b\n  : c\n: d\n", "? a\n: ? b\n  : c\n",
+     "- - ? a\n    : b\n", "?\n  - ? a\n    : b\n: c\n", "? - ? a\n: c\n", "- ? ? a\n    : b\n  : c\n"]
+  let routedAcc := (routed.filter accepts).length
+  let corpus : List String := routed ++
+    ["? a\n: b\n", "? ? a\n  : b\n: c\n", "- ? a: 1\n  : b\n", "? - a\n  - b\n: c\n", "a:\n  ? b\n  : c\n",
+     "? a\n? b\n: c\n", "? &p a: b\n: - w\n", "?\n  ? -\n: w\n", "- ? - a\n  : b\n",
+     "k:\n  ? - a\n  : b\n", "? -\n: w\n", "? - ? - a\n  : b\n: c\n", "?\n  ?\n    -\n    - b\n  ? c\n: w\n",
+     "? a\n:\n  ? b\n  : c\n", "? ? ? a\n    : b\n  : c\n: d\n", "- - ? - a\n      : b\n"]
+  -- A COMPACT pause: the indicator stands on the line of a `-` / `?` / `:` with only spaces between.
+  let compactAt (input : String) (sP : L4YAML.Scanner.ScannerState) : Bool :=
+    match ((input.toList.take sP.offset).reverse.dropWhile (· == ' ')) with
+    | ch :: _ => ch == '-' || ch == '?' || ch == ':'
+    | [] => false
+  let surfCol (input : String) (sP : L4YAML.Scanner.ScannerState) : Nat :=
+    ((input.toList.take sP.offset).reverse.takeWhile (· != '\n')).length
+  let mut cPauses := 0
+  let mut preMarked := 0
+  let mut preMarkless := 0
+  let mut coverOK := 0
+  let mut colOK := 0
+  let mut dashPauses := 0
+  let mut dashAdds := 0
+  for input in corpus do
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:64] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) =>
+          if sP.flowLevel == 0 && compactAt input sP then
+            let before := L4YAML.Proofs.RegisterWitness.markedCols sP
+            let after := L4YAML.Proofs.RegisterWitness.markedCols sN
+            if c == '?' then
+              cPauses := cPauses + 1
+              if before.isEmpty then preMarkless := preMarkless + 1 else preMarked := preMarked + 1
+              if after.all (fun x => x == sP.col || before.contains x) && after.contains sP.col then
+                coverOK := coverOK + 1
+              if surfCol input sP == sP.col then colOK := colOK + 1
+            else if c == '-' then
+              dashPauses := dashPauses + 1
+              if after.length > before.length then dashAdds := dashAdds + 1
+          s := sN
+        | _ => break
+      | _ => break
+  check state s!"P77 compact chain (item 413): compact `?` pauses={cPauses} (pre-state marked={preMarked} markless={preMarkless}) cover (own ∈ post, post ⊆ own ∪ pre — what `h_mcstep` hands the supply)={coverOK} own column = the `?`'s surface column (`hk`)={colOK}; compact `-` pauses={dashPauses} adding a mark={dashAdds} (must be 0); routed inputs accepted={routedAcc}/{routed.length}"
+    (cPauses > 0 && preMarked > 0 && preMarkless > 0 && coverOK == cPauses && colOK == cPauses &&
+     dashPauses > 0 && dashAdds == 0 && routedAcc == routed.length)
+
 def testFlowCarrier (state : IO.Ref TestCollector) : IO Unit := do
   let nestedQ : List String := ["?\n  ? -\n: w\n", "? - ? - a\n  : b\n: c\n", "?\n  ?\n    -\n    - b\n  ? c\n: w\n", "? ? - a\n  : b\n: c\n", "- ? - a\n  : b\n"]
   let singleQ : List String := ["? - a\n: b\n", "?\n  - a\n  - b\n: w\n", "k:\n  ? - a\n  : b\n", "? -\n: w\n"]
@@ -9024,6 +9138,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testOwnMark state
   testCompactCover state
   testEntryChain state
+  testCompactChain state
 
   testQuestionMarkColumn state
   testK1Lanes state
