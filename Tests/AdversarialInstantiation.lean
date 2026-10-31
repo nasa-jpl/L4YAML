@@ -8792,7 +8792,9 @@ def testEntryChain (state : IO.Ref TestCollector) : IO Unit := do
      "k:\n  ? - a\n  : b\n", "? -\n: w\n", "? - ? - a\n  : b\n: c\n", "?\n  ?\n    -\n    - b\n  ? c\n: w\n",
      "? a\n:\n  ? b\n  : c\n", "? ? ? a\n    : b\n  : c\n: d\n"]
   let mut qPauses := 0
-  let mut consShape := 0
+  let mut coverOK := 0
+  let mut ownAtTail := 0
+  let mut ownAtHead := 0
   let mut colonPauses := 0
   let mut colonAdds := 0
   for input in corpus do
@@ -8807,15 +8809,22 @@ def testEntryChain (state : IO.Ref TestCollector) : IO Unit := do
             let after := L4YAML.Proofs.RegisterWitness.markedCols sN
             if c == '?' then
               qPauses := qPauses + 1
-              if after == before ++ [sP.col] || after == sP.col :: before then consShape := consShape + 1
+              -- What the supply uses is the COVER (`h_mcstep`: `MarkedColsIn s' (k :: nsU)`, read by
+              -- membership): every post mark is the own column or a pre mark, and the own column is a
+              -- post mark.  WHERE the own column sits is a reading, not the invariant — `markedCols`
+              -- walks the indent stack in index order, so a push lands at the TAIL.
+              if after.all (fun m => m == sP.col || before.contains m) && after.contains sP.col then
+                coverOK := coverOK + 1
+              if after == before ++ [sP.col] then ownAtTail := ownAtTail + 1
+              if after == sP.col :: before then ownAtHead := ownAtHead + 1
             else if c == ':' then
               colonPauses := colonPauses + 1
               if after.length > before.length then colonAdds := colonAdds + 1
           s := sN
         | _ => break
       | _ => break
-  check state s!"P76 entry chain (item 412): block `?` pauses={qPauses} post marks = own column + pre marks={consShape}; block `:` pauses={colonPauses} adding a mark={colonAdds} (must be 0); routed inputs accepted={routedAcc}/{routed.length} declined-class inputs accepted={declinedAcc}/{declined.length}"
-    (qPauses > 0 && consShape == qPauses && colonPauses > 0 && colonAdds == 0 &&
+  check state s!"P76 entry chain (item 412): block `?` pauses={qPauses} post marks ⊆ own column ∪ pre marks with own ∈ post (the cover `h_mcstep` supplies)={coverOK} — own column at tail={ownAtTail} at head={ownAtHead} (order is a reading, not the invariant); block `:` pauses={colonPauses} adding a mark={colonAdds} (must be 0); routed inputs accepted={routedAcc}/{routed.length} declined-class inputs accepted={declinedAcc}/{declined.length}"
+    (qPauses > 0 && coverOK == qPauses && colonPauses > 0 && colonAdds == 0 &&
      routedAcc == routed.length && declinedAcc == declined.length)
 
 def testFlowCarrier (state : IO.Ref TestCollector) : IO Unit := do
