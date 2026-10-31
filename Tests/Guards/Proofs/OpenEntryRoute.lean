@@ -473,7 +473,7 @@ def expectedAvail : List String :=
     "accum_content_on_pendingBlock_indented: behind=[h_close_old:blockIn, h_close_entry_old:blockIn, h_kslot_old:blockIn/blockOut, h_closeF_old:blockIn, h_seqF_old:blockIn, h_kslotUp_old:blockIn/blockOut, h_closeFV_old:blockIn] ahead=[]",
     "accum_content_on_pendingMapValue_indented: behind=[h_vslot:blockOut, h_ivl_mv:blockOut] ahead=[h_expl:blockOut, h_kslot:blockOut]",
     "colon_open_map_explicit: behind=[] ahead=[hvp:blockOut]",
-    "compact_open_map: behind=[h_close_old:var] ahead=[]",
+    "compact_open_map: behind=[h_close_old:var, h_chainUp:var/blockOut] ahead=[]",
     "colon_open_map_implicit: behind=[] ahead=[h_kslotD:blockOut]",
     "colon_open_map_props: behind=[] ahead=[h_kslotD:blockOut]",
     "indicator_open_map: behind=[] ahead=[h_explUp_chain:blockOut, h_explUp_chainD:blockOut]",
