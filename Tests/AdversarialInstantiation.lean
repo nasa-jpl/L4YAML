@@ -9014,6 +9014,62 @@ def testRefusedAtParks (state : IO.Ref TestCollector) : IO Unit := do
      dashPauses > 0 && dashCarries == dashPauses && deadParks > 0 && armedParks > 0 &&
      flowOpensArmed > 0 && flowOpensSaved == flowOpensArmed && flowClosesSaved > 0 && flowClosesRestored == flowClosesSaved)
 
+def testInlDeclinesPaid (state : IO.Ref TestCollector) : IO Unit := do
+  -- 79 (item 415, PAID 7 of 14) — the statement-shaped `Or.inl … => Or.inr trivial` declines whose
+  -- upstream route now reaches the site: the `?` entry's chain read at its KEY content
+  -- (`explEntryChain_of_keyContent`: a `:` at the entry's OWN column completes `[186] explicit`
+  -- and closes the stream — one resume level; a `:` at an ENCLOSING mark leaves a key-only entry
+  -- (`explicitEmpty`) and item 412's chain one frame up resumes that column), the props run's
+  -- node as the entry's content at a nil tail, the compact fill's ancestor list, and the
+  -- relay of an upstream decline.  Hypothesis buckets on the parser: at every block `:` pause
+  -- standing on an ARMED register, the `:` lands at the register's own column (the entry
+  -- completes) or RIGHT of it only on the register's OWN LINE (an implicit key inside the `?`'s
+  -- key content, `? a: [1]` — `[186]`'s key node, not a value line); no `:` lands right of the
+  -- register on a LATER line, and LEFT of it is a READING, not a claim: a `:` at an ENCLOSING
+  -- `?`'s column (`? ? a\n: c`, the key-only inner entry the `nv ≠ n` arm serves) pauses with
+  -- the register already reading that enclosing `?` — the scanner presents the proof's
+  -- `explicitEmpty` inputs as own-column pauses of the outer register.  The first cut claimed
+  -- "nothing right of it" and "left of it must occur"; the same-line implicit keys refuted the
+  -- first (4 of 33) and the restored register the second (0 of 33), and the buckets were restated.
+  -- End to end: the routed inputs parse.  The seven UNPAID (`accum_content_pending` ×6: the
+  -- props park's slot `h_kslotE` carries a bare `∃ nv` with no domain; `colon_open_map`: a
+  -- frames fact where a marked-column chain is owed) are a class the item names, not refutes:
+  -- their inputs parse too (`declinedClass`).
+  let accepts (input : String) : Bool := match parseYaml input with | .ok _ => true | .error _ => false
+  let routed : List String :=
+    ["k:\n  ? a\n  : b\n", "k:\n  ? ? a\n    : b\n  : c\n", "? ? a\n  : b\n: c\n", "? a\n: b\n",
+     "? [1]: b\n: - w\n", "? ? [1]\n  : b\n: w\n", "? [1]\n: v\n", "? a: [1]\n: - w\n",
+     "? - &a x\n: - w\n", "? - !!str x\n: w\n", "? - a\n: - w\n", "? - ? - a\n    : b\n: c\n",
+     "? ? - a\n  : b\n: c\n", "k:\n  ? a: |\n      x\n  : d\n", "? a: \"p\n    q\"\n: - w\n",
+     "? ? a\n: c\n", "k:\n  ? ? a\n  : c\n", "- ? ? a\n  : c\n", "? ? - a\n: c\n"]
+  let declinedClass : List String := ["? &a x\n: w\n", "? !!str x\n: w\n", "- ? &a x\n  : w\n", "? a\n:\n  ? b\n  : c\n"]
+  let routedAcc := (routed.filter accepts).length
+  let declinedAcc := (declinedClass.filter accepts).length
+  let mut armedColons := 0
+  let mut ownCol := 0
+  let mut leftOfOwn := 0
+  let mut rightInKey := 0
+  let mut rightOfOwn := 0
+  for input in routed ++ declinedClass do
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:64] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) =>
+          if c == ':' && sP.flowLevel == 0 && sP.explicitKeyLine.isSome then
+            armedColons := armedColons + 1
+            if (sP.col : Int) == sP.explicitKeyCol then ownCol := ownCol + 1
+            else if (sP.col : Int) < sP.explicitKeyCol then leftOfOwn := leftOfOwn + 1
+            else if sP.explicitKeyLine == some sP.line then rightInKey := rightInKey + 1
+            else rightOfOwn := rightOfOwn + 1
+          s := sN
+        | _ => break
+      | _ => break
+  check state s!"P79 Or.inl declines paid (item 415): block `:` pauses on an ARMED register={armedColons} — at the register's own column (the `?` entry completes, `explicit`)={ownCol} left of it (a reading: an enclosing `?`'s `:` pauses on the register already restored to that `?`)={leftOfOwn} right of it on the `?`'s own line (an implicit key inside the key content — must occur)={rightInKey} right of it on a later line={rightOfOwn} (must be 0); routed inputs accepted={routedAcc}/{routed.length}; declined-class inputs accepted={declinedAcc}/{declinedClass.length}"
+    (armedColons > 0 && ownCol > 0 && rightInKey > 0 && rightOfOwn == 0 &&
+     routedAcc == routed.length && declinedAcc == declinedClass.length)
+
 def testFlowCarrier (state : IO.Ref TestCollector) : IO Unit := do
   let nestedQ : List String := ["?\n  ? -\n: w\n", "? - ? - a\n  : b\n: c\n", "?\n  ?\n    -\n    - b\n  ? c\n: w\n", "? ? - a\n  : b\n: c\n", "- ? - a\n  : b\n"]
   let singleQ : List String := ["? - a\n: b\n", "?\n  - a\n  - b\n: w\n", "k:\n  ? - a\n  : b\n", "? -\n: w\n"]
@@ -9211,6 +9267,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testEntryChain state
   testCompactChain state
   testRefusedAtParks state
+  testInlDeclinesPaid state
 
   testQuestionMarkColumn state
   testK1Lanes state

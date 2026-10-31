@@ -251,7 +251,7 @@ def posLine (p : Pos) : String := s!"{p.decl}{p.site} {p.kind} ∨ {p.alt}"
 -- projection `markedCols`: four fabricated births DECLINE (`Or.inr trivial` writers into `PackAltG`/`PackAlt`
 -- positions), none paid; positions unchanged.
 def expectedSummary : String :=
-  "positions=270 top=167 nested=103 True=195 PackAlt=66 PackAltG=9 modules=2 supply: paid=28 relayed=117 declined-only=0 never-supplied=0 unresolved=9 conclusions=11 consumers: spent=103 relayed=15 unused=0 unreadable=36 writers=39 inrTrivial=514"
+  "positions=270 top=167 nested=103 True=195 PackAlt=66 PackAltG=9 modules=2 supply: paid=28 relayed=117 declined-only=0 never-supplied=0 unresolved=9 conclusions=11 consumers: spent=103 relayed=15 unused=0 unreadable=36 writers=39 inrTrivial=507"
 
 def expectedPositions : List String :=
   [ "L4YAML.Proofs.PreprocessIndentStable.IndentFloor.transport[3].h_floor top ∨ True",
@@ -536,7 +536,7 @@ def expectedSupply : List String :=
     "L4YAML.Proofs.StreamAccum.PendingNode.pendingContent[12].h_framesV relayed [DECLINE=4 SPLIT=8]",
     "L4YAML.Proofs.StreamAccum.PendingNode.pendingContent[16].h_seqF relayed [DECLINE=9 SPLIT=3]",
     "L4YAML.Proofs.StreamAccum.PendingNode.pendingProps[19].h_ncol paid [FIELD=2 PAY=3 RELAY=1]",
-    "L4YAML.Proofs.StreamAccum.PendingNode.pendingProps[21].h_kslot relayed [DECLINE=3 FIELD=2 RELAY=1]",
+    "L4YAML.Proofs.StreamAccum.PendingNode.pendingProps[21].h_kslot relayed [DECLINE=2 FIELD=2 RELAY=1 SPLIT=1]",
     "L4YAML.Proofs.StreamAccum.PendingNode.pendingProps[22].h_routeE paid [DECLINE=3 FIELD=2 PAY=1]",
     "L4YAML.Proofs.StreamAccum.PendingNode.pendingProps[23].h_kslotE relayed [DECLINE=3 FIELD=2 SPLIT=1]",
     "L4YAML.Proofs.StreamAccum.PendingNode.pendingProps[24].h_closeFE relayed [DECLINE=3 FIELD=2 SPLIT=1]",
@@ -551,7 +551,7 @@ def expectedSupply : List String :=
     "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[10].h_kslot relayed [DECLINE=1 SPLIT=6]",
     "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[11].h_closeF paid [PAY=5 SPLIT=2]",
     "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[13].h_seqF paid [DECLINE=6 PAY=1]",
-    "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[14].h_kslotUp relayed [DECLINE=3 SPLIT=4]",
+    "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[14].h_kslotUp relayed [DECLINE=2 SPLIT=5]",
     "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[15].h_closeFV relayed [DECLINE=1 SPLIT=6]",
     "L4YAML.Proofs.StreamAccum.PendingNode.pendingMapValue[15].h_ncol paid [DECLINE=2 PAY=4]",
     "L4YAML.Proofs.StreamAccum.PendingNode.pendingMapValue[16].h_kslot relayed [DECLINE=3 SPLIT=3]",
@@ -648,7 +648,7 @@ def expectedSupply : List String :=
     "L4YAML.Proofs.StreamAccum.flowKeyHead[ret] conclusion",
     "L4YAML.Proofs.StreamAccum.flowKeyPack_of_close[7].h_key relayed [VIA=2]",
     "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_open[12].h_compact paid [DECLINE=1 FIELD=1 PAY=1]",
-    "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_open[13].h_compact_pair relayed [DECLINE=2 SPLIT=1]",
+    "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_open[13].h_compact_pair relayed [DECLINE=1 SPLIT=2]",
     "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_open[ret] conclusion",
     "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[9].h_col paid [DECLINE=3 PAY=1]",
     "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[20].h_sfx unresolved [DECLINE=3 LOCAL(h_sfx)=1]",
@@ -885,17 +885,17 @@ def expectedConsumers : List String :=
 def expectedWriters : List String :=
   [ "L4YAML.Proofs.PreprocessIndentStable.IndentFloor.transport ×1 (PreprocessIndentStable)",
     "L4YAML.Proofs.StreamAccum.FlowBaseRoutes.ofValue ×3 (StreamAccum)",
-    "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock ×30 (StreamAccum)",
+    "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock ×28 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.accum_block_on_noPending ×7 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlock ×32 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlockContent ×26 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.accum_block_on_pendingContent ×12 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.accum_block_pending ×40 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.accum_content_on_noPending ×12 (StreamAccum)",
-    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingBlock_indented ×29 (StreamAccum)",
-    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented ×32 (StreamAccum)",
+    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingBlock_indented ×28 (StreamAccum)",
+    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented ×29 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.accum_content_pending ×81 (StreamAccum)",
-    "L4YAML.Proofs.StreamAccum.accum_flow_open_depth0 ×67 (StreamAccum)",
+    "L4YAML.Proofs.StreamAccum.accum_flow_open_depth0 ×66 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.accum_step_flow ×6 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.colon_open_map ×4 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.colon_open_map_explicit ×6 (StreamAccum)",
