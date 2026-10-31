@@ -8698,6 +8698,23 @@ def testOwnMark (state : IO.Ref TestCollector) : IO Unit := do
   check state s!"P74 refused_of_markedCols_eq_nil (item 410): block pauses eligible Sound={cEligible} (ineligible={cIneligible}) markless={cMarkless} live register at a markless pause={cLiveAtMarkless} (marked={cMarked}, live there={cMarkedLive}) block `?` pauses={qPauses} markless after={qMarkless}"
     (cEligible > 0 && cMarkless > 0 && cLiveAtMarkless == 0 && cMarked > 0 && cMarkedLive == cMarked && qPauses > 0 && qMarkless == 0)
 
+open L4YAML.Surface in
+/-- Priority 75 (item 411), the GRAMMAR half read off the SURFACE CONSTRUCTORS, not the parser:
+    every `[187]` entry opens with `?`, with a bare `:` (empty key), or with an implicit key whose
+    value is `[192]`'s `s-l+block-node(n, block-out)` or `e-node s-l-comments` — never a compact
+    collection, which only `SBlockIndented` ([185]) admits.  By `cases` over the six constructors. -/
+lemma blockMapEntry_implicit_value_is_node {n : Nat} {s s' : L4YAML.Surface.SurfPos}
+    (h : L4YAML.Surface.SBlockMapEntry n s s') :
+    (∃ s₁, GLit '?' s s₁) ∨ (∃ s₁, GLit ':' s s₁) ∨
+    (∃ s₁ s₂, SImplicitKey s s₁ ∧ GLit ':' s₁ s₂ ∧
+      (SBlockNode (n + 1) .blockOut s₂ s' ∨ SSLComments s₂ s')) := by
+  cases h
+  all_goals first
+    | exact Or.inl ⟨_, by assumption⟩
+    | exact Or.inr (Or.inl ⟨_, by assumption⟩)
+    | exact Or.inr (Or.inr ⟨_, _, by assumption, by assumption, Or.inl (by assumption)⟩)
+    | exact Or.inr (Or.inr ⟨_, _, by assumption, by assumption, Or.inr (by assumption)⟩)
+
 def testCompactCover (state : IO.Ref TestCollector) : IO Unit := do
   -- 75 (item 411, PRICED) — the compact builder's four cover arms.  The payable witness is
   -- `markedCols sc` with a route per mark; the park's OWN mark rides `h_expl`'s compact route
@@ -8707,7 +8724,8 @@ def testCompactCover (state : IO.Ref TestCollector) : IO Unit := do
   -- GRAMMAR's, not the proof's: an explicit key's value may be a compact collection
   -- (`? - a⏎: b`), an implicit key's may not (`a: - b` — `[192]` is `s-l+block-node` only), so the
   -- implicit-key openers (`colon_open_map_implicit` / `_props`) have no route for the compact
-  -- forms — the stage-B obstacle.  (ii) At every block `?` dispatch the post-state's marks: the
+  -- forms — the stage-B obstacle.  The constructor fact is `blockMapEntry_implicit_value_is_node`
+  -- above (surface inversion); the parser readings here are its executable shadow.  (ii) At every block `?` dispatch the post-state's marks: the
   -- `?`'s own column is the LAST mark (0 misses); own-only parks (a singleton) are the class a
   -- decidable `markedCols sc = [n]` split would pay, nested parks (≥ 2 marks) the class it leaves.
   let accepts (input : String) : Bool := match parseYaml input with | .ok _ => true | .error _ => false
