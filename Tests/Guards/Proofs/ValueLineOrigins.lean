@@ -792,7 +792,7 @@ def expectedRows : List String :=
    "accum_content_on_pendingBlock_indented #1 param:entryKeyPack_of_dispatch.h_compact := paid:chain/built pos=[param:accum_content_on_pendingBlock_indented.h_kslot_old] origins=[O53] none=[stamp] ⊢ none-held 0/1",
    "accum_content_on_pendingBlock_indented #1 param:entryKeyPack_of_dispatch.h_ivl := paid:chain/built pos=[param:accum_content_on_pendingBlock_indented.h_kslot_old] origins=[O53] none=[stamp] ⊢ none-held 0/1",
    "accum_content_on_pendingBlock_indented #1 ctor:pendingProps.h_key := via/built pos=[param:accum_content_on_pendingBlock_indented.h_kslot_old] origins=[O8,O9,O10,O53] none=[fact] ⊢ none-held 0/4",
-   "accum_content_on_pendingBlock_indented #1 ctor:pendingProps.h_kslotE := paid:chain/built pos=[param:accum_content_on_pendingBlock_indented.h_kslot_old] origins=[O53] none=[punt,stamp] ⊢ none-held 0/1",
+   "accum_content_on_pendingBlock_indented #1 ctor:pendingProps.h_kslotE := paid:chain/built pos=[param:accum_content_on_pendingBlock_indented.h_kslot_old] origins=[O53] none=[stamp] ⊢ none-held 0/1",
    "accum_content_on_pendingBlock_indented #1 param:entryPropsKeyPack_of_dispatch.h_nodeV := paid:chain/built pos=[param:accum_content_on_pendingBlock_indented.h_kslot_old] origins=[O53] none=[stamp] ⊢ none-held 0/1",
    "accum_content_on_pendingBlock_indented #1 param:entryPropsKeyPack_of_dispatch.h_compact := paid:chain/built pos=[param:accum_content_on_pendingBlock_indented.h_kslot_old] origins=[O53] none=[stamp] ⊢ none-held 0/1",
    "accum_content_on_pendingBlock_indented #1 param:entryPropsKeyPack_of_dispatch.h_ivl := paid:chain/built pos=[param:accum_content_on_pendingBlock_indented.h_kslot_old] origins=[O53] none=[stamp] ⊢ none-held 0/1",
@@ -1174,7 +1174,7 @@ def expectedLine : String :=
 -- Item 372 (2026-10-27): the Or-shaped route conjunct of `ImplicitKeyPack` (summary mirrors the five `(Or)` rows).
 -- Item 374: lets=647 → 648, lapps=821 → 822, alts=5234 → 5243, nodes=13694 → 13696, liteNodes=630069 → 632322 — the resume context's face disjunct and `resumectx_of_landing`'s `h_base`.
   -- 2026-10-28 (item 386): lets 652 → 657, alts 5277 → 5280, nodes 13696 → 13706, liteNodes 634748 → 635676 — the `-` opener's `h_lvl_old` and its `omega` spend at the no-pop arm; no origin row moved.
-  "positions=48 packaged=7 packConsts=[ImplicitKeyPack,PropsKeyPack] rows=181 ctorRows=98 paramRows=83 packagedRows=29 punt=5 stamp=49 built=127 origins=54 originRows=22 route=12 frames=29 tail=1 other=0 concl=8 invariant=4 heldOrigins=14 allHeld=2 someHeld=37 noneHeld=58 unbornRows=10 relayedPunt=3 relayedStamp=13 relayedAbsurd=4 relayedFact=0 deadRows=0 unbornPos=5 rounds=5 follows=363 lets=687 lapps=854 alts=5627 nodes=13813 liteNodes=675336"
+  "positions=48 packaged=7 packConsts=[ImplicitKeyPack,PropsKeyPack] rows=181 ctorRows=98 paramRows=83 packagedRows=29 punt=5 stamp=49 built=127 origins=54 originRows=22 route=12 frames=29 tail=1 other=0 concl=8 invariant=4 heldOrigins=14 allHeld=2 someHeld=37 noneHeld=58 unbornRows=10 relayedPunt=3 relayedStamp=13 relayedAbsurd=4 relayedFact=0 deadRows=0 unbornPos=5 rounds=5 follows=363 lets=687 lapps=854 alts=5627 nodes=13813 liteNodes=675370"
 
 /-! ## §4 The reading -/
 

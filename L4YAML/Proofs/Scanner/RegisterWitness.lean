@@ -136,6 +136,12 @@ lemma markedCols_congr {s s' : ScannerState}
 lemma MarkedColsIn.self (sc : ScannerState) : MarkedColsIn sc (markedCols sc) :=
   fun i l c hi hc => markedCols_mem.mpr ⟨i, l, c, hi, hc, rfl⟩
 
+/-- The empty projection is the empty cover: a state with `markedCols sc = []` holds no mark
+    (item 410 — the markless face's refusal reads it). -/
+lemma MarkedColsIn.of_markedCols_nil {sc : ScannerState} (h : markedCols sc = []) :
+    MarkedColsIn sc [] :=
+  fun i l c hi hc => by rw [← h]; exact markedCols_mem.mpr ⟨i, l, c, hi, hc, rfl⟩
+
 /-- Spend a chain's routes at the projection: a domain `ns` of `s'` and a route for
     every member of `ns` give a route for every marked column of `s'`.  Births use it
     with `s' = sc` and the chain they hold; relays with `MarkedColsIn.self` transported
@@ -817,6 +823,14 @@ lemma refused_of_markedCols_nil {s : ScannerState} (hs : Sound s) (hfl : s.flowL
   obtain ⟨c, hc, -⟩ := hs.slots.2 j l' hj
   have := hm j l' c hj hc
   simp at this
+
+/-- **The `?` park's own-mark fact, read as its contrapositive** (item 410): a markless
+    projection at a block-context sound state is a DEAD register — no class-A `:` can fire
+    there — so a face whose `markedCols` is `[]` refuses honestly (`ExplicitValueRefused`),
+    it never declines. -/
+lemma refused_of_markedCols_eq_nil {s : ScannerState} (hs : Sound s) (hfl : s.flowLevel = 0)
+    (h : markedCols s = []) : s.explicitKeyLine = none :=
+  refused_of_markedCols_nil hs hfl (MarkedColsIn.of_markedCols_nil h)
 
 lemma scanBlockEntry_markedCols {s s' : ScannerState} {ns : List Nat}
     (hnf : s.inFlow = false) (hok : scanBlockEntry s = .ok s')

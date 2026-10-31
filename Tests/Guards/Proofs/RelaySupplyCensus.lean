@@ -1242,7 +1242,7 @@ DECLINE|PAY|PAY=1, PAY|VIA=1, PAY|VIA|VIA=1]"
 -- 2026-10-29 (item 389): leaves 386 → 388, DECLINE-free 94 → 95, PAY-free 180 → 181 — the `-` park's k = n mapping-top arm is a PAY leaf now; its sequence-top half stays a decline.
 -- 2026-10-30 (item 405): the `?`-park chain PAID through its ladder — three `h_kslotE_k` content relays and the `h_resKslot`/`hkvUp`-starved `closeThenBlock` births DECLINE (ruling (a)); SPLIT 167 → 164, DECLINE 255 → 258 (edges 657 unchanged).
 def expectedSplitBranch : String :=
-  "splits=163 leaves=380 relayRooted=152 siteDecided=11 optionalRoot=108 plainRoot=44 agree=110/110 disagree=0 [DECLINE-closed=105, DECLINE-free=89, PAY-free=175, VIA L4YAML.Proofs.StreamAccum.deeperLandingResume-=2, VIA L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root-=1, VIA absurd-=8]"
+  "splits=163 leaves=380 relayRooted=152 siteDecided=11 optionalRoot=108 plainRoot=44 agree=110/110 disagree=0 [DECLINE-closed=104, DECLINE-free=90, PAY-free=175, VIA L4YAML.Proofs.StreamAccum.deeperLandingResume-=2, VIA L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root-=1, VIA absurd-=8]"
 
 /-- **The ten splits the site decides for itself**, which is the whole residue
     of the branch question after `expectedSplitBranch`.  Four are a `dite` on a

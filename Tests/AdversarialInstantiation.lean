@@ -8650,6 +8650,54 @@ def testKslotPay (state : IO.Ref TestCollector) : IO Unit := do
   check state s!"P73 MarkedColsIn.step_value (item 409): block `:` pauses={cPauses} (eligible: Sound ∧ Mono={cEligible}, ineligible={cIneligible}) new mark after `:`={cBad} superset cover broken={cSuperBad} (marks dropped at {cShrink}; `[]` not a cover at {cEmptyNotCover} marked pauses); block `?` pauses={qPauses} mark added={qGrow}"
     (cPauses > 0 && cEligible > 0 && cBad == 0 && cSuperBad == 0 && cEmptyNotCover > 0 && qPauses > 0 && qGrow > 0)
 
+def testOwnMark (state : IO.Ref TestCollector) : IO Unit := do
+  -- 74 (item 410) — the `?` park's OWN-MARK fact, read as its contrapositive
+  -- `refused_of_markedCols_eq_nil`: at every block-context pause whose pre-state is `Sound`,
+  -- `markedCols s = []` → the register is DEAD (`explicitKeyLine = none`) — the markless entry
+  -- pack REFUSES, it does not decline.  Buckets: eligible (Sound, flowLevel 0) / ineligible;
+  -- markless pauses (the lemma's domain) / live-at-markless (the refutation bucket, must be 0);
+  -- negative control: a marked pause has a LIVE register (`Sound.reg`); own-mark presence: the
+  -- state after a block `?` dispatch is never markless.
+  let mut cEligible := 0
+  let mut cIneligible := 0
+  let mut cMarkless := 0
+  let mut cLiveAtMarkless := 0
+  let mut cMarked := 0
+  let mut cMarkedLive := 0
+  let mut qPauses := 0
+  let mut qMarkless := 0
+  let corpus : List String :=
+    ["a: 1\n", "a: [1, 2]\n", "? a\n: b\n", "- ? a: 1\n  : b\n", "? ? a\n  : b\n: c\n", "? - a\n  - b\n: c\n",
+     "a:\n  ? b\n  : c\n", "? [a]: b\n: c\n", "? a\n? b\n: c\n", "k: ? a\n   : b\n", "? &p a: b\n: - w\n",
+     "- a: 1\n  b: 2\n", "? a\n:\n  - b\n", "{a: 1}\n", "? {a: 1}\n: 2\n", "- a\n- b\n", "a:\n  - b\n  - c\n",
+     "? a\n: b\n? c\n: d\n", "?\n  ? -\n: w\n", "- ? - a\n  : b\n", "k:\n  ? - a\n  : b\n", "? -\n: w\n", "---\n? a\n: b\n...\n"]
+  for input in corpus do
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:64] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) =>
+          if s.flowLevel == 0 then
+            if soundB s then
+              cEligible := cEligible + 1
+              let marks := L4YAML.Proofs.RegisterWitness.markedCols s
+              if marks.isEmpty then
+                cMarkless := cMarkless + 1
+                if s.explicitKeyLine.isSome then cLiveAtMarkless := cLiveAtMarkless + 1
+              else
+                cMarked := cMarked + 1
+                if s.explicitKeyLine.isSome then cMarkedLive := cMarkedLive + 1
+            else cIneligible := cIneligible + 1
+          if c == '?' && sP.flowLevel == 0 then
+            qPauses := qPauses + 1
+            if (L4YAML.Proofs.RegisterWitness.markedCols sN).isEmpty then qMarkless := qMarkless + 1
+          s := sN
+        | _ => break
+      | _ => break
+  check state s!"P74 refused_of_markedCols_eq_nil (item 410): block pauses eligible Sound={cEligible} (ineligible={cIneligible}) markless={cMarkless} live register at a markless pause={cLiveAtMarkless} (marked={cMarked}, live there={cMarkedLive}) block `?` pauses={qPauses} markless after={qMarkless}"
+    (cEligible > 0 && cMarkless > 0 && cLiveAtMarkless == 0 && cMarked > 0 && cMarkedLive == cMarked && qPauses > 0 && qMarkless == 0)
+
 def testFlowCarrier (state : IO.Ref TestCollector) : IO Unit := do
   let nestedQ : List String := ["?\n  ? -\n: w\n", "? - ? - a\n  : b\n: c\n", "?\n  ?\n    -\n    - b\n  ? c\n: w\n", "? ? - a\n  : b\n: c\n", "- ? - a\n  : b\n"]
   let singleQ : List String := ["? - a\n: b\n", "?\n  - a\n  - b\n: w\n", "k:\n  ? - a\n  : b\n", "? -\n: w\n"]
@@ -8842,6 +8890,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testKslotDomain state
   testFlowCarrier state
   testKslotPay state
+  testOwnMark state
 
   testQuestionMarkColumn state
   testK1Lanes state

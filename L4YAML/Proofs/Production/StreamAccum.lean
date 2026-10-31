@@ -37398,7 +37398,11 @@ lemma accum_content_on_pendingBlock_indented
                       fun sp_m h_bn sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi =>
                         kslot nv (List.mem_reverse.mp (hmc ▸ List.mem_cons_self ..)) sp_m (SBlockIndented.node n .blockIn sp_scan sp_m h_bn)
                           sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi⟩
-                  | [] => Or.inr trivial
+                  -- Item 410: the markless projection is a DEAD register (own-mark lemma,
+                  -- contrapositive): the face REFUSES, it does not decline.
+                  | [] => Or.inr (PackAlt.step_content h_preprocess h_dispatch (PackAlt.ofRefused
+                      (RegisterWitness.refused_of_markedCols_eq_nil h_sound h_fl0
+                        (List.reverse_eq_nil_iff.mp hmc))))
               | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
              -- Item 114: the entry-level resume frames — item 110's landing
              -- spend rides the run (`k:⏎  - &p a⏎b: 2` pops).
