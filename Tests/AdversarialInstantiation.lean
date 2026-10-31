@@ -8829,6 +8829,58 @@ def testEntryChain (state : IO.Ref TestCollector) : IO Unit := do
     (qPauses > 0 && coverOK == qPauses && colonPauses > 0 && colonAdds == 0 &&
      routedAcc == routed.length && declinedAcc == declined.length)
 
+-- 77, grammar half (item 413) — the surface ROUTE `h_chainUp` carries, challenged off the
+-- constructors (a refutation is a build failure).  `compact_open_map` states the chain over the
+-- `-` / slot park's CONTENT `SBlockIndented n ctx`, not over its own entry: these examples pin
+-- (a) the wrapper the supply builds — a lone compact `?` entry IS that content through
+-- `SCompactMapTail.nil`; (b) the discharge — an ancestor `:` at a marked column `nv` after that
+-- content resumes `[map nv]` under the route both callers hold; (c) the `-` park's relay — its
+-- `h_kslotUp` (content in `.blockIn` + a compact-sequence tail) reaches the same route at the `nil`
+-- tail; (d) the refutation bucket — a compact-map tail that MOVES has a sibling entry, which the
+-- lone-entry wrapper never builds (`cases` over `SCompactMapTail`'s two constructors).
+section CompactChainGrammar
+open L4YAML.Surface L4YAML.Proofs.IndentStackCover L4YAML.Proofs.StreamAccum
+
+example (n m : Nat) (ctx : YamlContext) (sp_e sp_i sp_v : SurfPos)
+    (h_ind : SIndent m sp_e sp_i) (h_entry : SBlockMapEntry (n + 1 + m) sp_i sp_v) :
+    SBlockIndented n ctx sp_e sp_v :=
+  SBlockIndented.compactMap n ctx m sp_e sp_i sp_v h_ind
+    (SCompactMap.mk (n + 1 + m) sp_i sp_v sp_v h_entry (SCompactMapTail.nil (n + 1 + m) sp_v))
+
+example (n m nv : Nat) (ctx : YamlContext) (sp_start sp_e sp_i sp_v sp_c sp_c' sp_w : SurfPos)
+    (h_ind : SIndent m sp_e sp_i) (h_entry : SBlockMapEntry (n + 1 + m) sp_i sp_v)
+    (h_ci : SIndent nv sp_v sp_c) (h_colon : GLit ':' sp_c sp_c')
+    (h_val : SBlockIndented nv .blockOut sp_c' sp_w)
+    (route : ∀ sp_m : SurfPos, SBlockIndented n ctx sp_e sp_m →
+      ∀ sp_i sp_c : SurfPos, SIndent nv sp_m sp_i → GLit ':' sp_i sp_c →
+      ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →
+      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) :
+    ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w :=
+  route sp_v
+    (SBlockIndented.compactMap n ctx m sp_e sp_i sp_v h_ind
+      (SCompactMap.mk (n + 1 + m) sp_i sp_v sp_v h_entry (SCompactMapTail.nil (n + 1 + m) sp_v)))
+    sp_c sp_c' h_ci h_colon sp_w h_val
+
+example (n nv : Nat) (sp_start sp_scan : SurfPos)
+    (h_kslotUp : ∀ sp_m : SurfPos, SBlockIndented n .blockIn sp_scan sp_m →
+      ∀ sp_e : SurfPos, SCompactSeqTail n sp_m sp_e →
+      ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →
+      ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →
+      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) :
+    ∀ sp_m : SurfPos, SBlockIndented n .blockIn sp_scan sp_m →
+      ∀ sp_i sp_c : SurfPos, SIndent nv sp_m sp_i → GLit ':' sp_i sp_c →
+      ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →
+      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v :=
+  fun sp_m h_m => h_kslotUp sp_m h_m sp_m (SCompactSeqTail.nil n sp_m)
+
+example (k : Nat) (s s' : SurfPos) (h : SCompactMapTail k s s') (hne : s ≠ s') :
+    ∃ s₁ s₂ : SurfPos, SIndent k s s₁ ∧ SBlockMapEntry k s₁ s₂ := by
+  cases h with
+  | nil => exact absurd rfl hne
+  | cons _ _ s₁ s₂ _ h_ind h_entry _ => exact ⟨s₁, s₂, h_ind, h_entry⟩
+
+end CompactChainGrammar
+
 def testCompactChain (state : IO.Ref TestCollector) : IO Unit := do
   -- 77 (item 413, PAID) — `compact_open_map`'s chain ONE FRAME UP, supplied from the `-` / slot
   -- park's chain over the entry's CONTENT (`h_chainUp`, on the PRE-state's projection) through the
