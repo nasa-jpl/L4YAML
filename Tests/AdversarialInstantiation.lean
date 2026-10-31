@@ -9014,6 +9014,69 @@ def testRefusedAtParks (state : IO.Ref TestCollector) : IO Unit := do
      dashPauses > 0 && dashCarries == dashPauses && deadParks > 0 && armedParks > 0 &&
      flowOpensArmed > 0 && flowOpensSaved == flowOpensArmed && flowClosesSaved > 0 && flowClosesRestored == flowClosesSaved)
 
+-- 79, grammar half (item 415) — the surface ROUTE `explEntryChain_of_keyContent` carries,
+-- challenged off the constructors (a refutation is a build failure).  The lemma reads the `?`
+-- entry's chain at its KEY content and decides by column: (a) at the entry's OWN column the `:`
+-- line IS the explicit value — the entry is `[186] explicit` and `route` alone (item 412's entry
+-- route, no `up`) closes the stream at the nil tail, one resume level; (b) at any OTHER marked
+-- column the entry is KEY-ONLY (`explicitEmpty`) and `up` (item 413's chain one frame up) resumes
+-- that column; (c) the lemma's discharge under both hypotheses at a marked column; (d) the
+-- refutation bucket — the empty entry ends where the KEY ends (`sp_m`), the explicit one where the
+-- VALUE ends (`sp_v`): routing the own column through `explicitEmpty` proves the resume at `sp_m`,
+-- which is NOT the owed position `sp_v` once the value is non-empty, so the own-column arm cannot
+-- be served by the empty entry (the review's "accidental empty entry" is a type error, not a
+-- silently green route).
+section InlDeclinesGrammar
+open L4YAML.Surface L4YAML.Proofs.IndentStackCover L4YAML.Proofs.RegisterWitness L4YAML.Proofs.StreamAccum
+
+example (n : Nat) (sp_start sp_q sp_scan sp_m sp_i sp_c sp_v : SurfPos)
+    (h_qlit : GLit '?' sp_q sp_scan) (h_key : SBlockIndented n .blockOut sp_scan sp_m)
+    (h_ind : SIndent n sp_m sp_i) (h_lit : GLit ':' sp_i sp_c)
+    (h_val : SBlockIndented n .blockOut sp_c sp_v)
+    (route : ∀ sp_v : SurfPos, SBlockMapEntry n sp_q sp_v →
+      ∀ sp_e : SurfPos, SCompactMapTail n sp_v sp_e → SLYamlStream sp_start sp_e) :
+    ResumeFrames (SLYamlStream sp_start) [FrameLevel.map n] sp_v :=
+  ResumeFrames.one
+    (route sp_v (SBlockMapEntry.explicit n sp_q sp_scan sp_m sp_i sp_c sp_v h_qlit h_key h_ind h_lit h_val))
+
+example (n nv : Nat) (sc : L4YAML.Scanner.ScannerState) (sp_start sp_q sp_scan sp_m sp_i sp_c sp_v : SurfPos)
+    (hmem : nv ∈ markedCols sc) (hne : nv ≠ n)
+    (h_qlit : GLit '?' sp_q sp_scan) (h_key : SBlockIndented n .blockOut sp_scan sp_m)
+    (h_ind : SIndent nv sp_m sp_i) (h_lit : GLit ':' sp_i sp_c)
+    (h_val : SBlockIndented nv .blockOut sp_c sp_v)
+    (up : ∀ nv ∈ markedCols sc, nv ≠ n →
+      ∀ sp_v : SurfPos, SBlockMapEntry n sp_q sp_v →
+      ∀ sp_i sp_c : SurfPos, SIndent nv sp_v sp_i → GLit ':' sp_i sp_c →
+      ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →
+      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) :
+    ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v :=
+  up nv hmem hne sp_m (SBlockMapEntry.explicitEmpty n sp_q sp_scan sp_m h_qlit h_key)
+    sp_i sp_c h_ind h_lit sp_v h_val
+
+example (n nv : Nat) (sc : L4YAML.Scanner.ScannerState) (sp_start sp_q sp_scan sp_m sp_i sp_c sp_v : SurfPos)
+    (hmem : nv ∈ markedCols sc)
+    (h_qlit : GLit '?' sp_q sp_scan) (h_key : SBlockIndented n .blockOut sp_scan sp_m)
+    (h_ind : SIndent nv sp_m sp_i) (h_lit : GLit ':' sp_i sp_c)
+    (h_val : SBlockIndented nv .blockOut sp_c sp_v)
+    (route : ∀ sp_v : SurfPos, SBlockMapEntry n sp_q sp_v →
+      ∀ sp_e : SurfPos, SCompactMapTail n sp_v sp_e → SLYamlStream sp_start sp_e)
+    (up : ∀ nv ∈ markedCols sc, nv ≠ n →
+      ∀ sp_v : SurfPos, SBlockMapEntry n sp_q sp_v →
+      ∀ sp_i sp_c : SurfPos, SIndent nv sp_v sp_i → GLit ':' sp_i sp_c →
+      ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →
+      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) :
+    ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v :=
+  explEntryChain_of_keyContent h_qlit route up nv hmem sp_m h_key sp_i sp_c h_ind h_lit sp_v h_val
+
+example (n : Nat) (sp_start sp_q sp_scan sp_m : SurfPos)
+    (h_qlit : GLit '?' sp_q sp_scan) (h_key : SBlockIndented n .blockOut sp_scan sp_m)
+    (route : ∀ sp_v : SurfPos, SBlockMapEntry n sp_q sp_v →
+      ∀ sp_e : SurfPos, SCompactMapTail n sp_v sp_e → SLYamlStream sp_start sp_e) :
+    ResumeFrames (SLYamlStream sp_start) [FrameLevel.map n] sp_m :=
+  ResumeFrames.one (route sp_m (SBlockMapEntry.explicitEmpty n sp_q sp_scan sp_m h_qlit h_key))
+
+end InlDeclinesGrammar
+
 def testInlDeclinesPaid (state : IO.Ref TestCollector) : IO Unit := do
   -- 79 (item 415, PAID 7 of 14) — the statement-shaped `Or.inl … => Or.inr trivial` declines whose
   -- upstream route now reaches the site: the `?` entry's chain read at its KEY content
