@@ -8,7 +8,14 @@ specialisation (read at six sites) as `∀ nv ∈ RegisterWitness.markedCols sc,
 error with its enclosing declaration — the PRODUCERS that can no longer supply the field (STARVED
 or re-shapeable) and any other reader that breaks — then restores `StreamAccum.lean`
 byte-identically (both md5s printed).  Read-only in effect; never run it beside another
-`lake build`.  `--keep` leaves the patched tree in place (the pay's starting point)."""
+`lake build`.  `--keep` leaves the patched tree in place (the pay's starting point).
+
+The anchors are the field's text BEFORE the pay, so on the paid tree the probe would stop before
+building.  It therefore prices a REVISION, not the checkout: `--rev REV` (default `BASE_REV`, the
+merged #189 the item cut from) takes `StreamAccum.lean` from `git show REV:…`, patches that copy
+into the working tree, builds, and restores the working tree's own bytes.  It refuses when any
+OTHER library file differs between REV and HEAD (the build would read a mixed tree) — run it in a
+`git worktree` of REV in that case.  Example: `python3 scripts/flip_kslote_domain.py --rev 55d03804`."""
 import argparse, hashlib, re, subprocess, sys
 from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
@@ -28,9 +35,23 @@ PROOF_OLD = """                rcases h_kslotE_p with ⟨ne, nv, hne, r⟩ | h_a
 PROOF_NEW = """                rcases h_kslotE_p with ⟨ne, hne, r⟩ | h_alt
                 · obtain rfl : ne = k := by omega
                   exact Or.inl r"""
-ap = argparse.ArgumentParser(); ap.add_argument("--keep", action="store_true"); args = ap.parse_args()
+BASE_REV = "55d03804"  # merged #189 (item 415): the revision whose field text the anchors name
+REL = "L4YAML/Proofs/Production/StreamAccum.lean"
+ap = argparse.ArgumentParser(description="price item 416's field change at a revision")
+ap.add_argument("--rev", default=BASE_REV, help=f"revision holding the un-paid field (default {BASE_REV})")
+ap.add_argument("--keep", action="store_true", help="leave the patched tree in place")
+args = ap.parse_args()
+git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True)
+others = git("diff", "--quiet", args.rev, "HEAD", "--", "L4YAML", f":!{REL}")
+if others.returncode != 0:
+    sys.exit(f"library files other than {REL} differ between {args.rev} and HEAD; "
+             f"run the probe in a `git worktree` of {args.rev} instead")
+shown = git("show", f"{args.rev}:{REL}")
+if shown.returncode != 0:
+    sys.exit(f"cannot read {REL} at {args.rev}: {shown.stderr.strip()}")
 md5 = lambda: hashlib.md5(SRC.read_bytes()).hexdigest()
-orig = SRC.read_bytes(); m0 = md5(); t = orig.decode()
+orig = SRC.read_bytes(); m0 = md5(); t = shown.stdout
+print(f"pricing {REL} at {args.rev} (working tree md5 {m0[:12]})", flush=True)
 for old, new, want in ((FIELD_OLD, FIELD_NEW, 1), (HAVE_OLD, HAVE_NEW, 1), (PROOF_OLD, PROOF_NEW, 1)):
     if t.count(old) != want:
         sys.exit(f"anchor count {t.count(old)} != {want} for:\n{old[:80]}")
@@ -58,7 +79,7 @@ try:
     (ROOT / "scratch/kslote_flip.log").write_text(out)
 finally:
     if args.keep:
-        print(f"--keep: patched tree left in place (md5 {md5()[:12]}; original {m0[:12]})")
+        print(f"--keep: patched copy of {args.rev}:{REL} left in place (md5 {md5()[:12]}; working tree was {m0[:12]})")
     else:
         SRC.write_bytes(orig)
         print(f"restored md5 {md5()[:12]} (orig {m0[:12]}) identical={md5() == m0}")
