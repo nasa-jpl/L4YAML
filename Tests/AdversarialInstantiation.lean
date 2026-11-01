@@ -9248,12 +9248,24 @@ def testColonChainRelay (state : IO.Ref TestCollector) : IO Unit := do
   -- answers) is reported as a reading, not asserted.  Negative control: a `?` adds its own column.
   -- End to end: the `:`-landing inputs of item 415's stopped class G (a `:` at a dedent / line
   -- start opening a mapping under open `?` frames — item 197's `?⏎  ?⏎    - a⏎  : b⏎  : c⏎: w`).
-  let accepts (input : String) : Bool := match parseYaml input with | .ok _ => true | .error _ => false
-  let landings : List String :=
-    ["?\n  ?\n    - a\n  : b\n  : c\n: w\n", ": v\n", ": v\n: w\n", "? a\n: b\n: c\n", "k:\n  : v\n",
-     "- : v\n", "?\n  - a\n: b\n: c\n", "? &x a\n: b\n: c\n", "# c\n: v\n", "? ? a\n  : b\n: c\n: d\n",
-     "? a\n:\n  : v\n", "- ? a\n  : b\n  : c\n"]
-  let accepted := landings.filter accepts
+  -- Each landing is paired with the ROOT it must compose to (`map N` / `seq N` = one document whose
+  -- root collection has N entries), so a wrong mapping — a `:` read as a sibling, a dropped
+  -- entry, a refusal — fails the row; every row must hold (no threshold).
+  let rootKind : YamlValue → String
+    | .mapping _ arr => s!"map {arr.size}"
+    | .sequence _ arr => s!"seq {arr.size}"
+    | _ => "other"
+  let rootShape (input : String) : String := match parseYaml input with
+    | .ok docs =>
+      if docs.size != 1 then s!"docs {docs.size}" else (docs[0]?.map (fun d => rootKind d.value)).getD "other"
+    | .error _ => "refused"
+  let landings : List (String × String) :=
+    [("?\n  ?\n    - a\n  : b\n  : c\n: w\n", "map 1"), (": v\n", "map 1"), (": v\n: w\n", "map 2"),
+     ("? a\n: b\n: c\n", "map 2"), ("k:\n  : v\n", "map 1"), ("- : v\n", "seq 1"),
+     ("?\n  - a\n: b\n: c\n", "map 2"), ("? &x a\n: b\n: c\n", "map 2"), ("# c\n: v\n", "map 1"),
+     ("? ? a\n  : b\n: c\n: d\n", "map 2"), ("? a\n:\n  : v\n", "map 1"), ("- ? a\n  : b\n  : c\n", "seq 1")]
+  let misshaped := landings.filter (fun (i, e) => rootShape i != e)
+  let shaped := landings.length - misshaped.length
   let mut eligible := 0
   let mut ineligible := 0
   let mut same := 0
@@ -9261,7 +9273,7 @@ def testColonChainRelay (state : IO.Ref TestCollector) : IO Unit := do
   let mut grew := 0
   let mut qPauses := 0
   let mut qAdded := 0
-  for input in landings do
+  for (input, _) in landings do
     let mut s := L4YAML.Scanner.ScannerState.mk' input
     for _ in [:64] do
       match L4YAML.Scanner.scanNextToken_preprocess s with
@@ -9284,8 +9296,8 @@ def testColonChainRelay (state : IO.Ref TestCollector) : IO Unit := do
           s := sN
         | _ => break
       | _ => break
-  check state s!"P81 colon_open_map's h_kslot relayed (item 417): eligible block `:` steps={eligible} (ineligible pauses={ineligible}) — over s → s': marks unchanged={same} shrank (the answered `?`'s mark popped; still ⊆)={shrank} grew={grew} (must be 0: a `:` adds no mark); `?` pauses={qPauses} adding their own column={qAdded} (negative control, must be all); `:`-landing inputs accepted={accepted.length}/{landings.length} (refused: {landings.filter (fun i => !accepts i)})"
-    (eligible > 0 && grew == 0 && qPauses > 0 && qAdded == qPauses && accepts "?\n  ?\n    - a\n  : b\n  : c\n: w\n" && accepted.length * 10 ≥ landings.length * 8)
+  check state s!"P81 colon_open_map's h_kslot relayed (item 417): eligible block `:` steps={eligible} (ineligible pauses={ineligible}) — over s → s': marks unchanged={same} shrank (the answered `?`'s mark popped; still ⊆)={shrank} grew={grew} (must be 0: a `:` adds no mark); `?` pauses={qPauses} adding their own column={qAdded} (negative control, must be all); `:`-landing roots composed as predicted={shaped}/{landings.length} (misshaped, input ↦ got: {misshaped.map (fun (i, _) => (i, rootShape i))})"
+    (eligible > 0 && grew == 0 && qPauses > 0 && qAdded == qPauses && misshaped.isEmpty)
 
 def testFlowCarrier (state : IO.Ref TestCollector) : IO Unit := do
   let nestedQ : List String := ["?\n  ? -\n: w\n", "? - ? - a\n  : b\n: c\n", "?\n  ?\n    -\n    - b\n  ? c\n: w\n", "? ? - a\n  : b\n: c\n", "- ? - a\n  : b\n"]
