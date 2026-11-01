@@ -549,8 +549,8 @@ def expectedLadder : List String :=
   -- Item 387 (2026-10-29): `seqTop_refuted_at_indicator_le` holds the `:`/`?` dispatch (+1 holder).
   -- Item 409 (2026-10-30): `MarkedColsIn.step_value` holds the `:` dispatch and its preprocess (+1, +1).
   ["scanNextToken_dispatchBlockIndicators holders=134 edge=1 chain=0",
-   "scanNextToken_dispatchContent holders=161 edge=3 chain=1",
-   "scanNextToken_preprocess holders=250 edge=17 chain=3"]
+   "scanNextToken_dispatchContent holders=162 edge=3 chain=1",
+   "scanNextToken_preprocess holders=251 edge=17 chain=3"]
 
 /-- **What §1's proofs spend.**  `drop=false` is the non-circularity check
     items 242 and 243 also carry: a measurement of what the escape costs may

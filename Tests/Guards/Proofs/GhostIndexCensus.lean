@@ -322,7 +322,7 @@ def expectedTally : List String :=
    "ParkSlot: surface=0 state=2 prop=3 scalar=7 snapshot=0 ghost=0 or=1",
    -- Item 371: `pendingMapValue.h_expl`'s route carries its tail — one more surface binder
    -- (`sp_e`) and one more `Prop` premise (`SCompactMapTail`); ghost 22 and or 60 unchanged.
-   "PendingNode: surface=139 state=1 prop=283 scalar=63 snapshot=0 ghost=22 or=65",
+   "PendingNode: surface=139 state=1 prop=284 scalar=63 snapshot=0 ghost=22 or=65",
    "PropsKeyPack: surface=13 state=1 prop=13 scalar=7 snapshot=0 ghost=3 or=5",
    "PropsNodeRoute: surface=6 state=0 prop=1 scalar=0 snapshot=0 ghost=0 or=0",
    "PropsRideRoute: surface=7 state=0 prop=1 scalar=0 snapshot=0 ghost=0 or=0",

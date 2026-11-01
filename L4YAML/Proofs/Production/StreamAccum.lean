@@ -2461,7 +2461,8 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
         ∀ sp_m : SurfPos, SBlockNode n .blockIn sp_node sp_m →
         ∀ sp_end : SurfPos, SCompactSeqTail ne sp_m sp_end →
         SLYamlStream sp_start sp_end) ∨ PackAlt sc)
-      (h_kslotE : (∃ (ne nv : Nat), n = ne + 1 ∧
+      (h_kslotE : (∃ ne : Nat, n = ne + 1 ∧
+        ∀ nv ∈ RegisterWitness.markedCols sc,
         ∀ sp_m : SurfPos, SBlockNode n .blockIn sp_node sp_m →
         ∀ sp_e : SurfPos, SCompactSeqTail ne sp_m sp_e →
         ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →
@@ -22604,6 +22605,19 @@ lemma MarkedColsIn.step_content {sc s_prep s' : ScannerState} {c : Char} {ns : L
   have hp := RegisterWitness.preprocess_markedCols h_preprocess h
   refine RegisterWitness.dispatchContent_markedCols h_dispatch (hp.transport ?_ ?_) <;> split <;> rfl
 
+/-- **A content dispatch adds no mark** (item 416): every marked column of the post-state is a
+    marked column of the pre-state — the membership form of `MarkedColsIn.step_content` at the
+    projection itself (`ns := markedCols sc`), which lets a field stated over the PARK's projection
+    (`pendingProps.h_kslotE`) be fed from a chain over the pre-state's. -/
+lemma markedCols_mem_of_step_content {sc s_prep s' : ScannerState} {c : Char} {nv : Nat}
+    (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
+    (h_dispatch : scanNextToken_dispatchContent (if s_prep.allowDirectives then
+      { s_prep with allowDirectives := false, documentEverStarted := true }
+    else s_prep) c = .ok s')
+    (h : nv ∈ RegisterWitness.markedCols s') : nv ∈ RegisterWitness.markedCols sc := by
+  obtain ⟨i, l, col, hi, hc, rfl⟩ := RegisterWitness.markedCols_mem.mp h
+  exact MarkedColsIn.step_content h_preprocess h_dispatch (RegisterWitness.MarkedColsIn.self sc) i l col hi hc
+
 /-- The same step on the named alternative.  `trivial` while `PackAlt` is `True`; the census's
     residue mode substitutes the proof promised after `-- refused:` (`scripts/pack_flip_census.py`),
     and the final flip makes that proof the body. -/
@@ -37526,19 +37540,15 @@ lemma accum_content_on_pendingBlock_indented
              -- at the props park (`? - &p a⏎  - y⏎: v`).
              (match h_kslot_old with
               | Or.inl kslot =>
-                  -- Item 405 (Rule 8): the head of the PROJECTION `markedCols sc`
-                  -- is the index; the markless projection declines.
-                  -- (outermost first in the projection, so the own mark heads its REVERSE).
-                  match hmc : (RegisterWitness.markedCols sc).reverse with
-                  | nv :: _ => Or.inl ⟨n, nv, rfl,
-                      fun sp_m h_bn sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi =>
-                        kslot nv (List.mem_reverse.mp (hmc ▸ List.mem_cons_self ..)) sp_m (SBlockIndented.node n .blockIn sp_scan sp_m h_bn)
-                          sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi⟩
-                  -- Item 410: the markless projection is a DEAD register (own-mark lemma,
-                  -- contrapositive): the face REFUSES, it does not decline.
-                  | [] => Or.inr (PackAlt.step_content h_preprocess h_dispatch (PackAlt.ofRefused
-                      (RegisterWitness.refused_of_markedCols_eq_nil h_sound h_fl0
-                        (List.reverse_eq_nil_iff.mp hmc))))
+                  -- Item 416: the field is DOMAINED over the park's projection, so the whole
+                  -- chain is handed on (item 405 picked the head of the projection and item 410
+                  -- refused the markless one; a chain over `markedCols s'` needs neither — every
+                  -- post mark is a pre mark at a content dispatch).
+                  Or.inl ⟨n, rfl,
+                    fun nv hmem sp_m h_bn sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi =>
+                      kslot nv (markedCols_mem_of_step_content h_preprocess h_dispatch hmem) sp_m
+                        (SBlockIndented.node n .blockIn sp_scan sp_m h_bn)
+                        sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi⟩
               | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
              -- Item 114: the entry-level resume frames — item 110's landing
              -- spend rides the run (`k:⏎  - &p a⏎b: 2` pops).
@@ -39720,7 +39730,9 @@ lemma accum_content_pending (sc : ScannerState)
                    (h_kslot_p.imp (fun ⟨ns, hd, k⟩ => ⟨ns, MarkedColsIn.step_content h_preprocess h_dispatch hd, k⟩) (PackAlt.step_content h_preprocess h_dispatch))
                    -- Item 114: nor do the park's resume faces — the anchor
                    -- lives inside the same awaited node.
-                   (h_routeE_p.imp id (PackAlt.step_content h_preprocess h_dispatch)) (h_kslotE_p.imp id (PackAlt.step_content h_preprocess h_dispatch))
+                   (h_routeE_p.imp id (PackAlt.step_content h_preprocess h_dispatch)) (h_kslotE_p.imp (fun ⟨ne, hne, r⟩ => ⟨ne, hne,
+                     fun nv hmem => r nv (markedCols_mem_of_step_content h_preprocess h_dispatch hmem)⟩)
+                     (PackAlt.step_content h_preprocess h_dispatch))
                    -- Item 155: the ENTRY face steps with them, on the same reading.
                    (h_closeFE_p.imp (fun ⟨ne, ks, hne, h_lt, h_cv, r, _⟩ => ⟨ne, ks, hne, h_lt,
                      -- Item 389: pendingProps.h_closeFE carries no mapping-top conjunct (the 12/101 rung, unpaid), so none rides the extension.
@@ -39865,7 +39877,9 @@ lemma accum_content_pending (sc : ScannerState)
                      (dispatchContent_tag_simpleKey h_dispatch).2
                      (h_kslot_p.imp (fun ⟨ns, hd, k⟩ => ⟨ns, MarkedColsIn.step_content h_preprocess h_dispatch hd, k⟩) (PackAlt.step_content h_preprocess h_dispatch))
                      -- Item 114: the faces ride the extension, as at `&`.
-                     (h_routeE_p.imp id (PackAlt.step_content h_preprocess h_dispatch)) (h_kslotE_p.imp id (PackAlt.step_content h_preprocess h_dispatch))
+                     (h_routeE_p.imp id (PackAlt.step_content h_preprocess h_dispatch)) (h_kslotE_p.imp (fun ⟨ne, hne, r⟩ => ⟨ne, hne,
+                     fun nv hmem => r nv (markedCols_mem_of_step_content h_preprocess h_dispatch hmem)⟩)
+                     (PackAlt.step_content h_preprocess h_dispatch))
                      -- Item 155: the ENTRY face steps with them, on the same reading.
                      (h_closeFE_p.imp (fun ⟨ne, ks, hne, h_lt, h_cv, r, _⟩ => ⟨ne, ks, hne, h_lt,
                        -- Item 389: as at `&` — no mapping-top conjunct on the props park to ride.
@@ -40286,15 +40300,15 @@ lemma accum_content_pending (sc : ScannerState)
                 · obtain rfl : ne = k := by omega
                   exact Or.inl r
                 · exact Or.inr h_alt
-              have h_kslotE_k : (∃ nv : Nat,
+              have h_kslotE_k : (∀ nv ∈ RegisterWitness.markedCols sc,
                   ∀ sp_m : SurfPos, SBlockNode (k + 1) .blockIn sp_node sp_m →
                   ∀ sp_e : SurfPos, SCompactSeqTail k sp_m sp_e →
                   ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →
                   ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →
                   ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc := by
-                rcases h_kslotE_p with ⟨ne, nv, hne, r⟩ | h_alt
+                rcases h_kslotE_p with ⟨ne, hne, r⟩ | h_alt
                 · obtain rfl : ne = k := by omega
-                  exact Or.inl ⟨nv, r⟩
+                  exact Or.inl r
                 · exact Or.inr h_alt
               have h_closeFE_k : (∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width < k) ∧
                   ((∃ lo : Nat, IndentStackCover.Floor lo k ks ∧
@@ -40463,9 +40477,11 @@ lemma accum_content_pending (sc : ScannerState)
                            (content_park_arm (preprocess_some_peek h_preprocess)
                              h_flow_disp h_not_doc h_dispatch hcorr_result)
                            (match h_kslotE_k with
-                            -- Item 405: the props park's explicit-key slot (`h_kslotE_k`) names no
-                            -- domain for the chain — DECLINED (ruling (a)).
-                            | Or.inl _ => Or.inr trivial
+                            -- Item 416: the slot is DOMAINED over the projection (item 405 had declined it) —
+                            -- the decorated node at the landing feeds the chain, the dispatch adds no mark.
+                            | Or.inl kslotE => Or.inl (fun nv hmem sp_m h_ssl sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi =>
+                                kslotE nv (markedCols_mem_of_step_content h_preprocess h_dispatch hmem) sp_m (h_nodeAtG sp_m h_ssl)
+                                  sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi)
                             | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
                            (match h_closeFE_k with
                             | Or.inl ⟨ks, h_lt, h_cv, closeFE⟩ => Or.inl ⟨ks, h_lt,
@@ -40482,7 +40498,10 @@ lemma accum_content_pending (sc : ScannerState)
                            -- Item 190: UNMEASURED at the decorated content
                            -- dispatch, as at the two plain ones above.
                            (match h_kslotE_k with
-                            | Or.inl _ => Or.inr trivial
+                            | Or.inl kslotE => Or.inl ⟨RegisterWitness.markedCols s', RegisterWitness.MarkedColsIn.self s',
+                                fun nv hmem sp_m h_ssl sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi =>
+                                  kslotE nv (markedCols_mem_of_step_content h_preprocess h_dispatch hmem) sp_m (h_nodeAtG sp_m h_ssl)
+                                    sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi⟩
                             | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
                            -- ═══ ~~**Item 198: the PROPS lane's entry face has no
                            -- value-line twin.**~~  **Item 199 gave it one.**  The
@@ -40587,9 +40606,11 @@ lemma accum_content_pending (sc : ScannerState)
                            (content_park_arm (preprocess_some_peek h_preprocess)
                              h_flow_disp h_not_doc h_dispatch hcorr_result)
                            (match h_kslotE_k with
-                            -- Item 405: the props park's explicit-key slot (`h_kslotE_k`) names no
-                            -- domain for the chain — DECLINED (ruling (a)).
-                            | Or.inl _ => Or.inr trivial
+                            -- Item 416: the slot is DOMAINED over the projection (item 405 had declined it) —
+                            -- the decorated node at the landing feeds the chain, the dispatch adds no mark.
+                            | Or.inl kslotE => Or.inl (fun nv hmem sp_m h_ssl sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi =>
+                                kslotE nv (markedCols_mem_of_step_content h_preprocess h_dispatch hmem) sp_m (h_nodeAt sp_m h_ssl)
+                                  sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi)
                             | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
                            (match h_closeFE_k with
                             | Or.inl ⟨ks, h_lt, h_cv, closeFE⟩ => Or.inl ⟨ks, h_lt,
@@ -40606,7 +40627,10 @@ lemma accum_content_pending (sc : ScannerState)
                            -- Item 190: UNMEASURED at the decorated content
                            -- dispatch, as at the two plain ones above.
                            (match h_kslotE_k with
-                            | Or.inl _ => Or.inr trivial
+                            | Or.inl kslotE => Or.inl ⟨RegisterWitness.markedCols s', RegisterWitness.MarkedColsIn.self s',
+                                fun nv hmem sp_m h_ssl sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi =>
+                                  kslotE nv (markedCols_mem_of_step_content h_preprocess h_dispatch hmem) sp_m (h_nodeAt sp_m h_ssl)
+                                    sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi⟩
                             | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
                            -- Item 199: as above — the same fold, the same field.
                            (match h_closeFEV_k with
@@ -40708,9 +40732,11 @@ lemma accum_content_pending (sc : ScannerState)
                            (content_park_arm (preprocess_some_peek h_preprocess)
                              h_flow_disp h_not_doc h_dispatch hcorr_result)
                            (match h_kslotE_k with
-                            -- Item 405: the props park's explicit-key slot (`h_kslotE_k`) names no
-                            -- domain for the chain — DECLINED (ruling (a)).
-                            | Or.inl _ => Or.inr trivial
+                            -- Item 416: the slot is DOMAINED over the projection (item 405 had declined it) —
+                            -- the decorated node at the landing feeds the chain, the dispatch adds no mark.
+                            | Or.inl kslotE => Or.inl (fun nv hmem sp_m h_ssl sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi =>
+                                kslotE nv (markedCols_mem_of_step_content h_preprocess h_dispatch hmem) sp_m (h_nodeAtG sp_m h_ssl)
+                                  sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi)
                             | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
                            (match h_closeFE_k with
                             | Or.inl ⟨ks, h_lt, h_cv, closeFE⟩ => Or.inl ⟨ks, h_lt,
@@ -40727,7 +40753,10 @@ lemma accum_content_pending (sc : ScannerState)
                            -- Item 190: UNMEASURED at the decorated content
                            -- dispatch, as at the two plain ones above.
                            (match h_kslotE_k with
-                            | Or.inl _ => Or.inr trivial
+                            | Or.inl kslotE => Or.inl ⟨RegisterWitness.markedCols s', RegisterWitness.MarkedColsIn.self s',
+                                fun nv hmem sp_m h_ssl sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi =>
+                                  kslotE nv (markedCols_mem_of_step_content h_preprocess h_dispatch hmem) sp_m (h_nodeAtG sp_m h_ssl)
+                                    sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi⟩
                             | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
                            -- Item 199: as above — the same fold, the same field.
                            (match h_closeFEV_k with

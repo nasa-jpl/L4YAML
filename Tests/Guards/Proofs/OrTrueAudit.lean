@@ -251,7 +251,7 @@ def posLine (p : Pos) : String := s!"{p.decl}{p.site} {p.kind} ∨ {p.alt}"
 -- projection `markedCols`: four fabricated births DECLINE (`Or.inr trivial` writers into `PackAltG`/`PackAlt`
 -- positions), none paid; positions unchanged.
 def expectedSummary : String :=
-  "positions=270 top=167 nested=103 True=195 PackAlt=66 PackAltG=9 modules=2 supply: paid=28 relayed=117 declined-only=0 never-supplied=0 unresolved=9 conclusions=11 consumers: spent=103 relayed=15 unused=0 unreadable=36 writers=39 inrTrivial=507"
+  "positions=270 top=167 nested=103 True=195 PackAlt=66 PackAltG=9 modules=2 supply: paid=28 relayed=117 declined-only=0 never-supplied=0 unresolved=9 conclusions=11 consumers: spent=103 relayed=15 unused=0 unreadable=36 writers=39 inrTrivial=501"
 
 def expectedPositions : List String :=
   [ "L4YAML.Proofs.PreprocessIndentStable.IndentFloor.transport[3].h_floor top ∨ True",
@@ -543,10 +543,10 @@ def expectedSupply : List String :=
     "L4YAML.Proofs.StreamAccum.PendingNode.pendingProps[25].h_closeF relayed [DECLINE=3 FIELD=2 SPLIT=1]",
     "L4YAML.Proofs.StreamAccum.PendingNode.pendingProps[26].h_closeFV relayed [DECLINE=3 FIELD=2 SPLIT=1]",
     "L4YAML.Proofs.StreamAccum.PendingNode.pendingProps[28].h_closeFEV relayed [DECLINE=3 FIELD=2 SPLIT=1]",
-    "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlockContent[12].h_kslot relayed [DECLINE=3 SPLIT=3]",
+    "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlockContent[12].h_kslot relayed [SPLIT=6]",
     "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlockContent[13].h_closeF relayed [SPLIT=6]",
     "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlockContent[16].h_seqF relayed [DECLINE=3 SPLIT=3]",
-    "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlockContent[17].h_kslotUp relayed [DECLINE=3 SPLIT=3]",
+    "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlockContent[17].h_kslotUp relayed [SPLIT=6]",
     "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlockContent[18].h_closeFV relayed [SPLIT=6]",
     "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[10].h_kslot relayed [DECLINE=1 SPLIT=6]",
     "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[11].h_closeF paid [PAY=5 SPLIT=2]",
@@ -894,7 +894,7 @@ def expectedWriters : List String :=
     "L4YAML.Proofs.StreamAccum.accum_content_on_noPending ×12 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.accum_content_on_pendingBlock_indented ×28 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented ×29 (StreamAccum)",
-    "L4YAML.Proofs.StreamAccum.accum_content_pending ×81 (StreamAccum)",
+    "L4YAML.Proofs.StreamAccum.accum_content_pending ×75 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.accum_flow_open_depth0 ×66 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.accum_step_flow ×6 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.colon_open_map ×4 (StreamAccum)",
