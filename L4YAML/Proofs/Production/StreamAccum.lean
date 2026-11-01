@@ -28500,11 +28500,23 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
              -- stands inside.  Same carrier, same bound — what differs is only
              -- which `:` is owed. ═══
              (match h_vslot with
-              | Or.inl ⟨nv, _, _, _, _, _, _, _, _, _, Or.inl ⟨nsU, hkvU⟩⟩ =>
+              | Or.inl ⟨nv, _, _, _, _, _, _, _, _, hkv, Or.inl ⟨nsU, hdomU, kvU⟩⟩ =>
                   if hnk : nv ≤ k then
                     -- Item 191: the crossing is indifferent to WHICH ancestor's
-                    -- line follows, so the whole list rides one term.
-                    Or.inr trivial
+                    -- line follows, so the whole list rides one term.  Item 418: the
+                    -- term is `h_kslot`'s above, less the relay — the held list IS the
+                    -- domain (`h_mcstep_ne` carries it across the `-`); where the slot's
+                    -- own line was declined upstream, that alternative is carried.
+                    match hkv with
+                    | Or.inl hkv =>
+                        Or.inl ⟨nv :: nsU, h_mcstep_ne (by decide) _ hdomU, by
+                          rintro x hx _ h_indented sp_e h_tail
+                          rcases List.mem_cons.mp hx with hxe | hx'
+                          · rw [hxe]; exact hkv sp_e (slotLandedSeq hnk h_ssl
+                              (SBlockSeqEntries_of_compactTail h_ind h_dash h_gnot h_indented h_tail))
+                          · exact kvU x hx' sp_e (slotLandedSeq hnk h_ssl
+                              (SBlockSeqEntries_of_compactTail h_ind h_dash h_gnot h_indented h_tail))⟩
+                    | Or.inr h_alt => Or.inr (PackAlt.step_blockEntry h_preprocess h_dispatch h_alt)
                   else Or.inr trivial
               -- Item 320: the frame-above alternative, carried across the `-` (the catch-all keeps the residue arm).
               | Or.inl ⟨_, _, _, _, _, _, _, _, _, _, Or.inr h_alt⟩ =>
@@ -28604,7 +28616,23 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
           -- Item 209: the dispatch's floor, required now — item 208's `h_nic0`
           -- is what closes the column-0 half the `h_cov` bundle used to punt on.
           (dash_landing_floor h_noflow h_larm h_nic0 h_base h_preprocess)
-          (Or.inr trivial) h_mcstep h_mcstep_ne
+          -- Item 418: the DOMAINED twin of the chain two arguments up — the same
+          -- `slotChainMap` term, with the held list's cover (`hdomU`) kept instead of
+          -- dropped; a declined slot line or ancestor list carries its alternative.
+          (match h_vslot with
+           | Or.inl ⟨nv, _, _, _, _, _, _, _, _, hkv, hkvUp⟩ =>
+               if hnk : nv + 1 ≤ k then
+                 match hkv, hkvUp with
+                 | Or.inl kv, Or.inl ⟨nsU, hdomU, kvU⟩ =>
+                     Or.inl ⟨nv :: nsU, hdomU, slotChainMap hnk h_ssl h_ind (by
+                       rintro nvX hmem
+                       rcases List.mem_cons.mp hmem with rfl | hmem'
+                       · exact kv
+                       · exact kvU nvX hmem')⟩
+                 | Or.inl _, Or.inr h_alt => Or.inr h_alt
+                 | Or.inr h_alt, _ => Or.inr h_alt
+               else Or.inr trivial
+           | _ => Or.inr trivial) h_mcstep h_mcstep_ne
       by_cases hc_colon : c = ':'
       · subst hc_colon
         -- Item 51: an explicit-value pack fires on the `:` at its OWN column —
@@ -30613,7 +30641,12 @@ lemma accum_block_on_pendingBlock
                   entryChainMap hnk h_ssl h_ind (fun x hx => (List.mem_append.mp hx).elim (kslot x) (kslotU x))⟩
             | Or.inr _, Or.inl ⟨nsU, hdomU, kslotU⟩ =>
                 Or.inl ⟨nsU, hdomU, entryChainMap hnk h_ssl h_ind kslotU⟩
-            | _, Or.inr _ => Or.inr trivial
+            -- Item 418: the park's own domained line alone covers (`markedCols sc` is its
+            -- own cover); both declined, the own line's alternative is carried.
+            | Or.inl kslot, Or.inr _ =>
+                Or.inl ⟨RegisterWitness.markedCols sc, RegisterWitness.MarkedColsIn.self sc,
+                  entryChainMap hnk h_ssl h_ind kslot⟩
+            | Or.inr h_alt, Or.inr _ => Or.inr h_alt
           else Or.inr trivial) h_mcstep h_mcstep_ne
       -- Item 92: the frame's VALUE line fires on the `:` at its own column —
       -- the awaited entry closes empty into the compact KEY (`? -⏎: - w`);

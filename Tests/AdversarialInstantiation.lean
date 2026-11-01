@@ -9304,6 +9304,122 @@ def testColonChainRelay (state : IO.Ref TestCollector) : IO Unit := do
   check state s!"P81 colon_open_map's h_kslot relayed (item 417): eligible block `:` steps={eligible} (ineligible pauses={ineligible}) — over s → s': marks unchanged={same} shrank (the answered `?`'s mark popped; still ⊆)={shrank} grew={grew} (must be 0: a `:` adds no mark); `?` pauses={qPauses} adding their own column={qAdded} (negative control, must be all); `:`-landing values composed as predicted (whole value, nested)={shaped}/{landings.length} (misshaped, input ↦ got: {misshaped.map (fun (i, _) => (i, rootShape i))})"
     (eligible > 0 && grew == 0 && qPauses > 0 && qAdded == qPauses && misshaped.isEmpty)
 
+section HeldChainGrammar
+open L4YAML.Surface L4YAML.Proofs.RegisterWitness L4YAML.Proofs.StreamAccum L4YAML.Proofs.NodeProduction
+
+-- Priority 82 (item 418, PAID), the grammar half of the three held-chain relays.
+-- (i) the `-` landing's content IS the slot's `[185]` collection one column left: the entries the
+-- landed `-` opens (its body and compact tail) are `SBlockSeqEntries k`, and `slotLandedSeq`
+-- reads them as `SBlockIndented nv .blockOut` for every `nv ≤ k` — the hypothesis the held
+-- slot line (`hkv`) and ancestor lines (`kvU`) consume.
+example (nv k : Nat) (hnk : nv ≤ k) (sp_scan sp_mid sp_ind sp_dash sp_body sp_e : SurfPos)
+    (h_ssl : SSLComments sp_scan sp_mid) (h_ind : SIndent k sp_mid sp_ind)
+    (h_dash : GLit '-' sp_ind sp_dash) (h_gnot : GNot SNsChar sp_dash)
+    (h_body : SBlockIndented k .blockIn sp_dash sp_body) (h_tail : SCompactSeqTail k sp_body sp_e) :
+    SBlockIndented nv .blockOut sp_scan sp_e :=
+  slotLandedSeq hnk h_ssl (SBlockSeqEntries_of_compactTail h_ind h_dash h_gnot h_body h_tail)
+
+-- (ii) the pay's term shape: the held list `nv :: nsU` with its cover is the `∃ ns` the twin
+-- (`h_kslotUp`) owes, and `relay` turns the same pair into the own form (`h_kslot`) — so the
+-- twin carries strictly what the own form already spent; nothing new is owed.
+example (s' : L4YAML.Scanner.ScannerState) (nv : Nat) (nsU : List Nat) (P : Nat → Prop)
+    (hdom : MarkedColsIn s' (nv :: nsU)) (kv : P nv) (kvU : ∀ x ∈ nsU, P x) :
+    (∃ ns, MarkedColsIn s' ns ∧ ∀ x ∈ ns, P x) ∧ ∀ x ∈ markedCols s', P x :=
+  have chain : ∀ x ∈ nv :: nsU, P x := by
+    intro x hx
+    rcases List.mem_cons.mp hx with rfl | hx'
+    · exact kv
+    · exact kvU x hx'
+  ⟨⟨nv :: nsU, hdom, chain⟩, MarkedColsIn.relay hdom chain⟩
+
+-- (iii) the cover crosses the `-`: a non-`?` block indicator adds no mark (`h_mcstep_ne`), so the
+-- pre-state's cover of the held list is the post-state's — the `∃ ns` is stated at `s'`.
+example (sc s' : L4YAML.Scanner.ScannerState) (ns : List Nat) (hdom : MarkedColsIn sc ns)
+    (h_mcstep_ne : '-' ≠ '?' → ∀ ns : List Nat, MarkedColsIn sc ns → MarkedColsIn s' ns) :
+    MarkedColsIn s' ns :=
+  h_mcstep_ne (by decide) ns hdom
+
+-- (iv) the `?`/`:` landing: the chain over the landed `[188]` entry from the chain over the slot's
+-- content (`slotChainMap`, the term the undomained twin already spent), for the consed list.
+example (nv k : Nat) (hnk : nv + 1 ≤ k) (nsU : List Nat) (sp_start sp_scan sp_mid sp_ind : SurfPos)
+    (h_ssl : SSLComments sp_scan sp_mid) (h_ind : SIndent k sp_mid sp_ind)
+    (kv : ∀ sp_m : SurfPos, SBlockIndented nv .blockOut sp_scan sp_m → ExplValueLine sp_start nv sp_m)
+    (kvU : ∀ x ∈ nsU, ∀ sp_m : SurfPos, SBlockIndented nv .blockOut sp_scan sp_m → ExplValueLine sp_start x sp_m) :
+    ∀ x ∈ nv :: nsU, ∀ sp_v : SurfPos, SBlockMapEntry k sp_ind sp_v → ExplValueLine sp_start x sp_v :=
+  slotChainMap hnk h_ssl h_ind (by
+    rintro x hx
+    rcases List.mem_cons.mp hx with rfl | hx'
+    · exact kv
+    · exact kvU x hx')
+
+-- Refutation bucket: with the slot's own line HELD and the ancestor list DECLINED, `[nv]` is the
+-- only list the writer can name — and `MarkedColsIn s' [nv]` says every mark is `nv`, which a
+-- second marked column refutes.  That case therefore carries the alternative instead of a list;
+-- stated as the obligation the singleton would owe.
+example (s' : L4YAML.Scanner.ScannerState) (nv : Nat) (hdom : MarkedColsIn s' [nv]) :
+    ∀ x ∈ markedCols s', x = nv :=
+  MarkedColsIn.relay hdom (fun x hx => by simpa using hx)
+end HeldChainGrammar
+
+def testHeldChainRelay (state : IO.Ref TestCollector) : IO Unit := do
+  -- 82 (item 418, PAID) — the scanner half of the three held-chain relays: at a block `-`, `?` or
+  -- `:` landing the mark step the pays carry the held list across (`h_mcstep_ne`) says the step
+  -- adds no mark — read over the WHOLE step `s → s'` on the eligible pauses (block-level `-`/`:`;
+  -- a `?` adds its own column and is the negative control).  The class the pays make informative
+  -- is the landing under a held ANCESTOR list (`nsU ≠ []`): a pause standing under two or more
+  -- marks — counted, and read as the refutation of the singleton cover (`[nv]` cannot cover two
+  -- marks).  End to end: each closed-`?`-then-`-`/`?`/`:` landing under an enclosing `?` is paired
+  -- with the WHOLE value it must compose to (`p81Shape`); every row must hold.
+  let rootShape (input : String) : String := match parseYaml input with
+    | .ok docs =>
+      if docs.size != 1 then s!"docs {docs.size}" else (docs[0]?.map (fun d => p81Shape d.value)).getD "no doc"
+    | .error _ => "refused"
+  let landings : List (String × String) :=
+    [("?\n- a\n: w\n", "{[a]: w}"), ("?\n  ?\n  - a\n  : b\n: c\n", "{{[a]: b}: c}"),
+     ("?\n  ?\n  - a\n  - b\n  : c\n: d\n", "{{[a, b]: c}: d}"), ("?\n  ?\n  ? a\n  : b\n: c\n", "{{~: ~, a: b}: c}"),
+     ("?\n  ?\n  : b\n: c\n", "{{~: b}: c}"), ("? - a\n: b\n", "{[a]: b}"), ("?\n  - ? a\n    : b\n: c\n", "{[{a: b}]: c}"),
+     ("?\n  ?\n    ?\n    - a\n    : b\n  : c\n: d\n", "{{{[a]: b}: c}: d}"), ("- ?\n  - a\n  : b\n", "[{[a]: b}]"),
+     ("k:\n  ?\n  - a\n  : b\n", "{k: {[a]: b}}"), ("?\n  ?\n  - a\n  : b\n  : c\n: d\n", "{{[a]: b, ~: c}: d}"),
+     ("?\n  ? x\n  : y\n  ?\n  - a\n  : b\n: c\n", "{{x: y, [a]: b}: c}"), ("?\n  ?\n  - a\n: c\n", "{{[a]: ~}: c}"),
+     ("?\n  ?\n  ?\n  - a\n  : b\n: c\n", "{{~: ~, [a]: b}: c}"), ("?\n  ?\n  - a\n  ? b\n  : c\n: d\n", "{{[a]: ~, b: c}: d}")]
+  let misshaped := landings.filter (fun (i, e) => rootShape i != e)
+  let shaped := landings.length - misshaped.length
+  let mut dashSteps := 0
+  let mut colonSteps := 0
+  let mut ineligible := 0
+  let mut same := 0
+  let mut shrank := 0
+  let mut grew := 0
+  let mut underTwo := 0
+  let mut qPauses := 0
+  let mut qAdded := 0
+  for (input, _) in landings do
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:64] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) =>
+          let pre := markedColsOf s.pendingKeys s.indentColumns
+          let mid := markedColsOf sP.pendingKeys sP.indentColumns
+          let after := markedColsOf sN.pendingKeys sN.indentColumns
+          if sP.flowLevel == 0 && (c == '-' || c == ':') then
+            if c == '-' then dashSteps := dashSteps + 1 else colonSteps := colonSteps + 1
+            if after == pre then same := same + 1
+            else if after.all (· ∈ pre) then shrank := shrank + 1
+            else grew := grew + 1
+            if pre.eraseDups.length ≥ 2 then underTwo := underTwo + 1
+          else
+            ineligible := ineligible + 1
+          if sP.flowLevel == 0 && c == '?' then
+            qPauses := qPauses + 1
+            if sP.col ∈ after && !(sP.col ∈ mid) then qAdded := qAdded + 1
+          s := sN
+        | _ => break
+      | _ => break
+  check state s!"P82 held-chain relays (item 418): eligible block `-` steps={dashSteps} `:` steps={colonSteps} (ineligible pauses={ineligible}) — over s → s': marks unchanged={same} shrank={shrank} grew={grew}; under two or more marks (ancestor list held, singleton cover refuted)={underTwo}; `?` pauses={qPauses} add their own column={qAdded}; closed-`?` landings composed as predicted (whole value, nested)={shaped}/{landings.length}{if misshaped.isEmpty then "" else s!" misshaped: {misshaped.map (fun (i, e) => s!"{i.quote} ↦ {rootShape i} (predicted {e})")}"}"
+    (dashSteps > 0 && colonSteps > 0 && grew == 0 && underTwo > 0 && qPauses > 0 && qAdded == qPauses && misshaped.isEmpty)
+
 def testFlowCarrier (state : IO.Ref TestCollector) : IO Unit := do
   let nestedQ : List String := ["?\n  ? -\n: w\n", "? - ? - a\n  : b\n: c\n", "?\n  ?\n    -\n    - b\n  ? c\n: w\n", "? ? - a\n  : b\n: c\n", "- ? - a\n  : b\n"]
   let singleQ : List String := ["? - a\n: b\n", "?\n  - a\n  - b\n: w\n", "k:\n  ? - a\n  : b\n", "? -\n: w\n"]
@@ -9504,6 +9620,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testInlDeclinesPaid state
   testKslotEDomain state
   testColonChainRelay state
+  testHeldChainRelay state
 
   testQuestionMarkColumn state
   testK1Lanes state
