@@ -533,7 +533,7 @@ def chainKeySet : Std.HashSet String :=
 -- 2026-10-26 (item 370): splits 104 → 105, innerSplits 56 → 57 — the sibling `-` arm's split of `h_closeF_old`.
 -- 2026-10-28 (item 380, PR #146 review): splits 105 → 108 — `h_kslotUp`'s `Or.elim` decisions (see the ledger); pairs/sup unchanged.
 def expectedWorthTally : String :=
-  "pairs=36 splits=109 sup=99 chainPairs=0 chainSplits=0 innerPairs=13 \
+  "pairs=36 splits=110 sup=99 chainPairs=0 chainSplits=0 innerPairs=13 \
 innerSplits=57"
 
 /-- The ledger, worth-first.  `chain` is §3's verdict — a narrowing here lands
@@ -570,12 +570,9 @@ def expectedWorthLedger : List String :=
    -- 2026-10-26 (item 365): binder index #30 → #32 (`h_sound`/`h_fl0` inserted after `h_dead`); worth unchanged.
    "splits=11 sup=1 inner h_closeFV_old :: accum_content_on_pendingBlock_indented#33",
    "splits=11 sup=1 inner h_closeF_old :: accum_content_on_pendingBlock_indented#14",
-   "splits=7 sup=1 - h_kslot_old :: accum_content_on_pendingBlock_indented#13",
+   "splits=8 sup=1 - h_kslot_old :: accum_content_on_pendingBlock_indented#13",
    "splits=7 sup=1 inner h_closeF99 :: accum_content_on_pendingMapValue_indented#18",
    "splits=7 sup=1 inner h_closeFV_old :: accum_block_on_pendingBlock#31",
-   -- 2026-10-28 (item 380, PR #146 review): `h_kslotUp` splits 3 → 5 at pendingBlock, 1 → 2 at pendingBlockContent —
-   -- `Or.elim` is a two-arm split (`RelaySupplyCensus.isTwoArm`): the `Classical.em … |>.elim` decisions rooted at
-   -- the key-slot premise count as splits; worth (`sup`, inner/-) unchanged.
    "splits=6 sup=1 - h_kslotUp :: accum_block_on_pendingBlock#30",
    "splits=5 sup=1 - h_seqF168 :: accum_content_on_pendingMapValue_indented#38",
    "splits=4 sup=1 inner h_closeFV108 :: accum_content_on_pendingMapValue_indented#20",
@@ -588,7 +585,6 @@ def expectedWorthLedger : List String :=
    "splits=3 sup=1 - h_vslot :: accum_content_on_pendingMapValue_indented#16",
    "splits=2 sup=1 - h_kslotUp :: accum_block_on_pendingBlockContent#35",
    "splits=2 sup=1 - h_resV_land :: colon_open_map#26",
-   -- 2026-10-26 (item 370): splits 1 → 2 — the sibling `-` arm splits `h_closeF_old` too (row moves from the splits=1 group).
    "splits=2 sup=1 inner h_closeF_old :: accum_block_on_pendingBlock#32",
    "splits=2 sup=1 inner h_closeF_old :: accum_block_on_pendingBlockContent#36",
    "splits=2 sup=1 inner h_routeF :: colon_open_map_implicit#12",
@@ -623,7 +619,7 @@ def expectedWorthLedger : List String :=
 -- 2026-10-26 (item 369): branchPairs=35 → branchPairs=36, splits=103 → splits=104 — `accum_block_on_pendingBlock.h_closeF_old` (the `-` park's frames, read at the `:`/`?` landing for `h_res_land`).
 -- 2026-10-26 (item 370): splits 104 → 105 — the sibling `-` arm's split of `h_closeF_old`.
 -- 2026-10-28 (item 380, PR #146 review): splits 105 → 108, same cause; reach unchanged.
-def expectedBranchReach : String := "branchPairs=36 stateReachable=1 splits=109 stateSplits=3"
+def expectedBranchReach : String := "branchPairs=36 stateReachable=1 splits=110 stateSplits=3"
 
 open Meta in
 run_cmd do
@@ -888,7 +884,7 @@ one unfolding, and §6 is the item where those two disagreed about binders. -/
 -- 2026-10-29 (item 394, option B): no-op conclusion tally re-read after the s0 index.
 -- 2026-10-30 (item 405, Rule 8 fix): theorems 6480 → 6484 — `RegisterWitness.markedCols`, `markedCols_mem`, `MarkedColsIn.self`, `MarkedColsIn.relay`.
 -- 2026-10-30 (item 407, flow carrier `pendingKeys` conjunct): theorems 6484 → 6487 — `closeStaleExplicitKey_pendingKeys_of_inFlow`, `preprocess_pendingKeys_of_inFlow`, `allowDirectives_update_pendingKeys`.
-def expectedNoopTally : String := "theorems=6491 byElab=16 byWhnf=16 elabOnly=0 whnfOnly=0"
+def expectedNoopTally : String := "theorems=6492 byElab=16 byWhnf=16 elabOnly=0 whnfOnly=0"
 -- 5302 → 5344 on 2026-10-18 (plan row 20's close, closure-log item 280): the
 -- parse-side alias obligation moved to §7.1's DECLARATION set, so the carrier
 -- grew and the predicate gained its tools.  What is new in kind: `AG` carries

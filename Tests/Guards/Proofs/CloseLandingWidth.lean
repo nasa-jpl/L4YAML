@@ -491,10 +491,11 @@ def expectedCloses : List String :=
 -- 2026-10-30 (item 405): `closeThenBlock.h_vslot` is spent twice more — the compact fill and the resume branch now destructure `hkvUp`'s domain beside `hkv` (spends 8 → 10).
 def expectedSites : List String :=
   ["accum_block_pending→accum_block_on_closeThenBlock.h_close_pending → accum_block_on_closeThenBlock.h_close_pending: spends=1 (node 0) handoffs=0 carries=0 WIDTH reach=1 reachJudged=1 reachBoth=false",
-   "accum_block_pending→accum_block_on_closeThenBlock.h_vslot → accum_block_on_closeThenBlock.h_vslot: spends=10 (node 10) handoffs=4 carries=1 NEITHER reach=3 reachJudged=6 reachBoth=false",
    "accum_block_pending→accum_block_on_pendingBlock.h_close_pending → accum_block_on_pendingBlock.h_close_pending: spends=4 (node 0) handoffs=1 carries=0 BOTH reach=2 reachJudged=6 reachBoth=false",
    "accum_content_on_noPending→keyctx_of_preprocess.h_close → keyctx_of_preprocess.h_close: spends=2 (node 1) handoffs=0 carries=0 WIDTH reach=1 reachJudged=1 reachBoth=false",
-   "accum_flow_open_depth0→flowKeyRoute_of_root.h_close → flowKeyRoute_of_root.h_close: spends=2 (node 2) handoffs=0 carries=0 NEITHER reach=1 reachJudged=0 reachBoth=false"]
+   "accum_flow_open_depth0→flowKeyRoute_of_root.h_close → flowKeyRoute_of_root.h_close: spends=2 (node 2) handoffs=0 carries=0 NEITHER reach=1 reachJudged=0 reachBoth=false",
+  -- Item 415: the h_vslot site row re-read — the two paid closeThenBlock arms (relay + ancestor-list copy) change its spends/handoffs/reach.
+  "accum_block_pending→accum_block_on_closeThenBlock.h_vslot → accum_block_on_closeThenBlock.h_vslot: spends=12 (node 12) handoffs=4 carries=1 NEITHER reach=3 reachJudged=6 reachBoth=false"]
 -- 2026-10-24 (B3 [66] col-0 threading): follows StreamCompositions — the content/block parks close from `sp_gram` (run + gate).
 -- 2026-10-24 (B3 [66] col-0 threading): re-read on the item-355 base.
 -- 2026-10-30 (item 405): the two `closeThenBlock` births destructure `hkv` beside `hkvUp` and apply the slot route per chain member (`rcases List.mem_cons`): the node spends are read once per branch (the slot's own head and the ancestors'), with the chain index `cur:nv` only.
@@ -505,6 +506,10 @@ def expectedSpends : List String :=
   [
    -- Item 364: the declined K1-seq cover slot at the consed `seq n :: ks` site reads as a carry
    "accum_block_on_closeThenBlock carry→And.intro @— arg=— width=none index=direct[slot:k,tail:k] cmp=no","accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.compactSeq(prem:SIndent,SCompactSeq.mk(prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail)) width=ind[ind:h_iv] index=direct[cur:nv] cmp=yes[≡nv]",
+   "accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.compactSeq(prem:SIndent,SCompactSeq.mk(prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail)) width=none index=direct[cur:nv] cmp=no",
+    -- Item 415: the compact fill's ancestor list PAID at the `∃ ns` face too (the `hkvUp` arm copies the
+    -- `∀` face's two compactSeq spends: own route, ancestors' routes).
+   "accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.compactSeq(prem:SIndent,SCompactSeq.mk(prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail)) width=none index=direct[cur:nv] cmp=no",
    "accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.compactSeq(prem:SIndent,SCompactSeq.mk(prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail)) width=none index=direct[cur:nv] cmp=no",
    "accum_block_on_pendingBlock handoff→accum_block_on_closeThenBlock.h_close_pending @sp_mid arg=— width=ind[ws:hws,col:hcol_mid,ind:h_ind] index=direct[slot:n,tail:n,col:n,cur:n] cmp=yes[hkn:¬k = n,_hge:n ≥ k]",
    "accum_block_on_pendingBlock spend:comments @sp_mid arg=prem:SSLComments width=ind[ws:hws,col:hcol_mid,ind:h_ind] index=direct[slot:n,tail:n,col:n,cur:n] cmp=no",
@@ -602,7 +607,7 @@ def expectedEmpties : List String :=
 def expectedLine : String :=
 -- Item 371 (empties=25 → 27, emptyLemmas=6 → 8): the value-line packs end in the one-level
 -- `ResumeFrames`; `question_open_map`'s `h_expl`/`h_closeFV`/`h_framesV` come from the bound tail route `h_route51F`.
-  "closeSites=5 closePairs=6 closePairsD=8 viaClose=3 params=5 spends=20 spendsC=6 spendsE=0 spendsN=14 handoffs=5 carries=1 untyped=1 edges=3 paramsWalked=7 widthInd=5 widthWs=1 widthNone=0 idxDirect=4 idxPacked=1 idxNone=1 cmp=0 cmpSame=0 both=4 bothCmp=0 handInd=4 handDirect=5 handCmp=4 sitesBoth=1 sitesWidth=2 sitesNeither=2 sitesBothAll=0 empties=28 emptyLemmas=8 emptyInd=13 emptyCmp=5 emptySame=2 emptyClose=2 sites=20 pairs=20 pairs21=20 pairs18=18 nonANoDrop=8 reach=38"
+  "closeSites=5 closePairs=6 closePairsD=8 viaClose=3 params=5 spends=22 spendsC=6 spendsE=0 spendsN=16 handoffs=5 carries=1 untyped=1 edges=3 paramsWalked=7 widthInd=5 widthWs=1 widthNone=0 idxDirect=4 idxPacked=1 idxNone=1 cmp=0 cmpSame=0 both=4 bothCmp=0 handInd=4 handDirect=5 handCmp=4 sitesBoth=1 sitesWidth=2 sitesNeither=2 sitesBothAll=0 empties=28 emptyLemmas=8 emptyInd=13 emptyCmp=5 emptySame=2 emptyClose=2 sites=20 pairs=20 pairs21=20 pairs18=18 nonANoDrop=8 reach=38"
 
 /-! ## §5 The reading -/
 
