@@ -111,6 +111,7 @@ scripts/check-reflection-index.sh    # every Tests/Reflections/* is indexed
 scripts/check-closure-log.sh         # DOCS.md items ascend, dated, gaps declared
 scripts/check-serialization-proofs.sh
 python3 scripts/gate_vocab.py        # gate names in prose resolve (pin: Tests/Guards/Proofs/GateVocabulary.lean)
+scripts/check-scripts-lean.sh        # Rule 9: every scripts/*.py and inline python3 site is on scripts/scripts-ledger.txt; the ledger only shrinks
 scripts/run-all-tests.sh             # every test exe; collects failures
 lake exe suiterunner                 # matrix; items quote pass/fail/skip
 lake exe eventscore                  # event-axis score

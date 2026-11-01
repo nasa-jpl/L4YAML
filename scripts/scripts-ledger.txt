@@ -1,0 +1,95 @@
+# scripts/scripts-ledger.txt — Rule 9 ledger (Blueprint/06-discipline.md Rule 9; plan Blueprint/09-scripts-in-lean.md §5).
+# One row per Python script that still exists: `key | class | status`.
+#   key     scripts/<name>.py, or inline:<file>:<command prefix> for a python3 -c / python3 - invocation line in scripts/*.sh or
+#           .github/workflows/*.yml (command text up to the first shell operator, whitespace collapsed; one row per invocation line;
+#           the gate prints the current line numbers)
+#   class   G gate | I instrument | F flip/price | R report (plan §1)
+#   status  todo | lean:<exe> (ported; the .py is deleted, <exe> is a lean_exe) | exception:<reason> (plan §4)
+# Gate: scripts/check-scripts-lean.sh (lake exe scripts-check-ledger).  The pin below counts todo + exception rows
+# and must equal them; a port lowers it in the same PR.  The ledger may only shrink.
+# open: 85
+scripts/arm_price.py | F | todo
+scripts/beta5_arms.py | F | todo
+scripts/carrier_price.py | F | todo
+scripts/check-serialization-axioms.py | G | todo
+scripts/check_closure_log.py | G | todo
+scripts/check_import_closure.py | G | todo
+scripts/check_reflection_index.py | G | todo
+scripts/close_price.py | F | todo
+scripts/coordinate_price.py | F | todo
+scripts/cross-lang-compare.py | R | todo
+scripts/decline_all_optional.py | F | todo
+scripts/docs_nav.py | I | todo
+scripts/drop_sweep.py | I | todo
+scripts/flip_210.py | F | todo
+scripts/flip_211_stage1.py | F | todo
+scripts/flip_beta5.py | F | todo
+scripts/flip_carrier.py | F | todo
+scripts/flip_census.py | I | todo
+scripts/flip_close_ctx.py | F | todo
+scripts/flip_close_relay.py | F | todo
+scripts/flip_colon_chain.py | F | todo
+scripts/flip_compact_chain.py | F | todo
+scripts/flip_compact_cover.py | F | todo
+scripts/flip_completed_tail.py | F | todo
+scripts/flip_drop.py | F | todo
+scripts/flip_entry_chain.py | F | todo
+scripts/flip_floor_relay.py | F | todo
+scripts/flip_flow_cover_state.py | F | todo
+scripts/flip_flow_frames_chain.py | F | todo
+scripts/flip_flow_frames_field.py | F | todo
+scripts/flip_flow_pendingkeys.py | F | todo
+scripts/flip_inl_declines.py | F | todo
+scripts/flip_kslot_domain.py | F | todo
+scripts/flip_kslot_field.py | F | todo
+scripts/flip_kslote_domain.py | F | todo
+scripts/flip_map_top.py | F | todo
+scripts/flip_map_top2.py | F | todo
+scripts/flip_node_route.py | F | todo
+scripts/flip_opener_face.py | F | todo
+scripts/flip_own_tail.py | F | todo
+scripts/flip_park_route_face.py | F | todo
+scripts/flip_res_land_split.py | F | todo
+scripts/flip_resumectx_seqtop.py | F | todo
+scripts/flip_root_frame_le.py | F | todo
+scripts/flip_root_frame_supply.py | F | todo
+scripts/flip_root_frames.py | F | todo
+scripts/flip_seqtop_face.py | F | todo
+scripts/flip_sibling_arm.py | F | todo
+scripts/flip_supplier.py | F | todo
+scripts/flip_supply.py | F | todo
+scripts/flip_top_at.py | F | todo
+scripts/flip_valf_top.py | F | todo
+scripts/flip_vline_resume.py | F | todo
+scripts/gate_vocab.py | G | todo
+scripts/gen_traceof.py | I | todo
+scripts/generate-test-reports.py | R | todo
+scripts/html-to-pdf.py | R | todo
+scripts/inline_class_price.py | F | todo
+scripts/landing_nic0_price.py | F | todo
+scripts/ledger_diff.py | I | todo
+scripts/matrix_score.py | R | todo
+scripts/mv_slot_top_price.py | F | todo
+scripts/narrow_conclusion.py | F | todo
+scripts/open_map_price.py | F | todo
+scripts/pack_flip_census.py | I | todo
+scripts/park_nic0_price.py | F | todo
+scripts/park_top_price.py | F | todo
+scripts/pay_chain_optional.py | F | todo
+scripts/punt_reason_price.py | F | todo
+scripts/rename_lemma.py | G | todo
+scripts/repin.py | I | todo
+scripts/residue_classes.py | I | todo
+scripts/ride_price.py | F | todo
+scripts/svg-objects.py | R | todo
+scripts/transport_price.py | F | todo
+scripts/verify_yaml_spec_annotations.py | R | todo
+scripts/vslot_top_price.py | F | todo
+scripts/wire_price.py | F | todo
+inline:.github/workflows/test-coverage.yml:python3 -c "import weasyprint" | R | todo
+inline:.github/workflows/test-coverage.yml:python3 -c "import weasyprint" | R | todo
+inline:.github/workflows/test-coverage.yml:python3 - | G | todo
+inline:.github/workflows/test-coverage.yml:python3 -c " | R | todo
+inline:scripts/generate-all.sh:python3 -c "import weasyprint" | R | todo
+inline:scripts/generate-all.sh:python3 -c "import weasyprint" | R | todo
+inline:scripts/generate-all.sh:python3 - "$REPORTS/stats.json" | G | todo

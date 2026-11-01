@@ -3,8 +3,8 @@
 Status: PLAN, defaults RULED (2026-11-01, owner: "ok with the defaults" —
 every §6 default below is the decision). Governs the conversion of every
 `scripts/*.py` to Lean under [`06-discipline.md`](06-discipline.md) Rule 9.
-Nothing here is done yet; each phase lands as its own PR and ticks its
-rows in §5. Work order (§3): phase 0 → 2.1 → 3.1 → 3.2 → phase 1 → the
+Phase 0 (the gate) is DONE (#196); each later phase lands as its own PR
+and ticks its rows in §5. Work order (§3): phase 0 → 2.1 → 3.1 → 3.2 → phase 1 → the
 rest; R12 holds its next flip until 3.1 lands (Q6).
 
 Inventory basis: `scripts/` on `fix-a-grammar-completeness` at the merge of
@@ -121,7 +121,7 @@ script family per PR, following the item protocol where an instrument's
 reading is quoted (predict the Lean reading = the Python reading, then
 score it).
 
-**Phase 0 — the rule's gate (1 PR, no conversion).**
+**Phase 0 — the rule's gate (1 PR, no conversion). DONE — #196.**
 `scripts/check-scripts-lean.sh` + `scripts/scripts-ledger.txt`: the ledger
 lists every `.py` under `scripts/` with its class and status
 (`todo | lean:<exe> | exception:<reason>`); the gate fails on a `.py` not
