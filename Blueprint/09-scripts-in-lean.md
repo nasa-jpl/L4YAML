@@ -4,8 +4,8 @@ Status: PLAN, defaults RULED (2026-11-01, owner: "ok with the defaults" —
 every §6 default below is the decision). Governs the conversion of every
 `scripts/*.py` to Lean under [`06-discipline.md`](06-discipline.md) Rule 9.
 Nothing here is done yet; each phase lands as its own PR and ticks its
-rows in §5. Order of work: phase 0, then 2.1, then 3.1; R12 holds its next
-flip until 3.1 lands (Q6).
+rows in §5. Work order (§3): phase 0 → 2.1 → 3.1 → 3.2 → phase 1 → the
+rest; R12 holds its next flip until 3.1 lands (Q6).
 
 Inventory basis: `scripts/` on `fix-a-grammar-completeness` at the merge of
 PR #191 — **78 Python files, 13 176 lines**, plus 11 shell wrappers. Counts
@@ -65,14 +65,30 @@ scripts/*.sh                  -- unchanged names; body becomes `exec lake exe <n
 Rules for the port, so the Lean versions are better instruments, not
 transliterations:
 
-- **Declaration questions are answered from the environment.** A gate
-  that asks "is every module imported by something" loads the `.olean`
-  closure (`Lean.importModules`) and reads `env.header.moduleNames`; it
-  does not regex `import` lines — the 2026-10-17 `public import` miss is
-  the reason. `flip_census`'s "enclosing declaration" becomes
-  `Lean.Elab` position → `declRangeExt` lookup, with the text scan kept
-  only for files that fail to elaborate (the error site has no
-  environment).
+- **Declaration questions are answered from the environment — where one
+  can be loaded.** `check_import_closure.py` documents why it does NOT
+  load one: merging the full Proofs environment trips a duplicate
+  equation-lemma error (its docstring, and the CI comment it cites), and
+  `drop_sweep.py` documents the second obstacle — the executable entry
+  points each define a root `main`, so two of them in one environment is
+  an import error. A port therefore does not start from
+  `Lean.importModules` over everything. Strategy, in order: (i) read the
+  import *graph* without elaborating — each `.olean`'s header
+  (`Lean.readModuleData` → `header.imports`) lists its imports exactly as
+  the module system resolved them, no regex and no environment merge; the
+  closure walk is over headers, roots as today (`L4YAML` + the four
+  emitter exes); (ii) only where a question needs constants (binders,
+  axioms, dependents) load one closure at a time, as `DropDependents` and
+  `drop_sweep.py`'s per-entry-point probes already do. Phase 1.1 first
+  reproduces the duplicate equation-lemma failure with a scratch
+  `importModules` over the Proofs roots on the current toolchain and
+  records the result in the PR; if it no longer reproduces, (i) is still
+  the port (cheaper, and immune to it); if it does, (i) is the only port.
+  `flip_census`'s "enclosing declaration" is a build-log question: the
+  error site is in a file that failed to elaborate, so there is no
+  environment for it — the port keeps the text scan for openers, as a
+  tested function (`#guard` rows taken from the Python `OPENER` cases),
+  and uses `declRangeExt` only when the module did build.
 - **One flip library, data-driven flips.** A class-F instrument becomes a
   *flip spec* — file, base revision, list of `(anchor, replacement)` —
   consumed by one `lake exe scripts-flip SPEC.lean|SPEC.json`. The 58
@@ -102,8 +118,19 @@ lists every `.py` under `scripts/` with its class and status
 (`todo | lean:<exe> | exception:<reason>`); the gate fails on a `.py` not
 in the ledger, on a ledger row for a file that no longer exists, and on a
 `python3` call in `scripts/*.sh` or `.github/workflows/*.yml` whose target
-is not an `exception` row. Added to the gate battery (AGENTS §3, the
-skills). The ledger may only shrink. *This gate is itself a shell
+is not an `exception` row. **Inline Python** — `python3 -c "…"`,
+`python3 - <<'EOF'`, `python3 - "$ARG" <<'EOF'` — has no target file; the
+gate treats each as a script of its own, keyed by file and line
+(`inline:<file>:<line>`), and the ledger must list it. Today's four:
+`.github/workflows/test-coverage.yml` (the proof-hygiene read of
+`stats.json`; the release-asset JSON lookup) and `scripts/generate-all.sh`
+(the same hygiene read; `python3 -c "import weasyprint"`, a *probe for
+the PDF tool*, listed as part of Q3's exception). Phase 1 replaces the
+two hygiene reads with one Lean exe over `stats.json` (`Lean.Json`, ~20
+lines) and the asset lookup with `jq` or `gh api --jq` (no logic — a JSON
+field read; shell wrappers may use coreutils and `gh`). An inline row is
+removed when its heredoc is gone. Added to the gate battery (AGENTS §3,
+the skills). The ledger may only shrink. *This gate is itself a shell
 wrapper around a Lean exe (`Scripts/Main/CheckScriptsLedger.lean`) — the
 first Lean script, and the proof the shape works.*
 
@@ -131,10 +158,17 @@ breaks CI if wrong, cheapest first:
    (PACK-FLIP / PACK-RESIDUE / RESIDUE-CLASSES as three subcommands of
    one exe; the `∃`-index classing reads binders from the environment,
    which `GhostIndexCensus.lean` already does — one implementation).
-3. `drop_sweep.py` → retired in favour of `DropDependents.lean`, which the
-   script's own docstring names as the implementation of record; the
-   sweep's acceptance half (generates `L4YAML/Scratch/*.lean`) becomes a
-   `scripts-drop-sweep` exe only if an item still runs it (Q2).
+3. `drop_sweep.py` → `scripts-drop-sweep`, **not retired**: the walk
+   (`Tests.Guards.DropDependents.census`) is already Lean and shared, but
+   the sweep is the WIDE reading — every `L4YAML.*`/`Tests.*` module with
+   an olean in one environment, plus the executable entry points probed
+   one at a time against their own closures (two root `main`s cannot
+   share an environment) — and `DropDependents.lean` pins that wide
+   reading as its fifth pin (item 238). Retiring the script would leave
+   that pin without a producer. The exe keeps both probes and the
+   `--quick` mode, generates the per-closure scratch modules under
+   `L4YAML/Scratch/` and removes them as today, and must reproduce the
+   current `D= S= R= T=` reading before the Python is deleted.
 4. `ledger_diff.py` → `scripts-ledger-diff` (the escaped-pipe table parser
    is 40 lines; port with its two regression cases from PRs #125/#126 as
    `#guard`s). `gen_traceof.py` → `scripts-gen-traceof` (reads
@@ -187,16 +221,19 @@ for the scripts (the `python/` package tests keep theirs), update
 `l4yaml-build-and-gates` to the `lake exe` names, and move Rule 9's gate
 from "ledger may only shrink" to "ledger holds exceptions only".
 
-Order of value: phase 0 and phase 2.1 first (the gate, then the two
-primitives every item uses), then phase 1 (CI), then 3.1–3.2 (the live
-flips), then 4, then 3.3 by Q2.
+**Work order (the one sequence contributors follow; the status line at
+the top repeats it):** phase 0 → 2.1 → 3.1 → 3.2 → phase 1 → 2.2–2.4 →
+phase 4 → 3.3 → 3.4 → phase 5. Phase 2.1 and 3.1 come before the CI
+gates because Row 12 blocks on them (Q6): the next item's flip needs the
+flip exe, and every item needs `repin`/`flip_census`. Phase 1 is next
+because it removes Python from CI; it does not block an item.
 
 ## 4. Exceptions (proposed; the ledger is the record)
 
 | File | Why it may stay non-Lean | Until |
 |---|---|---|
 | `python/**`, `python/tests/**`, `Tests/test_python_ffi.py`, `Tests/conftest.py`, `Tests/tryparse_python.py` | the shipped Python binding and its tests — a product, not a script | — |
-| `scripts/html-to-pdf.py` | WeasyPrint rasterisation (Q3) | Q3 ruled |
+| `scripts/html-to-pdf.py` + the `python3 -c "import weasyprint"` probes | WeasyPrint rasterisation (Q3: ruled — the CLI route; the probe becomes `command -v weasyprint`) | phase 4.4 |
 | `scripts/attic/*.py` (if Q2 = freeze) | historical readings already recorded in DOCS.md; never run again | — |
 
 ## 5. Ledger (phase 0 turns this into `scripts/scripts-ledger.txt`)
@@ -215,7 +252,8 @@ flips), then 4, then 3.3 by Q2.
 | residue_classes.py | I | 123 | 10-30 | Row 12 items ≥ 403 | scripts-pack-census classes | todo |
 | docs_nav.py | I | 339 | 10-20 | AGENTS §1, skills | scripts-docs-nav | todo |
 | ledger_diff.py | I | 226 | 10-26 | ledgers/README | scripts-ledger-diff | todo |
-| drop_sweep.py | I | 229 | 09-22 | skills | DropDependents.lean / Q2 | todo |
+| drop_sweep.py | I | 229 | 09-22 | skills; DropDependents.lean's wide pin | scripts-drop-sweep | todo |
+| inline: test-coverage.yml hygiene read, release-asset lookup; generate-all.sh hygiene read, weasyprint probe | G/R | ~30 | — | CI, generate-all.sh | Lean `stats.json` exe; `gh api --jq`; Q3 | todo |
 | gen_traceof.py | I | 195 | 10-23 | TraceOf regeneration | scripts-gen-traceof | todo |
 | flip_colon_chain.py, flip_kslote_domain.py | F (live, items 417/416) | 138, 85 | 11-01 | items | flip specs (phase 3.1 validation) | todo |
 | flip_210.py, flip_211_stage1.py | F (live, `[211]`) | 138, 86 | 09-21, 10-27 | ledger snapshots | flip specs | todo |
