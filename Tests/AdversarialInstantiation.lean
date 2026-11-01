@@ -9192,6 +9192,101 @@ def testKslotEDomain (state : IO.Ref TestCollector) : IO Unit := do
   check state s!"P80 h_kslotE domained (item 416): eligible block content steps={contentPauses} (ineligible pauses={ineligible}) — over the lemma's span s → s': marks unchanged={sameMarks} shrank (still ⊆)={shrank} grew={grew} (must be 0: the step adds no mark); halves: preprocess s → sP unchanged={prepSame}, dispatch sP → s' unchanged={dispSame}; `?` pauses={qPauses} adding their own column={qAdded} (negative control, must be all); props-park inputs accepted={routedAcc}/{routed.length}"
     (contentPauses > 0 && grew == 0 && qPauses > 0 && qAdded == qPauses && routedAcc == routed.length)
 
+-- 81, grammar half (item 417) — `colon_open_map`'s `h_kslot` PAID from the caller's chain one
+-- frame up (item 412's `h_explUp_chainD`, stated over ENTRIES at `k`): the `:` arm builds the
+-- `[189]` entry from the awaited node (`SBlockMapEntry.emptyKeyNode`), so the owed NODE chain is
+-- the held ENTRY chain at that entry; the domain crosses the `:` by the mark step.  Each example
+-- is one obligation the pay discharges, read off the surface constructors.
+section ColonChainGrammar
+open L4YAML.Surface L4YAML.Proofs.IndentStackCover L4YAML.Proofs.RegisterWitness L4YAML.Proofs.StreamAccum
+
+-- (i) the node → the `[189]` entry: `emptyKeyNode` wants the node at `k + 1` in `.blockOut`;
+-- the slot's node is `.blockIn`, converted by `SBlockNode_blockIn_to_blockOut`.
+example (k : Nat) (sp_ind sp_scan' sp_m : SurfPos)
+    (h_lit : GLit ':' sp_ind sp_scan') (h_node : SBlockNode (k + 1) .blockIn sp_scan' sp_m) :
+    SBlockMapEntry k sp_ind sp_m :=
+  SBlockMapEntry.emptyKeyNode k sp_ind sp_scan' sp_m h_lit (L4YAML.Proofs.NodeProduction.SBlockNode_blockIn_to_blockOut h_node)
+
+-- (ii) the pay's term: the entry chain at that entry IS the slot chain, for every marked column.
+example (k nv : Nat) (sc : L4YAML.Scanner.ScannerState) (ns : List Nat)
+    (sp_start sp_ind sp_scan' sp_m sp_i sp_c sp_v : SurfPos)
+    (hmem : nv ∈ ns) (h_lit : GLit ':' sp_ind sp_scan')
+    (h_node : SBlockNode (k + 1) .blockIn sp_scan' sp_m)
+    (h_ind : SIndent nv sp_m sp_i) (h_colon : GLit ':' sp_i sp_c)
+    (h_val : SBlockIndented nv .blockOut sp_c sp_v)
+    (chain : ∀ nv ∈ ns, ∀ sp_v : SurfPos, SBlockMapEntry k sp_ind sp_v →
+      ∀ sp_i sp_c : SurfPos, SIndent nv sp_v sp_i → GLit ':' sp_i sp_c →
+      ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →
+      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) :
+    ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v :=
+  chain nv hmem sp_m
+    (SBlockMapEntry.emptyKeyNode k sp_ind sp_scan' sp_m h_lit (L4YAML.Proofs.NodeProduction.SBlockNode_blockIn_to_blockOut h_node))
+    sp_i sp_c h_ind h_colon sp_v h_val
+
+-- (iii) the domain crosses the `:`: a non-`?` indicator adds no mark (`h_mcstep_ne`), so the
+-- pre-state's `MarkedColsIn` is the post-state's — the `∃ ns` the new park's `h_kslot` carries.
+example (sc s' : L4YAML.Scanner.ScannerState) (ns : List Nat) (hdom : MarkedColsIn sc ns)
+    (h_mcstep_ne : ':' ≠ '?' → ∀ ns : List Nat, MarkedColsIn sc ns → MarkedColsIn s' ns) :
+    MarkedColsIn s' ns :=
+  h_mcstep_ne (by decide) ns hdom
+
+-- Refutation bucket: the OTHER `[189]` constructor, `emptyKeyEmpty`, closes the entry on
+-- comments (`SSLComments sp_scan' sp_m`) — the slot's hypothesis is a NODE, which is no
+-- comments run, so the node arm cannot be paid through it; the entry it builds ends at the
+-- comments' end, where no awaited node stands.  Stated as the obligation the wrong arm would owe.
+example (k : Nat) (sp_ind sp_scan' sp_m : SurfPos)
+    (h_lit : GLit ':' sp_ind sp_scan') (h_ssl : SSLComments sp_scan' sp_m) :
+    SBlockMapEntry k sp_ind sp_m :=
+  SBlockMapEntry.emptyKeyEmpty k sp_ind sp_scan' sp_m h_lit h_ssl
+end ColonChainGrammar
+
+def testColonChainRelay (state : IO.Ref TestCollector) : IO Unit := do
+  -- 81 (item 417, PAID) — the scanner half of the relay: the mark step `h_mcstep_ne` the pay
+  -- carries the domain across says a `:` dispatch adds no mark — over the WHOLE step `s → s'`
+  -- (preprocess + block-indicator dispatch), on the ELIGIBLE steps (the preprocess pauses on a
+  -- block-level `:`).  The lemma needs ⊆; whether a `:` also REMOVES a mark (the explicit key it
+  -- answers) is reported as a reading, not asserted.  Negative control: a `?` adds its own column.
+  -- End to end: the `:`-landing inputs of item 415's stopped class G (a `:` at a dedent / line
+  -- start opening a mapping under open `?` frames — item 197's `?⏎  ?⏎    - a⏎  : b⏎  : c⏎: w`).
+  let accepts (input : String) : Bool := match parseYaml input with | .ok _ => true | .error _ => false
+  let landings : List String :=
+    ["?\n  ?\n    - a\n  : b\n  : c\n: w\n", ": v\n", ": v\n: w\n", "? a\n: b\n: c\n", "k:\n  : v\n",
+     "- : v\n", "?\n  - a\n: b\n: c\n", "? &x a\n: b\n: c\n", "# c\n: v\n", "? ? a\n  : b\n: c\n: d\n",
+     "? a\n:\n  : v\n", "- ? a\n  : b\n  : c\n"]
+  let accepted := landings.filter accepts
+  let mut eligible := 0
+  let mut ineligible := 0
+  let mut same := 0
+  let mut shrank := 0
+  let mut grew := 0
+  let mut qPauses := 0
+  let mut qAdded := 0
+  for input in landings do
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:64] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) =>
+          let pre := markedColsOf s.pendingKeys s.indentColumns
+          let mid := markedColsOf sP.pendingKeys sP.indentColumns
+          let after := markedColsOf sN.pendingKeys sN.indentColumns
+          if sP.flowLevel == 0 && c == ':' then
+            eligible := eligible + 1
+            if after == pre then same := same + 1
+            else if after.all (· ∈ pre) then shrank := shrank + 1
+            else grew := grew + 1
+          else
+            ineligible := ineligible + 1
+          if sP.flowLevel == 0 && c == '?' then
+            qPauses := qPauses + 1
+            if sP.col ∈ after && !(sP.col ∈ mid) then qAdded := qAdded + 1
+          s := sN
+        | _ => break
+      | _ => break
+  check state s!"P81 colon_open_map's h_kslot relayed (item 417): eligible block `:` steps={eligible} (ineligible pauses={ineligible}) — over s → s': marks unchanged={same} shrank (the answered `?`'s mark popped; still ⊆)={shrank} grew={grew} (must be 0: a `:` adds no mark); `?` pauses={qPauses} adding their own column={qAdded} (negative control, must be all); `:`-landing inputs accepted={accepted.length}/{landings.length} (refused: {landings.filter (fun i => !accepts i)})"
+    (eligible > 0 && grew == 0 && qPauses > 0 && qAdded == qPauses && accepts "?\n  ?\n    - a\n  : b\n  : c\n: w\n" && accepted.length * 10 ≥ landings.length * 8)
+
 def testFlowCarrier (state : IO.Ref TestCollector) : IO Unit := do
   let nestedQ : List String := ["?\n  ? -\n: w\n", "? - ? - a\n  : b\n: c\n", "?\n  ?\n    -\n    - b\n  ? c\n: w\n", "? ? - a\n  : b\n: c\n", "- ? - a\n  : b\n"]
   let singleQ : List String := ["? - a\n: b\n", "?\n  - a\n  - b\n: w\n", "k:\n  ? - a\n  : b\n", "? -\n: w\n"]
@@ -9391,6 +9486,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testRefusedAtParks state
   testInlDeclinesPaid state
   testKslotEDomain state
+  testColonChainRelay state
 
   testQuestionMarkColumn state
   testK1Lanes state

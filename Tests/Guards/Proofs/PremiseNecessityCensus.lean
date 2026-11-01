@@ -387,7 +387,7 @@ def expectedModuleTallyP : String :=
   -- 2026-10-28 (item 386): constants/decls +2 (`IndentFloor.int_le_of_succ`, the level relays), READ +5, RELAY +2
   -- (the helpers' new premises `h_floor`/`h_nk`, the openers' `h_lvl_old`/`h_floor_mv`); UNUSED unchanged.
   -- 2026-10-29 (item 394): `FlowBaseRoutes.valueF` (+3 constants: the field, its projection, the structure's new arity), five more premise reads at the births and closes.
-  "constants=1742 decls=1377 eta=447 FIELD=201 READ=1473 RELAY=2734 RETURN=173 UNUSED=27"
+  "constants=1742 decls=1377 eta=447 FIELD=201 READ=1476 RELAY=2735 RETURN=173 UNUSED=27"
 
 -- Item 287: `accum_block_on_closeThenBlock`'s `h_vslot`, a READ one, left the
 -- `_ ∨ True` population — its sibling's move, under this peel.  Item 288: and
@@ -403,7 +403,7 @@ def expectedOptTallyP : String :=
   -- 2026-10-24 (item 350): total 163 → 159, ETA 33 → 31, READ 87 → 85 — the `h_expl`/`h_explUp` `inr`
   -- arms pay an empty chain and no longer read their alternative.
   -- 2026-10-28 (item 380, PR #146 review): READ 89 → 91, RELAY 40 → 38 — the two optional contexts eliminated by `Or.elim`.
-  "total=162 ETA=31 FIELD=4 READ=92 RELAY=33 RETURN=2"
+  "total=163 ETA=31 FIELD=4 READ=93 RELAY=33 RETURN=2"
 
 run_cmd do
   let env ← getEnv
@@ -881,7 +881,7 @@ lemma opt_premise_is_no_premise {A P : Prop} : (A ∨ True → P) ↔ P :=
 -- — the two item-385 helpers; `deeperLandingResume.h_valF` is one more optional context (READ inside the helper).
 def expectedOptPopulation : String :=
   -- 2026-10-24 (item 350): total 163 → 159, optTy 156 → 153, ctorFields 33 → 31 — as above.
-  "total=162 optTy=155 ctorFields=31"
+  "total=163 optTy=156 ctorFields=31"
 
 run_cmd do
   let env ← getEnv
