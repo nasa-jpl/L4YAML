@@ -9359,6 +9359,13 @@ example (nv k : Nat) (hnk : nv + 1 ≤ k) (nsU : List Nat) (sp_start sp_scan sp_
 example (s' : L4YAML.Scanner.ScannerState) (nv : Nat) (hdom : MarkedColsIn s' [nv]) :
     ∀ x ∈ markedCols s', x = nv :=
   MarkedColsIn.relay hdom (fun x hx => by simpa using hx)
+
+-- (v) the third pay, `pendingBlock`'s landed-`?` arm with the own line HELD and the ancestor list
+-- DECLINED: the projection itself is the list (`MarkedColsIn.self`), so the own line alone
+-- discharges the `∃ ns` — the arm that wrote `Or.inr trivial` owed nothing it did not hold.
+example (sc : L4YAML.Scanner.ScannerState) (P : Nat → Prop) (kslot : ∀ nv ∈ markedCols sc, P nv) :
+    ∃ ns, MarkedColsIn sc ns ∧ ∀ x ∈ ns, P x :=
+  ⟨markedCols sc, MarkedColsIn.self sc, kslot⟩
 end HeldChainGrammar
 
 def testHeldChainRelay (state : IO.Ref TestCollector) : IO Unit := do
@@ -9393,7 +9400,29 @@ def testHeldChainRelay (state : IO.Ref TestCollector) : IO Unit := do
   let mut underTwo := 0
   let mut qPauses := 0
   let mut qAdded := 0
-  for (input, _) in landings do
+  -- Reachability of the three PAID branches, read off the state the pays read: `mid` is the
+  -- register AFTER the preprocess (the dedent closes) and BEFORE the indicator's dispatch, so its
+  -- marks are the `nv` / `n` the branch guards compare with the landing column `k`.
+  -- (A) `closeThenBlock`'s `-`: every surviving mark `≤ k` is the paid arm (`nv ≤ k`), a mark
+  -- `> k` would be the residual `else` birth; two or more marks = the held ancestor list.
+  -- (B) `closeThenBlock`'s `?`/`:`: innermost mark `+ 1 ≤ k` is the paid arm, `= k` the `else`.
+  -- (C) `pendingBlock`'s landed `?` (no frame closes): innermost `+ 1 ≤ k` paid, `= k` the `else`.
+  let mut aPaid := 0
+  let mut aAnc := 0
+  let mut aBirth := 0
+  let mut bPaid := 0
+  let mut bBirth := 0
+  let mut bDeep := 0
+  let mut cPaid := 0
+  let mut cBirth := 0
+  let mut cDeep := 0
+  let reachInputs : List String :=
+    ["k:\n  ? a\n  : b\n", "? a\n? b\n: c\n", "?\n  ? a\n  ? b\n: c\n", "- ? a\n  : b\n- ? c\n  : d\n",
+     "?\n  ?\n    - a\n  ? b\n  : c\n: d\n", "?\n  k:\n    - a\n  ? b\n: c\n",
+     -- (A)'s witnesses: a `-` that closes a deeper sequence and lands under one / two surviving `?` marks
+     "?\n  - a\n  -\n    - x\n  - b\n: c\n", "?\n  ?\n    - a\n    -\n      - x\n    - b\n  : c\n: d\n",
+     "?\n  ?\n    - a\n    - k:\n        - x\n    - b\n  : c\n: d\n", "- ?\n    -\n      - x\n    - b\n  : c\n"]
+  for input in landings.map (·.1) ++ reachInputs do
     let mut s := L4YAML.Scanner.ScannerState.mk' input
     for _ in [:64] do
       match L4YAML.Scanner.scanNextToken_preprocess s with
@@ -9414,11 +9443,32 @@ def testHeldChainRelay (state : IO.Ref TestCollector) : IO Unit := do
           if sP.flowLevel == 0 && c == '?' then
             qPauses := qPauses + 1
             if sP.col ∈ after && !(sP.col ∈ mid) then qAdded := qAdded + 1
+          if sP.flowLevel == 0 && (c == '-' || c == '?' || c == ':') then
+            let k := sP.col
+            let closing := sP.indentColumns.size < s.indentColumns.size
+            let marks := mid.eraseDups
+            match marks.max? with
+            | some n =>
+              if closing && c == '-' then
+                if marks.all (· ≤ k) then
+                  aPaid := aPaid + 1
+                  if marks.length ≥ 2 then aAnc := aAnc + 1
+                else aBirth := aBirth + 1
+              else if closing then
+                if n + 1 ≤ k then bPaid := bPaid + 1
+                else if n == k then bBirth := bBirth + 1
+                else bDeep := bDeep + 1
+              else if c == '?' then
+                if n + 1 ≤ k then cPaid := cPaid + 1
+                else if n == k then cBirth := cBirth + 1
+                else cDeep := cDeep + 1
+            | none => pure ()
           s := sN
         | _ => break
       | _ => break
-  check state s!"P82 held-chain relays (item 418): eligible block `-` steps={dashSteps} `:` steps={colonSteps} (ineligible pauses={ineligible}) — over s → s': marks unchanged={same} shrank={shrank} grew={grew}; under two or more marks (ancestor list held, singleton cover refuted)={underTwo}; `?` pauses={qPauses} add their own column={qAdded}; closed-`?` landings composed as predicted (whole value, nested)={shaped}/{landings.length}{if misshaped.isEmpty then "" else s!" misshaped: {misshaped.map (fun (i, e) => s!"{i.quote} ↦ {rootShape i} (predicted {e})")}"}"
-    (dashSteps > 0 && colonSteps > 0 && grew == 0 && underTwo > 0 && qPauses > 0 && qAdded == qPauses && misshaped.isEmpty)
+  check state s!"P82 held-chain relays (item 418): eligible block `-` steps={dashSteps} `:` steps={colonSteps} (ineligible pauses={ineligible}) — over s → s': marks unchanged={same} shrank={shrank} grew={grew}; under two or more marks (ancestor list held, singleton cover refuted)={underTwo}; `?` pauses={qPauses} add their own column={qAdded}; closed-`?` landings composed as predicted (whole value, nested)={shaped}/{landings.length}{if misshaped.isEmpty then "" else s!" misshaped: {misshaped.map (fun (i, e) => s!"{i.quote} ↦ {rootShape i} (predicted {e})")}"} REACHED — (A) `-` after a close: paid arm={aPaid} (under a held ancestor list={aAnc}) residual birth={aBirth}; (B) `?`/`:` after a close: paid={bPaid} own-column else={bBirth} deeper={bDeep}; (C) landed `?` on a pending block: paid={cPaid} own-column else={cBirth} deeper={cDeep}"
+    (dashSteps > 0 && colonSteps > 0 && grew == 0 && underTwo > 0 && qPauses > 0 && qAdded == qPauses && misshaped.isEmpty &&
+      aPaid > 0 && aAnc > 0 && aBirth == 0 && bPaid > 0 && bDeep == 0 && cPaid > 0 && cDeep == 0)
 
 def testFlowCarrier (state : IO.Ref TestCollector) : IO Unit := do
   let nestedQ : List String := ["?\n  ? -\n: w\n", "? - ? - a\n  : b\n: c\n", "?\n  ?\n    -\n    - b\n  ? c\n: w\n", "? ? - a\n  : b\n: c\n", "- ? - a\n  : b\n"]
