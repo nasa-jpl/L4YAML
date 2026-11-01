@@ -1,8 +1,11 @@
 # Scripts in Lean — Rule 9's conversion plan
 
-Status: PLAN (2026-11-01). Governs the conversion of every `scripts/*.py`
-to Lean under [`06-discipline.md`](06-discipline.md) Rule 9. Nothing here
-is done yet; each phase lands as its own PR and ticks its rows in §5.
+Status: PLAN, defaults RULED (2026-11-01, owner: "ok with the defaults" —
+every §6 default below is the decision). Governs the conversion of every
+`scripts/*.py` to Lean under [`06-discipline.md`](06-discipline.md) Rule 9.
+Nothing here is done yet; each phase lands as its own PR and ticks its
+rows in §5. Order of work: phase 0, then 2.1, then 3.1; R12 holds its next
+flip until 3.1 lands (Q6).
 
 Inventory basis: `scripts/` on `fix-a-grammar-completeness` at the merge of
 PR #191 — **78 Python files, 13 176 lines**, plus 11 shell wrappers. Counts
@@ -227,7 +230,7 @@ flips), then 4, then 3.3 by Q2.
 | svg-objects.py | R | 71 | 09-05 | CI, generate-all.sh | scripts-svg-objects / Q3 | todo |
 | html-to-pdf.py | R | 414 | 04-09 | CI, generate-all.sh | exception or Q3 | todo |
 
-## 6. Open questions for the owner
+## 6. Questions for the owner (all ruled 2026-11-01: the stated default of each)
 
 1. **Regular expressions.** Core Lean has none. Options: (a) hand parsers
    per fixed shape (the build-log line, the pin line, the item header —
