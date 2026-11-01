@@ -278,6 +278,58 @@ the over-refusal that follows, `?⏎  ? y⏎  : z⏎: w: x`).
   an inequality (`n ≤ minContentIndentOf sc`); the census lists their counts
   so a growth there is visible, but does not name them.
 
+## Rule 9 — Scripts are written in Lean, not Python
+
+Added 2026-11-01 (owner's ruling). Every script this repository runs —
+a CI gate, a pricing or flip instrument, a census reader, a docs
+navigator, a report generator — is a Lean program (a `lean_exe` under
+`Scripts/`, or a Lake `script` in `lakefile.lean`), invoked through
+`lake exe <name>` / `lake run <name>`. The shell wrappers in `scripts/*.sh`
+may stay as entry points and may compose Lean executables with `git`,
+`lake` and coreutils; they may not call `python3`.
+
+Why. The instruments are the campaign's memory (Rule 6, §9, §10): a
+number an item quotes is only as reliable as the program that re-derives
+it, and today those programs live in a language the build never checks,
+with their own re-implementations of what Lean already knows — which
+line is a declaration opener (`flip_census.py`'s `OPENER` regex), which
+lines are imports (the `public import`/`meta import` regression that read
+the migrated library as empty on 2026-10-17), what a module's dependents
+are (`drop_sweep.py` and `DropDependents.lean` are two implementations
+of one walk). A Lean script reads the environment instead of grepping
+its text, elaborates under the same toolchain the proofs use, and is
+built and type-checked by `lake build` like everything else.
+
+What the rule requires:
+
+1. **No new `scripts/*.py`.** A new instrument is a Lean program; a
+   change to an existing Python instrument that is more than a one-line
+   fix converts it first (see the plan in
+   [`09-scripts-in-lean.md`](09-scripts-in-lean.md)).
+2. **Read the environment, not the text, when the question is about
+   declarations** — openers, imports, dependents, binders, axioms. Text
+   reading is for what Lean does not see: docstrings (`GateVocabulary`),
+   `DOCS.md`, build logs.
+3. **An instrument that edits library source** (a flip) states what it
+   patches, builds, and restores the bytes it read, printing both
+   checksums — the protocol `.devin/skills/l4yaml-price-instruments`
+   describes, now enforced by one shared `Scripts.Flip` library rather
+   than re-typed per script.
+4. **Python stays where it is the product**, not a script: the `l4yaml`
+   package under `python/` and its tests (`python/tests/`,
+   `Tests/test_python_ffi.py`) are the FFI binding this project ships.
+5. **Third-party tooling with no Lean counterpart** (PDF rasterisation,
+   the docker-driven processor matrix) is called as an external
+   program from a Lean or shell driver; the logic around it — what to
+   compare, how to score, what to write — is Lean. Exceptions are
+   listed, with their reason, in the plan's §4; an unlisted `.py` is a
+   Rule 9 violation.
+
+- **Gate**: `scripts/check-scripts-lean.sh` (plan §3, phase 0) fails
+  when a `.py` exists under `scripts/` that is not on the plan's
+  conversion ledger, or when a `.sh` or workflow step invokes `python3`
+  outside the ledger's listed exceptions. The ledger may only shrink.
+
 ## Checklist before merging a new lemma or theorem
 
 Contributor self-check:

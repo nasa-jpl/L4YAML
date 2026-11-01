@@ -11,7 +11,7 @@ the history cites; it does not duplicate them.  Task-shaped recipes live in
 |---|---|---|
 | What is this project, how do I build/test it, what is next at the project level | [`README.md`](README.md) (its **Next steps**) | restate its metrics elsewhere |
 | Which theorems are capstones and their status / axiom profile | [`Blueprint/04-capstones.md`](Blueprint/04-capstones.md) — machine-parsed | add a theorem without a row here |
-| The rules of proof work | [`Blueprint/06-discipline.md`](Blueprint/06-discipline.md) (Rules 1–7) | invent a parallel rule set |
+| The rules of proof work | [`Blueprint/06-discipline.md`](Blueprint/06-discipline.md) (Rules 1–9) | invent a parallel rule set |
 | What the active campaign is doing *right now* | `DOCS.md` → Row 12 closure log: `scripts/docs_nav.py next` and `remaining` | read DOCS.md top to bottom (45k lines) |
 | Which YAML productions are covered | [`L4YAML/YAML_PRODUCTIONS.md`](L4YAML/YAML_PRODUCTIONS.md) — machine-checked by `Tests/ProductionCoverage.lean` | edit by hand without the check |
 | Vocabulary of the pipeline | [`Blueprint/01-terminology.md`](Blueprint/01-terminology.md); campaign vocabulary in §6 below | |
@@ -42,6 +42,12 @@ From `Blueprint/06-discipline.md` (binding; the file wins over this summary):
 7. **`theorem` is reserved for `@[capstone]`** (listed in
    `scripts/capstones.txt`, gated by `scripts/check-theorem-keyword.sh`);
    everything else is `lemma`.
+8. **No ghost index on the accumulation invariant** — every index a
+   carrier introduces is a surface position, an obligation, or a projection
+   of the scanner state; a fourth kind means the scanner is incomplete.
+9. **Scripts are Lean, not Python.**  A new instrument or gate is a
+   `lean_exe` (run via `lake exe`); no new `scripts/*.py`.  The conversion
+   of the existing ones is planned in `Blueprint/09-scripts-in-lean.md`.
 
 Working rules the closure log cites by section number (they were a private
 checklist; restated here so the citations resolve):
@@ -93,6 +99,8 @@ Facts that cost people time:
 - Pricing/flip scripts (`scripts/*_price.py`, `scripts/flip_*.py`) edit
   library files in place and rebuild; never run one concurrently with
   `lake build`, and confirm the file is restored (they print both md5s).
+  They are Python today and are being converted to Lean under Rule 9
+  (`Blueprint/09-scripts-in-lean.md`); do not add a new `.py`.
 
 The gates an item reports green, in the order they are cheap:
 
