@@ -42,9 +42,9 @@ ap = argparse.ArgumentParser(description="price the 14 Or.inl declines of item 4
 ap.add_argument("--rev", default=BASE_REV, help=f"revision holding the sites (default {BASE_REV})")
 args = ap.parse_args()
 git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True)
-others = git("diff", "--quiet", args.rev, "HEAD", "--", "L4YAML", f":!{REL}")
+others = git("diff", "--quiet", args.rev, "--", "L4YAML", f":!{REL}")  # REV vs the WORKING TREE: uncommitted edits count
 if others.returncode != 0:
-    sys.exit(f"library files other than {REL} differ between {args.rev} and HEAD; "
+    sys.exit(f"library files other than {REL} differ between {args.rev} and the working tree; "
              f"run the probe in a `git worktree` of {args.rev} instead")
 shown = git("show", f"{args.rev}:{REL}")
 if shown.returncode != 0:
