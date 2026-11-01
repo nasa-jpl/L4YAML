@@ -49,6 +49,7 @@ scripts/check-reflection-index.sh     # reflections indexed
 scripts/check-closure-log.sh          # DOCS.md items ascend / dated / gaps declared
 scripts/check-serialization-proofs.sh # serialization hygiene (+ check-serialization-axioms.py)
 python3 scripts/gate_vocab.py         # gate names cited in prose resolve
+scripts/check-scripts-lean.sh         # Rule 9: scripts/**/*.py and inline python3 sites are on scripts/scripts-ledger.txt (shrink-only pin)
 scripts/run-all-tests.sh              # every test exe, collects failures
 lake exe suiterunner                  # matrix triple pass/fail/skip
 lake exe eventscore                   # event axis

@@ -335,3 +335,17 @@ lean_lib «Tests.ProductionCoverage» where
 @[default_target]
 lean_exe productioncoverage where
   root := `Tests.ProductionCoverage.Runner
+
+
+-- Rule 9 (Blueprint/06-discipline.md): scripts are Lean.  `Scripts` holds the
+-- pure halves (parsers, checks, with their `#guard` rows); each `lean_exe
+-- scripts-*` is one `Scripts/Main/*.lean` driver that scripts/*.sh wraps.
+-- Plan and ledger: Blueprint/09-scripts-in-lean.md, scripts/scripts-ledger.txt.
+@[default_target]
+lean_lib Scripts where
+  requiresModuleSystem := true
+
+-- Phase 0: the ledger gate behind scripts/check-scripts-lean.sh.
+@[default_target]
+lean_exe «scripts-check-ledger» where
+  root := `Scripts.Main.CheckScriptsLedger
