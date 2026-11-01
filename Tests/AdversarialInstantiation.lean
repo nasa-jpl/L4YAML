@@ -9150,10 +9150,18 @@ def testKslotEDomain (state : IO.Ref TestCollector) : IO Unit := do
      "k:\n  ? &a x\n  : w\n", "? - &a x\n: w\n", "? &a\n  b: 1\n: w\n", "? !!map\n  b: 1\n: w\n",
      "? &a !!str x\n: w\n", "? &a [1]\n: w\n", "? &a x\n:\n  ? &b y\n  : z\n", "? &a x # c\n: w\n"]
   let routedAcc := (routed.filter accepts).length
+  -- The lemma's span is the WHOLE step `sc → s'` (preprocess + content dispatch), so the gate
+  -- compares the pre-state `s` the step was taken from with `sN`; the two halves (`s → sP`,
+  -- `sP → sN`) are reported separately as readings.  A pause is ELIGIBLE when the lemma's
+  -- hypotheses hold (preprocess pauses at block level on a character that is neither an
+  -- indicator nor a break); the ineligible pauses are counted, not asserted on.
   let mut contentPauses := 0
+  let mut ineligible := 0
   let mut sameMarks := 0
   let mut shrank := 0
   let mut grew := 0
+  let mut prepSame := 0
+  let mut dispSame := 0
   let mut qPauses := 0
   let mut qAdded := 0
   for input in routed do
@@ -9163,20 +9171,25 @@ def testKslotEDomain (state : IO.Ref TestCollector) : IO Unit := do
       | .ok (some (sP, c)) =>
         match L4YAML.Scanner.scanNextToken s with
         | .ok (some sN) =>
-          let before := markedColsOf sP.pendingKeys sP.indentColumns
+          let pre := markedColsOf s.pendingKeys s.indentColumns
+          let mid := markedColsOf sP.pendingKeys sP.indentColumns
           let after := markedColsOf sN.pendingKeys sN.indentColumns
           if sP.flowLevel == 0 && !"?:-[]{}\n".toList.contains c then
             contentPauses := contentPauses + 1
-            if after == before then sameMarks := sameMarks + 1
-            else if after.all (· ∈ before) then shrank := shrank + 1
+            if after == pre then sameMarks := sameMarks + 1
+            else if after.all (· ∈ pre) then shrank := shrank + 1
             else grew := grew + 1
+            if mid == pre then prepSame := prepSame + 1
+            if after == mid then dispSame := dispSame + 1
+          else
+            ineligible := ineligible + 1
           if sP.flowLevel == 0 && c == '?' then
             qPauses := qPauses + 1
-            if sP.col ∈ after && !(sP.col ∈ before) then qAdded := qAdded + 1
+            if sP.col ∈ after && !(sP.col ∈ mid) then qAdded := qAdded + 1
           s := sN
         | _ => break
       | _ => break
-  check state s!"P80 h_kslotE domained (item 416): block content pauses={contentPauses} — marks unchanged={sameMarks} shrank (still ⊆, the lemma's reading)={shrank} grew={grew} (must be 0: a content dispatch adds no mark); `?` pauses={qPauses} adding their own column={qAdded} (negative control, must be all); props-park inputs accepted={routedAcc}/{routed.length}"
+  check state s!"P80 h_kslotE domained (item 416): eligible block content steps={contentPauses} (ineligible pauses={ineligible}) — over the lemma's span s → s': marks unchanged={sameMarks} shrank (still ⊆)={shrank} grew={grew} (must be 0: the step adds no mark); halves: preprocess s → sP unchanged={prepSame}, dispatch sP → s' unchanged={dispSame}; `?` pauses={qPauses} adding their own column={qAdded} (negative control, must be all); props-park inputs accepted={routedAcc}/{routed.length}"
     (contentPauses > 0 && grew == 0 && qPauses > 0 && qAdded == qPauses && routedAcc == routed.length)
 
 def testFlowCarrier (state : IO.Ref TestCollector) : IO Unit := do
