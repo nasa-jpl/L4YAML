@@ -9240,6 +9240,15 @@ example (k : Nat) (sp_ind sp_scan' sp_m : SurfPos)
   SBlockMapEntry.emptyKeyEmpty k sp_ind sp_scan' sp_m h_lit h_ssl
 end ColonChainGrammar
 
+/-- Priority 81's root renderer: the WHOLE composed value, nested (`{k: v, …}` / `[a, …]`, an
+empty scalar as `~`, an alias as `*x`; styles, tags and anchors dropped), so a nested `:` entry
+that vanished or landed as a sibling changes the string. -/
+partial def p81Shape : YamlValue → String
+  | .scalar s => if s.content.isEmpty then "~" else s.content
+  | .sequence _ items .. => "[" ++ ", ".intercalate (items.toList.map p81Shape) ++ "]"
+  | .mapping _ pairs .. => "{" ++ ", ".intercalate (pairs.toList.map (fun (k, v) => p81Shape k ++ ": " ++ p81Shape v)) ++ "}"
+  | .alias n => "*" ++ n
+
 def testColonChainRelay (state : IO.Ref TestCollector) : IO Unit := do
   -- 81 (item 417, PAID) — the scanner half of the relay: the mark step `h_mcstep_ne` the pay
   -- carries the domain across says a `:` dispatch adds no mark — over the WHOLE step `s → s'`
@@ -9248,22 +9257,18 @@ def testColonChainRelay (state : IO.Ref TestCollector) : IO Unit := do
   -- answers) is reported as a reading, not asserted.  Negative control: a `?` adds its own column.
   -- End to end: the `:`-landing inputs of item 415's stopped class G (a `:` at a dedent / line
   -- start opening a mapping under open `?` frames — item 197's `?⏎  ?⏎    - a⏎  : b⏎  : c⏎: w`).
-  -- Each landing is paired with the ROOT it must compose to (`map N` / `seq N` = one document whose
-  -- root collection has N entries), so a wrong mapping — a `:` read as a sibling, a dropped
-  -- entry, a refusal — fails the row; every row must hold (no threshold).
-  let rootKind : YamlValue → String
-    | .mapping _ arr => s!"map {arr.size}"
-    | .sequence _ arr => s!"seq {arr.size}"
-    | _ => "other"
+  -- Each landing is paired with the WHOLE value it must compose to (`p81Shape`, one document), so a
+  -- `:` read as a sibling, a dropped nested entry or a refusal fails its row; every row must hold
+  -- (no threshold).
   let rootShape (input : String) : String := match parseYaml input with
     | .ok docs =>
-      if docs.size != 1 then s!"docs {docs.size}" else (docs[0]?.map (fun d => rootKind d.value)).getD "other"
+      if docs.size != 1 then s!"docs {docs.size}" else (docs[0]?.map (fun d => p81Shape d.value)).getD "no doc"
     | .error _ => "refused"
   let landings : List (String × String) :=
-    [("?\n  ?\n    - a\n  : b\n  : c\n: w\n", "map 1"), (": v\n", "map 1"), (": v\n: w\n", "map 2"),
-     ("? a\n: b\n: c\n", "map 2"), ("k:\n  : v\n", "map 1"), ("- : v\n", "seq 1"),
-     ("?\n  - a\n: b\n: c\n", "map 2"), ("? &x a\n: b\n: c\n", "map 2"), ("# c\n: v\n", "map 1"),
-     ("? ? a\n  : b\n: c\n: d\n", "map 2"), ("? a\n:\n  : v\n", "map 1"), ("- ? a\n  : b\n  : c\n", "seq 1")]
+    [("?\n  ?\n    - a\n  : b\n  : c\n: w\n", "{{[a]: b, ~: c}: w}"), (": v\n", "{~: v}"), (": v\n: w\n", "{~: v, ~: w}"),
+     ("? a\n: b\n: c\n", "{a: b, ~: c}"), ("k:\n  : v\n", "{k: {~: v}}"), ("- : v\n", "[{~: v}]"),
+     ("?\n  - a\n: b\n: c\n", "{[a]: b, ~: c}"), ("? &x a\n: b\n: c\n", "{a: b, ~: c}"), ("# c\n: v\n", "{~: v}"),
+     ("? ? a\n  : b\n: c\n: d\n", "{{a: b}: c, ~: d}"), ("? a\n:\n  : v\n", "{a: {~: v}}"), ("- ? a\n  : b\n  : c\n", "[{a: b, ~: c}]")]
   let misshaped := landings.filter (fun (i, e) => rootShape i != e)
   let shaped := landings.length - misshaped.length
   let mut eligible := 0
@@ -9296,7 +9301,7 @@ def testColonChainRelay (state : IO.Ref TestCollector) : IO Unit := do
           s := sN
         | _ => break
       | _ => break
-  check state s!"P81 colon_open_map's h_kslot relayed (item 417): eligible block `:` steps={eligible} (ineligible pauses={ineligible}) — over s → s': marks unchanged={same} shrank (the answered `?`'s mark popped; still ⊆)={shrank} grew={grew} (must be 0: a `:` adds no mark); `?` pauses={qPauses} adding their own column={qAdded} (negative control, must be all); `:`-landing roots composed as predicted={shaped}/{landings.length} (misshaped, input ↦ got: {misshaped.map (fun (i, _) => (i, rootShape i))})"
+  check state s!"P81 colon_open_map's h_kslot relayed (item 417): eligible block `:` steps={eligible} (ineligible pauses={ineligible}) — over s → s': marks unchanged={same} shrank (the answered `?`'s mark popped; still ⊆)={shrank} grew={grew} (must be 0: a `:` adds no mark); `?` pauses={qPauses} adding their own column={qAdded} (negative control, must be all); `:`-landing values composed as predicted (whole value, nested)={shaped}/{landings.length} (misshaped, input ↦ got: {misshaped.map (fun (i, _) => (i, rootShape i))})"
     (eligible > 0 && grew == 0 && qPauses > 0 && qAdded == qPauses && misshaped.isEmpty)
 
 def testFlowCarrier (state : IO.Ref TestCollector) : IO Unit := do
