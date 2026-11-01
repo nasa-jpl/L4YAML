@@ -77,7 +77,16 @@ transliterations:
   (`Lean.readModuleData` → `header.imports`) lists its imports exactly as
   the module system resolved them, no regex and no environment merge; the
   closure walk is over headers, roots as today (`L4YAML` + the four
-  emitter exes); (ii) only where a question needs constants (binders,
+  emitter exes). The **candidate set stays the on-disk inventory** of
+  `L4YAML/**/*.lean`, exactly as the Python gate has it: an orphan has no
+  `.olean` after a default-target build (nothing imports it, so nothing
+  builds it), so a header-only inventory could never see it. The gate
+  therefore reports three classes, each a failure: *orphan* (a source
+  file not in the header-reachable closure), *missing header* (a source
+  file whose `.olean` is absent — unbuilt, so unverifiable), and *stale
+  header* (an `.olean` older than its source, which could carry an
+  import list the source no longer has). Reachable-but-stale is a
+  failure, not a pass. (ii) only where a question needs constants (binders,
   axioms, dependents) load one closure at a time, as `DropDependents` and
   `drop_sweep.py`'s per-entry-point probes already do. Phase 1.1 first
   reproduces the duplicate equation-lemma failure with a scratch
@@ -233,7 +242,7 @@ because it removes Python from CI; it does not block an item.
 | File | Why it may stay non-Lean | Until |
 |---|---|---|
 | `python/**`, `python/tests/**`, `Tests/test_python_ffi.py`, `Tests/conftest.py`, `Tests/tryparse_python.py` | the shipped Python binding and its tests — a product, not a script | — |
-| `scripts/html-to-pdf.py` + the `python3 -c "import weasyprint"` probes | WeasyPrint rasterisation (Q3: ruled — the CLI route; the probe becomes `command -v weasyprint`) | phase 4.4 |
+| `scripts/html-to-pdf.py` + the `python3 -c "import weasyprint"` probes | WeasyPrint rasterisation (Q3: ruled — the CLI route). The probe must keep checking that WeasyPrint can *start*, not merely that a binary exists: `import weasyprint` today fails when Pango/cairo are missing and that is what makes the PDF step skip with a warning instead of failing the job; the replacement is `weasyprint --version` (or `weasyprint --info`), which imports the package and so loads the native libraries, under the same "skip PDF with a warning on failure" branch — never `command -v weasyprint`. | phase 4.4 |
 | `scripts/attic/*.py` (if Q2 = freeze) | historical readings already recorded in DOCS.md; never run again | — |
 
 ## 5. Ledger (phase 0 turns this into `scripts/scripts-ledger.txt`)
