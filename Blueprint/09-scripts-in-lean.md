@@ -128,17 +128,33 @@ lists every `.py` under `scripts/` with its class and status
 in the ledger, on a ledger row for a file that no longer exists, and on a
 `python3` call in `scripts/*.sh` or `.github/workflows/*.yml` whose target
 is not an `exception` row. **Inline Python** — `python3 -c "…"`,
-`python3 - <<'EOF'`, `python3 - "$ARG" <<'EOF'` — has no target file; the
-gate treats each as a script of its own, keyed by file and line
-(`inline:<file>:<line>`), and the ledger must list it. Today's four:
-`.github/workflows/test-coverage.yml` (the proof-hygiene read of
-`stats.json`; the release-asset JSON lookup) and `scripts/generate-all.sh`
-(the same hygiene read; `python3 -c "import weasyprint"`, a *probe for
-the PDF tool*, listed as part of Q3's exception). Phase 1 replaces the
-two hygiene reads with one Lean exe over `stats.json` (`Lean.Json`, ~20
-lines) and the asset lookup with `jq` or `gh api --jq` (no logic — a JSON
-field read; shell wrappers may use coreutils and `gh`). An inline row is
-removed when its heredoc is gone. Added to the gate battery (AGENTS §3,
+`python3 - <<'EOF'`, `python3 - "$ARG" <<'EOF'` — has no target file. The
+ledger tracks **invocations, one row per invocation line**, keyed by the
+command text with whitespace collapsed (`inline:<file>:<command-prefix>`),
+so a line that moves is the same row and a line that is edited is a new
+one; the gate prints the current line numbers beside each row. Identical
+commands in one file share a key — the two `import weasyprint` probes in
+each file do — so the check is a **multiset** equality, not a set one:
+for every key, the number of ledger rows with that key must equal the
+number of invocation lines with it (a row short or a row over both fail);
+the ledger writes the duplicate as two rows (or one row with `×2`, which
+the reader expands), and the gate prints `×n @ lines [a, b]`. Off the
+tree at the #191 merge there are **seven**: four in
+`.github/workflows/test-coverage.yml` — the two `python3 -c "import
+weasyprint"` probes (install step, before and after `pip install`), the
+`stats.json` proof-hygiene heredoc, the release-asset JSON lookup — and
+three in `scripts/generate-all.sh` — the two `import weasyprint` probes
+and the same hygiene heredoc. `python3 -m pytest …` over
+`Tests/test_python_ffi.py` and `python/tests/` is the shipped binding's
+test run (§4, product, not a script) and `python3 -m pip install
+weasyprint` is Q3's tool install; the gate recognises `-m pytest` on
+those two paths and `-m pip install weasyprint` as covered by their §4
+rows and needs no inline rows for them. Phase 1 replaces the two
+hygiene heredocs with one Lean exe over `stats.json` (`Lean.Json`, ~20
+lines) and the asset lookup with `gh api --jq` (a JSON field read, no
+logic; wrappers may use coreutils and `gh`); the four `import weasyprint`
+probes become `weasyprint --version` under Q3 (§4). An inline row is
+removed when its command is gone. Added to the gate battery (AGENTS §3,
 the skills). The ledger may only shrink. *This gate is itself a shell
 wrapper around a Lean exe (`Scripts/Main/CheckScriptsLedger.lean`) — the
 first Lean script, and the proof the shape works.*
@@ -262,7 +278,7 @@ because it removes Python from CI; it does not block an item.
 | docs_nav.py | I | 339 | 10-20 | AGENTS §1, skills | scripts-docs-nav | todo |
 | ledger_diff.py | I | 226 | 10-26 | ledgers/README | scripts-ledger-diff | todo |
 | drop_sweep.py | I | 229 | 09-22 | skills; DropDependents.lean's wide pin | scripts-drop-sweep | todo |
-| inline: test-coverage.yml hygiene read, release-asset lookup; generate-all.sh hygiene read, weasyprint probe | G/R | ~30 | — | CI, generate-all.sh | Lean `stats.json` exe; `gh api --jq`; Q3 | todo |
+| inline ×7: test-coverage.yml — `import weasyprint` probe ×2, hygiene heredoc, release-asset lookup; generate-all.sh — `import weasyprint` probe ×2, hygiene heredoc | G/R | ~30 | — | CI, generate-all.sh | hygiene ×2 → one Lean `stats.json` exe; asset lookup → `gh api --jq`; probes ×4 → `weasyprint --version` (Q3) | todo |
 | gen_traceof.py | I | 195 | 10-23 | TraceOf regeneration | scripts-gen-traceof | todo |
 | flip_colon_chain.py, flip_kslote_domain.py | F (live, items 417/416) | 138, 85 | 11-01 | items | flip specs (phase 3.1 validation) | todo |
 | flip_210.py, flip_211_stage1.py | F (live, `[211]`) | 138, 86 | 09-21, 10-27 | ledger snapshots | flip specs | todo |
