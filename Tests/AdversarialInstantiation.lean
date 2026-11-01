@@ -9133,6 +9133,65 @@ def testInlDeclinesPaid (state : IO.Ref TestCollector) : IO Unit := do
     (armedColons > 0 && ownCol > 0 && rightInKey > 0 && rightOfOwn == 0 &&
      routedAcc == routed.length && declinedAcc == declinedClass.length)
 
+def testKslotEDomain (state : IO.Ref TestCollector) : IO Unit := do
+  -- 80 (item 416, PAID) — `pendingProps.h_kslotE` DOMAINED over the park's projection
+  -- (`∀ nv ∈ markedCols sc` in place of a bare `∃ nv`): the three informative producers hand
+  -- their chain on through `markedCols_mem_of_step_content` (a content dispatch adds no mark),
+  -- and the six `accum_content_pending` sites item 415 stopped at take the route.  What the
+  -- transport reads, at every CONTENT pause (the token is neither an indicator `? : - [ ] { }`
+  -- nor a break) on the parser: the post-state's marked columns are EXACTLY the pre-state's —
+  -- no mark added, none removed (the lemma needs ⊆; equality is the stronger reading and is
+  -- reported).  Negative control: a `?` pause adds its own column.  End to end: the props-park
+  -- inputs item 415 named as its stopped class (`? &a x\n: w`, …) parse, with nested, compact
+  -- and mapping-valued forms of the decorated explicit key.
+  let accepts (input : String) : Bool := match parseYaml input with | .ok _ => true | .error _ => false
+  let routed : List String :=
+    ["? &a x\n: w\n", "? !!str x\n: w\n", "- ? &a x\n  : w\n", "? ? &a x\n  : w\n: v\n",
+     "k:\n  ? &a x\n  : w\n", "? - &a x\n: w\n", "? &a\n  b: 1\n: w\n", "? !!map\n  b: 1\n: w\n",
+     "? &a !!str x\n: w\n", "? &a [1]\n: w\n", "? &a x\n:\n  ? &b y\n  : z\n", "? &a x # c\n: w\n"]
+  let routedAcc := (routed.filter accepts).length
+  -- The lemma's span is the WHOLE step `sc → s'` (preprocess + content dispatch), so the gate
+  -- compares the pre-state `s` the step was taken from with `sN`; the two halves (`s → sP`,
+  -- `sP → sN`) are reported separately as readings.  A pause is ELIGIBLE when the lemma's
+  -- hypotheses hold (preprocess pauses at block level on a character that is neither an
+  -- indicator nor a break); the ineligible pauses are counted, not asserted on.
+  let mut contentPauses := 0
+  let mut ineligible := 0
+  let mut sameMarks := 0
+  let mut shrank := 0
+  let mut grew := 0
+  let mut prepSame := 0
+  let mut dispSame := 0
+  let mut qPauses := 0
+  let mut qAdded := 0
+  for input in routed do
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:64] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) =>
+          let pre := markedColsOf s.pendingKeys s.indentColumns
+          let mid := markedColsOf sP.pendingKeys sP.indentColumns
+          let after := markedColsOf sN.pendingKeys sN.indentColumns
+          if sP.flowLevel == 0 && !"?:-[]{}\n".toList.contains c then
+            contentPauses := contentPauses + 1
+            if after == pre then sameMarks := sameMarks + 1
+            else if after.all (· ∈ pre) then shrank := shrank + 1
+            else grew := grew + 1
+            if mid == pre then prepSame := prepSame + 1
+            if after == mid then dispSame := dispSame + 1
+          else
+            ineligible := ineligible + 1
+          if sP.flowLevel == 0 && c == '?' then
+            qPauses := qPauses + 1
+            if sP.col ∈ after && !(sP.col ∈ mid) then qAdded := qAdded + 1
+          s := sN
+        | _ => break
+      | _ => break
+  check state s!"P80 h_kslotE domained (item 416): eligible block content steps={contentPauses} (ineligible pauses={ineligible}) — over the lemma's span s → s': marks unchanged={sameMarks} shrank (still ⊆)={shrank} grew={grew} (must be 0: the step adds no mark); halves: preprocess s → sP unchanged={prepSame}, dispatch sP → s' unchanged={dispSame}; `?` pauses={qPauses} adding their own column={qAdded} (negative control, must be all); props-park inputs accepted={routedAcc}/{routed.length}"
+    (contentPauses > 0 && grew == 0 && qPauses > 0 && qAdded == qPauses && routedAcc == routed.length)
+
 def testFlowCarrier (state : IO.Ref TestCollector) : IO Unit := do
   let nestedQ : List String := ["?\n  ? -\n: w\n", "? - ? - a\n  : b\n: c\n", "?\n  ?\n    -\n    - b\n  ? c\n: w\n", "? ? - a\n  : b\n: c\n", "- ? - a\n  : b\n"]
   let singleQ : List String := ["? - a\n: b\n", "?\n  - a\n  - b\n: w\n", "k:\n  ? - a\n  : b\n", "? -\n: w\n"]
@@ -9331,6 +9390,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testCompactChain state
   testRefusedAtParks state
   testInlDeclinesPaid state
+  testKslotEDomain state
 
   testQuestionMarkColumn state
   testK1Lanes state

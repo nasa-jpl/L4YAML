@@ -605,7 +605,7 @@ def expectedPositions : List String :=
    -- Item 372 (2026-10-27): the pack's route conjunct is now an Or (`∨ SeqTopKey sc`), so its head reads `(Or)`.
    "ctor:pendingContent.h_vpack arm=l path=∨L∃∧R→→→→→→→→ lvl=∃ns(MarkedColsIn)∀nv∈ns premises=[SSLComments,SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
    "ctor:pendingProps.h_kslot arm=l path=∨L∃∧R→→→→→→→→ lvl=∃ns(MarkedColsIn)∀nv∈ns premises=[SBlockNode(n),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
-   "ctor:pendingProps.h_kslotE arm=l path=∨L∃∃∧R→→→→→→→→ lvl=∃ne∃nv(n=ne + 1) premises=[SBlockNode(n),SCompactSeqTail(ne),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
+   "ctor:pendingProps.h_kslotE arm=l path=∨L∃∧R→→→→→→→→→→ lvl=∃ne(n=ne + 1)∀nv∈markedCols(…) premises=[SBlockNode(n),SCompactSeqTail(ne),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
    "ctor:pendingBlockContent.h_kslot arm=l path=∨L→→→→→→→→→→ lvl=∀nv∈markedCols(…) premises=[SSLComments,SCompactSeqTail(n),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
    "ctor:pendingBlockContent.h_kslotUp arm=l path=∨L∃∧R→→→→→→→→→→ lvl=∃ns(MarkedColsIn)∀nv∈ns premises=[SSLComments,SCompactSeqTail(n),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
    "ctor:pendingBlock.h_kslot arm=l path=∨L→→→→→→→→→→ lvl=∀nv∈markedCols(…) premises=[SBlockIndented(n),SCompactSeqTail(n),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
@@ -835,9 +835,9 @@ def expectedRows : List String :=
     "accum_content_on_pendingBlock_indented #1 ctor:pendingProps.h_kslot := paid:chain/built pos=[param:accum_content_on_pendingBlock_indented.h_kslot_old] origins=[O66] none=[stamp] ⊢ none-held 0/1",
     "accum_content_on_pendingBlock_indented #2 ctor:pendingBlockContent.h_kslotUp := paid:chain/built pos=[param:accum_content_on_pendingBlock_indented.h_kslotUp_old] origins=[O66] none=[stamp] ⊢ none-held 0/1",
     "accum_content_on_pendingBlock_indented #3 ctor:pendingBlockContent.h_kslotUp := paid:chain/built pos=[param:accum_content_on_pendingBlock_indented.h_kslotUp_old] origins=[O66] none=[stamp] ⊢ none-held 0/1",
-    "accum_content_pending #1 ctor:pendingBlockContent.h_kslotUp := punt/stamp pos=[] origins=[] none=[punt,stamp] ⊢ —",
-    "accum_content_pending #2 ctor:pendingBlockContent.h_kslotUp := punt/stamp pos=[] origins=[] none=[punt,stamp] ⊢ —",
-    "accum_content_pending #3 ctor:pendingBlockContent.h_kslotUp := punt/stamp pos=[] origins=[] none=[punt,stamp] ⊢ —",
+    "accum_content_pending #1 ctor:pendingBlockContent.h_kslotUp := paid:chain/built pos=[ctor:pendingProps.h_kslotE] origins=[O66] none=[stamp] ⊢ none-held 0/1",
+    "accum_content_pending #2 ctor:pendingBlockContent.h_kslotUp := paid:chain/built pos=[ctor:pendingProps.h_kslotE] origins=[O66] none=[stamp] ⊢ none-held 0/1",
+    "accum_content_pending #3 ctor:pendingBlockContent.h_kslotUp := paid:chain/built pos=[ctor:pendingProps.h_kslotE] origins=[O66] none=[stamp] ⊢ none-held 0/1",
     "accum_content_pending #1 param:accum_content_on_pendingBlock_indented.h_kslotUp_old := relay/built pos=[ctor:pendingBlock.h_kslotUp] origins=[O66] ⊢ none-held 0/1",
     "accum_step_flow #1 ctor:pendingContent.h_vpack := punt/stamp pos=[] origins=[] none=[stamp,punt] ⊢ —",
     "accum_step_flow #2 ctor:pendingContent.h_vpack := punt/stamp pos=[] origins=[] none=[stamp,punt] ⊢ —",
@@ -854,9 +854,9 @@ def expectedRows : List String :=
     "accum_block_pending #1 param:accum_block_on_pendingBlockContent.h_kslotUp := relay/built pos=[ctor:pendingBlockContent.h_kslotUp] origins=[O66] ⊢ none-held 0/1",
     "accum_block_pending #1 param:accum_block_on_pendingBlock.h_kslotUp := relay/built pos=[ctor:pendingBlock.h_kslotUp] origins=[O66] ⊢ none-held 0/1",
    -- Item 371: the restated value-line pack (`⇒ Resume(map(_)::[])▹Stream`, `ResumeFrames.one`'s level)
-   "accum_content_pending #1 ctor:pendingBlockContent.h_kslot := punt/stamp pos=[] origins=[] none=[punt,stamp] ⊢ —",
-   "accum_content_pending #2 ctor:pendingBlockContent.h_kslot := punt/stamp pos=[] origins=[] none=[punt,stamp] ⊢ —",
-   "accum_content_pending #3 ctor:pendingBlockContent.h_kslot := punt/stamp pos=[] origins=[] none=[punt,stamp] ⊢ —",
+   "accum_content_pending #1 ctor:pendingBlockContent.h_kslot := paid:chain/built pos=[ctor:pendingProps.h_kslotE] origins=[O66] none=[stamp] ⊢ none-held 0/1",
+   "accum_content_pending #2 ctor:pendingBlockContent.h_kslot := paid:chain/built pos=[ctor:pendingProps.h_kslotE] origins=[O66] none=[stamp] ⊢ none-held 0/1",
+   "accum_content_pending #3 ctor:pendingBlockContent.h_kslot := paid:chain/built pos=[ctor:pendingProps.h_kslotE] origins=[O66] none=[stamp] ⊢ none-held 0/1",
    "accum_flow_open_depth0 #3 param:flowKeyRoute_of_open.h_compact_pair := paid:tail/built pos=[ctor:pendingMapValue.h_expl] origins=[O44,O66] none=[stamp,punt] ⊢ none-held 0/2",
   -- 2026-10-31 (item 412): rows re-keyed to the renumbered origins (O16 → O62) plus the seven writers of the
   -- entry-shaped `h_expl` (net +7).
@@ -990,7 +990,7 @@ def expectedRows : List String :=
 -- 2026-10-30 (item 405): per-position classes follow `expectedRows`.
 def expectedPerPos : List String := [
    -- Item 409 (2026-10-30): per-position rows re-read (49 → 48: `explFrameValueLine.h_kslot` gone; origins renumbered).
-  "ctor:pendingBlockContent.h_kslotUp writers=6 punt=0 stamp=3 built=3 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=3 origins=[O66] ⊢ 0/1 held",
+  "ctor:pendingBlockContent.h_kslotUp writers=6 punt=0 stamp=0 built=6 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=6 origins=[O66] ⊢ 0/1 held",
   "param:accum_block_on_pendingBlock.h_kslotUp writers=1 punt=0 stamp=0 built=1 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=1 origins=[O66] ⊢ 0/1 held",
   "param:accum_block_on_pendingBlockContent.h_kslotUp writers=1 punt=0 stamp=0 built=1 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=1 origins=[O66] ⊢ 0/1 held",
   "param:accum_content_on_pendingBlock_indented.h_kslotUp_old writers=1 punt=0 stamp=0 built=1 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=1 origins=[O66] ⊢ 0/1 held",
@@ -1003,7 +1003,7 @@ def expectedPerPos : List String := [
   "ctor:pendingProps.h_kslot writers=6 punt=0 stamp=2 built=4 unborn=0 dead=0 allHeld=0 someHeld=3 noneHeld=1 origins=[O4,O5,O6,O7,O8,O9,O10,O11,O12,O13,O14,O15,O16,O17,O18,O19,O20,O21,O25,O26,O27,O28,O29,O30,O34,O35,O36,O37,O38,O39,O40,O45,O47,O51,O52,O65,O66] ⊢ 1/37 held",
   "ctor:pendingProps.h_kslotE writers=6 punt=1 stamp=2 built=3 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=3 origins=[O66] ⊢ 0/1 held",
   "ctor:pendingBlockContent.h_key packaged writers=6 punt=0 stamp=0 built=6 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=2 origins=[O4,O5,O6,O7,O11,O12,O13,O14,O66] ⊢ 0/9 held",
-  "ctor:pendingBlockContent.h_kslot writers=6 punt=0 stamp=3 built=3 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=3 origins=[O66] ⊢ 0/1 held",
+  "ctor:pendingBlockContent.h_kslot writers=6 punt=0 stamp=0 built=6 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=6 origins=[O66] ⊢ 0/1 held",
   "ctor:pendingBlock.h_kslot writers=7 punt=0 stamp=1 built=6 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=6 origins=[O66] ⊢ 0/1 held",
   "ctor:pendingMapValue.h_ivl writers=6 punt=0 stamp=3 built=3 unborn=0 dead=0 allHeld=1 someHeld=1 noneHeld=1 origins=[O0,O1,O2,O3,O4,O5,O6,O7,O8,O9,O10,O11,O12,O13,O14,O15,O16,O17,O18,O19,O20,O21,O22,O25,O26,O27,O28,O29,O30,O33,O34,O35,O36,O37,O38,O39,O40,O41,O45,O47,O49,O51,O52,O53,O54,O55,O56,O57,O58,O65,O66] ⊢ 8/51 held",
   "ctor:pendingMapValue.h_vslot writers=6 punt=0 stamp=3 built=3 unborn=0 dead=0 allHeld=1 someHeld=1 noneHeld=1 origins=[O0,O1,O2,O3,O4,O5,O6,O7,O8,O9,O10,O11,O12,O13,O14,O15,O16,O17,O18,O19,O20,O21,O22,O25,O26,O27,O28,O29,O30,O33,O34,O35,O36,O37,O38,O39,O40,O41,O45,O47,O50,O51,O52,O59,O60,O61,O62,O63,O64,O65,O66] ⊢ 8/51 held",
@@ -1213,7 +1213,7 @@ def expectedLine : String :=
 -- Item 372 (2026-10-27): the Or-shaped route conjunct of `ImplicitKeyPack` (summary mirrors the five `(Or)` rows).
 -- Item 374: lets=647 → 648, lapps=821 → 822, alts=5234 → 5243, nodes=13694 → 13696, liteNodes=630069 → 632322 — the resume context's face disjunct and `resumectx_of_landing`'s `h_base`.
   -- 2026-10-28 (item 386): lets 652 → 657, alts 5277 → 5280, nodes 13696 → 13706, liteNodes 634748 → 635676 — the `-` opener's `h_lvl_old` and its `omega` spend at the no-pop arm; no origin row moved.
-  "positions=52 packaged=7 packConsts=[ImplicitKeyPack,PropsKeyPack] rows=194 ctorRows=104 paramRows=90 packagedRows=29 punt=5 stamp=50 built=139 origins=67 originRows=32 route=12 frames=29 tail=14 other=0 concl=8 invariant=4 heldOrigins=14 allHeld=2 someHeld=37 noneHeld=86 unbornRows=0 relayedPunt=0 relayedStamp=10 relayedAbsurd=4 relayedFact=0 deadRows=0 unbornPos=0 rounds=4 follows=395 lets=693 lapps=871 alts=5654 nodes=14216 liteNodes=678811"
+  "positions=52 packaged=7 packConsts=[ImplicitKeyPack,PropsKeyPack] rows=194 ctorRows=104 paramRows=90 packagedRows=29 punt=5 stamp=44 built=145 origins=67 originRows=32 route=12 frames=29 tail=14 other=0 concl=8 invariant=4 heldOrigins=14 allHeld=2 someHeld=37 noneHeld=92 unbornRows=0 relayedPunt=0 relayedStamp=10 relayedAbsurd=4 relayedFact=0 deadRows=0 unbornPos=0 rounds=4 follows=394 lets=693 lapps=885 alts=5654 nodes=14216 liteNodes=679070"
 
 /-! ## §4 The reading -/
 

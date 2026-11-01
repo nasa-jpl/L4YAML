@@ -343,7 +343,7 @@ def expectedSteps : String :=
 -- 2026-10-25 (item 359): stepHolders 1887 → 1888 — `scanValue_refused_of_outer` (RegisterWitness) holds the
 -- `scanValue s = .ok s'` step equation.
 -- Item 372 (2026-10-27): `seqTopKey_refuted_at_colon` holds the `:` dispatch step (+1 step/disp holder).
-  "stepHolders=1944 dispHolders=375 dispTwoCorr=31 fns=73 fnsIx=26"
+  "stepHolders=1945 dispHolders=376 dispTwoCorr=31 fns=73 fnsIx=26"
 
 /-- **The ladder, at each population.**  `edge` is a production whose right
     endpoint is the step's output; `chain` requires a path to it from another
@@ -423,8 +423,8 @@ def expectedChainSpec : List Name :=
 -- 2026-10-29 (item 389): dispatchContent decls 159 → 160 (`contentLanding_indents_eq`), preprocess 243 → 246 (it plus `preprocess_currentIndent_le`, `preprocess_indents_eq_of_le`).
 -- 2026-10-30 (item 407, flow carrier `pendingKeys` conjunct): per-function decls 248 → 249 — `preprocess_pendingKeys_of_inFlow` reads `scanNextToken_preprocess`.
 def expectedPerFn : List String :=
-  ["scanNextToken_dispatchContent decls=161 chain=1",
-   "scanNextToken_preprocess decls=250 chain=3"]
+  ["scanNextToken_dispatchContent decls=162 chain=1",
+   "scanNextToken_preprocess decls=251 chain=3"]
 
 /-- **The one worked precedent is outside the work.**  It is not in item 238's
     transitive set and not on either repair thread, so β.5 neither pays for it
