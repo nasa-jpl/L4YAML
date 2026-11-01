@@ -224,14 +224,25 @@ def stripQuotes (w : String) : String :=
 
 def isBlank (c : Char) : Bool := c == ' ' || c == '\t' || c == '\r'
 
+/-- Does this physical line continue onto the next?  Only an *unescaped*
+trailing backslash continues: an odd run of trailing backslashes (`\`,
+`\\\`); an even run (`\\`) is literal backslashes and the line ends. -/
+def continues (line : String) : Bool :=
+  (line.trimAsciiEnd.toString.toList.reverse.takeWhile (· == '\\')).length % 2 == 1
+
+#guard continues "echo \\"
+#guard continues "echo \\\\\\  "
+#guard !continues "echo \\\\"
+#guard !continues "echo"
+
 /-- `\`-continued physical lines joined into logical lines, each a list of
-`(physical line, segment)` with the trailing backslash removed. -/
+`(physical line, segment)` with the continuing backslash removed. -/
 def logicalLines (text : String) : List (List (Nat × String)) :=
   let rec go : List String → Nat → List (Nat × String) → List (List (Nat × String)) → List (List (Nat × String))
     | [], _, cur, out => (if cur.isEmpty then out else cur.reverse :: out).reverse
     | l :: ls, n, cur, out =>
       let t := l.trimAscii.toString
-      if t.endsWith "\\" then
+      if continues t then
         go ls (n + 1) ((n, String.ofList (t.toList.dropLast)) :: cur) out
       else
         go ls (n + 1) [] (((n, l) :: cur).reverse :: out)
@@ -239,6 +250,7 @@ def logicalLines (text : String) : List (List (Nat × String)) :=
 
 #guard logicalLines "a\nb \\\n  c\nd" == [[(1, "a")], [(2, "b "), (3, "  c")], [(4, "d")]]
 #guard logicalLines "x \\" == [[(1, "x ")]]
+#guard logicalLines "echo \\\\\npython3 -c 1" == [[(1, "echo \\\\")], [(2, "python3 -c 1")]]
 
 /-- A shell word with the physical line it starts on and whether it starts
 inside an open quote (then it is the tail of a quoted argument). -/
@@ -567,6 +579,9 @@ def sitesOfText (file : String) (text : String) : Array Site :=
 #guard sitesOfText "f.sh" "python3 \\\n  -c 'print(1)'\n" == #[⟨"f.sh", 1, .inline "python3 -c 'print(1)'"⟩]
 #guard sitesOfText "f.sh" "exec \\\n  python3 \\\n  scripts/a.py --flag\n" == #[⟨"f.sh", 2, .script "scripts/a.py"⟩]
 #guard sitesOfText "f.sh" "python3 -c 'print(1)' \\\n  2>/dev/null\n" == #[⟨"f.sh", 1, .inline "python3 -c 'print(1)'"⟩]
+-- two trailing backslashes are literal: the next line is its own command (review finding)
+#guard sitesOfText "f.sh" "echo \\\\\npython3 -c 'print(1)'\n" == #[⟨"f.sh", 2, .inline "python3 -c 'print(1)'"⟩]
+#guard sitesOfText "f.sh" "echo \\\\\\\npython3 -c 'print(1)'\n" == #[]
 -- the workflow's three-line install probe keeps three sites on three lines
 #guard sitesOfText "w.yml" "          if python3 -c \"import weasyprint\" 2>/dev/null \\\n             || { python3 -m pip install --quiet --disable-pip-version-check weasyprint \\\n                  && python3 -c \"import weasyprint\" 2>/dev/null; }; then\n"
   == #[⟨"w.yml", 1, .inline "python3 -c \"import weasyprint\""⟩,
