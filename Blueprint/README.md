@@ -70,6 +70,9 @@ Read in order on first visit:
    long-running target stands (`parse_iff_grammar/YYYY-MM-DD.md`), with
    `scripts/ledger_diff.py --latest` to show the progress between the two
    newest dates. Old snapshots are never edited; corrections go in the next one.
+7. [`09-scripts-in-lean.md`](09-scripts-in-lean.md) — Rule 9's plan:
+   the ledger of every `scripts/*.py`, its class, what Lean facility
+   replaces it, the conversion phases and the open questions.
 
 ## Relationship to existing documentation
 
