@@ -132,7 +132,13 @@ is not an `exception` row. **Inline Python** — `python3 -c "…"`,
 ledger tracks **invocations, one row per invocation line**, keyed by the
 command text with whitespace collapsed (`inline:<file>:<command-prefix>`),
 so a line that moves is the same row and a line that is edited is a new
-one; the gate prints the current line number beside each row. Off the
+one; the gate prints the current line numbers beside each row. Identical
+commands in one file share a key — the two `import weasyprint` probes in
+each file do — so the check is a **multiset** equality, not a set one:
+for every key, the number of ledger rows with that key must equal the
+number of invocation lines with it (a row short or a row over both fail);
+the ledger writes the duplicate as two rows (or one row with `×2`, which
+the reader expands), and the gate prints `×n @ lines [a, b]`. Off the
 tree at the #191 merge there are **seven**: four in
 `.github/workflows/test-coverage.yml` — the two `python3 -c "import
 weasyprint"` probes (install step, before and after `pip install`), the
