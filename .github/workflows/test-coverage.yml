@@ -250,7 +250,7 @@ jobs:
           grep -q 'statsJson? : Option String := some' doc/Doc/L4YAML/StatsData.lean
 
       - name: Enforce proof-hygiene gates
-        # Four hard gates (Blueprint/06-discipline.md):
+        # Five hard gates (Blueprint/06-discipline.md):
         #   * keyword discipline — the `theorem` keyword is reserved for
         #     @[capstone] declarations (scripts/capstones.txt whitelist);
         #     everything else must use `lemma`. The tagged set itself is
@@ -270,6 +270,9 @@ jobs:
         #     Added 2026-09-27 after three commits that did nothing but move
         #     entries back into sequence (items 139/140, 159/160/161,
         #     243/244).
+        #   * scripts in Lean (Rule 9) — every scripts/*.py and inline
+        #     python3 invocation is on scripts/scripts-ledger.txt and the
+        #     ledger only shrinks; the gate is itself a Lean exe, built here.
         #   * sorry/axiom freedom — kernel-accurate (Lean.collectAxioms
         #     via collect-stats): zero theorems with (transitive) sorry,
         #     zero custom axioms in the compiled environment.
@@ -278,6 +281,8 @@ jobs:
           bash scripts/check-import-closure.sh
           bash scripts/check-reflection-index.sh
           bash scripts/check-closure-log.sh
+          lake build scripts-check-ledger
+          bash scripts/check-scripts-lean.sh
           python3 - <<'EOF'
           import json, sys
           env = json.load(open('docs/reports/stats.json'))['env']

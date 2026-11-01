@@ -182,11 +182,24 @@ def Ledger.openCount (l : Ledger) : Nat :=
 #guard (parseLedger "# ledger\n# open: 2\n\nscripts/a.py | F | todo\nscripts/b.py | G | lean:x\nscripts/c.py | R | exception:pdf\n").toOption
   == some { pin := 2, rows := #[⟨"scripts/a.py", .F, .todo⟩, ⟨"scripts/b.py", .G, .lean "x"⟩, ⟨"scripts/c.py", .R, .exception "pdf"⟩] }
 #guard ((parseLedger "# open: 2\nscripts/a.py | F | todo\nscripts/b.py | G | lean:x\nscripts/c.py | R | exception:pdf\n").toOption.map Ledger.openCount) == some 2
-/-! ## Python invocations in shell and workflow text -/
+/-! ## Python invocations in shell and workflow text
 
-/-- What one `python`/`python3` token in a line is followed by.  `cmd` is the
-command prefix: the interpreter word and its arguments up to the first
-shell operator (`|`, `&&`, `;`, a redirect, a heredoc), whitespace
+The scan is shell-shaped, not line-shaped: `\`-continued physical lines
+are one logical command line; a quoted string is one word that carries
+its quotes (`"import weasyprint"`), with inner blanks collapsed; a word
+beginning inside an open quote is never a command; an interpreter counts
+only in *command position* — first word of a simple command, after `|`,
+`||`, `&&`, `;`, `(`, `{`, `$(`, `!`, after `if`/`then`/`else`/`elif`/
+`do`/`while`/`until`/`exec`/`command`/`time`/`nohup`/`env`, after a
+`VAR=val` prefix, or after a YAML key (`run:`) at the head of the line.
+A top-level word starting with `#` ends the line (a comment).  The
+interpreter is `python`, `python3`, a path ending in one, or `$NAME` /
+`"$NAME"` / `${NAME}` for a `NAME=…python3` assignment found anywhere in
+the same file. -/
+
+/-- What one interpreter word in command position is followed by.  `cmd`
+is the command prefix: the interpreter word and its arguments up to the
+first shell operator (`|`, `&&`, `;`, a redirect, a heredoc), blanks
 collapsed — the text an inline row is keyed by. -/
 inductive PyCall where
   /-- `python3 scripts/x.py …` — the target is a file. -/
@@ -209,25 +222,162 @@ def rawWords (line : String) : List String :=
 def stripQuotes (w : String) : String :=
   String.ofList (w.toList.filter fun c => c != '"' && c != '\'')
 
-/-- Is this word the interpreter?  `python`, `python3`, or a path ending in
-one (`"$VENV/bin/python3"`); never `python3.12`, `PYBASE=/usr/bin/python3`
-or `$(python3`. -/
-def isPythonWord (raw : String) : Bool :=
+def isBlank (c : Char) : Bool := c == ' ' || c == '\t' || c == '\r'
+
+/-- `\`-continued physical lines joined into logical lines, each a list of
+`(physical line, segment)` with the trailing backslash removed. -/
+def logicalLines (text : String) : List (List (Nat × String)) :=
+  let rec go : List String → Nat → List (Nat × String) → List (List (Nat × String)) → List (List (Nat × String))
+    | [], _, cur, out => (if cur.isEmpty then out else cur.reverse :: out).reverse
+    | l :: ls, n, cur, out =>
+      let t := l.trimAscii.toString
+      if t.endsWith "\\" then
+        go ls (n + 1) ((n, String.ofList (t.toList.dropLast)) :: cur) out
+      else
+        go ls (n + 1) [] (((n, l) :: cur).reverse :: out)
+  go (text.splitOn "\n") 1 [] []
+
+#guard logicalLines "a\nb \\\n  c\nd" == [[(1, "a")], [(2, "b "), (3, "  c")], [(4, "d")]]
+#guard logicalLines "x \\" == [[(1, "x ")]]
+
+/-- A shell word with the physical line it starts on and whether it starts
+inside an open quote (then it is the tail of a quoted argument). -/
+structure TWord where
+  text : String
+  line : Nat
+  inQuote : Bool
+  deriving DecidableEq, Repr, Inhabited
+
+/-- Shell-shaped words of one logical line.  Quotes bind (`"a b"` is one
+word, quotes kept, inner blanks collapsed); `\x` is literal; a quote left
+open at a segment end runs into the next segment. -/
+def taggedWords (segs : List (Nat × String)) : List TWord := Id.run do
+  let mut out : Array TWord := #[]
+  let mut acc : Array Char := #[]
+  let mut q : Option Char := none
+  let mut wordLine := 0
+  let mut wordInQuote := false
+  for (ln, s) in segs do
+    let mut cs := s.toList
+    while !cs.isEmpty do
+      match cs with
+      | [] => pure ()
+      | c :: rest =>
+        cs := rest
+        if acc.isEmpty then
+          wordLine := ln
+          wordInQuote := q.isSome
+        match q with
+        | none =>
+          if isBlank c then
+            if !acc.isEmpty then
+              out := out.push ⟨String.ofList acc.toList, wordLine, wordInQuote⟩
+              acc := #[]
+          else if c == '"' || c == '\'' then
+            acc := acc.push c; q := some c
+          else if c == '\\' then
+            match rest with
+            | d :: rest' => acc := acc.push c |>.push d; cs := rest'
+            | [] => acc := acc.push c
+          else acc := acc.push c
+        | some qc =>
+          if c == qc then
+            acc := acc.push c; q := none
+          else if isBlank c then
+            if acc.back? != some ' ' then acc := acc.push ' '
+          else if c == '\\' && qc == '"' then
+            match rest with
+            | d :: rest' => acc := acc.push c |>.push d; cs := rest'
+            | [] => acc := acc.push c
+          else acc := acc.push c
+    -- segment end: a closed word ends; an open quote runs on as one blank
+    if q.isNone then
+      if !acc.isEmpty then
+        out := out.push ⟨String.ofList acc.toList, wordLine, wordInQuote⟩
+        acc := #[]
+    else if acc.back? != some ' ' then acc := acc.push ' '
+  if !acc.isEmpty then
+    let t := String.ofList acc.toList
+    out := out.push ⟨t.trimAsciiEnd.toString, wordLine, wordInQuote⟩
+  return out.toList
+
+def wordsOfLine (line : String) : List String := (taggedWords [(1, line)]).map (·.text)
+
+#guard wordsOfLine "  if python3 -c \"import  weasyprint\" 2>/dev/null; then" ==
+  ["if", "python3", "-c", "\"import weasyprint\"", "2>/dev/null;", "then"]
+#guard wordsOfLine "echo \"python3 scripts/new.py\"" == ["echo", "\"python3 scripts/new.py\""]
+#guard wordsOfLine "python3 -c \"print(\\\"a\\\")\"" == ["python3", "-c", "\"print(\\\"a\\\")\""]
+#guard wordsOfLine "| python3 -c \"" == ["|", "python3", "-c", "\""]
+#guard (taggedWords [(1, "echo 'a"), (2, "b' python3 x.py")]) ==
+  [⟨"echo", 1, false⟩, ⟨"'a b'", 1, false⟩, ⟨"python3", 2, false⟩, ⟨"x.py", 2, false⟩]
+#guard (taggedWords [(1, "python3"), (2, "  -c 'print(1)'")]).map (·.text) == ["python3", "-c", "'print(1)'"]
+
+/-- `NAME=value` → `(NAME, value)` for a shell identifier `NAME`. -/
+def assignment? (w : String) : Option (String × String) :=
+  match w.splitOn "=" with
+  | name :: v :: vs =>
+    if !name.isEmpty && name.all (fun c => c.isAlphanum || c == '_') && !name.front.isDigit
+    then some (name, "=".intercalate (v :: vs)) else none
+  | _ => none
+
+#guard assignment? "VPY=\"$RUNNER_TEMP/ci-venv/bin/python3\"" == some ("VPY", "\"$RUNNER_TEMP/ci-venv/bin/python3\"")
+#guard assignment? "PYBASE=/usr/bin/python3.12" == some ("PYBASE", "/usr/bin/python3.12")
+#guard assignment? "2>/dev/null" == none
+#guard assignment? "a=b=c" == some ("a", "b=c")
+
+/-- Is this word a literal interpreter?  `python`, `python3`, or a path
+ending in one (`"$VENV/bin/python3"`); never `python3.12`, `python-ffi`. -/
+def isPythonLiteral (raw : String) : Bool :=
   let w := stripQuotes raw
-  !w.any (· == '=') && !w.any (· == '(') &&
+  !w.any (· == '=') && !w.any (· == '(') && !w.any (· == ')') &&
     (w == "python" || w == "python3" || w.endsWith "/python" || w.endsWith "/python3")
 
-#guard isPythonWord "python3"
-#guard isPythonWord "\"$VENV/bin/python3\""
-#guard !isPythonWord "/usr/bin/python3.12"
-#guard !isPythonWord "PYBASE=/usr/bin/python3"
-#guard !isPythonWord "$(python3"
-#guard !isPythonWord "python-ffi"
+/-- `$NAME`, `"$NAME"`, `${NAME}` → `NAME`. -/
+def varRef? (raw : String) : Option String :=
+  let w := stripQuotes raw
+  if w.startsWith "$" then
+    let n := String.ofList ((w.toList.drop 1).filter fun c => c != '{' && c != '}')
+    if !n.isEmpty && n.all (fun c => c.isAlphanum || c == '_') then some n else none
+  else none
+
+#guard varRef? "\"$VPY\"" == some "VPY"
+#guard varRef? "${VPY}" == some "VPY"
+#guard varRef? "$VENV/bin/python3" == none
+#guard varRef? "python3" == none
+
+/-- The interpreter test: a literal, or a reference to a variable assigned
+an interpreter somewhere in the file (`vars`). -/
+def isPythonWord (vars : List String) (raw : String) : Bool :=
+  isPythonLiteral raw || (varRef? raw).any vars.contains
+
+#guard isPythonWord [] "python3"
+#guard isPythonWord [] "\"$VENV/bin/python3\""
+#guard !isPythonWord [] "/usr/bin/python3.12"
+#guard !isPythonWord [] "PYBASE=/usr/bin/python3"
+#guard !isPythonWord [] "$(python3"
+#guard !isPythonWord [] "python-ffi"
+#guard isPythonWord ["VPY"] "\"$VPY\""
+#guard !isPythonWord [] "\"$VPY\""
+#guard !isPythonWord ["VPY"] "\"$VENV\""
+
+/-- Variables assigned an interpreter anywhere in the text
+(`VPY="$RUNNER_TEMP/ci-venv/bin/python3"`, `PYBASE=/usr/bin/python3`). -/
+def interpreterVars (text : String) : List String :=
+  (logicalLines text).flatMap fun segs =>
+    (taggedWords segs).filterMap fun w =>
+      if w.inQuote then none else
+      let t := if w.text.endsWith ";" then String.ofList w.text.toList.dropLast else w.text
+      match assignment? t with
+      | some (n, v) => if isPythonLiteral v then some n else none
+      | none => none
+
+#guard interpreterVars "PYBASE=/usr/bin/python3.12\nif [ ! -x \"$PYBASE\" ]; then PYBASE=/usr/bin/python3; fi\nVPY=\"$RUNNER_TEMP/ci-venv/bin/python3\"\nX=1\n"
+  == ["PYBASE", "VPY"]
 
 /-- A word that ends the command: pipe, list operator, group, heredoc or redirect. -/
 def isOperatorWord (w : String) : Bool :=
-  w == "|" || w == "||" || w == "&&" || w == ";" || w == "\\" || w == "&" ||
-  w == "{" || w == "}" || w == "(" || w == ")" ||
+  w == "|" || w == "||" || w == "&&" || w == ";" || w == "\\" || w == "&" || w == "!" ||
+  w == "{" || w == "}" || w == "(" || w == ")" || w == "};" || w == ");" ||
   w.startsWith "<" || w.startsWith ">" ||
   (match w.toList with
    | d :: '>' :: _ => d.isDigit
@@ -239,6 +389,23 @@ def isOperatorWord (w : String) : Bool :=
 #guard !isOperatorWord "-c"
 #guard !isOperatorWord "\"$REPORTS/stats.json\""
 
+/-- After this word, is the next word in command position?  Control
+operators and groups, the keywords that take a command, a word ending in
+`;`, and a `VAR=val` prefix all put the next word there. -/
+def opensCommand (w : String) : Bool :=
+  w == "|" || w == "||" || w == "&&" || w == ";" || w == "!" || w == "{" || w == "(" ||
+  w == "}" || w == ")" || w == "};" || w == ");" || w.endsWith ";" ||
+  w == "if" || w == "then" || w == "else" || w == "elif" || w == "do" || w == "while" ||
+  w == "until" || w == "exec" || w == "command" || w == "time" || w == "nohup" || w == "env" ||
+  w == "fi" || w == "done" ||
+  (assignment? w).isSome
+
+#guard opensCommand "2>/dev/null;"
+#guard opensCommand "exec"
+#guard opensCommand "VPY=\"$X/python3\""
+#guard !opensCommand "echo"
+#guard !opensCommand "2>/dev/null"
+
 /-- The words of the command starting at the interpreter: up to the first
 operator word; a trailing `;` on a word ends it too (`then`, `fi`, … never
 belong to the command). -/
@@ -249,11 +416,10 @@ def commandWords : List String → List String
     else if w.endsWith ";" then [String.ofList (w.toList.dropLast)]
     else w :: commandWords rest
 
-#guard commandWords ["python3", "-c", "\"import", "weasyprint\"", "2>/dev/null;", "then"]
-  == ["python3", "-c", "\"import", "weasyprint\""]
+#guard commandWords ["python3", "-c", "\"import weasyprint\"", "2>/dev/null;", "then"]
+  == ["python3", "-c", "\"import weasyprint\""]
 #guard commandWords ["python3", "-", "\"$REPORTS/stats.json\"", "<<'EOF'", "|", "tee"]
   == ["python3", "-", "\"$REPORTS/stats.json\""]
-#guard commandWords ["python3", "-m", "pytest", "python/tests/", "-v", "\\"] == ["python3", "-m", "pytest", "python/tests/", "-v"]
 
 def stripDotSlash (p : String) : String :=
   if p.startsWith "./" then String.ofList (p.toList.drop 2) else p
@@ -266,23 +432,57 @@ def classifyCommand (cmd : List String) : PyCall :=
     if w == "-c" || w == "-" then .inline text
     else if w == "-m" then .moduleRun text
     else
-      let p := stripDotSlash (stripQuotes w)
+      let p := stripDotSlash (String.ofList ((stripQuotes w).toList.reverse.dropWhile (· == ')')).reverse)
       if p.endsWith ".py" then .script p else .none
   | _ => .none
 
-/-- Every python invocation in one line.  A line whose first word starts
-with `#` is a comment and has none. -/
+/-- One invocation found in the tree: the file, its 1-based line, the call. -/
+structure Site where
+  file : String
+  line : Nat
+  call : PyCall
+  deriving DecidableEq, Repr, Inhabited
+
+/-- Strip a leading `$(` or `(` (command substitution / subshell): the rest
+is in command position. -/
+def stripSubshell (w : String) : Option String :=
+  let body := match assignment? w with | some (_, v) => v | none => w
+  if body.startsWith "$(" then some (String.ofList (body.toList.drop 2))
+  else if body.startsWith "(" then some (String.ofList (body.toList.drop 1))
+  else none
+
+#guard stripSubshell "$(python3" == some "python3"
+#guard stripSubshell "x=$(python3" == some "python3"
+#guard stripSubshell "(python3" == some "python3"
+#guard stripSubshell "python3" == none
+
+/-- The invocations of one logical line (words tagged with their physical
+lines), with `vars` the file's interpreter variables.  The state is
+"next word is in command position"; it starts true, a YAML key
+(`run:`) or `-` at the head keeps it true. -/
+def callsOfWords (vars : List String) (file : String) (ws : List TWord) : List Site :=
+  let rec go (cmdPos : Bool) (first : Bool) : List TWord → List Site
+    | [] => []
+    | w :: rest =>
+      if w.inQuote then go false false rest
+      else
+        let t := match stripSubshell w.text with | some t' => t' | none => w.text
+        let cmdPos := cmdPos || (stripSubshell w.text).isSome
+        if t.startsWith "#" then []
+        else if first && (t.endsWith ":" || t == "-") then go true false rest
+        else if cmdPos && isPythonWord vars t then
+          let c := classifyCommand (commandWords (t :: rest.map (·.text)))
+          let here := if c == .none then [] else [⟨file, w.line, c⟩]
+          here ++ go false false rest
+        else go (opensCommand t) false rest
+  go true true ws
+
+/-- Every python invocation in one line (no interpreter variables). -/
 def pyCallsOfLine (line : String) : List PyCall :=
-  match rawWords line with
-  | [] => []
-  | w :: _ =>
-    if w.startsWith "#" then []
-    else
-      let rec go : List String → List PyCall
-        | [] => []
-        | w :: rest =>
-          if isPythonWord w then classifyCommand (commandWords (w :: rest)) :: go rest else go rest
-      (go (rawWords line)).filter (· != .none)
+  (callsOfWords [] "" (taggedWords [(1, line)])).map (·.call)
+
+def pyCallsOfLineWith (vars : List String) (line : String) : List PyCall :=
+  (callsOfWords vars "" (taggedWords [(1, line)])).map (·.call)
 
 #guard pyCallsOfLine "exec python3 scripts/check_closure_log.py" == [.script "scripts/check_closure_log.py"]
 #guard pyCallsOfLine "exec python3 scripts/rename_lemma.py --check --whitelist scripts/capstones.txt L4YAML"
@@ -294,46 +494,56 @@ def pyCallsOfLine (line : String) : List PyCall :=
 #guard pyCallsOfLine "  \"$VENV/bin/python3\" \"scripts/x.py\" out" == [.script "scripts/x.py"]
 #guard pyCallsOfLine "if python3 -c \"import weasyprint\" 2>/dev/null; then" == [.inline "python3 -c \"import weasyprint\""]
 #guard pyCallsOfLine "     && python3 -c \"import weasyprint\" 2>/dev/null; }; then" == [.inline "python3 -c \"import weasyprint\""]
+#guard pyCallsOfLine "             || { python3 -m pip install --quiet weasyprint" == [.moduleRun "python3 -m pip install --quiet weasyprint"]
 #guard pyCallsOfLine "          python3 - <<'EOF'" == [.inline "python3 -"]
 #guard pyCallsOfLine "  python3 - \"$REPORTS/stats.json\" <<'EOF' | tee -a \"$LOG\"" == [.inline "python3 - \"$REPORTS/stats.json\""]
 #guard pyCallsOfLine "            | python3 -c \"" == [.inline "python3 -c \""]
-#guard pyCallsOfLine "elif python3 -m pip install --quiet --disable-pip-version-check weasyprint 2>/dev/null \\"
+#guard pyCallsOfLine "elif python3 -m pip install --quiet --disable-pip-version-check weasyprint 2>/dev/null"
   == [.moduleRun "python3 -m pip install --quiet --disable-pip-version-check weasyprint"]
-#guard pyCallsOfLine "  python3 -m pytest Tests/test_python_ffi.py -v --tb=short \\" == [.moduleRun "python3 -m pytest Tests/test_python_ffi.py -v --tb=short"]
+#guard pyCallsOfLine "  python3 -m pytest Tests/test_python_ffi.py -v --tb=short" == [.moduleRun "python3 -m pytest Tests/test_python_ffi.py -v --tb=short"]
+#guard pyCallsOfLine "x=$(python3 scripts/a.py) && python3 scripts/b.py" == [.script "scripts/a.py", .script "scripts/b.py"]
+-- not invocations: probes, comments, assignments, loop lists, text
 #guard pyCallsOfLine "echo \"python         $(python3 --version) ($(command -v python3))\"" == []
 #guard pyCallsOfLine "          # GITHUB_PATH so every later `python3` — the pytest steps, the" == []
+#guard pyCallsOfLine "ls scripts  # python3 scripts/x.py runs it" == []
 #guard pyCallsOfLine "          PYBASE=/usr/bin/python3.12" == []
 #guard pyCallsOfLine "  'python/l4yaml/__init__.py|__version__ = \"|\"'" == []
 #guard pyCallsOfLine "  for rt in static python perl node ruby haskell dotnet lua; do" == []
+-- quoted text in another command's argument is not a call (review finding)
+#guard pyCallsOfLine "echo \"python3 scripts/new.py\"" == []
+#guard pyCallsOfLine "echo 'usage: python3 scripts/new.py -h'" == []
+#guard pyCallsOfLine "echo python3 scripts/new.py" == []
+-- interpreter variables (review finding)
+#guard pyCallsOfLineWith ["VPY"] "\"$VPY\" -c 'print(1)'" == [.inline "\"$VPY\" -c 'print(1)'"]
+#guard pyCallsOfLineWith ["VPY"] "\"$VPY\" -m pip install --quiet pytest" == [.moduleRun "\"$VPY\" -m pip install --quiet pytest"]
+#guard pyCallsOfLineWith ["VPY"] "\"$VPY\" --version" == []
+#guard pyCallsOfLineWith [] "\"$VPY\" -c 'print(1)'" == []
+#guard pyCallsOfLineWith ["VPY"] "echo \"$VPY\"" == []
 
 /-- Module runs plan §4 covers without a ledger row: pytest over the shipped
-binding's tests (`Tests/test_python_ffi.py`, `python/tests/`) and the
-installs that set that run up — `pip install` of the Q3 tool (`weasyprint`),
-of the test runner (`pytest`) or of `pip` itself (generate-all.sh's venv).
-Anything else is a script. -/
+binding's tests (`Tests/test_python_ffi.py`, `python/tests/`) or its
+`--version` probe, and the installs that set that run up — `-m venv`,
+`pip install` of the Q3 tool (`weasyprint`), of the test runner (`pytest`)
+or of `pip` itself.  Anything else is a script. -/
 def coveredModuleRun (cmd : String) : Bool :=
   match rawWords cmd with
   | _ :: "-m" :: "pytest" :: args =>
-    args.any fun a => a == "Tests/test_python_ffi.py" || a.startsWith "python/tests"
+    args.any fun a => a == "Tests/test_python_ffi.py" || a.startsWith "python/tests" || a == "--version"
   | _ :: "-m" :: "pip" :: "install" :: args =>
     args.any fun a => a == "weasyprint" || a == "pytest" || a == "pip"
+  | _ :: "-m" :: "venv" :: _ => true
   | _ => false
 
 #guard coveredModuleRun "python3 -m pytest Tests/test_python_ffi.py -v --tb=short"
 #guard coveredModuleRun "python3 -m pytest python/tests/ -v"
+#guard coveredModuleRun "\"$VPY\" -m pytest --version"
 #guard coveredModuleRun "python3 -m pip install --quiet --disable-pip-version-check weasyprint"
 #guard coveredModuleRun "\"$VENV/bin/python3\" -m pip install --quiet --disable-pip-version-check --upgrade pip"
 #guard coveredModuleRun "\"$VENV/bin/python3\" -m pip install --quiet --disable-pip-version-check pytest"
+#guard coveredModuleRun "\"$PYBASE\" -m venv \"$RUNNER_TEMP/ci-venv\""
 #guard !coveredModuleRun "python3 -m pytest scripts/"
 #guard !coveredModuleRun "python3 -m pip install requests"
 #guard !coveredModuleRun "python3 -m json.tool"
-
-/-- One invocation found in the tree: the file, its 1-based line, the call. -/
-structure Site where
-  file : String
-  line : Nat
-  call : PyCall
-  deriving DecidableEq, Repr, Inhabited
 
 /-- The ledger key of an inline site: `inline:<file>:<command prefix>`. -/
 def Site.inlineKey? (s : Site) : Option String :=
@@ -344,18 +554,28 @@ def Site.inlineKey? (s : Site) : Option String :=
 #guard (Site.inlineKey? ⟨"scripts/w.sh", 3, .inline "python3 -c \"import weasyprint\""⟩)
   == some "inline:scripts/w.sh:python3 -c \"import weasyprint\""
 
-/-- Scan a whole file's text; `file` is the path recorded on each site. -/
-def sitesOfText (file : String) (text : String) : Array Site := Id.run do
-  let mut out : Array Site := #[]
-  let mut n := 0
-  for line in text.splitOn "\n" do
-    n := n + 1
-    for c in pyCallsOfLine line do
-      out := out.push { file, line := n, call := c }
-  return out
+/-- Scan a whole file's text; `file` is the path recorded on each site.
+Continuation lines are joined first; a site's line is the physical line
+of its interpreter word. -/
+def sitesOfText (file : String) (text : String) : Array Site :=
+  let vars := interpreterVars text
+  ((logicalLines text).flatMap fun segs => callsOfWords vars file (taggedWords segs)).toArray
 
 #guard sitesOfText "f.sh" "#!/bin/bash\nexec python3 scripts/a.py\n"
   == #[⟨"f.sh", 2, .script "scripts/a.py"⟩]
+-- continuation lines (review finding): a continued `-c` and a continued script call
+#guard sitesOfText "f.sh" "python3 \\\n  -c 'print(1)'\n" == #[⟨"f.sh", 1, .inline "python3 -c 'print(1)'"⟩]
+#guard sitesOfText "f.sh" "exec \\\n  python3 \\\n  scripts/a.py --flag\n" == #[⟨"f.sh", 2, .script "scripts/a.py"⟩]
+#guard sitesOfText "f.sh" "python3 -c 'print(1)' \\\n  2>/dev/null\n" == #[⟨"f.sh", 1, .inline "python3 -c 'print(1)'"⟩]
+-- the workflow's three-line install probe keeps three sites on three lines
+#guard sitesOfText "w.yml" "          if python3 -c \"import weasyprint\" 2>/dev/null \\\n             || { python3 -m pip install --quiet --disable-pip-version-check weasyprint \\\n                  && python3 -c \"import weasyprint\" 2>/dev/null; }; then\n"
+  == #[⟨"w.yml", 1, .inline "python3 -c \"import weasyprint\""⟩,
+       ⟨"w.yml", 2, .moduleRun "python3 -m pip install --quiet --disable-pip-version-check weasyprint"⟩,
+       ⟨"w.yml", 3, .inline "python3 -c \"import weasyprint\""⟩]
+-- interpreter variable resolved within the file (review finding)
+#guard sitesOfText "w.yml" "VPY=\"$T/bin/python3\"\n\"$VPY\" -m pip install pytest\n\"$VPY\" -c 'print(1)'\n"
+  == #[⟨"w.yml", 2, .moduleRun "\"$VPY\" -m pip install pytest"⟩, ⟨"w.yml", 3, .inline "\"$VPY\" -c 'print(1)'"⟩]
+#guard sitesOfText "w.yml" "\"$VPY\" -c 'print(1)'\n" == #[]
 
 /-! ## `lean_exe` names in `lakefile.lean` -/
 
