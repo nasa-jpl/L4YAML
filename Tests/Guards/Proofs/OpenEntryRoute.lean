@@ -488,7 +488,7 @@ def expectedFunnel : List String :=
 def expectedLine : String :=
 -- Item 371 (t1Pairs=6 → 2, t1Sites=8 → 4, t2Pairs=2 → 6, t2Sites=4 → 8, covered1=6 → 2): the value-line packs end in the one-level
 -- `ResumeFrames`; `question_open_map`'s `h_expl`/`h_closeFV`/`h_framesV` come from the bound tail route `h_route51F`.
-  "aPairs=10 aSites=13 t1Pairs=2 t1Sites=4 t2Pairs=7 t2Sites=8 nPairs=1 nSites=1 multi=0 inline=0 covered1=2 covered2=9 stackedPairs=0 stackedNoDrop=0 nonA=10 nonANoDrop=8 pairs21=20 pairs18=18 sites=20 pairs=20 exhibits=5 closedFirst=1 handedNode=4 avail=13 behindLemmas=5 behindOpeners=0 aheadOpeners=3 funnelApps=4 paid=2 punted=2 other=0 chainApps=3 entryApps=5 qApps=1 cApps=1 reach=38"
+  "aPairs=10 aSites=13 t1Pairs=2 t1Sites=4 t2Pairs=7 t2Sites=8 nPairs=1 nSites=1 multi=0 inline=0 covered1=2 covered2=9 stackedPairs=0 stackedNoDrop=0 nonA=10 nonANoDrop=8 pairs21=20 pairs18=18 sites=20 pairs=20 exhibits=5 closedFirst=1 handedNode=4 avail=13 behindLemmas=5 behindOpeners=0 aheadOpeners=3 funnelApps=4 paid=2 punted=2 other=0 chainApps=4 entryApps=6 qApps=1 cApps=1 reach=38"
 
 /-! ## §6 The reading -/
 

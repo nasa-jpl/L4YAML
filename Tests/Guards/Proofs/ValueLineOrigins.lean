@@ -830,7 +830,14 @@ def expectedRows : List String :=
     "colon_open_map_implicit #1 ctor:pendingMapValue.h_explUp := stamp/stamp pos=[] origins=[] none=[stamp] ⊢ —",
     "colon_open_map_props #1 ctor:pendingMapValue.h_explUp := stamp/stamp pos=[] origins=[] none=[stamp] ⊢ —",
     "compact_open_map #1 ctor:pendingMapValue.h_explUp := alt/stamp pos=[] origins=[] none=[stamp] ⊢ —",
-    "accum_block_on_closeThenBlock #1 ctor:pendingBlock.h_kslotUp := punt/stamp pos=[] origins=[] none=[punt,stamp] ⊢ —",
+    -- Item 418: closeThenBlock's h_kslotUp arm and its domained h_explUp_chainD argument are BUILT off h_vslot
+    -- (origin O66) instead of punted; slotChainMap.up gains the writer; pendingBlock's landed-? catch-all pays on h_kslot
+    -- (entryChainMap.up relays it).
+    "accum_block_on_closeThenBlock #1 ctor:pendingBlock.h_kslotUp := paid:chain/built pos=[param:accum_block_on_closeThenBlock.h_vslot] origins=[O66] none=[stamp,punt] ⊢ none-held 0/1",
+    "accum_block_on_closeThenBlock #1 param:indicator_open_map.h_explUp_chainD := paid:chain/built pos=[param:accum_block_on_closeThenBlock.h_vslot] origins=[O66] none=[stamp,punt] ⊢ none-held 0/1",
+    "accum_block_on_closeThenBlock #4 param:slotChainMap.up := paid:chain/built pos=[param:accum_block_on_closeThenBlock.h_vslot] origins=[O66] ⊢ none-held 0/1",
+    "accum_block_on_pendingBlock #1 param:indicator_open_map.h_explUp_chainD := alt/built pos=[param:accum_block_on_pendingBlock.h_kslot] origins=[O66] none=[stamp,punt] ⊢ none-held 0/1",
+    "accum_block_on_pendingBlock #6 param:entryChainMap.up := relay/built pos=[param:accum_block_on_pendingBlock.h_kslot] origins=[O66] ⊢ none-held 0/1",
     "accum_block_on_closeThenBlock #2 ctor:pendingBlock.h_kslotUp := paid:chain/built pos=[param:accum_block_on_closeThenBlock.h_vslot] origins=[O66] none=[stamp] ⊢ none-held 0/1",
     "accum_content_on_pendingBlock_indented #1 ctor:pendingBlockContent.h_kslotUp := paid:chain/built pos=[param:accum_content_on_pendingBlock_indented.h_kslotUp_old] origins=[O66] none=[stamp] ⊢ none-held 0/1",
     "accum_content_on_pendingBlock_indented #1 ctor:pendingProps.h_kslot := paid:chain/built pos=[param:accum_content_on_pendingBlock_indented.h_kslot_old] origins=[O66] none=[stamp] ⊢ none-held 0/1",
@@ -843,7 +850,6 @@ def expectedRows : List String :=
     "accum_step_flow #1 ctor:pendingContent.h_vpack := punt/stamp pos=[] origins=[] none=[stamp,punt] ⊢ —",
     "accum_step_flow #2 ctor:pendingContent.h_vpack := punt/stamp pos=[] origins=[] none=[stamp,punt] ⊢ —",
     "colon_open_map #1 ctor:pendingMapValue.h_kslot := paid:chain/built pos=[param:colon_open_map.h_explUp_chainD] origins=[O66] none=[stamp] ⊢ none-held 0/1",
-    "accum_block_on_closeThenBlock #1 param:indicator_open_map.h_explUp_chainD := punt/punt pos=[] origins=[] none=[punt] ⊢ —",
     -- 2026-10-25 (item 359): punt/punt → punt/stamp — the value-park face beside this parameter pays
     -- `PackAlt.ofRefused (h_noek …)`, which the walker reads as a stamp origin.
     "accum_block_on_noPending #1 param:indicator_open_map.h_explUp_chainD := punt/stamp pos=[] origins=[] none=[stamp] ⊢ —",
@@ -871,7 +877,6 @@ def expectedRows : List String :=
   "accum_block_on_pendingBlock #1 ctor:pendingBlock.h_kslot := paid:other/built pos=[param:accum_block_on_pendingBlock.h_kslot] origins=[O66] none=[fact,stamp] ⊢ none-held 0/1",
   "accum_block_on_pendingBlock #2 ctor:pendingBlock.h_kslot := paid:other/built pos=[param:accum_block_on_pendingBlock.h_kslot] origins=[O66] none=[fact,stamp] ⊢ none-held 0/1",
   "accum_block_on_pendingBlock #1 param:indicator_open_map.h_explUp_chain := alt/built pos=[param:accum_block_on_pendingBlock.h_kslot] origins=[O66] none=[stamp,punt] ⊢ none-held 0/1",
-  "accum_block_on_pendingBlock #1 param:indicator_open_map.h_explUp_chainD := alt/built pos=[param:accum_block_on_pendingBlock.h_kslot] origins=[O66] none=[punt] ⊢ none-held 0/1",
   "accum_block_on_pendingBlock #1 param:entryChainMap.up := paid:chain/built pos=[param:accum_block_on_pendingBlock.h_kslot] origins=[O66] ⊢ none-held 0/1",
   "accum_block_on_pendingBlock #2 param:entryChainMap.up := relay/built pos=[param:accum_block_on_pendingBlock.h_kslot] origins=[O66] ⊢ none-held 0/1",
   "accum_block_on_pendingBlock #3 param:entryChainMap.up := relay/built pos=[param:accum_block_on_pendingBlock.h_kslot] origins=[O66] ⊢ none-held 0/1",
@@ -997,7 +1002,9 @@ def expectedPerPos : List String := [
   "param:accum_block_on_pendingBlockContent.h_kslotUp writers=1 punt=0 stamp=0 built=1 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=1 origins=[O66] ⊢ 0/1 held",
   "param:accum_content_on_pendingBlock_indented.h_kslotUp_old writers=1 punt=0 stamp=0 built=1 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=1 origins=[O66] ⊢ 0/1 held",
   "param:flowVPack_of_close.h_vslot writers=0 punt=0 stamp=0 built=0 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=0 origins=[] ⊢ punt-only",
-  "ctor:pendingBlock.h_kslotUp writers=7 punt=0 stamp=2 built=5 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=5 origins=[O66] ⊢ 0/1 held",
+  -- Item 418: h_kslotUp stamp 2 → 1 / built 5 → 6, h_explUp_chainD punt 2 → 1 / built 1 → 2, slotChainMap.up and
+  -- entryChainMap.up one writer more — the held-chain pays, all built off origin O66 (h_vslot / h_kslot).
+  "ctor:pendingBlock.h_kslotUp writers=7 punt=0 stamp=1 built=6 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=6 origins=[O66] ⊢ 0/1 held",
   -- 2026-10-31 (item 412): the two entry-shaped `h_expl` positions, and the key positions whose origins are re-keyed past them.
   "ctor:pendingContent.h_key packaged writers=12 punt=0 stamp=0 built=12 unborn=0 dead=0 allHeld=0 someHeld=2 noneHeld=4 origins=[O4,O5,O6,O7,O8,O9,O10,O11,O12,O13,O14,O15,O16,O17,O18,O19,O20,O21,O25,O26,O27,O28,O29,O30,O34,O35,O36,O37,O38,O39,O40,O45,O47,O51,O52,O65,O66] ⊢ 1/37 held",
   "ctor:pendingContent.h_vpack writers=12 punt=0 stamp=4 built=8 unborn=0 dead=0 allHeld=0 someHeld=8 noneHeld=0 origins=[O4,O5,O6,O7,O8,O9,O10,O11,O12,O13,O14,O15,O16,O17,O18,O19,O20,O21,O22,O25,O26,O27,O28,O29,O30,O33,O34,O35,O36,O37,O38,O39,O40,O41,O45,O47,O51,O52,O65,O66] ⊢ 1/40 held",
@@ -1028,7 +1035,7 @@ def expectedPerPos : List String := [
   "param:colon_open_map_explicit.hvp writers=3 punt=0 stamp=0 built=3 unborn=0 dead=0 allHeld=0 someHeld=1 noneHeld=2 origins=[O0,O1,O2,O3,O4,O5,O6,O7,O8,O9,O10,O11,O12,O13,O14,O15,O16,O17,O18,O19,O20,O21,O22,O25,O26,O27,O28,O29,O30,O33,O34,O35,O36,O37,O38,O39,O40,O41,O45,O47,O51,O52,O65,O66] ⊢ 2/44 held",
   "param:colon_open_map_implicit.h_kslotD writers=1 punt=0 stamp=0 built=1 unborn=0 dead=0 allHeld=0 someHeld=1 noneHeld=0 origins=[O4,O5,O6,O7,O8,O9,O10,O11,O12,O13,O14,O15,O16,O17,O18,O19,O20,O21,O25,O26,O27,O28,O29,O30,O34,O35,O36,O37,O38,O39,O40,O45,O47,O51,O52,O65,O66] ⊢ 1/37 held",
   "param:colon_open_map_props.h_kslotD writers=1 punt=0 stamp=0 built=1 unborn=0 dead=0 allHeld=0 someHeld=1 noneHeld=0 origins=[O4,O5,O6,O7,O8,O9,O10,O11,O12,O13,O14,O15,O16,O17,O18,O19,O20,O21,O25,O26,O27,O28,O29,O30,O34,O35,O36,O37,O38,O39,O40,O45,O47,O51,O52,O65,O66] ⊢ 1/37 held",
-  "param:entryChainMap.up writers=5 punt=0 stamp=0 built=5 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=5 origins=[O66] ⊢ 0/1 held",
+  "param:entryChainMap.up writers=6 punt=0 stamp=0 built=6 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=6 origins=[O66] ⊢ 0/1 held",
   "param:entryKeyPack_of_dispatch.h_compact writers=4 punt=0 stamp=0 built=4 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=4 origins=[O23,O42,O66] ⊢ 0/3 held",
   "param:entryKeyPack_of_dispatch.h_ivl writers=4 punt=0 stamp=0 built=4 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=4 origins=[O24,O43,O66] ⊢ 0/3 held",
   "param:entryKeyPack_of_dispatch.h_nodeV writers=4 punt=0 stamp=0 built=4 unborn=0 dead=0 allHeld=0 someHeld=2 noneHeld=2 origins=[O4,O5,O6,O7,O8,O9,O10,O11,O12,O13,O14,O15,O16,O17,O18,O19,O20,O21,O25,O26,O27,O28,O29,O30,O34,O35,O36,O37,O38,O39,O40,O45,O47,O51,O52,O65,O66] ⊢ 1/37 held",
@@ -1038,10 +1045,10 @@ def expectedPerPos : List String := [
   "param:flowKeyPack_of_close.h_key writers=2 punt=0 stamp=0 built=2 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=2 origins=[O46,O48] ⊢ 0/2 held",
   "param:flowKeyRoute_of_open.h_compact_pair writers=3 punt=0 stamp=1 built=2 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=2 origins=[O44,O66] ⊢ 0/2 held",
   "param:indicator_open_map.h_explUp_chain writers=4 punt=1 stamp=1 built=2 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=2 origins=[O66] ⊢ 0/1 held",
-  "param:indicator_open_map.h_explUp_chainD writers=4 punt=2 stamp=1 built=1 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=1 origins=[O66] ⊢ 0/1 held",
+  "param:indicator_open_map.h_explUp_chainD writers=4 punt=1 stamp=1 built=2 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=2 origins=[O66] ⊢ 0/1 held",
   "param:question_open_map.h_explUp_chain writers=1 punt=0 stamp=0 built=1 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=1 origins=[O66] ⊢ 0/1 held",
   "param:question_open_map.h_explUp_chainD writers=1 punt=0 stamp=0 built=1 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=1 origins=[O66] ⊢ 0/1 held",
-  "param:slotChainMap.up writers=3 punt=0 stamp=0 built=3 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=3 origins=[O66] ⊢ 0/1 held",
+  "param:slotChainMap.up writers=4 punt=0 stamp=0 built=4 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=4 origins=[O66] ⊢ 0/1 held",
   -- Item 413: pendingMapValue.h_expl noneHeld 1 -> 2 (compact_open_map's writer re-read) + param:compact_open_map.h_chainUp (two paid:chain writers).
   "ctor:pendingMapValue.h_expl writers=6 punt=0 stamp=4 built=2 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=2 origins=[O66] ⊢ 0/1 held",
   "param:compact_open_map.h_chainUp writers=2 punt=0 stamp=0 built=2 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=2 origins=[O66] ⊢ 0/1 held",
@@ -1216,7 +1223,7 @@ def expectedLine : String :=
 -- Item 372 (2026-10-27): the Or-shaped route conjunct of `ImplicitKeyPack` (summary mirrors the five `(Or)` rows).
 -- Item 374: lets=647 → 648, lapps=821 → 822, alts=5234 → 5243, nodes=13694 → 13696, liteNodes=630069 → 632322 — the resume context's face disjunct and `resumectx_of_landing`'s `h_base`.
   -- 2026-10-28 (item 386): lets 652 → 657, alts 5277 → 5280, nodes 13696 → 13706, liteNodes 634748 → 635676 — the `-` opener's `h_lvl_old` and its `omega` spend at the no-pop arm; no origin row moved.
-  "positions=53 packaged=7 packConsts=[ImplicitKeyPack,PropsKeyPack] rows=195 ctorRows=104 paramRows=91 packagedRows=29 punt=5 stamp=43 built=147 origins=67 originRows=32 route=12 frames=29 tail=14 other=0 concl=8 invariant=4 heldOrigins=14 allHeld=2 someHeld=37 noneHeld=94 unbornRows=0 relayedPunt=0 relayedStamp=10 relayedAbsurd=4 relayedFact=0 deadRows=0 unbornPos=0 rounds=4 follows=395 lets=693 lapps=888 alts=5654 nodes=14256 liteNodes=679153"
+  "positions=53 packaged=7 packConsts=[ImplicitKeyPack,PropsKeyPack] rows=197 ctorRows=104 paramRows=93 packagedRows=29 punt=4 stamp=42 built=151 origins=67 originRows=32 route=12 frames=29 tail=14 other=0 concl=8 invariant=4 heldOrigins=14 allHeld=2 someHeld=37 noneHeld=98 unbornRows=0 relayedPunt=0 relayedStamp=10 relayedAbsurd=4 relayedFact=0 deadRows=0 unbornPos=0 rounds=4 follows=406 lets=693 lapps=892 alts=5660 nodes=14378 liteNodes=679860"
 
 /-! ## §4 The reading -/
 

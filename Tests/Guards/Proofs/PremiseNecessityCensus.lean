@@ -387,7 +387,7 @@ def expectedModuleTallyP : String :=
   -- 2026-10-28 (item 386): constants/decls +2 (`IndentFloor.int_le_of_succ`, the level relays), READ +5, RELAY +2
   -- (the helpers' new premises `h_floor`/`h_nk`, the openers' `h_lvl_old`/`h_floor_mv`); UNUSED unchanged.
   -- 2026-10-29 (item 394): `FlowBaseRoutes.valueF` (+3 constants: the field, its projection, the structure's new arity), five more premise reads at the births and closes.
-  "constants=1742 decls=1377 eta=447 FIELD=201 READ=1476 RELAY=2735 RETURN=173 UNUSED=27"
+  "constants=1744 decls=1379 eta=447 FIELD=201 READ=1485 RELAY=2735 RETURN=173 UNUSED=27"
 
 -- Item 287: `accum_block_on_closeThenBlock`'s `h_vslot`, a READ one, left the
 -- `_ ∨ True` population — its sibling's move, under this peel.  Item 288: and

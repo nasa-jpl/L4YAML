@@ -963,8 +963,8 @@ def expectedTally : String :=
   -- 2026-10-26 (item 369): edges 664 → 665, DECLINE 256 → 255, FIELD 55 → 56, SPLIT 160 → 161 —
   -- `pendingBlock.h_closeF` threaded into `accum_block_on_pendingBlock` (one FIELD edge) and the
   -- `:`/`?` landing's `h_res_land` there read off those frames instead of `Or.inr trivial`.
-  "edges=655 skipped=42 [DECLINE=244, FIELD=58, LOCAL=27, PAY=54, RELAY=63, \
-SPLIT=178, VIA=31]"
+  "edges=655 skipped=42 [DECLINE=242, FIELD=58, LOCAL=27, PAY=54, RELAY=63, \
+SPLIT=180, VIA=31]"
 
 /-- **The row item 211 read off the compiler's error text and got wrong.**  All
     eight of these print `h_keyctx` when the premise is narrowed; six of them
@@ -1131,15 +1131,16 @@ Or.imp⇒LOCAL=5, Or.imp⇒RELAY=13, Or.imp⇒SPLIT=4, Or.imp⇒VIA=2, dite⇒SP
 -- no-pop arm splits `n < k` (PAY via the helper) from `k = n` (sequence top refuted / mapping sibling DECLINE).
 -- 2026-10-30 (item 405): the `?`-park chain PAID through its ladder — three `h_kslotE_k` content relays and the `h_resKslot`/`hkvUp`-starved `closeThenBlock` births DECLINE (ruling (a)); SPLIT 167 → 164, DECLINE 255 → 258 (edges 657 unchanged).  Rule 8 fix (same item): the chain re-indexed by the projection `markedCols sc`; the two head consumers (`flowKeyRoute_of_open`'s compact pair, the props park's entry-level pack) split on `markedCols sc` and DECLINE at the markless projection — leaves 381 → 383, DECLINE 194 → 196 (DECLINE|PAY 144 → 142, DECLINE|DECLINE|PAY 6 → 8).
 def expectedSplitLanding : String :=
-  "survived=178 collapsed=16 leaves=415 elsewhere=11 [DECLINE=214, PAY=190, \
+  "survived=180 collapsed=15 leaves=426 elsewhere=11 [DECLINE=222, PAY=193, \
 VIA=11] \
 [DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|PAY|PAY|PAY|VIA|VIA|VIA=1, \
 DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|PAY|VIA|VIA=1, \
+DECLINE|DECLINE|DECLINE|DECLINE|PAY=2, \
 DECLINE|DECLINE|DECLINE|DECLINE|PAY|PAY|PAY|PAY|PAY=1, \
 DECLINE|DECLINE|DECLINE|PAY=2, DECLINE|DECLINE|DECLINE|PAY|PAY|PAY=1, \
 DECLINE|DECLINE|DECLINE|PAY|VIA=3, DECLINE|DECLINE|PAY=12, \
-DECLINE|DECLINE|PAY|PAY=1, DECLINE|DECLINE|PAY|PAY|PAY=1, DECLINE|PAY=152, \
-DECLINE|PAY|PAY=1, PAY|VIA=1, PAY|VIA|VIA=1]"
+DECLINE|DECLINE|PAY|PAY|PAY=2, DECLINE|PAY=152, DECLINE|PAY|PAY=1, \
+PAY|VIA=1, PAY|VIA|VIA=1]"
 
 /-- **Which BRANCH is taken (DOCS item 217).**  Item 216 resolved what a split
     WRITES — both answers, one per arm.  What it could not say was which arm the
@@ -1242,7 +1243,7 @@ DECLINE|PAY|PAY=1, PAY|VIA=1, PAY|VIA|VIA=1]"
 -- 2026-10-29 (item 389): leaves 386 → 388, DECLINE-free 94 → 95, PAY-free 180 → 181 — the `-` park's k = n mapping-top arm is a PAY leaf now; its sequence-top half stays a decline.
 -- 2026-10-30 (item 405): the `?`-park chain PAID through its ladder — three `h_kslotE_k` content relays and the `h_resKslot`/`hkvUp`-starved `closeThenBlock` births DECLINE (ruling (a)); SPLIT 167 → 164, DECLINE 255 → 258 (edges 657 unchanged).
 def expectedSplitBranch : String :=
-  "splits=178 leaves=415 relayRooted=167 siteDecided=11 optionalRoot=111 plainRoot=56 agree=116/116 disagree=0 [DECLINE-closed=106, DECLINE-free=108, PAY-free=190, VIA L4YAML.Proofs.StreamAccum.deeperLandingResume-=2, VIA L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root-=1, VIA absurd-=8]"
+  "splits=180 leaves=426 relayRooted=169 siteDecided=11 optionalRoot=111 plainRoot=58 agree=118/118 disagree=0 [DECLINE-closed=109, DECLINE-free=113, PAY-free=193, VIA L4YAML.Proofs.StreamAccum.deeperLandingResume-=2, VIA L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root-=1, VIA absurd-=8]"
 
 /-- **The ten splits the site decides for itself**, which is the whole residue
     of the branch question after `expectedSplitBranch`.  Four are a `dite` on a
@@ -1260,12 +1261,11 @@ def expectedSplitBranch : String :=
 def expectedSiteDecided : List String :=
   ["1 accum_block_on_closeThenBlock :: dite on VIA Eq ⇒ DECLINE|PAY",
    "1 accum_block_on_pendingBlock :: dite on VIA Eq ⇒ DECLINE|PAY",
-   "1 accum_block_on_pendingBlock :: dite on VIA LE.le ⇒ DECLINE|DECLINE|PAY|PAY",
-   "1 accum_block_on_pendingBlock :: dite on VIA LE.le ⇒ DECLINE|DECLINE|PAY|PAY|PAY",
    "1 accum_block_on_pendingBlockContent :: dite on VIA Eq ⇒ DECLINE|PAY",
    "1 accum_content_pending :: Or.casesOn on VIA Nat.eq_zero_or_pos ⇒ DECLINE|DECLINE|DECLINE|PAY",
    "1 accum_flow_open_depth0 :: accum_flow_open_depth0.match_1_22 on SPLIT Or.casesOn on VIA preprocess_some_savedKey_shape ⇒ PAY|VIA",
    "2 accum_block_on_closeThenBlock :: Or.elim on VIA Classical.em ⇒ DECLINE|DECLINE|PAY",
+   "2 accum_block_on_pendingBlock :: dite on VIA LE.le ⇒ DECLINE|DECLINE|PAY|PAY|PAY",
    "2 accum_block_pending :: Or.casesOn on VIA Nat.eq_zero_or_pos ⇒ DECLINE|PAY"]
 
 /-- **The premises the branch is taken on**, by binder NAME, for the 99 splits
@@ -1544,8 +1544,7 @@ accum_step_flow → PendingNode.pendingContent#12 (h_framesV) = DECLINE via Or.e
 accum_step_flow → PendingNode.pendingContent#9 (h_vpack) = DECLINE via Or.elim; \
 accum_step_flow → PendingNode.pendingContent#12 (h_framesV) = DECLINE via Or.elim; \
 \
-accum_block_on_closeThenBlock → PendingNode.pendingBlock#11 (h_closeF) = PAY via Or.casesOn→Exists.casesOn→Exists.casesOn→And.casesOn→And.casesOn→And.casesOn→And.casesOn→dite; \
-accum_block_on_closeThenBlock → PendingNode.pendingBlock#14 (h_kslotUp) = DECLINE via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock.match_1_34→dite"
+accum_block_on_closeThenBlock → PendingNode.pendingBlock#11 (h_closeF) = PAY via Or.casesOn→Exists.casesOn→Exists.casesOn→And.casesOn→And.casesOn→And.casesOn→And.casesOn→dite"
 
 /-- **Read off the TYPE, not off a list.**  Item 211's falsification script
     enumerated five optional contexts of `content_dispatch_routed` by hand;
