@@ -639,7 +639,8 @@ def expectedPositions : List String :=
   "ctor:pendingMapValue.h_expl arm=l/stamp path=∨L∃∧R∧R∨L→→→→→→→→→ lvl=∃sp_q(GLit('?'))(?)∀nv∈markedCols(…) premises=[Ne,SBlockMapEntry(n),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
   "param:accum_content_on_pendingMapValue_indented.h_expl arm=l/stamp path=∨L∃∧R∧R∨L→→→→→→→→→ lvl=∃sp_q(GLit('?'))(?)∀nv∈markedCols(…) premises=[Ne,SBlockMapEntry(n),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
   -- Item 413: compact_open_map.h_chainUp — the opener's relay parameter (the `-` / slot park's chain over the entry's content).
-  "param:compact_open_map.h_chainUp arm=l path=∨L→→→→→→→→ lvl=∀nv∈markedCols(…) premises=[SBlockIndented(n),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no"]
+  "param:compact_open_map.h_chainUp arm=l path=∨L→→→→→→→→ lvl=∀nv∈markedCols(…) premises=[SBlockIndented(n),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
+  "param:colon_open_map.h_explUp_chainD arm=l path=∨L∃∧R→→→→→→→→ lvl=∃ns(MarkedColsIn)∀nv∈ns premises=[SBlockMapEntry(k),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no"]
 -- 2026-10-20 (item 306): 70 → 73 — three origins more, all in `accum_content_on_pendingBlock_indented`:
 -- the two key-pack builders' `h_nodeFV`/`h_dframesV` are now built from the entry park's
 -- `h_closeFV_old` (frames origin) where item 108 left punts; the rows after them renumber.
@@ -841,7 +842,7 @@ def expectedRows : List String :=
     "accum_content_pending #1 param:accum_content_on_pendingBlock_indented.h_kslotUp_old := relay/built pos=[ctor:pendingBlock.h_kslotUp] origins=[O66] ⊢ none-held 0/1",
     "accum_step_flow #1 ctor:pendingContent.h_vpack := punt/stamp pos=[] origins=[] none=[stamp,punt] ⊢ —",
     "accum_step_flow #2 ctor:pendingContent.h_vpack := punt/stamp pos=[] origins=[] none=[stamp,punt] ⊢ —",
-    "colon_open_map #1 ctor:pendingMapValue.h_kslot := punt/stamp pos=[] origins=[] none=[punt,stamp] ⊢ —",
+    "colon_open_map #1 ctor:pendingMapValue.h_kslot := paid:chain/built pos=[param:colon_open_map.h_explUp_chainD] origins=[O66] none=[stamp] ⊢ none-held 0/1",
     "accum_block_on_closeThenBlock #1 param:indicator_open_map.h_explUp_chainD := punt/punt pos=[] origins=[] none=[punt] ⊢ —",
     -- 2026-10-25 (item 359): punt/punt → punt/stamp — the value-park face beside this parameter pays
     -- `PackAlt.ofRefused (h_noek …)`, which the walker reads as a stamp origin.
@@ -972,7 +973,8 @@ def expectedRows : List String :=
   -- Item 413: compact_open_map's h_expl row re-read (its origin list now reaches h_chainUp) + the two paid:chain relays of h_chainUp (the inline fill's slot routes, the pendingBlock arm's h_kslotUp).
   "accum_block_on_closeThenBlock #1 param:compact_open_map.h_chainUp := paid:chain/built pos=[param:accum_block_on_closeThenBlock.h_vslot] origins=[O66] none=[stamp] ⊢ none-held 0/1",
   "accum_block_on_pendingBlock #1 param:compact_open_map.h_chainUp := paid:chain/built pos=[param:accum_block_on_pendingBlock.h_kslotUp] origins=[O66] none=[stamp] ⊢ none-held 0/1",
-  "compact_open_map #1 ctor:pendingMapValue.h_expl := relay/built pos=[param:compact_open_map.h_chainUp] origins=[O66] none=[stamp,absurd,punt] ⊢ none-held 0/1"]
+  "compact_open_map #1 ctor:pendingMapValue.h_expl := relay/built pos=[param:compact_open_map.h_chainUp] origins=[O66] none=[stamp,absurd,punt] ⊢ none-held 0/1",
+  "indicator_open_map #1 param:colon_open_map.h_explUp_chainD := relay/built pos=[param:indicator_open_map.h_explUp_chainD] origins=[O66] ⊢ none-held 0/1"]
 -- 2026-10-20 (item 306): the positions' origin sets re-read with the three new origins
 -- (`O3`, `O7`, `O10`) and the renumbering behind them; no position is born or dies.
 -- 2026-10-20 (item 307): the positions' origin sets re-read (three new origins, renumbered).
@@ -1007,7 +1009,7 @@ def expectedPerPos : List String := [
   "ctor:pendingBlock.h_kslot writers=7 punt=0 stamp=1 built=6 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=6 origins=[O66] ⊢ 0/1 held",
   "ctor:pendingMapValue.h_ivl writers=6 punt=0 stamp=3 built=3 unborn=0 dead=0 allHeld=1 someHeld=1 noneHeld=1 origins=[O0,O1,O2,O3,O4,O5,O6,O7,O8,O9,O10,O11,O12,O13,O14,O15,O16,O17,O18,O19,O20,O21,O22,O25,O26,O27,O28,O29,O30,O33,O34,O35,O36,O37,O38,O39,O40,O41,O45,O47,O49,O51,O52,O53,O54,O55,O56,O57,O58,O65,O66] ⊢ 8/51 held",
   "ctor:pendingMapValue.h_vslot writers=6 punt=0 stamp=3 built=3 unborn=0 dead=0 allHeld=1 someHeld=1 noneHeld=1 origins=[O0,O1,O2,O3,O4,O5,O6,O7,O8,O9,O10,O11,O12,O13,O14,O15,O16,O17,O18,O19,O20,O21,O22,O25,O26,O27,O28,O29,O30,O33,O34,O35,O36,O37,O38,O39,O40,O41,O45,O47,O50,O51,O52,O59,O60,O61,O62,O63,O64,O65,O66] ⊢ 8/51 held",
-  "ctor:pendingMapValue.h_kslot writers=6 punt=0 stamp=3 built=3 unborn=0 dead=0 allHeld=0 someHeld=3 noneHeld=0 origins=[O4,O5,O6,O7,O8,O9,O10,O11,O12,O13,O14,O15,O16,O17,O18,O19,O20,O21,O25,O26,O27,O28,O29,O30,O34,O35,O36,O37,O38,O39,O40,O45,O47,O51,O52,O65,O66] ⊢ 1/37 held",
+  "ctor:pendingMapValue.h_kslot writers=6 punt=0 stamp=2 built=4 unborn=0 dead=0 allHeld=0 someHeld=3 noneHeld=1 origins=[O4,O5,O6,O7,O8,O9,O10,O11,O12,O13,O14,O15,O16,O17,O18,O19,O20,O21,O25,O26,O27,O28,O29,O30,O34,O35,O36,O37,O38,O39,O40,O45,O47,O51,O52,O65,O66] ⊢ 1/37 held",
   "ctor:pendingMapValue.h_explUp writers=6 punt=0 stamp=5 built=1 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=1 origins=[O66] ⊢ 0/1 held",
   "param:accum_block_on_closeThenBlock.h_vpack writers=11 punt=1 stamp=2 built=8 unborn=0 dead=0 allHeld=0 someHeld=5 noneHeld=3 origins=[O0,O1,O2,O3,O4,O5,O6,O7,O8,O9,O10,O11,O12,O13,O14,O15,O16,O17,O18,O19,O20,O21,O22,O25,O26,O27,O28,O29,O30,O33,O34,O35,O36,O37,O38,O39,O40,O41,O45,O47,O51,O52,O65,O66] ⊢ 2/44 held",
   "param:accum_block_on_closeThenBlock.h_vslot writers=11 punt=0 stamp=10 built=1 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=1 origins=[O66] ⊢ 0/1 held",
@@ -1043,7 +1045,8 @@ def expectedPerPos : List String := [
   -- Item 413: pendingMapValue.h_expl noneHeld 1 -> 2 (compact_open_map's writer re-read) + param:compact_open_map.h_chainUp (two paid:chain writers).
   "ctor:pendingMapValue.h_expl writers=6 punt=0 stamp=4 built=2 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=2 origins=[O66] ⊢ 0/1 held",
   "param:compact_open_map.h_chainUp writers=2 punt=0 stamp=0 built=2 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=2 origins=[O66] ⊢ 0/1 held",
-  "param:explEntryChain_of_keyContent.up writers=4 punt=0 stamp=0 built=4 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=4 origins=[O66] ⊢ 0/1 held"]
+  "param:explEntryChain_of_keyContent.up writers=4 punt=0 stamp=0 built=4 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=4 origins=[O66] ⊢ 0/1 held",
+  "param:colon_open_map.h_explUp_chainD writers=1 punt=0 stamp=0 built=1 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=1 origins=[O66] ⊢ 0/1 held"]
 -- 2026-10-24 (item 355): 0 → 9.  The marked-column domain is transported through the step by
 -- `h.imp (fun ⟨ns, hd, k⟩ => ⟨ns, MarkedColsIn.step_content … hd, k⟩) …`, which this walker reads as a
 -- `step(...)` writer with no origin (it does not look through the transport lambda to the door it
@@ -1213,7 +1216,7 @@ def expectedLine : String :=
 -- Item 372 (2026-10-27): the Or-shaped route conjunct of `ImplicitKeyPack` (summary mirrors the five `(Or)` rows).
 -- Item 374: lets=647 → 648, lapps=821 → 822, alts=5234 → 5243, nodes=13694 → 13696, liteNodes=630069 → 632322 — the resume context's face disjunct and `resumectx_of_landing`'s `h_base`.
   -- 2026-10-28 (item 386): lets 652 → 657, alts 5277 → 5280, nodes 13696 → 13706, liteNodes 634748 → 635676 — the `-` opener's `h_lvl_old` and its `omega` spend at the no-pop arm; no origin row moved.
-  "positions=52 packaged=7 packConsts=[ImplicitKeyPack,PropsKeyPack] rows=194 ctorRows=104 paramRows=90 packagedRows=29 punt=5 stamp=44 built=145 origins=67 originRows=32 route=12 frames=29 tail=14 other=0 concl=8 invariant=4 heldOrigins=14 allHeld=2 someHeld=37 noneHeld=92 unbornRows=0 relayedPunt=0 relayedStamp=10 relayedAbsurd=4 relayedFact=0 deadRows=0 unbornPos=0 rounds=4 follows=394 lets=693 lapps=885 alts=5654 nodes=14216 liteNodes=679070"
+  "positions=53 packaged=7 packConsts=[ImplicitKeyPack,PropsKeyPack] rows=195 ctorRows=104 paramRows=91 packagedRows=29 punt=5 stamp=43 built=147 origins=67 originRows=32 route=12 frames=29 tail=14 other=0 concl=8 invariant=4 heldOrigins=14 allHeld=2 someHeld=37 noneHeld=94 unbornRows=0 relayedPunt=0 relayedStamp=10 relayedAbsurd=4 relayedFact=0 deadRows=0 unbornPos=0 rounds=4 follows=395 lets=693 lapps=888 alts=5654 nodes=14256 liteNodes=679153"
 
 /-! ## §4 The reading -/
 
@@ -1413,7 +1416,7 @@ run_cmd Lean.Elab.Command.liftTermElabM do
   -- Item 409 (2026-10-30): 42 → 41 — `explFrameValueLine.h_kslot` is gone with the lemma.
   -- 2026-10-31 (item 412): 41 → 43 — the entry-shaped `pendingMapValue.h_expl` (ctor) and its consumer param position, as ValueLinePacks pins.
   -- 2026-10-31 (item 413): 43 → 44 — `compact_open_map.h_chainUp`, the opener's relay parameter (ValueLinePacks params 31 → 32).
-  unless (cs.positions.filter (!·.packaged)).size == 45 do throwError "item 261's positions moved under this pass: {(cs.positions.filter (!·.packaged)).size}"
+  unless (cs.positions.filter (!·.packaged)).size == 46 do throwError "item 261's positions moved under this pass: {(cs.positions.filter (!·.packaged)).size}"
   unless origins.size > 0 do throwError "no origin resolved"
   unless pinned do return
   let check (name : String) (gotL : Array String) (exp : List String) : MetaM Unit := do

@@ -292,7 +292,7 @@ def isSurfFace (env : Environment) (lhs : Expr) : MetaM Bool := do
 -- 2026-10-29 (item 389): faces 62 → 63 — the mapping-top conjunct is one more narrowing face on the `-` park's route fields.
 -- 2026-10-29 (item 396): after_close's four optional contexts restated (binders 167 → 162, syntactic 159 → 154); flowOpen_floor_at_prep deleted (theorems 6362 → 6361, its DECLINE|PAY conclusion was one of the 17 no-op pairs).
 -- 2026-10-30 (item 405): faces 63 → 64 — `pendingMapValue.h_explUp`'s new `∨ PackAlt sc` arm (ruling "405 a").
-def expectedFaceTally : String := "binders=162 faces=64 heads=20"
+def expectedFaceTally : String := "binders=163 faces=64 heads=20"
 
 /-- The conclusion head of every left disjunct.  `FVAR 2` is `frameChainUnion`,
     whose face is schematic in `P` — the two rows no census of any kind can
@@ -321,7 +321,7 @@ def expectedHeadCensus : List String :=
    "KeyFrames 2",
    -- Item 409 (2026-10-30): the pack faces carry a `MarkedColsIn` head (+2); `explFrameValueLine`'s
    -- three `ResumeFrames` heads are gone (18 → 15).
-   "MarkedColsIn 17",
+   "MarkedColsIn 18",
    "MarkerNodeRoute 5",
    "Mono 4",
    "PropsNodeRoute 4",
@@ -384,7 +384,7 @@ which of four reasons applies. -/
 -- 2026-10-26 (item 369): binders=165 → binders=166, surf=134 → surf=135 — `accum_block_on_pendingBlock.h_closeF_old` (the `-` park's frames, read at the `:`/`?` landing for `h_res_land`).
 -- 2026-10-28 (item 385): binders 166 → 167, surf 135 → 136
 -- — `deeperLandingResume.h_valF`: one more surface-shaped optional binder.
-def expectedFidelity : String := "binders=162 surf=133 state=29"
+def expectedFidelity : String := "binders=163 surf=134 state=29"
 
 /-- The 25 faces a state census COULD evaluate — 27 since item 300 — which is
     the population the mandate's instrument is actually defined over.  Two of them
@@ -533,7 +533,7 @@ def chainKeySet : Std.HashSet String :=
 -- 2026-10-26 (item 370): splits 104 → 105, innerSplits 56 → 57 — the sibling `-` arm's split of `h_closeF_old`.
 -- 2026-10-28 (item 380, PR #146 review): splits 105 → 108 — `h_kslotUp`'s `Or.elim` decisions (see the ledger); pairs/sup unchanged.
 def expectedWorthTally : String :=
-  "pairs=36 splits=110 sup=99 chainPairs=0 chainSplits=0 innerPairs=13 \
+  "pairs=37 splits=111 sup=100 chainPairs=0 chainSplits=0 innerPairs=13 \
 innerSplits=57"
 
 /-- The ledger, worth-first.  `chain` is §3's verdict — a narrowing here lands
@@ -597,6 +597,7 @@ def expectedWorthLedger : List String :=
    "splits=1 sup=11 - h_sfx :: accum_block_on_closeThenBlock#19",
    "splits=1 sup=11 - h_valFV :: accum_block_on_closeThenBlock#32",
    "splits=1 sup=11 inner h_mapFV :: accum_block_on_closeThenBlock#31",
+   "splits=1 sup=1 - h_explUp_chainD :: colon_open_map#28",
    "splits=1 sup=1 - h_explUp_chainD :: question_open_map#29",
    "splits=1 sup=1 - h_kslot :: accum_block_on_pendingBlockContent#15",
    "splits=1 sup=1 - h_kslotD :: colon_open_map_implicit#29",
@@ -619,7 +620,7 @@ def expectedWorthLedger : List String :=
 -- 2026-10-26 (item 369): branchPairs=35 → branchPairs=36, splits=103 → splits=104 — `accum_block_on_pendingBlock.h_closeF_old` (the `-` park's frames, read at the `:`/`?` landing for `h_res_land`).
 -- 2026-10-26 (item 370): splits 104 → 105 — the sibling `-` arm's split of `h_closeF_old`.
 -- 2026-10-28 (item 380, PR #146 review): splits 105 → 108, same cause; reach unchanged.
-def expectedBranchReach : String := "branchPairs=36 stateReachable=1 splits=110 stateSplits=3"
+def expectedBranchReach : String := "branchPairs=37 stateReachable=1 splits=111 stateSplits=3"
 
 open Meta in
 run_cmd do
@@ -691,7 +692,7 @@ rather than as a count. -/
 -- 2026-10-26 (item 369): syntactic=157 → syntactic=158, population=159 → population=160 — `accum_block_on_pendingBlock.h_closeF_old` (the `-` park's frames, read at the `:`/`?` landing for `h_res_land`).
 -- 2026-10-28 (item 385): syntactic 158 → 159, population 160 → 161
 -- — the same binder, syntactically optional.
-def expectedHiddenTally : String := "hiddenDefs=1 syntactic=155 hiddenOnly=2 population=157"
+def expectedHiddenTally : String := "hiddenDefs=1 syntactic=156 hiddenOnly=2 population=158"
 
 def expectedHiddenDefs : List String := ["ResumeKeyCtx"]
 
