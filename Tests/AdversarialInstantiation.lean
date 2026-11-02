@@ -9539,6 +9539,53 @@ def testArmedOuterPartition (state : IO.Ref TestCollector) : IO Unit := do
     (colonPauses > 0 && qPauses > 0 && neither == 0 && k7 > 0 && armed ≥ 3 && keyElsewhere == 0 &&
      skaDownAtPark > 0 && flowPauses > 0 && dashPauses > 0 && witnesses.all (fun (k, x) => x != k))
 
+-- Priority 83b (item 422, review): the membership lemma's OWN refutation half — `exists_mem_ne_of_not_markedColsIn`
+-- tested as an implication over CONSTRUCTED registers, not over scanned ones: `pendingKeys` / `indentColumns` varied
+-- independently (no marks; one mark at `k`; one away; several; a `some none` slot; an unmarked slot at another column;
+-- a key with NO indent column — the mismatched-length case `markedCols_mem` reads as `none`).  The hypothesis
+-- `¬ MarkedColsIn s [k]` is decided from the arrays (some marked slot's column `≠ k`); a hypothesis-true register with no
+-- witness `≠ k` in `markedColsOf` refutes the lemma, and a hypothesis-false one WITH a witness refutes its converse.
+def testArmedOuterLemma (state : IO.Ref TestCollector) : IO Unit := do
+  let base := L4YAML.Scanner.ScannerState.mk' ""
+  let mkS (pks : Array (Option Nat)) (cols : Array Int) : L4YAML.Scanner.ScannerState :=
+    { base with pendingKeys := pks, indents := cols.map fun c => { column := c, isSequence := false } }
+  let cases : List (String × Array (Option Nat) × Array Int) :=
+    [ ("no slots", #[], #[]),
+      ("one unmarked slot", #[none], #[0]),
+      ("one mark at k", #[some 3], #[2]),
+      ("one mark away", #[some 3], #[0]),
+      ("two marks both k", #[some 1, some 4], #[2, 2]),
+      ("k and away", #[some 1, some 4], #[2, 5]),
+      ("away and away", #[some 1, some 4], #[0, 5]),
+      ("mark at k, unmarked away", #[some 1, none], #[2, 7]),
+      ("unmarked at k, mark away", #[none, some 9], #[2, 6]),
+      ("mark with no column", #[some 1], #[]),
+      ("mark at k, second mark with no column", #[some 1, some 2], #[2]),
+      ("negative column mark (toNat 0) with k = 2", #[some 1], #[-3]),
+      ("three marks, middle away", #[some 1, some 2, some 3], #[2, 0, 2]) ]
+  let k : Nat := 2
+  let mut hypTrue := 0
+  let mut hypFalse := 0
+  let mut refuted : List String := []
+  let mut converseRefuted : List String := []
+  for (name, pks, cols) in cases do
+    let s := mkS pks cols
+    let marks := markedColsOf s.pendingKeys s.indentColumns
+    -- ¬ MarkedColsIn s [k]  ⇔  some slot i has pks[i] = some (some _), cols[i] = some c, c.toNat ≠ k
+    let hyp := (List.range pks.size).any fun i =>
+      match pks[i]?, cols[i]? with
+      | some (some _), some c => c.toNat != k
+      | _, _ => false
+    let witness := marks.find? (· != k)
+    if hyp then
+      hypTrue := hypTrue + 1
+      if witness.isNone then refuted := name :: refuted
+    else
+      hypFalse := hypFalse + 1
+      if witness.isSome then converseRefuted := name :: converseRefuted
+  check state s!"P83b exists_mem_ne_of_not_markedColsIn on constructed registers (item 422): cases={cases.length} hypothesis-true={hypTrue} hypothesis-false={hypFalse}; refuted={refuted} converse-refuted={converseRefuted}"
+    (hypTrue == 6 && hypFalse == 7 && refuted.isEmpty && converseRefuted.isEmpty)
+
 def testFlowCarrier (state : IO.Ref TestCollector) : IO Unit := do
   let nestedQ : List String := ["?\n  ? -\n: w\n", "? - ? - a\n  : b\n: c\n", "?\n  ?\n    -\n    - b\n  ? c\n: w\n", "? ? - a\n  : b\n: c\n", "- ? - a\n  : b\n"]
   let singleQ : List String := ["? - a\n: b\n", "?\n  - a\n  - b\n: w\n", "k:\n  ? - a\n  : b\n", "? -\n: w\n"]
@@ -9741,6 +9788,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testColonChainRelay state
   testHeldChainRelay state
   testArmedOuterPartition state
+  testArmedOuterLemma state
 
   testQuestionMarkColumn state
   testK1Lanes state
