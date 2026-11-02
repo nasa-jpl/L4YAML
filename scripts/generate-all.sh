@@ -298,7 +298,7 @@ if wants 3; then
   GATES_FAILED=""
   for g in check-theorem-keyword check-import-closure check-reflection-index check-closure-log; do
     printf '%-26s ' "$g" | tee -a "$LOG"
-    if bash "scripts/$g.sh" >> "$LOG" 2>&1; then echo "ok" | tee -a "$LOG"
+    if lake run "$g" >> "$LOG" 2>&1; then echo "ok" | tee -a "$LOG"
     else
       echo "FAILED" | tee -a "$LOG"; warn "$g failed — see $LOG"
       GATES_FAILED="${GATES_FAILED:+$GATES_FAILED }$g"
