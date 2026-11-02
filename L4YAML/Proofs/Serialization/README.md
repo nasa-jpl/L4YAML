@@ -88,7 +88,7 @@ The package is imported by `L4YAML.lean`, so default builds and
 repository header; non-capstone declarations use `lemma`, and namespaces
 mirror module paths.
 
-Run `bash scripts/check-serialization-proofs.sh` to build the focused package,
+Run `lake run check-serialization-proofs` to build the focused package,
 observe every `#print axioms` site freshly, validate both deliberate-sorry
 signals, reject all axioms outside `propext`, `Classical.choice`, `Quot.sound`,
 and pin the exact headline profiles. This gate is part of `test-coverage.yml`

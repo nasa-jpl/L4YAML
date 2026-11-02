@@ -210,7 +210,7 @@ if wants 1; then
 
   say "Phase 1 — serialization axiom gate"
   LOG="$LOGS/01-serialization-gate.log"
-  bash scripts/check-serialization-proofs.sh > "$LOG" 2>&1
+  lake run check-serialization-proofs > "$LOG" 2>&1
   tail -1 "$LOG"
   note 1 serialization-gate "$(tail -1 "$LOG" | grep -oE '[0-9]+ observed profiles' || echo ok)"
   echo "log: $LOG"

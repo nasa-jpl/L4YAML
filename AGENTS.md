@@ -110,8 +110,8 @@ lake run check-theorem-keyword       # Rule 7
 lake run check-import-closure        # no orphan modules (off the .olean headers)
 lake run check-reflection-index      # every Tests/Reflections/* is indexed
 lake run check-closure-log           # DOCS.md items ascend, dated, gaps declared
-scripts/check-serialization-proofs.sh
-python3 scripts/gate_vocab.py        # gate names in prose resolve (pin: Tests/Guards/Proofs/GateVocabulary.lean)
+lake run check-serialization-proofs  # serialization hygiene: kernel axiom profiles, sorry control, exact headline sets
+lake run check-gate-vocab            # gate names in prose resolve (pin: Tests/Guards/Proofs/GateVocabulary.lean)
 lake run check-scripts-lean          # Rule 9: every scripts/*.py and inline python3 site is on scripts/scripts-ledger.txt; the ledger only shrinks
 lake run run-all-tests               # every test exe; collects failures (portable: Lake `script`, no bash)
 lake exe suiterunner                 # matrix; items quote pass/fail/skip

@@ -58,5 +58,5 @@ Project-specific lessons; the general digest of closed proof episodes is
 - Errors: `.unknownVariant` for a bad scalar value, `.notASequence` /
   `.notAMapping` only for shape mismatch.  Raw `YamlValue` fields need a
   local identity instance.
-- `scripts/check-serialization-proofs.sh` and `check-serialization-axioms.py`
-  gate this layer; run them before the full build.
+- `lake run check-serialization-proofs` gates this layer; run it before the
+  full build.

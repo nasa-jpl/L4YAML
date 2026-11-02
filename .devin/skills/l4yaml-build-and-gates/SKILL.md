@@ -47,8 +47,8 @@ lake run check-theorem-keyword        # `theorem` only on scripts/capstones.txt 
 lake run check-import-closure         # no orphan modules (reads .olean headers; builds the roots first)
 lake run check-reflection-index       # reflections index narrative matches its bullets
 lake run check-closure-log            # DOCS.md items ascend / dated / gaps declared
-scripts/check-serialization-proofs.sh # serialization hygiene (+ check-serialization-axioms.py)
-python3 scripts/gate_vocab.py         # gate names cited in prose resolve
+lake run check-serialization-proofs   # serialization hygiene: axiom profiles of every #print axioms site, sorry control
+lake run check-gate-vocab             # gate names cited in prose resolve (reads .olean headers via LEAN_PATH)
 lake run check-scripts-lean           # Rule 9: scripts/**/*.py and inline python3 sites are on scripts/scripts-ledger.txt (shrink-only pin)
 lake run run-all-tests                # every test exe, collects failures
 lake exe suiterunner                  # matrix triple pass/fail/skip
