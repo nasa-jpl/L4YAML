@@ -34,12 +34,12 @@ owed type a deliberate mismatch prints), one block per site. -/
 def bodyLines (sites : Array Site) : Array String := Id.run do
   let mut out := #[]
   for s in sites do
-    out := out.push s!"--- site {s.line} ({s.owner})"
+    out := out.push s!"--- site {s.line} ({s.owner}): {s.msg}"
     out := out.push s.body.trimAscii.toString
     out := out.push ""
   return out
 
-#guard bodyLines #[⟨"F", 3, "Type mismatch", "a", "  expected T\n  got U\n"⟩] == #["--- site 3 (a)", "expected T\n  got U", ""]
+#guard bodyLines #[⟨"F", 3, "Type mismatch", "a", "  expected T\n  got U\n"⟩] == #["--- site 3 (a): Type mismatch", "expected T\n  got U", ""]
 
 #guard headline "T" 1 #[⟨"F", 3, "m", "a", ""⟩, ⟨"F", 9, "n", "a", ""⟩, ⟨"F", 12, "o", "b", ""⟩] == "T exit=1 errors=3 decls=2"
 #guard ownerLines #[⟨"F", 3, "message", "a", ""⟩, ⟨"F", 9, "n", "a", ""⟩] 4 == #["  a: 2 site(s)", "    3: mess", "    9: n"]

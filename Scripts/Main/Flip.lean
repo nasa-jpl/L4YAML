@@ -27,8 +27,9 @@ anchored replacements, the build target and the report's tag.  The run
 3. writes the patched copy over the working-tree file, prints the content
    hash both sides, builds the target, saves the log, and bills every error
    site in the file to its enclosing declaration;
-4. restores the working tree's own bytes and checks they are identical
-   (`--keep` leaves the patched tree in place, the pay's starting point).
+4. restores the working tree's own bytes, checks they are identical, and
+   rebuilds the target so no later probe reads a flipped `.olean` (`--keep`
+   leaves the patched tree in place, the pay's starting point).
 
 Never run it beside another `lake build`.  Spec format (JSON, read by
 `Lean.Json` — core, no new dependency; a spec is data, not code, and an
@@ -38,6 +39,7 @@ array of lines keeps the Lean text literal):
 { "item": 416, "tag": "KSLOTE-FLIP", "rev": "55d03804",
   "file": "L4YAML/Proofs/Production/StreamAccum.lean", "target": "L4YAML",
   "log": "scratch/kslote_flip.log", "msgWidth": 100, "rounds": 1,
+  "report": "owners" | "bodies", "filter": "Type mismatch" (bodies: list only matching sites),
   "patches": [ { "name": "FIELD", "old": ["line", "line"], "new": ["line"], "count": 1 } ] }
 ```
 -/
@@ -91,6 +93,7 @@ structure Spec where
   rounds : Nat := 1
   lib : String := "L4YAML"
   report : String := "owners"
+  filter : Option String := none
 
 /-- A field with a default when the key is absent (derived `FromJson` would
 require every key). -/
@@ -132,7 +135,8 @@ instance : FromJson Spec where
     let lib ← getOr j "lib" "L4YAML"
     let report ← getOr j "report" "owners"
     if report != "owners" && report != "bodies" then throw s!"report must be `owners` or `bodies`, not `{report}`"
-    return { item, tag, rev, files, target, log, msgWidth, rounds, lib, report }
+    let filter ← getOr j "filter" (none : Option String)
+    return { item, tag, rev, files, target, log, msgWidth, rounds, lib, report, filter }
 
 def PatchJ.toPatch (p : PatchJ) : Patch.Patch :=
   ⟨p.name, "\n".intercalate p.old.toList, "\n".intercalate p.new.toList, p.count⟩
@@ -260,7 +264,16 @@ def runSpec (o : Opts) : IO UInt32 := do
       if r == 1 then
         IO.println (headline spec.tag code (main ++ others))
         if spec.report == "bodies" then
-          for l in bodyLines main do IO.println l
+          let listed := match spec.filter with
+            | some f => main.filter fun s => (s.msg.splitOn f).length > 1
+            | none => main
+          if let some f := spec.filter then
+            IO.println s!"  {listed.size} site(s) match `{f}`; {main.size - listed.size} other diagnostic(s) in the flipped file(s)"
+          for l in bodyLines listed do IO.println l
+          let rest := main.filter fun s => !(listed.any (· == s))
+          if !rest.isEmpty then
+            IO.println "  other diagnostics (not matching the filter):"
+            for l in ownerLines rest spec.msgWidth do IO.println l
         else
           for l in ownerLines main spec.msgWidth do IO.println l
         if !others.isEmpty then
@@ -299,6 +312,10 @@ def runSpec (o : Opts) : IO UInt32 := do
         let same := now == b
         IO.println s!"restored {f} hash {Patch.digest now} (orig {Patch.digest b}) identical={same}"
         if !same then restoredOk := false
+      -- as flip_210.py did: rebuild so no later probe reads a flipped .olean
+      let args := if spec.target.isEmpty then #["build"] else #["build", spec.target]
+      let o ← IO.Process.output { cmd := "lake", args, cwd := some root }
+      IO.println s!"rebuilt {if spec.target.isEmpty then "everything" else spec.target} on the restored tree: exit={o.exitCode}"
   return if !restoredOk then 1 else if incomplete.isSome then 3 else 0
 
 end Scripts.FlipMain
