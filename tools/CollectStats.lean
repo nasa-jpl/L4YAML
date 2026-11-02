@@ -15,7 +15,7 @@
       these are kernel-accurate and use `Lean.collectAxioms` to follow
       transitive dependencies.
     * dynamic counts: parsed from the existing test-runner outputs in
-      `docs/reports/` (so `scripts/run-all-tests.sh` must have run first
+      `docs/reports/` (so `lake run run-all-tests` must have run first
       for those numbers to be present)
 
   Build-job totals are not derivable without running `lake build` — pass them

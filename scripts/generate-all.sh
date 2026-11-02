@@ -221,8 +221,8 @@ if wants 2; then
   say "Phase 2 — Lean test suites"
   mkdir -p "$REPORTS"
   LOG="$LOGS/02-lean-suites.log"
-  bash scripts/run-all-tests.sh "$REPORTS" > "$LOG" 2>&1 || {
-    warn "run-all-tests.sh failed — see $LOG"; note 2 lean-suites FAILED; }
+  lake run run-all-tests -- "$REPORTS" > "$LOG" 2>&1 || {
+    warn "run-all-tests failed — see $LOG"; note 2 lean-suites FAILED; }
   VERIFIED="$(grep -oE 'Verified: [0-9]+/[0-9]+' "$LOG" | tail -1 || echo '?')"
   echo "${VERIFIED:-no Verified line}"
   note 2 lean-suites "${VERIFIED:-?}"

@@ -345,7 +345,7 @@ lean_exe productioncoverage where
 lean_lib Scripts where
   requiresModuleSystem := true
 
--- Phase 0: the ledger gate behind scripts/check-scripts-lean.sh.
+-- Phase 0: the ledger gate behind `lake run check-scripts-lean`.
 @[default_target]
 lean_exe «scripts-check-ledger» where
   root := `Scripts.Main.CheckScriptsLedger
@@ -363,3 +363,75 @@ lean_exe «scripts-repin» where
 @[default_target]
 lean_exe «scripts-flip» where
   root := `Scripts.Main.Flip
+
+/-! Phase 4.5 (Rule 9, Q7): portable entry points — `lake run <name>` replaces the
+bash wrappers that only run a `lean_exe`; same on Linux, macOS and Windows. -/
+
+/-- The Rule 9 ledger gate: `lake run check-scripts-lean [-- ARGS]`
+(`scripts/check-scripts-lean.sh` before 4.5). Builds the exe, runs it on this
+repository root; exit status is the exe's. -/
+script «check-scripts-lean» (args) do
+  let ws ← getWorkspace
+  let root := ws.root.dir
+  let build ← IO.Process.output { cmd := "lake", args := #["build", "scripts-check-ledger"], cwd := some root }
+  if build.exitCode != 0 then
+    IO.eprintln build.stdout; IO.eprintln build.stderr
+    IO.eprintln "check-scripts-lean: lake build scripts-check-ledger failed"
+    return 2
+  let exe := root / ".lake" / "build" / "bin" / "scripts-check-ledger"
+  let args := if args.headD "" == "--" then args.drop 1 else args   -- `lake run name -- ARGS` forwards the `--`
+  let hasRoot := args.any fun a => a == "-C" || a == "--root"
+  let argv := if hasRoot then args.toArray else #["-C", root.toString] ++ args.toArray
+  let child ← IO.Process.spawn { cmd := exe.toString, args := argv }
+  let code ← child.wait
+  return code
+
+/-- Every test exe, output captured under OUT (default `docs`), failures
+collected: `lake run run-all-tests [-- OUT]` (`scripts/run-all-tests.sh`
+before 4.5). Exit 1 when any suite or the suiterunner HTML report failed. -/
+script «run-all-tests» (args) do
+  let ws ← getWorkspace
+  let root := ws.root.dir
+  let args := if args.headD "" == "--" then args.drop 1 else args
+  let outArg : System.FilePath := args.headD "docs"
+  let out := if outArg.isAbsolute then outArg else root / outArg
+  IO.FS.createDirAll out
+  let bin := root / ".lake" / "build" / "bin"
+  let suites : Array (String × String) := #[
+    ("unit-tests", "tests"), ("demo", "demo"), ("explicitkeytests", "explicitkeytests"),
+    ("flowtests", "flowtests"), ("validationtests", "validationtests"), ("dumproundtrip", "dumproundtrip"),
+    ("rawparsetests", "rawparsetests"), ("specexamples", "specexamples"), ("schemadump", "schemadump"),
+    ("derivingconsumer", "derivingconsumer"), ("scannertests", "scannertests"),
+    ("scannerspecexamples", "scannerspecexamples"), ("adversarialtests", "adversarialtests"),
+    ("mutationtests", "mutationtests"), ("propertytests", "propertytests"),
+    ("productioncoverage", "productioncoverage"), ("limittests", "limittests"),
+    ("flowregressioncheck", "flowregressioncheck"), ("errorstagediag", "errorstagediag"),
+    ("scalarstagediag", "scalarstagediag"), ("aligntest", "aligntest")]
+  let mut failed : Array String := #[]
+  for (name, exe) in suites do
+    IO.println s!"=== Running: {name} ==="
+    let r ← try
+        IO.Process.output { cmd := (bin / exe).toString, cwd := some root }
+      catch e => pure { exitCode := 127, stdout := "", stderr := s!"{e}\n" }
+    let text := r.stdout ++ r.stderr
+    IO.print text
+    IO.FS.writeFile (out / s!"{name}.txt") (s!"=== {name} ===\n" ++ text)
+    if r.exitCode != 0 then failed := failed.push name
+    IO.println ""
+  IO.println "=== Generating HTML coverage reports ==="
+  let h ← try
+      IO.Process.output { cmd := (bin / "suiterunner").toString, args := #["--html", out.toString ++ "/"], cwd := some root }
+    catch e => pure { exitCode := 127, stdout := "", stderr := s!"{e}\n" }
+  IO.print h.stdout; IO.eprint h.stderr
+  IO.FS.writeFile (out / "coverage-console.txt") h.stdout
+  if h.exitCode != 0 then failed := failed.push "suiterunner-html"
+  let verified := suites.extract 0 17   -- the 17 verified suites, unit-tests … limittests
+  let mut all := ""
+  for (name, _) in verified do
+    all := all ++ (← IO.FS.readFile (out / s!"{name}.txt"))
+  IO.FS.writeFile (out / "all-verified-tests.txt") all
+  if !failed.isEmpty then
+    IO.eprintln s!"=== FAILED suites ({failed.size}): {" ".intercalate failed.toList} ==="
+    return 1
+  IO.println s!"=== All Lean test suites complete. Results in {out}/ ==="
+  return 0

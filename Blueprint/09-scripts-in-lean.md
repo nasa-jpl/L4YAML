@@ -126,7 +126,7 @@ reading is quoted (predict the Lean reading = the Python reading, then
 score it).
 
 **Phase 0 — the rule's gate (1 PR, no conversion). DONE — #196.**
-`scripts/check-scripts-lean.sh` + `scripts/scripts-ledger.txt`: the ledger
+`lake run check-scripts-lean` (was `scripts/check-scripts-lean.sh` until 4.5) + `scripts/scripts-ledger.txt`: the ledger
 lists every `.py` under `scripts/` with its class and status
 (`todo | lean:<exe> | exception:<reason>`); the gate fails on a `.py` not
 in the ledger, on a ledger row for a file that no longer exists, and on a
@@ -258,7 +258,12 @@ breaks CI if wrong, cheapest first:
    only, with `svg-objects.py` ported (it is an HTML rewrite, 71 lines);
    (b) replace the pair with a `.sh` driving `weasyprint` CLI directly and
    a Lean exe for the TOC/SVG rewriting; (c) drop the PDF from CI.
-5. **Portable wrappers (Q7).** Every `scripts/*.sh` that only runs a
+5. **Portable wrappers (Q7) — DONE (#202) for the two exe-only wrappers** (`lake run
+   check-scripts-lean`, `lake run run-all-tests`; their `.sh` deleted; the four
+   `check-*.sh` still wrap Python and are wired as `lake run` when phase 1 ports
+   them; `generate-all.sh`, `check-serialization-proofs.sh`, `build-api-docs.sh`,
+   `bump-version.sh`, `publish-pages.sh`, `sync-pages.sh` do more than run an
+   exe and stay `.sh` until their phase). Every `scripts/*.sh` that only runs a
    `lean_exe` becomes a Lake `script` block in `lakefile.lean` —
    `script check-scripts-lean (args) do … IO.Process.spawn … lake exe
    scripts-check-ledger …` — invoked as `lake run check-scripts-lean`

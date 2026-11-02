@@ -753,7 +753,7 @@ lemmas can be stated from `Proofs/`.
    [.github/workflows/test-coverage.yml](.github/workflows/test-coverage.yml)
    uses an explicit target list that omits `Tests.Guards`,
    `Tests.Reflections`, `l4yaml-event`, `l4yaml-json`, and `eventscore`, and
-   `scripts/run-all-tests.sh` runs nothing event-related — so even the
+   `lake run run-all-tests` runs nothing event-related — so even the
    existing reflection pins never elaborate in CI. Add the guard/reflection
    libs and the event targets to the build list, and add an event-scoring
    step with a fail threshold:

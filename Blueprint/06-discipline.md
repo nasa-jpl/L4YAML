@@ -325,7 +325,7 @@ What the rule requires:
    listed, with their reason, in the plan's §4; an unlisted `.py` is a
    Rule 9 violation.
 
-- **Gate**: `scripts/check-scripts-lean.sh` (plan §3, phase 0) fails
+- **Gate**: `lake run check-scripts-lean` (plan §3, phase 0; the `.sh` until 4.5) fails
   when a `.py` exists under `scripts/` that is not on the plan's
   conversion ledger, or when a `.sh` or workflow step invokes `python3`
   outside the ledger's listed exceptions. The ledger may only shrink.
