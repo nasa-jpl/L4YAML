@@ -3,7 +3,7 @@
 Status: PLAN, defaults RULED (2026-11-01, owner: "ok with the defaults" —
 every §6 default below is the decision). Governs the conversion of every
 `scripts/*.py` to Lean under [`06-discipline.md`](06-discipline.md) Rule 9.
-Phase 0 (the gate, #196), phase 2.1 (`flip_census`/`repin` in Lean), phase 3.1 (the flip library, `scripts-flip`, #200), phase 3.2's specs half (#201), phase 4.5 (`lake run`, #202) and phase 1's four CI gates (#PR1) are DONE; each later phase lands as its own PR
+Phase 0 (the gate, #196), phase 2.1 (`flip_census`/`repin` in Lean), phase 3.1 (the flip library, `scripts-flip`, #200), phase 3.2's specs half (#201), phase 4.5 (`lake run`, #202) and phase 1's four CI gates (#204) are DONE; each later phase lands as its own PR
 and ticks its rows in §5. Work order (§3): phase 0 → 2.1 → 3.1 → 3.2 → 4.5 →
 phase 1 → the rest; R12 holds its next flip until 3.1 lands (Q6).
 
@@ -278,7 +278,7 @@ breaks CI if wrong, cheapest first:
    a Lean exe for the TOC/SVG rewriting; (c) drop the PDF from CI.
 5. **Portable wrappers (Q7) — DONE (#202) for the two exe-only wrappers** (`lake run
    check-scripts-lean`, `lake run run-all-tests`; their `.sh` deleted) **and
-   (phase 1, #PR1) for the four gates** (`lake run check-theorem-keyword`,
+   (phase 1, #204) for the four gates** (`lake run check-theorem-keyword`,
    `check-import-closure`, `check-reflection-index`, `check-closure-log`; their
    `.sh` and `.py` deleted; `generate-all.sh`, `check-serialization-proofs.sh`, `build-api-docs.sh`,
    `bump-version.sh`, `publish-pages.sh`, `sync-pages.sh` do more than run an
@@ -327,10 +327,10 @@ it removes Python from CI; it does not block an item.
 
 | Script | Class | Lines | Born | Callers | Target | Status |
 |---|---|---|---|---|---|---|
-| check_import_closure.py | G | 104 | 07-31 | `lake run check-import-closure` (CI) | scripts-check-import-closure | **DONE** (#PR1) |
-| check_reflection_index.py | G | 148 | 08-11 | `lake run check-reflection-index` (CI) | scripts-check-reflection-index | **DONE** (#PR1) |
-| check_closure_log.py | G | 143 | 09-27 | `lake run check-closure-log` (CI) | scripts-check-closure-log | **DONE** (#PR1) |
-| rename_lemma.py | G | 220 | 08-01 | `lake run check-theorem-keyword` (CI) | scripts-theorem-keyword | **DONE** (#PR1) |
+| check_import_closure.py | G | 104 | 07-31 | `lake run check-import-closure` (CI) | scripts-check-import-closure | **DONE** (#204) |
+| check_reflection_index.py | G | 148 | 08-11 | `lake run check-reflection-index` (CI) | scripts-check-reflection-index | **DONE** (#204) |
+| check_closure_log.py | G | 143 | 09-27 | `lake run check-closure-log` (CI) | scripts-check-closure-log | **DONE** (#204) |
+| rename_lemma.py | G | 220 | 08-01 | `lake run check-theorem-keyword` (CI) | scripts-theorem-keyword | **DONE** (#204) |
 | check-serialization-axioms.py | G | 44 | 10-05 | check-serialization-proofs.sh (CI) | (inside that gate's exe) | todo |
 | gate_vocab.py | G | 207 | 09-25 | battery; GateVocabulary.lean | scripts-gate-vocab | todo |
 | repin.py | I (also `--check`) | 223 | 10-23 | every item | scripts-repin | lean:scripts-repin |
