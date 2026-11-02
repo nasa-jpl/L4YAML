@@ -12,12 +12,12 @@ the history cites; it does not duplicate them.  Task-shaped recipes live in
 | What is this project, how do I build/test it, what is next at the project level | [`README.md`](README.md) (its **Next steps**) | restate its metrics elsewhere |
 | Which theorems are capstones and their status / axiom profile | [`Blueprint/04-capstones.md`](Blueprint/04-capstones.md) — machine-parsed | add a theorem without a row here |
 | The rules of proof work | [`Blueprint/06-discipline.md`](Blueprint/06-discipline.md) (Rules 1–9) | invent a parallel rule set |
-| What the active campaign is doing *right now* | `DOCS.md` → Row 12 closure log: `scripts/docs_nav.py next` and `remaining` | read DOCS.md top to bottom (45k lines) |
+| What the active campaign is doing *right now* | `DOCS.md` → Row 12 closure log: `lake run docs-nav -- next` and `-- remaining` | read DOCS.md top to bottom (45k lines) |
 | Which YAML productions are covered | [`L4YAML/YAML_PRODUCTIONS.md`](L4YAML/YAML_PRODUCTIONS.md) — machine-checked by `Tests/ProductionCoverage.lean` | edit by hand without the check |
 | Vocabulary of the pipeline | [`Blueprint/01-terminology.md`](Blueprint/01-terminology.md); campaign vocabulary in §6 below | |
 | Lessons from closed proof episodes | [`Blueprint/08-init4.md`](Blueprint/08-init4.md) (digest of `Tests/Reflections/*`) | |
 
-Navigating the history: `python3 scripts/docs_nav.py toc | items --last 10 |
+Navigating the history: `lake run docs-nav -- toc | items --last 10 |
 item N | next | remaining | steps | grep REGEX | section PREFIX`.  Every item
 of the closure log is `### Item N (YYYY-MM-DD)`; the latest item's `**NEXT —`
 paragraph is the mandate for the next piece of work.

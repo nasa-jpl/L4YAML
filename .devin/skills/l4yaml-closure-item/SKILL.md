@@ -12,9 +12,9 @@ the work happens, not after; its predictions are the test of the reading.
 ## 0. Take the mandate
 
 ```bash
-python3 scripts/docs_nav.py next          # the paragraph you are answering
-python3 scripts/docs_nav.py item <N-1>    # read the whole previous item
-python3 scripts/docs_nav.py steps         # which 12.x.y row this is
+lake run docs-nav -- next          # the paragraph you are answering
+lake run docs-nav -- item <N-1>    # read the whole previous item
+lake run docs-nav -- steps         # which 12.x.y row this is
 ```
 Quote the NEXT verbatim under **The mandate.**  Departing from it is allowed
 only with the reason written there.

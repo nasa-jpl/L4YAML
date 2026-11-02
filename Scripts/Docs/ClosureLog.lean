@@ -8,8 +8,8 @@ module
 `DOCS.md`'s "Row 12 — β.5 closure log" is a flat run of `### Item N (DATE)`
 entries that readers and later entries navigate by number.  This module is
 the item parser both the gate (`scripts-check-closure-log`, formerly
-`scripts/check_closure_log.py`) and, when it is ported, `docs_nav.py` read
-the log through, and the gate's five checks as pure functions over the parsed
+`scripts/check_closure_log.py`) and the navigator (`scripts-docs-nav`,
+formerly `scripts/docs_nav.py`; `Scripts/Docs/Nav.lean`) read the log through, and the gate's five checks as pure functions over the parsed
 entries (each a hard failure):
 
 1. headings parse — every `### Item N …` heading carries a number and a

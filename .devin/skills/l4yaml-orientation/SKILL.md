@@ -10,12 +10,12 @@ description: First ten minutes on Open-MBEE/L4YAML — where the sources of trut
    `fix-a-grammar-completeness` on `nasa-jpl/L4YAML` (the fork `Open-MBEE/L4YAML` is retired for new work), not `main`.
 3. Find the mandate, never by paging DOCS.md:
    ```bash
-   python3 scripts/docs_nav.py next            # latest item's **NEXT —** paragraph
-   python3 scripts/docs_nav.py items --last 5  # what the last five items did
-   python3 scripts/docs_nav.py steps           # Row 12 six-step table with state
-   python3 scripts/docs_nav.py remaining       # open six-step rows, then the dated dependency chain
-   python3 scripts/docs_nav.py item 264        # read one item in full
-   python3 scripts/docs_nav.py grep -i 'noKeyContext'   # which items touched a name
+   lake run docs-nav -- next            # latest item's **NEXT —** paragraph
+   lake run docs-nav -- items --last 5  # what the last five items did
+   lake run docs-nav -- steps           # Row 12 six-step table with state
+   lake run docs-nav -- remaining       # open six-step rows, then the dated dependency chain
+   lake run docs-nav -- item 264        # read one item in full
+   lake run docs-nav -- grep -i 'noKeyContext'   # which items touched a name
    ```
 4. Before trusting any count or name from memory or from an older item:
    grep the tree (`rg -n 'name' L4YAML Tests`) and read the pin that already

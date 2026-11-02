@@ -3,7 +3,7 @@
 Status: PLAN, defaults RULED (2026-11-01, owner: "ok with the defaults" —
 every §6 default below is the decision). Governs the conversion of every
 `scripts/*.py` to Lean under [`06-discipline.md`](06-discipline.md) Rule 9.
-Phase 0 (the gate, #196), phase 2.1 (`flip_census`/`repin` in Lean), phase 3.1 (the flip library, `scripts-flip`, #200), phase 3.2's specs half (#201), phase 4.5 (`lake run`, #202) and phase 1 — the six class-G gates (#204, #206) — are DONE; each later phase lands as its own PR
+Phase 0 (the gate, #196), phase 2.1 (`flip_census`/`repin` in Lean), phase 3.1 (the flip library, `scripts-flip`, #200), phase 3.2's specs half (#201), phase 4.5 (`lake run`, #202) phase 1 — the six class-G gates (#204, #206) — and phase 2's first row (`docs_nav.py` → `lake run docs-nav`) are DONE; each later phase lands as its own PR
 and ticks its rows in §5. Work order (§3): phase 0 → 2.1 → 3.1 → 3.2 → 4.5 →
 phase 1 → the rest; R12 holds its next flip until 3.1 lands (Q6).
 
@@ -55,7 +55,9 @@ Scripts/                      -- lean_lib Scripts (allowNonModules := false; `mo
   Flip/Round.lean             -- build → census → sorry the breakages → rebuild, to a fixpoint
   Flip/Report.lean            -- sorried / restated / deleted / gate-site / pin, per producer/consumer
   Git.lean                    -- `git show REV:path`, `git diff --quiet REV -- L4YAML :!path`
-  Docs/ClosureLog.lean        -- DOCS.md item index (what docs_nav.py and check_closure_log.py share)
+  Docs/ClosureLog.lean        -- DOCS.md item heading parser (shared by docs-nav and check-closure-log)
+  Docs/Nav.lean               -- the docs-nav slices (item index, headline, NEXT paragraph, six-step rows, sections)
+  Lean/Regex.lean             -- the regex subset `docs-nav grep` accepts (backtracking matcher, #guard rows)
   Pins.lean                   -- `def expected… :=` reader/writer (repin.py)
   Main/<name>.lean            -- one `main` per lean_exe
 lakefile.lean                 -- lean_exe scripts-check-import-closure, scripts-repin, scripts-flip, …
@@ -184,8 +186,8 @@ breaks CI if wrong, cheapest first:
 3. **DONE (gate half)** `check_closure_log.py` → `scripts-check-closure-log`
    over `Scripts/Docs/ClosureLog.lean` (item parser, `declaredGaps`, the five
    checks as pure functions with `#guard` rows). `docs_nav.py` (class I,
-   phase 2) will read the log through the same module; it keeps its own
-   parser until then.
+   phase 2) reads the heading through the same module (`Scripts/Docs/Nav.lean`
+   adds the stricter single-space form, item ends and the slices).
 4. **DONE** `rename_lemma.py` → `scripts-theorem-keyword` (`--check` is the
    Rule 7 gate, `lake run check-theorem-keyword`; `--stats`; the rename mode
    is `--rewrite`). Scanner in `Scripts/Lean/TheoremKeyword.lean` with
@@ -228,6 +230,14 @@ breaks CI if wrong, cheapest first:
    `#guard`s). `gen_traceof.py` → `scripts-gen-traceof` (reads
    `Surface/Node.lean`'s mutual block; in Lean, read the syntax tree, not
    the text).
+5. **DONE** `docs_nav.py` → `scripts-docs-nav`, `lake run docs-nav -- <cmd>`
+   (`toc | items | item N | next [N] | remaining | steps | grep REGEX [-i] |
+   section PREFIX`, `--lines`, `--width`): `Scripts/Docs/Nav.lean` over the
+   shared heading parser, `Scripts/Lean/Regex.lean` for `grep` (the regex
+   subset the Python accepted, as a backtracking matcher with `#guard`
+   rows — no dependency, Q1). Every sub-command's stdout, stderr and exit
+   code identical to the Python on the same DOCS.md (24 invocations
+   diffed, errors included).
 
 **Phase 3 — class F, the flips (58 scripts, ~6 PRs).**
 1. **DONE (#200)** — `Scripts/Flip/{Patch,Round,Report}.lean`, `Scripts/Git.lean`,
@@ -345,7 +355,7 @@ it removes Python from CI; it does not block an item.
 | flip_census.py | I | 116 | 10-18 | every flip | scripts-flip-census | lean:scripts-flip-census |
 | pack_flip_census.py | I | 400 | 10-20 | every Row 12 item (PACK) | scripts-pack-census | todo |
 | residue_classes.py | I | 123 | 10-30 | Row 12 items ≥ 403 | scripts-pack-census classes | todo |
-| docs_nav.py | I | 339 | 10-20 | AGENTS §1, skills | scripts-docs-nav | todo |
+| docs_nav.py | I | 339 | 10-20 | AGENTS §1, skills | scripts-docs-nav | DONE (`lake run docs-nav`) |
 | ledger_diff.py | I | 226 | 10-26 | ledgers/README | scripts-ledger-diff | todo |
 | drop_sweep.py | I | 229 | 09-22 | skills; DropDependents.lean's wide pin | scripts-drop-sweep | todo |
 | inline ×7: test-coverage.yml — `import weasyprint` probe ×2, hygiene heredoc, release-asset lookup; generate-all.sh — `import weasyprint` probe ×2, hygiene heredoc | G/R | ~30 | — | CI, generate-all.sh | hygiene ×2 → one Lean `stats.json` exe; asset lookup → `gh api --jq`; probes ×4 → `weasyprint --version` (Q3) | todo |
