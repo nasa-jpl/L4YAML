@@ -224,34 +224,6 @@ def stripQuotes (w : String) : String :=
 
 def isBlank (c : Char) : Bool := c == ' ' || c == '\t' || c == '\r'
 
-/-- Does this physical line continue onto the next?  Only an *unescaped*
-trailing backslash continues: an odd run of trailing backslashes (`\`,
-`\\\`); an even run (`\\`) is literal backslashes and the line ends. -/
-def continues (line : String) : Bool :=
-  (line.trimAsciiEnd.toString.toList.reverse.takeWhile (· == '\\')).length % 2 == 1
-
-#guard continues "echo \\"
-#guard continues "echo \\\\\\  "
-#guard !continues "echo \\\\"
-#guard !continues "echo"
-
-/-- `\`-continued physical lines joined into logical lines, each a list of
-`(physical line, segment)` with the continuing backslash removed. -/
-def logicalLines (text : String) : List (List (Nat × String)) :=
-  let rec go : List String → Nat → List (Nat × String) → List (List (Nat × String)) → List (List (Nat × String))
-    | [], _, cur, out => (if cur.isEmpty then out else cur.reverse :: out).reverse
-    | l :: ls, n, cur, out =>
-      let t := l.trimAscii.toString
-      if continues t then
-        go ls (n + 1) ((n, String.ofList (t.toList.dropLast)) :: cur) out
-      else
-        go ls (n + 1) [] (((n, l) :: cur).reverse :: out)
-  go (text.splitOn "\n") 1 [] []
-
-#guard logicalLines "a\nb \\\n  c\nd" == [[(1, "a")], [(2, "b "), (3, "  c")], [(4, "d")]]
-#guard logicalLines "x \\" == [[(1, "x ")]]
-#guard logicalLines "echo \\\\\npython3 -c 1" == [[(1, "echo \\\\")], [(2, "python3 -c 1")]]
-
 /-- A shell word with the physical line it starts on and whether it starts
 inside an open quote (then it is the tail of a quoted argument). -/
 structure TWord where
@@ -260,69 +232,136 @@ structure TWord where
   inQuote : Bool
   deriving DecidableEq, Repr, Inhabited
 
-/-- Shell-shaped words of one logical line.  Quotes bind (`"a b"` is one
-word, quotes kept, inner blanks collapsed); `\x` is literal; a quote left
-open at a segment end runs into the next segment. -/
-def taggedWords (segs : List (Nat × String)) : List TWord := Id.run do
-  let mut out : Array TWord := #[]
+/-- The shell reading of a whole file: a list of logical command lines,
+each a list of words.  Quotes bind across physical lines (`"a` ⏎ `b"` is
+one word; inner blanks and newlines collapse to one space); `\x` is
+literal and `\`⏎ (unquoted or in `"…"`) is a continuation; an unquoted
+newline ends the command; `#` at a word start comments out the rest of
+the physical line; a heredoc body (`<<EOF` … `EOF`) is skipped.  Each
+word carries the physical line it starts on. -/
+def tokenizeShell (text : String) : List (List TWord) := Id.run do
+  let mut out : Array (List TWord) := #[]
+  let mut cur : Array TWord := #[]
   let mut acc : Array Char := #[]
   let mut q : Option Char := none
-  let mut wordLine := 0
+  let mut ln := 1
+  let mut wordLine := 1
   let mut wordInQuote := false
-  for (ln, s) in segs do
-    let mut cs := s.toList
-    while !cs.isEmpty do
-      match cs with
-      | [] => pure ()
-      | c :: rest =>
-        cs := rest
-        if acc.isEmpty then
-          wordLine := ln
-          wordInQuote := q.isSome
-        match q with
-        | none =>
-          if isBlank c then
+  let mut cs := text.toList
+  let mut skipLine := false              -- inside a `#` comment
+  let mut heredoc : Option String := none -- terminator of the body being skipped
+  let mut lineStart := true
+  while !cs.isEmpty do
+    match cs with
+    | [] => pure ()
+    | c :: rest =>
+      cs := rest
+      -- heredoc body: swallow whole physical lines until the terminator
+      if let some term := heredoc then
+        if c == '\n' then
+          ln := ln + 1; lineStart := true
+        else if lineStart then
+          let (lineChars, rest') := (c :: rest).span (· != '\n')
+          cs := rest'
+          lineStart := false
+          if (String.ofList lineChars).trimAscii.toString == term then heredoc := none
+        continue
+      if skipLine then
+        if c == '\n' then
+          skipLine := false
+          cs := c :: rest   -- let the newline end the command below
+        continue
+      if acc.isEmpty then
+        wordLine := ln
+        wordInQuote := q.isSome
+      match q with
+      | none =>
+        if c == '\n' then
+          if !acc.isEmpty then
+            cur := cur.push ⟨String.ofList acc.toList, wordLine, wordInQuote⟩; acc := #[]
+          if !cur.isEmpty then
+            out := out.push cur.toList
+            heredoc := heredocTerminator cur.toList
+            cur := #[]
+          ln := ln + 1; lineStart := true
+        else if isBlank c then
+          if !acc.isEmpty then
+            cur := cur.push ⟨String.ofList acc.toList, wordLine, wordInQuote⟩; acc := #[]
+        else if c == '#' && acc.isEmpty then
+          skipLine := true
+        else if c == '(' || c == ')' then
+          -- unquoted parens are syntax: `$(` opens a substitution, `(`/`)` a subshell
+          if c == '(' && acc.back? == some '$' then
+            acc := acc.pop
             if !acc.isEmpty then
-              out := out.push ⟨String.ofList acc.toList, wordLine, wordInQuote⟩
-              acc := #[]
-          else if c == '"' || c == '\'' then
-            acc := acc.push c; q := some c
-          else if c == '\\' then
-            match rest with
-            | d :: rest' => acc := acc.push c |>.push d; cs := rest'
-            | [] => acc := acc.push c
-          else acc := acc.push c
-        | some qc =>
-          if c == qc then
-            acc := acc.push c; q := none
-          else if isBlank c then
-            if acc.back? != some ' ' then acc := acc.push ' '
-          else if c == '\\' && qc == '"' then
-            match rest with
-            | d :: rest' => acc := acc.push c |>.push d; cs := rest'
-            | [] => acc := acc.push c
-          else acc := acc.push c
-    -- segment end: a closed word ends; an open quote runs on as one blank
-    if q.isNone then
-      if !acc.isEmpty then
-        out := out.push ⟨String.ofList acc.toList, wordLine, wordInQuote⟩
-        acc := #[]
-    else if acc.back? != some ' ' then acc := acc.push ' '
+              cur := cur.push ⟨String.ofList acc.toList, wordLine, wordInQuote⟩; acc := #[]
+            cur := cur.push ⟨"$(", ln, false⟩
+          else
+            if !acc.isEmpty then
+              cur := cur.push ⟨String.ofList acc.toList, wordLine, wordInQuote⟩; acc := #[]
+            cur := cur.push ⟨String.singleton c, ln, false⟩
+        else if c == '"' || c == '\'' then
+          acc := acc.push c; q := some c
+        else if c == '\\' then
+          match rest with
+          | '\n' :: rest' => cs := rest'; ln := ln + 1        -- continuation
+          | d :: rest' => acc := acc.push c |>.push d; cs := rest'
+          | [] => acc := acc.push c
+        else acc := acc.push c
+      | some qc =>
+        if c == qc then
+          acc := acc.push c; q := none
+        else if c == '\n' then
+          ln := ln + 1
+          if acc.back? != some ' ' then acc := acc.push ' '
+        else if isBlank c then
+          if acc.back? != some ' ' then acc := acc.push ' '
+        else if c == '\\' && qc == '"' then
+          match rest with
+          | '\n' :: rest' => cs := rest'; ln := ln + 1
+          | d :: rest' => acc := acc.push c |>.push d; cs := rest'
+          | [] => acc := acc.push c
+        else acc := acc.push c
   if !acc.isEmpty then
-    let t := String.ofList acc.toList
-    out := out.push ⟨t.trimAsciiEnd.toString, wordLine, wordInQuote⟩
+    cur := cur.push ⟨(String.ofList acc.toList).trimAsciiEnd.toString, wordLine, wordInQuote⟩
+  if !cur.isEmpty then out := out.push cur.toList
   return out.toList
+where
+  /-- `<<EOF`, `<<'EOF'`, `<<-EOF` (not `<<<`) → the body's terminator word. -/
+  heredocTerminator (ws : List TWord) : Option String :=
+    ws.findSome? fun w =>
+      if w.text.startsWith "<<" && !w.text.startsWith "<<<" then
+        let t := stripQuotes (String.ofList ((w.text.toList.drop 2).dropWhile (· == '-')))
+        if t.isEmpty then none else some t
+      else none
 
-def wordsOfLine (line : String) : List String := (taggedWords [(1, line)]).map (·.text)
+def wordsOfLine (line : String) : List String := ((tokenizeShell line).headD []).map (·.text)
 
 #guard wordsOfLine "  if python3 -c \"import  weasyprint\" 2>/dev/null; then" ==
   ["if", "python3", "-c", "\"import weasyprint\"", "2>/dev/null;", "then"]
 #guard wordsOfLine "echo \"python3 scripts/new.py\"" == ["echo", "\"python3 scripts/new.py\""]
 #guard wordsOfLine "python3 -c \"print(\\\"a\\\")\"" == ["python3", "-c", "\"print(\\\"a\\\")\""]
 #guard wordsOfLine "| python3 -c \"" == ["|", "python3", "-c", "\""]
-#guard (taggedWords [(1, "echo 'a"), (2, "b' python3 x.py")]) ==
-  [⟨"echo", 1, false⟩, ⟨"'a b'", 1, false⟩, ⟨"python3", 2, false⟩, ⟨"x.py", 2, false⟩]
-#guard (taggedWords [(1, "python3"), (2, "  -c 'print(1)'")]).map (·.text) == ["python3", "-c", "'print(1)'"]
+#guard wordsOfLine "ls scripts  # python3 scripts/x.py runs it" == ["ls", "scripts"]
+#guard wordsOfLine "x=$(python3 --version) (cd a)" == ["x=", "$(", "python3", "--version", ")", "(", "cd", "a", ")"]
+-- a quote spans physical lines without a continuation; words keep their start line
+#guard tokenizeShell "echo 'a\nb' python3 x.py\nls" ==
+  [[⟨"echo", 1, false⟩, ⟨"'a b'", 1, false⟩, ⟨"python3", 2, false⟩, ⟨"x.py", 2, false⟩], [⟨"ls", 3, false⟩]]
+-- `\`⏎ continues (unquoted and in double quotes); `\\`⏎ is a literal backslash and the line ends
+#guard (tokenizeShell "python3 \\\n  -c 'print(1)'").map (·.map (·.text)) == [["python3", "-c", "'print(1)'"]]
+#guard (tokenizeShell "echo \\\\\npython3 -c 1").map (·.map (·.text)) == [["echo", "\\\\"], ["python3", "-c", "1"]]
+#guard (tokenizeShell "echo \\\\\\\npython3 -c 1").map (·.map (·.text)) == [["echo", "\\\\python3", "-c", "1"]]
+#guard (tokenizeShell "echo \"a \\\nb\"").map (·.map (·.text)) == [["echo", "\"a b\""]]
+-- an even backslash run inside an open quote: the quote stays open across the newline
+#guard tokenizeShell "echo \"hello \\\\\npython3 -c 'print(1)'\n\"\nls" ==
+  [[⟨"echo", 1, false⟩, ⟨"\"hello \\\\ python3 -c 'print(1)' \"", 1, false⟩], [⟨"ls", 4, false⟩]]
+-- heredoc bodies are skipped; the command line keeps its words; `<<<` is not a heredoc
+#guard (tokenizeShell "python3 - <<'EOF'\nimport sys\nprint('python3 scripts/x.py')\nEOF\nls").map (·.map (·.text)) ==
+  [["python3", "-", "<<'EOF'"], ["ls"]]
+#guard (tokenizeShell "cat <<-EOF | tee x\n\tpython3 scripts/a.py\nEOF\n").map (·.map (·.text)) == [["cat", "<<-EOF", "|", "tee", "x"]]
+#guard (tokenizeShell "read -r a <<<\"$x\"\npython3 scripts/a.py").map (·.map (·.text)) == [["read", "-r", "a", "<<<\"$x\""], ["python3", "scripts/a.py"]]
+-- comments end at the physical line
+#guard (tokenizeShell "# python3 scripts/a.py\nls").map (·.map (·.text)) == [["ls"]]
 
 /-- `NAME=value` → `(NAME, value)` for a shell identifier `NAME`. -/
 def assignment? (w : String) : Option (String × String) :=
@@ -375,8 +414,8 @@ def isPythonWord (vars : List String) (raw : String) : Bool :=
 /-- Variables assigned an interpreter anywhere in the text
 (`VPY="$RUNNER_TEMP/ci-venv/bin/python3"`, `PYBASE=/usr/bin/python3`). -/
 def interpreterVars (text : String) : List String :=
-  (logicalLines text).flatMap fun segs =>
-    (taggedWords segs).filterMap fun w =>
+  (tokenizeShell text).flatMap fun ws =>
+    ws.filterMap fun w =>
       if w.inQuote then none else
       let t := if w.text.endsWith ";" then String.ofList w.text.toList.dropLast else w.text
       match assignment? t with
@@ -389,7 +428,7 @@ def interpreterVars (text : String) : List String :=
 /-- A word that ends the command: pipe, list operator, group, heredoc or redirect. -/
 def isOperatorWord (w : String) : Bool :=
   w == "|" || w == "||" || w == "&&" || w == ";" || w == "\\" || w == "&" || w == "!" ||
-  w == "{" || w == "}" || w == "(" || w == ")" || w == "};" || w == ");" ||
+  w == "{" || w == "}" || w == "(" || w == ")" || w == "$(" || w == "};" || w == ");" ||
   w.startsWith "<" || w.startsWith ">" ||
   (match w.toList with
    | d :: '>' :: _ => d.isDigit
@@ -405,7 +444,7 @@ def isOperatorWord (w : String) : Bool :=
 operators and groups, the keywords that take a command, a word ending in
 `;`, and a `VAR=val` prefix all put the next word there. -/
 def opensCommand (w : String) : Bool :=
-  w == "|" || w == "||" || w == "&&" || w == ";" || w == "!" || w == "{" || w == "(" ||
+  w == "|" || w == "||" || w == "&&" || w == ";" || w == "!" || w == "{" || w == "(" || w == "$(" ||
   w == "}" || w == ")" || w == "};" || w == ");" || w.endsWith ";" ||
   w == "if" || w == "then" || w == "else" || w == "elif" || w == "do" || w == "while" ||
   w == "until" || w == "exec" || w == "command" || w == "time" || w == "nohup" || w == "env" ||
@@ -455,19 +494,6 @@ structure Site where
   call : PyCall
   deriving DecidableEq, Repr, Inhabited
 
-/-- Strip a leading `$(` or `(` (command substitution / subshell): the rest
-is in command position. -/
-def stripSubshell (w : String) : Option String :=
-  let body := match assignment? w with | some (_, v) => v | none => w
-  if body.startsWith "$(" then some (String.ofList (body.toList.drop 2))
-  else if body.startsWith "(" then some (String.ofList (body.toList.drop 1))
-  else none
-
-#guard stripSubshell "$(python3" == some "python3"
-#guard stripSubshell "x=$(python3" == some "python3"
-#guard stripSubshell "(python3" == some "python3"
-#guard stripSubshell "python3" == none
-
 /-- The invocations of one logical line (words tagged with their physical
 lines), with `vars` the file's interpreter variables.  The state is
 "next word is in command position"; it starts true, a YAML key
@@ -478,8 +504,7 @@ def callsOfWords (vars : List String) (file : String) (ws : List TWord) : List S
     | w :: rest =>
       if w.inQuote then go false false rest
       else
-        let t := match stripSubshell w.text with | some t' => t' | none => w.text
-        let cmdPos := cmdPos || (stripSubshell w.text).isSome
+        let t := w.text
         if t.startsWith "#" then []
         else if first && (t.endsWith ":" || t == "-") then go true false rest
         else if cmdPos && isPythonWord vars t then
@@ -491,10 +516,10 @@ def callsOfWords (vars : List String) (file : String) (ws : List TWord) : List S
 
 /-- Every python invocation in one line (no interpreter variables). -/
 def pyCallsOfLine (line : String) : List PyCall :=
-  (callsOfWords [] "" (taggedWords [(1, line)])).map (·.call)
+  (callsOfWords [] "" ((tokenizeShell line).headD [])).map (·.call)
 
 def pyCallsOfLineWith (vars : List String) (line : String) : List PyCall :=
-  (callsOfWords vars "" (taggedWords [(1, line)])).map (·.call)
+  (callsOfWords vars "" ((tokenizeShell line).headD [])).map (·.call)
 
 #guard pyCallsOfLine "exec python3 scripts/check_closure_log.py" == [.script "scripts/check_closure_log.py"]
 #guard pyCallsOfLine "exec python3 scripts/rename_lemma.py --check --whitelist scripts/capstones.txt L4YAML"
@@ -567,11 +592,11 @@ def Site.inlineKey? (s : Site) : Option String :=
   == some "inline:scripts/w.sh:python3 -c \"import weasyprint\""
 
 /-- Scan a whole file's text; `file` is the path recorded on each site.
-Continuation lines are joined first; a site's line is the physical line
-of its interpreter word. -/
+The text is read as shell (`tokenizeShell`); a site's line is the physical
+line of its interpreter word. -/
 def sitesOfText (file : String) (text : String) : Array Site :=
   let vars := interpreterVars text
-  ((logicalLines text).flatMap fun segs => callsOfWords vars file (taggedWords segs)).toArray
+  ((tokenizeShell text).flatMap (callsOfWords vars file)).toArray
 
 #guard sitesOfText "f.sh" "#!/bin/bash\nexec python3 scripts/a.py\n"
   == #[⟨"f.sh", 2, .script "scripts/a.py"⟩]
@@ -582,6 +607,12 @@ def sitesOfText (file : String) (text : String) : Array Site :=
 -- two trailing backslashes are literal: the next line is its own command (review finding)
 #guard sitesOfText "f.sh" "echo \\\\\npython3 -c 'print(1)'\n" == #[⟨"f.sh", 2, .inline "python3 -c 'print(1)'"⟩]
 #guard sitesOfText "f.sh" "echo \\\\\\\npython3 -c 'print(1)'\n" == #[]
+-- an open quote spans lines (review finding): quoted text is echo's argument, not a command;
+-- a multi-line `python3 -c "…"` program is one word and the whole key
+#guard sitesOfText "f.sh" "echo \"hello \\\\\npython3 -c 'print(1)'\n\"\n" == #[]
+#guard sitesOfText "w.yml" "  | python3 -c \"\n  import sys\n  print(1)\n  \")\n" == #[⟨"w.yml", 1, .inline "python3 -c \" import sys print(1) \""⟩]
+-- heredoc bodies are not commands
+#guard sitesOfText "f.sh" "python3 - <<'EOF'\npython3 scripts/zz.py\nEOF\n" == #[⟨"f.sh", 1, .inline "python3 -"⟩]
 -- the workflow's three-line install probe keeps three sites on three lines
 #guard sitesOfText "w.yml" "          if python3 -c \"import weasyprint\" 2>/dev/null \\\n             || { python3 -m pip install --quiet --disable-pip-version-check weasyprint \\\n                  && python3 -c \"import weasyprint\" 2>/dev/null; }; then\n"
   == #[⟨"w.yml", 1, .inline "python3 -c \"import weasyprint\""⟩,
