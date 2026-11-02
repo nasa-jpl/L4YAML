@@ -232,6 +232,28 @@ structure TWord where
   inQuote : Bool
   deriving DecidableEq, Repr, Inhabited
 
+/-- Shell quote removal on a delimiter word, stopping at an unquoted control
+operator character. -/
+partial def heredocDelimiterGo : List Char → Option Char → List Char → List Char
+  | [], _, acc => acc.reverse
+  | c :: rest, some qc, acc =>
+    if c == qc then heredocDelimiterGo rest none acc
+    else if c == '\\' && qc == '"' then
+      -- in "…" a backslash escapes only $ ` " \ and newline; elsewhere it is kept
+      match rest with
+      | d :: r =>
+        if d == '$' || d == '`' || d == '"' || d == '\\' || d == '\n' then heredocDelimiterGo r (some qc) (d :: acc)
+        else heredocDelimiterGo r (some qc) (d :: c :: acc)
+      | [] => heredocDelimiterGo rest (some qc) (c :: acc)
+    else heredocDelimiterGo rest (some qc) (c :: acc)
+  | c :: rest, none, acc =>
+    if c == '"' || c == '\'' then heredocDelimiterGo rest (some c) acc
+    else if c == '\\' then (match rest with | d :: r => heredocDelimiterGo r none (d :: acc) | [] => acc.reverse)
+    else if c == ';' || c == '|' || c == '&' || c == '<' || c == '>' || c == ')' then acc.reverse
+    else heredocDelimiterGo rest none (c :: acc)
+
+def heredocDelimiter (cs : List Char) : String := String.ofList (heredocDelimiterGo cs none [])
+
 /-- The shell reading of a whole file: a list of logical command lines,
 each a list of words.  Quotes bind across physical lines (`"a` ⏎ `b"` is
 one word; inner blanks and newlines collapse to one space); `\x` is
@@ -338,22 +360,10 @@ where
         if w.text.startsWith "<<" && !w.text.startsWith "<<<" then
           let after := (w.text.toList.drop 2).dropWhile (· == '-')
           let raw := if after.isEmpty then (rest.head?.map (·.text.toList)).getD [] else after
-          let t := delimiter raw
+          let t := heredocDelimiter raw
           if t.isEmpty then none else some t
         else go rest
     go ws
-  /-- Shell quote removal on a delimiter word, stopping at an unquoted control
-  operator character. -/
-  delimiter (cs : List Char) : String :=
-    let rec go : List Char → Option Char → List Char → List Char
-      | [], _, acc => acc.reverse
-      | c :: rest, some qc, acc => if c == qc then go rest none acc else go rest (some qc) (c :: acc)
-      | c :: rest, none, acc =>
-        if c == '"' || c == '\'' then go rest (some c) acc
-        else if c == '\\' then (match rest with | d :: r => go r none (d :: acc) | [] => acc.reverse)
-        else if c == ';' || c == '|' || c == '&' || c == '<' || c == '>' || c == ')' then acc.reverse
-        else go rest none (c :: acc)
-    String.ofList (go cs none [])
 
 def wordsOfLine (line : String) : List String := ((tokenizeShell line).headD []).map (·.text)
 
@@ -387,6 +397,11 @@ def wordsOfLine (line : String) : List String := ((tokenizeShell line).headD [])
 #guard (tokenizeShell "cat << EOF\nhello\nEOF\npython3 -c 1").map (·.map (·.text)) == [["cat", "<<", "EOF"], ["python3", "-c", "1"]]
 #guard (tokenizeShell "cat <<EOF>out\nhello\nEOF\npython3 -c 1").map (·.map (·.text)) == [["cat", "<<EOF>out"], ["python3", "-c", "1"]]
 #guard (tokenizeShell "cat <<-\"E O F\"\nhello\nE O F\npython3 -c 1").map (·.map (·.text)) == [["cat", "<<-\"E O F\""], ["python3", "-c", "1"]]
+-- in "…" a backslash before an ordinary character is kept (review finding); `\"` is an escaped quote, `\\` one backslash
+#guard (tokenizeShell "cat <<\"E\\OF\"\nhello\nE\\OF\npython3 -c 1").map (·.map (·.text)) == [["cat", "<<\"E\\OF\""], ["python3", "-c", "1"]]
+#guard (tokenizeShell "cat <<\"E\\\"OF\"\nhello\nE\"OF\npython3 -c 1").map (·.map (·.text)) == [["cat", "<<\"E\\\"OF\""], ["python3", "-c", "1"]]
+#guard (tokenizeShell "cat <<\"E\\\\OF\"\nhello\nE\\OF\npython3 -c 1").map (·.map (·.text)) == [["cat", "<<\"E\\\\OF\""], ["python3", "-c", "1"]]
+#guard (tokenizeShell "cat <<'E\\OF'\nhello\nE\\OF\npython3 -c 1").map (·.map (·.text)) == [["cat", "<<'E\\OF'"], ["python3", "-c", "1"]]
 -- comments end at the physical line
 #guard (tokenizeShell "# python3 scripts/a.py\nls").map (·.map (·.text)) == [["ls"]]
 
@@ -644,6 +659,7 @@ def sitesOfText (file : String) (text : String) : Array Site :=
 #guard sitesOfText "f.sh" "cat <<\\EOF\nhello\nEOF\npython3 -c 'print(1)'\n" == #[⟨"f.sh", 4, .inline "python3 -c 'print(1)'"⟩]
 #guard sitesOfText "f.sh" "cat <<EOF; echo x\nhello\nEOF\npython3 scripts/a.py\n" == #[⟨"f.sh", 4, .script "scripts/a.py"⟩]
 #guard sitesOfText "f.sh" "cat << EOF\npython3 scripts/zz.py\nEOF\npython3 scripts/a.py\n" == #[⟨"f.sh", 4, .script "scripts/a.py"⟩]
+#guard sitesOfText "f.sh" "cat <<\"E\\OF\"\nhello\nE\\OF\npython3 -c 'print(1)'\n" == #[⟨"f.sh", 4, .inline "python3 -c 'print(1)'"⟩]
 -- the workflow's three-line install probe keeps three sites on three lines
 #guard sitesOfText "w.yml" "          if python3 -c \"import weasyprint\" 2>/dev/null \\\n             || { python3 -m pip install --quiet --disable-pip-version-check weasyprint \\\n                  && python3 -c \"import weasyprint\" 2>/dev/null; }; then\n"
   == #[⟨"w.yml", 1, .inline "python3 -c \"import weasyprint\""⟩,
