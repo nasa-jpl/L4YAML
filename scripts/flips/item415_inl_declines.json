@@ -1,0 +1,172 @@
+{
+ "item": 415,
+ "tag": "INL-PROBE",
+ "rev": "73042a01",
+ "target": "L4YAML",
+ "log": "scratch/inl_probe.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "report": "bodies",
+ "files": [
+  {
+   "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+   "patches": [
+    {
+     "name": "SITE_40379",
+     "line": 40379,
+     "old": [
+      "| Or.inl _ => Or.inr trivial"
+     ],
+     "new": [
+      "| Or.inl h_inl => (by exact (⟨⟩ : Unit))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "SITE_40396",
+     "line": 40396,
+     "old": [
+      "| Or.inl _ => Or.inr trivial"
+     ],
+     "new": [
+      "| Or.inl h_inl => (by exact (⟨⟩ : Unit))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "SITE_40503",
+     "line": 40503,
+     "old": [
+      "| Or.inl _ => Or.inr trivial"
+     ],
+     "new": [
+      "| Or.inl h_inl => (by exact (⟨⟩ : Unit))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "SITE_40520",
+     "line": 40520,
+     "old": [
+      "| Or.inl _ => Or.inr trivial"
+     ],
+     "new": [
+      "| Or.inl h_inl => (by exact (⟨⟩ : Unit))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "SITE_40624",
+     "line": 40624,
+     "old": [
+      "| Or.inl _ => Or.inr trivial"
+     ],
+     "new": [
+      "| Or.inl h_inl => (by exact (⟨⟩ : Unit))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "SITE_40641",
+     "line": 40641,
+     "old": [
+      "| Or.inl _ => Or.inr trivial"
+     ],
+     "new": [
+      "| Or.inl h_inl => (by exact (⟨⟩ : Unit))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "SITE_38182",
+     "line": 38182,
+     "old": [
+      "| Or.inl ⟨sp_q, h_qlit, route, _⟩ => Or.inr trivial"
+     ],
+     "new": [
+      "| Or.inl ⟨sp_q, h_qlit, route, h_chainUp⟩ => (by exact (⟨⟩ : Unit))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "SITE_38372",
+     "line": 38372,
+     "old": [
+      "| Or.inl ⟨sp_q, h_qlit, route, _⟩ => Or.inr trivial"
+     ],
+     "new": [
+      "| Or.inl ⟨sp_q, h_qlit, route, h_chainUp⟩ => (by exact (⟨⟩ : Unit))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "SITE_38467",
+     "line": 38467,
+     "old": [
+      "| Or.inl ⟨sp_q, h_qlit, route, _⟩ => Or.inr trivial"
+     ],
+     "new": [
+      "| Or.inl ⟨sp_q, h_qlit, route, h_chainUp⟩ => (by exact (⟨⟩ : Unit))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "SITE_37461",
+     "line": 37461,
+     "old": [
+      "| Or.inl _ => Or.inr trivial"
+     ],
+     "new": [
+      "| Or.inl h_inl => (by exact (⟨⟩ : Unit))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "SITE_27801",
+     "line": 27801,
+     "old": [
+      "| Or.inl _, Or.inr _ => Or.inr trivial"
+     ],
+     "new": [
+      "| Or.inl h_own, Or.inr h_altUp => (by exact (⟨⟩ : Unit))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "SITE_27844",
+     "line": 27844,
+     "old": [
+      "| Or.inl ⟨nsU, _, kvU⟩ => Or.inr trivial"
+     ],
+     "new": [
+      "| Or.inl ⟨nsU, h_domU, kvU⟩ => (by exact (⟨⟩ : Unit))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "SITE_24659",
+     "line": 24659,
+     "old": [
+      "| Or.inl ⟨nv, _, _, contV⟩ => Or.inr trivial"
+     ],
+     "new": [
+      "| Or.inl ⟨nv, h_ltV, h_covV, contV⟩ => (by exact (⟨⟩ : Unit))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "SITE_14872",
+     "line": 14872,
+     "old": [
+      "| Or.inl _ => Or.inr trivial"
+     ],
+     "new": [
+      "| Or.inl h_inl => (by exact (⟨⟩ : Unit))"
+     ],
+     "count": 1
+    }
+   ]
+  }
+ ],
+ "filter": "Type mismatch"
+}

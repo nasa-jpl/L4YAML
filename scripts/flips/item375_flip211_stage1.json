@@ -1,0 +1,295 @@
+{
+ "item": 375,
+ "tag": "FLIP-211",
+ "rev": "HEAD",
+ "target": "L4YAML",
+ "log": "scratch/375-flip211-build.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "files": [
+  {
+   "file": "L4YAML/Surface/Document.lean",
+   "patches": [
+    {
+     "name": "DOC_NARROW",
+     "old": [
+      "      GOpt SLAnyDocument s₂ s₃ →",
+      "      GStar SLDocumentSuffix s₃ s' →",
+      "      SLYamlStream s s'"
+     ],
+     "new": [
+      "      GOpt SLExplicitDocument s₂ s₃ →",
+      "      GStar SLDocumentSuffix s₃ s' →",
+      "      SLYamlStream s s'"
+     ],
+     "count": 1
+    }
+   ]
+  },
+  {
+   "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+   "patches": [
+    {
+     "name": "RESTATE_EXPLICIT",
+     "old": [
+      "          (GOpt.some sp sp_end",
+      "            (SLAnyDocument.explicit sp sp_end",
+      "              (SLExplicitDocument.withContent sp sp' sp_end h_marker h_content)))",
+      ""
+     ],
+     "new": [
+      "          (GOpt.some sp sp_end",
+      "            (SLExplicitDocument.withContent sp sp' sp_end h_marker h_content))",
+      ""
+     ],
+     "count": 1
+    },
+    {
+     "name": "W_ROOTMAP_HDR",
+     "old": [
+      "    (h_ind : SIndent k sp_land sp_key) :",
+      "    ∀ sp_v, SBlockMapEntry k sp_key sp_v → SLYamlStream sp_start sp_v := by",
+      "  cases h_op"
+     ],
+     "new": [
+      "    (h_ind : SIndent k sp_land sp_key) :",
+      "    (∀ sp_v, SBlockMapEntry k sp_key sp_v → SLYamlStream sp_start sp_v) ∨ True := by",
+      "  cases h_op"
+     ],
+     "count": 1
+    },
+    {
+     "name": "W_ROOTMAPF_HDR",
+     "old": [
+      "    (h_ind : SIndent k sp_land sp_key) :",
+      "    ∀ sp_v, SBlockMapEntry k sp_key sp_v →",
+      "    ∀ sp_e, SCompactMapTail k sp_v sp_e →",
+      "    ResumeFrames (SLYamlStream sp_start) [] sp_e := by",
+      "  cases h_op"
+     ],
+     "new": [
+      "    (h_ind : SIndent k sp_land sp_key) :",
+      "    (∀ sp_v, SBlockMapEntry k sp_key sp_v →",
+      "    ∀ sp_e, SCompactMapTail k sp_v sp_e →",
+      "    ResumeFrames (SLYamlStream sp_start) [] sp_e) ∨ True := by",
+      "  cases h_op"
+     ],
+     "count": 1
+    },
+    {
+     "name": "W_BARE_HDR",
+     "old": [
+      "    (h_tail : CompletedTail sc ∨ True) :",
+      "    ∀ sp_m, SBlockNode 0 .blockIn sp_anchor sp_m →",
+      "      SLYamlStream sp_start sp_m := by",
+      "  cases h_op"
+     ],
+     "new": [
+      "    (h_tail : CompletedTail sc ∨ True) :",
+      "    (∀ sp_m, SBlockNode 0 .blockIn sp_anchor sp_m →",
+      "      SLYamlStream sp_start sp_m) ∨ True := by",
+      "  cases h_op"
+     ],
+     "count": 1
+    },
+    {
+     "name": "W_FLOW_HDR",
+     "old": [
+      "    (h_sep : SSeparateLines 0 sp_mid sp_br) :",
+      "    ∀ sp_ne sp_m, SFlowContent 0 .flowOut sp_br sp_ne →",
+      "      SSLComments sp_ne sp_m → SLYamlStream sp_start sp_m := by",
+      "  cases h_op"
+     ],
+     "new": [
+      "    (h_sep : SSeparateLines 0 sp_mid sp_br) :",
+      "    (∀ sp_ne sp_m, SFlowContent 0 .flowOut sp_br sp_ne →",
+      "      SSLComments sp_ne sp_m → SLYamlStream sp_start sp_m) ∨ True := by",
+      "  cases h_op"
+     ],
+     "count": 1
+    },
+    {
+     "name": "W_ROOTMAP_ARM",
+     "old": [
+      "    | Or.inr _ => exact rootMapRoute hcol0 h_stream_land h_ind",
+      "  | true => exact rootMapRoute hcol0 h_stream_land h_ind"
+     ],
+     "new": [
+      "    | Or.inr _ => exact Or.inr trivial",
+      "  | true => exact Or.inr trivial"
+     ],
+     "count": 1
+    },
+    {
+     "name": "W_ROOTMAPF_ARM",
+     "old": [
+      "    | Or.inr _ => exact rootMapRouteF hcol0 h_stream_land h_ind",
+      "  | true => exact rootMapRouteF hcol0 h_stream_land h_ind"
+     ],
+     "new": [
+      "    | Or.inr _ => exact Or.inr trivial",
+      "  | true => exact Or.inr trivial"
+     ],
+     "count": 1
+    },
+    {
+     "name": "W_BARE_ARM",
+     "old": [
+      "    | Or.inr _ => exact bareNodeRoute h_stream",
+      "  | true => exact bareNodeRoute h_stream"
+     ],
+     "new": [
+      "    | Or.inr _ => exact Or.inr trivial",
+      "  | true => exact Or.inr trivial"
+     ],
+     "count": 1
+    },
+    {
+     "name": "W_FLOW_ARM",
+     "old": [
+      "    | Or.inr _ => exact topLevelFlowResumeSep h_stream h_sep",
+      "  | true => exact topLevelFlowResumeSep h_stream h_sep"
+     ],
+     "new": [
+      "    | Or.inr _ => exact Or.inr trivial",
+      "  | true => exact Or.inr trivial"
+     ],
+     "count": 1
+    },
+    {
+     "name": "DELETE_bareNodeRoute",
+     "old": [
+      "/-- **The bare-document node route, NAMED** (item 139) — the fallback the three",
+      "    honest routes below fall back TO, written once instead of at each landing.",
+      "",
+      "    A completed top-level node appended to a FINISHED stream as a second bare",
+      "    document: `[211]`'s implicit continuation with `[207] l-bare-document` in its",
+      "    `l-any-document?` slot.  This is the reading row 19's 1c deletes, and naming",
+      "    it is what lets one lemma carry every application of it that the content",
+      "    landings make — so the surface is a lemma to refute rather than a term",
+      "    repeated at three call sites.",
+      "",
+      "    Its domain is not empty and item 139 measures why: see",
+      "    `bareNodeRoute_or_refused`. -/",
+      "lemma bareNodeRoute {sp_start sp_anchor : SurfPos}",
+      "    (h_stream : SLYamlStream sp_start sp_anchor) :",
+      "    ∀ sp_m, SBlockNode 0 .blockIn sp_anchor sp_m →",
+      "      SLYamlStream sp_start sp_m :=",
+      "  fun sp_m h_bn =>",
+      "    SLYamlStream.implicitContinue sp_start sp_anchor sp_anchor sp_m sp_m",
+      "      h_stream (GStar.nil _)",
+      "      (GOpt.some sp_anchor sp_m (SLAnyDocument.bare sp_anchor sp_m",
+      "        (SLBareDocument.mk sp_anchor sp_m h_bn)))",
+      "      (GStar.nil _)",
+      "",
+      ""
+     ],
+     "new": [
+      ""
+     ],
+     "count": 1
+    },
+    {
+     "name": "DELETE_rootMapRoute",
+     "old": [
+      "/-- **The two ways a finished `[188]` entry re-enters the stream** (item 38),",
+      "    and the reason `ImplicitKeyPack` carries a route rather than the",
+      "    coordinates one of them happens to be built from.",
+      "",
+      "    `rootMapRoute` is what items 15–25 spent inline: a column-0 line start with",
+      "    the stream closed there, `[63] s-indent(k)` in front of the key, and the",
+      "    entry wrapped in `[187] l+block-mapping` + `[199]` + a bare document +",
+      "    `[211]`'s implicit continuation.  Every coordinate it takes is consumed",
+      "    HERE and none of it survives into the pack. -/",
+      "lemma rootMapRoute {sp_start sp_land sp_key : SurfPos} {k : Nat}",
+      "    (hcol0 : sp_land.col = 0)",
+      "    (h_stream_land : SLYamlStream sp_start sp_land)",
+      "    (h_ind : SIndent k sp_land sp_key) :",
+      "    ∀ sp_v, SBlockMapEntry k sp_key sp_v → SLYamlStream sp_start sp_v :=",
+      "  fun sp_v h_entry =>",
+      "    SLYamlStream.implicitContinue sp_start sp_land sp_land sp_v sp_v",
+      "      h_stream_land (GStar.nil _)",
+      "      (GOpt.some sp_land sp_v (SLAnyDocument.bare sp_land sp_v",
+      "        (SLBareDocument.mk sp_land sp_v",
+      "          (rootBlockMap k (sslComments_refl_of_col0 hcol0)",
+      "            (SBlockMapEntries.single k sp_land sp_key sp_v h_ind h_entry)))))",
+      "      (GStar.nil _)",
+      "",
+      ""
+     ],
+     "new": [
+      ""
+     ],
+     "count": 1
+    },
+    {
+     "name": "DELETE_rootMapRouteF",
+     "old": [
+      "/-- **`rootMapRoute`'s RESUME twin** (item 99): the same landing coordinates",
+      "    read at the ENTRIES level — the entry plus its whole width-`k` tail close",
+      "    the root mapping, and the frames bottom out in the stream (`ks = []`,",
+      "    nothing is open below the root).  This is what the root producers pay the",
+      "    pack's resume conjunct with, and it is the seed every deeper frame stack",
+      "    chains down to. -/",
+      "lemma rootMapRouteF {sp_start sp_land sp_key : SurfPos} {k : Nat}",
+      "    (hcol0 : sp_land.col = 0)",
+      "    (h_stream_land : SLYamlStream sp_start sp_land)",
+      "    (h_ind : SIndent k sp_land sp_key) :",
+      "    ∀ sp_v, SBlockMapEntry k sp_key sp_v →",
+      "    ∀ sp_e, SCompactMapTail k sp_v sp_e →",
+      "    ResumeFrames (SLYamlStream sp_start) [] sp_e :=",
+      "  fun _sp_v h_entry sp_e h_tail =>",
+      "    ResumeFrames.bottom sp_e",
+      "      (SLYamlStream.implicitContinue sp_start sp_land sp_land sp_e sp_e",
+      "        h_stream_land (GStar.nil _)",
+      "        (GOpt.some sp_land sp_e (SLAnyDocument.bare sp_land sp_e",
+      "          (SLBareDocument.mk sp_land sp_e",
+      "            (rootBlockMap k (sslComments_refl_of_col0 hcol0)",
+      "              (SBlockMapEntries_of_compactTail h_ind h_entry h_tail)))))",
+      "        (GStar.nil _))",
+      "",
+      ""
+     ],
+     "new": [
+      ""
+     ],
+     "count": 1
+    },
+    {
+     "name": "DELETE_topLevelFlowResumeSep",
+     "old": [
+      "/-- The base `resume` for a TOP-LEVEL flow document node: the completed flow node",
+      "    is a bare document that extends the stream (via `implicitContinue`). The",
+      "    leading separation `sp_mid → sp_br` (from the stream's endpoint to the",
+      "    bracket) rides in the bare document's `flowInBlock` separator slot — the",
+      "    zero-width `SSeparateLines.inline ∘ startOfLine` recovers the old",
+      "    stream-at-the-bracket special case.",
+      "",
+      "    The `SFlowNode.content` wrapper is the one `resume`'s narrowed argument moved",
+      "    here from the close sites (Reflection 621). -/",
+      "lemma topLevelFlowResumeSep {sp_start sp_mid sp_br : SurfPos}",
+      "    (h_stream : SLYamlStream sp_start sp_mid)",
+      "    (h_sep : SSeparateLines 0 sp_mid sp_br) :",
+      "    ∀ sp_ne sp_m, SFlowContent 0 .flowOut sp_br sp_ne →",
+      "      SSLComments sp_ne sp_m → SLYamlStream sp_start sp_m :=",
+      "  fun sp_ne sp_m h_content h_ssl =>",
+      "    SLYamlStream.implicitContinue sp_start sp_mid sp_mid sp_m sp_m",
+      "      h_stream (GStar.nil _)",
+      "      (GOpt.some sp_mid sp_m",
+      "        (SLAnyDocument.bare sp_mid sp_m",
+      "          (SLBareDocument.mk sp_mid sp_m",
+      "            (SBlockNode.flowInBlock 0 .blockIn sp_mid sp_br sp_ne sp_m",
+      "              h_sep (SFlowNode.content _ _ _ _ h_content) h_ssl))))",
+      "      (GStar.nil _)",
+      "",
+      ""
+     ],
+     "new": [
+      ""
+     ],
+     "count": 1
+    }
+   ]
+  }
+ ]
+}

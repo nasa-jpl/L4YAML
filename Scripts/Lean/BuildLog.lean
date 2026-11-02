@@ -257,4 +257,33 @@ def exampleFile : Array String := #[
 #guard enclosing "F.lean" exampleFile 99 == some ⟨"theorem", "bar"⟩         -- past EOF: clamps to the last line
 #guard enclosing "F.lean" #[] 1 == none
 
+/-- Does a log line start a new diagnostic or Lake status line (the end of the
+previous diagnostic's body)? -/
+def startsDiagnostic (l : String) : Bool :=
+  l.startsWith "error" || l.startsWith "warning" || l.startsWith "info" || l.startsWith "✖" ||
+  l.startsWith "✔" || l.startsWith "Build" || l.startsWith "[" || l.startsWith "⚠" || l.startsWith "trace" ||
+  l.startsWith "Some required targets" || l.startsWith "- " || (parseErr l).isSome
+
+/-- Every error line with the body that follows it (the lines up to the next
+diagnostic), for probes that read the message, not just its head. -/
+def errsWithBodies (log : String) : Array (ErrLine × String) := Id.run do
+  let ls := (log.splitOn "\n").toArray
+  let mut out := #[]
+  let mut i := 0
+  while i < ls.size do
+    match parseErr ls[i]! with
+    | some e =>
+      let mut j := i + 1
+      let mut body : Array String := #[]
+      while j < ls.size && !startsDiagnostic ls[j]! do
+        body := body.push ls[j]!
+        j := j + 1
+      out := out.push (e, "\n".intercalate body.toList)
+      i := j
+    | none => i := i + 1
+  return out
+
+#guard (errsWithBodies "error: A.lean:3:1: Type mismatch\n  x\n  y\nwarning: A.lean:9:1: w\nerror: A.lean:5:1: boom\n  z\nSome required targets logged failures:\n- A\nerror: build failed").map (fun (e, b) => (e.line, b))
+  == #[(3, "  x\n  y"), (5, "  z")]
+
 end Scripts.Lean.BuildLog

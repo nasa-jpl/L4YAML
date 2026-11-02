@@ -215,11 +215,23 @@ breaks CI if wrong, cheapest first:
    declarations` DOCS.md item 417 quotes is the probe's first cut, before
    its call-order fix).  Python and Lean agree line for line on both.
 2. Specs for the flips whose readings are **still cited as live
-   instruments** by an open NEXT or a ledger snapshot: `flip_210.py`,
-   `flip_211_stage1.py` (the `[211]` price, 10 decls / 25 sites),
-   `flip_beta5.py`/`beta5_arms.py` (`FIX-PIN`, `ARM-PIN`),
-   `punt_reason_price.py`, `flip_inl_declines.py`. Each spec's first run
-   must reproduce the number the ledger quotes.
+   instruments** by an open NEXT or a ledger snapshot. **Half DONE (#201):**
+   `flip_210.py`'s gate (`item210_implicit_continue.json`, `target: ""` = the
+   whole build — the `.py` itself stays until 3.2b: six instruments
+   (`flip_beta5`, `beta5_arms`, `flip_carrier`, `flip_drop`, `flip_supplier`,
+   `flip_supply`) load it as their error-location mapper), `flip_211_stage1.py` (`item375_flip211_stage1.json`, two files,
+   the four route deletions as block anchors) and `flip_inl_declines.py`
+   (`item415_inl_declines.json`, line-keyed anchors at 73042a01,
+   `report: "bodies"`) are specs, each reproducing its Python's reading on
+   the same tree. **Open (3.2b):** `flip_beta5.py`/`beta5_arms.py`
+   (`FIX-PIN`, `ARM-PIN`) and `punt_reason_price.py` are programs, not
+   anchor lists — they compute their edits with regexes shared with two
+   other flip modules, classify breakages sorried/restated/deleted/pins
+   over a sorry fixpoint with an axiom probe, and compare pins against
+   guard strings; `punt_reason_price.py` is a `lake env lean` instrument
+   with sub-commands. They need a Lean port of that classify/pin logic
+   (`Scripts/Flip/Report.lean`), not a spec; freezing their computed edits
+   would lose the "re-aim or refuse" property.
 3. The remaining 47 one-shot flips and prices (items 205–415, 6 538 lines): **Q2 decides**
    whether they are converted to specs (mechanical: the anchors are the
    data) or frozen — moved to `scripts/attic/` with their reading in
@@ -307,9 +319,11 @@ it removes Python from CI; it does not block an item.
 | inline ×7: test-coverage.yml — `import weasyprint` probe ×2, hygiene heredoc, release-asset lookup; generate-all.sh — `import weasyprint` probe ×2, hygiene heredoc | G/R | ~30 | — | CI, generate-all.sh | hygiene ×2 → one Lean `stats.json` exe; asset lookup → `gh api --jq`; probes ×4 → `weasyprint --version` (Q3) | todo |
 | gen_traceof.py | I | 195 | 10-23 | TraceOf regeneration | scripts-gen-traceof | todo |
 | flip_colon_chain.py, flip_kslote_domain.py | F (live, items 417/416) | 138, 85 | 11-01 | items | `scripts/flips/item417_colon_chain.json`, `item416_kslote_domain.json` | lean:scripts-flip |
-| flip_210.py, flip_211_stage1.py | F (live, `[211]`) | 138, 86 | 09-21, 10-27 | ledger snapshots | flip specs | todo |
-| flip_beta5.py, beta5_arms.py | F (live pins FIX-PIN/ARM-PIN) | 623, 297 | 09-25 | skills | flip specs | todo |
-| punt_reason_price.py, flip_inl_declines.py | F (live) | 510, 72 | 09-19, 10-31 | items 211, 415 | flip specs | todo |
+| flip_210.py | F (live; also the mapper module six flips load) | 138 | 09-21 | ledger snapshots, 6 loaders | gate: `scripts/flips/item210_implicit_continue.json`; file deleted with its loaders (3.2b) | todo |
+| flip_211_stage1.py | F (live, `[211]`) | 86 | 10-27 | ledger snapshots | `scripts/flips/item375_flip211_stage1.json` | lean:scripts-flip |
+| flip_beta5.py, beta5_arms.py | F (live pins FIX-PIN/ARM-PIN) | 623, 297 | 09-25 | skills | Lean port of classify/pins (3.2b) | todo |
+| punt_reason_price.py | F (live; a `lake env lean` instrument) | 510 | 09-19 | item 211 | Lean port (3.2b) | todo |
+| flip_inl_declines.py | F (live) | 72 | 10-31 | item 415 | `scripts/flips/item415_inl_declines.json` | lean:scripts-flip |
 | narrow_conclusion.py, pay_chain_optional.py, decline_all_optional.py | F (transforms) | 241, 140, 247 | 09-20 | skills | scripts-restate | todo |
 | 47 remaining `flip_*.py` / `*_price.py` (items 205–415) | F (one-shot) | 6 538 | 09-18 … 10-31 | DOCS.md items only | specs or attic (Q2) | todo |
 | matrix_score.py | R | 264 | 07-01 | README, CI | scripts-matrix-score | todo |

@@ -29,6 +29,7 @@ structure Site where
   line : Nat
   msg : String
   owner : String
+  body : String := ""
   deriving Repr, Inhabited, BEq
 
 /-- Does the logged path name `rel`?  Lake logs the path as given; accept a
@@ -41,36 +42,33 @@ def namesFile (logged rel : String) : Bool :=
 #guard namesFile "L4YAML/B.lean" "L4YAML/A.lean" == false
 #guard namesFile "XL4YAML/A.lean" "L4YAML/A.lean" == false
 
-/-- Every error line of a build log, both lake orderings, any file. -/
-def errsOf (log : String) : Array ErrLine := Id.run do
-  let mut out := #[]
-  for raw in log.splitOn "\n" do
-    if let some e := parseErr raw then out := out.push e
-  return out
+/-- Every error line of a build log, both lake orderings, any file, with the
+message body that follows it. -/
+def errsOf (log : String) : Array (ErrLine × String) := errsWithBodies log
 
 /-- The distinct logged files of `errs`, first-seen order. -/
-def filesOf (errs : Array ErrLine) : Array String :=
-  errs.foldl (fun acc e => if acc.contains e.file then acc else acc.push e.file) #[]
+def filesOf (errs : Array (ErrLine × String)) : Array String :=
+  errs.foldl (fun acc (e, _) => if acc.contains e.file then acc else acc.push e.file) #[]
 
 /-- The sites of `errs` that name `rel`, resolved against `lines` (the text of
 `rel`); `label` decorates the owner (identity for the flipped file, the file
 name for a dependent one). -/
-def resolveSites (errs : Array ErrLine) (rel : String) (lines : Array String)
+def resolveSites (errs : Array (ErrLine × String)) (rel : String) (lines : Array String)
     (label : String → String := id) : Array Site :=
-  errs.filterMap fun e =>
+  errs.filterMap fun (e, body) =>
     if namesFile e.file rel then
       let owner := match enclosing rel lines e.line with
         | some o => o.name
         | none => "?"
-      some ⟨rel, e.line, e.msg, label owner⟩
+      some ⟨rel, e.line, e.msg, label owner, body⟩
     else none
 
 #guard (errsOf "x\nerror: A.lean:3:1: boom\nB.lean:7:0: error: bang\n").size == 2
 #guard filesOf (errsOf "error: A.lean:3:1: boom\nB.lean:7:0: error: bang\nerror: A.lean:9:1: again") == #["A.lean", "B.lean"]
 #guard resolveSites (errsOf "error: A.lean:3:1: boom\nB.lean:7:0: error: bang") "A.lean" #["def a := 1", "", "  x"]
-  == #[⟨"A.lean", 3, "boom", "a"⟩]
+  == #[⟨"A.lean", 3, "boom", "a", ""⟩]
 #guard resolveSites (errsOf "B.lean:7:0: error: bang") "B.lean" #["lemma b : True := by", "", "", "", "", "", "  x"] (fun n => s!"B.lean {n}")
-  == #[⟨"B.lean", 7, "bang", "B.lean b"⟩]
+  == #[⟨"B.lean", 7, "bang", "B.lean b", ""⟩]
 
 /-- Sites grouped by owner, in first-seen order (Python `dict.setdefault`). -/
 def byOwner (sites : Array Site) : Array (String × Array Site) := Id.run do
