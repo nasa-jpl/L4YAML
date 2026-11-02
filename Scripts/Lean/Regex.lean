@@ -11,7 +11,18 @@ the same patterns `scripts/docs_nav.py grep` did without a regex dependency
 ranges and the escapes below, `\d \w \s \D \W \S \b \B`, anchors `^ $`,
 groups `( )` (non-capturing in effect) and `(?: )`, alternation `|`, and the
 quantifiers `* + ? {m} {m,} {m,n}`, each optionally lazy (`*?`).  `-i` folds
-ASCII case.  Unsupported syntax is a parse error reported to the caller.
+ASCII case.  `\A` / `\Z` are the string anchors (same as `^` / `$` here:
+no multiline mode).  Literal escapes: `\n \t \r \f \v \a` and any escaped
+non-alphanumeric character (`\. \* \- \\`).
+
+**Boundary.**  This is the subset the repository's recorded searches use, not
+Python's `re`; what is *not* supported is rejected at compile time (exit 2
+with the reason), never reinterpreted: capturing semantics and
+back-references (`\1`), `\x41` / `\u` / octal escapes, any other alphanumeric
+escape (`\p`, `\h`, …; `\b` inside a class), look-around `(?=` `(?!` `(?<`,
+inline flags `(?i)`, named groups, possessive quantifiers, Unicode classes
+and case folding beyond ASCII.  A pattern that compiles matches as Python's
+`re.search` would on one line.
 -/
 
 namespace Scripts.Lean.Regex
@@ -36,9 +47,13 @@ def escMatches (e : Char) (c : Char) : Bool :=
   | 's' => isSpace c | 'S' => !isSpace c
   | _ => false
 
-def escLiteral (e : Char) : Char :=
+/-- The character an escape stands for; an alphanumeric escape this subset
+does not define (`\x41`, `\1`, `\p`, …) is rejected, never read literally. -/
+def escChar (e : Char) : Except String Char :=
   match e with
-  | 'n' => '\n' | 't' => '\t' | 'r' => '\r' | 'f' => '\x0c' | 'v' => '\x0b' | c => c
+  | 'n' => pure '\n' | 't' => pure '\t' | 'r' => pure '\r' | 'f' => pure '\x0c'
+  | 'v' => pure '\x0b' | 'a' => pure '\x07'
+  | c => if c.isAlphanum then throw s!"unsupported escape `\\{c}`" else pure c
 
 mutual
   /-- Inside `[...]`, after the optional `^`: items until the closing `]`
@@ -50,17 +65,17 @@ mutual
     | [] => throw "missing ]"
     | '\\' :: e :: t =>
       if "dDwWsS".toList.contains e then classGo neg t false items (escs ++ [e])
-      else classItem neg (escLiteral e) t items escs
+      else do classItem neg (← escChar e) t items escs
     | c :: t => classItem neg c t items escs
   partial def classItem (neg : Bool) (c : Char) (t : List Char) (items : List (Char × Char))
       (escs : List Char) : Except String (Node × List Char) :=
     match t with
     | '-' :: d :: u =>
       if d == ']' then classGo neg t false (items ++ [(c, c)]) escs
-      else
-        let (d, u) := match d, u with
-          | '\\', e :: u' => (escLiteral e, u')
-          | _, _ => (d, u)
+      else do
+        let (d, u) ← match d, u with
+          | '\\', e :: u' => (escChar e).map (·, u')
+          | _, _ => pure (d, u)
         classGo neg u false (items ++ [(c, d)]) escs
     | _ => classGo neg t false (items ++ [(c, c)]) escs
 end
@@ -100,33 +115,40 @@ mutual
       if "dDwWsS".toList.contains e then pure (.esc e, t)
       else if e == 'b' then pure (.wordB, t)
       else if e == 'B' then pure (.nonWordB, t)
-      else pure (.chr (escLiteral e), t)
+      else if e == 'A' then pure (.bol, t)
+      else if e == 'Z' then pure (.eol, t)
+      else do pure (.chr (← escChar e), t)
     | '\\' :: [] => throw "trailing backslash"
     | c :: t =>
       if c == '*' || c == '+' || c == '?' then throw s!"nothing to repeat before `{c}`"
       else pure (.chr c, t)
     | [] => throw "unexpected end of pattern"
   partial def parseQuant (atom : Node) (cs : List Char) : Except String (Node × List Char) := do
-    let mk (lo : Nat) (hi : Option Nat) (rest : List Char) : Node × List Char :=
-      match rest with
-      | '?' :: r => (.rep atom lo hi true, r)
-      | _ => (.rep atom lo hi false, rest)
+    -- A quantifier on a quantifier (`a?{2}`, `a**`) is Python's "multiple repeat" error.
+    let mk (lo : Nat) (hi : Option Nat) (rest : List Char) : Except String (Node × List Char) :=
+      let (n, r) := match rest with
+        | '?' :: r => (Node.rep atom lo hi true, r)
+        | _ => (Node.rep atom lo hi false, rest)
+      match r with
+      | '*' :: _ | '+' :: _ | '?' :: _ => throw "multiple repeat"
+      | '{' :: d :: _ => if d.isDigit then throw "multiple repeat" else pure (n, r)
+      | _ => pure (n, r)
     match cs with
-    | '*' :: t => pure (mk 0 none t)
-    | '+' :: t => pure (mk 1 none t)
-    | '?' :: t => pure (mk 0 (some 1) t)
+    | '*' :: t => mk 0 none t
+    | '+' :: t => mk 1 none t
+    | '?' :: t => mk 0 (some 1) t
     | '{' :: t =>
       let ds := t.takeWhile Char.isDigit
       let t' := t.drop ds.length
       if ds.isEmpty then pure (atom, cs) else
       let lo := (String.ofList ds).toNat!
       match t' with
-      | '}' :: r => pure (mk lo (some lo) r)
-      | ',' :: '}' :: r => pure (mk lo none r)
+      | '}' :: r => mk lo (some lo) r
+      | ',' :: '}' :: r => mk lo none r
       | ',' :: r =>
         let es := r.takeWhile Char.isDigit
         match r.drop es.length with
-        | '}' :: r' => if es.isEmpty then pure (atom, cs) else pure (mk lo (some (String.ofList es).toNat!) r')
+        | '}' :: r' => if es.isEmpty then pure (atom, cs) else mk lo (some (String.ofList es).toNat!) r'
         | _ => pure (atom, cs)
       | _ => pure (atom, cs)
     | _ => pure (atom, cs)
@@ -176,7 +198,11 @@ mutual
       (k : Nat → Option Nat) : Option Nat :=
     let canStop : Bool := count ≥ lo
     let canMore : Bool := match hi with | some h => count < h | none => true
-    let more := if canMore then matchNode x m i (fun j => if j == i then none else matchRep x m lo hi lazy j (count + 1) k) else none
+    -- An empty iteration counts while the repetition is still below `lo` (bounded by
+    -- `lo`); once `lo` is reached a further empty iteration adds nothing, so stop there.
+    let more := if canMore then matchNode x m i (fun j =>
+      if j == i then (if count + 1 < lo then matchRep x m lo hi lazy j (count + 1) k else k i)
+      else matchRep x m lo hi lazy j (count + 1) k) else none
     if lazy then (if canStop then k i <|> more else more)
     else (more <|> (if canStop then k i else none))
 end
@@ -203,6 +229,11 @@ def test (pattern s : String) (icase := false) : Bool :=
 #guard test "\\s\\w+\\s" " word " && test "\\d+" "item 419" && !test "\\d+" "item"
 #guard test "a*" "" && test "^$" "" && !test "^$" "x" && test "(a|ab)(c|bcd)(d*)" "abcd"
 #guard test "a.*?b" "aXXb" && test "<.+?>" "<a><b>"
+#guard test "(?:a?){2}b" "b" && test "(?:a?){2}b" "aab" && !test "(?:a?){2}c" "b" && test "(a*)*b" "b" && test "(a*)+b" "aab" && !test "(a*)+b" "c"
+#guard test "\\AItem" "Item 1" && !test "\\AItem" " Item" && test "x\\Z" "ax" && !test "x\\Z" "xa"
+#guard (compile "\\x41").isOk == false && (compile "[\\x41]").isOk == false && (compile "[a-\\x41]").isOk == false && (compile "\\1").isOk == false && (compile "\\p").isOk == false
+#guard test "\\n" "a\nb" && test "\\-" "-" && test "[\\-a]" "-" && test "[\\.]" "." && !test "[\\.]" "x" && test "\\t" "\t"
+#guard (compile "a?{2}").isOk == false && (compile "a**").isOk == false && (compile "a{2}{3}").isOk == false && (compile "a*?").isOk && test "a*{" "{" && test "a{2}?b" "aab"
 #guard (compile "(ab").isOk == false && (compile "ab)").isOk == false && (compile "*a").isOk == false && (compile "[ab").isOk == false
 
 end Scripts.Lean.Regex

@@ -27,6 +27,7 @@ def usage : String := "usage: lake run docs-nav -- [-C ROOT] <cmd> [options]
   --width / -w N headline truncation width (default 100)
   -i, --ignore-case   (grep) fold case
   -C ROOT        checkout root (default: the current directory); reads ROOT/DOCS.md
+  --             end of options (a grep pattern that starts with `-` goes after it)
   -h, --help     this text;  --version"
 
 structure Opts where
@@ -46,6 +47,7 @@ partial def parseOpts (args : List String) (o : Opts) : Except String Opts :=
     match v.toNat? with | some n => pure (f n) | none => throw s!"{k} expects an integer, got '{v}'"
   match args with
   | [] => pure o
+  | "--" :: t => pure { o with positional := o.positional ++ t.toArray }
   | "-C" :: v :: t | "--root" :: v :: t => parseOpts t { o with root := v }
   | "-l" :: t | "--lines" :: t => parseOpts t { o with lines := true }
   | "-i" :: t | "--ignore-case" :: t => parseOpts t { o with icase := true }
@@ -65,7 +67,8 @@ def run (o : Opts) : IO UInt32 := do
   let arg? := o.positional[1]?
   let docs : System.FilePath := o.root / "DOCS.md"
   if !(← docs.pathExists) then return ← die s!"DOCS.md not found at {docs} (pass -C ROOT)" 2
-  let lines := ((← IO.FS.readFile docs).splitOn "\n").toArray
+  let text := ((← IO.FS.readFile docs).replace "\r\n" "\n").replace "\r" "\n"
+  let lines := (text.splitOn "\n").toArray
   let lines := if lines.size > 0 && lines[lines.size-1]! == "" then lines.pop else lines
   let emitE (r : Except String (Array String)) : IO UInt32 := do
     match r with | .ok ls => printAll ls; pure 0 | .error e => die e
@@ -94,9 +97,10 @@ def run (o : Opts) : IO UInt32 := do
 
 public def main (args : List String) : IO UInt32 := do
   let args := if args.headD "" == "--" then args.drop 1 else args
-  if args.contains "-h" || args.contains "--help" || args.isEmpty then
-    IO.println usage; return (if args.isEmpty then 2 else 0)
-  if args.contains "--version" then IO.println "scripts-docs-nav 1.0 (Rule 9 phase 2)"; return 0
+  if args.isEmpty then IO.println usage; return 2
+  let opts := args.takeWhile (· != "--")
+  if opts.contains "-h" || opts.contains "--help" then IO.println usage; return 0
+  if opts.contains "--version" then IO.println "scripts-docs-nav 1.0 (Rule 9 phase 2)"; return 0
   match parseOpts args {} with
   | .error e => die s!"{e}\n{usage}" 2
   | .ok o => if o.positional.isEmpty then die usage 2 else run o
