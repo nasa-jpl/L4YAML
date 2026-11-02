@@ -16,7 +16,7 @@ is the own column (excluded by `nv ≠ n + 1 + m`) or one of `sc`'s (`h_mcstep` 
 The flip: the two premises are added to the lemma, its decline becomes `sorry` (the SUPPLY is the
 obligation), and both callers pass `sorry sorry` (the RELAY is the obligation) — so the build reports
 the price as the declarations that carry `sorry`: a STARVED caller is one whose `sorry` no held fact
-can replace.  Read-only: patch, `lake build L4YAML` (a FLOOR, one round), `scripts/flip_census.py`,
+can replace.  Read-only: patch, `lake build L4YAML` (a FLOOR, one round), `lake exe scripts-flip-census`,
 restore; md5 both sides.  `--dry` prints the sites; `--keep` leaves the patch in place.
 """
 import hashlib, subprocess, sys
@@ -72,7 +72,8 @@ def main():
         with log.open("w") as f:
             r = subprocess.run(["lake", "build", "L4YAML"], cwd=ROOT, stdout=f, stderr=subprocess.STDOUT)
         print(f"lake build L4YAML exit={r.returncode}; log {log}")
-        c = subprocess.run([sys.executable, "scripts/flip_census.py", str(log)], cwd=ROOT, capture_output=True, text=True)
+        c = subprocess.run(["lake", "exe", "scripts-flip-census", str(log)], cwd=ROOT, capture_output=True, text=True)
+        if c.returncode != 0: sys.exit(f"scripts-flip-census exit={c.returncode}: {c.stderr.strip()}")
         print(c.stdout[-7000:]); print(c.stderr[-1500:], file=sys.stderr)
         txt = log.read_text(); print(f"sorry declarations: {txt.count('declaration uses')}; errors: {txt.count(': error:')}")
     finally:

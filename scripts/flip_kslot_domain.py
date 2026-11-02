@@ -10,7 +10,7 @@ The flip DOMAINS the chain: the two pack faces and the two `h_nodeV` premises ga
 `RegisterWitness.MarkedColsIn sc ns ∧`, and the two `:` births' declines become `sorry` so the build
 reports the supply as an obligation.  Every other breakage is the price (pack builders that fabricate
 `ns = []` now owe `MarkedColsIn s' []`, relays owe `MarkedColsIn.step_content`).  Read-only: patch, one
-`lake build L4YAML` (a FLOOR), `scripts/flip_census.py`, restore; md5 both sides.  `--dry`/`--keep`; `--round2` also domains the flow record's key face
+`lake build L4YAML` (a FLOOR), `lake exe scripts-flip-census`, restore; md5 both sides.  `--dry`/`--keep`; `--round2` also domains the flow record's key face
 (`FlowBaseRoutes.key`, at the open state `s0`) and `flowKeyPack_of_close.h_key`'s (at the close state), the
 chain round 1 exposed at lines 1692 / 14657.
 """
@@ -64,7 +64,8 @@ def main():
         with open(log, "w") as f:
             r = subprocess.run(["lake", "build", "L4YAML"], cwd=ROOT, stdout=f, stderr=subprocess.STDOUT)
         print(f"lake build L4YAML exit={r.returncode}; log {log}")
-        c = subprocess.run([sys.executable, "scripts/flip_census.py", str(log)], cwd=ROOT, capture_output=True, text=True)
+        c = subprocess.run(["lake", "exe", "scripts-flip-census", str(log)], cwd=ROOT, capture_output=True, text=True)
+        if c.returncode != 0: sys.exit(f"scripts-flip-census exit={c.returncode}: {c.stderr.strip()}")
         print(c.stdout[-6000:]); print(c.stderr[-2000:], file=sys.stderr)
     finally:
         if not keep: SRC.write_text(orig)

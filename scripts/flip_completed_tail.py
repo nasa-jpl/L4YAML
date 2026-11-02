@@ -4,7 +4,7 @@ that refutes the deeper landing in `closeThenBlock`'s `h_vslot` residue arm (ite
 Stage 1 flips `accum_block_on_closeThenBlock`'s own binder `h_tail139`; stage 2 flips every
 `CompletedTail sc ∨ True` binder/field in StreamAccum.lean (the fixpoint's upper bound), so the
 relays that merely pass a `∨ True` fact through are read too.  One `L4YAML` build per stage,
-`flip_census.py` on its log, source restored (md5 both sides).  `--dry` lists sites; `--keep` leaves
+`scripts-flip-census` on its log, source restored (md5 both sides).  `--dry` lists sites; `--keep` leaves
 the flipped tree in place (for the pay).  Never run concurrently with `lake build`."""
 import hashlib, subprocess, sys
 from pathlib import Path
@@ -37,7 +37,8 @@ def main():
         with log.open("w") as f:
             r = subprocess.run(["lake", "build", "L4YAML"], cwd=ROOT, stdout=f, stderr=subprocess.STDOUT)
         print(f"lake build L4YAML exit={r.returncode}; log {log}")
-        c = subprocess.run([sys.executable, "scripts/flip_census.py", str(log)], cwd=ROOT, capture_output=True, text=True)
+        c = subprocess.run(["lake", "exe", "scripts-flip-census", str(log)], cwd=ROOT, capture_output=True, text=True)
+        if c.returncode != 0: sys.exit(f"scripts-flip-census exit={c.returncode}: {c.stderr.strip()}")
         print(c.stdout[-8000:]); print(c.stderr[-2000:], file=sys.stderr)
         print("FLOOR: one build of `L4YAML`; guard modules behind it unmeasured.")
     finally:

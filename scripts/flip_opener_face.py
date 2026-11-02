@@ -6,7 +6,7 @@ decline).  `flowKeyRoute_of_root` already concludes `… ∨ True` and `accum_fl
 concludes the step tuple, so neither is flipped here (DOCS item 376 says why).
 
 Edits `L4YAML/Proofs/Production/StreamAccum.lean` in place, builds `L4YAML`, classifies with
-`scripts/flip_census.py`, restores; md5 printed both sides.  FLOOR: one build of the library;
+`lake exe scripts-flip-census`, restores; md5 printed both sides.  FLOOR: one build of the library;
 guard modules behind it unmeasured.  `--dry` patches nothing; `--keep` leaves the patch.
 """
 import hashlib, subprocess, sys
@@ -49,7 +49,8 @@ def main():
         with log.open("w") as f:
             r = subprocess.run(["lake", "build", "L4YAML"], cwd=ROOT, stdout=f, stderr=subprocess.STDOUT)
         print(f"lake build L4YAML exit={r.returncode}; log {log}")
-        c = subprocess.run([sys.executable, "scripts/flip_census.py", str(log)], cwd=ROOT, capture_output=True, text=True)
+        c = subprocess.run(["lake", "exe", "scripts-flip-census", str(log)], cwd=ROOT, capture_output=True, text=True)
+        if c.returncode != 0: sys.exit(f"scripts-flip-census exit={c.returncode}: {c.stderr.strip()}")
         print(c.stdout[-8000:]); print(c.stderr[-2000:], file=sys.stderr)
         print("FLOOR: one build of `L4YAML`; guard modules behind it unmeasured.")
     finally:

@@ -12,7 +12,7 @@ a `∨ True` conclusion, or — where the result is a park's route field — non
 the reading DOCS item 375 records).
 
 Edits `L4YAML/Surface/Document.lean` and `L4YAML/Proofs/Production/StreamAccum.lean`
-in place, builds `L4YAML`, classifies with `scripts/flip_census.py`, restores; md5
+in place, builds `L4YAML`, classifies with `lake exe scripts-flip-census`, restores; md5
 printed both sides.  One build of the library is a FLOOR (first failing module).
 `--dry` edits nothing; `--keep` leaves the flipped tree for a manual build.  Refuses
 a dirty tree.  Reading recorded in DOCS item 375: 10 declarations / 25 sites.
@@ -77,7 +77,8 @@ def main():
         with log.open("w") as f:
             r = subprocess.run(["lake", "build", "L4YAML"], cwd=ROOT, stdout=f, stderr=subprocess.STDOUT)
         print(f"lake build L4YAML exit={r.returncode}; log {log}")
-        c = subprocess.run([sys.executable, "scripts/flip_census.py", str(log)], cwd=ROOT, capture_output=True, text=True)
+        c = subprocess.run(["lake", "exe", "scripts-flip-census", str(log)], cwd=ROOT, capture_output=True, text=True)
+        if c.returncode != 0: sys.exit(f"scripts-flip-census exit={c.returncode}: {c.stderr.strip()}")
         print(c.stdout[-8000:]); print(c.stderr[-2000:], file=sys.stderr)
         print("FLOOR: one build of `L4YAML`; guard modules behind it unmeasured.")
     finally:

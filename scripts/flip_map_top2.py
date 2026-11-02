@@ -9,7 +9,7 @@ reading of `flip_map_top.py`'s single-ctor price).  The premise reads the TOP's 
         ∀ sp_end, SCompactSeqTail n sp_mid sp_end → ∀ sp_fin, SCompactMapTail n sp_end sp_fin →
         ResumeFrames (SLYamlStream sp_start) ks sp_fin)
 Edits `L4YAML/Proofs/Production/StreamAccum.lean` in place, builds `L4YAML`, classifies with
-`scripts/flip_census.py`, restores; md5 printed both sides.  FLOOR: one build.  `--dry` patches
+`lake exe scripts-flip-census`, restores; md5 printed both sides.  FLOOR: one build.  `--dry` patches
 nothing; `--keep` leaves the patch in place; `--one` patches `pendingBlock` only (item 388's shape
 with the corrected premise).
 """
@@ -62,7 +62,8 @@ def main():
         with log.open("w") as f:
             r = subprocess.run(["lake", "build", "L4YAML"], cwd=ROOT, stdout=f, stderr=subprocess.STDOUT)
         print(f"lake build L4YAML exit={r.returncode}; log {log}")
-        c = subprocess.run([sys.executable, "scripts/flip_census.py", str(log)], cwd=ROOT, capture_output=True, text=True)
+        c = subprocess.run(["lake", "exe", "scripts-flip-census", str(log)], cwd=ROOT, capture_output=True, text=True)
+        if c.returncode != 0: sys.exit(f"scripts-flip-census exit={c.returncode}: {c.stderr.strip()}")
         print(c.stdout[-8000:]); print(c.stderr[-2000:], file=sys.stderr)
         print("FLOOR: one build of `L4YAML`; guard modules behind it unmeasured.")
     finally:

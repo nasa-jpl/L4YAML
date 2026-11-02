@@ -7,7 +7,7 @@ every interior state `sc`; `MarkedColsIn.transport` (RegisterWitness) also needs
 `(0 < fl → sc.pendingKeys = s0.pendingKeys) ∧` beside the indents one and reads which
 constructors/relays of `FlowStackK` break — every break is a site that must SUPPLY the equality
 (from `PendingKeysStable`'s per-dispatch lemmas, or a new `preprocess_pendingKeys_of_inFlow`).
-Read-only: patch, one `lake build L4YAML` (a FLOOR), `scripts/flip_census.py`, restore; md5 both sides.
+Read-only: patch, one `lake build L4YAML` (a FLOOR), `lake exe scripts-flip-census`, restore; md5 both sides.
 `--dry` prints the site; `--keep` leaves the patched tree for the pay.  On a tree where the carrier is
 already PAID (item 407) the script refuses instead of inserting a duplicate conjunct.
 """
@@ -44,7 +44,8 @@ def main():
         with open(log, "w") as f:
             r = subprocess.run(["lake", "build", "L4YAML"], cwd=ROOT, stdout=f, stderr=subprocess.STDOUT)
         print(f"lake build L4YAML exit={r.returncode}; log {log}")
-        c = subprocess.run([sys.executable, "scripts/flip_census.py", str(log)], cwd=ROOT, capture_output=True, text=True)
+        c = subprocess.run(["lake", "exe", "scripts-flip-census", str(log)], cwd=ROOT, capture_output=True, text=True)
+        if c.returncode != 0: sys.exit(f"scripts-flip-census exit={c.returncode}: {c.stderr.strip()}")
         print(c.stdout[-6000:]); print(c.stderr[-2000:], file=sys.stderr)
     finally:
         if not keep: SRC.write_text(orig)

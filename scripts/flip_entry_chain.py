@@ -19,7 +19,7 @@ producers (`question_open_map`'s `Or.inl ⟨sp_ind, h_lit, h_route51F⟩`, `comp
 `h_expl105`) supply the component as `sorry`, so the build reports the SUPPLY as an obligation.  Every
 other breakage is the price: three-field destructurings `⟨sp_q, h_qlit, route⟩` of the old `h_expl`
 (`accum_flow_open_depth0`, `accum_block_pending`, the consumer's three sibling arms).  Read-only:
-patch, `lake build L4YAML` (a FLOOR, one round), `scripts/flip_census.py`, restore; md5 both sides.
+patch, `lake build L4YAML` (a FLOOR, one round), `lake exe scripts-flip-census`, restore; md5 both sides.
 `--dry` prints the sites; `--keep` leaves the patch in place.
 """
 import hashlib, subprocess, sys
@@ -110,7 +110,8 @@ def main():
         with log.open("w") as f:
             r = subprocess.run(["lake", "build", "L4YAML"], cwd=ROOT, stdout=f, stderr=subprocess.STDOUT)
         print(f"lake build L4YAML exit={r.returncode}; log {log}")
-        c = subprocess.run([sys.executable, "scripts/flip_census.py", str(log)], cwd=ROOT, capture_output=True, text=True)
+        c = subprocess.run(["lake", "exe", "scripts-flip-census", str(log)], cwd=ROOT, capture_output=True, text=True)
+        if c.returncode != 0: sys.exit(f"scripts-flip-census exit={c.returncode}: {c.stderr.strip()}")
         print(c.stdout[-7000:]); print(c.stderr[-1500:], file=sys.stderr)
         txt = log.read_text(); print(f"sorry declarations: {txt.count('declaration uses')}; errors: {txt.count(': error:')}")
     finally:

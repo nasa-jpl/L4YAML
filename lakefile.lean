@@ -349,3 +349,12 @@ lean_lib Scripts where
 @[default_target]
 lean_exe «scripts-check-ledger» where
   root := `Scripts.Main.CheckScriptsLedger
+
+-- Phase 2.1: flip_census.py and repin.py.
+@[default_target]
+lean_exe «scripts-flip-census» where
+  root := `Scripts.Main.FlipCensus
+
+@[default_target]
+lean_exe «scripts-repin» where
+  root := `Scripts.Main.Repin

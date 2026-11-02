@@ -18,7 +18,7 @@ two-line fused site, to the one-level resume
 
 (no new binder, no new disjunct — Rule 8's restatement, not item 320's (A)),
 builds the LIBRARY (`lake build L4YAML`), resolves the errors to declarations with
-`flip_census.py`, and restores the file (md5 printed both sides).  Round 1 is a
+`scripts-flip-census`, and restores the file (md5 printed both sides).  Round 1 is a
 FLOOR: the build stops at the first failing module.
 
     scripts/flip_vline_resume.py            # price: edit, build, census, restore
@@ -60,7 +60,8 @@ def main():
         with log.open("w") as f:
             r = subprocess.run(["lake", "build", "L4YAML"], cwd=ROOT, stdout=f, stderr=subprocess.STDOUT)
         print(f"lake build L4YAML exit={r.returncode}; log {log}")
-        c = subprocess.run([sys.executable, "scripts/flip_census.py", str(log)], cwd=ROOT, capture_output=True, text=True)
+        c = subprocess.run(["lake", "exe", "scripts-flip-census", str(log)], cwd=ROOT, capture_output=True, text=True)
+        if c.returncode != 0: sys.exit(f"scripts-flip-census exit={c.returncode}: {c.stderr.strip()}")
         print(c.stdout[-6000:]); print(c.stderr[-2000:], file=sys.stderr)
     finally:
         SRC.write_text(orig)

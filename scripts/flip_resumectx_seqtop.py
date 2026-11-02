@@ -4,7 +4,7 @@
 Rewrites the definition's closing `… ∨ True` to `… ∨ SeqTopKey s_prep) ∨ True` (opening paren
 inserted at the def's first `((`), so every `Or.inr trivial` keeps typing and the breaks are the
 sites that READ the left disjunct — the price of carrying the face, not of spelling it.  Builds
-`L4YAML` only, classifies with `scripts/flip_census.py`, restores; md5 printed both sides.  The
+`L4YAML` only, classifies with `lake exe scripts-flip-census`, restores; md5 printed both sides.  The
 count is a FLOOR scoped to library declarations (one build stops at the first failing module);
 the guard modules that spell or apply `ResumeKeyCtx`/`resumectx_of_landing` are listed by file
 as unmeasured proof repairs and pins.  `--dry` prints the patched definition; `--keep` leaves
@@ -39,7 +39,8 @@ def main():
         with log.open("w") as f:
             r = subprocess.run(["lake", "build", "L4YAML"], cwd=ROOT, stdout=f, stderr=subprocess.STDOUT)
         print(f"lake build L4YAML exit={r.returncode}; log {log}")
-        c = subprocess.run([sys.executable, "scripts/flip_census.py", str(log)], cwd=ROOT, capture_output=True, text=True)
+        c = subprocess.run(["lake", "exe", "scripts-flip-census", str(log)], cwd=ROOT, capture_output=True, text=True)
+        if c.returncode != 0: sys.exit(f"scripts-flip-census exit={c.returncode}: {c.stderr.strip()}")
         print(c.stdout[-8000:]); print(c.stderr[-2000:], file=sys.stderr)
         rest = {}
         for d in ("L4YAML", "Tests"):

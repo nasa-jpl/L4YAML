@@ -17,7 +17,7 @@ LEMMA (0 declarations broken, 4 `sorry` obligations) — the first half of the m
 Stage B (`--stage B`): stage A plus the STATEMENT change the ancestor route needs — the chain's
 node premise re-shaped `SBlockNode (n + 1) .blockIn` → `SBlockIndented n .blockIn` at the park field
 (`pendingMapValue.h_kslot`), the lemma's `h_kslot`, and the two pack lemmas' `h_nodeV`; the build's
-broken declarations (resolved by `scripts/flip_census.py`) are the price of widening the face,
+broken declarations (resolved by `lake exe scripts-flip-census`) are the price of widening the face,
 a FLOOR (one round).  Read-only: patch, build, census, restore; md5 both sides.  `--dry` prints
 the sites; `--keep` leaves the patch in place (for a descent round).
 """
@@ -78,7 +78,8 @@ def main():
         with log.open("w") as f:
             r = subprocess.run(["lake", "build", "L4YAML"], cwd=ROOT, stdout=f, stderr=subprocess.STDOUT)
         print(f"lake build L4YAML exit={r.returncode}; log {log}")
-        c = subprocess.run([sys.executable, "scripts/flip_census.py", str(log)], cwd=ROOT, capture_output=True, text=True)
+        c = subprocess.run(["lake", "exe", "scripts-flip-census", str(log)], cwd=ROOT, capture_output=True, text=True)
+        if c.returncode != 0: sys.exit(f"scripts-flip-census exit={c.returncode}: {c.stderr.strip()}")
         print(c.stdout[-6000:]); print(c.stderr[-2000:], file=sys.stderr)
         txt = log.read_text()
         print(f"sorry warnings: {txt.count('declaration uses ')}; errors: {txt.count(': error:')}")

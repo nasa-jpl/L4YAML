@@ -5,7 +5,7 @@
 park's level), and `accum_block_on_closeThenBlock.h_valF` / `deeperLandingResume` relay that bound as
 `fr.width < nv`.  Option (α) widens all three to `≤`, so a root park may carry `FrameLevel.map 0` and the
 root sibling (`a: 1⏎b: 2`) takes the openers' resume arm instead of the `[211]` fallback.  Read-only:
-patch, one `lake build L4YAML` (a FLOOR), `scripts/flip_census.py`, restore; md5 both sides.
+patch, one `lake build L4YAML` (a FLOOR), `lake exe scripts-flip-census`, restore; md5 both sides.
 `--dry` patches nothing; `--keep` leaves the patch.  Refuses a dirty `StreamAccum.lean`.
 """
 import hashlib, subprocess, sys
@@ -41,7 +41,8 @@ def main():
         with log.open("w") as f:
             r = subprocess.run(["lake", "build", "L4YAML"], cwd=ROOT, stdout=f, stderr=subprocess.STDOUT)
         print(f"lake build L4YAML exit={r.returncode}; log {log}")
-        c = subprocess.run([sys.executable, "scripts/flip_census.py", str(log)], cwd=ROOT, capture_output=True, text=True)
+        c = subprocess.run(["lake", "exe", "scripts-flip-census", str(log)], cwd=ROOT, capture_output=True, text=True)
+        if c.returncode != 0: sys.exit(f"scripts-flip-census exit={c.returncode}: {c.stderr.strip()}")
         print(c.stdout[-8000:]); print(c.stderr[-2000:], file=sys.stderr)
         print("FLOOR: one build of `L4YAML`; guard modules behind it unmeasured.")
     finally:

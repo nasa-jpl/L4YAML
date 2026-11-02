@@ -8,7 +8,7 @@ arm stops compiling; the breaks are the lines that must either route the open
 level's continuation or declare the decline at the `[211]` flip.
 
 Edits `L4YAML/Proofs/Production/StreamAccum.lean` in place, builds `L4YAML`,
-classifies with `scripts/flip_census.py`, restores; md5 printed both sides.  The
+classifies with `lake exe scripts-flip-census`, restores; md5 printed both sides.  The
 count is a FLOOR (one build of the library stops at the first failing module):
 the library roster is whole when no wrapper application lies outside
 `StreamAccum.lean`, and the guard modules' own `example` applications of the
@@ -70,7 +70,8 @@ def main():
         with log.open("w") as f:
             r = subprocess.run(["lake", "build", "L4YAML"], cwd=ROOT, stdout=f, stderr=subprocess.STDOUT)
         print(f"lake build L4YAML exit={r.returncode}; log {log}")
-        c = subprocess.run([sys.executable, "scripts/flip_census.py", str(log)], cwd=ROOT, capture_output=True, text=True)
+        c = subprocess.run(["lake", "exe", "scripts-flip-census", str(log)], cwd=ROOT, capture_output=True, text=True)
+        if c.returncode != 0: sys.exit(f"scripts-flip-census exit={c.returncode}: {c.stderr.strip()}")
         print(c.stdout[-8000:]); print(c.stderr[-2000:], file=sys.stderr)
         def apps(root):
             return sum(f.read_text().count(w) for f in root.rglob("*.lean") if f != SRC for w in WRAPPERS)
