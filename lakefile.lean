@@ -393,7 +393,8 @@ script «run-all-tests» (args) do
   let ws ← getWorkspace
   let root := ws.root.dir
   let args := if args.headD "" == "--" then args.drop 1 else args
-  let out : System.FilePath := root / (args.headD "docs")
+  let outArg : System.FilePath := args.headD "docs"
+  let out := if outArg.isAbsolute then outArg else root / outArg
   IO.FS.createDirAll out
   let bin := root / ".lake" / "build" / "bin"
   let suites : Array (String × String) := #[
@@ -418,7 +419,9 @@ script «run-all-tests» (args) do
     if r.exitCode != 0 then failed := failed.push name
     IO.println ""
   IO.println "=== Generating HTML coverage reports ==="
-  let h ← IO.Process.output { cmd := (bin / "suiterunner").toString, args := #["--html", out.toString ++ "/"], cwd := some root }
+  let h ← try
+      IO.Process.output { cmd := (bin / "suiterunner").toString, args := #["--html", out.toString ++ "/"], cwd := some root }
+    catch e => pure { exitCode := 127, stdout := "", stderr := s!"{e}\n" }
   IO.print h.stdout; IO.eprint h.stderr
   IO.FS.writeFile (out / "coverage-console.txt") h.stdout
   if h.exitCode != 0 then failed := failed.push "suiterunner-html"
