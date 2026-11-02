@@ -4466,7 +4466,8 @@ seq-spaces alternative at `accum_block_on_closeThenBlock`'s dash arm — and ite
 188 paid that carrier; the three applications did not move, and what they still
 stand under was not re-measured after it.  Two instruments do that here.
 
-**The flip, over the whole pack family at once.**  `scripts/pack_flip_census.py`
+**The flip, over the whole pack family at once.**  `lake run pack-census -- flip`
+(`Scripts/Pack/Census.lean`, formerly `scripts/pack_flip_census.py`)
 flips the family's NAMED alternative — since item 311 every value-line pack,
 chain pack and value-line stack in `StreamAccum` is typed `… ∨ PackAlt sc`
 (`∨ PackAltG g` on the flow frame), and the script rewrites the two bodies to
@@ -4474,7 +4475,7 @@ chain pack and value-line stack in `StreamAccum` is typed `… ∨ PackAlt sc`
 obligations, counted as `stubs`), and iterates `lake env lean` to a fixpoint: each
 `Or.inr trivial` it breaks is sorried (a DECLINE), each relay from an unflipped
 `∨ True` source is wrapped (a RELAY), and the tree is restored byte-identical.
-Item 312 gave it a second flip, `--alt refused`: `PackAlt sc` becomes the predicate
+Item 312 gave it a second flip, `pack-census -- residue` (the Python's `--alt refused`): `PackAlt sc` becomes the predicate
 itself, so a relay between two park states is a type error the census wraps in a
 probe and counts as `relayState` — the transports the lanes owe, which the `False`
 flip reads as the identity.  Item 186

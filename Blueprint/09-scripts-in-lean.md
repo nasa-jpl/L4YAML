@@ -3,7 +3,7 @@
 Status: PLAN, defaults RULED (2026-11-01, owner: "ok with the defaults" —
 every §6 default below is the decision). Governs the conversion of every
 `scripts/*.py` to Lean under [`06-discipline.md`](06-discipline.md) Rule 9.
-Phase 0 (the gate, #196), phase 2.1 (`flip_census`/`repin` in Lean), phase 3.1 (the flip library, `scripts-flip`, #200), phase 3.2's specs half (#201), phase 4.5 (`lake run`, #202) phase 1 — the six class-G gates (#204, #206) — and phase 2's first row (`docs_nav.py` → `lake run docs-nav`) are DONE; each later phase lands as its own PR
+Phase 0 (the gate, #196), phase 2.1 (`flip_census`/`repin` in Lean), phase 3.1 (the flip library, `scripts-flip`, #200), phase 3.2's specs half (#201), phase 4.5 (`lake run`, #202) phase 1 — the six class-G gates (#204, #206) — and phase 2's first two rows (`docs_nav.py` → `lake run docs-nav`; `pack_flip_census.py` + `residue_classes.py` → `lake run pack-census`) are DONE; each later phase lands as its own PR
 and ticks its rows in §5. Work order (§3): phase 0 → 2.1 → 3.1 → 3.2 → 4.5 →
 phase 1 → the rest; R12 holds its next flip until 3.1 lands (Q6).
 
@@ -210,10 +210,19 @@ breaks CI if wrong, cheapest first:
    `Scripts/Pins.lean`, exes `scripts-flip-census`, `scripts-repin`. These
    two are the core every later phase reuses; land them before any class-F
    port.
-2. `pack_flip_census.py` + `residue_classes.py` → `scripts-pack-census`
-   (PACK-FLIP / PACK-RESIDUE / RESIDUE-CLASSES as three subcommands of
-   one exe; the `∃`-index classing reads binders from the environment,
-   which `GhostIndexCensus.lean` already does — one implementation).
+2. **DONE** — `pack_flip_census.py` + `residue_classes.py` → `scripts-pack-census`,
+   `lake run pack-census -- flip|residue|classes` (PACK-FLIP / PACK-RESIDUE /
+   RESIDUE-CLASSES as three subcommands of one exe; `Scripts/Pack/Census.lean`
+   the pure round step with `#guard` rows, `Scripts/Pack/Residue.lean` the
+   classing).  Deviation, stated: the `∃`-index classing still reads the
+   binders off the text of `StreamAccum.lean` as the Python did (its classes
+   are reproduced byte for byte against item 403's reading); the environment
+   reading `GhostIndexCensus.lean` does is a later refinement, since the two
+   readings differ (a text binder is a lemma's telescope or a structure's
+   field line; the environment's is the elaborated type).  The pin check
+   reads a `def expected… : String :=` literal through the dated `--` notes
+   (`Scripts.Pins.defSpan`); the Python matched only a literal on the next
+   line, so a commented pin read `absent` and a moved pin never failed.
 3. `drop_sweep.py` → `scripts-drop-sweep`, **not retired**: the walk
    (`Tests.Guards.DropDependents.census`) is already Lean and shared, but
    the sweep is the WIDE reading — every `L4YAML.*`/`Tests.*` module with
@@ -353,8 +362,8 @@ it removes Python from CI; it does not block an item.
 | gate_vocab.py | G | 207 | 09-25 | `lake run check-gate-vocab`; GateVocabulary.lean | scripts-gate-vocab | **DONE** (#206) |
 | repin.py | I (also `--check`) | 223 | 10-23 | every item | scripts-repin | lean:scripts-repin |
 | flip_census.py | I | 116 | 10-18 | every flip | scripts-flip-census | lean:scripts-flip-census |
-| pack_flip_census.py | I | 400 | 10-20 | every Row 12 item (PACK) | scripts-pack-census | todo |
-| residue_classes.py | I | 123 | 10-30 | Row 12 items ≥ 403 | scripts-pack-census classes | todo |
+| pack_flip_census.py | I | 400 | 10-20 | every Row 12 item (PACK) | scripts-pack-census | DONE (`lake run pack-census -- flip|residue`) |
+| residue_classes.py | I | 123 | 10-30 | Row 12 items ≥ 403 | scripts-pack-census classes | DONE (`lake run pack-census -- classes`) |
 | docs_nav.py | I | 339 | 10-20 | AGENTS §1, skills | scripts-docs-nav | DONE (`lake run docs-nav`) |
 | ledger_diff.py | I | 226 | 10-26 | ledgers/README | scripts-ledger-diff | todo |
 | drop_sweep.py | I | 229 | 09-22 | skills; DropDependents.lean's wide pin | scripts-drop-sweep | todo |
