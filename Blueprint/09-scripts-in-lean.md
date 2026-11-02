@@ -3,7 +3,7 @@
 Status: PLAN, defaults RULED (2026-11-01, owner: "ok with the defaults" —
 every §6 default below is the decision). Governs the conversion of every
 `scripts/*.py` to Lean under [`06-discipline.md`](06-discipline.md) Rule 9.
-Phase 0 (the gate, #196), phase 2.1 (`flip_census`/`repin` in Lean), phase 3.1 (the flip library, `scripts-flip`, #200), phase 3.2's specs half (#201), phase 4.5 (`lake run`, #202) and phase 1's four CI gates (#204) are DONE; each later phase lands as its own PR
+Phase 0 (the gate, #196), phase 2.1 (`flip_census`/`repin` in Lean), phase 3.1 (the flip library, `scripts-flip`, #200), phase 3.2's specs half (#201), phase 4.5 (`lake run`, #202) and phase 1 — the six class-G gates (#204, #206) — are DONE; each later phase lands as its own PR
 and ticks its rows in §5. Work order (§3): phase 0 → 2.1 → 3.1 → 3.2 → 4.5 →
 phase 1 → the rest; R12 holds its next flip until 3.1 lands (Q6).
 
@@ -191,10 +191,17 @@ breaks CI if wrong, cheapest first:
    is `--rewrite`). Scanner in `Scripts/Lean/TheoremKeyword.lean` with
    `#guard` rows for strings, char literals, nested block comments,
    `Parser.Command.theorem`-style name literals.
-5. `check-serialization-axioms.py` → read inside
-   `scripts/check-serialization-proofs.sh`'s Lean exe.
-6. `gate_vocab.py` → `scripts-gate-vocab`; it already shells out to an
-   environment dump — in Lean the dump *is* the environment.
+5. **DONE (#206)** `check-serialization-axioms.py` + `check-serialization-proofs.sh`
+   → `scripts-check-serialization-proofs` (`Scripts/Lean/AxiomLog.lean` the
+   validator with `#guard` rows; the exe runs the build, the sorry control,
+   the `#print axioms` sweep and probe itself, `rg` no longer needed;
+   `--validate LOG SORRY SITES` is the Python's shape, for diffing).
+6. **DONE (#206)** `gate_vocab.py` → `scripts-gate-vocab` behind
+   `lake run check-gate-vocab`: the five regexes are hand scanners with
+   `#guard` rows; the environment is the `constNames` of the `.olean` headers
+   of every built module and its transitive imports (`LEAN_PATH` from the
+   workspace), so the exe root modules are read too — `-w/--wide-only`
+   reproduces the Python's single-environment set exactly (62 007 names).
 
 **Phase 2 — class I, the shared instruments (8 scripts, ~4 PRs).**
 1. **DONE** — `flip_census.py` + `repin.py` → `Scripts/Lean/BuildLog.lean`,
@@ -280,7 +287,8 @@ breaks CI if wrong, cheapest first:
    check-scripts-lean`, `lake run run-all-tests`; their `.sh` deleted) **and
    (phase 1, #204) for the four gates** (`lake run check-theorem-keyword`,
    `check-import-closure`, `check-reflection-index`, `check-closure-log`; their
-   `.sh` and `.py` deleted; `generate-all.sh`, `check-serialization-proofs.sh`, `build-api-docs.sh`,
+   `.sh` and `.py` deleted; `check-serialization-proofs.sh` → `lake run
+   check-serialization-proofs` (#206); `generate-all.sh`, `build-api-docs.sh`,
    `bump-version.sh`, `publish-pages.sh`, `sync-pages.sh` do more than run an
    exe and stay `.sh` until their phase). Every `scripts/*.sh` that only runs a
    `lean_exe` becomes a Lake `script` block in `lakefile.lean` —
@@ -331,8 +339,8 @@ it removes Python from CI; it does not block an item.
 | check_reflection_index.py | G | 148 | 08-11 | `lake run check-reflection-index` (CI) | scripts-check-reflection-index | **DONE** (#204) |
 | check_closure_log.py | G | 143 | 09-27 | `lake run check-closure-log` (CI) | scripts-check-closure-log | **DONE** (#204) |
 | rename_lemma.py | G | 220 | 08-01 | `lake run check-theorem-keyword` (CI) | scripts-theorem-keyword | **DONE** (#204) |
-| check-serialization-axioms.py | G | 44 | 10-05 | check-serialization-proofs.sh (CI) | (inside that gate's exe) | todo |
-| gate_vocab.py | G | 207 | 09-25 | battery; GateVocabulary.lean | scripts-gate-vocab | todo |
+| check-serialization-axioms.py | G | 44 | 10-05 | `lake run check-serialization-proofs` (CI) | scripts-check-serialization-proofs | **DONE** (#206) |
+| gate_vocab.py | G | 207 | 09-25 | `lake run check-gate-vocab`; GateVocabulary.lean | scripts-gate-vocab | **DONE** (#206) |
 | repin.py | I (also `--check`) | 223 | 10-23 | every item | scripts-repin | lean:scripts-repin |
 | flip_census.py | I | 116 | 10-18 | every flip | scripts-flip-census | lean:scripts-flip-census |
 | pack_flip_census.py | I | 400 | 10-20 | every Row 12 item (PACK) | scripts-pack-census | todo |

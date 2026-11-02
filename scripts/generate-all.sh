@@ -210,7 +210,7 @@ if wants 1; then
 
   say "Phase 1 — serialization axiom gate"
   LOG="$LOGS/01-serialization-gate.log"
-  bash scripts/check-serialization-proofs.sh > "$LOG" 2>&1
+  lake run check-serialization-proofs > "$LOG" 2>&1
   tail -1 "$LOG"
   note 1 serialization-gate "$(tail -1 "$LOG" | grep -oE '[0-9]+ observed profiles' || echo ok)"
   echo "log: $LOG"
@@ -298,7 +298,7 @@ if wants 3; then
   GATES_FAILED=""
   for g in check-theorem-keyword check-import-closure check-reflection-index check-closure-log; do
     printf '%-26s ' "$g" | tee -a "$LOG"
-    if bash "scripts/$g.sh" >> "$LOG" 2>&1; then echo "ok" | tee -a "$LOG"
+    if lake run "$g" >> "$LOG" 2>&1; then echo "ok" | tee -a "$LOG"
     else
       echo "FAILED" | tee -a "$LOG"; warn "$g failed — see $LOG"
       GATES_FAILED="${GATES_FAILED:+$GATES_FAILED }$g"

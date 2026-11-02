@@ -24,7 +24,7 @@ escape on exactly that half.
 A backticked identifier in a docstring is a claim, and it is the one class of
 claim nothing in the build checks.  Lean does not read its own comments; a
 census that reads the environment cannot see them.  So the reading is
-`scripts/gate_vocab.py`'s and the LITERAL is here — the same
+`lake run check-gate-vocab`'s (`Scripts/Lean/GateVocab.lean`) and the LITERAL is here — the same
 pin-from-the-other-side the flip instruments use, turned on prose.
 
 Two vocabularies are read.  The first is the dispatcher's own:
@@ -62,7 +62,7 @@ pass while reading less than it appears to (§9):
 
 namespace L4YAML.Tests.Guards.GateVocabulary
 
-/-- What `scripts/gate_vocab.py` reads over `L4YAML/` and `Tests/`.
+/-- What `lake run check-gate-vocab` reads over `L4YAML/` and `Tests/`.
 
     **`mentions` moves whenever prose cites a gate, and that is the point.**
     Item 268's own sections added four, across two dispatcher names it had to
@@ -83,7 +83,7 @@ namespace L4YAML.Tests.Guards.GateVocabulary
     moved would mean the scan had stopped seeing new prose.  (The names are not
     spelled here: this file is the one the scan skips, so a name written in this
     docstring would move `self` instead, for no reading.) -/
--- 2026-10-22: re-pinned from `scripts/gate_vocab.py` on the fix-a branch — the literal had been 448 since item 265's
+-- 2026-10-22: re-pinned from `scripts/gate_vocab.py` (now `lake run check-gate-vocab`) on the fix-a branch — the literal had been 448 since item 265's
 -- successors added gate names to Lean docstrings (items 332–340 each reported the drift as pre-existing); the
 -- script is the reading, this literal is the pin, and a disagreement is an item's to repin, not to record.
 -- 2026-10-23: 111/466 → 113/468 — the Step 5 status row names two new gates (`parseStream_accepts`,

@@ -148,7 +148,7 @@ jobs:
       - name: Kernel-check serialization proofs and exact axiom profiles
         # Fresh #print axioms observations, both placeholder negative-control
         # signals, and exact headline sets. Runs on every runtime dependency edit.
-        run: bash scripts/check-serialization-proofs.sh
+        run: lake run check-serialization-proofs
 
       # -------------------------------------------------------
       # Phase 2: Run all test suites

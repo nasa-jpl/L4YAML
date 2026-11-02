@@ -382,6 +382,15 @@ lean_exe «scripts-check-reflection-index» where
 lean_exe «scripts-check-closure-log» where
   root := `Scripts.Main.CheckClosureLog
 
+-- Phase 1 (rows 5–6): the two remaining class-G gates.
+@[default_target]
+lean_exe «scripts-check-serialization-proofs» where
+  root := `Scripts.Main.CheckSerializationProofs
+
+@[default_target]
+lean_exe «scripts-gate-vocab» where
+  root := `Scripts.Main.GateVocab
+
 /-! Phase 4.5 (Rule 9, Q7): portable entry points — `lake run <name>` replaces the
 bash wrappers that only run a `lean_exe`; same on Linux, macOS and Windows. -/
 
@@ -390,7 +399,8 @@ bash wrappers that only run a `lean_exe`; same on Linux, macOS and Windows. -/
 `-C`/`--root`), `fixed` first, then ARGS; the exit status is the exe's (2 when
 the build fails).  `lake run name -- ARGS` forwards the `--`, dropped here. -/
 def runGateExe (root : System.FilePath) (exe : String) (fixed : Array String)
-    (args : List String) (prereqs : Array String := #[]) : IO UInt32 := do
+    (args : List String) (prereqs : Array String := #[])
+    (env : Array (String × Option String) := #[]) : IO UInt32 := do
   let build ← IO.Process.output { cmd := "lake", args := #["build", exe] ++ prereqs, cwd := some root }
   if build.exitCode != 0 then
     IO.eprintln build.stdout; IO.eprintln build.stderr
@@ -399,7 +409,7 @@ def runGateExe (root : System.FilePath) (exe : String) (fixed : Array String)
   let args := if args.headD "" == "--" then args.drop 1 else args
   let hasRoot := args.any fun a => a == "-C" || a == "--root"
   let argv := (if hasRoot then #[] else #["-C", root.toString]) ++ fixed ++ args.toArray
-  let child ← IO.Process.spawn { cmd := (root / ".lake" / "build" / "bin" / exe).toString, args := argv }
+  let child ← IO.Process.spawn { cmd := (root / ".lake" / "build" / "bin" / exe).toString, args := argv, env }
   child.wait
 
 /-- The Rule 9 ledger gate: `lake run check-scripts-lean [-- ARGS]`
@@ -428,6 +438,20 @@ script «check-reflection-index» (args) do
 (`scripts/check-closure-log.sh` before phase 1). -/
 script «check-closure-log» (args) do
   runGateExe (← getWorkspace).root.dir "scripts-check-closure-log" #[] args
+
+/-- Serialization proof hygiene: kernel axiom profiles of every `#print axioms`
+site under `L4YAML/Proofs/Serialization`, sorry negative control, exact headline
+sets (`scripts/check-serialization-proofs.sh` + `check-serialization-axioms.py`
+before phase 1).  The exe runs `lake build` / `lake env lean` itself. -/
+script «check-serialization-proofs» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-check-serialization-proofs" #[] args
+
+/-- Every gate / refutation name the prose cites resolves in the environment
+(`python3 scripts/gate_vocab.py` before phase 1); the exe reads `.olean`
+headers through `LEAN_PATH`, which this script sets from the workspace. -/
+script «check-gate-vocab» (args) do
+  let ws ← getWorkspace
+  runGateExe ws.root.dir "scripts-gate-vocab" #[] args #[] ws.augmentedEnvVars
 
 /-- Every test exe, output captured under OUT (default `docs`), failures
 collected: `lake run run-all-tests [-- OUT]` (`scripts/run-all-tests.sh`

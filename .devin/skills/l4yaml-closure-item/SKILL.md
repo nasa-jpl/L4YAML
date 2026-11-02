@@ -54,7 +54,7 @@ reader can re-run it.  Never leave a probe importable from a library module.
 
 See `l4yaml-build-and-gates`.  The entry quotes: `lake build` job count and
 warning count, `suiterunner` pass/fail/skip, serialization hygiene,
-`run-all-tests`, the four text gates, `gate_vocab`, and the axiom census of
+`run-all-tests`, the four text gates, `check-gate-vocab`, and the axiom census of
 every touched declaration (no `sorryAx`; standard three + per-site
 `native_decide` only).
 
@@ -81,7 +81,7 @@ sentences with the headline numbers and the gate summary.
 **NEXT — <step number>, <one paragraph naming the next arm/instrument>.**
 ```
 
-Then: `lake run check-closure-log && python3 scripts/gate_vocab.py` — every
+Then: `lake run check-closure-log && lake run check-gate-vocab` — every
 gate or refutation name you wrote in prose must resolve in the environment.
 
 If the item moves a step's state, update the row in the

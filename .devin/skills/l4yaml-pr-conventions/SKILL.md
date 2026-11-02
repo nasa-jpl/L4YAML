@@ -22,7 +22,7 @@ This repo overrides the generic Open-MBEE git-flow note: there is no
   `docs(row 12): item N — …`, `test(guards): re-pin … after …`,
   `proof(<module>): …`, `fix(scanner): …`, `chore(scripts): …`.
 - **Before pushing:** full `lake build` exit 0, the text gates and
-  `gate_vocab.py` green, `lake run check-closure-log` green if DOCS.md
+  `lake run check-gate-vocab` green, `lake run check-closure-log` green if DOCS.md
   changed, `git status --porcelain` empty (pricing scripts restored).
 - **PR body:** what moved, the numbers with the pin that re-derives each, the
   item number if DOCS.md gained one.  No session identifiers, no internal
