@@ -151,6 +151,16 @@ def pinLiteral? (body : String) : Option String := do
 #guard pinLiteral? "  \"closure=883 imported=879 \\\nexcludedDecls=603\"\n" == some "closure=883 imported=879 excludedDecls=603"
 #guard pinLiteral? "  42\n" == none
 
+/-- The literal of a `def NAME : String :=` span: `same` is the rest of the definition line
+    after `:=` (a short pin, as `scripts-repin` writes one), `body` the lines below it after
+    the dated notes (a long pin, through its string gap).  Either layout reads. -/
+def pinOfSpan? (same body : String) : Option String :=
+  pinLiteral? (same ++ "\n" ++ body)
+
+#guard pinOfSpan? "\"D=4 S=0 R=0 T=27 capstonesInT=2 rawElim=11\"" "" == some "D=4 S=0 R=0 T=27 capstonesInT=2 rawElim=11"
+#guard pinOfSpan? "" "  \"closure=883 imported=879 \\\n excludedDecls=603 excludedDropRefs=0\"\n" == some "closure=883 imported=879 excludedDecls=603 excludedDropRefs=0"
+#guard pinOfSpan? "" "" == none
+
 def dropConst : String := "`L4YAML.Surface.SLYamlStream.scannerDrop"
 
 /-- The wide walk, appended to the `import` list (the Python's `WALK_BODY`). -/

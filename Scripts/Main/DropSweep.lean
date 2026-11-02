@@ -18,7 +18,7 @@ The generated Lean lives in `L4YAML/Scratch/` and is removed on the way out; not
 the tree is edited.  Never run it beside a `lake build` (it runs `lake env lean`, and
 `lake build MOD` on an entry point whose olean is unreadable).  stdout is the Python's,
 line for line; the two pins are read through the dated notes (`Scripts.Pins.defSpan`)
-and through a string gap (`\` + newline).
+and through a string gap (`\` + newline), on the definition line or below it.
 
 exit status: 0 complete (quick) or complete with both pins agreeing; 1 a pin missing or
 disagreeing, the walk not running clean or never composing, the walk's own module not
@@ -37,7 +37,7 @@ def usage : String := "usage: lake run drop-sweep -- [-C ROOT] [-q]
   against its own closure, compared with the pins in Tests/Guards/Proofs/DropDependents.lean
 
 options
-  -C, --root ROOT   repository root (default: the current directory)
+  -C, --root ROOT   repository root, relative or absolute (default: the current directory)
   -q, --quick       the wide walk only (no per-entry-point probes, no pin comparison)
   -h, --help        this text
   -V, --version     version"
@@ -87,7 +87,7 @@ def pin? (text name : String) : Option String := do
   let lines := (text.splitOn "\n").toArray
   let span ← Scripts.Pins.defSpan lines name
   let body := "\n".intercalate (lines.extract (span.start + 1 + span.comments.size) span.stop).toList
-  pinLiteral? body
+  pinOfSpan? span.head.same body
 
 def sweep (o : Opts) : IO UInt32 := do
   let scratch := o.root / "L4YAML" / "Scratch"
@@ -183,6 +183,7 @@ def run (args : List String) : IO UInt32 := do
   let o ← match parseOpts args {} with
     | .ok o => pure o
     | .error e => return ← die s!"{e}\n{usage}" 2
+  let o := { o with root := ← IO.FS.realPath o.root }
   let res ← (sweep o).toBaseIO
   cleanup o.root
   match res with
