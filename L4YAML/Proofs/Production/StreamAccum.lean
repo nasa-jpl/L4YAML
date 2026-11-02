@@ -22619,7 +22619,7 @@ lemma markedCols_mem_of_step_content {sc s_prep s' : ScannerState} {c : Char} {n
   exact MarkedColsIn.step_content h_preprocess h_dispatch (RegisterWitness.MarkedColsIn.self sc) i l col hi hc
 
 /-- The same step on the named alternative.  `trivial` while `PackAlt` is `True`; the census's
-    residue mode substitutes the proof promised after `-- refused:` (`scripts/pack_flip_census.py`),
+    residue mode substitutes the proof promised after `-- refused:` (`lake run pack-census -- residue`),
     and the final flip makes that proof the body. -/
 lemma PackAlt.step_content {sc s_prep s' : ScannerState} {c : Char}
     (_h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))

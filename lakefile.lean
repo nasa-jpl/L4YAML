@@ -395,6 +395,10 @@ lean_exe «scripts-gate-vocab» where
 lean_exe «scripts-docs-nav» where
   root := `Scripts.Main.DocsNav
 
+@[default_target]
+lean_exe «scripts-pack-census» where
+  root := `Scripts.Main.PackCensus
+
 /-! Phase 4.5 (Rule 9, Q7): portable entry points — `lake run <name>` replaces the
 bash wrappers that only run a `lean_exe`; same on Linux, macOS and Windows. -/
 
@@ -457,6 +461,11 @@ headers through `LEAN_PATH`, which this script sets from the workspace. -/
 -- remaining, steps, grep REGEX, section PREFIX) without paging it.
 script «docs-nav» (args) do
   runGateExe (← getWorkspace).root.dir "scripts-docs-nav" #[] args
+
+-- `lake run pack-census -- flip|residue|classes [options]`: the PACK flip census (edits
+-- StreamAccum.lean in place, restores it; never beside another lake build) and the residue's classes.
+script «pack-census» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-pack-census" #[] args
 
 script «check-gate-vocab» (args) do
   let ws ← getWorkspace
