@@ -39,7 +39,7 @@ array of lines keeps the Lean text literal):
 { "item": 416, "tag": "KSLOTE-FLIP", "rev": "55d03804",
   "file": "L4YAML/Proofs/Production/StreamAccum.lean", "target": "L4YAML",
   "log": "scratch/kslote_flip.log", "msgWidth": 100, "rounds": 1,
-  "report": "owners" | "bodies", "filter": "Type mismatch" (bodies: list only matching sites),
+  "report": "owners" | "bodies", "filter": "Type mismatch" (bodies: list only the sites whose head starts with it, case-insensitive),
   "patches": [ { "name": "FIELD", "old": ["line", "line"], "new": ["line"], "count": 1 } ] }
 ```
 -/
@@ -66,9 +66,10 @@ REV and the working tree.  Never run beside another lake build.
   -V, --version     print the version and exit
   -h, --help        print this help and exit
 
-exit status: 0 run complete and file restored, 1 file not restored
-identically, 2 usage, spec, git or anchor error, 3 incomplete probe (the
-build failed with no attributable site, or only dependent modules fail)."
+exit status: 0 run complete, files restored and rebuilt; 1 a file not
+restored identically; 2 usage, spec, git or anchor error; 3 incomplete probe
+(the build failed with no attributable site, or only dependent modules
+fail); 4 the rebuild of the restored tree failed."
 
 structure PatchJ where
   name : String
@@ -250,6 +251,7 @@ def runSpec (o : Opts) : IO UInt32 := do
     return 0
   let mut texts : Array (String × Array String) := patched.map fun (f, t) => (f, splitLines t)
   let mut restoredOk := true
+  let mut cleanupOk := true
   let mut incomplete : Option String := none
   let primary := spec.files[0]!.file
   try
@@ -265,7 +267,7 @@ def runSpec (o : Opts) : IO UInt32 := do
         IO.println (headline spec.tag code (main ++ others))
         if spec.report == "bodies" then
           let listed := match spec.filter with
-            | some f => main.filter fun s => (s.msg.splitOn f).length > 1
+            | some f => main.filter fun s => s.msg.toLower.startsWith f.toLower   -- the Python's `[Tt]ype mismatch` head
             | none => main
           if let some f := spec.filter then
             IO.println s!"  {listed.size} site(s) match `{f}`; {main.size - listed.size} other diagnostic(s) in the flipped file(s)"
@@ -316,7 +318,8 @@ def runSpec (o : Opts) : IO UInt32 := do
       let args := if spec.target.isEmpty then #["build"] else #["build", spec.target]
       let o ← IO.Process.output { cmd := "lake", args, cwd := some root }
       IO.println s!"rebuilt {if spec.target.isEmpty then "everything" else spec.target} on the restored tree: exit={o.exitCode}"
-  return if !restoredOk then 1 else if incomplete.isSome then 3 else 0
+      if o.exitCode != 0 then cleanupOk := false
+  return if !restoredOk then 1 else if !cleanupOk then 4 else if incomplete.isSome then 3 else 0
 
 end Scripts.FlipMain
 
