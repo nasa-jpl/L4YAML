@@ -242,9 +242,15 @@ breaks CI if wrong, cheapest first:
    `--quick` mode, generates the per-closure scratch modules under
    `L4YAML/Scratch/` and removes them as today, and must reproduce the
    current `D= S= R= T=` reading before the Python is deleted.
-4. `ledger_diff.py` → `scripts-ledger-diff` (the escaped-pipe table parser
-   is 40 lines; port with its two regression cases from PRs #125/#126 as
-   `#guard`s). `gen_traceof.py` → `scripts-gen-traceof` (reads
+4. **DONE** `ledger_diff.py` → `scripts-ledger-diff`, `lake run ledger-diff --
+   OLD NEW | --latest [--out FILE]`: `Scripts/Ledger/Diff.lean` (the
+   escaped-pipe row splitter with the #125/#126 cases as `#guard`s, the
+   section/table reader, the instrument Δ as an exact decimal, the row diff,
+   the report) and `Scripts/Main/LedgerDiff.lean` (the IO). Report, stderr
+   warnings and exit code identical to the Python on every adjacent pair of
+   the series, both orders, a file against itself, `--out`. The dated
+   snapshots that name `scripts/ledger_diff.py` are history and stay.
+   **Open:** `gen_traceof.py` → `scripts-gen-traceof` (reads
    `Surface/Node.lean`'s mutual block; in Lean, read the syntax tree, not
    the text).
 5. **DONE** `docs_nav.py` → `scripts-docs-nav`, `lake run docs-nav -- <cmd>`
@@ -373,7 +379,7 @@ it removes Python from CI; it does not block an item.
 | pack_flip_census.py | I | 400 | 10-20 | every Row 12 item (PACK) | scripts-pack-census | DONE (`lake run pack-census -- flip|residue`) |
 | residue_classes.py | I | 123 | 10-30 | Row 12 items ≥ 403 | scripts-pack-census classes | DONE (`lake run pack-census -- classes`) |
 | docs_nav.py | I | 339 | 10-20 | AGENTS §1, skills | scripts-docs-nav | DONE (`lake run docs-nav`) |
-| ledger_diff.py | I | 226 | 10-26 | ledgers/README | scripts-ledger-diff | todo |
+| ledger_diff.py | I | 226 | 10-26 | ledgers/README | scripts-ledger-diff | DONE (`lake run ledger-diff`) |
 | drop_sweep.py | I | 229 | 09-22 | skills; DropDependents.lean's wide pin | scripts-drop-sweep | **DONE** (`lake run drop-sweep`) |
 | inline ×7: test-coverage.yml — `import weasyprint` probe ×2, hygiene heredoc, release-asset lookup; generate-all.sh — `import weasyprint` probe ×2, hygiene heredoc | G/R | ~30 | — | CI, generate-all.sh | hygiene ×2 → one Lean `stats.json` exe; asset lookup → `gh api --jq`; probes ×4 → `weasyprint --version` (Q3) | todo |
 | gen_traceof.py | I | 195 | 10-23 | TraceOf regeneration | scripts-gen-traceof | todo |

@@ -19,6 +19,6 @@ one.
   line of the last DOCS item, `Blueprint/04-capstones.md` row 7.7), and
   correct the previous snapshot's errors in the new file — never edit an
   old snapshot's content.
-- **Diff the two newest snapshots:** `scripts/ledger_diff.py --latest`
+- **Diff the two newest snapshots:** `lake run ledger-diff -- --latest`
   (add `--out /tmp/ledger-diff.md` to keep the report).
-- **Diff any pair:** `scripts/ledger_diff.py Blueprint/ledgers/parse_iff_grammar/2026-10-25.md Blueprint/ledgers/parse_iff_grammar/2026-10-26.md`.
+- **Diff any pair:** `lake run ledger-diff -- Blueprint/ledgers/parse_iff_grammar/2026-10-25.md Blueprint/ledgers/parse_iff_grammar/2026-10-26.md`.

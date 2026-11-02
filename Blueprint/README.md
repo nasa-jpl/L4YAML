@@ -68,7 +68,7 @@ Read in order on first visit:
    `theorem`-keyword reservation for capstones (Rule 7).
 6. [`ledgers/`](ledgers/README.md) — dated snapshots of where a
    long-running target stands (`parse_iff_grammar/YYYY-MM-DD.md`), with
-   `scripts/ledger_diff.py --latest` to show the progress between the two
+   `lake run ledger-diff -- --latest` to show the progress between the two
    newest dates. Old snapshots are never edited; corrections go in the next one.
 7. [`09-scripts-in-lean.md`](09-scripts-in-lean.md) — Rule 9's plan:
    the ledger of every `scripts/*.py`, its class, what Lean facility
