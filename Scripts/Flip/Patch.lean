@@ -60,6 +60,23 @@ def applyAll (t : String) : List Patch → Except String String
 #guard (applyAll "abc" [⟨"M", "zzz", "y", 1⟩]).isOk == false    -- 0 ≠ 1: refused
 #guard (applyAll "ab" [⟨"A", "a", "b", 1⟩, ⟨"B", "b", "c", 1⟩]).isOk == false  -- sequential: "bb" has 2 b's
 
+/-- A line-keyed replacement: `old` must occur exactly once within line
+`line` (1-based) of `t`; used when the anchor text repeats across the file
+(`flip_inl_declines.py`'s 14 `| Or.inl _ => Or.inr trivial` sites). -/
+def applyAt (t : String) (line : Nat) (p : Patch) : Except String String :=
+  let ls := (t.splitOn "\n").toArray
+  if line == 0 || line > ls.size then .error s!"{p.name}: line {line} is outside the file ({ls.size} lines)"
+  else
+    let l := ls[line - 1]!
+    let n := countOccurrences l p.old
+    if n != 1 then .error s!"{p.name}: line {line} does not contain `{p.old}` exactly once ({n}): {l.take 90}"
+    else .ok ("\n".intercalate (ls.set! (line - 1) (replaceAll l p.old p.new)).toList)
+
+#guard (applyAt "a\nx y\nx" 2 ⟨"P", "x", "z", 1⟩).toOption == some "a\nz y\nx"
+#guard (applyAt "a\nx x\nx" 2 ⟨"P", "x", "z", 1⟩).isOk == false     -- twice on the line
+#guard (applyAt "a\nx" 3 ⟨"P", "x", "z", 1⟩).isOk == false           -- no such line
+#guard (applyAt "a\nb" 1 ⟨"P", "x", "z", 1⟩).isOk == false           -- not on that line
+
 /-- A 64-bit content hash printed both sides of a run (the Python printed md5;
 core Lean has no MD5, and restoration is judged by byte equality, not the hash). -/
 def digest (b : ByteArray) : String :=
