@@ -99,33 +99,6 @@ def leanFiles (root r : String) : IO (Array String) := do
     if q.extension == some "lean" then some (strip q.toString) else none
   return out.qsort (· < ·)
 
-/-- Replace the keyword at each site's line (the first `theorem` token on that
-line in code is the site; sites are per line, as the scanner reports them). -/
-def rewriteSites (text : String) (lines : Array Nat) : String := Id.run do
-  let ls := (text.splitOn "\n").toArray
-  let mut out := ls
-  for ln in lines do
-    if h : ln - 1 < out.size then
-      let l := out[ln - 1]
-      -- the scanner reported a code-state `theorem` on this line; replace the first
-      -- occurrence that is at a token boundary
-      out := out.set (ln - 1) (replaceFirst l)
-  return "\n".intercalate out.toList
-where
-  replaceFirst (l : String) : String :=
-    let cs := l.toList
-    let rec go (prev : Char) : List Char → List Char
-      | [] => []
-      | c :: rest =>
-        if isKwAt (c :: rest) && !isIdentChar prev && prev != '.' && prev != '`' then
-          "lemma".toList ++ (c :: rest).drop 7
-        else c :: go c rest
-    String.ofList (go '\n' cs)
-  isKwAt : List Char → Bool
-    | 't' :: 'h' :: 'e' :: 'o' :: 'r' :: 'e' :: 'm' :: (c :: _) => c == ' ' || c == '\t'
-    | ['t', 'h', 'e', 'o', 'r', 'e', 'm'] => true
-    | _ => false
-
 def run (o : Options) : IO UInt32 := do
   let wlPath : System.FilePath := (o.root : System.FilePath) / o.whitelist
   let wl ← try pure (parseWhitelist (← IO.FS.readFile wlPath))
@@ -138,13 +111,13 @@ def run (o : Options) : IO UInt32 := do
   for rel in files do
     let text ← IO.FS.readFile ((o.root : System.FilePath) / rel)
     let mut edits : Array Nat := #[]
-    for (line, name) in sites text do
-      if allowed wl rel name then kept := kept + 1
+    for site in sites text do
+      if allowed wl rel site.name then kept := kept + 1
       else
-        violations := violations.push (rel, line, name)
-        edits := edits.push line
+        violations := violations.push (rel, site.line, site.name)
+        edits := edits.push site.offset
     if o.mode == some .rewrite && !edits.isEmpty then
-      IO.FS.writeFile ((o.root : System.FilePath) / rel) (rewriteSites text edits)
+      IO.FS.writeFile ((o.root : System.FilePath) / rel) (rewriteAt text edits)
       renamed := renamed + edits.size
   match o.mode with
   | some .stats =>

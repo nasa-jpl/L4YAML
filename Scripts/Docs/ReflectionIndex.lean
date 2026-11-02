@@ -105,7 +105,8 @@ where
       if c.isDigit && !(prev.isAlphanum || prev == '_') then
         let ds := (c :: t).takeWhile Char.isDigit
         let t' := (c :: t).drop ds.length
-        let acc := if ds.length == 3 then (String.ofList ds).toNat! :: acc else acc
+        let bounded := t'.head?.all fun c => !(c.isAlphanum || c == '_')
+        let acc := if ds.length == 3 && bounded then (String.ofList ds).toNat! :: acc else acc
         go t' (ds.getLastD c) acc
       else go t c acc
 
@@ -200,6 +201,8 @@ def gate (text : String) : UInt32 × Array String := Id.run do
 #guard labelNumbers "Reflection 592 (cites 611)" == [592]
 #guard labelNumbers "Reflections 245, 246 and 1234 (x 300)" == [245, 246]
 #guard labelNumbers "no number (300)" == []
+#guard labelNumbers "Reflection 123x" == []
+#guard labelNumbers "Reflection 123_a, 124" == [124]
 #guard (gate "import Tests.Reflections.A\n## T\n### S (Reflections 100, 101)\n* `A` — Reflections 100, 101 (z)\n").1 == 0
 #guard (gate "import Tests.Reflections.A\n## T\n### S (Reflections 100)\n* `A` — Reflection 100 (z)\n* `B` — Reflection 101 (z)\n").2 ==
   #["Reflections index: 2 problem(s)", "",
