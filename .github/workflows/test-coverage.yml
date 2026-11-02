@@ -161,7 +161,7 @@ jobs:
       - name: Run Lean test suites
         run: |
           mkdir -p docs/reports
-          bash scripts/run-all-tests.sh docs/reports
+          lake run run-all-tests -- docs/reports
 
       - name: Build C shared library and tryparse_c
         # Build straight into ffi/out — the canonical layout from the
@@ -282,7 +282,7 @@ jobs:
           bash scripts/check-reflection-index.sh
           bash scripts/check-closure-log.sh
           lake build scripts-check-ledger
-          bash scripts/check-scripts-lean.sh
+          lake run check-scripts-lean
           python3 - <<'EOF'
           import json, sys
           env = json.load(open('docs/reports/stats.json'))['env']
