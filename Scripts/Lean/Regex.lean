@@ -55,6 +55,20 @@ def escChar (e : Char) : Except String Char :=
   | 'v' => pure '\x0b' | 'a' => pure '\x07'
   | c => if c.isAlphanum then throw s!"unsupported escape `\\{c}`" else pure c
 
+/-- After `{`: Python's `{m}`, `{m,}`, `{m,n}`, `{,n}`, `{,}` (an empty bound is
+0 / unbounded); `{}` or anything else is not a quantifier and the `{` is literal. -/
+def braceQuant? (t : List Char) : Option (Nat × Option Nat × List Char) :=
+  let lo := t.takeWhile Char.isDigit
+  let loN := if lo.isEmpty then 0 else (String.ofList lo).toNat!
+  match t.drop lo.length with
+  | '}' :: r => if lo.isEmpty then none else some (loN, some loN, r)
+  | ',' :: r =>
+    let hi := r.takeWhile Char.isDigit
+    match r.drop hi.length with
+    | '}' :: r' => some (loN, (if hi.isEmpty then none else some (String.ofList hi).toNat!), r')
+    | _ => none
+  | _ => none
+
 mutual
   /-- Inside `[...]`, after the optional `^`: items until the closing `]`
   (a leading `]` is literal). -/
@@ -131,26 +145,16 @@ mutual
         | _ => (Node.rep atom lo hi false, rest)
       match r with
       | '*' :: _ | '+' :: _ | '?' :: _ => throw "multiple repeat"
-      | '{' :: d :: _ => if d.isDigit then throw "multiple repeat" else pure (n, r)
+      | '{' :: t => if (braceQuant? t).isSome then throw "multiple repeat" else pure (n, r)
       | _ => pure (n, r)
     match cs with
     | '*' :: t => mk 0 none t
     | '+' :: t => mk 1 none t
     | '?' :: t => mk 0 (some 1) t
     | '{' :: t =>
-      let ds := t.takeWhile Char.isDigit
-      let t' := t.drop ds.length
-      if ds.isEmpty then pure (atom, cs) else
-      let lo := (String.ofList ds).toNat!
-      match t' with
-      | '}' :: r => mk lo (some lo) r
-      | ',' :: '}' :: r => mk lo none r
-      | ',' :: r =>
-        let es := r.takeWhile Char.isDigit
-        match r.drop es.length with
-        | '}' :: r' => if es.isEmpty then pure (atom, cs) else mk lo (some (String.ofList es).toNat!) r'
-        | _ => pure (atom, cs)
-      | _ => pure (atom, cs)
+      match braceQuant? t with
+      | some (lo, hi, r) => mk lo hi r
+      | none => pure (atom, cs)
     | _ => pure (atom, cs)
 end
 
@@ -233,6 +237,7 @@ def test (pattern s : String) (icase := false) : Bool :=
 #guard test "\\AItem" "Item 1" && !test "\\AItem" " Item" && test "x\\Z" "ax" && !test "x\\Z" "xa"
 #guard (compile "\\x41").isOk == false && (compile "[\\x41]").isOk == false && (compile "[a-\\x41]").isOk == false && (compile "\\1").isOk == false && (compile "\\p").isOk == false
 #guard test "\\n" "a\nb" && test "\\-" "-" && test "[\\-a]" "-" && test "[\\.]" "." && !test "[\\.]" "x" && test "\\t" "\t"
+#guard test "a*{2x}" "aa{2x}" && test "a{}" "a{}" && test "^a{,2}b$" "ab" && !test "^a{,2}b$" "aaab" && test "^a{,}b$" "aaab" && (compile "a*{2}").isOk == false && (compile "a*{,2}").isOk == false
 #guard (compile "a?{2}").isOk == false && (compile "a**").isOk == false && (compile "a{2}{3}").isOk == false && (compile "a*?").isOk && test "a*{" "{" && test "a{2}?b" "aab"
 #guard (compile "(ab").isOk == false && (compile "ab)").isOk == false && (compile "*a").isOk == false && (compile "[ab").isOk == false
 
