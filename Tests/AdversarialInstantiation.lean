@@ -9537,7 +9537,8 @@ def testArmedOuterPartition (state : IO.Ref TestCollector) : IO Unit := do
   let witnesses := armedWitnesses.reverse.eraseDups
   check state s!"P83 armed-outer partition (item 422): closing-`:` pauses={colonPauses} compact-`?` pauses={qPauses}; K7={k7} ARMED={armed} neither={neither}; K7 key at landing={keyAtLanding} elsewhere={keyElsewhere}; simpleKeyAllowed down at park={skaDownAtPark}; ARMED witness survived `:`={witnessSurvived} closed={witnessClosed}; controls flow={flowPauses} dash={dashPauses}; parsed={parsed}/{inputs.length}; witnesses (k, x)={witnesses}"
     (colonPauses > 0 && qPauses > 0 && neither == 0 && k7 > 0 && armed ≥ 3 && keyElsewhere == 0 &&
-     skaDownAtPark > 0 && flowPauses > 0 && dashPauses > 0 && witnesses.all (fun (k, x) => x != k))
+     skaDownAtPark > 0 && flowPauses > 0 && dashPauses > 0 && witnessClosed == 0 &&
+     witnesses.all (fun (k, x) => x != k))
 
 -- Priority 83b (item 422, review): the membership lemma's OWN refutation half — `exists_mem_ne_of_not_markedColsIn`
 -- tested as an implication over CONSTRUCTED registers, not over scanned ones: `pendingKeys` / `indentColumns` varied
