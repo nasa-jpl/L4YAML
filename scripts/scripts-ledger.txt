@@ -7,7 +7,7 @@
 #   status  todo | lean:<exe> (ported; the .py is deleted, <exe> is a lean_exe) | exception:<reason> (plan §4)
 # Gate: scripts/check-scripts-lean.sh (lake exe scripts-check-ledger).  The pin below counts todo + exception rows
 # and must equal them; a port lowers it in the same PR.  The ledger may only shrink.
-# open: 83
+# open: 81
 scripts/arm_price.py | F | todo
 scripts/beta5_arms.py | F | todo
 scripts/carrier_price.py | F | todo
@@ -28,7 +28,7 @@ scripts/flip_carrier.py | F | todo
 scripts/flip_census.py | I | lean:scripts-flip-census
 scripts/flip_close_ctx.py | F | todo
 scripts/flip_close_relay.py | F | todo
-scripts/flip_colon_chain.py | F | todo
+scripts/flip_colon_chain.py | F | lean:scripts-flip
 scripts/flip_compact_chain.py | F | todo
 scripts/flip_compact_cover.py | F | todo
 scripts/flip_completed_tail.py | F | todo
@@ -42,7 +42,7 @@ scripts/flip_flow_pendingkeys.py | F | todo
 scripts/flip_inl_declines.py | F | todo
 scripts/flip_kslot_domain.py | F | todo
 scripts/flip_kslot_field.py | F | todo
-scripts/flip_kslote_domain.py | F | todo
+scripts/flip_kslote_domain.py | F | lean:scripts-flip
 scripts/flip_map_top.py | F | todo
 scripts/flip_map_top2.py | F | todo
 scripts/flip_node_route.py | F | todo
