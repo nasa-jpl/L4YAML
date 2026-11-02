@@ -110,20 +110,24 @@ def validateFiles (log sorryLog sites : System.FilePath) : IO UInt32 := do
 def run (o : Options) : IO UInt32 := do
   if let some (l, s, t) := o.validate then
     return ← validateFiles l s t
-  let root : System.FilePath := o.root
+  -- absolute paths throughout: the probes are written here and read by a
+  -- child whose cwd is `root`, so a relative `-C` or `-k` must not be resolved twice
+  let root : System.FilePath ← IO.FS.realPath o.root
+  let rootS := root.toString
   let work : System.FilePath ← match o.keep with
-    | some d => pure d
-    | none => do
-      let d := root / ".lake" / "scratch" / "serialization-proofs"
-      pure d
+    | some d => do
+      let d : System.FilePath := d
+      let cwd ← IO.currentDir
+      pure (if d.isAbsolute then d else cwd / d)
+    | none => pure (root / ".lake" / "scratch" / "serialization-proofs")
   IO.FS.createDirAll work
-  let (bc, buildLog) ← runLogged o.root "lake" #["build", "L4YAML.Proofs.Serialization"]
+  let (bc, buildLog) ← runLogged rootS "lake" #["build", "L4YAML.Proofs.Serialization"]
   IO.FS.writeFile (work / "build.log") buildLog
   if bc != 0 then
     IO.eprintln "scripts-check-serialization-proofs: lake build L4YAML.Proofs.Serialization failed"
     return 2
   IO.FS.writeFile (work / "SerializationSorryProbe.lean") sorryProbe
-  let (_, sorryLog) ← runLogged o.root "lake" #["env", "lean", (work / "SerializationSorryProbe.lean").toString]
+  let (_, sorryLog) ← runLogged rootS "lake" #["env", "lean", (work / "SerializationSorryProbe.lean").toString]
   IO.FS.writeFile (work / "sorry.log") sorryLog
   let mut sites : List String := []
   for f in #[root / "L4YAML" / "Proofs" / "Serialization.lean"] ++ (← leanFilesUnder (root / "L4YAML" / "Proofs" / "Serialization")) do
@@ -134,7 +138,7 @@ def run (o : Options) : IO UInt32 := do
     return 1
   let probe := "import L4YAML.Proofs.Serialization\n" ++ "\n".intercalate (sites.map (s!"#print axioms {·}")) ++ "\n"
   IO.FS.writeFile (work / "SerializationAxiomProbe.lean") probe
-  let (_, axLog) ← runLogged o.root "lake" #["env", "lean", (work / "SerializationAxiomProbe.lean").toString]
+  let (_, axLog) ← runLogged rootS "lake" #["env", "lean", (work / "SerializationAxiomProbe.lean").toString]
   IO.FS.writeFile (work / "axioms.log") axLog
   IO.FS.writeFile (work / "qualification.log") (buildLog ++ axLog)
   let code ← validateFiles (work / "qualification.log") (work / "sorry.log") (work / "sites.txt")

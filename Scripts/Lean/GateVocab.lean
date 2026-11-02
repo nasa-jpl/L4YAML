@@ -235,6 +235,8 @@ def reading (s : Scan) (names : Std.HashSet String) : Reading :=
 #guard mentions "`checkFooBar_refuted`" == ["checkFooBar_refuted", "checkFooBar_refuted"]  -- both patterns, as the Python
 #guard mentions "`scanLoopIx_step` `scanLoop_` `scanLoop_a``scanLoop_b`" == ["scanLoopIx_step", "scanLoop_a", "scanLoop_b"]
 #guard mentions "no closing `scanNextToken_foo" == []
+#guard mentions "no closing `missing_refuted either" == []   -- the Python's REFUTED also required the closing backtick
+#guard wrapTail "`missing_refuted` yes" == false && wrapTail "missing_refuted` yes"
 -- families, wraps
 #guard families "`dispatchStructural_none_*` `checkFoo_*` `scanLoop_x*` `scanLoop_*x`" == 2
 #guard wrapOpen "the gate `scanNextToken_checkBlock" && wrapOpen "  `checkFlow" && !wrapOpen "`checkflow" && !wrapOpen "`scanLoop_x` done"
