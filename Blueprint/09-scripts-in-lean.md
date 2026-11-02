@@ -258,7 +258,7 @@ breaks CI if wrong, cheapest first:
    only, with `svg-objects.py` ported (it is an HTML rewrite, 71 lines);
    (b) replace the pair with a `.sh` driving `weasyprint` CLI directly and
    a Lean exe for the TOC/SVG rewriting; (c) drop the PDF from CI.
-5. **Portable wrappers (Q7) — DONE for the two exe-only wrappers** (`lake run
+5. **Portable wrappers (Q7) — DONE (#202) for the two exe-only wrappers** (`lake run
    check-scripts-lean`, `lake run run-all-tests`; their `.sh` deleted; the four
    `check-*.sh` still wrap Python and are wired as `lake run` when phase 1 ports
    them; `generate-all.sh`, `check-serialization-proofs.sh`, `build-api-docs.sh`,
