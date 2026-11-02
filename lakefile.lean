@@ -403,6 +403,10 @@ lean_exe «scripts-pack-census» where
 lean_exe «scripts-drop-sweep» where
   root := `Scripts.Main.DropSweep
 
+@[default_target]
+lean_exe «scripts-ledger-diff» where
+  root := `Scripts.Main.LedgerDiff
+
 /-! Phase 4.5 (Rule 9, Q7): portable entry points — `lake run <name>` replaces the
 bash wrappers that only run a `lean_exe`; same on Linux, macOS and Windows. -/
 
@@ -474,6 +478,11 @@ script «pack-census» (args) do
 /-- `lake run drop-sweep [-- -q]`: the WIDE `scannerDrop` dependents sweep (item 238). -/
 script «drop-sweep» (args) do
   runGateExe (← getWorkspace).root.dir "scripts-drop-sweep" #[] args
+
+/-- `lake run ledger-diff -- OLD NEW | --latest [--out FILE]`: diff two parse_iff_grammar
+    ledger snapshots. -/
+script «ledger-diff» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-ledger-diff" #[] args
 
 script «check-gate-vocab» (args) do
   let ws ← getWorkspace
