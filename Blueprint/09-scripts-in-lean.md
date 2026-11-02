@@ -215,7 +215,7 @@ breaks CI if wrong, cheapest first:
    declarations` DOCS.md item 417 quotes is the probe's first cut, before
    its call-order fix).  Python and Lean agree line for line on both.
 2. Specs for the flips whose readings are **still cited as live
-   instruments** by an open NEXT or a ledger snapshot. **Half DONE:**
+   instruments** by an open NEXT or a ledger snapshot. **Half DONE (#201):**
    `flip_210.py` (`item210_implicit_continue.json`, `target: ""` = the whole
    build), `flip_211_stage1.py` (`item375_flip211_stage1.json`, two files,
    the four route deletions as block anchors) and `flip_inl_declines.py`
