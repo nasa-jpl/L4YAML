@@ -81,35 +81,63 @@ def byOwner (sites : Array Site) : Array (String × Array Site) := Id.run do
     | none => out := out.push (s.owner, #[s])
   return out
 
-/-- Bracket depth change of a line, ignoring text after `--`. -/
-def depthDelta (l : String) : Int :=
-  let code := (l.splitOn "--").headD ""
-  code.foldl (fun d c =>
-    if c == '(' || c == '[' || c == '{' || c == '⟨' then d + 1
-    else if c == ')' || c == ']' || c == '}' || c == '⟩' then d - 1 else d) 0
+/-- Lexical state carried across the lines of a declaration: bracket depth
+and block-comment nesting. -/
+structure Lex where
+  depth : Int := 0
+  comment : Nat := 0
+  deriving Repr, Inhabited, BEq
 
-/-- Position of the first top-level ` :=` of a line entered at bracket depth
-`d0` (a `:=` inside `(h : x := default)` is skipped), with the depth at the
-end of the line. -/
-def topLevelAssign (l : String) (d0 : Int) : Option Nat × Int := Id.run do
-  let code := (l.splitOn "--").headD ""
-  let cs := code.toList.toArray
-  let mut d := d0
+/-- Is `cs[i]` the opening quote of a character literal (`'a'`, `'\n'`)?  A
+quote glued to an identifier (`h'`, `s'.col`) is not. -/
+def charLitAt (cs : Array Char) (i : Nat) : Bool :=
+  cs[i]! == '\'' && (i == 0 || !(cs[i - 1]!.isAlphanum || cs[i - 1]! == '_')) &&
+  ((i + 2 < cs.size && cs[i + 1]! != '\\' && cs[i + 2]! == '\'') ||
+   (i + 3 < cs.size && cs[i + 1]! == '\\' && cs[i + 3]! == '\''))
+
+/-- Scan one line from lexical state `st`: the position of the first top-level
+` :=` (outside strings, character literals, `--` and `/- -/` comments, at
+bracket depth 0; a `:=` inside `(h : x := default)` is skipped) and the state
+at the end of the line. -/
+def topLevelAssign (l : String) (st : Lex) : Option Nat × Lex := Id.run do
+  let cs := l.toList.toArray
+  let mut d := st.depth
+  let mut cm := st.comment
+  let mut inStr := false
   let mut i := 0
   while i < cs.size do
     let c := cs[i]!
-    if c == '(' || c == '[' || c == '{' || c == '⟨' then d := d + 1
+    if cm > 0 then
+      if c == '-' && i + 1 < cs.size && cs[i + 1]! == '/' then cm := cm - 1; i := i + 1
+      else if c == '/' && i + 1 < cs.size && cs[i + 1]! == '-' then cm := cm + 1; i := i + 1
+    else if inStr then
+      if c == '\\' then i := i + 1
+      else if c == '"' then inStr := false
+    else if c == '"' then inStr := true
+    else if c == '/' && i + 1 < cs.size && cs[i + 1]! == '-' then cm := 1; i := i + 1
+    else if c == '-' && i + 1 < cs.size && cs[i + 1]! == '-' then break
+    else if charLitAt cs i then i := i + (if cs[i + 1]! == '\\' then 3 else 2)
+    else if c == '(' || c == '[' || c == '{' || c == '⟨' then d := d + 1
     else if c == ')' || c == ']' || c == '}' || c == '⟩' then d := d - 1
     else if d == 0 && c == ':' && i + 1 < cs.size && cs[i + 1]! == '=' && (i == 0 || cs[i - 1]! == ' ' || cs[i - 1]! == ')')
         && (i + 2 ≥ cs.size || cs[i + 2]! == ' ') then
-      return (some i, depthDelta l)
+      return (some i, { depth := d, comment := cm })
     i := i + 1
-  return (none, d)
+  return (none, { depth := d, comment := cm })
 
-#guard (topLevelAssign "lemma f (n : Nat) : n = n := by" 0).1 == some 26
-#guard (topLevelAssign "    (h : x := 3) :" 0).1 == none        -- inside the binder
-#guard (topLevelAssign "  (h_x : A) -- note := here" 0).1 == none
-#guard (topLevelAssign "    : n = n := rfl" 0).1 == some 12
+#guard (topLevelAssign "lemma f (n : Nat) : n = n := by" {}).1 == some 26
+#guard (topLevelAssign "    (h : x := 3) :" {}).1 == none        -- inside the binder
+#guard (topLevelAssign "  (h_x : A) -- note := here" {}).1 == none
+#guard (topLevelAssign "    : n = n := rfl" {}).1 == some 12
+#guard (topLevelAssign "lemma docBoundary_start : isDocumentBoundary \"---\" := Or.inl rfl" {}).1 == some 51
+#guard (topLevelAssign "    parsesError \"[\" = true := by native_decide" {}).1 == some 27
+#guard (topLevelAssign "lemma q : f '(' \"\\\"\" = 1 := rfl" {}).1 == some 25          -- char literal and an escaped quote
+#guard (topLevelAssign "lemma r (h : s'.col = 0) : s' = s' := by" {}).1 == some 35     -- primes are not char literals
+#guard (topLevelAssign "lemma c /- ( := -/ : True := trivial" {}).1 == some 26
+#guard (topLevelAssign "lemma d /- opens (" {}).2 == { depth := 0, comment := 1 }
+#guard (topLevelAssign "  still ( comment -/ : True := trivial" { comment := 1 }).1 == some 28
+#guard (topLevelAssign "  (a : Nat)" {}).2 == { depth := 0, comment := 0 }
+#guard (topLevelAssign "  (a : Nat" {}).2 == { depth := 1, comment := 0 }
 
 /-- Replace the body of the declaration owning line `lineno` (1-based) with
 `sorry`: the signature is kept up to its top-level `:=`, the text from there
@@ -133,13 +161,13 @@ def sorryBody (lines : Array String) (lineno : Nat) : Option (Array String) := I
     if (openerOf l).isSome || (commandOf l).isSome || l.startsWith "end" || l.startsWith "@[" then break
     e := e + 1
   let mut k := s
-  let mut d : Int := 0
+  let mut st : Lex := {}
   while k < e do
-    let (pos, d') := topLevelAssign lines[k]! d
+    let (pos, st') := topLevelAssign lines[k]! st
     if let some p := pos then
       let sigHead := String.ofList (lines[k]!.toList.take p)
       return some ((lines.extract 0 k).push (sigHead.trimAsciiEnd.toString ++ " := by sorry") ++ lines.extract e lines.size)
-    d := d'
+    st := st'
     k := k + 1
   return none
 
