@@ -214,16 +214,14 @@ def baseName (path : String) : String :=
   | none => path
 
 /-- `enclosing`, on the file's lines (0-based array) and the 1-based error
-line.  A command at (or on the two lines above) the error line owns the
-site; else the nearest opener at or above it. -/
+line.  A command on the error line or the line above it owns the site; else the nearest opener at or above it. -/
 def enclosing (fileName : String) (lines : Array String) (lineno : Nat) : Option Owner := Id.run do
   let top := min lineno lines.size           -- Python: min(lineno, len(lines))
-  -- for i in range(top - 1, max(top - 3, -1), -1)
-  let lo := if top ≥ 3 then top - 3 else 0   -- exclusive lower bound, as max(top-3, -1) but never below -1
+  -- for i in range(top - 1, max(top - 3, -1), -1): the error line and the one above it
   let mut i := top
   while i > 0 do
     i := i - 1
-    if i < lo then break
+    if i + 2 < top then break
     match commandOf lines[i]! with
     | some k => return some ⟨k, s!"<{fileName}:{i + 1}>"⟩
     | none => pure ()
@@ -248,7 +246,10 @@ def exampleFile : Array String := #[
   "  rfl"]                            -- 10
 
 #guard enclosing "F.lean" exampleFile 5 == some ⟨"#guard", "<F.lean:5>"⟩
-#guard enclosing "F.lean" exampleFile 7 == some ⟨"#guard", "<F.lean:5>"⟩   -- two lines above (Python's window)
+#guard enclosing "F.lean" exampleFile 6 == some ⟨"#guard", "<F.lean:5>"⟩   -- one line above: the window
+#guard enclosing "F.lean" exampleFile 7 == some ⟨"lemma", "foo"⟩           -- two lines above: outside it (Python's range(top-1, top-3, -1))
+#guard enclosing "F.lean" exampleFile 2 == none                            -- top of file: lines 2 and 1 only
+#guard enclosing "F.lean" #["#eval 1", "x"] 2 == some ⟨"#eval", "<F.lean:1>"⟩
 #guard enclosing "F.lean" exampleFile 8 == some ⟨"lemma", "foo"⟩
 #guard enclosing "F.lean" exampleFile 10 == some ⟨"theorem", "bar"⟩
 #guard enclosing "F.lean" exampleFile 3 == some ⟨"def", "tagCases"⟩

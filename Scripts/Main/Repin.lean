@@ -59,6 +59,9 @@ def parseArgs (args : List String) : Parsed :=
   else
     let check := args.contains "--check" || args.contains "-c"
     let positional := args.filter fun a => !a.startsWith "-"
+    match args.find? fun a => a.startsWith "-" && a != "--check" && a != "-c" with
+    | some a => .bad s!"unknown option `{a}`"
+    | none =>
     match positional with
     | [log] => .run { log, check }
     | [log, root] => .run { log, root, check }

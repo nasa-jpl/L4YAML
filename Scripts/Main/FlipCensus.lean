@@ -161,9 +161,15 @@ def parseArgs : List String → Parsed
   | [] => .run none "."
   | ["-h"] | ["--help"] => .help
   | ["-V"] | ["--version"] => .version
-  | [log] => .run (some log) "."
-  | [log, root] => .run (some log) root
-  | a :: _ => .bad s!"too many arguments at `{a}`"
+  | args =>
+    match args.find? fun a => a.startsWith "-" with
+    | some a => .bad s!"unknown option `{a}`"
+    | none =>
+      match args with
+      | [log] => .run (some log) "."
+      | [log, root] => .run (some log) root
+      | a :: _ => .bad s!"too many arguments at `{a}`"
+      | [] => .run none "."
 
 end Scripts.FlipCensus
 
