@@ -21,11 +21,14 @@ open Scripts.Lean.BuildLog
 
 namespace Scripts.Flip.Round
 
-/-- One error site in the flipped file. -/
+/-- One error site: the logged file, its line, the message, and its owner —
+the declaration name (prefixed by the file when it is not the flipped one),
+`<file:line>` for a gate command, `?` when nothing encloses it. -/
 structure Site where
+  file : String
   line : Nat
   msg : String
-  owner : String          -- declaration name, or `<file:line>` for a gate, or `?`
+  owner : String
   deriving Repr, Inhabited, BEq
 
 /-- Does the logged path name `rel`?  Lake logs the path as given; accept a
@@ -38,17 +41,36 @@ def namesFile (logged rel : String) : Bool :=
 #guard namesFile "L4YAML/B.lean" "L4YAML/A.lean" == false
 #guard namesFile "XL4YAML/A.lean" "L4YAML/A.lean" == false
 
-/-- The sites of `rel` in a build log, resolved against the flipped text. -/
-def sitesOf (log rel : String) (lines : Array String) : Array Site := Id.run do
+/-- Every error line of a build log, both lake orderings, any file. -/
+def errsOf (log : String) : Array ErrLine := Id.run do
   let mut out := #[]
   for raw in log.splitOn "\n" do
-    if let some e := parseErr raw then
-      if namesFile e.file rel then
-        let owner := match enclosing rel lines e.line with
-          | some o => o.name
-          | none => "?"
-        out := out.push ⟨e.line, e.msg, owner⟩
+    if let some e := parseErr raw then out := out.push e
   return out
+
+/-- The distinct logged files of `errs`, first-seen order. -/
+def filesOf (errs : Array ErrLine) : Array String :=
+  errs.foldl (fun acc e => if acc.contains e.file then acc else acc.push e.file) #[]
+
+/-- The sites of `errs` that name `rel`, resolved against `lines` (the text of
+`rel`); `label` decorates the owner (identity for the flipped file, the file
+name for a dependent one). -/
+def resolveSites (errs : Array ErrLine) (rel : String) (lines : Array String)
+    (label : String → String := id) : Array Site :=
+  errs.filterMap fun e =>
+    if namesFile e.file rel then
+      let owner := match enclosing rel lines e.line with
+        | some o => o.name
+        | none => "?"
+      some ⟨rel, e.line, e.msg, label owner⟩
+    else none
+
+#guard (errsOf "x\nerror: A.lean:3:1: boom\nB.lean:7:0: error: bang\n").size == 2
+#guard filesOf (errsOf "error: A.lean:3:1: boom\nB.lean:7:0: error: bang\nerror: A.lean:9:1: again") == #["A.lean", "B.lean"]
+#guard resolveSites (errsOf "error: A.lean:3:1: boom\nB.lean:7:0: error: bang") "A.lean" #["def a := 1", "", "  x"]
+  == #[⟨"A.lean", 3, "boom", "a"⟩]
+#guard resolveSites (errsOf "B.lean:7:0: error: bang") "B.lean" #["lemma b : True := by", "", "", "", "", "", "  x"] (fun n => s!"B.lean {n}")
+  == #[⟨"B.lean", 7, "bang", "B.lean b"⟩]
 
 /-- Sites grouped by owner, in first-seen order (Python `dict.setdefault`). -/
 def byOwner (sites : Array Site) : Array (String × Array Site) := Id.run do
@@ -59,11 +81,42 @@ def byOwner (sites : Array Site) : Array (String × Array Site) := Id.run do
     | none => out := out.push (s.owner, #[s])
   return out
 
+/-- Bracket depth change of a line, ignoring text after `--`. -/
+def depthDelta (l : String) : Int :=
+  let code := (l.splitOn "--").headD ""
+  code.foldl (fun d c =>
+    if c == '(' || c == '[' || c == '{' || c == '⟨' then d + 1
+    else if c == ')' || c == ']' || c == '}' || c == '⟩' then d - 1 else d) 0
+
+/-- Position of the first top-level ` :=` of a line entered at bracket depth
+`d0` (a `:=` inside `(h : x := default)` is skipped), with the depth at the
+end of the line. -/
+def topLevelAssign (l : String) (d0 : Int) : Option Nat × Int := Id.run do
+  let code := (l.splitOn "--").headD ""
+  let cs := code.toList.toArray
+  let mut d := d0
+  let mut i := 0
+  while i < cs.size do
+    let c := cs[i]!
+    if c == '(' || c == '[' || c == '{' || c == '⟨' then d := d + 1
+    else if c == ')' || c == ']' || c == '}' || c == '⟩' then d := d - 1
+    else if d == 0 && c == ':' && i + 1 < cs.size && cs[i + 1]! == '=' && (i == 0 || cs[i - 1]! == ' ' || cs[i - 1]! == ')')
+        && (i + 2 ≥ cs.size || cs[i + 2]! == ' ') then
+      return (some i, depthDelta l)
+    i := i + 1
+  return (none, d)
+
+#guard (topLevelAssign "lemma f (n : Nat) : n = n := by" 0).1 == some 26
+#guard (topLevelAssign "    (h : x := 3) :" 0).1 == none        -- inside the binder
+#guard (topLevelAssign "  (h_x : A) -- note := here" 0).1 == none
+#guard (topLevelAssign "    : n = n := rfl" 0).1 == some 12
+
 /-- Replace the body of the declaration owning line `lineno` (1-based) with
-`sorry`: from the opener line, every line up to the next column-0 opener,
-command, `end`, or end of file is dropped and `:= by sorry` appended to the
-opener's first line.  `none` when no opener encloses the line (a gate site
-cannot be sorried). -/
+`sorry`: the signature is kept up to its top-level `:=`, the text from there
+to the next column-0 opener / command / `end` / attribute is dropped, and
+`:= by sorry` is appended.  `none` when no opener encloses the line, or the
+declaration has no top-level `:=` (a statement that fails to elaborate, an
+`inductive`/`structure`), which a sorry cannot repair. -/
 def sorryBody (lines : Array String) (lineno : Nat) : Option (Array String) := Id.run do
   let top := min lineno lines.size
   let mut i := top
@@ -79,23 +132,33 @@ def sorryBody (lines : Array String) (lineno : Nat) : Option (Array String) := I
     let l := lines[e]!
     if (openerOf l).isSome || (commandOf l).isSome || l.startsWith "end" || l.startsWith "@[" then break
     e := e + 1
-  let head := lines[s]!
-  let cut := match head.splitOn " :=" with
-    | h :: _ :: _ => h
-    | _ => head
-  return some ((lines.extract 0 s).push (cut ++ " := by sorry") ++ lines.extract e lines.size)
+  let mut k := s
+  let mut d : Int := 0
+  while k < e do
+    let (pos, d') := topLevelAssign lines[k]! d
+    if let some p := pos then
+      let sigHead := String.ofList (lines[k]!.toList.take p)
+      return some ((lines.extract 0 k).push (sigHead.trimAsciiEnd.toString ++ " := by sorry") ++ lines.extract e lines.size)
+    d := d'
+    k := k + 1
+  return none
 
 def exampleFile : Array String := #[
   "import X",
   "lemma foo : True := by",
   "  trivial",
   "",
-  "lemma bar : 1 = 1 :=",
-  "  rfl",
+  "lemma bar (n : Nat)",
+  "    (h : n = n := rfl) :",
+  "    n = n := by",
+  "  exact h",
+  "inductive T where",
+  "  | a",
   "end"]
 
-#guard sorryBody exampleFile 3 == some #["import X", "lemma foo : True := by sorry", "lemma bar : 1 = 1 :=", "  rfl", "end"]
-#guard sorryBody exampleFile 6 == some #["import X", "lemma foo : True := by", "  trivial", "", "lemma bar : 1 = 1 := by sorry", "end"]
+#guard sorryBody exampleFile 3 == some #["import X", "lemma foo : True := by sorry", "lemma bar (n : Nat)", "    (h : n = n := rfl) :", "    n = n := by", "  exact h", "inductive T where", "  | a", "end"]
+#guard sorryBody exampleFile 8 == some #["import X", "lemma foo : True := by", "  trivial", "", "lemma bar (n : Nat)", "    (h : n = n := rfl) :", "    n = n := by sorry", "inductive T where", "  | a", "end"]
+#guard sorryBody exampleFile 10 == none      -- an inductive has no body to sorry
 #guard sorryBody exampleFile 1 == none
 
 /-- Sorry every owner of `sites` (one edit per declaration, last line first so

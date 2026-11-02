@@ -42,7 +42,7 @@ array of lines keeps the Lean text literal):
 ```
 -/
 
-open Lean Scripts.Flip Scripts.Flip.Round Scripts.Flip.Report
+open Lean Scripts.Flip Scripts.Flip.Round Scripts.Flip.Report Scripts.Lean.BuildLog
 
 namespace Scripts.FlipMain
 
@@ -60,12 +60,13 @@ REV and the working tree.  Never run beside another lake build.
   -C, --root ROOT   repository root (default: .)
   -r, --rev REV     revision holding the un-paid text (default: spec.rev)
   -k, --keep        leave the patched tree in place
-  -d, --dry         check the anchors and print the sites; do not build
+  -d, --dry         check that every anchor matches; write and build nothing
   -V, --version     print the version and exit
   -h, --help        print this help and exit
 
 exit status: 0 run complete and file restored, 1 file not restored
-identically, 2 usage, spec, git or anchor error."
+identically, 2 usage, spec, git or anchor error, 3 incomplete probe (the
+build failed with no attributable site, or only dependent modules fail)."
 
 structure PatchJ where
   name : String
@@ -157,14 +158,29 @@ def readSpec (path : String) : IO (Except String Spec) := do
   let txt ← try IO.FS.readFile path catch e => return .error s!"cannot read {path}: {e}"
   return Json.parse txt >>= fromJson?
 
-/-- One build round: build, save the log, return (exit, sites). -/
-def round (root : System.FilePath) (spec : Spec) (lines : Array String) : IO (UInt32 × Array Site) := do
+/-- Sites of a dependent file, resolved against its own source under `root`
+(owner prefixed by the file); `file ?` when the file cannot be read. -/
+def otherSites (root : System.FilePath) (errs : Array ErrLine) (f : String) : IO (Array Site) := do
+  try
+    let txt ← IO.FS.readFile (root / f)
+    return resolveSites errs f (splitLines txt) (fun n => s!"{f} {n}")
+  catch _ =>
+    return errs.filterMap fun e => if e.file == f then some ⟨f, e.line, e.msg, s!"{f} ?"⟩ else none
+
+/-- One build round: build, save the log, return (exit, sites in the flipped
+file, sites in every other file). -/
+def round (root : System.FilePath) (spec : Spec) (lines : Array String) : IO (UInt32 × Array Site × Array Site) := do
   let o ← IO.Process.output { cmd := "lake", args := #["build", spec.target], cwd := some root }
   let out := o.stdout ++ o.stderr
   let logPath := root / spec.log
   if let some d := logPath.parent then IO.FS.createDirAll d
   IO.FS.writeFile logPath out
-  return (o.exitCode, sitesOf out spec.file lines)
+  let errs := errsOf out
+  let main := resolveSites errs spec.file lines
+  let mut others := #[]
+  for f in filesOf errs do
+    if !namesFile f spec.file then others := others ++ (← otherSites root errs f)
+  return (o.exitCode, main, others)
 
 def runSpec (o : Opts) : IO UInt32 := do
   let root : System.FilePath := o.root
@@ -192,42 +208,56 @@ def runSpec (o : Opts) : IO UInt32 := do
     return 0
   let mut lines := splitLines patched
   let mut restoredOk := true
+  let mut incomplete : Option String := none
   try
     IO.FS.writeFile src patched
     IO.println s!"flip tree hash {Patch.digest patched.toUTF8}; building {spec.target} …"
     (← IO.getStdout).flush
     let mut r := 1
-    let mut allSites : Array Site := #[]
+    let mut seen : Array Site := #[]
     repeat
-      let (code, sites) ← round root spec lines
+      let (code, main, others) ← round root spec lines
+      let fresh := (main ++ others).filter fun s => !(seen.any (·.owner == s.owner))
       if r == 1 then
-        IO.println (headline spec.tag code sites)
-        for l in ownerLines sites spec.msgWidth do IO.println l
-        allSites := sites
+        IO.println (headline spec.tag code main)
+        for l in ownerLines main spec.msgWidth do IO.println l
+        if !others.isEmpty then
+          IO.println s!"  other files: {others.size} site(s) in {(byOwner others).size} declaration(s)"
+          for l in ownerLines others spec.msgWidth do IO.println l
       else
-        let fresh := sites.filter fun s => !(allSites.any (·.owner == s.owner))
-        IO.println s!"round {r}: exit={code} errors={sites.size} new decls={(byOwner fresh).size}"
+        IO.println s!"round {r}: exit={code} errors={main.size + others.size} new decls={(byOwner fresh).size}"
         for l in ownerLines fresh spec.msgWidth do IO.println l
-        allSites := allSites ++ fresh
-        if fresh.isEmpty then break
+      seen := seen ++ fresh
+      if code == 0 then
+        if r > 1 then IO.println s!"round {r}: build green — fixpoint"
+        break
+      if main.isEmpty && others.isEmpty then
+        incomplete := some "the build failed with no diagnostic attributable to a source line (wrong target? Lake error?) — see the log"
+        break
       if r ≥ spec.rounds then break
-      lines := sorryBodies lines sites
+      let freshMain := fresh.filter (·.file == spec.file)
+      if freshMain.isEmpty then
+        incomplete := some s!"no new site in {spec.file} but the build still fails ({others.size} site(s) in dependent modules, outside the flip's scope)"
+        break
+      lines := sorryBodies lines main
       IO.FS.writeFile src ("\n".intercalate lines.toList ++ "\n")
       r := r + 1
     if spec.rounds > 1 then
-      IO.println s!"fixpoint after {r} round(s): errors={allSites.size} decls={(byOwner allSites).size}"
+      IO.println s!"after {r} round(s): errors={seen.size} decls={(byOwner seen).size}"
+    if let some why := incomplete then IO.println s!"INCOMPLETE: {why}"
     IO.println s!"FLOOR: one build of `{spec.target}` per round; guard modules behind it unmeasured."
   finally
     if o.keep then
+      IO.FS.writeFile src patched
       let now ← IO.FS.readBinFile src
-      IO.println s!"--keep: patched copy of {rev}:{spec.file} left in place (hash {Patch.digest now}; working tree was {h0})"
+      IO.println s!"--keep: patched copy of {rev}:{spec.file} left in place (hash {Patch.digest now}, the spec's text, no round's sorry; working tree was {h0})"
     else
       IO.FS.writeBinFile src orig
       let now ← IO.FS.readBinFile src
       let same := now == orig
       IO.println s!"restored hash {Patch.digest now} (orig {h0}) identical={same}"
       restoredOk := same
-  return if restoredOk then 0 else 1
+  return if !restoredOk then 1 else if incomplete.isSome then 3 else 0
 
 end Scripts.FlipMain
 

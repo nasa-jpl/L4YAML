@@ -29,7 +29,7 @@ def ownerLines (sites : Array Site) (msgWidth : Nat) : Array String := Id.run do
       out := out.push s!"    {e.line}: {e.msg.take msgWidth}"
   return out
 
-#guard headline "T" 1 #[⟨3, "m", "a"⟩, ⟨9, "n", "a"⟩, ⟨12, "o", "b"⟩] == "T exit=1 errors=3 decls=2"
-#guard ownerLines #[⟨3, "message", "a"⟩, ⟨9, "n", "a"⟩] 4 == #["  a: 2 site(s)", "    3: mess", "    9: n"]
+#guard headline "T" 1 #[⟨"F", 3, "m", "a"⟩, ⟨"F", 9, "n", "a"⟩, ⟨"F", 12, "o", "b"⟩] == "T exit=1 errors=3 decls=2"
+#guard ownerLines #[⟨"F", 3, "message", "a"⟩, ⟨"F", 9, "n", "a"⟩] 4 == #["  a: 2 site(s)", "    3: mess", "    9: n"]
 
 end Scripts.Flip.Report
