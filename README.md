@@ -822,7 +822,7 @@ substantial work so we can discuss scope and proof strategy.
 Proof work follows [`Blueprint/06-discipline.md`](Blueprint/06-discipline.md);
 [`AGENTS.md`](AGENTS.md) is the one-screen orientation (sources of truth,
 build and gates, the closure-log item protocol, campaign vocabulary), and
-`python3 scripts/docs_nav.py next` finds the active mandate in `DOCS.md`
+`lake run docs-nav -- next` finds the active mandate in `DOCS.md`
 without paging it.
 
 ## Acknowledgments

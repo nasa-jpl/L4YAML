@@ -6,7 +6,7 @@ description: Refute-before-prove for L4YAML — check a proposed or sorry'd lemm
 # Adversarial instantiation before proof (Rule 2)
 
 Statement first, refuter second, proof third.  Method and history:
-`python3 scripts/docs_nav.py section 'adversarial inst'`.
+`lake run docs-nav -- section 'adversarial inst'`.
 
 ## 1. Trace the capstone (Rule 1)
 

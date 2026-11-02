@@ -15,7 +15,7 @@ one.
 
 - **Take a snapshot.**  Copy the latest file to today's date, re-read every
   `State` cell and every instrument off the current tree (`git rev-parse
-  --short HEAD`, `scripts/docs_nav.py items --last 3`, the `PACK-RESIDUE`
+  --short HEAD`, `lake run docs-nav -- items --last 3`, the `PACK-RESIDUE`
   line of the last DOCS item, `Blueprint/04-capstones.md` row 7.7), and
   correct the previous snapshot's errors in the new file — never edit an
   old snapshot's content.

@@ -391,6 +391,10 @@ lean_exe «scripts-check-serialization-proofs» where
 lean_exe «scripts-gate-vocab» where
   root := `Scripts.Main.GateVocab
 
+@[default_target]
+lean_exe «scripts-docs-nav» where
+  root := `Scripts.Main.DocsNav
+
 /-! Phase 4.5 (Rule 9, Q7): portable entry points — `lake run <name>` replaces the
 bash wrappers that only run a `lean_exe`; same on Linux, macOS and Windows. -/
 
@@ -449,6 +453,11 @@ script «check-serialization-proofs» (args) do
 /-- Every gate / refutation name the prose cites resolves in the environment
 (`python3 scripts/gate_vocab.py` before phase 1); the exe reads `.olean`
 headers through `LEAN_PATH`, which this script sets from the workspace. -/
+-- `lake run docs-nav -- <cmd> [options]`: navigate DOCS.md (toc, items, item N, next,
+-- remaining, steps, grep REGEX, section PREFIX) without paging it.
+script «docs-nav» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-docs-nav" #[] args
+
 script «check-gate-vocab» (args) do
   let ws ← getWorkspace
   runGateExe ws.root.dir "scripts-gate-vocab" #[] args #[] ws.augmentedEnvVars
