@@ -277,8 +277,9 @@ def expectedBinders : List String :=
 -- 2026-10-29 (item 394, option B): skipped 41 → 42 — the mapping arm's valueF supply is an
 -- `Or.elim` over the park's cover (informative → carried, punted → declined), a shape the
 -- arm-payment reader skips (RelaySupply's tally skipped 41 → 42 the same way).
+-- 2026-11-02 (item 422): edges 106 → 108, RELAY 29 → 31 — the openers' `h_ref` relay the `h_outer` ARMED arm whole (`fun h => Or.inr h`).
 def expectedTally : String :=
-  "edges=106 skipped=42 DECLINE=21 FIELD=7 PAY=17 RELAY=29 VIA=32"
+  "edges=108 skipped=42 DECLINE=21 FIELD=7 PAY=17 RELAY=31 VIA=32"
 
 run_cmd do
   let env ← getEnv
@@ -308,8 +309,10 @@ run_cmd do
     "FOUR TIMES" is the four at `closeThenBlock`, and the other five are next
     door.  A projection is invisible to a census of `Or.inl`, which is why this
     row needs the resolver and not a grep. -/
+-- 2026-11-02 (item 422): closeThenBlock 4 → 5, pendingBlockContent 8 → 9 — one more `MarkedColsIn s_prep [k]` projection read at
+-- each (the `h_outer` decision moved from the park's cover to the prepared register).
 def expectedProjections : List String :=
-  [ "4 accum_block_on_closeThenBlock", "8 accum_block_on_pendingBlockContent" ]
+  [ "5 accum_block_on_closeThenBlock", "9 accum_block_on_pendingBlockContent" ]
 
 run_cmd do
   let (es, _) ← armEdges ``L4YAML.Proofs.StreamAccum.landing_or_park_ska

@@ -370,6 +370,8 @@ declarations' own binders and not by a rescoring of an existing one.
 -- 2026-10-30 (item 405): `h_mcstep_ne` premises on `accum_block_on_closeThenBlock`/`accum_block_on_pendingContent` (decls 1367 → 1370, READ +14, RELAY +1).
 -- 2026-10-30 (item 405, Rule 8 fix): follows HypothesisReaderCensus — the `?`-park chain re-indexed by `markedCols sc` (READ 1461 → 1457, RELAY 2721 → 2723).
 -- 2026-10-30 (item 407, flow carrier `pendingKeys` conjunct): constants 1733 → 1734 — `allowDirectives_update_pendingKeys`.
+-- 2026-11-02 (item 422): the PEELED module census moved — the five `h_outer` writes decide `MarkedColsIn s_prep [k]` (one `Classical.em`) in
+-- place of `h_park`/`h_kslotUp` reads; two opener `h_ref` relays; `exists_mem_ne_of_not_markedColsIn` added.
 def expectedModuleTallyP : String :=
   -- 2026-10-24 (item 350): constants 1424 → 1430, decls 1132 → 1137, READ 1207 → 1209, RELAY 2233 → 2237,
   -- RETURN 139 → 140 — `NotQuestionPark` and its three lemmas; `explFrameValueLine`'s split alternative.
@@ -387,7 +389,7 @@ def expectedModuleTallyP : String :=
   -- 2026-10-28 (item 386): constants/decls +2 (`IndentFloor.int_le_of_succ`, the level relays), READ +5, RELAY +2
   -- (the helpers' new premises `h_floor`/`h_nk`, the openers' `h_lvl_old`/`h_floor_mv`); UNUSED unchanged.
   -- 2026-10-29 (item 394): `FlowBaseRoutes.valueF` (+3 constants: the field, its projection, the structure's new arity), five more premise reads at the births and closes.
-  "constants=1744 decls=1379 eta=447 FIELD=201 READ=1485 RELAY=2735 RETURN=173 UNUSED=27"
+  "constants=1741 decls=1376 eta=447 FIELD=201 READ=1477 RELAY=2737 RETURN=173 UNUSED=27"
 
 -- Item 287: `accum_block_on_closeThenBlock`'s `h_vslot`, a READ one, left the
 -- `_ ∨ True` population — its sibling's move, under this peel.  Item 288: and
@@ -399,11 +401,13 @@ def expectedModuleTallyP : String :=
 -- 2026-10-26 (item 369): total=165 → total=166, READ=88 → READ=89 — `accum_block_on_pendingBlock.h_closeF_old` (the `-` park's frames, read at the `:`/`?` landing for `h_res_land`).
 -- 2026-10-28 (item 385): total 166 → 167, READ 91 → 92
 -- — the two item-385 helpers; `deeperLandingResume.h_valF` is one more optional context (READ inside the helper).
+-- 2026-11-02 (item 422): the PEELED optional-context census moved — the five `h_outer` writes decide `MarkedColsIn s_prep [k]` (one `Classical.em`) in
+-- place of `h_park`/`h_kslotUp` reads; two opener `h_ref` relays; `exists_mem_ne_of_not_markedColsIn` added.
 def expectedOptTallyP : String :=
   -- 2026-10-24 (item 350): total 163 → 159, ETA 33 → 31, READ 87 → 85 — the `h_expl`/`h_explUp` `inr`
   -- arms pay an empty chain and no longer read their alternative.
   -- 2026-10-28 (item 380, PR #146 review): READ 89 → 91, RELAY 40 → 38 — the two optional contexts eliminated by `Or.elim`.
-  "total=163 ETA=31 FIELD=4 READ=93 RELAY=33 RETURN=2"
+  "total=161 ETA=31 FIELD=4 READ=91 RELAY=33 RETURN=2"
 
 run_cmd do
   let env ← getEnv
@@ -879,9 +883,11 @@ lemma opt_premise_is_no_premise {A P : Prop} : (A ∨ True → P) ↔ P :=
 -- 2026-10-26 (item 369): total=165 → total=166, optTy=157 → optTy=158 — `accum_block_on_pendingBlock.h_closeF_old` (the `-` park's frames, read at the `:`/`?` landing for `h_res_land`).
 -- 2026-10-28 (item 385): total 166 → 167, optTy 158 → 159
 -- — the two item-385 helpers; `deeperLandingResume.h_valF` is one more optional context (READ inside the helper).
+-- 2026-11-02 (item 422): the optional population moved — the five `h_outer` writes decide `MarkedColsIn s_prep [k]` (one `Classical.em`) in
+-- place of `h_park`/`h_kslotUp` reads; two opener `h_ref` relays; `exists_mem_ne_of_not_markedColsIn` added.
 def expectedOptPopulation : String :=
   -- 2026-10-24 (item 350): total 163 → 159, optTy 156 → 153, ctorFields 33 → 31 — as above.
-  "total=163 optTy=156 ctorFields=31"
+  "total=161 optTy=154 ctorFields=31"
 
 run_cmd do
   let env ← getEnv

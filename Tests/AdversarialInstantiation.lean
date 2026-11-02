@@ -9470,6 +9470,123 @@ def testHeldChainRelay (state : IO.Ref TestCollector) : IO Unit := do
     (dashSteps > 0 && colonSteps > 0 && grew == 0 && underTwo > 0 && qPauses > 0 && qAdded == qPauses && misshaped.isEmpty &&
       aPaid > 0 && aAnc > 0 && aBirth == 0 && bPaid > 0 && bDeep == 0 && cPaid > 0 && cDeep == 0)
 
+-- Priority 83 (item 422, PAID): Rule 2 for the openers' `h_outer` body — at every block `:` and compact
+-- `?` pause that closes a `?` park, the prepared register is K7 (only the landing column `k = sP.col`
+-- is marked — `refused_of_outer_disp`'s side) or ARMED (some marked column `≠ k` — the new right arm):
+-- `exists_mem_ne_of_not_markedColsIn` is the decision, so a pause in NEITHER bucket would be a dead
+-- register at a sound block state (item 410's `refused_of_markedCols_eq_nil` refutes it).  Second half:
+-- the key the body carries — at K7 pauses the prepared save sits at the landing column (`hkey`), on
+-- either side of `h_park` (`simpleKeyAllowed` down at the park, up at the landing: `landing_or_park_save`).
+-- Third half: an ARMED witness survives the `:` dispatch (the `-`/flow pauses are negative controls).
+def testArmedOuterPartition (state : IO.Ref TestCollector) : IO Unit := do
+  let inputs : List String :=
+    [ "? a\n: b", "? a\n: b\n? c\n: d", "- ? a\n  : b", "- ? a\n  : b\n- ? c\n  : d",
+      "k:\n  ? a\n  : b", "? ? a\n  : b\n: c", "? - a\n: b", "? : v\n: w", "- ? : v",
+      "? &a k\n: v", "- ? &a\n  : v", "? !!str a\n: b", "? a\n? b\n: c",
+      "k:\n  ? a\n: b", "k:\n  - ? a\n    : b\n  ? c\n  : d", "? a\n  b\n: c",
+      "a: 1\n? b\n: 2", "- a\n- ? b\n  : c", "? [a]\n: b", "? {a: 1}\n: b",
+      "[? a : b]", "{? a : b}", "- a\n- b", "a: [b, c]\n? d\n: e" ]
+  let mut colonPauses := 0
+  let mut qPauses := 0
+  let mut k7 := 0
+  let mut armed := 0
+  let mut neither := 0
+  let mut armedWitnesses : List (Nat × Nat) := []
+  let mut skaDownAtPark := 0
+  let mut keyAtLanding := 0
+  let mut keyElsewhere := 0
+  let mut witnessSurvived := 0
+  let mut witnessClosed := 0
+  let mut flowPauses := 0
+  let mut dashPauses := 0
+  let mut parsed := 0
+  for input in inputs do
+    match parseYaml input with
+    | .ok _ => parsed := parsed + 1
+    | .error _ => pure ()
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:64] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) =>
+          let mid := (markedColsOf sP.pendingKeys sP.indentColumns).eraseDups
+          let after := markedColsOf sN.pendingKeys sN.indentColumns
+          let k := sP.col
+          if sP.flowLevel == 0 && (c == ':' || c == '?') && !mid.isEmpty then
+            if c == ':' then colonPauses := colonPauses + 1 else qPauses := qPauses + 1
+            if s.simpleKeyAllowed == false then skaDownAtPark := skaDownAtPark + 1
+            match mid.find? (· != k) with
+            | some x =>
+              armed := armed + 1
+              armedWitnesses := (k, x) :: armedWitnesses
+              if x ∈ after then witnessSurvived := witnessSurvived + 1 else witnessClosed := witnessClosed + 1
+            | none =>
+              if mid == [k] then
+                k7 := k7 + 1
+                if sP.simpleKey.possible then
+                  if sP.simpleKey.pos.col == k then keyAtLanding := keyAtLanding + 1
+                  else keyElsewhere := keyElsewhere + 1
+                else keyAtLanding := keyAtLanding + 1
+              else neither := neither + 1
+          else if sP.flowLevel > 0 && (c == ':' || c == '?') then flowPauses := flowPauses + 1
+          else if sP.flowLevel == 0 && c == '-' then dashPauses := dashPauses + 1
+          s := sN
+        | _ => break
+      | _ => break
+  let witnesses := armedWitnesses.reverse.eraseDups
+  check state s!"P83 armed-outer partition (item 422): closing-`:` pauses={colonPauses} compact-`?` pauses={qPauses}; K7={k7} ARMED={armed} neither={neither}; K7 key at landing={keyAtLanding} elsewhere={keyElsewhere}; simpleKeyAllowed down at park={skaDownAtPark}; ARMED witness survived `:`={witnessSurvived} closed={witnessClosed}; controls flow={flowPauses} dash={dashPauses}; parsed={parsed}/{inputs.length}; witnesses (k, x)={witnesses}"
+    (colonPauses > 0 && qPauses > 0 && neither == 0 && k7 > 0 && armed ≥ 3 && keyElsewhere == 0 &&
+     skaDownAtPark > 0 && flowPauses > 0 && dashPauses > 0 && witnessClosed == 0 &&
+     witnesses.all (fun (k, x) => x != k))
+
+-- Priority 83b (item 422, review): the membership lemma's OWN refutation half — `exists_mem_ne_of_not_markedColsIn`
+-- tested as an implication over CONSTRUCTED registers, not over scanned ones: `pendingKeys` / `indentColumns` varied
+-- independently (no marks; one mark at `k`; one away; several; a `some none` slot; an unmarked slot at another column;
+-- a key with NO indent column — the mismatched-length case `markedCols_mem` reads as `none`).  The hypothesis
+-- `¬ MarkedColsIn s [k]` is decided from the arrays (some marked slot's column `≠ k`); a hypothesis-true register with no
+-- witness `≠ k` in `markedColsOf` refutes the lemma, and a hypothesis-false one WITH a witness refutes its converse.
+def testArmedOuterLemma (state : IO.Ref TestCollector) : IO Unit := do
+  let base := L4YAML.Scanner.ScannerState.mk' ""
+  let mkS (pks : Array (Option Nat)) (cols : Array Int) : L4YAML.Scanner.ScannerState :=
+    { base with pendingKeys := pks, indents := cols.map fun c => { column := c, isSequence := false } }
+  let cases : List (String × Array (Option Nat) × Array Int) :=
+    [ ("no slots", #[], #[]),
+      ("one unmarked slot", #[none], #[0]),
+      ("one mark at k", #[some 3], #[2]),
+      ("one mark away", #[some 3], #[0]),
+      ("two marks both k", #[some 1, some 4], #[2, 2]),
+      ("k and away", #[some 1, some 4], #[2, 5]),
+      ("away and away", #[some 1, some 4], #[0, 5]),
+      ("mark at k, unmarked away", #[some 1, none], #[2, 7]),
+      ("unmarked at k, mark away", #[none, some 9], #[2, 6]),
+      ("mark with no column", #[some 1], #[]),
+      ("mark at k, second mark with no column", #[some 1, some 2], #[2]),
+      ("negative column mark (toNat 0) with k = 2", #[some 1], #[-3]),
+      ("three marks, middle away", #[some 1, some 2, some 3], #[2, 0, 2]) ]
+  let k : Nat := 2
+  let mut hypTrue := 0
+  let mut hypFalse := 0
+  let mut refuted : List String := []
+  let mut converseRefuted : List String := []
+  for (name, pks, cols) in cases do
+    let s := mkS pks cols
+    let marks := markedColsOf s.pendingKeys s.indentColumns
+    -- ¬ MarkedColsIn s [k]  ⇔  some slot i has pks[i] = some (some _), cols[i] = some c, c.toNat ≠ k
+    let hyp := (List.range pks.size).any fun i =>
+      match pks[i]?, cols[i]? with
+      | some (some _), some c => c.toNat != k
+      | _, _ => false
+    let witness := marks.find? (· != k)
+    if hyp then
+      hypTrue := hypTrue + 1
+      if witness.isNone then refuted := name :: refuted
+    else
+      hypFalse := hypFalse + 1
+      if witness.isSome then converseRefuted := name :: converseRefuted
+  check state s!"P83b exists_mem_ne_of_not_markedColsIn on constructed registers (item 422): cases={cases.length} hypothesis-true={hypTrue} hypothesis-false={hypFalse}; refuted={refuted} converse-refuted={converseRefuted}"
+    (hypTrue == 6 && hypFalse == 7 && refuted.isEmpty && converseRefuted.isEmpty)
+
 def testFlowCarrier (state : IO.Ref TestCollector) : IO Unit := do
   let nestedQ : List String := ["?\n  ? -\n: w\n", "? - ? - a\n  : b\n: c\n", "?\n  ?\n    -\n    - b\n  ? c\n: w\n", "? ? - a\n  : b\n: c\n", "- ? - a\n  : b\n"]
   let singleQ : List String := ["? - a\n: b\n", "?\n  - a\n  - b\n: w\n", "k:\n  ? - a\n  : b\n", "? -\n: w\n"]
@@ -9671,6 +9788,8 @@ def collectTests : IO VerifiedSuiteResult := do
   testKslotEDomain state
   testColonChainRelay state
   testHeldChainRelay state
+  testArmedOuterPartition state
+  testArmedOuterLemma state
 
   testQuestionMarkColumn state
   testK1Lanes state

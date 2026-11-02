@@ -251,7 +251,7 @@ def posLine (p : Pos) : String := s!"{p.decl}{p.site} {p.kind} ∨ {p.alt}"
 -- projection `markedCols`: four fabricated births DECLINE (`Or.inr trivial` writers into `PackAltG`/`PackAlt`
 -- positions), none paid; positions unchanged.
 def expectedSummary : String :=
-  "positions=271 top=168 nested=103 True=195 PackAlt=67 PackAltG=9 modules=2 supply: paid=28 relayed=118 declined-only=0 never-supplied=0 unresolved=9 conclusions=11 consumers: spent=104 relayed=15 unused=0 unreadable=36 writers=39 inrTrivial=500"
+  "positions=269 top=166 nested=103 True=193 PackAlt=67 PackAltG=9 modules=2 supply: paid=28 relayed=116 declined-only=0 never-supplied=0 unresolved=9 conclusions=11 consumers: spent=102 relayed=15 unused=0 unreadable=36 writers=39 inrTrivial=486"
 
 def expectedPositions : List String :=
   [ "L4YAML.Proofs.PreprocessIndentStable.IndentFloor.transport[3].h_floor top ∨ True",
@@ -400,7 +400,6 @@ def expectedPositions : List String :=
     "L4YAML.Proofs.StreamAccum.colon_open_map[25].h_pr_land top ∨ True",
     "L4YAML.Proofs.StreamAccum.colon_open_map[26].h_resV_land top ∨ PackAlt",
     "L4YAML.Proofs.StreamAccum.colon_open_map[28].h_explUp_chainD top ∨ PackAlt",
-    "L4YAML.Proofs.StreamAccum.colon_open_map_explicit[21].h_outer top ∨ True",
     "L4YAML.Proofs.StreamAccum.colon_open_map_implicit[12].h_routeF top ∨ True",
     "L4YAML.Proofs.StreamAccum.colon_open_map_implicit[12].h_routeF nested ∨ True",
     "L4YAML.Proofs.StreamAccum.colon_open_map_implicit[13].h_routeFV nested ∨ True",
@@ -410,7 +409,6 @@ def expectedPositions : List String :=
     "L4YAML.Proofs.StreamAccum.colon_open_map_props[12].h_routeFV top ∨ PackAlt",
     "L4YAML.Proofs.StreamAccum.colon_open_map_props[12].h_routeFV nested ∨ True",
     "L4YAML.Proofs.StreamAccum.colon_open_map_props[29].h_kslotD top ∨ PackAlt",
-    "L4YAML.Proofs.StreamAccum.compact_open_map[29].h_outer top ∨ True",
     "L4YAML.Proofs.StreamAccum.compact_open_map[30].h_chainUp top ∨ PackAlt",
     "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[16].h_keyctx top ∨ True",
     "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[19].h_propsctx top ∨ True",
@@ -609,13 +607,11 @@ def expectedSupply : List String :=
     "L4YAML.Proofs.StreamAccum.colon_open_map[25].h_pr_land relayed [RELAY=1]",
     "L4YAML.Proofs.StreamAccum.colon_open_map[26].h_resV_land relayed [RELAY=1]",
     "L4YAML.Proofs.StreamAccum.colon_open_map[28].h_explUp_chainD relayed [RELAY=1]",
-    "L4YAML.Proofs.StreamAccum.colon_open_map_explicit[21].h_outer relayed [SPLIT=3]",
     "L4YAML.Proofs.StreamAccum.colon_open_map_implicit[12].h_routeF relayed [SPLIT=1]",
     "L4YAML.Proofs.StreamAccum.colon_open_map_implicit[27].h_routeS relayed [FIELD=1]",
     "L4YAML.Proofs.StreamAccum.colon_open_map_props[11].h_routeF relayed [SPLIT=1]",
     "L4YAML.Proofs.StreamAccum.colon_open_map_props[12].h_routeFV relayed [SPLIT=1]",
     "L4YAML.Proofs.StreamAccum.colon_open_map_props[29].h_kslotD relayed [FIELD=1]",
-    "L4YAML.Proofs.StreamAccum.compact_open_map[29].h_outer relayed [SPLIT=2]",
     "L4YAML.Proofs.StreamAccum.compact_open_map[30].h_chainUp relayed [SPLIT=2]",
     "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[16].h_keyctx paid [PAY=2 VIA=1]",
     "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[19].h_propsctx relayed [DECLINE=2 SPLIT=1]",
@@ -712,6 +708,10 @@ def expectedSupply : List String :=
 -- the opener's existing re-decline stays).  `positions` cannot fall while `PackAlt` is `True` — item 414 makes it informative.
 -- Item 417 (2026-10-23): 270 → 271 — `colon_open_map[28].h_explUp_chainD`, the RELAY parameter carrying the `?` park's
 -- entry chain into the `:` opener (413's class); P3 predicted 271 before the reading; put to the owner in the PR.
+-- Item 422 (2026-11-02): 271 → 269 by RETIREMENT, not a new position — `colon_open_map_explicit[21].h_outer` and
+-- `compact_open_map[29].h_outer` carry the decided ARMED fact `∃ x ∈ markedCols s_prep, x ≠ k` ((γ′), owner's word "A’’"
+-- read against the producers: every write already held the key fact).  `True` 195 → 193; `inrTrivial` 500 → 486 — the 11
+-- `Or.inr trivial` at the five producer writes and the 3 at the openers' `h_ref` relays are gone.  The ceiling stays 271.
 def ceilingPositions : Nat := 271
 -- 2026-10-30 (item 405, Rule 8 fix): two more `Or.inr trivial` writers (509 → 511) — the two head consumers of the `?`-park chain
 -- (`flowKeyRoute_of_open`'s compact pair, the props park's entry-level pack) split on the projection `markedCols sc` and DECLINE at the
@@ -769,12 +769,12 @@ def expectedConsumers : List String :=
     "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock[32].h_valFV spent [cased=2 passed=0]",
     "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlock[13].h_kslot spent [cased=7 passed=0]",
     "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlock[29].h_seqF_old spent [cased=3 passed=0]",
-    "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlock[30].h_kslotUp spent [cased=7 passed=0]",
+    "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlock[30].h_kslotUp spent [cased=6 passed=0]",
     "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlock[31].h_closeFV_old spent [cased=7 passed=0]",
     "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlock[32].h_closeF_old spent [cased=3 passed=0]",
     "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlockContent[15].h_kslot spent [cased=3 passed=0]",
     "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlockContent[34].h_seqF_old spent [cased=2 passed=0]",
-    "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlockContent[35].h_kslotUp spent [cased=3 passed=0]",
+    "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlockContent[35].h_kslotUp spent [cased=2 passed=0]",
     "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlockContent[36].h_closeF_old spent [cased=2 passed=0]",
     "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlockContent[37].h_closeFV_old spent [cased=4 passed=0]",
     "L4YAML.Proofs.StreamAccum.accum_block_on_pendingContent[16].h_vpack relayed [cased=0 passed=1]",
@@ -805,13 +805,11 @@ def expectedConsumers : List String :=
     "L4YAML.Proofs.StreamAccum.colon_open_map[25].h_pr_land spent [cased=2 passed=0]",
     "L4YAML.Proofs.StreamAccum.colon_open_map[26].h_resV_land spent [cased=2 passed=0]",
     "L4YAML.Proofs.StreamAccum.colon_open_map[28].h_explUp_chainD spent [cased=1 passed=0]",
-    "L4YAML.Proofs.StreamAccum.colon_open_map_explicit[21].h_outer spent [cased=1 passed=0]",
     "L4YAML.Proofs.StreamAccum.colon_open_map_implicit[12].h_routeF spent [cased=2 passed=0]",
     "L4YAML.Proofs.StreamAccum.colon_open_map_implicit[27].h_routeS spent [cased=1 passed=0]",
     "L4YAML.Proofs.StreamAccum.colon_open_map_props[11].h_routeF spent [cased=2 passed=0]",
     "L4YAML.Proofs.StreamAccum.colon_open_map_props[12].h_routeFV spent [cased=2 passed=0]",
     "L4YAML.Proofs.StreamAccum.colon_open_map_props[29].h_kslotD spent [cased=1 passed=0]",
-    "L4YAML.Proofs.StreamAccum.compact_open_map[29].h_outer spent [cased=1 passed=0]",
     "L4YAML.Proofs.StreamAccum.compact_open_map[30].h_chainUp spent [cased=1 passed=0]",
     "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[16].h_keyctx relayed [cased=0 passed=1]",
     "L4YAML.Proofs.StreamAccum.content_dispatch_after_close[19].h_propsctx relayed [cased=0 passed=1]",
@@ -890,10 +888,10 @@ def expectedConsumers : List String :=
 def expectedWriters : List String :=
   [ "L4YAML.Proofs.PreprocessIndentStable.IndentFloor.transport ×1 (PreprocessIndentStable)",
     "L4YAML.Proofs.StreamAccum.FlowBaseRoutes.ofValue ×3 (StreamAccum)",
-    "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock ×29 (StreamAccum)",
+    "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock ×25 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.accum_block_on_noPending ×7 (StreamAccum)",
-    "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlock ×31 (StreamAccum)",
-    "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlockContent ×26 (StreamAccum)",
+    "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlock ×27 (StreamAccum)",
+    "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlockContent ×23 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.accum_block_on_pendingContent ×12 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.accum_block_pending ×40 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.accum_content_on_noPending ×12 (StreamAccum)",
@@ -903,11 +901,11 @@ def expectedWriters : List String :=
     "L4YAML.Proofs.StreamAccum.accum_flow_open_depth0 ×66 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.accum_step_flow ×6 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.colon_open_map ×3 (StreamAccum)",
-    "L4YAML.Proofs.StreamAccum.colon_open_map_explicit ×6 (StreamAccum)",
+    "L4YAML.Proofs.StreamAccum.colon_open_map_explicit ×5 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.colon_open_map_implicit ×4 (StreamAccum)",
     -- Item 409 (2026-10-30): the two `:` consumers' `h_kslotD` writers PAID (colon_fires_* rows gone, 41 → 39).
     "L4YAML.Proofs.StreamAccum.colon_open_map_props ×4 (StreamAccum)",
-    "L4YAML.Proofs.StreamAccum.compact_open_map ×9 (StreamAccum)",
+    "L4YAML.Proofs.StreamAccum.compact_open_map ×7 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.content_dispatch_after_close ×5 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.content_dispatch_routed ×25 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.dedent_cover_of_landing ×3 (StreamAccum)",

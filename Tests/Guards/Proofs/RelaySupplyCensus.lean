@@ -957,14 +957,16 @@ def hopName (env : Environment) (e : Edge) : String :=
 -- three callers' 12 DECLINE edges and the lemma's 4 RELAY edges go (edges 669 → 657, DECLINE
 -- 263 → 255, RELAY 67 → 63); the four Or.inr trivial now written inside the lemma are no edge.
 -- 2026-10-30 (item 405): the `?`-park chain PAID through its ladder — three `h_kslotE_k` content relays and the `h_resKslot`/`hkvUp`-starved `closeThenBlock` births DECLINE (ruling (a)); SPLIT 167 → 164, DECLINE 255 → 258 (edges 657 unchanged).
+-- 2026-11-02 (item 422): edges 655 → 650, SPLIT 180 → 175 — the five `h_park.elim` / `h_kslotUp.elim` splits at the
+-- openers' `h_outer` writes (`closeThenBlock` ×2, `pendingBlockContent`, `pendingBlock` ×2) are gone: the body is decided
+-- by `Classical.em (MarkedColsIn s_prep [k])` and both arms PAY ((γ′): K7 with the landing's key, or the ARMED fact).
 def expectedTally : String :=
   -- 2026-10-26 (item 366): DECLINE 258 → 256, VIA 47 → 49 — the two `h_outer` arguments of
   -- `accum_block_on_closeThenBlock` (compact and explicit `:`) pay under `Classical.em (MarkedColsIn sc [col])`.
   -- 2026-10-26 (item 369): edges 664 → 665, DECLINE 256 → 255, FIELD 55 → 56, SPLIT 160 → 161 —
   -- `pendingBlock.h_closeF` threaded into `accum_block_on_pendingBlock` (one FIELD edge) and the
   -- `:`/`?` landing's `h_res_land` there read off those frames instead of `Or.inr trivial`.
-  "edges=655 skipped=42 [DECLINE=242, FIELD=58, LOCAL=27, PAY=54, RELAY=63, \
-SPLIT=180, VIA=31]"
+  "edges=650 skipped=42 [DECLINE=242, FIELD=58, LOCAL=27, PAY=54, RELAY=63, SPLIT=175, VIA=31]"
 
 /-- **The row item 211 read off the compiler's error text and got wrong.**  All
     eight of these print `h_keyctx` when the premise is narrowed; six of them
@@ -1053,9 +1055,10 @@ def expectedProducers : List String :=
 -- 2026-10-28 (item 380, PR #146 review): piped 63 → 68, `Or.elim⇒SPLIT=5` — the five disagreeing `Or.elim`s land as splits.
 -- 2026-10-29 (item 388): piped 68 → 69, Or.imp⇒FIELD 33 → 34 — `accum_content_pending` relays the mapping
 -- park's `h_closeF` (now `.blockOut`) into the content lane's `.blockIn` binder by `.imp`, weakening the node.
+-- 2026-11-02 (item 422): piped 78 → 73, `Or.elim⇒SPLIT` 5 → 0 — the five `h_park.elim`/`h_kslotUp.elim` pipes at the `h_outer` writes
+-- are `Classical.em (MarkedColsIn s_prep [k])` decisions now (see `expectedTally`).
 def expectedPipeLanding : String :=
-  "piped=78 producers=10 [Eq.rec⇒VIA=8, Or.elim⇒SPLIT=5, Or.imp⇒FIELD=36, \
-Or.imp⇒LOCAL=5, Or.imp⇒RELAY=13, Or.imp⇒SPLIT=4, Or.imp⇒VIA=2, dite⇒SPLIT=5]"
+  "piped=73 producers=10 [Eq.rec⇒VIA=8, Or.imp⇒FIELD=36, Or.imp⇒LOCAL=5, Or.imp⇒RELAY=13, Or.imp⇒SPLIT=4, Or.imp⇒VIA=2, dite⇒SPLIT=5]"
 
 /-- What the SPLITs decide (DOCS item 216), and the row that matters is
     `elsewhere=0`: **not one leaf of any case split in this module is decided
@@ -1130,17 +1133,10 @@ Or.imp⇒LOCAL=5, Or.imp⇒RELAY=13, Or.imp⇒SPLIT=4, Or.imp⇒VIA=2, dite⇒SP
 -- 2026-10-29 (item 387): leaves 384 → 386, DECLINE 194 → 195, PAY 179 → 180 — `accum_block_on_pendingBlock`'s
 -- no-pop arm splits `n < k` (PAY via the helper) from `k = n` (sequence top refuted / mapping sibling DECLINE).
 -- 2026-10-30 (item 405): the `?`-park chain PAID through its ladder — three `h_kslotE_k` content relays and the `h_resKslot`/`hkvUp`-starved `closeThenBlock` births DECLINE (ruling (a)); SPLIT 167 → 164, DECLINE 255 → 258 (edges 657 unchanged).  Rule 8 fix (same item): the chain re-indexed by the projection `markedCols sc`; the two head consumers (`flowKeyRoute_of_open`'s compact pair, the props park's entry-level pack) split on `markedCols sc` and DECLINE at the markless projection — leaves 381 → 383, DECLINE 194 → 196 (DECLINE|PAY 144 → 142, DECLINE|DECLINE|PAY 6 → 8).
+-- 2026-11-02 (item 422): survived 180 → 175, leaves 426 → 410 (DECLINE 222 → 211, PAY 193 → 188), `DECLINE|DECLINE|PAY` 12 → 8,
+-- `DECLINE|DECLINE|DECLINE|PAY` 2 → 1 — the five retired `h_outer` splits and their declined leaves (see `expectedTally`).
 def expectedSplitLanding : String :=
-  "survived=180 collapsed=15 leaves=426 elsewhere=11 [DECLINE=222, PAY=193, \
-VIA=11] \
-[DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|PAY|PAY|PAY|VIA|VIA|VIA=1, \
-DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|PAY|VIA|VIA=1, \
-DECLINE|DECLINE|DECLINE|DECLINE|PAY=2, \
-DECLINE|DECLINE|DECLINE|DECLINE|PAY|PAY|PAY|PAY|PAY=1, \
-DECLINE|DECLINE|DECLINE|PAY=2, DECLINE|DECLINE|DECLINE|PAY|PAY|PAY=1, \
-DECLINE|DECLINE|DECLINE|PAY|VIA=3, DECLINE|DECLINE|PAY=12, \
-DECLINE|DECLINE|PAY|PAY|PAY=2, DECLINE|PAY=152, DECLINE|PAY|PAY=1, \
-PAY|VIA=1, PAY|VIA|VIA=1]"
+  "survived=175 collapsed=15 leaves=410 elsewhere=11 [DECLINE=211, PAY=188, VIA=11] [DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|PAY|PAY|PAY|VIA|VIA|VIA=1, DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|PAY|VIA|VIA=1, DECLINE|DECLINE|DECLINE|DECLINE|PAY=2, DECLINE|DECLINE|DECLINE|DECLINE|PAY|PAY|PAY|PAY|PAY=1, DECLINE|DECLINE|DECLINE|PAY=1, DECLINE|DECLINE|DECLINE|PAY|PAY|PAY=1, DECLINE|DECLINE|DECLINE|PAY|VIA=3, DECLINE|DECLINE|PAY=8, DECLINE|DECLINE|PAY|PAY|PAY=2, DECLINE|PAY=152, DECLINE|PAY|PAY=1, PAY|VIA=1, PAY|VIA|VIA=1]"
 
 /-- **Which BRANCH is taken (DOCS item 217).**  Item 216 resolved what a split
     WRITES — both answers, one per arm.  What it could not say was which arm the
@@ -1242,8 +1238,10 @@ PAY|VIA=1, PAY|VIA|VIA=1]"
 -- DECLINE-closed 100 → 101 (the `k = n` mapping top: the enclosing mapping's sibling, declined, named).
 -- 2026-10-29 (item 389): leaves 386 → 388, DECLINE-free 94 → 95, PAY-free 180 → 181 — the `-` park's k = n mapping-top arm is a PAY leaf now; its sequence-top half stays a decline.
 -- 2026-10-30 (item 405): the `?`-park chain PAID through its ladder — three `h_kslotE_k` content relays and the `h_resKslot`/`hkvUp`-starved `closeThenBlock` births DECLINE (ruling (a)); SPLIT 167 → 164, DECLINE 255 → 258 (edges 657 unchanged).
+-- 2026-11-02 (item 422): splits 180 → 175, leaves 426 → 410, relayRooted 169 → 166, siteDecided 11 → 9, optionalRoot 111 → 108,
+-- DECLINE-closed 109 → 98, PAY-free 193 → 188 — the five `h_outer` splits retired (see `expectedTally`).
 def expectedSplitBranch : String :=
-  "splits=180 leaves=426 relayRooted=169 siteDecided=11 optionalRoot=111 plainRoot=58 agree=118/118 disagree=0 [DECLINE-closed=109, DECLINE-free=113, PAY-free=193, VIA L4YAML.Proofs.StreamAccum.deeperLandingResume-=2, VIA L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root-=1, VIA absurd-=8]"
+  "splits=175 leaves=410 relayRooted=166 siteDecided=9 optionalRoot=108 plainRoot=58 agree=115/115 disagree=0 [DECLINE-closed=98, DECLINE-free=113, PAY-free=188, VIA L4YAML.Proofs.StreamAccum.deeperLandingResume-=2, VIA L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root-=1, VIA absurd-=8]"
 
 /-- **The ten splits the site decides for itself**, which is the whole residue
     of the branch question after `expectedSplitBranch`.  Four are a `dite` on a
@@ -1258,13 +1256,15 @@ def expectedSplitBranch : String :=
 -- 2026-10-25 (#112 review): the `FlowStackK` `MarkedColsIn` carrier reverted (Rule 8: a projection of the closed state is decided at the close by `Classical.em`); `accum_flow_open_depth0`'s inline domain matches go — SITE-DECIDED `match_1_27 → match_1_24`, COLLAPSED edge `match_1_25 → match_1_22`; the tally and DECLINE WRITERS (the paid faces) stay.
 -- 2026-10-28 (item 380, PR #146 review): `Or.elim` read as a two-arm split — +1 row: item 366's two
 -- `Classical.em (MarkedColsIn sc [col]) |>.elim` pays of `h_outer` at closeThenBlock, the site deriving its own major.
+-- 2026-11-02 (item 422): 8 → 7 rows — `2 accum_block_on_closeThenBlock :: Or.elim on VIA Classical.em ⇒ DECLINE|DECLINE|PAY`
+-- retired: the two `h_outer` writes still decide by `Classical.em (MarkedColsIn s_prep [k])`, but BOTH arms pay now ((γ′)), so
+-- the split is no longer site-decided-with-a-decline (see `expectedTally`).
 def expectedSiteDecided : List String :=
   ["1 accum_block_on_closeThenBlock :: dite on VIA Eq ⇒ DECLINE|PAY",
    "1 accum_block_on_pendingBlock :: dite on VIA Eq ⇒ DECLINE|PAY",
    "1 accum_block_on_pendingBlockContent :: dite on VIA Eq ⇒ DECLINE|PAY",
    "1 accum_content_pending :: Or.casesOn on VIA Nat.eq_zero_or_pos ⇒ DECLINE|DECLINE|DECLINE|PAY",
    "1 accum_flow_open_depth0 :: accum_flow_open_depth0.match_1_22 on SPLIT Or.casesOn on VIA preprocess_some_savedKey_shape ⇒ PAY|VIA",
-   "2 accum_block_on_closeThenBlock :: Or.elim on VIA Classical.em ⇒ DECLINE|DECLINE|PAY",
    "2 accum_block_on_pendingBlock :: dite on VIA LE.le ⇒ DECLINE|DECLINE|PAY|PAY|PAY",
    "2 accum_block_pending :: Or.casesOn on VIA Nat.eq_zero_or_pos ⇒ DECLINE|PAY"]
 
@@ -1285,6 +1285,8 @@ def expectedSiteDecided : List String :=
 -- face directly once the `PackAlt` arm became `NotQuestionPark`.
 -- 2026-10-28 (item 380, PR #146 review): `h_kslotUp` 4 → 7 — `Or.elim` read as a two-arm split: the three
 -- `Classical.em … |>.elim` decisions that root at the key-slot premise are splits now, not `VIA` leaves.
+-- 2026-11-02 (item 422): 25 → 25 rows — `8 h_kslotUp` retired; new `5 h_kslotUp`:
+-- the five `h_outer` writes no longer split on `h_park` / `h_kslotUp` (they decide `MarkedColsIn s_prep [k]`; see `expectedTally`).
 def expectedBranchPremises : List String :=
   ["1 h_mapF",
    "1 h_mapFV",
@@ -1306,10 +1308,10 @@ def expectedBranchPremises : List String :=
    "4 h_closeFV108",
    "4 h_routeF",
    "4 h_routeFV",
+   "5 h_kslotUp",
    "5 h_seqF168",
    "7 h_closeF99",
    "7 h_kslot",
-   "8 h_kslotUp",
    "8 h_kslot_old"]
 
 /-- **Is a DECLINE arm ever SELECTED (DOCS item 218).**  Item 217 named, for
@@ -1366,11 +1368,13 @@ def expectedBranchPremises : List String :=
 -- 2026-10-28 (item 385): accounted 667/667 → 669/669, nodes 163 → 164
 -- — `deeperLandingResume` is one more node; its two `h_valF` relay edges are accounted.
 -- 2026-10-29 (item 396): after_close's four declined contexts restated — their decline leaves are no longer reached through the three callers.
+-- 2026-11-02 (item 422): liveSplits 105 → 102, accounted 655 → 650, nodes 161 → 159 — the five `h_outer` splits and their
+-- declines retired (see `expectedTally`).
 def expectedDeclineReach : String :=
 -- Item 372 (2026-10-27): two more edges — `ImplicitKeyPack`'s route conjunct is now an Or (the `SeqTopKey` face), split at the producer's exit (a) and resolved at `colon_fires_implicit_key`.
 -- 2026-10-28 (item 380, PR #146 review): liveSplits 101 → 104 — `Or.elim` read as a two-arm split: three of the
 -- five disagreeing `Classical.em … |>.elim` decisions stand on a live (reachable) decline path; nothing else moved.
-  "pairs=37 orphan=4 direct=7 closureDecline=33 dead=0 maxDepth=2 liveSplits=105 deadSplits=0 accounted=655/655 nodes=161 fieldEdges=58 fieldResolved=58 withCycle=8 declineWriters=19 parkHop=22"
+  "pairs=37 orphan=4 direct=7 closureDecline=33 dead=0 maxDepth=2 liveSplits=102 deadSplits=0 accounted=650/650 nodes=159 fieldEdges=58 fieldResolved=58 withCycle=8 declineWriters=19 parkHop=22"
 
 /-- **Every branch premise, with what its own callers supply and where that
     bottoms out.**  `⇐` names the FIRST hop — for a park field, the field
@@ -1403,6 +1407,8 @@ def expectedDeclineReach : String :=
 -- 2026-10-29 (item 389): `accum_content_on_pendingBlock_indented` gains the premise `h_top_old` before `h_col_old`, so its `h_kslotUp_old` / `h_closeFV_old` rows move one hypothesis index (#31 → #32, #32 → #33); supply and branches unchanged.
 -- 2026-10-29 (item 394): `h_closeF_mv` at `accum_flow_open_depth0`'s mapping arm now SUPPLIES `FlowBaseRoutes.valueF` (a new branch-supply row from `pendingMapValue.h_closeF`).
 -- 2026-10-30 (item 405): the `?`-park chain PAID through its ladder (see `expectedTally`).
+-- 2026-11-02 (item 422): 37 → 37 rows — retired `h_kslotUp :: accum_block_on_pendingBlock#30 :: splits=6 sup=1 [FIELD=1] ⇐ PendingNode.pendingBlock.h_kslotUp ⇒ DECLINE+brDECLINE+brPAY`; `h_kslotUp :: accum_block_on_pendingBlockContent#35 :: splits=2 sup=1 [FIELD=1] ⇐ PendingNode.pendingBlockContent.h_kslotUp ⇒ brDECLINE+brPAY`; new `h_kslotUp :: accum_block_on_pendingBlock#30 :: splits=4 sup=1 [FIELD=1] ⇐ PendingNode.pendingBlock.h_kslotUp ⇒ DECLINE+brDECLINE+brPAY`; `h_kslotUp :: accum_block_on_pendingBlockContent#35 :: splits=1 sup=1 [FIELD=1] ⇐ PendingNode.pendingBlockContent.h_kslotUp ⇒ brDECLINE+brPAY`:
+-- the five `h_outer` splits are gone (both arms pay; see `expectedTally`).
 def expectedBranchSupply : List String :=
   ["h_closeF99 :: accum_content_on_pendingMapValue_indented#18 :: splits=7 sup=1 [FIELD=1] ⇐ PendingNode.pendingMapValue.h_closeF ⇒ PAY+brDECLINE+brPAY",
    "h_closeFV108 :: accum_content_on_pendingMapValue_indented#20 :: splits=4 sup=1 [FIELD=1] ⇐ PendingNode.pendingMapValue.h_closeFV ⇒ DECLINE+PAY+brDECLINE+brPAY",
@@ -1422,8 +1428,8 @@ def expectedBranchSupply : List String :=
    -- (`h_kslot_pk.imp … ⟨ns, MarkedColsIn.step_value …, routes⟩`): DECLINE ⇒ field-supplied, read as ORPHAN.
    "h_kslotD :: colon_open_map_implicit#29 :: splits=1 sup=1 [FIELD=1] ⇐ And.intro.left ⇒ ORPHAN",
    "h_kslotD :: colon_open_map_props#29 :: splits=1 sup=1 [FIELD=1] ⇐ And.intro.left ⇒ ORPHAN",
-   "h_kslotUp :: accum_block_on_pendingBlock#30 :: splits=6 sup=1 [FIELD=1] ⇐ PendingNode.pendingBlock.h_kslotUp ⇒ DECLINE+brDECLINE+brPAY",
-   "h_kslotUp :: accum_block_on_pendingBlockContent#35 :: splits=2 sup=1 [FIELD=1] ⇐ PendingNode.pendingBlockContent.h_kslotUp ⇒ brDECLINE+brPAY",
+   "h_kslotUp :: accum_block_on_pendingBlock#30 :: splits=4 sup=1 [FIELD=1] ⇐ PendingNode.pendingBlock.h_kslotUp ⇒ DECLINE+brDECLINE+brPAY",
+   "h_kslotUp :: accum_block_on_pendingBlockContent#35 :: splits=1 sup=1 [FIELD=1] ⇐ PendingNode.pendingBlockContent.h_kslotUp ⇒ brDECLINE+brPAY",
    "h_kslotUp_old :: accum_content_on_pendingBlock_indented#32 :: splits=3 sup=1 [FIELD=1] ⇐ PendingNode.pendingBlock.h_kslotUp ⇒ DECLINE+brDECLINE+brPAY",
    "h_kslot_old :: accum_content_on_pendingBlock_indented#13 :: splits=8 sup=1 [FIELD=1] ⇐ PendingNode.pendingBlock.h_kslot ⇒ DECLINE+brDECLINE+brPAY",
    "h_mapF :: accum_block_on_closeThenBlock#29 :: splits=1 sup=11 [DECLINE=7,FIELD=2,RELAY=2] ⇐ h_mapF109@accum_block_on_pendingContent,-,PendingNode.pendingMapValue.h_frames ⇒ DECLINE+PAY+VIA+brDECLINE+brPAY",

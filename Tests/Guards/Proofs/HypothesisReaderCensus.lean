@@ -622,6 +622,8 @@ adds.**   `constants` counts the module's non-internal constants, generated ones
 -- 2026-10-30 (item 405, Rule 8 fix): the `?`-park chain re-indexed by the projection `markedCols sc` — the two head consumers
 -- read the field through `MarkedColsIn.relay`/a `match markedCols sc` instead of a destructuring READ (READ 1396 → 1392, RELAY 2929 → 2931).
 -- 2026-10-30 (item 407, flow carrier `pendingKeys` conjunct): constants 1733 → 1734 — `allowDirectives_update_pendingKeys`.
+-- 2026-11-02 (item 422): the MODULE CENSUS moved — the five `h_outer` writes read `s_prep` (one `Classical.em` over `MarkedColsIn s_prep [k]`)
+-- in place of `h_park`/`h_kslotUp`; two opener `h_ref` relays; `exists_mem_ne_of_not_markedColsIn` added (RegisterWitness).
 def expectedModuleTally : String :=
   -- 2026-10-26 (item 365): RELAY 2830 → 2836 — `h_sound` ×3, `h_fl0` ×2 and `h_alt` ×1 passed whole from
   -- `accum_step_content`/`accum_content_pending`/the `_indented` pair to the content lane's payers.
@@ -630,7 +632,7 @@ def expectedModuleTally : String :=
   -- `dispatchBlock_colon_notQuestion` and `explFrameValueLine`'s split alternative.
   -- 2026-10-26 (item 366): RELAY 2836 → 2838 — `h_sound` passed whole into the two new `Sound sc` binders.
   -- 2026-10-27 (item 371): constants/decls +1, READ +1 — `ResumeFrames.one` (its `h_tail` is read once).
-  "constants=1744 decls=1379 eta=447 FIELD=175 READ=1418 RELAY=2946 RETURN=55 \
+  "constants=1741 decls=1376 eta=447 FIELD=175 READ=1410 RELAY=2948 RETURN=55 \
 UNUSED=27"
 -- 2026-10-25 (#112 review): the `FlowStackK` `MarkedColsIn` carrier reverted (Rule 8: a projection of the closed state is decided at the close by `Classical.em`); the two transport helpers and `h_pk'` go (constants 1683 → 1681, decls 1322 → 1320, READ 1325 → 1323, RELAY 2838 → 2830); `Mono sc` stays on `accum_step_flow`.
 -- 2026-10-25 (item 363): the flow OPEN lane read off the block state (`h_refused`, one `Classical.em`; five `match` blocks deleted): the five deleted `match` auxiliaries: constants 1681 → 1676, decls 1320 → 1315, READ 1323 → 1306.
@@ -743,7 +745,9 @@ inherit their parents' binders filtered out so the denominator is declarations. 
 -- (the `-` park's frames, read by the `:`/`?` landing for `h_res_land`).
 -- 2026-10-28 (item 385): total 166 → 167, READ 91 → 92
 -- — `deeperLandingResume.h_valF` is one more optional context, READ (destructured) inside the helper.
-def expectedOptTally : String := "total=163 ETA=31 READ=93 RELAY=39"
+-- 2026-11-02 (item 422): the OPTIONAL-CONTEXT census moved — the five `h_outer` writes read `s_prep` (one `Classical.em` over `MarkedColsIn s_prep [k]`)
+-- in place of `h_park`/`h_kslotUp`; two opener `h_ref` relays; `exists_mem_ne_of_not_markedColsIn` added (RegisterWitness).
+def expectedOptTally : String := "total=161 ETA=31 READ=91 RELAY=39"
 
 /-- The six item 212 enumerated, by verdict — seven since item 300.  Six are
     read in `content_dispatch_routed`'s own term (`h_markerline`, the marker

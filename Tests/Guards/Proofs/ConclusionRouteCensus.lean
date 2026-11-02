@@ -503,6 +503,8 @@ def expectedCross : List String :=
 -- `.blockOut` `h_closeF` into the content lane's `.blockIn` binder is one more landed pipe.
 -- 2026-10-30 (item 408): landed 71 → 79, landed-producers 2 → 10 — the eight `markedCols_congr … ▸` bridges
 -- (Eq.rec pipes) that move the projection face from `s_prep` to the open's `s'`.
+-- 2026-11-02 (item 422): landed 78 → 73, total 109 → 104 — the five `h_park.elim`/`h_kslotUp.elim` pipes at the openers'
+-- `h_outer` writes are `Classical.em (MarkedColsIn s_prep [k])` decisions now, both arms paid ((γ′)).
 def expectedPipeSplit : String :=
 -- 2026-10-25 (item 363): the flow OPEN lane read off the block state (`h_refused`, one `Classical.em`; five `match` blocks deleted): PIPE producers 46 → 47, total 109 → 110 (`h_refused` is one more Or.elim producer).
   -- 2026-10-26 (item 366): producers 47 → 49, total 110 → 112 — the two `h_outer` arguments of
@@ -511,7 +513,7 @@ def expectedPipeSplit : String :=
   -- two-arm split now: its 17 `VIA` edges leave the producer surface (the distinct producer `Or.elim` with them); the
   -- five whose arms disagree land as splits, the twelve whose arms agree are collapsed edges and are counted nowhere here.
   -- 2026-10-29 (item 394): `FlowBaseRoutes.valueF` is a new producer relayed VIA at both flow closes (producers 32/10 → 34/11, landed 69 → 71, landed-producers 0 → 2).
-  "pipes=0/0 producers=31/10 landed=78 landed-producers=10 total=109"
+  "pipes=0/0 producers=31/10 landed=73 landed-producers=10 total=104"
 
 end L4YAML.Tests.Guards.ConclusionRouteCensus
 

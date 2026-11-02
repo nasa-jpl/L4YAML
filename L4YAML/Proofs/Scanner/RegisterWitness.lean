@@ -124,6 +124,15 @@ lemma markedCols_mem {sc : ScannerState} {x : Nat} :
   · rintro ⟨i, l, c, hpk, hc, rfl⟩
     exact ⟨i, (Array.getElem?_eq_some_iff.mp hpk).1, by rw [hpk, hc]⟩
 
+/-- Item 422 (γ′): the DECIDED complement of K7 — when the marks are not all at `k`,
+    some marked column differs from `k` (the body of the openers' `h_outer` right arm). -/
+lemma exists_mem_ne_of_not_markedColsIn {s : ScannerState} {k : Nat}
+    (h : ¬ MarkedColsIn s [k]) : ∃ x ∈ markedCols s, x ≠ k :=
+  Classical.byContradiction fun hno => h fun i l c hpk hind =>
+    Classical.byContradiction fun hmem =>
+      hno ⟨c.toNat, markedCols_mem.2 ⟨i, l, c, hpk, hind, rfl⟩,
+        fun heq => hmem (List.mem_singleton.2 heq)⟩
+
 /-- `markedCols` reads `pendingKeys` and `indents` only (item 408): two states that agree on both
     project the same chain — the flow carrier's two conjuncts move it from the open to the close. -/
 lemma markedCols_congr {s s' : ScannerState}
