@@ -8,7 +8,7 @@ bounds `flip_root_frame_le.py` priced (`pendingMapValue.h_closeF` `< n` → `≤
 `flip_root_frames.py` rewrote — `⟨[], fun _ h => absurd h (List.not_mem_nil), …⟩` (frames lane) and
 `⟨[], fun _ hm => (List.not_mem_nil hm).elim⟩` (cover lane) — becomes `[FrameLevel.map 0]` with `h_lt`
 sorried, so the build reads the CONSUMERS of the longer list (the F-routes' `… [] sp_e` conclusions).
-Read-only: patch, one `lake build L4YAML` (a FLOOR), `scripts/flip_census.py`, restore; md5 both sides.
+Read-only: patch, one `lake build L4YAML` (a FLOOR), `lake exe scripts-flip-census`, restore; md5 both sides.
 `--stage A|B` (default A); `--dry` patches nothing; `--keep` leaves the patch.  Refuses a dirty StreamAccum.
 """
 import hashlib, subprocess, sys
@@ -60,7 +60,7 @@ def main():
         with log.open("w") as f:
             r = subprocess.run(["lake", "build", "L4YAML"], cwd=ROOT, stdout=f, stderr=subprocess.STDOUT)
         print(f"lake build L4YAML exit={r.returncode}; log {log}")
-        c = subprocess.run([sys.executable, "scripts/flip_census.py", str(log)], cwd=ROOT, capture_output=True, text=True)
+        c = subprocess.run(["lake", "exe", "scripts-flip-census", str(log)], cwd=ROOT, capture_output=True, text=True)
         print(c.stdout[-8000:]); print(c.stderr[-2000:], file=sys.stderr)
         print("FLOOR: one build of `L4YAML`; guard modules behind it unmeasured.")
     finally:

@@ -10,7 +10,7 @@ field priced here, inserted after `h_stream`:
 — the enclosing mapping's frames after the closed flow value, the shape `closeThenBlock.h_valF`
 spends.  Nothing supplies it (no `sorry`): the build counts the construction(s) and the pattern
 matches the field's arity breaks.  Read-only: patch, one `lake build L4YAML` (a FLOOR),
-`scripts/flip_census.py`, restore; md5 both sides.  `--dry` patches nothing; `--keep` leaves the patch.
+`lake exe scripts-flip-census`, restore; md5 both sides.  `--dry` patches nothing; `--keep` leaves the patch.
 """
 import hashlib, subprocess, sys
 from pathlib import Path
@@ -41,7 +41,7 @@ def main():
         with log.open("w") as f:
             r = subprocess.run(["lake", "build", "L4YAML"], cwd=ROOT, stdout=f, stderr=subprocess.STDOUT)
         print(f"lake build L4YAML exit={r.returncode}; log {log}")
-        c = subprocess.run([sys.executable, "scripts/flip_census.py", str(log)], cwd=ROOT, capture_output=True, text=True)
+        c = subprocess.run(["lake", "exe", "scripts-flip-census", str(log)], cwd=ROOT, capture_output=True, text=True)
         print(c.stdout[-6000:]); print(c.stderr[-2000:], file=sys.stderr)
         print("FLOOR: one build of `L4YAML`; guard modules behind it unmeasured.")
     finally:

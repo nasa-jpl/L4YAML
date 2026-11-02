@@ -8,7 +8,7 @@ face (lane (c)/(d)'s carrier, DOCS item 372).
 Edits `StreamAccum.lean` in place — inserts the `SeqTopKey` definition ahead of
 `ImplicitKeyPack` and widens the route conjunct of `ImplicitKeyPack`
 to `(route) ∨ SeqTopKey sc` — builds the library, runs
-`flip_census.py` on the log, and restores the file (both md5s printed).  The
+`scripts-flip-census` on the log, and restores the file (both md5s printed).  The
 broken declarations are the producers that build the conjunct bare and the
 consumers that spend it as a function; that roster is the item's price.
 
@@ -60,7 +60,7 @@ def main():
         with log.open("w") as f:
             r = subprocess.run(["lake", "build", "L4YAML"], cwd=ROOT, stdout=f, stderr=subprocess.STDOUT)
         print(f"lake build L4YAML exit={r.returncode}; log {log}")
-        c = subprocess.run([sys.executable, "scripts/flip_census.py", str(log)], cwd=ROOT, capture_output=True, text=True)
+        c = subprocess.run(["lake", "exe", "scripts-flip-census", str(log)], cwd=ROOT, capture_output=True, text=True)
         print(c.stdout[-8000:]); print(c.stderr[-2000:], file=sys.stderr)
     finally:
         SRC.write_text(orig)

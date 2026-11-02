@@ -6,7 +6,7 @@ fills the field must wrap its route in `Or.inl` (or declare `Or.inr` — the sin
 field as a function must match it.  The breaks are the roster of the face.
 
 Edits `L4YAML/Proofs/Production/StreamAccum.lean` in place, builds `L4YAML`,
-classifies with `scripts/flip_census.py`, restores; md5 printed both sides.  The
+classifies with `lake exe scripts-flip-census`, restores; md5 printed both sides.  The
 count is a FLOOR (one build of the library stops at the first failing module): the
 guard modules behind `StreamAccum.lean` that spell the field's type (`example`
 mirrors, park walkers) are unmeasured proof repairs beyond the price (item 373's
@@ -61,7 +61,7 @@ def main():
         with log.open("w") as f:
             r = subprocess.run(["lake", "build", "L4YAML"], cwd=ROOT, stdout=f, stderr=subprocess.STDOUT)
         print(f"lake build L4YAML exit={r.returncode}; log {log}")
-        c = subprocess.run([sys.executable, "scripts/flip_census.py", str(log)], cwd=ROOT, capture_output=True, text=True)
+        c = subprocess.run(["lake", "exe", "scripts-flip-census", str(log)], cwd=ROOT, capture_output=True, text=True)
         print(c.stdout[-8000:]); print(c.stderr[-2000:], file=sys.stderr)
         print("FLOOR: one build of `L4YAML`; guard modules behind it unmeasured.")
     finally:

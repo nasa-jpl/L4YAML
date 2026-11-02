@@ -11,7 +11,7 @@ the ctor's arity: the landed `closeThenBlock` birth must supply it from `h_valF`
 `valueLandedSeq`, the `.level` inversion) at `nv = k` and refute the premise at `nv < k` (the `-`
 pushed a sequence); `pendingBlock`/`pendingBlockContent` births relay the old park's; a bare root `-`
 refutes (pushed).  Edits `L4YAML/Proofs/Production/StreamAccum.lean` in place, builds `L4YAML`,
-classifies with `scripts/flip_census.py`, restores; md5 printed both sides.  FLOOR: one build.
+classifies with `lake exe scripts-flip-census`, restores; md5 printed both sides.  FLOOR: one build.
 `--dry` patches nothing; `--keep` leaves the patch in place.
 """
 import hashlib, subprocess, sys
@@ -43,7 +43,7 @@ def main():
         with log.open("w") as f:
             r = subprocess.run(["lake", "build", "L4YAML"], cwd=ROOT, stdout=f, stderr=subprocess.STDOUT)
         print(f"lake build L4YAML exit={r.returncode}; log {log}")
-        c = subprocess.run([sys.executable, "scripts/flip_census.py", str(log)], cwd=ROOT, capture_output=True, text=True)
+        c = subprocess.run(["lake", "exe", "scripts-flip-census", str(log)], cwd=ROOT, capture_output=True, text=True)
         print(c.stdout[-8000:]); print(c.stderr[-2000:], file=sys.stderr)
         print("FLOOR: one build of `L4YAML`; guard modules behind it unmeasured.")
     finally:

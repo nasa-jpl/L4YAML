@@ -5,7 +5,7 @@ into `accum_block_on_closeThenBlock`, whose `h_res_land` builder needs it for th
 (item 383's stop).  The instrument adds the binder in a COUNTING shape — `(∃ n, …) ∨ True` — so every
 caller breaks (an added explicit binder shifts the application) and one `L4YAML` build reads the
 producer roster; the pay's shape is decided arm by arm (no `∨ True` lands).  Read-only: edits
-StreamAccum.lean, builds, runs flip_census.py, restores (md5 both sides).  `--dry` lists the site."""
+StreamAccum.lean, builds, runs `lake exe scripts-flip-census`, restores (md5 both sides).  `--dry` lists the site."""
 import hashlib, subprocess, sys
 from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
@@ -36,7 +36,7 @@ def main():
         with log.open("w") as f:
             r = subprocess.run(["lake", "build", "L4YAML"], cwd=ROOT, stdout=f, stderr=subprocess.STDOUT)
         print(f"lake build L4YAML exit={r.returncode}; log {log}")
-        c = subprocess.run([sys.executable, "scripts/flip_census.py", str(log)], cwd=ROOT, capture_output=True, text=True)
+        c = subprocess.run(["lake", "exe", "scripts-flip-census", str(log)], cwd=ROOT, capture_output=True, text=True)
         print(c.stdout[-8000:]); print(c.stderr[-2000:], file=sys.stderr)
         print("FLOOR: one build of `L4YAML`; guard modules behind it unmeasured.")
     finally:

@@ -3,7 +3,7 @@
 Status: PLAN, defaults RULED (2026-11-01, owner: "ok with the defaults" —
 every §6 default below is the decision). Governs the conversion of every
 `scripts/*.py` to Lean under [`06-discipline.md`](06-discipline.md) Rule 9.
-Phase 0 (the gate) is DONE (#196); each later phase lands as its own PR
+Phase 0 (the gate, #196) and phase 2.1 (`flip_census`/`repin` in Lean) are DONE; each later phase lands as its own PR
 and ticks its rows in §5. Work order (§3): phase 0 → 2.1 → 3.1 → 3.2 → phase 1 → the
 rest; R12 holds its next flip until 3.1 lands (Q6).
 
@@ -175,7 +175,7 @@ breaks CI if wrong, cheapest first:
    environment dump — in Lean the dump *is* the environment.
 
 **Phase 2 — class I, the shared instruments (8 scripts, ~4 PRs).**
-1. `flip_census.py` + `repin.py` → `Scripts/Lean/BuildLog.lean`,
+1. **DONE** — `flip_census.py` + `repin.py` → `Scripts/Lean/BuildLog.lean`,
    `Scripts/Pins.lean`, exes `scripts-flip-census`, `scripts-repin`. These
    two are the core every later phase reuses; land them before any class-F
    port.
@@ -271,8 +271,8 @@ because it removes Python from CI; it does not block an item.
 | rename_lemma.py | G | 220 | 08-01 | check-theorem-keyword.sh (CI) | scripts-theorem-keyword | todo |
 | check-serialization-axioms.py | G | 44 | 10-05 | check-serialization-proofs.sh (CI) | (inside that gate's exe) | todo |
 | gate_vocab.py | G | 207 | 09-25 | battery; GateVocabulary.lean | scripts-gate-vocab | todo |
-| repin.py | I (also `--check`) | 223 | 10-23 | every item | scripts-repin | todo |
-| flip_census.py | I | 116 | 10-18 | every flip | scripts-flip-census | todo |
+| repin.py | I (also `--check`) | 223 | 10-23 | every item | scripts-repin | lean:scripts-repin |
+| flip_census.py | I | 116 | 10-18 | every flip | scripts-flip-census | lean:scripts-flip-census |
 | pack_flip_census.py | I | 400 | 10-20 | every Row 12 item (PACK) | scripts-pack-census | todo |
 | residue_classes.py | I | 123 | 10-30 | Row 12 items ≥ 403 | scripts-pack-census classes | todo |
 | docs_nav.py | I | 339 | 10-20 | AGENTS §1, skills | scripts-docs-nav | todo |

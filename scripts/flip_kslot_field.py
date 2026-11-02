@@ -12,7 +12,7 @@ marked columns (the field's own item-190 note) — so the flip restates the fiel
 
 and reads who pays: every birth now owes the domain (a relay of the enclosing park's, or a
 STARVED fresh singleton) and every consumer destructures `⟨ns, hdom, kslot⟩`.  Read-only: patch,
-one `lake build L4YAML` (a FLOOR), `scripts/flip_census.py`, restore; md5 both sides.  `--dry`/`--keep`;
+one `lake build L4YAML` (a FLOOR), `lake exe scripts-flip-census`, restore; md5 both sides.  `--dry`/`--keep`;
 `--round N` (1–4, default 1) applies rounds 1..N CUMULATIVELY — round 2 adds the three lemma
 premises, round 3 the `hkvUp` face, round 4 the `h_explUp` field; the sites line lists every head
 patched, so round 4 always shows the seven-site ladder (item 405 added the content twin's field).
@@ -89,7 +89,7 @@ def main():
         with open(log, "w") as f:
             r = subprocess.run(["lake", "build", "L4YAML"], cwd=ROOT, stdout=f, stderr=subprocess.STDOUT)
         print(f"lake build L4YAML exit={r.returncode}; log {log}")
-        c = subprocess.run([sys.executable, "scripts/flip_census.py", str(log)], cwd=ROOT, capture_output=True, text=True)
+        c = subprocess.run(["lake", "exe", "scripts-flip-census", str(log)], cwd=ROOT, capture_output=True, text=True)
         print(c.stdout[-8000:]); print(c.stderr[-2000:], file=sys.stderr)
     finally:
         if not keep: SRC.write_text(orig)

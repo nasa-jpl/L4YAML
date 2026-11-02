@@ -9,7 +9,7 @@ proof `h_lt : ∀ fr ∈ ks, fr.width < k` is sorried at every birth (it is the 
 at a root birth `k = 0` it asks `0 < 0`), so the build reads the CONSUMERS of the list — the
 F-routes whose conclusions end in `ResumeFrames … [] sp_e` and whatever destructures them.
 Edits `L4YAML/Proofs/Production/StreamAccum.lean` in place, builds `L4YAML` once (a FLOOR),
-classifies with `scripts/flip_census.py`, restores; md5 printed both sides.  `--dry` edits
+classifies with `lake exe scripts-flip-census`, restores; md5 printed both sides.  `--dry` edits
 nothing; `--keep` leaves the flipped tree.  Refuses a dirty StreamAccum.  Reading recorded in
 DOCS item 380.
 """
@@ -35,7 +35,7 @@ def main():
         with log.open("w") as f:
             r = subprocess.run(["lake", "build", "L4YAML"], cwd=ROOT, stdout=f, stderr=subprocess.STDOUT)
         print(f"lake build L4YAML exit={r.returncode}; log {log}")
-        c = subprocess.run([sys.executable, "scripts/flip_census.py", str(log)], cwd=ROOT, capture_output=True, text=True)
+        c = subprocess.run(["lake", "exe", "scripts-flip-census", str(log)], cwd=ROOT, capture_output=True, text=True)
         print(c.stdout[-8000:]); print(c.stderr[-2000:], file=sys.stderr)
         print("FLOOR: one build of `L4YAML`; guard modules behind it unmeasured.")
     finally:
