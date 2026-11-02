@@ -89,7 +89,7 @@ scripts/wire_price.py | F | todo
 inline:.github/workflows/test-coverage.yml:python3 -c "import weasyprint" | R | todo
 inline:.github/workflows/test-coverage.yml:python3 -c "import weasyprint" | R | todo
 inline:.github/workflows/test-coverage.yml:python3 - | G | todo
-inline:.github/workflows/test-coverage.yml:python3 -c " | R | todo
+inline:.github/workflows/test-coverage.yml:python3 -c " import sys, json release = json.load(sys.stdin) for asset in release.get('assets', []): if asset['name'] == '${ASSET}': print(asset['url']) sys.exit(0) print('ERROR: asset not found', file=sys.stderr) sys.exit(1) " | R | todo
 inline:scripts/generate-all.sh:python3 -c "import weasyprint" | R | todo
 inline:scripts/generate-all.sh:python3 -c "import weasyprint" | R | todo
 inline:scripts/generate-all.sh:python3 - "$REPORTS/stats.json" | G | todo
