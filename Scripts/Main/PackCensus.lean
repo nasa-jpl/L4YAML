@@ -22,12 +22,16 @@ The port of `scripts/pack_flip_census.py` and `scripts/residue_classes.py` (Rule
 `lake env lean -DmaxErrors=5000` on it to a fixpoint (`Scripts.Pack.Census`); the file is
 restored byte-identical whatever happens (a `.pack-flip.bak` beside it meanwhile), and the
 hashes are printed on stderr.  Never run them beside another `lake build`.  `classes` runs
-nothing (`Scripts.Pack.Residue`).  stdout is the Python's, line for line; the pin check
-reads `Tests/Guards/Proofs/BlockDeferralClasses.lean` as the Python did (a `def expected… :
-String :=` whose literal is on the next line; a comment between them reads as `absent`).
+nothing (`Scripts.Pack.Residue`).  stdout is the Python's, line for line, except the pin
+line: the pin `def expected… : String :=` in `Tests/Guards/Proofs/BlockDeferralClasses.lean`
+is read through the dated `--` notes between the head and the literal (`Scripts.Pins.defSpan`),
+so a moved pin is reported MOVED where the Python (literal on the next line only) said `absent`.
 
 exit status: 0 complete (pin absent or agreeing); 1 pin MOVED, file not restored, or a
-census error (unbalanced group, a missing anchor); 2 usage.
+census error (unbalanced group, a missing anchor); 2 usage; 3 `lake env lean` failed without
+a StreamAccum diagnostic (its output kept beside the TSV, else under `.lake/`); 4 incomplete
+census (`did not converge` or `stopping on an unhandled site`) — the partial summary is
+still printed and the TSV written, then the status says it is not a reading.
 -/
 
 open Scripts.Pack
@@ -101,12 +105,16 @@ def stemOut (tsv : System.FilePath) (rnd : Nat) : System.FilePath :=
   tsv.withFileName s!"{tsv.fileStem.getD "census"}-round{rnd}.out"
 
 /-- The rounds, on the patched tree: `(state, rounds, broke)`; throws on an unbalanced group. -/
+inductive Outcome where
+  | converged | unhandled | exhausted
+  deriving BEq, Repr
+
 def runRounds (o : Opts) (m : Mode) (p : Prepared) (orig tbl : Array String) (t : System.FilePath) :
-    IO (State × Nat × Bool) := do
+    IO (State × Nat × Outcome) := do
   let t0 ← IO.monoMsNow
   let mut st : State := { lines := p.lines }
   let mut rounds := 0
-  let mut broke := false
+  let mut outcome := Outcome.exhausted
   for rnd in [1:o.maxRounds + 1] do
     rounds := rnd
     let text := "\n".intercalate st.lines.toList
@@ -116,8 +124,15 @@ def runRounds (o : Opts) (m : Mode) (p : Prepared) (orig tbl : Array String) (t 
       IO.FS.writeFile (d / s!"round-{rnd}.lean") text
     let r ← IO.Process.output { cmd := "lake", args := #["env", "lean", "-DmaxErrors=5000", rel], cwd := some o.root }
     let log := r.stdout ++ r.stderr
-    if let some tsv := o.tsv then IO.FS.writeFile (stemOut tsv rnd) log
+    let kept ← match o.tsv with
+      | some tsv => pure (stemOut tsv rnd)
+      | none =>
+        IO.FS.createDirAll (o.root / ".lake")
+        pure (o.root / ".lake" / s!"pack-census-{m.name}-round{rnd}.out")
+    IO.FS.writeFile kept log
     let errs := Census.parseErrors log
+    if errs.isEmpty && r.exitCode != 0 then
+      throw (IO.userError s!"lake env lean exited {r.exitCode} with no {rel} diagnostic (round {rnd}; output in {kept})")
     let secs := ((← IO.monoMsNow) - t0 + 500) / 1000
     IO.println s!"round {rnd}: {errs.size} errors ({secs}s)"
     let settled := Census.settledProbes st.lines errs
@@ -125,7 +140,7 @@ def runRounds (o : Opts) (m : Mode) (p : Prepared) (orig tbl : Array String) (t 
     if !settled.isEmpty then
       IO.println s!"  {settled.size} pattern(s) of an already-probed `.imp … (fun h => alt_probe h)` relay, settled"
     if errs.isEmpty then
-      broke := true
+      outcome := .converged
       break
     let some st' := Census.step m p orig tbl rnd st errs
       | throw (IO.userError "unbalanced group")
@@ -134,10 +149,10 @@ def runRounds (o : Opts) (m : Mode) (p : Prepared) (orig tbl : Array String) (t 
     st := { st with out := #[] }
     if st.stop then
       IO.println "stopping on an unhandled site"
-      broke := true
+      outcome := .unhandled
       break
-  if !broke then IO.println "did not converge"
-  return (st, rounds, broke)
+  if outcome == .exhausted then IO.println "did not converge"
+  return (st, rounds, outcome)
 
 def runFlip (o : Opts) (m : Mode) : IO UInt32 := do
   let t := o.root / rel
@@ -150,21 +165,24 @@ def runFlip (o : Opts) (m : Mode) : IO UInt32 := do
   let tbl := Census.declTable orig
   let bak := o.root / (rel ++ ".pack-flip.bak")
   IO.FS.writeBinFile bak origBytes
-  let res ← try (Except.ok <$> runRounds o m p orig tbl t) catch e => pure (Except.error (toString e))
+  let res ← try (Except.ok <$> runRounds o m p orig tbl t) catch e =>
+    pure (Except.error (toString e))
   IO.FS.writeBinFile t origBytes
   try IO.FS.removeFile bak catch _ => pure ()
   let now ← IO.FS.readBinFile t
   let same := now == origBytes
   IO.eprintln s!"restored {rel} hash {Scripts.Flip.Patch.digest now} (orig {Scripts.Flip.Patch.digest origBytes}) identical={same}"
   if !same then return ← die "StreamAccum NOT restored" 1
-  let (st, rounds, _) ← match res with
-    | .error e => return ← die e 1
+  let (st, rounds, outcome) ← match res with
+    | .error e => return ← die e (if e.startsWith "lake env lean exited" then 3 else 1)
     | .ok r => pure r
   if let some tsv := o.tsv then
     IO.FS.writeFile tsv ("\n".intercalate (st.census.map (·.tsv)).toList ++ "\n")
   let s := Census.summary m orig st.census rounds p.stubs p.promised
   for l in s.out do IO.println l
   IO.println s!"{s.label} {s.line}"
+  if outcome != .converged then
+    return ← die s!"incomplete census ({if outcome == .unhandled then "stopped on an unhandled site" else "did not converge"} after {rounds} round(s)): the {s.label} line above is partial, not a reading" 4
   let pinText ← IO.FS.readFile (o.root / pinFile)
   match pinValue? pinText s.pin with
   | none => IO.println s!"{s.label}-PIN absent"; return 0
