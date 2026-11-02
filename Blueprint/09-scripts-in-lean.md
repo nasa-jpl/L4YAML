@@ -4,8 +4,8 @@ Status: PLAN, defaults RULED (2026-11-01, owner: "ok with the defaults" —
 every §6 default below is the decision). Governs the conversion of every
 `scripts/*.py` to Lean under [`06-discipline.md`](06-discipline.md) Rule 9.
 Phase 0 (the gate) is DONE (#196); each later phase lands as its own PR
-and ticks its rows in §5. Work order (§3): phase 0 → 2.1 → 3.1 → 3.2 → phase 1 → the
-rest; R12 holds its next flip until 3.1 lands (Q6).
+and ticks its rows in §5. Work order (§3): phase 0 → 2.1 → 3.1 → 3.2 → 4.5 →
+phase 1 → the rest; R12 holds its next flip until 3.1 lands (Q6).
 
 Inventory basis: `scripts/` on `fix-a-grammar-completeness` at the merge of
 PR #191 — **78 Python files, 13 176 lines**, plus 11 shell wrappers. Counts
@@ -60,6 +60,7 @@ Scripts/                      -- lean_lib Scripts (allowNonModules := false; `mo
   Main/<name>.lean            -- one `main` per lean_exe
 lakefile.lean                 -- lean_exe scripts-check-import-closure, scripts-repin, scripts-flip, …
 scripts/*.sh                  -- unchanged names; body becomes `exec lake exe <name> "$@"`
+                              -- until phase 4.5 replaces each with a Lake `script` (`lake run <name>`, Q7)
 ```
 
 Rules for the port, so the Lean versions are better instruments, not
@@ -103,8 +104,11 @@ transliterations:
   consumed by one `lake exe scripts-flip SPEC.lean|SPEC.json`. The 58
   scripts collapse to 58 specs; the protocol (anchor count, checksum
   both sides, never beside a build, `--rev`, `--keep`) is written once.
-- **A gate's `.sh` name does not change.** CI and the skills call
-  `scripts/check-import-closure.sh`; its body changes to `lake exe`.
+- **A gate's `.sh` name does not change** until phase 4.5. CI and the
+  skills call `scripts/check-import-closure.sh`; its body changes to
+  `lake exe`. The portable entry point is `lake run <name>` (Q7): bash
+  is the last non-portable layer, and Lake runs the same on Linux, macOS
+  and Windows.
 - **Every converted script is pinned where the Python was.** The guard
   files that quote a script's reading (e.g. `GateVocabulary.lean` ↔
   `gate_vocab.py`) are re-pointed at the Lean exe in the same PR; the
@@ -238,20 +242,38 @@ breaks CI if wrong, cheapest first:
    only, with `svg-objects.py` ported (it is an HTML rewrite, 71 lines);
    (b) replace the pair with a `.sh` driving `weasyprint` CLI directly and
    a Lean exe for the TOC/SVG rewriting; (c) drop the PDF from CI.
+5. **Portable wrappers (Q7).** Every `scripts/*.sh` that only runs a
+   `lean_exe` becomes a Lake `script` block in `lakefile.lean` —
+   `script check-scripts-lean (args) do … IO.Process.spawn … lake exe
+   scripts-check-ledger …` — invoked as `lake run check-scripts-lean`
+   on Linux, macOS and Windows; `lake run` lists them. CI and the skills
+   switch to `lake run`; the `.sh` files are deleted in the same PR
+   (one per gate family). This is not Q5 reopened: the exes stay
+   compiled under `Scripts/`; the `script` block is a few lines that
+   spawns one, so there is nothing to re-elaborate. Wrappers that do
+   more than run an exe (`generate-all.sh`, the WeasyPrint step) are
+   ported to `IO.Process` in the same block or left as the ruled Q3
+   `.sh`, stated per file in the PR. `uv` is used only where Python is
+   the product — the `python/` binding and its pytest run — never as a
+   launcher for a gate or instrument.
 
 **Phase 5 — retire the Python toolchain from the proof lane.** When the
 ledger holds only `exception` rows: remove the CI venv steps that exist
 for the scripts (the `python/` package tests keep theirs), update
 `.devin/skills/l4yaml-price-instruments/SKILL.md` and
-`l4yaml-build-and-gates` to the `lake exe` names, and move Rule 9's gate
+`l4yaml-build-and-gates` to the `lake run` names (4.5 did this for the
+wrappers it replaced; this is the sweep), and move Rule 9's gate
 from "ledger may only shrink" to "ledger holds exceptions only".
 
 **Work order (the one sequence contributors follow; the status line at
-the top repeats it):** phase 0 → 2.1 → 3.1 → 3.2 → phase 1 → 2.2–2.4 →
-phase 4 → 3.3 → 3.4 → phase 5. Phase 2.1 and 3.1 come before the CI
+the top repeats it):** phase 0 → 2.1 → 3.1 → 3.2 → **4.5** → phase 1 →
+2.2–2.4 → phase 4 → 3.3 → 3.4 → phase 5. Phase 2.1 and 3.1 come before the CI
 gates because Row 12 blocks on them (Q6): the next item's flip needs the
-flip exe, and every item needs `repin`/`flip_census`. Phase 1 is next
-because it removes Python from CI; it does not block an item.
+flip exe, and every item needs `repin`/`flip_census`. Phase 4.5 (Q7)
+comes next because it changes what CI and the skills call: every gate
+ported after it is wired as `lake run <name>` once, instead of as a
+`.sh` body first and a Lake `script` later. Phase 1 is then next because
+it removes Python from CI; it does not block an item.
 
 ## 4. Exceptions (proposed; the ledger is the record)
 
@@ -324,3 +346,12 @@ because it removes Python from CI; it does not block an item.
    flip (so item 418's price is the first Lean spec), or let R12 keep
    writing Python until 3.1 lands and convert those too? Default: phase 0
    + 2.1 + 3.1 first, R12 holds its next flip until then.
+7. **Portable invocation (ruled 2026-11-01: option 1).** The `.sh`
+   wrappers are bash, so nothing here runs on Windows. Options: (1) Lake
+   `script` blocks, `lake run <name>` — no bash, no Python, one
+   toolchain, consistent with Rule 9; (2) a `uv`-managed `pyproject.toml`
+   with console-script entry points that exec `lake exe …` — portable,
+   but a Python launcher under every gate, which is what Rule 9 removes.
+   Ruled: (1); `uv` only for `python/` (§4). Lands as phase 4.5, after
+   3.1/3.2, because the Row 12 instruments come first (Q6); the `.sh`
+   names hold until then.
