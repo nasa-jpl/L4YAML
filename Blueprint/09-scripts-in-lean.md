@@ -3,7 +3,7 @@
 Status: PLAN, defaults RULED (2026-11-01, owner: "ok with the defaults" —
 every §6 default below is the decision). Governs the conversion of every
 `scripts/*.py` to Lean under [`06-discipline.md`](06-discipline.md) Rule 9.
-Phase 0 (the gate, #196) and phase 2.1 (`flip_census`/`repin` in Lean) are DONE; each later phase lands as its own PR
+Phase 0 (the gate, #196), phase 2.1 (`flip_census`/`repin` in Lean) and phase 3.1 (the flip library, `scripts-flip`, #200) are DONE; each later phase lands as its own PR
 and ticks its rows in §5. Work order (§3): phase 0 → 2.1 → 3.1 → 3.2 → 4.5 →
 phase 1 → the rest; R12 holds its next flip until 3.1 lands (Q6).
 
@@ -205,11 +205,15 @@ breaks CI if wrong, cheapest first:
    the text).
 
 **Phase 3 — class F, the flips (58 scripts, ~6 PRs).**
-1. `Scripts/Flip/*` and `lake exe scripts-flip`: one PR, validated by
+1. **DONE (#200)** — `Scripts/Flip/{Patch,Round,Report}.lean`, `Scripts/Git.lean`,
+   `lake exe scripts-flip SPEC.json` (specs under `scripts/flips/`): validated by
    re-running the **two most recent** flips (`flip_colon_chain.py`,
    item 417; `flip_kslote_domain.py`, item 416) as specs at their `--rev`
    and matching the Python's declaration count and classification
-   (`errors=4 decls=2` for 416's base is the known reading).
+   (`errors=4 decls=2` for 416's base is the known reading; 417's committed
+   script reads `errors=10 decls=4` at `b377aadc` — the `11 sites / 5
+   declarations` DOCS.md item 417 quotes is the probe's first cut, before
+   its call-order fix).  Python and Lean agree line for line on both.
 2. Specs for the flips whose readings are **still cited as live
    instruments** by an open NEXT or a ledger snapshot: `flip_210.py`,
    `flip_211_stage1.py` (the `[211]` price, 10 decls / 25 sites),
@@ -302,7 +306,7 @@ it removes Python from CI; it does not block an item.
 | drop_sweep.py | I | 229 | 09-22 | skills; DropDependents.lean's wide pin | scripts-drop-sweep | todo |
 | inline ×7: test-coverage.yml — `import weasyprint` probe ×2, hygiene heredoc, release-asset lookup; generate-all.sh — `import weasyprint` probe ×2, hygiene heredoc | G/R | ~30 | — | CI, generate-all.sh | hygiene ×2 → one Lean `stats.json` exe; asset lookup → `gh api --jq`; probes ×4 → `weasyprint --version` (Q3) | todo |
 | gen_traceof.py | I | 195 | 10-23 | TraceOf regeneration | scripts-gen-traceof | todo |
-| flip_colon_chain.py, flip_kslote_domain.py | F (live, items 417/416) | 138, 85 | 11-01 | items | flip specs (phase 3.1 validation) | todo |
+| flip_colon_chain.py, flip_kslote_domain.py | F (live, items 417/416) | 138, 85 | 11-01 | items | `scripts/flips/item417_colon_chain.json`, `item416_kslote_domain.json` | lean:scripts-flip |
 | flip_210.py, flip_211_stage1.py | F (live, `[211]`) | 138, 86 | 09-21, 10-27 | ledger snapshots | flip specs | todo |
 | flip_beta5.py, beta5_arms.py | F (live pins FIX-PIN/ARM-PIN) | 623, 297 | 09-25 | skills | flip specs | todo |
 | punt_reason_price.py, flip_inl_declines.py | F (live) | 510, 72 | 09-19, 10-31 | items 211, 415 | flip specs | todo |

@@ -358,3 +358,8 @@ lean_exe «scripts-flip-census» where
 @[default_target]
 lean_exe «scripts-repin» where
   root := `Scripts.Main.Repin
+
+-- Phase 3.1: the shared flip library behind the flip_*.py scripts.
+@[default_target]
+lean_exe «scripts-flip» where
+  root := `Scripts.Main.Flip

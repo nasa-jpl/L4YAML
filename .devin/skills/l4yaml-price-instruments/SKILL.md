@@ -14,6 +14,7 @@ its output.
 
 | Script | Question it answers | Pin that must agree |
 |---|---|---|
+| `lake exe scripts-flip scripts/flips/<item>.json` (Lean, Rule 9) — one spec per flip: file, `rev`, anchored `old`/`new` pairs (each must match exactly once), target, tag; `--dry` checks anchors, `--rev` overrides, `--keep` leaves the patched tree; refuses when another `L4YAML/**` file differs between REV and the working tree (use a `git worktree` of REV) | A flip at a revision: which declarations break, how many sites, by owner | the item that cites it (416: `errors=4 decls=2`) |
 | `flip_beta5.py` | If `pendingFlow`/`scannerDrop` were deleted, what breaks to a fixpoint: `sorried / restated / deleted / pins` | `FIX-PIN` (named in the script) |
 | `beta5_arms.py` | Which constructor arms are dead vs live obligations | `ARM-PIN` |
 | `flip_210.py`, `flip_carrier.py`, `flip_supply.py`, `flip_supplier.py`, `flip_drop.py`; `lake exe scripts-flip-census` (Lean, Rule 9) | Narrowing / carrier / supply-side flips | see each docstring |
