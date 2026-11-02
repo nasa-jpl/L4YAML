@@ -29,7 +29,7 @@ the conclusion's target unconnected (item 236), and the sole support of
 
 This file reads the bill off the elaborated environment.  Over the whole tree —
 858 modules composed in one environment and the 36 executable entry points
-probed one at a time, `scripts/drop_sweep.py` — the arm has
+probed one at a time, `lake run drop-sweep` — the arm has
 
     D=4 direct  S=0 in a statement  R=0 case splits  T=26 transitive
 
@@ -205,7 +205,7 @@ def usesAll (env : Environment) :
     m := m.insert n (uses env n true)
   return (authored, m)
 
-/-- One environment pass.  `scripts/drop_sweep.py` calls this from an
+/-- One environment pass.  `lake run drop-sweep` calls this from an
     environment holding the whole tree; §2 calls it from this file's own,
     narrower closure, and the two agree. -/
 def census (pre : Option (Array Name × Std.HashMap Name (Std.HashSet Name)) := none) :
@@ -257,7 +257,7 @@ capstonesInT={c.capstonesInT.size} rawElim={c.rawElim.size}"
 
 Item 237's census read 109 of 230 modules before it imported the library root,
 and reported a library.  This one pins its own closure first, and
-`scripts/drop_sweep.py` re-runs the same `census` over every module in the tree
+`lake run drop-sweep` re-runs the same `census` over every module in the tree
 that has an olean — 858 composed in one environment, plus the 36 executable
 entry points probed alone, because two root-namespace `main`s cannot share an
 environment.  **The four counts are identical at every closure tried**; the
@@ -281,7 +281,7 @@ pins below are what makes that checkable rather than asserted. -/
     library — the one-line quoted-scalar scanner converses. -/
 def expectedClosure : Nat := 274  -- +1: `Proofs.Serialization.ParseCheckFrom` (S5 slice 1)
 
-/-- `scripts/drop_sweep.py`'s reading, re-derivable in one command and pinned
+/-- `lake run drop-sweep`'s reading, re-derivable in one command and pinned
     here so that a walk which starts from the wrong root disagrees with it
     loudly.  The 36 entry points hold 600 declarations between them and
     reference the arm zero times.  (602 on Lean v4.33.0: the count is every

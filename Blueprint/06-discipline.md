@@ -295,7 +295,7 @@ with their own re-implementations of what Lean already knows — which
 line is a declaration opener (`flip_census.py`'s `OPENER` regex), which
 lines are imports (the `public import`/`meta import` regression that read
 the migrated library as empty on 2026-10-17), what a module's dependents
-are (`drop_sweep.py` and `DropDependents.lean` are two implementations
+are (`lake run drop-sweep` and `DropDependents.lean` are two implementations
 of one walk). A Lean script reads the environment instead of grepping
 its text, elaborates under the same toolchain the proofs use, and is
 built and type-checked by `lake build` like everything else.

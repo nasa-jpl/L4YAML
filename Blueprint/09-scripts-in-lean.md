@@ -223,7 +223,15 @@ breaks CI if wrong, cheapest first:
    reads a `def expected… : String :=` literal through the dated `--` notes
    (`Scripts.Pins.defSpan`); the Python matched only a literal on the next
    line, so a commented pin read `absent` and a moved pin never failed.
-3. `drop_sweep.py` → `scripts-drop-sweep`, **not retired**: the walk
+3. **DONE** — `drop_sweep.py` → `scripts-drop-sweep`, `lake run drop-sweep [-- -q]`
+   (`Scripts/Drop/Sweep.lean` the pure readings with `#guard` rows — entry-point
+   detection, the three refused-import shapes, the `WIDE`/`MOD` lines, the pin
+   literal through its string gap; `Scripts/Main/DropSweep.lean` the IO).  Same
+   stdout, stderr and exit as the Python on the same tree, full and `--quick`
+   (the pins date from item 238 and both readings report them stale; a re-pin is
+   the campaign's decision, not the port's).  Modules are enumerated in the
+   Python's order (paths compared by component, so a directory's files precede
+   `Dir.lean`).  Why it is a port and not a retirement: the walk
    (`Tests.Guards.DropDependents.census`) is already Lean and shared, but
    the sweep is the WIDE reading — every `L4YAML.*`/`Tests.*` module with
    an olean in one environment, plus the executable entry points probed
@@ -366,7 +374,7 @@ it removes Python from CI; it does not block an item.
 | residue_classes.py | I | 123 | 10-30 | Row 12 items ≥ 403 | scripts-pack-census classes | DONE (`lake run pack-census -- classes`) |
 | docs_nav.py | I | 339 | 10-20 | AGENTS §1, skills | scripts-docs-nav | DONE (`lake run docs-nav`) |
 | ledger_diff.py | I | 226 | 10-26 | ledgers/README | scripts-ledger-diff | todo |
-| drop_sweep.py | I | 229 | 09-22 | skills; DropDependents.lean's wide pin | scripts-drop-sweep | todo |
+| drop_sweep.py | I | 229 | 09-22 | skills; DropDependents.lean's wide pin | scripts-drop-sweep | **DONE** (`lake run drop-sweep`) |
 | inline ×7: test-coverage.yml — `import weasyprint` probe ×2, hygiene heredoc, release-asset lookup; generate-all.sh — `import weasyprint` probe ×2, hygiene heredoc | G/R | ~30 | — | CI, generate-all.sh | hygiene ×2 → one Lean `stats.json` exe; asset lookup → `gh api --jq`; probes ×4 → `weasyprint --version` (Q3) | todo |
 | gen_traceof.py | I | 195 | 10-23 | TraceOf regeneration | scripts-gen-traceof | todo |
 | flip_colon_chain.py, flip_kslote_domain.py | F (live, items 417/416) | 138, 85 | 11-01 | items | `scripts/flips/item417_colon_chain.json`, `item416_kslote_domain.json` | lean:scripts-flip |
