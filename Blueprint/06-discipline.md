@@ -130,7 +130,7 @@ Examples:
     profiles pinned by `#guard_msgs` in
     [`L4YAML/Capstones.lean`](../L4YAML/Capstones.lean), plus
     [`scripts/capstones.txt`](../scripts/capstones.txt) driving
-    [`scripts/check-theorem-keyword.sh`](../scripts/check-theorem-keyword.sh)
+    `lake run check-theorem-keyword` (`Scripts/Main/TheoremKeyword.lean`)
     (Rule 7).
   - **External mirror**:
     [`L4YAML.FGM/KeyTheoremCatalogue.lean`](../../L4YAML.FGM/KeyTheoremCatalogue.lean)
@@ -204,12 +204,12 @@ the keyword itself carries Rule 1's traceability.
   once for the classic and once for the indexed twin) plus the
   `SIndent_*`/`GChar_*` wildcard families.
 - **Gates**:
-  [`scripts/check-theorem-keyword.sh`](../scripts/check-theorem-keyword.sh)
+  `lake run check-theorem-keyword` (`Scripts/Main/TheoremKeyword.lean`)
   fails CI on any non-whitelisted `theorem` in `L4YAML/`;
-  [`scripts/check-import-closure.sh`](../scripts/check-import-closure.sh)
+  `lake run check-import-closure` (`Scripts/Main/CheckImportClosure.lean`)
   ensures no module dodges the gates by dropping out of the import
   closure; and
-  [`scripts/check-reflection-index.sh`](../scripts/check-reflection-index.sh)
+  `lake run check-reflection-index` (`Scripts/Main/CheckReflectionIndex.lean`)
   holds the *narrative* half of `Tests/Reflections.lean` to its own
   claims — every bullet listed by the sub-theme it sits under, every
   listed number backed by a bullet, no number claimed twice, blocks

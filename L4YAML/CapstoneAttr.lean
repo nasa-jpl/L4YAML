@@ -22,7 +22,7 @@ set_option compiler.relaxedMetaCheck true
 In-repo, declaration-site registry of the blueprint capstones
 (`Blueprint/04-capstones.md`). The `theorem` keyword is reserved for
 `@[capstone]`-tagged declarations; every other proof uses `lemma`
-(see `L4YAML/Init.lean`; enforced by `scripts/check-theorem-keyword.sh`).
+(see `L4YAML/Init.lean`; enforced by `lake run check-theorem-keyword`).
 
 - `#capstones` prints the tagged set, one fully-qualified name per line
   (pinned by `#guard_msgs` in `L4YAML/Capstones.lean`, so silently

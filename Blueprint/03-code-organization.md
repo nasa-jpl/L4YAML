@@ -85,9 +85,9 @@ folder" rule (and to Initiative 1's exit criterion in
 They bracket the role folders in the import order — the prelude
 below everything, the registry above everything — which is why they
 are top-level rather than foldered. CI gates:
-[`scripts/check-theorem-keyword.sh`](../scripts/check-theorem-keyword.sh)
+`lake run check-theorem-keyword`
 (whitelist [`scripts/capstones.txt`](../scripts/capstones.txt)) and
-[`scripts/check-import-closure.sh`](../scripts/check-import-closure.sh)
+`lake run check-import-closure`
 (no orphan modules).
 
 ### File-size guideline

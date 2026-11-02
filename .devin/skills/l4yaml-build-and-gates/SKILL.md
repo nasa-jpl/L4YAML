@@ -38,15 +38,15 @@ Re-pin with the **cause** in the item; a pin that moved for a reason you
 cannot name is a finding, not a chore.
 
 A new `Tests/Reflections/*.lean` must be imported from `Tests/Reflections.lean`
-or it is not built (`scripts/check-reflection-index.sh` catches it).
+or it is not built (`lake run check-import-closure` catches it).
 
 ## Gates (what an item reports)
 
 ```bash
-scripts/check-theorem-keyword.sh      # `theorem` only on scripts/capstones.txt entries
-scripts/check-import-closure.sh       # no orphan modules
-scripts/check-reflection-index.sh     # reflections indexed
-scripts/check-closure-log.sh          # DOCS.md items ascend / dated / gaps declared
+lake run check-theorem-keyword        # `theorem` only on scripts/capstones.txt entries
+lake run check-import-closure         # no orphan modules (reads .olean headers; builds the roots first)
+lake run check-reflection-index       # reflections index narrative matches its bullets
+lake run check-closure-log            # DOCS.md items ascend / dated / gaps declared
 scripts/check-serialization-proofs.sh # serialization hygiene (+ check-serialization-axioms.py)
 python3 scripts/gate_vocab.py         # gate names cited in prose resolve
 lake run check-scripts-lean           # Rule 9: scripts/**/*.py and inline python3 sites are on scripts/scripts-ledger.txt (shrink-only pin)

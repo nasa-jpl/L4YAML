@@ -1,6 +1,6 @@
 # Capstone whitelist: declarations that keep the `theorem` keyword.
 # Everything else in L4YAML/ uses `lemma` (enforced by
-# scripts/check-theorem-keyword.sh; see Blueprint/06-discipline.md).
+# `lake run check-theorem-keyword`; see Blueprint/06-discipline.md).
 #
 # Format: <repo-relative-file>:<declaration-name>; trailing `*` = prefix
 # wildcard (same convention as L4YAML.FGM's check-capstones).

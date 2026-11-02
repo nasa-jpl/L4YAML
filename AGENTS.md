@@ -40,7 +40,7 @@ From `Blueprint/06-discipline.md` (binding; the file wins over this summary):
 6. **Verify before recommending from memory.**  Grep the tree; names and
    counts in this repo move daily.
 7. **`theorem` is reserved for `@[capstone]`** (listed in
-   `scripts/capstones.txt`, gated by `scripts/check-theorem-keyword.sh`);
+   `scripts/capstones.txt`, gated by `lake run check-theorem-keyword`);
    everything else is `lemma`.
 8. **No ghost index on the accumulation invariant** — every index a
    carrier introduces is a surface position, an obligation, or a projection
@@ -106,10 +106,10 @@ Facts that cost people time:
 The gates an item reports green, in the order they are cheap:
 
 ```bash
-scripts/check-theorem-keyword.sh     # Rule 7
-scripts/check-import-closure.sh      # no orphan modules
-scripts/check-reflection-index.sh    # every Tests/Reflections/* is indexed
-scripts/check-closure-log.sh         # DOCS.md items ascend, dated, gaps declared
+lake run check-theorem-keyword       # Rule 7
+lake run check-import-closure        # no orphan modules (off the .olean headers)
+lake run check-reflection-index      # every Tests/Reflections/* is indexed
+lake run check-closure-log           # DOCS.md items ascend, dated, gaps declared
 scripts/check-serialization-proofs.sh
 python3 scripts/gate_vocab.py        # gate names in prose resolve (pin: Tests/Guards/Proofs/GateVocabulary.lean)
 lake run check-scripts-lean          # Rule 9: every scripts/*.py and inline python3 site is on scripts/scripts-ledger.txt; the ledger only shrinks
@@ -142,8 +142,9 @@ Each `### Item N (date)` in the Row 12 log has the same shape; keep it.
 6. **`**NEXT —` …**  One paragraph: the next step, named by its Row 12 step
    number where it has one.
 
-Keep `scripts/check-closure-log.sh` green: numbers ascend by one, dates do not
-regress, a skipped number is declared in `scripts/check_closure_log.py`.
+Keep `lake run check-closure-log` green: numbers ascend by one, dates do not
+regress, a skipped number is declared in `Scripts/Docs/ClosureLog.lean`
+(`declaredGaps`).
 
 Commit subjects follow the log: `feat(row 12): step 12.3.3 — …`,
 `docs(row 12): item 299 — …`, `test(guards): re-pin … after …`,

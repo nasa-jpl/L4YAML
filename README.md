@@ -96,8 +96,8 @@ library — roughly 4,975 of them — is spelled `lemma` (macro in
 [L4YAML/Init.lean](L4YAML/Init.lean)). The tagged set and each capstone's
 axiom profile (18 pure, 7 `native_decide`-backed) are pinned at build time by
 `#guard_msgs` in [L4YAML/Capstones.lean](L4YAML/Capstones.lean), and CI
-enforces the discipline with `scripts/check-theorem-keyword.sh`,
-`scripts/check-import-closure.sh`, and a kernel-accurate
+enforces the discipline with `lake run check-theorem-keyword`,
+`lake run check-import-closure`, and a kernel-accurate
 zero-`sorry`/zero-custom-axiom assertion in
 [.github/workflows/test-coverage.yml](.github/workflows/test-coverage.yml).
 The rulebook is [Blueprint/06-discipline.md](Blueprint/06-discipline.md); the

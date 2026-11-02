@@ -277,10 +277,10 @@ jobs:
         #     via collect-stats): zero theorems with (transitive) sorry,
         #     zero custom axioms in the compiled environment.
         run: |
-          bash scripts/check-theorem-keyword.sh
-          bash scripts/check-import-closure.sh
-          bash scripts/check-reflection-index.sh
-          bash scripts/check-closure-log.sh
+          lake run check-theorem-keyword
+          lake run check-import-closure
+          lake run check-reflection-index
+          lake run check-closure-log
           lake build scripts-check-ledger
           lake run check-scripts-lean
           python3 - <<'EOF'

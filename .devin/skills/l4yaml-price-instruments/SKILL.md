@@ -20,7 +20,7 @@ its output.
 | `scripts/flips/item210_implicit_continue.json`, `item375_flip211_stage1.json` (the `[211]` price), `item415_inl_declines.json` (via `scripts-flip`); `flip_carrier.py`, `flip_supply.py`, `flip_supplier.py`, `flip_drop.py`; `lake exe scripts-flip-census` (Lean, Rule 9) | Narrowing / carrier / supply-side flips | see each docstring |
 | `ride_price.py`, `close_price.py`, `carrier_price.py`, `wire_price.py`, `transport_price.py`, `coordinate_price.py`, `arm_price.py`, `inline_class_price.py`, `punt_reason_price.py`, `*_top_price.py`, `*_nic0_price.py`, `open_map_price.py` | Cost of one specific change, by producer/consumer | `expected…` strings in `Tests/Guards/Proofs/` |
 | `drop_sweep.py` | Acceptance sweep (generates `L4YAML/Scratch/*.lean`, removes them) | — (a sweep says REACHED at most; it is not a proof obligation) |
-| `narrow_conclusion.py`, `pay_chain_optional.py`, `decline_all_optional.py`, `rename_lemma.py` | Mechanical source transforms used by items | — |
+| `narrow_conclusion.py`, `pay_chain_optional.py`, `decline_all_optional.py`, `lake exe scripts-theorem-keyword --rewrite` | Mechanical source transforms used by items | — |
 
 ## Protocol
 
