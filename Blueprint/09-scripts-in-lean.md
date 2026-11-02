@@ -3,7 +3,7 @@
 Status: PLAN, defaults RULED (2026-11-01, owner: "ok with the defaults" —
 every §6 default below is the decision). Governs the conversion of every
 `scripts/*.py` to Lean under [`06-discipline.md`](06-discipline.md) Rule 9.
-Phase 0 (the gate, #196), phase 2.1 (`flip_census`/`repin` in Lean) and phase 3.1 (the flip library, `scripts-flip`) are DONE; each later phase lands as its own PR
+Phase 0 (the gate, #196), phase 2.1 (`flip_census`/`repin` in Lean) and phase 3.1 (the flip library, `scripts-flip`, #200) are DONE; each later phase lands as its own PR
 and ticks its rows in §5. Work order (§3): phase 0 → 2.1 → 3.1 → 3.2 → 4.5 →
 phase 1 → the rest; R12 holds its next flip until 3.1 lands (Q6).
 
@@ -205,7 +205,7 @@ breaks CI if wrong, cheapest first:
    the text).
 
 **Phase 3 — class F, the flips (58 scripts, ~6 PRs).**
-1. **DONE** — `Scripts/Flip/{Patch,Round,Report}.lean`, `Scripts/Git.lean`,
+1. **DONE (#200)** — `Scripts/Flip/{Patch,Round,Report}.lean`, `Scripts/Git.lean`,
    `lake exe scripts-flip SPEC.json` (specs under `scripts/flips/`): validated by
    re-running the **two most recent** flips (`flip_colon_chain.py`,
    item 417; `flip_kslote_domain.py`, item 416) as specs at their `--rev`
