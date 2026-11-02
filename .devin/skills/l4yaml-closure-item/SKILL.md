@@ -60,7 +60,7 @@ every touched declaration (no `sorryAx`; standard three + per-site
 
 ## 5. Write the entry
 
-Shape (keep it; `scripts/check-closure-log.sh` gates the heading):
+Shape (keep it; `lake run check-closure-log` gates the heading):
 
 ```
 ### Item N (YYYY-MM-DD)
@@ -81,7 +81,7 @@ sentences with the headline numbers and the gate summary.
 **NEXT — <step number>, <one paragraph naming the next arm/instrument>.**
 ```
 
-Then: `scripts/check-closure-log.sh && python3 scripts/gate_vocab.py` — every
+Then: `lake run check-closure-log && python3 scripts/gate_vocab.py` — every
 gate or refutation name you wrote in prose must resolve in the environment.
 
 If the item moves a step's state, update the row in the

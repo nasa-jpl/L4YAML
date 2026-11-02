@@ -30,7 +30,7 @@ so that any drift **fails the build**:
 
 - the `#capstones` pin freezes the tagged **set** — adding, removing, or
   renaming a capstone must update this file (and `scripts/capstones.txt`,
-  which drives `scripts/check-theorem-keyword.sh`: these are the only
+  which drives `lake run check-theorem-keyword`: these are the only
   declarations allowed to use the `theorem` keyword);
 - the `#assert_capstone_axioms` pin freezes each capstone's **axiom
   profile** — `pure` = `propext`/`Classical.choice`/`Quot.sound` only,

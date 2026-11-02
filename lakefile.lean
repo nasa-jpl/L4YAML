@@ -364,27 +364,70 @@ lean_exe «scripts-repin» where
 lean_exe «scripts-flip» where
   root := `Scripts.Main.Flip
 
+-- Phase 1: the class-G gates (`lake run check-…`).
+@[default_target]
+lean_exe «scripts-theorem-keyword» where
+  root := `Scripts.Main.TheoremKeyword
+
+@[default_target]
+lean_exe «scripts-check-import-closure» where
+  root := `Scripts.Main.CheckImportClosure
+  supportInterpreter := true
+
+@[default_target]
+lean_exe «scripts-check-reflection-index» where
+  root := `Scripts.Main.CheckReflectionIndex
+
+@[default_target]
+lean_exe «scripts-check-closure-log» where
+  root := `Scripts.Main.CheckClosureLog
+
 /-! Phase 4.5 (Rule 9, Q7): portable entry points — `lake run <name>` replaces the
 bash wrappers that only run a `lean_exe`; same on Linux, macOS and Windows. -/
 
-/-- The Rule 9 ledger gate: `lake run check-scripts-lean [-- ARGS]`
-(`scripts/check-scripts-lean.sh` before 4.5). Builds the exe, runs it on this
-repository root; exit status is the exe's. -/
-script «check-scripts-lean» (args) do
-  let ws ← getWorkspace
-  let root := ws.root.dir
-  let build ← IO.Process.output { cmd := "lake", args := #["build", "scripts-check-ledger"], cwd := some root }
+/-- A gate behind `lake run <name> [-- ARGS]`: `lake build <exe> <prereqs>`, then run
+`.lake/build/bin/<exe>` with `-C <repo root>` (unless the caller passes
+`-C`/`--root`), `fixed` first, then ARGS; the exit status is the exe's (2 when
+the build fails).  `lake run name -- ARGS` forwards the `--`, dropped here. -/
+def runGateExe (root : System.FilePath) (exe : String) (fixed : Array String)
+    (args : List String) (prereqs : Array String := #[]) : IO UInt32 := do
+  let build ← IO.Process.output { cmd := "lake", args := #["build", exe] ++ prereqs, cwd := some root }
   if build.exitCode != 0 then
     IO.eprintln build.stdout; IO.eprintln build.stderr
-    IO.eprintln "check-scripts-lean: lake build scripts-check-ledger failed"
+    IO.eprintln s!"lake run: lake build {exe} {" ".intercalate prereqs.toList} failed"
     return 2
-  let exe := root / ".lake" / "build" / "bin" / "scripts-check-ledger"
-  let args := if args.headD "" == "--" then args.drop 1 else args   -- `lake run name -- ARGS` forwards the `--`
+  let args := if args.headD "" == "--" then args.drop 1 else args
   let hasRoot := args.any fun a => a == "-C" || a == "--root"
-  let argv := if hasRoot then args.toArray else #["-C", root.toString] ++ args.toArray
-  let child ← IO.Process.spawn { cmd := exe.toString, args := argv }
-  let code ← child.wait
-  return code
+  let argv := (if hasRoot then #[] else #["-C", root.toString]) ++ fixed ++ args.toArray
+  let child ← IO.Process.spawn { cmd := (root / ".lake" / "build" / "bin" / exe).toString, args := argv }
+  child.wait
+
+/-- The Rule 9 ledger gate: `lake run check-scripts-lean [-- ARGS]`
+(`scripts/check-scripts-lean.sh` before 4.5). -/
+script «check-scripts-lean» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-check-ledger" #[] args
+
+/-- Rule 7: `theorem` only on `scripts/capstones.txt` entries
+(`scripts/check-theorem-keyword.sh` before phase 1). -/
+script «check-theorem-keyword» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-theorem-keyword" #["--check", "L4YAML"] args
+
+/-- No orphan `L4YAML/**` module, every `Tests/Reflections/*` indexed
+(`scripts/check-import-closure.sh` before phase 1).  Reads `.olean` headers,
+so the default-target roots are built first (a no-op when up to date). -/
+script «check-import-closure» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-check-import-closure" #[] args
+    #["L4YAML", "l4yaml-event", "l4yaml-json", "l4yaml-event-ix", "l4yaml-json-ix"]
+
+/-- The Reflections index's narrative half matches its bullets
+(`scripts/check-reflection-index.sh` before phase 1). -/
+script «check-reflection-index» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-check-reflection-index" #[] args
+
+/-- DOCS.md closure-log items ascend, dated, gaps declared
+(`scripts/check-closure-log.sh` before phase 1). -/
+script «check-closure-log» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-check-closure-log" #[] args
 
 /-- Every test exe, output captured under OUT (default `docs`), failures
 collected: `lake run run-all-tests [-- OUT]` (`scripts/run-all-tests.sh`

@@ -7,14 +7,14 @@
 #   status  todo | lean:<exe> (ported; the .py is deleted, <exe> is a lean_exe) | exception:<reason> (plan §4)
 # Gate: scripts/check-scripts-lean.sh (lake exe scripts-check-ledger).  The pin below counts todo + exception rows
 # and must equal them; a port lowers it in the same PR.  The ledger may only shrink.
-# open: 79
+# open: 75
 scripts/arm_price.py | F | todo
 scripts/beta5_arms.py | F | todo
 scripts/carrier_price.py | F | todo
 scripts/check-serialization-axioms.py | G | todo
-scripts/check_closure_log.py | G | todo
-scripts/check_import_closure.py | G | todo
-scripts/check_reflection_index.py | G | todo
+scripts/check_closure_log.py | G | lean:scripts-check-closure-log
+scripts/check_import_closure.py | G | lean:scripts-check-import-closure
+scripts/check_reflection_index.py | G | lean:scripts-check-reflection-index
 scripts/close_price.py | F | todo
 scripts/coordinate_price.py | F | todo
 scripts/cross-lang-compare.py | R | todo
@@ -77,7 +77,7 @@ scripts/park_nic0_price.py | F | todo
 scripts/park_top_price.py | F | todo
 scripts/pay_chain_optional.py | F | todo
 scripts/punt_reason_price.py | F | todo
-scripts/rename_lemma.py | G | todo
+scripts/rename_lemma.py | G | lean:scripts-theorem-keyword
 scripts/repin.py | I | lean:scripts-repin
 scripts/residue_classes.py | I | todo
 scripts/ride_price.py | F | todo

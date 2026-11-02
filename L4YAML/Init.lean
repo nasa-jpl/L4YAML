@@ -21,7 +21,7 @@ Imported (directly or transitively) by every library module. Provides:
   approach as `Mathlib/Tactic/Lemma.lean`, core-only). Project policy
   (`Blueprint/06-discipline.md`): the `theorem` keyword is reserved for
   the `@[capstone]`-tagged blueprint capstones; **every other proof is
-  a `lemma`**. Enforced by `scripts/check-theorem-keyword.sh`.
+  a `lemma`**. Enforced by `lake run check-theorem-keyword`.
 - the `@[capstone]` attribute machinery, via `L4YAML.CapstoneAttr`.
 
 The `lemma` expander is a *macro* (not a `command_elab`) so that it

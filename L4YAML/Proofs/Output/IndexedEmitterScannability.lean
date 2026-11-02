@@ -25,7 +25,7 @@ parallel universe (Reflection 157: no transport between
 `ScannerStateIx`/`ParseStateIx` and `ScannerState`/`ParseState`), so it is
 not a drop-in for the legacy chain; it is now **wired into the library
 build** (including `EmitScansStrong`, formerly orphaned) so it cannot rot,
-per the import-closure gate (`scripts/check-import-closure.sh`).
+per the import-closure gate (`lake run check-import-closure`).
 
 Historical context (2026-05-31 parking rationale): this was originally a
 staging aggregator for a "6f.3c cutover" that would rename these

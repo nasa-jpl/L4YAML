@@ -3,7 +3,7 @@
 Status: PLAN, defaults RULED (2026-11-01, owner: "ok with the defaults" —
 every §6 default below is the decision). Governs the conversion of every
 `scripts/*.py` to Lean under [`06-discipline.md`](06-discipline.md) Rule 9.
-Phase 0 (the gate, #196), phase 2.1 (`flip_census`/`repin` in Lean) and phase 3.1 (the flip library, `scripts-flip`, #200) are DONE; each later phase lands as its own PR
+Phase 0 (the gate, #196), phase 2.1 (`flip_census`/`repin` in Lean), phase 3.1 (the flip library, `scripts-flip`, #200), phase 3.2's specs half (#201), phase 4.5 (`lake run`, #202) and phase 1's four CI gates (#204) are DONE; each later phase lands as its own PR
 and ticks its rows in §5. Work order (§3): phase 0 → 2.1 → 3.1 → 3.2 → 4.5 →
 phase 1 → the rest; R12 holds its next flip until 3.1 lands (Q6).
 
@@ -104,11 +104,11 @@ transliterations:
   consumed by one `lake exe scripts-flip SPEC.lean|SPEC.json`. The 58
   scripts collapse to 58 specs; the protocol (anchor count, checksum
   both sides, never beside a build, `--rev`, `--keep`) is written once.
-- **A gate's `.sh` name does not change** until phase 4.5. CI and the
-  skills call `scripts/check-import-closure.sh`; its body changes to
-  `lake exe`. The portable entry point is `lake run <name>` (Q7): bash
-  is the last non-portable layer, and Lake runs the same on Linux, macOS
-  and Windows.
+- **A gate's entry point is `lake run <name>`** (Q7, phase 4.5 — DONE): CI and
+  the skills call `lake run check-import-closure`, a Lake `script` that builds
+  the exe (and, for the header-reading gate, the default-target roots) and
+  runs it. Bash was the last non-portable layer; Lake runs the same on
+  Linux, macOS and Windows.
 - **Every converted script is pinned where the Python was.** The guard
   files that quote a script's reading (e.g. `GateVocabulary.lean` ↔
   `gate_vocab.py`) are re-pointed at the Lean exe in the same PR; the
@@ -165,14 +165,32 @@ first Lean script, and the proof the shape works.*
 
 **Phase 1 — class G, the gates (6 scripts, ~5 PRs).** Order by what
 breaks CI if wrong, cheapest first:
-1. `check_import_closure.py` → `scripts-check-import-closure` (environment
-   read; drops the import regex for good).
-2. `check_reflection_index.py` → `scripts-check-reflection-index`.
-3. `check_closure_log.py` + `docs_nav.py` → one `Scripts/Docs/ClosureLog.lean`
-   with two exes (`scripts-check-closure-log`, `scripts-docs-nav`); they
-   share the item parser today by duplication.
-4. `rename_lemma.py` → `scripts-theorem-keyword` (`--check` is the Rule 7
-   gate; the rename mode is kept as `--rewrite`).
+1. **DONE** `check_import_closure.py` → `scripts-check-import-closure`
+   (`Scripts/Lean/ImportClosure.lean`): the import graph is read off the
+   `.olean` headers (`Lean.readModuleData` → `imports`), strategy (i) of §2;
+   phase 1.1's probe reproduced the obstacle on v4.35.0 (`import Tests.EmitJson
+   failed, environment already contains 'main' from Tests.EmitEvents`), so (i)
+   is the only port. Two failure classes: *orphan* and *missing header*; the
+   third of §2, *stale header*, is **delegated to Lake** — the wrapper runs
+   `lake build L4YAML l4yaml-event l4yaml-json l4yaml-event-ix l4yaml-json-ix`
+   first — because an mtime comparison is not Lake's freshness criterion
+   (outputs are content-addressed; a byte-identical restore after a flip left
+   `StreamAccum.lean` newer than an `.olean` Lake rightly kept, a false
+   positive the first draft hit). The Reflections-index half stays textual
+   (`Tests.Reflections` is not built at gate time).
+2. **DONE** `check_reflection_index.py` → `scripts-check-reflection-index`
+   (`Scripts/Docs/ReflectionIndex.lean`; the narrative half is prose, parsed
+   as text; imports off the index's own lines).
+3. **DONE (gate half)** `check_closure_log.py` → `scripts-check-closure-log`
+   over `Scripts/Docs/ClosureLog.lean` (item parser, `declaredGaps`, the five
+   checks as pure functions with `#guard` rows). `docs_nav.py` (class I,
+   phase 2) will read the log through the same module; it keeps its own
+   parser until then.
+4. **DONE** `rename_lemma.py` → `scripts-theorem-keyword` (`--check` is the
+   Rule 7 gate, `lake run check-theorem-keyword`; `--stats`; the rename mode
+   is `--rewrite`). Scanner in `Scripts/Lean/TheoremKeyword.lean` with
+   `#guard` rows for strings, char literals, nested block comments,
+   `Parser.Command.theorem`-style name literals.
 5. `check-serialization-axioms.py` → read inside
    `scripts/check-serialization-proofs.sh`'s Lean exe.
 6. `gate_vocab.py` → `scripts-gate-vocab`; it already shells out to an
@@ -259,9 +277,10 @@ breaks CI if wrong, cheapest first:
    (b) replace the pair with a `.sh` driving `weasyprint` CLI directly and
    a Lean exe for the TOC/SVG rewriting; (c) drop the PDF from CI.
 5. **Portable wrappers (Q7) — DONE (#202) for the two exe-only wrappers** (`lake run
-   check-scripts-lean`, `lake run run-all-tests`; their `.sh` deleted; the four
-   `check-*.sh` still wrap Python and are wired as `lake run` when phase 1 ports
-   them; `generate-all.sh`, `check-serialization-proofs.sh`, `build-api-docs.sh`,
+   check-scripts-lean`, `lake run run-all-tests`; their `.sh` deleted) **and
+   (phase 1, #204) for the four gates** (`lake run check-theorem-keyword`,
+   `check-import-closure`, `check-reflection-index`, `check-closure-log`; their
+   `.sh` and `.py` deleted; `generate-all.sh`, `check-serialization-proofs.sh`, `build-api-docs.sh`,
    `bump-version.sh`, `publish-pages.sh`, `sync-pages.sh` do more than run an
    exe and stay `.sh` until their phase). Every `scripts/*.sh` that only runs a
    `lean_exe` becomes a Lake `script` block in `lakefile.lean` —
@@ -308,10 +327,10 @@ it removes Python from CI; it does not block an item.
 
 | Script | Class | Lines | Born | Callers | Target | Status |
 |---|---|---|---|---|---|---|
-| check_import_closure.py | G | 104 | 07-31 | check-import-closure.sh (CI) | scripts-check-import-closure | todo |
-| check_reflection_index.py | G | 148 | 08-11 | check-reflection-index.sh (CI) | scripts-check-reflection-index | todo |
-| check_closure_log.py | G | 143 | 09-27 | check-closure-log.sh (CI) | scripts-check-closure-log | todo |
-| rename_lemma.py | G | 220 | 08-01 | check-theorem-keyword.sh (CI) | scripts-theorem-keyword | todo |
+| check_import_closure.py | G | 104 | 07-31 | `lake run check-import-closure` (CI) | scripts-check-import-closure | **DONE** (#204) |
+| check_reflection_index.py | G | 148 | 08-11 | `lake run check-reflection-index` (CI) | scripts-check-reflection-index | **DONE** (#204) |
+| check_closure_log.py | G | 143 | 09-27 | `lake run check-closure-log` (CI) | scripts-check-closure-log | **DONE** (#204) |
+| rename_lemma.py | G | 220 | 08-01 | `lake run check-theorem-keyword` (CI) | scripts-theorem-keyword | **DONE** (#204) |
 | check-serialization-axioms.py | G | 44 | 10-05 | check-serialization-proofs.sh (CI) | (inside that gate's exe) | todo |
 | gate_vocab.py | G | 207 | 09-25 | battery; GateVocabulary.lean | scripts-gate-vocab | todo |
 | repin.py | I (also `--check`) | 223 | 10-23 | every item | scripts-repin | lean:scripts-repin |
