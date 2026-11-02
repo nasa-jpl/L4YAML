@@ -640,6 +640,11 @@ def doorOf (lem : Name) (parks : List Name) : MetaM (Array String) := do
 -- 2026-10-29 (item 389): the `-` park's `#3 BOTH` spend reads its k = n arm's new split — `kn(n < k)→paid` beside item 387's `atSequenceIndent` split, whose mapping-top half now reads the park's conjunct `h_mt` (paid) and whose sequence-top half stays punt.
 -- 2026-10-30 (item 405): `accum_block_on_pendingBlock`'s spend reads the `?`-park field's head-form chain (`h_kslot` now `∃ nv0 ns, …`).
 -- 2026-10-30 (item 405, Rule 8 fix): the same three rows re-read with the field re-indexed by the projection `markedCols sc` — the `opt(h_kslot:…)` frame now prints `∀ (nv : Nat), nv ∈ …` (no `∃ nv0 ns`), and the off-column decision destructures no chain (the `h✝` binders leave).
+-- 2026-11-02 (item 422): `accum_block_on_pendingBlock #4` (feeds `colon_open_map_explicit.h_stream_mid`): its
+-- `beside` read `opt(h_kslotUp…)→—|punt, other(∀ x ∈ ns → x = k)→paid|punt` — the K7 carrier paid from the chain's
+-- domain under an `if hns` split, declined otherwise; it now reads `other(MarkedColsIn s_prep [k])→paid|—`: K7 is
+-- DECIDED at the prepared register and its complement is the ARMED fact (`exists_mem_ne_of_not_markedColsIn`), so
+-- the second arm is a pay, not a punt (the openers' `h_outer` body, (γ′)).
 def expectedSpends : List String :=
   [
   "keyctx_of_preprocess #1 width feeds=tuple frames=[] cover=none floor=none above=[other(s_prep.simpleKey.possible = true ∧ s_pre…),other((∃ k, SIndent k sp_mid sp_ws) ∨ ∃ sa sb,…),other(h_disj:SSLComments sp_g sp_mid ∧ sp_mid.…)] beside=[]",
@@ -652,7 +657,7 @@ def expectedSpends : List String :=
    -- Item 418: `#3`'s landed-`?` split on `(h_kslot, h_kslotUp)` pays its last arm off `h_kslot` alone
    -- (`punt` → `paid,E:pass|—`: the own domained line covers, the alternative is carried), one leaf more under `kn(n + 1 ≤ k)`.
    "accum_block_on_pendingBlock #3 BOTH feeds=indicator_open_map.h_stream_land frames=[base:h_base,closeF(opt):h_kslot,closeF(opt):h_kslotUp,closeF(opt,wb,cover@2,floor@2):h_closeF_old,closeFV(opt,wb,cover@2,floor@2):h_closeFV_old,entry(SBI):h_close_entry_old,mono:h_mono,seqF(opt):h_seqF_old,top:h_top_old] cover=@2 floor=@2 above=[other(h_land:SSLComments sp_scan sp_mid ∧ sp_m…),other((∃ k, SIndent k sp_mid sp_sc) ∨ ∃ sa sb,…),char(c = '-'),char(c = ':' ∨ c = '?')] beside=[opt(h_closeF_old:(∃ ks, (∀ (fr : Proofs.Inde…)→E:empty×2,E:pass×2|punt,kmem(Proofs.IndentStackCover.FrameLevel.map k…)→E:empty|E:pass×2,E:empty,other(s_prep.indents = sc.indents ∨ ¬s_prep.in…)→E:pass×2,E:empty|—,kn(n < k)→paid,E:pass|E:pass,E:empty,other(atSequenceIndent s_prep = true ∧ (c = ':…)→—|E:pass,E:empty,other(atSequenceIndent s_prep = false)→E:pass,E:empty|punt,opt(h_mt:((∃ e, sc.indents.back? = some e ∧ …)→E:pass,E:empty|—,col0(sp_scan.col = 0)→punt|paid,kn(n + 1 ≤ k)→E:pass×5|punt,opt(h_kslot,h_kslotUp:((∀ (nv : Nat), nv ∈ P…)→paid,E:pass×3|paid,E:pass|paid,E:pass|—,opt(h_closeFV_old:(∃ nv ks, (∀ (fr : Proofs.…)→E:empty|—,kmem(Proofs.IndentStackCover.FrameLevel.map k…)→—|—,kn(n + 1 ≤ k)→E:pass×5|punt,opt(h_kslot,h_kslotUp:((∀ (nv : Nat), nv ∈ P…)→paid,E:pass×3|paid,E:pass|paid,E:pass|—]",
-   "accum_block_on_pendingBlock #4 BOTH feeds=colon_open_map_explicit.h_stream_mid frames=[base:h_base,closeF(opt):h_kslot,closeF(opt):h_kslotUp,closeF(opt,wb,cover@2,floor@2):h_closeF_old,closeF:kslot,closeFV(opt,wb,cover@2,floor@2):h_closeFV_old,entry(SBI):h_close_entry_old,mono:h_mono,seqF(opt):h_seqF_old,top:h_top_old] cover=@2 floor=@2 above=[other(h_land:SSLComments sp_scan sp_mid ∧ sp_m…),other((∃ k, SIndent k sp_mid sp_sc) ∨ ∃ sa sb,…),char(c = '-'),char(c = ':' ∨ c = '?'),char(c = ':')] beside=[opt(h_kslotUp:(∃ ns, Proofs.RegisterWitness.…)→—|punt,other(∀ (x : Nat), x ∈ ns → x = k)→paid|punt]",
+   "accum_block_on_pendingBlock #4 BOTH feeds=colon_open_map_explicit.h_stream_mid frames=[base:h_base,closeF(opt):h_kslot,closeF(opt):h_kslotUp,closeF(opt,wb,cover@2,floor@2):h_closeF_old,closeF:kslot,closeFV(opt,wb,cover@2,floor@2):h_closeFV_old,entry(SBI):h_close_entry_old,mono:h_mono,seqF(opt):h_seqF_old,top:h_top_old] cover=@2 floor=@2 above=[other(h_land:SSLComments sp_scan sp_mid ∧ sp_m…),other((∃ k, SIndent k sp_mid sp_sc) ∨ ∃ sa sb,…),char(c = '-'),char(c = ':' ∨ c = '?'),char(c = ':')] beside=[other(Proofs.RegisterWitness.MarkedColsIn s_pr…)→paid|—]",
    "accum_block_on_pendingBlock #5 BOTH feeds=block_dispatch_deferred_stamp_offcol.h_stream frames=[base:h_base,closeF(opt):h_kslot,closeF(opt):h_kslotUp,closeF(opt,wb,cover@2,floor@2):h_closeF_old,closeF:h_explicit,closeF:h_upSpend,closeF:kslot,closeFV(opt,wb,cover@2,floor@2):h_closeFV_old,entry(SBI):h_close_entry_old,mono:h_mono,seqF(opt):h_seqF_old,top:h_top_old] cover=@2 floor=@2 above=[other(h_land:SSLComments sp_scan sp_mid ∧ sp_m…),other((∃ k, SIndent k sp_mid sp_sc) ∨ ∃ sa sb,…),char(c = '-'),char(c = ':' ∨ c = '?'),char(c = ':'),other((if s_prep.allowDirectives = true then {…),opt(h_kslot:(∀ (nv : Nat), nv ∈ Proofs.Regis…),kmem(k ∈ Proofs.RegisterWitness.markedCols sc),k∃(h_upSpend:(∀ (sp_m : SurfPos), SBlockInd…)] beside=[other(s_prep.allowDirectives = true)→—|—]",
    "accum_block_on_pendingBlock #6 BOTH feeds=block_dispatch_deferred_stamp_nopack.h_stream frames=[base:h_base,closeF(opt):h_kslot,closeF(opt):h_kslotUp,closeF(opt,wb,cover@2,floor@2):h_closeF_old,closeF:h_explicit,closeF:h_upSpend,closeFV(opt,wb,cover@2,floor@2):h_closeFV_old,entry(SBI):h_close_entry_old,mono:h_mono,seqF(opt):h_seqF_old,top:h_top_old] cover=@2 floor=@2 above=[other(h_land:SSLComments sp_scan sp_mid ∧ sp_m…),other((∃ k, SIndent k sp_mid sp_sc) ∨ ∃ sa sb,…),char(c = '-'),char(c = ':' ∨ c = '?'),char(c = ':'),other((if s_prep.allowDirectives = true then {…),opt(h_kslot:(∀ (nv : Nat), nv ∈ Proofs.Regis…)] beside=[other(s_prep.allowDirectives = true)→—|—]"]
 -- 2026-10-21 (item 319): four rows re-read for the paid block-lane arms — the `rcases … | h_alt` and `| Or.inr h_alt`
@@ -674,6 +679,10 @@ def expectedSpends : List String :=
 -- 2026-10-30 (item 405): the `closeThenBlock` resume-branch decision reads the chain birth (`hkv` + `hkvUp` destructured, `h_resKslot` declined).
 -- 2026-10-30 (item 408): `flowKeyRoute_of_root`'s value-line pair no longer spends the resumed landing's
 -- `nv` (one route cannot fund `∀ nv ∈ markedCols s_prep`): that `match h_resV_land` arm is a punt on both sides.
+-- 2026-11-02 (item 422): decisions 57 → 56 at `accum_block_on_pendingBlock` beside #4 — the `Or.elim opt [h_kslotUp…] → —|punt`
+-- and `dite other [∀ x ∈ ns → x = k] → paid|punt` rows (K7 read off the chain's cover, declined otherwise) become ONE
+-- `Or.elim other [MarkedColsIn s_prep [k] ∨ ¬ …] → paid|—` row: K7 decided at the prepared register, its complement the
+-- ARMED fact ((γ′), `exists_mem_ne_of_not_markedColsIn`).
 def expectedDecisions : List String :=
   [ "flowKeyRoute_of_root dite kmem [Proofs.IndentStackCover.FrameLevel.map w ∈ ks] → E:other(lemma:SSLCommentsFrom_at_park(prem:ScannerSurfCorr,prem:GStar,prem:∀→Not,lemma:left(prem:And),lemma:left(lemma:right(lemma:right(…)))))|punt pos=—",
     "flowKeyRoute_of_root dite kmem [Proofs.IndentStackCover.FrameLevel.map w ∈ ks] → E:other(lemma:SSLCommentsFrom_at_park(prem:ScannerSurfCorr,prem:GStar,prem:∀→Not,lemma:left(prem:And),lemma:left(lemma:right(lemma:right(…)))))|punt pos=—",
@@ -714,8 +723,7 @@ def expectedDecisions : List String :=
     "accum_block_on_pendingBlock Or.elim other [(∃ k, SIndent k sp_mid sp_sc) ∨ ∃ sa sb, GStar SSWhite sp_mid sa ∧ SSWhi…] → E:empty×12,E:pass×16,E:node×6,P:hand,E:carry×2,P:spend×4|— pos=above#3,above#4,above#5,above#6",
     "accum_block_on_pendingBlock dite char [c = '-'] → E:empty×9,E:pass,E:node×6,P:hand,E:carry|P:spend×4,E:empty×3,E:pass×15,E:carry pos=above#3,above#4,above#5,above#6",
     "accum_block_on_pendingBlock dite char [c = ':' ∨ c = '?'] → P:spend×4,E:empty×3,E:pass×15,E:carry|— pos=above#3,above#4,above#5,above#6",
-    "accum_block_on_pendingBlock Or.elim opt [h_kslotUp:(∃ ns, Proofs.RegisterWitness.MarkedColsIn sc ns ∧ ∀ (nv : Nat), nv ∈ ns…] → —|punt pos=beside#4",
-    "accum_block_on_pendingBlock dite other [∀ (x : Nat), x ∈ ns → x = k] → paid|punt pos=beside#4",
+    "accum_block_on_pendingBlock Or.elim other [Proofs.RegisterWitness.MarkedColsIn s_prep [k] ∨ ¬Proofs.RegisterWitness…] → paid|— pos=beside#4",
     "accum_block_on_pendingBlock dite kmem [k ∈ nsU] → paid,E:carry,E:pass|— pos=—",
     "accum_block_on_pendingBlock dite kn [n + 1 ≤ k] → E:pass×5|punt pos=beside#3",
     "accum_block_on_pendingBlock match opt [h_kslot,h_kslotUp:((∀ (nv : Nat), nv ∈ Proofs.RegisterWitness.markedCols sc → ∀ (sp_m : Su…] → paid,E:pass×3|paid,E:pass|paid,E:pass|— pos=beside#3",
@@ -794,12 +802,14 @@ def expectedDoor : List String :=
 -- 2026-10-29 (item 389): decisions 121 → 126, apps 47 → 48 — the five new decision rows above (two `currentIndent < k` splits, the k = n arm's `h_mt` read) and `pushedBirth_not_mapTop`'s application at the landed birth.
 -- 2026-10-30 (item 405): see `expectedSpends`/`expectedDecisions` (the `?`-park chain ladder PAID).
 -- 2026-10-30 (item 405, Rule 8 fix): `apps` 43 → 48 — the five `h_kslot` decisions apply `MarkedColsIn.relay`/`markedCols` instead of destructuring a chain.  Rule 8 fix (same item): the five `h_kslot` decisions re-read with the projection (`∀ (nv : Nat), nv ∈ markedCols sc …`; the `kmem` splits read `k ∈ markedCols sc`).
+-- 2026-11-02 (item 422): decisions 141 → 139 — `accum_block_on_pendingBlock` beside #4's two rows (`Or.elim opt` punt +
+-- `dite` over the cover) became one paid `Or.elim` over `MarkedColsIn s_prep [k]` (see `expectedDecisions`).
 def expectedLine : String :=
   -- 2026-10-26 (item 366): decisions 114 → 115 — the `Classical.em (MarkedColsIn sc [k])` decision at
   -- `accum_block_on_closeThenBlock`'s explicit `:` face; no frame row moved.
 -- Item 371 (kslot=4 → 0, kslotUp=4 → 0): the value-line packs end in the one-level
 -- `ResumeFrames`; `question_open_map`'s `h_expl`/`h_closeFV`/`h_framesV` come from the bound tail route `h_route51F`.
-  "asked=6 both=4 lemmas=1 walked=4 feedFunnel=1 feedExplicit=1 feedDeferred=2 feedTuple=0 entry=4 entrySBI=4 kslot=0 kslotUp=0 closeF=4 closeFV=4 seqF=4 top=4 floor=0 cover=4 cover2=4 floorB=4 aboveKN=0 aboveKMem=1 aboveKNv=0 aboveKEx=1 hands=1 besideKN=1 besideKMem=1 besideKNv=0 puntKN=1 puntKMem=0 besideNone=0 decisions=141 decOnK=26 decKN=13 decKMem=12 decKNv=1 apps=52 funnelArgs=1 doorDropped=3/1 closeSites=5 params=5"
+  "asked=6 both=4 lemmas=1 walked=4 feedFunnel=1 feedExplicit=1 feedDeferred=2 feedTuple=0 entry=4 entrySBI=4 kslot=0 kslotUp=0 closeF=4 closeFV=4 seqF=4 top=4 floor=0 cover=4 cover2=4 floorB=4 aboveKN=0 aboveKMem=1 aboveKNv=0 aboveKEx=1 hands=1 besideKN=1 besideKMem=1 besideKNv=0 puntKN=1 puntKMem=0 besideNone=0 decisions=139 decOnK=26 decKN=13 decKMem=12 decKNv=1 apps=52 funnelArgs=1 doorDropped=3/1 closeSites=5 params=5"
 
 /-! ## §5 The reading -/
 

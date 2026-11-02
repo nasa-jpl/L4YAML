@@ -9470,6 +9470,75 @@ def testHeldChainRelay (state : IO.Ref TestCollector) : IO Unit := do
     (dashSteps > 0 && colonSteps > 0 && grew == 0 && underTwo > 0 && qPauses > 0 && qAdded == qPauses && misshaped.isEmpty &&
       aPaid > 0 && aAnc > 0 && aBirth == 0 && bPaid > 0 && bDeep == 0 && cPaid > 0 && cDeep == 0)
 
+-- Priority 83 (item 422, PAID): Rule 2 for the openers' `h_outer` body — at every block `:` and compact
+-- `?` pause that closes a `?` park, the prepared register is K7 (only the landing column `k = sP.col`
+-- is marked — `refused_of_outer_disp`'s side) or ARMED (some marked column `≠ k` — the new right arm):
+-- `exists_mem_ne_of_not_markedColsIn` is the decision, so a pause in NEITHER bucket would be a dead
+-- register at a sound block state (item 410's `refused_of_markedCols_eq_nil` refutes it).  Second half:
+-- the key the body carries — at K7 pauses the prepared save sits at the landing column (`hkey`), on
+-- either side of `h_park` (`simpleKeyAllowed` down at the park, up at the landing: `landing_or_park_save`).
+-- Third half: an ARMED witness survives the `:` dispatch (the `-`/flow pauses are negative controls).
+def testArmedOuterPartition (state : IO.Ref TestCollector) : IO Unit := do
+  let inputs : List String :=
+    [ "? a\n: b", "? a\n: b\n? c\n: d", "- ? a\n  : b", "- ? a\n  : b\n- ? c\n  : d",
+      "k:\n  ? a\n  : b", "? ? a\n  : b\n: c", "? - a\n: b", "? : v\n: w", "- ? : v",
+      "? &a k\n: v", "- ? &a\n  : v", "? !!str a\n: b", "? a\n? b\n: c",
+      "k:\n  ? a\n: b", "k:\n  - ? a\n    : b\n  ? c\n  : d", "? a\n  b\n: c",
+      "a: 1\n? b\n: 2", "- a\n- ? b\n  : c", "? [a]\n: b", "? {a: 1}\n: b",
+      "[? a : b]", "{? a : b}", "- a\n- b", "a: [b, c]\n? d\n: e" ]
+  let mut colonPauses := 0
+  let mut qPauses := 0
+  let mut k7 := 0
+  let mut armed := 0
+  let mut neither := 0
+  let mut armedWitnesses : List (Nat × Nat) := []
+  let mut skaDownAtPark := 0
+  let mut keyAtLanding := 0
+  let mut keyElsewhere := 0
+  let mut witnessSurvived := 0
+  let mut witnessClosed := 0
+  let mut flowPauses := 0
+  let mut dashPauses := 0
+  let mut parsed := 0
+  for input in inputs do
+    match parseYaml input with
+    | .ok _ => parsed := parsed + 1
+    | .error _ => pure ()
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:64] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) =>
+          let mid := (markedColsOf sP.pendingKeys sP.indentColumns).eraseDups
+          let after := markedColsOf sN.pendingKeys sN.indentColumns
+          let k := sP.col
+          if sP.flowLevel == 0 && (c == ':' || c == '?') && !mid.isEmpty then
+            if c == ':' then colonPauses := colonPauses + 1 else qPauses := qPauses + 1
+            if s.simpleKeyAllowed == false then skaDownAtPark := skaDownAtPark + 1
+            match mid.find? (· != k) with
+            | some x =>
+              armed := armed + 1
+              armedWitnesses := (k, x) :: armedWitnesses
+              if x ∈ after then witnessSurvived := witnessSurvived + 1 else witnessClosed := witnessClosed + 1
+            | none =>
+              if mid == [k] then
+                k7 := k7 + 1
+                if sP.simpleKey.possible then
+                  if sP.simpleKey.pos.col == k then keyAtLanding := keyAtLanding + 1
+                  else keyElsewhere := keyElsewhere + 1
+                else keyAtLanding := keyAtLanding + 1
+              else neither := neither + 1
+          else if sP.flowLevel > 0 && (c == ':' || c == '?') then flowPauses := flowPauses + 1
+          else if sP.flowLevel == 0 && c == '-' then dashPauses := dashPauses + 1
+          s := sN
+        | _ => break
+      | _ => break
+  let witnesses := armedWitnesses.reverse.eraseDups
+  check state s!"P83 armed-outer partition (item 422): closing-`:` pauses={colonPauses} compact-`?` pauses={qPauses}; K7={k7} ARMED={armed} neither={neither}; K7 key at landing={keyAtLanding} elsewhere={keyElsewhere}; simpleKeyAllowed down at park={skaDownAtPark}; ARMED witness survived `:`={witnessSurvived} closed={witnessClosed}; controls flow={flowPauses} dash={dashPauses}; parsed={parsed}/{inputs.length}; witnesses (k, x)={witnesses}"
+    (colonPauses > 0 && qPauses > 0 && neither == 0 && k7 > 0 && armed ≥ 3 && keyElsewhere == 0 &&
+     skaDownAtPark > 0 && flowPauses > 0 && dashPauses > 0 && witnesses.all (fun (k, x) => x != k))
+
 def testFlowCarrier (state : IO.Ref TestCollector) : IO Unit := do
   let nestedQ : List String := ["?\n  ? -\n: w\n", "? - ? - a\n  : b\n: c\n", "?\n  ?\n    -\n    - b\n  ? c\n: w\n", "? ? - a\n  : b\n: c\n", "- ? - a\n  : b\n"]
   let singleQ : List String := ["? - a\n: b\n", "?\n  - a\n  - b\n: w\n", "k:\n  ? - a\n  : b\n", "? -\n: w\n"]
@@ -9671,6 +9740,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testKslotEDomain state
   testColonChainRelay state
   testHeldChainRelay state
+  testArmedOuterPartition state
 
   testQuestionMarkColumn state
   testK1Lanes state

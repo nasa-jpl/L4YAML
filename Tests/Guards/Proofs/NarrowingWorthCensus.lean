@@ -292,7 +292,9 @@ def isSurfFace (env : Environment) (lhs : Expr) : MetaM Bool := do
 -- 2026-10-29 (item 389): faces 62 → 63 — the mapping-top conjunct is one more narrowing face on the `-` park's route fields.
 -- 2026-10-29 (item 396): after_close's four optional contexts restated (binders 167 → 162, syntactic 159 → 154); flowOpen_floor_at_prep deleted (theorems 6362 → 6361, its DECLINE|PAY conclusion was one of the 17 no-op pairs).
 -- 2026-10-30 (item 405): faces 63 → 64 — `pendingMapValue.h_explUp`'s new `∨ PackAlt sc` arm (ruling "405 a").
-def expectedFaceTally : String := "binders=163 faces=64 heads=20"
+-- 2026-11-02 (item 422): binders 163 → 161, faces 64 → 63, heads 20 → 19 — the openers' `h_outer` `∨ True` is a body now (the
+-- two parameters leave the optional population); see `expectedWorthLedger`.
+def expectedFaceTally : String := "binders=161 faces=63 heads=19"
 
 /-- The conclusion head of every left disjunct.  `FVAR 2` is `frameChainUnion`,
     whose face is schematic in `P` — the two rows no census of any kind can
@@ -302,6 +304,8 @@ def expectedFaceTally : String := "binders=163 faces=64 heads=20"
 -- `PendingNode.pendingMapValue.h_vslot`'s face, headed by its `≤`, left too.
 -- 2026-10-26 (item 369): head census re-read — `accum_block_on_pendingBlock.h_closeF_old` (the `-` park's frames, read at the `:`/`?` landing for `h_res_land`).
 -- 2026-10-30 (item 405, Rule 8 fix): the `?`-park chain is re-indexed by the projection `markedCols sc` (`∀ nv ∈ markedCols sc, …`), so the five value-line binders that had briefly headed on `MarkedColsIn` (the head-form chain's first conjunct) head on `ResumeFrames` again — MarkedColsIn 15 / ResumeFrames 18, item 404's reading.
+-- 2026-11-02 (item 422): `Sound 2` retired — the two `h_outer` `∨ True` binders headed by `PendingKeySound.Sound s_prep ∧ …`
+-- are bodies now ((γ′)).
 def expectedHeadCensus : List String :=
   -- Item 300: `Eq` 17 → 19, the two new optional binders (`h_markerline`, `h_marker_new`).
   -- Item 304: `ResumeFrames` 12 → 3 and `KeyFrames` 9 — the value-line stacks' heads.
@@ -330,7 +334,6 @@ def expectedHeadCensus : List String :=
    "ResumeFrames 16",
    "SLYamlStream 5",
    "SeqEntryTail 7",
-   "Sound 2",
    "SuffixRun 6",
    "le 11",
    "lt 30"]
@@ -384,7 +387,8 @@ which of four reasons applies. -/
 -- 2026-10-26 (item 369): binders=165 → binders=166, surf=134 → surf=135 — `accum_block_on_pendingBlock.h_closeF_old` (the `-` park's frames, read at the `:`/`?` landing for `h_res_land`).
 -- 2026-10-28 (item 385): binders 166 → 167, surf 135 → 136
 -- — `deeperLandingResume.h_valF`: one more surface-shaped optional binder.
-def expectedFidelity : String := "binders=163 surf=134 state=29"
+-- 2026-11-02 (item 422): binders 163 → 161 — the two `h_outer` positions retired (see `expectedFaceTally`).
+def expectedFidelity : String := "binders=161 surf=134 state=27"
 
 /-- The 25 faces a state census COULD evaluate — 27 since item 300 — which is
     the population the mandate's instrument is actually defined over.  Two of them
@@ -393,6 +397,7 @@ def expectedFidelity : String := "binders=163 surf=134 state=29"
 -- 2026-10-20 (item 309): binder indices re-read — `{alt : Prop}` precedes the generic helpers' premises.
 -- 2026-10-24 (B3): indices shift with the new park fields (closeThenBlock 25→26, entryKeyPack 17→18,
 -- entryPropsKeyPack 16→17, flowKeyRoute_of_root 21→24).
+-- 2026-11-02 (item 422): 29 → 27 — `colon_open_map_explicit#21`; `compact_open_map#29` retired: the two `h_outer` `∨ True` binders are bodies now ((γ′)).
 def expectedStateFaces : List String :=
   ["PreprocessIndentStable.IndentFloor.transport#3",
    "accum_block_on_closeThenBlock#26",
@@ -400,8 +405,6 @@ def expectedStateFaces : List String :=
    "bareNodeRoute_or_refused_content#12",
    "colon_open_map#23",
    "colon_open_map#24",
-   "colon_open_map_explicit#21",
-   "compact_open_map#29",
    "content_dispatch_routed#24",
    "content_dispatch_routed#26",
    "dedent_cover_of_landing#8",
@@ -532,8 +535,9 @@ def chainKeySet : Std.HashSet String :=
 -- 2026-10-26 (item 369): pairs=35 → pairs=36, splits=103 → splits=104, sup=98 → sup=99, innerPairs=12 → innerPairs=13, innerSplits=55 → innerSplits=56 — `accum_block_on_pendingBlock.h_closeF_old` (the `-` park's frames, read at the `:`/`?` landing for `h_res_land`).
 -- 2026-10-26 (item 370): splits 104 → 105, innerSplits 56 → 57 — the sibling `-` arm's split of `h_closeF_old`.
 -- 2026-10-28 (item 380, PR #146 review): splits 105 → 108 — `h_kslotUp`'s `Or.elim` decisions (see the ledger); pairs/sup unchanged.
+-- 2026-11-02 (item 422): the two re-counted `h_kslotUp` rows (see `expectedWorthLedger`).
 def expectedWorthTally : String :=
-  "pairs=37 splits=111 sup=100 chainPairs=0 chainSplits=0 innerPairs=13 \
+  "pairs=37 splits=108 sup=100 chainPairs=0 chainSplits=0 innerPairs=13 \
 innerSplits=57"
 
 /-- The ledger, worth-first.  `chain` is §3's verdict — a narrowing here lands
@@ -565,6 +569,8 @@ innerSplits=57"
 -- 2026-10-24 (B3 [66] col-0 threading): re-read on the item-354 base (binder indices).
 -- 2026-10-26 (item 369): worth census re-read — `accum_block_on_pendingBlock.h_closeF_old` (the `-` park's frames, read at the `:`/`?` landing for `h_res_land`).
 -- 2026-10-29 (item 389): binder indices only — `accum_content_on_pendingBlock_indented` gains `h_top_old`, so its `h_closeFV_old`/`h_kslotUp_old` rows move one index (#32 → #33, #31 → #32); no worth moved.
+-- 2026-11-02 (item 422): the `h_outer` rows and the `h_kslotUp` split counts at the five writes moved — K7 is decided at
+-- `s_prep` by one `Classical.em`, not read off `h_park`/`h_kslotUp`'s cover ((γ′)).
 def expectedWorthLedger : List String :=
   [
    -- 2026-10-26 (item 365): binder index #30 → #32 (`h_sound`/`h_fl0` inserted after `h_dead`); worth unchanged.
@@ -573,8 +579,8 @@ def expectedWorthLedger : List String :=
    "splits=8 sup=1 - h_kslot_old :: accum_content_on_pendingBlock_indented#13",
    "splits=7 sup=1 inner h_closeF99 :: accum_content_on_pendingMapValue_indented#18",
    "splits=7 sup=1 inner h_closeFV_old :: accum_block_on_pendingBlock#31",
-   "splits=6 sup=1 - h_kslotUp :: accum_block_on_pendingBlock#30",
    "splits=5 sup=1 - h_seqF168 :: accum_content_on_pendingMapValue_indented#38",
+   "splits=4 sup=1 - h_kslotUp :: accum_block_on_pendingBlock#30",
    "splits=4 sup=1 inner h_closeFV108 :: accum_content_on_pendingMapValue_indented#20",
    "splits=4 sup=1 inner h_closeFV_old :: accum_block_on_pendingBlockContent#37",
    "splits=3 sup=4 - h_cov :: indicator_open_map#27",
@@ -583,7 +589,6 @@ def expectedWorthLedger : List String :=
    "splits=3 sup=1 - h_kslotUp_old :: accum_content_on_pendingBlock_indented#32",
    "splits=3 sup=1 - h_seqF_old :: accum_content_on_pendingBlock_indented#15",
    "splits=3 sup=1 - h_vslot :: accum_content_on_pendingMapValue_indented#16",
-   "splits=2 sup=1 - h_kslotUp :: accum_block_on_pendingBlockContent#35",
    "splits=2 sup=1 - h_resV_land :: colon_open_map#26",
    "splits=2 sup=1 inner h_closeF_old :: accum_block_on_pendingBlock#32",
    "splits=2 sup=1 inner h_closeF_old :: accum_block_on_pendingBlockContent#36",
@@ -602,6 +607,7 @@ def expectedWorthLedger : List String :=
    "splits=1 sup=1 - h_kslot :: accum_block_on_pendingBlockContent#15",
    "splits=1 sup=1 - h_kslotD :: colon_open_map_implicit#29",
    "splits=1 sup=1 - h_kslotD :: colon_open_map_props#29",
+   "splits=1 sup=1 - h_kslotUp :: accum_block_on_pendingBlockContent#35",
    "splits=1 sup=1 - h_mapFV108 :: accum_block_on_pendingContent#35",
    "splits=1 sup=1 - h_resV_land :: question_open_map#27",
    "splits=1 sup=1 - h_routeS :: colon_open_map_implicit#27"]
@@ -620,7 +626,8 @@ def expectedWorthLedger : List String :=
 -- 2026-10-26 (item 369): branchPairs=35 → branchPairs=36, splits=103 → splits=104 — `accum_block_on_pendingBlock.h_closeF_old` (the `-` park's frames, read at the `:`/`?` landing for `h_res_land`).
 -- 2026-10-26 (item 370): splits 104 → 105 — the sibling `-` arm's split of `h_closeF_old`.
 -- 2026-10-28 (item 380, PR #146 review): splits 105 → 108, same cause; reach unchanged.
-def expectedBranchReach : String := "branchPairs=37 stateReachable=1 splits=111 stateSplits=3"
+-- 2026-11-02 (item 422): the five `h_outer` splits retired (see `expectedWorthLedger`).
+def expectedBranchReach : String := "branchPairs=37 stateReachable=1 splits=108 stateSplits=3"
 
 open Meta in
 run_cmd do
@@ -692,7 +699,8 @@ rather than as a count. -/
 -- 2026-10-26 (item 369): syntactic=157 → syntactic=158, population=159 → population=160 — `accum_block_on_pendingBlock.h_closeF_old` (the `-` park's frames, read at the `:`/`?` landing for `h_res_land`).
 -- 2026-10-28 (item 385): syntactic 158 → 159, population 160 → 161
 -- — the same binder, syntactically optional.
-def expectedHiddenTally : String := "hiddenDefs=1 syntactic=156 hiddenOnly=2 population=158"
+-- 2026-11-02 (item 422): syntactic 156 → 154, population 158 → 156 — the two `h_outer` positions retired.
+def expectedHiddenTally : String := "hiddenDefs=1 syntactic=154 hiddenOnly=2 population=156"
 
 def expectedHiddenDefs : List String := ["ResumeKeyCtx"]
 
@@ -885,7 +893,8 @@ one unfolding, and §6 is the item where those two disagreed about binders. -/
 -- 2026-10-29 (item 394, option B): no-op conclusion tally re-read after the s0 index.
 -- 2026-10-30 (item 405, Rule 8 fix): theorems 6480 → 6484 — `RegisterWitness.markedCols`, `markedCols_mem`, `MarkedColsIn.self`, `MarkedColsIn.relay`.
 -- 2026-10-30 (item 407, flow carrier `pendingKeys` conjunct): theorems 6484 → 6487 — `closeStaleExplicitKey_pendingKeys_of_inFlow`, `preprocess_pendingKeys_of_inFlow`, `allowDirectives_update_pendingKeys`.
-def expectedNoopTally : String := "theorems=6493 byElab=16 byWhnf=16 elabOnly=0 whnfOnly=0"
+-- 2026-11-02 (item 422): theorems 6493 → 6494 — `RegisterWitness.exists_mem_ne_of_not_markedColsIn`.
+def expectedNoopTally : String := "theorems=6494 byElab=16 byWhnf=16 elabOnly=0 whnfOnly=0"
 -- 5302 → 5344 on 2026-10-18 (plan row 20's close, closure-log item 280): the
 -- parse-side alias obligation moved to §7.1's DECLARATION set, so the carrier
 -- grew and the predicate gained its tools.  What is new in kind: `AG` carries

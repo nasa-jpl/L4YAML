@@ -25224,7 +25224,8 @@ lemma colon_open_map_explicit (sp_start sp_scan sp_mid sp_ind : SurfPos) (nv : N
     -- off the landing that reached the `:`.
     (h_top_in : s'.currentIndent ≤ (nv : Int))
     (h_outer : (PendingKeySound.Sound s_prep ∧ RegisterWitness.MarkedColsIn s_prep [nv] ∧
-      (s_prep.simpleKey.possible = true → s_prep.simpleKey.pos.col = s_prep.col)) ∨ True) :
+      (s_prep.simpleKey.possible = true → s_prep.simpleKey.pos.col = s_prep.col)) ∨
+      (∃ x ∈ RegisterWitness.markedCols s_prep, x ≠ nv)) :
     ∃ sp_gram' sp_block' sp_flow' sp_scan',
       SLYamlStream sp_start sp_gram' ∧
       BlockStack sp_gram' sp_block' ∧
@@ -25232,10 +25233,11 @@ lemma colon_open_map_explicit (sp_start sp_scan sp_mid sp_ind : SurfPos) (nv : N
       PendingNode s' false sp_start sp_flow' sp_scan' ∧
       ScannerSurfCorr s' sp_scan' := by
   -- Item 360: K7's pay — the park's domain says the `?` closed here is the outermost one.
-  have h_ref : ExplicitValueRefused s' ∨ True :=
+  -- Item 422: the right arm is the ARMED fact now, relayed whole — not re-declined.
+  have h_ref : ExplicitValueRefused s' ∨ (∃ x ∈ RegisterWitness.markedCols s_prep, x ≠ nv) :=
     h_outer.elim (fun ⟨hs, hm, hk⟩ => Or.inl (refused_of_outer_disp hs hm
         (by rw [← hcorr_prep.col_eq, SIndent_col h_ind, hcol_mid]; omega) hk h_noflow_disp h_dispatch))
-      (fun _ => Or.inr trivial)
+      (fun h => Or.inr h)
   have hpeek_disp : (if s_prep.allowDirectives then
       { s_prep with allowDirectives := false, documentEverStarted := true }
     else s_prep).peek? = some ':' := by
@@ -25420,7 +25422,8 @@ lemma compact_open_map (sp_start sp_entry sp_ind : SurfPos) (n m : Nat)
     (h_mono : IndentStackMono.Mono sc)
     (h_top : sc.currentIndent ≤ (n : Int))
     (h_outer : (PendingKeySound.Sound s_prep ∧ RegisterWitness.MarkedColsIn s_prep [n + 1 + m] ∧
-      (s_prep.simpleKey.possible = true → s_prep.simpleKey.pos.col = s_prep.col)) ∨ True)
+      (s_prep.simpleKey.possible = true → s_prep.simpleKey.pos.col = s_prep.col)) ∨
+      (∃ x ∈ RegisterWitness.markedCols s_prep, x ≠ n + 1 + m))
     (h_chainUp : (∀ nv ∈ RegisterWitness.markedCols sc,
       ∀ sp_m : SurfPos, SBlockIndented n ctx sp_entry sp_m →
       ∀ sp_i sp_c : SurfPos, SIndent nv sp_m sp_i → GLit ':' sp_i sp_c →
@@ -25435,13 +25438,16 @@ lemma compact_open_map (sp_start sp_entry sp_ind : SurfPos) (n m : Nat)
       PendingNode s' false sp_start sp_flow' sp_scan' ∧
       ScannerSurfCorr s' sp_scan' := by
   -- Item 360: K7's pay — only the `:` kills the register; the compact `?` re-arms it.
-  have h_ref : ExplicitValueRefused s' ∨ True :=
+  -- Item 422: the right arm names its reason — the ARMED fact relayed whole, or the compact `?`
+  -- (which re-arms the register) — not a re-decline.
+  have h_ref : ExplicitValueRefused s' ∨
+      ((∃ x ∈ RegisterWitness.markedCols s_prep, x ≠ n + 1 + m) ∨ c = '?') :=
     h_outer.elim (fun ⟨hs, hm, hk⟩ => hc.elim
         (fun hc' => Or.inl (refused_of_outer_disp hs hm
           (by rw [← hcorr_prep.col_eq, SIndent_col h_ind, hcol_entry]) hk h_noflow_disp
           (by rw [hc'] at h_dispatch; exact h_dispatch)))
-        (fun _ => Or.inr trivial))
-      (fun _ => Or.inr trivial)
+        (fun hq => Or.inr (Or.inr hq)))
+      (fun h => Or.inr (Or.inl h))
   have hpeek_disp : (if s_prep.allowDirectives then
       { s_prep with allowDirectives := false, documentEverStarted := true }
     else s_prep).peek? = some c := by
@@ -28049,13 +28055,12 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
               -- Item 259: the stack's shape and the SLOT's own bound, for the
               -- resume stack the opener's park covers from them.
               h_mono h_top_slot
-              -- Item 366: K7 at the landed `:` — the marked domain is a projection of THIS lemma's state
-              -- `sc` (Rule 8: decided here, no carrier); pays when only the landing column is marked.
-              ((Classical.em (RegisterWitness.MarkedColsIn sc [nv + 1 + m])).elim (fun hdom => h_park.elim (fun hp =>
-                  Or.inl ⟨PendingKeySound.preprocess_sound h_preprocess h_sound h_mono,
-                    RegisterWitness.preprocess_markedCols h_preprocess hdom,
-                    fun _ => (preprocess_saved_key_col hp.1 h_noflow h_preprocess).2⟩)
-                (fun _ => Or.inr trivial)) (fun _ => Or.inr trivial))
+              -- Item 422: K7 DECIDED at `s_prep` (Rule 8: a projection of the prepared register, no
+              -- carrier); its complement is the armed fact — the slot's own flag (`h_sk`) pays the key.
+              ((Classical.em (RegisterWitness.MarkedColsIn s_prep [nv + 1 + m])).elim (fun hdom =>
+                  Or.inl ⟨PendingKeySound.preprocess_sound h_preprocess h_sound h_mono, hdom,
+                    fun _ => (preprocess_saved_key_col h_sk h_noflow h_preprocess).2⟩)
+                (fun hnot => Or.inr (RegisterWitness.exists_mem_ne_of_not_markedColsIn hnot)))
               -- Item 413: the chain one frame up over the SLOT's content — its own route (`hkv`)
               -- heads it, the ancestors' (`hkvUp`) follow, on the slot's domain `nv :: nsU`; a
               -- declined half is RELAYED, not re-written.
@@ -28666,11 +28671,10 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
               h_dispatch)
             -- Item 366: K7 at the landed `:` — the marked domain is a projection of THIS lemma's state
             -- `sc` (Rule 8: decided here, no carrier); pays when only the landing column is marked.
-            ((Classical.em (RegisterWitness.MarkedColsIn sc [k])).elim (fun hdom => h_park.elim (fun hp =>
-                Or.inl ⟨PendingKeySound.preprocess_sound h_preprocess h_sound h_mono,
-                  RegisterWitness.preprocess_markedCols h_preprocess hdom,
-                  fun _ => (preprocess_saved_key_col hp.1 h_noflow h_preprocess).2⟩)
-              (fun _ => Or.inr trivial)) (fun _ => Or.inr trivial))
+            ((Classical.em (RegisterWitness.MarkedColsIn s_prep [k])).elim (fun hdom =>
+                Or.inl ⟨PendingKeySound.preprocess_sound h_preprocess h_sound h_mono, hdom,
+                  fun _ => landing_or_park_save h_noflow h_larm (h_park.imp_left And.left) h_preprocess⟩)
+              (fun hnot => Or.inr (RegisterWitness.exists_mem_ne_of_not_markedColsIn hnot)))
         -- ═══ Item 125: the landed `:` decides its own stamp source by
         -- classical case split — both conjuncts are the dispatch state's own
         -- fields.  With a source the generic reopen's park carries a REAL
@@ -29924,12 +29928,12 @@ lemma accum_block_on_pendingBlockContent {sp_gram : SurfPos}
                 (noflow_disp_of_noflow h_noflow)
                 (dash_landing_floor h_noflow h_larm h_nic0 h_base h_preprocess)
                 h_dispatch)
-              -- Item 360: K7's carrier — paid from `h_kslotUp`'s domain when only the `?`'s column is marked.
-              (h_kslotUp.elim (fun ⟨ns, hdom, _⟩ => h_park.elim (fun hp => if hns : ∀ x ∈ ns, x = k
-                then Or.inl ⟨PendingKeySound.preprocess_sound h_preprocess h_sound h_mono,
-                  (RegisterWitness.preprocess_markedCols h_preprocess hdom).mono (fun x hx => List.mem_singleton.2 (hns x hx)),
-                  fun _ => (preprocess_saved_key_col hp.1 h_noflow h_preprocess).2⟩
-                else Or.inr trivial) (fun _ => Or.inr trivial)) (fun _ => Or.inr trivial))
+              -- Item 422: K7 DECIDED at `s_prep`; its complement is the armed fact; the landing's
+              -- fresh save (`h_larm`) pays the key on either side of `h_park`.
+              ((Classical.em (RegisterWitness.MarkedColsIn s_prep [k])).elim (fun hdom =>
+                Or.inl ⟨PendingKeySound.preprocess_sound h_preprocess h_sound h_mono, hdom,
+                  fun _ => landing_or_park_save h_noflow h_larm (h_park.imp_left And.left) h_preprocess⟩)
+                (fun hnot => Or.inr (RegisterWitness.exists_mem_ne_of_not_markedColsIn hnot)))
           -- ═══ **Item 190: the frame ONE LEVEL UP, read at the landing's
           -- own column.**  `h_kslot` above is the frame this park's collection
           -- FILLS; this is the frame that one stands inside, and a park nested
@@ -30682,12 +30686,11 @@ lemma accum_block_on_pendingBlock
               (noflow_disp_of_noflow h_noflow)
               (landing_floor_of_arm h_noflow h_larm (by omega) h_base h_preprocess)
               h_dispatch)
-            -- Item 360: K7's carrier — paid from `h_kslotUp`'s domain when only the `?`'s column is marked.
-            (h_kslotUp.elim (fun ⟨ns, hdom, _⟩ => if hns : ∀ x ∈ ns, x = k
-              then Or.inl ⟨PendingKeySound.preprocess_sound h_preprocess h_sound h_mono,
-                (RegisterWitness.preprocess_markedCols h_preprocess hdom).mono (fun x hx => List.mem_singleton.2 (hns x hx)),
-                fun _ => (preprocess_saved_key_col h_sk h_noflow h_preprocess).2⟩
-              else Or.inr trivial) (fun _ => Or.inr trivial))
+            -- Item 422: K7 DECIDED at `s_prep`; its complement is the armed fact (`h_sk` pays the key).
+            ((Classical.em (RegisterWitness.MarkedColsIn s_prep [k])).elim (fun hdom =>
+                Or.inl ⟨PendingKeySound.preprocess_sound h_preprocess h_sound h_mono, hdom,
+                  fun _ => (preprocess_saved_key_col h_sk h_noflow h_preprocess).2⟩)
+              (fun hnot => Or.inr (RegisterWitness.exists_mem_ne_of_not_markedColsIn hnot)))
         -- ═══ **Item 190: the frame ONE LEVEL UP, read at the landing's own
         -- column** — as at `accum_block_on_pendingBlockContent`, with the
         -- awaited entry in the parked content's place (`?⏎  ? -⏎: w`). ═══
@@ -30942,12 +30945,11 @@ lemma accum_block_on_pendingBlock
             -- Item 259: the stack's shape and the PARK's own bound, for the
             -- resume stack the opener's park covers from them.
             h_mono h_top_old
-            -- Item 360: K7's carrier — paid from `h_kslotUp`'s domain when only the `?`'s column is marked.
-            (h_kslotUp.elim (fun ⟨ns, hdom, _⟩ => if hns : ∀ x ∈ ns, x = n + 1 + m
-              then Or.inl ⟨PendingKeySound.preprocess_sound h_preprocess h_sound h_mono,
-                (RegisterWitness.preprocess_markedCols h_preprocess hdom).mono (fun x hx => List.mem_singleton.2 (hns x hx)),
-                fun _ => (preprocess_saved_key_col h_sk h_noflow h_preprocess).2⟩
-              else Or.inr trivial) (fun _ => Or.inr trivial))
+            -- Item 422: K7 DECIDED at `s_prep`; its complement is the armed fact (`h_sk` pays the key).
+            ((Classical.em (RegisterWitness.MarkedColsIn s_prep [n + 1 + m])).elim (fun hdom =>
+                Or.inl ⟨PendingKeySound.preprocess_sound h_preprocess h_sound h_mono, hdom,
+                  fun _ => (preprocess_saved_key_col h_sk h_noflow h_preprocess).2⟩)
+              (fun hnot => Or.inr (RegisterWitness.exists_mem_ne_of_not_markedColsIn hnot)))
             -- Item 413: the chain one frame up over the `-` park's content — the compact mapping
             -- closes the entry with no sibling (`SCompactSeqTail.nil`); a declined chain is RELAYED.
             (match h_kslotUp with
