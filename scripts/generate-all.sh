@@ -176,11 +176,15 @@ export PYTHONNOUSERSITE=1
 export PATH="$VENV/bin:$PATH"
 echo "python         $(python3 --version) ($(command -v python3))"
 
+# `weasyprint --version` imports the package (and so the pango/cairo libraries),
+# as html-to-pdf.py does; `command -v` would pass with them missing (Rule 9, Q3).
+# The venv's own CLI, by path: an ambient weasyprint on PATH is not the one
+# the venv's python3 imports.
 HAS_WEASYPRINT=0
-if python3 -c "import weasyprint" 2>/dev/null; then
+if "$VENV/bin/weasyprint" --version >/dev/null 2>&1; then
   HAS_WEASYPRINT=1
 elif python3 -m pip install --quiet --disable-pip-version-check weasyprint 2>/dev/null \
-     && python3 -c "import weasyprint" 2>/dev/null; then
+     && "$VENV/bin/weasyprint" --version >/dev/null 2>&1; then
   HAS_WEASYPRINT=1
 fi
 [ "$HAS_WEASYPRINT" = 1 ] || warn "weasyprint unavailable — phase 5 will be skipped (needs pango/cairo/gdk-pixbuf)"
@@ -307,15 +311,7 @@ if wants 3; then
   if [ -n "$GATES_FAILED" ]; then note 3 hygiene-gates "FAILED: $GATES_FAILED"; fi
   # The kernel-accurate half: zero theorems with a sorry, zero custom axioms,
   # measured over the compiled environment rather than by grepping sources.
-  python3 - "$REPORTS/stats.json" <<'EOF' | tee -a "$LOG"
-import json, sys
-env = json.load(open(sys.argv[1]))['env']
-bad = {k: env[k] for k in ('theorems_with_transitive_sorry', 'theorems_with_direct_sorry',
-                           'theorems_with_custom_axiom', 'axioms') if env[k] != 0}
-if bad:
-    sys.exit(f"proof-hygiene gate failed: {bad}")
-print(f"env clean: {env['theorems']} theorems, 0 sorries, 0 custom axioms")
-EOF
+  lake run check-hygiene -- "$REPORTS/stats.json" 2>&1 | tee -a "$LOG"
   note 3 hygiene-gates "$(grep -oE 'env clean: [0-9]+ theorems' "$LOG" | tail -1 || echo '?')"
   echo "log: $LOG"
 fi

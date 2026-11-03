@@ -341,6 +341,13 @@ breaks CI if wrong, cheapest first:
    the exit-code categories, the stderr table, `json.dump(indent=1)`); the
    testers, the docker start mark, the deadline and the `--workers` pool of
    dedicated `Task`s in `Scripts/Main/MatrixScore.lean`.
+   **Row 3 DONE** — the seven inline probes: the two hygiene heredocs →
+   `lake run check-hygiene -- [STATS]` (`Scripts/Stats/Hygiene.lean`, the
+   `env` counters off `stats.json`, the heredoc's lines); the release-asset
+   lookup → `scripts-release-asset NAME < release.json` (a Lean field read;
+   `gh api --jq` was the plan, but `gh` is not a runner prerequisite and the
+   exe is built on the runner anyway); the four `import weasyprint` probes →
+   `weasyprint --version` (Q3: it imports the package and loads pango).
 3. `verify_yaml_spec_annotations.py` → `scripts-verify-spec-annotations`,
    with the grammar file fetched by `curl` in the `.sh` or vendored (Q4).
 4. `svg-objects.py`, `html-to-pdf.py` → **Q3**: WeasyPrint has no Lean
@@ -393,7 +400,7 @@ it removes Python from CI; it does not block an item.
 | File | Why it may stay non-Lean | Until |
 |---|---|---|
 | `python/**`, `python/tests/**`, `Tests/test_python_ffi.py`, `Tests/conftest.py`, `Tests/tryparse_python.py` | the shipped Python binding and its tests — a product, not a script | — |
-| `scripts/html-to-pdf.py` + the `python3 -c "import weasyprint"` probes | WeasyPrint rasterisation (Q3: ruled — the CLI route). The probe must keep checking that WeasyPrint can *start*, not merely that a binary exists: `import weasyprint` today fails when Pango/cairo are missing and that is what makes the PDF step skip with a warning instead of failing the job; the replacement is `weasyprint --version` (or `weasyprint --info`), which imports the package and so loads the native libraries, under the same "skip PDF with a warning on failure" branch — never `command -v weasyprint`. | phase 4.4 |
+| `scripts/html-to-pdf.py` + the `python3 -c "import weasyprint"` probes | WeasyPrint rasterisation (Q3: ruled — the CLI route). The probe must keep checking that WeasyPrint can *start*, not merely that a binary exists: `import weasyprint` today fails when Pango/cairo are missing and that is what makes the PDF step skip with a warning instead of failing the job; the replacement is `weasyprint --version` (or `weasyprint --info`), which imports the package and so loads the native libraries, under the same "skip PDF with a warning on failure" branch — never `command -v weasyprint`. **Probes switched (phase 4 row 3)**; `html-to-pdf.py` itself is row 4. | phase 4.4 |
 | `scripts/attic/*.py` (if Q2 = freeze) | historical readings already recorded in DOCS.md; never run again | — |
 
 ## 5. Ledger (phase 0 turns this into `scripts/scripts-ledger.txt`)
@@ -413,7 +420,7 @@ it removes Python from CI; it does not block an item.
 | docs_nav.py | I | 339 | 10-20 | AGENTS §1, skills | scripts-docs-nav | DONE (`lake run docs-nav`) |
 | ledger_diff.py | I | 226 | 10-26 | ledgers/README | scripts-ledger-diff | DONE (`lake run ledger-diff`) |
 | drop_sweep.py | I | 229 | 09-22 | skills; DropDependents.lean's wide pin | scripts-drop-sweep | **DONE** (`lake run drop-sweep`) |
-| inline ×7: test-coverage.yml — `import weasyprint` probe ×2, hygiene heredoc, release-asset lookup; generate-all.sh — `import weasyprint` probe ×2, hygiene heredoc | G/R | ~30 | — | CI, generate-all.sh | hygiene ×2 → one Lean `stats.json` exe; asset lookup → `gh api --jq`; probes ×4 → `weasyprint --version` (Q3) | todo |
+| inline ×7: test-coverage.yml — `import weasyprint` probe ×2, hygiene heredoc, release-asset lookup; generate-all.sh — `import weasyprint` probe ×2, hygiene heredoc | G/R | ~30 | — | CI, generate-all.sh | hygiene ×2 → `lake run check-hygiene` (`Scripts/Stats/Hygiene.lean`); asset lookup → `scripts-release-asset` (a Lean field read, not `gh api --jq`: `gh` is not a runner prerequisite and the exe is built there anyway); probes ×4 → `weasyprint --version` (Q3) | DONE (rows removed) |
 | gen_traceof.py | I | 195 | 10-23 | TraceOf regeneration | scripts-gen-traceof | DONE (`lake run gen-traceof`) |
 | flip_colon_chain.py, flip_kslote_domain.py | F (live, items 417/416) | 138, 85 | 11-01 | items | `scripts/flips/item417_colon_chain.json`, `item416_kslote_domain.json` | lean:scripts-flip |
 | flip_210.py | F (live; also the mapper module six flips load) | 138 | 09-21 | ledger snapshots, 6 loaders | gate: `scripts/flips/item210_implicit_continue.json`; mapper `lake run beta5-map -- LOG` | DONE (3.2b) |
