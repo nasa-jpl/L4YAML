@@ -353,6 +353,25 @@ breaks CI if wrong, cheapest first:
    `h_mapTop` wip).  Same validation as batch 1: the Python's `--keep` edit and
    the spec's `--patch-only` edit byte-identical in a worktree of each `rev`.
 
+   **3.3 batch 3 DONE (items 390–413, the last nine `flip_*.py`):**
+   `flip_valf_top` (stages 1/2), `flip_root_frame_supply` (stages A/B),
+   `flip_flow_cover_state`, `flip_flow_frames_chain`, `flip_kslot_domain`
+   (default/`--round2`), `flip_kslot_field` (rounds 1–4), `flip_compact_cover`
+   (stages A/B), `flip_entry_chain`, `flip_compact_chain` → seventeen specs.
+   Pinned at the commit that added the script where that commit touched no
+   library file (390, 392, 404, 411 — Tests only; 394 `flip_flow_frames_chain`
+   docs-only); at the PARENT where the commit paid the flip and the Python
+   refuses or its anchor is gone — 394 `flip_flow_cover_state` `c668a2ea`
+   (`747a1e05` lands the `Covered lo ks s0` conjunct), 412 `b70b870c`, 413
+   `6034cc4f` ("already PAID / carried on this tree"); and 397 at `bb4d733e`,
+   the script's own last re-anchoring (item 406): its `h_kslotD` decline lines
+   exist only between items 402 and 409, so neither the commit that added it
+   nor that commit's parent matches.  `flip_flow_cover_state` had no `--keep`,
+   so its Python edit was taken by calling its `patch` directly.  Same
+   validation as batches 1–2: Python edit and spec `--patch-only` edit
+   byte-identical in a worktree of each `rev`, `--dry` anchors exact.  Every
+   one-shot `flip_*.py` is now a spec; the 14 `*_price.py` remain.
+
 **Phase 4 — class R, reports and publishing (6 scripts, ~4 PRs).**
 1. **DONE** — `cross-lang-compare.py`, `generate-test-reports.py` →
    `suiterunner --compare DIR` / `--reports DIR` (`lake run cross-lang-compare`,
@@ -456,7 +475,8 @@ it removes Python from CI; it does not block an item.
 | punt_reason_price.py | F (live; a `lake env lean` instrument) | 510 | 09-19 | item 211 | scripts-punt-price | DONE (`lake run punt-price`) |
 | flip_inl_declines.py | F (live) | 72 | 10-31 | item 415 | `scripts/flips/item415_inl_declines.json` | lean:scripts-flip |
 | narrow_conclusion.py, pay_chain_optional.py, decline_all_optional.py | F (transforms) | 241, 140, 247 | 09-20 | skills | scripts-restate | todo |
-| 43 remaining `flip_*.py` / `*_price.py` (items 205–415) | F (one-shot) | 5 696 | 09-18 … 10-31 | DOCS.md items only | specs or attic (Q2) | todo |
+| 29 one-shot `flip_*.py` (items 371–413) | F (one-shot) | 1 947 | 10-27 … 10-31 | DOCS.md items only | 43 `scripts/flips/item<N>_*.json` (3.3 batches 1–3) | lean:scripts-flip |
+| 14 remaining `*_price.py` | F (one-shot) | 3 778 | 09-18 … 10-31 | DOCS.md items only | specs or small ports (Q2) | todo |
 | matrix_score.py | R | 264 | 07-01 | DOCS.md recipe | `lake run matrix-score` (`Scripts/Matrix/Score.lean`) | lean:scripts-matrix-score |
 | cross-lang-compare.py | R | 93 | 10-17 | CI, generate-all.sh | `suiterunner --compare DIR` (`lake run cross-lang-compare`; `Tests/SuiteRunner/Reports.lean`) | lean:suiterunner |
 | generate-test-reports.py | R | 201 | 04-09 | CI, generate-all.sh | `suiterunner --reports DIR` (`lake run test-reports`; `Tests/SuiteRunner/Reports.lean`) | lean:suiterunner |

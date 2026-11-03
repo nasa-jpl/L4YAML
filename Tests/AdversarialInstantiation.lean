@@ -7292,7 +7292,7 @@ Item 389 left `accum_block_on_closeThenBlock`'s landed birth under `nv < k` with
 refuted (`pushedBirth_not_mapTop`) and its no-push half declined.  Item 390 reads that half as
 UNREACHABLE once `h_valF` carries the mapping park's top ABOVE by its level
 (`sc.currentIndent ≤ nv`: then `k ≤ s_prep.currentIndent ≤ sc.currentIndent ≤ nv < k`), prices the
-conjunct (`flip_valf_top.py --stage 1`: 3 declarations / 10 sites) and the `pendingMapValue` field that
+conjunct (`flip_valf_top.py --stage 1`, now `scripts/flips/item390_valf_top_stage1.json`: 3 declarations / 10 sites) and the `pendingMapValue` field that
 would feed it (`--stage 2`: 10 declarations / 92 sites), and STOPS: two of the six births — the
 implicit-key `:` (`colon_open_map_implicit`, `colon_open_map_props`) — have no upper bound on the top
 in scope.  The `:` pushes at the KEY's column (`value_key_floor` is the LOWER bound) and nothing in the
@@ -7424,7 +7424,7 @@ e: 3
       (preViol == 0 && postViol == 0 && keylessViol == 0 && (liveColons, keyless) == expected)
 
 
-/-! ## Priority 62 — item 392: the second (α) flip PRICED (`flip_root_frame_supply.py`) and the lever RE-READ
+/-! ## Priority 62 — item 392: the second (α) flip PRICED (`flip_root_frame_supply.py`, now `scripts/flips/item392_root_frame_supply_stage{A,B}.json`) and the lever RE-READ
 
 Item 391's NEXT: price the root births SUPPLYING `[FrameLevel.map 0]`.  Stage A (the `ResumeFrames.level`
 stagger `<` → `≤` + the three (α) bounds) reads 9 declarations / 21 sites; stage B (A + item 380's 37
@@ -9710,7 +9710,7 @@ def testFlowCarrier (state : IO.Ref TestCollector) : IO Unit := do
   let singleQ : List String := ["? - a\n: b\n", "?\n  - a\n  - b\n: w\n", "k:\n  ? - a\n  : b\n", "? -\n: w\n"]
   -- 70 (item 406, PRICED) — the flow-open KEY FACE's chain (`FlowBaseRoutes.key`) is FABRICATED at
   -- `flowKeyRoute_of_root` (`⟨[nv], …⟩` once, `⟨[], …⟩` four times).  Domaining it
-  -- (`flip_kslot_domain.py --round2`) would owe `MarkedColsIn s0 []` / `[nv]` — so read which
+  -- (`flip_kslot_domain.py --round2`, now `scripts/flips/item397_kslot_domain_round2.json`) would owe `MarkedColsIn s0 []` / `[nv]` — so read which
   -- block-context flow opens stand under marks (the fabrication is honest only at `markless`).
   let flowOpens : List String :=
     [ "[a]: b", "{a: 1}: b", "[1]\n[2]: b", "? [a]: b", "? [a]\n: b", "? - [1]\n: w",
