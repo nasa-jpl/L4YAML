@@ -1,0 +1,30 @@
+{
+ "item": 384,
+ "tag": "CLOSE-RELAY",
+ "rev": "b641e57a",
+ "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+ "target": "L4YAML",
+ "log": "scratch/384-flip-close-relay.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "patches": [
+  {
+   "name": "P1",
+   "old": [
+    "    (s_prep s' : ScannerState) (c : Char) (sp_prep sp_scan' : SurfPos)",
+    "    (h_close_pending : danglingNodePos? sc = none →",
+    "      underIndentedFlowValuePos? sc = none →",
+    "      ∀ sp_mid, SSLComments sp_gram sp_mid → SLYamlStream sp_start sp_mid)"
+   ],
+   "new": [
+    "    (s_prep s' : ScannerState) (c : Char) (sp_prep sp_scan' : SurfPos)",
+    "    (h_close_pending : danglingNodePos? sc = none →",
+    "      underIndentedFlowValuePos? sc = none →",
+    "      ∀ sp_mid, SSLComments sp_gram sp_mid → SLYamlStream sp_start sp_mid)",
+    "    (h_closeN : (∃ n : Nat, ∀ sp_mid : SurfPos,",
+    "      SBlockNode (n + 1) .blockIn sp_scan sp_mid → SLYamlStream sp_start sp_mid) ∨ True)"
+   ],
+   "count": 1
+  }
+ ]
+}

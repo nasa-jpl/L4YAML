@@ -316,6 +316,19 @@ breaks CI if wrong, cheapest first:
    the last tree their anchors matched, in a worktree: edited texts byte-identical,
    rounds and arms as reported in the PR.  The four one-shot loaders went as
    specs (3.3's Q2 default), each at the last `rev` its anchors matched.
+   **3.3 batch 1 DONE (items 380–407, ten `flip_*.py`):** `flip_top_at`,
+   `flip_root_frames`, `flip_close_relay`, `flip_completed_tail` (two stages),
+   `flip_node_route`, `flip_flow_frames_field`, `flip_root_frame_le`,
+   `flip_flow_pendingkeys`, `flip_map_top`, `flip_close_ctx` (two stages) →
+   twelve `scripts/flips/item<N>_<name>[_stage<K>].json`, each at the commit
+   that added the script, except where that commit itself landed the flip
+   (`flip_close_ctx` at its parent `a011f471`; `flip_flow_pendingkeys` at its
+   parent `8f73136c` — `0e235ad3` paid item 407's conjunct, the Python
+   refuses on a paid tree, and a spec pinned there would insert the premise
+   twice).  Validation: in a worktree of each `rev`,
+   the Python's `--keep` edit (`git diff`) and the spec's `scripts-flip
+   --patch-only` edit are byte-identical; `--patch-only` (write the patched
+   file, build nothing) was added to `scripts-flip` for exactly this check.
 3. The remaining 47 one-shot flips and prices (items 205–415, 6 538 lines): **Q2 decides**
    whether they are converted to specs (mechanical: the anchors are the
    data) or frozen — moved to `scripts/attic/` with their reading in
