@@ -79,11 +79,13 @@ where
 #guard normNum ⟨-0, 3⟩ == ⟨0, 0⟩
 #guard normNum ⟨100, 0⟩ == ⟨100, 0⟩
 
-/-- Python `==` on two parsed JSON values: structural, objects by key, numbers by value. -/
+/-- Python `==` on two parsed JSON values: structural, objects by key, numbers by
+    value — and `True == 1`, `False == 0` (`bool` is a subclass of `int`). -/
 partial def pyEq : Json → Json → Bool
   | .null, .null => true
   | .bool a, .bool b => a == b
   | .num a, .num b => normNum a == normNum b
+  | .bool a, .num b | .num b, .bool a => normNum b == ⟨if a then 1 else 0, 0⟩
   | .str a, .str b => a == b
   | .arr a, .arr b => a.size == b.size && (a.zip b).all fun (x, y) => pyEq x y
   | .obj a, .obj b =>
@@ -106,6 +108,13 @@ def streamsEqText (a b : String) : Option Bool := do
 #guard streamsEqText "[1, 2]" "[1, 2] 3" == some false
 #guard streamsEqText "\"1\"" "1" == some false
 #guard streamsEqText "true" "true" == some true
+#guard streamsEqText "true" "1" == some true
+#guard streamsEqText "1.0" "true" == some true
+#guard streamsEqText "false" "0.0" == some true
+#guard streamsEqText "true" "2" == some false
+#guard streamsEqText "false" "null" == some false
+#guard streamsEqText "{\"enabled\": true}" "{\"enabled\": 1}" == some true
+#guard streamsEqText "[true, 0]" "[1, false]" == some true
 #guard streamsEqText "" "" == some true
 
 /-- What the harness got back from a tester: it could not be started at all

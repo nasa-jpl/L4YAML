@@ -107,22 +107,34 @@ def dockerWrapped (cmd : Cmd) : Cmd :=
 
 def lossy (b : ByteArray) : String := (String.fromUTF8? b).getD ""
 
+/-- Feed `input` to the tester's stdin and close it; a tester that exited or stopped
+    reading (EPIPE) is not the feeder's concern. -/
+def feed (stdin : IO.FS.Handle) (input : ByteArray) : IO Unit := do
+  try stdin.write input; stdin.flush catch _ => pure ()
+
 /-- Run `argv` with `input` on stdin, both outputs captured, killed after `limitMs`
-    (`none`).  Spawn failures propagate. -/
+    (`none`).  The clock starts before the feeder and the readers, each on its own
+    task, so a tester that neither reads nor exits is killed at the deadline — its
+    whole process group, which closes the pipes under the blocked feeder and
+    readers.  Spawn failures propagate. -/
 def outputWithin (limitMs : Nat) (argv : Cmd) (input : ByteArray) :
     IO (Option (UInt32 × ByteArray × ByteArray)) := do
   let child ← IO.Process.spawn
     { cmd := argv[0]!, args := argv.extract 1 argv.size,
-      stdin := .piped, stdout := .piped, stderr := .piped }
+      stdin := .piped, stdout := .piped, stderr := .piped, setsid := true }
   let (stdin, child) ← child.takeStdin
-  try stdin.write input; stdin.flush catch _ => pure ()
+  let start ← IO.monoMsNow
+  discard <| IO.asTask (prio := .dedicated) (feed stdin input)
   let outT ← IO.asTask (prio := .dedicated) child.stdout.readBinToEnd
   let errT ← IO.asTask (prio := .dedicated) child.stderr.readBinToEnd
-  let start ← IO.monoMsNow
   let mut rc : UInt32 := 0
   repeat
     if let some code ← child.tryWait then rc := code; break   -- tryWait reaps: no wait after it
     if (← IO.monoMsNow) - start > limitMs then
+      -- the tester's whole process group (`setsid`): what `sh` exec'd or left behind
+      -- would otherwise hold the pipes open and the reader tasks with them
+      unless System.Platform.isWindows do
+        discard <| IO.Process.output { cmd := "kill", args := #["-9", "--", s!"-{child.pid}"] }
       child.kill
       discard child.wait
       return none
@@ -133,10 +145,10 @@ def outputWithin (limitMs : Nat) (argv : Cmd) (input : ByteArray) :
 abbrev Reported := IO.Ref (List String)
 
 def harnessError (rep : Reported) (msg : String) : IO String := do
-  let seen ← rep.get
-  unless seen.contains msg do
-    rep.set (seen ++ [msg])
-    IO.eprintln s!"# harness error: {msg}"
+  -- one atomic step: workers report concurrently, and the final count is this list's length
+  let isNew ← rep.modifyGet fun seen =>
+    if seen.contains msg then (false, seen) else (true, seen ++ [msg])
+  if isNew then IO.eprintln s!"# harness error: {msg}"
   pure "harness-error"
 
 /-- Python `run`: `(rc, stdout)`; `unstarted` when the tester could not be started at
