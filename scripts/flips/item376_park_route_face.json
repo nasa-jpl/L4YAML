@@ -1,0 +1,60 @@
+{
+ "item": 376,
+ "tag": "PARK-ROUTE-FACE",
+ "rev": "6eb2e731",
+ "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+ "target": "L4YAML",
+ "log": "scratch/376-flip-park-route-face.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "patches": [
+  {
+   "name": "P1",
+   "old": [
+    "  | pendingBlock (sp_start sp_block sp_scan : SurfPos) (n : Nat)",
+    "      (h_close : ∀ sp_mid,"
+   ],
+   "new": [
+    "  | pendingBlock (sp_start sp_block sp_scan : SurfPos) (n : Nat)",
+    "      (h_close : (∀ sp_mid,"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P2",
+   "old": [
+    "        SBlockIndented n .blockIn sp_scan sp_mid →",
+    "        SLYamlStream sp_start sp_mid)"
+   ],
+   "new": [
+    "        SBlockIndented n .blockIn sp_scan sp_mid →",
+    "        SLYamlStream sp_start sp_mid) ∨ PackAlt sc)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P3",
+   "old": [
+    "  | pendingMapValue (sp_start sp_block sp_scan : SurfPos) (n : Nat)",
+    "      (h_close : ∀ sp_mid,"
+   ],
+   "new": [
+    "  | pendingMapValue (sp_start sp_block sp_scan : SurfPos) (n : Nat)",
+    "      (h_close : (∀ sp_mid,"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P4",
+   "old": [
+    "        SBlockNode (n + 1) .blockIn sp_scan sp_mid →",
+    "        SLYamlStream sp_start sp_mid)"
+   ],
+   "new": [
+    "        SBlockNode (n + 1) .blockIn sp_scan sp_mid →",
+    "        SLYamlStream sp_start sp_mid) ∨ PackAlt sc)"
+   ],
+   "count": 1
+  }
+ ]
+}

@@ -1,0 +1,60 @@
+{
+ "item": 377,
+ "tag": "RES-LAND-SPLIT",
+ "rev": "a51c3203",
+ "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+ "target": "L4YAML",
+ "log": "scratch/377-flip-res-land-split.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "patches": [
+  {
+   "name": "P1",
+   "old": [
+    "    -- the NEXT landing can resume too.",
+    "    (h_res_land : (∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width < k) ∧",
+    "      ∀ sp_end : SurfPos, SCompactMapTail k sp_land sp_end →",
+    "        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ True)"
+   ],
+   "new": [
+    "    -- the NEXT landing can resume too.",
+    "    (h_res_land : (∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width < k) ∧",
+    "      ∀ sp_end : SurfPos, SCompactMapTail k sp_land sp_end →",
+    "        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ SeqTopKey s_prep)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P2",
+   "old": [
+    "    -- (`? a⏎: 1⏎? b⏎: 2` is ONE mapping, the parser's own reading).",
+    "    (h_res_land : (∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width < k) ∧",
+    "      ∀ sp_end : SurfPos, SCompactMapTail k sp_land sp_end →",
+    "        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ True)"
+   ],
+   "new": [
+    "    -- (`? a⏎: 1⏎? b⏎: 2` is ONE mapping, the parser's own reading).",
+    "    (h_res_land : (∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width < k) ∧",
+    "      ∀ sp_end : SurfPos, SCompactMapTail k sp_land sp_end →",
+    "        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ SeqTopKey s_prep)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P3",
+   "old": [
+    "    -- level the landing's width names.",
+    "    (h_res_land : (∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width < k) ∧",
+    "      ∀ sp_end : SurfPos, SCompactMapTail k sp_land sp_end →",
+    "        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ True)"
+   ],
+   "new": [
+    "    -- level the landing's width names.",
+    "    (h_res_land : (∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width < k) ∧",
+    "      ∀ sp_end : SurfPos, SCompactMapTail k sp_land sp_end →",
+    "        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ SeqTopKey s_prep)"
+   ],
+   "count": 1
+  }
+ ]
+}

@@ -1,0 +1,46 @@
+{
+ "item": 372,
+ "tag": "SEQTOP-FACE",
+ "rev": "476ac8c1",
+ "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+ "target": "L4YAML",
+ "log": "scratch/372-flip-seqtop-face.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "patches": [
+  {
+   "name": "P1",
+   "old": [
+    "    PackAlt s' := trivial",
+    ""
+   ],
+   "new": [
+    "    PackAlt s' := trivial",
+    "",
+    "/-- **The landing on a sequence top** (item 372): the saved key's column is the",
+    "    scanner's top level and that level is a SEQUENCE — `- a⏎b: 1`'s `b` — which",
+    "    §8.2.1 refuses at the `:` (`scanValue_top_not_sequence`).  A key pack's route",
+    "    may decline into this face where the frames cover the stack and name no level",
+    "    at the landing (`preprocess_landing_mem_or_seq`'s right disjunct); the `:`",
+    "    consumers refute it. -/",
+    "def SeqTopKey (sc : ScannerState) : Prop :=",
+    "  (sc.indents.back?.map fun e =>",
+    "    e.isSequence && e.column == (sc.simpleKey.pos.col : Int)) = some true",
+    ""
+   ],
+   "count": 1
+  },
+  {
+   "name": "P2",
+   "old": [
+    "  ∃ (k : Nat) (sp_key sp_gram : SurfPos),",
+    "    (∀ sp_v, SBlockMapEntry k sp_key sp_v → SLYamlStream sp_start sp_v) ∧"
+   ],
+   "new": [
+    "  ∃ (k : Nat) (sp_key sp_gram : SurfPos),",
+    "    ((∀ sp_v, SBlockMapEntry k sp_key sp_v → SLYamlStream sp_start sp_v) ∨ SeqTopKey sc) ∧"
+   ],
+   "count": 1
+  }
+ ]
+}

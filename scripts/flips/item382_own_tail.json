@@ -1,0 +1,78 @@
+{
+ "item": 382,
+ "tag": "OWN-TAIL",
+ "rev": "71a004b7",
+ "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+ "target": "L4YAML",
+ "log": "scratch/382-flip-own-tail.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "patches": [
+  {
+   "name": "P1",
+   "old": [
+    "        ∀ sp_mid : SurfPos, SSLComments sp_scan sp_mid →",
+    "        ResumeFrames (SLYamlStream sp_start) ks sp_mid) ∨ True)"
+   ],
+   "new": [
+    "        ∀ sp_mid : SurfPos, SSLComments sp_scan sp_mid →",
+    "        ResumeFrames (SLYamlStream sp_start) (FrameLevel.map n :: ks) sp_mid) ∨ True)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P2",
+   "old": [
+    "    -- the empty tail); every other caller punts.",
+    "    (h_mapF : (∃ ks : List FrameLevel,"
+   ],
+   "new": [
+    "    -- the empty tail); every other caller punts.",
+    "    (h_mapF : (∃ (n' : Nat) (ks : List FrameLevel),"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P3",
+   "old": [
+    "      ∀ sp_m : SurfPos, SSLComments sp_g sp_m →",
+    "      ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True)"
+   ],
+   "new": [
+    "      ∀ sp_m : SurfPos, SSLComments sp_g sp_m →",
+    "      ResumeFrames (SLYamlStream sp_start) (FrameLevel.map n' :: ks) sp_m) ∨ True)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P4",
+   "old": [
+    "    -- punts its cover, the recorded residue); every other caller punts.",
+    "    (h_mapF : (∃ ks : List FrameLevel,",
+    "      ∀ sp_m : SurfPos, SSLComments sp_gram sp_m →",
+    "      ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True)"
+   ],
+   "new": [
+    "    -- punts its cover, the recorded residue); every other caller punts.",
+    "    (h_mapF : (∃ (n' : Nat) (ks : List FrameLevel),",
+    "      ∀ sp_m : SurfPos, SSLComments sp_gram sp_m →",
+    "      ResumeFrames (SLYamlStream sp_start) (FrameLevel.map n' :: ks) sp_m) ∨ True)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P5",
+   "old": [
+    "    (h_mapF109 : (∃ ks : List FrameLevel,",
+    "      ∀ sp_m : SurfPos, SSLComments sp_gram sp_m →",
+    "      ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True)"
+   ],
+   "new": [
+    "    (h_mapF109 : (∃ (n' : Nat) (ks : List FrameLevel),",
+    "      ∀ sp_m : SurfPos, SSLComments sp_gram sp_m →",
+    "      ResumeFrames (SLYamlStream sp_start) (FrameLevel.map n' :: ks) sp_m) ∨ True)"
+   ],
+   "count": 1
+  }
+ ]
+}

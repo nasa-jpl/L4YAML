@@ -1,0 +1,36 @@
+{
+ "item": 386,
+ "tag": "FLOOR-RELAY-S2",
+ "rev": "e379e74c",
+ "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+ "target": "L4YAML",
+ "log": "scratch/386-flip-floor-relay_stage2.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "patches": [
+  {
+   "name": "P1",
+   "old": [
+    "lemma deeperLandingResume {sp_start sp_gram sp_mid : SurfPos} {sc : ScannerState} {k : Nat}",
+    "    (h_valF : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width < nv) ∧"
+   ],
+   "new": [
+    "lemma deeperLandingResume {sp_start sp_gram sp_mid : SurfPos} {sc : ScannerState} {k : Nat}",
+    "    (h_valF : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width < nv) ∧ (nv : Int) ≤ sc.currentIndent ∧"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P2",
+   "old": [
+    "    -- stay raw — they name scanner levels, not node indices.",
+    "    (h_valF : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width < nv) ∧"
+   ],
+   "new": [
+    "    -- stay raw — they name scanner levels, not node indices.",
+    "    (h_valF : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width < nv) ∧ (nv : Int) ≤ sc.currentIndent ∧"
+   ],
+   "count": 1
+  }
+ ]
+}

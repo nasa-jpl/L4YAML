@@ -340,6 +340,19 @@ breaks CI if wrong, cheapest first:
    `decline_all_optional.py`: source transforms over `StreamAccum.lean`
    → `scripts-restate` subcommands on `Scripts/Flip/Patch.lean`.
 
+   **3.3 batch 2 DONE (items 371–389, ten `flip_*.py`):** `flip_vline_resume`,
+   `flip_seqtop_face`, `flip_sibling_arm`, `flip_resumectx_seqtop`,
+   `flip_opener_face`, `flip_park_route_face`, `flip_res_land_split`,
+   `flip_own_tail`, `flip_floor_relay` (three stages), `flip_map_top2` (default,
+   `--one`, `--props`) → fourteen specs.  Pinned at the commit that added the
+   script where that commit was docs-only (373, 376, 377, 382); at the PARENT
+   where the commit itself paid the flip — the Python refuses there or the
+   inserted premise is already present: 371 `1e80c84b`, 372 `476ac8c1`,
+   374 `d11be705`, 386 `e379e74c` (`d90c6c40` carries `h_lvl_old` and the
+   `(nv : Int) ≤ sc.currentIndent` conjunct), 389 `b674b2f5` (`9d34ab4f` is the
+   `h_mapTop` wip).  Same validation as batch 1: the Python's `--keep` edit and
+   the spec's `--patch-only` edit byte-identical in a worktree of each `rev`.
+
 **Phase 4 — class R, reports and publishing (6 scripts, ~4 PRs).**
 1. **DONE** — `cross-lang-compare.py`, `generate-test-reports.py` →
    `suiterunner --compare DIR` / `--reports DIR` (`lake run cross-lang-compare`,
