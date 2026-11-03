@@ -48,7 +48,8 @@ pass/fail results staged by feature coverage.
 .lake/build/bin/suiterunner --json results/ --snapshot
 
 # Four backends × five presets compared (lake run cross-lang-compare -- DIR);
-# writes DIR/cross-lang-results.json when every backend agrees, exit 1 otherwise;
+# writes DIR/cross-lang-results.json when every backend agrees (a stale one is
+# removed first), exit 1 otherwise;
 # each run is killed after --compare-timeout SECS (default 600)
 .lake/build/bin/suiterunner --compare DIR [--compare-timeout SECS]
 
@@ -342,10 +343,13 @@ def outputWithin (limitMs : Nat) (cfg : IO.Process.SpawnArgs) : IO (Option (Stri
 /-- `--compare DIR` (was `scripts/cross-lang-compare.py`): this executable run
     for every backend × preset from ROOT, each within `timeoutS` seconds, the
     `TOTAL:` lines compared per preset; `DIR/cross-lang-results.json` written
-    only when all agree; exit 1 on a mismatch, a missing TOTAL line or a run
-    killed at its deadline. -/
+    only when all agree — an earlier one is removed first, so a failed rerun
+    leaves nothing stale for `--reports`; exit 1 on a mismatch, a missing TOTAL
+    line or a run killed at its deadline. -/
 def runCompare (root : System.FilePath) (dir : String) (timeoutS : Nat) : IO UInt32 := do
   let exe ← IO.appPath
+  let json := underRoot root dir / "cross-lang-results.json"
+  if ← json.pathExists then IO.FS.removeFile json
   let mut results : List (String × List (String × Reports.Counts)) := []
   let mut allMatch := true
   for preset in Reports.presets do
@@ -367,7 +371,7 @@ def runCompare (root : System.FilePath) (dir : String) (timeoutS : Nat) : IO UIn
   IO.println ""
   IO.println (Reports.verdictLine allMatch)
   if !allMatch then return 1
-  IO.FS.writeFile (underRoot root dir / "cross-lang-results.json") (Reports.crossLangJson results)
+  IO.FS.writeFile json (Reports.crossLangJson results)
   return 0
 
 /-- `--reports DIR` (was `scripts/generate-test-reports.py`):
