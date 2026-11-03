@@ -77,7 +77,7 @@ partial def parseArgs : List String → Opts → Except String Opts
     | "-t" | "--timeout" => withValue fun v o =>
         match parseSeconds v with
         | some ms => .ok { o with timeoutMs := ms }
-        | none => .error s!"--timeout: invalid float value: '{v}'"
+        | none => .error s!"--timeout: invalid or out-of-range float value: '{v}'"
     | "-w" | "--workers" => withValue fun v o =>
         match v.toNat? with
         | some n => .ok { o with workers := n }
