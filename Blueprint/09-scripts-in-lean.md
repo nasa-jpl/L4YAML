@@ -321,8 +321,11 @@ breaks CI if wrong, cheapest first:
    `flip_node_route`, `flip_flow_frames_field`, `flip_root_frame_le`,
    `flip_flow_pendingkeys`, `flip_map_top`, `flip_close_ctx` (two stages) →
    twelve `scripts/flips/item<N>_<name>[_stage<K>].json`, each at the commit
-   that added the script (`flip_close_ctx` at its parent, `a011f471`: the
-   commit itself landed the flip).  Validation: in a worktree of each `rev`,
+   that added the script, except where that commit itself landed the flip
+   (`flip_close_ctx` at its parent `a011f471`; `flip_flow_pendingkeys` at its
+   parent `8f73136c` — `0e235ad3` paid item 407's conjunct, the Python
+   refuses on a paid tree, and a spec pinned there would insert the premise
+   twice).  Validation: in a worktree of each `rev`,
    the Python's `--keep` edit (`git diff`) and the spec's `scripts-flip
    --patch-only` edit are byte-identical; `--patch-only` (write the patched
    file, build nothing) was added to `scripts-flip` for exactly this check.
