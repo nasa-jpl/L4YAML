@@ -25,6 +25,12 @@ namespace Tests.SuiteRunner.Reports
 
 @[expose] public section
 
+instance {ε α : Type} [BEq ε] [BEq α] : BEq (Except ε α) where
+  beq
+    | .ok a, .ok b => a == b
+    | .error e, .error f => e == f
+    | _, _ => false
+
 def backends : List String := ["lean", "c", "python", "rust"]
 def presets : List String := ["unlimited", "default", "strict", "permissive", "safe_tags"]
 
@@ -212,13 +218,14 @@ where
 
 #guard xmlUnescape "a &lt;b&gt; &amp;&quot;&apos;&#65;&#x42; &bogus; &" == "a <b> &\"'AB &bogus; &"
 
-/-- A start tag's attributes: `name="value"` / `name='value'`, unescaped. -/
-partial def attrsOf (tag : String) : List (String × String) :=
+/-- A start tag's attributes: `name="value"` / `name='value'`, unescaped; an
+    unquoted or missing value is an error, as for `xml.etree`. -/
+partial def attrsOf (tag : String) : Except String (List (String × String)) :=
   go (tag.toList.dropWhile fun c => !c.isWhitespace) []
 where
-  go (cs : List Char) (acc : List (String × String)) : List (String × String) :=
+  go (cs : List Char) (acc : List (String × String)) : Except String (List (String × String)) :=
     let cs := cs.dropWhile Char.isWhitespace
-    if cs.isEmpty then acc.reverse else
+    if cs.isEmpty then .ok acc.reverse else
     let name := cs.takeWhile fun c => c != '=' && !c.isWhitespace && c != '/' && c != '>'
     if name.isEmpty then go (cs.drop 1) acc else
     let rest := (cs.drop name.length).dropWhile Char.isWhitespace
@@ -228,40 +235,47 @@ where
       | q :: v =>
         if q == '"' || q == '\'' then
           let val := v.takeWhile (· != q)
-          go (v.drop (val.length + 1)) ((String.ofList name, xmlUnescape (String.ofList val)) :: acc)
-        else acc.reverse
-      | [] => acc.reverse
-    | _ => go rest acc
+          if val.length == v.length then .error s!"unterminated value of attribute {String.ofList name}"
+          else go (v.drop (val.length + 1)) ((String.ofList name, xmlUnescape (String.ofList val)) :: acc)
+        else .error s!"unquoted value of attribute {String.ofList name}"
+      | [] => .error s!"attribute {String.ofList name} has no value"
+    | _ => .error s!"attribute {String.ofList name} has no value"
 
 #guard attrsOf "testcase classname=\"tests.A\" name='t &amp; u' time=\"0.01\"" ==
-  [("classname", "tests.A"), ("name", "t & u"), ("time", "0.01")]
+  .ok [("classname", "tests.A"), ("name", "t & u"), ("time", "0.01")]
+#guard attrsOf "testcase name=bare" == .error "unquoted value of attribute name"
+#guard attrsOf "testcase name=\"open" == .error "unterminated value of attribute name"
+#guard attrsOf "testcase name" == .error "attribute name has no value"
 
 /-- The elements of an XML text as a flat list: `(name, attrs, isStart, isEnd)` —
-    comments, declarations and CDATA skipped; `<x/>` is start and end. -/
-partial def tokens (s : String) : List (String × List (String × String) × Bool × Bool) :=
+    comments, declarations and CDATA skipped; `<x/>` is start and end.  An
+    unterminated tag, comment, CDATA section or declaration is an error. -/
+partial def tokens (s : String) : Except String (List (String × List (String × String) × Bool × Bool)) :=
   go s.toList []
 where
   go (cs : List Char) (acc : List (String × List (String × String) × Bool × Bool)) :
-      List (String × List (String × String) × Bool × Bool) :=
+      Except String (List (String × List (String × String) × Bool × Bool)) :=
     match cs with
-    | [] => acc.reverse
-    | '<' :: '!' :: '-' :: '-' :: t => go (skipTo t ['-', '-', '>']) acc
-    | '<' :: '!' :: '[' :: 'C' :: 'D' :: 'A' :: 'T' :: 'A' :: '[' :: t => go (skipTo t [']', ']', '>']) acc
-    | '<' :: '!' :: t | '<' :: '?' :: t => go (skipTo t ['>']) acc
-    | '<' :: '/' :: t =>
+    | [] => .ok acc.reverse
+    | '<' :: '!' :: '-' :: '-' :: t => do go (← skipTo t ['-', '-', '>'] "comment") acc
+    | '<' :: '!' :: '[' :: 'C' :: 'D' :: 'A' :: 'T' :: 'A' :: '[' :: t => do go (← skipTo t [']', ']', '>'] "CDATA section") acc
+    | '<' :: '!' :: t | '<' :: '?' :: t => do go (← skipTo t ['>'] "declaration") acc
+    | '<' :: '/' :: t => do
       let name := t.takeWhile fun c => c != '>' && !c.isWhitespace
-      go (skipTo t ['>']) ((String.ofList name, [], false, true) :: acc)
-    | '<' :: t =>
+      go (← skipTo t ['>'] s!"end tag </{String.ofList name}>") ((String.ofList name, [], false, true) :: acc)
+    | '<' :: t => do
       let body := takeTag t
+      if body.length == t.length then throw s!"unterminated tag <{String.ofList (body.take 20)}"
       let rest := t.drop body.length |>.drop 1
       let selfClose := body.getLast? == some '/'
       let name := body.takeWhile fun c => !c.isWhitespace && c != '/' && c != '>'
-      go rest ((String.ofList name, attrsOf (String.ofList body), true, selfClose) :: acc)
+      let attrs ← attrsOf (String.ofList body)
+      go rest ((String.ofList name, attrs, true, selfClose) :: acc)
     | _ :: t => go t acc
-  skipTo (cs : List Char) (pat : List Char) : List Char :=
+  skipTo (cs : List Char) (pat : List Char) (what : String) : Except String (List Char) :=
     match cs with
-    | [] => []
-    | _ :: t => if pat.isPrefixOf cs then cs.drop pat.length else skipTo t pat
+    | [] => .error s!"unterminated {what}"
+    | _ :: t => if pat.isPrefixOf cs then .ok (cs.drop pat.length) else skipTo t pat what
   /-- the tag body up to its `>`, quotes respected -/
   takeTag (cs : List Char) : List Char :=
     let rec loop (cs : List Char) (q : Option Char) (acc : List Char) : List Char :=
@@ -274,14 +288,31 @@ where
     loop cs none []
 
 /-- `generate_python_ffi_html`'s reading of one JUnit file: every `testcase`
-    under a `testsuite` (document order), with `failure` / `skipped` children. -/
-def junitCases (xml : String) : List Case := Id.run do
-  let toks := tokens xml
+    (document order), with `failure` / `skipped` children.  The document must
+    be well formed the way `xml.etree` demanded it: tags nest and match, one
+    root element, closed, nothing after it — a truncated file is an error, not
+    a shorter report. -/
+def junitCases (xml : String) : Except String (List Case) := do
+  let toks ← tokens xml
   let mut out : List Case := []
   let mut cur : Option (String × String) := none    -- (name, time) of the open testcase
   let mut failed := false
   let mut skipped := false
+  let mut stack : List String := []
+  let mut rootsClosed := 0
   for (name, attrs, isStart, isEnd) in toks do
+    if rootsClosed > 0 then throw s!"element <{name}> after the root element closed"
+    if isStart && !isEnd then stack := name :: stack
+    if isEnd then
+      if isStart then
+        if stack.isEmpty then rootsClosed := rootsClosed + 1
+      else
+        match stack with
+        | top :: rest =>
+          if top != name then throw s!"end tag </{name}> closes <{top}>"
+          stack := rest
+          if rest.isEmpty then rootsClosed := rootsClosed + 1
+        | [] => throw s!"end tag </{name}> with no open element"
     if name == "testcase" && isStart then
       let n := (attrs.lookup "classname").getD "" ++ "." ++ (attrs.lookup "name").getD ""
       cur := some (n, (attrs.lookup "time").getD "0")
@@ -295,6 +326,8 @@ def junitCases (xml : String) : List Case := Id.run do
         let (st, css) := if failed then ("FAIL", "fail") else if skipped then ("SKIP", "skip") else ("PASS", "pass")
         out := out ++ [⟨n, st, css, t⟩]
       cur := none
+  if let top :: _ := stack then throw s!"document ends inside <{top}>"
+  if rootsClosed == 0 then throw "no root element"
   return out
 
 def exampleJunit : String :=
@@ -304,7 +337,7 @@ def exampleJunit : String :=
   "<testcase classname=\"tests.B\" name=\"later\" time=\"0\"><skipped type=\"pytest.skip\" message=\"no lib\"/></testcase>\n" ++
   "<!-- <testcase name=\"commented\"/> --></testsuite></testsuites>\n"
 
-#guard junitCases exampleJunit ==
+#guard junitCases exampleJunit == .ok
   [⟨"tests.A.ok", "PASS", "pass", "0.001"⟩, ⟨"tests.A.bad <x>", "FAIL", "fail", "0.2"⟩, ⟨"tests.B.later", "SKIP", "skip", "0"⟩]
 
 structure Section where
@@ -349,8 +382,19 @@ def pythonFfiHtml (sections : List Section) : String × Nat := Id.run do
   parts := parts.push "</body></html>"
   return ("\n".intercalate parts.toList, gt)
 
-#guard (pythonFfiHtml [⟨"T", junitCases exampleJunit⟩]).2 == 3
-#guard ((pythonFfiHtml [⟨"T", junitCases exampleJunit⟩]).1.splitOn "\n").length == 25
+#guard junitCases "<testsuites><testsuite><testcase name=\"first\"/></testsuite>" ==
+  .error "document ends inside <testsuites>"
+#guard junitCases "<testsuite><testcase name=\"a\"></testsuite>" == .error "end tag </testsuite> closes <testcase>"
+#guard junitCases "<testsuite/><testsuite/>" == .error "element <testsuite> after the root element closed"
+#guard junitCases "<testsuite><testcase name=\"a\" time=1/></testsuite>" == .error "unquoted value of attribute time"
+#guard junitCases "<testsuite><!-- open" == .error "unterminated comment"
+#guard junitCases "<testsuite><testcase name=\"a\"" == .error "unterminated tag <testcase name=\"a\""
+#guard junitCases "<?xml version=\"1.0\"?>\n" == .error "no root element"
+#guard junitCases "</testsuite>" == .error "end tag </testsuite> with no open element"
+
+def exampleCases : List Case := (junitCases exampleJunit).toOption.getD []
+#guard (pythonFfiHtml [⟨"T", exampleCases⟩]).2 == 3
+#guard ((pythonFfiHtml [⟨"T", exampleCases⟩]).1.splitOn "\n").length == 25
 
 end
 

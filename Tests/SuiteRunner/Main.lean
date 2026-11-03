@@ -48,8 +48,9 @@ pass/fail results staged by feature coverage.
 .lake/build/bin/suiterunner --json results/ --snapshot
 
 # Four backends × five presets compared (lake run cross-lang-compare -- DIR);
-# writes DIR/cross-lang-results.json when every backend agrees, exit 1 otherwise
-.lake/build/bin/suiterunner --compare DIR
+# writes DIR/cross-lang-results.json when every backend agrees, exit 1 otherwise;
+# each run is killed after --compare-timeout SECS (default 600)
+.lake/build/bin/suiterunner --compare DIR [--compare-timeout SECS]
 
 # cross-lang-comparison.html and python-ffi-tests.html from DIR's
 # cross-lang-results.json and pytest JUnit files (lake run test-reports -- DIR)
@@ -322,23 +323,41 @@ def pyJoin (dir name : String) : String :=
 def underRoot (root : System.FilePath) (dir : String) : System.FilePath :=
   if (System.FilePath.mk dir).isAbsolute then dir else root / dir
 
+/-- Run a process with piped stdout/stderr and a deadline; `none` when it was
+    killed at the deadline (the Python's `subprocess.run(timeout=600)`). -/
+def outputWithin (limitMs : Nat) (cfg : IO.Process.SpawnArgs) : IO (Option (String × String)) := do
+  let child ← IO.Process.spawn { cfg with stdout := .piped, stderr := .piped, stdin := .null }
+  let outT ← IO.asTask child.stdout.readToEnd
+  let errT ← IO.asTask child.stderr.readToEnd
+  let start ← IO.monoMsNow
+  repeat
+    if (← child.tryWait).isSome then break
+    if (← IO.monoMsNow) - start > limitMs then
+      child.kill
+      discard child.wait
+      return none
+    IO.sleep 200
+  return some (← IO.ofExcept outT.get, ← IO.ofExcept errT.get)
+
 /-- `--compare DIR` (was `scripts/cross-lang-compare.py`): this executable run
-    for every backend × preset from ROOT, the `TOTAL:` lines compared per
-    preset; `DIR/cross-lang-results.json` written only when all agree; exit 1
-    on a mismatch or a missing TOTAL line. -/
-def runCompare (root : System.FilePath) (dir : String) : IO UInt32 := do
+    for every backend × preset from ROOT, each within `timeoutS` seconds, the
+    `TOTAL:` lines compared per preset; `DIR/cross-lang-results.json` written
+    only when all agree; exit 1 on a mismatch, a missing TOTAL line or a run
+    killed at its deadline. -/
+def runCompare (root : System.FilePath) (dir : String) (timeoutS : Nat) : IO UInt32 := do
   let exe ← IO.appPath
   let mut results : List (String × List (String × Reports.Counts)) := []
   let mut allMatch := true
   for preset in Reports.presets do
     let mut row : List (String × Reports.Counts) := []
     for b in Reports.backends do
-      let r ← IO.Process.output
+      let r ← outputWithin (timeoutS * 1000)
         { cmd := exe.toString, args := #["--backend", b, "--limits", preset], cwd := some root }
-      match Reports.parseTotal? (r.stdout ++ r.stderr) with
+      match r.bind fun (out, err) => Reports.parseTotal? (out ++ err) with
       | some c => row := row ++ [(b, c)]
       | none =>
-        IO.eprintln s!"ERROR: no TOTAL line for {b}/{preset}"
+        if r.isNone then IO.eprintln s!"ERROR: {b}/{preset} killed after {timeoutS}s"
+        else IO.eprintln s!"ERROR: no TOTAL line for {b}/{preset}"
         row := row ++ [(b, ⟨0, 0, 0, 0⟩)]
         allMatch := false
     let (line, same) := Reports.presetLine preset row
@@ -370,7 +389,9 @@ def runReports (root : System.FilePath) (dir : String) : IO UInt32 := do
   for (file, title) in [("python-ffi-junit.xml", "Python FFI Integration Tests (Tests/)"),
                         ("python-package-junit.xml", "Python Package Tests (python/tests/)")] do
     if ← (d / file).pathExists then
-      sections := sections ++ [⟨title, Reports.junitCases (← IO.FS.readFile (d / file))⟩]
+      match Reports.junitCases (← IO.FS.readFile (d / file)) with
+      | .error e => IO.eprintln s!"{pyJoin dir file}: {e}"; return 1
+      | .ok cases => sections := sections ++ [⟨title, cases⟩]
   if sections.isEmpty then
     IO.println "No JUnit XML files found, skipping Python FFI HTML report"
     return 0
@@ -395,6 +416,7 @@ def main (args : List String) : IO UInt32 := do
   let mut compareDir : Option String := none
   let mut reportsDir : Option String := none
   let mut root : System.FilePath := "."
+  let mut compareTimeout : Nat := 600
   let mut i : Nat := 0
   let mut skipNext := false
   for arg in args do
@@ -443,12 +465,16 @@ def main (args : List String) : IO UInt32 := do
       match args.drop (i + 1) with
       | dir :: _ => root := dir; skipNext := true
       | [] => IO.eprintln s!"Error: {arg} requires a directory argument"; return 1
+    else if arg == "--compare-timeout" then
+      match (args.drop (i + 1)).head? >>= String.toNat? with
+      | some n => compareTimeout := n; skipNext := true
+      | none => IO.eprintln "Error: --compare-timeout requires a number of seconds"; return 2
     else
       stageArg := arg
     i := i + 1
 
   if let some dir := reportsDir then return ← runReports root dir
-  if let some dir := compareDir then return ← runCompare root dir
+  if let some dir := compareDir then return ← runCompare root dir compareTimeout
 
   let stage := parseStageArg stageArg
 
