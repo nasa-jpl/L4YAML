@@ -1,6 +1,6 @@
 ---
 name: l4yaml-price-instruments
-description: Run L4YAML's "price before proving" instruments — scripts/*_price.py, flip_*.py, `lake run flip-beta5`, `lake run beta5-arms`, `lake run punt-price`, `lake run drop-sweep` — safely (they edit library source in place and rebuild), read their classifications, and keep their pins agreeing. Use before any deletion, arity change, carrier addition, or when an item needs a count it must not recollect.
+description: Run L4YAML's "price before proving" instruments — scripts/*_price.py, `lake exe scripts-flip scripts/flips/*.json`, `lake run flip-beta5`, `lake run beta5-arms`, `lake run punt-price`, `lake run drop-sweep` — safely (they edit library source in place and rebuild), read their classifications, and keep their pins agreeing. Use before any deletion, arity change, carrier addition, or when an item needs a count it must not recollect.
 ---
 
 # Pricing instruments

@@ -1,0 +1,38 @@
+{
+ "item": 390,
+ "tag": "VALF-TOP-S1",
+ "rev": "9f1d5dd2",
+ "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+ "target": "L4YAML",
+ "log": "scratch/390-valf-top-stage1.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "patches": [
+  {
+   "name": "P1",
+   "old": [
+    "    (h_valF : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width < nv) ∧",
+    "      (nv : Int) ≤ sc.currentIndent ∧"
+   ],
+   "new": [
+    "    (h_valF : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width < nv) ∧",
+    "      (nv : Int) ≤ sc.currentIndent ∧",
+    "      sc.currentIndent ≤ (nv : Int) ∧"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P2",
+   "old": [
+    "      -- Item 386: the park's level at or below the scanner's top (`h_floor`).",
+    "      (nv : Int) ≤ sc.currentIndent ∧"
+   ],
+   "new": [
+    "      -- Item 386: the park's level at or below the scanner's top (`h_floor`).",
+    "      (nv : Int) ≤ sc.currentIndent ∧",
+    "      sc.currentIndent ≤ (nv : Int) ∧"
+   ],
+   "count": 1
+  }
+ ]
+}

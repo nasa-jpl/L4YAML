@@ -1,0 +1,60 @@
+{
+ "item": 392,
+ "tag": "ROOT-FRAME-SUPPLY-SA",
+ "rev": "8b515e0b",
+ "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+ "target": "L4YAML",
+ "log": "scratch/392-root-frame-supply-stageA.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "patches": [
+  {
+   "name": "P1",
+   "old": [
+    "  | level (k : Nat) (ks : List FrameLevel) (sp : SurfPos)",
+    "      (h_lt : ∀ fr ∈ ks, fr.width < k)"
+   ],
+   "new": [
+    "  | level (k : Nat) (ks : List FrameLevel) (sp : SurfPos)",
+    "      (h_lt : ∀ fr ∈ ks, fr.width ≤ k)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P2",
+   "old": [
+    "      -- `Or.inr trivial` for both.",
+    "      (h_closeF : (∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width < n) ∧"
+   ],
+   "new": [
+    "      -- `Or.inr trivial` for both.",
+    "      (h_closeF : (∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width ≤ n) ∧"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P3",
+   "old": [
+    "    {k : Nat}",
+    "    (h_valF : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width < nv) ∧"
+   ],
+   "new": [
+    "    {k : Nat}",
+    "    (h_valF : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ nv) ∧"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P4",
+   "old": [
+    "    -- stay raw — they name scanner levels, not node indices.",
+    "    (h_valF : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width < nv) ∧"
+   ],
+   "new": [
+    "    -- stay raw — they name scanner levels, not node indices.",
+    "    (h_valF : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ nv) ∧"
+   ],
+   "count": 1
+  }
+ ]
+}

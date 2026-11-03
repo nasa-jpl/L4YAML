@@ -97,7 +97,7 @@ Facts that cost people time:
 - The toolchain is pinned in `lean-toolchain`.  Do not bump it or a dependency
   pin without the owner's go-ahead.
 - Pricing/flip instruments (`lake exe scripts-flip scripts/flips/*.json`,
-  `scripts/*_price.py`, `scripts/flip_*.py`) edit library files in place and
+  `scripts/*_price.py`) edit library files in place and
   rebuild; never run one concurrently with `lake build`, and confirm the
   file is restored (they print the content hash / md5 both sides).
   They are Python today and are being converted to Lean under Rule 9
@@ -184,7 +184,7 @@ Pipeline terms (scanner, token, composition, indexed twin, …) are in
 | **price / PRICED / PAID** | Measure the cost of a change before making it (by instrument), then discharge it.  "Price before proving." |
 | **STARVED** | A class of inputs for which no premise supplies the fact a proof needs; the deletion cannot proceed until a carrier feeds it. |
 | **census / pin** | A `Tests/Guards/Proofs/*` file that `#guard`s a count or string (`expectedClosure = "…"`); a pin is one such expected value.  Moving a pin is instrument debt, not proof debt. |
-| **flip** | A spec (`scripts/flips/*.json`, run by `lake exe scripts-flip`; older ones are still `scripts/flip_*.py`) that simulates a deletion by editing the source, rebuilding to a fixpoint, and classifying what breaks (sorried / restated / deleted / pins). |
+| **flip** | A spec (`scripts/flips/*.json`, run by `lake exe scripts-flip`; the `scripts/flip_*.py` they replaced are DOCS.md history) that simulates a deletion by editing the source, rebuilding to a fixpoint, and classifying what breaks (sorried / restated / deleted / pins). |
 | **instrument / gate** | A script that re-derives a number so an item never quotes a recollection; a gate is an instrument CI runs. |
 | **reach / roster** | Whether an input can reach an arm (REACHED is the most a sweep can say) and the enumerated set of arms/applications an item accounts for. |
 | **mandate / NEXT** | The previous item's closing `**NEXT —` paragraph, which the current item must answer. |
