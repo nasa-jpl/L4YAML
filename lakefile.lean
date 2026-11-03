@@ -423,6 +423,10 @@ lean_exe «scripts-punt-price» where
 lean_exe «scripts-beta5» where
   root := `Scripts.Main.Beta5
 
+@[default_target]
+lean_exe «scripts-matrix-score» where
+  root := `Scripts.Main.MatrixScore
+
 /-! Phase 4.5 (Rule 9, Q7): portable entry points — `lake run <name>` replaces the
 bash wrappers that only run a `lean_exe`; same on Linux, macOS and Windows. -/
 
@@ -521,6 +525,13 @@ script «cross-lang-compare» (args) do
 
 script «test-reports» (args) do
   runGateExe (← getWorkspace).root.dir "suiterunner" #["--reports"] args
+
+/-- Rule 9 phase 4 row 2: `lake run matrix-score -- --data DIR [--l4yaml-event CMD --l4yaml-json CMD
+--axis both --out FILE …]` scores every processor over the yaml-test-suite data form the way
+matrix.yaml.info does (was `scripts/matrix_score.py`); builds the two L4YAML testers first. -/
+script «matrix-score» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-matrix-score" #[] args
+    (prereqs := #["l4yaml-event", "l4yaml-json"])
 
 /-- `lake run flip-beta5 -- [--max-rounds N] [--log-dir DIR] [--probe LEAN]`: β.5's edit driven
     to a sorry-fixpoint over `lake build`, FIXLINE / FIX-PIN (item 263).  Up to 25 full

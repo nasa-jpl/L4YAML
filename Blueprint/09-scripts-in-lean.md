@@ -334,10 +334,13 @@ breaks CI if wrong, cheapest first:
    beside `HtmlReport.lean` (the `TOTAL:` reader, the JSON, a hand JUnit XML
    reader, both documents byte for byte the Python's); CI and
    `generate-all.sh` switched.
-2. `matrix_score.py` → `scripts-matrix-score`: the scorer is pure (event
-   and JSON normalisation), the docker calls are `IO.Process`; `Task` for
-   the pool. The JSON-stream decoder is the one piece of real parsing;
-   `Lean.Json` reads one value, loop it.
+2. **DONE** — `matrix_score.py` → `lake run matrix-score -- --data DIR …`
+   (`scripts-matrix-score`): the readings in `Scripts/Matrix/Score.lean` with
+   `#guard` rows (event normalisation, the JSON-stream decoder as
+   `many Lean.Json.Parser.anyCore`, Python's structural `==` on the values,
+   the exit-code categories, the stderr table, `json.dump(indent=1)`); the
+   testers, the docker start mark, the deadline and the `--workers` pool of
+   dedicated `Task`s in `Scripts/Main/MatrixScore.lean`.
 3. `verify_yaml_spec_annotations.py` → `scripts-verify-spec-annotations`,
    with the grammar file fetched by `curl` in the `.sh` or vendored (Q4).
 4. `svg-objects.py`, `html-to-pdf.py` → **Q3**: WeasyPrint has no Lean
@@ -421,7 +424,7 @@ it removes Python from CI; it does not block an item.
 | flip_inl_declines.py | F (live) | 72 | 10-31 | item 415 | `scripts/flips/item415_inl_declines.json` | lean:scripts-flip |
 | narrow_conclusion.py, pay_chain_optional.py, decline_all_optional.py | F (transforms) | 241, 140, 247 | 09-20 | skills | scripts-restate | todo |
 | 43 remaining `flip_*.py` / `*_price.py` (items 205–415) | F (one-shot) | 5 696 | 09-18 … 10-31 | DOCS.md items only | specs or attic (Q2) | todo |
-| matrix_score.py | R | 264 | 07-01 | README, CI | scripts-matrix-score | todo |
+| matrix_score.py | R | 264 | 07-01 | DOCS.md recipe | `lake run matrix-score` (`Scripts/Matrix/Score.lean`) | lean:scripts-matrix-score |
 | cross-lang-compare.py | R | 93 | 10-17 | CI, generate-all.sh | `suiterunner --compare DIR` (`lake run cross-lang-compare`; `Tests/SuiteRunner/Reports.lean`) | lean:suiterunner |
 | generate-test-reports.py | R | 201 | 04-09 | CI, generate-all.sh | `suiterunner --reports DIR` (`lake run test-reports`; `Tests/SuiteRunner/Reports.lean`) | lean:suiterunner |
 | verify_yaml_spec_annotations.py | R | 301 | 03-29 | manual | scripts-verify-spec-annotations | todo |
