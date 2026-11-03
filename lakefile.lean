@@ -412,6 +412,10 @@ lean_exe «scripts-gen-traceof» where
   root := `Scripts.Main.GenTraceOf
   supportInterpreter := true   -- it imports Surface/Node.lean's header to parse the block
 
+@[default_target]
+lean_exe «scripts-punt-price» where
+  root := `Scripts.Main.PuntPrice
+
 /-! Phase 4.5 (Rule 9, Q7): portable entry points — `lake run <name>` replaces the
 bash wrappers that only run a `lean_exe`; same on Linux, macOS and Windows. -/
 
@@ -494,6 +498,11 @@ script «ledger-diff» (args) do
 script «gen-traceof» (args) do
   runGateExe (← getWorkspace).root.dir "scripts-gen-traceof" #[] args
     (prereqs := #["L4YAML.Surface.Node"])
+
+/-- `lake run punt-price -- all|<reason>|split|phantom|reaches`: the price of `KeyPackPunt`'s
+    reasons off `lake env lean`'s error locations (item 211). Never beside a `lake build`. -/
+script «punt-price» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-punt-price" #[] args
 
 script «check-gate-vocab» (args) do
   let ws ← getWorkspace

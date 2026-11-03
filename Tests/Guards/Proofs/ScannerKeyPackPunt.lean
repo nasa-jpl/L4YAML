@@ -62,7 +62,7 @@ runtime observation can say that.
 * §5 **the phantom question, asked where the reason is BUILT** (item 211).
   Item 184 recorded `noKeyContext` as having no named input, "which by R646 is
   the signature of a branch that may be a phantom", and the note rode
-  twenty-two NEXT lists unexamined.  `scripts/punt_reason_price.py reaches`
+  twenty-two NEXT lists unexamined.  `lake run punt-price -- reaches`
   asks it at the production instead:
   `content_dispatch_routed` reaches the punt only when FIVE optional contexts
   decline at once, and of its eight applications exactly ONE does — the `---`
