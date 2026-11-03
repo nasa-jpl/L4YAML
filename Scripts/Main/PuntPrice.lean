@@ -1,6 +1,7 @@
 module
 
 public import Scripts.Punt.Price
+public import Scripts.Flip.Patch
 
 /-!
 # `lake run punt-price -- MODE` — the price of `KeyPackPunt`'s reasons (item 211)
@@ -35,17 +36,28 @@ def die (msg : String) (code : UInt32 := 1) : IO UInt32 := do
 
 def readLines (text : String) : Array String := (text.splitOn "\n").toArray
 
-/-- Write `patched` over the target, run `lake env lean` on it, restore the original bytes. -/
+/-- Write `patched` over the target, run `lake env lean` on it, restore the original bytes.
+    The original is first copied to `StreamAccum.lean.punt-bak` (the Python's backup), so
+    an interrupted run leaves a recoverable copy beside the source; it is removed only after
+    the restored bytes are verified.  Both digests go to stderr (Rule 9), stdout stays the
+    Python's. -/
 def leanOn (root : System.FilePath) (original : String) (patched : Array String) : IO (Except String String) := do
   let path := root / target
+  let backup := System.FilePath.mk (path.toString ++ ".punt-bak")
+  let before := Scripts.Flip.Patch.digest original.toUTF8
+  IO.eprintln s!"digest before  {target}  {before}"
+  IO.FS.writeFile backup original
   let res ← try
     IO.FS.writeFile path ("\n".intercalate patched.toList)
     let r ← IO.Process.output { cmd := "lake", args := #["env", "lean", target], cwd := some root }
     pure (.ok (r.stdout ++ r.stderr))
   catch e => pure (.error s!"{e}")
   IO.FS.writeFile path original
-  if (← IO.FS.readFile path) != original then
-    return .error s!"{target} was not restored; fix the source before trusting anything else"
+  let after := Scripts.Flip.Patch.digest (← IO.FS.readBinFile path)
+  IO.eprintln s!"digest after   {target}  {after}"
+  if after != before then
+    return .error s!"{target} was not restored (backup kept at {backup}); fix the source before trusting anything else"
+  IO.FS.removeFile backup
   return res
 
 def printAll (ls : Array String) : IO Unit := do
@@ -103,7 +115,7 @@ def run (args : List String) : IO UInt32 := do
     | .error e => return ← die s!"{e}\n{usage}" 2
   let which := pos.headD "all"
   if pos.length > 1 then return ← die s!"one mode at a time\n{usage}" 2
-  let root ← IO.FS.realPath root
+  let root ← try IO.FS.realPath root catch e => return ← die s!"invalid root: {e}" 2
   let path := root / target
   if !(← path.pathExists) then return ← die s!"{path} not found (pass -C ROOT)" 2
   let original ← IO.FS.readFile path
