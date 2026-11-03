@@ -201,15 +201,20 @@ def runFixpoint (o : Opts) : IO UInt32 := do
       IO.println ""
       IO.println s!"=== AXIOM CENSUS ({if rc == 0 then "at the FIXPOINT" else "at a STUCK point: only what built is readable"}) ==="
       let scratch := root / "L4YAML" / "Scratch"
+      let hadScratch ← scratch.pathExists
       IO.FS.createDirAll scratch
       let name := (System.FilePath.mk probe).fileName.getD "probe.lean"
-      IO.FS.writeBinFile (scratch / name) (← IO.FS.readBinFile probe)
+      let dest := scratch / name
+      if ← dest.pathExists then
+        throw <| IO.userError s!"{dest} exists; the probe is copied there and removed after, so move that file first"
+      IO.FS.writeBinFile dest (← IO.FS.readBinFile probe)
       let r ← IO.Process.output { cmd := "lake", args := #["env", "lean", s!"L4YAML/Scratch/{name}"], cwd := some root }
       let axlog := r.stdout ++ r.stderr
       keepLog o.logDir "flip.beta5.axioms.log" axlog
       IO.println s!"PROBE exit={r.exitCode}"
       IO.println axlog
-      IO.FS.removeDirAll scratch
+      IO.FS.removeFile dest
+      if !hadScratch && (← scratch.readDir).isEmpty then IO.FS.removeDir scratch
       if r.exitCode != 0 then
         IO.println "THE PROBE DID NOT ELABORATE — a module it imports did not build, so no profile was read.  A missing reading is not a clean one."
       census := (census? axlog).getD noCensus
