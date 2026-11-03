@@ -1,0 +1,23 @@
+{
+ "item": 407,
+ "tag": "FLOW-PENDINGKEYS",
+ "rev": "0e235ad3",
+ "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+ "target": "L4YAML",
+ "log": "scratch/407-flip-flow-pendingkeys.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "patches": [
+  {
+   "name": "P1",
+   "old": [
+    "    (0 < fl → sc.indents = s0.indents) ∧"
+   ],
+   "new": [
+    "    (0 < fl → sc.indents = s0.indents) ∧",
+    "    (0 < fl → sc.pendingKeys = s0.pendingKeys) ∧"
+   ],
+   "count": 1
+  }
+ ]
+}

@@ -1,0 +1,26 @@
+{
+ "item": 393,
+ "tag": "FLOW-FRAMES-FIELD",
+ "rev": "6aec2646",
+ "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+ "target": "L4YAML",
+ "log": "scratch/393-flip-flow-frames-field.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "patches": [
+  {
+   "name": "P1",
+   "old": [
+    "  | pendingFlow (sp_start sp_block sp_scan : SurfPos)",
+    "      (h_stream : SLYamlStream sp_start sp_block)"
+   ],
+   "new": [
+    "  | pendingFlow (sp_start sp_block sp_scan : SurfPos)",
+    "      (h_stream : SLYamlStream sp_start sp_block)",
+    "      (h_frF : (∃ (n : Nat) (ks : List FrameLevel), ∀ sp_mid, SSLComments sp_scan sp_mid →",
+    "          ResumeFrames (SLYamlStream sp_start) (FrameLevel.map n :: ks) sp_mid) ∨ True)"
+   ],
+   "count": 1
+  }
+ ]
+}

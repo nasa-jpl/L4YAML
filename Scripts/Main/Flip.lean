@@ -12,7 +12,7 @@ public import Lean.Data.Json
 # scripts-flip — price a flip spec at a revision
 
 ```
-lake exe scripts-flip SPEC.json [-C ROOT] [--rev REV] [--keep] [--dry] [-h] [-V]
+lake exe scripts-flip SPEC.json [-C ROOT] [--rev REV] [--keep] [--dry] [--patch-only] [-h] [-V]
 ```
 
 The one driver behind every `scripts/flip_*.py`: a spec names a library
@@ -62,6 +62,7 @@ REV and the working tree.  Never run beside another lake build.
   -C, --root ROOT   repository root (default: .)
   -r, --rev REV     revision holding the un-paid text (default: spec.rev)
   -k, --keep        leave the patched tree in place
+  -p, --patch-only  write the patched file(s) and stop: no build, no restore (to diff a spec's edit against its Python's)
   -d, --dry         check that every anchor matches; write and build nothing
   -V, --version     print the version and exit
   -h, --help        print this help and exit
@@ -157,6 +158,7 @@ structure Opts where
   root : String := "."
   rev : Option String := none
   keep : Bool := false
+  patchOnly : Bool := false
   dry : Bool := false
 
 inductive Parsed | help | version | bad (msg : String) | run (o : Opts)
@@ -178,6 +180,7 @@ where
         | v :: rest' => go rest' { o with rev := some v } seen
         | [] => .bad s!"`{a}` needs a value"
       else if a == "-k" || a == "--keep" then go rest { o with keep := true } seen
+      else if a == "-p" || a == "--patch-only" then go rest { o with patchOnly := true } seen
       else if a == "-d" || a == "--dry" then go rest { o with dry := true } seen
       else if a.startsWith "-" then .bad s!"unknown option `{a}`"
       else if seen then .bad s!"too many arguments at `{a}`"
@@ -248,6 +251,10 @@ def runSpec (o : Opts) : IO UInt32 := do
   let nPatches := spec.files.foldl (· + ·.patches.size) 0
   if o.dry then
     IO.println s!"--dry: {nPatches} anchor(s) found exactly as the spec says; nothing written"
+    return 0
+  if o.patchOnly then
+    for (f, t) in patched do IO.FS.writeFile (root / f) t
+    IO.println s!"--patch-only: {nPatches} anchor(s) applied; {", ".intercalate (patched.map fun (f, t) => s!"{f} {Patch.digest t.toUTF8}").toList} written, nothing built"
     return 0
   let mut texts : Array (String × Array String) := patched.map fun (f, t) => (f, splitLines t)
   let mut restoredOk := true

@@ -7456,7 +7456,7 @@ def testRootFrameSupply (state : IO.Ref TestCollector) : IO Unit := do
     checkM state s!"P62 {label}: {repr expected}" (got == expected) s!"got {repr got}"
 
 
-/-! ## Priority 63 — item 393: (α) at the FLOW park PRICED (`flip_flow_frames_field.py`) and the site RE-READ
+/-! ## Priority 63 — item 393: (α) at the FLOW park PRICED (`flip_flow_frames_field.py`, now `scripts/flips/item393_flow_frames_field.json`) and the site RE-READ
 
 The root sibling after a FLOW value (`a: [1]⏎b: 2`) closes into `PendingNode.pendingFlow`, whose only
 route is the stream (`h_stream`): `accum_block_pending`'s `pendingFlow` arm hands `closeThenBlock` every
