@@ -9587,6 +9587,64 @@ def testArmedOuterLemma (state : IO.Ref TestCollector) : IO Unit := do
   check state s!"P83b exists_mem_ne_of_not_markedColsIn on constructed registers (item 422): cases={cases.length} hypothesis-true={hypTrue} hypothesis-false={hypFalse}; refuted={refuted} converse-refuted={converseRefuted}"
     (hypTrue == 6 && hypFalse == 7 && refuted.isEmpty && converseRefuted.isEmpty)
 
+/-- **Priority 84 — the (β-mark) body is a tautology on the sound block domain** (item 424).  The
+    body item 423 priced, `ExplicitValueRefused sc ∨ markedCols sc ≠ []`, is INHABITED at every sound
+    block state: item 410's `refused_of_markedCols_eq_nil` reads a markless register as dead, and a
+    non-markless one is the other arm.  A `PackAlt` write of this body says nothing a `trivial` did
+    not — the `∨ True` smell under another name — so the pay is REFUTED before it is made. -/
+lemma packAlt_mark_tauto {s : L4YAML.Scanner.ScannerState} (hs : L4YAML.Proofs.PendingKeySound.Sound s)
+    (hfl : s.flowLevel = 0) :
+    s.explicitKeyLine = none ∨ L4YAML.Proofs.RegisterWitness.markedCols s ≠ [] :=
+  match h : L4YAML.Proofs.RegisterWitness.markedCols s with
+  | [] => Or.inl (L4YAML.Proofs.RegisterWitness.refused_of_markedCols_eq_nil hs hfl h)
+  | _ :: _ => Or.inr (by simp)
+
+/-- The scan half of Priority 84: at every block pause of P83's corpus (plus two dedent shapes) the
+    decided dichotomy — refused (`explicitKeyLine = none`) or armed (a marked slot) — is checked on the
+    PREPARED state; `neither` must be 0 (the lemma), both arms must be reached, and `markLost` counts the
+    pauses where the park held a mark the preprocess CLOSED (a dedent) and the refusal arm caught the
+    body — the (β-mark) transports would be paid by the tautology at `s_prep`, never by a mark that
+    survives, which is what makes the body uninformative. -/
+def testPackAltMarkTauto (state : IO.Ref TestCollector) : IO Unit := do
+  let inputs : List String :=
+    [ "? a\n: b", "? a\n: b\n? c\n: d", "- ? a\n  : b", "k:\n  ? a\n  : b", "? ? a\n  : b\n: c",
+      "? : v\n: w", "? &a k\n: v", "? !!str a\n: b", "? a\n? b\n: c", "k:\n  ? a\n: b",
+      "k:\n  - ? a\n    : b\n  ? c\n  : d", "a: 1\n? b\n: 2", "- a\n- ? b\n  : c", "? [a]\n: b",
+      "- a\n- b", "a: [b, c]\n? d\n: e", "k:\n  ? a\nb: c", "k:\n  - ? a\n    : b\nz: 1" ]
+  let mut pauses := 0
+  let mut refusedOnly := 0
+  let mut armedOnly := 0
+  let mut both := 0
+  let mut neither := 0
+  let mut markLost := 0
+  let mut parsed := 0
+  for input in inputs do
+    match parseYaml input with
+    | .ok _ => parsed := parsed + 1
+    | .error _ => pure ()
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:64] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, _)) =>
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) =>
+          if sP.flowLevel == 0 then
+            pauses := pauses + 1
+            let before := markedColsOf s.pendingKeys s.indentColumns
+            let marks := markedColsOf sP.pendingKeys sP.indentColumns
+            let refused := sP.explicitKeyLine.isNone
+            match refused, marks.isEmpty with
+            | true, true => refusedOnly := refusedOnly + 1
+            | false, false => armedOnly := armedOnly + 1
+            | true, false => both := both + 1
+            | false, true => neither := neither + 1
+            if !before.isEmpty && marks.isEmpty && refused then markLost := markLost + 1
+          s := sN
+        | _ => break
+      | _ => break
+  check state s!"P84 (β-mark) body on prepared block states (item 424): pauses={pauses} refused-only={refusedOnly} armed-only={armedOnly} both={both} NEITHER={neither}; mark closed by the preprocess and caught by the refusal arm={markLost}; parsed={parsed}/{inputs.length}"
+    (pauses > 0 && refusedOnly > 0 && armedOnly > 0 && neither == 0 && markLost > 0)
+
 def testFlowCarrier (state : IO.Ref TestCollector) : IO Unit := do
   let nestedQ : List String := ["?\n  ? -\n: w\n", "? - ? - a\n  : b\n: c\n", "?\n  ?\n    -\n    - b\n  ? c\n: w\n", "? ? - a\n  : b\n: c\n", "- ? - a\n  : b\n"]
   let singleQ : List String := ["? - a\n: b\n", "?\n  - a\n  - b\n: w\n", "k:\n  ? - a\n  : b\n", "? -\n: w\n"]
@@ -9790,6 +9848,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testHeldChainRelay state
   testArmedOuterPartition state
   testArmedOuterLemma state
+  testPackAltMarkTauto state
 
   testQuestionMarkColumn state
   testK1Lanes state
