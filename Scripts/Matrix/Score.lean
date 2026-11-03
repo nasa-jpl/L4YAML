@@ -290,14 +290,18 @@ def parseSeconds (s : String) : Option Nat := do
     | [p] => (if p.startsWith "+" then (p.drop 1).toString else p).toNat?.map Int.ofNat
     | ["", n] => n.toNat?.map fun k => -(Int.ofNat k)
     | _ => none
-  -- value·1000 = digits · 10^(e + 3 − |frac|); the power is never built for an exponent
-  -- that cannot matter: zero digits or a shift below the digit count floor to 0 ms, and a
-  -- deadline beyond 10^15 ms (a thousand millennia) is out of range
+  -- value·1000 = digits · 10^(e + 3 − |frac|), capped at 10^15 ms (a deadline beyond
+  -- 10^12 s is out of range, whatever its spelling); the power is never built when the
+  -- result is decided without it: zero digits or a shift below the digit count floor to
+  -- 0 ms, and more than 16 result digits exceed the cap
   let shift : Int := e + 3 - frac.length
+  let len : Int := (toString digits).length
   if digits == 0 then pure 0
-  else if shift < -(Int.ofNat (toString digits).length) then pure 0
-  else if shift > 15 then none
-  else if shift ≥ 0 then pure (digits * 10 ^ shift.toNat) else pure (digits / 10 ^ (-shift).toNat)
+  else if shift < -len then pure 0
+  else if len + shift > 16 then none
+  else
+    let ms := if shift ≥ 0 then digits * 10 ^ shift.toNat else digits / 10 ^ (-shift).toNat
+    if ms > 10 ^ 15 then none else pure ms
 
 #guard parseSeconds "5" == some 5000
 #guard parseSeconds "5.0" == some 5000
@@ -320,7 +324,14 @@ def parseSeconds (s : String) : Option Nat := do
 #guard parseSeconds "0e1000000000" == some 0
 #guard parseSeconds "0.000e-999999999" == some 0
 #guard parseSeconds "1e12" == some 1000000000000000
+#guard parseSeconds "1000000000000" == some 1000000000000000
+#guard parseSeconds "1000000000000.000" == some 1000000000000000
+#guard parseSeconds "999999999999.9999" == some 999999999999999
 #guard parseSeconds "1e13" == none
+#guard parseSeconds "10000000000000" == none
+#guard parseSeconds "1000000000000.001" == none
+#guard parseSeconds "1000000000001" == none
+#guard parseSeconds "0.0000000001e23" == none
 #guard parseSeconds "1e1000000000" == none
 
 /-- processor → (event tester, json tester) of the `yamlall` container, the Python's `DOCKER` table. -/
