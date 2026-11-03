@@ -7,7 +7,7 @@
 #   status  todo | lean:<exe> (ported; the .py is deleted, <exe> is a lean_exe) | exception:<reason> (plan §4)
 # Gate: scripts/check-scripts-lean.sh (lake exe scripts-check-ledger).  The pin below counts todo + exception rows
 # and must equal them; a port lowers it in the same PR.  The ledger may only shrink.
-# open: 57
+# open: 56
 scripts/arm_price.py | F | todo
 scripts/beta5_arms.py | F | lean:scripts-beta5
 scripts/carrier_price.py | F | todo
@@ -68,7 +68,7 @@ scripts/html-to-pdf.py | R | todo
 scripts/inline_class_price.py | F | todo
 scripts/landing_nic0_price.py | F | todo
 scripts/ledger_diff.py | I | lean:scripts-ledger-diff
-scripts/matrix_score.py | R | todo
+scripts/matrix_score.py | R | lean:scripts-matrix-score
 scripts/mv_slot_top_price.py | F | todo
 scripts/narrow_conclusion.py | F | todo
 scripts/open_map_price.py | F | todo

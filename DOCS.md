@@ -556,7 +556,7 @@ to *observe* the output (the fixes above were parser/scanner changes, each
 carried through the proof corpus).
 
 Every processor — L4YAML's native binaries and all 20 docker testers — is scored
-through one harness ([`scripts/matrix_score.py`](scripts/matrix_score.py)) over
+through one harness (`lake run matrix-score`, [`Scripts/Matrix/Score.lean`](Scripts/Matrix/Score.lean)) over
 the identical 402-test data form, so the numbers are apples-to-apples. On both
 axes an error test counts as correct iff the processor rejects it (three error
 tests ship a stale `in.json`; matching it would mean accepting invalid YAML).
@@ -705,11 +705,11 @@ lake build eventscore
 #     quoted above.  Pointing it at any other checkout scores something else.
 
 # 4. the full apples-to-apples table:
-lake build l4yaml-event l4yaml-json
-python3 scripts/matrix_score.py --data /path/to/suite-data --axis both \
-    --l4yaml-event .lake/build/bin/l4yaml-event \
-    --l4yaml-json  .lake/build/bin/l4yaml-json \
+lake run matrix-score -- --data /path/to/suite-data --axis both \
+    --l4yaml-event $PWD/.lake/build/bin/l4yaml-event \
+    --l4yaml-json  $PWD/.lake/build/bin/l4yaml-json \
     --out results.json
+#   ^ builds the two testers first; the data form is the yaml-test-suite `data` branch
 ```
 
 **The two axes score different corpora, and the difference is exactly one test.**
