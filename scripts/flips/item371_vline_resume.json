@@ -1,0 +1,944 @@
+{
+ "item": 371,
+ "tag": "VLINE-RESUME",
+ "rev": "1e80c84b",
+ "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+ "target": "L4YAML",
+ "log": "scratch/371-flip-vline-resume.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "patches": [
+  {
+   "name": "P1",
+   "old": [
+    "  ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →",
+    "  SLYamlStream sp_start sp_w"
+   ],
+   "new": [
+    "  ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →",
+    "  ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P2",
+   "old": [
+    "      ∀ sp_v : SurfPos, SBlockMapEntry k sp_key sp_v →",
+    "      ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →",
+    "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →",
+    "      ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →",
+    "      SLYamlStream sp_start sp_w) ∨ PackAlt sc) ∧"
+   ],
+   "new": [
+    "      ∀ sp_v : SurfPos, SBlockMapEntry k sp_key sp_v →",
+    "      ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →",
+    "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →",
+    "      ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →",
+    "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc) ∧"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P3",
+   "old": [
+    "      -- carries whatever the pack now states.",
+    "      ((∃ ns : List Nat, ∀ nv ∈ ns,",
+    "        ∀ sp_v : SurfPos, SBlockMapEntry k sp_key sp_v →",
+    "        ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →",
+    "        ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →",
+    "        ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →",
+    "        SLYamlStream sp_start sp_w) ∨ PackAltG g) ∧"
+   ],
+   "new": [
+    "      -- carries whatever the pack now states.",
+    "      ((∃ ns : List Nat, ∀ nv ∈ ns,",
+    "        ∀ sp_v : SurfPos, SBlockMapEntry k sp_key sp_v →",
+    "        ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →",
+    "        ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →",
+    "        ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →",
+    "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAltG g) ∧"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P4",
+   "old": [
+    "        SLYamlStream sp_start sp_v) ∨ alt)"
+   ],
+   "new": [
+    "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ alt)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P5",
+   "old": [
+    "        SLYamlStream sp_start sp_v) ∨ alt :="
+   ],
+   "new": [
+    "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ alt :="
+   ],
+   "count": 1
+  },
+  {
+   "name": "P6",
+   "old": [
+    "      ∀ sp_v : SurfPos, SBlockMapEntry k sp_p sp_v →",
+    "      ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →",
+    "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →",
+    "      ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →",
+    "      SLYamlStream sp_start sp_w) ∨ PackAlt sc) ∧"
+   ],
+   "new": [
+    "      ∀ sp_v : SurfPos, SBlockMapEntry k sp_p sp_v →",
+    "      ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →",
+    "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →",
+    "      ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →",
+    "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc) ∧"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P7",
+   "old": [
+    "          GLit ':' sp_i sp_c →",
+    "          ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "          SLYamlStream sp_start sp_v) ∨ PackAlt sc)"
+   ],
+   "new": [
+    "          GLit ':' sp_i sp_c →",
+    "          ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P8",
+   "old": [
+    "        ∀ sp_m : SurfPos, SBlockNode n .blockIn sp_node sp_m →",
+    "        ∀ sp_i sp_c : SurfPos, SIndent nv sp_m sp_i → GLit ':' sp_i sp_c →",
+    "        ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "        SLYamlStream sp_start sp_v) ∨ PackAlt sc)"
+   ],
+   "new": [
+    "        ∀ sp_m : SurfPos, SBlockNode n .blockIn sp_node sp_m →",
+    "        ∀ sp_i sp_c : SurfPos, SIndent nv sp_m sp_i → GLit ':' sp_i sp_c →",
+    "        ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P9",
+   "old": [
+    "        ∀ sp_e : SurfPos, SCompactSeqTail ne sp_m sp_e →",
+    "        ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →",
+    "        ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "        SLYamlStream sp_start sp_v) ∨ PackAlt sc)"
+   ],
+   "new": [
+    "        ∀ sp_e : SurfPos, SCompactSeqTail ne sp_m sp_e →",
+    "        ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →",
+    "        ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P10",
+   "old": [
+    "      (h_kslot : (∃ nv : Nat,",
+    "        ∀ sp_m : SurfPos, SSLComments sp_gram sp_m →",
+    "        ∀ sp_e : SurfPos, SCompactSeqTail n sp_m sp_e →",
+    "        ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →",
+    "        ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "        SLYamlStream sp_start sp_v) ∨ PackAlt sc)"
+   ],
+   "new": [
+    "      (h_kslot : (∃ nv : Nat,",
+    "        ∀ sp_m : SurfPos, SSLComments sp_gram sp_m →",
+    "        ∀ sp_e : SurfPos, SCompactSeqTail n sp_m sp_e →",
+    "        ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →",
+    "        ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P11",
+   "old": [
+    "      (h_kslotUp : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,",
+    "        ∀ sp_m : SurfPos, SSLComments sp_gram sp_m →",
+    "        ∀ sp_e : SurfPos, SCompactSeqTail n sp_m sp_e →",
+    "        ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →",
+    "        ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "        SLYamlStream sp_start sp_v) ∨ PackAlt sc)"
+   ],
+   "new": [
+    "      (h_kslotUp : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,",
+    "        ∀ sp_m : SurfPos, SSLComments sp_gram sp_m →",
+    "        ∀ sp_e : SurfPos, SCompactSeqTail n sp_m sp_e →",
+    "        ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →",
+    "        ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P12",
+   "old": [
+    "      (h_kslot : (∃ nv : Nat,",
+    "        ∀ sp_m : SurfPos, SBlockIndented n .blockIn sp_scan sp_m →",
+    "        ∀ sp_e : SurfPos, SCompactSeqTail n sp_m sp_e →",
+    "        ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →",
+    "        ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "        SLYamlStream sp_start sp_v) ∨ PackAlt sc)"
+   ],
+   "new": [
+    "      (h_kslot : (∃ nv : Nat,",
+    "        ∀ sp_m : SurfPos, SBlockIndented n .blockIn sp_scan sp_m →",
+    "        ∀ sp_e : SurfPos, SCompactSeqTail n sp_m sp_e →",
+    "        ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →",
+    "        ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P13",
+   "old": [
+    "      (h_kslotUp : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,",
+    "        ∀ sp_m : SurfPos, SBlockIndented n .blockIn sp_scan sp_m →",
+    "        ∀ sp_e : SurfPos, SCompactSeqTail n sp_m sp_e →",
+    "        ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →",
+    "        ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "        SLYamlStream sp_start sp_v) ∨ PackAlt sc)"
+   ],
+   "new": [
+    "      (h_kslotUp : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,",
+    "        ∀ sp_m : SurfPos, SBlockIndented n .blockIn sp_scan sp_m →",
+    "        ∀ sp_e : SurfPos, SCompactSeqTail n sp_m sp_e →",
+    "        ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →",
+    "        ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P14",
+   "old": [
+    "        ∀ sp_m : SurfPos, SBlockNode (n + 1) .blockIn sp_scan sp_m →",
+    "        ∀ sp_i sp_c : SurfPos, SIndent nv sp_m sp_i → GLit ':' sp_i sp_c →",
+    "        ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "        SLYamlStream sp_start sp_v) ∨ PackAlt sc)"
+   ],
+   "new": [
+    "        ∀ sp_m : SurfPos, SBlockNode (n + 1) .blockIn sp_scan sp_m →",
+    "        ∀ sp_i sp_c : SurfPos, SIndent nv sp_m sp_i → GLit ':' sp_i sp_c →",
+    "        ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P15",
+   "old": [
+    "        SLYamlStream sp_start sp_w) ∨ NotQuestionPark sc)"
+   ],
+   "new": [
+    "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ NotQuestionPark sc)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P16",
+   "old": [
+    "      ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →",
+    "      SLYamlStream sp_start sp_w) ∨ PackAltG g) ∧"
+   ],
+   "new": [
+    "      ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →",
+    "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAltG g) ∧"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P17",
+   "old": [
+    "      SLYamlStream sp_start sp_v) ∨ PackAltG g"
+   ],
+   "new": [
+    "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAltG g"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P18",
+   "old": [
+    "      SLYamlStream sp_start sp_v) ∨ alt) :"
+   ],
+   "new": [
+    "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ alt) :"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P19",
+   "old": [
+    "      ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "      SLYamlStream sp_start sp_v) ∨ alt :="
+   ],
+   "new": [
+    "      ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ alt :="
+   ],
+   "count": 1
+  },
+  {
+   "name": "P20",
+   "old": [
+    "      ∀ sp_i sp_c : SurfPos, SIndent nv sp sp_i → GLit ':' sp_i sp_c →",
+    "      ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "      SLYamlStream sp_start sp_v) ∨ PackAlt sc)"
+   ],
+   "new": [
+    "      ∀ sp_i sp_c : SurfPos, SIndent nv sp sp_i → GLit ':' sp_i sp_c →",
+    "      ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P21",
+   "old": [
+    "      s_prep.simpleKey.pos.col = k ∧",
+    "      ((∃ ns : List Nat, ∀ nv ∈ ns,",
+    "        ∀ sp_v : SurfPos, SBlockMapEntry k sp_key sp_v →",
+    "        ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →",
+    "        ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →",
+    "        ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →",
+    "        SLYamlStream sp_start sp_w) ∨ PackAltG g) ∧"
+   ],
+   "new": [
+    "      s_prep.simpleKey.pos.col = k ∧",
+    "      ((∃ ns : List Nat, ∀ nv ∈ ns,",
+    "        ∀ sp_v : SurfPos, SBlockMapEntry k sp_key sp_v →",
+    "        ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →",
+    "        ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →",
+    "        ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →",
+    "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAltG g) ∧"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P22",
+   "old": [
+    "      -- its sibling `: v` is `[187]`'s own next entry, not a `[188]` close.",
+    "      ((∃ ns : List Nat, ∀ nv ∈ ns,",
+    "        ∀ sp_v : SurfPos, SBlockMapEntry k sp_key sp_v →",
+    "        ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →",
+    "        ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →",
+    "        ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →",
+    "        SLYamlStream sp_start sp_w) ∨ PackAltG g) ∧"
+   ],
+   "new": [
+    "      -- its sibling `: v` is `[187]`'s own next entry, not a `[188]` close.",
+    "      ((∃ ns : List Nat, ∀ nv ∈ ns,",
+    "        ∀ sp_v : SurfPos, SBlockMapEntry k sp_key sp_v →",
+    "        ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →",
+    "        ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →",
+    "        ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →",
+    "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAltG g) ∧"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P23",
+   "old": [
+    "    -- `h_kslot`. ═══",
+    "    (h_explUp_chain : (∃ ns : List Nat, ∀ nv ∈ ns,",
+    "      ∀ sp_v : SurfPos, SBlockMapEntry k sp_ind sp_v →",
+    "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_v sp_i → GLit ':' sp_i sp_c →",
+    "      ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →",
+    "      SLYamlStream sp_start sp_w) ∨ PackAlt sc)"
+   ],
+   "new": [
+    "    -- `h_kslot`. ═══",
+    "    (h_explUp_chain : (∃ ns : List Nat, ∀ nv ∈ ns,",
+    "      ∀ sp_v : SurfPos, SBlockMapEntry k sp_ind sp_v →",
+    "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_v sp_i → GLit ':' sp_i sp_c →",
+    "      ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →",
+    "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P24",
+   "old": [
+    "    (h_top_in : s'.currentIndent ≤ (k : Int))",
+    "    (h_explUp_chainD : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,",
+    "      ∀ sp_v : SurfPos, SBlockMapEntry k sp_ind sp_v →",
+    "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_v sp_i → GLit ':' sp_i sp_c →",
+    "      ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →",
+    "      SLYamlStream sp_start sp_w) ∨ PackAlt sc)"
+   ],
+   "new": [
+    "    (h_top_in : s'.currentIndent ≤ (k : Int))",
+    "    (h_explUp_chainD : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,",
+    "      ∀ sp_v : SurfPos, SBlockMapEntry k sp_ind sp_v →",
+    "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_v sp_i → GLit ':' sp_i sp_c →",
+    "      ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →",
+    "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P25",
+   "old": [
+    "      SLYamlStream sp_start sp_w) ∨ PackAlt sc :="
+   ],
+   "new": [
+    "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc :="
+   ],
+   "count": 1
+  },
+  {
+   "name": "P26",
+   "old": [
+    "      SSLComments sp_scan sp_m → SIndent nv sp_m sp_i → GLit ':' sp_i sp_c →",
+    "      ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "      SLYamlStream sp_start sp_v)"
+   ],
+   "new": [
+    "      SSLComments sp_scan sp_m → SIndent nv sp_m sp_i → GLit ':' sp_i sp_c →",
+    "      ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P27",
+   "old": [
+    "    -- `:` opener has no input to spend it on.",
+    "    (h_explUp_chain : (∃ ns : List Nat, ∀ nv ∈ ns,",
+    "      ∀ sp_v : SurfPos, SBlockMapEntry k sp_ind sp_v →",
+    "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_v sp_i → GLit ':' sp_i sp_c →",
+    "      ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →",
+    "      SLYamlStream sp_start sp_w) ∨ PackAlt sc)"
+   ],
+   "new": [
+    "    -- `:` opener has no input to spend it on.",
+    "    (h_explUp_chain : (∃ ns : List Nat, ∀ nv ∈ ns,",
+    "      ∀ sp_v : SurfPos, SBlockMapEntry k sp_ind sp_v →",
+    "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_v sp_i → GLit ':' sp_i sp_c →",
+    "      ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →",
+    "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P28",
+   "old": [
+    "    (h_top_prep : s_prep.currentIndent ≤ (s_prep.col : Int))",
+    "    (h_explUp_chainD : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,",
+    "      ∀ sp_v : SurfPos, SBlockMapEntry k sp_ind sp_v →",
+    "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_v sp_i → GLit ':' sp_i sp_c →",
+    "      ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →",
+    "      SLYamlStream sp_start sp_w) ∨ PackAlt sc)"
+   ],
+   "new": [
+    "    (h_top_prep : s_prep.currentIndent ≤ (s_prep.col : Int))",
+    "    (h_explUp_chainD : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,",
+    "      ∀ sp_v : SurfPos, SBlockMapEntry k sp_ind sp_v →",
+    "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_v sp_i → GLit ':' sp_i sp_c →",
+    "      ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →",
+    "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P29",
+   "old": [
+    "      SLYamlStream sp_start sp_w) ∨ alt) :"
+   ],
+   "new": [
+    "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ alt) :"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P30",
+   "old": [
+    "      SLYamlStream sp_start sp_w) ∨ PackAlt sc) :"
+   ],
+   "new": [
+    "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc) :"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P31",
+   "old": [
+    "    -- site that paid `h_vpackUp` appends instead. ═══",
+    "    (h_vpack : (∃ ns : List Nat, ∀ nv ∈ ns,",
+    "      ∀ sp_m sp_i sp_c : SurfPos,",
+    "        SSLComments sp_gram sp_m → SIndent nv sp_m sp_i → GLit ':' sp_i sp_c →",
+    "        ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "        SLYamlStream sp_start sp_v) ∨ PackAlt sc)"
+   ],
+   "new": [
+    "    -- site that paid `h_vpackUp` appends instead. ═══",
+    "    (h_vpack : (∃ ns : List Nat, ∀ nv ∈ ns,",
+    "      ∀ sp_m sp_i sp_c : SurfPos,",
+    "        SSLComments sp_gram sp_m → SIndent nv sp_m sp_i → GLit ':' sp_i sp_c →",
+    "        ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P32",
+   "old": [
+    "        SLYamlStream sp_start sp_v) ∨ PackAlt sc) ∧"
+   ],
+   "new": [
+    "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc) ∧"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P33",
+   "old": [
+    "        ∀ sp_v : SurfPos, SBlockIndented nvU .blockOut sp_c sp_v →",
+    "        SLYamlStream sp_start sp_v) ∨ PackAlt sc)) ∨"
+   ],
+   "new": [
+    "        ∀ sp_v : SurfPos, SBlockIndented nvU .blockOut sp_c sp_v →",
+    "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nvU] sp_v) ∨ PackAlt sc)) ∨"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P34",
+   "old": [
+    "        ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "        SLYamlStream sp_start sp_v) ∨ PackAlt sc :="
+   ],
+   "new": [
+    "        ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc :="
+   ],
+   "count": 1
+  },
+  {
+   "name": "P35",
+   "old": [
+    "            SSLComments sp_gram sp_m → SIndent k sp_m sp_i → GLit ':' sp_i sp_c →",
+    "            ∀ sp_v : SurfPos, SBlockIndented k .blockOut sp_c sp_v →",
+    "            SLYamlStream sp_start sp_v) =>"
+   ],
+   "new": [
+    "            SSLComments sp_gram sp_m → SIndent k sp_m sp_i → GLit ':' sp_i sp_c →",
+    "            ∀ sp_v : SurfPos, SBlockIndented k .blockOut sp_c sp_v →",
+    "            ResumeFrames (SLYamlStream sp_start) [FrameLevel.map k] sp_v) =>"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P36",
+   "old": [
+    "    -- closed into this park hands it.",
+    "    (h_vpack : (∃ ns : List Nat, ∀ nv ∈ ns,",
+    "      ∀ sp_m sp_i sp_c : SurfPos,",
+    "        SSLComments sp_gram sp_m → SIndent nv sp_m sp_i → GLit ':' sp_i sp_c →",
+    "        ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "        SLYamlStream sp_start sp_v) ∨ PackAlt sc)"
+   ],
+   "new": [
+    "    -- closed into this park hands it.",
+    "    (h_vpack : (∃ ns : List Nat, ∀ nv ∈ ns,",
+    "      ∀ sp_m sp_i sp_c : SurfPos,",
+    "        SSLComments sp_gram sp_m → SIndent nv sp_m sp_i → GLit ':' sp_i sp_c →",
+    "        ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P37",
+   "old": [
+    "    (h_kslot : (∃ nv : Nat,",
+    "      ∀ sp_m : SurfPos, SSLComments sp_gram sp_m →",
+    "      ∀ sp_e : SurfPos, SCompactSeqTail n sp_m sp_e →",
+    "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →",
+    "      ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "      SLYamlStream sp_start sp_v) ∨ PackAlt sc)"
+   ],
+   "new": [
+    "    (h_kslot : (∃ nv : Nat,",
+    "      ∀ sp_m : SurfPos, SSLComments sp_gram sp_m →",
+    "      ∀ sp_e : SurfPos, SCompactSeqTail n sp_m sp_e →",
+    "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →",
+    "      ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P38",
+   "old": [
+    "    (h_kslotUp : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,",
+    "      ∀ sp_m : SurfPos, SSLComments sp_gram sp_m →",
+    "      ∀ sp_e : SurfPos, SCompactSeqTail n sp_m sp_e →",
+    "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →",
+    "      ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "      SLYamlStream sp_start sp_v) ∨ PackAlt sc)"
+   ],
+   "new": [
+    "    (h_kslotUp : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,",
+    "      ∀ sp_m : SurfPos, SSLComments sp_gram sp_m →",
+    "      ∀ sp_e : SurfPos, SCompactSeqTail n sp_m sp_e →",
+    "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →",
+    "      ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P39",
+   "old": [
+    "              SLYamlStream sp_start sp_v) =>"
+   ],
+   "new": [
+    "              ResumeFrames (SLYamlStream sp_start) [FrameLevel.map k] sp_v) =>"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P40",
+   "old": [
+    "              SLYamlStream sp_start sp_v) ∨ (∃ nsU : List Nat, k ∉ nsU) := by"
+   ],
+   "new": [
+    "              ResumeFrames (SLYamlStream sp_start) [FrameLevel.map k] sp_v) ∨ (∃ nsU : List Nat, k ∉ nsU) := by"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P41",
+   "old": [
+    "    (h_kslot : (∃ nv : Nat,",
+    "      ∀ sp_m : SurfPos, SBlockIndented n .blockIn sp_scan sp_m →",
+    "      ∀ sp_e : SurfPos, SCompactSeqTail n sp_m sp_e →",
+    "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →",
+    "      ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "      SLYamlStream sp_start sp_v) ∨ PackAlt sc)"
+   ],
+   "new": [
+    "    (h_kslot : (∃ nv : Nat,",
+    "      ∀ sp_m : SurfPos, SBlockIndented n .blockIn sp_scan sp_m →",
+    "      ∀ sp_e : SurfPos, SCompactSeqTail n sp_m sp_e →",
+    "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →",
+    "      ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P42",
+   "old": [
+    "    (h_kslotUp : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,",
+    "      ∀ sp_m : SurfPos, SBlockIndented n .blockIn sp_scan sp_m →",
+    "      ∀ sp_e : SurfPos, SCompactSeqTail n sp_m sp_e →",
+    "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →",
+    "      ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "      SLYamlStream sp_start sp_v) ∨ PackAlt sc)"
+   ],
+   "new": [
+    "    (h_kslotUp : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,",
+    "      ∀ sp_m : SurfPos, SBlockIndented n .blockIn sp_scan sp_m →",
+    "      ∀ sp_e : SurfPos, SCompactSeqTail n sp_m sp_e →",
+    "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →",
+    "      ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P43",
+   "old": [
+    "            ∀ sp_i sp_c : SurfPos, SIndent k sp_e sp_i → GLit ':' sp_i sp_c →",
+    "            ∀ sp_v : SurfPos, SBlockIndented k .blockOut sp_c sp_v →",
+    "            SLYamlStream sp_start sp_v) =>"
+   ],
+   "new": [
+    "            ∀ sp_i sp_c : SurfPos, SIndent k sp_e sp_i → GLit ':' sp_i sp_c →",
+    "            ∀ sp_v : SurfPos, SBlockIndented k .blockOut sp_c sp_v →",
+    "            ResumeFrames (SLYamlStream sp_start) [FrameLevel.map k] sp_v) =>"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P44",
+   "old": [
+    "            ∀ sp_v : SurfPos, SBlockIndented k .blockOut sp_c sp_v →",
+    "            SLYamlStream sp_start sp_v) ∨ (∃ nsU : List Nat, k ∉ nsU) := by"
+   ],
+   "new": [
+    "            ∀ sp_v : SurfPos, SBlockIndented k .blockOut sp_c sp_v →",
+    "            ResumeFrames (SLYamlStream sp_start) [FrameLevel.map k] sp_v) ∨ (∃ nsU : List Nat, k ∉ nsU) := by"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P45",
+   "old": [
+    "    -- value line pass `Or.inr trivial`.",
+    "    (h_nodeV : (∃ ns : List Nat, ∀ nv ∈ ns,",
+    "      ∀ sp_m : SurfPos, SBlockNode (n + 1) .blockIn sp_scan sp_m →",
+    "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_m sp_i → GLit ':' sp_i sp_c →",
+    "      ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "      SLYamlStream sp_start sp_v) ∨ PackAlt sc)"
+   ],
+   "new": [
+    "    -- value line pass `Or.inr trivial`.",
+    "    (h_nodeV : (∃ ns : List Nat, ∀ nv ∈ ns,",
+    "      ∀ sp_m : SurfPos, SBlockNode (n + 1) .blockIn sp_scan sp_m →",
+    "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_m sp_i → GLit ':' sp_i sp_c →",
+    "      ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P46",
+   "old": [
+    "    -- no value line pass `Or.inr trivial` for it.",
+    "    (h_compact : ((∀ sp, SBlockIndented n .blockIn sp_scan sp → SLYamlStream sp_start sp) ∧",
+    "      sp_scan.col = n + 1 ∧",
+    "      -- Item 196: a CHAIN, in step with the pack conjunct it funds.",
+    "      ((∃ ns : List Nat, ∀ nv ∈ ns, ∀ sp : SurfPos, SBlockIndented n .blockIn sp_scan sp →",
+    "        ∀ sp_i sp_c : SurfPos, SIndent nv sp sp_i → GLit ':' sp_i sp_c →",
+    "        ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "        SLYamlStream sp_start sp_v) ∨ PackAlt sc)) ∨ True)"
+   ],
+   "new": [
+    "    -- no value line pass `Or.inr trivial` for it.",
+    "    (h_compact : ((∀ sp, SBlockIndented n .blockIn sp_scan sp → SLYamlStream sp_start sp) ∧",
+    "      sp_scan.col = n + 1 ∧",
+    "      -- Item 196: a CHAIN, in step with the pack conjunct it funds.",
+    "      ((∃ ns : List Nat, ∀ nv ∈ ns, ∀ sp : SurfPos, SBlockIndented n .blockIn sp_scan sp →",
+    "        ∀ sp_i sp_c : SurfPos, SIndent nv sp sp_i → GLit ':' sp_i sp_c →",
+    "        ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)) ∨ True)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P47",
+   "old": [
+    "    -- `h_compact` is real pass the same frame here.",
+    "    (h_ivl : (sc.implicitValueLine = some sc.line ∧ sc.needIndentCheck = false ∧",
+    "      LastTokenReal sc.tokens) ∨",
+    "      ((∀ sp, SBlockIndented n .blockIn sp_scan sp → SLYamlStream sp_start sp) ∧",
+    "        sp_scan.col = n + 1 ∧",
+    "        ((∃ ns : List Nat, ∀ nv ∈ ns, ∀ sp : SurfPos, SBlockIndented n .blockIn sp_scan sp →",
+    "          ∀ sp_i sp_c : SurfPos, SIndent nv sp sp_i → GLit ':' sp_i sp_c →",
+    "          ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "          SLYamlStream sp_start sp_v) ∨ PackAlt sc)))"
+   ],
+   "new": [
+    "    -- `h_compact` is real pass the same frame here.",
+    "    (h_ivl : (sc.implicitValueLine = some sc.line ∧ sc.needIndentCheck = false ∧",
+    "      LastTokenReal sc.tokens) ∨",
+    "      ((∀ sp, SBlockIndented n .blockIn sp_scan sp → SLYamlStream sp_start sp) ∧",
+    "        sp_scan.col = n + 1 ∧",
+    "        ((∃ ns : List Nat, ∀ nv ∈ ns, ∀ sp : SurfPos, SBlockIndented n .blockIn sp_scan sp →",
+    "          ∀ sp_i sp_c : SurfPos, SIndent nv sp sp_i → GLit ':' sp_i sp_c →",
+    "          ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)))"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P48",
+   "old": [
+    "              SLYamlStream sp_start sp_v) ∨ PackAlt sc)) ∨"
+   ],
+   "new": [
+    "              ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)) ∨"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P49",
+   "old": [
+    "    -- nesting the compact conjunct above cannot reach (`?⏎  &p a: b⏎: - w`).",
+    "    (h_nodeV : (∃ ns : List Nat, ∀ nv ∈ ns,",
+    "      ∀ sp_m : SurfPos, SBlockNode (n + 1) .blockIn sp_scan sp_m →",
+    "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_m sp_i → GLit ':' sp_i sp_c →",
+    "      ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "      SLYamlStream sp_start sp_v) ∨ PackAlt sc)"
+   ],
+   "new": [
+    "    -- nesting the compact conjunct above cannot reach (`?⏎  &p a: b⏎: - w`).",
+    "    (h_nodeV : (∃ ns : List Nat, ∀ nv ∈ ns,",
+    "      ∀ sp_m : SurfPos, SBlockNode (n + 1) .blockIn sp_scan sp_m →",
+    "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_m sp_i → GLit ':' sp_i sp_c →",
+    "      ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P50",
+   "old": [
+    "    -- `PropsKeyPack` its pair (`? &p a: b⏎: - w`).",
+    "    (h_compact : ((∀ sp, SBlockIndented n .blockIn sp_scan sp → SLYamlStream sp_start sp) ∧",
+    "      sp_scan.col = n + 1 ∧",
+    "      -- Item 196: a CHAIN, in step with the pack conjunct it funds.",
+    "      ((∃ ns : List Nat, ∀ nv ∈ ns, ∀ sp : SurfPos, SBlockIndented n .blockIn sp_scan sp →",
+    "        ∀ sp_i sp_c : SurfPos, SIndent nv sp sp_i → GLit ':' sp_i sp_c →",
+    "        ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "        SLYamlStream sp_start sp_v) ∨ PackAlt sc)) ∨ True)"
+   ],
+   "new": [
+    "    -- `PropsKeyPack` its pair (`? &p a: b⏎: - w`).",
+    "    (h_compact : ((∀ sp, SBlockIndented n .blockIn sp_scan sp → SLYamlStream sp_start sp) ∧",
+    "      sp_scan.col = n + 1 ∧",
+    "      -- Item 196: a CHAIN, in step with the pack conjunct it funds.",
+    "      ((∃ ns : List Nat, ∀ nv ∈ ns, ∀ sp : SurfPos, SBlockIndented n .blockIn sp_scan sp →",
+    "        ∀ sp_i sp_c : SurfPos, SIndent nv sp sp_i → GLit ':' sp_i sp_c →",
+    "        ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)) ∨ True)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P51",
+   "old": [
+    "    -- or, item 125, the FACE in `h_compact`'s own left shape.",
+    "    (h_ivl : (sc.implicitValueLine = some sc.line ∧ sc.needIndentCheck = false ∧",
+    "      LastTokenReal sc.tokens) ∨",
+    "      ((∀ sp, SBlockIndented n .blockIn sp_scan sp → SLYamlStream sp_start sp) ∧",
+    "        sp_scan.col = n + 1 ∧",
+    "        ((∃ ns : List Nat, ∀ nv ∈ ns, ∀ sp : SurfPos, SBlockIndented n .blockIn sp_scan sp →",
+    "          ∀ sp_i sp_c : SurfPos, SIndent nv sp sp_i → GLit ':' sp_i sp_c →",
+    "          ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "          SLYamlStream sp_start sp_v) ∨ PackAlt sc)))"
+   ],
+   "new": [
+    "    -- or, item 125, the FACE in `h_compact`'s own left shape.",
+    "    (h_ivl : (sc.implicitValueLine = some sc.line ∧ sc.needIndentCheck = false ∧",
+    "      LastTokenReal sc.tokens) ∨",
+    "      ((∀ sp, SBlockIndented n .blockIn sp_scan sp → SLYamlStream sp_start sp) ∧",
+    "        sp_scan.col = n + 1 ∧",
+    "        ((∃ ns : List Nat, ∀ nv ∈ ns, ∀ sp : SurfPos, SBlockIndented n .blockIn sp_scan sp →",
+    "          ∀ sp_i sp_c : SurfPos, SIndent nv sp sp_i → GLit ':' sp_i sp_c →",
+    "          ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)))"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P52",
+   "old": [
+    "            ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "            SLYamlStream sp_start sp_v) ∨ PackAlt sc)) ∨"
+   ],
+   "new": [
+    "            ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "            ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)) ∨"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P53",
+   "old": [
+    "    (h_kslot_old : (∃ nv : Nat,",
+    "      ∀ sp_m : SurfPos, SBlockIndented n .blockIn sp_scan sp_m →",
+    "      ∀ sp_e : SurfPos, SCompactSeqTail n sp_m sp_e →",
+    "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →",
+    "      ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "      SLYamlStream sp_start sp_v) ∨ PackAlt sc)"
+   ],
+   "new": [
+    "    (h_kslot_old : (∃ nv : Nat,",
+    "      ∀ sp_m : SurfPos, SBlockIndented n .blockIn sp_scan sp_m →",
+    "      ∀ sp_e : SurfPos, SCompactSeqTail n sp_m sp_e →",
+    "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →",
+    "      ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P54",
+   "old": [
+    "    (h_kslotUp_old : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,",
+    "      ∀ sp_m : SurfPos, SBlockIndented n .blockIn sp_scan sp_m →",
+    "      ∀ sp_e : SurfPos, SCompactSeqTail n sp_m sp_e →",
+    "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →",
+    "      ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "      SLYamlStream sp_start sp_v) ∨ PackAlt sc)"
+   ],
+   "new": [
+    "    (h_kslotUp_old : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,",
+    "      ∀ sp_m : SurfPos, SBlockIndented n .blockIn sp_scan sp_m →",
+    "      ∀ sp_e : SurfPos, SCompactSeqTail n sp_m sp_e →",
+    "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →",
+    "      ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P55",
+   "old": [
+    "    (h_kslot : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,",
+    "      ∀ sp_m : SurfPos, SBlockNode (n + 1) .blockIn sp_scan sp_m →",
+    "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_m sp_i → GLit ':' sp_i sp_c →",
+    "      ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "      SLYamlStream sp_start sp_v) ∨ PackAlt sc)"
+   ],
+   "new": [
+    "    (h_kslot : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,",
+    "      ∀ sp_m : SurfPos, SBlockNode (n + 1) .blockIn sp_scan sp_m →",
+    "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_m sp_i → GLit ':' sp_i sp_c →",
+    "      ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P56",
+   "old": [
+    "          SLYamlStream sp_start sp_v) ∨ PackAlt sc)) :="
+   ],
+   "new": [
+    "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)) :="
+   ],
+   "count": 1
+  },
+  {
+   "name": "P57",
+   "old": [
+    "        SLYamlStream sp_start sp_v) ∨ PackAlt sc)) ∨ True :="
+   ],
+   "new": [
+    "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)) ∨ True :="
+   ],
+   "count": 1
+  },
+  {
+   "name": "P58",
+   "old": [
+    "                  SLYamlStream sp_start sp_v) ∨ PackAlt sc := by"
+   ],
+   "new": [
+    "                  ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc := by"
+   ],
+   "count": 1
+  }
+ ]
+}

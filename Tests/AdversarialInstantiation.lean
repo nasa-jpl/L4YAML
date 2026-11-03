@@ -6287,7 +6287,7 @@ def testNoPopAfterClosedNode (state : IO.Ref TestCollector) : IO Unit := do
       s!"(documents, root keys, first item rendered) = {repr got}; expected {repr expected}"
 
 /-- **Priority 50 (item 382): the MAPPING park's NO-POP arm receives the DEEPER landing — the
-    awaited VALUE node — while the root sibling takes the RESUME arm.**  `flip_own_tail.py` read
+    awaited VALUE node — while the root sibling takes the RESUME arm.**  `flip_own_tail.py`, now `scripts/flips/item382_own_tail.json` read
     that every birth of `pendingMapValue` already supplies `h_frames` with the park's own level as
     the head frame (`ResumeFrames.level k ksF …` over the empty value, item 147/197), so at
     `accum_block_on_closeThenBlock` the `hmem` test is TRUE for a sibling at the park's level
