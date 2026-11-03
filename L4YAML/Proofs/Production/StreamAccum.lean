@@ -3626,7 +3626,7 @@ lemma props_couplings_of_push {s_ad s' : ScannerState} {tok : YamlToken}
     indicators themselves ride `PendingNode.pendingFlow`, composed at
     consumption time by `close_with_ssl`.
 
-    **What a second arm costs** (`scripts/flip_carrier.py`, DOCS item 246).
+    **What a second arm costs** (`scripts/flips/item246_carrier_arm.json`, DOCS item 246).
     Forty declarations mention `BlockStack` and twenty-one name its `nil` —
     eighteen build it, and three read the carrier and only leave the
     constructor in a binder their `cases` writes (DOCS item 247); an added

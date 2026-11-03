@@ -87,7 +87,7 @@ that eliminate it, so there the flip is not optional.
 
 ## What the cheap instrument buys over the expensive one
 
-`scripts/flip_drop.py` deletes the arm for real and counts what stops
+`scripts/flips/item238_scanner_drop.json` (via `scripts-flip`) deletes the arm for real and counts what stops
 compiling.  Both construction sites are in one module that the library root
 imports, so the build stops there and reports **2** — it cannot see the other
 two, and it cannot see the 24 behind them.  Here the environment walk strictly

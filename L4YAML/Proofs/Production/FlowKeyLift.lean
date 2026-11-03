@@ -1072,7 +1072,7 @@ magnitude smaller than the conversion it discharges, and one of them pays for
 all 48 of that conversion's payable sites at once because the residue widens.
 What is missing is the coordinate that would state the hypothesis, not a
 cheaper proof; `Tests/Guards/Proofs/SurfaceSpanCensus.lean` §8 measures both
-halves and `scripts/flip_supply.py` prices the consumer side. -/
+halves and `scripts/flips/item233_flow_key_head.json` prices the consumer side. -/
 
 lemma plain_toKey_of_noBreak {n : Nat} {c tc : L4YAML.YamlContext} (hp : KeyPair c tc)
     {s s' : SurfPos} (h : SNsPlain n c s s') (hnb : ¬ BreakBetween s s') :

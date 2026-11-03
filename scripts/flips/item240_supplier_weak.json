@@ -1,0 +1,54 @@
+{
+ "item": 240,
+ "tag": "SUPPLIER-WEAK",
+ "rev": "d622b0ae",
+ "target": "",
+ "log": "scratch/flip240_supplier_weak.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "files": [
+  {
+   "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+   "patches": [
+    {
+     "name": "SIG",
+     "old": [
+      "    (h_stream : SLYamlStream sp_start sp_block)",
+      "    (h_nd : danglingNodePos? sc = none)",
+      "    -- Item 275: §8.1's silence, relayed to `pendingContent`'s face.  Only that",
+      "    -- arm reads it; `pendingBlockContent`'s own `h_closable` is unchanged.",
+      "    (h_ui : underIndentedFlowValuePos? sc = none)",
+      "    (h_ssl : SSLComments sp_scan sp_mid) :",
+      "    SLYamlStream sp_start sp_mid := by",
+      ""
+     ],
+     "new": [
+      "    (h_stream : SLYamlStream sp_start sp_block)",
+      "    (h_scan : SLYamlStream sp_start sp_scan)",
+      "    (h_nd : danglingNodePos? sc = none)",
+      "    (h_ui : underIndentedFlowValuePos? sc = none)",
+      "    (h_ssl : SSLComments sp_scan sp_mid) :",
+      "    SLYamlStream sp_start sp_mid := by",
+      ""
+     ],
+     "count": 1
+    },
+    {
+     "name": "ARM",
+     "old": [
+      "  | pendingFlow =>",
+      "    -- Absorb opaque scanner content (flow/block indicators) via scannerDrop.",
+      "    exact SLYamlStream.scannerDrop sp_start sp_block sp_scan sp_mid h_stream h_ssl",
+      ""
+     ],
+     "new": [
+      "  | pendingFlow =>",
+      "    exact ssl_comments_extend_stream sp_start sp_scan sp_mid h_scan h_ssl",
+      ""
+     ],
+     "count": 1
+    }
+   ]
+  }
+ ]
+}

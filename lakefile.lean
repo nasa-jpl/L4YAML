@@ -416,6 +416,10 @@ lean_exe «scripts-gen-traceof» where
 lean_exe «scripts-punt-price» where
   root := `Scripts.Main.PuntPrice
 
+@[default_target]
+lean_exe «scripts-beta5» where
+  root := `Scripts.Main.Beta5
+
 /-! Phase 4.5 (Rule 9, Q7): portable entry points — `lake run <name>` replaces the
 bash wrappers that only run a `lean_exe`; same on Linux, macOS and Windows. -/
 
@@ -503,6 +507,22 @@ script «gen-traceof» (args) do
     reasons off `lake env lean`'s error locations (item 211). Never beside a `lake build`. -/
 script «punt-price» (args) do
   runGateExe (← getWorkspace).root.dir "scripts-punt-price" #[] args
+
+/-- `lake run flip-beta5 -- [--max-rounds N] [--log-dir DIR] [--probe LEAN]`: β.5's edit driven
+    to a sorry-fixpoint over `lake build`, FIXLINE / FIX-PIN (item 263).  Up to 25 full
+    builds; never beside a `lake build`. -/
+script «flip-beta5» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-beta5" #["fixpoint"] args
+
+/-- `lake run beta5-arms -- [--end control|arms]... [--log-dir DIR]`: β.5's edit alone and with
+    the dead arms deleted, `lake build L4YAML` each, ARMLINE / ARM-PIN (item 264). -/
+script «beta5-arms» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-beta5" #["arms"] args
+
+/-- `lake run beta5-map -- LOG`: the declarations enclosing a build log's error locations
+    (item 230's mapper). -/
+script «beta5-map» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-beta5" #["map"] args
 
 script «check-gate-vocab» (args) do
   let ws ← getWorkspace

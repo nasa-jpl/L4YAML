@@ -30,7 +30,7 @@ that replaces it.
 
 ## What the flip is for, and why it is not optional here
 
-`scripts/flip_beta5.py` applies β.5's actual edit — both deletions and
+`lake run flip-beta5` applies β.5's actual edit — both deletions and
 `dropClose` with them — and then drives the build to a FIXPOINT: it replaces
 each broken declaration's proof with `sorry`, neutralizes each top-level census
 whose pins the deletion re-reads, and rebuilds until the tree is clean.  That
@@ -229,7 +229,7 @@ contains the fixpoint's seven, and the two it adds are named above.
 
 /-- The fixpoint's own reading.  Nothing in Lean can re-derive it — it is a
     property of a source tree that does not exist — so the pin is checked from
-    the other side: `scripts/flip_beta5.py` reads this literal out of this file
+    the other side: `lake run flip-beta5` reads this literal out of this file
     and compares its own summary line against it, printing `FIX-PIN agrees`.  A
     pin checked against itself is an empty check (§9). -/
 def expectedFixpoint : String :=
@@ -238,7 +238,7 @@ def expectedFixpoint : String :=
 /-- **The same edit with the DEAD BRANCHES deleted rather than sorried**
     (item 264).  The fixpoint above keeps every broken statement and loses only
     its proof, so it can say a proof breaks and never say what repairing it
-    costs.  `scripts/beta5_arms.py` makes β.5's deletions and then deletes the
+    costs.  `lake run beta5-arms` makes β.5's deletions and then deletes the
     five dead `| pendingFlow` arms for real, and reads the residue:
 
     * `control` re-derives the seven in the same run, so `dead` is a delta of
