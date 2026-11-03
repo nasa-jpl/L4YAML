@@ -38,12 +38,14 @@ def readLines (text : String) : Array String := (text.splitOn "\n").toArray
 
 /-- Write `patched` over the target, run `lake env lean` on it, restore the original bytes.
     The original is first copied to `StreamAccum.lean.punt-bak` (the Python's backup), so
-    an interrupted run leaves a recoverable copy beside the source; it is removed only after
-    the restored bytes are verified.  Both digests go to stderr (Rule 9), stdout stays the
+    an interrupted run leaves a recoverable copy beside the source; a run refuses to start while
+    one exists, and it is removed only after the restored bytes are verified.  Both digests go to stderr (Rule 9), stdout stays the
     Python's. -/
 def leanOn (root : System.FilePath) (original : String) (patched : Array String) : IO (Except String String) := do
   let path := root / target
   let backup := System.FilePath.mk (path.toString ++ ".punt-bak")
+  if ← backup.pathExists then
+    return .error s!"{backup} exists: an earlier run was interrupted, so {target} may be the patched copy; inspect it, restore from the backup, delete the backup, then rerun"
   let before := Scripts.Flip.Patch.digest original.toUTF8
   IO.eprintln s!"digest before  {target}  {before}"
   IO.FS.writeFile backup original
