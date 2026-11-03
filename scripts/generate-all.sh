@@ -178,11 +178,13 @@ echo "python         $(python3 --version) ($(command -v python3))"
 
 # `weasyprint --version` imports the package (and so the pango/cairo libraries),
 # as html-to-pdf.py does; `command -v` would pass with them missing (Rule 9, Q3).
+# The venv's own CLI, by path: an ambient weasyprint on PATH is not the one
+# the venv's python3 imports.
 HAS_WEASYPRINT=0
-if weasyprint --version >/dev/null 2>&1; then
+if "$VENV/bin/weasyprint" --version >/dev/null 2>&1; then
   HAS_WEASYPRINT=1
 elif python3 -m pip install --quiet --disable-pip-version-check weasyprint 2>/dev/null \
-     && weasyprint --version >/dev/null 2>&1; then
+     && "$VENV/bin/weasyprint" --version >/dev/null 2>&1; then
   HAS_WEASYPRINT=1
 fi
 [ "$HAS_WEASYPRINT" = 1 ] || warn "weasyprint unavailable — phase 5 will be skipped (needs pango/cairo/gdk-pixbuf)"

@@ -109,10 +109,13 @@ jobs:
           # STARTING it, not pip exit status: `weasyprint --version` imports
           # the package (and so loads the system pango/cairo libraries
           # above) exactly as html-to-pdf.py does — never `command -v`,
-          # which would pass with the libraries missing (Rule 9, Q3).
-          if weasyprint --version >/dev/null 2>&1 \
+          # which would pass with the libraries missing (Rule 9, Q3). The
+          # venv's own CLI, by path: an ambient /usr/bin/weasyprint would
+          # pass the probe while the venv's python3 cannot import it.
+          WP="$RUNNER_TEMP/ci-venv/bin/weasyprint"
+          if "$WP" --version >/dev/null 2>&1 \
              || { python3 -m pip install --quiet --disable-pip-version-check weasyprint \
-                  && weasyprint --version >/dev/null 2>&1; }; then
+                  && "$WP" --version >/dev/null 2>&1; }; then
             echo "has_weasyprint=true" >> "$GITHUB_OUTPUT"
           else
             echo "::warning::weasyprint unavailable — PDF generation will be skipped"
