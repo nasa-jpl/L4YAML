@@ -102,6 +102,9 @@ lean_lib «Tests.SuiteRunner.HtmlReport» where
 
 lean_lib «Tests.Main» where
   roots := #[`Tests.Main]
+lean_lib «Tests.SuiteRunner.Reports» where
+  roots := #[`Tests.SuiteRunner.Reports]
+
 
 lean_lib Demo
 
@@ -507,6 +510,17 @@ script «gen-traceof» (args) do
     reasons off `lake env lean`'s error locations (item 211). Never beside a `lake build`. -/
 script «punt-price» (args) do
   runGateExe (← getWorkspace).root.dir "scripts-punt-price" #[] args
+
+/-- Rule 9 phase 4 row 1: `lake run cross-lang-compare -- DIR` runs suiterunner's
+four backends under the five presets and writes `DIR/cross-lang-results.json`
+(was `scripts/cross-lang-compare.py`); `lake run test-reports -- DIR` renders
+`cross-lang-comparison.html` and `python-ffi-tests.html` from that JSON and the
+pytest JUnit files (was `scripts/generate-test-reports.py`). -/
+script «cross-lang-compare» (args) do
+  runGateExe (← getWorkspace).root.dir "suiterunner" #["--compare"] args
+
+script «test-reports» (args) do
+  runGateExe (← getWorkspace).root.dir "suiterunner" #["--reports"] args
 
 /-- `lake run flip-beta5 -- [--max-rounds N] [--log-dir DIR] [--probe LEAN]`: β.5's edit driven
     to a sorry-fixpoint over `lake build`, FIXLINE / FIX-PIN (item 263).  Up to 25 full
