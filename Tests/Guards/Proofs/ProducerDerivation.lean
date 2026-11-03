@@ -47,7 +47,7 @@ left behind.
 
 ## What that makes of the lattice
 
-`scripts/flip_supplier.py --end producer` threads the `field` repair one level:
+`scripts/flips/item240_supplier_producer.json` (via `scripts-flip`) threads the `field` repair one level:
 the park keeps its new field, `close_with_ssl` still reads it, and the producer
 gains the premise and spends it.  It reports `producer=4` — the producer's own
 consumers, and item 240's `field=1` is the first wave of the same repair

@@ -26,7 +26,7 @@ There are three repairs, and they are not variants of one edit:
 | **field** | `pendingFlow` gains the same connection as its LAST field | unchanged | **1** |
 | **retire** | `pendingFlow` deleted, docstring and arm together | unchanged | **7** |
 
-`scripts/flip_supplier.py` runs all three for real, and a fourth end threads
+`scripts/flips/item240_supplier_{weak,field,retire,producer}.json` (via `scripts-flip`) runs all three for real, and a fourth end threads
 the `field` repair one level to measure its second wave (DOCS item 241).
 Each end leaves a well-typed, DROP-FREE supplier behind, and each prints
 `REPAIRED errors=0` so that "the repair elaborates" is a reading and not a

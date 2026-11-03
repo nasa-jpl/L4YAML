@@ -61,7 +61,7 @@ sites' own path and item 244's literal into the candidate carrier with no
 unpaid premise, against item 245's `seq_entry_of_park_span`, which needed a
 whole block node to land the same literal in the grammar.
 
-`scripts/flip_carrier.py` runs the flip for real — `arm` adds the constructor,
+`scripts/flips/item246_carrier_{arm,retire}.json` (via `scripts-flip`) runs the flip for real — `arm` adds the constructor,
 `retire` adds it and deletes both absorptions — restores the source, and checks
 its `StreamAccum` counts against the lists pinned here.
 -/

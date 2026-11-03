@@ -55,7 +55,7 @@ the gap between them.
 
 Every one of the five park calls has one hypothesis mentioning both endpoints,
 and it is the `PendingNode` itself — the premise item 239 refuted.  Those five
-are the same five `scripts/flip_supplier.py --end weak` breaks when
+are the same five `scripts/flips/item240_supplier_weak.json` breaks when
 `close_with_ssl` gains the connecting premise, so the walk and the flip name one
 ring by two independent routes: the flip reads what stops compiling, this reads
 what the proof terms hold.  The other

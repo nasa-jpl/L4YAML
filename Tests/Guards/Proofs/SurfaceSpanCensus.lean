@@ -580,7 +580,7 @@ two PROVE one, and both of those two prove it of a literal character list.
 is a fact about the SCANNER's line counter; `ScannerSurfCorr` — the
 correspondence between a scanner state and a surface position — has five
 fields and none of them is the line, and `SurfPos` has two, `chars` and `col`.
-The price of the supply side is that coordinate.  `scripts/flip_supply.py`
+The price of the supply side is that coordinate.  `scripts/flips/item233_flow_key_head.json` (via `scripts-flip`)
 prices the other half: tightening the head promise to take the two facts
 breaks four definitions from seven locations, and that is a lower bound
 because the build stops at the module all four live in. -/

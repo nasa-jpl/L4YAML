@@ -1,6 +1,6 @@
 ---
 name: l4yaml-price-instruments
-description: Run L4YAML's "price before proving" instruments — scripts/*_price.py, flip_*.py, beta5_arms.py, `lake run punt-price`, `lake run drop-sweep` — safely (they edit library source in place and rebuild), read their classifications, and keep their pins agreeing. Use before any deletion, arity change, carrier addition, or when an item needs a count it must not recollect.
+description: Run L4YAML's "price before proving" instruments — scripts/*_price.py, flip_*.py, `lake run flip-beta5`, `lake run beta5-arms`, `lake run punt-price`, `lake run drop-sweep` — safely (they edit library source in place and rebuild), read their classifications, and keep their pins agreeing. Use before any deletion, arity change, carrier addition, or when an item needs a count it must not recollect.
 ---
 
 # Pricing instruments
@@ -15,9 +15,10 @@ its output.
 | Script | Question it answers | Pin that must agree |
 |---|---|---|
 | `lake exe scripts-flip scripts/flips/<item>.json` (Lean, Rule 9) — one spec per flip: file, `rev`, anchored `old`/`new` pairs (each must match exactly once), target, tag; `--dry` checks anchors, `--rev` overrides, `--keep` leaves the patched tree; refuses when another `L4YAML/**` file differs between REV and the working tree (use a `git worktree` of REV) | A flip at a revision: which declarations break, how many sites, by owner | the item that cites it (416: `errors=4 decls=2`) |
-| `flip_beta5.py` | If `pendingFlow`/`scannerDrop` were deleted, what breaks to a fixpoint: `sorried / restated / deleted / pins` | `FIX-PIN` (named in the script) |
-| `beta5_arms.py` | Which constructor arms are dead vs live obligations | `ARM-PIN` |
-| `scripts/flips/item210_implicit_continue.json`, `item375_flip211_stage1.json` (the `[211]` price), `item415_inl_declines.json` (via `scripts-flip`); `flip_carrier.py`, `flip_supply.py`, `flip_supplier.py`, `flip_drop.py`; `lake exe scripts-flip-census` (Lean, Rule 9) | Narrowing / carrier / supply-side flips | see each docstring |
+| `lake run flip-beta5 [-- --max-rounds N --log-dir DIR --probe LEAN]` (Lean, Rule 9; `-- --dry` checks the anchors) | If `pendingFlow`/`scannerDrop` were deleted, what breaks to a fixpoint: `sorried / restated / deleted / pins` | `FIX-PIN` (`expectedFixpoint` in `ParkBill.lean`) |
+| `lake run beta5-arms [-- --end control|arms --log-dir DIR]` (Lean, Rule 9) | Which constructor arms are dead vs live obligations | `ARM-PIN` (`expectedArms` in `ParkBill.lean`) |
+| `lake run beta5-map -- LOG` | The declarations enclosing a build log's error locations (item 230's mapper) | — |
+| `scripts/flips/item210_implicit_continue.json`, `item375_flip211_stage1.json` (the `[211]` price), `item415_inl_declines.json` (via `scripts-flip`); `item238_scanner_drop.json`, `item233_flow_key_head.json`, `item246_carrier_{arm,retire}.json`, `item240_supplier_{weak,field,retire,producer}.json` (the four loaders of `flip_210.py`, as specs; the `rev` of each is the last tree its anchors matched); `lake exe scripts-flip-census` (Lean, Rule 9) | Narrowing / carrier / supply-side flips | see each docstring |
 | `ride_price.py`, `close_price.py`, `carrier_price.py`, `wire_price.py`, `transport_price.py`, `coordinate_price.py`, `arm_price.py`, `inline_class_price.py`, `lake run punt-price`, `*_top_price.py`, `*_nic0_price.py`, `open_map_price.py` | Cost of one specific change, by producer/consumer | `expected…` strings in `Tests/Guards/Proofs/` |
 | `lake run drop-sweep [-- -q]` | Acceptance sweep (generates `L4YAML/Scratch/*.lean`, removes them) | — (a sweep says REACHED at most; it is not a proof obligation) |
 | `narrow_conclusion.py`, `pay_chain_optional.py`, `decline_all_optional.py`, `lake exe scripts-theorem-keyword --rewrite` | Mechanical source transforms used by items | — |

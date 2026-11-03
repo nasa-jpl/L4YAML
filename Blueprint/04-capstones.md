@@ -598,7 +598,7 @@ is buildable — from that park.
 
 **Under β.5's own edit only ONE of the two is a restatement, and that is
 measured rather than argued**
-([`flip_beta5.py`](../scripts/flip_beta5.py), DOCS item 263). Row 12 retires
+(`lake run flip-beta5`, DOCS item 263). Row 12 retires
 `pendingFlow` and deletes `scannerDrop` together, so the park the refutation
 builds its witness from is gone with the arm. A flip that applies both
 deletions for real and drives the build to a fixpoint leaves
@@ -701,7 +701,7 @@ the entry's content ends — so what the six owe is a block node, not a characte
 
 **And the missing arm is honest, and cheap where it is read**
 ([`CarrierArmPrice.lean`](../Tests/Guards/Proofs/CarrierArmPrice.lean),
-[`flip_carrier.py`](../scripts/flip_carrier.py)). The arm that would hold the
+`scripts/flips/item246_carrier_arm.json` via `scripts-flip`). The arm that would hold the
 park's `-` — `s-indent(n)` then the indicator, `[183]`'s entry with its content
 still owed — reaches its target from its source through its own two premises,
 the reading under which `scannerDrop` is broken; the same reading over the

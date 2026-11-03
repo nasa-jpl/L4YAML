@@ -307,8 +307,15 @@ breaks CI if wrong, cheapest first:
    lean` / restore); stdout and exit identical to the Python on the same
    tree for every mode (`phantom`'s `stamp` anchor is stale on the current
    tree — both sides stop there, exit 1; re-aiming it is the campaign's).
-   **Open:** the `flip_beta5.py`/`beta5_arms.py` half, with `flip_210.py`
-   and its loaders.
+   **3.2b, flip half DONE:** `flip_beta5.py` + `beta5_arms.py` + `flip_210.py`'s
+   mapper → `lake run flip-beta5` / `beta5-arms` / `beta5-map` (`Scripts/Flip/Beta5.lean`
+   the edit, the round, the dead blocks, the lines and pins with `#guard` rows;
+   `Scripts/Main/Beta5.lean` the backups / builds / restores).  Both Pythons had
+   been dead since 2026-10-24 (the park's last field moved: `CTOR_TAIL` no
+   longer follows the docstring), so the same-tree comparison is at `d622b0ae`,
+   the last tree their anchors matched, in a worktree: edited texts byte-identical,
+   rounds and arms as reported in the PR.  The four one-shot loaders went as
+   specs (3.3's Q2 default), each at the last `rev` its anchors matched.
 3. The remaining 47 one-shot flips and prices (items 205–415, 6 538 lines): **Q2 decides**
    whether they are converted to specs (mechanical: the anchors are the
    data) or frozen — moved to `scripts/attic/` with their reading in
@@ -403,13 +410,14 @@ it removes Python from CI; it does not block an item.
 | inline ×7: test-coverage.yml — `import weasyprint` probe ×2, hygiene heredoc, release-asset lookup; generate-all.sh — `import weasyprint` probe ×2, hygiene heredoc | G/R | ~30 | — | CI, generate-all.sh | hygiene ×2 → one Lean `stats.json` exe; asset lookup → `gh api --jq`; probes ×4 → `weasyprint --version` (Q3) | todo |
 | gen_traceof.py | I | 195 | 10-23 | TraceOf regeneration | scripts-gen-traceof | DONE (`lake run gen-traceof`) |
 | flip_colon_chain.py, flip_kslote_domain.py | F (live, items 417/416) | 138, 85 | 11-01 | items | `scripts/flips/item417_colon_chain.json`, `item416_kslote_domain.json` | lean:scripts-flip |
-| flip_210.py | F (live; also the mapper module six flips load) | 138 | 09-21 | ledger snapshots, 6 loaders | gate: `scripts/flips/item210_implicit_continue.json`; file deleted with its loaders (3.2b) | todo |
+| flip_210.py | F (live; also the mapper module six flips load) | 138 | 09-21 | ledger snapshots, 6 loaders | gate: `scripts/flips/item210_implicit_continue.json`; mapper `lake run beta5-map -- LOG` | DONE (3.2b) |
 | flip_211_stage1.py | F (live, `[211]`) | 86 | 10-27 | ledger snapshots | `scripts/flips/item375_flip211_stage1.json` | lean:scripts-flip |
-| flip_beta5.py, beta5_arms.py | F (live pins FIX-PIN/ARM-PIN) | 623, 297 | 09-25 | skills | Lean port of classify/pins (3.2b) | todo |
+| flip_beta5.py, beta5_arms.py | F (live pins FIX-PIN/ARM-PIN) | 623, 297 | 09-25 | skills | scripts-beta5 (`Scripts/Flip/Beta5.lean`) | DONE (`lake run flip-beta5` / `beta5-arms`) |
+| flip_drop.py, flip_supply.py, flip_carrier.py, flip_supplier.py | F (one-shot; `flip_210.py`'s loaders) | 115, 131, 255, 341 | 09-21 … 09-23 | guard docstrings | `scripts/flips/item238_scanner_drop.json`, `item233_flow_key_head.json`, `item246_carrier_{arm,retire}.json`, `item240_supplier_{weak,field,retire,producer}.json` | lean:scripts-flip (3.2b) |
 | punt_reason_price.py | F (live; a `lake env lean` instrument) | 510 | 09-19 | item 211 | scripts-punt-price | DONE (`lake run punt-price`) |
 | flip_inl_declines.py | F (live) | 72 | 10-31 | item 415 | `scripts/flips/item415_inl_declines.json` | lean:scripts-flip |
 | narrow_conclusion.py, pay_chain_optional.py, decline_all_optional.py | F (transforms) | 241, 140, 247 | 09-20 | skills | scripts-restate | todo |
-| 47 remaining `flip_*.py` / `*_price.py` (items 205–415) | F (one-shot) | 6 538 | 09-18 … 10-31 | DOCS.md items only | specs or attic (Q2) | todo |
+| 43 remaining `flip_*.py` / `*_price.py` (items 205–415) | F (one-shot) | 5 696 | 09-18 … 10-31 | DOCS.md items only | specs or attic (Q2) | todo |
 | matrix_score.py | R | 264 | 07-01 | README, CI | scripts-matrix-score | todo |
 | cross-lang-compare.py | R | 93 | 10-17 | CI, generate-all.sh | HtmlReport.lean | todo |
 | generate-test-reports.py | R | 201 | 04-09 | CI, generate-all.sh | HtmlReport.lean | todo |
