@@ -9587,17 +9587,77 @@ def testArmedOuterLemma (state : IO.Ref TestCollector) : IO Unit := do
   check state s!"P83b exists_mem_ne_of_not_markedColsIn on constructed registers (item 422): cases={cases.length} hypothesis-true={hypTrue} hypothesis-false={hypFalse}; refuted={refuted} converse-refuted={converseRefuted}"
     (hypTrue == 6 && hypFalse == 7 && refuted.isEmpty && converseRefuted.isEmpty)
 
-/-- **Priority 84 — the (β-mark) body is a tautology on the sound block domain** (item 424).  The
+/-! **Priority 84 — the (β-mark) body is a tautology on the sound block domain** (item 424).  The
     body item 423 priced, `ExplicitValueRefused sc ∨ markedCols sc ≠ []`, is INHABITED at every sound
     block state: item 410's `refused_of_markedCols_eq_nil` reads a markless register as dead, and a
     non-markless one is the other arm.  A `PackAlt` write of this body says nothing a `trivial` did
-    not — the `∨ True` smell under another name — so the pay is REFUTED before it is made. -/
-lemma packAlt_mark_tauto {s : L4YAML.Scanner.ScannerState} (hs : L4YAML.Proofs.PendingKeySound.Sound s)
+    not — the `∨ True` smell under another name — so the pay is REFUTED before it is made.  An
+    `example`, not a declaration: a refutation feeds no capstone (Rule 1), it only has to be checked
+    by the build (§1). -/
+example {s : L4YAML.Scanner.ScannerState} (hs : L4YAML.Proofs.PendingKeySound.Sound s)
     (hfl : s.flowLevel = 0) :
     s.explicitKeyLine = none ∨ L4YAML.Proofs.RegisterWitness.markedCols s ≠ [] :=
   match h : L4YAML.Proofs.RegisterWitness.markedCols s with
   | [] => Or.inl (L4YAML.Proofs.RegisterWitness.refused_of_markedCols_eq_nil hs hfl h)
   | _ :: _ => Or.inr (by simp)
+
+/-- Priority 84's register half (Devin Review on the PR): the `example` quantifies over EVERY sound
+    block state, not the scanned ones, so the body is checked on hand-built registers with the `Sound`
+    hypothesis DECIDED by a Bool mirror of its four clauses (`SlotsOk`, `RegOk`, `BaseOk`, `StackOk`) —
+    a hypothesis-true register without the conclusion refutes; a hypothesis-FALSE register without it
+    (a markless slot array beside a LIVE register — `RegOk` fails) shows the `Sound` premise is
+    load-bearing, not decoration. -/
+def testPackAltMarkTautoRegisters (state : IO.Ref TestCollector) : IO Unit := do
+  let base := L4YAML.Scanner.ScannerState.mk' ""
+  let mkS (pks : Array (Option Nat)) (cols : Array Int) (ekl : Option Nat) (ekc : Int) (fl : Nat)
+      (stack : Array (Option Nat × Int)) : L4YAML.Scanner.ScannerState :=
+    { base with pendingKeys := pks, indents := cols.map fun c => { column := c, isSequence := false },
+                explicitKeyLine := ekl, explicitKeyCol := ekc, flowLevel := fl, explicitKeyStack := stack }
+  let soundB (t : L4YAML.Scanner.ScannerState) : Bool :=
+    let slots := t.pendingKeys.size == t.indents.size &&
+      (List.range t.pendingKeys.size).all fun i =>
+        (match t.pendingKeys[i]?, t.indentColumns[i]? with
+          | some (some _), some c => decide (0 ≤ c)
+          | some (some _), none => false
+          | _, _ => true)
+    let inner := t.innermostPendingKey
+    let reg := t.flowLevel != 0 || (t.explicitKeyLine == inner.1 && t.explicitKeyCol == inner.2)
+    let baseOk := t.flowLevel == 0 || t.explicitKeyStack[0]? == some inner
+    let stackOk := t.explicitKeyStack.size == t.flowLevel
+    slots && reg && baseOk && stackOk
+  let cases : List (String × L4YAML.Scanner.ScannerState) :=
+    [ ("empty, dead register", mkS #[] #[] none (-1) 0 #[]),
+      ("one unmarked slot, dead register", mkS #[none] #[0] none (-1) 0 #[]),
+      ("one mark at 2, register reads it", mkS #[some 3] #[2] (some 3) 2 0 #[]),
+      ("nested: marks at 0 and 2, register reads the inner", mkS #[some 1, some 3] #[0, 2] (some 3) 2 0 #[]),
+      ("nested: outer mark only, inner unmarked, register reads the outer", mkS #[some 1, none] #[0, 2] (some 1) 0 0 #[]),
+      ("one mark, register reads ANOTHER line (RegOk fails)", mkS #[some 3] #[2] (some 7) 2 0 #[]),
+      ("markless beside a LIVE register (RegOk fails) — the body is FALSE here", mkS #[none] #[0] (some 3) 0 0 #[]),
+      ("markless, live register, no slots at all — the body is FALSE here", mkS #[] #[] (some 1) 0 0 #[]),
+      ("mark on a negative column (SlotsOk fails)", mkS #[some 2] #[-1] (some 2) (-1) 0 #[]),
+      ("slot arrays out of lockstep (SlotsOk fails)", mkS #[some 2, none] #[2] (some 2) 2 0 #[]),
+      ("in flow (flowLevel 1), dead register, stack holds the innermost", mkS #[none] #[0] none (-1) 1 #[(none, -1)]),
+      ("in flow, armed below the open", mkS #[some 2] #[2] (some 2) 2 1 #[(some 2, 2)]) ]
+  let mut hypTrue := 0
+  let mut hypFalse := 0
+  let mut refuted : List String := []
+  let mut soundNecessary := 0
+  let mut refusedArm := 0
+  let mut armedArm := 0
+  for (name, t) in cases do
+    let marks := markedColsOf t.pendingKeys t.indentColumns
+    let conclusion := t.explicitKeyLine.isNone || !marks.isEmpty
+    if soundB t && t.flowLevel == 0 then
+      hypTrue := hypTrue + 1
+      if conclusion then
+        if t.explicitKeyLine.isNone then refusedArm := refusedArm + 1
+        else armedArm := armedArm + 1
+      else refuted := name :: refuted
+    else
+      hypFalse := hypFalse + 1
+      if !conclusion then soundNecessary := soundNecessary + 1
+  check state s!"P84b (β-mark) body on constructed registers (item 424): cases={cases.length} hypothesis-true={hypTrue} (refused arm={refusedArm}, armed arm={armedArm}) hypothesis-false={hypFalse}; refuted={refuted}; hypothesis-false registers where the body FAILS (Sound is load-bearing)={soundNecessary}"
+    (hypTrue == 5 && hypFalse == 7 && refuted.isEmpty && refusedArm == 2 && armedArm == 3 && soundNecessary == 2)
 
 /-- The scan half of Priority 84: at every block pause of P83's corpus (plus two dedent shapes) the
     decided dichotomy — refused (`explicitKeyLine = none`) or armed (a marked slot) — is checked on the
@@ -9849,6 +9909,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testArmedOuterPartition state
   testArmedOuterLemma state
   testPackAltMarkTauto state
+  testPackAltMarkTautoRegisters state
 
   testQuestionMarkColumn state
   testK1Lanes state
