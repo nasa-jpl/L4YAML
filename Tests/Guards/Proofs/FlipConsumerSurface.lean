@@ -418,7 +418,7 @@ at 2 productions and `implicitValue` at 3.  A census restricted on a claim it is
 itself able to test is a census that cannot correct its author.
 
 **The two instruments agree on the two reasons that were measured and not on
-the third.**  `scripts/punt_reason_price.py` is item 184's other half as an
+the third.**  `lake run punt-price` is item 184's other half as an
 artifact — delete a constructor, build, group by declaration.  It reads `dedent`
 7/5 and `noKeyContext` 6/5, agreeing; it reads `tab` at **7** where this lane
 reads **5**, because `tab` is written `refine Or.inr (KeyPackPunt.tab ?_ ...)`
@@ -432,7 +432,7 @@ hands the reason over and is emptied by a proof about the input; a consumer arm
 is the `cases` label that spends it, and it goes when the last production does.
 What R3 has to pay is seven productions, not thirteen sites — and this lane
 cannot make that split, because an application is an application.
-`punt_reason_price.py split` does, from the source, against this lane's own
+`lake run punt-price -- split` does, from the source, against this lane's own
 site list.
 
 **Item 296: `dedent` reads 5 sites, two productions and three consumer arms.**

@@ -300,7 +300,15 @@ breaks CI if wrong, cheapest first:
    guard strings; `punt_reason_price.py` is a `lake env lean` instrument
    with sub-commands. They need a Lean port of that classify/pin logic
    (`Scripts/Flip/Report.lean`), not a spec; freezing their computed edits
-   would lose the "re-aim or refuse" property.
+   would lose the "re-aim or refuse" property. **3.2b, punt half DONE:**
+   `punt_reason_price.py` → `lake run punt-price -- all|<reason>|split|
+   phantom|stamp|keyroute|reaches` (`Scripts/Punt/Price.lean` the readings
+   with `#guard` rows, `Scripts/Main/PuntPrice.lean` the patch / `lake env
+   lean` / restore); stdout and exit identical to the Python on the same
+   tree for every mode (`phantom`'s `stamp` anchor is stale on the current
+   tree — both sides stop there, exit 1; re-aiming it is the campaign's).
+   **Open:** the `flip_beta5.py`/`beta5_arms.py` half, with `flip_210.py`
+   and its loaders.
 3. The remaining 47 one-shot flips and prices (items 205–415, 6 538 lines): **Q2 decides**
    whether they are converted to specs (mechanical: the anchors are the
    data) or frozen — moved to `scripts/attic/` with their reading in
@@ -398,7 +406,7 @@ it removes Python from CI; it does not block an item.
 | flip_210.py | F (live; also the mapper module six flips load) | 138 | 09-21 | ledger snapshots, 6 loaders | gate: `scripts/flips/item210_implicit_continue.json`; file deleted with its loaders (3.2b) | todo |
 | flip_211_stage1.py | F (live, `[211]`) | 86 | 10-27 | ledger snapshots | `scripts/flips/item375_flip211_stage1.json` | lean:scripts-flip |
 | flip_beta5.py, beta5_arms.py | F (live pins FIX-PIN/ARM-PIN) | 623, 297 | 09-25 | skills | Lean port of classify/pins (3.2b) | todo |
-| punt_reason_price.py | F (live; a `lake env lean` instrument) | 510 | 09-19 | item 211 | Lean port (3.2b) | todo |
+| punt_reason_price.py | F (live; a `lake env lean` instrument) | 510 | 09-19 | item 211 | scripts-punt-price | DONE (`lake run punt-price`) |
 | flip_inl_declines.py | F (live) | 72 | 10-31 | item 415 | `scripts/flips/item415_inl_declines.json` | lean:scripts-flip |
 | narrow_conclusion.py, pay_chain_optional.py, decline_all_optional.py | F (transforms) | 241, 140, 247 | 09-20 | skills | scripts-restate | todo |
 | 47 remaining `flip_*.py` / `*_price.py` (items 205–415) | F (one-shot) | 6 538 | 09-18 … 10-31 | DOCS.md items only | specs or attic (Q2) | todo |

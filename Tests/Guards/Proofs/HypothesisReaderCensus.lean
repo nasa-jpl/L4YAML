@@ -50,7 +50,7 @@ pendingFlow`'s field").  Eight agreements at one build instead of eight.
   without it (`punt_premise_buys_nothing`).  There is nothing to read, not
   because the census cannot see it but because the type carries none.  The
   price of a punt is the CASE SPLIT it forces, which is what
-  `scripts/punt_reason_price.py` already measures; the two instruments are
+  `lake run punt-price` already measures; the two instruments are
   asking the only question available.
 * **Item 183's flip order** is where `h_ref`'s readers live:
   `rootMapRoute_or_refused` and `rootMapRouteF_or_refused` are two of the flip's

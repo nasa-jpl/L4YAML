@@ -1,6 +1,6 @@
 ---
 name: l4yaml-price-instruments
-description: Run L4YAML's "price before proving" instruments — scripts/*_price.py, flip_*.py, beta5_arms.py, punt_reason_price.py, `lake run drop-sweep` — safely (they edit library source in place and rebuild), read their classifications, and keep their pins agreeing. Use before any deletion, arity change, carrier addition, or when an item needs a count it must not recollect.
+description: Run L4YAML's "price before proving" instruments — scripts/*_price.py, flip_*.py, beta5_arms.py, `lake run punt-price`, `lake run drop-sweep` — safely (they edit library source in place and rebuild), read their classifications, and keep their pins agreeing. Use before any deletion, arity change, carrier addition, or when an item needs a count it must not recollect.
 ---
 
 # Pricing instruments
@@ -18,7 +18,7 @@ its output.
 | `flip_beta5.py` | If `pendingFlow`/`scannerDrop` were deleted, what breaks to a fixpoint: `sorried / restated / deleted / pins` | `FIX-PIN` (named in the script) |
 | `beta5_arms.py` | Which constructor arms are dead vs live obligations | `ARM-PIN` |
 | `scripts/flips/item210_implicit_continue.json`, `item375_flip211_stage1.json` (the `[211]` price), `item415_inl_declines.json` (via `scripts-flip`); `flip_carrier.py`, `flip_supply.py`, `flip_supplier.py`, `flip_drop.py`; `lake exe scripts-flip-census` (Lean, Rule 9) | Narrowing / carrier / supply-side flips | see each docstring |
-| `ride_price.py`, `close_price.py`, `carrier_price.py`, `wire_price.py`, `transport_price.py`, `coordinate_price.py`, `arm_price.py`, `inline_class_price.py`, `punt_reason_price.py`, `*_top_price.py`, `*_nic0_price.py`, `open_map_price.py` | Cost of one specific change, by producer/consumer | `expected…` strings in `Tests/Guards/Proofs/` |
+| `ride_price.py`, `close_price.py`, `carrier_price.py`, `wire_price.py`, `transport_price.py`, `coordinate_price.py`, `arm_price.py`, `inline_class_price.py`, `lake run punt-price`, `*_top_price.py`, `*_nic0_price.py`, `open_map_price.py` | Cost of one specific change, by producer/consumer | `expected…` strings in `Tests/Guards/Proofs/` |
 | `lake run drop-sweep [-- -q]` | Acceptance sweep (generates `L4YAML/Scratch/*.lean`, removes them) | — (a sweep says REACHED at most; it is not a proof obligation) |
 | `narrow_conclusion.py`, `pay_chain_optional.py`, `decline_all_optional.py`, `lake exe scripts-theorem-keyword --rewrite` | Mechanical source transforms used by items | — |
 
