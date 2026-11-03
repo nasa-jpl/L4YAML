@@ -79,13 +79,27 @@ where
 #guard normNum ⟨-0, 3⟩ == ⟨0, 0⟩
 #guard normNum ⟨100, 0⟩ == ⟨100, 0⟩
 
+/-- Python `==` on two parsed JSON numbers: the previous scorer compared `json.loads`'s
+    `float`s, so two decimals that round to the same binary64 are equal
+    (`0.1 == 0.10000000000000001`); exact equality is kept beside it so two integers
+    beyond 2⁵³ that differ compare unequal as in Python unless they round to the same
+    double — the one residue, far outside any oracle's values. -/
+def pyNumEq (a b : JsonNumber) : Bool :=
+  normNum a == normNum b || a.toFloat == b.toFloat
+
+#guard pyNumEq ⟨1, 1⟩ ⟨10000000000000001, 17⟩          -- 0.1 == 0.10000000000000001
+#guard !pyNumEq ⟨1, 1⟩ ⟨11, 2⟩                          -- 0.1 ≠ 0.11
+#guard pyNumEq ⟨1, 0⟩ ⟨100, 2⟩                          -- 1 == 1.00
+#guard pyNumEq ⟨-15, 1⟩ ⟨-150, 2⟩                       -- -1.5 == -1.50
+#guard !pyNumEq ⟨15, 1⟩ ⟨-15, 1⟩
+
 /-- Python `==` on two parsed JSON values: structural, objects by key, numbers by
-    value — and `True == 1`, `False == 0` (`bool` is a subclass of `int`). -/
+    `pyNumEq` — and `True == 1`, `False == 0` (`bool` is a subclass of `int`). -/
 partial def pyEq : Json → Json → Bool
   | .null, .null => true
   | .bool a, .bool b => a == b
-  | .num a, .num b => normNum a == normNum b
-  | .bool a, .num b | .num b, .bool a => normNum b == ⟨if a then 1 else 0, 0⟩
+  | .num a, .num b => pyNumEq a b
+  | .bool a, .num b | .num b, .bool a => pyNumEq b ⟨if a then 1 else 0, 0⟩
   | .str a, .str b => a == b
   | .arr a, .arr b => a.size == b.size && (a.zip b).all fun (x, y) => pyEq x y
   | .obj a, .obj b =>
@@ -108,6 +122,8 @@ def streamsEqText (a b : String) : Option Bool := do
 #guard streamsEqText "[1, 2]" "[1, 2] 3" == some false
 #guard streamsEqText "\"1\"" "1" == some false
 #guard streamsEqText "true" "true" == some true
+#guard streamsEqText "[0.1, 1e2]" "[0.10000000000000001, 100.0]" == some true
+#guard streamsEqText "0.1" "0.2" == some false
 #guard streamsEqText "true" "1" == some true
 #guard streamsEqText "1.0" "true" == some true
 #guard streamsEqText "false" "0.0" == some true
@@ -252,24 +268,49 @@ def resultsJson (results : List (String × List (String × AxisResult))) : Strin
 #guard resultsJson [("c", [("json", ⟨[("harness-error", 1)], [("harness-error", "229Q")]⟩)]), ("d", [])] ==
   "{\n \"c\": {\n  \"json\": {\n   \"cats\": {\n    \"harness-error\": 1\n   },\n   \"fails\": [\n    [\n     \"harness-error\",\n     \"229Q\"\n    ]\n   ]\n  }\n },\n \"d\": {}\n}"
 
-/-- argparse's `type=float` for `--timeout`, in milliseconds: `5`, `5.0`, `0.25`. -/
-def parseSeconds (s : String) : Option Nat :=
-  match s.splitOn "." with
-  | [w] => (w.toNat?).map (· * 1000)
-  | [w, f] =>
-    if f.isEmpty || !f.all Char.isDigit then none else
-    let whole := if w.isEmpty then some 0 else w.toNat?
-    let frac := ((f ++ "000").take 3).toNat?
-    whole.bind fun wn => frac.map fun fn => wn * 1000 + fn
-  | _ => none
+/-- argparse's `type=float` for `--timeout`, in whole milliseconds (floored): Python's
+    float syntax — `5`, `5.0`, `.5`, `+2`, `1e-3`, `2.5E+1` — except `inf`/`nan` and
+    negatives, which are no deadline. -/
+def parseSeconds (s : String) : Option Nat := do
+  let s := if s.startsWith "+" then (s.drop 1).toString else s
+  let (num, exp) ← match s.splitOn "e" with
+    | [n] => match n.splitOn "E" with
+      | [n] => some (n, "0")
+      | [n, e] => some (n, e)
+      | _ => none
+    | [n, e] => some (n, e)
+    | _ => none
+  let (whole, frac) ← match num.splitOn "." with
+    | [w] => some (w, "")
+    | [w, f] => some (w, f)
+    | _ => none
+  guard (!(whole.isEmpty && frac.isEmpty) && whole.all Char.isDigit && frac.all Char.isDigit)
+  let digits ← (if whole.isEmpty && frac.isEmpty then none else (whole ++ frac).toNat?)
+  let e : Int ← match exp.splitOn "-" with
+    | [p] => (if p.startsWith "+" then (p.drop 1).toString else p).toNat?.map Int.ofNat
+    | ["", n] => n.toNat?.map fun k => -(Int.ofNat k)
+    | _ => none
+  -- value·1000 = digits · 10^(e + 3 − |frac|)
+  let shift : Int := e + 3 - frac.length
+  if shift ≥ 0 then pure (digits * 10 ^ shift.toNat) else pure (digits / 10 ^ (-shift).toNat)
 
 #guard parseSeconds "5" == some 5000
 #guard parseSeconds "5.0" == some 5000
 #guard parseSeconds "0.25" == some 250
 #guard parseSeconds ".5" == some 500
 #guard parseSeconds "0.0015" == some 1
+#guard parseSeconds "1e-3" == some 1
+#guard parseSeconds "1e-4" == some 0
+#guard parseSeconds "5E2" == some 500000
+#guard parseSeconds ".5e1" == some 5000
+#guard parseSeconds "2.5E+1" == some 25000
+#guard parseSeconds "+2" == some 2000
 #guard parseSeconds "abc" == none
 #guard parseSeconds "" == none
+#guard parseSeconds "." == none
+#guard parseSeconds "-1" == none
+#guard parseSeconds "1e" == none
+#guard parseSeconds "inf" == none
 
 /-- processor → (event tester, json tester) of the `yamlall` container, the Python's `DOCKER` table. -/
 def dockerTesters : List (String × Option String × Option String) :=
