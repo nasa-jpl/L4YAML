@@ -113,6 +113,7 @@ lake run check-closure-log           # DOCS.md items ascend, dated, gaps declare
 lake run check-serialization-proofs  # serialization hygiene: kernel axiom profiles, sorry control, exact headline sets
 lake run check-gate-vocab            # gate names in prose resolve (pin: Tests/Guards/Proofs/GateVocabulary.lean)
 lake run check-scripts-lean          # Rule 9: every scripts/*.py and inline python3 site is on scripts/scripts-ledger.txt; the ledger only shrinks
+lake run check-hygiene -- docs/reports/stats.json   # zero sorries / custom axioms in the compiled environment, off collect-stats' stats.json
 lake run run-all-tests               # every test exe; collects failures (portable: Lake `script`, no bash)
 lake exe suiterunner                 # matrix; items quote pass/fail/skip
 lake exe eventscore                  # event-axis score

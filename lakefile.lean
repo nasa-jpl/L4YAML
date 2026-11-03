@@ -427,6 +427,14 @@ lean_exe «scripts-beta5» where
 lean_exe «scripts-matrix-score» where
   root := `Scripts.Main.MatrixScore
 
+@[default_target]
+lean_exe «scripts-check-hygiene» where
+  root := `Scripts.Main.CheckHygiene
+
+@[default_target]
+lean_exe «scripts-release-asset» where
+  root := `Scripts.Main.ReleaseAsset
+
 /-! Phase 4.5 (Rule 9, Q7): portable entry points — `lake run <name>` replaces the
 bash wrappers that only run a `lean_exe`; same on Linux, macOS and Windows. -/
 
@@ -532,6 +540,12 @@ matrix.yaml.info does (was `scripts/matrix_score.py`); builds the two L4YAML tes
 script «matrix-score» (args) do
   runGateExe (← getWorkspace).root.dir "scripts-matrix-score" #[] args
     (prereqs := #["l4yaml-event", "l4yaml-json"])
+
+/-- Rule 9 phase 4 row 3: `lake run check-hygiene -- [STATS]` — zero theorems with a sorry,
+zero custom axioms in the compiled environment, read off `collect-stats`'s `stats.json`
+(was the `python3 - <<'EOF'` heredoc in CI and `generate-all.sh`). -/
+script «check-hygiene» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-check-hygiene" #[] args
 
 /-- `lake run flip-beta5 -- [--max-rounds N] [--log-dir DIR] [--probe LEAN]`: β.5's edit driven
     to a sorry-fixpoint over `lake build`, FIXLINE / FIX-PIN (item 263).  Up to 25 full
