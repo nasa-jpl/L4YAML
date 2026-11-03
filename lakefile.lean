@@ -407,6 +407,11 @@ lean_exe «scripts-drop-sweep» where
 lean_exe «scripts-ledger-diff» where
   root := `Scripts.Main.LedgerDiff
 
+@[default_target]
+lean_exe «scripts-gen-traceof» where
+  root := `Scripts.Main.GenTraceOf
+  supportInterpreter := true   -- it imports Surface/Node.lean's header to parse the block
+
 /-! Phase 4.5 (Rule 9, Q7): portable entry points — `lake run <name>` replaces the
 bash wrappers that only run a `lean_exe`; same on Linux, macOS and Windows. -/
 
@@ -483,6 +488,12 @@ script «drop-sweep» (args) do
     ledger snapshots. -/
 script «ledger-diff» (args) do
   runGateExe (← getWorkspace).root.dir "scripts-ledger-diff" #[] args
+
+/-- `lake run gen-traceof [-- -o FILE | --check | --report]`: regenerate TraceOf/Node.lean from
+    Surface/Node.lean's mutual block (read off the syntax tree; needs its imports built). -/
+script «gen-traceof» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-gen-traceof" #[] args
+    (prereqs := #["L4YAML.Surface.Node"])
 
 script «check-gate-vocab» (args) do
   let ws ← getWorkspace

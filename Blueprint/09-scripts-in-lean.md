@@ -250,9 +250,20 @@ breaks CI if wrong, cheapest first:
    warnings and exit code identical to the Python on every adjacent pair of
    the series, both orders, a file against itself, `--out`. The dated
    snapshots that name `scripts/ledger_diff.py` are history and stay.
-   **Open:** `gen_traceof.py` → `scripts-gen-traceof` (reads
-   `Surface/Node.lean`'s mutual block; in Lean, read the syntax tree, not
-   the text).
+   **DONE** `gen_traceof.py` → `scripts-gen-traceof`, `lake run gen-traceof
+   [-- -o FILE | --check | --report]`: `Scripts/Main/GenTraceOf.lean` parses
+   `Surface/Node.lean` with Lean's parser in the environment its header
+   imports and reads each inductive / constructor / premise off the syntax
+   tree (source spans, comments dropped); `Scripts/TraceOf/Gen.lean` is the
+   Python's rewriting (bearing closure, `T`-twins, `Lift`, the `ev` lists)
+   with `#guard` rows. The syntax-tree reading found what the text reading
+   missed: the Python's constructor regex required a newline after the
+   colon, so the one-line `nil` constructors of `SCompactSeqTail` and
+   `SCompactMapTail` were silently dropped from the generated twin;
+   `TraceOf/Node.lean` is regenerated with them (the library and every
+   guard build unchanged). Otherwise byte-identical to the Python's output.
+   `--check` compares the checked-in twin with what the source generates
+   (a gate shape, not yet in CI).
 5. **DONE** `docs_nav.py` → `scripts-docs-nav`, `lake run docs-nav -- <cmd>`
    (`toc | items | item N | next [N] | remaining | steps | grep REGEX [-i] |
    section PREFIX`, `--lines`, `--width`): `Scripts/Docs/Nav.lean` over the
@@ -382,7 +393,7 @@ it removes Python from CI; it does not block an item.
 | ledger_diff.py | I | 226 | 10-26 | ledgers/README | scripts-ledger-diff | DONE (`lake run ledger-diff`) |
 | drop_sweep.py | I | 229 | 09-22 | skills; DropDependents.lean's wide pin | scripts-drop-sweep | **DONE** (`lake run drop-sweep`) |
 | inline ×7: test-coverage.yml — `import weasyprint` probe ×2, hygiene heredoc, release-asset lookup; generate-all.sh — `import weasyprint` probe ×2, hygiene heredoc | G/R | ~30 | — | CI, generate-all.sh | hygiene ×2 → one Lean `stats.json` exe; asset lookup → `gh api --jq`; probes ×4 → `weasyprint --version` (Q3) | todo |
-| gen_traceof.py | I | 195 | 10-23 | TraceOf regeneration | scripts-gen-traceof | todo |
+| gen_traceof.py | I | 195 | 10-23 | TraceOf regeneration | scripts-gen-traceof | DONE (`lake run gen-traceof`) |
 | flip_colon_chain.py, flip_kslote_domain.py | F (live, items 417/416) | 138, 85 | 11-01 | items | `scripts/flips/item417_colon_chain.json`, `item416_kslote_domain.json` | lean:scripts-flip |
 | flip_210.py | F (live; also the mapper module six flips load) | 138 | 09-21 | ledger snapshots, 6 loaders | gate: `scripts/flips/item210_implicit_continue.json`; file deleted with its loaders (3.2b) | todo |
 | flip_211_stage1.py | F (live, `[211]`) | 86 | 10-27 | ledger snapshots | `scripts/flips/item375_flip211_stage1.json` | lean:scripts-flip |
