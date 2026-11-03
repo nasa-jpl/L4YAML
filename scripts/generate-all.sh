@@ -266,14 +266,14 @@ if wants 2; then
   say "Phase 2 — cross-language comparison (4 backends x 5 presets)"
   LOG="$REPORTS/cross-lang-comparison.txt"
   echo "=== Cross-Language yaml-test-suite Comparison ===" > "$LOG"
-  python3 scripts/cross-lang-compare.py "$REPORTS" 2>&1 | tee -a "$LOG" | tail -8
+  lake run cross-lang-compare -- "$REPORTS" 2>&1 | tee -a "$LOG" | tail -8
   note 2 cross-language "$(grep -cE 'all 4 backends identical' "$LOG" || echo 0)/5 presets identical"
 fi
 
 # ------------------------------------------------------------------ phase 3
 if wants 3; then
   say "Phase 3 — test-result HTML reports"
-  python3 scripts/generate-test-reports.py "$REPORTS" > "$LOGS/03-reports.log" 2>&1
+  lake run test-reports -- "$REPORTS" > "$LOGS/03-reports.log" 2>&1
   note 3 reports ok
 
   say "Phase 3 — collect stats"

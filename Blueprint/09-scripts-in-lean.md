@@ -328,9 +328,12 @@ breaks CI if wrong, cheapest first:
    → `scripts-restate` subcommands on `Scripts/Flip/Patch.lean`.
 
 **Phase 4 — class R, reports and publishing (6 scripts, ~4 PRs).**
-1. `cross-lang-compare.py`, `generate-test-reports.py` → extend
-   `Tests/SuiteRunner/HtmlReport.lean`, which already renders HTML in
-   Lean; the four-backend comparison is a table over suiterunner's JSON.
+1. **DONE** — `cross-lang-compare.py`, `generate-test-reports.py` →
+   `suiterunner --compare DIR` / `--reports DIR` (`lake run cross-lang-compare`,
+   `lake run test-reports`), the pure half in `Tests/SuiteRunner/Reports.lean`
+   beside `HtmlReport.lean` (the `TOTAL:` reader, the JSON, a hand JUnit XML
+   reader, both documents byte for byte the Python's); CI and
+   `generate-all.sh` switched.
 2. `matrix_score.py` → `scripts-matrix-score`: the scorer is pure (event
    and JSON normalisation), the docker calls are `IO.Process`; `Task` for
    the pool. The JSON-stream decoder is the one piece of real parsing;
@@ -419,8 +422,8 @@ it removes Python from CI; it does not block an item.
 | narrow_conclusion.py, pay_chain_optional.py, decline_all_optional.py | F (transforms) | 241, 140, 247 | 09-20 | skills | scripts-restate | todo |
 | 43 remaining `flip_*.py` / `*_price.py` (items 205–415) | F (one-shot) | 5 696 | 09-18 … 10-31 | DOCS.md items only | specs or attic (Q2) | todo |
 | matrix_score.py | R | 264 | 07-01 | README, CI | scripts-matrix-score | todo |
-| cross-lang-compare.py | R | 93 | 10-17 | CI, generate-all.sh | HtmlReport.lean | todo |
-| generate-test-reports.py | R | 201 | 04-09 | CI, generate-all.sh | HtmlReport.lean | todo |
+| cross-lang-compare.py | R | 93 | 10-17 | CI, generate-all.sh | `suiterunner --compare DIR` (`lake run cross-lang-compare`; `Tests/SuiteRunner/Reports.lean`) | lean:suiterunner |
+| generate-test-reports.py | R | 201 | 04-09 | CI, generate-all.sh | `suiterunner --reports DIR` (`lake run test-reports`; `Tests/SuiteRunner/Reports.lean`) | lean:suiterunner |
 | verify_yaml_spec_annotations.py | R | 301 | 03-29 | manual | scripts-verify-spec-annotations | todo |
 | svg-objects.py | R | 71 | 09-05 | CI, generate-all.sh | scripts-svg-objects / Q3 | todo |
 | html-to-pdf.py | R | 414 | 04-09 | CI, generate-all.sh | exception or Q3 | todo |

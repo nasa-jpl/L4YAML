@@ -216,15 +216,15 @@ jobs:
           # pipefail: the script's exit 1 on a backend mismatch must fail this
           # step, not be eaten by tee.
           #
-          # The comparison itself lives in scripts/cross-lang-compare.py so that
-          # this step and scripts/generate-all.sh score the four backends with
-          # one implementation rather than two copies of it.
+          # The comparison itself is `suiterunner --compare` (Tests/SuiteRunner/
+          # Reports.lean) so that this step and scripts/generate-all.sh score the
+          # four backends with one implementation rather than two copies of it.
           set -o pipefail
           RESULTS="docs/reports"
           echo "=== Cross-Language yaml-test-suite Comparison ===" | tee "$RESULTS/cross-lang-comparison.txt"
           L4YAML_LIB="$GITHUB_WORKSPACE/ffi/out/libl4yaml.so" \
           LD_LIBRARY_PATH="$GITHUB_WORKSPACE/ffi/out:${LD_LIBRARY_PATH:-}" \
-          python3 scripts/cross-lang-compare.py "$RESULTS" \
+          lake run cross-lang-compare -- "$RESULTS" \
             | tee -a "$RESULTS/cross-lang-comparison.txt"
 
       # -------------------------------------------------------
@@ -232,7 +232,7 @@ jobs:
       # -------------------------------------------------------
       - name: Generate test result HTML reports
         run: |
-          python3 scripts/generate-test-reports.py docs/reports
+          lake run test-reports -- docs/reports
 
       - name: Collect stats (kernel-accurate axiom + sorry counts)
         # Runs after every other report under docs/reports/ has landed so
