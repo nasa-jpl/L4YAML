@@ -35,9 +35,9 @@ def spendLines (lines : Array String) : Array Nat :=
     s.startsWith spend || s.startsWith ("· " ++ spend)
 
 /-- `with_probe(line, ty, tac)`: the `have` sharing the spend's tactic block. -/
-def withProbe (line ty : String) (tac : Option String) : Array String :=
+def withProbe (line ty : String) (tac : Option String) (name : String := "_probe270") : Array String :=
   let indent := take line (line.length - (lstrip line).length)
-  let have_ := s!"have _probe270 : {ty} := by {tac.getD "assumption"}"
+  let have_ := s!"have {name} : {ty} := by {tac.getD "assumption"}"
   let s := strip line
   if s.startsWith "· " then #[s!"{indent}· {have_}", s!"{indent}  {Scripts.Punt.Price.drop s 2}"]
   else #[s!"{indent}{have_}", line]

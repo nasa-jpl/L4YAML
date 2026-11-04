@@ -19,7 +19,7 @@ its output.
 | `lake run beta5-arms [-- --end control|arms --log-dir DIR]` (Lean, Rule 9) | Which constructor arms are dead vs live obligations | `ARM-PIN` (`expectedArms` in `ParkBill.lean`) |
 | `lake run beta5-map -- LOG` | The declarations enclosing a build log's error locations (item 230's mapper) | — |
 | `scripts/flips/item210_implicit_continue.json`, `item375_flip211_stage1.json` (the `[211]` price), `item415_inl_declines.json` (via `scripts-flip`); `item238_scanner_drop.json`, `item233_flow_key_head.json`, `item246_carrier_{arm,retire}.json`, `item240_supplier_{weak,field,retire,producer}.json` (the four loaders of `flip_210.py`, as specs; the `rev` of each is the last tree its anchors matched); `lake exe scripts-flip-census` (Lean, Rule 9) | Narrowing / carrier / supply-side flips | see each docstring |
-| `ride_price.py`, `close_price.py`, `transport_price.py`, `coordinate_price.py`, `inline_class_price.py`, `lake run price -- carrier|wire [--wide]|arm` (items 266–270, Lean; `all`/`arm` check `expectedCarrierPrice`/`expectedWirePrice`/`expectedArmTable`), `lake run punt-price`, `lake run price -- park-top|vslot-top|mv-slot-top|open-map|park-nic0|landing-nic0` (items 205–210, Lean) | Cost of one specific change, by producer/consumer | `expected…` strings in `Tests/Guards/Proofs/` |
+| `close_price.py`, `inline_class_price.py`, `lake run price -- carrier|wire [--wide]|arm|coordinate|transport|ride [MODE]` (items 266–273, Lean; the `wide` mode of the last three is a `lake build`; `all`/`arm` check `expectedCarrierPrice`/`expectedWirePrice`/`expectedArmTable`), `lake run punt-price`, `lake run price -- park-top|vslot-top|mv-slot-top|open-map|park-nic0|landing-nic0` (items 205–210, Lean) | Cost of one specific change, by producer/consumer | `expected…` strings in `Tests/Guards/Proofs/` |
 | `lake run drop-sweep [-- -q]` | Acceptance sweep (generates `L4YAML/Scratch/*.lean`, removes them) | — (a sweep says REACHED at most; it is not a proof obligation) |
 | `narrow_conclusion.py`, `pay_chain_optional.py`, `decline_all_optional.py`, `lake exe scripts-theorem-keyword --rewrite` | Mechanical source transforms used by items | — |
 
@@ -44,9 +44,12 @@ its output.
 
 ## Writing a new instrument
 
-Only when no existing script answers the question.  Copy the shape of
-`ride_price.py`: docstring that states the question, what is edited, how it
-is restored (checksums both sides), and the pin it must agree with.  Add the
-pin to a `Tests/Guards/Proofs/*.lean` guard so the build re-derives it.
-Hold a script out of the gate battery if it rebuilds >100 modules
-(`coordinate_price.py`'s note), and say so in its docstring.
+Only when no existing instrument answers the question.  Write it in Lean as a
+`Scripts/Price/*.lean` module plus a `scripts-price` sub-command (copy the
+shape of `Scripts/Price/Ride.lean` + `rideCmd` in `Scripts/Main/Price.lean`):
+a module docstring that states the question, what is edited, how it is
+restored (`Scripts.Price.Env.leanOn` backs up, restores and prints both
+digests), `#guard` rows for the pure parts, and the pin it must agree with.
+Add the pin to a `Tests/Guards/Proofs/*.lean` guard so the build re-derives
+it.  Hold a mode out of the gate battery if it rebuilds >100 modules (the
+`wide` modes), and say so in the docstring.

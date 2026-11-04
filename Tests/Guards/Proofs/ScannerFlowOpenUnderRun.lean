@@ -1108,7 +1108,7 @@ def expectedArmTable : String :=
   "cells=24 paid=10 owed=14 hok=PPP base=PPP le=OOO floor=OOO \
 noflow_prep=PPP park_col_ne0=OOO gate_gp=POO sibling_floor_prep=OOO"
 
-/-- **§11 What the coordinate costs** (`scripts/coordinate_price.py`).
+/-- **§11 What the coordinate costs** (`lake run price -- coordinate`).
 
     Four probes, all by elaboration at the three sites that spend the ride.
 
@@ -1136,7 +1136,7 @@ noflow_prep=PPP park_col_ne0=OOO gate_gp=POO sibling_floor_prep=OOO"
     268's `gate=49`.
 
     The tree census is held out of this pin and out of the battery: it rebuilds
-    every module that imports the patched one.  `coordinate_price.py wide`
+    every module that imports the patched one.  `lake run price -- coordinate wide`
     re-derives it. -/
 def expectedCoordPrice : String :=
   "arms=pendingProps,pendingBlock,pendingMapValue ident=diagonal le=BBB \
@@ -1633,7 +1633,7 @@ private def transportControl : Nat × Nat × Nat × Nat × Nat × Nat := Id.run 
 
 /-! ### §12a What the applied source still owes, priced
 
-`scripts/transport_price.py`, battery stage 22c.  Six probes, read by
+`lake run price -- transport`, battery stage 22c.  Six probes, read by
 elaboration at the three arms that spend `drop_ride`:
 
 * `source` — the membership `underRunEnd_landing_on_stack` returns, at the arm.
@@ -1784,7 +1784,7 @@ private def carrierChoiceControl : Nat × Nat × Nat × Nat × Nat × Nat := Id.
 
 /-! ### §13a What the ride can carry, priced
 
-`scripts/ride_price.py`, battery stage 22d.  Five rows read by elaboration at
+`lake run price -- ride`, battery stage 22d.  Five rows read by elaboration at
 the three arms that spend `drop_ride`, on a module with item 272's ring PAID —
 the payment is applied and the probes carry no hypothesis and no hole — and
 four censuses taken by arity flip:
