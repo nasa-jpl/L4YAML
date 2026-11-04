@@ -10,8 +10,9 @@ meta import Scripts.Punt.Price
 Shared by `lake run punt-price` and `lake run price`: write the patched lines over the
 target, run `lake env lean TARGET` from the repository root, restore the original bytes
 and hand back Lean's stdout+stderr — unless Lean exited nonzero without reporting a single
-error location in the target (Lake or the toolchain failed before elaborating the file): that
-is an error, never a zero price.  The original is first copied to `TARGET<suffix>`
+error location in the target (Lake or the toolchain failed before elaborating the file), or
+reported one in the target's import header (a dependency's `.olean` missing or stale, so the
+probe never elaborated): both are errors, never a reading.  The original is first copied to `TARGET<suffix>`
 (each Python's backup name), so an interrupted run leaves a recoverable copy beside the
 source; a run refuses to start while one exists, and it is removed only after the restored
 bytes are verified.  Both digests go to stderr (Rule 9), stdout stays the Python's.
@@ -21,24 +22,53 @@ namespace Scripts.Price.Env
 
 public section
 
-/-- `^TARGET:(\d+):(\d+): error` on some line: Lean reached the target and reported a
-    location in it.  A nonzero exit WITHOUT one is Lake or the toolchain failing before (or
-    instead of) elaborating the file — not a zero price. -/
-def hasTargetError (target out : String) : Bool :=
-  (out.splitOn "\n").any fun l =>
+/-- `^TARGET:(\d+):(\d+): error` → the line, for every such line of the log. -/
+def targetErrorLines (target out : String) : List Nat :=
+  (out.splitOn "\n").filterMap fun l => do
     let pre := target ++ ":"
-    l.startsWith pre &&
-      let rest := (Scripts.Punt.Price.drop l pre.length).toList
-      let d1 := rest.takeWhile Char.isDigit
-      let rest := rest.drop d1.length
-      !d1.isEmpty && rest.head? == some ':' &&
-        let d2 := (rest.drop 1).takeWhile Char.isDigit
-        !d2.isEmpty && (String.ofList ((rest.drop 1).drop d2.length)).startsWith ": error"
+    guard (l.startsWith pre)
+    let rest := (Scripts.Punt.Price.drop l pre.length).toList
+    let d1 := rest.takeWhile Char.isDigit
+    guard !d1.isEmpty
+    let rest := rest.drop d1.length
+    guard (rest.head? == some ':')
+    let d2 := (rest.drop 1).takeWhile Char.isDigit
+    guard !d2.isEmpty
+    guard ((String.ofList ((rest.drop 1).drop d2.length)).startsWith ": error")
+    return (String.ofList d1).toNat!
 
-#guard hasTargetError "a/b.lean" "x\na/b.lean:12:4: error: boom\n"
-#guard !hasTargetError "a/b.lean" "error: failed to load Lean configuration\n"
-#guard !hasTargetError "a/b.lean" "a/b.lean:12:4: warning: unused\n"
-#guard !hasTargetError "a/b.lean" "other/b.lean:12:4: error: boom\n"
+#guard targetErrorLines "a/b.lean" "x\na/b.lean:12:4: error: boom\na/b.lean:3:0: error: y\n" == [12, 3]
+#guard targetErrorLines "a/b.lean" "error: failed to load Lean configuration\n" == []
+#guard targetErrorLines "a/b.lean" "a/b.lean:12:4: warning: unused\n" == []
+#guard targetErrorLines "a/b.lean" "other/b.lean:12:4: error: boom\n" == []
+
+/-- Lean reached the target and reported a location in it.  A nonzero exit WITHOUT one is
+    Lake or the toolchain failing before (or instead of) elaborating the file — not a zero
+    price. -/
+def hasTargetError (target out : String) : Bool := !(targetErrorLines target out).isEmpty
+
+/-- `module` / `[public|private|meta] import …` at the start of a line. -/
+def isHeaderLine (l : String) : Bool :=
+  let ws := (l.splitOn " ").filter (· != "")
+  match ws with
+  | "module" :: _ => true
+  | "import" :: _ => true
+  | "public" :: "meta" :: "import" :: _ => true
+  | w :: "import" :: _ => w == "public" || w == "private" || w == "meta"
+  | _ => false
+
+/-- The 1-based line of the file's last `module` / `import` line (0 if none): an error at or
+    above it is an import that did not load (a dependency's `.olean` missing or stale), after
+    which nothing the probe reports is a reading. -/
+def headerEnd (lines : Array String) : Nat := Id.run do
+  let mut last := 0
+  for i in [0:lines.size] do
+    if isHeaderLine lines[i]! then last := i + 1
+  return last
+
+#guard headerEnd #["module", "", "public import A.B", "meta import C", "", "namespace X", "import_tax := 1"] == 4
+#guard headerEnd #["lemma a : True := trivial"] == 0
+#guard isHeaderLine "public meta import A"
 
 /-- The last `n` lines of a log, for a diagnostic. -/
 def tailLines (out : String) (n : Nat) : String :=
@@ -58,8 +88,11 @@ def leanOn (root : System.FilePath) (target : String) (suffix : String)
     IO.FS.writeFile path ("\n".intercalate patched.toList)
     let r ← IO.Process.output { cmd := "lake", args := #["env", "lean", target], cwd := some root }
     let out := r.stdout ++ r.stderr
-    if r.exitCode != 0 && !hasTargetError target out then
+    let locs := targetErrorLines target out
+    if r.exitCode != 0 && locs.isEmpty then
       pure (.error s!"lake env lean {target} exited {r.exitCode} without an error location in {target} — not a reading (Lake or the toolchain failed before elaborating the file):\n{tailLines out 20}")
+    else if locs.any (· ≤ headerEnd patched) then
+      pure (.error s!"lake env lean {target}: an error in the file's import header (line {(locs.filter (· ≤ headerEnd patched)).head!}) — a dependency did not load, so nothing below it is a reading; build the library first (`lake build L4YAML`):\n{tailLines out 20}")
     else pure (.ok out)
   catch e => pure (.error s!"{e}")
   IO.FS.writeFile path original
