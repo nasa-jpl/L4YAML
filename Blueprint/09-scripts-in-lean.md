@@ -372,6 +372,28 @@ breaks CI if wrong, cheapest first:
    byte-identical in a worktree of each `rev`, `--dry` anchors exact.  Every
    one-shot `flip_*.py` is now a spec; the 14 `*_price.py` remain.
 
+   **3.3 prices batch 1 DONE (items 205–210, six `*_price.py` → `lake run price`):**
+   `park_top_price.py`, `vslot_top_price.py`, `mv_slot_top_price.py`,
+   `open_map_price.py`, `park_nic0_price.py`, `landing_nic0_price.py` are not
+   specs: each is a PROGRAM over the source (constructor spans, signature
+   ends, a binder renamed, errors anchored on the nearest preceding
+   application and collapsed by cascade) with sub-commands, so they are one
+   exe, `scripts-price` (`Scripts/Price/Attribute.lean` the shared reading —
+   `lake env lean`'s error lines, `prior[-1]` anchoring, by-declaration
+   census, cascades, unanchored ceiling — and one module per script for its
+   probe and report wording; `Scripts/Price/Env.lean` the backup / `lake env
+   lean` / restore step, now shared with `punt-price`).  `lake run price --
+   park-top [ring1|all|<park>] | vslot-top | mv-slot-top | open-map [LEMMA…]
+   | park-nic0 [<park>|all|escape|sites|payers] | landing-nic0
+   [<lemma>|all|payers|drop]`, stdout the Python's line for line (digests on
+   stderr).  Validation: Python and Lean run on the same tree, in a worktree
+   of the commit that last changed each script (`523f365c` for `park_top`,
+   `vslot_top`, `mv_slot_top`; `3c6ff7d7` for `open_map`; `084764ac` for
+   `park_nic0`, `landing_nic0`) — `mv_slot_top`'s anchor is gone at its own
+   commit `3c6ff7d7` (item 209 rewrote `h_vslot`), so it runs at the parent —
+   stdout byte-identical for every mode, both trees clean after.  Eight
+   `*_price.py` remain (items 266–286).
+
 **Phase 4 — class R, reports and publishing (6 scripts, ~4 PRs).**
 1. **DONE** — `cross-lang-compare.py`, `generate-test-reports.py` →
    `suiterunner --compare DIR` / `--reports DIR` (`lake run cross-lang-compare`,
@@ -476,7 +498,8 @@ it removes Python from CI; it does not block an item.
 | flip_inl_declines.py | F (live) | 72 | 10-31 | item 415 | `scripts/flips/item415_inl_declines.json` | lean:scripts-flip |
 | narrow_conclusion.py, pay_chain_optional.py, decline_all_optional.py | F (transforms) | 241, 140, 247 | 09-20 | skills | scripts-restate | todo |
 | 29 one-shot `flip_*.py` (items 371–413) | F (one-shot) | 1 947 | 10-27 … 10-31 | DOCS.md items only | 43 `scripts/flips/item<N>_*.json` (3.3 batches 1–3) | lean:scripts-flip |
-| 14 remaining `*_price.py` | F (one-shot) | 3 778 | 09-18 … 10-31 | DOCS.md items only | specs or small ports (Q2) | todo |
+| park_top_price.py, vslot_top_price.py, mv_slot_top_price.py, open_map_price.py, park_nic0_price.py, landing_nic0_price.py | F (items 205–210; `lake env lean` instruments with sub-commands) | 1 222 | 09-18 … 09-19 | DOCS.md items, StreamAccum/guard prose | `lake run price -- park-top|vslot-top|mv-slot-top|open-map|park-nic0|landing-nic0` (`Scripts/Price/*`) | lean:scripts-price |
+| 8 remaining `*_price.py` (items 266–286) | F (one-shot) | 2 556 | 09-23 … 10-31 | DOCS.md items only | specs or small ports (Q2) | todo |
 | matrix_score.py | R | 264 | 07-01 | DOCS.md recipe | `lake run matrix-score` (`Scripts/Matrix/Score.lean`) | lean:scripts-matrix-score |
 | cross-lang-compare.py | R | 93 | 10-17 | CI, generate-all.sh | `suiterunner --compare DIR` (`lake run cross-lang-compare`; `Tests/SuiteRunner/Reports.lean`) | lean:suiterunner |
 | generate-test-reports.py | R | 201 | 04-09 | CI, generate-all.sh | `suiterunner --reports DIR` (`lake run test-reports`; `Tests/SuiteRunner/Reports.lean`) | lean:suiterunner |

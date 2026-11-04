@@ -3333,8 +3333,8 @@ other 7 need the field on `pendingContent` (whose own is an OPTION,
 (~~4~~), `pendingFlow` (~~10~~) and `pendingBlockContent` (6).
 
 > **Corrected at item 210 (§29), the last unmeasured number in this
-> paragraph.**  `scripts/landing_nic0_price.py` prices the premise the way
-> `park_nic0_price.py` prices the field: **15 sites across 4 declarations**, not
+> paragraph.**  `lake run price -- landing-nic0` prices the premise the way
+> `lake run price -- park-nic0` prices the field: **15 sites across 4 declarations**, not
 > 12.  The **5** is exactly right and the three parks named are the three; what
 > the reading missed is the RELAY — three sites where a landing arm hands the
 > premise to another landing arm and no park stands at all.  `12 = 15 - 3`, so
@@ -3355,7 +3355,7 @@ exists to refute.
 
 **Corrected at item 206 (§25), which re-derived every number in this paragraph
 with an instrument instead of a reading, and closed the ring.**  The five
-counts are `scripts/park_nic0_price.py <park>`: `pendingContent` **12** (not
+counts are `lake run price -- park-nic0 <park>`: `pendingContent` **12** (not
 17), `pendingDocEnd` **1**, `pendingDocStart` **2** (not 4), `pendingFlow`
 **1** (not 10), `pendingBlockContent` **6**.  The one that carried the order
 was off by ten times, and it was off because it counted the escape's
@@ -3367,9 +3367,9 @@ field is PAID (§25) and the remaining ring-2 surface is **21** producers, not
 
 The blanket measurement agrees: the same carrier asked of every block-context
 park at once is ~~**52 sites across 20 declarations**~~ **49 across 20**
-(`scripts/park_top_price.py all`) — the 52 counted a cascade as three extra
+(`lake run price -- park-top all`) — the 52 counted a cascade as three extra
 producers, and item 208's §27 says which three — against **7 across 4** for the
-field alone (`scripts/park_top_price.py ring1`, which reproduces item 204's
+field alone (`lake run price -- park-top ring1`, which reproduces item 204's
 number and needs no correction: all seven are distinct applications). -/
 
 section Item205
@@ -3852,7 +3852,7 @@ item 204 proved `block_dispatch_deferred_stamp_compact`'s class FALSE without.
 
 | what | §24 recorded | instrument | why it moved |
 |---|---|---|---|
-| ring 1's producers | 7 | **7** | — (`scripts/park_top_price.py ring1`) |
+| ring 1's producers | 7 | **7** | — (`lake run price -- park-top ring1`) |
 | `noPending`'s producers | 8 | **8** | right number, never re-derived; the naive census says **11** |
 | the blanket closure floor | 52 | **49** | the same three errors, counted as producers |
 | the compact fill's price | "item 204's other six" | **1** payer → a field with **6** producers | two different questions, one number (and the **6** is itself corrected to **3** at §28: it priced a field where the carrier is a conjunct) |
@@ -3882,10 +3882,10 @@ The seventh is a `-` scanned INLINE off an already-open `[185]`/`[186]` slot
 (`? - a`).  No break was crossed, so preprocessing's unwind never ran and the
 stack the `-` pushes onto is the SLOT's — a number neither the landing nor this
 park states.  Its price is three rings and all three are measured:
-`scripts/vslot_top_price.py` says **1** payer (`accum_block_pending`'s relay,
+`lake run price -- vslot-top` says **1** payer (`accum_block_pending`'s relay,
 whose raw error list reads five and whose four extras are arms of one tuple);
 that payer needs a top field on `pendingMapValue`, ~~**6** producers, one in
-each `*_open_map` lemma~~ (`scripts/park_top_price.py pendingMapValue`); and
+each `*_open_map` lemma~~ (`lake run price -- park-top pendingMapValue`); and
 not one of those six holds the dispatch floor such a field would be built from.
 So `h_park_top` lands as an OPTION — item 154's shape, for item 154's reason —
 and the arm lands with the ring below it.
@@ -3893,11 +3893,11 @@ and the arm lands with the ring below it.
 **Corrected at item 209 (§28).**  The **6** prices a FIELD, and the honest
 carrier is a CONJUNCT on `h_vslot` — read only where there is a slot to fill,
 paid only by the producers that open one, which is **3**
-(`scripts/mv_slot_top_price.py`).  The two that fall away are the implicit-key
+(`lake run price -- mv-slot-top`).  The two that fall away are the implicit-key
 openers, whose push is at the KEY's column rather than the indicator's: the
 price that vanished is also the hardest part of the price that stayed.  Ring 3
 under them is **6** call sites in 4 declarations
-(`scripts/open_map_price.py`) — **9** in 6 if the field is asked of all six
+(`lake run price -- open-map`) — **9** in 6 if the field is asked of all six
 producers, which is the number a field would have cost. -/
 
 section Item208
@@ -3953,7 +3953,7 @@ hypothesis, so the shape of item 209's payment is checked rather than
 described. -/
 
 example {sc s_prep s' : ScannerState} {sp_prep : SurfPos} {nv m : Nat}
-    -- the conjunct `scripts/vslot_top_price.py` prices at ONE payer
+    -- the conjunct `lake run price -- vslot-top` prices at ONE payer
     (h_slot_top : sc.currentIndent ≤ (nv : Int))
     (h_base : IndentStackBase.SentinelBase sc)
     (h_col : sp_prep.col = nv + 1 + m)
@@ -4062,8 +4062,8 @@ instrument answered a question nobody had asked.**
 
 | what | §27 recorded | instrument | why it moved |
 |---|---|---|---|
-| the field on `pendingMapValue` | **6** producers | **3** | the **6** prices a FIELD; the carrier is a CONJUNCT on `h_vslot`, read only where there is a slot and paid only by the openers that make one (`scripts/mv_slot_top_price.py`) |
-| the ring under it | "not one of the six holds the floor" | **6** call sites in 4 declarations | true of the six as stated, and the relay above two of them has held the floor since item 147 — inside `h_cov`, as an option (`scripts/open_map_price.py`) |
+| the field on `pendingMapValue` | **6** producers | **3** | the **6** prices a FIELD; the carrier is a CONJUNCT on `h_vslot`, read only where there is a slot and paid only by the openers that make one (`lake run price -- mv-slot-top`) |
+| the ring under it | "not one of the six holds the floor" | **6** call sites in 4 declarations | true of the six as stated, and the relay above two of them has held the floor since item 147 — inside `h_cov`, as an option (`lake run price -- open-map`) |
 
 The three that owe nothing are `colon_open_map`, `colon_open_map_implicit` and
 `colon_open_map_props` — `[189]`'s keyless `:` and the two implicit-key
@@ -4286,10 +4286,10 @@ an instrument except one:
 > refuting the hypothesis from a column field the park already carries.
 
 The **12** rode five NEXT lists verbatim — 205, 206, 207, 208, 209 — as the ring
-still to pay.  `scripts/landing_nic0_price.py` is the instrument it never had:
+still to pay.  `lake run price -- landing-nic0` is the instrument it never had:
 it splices a SECOND copy of the premise into a landing consumer's signature,
 rebuilds, and groups the failures by the declaration containing them, which is
-`park_top_price.py`'s method one ring further out.  **The census is 15 sites
+`lake run price -- park-top`'s method one ring further out.  **The census is 15 sites
 across 4 declarations**, and the five per-lemma runs sum to the blanket one,
 which is the instrument's own control.
 
