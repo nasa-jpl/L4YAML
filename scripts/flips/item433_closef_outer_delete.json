@@ -1,0 +1,83 @@
+{
+ "item": 433,
+ "tag": "CLOSEF-OUTER-DELETE",
+ "rev": "2a6d79f3",
+ "target": "L4YAML",
+ "log": "scratch/closef_outer_delete.log",
+ "msgWidth": 110,
+ "rounds": 5,
+ "report": "bodies",
+ "files": [
+  {
+   "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+   "patches": [
+    {
+     "name": "L2505.pendingProps.h_closeF.outer",
+     "line": 2505,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True)"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_m))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L2843.pendingBlockContent.h_closeF.outer",
+     "line": 2843,
+     "old": [
+      "          ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)) ∨ True)"
+     ],
+     "new": [
+      "          ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L3060.pendingBlock.h_closeF.outer",
+     "line": 3060,
+     "old": [
+      "          ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)) ∨ True)"
+     ],
+     "new": [
+      "          ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L3371.pendingMapValue.h_closeF.outer",
+     "line": 3371,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) (FrameLevel.map n :: ks) sp_mid) ∨ True)"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) (FrameLevel.map n :: ks) sp_mid))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L29520.pendingBlockContent.h_closeF_old.outer",
+     "line": 29520,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)) ∨ True)"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L30115.pendingBlock.h_closeF_old.outer",
+     "line": 30115,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)) ∨ True)"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)))"
+     ],
+     "count": 1
+    }
+   ]
+  }
+ ]
+}
