@@ -1,0 +1,83 @@
+{
+  "item": 426,
+  "tag": "HKSLOT-FAMILY-DELETE",
+  "rev": "1a9479df",
+  "target": "L4YAML",
+  "log": "scratch/hkslot_family_delete.log",
+  "msgWidth": 110,
+  "rounds": 4,
+  "report": "bodies",
+  "files": [
+    {
+      "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+      "patches": [
+        {
+          "name": "pendingMapValue.h_kslot.field",
+          "line": 3346,
+          "old": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "accum_content_on_pendingMapValue_indented.h_kslot.param",
+          "line": 38047,
+          "old": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "colon_open_map.h_explUp_chainD",
+          "line": 24608,
+          "old": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "question_open_map.h_explUp_chainD",
+          "line": 24919,
+          "old": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "compact_open_map.h_explUp_chainD",
+          "line": 25848,
+          "old": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "colon_open_map_implicit.h_kslotD",
+          "line": 26249,
+          "old": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w))"
+          ],
+          "count": 1
+        }
+      ]
+    }
+  ]
+}
