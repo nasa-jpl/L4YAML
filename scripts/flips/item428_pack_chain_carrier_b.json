@@ -1,0 +1,120 @@
+{
+  "item": 428,
+  "tag": "PACK-CHAIN-CARRIER-B",
+  "rev": "199d7ef4",
+  "target": "L4YAML",
+  "log": "scratch/pack_chain_carrier_b.log",
+  "msgWidth": 110,
+  "rounds": 5,
+  "report": "bodies",
+  "files": [
+    {
+      "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+      "patches": [
+        {
+          "name": "L1218.ImplicitKeyPack.chain",
+          "line": 1218,
+          "old": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc) ∧"
+          ],
+          "new": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w)) ∧"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L1898.PropsKeyPack.chain",
+          "line": 1898,
+          "old": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc) ∧"
+          ],
+          "new": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w)) ∧"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L34591.entryKeyPack.h_nodeV",
+          "line": 34591,
+          "old": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L34611.h_cp_chain",
+          "line": 34611,
+          "old": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)) ∨ True)"
+          ],
+          "new": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))) ∨ True)"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L34632.h_cp_chain",
+          "line": 34632,
+          "old": [
+            "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)))"
+          ],
+          "new": [
+            "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L35302.entryPropsKeyPack.h_nodeV",
+          "line": 35302,
+          "old": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L35315.h_cp_chain",
+          "line": 35315,
+          "old": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)) ∨ True)"
+          ],
+          "new": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))) ∨ True)"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L35403.h_cp_chain",
+          "line": 35403,
+          "old": [
+            "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)))"
+          ],
+          "new": [
+            "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L35888.content_dispatch_routed.h_chainUp",
+          "line": 35888,
+          "old": [
+            "    (h_alt : PackAlt s_prep)"
+          ],
+          "new": [
+            "    (h_alt : PackAlt s_prep)",
+            "    (h_chainUp : ∃ ns : List Nat, RegisterWitness.MarkedColsIn s_prep ns ∧ ∀ nv ∈ ns,",
+            "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_prep sp_i → GLit ':' sp_i sp_c →",
+            "      ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →",
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w)"
+          ],
+          "count": 1
+        }
+      ]
+    }
+  ]
+}
