@@ -13,6 +13,7 @@ public import Scripts.Price.Arm
 public import Scripts.Price.Ride
 public import Scripts.Lean.DeclRanges
 public import Scripts.Price.Close
+public import Scripts.Price.InlineClass
 public import Scripts.Price.Ride
 
 /-!
@@ -53,6 +54,7 @@ def usage : String := s!"usage: lake run price -- SCRIPT [MODE…] [-C ROOT]
   transport    [arms|optok|frames|pay|ride|all|wide] transport_price.py (item 272): the open token's position through the arms
   ride         [arm|ride|carrier|transport|all|wide] ride_price.py (item 273): the arms with the ring paid; ride/carrier/transport flips
   close        [probe|name|flip|all|wide] close_price.py (item 274): what the frame's CLOSE can pay for a reshaped carrier
+  inline-class [feeders|arms|census]       inline_class_price.py (items 286/287): the escape's INLINE class (pins in BlockDeferralClasses.lean)
   -C, --root ROOT  repository root (default: the current directory)
   -h, --help / -V, --version
 
@@ -644,7 +646,146 @@ def closeCmd (root : System.FilePath) (original : String) (lines : Array String)
   for (row, out) in why.qsort (·.1 < ·.1) do IO.println s!"  {row} refused: {Scripts.Punt.Price.take out 170}"
   verdict root "CLOSE" "expectedClosePrice" got
 
-def scripts : List String := ["park-top", "vslot-top", "mv-slot-top", "open-map", "park-nic0", "landing-nic0", "carrier", "wire", "arm", "coordinate", "transport", "ride", "close"]
+open Scripts.Price.InlineClass in
+def inlineClassCmd (root : System.FilePath) (original : String) (lines : Array String) (pos : List String) : IO UInt32 := do
+  let which := pos.headD "feeders"
+  if !["feeders", "arms", "census"].contains which then return ← die "usage: inline_class_price.py feeders|arms|census" 2
+  let pinText ← do let p := root / pin; if ← p.pathExists then pure (some (← IO.FS.readFile p)) else pure none
+  let check (name label line : String) : IO UInt32 := do
+    let (ls, rc) := pinVerdict label (pinText.bind (Scripts.Price.Pin.expectedLiteral? · name)) line
+    printAll ls; return rc
+  -- one elaboration of a patched copy, timed, with the Python's own md5 line
+  let run (patched : Array String) : IO (Except String String) := do
+    let path := root / target
+    let before := Scripts.Lean.Md5.md5 (← IO.FS.readBinFile path)
+    let t0 ← IO.monoMsNow
+    let r ← Scripts.Price.Env.leanOn root target ".inline-class-bak" original patched
+    let after := Scripts.Lean.Md5.md5 (← IO.FS.readBinFile path)
+    let secs := ((← IO.monoMsNow) - t0 + 500) / 1000
+    IO.println s!"md5 StreamAccum.lean  before {before}  after {after}  {if before == after then "==" else "DIFFERS"}   ({secs}s)"
+    match r with
+    | .error e => return .error e
+    | .ok (_, out) => return .ok out
+  let olean := root / ".lake" / "build" / "lib" / "lean" / "L4YAML" / "Proofs" / "Production" / "StreamAccum.olean"
+  if which == "feeders" then
+    if !hasFallback lines then IO.println retiredLine; return 0
+    let ds := Scripts.Lean.DeclRanges.decls (← Scripts.Lean.DeclRanges.readRanges olean)
+    let start (d : String) : Option Nat := (ds.find? (·.name == d)).map (·.start - 1)
+    match narrow lines start with
+    | .error e => return ← die e
+    | .ok patched =>
+      match ← run patched with
+      | .error e => return ← die e
+      | .ok body =>
+        match ← declOwner root lines patched with
+        | .error e => return ← die e
+        | .ok owner =>
+          let declLine (d : String) : Nat := ((ds.find? (·.name == d)).map (·.start - 1)).getD 0
+          let mut rows : Array (String × String × Nat × Nat × String × String) := #[]
+          for l in body.splitOn "\n" do
+            if let some (ln, col, msg) := errRow? l then
+              let d := owner ln
+              rows := rows.push (d, armOf patched (ln - 1) (declLine d), ln, col, msg, Scripts.Price.Attribute.strip patched[ln - 1]!)
+          let mut groups : Array (String × Array (String × String × Nat × Nat × String × String)) := #[]
+          for r in rows do groups := Scripts.Price.Attribute.addTo groups r.1 r
+          IO.println ""; IO.println s!"=== feeders: {rows.size} errors / {groups.size} declarations ==="
+          for (d, rs) in groups.qsort (fun a b => a.2[0]!.2.2.1 < b.2[0]!.2.2.1) do
+            IO.println s!"  {Scripts.Punt.Price.padLeft (toString rs.size) 3}  {d}{if narrowed.contains d then " (NARROWED -- its own body)" else ""}"
+            for (_, arm, ln, col, msg, text) in rs do
+              IO.println s!"         L{ln}:{Scripts.Punt.Price.padRight (toString col) 4} arm {Scripts.Punt.Price.padRight arm 20} {Scripts.Punt.Price.take msg 60}"
+              IO.println s!"                     {Scripts.Punt.Price.take text 90}"
+          let arms := ((rows.filter fun r => !narrowed.contains r.1).map fun r => (r.1, r.2.1)).toList.eraseDups.toArray.qsort
+            (fun a b => a.1 < b.1 || (a.1 == b.1 && a.2 < b.2))
+          let other := (body.splitOn "\n").filter fun l => (l.splitOn "error").length > 1 && (errRow? l).isNone
+          if !other.isEmpty then
+            IO.println s!"  (other error lines: {other.length} )"
+            for l in other.take 10 do IO.println s!"    {Scripts.Punt.Price.take l 160}"
+          let line := s!"errors={rows.size} decls={groups.size} feeders=" ++ ",".intercalate (arms.toList.map fun (d, a) => s!"{d}/{a}")
+          IO.println ("INLINE-FEEDERS " ++ line)
+          return ← check "expectedInlineFeeders" "INLINE-FEEDERS-PIN" line
+  if which == "arms" then
+    let ds := Scripts.Lean.DeclRanges.decls (← Scripts.Lean.DeclRanges.readRanges olean)
+    let some w := ds.find? (·.name == wrapper) | return ← die s!"AssertionError: no declaration {wrapper} in the module"
+    let a := w.start - 1
+    let b := w.stop
+    let patched := (lines.extract 0 a) ++ (Array.replicate (b - a) deletedMarker) ++ (lines.extract b lines.size)
+    match ← run patched with
+    | .error e => return ← die e
+    | .ok body =>
+      match ← declOwner root lines patched with
+      | .error e => return ← die e
+      | .ok owner =>
+        let declLine (d : String) : Nat := ((ds.find? (·.name == d)).map (·.start - 1)).getD 0
+        let mut rows : Array (String × String × Nat) := #[]
+        let mut other : Array String := #[]
+        for l in body.splitOn "\n" do
+          if let some (ln, _, msg) := errRow? l then
+            if (msg.splitOn wrapper).length ≤ 1 then other := other.push l
+            else
+              let d := owner ln
+              rows := rows.push (d, armLabel lines (ln - 1) (declLine d), ln)
+        let mut groups : Array (String × Array (String × Nat)) := #[]
+        for (d, arm, ln) in rows do groups := Scripts.Price.Attribute.addTo groups d (arm, ln)
+        IO.println ""; IO.println s!"=== arms: {rows.size} applications / {groups.size} declarations ==="
+        for (d, rs) in groups.qsort (·.1 < ·.1) do
+          IO.println s!"  {Scripts.Punt.Price.padLeft (toString rs.size) 3}  {d}"
+          for (arm, ln) in rs do IO.println s!"         L{Scripts.Punt.Price.padRight (toString ln) 6} {arm}"
+        if !other.isEmpty then
+          IO.println s!"  ({other.size} other errors -- the deletion broke more than the applications)"
+          for l in other.toList.take 10 do IO.println s!"    {Scripts.Punt.Price.take l 180}"
+        let sorted := rows.qsort fun a b => a.1 < b.1 || (a.1 == b.1 && (a.2.1 < b.2.1 || (a.2.1 == b.2.1 && a.2.2 < b.2.2)))
+        let line := s!"apps={rows.size} decls={groups.size} arms=" ++ ",".intercalate (sorted.toList.map fun (d, arm, _) => s!"{d}/{arm}")
+        IO.println ("INLINE-ARMS " ++ line)
+        return ← check "expectedInlineArms" "INLINE-ARMS-PIN" line
+  -- census
+  let probe := root / probePath
+  let dir := root / "Scratch"
+  if ← probe.pathExists then return ← die s!"{probe} exists; refusing to overwrite it"
+  let madeDir := !(← dir.pathExists)
+  IO.FS.createDirAll dir
+  IO.FS.writeFile probe program
+  let t0 ← IO.monoMsNow
+  let cleanup : IO Unit := do
+    IO.FS.removeFile probe
+    if madeDir then
+      try IO.FS.removeDir dir catch _ => pure ()
+  let r ← try
+      IO.Process.output { cmd := "lake", args := #["env", "lean", probePath], cwd := some root }
+    catch e => do
+      cleanup
+      throw e
+  cleanup
+  let body := r.stdout ++ r.stderr
+  if r.exitCode != 0 then
+    IO.println (Scripts.Punt.Price.take body 3000)
+    return ← die s!"census probe failed ({r.exitCode})"
+  let rows := (body.splitOn "\n").filterMap rowOf? |>.toArray
+  let src := ((body.splitOn "\n").findSome? fun l => if l.startsWith "SOURCES " then (l.splitOn " ")[1]!.toNat? else none).getD 0
+  let acc := rows.filter (·[2]! == "acc=true")
+  let nokey := acc.filter (·[3]! == "live=false")
+  let popped := acc.filter (·[4]! != "no-pop")
+  let mut groups : Array (String × Nat) := #[]
+  for r in popped do
+    match groups.findIdx? (·.1 == r[4]!) with
+    | some i => groups := groups.modify i fun (k, v) => (k, v + 1)
+    | none => groups := groups.push (r[4]!, 1)
+  let secs := ((← IO.monoMsNow) - t0 + 500) / 1000
+  IO.println s!"sources {src}, candidates {candidates.length}  ({secs}s)"
+  for kind in kinds do
+    let ks := rows.filter (·[1]! == kind)
+    let ka := ks.filter (·[2]! == "acc=true")
+    IO.println s!"  {Scripts.Punt.Price.padRight kind 8} rows {Scripts.Punt.Price.padLeft (toString ks.size) 4}   accepted {Scripts.Punt.Price.padLeft (toString ka.size) 4}   refused {Scripts.Punt.Price.padLeft (toString (ks.size - ka.size)) 4}"
+  IO.println s!"  accepted with no live key on the park's line: {nokey.size}"
+  for r in nokey do IO.println s!"      {r[5]!} {Scripts.Punt.Price.take r[6]! 100}"
+  let bySorted := groups.qsort (·.1 < ·.1)
+  IO.println (s!"  accepted whose own landing popped: {popped.size}  " ++ "  ".intercalate (bySorted.toList.map fun (k, v) => s!"{k}={v}"))
+  for r in popped do if r[4]! != "onto-map" then IO.println s!"      {r[4]!} {r[5]!} {Scripts.Punt.Price.take r[6]! 100}"
+  let g (k : String) : Nat := ((groups.find? (·.1 == k)).map (·.2)).getD 0
+  let line := s!"rows={rows.size} accepted={acc.size} nokey={nokey.size} popped={popped.size} onto-map={g "onto-map"} onto-seq={g "onto-seq"} off-level={g "off-level"}"
+  IO.println ("INLINE-CENSUS " ++ line)
+  check "expectedInlineCensus" "INLINE-CENSUS-PIN" line
+
+def scripts : List String := ["park-top", "vslot-top", "mv-slot-top", "open-map", "park-nic0", "landing-nic0", "carrier", "wire", "arm", "coordinate", "transport", "ride", "close", "inline-class"]
 
 def run (args : List String) : IO UInt32 := do
   if args.any (fun a => a == "-h" || a == "--help") then IO.println usage; return 0
@@ -668,7 +809,7 @@ def run (args : List String) : IO UInt32 := do
   if !(← path.pathExists) then return ← die s!"{path} not found (pass -C ROOT)" 2
   let original ← IO.FS.readFile path
   let lines := readLines original
-  if ["carrier", "wire", "coordinate", "transport", "ride", "close"].contains script then
+  if ["carrier", "wire", "coordinate", "transport", "ride", "close", "inline-class"].contains script then
     if let .error e ← Scripts.Price.Env.ensureBuilt root target then return ← die e
   match script with
   | "park-top" => parkTop root original lines pos
@@ -683,6 +824,7 @@ def run (args : List String) : IO UInt32 := do
   | "transport" => transport root original lines pos
   | "ride" => rideCmd root original lines pos
   | "close" => closeCmd root original lines pos
+  | "inline-class" => inlineClassCmd root original lines pos
   | _ => arm root original lines
 
 end Scripts.MainPrice
