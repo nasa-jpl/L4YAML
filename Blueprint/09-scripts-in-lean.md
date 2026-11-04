@@ -394,6 +394,25 @@ breaks CI if wrong, cheapest first:
    stdout byte-identical for every mode, both trees clean after.  Eight
    `*_price.py` remain (items 266–286).
 
+   **3.3 prices batch 2 DONE (items 266–270, `carrier_price.py`,
+   `wire_price.py`, `arm_price.py` → `lake run price -- carrier|wire|arm`):**
+   the three live-pin instruments of `Tests/Guards/Proofs/ScannerFlowOpenUnderRun.lean`
+   (`expectedCarrierPrice`, `expectedWirePrice`, `expectedArmTable`).
+   `Scripts/Price/Pin.lean` is what they share — the exact-one anchor, the
+   wider declaration regex (`structure`/`abbrev`, dotted and primed names),
+   Lake/Lean error locations split into the module's own lines and other
+   files (`--wide` = `lake build`), the two pin readers (regex, and
+   `arm_price.py`'s character scan over a `\`⏎ continuation) and the
+   `X-PIN agrees / DISAGREES` verdict; `Scripts/Lean/Md5.lean` is MD5 (RFC
+   1321, `#guard` on its test vectors) for the `md5 … before … after` line.
+   `arm` is 24 `lake env lean` runs (3 arms × 8 premises, `have _probe270`
+   spliced before each `exact slot_ride`), PAID = exit 0.  `arm_price.py`
+   hard-coded its author's checkout as `ROOT`, so its oracle ran from a copy
+   with the path made relative.  Validation: Python and Lean on the same
+   tree (a worktree of the merged base — every anchor still matches there),
+   stdout byte-identical for every mode run, pins agreeing on both sides,
+   trees clean.  Five `*_price.py` remain (items 271–286).
+
 **Phase 4 — class R, reports and publishing (6 scripts, ~4 PRs).**
 1. **DONE** — `cross-lang-compare.py`, `generate-test-reports.py` →
    `suiterunner --compare DIR` / `--reports DIR` (`lake run cross-lang-compare`,
@@ -499,7 +518,8 @@ it removes Python from CI; it does not block an item.
 | narrow_conclusion.py, pay_chain_optional.py, decline_all_optional.py | F (transforms) | 241, 140, 247 | 09-20 | skills | scripts-restate | todo |
 | 29 one-shot `flip_*.py` (items 371–413) | F (one-shot) | 1 947 | 10-27 … 10-31 | DOCS.md items only | 43 `scripts/flips/item<N>_*.json` (3.3 batches 1–3) | lean:scripts-flip |
 | park_top_price.py, vslot_top_price.py, mv_slot_top_price.py, open_map_price.py, park_nic0_price.py, landing_nic0_price.py | F (items 205–210; `lake env lean` instruments with sub-commands) | 1 222 | 09-18 … 09-19 | DOCS.md items, StreamAccum/guard prose | `lake run price -- park-top|vslot-top|mv-slot-top|open-map|park-nic0|landing-nic0` (`Scripts/Price/*`) | lean:scripts-price |
-| 8 remaining `*_price.py` (items 266–286) | F (one-shot) | 2 556 | 09-23 … 10-31 | DOCS.md items only | specs or small ports (Q2) | todo |
+| carrier_price.py, wire_price.py, arm_price.py | F (live pins in `ScannerFlowOpenUnderRun.lean`; `lake env lean` / `lake build`) | 533 | 09-23 … 09-24 | guard-file prose | `lake run price -- carrier|wire|arm` (`Scripts/Price/{Pin,Carrier,Wire,Arm}.lean`, `Scripts/Lean/Md5.lean`) | lean:scripts-price |
+| 5 remaining `*_price.py` (items 271–286: coordinate, transport, ride, close, inline_class) | F (one-shot) | 2 023 | 09-24 … 10-31 | DOCS.md items only | small ports | todo |
 | matrix_score.py | R | 264 | 07-01 | DOCS.md recipe | `lake run matrix-score` (`Scripts/Matrix/Score.lean`) | lean:scripts-matrix-score |
 | cross-lang-compare.py | R | 93 | 10-17 | CI, generate-all.sh | `suiterunner --compare DIR` (`lake run cross-lang-compare`; `Tests/SuiteRunner/Reports.lean`) | lean:suiterunner |
 | generate-test-reports.py | R | 201 | 04-09 | CI, generate-all.sh | `suiterunner --reports DIR` (`lake run test-reports`; `Tests/SuiteRunner/Reports.lean`) | lean:suiterunner |
