@@ -440,6 +440,12 @@ lean_exe «scripts-check-hygiene» where
 lean_exe «scripts-release-asset» where
   root := `Scripts.Main.ReleaseAsset
 
+-- Phase 4 (row 4): the publishing row — the HTML rewriting of svg-objects.py and
+-- html-to-pdf.py; WeasyPrint stays an external CLI (Q3).
+@[default_target]
+lean_exe «scripts-html-pdf» where
+  root := `Scripts.Main.HtmlPdf
+
 /-! Phase 4.5 (Rule 9, Q7): portable entry points — `lake run <name>` replaces the
 bash wrappers that only run a `lean_exe`; same on Linux, macOS and Windows. -/
 
@@ -560,6 +566,21 @@ zero custom axioms in the compiled environment, read off `collect-stats`'s `stat
 (was the `python3 - <<'EOF'` heredoc in CI and `generate-all.sh`). -/
 script «check-hygiene» (args) do
   runGateExe (← getWorkspace).root.dir "scripts-check-hygiene" #[] args
+
+/-- Rule 9 phase 4 row 4 (Q3, the CLI route): `lake run svg-objects -- DIR` rewrites the
+multi-page site's `<img src="*.svg">` as `<object>` in place (was `scripts/svg-objects.py`);
+`lake run html-to-pdf -- HTML_INPUT OUTPUT_PDF` merges the page(s) into one PDF-ready
+document beside the source and renders it with the `weasyprint` CLI (`$WEASYPRINT`, else
+on PATH; was `scripts/html-to-pdf.py`); `lake run html-merge -- HTML_INPUT OUT.html` is
+the merge alone, for a shell that drives weasyprint itself. -/
+script «svg-objects» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-html-pdf" #["svg-objects"] args
+
+script «html-merge» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-html-pdf" #["merge"] args
+
+script «html-to-pdf» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-html-pdf" #["pdf"] args
 
 /-- `lake run flip-beta5 -- [--max-rounds N] [--log-dir DIR] [--probe LEAN]`: β.5's edit driven
     to a sorry-fixpoint over `lake build`, FIXLINE / FIX-PIN (item 263).  Up to 25 full

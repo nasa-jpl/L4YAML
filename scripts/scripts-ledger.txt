@@ -7,7 +7,7 @@
 #   status  todo | lean:<exe> (ported; the .py is deleted, <exe> is a lean_exe) | exception:<reason> (plan §4)
 # Gate: scripts/check-scripts-lean.sh (lake exe scripts-check-ledger).  The pin below counts todo + exception rows
 # and must equal them; a port lowers it in the same PR.  The ledger may only shrink.
-# open: 6
+# open: 4
 scripts/arm_price.py | F | lean:scripts-price
 scripts/beta5_arms.py | F | lean:scripts-beta5
 scripts/carrier_price.py | F | lean:scripts-price
@@ -35,7 +35,7 @@ scripts/flip_supply.py | F | lean:scripts-flip
 scripts/gate_vocab.py | G | lean:scripts-gate-vocab
 scripts/gen_traceof.py | I | lean:scripts-gen-traceof
 scripts/generate-test-reports.py | R | lean:suiterunner
-scripts/html-to-pdf.py | R | todo
+scripts/html-to-pdf.py | R | lean:scripts-html-pdf
 scripts/inline_class_price.py | F | lean:scripts-price
 scripts/landing_nic0_price.py | F | lean:scripts-price
 scripts/ledger_diff.py | I | lean:scripts-ledger-diff
@@ -52,7 +52,7 @@ scripts/rename_lemma.py | G | lean:scripts-theorem-keyword
 scripts/repin.py | I | lean:scripts-repin
 scripts/residue_classes.py | I | lean:scripts-pack-census
 scripts/ride_price.py | F | lean:scripts-price
-scripts/svg-objects.py | R | todo
+scripts/svg-objects.py | R | lean:scripts-html-pdf
 scripts/transport_price.py | F | lean:scripts-price
 scripts/verify_yaml_spec_annotations.py | R | todo
 scripts/vslot_top_price.py | F | lean:scripts-price

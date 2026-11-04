@@ -177,7 +177,7 @@ export PATH="$VENV/bin:$PATH"
 echo "python         $(python3 --version) ($(command -v python3))"
 
 # `weasyprint --version` imports the package (and so the pango/cairo libraries),
-# as html-to-pdf.py does; `command -v` would pass with them missing (Rule 9, Q3).
+# as `lake run html-to-pdf` does; `command -v` would pass with them missing (Rule 9, Q3).
 # The venv's own CLI, by path: an ambient weasyprint on PATH is not the one
 # the venv's python3 imports.
 HAS_WEASYPRINT=0
@@ -378,7 +378,7 @@ if wants 4; then
   say "Phase 4 — Verso render"
   LOG="$LOGS/04-verso-render.log"
   ( cd doc && lake exe l4yaml-doc ) > "$LOG" 2>&1
-  python3 scripts/svg-objects.py doc/_out/html-multi | tee -a "$LOG" | tail -1
+  lake run svg-objects -- doc/_out/html-multi 2>&1 | tee -a "$LOG" | tail -1
 
   # Assemble beside docs/reports and swap, so Phase 2-3's reports survive.
   rm -rf docs.new
@@ -417,7 +417,7 @@ if wants 5; then
   if [ "$HAS_WEASYPRINT" = 1 ]; then
     say "Phase 5 — PDF"
     LOG="$LOGS/05-pdf.log"
-    python3 scripts/html-to-pdf.py doc/_out/html-single/index.html docs/L4YAML.pdf > "$LOG" 2>&1
+    WEASYPRINT="$VENV/bin/weasyprint" lake run html-to-pdf -- doc/_out/html-single/index.html docs/L4YAML.pdf > "$LOG" 2>&1
     if [ -f docs/L4YAML.pdf ]; then
       sed -i 's|strategy, security model, and FFI bindings for C, Python, and Rust.</p>|strategy, security model, and FFI bindings for C, Python, and Rust.</p>\n              <p>\n                A PDF version of this manual is available for download:\n<a href="L4YAML.pdf">L4YAML.pdf</a>.</p>|' docs/index.html
       echo "docs/L4YAML.pdf ($(du -h docs/L4YAML.pdf | cut -f1))"

@@ -11,8 +11,8 @@ name = "L4YamlDoc"
 # pins (its `verso-v4.35.0` tag).
 # The `NicolasRouquette/verso` fork (`fix/combined-img-svg`) this replaced carried two
 # patches, both now provided project-side instead of in verso: SVG images embed as
-# `<object>` so Graphviz `URL=` node links stay clickable (scripts/svg-objects.py,
-# run on html-multi after `lake exe l4yaml-doc`), and image URLs resolve via the
+# `<object>` so Graphviz `URL=` node links stay clickable (`lake run svg-objects --
+# doc/_out/html-multi` after `lake exe l4yaml-doc`), and image URLs resolve via the
 # per-page `<base>` tag against the site root, where `extraFilesHtml` now stages
 # `graphs/` once (Doc/Main.lean) instead of once per referencing page.
 [[require]]
