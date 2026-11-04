@@ -1,0 +1,61 @@
+{
+  "item": 428,
+  "tag": "PACK-CHAIN-CARRIER-A",
+  "rev": "199d7ef4",
+  "target": "L4YAML",
+  "log": "scratch/pack_chain_carrier_a.log",
+  "msgWidth": 110,
+  "rounds": 5,
+  "report": "bodies",
+  "files": [
+    {
+      "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+      "patches": [
+        {
+          "name": "L1218.ImplicitKeyPack.chain",
+          "line": 1218,
+          "old": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc) ∧"
+          ],
+          "new": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w)) ∧"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L1898.PropsKeyPack.chain",
+          "line": 1898,
+          "old": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc) ∧"
+          ],
+          "new": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w)) ∧"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L34591.entryKeyPack.h_nodeV",
+          "line": 34591,
+          "old": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L35302.entryPropsKeyPack.h_nodeV",
+          "line": 35302,
+          "old": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+          ],
+          "count": 1
+        }
+      ]
+    }
+  ]
+}
