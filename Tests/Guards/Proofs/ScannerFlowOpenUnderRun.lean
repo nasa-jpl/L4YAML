@@ -1993,7 +1993,7 @@ private def closeGateControl : Nat × Nat × Nat × Nat × Nat × Nat × Nat × 
 
 /-! ### §14a What the close can pay, priced
 
-`scripts/close_price.py`, battery stage 22e.  Five rows read by elaboration —
+`lake run price -- close`, battery stage 22e.  Five rows read by elaboration —
 each a standalone probe of what `FlowBaseAnchor.gate`'s slot branch could be
 closed with, all five in ONE insertion and one elaboration, each carrying a
 null twin that must FAIL — and five censuses taken by flip:
