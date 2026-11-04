@@ -438,6 +438,32 @@ breaks CI if wrong, cheapest first:
    byte-identical, pins agreeing on both sides, trees clean.  Two
    `*_price.py` remain (`close_price.py`, `inline_class_price.py`).
 
+   **3.3 prices batch 4 DONE (items 274/286/287, `close_price.py`,
+   `inline_class_price.py` → `lake run price -- close [probe|name|flip|all|wide]`,
+   `lake run price -- inline-class [feeders|arms|census]`):** the last two
+   `*_price.py`.  `Scripts/Price/Close.lean`: the ten-lemma insertion (five rows
+   and their `by assumption` twins) read in ONE elaboration — an error inside the
+   inserted block is billed to the probe by the block's own geometry, any other
+   error to its declaration off the ranges (a broken host declaration is a
+   refusal); `name` (`O` only for a `lean.unknownIdentifier` naming `sc0`),
+   `flip` (`gate`/`close` wrapped premise, `apps` rename, `closable` second
+   verdict), `wide`, the `CLOSE-PRICE` line and `expectedClosePrice` through
+   the shared pin reader.  No SIGTERM handler: the durable `.close-price-bak`
+   and the refusal to run beside one cover an interrupted probe.
+   `Scripts/Price/InlineClass.lean`: `feeders` says it is retired on any tree
+   past item 287 (its `narrow` is kept, located off the declaration ranges),
+   `arms` deletes the wrapper's whole range (docstring included, as the Python
+   did) and bills each application to its declaration off the ranges and to its
+   case arm off the proof text (syntax Lean does not keep), `census` writes the
+   runtime probe to `Scratch/InlineClassCensus.lean` verbatim, elaborates and
+   removes it (never overwriting an existing file, removing `Scratch/` only if
+   it created it); the three pins of `BlockDeferralClasses.lean` keep the
+   Python's `absent`/`agrees`/`MOVED` wording.  Stated differences: the
+   `(NNs)` elapsed-time suffixes on the md5 and `sources` lines are wall-clock
+   and differ run to run; an unknown close MODE is exit 2.  Validation: Python
+   and Lean on the same trees, stdout byte-identical apart from those seconds.
+   Every `*_price.py` is now Lean; phase 3.3 is complete.
+
 **Phase 4 — class R, reports and publishing (6 scripts, ~4 PRs).**
 1. **DONE** — `cross-lang-compare.py`, `generate-test-reports.py` →
    `suiterunner --compare DIR` / `--reports DIR` (`lake run cross-lang-compare`,

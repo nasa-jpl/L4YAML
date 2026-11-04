@@ -391,7 +391,7 @@ gap, recorded at item 173, not a datum about this reading. -/
 Neither of `block_dispatch_deferred_inline`'s two sites decides anything: each
 spends a STREAM its caller handed down (`h_stream_fallback`), so the class is
 the set of callers that hand a stream rather than a refutation.
-`scripts/inline_class_price.py feeders` narrows that stream to `False` in the
+`lake run price -- inline-class feeders` narrows that stream to `False` in the
 three lemmas that take it and builds: a caller that refutes still elaborates,
 and a caller that hands a stream breaks once, at the stream it hands.
 
@@ -438,7 +438,7 @@ and `compact_open_map`'s `:` branch) and two consumers that re-read the slot
 with `.imp _ id`.  Each producer pays `h_ivl` with the stamp in the same
 argument list, so the arm's carrier is named and its first ring measured. -/
 
-/-- `scripts/inline_class_price.py feeders`, checked from the script's side —
+/-- `lake run price -- inline-class feeders`, checked from the script's side —
     the tree as it stood at item 286.  Item 287 retired the fallback the mode
     narrows, so on a later tree it says so and stops. -/
 def expectedInlineFeeders : String :=
@@ -449,7 +449,7 @@ def expectedInlineFeeders : String :=
     residue, and the two `:` consumers take their punt as a builder, so every
     arm says what the residue at its park is: the five crossed-break arms
     refute it (`sslComments_refutes_inline_residue`) and the seven above apply
-    the escape where their reason stands.  `scripts/inline_class_price.py arms`
+    the escape where their reason stands.  `lake run price -- inline-class arms`
     deletes the wrapper and locates every application the tree then lacks:
     eight, at the seven arms and the dead `pendingFlow` one.
 
@@ -475,7 +475,7 @@ def expectedInlineFeeders : String :=
 def expectedInlineArms : String :=
   "apps=3 decls=3 arms=accum_block_pending/pendingFlow,colon_fires_implicit_key/noKeyContext,colon_fires_props_key/noKeyContext"
 
-/-- `scripts/inline_class_price.py census`, checked from the script's side. -/
+/-- `lake run price -- inline-class census`, checked from the script's side. -/
 def expectedInlineCensus : String :=
   "rows=432 accepted=371 nokey=0 popped=37 onto-map=37 onto-seq=0 off-level=0"
 
