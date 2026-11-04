@@ -9705,6 +9705,65 @@ def testPackAltMarkTauto (state : IO.Ref TestCollector) : IO Unit := do
   check state s!"P84 (β-mark) body on prepared block states (item 424): pauses={pauses} refused-only={refusedOnly} armed-only={armedOnly} both={both} NEITHER={neither}; mark closed by the preprocess and caught by the refusal arm={markLost}; parsed={parsed}/{inputs.length}"
     (pauses > 0 && refusedOnly > 0 && armedOnly > 0 && neither == 0 && markLost > 0)
 
+/-! **Priority 85 — (ζ-dedent) refuted before the proof** (item 429).  Item 428's NEXT named the
+    missing scanner fact as "a dedent that under-runs the frames EMPTIES the register".  Rule 2 on the
+    scanner says no: a mark at an ENCLOSING `?` park survives every dedent that lands above it
+    (`? - a\n  - b: c\n  - d\n: e` — the `-` lands at column 2 on a sequence frame, `map 2` names no
+    frame, and the `?` mark at column 0 is still set), so `survivedUnderRun` must be POSITIVE.  What
+    does hold at every block pause — the strongest true statement, proven in scratch over `Sound`,
+    `Mono`, `SentinelBase` and the popped stack — is that every surviving mark sits at or below the
+    landing column (`leViol = 0`) and was a mark before the preprocess (`subViol = 0`); the slot of a
+    sequence frame is never marked (`seqTopMarked = 0`), an invariant no `Sound` clause states.
+    `underRun` is the item 297 arm's exact shape — a popped landing whose stack top is a SEQUENCE
+    entry AT the landing column (`preprocess_landing_mem_or_seq`'s right disjunct) — not merely a
+    sequence top. -/
+def testDedentMarksSurvive (state : IO.Ref TestCollector) : IO Unit := do
+  let inputs : List String :=
+    [ "? a\n: b", "? a\n: b\n? c\n: d", "- ? a\n  : b", "k:\n  ? a\n  : b", "? ? a\n  : b\n: c",
+      "? : v\n: w", "? &a k\n: v", "? !!str a\n: b", "? a\n? b\n: c", "k:\n  ? a\n: b",
+      "k:\n  - ? a\n    : b\n  ? c\n  : d", "a: 1\n? b\n: 2", "- a\n- ? b\n  : c", "? [a]\n: b",
+      "- a\n- b", "a: [b, c]\n? d\n: e", "k:\n  ? a\nb: c", "k:\n  - ? a\n    : b\nz: 1",
+      "? - a\n  - ? b\n    : c\n  - d\n: e", "? a\n:\n  - ? b\n    : c\n  - d\nz: 1", "? - a\n  - b: c\n  - d\n: e",
+      "- a\n? b\n: c", "- a\n- ? b\n  : c\n? d\n: e", "?\n  ? a\n  : b\n: c\nz: 1", "? - ? a\n    : b\n  - c\n: d",
+      "a:\n  ? b\n  : c\n  ? d\n  : e\nz: 1", "? a\n: b\nkey: v", "a:\n  - ? b\n    : c\n  - key: v",
+      "? - a\n  -\n    ? b\n    : c\n  - d\n: e" ]
+  let mut pauses := 0
+  let mut pops := 0
+  let mut underRun := 0
+  let mut survivedUnderRun := 0
+  let mut leViol := 0
+  let mut subViol := 0
+  let mut seqTopMarked := 0
+  for input in inputs do
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:80] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, _)) =>
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) =>
+          if sP.flowLevel == 0 then
+            pauses := pauses + 1
+            let before := L4YAML.Proofs.RegisterWitness.markedCols s
+            let after := L4YAML.Proofs.RegisterWitness.markedCols sP
+            if !(after.all (before.contains ·)) then subViol := subViol + 1
+            if !(after.all (· ≤ sP.col)) then leViol := leViol + 1
+            let topSeq := match sP.indents.back? with
+              | some e => e.isSequence && e.column == (sP.col : Int)
+              | none => false
+            match sP.indents.back?, sP.pendingKeys[sP.indents.size - 1]? with
+            | some e, some (some _) => if e.isSequence then seqTopMarked := seqTopMarked + 1
+            | _, _ => pure ()
+            if sP.indents.size < s.indents.size then
+              pops := pops + 1
+              if topSeq then
+                underRun := underRun + 1
+                if !after.isEmpty then survivedUnderRun := survivedUnderRun + 1
+          s := sN
+        | _ => break
+      | _ => break
+  check state s!"P85 (ζ-dedent) refuted on the scanner (item 429): pauses={pauses} pops={pops} under-run landings={underRun} marks SURVIVING an under-run={survivedUnderRun} le-violations={leViol} subset-violations={subViol} seq-top marked={seqTopMarked}"
+    (pauses > 0 && pops > 0 && underRun > 0 && survivedUnderRun > 0 && leViol == 0 && subViol == 0 && seqTopMarked == 0)
+
 def testFlowCarrier (state : IO.Ref TestCollector) : IO Unit := do
   let nestedQ : List String := ["?\n  ? -\n: w\n", "? - ? - a\n  : b\n: c\n", "?\n  ?\n    -\n    - b\n  ? c\n: w\n", "? ? - a\n  : b\n: c\n", "- ? - a\n  : b\n"]
   let singleQ : List String := ["? - a\n: b\n", "?\n  - a\n  - b\n: w\n", "k:\n  ? - a\n  : b\n", "? -\n: w\n"]
@@ -9910,6 +9969,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testArmedOuterLemma state
   testPackAltMarkTauto state
   testPackAltMarkTautoRegisters state
+  testDedentMarksSurvive state
 
   testQuestionMarkColumn state
   testK1Lanes state

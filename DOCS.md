@@ -51076,3 +51076,54 @@ By class under (a)+(b): PAYS — the `h_nodeV` and `h_cp` relays (`entryKeyPack_
 **Gates.**  No library change: no build, no pin moved; both specs restored identically, `L4YAML` rebuilt exit 0; `lake run check-closure-log`, `check-gate-vocab`, `check-scripts-lean` green.  Instruments unchanged: `decline` 70 / `uncond` 12, OrTrueAudit 269 / 486, `ns` 21, ghost 72.
 
 **NEXT —** item 429, the owner's word needed.  **(ζ-dedent)** the missing scanner fact as a lemma in `RegisterWitness` / `PendingKeysStable`: a preprocess whose landing under-runs every frame (the items 296 / 297 arms' `h_land` with `w` naming no frame) leaves `markedCols s' = []` — Rule 2 first (a `?` park at column 0 is the refutation candidate), then the 4 fresh-document arms and the 6 frame arms pay by the empty chain, re-priced by spec (a).  **(η-reshape)** `accum_content_pending` reads the park's chain (`h_kslot92` / `h_expl`) before the mark-routed dispatch so the 4 content callers can feed `h_chainUp`, and `accum_content_on_noPending` gains the premise; re-priced by spec (b) with the wrapper's three callers.  Lane (d) for `flowKeyPack_of_close` stays separate.  Recommended order: (ζ-dedent) then (η-reshape), each one item.
+
+### Item 429 (2026-11-04)
+
+**(ζ-dedent) REFUTED by Rule 2 before the proof, and the strongest true scanner statement PROVEN in scratch (standard axioms) but NOT landed: no producer on this tree can call it.**  The owner's word for 429 was "(ζ-dedent)".  The mandate's statement — a preprocess whose landing under-runs every frame leaves `markedCols s' = []` — is FALSE on the scanner: a mark at an ENCLOSING `?` park survives every dedent that lands above it.  The scanner pops `pendingKeys` in lockstep with `indents` (`unwindIndentsLoopIx`, `IndexedState.lean` L311), so a dedent closes exactly the marks ABOVE the landing and keeps every mark at or below it; `? - a\n  - b: c\n  - d\n: e` lands the second `-` at column 2 on a SEQUENCE frame (`FrameLevel.map 2` names no frame — the item 297 shape, `preprocess_landing_mem_or_seq`'s right disjunct) with the `?` mark at column 0 still set (`markedCols` `[0] → [0]`).  What does hold, at every block pause of a 29-input corpus (Priority 85, `testDedentMarksSurvive`): every surviving mark sits at or below the landing column, every surviving mark was a mark before the preprocess, and the slot of a sequence frame is never marked.  Test only; no library change.
+
+**The mandate** (item 428's NEXT): "item 429, the owner's word needed.  (ζ-dedent) the missing scanner fact as a lemma in `RegisterWitness` / `PendingKeysStable`: a preprocess whose landing under-runs every frame (the items 296 / 297 arms' `h_land` with `w` naming no frame) leaves `markedCols s' = []` — Rule 2 first (a `?` park at column 0 is the refutation candidate), then the 4 fresh-document arms and the 6 frame arms pay by the empty chain, re-priced by spec (a) …"  Owner's word: "(ζ-dedent)".  Rule 2 came first, as mandated, and refuted the statement; what follows is the strongest true statement and what it would pay.
+
+**Predictions first.**  P1 (the mandate's own) — a `?` park at column 0 refutes the literal body.  P2 — P85 over the corpus: 110–140 block pauses, 20–26 dedents, 6–10 under-run landings, 4–8 with a surviving mark, 0 / 0 / 0 violations; Adversarial 12786 → 12787.  P3 — no library change, so `decline` 70 / `uncond` 12, OrTrueAudit 269 / 486, `ns` 21, ghost 72 unchanged and no pin moves.  P4 — the strongest true lemma pays 0 of the 10 starved arms on this tree, because the producer lacks its premises.
+
+**The reading.**  Rule 2 was run as a scanner probe over 29 inputs (the P84 corpus plus eleven nested-`?` / sequence-landing shapes) at every block pause, reading `markedCols` before and after `scanNextToken_preprocess`.  Three invariants held at all of them and the literal body failed at 9 dedents in 6 inputs.  The strongest true statement, proven in scratch (`~/scratch/429/Lemma.lean`, `#print axioms` = `propext`, `Classical.choice`, `Quot.sound`):
+
+```lean
+lemma preprocess_markedCols_le_col {s s' : ScannerState} {c : Char}
+    (hok : scanNextToken_preprocess s = .ok (some (s', c)))
+    (hs : Sound s) (hm : Mono s) (hb : SentinelBase s) (h_pop : s'.indents ≠ s.indents) :
+    ∀ nv ∈ markedCols s', nv ≤ s'.col := by
+  intro nv hnv
+  obtain ⟨i, l, col, hi, hc, rfl⟩ := markedCols_mem.mp hnv
+  have hs' := preprocess_sound hok hs hm
+  obtain ⟨col', hc', hnn⟩ := hs'.slots.2 i l hi
+  rw [hc] at hc'
+  obtain rfl := Option.some.inj hc'
+  rw [indentColumns_getElem?] at hc
+  obtain ⟨e, he, hecol⟩ := Option.map_eq_some_iff.mp hc
+  have hmem : e ∈ s'.indents := Array.mem_of_getElem? he
+  have h1 := (preprocess_mono hok hm).le_currentIndent e hmem
+  have h2 := (preprocess_top_le_col hok hb).resolve_right h_pop
+  omega
+
+lemma preprocess_markedCols_subset {s s' : ScannerState} {c : Char}
+    (hok : scanNextToken_preprocess s = .ok (some (s', c))) :
+    ∀ nv ∈ markedCols s', nv ∈ markedCols s := by
+  intro nv hnv
+  obtain ⟨i, l, col, hi, hc, rfl⟩ := markedCols_mem.mp hnv
+  exact preprocess_markedCols hok (MarkedColsIn.self s) i l col hi hc
+```
+
+What it would pay, read at the item 297 arm of `entryKeyPack_of_dispatch` (L35056–35117; the 296 arm and the two `entryPropsKeyPack_of_dispatch` twins are the same shape): the pack's chain field needs, for every surviving mark `nv`, `ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w` — the FRAME's resume, which the arm can build with `resumeAtMap` only for `FrameLevel.map nv ∈ ks`.  With `nv ≤ w` from the lemma, frame membership follows from `IndentStackCover.Covered lo ks sc` only for `lo ≤ nv` AND only if the marked slot's entry is a mapping entry.  Four gaps, none a carrier the lemma supplies: (i) `entryKeyPack_of_dispatch` holds no `Sound sc` (the lemma's first premise; `markedColsIn_nil_of_refused` needs it too), and its `h_cov : (Mono sc ∧ SentinelBase sc) ∨ True` is itself a `∨ True` the callers may pass as `Or.inr trivial`; (ii) the no-pop sub-arm (`s_prep.indents = sc.indents`) has no column relation at all (`preprocess_top_le_col` is silent there); (iii) marks BELOW the cover floor `lo` (an enclosing `?` under the dropped frames — exactly the refuting input's mark at column 0) have no frame in `ks`; (iv) "a sequence frame's slot is never marked" is observed (P85 `seqTopMarked = 0`) but no `Sound` clause states it.  So the lemma pays 0 of the 4 fresh-document arms and 0 of the 6 frame arms on this tree (P4 HELD by the reading), and by Rule 1 it does not land: a lemma no declaration can call is not on any capstone's chain.  Spec (a) was not re-run: the library tree is byte-identical to `199d7ef4` (`git diff --stat 199d7ef4 HEAD -- L4YAML/ Tests/` is empty before this item), so its 48 / 9 stands as this tree's census.
+
+**Predictions, scored.**
+
+| P | said | result |
+|---|---|---|
+| P1 | a `?` park at column 0 refutes the literal body | HELD — the refuting `?` is the ENCLOSING park at column 0, surviving a landing at column 2; what it taught: "under-runs every frame" is about the FRAMES `ks`, not the register — the register keeps every mark at or below the landing |
+| P2 | P85: 110–140 pauses, 20–26 dedents, 6–10 under-run, 4–8 surviving, 0/0/0 | REFUTED on pauses (218 — every block pause counts, scalars included) and dedents (18), HELD on the under-run landings (6), the surviving marks (4) and the violations (0 / 0 / 0); Adversarial 12787 HELD |
+| P3 | no library change; instruments unchanged | HELD — `decline` 70 / `uncond` 12, OrTrueAudit 269 / 486, `ns` 21, ghost 72; no pin moved |
+| P4 | the lemma pays 0 of the 10 arms | HELD by the reading — the producer holds no `Sound sc`, `h_cov` is `∨ True`, marks below `lo` are uncovered, no seq-slot invariant |
+
+**Gates.**  Test only: `Tests/AdversarialInstantiation.lean` gains Priority 85 (`testDedentMarksSurvive`, registered after P84; Devin Review's flag on the first read was right — `underRun` counted any popped landing on a sequence top, a broader proxy than the item 297 arm, so it now requires the top's column to EQUAL the landing column, `preprocess_landing_mem_or_seq`'s right disjunct exactly; the counts did not move, 6 / 4); `lake build adversarialinstantiation` exit 0, `lake exe adversarialinstantiation` 12787 / 12787 passed (12786 → 12787).  `lake run check-closure-log`, `check-gate-vocab`, `check-scripts-lean` green.  No library change: no full build, no pin moved.  Instruments unchanged: `decline` 70 / `uncond` 12, OrTrueAudit 269 / 486, `ns` 21, ghost 72.
+
+**NEXT —** item 430, the owner's word needed.  The register side is now read to the bottom: a dedent keeps the enclosing `?` marks, so the fresh-document arms are FRAME-membership arms, and the chain field at those arms is a genuine obligation — the enclosing parks' resumes — not an empty chain.  **(θ-sound)** carry `Sound sc` into the two pack producers and bare `h_cov`'s `∨ True` (a statement change over their callers, priced by a spec), then pay the frame arms where `lo ≤ nv` with `preprocess_markedCols_le_col` + `Covered` + `resumeAtMap`, which also needs the seq-slot invariant added to `Sound` (`SlotsOk`) and transported — a scanner-soundness item of its own.  **(ι-floor)** state the mark floor the arms lack — `∀ nv ∈ markedCols sc, lo ≤ nv` as a fact of the park's cover (`h_dframes`), priced by reading `dedent_cover_of_landing`'s producers; without it (θ-sound) pays only the covered marks.  **(η-reshape)** as in item 428, for `content_dispatch_routed`'s 23 births, independent of the above.  Recommended order: (ι-floor) read first (it decides whether (θ-sound) can pay anything), then (θ-sound), then (η-reshape), one item each.
