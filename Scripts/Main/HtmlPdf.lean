@@ -171,16 +171,20 @@ def pdf (root : Option System.FilePath) (args : List String) : IO UInt32 := do
   let some merged ← mergeDoc inArg input | return 1
   let baseDir ← if ← isFile input then pure (input.parent.getD ".") else pure input
   let mergedPath := baseDir / "_merged_for_pdf.html"
-  IO.FS.writeFile mergedPath merged
   let out := resolveArg root outArg
   IO.println s!"Generating PDF: {pyPath outArg}"
-  if let some d := out.parent then IO.FS.createDirAll d
+  if let some d := out.parent then
+    try IO.FS.createDirAll d
+    catch e => IO.eprintln s!"Error: cannot create {d}: {e}"; return 1
+  IO.FS.writeFile mergedPath merged
+  -- from here the merged file exists: whatever the render does, it is removed
   let code ← try
       let child ← IO.Process.spawn { cmd := wp, args := #[mergedPath.toString, out.toString] }
       child.wait
     catch e =>
       IO.eprintln s!"Error: {wp}: {e}"; pure (1 : UInt32)
-  try IO.FS.removeFile mergedPath catch _ => pure ()
+    finally
+      try IO.FS.removeFile mergedPath catch _ => pure ()
   if code != 0 then
     IO.eprintln s!"Error: weasyprint exited {code}"; return 1
   let size := (← out.metadata).byteSize.toNat
