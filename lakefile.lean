@@ -506,7 +506,10 @@ script «docs-nav» (args) do
 -- `lake run pack-census -- flip|residue|classes [options]`: the PACK flip census (edits
 -- StreamAccum.lean in place, restores it; never beside another lake build) and the residue's classes.
 script «pack-census» (args) do
-  runGateExe (← getWorkspace).root.dir "scripts-pack-census" #[] args
+  -- `births` reads StreamAccum.olean's declaration ranges, so the module is built first (as the
+  -- gate does); `flip`/`residue` edit the source in place and must NOT be built beside.
+  let prereqs := if args.contains "births" then #["L4YAML.Proofs.Production.StreamAccum"] else #[]
+  runGateExe (← getWorkspace).root.dir "scripts-pack-census" #[] args prereqs
 
 /-- `lake run drop-sweep [-- -q]`: the WIDE `scannerDrop` dependents sweep (item 238). -/
 script «drop-sweep» (args) do

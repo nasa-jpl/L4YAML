@@ -240,6 +240,10 @@ def runBirths (o : Opts) : IO UInt32 := do
   let olean := o.root / ".lake" / "build" / "lib" / "lean" / "L4YAML" / "Proofs" / "Production" / "StreamAccum.olean"
   if !(← olean.pathExists) then
     return ← die s!"{olean} is missing -- build the library first (births reads the module's declaration ranges from it)" 1
+  let srcTime := (← (o.root / rel).metadata).modified
+  let oleanTime := (← olean.metadata).modified
+  if oleanTime < srcTime then
+    return ← die s!"{olean} is older than {rel} -- build the library first (the declaration ranges would describe the old source)" 1
   let ds ← try
       pure (Scripts.Lean.DeclRanges.decls (← Scripts.Lean.DeclRanges.readRanges olean))
     catch e => return ← die s!"reading the declaration ranges of {olean}: {e}" 1
