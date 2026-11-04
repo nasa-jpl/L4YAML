@@ -228,6 +228,7 @@ def run (args : List String) : IO UInt32 := do
   let rec opts : List String → System.FilePath → List String → Except String (System.FilePath × List String)
     | [], r, pos => .ok (r, pos.reverse)
     | "-C" :: v :: t, _, pos | "--root" :: v :: t, _, pos => opts t v pos
+    | "--wide" :: t, r, pos => opts t r ("--wide" :: pos)
     | a :: t, r, pos => if a.startsWith "-" && a.length > 1 then .error s!"unknown option '{a}'" else opts t r (a :: pos)
   let (root, pos) ← match opts args "." [] with
     | .ok x => pure x
@@ -235,7 +236,8 @@ def run (args : List String) : IO UInt32 := do
   let some script := pos.head? | return ← die usage 2
   if !scripts.contains script then return ← die s!"unknown script '{script}'\n{usage}" 2
   let pos := pos.drop 1
-  if script != "open-map" && script != "wire" && pos.length > 1 then return ← die s!"one mode at a time\n{usage}" 2
+  if script != "wire" && pos.contains "--wide" then return ← die s!"--wide is a `wire` option\n{usage}" 2
+  if script != "open-map" && (pos.filter (· != "--wide")).length > 1 then return ← die s!"one mode at a time\n{usage}" 2
   let root ← try IO.FS.realPath root catch e => return ← die s!"invalid root: {e}" 2
   let path := root / target
   if !(← path.pathExists) then return ← die s!"{path} not found (pass -C ROOT)" 2

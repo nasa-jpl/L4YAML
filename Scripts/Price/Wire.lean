@@ -8,6 +8,7 @@ meta import Scripts.Price.Pin
 namespace Scripts.Price.Wire
 
 open Scripts.Price.Pin
+open Scripts.Price.Attribute (rstrip)
 open Scripts.Punt.Price (padLeft padRight)
 
 public section
@@ -29,11 +30,10 @@ def usage : String := "usage: wire_price.py [" ++ "|".intercalate probes ++ "|al
 
 def applyProbe (lines : Array String) (which : String) : Except String (Array String) := do
   if which == "gate" then
-    let mut out := lines
-    out := out.set! (← indexOf out gateofHead) gateofHead2
-    out := out.set! (← indexOf out gateofNone) gateofNone2
-    out := out.set! (← indexOf out gateofSome) gateofSome2
-    return out
+    let i ← indexOf lines gateofHead
+    if !(i + 2 < lines.size && rstrip lines[i + 1]! == gateofNone && rstrip lines[i + 2]! == gateofSome) then
+      throw s!"AssertionError: `GateOf`'s arms are not {repr gateofNone} / {repr gateofSome} under its head (line {i + 1})"
+    return (lines.set! i gateofHead2).set! (i + 1) gateofNone2 |>.set! (i + 2) gateofSome2
   else if which == "anchor" then return lines.set! (← indexOf lines anchorArm) anchorArm2
   else if which == "route" then return lines.set! (← indexOf lines routeField) routeField2
   else if which == "eof" then return insertAfter lines (← indexOf lines eofHead) hyp
@@ -55,9 +55,10 @@ def allRow (p : String) (n d : Nat) (names : Array String) (away : Array String)
 
 def names (decls : Array (String × Array Nat)) : Array String := (decls.map (·.1)).qsort (· < ·)
 
-private def sample : Array String := #[gateofHead, gateofNone, gateofSome, "x", eofHead, "    (h : True) :"]
-#guard (applyProbe sample "gate").toOption == some #[gateofHead2, gateofNone2, gateofSome2, "x", eofHead, "    (h : True) :"]
-#guard (applyProbe sample "eof").toOption == some #[gateofHead, gateofNone, gateofSome, "x", eofHead, hyp, "    (h : True) :"]
+private def sample : Array String := #["  | none => True", gateofHead, gateofNone, gateofSome, "x", eofHead, "    (h : True) :"]
+#guard (applyProbe sample "gate").toOption == some #["  | none => True", gateofHead2, gateofNone2, gateofSome2, "x", eofHead, "    (h : True) :"]
+#guard (applyProbe #[gateofHead, "  | other", gateofSome] "gate").toOption == none
+#guard (applyProbe sample "eof").toOption == some #["  | none => True", gateofHead, gateofNone, gateofSome, "x", eofHead, hyp, "    (h : True) :"]
 #guard (applyProbe sample "anchor").toOption == none
 #guard verboseLines "eof" #[6] #[("scanNextToken_none_stream", #[6])] #["Tests/A.lean"] ==
   #["probe eof: 1 error sites in 1 declarations", "", "    1  scanNextToken_none_stream", "", "  files outside the module: Tests/A.lean"]
