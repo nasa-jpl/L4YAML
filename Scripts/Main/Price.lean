@@ -367,7 +367,10 @@ def transport (root : System.FilePath) (original : String) (lines : Array String
           | .error e => return ← die e
           | .ok (rs, n, names) =>
             printAll rs
-            if mode == "optok" then optokN := n; optokD := names else framesN := n; framesD := names
+            if mode == "optok" then
+              optokN := n; optokD := names
+            else
+              framesN := n; framesD := names
   if which == "pay" || which == "all" then
     IO.println "-- pay: the genesis once the ring is paid"
     match patchPay lines with
@@ -397,7 +400,9 @@ def transport (root : System.FilePath) (original : String) (lines : Array String
       for a in arms do
         match ← probeAt root sfx original lines li "True" (rideTac (ident a)) Scripts.Price.Transport.probeName with
         | .error e => return ← die e
-        | .ok (ok, _) => if ok then ride := ride + 1; IO.println (rideLine ok a)
+        | .ok (ok, _) =>
+          IO.println (rideLine ok a)
+          if ok then ride := ride + 1
       match ← probeAt root sfx original lines li "True" (rideTac "h_base") Scripts.Price.Transport.probeName with
       | .error e => return ← die e
       | .ok (ok, _) =>
