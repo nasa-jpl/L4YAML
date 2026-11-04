@@ -10,6 +10,9 @@ public import Scripts.Price.LandingNic0
 public import Scripts.Price.Carrier
 public import Scripts.Price.Wire
 public import Scripts.Price.Arm
+public import Scripts.Price.Ride
+public import Scripts.Lean.DeclRanges
+public import Scripts.Price.Ride
 
 /-!
 # `lake run price -- SCRIPT [MODE…]` — the six `*_price.py` of items 205–210 in Lean
@@ -45,12 +48,16 @@ def usage : String := s!"usage: lake run price -- SCRIPT [MODE…] [-C ROOT]
   carrier      [core|slot|prop|consumer|gate|all]   carrier_price.py (items 266/267): the built carrier by producers
   wire         [gate|anchor|route|eof|all] [--wide] wire_price.py (item 268): the carrier's wiring (`--wide`: lake build)
   arm                                      arm_price.py (item 270): what each arm holds, premise by premise (24 runs)
+  coordinate   [bridge|ident|split|all|wide] coordinate_price.py (item 271): the bridge, the arms' identity, the arity flip
+  transport    [arms|optok|frames|pay|ride|all|wide] transport_price.py (item 272): the open token's position through the arms
+  ride         [arm|ride|carrier|transport|all|wide] ride_price.py (item 273): the arms with the ring paid; ride/carrier/transport flips
   -C, --root ROOT  repository root (default: the current directory)
   -h, --help / -V, --version
 
-`all` of carrier/wire and `arm` end by comparing their line with the pin in
+`all` of carrier/wire/coordinate/transport/ride and `arm` end by comparing their line with the pin in
 Tests/Guards/Proofs/ScannerFlowOpenUnderRun.lean (`expectedCarrierPrice`, `expectedWirePrice`,
-`expectedArmTable`); exit 1 when it disagrees or is absent.  Each mode but `payers` patches {target} in place, runs `lake env lean` on it and restores
+`expectedArmTable`, `expectedCoordPrice`, `expectedTransportPrice`, `expectedRidePrice`); exit 1 when it
+disagrees or is absent.  The `wide` mode of coordinate/transport/ride runs `lake build` on the patched tree.  Each mode but `payers` patches {target} in place, runs `lake env lean` on it and restores
 it (digests on stderr); never run one beside a `lake build`."
 
 def die (msg : String) (code : UInt32 := 1) : IO UInt32 := do
@@ -132,6 +139,20 @@ def landingNic0 (root : System.FilePath) (original : String) (lines : Array Stri
     ((Scripts.Price.LandingNic0.applyProbe lines which).map (·.1))
     (fun patched body => Scripts.Price.LandingNic0.report patched names body)
 
+/-- `line ↦ declaration` for a patched copy of the target, off the module's declaration ranges
+    (`Scripts.Lean.DeclRanges`); `run` has `lake build` the pristine module first, so the ranges
+    describe the source the probe read.  A missing `.olean` is a failure, not a reading. -/
+def declOwner (root : System.FilePath) (pristine patched : Array String) : IO (Except String (Nat → String)) := do
+  let olean := root / ".lake" / "build" / "lib" / "lean" / "L4YAML" / "Proofs" / "Production" / "StreamAccum.olean"
+  if !(← olean.pathExists) then
+    return .error s!"{olean} is missing -- build the library first (the declaration census reads the module's declaration ranges from it)"
+  try
+    let ds := Scripts.Lean.DeclRanges.decls (← Scripts.Lean.DeclRanges.readRanges olean)
+    if ds.isEmpty then return .error s!"{olean}: no declaration ranges -- build the library first"
+    let m := Scripts.Lean.DeclRanges.lineMap pristine patched
+    return .ok fun l => Scripts.Lean.DeclRanges.ownerOf ds (m.getD (l - 1) l)
+  catch e => return .error s!"reading the declaration ranges of {olean}: {e}"
+
 def readPin (root : System.FilePath) : IO (Option String) := do
   let p := root / Scripts.Price.Pin.pin
   if ← p.pathExists then return some (← IO.FS.readFile p) else return none
@@ -144,7 +165,10 @@ def carrier (root : System.FilePath) (original : String) (lines : Array String) 
     | .ok patched =>
       match ← Scripts.Price.Env.leanOn root target ".carrier-price-bak" original patched with
       | .error e => return .error e
-      | .ok (_, out) => return Scripts.Price.Carrier.reading p patched out
+      | .ok (_, out) =>
+        match ← declOwner root lines patched with
+        | .error e => return .error e
+        | .ok owner => return Scripts.Price.Carrier.reading p owner out
   if which == "all" then
     let mut got : Array String := #[]
     for p in Scripts.Price.Carrier.probes do
@@ -173,7 +197,10 @@ def wire (root : System.FilePath) (original : String) (lines : Array String) (po
     | .ok patched =>
       match ← Scripts.Price.Env.leanOn root target ".wire-price-bak" original patched (wide := wide) with
       | .error e => return .error e
-      | .ok (_, out) => return Scripts.Price.Wire.reading p patched out
+      | .ok (_, out) =>
+        match ← declOwner root lines patched with
+        | .error e => return .error e
+        | .ok owner => return Scripts.Price.Wire.reading p owner out
   if which == "all" then
     let mut got : Array String := #[]
     for p in Scripts.Price.Wire.probes do
@@ -219,7 +246,291 @@ def arm (root : System.FilePath) (original : String) (lines : Array String) : IO
   printAll ls
   return (if before != after then 1 else rc)
 
-def scripts : List String := ["park-top", "vslot-top", "mv-slot-top", "open-map", "park-nic0", "landing-nic0", "carrier", "wire", "arm"]
+/-- One `have NAME : TY := by TAC` probe before the spend at `li`; `(elaborated?, log)`. -/
+def probeAt (root : System.FilePath) (suffix original : String) (pristine : Array String) (li : Nat) (ty tac name : String) : IO (Except String (Bool × String)) := do
+  let patched := Scripts.Price.Attribute.replaceLine pristine li (Scripts.Price.Arm.withProbe pristine[li]! ty (some tac) name)
+  match ← Scripts.Price.Env.leanOn root target suffix original patched with
+  | .error e => return .error e
+  | .ok (code, out) => return .ok (code == 0, out)
+
+/-- `  ARM/NAME refused: <first error line, 160 chars>`, sorted by `(arm, name)`. -/
+def refusedLines (why : Array (String × String × String)) : Array String :=
+  (why.qsort fun (a, n, _) (b, m, _) => a < b || (a == b && n < m)).map fun (a, n, out) =>
+    let first := ((out.splitOn "\n").find? fun l => (l.splitOn ": error").length > 1).getD ""
+    s!"  {a}/{n} refused: {Scripts.Punt.Price.take (Scripts.Price.Attribute.strip first) 160}"
+
+def md5Of (root : System.FilePath) : IO String := do
+  return Scripts.Lean.Md5.md5 (← IO.FS.readBinFile (root / target))
+
+/-- The P/B/O cell: `assumption` first, then the named derivation. -/
+def cellOf (root : System.FilePath) (suffix original : String) (pristine : Array String) (li : Nat) (ty : String) (named : Option String) (name : String)
+    : IO (Except String (String × Option String)) := do
+  match ← probeAt root suffix original pristine li ty "assumption" name with
+  | .error e => return .error e
+  | .ok (true, _) => return .ok ("P", none)
+  | .ok (false, _) =>
+    match named with
+    | none => return .ok ("O", none)
+    | some tac =>
+      match ← probeAt root suffix original pristine li ty tac name with
+      | .error e => return .error e
+      | .ok (ok, out) => return .ok (if ok then "B" else "O", if ok then none else some out)
+
+def tail (root : System.FilePath) (which : String) (before : String) : IO (Option UInt32) := do
+  let after ← md5Of root
+  IO.println ""; IO.println (Scripts.Price.Arm.md5Line ((root / target).fileName.getD target) before after)
+  if before != after then return some 1
+  if which != "all" then return some 0
+  return none
+
+def verdict (root : System.FilePath) (label pinName got : String) : IO UInt32 := do
+  let want := (← readPin root).bind (Scripts.Price.Pin.expectedScanned? · pinName)
+  let (ls, rc) := Scripts.Price.Pin.pinVerdict label want got
+  printAll ls
+  return rc
+
+def coordModes : List String := ["bridge", "ident", "split", "all", "wide"]
+
+open Scripts.Price.Coordinate in
+def coordinate (root : System.FilePath) (original : String) (lines : Array String) (pos : List String) : IO UInt32 := do
+  let which := pos.headD "all"
+  if !coordModes.contains which then return ← die s!"coordinate: unknown mode '{which}' (one of {", ".intercalate coordModes})" 2
+  let idxs := Scripts.Price.Arm.spendLines lines
+  if idxs.size != arms.length then
+    return ← die s!"expected {arms.length} spends of `{Scripts.Price.Arm.spend}`, found {idxs.size} -- the arm population moved and this table is not about it"
+  let sfx := ".coordinate-price-bak"
+  let before ← md5Of root
+  let mut cells : Array (String × String × String) := #[]
+  let mut grid : Array (String × String × Bool) := #[]
+  let mut lib := 0
+  let mut libnames : Array String := #[]
+  if which == "bridge" || which == "all" then
+    IO.println "-- bridge: null (assumption) against a named derivation"
+    for (a, li) in arms.zip idxs.toList do
+      for (n, ty, named) in bridgeRows a do
+        match ← cellOf root sfx original lines li ty named probeName with
+        | .error e => return ← die e
+        | .ok (v, _) => cells := cells.push (a, n, v); IO.println (bridgeLine v a n)
+  if which == "ident" || which == "all" then
+    IO.println "-- ident: which arm each site is in"
+    for (a, li) in arms.zip idxs.toList do
+      for o in arms do
+        match ← probeAt root sfx original lines li "True" (identTac o) probeName with
+        | .error e => return ← die e
+        | .ok (ok, _) => grid := grid.push (a, o, ok); IO.println (identLine ok a o)
+  if which == "split" || which == "all" then
+    IO.println "-- split: the arity flip, by declaration, in the module"
+    match patchSplit lines with
+    | .error e => return ← die e
+    | .ok patched =>
+      match ← Scripts.Price.Env.leanOn root target sfx original patched with
+      | .error e => return ← die e
+      | .ok (_, out) =>
+        match ← declOwner root lines patched with
+        | .error e => return ← die e
+        | .ok owner =>
+          match splitReading owner out with
+          | .error e => return ← die e
+          | .ok (rows, n, names) => printAll rows; lib := n; libnames := names
+  if which == "wide" then
+    IO.println "-- wide: the same flip over the tree, module repaired"
+    match patchSplit lines (repair := true) with
+    | .error e => return ← die e
+    | .ok patched =>
+      match ← Scripts.Price.Env.leanOn root target sfx original patched (wide := true) with
+      | .error e => return ← die e
+      | .ok (code, out) =>
+        match wideReading code out with
+        | .error e => return ← die e
+        | .ok (rows, _, _) => printAll rows
+  if let some rc ← tail root which before then return rc
+  let got := gotLine grid cells lib
+  IO.println ("COORD-PRICE " ++ got)
+  IO.println s!"  library declarations broken: {", ".intercalate libnames.toList}"
+  verdict root "COORD" "expectedCoordPrice" got
+
+def transportModes : List String := ["arms", "optok", "frames", "pay", "ride", "all", "wide"]
+
+open Scripts.Price.Coordinate in
+open Scripts.Price.Transport in
+def transport (root : System.FilePath) (original : String) (lines : Array String) (pos : List String) : IO UInt32 := do
+  let which := pos.headD "all"
+  if !transportModes.contains which then return ← die s!"transport: unknown mode '{which}' (one of {", ".intercalate transportModes})" 2
+  let idxs := Scripts.Price.Arm.spendLines lines
+  if idxs.size != arms.length then
+    return ← die s!"expected {arms.length} spends, found {idxs.size} -- the arm population moved and this table is not about it"
+  let sfx := ".transport-price-bak"
+  let before ← md5Of root
+  let mut cells : Array (String × String × String) := #[]
+  let mut why : Array (String × String × String) := #[]
+  let mut optokN := 0; let mut optokD : Array String := #[]
+  let mut framesN := 0; let mut framesD : Array String := #[]
+  let mut pay : Array (String × String) := #[]
+  let mut ride := 0
+  if which == "arms" || which == "all" then
+    IO.println "-- arms: the applied source, the shape the genesis names, and the genesis"
+    let r := ringed lines
+    for (a, li) in arms.zip idxs.toList do
+      for (n, ty, named) in rows a r do
+        match ← cellOf root sfx original lines li ty (some named) Scripts.Price.Transport.probeName with
+        | .error e => return ← die e
+        | .ok (v, w) =>
+          cells := cells.push (a, n, v); IO.println (cellLine v a n)
+          if let some out := w then why := why.push (a, n, out)
+  for (mode, heading) in [("optok", "-- optok: who must supply the open token's position"),
+                          ("frames", "-- frames: how many frames the declaration builds")] do
+    if which == mode || which == "all" then
+      IO.println heading
+      match patchFlip lines mode with
+      | .error e => return ← die e
+      | .ok patched =>
+        match ← Scripts.Price.Env.leanOn root target sfx original patched with
+        | .error e => return ← die e
+        | .ok (_, out) =>
+          match ← declOwner root lines patched with
+          | .error e => return ← die e
+          | .ok owner =>
+            match flipReading mode owner out with
+            | .error e => return ← die e
+            | .ok (rs, n, names) =>
+              printAll rs
+              if mode == "optok" then
+                optokN := n; optokD := names
+              else
+                framesN := n; framesD := names
+  if which == "pay" || which == "all" then
+    IO.println "-- pay: the genesis once the ring is paid"
+    match patchPay lines with
+    | .error e => return ← die e
+    | .ok paid =>
+      match ← Scripts.Price.Env.leanOn root target sfx original paid with
+      | .error e => return ← die e
+      | .ok (code, out) =>
+        if code != 0 then return ← die (Scripts.Punt.Price.take ("pay: the paid module does not elaborate:\n" ++ "\n".intercalate ((out.splitOn "\n").filter fun l => (l.splitOn ": error").length > 1)) 2000)
+        let paidText := "\n".intercalate paid.toList
+        let pidx := Scripts.Price.Arm.spendLines paid
+        for (a, li) in arms.zip pidx.toList do
+          match ← probeAt root sfx original paid li payTy (payTac a) Scripts.Price.Transport.probeName with
+          | .error e => return ← die e
+          | .ok (okN, _) =>
+            match ← probeAt root sfx original paid li payTy "assumption" Scripts.Price.Transport.probeName with
+            | .error e => return ← die e
+            | .ok (okA, _) =>
+              let v := if okA then "P" else if okN then "B" else "O"
+              pay := pay.push (a, v); IO.println (payLine v a)
+        let _ := paidText
+  if which == "ride" || which == "all" then
+    IO.println "-- ride: what is in scope where `drop_ride` is built"
+    match Scripts.Price.Pin.indexOf lines rideAnchor with
+    | .error e => return ← die e
+    | .ok li =>
+      for a in arms do
+        match ← probeAt root sfx original lines li "True" (rideTac (ident a)) Scripts.Price.Transport.probeName with
+        | .error e => return ← die e
+        | .ok (ok, _) =>
+          IO.println (rideLine ok a)
+          if ok then ride := ride + 1
+      match ← probeAt root sfx original lines li "True" (rideTac "h_base") Scripts.Price.Transport.probeName with
+      | .error e => return ← die e
+      | .ok (ok, _) =>
+        IO.println (rideControl ok)
+        if !ok then return ← die rideControlErr
+  if which == "wide" then
+    IO.println "-- wide: the `optok` ring over the tree"
+    match patchFlip lines "optok" with
+    | .error e => return ← die e
+    | .ok patched =>
+      match ← Scripts.Price.Env.leanOn root target sfx original patched (wide := true) with
+      | .error e => return ← die e
+      | .ok (code, out) =>
+        match wideReading "optok" code out with
+        | .error e => return ← die e
+        | .ok (rs, _, _) => printAll rs
+  if let some rc ← tail root which before then return rc
+  let got := gotLine cells optokN pay framesN ride
+  IO.println ("TRANSPORT-PRICE " ++ got)
+  IO.println s!"  optok sites in: {", ".intercalate optokD.toList}"
+  IO.println s!"  frames sites in: {", ".intercalate framesD.toList}"
+  printAll (refusedLines why)
+  verdict root "TRANSPORT" "expectedTransportPrice" got
+
+def rideModes : List String := ["arm", "ride", "carrier", "transport", "all", "wide"]
+
+open Scripts.Price.Coordinate in
+open Scripts.Price.Ride in
+def rideCmd (root : System.FilePath) (original : String) (lines : Array String) (pos : List String) : IO UInt32 := do
+  let which := pos.headD "all"
+  if !rideModes.contains which then return ← die s!"ride: unknown mode '{which}' (one of {", ".intercalate rideModes})" 2
+  let sfx := ".ride-price-bak"
+  let before ← md5Of root
+  let mut cells : Array (String × String × String) := #[]
+  let mut why : Array (String × String × String) := #[]
+  let mut rideR : Nat × Array String := (0, #[])
+  let mut carrierR : Array (String × Nat × Array String) := #[]
+  let mut trR : Nat × Array String := (0, #[])
+  if which == "arm" || which == "all" then
+    IO.println "-- arm: what each arm can build, with item 272's ring PAID"
+    match Scripts.Price.Transport.patchPay lines with
+    | .error e => return ← die e
+    | .ok paid =>
+      match ← Scripts.Price.Env.leanOn root target sfx original paid with
+      | .error e => return ← die e
+      | .ok (code, out) =>
+        if code != 0 then return ← die (armErr out)
+        let idxs := Scripts.Price.Arm.spendLines paid
+        if idxs.size != arms.length then return ← die s!"expected {arms.length} spends, found {idxs.size}"
+        for (a, li) in arms.zip idxs.toList do
+          for (n, ty, named) in rows a do
+            match ← cellOf root sfx original paid li ty named Scripts.Price.Ride.probeName with
+            | .error e => return ← die e
+            | .ok (v, w) =>
+              cells := cells.push (a, n, v); IO.println (Scripts.Price.Transport.cellLine v a n)
+              if let some o := w then why := why.push (a, n, o)
+  let flip (mode : String) : IO (Except String (Nat × Array String)) := do
+    match patchFlip lines mode with
+    | .error e => return .error e
+    | .ok patched =>
+      match ← Scripts.Price.Env.leanOn root target sfx original patched with
+      | .error e => return .error e
+      | .ok (_, out) =>
+        match ← declOwner root lines patched with
+        | .error e => return .error e
+        | .ok owner =>
+          match Scripts.Price.Transport.flipReading mode owner out with
+          | .error e => return .error e
+          | .ok (rs, n, names) => printAll rs; return .ok (n, names)
+  if which == "ride" || which == "all" then
+    IO.println "-- ride: how many terms spend the ride"
+    match ← flip "ride" with | .error e => return ← die e | .ok r => rideR := r
+  if which == "carrier" || which == "all" then
+    IO.println "-- carrier: three reshapes of the frame's `some` arm"
+    for v in carriers do
+      IO.println s!"   {v}:"
+      match ← flip v with | .error e => return ← die e | .ok (n, names) => carrierR := carrierR.push (v, n, names)
+  if which == "transport" || which == "all" then
+    IO.println "-- transport: who goes through the carrier funnel"
+    match ← flip "transport" with | .error e => return ← die e | .ok r => trR := r
+  if which == "wide" then
+    IO.println "-- wide: the `choice` reshape over the tree"
+    match patchFlip lines "choice" with
+    | .error e => return ← die e
+    | .ok patched =>
+      match ← Scripts.Price.Env.leanOn root target sfx original patched (wide := true) with
+      | .error e => return ← die e
+      | .ok (code, out) =>
+        match Scripts.Price.Transport.wideReading "choice" code out with
+        | .error e => return ← die e
+        | .ok (rs, _, _) => printAll rs
+  if let some rc ← tail root which before then return rc
+  let got := gotLine cells (rideR.1, rideR.2.size) (carrierR.map fun (v, n, d) => (v, n, d.size)) (trR.1, trR.2.size)
+  IO.println ("RIDE-PRICE " ++ got)
+  IO.println s!"  ride sites in: {", ".intercalate rideR.2.toList}"
+  for (v, _, d) in carrierR do IO.println s!"  {v} sites in: {", ".intercalate d.toList}"
+  IO.println s!"  transport sites in: {", ".intercalate trR.2.toList}"
+  printAll (refusedLines why)
+  verdict root "RIDE" "expectedRidePrice" got
+
+def scripts : List String := ["park-top", "vslot-top", "mv-slot-top", "open-map", "park-nic0", "landing-nic0", "carrier", "wire", "arm", "coordinate", "transport", "ride"]
 
 def run (args : List String) : IO UInt32 := do
   if args.any (fun a => a == "-h" || a == "--help") then IO.println usage; return 0
@@ -243,6 +554,8 @@ def run (args : List String) : IO UInt32 := do
   if !(← path.pathExists) then return ← die s!"{path} not found (pass -C ROOT)" 2
   let original ← IO.FS.readFile path
   let lines := readLines original
+  if ["carrier", "wire", "coordinate", "transport", "ride"].contains script then
+    if let .error e ← Scripts.Price.Env.ensureBuilt root target then return ← die e
   match script with
   | "park-top" => parkTop root original lines pos
   | "vslot-top" => vslotTop root original lines
@@ -252,6 +565,9 @@ def run (args : List String) : IO UInt32 := do
   | "landing-nic0" => landingNic0 root original lines pos
   | "carrier" => carrier root original lines pos
   | "wire" => wire root original lines pos
+  | "coordinate" => coordinate root original lines pos
+  | "transport" => transport root original lines pos
+  | "ride" => rideCmd root original lines pos
   | _ => arm root original lines
 
 end Scripts.MainPrice

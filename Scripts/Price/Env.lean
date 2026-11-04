@@ -96,6 +96,16 @@ def tailLines (out : String) (n : Nat) : String :=
   let ls := (out.splitOn "\n").filter (· != "")
   "\n".intercalate (ls.drop (ls.length - min n ls.length))
 
+/-- `lake build MODULE` on the pristine tree, before anything is patched: Lake's content hashes
+    are the freshness oracle, so afterwards the module's `.olean*` describe the source the probes
+    read (`Scripts.Lean.DeclRanges` maps error lines onto its declaration ranges).  Up to date in
+    seconds; a stale module is rebuilt; a failure is a failure, not a reading. -/
+def ensureBuilt (root : System.FilePath) (target : String) : IO (Except String Unit) := do
+  let r ← IO.Process.output { cmd := "lake", args := #["build", moduleOf target], cwd := some root }
+  if r.exitCode != 0 then
+    return .error s!"lake build {moduleOf target} exited {r.exitCode} on the pristine tree — nothing below is a reading until the library builds:\n{tailLines (r.stdout ++ r.stderr) 20}"
+  return .ok ()
+
 /-- `lake env lean TARGET` (or, with `wide`, `lake build`) over the patched copy → Lean's exit
     code and its stdout+stderr. -/
 def leanOn (root : System.FilePath) (target : String) (suffix : String)

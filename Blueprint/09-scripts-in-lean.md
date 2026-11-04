@@ -413,6 +413,31 @@ breaks CI if wrong, cheapest first:
    stdout byte-identical for every mode run, pins agreeing on both sides,
    trees clean.  Five `*_price.py` remain (items 271–286).
 
+   **3.3 prices batch 3 DONE (items 271–273, `coordinate_price.py`,
+   `transport_price.py`, `ride_price.py` → `lake run price --
+   coordinate|transport|ride [MODE]`):** the three instruments behind
+   `expectedCoordPrice` / `expectedTransportPrice` / `expectedRidePrice`.
+   They were one Python program in three files (`transport` imported
+   `coordinate`'s probe harness, `ride` imported both), and are one chain of
+   Lean modules the same way: `Scripts/Price/Coordinate.lean` (the arms and
+   their binders, the bridge rows, the `_floor_half` arity flip with its
+   repair, the wide reading that refuses a green tree, an unrepaired module
+   or a log with no location), `Transport.lean` (the genesis tactic with and
+   without item 285's ring, the `optok`/`frames` flips, `patch_pay` — the
+   item-272 rewrite kept for a tree that predates item 285 — the ride-scope
+   probe with its control), `Ride.lean` (the five rows on the paid module,
+   the `ride`/`transport`/carrier flips).  The P/B/O cell, the probe
+   insertion (`Arm.withProbe` with the instrument's own `_probeNNN` binder),
+   the `md5 … before … after` line, the refused-row diagnostics and the
+   `X-PRICE`/`X-PIN` verdict are shared in `Scripts/Main/Price.lean`; the
+   `wide` modes run `lake build` through `Env.leanOn (wide := true)`, so a
+   build that never reached the module is a failure, not a reading.  One
+   stated difference: an unknown MODE is a usage error (exit 2) where the
+   Python ran nothing and exited 0.  Validation: Python and Lean on the same
+   tree (a worktree of the commit that last changed each script), stdout
+   byte-identical, pins agreeing on both sides, trees clean.  Two
+   `*_price.py` remain (`close_price.py`, `inline_class_price.py`).
+
 **Phase 4 — class R, reports and publishing (6 scripts, ~4 PRs).**
 1. **DONE** — `cross-lang-compare.py`, `generate-test-reports.py` →
    `suiterunner --compare DIR` / `--reports DIR` (`lake run cross-lang-compare`,

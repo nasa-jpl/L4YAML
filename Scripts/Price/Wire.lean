@@ -39,11 +39,11 @@ def applyProbe (lines : Array String) (which : String) : Except String (Array St
   else if which == "eof" then return insertAfter lines (← indexOf lines eofHead) hyp
   else throw s!"AssertionError: {which}"
 
-def reading (which : String) (patched : Array String) (out : String) :
+def reading (which : String) (owner : Nat → String) (out : String) :
     Except String (Array Nat × Array (String × Array Nat) × Array String) := do
   let (raw, away) := splitErrors out
   if raw.isEmpty && away.isEmpty then throw s!"{which}: the probe broke nothing -- it did not apply"
-  return (raw, byDeclLines patched raw, away)
+  return (raw, byDeclLines owner raw, away)
 
 def verboseLines (which : String) (raw : Array Nat) (decls : Array (String × Array Nat)) (away : Array String) : Array String :=
   #[s!"probe {which}: {raw.size} error sites in {decls.size} declarations", ""] ++ declRows decls ++
