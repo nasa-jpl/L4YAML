@@ -578,6 +578,13 @@ script «check-gate-vocab» (args) do
   let ws ← getWorkspace
   runGateExe ws.root.dir "scripts-gate-vocab" #[] args #[] ws.augmentedEnvVars
 
+/-- `lake run check-pack-births`: the pack producers' `PackAlt` writes (item 431, the pack lane's
+    recorded residue) against `expectedPackBirths`; reads `StreamAccum.olean`'s declaration ranges,
+    so the library must be built first. -/
+script «check-pack-births» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-pack-census" #["births"] args
+    #["L4YAML.Proofs.Production.StreamAccum"]
+
 /-- Every test exe, output captured under OUT (default `docs`), failures
 collected: `lake run run-all-tests [-- OUT]` (`scripts/run-all-tests.sh`
 before 4.5). Exit 1 when any suite or the suiterunner HTML report failed. -/

@@ -287,6 +287,7 @@ jobs:
           lake run check-closure-log
           lake build scripts-check-ledger
           lake run check-scripts-lean
+          lake run check-pack-births
           lake run check-hygiene -- docs/reports/stats.json
 
       # -------------------------------------------------------
