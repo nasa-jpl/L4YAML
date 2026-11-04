@@ -9767,13 +9767,18 @@ def testDedentMarksSurvive (state : IO.Ref TestCollector) : IO Unit := do
 /-! **Priority 86 — (ι-floor) refuted, and the seq-top key read at the dispatch** (item 430).  The
     frame arms' cover `Floor lo n ks ∧ Covered lo ks sc` stands at the park's own index (`Floor n n []`)
     or at the root (`Floor 0 k []`), so a mark BELOW the floor is a mark below the stack top after the
-    landing — an enclosing `?` park's.  `belowTop` must equal `survivors` (every mark surviving an
-    under-run landing sits strictly below the top's column) and be positive: the floor fact
-    `∀ nv ∈ markedCols sc, lo ≤ nv` is false whenever an enclosing `?` exists.  The second half reads
-    the item 297 arm's reachability: a key landing on a sequence frame's own column PASSES
-    `scanNextToken_dispatchContent` (`dispatchOk = keyOnSeqTop`) and the input dies one token later at
-    the `:` (`atSequenceIndent` → `trailingContent`, §8.2.1; `laterErrors = inputsWithKeyOnSeqTop`),
-    so the arm is reached with `h_dispatch = .ok` and `SeqTopKey` is its honest alternative. -/
+    landing — an enclosing `?` park's.  `belowTop` and `belowLanding` must equal `survivors` (every
+    mark surviving an under-run landing sits strictly below the top's column and below the landing
+    column) and be positive.  What the scanner can pin is the LOWER half of the link — the survivors
+    lie below the landing column, hence below any floor `lo ≥ s_prep.col`; that the producers' floors
+    never fall below the park's index (`Floor n n []`, the root literal, `Floor.mono_index` only
+    raising) is the cover READING in DOCS 430, not this test.  The second half reads the item 297
+    arm's reachability: a key landing on a sequence frame's own column PASSES
+    `scanNextToken_dispatchContent` (`dispatchOk = keyOnSeqTop`) and the input is rejected ON THE
+    `:` STEP — the scan step whose preprocessed character is `:` fails with `trailingContent`
+    (`atSequenceIndent`, §8.2.1); any other failure, position or cause does not count
+    (`laterErrors = inputsWithKeyOnSeqTop`) — so the arm is reached with `h_dispatch = .ok` and
+    `SeqTopKey` is its honest alternative. -/
 def testMarkFloorAndSeqTopKey (state : IO.Ref TestCollector) : IO Unit := do
   let underRunInputs : List String :=
     [ "? - a\n  - ? b\n    : c\n  - d\n: e", "? a\n:\n  - ? b\n    : c\n  - d\nz: 1", "? - a\n  - b: c\n  - d\n: e",
@@ -9782,6 +9787,7 @@ def testMarkFloorAndSeqTopKey (state : IO.Ref TestCollector) : IO Unit := do
   let mut underRun := 0
   let mut survivors := 0
   let mut belowTop := 0
+  let mut belowLanding := 0
   for input in underRunInputs do
     let mut s := L4YAML.Scanner.ScannerState.mk' input
     for _ in [:80] do
@@ -9798,6 +9804,7 @@ def testMarkFloorAndSeqTopKey (state : IO.Ref TestCollector) : IO Unit := do
                 if !marks.isEmpty then
                   survivors := survivors + 1
                   if marks.all (fun nv => (nv : Int) < e.column) then belowTop := belowTop + 1
+                  if marks.all (fun nv => nv < sP.col) then belowLanding := belowLanding + 1
             | none => pure ()
           s := sN
         | _ => break
@@ -9812,7 +9819,7 @@ def testMarkFloorAndSeqTopKey (state : IO.Ref TestCollector) : IO Unit := do
   for input in seqTopInputs do
     let mut s := L4YAML.Scanner.ScannerState.mk' input
     let mut sawKey := false
-    let mut errored := false
+    let mut colonRejects := false
     for _ in [:80] do
       match L4YAML.Scanner.scanNextToken_preprocess s with
       | .ok (some (sP, c)) =>
@@ -9830,14 +9837,18 @@ def testMarkFloorAndSeqTopKey (state : IO.Ref TestCollector) : IO Unit := do
         match L4YAML.Scanner.scanNextToken s with
         | .ok (some sN) => s := sN
         | .ok none => break
-        | .error _ => errored := true; break
+        | .error e =>
+          match c, e with
+          | ':', .trailingContent _ _ => colonRejects := true
+          | _, _ => pure ()
+          break
       | .ok none => break
-      | .error _ => errored := true; break
+      | .error _ => break
     if sawKey then
       inputsWithKeyOnSeqTop := inputsWithKeyOnSeqTop + 1
-      if errored then laterErrors := laterErrors + 1
-  check state s!"P86 (ι-floor) refuted / seq-top key reaches the dispatch (item 430): under-run landings={underRun} with surviving marks={survivors} all below the top={belowTop}; key-on-seq-top pauses={keyOnSeqTop} dispatchContent ok={dispatchOk} inputs={inputsWithKeyOnSeqTop} erroring later at the `:`={laterErrors}"
-    (underRun > 0 && survivors > 0 && belowTop == survivors && keyOnSeqTop > 0 && dispatchOk == keyOnSeqTop && inputsWithKeyOnSeqTop > 0 && laterErrors == inputsWithKeyOnSeqTop)
+      if colonRejects then laterErrors := laterErrors + 1
+  check state s!"P86 (ι-floor) refuted / seq-top key reaches the dispatch (item 430): under-run landings={underRun} with surviving marks={survivors} all below the top={belowTop} all below the landing column={belowLanding}; key-on-seq-top pauses={keyOnSeqTop} dispatchContent ok={dispatchOk} inputs={inputsWithKeyOnSeqTop} rejected by `trailingContent` on the `:` step={laterErrors}"
+    (underRun > 0 && survivors > 0 && belowTop == survivors && belowLanding == survivors && keyOnSeqTop > 0 && dispatchOk == keyOnSeqTop && inputsWithKeyOnSeqTop > 0 && laterErrors == inputsWithKeyOnSeqTop)
 
 def testFlowCarrier (state : IO.Ref TestCollector) : IO Unit := do
   let nestedQ : List String := ["?\n  ? -\n: w\n", "? - ? - a\n  : b\n: c\n", "?\n  ?\n    -\n    - b\n  ? c\n: w\n", "? ? - a\n  : b\n: c\n", "- ? - a\n  : b\n"]
