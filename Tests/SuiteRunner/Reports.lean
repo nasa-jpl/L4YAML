@@ -218,6 +218,26 @@ where
 
 #guard xmlUnescape "a &lt;b&gt; &amp;&quot;&apos;&#65;&#x42; &bogus; &" == "a <b> &\"'AB &bogus; &"
 
+/-- Recognized XML entities and scalar-valued numeric character references.
+    Reject malformed references before the permissive display unescaper runs. -/
+partial def validXmlEntities : List Char → Bool
+  | [] => true
+  | '&' :: t =>
+    let ent := t.takeWhile (· != ';')
+    let e := String.ofList ent
+    let num : Option Nat :=
+      if e.startsWith "#x" then
+        let hs := ent.drop 2
+        if hs.isEmpty || !hs.all (fun c => c.isDigit || "abcdefABCDEF".toList.contains c) then none
+        else some (hs.foldl (fun n c => n * 16 + (if c.isDigit then c.toNat - '0'.toNat else c.toLower.toNat - 'a'.toNat + 10)) 0)
+      else if e.startsWith "#" then (String.ofList (ent.drop 1)).toNat? else none
+    let scalar := match num with
+      | some n => n == 9 || n == 10 || n == 13 || (n ≥ 32 && n ≤ 0xD7FF) || (n ≥ 0xE000 && n ≤ 0xFFFD) || (n ≥ 0x10000 && n ≤ 0x10FFFF)
+      | none => false
+    t.length > ent.length && (["amp", "lt", "gt", "quot", "apos"].contains e || scalar) &&
+      validXmlEntities (t.drop (ent.length + 1))
+  | _ :: t => validXmlEntities t
+
 /-- A start tag's attributes: `name="value"` / `name='value'`, unescaped; an
     unquoted or missing value is an error, as for `xml.etree`. -/
 partial def attrsOf (tag : String) : Except String (List (String × String)) :=
@@ -231,11 +251,15 @@ where
     let rest := (cs.drop name.length).dropWhile Char.isWhitespace
     match rest with
     | '=' :: t =>
+      if acc.any (fun kv => kv.1 == String.ofList name) then
+        .error s!"duplicate attribute {String.ofList name}"
+      else
       match t.dropWhile Char.isWhitespace with
       | q :: v =>
         if q == '"' || q == '\'' then
           let val := v.takeWhile (· != q)
           if val.length == v.length then .error s!"unterminated value of attribute {String.ofList name}"
+          else if !validXmlEntities val || val.contains '<' then .error s!"invalid value of attribute {String.ofList name}"
           else go (v.drop (val.length + 1)) ((String.ofList name, xmlUnescape (String.ofList val)) :: acc)
         else .error s!"unquoted value of attribute {String.ofList name}"
       | [] => .error s!"attribute {String.ofList name} has no value"
@@ -251,18 +275,21 @@ where
     comments, declarations and CDATA skipped; `<x/>` is start and end.  An
     unterminated tag, comment, CDATA section or declaration is an error. -/
 partial def tokens (s : String) : Except String (List (String × List (String × String) × Bool × Bool)) :=
-  go s.toList []
+  go s.toList [] 0
 where
-  go (cs : List Char) (acc : List (String × List (String × String) × Bool × Bool)) :
+  go (cs : List Char) (acc : List (String × List (String × String) × Bool × Bool)) (depth : Nat) :
       Except String (List (String × List (String × String) × Bool × Bool)) :=
     match cs with
     | [] => .ok acc.reverse
-    | '<' :: '!' :: '-' :: '-' :: t => do go (← skipTo t ['-', '-', '>'] "comment") acc
-    | '<' :: '!' :: '[' :: 'C' :: 'D' :: 'A' :: 'T' :: 'A' :: '[' :: t => do go (← skipTo t [']', ']', '>'] "CDATA section") acc
-    | '<' :: '!' :: t | '<' :: '?' :: t => do go (← skipTo t ['>'] "declaration") acc
+    | '<' :: '!' :: '-' :: '-' :: t => do go (← skipTo t ['-', '-', '>'] "comment") acc depth
+    | '<' :: '!' :: '[' :: 'C' :: 'D' :: 'A' :: 'T' :: 'A' :: '[' :: t => do go (← skipTo t [']', ']', '>'] "CDATA section") acc depth
+    | '<' :: '!' :: t | '<' :: '?' :: t => do go (← skipTo t ['>'] "declaration") acc depth
     | '<' :: '/' :: t => do
       let name := t.takeWhile fun c => c != '>' && !c.isWhitespace
-      go (← skipTo t ['>'] s!"end tag </{String.ofList name}>") ((String.ofList name, [], false, true) :: acc)
+      let afterName := (t.drop name.length).dropWhile Char.isWhitespace
+      match afterName with
+      | '>' :: rest => go rest ((String.ofList name, [], false, true) :: acc) (depth - 1)
+      | _ => throw s!"invalid end tag </{String.ofList name}>"
     | '<' :: t => do
       let body := takeTag t
       if body.length == t.length then throw s!"unterminated tag <{String.ofList (body.take 20)}"
@@ -270,8 +297,15 @@ where
       let selfClose := body.getLast? == some '/'
       let name := body.takeWhile fun c => !c.isWhitespace && c != '/' && c != '>'
       let attrs ← attrsOf (String.ofList body)
-      go rest ((String.ofList name, attrs, true, selfClose) :: acc)
-    | _ :: t => go t acc
+      go rest ((String.ofList name, attrs, true, selfClose) :: acc) (depth + if selfClose then 0 else 1)
+    | '&' :: t => do
+      if depth == 0 then throw "text outside root element"
+      let ent := t.takeWhile (· != ';')
+      if t.length == ent.length || !validXmlEntities ('&' :: ent ++ [';']) then throw "invalid entity in content"
+      go (t.drop (ent.length + 1)) acc depth
+    | c :: t => do
+      if depth == 0 && !c.isWhitespace then throw "text outside root element"
+      go t acc depth
   skipTo (cs : List Char) (pat : List Char) (what : String) : Except String (List Char) :=
     match cs with
     | [] => .error s!"unterminated {what}"
@@ -391,6 +425,27 @@ def pythonFfiHtml (sections : List Section) : String × Nat := Id.run do
 #guard junitCases "<testsuite><testcase name=\"a\"" == .error "unterminated tag <testcase name=\"a\""
 #guard junitCases "<?xml version=\"1.0\"?>\n" == .error "no root element"
 #guard junitCases "</testsuite>" == .error "end tag </testsuite> with no open element"
+
+-- Malformed JUnit documents must not become green one-test reports.  The
+-- original Python ElementTree reader rejects each of these six inputs.
+#guard (match junitCases "garbage<testsuite><testcase name=\"ok\"/></testsuite>" with
+  | .error _ => true | .ok _ => false)
+#guard (match junitCases "<testsuite><testcase name=\"ok\"/></testsuite>garbage" with
+  | .error _ => true | .ok _ => false)
+#guard (match junitCases "<testsuite><testcase name=\"a\" name=\"b\"/></testsuite>" with
+  | .error _ => true | .ok _ => false)
+#guard (match junitCases "<testsuite><testcase name=\"&unknown;\"/></testsuite>" with
+  | .error _ => true | .ok _ => false)
+#guard (match junitCases "<testsuite><testcase name=\"a\"/> &broken; </testsuite>" with
+  | .error _ => true | .ok _ => false)
+#guard (match junitCases "<testsuite><testcase name=\"a\"/></testsuite garbage>" with
+  | .error _ => true | .ok _ => false)
+
+-- Legitimate whitespace, escaping, and CDATA remain accepted.
+#guard junitCases "\n<testsuite><testcase name=\"a &amp; b\"/></testsuite> \n" ==
+  .ok [⟨".a & b", "PASS", "pass", "0"⟩]
+#guard junitCases "<testsuite><testcase name=\"ok\"/><![CDATA[&broken;]]></testsuite>" ==
+  .ok [⟨".ok", "PASS", "pass", "0"⟩]
 
 def exampleCases : List Case := (junitCases exampleJunit).toOption.getD []
 #guard (pythonFfiHtml [⟨"T", exampleCases⟩]).2 == 3
