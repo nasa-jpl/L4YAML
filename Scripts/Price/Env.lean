@@ -70,13 +70,36 @@ def headerEnd (lines : Array String) : Nat := Id.run do
 #guard headerEnd #["lemma a : True := trivial"] == 0
 #guard isHeaderLine "public meta import A"
 
+/-- `L4YAML/Proofs/Production/StreamAccum.lean` → `L4YAML.Proofs.Production.StreamAccum`. -/
+def moduleOf (target : String) : String :=
+  let t := if target.endsWith ".lean" then Scripts.Punt.Price.take target (target.length - 5) else target
+  String.map (fun c => if c == '/' then '.' else c) t
+
+#guard moduleOf "L4YAML/Proofs/Production/StreamAccum.lean" == "L4YAML.Proofs.Production.StreamAccum"
+
+/-- A wide (`lake build`) log shows the patched module was reached: a `Built M` / `Building M`
+    / `Replayed M` record for it (`M (`, `M:` or end of line after the name). -/
+def reachedModule (target out : String) : Bool :=
+  let m := moduleOf target
+  (out.splitOn "\n").any fun l =>
+    ["Built ", "Building ", "Replayed "].any fun kw =>
+      let parts := l.splitOn (kw ++ m)
+      parts.length > 1 && ((parts.drop 1).head!.isEmpty || (parts.drop 1).head!.startsWith " " || (parts.drop 1).head!.startsWith ":")
+
+#guard reachedModule "L4YAML/Proofs/Production/StreamAccum.lean" "✔ [3/9] Built L4YAML.Proofs.Production.StreamAccum (12s)\n"
+#guard reachedModule "L4YAML/Proofs/Production/StreamAccum.lean" "✖ [3/9] Building L4YAML.Proofs.Production.StreamAccum\n"
+#guard !reachedModule "L4YAML/Proofs/Production/StreamAccum.lean" "✔ [3/9] Built L4YAML.Proofs.Production.StreamAccumX (1s)\n"
+#guard !reachedModule "L4YAML/Proofs/Production/StreamAccum.lean" "error: Tests/X.lean:12:3: boom\n"
+
 /-- The last `n` lines of a log, for a diagnostic. -/
 def tailLines (out : String) (n : Nat) : String :=
   let ls := (out.splitOn "\n").filter (· != "")
   "\n".intercalate (ls.drop (ls.length - min n ls.length))
 
+/-- `lake env lean TARGET` (or, with `wide`, `lake build`) over the patched copy → Lean's exit
+    code and its stdout+stderr. -/
 def leanOn (root : System.FilePath) (target : String) (suffix : String)
-    (original : String) (patched : Array String) : IO (Except String String) := do
+    (original : String) (patched : Array String) (wide : Bool := false) : IO (Except String (UInt32 × String)) := do
   let path := root / target
   let backup := System.FilePath.mk (path.toString ++ suffix)
   if ← backup.pathExists then
@@ -86,14 +109,18 @@ def leanOn (root : System.FilePath) (target : String) (suffix : String)
   IO.FS.writeFile backup original
   let res ← try
     IO.FS.writeFile path ("\n".intercalate patched.toList)
-    let r ← IO.Process.output { cmd := "lake", args := #["env", "lean", target], cwd := some root }
+    let args := if wide then #["build"] else #["env", "lean", target]
+    let r ← IO.Process.output { cmd := "lake", args, cwd := some root }
     let out := r.stdout ++ r.stderr
     let locs := targetErrorLines target out
-    if r.exitCode != 0 && locs.isEmpty then
+    if wide then
+      if r.exitCode == 0 || !locs.isEmpty || reachedModule target out then pure (.ok (r.exitCode, out))
+      else pure (.error s!"lake build exited {r.exitCode} without reaching {target} (no `Built`/`Building` line for its module and no error location in it) — an unrelated failure, not a reading:\n{tailLines out 20}")
+    else if r.exitCode != 0 && locs.isEmpty then
       pure (.error s!"lake env lean {target} exited {r.exitCode} without an error location in {target} — not a reading (Lake or the toolchain failed before elaborating the file):\n{tailLines out 20}")
     else if locs.any (· ≤ headerEnd patched) then
       pure (.error s!"lake env lean {target}: an error in the file's import header (line {(locs.filter (· ≤ headerEnd patched)).head!}) — a dependency did not load, so nothing below it is a reading; build the library first (`lake build L4YAML`):\n{tailLines out 20}")
-    else pure (.ok out)
+    else pure (.ok (r.exitCode, out))
   catch e => pure (.error s!"{e}")
   IO.FS.writeFile path original
   let after := Scripts.Flip.Patch.digest (← IO.FS.readBinFile path)

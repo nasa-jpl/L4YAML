@@ -14303,7 +14303,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
   -- is read only by the genesis and the spend.  The datum's source is
   -- preprocessing's own law — it accepts a landing out of flow exactly at a
   -- column that stands on the stack (198 = 54 + 144, both directions).  The
-  -- bill is `scripts/carrier_price.py`: seven declarations for the anchor
+  -- bill is `lake run price -- carrier`: seven declarations for the anchor
   -- ring, one for the gate below it, one for the consumer below that.
   --
   -- **Item 267: the carrier, BUILT.**  `ParkCore` carries the four transport
@@ -14315,7 +14315,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
   -- below hands `h_kpkg none`, so this frame is UNGATED and its node reading is
   -- unconditional -- which is why only an escape can supply one.  Three
   -- measurements price the change (`ScannerFlowOpenUnderRun` §8,
-  -- `Tests/Guards/Proofs/ParkBill.lean` §5, `scripts/wire_price.py`):
+  -- `Tests/Guards/Proofs/ParkBill.lean` §5, `lake run price -- wire`):
   --
   -- * the family dies at FOUR checks, not two -- §8.1's floor and §9.2's
   --   dangling run, each at a mid-stream and an end-of-input depth, and the

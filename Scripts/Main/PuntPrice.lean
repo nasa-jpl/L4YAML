@@ -38,8 +38,8 @@ def die (msg : String) (code : UInt32 := 1) : IO UInt32 := do
 def readLines (text : String) : Array String := (text.splitOn "\n").toArray
 
 /-- `Scripts.Price.Env.leanOn` with the Python's backup name. -/
-def leanOn (root : System.FilePath) (original : String) (patched : Array String) : IO (Except String String) :=
-  Scripts.Price.Env.leanOn root target ".punt-bak" original patched
+def leanOn (root : System.FilePath) (original : String) (patched : Array String) : IO (Except String String) := do
+  return (← Scripts.Price.Env.leanOn root target ".punt-bak" original patched).map (·.2)
 
 def printAll (ls : Array String) : IO Unit := do
   let out ← IO.getStdout

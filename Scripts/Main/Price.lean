@@ -7,6 +7,9 @@ public import Scripts.Price.MvSlotTop
 public import Scripts.Price.OpenMap
 public import Scripts.Price.ParkNic0
 public import Scripts.Price.LandingNic0
+public import Scripts.Price.Carrier
+public import Scripts.Price.Wire
+public import Scripts.Price.Arm
 
 /-!
 # `lake run price -- SCRIPT [MODE…]` — the six `*_price.py` of items 205–210 in Lean
@@ -39,10 +42,15 @@ def usage : String := s!"usage: lake run price -- SCRIPT [MODE…] [-C ROOT]
   park-nic0    [{Scripts.Price.ParkNic0.usageModes}]
                                            park_nic0_price.py (items 206/207): the armed-at-column-zero carrier
   landing-nic0 [<lemma>|all|payers|drop]   landing_nic0_price.py (item 210): item 154's flag at the block landing
+  carrier      [core|slot|prop|consumer|gate|all]   carrier_price.py (items 266/267): the built carrier by producers
+  wire         [gate|anchor|route|eof|all] [--wide] wire_price.py (item 268): the carrier's wiring (`--wide`: lake build)
+  arm                                      arm_price.py (item 270): what each arm holds, premise by premise (24 runs)
   -C, --root ROOT  repository root (default: the current directory)
   -h, --help / -V, --version
 
-Each mode but `payers` patches {target} in place, runs `lake env lean` on it and restores
+`all` of carrier/wire and `arm` end by comparing their line with the pin in
+Tests/Guards/Proofs/ScannerFlowOpenUnderRun.lean (`expectedCarrierPrice`, `expectedWirePrice`,
+`expectedArmTable`); exit 1 when it disagrees or is absent.  Each mode but `payers` patches {target} in place, runs `lake env lean` on it and restores
 it (digests on stderr); never run one beside a `lake build`."
 
 def die (msg : String) (code : UInt32 := 1) : IO UInt32 := do
@@ -63,7 +71,7 @@ def probeRun (root : System.FilePath) (suffix original : String) (headline : Str
     IO.println headline
     match ← Scripts.Price.Env.leanOn root target suffix original patched with
     | .error e => die e
-    | .ok body => printAll (report patched body); pure 0
+    | .ok (_, body) => printAll (report patched body); pure 0
 
 def parkTop (root : System.FilePath) (original : String) (lines : Array String) (pos : List String) : IO UInt32 := do
   let which := pos.headD "ring1"
@@ -115,7 +123,7 @@ def landingNic0 (root : System.FilePath) (original : String) (lines : Array Stri
         | .ok (patched, _) =>
           match ← Scripts.Price.Env.leanOn root target ".landing-bak" original patched with
           | .error e => return ← die e
-          | .ok body => printAll (Scripts.Price.LandingNic0.dropLines n (sortedNat (errorLines body)))
+          | .ok (_, body) => printAll (Scripts.Price.LandingNic0.dropLines n (sortedNat (errorLines body)))
       return 0
   if !Scripts.Price.LandingNic0.modes.contains which then
     return ← die s!"usage: landing_nic0_price.py [{Scripts.Price.LandingNic0.usageModes}]"
@@ -124,7 +132,94 @@ def landingNic0 (root : System.FilePath) (original : String) (lines : Array Stri
     ((Scripts.Price.LandingNic0.applyProbe lines which).map (·.1))
     (fun patched body => Scripts.Price.LandingNic0.report patched names body)
 
-def scripts : List String := ["park-top", "vslot-top", "mv-slot-top", "open-map", "park-nic0", "landing-nic0"]
+def readPin (root : System.FilePath) : IO (Option String) := do
+  let p := root / Scripts.Price.Pin.pin
+  if ← p.pathExists then return some (← IO.FS.readFile p) else return none
+
+def carrier (root : System.FilePath) (original : String) (lines : Array String) (pos : List String) : IO UInt32 := do
+  let which := pos.headD "core"
+  let one (p : String) : IO (Except String (Array Nat × Array (String × Array Nat))) := do
+    match Scripts.Price.Carrier.applyProbe lines p with
+    | .error e => return .error e
+    | .ok patched =>
+      match ← Scripts.Price.Env.leanOn root target ".carrier-price-bak" original patched with
+      | .error e => return .error e
+      | .ok (_, out) => return Scripts.Price.Carrier.reading p patched out
+  if which == "all" then
+    let mut got : Array String := #[]
+    for p in Scripts.Price.Carrier.probes do
+      match ← one p with
+      | .error e => return ← die e
+      | .ok (raw, decls) =>
+        IO.println (Scripts.Price.Carrier.allRow p raw.size decls.size (Scripts.Price.Carrier.names decls))
+        got := got.push s!"{p}={decls.size}"
+    let gotS := " ".intercalate got.toList
+    IO.println ""; IO.println s!"CARRIER-PRICE {gotS}"
+    let want := (← readPin root).bind (Scripts.Price.Pin.expectedLiteral? · "expectedCarrierPrice")
+    let (ls, rc) := Scripts.Price.Pin.pinVerdict "CARRIER" want gotS
+    printAll ls; return rc
+  if !Scripts.Price.Carrier.probes.contains which then return ← die Scripts.Price.Carrier.usage
+  match ← one which with
+  | .error e => die e
+  | .ok (raw, decls) => printAll (Scripts.Price.Carrier.verboseLines which raw decls); return 0
+
+def wire (root : System.FilePath) (original : String) (lines : Array String) (pos : List String) : IO UInt32 := do
+  let wide := pos.contains "--wide"
+  let pos := pos.filter (· != "--wide")
+  let which := pos.headD "gate"
+  let one (p : String) : IO (Except String (Array Nat × Array (String × Array Nat) × Array String)) := do
+    match Scripts.Price.Wire.applyProbe lines p with
+    | .error e => return .error e
+    | .ok patched =>
+      match ← Scripts.Price.Env.leanOn root target ".wire-price-bak" original patched (wide := wide) with
+      | .error e => return .error e
+      | .ok (_, out) => return Scripts.Price.Wire.reading p patched out
+  if which == "all" then
+    let mut got : Array String := #[]
+    for p in Scripts.Price.Wire.probes do
+      match ← one p with
+      | .error e => return ← die e
+      | .ok (raw, decls, away) =>
+        IO.println (Scripts.Price.Wire.allRow p raw.size decls.size (Scripts.Price.Wire.names decls) away)
+        got := got.push s!"{p}={decls.size}"
+    let gotS := " ".intercalate got.toList
+    IO.println ""; IO.println s!"WIRE-PRICE {gotS}"
+    let want := (← readPin root).bind (Scripts.Price.Pin.expectedLiteral? · "expectedWirePrice")
+    let (ls, rc) := Scripts.Price.Pin.pinVerdict "WIRE" want gotS
+    printAll ls; return rc
+  if !Scripts.Price.Wire.probes.contains which then return ← die Scripts.Price.Wire.usage
+  match ← one which with
+  | .error e => die e
+  | .ok (raw, decls, away) => printAll (Scripts.Price.Wire.verboseLines which raw decls away); return 0
+
+def arm (root : System.FilePath) (original : String) (lines : Array String) : IO UInt32 := do
+  let idxs := Scripts.Price.Arm.spendLines lines
+  if idxs.size != Scripts.Price.Arm.arms.length then
+    return ← die s!"expected {Scripts.Price.Arm.arms.length} spends of `{Scripts.Price.Arm.spend}`, found {idxs.size} -- the arm population moved and this table is not about it"
+  let path := root / target
+  let before := Scripts.Lean.Md5.md5 (← IO.FS.readBinFile path)
+  let mut rows : Array (String × String × Bool) := #[]
+  for (armName, li) in Scripts.Price.Arm.arms.zip idxs.toList do
+    for (name, ty, tac) in Scripts.Price.Arm.premises do
+      let patched := Scripts.Price.Arm.patched lines li ty tac
+      match ← Scripts.Price.Env.leanOn root target ".arm-price-bak" original patched with
+      | .error e => return ← die e
+      | .ok (code, out) =>
+        let paid := code == 0
+        rows := rows.push (armName, name, paid)
+        IO.println (Scripts.Price.Arm.rowLine paid armName name)
+        if !paid then if let some d := Scripts.Price.Arm.firstDiag out then IO.println d
+  let after := Scripts.Lean.Md5.md5 (← IO.FS.readBinFile path)
+  IO.println ""; IO.println (Scripts.Price.Arm.md5Line (path.fileName.getD target) before after)
+  let line := Scripts.Price.Arm.tableLine rows
+  IO.println line
+  let got := Scripts.Punt.Price.drop line "ARMTABLE ".length
+  let want := (← readPin root).bind (Scripts.Price.Pin.expectedScanned? · "expectedArmTable")
+  let (ls, rc) := Scripts.Price.Pin.pinVerdict "ARM" want got
+  printAll ls
+  return (if before != after then 1 else rc)
+
+def scripts : List String := ["park-top", "vslot-top", "mv-slot-top", "open-map", "park-nic0", "landing-nic0", "carrier", "wire", "arm"]
 
 def run (args : List String) : IO UInt32 := do
   if args.any (fun a => a == "-h" || a == "--help") then IO.println usage; return 0
@@ -133,6 +228,7 @@ def run (args : List String) : IO UInt32 := do
   let rec opts : List String → System.FilePath → List String → Except String (System.FilePath × List String)
     | [], r, pos => .ok (r, pos.reverse)
     | "-C" :: v :: t, _, pos | "--root" :: v :: t, _, pos => opts t v pos
+    | "--wide" :: t, r, pos => opts t r ("--wide" :: pos)
     | a :: t, r, pos => if a.startsWith "-" && a.length > 1 then .error s!"unknown option '{a}'" else opts t r (a :: pos)
   let (root, pos) ← match opts args "." [] with
     | .ok x => pure x
@@ -140,7 +236,8 @@ def run (args : List String) : IO UInt32 := do
   let some script := pos.head? | return ← die usage 2
   if !scripts.contains script then return ← die s!"unknown script '{script}'\n{usage}" 2
   let pos := pos.drop 1
-  if script != "open-map" && pos.length > 1 then return ← die s!"one mode at a time\n{usage}" 2
+  if script != "wire" && pos.contains "--wide" then return ← die s!"--wide is a `wire` option\n{usage}" 2
+  if script != "open-map" && (pos.filter (· != "--wide")).length > 1 then return ← die s!"one mode at a time\n{usage}" 2
   let root ← try IO.FS.realPath root catch e => return ← die s!"invalid root: {e}" 2
   let path := root / target
   if !(← path.pathExists) then return ← die s!"{path} not found (pass -C ROOT)" 2
@@ -152,7 +249,10 @@ def run (args : List String) : IO UInt32 := do
   | "mv-slot-top" => mvSlotTop root original lines
   | "open-map" => openMap root original lines pos
   | "park-nic0" => parkNic0 root original lines pos
-  | _ => landingNic0 root original lines pos
+  | "landing-nic0" => landingNic0 root original lines pos
+  | "carrier" => carrier root original lines pos
+  | "wire" => wire root original lines pos
+  | _ => arm root original lines
 
 end Scripts.MainPrice
 

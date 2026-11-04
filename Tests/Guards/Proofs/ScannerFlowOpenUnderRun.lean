@@ -445,7 +445,7 @@ the input run three to five steps past the open, so no hypothesis of
 §10 prices a missing carrier by the PRODUCERS it touches, and this section is
 the half of that price the runtime decides.  The other half —
 `passenger=7 heavy=7 prop=8 consumer=1 gate=1`, pinned below — is
-`scripts/carrier_price.py`.
+`lake run price -- carrier`.
 
 **The transport already exists.**  `ParkAnchor sc0 s d` runs a fact from a
 depth-0 flow OPEN to its CLOSE and is spent there by `ParkAnchor.dangling_eq`,
@@ -740,7 +740,7 @@ private def preLaw : Nat × Nat × Nat × Nat × Nat := Id.run do
 
 #guard preLaw == (198, 54, 54, 144, 144)
 
-/-- What `scripts/carrier_price.py` reads by editing `StreamAccum.lean` and
+/-- What `lake run price -- carrier` reads by editing `StreamAccum.lean` and
     counting the declarations each edit breaks.
 
     Five probes, five rings, aimed at the BUILT carrier (item 267).  `core` and
@@ -1066,7 +1066,7 @@ private def sourceFacts : Nat × Nat × Nat × Nat × Nat × Nat × Nat × Nat :
 
 #guard sourceFacts == (144, 0, 144, 144, 54, 144, 90, 54)
 
-/-- **§3 What the wiring costs, by producers** (`scripts/wire_price.py`).
+/-- **§3 What the wiring costs, by producers** (`lake run price -- wire`).
 
     Four probes, four rings.  `gate` widens `GateOf`'s arity — who READS the
     frame's gate; `anchor` adds the carrier as a third conjunct of
@@ -1081,7 +1081,7 @@ private def sourceFacts : Nat × Nat × Nat × Nat × Nat × Nat × Nat × Nat :
     therefore belongs on the route, not on `GateOf`. -/
 def expectedWirePrice : String := "gate=49 anchor=2 route=3 eof=1"
 
-/-- **§10a What each `drop_ride` arm HOLDS** (`scripts/arm_price.py`).
+/-- **§10a What each `drop_ride` arm HOLDS** (`lake run price -- arm`).
 
     Twenty-four cells: eight readings against the three arms that spend the
     ride, each taken by ELABORATION at the spend site — `assumption` for the
@@ -1392,7 +1392,7 @@ private def lineSource : Nat × Nat × Nat × Nat × Nat × Nat × Nat := Id.run
     row, and `floorFacts`'s own last three say the remaining premise does too —
     54 below the incoming floor, 90 at it, 0 above.  So every premise
     `preprocess_floor_eq` asks for is TRUE at every input this branch admits,
-    and `scripts/arm_price.py` reads none of them as nameable inside the arm:
+    and `lake run price -- arm` reads none of them as nameable inside the arm:
     what the ride owes is a COORDINATE, not a fact. -/
 private def genesisFacts : Nat × Nat × Nat × Nat × Nat × Nat × Nat := Id.run do
   let mut rows := 0
