@@ -102,8 +102,11 @@ namespace L4YAML.Tests.Guards.GateVocabulary
 -- check-prefixed name without backticks (it no longer resolves) and drops its `ev₁` rows.
 -- Item 387 review round (2026-10-29): mentions 478 → 479 — the Priority 58b paragraph names the
 -- scanner preprocess entry it walks once more; no name added or retired.
+-- Item 430 (2026-11-04): mentions 484 → 485 — Priority 86's docstring names the content dispatch
+-- step it calls directly on the seq-top key landings (not spelled here: it would move `self`); no name
+-- added or retired.
 def expectedGateVocab : String :=
-  "names=113 mentions=484 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
+  "names=113 mentions=485 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
 
 end L4YAML.Tests.Guards.GateVocabulary
 
