@@ -1953,7 +1953,7 @@ lemma noek_of_flowLevel_succ {sc : ScannerState} {n : Nat}
     Item 205 named this lemma and the field it feeds; what it could not name
     was the count, because `noPending`'s "eight producers" was a sentence
     (item 116) that four items spent and no instrument had re-derived.
-    `scripts/park_top_price.py noPending` derives it: **8**, of which these
+    `lake run price -- park-top noPending` derives it: **8**, of which these
     seven, and the raw error list reads ELEVEN. -/
 lemma ntop_of_flowLevel_succ {sc : ScannerState} {n : Nat}
     (h : sc.flowLevel = n + 1) :
@@ -2098,7 +2098,7 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       -- dispatch reads is this one — which is empty.  That is the one of ring
       -- 1's seven producers whose payment is a FIELD rather than a reading.
       --
-      -- Eight is the instrument's number (`scripts/park_top_price.py
+      -- Eight is the instrument's number (`lake run price -- park-top
       -- noPending`), not item 116's sentence, which said the same thing and
       -- was spent four times before anything re-derived it.
       (h_ntop : sc.inFlow = false → sc.currentIndent < 0)
@@ -3121,7 +3121,7 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       -- this number being absent.
       --
       -- It is an OPTION for one producer's sake, and that producer is
-      -- measured, not guessed.  Six of the seven (`scripts/park_top_price.py
+      -- measured, not guessed.  Six of the seven (`lake run price -- park-top
       -- ring1`) pay `Or.inl`: the four LANDED ones read the floor off the
       -- walk's unwind (`landing_floor_of_arm`, or `dash_landing_floor` where
       -- the park stands AT a line start and item 207's flag runs the unwind
@@ -3132,10 +3132,10 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       -- off an already-open `[185]`/`[186]` slot (`? - a`) — where no break
       -- was crossed, so no unwind ran, and the stack the `-` pushes onto is
       -- the SLOT's.  Its price is measured and it is not this item's:
-      -- `scripts/vslot_top_price.py` says ONE payer (`accum_block_pending`'s
+      -- `lake run price -- vslot-top` says ONE payer (`accum_block_pending`'s
       -- relay, whose raw error list reads five), that payer needs a top field
       -- on `pendingMapValue` (**6** producers,
-      -- `scripts/park_top_price.py pendingMapValue`), and each of those six
+      -- `lake run price -- park-top pendingMapValue`), and each of those six
       -- `*_open_map` lemmas needs a dispatch floor none of them holds — a
       -- further ring.  Three rings for one arm, which is why the field lands
       -- as an option and the arm lands with item 209. ═══
@@ -3274,8 +3274,8 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       -- there IS a slot to fill, so a field asked of every producer would ask
       -- three of them for a number their consumer never reads — item 197's
       -- rule, run the other way.  The difference is MEASURED, not argued:
-      -- `scripts/park_top_price.py pendingMapValue` prices the constructor's
-      -- producers at **6** and `scripts/mv_slot_top_price.py` prices this
+      -- `lake run price -- park-top pendingMapValue` prices the constructor's
+      -- producers at **6** and `lake run price -- mv-slot-top` prices this
       -- conjunct's at **3** (`question_open_map`, `colon_open_map_explicit`,
       -- `compact_open_map`).  The three that owe nothing are the ones item 125
       -- already named: `[189]`'s keyless `:` and the two implicit-key openers
@@ -28000,11 +28000,11 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
                  -- Item 208 priced this at three rings and measured each;
                  -- item 209 found the middle one HALF that price — the honest
                  -- field is a conjunct on `h_vslot`, whose payers are **3** of
-                 -- the six `*_open_map` lemmas (`scripts/mv_slot_top_price.py`),
+                 -- the six `*_open_map` lemmas (`lake run price -- mv-slot-top`),
                  -- and the two openers that fell away are the two whose push is
                  -- at the KEY's column rather than the indicator's.  Ring 3 is
                  -- **6** call sites in 4 declarations
-                 -- (`scripts/open_map_price.py`), every one of which pays from
+                 -- (`lake run price -- open-map`), every one of which pays from
                  -- item 208's own fields. ═══
                  (indicator_top_dash_at_col
                    (by have := SIndent_col h_ind; omega) hcorr_prep

@@ -419,6 +419,11 @@ lean_exe «scripts-gen-traceof» where
 lean_exe «scripts-punt-price» where
   root := `Scripts.Main.PuntPrice
 
+-- Phase 3.3: the six `*_price.py` of items 205–210 as `lake run price -- SCRIPT [MODE…]`.
+@[default_target]
+lean_exe «scripts-price» where
+  root := `Scripts.Main.Price
+
 @[default_target]
 lean_exe «scripts-beta5» where
   root := `Scripts.Main.Beta5
@@ -522,6 +527,12 @@ script «gen-traceof» (args) do
     reasons off `lake env lean`'s error locations (item 211). Never beside a `lake build`. -/
 script «punt-price» (args) do
   runGateExe (← getWorkspace).root.dir "scripts-punt-price" #[] args
+
+/-- `lake run price -- park-top|vslot-top|mv-slot-top|open-map|park-nic0|landing-nic0 [MODE…]`:
+    the six `*_price.py` of items 205–210 (a probe patched into `StreamAccum.lean`,
+    `lake env lean`, the errors anchored on applications). Never beside a `lake build`. -/
+script «price» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-price" #[] args
 
 /-- Rule 9 phase 4 row 1: `lake run cross-lang-compare -- DIR` runs suiterunner's
 four backends under the five presets and writes `DIR/cross-lang-results.json`

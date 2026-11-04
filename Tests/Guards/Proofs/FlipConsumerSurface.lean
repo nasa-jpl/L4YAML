@@ -77,7 +77,7 @@ instead of splitting on it.  A row leaving this census is what a class
 emptying looks like, which is the shape item 184 built the lane for.
 
 **Re-derived from cold at item 210**, independently of this module:
-`scripts/park_nic0_price.py sites` threads a premise through the escape and each
+`lake run price -- park-nic0 sites` threads a premise through the escape and each
 of its wrappers and reads the census off the failures — **9 applications across
 4 consumer lemmas**, 3 `accum_block_on_closeThenBlock`, 3
 `…_pendingBlockContent`, 2 `…_pendingBlock`, 1 `accum_content_pending`.  That
