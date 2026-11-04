@@ -12,6 +12,7 @@ public import Scripts.Price.Wire
 public import Scripts.Price.Arm
 public import Scripts.Price.Ride
 public import Scripts.Lean.DeclRanges
+public import Scripts.Price.Close
 public import Scripts.Price.Ride
 
 /-!
@@ -51,6 +52,7 @@ def usage : String := s!"usage: lake run price -- SCRIPT [MODE…] [-C ROOT]
   coordinate   [bridge|ident|split|all|wide] coordinate_price.py (item 271): the bridge, the arms' identity, the arity flip
   transport    [arms|optok|frames|pay|ride|all|wide] transport_price.py (item 272): the open token's position through the arms
   ride         [arm|ride|carrier|transport|all|wide] ride_price.py (item 273): the arms with the ring paid; ride/carrier/transport flips
+  close        [probe|name|flip|all|wide] close_price.py (item 274): what the frame's CLOSE can pay for a reshaped carrier
   -C, --root ROOT  repository root (default: the current directory)
   -h, --help / -V, --version
 
@@ -530,7 +532,119 @@ def rideCmd (root : System.FilePath) (original : String) (lines : Array String) 
   printAll (refusedLines why)
   verdict root "RIDE" "expectedRidePrice" got
 
-def scripts : List String := ["park-top", "vslot-top", "mv-slot-top", "open-map", "park-nic0", "landing-nic0", "carrier", "wire", "arm", "coordinate", "transport", "ride"]
+open Scripts.Price.Close in
+def closeCmd (root : System.FilePath) (original : String) (lines : Array String) (pos : List String) : IO UInt32 := do
+  let which := pos.headD "all"
+  if !modes.contains which then return ← die s!"close: unknown mode '{which}' (one of {", ".intercalate modes})" 2
+  let sfx := ".close-price-bak"
+  let before ← md5Of root
+  let mut cells : Array (String × String) := #[]
+  let mut why : Array (String × String) := #[]
+  let mut nameC : Array String := #[]
+  let mut wrapC : Array String := #[]
+  let mut flips : Array (String × Nat × Array String) := #[]
+  let mut apps : Nat × Array String := (0, #[])
+  if which == "probe" || which == "all" then
+    IO.println "-- probe: what the slot branch of `gate` can be closed with"
+    match patchProbe lines with
+    | .error e => return ← die e
+    | .ok (at_, patched) =>
+      match ← Scripts.Price.Env.leanOn root target sfx original patched with
+      | .error e => return ← die e
+      | .ok (_, out) =>
+        match ← declOwner root lines patched with
+        | .error e => return ← die e
+        | .ok owner =>
+          let mut hit : Array (String × Array String) := #[]
+          for l in out.splitOn "\n" do
+            if let some (_, n) := Scripts.Price.Pin.errLoc? l then
+              let d := (ownerInBlock at_ n).getD (owner n)
+              hit := Scripts.Price.Attribute.addTo hit d (Scripts.Price.Attribute.strip l)
+          let stray := ((hit.map (·.1)).filter fun d => !(d.startsWith "_probe274_" || d.startsWith "_null274_")).qsort (· < ·)
+          if !stray.isEmpty then
+            return ← die s!"probe: the insertion broke declarations of its own host: {", ".intercalate stray.toList}"
+          for row in rowNames do
+            let ok := (hit.find? (·.1 == s!"_probe274_{row}")).isNone
+            if (hit.find? (·.1 == s!"_null274_{row}")).isNone then
+              return ← die s!"probe/{row}: `by assumption` PROVED the goal -- the row reads a hypothesis, not a derivation."
+            let cell := if ok then "B" else "O"
+            cells := cells.push (row, cell)
+            if !ok then why := why.push (row, ((hit.find? (·.1 == s!"_probe274_{row}")).map (·.2[0]!)).getD "")
+            IO.println (cellLine cell row)
+  if which == "name" || which == "all" then
+    IO.println "-- name: can the premise be stated where the spend is?"
+    for (prem, isWrap) in [(barePrem, false), (wrapPrem, true)] do
+      for head in [gateHead, closeHead] do
+        match patchPrem lines head prem with
+        | .error e => return ← die e
+        | .ok patched =>
+          match ← Scripts.Price.Env.leanOn root target sfx original patched with
+          | .error e => return ← die e
+          | .ok (code, out) =>
+            let errs := ((out.splitOn "\n").filter fun l => (Scripts.Price.Pin.errLoc? l).isSome).toArray.map Scripts.Price.Attribute.strip
+            let named := errs.any isNamed
+            IO.println (nameLine named head errs)
+            if !named && code == 0 then
+              return ← die s!"name/{headName head}: adding a premise broke NOTHING -- the census below would be vacuous and the edit did not apply."
+            let c := if named then "O" else "B"
+            if isWrap then wrapC := wrapC.push c else nameC := nameC.push c
+  let flip (label : String) (patched : Array String) : IO (Except String (Nat × Array String)) := do
+    match ← Scripts.Price.Env.leanOn root target sfx original patched with
+    | .error e => return .error e
+    | .ok (_, out) =>
+      match ← declOwner root lines patched with
+      | .error e => return .error e
+      | .ok owner =>
+        let raw := (Scripts.Price.Attribute.errorLines out).qsort (· < ·)
+        if raw.isEmpty then return .error s!"{label}: the flip broke nothing -- it did not apply"
+        let decls := Scripts.Price.Pin.byDeclLines owner raw
+        printAll (flipRows decls)
+        return .ok (raw.size, (decls.map (·.1)).qsort (· < ·))
+  if which == "flip" || which == "all" then
+    IO.println "-- flip: who must WRITE one, by declaration"
+    for (tag, head) in [("gate", gateHead), ("close", closeHead)] do
+      IO.println s!"   {tag}:"
+      match patchPrem lines head wrapPrem with
+      | .error e => return ← die e
+      | .ok patched =>
+        match ← flip tag patched with
+        | .error e => return ← die e
+        | .ok (n, ds) => flips := flips.push (tag, n, ds)
+    IO.println "   apps:"
+    match patchRename lines with
+    | .error e => return ← die e
+    | .ok patched =>
+      match ← flip "apps" patched with
+      | .error e => return ← die e
+      | .ok r => apps := r
+    IO.println "   closable:"
+    match patchClosable lines with
+    | .error e => return ← die e
+    | .ok patched =>
+      match ← flip "closable" patched with
+      | .error e => return ← die e
+      | .ok (n, ds) => flips := flips.push ("closable", n, ds)
+  if which == "wide" then
+    IO.println "-- wide: the wrapped premise on `gate_of_close`, over the tree"
+    match patchPrem lines closeHead wrapPrem with
+    | .error e => return ← die e
+    | .ok patched =>
+      match ← Scripts.Price.Env.leanOn root target sfx original patched (wide := true) with
+      | .error e => return ← die e
+      | .ok (code, out) =>
+        match wideReading code out with
+        | .error e => return ← die e
+        | .ok (rs, _) => printAll rs
+  if let some rc ← tail root which before then return rc
+  let got := gotLine cells nameC wrapC flips apps.1
+  IO.println ("CLOSE-PRICE " ++ got)
+  for t in ["gate", "close", "closable"] do
+    IO.println s!"  {t} sites in: {", ".intercalate (((flips.find? (·.1 == t)).map (·.2.2)).getD #[]).toList}"
+  IO.println s!"  apps sites in: {", ".intercalate apps.2.toList}"
+  for (row, out) in why.qsort (·.1 < ·.1) do IO.println s!"  {row} refused: {Scripts.Punt.Price.take out 170}"
+  verdict root "CLOSE" "expectedClosePrice" got
+
+def scripts : List String := ["park-top", "vslot-top", "mv-slot-top", "open-map", "park-nic0", "landing-nic0", "carrier", "wire", "arm", "coordinate", "transport", "ride", "close"]
 
 def run (args : List String) : IO UInt32 := do
   if args.any (fun a => a == "-h" || a == "--help") then IO.println usage; return 0
@@ -554,7 +668,7 @@ def run (args : List String) : IO UInt32 := do
   if !(← path.pathExists) then return ← die s!"{path} not found (pass -C ROOT)" 2
   let original ← IO.FS.readFile path
   let lines := readLines original
-  if ["carrier", "wire", "coordinate", "transport", "ride"].contains script then
+  if ["carrier", "wire", "coordinate", "transport", "ride", "close"].contains script then
     if let .error e ← Scripts.Price.Env.ensureBuilt root target then return ← die e
   match script with
   | "park-top" => parkTop root original lines pos
@@ -568,6 +682,7 @@ def run (args : List String) : IO UInt32 := do
   | "coordinate" => coordinate root original lines pos
   | "transport" => transport root original lines pos
   | "ride" => rideCmd root original lines pos
+  | "close" => closeCmd root original lines pos
   | _ => arm root original lines
 
 end Scripts.MainPrice
