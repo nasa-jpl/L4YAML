@@ -4626,6 +4626,14 @@ def expectedPackResidue : String :=
   -- re-pinned to `lake run pack-census -- residue` on the merged #207 tree (53a36ba0).
   "sites=74 decls=15 rounds=2 decline=70 relayTrue=0 relayState=4 leaf=58 uncond=12 stubs=1 promised=6"
 
+/-- Item 431 ((α-close), 2026-11-04): the pack lane's recorded residue — the three pack producers'
+`PackAlt` writes, counted off the source by `lake run pack-census -- births` (no flip): `h_alt` births
+(`… h_dispatch h_alt)`) `+` relays of a frames premise's `PackAlt` arm.  Items 427–430 read the births
+to the bottom (refused / guard-else / frame / fresh-document / mid-line classes in DOCS 431); a move
+here is a producer paid or born, and is an item's to record. -/
+def expectedPackBirths : String :=
+  "entryKeyPack_of_dispatch=9+5 entryPropsKeyPack_of_dispatch=9+5 content_dispatch_routed=23+0"
+
 /-! **The 32 roots (29 since item 307), by what the register does there** — a READING of each site
 (the compiler prices it when the construction is attempted, §1):
 

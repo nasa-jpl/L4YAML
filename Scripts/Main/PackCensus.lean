@@ -44,6 +44,7 @@ def usage : String := "usage: lake run pack-census -- [-C ROOT] <cmd> [options]
   flip     [-t|--tsv PATH] [-m|--max-rounds N] [-d|--dump-dir DIR]   PACK-FLIP: both PackAlt bodies False (the declines)
   residue  [-t|--tsv PATH] [-m|--max-rounds N] [-d|--dump-dir DIR]   PACK-RESIDUE: PackAlt = ExplicitValueRefused (the residue)
   classes  [-t|--tsv PATH]                                           RESIDUE-CLASSES: the declines by existential index
+  births                                                             PACK-BIRTHS: the pack producers' PackAlt writes (item 431)
 
 options
   -C, --root ROOT       repository root (default: the current directory)
@@ -192,6 +193,42 @@ def runFlip (o : Opts) (m : Mode) : IO UInt32 := do
       IO.println s!"{s.label}-PIN MOVED\n  got      {s.line}\n  expected {v}"
       return 1
 
+/-- `births` (item 431, the pack lane's (α-close)): the three pack producers' `PackAlt` writes, counted
+off the source without a flip — `h_alt` births (`… h_dispatch h_alt)`, the chain fields born from the
+producer's own `h_alt : PackAlt` premise) and relays (`| Or.inr h => Or.inr (PackAlt.step_content …
+h)`, the frames premises' `PackAlt` arm handed on).  Pinned as `expectedPackBirths` in the pin file;
+comment lines do not count. -/
+def birthProducers : List String :=
+  ["entryKeyPack_of_dispatch", "entryPropsKeyPack_of_dispatch", "content_dispatch_routed"]
+
+def birthLabel := "PACK-BIRTHS"
+
+def runBirths (o : Opts) : IO UInt32 := do
+  let src := ((← IO.FS.readFile (o.root / rel)).splitOn "\n").toArray
+  let tbl := Census.declTable src
+  let mut parts : Array String := #[]
+  for d in birthProducers do
+    let mut alt := 0
+    let mut relay := 0
+    for i in [:src.size] do
+      if tbl[i]! == d then
+        let l := src[i]!
+        if (String.ofList (l.toList.dropWhile Char.isWhitespace)).startsWith "--" then continue
+        alt := alt + Scripts.Flip.Patch.countOccurrences l "h_dispatch h_alt)"
+        relay := relay + Scripts.Flip.Patch.countOccurrences l
+          "| Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h)"
+    parts := parts.push s!"{d}={alt}+{relay}"
+  let line := " ".intercalate parts.toList
+  IO.println s!"{birthLabel} {line}"
+  let pinText ← IO.FS.readFile (o.root / pinFile)
+  match pinValue? pinText "expectedPackBirths" with
+  | none => IO.println s!"{birthLabel}-PIN absent"; return 0
+  | some v =>
+    if v == line then IO.println s!"{birthLabel}-PIN agrees"; return 0
+    else
+      IO.println s!"{birthLabel}-PIN MOVED\n  got      {line}\n  expected {v}"
+      return 1
+
 def runClasses (o : Opts) : IO UInt32 := do
   let audit ← IO.FS.readFile (o.root / auditFile)
   let src := (← IO.FS.readFile (o.root / rel)).splitOn "\n" |>.toArray
@@ -226,6 +263,7 @@ def run (args : List String) : IO UInt32 := do
     | ["flip"] => runFlip o Census.modeFalse
     | ["residue"] => runFlip o Census.modeRefused
     | ["classes"] => runClasses o
+    | ["births"] => runBirths o
     | [] => die usage 2
     | c :: _ => die s!"unknown command '{c}'\n{usage}" 2
 
