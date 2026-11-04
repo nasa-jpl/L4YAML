@@ -139,8 +139,9 @@ def landingNic0 (root : System.FilePath) (original : String) (lines : Array Stri
     ((Scripts.Price.LandingNic0.applyProbe lines which).map (·.1))
     (fun patched body => Scripts.Price.LandingNic0.report patched names body)
 
-/-- `line ↦ declaration` for a patched copy of the target, off the built module's declaration
-    ranges (`Scripts.Lean.DeclRanges`); a missing `.olean` is a failure, not a reading. -/
+/-- `line ↦ declaration` for a patched copy of the target, off the module's declaration ranges
+    (`Scripts.Lean.DeclRanges`); `run` has `lake build` the pristine module first, so the ranges
+    describe the source the probe read.  A missing `.olean` is a failure, not a reading. -/
 def declOwner (root : System.FilePath) (pristine patched : Array String) : IO (Except String (Nat → String)) := do
   let olean := root / ".lake" / "build" / "lib" / "lean" / "L4YAML" / "Proofs" / "Production" / "StreamAccum.olean"
   if !(← olean.pathExists) then
@@ -553,6 +554,8 @@ def run (args : List String) : IO UInt32 := do
   if !(← path.pathExists) then return ← die s!"{path} not found (pass -C ROOT)" 2
   let original ← IO.FS.readFile path
   let lines := readLines original
+  if ["carrier", "wire", "coordinate", "transport", "ride"].contains script then
+    if let .error e ← Scripts.Price.Env.ensureBuilt root target then return ← die e
   match script with
   | "park-top" => parkTop root original lines pos
   | "vslot-top" => vslotTop root original lines
