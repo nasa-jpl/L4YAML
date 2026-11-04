@@ -8,8 +8,8 @@ meta import Scripts.Punt.Price
 /-!
 # Scripts.Price.Pin — what `carrier_price.py`, `wire_price.py` and `arm_price.py` share
 
-The items 266–270 instruments: an exact-one anchor (`_index`), the wider declaration regex
-(`structure`/`abbrev`, dotted and primed names), `lake build` / `lake env lean` error
+The items 266–270 instruments: an exact-one anchor (`_index`), the error lines grouped by
+the declaration owning them (off the module's declaration ranges, not a header regex), `lake build` / `lake env lean` error
 locations split into the module's own lines and other files, and the two readers of the
 `expected…` literals in `Tests/Guards/Proofs/ScannerFlowOpenUnderRun.lean` (the regex one,
 and `arm_price.py`'s character scan that honours a `\`⏎ continuation).
@@ -39,37 +39,14 @@ def insertAfter (lines : Array String) (i : Nat) (l : String) : Array String :=
 
 #guard insertAfter #["a", "b"] 0 "x" == #["a", "x", "b"]
 
-/-- `^(?:private )?(?:lemma|theorem|def|structure|abbrev) ([A-Za-z_][A-Za-z0-9_.'!?]*)`. -/
-def declHeadWide? (line : String) : Option String :=
-  let rest := if line.startsWith "private " then Scripts.Punt.Price.drop line 8 else line
-  ["lemma ", "theorem ", "def ", "structure ", "abbrev "].findSome? fun (kw : String) =>
-    if rest.startsWith kw then
-      let cs := (Scripts.Punt.Price.drop rest kw.length).toList
-      match cs with
-      | c :: _ =>
-        if c.isAlpha || c == '_' then
-          some (String.ofList (cs.takeWhile fun c => isWordChar c || c == '.' || c == '\'' || c == '!' || c == '?'))
-        else none
-      | [] => none
-    else none
-
-#guard declHeadWide? "structure ParkCore (sc0 s : ScannerState)" == some "ParkCore"
-#guard declHeadWide? "lemma FlowBaseAnchor.gate' {g}" == some "FlowBaseAnchor.gate'"
-#guard declHeadWide? "def frameTokenVal? (t)" == some "frameTokenVal?"
-#guard declHeadWide? "abbrev X := Nat" == some "X"
-#guard declHeadWide? "def 1x" == none
-
-def enclosingDecl (lines : Array String) (lineno : Nat) : String := Id.run do
-  let mut decl := "<file scope>"
-  for i in [0:min lineno lines.size] do
-    if let some n := declHeadWide? lines[i]! then decl := n
-  return decl
-
-/-- `by_decl` sorted `(-len, name)`, rendered `  {len:3d}  {decl}`. -/
-def byDeclLines (patched : Array String) (raw : Array Nat) : Array (String × Array Nat) := Id.run do
+/-- `by_decl`: the error lines grouped by the declaration owning each (`owner`, read off the
+    module's declaration ranges — `Scripts.Lean.DeclRanges`), sorted `(-len, name)`. -/
+def byDeclLines (owner : Nat → String) (raw : Array Nat) : Array (String × Array Nat) := Id.run do
   let mut c : Array (String × Array Nat) := #[]
-  for r in raw do c := Scripts.Price.Attribute.addTo c (enclosingDecl patched r) r
+  for r in raw do c := Scripts.Price.Attribute.addTo c (owner r) r
   return stableSort c Scripts.Price.Attribute.byCountThenName
+
+#guard byDeclLines (fun l => if l < 10 then "a" else "b") #[3, 12, 5] == #[("a", #[3, 5]), ("b", #[12])]
 
 def declRows (c : Array (String × Array Nat)) : Array String :=
   c.map fun (d, hs) => s!"  {padLeft (toString hs.size) 3}  {d}"

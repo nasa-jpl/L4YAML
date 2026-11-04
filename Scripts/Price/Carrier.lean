@@ -36,11 +36,11 @@ def applyProbe (lines : Array String) (which : String) : Except String (Array St
   else throw s!"AssertionError: {which}"
 
 /-- `(raw error lines, by_decl)` or the Python's `SystemExit`. -/
-def reading (which : String) (patched : Array String) (out : String) :
+def reading (which : String) (owner : Nat → String) (out : String) :
     Except String (Array Nat × Array (String × Array Nat)) := do
   let raw := (Scripts.Price.Attribute.errorLines out).qsort (· < ·)
   if raw.isEmpty then throw s!"{which}: the probe broke nothing -- it did not apply"
-  return (raw, byDeclLines patched raw)
+  return (raw, byDeclLines owner raw)
 
 def verboseLines (which : String) (raw : Array Nat) (decls : Array (String × Array Nat)) : Array String :=
   #[s!"probe {which}: {raw.size} error sites in {decls.size} declarations", ""] ++ declRows decls
@@ -53,8 +53,8 @@ def names (decls : Array (String × Array Nat)) : Array String := (decls.map (·
 private def sample : Array String := #[coreStruct, "  a : True", slotStruct, "  b : True", "lemma x : True := trivial"]
 #guard (applyProbe sample "core").toOption == some #[coreStruct, field, "  a : True", slotStruct, "  b : True", "lemma x : True := trivial"]
 #guard (applyProbe sample "prop").toOption == none
-#guard (reading "core" sample "").toOption == none
-#guard (reading "core" sample "L4YAML/Proofs/Production/StreamAccum.lean:5:1: error: a\nL4YAML/Proofs/Production/StreamAccum.lean:2:1: error: b\n").toOption.map (·.1) == some #[2, 5]
+#guard (reading "core" (fun _ => "d") "").toOption == none
+#guard (reading "core" (fun _ => "d") "L4YAML/Proofs/Production/StreamAccum.lean:5:1: error: a\nL4YAML/Proofs/Production/StreamAccum.lean:2:1: error: b\n").toOption.map (·.1) == some #[2, 5]
 #guard verboseLines "core" #[2, 5] #[("ParkCore", #[2]), ("x", #[5])] == #["probe core: 2 error sites in 2 declarations", "", "    1  ParkCore", "    1  x"]
 #guard allRow "core" 7 3 #["a", "b"] == "core      errors=  7  declarations= 3  a, b"
 

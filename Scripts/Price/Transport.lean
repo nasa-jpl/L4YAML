@@ -59,10 +59,10 @@ def patchFlip (lines : Array String) (which : String) : Except String (Array Str
     return out.set! (← indexOf out kpkgFun) kpkgFun2
 
 /-- `run_flip`'s reading: by-decl rows, `(raw count, sorted decl names)`. -/
-def flipReading (which : String) (patched : Array String) (out : String) : Except String (Array String × Nat × Array String) := do
+def flipReading (which : String) (owner : Nat → String) (out : String) : Except String (Array String × Nat × Array String) := do
   let raw := (Scripts.Price.Attribute.errorLines out).qsort (· < ·)
   if raw.isEmpty then throw s!"{which}: the flip broke nothing -- it did not apply"
-  let decls := byDeclLines patched raw
+  let decls := byDeclLines owner raw
   return (declRows decls, raw.size, (decls.map (·.1)).qsort (· < ·))
 
 /-- `run_wide`'s reading: rows (inside count first), `(inside, hits)`. -/

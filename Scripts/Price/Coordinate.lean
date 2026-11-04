@@ -73,10 +73,10 @@ def patchSplit (lines : Array String) (repair : Bool := false) : Except String (
   return out
 
 /-- `run_split`'s reading: `(by_decl rows, count, sorted names)`. -/
-def splitReading (patched : Array String) (out : String) : Except String (Array String × Nat × Array String) := do
+def splitReading (owner : Nat → String) (out : String) : Except String (Array String × Nat × Array String) := do
   let raw := (Scripts.Price.Attribute.errorLines out).qsort (· < ·)
   if raw.isEmpty then throw "split: the flip broke nothing -- it did not apply"
-  let decls := byDeclLines patched raw
+  let decls := byDeclLines owner raw
   return (declRows decls, decls.size, (decls.map (·.1)).qsort (· < ·))
 
 /-- `run_wide`'s reading over a `lake build` log: rows, failed modules, `(count, sorted files)`. -/

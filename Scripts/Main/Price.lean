@@ -11,6 +11,7 @@ public import Scripts.Price.Carrier
 public import Scripts.Price.Wire
 public import Scripts.Price.Arm
 public import Scripts.Price.Ride
+public import Scripts.Lean.DeclRanges
 public import Scripts.Price.Ride
 
 /-!
@@ -138,6 +139,19 @@ def landingNic0 (root : System.FilePath) (original : String) (lines : Array Stri
     ((Scripts.Price.LandingNic0.applyProbe lines which).map (·.1))
     (fun patched body => Scripts.Price.LandingNic0.report patched names body)
 
+/-- `line ↦ declaration` for a patched copy of the target, off the built module's declaration
+    ranges (`Scripts.Lean.DeclRanges`); a missing `.olean` is a failure, not a reading. -/
+def declOwner (root : System.FilePath) (pristine patched : Array String) : IO (Except String (Nat → String)) := do
+  let olean := root / ".lake" / "build" / "lib" / "lean" / "L4YAML" / "Proofs" / "Production" / "StreamAccum.olean"
+  if !(← olean.pathExists) then
+    return .error s!"{olean} is missing -- build the library first (the declaration census reads the module's declaration ranges from it)"
+  try
+    let ds := Scripts.Lean.DeclRanges.decls (← Scripts.Lean.DeclRanges.readRanges olean)
+    if ds.isEmpty then return .error s!"{olean}: no declaration ranges -- build the library first"
+    let m := Scripts.Lean.DeclRanges.lineMap pristine patched
+    return .ok fun l => Scripts.Lean.DeclRanges.ownerOf ds (m.getD (l - 1) l)
+  catch e => return .error s!"reading the declaration ranges of {olean}: {e}"
+
 def readPin (root : System.FilePath) : IO (Option String) := do
   let p := root / Scripts.Price.Pin.pin
   if ← p.pathExists then return some (← IO.FS.readFile p) else return none
@@ -150,7 +164,10 @@ def carrier (root : System.FilePath) (original : String) (lines : Array String) 
     | .ok patched =>
       match ← Scripts.Price.Env.leanOn root target ".carrier-price-bak" original patched with
       | .error e => return .error e
-      | .ok (_, out) => return Scripts.Price.Carrier.reading p patched out
+      | .ok (_, out) =>
+        match ← declOwner root lines patched with
+        | .error e => return .error e
+        | .ok owner => return Scripts.Price.Carrier.reading p owner out
   if which == "all" then
     let mut got : Array String := #[]
     for p in Scripts.Price.Carrier.probes do
@@ -179,7 +196,10 @@ def wire (root : System.FilePath) (original : String) (lines : Array String) (po
     | .ok patched =>
       match ← Scripts.Price.Env.leanOn root target ".wire-price-bak" original patched (wide := wide) with
       | .error e => return .error e
-      | .ok (_, out) => return Scripts.Price.Wire.reading p patched out
+      | .ok (_, out) =>
+        match ← declOwner root lines patched with
+        | .error e => return .error e
+        | .ok owner => return Scripts.Price.Wire.reading p owner out
   if which == "all" then
     let mut got : Array String := #[]
     for p in Scripts.Price.Wire.probes do
@@ -305,9 +325,12 @@ def coordinate (root : System.FilePath) (original : String) (lines : Array Strin
       match ← Scripts.Price.Env.leanOn root target sfx original patched with
       | .error e => return ← die e
       | .ok (_, out) =>
-        match splitReading patched out with
+        match ← declOwner root lines patched with
         | .error e => return ← die e
-        | .ok (rows, n, names) => printAll rows; lib := n; libnames := names
+        | .ok owner =>
+          match splitReading owner out with
+          | .error e => return ← die e
+          | .ok (rows, n, names) => printAll rows; lib := n; libnames := names
   if which == "wide" then
     IO.println "-- wide: the same flip over the tree, module repaired"
     match patchSplit lines (repair := true) with
@@ -363,14 +386,17 @@ def transport (root : System.FilePath) (original : String) (lines : Array String
         match ← Scripts.Price.Env.leanOn root target sfx original patched with
         | .error e => return ← die e
         | .ok (_, out) =>
-          match flipReading mode patched out with
+          match ← declOwner root lines patched with
           | .error e => return ← die e
-          | .ok (rs, n, names) =>
-            printAll rs
-            if mode == "optok" then
-              optokN := n; optokD := names
-            else
-              framesN := n; framesD := names
+          | .ok owner =>
+            match flipReading mode owner out with
+            | .error e => return ← die e
+            | .ok (rs, n, names) =>
+              printAll rs
+              if mode == "optok" then
+                optokN := n; optokD := names
+              else
+                framesN := n; framesD := names
   if which == "pay" || which == "all" then
     IO.println "-- pay: the genesis once the ring is paid"
     match patchPay lines with
@@ -466,9 +492,12 @@ def rideCmd (root : System.FilePath) (original : String) (lines : Array String) 
       match ← Scripts.Price.Env.leanOn root target sfx original patched with
       | .error e => return .error e
       | .ok (_, out) =>
-        match Scripts.Price.Transport.flipReading mode patched out with
+        match ← declOwner root lines patched with
         | .error e => return .error e
-        | .ok (rs, n, names) => printAll rs; return .ok (n, names)
+        | .ok owner =>
+          match Scripts.Price.Transport.flipReading mode owner out with
+          | .error e => return .error e
+          | .ok (rs, n, names) => printAll rs; return .ok (n, names)
   if which == "ride" || which == "all" then
     IO.println "-- ride: how many terms spend the ride"
     match ← flip "ride" with | .error e => return ← die e | .ok r => rideR := r
