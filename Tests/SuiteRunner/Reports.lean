@@ -447,6 +447,18 @@ def pythonFfiHtml (sections : List Section) : String × Nat := Id.run do
 #guard junitCases "<testsuite><testcase name=\"ok\"/><![CDATA[&broken;]]></testsuite>" ==
   .ok [⟨".ok", "PASS", "pass", "0"⟩]
 
+-- Protect valid XML syntax against stricter token/entity rejection.
+#guard junitCases "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<testsuite><testcase name=\"ok\"/></testsuite>" ==
+  .ok [⟨".ok", "PASS", "pass", "0"⟩]
+#guard junitCases "<testsuite><testcase name=\"&#65;&#x42;\"/></testsuite>" ==
+  .ok [⟨".AB", "PASS", "pass", "0"⟩]
+#guard junitCases "<testsuite><testcase name=\"ok\"/>&#65;&#x42;</testsuite>" ==
+  .ok [⟨".ok", "PASS", "pass", "0"⟩]
+
+-- Numeric references to non-XML characters must remain errors.
+#guard (match junitCases "<testsuite><testcase name=\"&#xD800;\"/></testsuite>" with
+  | .error _ => true | .ok _ => false)
+
 def exampleCases : List Case := (junitCases exampleJunit).toOption.getD []
 #guard (pythonFfiHtml [⟨"T", exampleCases⟩]).2 == 3
 #guard ((pythonFfiHtml [⟨"T", exampleCases⟩]).1.splitOn "\n").length == 25
