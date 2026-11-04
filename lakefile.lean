@@ -506,7 +506,10 @@ script «docs-nav» (args) do
 -- `lake run pack-census -- flip|residue|classes [options]`: the PACK flip census (edits
 -- StreamAccum.lean in place, restores it; never beside another lake build) and the residue's classes.
 script «pack-census» (args) do
-  runGateExe (← getWorkspace).root.dir "scripts-pack-census" #[] args
+  -- `births` reads StreamAccum.olean's declaration ranges, so the module is built first (as the
+  -- gate does); `flip`/`residue` edit the source in place and must NOT be built beside.
+  let prereqs := if args.contains "births" then #["L4YAML.Proofs.Production.StreamAccum"] else #[]
+  runGateExe (← getWorkspace).root.dir "scripts-pack-census" #[] args prereqs
 
 /-- `lake run drop-sweep [-- -q]`: the WIDE `scannerDrop` dependents sweep (item 238). -/
 script «drop-sweep» (args) do
@@ -577,6 +580,13 @@ script «beta5-map» (args) do
 script «check-gate-vocab» (args) do
   let ws ← getWorkspace
   runGateExe ws.root.dir "scripts-gate-vocab" #[] args #[] ws.augmentedEnvVars
+
+/-- `lake run check-pack-births`: the pack producers' `PackAlt` writes (item 431, the pack lane's
+    recorded residue) against `expectedPackBirths`; reads `StreamAccum.olean`'s declaration ranges,
+    so the library must be built first. -/
+script «check-pack-births» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-pack-census" #["births"] args
+    #["L4YAML.Proofs.Production.StreamAccum"]
 
 /-- Every test exe, output captured under OUT (default `docs`), failures
 collected: `lake run run-all-tests [-- OUT]` (`scripts/run-all-tests.sh`

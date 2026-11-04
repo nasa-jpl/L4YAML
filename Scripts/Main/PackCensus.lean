@@ -4,6 +4,7 @@ public import Scripts.Pack.Census
 public import Scripts.Pack.Residue
 public import Scripts.Flip.Patch
 public import Scripts.Pins
+public import Scripts.Lean.DeclRanges
 
 @[expose] public section Blanket
 
@@ -44,6 +45,7 @@ def usage : String := "usage: lake run pack-census -- [-C ROOT] <cmd> [options]
   flip     [-t|--tsv PATH] [-m|--max-rounds N] [-d|--dump-dir DIR]   PACK-FLIP: both PackAlt bodies False (the declines)
   residue  [-t|--tsv PATH] [-m|--max-rounds N] [-d|--dump-dir DIR]   PACK-RESIDUE: PackAlt = ExplicitValueRefused (the residue)
   classes  [-t|--tsv PATH]                                           RESIDUE-CLASSES: the declines by existential index
+  births                                                             PACK-BIRTHS: the pack producers' PackAlt writes (item 431)
 
 options
   -C, --root ROOT       repository root (default: the current directory)
@@ -192,6 +194,80 @@ def runFlip (o : Opts) (m : Mode) : IO UInt32 := do
       IO.println s!"{s.label}-PIN MOVED\n  got      {s.line}\n  expected {v}"
       return 1
 
+/-- `births` (item 431, the pack lane's (α-close)): the three pack producers' `PackAlt` writes, counted
+off the source without a flip — `h_alt` births (`… h_dispatch h_alt)`, the chain fields born from the
+producer's own `h_alt : PackAlt` premise) and relays (`| Or.inr h => Or.inr (PackAlt.step_content …
+h)`, the frames premises' `PackAlt` arm handed on).  Declaration ownership is read off the module's
+declaration ranges (`Scripts.Lean.DeclRanges`, Rule 9 §2 — the library must be built), comments are
+stripped and whitespace collapsed before matching (`declText`).  Pinned as `expectedPackBirths` in
+the pin file; `lake run check-pack-births` is the gate. -/
+def birthProducers : List String :=
+  ["entryKeyPack_of_dispatch", "entryPropsKeyPack_of_dispatch", "content_dispatch_routed"]
+
+def birthLabel := "PACK-BIRTHS"
+
+/-- The declaration's lines `a..b` (1-based, inclusive) as one string: `--` line comments and `/- … -/`
+block comments dropped (so a comment cannot add or hide a write), joined with spaces and whitespace
+collapsed (so a write wrapped across lines still matches). -/
+def declText (src : Array String) (a b : Nat) : String := Id.run do
+  let mut out := ""
+  let mut depth := 0
+  for ln in [a - 1 : b] do
+    if h : ln < src.size then
+      let cs := src[ln].toList
+      let mut acc : List Char := []
+      let mut rest := cs
+      let mut stop := false
+      while !stop do
+        match rest with
+        | [] => stop := true
+        | '/' :: '-' :: t =>
+          depth := depth + 1
+          rest := t
+        | '-' :: '/' :: t =>
+          depth := if depth == 0 then 0 else depth - 1
+          rest := t
+        | '-' :: '-' :: t =>
+          if depth == 0 then stop := true else rest := t
+        | c :: t =>
+          if depth == 0 then acc := c :: acc
+          rest := t
+      out := out ++ " " ++ String.ofList acc.reverse
+  return Census.collapseWs out
+
+def runBirths (o : Opts) : IO UInt32 := do
+  let src := ((← IO.FS.readFile (o.root / rel)).splitOn "\n").toArray
+  let olean := o.root / ".lake" / "build" / "lib" / "lean" / "L4YAML" / "Proofs" / "Production" / "StreamAccum.olean"
+  if !(← olean.pathExists) then
+    return ← die s!"{olean} is missing -- build the library first (births reads the module's declaration ranges from it)" 1
+  let srcTime := (← (o.root / rel).metadata).modified
+  let oleanTime := (← olean.metadata).modified
+  if oleanTime < srcTime then
+    return ← die s!"{olean} is older than {rel} -- build the library first (the declaration ranges would describe the old source)" 1
+  let ds ← try
+      pure (Scripts.Lean.DeclRanges.decls (← Scripts.Lean.DeclRanges.readRanges olean))
+    catch e => return ← die s!"reading the declaration ranges of {olean}: {e}" 1
+  if ds.isEmpty then return ← die s!"{olean}: no declaration ranges -- build the library first" 1
+  let mut parts : Array String := #[]
+  for d in birthProducers do
+    let some decl := ds.find? (·.name == d)
+      | return ← die s!"{d}: no declaration of that name in {rel}'s ranges" 1
+    let body := declText src decl.start decl.stop
+    let alt := Scripts.Flip.Patch.countOccurrences body "h_dispatch h_alt)"
+    let relay := Scripts.Flip.Patch.countOccurrences body
+      "| Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h)"
+    parts := parts.push s!"{d}={alt}+{relay}"
+  let line := " ".intercalate parts.toList
+  IO.println s!"{birthLabel} {line}"
+  let pinText ← IO.FS.readFile (o.root / pinFile)
+  match pinValue? pinText "expectedPackBirths" with
+  | none => IO.println s!"{birthLabel}-PIN absent"; return 0
+  | some v =>
+    if v == line then IO.println s!"{birthLabel}-PIN agrees"; return 0
+    else
+      IO.println s!"{birthLabel}-PIN MOVED\n  got      {line}\n  expected {v}"
+      return 1
+
 def runClasses (o : Opts) : IO UInt32 := do
   let audit ← IO.FS.readFile (o.root / auditFile)
   let src := (← IO.FS.readFile (o.root / rel)).splitOn "\n" |>.toArray
@@ -226,6 +302,7 @@ def run (args : List String) : IO UInt32 := do
     | ["flip"] => runFlip o Census.modeFalse
     | ["residue"] => runFlip o Census.modeRefused
     | ["classes"] => runClasses o
+    | ["births"] => runBirths o
     | [] => die usage 2
     | c :: _ => die s!"unknown command '{c}'\n{usage}" 2
 

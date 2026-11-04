@@ -112,6 +112,7 @@ lake run check-reflection-index      # every Tests/Reflections/* is indexed
 lake run check-closure-log           # DOCS.md items ascend, dated, gaps declared
 lake run check-serialization-proofs  # serialization hygiene: kernel axiom profiles, sorry control, exact headline sets
 lake run check-gate-vocab            # gate names in prose resolve (pin: Tests/Guards/Proofs/GateVocabulary.lean)
+lake run check-pack-births           # the pack producers' PackAlt writes (pin: expectedPackBirths; needs the library built)
 lake run check-scripts-lean          # Rule 9: every scripts/*.py and inline python3 site is on scripts/scripts-ledger.txt; the ledger only shrinks
 lake run check-hygiene -- docs/reports/stats.json   # zero sorries / custom axioms in the compiled environment, off collect-stats' stats.json
 lake run run-all-tests               # every test exe; collects failures (portable: Lake `script`, no bash)
