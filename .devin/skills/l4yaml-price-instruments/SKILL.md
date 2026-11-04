@@ -30,8 +30,9 @@ its output.
    and rebuild.  Wait for any build to finish (`pgrep -f 'lake build'`).
 2. Start from a clean tree (`git status --porcelain` empty) so the restore
    check is meaningful.
-3. Run with output captured: `lake run price -- X [MODE] > scratch/NNN-X.log 2>&1`
-   (or the instrument's own `lake run …` line from the table above).
+3. Run with output captured: `mkdir -p scratch && lake run price -- X [MODE] > scratch/NNN-X.log 2>&1`
+   (or the instrument's own `lake run …` line from the table above; `scratch/` is
+   gitignored and may not exist yet).
 4. Afterwards confirm the restore: the script prints md5 before/after; also
    `git status --porcelain` must be empty.  If not, `git checkout -- <file>`
    and say so in the item.
