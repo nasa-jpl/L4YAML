@@ -108,7 +108,7 @@ jobs:
           # venv from the previous step, via GITHUB_PATH). Verify by
           # STARTING it, not pip exit status: `weasyprint --version` imports
           # the package (and so loads the system pango/cairo libraries
-          # above) exactly as html-to-pdf.py does — never `command -v`,
+          # above) exactly as `lake run html-to-pdf` does — never `command -v`,
           # which would pass with the libraries missing (Rule 9, Q3). The
           # venv's own CLI, by path: an ambient /usr/bin/weasyprint would
           # pass the probe while the venv's python3 cannot import it.
@@ -376,9 +376,9 @@ jobs:
       - name: Rewrite SVG images as interactive <object> embeds
         # Multi-page site only: <img> disables SVG-internal navigation, so the
         # doc-gen4 links on the theorem-graph nodes need <object>. The single
-        # page keeps <img> — it feeds html-to-pdf.py, and WeasyPrint rasterizes
-        # <img src="*.svg"> natively.
-        run: python3 scripts/svg-objects.py doc/_out/html-multi
+        # page keeps <img> — it feeds `lake run html-to-pdf`, and WeasyPrint
+        # rasterizes <img src="*.svg"> natively.
+        run: lake run svg-objects -- doc/_out/html-multi
 
       - name: Copy Verso output to docs/
         run: |
@@ -409,7 +409,10 @@ jobs:
           # Render from the self-contained single page (emitted by l4yaml-doc), so the
           # document and its PDF bookmark outline are in true document order — not the
           # alphabetical, lossy order a multi-page directory merge produces.
-          python3 scripts/html-to-pdf.py \
+          # Lean merges the page(s) into one PDF-ready document; the venv's own
+          # weasyprint CLI (the one the probe above started) renders it.
+          WEASYPRINT="$RUNNER_TEMP/ci-venv/bin/weasyprint" \
+            lake run html-to-pdf -- \
             doc/_out/html-single/index.html \
             docs/L4YAML.pdf
           echo "PDF generated: docs/L4YAML.pdf"

@@ -41,7 +41,7 @@ What they need from the host that Lean does not provide natively:
 | regular expressions (193 uses) | G, I, F | none in core; see Q1 — `Std.Internal.Parsec`/hand parsers for the fixed shapes (`file:line:col: error:`, `def expected… := "…"`, `### Item N (date)`), or read the environment and have no text to parse |
 | md5 of a file | F | `hashlib` → `IO.Process.output "md5sum"` or Lean's `String.hash`/a byte hash — any stable digest printed both sides suffices |
 | URL fetch | `verify_yaml_spec_annotations.py` | `curl` from the driver, or vendor the grammar file (Q4) |
-| HTML → PDF (WeasyPrint), SVG rewriting (`xml.etree`) | `html-to-pdf.py`, `svg-objects.py` | no Lean counterpart; exception or external program (Q3) |
+| HTML → PDF (WeasyPrint), SVG rewriting (`xml.etree`) | `html-to-pdf.py`, `svg-objects.py` | no Lean counterpart for the rasteriser; the HTML rewriting is Lean (`Scripts/Html`), the `weasyprint` CLI an external program (Q3, done) |
 | docker-driven processor matrix, thread pool | `matrix_score.py` | `IO.Process` + `Task` |
 | `signal`, `importlib` (self-reload) | `docs_nav.py`, `beta5_arms.py` | not needed in a compiled exe |
 
@@ -487,11 +487,25 @@ breaks CI if wrong, cheapest first:
    `weasyprint --version` (Q3: it imports the package and loads pango).
 3. `verify_yaml_spec_annotations.py` → `scripts-verify-spec-annotations`,
    with the grammar file fetched by `curl` in the `.sh` or vendored (Q4).
-4. `svg-objects.py`, `html-to-pdf.py` → **Q3**: WeasyPrint has no Lean
-   counterpart. Options: (a) `exception:weasyprint` for `html-to-pdf.py`
-   only, with `svg-objects.py` ported (it is an HTML rewrite, 71 lines);
-   (b) replace the pair with a `.sh` driving `weasyprint` CLI directly and
-   a Lean exe for the TOC/SVG rewriting; (c) drop the PDF from CI.
+4. `svg-objects.py`, `html-to-pdf.py` → **Q3, DONE (route b)**: `lake run
+   svg-objects -- DIR` and `lake run html-to-pdf -- IN OUT.pdf` (one exe,
+   `scripts-html-pdf`, `Scripts/Html/{Bytes,Svg,Merge,PdfCss}.lean`): the
+   `<img src="*.svg">` → `<object>` rewrite, the numbered-TOC page order, the
+   `HTMLParser`-shaped head/body extraction with the web-only subtrees dropped,
+   the heading renumbering and the print stylesheet are Lean; the one external
+   program is the `weasyprint` CLI (`$WEASYPRINT`, else on PATH — CI and
+   `generate-all.sh` pass their venv's copy), spawned on the merged file and
+   never through Python logic of ours. `lake run html-merge -- IN OUT.html` is
+   the merge alone. Validated on the Verso render: the SVG rewrite of
+   `html-multi` byte-identical to the Python's (33 images over 3 pages,
+   idempotent); the merged document byte-identical to the Python's once its
+   `HTMLParser` is told to leave character references as written — the two
+   stated departures: `&amp;`/`&lt;` stay escaped (the Python decoded them
+   into live markup; 237 such sites in the single page, all `&amp;` in
+   permalink hrefs) and a valueless attribute is emitted bare (the Python
+   printed `k="None"`; none in the current render). Both pipelines render
+   the same PDF (138 KB single page, 32 KB nine-chapter merge); the Python's
+   `Found`/`Generating`/`PDF generated (N KB)` lines and exit codes kept.
 5. **Portable wrappers (Q7) — DONE (#202) for the two exe-only wrappers** (`lake run
    check-scripts-lean`, `lake run run-all-tests`; their `.sh` deleted) **and
    (phase 1, #204) for the four gates** (`lake run check-theorem-keyword`,
@@ -537,7 +551,7 @@ it removes Python from CI; it does not block an item.
 | File | Why it may stay non-Lean | Until |
 |---|---|---|
 | `python/**`, `python/tests/**`, `Tests/test_python_ffi.py`, `Tests/conftest.py`, `Tests/tryparse_python.py` | the shipped Python binding and its tests — a product, not a script | — |
-| `scripts/html-to-pdf.py` + the `python3 -c "import weasyprint"` probes | WeasyPrint rasterisation (Q3: ruled — the CLI route). The probe must keep checking that WeasyPrint can *start*, not merely that a binary exists: `import weasyprint` today fails when Pango/cairo are missing and that is what makes the PDF step skip with a warning instead of failing the job; the replacement is `weasyprint --version` (or `weasyprint --info`), which imports the package and so loads the native libraries, under the same "skip PDF with a warning on failure" branch — never `command -v weasyprint`. **Probes switched (phase 4 row 3)**; `html-to-pdf.py` itself is row 4. | phase 4.4 |
+| the `weasyprint` CLI (no Python of ours: `html-to-pdf.py` is Lean since phase 4 row 4, the CLI is spawned by `scripts-html-pdf pdf`) + its `weasyprint --version` probes | WeasyPrint rasterisation (Q3: ruled — the CLI route). The probe must keep checking that WeasyPrint can *start*, not merely that a binary exists: `import weasyprint` today fails when Pango/cairo are missing and that is what makes the PDF step skip with a warning instead of failing the job; the replacement is `weasyprint --version` (or `weasyprint --info`), which imports the package and so loads the native libraries, under the same "skip PDF with a warning on failure" branch — never `command -v weasyprint`. **Probes switched (phase 4 row 3)**; `html-to-pdf.py` ported (row 4) — the external program is the only remaining non-Lean piece of the PDF build, and it is not a script of this repository. | — |
 | `scripts/attic/*.py` (if Q2 = freeze) | historical readings already recorded in DOCS.md; never run again | — |
 
 ## 5. Ledger (phase 0 turns this into `scripts/scripts-ledger.txt`)
@@ -575,8 +589,8 @@ it removes Python from CI; it does not block an item.
 | cross-lang-compare.py | R | 93 | 10-17 | CI, generate-all.sh | `suiterunner --compare DIR` (`lake run cross-lang-compare`; `Tests/SuiteRunner/Reports.lean`) | lean:suiterunner |
 | generate-test-reports.py | R | 201 | 04-09 | CI, generate-all.sh | `suiterunner --reports DIR` (`lake run test-reports`; `Tests/SuiteRunner/Reports.lean`) | lean:suiterunner |
 | verify_yaml_spec_annotations.py | R | 301 | 03-29 | manual | scripts-verify-spec-annotations | todo |
-| svg-objects.py | R | 71 | 09-05 | CI, generate-all.sh | scripts-svg-objects / Q3 | todo |
-| html-to-pdf.py | R | 414 | 04-09 | CI, generate-all.sh | exception or Q3 | todo |
+| svg-objects.py | R | 71 | 09-05 | CI, generate-all.sh | `lake run svg-objects -- DIR` (`Scripts/Html/Svg.lean`) | lean:scripts-html-pdf |
+| html-to-pdf.py | R | 414 | 04-09 | CI, generate-all.sh | `lake run html-to-pdf -- IN OUT.pdf` (`Scripts/Html/Merge.lean` + the `weasyprint` CLI) | lean:scripts-html-pdf |
 
 ## 6. Questions for the owner (all ruled 2026-11-01: the stated default of each)
 
@@ -594,7 +608,9 @@ it removes Python from CI; it does not block an item.
 3. **PDF.** Keep `html-to-pdf.py` as the one `exception:weasyprint`, or
    replace with the `weasyprint` CLI driven from `.sh` plus a Lean exe for
    the TOC/SVG rewriting, or drop the PDF build? Default: the CLI route (b)
-   — no Python logic, one external program.
+   — no Python logic, one external program. **Done (phase 4 row 4):** route
+   (b), the CLI spawned by the Lean exe itself rather than by a `.sh`, so the
+   same command runs on every platform.
 4. **Spec grammar fetch.** `verify_yaml_spec_annotations.py` downloads
    `yaml-spec-1.2.yaml` at run time. Vendor the file (reproducible,
    licence to check) or `curl` in the wrapper? Default: vendor.
