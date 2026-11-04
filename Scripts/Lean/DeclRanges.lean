@@ -10,7 +10,7 @@ public import Lean.PrivateName
 Rule 9 §2: a question about declarations is answered from the environment, not from the
 text.  The price instruments group a probe's error lines by the declaration they fall in;
 this module reads the module's declaration ranges (`Lean.declRangeExt`, exported to the
-`.olean.server` part) and answers "which declaration owns line *n*" from them.  A probe
+`.olean.server` part of a `module`-system file, to the `.olean` itself of a legacy one) and answers "which declaration owns line *n*" from them.  A probe
 may have inserted lines, so `lineMap` carries a patched line back to the pristine one the
 ranges describe.
 -/
@@ -30,11 +30,12 @@ structure Decl where
 
 unsafe def readRangesImpl (olean : System.FilePath) : IO (Array (Name × DeclarationRanges)) := do
   let server := System.FilePath.mk (olean.toString ++ ".server")
-  if !(← server.pathExists) then throw (IO.userError s!"{server} is missing")
-  let parts ← readModuleDataParts #[olean, server]
-  let some (data, _) := parts[parts.size - 1]? | throw (IO.userError s!"{server}: no module data")
+  let files := if ← server.pathExists then #[olean, server] else #[olean]
+  let parts ← readModuleDataParts files
+  let some (data, _) := parts[parts.size - 1]? | throw (IO.userError s!"{files.back!}: no module data")
   let some (_, es) := data.entries.find? (·.1 == ``Lean.declRangeExt)
-    | throw (IO.userError s!"{server}: no declaration ranges")
+    | throw (IO.userError s!"{files.back!}: no declaration ranges")
+  if es.isEmpty then throw (IO.userError s!"{files.back!}: no declaration ranges")
   return unsafeCast es
 
 /-- `(name, ranges)` of every declaration the module `olean` elaborated. -/
