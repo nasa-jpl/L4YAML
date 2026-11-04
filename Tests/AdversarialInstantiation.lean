@@ -9713,7 +9713,10 @@ def testPackAltMarkTauto (state : IO.Ref TestCollector) : IO Unit := do
     does hold at every block pause — the strongest true statement, proven in scratch over `Sound`,
     `Mono`, `SentinelBase` and the popped stack — is that every surviving mark sits at or below the
     landing column (`leViol = 0`) and was a mark before the preprocess (`subViol = 0`); the slot of a
-    sequence frame is never marked (`seqTopMarked = 0`), an invariant no `Sound` clause states. -/
+    sequence frame is never marked (`seqTopMarked = 0`), an invariant no `Sound` clause states.
+    `underRun` is the item 297 arm's exact shape — a popped landing whose stack top is a SEQUENCE
+    entry AT the landing column (`preprocess_landing_mem_or_seq`'s right disjunct) — not merely a
+    sequence top. -/
 def testDedentMarksSurvive (state : IO.Ref TestCollector) : IO Unit := do
   let inputs : List String :=
     [ "? a\n: b", "? a\n: b\n? c\n: d", "- ? a\n  : b", "k:\n  ? a\n  : b", "? ? a\n  : b\n: c",
@@ -9744,7 +9747,9 @@ def testDedentMarksSurvive (state : IO.Ref TestCollector) : IO Unit := do
             let after := L4YAML.Proofs.RegisterWitness.markedCols sP
             if !(after.all (before.contains ·)) then subViol := subViol + 1
             if !(after.all (· ≤ sP.col)) then leViol := leViol + 1
-            let topSeq := match sP.indents.back? with | some e => e.isSequence | none => false
+            let topSeq := match sP.indents.back? with
+              | some e => e.isSequence && e.column == (sP.col : Int)
+              | none => false
             match sP.indents.back?, sP.pendingKeys[sP.indents.size - 1]? with
             | some e, some (some _) => if e.isSequence then seqTopMarked := seqTopMarked + 1
             | _, _ => pure ()
