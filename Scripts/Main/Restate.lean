@@ -43,8 +43,10 @@ def usage : String := "usage: scripts-restate [-C ROOT] COMMAND …
       PreprocessIndentStable; --all narrows every name at once (one build), --deep also
       narrows the `∨ True` motives in the proof body (was scripts/narrow_conclusion.py)
 
-  --patch-only PATH   write the transformed module to PATH instead of building (the
-                      source is not touched); narrow-conclusion needs --all or one name
+  --patch-only PATH   write the transformed module to PATH and build nothing — no
+                      baseline build, no price; the source is not touched, and the roster
+                      probe of decline/pay reads the `.olean`s as they are (build first if
+                      the roster must be current); narrow-conclusion needs --all or one name
   -C, --root ROOT     the checkout to work in (default: the cwd)
   -h, --help / -V, --version"
 
@@ -121,14 +123,12 @@ def printSkipped (skipped : List (String × Nat)) : IO Unit := do
 /-- items 226 / 227: the shadowing run. -/
 def shadowRun (root : System.FilePath) (patchOnly : Option String) (probeName probeSrc : String)
     (header : Array Row → String) (keep : Row → Bool) (witness verb suffix errorsTitle : String) : IO UInt32 := do
-  IO.println "building first (a probe reads oleans, not sources)..."
-  if (← lake root #["build"]).exitCode != 0 then
-    IO.eprintln "baseline build failed; refusing to measure"; return 1
-  let rows ← match ← roster root probeName probeSrc with
-    | .ok rows => pure rows
-    | .error e => IO.eprintln e; return 1
   let path := root / streamAccumRel
   if let some out := patchOnly then
+    -- no build: the roster probe reads the `.olean`s as they are
+    let rows ← match ← roster root probeName probeSrc with
+      | .ok rows => pure rows
+      | .error e => IO.eprintln e; return 1
     let original ← IO.FS.readBinFile path
     let res := shadow (splitLines (String.fromUTF8! original)) rows witness keep
     IO.println (header rows)
@@ -137,6 +137,12 @@ def shadowRun (root : System.FilePath) (patchOnly : Option String) (probeName pr
     IO.FS.writeFile out (joinLines res.lines)
     IO.eprintln s!"patch-only: transformed module written to {out}; {streamAccumRel} untouched"
     return 0
+  IO.println "building first (a probe reads oleans, not sources)..."
+  if (← lake root #["build"]).exitCode != 0 then
+    IO.eprintln "baseline build failed; refusing to measure"; return 1
+  let rows ← match ← roster root probeName probeSrc with
+    | .ok rows => pure rows
+    | .error e => IO.eprintln e; return 1
   withBackup root streamAccumRel suffix fun original => do
     let res := shadow (splitLines (String.fromUTF8! original)) rows witness keep
     IO.println (header rows)
@@ -175,6 +181,8 @@ def narrowConclusion (root : System.FilePath) (patchOnly : Option String) (args 
   let all := args.contains "--all"
   let deep := args.contains "--deep"
   let positional := args.filter fun a => a != "--all" && a != "--deep"
+  if let some bad := positional.find? (·.startsWith "-") then
+    IO.eprintln s!"narrow-conclusion: unrecognized option '{bad}' (the options are --all, --deep, --patch-only PATH)"; return 2
   let modName :: names := positional
     | IO.eprintln "usage: lake run restate -- narrow-conclusion MODULE NAME… [--all] [--deep]"; return 2
   let some (_, rel, modl) := modules.find? (·.1 == modName)
