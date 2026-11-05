@@ -1,0 +1,457 @@
+{
+ "item": 434,
+ "tag": "CLOSEF-OUTER-FAMILY",
+ "rev": "6110831f",
+ "target": "L4YAML",
+ "log": "scratch/closef_outer_family.log",
+ "msgWidth": 110,
+ "rounds": 12,
+ "report": "bodies",
+ "files": [
+  {
+   "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+   "patches": [
+    {
+     "name": "L1656.flowKeyPack_of_close.h_key.outer",
+     "line": 1656,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_e) ∨ True) ∧"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_e)) ∧"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L2226.PendingNode.h_framesS.outer",
+     "line": 2226,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_mid) ∨ True)"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_mid))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L2490.PendingNode.h_closeFE.outer",
+     "line": 2490,
+     "old": [
+      "          ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)) ∨ True)"
+     ],
+     "new": [
+      "          ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L2505.PendingNode.h_closeF.outer",
+     "line": 2505,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True)"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_m))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L2843.PendingNode.h_closeF.outer",
+     "line": 2843,
+     "old": [
+      "          ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)) ∨ True)"
+     ],
+     "new": [
+      "          ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L3060.PendingNode.h_closeF.outer",
+     "line": 3060,
+     "old": [
+      "          ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)) ∨ True)"
+     ],
+     "new": [
+      "          ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L3371.PendingNode.h_closeF.outer",
+     "line": 3371,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) (FrameLevel.map n :: ks) sp_mid) ∨ True)"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) (FrameLevel.map n :: ks) sp_mid))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L3391.PendingNode.h_frames.outer",
+     "line": 3391,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_mid) ∨ True)"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_mid))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L12659.flowKeyRoute_of_open.h_gate.outer",
+     "line": 12659,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_e) ∨ True) ∧"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_e)) ∧"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L12859.flowKeyRoute_of_root.h_mapF.outer",
+     "line": 12859,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True)"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_m))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L12897.flowKeyRoute_of_root.h_mapFV.outer",
+     "line": 12897,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_e) ∨ True) ∧"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_e)) ∧"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L12932.flowKeyRoute_of_root.h_res_land.outer",
+     "line": 12932,
+     "old": [
+      "            ResumeFrames (SLYamlStream sp_start) ks' sp_end) ∨ True := by"
+     ],
+     "new": [
+      "            ResumeFrames (SLYamlStream sp_start) ks' sp_end) := by"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L14178.accum_flow_open_depth0.h_opsk.outer",
+     "line": 14178,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True) →"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_m)) →"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L24567.colon_open_map.h_res_land.outer",
+     "line": 24567,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ True)"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_end))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L24844.question_open_map.h_res_land.outer",
+     "line": 24844,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ True)"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_end))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L25794.indicator_open_map.h_res_land.outer",
+     "line": 25794,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ True)"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_end))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L25965.colon_open_map_implicit.h_routeF.outer",
+     "line": 25965,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_e) ∨ True)"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_e))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L26206.colon_open_map_props.h_routeF.outer",
+     "line": 26206,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_e) ∨ True)"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_e))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L27442.deeperLandingResume.h_valF.outer",
+     "line": 27442,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) (FrameLevel.map nv :: ks) sp_mid) ∨ True)"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) (FrameLevel.map nv :: ks) sp_mid))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L27448.deeperLandingResume.h_res_land.outer",
+     "line": 27448,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ True := by"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_end) := by"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L27689.accum_block_on_closeThenBlock.h_valF.outer",
+     "line": 27689,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) (FrameLevel.map nv :: ks) sp_mid) ∨ True)"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) (FrameLevel.map nv :: ks) sp_mid))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L27713.accum_block_on_closeThenBlock.h_mapF.outer",
+     "line": 27713,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True)"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_m))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L28164.accum_block_on_closeThenBlock.h_res_land.outer",
+     "line": 28164,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ True := by"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_end) := by"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L28324.accum_block_on_closeThenBlock.h_seqFrames.outer",
+     "line": 28324,
+     "old": [
+      "          ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)) ∨ True := by"
+     ],
+     "new": [
+      "          ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)) := by"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L29314.accum_block_on_pendingContent.h_mapF109.outer",
+     "line": 29314,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True)"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_m))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L29520.accum_block_on_pendingBlockContent.h_closeF_old.outer",
+     "line": 29520,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)) ∨ True)"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L30115.accum_block_on_pendingBlock.h_closeF_old.outer",
+     "line": 30115,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)) ∨ True)"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L34154.resumectx_of_landing.h_fS.outer",
+     "line": 34154,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True)"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_m))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L34645.entryKeyPack_of_dispatch.h_nodeF.outer",
+     "line": 34645,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True)"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_m))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L34661.entryKeyPack_of_dispatch.h_dframes.outer",
+     "line": 34661,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True)"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_m))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L35330.entryPropsKeyPack_of_dispatch.h_nodeF.outer",
+     "line": 35330,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True)"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_m))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L35340.entryPropsKeyPack_of_dispatch.h_dframes.outer",
+     "line": 35340,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True)"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_m))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L35948.content_dispatch_routed.h_dead.outer",
+     "line": 35948,
+     "old": [
+      "            ResumeFrames (SLYamlStream sp_start) ks sp_e) ∨ True) →"
+     ],
+     "new": [
+      "            ResumeFrames (SLYamlStream sp_start) ks sp_e)) →"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L36202.content_dispatch_routed.h_dead.outer",
+     "line": 36202,
+     "old": [
+      "            ResumeFrames (SLYamlStream sp_start) ks sp_e) ∨ True) →"
+     ],
+     "new": [
+      "            ResumeFrames (SLYamlStream sp_start) ks sp_e)) →"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L37170.accum_content_on_pendingBlock_indented.h_closeF_old.outer",
+     "line": 37170,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)) ∨ True)"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L38056.accum_content_on_pendingMapValue_indented.h_closeF99.outer",
+     "line": 38056,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) (FrameLevel.map n :: ks) sp_mid) ∨ True)"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) (FrameLevel.map n :: ks) sp_mid))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L38070.accum_content_on_pendingMapValue_indented.h_frames99.outer",
+     "line": 38070,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_mid) ∨ True)"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_mid))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L38910.accum_content_pending.h_fS.outer",
+     "line": 38910,
+     "old": [
+      "            ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True)"
+     ],
+     "new": [
+      "            ResumeFrames (SLYamlStream sp_start) ks sp_m))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L39500.accum_content_pending.h_fS.outer",
+     "line": 39500,
+     "old": [
+      "          ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True :="
+     ],
+     "new": [
+      "          ResumeFrames (SLYamlStream sp_start) ks sp_m) :="
+     ],
+     "count": 1
+    },
+    {
+     "name": "L40380.accum_content_pending.h_res_land.outer",
+     "line": 40380,
+     "old": [
+      "                  ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ True := by"
+     ],
+     "new": [
+      "                  ResumeFrames (SLYamlStream sp_start) ks sp_end) := by"
+     ],
+     "count": 1
+    }
+   ]
+  }
+ ]
+}
