@@ -10,6 +10,7 @@ public import L4YAML.Proofs.Parser.TokenGrammar
 public import L4YAML.Proofs.Serialization.TokenEvents
 public import L4YAML.Proofs.Production.StreamAccum
 public import L4YAML.Proofs.Scanner.RegisterWitness
+public import L4YAML.Proofs.Serialization.ScannerShape
 public import L4YAML.Proofs.Scanner.FlowAdjacency
 public import L4YAML.Proofs.Output.AlignProofs
 public import L4YAML.Proofs.Scanner.FlowAdjacencyIx
@@ -441,7 +442,6 @@ def test9cd (state : IO.Ref TestCollector) : IO Unit := do
   -- Cross: deeply nested mixed structures
   checkRoundTrip state "cross-nested"
     (seqv [mapv [(sv "key", seqv [mapv [(sv "inner", seqv [sv "a", sv "b"])]])]])
-
 
 /-! ## Priority 3 — Theorems 9a, 9b (parser fuel sufficiency)
 
@@ -1921,7 +1921,6 @@ def testCloseStaleExplicitKey (state : IO.Ref TestCollector) : IO Unit := do
   checkStaleCase state "same-line" "? a b" 4 0 4 (some 0) 0 0 false
   checkStaleCase state "end-of-input" "? a\n" 4 1 0 (some 0) 0 0 false
 
-
 /-! ## Priority 9 — `stripAnchors`/`adaptForFlowContext` commute with `resolveAliases` (PR: clean before resolve)
 
 `addAnchor` now stores `(val.stripAnchors.adaptForFlowContext).resolveAliases ps.anchors`
@@ -2700,7 +2699,6 @@ def testTokenCarrierWalk (state : IO.Ref TestCollector) : IO Unit := do
       s!"{hf} of {steps} boundaries"
     checkM state s!"walk/{label}: Sound after every step" (cf == 0) s!"{cf} of {steps} steps"
 
-
 /-! ## Priority 16 — the column floor rides the token boundary (item 339, row 12)
 
 Item 339 adds `ColFloor` (`needIndentCheck = false → currentIndent ≤ col`, every
@@ -2815,7 +2813,6 @@ def testColFloorWalk (state : IO.Ref TestCollector) : IO Unit := do
     (match scan "k:\n  v: [a,\n b]\n" with | .error _ => true | .ok _ => false) ""
   checkM state "colfloor/flow continuation at the floor + 1 accepted"
     (match scan "k:\n  v: [a,\n   b]\n" with | .error _ => false | .ok _ => true) ""
-
 
 /-- `collectPlainScalarLoop_flow_inv`'s premise and conclusion as Booleans, read off an
     explicit `(l₀, c₀)` (the entry line and column). -/
@@ -3448,7 +3445,6 @@ def testMaximalTagLeaves (state : IO.Ref TestCollector) : IO Unit := do
     checkM state s!"tailGnotTag/{repr tail}: head-not-tag-char ↔ GNot at the tail"
       (gnotTagAtB s == expected) s!"got {gnotTagAtB s}"
 
-
 /-! ## Priority 20 — `[147]` glued flow value: `flowGluedCollectionValue` refusal grid
 
 `scanValueValidate` now refuses a flow `:` glued to `[`/`{` unless the key is JSON-like
@@ -3975,7 +3971,6 @@ def testNotQuestionPark (state : IO.Ref TestCollector) : IO Unit := do
       s!"colons {colons} questions {questions} bad {bad}"
     checkM state s!"dispatch/{repr input}: an indicator was dispatched" (colons + questions > 0) ""
 
-
 /-! ## Priority 24 — the marked-column domain and its transport (item 355, row 12)
 
 Item 355 narrows five value-line faces to `∃ ns, MarkedColsIn sc ns ∧ …`: every marked
@@ -4171,7 +4166,6 @@ def testColZeroParks (state : IO.Ref TestCollector) : IO Unit := do
   -- JSON-key carry, JSON-key glued — `refuted` is 0 on every row; the tallies are pinned so a hypothesis
   -- that fails everywhere is caught (§7).
   checkM state "col0/tally" (tally == #[(185, 16, 0), (193, 8, 0), (198, 3, 0), (178, 23, 0), (194, 7, 0)]) s!"tally={repr tally}"
-
 
 /-! ## Priority 26 — the `?`'s own mark (item 357, row 12)
 
@@ -4533,7 +4527,6 @@ def walkRefusedDisp (input : String) : Nat × Nat × Nat × Nat × Nat := Id.run
     | _ => fuel := 0
   return (payable, bad, reset, nested, nestedLive)
 
-
 def testExplicitColonRegister (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 28: register after the explicit `:` (item 359)"
   let walks : List (String × List (Nat × Option Nat × List (Option Nat))) :=
@@ -4789,7 +4782,6 @@ def testK1Lanes (state : IO.Ref TestCollector) : IO Unit := do
       (seqMiss == o) s!"got {seqMiss} expected {o}"
     checkM state s!"k1Lanes/{repr input}: the sibling premise is load-bearing (fresh landing)"
       (freshMiss == f) s!"got {freshMiss} expected {f}"
-
 
 open L4YAML.Proofs.IndentStackCover in
 /-- Priority 33 (item 364; #123 review): INSTANTIATE the K1-fresh cover on
@@ -5340,7 +5332,6 @@ def testTraceOfBlockLedger (state : IO.Ref TestCollector) : IO Unit := do
     checkM state s!"traceOf/block ledger {label}" (got == expected)
       s!"parseYaml: {repr got} (docs), expected {repr expected}"
 
-
 /-- Priority 34 (`[173]` tail confined to EOF): the executable side of
 `collectLineContentLoop_fst_nonempty` and of `BlockStopOk.badChar`'s non-empty run
 (`lineRunPlus_toBodyTail`).  An `nb-char` first and fuel ≥ 1 give non-empty content; the
@@ -5804,7 +5795,6 @@ def testOpenerSiblingAccepted (state : IO.Ref TestCollector) : IO Unit := do
     let got := openerLaneRow src
     checkM state s!"opener lanes {label}" (got == expected)
       s!"(open, started, marker, props) = {repr got}; expected {repr expected}"
-
 
 /-- One line-start pause of the scanner, read for item 377 (Priority 45): the character the dispatcher is
     about to see, whether the cursor stands at a block sequence's own indent
@@ -6337,7 +6327,6 @@ def testDeeperLandingResidueArm (state : IO.Ref TestCollector) : IO Unit := do
     let got := rootKeys input
     checkM state s!"deeper landing: slot vs residue arm {label}" (got == expected)
       s!"(documents, root keys, first value rendered) = {repr got}; expected {repr expected}"
-
 
 /-- **Priority 51 (S5 slice 1, EVENTSOF-CONCEPT §9): the parser's serialization verdict vs
     `checkFrom {} (tokenEvents tokens)`.**  S5(→) claims that every `parseStream` run the parser
@@ -6882,7 +6871,6 @@ def testSeqTopNoPopFaces (state : IO.Ref TestCollector) : IO Unit := do
       if face then seqFaces := seqFaces + 1
   checkM state s!"atSequenceIndent faces at the top's column: sequence tops = {seqFaces}" (seqFaces == 2) ""
 
-
 /-- Item 387 (PR #159 review): `seqTop_refuted_at_indicator_le`'s premises read at every ACCEPTED
     `:`/`?` dispatch of `input` (the pause `scanNextToken_preprocess` returns, dispatched on its
     directive-reset twin exactly as the lemma states it).  The lemma's cursor premise is the
@@ -7423,7 +7411,6 @@ e: 3
     check state s!"P61 live-key top bound over {label}: pauses={pauses} liveColons={liveColons} preViol={preViol} postViol={postViol} keyless={keyless} keylessViol={keylessViol}"
       (preViol == 0 && postViol == 0 && keylessViol == 0 && (liveColons, keyless) == expected)
 
-
 /-! ## Priority 62 — item 392: the second (α) flip PRICED (`flip_root_frame_supply.py`, now `scripts/flips/item392_root_frame_supply_stage{A,B}.json`) and the lever RE-READ
 
 Item 391's NEXT: price the root births SUPPLYING `[FrameLevel.map 0]`.  Stage A (the `ResumeFrames.level`
@@ -7454,7 +7441,6 @@ def testRootFrameSupply (state : IO.Ref TestCollector) : IO Unit := do
   for (label, input, expected) in rows do
     let got := rootKeys input
     checkM state s!"P62 {label}: {repr expected}" (got == expected) s!"got {repr got}"
-
 
 /-! ## Priority 63 — item 393: (α) at the FLOW park PRICED (`flip_flow_frames_field.py`, now `scripts/flips/item393_flow_frames_field.json`) and the site RE-READ
 
@@ -7821,7 +7807,6 @@ def testAlignLemmas (state : IO.Ref TestCollector) : IO Unit := do
   let (rows, viol) := alignGapWalk
   check state s!"minGap_le_gap over cell lists with and without outliers: rows={rows} viol={viol}"
     (viol == 0 && rows > 0)
-
 
 /-! ## Priority 67 — item 400: the four input-ahead exports READ before they are stated
 
@@ -8596,7 +8581,6 @@ def testKslotDomain (state : IO.Ref TestCollector) : IO Unit := do
       | _ => break
   check state s!"P69d markedCols projection: states={states} markedCols_mem mismatches={memBad} MarkedColsIn.self misses={selfBad} relay violations={relayBad}; negative control broke={negBroke}/{negN}; own mark last at ? pauses: violations={lastBad} two-mark pauses={lastTwo}; own mark present after a ? dispatch: misses={ownMiss}/{ownN}"
     (states > 7 && memBad == 0 && selfBad == 0 && relayBad == 0 && negN > 0 && negBroke == negN && lastBad == 0 && lastTwo > 0 && ownN > 0 && ownMiss == 0)
-
 
 /-- Priority 70/71: the flow carrier (items 406/407) — split from `testKslotDomain` (LCNF timeout). -/
 def testKslotPay (state : IO.Ref TestCollector) : IO Unit := do
@@ -10029,6 +10013,7 @@ def testFlowCarrier (state : IO.Ref TestCollector) : IO Unit := do
   check state s!"P72 flow key face projection (item 408): in-flow pauses={mcPauses} closes={mcCloses} markedCols ≠ open's={mcBad}"
     (mcPauses > 0 && mcCloses > 0 && mcBad == 0)
 
+
   -- 72 (ii) — `markedCols_congr` as a STATEMENT (review): arbitrary state PAIRS under its two hypotheses
   -- (`pendingKeys` equal, `indents` equal) with every OTHER field free to differ — empty, singleton and
   -- nested marked slots, block and flow states alike — must project the same chain; and a negative
@@ -10067,6 +10052,82 @@ def testFlowCarrier (state : IO.Ref TestCollector) : IO Unit := do
       | _ => break
   check state s!"P72 (ii) markedCols_congr direct: pairs={cgPairs} (empty={cgEmpty} two-or-more={cgMulti}) projections differ={cgBad}; negative pairs={cgNeg} of which chains differ={cgNegDiff}"
     (cgPairs > 0 && cgEmpty > 0 && cgMulti > 0 && cgBad == 0 && cgNeg > 0 && cgNegDiff > 0)
+
+/-! **Priority 87 — S3 obligation (b) `DirectivesClosed` on `scanFiltered` output, instantiated BEFORE
+    the proof (Rule 2).**  The claim: in `scanFiltered input = .ok ts` every `%YAML`/`%TAG` token is
+    followed by another directive token or `.documentStart`.  The grid walks the directive run's
+    every exit — `---` (closes), a second directive (continues), `...`/EOF/every content dispatch
+    path (`-`, `?`, `:`, `[`, `{`, `"`, `'`, `&`, `*`, `!`, `|`, plain) which must REFUSE with
+    `directiveWithoutDocument` — plus the re-arming boundary (`...` re-allows directives, `---`
+    and content do not: `directiveAfterContent`), reserved `%FOO` directives (flag up, no token),
+    comments/blank lines/BOM before the run, and the degenerate inputs (empty, `---`, `...`, one
+    scalar) where the claim holds vacuously.  The verdict column is the prediction; on success the
+    RAW `scan` fold `dirRun false … = some false` (the proof's invariant) and the filtered
+    `DirectivesClosed` shape are both checked. -/
+def testDirectivesClosedScan (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 87: S3 (b) DirectivesClosed — every directive run exits into `---` or another directive, or the scan is refused"
+  let isDir : YamlToken → Bool
+    | .versionDirective .. | .tagDirective .. => true
+    | _ => false
+  let closedB (vs : List YamlToken) : Bool :=
+    (List.range vs.length).all fun i =>
+      match vs[i]?, vs[i+1]? with
+      | some t, nxt =>
+        if isDir t then (match nxt with | some n => isDir n || n == .documentStart | none => false)
+        else true
+      | none, _ => true
+  -- (input, scans?, number of directive tokens expected when it scans)
+  let rows : List (String × Bool × Nat) :=
+    [ ("%YAML 1.2\n---\na", true, 1), ("%TAG !e! tag:x,2000:\n---\n!e!a b", true, 1),
+      ("%YAML 1.2\n%TAG !e! tag:x,2000:\n---\na", true, 2),
+      ("%TAG !e! tag:x,2000:\n%YAML 1.2\n---\na", true, 2),
+      ("%YAML 1.2\n---", true, 1), ("%YAML 1.2\n# c\n\n---\na", true, 1),
+      ("\uFEFF%YAML 1.2\n---\na", true, 1), ("%FOO bar\n---\na", true, 0),
+      ("--- a\n...\n%YAML 1.2\n---\nb", true, 1), ("a\n...\n%TAG !e! tag:x,2000:\n---\n!e!b c", true, 1),
+      ("", true, 0), ("---", true, 0), ("...", true, 0), ("a", true, 0), ("--- a\n--- b", true, 0),
+      -- the run exits into content, `...`, or EOF: refused
+      ("%YAML 1.2\na", false, 0), ("%YAML 1.2\n...\n", false, 0), ("%YAML 1.2\n", false, 0),
+      ("%YAML 1.2", false, 0), ("%FOO bar\na", false, 0), ("%FOO bar\n", false, 0),
+      ("%YAML 1.2\n- a", false, 0), ("%YAML 1.2\n? a\n: b", false, 0), ("%YAML 1.2\n: a", false, 0),
+      ("%YAML 1.2\n[a]", false, 0), ("%YAML 1.2\n{a: b}", false, 0), ("%YAML 1.2\n\"a\"", false, 0),
+      ("%YAML 1.2\n'a'", false, 0), ("%YAML 1.2\n&x a", false, 0), ("%YAML 1.2\n*x", false, 0),
+      ("%YAML 1.2\n!t a", false, 0), ("%YAML 1.2\n|\n a", false, 0), ("%YAML 1.2\n>\n a", false, 0),
+      ("%TAG !e! tag:x,2000:\na: b", false, 0),
+      -- directives where they are not allowed: after `---` or content without a `...`
+      ("---\n%YAML 1.2\n---\na", false, 0), ("a\n---\n%YAML 1.2\n---\nb", false, 0),
+      ("%YAML 1.2\n--- a\n%TAG !e! tag:x,2000:\n---\nb", false, 0),
+      -- a `%` line INSIDE a plain scalar is scalar text, not a directive: scans, no directive token
+      ("a\n%YAML 1.2\n---\nb", true, 0) ]
+  let mut scanned := 0
+  let mut refused := 0
+  for (input, expOk, nDir) in rows do
+    match Scanner.scanFiltered input with
+    | .error e =>
+      refused := refused + 1
+      checkM state s!"P87 {repr input}: refused" (!expOk) s!"{repr e}"
+      -- a run that opens the stream is refused for the directive reason, not something else (after
+      -- content the `%` line is read as scalar text, and the refusal is whatever that text earns)
+      if !expOk && (input.startsWith "%" || input.startsWith "\uFEFF%")
+          && !(input.splitOn "\n").any (·.startsWith "--- ") then
+        let directiveReason := match e with
+          | .directiveWithoutDocument _ => true | .directiveAfterContent _ => true | _ => false
+        checkM state s!"P87 {repr input}: refused on the directive" directiveReason s!"{repr e}"
+    | .ok ts =>
+      scanned := scanned + 1
+      let vs := ts.toList.map (·.val)
+      checkM state s!"P87 {repr input}: scans" expOk s!"{ts.size} tokens"
+      checkM state s!"P87 {repr input}: DirectivesClosed on the filtered tokens" (closedB vs) s!"{repr vs}"
+      checkM state s!"P87 {repr input}: {nDir} directive token(s)" ((vs.filter isDir).length == nDir)
+        s!"got {(vs.filter isDir).length}"
+      match Scanner.scan input with
+      | .ok raw =>
+        let rawVals := L4YAML.Proofs.DirectiveRuns.toks raw
+        checkM state s!"P87 {repr input}: raw fold `dirRun false … = some false`"
+          (L4YAML.Proofs.DirectiveRuns.dirRun false rawVals == some false) s!"{repr rawVals}"
+        checkM state s!"P87 {repr input}: filtering placeholders is the proof's bridge"
+          (L4YAML.Proofs.DirectiveRuns.toks (raw.filter fun t => t.val != .placeholder) == vs) ""
+      | .error e => checkM state s!"P87 {repr input}: raw scan agrees with scanFiltered" false s!"{repr e}"
+  checkM state s!"P87 grid: scanned={scanned} refused={refused}" (scanned == 16 && refused == 22) ""
 
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
@@ -10172,6 +10233,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testTagHandleShape state
   testTokenStateOkRestatement state
   testAlignLemmas state
+  testDirectivesClosedScan state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",
