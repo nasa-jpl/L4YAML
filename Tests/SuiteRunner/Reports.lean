@@ -294,7 +294,7 @@ where
     | '<' :: '!' :: '-' :: '-' :: t => do go (← skipTo t ['-', '-', '>'] "comment") acc depth
     | '<' :: '!' :: '[' :: 'C' :: 'D' :: 'A' :: 'T' :: 'A' :: '[' :: t => do go (← skipTo t [']', ']', '>'] "CDATA section") acc depth
     | '<' :: '!' :: 'D' :: 'O' :: 'C' :: 'T' :: 'Y' :: 'P' :: 'E' :: t => do
-      go (← skipDoctype t none) acc depth
+      go (← skipDoctype t) acc depth
     | '<' :: '!' :: t | '<' :: '?' :: t => do go (← skipTo t ['>'] "declaration") acc depth
     | '<' :: '/' :: t => do
       let name := t.takeWhile fun c => c != '>' && !c.isWhitespace
@@ -318,19 +318,51 @@ where
     | c :: t => do
       if depth == 0 && !c.isWhitespace then throw "text outside root element"
       go t acc depth
-  /-- Skip a DOCTYPE without accepting internal subsets; delimiters in quoted
-      external identifiers are ordinary characters, not markup boundaries. -/
-  skipDoctype (cs : List Char) (quoted : Option Char) : Except String (List Char) :=
+  /-- Accept only a plain DOCTYPE or bounded SYSTEM/PUBLIC external IDs.
+      A quote starts an identifier only after the corresponding keyword.
+      Internal DTD subsets remain explicitly unsupported. -/
+  skipDoctype (cs : List Char) : Except String (List Char) := do
+    let afterSpace := cs.dropWhile Char.isWhitespace
+    if afterSpace.length == cs.length then throw "invalid DOCTYPE declaration"
+    let name := afterSpace.takeWhile fun c =>
+      !c.isWhitespace && c != '[' && c != '>' && c != '"' && c != '\''
+    if name.isEmpty then throw "invalid DOCTYPE declaration"
+    let afterName := afterSpace.drop name.length
+    let rest := afterName.dropWhile Char.isWhitespace
+    if rest.head? == some '[' then throw "DOCTYPE internal subset unsupported"
+    if rest.head? == some '>' then return rest.drop 1
+    if afterName.length == rest.length then throw "invalid DOCTYPE declaration"
+    if ("SYSTEM".toList).isPrefixOf rest then
+      let afterKeyword := rest.drop 6
+      if afterKeyword.isEmpty || !(afterKeyword.headD ' ').isWhitespace then
+        throw "invalid DOCTYPE declaration"
+      finishDoctype (← doctypeLiteral (afterKeyword.dropWhile Char.isWhitespace))
+    else if ("PUBLIC".toList).isPrefixOf rest then
+      let afterKeyword := rest.drop 6
+      if afterKeyword.isEmpty || !(afterKeyword.headD ' ').isWhitespace then
+        throw "invalid DOCTYPE declaration"
+      let afterPublicId ← doctypeLiteral (afterKeyword.dropWhile Char.isWhitespace)
+      if afterPublicId.isEmpty || !(afterPublicId.headD ' ').isWhitespace then
+        throw "invalid DOCTYPE declaration"
+      finishDoctype (← doctypeLiteral (afterPublicId.dropWhile Char.isWhitespace))
+    else throw "invalid DOCTYPE declaration"
+  /-- Consume a quoted external identifier without treating delimiters as markup. -/
+  doctypeLiteral (cs : List Char) : Except String (List Char) :=
     match cs with
+    | '"' :: t => afterDoctypeLiteral '"' t
+    | '\'' :: t => afterDoctypeLiteral '\'' t
+    | _ => .error "invalid DOCTYPE declaration"
+  afterDoctypeLiteral (quote : Char) (cs : List Char) : Except String (List Char) :=
+    let chars := cs.takeWhile (· != quote)
+    match cs.drop chars.length with
     | [] => .error "unterminated declaration"
-    | c :: t =>
-      match quoted with
-      | some q => skipDoctype t (if c == q then none else some q)
-      | none =>
-        if c == '[' then .error "DOCTYPE internal subset unsupported"
-        else if c == '"' || c == '\'' then skipDoctype t (some c)
-        else if c == '>' then .ok t
-        else skipDoctype t none
+    | _ :: t => .ok t
+  finishDoctype (cs : List Char) : Except String (List Char) :=
+    match cs.dropWhile Char.isWhitespace with
+    | '>' :: t => .ok t
+    | '[' :: _ => .error "DOCTYPE internal subset unsupported"
+    | [] => .error "unterminated declaration"
+    | _ => .error "invalid DOCTYPE declaration"
   skipTo (cs : List Char) (pat : List Char) (what : String) : Except String (List Char) :=
     match cs with
     | [] => .error s!"unterminated {what}"
@@ -474,6 +506,21 @@ def pythonFfiHtml (sections : List Section) : String × Nat := Id.run do
 -- An actual subset is rejected even after a quoted bracket in an identifier.
 #guard junitCases "<!DOCTYPE testsuite SYSTEM \"report[1].dtd\" [<!ELEMENT testsuite ANY>]><testsuite><testcase name=\"ok\"/></testsuite>" ==
   .error "DOCTYPE internal subset unsupported"
+-- A quoted span without SYSTEM or PUBLIC is malformed, even if it contains a bracket.
+#guard junitCases "<!DOCTYPE testsuite \"[\"><testsuite><testcase name=\"ok\"/></testsuite>" ==
+  .error "invalid DOCTYPE declaration"
+#guard junitCases "<!DOCTYPE testsuite \"report.dtd\"><testsuite><testcase name=\"ok\"/></testsuite>" ==
+  .error "invalid DOCTYPE declaration"
+#guard junitCases "<!DOCTYPE testsuite SYSTEM report.dtd><testsuite><testcase name=\"ok\"/></testsuite>" ==
+  .error "invalid DOCTYPE declaration"
+#guard junitCases "<!DOCTYPE testsuite SYSTEM \"report.dtd\" \"extra\"><testsuite><testcase name=\"ok\"/></testsuite>" ==
+  .error "invalid DOCTYPE declaration"
+#guard junitCases "<!DOCTYPE testsuite PUBLIC \"public\" ><testsuite><testcase name=\"ok\"/></testsuite>" ==
+  .error "invalid DOCTYPE declaration"
+#guard junitCases "<!DOCTYPE testsuite PUBLIC \"-//EXAMPLE//DTD JUnit//EN\" \"report[1].dtd\"><testsuite><testcase name=\"ok\"/></testsuite>" ==
+  .ok [⟨".ok", "PASS", "pass", "0"⟩]
+#guard junitCases "<!DOCTYPE testsuite SYSTEM 'report[1].dtd'><testsuite><testcase name=\"ok\"/></testsuite>" ==
+  .ok [⟨".ok", "PASS", "pass", "0"⟩]
 -- Rejected missing attribute separators must not create green reports.
 #guard junitCases "<testsuite><testcase name=\"a\"time=\"1\"/></testsuite>" ==
   .error "attributes must be separated by whitespace"
