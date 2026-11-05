@@ -294,9 +294,7 @@ where
     | '<' :: '!' :: '-' :: '-' :: t => do go (← skipTo t ['-', '-', '>'] "comment") acc depth
     | '<' :: '!' :: '[' :: 'C' :: 'D' :: 'A' :: 'T' :: 'A' :: '[' :: t => do go (← skipTo t [']', ']', '>'] "CDATA section") acc depth
     | '<' :: '!' :: 'D' :: 'O' :: 'C' :: 'T' :: 'Y' :: 'P' :: 'E' :: t => do
-      if (t.takeWhile (· != '>')).contains '[' then
-        throw "DOCTYPE internal subset unsupported"
-      go (← skipTo t ['>'] "declaration") acc depth
+      go (← skipDoctype t none) acc depth
     | '<' :: '!' :: t | '<' :: '?' :: t => do go (← skipTo t ['>'] "declaration") acc depth
     | '<' :: '/' :: t => do
       let name := t.takeWhile fun c => c != '>' && !c.isWhitespace
@@ -320,6 +318,19 @@ where
     | c :: t => do
       if depth == 0 && !c.isWhitespace then throw "text outside root element"
       go t acc depth
+  /-- Skip a DOCTYPE without accepting internal subsets; delimiters in quoted
+      external identifiers are ordinary characters, not markup boundaries. -/
+  skipDoctype (cs : List Char) (quoted : Option Char) : Except String (List Char) :=
+    match cs with
+    | [] => .error "unterminated declaration"
+    | c :: t =>
+      match quoted with
+      | some q => skipDoctype t (if c == q then none else some q)
+      | none =>
+        if c == '[' then .error "DOCTYPE internal subset unsupported"
+        else if c == '"' || c == '\'' then skipDoctype t (some c)
+        else if c == '>' then .ok t
+        else skipDoctype t none
   skipTo (cs : List Char) (pat : List Char) (what : String) : Except String (List Char) :=
     match cs with
     | [] => .error s!"unterminated {what}"
@@ -455,6 +466,14 @@ def pythonFfiHtml (sections : List Section) : String × Nat := Id.run do
 -- Ordinary DOCTYPE declarations without an internal subset remain accepted.
 #guard junitCases "<!DOCTYPE testsuite><testsuite><testcase name=\"a\"/></testsuite>" ==
   .ok [⟨".a", "PASS", "pass", "0"⟩]
+-- Quoted delimiters in a system identifier are not an internal subset.
+#guard junitCases "<!DOCTYPE testsuite SYSTEM \"report[1].dtd\"><testsuite><testcase name=\"ok\"/></testsuite>" ==
+  .ok [⟨".ok", "PASS", "pass", "0"⟩]
+#guard junitCases "<!DOCTYPE testsuite SYSTEM \"report>1.dtd\"><testsuite><testcase name=\"ok\"/></testsuite>" ==
+  .ok [⟨".ok", "PASS", "pass", "0"⟩]
+-- An actual subset is rejected even after a quoted bracket in an identifier.
+#guard junitCases "<!DOCTYPE testsuite SYSTEM \"report[1].dtd\" [<!ELEMENT testsuite ANY>]><testsuite><testcase name=\"ok\"/></testsuite>" ==
+  .error "DOCTYPE internal subset unsupported"
 -- Rejected missing attribute separators must not create green reports.
 #guard junitCases "<testsuite><testcase name=\"a\"time=\"1\"/></testsuite>" ==
   .error "attributes must be separated by whitespace"
