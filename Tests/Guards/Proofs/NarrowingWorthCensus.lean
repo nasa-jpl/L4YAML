@@ -31,7 +31,7 @@ family was ever asked what it says.)
 sites `Or.inr trivial` and `Or.inl ⟨[], _⟩` are the same decline written two
 ways, and the narrowing moves the premise from one unconditional inhabitant to
 another.  §1 states that as a theorem and
-`scripts/pay_chain_optional.py` runs it against the compiler: **14 of them paid
+`lake run restate -- pay-chain-optional` runs it against the compiler: **14 of them paid
 at once with `Or.inl ⟨[], by simp⟩`, one build, zero errors**, after which
 Lean's linter calls 11 of the 14 unreferenced.
 
