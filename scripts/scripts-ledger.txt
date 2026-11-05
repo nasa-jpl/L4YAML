@@ -7,7 +7,7 @@
 #   status  todo | lean:<exe> (ported; the .py is deleted, <exe> is a lean_exe) | exception:<reason> (plan §4)
 # Gate: scripts/check-scripts-lean.sh (lake exe scripts-check-ledger).  The pin below counts todo + exception rows
 # and must equal them; a port lowers it in the same PR.  The ledger may only shrink.
-# open: 4
+# open: 1
 scripts/arm_price.py | F | lean:scripts-price
 scripts/beta5_arms.py | F | lean:scripts-beta5
 scripts/carrier_price.py | F | lean:scripts-price
@@ -18,7 +18,7 @@ scripts/check_reflection_index.py | G | lean:scripts-check-reflection-index
 scripts/close_price.py | F | lean:scripts-price
 scripts/coordinate_price.py | F | lean:scripts-price
 scripts/cross-lang-compare.py | R | lean:suiterunner
-scripts/decline_all_optional.py | F | todo
+scripts/decline_all_optional.py | F | lean:scripts-restate
 scripts/docs_nav.py | I | lean:scripts-docs-nav
 scripts/drop_sweep.py | I | lean:scripts-drop-sweep
 scripts/flip_210.py | F | lean:scripts-beta5
@@ -41,12 +41,12 @@ scripts/landing_nic0_price.py | F | lean:scripts-price
 scripts/ledger_diff.py | I | lean:scripts-ledger-diff
 scripts/matrix_score.py | R | lean:scripts-matrix-score
 scripts/mv_slot_top_price.py | F | lean:scripts-price
-scripts/narrow_conclusion.py | F | todo
+scripts/narrow_conclusion.py | F | lean:scripts-restate
 scripts/open_map_price.py | F | lean:scripts-price
 scripts/pack_flip_census.py | I | lean:scripts-pack-census
 scripts/park_nic0_price.py | F | lean:scripts-price
 scripts/park_top_price.py | F | lean:scripts-price
-scripts/pay_chain_optional.py | F | todo
+scripts/pay_chain_optional.py | F | lean:scripts-restate
 scripts/punt_reason_price.py | F | lean:scripts-punt-price
 scripts/rename_lemma.py | G | lean:scripts-theorem-keyword
 scripts/repin.py | I | lean:scripts-repin

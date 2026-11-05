@@ -45,7 +45,7 @@ its target is.  DEAD is therefore a sound under-approximation.  Over every
 nodes: **ten are dead and every one of them is `UNUSED`.  The `RELAY` lane has
 none.**
 
-**3.  The substitution probe** (`scripts/decline_all_optional.py`): replace a
+**3.  The substitution probe** (`lake run restate -- decline-all-optional`): replace a
 binder's uses with the canonical inhabitant of its type and rebuild.  For
 `A ∨ True` that inhabitant is `Or.inr trivial`, so the probe is available for
 the whole optional population — and **all 119 of `StreamAccum`'s optional

@@ -446,6 +446,11 @@ lean_exe «scripts-release-asset» where
 lean_exe «scripts-html-pdf» where
   root := `Scripts.Main.HtmlPdf
 
+-- Phase 3.3 (last rows): the StreamAccum restate trio of items 226–228.
+@[default_target]
+lean_exe «scripts-restate» where
+  root := `Scripts.Main.Restate
+
 /-! Phase 4.5 (Rule 9, Q7): portable entry points — `lake run <name>` replaces the
 bash wrappers that only run a `lean_exe`; same on Linux, macOS and Windows. -/
 
@@ -542,6 +547,14 @@ script «punt-price» (args) do
     `lake env lean`, the errors anchored on applications). Never beside a `lake build`. -/
 script «price» (args) do
   runGateExe (← getWorkspace).root.dir "scripts-price" #[] args
+
+/-- Rule 9 phase 3.3 (last rows): `lake run restate -- decline-all-optional | pay-chain-optional
+| narrow-conclusion MODULE NAME… [--all] [--deep]` — the StreamAccum restate trio of items
+226–228 (`decline_all_optional.py`, `pay_chain_optional.py`, `narrow_conclusion.py`): a
+source transform behind a backup copy, `lake build` as the price, the bytes restored and the
+module rebuilt. Never beside a `lake build`. -/
+script «restate» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-restate" #[] args
 
 /-- Rule 9 phase 4 row 1: `lake run cross-lang-compare -- DIR` runs suiterunner's
 four backends under the five presets and writes `DIR/cross-lang-results.json`

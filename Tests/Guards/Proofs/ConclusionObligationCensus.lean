@@ -15,7 +15,7 @@ This file is that operation and its price.
 each proof actually takes.  §5's re-run of item 227's own instrument reads
 **22**, in both directions, which is the machine's receipt for the operation.
 
-**What it cost.**  `scripts/narrow_conclusion.py` narrows a conclusion to
+**What it cost.**  `lake run restate -- narrow-conclusion` narrows a conclusion to
 `∨ False` — the tightest narrowing there is, so the error count bounds what
 ANY narrowing must pay — and lets `lake build` answer.  Over the 25 of the 27
 that are lemmas at all, the answer is **182 sites**: 97 in `FlowKeyLift`, 84 in
@@ -261,7 +261,7 @@ and not a lemma at all.
 `res` is a DAG count and undercounts by sharing: at item 228 `props_toKey`
 wrote `Or.inr trivial` in two branches over the same span, so the two terms
 were structurally identical and this walk saw one where the compiler saw two.
-That is why `scripts/narrow_conclusion.py` exists, and why its number is the
+That is why `lake run restate -- narrow-conclusion` exists, and why its number is the
 one DOCS quotes. -/
 
 partial def scanTerm (e : Expr) (seen : Std.HashSet Expr) (r i : Nat) :

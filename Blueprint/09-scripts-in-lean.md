@@ -339,6 +339,23 @@ breaks CI if wrong, cheapest first:
 4. `narrow_conclusion.py`, `pay_chain_optional.py`,
    `decline_all_optional.py`: source transforms over `StreamAccum.lean`
    → `scripts-restate` subcommands on `Scripts/Flip/Patch.lean`.
+   **DONE:** `lake run restate -- decline-all-optional | pay-chain-optional |
+   narrow-conclusion MODULE NAME… [--all] [--deep]` (one exe, `Scripts/Restate/
+   {Text,Shadow,Narrow,Probes}.lean`). The roster of optional binders is read
+   off the environment by the items' probes verbatim (`L4YAML/Scratch/
+   OptionalRoster.lean` / `ChainRoster.lean`, elaborated with `lake env lean`
+   after a build, removed after); the edits are the Pythons' geometry
+   (`shadow`'s `have b : T := witness` under `:= by`, `narrow`/`narrow_deep`'s
+   `∨ True` → `∨ False`), behind the same `.lean.item22N-backup` copy, with the
+   content digests on stderr and a refusal when a backup from an interrupted
+   run is present; `--patch-only PATH` writes the transformed module without
+   building. Validated in a worktree of the scripts' last commit (`7edb220c`,
+   fully built), Python vs Lean: the transformed module byte-identical and
+   stdout identical for `decline-all-optional`, `pay-chain-optional`, and
+   `narrow-conclusion` over `StreamAccum frameChainUnion flowKeyHead` (each,
+   and `--all --deep`), `FlowKeyLift flowNode_toKey --deep`,
+   `PreprocessIndentStable IndentFloor.transport FlowBaseRoutes.key nope` (the
+   two `SKIP` reasons); the trees clean after every run.
 
    **3.3 batch 2 DONE (items 371–389, ten `flip_*.py`):** `flip_vline_resume`,
    `flip_seqtop_face`, `flip_sibling_arm`, `flip_resumectx_seqtop`,
@@ -580,7 +597,7 @@ it removes Python from CI; it does not block an item.
 | flip_drop.py, flip_supply.py, flip_carrier.py, flip_supplier.py | F (one-shot; `flip_210.py`'s loaders) | 115, 131, 255, 341 | 09-21 … 09-23 | guard docstrings | `scripts/flips/item238_scanner_drop.json`, `item233_flow_key_head.json`, `item246_carrier_{arm,retire}.json`, `item240_supplier_{weak,field,retire,producer}.json` | lean:scripts-flip (3.2b) |
 | punt_reason_price.py | F (live; a `lake env lean` instrument) | 510 | 09-19 | item 211 | scripts-punt-price | DONE (`lake run punt-price`) |
 | flip_inl_declines.py | F (live) | 72 | 10-31 | item 415 | `scripts/flips/item415_inl_declines.json` | lean:scripts-flip |
-| narrow_conclusion.py, pay_chain_optional.py, decline_all_optional.py | F (transforms) | 241, 140, 247 | 09-20 | skills | scripts-restate | todo |
+| narrow_conclusion.py, pay_chain_optional.py, decline_all_optional.py | F (transforms) | 241, 140, 247 | 09-20 | skills | `lake run restate -- narrow-conclusion|pay-chain-optional|decline-all-optional` (`Scripts/Restate/*`) | lean:scripts-restate |
 | 29 one-shot `flip_*.py` (items 371–413) | F (one-shot) | 1 947 | 10-27 … 10-31 | DOCS.md items only | 43 `scripts/flips/item<N>_*.json` (3.3 batches 1–3) | lean:scripts-flip |
 | park_top_price.py, vslot_top_price.py, mv_slot_top_price.py, open_map_price.py, park_nic0_price.py, landing_nic0_price.py | F (items 205–210; `lake env lean` instruments with sub-commands) | 1 222 | 09-18 … 09-19 | DOCS.md items, StreamAccum/guard prose | `lake run price -- park-top|vslot-top|mv-slot-top|open-map|park-nic0|landing-nic0` (`Scripts/Price/*`) | lean:scripts-price |
 | carrier_price.py, wire_price.py, arm_price.py | F (live pins in `ScannerFlowOpenUnderRun.lean`; `lake env lean` / `lake build`) | 533 | 09-23 … 09-24 | guard-file prose | `lake run price -- carrier|wire|arm` (`Scripts/Price/{Pin,Carrier,Wire,Arm}.lean`, `Scripts/Lean/Md5.lean`) | lean:scripts-price |
