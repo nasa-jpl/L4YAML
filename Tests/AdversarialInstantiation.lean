@@ -9865,7 +9865,8 @@ def testMarkFloorAndSeqTopKey (state : IO.Ref TestCollector) : IO Unit := do
     at the SAME indentation as its key (`a:⏎- b`, YAML's compact block sequence as a mapping value:
     the `-` pushes no sequence level, the top is the mapping at the key's column), the 6 `entryFails`,
     so the entry parks are not "absent" either: at `k:⏎- a` the park's value line IS open and the
-    `-` writers hold no face for it (Rule 2's refutation of (ο-absent) for the entry class). -/
+    `-` writers hold no face for it (Rule 2's refutation of (ο-absent) for the entry class).  The six
+    are pinned by input and position, not by count, so a different failure cannot pass as this one. -/
 def testNoMapLineArm (state : IO.Ref TestCollector) : IO Unit := do
   let inputs : List String :=
     [ "a: 1", "- a\n- b", "---\na: 1\n...\n", "--- a\n--- b", "k: !!str\n  v", "k: &x\n  v", "- !!str\n  v",
@@ -9904,7 +9905,9 @@ def testNoMapLineArm (state : IO.Ref TestCollector) : IO Unit := do
       | _ => break
   check state s!"P87 (ο-absent) NoMapLine on the scanner (item 435): virgin={holds[0]!}/{pauses[0]!} marker={holds[1]!}/{pauses[1]!} entry={holds[2]!}/{pauses[2]!} props={holds[3]!}/{pauses[3]!} value={holds[4]!}/{pauses[4]!} other={holds[5]!}/{pauses[5]!} entry-fails={entryFails}"
     (pauses[0]! > 0 && holds[0]! == pauses[0]! && pauses[1]! > 0 && holds[1]! == pauses[1]!
-      && pauses[2]! > 0 && holds[2]! + entryFails.length == pauses[2]! && entryFails.length == 6
+      && pauses[2]! > 0 && holds[2]! + entryFails.length == pauses[2]!
+      && entryFails == [ s!"{repr "a: !!seq\n- b"}@1:2", s!"{repr "a:\n- b"}@1:2", s!"{repr "a:\n- b\n- c\nd: 1"}@1:2",
+           s!"{repr "a:\n- b\n- c\nd: 1"}@2:2", s!"{repr "k:\n- x: 1\n  y: 2"}@1:2", s!"{repr "k:\n- - a\n  - b"}@1:2" ]
       && pauses[3]! > 0 && holds[3]! < pauses[3]! && pauses[4]! > 0 && holds[4]! == 0)
 
 
