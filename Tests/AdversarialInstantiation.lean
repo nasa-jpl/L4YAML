@@ -9911,6 +9911,58 @@ def testNoMapLineArm (state : IO.Ref TestCollector) : IO Unit := do
       && pauses[3]! > 0 && holds[3]! < pauses[3]! && pauses[4]! > 0 && holds[4]! == 0)
 
 
+/-! **Priority 88 — (σ-three-arms): the two new park fields read on the scanner** (item 436).  The
+    per-class restatement puts `h_ntop : sc.currentIndent < 0` on the marker parks (`scanDocumentStart` /
+    `scanDocumentEnd` call `unwindIndents s (-1)`) and `h_seqTop` on the `-` parks: after the `-` step the
+    stack top is a sequence level (`pushSequenceIndent` pushed at the `-`'s column) or, in the compact
+    `k:⏎- a` case where it pushed nothing, the mapping level AT the `-`'s own column.  Rule 2 before the
+    proof: at every marker pause the sentinel is on top; at every `-` pause the top is a sequence level or
+    a mapping level at the `-` column — and NO third case (a mapping top at another column would be an
+    indentation the scanner refuses).  The compact pauses are the six P87 pinned. -/
+def testThreeArmsFields (state : IO.Ref TestCollector) : IO Unit := do
+  let inputs : List String :=
+    [ "a: 1", "- a\n- b", "---\na: 1\n...\n", "--- a\n--- b", "k: !!str\n  v", "k:\n  - a\n  - b", "? a\n: b",
+      "- - a\n  - b", "k:\n  v: w\n  x: y", "a:\n  b:\n    c: d\n  e: f", "- a: 1\n  b: 2", "--- !!map\na: 1",
+      "...\n", "- &a x\n- *a", "? - a\n: b", "a: !!seq\n- b", "- a\n-\n  - b\n- c", "---\n- a\n---\n- b\n...",
+      "a:\n- b", "a:\n- b\n- c\nd: 1", "k:\n- x: 1\n  y: 2", "k:\n- - a\n  - b", "%YAML 1.2\n---\na: 1",
+      "a:\n  - b\n  -\n    c: d\n---\ne: f", "- a\n...\n- b", "k:\n  - a\n- b" ]
+  let mut markerPauses := 0
+  let mut markerTop := 0
+  let mut entryPauses := 0
+  let mut seqTop := 0
+  let mut compactTop := 0
+  let mut thirdCase : List String := []
+  for input in inputs do
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:80] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        if sP.flowLevel == 0 && c != '#' then
+          match L4YAML.Scanner.lastRealToken? sP.tokens with
+          | some t =>
+            match t.val with
+            | .documentStart | .documentEnd =>
+              markerPauses := markerPauses + 1
+              if sP.currentIndent < 0 then markerTop := markerTop + 1
+            | .blockEntry =>
+              entryPauses := entryPauses + 1
+              match sP.indents.back? with
+              | some e =>
+                if e.isSequence then seqTop := seqTop + 1
+                else if e.column == (t.pos.col : Int) then compactTop := compactTop + 1
+                else thirdCase := thirdCase ++ [s!"{repr input}@{sP.line}:{sP.col}"]
+              | none => thirdCase := thirdCase ++ [s!"{repr input}@{sP.line}:{sP.col} (no top)"]
+            | _ => pure ()
+          | none => pure ()
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) => s := sN
+        | _ => break
+      | _ => break
+  check state s!"P88 (σ-three-arms) park fields on the scanner (item 436): marker sentinel-top={markerTop}/{markerPauses}; entry seq-top={seqTop} compact-top={compactTop} of {entryPauses}; third case={thirdCase}"
+    (markerPauses > 0 && markerTop == markerPauses && entryPauses > 0
+      && seqTop + compactTop == entryPauses && compactTop == 6 && thirdCase.isEmpty)
+
+
 def testFlowCarrier (state : IO.Ref TestCollector) : IO Unit := do
   let nestedQ : List String := ["?\n  ? -\n: w\n", "? - ? - a\n  : b\n: c\n", "?\n  ?\n    -\n    - b\n  ? c\n: w\n", "? ? - a\n  : b\n: c\n", "- ? - a\n  : b\n"]
   let singleQ : List String := ["? - a\n: b\n", "?\n  - a\n  - b\n: w\n", "k:\n  ? - a\n  : b\n", "? -\n: w\n"]
@@ -10119,6 +10171,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testDedentMarksSurvive state
   testMarkFloorAndSeqTopKey state
   testNoMapLineArm state
+  testThreeArmsFields state
 
   testQuestionMarkColumn state
   testK1Lanes state
