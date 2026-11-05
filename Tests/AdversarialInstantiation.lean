@@ -9850,6 +9850,67 @@ def testMarkFloorAndSeqTopKey (state : IO.Ref TestCollector) : IO Unit := do
   check state s!"P86 (ι-floor) refuted / seq-top key reaches the dispatch (item 430): under-run landings={underRun} with surviving marks={survivors} all below the top={belowTop} all below the landing column={belowLanding}; key-on-seq-top pauses={keyOnSeqTop} dispatchContent ok={dispatchOk} inputs={inputsWithKeyOnSeqTop} rejected by `trailingContent` on the `:` step={laterErrors}"
     (underRun > 0 && survivors > 0 && belowTop == survivors && belowLanding == survivors && keyOnSeqTop > 0 && dispatchOk == keyOnSeqTop && inputsWithKeyOnSeqTop > 0 && laterErrors == inputsWithKeyOnSeqTop)
 
+/-! **Priority 87 — (ο-absent): the map frames face's negative arm `NoMapLine` read on the scanner**
+    (item 435).  Items 432–434 found the face's outer `∨ True` is a three-valued statement — *the park's
+    value line resumes these frames* / *the park has no such line* — written with `True` for the second
+    value.  The candidate negative arm is a projection of the scanner state: `NoMapLine sc := sc.currentIndent
+    < 0 ∨ (sc.indents.back? = some e ∧ e.isSequence)` — the stack top is the sentinel or a sequence level,
+    so no mapping value line is open at the top.  Rule 2 before the proof: at every block-context pause,
+    classed by the last real token (none = the virgin park, `---`/`...` = the marker parks, `-` = the entry
+    parks, anchor/tag = the props park, `:` = a mapping value line), the arm must HOLD at every virgin,
+    marker and entry pause (those writers punt for the right reason) and FAIL at some props pause and at
+    every `:` pause (a props park at a mapping value position is not "absent" — its writer must relay the
+    face, and the arm is not vacuous).  READ (the pinned numbers): it holds at every virgin and marker
+    pause, fails at every `:` pause, fails at 6 of 10 props pauses — and FAILS at the `-` of a sequence
+    at the SAME indentation as its key (`a:⏎- b`, YAML's compact block sequence as a mapping value:
+    the `-` pushes no sequence level, the top is the mapping at the key's column), the 6 `entryFails`,
+    so the entry parks are not "absent" either: at `k:⏎- a` the park's value line IS open and the
+    `-` writers hold no face for it (Rule 2's refutation of (ο-absent) for the entry class).  The six
+    are pinned by input and position, not by count, so a different failure cannot pass as this one. -/
+def testNoMapLineArm (state : IO.Ref TestCollector) : IO Unit := do
+  let inputs : List String :=
+    [ "a: 1", "- a\n- b", "---\na: 1\n...\n", "--- a\n--- b", "k: !!str\n  v", "k: &x\n  v", "- !!str\n  v",
+      "!!str a: b", "k:\n  - a\n  - b", "? a\n: b", "- - a\n  - b", "k:\n  v: w\n  x: y",
+      "a:\n  b:\n    c: d\n  e: f", "- a: 1\n  b: 2", "k: [a, b]", "k:\n  [a, b]", "--- !!map\na: 1", "...\n",
+      "# c\na: 1", "k: |\n  text\nm: 2", "- &a x\n- *a", "? - a\n: b", "a: !!seq\n- b", "- a\n-\n  - b\n- c",
+      "a: &x !!str\n  v\nb: 2", "---\n- a\n---\n- b\n...", "k:\n  !!str v\nm: 1",
+      "a:\n- b", "a:\n- b\n- c\nd: 1", "k:\n- x: 1\n  y: 2", "k:\n- - a\n  - b" ]
+  let noMapLine (s : L4YAML.Scanner.ScannerState) : Bool :=
+    s.currentIndent < 0 || (match s.indents.back? with | some e => e.isSequence | none => false)
+  let kindOf (s : L4YAML.Scanner.ScannerState) : String :=
+    match L4YAML.Scanner.lastRealToken? s.tokens with
+    | none => "virgin"
+    | some t => match t.val with
+      | .streamStart => "virgin" | .placeholder => "virgin" | .documentStart => "marker" | .documentEnd => "marker"
+      | .blockEntry => "entry" | .anchor .. => "props" | .tag .. => "props" | .value => "value"
+      | _ => "other"
+  let mut pauses : Array Nat := #[0, 0, 0, 0, 0, 0]
+  let mut holds : Array Nat := #[0, 0, 0, 0, 0, 0]
+  let idx (k : String) : Nat := match k with
+    | "virgin" => 0 | "marker" => 1 | "entry" => 2 | "props" => 3 | "value" => 4 | _ => 5
+  let mut entryFails : List String := []
+  for input in inputs do
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:80] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        if sP.flowLevel == 0 && c != '#' then
+          let i := idx (kindOf sP)
+          pauses := pauses.set! i (pauses[i]! + 1)
+          if noMapLine sP then holds := holds.set! i (holds[i]! + 1)
+          else if i == 2 then entryFails := entryFails ++ [s!"{repr input}@{sP.line}:{sP.col}"]
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) => s := sN
+        | _ => break
+      | _ => break
+  check state s!"P87 (ο-absent) NoMapLine on the scanner (item 435): virgin={holds[0]!}/{pauses[0]!} marker={holds[1]!}/{pauses[1]!} entry={holds[2]!}/{pauses[2]!} props={holds[3]!}/{pauses[3]!} value={holds[4]!}/{pauses[4]!} other={holds[5]!}/{pauses[5]!} entry-fails={entryFails}"
+    (pauses[0]! > 0 && holds[0]! == pauses[0]! && pauses[1]! > 0 && holds[1]! == pauses[1]!
+      && pauses[2]! > 0 && holds[2]! + entryFails.length == pauses[2]!
+      && entryFails == [ s!"{repr "a: !!seq\n- b"}@1:2", s!"{repr "a:\n- b"}@1:2", s!"{repr "a:\n- b\n- c\nd: 1"}@1:2",
+           s!"{repr "a:\n- b\n- c\nd: 1"}@2:2", s!"{repr "k:\n- x: 1\n  y: 2"}@1:2", s!"{repr "k:\n- - a\n  - b"}@1:2" ]
+      && pauses[3]! > 0 && holds[3]! < pauses[3]! && pauses[4]! > 0 && holds[4]! == 0)
+
+
 def testFlowCarrier (state : IO.Ref TestCollector) : IO Unit := do
   let nestedQ : List String := ["?\n  ? -\n: w\n", "? - ? - a\n  : b\n: c\n", "?\n  ?\n    -\n    - b\n  ? c\n: w\n", "? ? - a\n  : b\n: c\n", "- ? - a\n  : b\n"]
   let singleQ : List String := ["? - a\n: b\n", "?\n  - a\n  - b\n: w\n", "k:\n  ? - a\n  : b\n", "? -\n: w\n"]
@@ -10057,6 +10118,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testPackAltMarkTautoRegisters state
   testDedentMarksSurvive state
   testMarkFloorAndSeqTopKey state
+  testNoMapLineArm state
 
   testQuestionMarkColumn state
   testK1Lanes state
