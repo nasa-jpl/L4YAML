@@ -188,6 +188,11 @@ structure Case where
   time : String
   deriving Repr, BEq, Inhabited
 
+/-- Parse hexadecimal XML character references, shared by display and validation. -/
+def xmlHexNat (hs : List Char) : Option Nat :=
+  if hs.isEmpty || !hs.all (fun c => c.isDigit || "abcdefABCDEF".toList.contains c) then none
+  else some (hs.foldl (fun n c => n * 16 + (if c.isDigit then c.toNat - '0'.toNat else (c.toLower.toNat - 'a'.toNat + 10))) 0)
+
 /-- XML entities and character references. -/
 def xmlUnescape (s : String) : String := Id.run do
   let mut out := ""
@@ -202,7 +207,7 @@ def xmlUnescape (s : String) : String := Id.run do
         if e == "amp" then some "&" else if e == "lt" then some "<" else if e == "gt" then some ">"
         else if e == "quot" then some "\"" else if e == "apos" then some "'"
         else match ent with
-          | '#' :: 'x' :: hs => (String.ofList hs).toNat? |> fun _ => (hexNat hs).map fun n => String.singleton (Char.ofNat n)
+          | '#' :: 'x' :: hs => (xmlHexNat hs).map fun n => String.singleton (Char.ofNat n)
           | '#' :: ds => ((String.ofList ds).toNat?).map fun n => String.singleton (Char.ofNat n)
           | _ => none
       match rep with
@@ -211,25 +216,18 @@ def xmlUnescape (s : String) : String := Id.run do
     | c :: t => out := out.push c; rest := t
     | [] => pure ()
   return out
-where
-  hexNat (hs : List Char) : Option Nat :=
-    if hs.isEmpty || !hs.all (fun c => c.isDigit || "abcdefABCDEF".toList.contains c) then none
-    else some (hs.foldl (fun n c => n * 16 + (if c.isDigit then c.toNat - '0'.toNat else (c.toLower.toNat - 'a'.toNat + 10))) 0)
 
 #guard xmlUnescape "a &lt;b&gt; &amp;&quot;&apos;&#65;&#x42; &bogus; &" == "a <b> &\"'AB &bogus; &"
 
 /-- Recognized XML entities and scalar-valued numeric character references.
     Reject malformed references before the permissive display unescaper runs. -/
-partial def validXmlEntities : List Char → Bool
+def validXmlEntities : List Char → Bool
   | [] => true
   | '&' :: t =>
     let ent := t.takeWhile (· != ';')
     let e := String.ofList ent
     let num : Option Nat :=
-      if e.startsWith "#x" then
-        let hs := ent.drop 2
-        if hs.isEmpty || !hs.all (fun c => c.isDigit || "abcdefABCDEF".toList.contains c) then none
-        else some (hs.foldl (fun n c => n * 16 + (if c.isDigit then c.toNat - '0'.toNat else c.toLower.toNat - 'a'.toNat + 10)) 0)
+      if e.startsWith "#x" then xmlHexNat (ent.drop 2)
       else if e.startsWith "#" then (String.ofList (ent.drop 1)).toNat? else none
     let scalar := match num with
       | some n => n == 9 || n == 10 || n == 13 || (n ≥ 32 && n ≤ 0xD7FF) || (n ≥ 0xE000 && n ≤ 0xFFFD) || (n ≥ 0x10000 && n ≤ 0x10FFFF)
@@ -237,6 +235,10 @@ partial def validXmlEntities : List Char → Bool
     t.length > ent.length && (["amp", "lt", "gt", "quot", "apos"].contains e || scalar) &&
       validXmlEntities (t.drop (ent.length + 1))
   | _ :: t => validXmlEntities t
+termination_by cs => cs.length
+decreasing_by
+  all_goals simp_wf
+  all_goals omega
 
 /-- A start tag's attributes: `name="value"` / `name='value'`, unescaped; an
     unquoted or missing value is an error, as for `xml.etree`. -/
@@ -260,7 +262,12 @@ where
           let val := v.takeWhile (· != q)
           if val.length == v.length then .error s!"unterminated value of attribute {String.ofList name}"
           else if !validXmlEntities val || val.contains '<' then .error s!"invalid value of attribute {String.ofList name}"
-          else go (v.drop (val.length + 1)) ((String.ofList name, xmlUnescape (String.ofList val)) :: acc)
+          else
+            let afterVal := v.drop (val.length + 1)
+            if !(afterVal.headD ' ').isWhitespace && afterVal.headD ' ' != '/' && afterVal.headD ' ' != '>' then
+              .error "attributes must be separated by whitespace"
+            else
+              go afterVal ((String.ofList name, xmlUnescape (String.ofList val)) :: acc)
         else .error s!"unquoted value of attribute {String.ofList name}"
       | [] => .error s!"attribute {String.ofList name} has no value"
     | _ => .error s!"attribute {String.ofList name} has no value"
@@ -270,10 +277,13 @@ where
 #guard attrsOf "testcase name=bare" == .error "unquoted value of attribute name"
 #guard attrsOf "testcase name=\"open" == .error "unterminated value of attribute name"
 #guard attrsOf "testcase name" == .error "attribute name has no value"
+#guard attrsOf "testcase name=\"a\"time=\"1\"" == .error "attributes must be separated by whitespace"
 
 /-- The elements of an XML text as a flat list: `(name, attrs, isStart, isEnd)` —
-    comments, declarations and CDATA skipped; `<x/>` is start and end.  An
-    unterminated tag, comment, CDATA section or declaration is an error. -/
+    comments, declarations and CDATA skipped; `<x/>` is start and end.
+    This deliberately bounded JUnit reader rejects a DOCTYPE declaration
+    with an internal subset rather than attempting general DTD/entity support.
+    An unterminated tag, comment, CDATA or declaration is an error. -/
 partial def tokens (s : String) : Except String (List (String × List (String × String) × Bool × Bool)) :=
   go s.toList [] 0
 where
@@ -283,6 +293,10 @@ where
     | [] => .ok acc.reverse
     | '<' :: '!' :: '-' :: '-' :: t => do go (← skipTo t ['-', '-', '>'] "comment") acc depth
     | '<' :: '!' :: '[' :: 'C' :: 'D' :: 'A' :: 'T' :: 'A' :: '[' :: t => do go (← skipTo t [']', ']', '>'] "CDATA section") acc depth
+    | '<' :: '!' :: 'D' :: 'O' :: 'C' :: 'T' :: 'Y' :: 'P' :: 'E' :: t => do
+      if (t.takeWhile (· != '>')).contains '[' then
+        throw "DOCTYPE internal subset unsupported"
+      go (← skipTo t ['>'] "declaration") acc depth
     | '<' :: '!' :: t | '<' :: '?' :: t => do go (← skipTo t ['>'] "declaration") acc depth
     | '<' :: '/' :: t => do
       let name := t.takeWhile fun c => c != '>' && !c.isWhitespace
@@ -427,19 +441,23 @@ def pythonFfiHtml (sections : List Section) : String × Nat := Id.run do
 #guard junitCases "</testsuite>" == .error "end tag </testsuite> with no open element"
 
 -- Malformed JUnit documents must not become green one-test reports.  The
--- original Python ElementTree reader rejects each of these six inputs.
-#guard (match junitCases "garbage<testsuite><testcase name=\"ok\"/></testsuite>" with
-  | .error _ => true | .ok _ => false)
-#guard (match junitCases "<testsuite><testcase name=\"ok\"/></testsuite>garbage" with
-  | .error _ => true | .ok _ => false)
-#guard (match junitCases "<testsuite><testcase name=\"a\" name=\"b\"/></testsuite>" with
-  | .error _ => true | .ok _ => false)
-#guard (match junitCases "<testsuite><testcase name=\"&unknown;\"/></testsuite>" with
-  | .error _ => true | .ok _ => false)
-#guard (match junitCases "<testsuite><testcase name=\"a\"/> &broken; </testsuite>" with
-  | .error _ => true | .ok _ => false)
-#guard (match junitCases "<testsuite><testcase name=\"a\"/></testsuite garbage>" with
-  | .error _ => true | .ok _ => false)
+-- original Python ElementTree reader rejects all seven inputs.
+#guard junitCases "garbage<testsuite><testcase name=\"ok\"/></testsuite>" == .error "text outside root element"
+#guard junitCases "<testsuite><testcase name=\"ok\"/></testsuite>garbage" == .error "text outside root element"
+#guard junitCases "<testsuite><testcase name=\"a\" name=\"b\"/></testsuite>" == .error "duplicate attribute name"
+#guard junitCases "<testsuite><testcase name=\"&unknown;\"/></testsuite>" == .error "invalid value of attribute name"
+#guard junitCases "<testsuite><testcase name=\"a\"/> &broken; </testsuite>" == .error "invalid entity in content"
+#guard junitCases "<testsuite><testcase name=\"a\"/></testsuite garbage>" == .error "invalid end tag </testsuite>"
+
+-- This bounded reader deliberately refuses DTD internal subsets; lock the boundary.
+#guard junitCases "<!DOCTYPE testsuite [<!ELEMENT testsuite ANY>]><testsuite><testcase name=\"a\"/></testsuite>" ==
+  .error "DOCTYPE internal subset unsupported"
+-- Ordinary DOCTYPE declarations without an internal subset remain accepted.
+#guard junitCases "<!DOCTYPE testsuite><testsuite><testcase name=\"a\"/></testsuite>" ==
+  .ok [⟨".a", "PASS", "pass", "0"⟩]
+-- Rejected missing attribute separators must not create green reports.
+#guard junitCases "<testsuite><testcase name=\"a\"time=\"1\"/></testsuite>" ==
+  .error "attributes must be separated by whitespace"
 
 -- Legitimate whitespace, escaping, and CDATA remain accepted.
 #guard junitCases "\n<testsuite><testcase name=\"a &amp; b\"/></testsuite> \n" ==
@@ -456,8 +474,7 @@ def pythonFfiHtml (sections : List Section) : String × Nat := Id.run do
   .ok [⟨".ok", "PASS", "pass", "0"⟩]
 
 -- Numeric references to non-XML characters must remain errors.
-#guard (match junitCases "<testsuite><testcase name=\"&#xD800;\"/></testsuite>" with
-  | .error _ => true | .ok _ => false)
+#guard junitCases "<testsuite><testcase name=\"&#xD800;\"/></testsuite>" == .error "invalid value of attribute name"
 
 def exampleCases : List Case := (junitCases exampleJunit).toOption.getD []
 #guard (pythonFfiHtml [⟨"T", exampleCases⟩]).2 == 3
