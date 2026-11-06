@@ -35983,7 +35983,7 @@ lemma content_dispatch_routed
               IndentStackCover.Covered lo (FrameLevel.map k :: ks) s') ∨ True) ∧
             ∀ sp_v : SurfPos, SBlockMapEntry k sp_prep sp_v →
             ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →
-            ResumeFrames (SLYamlStream sp_start) ks sp_e) ∨ True) →
+            ResumeFrames (SLYamlStream sp_start) ks sp_e) ∨ (ExplicitValueRefused s_prep ∨ SeqTopKey s_prep)) →
           ((∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width < k) ∧
             -- Item 150: the value-line pack field's cover, at the park this
             -- build reaches.
@@ -36011,7 +36011,7 @@ lemma content_dispatch_routed
         refine Or.inl ⟨⟨k, h_route_k, h_kcol,
           -- Item 94: the run heads a landed key, and no `?` fits to its
           -- left on either branch, so no value line twins the route.
-          Or.inr (PackAlt.step_dispatch h_dispatch (if hk : k = 0 then PackAlt.ofRefused (h_dead (by rw [← hcorr_prep.col_eq]; have := SIndent_col h_ind; rw [hcol0] at this; omega)) else h_alt)), h_resF, h_resFV⟩, h_props, ?_,
+          Or.inr (PackAlt.step_dispatch h_dispatch (if hk : k = 0 then PackAlt.ofRefused (h_dead (by rw [← hcorr_prep.col_eq]; have := SIndent_col h_ind; rw [hcol0] at this; omega)) else h_alt)), h_resF.imp_right (fun _ => trivial), h_resFV⟩, h_props, ?_,
           by rw [h_sk, allowDirectives_update_simpleKey]; exact h_sk_poss⟩
         rw [h_sk, allowDirectives_update_simpleKey, h_sk_pos,
             h_line', allowDirectives_update_line]
@@ -36237,7 +36237,7 @@ lemma content_dispatch_routed
               IndentStackCover.Covered lo (FrameLevel.map k :: ks) s') ∨ True) ∧
             ∀ sp_v : SurfPos, SBlockMapEntry k sp_prep sp_v →
             ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →
-            ResumeFrames (SLYamlStream sp_start) ks sp_e) ∨ True) →
+            ResumeFrames (SLYamlStream sp_start) ks sp_e) ∨ (ExplicitValueRefused s_prep ∨ SeqTopKey s_prep)) →
           ((∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width < k) ∧
             -- Item 150: the value-line pack field's cover, at the park this
             -- build reaches.
@@ -36288,7 +36288,7 @@ lemma content_dispatch_routed
                             else s_prep).indents = s_prep.indents from by split <;> rfl])
                         (by rw [h_pp, allowDirectives_update_simpleKey]) h_seq),
                       h_ol, h_tws2, h_kcol_of h_pp, Or.inr (PackAlt.step_dispatch h_dispatch (if hk : k = 0 then PackAlt.ofRefused (h_dead (by rw [← hcorr_prep.col_eq]; have := SIndent_col h_ind; rw [hcol0] at this; omega)) else h_alt)),
-                      h_resF, h_resFV, h_resQ⟩
+                      h_resF.imp_right (fun _ => trivial), h_resFV, h_resQ⟩
       -- Item 109: the RESUMING context first.  It is the honest reading where
       -- it exists, and it exists exactly when the park that closed here kept
       -- frames whose stack the landing width names.
@@ -36299,7 +36299,7 @@ lemma content_dispatch_routed
           -- Item 374: the sequence-top face rides the pack's route conjunct to the `:`.
           obtain ⟨⟨k, sp_land, hcol0, h_ind, h_seq⟩, h_sk_poss, h_sk_pos⟩ := hface
           exact h_build k sp_land hcol0 h_ind h_sk_pos (Or.inr h_seq)
-            (Or.inr trivial) (Or.inr trivial) (Or.inr trivial)
+            (Or.inr (Or.inr h_seq)) (Or.inr trivial) (Or.inr trivial)
         | inl hres =>
             obtain ⟨⟨k, ks, sp_land, hcol0, h_ind, h_lt, h_cov_res, cont, hresV, hresQ⟩,
                     _h_sk_poss, h_sk_pos⟩ := hres

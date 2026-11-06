@@ -251,7 +251,7 @@ def posLine (p : Pos) : String := s!"{p.decl}{p.site} {p.kind} ∨ {p.alt}"
 -- projection `markedCols`: four fabricated births DECLINE (`Or.inr trivial` writers into `PackAltG`/`PackAlt`
 -- positions), none paid; positions unchanged.
 def expectedSummary : String :=
-  "positions=269 top=166 nested=103 True=193 PackAlt=67 PackAltG=9 modules=2 supply: paid=28 relayed=116 declined-only=0 never-supplied=0 unresolved=9 conclusions=11 consumers: spent=102 relayed=15 unused=0 unreadable=36 writers=39 inrTrivial=486"
+  "positions=269 top=166 nested=103 True=193 PackAlt=67 PackAltG=9 modules=2 supply: paid=28 relayed=116 declined-only=0 never-supplied=0 unresolved=9 conclusions=11 consumers: spent=102 relayed=15 unused=0 unreadable=36 writers=39 inrTrivial=485"
 
 def expectedPositions : List String :=
   [ "L4YAML.Proofs.PreprocessIndentStable.IndentFloor.transport[3].h_floor top ∨ True",
@@ -712,6 +712,10 @@ def expectedSupply : List String :=
 -- `compact_open_map[29].h_outer` carry the decided ARMED fact `∃ x ∈ markedCols s_prep, x ≠ k` ((γ′), owner's word "A’’"
 -- read against the producers: every write already held the key fact).  `True` 195 → 193; `inrTrivial` 500 → 486 — the 11
 -- `Or.inr trivial` at the five producer writes and the 3 at the openers' `h_ref` relays are gone.  The ceiling stays 271.
+-- Item 438 (2026-11-06): positions UNCHANGED at 269, `inrTrivial` 486 → 485 — the (χ-seqtop-refused) pay restated the `∨ True` of
+-- two PROOF-BODY statements (`content_dispatch_routed`'s locals `h_buildP` / `h_build`, their `h_resF` premise → `∨ (ExplicitValueRefused
+-- s_prep ∨ SeqTopKey s_prep)`), which this roster does not see (it reads the TYPES of authored constants); the raw `∨ True` count of
+-- `StreamAccum.lean` fell 259 → 257, and the one `Or.inr trivial` writer of that premise now writes `Or.inr (Or.inr h_seq)`.
 def ceilingPositions : Nat := 271
 -- 2026-10-30 (item 405, Rule 8 fix): two more `Or.inr trivial` writers (509 → 511) — the two head consumers of the `?`-park chain
 -- (`flowKeyRoute_of_open`'s compact pair, the props park's entry-level pack) split on the projection `markedCols sc` and DECLINE at the
@@ -907,7 +911,7 @@ def expectedWriters : List String :=
     "L4YAML.Proofs.StreamAccum.colon_open_map_props ×4 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.compact_open_map ×7 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.content_dispatch_after_close ×5 (StreamAccum)",
-    "L4YAML.Proofs.StreamAccum.content_dispatch_routed ×25 (StreamAccum)",
+    "L4YAML.Proofs.StreamAccum.content_dispatch_routed ×24 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.dedent_cover_of_landing ×3 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.deeperLandingResume ×2 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch ×14 (StreamAccum)",
