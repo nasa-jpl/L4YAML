@@ -10170,11 +10170,11 @@ def testThreeArmsFields (state : IO.Ref TestCollector) : IO Unit := do
       && flowClosePauses > 0 && flowCloseSentinel == flowClosePauses)
 
 
-/-- Review on #250 (item 441): the restated chain alternative `… ∨ markedCols sc ≠ []` is a
-    TAUTOLOGY — the pack's informative arm is vacuous over `[]` exactly where the alternative is
-    false (item 424's lesson in the other direction).  A pin on this Prop would be worthless (§7);
-    the lemma is the refutation itself. -/
-lemma packAlt_marks_tauto (L : List Nat) (P : Nat → Prop) : (∀ nv ∈ L, P nv) ∨ L ≠ [] := by
+-- Review on #250 (item 441): the restated chain alternative `… ∨ markedCols sc ≠ []` is a
+-- TAUTOLOGY — the pack's informative arm is vacuous over `[]` exactly where the alternative is
+-- false (item 424's lesson in the other direction).  Checked at elaboration as an `example`: a
+-- pin on the Prop would be worthless (§7) and a named lemma would feed no capstone (Rule 1).
+example (L : List Nat) (P : Nat → Prop) : (∀ nv ∈ L, P nv) ∨ L ≠ [] := by
   cases L with
   | nil => exact Or.inl (fun _ h => by simp at h)
   | cons _ _ => exact Or.inr (by simp)
