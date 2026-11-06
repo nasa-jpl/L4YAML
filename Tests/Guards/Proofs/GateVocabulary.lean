@@ -105,8 +105,10 @@ namespace L4YAML.Tests.Guards.GateVocabulary
 -- Item 430 (2026-11-04): mentions 484 → 485 — Priority 86's docstring names the content dispatch
 -- step it calls directly on the seq-top key landings (not spelled here: it would move `self`); no name
 -- added or retired.
+-- 2026-11-05 (capstone 7.7 S3 (b)): mentions 485 → 491 — the Priority 87 grid's prose names the scanner
+-- entry points and the two directive refusals it instantiates.
 def expectedGateVocab : String :=
-  "names=113 mentions=485 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
+  "names=113 mentions=491 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
 
 end L4YAML.Tests.Guards.GateVocabulary
 
