@@ -10170,6 +10170,101 @@ def testThreeArmsFields (state : IO.Ref TestCollector) : IO Unit := do
       && flowClosePauses > 0 && flowCloseSentinel == flowClosePauses)
 
 
+-- Review on #250 (item 441): the restated chain alternative `… ∨ markedCols sc ≠ []` is a
+-- TAUTOLOGY — the pack's informative arm is vacuous over `[]` exactly where the alternative is
+-- false (item 424's lesson in the other direction).  Checked at elaboration as an `example`: a
+-- pin on the Prop would be worthless (§7) and a named lemma would feed no capstone (Rule 1).
+example (L : List Nat) (P : Nat → Prop) : (∀ nv ∈ L, P nv) ∨ L ≠ [] := by
+  cases L with
+  | nil => exact Or.inl (fun _ h => by simp at h)
+  | cons _ _ => exact Or.inr (by simp)
+
+def testPackAltMarks (state : IO.Ref TestCollector) : IO Unit := do
+  -- P90 (item 441, (ω-pay)): the scanner projection proposed for the pack chain's `∨ PackAlt sc`
+  -- arm (today `True`) is `RegisterWitness.markedCols sc ≠ []` — the register holds a `?` mark.
+  -- Where no mark is held the pack's informative arm (`∀ nv ∈ markedCols sc, …`) is vacuously
+  -- true, so a producer there pays the left arm for free; the arm must therefore be FALSE at
+  -- unmarked pauses (not a tautology, item 424's lesson) and the marked pauses must all sit
+  -- under an open `?` line.  Both pinned by input and position.
+  let inputs : List String :=
+    [ "a: 1", "- a\n- b", "---\na: 1\n...\n", "k:\n  - a\n  - b", "? a\n: b", "- - a\n  - b",
+      "k:\n  v: w\n  x: y", "- a: 1\n  b: 2", "? - a\n: b", "a:\n- b", "k:\n- x: 1\n  y: 2",
+      "? a\n? b\n: c", "k:\n  ? a\n  : b", "- ? a\n  : b", "? a: 1\n: b", "- a\n- ? b\n  : c",
+      "? |\n  k\n: v", "k: v\n? a\n: b", "[a]\n? b\n: c", "? a\n- b", "? a\n  - b\n: c",
+      "k:\n  ? a\n  - b", "- ? a\n  - b", "? a\n:\n- b", "? k\n: - a\n  - b" ]
+  let mut pauses := 0
+  let mut unmarked := 0
+  let mut unmarkedLive := 0
+  let mut markedRefused := 0
+  let mut marked : List String := []
+  -- Review on #250: the `:` STEP on a marked state — does the mark survive into the post-dispatch
+  -- state (`PackAlt.step_value`'s question)?  Counted at every `:` pause whose pre-state is marked.
+  let mut colonMarked := 0
+  let mut colonErased := 0
+  for input in inputs do
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:80] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        let m := L4YAML.Proofs.RegisterWitness.markedCols sP
+        if sP.flowLevel == 0 && c != '#' then
+          pauses := pauses + 1
+          let live := sP.explicitKeyLine.isSome
+          if m.isEmpty then
+            unmarked := unmarked + 1
+            if live then unmarkedLive := unmarkedLive + 1
+          else
+            marked := marked ++ [s!"{repr input}@{sP.line}:{sP.col} marks={m}"]
+            if !live then markedRefused := markedRefused + 1
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) =>
+          if sP.flowLevel == 0 && c == ':' && !m.isEmpty then
+            colonMarked := colonMarked + 1
+            if (L4YAML.Proofs.RegisterWitness.markedCols sN).isEmpty then colonErased := colonErased + 1
+          s := sN
+        | _ => break
+      | _ => break
+  check state s!"P90 (ω-pay) `markedCols sc ≠ []` over the block pauses (item 441): unmarked={unmarked} (of which `?` line open={unmarkedLive}) marked={marked.length} (of which no `?` line open={markedRefused}) of {pauses}; `:` steps on a marked state={colonMarked}, mark erased by the step={colonErased}; marked: {marked}"
+    -- Pinned by position: the marked pauses are exactly the pauses under an open `?` line (34 of
+    -- 131, none without one), and no unmarked pause has a `?` line open — the projection
+    -- `markedCols sc ≠ []` coincides with item 187's `explicitKeyLine ≠ none` over the block pauses.
+    (pauses == 131 && unmarked == 97 && unmarkedLive == 0 && markedRefused == 0 &&
+      colonMarked == 13 && colonErased == 12 &&
+      marked == ["\"? a\\n: b\"@0:2 marks=[0]",
+        "\"? a\\n: b\"@1:0 marks=[0]",
+        "\"? - a\\n: b\"@0:2 marks=[0]",
+        "\"? - a\\n: b\"@0:4 marks=[0]",
+        "\"? - a\\n: b\"@1:0 marks=[0]",
+        "\"? a\\n? b\\n: c\"@0:2 marks=[0]",
+        "\"? a\\n? b\\n: c\"@1:2 marks=[0]",
+        "\"? a\\n? b\\n: c\"@2:0 marks=[0]",
+        "\"k:\\n  ? a\\n  : b\"@1:4 marks=[2]",
+        "\"k:\\n  ? a\\n  : b\"@2:2 marks=[2]",
+        "\"- ? a\\n  : b\"@0:4 marks=[2]",
+        "\"- ? a\\n  : b\"@1:2 marks=[2]",
+        "\"? a: 1\\n: b\"@0:2 marks=[0]",
+        "\"? a: 1\\n: b\"@0:3 marks=[0]",
+        "\"? a: 1\\n: b\"@0:5 marks=[0]",
+        "\"? a: 1\\n: b\"@1:0 marks=[0]",
+        "\"- a\\n- ? b\\n  : c\"@1:4 marks=[2]",
+        "\"- a\\n- ? b\\n  : c\"@2:2 marks=[2]",
+        "\"? |\\n  k\\n: v\"@0:2 marks=[0]",
+        "\"? |\\n  k\\n: v\"@2:0 marks=[0]",
+        "\"k: v\\n? a\\n: b\"@1:2 marks=[0]",
+        "\"k: v\\n? a\\n: b\"@2:0 marks=[0]",
+        "\"? a\\n- b\"@0:2 marks=[0]",
+        "\"? a\\n- b\"@1:0 marks=[0]",
+        "\"? a\\n  - b\\n: c\"@0:2 marks=[0]",
+        "\"? a\\n  - b\\n: c\"@2:0 marks=[0]",
+        "\"k:\\n  ? a\\n  - b\"@1:4 marks=[2]",
+        "\"k:\\n  ? a\\n  - b\"@2:2 marks=[2]",
+        "\"- ? a\\n  - b\"@0:4 marks=[2]",
+        "\"- ? a\\n  - b\"@1:2 marks=[2]",
+        "\"? a\\n:\\n- b\"@0:2 marks=[0]",
+        "\"? a\\n:\\n- b\"@1:0 marks=[0]",
+        "\"? k\\n: - a\\n  - b\"@0:2 marks=[0]",
+        "\"? k\\n: - a\\n  - b\"@1:0 marks=[0]"])
+
 def testSeqTopRefusedArm (state : IO.Ref TestCollector) : IO Unit := do
   -- P89 (item 438, (χ-seqtop-refused)): the negative arm `ExplicitValueRefused s ∨ SeqTopKey s`
   -- proposed for `content_dispatch_routed`'s `h_resF` premise must NOT be a tautology over the
@@ -10783,6 +10878,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testNoMapLineArm state
   testThreeArmsFields state
   testSeqTopRefusedArm state
+  testPackAltMarks state
 
   testQuestionMarkColumn state
   testK1Lanes state
