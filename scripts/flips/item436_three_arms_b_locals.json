@@ -6,7 +6,7 @@
  "rev": "9ae1d177",
  "item": 436,
  "tag": "THREE-ARMS-B-LOCALS",
- "log": "scratch/three_arms_b.log",
+ "log": "scratch/three_arms_b2.log",
  "files": [
   {
    "file": "L4YAML/Proofs/Production/StreamAccum.lean",
@@ -18,7 +18,7 @@
       "            ResumeFrames (SLYamlStream sp_start) ks' sp_end) ∨ True := by"
      ],
      "new": [
-      "            ResumeFrames (SLYamlStream sp_start) ks' sp_end) ∨ (w : Int) ≤ sc.currentIndent := by"
+      "            ResumeFrames (SLYamlStream sp_start) ks' sp_end) ∨ (RegisterWitness.NoMapLine sc ∨ ∀ ks : List FrameLevel, (∀ sp_m : SurfPos, SSLComments sp_g sp_m → ResumeFrames (SLYamlStream sp_start) ks sp_m) → FrameLevel.map w ∉ ks) := by"
      ],
      "count": 1
     },
@@ -29,7 +29,7 @@
       "        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ True := by"
      ],
      "new": [
-      "        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ (k : Int) ≤ sc.currentIndent := by"
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ (RegisterWitness.NoMapLine sc ∨ (k : Int) ≤ sc.currentIndent) := by"
      ],
      "count": 1
     },
@@ -40,7 +40,7 @@
       "        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ True := by"
      ],
      "new": [
-      "        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ (k : Int) ≤ sc.currentIndent := by"
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ (RegisterWitness.NoMapLine sc ∨ (k : Int) ≤ sc.currentIndent) := by"
      ],
      "count": 1
     },
@@ -51,7 +51,7 @@
       "          ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)) ∨ True := by"
      ],
      "new": [
-      "          ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)) ∨ ((k : Int) ≤ sc.currentIndent ∨ s_prep.indents ≠ sc.indents) := by"
+      "          ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)) ∨ (RegisterWitness.NoMapLine sc ∨ (k : Int) ≤ sc.currentIndent ∨ s_prep.indents ≠ sc.indents) := by"
      ],
      "count": 1
     },
@@ -73,7 +73,7 @@
       "                  ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ True := by"
      ],
      "new": [
-      "                  ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ (k : Int) ≠ sc.currentIndent := by"
+      "                  ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ (RegisterWitness.NoMapLine sc ∨ (k : Int) ≠ sc.currentIndent) := by"
      ],
      "count": 1
     }

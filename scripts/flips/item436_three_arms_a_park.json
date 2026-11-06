@@ -3,7 +3,7 @@
  "tag": "THREE-ARMS-A-PARK",
  "rev": "9ae1d177",
  "target": "L4YAML",
- "log": "scratch/three_arms_a.log",
+ "log": "scratch/three_arms_a2.log",
  "msgWidth": 110,
  "rounds": 12,
  "report": "bodies",
@@ -30,17 +30,6 @@
      ],
      "new": [
       "        ResumeFrames (SLYamlStream sp_start) ks sp_mid) ∨ RegisterWitness.NoMapLine sc)"
-     ],
-     "count": 1
-    },
-    {
-     "name": "L2308.pendingContent.h_seqTop.new",
-     "line": 2308,
-     "old": [
-      "      (h_live : InlineResidue sp_scan ':' → sc.simpleKey.possible = true) :"
-     ],
-     "new": [
-      "      (h_live : InlineResidue sp_scan ':' → sc.simpleKey.possible = true) (h_seqTop : ∃ e, sc.indents.back? = some e ∧ (e.isSequence = true ∨ e.column + 1 = (sp_scan.col : Int))) :"
      ],
      "count": 1
     },

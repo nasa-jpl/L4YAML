@@ -9932,7 +9932,9 @@ def testThreeArmsFields (state : IO.Ref TestCollector) : IO Unit := do
   let mut seqTop := 0
   let mut compactTop := 0
   let mut thirdCase : List String := []
-  for input in inputs do
+  let mut flowClosePauses := 0
+  let mut flowCloseSentinel := 0
+  for input in inputs ++ ["[a]", "[a]\n---\n{b: c}", "{a: b}\nk: v", "[a, [b]]\n- c"] do
     let mut s := L4YAML.Scanner.ScannerState.mk' input
     for _ in [:80] do
       match L4YAML.Scanner.scanNextToken_preprocess s with
@@ -9941,6 +9943,9 @@ def testThreeArmsFields (state : IO.Ref TestCollector) : IO Unit := do
           match L4YAML.Scanner.lastRealToken? sP.tokens with
           | some t =>
             match t.val with
+            | .flowSequenceEnd | .flowMappingEnd =>
+              flowClosePauses := flowClosePauses + 1
+              if sP.currentIndent < 0 then flowCloseSentinel := flowCloseSentinel + 1
             | .documentStart | .documentEnd =>
               markerPauses := markerPauses + 1
               if sP.currentIndent < 0 then markerTop := markerTop + 1
@@ -9958,9 +9963,10 @@ def testThreeArmsFields (state : IO.Ref TestCollector) : IO Unit := do
         | .ok (some sN) => s := sN
         | _ => break
       | _ => break
-  check state s!"P88 (σ-three-arms) park fields on the scanner (item 436): marker sentinel-top={markerTop}/{markerPauses}; entry seq-top={seqTop} compact-top={compactTop} of {entryPauses}; third case={thirdCase}"
+  check state s!"P88 (σ-three-arms) park fields on the scanner (item 436): marker sentinel-top={markerTop}/{markerPauses}; entry seq-top={seqTop} compact-top={compactTop} of {entryPauses}; third case={thirdCase}; root flow-close pauses with the sentinel on top={flowCloseSentinel}/{flowClosePauses} (so `h_seqTop` is NOT a `pendingContent` field: review on #244)"
     (markerPauses > 0 && markerTop == markerPauses && entryPauses > 0
-      && seqTop + compactTop == entryPauses && compactTop == 6 && thirdCase.isEmpty)
+      && seqTop + compactTop == entryPauses && compactTop == 6 && thirdCase.isEmpty
+      && flowClosePauses > 0 && flowCloseSentinel == flowClosePauses)
 
 
 def testFlowCarrier (state : IO.Ref TestCollector) : IO Unit := do
