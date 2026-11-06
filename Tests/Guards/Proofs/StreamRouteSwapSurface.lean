@@ -165,9 +165,9 @@ example {sc : ScannerState} {sp_start sp_block sp_scan : SurfPos}
     (h_docline : sc.docStartLine = some sc.line)
     -- Item 320: and the dead register the marker leaves (lane (e)'s field).
     (h_noek : sc.explicitKeyLine = none)
-    (h_next : sc.inFlow = false → NextIsSep sc) :
+    (h_next : sc.inFlow = false → NextIsSep sc) (h_ntop : sc.currentIndent < 0) :
     PendingNode sc false sp_start sp_block sp_scan :=
-  PendingNode.pendingDocStart (h_next := h_next) sp_start sp_block sp_scan h_doc_route
+  PendingNode.pendingDocStart (h_next := h_next) (h_ntop := h_ntop) sp_start sp_block sp_scan h_doc_route
     h_nic h_real h_marker_tail h_arm h_nodir h_nic0 h_docline h_noek
 
 -- The `[208]` producer's own payment: `l-explicit-document` is what the

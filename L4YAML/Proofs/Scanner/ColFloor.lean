@@ -382,6 +382,24 @@ lemma scanDocumentEnd_shape {s s' : ScannerState} (hok : scanDocumentEnd s = .ok
   all_goals (try contradiction)
   all_goals exact (Except.ok.inj hok).symm
 
+/-- Item 437: a document marker leaves the SENTINEL on top (`unwindIndents s (-1)` pops
+    every level) — the marker parks' `h_ntop`. -/
+lemma scanDocumentStart_currentIndent_neg {s : ScannerState} (hbase : SentinelBase s) :
+    (scanDocumentStart s).currentIndent < 0 := by
+  have h := unwindIndents_neg_one_currentIndent hbase
+  have hind : (scanDocumentStart s).indents = (unwindIndents s (-1)).indents := by
+    unfold scanDocumentStart
+    simp [L4YAML.Proofs.IndentStackBase.advanceN_preserves_indents, L4YAML.Proofs.PreprocessIndentStable.emit_indents]
+  rw [L4YAML.Proofs.PreprocessIndentStable.currentIndent_of_indents_eq hind]; omega
+
+lemma scanDocumentEnd_currentIndent_neg {s s' : ScannerState} (hok : scanDocumentEnd s = .ok s')
+    (hbase : SentinelBase s) : s'.currentIndent < 0 := by
+  have h := unwindIndents_neg_one_currentIndent hbase
+  have hind : s'.indents = (unwindIndents s (-1)).indents := by
+    rw [scanDocumentEnd_shape hok]
+    simp [L4YAML.Proofs.IndentStackBase.advanceN_preserves_indents, L4YAML.Proofs.PreprocessIndentStable.emit_indents]
+  rw [L4YAML.Proofs.PreprocessIndentStable.currentIndent_of_indents_eq hind]; omega
+
 lemma scanDocumentEnd_colfloor {s s' : ScannerState} (hok : scanDocumentEnd s = .ok s')
     (h : ColFloor s) (hbase : SentinelBase s) : ColFloor s' := by
   have hst := L4YAML.Proofs.ScannerCorrectness.scanDocumentEnd_preserves_simpleKeyStack s s' hok

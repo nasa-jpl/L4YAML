@@ -763,9 +763,14 @@ def expectedArgs : List String :=
 -- 2026-10-24 (B3 [66] col-0 threading): follows CloseLandingWidth — the content/block parks close from `sp_gram` (run + gate).
 -- 2026-10-26 (item 369): used=10 → used=11, dropped=4 → dropped=3, h_close(_h_close),h_closeF(h_closeF✝),h_nodir(h_nodir✝),h_offer(h_offer✝) → h_close(_h_close),h_nodir(h_nodir✝),h_offer(h_offer✝) — `pendingBlock.h_closeF` is now read by
 -- `accum_block_on_pendingBlock` (the `:`/`?` landing's `h_res_land`).
+-- 2026-11-06 (item 437): `pendingBlock` fields 18 → 19, faces 14 → 15, dropped 3 → 4 — the new `h_seqTop`
+--   (seq top ∨ the compact level at the dash column) is carried by the 7 producers and not yet read
+--   by the landing consumer (its `∨ NoMapLine` anchors were STOP-priced and restored).
 def expectedDoor : List String :=
-  ["PendingNode.pendingBlock: fields=18 data=4 faces=14 equations=5 used=11 dropped=3 h_close(_h_close),h_nodir(h_nodir✝),h_offer(h_offer✝)",
+  ["PendingNode.pendingBlock: fields=19 data=4 faces=15 equations=5 used=11 dropped=4 h_close(_h_close),h_nodir(h_nodir✝),h_offer(h_offer✝),h_seqTop(h_seqTop✝)",
    "PendingNode.pendingBlockContent: fields=22 data=5 faces=17 equations=5 used=16 dropped=1 h_nodir(h_nodir✝)"]
+-- 2026-11-06 (item 437): `apps` 52 → 53 and `doorDropped` 3/1 → 4/1 — `pendingBlock`'s new `h_seqTop`
+--   is one more constructor application and one more dropped (not yet read) field at the landing.
 -- 2026-10-18 (item 284): `decisions` 126 → 127, `apps` 39 → 40 and `doorDropped`
 -- 3/2 → 4/2, and nothing else.  The door's extra drop is `pendingBlock.h_offer`
 -- (above).  The other two are ONE payment: the walk meets the `-` producer's
@@ -809,7 +814,7 @@ def expectedLine : String :=
   -- `accum_block_on_closeThenBlock`'s explicit `:` face; no frame row moved.
 -- Item 371 (kslot=4 → 0, kslotUp=4 → 0): the value-line packs end in the one-level
 -- `ResumeFrames`; `question_open_map`'s `h_expl`/`h_closeFV`/`h_framesV` come from the bound tail route `h_route51F`.
-  "asked=6 both=4 lemmas=1 walked=4 feedFunnel=1 feedExplicit=1 feedDeferred=2 feedTuple=0 entry=4 entrySBI=4 kslot=0 kslotUp=0 closeF=4 closeFV=4 seqF=4 top=4 floor=0 cover=4 cover2=4 floorB=4 aboveKN=0 aboveKMem=1 aboveKNv=0 aboveKEx=1 hands=1 besideKN=1 besideKMem=1 besideKNv=0 puntKN=1 puntKMem=0 besideNone=0 decisions=139 decOnK=26 decKN=13 decKMem=12 decKNv=1 apps=52 funnelArgs=1 doorDropped=3/1 closeSites=5 params=5"
+  "asked=6 both=4 lemmas=1 walked=4 feedFunnel=1 feedExplicit=1 feedDeferred=2 feedTuple=0 entry=4 entrySBI=4 kslot=0 kslotUp=0 closeF=4 closeFV=4 seqF=4 top=4 floor=0 cover=4 cover2=4 floorB=4 aboveKN=0 aboveKMem=1 aboveKNv=0 aboveKEx=1 hands=1 besideKN=1 besideKMem=1 besideKNv=0 puntKN=1 puntKMem=0 besideNone=0 decisions=139 decOnK=26 decKN=13 decKMem=12 decKNv=1 apps=53 funnelArgs=1 doorDropped=4/1 closeSites=5 params=5"
 
 /-! ## §5 The reading -/
 

@@ -2593,7 +2593,7 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       (h_noek : sc.explicitKeyLine = none)
       -- `[66]` narrowed to col 0: the scanner's comment gate at this park, off a
       -- line start — the indicator that parked here is the last consumed char.
-      (h_next : sc.inFlow = false → NextIsSep sc) :
+      (h_next : sc.inFlow = false → NextIsSep sc) (h_ntop : sc.currentIndent < 0) :
       PendingNode sc false sp_start sp_block sp_scan
   /-- Document start `---` scanned. The gap contains SCDirectivesEnd
       (possibly preceded by directives). Awaiting content or SSLComments
@@ -2652,7 +2652,7 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       (h_noek : sc.explicitKeyLine = none)
       -- `[66]` narrowed to col 0: the scanner's comment gate at this park, off a
       -- line start — the indicator that parked here is the last consumed char.
-      (h_next : sc.inFlow = false → NextIsSep sc) :
+      (h_next : sc.inFlow = false → NextIsSep sc) (h_ntop : sc.currentIndent < 0) :
       PendingNode sc false sp_start sp_block sp_scan
   /-- Directive `%` scanned. The gap contains directive content.
       Awaiting next `%` (accumulate) or `---` (form directive document).
@@ -3146,7 +3146,7 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       (h_offer : OfferPred sc.tokens)
       -- `[66]` narrowed to col 0: the scanner's comment gate at this park, off a
       -- line start — the indicator that parked here is the last consumed char.
-      (h_next : sc.inFlow = false → NextIsSep sc) :
+      (h_next : sc.inFlow = false → NextIsSep sc) (h_seqTop : ∃ e, sc.indents.back? = some e ∧ (e.isSequence = true ∨ e.column = (n : Int))) :
       PendingNode sc false sp_start sp_block sp_scan
   /-- A KEYLESS block-mapping entry opened at column 0, depth 0, one node
       awaited — the mapping twin of `pendingBlock` (item 13).  The whole entry
@@ -10432,6 +10432,7 @@ lemma structural_dispatch_to_pending
     (s_prep s' : ScannerState) (c : Char) (sp_start sp : SurfPos)
     (hcorr : ScannerSurfCorr s_prep sp)
     (hpeek : s_prep.peek? = some c)
+    (h_base : IndentStackBase.SentinelBase s_prep)
     (h_stream : SLYamlStream sp_start sp)
     -- **Item 138: the directive document's arm, resolved by the park that
     -- closed here.**  Only a `%` branch reads it, and only that branch can
@@ -10506,7 +10507,7 @@ lemma structural_dispatch_to_pending
     intro hat s_de hde h_eq; subst h_eq
     obtain ⟨rest, hchars, hcol⟩ := atDocumentEnd_chars s_prep sp hcorr hat
     obtain ⟨sp', h_marker, hcorr'⟩ := scanDocumentEnd_prod s_prep sp hcorr rest hchars hcol s' hde
-    exact ⟨sp', false, hcol, PendingNode.pendingDocEnd (h_offer := scanDocumentEnd_offerPred hde) (h_next := fun _ => nextIsSep_after_marker3 hcorr hchars hcorr' (SCDocumentEnd_chars h_marker hchars) (atDocumentEnd_follower hat)) sp_start sp sp'
+    exact ⟨sp', false, hcol, PendingNode.pendingDocEnd (h_ntop := ColFloor.scanDocumentEnd_currentIndent_neg hde h_base) (h_offer := scanDocumentEnd_offerPred hde) (h_next := fun _ => nextIsSep_after_marker3 hcorr hchars hcorr' (SCDocumentEnd_chars h_marker hchars) (atDocumentEnd_follower hat)) sp_start sp sp'
              (Or.inr ((scanDocumentEnd_restTailSuffix hcorr'.end_eq hde).to_surface hcorr'))
              -- Item 223: the `...` park's rung.  `scanDocumentEnd` re-arms AND
              -- clears, and the field now records both halves.
@@ -10526,7 +10527,7 @@ lemma structural_dispatch_to_pending
   have hpark := scanDocumentStart_park_facts s_prep sp hcorr rest hchars hcol
     (h_nic_ds hat hcol_s)
   exact ⟨sp', false, hcol,
-    PendingNode.pendingDocStart (h_next := fun _ => nextIsSep_after_marker3 hcorr hchars hcorr' (SCDirectivesEnd_chars h_marker hchars) (atDocumentStart_follower hat)) sp_start sp sp'
+    PendingNode.pendingDocStart (h_ntop := ColFloor.scanDocumentStart_currentIndent_neg h_base) (h_next := fun _ => nextIsSep_after_marker3 hcorr hchars hcorr' (SCDirectivesEnd_chars h_marker hchars) (atDocumentStart_follower hat)) sp_start sp sp'
       -- Item 135: the route, not the document.  `[208] l-explicit-document` is
       -- what `[211]`'s implicit-continuation arm takes, at any point in the
       -- stream — so this producer spends the constructor itself and the three
@@ -10620,6 +10621,7 @@ lemma structural_dispatch_after_directives
     (s_prep s' : ScannerState) (c : Char) (sp_start sp_block sp_prep : SurfPos)
     (hcorr : ScannerSurfCorr s_prep sp_prep)
     (hpeek : s_prep.peek? = some c)
+    (h_base : IndentStackBase.SentinelBase s_prep)
     (h_stream : SLYamlStream sp_start sp_block)
     (h_dirs : GPlus SLDirective sp_block sp_prep)
     -- **Item 138: the arm the run's document belongs to**, carried on the park
@@ -10700,7 +10702,7 @@ lemma structural_dispatch_after_directives
   have hpark := scanDocumentStart_park_facts s_prep sp_prep hcorr rest hchars hcol
     (h_nic_ds hat hcol_s)
   exact ⟨sp', false,
-    PendingNode.pendingDocStart (h_next := fun _ => nextIsSep_after_marker3 hcorr hchars hcorr' (SCDirectivesEnd_chars h_marker hchars) (atDocumentStart_follower hat)) sp_start sp_block sp'
+    PendingNode.pendingDocStart (h_ntop := ColFloor.scanDocumentStart_currentIndent_neg h_base) (h_next := fun _ => nextIsSep_after_marker3 hcorr hchars hcorr' (SCDirectivesEnd_chars h_marker hchars) (atDocumentStart_follower hat)) sp_start sp_block sp'
       -- **Item 138: the route the park carries, spent.**  `[209]
       -- l-directive-document` is not an `l-explicit-document`, so `[211]`'s
       -- implicit continuation was always the wrong arm for it — item 135 named
@@ -10736,6 +10738,7 @@ lemma dispatch_new_pending
     (s_prep s' : ScannerState) (c : Char)
     (sp_start sp_mid sp_ws sp_gap sp_prep sp_scan' : SurfPos)
     (hcorr_prep : ScannerSurfCorr s_prep sp_prep)
+    (h_base : IndentStackBase.SentinelBase s_prep)
     (hcorr_gap : ScannerSurfCorr s_prep sp_gap)
     (hcorr_result : ScannerSurfCorr s' sp_scan')
     (hcol_mid : sp_mid.col = 0)
@@ -10760,7 +10763,7 @@ lemma dispatch_new_pending
       ∀ sp_end, SLDirectiveDocument sp_prep sp_end → SLYamlStream sp_start sp_end :=
     h_mid_prep ▸ h_dir_route
   obtain ⟨sp_disp, b', _, h_pending_new, h_flag, hcorr_disp⟩ :=
-    structural_dispatch_to_pending s_prep s' c sp_start sp_prep hcorr_prep hpeek h_stream_prep
+    structural_dispatch_to_pending s_prep s' c sp_start sp_prep hcorr_prep hpeek h_base h_stream_prep
       h_dir_prep h_nic_ds h_dispatch
   have h_disp_eq : sp_disp = sp_scan' := ScannerSurfCorr_unique hcorr_disp hcorr_result
   rw [← h_mid_prep, h_disp_eq] at h_pending_new
@@ -10786,6 +10789,7 @@ lemma accum_structural_pending (sc : ScannerState)
     -- Item 275: §8.1's check, carried beside §9.2's.
     (h_fv : scanNextToken_checkFlowValueIndent sc s_prep = .ok ())
     (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
+    (h_base : IndentStackBase.SentinelBase sc)
     (h_dispatch : scanNextToken_dispatchStructural s_prep c = .ok (some s')) :
     ∃ sp_gram' sp_block' sp_flow' sp_scan' b',
       SLYamlStream sp_start sp_gram' ∧
@@ -10857,7 +10861,7 @@ lemma accum_structural_pending (sc : ScannerState)
         obtain ⟨b', h_pend_new, h_flag⟩ :=
           dispatch_new_pending s_prep s' c sp_start sp_mid sp_ws sp_gap sp_prep sp_scan'
             (h_nic_ds := h_nic_ds)
-            hcorr_prep hcorr_gap hcorr_result hcol_mid hws hcmt h_stream_mid hpeek
+            hcorr_prep (IndentStackBase.preprocess_base h_preprocess h_base) hcorr_gap hcorr_result hcol_mid hws hcmt h_stream_mid hpeek
             (fun hA => h_dir_pending (h_ad_sc ▸ hA) sp_mid h_ssl) h_dispatch
         exact ⟨sp_mid, sp_mid, sp_mid, sp_scan', b', h_stream_mid, BlockStack.nil sp_mid,
                FlowStackB.nil sp_mid .sep, h_pend_new, h_flag, hcorr_result⟩
@@ -10900,7 +10904,7 @@ lemma accum_structural_pending (sc : ScannerState)
         obtain ⟨b', h_pend_new, h_flag⟩ :=
           dispatch_new_pending s_prep s' c sp_start sp_mid sp_ws sp_gap sp_prep sp_scan'
             (h_nic_ds := h_nic_ds)
-            hcorr_prep hcorr_gap hcorr_result hcol_mid hws hcmt h_stream_mid hpeek
+            hcorr_prep (IndentStackBase.preprocess_base h_preprocess h_base) hcorr_gap hcorr_result hcol_mid hws hcmt h_stream_mid hpeek
             (fun hA => h_dir_pending (h_ad_sc ▸ hA) sp_mid (SSLCommentsFrom_at_park h_corr (GStar.nil _) (fun _ => h_pending.nil_gate_of_allowDirectives h_noflow h_corr (h_ad_sc ▸ hA)) h_ssl h_ok)) h_dispatch
         exact ⟨sp_mid, sp_mid, sp_mid, sp_scan', b', h_stream_mid, BlockStack.nil sp_mid,
                FlowStackB.nil sp_mid .sep, h_pend_new, h_flag, hcorr_result⟩
@@ -10929,7 +10933,7 @@ lemma accum_structural_pending (sc : ScannerState)
           h_mid_prep ▸ h_dir_acc_old sp_mid h_ssl
         obtain ⟨sp', b', h_pend', h_flag', hcorr'⟩ :=
           structural_dispatch_after_directives s_prep s' c sp_start sp_block sp_prep
-            hcorr_prep hpeek h_stream_old h_dirs h_dir_route_old h_dp_prep h_nic_ds h_dispatch
+            hcorr_prep hpeek (IndentStackBase.preprocess_base h_preprocess h_base) h_stream_old h_dirs h_dir_route_old h_dp_prep h_nic_ds h_dispatch
         have h_sp_eq : sp' = sp_scan' := ScannerSurfCorr_unique hcorr' hcorr_result
         exact ⟨sp_block, sp_block, sp_block, sp_scan', b', h_stream_old,
                BlockStack.nil sp_block, FlowStackB.nil sp_block .sep, h_sp_eq ▸ h_pend', h_flag',
@@ -10968,6 +10972,7 @@ lemma accum_step_structural (sc : ScannerState)
       InteriorGap sc (tailOf sc.tokens) sp_flow sp_scan ∧
         LastTokenReal sc.tokens ∧ sc.allowDirectives = false)
     (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
+    (h_base : IndentStackBase.SentinelBase sc)
     -- **Item 157: §9.2's DANGLING refusal, threaded from `scanNextToken`.**  It
     -- runs BEFORE every dispatch, so its success reaches all four of them
     -- unchanged; what the landing turns it into is the park's own face.
@@ -11002,7 +11007,7 @@ lemma accum_step_structural (sc : ScannerState)
       accum_structural_pending sc sp_start sp_flow sp_scan s_prep s' c
         (absorb_stacksB sp_start sp_gram sp_block sp_flow h_stream h_stack h_flow)
         (h_pending h0) h_dir_flag h_corr
-        (by unfold ScannerState.inFlow; simp; omega) h_dn h_fv h_preprocess h_dispatch
+        (by unfold ScannerState.inFlow; simp; omega) h_dn h_fv h_preprocess h_base h_dispatch
     exact ⟨g', bl', fl', sn', b', q1, q2, ⟨0, 0, #[], none, _, q3.retail, rfl, fun h => absurd h (by omega), fun h => absurd h (by omega), Nat.zero_le _, fun h => absurd h (by omega)⟩,
            fun _ => q4, q5, q6, fun h => absurd h (by omega)⟩
   · -- ═══ DEPTH ≥ 1: VACUOUS. ═══
@@ -23054,6 +23059,39 @@ lemma indicator_top_dash_at_col {s_prep s' : ScannerState} {sp_prep : SurfPos}
   rw [h_upd_col, h_col] at this
   exact this
 
+/-- **The landed dash's stack TOP, named** (item 437): `[183]`'s `-` leaves a
+    SEQUENCE level on top, or — the compact `k:⏎- a` — the level at its own
+    column; the `-` parks' `h_seqTop`. -/
+lemma indicator_seqTop_dash_at_col {s_prep s' : ScannerState} {sp_prep : SurfPos}
+    {k : Nat}
+    (hcol_prep : sp_prep.col = k)
+    (hcorr_prep : ScannerSurfCorr s_prep sp_prep)
+    (h_base : IndentStackBase.SentinelBase s_prep)
+    (h_fl : s_prep.currentIndent ≤ (s_prep.col : Int))
+    (h_dispatch : scanNextToken_dispatchBlockIndicators
+        (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) '-' = .ok (some s')) :
+    ∃ e, s'.indents.back? = some e ∧ (e.isSequence = true ∨ e.column = (k : Int)) := by
+  have h_upd_ind : (if s_prep.allowDirectives then
+      { s_prep with allowDirectives := false, documentEverStarted := true }
+    else s_prep).indents = s_prep.indents := by split <;> rfl
+  have h_upd_col : (if s_prep.allowDirectives then
+      { s_prep with allowDirectives := false, documentEverStarted := true }
+    else s_prep).col = s_prep.col := by split <;> rfl
+  have h_col : s_prep.col = k := by rw [← hcorr_prep.col_eq, hcol_prep]
+  obtain ⟨h_noflow, h_scan⟩ := dispatchBlockIndicators_dash_scan h_dispatch
+  have h_fl_disp : (if s_prep.allowDirectives then
+      { s_prep with allowDirectives := false, documentEverStarted := true }
+    else s_prep).currentIndent ≤ ((if s_prep.allowDirectives then
+      { s_prep with allowDirectives := false, documentEverStarted := true }
+    else s_prep).col : Int) := by
+    rw [currentIndent_of_indents_eq h_upd_ind, h_upd_col]; exact h_fl
+  have := IndentStackCover.scanBlockEntry_seqTop h_noflow h_scan
+    (IndentStackBase.SentinelBase.of_indents_eq h_base h_upd_ind) h_fl_disp
+  rw [h_upd_col, h_col] at this
+  exact this
+
 /-- **The landed dash's TOP**, `indicator_floor_dash`'s twin (item 205): a zero
     landing plus `[63]`'s width IS the dispatch's column, here as there. -/
 lemma indicator_top_dash {s_prep s' : ScannerState} {sp_land sp_prep : SurfPos}
@@ -27274,7 +27312,7 @@ lemma accum_block_on_noPending
           (GStar.nil _)
     exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
            BlockStack.nil sp_block, FlowStackB.nil sp_block .sep,
-           PendingNode.pendingBlock (h_next := fun _ => dispatchBlock_dash_next (noflow_disp_of_noflow h_noflow) hpeek_disp h_dispatch) (h_offer := dispatchBlock_dash_offerPred h_dispatch) sp_start sp_block sp_scan' k
+           PendingNode.pendingBlock (h_seqTop := indicator_seqTop_dash_at_col (by have := SIndent_col h_ind; omega) hcorr_prep (IndentStackBase.preprocess_base h_preprocess h_base) (dash_dispatch_floor h_base (by have := h_ntop h_scflow; omega) h_preprocess) h_dispatch) (h_next := fun _ => dispatchBlock_dash_next (noflow_disp_of_noflow h_noflow) hpeek_disp h_dispatch) (h_offer := dispatchBlock_dash_offerPred h_dispatch) sp_start sp_block sp_scan' k
              (fun sp_final (h_indented : SBlockIndented k .blockIn sp_scan' sp_final) =>
                have h_entry :=
                  SBlockSeqEntries.single k sp_mid _ sp_scan' sp_scan' sp_final
@@ -27837,7 +27875,7 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
         rw [hsp_dash2_eq] at h_dash2 h_gnot2
         exact ⟨sp_a, sp_a, sp_a, sp_scan', h_stream_a,
                BlockStack.nil sp_a, FlowStackB.nil sp_a .sep,
-               PendingNode.pendingBlock (h_next := fun _ => dispatchBlock_dash_next (noflow_disp_of_noflow h_noflow) hpeek_disp h_dispatch) (h_offer := dispatchBlock_dash_offerPred h_dispatch) sp_start sp_a sp_scan' (nv + 1 + m)
+               PendingNode.pendingBlock (h_seqTop := indicator_seqTop_dash_at_col (by have := SIndent_col h_ind; omega) hcorr_prep (IndentStackBase.preprocess_base h_preprocess h_base) (dash_dispatch_floor h_base (by have hc := (hcorr_prep.col_eq).symm; have := SIndent_col h_ind; omega) h_preprocess) h_dispatch) (h_next := fun _ => dispatchBlock_dash_next (noflow_disp_of_noflow h_noflow) hpeek_disp h_dispatch) (h_offer := dispatchBlock_dash_offerPred h_dispatch) sp_start sp_a sp_scan' (nv + 1 + m)
                  (fun sp_final (h_bi : SBlockIndented (nv + 1 + m) .blockIn sp_scan' sp_final) =>
                    hvs sp_final
                      (SBlockIndented.compactSeq nv .blockOut m sp_mid _ sp_final h_ind
@@ -28444,7 +28482,7 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
       · exact h_slotV'
     exact ⟨sp_mid, sp_mid, sp_mid, sp_scan', h_stream_new,
            BlockStack.nil sp_mid, FlowStackB.nil sp_mid .sep,
-           PendingNode.pendingBlock (h_next := fun _ => dispatchBlock_dash_next (noflow_disp_of_noflow h_noflow) hpeek_disp h_dispatch) (h_offer := dispatchBlock_dash_offerPred h_dispatch) sp_start sp_mid sp_scan' k
+           PendingNode.pendingBlock (h_seqTop := indicator_seqTop_dash_at_col (by have := SIndent_col h_ind; omega) hcorr_prep (IndentStackBase.preprocess_base h_preprocess h_base) (dash_landing_floor h_noflow h_larm h_nic0 h_base h_preprocess) h_dispatch) (h_next := fun _ => dispatchBlock_dash_next (noflow_disp_of_noflow h_noflow) hpeek_disp h_dispatch) (h_offer := dispatchBlock_dash_offerPred h_dispatch) sp_start sp_mid sp_scan' k
              -- Item 118: where the route is `h_docRoute`'s, the sequence
              -- document lands wherever the closed park says.  Item 167: where
              -- the park names an open collection at this width, both
@@ -29627,7 +29665,7 @@ lemma accum_block_on_pendingBlockContent {sp_gram : SurfPos}
         have h_cont := h_entry_old sp_mid h_ssl
         exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
                BlockStack.nil sp_block, FlowStackB.nil sp_block .sep,
-               PendingNode.pendingBlock (h_next := fun _ => dispatchBlock_dash_next (noflow_disp_of_noflow h_noflow) hpeek_disp h_dispatch) (h_offer := dispatchBlock_dash_offerPred h_dispatch) sp_start sp_block sp_scan' k
+               PendingNode.pendingBlock (h_seqTop := indicator_seqTop_dash_at_col (by have := SIndent_col h_ind; omega) hcorr_prep (IndentStackBase.preprocess_base h_preprocess h_base) ((ColFloor.preprocess_colfloor h_preprocess h_cf h_base).floor (by have := nic_false_of_indicator_noflow h_preprocess (noflow_disp_of_noflow h_noflow); split at this <;> exact this)) h_dispatch) (h_next := fun _ => dispatchBlock_dash_next (noflow_disp_of_noflow h_noflow) hpeek_disp h_dispatch) (h_offer := dispatchBlock_dash_offerPred h_dispatch) sp_start sp_block sp_scan' k
                  (fun sp_final (h_indented : SBlockIndented k .blockIn sp_scan' sp_final) =>
                    h_cont sp_final (SCompactSeqTail.cons k sp_mid _ sp_scan' sp_final sp_final
                      h_ind h_dash2 h_gnot2 h_indented (SCompactSeqTail.nil k sp_final)))
@@ -30185,7 +30223,7 @@ lemma accum_block_on_pendingBlock
       have h_cont := h_close_entry_old sp_mid h_node_old
       exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
              BlockStack.nil sp_block, FlowStackB.nil sp_block .sep,
-             PendingNode.pendingBlock (h_next := fun _ => dispatchBlock_dash_next (noflow_disp_of_noflow h_noflow) hpeek_disp h_dispatch) (h_offer := dispatchBlock_dash_offerPred h_dispatch) sp_start sp_block sp_scan' k
+             PendingNode.pendingBlock (h_seqTop := indicator_seqTop_dash_at_col (by have := SIndent_col h_ind; omega) hcorr_prep (IndentStackBase.preprocess_base h_preprocess h_base) (dash_dispatch_floor h_base (by have hc := (hcorr_prep.col_eq).symm; have := SIndent_col h_ind; omega) h_preprocess) h_dispatch) (h_next := fun _ => dispatchBlock_dash_next (noflow_disp_of_noflow h_noflow) hpeek_disp h_dispatch) (h_offer := dispatchBlock_dash_offerPred h_dispatch) sp_start sp_block sp_scan' k
                (fun sp_final (h_indented : SBlockIndented k .blockIn sp_scan' sp_final) =>
                  h_cont sp_final (SCompactSeqTail.cons k sp_mid _ sp_scan' sp_final sp_final
                    h_ind h_dash2 h_gnot2 h_indented (SCompactSeqTail.nil k sp_final)))
@@ -30294,7 +30332,7 @@ lemma accum_block_on_pendingBlock
             sp_end (SCompactSeqTail.nil n sp_end)
         exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
                BlockStack.nil sp_block, FlowStackB.nil sp_block .sep,
-               PendingNode.pendingBlock (h_next := fun _ => dispatchBlock_dash_next (noflow_disp_of_noflow h_noflow) hpeek_disp h_dispatch) (h_offer := dispatchBlock_dash_offerPred h_dispatch) sp_start sp_block sp_scan' k
+               PendingNode.pendingBlock (h_seqTop := indicator_seqTop_dash_at_col (by have := SIndent_col h_ind; omega) hcorr_prep (IndentStackBase.preprocess_base h_preprocess h_base) (dash_dispatch_floor h_base (by have hc := (hcorr_prep.col_eq).symm; have := SIndent_col h_ind; omega) h_preprocess) h_dispatch) (h_next := fun _ => dispatchBlock_dash_next (noflow_disp_of_noflow h_noflow) hpeek_disp h_dispatch) (h_offer := dispatchBlock_dash_offerPred h_dispatch) sp_start sp_block sp_scan' k
                  (fun sp_final (h_indented : SBlockIndented k .blockIn sp_scan' sp_final) =>
                    h_close_inner sp_final
                      (SBlockSeqEntries.single k sp_mid _ sp_scan' sp_scan' sp_final
@@ -30793,7 +30831,7 @@ lemma accum_block_on_pendingBlock
       rw [hsp_dash2_eq] at h_dash2 h_gnot2
       exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
              BlockStack.nil sp_block, FlowStackB.nil sp_block .sep,
-             PendingNode.pendingBlock (h_next := fun _ => dispatchBlock_dash_next (noflow_disp_of_noflow h_noflow) hpeek_disp h_dispatch) (h_offer := dispatchBlock_dash_offerPred h_dispatch) sp_start sp_block sp_scan' (n + 1 + m)
+             PendingNode.pendingBlock (h_seqTop := indicator_seqTop_dash_at_col (by have := SIndent_col h_ind; omega) hcorr_prep (IndentStackBase.preprocess_base h_preprocess h_base) (dash_dispatch_floor h_base (by have hc := (hcorr_prep.col_eq).symm; have := SIndent_col h_ind; omega) h_preprocess) h_dispatch) (h_next := fun _ => dispatchBlock_dash_next (noflow_disp_of_noflow h_noflow) hpeek_disp h_dispatch) (h_offer := dispatchBlock_dash_offerPred h_dispatch) sp_start sp_block sp_scan' (n + 1 + m)
                (fun sp_final (h_bi : SBlockIndented (n + 1 + m) .blockIn sp_scan' sp_final) =>
                  h_close_old sp_final
                    (SBlockIndented.compactSeq n .blockIn m sp_mid sp_sc sp_final h_ind
@@ -42055,7 +42093,7 @@ lemma scanNextToken_accum_step (sc : ScannerState)
           have h := Except.ok.inj h_ok; injection h with h; subst h
           obtain ⟨g', bl', fl', sn', b', q1, q2, q3, q4, q5, q6, q7⟩ :=
             accum_step_structural sc sp_start sp_gram sp_block sp_flow sp_scan s_pre s_str c_pre
-              h_stream h_stack h_flow h_pending h_dir_flag h_corr h_interior h_pre h_dn h_fv h_str_eq
+              h_stream h_stack h_flow h_pending h_dir_flag h_corr h_interior h_pre h_base h_dn h_fv h_str_eq
           exact ⟨g', bl', fl', sn', b', q1, q2, q3, q4, q5, q6, q7, h_sc'.1, h_sc'.2, h_lkt'⟩
         · -- Pending-directives check (Fix B) — pure check, no state change
           split at h_ok

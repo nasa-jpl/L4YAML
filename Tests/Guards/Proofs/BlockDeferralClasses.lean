@@ -3718,9 +3718,9 @@ example {sc : ScannerState} {sp_start sp_block sp_scan : SurfPos}
     (h_offer : OfferPred sc.tokens)
     -- Item 320: and the dead register the marker leaves (lane (e)'s field).
     (h_noek : sc.explicitKeyLine = none)
-    (h_next : sc.inFlow = false → NextIsSep sc) :
+    (h_next : sc.inFlow = false → NextIsSep sc) (h_ntop : sc.currentIndent < 0) :
     PendingNode sc false sp_start sp_block sp_scan :=
-  PendingNode.pendingDocEnd (h_next := h_next) (h_offer := h_offer) sp_start sp_block sp_scan h_line h_marker h_arm
+  PendingNode.pendingDocEnd (h_next := h_next) (h_offer := h_offer) (h_ntop := h_ntop) sp_start sp_block sp_scan h_line h_marker h_arm
     (nic0_of_col_pos (by rw [scDocumentEnd_col h_marker]; omega)) h_noek
 
 /-- …and the `---` park, whose marker its producers hold but the constructor

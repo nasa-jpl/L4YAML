@@ -1,0 +1,434 @@
+{
+ "item": 437,
+ "tag": "PAY-437-A-PARK",
+ "rev": "099de858",
+ "target": "L4YAML",
+ "log": "scratch/pay437_a2.log",
+ "msgWidth": 110,
+ "rounds": 12,
+ "report": "bodies",
+ "files": [
+  {
+   "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+   "patches": [
+    {
+     "name": "L1656.flowKeyPack_of_close.h_key.a",
+     "line": 1656,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_e) ∨ True) ∧"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_e) ∨ RegisterWitness.NoMapLine sc) ∧"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L2226.PendingNode.h_framesS.a",
+     "line": 2226,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_mid) ∨ True)"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_mid) ∨ RegisterWitness.NoMapLine sc)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L2490.PendingNode.h_closeFE.a",
+     "line": 2490,
+     "old": [
+      "          ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)) ∨ True)"
+     ],
+     "new": [
+      "          ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)) ∨ RegisterWitness.NoMapLine sc)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L2505.PendingNode.h_closeF.a",
+     "line": 2505,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True)"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ RegisterWitness.NoMapLine sc)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L2596.pendingDocEnd.h_ntop.new",
+     "line": 2596,
+     "old": [
+      "      (h_next : sc.inFlow = false → NextIsSep sc) :"
+     ],
+     "new": [
+      "      (h_next : sc.inFlow = false → NextIsSep sc) (h_ntop : sc.currentIndent < 0) :"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L2655.pendingDocStart.h_ntop.new",
+     "line": 2655,
+     "old": [
+      "      (h_next : sc.inFlow = false → NextIsSep sc) :"
+     ],
+     "new": [
+      "      (h_next : sc.inFlow = false → NextIsSep sc) (h_ntop : sc.currentIndent < 0) :"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L2843.PendingNode.h_closeF.a",
+     "line": 2843,
+     "old": [
+      "          ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)) ∨ True)"
+     ],
+     "new": [
+      "          ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)) ∨ RegisterWitness.NoMapLine sc)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L2935.pendingBlockContent.h_seqTop.new",
+     "line": 2935,
+     "old": [
+      "      (h_live : InlineResidue sp_scan ':' → sc.simpleKey.possible = true) :"
+     ],
+     "new": [
+      "      (h_live : InlineResidue sp_scan ':' → sc.simpleKey.possible = true) (h_seqTop : ∃ e, sc.indents.back? = some e ∧ (e.isSequence = true ∨ e.column = (n : Int))) :"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L3060.PendingNode.h_closeF.a",
+     "line": 3060,
+     "old": [
+      "          ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)) ∨ True)"
+     ],
+     "new": [
+      "          ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)) ∨ RegisterWitness.NoMapLine sc)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L3149.pendingBlock.h_seqTop.new",
+     "line": 3149,
+     "old": [
+      "      (h_next : sc.inFlow = false → NextIsSep sc) :"
+     ],
+     "new": [
+      "      (h_next : sc.inFlow = false → NextIsSep sc) (h_seqTop : ∃ e, sc.indents.back? = some e ∧ (e.isSequence = true ∨ e.column = (n : Int))) :"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L3371.PendingNode.h_closeF.a",
+     "line": 3371,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) (FrameLevel.map n :: ks) sp_mid) ∨ True)"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) (FrameLevel.map n :: ks) sp_mid) ∨ RegisterWitness.NoMapLine sc)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L3391.PendingNode.h_frames.a",
+     "line": 3391,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_mid) ∨ True)"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_mid) ∨ RegisterWitness.NoMapLine sc)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L12659.flowKeyRoute_of_open.h_gate.a",
+     "line": 12659,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_e) ∨ True) ∧"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_e) ∨ RegisterWitness.NoMapLine sc) ∧"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L12859.flowKeyRoute_of_root.h_mapF.a",
+     "line": 12859,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True)"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ RegisterWitness.NoMapLine sc)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L12897.flowKeyRoute_of_root.h_mapFV.a",
+     "line": 12897,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_e) ∨ True) ∧"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_e) ∨ RegisterWitness.NoMapLine sc) ∧"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L14178.accum_flow_open_depth0.h_opsk.a",
+     "line": 14178,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True) →"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ RegisterWitness.NoMapLine sc) →"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L24567.colon_open_map.h_res_land.a",
+     "line": 24567,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ True)"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ RegisterWitness.NoMapLine sc)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L24844.question_open_map.h_res_land.a",
+     "line": 24844,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ True)"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ RegisterWitness.NoMapLine sc)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L25794.indicator_open_map.h_res_land.a",
+     "line": 25794,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ True)"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ RegisterWitness.NoMapLine sc)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L25965.colon_open_map_implicit.h_routeF.a",
+     "line": 25965,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_e) ∨ True)"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_e) ∨ RegisterWitness.NoMapLine s_prep)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L26206.colon_open_map_props.h_routeF.a",
+     "line": 26206,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_e) ∨ True)"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_e) ∨ RegisterWitness.NoMapLine s_prep)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L27442.deeperLandingResume.h_valF.a",
+     "line": 27442,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) (FrameLevel.map nv :: ks) sp_mid) ∨ True)"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) (FrameLevel.map nv :: ks) sp_mid) ∨ RegisterWitness.NoMapLine sc)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L27689.accum_block_on_closeThenBlock.h_valF.a",
+     "line": 27689,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) (FrameLevel.map nv :: ks) sp_mid) ∨ True)"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) (FrameLevel.map nv :: ks) sp_mid) ∨ RegisterWitness.NoMapLine sc)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L27713.accum_block_on_closeThenBlock.h_mapF.a",
+     "line": 27713,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True)"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ RegisterWitness.NoMapLine sc)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L29314.accum_block_on_pendingContent.h_mapF109.a",
+     "line": 29314,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True)"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ RegisterWitness.NoMapLine sc)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L29520.accum_block_on_pendingBlockContent.h_closeF_old.a",
+     "line": 29520,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)) ∨ True)"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)) ∨ RegisterWitness.NoMapLine sc)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L30115.accum_block_on_pendingBlock.h_closeF_old.a",
+     "line": 30115,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)) ∨ True)"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)) ∨ RegisterWitness.NoMapLine sc)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L34154.resumectx_of_landing.h_fS.a",
+     "line": 34154,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True)"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ RegisterWitness.NoMapLine sc)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L34645.entryKeyPack_of_dispatch.h_nodeF.a",
+     "line": 34645,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True)"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ RegisterWitness.NoMapLine sc)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L34661.entryKeyPack_of_dispatch.h_dframes.a",
+     "line": 34661,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True)"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ RegisterWitness.NoMapLine sc)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L35330.entryPropsKeyPack_of_dispatch.h_nodeF.a",
+     "line": 35330,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True)"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ RegisterWitness.NoMapLine sc)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L35340.entryPropsKeyPack_of_dispatch.h_dframes.a",
+     "line": 35340,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True)"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ RegisterWitness.NoMapLine sc)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L37170.accum_content_on_pendingBlock_indented.h_closeF_old.a",
+     "line": 37170,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)) ∨ True)"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)) ∨ RegisterWitness.NoMapLine sc)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L38056.accum_content_on_pendingMapValue_indented.h_closeF99.a",
+     "line": 38056,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) (FrameLevel.map n :: ks) sp_mid) ∨ True)"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) (FrameLevel.map n :: ks) sp_mid) ∨ RegisterWitness.NoMapLine sc)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L38070.accum_content_on_pendingMapValue_indented.h_frames99.a",
+     "line": 38070,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_mid) ∨ True)"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) ks sp_mid) ∨ RegisterWitness.NoMapLine sc)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L38910.accum_content_pending.h_fS.a",
+     "line": 38910,
+     "old": [
+      "            ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True)"
+     ],
+     "new": [
+      "            ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ RegisterWitness.NoMapLine sc)"
+     ],
+     "count": 1
+    }
+   ]
+  },
+  {
+   "file": "L4YAML/Proofs/Scanner/RegisterWitness.lean",
+   "patches": [
+    {
+     "name": "NoMapLine.def",
+     "line": 1250,
+     "old": [
+      "end L4YAML.Proofs.RegisterWitness"
+     ],
+     "new": [
+      "/-- Item 435: the negative arm of the map frames face — no mapping value line is open at the",
+      "    stack top: the top is the sentinel or a sequence level. -/",
+      "def NoMapLine (sc : ScannerState) : Prop :=",
+      "  sc.currentIndent < 0 ∨ ∃ e, sc.indents.back? = some e ∧ e.isSequence = true",
+      "",
+      "end L4YAML.Proofs.RegisterWitness"
+     ],
+     "count": 1
+    }
+   ]
+  }
+ ]
+}
