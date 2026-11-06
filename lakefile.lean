@@ -451,6 +451,11 @@ lean_exe «scripts-html-pdf» where
 lean_exe «scripts-restate» where
   root := `Scripts.Main.Restate
 
+-- Rule 9's last row: the @[yaml_spec] annotations against yaml-spec-1.2.yaml.
+@[default_target]
+lean_exe «scripts-verify-spec-annotations» where
+  root := `Scripts.Main.VerifySpecAnnotations
+
 /-! Phase 4.5 (Rule 9, Q7): portable entry points — `lake run <name>` replaces the
 bash wrappers that only run a `lean_exe`; same on Linux, macOS and Windows. -/
 
@@ -555,6 +560,16 @@ source transform behind a backup copy, `lake build` as the price, the bytes rest
 module rebuilt. Never beside a `lake build`. -/
 script «restate» (args) do
   runGateExe (← getWorkspace).root.dir "scripts-restate" #[] args
+
+/-- Rule 9's last row: `lake run verify-spec-annotations [-- --spec-file PATH | --spec-url URL]
+[--lean-root DIR] [--no-build]` checks every `@[yaml_spec "section" NNN "name"]` reference the
+build registered (the `yamlSpecExt` entries of the `.olean`s, after a `lake build`; not the
+source text) against yaml/yaml-grammar's `yaml-spec-1.2.yaml` (fetched by `curl` from the
+pinned upstream commit unless a local file is given; the file is not vendored — the upstream
+repository carries no licence); was `scripts/verify_yaml_spec_annotations.py`. PATH and DIR
+are the caller's (relative to the working directory). Exit 1 on a name mismatch or an unknown rule. -/
+script «verify-spec-annotations» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-verify-spec-annotations" #[] args
 
 /-- Rule 9 phase 4 row 1: `lake run cross-lang-compare -- DIR` runs suiterunner's
 four backends under the five presets and writes `DIR/cross-lang-results.json`

@@ -504,6 +504,28 @@ breaks CI if wrong, cheapest first:
    `weasyprint --version` (Q3: it imports the package and loads pango).
 3. `verify_yaml_spec_annotations.py` → `scripts-verify-spec-annotations`,
    with the grammar file fetched by `curl` in the `.sh` or vendored (Q4).
+   **DONE:** `lake run verify-spec-annotations [-- --spec-file PATH | --spec-url
+   URL] [--lean-root DIR] [--no-build]` (`Scripts/Spec/Annotations.lean` the pure
+   half with `#guard` rows — the `:NNN: name` table, the Python's `names_match`
+   variant maps, the three diagnostics; `Scripts/Spec/Env.lean` the environment
+   read; `Scripts/Main/VerifySpecAnnotations.lean` the driver). The references
+   are read off the environment, not the text (Rule 9 §2, unlike the Python's
+   regex scan): `lake build` first (Lake's content hashes decide freshness;
+   `--no-build` reads the `.olean`s as they are), then the `yamlSpecExt` entries
+   of every module under the Lean root — the declaration and its `YamlSpecRef`
+   — placed by `declRangeExt`, so a diagnostic names `file:line decl`; the
+   auxiliary declarations the elaborator re-applies an attribute to (`._unary`,
+   `._unsafe_rec`) are not counted, and prose, strings and comments hold no
+   entry. **Not vendored** (Q4, see §6): the file is fetched by `curl` — an
+   external program, as WeasyPrint is — from the raw URL pinned to the commit
+   that last changed it (`7bc2eabf`, 2020-10-26, blob `0af81136`), or read from
+   `--spec-file`. Python vs Lean on this tree: the 19 name mismatches identical
+   up to the location (the Python's attribute line vs the declaration's line and
+   name), 211/211 covered, exit 1 both sides, the whole checkout and
+   `--lean-root L4YAML/Spec`; the Python's 828 text matches are the
+   environment's 820 references plus 8 matches in prose (`YamlSpec.lean`'s
+   docstrings, `lakefile.lean`, the port's own docstring). The ledger is
+   closed: `# open: 0`.
 4. `svg-objects.py`, `html-to-pdf.py` → **Q3, DONE (route b)**: `lake run
    svg-objects -- DIR` and `lake run html-to-pdf -- IN OUT.pdf` (one exe,
    `scripts-html-pdf`, `Scripts/Html/{Bytes,Svg,Merge,PdfCss}.lean`): the
@@ -605,7 +627,9 @@ it removes Python from CI; it does not block an item.
 | matrix_score.py | R | 264 | 07-01 | DOCS.md recipe | `lake run matrix-score` (`Scripts/Matrix/Score.lean`) | lean:scripts-matrix-score |
 | cross-lang-compare.py | R | 93 | 10-17 | CI, generate-all.sh | `suiterunner --compare DIR` (`lake run cross-lang-compare`; `Tests/SuiteRunner/Reports.lean`) | lean:suiterunner |
 | generate-test-reports.py | R | 201 | 04-09 | CI, generate-all.sh | `suiterunner --reports DIR` (`lake run test-reports`; `Tests/SuiteRunner/Reports.lean`) | lean:suiterunner |
-| verify_yaml_spec_annotations.py | R | 301 | 03-29 | manual | scripts-verify-spec-annotations | todo |
+| verify_yaml_spec_annotations.py | R | 301 | 03-29 | manual | `lake run verify-spec-annotations` (`Scripts/Spec/{Annotations,Env}.lean`; the references read off the `.olean`s' `yamlSpecExt` entries, the grammar fetched by `curl` from the pinned upstream commit, not vendored) | lean:scripts-verify-spec-annotations |
+
+**Final ledger line:** `py=0 rows=49 todo=0 exception=0 lean=49 open=0 pin=0` — every row of this plan is Lean; the only non-Lean pieces of any instrument are external programs (`weasyprint`, `curl`, `lake`, `git`, `docker`) spawned by a Lean exe.
 | svg-objects.py | R | 71 | 09-05 | CI, generate-all.sh | `lake run svg-objects -- DIR` (`Scripts/Html/Svg.lean`) | lean:scripts-html-pdf |
 | html-to-pdf.py | R | 414 | 04-09 | CI, generate-all.sh | `lake run html-to-pdf -- IN OUT.pdf` (`Scripts/Html/Merge.lean` + the `weasyprint` CLI) | lean:scripts-html-pdf |
 
@@ -631,6 +655,11 @@ it removes Python from CI; it does not block an item.
 4. **Spec grammar fetch.** `verify_yaml_spec_annotations.py` downloads
    `yaml-spec-1.2.yaml` at run time. Vendor the file (reproducible,
    licence to check) or `curl` in the wrapper? Default: vendor.
+   **Ruled by the licence check:** yaml/yaml-grammar carries no licence (no
+   LICENSE file, nothing in its ReadMe, no copyright or licence line in the
+   file), so the file is not vendored; the Lean exe fetches it with `curl`
+   from the URL pinned to upstream commit `7bc2eabf` (reproducible), with
+   `--spec-file PATH` for offline use.
 5. **Where do the exes live.** `Scripts/` as a new top-level `lean_lib`
    with one `lean_exe` per script (compiled, fast, type-checked by the
    full build — adds ~30 jobs to the 1342), or Lake `script` blocks in
