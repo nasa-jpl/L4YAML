@@ -347,7 +347,7 @@ def expectedSteps : String :=
 -- the `directivesPresent` preservation family (`ScannerDirectivesPresent`) and the `DirInv` loop invariant
 -- (`DirectiveRuns`) hold the preprocess/dispatch/content step equations (and, through `DirInv_scanNextToken`,
 -- the pending-directives check).
-  "stepHolders=2006 dispHolders=384 dispTwoCorr=31 fns=74 fnsIx=26"
+  "stepHolders=2009 dispHolders=385 dispTwoCorr=31 fns=74 fnsIx=26"
 
 /-- **The ladder, at each population.**  `edge` is a production whose right
     endpoint is the step's output; `chain` requires a path to it from another

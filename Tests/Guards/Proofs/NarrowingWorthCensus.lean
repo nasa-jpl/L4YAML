@@ -894,7 +894,7 @@ one unfolding, and §6 is the item where those two disagreed about binders. -/
 -- 2026-10-30 (item 405, Rule 8 fix): theorems 6480 → 6484 — `RegisterWitness.markedCols`, `markedCols_mem`, `MarkedColsIn.self`, `MarkedColsIn.relay`.
 -- 2026-10-30 (item 407, flow carrier `pendingKeys` conjunct): theorems 6484 → 6487 — `closeStaleExplicitKey_pendingKeys_of_inFlow`, `preprocess_pendingKeys_of_inFlow`, `allowDirectives_update_pendingKeys`.
 -- 2026-11-02 (item 422): theorems 6493 → 6494 — `RegisterWitness.exists_mem_ne_of_not_markedColsIn`.
-def expectedNoopTally : String := "theorems=6494 byElab=16 byWhnf=16 elabOnly=0 whnfOnly=0"
+def expectedNoopTally : String := "theorems=6498 byElab=16 byWhnf=16 elabOnly=0 whnfOnly=0"
 -- 5302 → 5344 on 2026-10-18 (plan row 20's close, closure-log item 280): the
 -- parse-side alias obligation moved to §7.1's DECLARATION set, so the carrier
 -- grew and the predicate gained its tools.  What is new in kind: `AG` carries

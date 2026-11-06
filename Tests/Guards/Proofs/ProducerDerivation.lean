@@ -267,7 +267,7 @@ def expectedCensus : String :=
   -- one-level `ResumeFrames`, not head-`SLYamlStream` (the restated pack).
     -- 2026-10-29 (item 389): corrHyp 584 → 587 — `pushedBirth_not_mapTop`, `noPushBirth_indents`,
   -- `contentLanding_indents_eq` read the cursor through a `ScannerSurfCorr` hypothesis.
-  "corrHyp=586 streamConcl=88 both=41 free=0 pairConcl=1 held=3 pairAny=8"
+  "corrHyp=587 streamConcl=88 both=41 free=0 pairConcl=1 held=3 pairAny=8"
 
 /-- The one conclusion that pairs them, and it is the stream's origin. -/
 def expectedSeedConcl : List Name :=

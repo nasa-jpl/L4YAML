@@ -697,6 +697,9 @@ def expectedBounds : List String :=
   ["accum_content_on_pendingMapValue_indented #1 idx=n + 1 ctor=s' where=inline bounds=[] ⊢ no-bound",
    "content_dispatch_routed #1 idx=0 ctor=s' where=— bounds=[] ⊢ no-bound",
    "content_dispatch_routed #2 idx=0 ctor=s' where=— bounds=[] ⊢ no-bound"]
+-- 2026-11-06 (item 437): the two `content_dispatch_routed` callers from `accum_content_pending #5` (the marker park)
+--   now see a back-bound — the park's new `h_ntop : sc.currentIndent < 0` (the sentinel on top, floor 0, below) —
+--   so `no-bound-back` becomes `low=0`.
 def expectedCallers : List String :=
   [-- 2026-10-26 (item 369): the caller now relays the `-` park's `h_closeF_old` cover as well.
    "content_dispatch_routed #1 ← accum_content_on_noPending #1 state=s_prep mono=no base=no bounds=[] idx=0 ⊢ no-mono,no-bound | back=sc(h_preprocess) monoB=no baseB=no boundsB=[] resumeB=[] ⊢ no-mono-back,no-bound-back",
@@ -705,7 +708,7 @@ def expectedCallers : List String :=
    "content_dispatch_routed #1 ← accum_content_pending #2 state=s_prep mono=no base=no bounds=[] idx=0 ⊢ no-mono,no-bound | back=sc(h_preprocess) monoB=yes(h_mono) baseB=yes(h_base) boundsB=[] resumeB=[h_fS:frames(ks); h_fV:frames(ks); h_fQ:tail(kk)←landing] ⊢ no-bound-back",
    "content_dispatch_routed #1 ← accum_content_pending #3 state=s_prep mono=no base=no bounds=[] idx=0 ⊢ no-mono,no-bound | back=sc(h_preprocess) monoB=yes(h_mono) baseB=yes(h_base) boundsB=[] resumeB=[h_fS:frames(ks); h_fV:frames(ks); h_fQ:tail(kk)←landing] ⊢ no-bound-back",
    "content_dispatch_routed #1 ← accum_content_pending #4 state=s_prep mono=no base=no bounds=[] idx=0 ⊢ no-mono,no-bound | back=sc(h_preprocess) monoB=yes(h_mono) baseB=yes(h_base) boundsB=[] resumeB=[h_fS:frames(ks); h_fV:frames(ks); h_fQ:tail(kk)←landing] ⊢ no-bound-back",
-   "content_dispatch_routed #1 ← accum_content_pending #5 state=s_prep mono=no base=no bounds=[] idx=0 ⊢ no-mono,no-bound | back=sc(h_preprocess) monoB=yes(h_mono) baseB=yes(h_base) boundsB=[] resumeB=[h_defer_split:frames(ks)] ⊢ no-bound-back",
+   "content_dispatch_routed #1 ← accum_content_pending #5 state=s_prep mono=no base=no bounds=[] idx=0 ⊢ no-mono,no-bound | back=sc(h_preprocess) monoB=yes(h_mono) baseB=yes(h_base) boundsB=[h_ntop✝:sc<0 floor=0 below(syn)] resumeB=[h_defer_split:frames(ks)] ⊢ low=0",
    "content_dispatch_routed #1 ← content_dispatch_after_close #1 state=s_prep mono=no base=no bounds=[] idx=0 ⊢ no-mono,no-bound | back=— monoB=no baseB=no boundsB=[] resumeB=[] ⊢ no-prep-back",
    "content_dispatch_routed #2 ← accum_content_on_noPending #1 state=s_prep mono=no base=no bounds=[] idx=0 ⊢ no-mono,no-bound | back=sc(h_preprocess) monoB=no baseB=no boundsB=[] resumeB=[] ⊢ no-mono-back,no-bound-back",
    "content_dispatch_routed #2 ← accum_content_on_noPending #2 state=s_prep mono=no base=no bounds=[] idx=0 ⊢ no-mono,no-bound | back=sc(h_preprocess) monoB=no baseB=no boundsB=[] resumeB=[] ⊢ no-mono-back,no-bound-back",
@@ -713,11 +716,14 @@ def expectedCallers : List String :=
    "content_dispatch_routed #2 ← accum_content_pending #2 state=s_prep mono=no base=no bounds=[] idx=0 ⊢ no-mono,no-bound | back=sc(h_preprocess) monoB=yes(h_mono) baseB=yes(h_base) boundsB=[] resumeB=[h_fS:frames(ks); h_fV:frames(ks); h_fQ:tail(kk)←landing] ⊢ no-bound-back",
    "content_dispatch_routed #2 ← accum_content_pending #3 state=s_prep mono=no base=no bounds=[] idx=0 ⊢ no-mono,no-bound | back=sc(h_preprocess) monoB=yes(h_mono) baseB=yes(h_base) boundsB=[] resumeB=[h_fS:frames(ks); h_fV:frames(ks); h_fQ:tail(kk)←landing] ⊢ no-bound-back",
    "content_dispatch_routed #2 ← accum_content_pending #4 state=s_prep mono=no base=no bounds=[] idx=0 ⊢ no-mono,no-bound | back=sc(h_preprocess) monoB=yes(h_mono) baseB=yes(h_base) boundsB=[] resumeB=[h_fS:frames(ks); h_fV:frames(ks); h_fQ:tail(kk)←landing] ⊢ no-bound-back",
-   "content_dispatch_routed #2 ← accum_content_pending #5 state=s_prep mono=no base=no bounds=[] idx=0 ⊢ no-mono,no-bound | back=sc(h_preprocess) monoB=yes(h_mono) baseB=yes(h_base) boundsB=[] resumeB=[h_defer_split:frames(ks)] ⊢ no-bound-back",
+   "content_dispatch_routed #2 ← accum_content_pending #5 state=s_prep mono=no base=no bounds=[] idx=0 ⊢ no-mono,no-bound | back=sc(h_preprocess) monoB=yes(h_mono) baseB=yes(h_base) boundsB=[h_ntop✝:sc<0 floor=0 below(syn)] resumeB=[h_defer_split:frames(ks)] ⊢ low=0",
    "content_dispatch_routed #2 ← content_dispatch_after_close #1 state=s_prep mono=no base=no bounds=[] idx=0 ⊢ no-mono,no-bound | back=— monoB=no baseB=no boundsB=[] resumeB=[] ⊢ no-prep-back"]
+-- 2026-11-06 (item 437): the lack rows of `content_dispatch_routed`'s two `h_closeFE` punts read the marker park's
+--   new `h_ntop` as one supplied bound on the back side (`suppliedB` 0 → 1; see the callers' pin above); the
+--   aggregate follows: `lackSuppliedB` 0 → 2, `lackLow` 0 → 2, nodes 124448 → 124494.
 def expectedLack : List String :=
-  ["content_dispatch_routed #1 ctor:pendingProps.h_closeFE lacks=[mono,base,prep,floorSrc] idx=0 pre=s_prep(disp) callers=8 supplied=0 suppliedB=0 step=[IndentStackCover.dispatchContent_cover→Covered] shape=Covered consed=none pin=— bottom=at[→h_route:SBlockNode(0) at(syn)] resume=[] ne=none(0=ne + 1) ⊢ vacuous(0=ne + 1)",
-   "content_dispatch_routed #2 ctor:pendingProps.h_closeFE lacks=[mono,base,prep,floorSrc] idx=0 pre=s_prep(disp) callers=8 supplied=0 suppliedB=0 step=[IndentStackCover.dispatchContent_cover→Covered] shape=Covered consed=none pin=— bottom=at[→h_route:SBlockNode(0) at(syn)] resume=[] ne=none(0=ne + 1) ⊢ vacuous(0=ne + 1)"]
+  ["content_dispatch_routed #1 ctor:pendingProps.h_closeFE lacks=[mono,base,prep,floorSrc] idx=0 pre=s_prep(disp) callers=8 supplied=0 suppliedB=1 step=[IndentStackCover.dispatchContent_cover→Covered] shape=Covered consed=none pin=— bottom=at[→h_route:SBlockNode(0) at(syn)] resume=[] ne=none(0=ne + 1) ⊢ vacuous(0=ne + 1)",
+   "content_dispatch_routed #2 ctor:pendingProps.h_closeFE lacks=[mono,base,prep,floorSrc] idx=0 pre=s_prep(disp) callers=8 supplied=0 suppliedB=1 step=[IndentStackCover.dispatchContent_cover→Covered] shape=Covered consed=none pin=— bottom=at[→h_route:SBlockNode(0) at(syn)] resume=[] ne=none(0=ne + 1) ⊢ vacuous(0=ne + 1)"]
 def expectedBottoms : List String :=
   ["content_dispatch_routed #1 ctor:pendingProps.h_closeFE idx=0 bottom=at[→h_route:SBlockNode(0) at(syn)] resume=[]",
    "content_dispatch_routed #2 ctor:pendingProps.h_closeFE idx=0 bottom=at[→h_route:SBlockNode(0) at(syn)] resume=[]",
@@ -826,7 +832,7 @@ def expectedLine : String :=
 -- Item 372 (2026-10-27): exit (a)'s sequence-top face (`SeqTopKey`) reads at the dedent key's punt.
 -- Item 374: rows=200 → 202, nodes=119962 → 120158 — `resumectx_of_landing` gains `h_base`, read at the props park's relay.
   -- 2026-10-29 (item 394): the term grew with `FlowBaseRoutes.valueF`'s supply and relays (nodes 122297 → 122509); no punt-cover row moved.
-  "sites=3 pb=0 pmv=0 props=3 idx0=2 mono=1 monoOpt=0 base=1 baseOpt=0 prep=1 dispB=0 dispC=3 hc=2 chr=2 dash=0 corr=3 noflow=3 save=1 fl=0 top=0 larm=0 floor=1 nic=3 armed=0 col0=1 ids=0 coverSites=1 coverBinders=4 coverFnSites=3 full=0 fullB=0 missMono=2 missBase=2 missPrep=2 missFloorSrc=3 own=0 empty=0 relay=1 relayEntries=4 bounds=0 below=0 belowSyn=0 belowArm=0 at=0 atSyn=0 atArm=0 undecided=0 bOwn=0 bOld=0 landedBelow=0 inlineBelow=0 payable=0 lack=2 lackCallers=16 lackSupplied=0 lackSuppliedB=0 lackLow=0 lackPayable=0 vacuous=2 bottomBelow=0 paidRows=16 bottomPaidBelow=5 bottomPaidRelay=9 named=8 rows=206 nodes=124448"
+  "sites=3 pb=0 pmv=0 props=3 idx0=2 mono=1 monoOpt=0 base=1 baseOpt=0 prep=1 dispB=0 dispC=3 hc=2 chr=2 dash=0 corr=3 noflow=3 save=1 fl=0 top=0 larm=0 floor=1 nic=3 armed=0 col0=1 ids=0 coverSites=1 coverBinders=4 coverFnSites=3 full=0 fullB=0 missMono=2 missBase=2 missPrep=2 missFloorSrc=3 own=0 empty=0 relay=1 relayEntries=4 bounds=0 below=0 belowSyn=0 belowArm=0 at=0 atSyn=0 atArm=0 undecided=0 bOwn=0 bOld=0 landedBelow=0 inlineBelow=0 payable=0 lack=2 lackCallers=16 lackSupplied=0 lackSuppliedB=2 lackLow=2 lackPayable=0 vacuous=2 bottomBelow=0 paidRows=16 bottomPaidBelow=5 bottomPaidRelay=9 named=8 rows=206 nodes=124494"
 
 /-! ## §3 The reading -/
 

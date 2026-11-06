@@ -1,0 +1,102 @@
+{
+ "target": "L4YAML",
+ "msgWidth": 110,
+ "rounds": 6,
+ "report": "bodies",
+ "rev": "099de858",
+ "item": 437,
+ "tag": "PAY-437-B-LOCALS",
+ "log": "scratch/pay437_b2.log",
+ "files": [
+  {
+   "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+   "patches": [
+    {
+     "name": "L12932.flowKeyRoute_of_root.h_res_land.b",
+     "line": 12932,
+     "old": [
+      "            ResumeFrames (SLYamlStream sp_start) ks' sp_end) ∨ True := by"
+     ],
+     "new": [
+      "            ResumeFrames (SLYamlStream sp_start) ks' sp_end) ∨ (RegisterWitness.NoMapLine sc ∨ ∀ ks : List FrameLevel, (∀ sp_m : SurfPos, SSLComments sp_g sp_m → ResumeFrames (SLYamlStream sp_start) ks sp_m) → FrameLevel.map w ∉ ks) := by"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L27448.deeperLandingResume.h_res_land.b",
+     "line": 27448,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ True := by"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ (RegisterWitness.NoMapLine sc ∨ (k : Int) ≤ sc.currentIndent) := by"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L28164.closeThenBlock.h_res_land.b",
+     "line": 28164,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ True := by"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ (RegisterWitness.NoMapLine sc ∨ (k : Int) ≤ sc.currentIndent) := by"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L28324.closeThenBlock.h_seqFrames.b",
+     "line": 28324,
+     "old": [
+      "          ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)) ∨ True := by"
+     ],
+     "new": [
+      "          ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)) ∨ (RegisterWitness.NoMapLine sc ∨ (k : Int) ≤ sc.currentIndent ∨ s_prep.indents ≠ sc.indents) := by"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L39500.accum_content_pending.h_fS.b",
+     "line": 39500,
+     "old": [
+      "          ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True :="
+     ],
+     "new": [
+      "          ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ RegisterWitness.NoMapLine sc :="
+     ],
+     "count": 1
+    },
+    {
+     "name": "L40380.accum_content_pending.h_closeFE_k.b",
+     "line": 40380,
+     "old": [
+      "                  ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ True := by"
+     ],
+     "new": [
+      "                  ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ (RegisterWitness.NoMapLine sc ∨ (k : Int) ≠ sc.currentIndent) := by"
+     ],
+     "count": 1
+    }
+   ]
+  },
+  {
+   "file": "L4YAML/Proofs/Scanner/RegisterWitness.lean",
+   "patches": [
+    {
+     "name": "NoMapLine.def",
+     "line": 1250,
+     "old": [
+      "end L4YAML.Proofs.RegisterWitness"
+     ],
+     "new": [
+      "def NoMapLine (sc : ScannerState) : Prop :=",
+      "  sc.currentIndent < 0 ∨ ∃ e, sc.indents.back? = some e ∧ e.isSequence = true",
+      "",
+      "end L4YAML.Proofs.RegisterWitness"
+     ],
+     "count": 1
+    }
+   ]
+  }
+ ]
+}

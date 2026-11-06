@@ -1009,6 +1009,25 @@ lemma scanBlockEntry_top_le {s s' : ScannerState} (h_noflow : s.inFlow = false)
   rw [currentIndent_of_indents_eq (scanBlockEntry_indents h_noflow hok)]
   exact pushSequenceIndent_top_le h_floor
 
+/-- Item 437: after `[183]`'s `-` the stack top is a SEQUENCE level (the entry pushed one)
+    or the level at the indicator's own column (the compact `k:⏎- a`, where the mapping
+    stays on top) — the `-` parks' `h_seqTop`. -/
+lemma scanBlockEntry_seqTop {s s' : ScannerState} (h_noflow : s.inFlow = false)
+    (hok : scanBlockEntry s = .ok s') (h_base : SentinelBase s)
+    (h_floor : s.currentIndent ≤ (s.col : Int)) :
+    ∃ e, s'.indents.back? = some e ∧ (e.isSequence = true ∨ e.column = (s.col : Int)) := by
+  rw [scanBlockEntry_indents h_noflow hok]
+  unfold pushSequenceIndent
+  split
+  · exact ⟨{ column := (s.col : Int), isSequence := true }, by simp, Or.inl rfl⟩
+  · rename_i hle
+    have hsz := h_base.size_pos
+    have hback : s.indents.back? = some s.indents[s.indents.size - 1] :=
+      Array.getElem?_eq_getElem (by omega)
+    have hcur : s.currentIndent = s.indents[s.indents.size - 1].column := by
+      unfold ScannerState.currentIndent; rw [hback]
+    exact ⟨_, hback, Or.inr (by omega)⟩
+
 end L4YAML.Proofs.IndentStackCover
 
 end Blanket

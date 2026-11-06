@@ -1,0 +1,39 @@
+{
+ "target": "L4YAML",
+ "msgWidth": 110,
+ "rounds": 6,
+ "report": "bodies",
+ "rev": "099de858",
+ "item": 437,
+ "tag": "PAY-437-C-REFUSED",
+ "log": "scratch/pay437_c.log",
+ "files": [
+  {
+   "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+   "patches": [
+    {
+     "name": "L35948.content_dispatch_routed.h_dead.c",
+     "line": 35948,
+     "old": [
+      "            ResumeFrames (SLYamlStream sp_start) ks sp_e) ∨ True) →"
+     ],
+     "new": [
+      "            ResumeFrames (SLYamlStream sp_start) ks sp_e) ∨ ExplicitValueRefused s_prep) →"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L36202.content_dispatch_routed.h_dead.c",
+     "line": 36202,
+     "old": [
+      "            ResumeFrames (SLYamlStream sp_start) ks sp_e) ∨ True) →"
+     ],
+     "new": [
+      "            ResumeFrames (SLYamlStream sp_start) ks sp_e) ∨ ExplicitValueRefused s_prep) →"
+     ],
+     "count": 1
+    }
+   ]
+  }
+ ]
+}
