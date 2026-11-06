@@ -5339,9 +5339,13 @@ marker / token / position / fuel grid
 `[211] l-yaml-stream ::= l-document-prefix* l-any-document? ( l-document-suffix+
 l-document-prefix* l-any-document? | l-document-prefix* l-explicit-document? )*`: a document
 that is neither the first nor preceded by `...` starts with `---`.  `docsWalk false` is that
-rule as a line walk — the decidable mirror of `SLYamlStream` with `implicitContinue` over
+rule as a line walk — the DOCUMENT-START count of `[211]` under `implicitContinue` over
 `GOpt SLExplicitDocument`: a content line continues the open document, and opens a bare one
-only at the start or after `...`.  `docsWalk true` mirrors TODAY's constructor (`GOpt
+only at the start or after `...`.  It reads where documents start, not whether their bodies
+derive (`a⏎: x` counts one document; the grammar refuses it at the node), so it is NOT a
+membership oracle: on an accepted row, parser documents = walk is a NECESSARY condition of
+`parseYaml ok → SLYamlStream` under the narrowing; on a refused row the walk's count is pinned
+beside the refusal (`refusedWalk`), never skipped.  `docsWalk true` mirrors TODAY's constructor (`GOpt
 SLAnyDocument`): a column-0 content line inside an open document may ALSO open a second bare
 document, so it counts the widest split the broad grammar admits.  Each row pins `parseYaml`'s
 (documents, root arity) beside both counts: a row with `broad ≠ explicit` is one the broad
@@ -5376,7 +5380,8 @@ def atCol0 (l : String) : Bool :=
 def lines (input : String) : List String :=
   (input.splitOn "\n").map fun l => if l.endsWith "\r" then String.mk l.toList.dropLast else l
 
-/-- Documents the stream grammar counts over the first `fuel` lines: `broad = false` is the
+/-- Document STARTS the stream grammar's marker structure counts over the first `fuel` lines
+(not node membership — see the section header): `broad = false` is the
 explicit-only `[211]`, `broad = true` today's `GOpt SLAnyDocument` continuation. -/
 def docsWalk (broad : Bool) (input : String) (fuel : Nat) : Nat :=
   go ((lines input).take fuel) 0 .none
@@ -5514,6 +5519,10 @@ def testExplicitOnlyStream (state : IO.Ref TestCollector) : IO Unit := do
       ("[1]: a⏎b: 2 (flow key at the root)", "[1]: a\nb: 2", some (1, 2), true),
       ("k:⏎  a: 1⏎b: 2 (closeThenBlock's root sibling)", "k:\n  a: 1\nb: 2", some (1, 2), true),
       ("&p a: 1⏎b: 2 (props park's sibling)", "&p a: 1\nb: 2", some (1, 2), true) ]
+  -- the refused rows, with the walk's own count: the walk is not a membership oracle
+  let refusedWalk : List (String × Nat) :=
+    [ ("a:\n&x b", 1), ("a: *x\nb: c", 1), ("a #c\n&x: b", 1), ("a: |\n   x\n  &x b: *x", 1),
+      ("a\n: x", 1), ("a\n{x: 1}", 1), ("a\nb: c", 1) ]
   for (label, src, expected, differs) in c4 ++ markers ++ tokens do
     let got := parserRow src
     let eo := explicitOnlyDocs src
@@ -5524,8 +5533,10 @@ def testExplicitOnlyStream (state : IO.Ref TestCollector) : IO Unit := do
     checkM state s!"explicit-only/outside {label}" (outside == (src == "a\n%YAML 1.2\n---\nb"))
       s!"directive after an unterminated document = {outside}"
     checkM state s!"explicit-only/agree {label}"
-      (match got with | some (d, _) => outside || d == eo | none => true)
-      s!"parser docs = {repr (got.map Prod.fst)}, explicit-only walk = {eo}"
+      (match got with
+       | some (d, _) => outside || d == eo
+       | none => refusedWalk.lookup src == some eo)
+      s!"parser docs = {repr (got.map Prod.fst)}, explicit-only walk = {eo}; a refused row pins the walk's count ({repr (refusedWalk.lookup src)}): the walk reads document starts, not node membership"
     checkM state s!"explicit-only/broad {label}" ((br != eo) == differs)
       s!"broad = {br}, explicit-only = {eo}; expected differs={differs}"
   -- fuel 0 / 1 / 2: the walk on the first k lines against the parser on that prefix
