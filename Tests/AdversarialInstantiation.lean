@@ -5332,6 +5332,223 @@ def testTraceOfBlockLedger (state : IO.Ref TestCollector) : IO Unit := do
     checkM state s!"traceOf/block ledger {label}" (got == expected)
       s!"parseYaml: {repr got} (docs), expected {repr expected}"
 
+/-! ## Priority 68 — `[211]` explicit-only `implicitContinue`: the narrowed stream's document
+count, read against the parser on C4's block/document grid (28 inputs), `a⏎&x`, and a
+marker / token / position / fuel grid
+
+`[211] l-yaml-stream ::= l-document-prefix* l-any-document? ( l-document-suffix+
+l-document-prefix* l-any-document? | l-document-prefix* l-explicit-document? )*`: a document
+that is neither the first nor preceded by `...` starts with `---`.  `docsWalk false` is that
+rule as a line walk — the DOCUMENT-START count of `[211]` under `implicitContinue` over
+`GOpt SLExplicitDocument`: a content line continues the open document, and opens a bare one
+only at the start or after `...`.  It reads where documents start, not whether their bodies
+derive (`a⏎: x` counts one document; the grammar refuses it at the node), so it is NOT a
+membership oracle: on an accepted row, parser documents = walk is a NECESSARY condition of
+`parseYaml ok → SLYamlStream` under the narrowing; on a refused row the walk's count is pinned
+beside the refusal (`refusedWalk`), never skipped.  `docsWalk true` mirrors TODAY's constructor (`GOpt
+SLAnyDocument`): a column-0 content line inside an open document may ALSO open a second bare
+document, so it counts the widest split the broad grammar admits.  Each row pins `parseYaml`'s
+(documents, root arity) beside both counts: a row with `broad ≠ explicit` is one the broad
+grammar reads two ways — `a⏎&x` (R1) and every opener-sibling input (`a: 1⏎b: 2`: the second
+bare document the eight opener lines build today) — and the parser must agree with the
+explicit-only count on every accepted row.  Fuel = lines read: the walk at fuel 0 / 1 / 2 is
+pinned against the parser on the same line prefix. -/
+namespace ExplicitOnlyMirror
+
+inductive DocState where
+  | none | opened | closed
+  deriving BEq, Repr
+
+/-- `'-'` a `---` line, `'.'` a `...` line, `'#'` blank / comment, `'%'` a directive,
+`'c'` content (indented or not). -/
+def lineKind (l : String) : Char :=
+  match (l.toList.reverse.dropWhile Char.isWhitespace).reverse with
+  | [] => '#'
+  | '#' :: _ => '#'
+  | '%' :: _ => '%'
+  | '-' :: '-' :: '-' :: rest =>
+    if rest = [] ∨ rest.head? = some ' ' ∨ rest.head? = some '\t' then '-' else 'c'
+  | '.' :: '.' :: '.' :: rest =>
+    if rest = [] ∨ rest.head? = some ' ' ∨ rest.head? = some '\t' then '.' else 'c'
+  | _ => 'c'
+
+def atCol0 (l : String) : Bool :=
+  match l.toList with
+  | c :: _ => c != ' ' && c != '\t'
+  | [] => false
+
+def lines (input : String) : List String :=
+  (input.splitOn "\n").map fun l => if l.endsWith "\r" then String.mk l.toList.dropLast else l
+
+/-- Document STARTS the stream grammar's marker structure counts over the first `fuel` lines
+(not node membership — see the section header): `broad = false` is the
+explicit-only `[211]`, `broad = true` today's `GOpt SLAnyDocument` continuation. -/
+def docsWalk (broad : Bool) (input : String) (fuel : Nat) : Nat :=
+  go ((lines input).take fuel) 0 .none
+where
+  go : List String → Nat → DocState → Nat
+    | [], n, _ => n
+    | l :: ls, n, st =>
+      match lineKind l, st with
+      | '-', _ => go ls (n + 1) .opened
+      | '.', _ => go ls n .closed
+      | 'c', .opened => go ls (if broad && atCol0 l then n + 1 else n) .opened
+      | 'c', _ => go ls (n + 1) .opened
+      | _, _ => go ls n st
+
+/-- `[211]` after an unterminated document admits `l-explicit-document?` only: a directive line
+while a document is open is outside the explicit-only grammar (inside the broad one, through
+`SLAnyDocument.directive` at `structural_dispatch_to_pending`'s `%` route). -/
+def directiveAfterOpenDoc (input : String) : Bool :=
+  go (lines input) .none
+where
+  go : List String → DocState → Bool
+    | [], _ => false
+    | l :: ls, st =>
+      match lineKind l, st with
+      | '%', .opened => true
+      | '-', _ => go ls .opened
+      | '.', _ => go ls .closed
+      | 'c', _ => go ls .opened
+      | _, _ => go ls st
+
+#guard directiveAfterOpenDoc "a\n%YAML 1.2\n---\nb" = true
+#guard directiveAfterOpenDoc "a\n...\n%YAML 1.2\n---\nb" = false
+#guard directiveAfterOpenDoc "%YAML 1.2\n---\na" = false
+
+def explicitOnlyDocs (input : String) : Nat := docsWalk false input (lines input).length
+def broadDocs (input : String) : Nat := docsWalk true input (lines input).length
+
+def parserRow (src : String) : Option (Nat × Nat) :=
+  let rootArity : YamlValue → Nat
+    | .mapping _ arr => arr.size
+    | .sequence _ arr => arr.size
+    | _ => 0
+  match L4YAML.TokenParser.parseYaml src with
+  | .ok docs => some (docs.size, (docs[0]?.map (fun d => rootArity d.value)).getD 0)
+  | .error _ => none
+
+-- the walk on the constructor's own smallest instances (`#guard`: a refutation is a build failure)
+#guard explicitOnlyDocs "" = 0
+#guard explicitOnlyDocs "a" = 1
+#guard explicitOnlyDocs "a\n&x" = 1 ∧ broadDocs "a\n&x" = 2
+#guard explicitOnlyDocs "a\n...\n&x" = 2 ∧ broadDocs "a\n...\n&x" = 2
+#guard explicitOnlyDocs "a\n---\nb" = 2 ∧ broadDocs "a\n---\nb" = 3
+#guard explicitOnlyDocs "a: 1\nb: 2" = 1 ∧ broadDocs "a: 1\nb: 2" = 2
+#guard docsWalk false "a\n&x" 0 = 0 ∧ docsWalk false "a\n&x" 1 = 1 ∧ docsWalk false "a\n&x" 2 = 1
+#guard docsWalk true "a\n&x" 0 = 0 ∧ docsWalk true "a\n&x" 1 = 1 ∧ docsWalk true "a\n&x" 2 = 2
+
+end ExplicitOnlyMirror
+
+open ExplicitOnlyMirror in
+def testExplicitOnlyStream (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 68: [211] explicit-only implicitContinue — the narrowed stream's document count against the parser (C4's 28 inputs, a⏎&x, marker/token/position/fuel grid)"
+  -- (label, input, parser (docs, arity) or refused, broad ≠ explicit-only)
+  let c4 : List (String × String × Option (Nat × Nat) × Bool) :=
+    [ ("a: &x b", "a: &x b", some (1, 1), false),
+      ("&x a: b", "&x a: b", some (1, 1), false),
+      ("a:⏎  &x b", "a:\n  &x b", some (1, 1), false),
+      ("a:⏎&x b (row-19 over-acceptance: refused)", "a:\n&x b", none, true),
+      ("- a⏎  &x", "- a\n  &x", some (1, 1), false),
+      ("- a⏎- &x b", "- a\n- &x b", some (1, 2), true),
+      ("a⏎&x (R1)", "a\n&x", some (1, 0), true),
+      ("? a⏎: &x b", "? a\n: &x b", some (1, 1), true),
+      ("a: *x⏎b: c (undefinedAlias: refused)", "a: *x\nb: c", none, true),
+      ("&x⏎a: b", "&x\na: b", some (1, 1), true),
+      ("!!str⏎a", "!!str\na", some (1, 0), true),
+      ("&x !!str⏎a: b (REFUTED arity 1: the parser reads a tagged scalar, arity 0)", "&x !!str\na: b", some (1, 0), true),
+      ("a: |⏎  &x", "a: |\n  &x", some (1, 1), false),
+      ("a: >⏎  *x", "a: >\n  *x", some (1, 1), false),
+      ("a: \"x\"⏎&y b: c", "a: \"x\"\n&y b: c", some (1, 2), true),
+      ("--- &x⏎a", "--- &x\na", some (1, 0), true),
+      ("%TAG !e! tag:x⏎---⏎!e!a b", "%TAG !e! tag:x\n---\n!e!a b", some (1, 0), true),
+      ("--- a⏎--- &x b", "--- a\n--- &x b", some (2, 0), false),
+      ("a⏎...⏎&x", "a\n...\n&x", some (2, 0), false),
+      ("a #c⏎&x: b (row 19: refused)", "a #c\n&x: b", none, true),
+      ("a: b # &x", "a: b # &x", some (1, 1), false),
+      ("- &x⏎  - *x", "- &x\n  - *x", some (1, 1), false),
+      ("&x [*x]", "&x [*x]", some (1, 1), false),
+      ("a: &x⏎  b: *x", "a: &x\n  b: *x", some (1, 1), false),
+      ("BOM &x a", "\uFEFF&x a", some (1, 0), false),
+      ("a␍⏎&x (CRLF R1)", "a\r\n&x", some (1, 0), true),
+      ("a: &x b␍⏎", "a: &x b\r\n", some (1, 1), false),
+      ("a: |⏎   x⏎  &x b: *x (R2: refused)", "a: |\n   x\n  &x b: *x", none, false) ]
+  -- `---` / `...` first / middle / last, with and without content; directives; nesting
+  let markers : List (String × String × Option (Nat × Nat) × Bool) :=
+    [ ("(empty)", "", some (0, 0), false),
+      ("a", "a", some (1, 0), false),
+      ("---", "---", some (1, 0), false),
+      ("...", "...", some (0, 0), false),
+      ("--- a", "--- a", some (1, 0), false),
+      ("---⏎a", "---\na", some (1, 0), true),
+      ("a⏎---", "a\n---", some (2, 0), false),
+      ("a⏎...", "a\n...", some (1, 0), false),
+      ("...⏎a", "...\na", some (1, 0), false),
+      ("---⏎...", "---\n...", some (1, 0), false),
+      ("---⏎---", "---\n---", some (2, 0), false),
+      ("---⏎a⏎---⏎b", "---\na\n---\nb", some (2, 0), true),
+      ("a⏎...⏎b", "a\n...\nb", some (2, 0), false),
+      ("a⏎...⏎---⏎b (REFUTED differs=false: `---⏎b` is itself a broad split)", "a\n...\n---\nb", some (2, 0), true),
+      ("a⏎---⏎...⏎b", "a\n---\n...\nb", some (3, 0), false),
+      ("a⏎---⏎b⏎... (REFUTED differs=false: `---⏎b` splits under the broad grammar)", "a\n---\nb\n...", some (2, 0), true),
+      ("%YAML 1.2⏎---⏎a", "%YAML 1.2\n---\na", some (1, 0), true),
+      ("a⏎%YAML 1.2⏎---⏎b (REFUTED refused: the parser ACCEPTS two documents; `[211]` admits no directive document after an unterminated bare document — outside the explicit-only grammar, inside the broad one)", "a\n%YAML 1.2\n---\nb", some (2, 0), true),
+      ("a⏎...⏎%YAML 1.2⏎---⏎b (REFUTED differs=false: `---⏎b` splits under the broad grammar)", "a\n...\n%YAML 1.2\n---\nb", some (2, 0), true),
+      ("# c⏎a⏎# c", "# c\na\n# c", some (1, 0), false),
+      ("a:⏎  b:⏎    c: 1⏎d: 2 (nested, root sibling)", "a:\n  b:\n    c: 1\nd: 2", some (1, 2), true),
+      ("a:⏎  b:⏎    c: 1⏎---⏎d: 2 (REFUTED differs=false: `---⏎d: 2` splits under the broad grammar)", "a:\n  b:\n    c: 1\n---\nd: 2", some (2, 1), true),
+      ("- a⏎- b⏎---⏎- c", "- a\n- b\n---\n- c", some (2, 2), true) ]
+  -- every token kind at column 0 after a bare plain line
+  let tokens : List (String × String × Option (Nat × Nat) × Bool) :=
+    [ ("a⏎!t x", "a\n!t x", some (1, 0), true),
+      ("a⏎*x (REFUTED refused: plain continuation `a *x`)", "a\n*x", some (1, 0), true),
+      ("a⏎- x (REFUTED refused: plain continuation `a - x`)", "a\n- x", some (1, 0), true),
+      ("a⏎? x (REFUTED refused: plain continuation `a ? x`)", "a\n? x", some (1, 0), true),
+      ("a⏎: x (refused)", "a\n: x", none, true),
+      ("a⏎[x] (REFUTED refused: plain continuation `a [x]`)", "a\n[x]", some (1, 0), true),
+      ("a⏎{x: 1} (refused)", "a\n{x: 1}", none, true),
+      ("a⏎\"x\" (REFUTED refused: plain continuation)", "a\n\"x\"", some (1, 0), true),
+      ("a⏎'x' (REFUTED refused: plain continuation)", "a\n'x'", some (1, 0), true),
+      ("a⏎| (REFUTED refused: plain continuation `a |`)", "a\n|", some (1, 0), true),
+      ("a⏎> (REFUTED refused: plain continuation `a >`)", "a\n>", some (1, 0), true),
+      ("a⏎# c", "a\n# c", some (1, 0), false),
+      ("a⏎b: c (refused)", "a\nb: c", none, true),
+      ("a: 1⏎b: 2 (`:` opener's sibling)", "a: 1\nb: 2", some (1, 2), true),
+      ("? a⏎b: 2 (`?` opener's sibling)", "? a\nb: 2", some (1, 2), true),
+      ("a: [1]⏎b: 2 (flow value, block sibling)", "a: [1]\nb: 2", some (1, 2), true),
+      ("[1]: a⏎b: 2 (flow key at the root)", "[1]: a\nb: 2", some (1, 2), true),
+      ("k:⏎  a: 1⏎b: 2 (closeThenBlock's root sibling)", "k:\n  a: 1\nb: 2", some (1, 2), true),
+      ("&p a: 1⏎b: 2 (props park's sibling)", "&p a: 1\nb: 2", some (1, 2), true) ]
+  -- the refused rows, with the walk's own count: the walk is not a membership oracle
+  let refusedWalk : List (String × Nat) :=
+    [ ("a:\n&x b", 1), ("a: *x\nb: c", 1), ("a #c\n&x: b", 1), ("a: |\n   x\n  &x b: *x", 1),
+      ("a\n: x", 1), ("a\n{x: 1}", 1), ("a\nb: c", 1) ]
+  for (label, src, expected, differs) in c4 ++ markers ++ tokens do
+    let got := parserRow src
+    let eo := explicitOnlyDocs src
+    let br := broadDocs src
+    checkM state s!"explicit-only/parser {label}" (got == expected)
+      s!"parser (docs, arity) = {repr got}; expected {repr expected}"
+    let outside := directiveAfterOpenDoc src
+    checkM state s!"explicit-only/outside {label}" (outside == (src == "a\n%YAML 1.2\n---\nb"))
+      s!"directive after an unterminated document = {outside}"
+    checkM state s!"explicit-only/agree {label}"
+      (match got with
+       | some (d, _) => outside || d == eo
+       | none => refusedWalk.lookup src == some eo)
+      s!"parser docs = {repr (got.map Prod.fst)}, explicit-only walk = {eo}; a refused row pins the walk's count ({repr (refusedWalk.lookup src)}): the walk reads document starts, not node membership"
+    checkM state s!"explicit-only/broad {label}" ((br != eo) == differs)
+      s!"broad = {br}, explicit-only = {eo}; expected differs={differs}"
+  -- fuel 0 / 1 / 2: the walk on the first k lines against the parser on that prefix
+  for src in ["a\n&x", "a\r\n&x", "a: 1\nb: 2", "a\n---\nb", "a\n...\nb", "---\na\n---\nb", "- a\n- &x b"] do
+    for k in [0, 1, 2] do
+      let pre := "\n".intercalate ((lines src).take k)
+      let eo := docsWalk false src k
+      let got := parserRow pre
+      checkM state s!"explicit-only/fuel {k} {repr src}"
+        (match got with | some (d, _) => d == eo | none => false)
+        s!"prefix {repr pre}: parser {repr got}, walk {eo}"
+
 /-- Priority 34 (`[173]` tail confined to EOF): the executable side of
 `collectLineContentLoop_fst_nonempty` and of `BlockStopOk.badChar`'s non-empty run
 (`lineRunPlus_toBodyTail`).  An `nb-char` first and fuel ≥ 1 give non-empty content; the
@@ -10579,6 +10796,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testExplicitColonRegister state
   testTraceOfLeafEvents state
   testTraceOfBlockLedger state
+  testExplicitOnlyStream state
   testRootSiblingLedger state
   testSiblingDashFrames state
   testValueLineResume state
