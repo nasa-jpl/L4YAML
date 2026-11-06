@@ -4,17 +4,18 @@ public import Scripts.Restate.Text
 meta import Scripts.Restate.Text
 
 /-!
-# `Scripts.Spec.Annotations` — `@[yaml_spec]` annotations against `yaml-spec-1.2.yaml`
+# `Scripts.Spec.Annotations` — `@[yaml_spec]` references against `yaml-spec-1.2.yaml`
 (was `scripts/verify_yaml_spec_annotations.py`)
 
 The grammar file (yaml/yaml-grammar) names every production of YAML 1.2 as `:NNN: name`;
 the library's `@[yaml_spec "section" NNN "name"]` attributes cite them.  This module is
 the pure half of the check: the spec's `number → name` table (`^:(\d{3}):\s+(\S+)`), the
-annotations of a Lean line (`yaml_spec\s+"…"(?:\s+(\d+)\s+"…")?`), the Python's name
-normalisation (`s-indent(≤n)` / `s-indent(<n)` are the spec's `s-indent-le` / `-lt`; the
-spec's `seq-spaces` is the YAML 1.2.2 text's `seq-space`; parameter lists stripped), and
-the three diagnostics — NAME MISMATCHES, UNKNOWN RULES, COVERAGE — worded as the Python
-printed them.
+Python's name normalisation (`s-indent(≤n)` / `s-indent(<n)` are the spec's `s-indent-le` /
+`-lt`; the spec's `seq-spaces` is the YAML 1.2.2 text's `seq-space`; parameter lists
+stripped), and the three diagnostics — NAME MISMATCHES, UNKNOWN RULES, COVERAGE — worded
+as the Python printed them.  The references themselves come from the environment
+(`Scripts.Spec.Env`: the `yamlSpecExt` entries of the built `.olean`s), not from the text
+the Python scanned; a diagnostic names the declaration carrying the reference.
 -/
 
 namespace Scripts.Spec
@@ -49,50 +50,23 @@ def parseSpec (text : String) : Array (Nat × String) :=
 def specName? (spec : Array (Nat × String)) (n : Nat) : Option String :=
   (spec.find? (·.1 == n)).map (·.2)
 
+/-- One `@[yaml_spec …]` reference: the module's source file (relative to the checkout), the
+    declaration it is attached to and the line that declaration's name is on (none when the
+    module only annotated a declaration of another module), and the reference's fields. -/
 structure Annotation where
   file : String
-  line : Nat
+  decl : String
+  line : Option Nat
   section_ : String
   ruleNum : Option Nat
   ruleName : Option String
   deriving Repr, BEq
 
-/-- `LEAN_ANNOT_RE.finditer(line)`: every `yaml_spec "S"` with its optional `N "name"`. -/
-partial def annotationsOfLine (file : String) (lineNo : Nat) (line : String) : List Annotation :=
-  go (chars line) 0 []
-where
-  quoted (a : Array Char) (i : Nat) : Option (String × Nat) :=
-    if i < a.size && a[i]! == '"' then
-      let j := (List.range (a.size - i - 1)).find? (fun k => a[i + 1 + k]! == '"') |>.map (· + i + 1)
-      match j with
-      | some j => if j > i + 1 then some (String.ofList (a.extract (i + 1) j).toList, j + 1) else none
-      | none => none
-    else none
-  skipWs (a : Array Char) (i : Nat) : Nat :=
-    if i < a.size && isWs a[i]! then skipWs a (i + 1) else i
-  go (a : Array Char) (i : Nat) (acc : List Annotation) : List Annotation :=
-    match findSub a (chars "yaml_spec") i with
-    | none => acc.reverse
-    | some p =>
-      let q := skipWs a (p + 9)
-      if q == p + 9 then go a (p + 1) acc else
-      match quoted a q with
-      | none => go a (p + 1) acc
-      | some (sec, e) =>
-        let r := skipWs a e
-        let digitsEnd := (List.range (a.size - r)).find? (fun k => !(a[r + k]!).isDigit) |>.map (· + r) |>.getD a.size
-        let opt :=
-          if r > e && digitsEnd > r then
-            let s := skipWs a digitsEnd
-            if s > digitsEnd then
-              match quoted a s with
-              | some (name, e2) => some (String.toNat! (String.ofList (a.extract r digitsEnd).toList), name, e2)
-              | none => none
-            else none
-          else none
-        match opt with
-        | some (n, name, e2) => go a e2 ({ file, line := lineNo, section_ := sec, ruleNum := some n, ruleName := some name } :: acc)
-        | none => go a e ({ file, line := lineNo, section_ := sec, ruleNum := none, ruleName := none } :: acc)
+/-- Where a diagnostic points: `file:line decl`, or `file decl` without a line. -/
+def Annotation.at (a : Annotation) : String :=
+  match a.line with
+  | some l => s!"{a.file}:{l} {a.decl}"
+  | none => s!"{a.file} {a.decl}"
 
 /-- `re.sub(r"\(.*\)$", "", name)`: from the first `(` to a `)` that ends the name. -/
 def normaliseLeanName (name : String) : String :=
@@ -128,12 +102,12 @@ def verify (spec : Array (Nat × String)) (anns : List Annotation) : Report := I
     let some num := ann.ruleNum | continue
     match specName? spec num with
     | none =>
-      unknown := unknown ++ [s!"  [{pad3 num}] \"{ann.ruleName.getD "None"}\" — not in spec (1–{maxRule})  @ {ann.file}:{ann.line}"]
+      unknown := unknown ++ [s!"  [{pad3 num}] \"{ann.ruleName.getD "None"}\" — not in spec (1–{maxRule})  @ {ann.at}"]
     | some sn =>
       unless covered.contains num do covered := covered ++ [num]
       if let some ln := ann.ruleName then
         unless namesMatch ln sn do
-          mismatches := mismatches ++ [s!"  [{pad3 num}] lean=\"{ln}\"  spec=\"{sn}\"  @ {ann.file}:{ann.line}"]
+          mismatches := mismatches ++ [s!"  [{pad3 num}] lean=\"{ln}\"  spec=\"{sn}\"  @ {ann.at}"]
   let sorted := (spec.toList.map (·.1)).mergeSort (· ≤ ·)
   let uncovered := sorted.filterMap fun n =>
     if covered.contains n then none else some s!"  [{pad3 n}] {(specName? spec n).getD ""}"
@@ -153,27 +127,21 @@ def pct1 (u n : Nat) : String :=
 #guard specRule? "  :063: s-indent" == none
 #guard specRule? ":63: x" == none
 #guard parseSpec ":001: a\n:002: b\n#:003: c\n:001: a2\n" == #[(1, "a2"), (2, "b")]
-#guard annotationsOfLine "f" 3 "@[yaml_spec \"5.4\" 24 \"b-line-feed\"] def x" ==
-  [{ file := "f", line := 3, section_ := "5.4", ruleNum := some 24, ruleName := some "b-line-feed" }]
-#guard annotationsOfLine "f" 1 "yaml_spec \"8.1\" -- yaml_spec \"8.2\" 007 \"c\"" ==
-  [{ file := "f", line := 1, section_ := "8.1", ruleNum := none, ruleName := none },
-   { file := "f", line := 1, section_ := "8.2", ruleNum := some 7, ruleName := some "c" }]
-#guard annotationsOfLine "f" 1 "yaml_spec \"8.1\" 12 x" ==
-  [{ file := "f", line := 1, section_ := "8.1", ruleNum := none, ruleName := none }]
-#guard annotationsOfLine "f" 1 "yaml_spec\"8.1\"" == []
 #guard normaliseLeanName "s-indent(n)" == "s-indent"
 #guard normaliseLeanName "c-l+block-map(n)(x)" == "c-l+block-map"
 #guard normaliseLeanName "a(b)c" == "a(b)c"
 #guard namesMatch "s-indent(≤n)" "s-indent-le" && namesMatch "s-indent(<n)" "s-indent-lt"
 #guard namesMatch "seq-space(n,c)" "seq-spaces" && namesMatch "s-indent(≤n)" "s-indent" && !namesMatch "s-indent(≤n)" "s-indent-lt" && !namesMatch "x(n)" "y"
 #guard pct1 211 211 == "100.0" && pct1 1 3 == "33.3" && pct1 2 3 == "66.7" && pct1 1 8 == "12.5" && pct1 0 5 == "0.0"
-#guard (verify #[(1, "a"), (2, "b")] [{ file := "f", line := 2, section_ := "s", ruleNum := some 1, ruleName := some "a(n)" },
-    { file := "f", line := 4, section_ := "s", ruleNum := some 9, ruleName := some "z" },
-    { file := "g", line := 1, section_ := "s", ruleNum := some 2, ruleName := some "bb" }]).mismatches
-  == ["  [  2] lean=\"bb\"  spec=\"b\"  @ g:1"]
-#guard (verify #[(1, "a"), (2, "b")] [{ file := "f", line := 4, section_ := "s", ruleNum := some 9, ruleName := some "z" }]).unknown
-  == ["  [  9] \"z\" — not in spec (1–2)  @ f:4"]
-#guard (verify #[(1, "a"), (2, "b")] [{ file := "f", line := 4, section_ := "s", ruleNum := some 2, ruleName := none }]).uncovered
+#guard (Annotation.at { file := "f", decl := "T.x", line := some 2, section_ := "s", ruleNum := none, ruleName := none }) == "f:2 T.x"
+#guard (Annotation.at { file := "f", decl := "T.x", line := none, section_ := "s", ruleNum := none, ruleName := none }) == "f T.x"
+#guard (verify #[(1, "a"), (2, "b")] [{ file := "f", decl := "x", line := some 2, section_ := "s", ruleNum := some 1, ruleName := some "a(n)" },
+    { file := "f", decl := "y", line := some 4, section_ := "s", ruleNum := some 9, ruleName := some "z" },
+    { file := "g", decl := "T.c", line := none, section_ := "s", ruleNum := some 2, ruleName := some "bb" }]).mismatches
+  == ["  [  2] lean=\"bb\"  spec=\"b\"  @ g T.c"]
+#guard (verify #[(1, "a"), (2, "b")] [{ file := "f", decl := "y", line := some 4, section_ := "s", ruleNum := some 9, ruleName := some "z" }]).unknown
+  == ["  [  9] \"z\" — not in spec (1–2)  @ f:4 y"]
+#guard (verify #[(1, "a"), (2, "b")] [{ file := "f", decl := "y", line := some 4, section_ := "s", ruleNum := some 2, ruleName := none }]).uncovered
   == ["  [  1] a"]
 
 end

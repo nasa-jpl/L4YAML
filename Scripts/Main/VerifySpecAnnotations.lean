@@ -1,37 +1,51 @@
 module
 
 public import Scripts.Spec.Annotations
+public import Scripts.Spec.Env
 public import Scripts.Html.Bytes
 
 /-!
-# `scripts-verify-spec-annotations` — `lake run verify-spec-annotations [-- --spec-file PATH | --spec-url URL] [--lean-root DIR]`
+# `scripts-verify-spec-annotations` — `lake run verify-spec-annotations [-- --spec-file PATH | --spec-url URL] [--lean-root DIR] [--no-build]`
 
 Rule 9's last row (was `scripts/verify_yaml_spec_annotations.py`): every `@[yaml_spec
-"section" NNN "name"]` in the tree against the `:NNN: name` table of yaml/yaml-grammar's
-`yaml-spec-1.2.yaml` — name mismatches, unknown rule numbers, coverage.  The grammar file
-is not vendored (yaml/yaml-grammar carries no licence): by default it is fetched by `curl`
-(an external program, as WeasyPrint is) from the raw URL pinned to the commit that last
-changed it, or read from `--spec-file PATH`.  The report is the Python's, line for line.
+"section" NNN "name"]` reference the build registered against the `:NNN: name` table of
+yaml/yaml-grammar's `yaml-spec-1.2.yaml` — name mismatches, unknown rule numbers, coverage.
+
+The references are read off the environment, not the text (Rule 9 §2): `lake build` first
+(Lake's content hashes decide what is stale; `--no-build` reads the `.olean`s as they are),
+then for every `*.lean` under the Lean root that is a module of this workspace (its `.olean`
+under `.lake/build/lib/lean`), the `yamlSpecExt` entries of that `.olean` — the declaration
+and the reference — placed by `declRangeExt`.  Source files that are not built modules
+(`lakefile.lean`, `doc/`, scratch files) hold no entries and are not read; their count goes
+to stderr.  A diagnostic points at `file:line decl`.
+
+The grammar file is not vendored (yaml/yaml-grammar carries no licence): by default it is
+fetched by `curl` (an external program, as WeasyPrint is) from the raw URL pinned to the
+commit that last changed it, or read from `--spec-file PATH`.  Relative paths given on the
+command line are the caller's (resolved against the working directory, as the Python did);
+`-C ROOT` only names the checkout.  The report is the Python's, line for line.
 
 exit status: 0 consistent; 1 a mismatch or unknown rule was found, the spec could not be
-read, or the Lean root does not exist; 2 usage.
+read, the Lean root does not exist or is outside the checkout, or the build failed; 2 usage.
 -/
 
 namespace Scripts.Spec.Main
 
 open Scripts.Spec
 open Scripts.Html (ltComps universalNewlines)
+open Scripts.Lean.DeclRanges (readRanges)
 
-def version : String := "scripts-verify-spec-annotations 1.0 (Rule 9, the last row)"
+def version : String := "scripts-verify-spec-annotations 1.1 (Rule 9, the last row)"
 
 /-- yaml/yaml-grammar `yaml-spec-1.2.yaml`, pinned to the commit that last changed it
     (2020-10-26; blob 0af81136…, 61 915 bytes). -/
 def defaultSpecUrl : String :=
   "https://raw.githubusercontent.com/yaml/yaml-grammar/7bc2eabfc4312c13686d02cca6dd9e56c265c029/yaml-spec-1.2.yaml"
 
-def usage : String := s!"usage: scripts-verify-spec-annotations [-C ROOT] [--spec-file PATH | --spec-url URL] [--lean-root DIR]
+def usage : String := s!"usage: scripts-verify-spec-annotations [-C ROOT] [--spec-file PATH | --spec-url URL] [--lean-root DIR] [--no-build]
 
-  Verify @[yaml_spec] annotations against yaml-spec-1.2.yaml (yaml/yaml-grammar):
+  Verify the @[yaml_spec] references the build registered against yaml-spec-1.2.yaml
+  (yaml/yaml-grammar), off the .oleans (`lake build` runs first unless --no-build):
     1. NAME MISMATCHES  — rule number exists in spec but annotation has a different name
     2. UNKNOWN RULES    — annotation references a rule number not in the spec (1–211)
     3. COVERAGE         — spec rules not referenced by any annotation
@@ -39,48 +53,63 @@ def usage : String := s!"usage: scripts-verify-spec-annotations [-C ROOT] [--spe
   -f, --spec-file PATH   read the grammar file locally (overrides --spec-url)
   -u, --spec-url URL     fetch it with curl (default: the pinned upstream commit,
                          {defaultSpecUrl})
-  -l, --lean-root DIR    the tree to scan for *.lean (default: ROOT)
+  -l, --lean-root DIR    the subtree whose modules are read (default: ROOT)
+  -n, --no-build         read the .oleans as they are (build first if they must be current)
   -C, --root ROOT        the checkout (default: the cwd)
-  -h, --help / -V, --version"
+  -h, --help / -V, --version
+
+  PATH and DIR are resolved against the working directory, not ROOT."
 
 def leanFiles (root : System.FilePath) : IO (Array System.FilePath) := do
-  let all ← root.walkDir
+  let all ← root.walkDir fun d => pure (d.fileName != some ".lake" && d.fileName != some ".git")
   let mut files := #[]
   for p in all do
     if p.extension == some "lean" then
       if (← p.metadata).type == IO.FS.FileType.file then files := files.push p
   return files.qsort fun a b => ltComps a.components b.components
 
-def relTo (root p : System.FilePath) : String :=
+/-- `p` relative to `root` (both real paths), when it is below it. -/
+def relTo? (root p : System.FilePath) : Option String :=
   let r := root.toString
   let s := p.toString
-  if s.startsWith (r ++ "/") then (s.drop (r.length + 1)).toString else s
+  if s.startsWith (r ++ "/") then some (s.drop (r.length + 1)).toString else none
 
-def scan (root : System.FilePath) : IO (List Annotation) := do
-  let mut anns := []
-  for p in ← leanFiles root do
-    let text := String.fromUTF8! (universalNewlines (← IO.FS.readBinFile p))
-    let rel := relTo root p
-    let mut n := 1
-    for line in text.splitOn "\n" do
-      anns := anns ++ annotationsOfLine rel n line
-      n := n + 1
-  return anns
+/-- The module's `.olean`: `.lake/build/lib/lean/<rel without .lean>.olean`. -/
+def oleanOf (root : System.FilePath) (rel : String) : System.FilePath :=
+  root / ".lake" / "build" / "lib" / "lean" / (String.ofList (rel.toList.take (rel.length - 5)) ++ ".olean")
 
-def run (root : System.FilePath) (specFile specUrl leanRoot : Option String) : IO UInt32 := do
-  let leanRootPath : System.FilePath := match leanRoot with
-    | some d => if d.startsWith "/" then d else root / d
-    | none => root
-  let shownRoot ← match leanRoot with
-    | some d => pure d
-    | none => do pure (← IO.FS.realPath root).toString
-  unless ← leanRootPath.isDir do
+/-- Every reference registered by the modules under `leanRoot`, in file order then source
+    order; the second component counts the `.lean` files that are not built modules. -/
+def readAll (root leanRoot : System.FilePath) : IO (List Annotation × Nat) := do
+  let mut anns : Array Annotation := #[]
+  let mut skipped := 0
+  for p in ← leanFiles leanRoot do
+    let some rel := relTo? root p | skipped := skipped + 1; continue
+    let olean := oleanOf root rel
+    unless ← olean.pathExists do skipped := skipped + 1; continue
+    let refs := (← Env.readSpecRefs olean).filter fun (n, _) => Env.isUserDecl n
+    if refs.isEmpty then continue
+    let ranges ← try readRanges olean catch _ => pure #[]
+    for (line, n, r) in Env.ordered refs ranges do
+      anns := anns.push { file := rel, decl := Env.userName n, line, section_ := r.specSection,
+                          ruleNum := r.rule, ruleName := r.name }
+  return (anns.toList, skipped)
+
+def run (root : System.FilePath) (specFile specUrl leanRoot : Option String) (build : Bool) : IO UInt32 := do
+  unless ← root.isDir do
+    IO.eprintln s!"Error: checkout not found: {root}"; return 1
+  let rootReal ← IO.FS.realPath root
+  let leanRootGiven : System.FilePath := leanRoot.getD root.toString
+  let shownRoot := leanRoot.getD rootReal.toString
+  unless ← leanRootGiven.isDir do
     IO.eprintln s!"Error: Lean root not found: {shownRoot}"; return 1
+  let leanRootReal ← IO.FS.realPath leanRootGiven
+  unless leanRootReal == rootReal || (relTo? rootReal leanRootReal).isSome do
+    IO.eprintln s!"Error: Lean root {shownRoot} is not inside the checkout {rootReal}"; return 1
   let specText ← match specFile with
     | some f =>
       IO.println s!"Reading spec from {f}"
-      let p : System.FilePath := if f.startsWith "/" then f else root / f
-      try pure (String.fromUTF8! (universalNewlines (← IO.FS.readBinFile p)))
+      try pure (String.fromUTF8! (universalNewlines (← IO.FS.readBinFile f)))
       catch e => IO.eprintln s!"Error: {e}"; return 1
     | none =>
       let url := specUrl.getD defaultSpecUrl
@@ -93,8 +122,16 @@ def run (root : System.FilePath) (specFile specUrl leanRoot : Option String) : I
   let spec := parseSpec specText
   IO.println s!"Parsed {spec.size} spec rules (expected 211)"
   if spec.size != 211 then IO.eprintln s!"  WARNING: expected 211 rules, got {spec.size}"
-  IO.println s!"Scanning Lean files under {shownRoot}"
-  let anns ← scan leanRootPath
+  if build then
+    IO.println "Building (lake build; the references are read off the .oleans)"
+    let b ← IO.Process.output { cmd := "lake", args := #["build"], cwd := some rootReal }
+    if b.exitCode != 0 then
+      IO.eprintln b.stdout; IO.eprintln b.stderr
+      IO.eprintln "Error: lake build failed; the .oleans are not a reading"; return 1
+  IO.println s!"Reading @[yaml_spec] references of the modules under {shownRoot}"
+  let (anns, skipped) ← readAll rootReal leanRootReal
+  if skipped > 0 then
+    IO.eprintln s!"  ({skipped} .lean files under {shownRoot} are not built modules of this workspace and hold no references)"
   let withRule := anns.filter (·.ruleNum.isSome)
   let unique := (withRule.filterMap (·.ruleNum)).eraseDups
   IO.println s!"Found {anns.length} total annotations ({withRule.length} with rule numbers, {anns.length - withRule.length} section-only)"
@@ -130,6 +167,7 @@ def cli (args : List String) : IO UInt32 := do
   let mut specFile : Option String := none
   let mut specUrl : Option String := none
   let mut leanRoot : Option String := none
+  let mut build := true
   let mut it := args
   while true do
     match it with
@@ -140,8 +178,9 @@ def cli (args : List String) : IO UInt32 := do
     | "-f" :: p :: more | "--spec-file" :: p :: more => specFile := some p; it := more
     | "-u" :: u :: more | "--spec-url" :: u :: more => specUrl := some u; it := more
     | "-l" :: d :: more | "--lean-root" :: d :: more => leanRoot := some d; it := more
+    | "-n" :: more | "--no-build" :: more => build := false; it := more
     | a :: _ => IO.eprintln s!"scripts-verify-spec-annotations: unrecognized argument '{a}'\n{usage}"; return 2
-  run root specFile specUrl leanRoot
+  run root specFile specUrl leanRoot build
 
 end Scripts.Spec.Main
 

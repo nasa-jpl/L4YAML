@@ -562,10 +562,12 @@ script «restate» (args) do
   runGateExe (← getWorkspace).root.dir "scripts-restate" #[] args
 
 /-- Rule 9's last row: `lake run verify-spec-annotations [-- --spec-file PATH | --spec-url URL]
-[--lean-root DIR]` checks every `@[yaml_spec "section" NNN "name"]` against yaml/yaml-grammar's
-`yaml-spec-1.2.yaml` (fetched by `curl` from the pinned upstream commit unless a local file is
-given; the file is not vendored — the upstream repository carries no licence); was
-`scripts/verify_yaml_spec_annotations.py`. Exit 1 on a name mismatch or an unknown rule. -/
+[--lean-root DIR] [--no-build]` checks every `@[yaml_spec "section" NNN "name"]` reference the
+build registered (the `yamlSpecExt` entries of the `.olean`s, after a `lake build`; not the
+source text) against yaml/yaml-grammar's `yaml-spec-1.2.yaml` (fetched by `curl` from the
+pinned upstream commit unless a local file is given; the file is not vendored — the upstream
+repository carries no licence); was `scripts/verify_yaml_spec_annotations.py`. PATH and DIR
+are the caller's (relative to the working directory). Exit 1 on a name mismatch or an unknown rule. -/
 script «verify-spec-annotations» (args) do
   runGateExe (← getWorkspace).root.dir "scripts-verify-spec-annotations" #[] args
 
