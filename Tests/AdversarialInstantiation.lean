@@ -10296,6 +10296,159 @@ def testStreamEndNoEvent (state : IO.Ref TestCollector) : IO Unit := do
         (evPre2 != evFull) s!"{repr evPre2} vs {repr evFull}"
   checkM state s!"P89 grid: scanned={scanned} parsed={parsed}" (scanned == 20 && parsed == 20) ""
 
+/-! **Priority 89 (ii) — `go_append_streamEnd` on its own quantified scope, instantiated BEFORE the
+    proof (Rule 2).**  The lemma is `∀ l p pending, p.val = .streamEnd → go (l ++ [p]) pending = go l
+    pending` for ARBITRARY token lists and pending handles — not just scanner output read with
+    `pending = []`.  The grid: every token kind the fold names (`anchor`/`alias`/`tag` with named,
+    empty and bare-`!` handles/`documentStart`/`documentEnd`/named and unnamed `tagDirective`/
+    `versionDirective`/`scalar`/`placeholder`/`blockEntry`/`key`/`value`/`streamStart`/a mid-list
+    `streamEnd`), as `[]`, `[x]`, `[x, y]` and three-token lists, under `pending ∈ {[], ["!f!"],
+    ["!f!", "!g!"]}`.  Controls, so the equality is about `.streamEnd` specifically: appending
+    `.documentEnd` changes every row (`endDocument`), appending `%TAG !e!` changes every row
+    (`declareTag "!e!"` is flushed at the end), appending `---` changes every row. -/
+def testGoAppendStreamEnd (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 89 (ii): go_append_streamEnd — arbitrary lists and pending handles"
+  let go := L4YAML.Proofs.Serialization.TokenEvents.go
+  let se := s5Tok .streamEnd
+  let kinds : List YamlToken :=
+    [ .anchor "x", .alias "x", .tag "!e!" "a", .tag "" "a", .tag "!" "a", .tag "!!" "str",
+      .documentStart, .documentEnd, .tagDirective "!e!" "tag:x", .tagDirective "!" "tag:y",
+      .tagDirective "!!" "tag:z", .versionDirective 1 2, .scalar "a" .plain, .placeholder,
+      .blockEntry, .key, .value, .streamStart, .streamEnd, .blockMappingStart, .flowSequenceStart ]
+  let pendings : List (List String) := [[], ["!f!"], ["!f!", "!g!"]]
+  let singles : List (List YamlToken) := kinds.map ([·])
+  let pairs : List (List YamlToken) := kinds.flatMap fun a => kinds.map fun b => [a, b]
+  let triples : List (List YamlToken) :=
+    [ [.documentStart, .tagDirective "!e!" "tag:x", .documentEnd],
+      [.tagDirective "!e!" "tag:x", .documentStart, .anchor "a"],
+      [.tagDirective "!e!" "tag:x", .tagDirective "!h!" "tag:y", .documentStart],
+      [.anchor "a", .streamEnd, .alias "a"], [.tag "!e!" "a", .documentEnd, .documentStart],
+      [.documentStart, .documentEnd, .streamEnd] ]
+  let lists : List (List YamlToken) := [[]] ++ singles ++ pairs ++ triples
+  let mut rows := 0
+  let mut agree := 0
+  let mut ctrlDocEnd := 0
+  let mut ctrlTagDir := 0
+  let mut ctrlDocStart := 0
+  for l in lists do
+    for pending in pendings do
+      rows := rows + 1
+      let ps := l.map s5Tok
+      let lhs := go (ps ++ [se]) pending
+      let rhs := go ps pending
+      if lhs == rhs then agree := agree + 1
+      else checkM state s!"P89(ii) go {repr l} {repr pending}: appending streamEnd keeps the events" false
+        s!"{repr lhs} vs {repr rhs}"
+      if go (ps ++ [s5Tok .documentEnd]) pending != rhs then ctrlDocEnd := ctrlDocEnd + 1
+      if go (ps ++ [s5Tok (.tagDirective "!e!" "tag:x")]) pending != rhs then ctrlTagDir := ctrlTagDir + 1
+      if go (ps ++ [s5Tok .documentStart]) pending != rhs then ctrlDocStart := ctrlDocStart + 1
+  -- the review's literal row: `%TAG !e!` under a pending `!f!`, with and without the appended streamEnd
+  let lit := [s5Tok (.tagDirective "!e!" "tag:x")]
+  checkM state "P89(ii) go [%TAG !e!] [\"!f!\"] = [declareTag !f!, declareTag !e!] (pending flushed in order)"
+    (go lit ["!f!"] == [.declareTag "!f!", .declareTag "!e!"]) s!"{repr (go lit ["!f!"])}"
+  checkM state "P89(ii) go [%TAG !e!, streamEnd] [\"!f!\"] = go [%TAG !e!] [\"!f!\"]"
+    (go (lit ++ [se]) ["!f!"] == go lit ["!f!"]) ""
+  checkM state "P89(ii) go [] [\"!f!\"] = [declareTag !f!] and streamEnd alone adds nothing"
+    (go [] ["!f!"] == [.declareTag "!f!"] && go [se] ["!f!"] == [.declareTag "!f!"]) ""
+  checkM state s!"P89(ii) grid: rows={rows} agree={agree} (theorem-holds on every row)" (rows == 1407 && agree == rows) ""
+  checkM state s!"P89(ii) controls: documentEnd changes every row ({ctrlDocEnd}), %TAG !e! changes every row ({ctrlTagDir}), --- changes every row ({ctrlDocStart})"
+    (ctrlDocEnd == rows && ctrlTagDir == rows && ctrlDocStart == rows) ""
+
+/-! **Priority 89 (iii) — `DirInv_scanLoop_streamEnd` on `scanLoop` itself: fuel 0/1/2 and states
+    before and after a scanner step, instantiated BEFORE the proof (Rule 2).**  The lemma:
+    `AllKeysValid s → DirInv s → scanLoop s fuel = .ok ts → ∃ L, toks ts = L ++ [.streamEnd] ∧
+    .streamEnd ∉ L`, for ANY state and fuel.  The grid runs `scanLoop` directly, from the state `scan`
+    builds (`mk'` + `streamStart` + BOM) and from the states one and two `scanNextToken` steps later,
+    with fuel 0, 1, 2 and up to 24, on empty/BOM/scalar/`---`/`...`/flow/nested-block/directive/
+    sequence inputs and a refused one.  On every `.ok` the full conclusion is checked (sole trailing
+    `.streamEnd`); the decidable parts of `DirInv` (`ok`, `flag`, `dpAD`, `nose`) are checked on every
+    start state.  Fuel 0 is always `fuelExhausted` (vacuous row, failed-hypothesis); the first fuel that
+    succeeds is pinned per input.  The premise matters: a start state that already holds a `.streamEnd`
+    (violating `nose`) scans the empty input to TWO `.streamEnd`s — refuting the conclusion without the
+    hypothesis — and a start state with `directivesPresent` up is refused (`directiveWithoutDocument`). -/
+def testScanLoopStreamEndFuel (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 89 (iii): DirInv_scanLoop_streamEnd — scanLoop at fuel 0/1/2 from stepped states"
+  let toks := L4YAML.Proofs.DirectiveRuns.toks
+  let vals := L4YAML.Proofs.DirectiveRuns.vals
+  let dirRun := L4YAML.Proofs.DirectiveRuns.dirRun
+  let start (input : String) : Scanner.ScannerState :=
+    let s := Scanner.ScannerState.mk' input
+    let s := s.emit .streamStart
+    match s.peek? with
+    | some '\uFEFF' => s.consumeBOM
+    | _ => s
+  let conclusion (ts : Array (Positioned YamlToken)) : Bool :=
+    let vs := toks ts
+    vs.getLast? == some .streamEnd && (vs.dropLast.filter (· == .streamEnd)).isEmpty
+  let dirInvDec (s : Scanner.ScannerState) : Bool :=
+    let d := dirRun false (vals s)
+    d != none && (d == some true → s.directivesPresent) && (s.directivesPresent → s.allowDirectives)
+      && !(vals s).contains .streamEnd
+  -- (input, predicted first succeeding fuel from the start state; none = scan refuses)
+  let rows : List (String × Option Nat) :=
+    [ ("", some 1), ("\uFEFF", some 1), ("# c\n", some 1), ("a", some 2), ("---", some 2), ("...", some 2),
+      ("--- a\n...", some 4), ("[a]", some 4), -- predicted 8, got 6: the mapping-start/key/value tokens come out of one `scanNextToken` step each
+      ("a:\n  b: c", some 6), ("- a\n- b", some 5),
+      ("%YAML 1.2\n---\na", some 4), ("%TAG !e! tag:x,2000:\n--- !e!a b", some 5), ("[a", none),
+      ("%YAML 1.2\n", none) ]
+  let maxFuel := 24
+  let mut okRows := 0
+  let mut fuel0 := 0
+  for (input, expFirst) in rows do
+    -- the start state and the states one and two scanner steps later
+    let s0 := start input
+    let mut starts : List (Nat × Scanner.ScannerState) := [(0, s0)]
+    match Scanner.scanNextToken s0 with
+    | .ok (some s1) =>
+      starts := starts ++ [(1, s1)]
+      match Scanner.scanNextToken s1 with
+      | .ok (some s2) => starts := starts ++ [(2, s2)]
+      | _ => pure ()
+    | _ => pure ()
+    for (step, s) in starts do
+      checkM state s!"P89(iii) {repr input} step {step}: decidable DirInv parts (ok/flag/dpAD/nose) hold" (dirInvDec s)
+        s!"{repr (vals s)} dp={s.directivesPresent}"
+      let mut first : Option Nat := none
+      let mut last : Option (List YamlToken) := none
+      for fuel in List.range (maxFuel + 1) do
+        match Scanner.scanLoop s fuel with
+        | .error e =>
+          if fuel == 0 then fuel0 := fuel0 + 1
+          else if fuel == 0 then pure ()
+          else if first.isSome then
+            checkM state s!"P89(iii) {repr input} step {step} fuel {fuel}: success is monotone in fuel" false s!"{repr e}"
+          else pure ()
+        | .ok ts =>
+          okRows := okRows + 1
+          checkM state s!"P89(iii) {repr input} step {step} fuel {fuel}: scanLoop ok ⇒ sole trailing streamEnd"
+            (conclusion ts) s!"{repr (toks ts)}"
+          checkM state s!"P89(iii) {repr input} step {step} fuel {fuel}: fuel 0 never succeeds" (fuel > 0) ""
+          if first.isNone then first := some fuel
+          match last with
+          | some prev => checkM state s!"P89(iii) {repr input} step {step} fuel {fuel}: more fuel, same tokens" (prev == toks ts) ""
+          | none => pure ()
+          last := some (toks ts)
+      if step == 0 then
+        checkM state s!"P89(iii) {repr input}: first succeeding fuel from the start state is {repr expFirst}"
+          (first == expFirst) s!"got {repr first}"
+      else
+        -- a stepped state needs exactly one unit of fuel less per step taken
+        checkM state s!"P89(iii) {repr input} step {step}: first succeeding fuel = start's − {step}"
+          (first == expFirst.map (· - step)) s!"got {repr first}"
+  -- the premise matters: `nose` violated ⇒ two streamEnds; `directivesPresent` up ⇒ refused
+  let bad := (start "").emit .streamEnd
+  match Scanner.scanLoop bad 1 with
+  | .ok ts =>
+    checkM state "P89(iii) without nose: scanLoop from a state already holding streamEnd succeeds with TWO streamEnds — the conclusion fails"
+      (!conclusion ts && (toks ts).count .streamEnd == 2) s!"{repr (toks ts)}"
+  | .error e => checkM state "P89(iii) without nose: scanLoop succeeds" false s!"{repr e}"
+  let dp := { start "" with directivesPresent := true }
+  match Scanner.scanLoop dp 1 with
+  | .ok ts => checkM state "P89(iii) directivesPresent up on empty input: refused" false s!"{repr (toks ts)}"
+  | .error e => checkM state "P89(iii) directivesPresent up on empty input: directiveWithoutDocument"
+      (match e with | .directiveWithoutDocument _ => true | _ => false) s!"{repr e}"
+  checkM state s!"P89(iii) grid: okRows={okRows} fuel0Errors={fuel0}" (okRows > 0 && fuel0 > 0) s!"okRows={okRows} fuel0={fuel0}"
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -10404,6 +10557,8 @@ def collectTests : IO VerifiedSuiteResult := do
   testDirectivesClosedScan state
   testStreamEndLastScan state
   testStreamEndNoEvent state
+  testGoAppendStreamEnd state
+  testScanLoopStreamEndFuel state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",
