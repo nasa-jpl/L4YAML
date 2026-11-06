@@ -10100,6 +10100,8 @@ def testDirectivesClosedScan (state : IO.Ref TestCollector) : IO Unit := do
       ("a\n%YAML 1.2\n---\nb", true, 0) ]
   let mut scanned := 0
   let mut refused := 0
+  let mut parsed := 0
+  let mut parserRejected := 0
   for (input, expOk, nDir) in rows do
     match Scanner.scanFiltered input with
     | .error e =>
@@ -10127,7 +10129,24 @@ def testDirectivesClosedScan (state : IO.Ref TestCollector) : IO Unit := do
         checkM state s!"P87 {repr input}: filtering placeholders is the proof's bridge"
           (L4YAML.Proofs.DirectiveRuns.toks (raw.filter fun t => t.val != .placeholder) == vs) ""
       | .error e => checkM state s!"P87 {repr input}: raw scan agrees with scanFiltered" false s!"{repr e}"
-  checkM state s!"P87 grid: scanned={scanned} refused={refused}" (scanned == 16 && refused == 22) ""
+      -- the composed lemma on the same tokens: its TagUsesShaped premise, the parser verdict, and a
+      -- checkFrom witness k; the full array (k = ts.size) is the one the lemma's first disjunct names
+      let (pOk, cfFull) := s5TokVerdict ts
+      checkM state s!"P87 {repr input}: TagUsesShaped premise holds on scanner output" (s5TagUsesShaped ts)
+        s!"{repr vs}"
+      if pOk then
+        parsed := parsed + 1
+        let ks := (List.range (ts.size + 1)).filter fun k =>
+          L4YAML.Proofs.Serialization.SerializationWellFormed.checkFrom {}
+            (L4YAML.Proofs.Serialization.TokenEvents.tokenEvents (ts.extract 0 k))
+        checkM state s!"P87 {repr input}: parser ok ⇒ checkFrom accepts the full array (k = ts.size)" cfFull
+          s!"accepted prefixes k = {ks}"
+        checkM state s!"P87 {repr input}: the witness k = ts.size is among the accepted prefixes"
+          (ks.contains ts.size) s!"ks = {ks} size = {ts.size}"
+      else
+        parserRejected := parserRejected + 1
+  checkM state s!"P87 grid: scanned={scanned} refused={refused} parsed={parsed} parserRejected={parserRejected}"
+    (scanned == 16 && refused == 22 && parsed == 16 && parserRejected == 0) ""
 
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
