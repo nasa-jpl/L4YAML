@@ -9953,6 +9953,70 @@ def testThreeArmsFields (state : IO.Ref TestCollector) : IO Unit := do
       && flowClosePauses > 0 && flowCloseSentinel == flowClosePauses)
 
 
+def testSeqTopRefusedArm (state : IO.Ref TestCollector) : IO Unit := do
+  -- P89 (item 438, (χ-seqtop-refused)): the negative arm `ExplicitValueRefused s ∨ SeqTopKey s`
+  -- proposed for `content_dispatch_routed`'s `h_resF` premise must NOT be a tautology over the
+  -- block pauses (item 424's lesson: `Refused ∨ Armed` was inhabited everywhere).  Both disjuncts
+  -- fail exactly where an explicit `?` key line is open and the stack top is not a sequence level
+  -- at the simple key's column; those pauses are pinned by input and position.
+  let inputs : List String :=
+    [ "a: 1", "- a\n- b", "---\na: 1\n...\n", "k:\n  - a\n  - b", "? a\n: b", "- - a\n  - b",
+      "k:\n  v: w\n  x: y", "- a: 1\n  b: 2", "? - a\n: b", "a:\n- b", "k:\n- x: 1\n  y: 2",
+      "? a\n? b\n: c", "k:\n  ? a\n  : b", "- ? a\n  : b", "? a: 1\n: b", "- a\n- ? b\n  : c",
+      "? |\n  k\n: v", "k: v\n? a\n: b", "[a]\n? b\n: c" ]
+  let mut pauses := 0
+  let mut refused := 0
+  let mut seqTopKey := 0
+  let mut bothFail : List String := []
+  let mut col0Pauses := 0
+  let mut col0Refused := 0
+  for input in inputs do
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:80] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        if sP.flowLevel == 0 && c != '#' then
+          pauses := pauses + 1
+          let r := sP.explicitKeyLine.isNone
+          let q := (sP.indents.back?.map fun e =>
+            e.isSequence && e.column == (sP.simpleKey.pos.col : Int)) == some true
+          if r then refused := refused + 1
+          if q then seqTopKey := seqTopKey + 1
+          if !r && !q then bothFail := bothFail ++ [s!"{repr input}@{sP.line}:{sP.col}"]
+          if sP.col == 0 then
+            col0Pauses := col0Pauses + 1
+            if r then col0Refused := col0Refused + 1
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) => s := sN
+        | _ => break
+      | _ => break
+  check state s!"P89 (χ-seqtop-refused) `ExplicitValueRefused ∨ SeqTopKey` over the block pauses (item 438): refused={refused} seqTopKey={seqTopKey} of {pauses}; both fail at {bothFail.length}: {bothFail}; column-0 pauses refused={col0Refused}/{col0Pauses}"
+    -- Pinned by position (review on #240: pin which pauses, not how many): every both-fail pause
+    -- sits on an explicit `?` key line; the two disjuncts are disjoint from it, not a tautology.
+    (pauses == 103 && refused == 81 && seqTopKey == 4 && col0Refused == 28 && col0Pauses == 34 &&
+      bothFail == ["\"? a\\n: b\"@0:2",
+        "\"? a\\n: b\"@1:0",
+        "\"? - a\\n: b\"@0:2",
+        "\"? - a\\n: b\"@0:4",
+        "\"? - a\\n: b\"@1:0",
+        "\"? a\\n? b\\n: c\"@0:2",
+        "\"? a\\n? b\\n: c\"@1:2",
+        "\"? a\\n? b\\n: c\"@2:0",
+        "\"k:\\n  ? a\\n  : b\"@1:4",
+        "\"k:\\n  ? a\\n  : b\"@2:2",
+        "\"- ? a\\n  : b\"@0:4",
+        "\"- ? a\\n  : b\"@1:2",
+        "\"? a: 1\\n: b\"@0:2",
+        "\"? a: 1\\n: b\"@0:3",
+        "\"? a: 1\\n: b\"@0:5",
+        "\"? a: 1\\n: b\"@1:0",
+        "\"- a\\n- ? b\\n  : c\"@1:4",
+        "\"- a\\n- ? b\\n  : c\"@2:2",
+        "\"? |\\n  k\\n: v\"@0:2",
+        "\"? |\\n  k\\n: v\"@2:0",
+        "\"k: v\\n? a\\n: b\"@1:2",
+        "\"k: v\\n? a\\n: b\"@2:0"])
+
 def testFlowCarrier (state : IO.Ref TestCollector) : IO Unit := do
   let nestedQ : List String := ["?\n  ? -\n: w\n", "? - ? - a\n  : b\n: c\n", "?\n  ?\n    -\n    - b\n  ? c\n: w\n", "? ? - a\n  : b\n: c\n", "- ? - a\n  : b\n"]
   let singleQ : List String := ["? - a\n: b\n", "?\n  - a\n  - b\n: w\n", "k:\n  ? - a\n  : b\n", "? -\n: w\n"]
@@ -10501,6 +10565,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testMarkFloorAndSeqTopKey state
   testNoMapLineArm state
   testThreeArmsFields state
+  testSeqTopRefusedArm state
 
   testQuestionMarkColumn state
   testK1Lanes state
