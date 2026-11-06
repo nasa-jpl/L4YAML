@@ -51355,7 +51355,7 @@ Total 107 writes in ≤ 22 declarations (first cut 109) (the specs overlap on `c
 
 | | predicted | read | verdict |
 |---|---|---|---|
-| P1 | marker 100 %, `-` seq ∨ compact 100 %, 0 third | 9 / 9; 24 + 6 of 30; 0 | HELD |
+| P1 | marker 100 %, `-` seq ∨ compact 100 %, 0 third | 10 / 10 (9 / 9 before the root flow-close inputs joined the corpus); 24 + 6 of 30; 0 | HELD |
 | P2 | (a) ≈ 75 / ≈ 17, births = 7 producers + 6 compact | 95 / 19 (first cut 97 / 19 with `h_seqTop` on `pendingContent`, refuted by the review and P88's 3 / 3); 7 producers + 6 compact + 2 root + 2 flow + 2 `pendingContent` | REFUTED upward on size, HELD in shape; the first cut's field placement REFUTED |
 | P3 | (b) ≈ 14 / 5 all payable | 9 / 4, 6 own arms + 3 shape relays; the first cut's bare `w ≤ currentIndent` arm REFUTED at the root landing (review on #244) and restated with the absent case | REFUTED downward, HELD on payability after the restatement |
 | P4 | (c) ≈ 7 / 1 | 3 / 1 (the other 6 refusal arms are reached through (a)'s anchors) | REFUTED downward |
