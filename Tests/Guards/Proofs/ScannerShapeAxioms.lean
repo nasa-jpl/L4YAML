@@ -64,6 +64,30 @@ open L4YAML.Proofs.DirectiveRuns in
 #guard_msgs in
 #print axioms dirRun_false_closed
 
+open L4YAML.Proofs.Serialization.ScannerShape in
+/-- info: 'L4YAML.Proofs.Serialization.ScannerShape.scan_toks_streamEnd' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
+#guard_msgs in
+#print axioms scan_toks_streamEnd
+
+open L4YAML.Proofs.Serialization.ScannerShape in
+/-- info: 'L4YAML.Proofs.Serialization.ScannerShape.scanFiltered_toks_streamEnd' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
+#guard_msgs in
+#print axioms scanFiltered_toks_streamEnd
+
+open L4YAML.Proofs.Serialization.ScannerShape in
+/-- info: 'L4YAML.Proofs.Serialization.ScannerShape.scanFiltered_streamEnd_last' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
+#guard_msgs in
+#print axioms scanFiltered_streamEnd_last
+
 end Tests.Guards.ScannerShapeAxioms
 
 end Blanket

@@ -10206,6 +10206,48 @@ def testDirectivesClosedScan (state : IO.Ref TestCollector) : IO Unit := do
   checkM state s!"P87 grid: scanned={scanned} refused={refused} parsed={parsed} parserRejected={parserRejected}"
     (scanned == 16 && refused == 22 && parsed == 16 && parserRejected == 0) ""
 
+/-! **Priority 88 — S3 obligation (c) `streamEnd`-last on `scanFiltered` output, instantiated BEFORE the
+    proof (Rule 2).**  The claim: `scanFiltered input = .ok ts → 0 < ts.size ∧ tok ts (ts.size - 1) =
+    some .streamEnd`.  The grid walks the stream's every ending — empty input, BOM only, comments and
+    blank lines only, a lone `---` or `...`, trailing newlines after `...`, documents ending in a block
+    scalar / flow collection / nested mapping / directive run, a second document, inputs the scanner
+    refuses (no claim) — and on every scan checks the filtered shape, the raw `scan` shape the proof
+    goes through (last raw token `.streamEnd`), and that `.streamEnd` occurs exactly once. -/
+def testStreamEndLastScan (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 88: S3 (c) streamEnd-last — scanFiltered output is non-empty and ends in streamEnd"
+  let rows : List (String × Bool) :=
+    [ ("", true), ("\uFEFF", true), ("# c\n\n", true), ("\n\n\n", true), ("---", true), ("...", true),
+      ("--- a\n...\n\n\n", true), ("a", true), ("a\n", true), ("[a, [b, {c: d}]]", true), ("a:\n  b:\n    c: d", true),
+      ("|\n a\n b\n", true), (">-\n a\n", true), ("%YAML 1.2\n---\na", true), ("%TAG !e! tag:x,2000:\n--- !e!a b", true),
+      ("--- a\n--- b\n", true), ("--- a\n...\n--- b\n...", true), ("- a\n- - b\n  - c", true), ("? a\n: b", true),
+      ("\"a\\nb\"", true), ("'a'", true), ("&x a", true), ("[&x a, *x]", true), ("!!str a", true),
+      -- refused: no claim, only that the verdict is as predicted
+      ("[a", false), ("%YAML 1.2\n", false), ("*x", false), ("{a", false),
+      -- predicted refused, scans: ` c` on the next line continues the plain scalar `b c`
+      ("a: b\n c", true) ]
+  let mut scanned := 0
+  let mut refused := 0
+  for (input, expOk) in rows do
+    match Scanner.scanFiltered input with
+    | .error e =>
+      refused := refused + 1
+      checkM state s!"P88 {repr input}: refused" (!expOk) s!"{repr e}"
+    | .ok ts =>
+      scanned := scanned + 1
+      let vs := ts.toList.map (·.val)
+      checkM state s!"P88 {repr input}: scans" expOk s!"{ts.size} tokens"
+      checkM state s!"P88 {repr input}: non-empty and last token is streamEnd"
+        (ts.size > 0 && (ts[ts.size - 1]?.map (·.val)) == some .streamEnd) s!"{repr vs}"
+      checkM state s!"P88 {repr input}: streamEnd occurs exactly once" ((vs.filter (· == .streamEnd)).length == 1)
+        s!"{repr vs}"
+      match Scanner.scan input with
+      | .ok raw =>
+        let rawVals := L4YAML.Proofs.DirectiveRuns.toks raw
+        checkM state s!"P88 {repr input}: raw scan ends in streamEnd (the proof's intermediate)"
+          (rawVals.getLast? == some .streamEnd) s!"{repr rawVals}"
+      | .error e => checkM state s!"P88 {repr input}: raw scan agrees with scanFiltered" false s!"{repr e}"
+  checkM state s!"P88 grid: scanned={scanned} refused={refused}" (scanned == 25 && refused == 4) ""
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -10312,6 +10354,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testTokenStateOkRestatement state
   testAlignLemmas state
   testDirectivesClosedScan state
+  testStreamEndLastScan state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",
