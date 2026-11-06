@@ -10248,6 +10248,54 @@ def testStreamEndLastScan (state : IO.Ref TestCollector) : IO Unit := do
       | .error e => checkM state s!"P88 {repr input}: raw scan agrees with scanFiltered" false s!"{repr e}"
   checkM state s!"P88 grid: scanned={scanned} refused={refused}" (scanned == 25 && refused == 4) ""
 
+/-! **Priority 89 — the `.streamEnd` step of S3 (c)'s composition, instantiated BEFORE the proof
+    (Rule 2).**  `parseStreamLoop` stops before consuming `.streamEnd`, so the witness `k` of
+    `parseStream_ok_checkFrom` may be `ts.size - 1`, not `ts.size`; the full-array verdict
+    `checkFrom {} (tokenEvents ts)` therefore needs `tokenEvents (ts.extract 0 (ts.size - 1)) =
+    tokenEvents ts` — that `.streamEnd` adds no event — on top of `streamEnd`-last.  The grid checks
+    that equality and the equal `checkFrom` verdicts on every scanned Priority 88 row, that
+    `parseStream` accepting a row gives the full-array verdict, and — the control that the equality
+    is about `.streamEnd` specifically — that dropping one more token on a row ending in `...` changes
+    the events (`endDocument` is lost). -/
+def testStreamEndNoEvent (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 89: S3 (c) composition — the prefix before streamEnd has the full array's events"
+  let rows : List String :=
+    [ "", "\uFEFF", "# c\n\n", "---", "...", "--- a\n...\n\n\n", "a", "[a, [b, {c: d}]]",
+      "a:\n  b:\n    c: d", "|\n a\n b\n", "%YAML 1.2\n---\na", "%TAG !e! tag:x,2000:\n--- !e!a b",
+      "--- a\n--- b\n", "--- a\n...\n--- b\n...", "- a\n- - b\n  - c", "? a\n: b", "&x a", "[&x a, *x]",
+      "!!str a", "a: b\n c" ]
+  let mut scanned := 0
+  let mut parsed := 0
+  for input in rows do
+    match Scanner.scanFiltered input with
+    | .error e => checkM state s!"P89 {repr input}: scans" false s!"{repr e}"
+    | .ok ts =>
+      scanned := scanned + 1
+      let evFull := L4YAML.Proofs.Serialization.TokenEvents.tokenEvents ts
+      let evPre := L4YAML.Proofs.Serialization.TokenEvents.tokenEvents (ts.extract 0 (ts.size - 1))
+      checkM state s!"P89 {repr input}: events of the prefix before streamEnd = events of ts"
+        (evPre == evFull) s!"{repr evPre} vs {repr evFull}"
+      let cf : List L4YAML.Proofs.Serialization.SerializationWellFormed.Event → Bool :=
+        fun ev => L4YAML.Proofs.Serialization.SerializationWellFormed.checkFrom
+          ({} : L4YAML.Proofs.Serialization.SerializationWellFormed.Env) ev
+      checkM state s!"P89 {repr input}: checkFrom agrees on that prefix and on ts"
+        (cf evPre == cf evFull) ""
+      match parseStream ts with
+      | .ok _ =>
+        parsed := parsed + 1
+        checkM state s!"P89 {repr input}: parseStream ok ⇒ checkFrom \{} (tokenEvents ts)"
+          (cf evFull) s!"{repr evFull}"
+      | .error _ => pure ()
+  for input in ["--- a\n...", "--- a\n...\n--- b\n..."] do
+    match Scanner.scanFiltered input with
+    | .error e => checkM state s!"P89 control {repr input}: scans" false s!"{repr e}"
+    | .ok ts =>
+      let evFull := L4YAML.Proofs.Serialization.TokenEvents.tokenEvents ts
+      let evPre2 := L4YAML.Proofs.Serialization.TokenEvents.tokenEvents (ts.extract 0 (ts.size - 2))
+      checkM state s!"P89 control {repr input}: dropping documentEnd too changes the events"
+        (evPre2 != evFull) s!"{repr evPre2} vs {repr evFull}"
+  checkM state s!"P89 grid: scanned={scanned} parsed={parsed}" (scanned == 20 && parsed == 20) ""
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -10355,6 +10403,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testAlignLemmas state
   testDirectivesClosedScan state
   testStreamEndLastScan state
+  testStreamEndNoEvent state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",

@@ -40,6 +40,18 @@ def isDirTok : Option YamlToken → Bool
   | some (.versionDirective ..) | some (.tagDirective ..) => true
   | _ => false
 
+/-- An ordinary token: neither a directive nor `.streamEnd` (the two kinds a content scanner never
+emits; `.streamEnd` is emitted once, by `scanLoop` itself, after the last `scanNextToken`). -/
+def ordTok : YamlToken → Bool
+  | .versionDirective .. | .tagDirective .. | .streamEnd => false
+  | _ => true
+
+lemma ordTok_nonDir (t : YamlToken) (h : ordTok t = true) : isDirTok (some t) = false := by
+  cases t <;> simp_all [ordTok, isDirTok]
+
+lemma ordTok_ne_streamEnd (t : YamlToken) (h : ordTok t = true) : t ≠ .streamEnd := by
+  cases t <;> simp_all [ordTok]
+
 /-- One token of the directive-run fold.  `none` is the dead state (a
     directive run was closed by something other than a directive or `---`);
     `some o` says whether a run is open. -/
@@ -371,6 +383,7 @@ structure DirInv (s : ScannerState) : Prop where
     KeyOK (vals s) s.simpleKey.tokenIndex ∨ s.directivesPresent = true
   stack : ∀ j (h : j < s.simpleKeyStack.size), s.simpleKeyStack[j].possible = true →
     KeyOK (vals s) s.simpleKeyStack[j].tokenIndex
+  nose : .streamEnd ∉ vals s
 
 lemma DirInv.closed {s : ScannerState} (hI : DirInv s) (hdp : s.directivesPresent = false) :
     dirRun false (vals s) = some false := by
@@ -388,7 +401,9 @@ lemma DirInv.ofClosed (s2 : ScannerState)
     (hdp : s2.directivesPresent = false) (had : s2.allowDirectives = false)
     (hkey : s2.simpleKey.possible = true → KeyOK (vals s2) s2.simpleKey.tokenIndex)
     (hstack : ∀ j (h : j < s2.simpleKeyStack.size), s2.simpleKeyStack[j].possible = true →
-      KeyOK (vals s2) s2.simpleKeyStack[j].tokenIndex) : DirInv s2 where
+      KeyOK (vals s2) s2.simpleKeyStack[j].tokenIndex)
+    (hnose : .streamEnd ∉ vals s2) : DirInv s2 where
+  nose := hnose
   ok := by rw [hv]; simp
   flag := by rw [hv]; intro h; cases h
   dpAD := by rw [hdp]; intro h; cases h
@@ -402,7 +417,7 @@ lemma vals_length (s : ScannerState) : (vals s).length = s.tokens.size := by sim
     reads preserved except possibly a freshly saved key. -/
 lemma DirInv.transport (s s2 : ScannerState) (M : List YamlToken)
     (hv : vals s2 = vals s ++ M)
-    (hM : ∀ t ∈ M, isDirTok (some t) = false)
+    (hM : ∀ t ∈ M, ordTok t = true)
     (hopen : dirRun false (vals s) = some true → ∀ t ∈ M, t = .placeholder)
     (hdp : s2.directivesPresent = s.directivesPresent)
     (had : s2.allowDirectives = s.allowDirectives)
@@ -418,8 +433,8 @@ lemma DirInv.transport (s s2 : ScannerState) (M : List YamlToken)
     | some b =>
       cases b with
       | true => left; rw [hv, dirRun_append_ph false _ M (hopen h0), h0]
-      | false => right; exact ⟨rfl, by rw [hv]; exact dirRun_append_nonDir _ _ h0 hM⟩
-  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
+      | false => right; exact ⟨rfl, by rw [hv]; exact dirRun_append_nonDir _ _ h0 (fun t ht => ordTok_nonDir t (hM t ht))⟩
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · rcases hfold with h | ⟨_, h⟩
     · rw [h]; exact hI.ok
     · rw [h]; simp
@@ -452,8 +467,13 @@ lemma DirInv.transport (s s2 : ScannerState) (M : List YamlToken)
     rw [hv]
     exact KeyOK_append _ _ _ (by have := (hA.2 j hj' hp).2.1; rw [vals_length]; omega)
       (hI.stack j hj' hp)
+  · rw [hv]; intro hmem
+    rcases List.mem_append.1 hmem with hmem | hmem
+    · exact hI.nose hmem
+    · exact ordTok_ne_streamEnd _ (hM _ hmem) rfl
 
 /-- Same tokens, same fields: the invariant transfers. -/
+
 lemma DirInv.ofFields (s t : ScannerState) (ht : t.tokens = s.tokens)
     (hdp : t.directivesPresent = s.directivesPresent) (had : t.allowDirectives = s.allowDirectives)
     (hind : t.indents = s.indents) (hk : t.simpleKey = s.simpleKey ∨ t.simpleKey.possible = false)
@@ -684,7 +704,13 @@ lemma DirInv_scanDocumentStart (s : ScannerState) (hA : AllKeysValid s) (hI : Di
         have hq := hI.quiet (hI.dpAD (hI.flag h0))
         rw [unwindIndents_quiet_eq s (-1) hq (by omega)] at hM
         exact List.append_cancel_left (bs := M) (cs := []) (by rw [List.append_nil]; exact hM.symm)
-  refine DirInv.ofClosed _ hclosed hdp had (fun h => by rw [hk] at h; cases h) ?_
+  refine DirInv.ofClosed _ hclosed hdp had (fun h => by rw [hk] at h; cases h) ?_ ?_
+  rotate_left
+  · rw [hv']; intro hmem
+    rcases List.mem_append.1 hmem with hmem | hmem
+    · exact hI.nose hmem
+    · have hM' : .streamEnd ∈ M := by simpa using hmem
+      exact absurd (hall _ hM') (by simp)
   intro j hj hp
   have hj' : j < s.simpleKeyStack.size := hst ▸ hj
   have he : (scanDocumentStart s).simpleKeyStack[j] = s.simpleKeyStack[j]'hj' := by simp [hst]
@@ -730,7 +756,7 @@ lemma DirInv_scanDocumentEnd (s s' : ScannerState) (h : scanDocumentEnd s = .ok 
     rcases ht with ht | rfl
     · rw [hall t ht]; rfl
     · rfl
-  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · rw [hclosed]; simp
   · rw [hclosed]; intro h; cases h
   · intro _; exact had
@@ -743,6 +769,11 @@ lemma DirInv_scanDocumentEnd (s s' : ScannerState) (h : scanDocumentEnd s = .ok 
     rw [hv']
     exact KeyOK_append _ _ _ (by have := (hA.2 j hj' hp).2.1; rw [vals_length]; omega)
       (hI.stack j hj' hp)
+  · rw [hv']; intro hmem
+    rcases List.mem_append.1 hmem with hmem | hmem
+    · exact hI.nose hmem
+    · have hM' : .streamEnd ∈ M := by simpa using hmem
+      exact absurd (hall _ hM') (by simp)
 
 lemma scanDirective_fields (s s' : ScannerState) (h : scanDirective s = .ok s') :
     (vals s' = vals s ∨ ∃ d, vals s' = vals s ++ [d] ∧ isDirTok (some d) = true) ∧
@@ -815,10 +846,17 @@ lemma DirInv_scanDirective (s s' : ScannerState) (h : scanDirective s = .ok s')
   have hst := scanDirective_preserves_simpleKeyStack s s' h
   have had : s'.allowDirectives = true := had'.trans had0
   refine ⟨?_, fun _ => hdp, fun _ => had, fun _ => Quiet_of_indents_eq hind hq,
-    fun _ => Or.inr hdp, ?_⟩
+    fun _ => Or.inr hdp, ?_, ?_⟩
   · rcases hv with hv | ⟨d, hv, hd⟩
     · rw [hv]; exact hI.ok
     · rw [hv, dirRun_append_dir _ _ hd hI.ok]; simp
+  rotate_left
+  · rcases hv with hv | ⟨d, hv, hd⟩
+    · rw [hv]; exact hI.nose
+    · rw [hv]; intro hmem
+      rcases List.mem_append.1 hmem with hmem | hmem
+      · exact hI.nose hmem
+      · simp at hmem; subst hmem; simp [isDirTok] at hd
   · intro j hj hp
     have hj' : j < s.simpleKeyStack.size := hst ▸ hj
     have he : s'.simpleKeyStack[j] = s.simpleKeyStack[j]'hj' := by simp [hst]
@@ -847,12 +885,12 @@ lemma DirInv_dispatchStructural (s : ScannerState) (c : Char) (s' : ScannerState
 
 /-! ### Content scanners push one non-directive token -/
 
-/-- `s'` is `s` plus exactly one token, and that token is not a directive. -/
+/-- `s'` is `s` plus exactly one ordinary token (not a directive, not `.streamEnd`). -/
 def PushNonDir (s s' : ScannerState) : Prop :=
-  ∃ t, vals s' = vals s ++ [t] ∧ isDirTok (some t) = false
+  ∃ t, vals s' = vals s ++ [t] ∧ ordTok t = true
 
 lemma PushNonDir.emitAt (s s0 : ScannerState) (p : YamlPos) (t : YamlToken)
-    (h0 : s0.tokens = s.tokens) (ht : isDirTok (some t) = false) :
+    (h0 : s0.tokens = s.tokens) (ht : ordTok t = true) :
     PushNonDir s (s0.emitAt p t) :=
   ⟨t, by rw [vals_emitAt]; simp [vals, h0], ht⟩
 
@@ -989,7 +1027,7 @@ lemma scanPlainScalar_pushNonDir (s s' : ScannerState) (h : scanPlainScalar s = 
 
 /-- Token extension by non-directive tokens only. -/
 def NonDirExt (a b : ScannerState) : Prop :=
-  ∃ M, vals b = vals a ++ M ∧ ∀ t ∈ M, isDirTok (some t) = false
+  ∃ M, vals b = vals a ++ M ∧ ∀ t ∈ M, ordTok t = true
 
 lemma NonDirExt.refl (a : ScannerState) : NonDirExt a a := ⟨[], by simp, by simp⟩
 
@@ -1011,7 +1049,7 @@ lemma NonDirExt.trans {a b c : ScannerState} (h1 : NonDirExt a b) (h2 : NonDirEx
   · exact hM1 t ht
   · exact hM2 t ht
 
-lemma NonDirExt.emit (a : ScannerState) (t : YamlToken) (ht : isDirTok (some t) = false) :
+lemma NonDirExt.emit (a : ScannerState) (t : YamlToken) (ht : ordTok t = true) :
     NonDirExt a (a.emit t) := ⟨[t], vals_emit a t, by simpa using ht⟩
 
 lemma NonDirExt.ofPush {a b : ScannerState} (h : PushNonDir a b) : NonDirExt a b := by
@@ -1026,15 +1064,18 @@ structure PostInv (s : ScannerState) : Prop where
   closed : dirRun false (vals s) = some false
   key : s.simpleKey.possible = true → KeyOK (vals s) s.simpleKey.tokenIndex
   stack : StackOK (vals s) s.simpleKeyStack
+  nose : .streamEnd ∉ vals s
 
 lemma PostInv.ofDirInv (s : ScannerState) (hI : DirInv s) (hdp : s.directivesPresent = false) :
     PostInv s where
   closed := hI.closed hdp
   key := fun h => (hI.key h).resolve_right (by simp [hdp])
   stack := hI.stack
+  nose := hI.nose
 
 lemma DirInv.ofPost (s : ScannerState) (hP : PostInv s) (hdp : s.directivesPresent = false)
     (had : s.allowDirectives = false) : DirInv s where
+  nose := hP.nose
   ok := by rw [hP.closed]; simp
   flag := by rw [hP.closed]; simp
   dpAD := by rw [hdp]; simp
@@ -1084,12 +1125,27 @@ lemma KeyTrans_of {s s1 s2 : ScannerState} (h : s1.simpleKey = s.simpleKey)
   rw [← h, ← hp, ← hi]
   exact ⟨hp2, rfl⟩
 
+lemma nose_append {s s2 : ScannerState} {M : List YamlToken} (hv : vals s2 = vals s ++ M)
+    (hn : .streamEnd ∉ vals s) (hM : ∀ t ∈ M, ordTok t = true) : .streamEnd ∉ vals s2 := by
+  rw [hv]; intro hmem
+  rcases List.mem_append.1 hmem with hmem | hmem
+  · exact hn hmem
+  · exact ordTok_ne_streamEnd _ (hM _ hmem) rfl
+
+lemma nose_one {s s2 : ScannerState} {t : YamlToken} (hv : vals s2 = vals s ++ [t])
+    (hn : .streamEnd ∉ vals s) (ht : ordTok t = true) : .streamEnd ∉ vals s2 :=
+  nose_append hv hn (by simpa using ht)
+
+lemma nose_set (L : List YamlToken) (i : Nat) (t : YamlToken) (hL : .streamEnd ∉ L)
+    (ht : t ≠ .streamEnd) : .streamEnd ∉ L.set i t :=
+  fun h => (List.mem_or_eq_of_mem_set h).elim hL (fun e => ht e.symm)
+
 lemma PostInv.transport (s s2 : ScannerState) (hE : NonDirExt s s2)
     (hstack : s2.simpleKeyStack = s.simpleKeyStack) (hkey : KeyTrans s s2)
     (hA : AllKeysValid s) (hP : PostInv s) : PostInv s2 := by
   obtain ⟨M, hv, hM⟩ := hE
-  refine ⟨?_, ?_, ?_⟩
-  · rw [hv]; exact dirRun_append_nonDir _ _ hP.closed hM
+  refine ⟨?_, ?_, ?_, nose_append hv hP.nose hM⟩
+  · rw [hv]; exact dirRun_append_nonDir _ _ hP.closed (fun t ht => ordTok_nonDir t (hM t ht))
   · intro hp
     obtain ⟨hp0, hidx⟩ := hkey hp
     rw [hidx, hv]
@@ -1101,8 +1157,8 @@ lemma PostInv.transportCleared (s s2 : ScannerState) (hE : NonDirExt s s2)
     (hstack : s2.simpleKeyStack = s.simpleKeyStack) (hk : s2.simpleKey.possible = false)
     (hlen : StackLen (vals s) s.simpleKeyStack) (hP : PostInv s) : PostInv s2 := by
   obtain ⟨M, hv, hM⟩ := hE
-  refine ⟨?_, fun hp => (by rw [hk] at hp; cases hp), ?_⟩
-  · rw [hv]; exact dirRun_append_nonDir _ _ hP.closed hM
+  refine ⟨?_, fun hp => (by rw [hk] at hp; cases hp), ?_, nose_append hv hP.nose hM⟩
+  · rw [hv]; exact dirRun_append_nonDir _ _ hP.closed (fun t ht => ordTok_nonDir t (hM t ht))
   · rw [hstack, hv]; exact StackOK_append _ _ _ hlen hP.stack
 
 lemma AllKeysValid_of_clear (s t : ScannerState) (ht : t.tokens = s.tokens)
@@ -1115,12 +1171,12 @@ lemma AllKeysValid_of_clear (s t : ScannerState) (ht : t.tokens = s.tokens)
 
 /-! ### Flow indicators -/
 
-lemma PostInv_flowStart (s s' : ScannerState) (t : YamlToken) (ht : isDirTok (some t) = false)
+lemma PostInv_flowStart (s s' : ScannerState) (t : YamlToken) (ht : ordTok t = true)
     (hv : vals s' = vals s ++ [t]) (hk : s'.simpleKey.possible = false)
     (hst : s'.simpleKeyStack = s.simpleKeyStack.push s.simpleKey)
     (hA : AllKeysValid s) (hP : PostInv s) : PostInv s' := by
-  refine ⟨?_, fun hp => (by rw [hk] at hp; cases hp), ?_⟩
-  · rw [hv]; exact dirRun_append_nonDir _ _ hP.closed (by simpa using ht)
+  refine ⟨?_, fun hp => (by rw [hk] at hp; cases hp), ?_, nose_one hv hP.nose ht⟩
+  · rw [hv]; exact dirRun_append_nonDir _ _ hP.closed (by simpa using ordTok_nonDir t ht)
   · rw [hst, hv]
     intro j hj hp
     by_cases hlt : j < s.simpleKeyStack.size
@@ -1129,12 +1185,12 @@ lemma PostInv_flowStart (s s' : ScannerState) (t : YamlToken) (ht : isDirTok (so
     · simp only [Array.getElem_push, hlt, dite_false] at hp ⊢
       exact KeyOK_append _ _ _ (keyLen_of_AllKeysValid s hA hp) (hP.key hp)
 
-lemma PostInv_flowEnd (s s' : ScannerState) (t : YamlToken) (ht : isDirTok (some t) = false)
+lemma PostInv_flowEnd (s s' : ScannerState) (t : YamlToken) (ht : ordTok t = true)
     (hv : vals s' = vals s ++ [t]) (hk : s'.simpleKey = s.simpleKeyStack.back?.getD {})
     (hst : s'.simpleKeyStack = s.simpleKeyStack.pop)
     (hA : AllKeysValid s) (hP : PostInv s) : PostInv s' := by
-  refine ⟨?_, ?_, ?_⟩
-  · rw [hv]; exact dirRun_append_nonDir _ _ hP.closed (by simpa using ht)
+  refine ⟨?_, ?_, ?_, nose_one hv hP.nose ht⟩
+  · rw [hv]; exact dirRun_append_nonDir _ _ hP.closed (by simpa using ordTok_nonDir t ht)
   · intro hp
     rw [hk] at hp ⊢
     cases hb : s.simpleKeyStack.back? with
@@ -1316,23 +1372,33 @@ lemma PostInv_scanValuePrepare (s : ScannerState) (hA : AllKeysValid s) (hP : Po
     split
     · split
       · obtain ⟨hc, hks⟩ := KeyOK_set_both (vals s) _ .blockMappingStart .key rfl rfl hk hP.closed
-        refine ⟨⟨?_, by simp, ?_⟩, by simp, by simp⟩
+        refine ⟨⟨?_, by simp, ?_, ?_⟩, by simp, by simp⟩
         · show dirRun false (toks ((s.tokens.setIfInBounds _ _).setIfInBounds _ _)) = some false
           rw [toks_setIfInBounds, toks_setIfInBounds]; exact hc
+        rotate_left
+        · show .streamEnd ∉ toks ((s.tokens.setIfInBounds _ _).setIfInBounds _ _)
+          rw [toks_setIfInBounds, toks_setIfInBounds]
+          exact nose_set _ _ _ (nose_set _ _ _ hP.nose (by simp)) (by simp)
         · show StackOK (toks ((s.tokens.setIfInBounds _ _).setIfInBounds _ _)) s.simpleKeyStack
           rw [toks_setIfInBounds, toks_setIfInBounds]
           exact fun j hj hp' => hks _ (hP.stack j hj hp')
       · obtain ⟨hc, hks⟩ := KeyOK_set_one (vals s) _ .key rfl hk hP.closed
-        refine ⟨⟨?_, by simp, ?_⟩, by simp, by simp⟩
+        refine ⟨⟨?_, by simp, ?_, ?_⟩, by simp, by simp⟩
         · show dirRun false (toks (s.tokens.setIfInBounds _ _)) = some false
           rw [toks_setIfInBounds]; exact hc
+        rotate_left
+        · show .streamEnd ∉ toks (s.tokens.setIfInBounds _ _)
+          rw [toks_setIfInBounds]; exact nose_set _ _ _ hP.nose (by simp)
         · show StackOK (toks (s.tokens.setIfInBounds _ _)) s.simpleKeyStack
           rw [toks_setIfInBounds]
           exact fun j hj hp' => hks _ (hP.stack j hj hp')
     · obtain ⟨hc, hks⟩ := KeyOK_set_one (vals s) _ .key rfl hk hP.closed
-      refine ⟨⟨?_, by simp, ?_⟩, by simp, by simp⟩
+      refine ⟨⟨?_, by simp, ?_, ?_⟩, by simp, by simp⟩
       · show dirRun false (toks (s.tokens.setIfInBounds _ _)) = some false
         rw [toks_setIfInBounds]; exact hc
+      rotate_left
+      · show .streamEnd ∉ toks (s.tokens.setIfInBounds _ _)
+        rw [toks_setIfInBounds]; exact nose_set _ _ _ hP.nose (by simp)
       · show StackOK (toks (s.tokens.setIfInBounds _ _)) s.simpleKeyStack
         rw [toks_setIfInBounds]
         exact fun j hj hp' => hks _ (hP.stack j hj hp')
@@ -1386,7 +1452,7 @@ lemma PostInv_scanValue (s s' : ScannerState) (h : scanValue s = .ok s')
     have := scanValuePrepare_tokens_monotonic (scanValueClearKey s)
     rw [scanValueClearKey_preserves_tokens] at this
     omega
-  refine PostInv.transportCleared _ s' ⟨[.value], scanValue_vals s s' h, by simp [isDirTok]⟩ ?_
+  refine PostInv.transportCleared _ s' ⟨[.value], scanValue_vals s s' h, by simp [ordTok]⟩ ?_
     (scanValue_clears_simpleKey s s' h) hlen hP2
   rw [scanValue_preserves_simpleKeyStack s s' h, hst2, hst1]
 
@@ -1583,6 +1649,7 @@ lemma DirInv_scanLoop : ∀ (fuel : Nat) (s : ScannerState) (ts : Array (Positio
         (DirInv_scanNextToken s s' hA hI hs') h
 
 lemma DirInv_init (input : String) : DirInv ((ScannerState.mk' input).emit .streamStart) where
+  nose := by simp [vals, toks, ScannerState.mk', ScannerState.emit]
   ok := by simp [vals, toks, ScannerState.mk', ScannerState.emit, dirRun, dirStep]
   flag := by simp [vals, toks, ScannerState.mk', ScannerState.emit, dirRun, dirStep]
   dpAD := by simp [ScannerState.mk', ScannerState.emit]
@@ -1609,9 +1676,10 @@ lemma DirInv_consumeBOM (s : ScannerState) (hA : AllKeysValid s) (hI : DirInv s)
     (consumeBOM_indents s)
     (Or.inl (consumeBOM_preserves_simpleKey s)) (consumeBOM_preserves_simpleKeyStack s) hA hI
 
-/-- Raw scanner output (placeholders included) has its directive run closed. -/
-lemma scan_closed (input : String) (ts : Array (Positioned YamlToken)) (h : scan input = .ok ts) :
-    dirRun false (toks ts) = some false := by
+/-- Any `scanLoop` consequence of `AllKeysValid ∧ DirInv` holds of `scan` output: the initial state
+    (`streamStart` emitted, BOM consumed or not) satisfies both. -/
+lemma scan_inv (input : String) (ts : Array (Positioned YamlToken)) (h : scan input = .ok ts)
+    (P : Prop) (hP : ∀ fuel s, AllKeysValid s → DirInv s → scanLoop s fuel = .ok ts → P) : P := by
   unfold scan at h
   have hA0 := AllKeysValid_init input
   have hI0 := DirInv_init input
@@ -1632,7 +1700,52 @@ lemma scan_closed (input : String) (ts : Array (Positioned YamlToken)) (h : scan
     split
     · exact DirInv_consumeBOM _ hA0 hI0
     · exact hI0
-  exact DirInv_scanLoop _ _ ts hA hI h
+  exact hP _ _ hA hI h
+
+/-- Raw scanner output (placeholders included) has its directive run closed. -/
+lemma scan_closed (input : String) (ts : Array (Positioned YamlToken)) (h : scan input = .ok ts) :
+    dirRun false (toks ts) = some false :=
+  scan_inv input ts h _ (fun fuel s hA hI h' => DirInv_scanLoop fuel s ts hA hI h')
+
+/-- `scanLoop` output is some run of ordinary tokens followed by the one `.streamEnd` it emits itself
+    (`DirInv.nose`: no content scanner emits `.streamEnd`). -/
+lemma DirInv_scanLoop_streamEnd : ∀ (fuel : Nat) (s : ScannerState)
+    (ts : Array (Positioned YamlToken)),
+    AllKeysValid s → DirInv s → scanLoop s fuel = .ok ts →
+    ∃ L, toks ts = L ++ [.streamEnd] ∧ .streamEnd ∉ L := by
+  intro fuel
+  induction fuel with
+  | zero => intro s ts _ _ h; simp [scanLoop] at h
+  | succ n ih =>
+    intro s ts hA hI h
+    unfold scanLoop at h
+    split at h
+    · contradiction
+    · split at h
+      · contradiction
+      · split at h
+        · contradiction
+        · split at h
+          · contradiction
+          · split at h
+            · contradiction
+            · simp only [Except.ok.injEq] at h; subst h
+              obtain ⟨M, hM, hall⟩ := unwindIndents_vals s (-1)
+              refine ⟨vals s ++ M, ?_, ?_⟩
+              · show vals ((unwindIndents s (-1)).emit .streamEnd) = _
+                rw [vals_emit, hM]
+              · intro hmem
+                rcases List.mem_append.1 hmem with hmem | hmem
+                · exact hI.nose hmem
+                · exact absurd (hall _ hmem) (by simp)
+    · rename_i s' hs'
+      exact ih s' ts (scanNextToken_preserves_AllKeysValid s s' hA hs')
+        (DirInv_scanNextToken s s' hA hI hs') h
+
+/-- Raw scanner output ends in `.streamEnd`, and that is its only `.streamEnd`. -/
+lemma scan_streamEnd_unique (input : String) (ts : Array (Positioned YamlToken))
+    (h : scan input = .ok ts) : ∃ L, toks ts = L ++ [.streamEnd] ∧ .streamEnd ∉ L :=
+  scan_inv input ts h _ (fun fuel s hA hI h' => DirInv_scanLoop_streamEnd fuel s ts hA hI h')
 
 lemma toks_filter (ts : Array (Positioned YamlToken)) :
     toks (ts.filter fun t => t.val != .placeholder) = (toks ts).filter nonPh := by

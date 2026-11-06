@@ -88,6 +88,64 @@ open L4YAML.Proofs.Serialization.ScannerShape in
 #guard_msgs in
 #print axioms scanFiltered_streamEnd_last
 
+open L4YAML.Proofs.DirectiveRuns in
+/-- info: 'L4YAML.Proofs.DirectiveRuns.scan_inv' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms scan_inv
+
+open L4YAML.Proofs.DirectiveRuns in
+/-- info: 'L4YAML.Proofs.DirectiveRuns.DirInv_scanLoop_streamEnd' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms DirInv_scanLoop_streamEnd
+
+open L4YAML.Proofs.DirectiveRuns in
+/-- info: 'L4YAML.Proofs.DirectiveRuns.scan_streamEnd_unique' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms scan_streamEnd_unique
+
+open L4YAML.Proofs.Serialization.ScannerShape in
+/-- info: 'L4YAML.Proofs.Serialization.ScannerShape.scanFiltered_toks_streamEnd_unique' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
+#guard_msgs in
+#print axioms scanFiltered_toks_streamEnd_unique
+
+open L4YAML.Proofs.Serialization.ScannerShape in
+/-- info: 'L4YAML.Proofs.Serialization.ScannerShape.scanFiltered_streamEnd_index' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
+#guard_msgs in
+#print axioms scanFiltered_streamEnd_index
+
+open L4YAML.Proofs.Serialization.ScannerShape in
+/-- info: 'L4YAML.Proofs.Serialization.ScannerShape.go_append_streamEnd' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
+#guard_msgs in
+#print axioms go_append_streamEnd
+
+open L4YAML.Proofs.Serialization.ScannerShape in
+/-- info: 'L4YAML.Proofs.Serialization.ScannerShape.tokenEvents_dropLast_streamEnd' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
+#guard_msgs in
+#print axioms tokenEvents_dropLast_streamEnd
+
+open L4YAML.Proofs.Serialization.ScannerShape in
+/-- info: 'L4YAML.Proofs.Serialization.ScannerShape.scanFiltered_parseStream_ok_checkFrom_full' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
+#guard_msgs in
+#print axioms scanFiltered_parseStream_ok_checkFrom_full
+
 end Tests.Guards.ScannerShapeAxioms
 
 end Blanket

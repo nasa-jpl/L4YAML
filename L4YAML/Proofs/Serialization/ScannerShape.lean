@@ -2,6 +2,7 @@ module
 
 public import L4YAML.Proofs.Serialization.ParseCheckFrom
 public import L4YAML.Proofs.Scanner.DirectiveRuns
+import all L4YAML.Proofs.Serialization.TokenEvents
 
 @[expose] public section Blanket
 
@@ -16,7 +17,12 @@ scanner output.
   `directiveAfterContent` refusals, carried through the scan loop as `DirInv`).
 * (c) `streamEnd`-last — `scanFiltered_streamEnd_last`: the output is non-empty and
   its last token is `.streamEnd` (`scanLoop` emits it last, and the placeholder
-  filter keeps it), so the consumed prefix `k = ts.size` is the whole array.
+  filter keeps it).  This alone does not make S5's consumed prefix the whole
+  array: `parseStreamLoop` stops before consuming `.streamEnd`, so S5's witness
+  `k` may be `ts.size - 1`.  The separate argument is `scanFiltered_streamEnd_index`
+  (`.streamEnd` is the only such token, so that `k` is `ts.size - 1`) plus
+  `tokenEvents_dropLast_streamEnd` (`.streamEnd` adds no event); together,
+  `scanFiltered_parseStream_ok_checkFrom_full` carries S5's verdict to all of `ts`.
 -/
 
 namespace L4YAML.Proofs.Serialization.ScannerShape
@@ -89,6 +95,87 @@ lemma scanFiltered_streamEnd_last (input : String) (ts : Toks) (h : scanFiltered
   refine ⟨by omega, ?_⟩
   rw [tok_eq_toks, hL, hlen]
   simp
+
+/-- The filter keeps the one `.streamEnd` and introduces none. -/
+lemma scanFiltered_toks_streamEnd_unique (input : String) (ts : Toks)
+    (h : scanFiltered input = .ok ts) :
+    ∃ L, toks ts = L ++ [.streamEnd] ∧ .streamEnd ∉ L := by
+  unfold scanFiltered at h
+  split at h
+  · rename_i raw h0
+    simp only [Except.ok.injEq] at h
+    subst h
+    obtain ⟨L, hL, hn⟩ := scan_streamEnd_unique input raw h0
+    refine ⟨L.filter nonPh, ?_, fun hm => hn (List.mem_filter.1 hm).1⟩
+    rw [toks_filter, hL, List.filter_append]
+    rfl
+  · contradiction
+
+/-- On scanner output the only index holding `.streamEnd` is the last one. -/
+lemma scanFiltered_streamEnd_index (input : String) (ts : Toks) (h : scanFiltered input = .ok ts)
+    (k : Nat) (hk : ParseCheckFrom.tok ts k = some .streamEnd) : k = ts.size - 1 := by
+  obtain ⟨L, hL, hn⟩ := scanFiltered_toks_streamEnd_unique input ts h
+  have hlen : ts.size = L.length + 1 := by
+    have := congrArg List.length hL
+    simpa [toks_length] using this
+  rw [tok_eq_toks, hL] at hk
+  by_cases hlt : k < L.length
+  · rw [List.getElem?_append_left hlt] at hk
+    exact absurd (List.mem_of_getElem? hk) hn
+  · rw [List.getElem?_append_right (Nat.le_of_not_lt hlt)] at hk
+    rcases Nat.lt_or_ge (k - L.length) 1 with hlt1 | hge1
+    · omega
+    · rw [List.getElem?_eq_none (by simpa using hge1)] at hk
+      cases hk
+
+/-- `.streamEnd` contributes no event: `tokenEvent .streamEnd = none` and it is neither a `%TAG`
+    directive nor `---`, so the fold ignores it. -/
+lemma go_append_streamEnd (l : List (Positioned YamlToken)) (p : Positioned YamlToken)
+    (hp : p.val = .streamEnd) : ∀ pending, go (l ++ [p]) pending = go l pending := by
+  induction l with
+  | nil => intro pending; simp [go, hp, tokenEvent]
+  | cons t ts ih =>
+    intro pending
+    simp only [List.cons_append, go]
+    split
+    · split <;> simp [ih]
+    · simp [ih]
+    · split <;> simp [ih]
+
+/-- Dropping a final `.streamEnd` leaves `tokenEvents` unchanged. -/
+lemma tokenEvents_dropLast_streamEnd (ts : Toks) (L : List YamlToken)
+    (hL : toks ts = L ++ [.streamEnd]) :
+    tokenEvents (ts.extract 0 (ts.size - 1)) = tokenEvents ts := by
+  rcases List.eq_nil_or_concat ts.toList with hnil | ⟨l', p, hcat⟩
+  · have := congrArg List.length hL; simp [toks, hnil] at this
+  · rw [List.concat_eq_append] at hcat
+    have hp : p.val = .streamEnd := by
+      have := congrArg List.getLast? hL
+      simpa [toks, hcat] using this
+    have h1 : (ts.extract 0 (ts.size - 1)).toList = ts.toList.dropLast := by
+      simp [List.dropLast_eq_take]
+    unfold tokenEvents
+    rw [h1, hcat, List.dropLast_concat]
+    exact (go_append_streamEnd l' p hp []).symm
+
+/-- S5's token-level result on scanner output, carried to the full token array. `parseStreamLoop`
+    stops before consuming `.streamEnd`, so S5's witness `k` may be `ts.size - 1`, not `ts.size`;
+    since `.streamEnd` is the last token and the only one (`scanFiltered_streamEnd_index`) and adds
+    no event (`go_append_streamEnd`), the checker's verdict on that prefix is its verdict on all of
+    `ts`. The `StuckAt` disjunct is S3 (d)'s. -/
+lemma scanFiltered_parseStream_ok_checkFrom_full (input : String) (ts : Toks)
+    (docs : Array YamlDocument) (hs : scanFiltered input = .ok ts)
+    (hT : TagUsesShaped ts) (h : parseStream ts = .ok docs) :
+    checkFrom {} (tokenEvents ts) = true ∨
+      ∃ k, k ≤ ts.size ∧ StuckAt ts k ∧ checkFrom {} (tokenEvents (ts.extract 0 k)) = true := by
+  obtain ⟨k, hk, hc, hchk⟩ := scanFiltered_parseStream_ok_checkFrom input ts docs hs hT h
+  rcases hc with rfl | hse | hst
+  · left; simpa using hchk
+  · left
+    obtain ⟨L, hL, _⟩ := scanFiltered_toks_streamEnd_unique input ts hs
+    rw [scanFiltered_streamEnd_index input ts hs k hse, tokenEvents_dropLast_streamEnd ts L hL] at hchk
+    exact hchk
+  · right; exact ⟨k, hk, hst, hchk⟩
 
 end L4YAML.Proofs.Serialization.ScannerShape
 
