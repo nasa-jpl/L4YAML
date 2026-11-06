@@ -347,7 +347,13 @@ def expectedSteps : String :=
 -- the `directivesPresent` preservation family (`ScannerDirectivesPresent`) and the `DirInv` loop invariant
 -- (`DirectiveRuns`) hold the preprocess/dispatch/content step equations (and, through `DirInv_scanNextToken`,
 -- the pending-directives check).
-  "stepHolders=2009 dispHolders=385 dispTwoCorr=31 fns=74 fnsIx=26"
+-- 2026-11-05 (capstone 7.7 S3 (c), streamEnd-last): stepHolders 2009 → 2012 — `scan_toks_streamEnd`,
+-- `scanFiltered_toks_streamEnd`, `scanFiltered_streamEnd_last` (ScannerShape) hold the scan entry equations.
+-- 2026-11-06 (capstone 7.7 S3 (c), review fix — `.streamEnd` adds no event): stepHolders 2012 → 2018 —
+-- `scan_inv`, `DirInv_scanLoop_streamEnd`, `scan_streamEnd_unique` (DirectiveRuns) and
+-- `scanFiltered_toks_streamEnd_unique`, `scanFiltered_streamEnd_index`,
+-- `scanFiltered_parseStream_ok_checkFrom_full` (ScannerShape) hold the scan entry equations.
+  "stepHolders=2018 dispHolders=385 dispTwoCorr=31 fns=74 fnsIx=26"
 
 /-- **The ladder, at each population.**  `edge` is a production whose right
     endpoint is the step's output; `chain` requires a path to it from another
