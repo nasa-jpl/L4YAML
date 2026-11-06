@@ -115,7 +115,7 @@ unsafe def run (args : List String) : IO UInt32 := do
     for r in w.relays do IO.println s!"  {shownName r.consumer}: {r.src} → {r.dst}"
   for l in w.dbg do IO.println s!"dbg: {l}"
   IO.println "OFF residue:"
-  for c in cs.filter (·.cls.startsWith "off-") do IO.println s!"  {c.line}"
+  for c in cs.filter (fun c => !c.cls.startsWith "on-") do IO.println s!"  {c.line}"
   if check then
     let guard ← IO.FS.readFile (root / guardFile)
     match pinString? guard "expectedSummary" with

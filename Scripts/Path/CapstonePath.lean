@@ -172,7 +172,7 @@ structure Walk where
   arms : Array Arm := #[]
   relays : Array Relay := #[]
   touches : Std.HashMap Name Bool := {}
-  seen : Std.HashSet (Expr × Nat) := {}
+  seen : Std.HashSet (Expr × Nat × UInt64 × Option String) := {}
   levels : Std.HashMap Expr Nat := {}
   steps : Nat := 0
   levelSteps : Nat := 0
@@ -182,6 +182,19 @@ structure Walk where
 
 /-- A root: the audit key of the binder / field the fact came from, and its type's head. -/
 abbrev Root := String × Option Name
+
+/-- A root reached INSIDE a labelled fact (through a casing's minor binder or a projection): its
+    key is the binder's key with `/nested`, so an arm read there is recorded against the binder's
+    `nested` rows, never against its `top` row. -/
+def nestedRoot (r : Root) : Root := if r.1.endsWith "/nested" then r else (r.1 ++ "/nested", r.2)
+
+/-- The labelled part of a binder context, hashed: the walker's memo must not identify two visits
+    of one subterm under different labels. -/
+def labelsKey (ctx : Array (Option Root)) : UInt64 := Id.run do
+  let mut h : UInt64 := 7
+  for i in [0:ctx.size] do
+    if let some (k, _) := ctx[i]! then h := mixHash (mixHash h (hash i)) (hash k)
+  return h
 
 def shownName (n : Name) : String := (privateToUserName n).toString
 
@@ -286,7 +299,13 @@ partial def rootOf (env : Environment) (keys : Std.HashSet String) (rets : Std.H
       if isCast c then
         let args := e.getAppArgs
         -- `Eq.rec` / `Eq.ndrec` transport their fourth argument; the other casts their last
-        let src := if (c == ``Eq.rec || c == ``Eq.ndrec) && args.size ≥ 6 then args[3]? else args.back?
+        -- `Or.imp {a c b d} f g h` / `Or.imp_left {a b c} f h` / `Or.imp_right {b c a} f h`: the source
+        -- disjunction is the LAST explicit argument of the saturated call (a partial application
+        -- is a function, not a fact: no root).
+        let src :=
+          if c == ``Or.imp then (if args.size == 7 then args[6]? else none)
+          else if c == ``Or.imp_left || c == ``Or.imp_right then (if args.size == 5 then args[4]? else none)
+          else if (c == ``Eq.rec || c == ``Eq.ndrec) && args.size ≥ 6 then args[3]? else args.back?
         src >>= rootOf env keys rets ctx
       else if rets.contains c then some (s!"{shownName c}[ret]", none) else none
     | _ => rootOf env keys rets ctx f
@@ -297,10 +316,10 @@ partial def rootOf (env : Environment) (keys : Std.HashSet String) (rets : Std.H
     | some (.inductInfo iv) =>
       match iv.ctors.head? >>= ctorFields env with
       | some (_, fs) => match fs[i]? with
-        | some (k, h) => if keys.contains k then some (k, h) else some (r, none)
-        | none => some (r, none)
-      | none => some (r, none)
-    | _ => some (r, none)
+        | some (k, h) => if keys.contains k then some (k, h) else some (nestedRoot (r, none))
+        | none => some (nestedRoot (r, none))
+      | none => some (nestedRoot (r, none))
+    | _ => some (nestedRoot (r, none))
   | _ => none
 
 def isCasing (env : Environment) (c : Name) : Bool :=
@@ -369,8 +388,9 @@ def minorsOf (env : Environment) (c : Name) (args : Array Expr) : Array (Nat × 
 partial def walk (env : Environment) (drop : Std.HashSet Name) (keys : Std.HashSet String)
     (rets : Std.HashSet Name) (self : Name) (arm : Option String) (ctx : Array (Option Root)) (e : Expr) :
     StateM Walk Unit := do
-  if (← get).seen.contains (e, ctx.size) then return
-  modify fun w => { w with seen := w.seen.insert (e, ctx.size), steps := w.steps + 1 }
+  let memo := (e, ctx.size, labelsKey ctx, arm)
+  if (← get).seen.contains memo then return
+  modify fun w => { w with seen := w.seen.insert memo, steps := w.steps + 1 }
   if (← get).steps > (← get).budget then return
   match e with
   | .app .. =>
@@ -454,7 +474,7 @@ partial def walk (env : Environment) (drop : Std.HashSet Name) (keys : Std.HashS
               | some (_, fs) =>
                 if fs.any (fun (k, _) => keys.contains k) then
                   fs.map (fun (k, h) => some (k, h))
-                else fs.map fun _ => major?
+                else fs.map fun _ => major?.map nestedRoot
               | none => #[]
             let mut arm' := arm
             if labels.any (fun l => l.any fun (k, _) => keys.contains k) then
@@ -586,9 +606,18 @@ def classify (shown : Std.HashSet String) (positions supply consumers : List Str
       (match cons.get? key with | some ("unreadable", _) => true | _ => false)
     let _ := isCtor
     let _ := cons
+    let nk := key ++ "/nested"
     let cls :=
       if !declReached shown p.decl then "off-unreached"
-      else if p.site == "[ret]" then (if on.contains key then "on-conclusion" else "off-conclusion")
+      else if p.site == "[ret]" then
+        (if on.contains (if p.kind == "nested" then nk else key) then "on-conclusion" else "off-conclusion")
+      else if p.kind == "nested" then
+        -- the binder's inner disjunctions share one key: read collectively, never off the top row
+        if hasArm nk "drop" then "on-drop-nested"
+        else if hasArm nk "via" then "on-via-nested"
+        else if relayed.contains nk then "on-relay-nested"
+        else if hasArm nk "honest" then "off-honest-nested"
+        else "nested-unresolved"
       else if hasArm key "drop" then "on-drop"
       else if hasArm key "via" then "on-via"
       else if relayed.contains key then "on-relay"
@@ -602,14 +631,16 @@ def count (cs : Array Classed) (f : Classed → Bool) : Nat := (cs.filter f).siz
 /-- The one-line summary the guard pins. -/
 def summary (cs : Array Classed) (consumed : List String) (saReached saTotal : Nat) (unrooted : Nat := 0) : String :=
   let classes := ["on-drop", "on-via", "on-relay", "on-conclusion",
-                  "off-honest", "off-unread", "off-conclusion", "off-unreached"]
+                  "off-honest", "off-unread", "off-conclusion", "off-unreached",
+                  "on-drop-nested", "on-via-nested", "on-relay-nested", "off-honest-nested", "nested-unresolved"]
   let byCls := " ".intercalate (classes.map fun c => s!"{c}={count cs (·.cls == c)}")
   let on := cs.filter (·.cls.startsWith "on-")
   let off := cs.filter (·.cls.startsWith "off-")
   let byAlt (xs : Array Classed) (a : String) := (xs.filter (·.pos.alt == a)).size
   -- a nested position shares its top binder's key: count the DECLINE edges once, at the top
   let decl (xs : Array Classed) := (xs.filter (·.pos.kind == "top")).foldl (· + ·.declines) 0
-  s!"positions={cs.size} on={on.size} off={off.size} {byCls} " ++
+  let unres := cs.filter (·.cls == "nested-unresolved")
+  s!"positions={cs.size} on={on.size} off={off.size} unresolved={unres.size} {byCls} " ++
   s!"on-by-alt: True={byAlt on "True"} PackAlt={byAlt on "PackAlt"} PackAltG={byAlt on "PackAltG"} " ++
   s!"off-by-alt: True={byAlt off "True"} PackAlt={byAlt off "PackAlt"} PackAltG={byAlt off "PackAltG"} " ++
   s!"pack-declines: on={decl (on.filter (·.pos.alt != "True"))} off={decl (off.filter (·.pos.alt != "True"))} " ++
