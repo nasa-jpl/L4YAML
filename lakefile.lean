@@ -395,6 +395,11 @@ lean_exe «scripts-gate-vocab» where
   root := `Scripts.Main.GateVocab
 
 @[default_target]
+lean_exe «scripts-capstone-path» where
+  root := `Scripts.Main.CapstonePath
+  supportInterpreter := true
+
+@[default_target]
 lean_exe «scripts-docs-nav» where
   root := `Scripts.Main.DocsNav
 
@@ -629,6 +634,13 @@ script «beta5-map» (args) do
 script «check-gate-vocab» (args) do
   let ws ← getWorkspace
   runGateExe ws.root.dir "scripts-gate-vocab" #[] args #[] ws.augmentedEnvVars
+
+/-- `lake run capstone-path [-- --check]`: the `∨ True` audit's positions ON / OFF the capstone's
+    path (item 439; pin: `Tests/Guards/Proofs/CapstonePathAudit.lean`); loads the built
+    `DocumentProduction` environment, so the library is built first. -/
+script «capstone-path» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-capstone-path" #[] args
+    #["L4YAML.Proofs.Production.DocumentProduction"]
 
 /-- `lake run check-pack-births`: the pack producers' `PackAlt` writes (item 431, the pack lane's
     recorded residue) against `expectedPackBirths`; reads `StreamAccum.olean`'s declaration ranges,
