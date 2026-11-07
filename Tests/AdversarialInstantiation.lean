@@ -11749,9 +11749,11 @@ def testFlowSyncPrereqs (state : IO.Ref TestCollector) : IO Unit := do
     head (`vals[0] = SS`), `Shape (vals s)`, deep (`1 < indents.size ∨ 0 ≤ currentIndent ⇒` the
     last real token is not a boundary), flow (`0 < flowLevel ⇒` same), fresh (boundary ⇒
     `currentIndent = −1 ∧ flowLevel = 0`), slot (`simpleKey.possible ⇒` the token before the slot
-    is not a boundary, or `flowLevel = 0 ∧ (currentIndent < key.col ∨ simpleKeyAllowed)`), stack
+    is not a boundary, or `flowLevel = 0 ∧ (currentIndent < key.col ∨ (simpleKeyAllowed ∧` the indent top is
+    the sequence entry at the key's column`))`), stack
     (`∀ j`, a possible stacked key's predecessor is not a boundary, or `j = 0 ∧ currentIndent <
-    key.col`).  Predictions: P1 — all seven hold on every reached state of every row; P2 — the slot
+    key.col`), tail / stackTail (no boundary token from a possible key's slot onwards — what makes the
+    inserted `.key`'s `.value` live).  Predictions: P1 — all nine hold on every reached state of every row; P2 — the slot
     clause's `simpleKeyAllowed` alternative is LOAD-BEARING: with it withdrawn the clause fails on
     `- a` right after `scanBlockEntry` (the key saved at `-` sits after `SS`, `pushSequenceIndent`
     raised the indent and kept it); P3 — the stack clause's `j = 0` alternative is load-bearing:
@@ -11761,10 +11763,25 @@ open L4YAML.Proofs.DirectiveRuns (vals)
 
 def bndAt (L : List YamlToken) (idx : Nat) : Bool := L4YAML.Proofs.DocStartLive.Bnd (L4YAML.Proofs.DocStartLive.lastReal (L.take idx))
 
+/-- v3 of the slot arm: the stale key a `-` leaves behind is recognisable — `simpleKeyAllowed`
+    is still up AND the indent top is the sequence entry at the key's column (which is exactly
+    what `scanValueValidate` refuses with `trailingContent`). -/
+def seqTopAt (s : ScannerState) (k : SimpleKeyState) : Bool :=
+  match s.indents.back? with
+  | some top => top.isSequence && top.column == (k.pos.col : Int)
+  | none => false
+
 def slotOK (s : ScannerState) (allowedArm : Bool) : Bool :=
   !s.simpleKey.possible ||
     !bndAt (vals s) s.simpleKey.tokenIndex ||
-    (s.flowLevel == 0 && (s.currentIndent < (s.simpleKey.pos.col : Int) || (allowedArm && s.simpleKeyAllowed)))
+    (s.flowLevel == 0 && (s.currentIndent < (s.simpleKey.pos.col : Int) ||
+      (allowedArm && s.simpleKeyAllowed && seqTopAt s s.simpleKey)))
+
+def tailOK (L : List YamlToken) (idx : Nat) : Bool :=
+  (L.drop idx).all fun t => !L4YAML.Proofs.DocStartLive.Bnd (some t)
+
+def stackTailOK (s : ScannerState) : Bool :=
+  s.simpleKeyStack.all fun k => !k.possible || tailOK (vals s) k.tokenIndex
 
 def stackOK (s : ScannerState) (zeroArm : Bool) : Bool :=
   (List.range s.simpleKeyStack.size).all fun j =>
@@ -11782,7 +11799,9 @@ def clauses (s : ScannerState) : List (String × Bool) :=
     ("flow", !(0 < s.flowLevel) || !b),
     ("fresh", !b || (s.currentIndent == -1 && s.flowLevel == 0)),
     ("slot", slotOK s true),
-    ("stack", stackOK s true) ]
+    ("stack", stackOK s true),
+    ("tail", !s.simpleKey.possible || tailOK L s.simpleKey.tokenIndex),
+    ("stackTail", stackTailOK s) ]
 
 def rows : List String :=
   P91.rows ++ P92.extraRows ++ P93.rows ++
@@ -11797,6 +11816,7 @@ def testLiveInvCarrier (state : IO.Ref TestCollector) : IO Unit := do
   let mut states := 0
   let mut slotNoAllowed := 0
   let mut stackNoZero := 0
+  let mut seqTopStale := 0
   let mut keyStates := 0
   let mut stackStates := 0
   for input in P94.rows do
@@ -11810,9 +11830,11 @@ def testLiveInvCarrier (state : IO.Ref TestCollector) : IO Unit := do
       if s.simpleKeyStack.any (·.possible) then stackStates := stackStates + 1
       if !P94.slotOK s false then slotNoAllowed := slotNoAllowed + 1
       if !P94.stackOK s false then stackNoZero := stackNoZero + 1
+      if s.simpleKey.possible && P94.bndAt (L4YAML.Proofs.DirectiveRuns.vals s) s.simpleKey.tokenIndex
+          && !(s.currentIndent < (s.simpleKey.pos.col : Int)) then seqTopStale := seqTopStale + 1
       k := k + 1
-  checkM state s!"P94 states={states} rows={P94.rows.length} key-possible states={keyStates} stacked-key states={stackStates}; withdrawn `simpleKeyAllowed` arm fails on {slotNoAllowed}; withdrawn `j = 0` arm fails on {stackNoZero}"
-    (states > 0 && keyStates > 0 && stackStates > 0 && slotNoAllowed > 0 && stackNoZero > 0) ""
+  checkM state s!"P94 states={states} rows={P94.rows.length} key-possible states={keyStates} stacked-key states={stackStates}; withdrawn `simpleKeyAllowed` arm fails on {slotNoAllowed}; withdrawn `j = 0` arm fails on {stackNoZero}; stale-after-`-` keys (boundary before the slot, indent not below the key) = {seqTopStale}"
+    (states > 0 && keyStates > 0 && stackStates > 0 && slotNoAllowed > 0 && stackNoZero > 0 && seqTopStale > 0) ""
 
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
