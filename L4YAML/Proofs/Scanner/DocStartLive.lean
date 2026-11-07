@@ -212,7 +212,7 @@ structure LiveInv (s : ScannerState) : Prop where
   fresh : Bnd (lastReal (vals s)) = true → s.currentIndent = -1 ∧ s.flowLevel = 0
   slot : s.simpleKey.possible = true → SlotOK (vals s) s.flowLevel s.currentIndent s.simpleKey
   stack : ∀ j (h : j < s.simpleKeyStack.size), s.simpleKeyStack[j].possible = true →
-    Bnd (lastReal ((vals s).take s.simpleKeyStack[j].tokenIndex)) = false
+    SlotOK (vals s) 0 s.currentIndent s.simpleKeyStack[j]
 
 /-- The key transport the invariant needs: a still-possible key is the old one. -/
 def KeyTr (s s' : ScannerState) : Prop :=
@@ -281,8 +281,9 @@ lemma LiveInv.ext (s s' : ScannerState) (hI : LiveInv s) (M : List YamlToken)
   stack := by
     intro j hj hp
     simp only [hst] at hj hp ⊢
-    rw [hv, take_append_of_le _ _ _ (hsl j hj hp)]
-    exact hI.stack j hj hp
+    have : s'.currentIndent = s.currentIndent := by simp [ScannerState.currentIndent, hind]
+    rw [hv, this]
+    exact SlotOK_append _ _ _ _ _ (hsl j hj hp) (hI.stack j hj hp)
 
 
 end L4YAML.Proofs.DocStartLive
