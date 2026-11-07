@@ -372,6 +372,7 @@ declarations' own binders and not by a rescoring of an existing one.
 -- 2026-10-30 (item 407, flow carrier `pendingKeys` conjunct): constants 1733 → 1734 — `allowDirectives_update_pendingKeys`.
 -- 2026-11-02 (item 422): the PEELED module census moved — the five `h_outer` writes decide `MarkedColsIn s_prep [k]` (one `Classical.em`) in
 -- place of `h_park`/`h_kslotUp` reads; two opener `h_ref` relays; `exists_mem_ne_of_not_markedColsIn` added.
+-- 2026-11-07 (item 448, (α) stage A): constants 1742 → 1744, READ +3, RETURN +1 — `ResumeFrames.strict` and its `match` auxiliary.
 def expectedModuleTallyP : String :=
   -- 2026-10-24 (item 350): constants 1424 → 1430, decls 1132 → 1137, READ 1207 → 1209, RELAY 2233 → 2237,
   -- RETURN 139 → 140 — `NotQuestionPark` and its three lemmas; `explFrameValueLine`'s split alternative.
@@ -389,7 +390,7 @@ def expectedModuleTallyP : String :=
   -- 2026-10-28 (item 386): constants/decls +2 (`IndentFloor.int_le_of_succ`, the level relays), READ +5, RELAY +2
   -- (the helpers' new premises `h_floor`/`h_nk`, the openers' `h_lvl_old`/`h_floor_mv`); UNUSED unchanged.
   -- 2026-10-29 (item 394): `FlowBaseRoutes.valueF` (+3 constants: the field, its projection, the structure's new arity), five more premise reads at the births and closes.
-  "constants=1742 decls=1377 eta=450 FIELD=201 READ=1478 RELAY=2745 RETURN=174 UNUSED=27"
+  "constants=1744 decls=1379 eta=450 FIELD=201 READ=1481 RELAY=2745 RETURN=175 UNUSED=27"
 
 -- Item 287: `accum_block_on_closeThenBlock`'s `h_vslot`, a READ one, left the
 -- `_ ∨ True` population — its sibling's move, under this peel.  Item 288: and

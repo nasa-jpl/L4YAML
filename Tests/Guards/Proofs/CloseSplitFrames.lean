@@ -645,11 +645,13 @@ def doorOf (lem : Name) (parks : List Name) : MetaM (Array String) := do
 -- domain under an `if hns` split, declined otherwise; it now reads `other(MarkedColsIn s_prep [k])→paid|—`: K7 is
 -- DECIDED at the prepared register and its complement is the ARMED fact (`exists_mem_ne_of_not_markedColsIn`), so
 -- the second arm is a pay, not a punt (the openers' `h_outer` body, (γ′)).
+-- 2026-11-07 (item 448, (α) stage A): `closeThenBlock`'s `h_valF` lost its `wb` tag — the face's width bound is
+-- `∀ fr ∈ ks, fr.width ≤ nv` now (the park's own level admitted), which the walker does not read as a `<` bound.
 def expectedSpends : List String :=
   [
   "keyctx_of_preprocess #1 width feeds=tuple frames=[] cover=none floor=none above=[other(s_prep.simpleKey.possible = true ∧ s_pre…),other((∃ k, SIndent k sp_mid sp_ws) ∨ ∃ sa sb,…),other(h_disj:SSLComments sp_g sp_mid ∧ sp_mid.…)] beside=[]",
    -- Item 371: the restated value-line pack (`⇒ Resume(map(_)::[])▹Stream`, `ResumeFrames.one`'s level)
-   "accum_block_on_closeThenBlock #2 width feeds=tuple frames=[base:h_base,closeF(opt):h_mapF,closeF(opt):h_vpack,closeF(opt,wb,cover@2,floor@2):h_valF,closeF:h_vslot,closeFV(opt):h_valFV,closeFV(opt,cover@2,floor@2):h_mapFV,mono:h_mono,nic0:h_nic0,seqF(opt):h_seqF,tail(opt):h_tail139] cover=@2 floor=@2 above=[other(h_land:SSLComments sp_gram sp_mid ∧ sp_m…)] beside=[]",
+   "accum_block_on_closeThenBlock #2 width feeds=tuple frames=[base:h_base,closeF(opt):h_mapF,closeF(opt):h_vpack,closeF(opt,cover@2,floor@2):h_valF,closeF:h_vslot,closeFV(opt):h_valFV,closeFV(opt,cover@2,floor@2):h_mapFV,mono:h_mono,nic0:h_nic0,seqF(opt):h_seqF,tail(opt):h_tail139] cover=@2 floor=@2 above=[other(h_land:SSLComments sp_gram sp_mid ∧ sp_m…)] beside=[]",
    -- item 385: the no-pop leaf (`s_prep.indents = sc.indents`) passes the park's `closeF` frames
    -- into `deeperLandingResumeSeq` instead of declining (`E:pass`)
    -- 2026-10-29 (item 387): `#3` gains `kn(n < k)→paid,E:pass|—` before `col0` — the no-pop arm's
@@ -683,6 +685,8 @@ def expectedSpends : List String :=
 -- and `dite other [∀ x ∈ ns → x = k] → paid|punt` rows (K7 read off the chain's cover, declined otherwise) become ONE
 -- `Or.elim other [MarkedColsIn s_prep [k] ∨ ¬ …] → paid|—` row: K7 decided at the prepared register, its complement the
 -- ARMED fact ((γ′), `exists_mem_ne_of_not_markedColsIn`).
+-- 2026-11-07 (item 448, (α) stage A): the two `dite kn` rows of `closeThenBlock` read one `E:empty` more — the
+-- `nv = k` arm's `SBlockNode.emptyNode` close, off which the mapping's frames' strict order is read (`ResumeFrames.strict`).
 def expectedDecisions : List String :=
   [ "flowKeyRoute_of_root dite kmem [Proofs.IndentStackCover.FrameLevel.map w ∈ ks] → E:other(lemma:SSLCommentsFrom_at_park(prem:ScannerSurfCorr,prem:GStar,prem:∀→Not,lemma:left(prem:And),lemma:left(lemma:right(lemma:right(…)))))|punt pos=—",
     "flowKeyRoute_of_root dite kmem [Proofs.IndentStackCover.FrameLevel.map w ∈ ks] → E:other(lemma:SSLCommentsFrom_at_park(prem:ScannerSurfCorr,prem:GStar,prem:∀→Not,lemma:left(prem:And),lemma:left(lemma:right(lemma:right(…)))))|punt pos=—",
@@ -708,9 +712,9 @@ def expectedDecisions : List String :=
     "accum_block_on_closeThenBlock dite kn [nv + 1 ≤ k] → E:pass×4|punt pos=—",
     "accum_block_on_closeThenBlock dite kmem [k ∈ ns] → E:pass|— pos=—",
     "accum_block_on_closeThenBlock dite kmem [k ∈ ns] → E:pass|— pos=—",
-    "accum_block_on_closeThenBlock dite kn [nv < k] → paid,E:other(lemma:SBlockNode_blockIn_to_blockOut(SBlockNode.blockSeq(GOpt.none,prem:SSLComments,lemma:SBlockSeqEntries_of_compactTail(prem:SIndent,prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail))))|E:other(SBlockNode.blockSeq(GOpt.none,prem:SSLComments,lemma:SBlockSeqEntries_of_compactTail(prem:SIndent,prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail)))×2,E:pass,E:carry pos=—",
+    "accum_block_on_closeThenBlock dite kn [nv < k] → paid,E:other(lemma:SBlockNode_blockIn_to_blockOut(SBlockNode.blockSeq(GOpt.none,prem:SSLComments,lemma:SBlockSeqEntries_of_compactTail(prem:SIndent,prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail))))|E:empty,E:other(SBlockNode.blockSeq(GOpt.none,prem:SSLComments,lemma:SBlockSeqEntries_of_compactTail(prem:SIndent,prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail)))×2,E:pass,E:carry pos=—",
     "accum_block_on_closeThenBlock dite k? [s_prep.currentIndent < ↑k] → paid|paid pos=—",
-    "accum_block_on_closeThenBlock dite kn [nv ≤ k] → paid,E:other(SBlockNode.blockSeq(GOpt.none,prem:SSLComments,lemma:SBlockSeqEntries_of_compactTail(prem:SIndent,prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail)))×2,E:pass|paid,E:carry pos=—",
+    "accum_block_on_closeThenBlock dite kn [nv ≤ k] → paid,E:empty,E:other(SBlockNode.blockSeq(GOpt.none,prem:SSLComments,lemma:SBlockSeqEntries_of_compactTail(prem:SIndent,prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail)))×2,E:pass|paid,E:carry pos=—",
    -- 2026-10-29 (item 387): the no-pop arm's strict split `n < k` (paid: the helper; `E:pass`: `k = n` to the sequence-top split).
     "accum_block_on_pendingBlock Or.casesOn kn [n < k ∨ n ≥ k] → E:node×5|P:hand,E:carry,E:empty×3,E:node pos=—",
     -- item 385: the no-pop leaf decides on `s_prep.indents = sc.indents` and passes the park's
@@ -809,12 +813,13 @@ def expectedDoor : List String :=
 -- 2026-10-30 (item 405, Rule 8 fix): `apps` 43 → 48 — the five `h_kslot` decisions apply `MarkedColsIn.relay`/`markedCols` instead of destructuring a chain.  Rule 8 fix (same item): the five `h_kslot` decisions re-read with the projection (`∀ (nv : Nat), nv ∈ markedCols sc …`; the `kmem` splits read `k ∈ markedCols sc`).
 -- 2026-11-02 (item 422): decisions 141 → 139 — `accum_block_on_pendingBlock` beside #4's two rows (`Or.elim opt` punt +
 -- `dite` over the cover) became one paid `Or.elim` over `MarkedColsIn s_prep [k]` (see `expectedDecisions`).
+-- 2026-11-07 (item 448, (α) stage A): `apps` 53 → 54 — the `nv = k` arm's `SBlockNode.emptyNode` application (`ResumeFrames.strict`'s read).
 def expectedLine : String :=
   -- 2026-10-26 (item 366): decisions 114 → 115 — the `Classical.em (MarkedColsIn sc [k])` decision at
   -- `accum_block_on_closeThenBlock`'s explicit `:` face; no frame row moved.
 -- Item 371 (kslot=4 → 0, kslotUp=4 → 0): the value-line packs end in the one-level
 -- `ResumeFrames`; `question_open_map`'s `h_expl`/`h_closeFV`/`h_framesV` come from the bound tail route `h_route51F`.
-  "asked=6 both=4 lemmas=1 walked=4 feedFunnel=1 feedExplicit=1 feedDeferred=2 feedTuple=0 entry=4 entrySBI=4 kslot=0 kslotUp=0 closeF=4 closeFV=4 seqF=4 top=4 floor=0 cover=4 cover2=4 floorB=4 aboveKN=0 aboveKMem=1 aboveKNv=0 aboveKEx=1 hands=1 besideKN=1 besideKMem=1 besideKNv=0 puntKN=1 puntKMem=0 besideNone=0 decisions=139 decOnK=26 decKN=13 decKMem=12 decKNv=1 apps=53 funnelArgs=1 doorDropped=4/1 closeSites=5 params=5"
+  "asked=6 both=4 lemmas=1 walked=4 feedFunnel=1 feedExplicit=1 feedDeferred=2 feedTuple=0 entry=4 entrySBI=4 kslot=0 kslotUp=0 closeF=4 closeFV=4 seqF=4 top=4 floor=0 cover=4 cover2=4 floorB=4 aboveKN=0 aboveKMem=1 aboveKNv=0 aboveKEx=1 hands=1 besideKN=1 besideKMem=1 besideKNv=0 puntKN=1 puntKMem=0 besideNone=0 decisions=139 decOnK=26 decKN=13 decKMem=12 decKNv=1 apps=54 funnelArgs=1 doorDropped=4/1 closeSites=5 params=5"
 
 /-! ## §5 The reading -/
 

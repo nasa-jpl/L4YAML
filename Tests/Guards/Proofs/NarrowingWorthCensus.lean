@@ -294,7 +294,9 @@ def isSurfFace (env : Environment) (lhs : Expr) : MetaM Bool := do
 -- 2026-10-30 (item 405): faces 63 → 64 — `pendingMapValue.h_explUp`'s new `∨ PackAlt sc` arm (ruling "405 a").
 -- 2026-11-02 (item 422): binders 163 → 161, faces 64 → 63, heads 20 → 19 — the openers' `h_outer` `∨ True` is a body now (the
 -- two parameters leave the optional population); see `expectedWorthLedger`.
-def expectedFaceTally : String := "binders=161 faces=63 heads=19"
+-- 2026-11-07 (item 448, (α) stage A): faces 63 → 62 — `closeThenBlock`'s `h_valF` width bound reads `≤ nv` (the park's own
+-- level admitted), one strict-width narrowing face fewer; `theorems` 6498 → 6499 is `ResumeFrames.strict`.
+def expectedFaceTally : String := "binders=161 faces=62 heads=19"
 
 /-- The conclusion head of every left disjunct.  `FVAR 2` is `frameChainUnion`,
     whose face is schematic in `P` — the two rows no census of any kind can
@@ -306,6 +308,8 @@ def expectedFaceTally : String := "binders=161 faces=63 heads=19"
 -- 2026-10-30 (item 405, Rule 8 fix): the `?`-park chain is re-indexed by the projection `markedCols sc` (`∀ nv ∈ markedCols sc, …`), so the five value-line binders that had briefly headed on `MarkedColsIn` (the head-form chain's first conjunct) head on `ResumeFrames` again — MarkedColsIn 15 / ResumeFrames 18, item 404's reading.
 -- 2026-11-02 (item 422): `Sound 2` retired — the two `h_outer` `∨ True` binders headed by `PendingKeySound.Sound s_prep ∧ …`
 -- are bodies now ((γ′)).
+-- 2026-11-07 (item 448, (α) stage A): heads `lt` 30 → 26, `le` 11 → 15 — the four `:` park faces' width bound
+-- (`pendingMapValue.h_closeF`, the two `h_valF`, the `h_closeF` mirror) read `≤ n`, the park's own level admitted.
 def expectedHeadCensus : List String :=
   -- Item 300: `Eq` 17 → 19, the two new optional binders (`h_markerline`, `h_marker_new`).
   -- Item 304: `ResumeFrames` 12 → 3 and `KeyFrames` 9 — the value-line stacks' heads.
@@ -335,8 +339,8 @@ def expectedHeadCensus : List String :=
    "SLYamlStream 5",
    "SeqEntryTail 7",
    "SuffixRun 6",
-   "le 11",
-   "lt 30"]
+   "le 15",
+   "lt 26"]
 
 /-! ## §3  The rung-1 census: which faces are vacuous on their own
 
@@ -894,7 +898,7 @@ one unfolding, and §6 is the item where those two disagreed about binders. -/
 -- 2026-10-30 (item 405, Rule 8 fix): theorems 6480 → 6484 — `RegisterWitness.markedCols`, `markedCols_mem`, `MarkedColsIn.self`, `MarkedColsIn.relay`.
 -- 2026-10-30 (item 407, flow carrier `pendingKeys` conjunct): theorems 6484 → 6487 — `closeStaleExplicitKey_pendingKeys_of_inFlow`, `preprocess_pendingKeys_of_inFlow`, `allowDirectives_update_pendingKeys`.
 -- 2026-11-02 (item 422): theorems 6493 → 6494 — `RegisterWitness.exists_mem_ne_of_not_markedColsIn`.
-def expectedNoopTally : String := "theorems=6498 byElab=16 byWhnf=16 elabOnly=0 whnfOnly=0"
+def expectedNoopTally : String := "theorems=6499 byElab=16 byWhnf=16 elabOnly=0 whnfOnly=0"
 -- 5302 → 5344 on 2026-10-18 (plan row 20's close, closure-log item 280): the
 -- parse-side alias obligation moved to §7.1's DECLARATION set, so the carrier
 -- grew and the predicate gained its tools.  What is new in kind: `AG` carries

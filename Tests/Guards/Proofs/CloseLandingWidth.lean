@@ -572,6 +572,10 @@ def expectedEmpties : List String :=
    "accum_block_on_pendingBlock SBlockIndented.empty n=n @sp_mid width=ind[ws:hws,col:hcol_mid,ind:h_ind] cmp=no",
    "accum_block_on_pendingBlock SBlockIndented.empty n=n @sp_m width=ind[ind:h_iv] cmp=no",
    "accum_block_on_pendingBlock SBlockIndented.empty n=n @sp_mid width=ind[ws:hws,col:hcol_mid,ind:h_ind] cmp=yes[h_nk:n ≤ k,hnk:¬n < k]",
+   -- 2026-11-07 (item 448): 28 → 29 — stage A of the (α) root-frame supply reads `h_valF`'s park face as
+   -- `≤ nv`; `closeThenBlock`'s `nv = k` arm (item 388) now reads the mapping's own frames' strict order
+   -- off the empty-value close (`ResumeFrames.strict`) instead of off the face.
+   "accum_block_on_closeThenBlock SBlockNode.emptyNode n=nv + 1 @sp_mid width=ind[ws:hws,col:hcol_mid,ind:h_ind] cmp=yes[hnv:¬nv < k,hnk:nv ≤ k]",
    "accum_block_pending SBlockNode.emptyNode n=nmv + 1 @sp_m width=ind[ind:h_ind] cmp=no",
    "accum_block_pending SBlockIndented.empty n=nmv @sp_m width=ind[ind:h_ind] cmp=yes[≡nmv]",
    "accum_block_pending SBlockNode.emptyNode n=nmv + 1 @sp_m width=ind[ind:h_ind] cmp=no",
@@ -614,7 +618,7 @@ def expectedEmpties : List String :=
 def expectedLine : String :=
 -- Item 371 (empties=25 → 27, emptyLemmas=6 → 8): the value-line packs end in the one-level
 -- `ResumeFrames`; `question_open_map`'s `h_expl`/`h_closeFV`/`h_framesV` come from the bound tail route `h_route51F`.
-  "closeSites=5 closePairs=6 closePairsD=8 viaClose=3 params=5 spends=24 spendsC=6 spendsE=0 spendsN=18 handoffs=6 carries=1 untyped=1 edges=3 paramsWalked=7 widthInd=5 widthWs=1 widthNone=0 idxDirect=4 idxPacked=1 idxNone=1 cmp=0 cmpSame=0 both=4 bothCmp=0 handInd=5 handDirect=6 handCmp=5 sitesBoth=1 sitesWidth=2 sitesNeither=2 sitesBothAll=0 empties=28 emptyLemmas=8 emptyInd=13 emptyCmp=5 emptySame=2 emptyClose=2 sites=20 pairs=20 pairs21=20 pairs18=18 nonANoDrop=8 reach=38"
+  "closeSites=5 closePairs=6 closePairsD=8 viaClose=3 params=5 spends=24 spendsC=6 spendsE=0 spendsN=18 handoffs=6 carries=1 untyped=1 edges=3 paramsWalked=7 widthInd=5 widthWs=1 widthNone=0 idxDirect=4 idxPacked=1 idxNone=1 cmp=0 cmpSame=0 both=4 bothCmp=0 handInd=5 handDirect=6 handCmp=5 sitesBoth=1 sitesWidth=2 sitesNeither=2 sitesBothAll=0 empties=29 emptyLemmas=9 emptyInd=14 emptyCmp=6 emptySame=2 emptyClose=2 sites=20 pairs=20 pairs21=20 pairs18=18 nonANoDrop=8 reach=38"
 
 /-! ## §5 The reading -/
 
