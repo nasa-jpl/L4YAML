@@ -5571,12 +5571,17 @@ inside an open document are plain continuations (`[69]`: the open node is a plai
 as a character (`[126]` ns-plain-first excludes it), not as a directive. -/
 def testDirectiveAfterContent (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 69: directiveAfterContent — a `%` line while a document is open is a plain continuation or a refusal, never a directive"
-  let firstScalar (docs : Array YamlDocument) : String :=
-    match docs[0]?.map (fun d => d.value) with
-    | some (YamlValue.scalar s) => s.content
-    | _ => ""
-  -- (label, input, accepted as (documents, first document's scalar content), `directiveAfterContent` line)
-  let rows : List (String × String × Option (Nat × String) × Option Nat) :=
+  -- the first document's leading scalar: through a sequence's first element or a mapping's first
+  -- value, so a dropped continuation (`[a⏎%b]` without `%b`) is a failure, not a blank
+  let rec firstContent : Nat → YamlValue → String
+    | _, YamlValue.scalar s => s.content
+    | fuel + 1, YamlValue.sequence _ arr _ _ => (arr[0]?.map (firstContent fuel)).getD "<empty sequence>"
+    | fuel + 1, YamlValue.mapping _ arr _ _ => (arr[0]?.map (fun p => firstContent fuel p.2)).getD "<empty mapping>"
+    | _, _ => "<other>"
+  let firstDoc (docs : Array YamlDocument) : String :=
+    (docs[0]?.map (fun d => firstContent 8 d.value)).getD "<no document>"
+  -- (label, input, accepted as (documents, first document's leading scalar), or the exact refusal)
+  let rows : List (String × String × Option (Nat × String) × Option ScanError) :=
     [ ("a⏎%YAML 1.2⏎---⏎b (plain continuation, then an explicit document)", "a\n%YAML 1.2\n---\nb", some (2, "a %YAML 1.2"), none),
       ("a⏎%TAG ! !x⏎---⏎b", "a\n%TAG ! !x\n---\nb", some (2, "a %TAG ! !x"), none),
       ("a⏎%YAML 1.2 (last line)", "a\n%YAML 1.2", some (1, "a %YAML 1.2"), none),
@@ -5587,35 +5592,30 @@ def testDirectiveAfterContent (state : IO.Ref TestCollector) : IO Unit := do
       ("---⏎a⏎%YAML 1.2⏎---⏎b (inside an explicit document)", "---\na\n%YAML 1.2\n---\nb", some (2, "a %YAML 1.2"), none),
       ("%YAML 1.2⏎---⏎a⏎%YAML 1.2⏎---⏎b (after a real directive document)", "%YAML 1.2\n---\na\n%YAML 1.2\n---\nb", some (2, "a %YAML 1.2"), none),
       ("a⏎%YAML 1.2⏎...⏎%YAML 1.2⏎---⏎b (continuation, then `...`, then a real directive)", "a\n%YAML 1.2\n...\n%YAML 1.2\n---\nb", some (2, "a %YAML 1.2"), none),
-      ("[a⏎%b] (flow plain continuation)", "[a\n%b]", some (1, ""), none),
-      ("- a⏎  %b (continuation at column > 0)", "- a\n  %b", some (1, ""), none),
+      ("[a⏎%b] (flow plain continuation: the sequence's one element)", "[a\n%b]", some (1, "a %b"), none),
+      ("- a⏎  %b (continuation at column > 0: the sequence's one element)", "- a\n  %b", some (1, "a %b"), none),
       ("\"a⏎%b\" (quoted: text)", "\"a\n%b\"", some (1, "a %b"), none),
       ("a⏎...⏎%YAML 1.2⏎---⏎b (a directive after `...`: allowed)", "a\n...\n%YAML 1.2\n---\nb", some (2, "a"), none),
-      ("a: 1⏎%YAML 1.2⏎---⏎b: 2 (mapping value closed at the dedent)", "a: 1\n%YAML 1.2\n---\nb: 2", none, some 1),
-      ("- a⏎%YAML 1.2⏎---⏎b (sequence entry closed)", "- a\n%YAML 1.2\n---\nb", none, some 1),
-      ("a #c⏎%YAML 1.2⏎---⏎b (comment ends the plain scalar)", "a #c\n%YAML 1.2\n---\nb", none, some 1),
-      ("\"a\"⏎%YAML 1.2⏎---⏎b (quoted scalar closed)", "\"a\"\n%YAML 1.2\n---\nb", none, some 1),
-      ("a: |⏎  x⏎%YAML 1.2⏎---⏎b (block scalar closed at the dedent)", "a: |\n  x\n%YAML 1.2\n---\nb", none, some 2),
-      ("[a,⏎%b] (after a flow separator: no plain to continue)", "[a,\n%b]", none, some 1),
-      ("? a⏎%YAML 1.2⏎---⏎b (explicit key closed)", "? a\n%YAML 1.2\n---\nb", none, some 1),
-      ("a:⏎  %x (column > 0: `%` cannot start a plain scalar — refused as a character, not a directive)", "a:\n  %x", none, none) ]
-  for (label, src, accepted, dacLine) in rows do
-    match L4YAML.TokenParser.parseYaml src, accepted with
-    | .ok docs, some (n, content) =>
-      checkM state s!"directiveAfterContent/{label}" (docs.size == n && firstScalar docs == content)
-        s!"accepted: docs={docs.size} first={repr (firstScalar docs)}; expected {n} / {repr content}"
-    | .ok docs, none =>
+      ("a: 1⏎%YAML 1.2⏎---⏎b: 2 (mapping value closed at the dedent)", "a: 1\n%YAML 1.2\n---\nb: 2", none, some (.directiveAfterContent 1)),
+      ("- a⏎%YAML 1.2⏎---⏎b (sequence entry closed)", "- a\n%YAML 1.2\n---\nb", none, some (.directiveAfterContent 1)),
+      ("a #c⏎%YAML 1.2⏎---⏎b (comment ends the plain scalar)", "a #c\n%YAML 1.2\n---\nb", none, some (.directiveAfterContent 1)),
+      ("\"a\"⏎%YAML 1.2⏎---⏎b (quoted scalar closed)", "\"a\"\n%YAML 1.2\n---\nb", none, some (.directiveAfterContent 1)),
+      ("a: |⏎  x⏎%YAML 1.2⏎---⏎b (block scalar closed at the dedent)", "a: |\n  x\n%YAML 1.2\n---\nb", none, some (.directiveAfterContent 2)),
+      ("[a,⏎%b] (after a flow separator: no plain to continue)", "[a,\n%b]", none, some (.directiveAfterContent 1)),
+      ("? a⏎%YAML 1.2⏎---⏎b (explicit key closed)", "? a\n%YAML 1.2\n---\nb", none, some (.directiveAfterContent 1)),
+      ("a:⏎  %x (column > 0: `%` cannot start a plain scalar — refused as a character, not a directive)", "a:\n  %x", none, some (.unexpectedChar '%' 1 2)) ]
+  for (label, src, accepted, refusal) in rows do
+    match L4YAML.TokenParser.parseYaml src, accepted, refusal with
+    | .ok docs, some (n, content), _ =>
+      checkM state s!"directiveAfterContent/{label}" (docs.size == n && firstDoc docs == content)
+        s!"accepted: docs={docs.size} first={repr (firstDoc docs)}; expected {n} / {repr content}"
+    | .ok docs, none, _ =>
       checkM state s!"directiveAfterContent/{label}" false
-        s!"ACCEPTED (docs={docs.size} first={repr (firstScalar docs)}) but a refusal was expected"
-    | .error e, none =>
-      let msg := toString e
-      let expectedMsg := dacLine.map fun l => toString (ScanError.directiveAfterContent l)
-      checkM state s!"directiveAfterContent/{label}"
-        (match expectedMsg with
-         | some m => msg == m
-         | none => !(msg == toString (ScanError.directiveAfterContent 0) || (msg.splitOn "directive after").length > 1))
-        s!"refused: {msg}; expected {repr expectedMsg}"
-    | .error e, some _ =>
+        s!"ACCEPTED (docs={docs.size} first={repr (firstDoc docs)}) but a refusal was expected"
+    | .error e, _, some err =>
+      checkM state s!"directiveAfterContent/{label}" (toString e == toString err)
+        s!"refused: {e}; expected {err}"
+    | .error e, _, none =>
       checkM state s!"directiveAfterContent/{label}" false s!"REFUSED ({e}) but acceptance was expected"
 
 /-- Priority 34 (`[173]` tail confined to EOF): the executable side of
