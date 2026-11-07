@@ -64,4 +64,9 @@ open L4YAML.Proofs.DocStartLive in
 #guard_msgs in
 #print axioms Shape_append_live
 
+open L4YAML.Proofs.DocStartLive in
+/-- info: 'L4YAML.Proofs.DocStartLive.Bnd_lastReal_append_live' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Bnd_lastReal_append_live
+
 end Tests.Guards.DocStartLiveAxioms

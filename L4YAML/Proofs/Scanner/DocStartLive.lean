@@ -82,7 +82,7 @@ lemma Shape_snoc (L : List YamlToken) (t : YamlToken) (hL : Shape L)
     exact ht hl hp
   · rw [List.getElem?_append_right (Nat.le_of_lt hgt)] at hu
     have : j - L.length ≠ 0 := by omega
-    simp [List.getElem?_cons, this] at hu
+    simp [this] at hu
 
 lemma Shape_append_ph (L M : List YamlToken) (hL : Shape L) (hM : ∀ t ∈ M, nonPh t = false) :
     Shape (L ++ M) := by
@@ -198,7 +198,4 @@ lemma Bnd_lastReal_append_live (L M : List YamlToken) (hM : LiveExt M)
   · exact h'
   · rw [h'] at h; exact absurd h (by simp [(hM t ht hn).2])
 
-/-- The simple-key slot is reachable from the saved state: the real token before it
-    is no boundary, or the save happened in block context strictly deeper than the
-    current indent (so `scanValuePrepare` will open a mapping first). -/
 end L4YAML.Proofs.DocStartLive
