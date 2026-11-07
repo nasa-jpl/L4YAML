@@ -904,6 +904,88 @@ lemma LiveInv_dispatchFlow (s : ScannerState) (c : Char) (s' : ScannerState)
                   (scanFlowEntry_preserves_simpleKeyStack s _ h_entry) hind hA hI
           · simp at h
 
+/-! ### Rewriting a slot: `set` with a real non-boundary token -/
+
+lemma snoc_ind' {P : List YamlToken → Prop} (h0 : P []) (h1 : ∀ L t, P L → P (L ++ [t])) :
+    ∀ L, P L := by
+  intro L
+  induction h : L.length generalizing L with
+  | zero => cases L with
+    | nil => exact h0
+    | cons => simp at h
+  | succ n ih =>
+    rcases List.eq_nil_or_concat L with rfl | ⟨L', t, rfl⟩
+    · simp at h
+    · rw [List.concat_eq_append] at h ⊢
+      simp at h; exact h1 _ _ (ih _ h)
+
+lemma lastReal_append_real (L M : List YamlToken) (hex : ∃ u ∈ M, nonPh u = true) :
+    ∃ t ∈ M, nonPh t = true ∧ lastReal (L ++ M) = some t := by
+  induction M using snoc_ind' generalizing L with
+  | h0 => obtain ⟨u, hu, _⟩ := hex; simp at hu
+  | h1 M t ih =>
+    rw [← List.append_assoc, lastReal_snoc]
+    cases hnt : nonPh t with
+    | true => exact ⟨t, by simp, hnt, rfl⟩
+    | false =>
+      obtain ⟨u, hu, hnu⟩ := hex
+      have hu' : u ∈ M := by
+        rcases List.mem_append.1 hu with hu | hu
+        · exact hu
+        · simp at hu; subst hu; rw [hnt] at hnu; cases hnu
+      obtain ⟨v, hv, hnv, hlv⟩ := ih L ⟨u, hu', hnu⟩
+      exact ⟨v, List.mem_append_left _ hv, hnv, hlv⟩
+
+lemma Bnd_lastReal_of_tail (L : List YamlToken) (idx : Nat) (h : TailOK L idx)
+    (hex : ∃ u ∈ L.drop idx, nonPh u = true) : Bnd (lastReal L) = false := by
+  obtain ⟨t, ht, _, hl⟩ := lastReal_append_real (L.take idx) (L.drop idx) hex
+  rw [List.take_append_drop] at hl
+  rw [hl]; exact h t ht
+
+lemma TailOK_set (L : List YamlToken) (idx j : Nat) (t : YamlToken) (ht : Bnd (some t) = false)
+    (h : TailOK L idx) : TailOK (L.set j t) idx := by
+  intro u hu
+  rw [List.drop_set] at hu
+  split at hu
+  · exact h u hu
+  · rcases List.mem_or_eq_of_mem_set hu with hu | rfl
+    · exact h u hu
+    · exact ht
+
+lemma Bnd_lastReal_set_false (L : List YamlToken) (j : Nat) (t : YamlToken) (hnp : nonPh t = true)
+    (ht : Bnd (some t) = false) (h : Bnd (lastReal L) = false) :
+    Bnd (lastReal (L.set j t)) = false := by
+  induction L using snoc_ind' generalizing j with
+  | h0 => simpa using h
+  | h1 L a ih =>
+    rw [List.set_append]
+    split
+    · rw [lastReal_snoc] at h ⊢
+      cases hna : nonPh a with
+      | true => rw [hna] at h; simpa using h
+      | false => rw [hna] at h; simp only [Bool.false_eq_true, ↓reduceIte] at h ⊢; exact ih j h
+    · rename_i hge
+      by_cases hj : j - L.length = 0
+      · rw [hj]; simp only [List.set_cons_zero]; rw [lastReal_snoc, hnp]; simpa using ht
+      · rw [List.set_eq_of_length_le (by simp; omega)]; exact h
+
+lemma Shape_set (L : List YamlToken) (j : Nat) (t : YamlToken) (hnp : nonPh t = true)
+    (ht : Bnd (some t) = false) (hL : Shape L)
+    (hj : liveTok t = false → Bnd (lastReal (L.take j)) = false) : Shape (L.set j t) := by
+  intro m u hm hu hdead hnpu
+  rw [List.take_set]
+  by_cases hmj : m = j
+  · subst hmj
+    rw [List.getElem?_set] at hu
+    simp only [↓reduceIte] at hu
+    split at hu
+    · simp only [Option.some.injEq] at hu; subst hu
+      rw [List.set_eq_of_length_le (by rw [List.length_take]; omega)]
+      exact hj hdead
+    · cases hu
+  · rw [List.getElem?_set_ne (Ne.symm hmj)] at hu
+    exact Bnd_lastReal_set_false _ _ _ hnp ht (hL m u hm hu hdead hnpu)
+
 end L4YAML.Proofs.DocStartLiveInv
 
 end Blanket
