@@ -150,12 +150,12 @@ open L4YAML.Proofs.Serialization.ScannerShape in
     `parseStreamLoop_cf` / `parseStream_ok_checkFrom` and the wrappers above carry it. -/
 
 open L4YAML.Proofs.Serialization.ParseCheckFrom in
-/-- info: 'L4YAML.Proofs.Serialization.ParseCheckFrom.LoopStuck_of_initial' depends on axioms: [propext,
+/-- info: 'L4YAML.Proofs.Serialization.ParseCheckFrom.LoopDead_of_initial' depends on axioms: [propext,
  Classical.choice,
  Quot.sound]
 -/
 #guard_msgs in
-#print axioms LoopStuck_of_initial
+#print axioms LoopDead_of_initial
 
 open L4YAML.Proofs.Serialization.ParseCheckFrom in
 /-- info: 'L4YAML.Proofs.Serialization.ParseCheckFrom.StopShape_after_documentEnd' depends on axioms: [propext,
