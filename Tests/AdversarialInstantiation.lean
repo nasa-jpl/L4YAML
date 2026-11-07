@@ -11584,6 +11584,7 @@ def testFlowSyncPrereqs (state : IO.Ref TestCollector) : IO Unit := do
   let mut loopFuel0 := 0
   let mut loopFuelOut := 0
   let mut loopOk := 0
+  let mut loopRefused := 0
   for input in P93.rows do
     let tr := P93.trajectory input
     checkM state s!"P93 {repr input}: start state FlowSync" (P93.flowSync tr.head!) ""
@@ -11616,9 +11617,11 @@ def testFlowSyncPrereqs (state : IO.Ref TestCollector) : IO Unit := do
     let s0 := tr.head!
     for fuel in List.range 4 do
       match scanLoopFull s0 fuel with
-      | .error _ =>
+      | .error e =>
         if fuel == 0 then loopFuel0 := loopFuel0 + 1
-        else loopFuelOut := loopFuelOut + 1
+        else match e with
+          | .fuelExhausted _ _ => loopFuelOut := loopFuelOut + 1
+          | _ => loopRefused := loopRefused + 1
       | .ok sF =>
         loopOk := loopOk + 1
         checkM state s!"P93 {repr input} scanLoopFull fuel {fuel}: success ⇒ FlowSync (fuel 0 never succeeds)"
@@ -11626,9 +11629,9 @@ def testFlowSyncPrereqs (state : IO.Ref TestCollector) : IO Unit := do
   checkM state s!"P93 steps={steps} in-flow steps={flowSteps} block steps changing indents={blockIndentChanges} skipToContent kept={allowedKept} raised={allowedRaised} deepest flow={deepest}"
     (steps > 0 && flowSteps > 0 && blockIndentChanges > 0 && allowedKept > 0 && allowedRaised > 0 && deepest >= 3) ""
   -- every row fails at fuel 0 (one error per row, never a success); fuel 1..3 splits into successes
-  -- (short rows) and fuel-outs, tallied apart so a fuel-out cannot pass as a success
-  checkM state s!"P93 scanLoopFull: fuel-0 failures={loopFuel0} rows={P93.rows.length} fuel 1..3 successes={loopOk} fuel-outs={loopFuelOut}"
-    (loopFuel0 == P93.rows.length && loopOk > 0 && loopFuelOut > 0) ""
+  -- (short rows), `fuelExhausted` fuel-outs and scanner refusals (`]` → `flowEndOutsideFlow`), tallied apart
+  checkM state s!"P93 scanLoopFull: fuel-0 failures={loopFuel0} rows={P93.rows.length} fuel 1..3 successes={loopOk} fuel-outs (`fuelExhausted`)={loopFuelOut} scanner refusals={loopRefused}"
+    (loopFuel0 == P93.rows.length && loopOk > 0 && loopFuelOut > 0 && loopRefused > 0) ""
   -- withdrawn-premise control for `FlowSync_scanNextToken`: desynchronise the stacks of a reached
   -- state and step — the conclusion must FAIL somewhere, else the premise is idle
   let mut desyncBroken := 0
