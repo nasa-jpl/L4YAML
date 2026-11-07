@@ -34,7 +34,10 @@ written up under the defect it fixed, not as a closure-log row.
 (Row 12 step 1, the frame-list retyping, is written up on its own branch;
 drop its row when that entry lands.) -/
 def declaredGaps : List (Nat × String) :=
-  [(18, "surrogate-hex-escapes-decoded-to-nul")]
+  [(18, "surrogate-hex-escapes-decoded-to-nul"),
+   -- 442: the slot two concurrent lanes both took on 2026-11-06 — Row 19's entry became 443 and
+   -- Row 12's (the (ω-negative) item) became 444; nothing was written as 442.
+   (442, "item-444-2026-11-06")]
 
 /-- One `### Item N[a] (DATE)` heading. -/
 structure Entry where
