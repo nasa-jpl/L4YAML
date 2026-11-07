@@ -18,10 +18,10 @@ public import L4YAML.Proofs.Scanner.FlowSync
 
     * `head`  — `vals[0] = .streamStart`;
     * `shape` — `Shape (vals s)`;
-    * `deep`  — an open block indent (or a non-negative `currentIndent`) means the
-      last real token is not a boundary (`.streamStart`/`.documentEnd`);
+    * `deep`  — a non-negative `currentIndent` means the last real token is not a
+      boundary (`.streamStart`/`.documentEnd`);
     * `flow`  — an open flow collection means the same;
-    * `fresh` — after a boundary the indent is `-1` and the flow level `0`;
+    * `fresh` — after a boundary the indent is negative and the flow level `0`;
     * `slot`  — a possible simple key sits after a non-boundary, or in block
       context where `rollIndent` will insert `blockMappingStart` before it
       (`currentIndent < key.col`) or where the key is still to be overwritten
@@ -69,9 +69,9 @@ def TailOK (L : List YamlToken) (idx : Nat) : Prop := ∀ t ∈ L.drop idx, Bnd 
 structure LiveInv (s : ScannerState) : Prop where
   head : (vals s)[0]? = some .streamStart
   shape : Shape (vals s)
-  deep : 1 < s.indents.size ∨ 0 ≤ s.currentIndent → Bnd (lastReal (vals s)) = false
+  deep : 0 ≤ s.currentIndent → Bnd (lastReal (vals s)) = false
   flow : 0 < s.flowLevel → Bnd (lastReal (vals s)) = false
-  fresh : Bnd (lastReal (vals s)) = true → s.currentIndent = -1 ∧ s.flowLevel = 0
+  fresh : Bnd (lastReal (vals s)) = true → s.currentIndent < 0 ∧ s.flowLevel = 0
   slot : s.simpleKey.possible = true →
     SlotOK (vals s) s.flowLevel s.currentIndent (s.simpleKeyAllowed && seqTop s s.simpleKey)
       s.simpleKey
@@ -208,7 +208,7 @@ lemma LiveInv.ofFields (s t : ScannerState) (ht : t.tokens = s.tokens)
   refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · rw [hv]; exact hI.head
   · rw [hv]; exact hI.shape
-  · rw [hv, hind, hci]; exact hI.deep
+  · rw [hv, hci]; exact hI.deep
   · rw [hv, hfl]; exact hI.flow
   · rw [hv, hci, hfl]; exact hI.fresh
   · intro hp
@@ -317,7 +317,7 @@ lemma seqTop_col {s : ScannerState} {k : SimpleKeyState} (h : seqTop s k = true)
     simp [ScannerState.currentIndent, htop, h.2]
   · cases h
 
-lemma LiveInv_unwindIndents (s : ScannerState) (col : Int) (hc : 0 ≤ col)
+lemma LiveInv_unwindIndents (s : ScannerState) (col : Int) (hc : -1 ≤ col)
     (hB : SentinelBase s) (hA : AllKeysValid s) (hI : LiveInv s) :
     LiveInv (unwindIndents s col) := by
   unfold unwindIndents
@@ -347,7 +347,7 @@ lemma LiveInv_unwindIndents (s : ScannerState) (col : Int) (hc : 0 ≤ col)
         | nil => rw [h] at hh; simp at hh
         | cons => simp
       rw [List.getElem?_append_left this]; exact hh
-    · rw [hM]; exact Shape_append_blockEnds _ _ hI.shape (hI.deep (Or.inl hsz)) hall'
+    · rw [hM]; exact Shape_append_blockEnds _ _ hI.shape (hI.deep (by omega)) hall'
     · intro hp
       rw [hk] at hp ⊢
       have hlen : s.simpleKey.tokenIndex ≤ (vals s).length := by
@@ -404,7 +404,7 @@ lemma LiveInv.ofSave (s t : ScannerState) (ph : Positioned YamlToken) (hph : ph.
       | cons => simp
     rw [List.getElem?_append_left this]; exact hh
   · rw [hv]; exact Shape_append_ph _ _ hI.shape hphs
-  · rw [hv, hlr, hind, hci]; exact hI.deep
+  · rw [hv, hlr, hci]; exact hI.deep
   · rw [hv, hlr, hfl]; exact hI.flow
   · rw [hv, hlr, hci, hfl]; exact hI.fresh
   · intro _
@@ -415,7 +415,7 @@ lemma LiveInv.ofSave (s t : ScannerState) (ph : Positioned YamlToken) (hph : ph.
     | false => exact Or.inl rfl
     | true =>
       obtain ⟨hci0, hfl0⟩ := hI.fresh hb
-      exact Or.inr ⟨hfl0, Or.inl (by rw [hci0]; omega)⟩
+      exact Or.inr ⟨hfl0, Or.inl (by omega)⟩
   · intro j hj hp
     simp only [hst] at hj hp ⊢
     rw [hv, hci, take_append_of_le' _ _ _ (by have := stackLen_of_AllKeysValid s hA j hj hp; omega)]
