@@ -26,6 +26,10 @@ scanner output.
   (`.streamEnd` is the only such token, so that `k` is `ts.size - 1`) plus
   `tokenEvents_dropLast_streamEnd` (`.streamEnd` adds no event); together,
   `scanFiltered_parseStream_ok_checkFrom_full` carries S5's verdict to all of `ts`.
+* (β2b) `LoopDead`'s index-1 / after-`...` shapes excluded — `LoopDead_scanFiltered`, from
+  `DocStartLiveInv.scanFiltered_liveF` (the `LiveInv` carrier over `scanLoop`): a dead token
+  there would need a non-boundary token before it.  What `scanFiltered_parseStream_ok_checkFrom_full`
+  still carries is `DeadResidue` — the `.afterDocument` shape (γ) or a `.comment` token.
 -/
 
 namespace L4YAML.Proofs.Serialization.ScannerShape
