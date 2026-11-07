@@ -10894,6 +10894,250 @@ def testScanLoopStreamEndFuel (state : IO.Ref TestCollector) : IO Unit := do
       (match e with | .directiveWithoutDocument _ => true | _ => false) s!"{repr e}"
   checkM state s!"P89(iii) grid: okRows={okRows} fuel0Errors={fuel0}" (okRows > 0 && fuel0 > 0) s!"okRows={okRows} fuel0={fuel0}"
 
+/-! **Priority 91 — S3 (d), the loop's no-progress exit on scanner output, instantiated BEFORE the
+    proof (Rule 2).**  Naive (d) — "for S5's witness `k`, `StuckAt ts k` is impossible on scanner
+    output, so only `k = ts.size` is reachable" — is FALSE as stated: `StuckAt` is a property of a
+    token index with no tie to the loop, and it holds at index 0 of every output (`.streamStart` is an
+    `emptyFollowerTok`), at every `.key`/`.value`/`---`/`...` index (`a: b`: k = 2, 4) and at the
+    second `-` of `-\n- a` (k = 3), each with S5's prefix verdict true — so no scanner fact can
+    exclude the disjunct as stated ((i), pinned).  The strongest true statement ties `k` to the loop:
+    `StuckAt ts k ∧ (k = ps.pos ∨ tok ts (k-1) = some .documentEnd ∨
+       validNextToken .afterDocument (tok ts k) = true)` — the stuck exit is the first iteration,
+    follows a consumed `...`, or sits in the `.afterDocument` state whose `validNextToken` admitted
+    the token.  (ii) shadows `parseStreamLoop` (same peek / `parseDocument` / `tryConsume` / state
+    transitions), checks it agrees with the real loop, and records where `parseDocument` is called
+    and where the loop stops: on scanner output the stop is always the `.streamEnd` index, the
+    no-progress exit is never taken, and the document-start tokens are `bM`/`bS`/`[`/`{`/scalar/
+    `---`/`%YAML`/anchor/tag (counts pinned), never key/value/blockEnd/flowEntry/flow-end.  (iii)
+    pins the refined disjunct as NOT a tautology — false at the anchor and alias of `[&x a, *x]`, the
+    tag of `[!t a]`, the second `-` of `-\n- a` — and records the residue (γ): it is TRUE at the
+    `.value` of `a: b` (k = 4) because `validNextToken .afterDocument .value = true`; excluding that
+    needs a bracket-depth argument on both sides.  (iv) drives `parseStreamLoop` directly at fuel
+    0/1/2 (and `ts.size`) from `.initial`/`.afterDocument`/`.afterDocumentEnd` at first/middle/last
+    positions, checking the refined conclusion whenever `size < fuel + pos` holds and that the
+    premise is not vacuous (fuel 0 on `a: b` stops at the `bM`); the `k = ps.pos` disjunct is
+    witnessed by starting at the `.value` of `a: b`. -/
+namespace P91
+open L4YAML.Proofs.Serialization.ParseCheckFrom (tok emptyFollowerTok)
+
+def stuckAtB (ts : Array (Positioned YamlToken)) (k : Nat) : Bool :=
+  emptyFollowerTok (tok ts k) ||
+    (tok ts k == some .blockEntry && decide (0 < k) && tok ts (k - 1) == some .blockEntry)
+
+def afterDocOK : Option YamlToken → Bool
+  | some t => StreamState.validNextToken .afterDocument t
+  | none => false
+
+def stateOK (st : StreamState) : Option YamlToken → Bool
+  | some t => st.validNextToken t
+  | none => false
+
+/-- the refined disjunct's second conjunct, state-aware (the loop lemma's form) -/
+def stopShapeB (ts : Array (Positioned YamlToken)) (st : StreamState) (p k : Nat) : Bool :=
+  (k == p && stateOK st (tok ts k)) || tok ts (k - 1) == some .documentEnd || afterDocOK (tok ts k)
+
+def conclB (ts : Array (Positioned YamlToken)) (st : StreamState) (p k : Nat) : Bool :=
+  k == ts.size || tok ts k == some .streamEnd || (stuckAtB ts k && stopShapeB ts st p k)
+
+/-- the refined disjunct at `parseStream`'s top level (pos 1, `.initial`) -/
+def loopStuckB (ts : Array (Positioned YamlToken)) (k : Nat) : Bool :=
+  stuckAtB ts k && (k == 1 || tok ts (k - 1) == some .documentEnd || afterDocOK (tok ts k))
+
+def dead : Option YamlToken → Bool
+  | some .key | some .value | some .blockEnd | some .flowEntry | some .flowSequenceEnd
+  | some .flowMappingEnd | some .streamStart | none => true
+  | _ => false
+
+def tokName : Option YamlToken → String
+  | some .streamStart => "SS" | some .streamEnd => "SE" | some .documentStart => "DS"
+  | some .documentEnd => "DE" | some (.versionDirective ..) => "%Y" | some (.tagDirective ..) => "%T"
+  | some (.scalar ..) => "sc" | some .blockSequenceStart => "bS" | some .blockMappingStart => "bM"
+  | some .blockEnd => "bE" | some .blockEntry => "-" | some .flowSequenceStart => "["
+  | some .flowSequenceEnd => "]" | some .flowMappingStart => "{" | some .flowMappingEnd => "}"
+  | some .flowEntry => "," | some .key => "?" | some .value => ":" | some (.anchor ..) => "&"
+  | some (.alias ..) => "*" | some (.tag ..) => "!" | some _ => "??" | none => "∅"
+
+def stName : StreamState → String
+  | .initial => "initial" | .afterDocument => "afterDocument" | .afterDocumentEnd => "afterDocumentEnd"
+
+structure Shadow where
+  visited : List Nat
+  stop : Nat
+  state : StreamState
+  stuck : Bool := false
+  err : Bool := false
+
+/-- `parseStreamLoop`'s control flow with the positions it visits and the state at the stop. -/
+def shadow (ts : Array (Positioned YamlToken)) :
+    Nat → ParseState → StreamState → List Nat → Shadow
+  | 0, ps, st, vis => { visited := vis.reverse, stop := ps.pos, state := st }
+  | f + 1, ps, st, vis =>
+    match ps.peek? with
+    | some .streamEnd => { visited := vis.reverse, stop := ps.pos, state := st }
+    | none => { visited := vis.reverse, stop := ps.pos, state := st }
+    | some .documentEnd => shadow ts f (ps.tryConsume .documentEnd).2 .afterDocumentEnd vis
+    | some t =>
+      if !st.validNextToken t then
+        { visited := vis.reverse, stop := ps.pos, state := st, err := true }
+      else
+        match parseDocument ps with
+        | .error _ => { visited := vis.reverse, stop := ps.pos, state := st, err := true }
+        | .ok (_, ps') =>
+          let ps2 : ParseState :=
+            { ps' with anchors := #[], anchorIndex := .empty, declaredAnchors := #[],
+                       declaredIndex := .empty, nodePositions := #[], currentPath := #[] }
+          let (c, ps3) := ps2.tryConsume .documentEnd
+          if ps3.pos == ps.pos then
+            { visited := (ps.pos :: vis).reverse, stop := ps.pos, state := st, stuck := true }
+          else shadow ts f ps3 (if c then .afterDocumentEnd else .afterDocument) (ps.pos :: vis)
+
+def at_ (ts : Array (Positioned YamlToken)) (p : Nat) : ParseState :=
+  { ParseState.mk' ts with pos := p }
+
+def rows : List String :=
+  [ "", "a", "a: b", "---", "...", "--- a", "--- a\n...", "- - a", "- - - a", "-\n- a", "- \n  - a",
+    ": a", "? a", "? a\n: b", "]", "}", ",", "*x", "&x", "&x a", "!!str", "!t a", "%YAML 1.2\n---",
+    "...\n: a", "...\n? a", "...\n]", "...\n}", "...\n,", "...\n*x", "...\n&x a", "...\n!!str a",
+    "...\n%YAML 1.2\n---", "...\n---", "...\n...", "...\n- a", "...\n- - a", "...\n:", "...\n-",
+    "a\n...\n: b\n...\nc", "---\n: a", "--- : a", "---\n? a", "--- ]", "--- ,", "--- }", "---\n- - a",
+    "--- - - a", "--- -\n- a", "a\n: b", "[a]\n]", "[a]\n,", "a: b\nc", "a: b\n: c", "{a: b}\n}",
+    "[a]\n: b", "a\n...\n]", "a\n...\n:", "--- a\n--- : b", "--- a\n---\n: b", "- a\n...\n- - b", ": ",
+    ":", "?", "? ", "-", "- ", "--- -", "--- ?", "--- :", "...\n?", "a:\n- b", "a:\n- - b",
+    "- ? a\n  : b", "- : a", "[: a]", "{: a}", "[? a]", "&a\n...\n*a", "*a\n...", "!t\n...\n!t",
+    "--- &a\n--- *a", "\uFEFF: a", "# c\n: a", "\n\n: a", "   : a", "  - - a" ]
+
+def bump (acc : List (String × Nat)) (k : String) : List (String × Nat) :=
+  match acc.find? (·.1 == k) with
+  | some _ => acc.map fun (a, n) => if a == k then (a, n + 1) else (a, n)
+  | none => acc ++ [(k, 1)]
+
+end P91
+
+def testStuckAtDocStart (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 91: S3 (d) — StuckAt at the loop's stop: refutation and the refined disjunct"
+  let cf : Array (Positioned YamlToken) → Nat → Bool := fun ts k =>
+    L4YAML.Proofs.Serialization.SerializationWellFormed.checkFrom
+      ({} : L4YAML.Proofs.Serialization.SerializationWellFormed.Env)
+      (L4YAML.Proofs.Serialization.TokenEvents.tokenEvents (ts.extract 0 k))
+  let tk := L4YAML.Proofs.Serialization.ParseCheckFrom.tok
+  let isOk : Except ScanError (Array YamlDocument) → Bool := fun r =>
+    match r with | .ok _ => true | .error _ => false
+  let mut scanned := 0
+  let mut parsed := 0
+  let mut refused := 0
+  let mut loopPos := 0
+  let mut classes : List (String × Nat) := []
+  for input in P91.rows do
+    match Scanner.scanFiltered input with
+    | .error _ => refused := refused + 1
+    | .ok ts =>
+      scanned := scanned + 1
+      -- (i) the naive form is refuted at k = 0 on every output: StuckAt, not size, not streamEnd,
+      -- and S5's prefix verdict holds there
+      checkM state s!"P91(i) {repr input}: StuckAt ts 0 ∧ 0 ≠ size ∧ tok 0 ≠ streamEnd ∧ checkFrom on the empty prefix"
+        (P91.stuckAtB ts 0 && 0 != ts.size && tk ts 0 != some .streamEnd && cf ts 0) ""
+      -- (ii) the shadow against the real loop, from parseStream's start (pos 1, .initial, fuel size)
+      let sh := P91.shadow ts ts.size (P91.at_ ts 1) .initial []
+      let real := parseStreamLoop (P91.at_ ts 1) #[] .initial ts.size
+      checkM state s!"P91(ii) {repr input}: shadow success agrees with parseStreamLoop"
+        (sh.err == !isOk real) s!"shadow err={sh.err}"
+      checkM state s!"P91(ii) {repr input}: shadow success agrees with parseStream"
+        (sh.err == !isOk (parseStream ts)) ""
+      if isOk (parseStream ts) then
+        parsed := parsed + 1
+        checkM state s!"P91(ii) {repr input}: no no-progress exit; stop is the streamEnd index"
+          (!sh.stuck && sh.stop + 1 == ts.size && tk ts sh.stop == some .streamEnd)
+          s!"stuck={sh.stuck} stop={sh.stop} size={ts.size}"
+        checkM state s!"P91(ii) {repr input}: refined conclusion at the stop"
+          (P91.conclB ts sh.state 1 sh.stop) ""
+      for p in sh.visited do
+        loopPos := loopPos + 1
+        classes := P91.bump classes (P91.tokName (tk ts p))
+        checkM state s!"P91(ii) {repr input}: document-start token at {p} is live ({P91.tokName (tk ts p)})"
+          (!P91.dead (tk ts p)) ""
+        checkM state s!"P91(ii) {repr input}: StuckAt at document start {p} only for a head-consumed token"
+          (!P91.stuckAtB ts p || (match tk ts p with
+            | some .documentStart | some (.versionDirective ..) | some (.tagDirective ..)
+            | some (.anchor ..) | some (.tag ..) | some (.alias ..) => true
+            | _ => false)) s!"{P91.tokName (tk ts p)}"
+  checkM state s!"P91 grid: rows={P91.rows.length} scanned={scanned} refused={refused} parsed={parsed} loopPositions={loopPos}"
+    (P91.rows.length == 86 && scanned == 58 && refused == 28 && parsed == 58 && loopPos == 61)
+    "prediction corrected: 56 scanned / 30 refused was a miscount of the probe; every scanned row parses"
+  let expected : List (String × Nat) :=
+    [("bM", 21), ("bS", 14), ("DS", 9), ("!", 5), ("sc", 4), ("&", 3), ("%Y", 2), ("[", 2), ("{", 1)]
+  for (c, n) in expected do
+    checkM state s!"P91(ii) document-start class {c}: {n} occurrences"
+      ((classes.find? (·.1 == c)).map (·.2) == some n) s!"{repr classes}"
+  checkM state s!"P91(ii) no other document-start class" (classes.length == expected.length) s!"{repr classes}"
+  -- (i)/(iii) pins
+  let pinRow := fun (input : String) (f : Array (Positioned YamlToken) → IO Unit) => do
+    match Scanner.scanFiltered input with
+    | .error e => checkM state s!"P91 pin {repr input}: scans" false s!"{repr e}"
+    | .ok ts => f ts
+  pinRow "a: b" fun ts => do
+    checkM state "P91(i) \"a: b\": StuckAt at the key (2) and the value (4), prefix verdicts true"
+      (P91.stuckAtB ts 2 && P91.stuckAtB ts 4 && cf ts 2 && cf ts 4 && tk ts 4 == some .value) ""
+    checkM state "P91(iii) residue (γ): the refined disjunct HOLDS at the value of \"a: b\" (afterDocument admits .value)"
+      (P91.loopStuckB ts 4 && P91.afterDocOK (some .value)) ""
+    checkM state "P91(iii) \"a: b\": refined disjunct false at the key's scalar (3, not StuckAt)"
+      (!P91.loopStuckB ts 3) ""
+  pinRow "-\n- a" fun ts => do
+    checkM state "P91(i) \"-\\n- a\": StuckAt at 3 by the blockEntry-after-blockEntry disjunct, prefix verdict true"
+      (tk ts 2 == some .blockEntry && tk ts 3 == some .blockEntry && P91.stuckAtB ts 3 && cf ts 3) ""
+    checkM state "P91(iii) \"-\\n- a\": refined disjunct false at 3" (!P91.loopStuckB ts 3) ""
+  pinRow "[&x a, *x]" fun ts => do
+    checkM state "P91(iii) \"[&x a, *x]\": StuckAt at the anchor (2) and alias (5), refined disjunct false at both"
+      (tk ts 2 == some (.anchor "x") && tk ts 5 == some (.alias "x") && P91.stuckAtB ts 2 &&
+        P91.stuckAtB ts 5 && !P91.loopStuckB ts 2 && !P91.loopStuckB ts 5) s!"{repr (ts.map (·.val))}"
+  pinRow "[!t a]" fun ts => do
+    checkM state "P91(iii) \"[!t a]\": StuckAt at the tag (2), refined disjunct false"
+      (P91.stuckAtB ts 2 && !P91.loopStuckB ts 2) s!"{repr (ts.map (·.val))}"
+  pinRow "--- a\n--- b" fun ts => do
+    checkM state "P91(iii) \"--- a\\n--- b\": the second --- (3) is StuckAt and satisfies the refined disjunct (afterDocument admits ---)"
+      (tk ts 3 == some .documentStart && P91.loopStuckB ts 3) ""
+  -- (iv) parseStreamLoop directly: fuel 0/1/2/size, three states, first/middle/last positions
+  let fuelRows : List String := ["", "a", "a: b", "--- a\n--- b", "a\n...\n: b\n...\nc", "-\n- a", "[&x a, *x]", "...\n..."]
+  let states : List StreamState := [.initial, .afterDocument, .afterDocumentEnd]
+  let mut instances := 0
+  let mut holds := 0
+  let mut vacuous := 0
+  let mut nonVacuous := 0
+  for input in fuelRows do
+    match Scanner.scanFiltered input with
+    | .error e => checkM state s!"P91(iv) {repr input}: scans" false s!"{repr e}"
+    | .ok ts =>
+      let positions := ([1, 2, ts.size / 2, ts.size - 1, ts.size] ++ (if input == "a: b" then [4] else [])).eraseDups
+      for st in states do
+        for p in positions do
+          for f in [0, 1, 2, ts.size] do
+            let real := parseStreamLoop (P91.at_ ts p) #[] st f
+            let sh := P91.shadow ts f (P91.at_ ts p) st []
+            instances := instances + 1
+            checkM state s!"P91(iv) {repr input} st={P91.stName st} pos={p} fuel={f}: shadow agrees with the loop"
+              (sh.err == !isOk real) ""
+            if isOk real then
+              let premise := ts.size < f + p
+              let concl := P91.conclB ts sh.state p sh.stop
+              if premise then
+                holds := holds + 1
+                checkM state s!"P91(iv) {repr input} st={P91.stName st} pos={p} fuel={f}: refined conclusion at stop {sh.stop}"
+                  concl s!"stuck={sh.stuck} state={P91.stName sh.state} tok={P91.tokName (tk ts sh.stop)}"
+              else if concl then vacuous := vacuous + 1
+              else nonVacuous := nonVacuous + 1
+  checkM state s!"P91(iv) instances={instances} premise-holds={holds} premise-fails∧concl={vacuous} premise-fails∧¬concl={nonVacuous}"
+    (nonVacuous > 0) ""
+  match Scanner.scanFiltered "a: b" with
+  | .error _ => pure ()
+  | .ok ts =>
+    let sh0 := P91.shadow ts 0 (P91.at_ ts 1) .initial []
+    checkM state "P91(iv) \"a: b\" fuel 0: loop returns ok at the bM (k = 1), the conclusion fails — the size < fuel + pos premise is load-bearing"
+      (isOk (parseStreamLoop (P91.at_ ts 1) #[] .initial 0) && sh0.stop == 1 &&
+        !P91.conclB ts .initial 1 1) ""
+    for st in states do
+      let sh4 := P91.shadow ts ts.size (P91.at_ ts 4) st []
+      checkM state s!"P91(iv) \"a: b\" from the value (4), {P91.stName st}: the loop takes the no-progress exit at k = pos — the k = ps.pos disjunct"
+        (isOk (parseStreamLoop (P91.at_ ts 4) #[] st ts.size) && sh4.stuck && sh4.stop == 4 &&
+          P91.stuckAtB ts 4 && P91.conclB ts st 4 4) ""
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -11008,6 +11252,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testStreamEndNoEvent state
   testGoAppendStreamEnd state
   testScanLoopStreamEndFuel state
+  testStuckAtDocStart state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",
