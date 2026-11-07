@@ -146,6 +146,65 @@ open L4YAML.Proofs.Serialization.ScannerShape in
 #guard_msgs in
 #print axioms scanFiltered_parseStream_ok_checkFrom_full
 
+/-! S3 (d): the loop's no-progress exit tied to where it can sit (`StopShape`, `LoopStuck`); the refined
+    `parseStreamLoop_cf` / `parseStream_ok_checkFrom` and the wrappers above carry it. -/
+
+open L4YAML.Proofs.Serialization.ParseCheckFrom in
+/-- info: 'L4YAML.Proofs.Serialization.ParseCheckFrom.LoopStuck_of_initial' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
+#guard_msgs in
+#print axioms LoopStuck_of_initial
+
+open L4YAML.Proofs.Serialization.ParseCheckFrom in
+/-- info: 'L4YAML.Proofs.Serialization.ParseCheckFrom.StopShape_after_documentEnd' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
+#guard_msgs in
+#print axioms StopShape_after_documentEnd
+
+open L4YAML.Proofs.Serialization.ParseCheckFrom in
+/-- info: 'L4YAML.Proofs.Serialization.ParseCheckFrom.StopShape_afterDocument' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
+#guard_msgs in
+#print axioms StopShape_afterDocument
+
+open L4YAML.Proofs.Serialization.ParseCheckFrom in
+/-- info: 'L4YAML.Proofs.Serialization.ParseCheckFrom.stop_mono' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
+#guard_msgs in
+#print axioms stop_mono
+
+open L4YAML.Proofs.Serialization.ParseCheckFrom in
+/-- info: 'L4YAML.Proofs.Serialization.ParseCheckFrom.stop_mono'' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
+#guard_msgs in
+#print axioms stop_mono'
+
+open L4YAML.Proofs.Serialization.ParseCheckFrom in
+/-- info: 'L4YAML.Proofs.Serialization.ParseCheckFrom.parseStreamLoop_cf' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
+#guard_msgs in
+#print axioms parseStreamLoop_cf
+
+open L4YAML.Proofs.Serialization.ParseCheckFrom in
+/-- info: 'L4YAML.Proofs.Serialization.ParseCheckFrom.parseStream_ok_checkFrom' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
+#guard_msgs in
+#print axioms parseStream_ok_checkFrom
+
 end Tests.Guards.ScannerShapeAxioms
 
 end Blanket
