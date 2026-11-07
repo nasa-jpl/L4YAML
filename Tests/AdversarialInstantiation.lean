@@ -11836,6 +11836,95 @@ def testLiveInvCarrier (state : IO.Ref TestCollector) : IO Unit := do
   checkM state s!"P94 states={states} rows={P94.rows.length} key-possible states={keyStates} stacked-key states={stackStates}; withdrawn `simpleKeyAllowed` arm fails on {slotNoAllowed}; withdrawn `j = 0` arm fails on {stackNoZero}; stale-after-`-` keys (boundary before the slot, indent not below the key) = {seqTopStale}"
     (states > 0 && keyStates > 0 && stackStates > 0 && slotNoAllowed > 0 && stackNoZero > 0 && seqTopStale > 0) ""
 
+namespace P94
+open L4YAML.Proofs.Serialization.ParseCheckFrom (tok)
+
+/-- `LoopDead ts k`, computed. -/
+def loopDeadB (ts : Array (Positioned YamlToken)) (k : Nat) : Bool :=
+  (P92.deadTok (tok ts k) || (tok ts k == some .blockEntry && decide (0 < k) &&
+      tok ts (k - 1) == some .blockEntry)) &&
+    tok ts k != some .documentEnd &&
+    (k == 1 || tok ts (k - 1) == some .documentEnd || P91.afterDocOK (tok ts k))
+
+/-- `DeadResidue (tok ts k)`, computed: the `.afterDocument` shape or a comment. -/
+def residueB (ts : Array (Positioned YamlToken)) (k : Nat) : Bool :=
+  P91.afterDocOK (tok ts k) || (match tok ts k with | some (.comment _) => true | _ => false)
+
+/-- `LoopDead_scanFiltered`'s conclusion. -/
+def dischargeB (ts : Array (Positioned YamlToken)) (k : Nat) : Bool :=
+  k == ts.size || tok ts k == some .streamEnd || residueB ts k
+
+def alphabet : List YamlToken :=
+  [.streamStart, .documentEnd, .documentStart, .key, .value, .blockEnd, .flowEntry,
+   .flowSequenceEnd, .scalar "a" .plain, .blockEntry, .blockMappingStart, .streamEnd]
+
+def listsUpTo : Nat → List (List YamlToken)
+  | 0 => [[]]
+  | n + 1 => let r := listsUpTo n; r ++ (r.filter (·.length == n)).flatMap fun l => alphabet.map (l ++ [·])
+
+/-- `liveF_dead_contra`'s position premise: `k = 1 ∨ L[k-1] = .documentEnd`. -/
+def posB (L : List YamlToken) (k : Nat) : Bool := k == 1 || L[k - 1]? == some .documentEnd
+end P94
+
+def testLoopDeadDischarge (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 94 (vi): S3 (β2b) — scanFiltered_liveF, liveF_dead_contra, LoopDead_scanFiltered"
+  -- (a) list level: with `LiveF` and `.streamStart` first, no dead token at 1 / after `...`
+  let mut held := 0
+  let mut failedPremise := 0
+  let mut deadUnderFailed := 0
+  for L in P94.listsUpTo 4 do
+    if L[0]? != some .streamStart then continue
+    let live := P92.liveFB L
+    for k in List.range L.length do
+      if k == 0 || !P94.posB L k then continue
+      match L[k]? with
+      | some t =>
+        if live then
+          held := held + 1
+          checkM state s!"P94 (vi) liveF_dead_contra {repr L} k={k}" (L4YAML.Proofs.DocStartLive.liveTok t) ""
+        else
+          failedPremise := failedPremise + 1
+          if !L4YAML.Proofs.DocStartLive.liveTok t then deadUnderFailed := deadUnderFailed + 1
+      | none => pure ()
+  checkM state s!"P94 (vi) liveF_dead_contra: premise-held rows={held}, failed-premise rows={failedPremise}, dead under failed premise={deadUnderFailed} (load-bearing)"
+    (held > 0 && deadUnderFailed > 0) ""
+  -- (b) scanner outputs: `LiveF` + head, and the discharge at every `LoopDead` position
+  let mut scanned := 0
+  let mut loopDeadPos := 0
+  let mut atOne := 0
+  let mut afterDE := 0
+  for input in P94.rows do
+    match scanFiltered input with
+    | .error _ => pure ()
+    | .ok ts =>
+      scanned := scanned + 1
+      let L := L4YAML.Proofs.DirectiveRuns.toks ts
+      checkM state s!"P94 (vi) scanFiltered_liveF {repr input}: LiveF" (P92.liveFB L) s!"toks={repr L}"
+      checkM state s!"P94 (vi) scanFiltered_liveF {repr input}: head" (L[0]? == some .streamStart) ""
+      for k in List.range (ts.size + 1) do
+        if P94.loopDeadB ts k then
+          loopDeadPos := loopDeadPos + 1
+          if k == 1 then atOne := atOne + 1
+          if L4YAML.Proofs.Serialization.ParseCheckFrom.tok ts (k - 1) == some YamlToken.documentEnd then afterDE := afterDE + 1
+          checkM state s!"P94 (vi) LoopDead_scanFiltered {repr input} k={k}" (P94.dischargeB ts k)
+            s!"tok={repr (L4YAML.Proofs.Serialization.ParseCheckFrom.tok ts k)} toks={repr L}"
+  -- (c) non-tautology on hand-altered arrays (the `scanFiltered` premise is load-bearing):
+  --     `.streamStart` at index 1 satisfies `LoopDead ts 1` and refutes the conclusion (dead, not in
+  --     `validNextToken .afterDocument`, not a `.comment`); `.key` at index 1 also satisfies
+  --     `LoopDead ts 1` but the conclusion is TRUE through `DeadResidue` — `.afterDocument` admits
+  --     `.key`: that is (γ), the residue the item prices, pinned here as in P91's `a: b` row.
+  match scanFiltered "- a" with
+  | .ok ts0 =>
+    let tsS := ts0.modify 1 fun p => { p with val := .streamStart }
+    checkM state "P94 (vi) pin: LoopDead holds at 1 on [SS, SS, …]" (P94.loopDeadB tsS 1) ""
+    checkM state "P94 (vi) pin: the discharge fails there (premise load-bearing)" (!P94.dischargeB tsS 1) ""
+    let tsK := ts0.modify 1 fun p => { p with val := .key }
+    checkM state "P94 (vi) pin: LoopDead holds at 1 on [SS, key, …]" (P94.loopDeadB tsK 1) ""
+    checkM state "P94 (vi) pin: `.key` at 1 is TRUE under the (γ) residue" (P94.dischargeB tsK 1) ""
+  | .error _ => checkM state "P94 (vi) pin: `- a` scans" false ""
+  checkM state s!"P94 (vi) scanned={scanned} LoopDead positions={loopDeadPos} (k=1: {atOne}, after `...`: {afterDE})"
+    (scanned > 0 && loopDeadPos > 0) ""
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -11956,6 +12045,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testDocStartLive state
   testFlowSyncPrereqs state
   testLiveInvCarrier state
+  testLoopDeadDischarge state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",

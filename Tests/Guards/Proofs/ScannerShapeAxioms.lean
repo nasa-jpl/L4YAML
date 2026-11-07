@@ -146,6 +146,22 @@ open L4YAML.Proofs.Serialization.ScannerShape in
 #guard_msgs in
 #print axioms scanFiltered_parseStream_ok_checkFrom_full
 
+/-! S3 (β2b): the scanner excludes `LoopDead`'s index-1 and after-`...` shapes; `DeadResidue` is what
+    remains (the `.afterDocument` shape (γ), or a `.comment` token). -/
+
+open L4YAML.Proofs.Serialization.ScannerShape in
+/-- info: 'L4YAML.Proofs.Serialization.ScannerShape.liveF_dead_contra' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
+#print axioms liveF_dead_contra
+
+open L4YAML.Proofs.Serialization.ScannerShape in
+/-- info: 'L4YAML.Proofs.Serialization.ScannerShape.LoopDead_scanFiltered' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
+#guard_msgs in
+#print axioms LoopDead_scanFiltered
+
 /-! S3 (d): the loop's no-progress exit tied to where it can sit (`StopShape`, `LoopStuck`); the refined
     `parseStreamLoop_cf` / `parseStream_ok_checkFrom` and the wrappers above carry it. -/
 

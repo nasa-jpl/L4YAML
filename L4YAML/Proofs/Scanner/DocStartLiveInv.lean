@@ -1119,7 +1119,7 @@ lemma LiveInv_scanKey (s s' : ScannerState) (h : scanKey s = .ok s')
 lemma Bnd_lastReal_take_succ (L : List YamlToken) (idx : Nat) (hT : TailOK L idx)
     (hprev : Bnd (lastReal (L.take idx)) = false ∨ ∃ u, L[idx]? = some u ∧ nonPh u = true) :
     Bnd (lastReal (L.take (idx + 1))) = false := by
-  rw [List.take_succ]
+  rw [List.take_add_one]
   cases hu : L[idx]? with
   | none =>
     simp only [Option.toList_none, List.append_nil]
@@ -1168,7 +1168,7 @@ lemma scanValue_unfold (s s' : ScannerState) (h : scanValue s = .ok s') :
   simp only [Except.ok.injEq] at h; subst h
   refine ⟨by cases u; exact hval, ?_, ?_⟩
   · simp [vals, toks, advance_preserves_tokens, ScannerState.emit]
-  · simp [L4YAML.Proofs.IndentStackBase.advanceN_preserves_indents,
+  · simp [
       L4YAML.Proofs.PreprocessIndentStable.emit_indents, ScannerLoopInvariant.advance_indents]
 
 lemma StrongSlot_of_eq {s t : ScannerState} (hS : StrongSlot s) (hv : vals t = vals s)
@@ -1181,7 +1181,7 @@ lemma StrongSlot_of_eq {s t : ScannerState} (hS : StrongSlot s) (hv : vals t = v
 
 /-- One rewrite of the slot pair at `idx + 1` with `.key`. -/
 lemma key_set_pieces (L : List YamlToken) (idx : Nat) (hT : TailOK L idx) (hSh : Shape L)
-    (hh : L[0]? = some .streamStart) (hlt : idx + 1 < L.length) (hidx0 : idx ≠ 0)
+    (hh : L[0]? = some .streamStart) (hlt : idx + 1 < L.length) (_hidx0 : idx ≠ 0)
     (hprev : Bnd (lastReal (L.take idx)) = false ∨ ∃ u, L[idx]? = some u ∧ nonPh u = true) :
     Shape (L.set (idx + 1) .key) ∧ Bnd (lastReal (L.set (idx + 1) .key)) = false ∧
     (L.set (idx + 1) .key)[0]? = some .streamStart := by
@@ -1754,7 +1754,7 @@ lemma scanFiltered_liveF (input : String) (ts : Array (Positioned YamlToken))
     | nil => rw [hL] at hhd; simp at hhd
     | cons a L' =>
       rw [hL] at hhd; simp at hhd; subst hhd
-      simp [List.filter_cons, nonPh]
+      simp [nonPh]
   · contradiction
 
 end L4YAML.Proofs.DocStartLiveInv
