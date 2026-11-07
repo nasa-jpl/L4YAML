@@ -5638,6 +5638,20 @@ sequence resumes the mapping), the `-`-first and column-1 twins refused.
 Predictions (scored in the item): P1 every sibling-after-sequence row is one document with two
 root keys; P2 the deepest stack of `a:⏎- b⏎c: 1` is `[map 0, map 0, seq 0]` (REFUTED:
 `[map 0, map 0]`, no push; fuel 2 already reaches it, not `[map 0]`); P3 `- a⏎b: 1` and `a:⏎- b⏎ c: 1` are refused; P4 fuel 0 projects `[]`. -/
+/-! Rule 2 on `ResumeFrames.strict` itself, under a `ResumeFrames` premise (elaboration-time rows; the
+exe's rows below can only instantiate the bound on raw lists).  A nested level reads the strict order
+off the frame below; the own-level pair `[map 0, map 0]` has NO `ResumeFrames` witness — the equal-width
+frame of the `-` park lives on the park's face, never in a level, which is why stage A widens the faces
+and not `ResumeFrames.level`. -/
+open L4YAML.Surface L4YAML.Proofs.IndentStackCover L4YAML.Proofs.StreamAccum in
+example {P : SurfPos → Prop} {sp : SurfPos}
+    (h : ResumeFrames P [FrameLevel.map 2, FrameLevel.map 0] sp) : (FrameLevel.map 0).width < 2 :=
+  h.strict _ (List.Mem.head _)
+
+open L4YAML.Surface L4YAML.Proofs.IndentStackCover L4YAML.Proofs.StreamAccum in
+example {P : SurfPos → Prop} {sp : SurfPos} : ¬ ResumeFrames P [FrameLevel.map 0, FrameLevel.map 0] sp :=
+  fun h => absurd (h.strict _ (List.Mem.head _)) (Nat.lt_irrefl _)
+
 open L4YAML.Proofs.IndentStackCover in
 def testRootFrameBound (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 70: the (α) root-frame bound — `<` refuses the park's own level, `≤` admits it (stage A)"
