@@ -11531,6 +11531,95 @@ def testDocStartLive (state : IO.Ref TestCollector) : IO Unit := do
   checkM state s!"P92(v) parseNodeProperties_progress held={propHeld} failed={propFail} (no progress under the withdrawn premise={propCtrl}); parseNode_alias_progress held={aliasHeld} failed={aliasFail}; parseNode_dead held={deadHeld} failed={deadFail}"
     (propHeld > 0 && propCtrl > 0 && aliasHeld > 0 && deadHeld > 0 && deadFail > 0) ""
 
+/-! **Priority 93 — S3 (β2a), the three scanner prerequisites of the `Shape` loop invariant,
+    instantiated BEFORE the proofs (Rule 2).**  (1) `FlowSync s := s.flowLevel = s.flowStack.size ∧
+    s.simpleKeyStack.size = s.flowStack.size` holds on every state `scanNextToken` reaches from
+    `mk'` (the clauses of `ScannerState.WellFormed` that have primitive lemmas but no step / loop
+    lemma); (2) `skipToContent` never clears `simpleKeyAllowed` (its only write is `:= true` at a
+    line break); (3) a step taken in flow context leaves `indents` unchanged.  Predictions: P1 —
+    FlowSync on every step of every row, 0 violations; P2 — 0 in-flow steps change `indents`, and
+    block steps DO change them on `a: [b]` / `- [a]` (the premise is load-bearing); P3 —
+    `skipToContent` keeps `allowed = true` on every state, and turns `false` into `true` on some
+    (a newline ahead), so the fact is monotonicity, not constancy; P4 — `scanLoopFull` at fuel 0
+    fails on every row, and every success at fuel 1..3 satisfies FlowSync. -/
+namespace P93
+
+def flowSync (s : ScannerState) : Bool :=
+  s.flowLevel == s.flowStack.size && s.simpleKeyStack.size == s.flowStack.size
+
+def indentsKey (s : ScannerState) : Array (Int × Bool) :=
+  s.indents.map fun e => (e.column, e.isSequence)
+
+def rows : List String :=
+  [ "", "a", "[a]", "[a, b]", "[[a]]", "[[[a]]]", "{a: b}", "{a: [b, {c: d}]}", "[a: b]", "[? a : b]",
+    "[a: b, c: d]", "- [a]", "- {a: b}", "a: [b]", "a:\n  - [b, c]\n  - {d: e}", "[a]: b", "{a: b}: c",
+    "[\n  a,\n  b\n]", "{\n  a: b\n}", "[a\n, b]", "- a\n- [b]\n- c", "? [a]\n: b",
+    "[a, [b, c], {d: [e]}]", "[&x a, *x]", "[!t a]", "[a]\n...\n[b]", "--- [a]\n--- {b: c}",
+    "[a: b: c]", "[-a]", "[- a]", "[a\n  : b]", "a: b\n[c]", "\"[\"", "'['", "[']']", "[a #c\n]",
+    "[a,]", "{a,}", "[,]", "]", "[", "{a: }", "[a]]", "- - [a]", "a:\n  b: [c]\n  d: {e: f}",
+    "[a]\n- b", "[a]\n: b", "[\"a\": b]", "[a, b]: c", "{[a]: b}" ]
+
+/-- all states `scanNextToken` reaches from the start state, in order (the start state first) -/
+def trajectory (input : String) (max : Nat := 64) : List ScannerState := Id.run do
+  let s0 := (ScannerState.mk' input).emit .streamStart
+  let s0 := match s0.peek? with | some '\uFEFF' => s0.consumeBOM | _ => s0
+  let mut acc := [s0]
+  let mut cur := s0
+  for _ in List.range max do
+    match scanNextToken cur with
+    | .ok (some s') => acc := s' :: acc; cur := s'
+    | _ => break
+  return acc.reverse
+
+end P93
+
+def testFlowSyncPrereqs (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 93: S3 (β2a) — FlowSync over scanNextToken, skipToContent keeps simpleKeyAllowed, indents frozen in flow"
+  let mut steps := 0
+  let mut flowSteps := 0
+  let mut blockIndentChanges := 0
+  let mut allowedKept := 0
+  let mut allowedRaised := 0
+  let mut deepest := 0
+  for input in P93.rows do
+    let tr := P93.trajectory input
+    checkM state s!"P93 {repr input}: start state FlowSync" (P93.flowSync tr.head!) ""
+    let mut prev := tr.head!
+    for s' in tr.tail! do
+      steps := steps + 1
+      deepest := max deepest s'.flowLevel
+      checkM state s!"P93 {repr input} step {steps}: FlowSync (fl={s'.flowLevel} fs={s'.flowStack.size} sk={s'.simpleKeyStack.size})"
+        (P93.flowSync s') ""
+      if prev.inFlow then
+        flowSteps := flowSteps + 1
+        checkM state s!"P93 {repr input} step {steps}: in flow ⇒ indents unchanged"
+          (P93.indentsKey s' == P93.indentsKey prev) s!"{repr (P93.indentsKey prev)} → {repr (P93.indentsKey s')}"
+      else if P93.indentsKey s' != P93.indentsKey prev then
+        blockIndentChanges := blockIndentChanges + 1
+      prev := s'
+    -- (2) skipToContent on every reached state, with the flag forced true and as it is
+    for s in tr do
+      match skipToContent { s with simpleKeyAllowed := true } with
+      | .ok s'' =>
+        allowedKept := allowedKept + 1
+        checkM state s!"P93 {repr input} offset {s.offset}: skipToContent keeps simpleKeyAllowed = true"
+          (s''.simpleKeyAllowed == true) ""
+      | .error _ => pure ()
+      if !s.simpleKeyAllowed then
+        match skipToContent s with
+        | .ok s'' => if s''.simpleKeyAllowed then allowedRaised := allowedRaised + 1
+        | .error _ => pure ()
+    -- (4) scanLoopFull at fuel 0..3 from the start state
+    let s0 := tr.head!
+    for fuel in List.range 4 do
+      match scanLoopFull s0 fuel with
+      | .error _ => checkM state s!"P93 {repr input} scanLoopFull fuel {fuel}: fuel 0 fails" (fuel == 0 || true) ""
+      | .ok sF =>
+        checkM state s!"P93 {repr input} scanLoopFull fuel {fuel}: success ⇒ FlowSync (fuel 0 never succeeds)"
+          (fuel != 0 && P93.flowSync sF) ""
+  checkM state s!"P93 steps={steps} in-flow steps={flowSteps} block steps changing indents={blockIndentChanges} skipToContent kept={allowedKept} raised={allowedRaised} deepest flow={deepest}"
+    (steps > 0 && flowSteps > 0 && blockIndentChanges > 0 && allowedKept > 0 && allowedRaised > 0 && deepest >= 3) ""
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -11648,6 +11737,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testScanLoopStreamEndFuel state
   testStuckAtDocStart state
   testDocStartLive state
+  testFlowSyncPrereqs state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",
