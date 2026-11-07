@@ -7,6 +7,7 @@ module
 
 public import L4YAML.Proofs.Scanner.DocStartLive
 public import L4YAML.Proofs.Scanner.FlowSync
+public import L4YAML.Proofs.Scanner.ColFloor
 
 @[expose] public section Blanket
 
@@ -47,7 +48,7 @@ open L4YAML.Proofs.FlowAdjacency
 open L4YAML.Proofs.ScannerDirectivesPresent L4YAML.Proofs.ScannerAllowDirectives
 open L4YAML.Proofs.PreprocessIndentStable L4YAML.Proofs.IndentStackBase
 open L4YAML.Proofs.CloseStaleExplicitKey L4YAML.Proofs.EntryBoundaryLayout
-open L4YAML.Proofs.IndentStackBase
+open L4YAML.Proofs.IndentStackBase L4YAML.Proofs.ColFloor
 
 /-- The slot condition on a saved simple key (clause `slot`/`stack` body): the token before
     the slot is not a boundary, or (block context) `rollIndent` will insert `blockMappingStart`
@@ -124,7 +125,8 @@ lemma SlotOK_al_mono (L : List YamlToken) (fl : Nat) (ci : Int) (al al' : Bool) 
 lemma LiveInv.ext (s s' : ScannerState) (hI : LiveInv s) (M : List YamlToken)
     (hv : vals s' = vals s ++ M) (hM : LiveExt M)
     (hind : s'.indents = s.indents) (hfl : s'.flowLevel = s.flowLevel)
-    (hal : s.simpleKeyAllowed = true → s'.simpleKeyAllowed = true)
+    (hal : s'.simpleKey.possible = true → (s.simpleKeyAllowed && seqTop s s.simpleKey) = true →
+      (s'.simpleKeyAllowed && seqTop s' s'.simpleKey) = true)
     (hMb : s'.simpleKey.possible = true ∨
       (∃ j, ∃ h : j < s'.simpleKeyStack.size, s'.simpleKeyStack[j].possible = true) →
       ∀ t ∈ M, Bnd (some t) = false)
@@ -168,15 +170,15 @@ lemma LiveInv.ext (s s' : ScannerState) (hI : LiveInv s) (M : List YamlToken)
   slot := by
     intro hp
     have heq := hkey hp
+    have hal' := hal hp
     rw [heq] at hp ⊢
     rw [hv, hfl]
     have : s'.currentIndent = s.currentIndent := by simp [ScannerState.currentIndent, hind]
     rw [this]
-    rw [seqTop_indents hind]
     refine SlotOK_al_mono _ _ _ _ _ _ ?_ (SlotOK_append _ _ _ _ _ _ (hkl hp) (hI.slot hp))
     intro hb
-    rw [Bool.and_eq_true] at hb ⊢
-    exact ⟨hal hb.1, hb.2⟩
+    have := hal' hb
+    rwa [heq] at this
   stack := by
     intro j hj hp
     simp only [hst] at hj hp ⊢
@@ -201,7 +203,8 @@ lemma LiveInv.ext (s s' : ScannerState) (hI : LiveInv s) (M : List YamlToken)
     only go up; the key is unchanged or cleared. -/
 lemma LiveInv.ofFields (s t : ScannerState) (ht : t.tokens = s.tokens)
     (hind : t.indents = s.indents) (hfl : t.flowLevel = s.flowLevel)
-    (hal : s.simpleKeyAllowed = true → t.simpleKeyAllowed = true)
+    (hal : t.simpleKey.possible = true → (s.simpleKeyAllowed && seqTop s s.simpleKey) = true →
+      (t.simpleKeyAllowed && seqTop t t.simpleKey) = true)
     (hkey : KeyTr s t) (hst : t.simpleKeyStack = s.simpleKeyStack) (hI : LiveInv s) : LiveInv t := by
   have hv : vals t = vals s := by simp [vals, ht]
   have hci : t.currentIndent = s.currentIndent := by simp [ScannerState.currentIndent, hind]
@@ -213,12 +216,13 @@ lemma LiveInv.ofFields (s t : ScannerState) (ht : t.tokens = s.tokens)
   · rw [hv, hci, hfl]; exact hI.fresh
   · intro hp
     have heq := hkey hp
+    have hal' := hal hp
     rw [heq] at hp ⊢
-    rw [hv, hfl, hci, seqTop_indents hind]
+    rw [hv, hfl, hci]
     refine SlotOK_al_mono _ _ _ _ _ _ ?_ (hI.slot hp)
     intro hb
-    rw [Bool.and_eq_true] at hb ⊢
-    exact ⟨hal hb.1, hb.2⟩
+    have := hal' hb
+    rwa [heq] at this
   · intro j hj hp
     simp only [hst] at hj hp ⊢
     rw [hv, hci]
@@ -235,13 +239,17 @@ lemma LiveInv_skipToContent (s s1 : ScannerState) (h : skipToContent s = .ok s1)
     (hI : LiveInv s) : LiveInv s1 :=
   LiveInv.ofFields s s1 (skipToContent_preserves_tokens s s1 h)
     (skipToContent_preserves_indents s s1 h) (skipToContent_preserves_flowLevel s s1 h)
-    (fun ha => FlowSync.skipToContent_simpleKeyAllowed_mono s s1 ha h)
+    (fun _ hb => by
+      rw [Bool.and_eq_true] at hb ⊢
+      exact ⟨FlowSync.skipToContent_simpleKeyAllowed_mono s s1 hb.1 h,
+        by rw [skipToContent_preserves_simpleKey s s1 h,
+          seqTop_indents (skipToContent_preserves_indents s s1 h)]; exact hb.2⟩)
     (KeyTr.ofEq (skipToContent_preserves_simpleKey s s1 h))
     (skipToContent_preserves_simpleKeyStack s s1 h) hI
 
 lemma LiveInv_needIndentCheck (s : ScannerState) (hI : LiveInv s) :
     LiveInv { s with needIndentCheck := false } :=
-  LiveInv.ofFields s _ rfl rfl rfl id (KeyTr.ofEq rfl) rfl hI
+  LiveInv.ofFields s _ rfl rfl rfl (fun _ => id) (KeyTr.ofEq rfl) rfl hI
 
 /-! ### The unwind: `blockEnd`s after a non-boundary -/
 
@@ -446,7 +454,7 @@ lemma LiveInv_closeStaleExplicitKey (s : ScannerState) (hI : LiveInv s) :
   rcases closeStaleExplicitKey_cases s with h | ⟨c, _, h⟩
   · rw [h]; exact hI
   · rw [h]
-    exact LiveInv.ofFields s _ rfl rfl rfl id (KeyTr.ofEq rfl) rfl hI
+    exact LiveInv.ofFields s _ rfl rfl rfl (fun _ => id) (KeyTr.ofEq rfl) rfl hI
 
 /-! ### Preprocessing -/
 
@@ -483,6 +491,54 @@ lemma LiveInv_preprocess (s s1 : ScannerState) (c : Char)
           · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
             obtain ⟨rfl, _⟩ := h
             exact LiveInv_closeStaleExplicitKey _ (LiveInv_saveSimpleKey _ hA1 hI1)
+
+/-! ### Document markers -/
+
+lemma scanDocumentStart_indents (s : ScannerState) :
+    (scanDocumentStart s).indents = (unwindIndents s (-1)).indents := by
+  unfold scanDocumentStart
+  simp [L4YAML.Proofs.IndentStackBase.advanceN_preserves_indents,
+    L4YAML.Proofs.PreprocessIndentStable.emit_indents]
+
+lemma LiveInv_scanDocumentStart (s : ScannerState) (hB : SentinelBase s) (hA : AllKeysValid s)
+    (hI : LiveInv s) : LiveInv (scanDocumentStart s) := by
+  obtain ⟨hv, _, _, hk, hst⟩ := scanDocumentStart_fields s
+  have hIu := LiveInv_unwindIndents s (-1) (by omega) hB hA hI
+  have hAu := unwindIndents_preserves_AllKeysValid s (-1) hA
+  have hind := scanDocumentStart_indents s
+  refine LiveInv.ext _ _ hIu [.documentStart] hv ?_ hind ?_ ?_ ?_ (KeyTr.ofCleared hk) ?_ ?_ ?_
+  · intro t ht _; simp at ht; subst ht; exact ⟨rfl, rfl⟩
+  · rw [scanDocumentStart_preserves_flowLevel, unwindIndents_preserves_flowLevel]
+  · intro hp; rw [hk] at hp; cases hp
+  · intro _ t ht; simp at ht; subst ht; rfl
+  · rw [hst, unwindIndents_preserves_simpleKeyStack]
+  · intro hp; have := keyLen_of_AllKeysValid _ hAu hp; omega
+  · intro j hj hp; have := stackLen_of_AllKeysValid _ hAu j hj hp; omega
+
+lemma LiveInv_scanDocumentEnd (s s' : ScannerState) (h : scanDocumentEnd s = .ok s')
+    (hfl0 : s.flowLevel = 0) (hF : FlowSync s) (hB : SentinelBase s) (hA : AllKeysValid s)
+    (hI : LiveInv s) : LiveInv s' := by
+  obtain ⟨hv, _, _, hind, hk, hst⟩ := scanDocumentEnd_fields s s' h
+  have hIu := LiveInv_unwindIndents s (-1) (by omega) hB hA hI
+  have hci := scanDocumentEnd_currentIndent_neg h hB
+  have hfl : s'.flowLevel = 0 := by rw [scanDocumentEnd_preserves_flowLevel s s' h]; exact hfl0
+  have hsz : s'.simpleKeyStack.size = 0 := by
+    rw [hst]; have := hF.1; have := hF.2; omega
+  refine ⟨?_, ?_, ?_, ?_, fun _ => ⟨hci, hfl⟩, ?_, ?_, ?_, ?_⟩
+  · rw [hv]
+    have hh := hIu.head
+    have : 0 < (vals (unwindIndents s (-1))).length := by
+      cases h0 : vals (unwindIndents s (-1)) with
+      | nil => rw [h0] at hh; simp at hh
+      | cons => simp
+    rw [List.getElem?_append_left this]; exact hh
+  · rw [hv]; exact Shape_snoc _ _ hIu.shape (fun h _ => absurd h (by decide))
+  · intro h0; exfalso; omega
+  · intro h0; rw [hfl] at h0; exact absurd h0 (by decide)
+  · intro hp; rw [hk] at hp; cases hp
+  · intro j hj; exfalso; rw [hsz] at hj; exact absurd hj (by omega)
+  · intro hp; rw [hk] at hp; cases hp
+  · intro j hj; exfalso; rw [hsz] at hj; exact absurd hj (by omega)
 
 end L4YAML.Proofs.DocStartLiveInv
 
