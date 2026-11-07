@@ -46,7 +46,8 @@ open L4YAML.Proofs.ScannerCorrectness L4YAML.Proofs.ScannerCorrectness.ScanHelpe
 open L4YAML.Proofs.FlowAdjacency
 open L4YAML.Proofs.ScannerDirectivesPresent L4YAML.Proofs.ScannerAllowDirectives
 open L4YAML.Proofs.PreprocessIndentStable L4YAML.Proofs.IndentStackBase
-open L4YAML.Proofs.CloseStaleExplicitKey
+open L4YAML.Proofs.CloseStaleExplicitKey L4YAML.Proofs.EntryBoundaryLayout
+open L4YAML.Proofs.IndentStackBase
 
 /-- The slot condition on a saved simple key (clause `slot`/`stack` body): the token before
     the slot is not a boundary, or (block context) `rollIndent` will insert `blockMappingStart`
@@ -234,13 +235,145 @@ lemma LiveInv_skipToContent (s s1 : ScannerState) (h : skipToContent s = .ok s1)
     (hI : LiveInv s) : LiveInv s1 :=
   LiveInv.ofFields s s1 (skipToContent_preserves_tokens s s1 h)
     (skipToContent_preserves_indents s s1 h) (skipToContent_preserves_flowLevel s s1 h)
-    (fun ha => skipToContent_simpleKeyAllowed_mono s s1 ha h)
+    (fun ha => FlowSync.skipToContent_simpleKeyAllowed_mono s s1 ha h)
     (KeyTr.ofEq (skipToContent_preserves_simpleKey s s1 h))
     (skipToContent_preserves_simpleKeyStack s s1 h) hI
 
 lemma LiveInv_needIndentCheck (s : ScannerState) (hI : LiveInv s) :
     LiveInv { s with needIndentCheck := false } :=
   LiveInv.ofFields s _ rfl rfl rfl id (KeyTr.ofEq rfl) rfl hI
+
+/-! ### The unwind: `blockEnd`s after a non-boundary -/
+
+lemma lastReal_append_blockEnds (L M : List YamlToken) (hall : ∀ t ∈ M, t = .blockEnd) :
+    lastReal (L ++ .blockEnd :: M) = some .blockEnd := by
+  induction M generalizing L with
+  | nil => simp [lastReal_snoc, nonPh]
+  | cons t M ih =>
+    have ht : t = .blockEnd := hall t (by simp)
+    subst ht
+    rw [show L ++ .blockEnd :: .blockEnd :: M = (L ++ [.blockEnd]) ++ .blockEnd :: M by simp]
+    exact ih _ (fun u hu => hall u (by simp [hu]))
+
+lemma Shape_append_blockEnds (L M : List YamlToken) (hL : Shape L) (hb : Bnd (lastReal L) = false)
+    (hall : ∀ t ∈ M, t = .blockEnd) : Shape (L ++ M) := by
+  induction M generalizing L with
+  | nil => simpa using hL
+  | cons t M ih =>
+    have ht : t = .blockEnd := hall t (by simp)
+    subst ht
+    rw [show L ++ .blockEnd :: M = (L ++ [.blockEnd]) ++ M by simp]
+    refine ih _ (Shape_snoc _ _ hL (fun _ _ => hb)) ?_ (fun u hu => hall u (by simp [hu]))
+    simp [lastReal_snoc, nonPh, Bnd]
+
+/-- One pop of the unwind. -/
+def popStep (s : ScannerState) : ScannerState :=
+  { s.emit .blockEnd with indents := (s.emit .blockEnd).indents.pop, pendingKeys := (s.emit .blockEnd).pendingKeys.pop }
+
+lemma popStep_indents_size (s : ScannerState) : (popStep s).indents.size = s.indents.size - 1 := by
+  simp [popStep, ScannerState.emit]
+
+/-- What one `unwindIndentsLoop` run does, with enough fuel: nothing, or it emits
+    `blockEnd`s, popped past the target column (or down to the base). -/
+lemma unwindIndentsLoop_result : ∀ (fuel : Nat) (s : ScannerState) (col : Int),
+    s.indents.size ≤ fuel →
+    (unwindIndentsLoop s col fuel = s ∧ (s.currentIndent ≤ col ∨ s.indents.size ≤ 1)) ∨
+    (∃ M, vals (unwindIndentsLoop s col fuel) = vals s ++ (.blockEnd :: M) ∧
+      (∀ t ∈ M, t = .blockEnd) ∧ 1 < s.indents.size ∧ col < s.currentIndent ∧
+      ((unwindIndentsLoop s col fuel).currentIndent ≤ col ∨
+        (unwindIndentsLoop s col fuel).indents.size ≤ 1)) := by
+  intro fuel
+  induction fuel with
+  | zero => intro s col hf; exact Or.inl ⟨by simp [unwindIndentsLoop], Or.inr (by omega)⟩
+  | succ f ih =>
+    intro s col hf
+    unfold unwindIndentsLoop
+    split
+    · rename_i hcond
+      simp only [Bool.and_eq_true, decide_eq_true_eq] at hcond
+      have hsz' : (popStep s).indents.size ≤ f := by rw [popStep_indents_size]; omega
+      have key := ih (popStep s) col hsz'
+      simp only [popStep] at key
+      rcases key with ⟨heq, hfin⟩ | ⟨M, hM, hall, _, _, hfin⟩
+      · refine Or.inr ⟨[], ?_, by simp, hcond.2, hcond.1, ?_⟩
+        · rw [heq]; simp [vals, toks, ScannerState.emit]
+        · rw [heq]; simpa [ScannerState.emit, ScannerState.currentIndent] using hfin
+      · refine Or.inr ⟨.blockEnd :: M, ?_, ?_, hcond.2, hcond.1, hfin⟩
+        · rw [hM]; simp [vals, toks, ScannerState.emit]
+        · intro t ht; simp at ht; rcases ht with rfl | ht; rfl; exact hall t ht
+    · rename_i hcond
+      simp only [Bool.and_eq_true, decide_eq_true_eq, not_and] at hcond
+      refine Or.inl ⟨rfl, ?_⟩
+      by_cases h : col < s.currentIndent
+      · exact Or.inr (by have := hcond h; omega)
+      · exact Or.inl (by omega)
+
+lemma seqTop_col {s : ScannerState} {k : SimpleKeyState} (h : seqTop s k = true) :
+    s.currentIndent = (k.pos.col : Int) := by
+  unfold seqTop at h
+  split at h
+  · rename_i top htop
+    simp only [Bool.and_eq_true, beq_iff_eq] at h
+    simp [ScannerState.currentIndent, htop, h.2]
+  · cases h
+
+lemma LiveInv_unwindIndents (s : ScannerState) (col : Int) (hc : 0 ≤ col)
+    (hB : SentinelBase s) (hA : AllKeysValid s) (hI : LiveInv s) :
+    LiveInv (unwindIndents s col) := by
+  unfold unwindIndents
+  rcases unwindIndentsLoop_result s.indents.size s col (Nat.le_refl _) with ⟨heq, _⟩ | ⟨M, hM, hall, hsz, hcol, hfin⟩
+  · rw [heq]; exact hI
+  · generalize hr : unwindIndentsLoop s col s.indents.size = r at hM hfin
+    have hlr : lastReal (vals r) = some .blockEnd := by rw [hM]; exact lastReal_append_blockEnds _ _ hall
+    have hBr : Bnd (lastReal (vals r)) = false := by rw [hlr]; rfl
+    have hfl : r.flowLevel = s.flowLevel := by rw [← hr]; exact unwindIndentsLoop_preserves_flowLevel _ _ _
+    have hk : r.simpleKey = s.simpleKey := by rw [← hr]; exact unwindIndentsLoop_preserves_simpleKey _ _ _
+    have hst : r.simpleKeyStack = s.simpleKeyStack := by
+      rw [← hr]; exact unwindIndentsLoop_preserves_simpleKeyStack _ _ _
+    have hBr' : SentinelBase r := by rw [← hr]; exact unwindIndentsLoop_base _ _ _ hB
+    have hci : r.currentIndent ≤ col := by
+      rcases hfin with h | h
+      · exact h
+      · rw [hBr'.currentIndent_of_size_le_one h]; omega
+    have hall' : ∀ t ∈ (.blockEnd :: M), t = .blockEnd := by
+      intro t ht; simp at ht; rcases ht with rfl | ht; rfl; exact hall t ht
+    have hMb : ∀ t ∈ (.blockEnd :: M), Bnd (some t) = false := by
+      intro t ht; rw [hall' t ht]; rfl
+    refine ⟨?_, ?_, fun _ => hBr, fun _ => hBr, (fun h => by rw [hBr] at h; cases h), ?_, ?_, ?_, ?_⟩
+    · rw [hM]
+      have hh := hI.head
+      have : 0 < (vals s).length := by
+        cases h : vals s with
+        | nil => rw [h] at hh; simp at hh
+        | cons => simp
+      rw [List.getElem?_append_left this]; exact hh
+    · rw [hM]; exact Shape_append_blockEnds _ _ hI.shape (hI.deep (Or.inl hsz)) hall'
+    · intro hp
+      rw [hk] at hp ⊢
+      have hlen : s.simpleKey.tokenIndex ≤ (vals s).length := by
+        have := keyLen_of_AllKeysValid s hA hp; omega
+      rcases hI.slot hp with h | ⟨h0, h1⟩
+      · left; rw [hM, take_append_of_le' _ _ _ hlen]; exact h
+      · right; refine ⟨by rw [hfl]; exact h0, Or.inl ?_⟩
+        rcases h1 with h1 | h1
+        · omega
+        · rw [Bool.and_eq_true] at h1
+          have := seqTop_col h1.2; omega
+    · intro j hj hp
+      simp only [hst] at hj hp ⊢
+      rcases hI.stack j hj hp with h | ⟨hj0, hlt⟩
+      · left; rw [hM, take_append_of_le' _ _ _ (by have := stackLen_of_AllKeysValid s hA j hj hp; omega)]
+        exact h
+      · right; exact ⟨hj0, by omega⟩
+    · intro hp
+      rw [hk] at hp ⊢
+      rw [hM]
+      exact TailOK_append _ _ _ (by have := keyLen_of_AllKeysValid s hA hp; omega) (hI.tail hp) hMb
+    · intro j hj hp
+      simp only [hst] at hj hp ⊢
+      rw [hM]
+      exact TailOK_append _ _ _ (by have := stackLen_of_AllKeysValid s hA j hj hp; omega)
+        (hI.stackTail j hj hp) hMb
 
 end L4YAML.Proofs.DocStartLiveInv
 
