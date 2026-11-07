@@ -1392,12 +1392,12 @@ def StopShape (ts : Toks) (st : StreamState) (p k : Nat) : Prop :=
 /-- The no-progress exit at `parseStream`'s top level (entry position 1, state
 `.initial`, whose `validNextToken` admits everything). -/
 def LoopDead (ts : Toks) (k : Nat) : Prop :=
-  DeadAt ts k ∧ (k = 1 ∨ tok ts (k - 1) = some .documentEnd ∨
+  DeadAt ts k ∧ tok ts k ≠ some .documentEnd ∧ (k = 1 ∨ tok ts (k - 1) = some .documentEnd ∨
     ∃ t, tok ts k = some t ∧ StreamState.validNextToken .afterDocument t = true)
 
 lemma LoopDead_of_initial (ts : Toks) (k : Nat) (hs : DeadAt ts k)
-    (h : StopShape ts .initial 1 k) : LoopDead ts k := by
-  refine ⟨hs, ?_⟩
+    (hne : tok ts k ≠ some .documentEnd) (h : StopShape ts .initial 1 k) : LoopDead ts k := by
+  refine ⟨hs, hne, ?_⟩
   rcases h with ⟨rfl, -⟩ | h | h
   · exact Or.inl rfl
   · exact Or.inr (Or.inl h)
@@ -2111,7 +2111,8 @@ lemma parseStreamLoop_cf (fuel : Nat) : ∀ (ps : ParseState) (docs : Array Yaml
     ps.declaredAnchors = #[] → DirectivesClosed ps.tokens → TagUsesShaped ps.tokens →
     ∀ s : CS, ∃ k s', ps.pos ≤ k ∧ k ≤ ps.tokens.size ∧
       (k = ps.tokens.size ∨ tok ps.tokens k = some .streamEnd ∨
-        (DeadAt ps.tokens k ∧ StopShape ps.tokens st ps.pos k)) ∧
+        (DeadAt ps.tokens k ∧ tok ps.tokens k ≠ some .documentEnd ∧
+          StopShape ps.tokens st ps.pos k)) ∧
       runToks (seg ps.tokens ps.pos k) s = some s' := by
   induction fuel with
   | zero => intro ps _ _ _ _ hsz hf; omega
@@ -2139,7 +2140,7 @@ lemma parseStreamLoop_cf (fuel : Nat) : ∀ (ps : ParseState) (docs : Array Yaml
         hdecl hD hT (s.1.reset, s.2)
       simp only [ParseState.advance] at hk1 hk2 hk3 hr
       have hpkT : tok ps.tokens ps.pos = some .documentEnd := by rw [← peek_eq_tok]; exact hpk
-      refine ⟨k, s', by omega, hk2, stop_mono (StopShape_after_documentEnd _ _ _ _ _ _ hpkT) hk3, ?_⟩
+      refine ⟨k, s', by omega, hk2, stop_mono (And.imp_right (StopShape_after_documentEnd _ _ _ _ _ _ hpkT)) hk3, ?_⟩
       obtain ⟨p, hp, hv⟩ := peek_some hpk
       rw [seg_append _ (Nat.le_succ _) hk1, runToks_append, seg_one _ hp]
       simpa [runToks, hv, stepTok] using hr
@@ -2162,7 +2163,10 @@ lemma parseStreamLoop_cf (fuel : Nat) : ∀ (ps : ParseState) (docs : Array Yaml
             · rename_i heqpos
               simp only [beq_iff_eq] at heqpos
               obtain ⟨tk, hpk2, hvt⟩ := hvalid
-              exact ⟨ps.pos, s, Nat.le_refl _, hsz, Or.inr (Or.inr ⟨stuck_d heqpos,
+              have hne : tok ps.tokens ps.pos ≠ some .documentEnd := by
+                rw [← peek_eq_tok, hpk]; intro heq; simp only [Option.some.injEq] at heq
+                subst heq; simp_all
+              exact ⟨ps.pos, s, Nat.le_refl _, hsz, Or.inr (Or.inr ⟨stuck_d heqpos, hne,
                 Or.inl ⟨rfl, tk, by rw [← peek_eq_tok]; exact hpk2, hvt⟩⟩), by simp [runToks]⟩
             · rename_i hnepos
               have hlt : ps.pos < ps_d.pos := by
@@ -2173,7 +2177,7 @@ lemma parseStreamLoop_cf (fuel : Nat) : ∀ (ps : ParseState) (docs : Array Yaml
               obtain ⟨k, s', hk1, hk2, hk3, hr⟩ := ih _ _ _ docs' h (by simpa [t_d] using p2)
                 (by simp only [t_d]; omega) rfl (by simpa [t_d] using hD) (by simpa [t_d] using hT) s₁
               simp only [t_d] at hk1 hk2 hk3 hr
-              refine ⟨k, s', by omega, hk2, stop_mono (StopShape_afterDocument _ _ _ _ _) hk3, ?_⟩
+              refine ⟨k, s', by omega, hk2, stop_mono (And.imp_right (StopShape_afterDocument _ _ _ _ _)) hk3, ?_⟩
               rw [seg_append _ p1 hk1, runToks_append, hr₁]
               exact hr
           · have hlt := pos_lt_of_peek hpkR
@@ -2194,7 +2198,7 @@ lemma parseStreamLoop_cf (fuel : Nat) : ∀ (ps : ParseState) (docs : Array Yaml
               have hpkT : tok ps.tokens ps_d.pos = some .documentEnd := by
                 rw [← t_d, ← peek_eq_tok]; exact hpkR
               refine ⟨k, s', by omega, hk2,
-                stop_mono (StopShape_after_documentEnd _ _ _ _ _ _ hpkT) hk3, ?_⟩
+                stop_mono (And.imp_right (StopShape_after_documentEnd _ _ _ _ _ _ hpkT)) hk3, ?_⟩
               rw [seg_append _ p1 (Nat.le_trans (Nat.le_succ _) hk1), runToks_append, hr₁,
                 seg_append _ (Nat.le_succ _) hk1]
               show runToks (seg ps.tokens ps_d.pos (ps_d.pos + 1) ++ seg ps.tokens (ps_d.pos + 1) k) s₁ = some s'
@@ -2202,12 +2206,13 @@ lemma parseStreamLoop_cf (fuel : Nat) : ∀ (ps : ParseState) (docs : Array Yaml
               simpa [runToks, hv, stepTok] using hr
 
 lemma stop_mono' {ts : Toks} {k : Nat}
-    (h : k = ts.size ∨ tok ts k = some .streamEnd ∨ (DeadAt ts k ∧ StopShape ts .initial (0 + 1) k)) :
+    (h : k = ts.size ∨ tok ts k = some .streamEnd ∨
+      (DeadAt ts k ∧ tok ts k ≠ some .documentEnd ∧ StopShape ts .initial (0 + 1) k)) :
     k = ts.size ∨ tok ts k = some .streamEnd ∨ LoopDead ts k := by
-  rcases h with h | h | ⟨h1, h2⟩
+  rcases h with h | h | ⟨h1, hne, h2⟩
   · exact Or.inl h
   · exact Or.inr (Or.inl h)
-  · exact Or.inr (Or.inr (LoopDead_of_initial ts k h1 h2))
+  · exact Or.inr (Or.inr (LoopDead_of_initial ts k h1 hne h2))
 
 /-- **S5(→), parser side.** A successful `parseStream` run is well-formed up to
 the position `k` where the loop stopped: `checkFrom {} (tokenEvents (ts.extract 0 k))`.
