@@ -540,6 +540,81 @@ lemma LiveInv_scanDocumentEnd (s s' : ScannerState) (h : scanDocumentEnd s = .ok
   · intro hp; rw [hk] at hp; cases hp
   · intro j hj; exfalso; rw [hsz] at hj; exact absurd hj (by omega)
 
+/-! ### Directives and the structural dispatcher -/
+
+lemma scanDirective_allowDirectives_true (s s' : ScannerState) (h : scanDirective s = .ok s') :
+    s.allowDirectives = true := by
+  unfold scanDirective at h
+  split at h
+  · contradiction
+  · rename_i hn; simpa using hn
+
+lemma LiveInv_scanDirective (s s' : ScannerState) (h : scanDirective s = .ok s')
+    (hD : DirInv s) (hB : SentinelBase s) (hA : AllKeysValid s) (hI : LiveInv s) : LiveInv s' := by
+  obtain ⟨hv, _, _⟩ := scanDirective_fields s s' h
+  have hq : Quiet s := hD.quiet (scanDirective_allowDirectives_true s s' h)
+  have hal : s'.simpleKey.possible = true → (s.simpleKeyAllowed && seqTop s s.simpleKey) = true →
+      (s'.simpleKeyAllowed && seqTop s' s'.simpleKey) = true := by
+    intro _ hb
+    exfalso
+    rw [Bool.and_eq_true] at hb
+    have hc := seqTop_col hb.2
+    rcases hq with hq | hq
+    · rw [hB.currentIndent_of_size_le_one hq] at hc; omega
+    · omega
+  have hkl : s.simpleKey.possible = true → s.simpleKey.tokenIndex ≤ (vals s).length := by
+    intro hp; have := keyLen_of_AllKeysValid s hA hp; omega
+  have hsl : ∀ j (hj : j < s.simpleKeyStack.size), s.simpleKeyStack[j].possible = true →
+      s.simpleKeyStack[j].tokenIndex ≤ (vals s).length := by
+    intro j hj hp; have := stackLen_of_AllKeysValid s hA j hj hp; omega
+  rcases hv with hv | ⟨d, hv, hd⟩
+  · exact LiveInv.ext s s' hI [] (by rw [hv]; simp) (fun t ht => by simp at ht)
+      (scanDirective_preserves_indents h) (scanDirective_preserves_flowLevel s s' h) hal
+      (fun _ t ht => by simp at ht) (KeyTr.ofEq (scanDirective_preserves_simpleKey s s' h))
+      (scanDirective_preserves_simpleKeyStack s s' h) hkl hsl
+  · refine LiveInv.ext s s' hI [d] hv ?_
+      (scanDirective_preserves_indents h) (scanDirective_preserves_flowLevel s s' h) hal
+      ?_ (KeyTr.ofEq (scanDirective_preserves_simpleKey s s' h))
+      (scanDirective_preserves_simpleKeyStack s s' h) hkl hsl
+    · intro t ht _
+      have htd : t = d := by simpa using ht
+      rw [htd]
+      cases d <;> simp [isDirTok] at hd <;> exact ⟨rfl, rfl⟩
+    · intro _ t ht
+      have htd : t = d := by simpa using ht
+      rw [htd]
+      cases d <;> simp [isDirTok] at hd <;> rfl
+
+lemma flowLevel_zero_of_marker_guard (s : ScannerState)
+    (h1 : ¬ (s.col == 0 && s.inFlow && (atDocumentStart s || atDocumentEnd s)) = true)
+    (h2 : (s.col == 0 && atDocumentEnd s) = true) : s.flowLevel = 0 := by
+  simp only [Bool.and_eq_true, Bool.or_eq_true] at h1 h2
+  cases hfl : s.flowLevel with
+  | zero => rfl
+  | succ n =>
+    exfalso
+    apply h1
+    refine ⟨⟨h2.1, ?_⟩, Or.inr h2.2⟩
+    simp [ScannerState.inFlow, hfl]
+
+lemma LiveInv_dispatchStructural (s : ScannerState) (c : Char) (s' : ScannerState)
+    (h : scanNextToken_dispatchStructural s c = .ok (some s'))
+    (hD : DirInv s) (hF : FlowSync s) (hB : SentinelBase s) (hA : AllKeysValid s)
+    (hI : LiveInv s) : LiveInv s' := by
+  unfold scanNextToken_dispatchStructural at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  repeat (any_goals (split at h))
+  any_goals contradiction
+  all_goals (try simp only [Except.ok.injEq, Option.some.injEq] at h)
+  any_goals contradiction
+  all_goals (try subst_vars)
+  all_goals first
+    | exact LiveInv_scanDocumentStart s hB hA hI
+    | exact LiveInv_scanDocumentEnd _ _ (by assumption)
+        (flowLevel_zero_of_marker_guard s (by assumption) (by assumption)) hF hB hA hI
+    | exact LiveInv_scanDirective _ _ (by assumption) hD hB hA hI
+
 end L4YAML.Proofs.DocStartLiveInv
 
 end Blanket
