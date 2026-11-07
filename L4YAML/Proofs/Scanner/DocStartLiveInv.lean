@@ -1594,6 +1594,169 @@ lemma LiveInv_dispatchContent (s : ScannerState) (c : Char) (s' : ScannerState)
       | exact dispatchContent_preserves_simpleKeyStack _ _ _ h
       | exact dispatchContent_preserves_simpleKeyStack s c s' h
 
+/-! ### One step, the loop, the initial state -/
+
+lemma LiveInv_scanNextToken (s s' : ScannerState) (hA : AllKeysValid s) (hD : DirInv s)
+    (hB : SentinelBase s) (hF : FlowSync s) (hI : LiveInv s)
+    (h : scanNextToken s = .ok (some s')) : LiveInv s' := by
+  unfold scanNextToken at h
+  simp only [bind, Except.bind, pure, Except.pure] at h
+  split at h <;> (try (simp at h; done))
+  split at h <;> (try (simp at h; done))
+  rename_i s2 c h_pre
+  have hA2 := preprocess_preserves_AllKeysValid s s2 c h_pre hA
+  have hD2 := DirInv_preprocess s s2 c h_pre hA hD
+  have hB2 := preprocess_base h_pre hB
+  have hF2 := FlowSync_preprocess s s2 c h_pre hF
+  have hI2 := LiveInv_preprocess s s2 c h_pre hB hA hI
+  have hS2 := StrongSlot_preprocess s s2 c h_pre hB hA hI
+  split at h <;> (try (simp at h; done))
+  split at h <;> (try (simp at h; done))
+  split at h <;> (try (simp at h; done))
+  split at h
+  · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+    exact LiveInv_dispatchStructural s2 c _ (by assumption) hD2 hF2 hB2 hA2 hI2
+  · split at h <;> (try (simp at h; done))
+    split at h <;> (try (simp at h; done))
+    have hA3 := allowDir_ite_preserves_AllKeysValid s2 hA2
+    have hI3 : LiveInv (if s2.allowDirectives = true then
+        { s2 with allowDirectives := false, documentEverStarted := true } else s2) := by
+      split
+      · exact LiveInv.ofFields s2 _ rfl rfl rfl (fun _ h _ _ => Or.inr h) (KeyTr.ofEq rfl) rfl hI2
+      · exact hI2
+    have hS3 : StrongSlot (if s2.allowDirectives = true then
+        { s2 with allowDirectives := false, documentEverStarted := true } else s2) := by
+      split
+      · exact StrongSlot_of_eq hS2 rfl rfl rfl (Or.inl rfl)
+      · exact hS2
+    have hF3 : FlowSync (if s2.allowDirectives = true then
+        { s2 with allowDirectives := false, documentEverStarted := true } else s2) := by
+      split
+      · exact ⟨hF2.1, hF2.2⟩
+      · exact hF2
+    split at h <;> (try (simp at h; done))
+    split at h
+    · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+      exact LiveInv_dispatchFlow _ c _ (by assumption) hF3 hS3 hA3 hI3
+    · split at h <;> (try (simp at h; done))
+      split at h
+      · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+        exact LiveInv_dispatchBlock _ c _ (by assumption) hF3 hS3 hA3 hI3
+      · split at h <;> (try (simp at h; done))
+        split at h <;> (try (simp at h; done))
+        simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+        exact LiveInv_dispatchContent _ c _ (by assumption) hS3 hA3 hI3
+
+lemma LiveInv_scanLoop : ∀ (fuel : Nat) (s : ScannerState) (ts : Array (Positioned YamlToken)),
+    AllKeysValid s → DirInv s → SentinelBase s → FlowSync s → LiveInv s →
+    scanLoop s fuel = .ok ts → Shape (toks ts) ∧ (toks ts)[0]? = some .streamStart := by
+  intro fuel
+  induction fuel with
+  | zero => intro s ts _ _ _ _ _ h; simp [scanLoop] at h
+  | succ n ih =>
+    intro s ts hA hD hB hF hI h
+    unfold scanLoop at h
+    split at h
+    · contradiction
+    · split at h
+      · contradiction
+      · split at h
+        · contradiction
+        · split at h
+          · contradiction
+          · split at h
+            · contradiction
+            · simp only [Except.ok.injEq] at h; subst h
+              have hI' := LiveInv_unwindIndents s (-1) (Int.le_refl _) hB hA hI
+              show Shape (vals ((unwindIndents s (-1)).emit .streamEnd)) ∧
+                (vals ((unwindIndents s (-1)).emit .streamEnd))[0]? = some .streamStart
+              rw [vals_emit]
+              exact ⟨Shape_append_live _ _ hI'.shape
+                  (fun t ht _ => by simp at ht; subst ht; exact ⟨rfl, rfl⟩),
+                head_append' _ _ hI'.head⟩
+    · rename_i s' hs'
+      exact ih s' ts (scanNextToken_preserves_AllKeysValid s s' hA hs')
+        (DirInv_scanNextToken s s' hA hD hs') (scanNextToken_base hs' hB)
+        (FlowSync_scanNextToken s s' hF hs') (LiveInv_scanNextToken s s' hA hD hB hF hI hs') h
+
+lemma LiveInv_init (input : String) : LiveInv ((ScannerState.mk' input).emit .streamStart) where
+  head := by simp [vals, toks, ScannerState.mk', ScannerState.emit]
+  shape := by
+    intro j t hj hjt
+    have hv : vals ((ScannerState.mk' input).emit .streamStart) = [.streamStart] := by
+      simp [vals, toks, ScannerState.mk', ScannerState.emit]
+    rw [hv] at hjt
+    cases j with
+    | zero => omega
+    | succ k => simp at hjt
+  deep := by intro h; simp [ScannerState.currentIndent, ScannerState.mk', ScannerState.emit] at h
+  flow := by intro h; simp [ScannerState.mk', ScannerState.emit] at h
+  fresh := by intro _; exact ⟨by simp [ScannerState.currentIndent, ScannerState.mk', ScannerState.emit], rfl⟩
+  slot := by intro h; simp [ScannerState.mk', ScannerState.emit] at h
+  stack := by intro j hj; simp [ScannerState.mk', ScannerState.emit] at hj
+  tail := by intro h; simp [ScannerState.mk', ScannerState.emit] at h
+  stackTail := by intro j hj; simp [ScannerState.mk', ScannerState.emit] at hj
+
+lemma SentinelBase_init (input : String) : SentinelBase ((ScannerState.mk' input).emit .streamStart) := by
+  simp [SentinelBase, ScannerState.mk', ScannerState.emit]
+
+lemma FlowSync_init (input : String) : FlowSync ((ScannerState.mk' input).emit .streamStart) :=
+  ⟨(FlowSync_mk' input).1, (FlowSync_mk' input).2⟩
+
+lemma LiveInv_consumeBOM (s : ScannerState) (hI : LiveInv s) : LiveInv s.consumeBOM :=
+  LiveInv.ofFields s _ (consumeBOM_preserves_tokens s) (consumeBOM_indents s)
+    (consumeBOM_preserves_flowLevel s)
+    (fun _ h _ _ => Or.inr (by
+      show s.advance.simpleKeyAllowed = true
+      rw [advance_preserves_simpleKeyAllowed]; exact h))
+    (KeyTr.ofEq (consumeBOM_preserves_simpleKey s)) (consumeBOM_preserves_simpleKeyStack s) hI
+
+lemma SentinelBase_consumeBOM (s : ScannerState) (hB : SentinelBase s) : SentinelBase s.consumeBOM := by
+  unfold SentinelBase; rw [consumeBOM_indents]; exact hB
+
+lemma FlowSync_consumeBOM (s : ScannerState) (hF : FlowSync s) : FlowSync s.consumeBOM := by
+  unfold FlowSync
+  rw [consumeBOM_preserves_flowLevel, consumeBOM_preserves_flowStack, consumeBOM_preserves_simpleKeyStack]
+  exact hF
+
+/-- Raw scanner output (placeholders included) is `Shape`d and starts with `.streamStart`. -/
+lemma scan_shape (input : String) (ts : Array (Positioned YamlToken)) (h : scan input = .ok ts) :
+    Shape (toks ts) ∧ (toks ts)[0]? = some .streamStart := by
+  unfold scan at h
+  have hA0 := AllKeysValid_init input
+  have hD0 := DirInv_init input
+  have hB0 := SentinelBase_init input
+  have hF0 := FlowSync_init input
+  have hI0 := LiveInv_init input
+  dsimp only at h
+  split at h
+  · have h_tok := consumeBOM_preserves_tokens ((ScannerState.mk' input).emit .streamStart)
+    exact LiveInv_scanLoop _ _ ts
+      (AllKeysValid_mono _ _ hA0 (consumeBOM_preserves_simpleKey _)
+        (consumeBOM_preserves_simpleKeyStack _) (by simp [h_tok]) (fun i hi => by simp [h_tok]))
+      (DirInv_consumeBOM _ hA0 hD0) (SentinelBase_consumeBOM _ hB0) (FlowSync_consumeBOM _ hF0)
+      (LiveInv_consumeBOM _ hI0) h
+  · exact LiveInv_scanLoop _ _ ts hA0 hD0 hB0 hF0 hI0 h
+
+/-- Filtered scanner output: every dead token after index 0 follows a non-boundary token, and the
+    list starts with `.streamStart`. -/
+lemma scanFiltered_liveF (input : String) (ts : Array (Positioned YamlToken))
+    (h : scanFiltered input = .ok ts) :
+    LiveF (toks ts) ∧ (toks ts)[0]? = some .streamStart := by
+  unfold scanFiltered at h
+  split at h
+  · rename_i ts0 h0
+    simp only [Except.ok.injEq] at h; subst h
+    rw [toks_filter]
+    obtain ⟨hsh, hhd⟩ := scan_shape input ts0 h0
+    refine ⟨LiveF_of_Shape _ hsh, ?_⟩
+    cases hL : toks ts0 with
+    | nil => rw [hL] at hhd; simp at hhd
+    | cons a L' =>
+      rw [hL] at hhd; simp at hhd; subst hhd
+      simp [List.filter_cons, nonPh]
+  · contradiction
+
 end L4YAML.Proofs.DocStartLiveInv
 
 end Blanket
