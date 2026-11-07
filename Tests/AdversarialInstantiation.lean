@@ -10334,6 +10334,45 @@ def testPackAltMarks (state : IO.Ref TestCollector) : IO Unit := do
         "\"? k\\n: - a\\n  - b\"@0:2 marks=[0]",
         "\"? k\\n: - a\\n  - b\"@1:0 marks=[0]"])
 
+def testPackAltNegative (state : IO.Ref TestCollector) : IO Unit := do
+  -- P91 (item 444, (ω-negative)): Rule 2 on the WHOLE restated disjunction, not the arm (item 441's
+  -- lesson): with `PackAlt sc := ExplicitValueRefused sc` the chain field reads
+  -- `(∀ nv ∈ markedCols sc, …) ∨ sc.explicitKeyLine = none`, inhabited for FREE exactly where
+  -- `markedCols sc = []` or the register is closed.  What the pauses can measure is that free
+  -- domain and its complement — the marked, live pauses where only the pack's own continuation
+  -- can inhabit the disjunction (whether it does is the producer's question, not the pause's);
+  -- the negative must add no pause the vacuous arm does not already cover.
+  let inputs : List String :=
+    [ "a: 1", "- a\n- b", "---\na: 1\n...\n", "k:\n  - a\n  - b", "? a\n: b", "- - a\n  - b",
+      "k:\n  v: w\n  x: y", "- a: 1\n  b: 2", "? - a\n: b", "a:\n- b", "k:\n- x: 1\n  y: 2",
+      "? a\n? b\n: c", "k:\n  ? a\n  : b", "- ? a\n  : b", "? a: 1\n: b", "- a\n- ? b\n  : c",
+      "? |\n  k\n: v", "k: v\n? a\n: b", "[a]\n? b\n: c", "? a\n- b", "? a\n  - b\n: c",
+      "k:\n  ? a\n  - b", "- ? a\n  - b", "? a\n:\n- b", "? k\n: - a\n  - b" ]
+  let mut pauses := 0
+  let mut freeVacuous := 0
+  let mut freeRefusedOnly := 0
+  let mut markedLive := 0
+  for input in inputs do
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:80] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        if sP.flowLevel == 0 && c != '#' then
+          pauses := pauses + 1
+          let vac := (L4YAML.Proofs.RegisterWitness.markedCols sP).isEmpty
+          let refused := sP.explicitKeyLine.isNone
+          if vac then freeVacuous := freeVacuous + 1
+          else if refused then freeRefusedOnly := freeRefusedOnly + 1
+          else markedLive := markedLive + 1
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) => s := sN
+        | _ => break
+      | _ => break
+  check state s!"P91 (ω-negative) `(∀ nv ∈ markedCols sc, …) ∨ ExplicitValueRefused sc` over the block pauses (item 444): free by the vacuous pack={freeVacuous}, free by the refusal alone={freeRefusedOnly}, marked and live (the pack's continuation the only inhabitant)={markedLive} of {pauses}"
+    -- Not free everywhere: at the 34 marked pauses of P90 neither disjunct is in hand by the
+    -- register alone; the refusal adds nothing the vacuous arm does not cover (refused ⇔ unmarked).
+    (pauses == 131 && freeVacuous == 97 && freeRefusedOnly == 0 && markedLive == 34)
+
 def testSeqTopRefusedArm (state : IO.Ref TestCollector) : IO Unit := do
   -- P89 (item 438, (χ-seqtop-refused)): the negative arm `ExplicitValueRefused s ∨ SeqTopKey s`
   -- proposed for `content_dispatch_routed`'s `h_resF` premise must NOT be a tautology over the
@@ -11279,6 +11318,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testThreeArmsFields state
   testSeqTopRefusedArm state
   testPackAltMarks state
+  testPackAltNegative state
 
   testQuestionMarkColumn state
   testK1Lanes state
