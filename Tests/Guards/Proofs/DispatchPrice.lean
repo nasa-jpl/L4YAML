@@ -353,7 +353,7 @@ def expectedSteps : String :=
 -- `scan_inv`, `DirInv_scanLoop_streamEnd`, `scan_streamEnd_unique` (DirectiveRuns) and
 -- `scanFiltered_toks_streamEnd_unique`, `scanFiltered_streamEnd_index`,
 -- `scanFiltered_parseStream_ok_checkFrom_full` (ScannerShape) hold the scan entry equations.
-  "stepHolders=2018 dispHolders=385 dispTwoCorr=31 fns=74 fnsIx=26"
+  "stepHolders=2030 dispHolders=390 dispTwoCorr=31 fns=75 fnsIx=26"
 
 /-- **The ladder, at each population.**  `edge` is a production whose right
     endpoint is the step's output; `chain` requires a path to it from another
@@ -435,9 +435,11 @@ def expectedChainSpec : List Name :=
 -- 2026-11-05 (capstone 7.7 S3 (b), `DirectivesClosed`): dispatchContent decls 162 → 165
 -- (`dispatchContent_preserves_directivesPresent`, `dispatchContent_shape`, `PostInv_dispatchContent`),
 -- preprocess 251 → 253 (`preprocess_preserves_directivesPresent`, `DirInv_preprocess`).
+-- 2026-11-07 (item 447): per-function decls `scanNextToken_preprocess` 253 → 255 (`preprocess_preserves_flowLevel`,
+--   `FlowSync_preprocess`), `scanNextToken_dispatchContent` 165 → 166 (`FlowSync_dispatchContent`) — `Proofs/Scanner/FlowSync.lean` (S3 (β2a)).
 def expectedPerFn : List String :=
-  ["scanNextToken_dispatchContent decls=165 chain=1",
-   "scanNextToken_preprocess decls=253 chain=3"]
+  ["scanNextToken_dispatchContent decls=166 chain=1",
+   "scanNextToken_preprocess decls=255 chain=3"]
 
 /-- **The one worked precedent is outside the work.**  It is not in item 238's
     transitive set and not on either repair thread, so β.5 neither pays for it
@@ -451,6 +453,8 @@ def expectedOne : String := "inT=false onThread=false onProdThread=false"
     redundant may not route through the escape. -/
 -- 2026-10-24 (B3 [66] col-0 threading): startOfLine true → false — the derivation no longer spends the
 -- ε `s-separate-in-line` (now col-0 only); its separators are the scanner's own white runs.
+-- 2026-11-07 (item 447): `stepHolders` 2018 → 2030, `dispHolders` 385 → 390, `fns` 74 → 75 — `Proofs/Scanner/FlowSync.lean`
+--   (S3 (β2a)): `FlowSync_scanNextToken` / `_scanLoopFull` / `scanNextToken_indents_of_inFlow` and their per-dispatcher arms
 def expectedWeak : String := "startOfLine=false drop=false"
 
 set_option maxHeartbeats 4000000 in
