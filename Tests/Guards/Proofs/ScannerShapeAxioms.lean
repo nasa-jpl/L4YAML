@@ -150,41 +150,31 @@ open L4YAML.Proofs.Serialization.ScannerShape in
     `parseStreamLoop_cf` / `parseStream_ok_checkFrom` and the wrappers above carry it. -/
 
 open L4YAML.Proofs.Serialization.ParseCheckFrom in
-/-- info: 'L4YAML.Proofs.Serialization.ParseCheckFrom.LoopDead_of_initial' depends on axioms: [propext,
- Classical.choice,
- Quot.sound]
+/-- info: 'L4YAML.Proofs.Serialization.ParseCheckFrom.LoopDead_of_initial' depends on axioms: [propext]
 -/
 #guard_msgs in
 #print axioms LoopDead_of_initial
 
 open L4YAML.Proofs.Serialization.ParseCheckFrom in
-/-- info: 'L4YAML.Proofs.Serialization.ParseCheckFrom.StopShape_after_documentEnd' depends on axioms: [propext,
- Classical.choice,
- Quot.sound]
+/-- info: 'L4YAML.Proofs.Serialization.ParseCheckFrom.StopShape_after_documentEnd' does not depend on any axioms
 -/
 #guard_msgs in
 #print axioms StopShape_after_documentEnd
 
 open L4YAML.Proofs.Serialization.ParseCheckFrom in
-/-- info: 'L4YAML.Proofs.Serialization.ParseCheckFrom.StopShape_afterDocument' depends on axioms: [propext,
- Classical.choice,
- Quot.sound]
+/-- info: 'L4YAML.Proofs.Serialization.ParseCheckFrom.StopShape_afterDocument' does not depend on any axioms
 -/
 #guard_msgs in
 #print axioms StopShape_afterDocument
 
 open L4YAML.Proofs.Serialization.ParseCheckFrom in
-/-- info: 'L4YAML.Proofs.Serialization.ParseCheckFrom.stop_mono' depends on axioms: [propext,
- Classical.choice,
- Quot.sound]
+/-- info: 'L4YAML.Proofs.Serialization.ParseCheckFrom.stop_mono' depends on axioms: [propext]
 -/
 #guard_msgs in
 #print axioms stop_mono
 
 open L4YAML.Proofs.Serialization.ParseCheckFrom in
-/-- info: 'L4YAML.Proofs.Serialization.ParseCheckFrom.stop_mono'' depends on axioms: [propext,
- Classical.choice,
- Quot.sound]
+/-- info: 'L4YAML.Proofs.Serialization.ParseCheckFrom.stop_mono'' depends on axioms: [propext]
 -/
 #guard_msgs in
 #print axioms stop_mono'
