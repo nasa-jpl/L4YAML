@@ -11,6 +11,7 @@ public import L4YAML.Proofs.Serialization.TokenEvents
 public import L4YAML.Proofs.Production.StreamAccum
 public import L4YAML.Proofs.Scanner.RegisterWitness
 public import L4YAML.Proofs.Serialization.ScannerShape
+public import L4YAML.Proofs.Scanner.DocStartLive
 public import L4YAML.Proofs.Scanner.FlowAdjacency
 public import L4YAML.Proofs.Output.AlignProofs
 public import L4YAML.Proofs.Scanner.FlowAdjacencyIx
@@ -11277,7 +11278,13 @@ def testStuckAtDocStart (state : IO.Ref TestCollector) : IO Unit := do
     success; (iii) the parser side the discharge needs — `DeadAt`: on `[SS, t, SE]` for every token
     kind `t`, `parseStreamLoop` takes its no-progress exit iff `t` is dead (the head-consumed
     `emptyFollowerTok`s — `---`, directives, anchor, tag, alias — make progress or fail), likewise on
-    `[SS, DE, t, SE]` and, in `.afterDocument`, on `[SS, sc, t, SE]` from position 2. -/
+    `[SS, DE, t, SE]` and, in `.afterDocument`, on `[SS, sc, t, SE]` from position 2; (iv) the
+    list-level lemmas of `Proofs/Scanner/DocStartLive.lean` directly (`filter_getLast`,
+    `lastReal_snoc`, `Shape_snoc`, `LiveF_of_Shape`) on every list of length ≤ 3 over an alphabet
+    with both boundaries, a placeholder, dead and live tokens, with the withdrawn-`Shape` control.
+    (i) grew to 143 rows: `---` / `...` inside flow collections and quoted / block scalars — the only
+    way a dead token could follow a boundary — are refused (`documentMarkerInFlow` /
+    `documentMarkerInScalar`). -/
 namespace P92
 open L4YAML.Proofs.Serialization.ParseCheckFrom (tok)
 
@@ -11315,6 +11322,24 @@ def extraRows : List String :=
     "[a\n...\n]", "[\n...\n]", "{\n...\n}", "[a,\n...\nb]", "[a\n---\n]", "- [a\n...\n]",
     "\"a\n...\nb\"", "'a\n...\nb'", "|\n...\n", "a:\n...\n b", "? a\n...\n: b", "- a\n...\n  - b",
     "[a\n...", "{a\n...", "[a,\n...", "a: [\n...\n]", "a: b\n...\n c" ]
+
+/-- executable mirror of `DocStartLive.Shape` (raw list) -/
+def shapeB (L : List YamlToken) : Bool :=
+  (List.range L.length).all fun j => j == 0 ||
+    (match L[j]? with
+     | some t => L4YAML.Proofs.DocStartLive.liveTok t || !L4YAML.Proofs.DirectiveRuns.nonPh t ||
+         L4YAML.Proofs.DocStartLive.Bnd (L4YAML.Proofs.DocStartLive.lastReal (L.take j)) == false
+     | none => true)
+
+/-- executable mirror of `DocStartLive.LiveF` (filtered list) -/
+def liveFB (F : List YamlToken) : Bool :=
+  (List.range F.length).all fun k => k == 0 ||
+    (match F[k]? with
+     | some t => L4YAML.Proofs.DocStartLive.liveTok t ||
+         (match F[k - 1]? with
+          | some u => L4YAML.Proofs.DocStartLive.Bnd (some u) == false
+          | none => false)
+     | none => true)
 
 def kinds : List (String × YamlToken) :=
   [ ("SS", .streamStart), ("SE", .streamEnd), ("ph", .placeholder), ("%Y", .versionDirective 1 2),
@@ -11396,6 +11421,43 @@ def testDocStartLive (state : IO.Ref TestCollector) : IO Unit := do
         s!"stop={sh.stop} err={sh.err}"
   checkM state s!"P92(iii) stuck-on-dead={stuckDead} live-progress={liveProgress} live-error/not-admitted={liveError}"
     (stuckDead > 0 && liveProgress > 0 && liveError > 0) ""
+
+  -- (iv) the list-level lemmas of `DocStartLive` directly: every list of length ≤ 3 over an
+  -- alphabet with both boundaries, a placeholder, dead and live tokens; withdrawn-premise control
+  let alpha : List YamlToken := [.streamStart, .documentEnd, .placeholder, .key, .scalar "a" .plain,
+    .blockEnd, .blockEntry, .documentStart]
+  let lists : List (List YamlToken) :=
+    [[]] ++ alpha.map ([·]) ++ (alpha.flatMap fun a => alpha.map fun b => [a, b]) ++
+      (alpha.flatMap fun a => alpha.flatMap fun b => alpha.map fun c => [a, b, c])
+  let mut shapeOk := 0
+  let mut shapeFail := 0
+  let mut snocPrem := 0
+  for L in lists do
+    checkM state s!"P92(iv) filter_getLast {repr L}"
+      (L4YAML.Proofs.DocStartLive.lastReal L ==
+        (L.filter L4YAML.Proofs.DirectiveRuns.nonPh).getLast?) ""
+    for t in alpha do
+      checkM state s!"P92(iv) lastReal_snoc {repr L} ++ [{repr t}]"
+        (L4YAML.Proofs.DocStartLive.lastReal (L ++ [t]) ==
+          (if L4YAML.Proofs.DirectiveRuns.nonPh t then some t
+           else L4YAML.Proofs.DocStartLive.lastReal L)) ""
+      if P92.shapeB L && (L4YAML.Proofs.DocStartLive.liveTok t ||
+          !L4YAML.Proofs.DirectiveRuns.nonPh t ||
+          L4YAML.Proofs.DocStartLive.Bnd (L4YAML.Proofs.DocStartLive.lastReal L) == false) then
+        snocPrem := snocPrem + 1
+        checkM state s!"P92(iv) Shape_snoc {repr L} ++ [{repr t}]" (P92.shapeB (L ++ [t])) ""
+    if P92.shapeB L then
+      shapeOk := shapeOk + 1
+      checkM state s!"P92(iv) LiveF_of_Shape {repr L}"
+        (P92.liveFB (L.filter L4YAML.Proofs.DirectiveRuns.nonPh)) ""
+    else
+      shapeFail := shapeFail + 1
+  checkM state s!"P92(iv) lists={lists.length} shape-ok={shapeOk} shape-fail={shapeFail} Shape_snoc-premise={snocPrem}"
+    (lists.length == 585 && shapeOk > 0 && shapeFail > 0 && snocPrem > 0) ""
+  let liveFails := lists.filter fun L =>
+    !P92.shapeB L && !P92.liveFB (L.filter L4YAML.Proofs.DirectiveRuns.nonPh)
+  checkM state s!"P92(iv) withdrawn Shape ⇒ LiveF fails on {liveFails.length} lists (first: {repr liveFails.head?})"
+    (liveFails.length > 0) ""
 
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)

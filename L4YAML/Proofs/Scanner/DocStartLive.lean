@@ -163,7 +163,7 @@ lemma LiveF_of_Shape (L : List YamlToken) (h : Shape L) : LiveF (L.filter nonPh)
       | none => rw [hv] at hb; cases hb
       | some v => exact ⟨v, rfl, by rw [hv] at hb; exact hb⟩
 
-/-! ## The scanner invariant -/
+/-! ## Towards the scanner invariant (β2): extension by live tokens -/
 
 lemma lastReal_append_cases (L M : List YamlToken) :
     lastReal (L ++ M) = lastReal L ∨
@@ -201,89 +201,4 @@ lemma Bnd_lastReal_append_live (L M : List YamlToken) (hM : LiveExt M)
 /-- The simple-key slot is reachable from the saved state: the real token before it
     is no boundary, or the save happened in block context strictly deeper than the
     current indent (so `scanValuePrepare` will open a mapping first). -/
-def SlotOK (L : List YamlToken) (fl : Nat) (ci : Int) (k : SimpleKeyState) : Prop :=
-  Bnd (lastReal (L.take k.tokenIndex)) = false ∨ (fl = 0 ∧ ci < (k.pos.col : Int))
-
-structure LiveInv (s : ScannerState) : Prop where
-  head : (vals s)[0]? = some .streamStart
-  shape : Shape (vals s)
-  deep : 1 < s.indents.size ∨ 0 ≤ s.currentIndent → Bnd (lastReal (vals s)) = false
-  flow : 0 < s.flowLevel → Bnd (lastReal (vals s)) = false
-  fresh : Bnd (lastReal (vals s)) = true → s.currentIndent = -1 ∧ s.flowLevel = 0
-  slot : s.simpleKey.possible = true → SlotOK (vals s) s.flowLevel s.currentIndent s.simpleKey
-  stack : ∀ j (h : j < s.simpleKeyStack.size), s.simpleKeyStack[j].possible = true →
-    SlotOK (vals s) 0 s.currentIndent s.simpleKeyStack[j]
-
-/-- The key transport the invariant needs: a still-possible key is the old one. -/
-def KeyTr (s s' : ScannerState) : Prop :=
-  s'.simpleKey.possible = true → s'.simpleKey = s.simpleKey
-
-lemma KeyTr.ofEq {s s' : ScannerState} (h : s'.simpleKey = s.simpleKey) : KeyTr s s' := fun _ => h
-lemma KeyTr.ofCleared {s s' : ScannerState} (h : s'.simpleKey.possible = false) : KeyTr s s' :=
-  fun hp => by rw [h] at hp; cases hp
-
-lemma SlotOK_append (L M : List YamlToken) (fl : Nat) (ci : Int) (k : SimpleKeyState)
-    (hk : k.tokenIndex ≤ L.length) (h : SlotOK L fl ci k) : SlotOK (L ++ M) fl ci k := by
-  unfold SlotOK at h ⊢
-  rw [take_append_of_le _ _ _ hk]
-  exact h
-
-/-- Appending live tokens (and placeholders) with the indent / flow / key state
-    untouched keeps the invariant. -/
-lemma LiveInv.ext (s s' : ScannerState) (hI : LiveInv s) (M : List YamlToken)
-    (hv : vals s' = vals s ++ M) (hM : LiveExt M)
-    (hind : s'.indents = s.indents) (hfl : s'.flowLevel = s.flowLevel)
-    (hkey : KeyTr s s') (hst : s'.simpleKeyStack = s.simpleKeyStack)
-    (hkl : s.simpleKey.possible = true → s.simpleKey.tokenIndex ≤ (vals s).length)
-    (hsl : ∀ j (h : j < s.simpleKeyStack.size), s.simpleKeyStack[j].possible = true →
-      s.simpleKeyStack[j].tokenIndex ≤ (vals s).length) : LiveInv s' where
-  head := by
-    rw [hv]
-    have hh := hI.head
-    have : 0 < (vals s).length := by
-      cases h : vals s with
-      | nil => rw [h] at hh; simp at hh
-      | cons => simp
-    rw [List.getElem?_append_left this]; exact hh
-  shape := by rw [hv]; exact Shape_append_live _ _ hI.shape hM
-  deep := by
-    intro hd
-    cases hb : Bnd (lastReal (vals s')) with
-    | false => rfl
-    | true =>
-      have hb' : Bnd (lastReal (vals s ++ M)) = true := by rw [← hv]; exact hb
-      rw [Bnd_lastReal_append_live _ _ hM hb'] at hb'
-      have := hI.deep (by simpa [ScannerState.currentIndent, hind] using hd)
-      rw [this] at hb'; cases hb'
-  flow := by
-    intro hf
-    cases hb : Bnd (lastReal (vals s')) with
-    | false => rfl
-    | true =>
-      have hb' : Bnd (lastReal (vals s ++ M)) = true := by rw [← hv]; exact hb
-      rw [Bnd_lastReal_append_live _ _ hM hb'] at hb'
-      have := hI.flow (by rw [← hfl]; exact hf)
-      rw [this] at hb'; cases hb'
-  fresh := by
-    intro hb
-    have hb' : Bnd (lastReal (vals s ++ M)) = true := by rw [← hv]; exact hb
-    rw [Bnd_lastReal_append_live _ _ hM hb'] at hb'
-    have := hI.fresh hb'
-    simpa [ScannerState.currentIndent, hind, hfl] using this
-  slot := by
-    intro hp
-    have heq := hkey hp
-    rw [heq] at hp ⊢
-    rw [hv, hfl]
-    have : s'.currentIndent = s.currentIndent := by simp [ScannerState.currentIndent, hind]
-    rw [this]
-    exact SlotOK_append _ _ _ _ _ (hkl hp) (hI.slot hp)
-  stack := by
-    intro j hj hp
-    simp only [hst] at hj hp ⊢
-    have : s'.currentIndent = s.currentIndent := by simp [ScannerState.currentIndent, hind]
-    rw [hv, this]
-    exact SlotOK_append _ _ _ _ _ (hsl j hj hp) (hI.stack j hj hp)
-
-
 end L4YAML.Proofs.DocStartLive
