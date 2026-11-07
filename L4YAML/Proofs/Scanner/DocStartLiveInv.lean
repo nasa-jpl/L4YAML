@@ -1168,6 +1168,203 @@ lemma scanValue_unfold (s s' : ScannerState) (h : scanValue s = .ok s') :
   · simp [L4YAML.Proofs.IndentStackBase.advanceN_preserves_indents,
       L4YAML.Proofs.PreprocessIndentStable.emit_indents, ScannerLoopInvariant.advance_indents]
 
+lemma StrongSlot_of_eq {s t : ScannerState} (hS : StrongSlot s) (hv : vals t = vals s)
+    (hfl : t.flowLevel = s.flowLevel) (hci : t.currentIndent = s.currentIndent)
+    (hk : t.simpleKey = s.simpleKey ∨ t.simpleKey.possible = false) : StrongSlot t := by
+  intro hp
+  rcases hk with hk | hk
+  · rw [hk] at hp ⊢; unfold SlotOK; rw [hv, hfl, hci]; exact hS hp
+  · rw [hk] at hp; cases hp
+
+/-- One rewrite of the slot pair at `idx + 1` with `.key`. -/
+lemma key_set_pieces (L : List YamlToken) (idx : Nat) (hT : TailOK L idx) (hSh : Shape L)
+    (hh : L[0]? = some .streamStart) (hlt : idx + 1 < L.length) (hidx0 : idx ≠ 0)
+    (hprev : Bnd (lastReal (L.take idx)) = false ∨ ∃ u, L[idx]? = some u ∧ nonPh u = true) :
+    Shape (L.set (idx + 1) .key) ∧ Bnd (lastReal (L.set (idx + 1) .key)) = false ∧
+    (L.set (idx + 1) .key)[0]? = some .streamStart := by
+  refine ⟨Shape_set _ _ _ rfl rfl hSh (fun _ => Bnd_lastReal_take_succ _ _ hT hprev), ?_, ?_⟩
+  · refine Bnd_lastReal_of_tail _ _ (TailOK_set _ _ _ _ rfl hT) ⟨.key, ?_, rfl⟩
+    rw [List.mem_iff_getElem?]
+    exact ⟨1, by rw [List.getElem?_drop, List.getElem?_set_self (by omega)]⟩
+  · rw [List.getElem?_set_ne (by omega)]; exact hh
+
+/-- What `scanValuePrepare` does to the token list, for the invariant. -/
+lemma prepare_pieces (s1 : ScannerState) (hval : scanValueValidate s1 = .ok ())
+    (hA1 : AllKeysValid s1) (hS1 : StrongSlot s1) (hI1 : LiveInv s1) :
+    Shape (vals (scanValuePrepare s1)) ∧ Bnd (lastReal (vals (scanValuePrepare s1))) = false ∧
+    (vals (scanValuePrepare s1))[0]? = some .streamStart ∧
+    (∀ j (hj : j < s1.simpleKeyStack.size), s1.simpleKeyStack[j].possible = true →
+      Bnd (lastReal ((vals s1).take s1.simpleKeyStack[j].tokenIndex)) = false →
+      Bnd (lastReal ((vals (scanValuePrepare s1)).take s1.simpleKeyStack[j].tokenIndex)) = false) ∧
+    (∀ j (hj : j < s1.simpleKeyStack.size), s1.simpleKeyStack[j].possible = true →
+      TailOK (vals s1) s1.simpleKeyStack[j].tokenIndex →
+      TailOK (vals (scanValuePrepare s1)) s1.simpleKeyStack[j].tokenIndex) := by
+  have hshape := hI1.shape
+  have hhead := hI1.head
+  unfold scanValuePrepare
+  split
+  · rename_i hp
+    have hT := hI1.tail hp
+    have hlt : s1.simpleKey.tokenIndex + 1 < (vals s1).length := by
+      rw [vals_length]; exact (hA1.1 hp).2.1
+    have hidx0 : s1.simpleKey.tokenIndex ≠ 0 := by
+      intro h0
+      have hmem : YamlToken.streamStart ∈ (vals s1).drop s1.simpleKey.tokenIndex := by
+        rw [h0, List.drop_zero]; exact List.mem_of_getElem? hhead
+      have := hT _ hmem; cases this
+    split
+    · split
+      · -- block, the key is deeper than the current indent: `blockMappingStart` first
+        rename_i hgt
+        dsimp only
+        simp only [vals, toks_setIfInBounds]
+        have h1 : TailOK ((vals s1).set s1.simpleKey.tokenIndex .blockMappingStart) s1.simpleKey.tokenIndex :=
+          TailOK_set _ _ _ _ rfl hT
+        have h2 : Shape ((vals s1).set s1.simpleKey.tokenIndex .blockMappingStart) :=
+          Shape_set _ _ _ rfl rfl hshape (fun h => absurd h (by decide))
+        have h3 : ((vals s1).set s1.simpleKey.tokenIndex .blockMappingStart)[0]? = some .streamStart := by
+          rw [List.getElem?_set_ne hidx0]; exact hhead
+        have h4 : s1.simpleKey.tokenIndex + 1 < ((vals s1).set s1.simpleKey.tokenIndex .blockMappingStart).length := by
+          rw [List.length_set]; exact hlt
+        obtain ⟨hs2, hl2, hh2⟩ := key_set_pieces _ _ h1 h2 h3 h4 hidx0
+          (Or.inr ⟨.blockMappingStart, List.getElem?_set_self (by omega), rfl⟩)
+        refine ⟨hs2, hl2, hh2, ?_, ?_⟩
+        · intro j hj hpj h
+          rw [List.take_set, List.take_set]
+          exact Bnd_lastReal_set_false _ _ _ rfl rfl (Bnd_lastReal_set_false _ _ _ rfl rfl h)
+        · intro j hj hpj h
+          exact TailOK_set _ _ _ _ rfl (TailOK_set _ _ _ _ rfl h)
+      · -- block, the key is at or above the current indent: the slot itself is live
+        rename_i hnlt
+        dsimp only
+        simp only [vals, toks_setIfInBounds]
+        have hprev : Bnd (lastReal ((vals s1).take s1.simpleKey.tokenIndex)) = false := by
+          rcases hS1 hp with h | ⟨_, h | h⟩
+          · exact h
+          · exact absurd h (by omega)
+          · cases h
+        obtain ⟨hs2, hl2, hh2⟩ := key_set_pieces _ _ hT hshape hhead hlt hidx0 (Or.inl hprev)
+        refine ⟨hs2, hl2, hh2, ?_, ?_⟩
+        · intro j hj hpj h
+          rw [List.take_set]
+          exact Bnd_lastReal_set_false _ _ _ rfl rfl h
+        · intro j hj hpj h
+          exact TailOK_set _ _ _ _ rfl h
+    · -- flow: the slot is live
+      rename_i hin
+      dsimp only
+      simp only [vals, toks_setIfInBounds]
+      have hfl : 0 < s1.flowLevel := by
+        unfold ScannerState.inFlow at hin; simp at hin; omega
+      have hprev : Bnd (lastReal ((vals s1).take s1.simpleKey.tokenIndex)) = false := by
+        rcases hS1 hp with h | ⟨h0, _⟩
+        · exact h
+        · omega
+      obtain ⟨hs2, hl2, hh2⟩ := key_set_pieces _ _ hT hshape hhead hlt hidx0 (Or.inl hprev)
+      refine ⟨hs2, hl2, hh2, ?_, ?_⟩
+      · intro j hj hpj h
+        rw [List.take_set]
+        exact Bnd_lastReal_set_false _ _ _ rfl rfl h
+      · intro j hj hpj h
+        exact TailOK_set _ _ _ _ rfl h
+  · rename_i hnp
+    have hnp' : s1.simpleKey.possible = false := by simpa using hnp
+    split
+    · -- explicit value: the `:` sits at the mapping's indent
+      rename_i hek
+      refine ⟨hshape, ?_, hhead, fun _ _ _ h => h, fun _ _ _ h => h⟩
+      cases hin : s1.inFlow with
+      | true => exact hI1.flow (by unfold ScannerState.inFlow at hin; simpa using hin)
+      | false =>
+        have hcol := scanValueValidate_explicit_col hnp' hin hek hval
+        exact hI1.deep (by omega)
+    · split
+      · rename_i hin
+        have hin' : s1.inFlow = false := by simpa using hin
+        rcases pushMappingIndent_vals s1 s1.col with ⟨hp, hle⟩ | hp
+        · rw [hp]; exact ⟨hshape, hI1.deep (by omega), hhead, fun _ _ _ h => h, fun _ _ _ h => h⟩
+        · rw [hp]
+          refine ⟨Shape_append_live _ _ hshape ?_, by rw [lastReal_snoc]; rfl, head_append' _ _ hhead, ?_, ?_⟩
+          · intro t ht _; simp at ht; subst ht; exact ⟨rfl, rfl⟩
+          · intro j hj hpj h
+            rw [take_append_of_le' _ _ _ (by have := stackLen_of_AllKeysValid s1 hA1 j hj hpj; omega)]
+            exact h
+          · intro j hj hpj h
+            exact TailOK_append _ _ _ (by have := stackLen_of_AllKeysValid s1 hA1 j hj hpj; omega) h
+              (fun t ht => by simp at ht; subst ht; rfl)
+      · rename_i hin
+        have hfl : 0 < s1.flowLevel := by
+          unfold ScannerState.inFlow at hin; simp at hin; omega
+        exact ⟨hshape, hI1.flow hfl, hhead, fun _ _ _ h => h, fun _ _ _ h => h⟩
+
+lemma LiveInv_scanValue (s s' : ScannerState) (h : scanValue s = .ok s')
+    (hF : FlowSync s) (hS : StrongSlot s) (hA : AllKeysValid s) (hI : LiveInv s) : LiveInv s' := by
+  obtain ⟨hval, hv, hind⟩ := scanValue_unfold s s' h
+  have ht1 := scanValueClearKey_preserves_tokens s
+  have hc1 := L4YAML.Proofs.PendingKeySound.scanValueClearKey_core s
+  have hst1 := scanValueClearKey_preserves_simpleKeyStack s
+  have hk1 := scanValueClearKey_simpleKey s
+  have hal1 := scanValueClearKey_simpleKeyAllowed s
+  have hv1 : vals (scanValueClearKey s) = vals s := by simp [vals, ht1]
+  have hci1 : (scanValueClearKey s).currentIndent = s.currentIndent := by
+    simp [ScannerState.currentIndent, hc1.1]
+  have hI1 : LiveInv (scanValueClearKey s) :=
+    LiveInv.ofFields s _ ht1 hc1.1 hc1.2.2.1 (fun _ h _ _ => Or.inr (by rw [hal1]; exact h))
+      (fun hp => by
+        rcases hk1 with hk1 | hk1
+        · exact hk1
+        · rw [hk1] at hp; cases hp) hst1 hI
+  have hA1 : AllKeysValid (scanValueClearKey s) := by
+    rcases scanValueClearKey_identity_or_clear s with e | ⟨hk, ht⟩
+    · rw [e]; exact hA
+    · exact AllKeysValid_of_clear s _ ht hst1 hk hA
+  have hS1 : StrongSlot (scanValueClearKey s) := StrongSlot_of_eq hS hv1 hc1.2.2.1 hci1 hk1
+  have hsz1 : (scanValueClearKey s).simpleKeyStack.size = (scanValueClearKey s).flowLevel := by
+    rw [hst1, hc1.2.2.1]; have := hF.1; have := hF.2; omega
+  have hst' : s'.simpleKeyStack = (scanValueClearKey s).simpleKeyStack := by
+    rw [scanValue_preserves_simpleKeyStack s s' h, hst1]
+  have hk' := scanValue_clears_simpleKey s s' h
+  generalize scanValueClearKey s = s1 at *
+  obtain ⟨hsh, hlast, hhd, hstk, hstt⟩ := prepare_pieces s1 hval hA1 hS1 hI1
+  have hlr : lastReal (vals s') = some .value := by rw [hv, lastReal_snoc]; rfl
+  refine LiveInv.ofPieces s1 s' (by rw [hv]; exact head_append' _ _ hhd) ?_ (by rw [hlr]; rfl) hk' hst' ?_ ?_ ?_ hI1
+  · rw [hv]; exact Shape_snoc _ _ hsh (fun _ _ => hlast)
+  · intro hpos
+    have hin : s1.inFlow = true := by unfold ScannerState.inFlow; simp; omega
+    simp [ScannerState.currentIndent, hind, scanValuePrepare_indents_of_inFlow hin]
+  · intro j hj hp hb
+    rw [hv, take_append_of_le' _ _ _ ?_]
+    · exact hstk j hj hp hb
+    · have := stackLen_of_AllKeysValid s1 hA1 j hj hp
+      have hmono : (vals s1).length ≤ (vals (scanValuePrepare s1)).length := by
+        simp only [vals, toks_length]
+        exact scanValuePrepare_tokens_monotonic s1
+      omega
+  · intro j hj hp ht
+    rw [hv]
+    refine TailOK_append _ _ _ ?_ (hstt j hj hp ht) (fun t ht => by simp at ht; subst ht; rfl)
+    have := stackLen_of_AllKeysValid s1 hA1 j hj hp
+    have hmono : (vals s1).length ≤ (vals (scanValuePrepare s1)).length := by
+      simp only [vals, toks_length]
+      exact scanValuePrepare_tokens_monotonic s1
+    omega
+
+lemma LiveInv_dispatchBlock (s : ScannerState) (c : Char) (s' : ScannerState)
+    (h : scanNextToken_dispatchBlockIndicators s c = .ok (some s'))
+    (hF : FlowSync s) (hS : StrongSlot s) (hA : AllKeysValid s) (hI : LiveInv s) : LiveInv s' := by
+  unfold scanNextToken_dispatchBlockIndicators at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  repeat (any_goals (split at h))
+  any_goals contradiction
+  all_goals (try simp only [Except.ok.injEq, Option.some.injEq] at *)
+  any_goals contradiction
+  all_goals (try subst_vars)
+  all_goals first
+    | exact LiveInv_scanBlockEntry s _ (by assumption) (by simp_all) hF hA hI
+    | exact LiveInv_scanKey s _ (by assumption) hF hA hI
+    | exact LiveInv_scanValue s _ (by assumption) hF hS hA hI
+
 end L4YAML.Proofs.DocStartLiveInv
 
 end Blanket
