@@ -2,6 +2,7 @@ module
 
 public import L4YAML.Proofs.Serialization.ParseCheckFrom
 public import L4YAML.Proofs.Scanner.DirectiveRuns
+public import L4YAML.Proofs.Scanner.DocStartLive
 import all L4YAML.Proofs.Serialization.TokenEvents
 
 @[expose] public section Blanket
@@ -58,7 +59,7 @@ lemma scanFiltered_parseStream_ok_checkFrom (input : String) (ts : Toks)
     (docs : Array YamlDocument) (hs : scanFiltered input = .ok ts) (hT : TagUsesShaped ts)
     (h : parseStream ts = .ok docs) :
     ∃ k, k ≤ ts.size ∧
-      (k = ts.size ∨ ParseCheckFrom.tok ts k = some .streamEnd ∨ LoopStuck ts k) ∧
+      (k = ts.size ∨ ParseCheckFrom.tok ts k = some .streamEnd ∨ LoopDead ts k) ∧
       checkFrom {} (tokenEvents (ts.extract 0 k)) = true :=
   parseStream_ok_checkFrom ts docs hT (scanFiltered_DirectivesClosed input ts hs) h
 
@@ -162,14 +163,14 @@ lemma tokenEvents_dropLast_streamEnd (ts : Toks) (L : List YamlToken)
     stops before consuming `.streamEnd`, so S5's witness `k` may be `ts.size - 1`, not `ts.size`;
     since `.streamEnd` is the last token and the only one (`scanFiltered_streamEnd_index`) and adds
     no event (`go_append_streamEnd`), the checker's verdict on that prefix is its verdict on all of
-    `ts`. The `LoopStuck` disjunct is the loop's no-progress exit tied to where it can sit (S3 (d):
+    `ts`. The `LoopDead` disjunct is the loop's no-progress exit tied to where it can sit (S3 (d):
     `StuckAt` alone is refuted at every `.value` index); its first two shapes are the scanner's (β),
     the `.afterDocument` one the bracket-depth residue (γ). -/
 lemma scanFiltered_parseStream_ok_checkFrom_full (input : String) (ts : Toks)
     (docs : Array YamlDocument) (hs : scanFiltered input = .ok ts)
     (hT : TagUsesShaped ts) (h : parseStream ts = .ok docs) :
     checkFrom {} (tokenEvents ts) = true ∨
-      ∃ k, k ≤ ts.size ∧ LoopStuck ts k ∧ checkFrom {} (tokenEvents (ts.extract 0 k)) = true := by
+      ∃ k, k ≤ ts.size ∧ LoopDead ts k ∧ checkFrom {} (tokenEvents (ts.extract 0 k)) = true := by
   obtain ⟨k, hk, hc, hchk⟩ := scanFiltered_parseStream_ok_checkFrom input ts docs hs hT h
   rcases hc with rfl | hse | hst
   · left; simpa using hchk

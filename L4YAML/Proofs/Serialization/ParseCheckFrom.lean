@@ -1336,6 +1336,47 @@ def StuckAt (ts : Toks) (k : Nat) : Prop :=
   emptyFollowerTok (tok ts k) = true ∨
     (tok ts k = some .blockEntry ∧ 0 < k ∧ tok ts (k - 1) = some .blockEntry)
 
+/-- The tokens `parseDocument` consumes nothing of: `emptyFollowerTok` minus the document head
+(`---`, directives) and the node properties / alias (`parseNode` advances over those). S3 (β). -/
+def deadTok : Option YamlToken → Bool
+  | some .key | some .value | some .blockEnd | some .flowEntry | some .flowSequenceEnd
+  | some .flowMappingEnd | some .streamStart | some (.comment ..) | some .placeholder
+  | some .documentEnd | some .streamEnd | none => true
+  | _ => false
+
+/-- `StuckAt` sharpened to what the no-progress exit can actually sit on: a dead token, or a `-`
+right after a `-` (the sequence-entry empty node). -/
+def DeadAt (ts : Toks) (k : Nat) : Prop :=
+  deadTok (tok ts k) = true ∨
+    (tok ts k = some .blockEntry ∧ 0 < k ∧ tok ts (k - 1) = some .blockEntry)
+
+lemma deadTok_emptyFollower (o : Option YamlToken) (h : deadTok o = true) :
+    emptyFollowerTok o = true := by
+  cases o with
+  | none => rfl
+  | some t => cases t <;> simp_all [deadTok, emptyFollowerTok]
+
+lemma StuckAt_of_DeadAt (ts : Toks) (k : Nat) (h : DeadAt ts k) : StuckAt ts k := by
+  rcases h with h | h
+  · exact Or.inl (deadTok_emptyFollower _ h)
+  · exact Or.inr h
+
+lemma deadTok_of_emptyFollower (o : Option YamlToken) (he : emptyFollowerTok o = true)
+    (ha : ∀ n, o ≠ some (.anchor n)) (hl : ∀ n, o ≠ some (.alias n))
+    (ht : ∀ h s, o ≠ some (.tag h s)) (hd : isDirectiveTok o = false)
+    (hs : o ≠ some .documentStart) : deadTok o = true := by
+  cases o with
+  | none => rfl
+  | some t =>
+    cases t <;> first
+      | rfl
+      | (simp [emptyFollowerTok] at he; done)
+      | (simp [isDirectiveTok] at hd; done)
+      | exact absurd rfl (ha _)
+      | exact absurd rfl (hl _)
+      | exact absurd rfl (ht _ _)
+      | exact absurd rfl hs
+
 /-- Where `parseStreamLoop`'s no-progress exit can sit, relative to the loop's entry
 position `p` and stream state `st`: in the first iteration (`k = p`, and `st` admitted
 the token), right after a consumed `...`, or in the `.afterDocument` state — which
@@ -1350,13 +1391,13 @@ def StopShape (ts : Toks) (st : StreamState) (p k : Nat) : Prop :=
 
 /-- The no-progress exit at `parseStream`'s top level (entry position 1, state
 `.initial`, whose `validNextToken` admits everything). -/
-def LoopStuck (ts : Toks) (k : Nat) : Prop :=
-  StuckAt ts k ∧ (k = 1 ∨ tok ts (k - 1) = some .documentEnd ∨
+def LoopDead (ts : Toks) (k : Nat) : Prop :=
+  DeadAt ts k ∧ tok ts k ≠ some .documentEnd ∧ (k = 1 ∨ tok ts (k - 1) = some .documentEnd ∨
     ∃ t, tok ts k = some t ∧ StreamState.validNextToken .afterDocument t = true)
 
-lemma LoopStuck_of_initial (ts : Toks) (k : Nat) (hs : StuckAt ts k)
-    (h : StopShape ts .initial 1 k) : LoopStuck ts k := by
-  refine ⟨hs, ?_⟩
+lemma LoopDead_of_initial (ts : Toks) (k : Nat) (hs : DeadAt ts k)
+    (hne : tok ts k ≠ some .documentEnd) (h : StopShape ts .initial 1 k) : LoopDead ts k := by
+  refine ⟨hs, hne, ?_⟩
   rcases h with ⟨rfl, -⟩ | h | h
   · exact Or.inl rfl
   · exact Or.inr (Or.inl h)
@@ -1381,8 +1422,8 @@ lemma StopShape_afterDocument (ts : Toks) (st : StreamState) (p q k : Nat)
   · exact Or.inr (Or.inr h)
 
 lemma stop_mono {ts : Toks} {k : Nat} {A B : Prop} (hAB : A → B)
-    (h : k = ts.size ∨ tok ts k = some .streamEnd ∨ (StuckAt ts k ∧ A)) :
-    k = ts.size ∨ tok ts k = some .streamEnd ∨ (StuckAt ts k ∧ B) := by
+    (h : k = ts.size ∨ tok ts k = some .streamEnd ∨ (DeadAt ts k ∧ A)) :
+    k = ts.size ∨ tok ts k = some .streamEnd ∨ (DeadAt ts k ∧ B) := by
   rcases h with h | h | ⟨h1, h2⟩
   · exact Or.inl h
   · exact Or.inr (Or.inl h)
@@ -1394,6 +1435,244 @@ lemma peek_eq_of_cf {ps ps' : ParseState} (h : CF ps ps') (hpos : ps'.pos = ps.p
 
 /-- The stuck analysis for one node: a `parseNode` that consumes nothing sits
 at a `StuckAt` position. -/
+lemma declareAnchorOpt_pos (ps : ParseState) (o : Option String) :
+    (ps.declareAnchorOpt o).pos = ps.pos := by
+  cases o <;> simp [ParseState.declareAnchorOpt, ParseState.declareAnchor]
+
+/-- Node properties are consumed: an anchor or tag at the cursor advances it. S3 (β). -/
+lemma parseNodeProperties_progress (ps : ParseState) (props : NodeProperties) (ps' : ParseState)
+    (h : parseNodeProperties ps = .ok (props, ps'))
+    (hpk : (∃ n, ps.peek? = some (.anchor n)) ∨ ∃ hd sf, ps.peek? = some (.tag hd sf)) :
+    ps.pos < ps'.pos := by
+  unfold parseNodeProperties at h
+  dsimp only [] at h
+  simp only [Std.Legacy.Range.forIn_eq_forIn_range',
+             Std.Legacy.Range.size, Nat.sub_zero, Nat.add_sub_cancel, Nat.div_one,
+             show List.range' 0 2 1 = 0 :: List.range' 1 1 1 from by decide,
+             show List.range' 1 1 1 = [1] from by decide,
+             List.forIn_cons, List.forIn_nil, bind, Except.bind, pure, Except.pure] at h
+  rcases hpk with ⟨n, hpk⟩ | ⟨hd, sf, hpk⟩
+  · rw [hpk] at h
+    simp only [Option.isSome_none, Bool.false_eq_true, ↓reduceIte] at h
+    cases hpk2 : ps.advance.peek? with
+      | none =>
+        simp only [hpk2] at h
+        first
+          | (simp at h; done)
+          | (simp only [Except.ok.injEq, Prod.mk.injEq] at h
+             obtain ⟨-, rfl⟩ := h
+             simp [declareAnchorOpt_pos, ParseState.advance]
+             try omega
+             done)
+      | some t2 =>
+        cases t2 <;> simp only [hpk2, Option.isSome_some, Option.isSome_none, Bool.false_eq_true,
+          ↓reduceIte] at h
+        case tag h2 s2 =>
+          by_cases hc : (h2 != "" && h2 != "!" && h2 != "!!") = true
+          · by_cases hc2 : (!ps.advance.tagHandles.any fun x => x.fst == h2) = true
+            · simp only [hc, hc2, ↓reduceIte] at h; simp at h
+            · simp only [hc, hc2, ↓reduceIte, Bool.false_eq_true] at h
+              first
+          | (simp at h; done)
+          | (simp only [Except.ok.injEq, Prod.mk.injEq] at h
+             obtain ⟨-, rfl⟩ := h
+             simp [declareAnchorOpt_pos, ParseState.advance]
+             try omega
+             done)
+          · simp only [hc, ↓reduceIte, Bool.false_eq_true] at h
+            first
+          | (simp at h; done)
+          | (simp only [Except.ok.injEq, Prod.mk.injEq] at h
+             obtain ⟨-, rfl⟩ := h
+             simp [declareAnchorOpt_pos, ParseState.advance]
+             try omega
+             done)
+        all_goals first
+          | (simp at h; done)
+          | (simp only [Except.ok.injEq, Prod.mk.injEq] at h
+             obtain ⟨-, rfl⟩ := h
+             simp [declareAnchorOpt_pos, ParseState.advance]
+             try omega
+             done)
+  · rw [hpk] at h
+    by_cases hc : (hd != "" && hd != "!" && hd != "!!") = true
+    · by_cases hc2 : (!ps.tagHandles.any fun x => x.fst == hd) = true
+      · simp only [hc, hc2, ↓reduceIte] at h; simp at h
+      · simp only [hc, hc2, ↓reduceIte, Bool.false_eq_true] at h
+        cases hpk2 : ps.advance.peek? with
+      | none =>
+        simp only [hpk2] at h
+        first
+          | (simp at h; done)
+          | (simp only [Except.ok.injEq, Prod.mk.injEq] at h
+             obtain ⟨-, rfl⟩ := h
+             simp [declareAnchorOpt_pos, ParseState.advance]
+             try omega
+             done)
+      | some t2 =>
+        cases t2 <;> simp only [hpk2, Option.isSome_some, Option.isSome_none, Bool.false_eq_true,
+          ↓reduceIte] at h
+        case tag h2 s2 =>
+          by_cases hc : (h2 != "" && h2 != "!" && h2 != "!!") = true
+          · by_cases hc2 : (!ps.advance.tagHandles.any fun x => x.fst == h2) = true
+            · simp only [hc, hc2, ↓reduceIte] at h; simp at h
+            · simp only [hc, hc2, ↓reduceIte, Bool.false_eq_true] at h
+              first
+          | (simp at h; done)
+          | (simp only [Except.ok.injEq, Prod.mk.injEq] at h
+             obtain ⟨-, rfl⟩ := h
+             simp [declareAnchorOpt_pos, ParseState.advance]
+             try omega
+             done)
+          · simp only [hc, ↓reduceIte, Bool.false_eq_true] at h
+            first
+          | (simp at h; done)
+          | (simp only [Except.ok.injEq, Prod.mk.injEq] at h
+             obtain ⟨-, rfl⟩ := h
+             simp [declareAnchorOpt_pos, ParseState.advance]
+             try omega
+             done)
+        all_goals first
+          | (simp at h; done)
+          | (simp only [Except.ok.injEq, Prod.mk.injEq] at h
+             obtain ⟨-, rfl⟩ := h
+             simp [declareAnchorOpt_pos, ParseState.advance]
+             try omega
+             done)
+    · simp only [hc, ↓reduceIte, Bool.false_eq_true] at h
+      cases hpk2 : ps.advance.peek? with
+      | none =>
+        simp only [hpk2] at h
+        first
+          | (simp at h; done)
+          | (simp only [Except.ok.injEq, Prod.mk.injEq] at h
+             obtain ⟨-, rfl⟩ := h
+             simp [declareAnchorOpt_pos, ParseState.advance]
+             try omega
+             done)
+      | some t2 =>
+        cases t2 <;> simp only [hpk2, Option.isSome_some, Option.isSome_none, Bool.false_eq_true,
+          ↓reduceIte] at h
+        case tag h2 s2 =>
+          by_cases hc : (h2 != "" && h2 != "!" && h2 != "!!") = true
+          · by_cases hc2 : (!ps.advance.tagHandles.any fun x => x.fst == h2) = true
+            · simp only [hc, hc2, ↓reduceIte] at h; simp at h
+            · simp only [hc, hc2, ↓reduceIte, Bool.false_eq_true] at h
+              first
+          | (simp at h; done)
+          | (simp only [Except.ok.injEq, Prod.mk.injEq] at h
+             obtain ⟨-, rfl⟩ := h
+             simp [declareAnchorOpt_pos, ParseState.advance]
+             try omega
+             done)
+          · simp only [hc, ↓reduceIte, Bool.false_eq_true] at h
+            first
+          | (simp at h; done)
+          | (simp only [Except.ok.injEq, Prod.mk.injEq] at h
+             obtain ⟨-, rfl⟩ := h
+             simp [declareAnchorOpt_pos, ParseState.advance]
+             try omega
+             done)
+        all_goals first
+          | (simp at h; done)
+          | (simp only [Except.ok.injEq, Prod.mk.injEq] at h
+             obtain ⟨-, rfl⟩ := h
+             simp [declareAnchorOpt_pos, ParseState.advance]
+             try omega
+             done)
+
+/-- An alias at the cursor is consumed by `parseNode`. S3 (β). -/
+lemma parseNode_alias_progress (ps : ParseState) (m : Nat) (n : String) (val : YamlValue)
+    (ps' : ParseState) (hpk : ps.peek? = some (.alias n)) (h_ok : parseNode ps m = .ok (val, ps')) :
+    ps.pos < ps'.pos := by
+  cases m with
+  | zero => simp [parseNode] at h_ok
+  | succ k =>
+    unfold parseNode at h_ok
+    simp only [bind, Except.bind, pure, Except.pure] at h_ok
+    rw [hpk] at h_ok
+    dsimp only at h_ok
+    repeat' split at h_ok
+    all_goals first
+      | (simp at h_ok; done)
+      | (simp only [Except.ok.injEq] at h_ok
+         first | subst h_ok | (obtain ⟨-, rfl⟩ := h_ok)
+         simp [ParseState.advance]
+         try omega
+         done)
+
+/-- `parseNode_stuck`, sharpened: no progress means an `emptyFollowerTok` that is neither an anchor
+nor a tag (those are consumed), or a `-` after a `-`. S3 (β). -/
+lemma parseNode_dead (ps : ParseState) (m : Nat) (val : YamlValue) (ps' : ParseState)
+    (h_fuel : 2 < m) (h_ok : parseNode ps m = .ok (val, ps')) (hpos : ps'.pos = ps.pos) :
+    (emptyFollowerTok (tok ps.tokens ps.pos) = true ∧
+      (∀ n, tok ps.tokens ps.pos ≠ some (.anchor n)) ∧
+      (∀ hd sf, tok ps.tokens ps.pos ≠ some (.tag hd sf))) ∨
+    (tok ps.tokens ps.pos = some .blockEntry ∧ 0 < ps.pos ∧
+      tok ps.tokens (ps.pos - 1) = some .blockEntry) := by
+  cases m with
+  | zero => simp [parseNode] at h_ok
+  | succ k =>
+    unfold parseNode at h_ok
+    simp only [bind, Except.bind, pure, Except.pure] at h_ok
+    split at h_ok
+    · split at h_ok <;> first | contradiction | skip
+      split at h_ok <;> (
+        simp only [Except.ok.injEq] at h_ok
+        obtain ⟨_, rfl⟩ := Prod.mk.inj h_ok) <;> simp [ParseState.advance] at hpos
+    · split at h_ok
+      · simp at h_ok
+      · rename_i props_res heq_props
+        obtain ⟨props, ps_props⟩ := props_res
+        dsimp only [] at h_ok
+        have h_props := parseNodeProperties_cf ps props ps_props heq_props
+        split at h_ok <;> first | contradiction | skip
+        split at h_ok
+        · simp at h_ok
+        · rename_i content_res heq_content
+          obtain ⟨val_c, ps_c⟩ := content_res
+          dsimp only [] at h_ok
+          have h_content := parseNodeContent_cf (parseNode_cf_all k) ps_props k (Nat.le_refl k)
+            props _ val_c ps_c heq_content
+          simp only [Except.ok.injEq] at h_ok
+          obtain ⟨_, rfl⟩ := Prod.mk.inj h_ok
+          have hfin : ps_c.pos ≤ (applyNodeFinalization val_c ps_c props
+              (ps.peekPos?.getD { offset := 0, line := 0, col := 0 })).2.pos :=
+            (applyNodeFinalization_cf val_c ps_c props _).2.1
+          have hfin' : ps_c.pos ≤ ps.pos := Nat.le_trans hfin (Nat.le_of_eq hpos)
+          have h1 := h_content.1.2.1
+          have h2 := h_props.2.1
+          have hpos_c : ps_c.pos = ps_props.pos := by omega
+          have hpos_p : ps_props.pos = ps.pos := by omega
+          have hpk : ps_props.peek? = ps.peek? := peek_eq_of_cf h_props hpos_p
+          rcases h_content.2 hpos_c (by omega) with h | ⟨hse, hbe⟩
+          · left
+            refine ⟨by rw [← peek_eq_tok, ← hpk]; exact h, ?_, ?_⟩
+            · intro n hn
+              have := parseNodeProperties_progress ps props ps_props heq_props
+                (Or.inl ⟨n, by rw [peek_eq_tok]; exact hn⟩)
+              omega
+            · intro hd sf hn
+              have := parseNodeProperties_progress ps props ps_props heq_props
+                (Or.inr ⟨hd, sf, by rw [peek_eq_tok]; exact hn⟩)
+              omega
+          · right
+            rw [hpk] at hbe
+            refine ⟨by rw [← peek_eq_tok]; exact hbe, ?_⟩
+            have hlt := pos_lt_of_peek hbe
+            revert hse
+            split
+            · rename_i hgt; intro hse
+              split at hse
+              · rename_i hbe'
+                refine ⟨hgt, ?_⟩
+                rw [tok, Array.getElem?_eq_getElem (by omega)]
+                simp only [Option.map_some, Option.some.injEq]
+                rw [getElem!_pos ps.tokens (ps.pos - 1) (by omega)] at hbe'
+                exact hbe'
+              · simp at hse
+            · intro hse; simp at hse
+
 lemma parseNode_stuck (ps : ParseState) (m : Nat) (val : YamlValue) (ps' : ParseState)
     (h_fuel : 2 < m) (h_ok : parseNode ps m = .ok (val, ps')) (hpos : ps'.pos = ps.pos) :
     StuckAt ps.tokens ps.pos := by
@@ -1767,7 +2046,7 @@ lemma parseDocument_cf (ps : ParseState) (doc : YamlDocument) (ps' : ParseState)
     (hsz : ps.pos ≤ ps.tokens.size) (hD : DirectivesClosed ps.tokens) (hT : TagUsesShaped ps.tokens)
     (hdecl : ps.declaredAnchors = #[]) :
     ps'.tokens = ps.tokens ∧ ps.pos ≤ ps'.pos ∧ ps'.pos ≤ ps.tokens.size ∧
-    (ps'.pos = ps.pos → StuckAt ps.tokens ps.pos) ∧
+    (ps'.pos = ps.pos → DeadAt ps.tokens ps.pos) ∧
     ∀ s : CS, ∃ s', runToks (seg ps.tokens ps.pos ps'.pos) s = some s' := by
   unfold parseDocument at h
   simp only [bind, Except.bind, pure, Except.pure] at h
@@ -1778,9 +2057,9 @@ lemma parseDocument_cf (ps : ParseState) (doc : YamlDocument) (ps' : ParseState)
     dsimp only at h
     obtain ⟨t_p, p1, p2, d_p, stuck_p, r_p⟩ := prepareDocumentState_cf ps dirs ps_p hpre hsz hD hdecl
     have hT' : TagUsesShaped ps_p.tokens := t_p ▸ hT
-    have hempty : ∀ (hpk : emptyFollowerTok ps_p.peek? = true), ps' = ps_p →
+    have hempty : ∀ (hpk : deadTok ps_p.peek? = true), ps' = ps_p →
         ps'.tokens = ps.tokens ∧ ps.pos ≤ ps'.pos ∧ ps'.pos ≤ ps.tokens.size ∧
-        (ps'.pos = ps.pos → StuckAt ps.tokens ps.pos) ∧
+        (ps'.pos = ps.pos → DeadAt ps.tokens ps.pos) ∧
         ∀ s : CS, ∃ s', runToks (seg ps.tokens ps.pos ps'.pos) s = some s' := by
       intro hpk heq; subst heq
       refine ⟨t_p, p1, p2, fun hpos => Or.inl ?_, fun s => ?_⟩
@@ -1804,8 +2083,17 @@ lemma parseDocument_cf (ps : ParseState) (doc : YamlDocument) (ps' : ParseState)
         refine ⟨hcf.1.trans t_p, Nat.le_trans p1 hcf.2.1, ?_, fun hpos => ?_, fun s => ?_⟩
         · have := hcf.2.2.2.1 (by rw [t_p]; exact p2); rw [t_p] at this; exact this
         · have hpos_p : ps_p.pos = ps.pos := by have := hcf.2.1; omega
-          have := parseNode_stuck ps_p _ val ps_n (by omega) hpn (by omega)
-          rw [t_p, hpos_p] at this; exact this
+          rcases parseNode_dead ps_p _ val ps_n (by omega) hpn (by omega) with ⟨he, ha, ht⟩ | hpair
+          · left
+            rw [t_p, hpos_p] at he ha ht
+            have hal : ∀ n, tok ps.tokens ps.pos ≠ some (.alias n) := by
+              intro n hn
+              have := parseNode_alias_progress ps_p _ n val ps_n
+                (by rw [peek_eq_tok, t_p, hpos_p]; exact hn) hpn
+              omega
+            obtain ⟨hd, hs⟩ := stuck_p hpos_p he
+            exact deadTok_of_emptyFollower _ he ha hal ht hd hs
+          · right; rw [t_p, hpos_p] at hpair; exact hpair
         · obtain ⟨s₁, hr₁, hrel⟩ := r_p s
           obtain ⟨s₂, hr₂, -⟩ := hcf.2.2.2.2 hT' s₁ hrel
           refine ⟨s₂, ?_⟩
@@ -1823,7 +2111,8 @@ lemma parseStreamLoop_cf (fuel : Nat) : ∀ (ps : ParseState) (docs : Array Yaml
     ps.declaredAnchors = #[] → DirectivesClosed ps.tokens → TagUsesShaped ps.tokens →
     ∀ s : CS, ∃ k s', ps.pos ≤ k ∧ k ≤ ps.tokens.size ∧
       (k = ps.tokens.size ∨ tok ps.tokens k = some .streamEnd ∨
-        (StuckAt ps.tokens k ∧ StopShape ps.tokens st ps.pos k)) ∧
+        (DeadAt ps.tokens k ∧ tok ps.tokens k ≠ some .documentEnd ∧
+          StopShape ps.tokens st ps.pos k)) ∧
       runToks (seg ps.tokens ps.pos k) s = some s' := by
   induction fuel with
   | zero => intro ps _ _ _ _ hsz hf; omega
@@ -1851,7 +2140,7 @@ lemma parseStreamLoop_cf (fuel : Nat) : ∀ (ps : ParseState) (docs : Array Yaml
         hdecl hD hT (s.1.reset, s.2)
       simp only [ParseState.advance] at hk1 hk2 hk3 hr
       have hpkT : tok ps.tokens ps.pos = some .documentEnd := by rw [← peek_eq_tok]; exact hpk
-      refine ⟨k, s', by omega, hk2, stop_mono (StopShape_after_documentEnd _ _ _ _ _ _ hpkT) hk3, ?_⟩
+      refine ⟨k, s', by omega, hk2, stop_mono (And.imp_right (StopShape_after_documentEnd _ _ _ _ _ _ hpkT)) hk3, ?_⟩
       obtain ⟨p, hp, hv⟩ := peek_some hpk
       rw [seg_append _ (Nat.le_succ _) hk1, runToks_append, seg_one _ hp]
       simpa [runToks, hv, stepTok] using hr
@@ -1874,7 +2163,10 @@ lemma parseStreamLoop_cf (fuel : Nat) : ∀ (ps : ParseState) (docs : Array Yaml
             · rename_i heqpos
               simp only [beq_iff_eq] at heqpos
               obtain ⟨tk, hpk2, hvt⟩ := hvalid
-              exact ⟨ps.pos, s, Nat.le_refl _, hsz, Or.inr (Or.inr ⟨stuck_d heqpos,
+              have hne : tok ps.tokens ps.pos ≠ some .documentEnd := by
+                rw [← peek_eq_tok, hpk]; intro heq; simp only [Option.some.injEq] at heq
+                subst heq; simp_all
+              exact ⟨ps.pos, s, Nat.le_refl _, hsz, Or.inr (Or.inr ⟨stuck_d heqpos, hne,
                 Or.inl ⟨rfl, tk, by rw [← peek_eq_tok]; exact hpk2, hvt⟩⟩), by simp [runToks]⟩
             · rename_i hnepos
               have hlt : ps.pos < ps_d.pos := by
@@ -1885,7 +2177,7 @@ lemma parseStreamLoop_cf (fuel : Nat) : ∀ (ps : ParseState) (docs : Array Yaml
               obtain ⟨k, s', hk1, hk2, hk3, hr⟩ := ih _ _ _ docs' h (by simpa [t_d] using p2)
                 (by simp only [t_d]; omega) rfl (by simpa [t_d] using hD) (by simpa [t_d] using hT) s₁
               simp only [t_d] at hk1 hk2 hk3 hr
-              refine ⟨k, s', by omega, hk2, stop_mono (StopShape_afterDocument _ _ _ _ _) hk3, ?_⟩
+              refine ⟨k, s', by omega, hk2, stop_mono (And.imp_right (StopShape_afterDocument _ _ _ _ _)) hk3, ?_⟩
               rw [seg_append _ p1 hk1, runToks_append, hr₁]
               exact hr
           · have hlt := pos_lt_of_peek hpkR
@@ -1906,7 +2198,7 @@ lemma parseStreamLoop_cf (fuel : Nat) : ∀ (ps : ParseState) (docs : Array Yaml
               have hpkT : tok ps.tokens ps_d.pos = some .documentEnd := by
                 rw [← t_d, ← peek_eq_tok]; exact hpkR
               refine ⟨k, s', by omega, hk2,
-                stop_mono (StopShape_after_documentEnd _ _ _ _ _ _ hpkT) hk3, ?_⟩
+                stop_mono (And.imp_right (StopShape_after_documentEnd _ _ _ _ _ _ hpkT)) hk3, ?_⟩
               rw [seg_append _ p1 (Nat.le_trans (Nat.le_succ _) hk1), runToks_append, hr₁,
                 seg_append _ (Nat.le_succ _) hk1]
               show runToks (seg ps.tokens ps_d.pos (ps_d.pos + 1) ++ seg ps.tokens (ps_d.pos + 1) k) s₁ = some s'
@@ -1914,27 +2206,28 @@ lemma parseStreamLoop_cf (fuel : Nat) : ∀ (ps : ParseState) (docs : Array Yaml
               simpa [runToks, hv, stepTok] using hr
 
 lemma stop_mono' {ts : Toks} {k : Nat}
-    (h : k = ts.size ∨ tok ts k = some .streamEnd ∨ (StuckAt ts k ∧ StopShape ts .initial (0 + 1) k)) :
-    k = ts.size ∨ tok ts k = some .streamEnd ∨ LoopStuck ts k := by
-  rcases h with h | h | ⟨h1, h2⟩
+    (h : k = ts.size ∨ tok ts k = some .streamEnd ∨
+      (DeadAt ts k ∧ tok ts k ≠ some .documentEnd ∧ StopShape ts .initial (0 + 1) k)) :
+    k = ts.size ∨ tok ts k = some .streamEnd ∨ LoopDead ts k := by
+  rcases h with h | h | ⟨h1, hne, h2⟩
   · exact Or.inl h
   · exact Or.inr (Or.inl h)
-  · exact Or.inr (Or.inr (LoopStuck_of_initial ts k h1 h2))
+  · exact Or.inr (Or.inr (LoopDead_of_initial ts k h1 hne h2))
 
 /-- **S5(→), parser side.** A successful `parseStream` run is well-formed up to
 the position `k` where the loop stopped: `checkFrom {} (tokenEvents (ts.extract 0 k))`.
-`k` is the end of input, a `streamEnd`, or a `LoopStuck` position (the loop's
+`k` is the end of input, a `streamEnd`, or a `LoopDead` position (the loop's
 no-progress exit: `StuckAt`, and the stop is at index 1, after a `...`, or in the
 `.afterDocument` state — S3 (d)). Under scanner-shaped tokens (`TagUsesShaped`,
 `DirectivesClosed`), the parser's anchor/tag guards compose to the checker.
 S3 (c) carries the verdict across the final `.streamEnd`
 (`scanFiltered_parseStream_ok_checkFrom_full`); S3 (d)'s scanner side discharges
-the first two `LoopStuck` shapes, the `.afterDocument` one is the residue (γ).
+the first two `LoopDead` shapes, the `.afterDocument` one is the residue (γ).
 Capstone 7.7 `parse_iff_grammar` via S5 (EVENTSOF-CONCEPT §9). -/
 lemma parseStream_ok_checkFrom (ts : Toks) (docs : Array YamlDocument)
     (hT : TagUsesShaped ts) (hD : DirectivesClosed ts)
     (h : parseStream ts = .ok docs) :
-    ∃ k, k ≤ ts.size ∧ (k = ts.size ∨ tok ts k = some .streamEnd ∨ LoopStuck ts k) ∧
+    ∃ k, k ≤ ts.size ∧ (k = ts.size ∨ tok ts k = some .streamEnd ∨ LoopDead ts k) ∧
       checkFrom {} (tokenEvents (ts.extract 0 k)) = true := by
   unfold parseStream at h
   simp only [bind, Except.bind] at h
@@ -1979,7 +2272,7 @@ lemma parse_ok_checkFrom (input : String) (docs : Array YamlDocument)
     (h : parseYaml input = .ok docs) :
     ∃ tokens, Scanner.scanFiltered input = .ok tokens ∧ (∃ raw, parseStream tokens = .ok raw) ∧
       (TagUsesShaped tokens → DirectivesClosed tokens →
-        ∃ k, k ≤ tokens.size ∧ (k = tokens.size ∨ tok tokens k = some .streamEnd ∨ LoopStuck tokens k) ∧
+        ∃ k, k ≤ tokens.size ∧ (k = tokens.size ∨ tok tokens k = some .streamEnd ∨ LoopDead tokens k) ∧
           checkFrom {} (tokenEvents (tokens.extract 0 k)) = true) := by
   unfold parseYaml parseYamlRaw at h
   split at h

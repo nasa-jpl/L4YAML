@@ -11,6 +11,7 @@ public import L4YAML.Proofs.Serialization.TokenEvents
 public import L4YAML.Proofs.Production.StreamAccum
 public import L4YAML.Proofs.Scanner.RegisterWitness
 public import L4YAML.Proofs.Serialization.ScannerShape
+public import L4YAML.Proofs.Scanner.DocStartLive
 public import L4YAML.Proofs.Scanner.FlowAdjacency
 public import L4YAML.Proofs.Output.AlignProofs
 public import L4YAML.Proofs.Scanner.FlowAdjacencyIx
@@ -11264,6 +11265,272 @@ def testStuckAtDocStart (state : IO.Ref TestCollector) : IO Unit := do
   -- `.afterDocument`); the load-bearing case is a first-iteration shape at a scalar
   checkM state "P91(v) [SS, sc, DE, :]: no `...` at q = 0, the shape at q+1 = 1 (first iteration, scalar admitted by .initial) does not transfer to p = 3 — hp is load-bearing"
     (P91.stopShapeB ex .initial 1 1 && !(tk ex 0 == some .documentEnd) && !P91.stopShapeB ex .afterDocument 3 1) ""
+/-! **Priority 92 — S3 (β), the document-start token on scanner output, instantiated BEFORE the
+    proof (Rule 2).**  Statement to prove: `scanFiltered input = .ok ts →` the token at index 1 and the
+    token right after every `.documentEnd` is never dead — `key` / `value` / `blockEnd` / `flowEntry` /
+    `flowSequenceEnd` / `flowMappingEnd` / `streamStart` (nor absent).  The raw shape the invariant
+    carries: for a dead raw token at `j`, `prevRealIdx? raw j` (the nearest non-placeholder before it)
+    is never `streamStart` / `documentEnd`; placeholders are the only tokens between a reservation
+    and its filled `key`.  (i) checks both on 86 + 40 inputs (index 1 and after `...`: every token
+    kind, BOM / comment / blank prefixes, `...` runs, `...` with trailing comment, `--- ...`, block
+    scalars and quoted scalars after `...`, flow collections after `...`); (ii) drives `scanLoop`
+    directly at fuel 0..24 from the start state and 1–2 steps later, checking the conclusion on every
+    success; (iii) the parser side the discharge needs — `DeadAt`: on `[SS, t, SE]` for every token
+    kind `t`, `parseStreamLoop` takes its no-progress exit iff `t` is dead (the head-consumed
+    `emptyFollowerTok`s — `---`, directives, anchor, tag, alias — make progress or fail), likewise on
+    `[SS, DE, t, SE]` and, in `.afterDocument`, on `[SS, sc, t, SE]` from position 2; (iv) the
+    list-level lemmas of `Proofs/Scanner/DocStartLive.lean` directly (`filter_getLast`,
+    `lastReal_snoc`, `Shape_snoc`, `LiveF_of_Shape`) on every list of length ≤ 3 over an alphabet
+    with both boundaries, a placeholder, dead and live tokens, with the withdrawn-`Shape` control;
+    (v) the parser progress lemmas `parseNodeProperties_progress`, `parseNode_alias_progress`,
+    `parseNode_dead` on their own premises: hand-built arrays at first / middle / after-`-` / last
+    positions, property orderings and an alias as the head, every token kind as the follower,
+    `parseNode` fuel 0..5, premise-held and premise-failed rows tallied separately.
+    (i) grew to 143 rows: `---` / `...` inside flow collections and quoted / block scalars — the only
+    way a dead token could follow a boundary — are refused (`documentMarkerInFlow` /
+    `documentMarkerInScalar`). -/
+namespace P92
+open L4YAML.Proofs.Serialization.ParseCheckFrom (tok)
+
+def deadTok : Option YamlToken → Bool
+  | some .key | some .value | some .blockEnd | some .flowEntry | some .flowSequenceEnd
+  | some .flowMappingEnd | some .streamStart | some (.comment ..) | some .placeholder | none => true
+  | _ => false
+
+/-- (i) on the filtered array: index 1 and every index after a `.documentEnd` is live -/
+def docStartLive (ts : Array (Positioned YamlToken)) : Bool :=
+  !deadTok (tok ts 1) &&
+    (List.range ts.size).all fun k => k == 0 || tok ts (k - 1) != some .documentEnd || !deadTok (tok ts k)
+
+/-- the raw shape: a dead raw token is never preceded (through placeholders) by SS / DE -/
+def rawShape (raw : Array (Positioned YamlToken)) : Bool :=
+  (List.range raw.size).all fun j =>
+    j == 0 || !deadTok (tok raw j) || tok raw j == some .placeholder ||
+      (match prevRealIdx? raw j with
+        | some i => tok raw i != some .streamStart && tok raw i != some .documentEnd
+        | none => false)
+
+def deCount (ts : Array (Positioned YamlToken)) : Nat :=
+  (List.range ts.size).countP fun k => tok ts k == some .documentEnd
+
+def extraRows : List String :=
+  [ "\uFEFF...\n: a", "# c\n...\n: a", "...\n\n\n: a", "...\n...\n: a", "... # c\n: a", "--- ...",
+    "--- ...\n? a", "?\n: ", "-\n...\n-", "[a]\n...\n]", "[a]\n...\n[b]", "{a: b}\n...\n{c: d}",
+    "...\n|\n a", "...\n>\n a", "...\n\"a\"", "...\n'a'", "a\n...\n...\nb", "...\n%TAG !e! tag:x\n---",
+    "...\n# only comment", "... ", "...\t", "...a", "....", "...\n: ", "...\n? ", "...\n- ",
+    "...\n[a, b]", "...\n{a: b}", "...\n[]", "...\n{}", "...\n- - a", "...\n--- a\n...", "...\n---\n...",
+    "a: b\n...\nc: d", "a: b\n...\n: d", "- a\n...\n- b", "? a\n...\n? b", "&x a\n...\n&x b",
+    "!t a\n...\n!t b", "a\n...\n...\n...\nb",
+    -- document markers inside flow / quoted scalars: the scanner refuses (`documentMarkerInFlow`,
+    -- `documentMarkerInScalar`) — the only way a dead token could follow `...`
+    "[a\n...\n]", "[\n...\n]", "{\n...\n}", "[a,\n...\nb]", "[a\n---\n]", "- [a\n...\n]",
+    "\"a\n...\nb\"", "'a\n...\nb'", "|\n...\n", "a:\n...\n b", "? a\n...\n: b", "- a\n...\n  - b",
+    "[a\n...", "{a\n...", "[a,\n...", "a: [\n...\n]", "a: b\n...\n c" ]
+
+/-- executable mirror of `DocStartLive.Shape` (raw list) -/
+def shapeB (L : List YamlToken) : Bool :=
+  (List.range L.length).all fun j => j == 0 ||
+    (match L[j]? with
+     | some t => L4YAML.Proofs.DocStartLive.liveTok t || !L4YAML.Proofs.DirectiveRuns.nonPh t ||
+         L4YAML.Proofs.DocStartLive.Bnd (L4YAML.Proofs.DocStartLive.lastReal (L.take j)) == false
+     | none => true)
+
+/-- executable mirror of `DocStartLive.LiveF` (filtered list) -/
+def liveFB (F : List YamlToken) : Bool :=
+  (List.range F.length).all fun k => k == 0 ||
+    (match F[k]? with
+     | some t => L4YAML.Proofs.DocStartLive.liveTok t ||
+         (match F[k - 1]? with
+          | some u => L4YAML.Proofs.DocStartLive.Bnd (some u) == false
+          | none => false)
+     | none => true)
+
+def kinds : List (String × YamlToken) :=
+  [ ("SS", .streamStart), ("SE", .streamEnd), ("ph", .placeholder), ("%Y", .versionDirective 1 2),
+    ("%T", .tagDirective "!e!" "tag:x"), ("DS", .documentStart), ("DE", .documentEnd),
+    ("bS", .blockSequenceStart), ("bM", .blockMappingStart), ("bE", .blockEnd), ("-", .blockEntry),
+    ("?", .key), (":", .value), ("[", .flowSequenceStart), ("]", .flowSequenceEnd),
+    ("{", .flowMappingStart), ("}", .flowMappingEnd), (",", .flowEntry), ("&", .anchor "x"),
+    ("*", .alias "x"), ("!", .tag "!!" "str"), ("sc", .scalar "a" .plain), ("#", .comment "c") ]
+
+end P92
+
+def testDocStartLive (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 92: S3 (β) — the document-start token is never dead; DeadAt on the parser side"
+  let rows := P91.rows ++ P92.extraRows
+  let mut scanned := 0
+  let mut refused := 0
+  let mut des := 0
+  for input in rows do
+    match Scanner.scanFiltered input, Scanner.scan input with
+    | .ok ts, .ok raw =>
+      scanned := scanned + 1
+      des := des + P92.deCount ts
+      checkM state s!"P92(i) {repr input}: index 1 and every token after `...` is live"
+        (P92.docStartLive ts) s!"{repr (ts.map (·.val))}"
+      checkM state s!"P92(i) {repr input}: raw shape — no dead raw token right after SS / DE through placeholders"
+        (P92.rawShape raw) s!"{repr (raw.map (·.val))}"
+    | .error _, .error _ => refused := refused + 1
+    | _, _ => checkM state s!"P92(i) {repr input}: scan and scanFiltered agree on success" false ""
+  checkM state s!"P92(i) rows={rows.length} scanned={scanned} refused={refused} documentEnds={des}"
+    (rows.length == 143 && scanned == 102 && refused == 41 && des == 65)
+    "prediction corrected: 94 scanned / 32 refused was the guess; `...a`, `....`, `...\t` scan (plain scalars / `...` + tab)"
+  -- (ii) scanLoop directly: fuel 0..24 from the start state and after one / two steps
+  let mut okRuns := 0
+  let mut fuelOut := 0
+  for input in ["", "...", "...\n: a", "a: b\n...\nc: d", "? a\n...\n? b", "[a]\n...\n[b]", "--- ...\n? a", "-\n...\n-"] do
+    let s0 := (ScannerState.mk' input).emit .streamStart
+    let s0 := match s0.peek? with | some '\uFEFF' => s0.consumeBOM | _ => s0
+    let steps : List (Nat × Option ScannerState) :=
+      let s1 := match scanNextToken s0 with | .ok (some s) => some s | _ => none
+      let s2 := s1.bind fun s => match scanNextToken s with | .ok (some s') => some s' | _ => none
+      [(0, some s0), (1, s1), (2, s2)]
+    for (n, st?) in steps do
+      match st? with
+      | none => pure ()
+      | some st =>
+        for fuel in List.range 25 do
+          match scanLoop st fuel with
+          | .error _ => fuelOut := fuelOut + 1
+          | .ok raw =>
+            okRuns := okRuns + 1
+            let ts := raw.filter fun t => t.val != .placeholder
+            checkM state s!"P92(ii) {repr input} step {n} fuel {fuel}: success ⇒ document-start tokens live (filtered) and raw shape"
+              (P92.docStartLive ts && P92.rawShape raw) s!"{repr (ts.map (·.val))}"
+  checkM state s!"P92(ii) scanLoop runs: ok={okRuns} fuel-out/error={fuelOut}" (okRuns > 0 && fuelOut > 0) ""
+  -- (iii) DeadAt on the parser side: [SS, t, SE], [SS, DE, t, SE] from .initial / .afterDocumentEnd,
+  -- [SS, sc, t, SE] from position 2 in .afterDocument — the loop's no-progress exit iff `t` is dead
+  let isOk : Except ScanError (Array YamlDocument) → Bool := fun r =>
+    match r with | .ok _ => true | .error _ => false
+  let mut stuckDead := 0
+  let mut liveProgress := 0
+  let mut liveError := 0
+  for (nm, t) in P92.kinds do
+    for (lbl, arr, p, st) in
+        [ ("[SS, t, SE]", P91.mkArr [.streamStart, t, .streamEnd], 1, StreamState.initial),
+          ("[SS, DE, t, SE]", P91.mkArr [.streamStart, .documentEnd, t, .streamEnd], 1, StreamState.initial),
+          ("[SS, sc, t, SE] afterDocument", P91.mkArr [.streamStart, .scalar "a" .plain, t, .streamEnd], 2,
+            StreamState.afterDocument) ] do
+      let real := parseStreamLoop (P91.at_ arr p) #[] st arr.size
+      let sh := P91.shadow arr arr.size (P91.at_ arr p) st []
+      let dead := P92.deadTok (some t) && t != .streamEnd && t != .documentEnd
+      -- the loop never calls parseDocument on DE / SE / none: those are its own arms
+      if sh.stuck then stuckDead := stuckDead + 1
+      else if isOk real then liveProgress := liveProgress + 1
+      else liveError := liveError + 1
+      checkM state s!"P92(iii) {lbl} t={nm}: no-progress exit ⇔ dead token (stuck={sh.stuck} ok={isOk real})"
+        (if sh.stuck then dead else
+          -- a live token either progresses, is refused, or is not admitted by the state
+          !dead || !(st.validNextToken t) || t == .streamEnd || t == .documentEnd)
+        s!"stop={sh.stop} err={sh.err}"
+  checkM state s!"P92(iii) stuck-on-dead={stuckDead} live-progress={liveProgress} live-error/not-admitted={liveError}"
+    (stuckDead > 0 && liveProgress > 0 && liveError > 0) ""
+
+  -- (iv) the list-level lemmas of `DocStartLive` directly: every list of length ≤ 3 over an
+  -- alphabet with both boundaries, a placeholder, dead and live tokens; withdrawn-premise control
+  let alpha : List YamlToken := [.streamStart, .documentEnd, .placeholder, .key, .scalar "a" .plain,
+    .blockEnd, .blockEntry, .documentStart]
+  let lists : List (List YamlToken) :=
+    [[]] ++ alpha.map ([·]) ++ (alpha.flatMap fun a => alpha.map fun b => [a, b]) ++
+      (alpha.flatMap fun a => alpha.flatMap fun b => alpha.map fun c => [a, b, c])
+  let mut shapeOk := 0
+  let mut shapeFail := 0
+  let mut snocPrem := 0
+  for L in lists do
+    checkM state s!"P92(iv) filter_getLast {repr L}"
+      (L4YAML.Proofs.DocStartLive.lastReal L ==
+        (L.filter L4YAML.Proofs.DirectiveRuns.nonPh).getLast?) ""
+    for t in alpha do
+      checkM state s!"P92(iv) lastReal_snoc {repr L} ++ [{repr t}]"
+        (L4YAML.Proofs.DocStartLive.lastReal (L ++ [t]) ==
+          (if L4YAML.Proofs.DirectiveRuns.nonPh t then some t
+           else L4YAML.Proofs.DocStartLive.lastReal L)) ""
+      if P92.shapeB L && (L4YAML.Proofs.DocStartLive.liveTok t ||
+          !L4YAML.Proofs.DirectiveRuns.nonPh t ||
+          L4YAML.Proofs.DocStartLive.Bnd (L4YAML.Proofs.DocStartLive.lastReal L) == false) then
+        snocPrem := snocPrem + 1
+        checkM state s!"P92(iv) Shape_snoc {repr L} ++ [{repr t}]" (P92.shapeB (L ++ [t])) ""
+    if P92.shapeB L then
+      shapeOk := shapeOk + 1
+      checkM state s!"P92(iv) LiveF_of_Shape {repr L}"
+        (P92.liveFB (L.filter L4YAML.Proofs.DirectiveRuns.nonPh)) ""
+    else
+      shapeFail := shapeFail + 1
+  checkM state s!"P92(iv) lists={lists.length} shape-ok={shapeOk} shape-fail={shapeFail} Shape_snoc-premise={snocPrem}"
+    (lists.length == 585 && shapeOk > 0 && shapeFail > 0 && snocPrem > 0) ""
+  let liveFails := lists.filter fun L =>
+    !P92.shapeB L && !P92.liveFB (L.filter L4YAML.Proofs.DirectiveRuns.nonPh)
+  checkM state s!"P92(iv) withdrawn Shape ⇒ LiveF fails on {liveFails.length} lists (first: {repr liveFails.head?})"
+    (liveFails.length > 0) ""
+
+  -- (v) the parser progress lemmas directly, on their own premises (Rule 2): hand-built arrays,
+  -- first / middle / after-`-` / last positions, property orderings and an alias as the head,
+  -- every token kind as the follower, `parseNode` fuel 0..5; premise-held and premise-failed rows
+  -- tallied separately (and, for `parseNodeProperties_progress`, the no-progress rows the
+  -- withdrawn premise admits)
+  let pcf := L4YAML.Proofs.Serialization.ParseCheckFrom.emptyFollowerTok
+  let heads : List (String × List YamlToken) :=
+    [ ("&x", [.anchor "x"]), ("!t", [.tag "!" "t"]), ("&x !t", [.anchor "x", .tag "!" "t"]),
+      ("!t &x", [.tag "!" "t", .anchor "x"]), ("&x &y", [.anchor "x", .anchor "y"]),
+      ("!t !u", [.tag "!" "t", .tag "!" "u"]), ("*x", [.alias "x"]), ("(none)", []) ]
+  let ctxs : List (String × List YamlToken × Nat × List YamlToken) :=
+    [ ("first", [.streamStart], 1, [.streamEnd]),
+      ("middle", [.streamStart, .scalar "a" .plain], 2, [.streamEnd]),
+      ("after -", [.streamStart, .blockSequenceStart, .blockEntry], 3, [.blockEnd, .streamEnd]),
+      ("last", [.streamStart], 1, []) ]
+  let mut propHeld := 0
+  let mut propFail := 0
+  let mut propCtrl := 0
+  let mut aliasHeld := 0
+  let mut aliasFail := 0
+  let mut deadHeld := 0
+  let mut deadFail := 0
+  for (cn, pre, p, post) in ctxs do
+    for (hn, hd) in heads do
+      for (fn, f) in P92.kinds do
+        let arr := P91.mkArr (pre ++ hd ++ [f] ++ post)
+        let ps := ((P91.at_ arr p).declareAnchor "x").addAnchor "x" (seqv [])
+        let lbl := s!"P92(v) {cn} {hn} {fn}"
+        let isProp := match ps.peek? with
+          | some (.anchor _) => true
+          | some (.tag _ _) => true
+          | _ => false
+        match parseNodeProperties ps with
+        | .ok (_, ps') =>
+          if isProp then
+            propHeld := propHeld + 1
+            checkM state s!"{lbl}: parseNodeProperties_progress" (ps.pos < ps'.pos)
+              s!"pos {ps.pos} → {ps'.pos}"
+          else
+            propFail := propFail + 1
+            if !(ps.pos < ps'.pos) then propCtrl := propCtrl + 1
+        | .error _ => propFail := propFail + 1
+        for m in List.range 6 do
+          match parseNode ps m with
+          | .error _ =>
+            aliasFail := aliasFail + 1
+            deadFail := deadFail + 1
+          | .ok (_, ps') =>
+            match ps.peek? with
+            | some (.alias _) =>
+              aliasHeld := aliasHeld + 1
+              checkM state s!"{lbl} fuel {m}: parseNode_alias_progress" (ps.pos < ps'.pos)
+                s!"pos {ps.pos} → {ps'.pos}"
+            | _ => aliasFail := aliasFail + 1
+            if 2 < m && ps'.pos == ps.pos then
+              deadHeld := deadHeld + 1
+              let t := L4YAML.Proofs.Serialization.ParseCheckFrom.tok arr ps.pos
+              let notProp := match t with
+                | some (.anchor _) => false
+                | some (.tag _ _) => false
+                | _ => true
+              let concl := (pcf t && notProp) ||
+                (t == some YamlToken.blockEntry && 0 < ps.pos && L4YAML.Proofs.Serialization.ParseCheckFrom.tok arr (ps.pos - 1) == some YamlToken.blockEntry)
+              checkM state s!"{lbl} fuel {m}: parseNode_dead" concl s!"tok {repr t}"
+            else deadFail := deadFail + 1
+  checkM state s!"P92(v) parseNodeProperties_progress held={propHeld} failed={propFail} (no progress under the withdrawn premise={propCtrl}); parseNode_alias_progress held={aliasHeld} failed={aliasFail}; parseNode_dead held={deadHeld} failed={deadFail}"
+    (propHeld > 0 && propCtrl > 0 && aliasHeld > 0 && deadHeld > 0 && deadFail > 0) ""
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -11380,6 +11647,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testGoAppendStreamEnd state
   testScanLoopStreamEndFuel state
   testStuckAtDocStart state
+  testDocStartLive state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",
