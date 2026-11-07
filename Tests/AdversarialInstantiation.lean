@@ -11264,6 +11264,134 @@ def testStuckAtDocStart (state : IO.Ref TestCollector) : IO Unit := do
   -- `.afterDocument`); the load-bearing case is a first-iteration shape at a scalar
   checkM state "P91(v) [SS, sc, DE, :]: no `...` at q = 0, the shape at q+1 = 1 (first iteration, scalar admitted by .initial) does not transfer to p = 3 — hp is load-bearing"
     (P91.stopShapeB ex .initial 1 1 && !(tk ex 0 == some .documentEnd) && !P91.stopShapeB ex .afterDocument 3 1) ""
+/-! **Priority 92 — S3 (β), the document-start token on scanner output, instantiated BEFORE the
+    proof (Rule 2).**  Statement to prove: `scanFiltered input = .ok ts →` the token at index 1 and the
+    token right after every `.documentEnd` is never dead — `key` / `value` / `blockEnd` / `flowEntry` /
+    `flowSequenceEnd` / `flowMappingEnd` / `streamStart` (nor absent).  The raw shape the invariant
+    carries: for a dead raw token at `j`, `prevRealIdx? raw j` (the nearest non-placeholder before it)
+    is never `streamStart` / `documentEnd`; placeholders are the only tokens between a reservation
+    and its filled `key`.  (i) checks both on 86 + 40 inputs (index 1 and after `...`: every token
+    kind, BOM / comment / blank prefixes, `...` runs, `...` with trailing comment, `--- ...`, block
+    scalars and quoted scalars after `...`, flow collections after `...`); (ii) drives `scanLoop`
+    directly at fuel 0..24 from the start state and 1–2 steps later, checking the conclusion on every
+    success; (iii) the parser side the discharge needs — `DeadAt`: on `[SS, t, SE]` for every token
+    kind `t`, `parseStreamLoop` takes its no-progress exit iff `t` is dead (the head-consumed
+    `emptyFollowerTok`s — `---`, directives, anchor, tag, alias — make progress or fail), likewise on
+    `[SS, DE, t, SE]` and, in `.afterDocument`, on `[SS, sc, t, SE]` from position 2. -/
+namespace P92
+open L4YAML.Proofs.Serialization.ParseCheckFrom (tok)
+
+def deadTok : Option YamlToken → Bool
+  | some .key | some .value | some .blockEnd | some .flowEntry | some .flowSequenceEnd
+  | some .flowMappingEnd | some .streamStart | some (.comment ..) | some .placeholder | none => true
+  | _ => false
+
+/-- (i) on the filtered array: index 1 and every index after a `.documentEnd` is live -/
+def docStartLive (ts : Array (Positioned YamlToken)) : Bool :=
+  !deadTok (tok ts 1) &&
+    (List.range ts.size).all fun k => k == 0 || tok ts (k - 1) != some .documentEnd || !deadTok (tok ts k)
+
+/-- the raw shape: a dead raw token is never preceded (through placeholders) by SS / DE -/
+def rawShape (raw : Array (Positioned YamlToken)) : Bool :=
+  (List.range raw.size).all fun j =>
+    j == 0 || !deadTok (tok raw j) || tok raw j == some .placeholder ||
+      (match prevRealIdx? raw j with
+        | some i => tok raw i != some .streamStart && tok raw i != some .documentEnd
+        | none => false)
+
+def deCount (ts : Array (Positioned YamlToken)) : Nat :=
+  (List.range ts.size).countP fun k => tok ts k == some .documentEnd
+
+def extraRows : List String :=
+  [ "\uFEFF...\n: a", "# c\n...\n: a", "...\n\n\n: a", "...\n...\n: a", "... # c\n: a", "--- ...",
+    "--- ...\n? a", "?\n: ", "-\n...\n-", "[a]\n...\n]", "[a]\n...\n[b]", "{a: b}\n...\n{c: d}",
+    "...\n|\n a", "...\n>\n a", "...\n\"a\"", "...\n'a'", "a\n...\n...\nb", "...\n%TAG !e! tag:x\n---",
+    "...\n# only comment", "... ", "...\t", "...a", "....", "...\n: ", "...\n? ", "...\n- ",
+    "...\n[a, b]", "...\n{a: b}", "...\n[]", "...\n{}", "...\n- - a", "...\n--- a\n...", "...\n---\n...",
+    "a: b\n...\nc: d", "a: b\n...\n: d", "- a\n...\n- b", "? a\n...\n? b", "&x a\n...\n&x b",
+    "!t a\n...\n!t b", "a\n...\n...\n...\nb" ]
+
+def kinds : List (String × YamlToken) :=
+  [ ("SS", .streamStart), ("SE", .streamEnd), ("ph", .placeholder), ("%Y", .versionDirective 1 2),
+    ("%T", .tagDirective "!e!" "tag:x"), ("DS", .documentStart), ("DE", .documentEnd),
+    ("bS", .blockSequenceStart), ("bM", .blockMappingStart), ("bE", .blockEnd), ("-", .blockEntry),
+    ("?", .key), (":", .value), ("[", .flowSequenceStart), ("]", .flowSequenceEnd),
+    ("{", .flowMappingStart), ("}", .flowMappingEnd), (",", .flowEntry), ("&", .anchor "x"),
+    ("*", .alias "x"), ("!", .tag "!!" "str"), ("sc", .scalar "a" .plain), ("#", .comment "c") ]
+
+end P92
+
+def testDocStartLive (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 92: S3 (β) — the document-start token is never dead; DeadAt on the parser side"
+  let rows := P91.rows ++ P92.extraRows
+  let mut scanned := 0
+  let mut refused := 0
+  let mut des := 0
+  for input in rows do
+    match Scanner.scanFiltered input, Scanner.scan input with
+    | .ok ts, .ok raw =>
+      scanned := scanned + 1
+      des := des + P92.deCount ts
+      checkM state s!"P92(i) {repr input}: index 1 and every token after `...` is live"
+        (P92.docStartLive ts) s!"{repr (ts.map (·.val))}"
+      checkM state s!"P92(i) {repr input}: raw shape — no dead raw token right after SS / DE through placeholders"
+        (P92.rawShape raw) s!"{repr (raw.map (·.val))}"
+    | .error _, .error _ => refused := refused + 1
+    | _, _ => checkM state s!"P92(i) {repr input}: scan and scanFiltered agree on success" false ""
+  checkM state s!"P92(i) rows={rows.length} scanned={scanned} refused={refused} documentEnds={des}"
+    (rows.length == 126 && scanned == 97 && refused == 29 && des == 60)
+    "prediction corrected: 94 scanned / 32 refused was the guess; `...a`, `....`, `...\t` scan (plain scalars / `...` + tab)"
+  -- (ii) scanLoop directly: fuel 0..24 from the start state and after one / two steps
+  let mut okRuns := 0
+  let mut fuelOut := 0
+  for input in ["", "...", "...\n: a", "a: b\n...\nc: d", "? a\n...\n? b", "[a]\n...\n[b]", "--- ...\n? a", "-\n...\n-"] do
+    let s0 := (ScannerState.mk' input).emit .streamStart
+    let s0 := match s0.peek? with | some '\uFEFF' => s0.consumeBOM | _ => s0
+    let steps : List (Nat × Option ScannerState) :=
+      let s1 := match scanNextToken s0 with | .ok (some s) => some s | _ => none
+      let s2 := s1.bind fun s => match scanNextToken s with | .ok (some s') => some s' | _ => none
+      [(0, some s0), (1, s1), (2, s2)]
+    for (n, st?) in steps do
+      match st? with
+      | none => pure ()
+      | some st =>
+        for fuel in List.range 25 do
+          match scanLoop st fuel with
+          | .error _ => fuelOut := fuelOut + 1
+          | .ok raw =>
+            okRuns := okRuns + 1
+            let ts := raw.filter fun t => t.val != .placeholder
+            checkM state s!"P92(ii) {repr input} step {n} fuel {fuel}: success ⇒ document-start tokens live (filtered) and raw shape"
+              (P92.docStartLive ts && P92.rawShape raw) s!"{repr (ts.map (·.val))}"
+  checkM state s!"P92(ii) scanLoop runs: ok={okRuns} fuel-out/error={fuelOut}" (okRuns > 0 && fuelOut > 0) ""
+  -- (iii) DeadAt on the parser side: [SS, t, SE], [SS, DE, t, SE] from .initial / .afterDocumentEnd,
+  -- [SS, sc, t, SE] from position 2 in .afterDocument — the loop's no-progress exit iff `t` is dead
+  let isOk : Except ScanError (Array YamlDocument) → Bool := fun r =>
+    match r with | .ok _ => true | .error _ => false
+  let mut stuckDead := 0
+  let mut liveProgress := 0
+  let mut liveError := 0
+  for (nm, t) in P92.kinds do
+    for (lbl, arr, p, st) in
+        [ ("[SS, t, SE]", P91.mkArr [.streamStart, t, .streamEnd], 1, StreamState.initial),
+          ("[SS, DE, t, SE]", P91.mkArr [.streamStart, .documentEnd, t, .streamEnd], 1, StreamState.initial),
+          ("[SS, sc, t, SE] afterDocument", P91.mkArr [.streamStart, .scalar "a" .plain, t, .streamEnd], 2,
+            StreamState.afterDocument) ] do
+      let real := parseStreamLoop (P91.at_ arr p) #[] st arr.size
+      let sh := P91.shadow arr arr.size (P91.at_ arr p) st []
+      let dead := P92.deadTok (some t) && t != .streamEnd && t != .documentEnd
+      -- the loop never calls parseDocument on DE / SE / none: those are its own arms
+      if sh.stuck then stuckDead := stuckDead + 1
+      else if isOk real then liveProgress := liveProgress + 1
+      else liveError := liveError + 1
+      checkM state s!"P92(iii) {lbl} t={nm}: no-progress exit ⇔ dead token (stuck={sh.stuck} ok={isOk real})"
+        (if sh.stuck then dead else
+          -- a live token either progresses, is refused, or is not admitted by the state
+          !dead || !(st.validNextToken t) || t == .streamEnd || t == .documentEnd)
+        s!"stop={sh.stop} err={sh.err}"
+  checkM state s!"P92(iii) stuck-on-dead={stuckDead} live-progress={liveProgress} live-error/not-admitted={liveError}"
+    (stuckDead > 0 && liveProgress > 0 && liveError > 0) ""
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -11380,6 +11508,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testGoAppendStreamEnd state
   testScanLoopStreamEndFuel state
   testStuckAtDocStart state
+  testDocStartLive state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",
