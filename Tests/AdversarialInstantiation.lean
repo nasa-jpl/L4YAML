@@ -11581,6 +11581,9 @@ def testFlowSyncPrereqs (state : IO.Ref TestCollector) : IO Unit := do
   let mut allowedKept := 0
   let mut allowedRaised := 0
   let mut deepest := 0
+  let mut loopFuel0 := 0
+  let mut loopFuelOut := 0
+  let mut loopOk := 0
   for input in P93.rows do
     let tr := P93.trajectory input
     checkM state s!"P93 {repr input}: start state FlowSync" (P93.flowSync tr.head!) ""
@@ -11613,12 +11616,19 @@ def testFlowSyncPrereqs (state : IO.Ref TestCollector) : IO Unit := do
     let s0 := tr.head!
     for fuel in List.range 4 do
       match scanLoopFull s0 fuel with
-      | .error _ => checkM state s!"P93 {repr input} scanLoopFull fuel {fuel}: fuel 0 fails" (fuel == 0 || true) ""
+      | .error _ =>
+        if fuel == 0 then loopFuel0 := loopFuel0 + 1
+        else loopFuelOut := loopFuelOut + 1
       | .ok sF =>
+        loopOk := loopOk + 1
         checkM state s!"P93 {repr input} scanLoopFull fuel {fuel}: success ⇒ FlowSync (fuel 0 never succeeds)"
           (fuel != 0 && P93.flowSync sF) ""
   checkM state s!"P93 steps={steps} in-flow steps={flowSteps} block steps changing indents={blockIndentChanges} skipToContent kept={allowedKept} raised={allowedRaised} deepest flow={deepest}"
     (steps > 0 && flowSteps > 0 && blockIndentChanges > 0 && allowedKept > 0 && allowedRaised > 0 && deepest >= 3) ""
+  -- every row fails at fuel 0 (one error per row, never a success); fuel 1..3 splits into successes
+  -- (short rows) and fuel-outs, tallied apart so a fuel-out cannot pass as a success
+  checkM state s!"P93 scanLoopFull: fuel-0 failures={loopFuel0} rows={P93.rows.length} fuel 1..3 successes={loopOk} fuel-outs={loopFuelOut}"
+    (loopFuel0 == P93.rows.length && loopOk > 0 && loopFuelOut > 0) ""
   -- withdrawn-premise control for `FlowSync_scanNextToken`: desynchronise the stacks of a reached
   -- state and step — the conclusion must FAIL somewhere, else the premise is idle
   let mut desyncBroken := 0
