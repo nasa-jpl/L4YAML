@@ -5356,7 +5356,7 @@ pinned against the parser on the same line prefix. -/
 namespace ExplicitOnlyMirror
 
 inductive DocState where
-  | none | opened | closed
+  | none | opened | closed | directives
   deriving BEq, Repr
 
 /-- `'-'` a `---` line, `'.'` a `...` line, `'#'` blank / comment, `'%'` a directive,
@@ -5390,16 +5390,24 @@ where
     | [], n, _ => n
     | l :: ls, n, st =>
       match lineKind l, st with
+      | '-', .directives => go ls n .opened
       | '-', _ => go ls (n + 1) .opened
       | '.', _ => go ls n .closed
       | 'c', .opened => go ls (if broad && atCol0 l then n + 1 else n) .opened
+      -- a `%` line while a document is open: a plain continuation (explicit-only: no new
+      -- document); the broad `.directive` arm would also open a directive document here
+      | '%', .opened => if broad then go ls (n + 1) .directives else go ls n .opened
       | 'c', _ => go ls (n + 1) .opened
       | _, _ => go ls n st
 
-/-- `[211]` after an unterminated document admits `l-explicit-document?` only: a directive line
-while a document is open is outside the explicit-only grammar (inside the broad one, through
-`SLAnyDocument.directive` at `structural_dispatch_to_pending`'s `%` route). -/
-def directiveAfterOpenDoc (input : String) : Bool :=
+/-- A `%` line at column 0 while a document is open is NEVER a directive: `[211]` admits only
+`l-explicit-document?` after an unterminated document, so either the open node is a plain scalar
+and the line is its continuation (`[69]`: `%` is `ns-plain-char`; `a⏎%YAML 1.2` is the scalar
+`a %YAML 1.2`) or no derivation exists and the scanner refuses it (`scanDirective`'s first test,
+`directiveAfterContent`; item 138's `PendingNode.dirRoute` builds `single` / `suffixContinue`
+only).  Only the broad `.directive` arm of `implicitContinue` reads it as a directive document
+— the second reading the narrowing removes. -/
+def directiveLineWhileOpen (input : String) : Bool :=
   go (lines input) .none
 where
   go : List String → DocState → Bool
@@ -5412,12 +5420,13 @@ where
       | 'c', _ => go ls .opened
       | _, _ => go ls st
 
-#guard directiveAfterOpenDoc "a\n%YAML 1.2\n---\nb" = true
-#guard directiveAfterOpenDoc "a\n...\n%YAML 1.2\n---\nb" = false
-#guard directiveAfterOpenDoc "%YAML 1.2\n---\na" = false
+#guard directiveLineWhileOpen "a\n%YAML 1.2\n---\nb" = true
+#guard directiveLineWhileOpen "a\n...\n%YAML 1.2\n---\nb" = false
+#guard directiveLineWhileOpen "%YAML 1.2\n---\na" = false
 
 def explicitOnlyDocs (input : String) : Nat := docsWalk false input (lines input).length
 def broadDocs (input : String) : Nat := docsWalk true input (lines input).length
+#guard explicitOnlyDocs "a\n%YAML 1.2\n---\nb" = 2 ∧ broadDocs "a\n%YAML 1.2\n---\nb" = 3
 
 def parserRow (src : String) : Option (Nat × Nat) :=
   let rootArity : YamlValue → Nat
@@ -5492,7 +5501,7 @@ def testExplicitOnlyStream (state : IO.Ref TestCollector) : IO Unit := do
       ("a⏎---⏎...⏎b", "a\n---\n...\nb", some (3, 0), false),
       ("a⏎---⏎b⏎... (REFUTED differs=false: `---⏎b` splits under the broad grammar)", "a\n---\nb\n...", some (2, 0), true),
       ("%YAML 1.2⏎---⏎a", "%YAML 1.2\n---\na", some (1, 0), true),
-      ("a⏎%YAML 1.2⏎---⏎b (REFUTED refused: the parser ACCEPTS two documents; `[211]` admits no directive document after an unterminated bare document — outside the explicit-only grammar, inside the broad one)", "a\n%YAML 1.2\n---\nb", some (2, 0), true),
+      ("a⏎%YAML 1.2⏎---⏎b (REFUTED refused: the `%` line is the plain CONTINUATION `a %YAML 1.2`, then an explicit document — two documents under both the parser and the explicit-only walk; the broad `.directive` arm adds a third reading)", "a\n%YAML 1.2\n---\nb", some (2, 0), true),
       ("a⏎...⏎%YAML 1.2⏎---⏎b (REFUTED differs=false: `---⏎b` splits under the broad grammar)", "a\n...\n%YAML 1.2\n---\nb", some (2, 0), true),
       ("# c⏎a⏎# c", "# c\na\n# c", some (1, 0), false),
       ("a:⏎  b:⏎    c: 1⏎d: 2 (nested, root sibling)", "a:\n  b:\n    c: 1\nd: 2", some (1, 2), true),
@@ -5529,12 +5538,13 @@ def testExplicitOnlyStream (state : IO.Ref TestCollector) : IO Unit := do
     let br := broadDocs src
     checkM state s!"explicit-only/parser {label}" (got == expected)
       s!"parser (docs, arity) = {repr got}; expected {repr expected}"
-    let outside := directiveAfterOpenDoc src
-    checkM state s!"explicit-only/outside {label}" (outside == (src == "a\n%YAML 1.2\n---\nb"))
-      s!"directive after an unterminated document = {outside}"
+    let dirLine := directiveLineWhileOpen src
+    checkM state s!"explicit-only/directive-line {label}"
+      (dirLine == (src == "a\n%YAML 1.2\n---\nb") && (!dirLine || got.map Prod.snd == some 0))
+      s!"`%` line while a document is open = {dirLine}: the parser folds it into a plain scalar (arity 0) or refuses it; got {repr got}"
     checkM state s!"explicit-only/agree {label}"
       (match got with
-       | some (d, _) => outside || d == eo
+       | some (d, _) => d == eo
        | none => refusedWalk.lookup src == some eo)
       s!"parser docs = {repr (got.map Prod.fst)}, explicit-only walk = {eo}; a refused row pins the walk's count ({repr (refusedWalk.lookup src)}): the walk reads document starts, not node membership"
     checkM state s!"explicit-only/broad {label}" ((br != eo) == differs)
@@ -5548,6 +5558,65 @@ def testExplicitOnlyStream (state : IO.Ref TestCollector) : IO Unit := do
       checkM state s!"explicit-only/fuel {k} {repr src}"
         (match got with | some (d, _) => d == eo | none => false)
         s!"prefix {repr pre}: parser {repr got}, walk {eo}"
+
+/-! ## Priority 69 — `directiveAfterContent`: a `%` line while a document is open, read at the
+parser (Row 19 step (1), re-read before any pay)
+
+The scanner already refuses a directive after content without `...` (`scanDirective`'s first
+test, `directiveAfterContent`; item 138's `PendingNode.dirRoute` routes a `%` run through
+`single` / `suffixContinue` only).  What the rows read: the ONLY accepted `%`-at-column-0 lines
+inside an open document are plain continuations (`[69]`: the open node is a plain scalar and
+`%` is `ns-plain-char`), block / flow / quoted alike; every other such line is refused with
+`directiveAfterContent` at the line of the content it follows; a `%` at column > 0 is refused
+as a character (`[126]` ns-plain-first excludes it), not as a directive. -/
+def testDirectiveAfterContent (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 69: directiveAfterContent — a `%` line while a document is open is a plain continuation or a refusal, never a directive"
+  -- the first document's leading scalar: through a sequence's first element or a mapping's first
+  -- value, so a dropped continuation (`[a⏎%b]` without `%b`) is a failure, not a blank
+  let rec firstContent : Nat → YamlValue → String
+    | _, YamlValue.scalar s => s.content
+    | fuel + 1, YamlValue.sequence _ arr _ _ => (arr[0]?.map (firstContent fuel)).getD "<empty sequence>"
+    | fuel + 1, YamlValue.mapping _ arr _ _ => (arr[0]?.map (fun p => firstContent fuel p.2)).getD "<empty mapping>"
+    | _, _ => "<other>"
+  let firstDoc (docs : Array YamlDocument) : String :=
+    (docs[0]?.map (fun d => firstContent 8 d.value)).getD "<no document>"
+  -- (label, input, accepted as (documents, first document's leading scalar), or the exact refusal)
+  let rows : List (String × String × Option (Nat × String) × Option ScanError) :=
+    [ ("a⏎%YAML 1.2⏎---⏎b (plain continuation, then an explicit document)", "a\n%YAML 1.2\n---\nb", some (2, "a %YAML 1.2"), none),
+      ("a⏎%TAG ! !x⏎---⏎b", "a\n%TAG ! !x\n---\nb", some (2, "a %TAG ! !x"), none),
+      ("a⏎%YAML 1.2 (last line)", "a\n%YAML 1.2", some (1, "a %YAML 1.2"), none),
+      ("a⏎% (a lone `%`)", "a\n%", some (1, "a %"), none),
+      ("a⏎%YAML 1.2 #c⏎---⏎b (comment after the continuation)", "a\n%YAML 1.2 #c\n---\nb", some (2, "a %YAML 1.2"), none),
+      ("a⏎⏎%YAML 1.2⏎---⏎b (empty line folded to a break)", "a\n\n%YAML 1.2\n---\nb", some (2, "a\n%YAML 1.2"), none),
+      ("&x a⏎%YAML 1.2⏎---⏎b (anchored plain)", "&x a\n%YAML 1.2\n---\nb", some (2, "a %YAML 1.2"), none),
+      ("---⏎a⏎%YAML 1.2⏎---⏎b (inside an explicit document)", "---\na\n%YAML 1.2\n---\nb", some (2, "a %YAML 1.2"), none),
+      ("%YAML 1.2⏎---⏎a⏎%YAML 1.2⏎---⏎b (after a real directive document)", "%YAML 1.2\n---\na\n%YAML 1.2\n---\nb", some (2, "a %YAML 1.2"), none),
+      ("a⏎%YAML 1.2⏎...⏎%YAML 1.2⏎---⏎b (continuation, then `...`, then a real directive)", "a\n%YAML 1.2\n...\n%YAML 1.2\n---\nb", some (2, "a %YAML 1.2"), none),
+      ("[a⏎%b] (flow plain continuation: the sequence's one element)", "[a\n%b]", some (1, "a %b"), none),
+      ("- a⏎  %b (continuation at column > 0: the sequence's one element)", "- a\n  %b", some (1, "a %b"), none),
+      ("\"a⏎%b\" (quoted: text)", "\"a\n%b\"", some (1, "a %b"), none),
+      ("a⏎...⏎%YAML 1.2⏎---⏎b (a directive after `...`: allowed)", "a\n...\n%YAML 1.2\n---\nb", some (2, "a"), none),
+      ("a: 1⏎%YAML 1.2⏎---⏎b: 2 (mapping value closed at the dedent)", "a: 1\n%YAML 1.2\n---\nb: 2", none, some (.directiveAfterContent 1)),
+      ("- a⏎%YAML 1.2⏎---⏎b (sequence entry closed)", "- a\n%YAML 1.2\n---\nb", none, some (.directiveAfterContent 1)),
+      ("a #c⏎%YAML 1.2⏎---⏎b (comment ends the plain scalar)", "a #c\n%YAML 1.2\n---\nb", none, some (.directiveAfterContent 1)),
+      ("\"a\"⏎%YAML 1.2⏎---⏎b (quoted scalar closed)", "\"a\"\n%YAML 1.2\n---\nb", none, some (.directiveAfterContent 1)),
+      ("a: |⏎  x⏎%YAML 1.2⏎---⏎b (block scalar closed at the dedent)", "a: |\n  x\n%YAML 1.2\n---\nb", none, some (.directiveAfterContent 2)),
+      ("[a,⏎%b] (after a flow separator: no plain to continue)", "[a,\n%b]", none, some (.directiveAfterContent 1)),
+      ("? a⏎%YAML 1.2⏎---⏎b (explicit key closed)", "? a\n%YAML 1.2\n---\nb", none, some (.directiveAfterContent 1)),
+      ("a:⏎  %x (column > 0: `%` cannot start a plain scalar — refused as a character, not a directive)", "a:\n  %x", none, some (.unexpectedChar '%' 1 2)) ]
+  for (label, src, accepted, refusal) in rows do
+    match L4YAML.TokenParser.parseYaml src, accepted, refusal with
+    | .ok docs, some (n, content), _ =>
+      checkM state s!"directiveAfterContent/{label}" (docs.size == n && firstDoc docs == content)
+        s!"accepted: docs={docs.size} first={repr (firstDoc docs)}; expected {n} / {repr content}"
+    | .ok docs, none, _ =>
+      checkM state s!"directiveAfterContent/{label}" false
+        s!"ACCEPTED (docs={docs.size} first={repr (firstDoc docs)}) but a refusal was expected"
+    | .error e, _, some err =>
+      checkM state s!"directiveAfterContent/{label}" (toString e == toString err)
+        s!"refused: {e}; expected {err}"
+    | .error e, _, none =>
+      checkM state s!"directiveAfterContent/{label}" false s!"REFUSED ({e}) but acceptance was expected"
 
 /-- Priority 34 (`[173]` tail confined to EOF): the executable side of
 `collectLineContentLoop_fst_nonempty` and of `BlockStopOk.badChar`'s non-empty run
@@ -10893,6 +10962,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testTraceOfLeafEvents state
   testTraceOfBlockLedger state
   testExplicitOnlyStream state
+  testDirectiveAfterContent state
   testRootSiblingLedger state
   testSiblingDashFrames state
   testValueLineResume state
