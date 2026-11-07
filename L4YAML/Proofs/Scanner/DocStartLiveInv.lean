@@ -1111,6 +1111,63 @@ lemma LiveInv_scanKey (s s' : ScannerState) (h : scanKey s = .ok s')
       unfold ScannerState.inFlow; simp; omega
     simp [ScannerState.currentIndent, scanKey_indents_of_inFlow hin h]
 
+/-! ### `scanValue`: the retroactive key insertion -/
+
+lemma Bnd_lastReal_take_succ (L : List YamlToken) (idx : Nat) (hT : TailOK L idx)
+    (hprev : Bnd (lastReal (L.take idx)) = false ∨ ∃ u, L[idx]? = some u ∧ nonPh u = true) :
+    Bnd (lastReal (L.take (idx + 1))) = false := by
+  rw [List.take_succ]
+  cases hu : L[idx]? with
+  | none =>
+    simp only [Option.toList_none, List.append_nil]
+    rcases hprev with h | ⟨u, hu', _⟩
+    · exact h
+    · rw [hu] at hu'; cases hu'
+  | some u =>
+    simp only [Option.toList_some]
+    rw [lastReal_snoc]
+    cases hnu : nonPh u with
+    | true =>
+      simp only [↓reduceIte]
+      have hmem : u ∈ L.drop idx := by
+        rw [List.mem_iff_getElem?]
+        exact ⟨0, by rw [List.getElem?_drop]; simpa using hu⟩
+      exact hT u hmem
+    | false =>
+      simp only [Bool.false_eq_true, ↓reduceIte]
+      rcases hprev with h | ⟨u', hu', hnu'⟩
+      · exact h
+      · rw [hu] at hu'; simp only [Option.some.injEq] at hu'; subst hu'; rw [hnu] at hnu'; cases hnu'
+
+lemma head_append' (L M : List YamlToken) (h : L[0]? = some .streamStart) :
+    (L ++ M)[0]? = some .streamStart := by
+  have : 0 < L.length := by
+    cases hL : L with
+    | nil => rw [hL] at h; simp at h
+    | cons => simp
+  rw [List.getElem?_append_left this]; exact h
+
+lemma scanValueClearKey_simpleKeyAllowed (s : ScannerState) :
+    (scanValueClearKey s).simpleKeyAllowed = s.simpleKeyAllowed := by
+  unfold scanValueClearKey
+  split <;> (try split) <;> (try split) <;> rfl
+
+lemma scanValue_unfold (s s' : ScannerState) (h : scanValue s = .ok s') :
+    scanValueValidate (scanValueClearKey s) = .ok () ∧
+    vals s' = vals (scanValuePrepare (scanValueClearKey s)) ++ [.value] ∧
+    s'.indents = (scanValuePrepare (scanValueClearKey s)).indents := by
+  unfold scanValue at h
+  simp only [bind, Except.bind] at h
+  split at h <;> try contradiction
+  rename_i u hval
+  split at h <;> try contradiction
+  split at h <;> try contradiction
+  simp only [Except.ok.injEq] at h; subst h
+  refine ⟨by cases u; exact hval, ?_, ?_⟩
+  · simp [vals, toks, advance_preserves_tokens, ScannerState.emit]
+  · simp [L4YAML.Proofs.IndentStackBase.advanceN_preserves_indents,
+      L4YAML.Proofs.PreprocessIndentStable.emit_indents, ScannerLoopInvariant.advance_indents]
+
 end L4YAML.Proofs.DocStartLiveInv
 
 end Blanket
