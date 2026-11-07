@@ -41,6 +41,12 @@ open L4YAML L4YAML.Scanner
 open L4YAML.Proofs.DirectiveRuns
 open L4YAML.Proofs.DocStartLive
 open L4YAML.Proofs.FlowSync
+open L4YAML L4YAML.Scanner
+open L4YAML.Proofs.ScannerCorrectness L4YAML.Proofs.ScannerCorrectness.ScanHelpers
+open L4YAML.Proofs.FlowAdjacency
+open L4YAML.Proofs.ScannerDirectivesPresent L4YAML.Proofs.ScannerAllowDirectives
+open L4YAML.Proofs.PreprocessIndentStable L4YAML.Proofs.IndentStackBase
+open L4YAML.Proofs.CloseStaleExplicitKey
 
 /-- The slot condition on a saved simple key (clause `slot`/`stack` body): the token before
     the slot is not a boundary, or (block context) `rollIndent` will insert `blockMappingStart`
@@ -189,6 +195,52 @@ lemma LiveInv.ext (s s' : ScannerState) (hI : LiveInv s) (M : List YamlToken)
     simp only [hst] at hj hp ⊢
     rw [hv]
     exact TailOK_append _ _ _ (hsl j hj hp) (hI.stackTail j hj hp) hM'
+
+/-- Field transport: same tokens, indents, flow level and key stack; `simpleKeyAllowed` may
+    only go up; the key is unchanged or cleared. -/
+lemma LiveInv.ofFields (s t : ScannerState) (ht : t.tokens = s.tokens)
+    (hind : t.indents = s.indents) (hfl : t.flowLevel = s.flowLevel)
+    (hal : s.simpleKeyAllowed = true → t.simpleKeyAllowed = true)
+    (hkey : KeyTr s t) (hst : t.simpleKeyStack = s.simpleKeyStack) (hI : LiveInv s) : LiveInv t := by
+  have hv : vals t = vals s := by simp [vals, ht]
+  have hci : t.currentIndent = s.currentIndent := by simp [ScannerState.currentIndent, hind]
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · rw [hv]; exact hI.head
+  · rw [hv]; exact hI.shape
+  · rw [hv, hind, hci]; exact hI.deep
+  · rw [hv, hfl]; exact hI.flow
+  · rw [hv, hci, hfl]; exact hI.fresh
+  · intro hp
+    have heq := hkey hp
+    rw [heq] at hp ⊢
+    rw [hv, hfl, hci, seqTop_indents hind]
+    refine SlotOK_al_mono _ _ _ _ _ _ ?_ (hI.slot hp)
+    intro hb
+    rw [Bool.and_eq_true] at hb ⊢
+    exact ⟨hal hb.1, hb.2⟩
+  · intro j hj hp
+    simp only [hst] at hj hp ⊢
+    rw [hv, hci]
+    exact hI.stack j hj hp
+  · intro hp
+    have heq := hkey hp
+    rw [heq] at hp ⊢
+    rw [hv]; exact hI.tail hp
+  · intro j hj hp
+    simp only [hst] at hj hp ⊢
+    rw [hv]; exact hI.stackTail j hj hp
+
+lemma LiveInv_skipToContent (s s1 : ScannerState) (h : skipToContent s = .ok s1)
+    (hI : LiveInv s) : LiveInv s1 :=
+  LiveInv.ofFields s s1 (skipToContent_preserves_tokens s s1 h)
+    (skipToContent_preserves_indents s s1 h) (skipToContent_preserves_flowLevel s s1 h)
+    (fun ha => skipToContent_simpleKeyAllowed_mono s s1 ha h)
+    (KeyTr.ofEq (skipToContent_preserves_simpleKey s s1 h))
+    (skipToContent_preserves_simpleKeyStack s s1 h) hI
+
+lemma LiveInv_needIndentCheck (s : ScannerState) (hI : LiveInv s) :
+    LiveInv { s with needIndentCheck := false } :=
+  LiveInv.ofFields s _ rfl rfl rfl id (KeyTr.ofEq rfl) rfl hI
 
 end L4YAML.Proofs.DocStartLiveInv
 
