@@ -87,9 +87,16 @@ lemma TailOK_append (L M : List YamlToken) (idx : Nat) (hk : idx ≤ L.length)
 
 /-- Key transport: a still-possible key is the old one. -/
 def KeyTr (s s' : ScannerState) : Prop :=
-  s'.simpleKey.possible = true → s'.simpleKey = s.simpleKey
+  s'.simpleKey.possible = true → s.simpleKey.possible = true ∧
+    s'.simpleKey.tokenIndex = s.simpleKey.tokenIndex ∧ s'.simpleKey.pos = s.simpleKey.pos
 
-lemma KeyTr.ofEq {s s' : ScannerState} (h : s'.simpleKey = s.simpleKey) : KeyTr s s' := fun _ => h
+lemma KeyTr.ofEq {s s' : ScannerState} (h : s'.simpleKey = s.simpleKey) : KeyTr s s' :=
+  fun hp => ⟨by rw [← h]; exact hp, by rw [h], by rw [h]⟩
+
+lemma SlotOK_key_congr (L : List YamlToken) (fl : Nat) (ci : Int) (al : Bool) (k k' : SimpleKeyState)
+    (hidx : k'.tokenIndex = k.tokenIndex) (hpos : k'.pos = k.pos) (h : SlotOK L fl ci al k) :
+    SlotOK L fl ci al k' := by
+  unfold SlotOK at h ⊢; rw [hidx, hpos]; exact h
 lemma KeyTr.ofCleared {s s' : ScannerState} (h : s'.simpleKey.possible = false) : KeyTr s s' :=
   fun hp => by rw [h] at hp; cases hp
 
@@ -168,15 +175,15 @@ lemma LiveInv.ext (s s' : ScannerState) (hI : LiveInv s) (M : List YamlToken)
     simpa [ScannerState.currentIndent, hind, hfl] using this
   slot := by
     intro hp
-    have heq := hkey hp
+    obtain ⟨hp0, hidx, hpos⟩ := hkey hp
     have hal' := hal hp
-    rw [heq] at hp ⊢
     rw [hv, hfl]
     have : s'.currentIndent = s.currentIndent := by simp [ScannerState.currentIndent, hind]
     rw [this]
-    refine SlotOK_transfer _ _ _ _ _ _ ?_ (SlotOK_append _ _ _ _ _ _ (hkl hp) (hI.slot hp))
+    refine SlotOK_key_congr _ _ _ _ _ _ hidx hpos
+      (SlotOK_transfer _ _ _ _ _ _ ?_ (SlotOK_append _ _ _ _ _ _ (hkl hp0) (hI.slot hp0)))
     intro hb h0 hlt
-    rw [take_append_of_le' _ _ _ (hkl hp)]
+    rw [take_append_of_le' _ _ _ (hkl hp0)]
     exact hal' hb h0 hlt
   stack := by
     intro j hj hp
@@ -186,11 +193,10 @@ lemma LiveInv.ext (s s' : ScannerState) (hI : LiveInv s) (M : List YamlToken)
     exact hI.stack j hj hp
   tail := by
     intro hp
-    have heq := hkey hp
+    obtain ⟨hp0, hidx, _⟩ := hkey hp
     have hM' := hMb (Or.inl hp)
-    rw [heq] at hp ⊢
-    rw [hv]
-    exact TailOK_append _ _ _ (hkl hp) (hI.tail hp) hM'
+    rw [hv, hidx]
+    exact TailOK_append _ _ _ (hkl hp0) (hI.tail hp0) hM'
   stackTail := by
     intro j hj hp
     have hM' := hMb (Or.inr ⟨j, hj, hp⟩)
@@ -215,19 +221,17 @@ lemma LiveInv.ofFields (s t : ScannerState) (ht : t.tokens = s.tokens)
   · rw [hv, hfl]; exact hI.flow
   · rw [hv, hci, hfl]; exact hI.fresh
   · intro hp
-    have heq := hkey hp
+    obtain ⟨hp0, hidx, hpos⟩ := hkey hp
     have hal' := hal hp
-    rw [heq] at hp ⊢
     rw [hv, hfl, hci]
-    exact SlotOK_transfer _ _ _ _ _ _ hal' (hI.slot hp)
+    exact SlotOK_key_congr _ _ _ _ _ _ hidx hpos (SlotOK_transfer _ _ _ _ _ _ hal' (hI.slot hp0))
   · intro j hj hp
     simp only [hst] at hj hp ⊢
     rw [hv, hci]
     exact hI.stack j hj hp
   · intro hp
-    have heq := hkey hp
-    rw [heq] at hp ⊢
-    rw [hv]; exact hI.tail hp
+    obtain ⟨hp0, hidx, _⟩ := hkey hp
+    rw [hv, hidx]; exact hI.tail hp0
   · intro j hj hp
     simp only [hst] at hj hp ⊢
     rw [hv]; exact hI.stackTail j hj hp
@@ -616,9 +620,8 @@ lemma hal_of_StrongSlot {s s' : ScannerState} (hkey : KeyTr s s') (hS : StrongSl
       ¬ s.currentIndent < (s.simpleKey.pos.col : Int) →
       Bnd (lastReal ((vals s).take s.simpleKey.tokenIndex)) = false ∨ s'.simpleKeyAllowed = true := by
   intro hp _ _ hnlt
-  have heq := hkey hp
-  rw [heq] at hp
-  rcases hS hp with h | ⟨_, h | h⟩
+  obtain ⟨hp0, _, _⟩ := hkey hp
+  rcases hS hp0 with h | ⟨_, h | h⟩
   · exact Or.inl h
   · exact absurd h hnlt
   · cases h
@@ -1312,7 +1315,7 @@ lemma LiveInv_scanValue (s s' : ScannerState) (h : scanValue s = .ok s')
     LiveInv.ofFields s _ ht1 hc1.1 hc1.2.2.1 (fun _ h _ _ => Or.inr (by rw [hal1]; exact h))
       (fun hp => by
         rcases hk1 with hk1 | hk1
-        · exact hk1
+        · exact KeyTr.ofEq hk1 hp
         · rw [hk1] at hp; cases hp) hst1 hI
   have hA1 : AllKeysValid (scanValueClearKey s) := by
     rcases scanValueClearKey_identity_or_clear s with e | ⟨hk, ht⟩
@@ -1364,6 +1367,232 @@ lemma LiveInv_dispatchBlock (s : ScannerState) (c : Char) (s' : ScannerState)
     | exact LiveInv_scanBlockEntry s _ (by assumption) (by simp_all) hF hA hI
     | exact LiveInv_scanKey s _ (by assumption) hF hA hI
     | exact LiveInv_scanValue s _ (by assumption) hF hS hA hI
+
+/-! ### Content: one live, non-boundary token -/
+
+/-- `s'` is `s` plus exactly one live, non-boundary token. -/
+def PushLive (s s' : ScannerState) : Prop :=
+  ∃ t, vals s' = vals s ++ [t] ∧ liveTok t = true ∧ Bnd (some t) = false
+
+lemma PushLive.emitAt (s s0 : ScannerState) (p : YamlPos) (t : YamlToken)
+    (h0 : s0.tokens = s.tokens) (ht : liveTok t = true ∧ Bnd (some t) = false) :
+    PushLive s (s0.emitAt p t) :=
+  ⟨t, by rw [vals_emitAt]; simp [vals, h0], ht.1, ht.2⟩
+
+lemma PushLive.ofEq {s s1 s' : ScannerState} (h : PushLive s1 s') (h1 : s1.tokens = s.tokens) :
+    PushLive s s' := by
+  obtain ⟨t, hv, ht⟩ := h
+  exact ⟨t, by rw [hv]; simp [vals, h1], ht⟩
+
+lemma PushLive.congr {s s' s'' : ScannerState} (h : PushLive s s') (h2 : s''.tokens = s'.tokens) :
+    PushLive s s'' := by
+  obtain ⟨t, hv, ht⟩ := h
+  exact ⟨t, by rw [← hv]; simp [vals, h2], ht⟩
+
+lemma scanAnchorOrAlias_pushLive (s : ScannerState) (isAnchor : Bool) (s' : ScannerState)
+    (hok : scanAnchorOrAlias s isAnchor = .ok s') : PushLive s s' := by
+  unfold scanAnchorOrAlias at hok; dsimp only [] at hok
+  split at hok
+  · exact absurd hok (by simp)
+  · have h := Except.ok.inj hok; subst h; try dsimp only []
+    have h_collect :=
+      collectAnchorNameLoop_preserves_tokens s.advance "" (s.inputEnd - s.advance.offset)
+    have h_adv := advance_preserves_tokens s
+    apply PushLive.emitAt _ _ _ _ (h_collect.trans h_adv)
+    first | exact ⟨rfl, rfl⟩ | (cases isAnchor <;> exact ⟨rfl, rfl⟩)
+
+
+lemma scanVerbatimTag_pushLive (s : ScannerState) (pos : YamlPos) (s' : ScannerState)
+    (hok : scanVerbatimTag s pos = .ok s') : PushLive s s' := by
+  unfold scanVerbatimTag at hok; dsimp only [] at hok
+  split at hok
+  · exact absurd hok (by simp)
+  · split at hok
+    · exact absurd hok (by simp)
+    · have h := Except.ok.inj hok; subst h
+      exact PushLive.emitAt _ _ _ _
+        (by simp only [collectVerbatimTagLoop_preserves_tokens, advance_preserves_tokens]) ⟨rfl, rfl⟩
+
+
+lemma scanSecondaryTag_pushLive (s : ScannerState) (pos : YamlPos) :
+    PushLive s (scanSecondaryTag s pos) := by
+  unfold scanSecondaryTag
+  exact PushLive.emitAt _ _ _ _
+    (by simp only [collectTagSuffixLoop_preserves_tokens, advance_preserves_tokens]) ⟨rfl, rfl⟩
+
+
+lemma scanNamedTag_pushLive (s : ScannerState) (pos : YamlPos) (inputEnd : Nat) :
+    PushLive s (scanNamedTag s pos inputEnd) := by
+  unfold scanNamedTag; simp only []
+  have h_handle := collectTagHandleLoop_preserves_tokens s "" (inputEnd - s.offset)
+  split
+  · exact PushLive.emitAt _ _ _ _ (by rw [collectTagSuffixLoop_preserves_tokens, h_handle]) ⟨rfl, rfl⟩
+  · exact PushLive.emitAt _ _ _ _ (by rw [collectTagSuffixLoop_preserves_tokens, h_handle]) ⟨rfl, rfl⟩
+
+
+lemma scanTag_pushLive (s s' : ScannerState) (hok : scanTag s = .ok s') : PushLive s s' := by
+  unfold scanTag at hok; dsimp only [] at hok
+  split at hok
+  · simp only [bind, Except.bind] at hok
+    generalize hv : scanVerbatimTag s.advance s.currentPos = result at hok
+    cases result with
+    | error e => simp at hok
+    | ok s_verb =>
+      dsimp only [] at hok
+      have h := Except.ok.inj hok; subst h; try dsimp only []
+      exact (scanVerbatimTag_pushLive _ _ _ hv).ofEq (advance_preserves_tokens s)
+  · have h := Except.ok.inj hok; subst h; try dsimp only []
+    exact (scanSecondaryTag_pushLive _ _).ofEq (advance_preserves_tokens s)
+  · have h := Except.ok.inj hok; subst h; try dsimp only []
+    exact (scanNamedTag_pushLive _ _ _).ofEq (advance_preserves_tokens s)
+
+
+lemma scanBlockScalarBody_pushLive (s_orig s_nl : ScannerState)
+    (chomp : ChompStyle) (expl : Option Nat) (isLit : Bool) (startPos : YamlPos)
+    (s' : ScannerState) (h_tok : s_nl.tokens = s_orig.tokens)
+    (h : scanBlockScalarBody s_orig s_nl chomp expl isLit startPos = .ok s') :
+    PushLive s_orig s' := by
+  unfold scanBlockScalarBody at h
+  simp only [] at h
+  repeat (any_goals (split at h))
+  all_goals (try contradiction)
+  all_goals (simp only [Except.ok.injEq] at h; subst h; try dsimp only [])
+  all_goals exact (PushLive.emitAt _ _ _ _
+    (by rw [collectBlockScalarLoop_preserves_tokens, h_tok]) ⟨rfl, rfl⟩).congr rfl
+
+
+lemma scanBlockScalar_pushLive (s s' : ScannerState) (h : scanBlockScalar s = .ok s') :
+    PushLive s s' := by
+  unfold scanBlockScalar at h
+  simp only [] at h
+  split at h
+  · contradiction
+  · exact scanBlockScalarBody_pushLive s _ _ _ _ _ s'
+      (by rw [scanBlockScalarConsumeNewline_preserves_tokens _ _ (by assumption),
+              scanBlockScalarSkipComment_preserves_tokens,
+              skipWhitespace_preserves_tokens,
+              parseBlockHeaderLoop_preserves_tokens,
+              advance_preserves_tokens]) h
+
+
+lemma scanPlainScalar_pushLive (s s' : ScannerState) (h : scanPlainScalar s = .ok s') :
+    PushLive s s' := by
+  unfold scanPlainScalar at h
+  simp only [bind, Except.bind] at h
+  split at h <;> try contradiction
+  rename_i heq
+  have h_collect := collectPlainScalarLoop_preserves_tokens s "" "" _ _ _ _ _ heq
+  injection h with h_eq; subst h_eq
+  exact PushLive.emitAt _ _ _ _ h_collect ⟨rfl, rfl⟩
+
+
+lemma scanDoubleQuoted_pushLive (s s' : ScannerState) (h : scanDoubleQuoted s = .ok s') :
+    PushLive s s' := by
+  unfold scanDoubleQuoted at h
+  simp only [bind, Except.bind] at h
+  split at h <;> try contradiction
+  rename_i heq
+  have h_collect := collectDoubleQuotedLoop_preserves_tokens s.advance "" _ _ _ _ _ _ heq
+  have h_adv := advance_preserves_tokens s
+  split at h
+  · split at h <;> try contradiction
+    injection h with h_eq; subst h_eq
+    exact PushLive.emitAt _ _ _ _ (h_collect.trans h_adv) ⟨rfl, rfl⟩
+  · injection h with h_eq; subst h_eq
+    exact PushLive.emitAt _ _ _ _ (h_collect.trans h_adv) ⟨rfl, rfl⟩
+
+
+lemma scanSingleQuoted_pushLive (s s' : ScannerState) (h : scanSingleQuoted s = .ok s') :
+    PushLive s s' := by
+  unfold scanSingleQuoted at h
+  simp only [bind, Except.bind] at h
+  split at h <;> try contradiction
+  rename_i heq
+  have h_collect := collectSingleQuotedLoop_preserves_tokens s.advance "" _ _ _ _ _ _ heq
+  have h_adv := advance_preserves_tokens s
+  split at h
+  · split at h <;> try contradiction
+    injection h with h_eq; subst h_eq
+    exact PushLive.emitAt _ _ _ _ (h_collect.trans h_adv) ⟨rfl, rfl⟩
+  · injection h with h_eq; subst h_eq
+    exact PushLive.emitAt _ _ _ _ (h_collect.trans h_adv) ⟨rfl, rfl⟩
+
+
+lemma dispatchContent_live (s : ScannerState) (c : Char) (s' : ScannerState)
+    (h : scanNextToken_dispatchContent s c = .ok s') :
+    PushLive s s' ∧ KeyTr s s' := by
+  unfold scanNextToken_dispatchContent at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  split at h
+  · split at h
+    · simp at h
+    generalize h_fn : scanAnchorOrAlias s true = result at h
+    cases result with
+    | error e => simp at h
+    | ok s_a =>
+      simp only [Except.ok.injEq] at h; subst h
+      exact ⟨scanAnchorOrAlias_pushLive s true s_a h_fn,
+        KeyTr.ofEq (scanAnchorOrAlias_preserves_simpleKey s true s_a h_fn)⟩
+  · split at h
+    · split at h
+      · simp at h
+      split at h
+      · simp at h
+      · exact ⟨scanAnchorOrAlias_pushLive s false _ (aliasArm_scan_ok h),
+          KeyTr.ofEq (scanAnchorOrAlias_preserves_simpleKey s false _ (aliasArm_scan_ok h))⟩
+    · split at h
+      · split at h
+        · simp at h
+        generalize h_fn : scanTag s = result at h
+        cases result with
+        | error e => simp at h
+        | ok s_t =>
+          simp only [Except.ok.injEq] at h; subst h
+          exact ⟨scanTag_pushLive s s_t h_fn,
+            KeyTr.ofEq (scanTag_preserves_simpleKey s s_t h_fn)⟩
+      · repeat (any_goals (split at h))
+        any_goals contradiction
+        all_goals (try simp only [Except.ok.injEq] at *)
+        all_goals (try contradiction)
+        all_goals (try subst_vars)
+        all_goals first
+          | exact ⟨scanBlockScalar_pushLive _ _ (by assumption),
+              KeyTr.ofCleared (scanBlockScalar_clears_simpleKey _ _ (by assumption))⟩
+          | exact ⟨scanPlainScalar_pushLive _ _ (by assumption),
+              KeyTr.ofEq (scanPlainScalar_preserves_simpleKey _ _ (by assumption))⟩
+          | exact ⟨scanDoubleQuoted_pushLive _ _ (by assumption),
+              KeyTr.ofEq (scanDoubleQuoted_preserves_simpleKey _ _ (by assumption))⟩
+          | exact ⟨scanSingleQuoted_pushLive _ _ (by assumption),
+              KeyTr.ofEq (scanSingleQuoted_preserves_simpleKey _ _ (by assumption))⟩
+          | exact ⟨(scanDoubleQuoted_pushLive _ _ (by assumption)).congr (by rfl),
+              (fun _ => by
+                have hk := scanDoubleQuoted_preserves_simpleKey _ _ (by assumption)
+                refine ⟨?_, ?_, ?_⟩ <;> simp_all)⟩
+          | exact ⟨(scanSingleQuoted_pushLive _ _ (by assumption)).congr (by rfl),
+              (fun _ => by
+                have hk := scanSingleQuoted_preserves_simpleKey _ _ (by assumption)
+                refine ⟨?_, ?_, ?_⟩ <;> simp_all)⟩
+          | (simp_all; done)
+
+
+lemma LiveInv_dispatchContent (s : ScannerState) (c : Char) (s' : ScannerState)
+    (h : scanNextToken_dispatchContent s c = .ok s')
+    (hS : StrongSlot s) (hA : AllKeysValid s) (hI : LiveInv s) : LiveInv s' := by
+  obtain ⟨⟨t, hv, hlive, hbnd⟩, hkey⟩ := dispatchContent_live s c s' h
+  refine LiveInv.ext s s' hI [t] hv (fun u hu _ => by simp at hu; subst hu; exact ⟨hlive, hbnd⟩)
+    (L4YAML.Proofs.IndentStackBase.dispatchContent_preserves_indents h) ?_ (hal_of_StrongSlot hkey hS)
+    (fun _ u hu => by simp at hu; subst hu; exact hbnd) hkey ?_
+    (fun hp => by have := keyLen_of_AllKeysValid s hA hp; omega)
+    (fun j hj hp => by have := stackLen_of_AllKeysValid s hA j hj hp; omega)
+  · first
+      | exact dispatchContent_preserves_flowLevel h
+      | exact dispatchContent_preserves_flowLevel _ _ _ h
+      | exact dispatchContent_preserves_flowLevel s c s' h
+  · first
+      | exact dispatchContent_preserves_simpleKeyStack h
+      | exact dispatchContent_preserves_simpleKeyStack _ _ _ h
+      | exact dispatchContent_preserves_simpleKeyStack s c s' h
 
 end L4YAML.Proofs.DocStartLiveInv
 
