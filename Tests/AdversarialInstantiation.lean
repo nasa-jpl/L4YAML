@@ -11011,6 +11011,16 @@ def bump (acc : List (String × Nat)) (k : String) : List (String × Nat) :=
   | some _ => acc.map fun (a, n) => if a == k then (a, n + 1) else (a, n)
   | none => acc ++ [(k, 1)]
 
+/-- every token list of length ≤ n over `kinds` -/
+def lists (kinds : List YamlToken) : Nat → List (List YamlToken)
+  | 0 => [[]]
+  | n + 1 =>
+    let r := lists kinds n
+    r ++ (r.filter (·.length == n)).flatMap fun l => kinds.map (· :: l)
+
+def mkArr (l : List YamlToken) : Array (Positioned YamlToken) :=
+  (l.map fun t => { pos := { offset := 0, line := 0, col := 0 }, val := t }).toArray
+
 end P91
 
 def testStuckAtDocStart (state : IO.Ref TestCollector) : IO Unit := do
@@ -11138,6 +11148,83 @@ def testStuckAtDocStart (state : IO.Ref TestCollector) : IO Unit := do
       checkM state s!"P91(iv) \"a: b\" from the value (4), {P91.stName st}: the loop takes the no-progress exit at k = pos — the k = ps.pos disjunct"
         (isOk (parseStreamLoop (P91.at_ ts 4) #[] st ts.size) && sh4.stuck && sh4.stop == 4 &&
           P91.stuckAtB ts 4 && P91.conclB ts st 4 4) ""
+  -- (v) the bridge lemmas on their own quantified scope: hand-built arrays (every list of length ≤ 3
+  -- over six kinds), arbitrary p / q / k ∈ 0..4 (past the end included) and st / st'; the mirrors are
+  -- the Bool twins above, failed premises tallied apart from the rows where the premise holds
+  let kinds : List YamlToken :=
+    [.documentEnd, .value, .scalar "a" .plain, .documentStart, .streamStart, .blockEntry]
+  let arrays := (P91.lists kinds 3).map P91.mkArr
+  let idx : List Nat := [0, 1, 2, 3, 4]
+  let mut aDEh := 0; let mut aDEf := 0; let mut aDEbad := 0; let mut aDEctrl := 0
+  let mut aDh := 0; let mut aDf := 0; let mut aDbad := 0; let mut aDcf := 0
+  let mut lih := 0; let mut lif := 0; let mut libad := 0; let mut lictrl := 0
+  let mut smh := 0; let mut smf := 0; let mut smbad := 0
+  let mut smPh := 0; let mut smPf := 0; let mut smPbad := 0
+  for ts in arrays do
+    for k in idx do
+      -- LoopStuck_of_initial : StuckAt ts k → StopShape ts .initial 1 k → LoopStuck ts k
+      if P91.stuckAtB ts k && P91.stopShapeB ts .initial 1 k then
+        lih := lih + 1
+        if !P91.loopStuckB ts k then libad := libad + 1
+      else
+        lif := lif + 1
+        if !P91.loopStuckB ts k then lictrl := lictrl + 1
+      -- stop_mono' : (k = size ∨ streamEnd ∨ (StuckAt ∧ StopShape .initial (0+1) k)) → (… ∨ LoopStuck)
+      let pre := k == ts.size || tk ts k == some .streamEnd ||
+        (P91.stuckAtB ts k && P91.stopShapeB ts .initial (0 + 1) k)
+      let post := k == ts.size || tk ts k == some .streamEnd || P91.loopStuckB ts k
+      if pre then
+        smPh := smPh + 1
+        if !post then smPbad := smPbad + 1
+      else smPf := smPf + 1
+      for st in states do
+        for p in idx do
+          for q in idx do
+            -- StopShape_afterDocument : StopShape ts .afterDocument q k → StopShape ts st p k
+            if P91.stopShapeB ts .afterDocument q k then
+              aDh := aDh + 1
+              if !P91.stopShapeB ts st p k then aDbad := aDbad + 1
+            else
+              aDf := aDf + 1
+              if !P91.stopShapeB ts st p k then aDcf := aDcf + 1
+            -- stop_mono with A := StopShape .afterDocument q k, B := StopShape st p k
+            let preM := k == ts.size || tk ts k == some .streamEnd ||
+              (P91.stuckAtB ts k && P91.stopShapeB ts .afterDocument q k)
+            let postM := k == ts.size || tk ts k == some .streamEnd ||
+              (P91.stuckAtB ts k && P91.stopShapeB ts st p k)
+            if preM then
+              smh := smh + 1
+              if !postM then smbad := smbad + 1
+            else smf := smf + 1
+            for st' in states do
+              -- StopShape_after_documentEnd : tok ts q = documentEnd → StopShape ts st' (q+1) k → StopShape ts st p k
+              let hp := tk ts q == some .documentEnd
+              let hs := P91.stopShapeB ts st' (q + 1) k
+              if hp && hs then
+                aDEh := aDEh + 1
+                if !P91.stopShapeB ts st p k then aDEbad := aDEbad + 1
+              else
+                aDEf := aDEf + 1
+                if !hp && hs && !P91.stopShapeB ts st p k then aDEctrl := aDEctrl + 1
+  checkM state s!"P91(v) {arrays.length} arrays: StopShape_after_documentEnd premise-holds={aDEh} failed-premise={aDEf} hp-withdrawn∧shape∧¬concl={aDEctrl}"
+    (aDEbad == 0 && aDEh > 0 && aDEctrl > 0 && arrays.length == 259) s!"violations={aDEbad}"
+  checkM state s!"P91(v) StopShape_afterDocument premise-holds={aDh} failed-premise={aDf} (of which concl false={aDcf})"
+    (aDbad == 0 && aDh > 0 && aDcf > 0) s!"violations={aDbad}"
+  checkM state s!"P91(v) LoopStuck_of_initial premise-holds={lih} failed-premise={lif} (of which LoopStuck false={lictrl})"
+    (libad == 0 && lih > 0 && lictrl > 0) s!"violations={libad}"
+  checkM state s!"P91(v) stop_mono premise-holds={smh} failed-premise={smf}" (smbad == 0 && smh > 0 && smf > 0)
+    s!"violations={smbad}"
+  checkM state s!"P91(v) stop_mono' premise-holds={smPh} failed-premise={smPf}" (smPbad == 0 && smPh > 0 && smPf > 0)
+    s!"violations={smPbad}"
+  -- the reviewer's example: `...` at 2, a structural token at 3, p / q / k / st / st' independent
+  let ex := P91.mkArr [.streamStart, .scalar "a" .plain, .documentEnd, .value]
+  checkM state "P91(v) [SS, sc, DE, :]: StopShape_after_documentEnd at q = 2, k = 3 for every st, st', p"
+    (states.all fun st => states.all fun st' => idx.all fun p =>
+      !(tk ex 2 == some .documentEnd && P91.stopShapeB ex st' 3 3) || P91.stopShapeB ex st p 3) ""
+  -- prediction corrected: at k = 2 the conclusion survives without hp (`...` itself is admitted by
+  -- `.afterDocument`); the load-bearing case is a first-iteration shape at a scalar
+  checkM state "P91(v) [SS, sc, DE, :]: no `...` at q = 0, the shape at q+1 = 1 (first iteration, scalar admitted by .initial) does not transfer to p = 3 — hp is load-bearing"
+    (P91.stopShapeB ex .initial 1 1 && !(tk ex 0 == some .documentEnd) && !P91.stopShapeB ex .afterDocument 3 1) ""
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
