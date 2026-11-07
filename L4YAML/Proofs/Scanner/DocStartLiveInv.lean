@@ -26,7 +26,7 @@ public import L4YAML.Proofs.Scanner.ColFloor
     * `slot`  — a possible simple key sits after a non-boundary, or in block
       context where `rollIndent` will insert `blockMappingStart` before it
       (`currentIndent < key.col`) or where the key is still to be overwritten
-      (`simpleKeyAllowed`);
+      (`simpleKeyAllowed`; after preprocessing this arm is gone: `StrongSlot`);
     * `stack` — a stacked possible key sits after a non-boundary, or is the
       outermost (`j = 0`) with `currentIndent < key.col`.
 
@@ -53,17 +53,11 @@ open L4YAML.Proofs.ScannerFlowCollection
 
 /-- The slot condition on a saved simple key (clause `slot`/`stack` body): the token before
     the slot is not a boundary, or (block context) `rollIndent` will insert `blockMappingStart`
-    first (`ci < key.col`), or the key is the stale one a `-` leaves behind (`stale`), which
-    `scanValueValidate` refuses. -/
-def SlotOK (L : List YamlToken) (fl : Nat) (ci : Int) (stale : Bool) (k : SimpleKeyState) : Prop :=
+    first (`ci < key.col`), or the key is the stale one a `-` leaves behind — `simpleKeyAllowed`
+    is still up, so the next preprocessing `saveSimpleKey` overwrites it. -/
+def SlotOK (L : List YamlToken) (fl : Nat) (ci : Int) (al : Bool) (k : SimpleKeyState) : Prop :=
   Bnd (lastReal (L.take k.tokenIndex)) = false ∨
-    (fl = 0 ∧ (ci < (k.pos.col : Int) ∨ stale = true))
-
-/-- The indent top is the sequence entry at the key's column. -/
-def seqTop (s : ScannerState) (k : SimpleKeyState) : Bool :=
-  match s.indents.back? with
-  | some top => top.isSequence && top.column == (k.pos.col : Int)
-  | none => false
+    (fl = 0 ∧ (ci < (k.pos.col : Int) ∨ al = true))
 
 /-- No boundary token from index `idx` on. -/
 def TailOK (L : List YamlToken) (idx : Nat) : Prop := ∀ t ∈ L.drop idx, Bnd (some t) = false
@@ -75,17 +69,13 @@ structure LiveInv (s : ScannerState) : Prop where
   flow : 0 < s.flowLevel → Bnd (lastReal (vals s)) = false
   fresh : Bnd (lastReal (vals s)) = true → s.currentIndent < 0 ∧ s.flowLevel = 0
   slot : s.simpleKey.possible = true →
-    SlotOK (vals s) s.flowLevel s.currentIndent (s.simpleKeyAllowed && seqTop s s.simpleKey)
-      s.simpleKey
+    SlotOK (vals s) s.flowLevel s.currentIndent s.simpleKeyAllowed s.simpleKey
   stack : ∀ j (h : j < s.simpleKeyStack.size), s.simpleKeyStack[j].possible = true →
     Bnd (lastReal ((vals s).take s.simpleKeyStack[j].tokenIndex)) = false ∨
       (j = 0 ∧ s.currentIndent < (s.simpleKeyStack[j].pos.col : Int))
   tail : s.simpleKey.possible = true → TailOK (vals s) s.simpleKey.tokenIndex
   stackTail : ∀ j (h : j < s.simpleKeyStack.size), s.simpleKeyStack[j].possible = true →
     TailOK (vals s) s.simpleKeyStack[j].tokenIndex
-
-lemma seqTop_indents {s s' : ScannerState} (h : s'.indents = s.indents) (k : SimpleKeyState) :
-    seqTop s' k = seqTop s k := by simp [seqTop, h]
 
 lemma TailOK_append (L M : List YamlToken) (idx : Nat) (hk : idx ≤ L.length)
     (h : TailOK L idx) (hM : ∀ t ∈ M, Bnd (some t) = false) : TailOK (L ++ M) idx := by
@@ -113,21 +103,29 @@ lemma SlotOK_append (L M : List YamlToken) (fl : Nat) (ci : Int) (al : Bool) (k 
   rw [take_append_of_le' _ _ _ hk]
   exact h
 
-lemma SlotOK_al_mono (L : List YamlToken) (fl : Nat) (ci : Int) (al al' : Bool) (k : SimpleKeyState)
-    (hal : al = true → al' = true) (h : SlotOK L fl ci al k) : SlotOK L fl ci al' k := by
+/-- The `al` arm transfers when either the slot is in fact live or the flag stays up. -/
+lemma SlotOK_transfer (L : List YamlToken) (fl : Nat) (ci : Int) (al al' : Bool) (k : SimpleKeyState)
+    (hal : al = true → fl = 0 → ¬ ci < (k.pos.col : Int) →
+      Bnd (lastReal (L.take k.tokenIndex)) = false ∨ al' = true)
+    (h : SlotOK L fl ci al k) : SlotOK L fl ci al' k := by
   unfold SlotOK at h ⊢
   rcases h with h | ⟨h1, h2 | h2⟩
   · exact Or.inl h
   · exact Or.inr ⟨h1, Or.inl h2⟩
-  · exact Or.inr ⟨h1, Or.inr (hal h2)⟩
+  · by_cases hlt : ci < (k.pos.col : Int)
+    · exact Or.inr ⟨h1, Or.inl hlt⟩
+    · rcases hal h2 h1 hlt with h3 | h3
+      · exact Or.inl h3
+      · exact Or.inr ⟨h1, Or.inr h3⟩
 
 /-- Appending live tokens (and placeholders) with the indent / flow / key state
     untouched keeps the invariant (`simpleKeyAllowed` may only go up). -/
 lemma LiveInv.ext (s s' : ScannerState) (hI : LiveInv s) (M : List YamlToken)
     (hv : vals s' = vals s ++ M) (hM : LiveExt M)
     (hind : s'.indents = s.indents) (hfl : s'.flowLevel = s.flowLevel)
-    (hal : s'.simpleKey.possible = true → (s.simpleKeyAllowed && seqTop s s.simpleKey) = true →
-      (s'.simpleKeyAllowed && seqTop s' s'.simpleKey) = true)
+    (hal : s'.simpleKey.possible = true → s.simpleKeyAllowed = true → s.flowLevel = 0 →
+      ¬ s.currentIndent < (s.simpleKey.pos.col : Int) →
+      Bnd (lastReal ((vals s).take s.simpleKey.tokenIndex)) = false ∨ s'.simpleKeyAllowed = true)
     (hMb : s'.simpleKey.possible = true ∨
       (∃ j, ∃ h : j < s'.simpleKeyStack.size, s'.simpleKeyStack[j].possible = true) →
       ∀ t ∈ M, Bnd (some t) = false)
@@ -176,10 +174,10 @@ lemma LiveInv.ext (s s' : ScannerState) (hI : LiveInv s) (M : List YamlToken)
     rw [hv, hfl]
     have : s'.currentIndent = s.currentIndent := by simp [ScannerState.currentIndent, hind]
     rw [this]
-    refine SlotOK_al_mono _ _ _ _ _ _ ?_ (SlotOK_append _ _ _ _ _ _ (hkl hp) (hI.slot hp))
-    intro hb
-    have := hal' hb
-    rwa [heq] at this
+    refine SlotOK_transfer _ _ _ _ _ _ ?_ (SlotOK_append _ _ _ _ _ _ (hkl hp) (hI.slot hp))
+    intro hb h0 hlt
+    rw [take_append_of_le' _ _ _ (hkl hp)]
+    exact hal' hb h0 hlt
   stack := by
     intro j hj hp
     simp only [hst] at hj hp ⊢
@@ -204,8 +202,9 @@ lemma LiveInv.ext (s s' : ScannerState) (hI : LiveInv s) (M : List YamlToken)
     only go up; the key is unchanged or cleared. -/
 lemma LiveInv.ofFields (s t : ScannerState) (ht : t.tokens = s.tokens)
     (hind : t.indents = s.indents) (hfl : t.flowLevel = s.flowLevel)
-    (hal : t.simpleKey.possible = true → (s.simpleKeyAllowed && seqTop s s.simpleKey) = true →
-      (t.simpleKeyAllowed && seqTop t t.simpleKey) = true)
+    (hal : t.simpleKey.possible = true → s.simpleKeyAllowed = true → s.flowLevel = 0 →
+      ¬ s.currentIndent < (s.simpleKey.pos.col : Int) →
+      Bnd (lastReal ((vals s).take s.simpleKey.tokenIndex)) = false ∨ t.simpleKeyAllowed = true)
     (hkey : KeyTr s t) (hst : t.simpleKeyStack = s.simpleKeyStack) (hI : LiveInv s) : LiveInv t := by
   have hv : vals t = vals s := by simp [vals, ht]
   have hci : t.currentIndent = s.currentIndent := by simp [ScannerState.currentIndent, hind]
@@ -220,10 +219,7 @@ lemma LiveInv.ofFields (s t : ScannerState) (ht : t.tokens = s.tokens)
     have hal' := hal hp
     rw [heq] at hp ⊢
     rw [hv, hfl, hci]
-    refine SlotOK_al_mono _ _ _ _ _ _ ?_ (hI.slot hp)
-    intro hb
-    have := hal' hb
-    rwa [heq] at this
+    exact SlotOK_transfer _ _ _ _ _ _ hal' (hI.slot hp)
   · intro j hj hp
     simp only [hst] at hj hp ⊢
     rw [hv, hci]
@@ -240,17 +236,13 @@ lemma LiveInv_skipToContent (s s1 : ScannerState) (h : skipToContent s = .ok s1)
     (hI : LiveInv s) : LiveInv s1 :=
   LiveInv.ofFields s s1 (skipToContent_preserves_tokens s s1 h)
     (skipToContent_preserves_indents s s1 h) (skipToContent_preserves_flowLevel s s1 h)
-    (fun _ hb => by
-      rw [Bool.and_eq_true] at hb ⊢
-      exact ⟨FlowSync.skipToContent_simpleKeyAllowed_mono s s1 hb.1 h,
-        by rw [skipToContent_preserves_simpleKey s s1 h,
-          seqTop_indents (skipToContent_preserves_indents s s1 h)]; exact hb.2⟩)
+    (fun _ hb _ _ => Or.inr (FlowSync.skipToContent_simpleKeyAllowed_mono s s1 hb h))
     (KeyTr.ofEq (skipToContent_preserves_simpleKey s s1 h))
     (skipToContent_preserves_simpleKeyStack s s1 h) hI
 
 lemma LiveInv_needIndentCheck (s : ScannerState) (hI : LiveInv s) :
     LiveInv { s with needIndentCheck := false } :=
-  LiveInv.ofFields s _ rfl rfl rfl (fun _ => id) (KeyTr.ofEq rfl) rfl hI
+  LiveInv.ofFields s _ rfl rfl rfl (fun _ h _ _ => Or.inr h) (KeyTr.ofEq rfl) rfl hI
 
 /-! ### The unwind: `blockEnd`s after a non-boundary -/
 
@@ -317,15 +309,6 @@ lemma unwindIndentsLoop_result : ∀ (fuel : Nat) (s : ScannerState) (col : Int)
       · exact Or.inr (by have := hcond h; omega)
       · exact Or.inl (by omega)
 
-lemma seqTop_col {s : ScannerState} {k : SimpleKeyState} (h : seqTop s k = true) :
-    s.currentIndent = (k.pos.col : Int) := by
-  unfold seqTop at h
-  split at h
-  · rename_i top htop
-    simp only [Bool.and_eq_true, beq_iff_eq] at h
-    simp [ScannerState.currentIndent, htop, h.2]
-  · cases h
-
 lemma LiveInv_unwindIndents (s : ScannerState) (col : Int) (hc : -1 ≤ col)
     (hB : SentinelBase s) (hA : AllKeysValid s) (hI : LiveInv s) :
     LiveInv (unwindIndents s col) := by
@@ -363,11 +346,10 @@ lemma LiveInv_unwindIndents (s : ScannerState) (col : Int) (hc : -1 ≤ col)
         have := keyLen_of_AllKeysValid s hA hp; omega
       rcases hI.slot hp with h | ⟨h0, h1⟩
       · left; rw [hM, take_append_of_le' _ _ _ hlen]; exact h
-      · right; refine ⟨by rw [hfl]; exact h0, Or.inl ?_⟩
+      · right; refine ⟨by rw [hfl]; exact h0, ?_⟩
         rcases h1 with h1 | h1
-        · omega
-        · rw [Bool.and_eq_true] at h1
-          have := seqTop_col h1.2; omega
+        · exact Or.inl (by omega)
+        · right; rw [← hr]; rw [unwindIndentsLoop_preserves_simpleKeyAllowed]; exact h1
     · intro j hj hp
       simp only [hst] at hj hp ⊢
       rcases hI.stack j hj hp with h | ⟨hj0, hlt⟩
@@ -455,7 +437,7 @@ lemma LiveInv_closeStaleExplicitKey (s : ScannerState) (hI : LiveInv s) :
   rcases closeStaleExplicitKey_cases s with h | ⟨c, _, h⟩
   · rw [h]; exact hI
   · rw [h]
-    exact LiveInv.ofFields s _ rfl rfl rfl (fun _ => id) (KeyTr.ofEq rfl) rfl hI
+    exact LiveInv.ofFields s _ rfl rfl rfl (fun _ h _ _ => Or.inr h) (KeyTr.ofEq rfl) rfl hI
 
 /-! ### Preprocessing -/
 
@@ -554,14 +536,13 @@ lemma LiveInv_scanDirective (s s' : ScannerState) (h : scanDirective s = .ok s')
     (hD : DirInv s) (hB : SentinelBase s) (hA : AllKeysValid s) (hI : LiveInv s) : LiveInv s' := by
   obtain ⟨hv, _, _⟩ := scanDirective_fields s s' h
   have hq : Quiet s := hD.quiet (scanDirective_allowDirectives_true s s' h)
-  have hal : s'.simpleKey.possible = true → (s.simpleKeyAllowed && seqTop s s.simpleKey) = true →
-      (s'.simpleKeyAllowed && seqTop s' s'.simpleKey) = true := by
-    intro _ hb
+  have hal : s'.simpleKey.possible = true → s.simpleKeyAllowed = true → s.flowLevel = 0 →
+      ¬ s.currentIndent < (s.simpleKey.pos.col : Int) →
+      Bnd (lastReal ((vals s).take s.simpleKey.tokenIndex)) = false ∨ s'.simpleKeyAllowed = true := by
+    intro _ _ _ hnlt
     exfalso
-    rw [Bool.and_eq_true] at hb
-    have hc := seqTop_col hb.2
     rcases hq with hq | hq
-    · rw [hB.currentIndent_of_size_le_one hq] at hc; omega
+    · rw [hB.currentIndent_of_size_le_one hq] at hnlt; omega
     · omega
   have hkl : s.simpleKey.possible = true → s.simpleKey.tokenIndex ≤ (vals s).length := by
     intro hp; have := keyLen_of_AllKeysValid s hA hp; omega
@@ -624,10 +605,23 @@ def StrongSlot (s : ScannerState) : Prop :=
     SlotOK (vals s) s.flowLevel s.currentIndent false s.simpleKey
 
 lemma StrongSlot.of_al_false (s : ScannerState) (hI : LiveInv s)
-    (hb : (s.simpleKeyAllowed && seqTop s s.simpleKey) = false) : StrongSlot s := by
+    (hb : s.simpleKeyAllowed = false) : StrongSlot s := by
   intro hp
   have := hI.slot hp
   rwa [hb] at this
+
+/-- After preprocessing the `al` arm is never needed. -/
+lemma hal_of_StrongSlot {s s' : ScannerState} (hkey : KeyTr s s') (hS : StrongSlot s) :
+    s'.simpleKey.possible = true → s.simpleKeyAllowed = true → s.flowLevel = 0 →
+      ¬ s.currentIndent < (s.simpleKey.pos.col : Int) →
+      Bnd (lastReal ((vals s).take s.simpleKey.tokenIndex)) = false ∨ s'.simpleKeyAllowed = true := by
+  intro hp _ _ hnlt
+  have heq := hkey hp
+  rw [heq] at hp
+  rcases hS hp with h | ⟨_, h | h⟩
+  · exact Or.inl h
+  · exact absurd h hnlt
+  · cases h
 
 lemma StrongSlot_saveSimpleKey (s : ScannerState) (hI : LiveInv s) : StrongSlot (saveSimpleKey s) := by
   unfold saveSimpleKey
@@ -657,7 +651,7 @@ lemma StrongSlot_saveSimpleKey (s : ScannerState) (hI : LiveInv s) : StrongSlot 
         obtain ⟨hci0, hfl0⟩ := hI.fresh hb
         exact Or.inr ⟨hfl0, Or.inl (by omega)⟩
     · rename_i hal
-      exact StrongSlot.of_al_false s hI (by simp at hal; simp [hal])
+      exact StrongSlot.of_al_false s hI (by simpa using hal)
 
 lemma StrongSlot_closeStaleExplicitKey (s : ScannerState) (hS : StrongSlot s) :
     StrongSlot (closeStaleExplicitKey s) := by
