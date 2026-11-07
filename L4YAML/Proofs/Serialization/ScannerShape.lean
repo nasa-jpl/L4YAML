@@ -3,6 +3,7 @@ module
 public import L4YAML.Proofs.Serialization.ParseCheckFrom
 public import L4YAML.Proofs.Scanner.DirectiveRuns
 public import L4YAML.Proofs.Scanner.DocStartLive
+public import L4YAML.Proofs.Scanner.FlowSync
 import all L4YAML.Proofs.Serialization.TokenEvents
 
 @[expose] public section Blanket

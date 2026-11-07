@@ -11619,6 +11619,20 @@ def testFlowSyncPrereqs (state : IO.Ref TestCollector) : IO Unit := do
           (fuel != 0 && P93.flowSync sF) ""
   checkM state s!"P93 steps={steps} in-flow steps={flowSteps} block steps changing indents={blockIndentChanges} skipToContent kept={allowedKept} raised={allowedRaised} deepest flow={deepest}"
     (steps > 0 && flowSteps > 0 && blockIndentChanges > 0 && allowedKept > 0 && allowedRaised > 0 && deepest >= 3) ""
+  -- withdrawn-premise control for `FlowSync_scanNextToken`: desynchronise the stacks of a reached
+  -- state and step — the conclusion must FAIL somewhere, else the premise is idle
+  let mut desyncBroken := 0
+  let mut desyncStepped := 0
+  for input in ["[a, b]", "{a: [b]}", "- [a]", "a: b"] do
+    for s in P93.trajectory input do
+      let bad := { s with flowStack := s.flowStack.push true }
+      match scanNextToken bad with
+      | .ok (some s') =>
+        desyncStepped := desyncStepped + 1
+        if !P93.flowSync s' then desyncBroken := desyncBroken + 1
+      | _ => pure ()
+  checkM state s!"P93 withdrawn FlowSync premise: stepped={desyncStepped} conclusion fails on {desyncBroken}"
+    (desyncStepped > 0 && desyncBroken > 0) ""
 
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)

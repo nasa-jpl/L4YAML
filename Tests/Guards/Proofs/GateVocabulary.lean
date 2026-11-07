@@ -107,8 +107,9 @@ namespace L4YAML.Tests.Guards.GateVocabulary
 -- added or retired.
 -- 2026-11-05 (capstone 7.7 S3 (b)): mentions 485 → 491 — the Priority 87 grid's prose names the scanner
 -- entry points and the two directive refusals it instantiates.
+-- 2026-11-07 (item 447): names 113 → 114, mentions 491 → 495 — item 447's prose names the gates once more (S3 (β2a)).
 def expectedGateVocab : String :=
-  "names=113 mentions=491 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
+  "names=114 mentions=495 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
 
 end L4YAML.Tests.Guards.GateVocabulary
 

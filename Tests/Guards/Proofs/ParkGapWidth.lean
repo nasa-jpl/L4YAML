@@ -546,6 +546,8 @@ def expectedLadder : List String :=
 -- 2026-10-23 (item 357): holders=117 → 119 — `dispatchBlockIndicators_markedCols` and its `_of_ne`
 --   twin read the block-indicator dispatch to transport `MarkedColsIn` across the `-`/`?`/`:` step.
 -- 2026-10-25 (item 358): holders=119 → 120 — `landing_frame_of_cover` (the K1 bridge) holds the dispatch.
+-- 2026-11-07 (item 447): holders 137 → 138 (block), 165 → 166 (content), 253 → 255 (preprocess) — `Proofs/Scanner/FlowSync.lean`
+--   (S3 (β2a)): `FlowSync_dispatchBlock` / `_dispatchContent` / `_preprocess` + `preprocess_preserves_flowLevel` read the dispatchers.
 -- 2026-11-06 (item 437): holders=136 → 137 — `indicator_seqTop_dash_at_col` reads the `-` dispatch to
 --   hand the dash parks `h_seqTop` (seq top ∨ the compact level at the dash column).
 -- 2026-10-25 (item 360): holders=120 → 121 — `refused_of_outer_disp` (the K7 bridge) holds the dispatch.
@@ -553,9 +555,9 @@ def expectedLadder : List String :=
   -- Item 387 (2026-10-29): `seqTop_refuted_at_indicator_le` holds the `:`/`?` dispatch (+1 holder).
   -- Item 409 (2026-10-30): `MarkedColsIn.step_value` holds the `:` dispatch and its preprocess (+1, +1).
   [
-   "scanNextToken_dispatchBlockIndicators holders=137 edge=1 chain=0",
-   "scanNextToken_dispatchContent holders=165 edge=3 chain=1",
-   "scanNextToken_preprocess holders=253 edge=17 chain=3"]
+   "scanNextToken_dispatchBlockIndicators holders=138 edge=1 chain=0",
+   "scanNextToken_dispatchContent holders=166 edge=3 chain=1",
+   "scanNextToken_preprocess holders=255 edge=17 chain=3"]
 
 /-- **What §1's proofs spend.**  `drop=false` is the non-circularity check
     items 242 and 243 also carry: a measurement of what the escape costs may
