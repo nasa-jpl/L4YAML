@@ -10987,7 +10987,6 @@ def collectTests : IO VerifiedSuiteResult := do
   testThreeArmsFields state
   testSeqTopRefusedArm state
   testPackAltMarks state
-||||||| parent of 972d98ae (docs(row 12): item 444 — (ω-negative) the ON set's negative alternative READ (the chain fact collapses to `ExplicitValueRefused sc`), Rule 2 on the whole disjunction (P91) and PRICED as `scripts/flips/item444_packalt_refused.json` (81 / 23; 8 pay, 73 the pack owed) — STOPPED before the pay; options (ω-pay-refused)/(ω-births)/(ω-close) for 445; no library change)
   testPackAltNegative state
 
   testQuestionMarkColumn state
