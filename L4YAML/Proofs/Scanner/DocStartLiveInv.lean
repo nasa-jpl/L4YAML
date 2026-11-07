@@ -448,6 +448,42 @@ lemma LiveInv_closeStaleExplicitKey (s : ScannerState) (hI : LiveInv s) :
   · rw [h]
     exact LiveInv.ofFields s _ rfl rfl rfl id (KeyTr.ofEq rfl) rfl hI
 
+/-! ### Preprocessing -/
+
+lemma LiveInv_preprocess (s s1 : ScannerState) (c : Char)
+    (h : scanNextToken_preprocess s = .ok (some (s1, c)))
+    (hB : SentinelBase s) (hA : AllKeysValid s) (hI : LiveInv s) : LiveInv s1 := by
+  unfold scanNextToken_preprocess at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  split at h
+  · contradiction
+  · rename_i s_skip h_skip
+    have hI1 := LiveInv_skipToContent s s_skip h_skip hI
+    have hA1 := skipToContent_preserves_AllKeysValid s s_skip h_skip hA
+    have hB1 : SentinelBase s_skip := hB.of_indents_eq (skipToContent_preserves_indents s s_skip h_skip)
+    split at h
+    · simp at h
+    · split at h
+      · split at h
+        · contradiction
+        · split at h
+          · simp at h
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
+            obtain ⟨rfl, _⟩ := h
+            have hI2 := LiveInv_needIndentCheck _
+              (LiveInv_unwindIndents s_skip s_skip.col (by omega) hB1 hA1 hI1)
+            have hA2 : AllKeysValid { unwindIndents s_skip s_skip.col with needIndentCheck := false } :=
+              unwindIndents_preserves_AllKeysValid s_skip _ hA1
+            exact LiveInv_closeStaleExplicitKey _ (LiveInv_saveSimpleKey _ hA2 hI2)
+      · split at h
+        · contradiction
+        · split at h
+          · simp at h
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
+            obtain ⟨rfl, _⟩ := h
+            exact LiveInv_closeStaleExplicitKey _ (LiveInv_saveSimpleKey _ hA1 hI1)
+
 end L4YAML.Proofs.DocStartLiveInv
 
 end Blanket
