@@ -48,7 +48,8 @@ open L4YAML.Proofs.FlowAdjacency
 open L4YAML.Proofs.ScannerDirectivesPresent L4YAML.Proofs.ScannerAllowDirectives
 open L4YAML.Proofs.PreprocessIndentStable L4YAML.Proofs.IndentStackBase
 open L4YAML.Proofs.CloseStaleExplicitKey L4YAML.Proofs.EntryBoundaryLayout
-open L4YAML.Proofs.IndentStackBase L4YAML.Proofs.ColFloor
+open L4YAML.Proofs.IndentStackBase L4YAML.Proofs.ColFloor L4YAML.Proofs.FlowIndentStable
+open L4YAML.Proofs.ScannerFlowCollection
 
 /-- The slot condition on a saved simple key (clause `slot`/`stack` body): the token before
     the slot is not a boundary, or (block context) `rollIndent` will insert `blockMappingStart`
@@ -614,6 +615,294 @@ lemma LiveInv_dispatchStructural (s : ScannerState) (c : Char) (s' : ScannerStat
     | exact LiveInv_scanDocumentEnd _ _ (by assumption)
         (flowLevel_zero_of_marker_guard s (by assumption) (by assumption)) hF hB hA hI
     | exact LiveInv_scanDirective _ _ (by assumption) hD hB hA hI
+
+/-! ### After preprocessing the slot is in strong form (no stale arm) -/
+
+/-- The slot condition without the stale arm. -/
+def StrongSlot (s : ScannerState) : Prop :=
+  s.simpleKey.possible = true →
+    SlotOK (vals s) s.flowLevel s.currentIndent false s.simpleKey
+
+lemma StrongSlot.of_al_false (s : ScannerState) (hI : LiveInv s)
+    (hb : (s.simpleKeyAllowed && seqTop s s.simpleKey) = false) : StrongSlot s := by
+  intro hp
+  have := hI.slot hp
+  rwa [hb] at this
+
+lemma StrongSlot_saveSimpleKey (s : ScannerState) (hI : LiveInv s) : StrongSlot (saveSimpleKey s) := by
+  unfold saveSimpleKey
+  split
+  · rename_i hin
+    simp only [Bool.and_eq_true] at hin
+    intro hp
+    have hfl : 0 < s.flowLevel := by
+      have := hin.1; unfold ScannerState.inFlow at this; simpa using this
+    rcases hI.slot hp with h | ⟨h0, _⟩
+    · exact Or.inl h
+    · omega
+  · split
+    · generalize hph0 : (⟨s.currentPos, .placeholder, s.currentPos⟩ : Positioned YamlToken) = ph
+      intro _
+      unfold SlotOK
+      have hv : vals ({ s with tokens := (s.tokens.push ph).push ph } : ScannerState) = vals s ++ [.placeholder, .placeholder] := by
+        simp [vals, toks, ← hph0]
+      have hlen : (vals s).length = s.tokens.size := vals_length s
+      show Bnd (lastReal ((vals { s with tokens := (s.tokens.push ph).push ph }).take s.tokens.size)) = false ∨
+        (s.flowLevel = 0 ∧ (s.currentIndent < (s.currentPos.col : Int) ∨ false = true))
+      rw [hv, take_append_of_le' _ _ _ (by omega),
+        show (vals s).take s.tokens.size = vals s from List.take_of_length_le (by omega)]
+      cases hb : Bnd (lastReal (vals s)) with
+      | false => exact Or.inl rfl
+      | true =>
+        obtain ⟨hci0, hfl0⟩ := hI.fresh hb
+        exact Or.inr ⟨hfl0, Or.inl (by omega)⟩
+    · rename_i hal
+      exact StrongSlot.of_al_false s hI (by simp at hal; simp [hal])
+
+lemma StrongSlot_closeStaleExplicitKey (s : ScannerState) (hS : StrongSlot s) :
+    StrongSlot (closeStaleExplicitKey s) := by
+  rcases closeStaleExplicitKey_cases s with h | ⟨c, _, h⟩
+  · rw [h]; exact hS
+  · rw [h]; exact fun hp => hS hp
+
+lemma StrongSlot_preprocess (s s1 : ScannerState) (c : Char)
+    (h : scanNextToken_preprocess s = .ok (some (s1, c)))
+    (hB : SentinelBase s) (hA : AllKeysValid s) (hI : LiveInv s) : StrongSlot s1 := by
+  unfold scanNextToken_preprocess at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  split at h
+  · contradiction
+  · rename_i s_skip h_skip
+    have hI1 := LiveInv_skipToContent s s_skip h_skip hI
+    have hA1 := skipToContent_preserves_AllKeysValid s s_skip h_skip hA
+    have hB1 : SentinelBase s_skip := hB.of_indents_eq (skipToContent_preserves_indents s s_skip h_skip)
+    split at h
+    · simp at h
+    · split at h
+      · split at h
+        · contradiction
+        · split at h
+          · simp at h
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
+            obtain ⟨rfl, _⟩ := h
+            have hI2 := LiveInv_needIndentCheck _
+              (LiveInv_unwindIndents s_skip s_skip.col (by omega) hB1 hA1 hI1)
+            exact StrongSlot_closeStaleExplicitKey _ (StrongSlot_saveSimpleKey _ hI2)
+      · split at h
+        · contradiction
+        · split at h
+          · simp at h
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
+            obtain ⟨rfl, _⟩ := h
+            exact StrongSlot_closeStaleExplicitKey _ (StrongSlot_saveSimpleKey _ hI1)
+
+/-! ### Flow indicators -/
+
+lemma head_append {s : ScannerState} (hI : LiveInv s) (M : List YamlToken) :
+    (vals s ++ M)[0]? = some .streamStart := by
+  have hh := hI.head
+  have : 0 < (vals s).length := by
+    cases h : vals s with
+    | nil => rw [h] at hh; simp at hh
+    | cons => simp
+  rw [List.getElem?_append_left this]; exact hh
+
+/-- A live, non-boundary token is appended, the key cleared and pushed. -/
+lemma LiveInv.flowStart (s s' : ScannerState) (t : YamlToken) (hlive : liveTok t = true)
+    (hnp : nonPh t = true) (hbnd : Bnd (some t) = false)
+    (hv : vals s' = vals s ++ [t]) (hk : s'.simpleKey.possible = false)
+    (hst : s'.simpleKeyStack = s.simpleKeyStack.push s.simpleKey) (hind : s'.indents = s.indents)
+    (hF : FlowSync s) (hS : StrongSlot s) (hA : AllKeysValid s) (hI : LiveInv s) : LiveInv s' := by
+  have hci : s'.currentIndent = s.currentIndent := by simp [ScannerState.currentIndent, hind]
+  have hlr : lastReal (vals s') = some t := by rw [hv, lastReal_snoc, hnp]; rfl
+  have hBr : Bnd (lastReal (vals s')) = false := by rw [hlr]; exact hbnd
+  have hMb : ∀ u ∈ [t], Bnd (some u) = false := by
+    intro u hu; simp at hu; subst hu; exact hbnd
+  refine ⟨by rw [hv]; exact head_append hI _, ?_, fun _ => hBr, fun _ => hBr,
+    (fun h => by rw [hBr] at h; cases h), (fun hp => by rw [hk] at hp; cases hp), ?_,
+    (fun hp => by rw [hk] at hp; cases hp), ?_⟩
+  · rw [hv]; exact Shape_snoc _ _ hI.shape (fun h => by rw [hlive] at h; cases h)
+  · intro j hj hp
+    simp only [hst] at hj hp ⊢
+    rw [hv, hci]
+    by_cases hlt : j < s.simpleKeyStack.size
+    · simp only [Array.getElem_push, hlt, dite_true] at hp ⊢
+      rw [take_append_of_le' _ _ _ (by have := stackLen_of_AllKeysValid s hA j hlt hp; omega)]
+      exact hI.stack j hlt hp
+    · simp only [Array.getElem_push, hlt, dite_false] at hp ⊢
+      rw [take_append_of_le' _ _ _ (by have := keyLen_of_AllKeysValid s hA hp; omega)]
+      rcases hS hp with h | ⟨h0, h1 | h1⟩
+      · exact Or.inl h
+      · right
+        refine ⟨?_, h1⟩
+        have := hF.1; have := hF.2
+        simp at hj; omega
+      · cases h1
+  · intro j hj hp
+    simp only [hst] at hj hp ⊢
+    rw [hv]
+    by_cases hlt : j < s.simpleKeyStack.size
+    · simp only [Array.getElem_push, hlt, dite_true] at hp ⊢
+      exact TailOK_append _ _ _ (by have := stackLen_of_AllKeysValid s hA j hlt hp; omega)
+        (hI.stackTail j hlt hp) hMb
+    · simp only [Array.getElem_push, hlt, dite_false] at hp ⊢
+      exact TailOK_append _ _ _ (by have := keyLen_of_AllKeysValid s hA hp; omega) (hI.tail hp) hMb
+
+/-- A non-boundary token is appended after a non-boundary, the key popped back. -/
+lemma LiveInv.flowEnd (s s' : ScannerState) (t : YamlToken)
+    (hnp : nonPh t = true) (hbnd : Bnd (some t) = false)
+    (hv : vals s' = vals s ++ [t]) (hpos : 0 < s.flowLevel) (hfl : s'.flowLevel = s.flowLevel - 1)
+    (hk : s'.simpleKey = s.simpleKeyStack.back?.getD {})
+    (hst : s'.simpleKeyStack = s.simpleKeyStack.pop) (hind : s'.indents = s.indents)
+    (hF : FlowSync s) (hA : AllKeysValid s) (hI : LiveInv s) : LiveInv s' := by
+  have hci : s'.currentIndent = s.currentIndent := by simp [ScannerState.currentIndent, hind]
+  have hlr : lastReal (vals s') = some t := by rw [hv, lastReal_snoc, hnp]; rfl
+  have hBr : Bnd (lastReal (vals s')) = false := by rw [hlr]; exact hbnd
+  have hMb : ∀ u ∈ [t], Bnd (some u) = false := by
+    intro u hu; simp at hu; subst hu; exact hbnd
+  have hsz : s.simpleKeyStack.size = s.flowLevel := by have := hF.1; have := hF.2; omega
+  refine ⟨by rw [hv]; exact head_append hI _, ?_, fun _ => hBr, fun _ => hBr,
+    (fun h => by rw [hBr] at h; cases h), ?_, ?_, ?_, ?_⟩
+  · rw [hv]; exact Shape_snoc _ _ hI.shape (fun _ _ => hI.flow hpos)
+  · intro hp
+    rw [hk] at hp ⊢
+    cases hb : s.simpleKeyStack.back? with
+    | none => rw [hb] at hp; simp at hp
+    | some k =>
+      rw [hb] at hp
+      simp only [Option.getD_some] at hp ⊢
+      simp only [Array.back?, Array.getElem?_eq_some_iff] at hb
+      obtain ⟨hlt, hk'⟩ := hb
+      rw [← hk'] at hp ⊢
+      unfold SlotOK
+      rw [hv, hci, hfl, take_append_of_le' _ _ _ (by have := stackLen_of_AllKeysValid s hA _ hlt hp; omega)]
+      rcases hI.stack _ hlt hp with h | ⟨h0, h1⟩
+      · exact Or.inl h
+      · right; refine ⟨by omega, Or.inl h1⟩
+  · intro j hj hp
+    simp only [hst] at hj hp ⊢
+    have hj' : j < s.simpleKeyStack.size := by simp at hj; omega
+    simp only [Array.getElem_pop] at hp ⊢
+    rw [hv, hci, take_append_of_le' _ _ _ (by have := stackLen_of_AllKeysValid s hA j hj' hp; omega)]
+    exact hI.stack j hj' hp
+  · intro hp
+    rw [hk] at hp ⊢
+    cases hb : s.simpleKeyStack.back? with
+    | none => rw [hb] at hp; simp at hp
+    | some k =>
+      rw [hb] at hp
+      simp only [Option.getD_some] at hp ⊢
+      simp only [Array.back?, Array.getElem?_eq_some_iff] at hb
+      obtain ⟨hlt, hk'⟩ := hb
+      rw [← hk'] at hp ⊢
+      rw [hv]
+      exact TailOK_append _ _ _ (by have := stackLen_of_AllKeysValid s hA _ hlt hp; omega)
+        (hI.stackTail _ hlt hp) hMb
+  · intro j hj hp
+    simp only [hst] at hj hp ⊢
+    have hj' : j < s.simpleKeyStack.size := by simp at hj; omega
+    simp only [Array.getElem_pop] at hp ⊢
+    rw [hv]
+    exact TailOK_append _ _ _ (by have := stackLen_of_AllKeysValid s hA j hj' hp; omega)
+      (hI.stackTail j hj' hp) hMb
+
+/-- A non-boundary token appended after a non-boundary with the key cleared and the
+    rest untouched. -/
+lemma LiveInv.deadSnoc (s s' : ScannerState) (t : YamlToken)
+    (hnp : nonPh t = true) (hbnd : Bnd (some t) = false)
+    (hv : vals s' = vals s ++ [t]) (hlast : Bnd (lastReal (vals s)) = false)
+    (hk : s'.simpleKey.possible = false) (hst : s'.simpleKeyStack = s.simpleKeyStack)
+    (hind : s'.indents = s.indents) (hA : AllKeysValid s) (hI : LiveInv s) : LiveInv s' := by
+  have hci : s'.currentIndent = s.currentIndent := by simp [ScannerState.currentIndent, hind]
+  have hlr : lastReal (vals s') = some t := by rw [hv, lastReal_snoc, hnp]; rfl
+  have hBr : Bnd (lastReal (vals s')) = false := by rw [hlr]; exact hbnd
+  have hMb : ∀ u ∈ [t], Bnd (some u) = false := by
+    intro u hu; simp at hu; subst hu; exact hbnd
+  refine ⟨by rw [hv]; exact head_append hI _, ?_, fun _ => hBr, fun _ => hBr,
+    (fun h => by rw [hBr] at h; cases h), (fun hp => by rw [hk] at hp; cases hp), ?_,
+    (fun hp => by rw [hk] at hp; cases hp), ?_⟩
+  · rw [hv]; exact Shape_snoc _ _ hI.shape (fun _ _ => hlast)
+  · intro j hj hp
+    simp only [hst] at hj hp ⊢
+    rw [hv, hci, take_append_of_le' _ _ _ (by have := stackLen_of_AllKeysValid s hA j hj hp; omega)]
+    exact hI.stack j hj hp
+  · intro j hj hp
+    simp only [hst] at hj hp ⊢
+    rw [hv]
+    exact TailOK_append _ _ _ (by have := stackLen_of_AllKeysValid s hA j hj hp; omega)
+      (hI.stackTail j hj hp) hMb
+
+lemma scanFlowEntry_vals (s s' : ScannerState) (h : scanFlowEntry s = .ok s') :
+    vals s' = vals s ++ [.flowEntry] := by
+  unfold scanFlowEntry at h
+  simp only [bind, Except.bind] at h
+  repeat' (split at h)
+  all_goals (first
+    | contradiction
+    | (injection h with h_eq; subst h_eq
+       simp [vals, toks, advance_preserves_tokens, ScannerState.emit]))
+
+lemma LiveInv_dispatchFlow (s : ScannerState) (c : Char) (s' : ScannerState)
+    (h : scanNextToken_dispatchFlowIndicators s c = .ok (some s'))
+    (hF : FlowSync s) (hS : StrongSlot s) (hA : AllKeysValid s) (hI : LiveInv s) : LiveInv s' := by
+  have hind := dispatchFlowIndicators_preserves_indents h
+  unfold scanNextToken_dispatchFlowIndicators at h
+  replace h := peel_flowAdj h
+  simp only [bind, Except.bind, pure, Except.pure] at h
+  split at h
+  · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+    exact LiveInv.flowStart s _ _ rfl rfl rfl (scanFlowSequenceStart_vals s)
+      (scanFlowSequenceStart_simpleKey_cleared s) (scanFlowSequenceStart_stack_pushed s) hind hF hS hA hI
+  · split at h
+    · split at h
+      · simp at h
+      · split at h
+        · simp at h
+        · split at h
+          · simp at h
+          · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+            have hpos : 0 < s.flowLevel := by
+              cases hz : s.flowLevel with
+              | zero => simp_all
+              | succ n => omega
+            exact LiveInv.flowEnd s _ _ rfl rfl (scanFlowSequenceEnd_vals s) hpos
+              (scanFlowSequenceEnd_flowLevel_pos s hpos)
+              (scanFlowSequenceEnd_simpleKey_restored s) (scanFlowSequenceEnd_stack_popped s) hind hF hA hI
+    · split at h
+      · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+        exact LiveInv.flowStart s _ _ rfl rfl rfl (scanFlowMappingStart_vals s)
+          (scanFlowMappingStart_simpleKey_cleared s) (scanFlowMappingStart_stack_pushed s) hind hF hS hA hI
+      · split at h
+        · split at h
+          · simp at h
+          · split at h
+            · simp at h
+            · split at h
+              · simp at h
+              · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+                have hpos : 0 < s.flowLevel := by
+                  cases hz : s.flowLevel with
+                  | zero => simp_all
+                  | succ n => omega
+                exact LiveInv.flowEnd s _ _ rfl rfl (scanFlowMappingEnd_vals s) hpos
+                  (scanFlowMappingEnd_flowLevel_pos s hpos)
+                  (scanFlowMappingEnd_simpleKey_restored s) (scanFlowMappingEnd_stack_popped s) hind hF hA hI
+        · split at h
+          · split at h
+            · simp at h
+            · split at h
+              · simp at h
+              · rename_i _ _ _ h_entry
+                simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+                have hpos : 0 < s.flowLevel := by
+                  cases hz : s.flowLevel with
+                  | zero => simp_all
+                  | succ n => omega
+                exact LiveInv.deadSnoc s _ _ rfl rfl (scanFlowEntry_vals s _ h_entry) (hI.flow hpos)
+                  (scanFlowEntry_clears_simpleKey s _ h_entry)
+                  (scanFlowEntry_preserves_simpleKeyStack s _ h_entry) hind hA hI
+          · simp at h
 
 end L4YAML.Proofs.DocStartLiveInv
 
