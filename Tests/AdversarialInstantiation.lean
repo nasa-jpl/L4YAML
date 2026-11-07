@@ -11281,7 +11281,11 @@ def testStuckAtDocStart (state : IO.Ref TestCollector) : IO Unit := do
     `[SS, DE, t, SE]` and, in `.afterDocument`, on `[SS, sc, t, SE]` from position 2; (iv) the
     list-level lemmas of `Proofs/Scanner/DocStartLive.lean` directly (`filter_getLast`,
     `lastReal_snoc`, `Shape_snoc`, `LiveF_of_Shape`) on every list of length ≤ 3 over an alphabet
-    with both boundaries, a placeholder, dead and live tokens, with the withdrawn-`Shape` control.
+    with both boundaries, a placeholder, dead and live tokens, with the withdrawn-`Shape` control;
+    (v) the parser progress lemmas `parseNodeProperties_progress`, `parseNode_alias_progress`,
+    `parseNode_dead` on their own premises: hand-built arrays at first / middle / after-`-` / last
+    positions, property orderings and an alias as the head, every token kind as the follower,
+    `parseNode` fuel 0..5, premise-held and premise-failed rows tallied separately.
     (i) grew to 143 rows: `---` / `...` inside flow collections and quoted / block scalars — the only
     way a dead token could follow a boundary — are refused (`documentMarkerInFlow` /
     `documentMarkerInScalar`). -/
@@ -11458,6 +11462,74 @@ def testDocStartLive (state : IO.Ref TestCollector) : IO Unit := do
     !P92.shapeB L && !P92.liveFB (L.filter L4YAML.Proofs.DirectiveRuns.nonPh)
   checkM state s!"P92(iv) withdrawn Shape ⇒ LiveF fails on {liveFails.length} lists (first: {repr liveFails.head?})"
     (liveFails.length > 0) ""
+
+  -- (v) the parser progress lemmas directly, on their own premises (Rule 2): hand-built arrays,
+  -- first / middle / after-`-` / last positions, property orderings and an alias as the head,
+  -- every token kind as the follower, `parseNode` fuel 0..5; premise-held and premise-failed rows
+  -- tallied separately (and, for `parseNodeProperties_progress`, the no-progress rows the
+  -- withdrawn premise admits)
+  let pcf := L4YAML.Proofs.Serialization.ParseCheckFrom.emptyFollowerTok
+  let heads : List (String × List YamlToken) :=
+    [ ("&x", [.anchor "x"]), ("!t", [.tag "!" "t"]), ("&x !t", [.anchor "x", .tag "!" "t"]),
+      ("!t &x", [.tag "!" "t", .anchor "x"]), ("&x &y", [.anchor "x", .anchor "y"]),
+      ("!t !u", [.tag "!" "t", .tag "!" "u"]), ("*x", [.alias "x"]), ("(none)", []) ]
+  let ctxs : List (String × List YamlToken × Nat × List YamlToken) :=
+    [ ("first", [.streamStart], 1, [.streamEnd]),
+      ("middle", [.streamStart, .scalar "a" .plain], 2, [.streamEnd]),
+      ("after -", [.streamStart, .blockSequenceStart, .blockEntry], 3, [.blockEnd, .streamEnd]),
+      ("last", [.streamStart], 1, []) ]
+  let mut propHeld := 0
+  let mut propFail := 0
+  let mut propCtrl := 0
+  let mut aliasHeld := 0
+  let mut aliasFail := 0
+  let mut deadHeld := 0
+  let mut deadFail := 0
+  for (cn, pre, p, post) in ctxs do
+    for (hn, hd) in heads do
+      for (fn, f) in P92.kinds do
+        let arr := P91.mkArr (pre ++ hd ++ [f] ++ post)
+        let ps := ((P91.at_ arr p).declareAnchor "x").addAnchor "x" (seqv [])
+        let lbl := s!"P92(v) {cn} {hn} {fn}"
+        let isProp := match ps.peek? with
+          | some (.anchor _) => true
+          | some (.tag _ _) => true
+          | _ => false
+        match parseNodeProperties ps with
+        | .ok (_, ps') =>
+          if isProp then
+            propHeld := propHeld + 1
+            checkM state s!"{lbl}: parseNodeProperties_progress" (ps.pos < ps'.pos)
+              s!"pos {ps.pos} → {ps'.pos}"
+          else
+            propFail := propFail + 1
+            if !(ps.pos < ps'.pos) then propCtrl := propCtrl + 1
+        | .error _ => propFail := propFail + 1
+        for m in List.range 6 do
+          match parseNode ps m with
+          | .error _ =>
+            aliasFail := aliasFail + 1
+            deadFail := deadFail + 1
+          | .ok (_, ps') =>
+            match ps.peek? with
+            | some (.alias _) =>
+              aliasHeld := aliasHeld + 1
+              checkM state s!"{lbl} fuel {m}: parseNode_alias_progress" (ps.pos < ps'.pos)
+                s!"pos {ps.pos} → {ps'.pos}"
+            | _ => aliasFail := aliasFail + 1
+            if 2 < m && ps'.pos == ps.pos then
+              deadHeld := deadHeld + 1
+              let t := L4YAML.Proofs.Serialization.ParseCheckFrom.tok arr ps.pos
+              let notProp := match t with
+                | some (.anchor _) => false
+                | some (.tag _ _) => false
+                | _ => true
+              let concl := (pcf t && notProp) ||
+                (t == some YamlToken.blockEntry && 0 < ps.pos && L4YAML.Proofs.Serialization.ParseCheckFrom.tok arr (ps.pos - 1) == some YamlToken.blockEntry)
+              checkM state s!"{lbl} fuel {m}: parseNode_dead" concl s!"tok {repr t}"
+            else deadFail := deadFail + 1
+  checkM state s!"P92(v) parseNodeProperties_progress held={propHeld} failed={propFail} (no progress under the withdrawn premise={propCtrl}); parseNode_alias_progress held={aliasHeld} failed={aliasFail}; parseNode_dead held={deadHeld} failed={deadFail}"
+    (propHeld > 0 && propCtrl > 0 && aliasHeld > 0 && deadHeld > 0 && deadFail > 0) ""
 
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
