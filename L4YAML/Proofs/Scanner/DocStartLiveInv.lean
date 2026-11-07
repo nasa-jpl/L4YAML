@@ -375,6 +375,79 @@ lemma LiveInv_unwindIndents (s : ScannerState) (col : Int) (hc : 0 ≤ col)
       exact TailOK_append _ _ _ (by have := stackLen_of_AllKeysValid s hA j hj hp; omega)
         (hI.stackTail j hj hp) hMb
 
+/-! ### `saveSimpleKey`: the new slot sits after the last real token -/
+
+/-- Two placeholders are pushed and the key is re-saved at the old size; everything the
+    invariant reads is otherwise unchanged. -/
+lemma LiveInv.ofSave (s t : ScannerState) (ph : Positioned YamlToken) (hph : ph.val = .placeholder)
+    (ht : t.tokens = (s.tokens.push ph).push ph)
+    (hind : t.indents = s.indents) (hfl : t.flowLevel = s.flowLevel)
+    (hst : t.simpleKeyStack = s.simpleKeyStack)
+    (hki : t.simpleKey.tokenIndex = s.tokens.size)
+    (hA : AllKeysValid s) (hI : LiveInv s) : LiveInv t := by
+  have hv : vals t = vals s ++ [.placeholder, .placeholder] := by
+    simp [vals, toks, ht, hph]
+  have hci : t.currentIndent = s.currentIndent := by simp [ScannerState.currentIndent, hind]
+  have hphs : ∀ u ∈ ([.placeholder, .placeholder] : List YamlToken), nonPh u = false := by
+    intro u hu; simp at hu; rcases hu with rfl | rfl <;> rfl
+  have hlr : lastReal (vals s ++ [.placeholder, .placeholder]) = lastReal (vals s) :=
+    lastReal_append_ph _ _ hphs
+  have hMb : ∀ u ∈ ([.placeholder, .placeholder] : List YamlToken), Bnd (some u) = false := by
+    intro u hu; simp at hu; rcases hu with rfl | rfl <;> rfl
+  have hlen : (vals s).length = s.tokens.size := vals_length s
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · rw [hv]
+    have hh := hI.head
+    have : 0 < (vals s).length := by
+      cases h : vals s with
+      | nil => rw [h] at hh; simp at hh
+      | cons => simp
+    rw [List.getElem?_append_left this]; exact hh
+  · rw [hv]; exact Shape_append_ph _ _ hI.shape hphs
+  · rw [hv, hlr, hind, hci]; exact hI.deep
+  · rw [hv, hlr, hfl]; exact hI.flow
+  · rw [hv, hlr, hci, hfl]; exact hI.fresh
+  · intro _
+    unfold SlotOK
+    rw [hv, hki, hfl, hci, take_append_of_le' _ _ _ (by omega),
+      show (vals s).take s.tokens.size = vals s from List.take_of_length_le (by omega)]
+    cases hb : Bnd (lastReal (vals s)) with
+    | false => exact Or.inl rfl
+    | true =>
+      obtain ⟨hci0, hfl0⟩ := hI.fresh hb
+      exact Or.inr ⟨hfl0, Or.inl (by rw [hci0]; omega)⟩
+  · intro j hj hp
+    simp only [hst] at hj hp ⊢
+    rw [hv, hci, take_append_of_le' _ _ _ (by have := stackLen_of_AllKeysValid s hA j hj hp; omega)]
+    exact hI.stack j hj hp
+  · intro _
+    rw [hv, hki]
+    intro u hu
+    rw [List.drop_append_of_le_length (by omega),
+      show (vals s).drop s.tokens.size = [] from List.drop_of_length_le (by omega)] at hu
+    exact hMb u hu
+  · intro j hj hp
+    simp only [hst] at hj hp ⊢
+    rw [hv]
+    exact TailOK_append _ _ _ (by have := stackLen_of_AllKeysValid s hA j hj hp; omega)
+      (hI.stackTail j hj hp) hMb
+
+lemma LiveInv_saveSimpleKey (s : ScannerState) (hA : AllKeysValid s) (hI : LiveInv s) :
+    LiveInv (saveSimpleKey s) := by
+  unfold saveSimpleKey
+  split
+  · exact hI
+  · split
+    · exact LiveInv.ofSave s _ _ rfl rfl rfl rfl rfl rfl hA hI
+    · exact hI
+
+lemma LiveInv_closeStaleExplicitKey (s : ScannerState) (hI : LiveInv s) :
+    LiveInv (closeStaleExplicitKey s) := by
+  rcases closeStaleExplicitKey_cases s with h | ⟨c, _, h⟩
+  · rw [h]; exact hI
+  · rw [h]
+    exact LiveInv.ofFields s _ rfl rfl rfl id (KeyTr.ofEq rfl) rfl hI
+
 end L4YAML.Proofs.DocStartLiveInv
 
 end Blanket
