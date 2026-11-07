@@ -11309,7 +11309,12 @@ def extraRows : List String :=
     "...\n# only comment", "... ", "...\t", "...a", "....", "...\n: ", "...\n? ", "...\n- ",
     "...\n[a, b]", "...\n{a: b}", "...\n[]", "...\n{}", "...\n- - a", "...\n--- a\n...", "...\n---\n...",
     "a: b\n...\nc: d", "a: b\n...\n: d", "- a\n...\n- b", "? a\n...\n? b", "&x a\n...\n&x b",
-    "!t a\n...\n!t b", "a\n...\n...\n...\nb" ]
+    "!t a\n...\n!t b", "a\n...\n...\n...\nb",
+    -- document markers inside flow / quoted scalars: the scanner refuses (`documentMarkerInFlow`,
+    -- `documentMarkerInScalar`) — the only way a dead token could follow `...`
+    "[a\n...\n]", "[\n...\n]", "{\n...\n}", "[a,\n...\nb]", "[a\n---\n]", "- [a\n...\n]",
+    "\"a\n...\nb\"", "'a\n...\nb'", "|\n...\n", "a:\n...\n b", "? a\n...\n: b", "- a\n...\n  - b",
+    "[a\n...", "{a\n...", "[a,\n...", "a: [\n...\n]", "a: b\n...\n c" ]
 
 def kinds : List (String × YamlToken) :=
   [ ("SS", .streamStart), ("SE", .streamEnd), ("ph", .placeholder), ("%Y", .versionDirective 1 2),
@@ -11339,7 +11344,7 @@ def testDocStartLive (state : IO.Ref TestCollector) : IO Unit := do
     | .error _, .error _ => refused := refused + 1
     | _, _ => checkM state s!"P92(i) {repr input}: scan and scanFiltered agree on success" false ""
   checkM state s!"P92(i) rows={rows.length} scanned={scanned} refused={refused} documentEnds={des}"
-    (rows.length == 126 && scanned == 97 && refused == 29 && des == 60)
+    (rows.length == 143 && scanned == 102 && refused == 41 && des == 65)
     "prediction corrected: 94 scanned / 32 refused was the guess; `...a`, `....`, `...\t` scan (plain scalars / `...` + tab)"
   -- (ii) scanLoop directly: fuel 0..24 from the start state and after one / two steps
   let mut okRuns := 0
