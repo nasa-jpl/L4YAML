@@ -172,6 +172,229 @@ lemma scanAnchorOrAlias_trace (sc : ScannerState) (sp : SurfPos) (isAnchor : Boo
         simp only [Bool.false_eq_true, ite_false]
         rw [hname', span_cons '*' rest sc.col (sc.col + 1) sp' hlen', aliasEvents_span _ hall]
 
+/-! ### The tag handle, arm by arm: `handleOf` of the lexeme's span is the handle the scanner emits -/
+
+open L4YAML.Proofs.Serialization.SourceEvents in
+/-- `spanWhile p` on a list whose prefix `w` passes `p` and whose next char fails it splits exactly there. -/
+lemma spanWhile_prefix (p : Char → Bool) : ∀ (w rest : List Char), w.all p = true →
+    (∀ c, rest.head? = some c → p c = false) → spanWhile p (w ++ rest) = (w, rest)
+  | [], rest, _, hstop => by
+    cases rest with
+    | nil => rfl
+    | cons c cs => simp [spanWhile, hstop c rfl]
+  | c :: cs, rest, h, hstop => by
+    simp only [List.all_cons, Bool.and_eq_true] at h
+    simp [spanWhile, h.1, spanWhile_prefix p cs rest h.2 hstop]
+
+lemma tagEvents_verbatim (cs : List Char) : tagEvents ('!' :: '<' :: cs) = [] := by
+  simp [tagEvents]
+
+lemma handleOf_secondary (cs : List Char) : EventsOf.handleOf ('!' :: '!' :: cs) = "!!" := by
+  simp [EventsOf.handleOf, SourceEvents.namedTagUseAt, SourceEvents.namedTagUseTail, SourceEvents.spanWhile,
+    show isWordCharBool '!' = false by decide]
+
+lemma handleOf_named (w cs : List Char) (hw : w.all isWordCharBool = true) (hne : w ≠ []) :
+    EventsOf.handleOf ('!' :: (w ++ '!' :: cs)) = "!" ++ String.ofList w ++ "!" := by
+  have hsplit := spanWhile_prefix isWordCharBool w ('!' :: cs) hw
+    (fun c hc => by simp at hc; subst hc; decide)
+  have htail : SourceEvents.namedTagUseTail (w ++ '!' :: cs) =
+      some (.useTag ("!" ++ String.ofList w ++ "!"), cs) := by
+    unfold SourceEvents.namedTagUseTail
+    rw [hsplit]
+    cases w with
+    | nil => exact absurd rfl hne
+    | cons a as => rfl
+  simp [EventsOf.handleOf, SourceEvents.namedTagUseAt, htail]
+
+lemma handleOf_primary (w cs : List Char) (hw : w.all isWordCharBool = true)
+    (hstop : ∀ c, cs.head? = some c → isWordCharBool c = false ∧ c ≠ '!') :
+    EventsOf.handleOf ('!' :: (w ++ cs)) = "!" := by
+  have hsplit := spanWhile_prefix isWordCharBool w cs hw (fun c hc => (hstop c hc).1)
+  have hbang : isWordCharBool '!' = false := by decide
+  have htail : SourceEvents.namedTagUseTail (w ++ cs) = none := by
+    unfold SourceEvents.namedTagUseTail
+    rw [hsplit]
+    cases w with
+    | nil => cases cs <;> rfl
+    | cons a as =>
+      cases cs with
+      | nil => rfl
+      | cons c cs' =>
+        have hc := (hstop c rfl).2
+        simp only
+        split <;> simp_all
+  simp only [EventsOf.handleOf, SourceEvents.namedTagUseAt, htail]
+  cases w with
+  | nil =>
+    cases cs with
+    | nil => rfl
+    | cons c cs' =>
+      have hc := (hstop c rfl).2
+      simp only [List.nil_append]
+      split <;> simp_all
+  | cons a as =>
+    simp only [List.all_cons, Bool.and_eq_true] at hw
+    simp only [List.cons_append]
+    split <;> simp_all
+
+/-- The tag loops emit nothing. -/
+lemma collectTagHandleLoop_tokens (fuel : Nat) : ∀ (sc : ScannerState) (acc : String),
+    (collectTagHandleLoop sc acc fuel).2.2.tokens = sc.tokens := by
+  induction fuel with
+  | zero => intro sc acc; rfl
+  | succ n ih =>
+    intro sc acc
+    unfold collectTagHandleLoop; split
+    · exact (keeps_advance sc).1
+    · split
+      · rw [ih]; exact (keeps_advance sc).1
+      · rfl
+    · rfl
+
+lemma collectTagSuffixLoop_tokens (fuel : Nat) : ∀ (sc : ScannerState) (acc : String),
+    (collectTagSuffixLoop sc acc fuel).2.tokens = sc.tokens := by
+  induction fuel with
+  | zero => intro sc acc; rfl
+  | succ n ih =>
+    intro sc acc
+    unfold collectTagSuffixLoop; split
+    · split
+      · rw [ih]; exact (keeps_advance sc).1
+      · rfl
+    · rfl
+
+/-! ### Spans of the tag loops, in the form `sp.chars = consumed ++ sp'.chars` -/
+
+/-- `span` read off a decomposition of the start's characters. -/
+lemma span_of_eq (sp sp' : SurfPos) (L : List Char) (h : sp.chars = L ++ sp'.chars) :
+    span sp sp' = L := by
+  rw [span, h]; simp
+
+lemma ne_newline_of_bool {p : Char → Bool} (c : Char) (hc : p c = true)
+    (hn : p '\n' = false) (hr : p '\r' = false) : c ≠ '\n' ∧ c ≠ '\r' :=
+  ⟨fun h => by subst h; rw [hc] at hn; exact Bool.noConfusion hn,
+   fun h => by subst h; rw [hc] at hr; exact Bool.noConfusion hr⟩
+
+/-- A one-character step of a loop that advances over a non-newline `c`. -/
+lemma step_corr (sc : ScannerState) (c : Char) (rest : List Char)
+    (hcorr : ScannerSurfCorr sc ⟨c :: rest, sc.col⟩) (hpeek : sc.peek? = some c)
+    (hnl : c ≠ '\n') (hcr : c ≠ '\r') :
+    ScannerSurfCorr sc.advance ⟨rest, sc.col + 1⟩ :=
+  advance_non_newline_corr sc c rest hcorr (peek_some_has_more hpeek) hnl hcr
+
+/-- `collectTagSuffixLoop` consumes a prefix of the surface (its content is irrelevant here). -/
+lemma collectTagSuffixLoop_span (fuel : Nat) : ∀ (sc : ScannerState) (sp : SurfPos) (acc : String),
+    ScannerSurfCorr sc sp →
+    ∃ sp' L, ScannerSurfCorr (collectTagSuffixLoop sc acc fuel).2 sp' ∧ sp.chars = L ++ sp'.chars := by
+  induction fuel with
+  | zero => intro sc sp acc hcorr; exact ⟨sp, [], hcorr, rfl⟩
+  | succ n ih =>
+    intro sc sp acc hcorr
+    unfold collectTagSuffixLoop; split
+    · rename_i c hpeek; split
+      · rename_i hc
+        obtain ⟨rest, hsp⟩ := peek_some_sp hcorr hpeek
+        subst hsp
+        obtain ⟨hnl, hcr⟩ := ne_newline_of_bool c hc (by decide) (by decide)
+        obtain ⟨sp', L, hcorr', hL⟩ := ih sc.advance ⟨rest, sc.col + 1⟩ (acc.push c)
+          (step_corr sc c rest hcorr hpeek hnl hcr)
+        have hL' : rest = L ++ sp'.chars := hL
+        exact ⟨sp', c :: L, hcorr', by simp [hL']⟩
+      · exact ⟨sp, [], hcorr, rfl⟩
+    · exact ⟨sp, [], hcorr, rfl⟩
+
+/-- `collectVerbatimTagLoop` consumes a prefix of the surface. -/
+lemma collectVerbatimTagLoop_span (fuel : Nat) : ∀ (sc : ScannerState) (sp : SurfPos) (acc : String),
+    ScannerSurfCorr sc sp →
+    ∃ sp' L, ScannerSurfCorr (collectVerbatimTagLoop sc acc fuel).2.2 sp' ∧ sp.chars = L ++ sp'.chars := by
+  induction fuel with
+  | zero => intro sc sp acc hcorr; exact ⟨sp, [], hcorr, rfl⟩
+  | succ n ih =>
+    intro sc sp acc hcorr
+    unfold collectVerbatimTagLoop; split
+    · rename_i hpeek
+      obtain ⟨rest, hsp⟩ := peek_some_sp hcorr hpeek
+      subst hsp
+      exact ⟨⟨rest, sc.col + 1⟩, ['>'], step_corr sc '>' rest hcorr hpeek (by decide) (by decide), rfl⟩
+    · rename_i c hne hpeek; split
+      · rename_i hc
+        obtain ⟨rest, hsp⟩ := peek_some_sp hcorr hpeek
+        subst hsp
+        obtain ⟨hnl, hcr⟩ := ne_newline_of_bool c hc (by decide) (by decide)
+        obtain ⟨sp', L, hcorr', hL⟩ := ih sc.advance ⟨rest, sc.col + 1⟩ (acc.push c)
+          (step_corr sc c rest hcorr hpeek hnl hcr)
+        have hL' : rest = L ++ sp'.chars := hL
+        exact ⟨sp', c :: L, hcorr', by simp [hL']⟩
+      · exact ⟨sp, [], hcorr, rfl⟩
+    · exact ⟨sp, [], hcorr, rfl⟩
+
+lemma collectVerbatimTagLoop_tokens (fuel : Nat) : ∀ (sc : ScannerState) (acc : String),
+    (collectVerbatimTagLoop sc acc fuel).2.2.tokens = sc.tokens := by
+  induction fuel with
+  | zero => intro sc acc; rfl
+  | succ n ih =>
+    intro sc acc
+    unfold collectVerbatimTagLoop; split
+    · exact (keeps_advance sc).1
+    · split
+      · rw [ih]; exact (keeps_advance sc).1
+      · rfl
+    · rfl
+
+/-- `collectTagHandleLoop` with enough fuel: the handle chars it returns are exactly the word chars it
+consumed; with the bang it also consumed the `!`; without, the next character is neither a word char
+nor `!`. -/
+lemma collectTagHandleLoop_span (fuel : Nat) : ∀ (sc : ScannerState) (sp : SurfPos) (acc : String),
+    ScannerSurfCorr sc sp → sc.inputEnd - sc.offset ≤ fuel →
+    ∃ sp' w, ScannerSurfCorr (collectTagHandleLoop sc acc fuel).2.2 sp' ∧
+      (collectTagHandleLoop sc acc fuel).1.toList = acc.toList ++ w ∧
+      w.all isWordCharBool = true ∧
+      (((collectTagHandleLoop sc acc fuel).2.1 = true ∧ sp.chars = (w ++ ['!']) ++ sp'.chars) ∨
+       ((collectTagHandleLoop sc acc fuel).2.1 = false ∧ sp.chars = w ++ sp'.chars ∧
+         ∀ c, sp'.chars.head? = some c → isWordCharBool c = false ∧ c ≠ '!')) := by
+  induction fuel with
+  | zero =>
+    intro sc sp acc hcorr hfuel
+    have hnone : sc.peek? = none := peek_none_of_fuel_zero (by omega)
+    have hnil : sp.chars = [] := peek_none_chars_nil hcorr hnone
+    exact ⟨sp, [], hcorr, by simp [collectTagHandleLoop], rfl,
+      Or.inr ⟨rfl, by simp, fun c hc => by rw [hnil] at hc; cases hc⟩⟩
+  | succ n ih =>
+    intro sc sp acc hcorr hfuel
+    unfold collectTagHandleLoop; split
+    · rename_i hpeek
+      obtain ⟨rest, hsp⟩ := peek_some_sp hcorr hpeek
+      subst hsp
+      exact ⟨⟨rest, sc.col + 1⟩, [], step_corr sc '!' rest hcorr hpeek (by decide) (by decide),
+        by simp, rfl, Or.inl ⟨rfl, rfl⟩⟩
+    · rename_i c hne hpeek; split
+      · rename_i hc
+        obtain ⟨rest, hsp⟩ := peek_some_sp hcorr hpeek
+        subst hsp
+        obtain ⟨hnl, hcr⟩ := ne_newline_of_bool c hc (by decide) (by decide)
+        have hmore := peek_some_has_more hpeek
+        have hfuel' : sc.advance.inputEnd - sc.advance.offset ≤ n := by
+          have h1 := ScannerProgress.advance_offset_lt sc hmore
+          have h2 : sc.advance.inputEnd = sc.inputEnd := advance_inputEnd sc
+          omega
+        obtain ⟨sp', w, hcorr', hw, hall, hshape⟩ := ih sc.advance ⟨rest, sc.col + 1⟩ (acc.push c)
+          (step_corr sc c rest hcorr hpeek hnl hcr) hfuel'
+        refine ⟨sp', c :: w, hcorr', by rw [hw, String.toList_push]; simp, by simp [hc, hall], ?_⟩
+        rcases hshape with ⟨hb, hL⟩ | ⟨hb, hL, hstop⟩
+        · have hL' : rest = (w ++ ['!']) ++ sp'.chars := hL
+          exact Or.inl ⟨hb, by simp [hL']⟩
+        · have hL' : rest = w ++ sp'.chars := hL
+          exact Or.inr ⟨hb, by simp [hL'], hstop⟩
+      · rename_i hc
+        obtain ⟨rest, hsp⟩ := peek_some_sp hcorr hpeek
+        subst hsp
+        refine ⟨⟨c :: rest, sc.col⟩, [], hcorr, by simp, rfl, Or.inr ⟨rfl, rfl, ?_⟩⟩
+        intro c' hc'; simp at hc'; subst hc'
+        exact ⟨by simpa using hc, hne⟩
+    · rename_i hpeek
+      have hnil : sp.chars = [] := peek_none_chars_nil hcorr hpeek
+      exact ⟨sp, [], hcorr, by simp, rfl, Or.inr ⟨rfl, by simp, fun c hc => by rw [hnil] at hc; cases hc⟩⟩
+
 end
 
 end L4YAML.Proofs.Serialization.TraceOf.LeafBridge
