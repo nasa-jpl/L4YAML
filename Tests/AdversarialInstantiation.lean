@@ -12393,6 +12393,145 @@ def testGammaBal (state : IO.Ref TestCollector) : IO Unit := do
       (!P97.balB (L4YAML.Proofs.DirectiveRuns.vals s')) ""
   | _ => checkM state "P97 control: seeded state steps" false ""
 
+namespace P98
+open L4YAML.Proofs.Serialization.ParseCheckFrom (tok)
+
+/-- (γ2) target measure: the net `P97.depth` of the tokens a parse consumed, `[i, j)`. -/
+def depthSeg (ts : Array (Positioned YamlToken)) (i j : Nat) : Int :=
+  P97.depth (((ts.toList.drop i).take (j - i)).map (·.val))
+
+/-- `parseDocument`'s fuel (`4 * ts.size + 4`, inlined in the parser). -/
+def docFuel (ts : Array (Positioned YamlToken)) : Nat := 4 * ts.size + 4
+
+/-- Hand-built arrays for the parser's two leniencies: a block collection whose `blockEnd` is
+missing (the loop exits at a foreign token and `parseBlock*` keeps the position), and fuel
+running out inside a block loop (`parseBlock*Loop … 0 = .ok`).  `Bal` holds on every one of them
+(the structural dead tokens sit after an opener), so the scanner side alone cannot exclude them. -/
+def refuters : List (String × List YamlToken) :=
+  let a := YamlToken.scalar "a" .plain
+  let b := YamlToken.scalar "b" .plain
+  [ ("[SS, bSS, bE, a, key, b, SE]", [.streamStart, .blockSequenceStart, .blockEntry, a, .key, b, .streamEnd]),
+    ("[SS, bMS, key, a, value, b, flowEntry, SE]",
+      [.streamStart, .blockMappingStart, .key, a, .value, b, .flowEntry, .streamEnd]),
+    ("[SS, bSS, bE, a, value, SE]", [.streamStart, .blockSequenceStart, .blockEntry, a, .value, .streamEnd]),
+    ("[SS, bMS, key, a, value, b, fSE, SE]",
+      [.streamStart, .blockMappingStart, .key, a, .value, b, .flowSequenceEnd, .streamEnd]),
+    ("[SS, bSS, bE, bSS, bE, a, bEnd, key, SE]",
+      [.streamStart, .blockSequenceStart, .blockEntry, .blockSequenceStart, .blockEntry, a, .blockEnd, .key, .streamEnd]) ]
+
+/-- Controls: balanced arrays (`parseNode` consumes through the closer) and the flow collections,
+whose closer is not optional (`expectedToken`). -/
+def controls : List (String × List YamlToken) :=
+  let a := YamlToken.scalar "a" .plain
+  [ ("[SS, bSS, bE, a, bEnd, SE]", [.streamStart, .blockSequenceStart, .blockEntry, a, .blockEnd, .streamEnd]),
+    ("[SS, bMS, key, a, value, a, bEnd, SE]",
+      [.streamStart, .blockMappingStart, .key, a, .value, a, .blockEnd, .streamEnd]),
+    ("[SS, fSS, a, fSE, SE]", [.streamStart, .flowSequenceStart, a, .flowSequenceEnd, .streamEnd]),
+    ("[SS, fMS, key, a, value, a, fME, SE]",
+      [.streamStart, .flowMappingStart, .key, a, .value, a, .flowMappingEnd, .streamEnd]),
+    ("[SS, fSS, a, key, SE] (flow: refused, not lenient)", [.streamStart, .flowSequenceStart, a, .key, .streamEnd]),
+    ("[SS, fSS, a, bEnd, SE] (flow: refused, not lenient)", [.streamStart, .flowSequenceStart, a, .blockEnd, .streamEnd]) ]
+
+end P98
+
+def testGammaDepth (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 98: (γ2) — does parseNode / parseDocument consume a net-depth-0 segment?"
+  -- (i) the NEXT's statement on arbitrary arrays: REFUTED by the block closers' leniency
+  let mut refuted := 0
+  for (nm, l) in P98.refuters do
+    let arr := P91.mkArr l
+    checkM state s!"P98(i) {nm}: Bal holds (the scanner side admits this array)" (P97.balB l) ""
+    match parseNode (P91.at_ arr 1) (P98.docFuel arr) with
+    | .ok (_, ps') =>
+      let d := P98.depthSeg arr 1 ps'.pos
+      if d != 0 then refuted := refuted + 1
+      checkM state s!"P98(i) {nm}: parseNode from 1 succeeds at positive net depth (the missing `blockEnd` is tolerated)"
+        (0 < d) s!"p'={ps'.pos} depth={d}"
+    | .error _ => checkM state s!"P98(i) {nm}: parseNode from 1 succeeds" false ""
+    -- the composed gap: parseStream accepts, the loop's no-progress exit sits on the structural token
+    let sh := P91.shadow arr arr.size (P91.at_ arr 1) .initial []
+    let real := parseStream arr
+    let okB := match real with | .ok _ => true | .error _ => false
+    checkM state s!"P98(i) {nm}: parseStream = .ok with the loop stuck on a structural dead token at positive depth — DeadResidue reached"
+      (okB && sh.stuck && P97.structDeadB ((L4YAML.Proofs.Serialization.ParseCheckFrom.tok arr sh.stop).getD .streamEnd) && 0 < P98.depthSeg arr 0 sh.stop)
+      s!"ok={okB} stuck={sh.stuck} stop={sh.stop} tok={repr (L4YAML.Proofs.Serialization.ParseCheckFrom.tok arr sh.stop)} depth={P98.depthSeg arr 0 sh.stop}"
+  checkM state s!"P98(i) refuters={P98.refuters.length} net-depth≠0={refuted}: `depth (seg) = 0` for every successful parseNode is FALSE on arbitrary arrays"
+    (refuted == P98.refuters.length) ""
+  for (nm, l) in P98.controls do
+    let arr := P91.mkArr l
+    match parseNode (P91.at_ arr 1) (P98.docFuel arr) with
+    | .ok (_, ps') =>
+      checkM state s!"P98(i) control {nm}: parseNode from 1 is balanced" (P98.depthSeg arr 1 ps'.pos == 0) s!"p'={ps'.pos}"
+    | .error _ =>
+      checkM state s!"P98(i) control {nm}: refused" (nm.endsWith "(flow: refused, not lenient)") ""
+  -- (ii) the weaker claim that is true on arbitrary arrays: a successful parse never consumes more
+  -- closers than openers (every consumed closer follows its own opener in the same call)
+  let mut nodeRuns := 0
+  let mut nonneg := 0
+  let mut lowFuelPositive := 0
+  let mut fullFuelZero := 0
+  let mut fullFuelRuns := 0
+  let all := P97.rows ++ P96.rows ++ P95.rows ++ P94.rows ++ P91.rows ++ P92.extraRows
+  let mut scanned := 0
+  let mut docSegs := 0
+  let mut visited := 0
+  let mut stuck := 0
+  for input in all do
+    match L4YAML.Scanner.scanFiltered input with
+    | .error _ => pure ()
+    | .ok ts =>
+      scanned := scanned + 1
+      for p in List.range ts.size do
+        for fuel in [1, 2, 3, P98.docFuel ts] do
+          match parseNode (P91.at_ ts p) fuel with
+          | .error _ => pure ()
+          | .ok (_, ps') =>
+            nodeRuns := nodeRuns + 1
+            let d := P98.depthSeg ts p ps'.pos
+            if 0 ≤ d then nonneg := nonneg + 1
+            if fuel == P98.docFuel ts then
+              fullFuelRuns := fullFuelRuns + 1
+              if d == 0 then fullFuelZero := fullFuelZero + 1
+              checkM state s!"P98(iii) {repr input} parseNode from {p} at the parser's fuel: net depth 0"
+                (d == 0) s!"p'={ps'.pos} depth={d} tokens={repr (ts.map (·.val))}"
+            else if 0 < d then lowFuelPositive := lowFuelPositive + 1
+      -- (iv) the loop's positions on scanner output sit at depth 0; no no-progress exit
+      let sh := P91.shadow ts ts.size (P91.at_ ts 1) .initial []
+      if sh.stuck then stuck := stuck + 1
+      for q in sh.visited ++ [sh.stop] do
+        visited := visited + 1
+        checkM state s!"P98(iv) {repr input}: loop position {q} at depth 0" (P98.depthSeg ts 0 q == 0)
+          s!"depth={P98.depthSeg ts 0 q} tokens={repr (ts.map (·.val))}"
+      for q in sh.visited do
+        match parseDocument (P91.at_ ts q) with
+        | .ok (_, ps') =>
+          docSegs := docSegs + 1
+          checkM state s!"P98(iv) {repr input}: parseDocument segment from {q} has net depth 0"
+            (P98.depthSeg ts q ps'.pos == 0) s!"p'={ps'.pos}"
+        | .error _ => checkM state s!"P98(iv) {repr input}: parseDocument from visited {q} succeeds" false ""
+  checkM state s!"P98(ii) parseNode runs on scanner output (every position, fuel 1/2/3/4n+4) = {nodeRuns}, net depth ≥ 0 on {nonneg} (all); low-fuel runs at positive depth (fuel-out leniency) = {lowFuelPositive}"
+    (nodeRuns > 0 && nonneg == nodeRuns && lowFuelPositive > 0) ""
+  checkM state s!"P98(iii) full-fuel runs = {fullFuelRuns}, net depth 0 on {fullFuelZero}" (fullFuelRuns > 0 && fullFuelZero == fullFuelRuns) ""
+  checkM state s!"P98(iv) rows={all.length} scanned={scanned} loop positions={visited} document segments={docSegs} no-progress exits={stuck}"
+    (scanned > 0 && visited > 0 && docSegs > 0 && stuck == 0) ""
+  -- (v) fuel 0 / 1 / 2 / 4 on a balanced block sequence: fuel 0 and 1 are errors (the content
+  -- dispatch gets fuel 0), fuel 2 leaves the loop at fuel 0 and the opener unclosed (lenient,
+  -- depth 1), fuel 4 is the first that consumes the `blockEnd` — so the depth claim needs fuel
+  -- adequacy even on conformant input.  (Prediction "fuel 1 lenient / fuel 3 balanced" was off by
+  -- one: each loop iteration spends a fuel before the entry's `parseNode` gets its own.)
+  let arr := P91.mkArr [.streamStart, .blockSequenceStart, .blockEntry, .scalar "a" .plain, .blockEnd, .streamEnd]
+  let isErr : Except ScanError (YamlValue × ParseState) → Bool := fun r => match r with | .error _ => true | _ => false
+  checkM state "P98(v) fuel 0: parseNode errors" (isErr (parseNode (P91.at_ arr 1) 0)) ""
+  checkM state "P98(v) fuel 1: parseNode errors (parseBlockSequence at fuel 0)" (isErr (parseNode (P91.at_ arr 1) 1)) ""
+  match parseNode (P91.at_ arr 1) 2 with
+  | .ok (_, ps') => checkM state "P98(v) fuel 2 on [bSS, bE, a, bEnd]: the loop runs at fuel 0 and the opener stays unclosed (depth 1)"
+      (P98.depthSeg arr 1 ps'.pos == 1) s!"p'={ps'.pos}"
+  | .error _ => checkM state "P98(v) fuel 2 on [bSS, bE, a, bEnd] succeeds" false ""
+  checkM state "P98(v) fuel 3: parseNode errors (the entry's parseNode gets fuel 0)" (isErr (parseNode (P91.at_ arr 1) 3)) ""
+  match parseNode (P91.at_ arr 1) 4 with
+  | .ok (_, ps') => checkM state "P98(v) fuel 4 on [bSS, bE, a, bEnd]: balanced" (P98.depthSeg arr 1 ps'.pos == 0) s!"p'={ps'.pos}"
+  | .error _ => checkM state "P98(v) fuel 4 on [bSS, bE, a, bEnd] succeeds" false ""
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -12518,6 +12657,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testTagUsesShaped state
   testNoComment state
   testGammaBal state
+  testGammaDepth state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",
