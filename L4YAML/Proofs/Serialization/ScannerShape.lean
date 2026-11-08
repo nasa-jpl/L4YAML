@@ -7,6 +7,8 @@ public import L4YAML.Proofs.Scanner.FlowSync
 public import L4YAML.Proofs.Scanner.DocStartLiveInv
 public import L4YAML.Proofs.Scanner.TagShape
 public import L4YAML.Proofs.Scanner.StructDepth
+public import L4YAML.Proofs.Serialization.TraceOf.LeafBridge
+public import L4YAML.Proofs.Scanner.AliasTrailingContent
 import all L4YAML.Proofs.Serialization.TokenEvents
 
 @[expose] public section Blanket
@@ -257,6 +259,88 @@ lemma scanFiltered_parseStream_ok_checkFrom_full (input : String) (ts : Toks)
   · obtain ⟨L, hL, _⟩ := scanFiltered_toks_streamEnd_unique input ts hs
     rw [scanFiltered_streamEnd_index input ts hs k hse, tokenEvents_dropLast_streamEnd ts L hL] at hchk
     exact hchk
+
+/-! ## The leaf arms of the content dispatcher land on the annotated leaves (S3 slice (1))
+
+`scanNextToken_dispatchContent`'s `&` / `*` / `!` arms, composed onto
+`TraceOf.LeafBridge.scanAnchorOrAlias_trace` / `scanTag_trace`: the token the arm
+pushes is the leaf token, and the lexeme it consumed is the annotated leaf relation
+whose trace is `tokenEvent` of that token.  These are the per-arm facts the later
+slices of `scan_trace` walk through `scanLoop` with. -/
+
+open L4YAML.Surface L4YAML.Proofs.CouplingBridge L4YAML.Proofs.Serialization.TraceOf L4YAML.Proofs.Serialization.TraceOf.LeafBridge in
+lemma dispatchContent_anchor_trace (s : ScannerState) (sp : SurfPos)
+    (hcorr : ScannerSurfCorr s sp) (hpeek : s.peek? = some '&') (s'' : ScannerState)
+    (h : scanNextToken_dispatchContent s '&' = .ok s'') :
+    ∃ sp' name,
+      s''.tokens = s.tokens.push (Positioned.mk s.currentPos (.anchor name) s.currentPos) ∧
+      ScannerSurfCorr s'' sp' ∧ TCNsAnchorProperty sp sp' [.defineAnchor name] := by
+  unfold scanNextToken_dispatchContent at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  split at h
+  · split at h
+    · simp at h
+    generalize h_fn : scanAnchorOrAlias s true = result at h
+    cases result with
+    | error e => simp at h
+    | ok s_a =>
+      simp only [Except.ok.injEq] at h; subst h
+      obtain ⟨sp', name, htok, hcorr', hA, _⟩ :=
+        scanAnchorOrAlias_trace s sp true hcorr (by simpa using hpeek) s_a h_fn
+      exact ⟨sp', name, by simpa using htok,
+        ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩,
+        hA rfl⟩
+  · exact absurd (by decide : ('&' == '&') = true) (by assumption)
+
+open L4YAML.Surface L4YAML.Proofs.CouplingBridge L4YAML.Proofs.Serialization.TraceOf L4YAML.Proofs.Serialization.TraceOf.LeafBridge in
+lemma dispatchContent_alias_trace (s : ScannerState) (sp : SurfPos)
+    (hcorr : ScannerSurfCorr s sp) (hpeek : s.peek? = some '*') (s'' : ScannerState)
+    (h : scanNextToken_dispatchContent s '*' = .ok s'') :
+    ∃ sp' name,
+      s''.tokens = s.tokens.push (Positioned.mk s.currentPos (.alias name) s.currentPos) ∧
+      ScannerSurfCorr s'' sp' ∧ TCNsAliasNode sp sp' [.useAlias name] := by
+  unfold scanNextToken_dispatchContent at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  split at h
+  · exact absurd (by assumption : ('*' == '&') = true) (by decide)
+  · split at h
+    · split at h
+      · simp at h
+      split at h
+      · simp at h
+      · have h_fn := aliasArm_scan_ok h
+        obtain ⟨sp', name, htok, hcorr', _, hA⟩ :=
+          scanAnchorOrAlias_trace s sp false hcorr (by simpa using hpeek) s'' h_fn
+        exact ⟨sp', name, by simpa using htok, hcorr', hA rfl⟩
+    · exact absurd (by decide : ('*' == '*') = true) (by assumption)
+
+open L4YAML.Surface L4YAML.Proofs.CouplingBridge L4YAML.Proofs.Serialization.TraceOf L4YAML.Proofs.Serialization.TraceOf.LeafBridge in
+lemma dispatchContent_tag_trace (s : ScannerState) (sp : SurfPos)
+    (hcorr : ScannerSurfCorr s sp) (hpeek : s.peek? = some '!') (s'' : ScannerState)
+    (h : scanNextToken_dispatchContent s '!' = .ok s'') :
+    ∃ sp' handle suffix,
+      s''.tokens = s.tokens.push (Positioned.mk s.currentPos (.tag handle suffix) s.currentPos) ∧
+      ScannerSurfCorr s'' sp' ∧
+      TCNsTagProperty sp sp' ((tokenEvent (.tag handle suffix)).toList) := by
+  unfold scanNextToken_dispatchContent at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  split at h
+  · exact absurd (by assumption : ('!' == '&') = true) (by decide)
+  · split at h
+    · exact absurd (by assumption : ('!' == '*') = true) (by decide)
+    · split at h
+      · split at h
+        · simp at h
+        generalize h_fn : scanTag s = result at h
+        cases result with
+        | error e => simp at h
+        | ok s_t =>
+          simp only [Except.ok.injEq] at h; subst h
+          exact scanTag_trace s sp hcorr hpeek s_t h_fn
+      · exact absurd (by decide : ('!' == '!') = true) (by assumption)
 
 end L4YAML.Proofs.Serialization.ScannerShape
 
