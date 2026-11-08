@@ -212,6 +212,10 @@ def wf (segs : List Seg) : Bool := checkFrom {} (eventsOfSegs segs)
 #guard noEventLexeme 0 "a*b".toList = false
 #guard declaredHandle "%TAG !h! tag:e,2026:".toList = some "!h!"
 #guard declaredHandle "%YAML 1.2".toList = none
+#guard declaredHandle "%TAG!e! tag:x:".toList = none
+#guard declaredHandle "%TAG\t!e! tag:x:".toList = some "!e!"
+#guard declaredHandle "%TAG  !e! tag:x:".toList = some "!e!"
+#guard declaredHandle "%TAGX !e! tag:x:".toList = none
 
 end L4YAML.Proofs.Serialization.EventsOf
 

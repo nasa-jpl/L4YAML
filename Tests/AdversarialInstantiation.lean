@@ -13692,11 +13692,16 @@ def testDocBridge (state : IO.Ref TestCollector) : IO Unit := do
   -- predicted REFUTED by the scratch probe — `%TAG!e! …` is a reserved directive to the scanner and to
   -- `ScannedDirective` (no separation after `TAG`), while `declaredHandle` accepts zero separation.
   let dis := P101.lexerDisagree P101.allRows
-  -- Two rows, pinned exactly: the BOM row is P99's known lexer debt (no BOM arm, so the `%` line is not
-  -- seen at column 0); `%TAG!e! …` is the slice-(2) refutation — `TLDirective`'s payload names a handle
-  -- the scanner (and `ScannedDirective.tag`'s separation premise) does not declare.
-  checkM state s!"P101(x) lexer declaredHandle vs scanner named %TAG per row: exactly 2 disagreeing scanned rows ({dis.length}): {repr dis}"
-    (dis == ["\uFEFF%TAG !e! tag:x:\n---\na", "%TAG!e! tag:x:\n---\n!e!a b"]) ""
+  -- Before the ruling this read TWO rows: the BOM row (P99's known lexer debt — no BOM arm, so the `%`
+  -- line is not at column 0) and `%TAG!e! …`, the slice-(2) refutation: `TLDirective`'s payload named a
+  -- handle the scanner (and `ScannedDirective.tag`'s separation premise) does not declare, because
+  -- `namedTagDeclarationAt` accepted zero separation after `%TAG`.  Ruling (α): the lexer now requires
+  -- `[88]`'s `s-separate-in-line`; the BOM row alone remains.
+  checkM state s!"P101(x) lexer declaredHandle vs scanner named %TAG per row: exactly the BOM row disagrees ({dis.length}): {repr dis}"
+    (dis == ["\uFEFF%TAG !e! tag:x:\n---\na"]) ""
+  checkM state "P101(x) %TAG!e! (no separation) declares nothing to the lexer, as to the scanner"
+    (L4YAML.Proofs.Serialization.EventsOf.declaredHandle "%TAG!e! tag:x:".toList == none &&
+     P101.namedHandles ((scanFiltered "%TAG!e! tag:x:\n---\n!e!a b").toOption.getD #[]).toList == []) ""
   -- (ix) term-level instances of the algebra
   checkM state "P101(ix) goOut [documentStart] [\"!e!\"] = ([beginDocument, declareTag !e!], [])"
     (P101.goOut [tok .documentStart] ["!e!"] == ([.beginDocument, .declareTag "!e!"], [])) ""
