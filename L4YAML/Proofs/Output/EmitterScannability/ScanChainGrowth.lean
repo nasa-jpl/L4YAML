@@ -3704,7 +3704,7 @@ lemma parseStreamLoop_single_doc
     (tok : YamlToken) (h_peek : ps.peek? = some tok) (h_not_se : tok ≠ .streamEnd)
     (h_not_de : tok ≠ .documentEnd)
     (doc : YamlDocument) (ps' : ParseState)
-    (h_doc : parseDocument ps = .ok (doc, ps'))
+    (h_doc : parseDocument ps = .ok (doc, ps')) (h_tok : ps'.tokens = ps.tokens)
     (h_peek' : ps'.peek? = some .streamEnd) :
     parseStreamLoop ps #[] .initial fuel = .ok #[doc] := by
   -- Two iterations: first parses document, second sees streamEnd and returns.
@@ -3738,8 +3738,15 @@ lemma parseStreamLoop_single_doc
                      from by decide]
         simp only [Bool.false_eq_true, ↓reduceIte]
         simp only [parseStreamLoop, h_peek'_r]
-        -- Both if-branches are identical (stuck or not, result is same)
-        split <;> rfl)
+        -- The no-progress branch is an error; it is excluded because the peeks differ.
+        split
+        · rename_i hstuck
+          exfalso
+          have hpos : ps'.pos = ps.pos := by simpa using hstuck
+          have h1 : ps'.peek? = ps.peek? := by unfold ParseState.peek?; rw [h_tok, hpos]
+          rw [h_peek', h_peek] at h1
+          exact h_not_se (Option.some.inj h1).symm
+        · rfl)
 
 /-- **Scannability preservation**: the parsed output of emitter output is
     scannable.  Follows from `parseStream_output_scannable_composed` applied to

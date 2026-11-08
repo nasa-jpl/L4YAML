@@ -779,9 +779,10 @@ def parseDocument (ps : ParseState) : Except ScanError (YamlDocument × ParseSta
     **Invariant**: `ps.tokens` is preserved across iterations (only `.pos`,
     `.anchors`, `.nodePositions`, `.currentPath`, `.tagHandles` change).
 
-    **Termination**: `fuel` decreases by 1 each iteration. Additionally,
-    a stuck-detection check breaks if `parseDocument` + `tryConsume` didn't
-    advance `ps.pos`. -/
+    **Termination**: `fuel` decreases by 1 each iteration.  A no-progress
+    iteration (`parseDocument` + `tryConsume` did not advance `ps.pos`: the
+    stream state admitted a token no document can start with) is refused as
+    `trailingContent` rather than returned as a truncated success. -/
 def parseStreamLoop (ps : ParseState) (docs : Array YamlDocument)
     (streamState : StreamState) (fuel : Nat) :
     Except ScanError (Array YamlDocument) :=
@@ -813,7 +814,11 @@ def parseStreamLoop (ps : ParseState) (docs : Array YamlDocument)
                                nodePositions := #[], currentPath := #[] }
           let (consumed, ps) := ps.tryConsume .documentEnd
           let streamState := if consumed then .afterDocumentEnd else .afterDocument
-          if ps.pos == savedPos then .ok docs
+          if ps.pos == savedPos then
+            -- No progress: the document parser consumed nothing at a token the stream state
+            -- admitted.  Refuse (trailing content) instead of silently dropping the rest.
+            let pos := ps.peekPos?.getD { offset := 0, line := 0, col := 0 }
+            .error (.trailingContent pos.line pos.col)
           else parseStreamLoop ps docs streamState fuel
 
 /-- Parse a complete YAML stream (multiple documents).

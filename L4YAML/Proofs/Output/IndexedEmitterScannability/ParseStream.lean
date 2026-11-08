@@ -89,7 +89,7 @@ lemma parseStreamLoop_single_docIx {input : String}
     (tok : YamlToken) (h_peek : ps.peek? = some tok) (h_not_se : tok ≠ .streamEnd)
     (h_not_de : tok ≠ .documentEnd)
     (doc : YamlDocument) (ps' : ParseStateIx input)
-    (h_doc : parseDocument ps = .ok (doc, ps'))
+    (h_doc : parseDocument ps = .ok (doc, ps')) (h_tok : ps'.tokens = ps.tokens)
     (h_peek' : ps'.peek? = some .streamEnd) :
     parseStreamLoop ps #[] .initial fuel = .ok #[doc] := by
   -- Two iterations: first parses document, second sees streamEnd and returns.
@@ -124,8 +124,15 @@ lemma parseStreamLoop_single_docIx {input : String}
                      from by decide]
         simp only [Bool.false_eq_true, ↓reduceIte]
         simp only [parseStreamLoop, h_peek'_r]
-        -- Both if-branches collapse to the same `.ok #[doc]` result.
-        split <;> rfl)
+        -- The no-progress branch is an error; it is excluded because the peeks differ.
+        split
+        · rename_i hstuck
+          exfalso
+          have hpos : ps'.pos = ps.pos := by simpa using hstuck
+          have h1 : ps'.peek? = ps.peek? := by unfold ParseStateIx.peek? ParseStateIx.peekIx?; rw [h_tok, hpos]
+          rw [h_peek', h_peek] at h1
+          exact h_not_se (Option.some.inj h1).symm
+        · rfl)
 
 /-- **Grammability preservation**: the parsed output of emitter output is
     scannable. Follows from `parseStreamIx_output_scannable_composed` applied
@@ -498,7 +505,7 @@ lemma parseStream_three_tokens_scalarIx {input : String} (content : String)
         { content, style := .doubleQuoted, tag := none, anchor := none },
       directives := #[], anchors := ps1.advance.anchors,
       nodePositions := ps1.advance.nodePositions }
-    ps1.advance h_doc_val h_peek2
+    ps1.advance h_doc_val rfl h_peek2
   exact ⟨_, h_loop, rfl, by simp [getElem!_pos]⟩
 
 /-- **`parseYamlRawIx` on `emitScalar` produces a scalar value**: when

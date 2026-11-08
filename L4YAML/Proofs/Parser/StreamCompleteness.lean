@@ -2041,7 +2041,10 @@ lemma stream_ok {ts : Toks} {s : Sym} {i j : Nat} (hS : PerTokenOk ts) (h : TG t
          rw [tryConsume_docEnd_miss' (ps := resetDoc ps') htk' hp' hnde]
          simp only [Bool.false_eq_true, ↓reduceIte]
          split
-         · exact ⟨_, rfl⟩
+         · rename_i hst
+           exfalso
+           have h2 : ps'.pos = i0 := by simpa [resetDoc] using hst
+           omega
          · refine ihr _ (docs.push doc) f ?_ (by omega) hj
            exact ⟨htk', hp', by omega, by omega, hafter⟩)
   | stream_docTerminated ht hne1 hne2 hvalid hdoc hend hr _ ihr =>
@@ -2064,7 +2067,10 @@ lemma stream_ok {ts : Toks} {s : Sym} {i j : Nat} (hS : PerTokenOk ts) (h : TG t
          rw [tryConsume_docEnd_hit' (ps := resetDoc ps') htk' hp' hend]
          simp only [↓reduceIte]
          split
-         · exact ⟨_, rfl⟩
+         · rename_i hst
+           exfalso
+           have h2 : ps'.pos + 1 = i0 := by simpa [resetDoc, ParseState.advance] using hst
+           omega
          · refine ihr _ (docs.push doc) f ?_ (by omega) hj
            exact ⟨htk', by simp [ParseState.advance, hp'], by omega, by omega,
              notDirBefore_of hend rfl, envReset_after_docEnd hend⟩)

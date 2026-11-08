@@ -90,7 +90,9 @@ def parseStreamMarkedLoopIx {input : String} (ps : ParseStateIx input)
           let (consumed, ps) := ps.tryConsume .documentEnd
           let acc := acc.push { doc, explicitStart, explicitEnd := consumed }
           let streamState := if consumed then .afterDocumentEnd else .afterDocument
-          if ps.pos == savedPos then .ok acc
+          if ps.pos == savedPos then
+            let pos := ps.peekPos?.getD { offset := 0, line := 0, col := 0 }
+            .error (.trailingContent pos.line pos.col)
           else parseStreamMarkedLoopIx ps acc streamState fuel
 
 /-- Indexed twin of `parseYamlRawMarked`: parse a YAML stream into documents

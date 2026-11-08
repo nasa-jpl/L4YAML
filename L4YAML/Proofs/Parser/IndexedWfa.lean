@@ -1614,8 +1614,8 @@ lemma parseStreamLoop_wfa
             (parseDocument_tokens_eq_ix tokens h_fpsv h_matched ps doc_new ps_doc h_tok h_pd).trans h_tok
           -- Position check → return or recurse
           split at h_ok
-          · -- pos == savedPos: return docs'
-            simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_acc'
+          · -- pos == savedPos: no progress → error, contradiction
+            simp at h_ok
           · -- recurse with reset anchors + tryConsume
             apply ih
             · -- tokens preserved

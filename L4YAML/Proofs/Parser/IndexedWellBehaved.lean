@@ -2928,7 +2928,7 @@ lemma parseStreamLoop_docs_from_parseDocument_ix
             · exact h_acc d hd_old
             · exact ⟨ps, ps', h_eq, h_pd⟩
           split at h_ok
-          · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_acc'
+          · simp at h_ok  -- no progress → error, contradiction
           · exact ih _ _ _ h_next_tok h_acc' h_ok
 
 /-- Every document in `parseStreamIx`'s output was produced by `parseDocument`

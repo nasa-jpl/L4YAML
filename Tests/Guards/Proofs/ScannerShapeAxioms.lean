@@ -146,8 +146,9 @@ open L4YAML.Proofs.Serialization.ScannerShape in
 #guard_msgs in
 #print axioms scanFiltered_parseStream_ok_checkFrom_full
 
-/-! S3 (β2b): the scanner excludes `LoopDead`'s index-1 and after-`...` shapes; `DeadResidue` is what
-    remains (the `.afterDocument` shape (γ), or a `.comment` token). -/
+/-! Scanner-shape facts on the parser's view (β2b, (γ1)); their consumer, the discharge of the loop's
+    no-progress exit (`LoopDead_scanFiltered`, `DeadResidue`), is retired since (γ2α) made that exit an
+    error. -/
 
 open L4YAML.Proofs.Serialization.ScannerShape in
 /-- info: 'L4YAML.Proofs.Serialization.ScannerShape.liveF_dead_contra' depends on axioms: [propext, Quot.sound] -/
@@ -155,45 +156,15 @@ open L4YAML.Proofs.Serialization.ScannerShape in
 #print axioms liveF_dead_contra
 
 open L4YAML.Proofs.Serialization.ScannerShape in
-/-- info: 'L4YAML.Proofs.Serialization.ScannerShape.LoopDead_scanFiltered' depends on axioms: [propext,
+/-- info: 'L4YAML.Proofs.Serialization.ScannerShape.scanFiltered_bal_tok' depends on axioms: [propext,
  Classical.choice,
  Quot.sound]
 -/
 #guard_msgs in
-#print axioms LoopDead_scanFiltered
+#print axioms scanFiltered_bal_tok
 
-/-! S3 (d): the loop's no-progress exit tied to where it can sit (`StopShape`, `LoopStuck`); the refined
-    `parseStreamLoop_cf` / `parseStream_ok_checkFrom` and the wrappers above carry it. -/
-
-open L4YAML.Proofs.Serialization.ParseCheckFrom in
-/-- info: 'L4YAML.Proofs.Serialization.ParseCheckFrom.LoopDead_of_initial' depends on axioms: [propext]
--/
-#guard_msgs in
-#print axioms LoopDead_of_initial
-
-open L4YAML.Proofs.Serialization.ParseCheckFrom in
-/-- info: 'L4YAML.Proofs.Serialization.ParseCheckFrom.StopShape_after_documentEnd' does not depend on any axioms
--/
-#guard_msgs in
-#print axioms StopShape_after_documentEnd
-
-open L4YAML.Proofs.Serialization.ParseCheckFrom in
-/-- info: 'L4YAML.Proofs.Serialization.ParseCheckFrom.StopShape_afterDocument' does not depend on any axioms
--/
-#guard_msgs in
-#print axioms StopShape_afterDocument
-
-open L4YAML.Proofs.Serialization.ParseCheckFrom in
-/-- info: 'L4YAML.Proofs.Serialization.ParseCheckFrom.stop_mono' depends on axioms: [propext]
--/
-#guard_msgs in
-#print axioms stop_mono
-
-open L4YAML.Proofs.Serialization.ParseCheckFrom in
-/-- info: 'L4YAML.Proofs.Serialization.ParseCheckFrom.stop_mono'' depends on axioms: [propext]
--/
-#guard_msgs in
-#print axioms stop_mono'
+/-! S5(→): the stream loop stops at `.streamEnd` or the end of the array; the no-progress exit is an
+    error ((γ2α)), so `parseStreamLoop_cf` / `parseStream_ok_checkFrom` carry no third stop shape. -/
 
 open L4YAML.Proofs.Serialization.ParseCheckFrom in
 /-- info: 'L4YAML.Proofs.Serialization.ParseCheckFrom.parseStreamLoop_cf' depends on axioms: [propext,

@@ -216,7 +216,7 @@ lemma parseStreamLoop_aliases_resolve_ix
             · exact h_acc d hd_old
             · exact parseDocument_aliases_resolve_ix _ _ _ h_decl h_pd
           split at h_ok
-          · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_acc'
+          · simp at h_ok  -- no progress → error, contradiction
           · -- §3.2.2.2: anchor scope is per document, and the reset restores
             -- the agreement between the registers for the next one.
             refine ih _ _ _ ?_ h_acc' h_ok
