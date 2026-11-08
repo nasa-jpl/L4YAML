@@ -12232,6 +12232,143 @@ def testNoComment (state : IO.Ref TestCollector) : IO Unit := do
       (!(L4YAML.Proofs.DirectiveRuns.vals s').all P95.tagOkB) ""
   | _ => checkM state "P96 control: seeded state steps" false ""
 
+
+namespace P97
+
+/-- (γ1) depth step: block/flow openers +1, closers −1. -/
+def depthStep : YamlToken → Int
+  | .blockSequenceStart | .blockMappingStart | .flowSequenceStart | .flowMappingStart => 1
+  | .blockEnd | .flowSequenceEnd | .flowMappingEnd => -1
+  | _ => 0
+
+def depth (L : List YamlToken) : Int := L.foldl (fun d t => d + depthStep t) 0
+
+/-- The structural dead kinds `validNextToken .afterDocument` admits (DeadResidue minus the
+boundary/`.comment`/`.placeholder` kinds already excluded). -/
+def structDeadB : YamlToken → Bool
+  | .key | .value | .blockEnd | .flowEntry | .flowSequenceEnd | .flowMappingEnd => true
+  | _ => false
+
+/-- `Bal L`: every structural dead token sits at positive depth. -/
+def balB (L : List YamlToken) : Bool := Id.run do
+  let mut d : Int := 0
+  for t in L do
+    if structDeadB t && !(0 < d) then return false
+    d := d + depthStep t
+  return true
+
+def rows : List String :=
+  [ "a", "a: b", ": b", ":", "? a", "? a\n: b", "? \n: ", "? a\n: b\n: c", "- a", "- - a", "- :", "- ? a",
+    "- a\n- : b", "a:\n  b: c\n: d", "a:\n  ? b\n: c", "a:\n  b\n: c", "a: b\n: c", "[a]: b\n: c",
+    "a:\n  - b\n: c", "a:\n  b:\n    c\nd: e", "a:\n  b:\n    c: d\n  e: f\ng: h", "[a]", "[a, b]", "[a: b]",
+    "[: b]", "[a, : b]", "[a: b, c: d]", "{a}", "{a: b}", "{a: b, c}", "{a: b, c: d}", "[[a]]", "[[[a]]]",
+    "[{a: [b, {c: d}]}]", "a: [b, {c: d}]", "- [a, b]\n- {c: d}", "[a]: b", "? [a]\n: b", "{a: b}: c",
+    "? a\n...\n: b", "a: b\n...\n", "---\na: b\n---\n- c\n...", "--- a\n--- b", "...\n", "---\n...\n---",
+    "|\n a\nb: c", ">\n a\n- b", "a: |\n  x\nb: c", "- |\n  x\n- y", "&x a: b", "!t a: b", "a: &x b\nc: *x",
+    "\uFEFFa: b", "# c\na: b # d\n# e", "a:\n  # c\n  b: c\n# d\nd: e", "a:\n\n  b\n\nc: d",
+    ", a", "]", "}", "a, b", "[a]b", "a: - b", "  ? a\n: b", "- ? a\n: b", "- a\n: b", "  a: b\n: c",
+    "[a", "{a", "[a}", "{a]", "a: b: c", "[a, b,]", "{a: b,}", "[,]", "[a,,b]", "a:\n- b\n- c", "a:\nb: c",
+    "- a:\n    b: c\n  d: e", "-\n  - a\n  - b", "? - a\n  - b\n: c", "? a: b\n: c", "[? a : b]", "{? a : b}",
+    "a: \"b\": c", "\"a\": \"b\"", "'a': ['b']", "a: !!map {b: c}", "- !!seq [a]", "a:\n  -\n  - b" ]
+
+def c1B (s : ScannerState) : Bool :=
+  depth (L4YAML.Proofs.DirectiveRuns.vals s) == (s.indents.size : Int) - 1 + (s.flowLevel : Int)
+
+def c3B (s : ScannerState) : Bool :=
+  (s.indents[0]?.map (·.column) == some (-1)) &&
+    (List.range s.indents.size).all (fun i => i == 0 || (s.indents[i]?.map (fun e => decide (0 ≤ e.column)) == some true))
+
+/-- The slot's tail is depth-neutral, or (block context) the slot is stale-but-harmless exactly as
+`SlotOK`'s alternative: it will be re-saved (`simpleKeyAllowed`) or its `:` pushes a fresh mapping
+(`currentIndent < pos.col`).  Prediction P4 (plain neutrality) was REFUTED on `- a`: the key saved
+at `-` sits before the `blockSequenceStart` that `pushSequenceIndent` emits. -/
+def slotNeutralB (s : ScannerState) : Bool :=
+  depth ((L4YAML.Proofs.DirectiveRuns.vals s).take (s.simpleKey.tokenIndex + 1)) ==
+    depth (L4YAML.Proofs.DirectiveRuns.vals s)
+
+def c4B (s : ScannerState) : Bool :=
+  !s.simpleKey.possible || slotNeutralB s ||
+    (s.flowLevel == 0 && (s.currentIndent < (s.simpleKey.pos.col : Int) || s.simpleKeyAllowed))
+
+def c5B (s : ScannerState) : Bool :=
+  (List.range s.simpleKeyStack.size).all fun j =>
+    match s.simpleKeyStack[j]? with
+    | some k => !k.possible ||
+        depth ((L4YAML.Proofs.DirectiveRuns.vals s).take (k.tokenIndex + 1)) + ((s.flowLevel : Int) - j) ==
+          depth (L4YAML.Proofs.DirectiveRuns.vals s)
+    | none => true
+
+end P97
+
+def testGammaBal (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 97: S3 (γ1) — structural dead tokens sit at positive depth on scanner output (Bal)"
+  let mut scanned := 0
+  let mut refused := 0
+  let mut tokens := 0
+  let mut structural := 0
+  let mut states := 0
+  let mut slots := 0
+  let mut slotsAlt := 0
+  let mut stacked := 0
+  let all := P97.rows ++ P96.rows ++ P95.rows ++ P94.rows ++ P91.rows
+  for input in all do
+    match L4YAML.Scanner.scanFiltered input with
+    | .ok ts =>
+      scanned := scanned + 1
+      tokens := tokens + ts.size
+      structural := structural + (ts.filter (fun p => P97.structDeadB p.val)).size
+      checkM state s!"P97 {repr input}: Bal on scanner output" (P97.balB (ts.map (·.val)).toList)
+        s!"tokens={repr (ts.map (·.val))}"
+    | .error _ => refused := refused + 1
+    for s in P93.trajectory input do
+      states := states + 1
+      let v := L4YAML.Proofs.DirectiveRuns.vals s
+      checkM state s!"P97 {repr input}: c1 depth = indents.size - 1 + flowLevel on reached state {states}"
+        (P97.c1B s) s!"depth={P97.depth v} indents={s.indents.size} fl={s.flowLevel} vals={repr v}"
+      checkM state s!"P97 {repr input}: c3 indent stack sentinel/columns on reached state {states}" (P97.c3B s)
+        s!"indents={repr (s.indents.map (·.column))}"
+      checkM state s!"P97 {repr input}: c4 slot tail is depth-neutral on reached state {states}" (P97.c4B s)
+        s!"idx={s.simpleKey.tokenIndex} vals={repr v}"
+      checkM state s!"P97 {repr input}: c5 stacked slots on reached state {states}" (P97.c5B s)
+        s!"stack={repr (s.simpleKeyStack.map (fun k => (k.possible, k.tokenIndex)))} fl={s.flowLevel} vals={repr v}"
+      checkM state s!"P97 {repr input}: Bal on reached raw state {states}" (P97.balB v) s!"vals={repr v}"
+      if s.simpleKey.possible then
+        slots := slots + 1
+        if !P97.slotNeutralB s then slotsAlt := slotsAlt + 1
+      stacked := stacked + (s.simpleKeyStack.filter (·.possible)).size
+  checkM state s!"P97 rows={all.length} (own {P97.rows.length}) scanned={scanned} refused={refused} tokens={tokens} structural={structural} states={states} slots={slots} (non-neutral, via the SlotOK alternative: {slotsAlt}) stacked={stacked}"
+    (scanned > 0 && structural > 0 && slots > 0 && slotsAlt > 0 && stacked > 0) ""
+  -- scanLoop direct at fuel 0/1/2/64 from the initial state
+  let mut loopOk := 0
+  let mut loopFuelOut := 0
+  for input in P97.rows do
+    for fuel in [0, 1, 2, 64] do
+      match L4YAML.Scanner.scanLoop ((ScannerState.mk' input).emit .streamStart) fuel with
+      | .ok ts =>
+        loopOk := loopOk + 1
+        checkM state s!"P97 scanLoop {repr input} fuel={fuel}: Bal" (P97.balB (ts.map (·.val)).toList) ""
+      | .error (.fuelExhausted ..) => loopFuelOut := loopFuelOut + 1
+      | .error _ => pure ()
+  checkM state s!"P97 scanLoop direct: ok={loopOk} fuelOut={loopFuelOut}" (loopOk > 0 && loopFuelOut > 0) ""
+  -- refuters: hand-built arrays with a structural dead token at depth 0 fail Bal; balanced ones hold
+  let SS := YamlToken.streamStart; let SE := YamlToken.streamEnd
+  checkM state "P97 pin: [SS, key, SE] fails Bal" (!P97.balB [SS, .key, SE]) ""
+  checkM state "P97 pin: [SS, value, SE] fails Bal" (!P97.balB [SS, .value, SE]) ""
+  checkM state "P97 pin: [SS, bms, blockEnd, blockEnd, SE] fails Bal (second closer at depth 0)"
+    (!P97.balB [SS, .blockMappingStart, .blockEnd, .blockEnd, SE]) ""
+  checkM state "P97 pin: [SS, flowEntry, SE] fails Bal" (!P97.balB [SS, .flowEntry, SE]) ""
+  checkM state "P97 pin: [SS, bms, key, value, blockEnd, SE] holds" (P97.balB [SS, .blockMappingStart, .key, .value, .blockEnd, SE]) ""
+  checkM state "P97 pin: [SS, fss, flowEntry, fse, SE] holds" (P97.balB [SS, .flowSequenceStart, .flowEntry, .flowSequenceEnd, SE]) ""
+  checkM state "P97 pin: a `.key` at depth 0 is `DeadResidue`-shaped (the (γ) residue this closes)"
+    (P91.afterDocOK (some .key) && P94.loopDeadB #[s5Tok SS, s5Tok .documentEnd, s5Tok .key, s5Tok SE] 2) ""
+  -- control: a seeded structural token at depth 0 is carried through a step, not repaired
+  let sBad := ((ScannerState.mk' "a").emit .streamStart).emit .value
+  match L4YAML.Scanner.scanNextToken sBad with
+  | .ok (some s') =>
+    checkM state "P97 control: seeded depth-0 `.value` survives the step (carried, not repaired)"
+      (!P97.balB (L4YAML.Proofs.DirectiveRuns.vals s')) ""
+  | _ => checkM state "P97 control: seeded state steps" false ""
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -12356,6 +12493,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testSetLemmas state
   testTagUsesShaped state
   testNoComment state
+  testGammaBal state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",
