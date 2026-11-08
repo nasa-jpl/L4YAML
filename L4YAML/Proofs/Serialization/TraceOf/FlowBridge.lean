@@ -138,11 +138,16 @@ lemma scanSingleQuoted_trace (sc : ScannerState) (sp : SurfPos)
 /-! ### Key contexts
 
 `[110] nb-double-text(n, block-key | flow-key)` is `[111] nb-double-one-line`, so a quoted scalar is a
-KEY derivation only when the scanner's run stayed on its line (`s'.line = sc.line`); the body then
-transports between the two key contexts (`SNbDoubleText`'s two key arms are the same relation).
-The premise is PR 2's to discharge at the `:` arm — and NOT every scanner-accepted quoted flow key
-has it (`{"a⏎ b": c}` is accepted; P102 pins the set), which is a scanner-vs-grammar finding
-recorded in item 464. -/
+derivation in a KEY context only when the scanner's run stayed on its line (`s'.line = sc.line`); the
+body then transports between the two key contexts (`SNbDoubleText`'s two key arms are the same
+relation).  Where the encoded grammar reads a key at `.flowKey` is `inFlowCtx .blockKey` — a flow
+collection as a BLOCK implicit key — and there the scanner enforces the one-line rule itself
+(`invalidImplicitKey`), so the premise is available.  Keys INSIDE flow collections are read at the
+collection's own context (`TFlowMapEntry.implicitValue` / `TFlowSeqEntry.pairValue` take
+`TFlowNode n c`, `c = .flowIn`), whose quoted body is multi-line: the flow re-walk discharges them
+through the content twins above (lifted to `.flowIn` by `ScalarFoldAt.SCDoubleQuoted_multiCtx`),
+NOT through these — the scanner accepts `{"a⏎ b": c}` and so does the encoded grammar (P102 (x)
+pins the set; item 464). -/
 
 /-- `SCDoubleQuoted` relabels between the two key contexts (same one-line body). -/
 lemma SCDoubleQuoted_blockKey_to_key {s s' : SurfPos} (c : YamlContext)
@@ -160,8 +165,8 @@ lemma SCSingleQuoted_blockKey_to_key {s s' : SurfPos} (c : YamlContext)
   exact SCSingleQuoted.mk 0 c _ _ _ _ h_open
     (by rcases hc with rfl | rfl <;> exact h_text) h_close
 
-/-- `"…"` as a KEY: with the run on one line, the same token over an `SCDoubleQuoted 0 c` span for
-either key context — `TFlowContent.doubleQ`, trace `[]`. -/
+/-- `"…"` in a `.blockKey` / `.flowKey` context: with the run on one line, the same token over an
+`SCDoubleQuoted 0 c` span for either key context — `TFlowContent.doubleQ`, trace `[]`. -/
 lemma scanDoubleQuoted_key_trace (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (hpeek : sc.peek? = some '"')
     (s' : ScannerState) (hok : scanDoubleQuoted sc = .ok s') (h_line : s'.line = sc.line)
@@ -174,7 +179,7 @@ lemma scanDoubleQuoted_key_trace (sc : ScannerState) (sp : SurfPos)
   subst hsp
   exact ⟨sp', v, htok, hcorr', TFlowContent.doubleQ _ _ _ _ (SCDoubleQuoted_blockKey_to_key c hc hK)⟩
 
-/-- `'…'` as a KEY: the single-quoted twin. -/
+/-- `'…'` in a `.blockKey` / `.flowKey` context: the single-quoted twin. -/
 lemma scanSingleQuoted_key_trace (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (hpeek : sc.peek? = some '\'')
     (s' : ScannerState) (hok : scanSingleQuoted sc = .ok s') (h_line : s'.line = sc.line)
