@@ -6826,8 +6826,10 @@ def testParseOkCheckFrom (state : IO.Ref TestCollector) : IO Unit := do
       ("D: directive run with no `---`", #[s5Tok .streamStart, s5Tok (.tagDirective "!t!" "p"), s5Tok (.tag "!t!" "x"), s5Tok .streamEnd]) ]
   for (label, ts) in gap do
     let got := s5TokVerdict ts
-    checkM state s!"S5 token-level gap pinned {label}" (got == (true, false))
-      s!"(parser ok, checkFrom) = {repr got}; expected (true, false) — the premises of parseStream_ok_checkFrom exist for this gap"
+    -- the B rows (no-progress exit) are refused since (γ2α): the parser no longer accepts them
+    let exp := if label.startsWith "B" then (false, false) else (true, false)
+    checkM state s!"S5 token-level gap pinned {label}" (got == exp)
+      s!"(parser ok, checkFrom) = {repr got}; expected {repr exp} — the premises of parseStream_ok_checkFrom exist for this gap"
     checkM state s!"S5 token-level gap is outside the premises {label}"
       (!(s5TagUsesShaped ts && s5DirectivesClosed ts && s5StreamEndLast ts) || label.startsWith "B")
       s!"the gap input satisfies the scanner-shape premises; only the no-progress rows (B) may"
@@ -6922,8 +6924,8 @@ def testTokenEventExtractorsSeam (state : IO.Ref TestCollector) : IO Unit := do
   -- token rows: (label, tokens, parser ok, TG (narrowed, spec [209]), retired-extractor verdict as a literal, new verdict)
   let trows : List (String × Array (Positioned YamlToken) × Bool × Bool × Bool × Bool) :=
     [ ("A %TAG !h + use", #[mk .streamStart, mk (.tagDirective "!h" "p"), mk .documentStart, mk (.tag "!h" "x"), mk .streamEnd], true, true, true, false),
-      ("B1 key at doc start", #[mk .streamStart, mk .key, mk (.tag "!t!" "x"), mk .streamEnd], true, false, false, false),
-      ("B2 scalar key alias", #[mk .streamStart, mk (.scalar "a" .plain), mk .key, mk (.alias "x"), mk .streamEnd], true, false, false, false),
+      ("B1 key at doc start", #[mk .streamStart, mk .key, mk (.tag "!t!" "x"), mk .streamEnd], false, false, false, false),
+      ("B2 scalar key alias", #[mk .streamStart, mk (.scalar "a" .plain), mk .key, mk (.alias "x"), mk .streamEnd], false, false, false, false),
       ("C after streamEnd", #[mk .streamStart, mk .streamEnd, mk (.tag "!t!" "x")], true, false, false, false),
       ("D directives, no ---, use", #[mk .streamStart, mk (.tagDirective "!t!" "p"), mk (.tag "!t!" "x"), mk .streamEnd], true, false, true, false),
       ("D' directive then streamEnd", #[mk .streamStart, mk (.tagDirective "!t!" "p"), mk .streamEnd], true, false, true, true),
@@ -7081,8 +7083,8 @@ def testTokenStateOkRestatement (state : IO.Ref TestCollector) : IO Unit := do
   -- token rows: (label, tokens, parser ok, TG after narrowing, old verdict, new verdict)
   let trows : List (String × Array (Positioned YamlToken) × Bool × Bool × Bool × Bool) :=
     [ ("A %TAG !h + use", #[mk .streamStart, mk (.tagDirective "!h" "p"), mk .documentStart, mk (.tag "!h" "x"), mk .streamEnd], true, true, true, false),
-      ("B1 key at doc start", #[mk .streamStart, mk .key, mk (.tag "!t!" "x"), mk .streamEnd], true, false, false, false),
-      ("B2 scalar key alias", #[mk .streamStart, mk (.scalar "a" .plain), mk .key, mk (.alias "x"), mk .streamEnd], true, false, false, false),
+      ("B1 key at doc start", #[mk .streamStart, mk .key, mk (.tag "!t!" "x"), mk .streamEnd], false, false, false, false),
+      ("B2 scalar key alias", #[mk .streamStart, mk (.scalar "a" .plain), mk .key, mk (.alias "x"), mk .streamEnd], false, false, false, false),
       ("C after streamEnd", #[mk .streamStart, mk .streamEnd, mk (.tag "!t!" "x")], true, false, false, false),
       ("D directives, no ---, use", #[mk .streamStart, mk (.tagDirective "!t!" "p"), mk (.tag "!t!" "x"), mk .streamEnd], true, false, true, false),
       ("D' directive then streamEnd", #[mk .streamStart, mk (.tagDirective "!t!" "p"), mk .streamEnd], true, false, true, true),
