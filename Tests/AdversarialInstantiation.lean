@@ -5835,7 +5835,12 @@ def testRootFrameSupplyRead (state : IO.Ref TestCollector) : IO Unit := do
       ("a⏎&x — line 0 (REFUTED: the scalar step crosses the break, no state on the line)", "a\n&x\n", 0, []),
       ("a⏎&x — line 1", "a\n&x\n", 1, [FrameLevel.map 0]),
       ("- a⏎- b — the `-` park's line", "- a\n- b\n", 0, [FrameLevel.map 0, FrameLevel.seq 0]),
-      ("- a⏎- b — the second entry's line", "- a\n- b\n", 1, [FrameLevel.map 0, FrameLevel.seq 0]) ]
+      ("- a⏎- b — the second entry's line", "- a\n- b\n", 1, [FrameLevel.map 0, FrameLevel.seq 0]),
+      -- the 14546 question (item 461): a flow key at a nested park's own column pushes the MAPPING
+      -- level at that column; no `seq n` stands over a `map n` (prediction: `[map 0, map 0, map 2]`
+      -- and `[map 0, seq 0, map 2]`)
+      ("a:⏎  [b]: 1⏎  c: 2 — the flow key's line", "a:\n  [b]: 1\n  c: 2\n", 1, [FrameLevel.map 0, FrameLevel.map 0, FrameLevel.map 2]),
+      ("- [a]: 1⏎  b: 2 — the flow key's line under `-`", "- [a]: 1\n  b: 2\n", 0, [FrameLevel.map 0, FrameLevel.seq 0, FrameLevel.map 2]) ]
   for (label, input, line, expected) in atLine do
     let got := framesAtLine input line
     checkM state s!"rootFrameSupply/at-line {label}: stack [{frameLabel expected}]" (got == expected)
