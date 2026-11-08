@@ -13742,8 +13742,10 @@ def own : List String :=
    "[\"a\", \"b\"]", "{'a': 'b', \"c\": \"d\"}", "\"a\": \"b\"", "? \"a\"\n: 'b'", "\"a\" # c",
    "\"a\"\n\"b\"", "--- \"a\"", "\"a\"\n---\n'b'", "\uFEFF\"a\"", "\uFEFF[a]", "&x \"a\"", "!!str 'a'",
    "\"\\q\"", "\"abc", "'abc", "\"a\nb", "k: \"a\n\nb\"", "\"a\\\"b\"", "'a\"b'", "\"a'b\"",
-   -- quoted IMPLICIT KEYS spanning a line (review finding, slice (3) PR 1): the grammar's
-   -- implicit keys are one-line (`c-s-implicit-json-key(flow-key)`); what does the scanner say?
+   -- quoted IMPLICIT KEYS spanning a line (review findings, slice (3) PR 1): the key twins'
+   -- one-line premise is NOT always available — the scanner accepts these, and so do the encoded
+   -- grammar (`TFlowMapEntry.implicitValue` / `TFlowSeqEntry.pairValue` read the key at `.flowIn`),
+   -- `refLex` and `checkTokenGrammar`; the spec's `[154]` one-line rule for flow pairs is not encoded.
    "{\"a\n b\": c}", "[\"a\n b\": c]", "{'a\n b': c}", "\"a\n b\": c", "{\"a b\": c}", "{'a': b, \"c\n d\": e}"]
 
 def allRows : List String := (P101.allRows ++ own).eraseDups
@@ -13947,10 +13949,10 @@ def testFlowBridge (state : IO.Ref TestCollector) : IO Unit := do
   checkM state "P102(viii) unterminated / badly escaped quoted scalars are refused"
     (["\"abc", "'abc", "\"a\nb", "\"\\q\""].all (fun s => P102.refusedWith s (fun _ => true))) ""
   -- (x) quoted implicit keys: the key twins' one-line premise, and the scanner/grammar divergence
-  checkM state s!"P102(x) quoted scalars in key position: {t.keySites} sites, {t.keyMultiLine.length} whose run leaves the line — exactly the multi-line quoted FLOW keys the scanner accepts (the grammar's implicit keys are one-line): {repr t.keyMultiLine.reverse}"
+  checkM state s!"P102(x) quoted scalars in key position: {t.keySites} sites, {t.keyMultiLine.length} whose run leaves the line — exactly the multi-line quoted FLOW keys (accepted by the scanner AND the encoded grammar; the key twins' one-line premise fails there, the content twins at .flowIn serve): {repr t.keyMultiLine.reverse}"
     (t.keySites ≥ 15 && t.keyMultiLine.length == 4 &&
      t.keyMultiLine.reverse == [("{\"a\n b\": c}", 1), ("[\"a\n b\": c]", 1), ("{'a\n b': c}", 1), ("{'a': b, \"c\n d\": e}", 9)]) ""
-  checkM state "P102(x) the block form \"a\n b\": c is refused (invalidImplicitKey) — the scanner has the one-line rule for block implicit keys, not for flow"
+  checkM state "P102(x) the block form \"a\n b\": c is refused (invalidImplicitKey) — the one-line rule the scanner enforces is the BLOCK implicit key's (inFlowCtx .blockKey = .flowKey is where the key twins apply)"
     (P102.refusedWith "\"a\n b\": c" (fun | .invalidImplicitKey .. => true | _ => false)) ""
   -- (ix) term-level instances
   checkM state "P102(ix) goOut [flowSequenceStart, flowEntry, flowSequenceEnd] [\"!e!\"] = ([], [\"!e!\"])"
