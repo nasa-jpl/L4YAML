@@ -13467,6 +13467,218 @@ lemma traceOf_tag_bang : L4YAML.Proofs.Serialization.TraceOf.TCNsTagProperty
 
 end P100
 
+
+/-! ## Priority 101 — S3 slice (2): document markers and the `tokenEvents` algebra, before proof
+
+Item 459's NEXT.  The statements: (A) `go (l₁ ++ l₂) p = (goOut l₁ p).1 ++ go l₂ (goOut l₁ p).2`
+with `goOut` the state-passing twin of `TokenEvents.go` (events emitted, pending handles left),
+`.documentStart` flushing the pending `%TAG` handles as `declareTag`s after `beginDocument`;
+(B) the scanner's `scanDocumentStart` / `scanDocumentEnd` / `scanDirective` arms land on
+`SCDirectivesEnd` / `SCDocumentEnd` / `ScannedDirective` with the token they push and the
+`TLDirective` payload `declaredHandle (span) = named handle`. -/
+namespace P101
+open L4YAML.Proofs.Serialization.TokenEvents (go tokenEvents tokenEvent isNamedHandle tok)
+open L4YAML.Proofs.Serialization.SerializationWellFormed (Event)
+
+def own : List String :=
+  ["---\na", "--- a", "---", "---\n", "...", "...\n", "a\n...", "a\n...\nb", "---\na\n...",
+   "---\na\n...\n---\nb", "---\n...\n", "--- ...", "---\n...", "---a", "...a", "... a",
+   "%YAML 1.2\n---\na", "%TAG !e! tag:x,2000:\n---\n!e!a b", "%TAG ! tag:x,2000:\n---\n!a b",
+   "%TAG !! tag:x,2000:\n---\n!!str b", "%TAG !e! tag:x:\n%YAML 1.2\n---\na",
+   "%YAML 1.2\n%TAG !e! tag:x:\n---\na", "%TAG !a! tag:a:\n%TAG !b! tag:b:\n%TAG !c! tag:c:\n---\n!a!x !b!y",
+   "%FOO bar\n---\na", "%TAG !e! tag:x:\n%FOO\n---\na", "%TAG !e! tag:x:\n---\na\n...\n%TAG !f! tag:y:\n---\nb",
+   "%TAG !e! tag:x:\n---\na\n---\nb", "%TAG !e! tag:x:\n---\n...\n---\nb", "%TAG !e! tag:x: # c\n---\na",
+   "%TAG !e-1! tag:x:\n---\na", "%TAG !e! tag:x:\n---\n%TAG !f! tag:y:\n---\nb",
+   "\uFEFF---\na", "\uFEFFa\n...", "\uFEFF%TAG !e! tag:x:\n---\na", "\uFEFF%YAML 1.2\n---\na",
+   "---\n- a\n- b\n...", "---\na: b\n---\nc: d", "--- |\n  x\n...", "--- !!str a", "--- &x a\n--- *x",
+   "a\n---\nb", "a\n---\n...\n---\nb", "- a\n---\n- b", "a: b\n...\n---\nc: d",
+   "%TAG !bad tag:x:\n---\na", "%TAG !e! tag:x: junk\n---\na", "a\n%TAG !e! tag:x:\n---\nb",
+   "%TAG !e! tag:x:\n...", "%TAG !e! tag:x:\na", "%", "%TAG", "%TAG !e!", "%TAG !e! tag:x:",
+   "%YAML 1.2\n%YAML 1.2\n---\na", "---\n%TAG !e! tag:x:\n---\na"]
+
+def allRows : List String := (P100.allRows ++ own).eraseDups
+
+/-- `go`'s state-passing twin: the events emitted and the pending handles left. -/
+def goOut : List (Positioned YamlToken) → List String → List Event × List String
+  | [], p => ([], p)
+  | t :: ts, p =>
+    match t.val with
+    | .tagDirective h _ => goOut ts (if isNamedHandle h then h :: p else p)
+    | .documentStart =>
+      let r := goOut ts []
+      (.beginDocument :: (p.reverse.map .declareTag ++ r.1), r.2)
+    | v =>
+      let r := goOut ts p
+      match tokenEvent v with
+      | some e => (e :: r.1, r.2)
+      | none => r
+
+def namedHandles (l : List (Positioned YamlToken)) : List String :=
+  l.filterMap fun t => match t.val with
+    | .tagDirective h _ => if isNamedHandle h then some h else none
+    | _ => none
+
+def lineAt (s : String) (o : Nat) : List Char :=
+  (P100.dropBytes s.toList o).takeWhile (fun c => c != '\n' && c != '\r')
+
+structure Tally where
+  rows : Nat := 0
+  scanned : Nat := 0
+  refused : Nat := 0
+  splits : Nat := 0
+  splitBad : List String := []
+  starts : Nat := 0
+  startBad : List String := []
+  ends : Nat := 0
+  beginEv : Nat := 0
+  endEv : Nat := 0
+  dirs : Nat := 0
+  namedDirs : Nat := 0
+  dirBad : List String := []
+  pendingAtEnd : Nat := 0
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    t := { t with rows := t.rows + 1 }
+    match scanFiltered s with
+    | .error _ => t := { t with refused := t.refused + 1 }
+    | .ok ts =>
+      t := { t with scanned := t.scanned + 1 }
+      let l := ts.toList
+      let evs := tokenEvents ts
+      -- (A) the append law at every split, and the whole-stream reading
+      for k in [0:l.length + 1] do
+        let r := goOut (l.take k) []
+        t := { t with splits := t.splits + 1 }
+        if evs != r.1 ++ go (l.drop k) r.2 then
+          t := { t with splitBad := s!"{repr s} k={k}" :: t.splitBad }
+      let whole := goOut l []
+      if evs != whole.1 ++ whole.2.reverse.map .declareTag then
+        t := { t with splitBad := s!"{repr s} whole" :: t.splitBad }
+      if !whole.2.isEmpty then t := { t with pendingAtEnd := t.pendingAtEnd + 1 }
+      -- (B) every documentStart flushes the named handles since the previous one, in order
+      let mut i := 0
+      let mut prev := 0
+      for tk in l do
+        match tk.val with
+        | .documentStart =>
+          t := { t with starts := t.starts + 1 }
+          let r := goOut (l.take i) []
+          let named := namedHandles ((l.take i).drop prev)
+          let tail := go (l.drop i) r.2
+          if r.2.reverse != named || !(tail.take (named.length + 1) == .beginDocument :: named.map .declareTag) then
+            t := { t with startBad := s!"{repr s} i={i}" :: t.startBad }
+          prev := i + 1
+        | .documentEnd => t := { t with ends := t.ends + 1 }
+        | .tagDirective h _ =>
+          t := { t with dirs := t.dirs + 1 }
+          if isNamedHandle h then t := { t with namedDirs := t.namedDirs + 1 }
+          -- the TLDirective payload: the lexer's declaredHandle on the directive line = the named handle
+          let dh := L4YAML.Proofs.Serialization.EventsOf.declaredHandle (lineAt s tk.pos.offset)
+          if dh != (if isNamedHandle h then some h else none) then
+            t := { t with dirBad := s!"{repr s}@{tk.pos.offset}: {repr dh} vs {repr h}" :: t.dirBad }
+        | _ => pure ()
+        i := i + 1
+      t := { t with beginEv := t.beginEv + (evs.filter (· == .beginDocument)).length,
+                    endEv := t.endEv + (evs.filter (· == .endDocument)).length }
+  return t
+
+structure Direct where
+  runs : Nat := 0
+  ok : Nat := 0
+  refused : Nat := 0
+  refusedWhy : List String := []
+  bad : List String := []
+
+/-- The arms run directly on a fresh state positioned at the marker / directive. -/
+def directRuns (rows : List String) : Direct × Direct × Direct := Id.run do
+  let mut ds : Direct := {}
+  let mut de : Direct := {}
+  let mut dd : Direct := {}
+  for s in rows do
+    match scanFiltered s with
+    | .error _ => pure ()
+    | .ok ts =>
+      for tk in ts do
+        let st := P100.stateAt s tk.pos.offset
+        match tk.val with
+        | .documentStart =>
+          ds := { ds with runs := ds.runs + 1 }
+          let s' := scanDocumentStart st
+          let sp := P100.spanAt s st.offset s'.offset
+          if s'.tokens == st.tokens.push { pos := st.currentPos, val := .documentStart } &&
+             sp == ['-', '-', '-'] && s'.col == st.col + 3 && s'.input == st.input &&
+             s'.inputEnd == st.inputEnd && s'.definedAnchors.isEmpty && !s'.allowDirectives
+          then ds := { ds with ok := ds.ok + 1 }
+          else ds := { ds with bad := s!"{repr s}@{st.offset}" :: ds.bad }
+        | .documentEnd =>
+          de := { de with runs := de.runs + 1 }
+          match scanDocumentEnd st with
+          | .error e => de := { de with refused := de.refused + 1, refusedWhy := s!"{repr s}@{st.offset}: {repr e}" :: de.refusedWhy }
+          | .ok s' =>
+            let sp := P100.spanAt s st.offset s'.offset
+            if s'.tokens == st.tokens.push { pos := st.currentPos, val := .documentEnd } &&
+               sp == ['.', '.', '.'] && s'.col == st.col + 3 && s'.input == st.input && s'.allowDirectives
+            then de := { de with ok := de.ok + 1 }
+            else de := { de with bad := s!"{repr s}@{st.offset}" :: de.bad }
+          -- the guard: directives pending refuse `...`
+          match scanDocumentEnd { st with directivesPresent := true } with
+          | .error (.directiveWithoutDocument _) => pure ()
+          | _ => de := { de with bad := s!"{repr s}@{st.offset}: directivesPresent not refused" :: de.bad }
+        | .tagDirective h pfx =>
+          dd := { dd with runs := dd.runs + 1 }
+          match scanDirective st with
+          | .error e => dd := { dd with refused := dd.refused + 1, refusedWhy := s!"{repr s}@{st.offset}: {repr e}" :: dd.refusedWhy }
+          | .ok s' =>
+            let sp := P100.spanAt s st.offset s'.offset
+            let dh := L4YAML.Proofs.Serialization.EventsOf.declaredHandle (lineAt s st.offset)
+            if s'.tokens == st.tokens.push { pos := st.currentPos, val := .tagDirective h pfx } &&
+               sp.head? == some '%' && s'.input == st.input && s'.directivesPresent &&
+               dh == (if isNamedHandle h then some h else none)
+            then dd := { dd with ok := dd.ok + 1 }
+            else dd := { dd with bad := s!"{repr s}@{st.offset}: span {repr (String.ofList sp)} dh {repr dh}" :: dd.bad }
+          match scanDirective { st with allowDirectives := false } with
+          | .error (.directiveAfterContent _) => pure ()
+          | _ => dd := { dd with bad := s!"{repr s}@{st.offset}: directiveAfterContent not refused" :: dd.bad }
+        | _ => pure ()
+  return (ds, de, dd)
+
+end P101
+
+section P101Test
+open L4YAML.Proofs.Serialization.TokenEvents (go tokenEvents tokenEvent isNamedHandle tok)
+open L4YAML.Proofs.Serialization.SerializationWellFormed (Event)
+
+def testDocBridge (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 101: S3 slice (2) — document markers and the tokenEvents algebra, before proof"
+  let t := P101.tally P101.allRows
+  checkM state s!"P101(i) {t.rows} rows, {t.scanned} scanned, {t.refused} refused" (t.scanned ≥ 400 && t.refused ≥ 8) ""
+  checkM state s!"P101(ii) go (l₁ ++ l₂) p = (goOut l₁ p).1 ++ go l₂ (goOut l₁ p).2 at every split: {t.splits} splits, {t.splitBad.length} bad; whole-stream flush of the pending handles holds; {t.pendingAtEnd} rows end with pending handles"
+    (t.splitBad.isEmpty && t.splits ≥ 2000) s!"{repr (t.splitBad.take 6)}"
+  checkM state s!"P101(iii) every documentStart ({t.starts}) flushes exactly the named handles since the previous one, in order, after beginDocument: {t.startBad.length} bad"
+    (t.startBad.isEmpty && t.starts ≥ 60) s!"{repr (t.startBad.take 6)}"
+  checkM state s!"P101(iv) documentStart tokens {t.starts} = beginDocument events {t.beginEv}; documentEnd tokens {t.ends} = endDocument events {t.endEv}"
+    (t.starts == t.beginEv && t.ends == t.endEv && t.ends ≥ 15) ""
+  checkM state s!"P101(v) TLDirective payload: declaredHandle (directive line) = the named handle on every %TAG ({t.dirs} directives, {t.namedDirs} named): {t.dirBad.length} bad"
+    (t.dirBad.isEmpty && t.namedDirs ≥ 10 && t.dirs > t.namedDirs) s!"{repr (t.dirBad.take 6)}"
+  let (ds, de, dd) := P101.directRuns P101.allRows
+  checkM state s!"P101(vi) scanDocumentStart direct: {ds.runs} runs, {ds.ok} with the token / '---' span / col+3 / resets, {ds.bad.length} bad"
+    (ds.bad.isEmpty && ds.ok == ds.runs && ds.runs ≥ 60) s!"{repr (ds.bad.take 6)}"
+  checkM state s!"P101(vii) scanDocumentEnd direct: {de.runs} runs, {de.ok} with the token / '...' span / col+3, {de.refused} refused, {de.bad.length} bad; directivesPresent refused on every one"
+    (de.bad.isEmpty && de.ok == de.runs && de.refused == 0 && de.runs ≥ 15) s!"{repr (de.bad.take 6)} {repr (de.refusedWhy.take 4)}"
+  checkM state s!"P101(viii) scanDirective direct on %TAG: {dd.runs} runs, {dd.ok} with the token / '%'-span / declaredHandle, {dd.refused} refused, {dd.bad.length} bad; allowDirectives=false refused on every one"
+    (dd.bad.isEmpty && dd.ok == dd.runs && dd.refused == 0 && dd.runs ≥ 15) s!"{repr (dd.bad.take 6)} {repr (dd.refusedWhy.take 4)}"
+  -- (ix) term-level instances of the algebra
+  checkM state "P101(ix) goOut [documentStart] [\"!e!\"] = ([beginDocument, declareTag !e!], [])"
+    (P101.goOut [tok .documentStart] ["!e!"] == ([.beginDocument, .declareTag "!e!"], [])) ""
+  checkM state "P101(ix) goOut [%TAG !e!, %TAG !, %YAML-shaped reserved] [] leaves pending [!e!]"
+    ((P101.goOut [tok (.tagDirective "!e!" "x"), tok (.tagDirective "!" "y"), tok (.tagDirective "!!" "z")] []) == ([], ["!e!"])) ""
+  checkM state "P101(ix) go [documentEnd] p = [endDocument] ++ flush p"
+    (go [tok .documentEnd] ["!a!"] == [.endDocument, .declareTag "!a!"]) ""
+
+end P101Test
+
 def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 100: S3 slice (1) — leaf span ↔ token payload (anchor / alias / tag), before proof"
   let t := P100.tally P100.allRows
@@ -13645,6 +13857,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testGammaDepth state
   testTraceBridge state
   testLeafBridge state
+  testDocBridge state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",
