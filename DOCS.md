@@ -51850,7 +51850,7 @@ What the refutations teach: the owner's framing is sharper than the audit's — 
 
 | # | Predicted | Measured | Verdict |
 |---|---|---|---|
-| P1 | 81 / 23 | 81 / 22 in StreamAccum (+ 2 / 1 in `Capstones.lean`'s sorry guard = 83 / 23) | HELD on the site set; the 23rd declaration is the guard, not a writer |
+| P1 | 81 / 23 | 81 / 22 in StreamAccum (+ 2 / 1 in `Capstones.lean`'s sorry guard = 83 / 23) | sites HELD; declarations REFUTED — 22, not 23: item 445's 23rd declaration was the `Capstones.lean` guard, which the flip now reports in round 2 outside the flipped file; the writer set is 22 declarations |
 | P2 | P92 holds at every unmarked block pause | 113 / 113 block; flow 8 of 50 unmarked pauses LIVE | HELD in block; the flow refutation is the lemma's premise, measured |
 | P3 | 8 + ≈ 20 pay, ≈ 50 births | 8 pay, 73 births (the lemma class is empty: its 8 branches already pay) | REFUTED — the mandate's step (2) had already been done by items 361/363/365 |
 | P4 | ON 7 → 7; `inrTrivial` 485 → ≈ 465 | no library change: ON 7, 269, 485, 70, 12 all unchanged | HELD trivially (no pay); the ≈ 465 untested |
