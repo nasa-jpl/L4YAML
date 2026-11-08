@@ -13096,6 +13096,160 @@ def testTraceBridge (state : IO.Ref TestCollector) : IO Unit := do
   checkM state "P99(vi) `%TAG !e! tag:x` without `---` is refused by the scanner (DirectivesClosed, S3 (b))"
     ((P99.both "%TAG !e! tag:x").1 == none) ""
 
+/-! ## Priority 100: S3 slice (1), the leaf bridge — span ↔ payload, before proof
+The leaf twins to be proved: for a scanned `.anchor name` / `.alias name` / `.tag handle suffix` token,
+the annotated leaf relation (`TCNsAnchorProperty` / `TCNsAliasNode` / `TCNsTagProperty`, `TraceOf/Leaves.lean`)
+holds on the lexeme's span with the trace `tokenEvent` assigns the token — i.e. `anchorEvents span =
+[.defineAnchor name]`, `aliasEvents span = [.useAlias name]`, `tagEvents span = (tokenEvent (.tag handle _)).toList`.
+Executable mirror: the span is the input from the token's byte offset to the next token's (the leaf event
+functions read only the lexeme's own prefix, so the trailing text is inert); the legacy scanner leaves
+`endPos` at `pos`, hence the next-token bound.  Also gridded: the boolean anchor-char class the lexer uses
+(`isAnchorCharBool`) against `collectAnchorNameLoop`'s own condition, over every scalar value. -/
+namespace P100
+open L4YAML.Proofs.Serialization.TokenEvents (tokenEvent)
+open L4YAML.Proofs.Serialization.TraceOf (anchorEvents aliasEvents tagEvents span)
+open L4YAML.Proofs.Serialization.SerializationWellFormed (Event)
+open L4YAML.Proofs.Serialization.EventsOf (handleOf)
+open L4YAML.CharPredicates
+open L4YAML.Surface
+
+/-- Leaf boundary rows: every handle kind, anchor-name boundaries, empty/singleton lexemes, both
+property orders, flow/block neighbours, BOM and non-ASCII names. -/
+def own : List String :=
+  [ "!", "!!", "!!x", "!e!", "!e!x", "!-!x", "!a-b!x", "!a%b!c", "!%!x", "!a!b!c", "!<tag:x>", "!<>", "!<tag:x>y",
+    "!<tag:x> a", "!!str a", "!t a", "!t", "!a!", "!A1-!x",
+    "&", "*", "& a", "&a", "*a", "&a,b", "[&a,b]", "[&a]", "{&a: b}", "&a#c", "&a: b", "*a: b", "&a\tb", "&a b",
+    "&aé b", "&a\u0007", "&a\uFEFFb", "\uFEFF&a b", "&a *a", "&a\n*a", "- &a\n- *a", "&a\n!t b", "!t &a b", "&a !t b",
+    "!t\n&a b", "&a\n!t\nb", "[!t &a b, *a]", "{!t &a b: *a}", "&a: !t b", "? &a\n: *a", "&a]", "&a}", "*a]", "&a\n",
+    "&x [*x]", "&x {a: *x}", "&x\n- *x", "!<tag:x,y!h!> a", "!<!> a", "!<tag:x>!y", "!!x!y", "!e!x!y", "!e! x", "!e!\nx" ]
+
+def allRows : List String := (P99.allRows ++ own).eraseDups
+
+/-- Drop `n` UTF-8 bytes from a char list. -/
+def dropBytes : List Char → Nat → List Char
+  | l, 0 => l
+  | [], _ => []
+  | c :: cs, n => dropBytes cs (n - c.utf8Size)
+
+/-- Take `bytes` UTF-8 bytes from a char list (a partial last char is dropped). -/
+def takeBytes : List Char → Nat → List Char
+  | _, 0 => []
+  | [], _ => []
+  | c :: cs, n => if n < c.utf8Size then [] else c :: takeBytes cs (n - c.utf8Size)
+
+def spanAt (input : String) (a b : Nat) : List Char :=
+  takeBytes (dropBytes input.toList a) (b - a)
+
+def isLeaf : YamlToken → Bool
+  | .anchor _ | .alias _ | .tag _ _ => true
+  | _ => false
+
+def leafEvents : YamlToken → List Char → List Event
+  | .anchor _, sp => anchorEvents sp
+  | .alias _, sp => aliasEvents sp
+  | .tag _ _, sp => tagEvents sp
+  | _, _ => []
+
+def handleKind : YamlToken → String
+  | .tag "" _ => "verbatim"
+  | .tag "!" _ => "primary"
+  | .tag "!!" _ => "secondary"
+  | .tag _ _ => "named"
+  | .anchor _ => "anchor"
+  | .alias _ => "alias"
+  | _ => "other"
+
+structure Tally where
+  rows : Nat := 0
+  scanned : Nat := 0
+  leaves : Nat := 0
+  ok : Nat := 0
+  byKind : List (String × Nat) := []
+  bad : List (String × String × String) := []   -- row, token, (span events vs tokenEvent)
+
+def bump (acc : List (String × Nat)) (k : String) : List (String × Nat) :=
+  match acc.find? (·.1 == k) with
+  | some _ => acc.map fun (a, n) => if a == k then (a, n + 1) else (a, n)
+  | none => (k, 1) :: acc
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    t := { t with rows := t.rows + 1 }
+    match scanFiltered s with
+    | .error _ => pure ()
+    | .ok ts =>
+      t := { t with scanned := t.scanned + 1 }
+      let n := ts.size
+      for i in [0:n] do
+        let tk := ts[i]!
+        if isLeaf tk.val then
+          let b := if i + 1 < n then ts[i+1]!.pos.offset else s.utf8ByteSize
+          let sp := spanAt s tk.pos.offset b
+          let got := leafEvents tk.val sp
+          let want := (tokenEvent tk.val).toList
+          t := { t with leaves := t.leaves + 1, byKind := bump t.byKind (handleKind tk.val) }
+          if got == want then t := { t with ok := t.ok + 1 }
+          else t := { t with bad := (s, s!"{repr tk.val}", s!"span={repr (String.ofList sp)} got={repr got} want={repr want}") :: t.bad }
+  return t
+
+/-- `collectAnchorNameLoop`'s own acceptance condition, as written in `Scanner/NodeProperties.lean`. -/
+def loopCond (c : Char) : Bool :=
+  !isFlowIndicatorBool c && !isWhiteSpaceBool c && !isLineBreakBool c && isPrintableBool c && c != '\uFEFF'
+
+def charMismatches : Nat := Id.run do
+  let mut n := 0
+  for k in [0:0x110000] do
+    if k < 0xD800 || 0xDFFF < k then
+      let c := Char.ofNat k
+      if L4YAML.Proofs.Serialization.SourceEvents.isAnchorCharBool c != loopCond c then n := n + 1
+  return n
+
+def kindCount (t : Tally) (k : String) : Nat := (t.byKind.find? (·.1 == k)).map (·.2) |>.getD 0
+
+/-! ### Smallest term-level instances: `&x`, `*x`, `!` with the token's trace -/
+
+private lemma ns_x : isNsAnchorChar 'x' := by unfold isNsAnchorChar isNsChar; decide
+
+private lemma gnot_empty {P : Char → Prop} (col : Nat) : GNot (GChar P) ⟨[], col⟩ :=
+  fun _ h => by cases h
+
+lemma traceOf_anchor_x : L4YAML.Proofs.Serialization.TraceOf.TCNsAnchorProperty
+    ⟨['&', 'x'], 0⟩ ⟨[], 2⟩ [.defineAnchor "x"] :=
+  ⟨.mk ['x'] 0 ⟨[], 2⟩ (.mk _ _ _ (.mk 'x' [] 1 ns_x) (.nil _)) (gnot_empty 2), rfl⟩
+
+lemma traceOf_alias_x : L4YAML.Proofs.Serialization.TraceOf.TCNsAliasNode
+    ⟨['*', 'x'], 0⟩ ⟨[], 2⟩ [.useAlias "x"] :=
+  ⟨.mk ['x'] 0 ⟨[], 2⟩ (.mk _ _ _ (.mk 'x' [] 1 ns_x) (.nil _)) (gnot_empty 2), rfl⟩
+
+lemma traceOf_tag_bang : L4YAML.Proofs.Serialization.TraceOf.TCNsTagProperty
+    ⟨['!'], 0⟩ ⟨[], 1⟩ [.useTag "!"] :=
+  ⟨.nonSpecific [] 0 (gnot_empty 1), rfl⟩
+
+end P100
+
+def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 100: S3 slice (1) — leaf span ↔ token payload (anchor / alias / tag), before proof"
+  let t := P100.tally P100.allRows
+  checkM state s!"P100(i) {t.rows} rows, {t.scanned} scanned, {t.leaves} leaf tokens: span events = tokenEvent on {t.ok}"
+    (t.ok == t.leaves) s!"{repr (t.bad.take 8)}"
+  for (s, tk, why) in t.bad.take 12 do
+    checkM state s!"P100(i) mismatch {repr s} {tk}" false why
+  for k in ["anchor", "alias", "verbatim", "secondary", "named", "primary"] do
+    let n := P100.kindCount t k
+    checkM state s!"P100(ii) kind {k}: {n} tokens" (n ≥ 3) ""
+  -- (iii) the lexer's boolean anchor class is the scanner's loop condition, on every scalar value
+  let m := P100.charMismatches
+  checkM state s!"P100(iii) isAnchorCharBool = collectAnchorNameLoop's condition on every scalar value ({m} mismatches)" (m == 0) ""
+  -- (iv) empty / singleton lexemes
+  for s in ["&", "*", "& a", "!<>"] do
+    checkM state s!"P100(iv) {repr s} is refused" (scanFiltered s).toOption.isNone ""
+  checkM state "P100(iv) `!` scans to [useTag \"!\"]" ((P99.both "!").1 == some [.useTag "!"]) s!"{repr (P99.both "!").1}"
+  checkM state "P100(iv) `!!` scans to [useTag \"!!\"]" ((P99.both "!!").1 == some [.useTag "!!"]) s!"{repr (P99.both "!!").1}"
+  -- (v) the smallest term-level instances are the lemmas above; their scanner side:
+  checkM state "P100(v) `&x` → [defineAnchor x]" ((P99.both "&x").1 == some [.defineAnchor "x"]) ""
+  checkM state "P100(v) `*x` → scanner refuses an undefined alias (the trace side holds: traceOf_alias_x)" ((P99.both "*x").1 == none) ""
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -13227,6 +13381,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testGammaBal state
   testGammaDepth state
   testTraceBridge state
+  testLeafBridge state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",
