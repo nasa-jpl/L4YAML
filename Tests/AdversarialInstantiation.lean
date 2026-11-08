@@ -12570,14 +12570,27 @@ def allRows : List String :=
 def both (s : String) : Option (List Event) × Option (List Event) :=
   ((scanFiltered s).toOption.map tokenEvents, (refLex s).map eventsOfSegs)
 
-/-- The slice a row belongs to, by the outermost construct its text shows. -/
+/-- The slice a row belongs to, by the outermost construct the SCANNER's tokens show (review of the
+first cut: text-based labels counted `'...'`, `"---"`, `[---]` as documents).  A refused row has no
+tokens and is labelled `refused`; the per-slice reading is over scanned rows only. -/
 def sliceOf (s : String) : String :=
-  let l := s.toList
-  let has (c : Char) := l.contains c
-  if (s.splitOn "---").length > 1 || (s.splitOn "...").length > 1 || has '%' then "document"
-  else if has '[' || has '{' then "flow"
-  else if has ':' || has '-' || has '?' || has '|' || has '>' || has '\n' then "block"
-  else "leaf"
+  match scanFiltered s with
+  | .error _ => "refused"
+  | .ok ts =>
+    let ks := ts.toList.map (·.val)
+    let isDoc : YamlToken → Bool
+      | .documentStart | .documentEnd | .tagDirective .. | .versionDirective .. => true
+      | _ => false
+    let isFlow : YamlToken → Bool
+      | .flowSequenceStart | .flowMappingStart => true
+      | _ => false
+    let isBlock : YamlToken → Bool
+      | .blockSequenceStart | .blockMappingStart | .blockEntry | .key | .value | .blockEnd => true
+      | _ => false
+    if ks.any isDoc then "document"
+    else if ks.any isFlow then "flow"
+    else if ks.any isBlock then "block"
+    else "leaf"
 
 def slices : List String := ["leaf", "flow", "block", "document"]
 
@@ -12652,6 +12665,11 @@ def bomRow (s : String) : Bool := s.toList.head? == some '\uFEFF'
 statement — holds with the scanner's trace.  This is the block slice's plain-continuation boundary. -/
 def plainContinuation (s : String) : Bool := s == "&x a\n&y b"
 
+/-- The disagreeing rows of the first run, pinned as a SET so a fifth disagreement (or a vanished one)
+fails here rather than drifting under the per-kind classification (review of the first cut). -/
+def disagreeRows : List String :=
+  ["\uFEFF--- a", "&x a\n&y b", "\uFEFF!t a", "\uFEFF...\n: a"]
+
 /-- `parseStream`'s refusal is the state half (`undeclaredTagHandle`), never a shape `TokenGrammar` misses. -/
 def stateRefusal (s : String) : Bool :=
   match scanFiltered s with
@@ -12691,16 +12709,21 @@ def testTraceBridge (state : IO.Ref TestCollector) : IO Unit := do
     checkM state s!"P99(i) disagreement is a BOM row (lexer debt), the plain-continuation shape, or a pinned RefLexCensus shape: {repr s}"
       (P99.bomRow s || P99.plainContinuation s || P99.knownDivergence s)
       s!"scanner={evStr ea} skeleton={evStr eb}"
-  checkM state s!"P99(i) disagreements: {(t.disagree.filter fun r => P99.bomRow r.1).length} BOM rows (lexer debt), {(t.disagree.filter fun r => P99.plainContinuation r.1).length} plain-continuation, {(t.disagree.filter fun r => P99.knownDivergence r.1).length} RefLexCensus"
-    true ""
+  let dis := t.disagree.map (·.1)
+  checkM state s!"P99(i) disagreements: {(dis.filter P99.bomRow).length} BOM rows (lexer debt), {(dis.filter P99.plainContinuation).length} plain-continuation, {(dis.filter P99.knownDivergence).length} RefLexCensus — exactly the pinned set of {P99.disagreeRows.length}"
+    (dis.length == P99.disagreeRows.length && P99.disagreeRows.all (dis.contains ·) && t.agree + dis.length == t.bothOk)
+    s!"got {repr dis}"
   checkM state s!"P99(i) no row the scanner accepts is refused by the lexer ({t.scanOnly.length} scanner-only; {t.lexOnly} lexer-only)"
     t.scanOnly.isEmpty s!"{repr t.scanOnly}"
-  -- (ii) per slice
+  -- (ii) per slice (scanned rows, labelled by their tokens)
+  let mut sliced := 0
   for sl in P99.slices do
     let rs := rows.filter (P99.sliceOf · == sl)
     let ts := P99.tally rs
-    checkM state s!"P99(ii) slice {sl}: {ts.rows} rows, {ts.scanned} scanned, {ts.eventRows} event-bearing, {ts.bothOk} both, {ts.agree} agree, {ts.disagree.length} disagree"
-      (ts.agree + ts.disagree.length == ts.bothOk) ""
+    sliced := sliced + ts.rows
+    checkM state s!"P99(ii) slice {sl}: {ts.rows} scanned rows, {ts.eventRows} event-bearing, {ts.agree} agree, {ts.disagree.length} disagree"
+      (ts.scanned == ts.rows && ts.agree + ts.disagree.length == ts.bothOk) ""
+  checkM state s!"P99(ii) the four slices partition the {t.scanned} scanned rows" (sliced == t.scanned) s!"{sliced}"
   -- (iii) consumer census, executable half: the trace reads six token kinds; every other kind
   -- (`.key`/`.value`/`.blockEnd`/flow ends/`.flowEntry`, `.comment`, `.streamStart`/`.streamEnd`, …) is inert
   checkM state s!"P99(iii) trace inert under every non-trace token kind on {t.inert} of {t.scanned} scanned rows"
