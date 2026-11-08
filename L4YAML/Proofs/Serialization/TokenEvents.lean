@@ -42,7 +42,7 @@ starts are handled by `tokenEvents` because their order is not local. -/
 handle without checking its closing `!`, so `%TAG !h …` scans; a handle of that
 shape can never be used (every shorthand use is `!`, `!!` or `!…!`), and the
 skeleton's `declaredHandle` declares nothing for it — nor does this. -/
-def isNamedHandle (h : String) : Bool :=
+@[expose] def isNamedHandle (h : String) : Bool :=
   match h.toList with
   | '!' :: rest => rest.length ≥ 2 && rest.getLast? == some '!' &&
       rest.dropLast.all (fun c => c.isAlphanum || c = '-')
