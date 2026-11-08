@@ -13235,12 +13235,28 @@ def leafSites (rows : List String) : List (String × Positioned YamlToken) := Id
         if isLeaf tk.val then out := (s, tk) :: out
   return out.reverse
 
+def isTrailing : ScanError → Bool
+  | .trailingContent _ _ => true
+  | _ => false
+
+def siteWhy (s : String) (o : Nat) (e : ScanError) : String := s!"{repr s}@{o}: {repr e}"
+
 structure Direct where
   runs : Nat := 0
   ok : Nat := 0
   refused : Nat := 0
-  refusedWhy : List String := []
+  /-- The refused sites as `(row, offset)`, every one a `trailingContent` refusal (else `badRefusal`). -/
+  refusedAt : List (String × Nat) := []
+  badRefusal : List String := []
+  okByKind : List (String × Nat) := []
+  refusedByKind : List (String × Nat) := []
   bad : List String := []
+
+def recordRefusal (d : Direct) (s : String) (o : Nat) (kind : String) (e : ScanError) : Direct :=
+  let d := { d with refused := d.refused + 1 }
+  let d := { d with refusedAt := (s, o) :: d.refusedAt }
+  let d := { d with refusedByKind := bump d.refusedByKind kind }
+  if isTrailing e then d else { d with badRefusal := siteWhy s o e :: d.badRefusal }
 
 /-- The executable face of a twin's conclusion for a run `st → s'` that emitted `tk`. -/
 def landingOk (s : String) (st s' : ScannerState) (tok : YamlToken) : Bool :=
@@ -13281,11 +13297,23 @@ def directRuns (rows : List String) : Direct × Direct × Direct := Id.run do
     let stD := match tk.val with | .alias n => { st with definedAnchors := #[n] } | _ => st
     disp := { disp with runs := disp.runs + 1 }
     match scanNextToken_dispatchContent stD c with
-    | .error e => disp := { disp with refused := disp.refused + 1, refusedWhy := s!"{repr s}@{st.offset}: {repr e}" :: disp.refusedWhy }
+    | .error e =>
+      disp := recordRefusal disp s st.offset (handleKind tk.val) e
     | .ok s'' =>
-      if (s''.tokens.back?.map (·.val)) == some tk.val && landingOk s stD s'' tk.val then disp := { disp with ok := disp.ok + 1 }
+      if (s''.tokens.back?.map (·.val)) == some tk.val && landingOk s stD s'' tk.val then
+        disp := { disp with ok := disp.ok + 1, okByKind := bump disp.okByKind (handleKind tk.val) }
       else disp := { disp with bad := s!"{repr s}@{st.offset}: dispatch {repr tk.val} → {repr (s''.tokens.back?.map (·.val))} col {stD.col}→{s''.col}" :: disp.bad }
   return (leaf, tag, disp)
+
+/-- The dispatcher's refusals on the fresh (block-context) states, read on 2026-11-08: every one an
+alias inside a flow collection, refused by the `*` arm's `validateAliasClose` as `trailingContent`
+(`flowLevel = 0` on the direct run's state, so `,` / `]` / `}` after the alias reads as trailing). -/
+def dispRefusedSites : List (String × Nat) :=
+  [("[&x a, *x]", 7), ("{&x a: *x}", 7), ("[&x a: *x]", 7), ("[&x [*x]]", 5), ("{a: [&x b, *x]}", 11),
+   ("[&x a,\n *x]", 8), ("{ &x a : *x }", 9), ("[!t &a b, *a]", 10), ("{!t &a b: *a}", 10),
+   ("&x [*x]", 4), ("&x {a: *x}", 7)]
+
+def kindOf (l : List (String × Nat)) (k : String) : Nat := (l.find? (·.1 == k)).map (·.2) |>.getD 0
 
 structure Loops where
   runs : Nat := 0
@@ -13384,8 +13412,17 @@ def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
     (tag.ok == tag.runs && tag.refused == 0) s!"{repr (tag.bad.take 6)}"
   -- (vii) the content dispatcher's arms (the consumers `ScannerShape.dispatchContent_*_trace`): every accepted run satisfies
   checkM state s!"P100(vii) dispatchContent direct: {disp.runs} runs, {disp.ok} accepted with the conclusion, {disp.refused} refused by the arm's guards, {disp.bad.length} bad"
-    (disp.bad.isEmpty && disp.ok + disp.refused == disp.runs && disp.ok ≥ 150) s!"{repr (disp.bad.take 6)}"
-  checkM state s!"P100(vii) the {disp.refused} guard refusals: {repr disp.refusedWhy.reverse}" true ""
+    (disp.bad.isEmpty && disp.ok + disp.refused == disp.runs && disp.runs == 182) s!"{repr (disp.bad.take 6)}"
+  -- the reading pinned exactly: per kind, and the refused set
+  let okA := P100.kindOf disp.okByKind "anchor"; let rA := P100.kindOf disp.refusedByKind "anchor"
+  let okL := P100.kindOf disp.okByKind "alias"; let rL := P100.kindOf disp.refusedByKind "alias"
+  let okT := disp.ok - okA - okL; let rT := disp.refused - rA - rL
+  checkM state s!"P100(vii) by kind — anchor {okA}/{rA}, alias {okL}/{rL}, tag {okT}/{rT} (accepted/refused)"
+    (okA == 63 && rA == 0 && okL == 9 && rL == 11 && okT == 99 && rT == 0) ""
+  checkM state s!"P100(vii) the {disp.refused} refusals are exactly the pinned flow-context alias sites, all trailingContent"
+    (disp.refusedAt.length == P100.dispRefusedSites.length && P100.dispRefusedSites.all (disp.refusedAt.contains ·)
+      && disp.refusedAt.all (P100.dispRefusedSites.contains ·) && disp.badRefusal.isEmpty)
+    s!"got {repr disp.refusedAt.reverse} bad {repr disp.badRefusal}"
   -- (viii) the loop helpers at fuel 0 / 1 / 2 / full, accumulators "" and "pre"
   let L := P100.loopRuns P100.allRows
   checkM state s!"P100(viii) loop helpers: {L.runs} runs (4 loops × 4 fuels × 2 accumulators per leaf), {L.ok} with the span/landing clauses"
