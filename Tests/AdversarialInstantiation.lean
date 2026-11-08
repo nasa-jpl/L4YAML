@@ -10872,6 +10872,85 @@ def testPackBirthsOnDrop (state : IO.Ref TestCollector) : IO Unit := do
       depth2Ex == ["\"?\\n  ?\\n    ?\\n      - a\\n    : b\\n  : c\\n: d\"@3:6 nv=0",
         "\"?\\n  - ?\\n      - a\\n    : b\\n: c\"@2:6 nv=0"])
 
+def testPackStrictGuardLane (state : IO.Ref TestCollector) : IO Unit := do
+  -- P95 (item 462, (ω-pay-births) step (b)): the four STRICT guards `nv + 1 ≤ k` / `n + 1 ≤ k`
+  -- (`accum_block_on_closeThenBlock` L28648 / L28678, `accum_block_on_pendingBlock` L30649 /
+  -- L30690) sit in the `:` / `?` OPENER arm (`indicator_open_map`), not at a `-` landing: `k` is
+  -- the `:`/`?`'s column, `n` the park's own mark.  Read at the scanner, for every block `:`/`?`
+  -- pause on a marked state: (i) the lane — `k > n` (nested), `k = n` (the park's own `:` or a
+  -- sibling `?`), `k < n` (a dedent to an enclosing mark); (ii) the step — the marks after the
+  -- token are `before.filter (· < k)` (+ `[k]` for a `?`): the park's own mark is consumed or
+  -- closed, never carried; (iii) the ancestors' surface — after the landing's node completes, a
+  -- `:` at every surviving mark's column parses; (iv) how many `k ≤ n` pauses have NO ancestor
+  -- (the chain `[]` pays the else for free).  Measured, not spent.
+  let inputs : List String :=
+    [ "? a\n: b", "?\n- a\n: b", "?\n  - a\n: b", "k:\n  ?\n  - a\n  : b", "- ?\n  - a\n  : b",
+      "?\n  ?\n    - a\n  : b\n: c", "?\n  ?\n    ?\n      - a\n    : b\n  : c\n: d",
+      "?\n  - ?\n      - a\n    : b\n: c", "- ?\n    - a\n  : b", "?\n  k:\n    - a\n: b",
+      "? a\n? b\n: c", "k:\n  ? a\n  : b", "- ? a\n  : b", "? a: 1\n: b", "- a\n- ? b\n  : c",
+      "? [a, b]\n: c", "? {a: b}\n: c", "?\n  - [a, ? b : c]\n: d", "?\n  ?\n    [? a : b]\n  : c\n: d",
+      "?\n  ?\n    - a\n  ? b\n: w", "?\n  ?\n  - a\n  : b\n: c", "? |\n  k\n: v",
+      "?\n  ? a\n  : b\n  ? c\n  : d\n: e", "- ?\n    ?\n      ?\n        - a\n      : b\n    : c\n  : d",
+      "k:\n  ?\n    ?\n      ?\n        a\n      : b\n    : c\n  : d", "?\n  ? a\n: b",
+      "?\n  ?\n    ? a\n: b", "?\n  ? a\n  ? b\n: c", "?\n  ?\n    - a\n: b", "? a\n:\n  ? b\n  : c" ]
+  let mut pauses := 0
+  let mut nested := 0
+  let mut own := 0
+  let mut dedent := 0
+  let mut stepExc : List String := []
+  let mut noAnc := 0
+  let mut ancChecks := 0
+  let mut rejects : List String := []
+  for input in inputs do
+    let chars := input.toList
+    let lines := (input.splitOn "\n").toArray
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:80] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        let before := L4YAML.Proofs.RegisterWitness.markedCols s
+        let isInd := (c == ':' || c == '?') &&
+          (chars[sP.offset + 1]?.map (fun ch => ch == ' ' || ch == '\n')).getD true
+        let after := match L4YAML.Scanner.scanNextToken s with
+          | .ok (some sN) => some (L4YAML.Proofs.RegisterWitness.markedCols sN)
+          | _ => none
+        if isInd && sP.flowLevel == 0 && !before.isEmpty then
+          pauses := pauses + 1
+          let n := before.foldl max 0
+          let k := sP.col
+          if k > n then nested := nested + 1
+          else if k == n then own := own + 1
+          else dedent := dedent + 1
+          let surv := before.filter (· < k)
+          let expected := surv ++ (if c == '?' then [k] else [])
+          if after != some expected then
+            stepExc := stepExc ++ [s!"{repr input}@{sP.line}:{k} c={c} before={before} after={after}"]
+          if k ≤ n && surv.isEmpty then noAnc := noAnc + 1
+          let indentOf (l : String) : Nat := (l.toList.takeWhile (· == ' ')).length
+          let mut last := sP.line
+          for i in [sP.line + 1 : lines.size] do
+            let l := lines[i]!
+            let blank := l.toList.all (· == ' ')
+            if i == last + 1 && (blank || indentOf l > k) then last := i
+          let pre := "\n".intercalate (lines.toList.take (last + 1))
+          for nv in surv do
+            ancChecks := ancChecks + 1
+            let cont := pre ++ "\n" ++ String.ofList (List.replicate nv ' ') ++ ": v\n"
+            match L4YAML.TokenParser.parseYaml cont with
+            | .ok _ => pure ()
+            | .error _ => rejects := rejects ++ [s!"{repr input}@{sP.line}:{k} c={c} nv={nv}"]
+        match after with
+        | some _ =>
+          match L4YAML.Scanner.scanNextToken s with
+          | .ok (some sN) => s := sN
+          | _ => break
+        | none => break
+      | _ => break
+  IO.println s!"P95 marked `:`/`?` pauses={pauses} nested={nested} own={own} dedent={dedent} step-exceptions={stepExc} no-ancestor k≤n={noAnc} ancestor checks={ancChecks} rejects={rejects}"
+  check state s!"P95 (ω-pay-births) the strict guards' lane at the `:`/`?` landings (item 462): {pauses} marked pauses — k > n {nested} / k = n {own} / k < n {dedent}; the step (marks after = survivors below k, + the `?`'s own) off at {stepExc.length}; {noAnc} of the k ≤ n pauses have no ancestor (the empty chain pays); the ancestors' `:` continuation parses at every survivor except {rejects}"
+    (pauses ≥ 30 && nested ≥ 5 && own ≥ 15 && dedent ≥ 3 && stepExc.isEmpty && noAnc ≥ 10 &&
+      ancChecks ≥ 10 && rejects.isEmpty)
+
 def testSeqTopRefusedArm (state : IO.Ref TestCollector) : IO Unit := do
   -- P89 (item 438, (χ-seqtop-refused)): the negative arm `ExplicitValueRefused s ∨ SeqTopKey s`
   -- proposed for `content_dispatch_routed`'s `h_resF` premise must NOT be a tautology over the
@@ -13482,6 +13561,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testThreeArmsFields state
   testSeqTopRefusedArm state
   testPackChainCarrier state
+  testPackStrictGuardLane state
   testPackAltMarks state
   testPackAltNegative state
   testPackAltUnmarkedRefused state
