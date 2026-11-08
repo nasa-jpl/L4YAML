@@ -10474,6 +10474,53 @@ def testPackAltNegative (state : IO.Ref TestCollector) : IO Unit := do
     -- register alone; the refusal adds nothing the vacuous arm does not cover (refused ⇔ unmarked).
     (pauses == 131 && freeVacuous == 97 && freeRefusedOnly == 0 && markedLive == 34)
 
+def testPackAltUnmarkedRefused (state : IO.Ref TestCollector) : IO Unit := do
+  -- P92 (item 455, (ω-pay-refused)): the direction the unmarked writers spend — item 410's
+  -- `RegisterWitness.refused_of_markedCols_eq_nil` read at the pauses: wherever the projection
+  -- `markedCols sP` is EMPTY the register is dead (`explicitKeyLine = none`).  The lemma asks
+  -- `Sound` and `flowLevel = 0`; the grid measures the block pauses (where the pay spends it) and
+  -- the flow pauses separately (where the premise is missing — a flow writer may not use it).
+  let inputs : List String :=
+    [ "a: 1", "- a\n- b", "---\na: 1\n...\n", "k:\n  - a\n  - b", "? a\n: b", "- - a\n  - b",
+      "k:\n  v: w\n  x: y", "- a: 1\n  b: 2", "? - a\n: b", "a:\n- b", "k:\n- x: 1\n  y: 2",
+      "? a\n? b\n: c", "k:\n  ? a\n  : b", "- ? a\n  : b", "? a: 1\n: b", "- a\n- ? b\n  : c",
+      "? |\n  k\n: v", "k: v\n? a\n: b", "[a]\n? b\n: c", "? a\n- b", "? a\n  - b\n: c",
+      "k:\n  ? a\n  - b", "- ? a\n  - b", "? a\n:\n- b", "? k\n: - a\n  - b",
+      "[a, b]", "{a: b}", "? [a]\n: b", "[? a : b]", "{? a : b}", "k: [a, ? b : c]", "? {a: b}\n: c",
+      "- [a, {b: c}]", "? a\n: [b]", "{a: [b, c], ? d : e}" ]
+  let mut blockPauses := 0
+  let mut blockUnmarked := 0
+  let mut blockUnmarkedLive : List String := []
+  let mut flowPauses := 0
+  let mut flowUnmarked := 0
+  let mut flowUnmarkedLive : List String := []
+  for input in inputs do
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:80] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        if c != '#' then
+          let vac := (L4YAML.Proofs.RegisterWitness.markedCols sP).isEmpty
+          let live := sP.explicitKeyLine.isSome
+          if sP.flowLevel == 0 then
+            blockPauses := blockPauses + 1
+            if vac then
+              blockUnmarked := blockUnmarked + 1
+              if live then blockUnmarkedLive := blockUnmarkedLive ++ [s!"{repr input}@{sP.line}:{sP.col}"]
+          else
+            flowPauses := flowPauses + 1
+            if vac then
+              flowUnmarked := flowUnmarked + 1
+              if live then flowUnmarkedLive := flowUnmarkedLive ++ [s!"{repr input}@{sP.line}:{sP.col}"]
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) => s := sN
+        | _ => break
+      | _ => break
+  IO.println s!"P92 block pauses={blockPauses} unmarked={blockUnmarked} unmarked-live={blockUnmarkedLive}"
+  IO.println s!"P92 flow pauses={flowPauses} unmarked={flowUnmarked} unmarked-live={flowUnmarkedLive}"
+  check state s!"P92 (ω-pay-refused) unmarked ⇒ refused at every BLOCK pause (item 455): {blockUnmarked} of {blockPauses} pauses unmarked, 0 of them with a live register; flow pauses {flowPauses} / unmarked {flowUnmarked} / live {flowUnmarkedLive.length} measured, not spent"
+    (blockPauses > 131 && blockUnmarkedLive.isEmpty)
+
 def testSeqTopRefusedArm (state : IO.Ref TestCollector) : IO Unit := do
   -- P89 (item 438, (χ-seqtop-refused)): the negative arm `ExplicitValueRefused s ∨ SeqTopKey s`
   -- proposed for `content_dispatch_routed`'s `h_resF` premise must NOT be a tautology over the
@@ -12527,6 +12574,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testSeqTopRefusedArm state
   testPackAltMarks state
   testPackAltNegative state
+  testPackAltUnmarkedRefused state
 
   testQuestionMarkColumn state
   testK1Lanes state
