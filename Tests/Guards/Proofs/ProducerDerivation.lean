@@ -271,7 +271,10 @@ def expectedCensus : String :=
   -- (`collectAnchorNameLoop_chars`, `scanAnchorOrAlias_trace`, `step_corr`, the three `*_span` loop lemmas,
   -- `corr_emit_ska`, `scanTag_trace`) read the lexeme through a `ScannerSurfCorr` hypothesis; nothing else moved.
   -- 2026-11-08 (item 459, review): corrHyp 595 → 598 — the twins' consumers `ScannerShape.dispatchContent_{anchor,alias,tag}_trace`.
-  "corrHyp=598 streamConcl=88 both=41 free=0 pairConcl=1 held=3 pairAny=8"
+  -- corrHyp 598 → 606 on 2026-11-08: S3 slice (2), `TraceOf/DocBridge` (the three marker/directive
+  -- twins and their helpers read the lexeme through a `ScannerSurfCorr` hypothesis) and the three
+  -- `ScannerShape.dispatchStructural_*_trace` consumers.
+  "corrHyp=606 streamConcl=88 both=41 free=0 pairConcl=1 held=3 pairAny=8"
 
 /-- The one conclusion that pairs them, and it is the stream's origin. -/
 def expectedSeedConcl : List Name :=

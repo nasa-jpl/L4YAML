@@ -108,12 +108,21 @@ def namedTagDeclarationTail (afterBang : List Char) : Option (Event × List Char
 /-- Parse a custom named handle declaration from a `%TAG` directive at the
 current source position.  Prefix contents are irrelevant to the declaration
 accept/reject state, so this projection deliberately stops after the handle. -/
-def namedTagDeclarationAt : List Char → Option (Event × List Char)
-  | '%' :: 'T' :: 'A' :: 'G' :: cs =>
-      match dropHSpace cs with
-      | '!' :: afterBang => namedTagDeclarationTail afterBang
-      | _ => none
+def namedTagDeclarationAfterSep (cs : List Char) : Option (Event × List Char) :=
+  match dropHSpace cs with
+  | '!' :: afterBang => namedTagDeclarationTail afterBang
   | _ => none
+
+/-- `[88] ns-tag-directive ::= "TAG" s-separate-in-line c-tag-handle …`: at least one
+space or tab must follow `%TAG`; `%TAG!e!` is a reserved directive (`[83]`), declaring
+nothing — as the scanner and `ScannedDirective` read it. -/
+def namedTagDeclarationAt : List Char → Option (Event × List Char)
+  | '%' :: 'T' :: 'A' :: 'G' :: ' ' :: cs => namedTagDeclarationAfterSep cs
+  | '%' :: 'T' :: 'A' :: 'G' :: '\t' :: cs => namedTagDeclarationAfterSep cs
+  | _ => none
+
+#guard namedTagDeclarationAt "%TAG!e! tag:x:".toList = none
+#guard namedTagDeclarationAt "%TAGX !e! tag:x:".toList = none
 
 /-! ## Generic prefix algebra -/
 

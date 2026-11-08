@@ -361,7 +361,10 @@ def expectedSteps : String :=
   -- `LeafBridge.scanTag_trace` hold a `scanAnchorOrAlias … = .ok s'` / `scanTag sc = .ok s'` step; dispatch rows unchanged.
   -- 2026-11-08 (item 459, review): stepHolders 2102 → 2105, dispHolders 403 → 406 — the twins' consumers
   -- `ScannerShape.dispatchContent_{anchor,alias,tag}_trace` hold a `scanNextToken_dispatchContent s c = .ok s''` step.
-  "stepHolders=2105 dispHolders=406 dispTwoCorr=31 fns=75 fnsIx=26"
+  -- 2026-11-08 (item 462, S3 slice (2)): stepHolders 2105 → 2112, dispHolders 406 → 409 — `DocBridge.scanDocumentStart_trace`,
+  -- `scanDocumentEnd_trace`, `scanTagDirective_trace`, `scanDirective_trace` hold a scanner step; their consumers
+  -- `ScannerShape.dispatchStructural_{documentStart,documentEnd,directive}_trace` hold a `scanNextToken_dispatchStructural s c = .ok (some s')` step.
+  "stepHolders=2112 dispHolders=409 dispTwoCorr=31 fns=75 fnsIx=26"
 
 /-- **The ladder, at each population.**  `edge` is a production whose right
     endpoint is the step's output; `chain` requires a path to it from another
