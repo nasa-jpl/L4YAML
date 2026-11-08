@@ -13982,6 +13982,8 @@ structure Frame where
   tail : String := "sep"
   entries : Nat := 0
   toks : List (Positioned YamlToken) := []
+  shape : String := "betweenEmpty"   -- the SeqFrame / MapFrame constructor the walk is in
+  propPending : Bool := false        -- an anchor / tag property awaits its content (one node, two tokens)
 
 structure Tally where
   rows : Nat := 0
@@ -13995,6 +13997,25 @@ structure Tally where
   traceBad : List String := []
   baseOpens : Nat := 0
   baseCloses : Nat := 0
+  closeShape : List (String × Nat) := []   -- (depth:kind/shape, count)
+  shapeBad : List String := []
+
+/-- `SeqFrame` / `MapFrame` constructor transitions, read off the token kinds (`.key` from an explicit
+    `?` vs. the simple-key insertion is told apart by the source char under the token). -/
+def step (isSeq : Bool) (shape : String) (ev : String) : Option String :=
+  let node := if isSeq then "midNode" else "midKey"
+  match ev, shape with
+  | "node", "betweenEmpty" | "node", "betweenHeld" => some node
+  | "node", "midQuestion" => some "midExplicitKey"
+  | "node", "midColon" | "node", "midExplicitColon" | "node", "midEmptyColon" | "node", "midQuestionEmptyColon" => some "betweenEntries"
+  | "question", "betweenEmpty" | "question", "betweenHeld" => some "midQuestion"
+  | "colon", "midNode" | "colon", "midKey" => some "midColon"
+  | "colon", "midExplicitKey" => some "midExplicitColon"
+  | "colon", "betweenEmpty" | "colon", "betweenHeld" => some "midEmptyColon"
+  | "colon", "midQuestion" => some "midQuestionEmptyColon"
+  | "comma", "betweenEmpty" => none
+  | "comma", _ => some "betweenHeld"
+  | _, _ => none
 
 def tally (rows : List String) : Tally := Id.run do
   let mut t : Tally := {}
@@ -14009,6 +14030,23 @@ def tally (rows : List String) : Tally := Id.run do
         let depth := st.length
         -- record the token into every open frame (innermost owns it)
         st := st.map (fun f => { f with toks := tk :: f.toks })
+        let isProp : Bool := match tk.val with | .anchor _ | .tag .. => true | _ => false
+        let ev : String := match tk.val with
+          | .flowSequenceStart | .flowMappingStart | .scalar .. | .alias _ | .anchor _ | .tag .. => "node"
+          | .flowEntry => "comma"
+          | .key => if s.get ⟨tk.pos.offset⟩ == '?' then "question" else "key"
+          | .value => "colon"
+          | _ => ""
+        if ev != "" && ev != "key" then
+          match st with
+          | f :: r =>
+            if ev == "node" && f.propPending then
+              st := { f with propPending := isProp } :: r     -- the property's own content: same node
+            else
+              match P103.step f.isSeq f.shape ev with
+              | some sh => st := { f with shape := sh, propPending := isProp } :: r
+              | none => t := { t with shapeBad := s!"{repr s}@{tk.pos.offset}: {f.shape} + {ev}" :: t.shapeBad }
+          | [] => pure ()
         match tk.val with
         | .flowSequenceStart | .flowMappingStart =>
           if depth == 0 then t := { t with baseOpens := t.baseOpens + 1 }
@@ -14018,7 +14056,8 @@ def tally (rows : List String) : Tally := Id.run do
         | .flowSequenceEnd | .flowMappingEnd =>
           match st with
           | f :: rest =>
-            t := { t with frames := t.frames + 1, closeAt := P100.bump t.closeAt s!"{depth}:{f.tail}" }
+            t := { t with frames := t.frames + 1, closeAt := P100.bump t.closeAt s!"{depth}:{f.tail}",
+                          closeShape := P100.bump t.closeShape s!"{depth}:{if f.isSeq then "seq" else "map"}/{f.shape}" }
             if depth ≥ 2 then t := { t with nested := t.nested + 1 }
             if depth == 1 then t := { t with baseCloses := t.baseCloses + 1 }
             if f.tail == "question" then t := { t with questionCloses := s!"{repr s}@{tk.pos.offset}" :: t.questionCloses }
@@ -14060,6 +14099,12 @@ def testFlowWalk (state : IO.Ref TestCollector) : IO Unit := do
     t.valueBad.isEmpty s!"{repr (t.valueBad.take 6)}"
   checkM state s!"P103(iv) every closed frame's token run under the production goOut keeps pending and emits only anchor / alias / tag events: {t.traceBad.length} bad"
     t.traceBad.isEmpty s!"{repr (t.traceBad.take 6)}"
+  -- (v) the census by FRAME SHAPE (review on item 465: `[a]` closes `midNode`, `{a:}` closes `midColon`; the tail hides it)
+  let sh (k : String) : Nat := (t.closeShape.filter (·.1.endsWith k)).foldl (· + ·.2) 0
+  checkM state s!"P103(v) closes by (depth:kind/shape): {repr t.closeShape}; bad transitions {t.shapeBad.length}"
+    (t.shapeBad.isEmpty && t.closeShape.foldl (· + ·.2) 0 == t.frames) s!"{repr (t.shapeBad.take 6)}"
+  checkM state s!"P103(v) midNode+midKey {sh "/midNode" + sh "/midKey"}, betweenEntries {sh "/betweenEntries"}, betweenEmpty {sh "/betweenEmpty"}, betweenHeld {sh "/betweenHeld"}, midColon {sh "/midColon"}, midEmptyColon {sh "/midEmptyColon"}, midExplicitKey {sh "/midExplicitKey"}, midExplicitColon {sh "/midExplicitColon"}, midQuestion {sh "/midQuestion"}, midQuestionEmptyColon {sh "/midQuestionEmptyColon"}"
+    (sh "/midNode" + sh "/midKey" ≥ 40 && sh "/betweenEntries" ≥ 40 && sh "/betweenEmpty" ≥ 5 && sh "/betweenHeld" ≥ 4 && sh "/midColon" ≥ 1) ""
 
 end P103Test
 
