@@ -270,7 +270,8 @@ def expectedCensus : String :=
   -- 2026-11-08 (item 459, S3 slice (1)): corrHyp 587 → 595 — the eight `TraceOf/LeafBridge.lean` lemmas
   -- (`collectAnchorNameLoop_chars`, `scanAnchorOrAlias_trace`, `step_corr`, the three `*_span` loop lemmas,
   -- `corr_emit_ska`, `scanTag_trace`) read the lexeme through a `ScannerSurfCorr` hypothesis; nothing else moved.
-  "corrHyp=595 streamConcl=88 both=41 free=0 pairConcl=1 held=3 pairAny=8"
+  -- 2026-11-08 (item 459, review): corrHyp 595 → 598 — the twins' consumers `ScannerShape.dispatchContent_{anchor,alias,tag}_trace`.
+  "corrHyp=598 streamConcl=88 both=41 free=0 pairConcl=1 held=3 pairAny=8"
 
 /-- The one conclusion that pairs them, and it is the stream's origin. -/
 def expectedSeedConcl : List Name :=

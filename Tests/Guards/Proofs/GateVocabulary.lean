@@ -111,8 +111,9 @@ namespace L4YAML.Tests.Guards.GateVocabulary
 -- 2026-11-07 (item 449): mentions 495 → 497 — item 449's prose names the gates it ran (S3 (β2b)).
 -- 2026-11-08 (item 450): mentions 497 → 499 — item 450's Gates paragraph names the gates (S3 (a), `TagShape`).
 -- 2026-11-08 (item 454): mentions 499 → 501 — item 454's Gates paragraph names the gates it ran (S3 proper, READ).
+-- 2026-11-08 (item 459, review): mentions 501 → 503 — item 459's gate paragraph names `DispatchPrice` and `ParkGapWidth` rows.
 def expectedGateVocab : String :=
-  "names=114 mentions=501 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
+  "names=114 mentions=503 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
 
 end L4YAML.Tests.Guards.GateVocabulary
 
