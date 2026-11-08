@@ -13,7 +13,7 @@ public import L4YAML.Proofs.Scanner.TagShape
 public import L4YAML.Proofs.Serialization.TraceOf.LeafBridge
 
 /-!
-# S3 slice (2): the document-marker bridge (capstone 7.7, item 462)
+# S3 slice (2): the document-marker bridge (capstone 7.7, item 463)
 
 The scanner's `scanDocumentStart` / `scanDocumentEnd` / `scanDirective` arms land on the
 surface relations `TraceOf/Document.lean` annotates (`SCDirectivesEnd`, `SCDocumentEnd`,

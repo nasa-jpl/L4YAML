@@ -85,7 +85,8 @@ def expectedUnread : List Name :=
   [`L4YAML.Output.Events, `L4YAML.Output.EventsIx,
    `L4YAML.Output.Json, `L4YAML.Output.JsonIx]
 
-def expectedClosure : String := "modulesSeen=278"
+-- 2026-11-08 (item 464, S3 slice (3) first PR): 278 → 279, `Proofs.Serialization.TraceOf.FlowBridge`.
+def expectedClosure : String := "modulesSeen=279"
 -- 268 → 271 on 2026-11-05: `Proofs.Scanner.ScannerDirectivesPresent`, `Proofs.Scanner.DirectiveRuns`,
 -- `Proofs.Serialization.ScannerShape` (S3 obligation (b), `scanFiltered_DirectivesClosed`).
 -- 265 → 266 on 2026-10-28: `Proofs.Serialization.ParseCheckFrom` (S5 slice 1, `parse_ok_checkFrom`)
