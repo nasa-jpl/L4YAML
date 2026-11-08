@@ -5,6 +5,7 @@ public import L4YAML.Proofs.Scanner.DirectiveRuns
 public import L4YAML.Proofs.Scanner.DocStartLive
 public import L4YAML.Proofs.Scanner.FlowSync
 public import L4YAML.Proofs.Scanner.DocStartLiveInv
+public import L4YAML.Proofs.Scanner.TagShape
 import all L4YAML.Proofs.Serialization.TokenEvents
 
 @[expose] public section Blanket
@@ -15,6 +16,10 @@ import all L4YAML.Proofs.Serialization.TokenEvents
 `scanFiltered input = .ok ts` as premises.  This module discharges them for real
 scanner output.
 
+* (a) `TagUsesShaped ts` — `scanFiltered_TagUsesShaped`, from `TagShape.scanFiltered_tagOk`
+  (the per-token `TagInv` carried over `scanLoop`: the only arm that builds a `.tag` is
+  `scanTag`, whose handles are `""`, `"!!"`, `"!"` or `"!" ++ word-chars ++ "!"`), bridged
+  to the parser's `BuiltinTagHandle ∨ isNamedHandle` by `tagOk_shaped`.
 * (b) `DirectivesClosed ts` — `scanFiltered_DirectivesClosed`, from
   `DirectiveRuns.scanFiltered_closedList` (the `directiveWithoutDocument` /
   `directiveAfterContent` refusals, carried through the scan loop as `DirInv`).
@@ -58,16 +63,51 @@ lemma scanFiltered_DirectivesClosed (input : String) (ts : Toks)
   rw [tok_eq_toks, isDirectiveTok_eq_isDirTok]
   exact hc
 
-/-- `parseStream_ok_checkFrom` on scanner output, with premise (b) discharged by the scanner.
-What remains to be supplied from outside is (a) `TagUsesShaped ts` — the scanner refuses every
-other handle shape at runtime (`invalidTagHandle`), but that refusal is not yet a lemma. -/
+/-! ## (a) every tag use has a shaped handle -/
+
+/-- The scanner-side token predicate (`TagShape.tagOk`: `""` or `isTagHandleShaped`) implies the
+parser-side one (`BuiltinTagHandle ∨ isNamedHandle`); the named case is `ns-word-char ⊆
+alphanumeric-or-dash` (`TagShape.wordChar_alnum`). -/
+lemma tagOk_shaped (h suf : String) (ht : TagShape.tagOk (.tag h suf) = true) :
+    BuiltinTagHandle h ∨ isNamedHandle h = true := by
+  simp only [TagShape.tagOk, Bool.or_eq_true, beq_iff_eq] at ht
+  rcases ht with rfl | ht
+  · exact Or.inl (Or.inl rfl)
+  · unfold isTagHandleShaped at ht
+    simp only [Bool.or_eq_true, beq_iff_eq] at ht
+    rcases ht with (rfl | rfl) | ht
+    · exact Or.inl (Or.inr (Or.inl rfl))
+    · exact Or.inl (Or.inr (Or.inr rfl))
+    · right
+      unfold isNamedHandle
+      generalize h.toList = L at ht ⊢
+      split at ht
+      · simp only [Bool.and_eq_true, decide_eq_true_eq, beq_iff_eq, List.all_eq_true] at ht ⊢
+        refine ⟨⟨ht.1.1, ht.1.2⟩, fun x hx => ?_⟩
+        have := TagShape.wordChar_alnum x (ht.2 x hx)
+        simpa using this
+      · cases ht
+
+/-- (a) discharged: every `.tag` on `scanFiltered` output has a builtin or named handle
+(`TagShape.scanFiltered_tagOk` carried over `scanLoop`, bridged by `tagOk_shaped`). -/
+lemma scanFiltered_TagUsesShaped (input : String) (ts : Toks) (hs : scanFiltered input = .ok ts) :
+    TagUsesShaped ts := by
+  intro p hp h suf hpv
+  have hok := TagShape.scanFiltered_tagOk input ts hs p.val
+    (List.mem_map.2 ⟨p, Array.mem_toList_iff.2 hp, rfl⟩)
+  rw [hpv] at hok
+  exact tagOk_shaped h suf hok
+
+/-- `parseStream_ok_checkFrom` on scanner output, with premises (a) and (b) discharged by the
+scanner (`scanFiltered_TagUsesShaped`, `scanFiltered_DirectivesClosed`). -/
 lemma scanFiltered_parseStream_ok_checkFrom (input : String) (ts : Toks)
-    (docs : Array YamlDocument) (hs : scanFiltered input = .ok ts) (hT : TagUsesShaped ts)
+    (docs : Array YamlDocument) (hs : scanFiltered input = .ok ts)
     (h : parseStream ts = .ok docs) :
     ∃ k, k ≤ ts.size ∧
       (k = ts.size ∨ ParseCheckFrom.tok ts k = some .streamEnd ∨ LoopDead ts k) ∧
       checkFrom {} (tokenEvents (ts.extract 0 k)) = true :=
-  parseStream_ok_checkFrom ts docs hT (scanFiltered_DirectivesClosed input ts hs) h
+  parseStream_ok_checkFrom ts docs (scanFiltered_TagUsesShaped input ts hs)
+    (scanFiltered_DirectivesClosed input ts hs) h
 
 /-! ## (c) `streamEnd` is the last token -/
 
@@ -249,11 +289,11 @@ lemma LoopDead_scanFiltered (input : String) (ts : Toks) (hs : scanFiltered inpu
     one — the bracket-depth residue (γ). -/
 lemma scanFiltered_parseStream_ok_checkFrom_full (input : String) (ts : Toks)
     (docs : Array YamlDocument) (hs : scanFiltered input = .ok ts)
-    (hT : TagUsesShaped ts) (h : parseStream ts = .ok docs) :
+    (h : parseStream ts = .ok docs) :
     checkFrom {} (tokenEvents ts) = true ∨
       ∃ k, k ≤ ts.size ∧ LoopDead ts k ∧ DeadResidue (ParseCheckFrom.tok ts k) ∧
         checkFrom {} (tokenEvents (ts.extract 0 k)) = true := by
-  obtain ⟨k, hk, hc, hchk⟩ := scanFiltered_parseStream_ok_checkFrom input ts docs hs hT h
+  obtain ⟨k, hk, hc, hchk⟩ := scanFiltered_parseStream_ok_checkFrom input ts docs hs h
   have hc' : k = ts.size ∨ ParseCheckFrom.tok ts k = some .streamEnd ∨
       (LoopDead ts k ∧ DeadResidue (ParseCheckFrom.tok ts k)) := by
     rcases hc with h1 | h2 | hst
