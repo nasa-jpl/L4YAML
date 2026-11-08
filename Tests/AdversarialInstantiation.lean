@@ -10783,11 +10783,15 @@ def testPackChainCarrier (state : IO.Ref TestCollector) : IO Unit := do
 def testPackBirthsOnDrop (state : IO.Ref TestCollector) : IO Unit := do
   -- P93 (item 457, (ω-births)): the three `on-drop` producers' 21 `PackAlt` writes
   -- (`accum_block_on_closeThenBlock` 13 / `_pendingBlockContent` 4 / `_pendingBlock` 4), read by
-  -- class at the scanner's block pauses.  (A) the level guards `nv ≤ k` — is a mark ever DEEPER
-  -- than the stack top?  (B)/(C) the chain classes — at a `-` pause, how many frames up do the
-  -- marks sit (one: the carried `h_kslotUp` / `nsU` chain; two or more: no carrier)?  And the
-  -- pack's own continuation — at every marked pause and every mark `nv`, does a `:` at column
-  -- `nv` still parse?  Measured, not spent: the pay waits on the library.
+  -- class at the scanner's block pauses.  (A) the level guards AS WRITTEN, at the `-` pause's own
+  -- column `k`: the non-strict `nv ≤ k` (closeThenBlock's `:` route and `-` landing) fails at a mark
+  -- DEEPER than the landing; the strict `nv + 1 ≤ k` (closeThenBlock's map landing, pendingBlock's
+  -- two) fails already at a mark AT the landing column — the sibling shape `? a⏎- b`.  (B)/(C) the
+  -- chain classes — at a `-` pause, how many frames up do the marks sit (one: the carried
+  -- `h_kslotUp` / `nsU` chain; two or more: no carrier)?  And the pack's own continuation — at
+  -- every marked pause and every mark `nv`, with the pause's line KEPT (the landing consumed), does
+  -- a `:` at column `nv` on the next line still parse?  Measured, not spent: the pay waits on the
+  -- library.
   let inputs : List String :=
     [ "a: 1", "- a\n- b", "k:\n  - a\n  - b", "? a\n: b", "- - a\n  - b",
       "k:\n  v: w\n  x: y", "- a: 1\n  b: 2", "? - a\n: b", "a:\n- b", "k:\n- x: 1\n  y: 2",
@@ -10797,9 +10801,11 @@ def testPackBirthsOnDrop (state : IO.Ref TestCollector) : IO Unit := do
       "? {a: b}\n: c", "? a\n: [b]",
       "?\n  - a\n: b", "?\n  ?\n    - a\n  : b\n: c", "- ?\n    - a\n  : b", "k:\n  ?\n    - a\n  : b",
       "?\n  ?\n    ?\n      - a\n    : b\n  : c\n: d", "? - a\n  - b\n: c", "?\n  k:\n    - a\n: b",
-      "?\n  - a\n  - b\n: c", "- ?\n  - a\n  : b", "?\n  - ?\n      - a\n    : b\n: c" ]
+      "?\n  - a\n  - b\n: c", "- ?\n  - a\n  : b", "?\n  - ?\n      - a\n    : b\n: c",
+      "?\n- a\n: b", "k:\n  ?\n  - a\n  : b" ]
   let mut markedPauses := 0
   let mut guardViol : List String := []
+  let mut strictFail : List String := []
   let mut dashPauses := 0
   let mut depth0 := 0
   let mut depth1 := 0
@@ -10818,12 +10824,13 @@ def testPackBirthsOnDrop (state : IO.Ref TestCollector) : IO Unit := do
           if !marks.isEmpty then
             markedPauses := markedPauses + 1
             let top : Int := (sP.indents.back?.map (·.column)).getD (-1)
+            let chars := input.toList
+            let lineEnd := sP.offset + (chars.drop sP.offset |>.takeWhile (· != '\n')).length
             for nv in marks do
               if (nv : Int) > top then
                 guardViol := guardViol ++ [s!"{repr input}@{sP.line}:{sP.col} nv={nv} top={top}"]
               contChecks := contChecks + 1
-              let pre := String.ofList (input.toList.take sP.offset)
-              let pre := if pre.isEmpty || pre.endsWith "\n" then pre else pre ++ "\n"
+              let pre := String.ofList (chars.take lineEnd) ++ "\n"
               let cont := pre ++ String.ofList (List.replicate nv ' ') ++ ": v\n"
               match L4YAML.TokenParser.parseYaml cont with
               | .ok _ => pure ()
@@ -10831,6 +10838,10 @@ def testPackBirthsOnDrop (state : IO.Ref TestCollector) : IO Unit := do
             if c == '-' then
               dashPauses := dashPauses + 1
               for nv in marks do
+                if nv > sP.col then
+                  guardViol := guardViol ++ [s!"{repr input}@{sP.line}:{sP.col} nv={nv} k={sP.col}"]
+                if nv == sP.col then
+                  strictFail := strictFail ++ [s!"{repr input}@{sP.line}:{sP.col} nv={nv}"]
                 let above := (sP.indents.toList.filter (fun e => e.column > (nv : Int))).length
                 if above == 0 then depth0 := depth0 + 1
                 else if above == 1 then
@@ -10845,9 +10856,14 @@ def testPackBirthsOnDrop (state : IO.Ref TestCollector) : IO Unit := do
         | .ok (some sN) => s := sN
         | _ => break
       | _ => break
-  IO.println s!"P93 marked block pauses={markedPauses} guard-violations={guardViol} dash pauses={dashPauses} depth0={depth0} depth1={depth1} (map {depth1Map}) depth2+={depth2} {depth2Ex} continuation checks={contChecks} rejects={rejects}"
-  check state s!"P93 (ω-births) the on-drop classes at the block pauses (item 457): {markedPauses} marked pauses, a mark deeper than the stack top at {guardViol.length} (class A empty), `-` pauses {dashPauses} with marks at depth 0 / 1 / 2+ = {depth0} / {depth1} / {depth2}, the `:` continuation at every mark parses except {rejects}"
-    (markedPauses ≥ 40 && guardViol.isEmpty && depth1 ≥ 5 && rejects.isEmpty &&
+  IO.println s!"P93 marked block pauses={markedPauses} guard-violations={guardViol} strict-fail={strictFail} dash pauses={dashPauses} depth0={depth0} depth1={depth1} (map {depth1Map}) depth2+={depth2} {depth2Ex} continuation checks={contChecks} rejects={rejects}"
+  check state s!"P93 (ω-births) the on-drop classes at the block pauses (item 457): {markedPauses} marked pauses, a mark deeper than the landing / the stack top at {guardViol.length} (the non-strict guards' failure set empty), a mark AT the `-` landing column at {strictFail.length} (the strict guards' failure set — the sibling shape), `-` pauses {dashPauses} with marks at depth 0 / 1 / 2+ = {depth0} / {depth1} / {depth2} (depth 1 all mapping frames: {depth1Map}), the `:` continuation after the pause's line parses except at {rejects}"
+    (markedPauses ≥ 40 && guardViol.isEmpty && depth1 ≥ 5 && depth1Map == depth1 &&
+      strictFail == ["\"? a\\n- b\"@1:0 nv=0", "\"k:\\n  ? a\\n  - b\"@2:2 nv=2",
+        "\"- ? a\\n  - b\"@1:2 nv=2", "\"- ?\\n  - a\\n  : b\"@1:2 nv=2",
+        "\"?\\n- a\\n: b\"@1:0 nv=0", "\"k:\\n  ?\\n  - a\\n  : b\"@2:2 nv=2"] &&
+      rejects == ["\"? a\\n- b\"@1:0 nv=0", "\"k:\\n  ? a\\n  - b\"@2:2 nv=2",
+        "\"- ? a\\n  - b\"@1:2 nv=2"] &&
       depth2Ex == ["\"?\\n  ?\\n    ?\\n      - a\\n    : b\\n  : c\\n: d\"@3:6 nv=0",
         "\"?\\n  - ?\\n      - a\\n    : b\\n: c\"@2:6 nv=0"])
 
