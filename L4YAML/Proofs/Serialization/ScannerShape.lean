@@ -16,7 +16,7 @@ import all L4YAML.Proofs.Serialization.TokenEvents
 `scanFiltered input = .ok ts` as premises.  This module discharges them for real
 scanner output.
 
-* (a) `TagUsesShaped ts` — `scanFiltered_TagUsesShaped`, from `TagShape.scanFiltered_tagOk`
+* (a) `TagUsesShaped ts` — `scanFiltered_TagUsesShaped`, from `TagShape.scanFiltered_emitOk`
   (the per-token `TagInv` carried over `scanLoop`: the only arm that builds a `.tag` is
   `scanTag`, whose handles are `""`, `"!!"`, `"!"` or `"!" ++ word-chars ++ "!"`), bridged
   to the parser's `BuiltinTagHandle ∨ isNamedHandle` by `tagOk_shaped`.
@@ -34,7 +34,8 @@ scanner output.
 * (β2b) `LoopDead`'s index-1 / after-`...` shapes excluded — `LoopDead_scanFiltered`, from
   `DocStartLiveInv.scanFiltered_liveF` (the `LiveInv` carrier over `scanLoop`): a dead token
   there would need a non-boundary token before it.  What `scanFiltered_parseStream_ok_checkFrom_full`
-  still carries is `DeadResidue` — the `.afterDocument` shape (γ) or a `.comment` token.
+  still carries is `DeadResidue` — the `.afterDocument` shape (γ); the `.comment` disjunct is
+  closed by `scanFiltered_noComment` (`TagShape.emitOk`).
 -/
 
 namespace L4YAML.Proofs.Serialization.ScannerShape
@@ -65,12 +66,12 @@ lemma scanFiltered_DirectivesClosed (input : String) (ts : Toks)
 
 /-! ## (a) every tag use has a shaped handle -/
 
-/-- The scanner-side token predicate (`TagShape.tagOk`: `""` or `isTagHandleShaped`) implies the
+/-- The scanner-side token predicate (`TagShape.emitOk`: `""` or `isTagHandleShaped`) implies the
 parser-side one (`BuiltinTagHandle ∨ isNamedHandle`); the named case is `ns-word-char ⊆
 alphanumeric-or-dash` (`TagShape.wordChar_alnum`). -/
-lemma tagOk_shaped (h suf : String) (ht : TagShape.tagOk (.tag h suf) = true) :
+lemma tagOk_shaped (h suf : String) (ht : TagShape.emitOk (.tag h suf) = true) :
     BuiltinTagHandle h ∨ isNamedHandle h = true := by
-  simp only [TagShape.tagOk, Bool.or_eq_true, beq_iff_eq] at ht
+  simp only [TagShape.emitOk, Bool.or_eq_true, beq_iff_eq] at ht
   rcases ht with rfl | ht
   · exact Or.inl (Or.inl rfl)
   · unfold isTagHandleShaped at ht
@@ -89,11 +90,11 @@ lemma tagOk_shaped (h suf : String) (ht : TagShape.tagOk (.tag h suf) = true) :
       · cases ht
 
 /-- (a) discharged: every `.tag` on `scanFiltered` output has a builtin or named handle
-(`TagShape.scanFiltered_tagOk` carried over `scanLoop`, bridged by `tagOk_shaped`). -/
+(`TagShape.scanFiltered_emitOk` carried over `scanLoop`, bridged by `tagOk_shaped`). -/
 lemma scanFiltered_TagUsesShaped (input : String) (ts : Toks) (hs : scanFiltered input = .ok ts) :
     TagUsesShaped ts := by
   intro p hp h suf hpv
-  have hok := TagShape.scanFiltered_tagOk input ts hs p.val
+  have hok := TagShape.scanFiltered_emitOk input ts hs p.val
     (List.mem_map.2 ⟨p, Array.mem_toList_iff.2 hp, rfl⟩)
   rw [hpv] at hok
   exact tagOk_shaped h suf hok
@@ -222,11 +223,17 @@ lemma liveF_dead_contra (F : List YamlToken) (hL : DocStartLive.LiveF F) (hhd : 
     simp only [Option.some.injEq] at hu; subst hu; simp [DocStartLive.Bnd] at hBu
   · rw [h] at hu; simp only [Option.some.injEq] at hu; subst hu; simp [DocStartLive.Bnd] at hBu
 
-/-- The residue of `LoopDead` after (β2): the `.afterDocument` shape (γ), or a `.comment` token
-(the scanner never emits one, but no lemma says so yet). -/
+/-- The residue of `LoopDead` after (β2) and the `.comment` lemma: the `.afterDocument` shape (γ). -/
 def DeadResidue (o : Option YamlToken) : Prop :=
-  ∃ t, o = some t ∧
-    (StreamState.validNextToken .afterDocument t = true ∨ ∃ text, t = .comment text)
+  ∃ t, o = some t ∧ StreamState.validNextToken .afterDocument t = true
+
+/-- The scanner emits no `.comment` token (`TagShape.emitOk`, carried over `scanLoop`). -/
+lemma scanFiltered_noComment (input : String) (ts : Toks) (hs : scanFiltered input = .ok ts)
+    (k : Nat) (text : String) : ParseCheckFrom.tok ts k ≠ some (.comment text) := by
+  intro h
+  rw [tok_eq_toks] at h
+  have := TagShape.scanFiltered_emitOk input ts hs _ (List.mem_of_getElem? h)
+  simp [TagShape.emitOk] at this
 
 /-- (β2): on scanner output the loop's no-progress exit cannot sit at index 1 or right after a
 `...` — the token there is live (`scanFiltered_liveF`), and a dead token at `k` would need a
@@ -240,7 +247,7 @@ lemma LoopDead_scanFiltered (input : String) (ts : Toks) (hs : scanFiltered inpu
   obtain ⟨hdead, hne, hpos⟩ := hd
   have hlen : (toks ts).length = ts.size := by simp [toks]
   rcases hpos with hk1 | hde | ⟨t, ht, hγ⟩
-  all_goals try (right; right; unfold DeadResidue; exact ⟨t, ht, Or.inl hγ⟩)
+  all_goals try (right; right; unfold DeadResidue; exact ⟨t, ht, hγ⟩)
   all_goals
     have hpos' : k = 1 ∨ (toks ts)[k - 1]? = some .documentEnd := by
       first
@@ -256,13 +263,11 @@ lemma LoopDead_scanFiltered (input : String) (ts : Toks) (hs : scanFiltered inpu
       | some t =>
         rw [htk] at hdt hne
         have htk' : (toks ts)[k]? = some t := by rw [← tok_eq_toks]; exact htk
-        by_cases hc : ∃ text, t = .comment text
-        · exact Or.inr (Or.inr ⟨t, rfl, Or.inr hc⟩)
         cases t <;> simp [deadTok] at hdt
         all_goals first
           | exact absurd rfl hne
           | exact Or.inr (Or.inl rfl)
-          | exact absurd ⟨_, rfl⟩ hc
+          | exact absurd htk (scanFiltered_noComment input ts hs k _)
           | exact (liveF_dead_contra _ hL hhd k _ htk' (by decide) hpos').elim
           | (exfalso
              have hmem := List.mem_of_getElem? htk'
