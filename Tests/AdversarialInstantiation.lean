@@ -10788,10 +10788,11 @@ def testPackChainCarrier (state : IO.Ref TestCollector) : IO Unit := do
 def testPackBirthsOnDrop (state : IO.Ref TestCollector) : IO Unit := do
   -- P93 (item 457, (ω-births)): the three `on-drop` producers' 21 `PackAlt` writes
   -- (`accum_block_on_closeThenBlock` 13 / `_pendingBlockContent` 4 / `_pendingBlock` 4), read by
-  -- class at the scanner's block pauses.  (A) the level guards AS WRITTEN, at the `-` pause's own
-  -- column `k`: the non-strict `nv ≤ k` (closeThenBlock's `:` route and `-` landing) fails at a mark
-  -- DEEPER than the landing; the strict `nv + 1 ≤ k` (closeThenBlock's map landing, pendingBlock's
-  -- two) fails already at a mark AT the landing column — the sibling shape `? a⏎- b`.  (B)/(C) the
+  -- class at the scanner's block pauses.  (A) the level guards at the `-` pause's own column `k`:
+  -- the non-strict `nv ≤ k` (closeThenBlock's `-` landings) fails at a mark DEEPER than the
+  -- landing; a mark AT the `-`'s column (`? a⏎- b`, `?⏎- a`) is counted too — item 462 read the
+  -- STRICT `nv + 1 ≤ k` guards into the `:`/`?` opener arm, so that count is a `-` landing fact
+  -- (the keyed-sibling / sequence-as-key shapes), not a strict-guard domain.  (B)/(C) the
   -- chain classes — at a `-` pause, how many frames up do the marks sit (one: the carried
   -- `h_kslotUp` / `nsU` chain; two or more: no carrier)?  And the pack's own continuation — at
   -- every marked pause and every mark `nv`, with the pause's line KEPT (the landing consumed), does
@@ -10862,7 +10863,7 @@ def testPackBirthsOnDrop (state : IO.Ref TestCollector) : IO Unit := do
         | _ => break
       | _ => break
   IO.println s!"P93 marked block pauses={markedPauses} guard-violations={guardViol} strict-fail={strictFail} dash pauses={dashPauses} depth0={depth0} depth1={depth1} (map {depth1Map}) depth2+={depth2} {depth2Ex} continuation checks={contChecks} rejects={rejects}"
-  check state s!"P93 (ω-births) the on-drop classes at the block pauses (item 457): {markedPauses} marked pauses, a mark deeper than the landing / the stack top at {guardViol.length} (the non-strict guards' failure set empty), a mark AT the `-` landing column at {strictFail.length} (the strict guards' failure set — the sibling shape), `-` pauses {dashPauses} with marks at depth 0 / 1 / 2+ = {depth0} / {depth1} / {depth2} (depth 1 all mapping frames: {depth1Map}), the `:` continuation after the pause's line parses except at {rejects}"
+  check state s!"P93 (ω-births) the on-drop classes at the block pauses (item 457): {markedPauses} marked pauses, a mark deeper than the landing / the stack top at {guardViol.length} (the non-strict guards' failure set empty), a mark AT the `-` landing column at {strictFail.length} (the keyed-sibling / sequence-as-key shapes; item 462: the strict guards are the `:`/`?` arm's, not the `-`'s), `-` pauses {dashPauses} with marks at depth 0 / 1 / 2+ = {depth0} / {depth1} / {depth2} (depth 1 all mapping frames: {depth1Map}), the `:` continuation after the pause's line parses except at {rejects}"
     (markedPauses ≥ 40 && guardViol.isEmpty && depth1 ≥ 5 && depth1Map == depth1 &&
       strictFail == ["\"? a\\n- b\"@1:0 nv=0", "\"k:\\n  ? a\\n  - b\"@2:2 nv=2",
         "\"- ? a\\n  - b\"@1:2 nv=2", "\"- ?\\n  - a\\n  : b\"@1:2 nv=2",
@@ -10871,6 +10872,89 @@ def testPackBirthsOnDrop (state : IO.Ref TestCollector) : IO Unit := do
         "\"- ? a\\n  - b\"@1:2 nv=2"] &&
       depth2Ex == ["\"?\\n  ?\\n    ?\\n      - a\\n    : b\\n  : c\\n: d\"@3:6 nv=0",
         "\"?\\n  - ?\\n      - a\\n    : b\\n: c\"@2:6 nv=0"])
+
+def testPackStrictGuardLane (state : IO.Ref TestCollector) : IO Unit := do
+  -- P95 (item 462, (ω-pay-births) step (b)): the four STRICT guards `nv + 1 ≤ k` / `n + 1 ≤ k`
+  -- (`accum_block_on_closeThenBlock` L28648 / L28678, `accum_block_on_pendingBlock` L30649 /
+  -- L30690) sit in the `:` / `?` OPENER arm (`indicator_open_map`), not at a `-` landing: `k` is
+  -- the `:`/`?`'s column, `n` the park's own mark.  Read at the scanner, for every block `:`/`?`
+  -- pause on a marked state: (i) the lane — `k > n` (nested), `k = n` (the park's own `:` or a
+  -- sibling `?`), `k < n` (a dedent to an enclosing mark); (ii) the step — the marks after the
+  -- token are `before.filter (· < k)` (+ `[k]` for a `?`): the park's own mark is consumed or
+  -- closed, never carried; (iii) the ancestors' surface — after the landing's WHOLE entry (its
+  -- node, and for a `?` its own `:` value line at `k`) completes, a `:` at every surviving mark's
+  -- column parses; (iv) how many `k ≤ n` pauses have NO ancestor — the park's own mark's pack is
+  -- still owed there (`MarkedColsIn sc ns` holds every mark of `sc`).  Measured, not spent.
+  let inputs : List String :=
+    [ "? a\n: b", "?\n- a\n: b", "?\n  - a\n: b", "k:\n  ?\n  - a\n  : b", "- ?\n  - a\n  : b",
+      "?\n  ?\n    - a\n  : b\n: c", "?\n  ?\n    ?\n      - a\n    : b\n  : c\n: d",
+      "?\n  - ?\n      - a\n    : b\n: c", "- ?\n    - a\n  : b", "?\n  k:\n    - a\n: b",
+      "? a\n? b\n: c", "k:\n  ? a\n  : b", "- ? a\n  : b", "? a: 1\n: b", "- a\n- ? b\n  : c",
+      "? [a, b]\n: c", "? {a: b}\n: c", "?\n  - [a, ? b : c]\n: d", "?\n  ?\n    [? a : b]\n  : c\n: d",
+      "?\n  ?\n    - a\n  ? b\n: w", "?\n  ?\n  - a\n  : b\n: c", "? |\n  k\n: v",
+      "?\n  ? a\n  : b\n  ? c\n  : d\n: e", "- ?\n    ?\n      ?\n        - a\n      : b\n    : c\n  : d",
+      "k:\n  ?\n    ?\n      ?\n        a\n      : b\n    : c\n  : d", "?\n  ? a\n: b",
+      "?\n  ?\n    ? a\n: b", "?\n  ? a\n  ? b\n: c", "?\n  ?\n    - a\n: b", "? a\n:\n  ? b\n  : c" ]
+  let mut pauses := 0
+  let mut nested := 0
+  let mut own := 0
+  let mut dedent := 0
+  let mut stepExc : List String := []
+  let mut noAnc := 0
+  let mut ancChecks := 0
+  let mut rejects : List String := []
+  for input in inputs do
+    let chars := input.toList
+    let lines := (input.splitOn "\n").toArray
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:80] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        let before := L4YAML.Proofs.RegisterWitness.markedCols s
+        let isInd := (c == ':' || c == '?') &&
+          (chars[sP.offset + 1]?.map (fun ch => ch == ' ' || ch == '\n')).getD true
+        let after := match L4YAML.Scanner.scanNextToken s with
+          | .ok (some sN) => some (L4YAML.Proofs.RegisterWitness.markedCols sN)
+          | _ => none
+        if isInd && sP.flowLevel == 0 && !before.isEmpty then
+          pauses := pauses + 1
+          let n := before.foldl max 0
+          let k := sP.col
+          if k > n then nested := nested + 1
+          else if k == n then own := own + 1
+          else dedent := dedent + 1
+          let surv := before.filter (· < k)
+          let expected := surv ++ (if c == '?' then [k] else [])
+          if after != some expected then
+            stepExc := stepExc ++ [s!"{repr input}@{sP.line}:{k} c={c} before={before} after={after}"]
+          if k ≤ n && surv.isEmpty then noAnc := noAnc + 1
+          let indentOf (l : String) : Nat := (l.toList.takeWhile (· == ' ')).length
+          let mut last := sP.line
+          for i in [sP.line + 1 : lines.size] do
+            let l := lines[i]!
+            let blank := l.toList.all (· == ' ')
+            let valueLine := c == '?' && indentOf l == k &&
+              (l.toList.drop k).head? == some ':' &&
+              ((l.toList.drop (k + 1)).head?.map (· == ' ')).getD true
+            if i == last + 1 && (blank || indentOf l > k || valueLine) then last := i
+          let pre := "\n".intercalate (lines.toList.take (last + 1))
+          for nv in surv do
+            ancChecks := ancChecks + 1
+            let cont := pre ++ "\n" ++ String.ofList (List.replicate nv ' ') ++ ": v\n"
+            match L4YAML.TokenParser.parseYaml cont with
+            | .ok _ => pure ()
+            | .error _ => rejects := rejects ++ [s!"{repr input}@{sP.line}:{k} c={c} nv={nv}"]
+        match after with
+        | some _ =>
+          match L4YAML.Scanner.scanNextToken s with
+          | .ok (some sN) => s := sN
+          | _ => break
+        | none => break
+      | _ => break
+  IO.println s!"P95 marked `:`/`?` pauses={pauses} nested={nested} own={own} dedent={dedent} step-exceptions={stepExc} no-ancestor k≤n={noAnc} ancestor checks={ancChecks} rejects={rejects}"
+  check state s!"P95 (ω-pay-births) the strict guards' lane at the `:`/`?` landings (item 462): {pauses} marked pauses — k > n {nested} / k = n {own} / k < n {dedent}; the step (marks after = survivors below k, + the `?`'s own) off at {stepExc.length}; {noAnc} of the k ≤ n pauses have no ancestor (the park's own mark's pack still owed there); the ancestors' `:` continuation after the whole entry parses at every survivor except {rejects}"
+    (pauses ≥ 30 && nested ≥ 5 && own ≥ 15 && dedent ≥ 3 && stepExc.isEmpty && noAnc ≥ 10 &&
+      ancChecks ≥ 10 && rejects.isEmpty)
 
 def testSeqTopRefusedArm (state : IO.Ref TestCollector) : IO Unit := do
   -- P89 (item 438, (χ-seqtop-refused)): the negative arm `ExplicitValueRefused s ∨ SeqTopKey s`
@@ -13482,6 +13566,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testThreeArmsFields state
   testSeqTopRefusedArm state
   testPackChainCarrier state
+  testPackStrictGuardLane state
   testPackAltMarks state
   testPackAltNegative state
   testPackAltUnmarkedRefused state
