@@ -279,7 +279,7 @@ pins below are what makes that checkable rather than asserted. -/
     in one.
     259 on 2026-10-23 (after `Serialization.EventsOf` and `RefLex`), when `Proofs.Production.Acceptance.Quoted` joined the
     library — the one-line quoted-scalar scanner converses. -/
-def expectedClosure : Nat := 282  -- +1 on 2026-11-08: `Proofs.Scanner.StructDepth` ((γ1)); 281 was +1 on 2026-11-08: `Proofs.Scanner.TagShape` (S3 (a)); 280 was +1 on 2026-11-07: `Proofs.Scanner.DocStartLiveInv` (S3 (β2b)); 279 was +1 on 2026-11-07: `Proofs.Scanner.FlowSync` (S3 (β2a)); 278 was +1 `Proofs.Scanner.DocStartLive` (S3 (β1)); 277 was +3 on 2026-11-05: `Proofs.Scanner.ScannerDirectivesPresent`, `Proofs.Scanner.DirectiveRuns`,
+def expectedClosure : Nat := 283  -- +1 on 2026-11-08: `Proofs.Serialization.TraceOf.LeafBridge` (S3 slice (1)); 282 was +1 on 2026-11-08: `Proofs.Scanner.StructDepth` ((γ1)); 281 was +1 on 2026-11-08: `Proofs.Scanner.TagShape` (S3 (a)); 280 was +1 on 2026-11-07: `Proofs.Scanner.DocStartLiveInv` (S3 (β2b)); 279 was +1 on 2026-11-07: `Proofs.Scanner.FlowSync` (S3 (β2a)); 278 was +1 `Proofs.Scanner.DocStartLive` (S3 (β1)); 277 was +3 on 2026-11-05: `Proofs.Scanner.ScannerDirectivesPresent`, `Proofs.Scanner.DirectiveRuns`,
   -- `Proofs.Serialization.ScannerShape` (S3 (b)); 274 was +1 `Proofs.Serialization.ParseCheckFrom` (S5 slice 1)
 
 /-- `lake run drop-sweep`'s reading, re-derivable in one command and pinned

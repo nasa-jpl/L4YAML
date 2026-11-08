@@ -60,8 +60,8 @@ lemma collectAnchorNameLoop_chars (fuel : Nat) : ∀ (sc : ScannerState) (sp : S
         have hlb : isLineBreakBool c = false :=
           bool_not_true_imp_false
             (Bool.and_eq_true_iff.mp (Bool.and_eq_true_iff.mp (Bool.and_eq_true_iff.mp hcond).1).1).2
-        have hne_nl : c ≠ '\n' := by intro heq; rw [heq] at hlb; exact absurd hlb (by native_decide)
-        have hne_cr : c ≠ '\r' := by intro heq; rw [heq] at hlb; exact absurd hlb (by native_decide)
+        have hne_nl : c ≠ '\n' := by intro heq; rw [heq] at hlb; exact absurd hlb (by decide)
+        have hne_cr : c ≠ '\r' := by intro heq; rw [heq] at hlb; exact absurd hlb (by decide)
         have hcorr_adv := advance_non_newline_corr sc c rest hcorr hmore hne_nl hne_cr
         have hfuel' : sc.advance.inputEnd - sc.advance.offset ≤ fuel' := by
           have h1 := ScannerProgress.advance_offset_lt sc hmore
@@ -86,7 +86,7 @@ lemma takeWhile_all (p : Char → Bool) : ∀ (L : List Char), L.all p = true �
   | [], _ => rfl
   | c :: cs, h => by
     simp only [List.all_cons, Bool.and_eq_true] at h
-    simp [List.takeWhile_cons, h.1, takeWhile_all p cs h.2]
+    simp [h.1, takeWhile_all p cs h.2]
 
 /-- `anchorEvents` on a `&`-led span whose tail is all anchor chars names exactly that tail. -/
 lemma anchorEvents_span (L : List Char) (h : L.all isAnchorCharBool = true) :

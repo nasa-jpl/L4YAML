@@ -357,7 +357,9 @@ def expectedSteps : String :=
 -- `scanFiltered_parseStream_ok_checkFrom_full` (ScannerShape) hold the scan entry equations.
 -- 2026-11-08 ((γ2α)): stepHolders 2101 → 2100 — `ScannerShape.LoopDead_scanFiltered` (a scan-entry
 -- holder) deleted with the loop's no-progress exit.
-  "stepHolders=2100 dispHolders=403 dispTwoCorr=31 fns=75 fnsIx=26"
+  -- 2026-11-08 (item 459, S3 slice (1)): stepHolders 2100 → 2102 — `LeafBridge.scanAnchorOrAlias_trace` and
+  -- `LeafBridge.scanTag_trace` hold a `scanAnchorOrAlias … = .ok s'` / `scanTag sc = .ok s'` step; dispatch rows unchanged.
+  "stepHolders=2102 dispHolders=403 dispTwoCorr=31 fns=75 fnsIx=26"
 
 /-- **The ladder, at each population.**  `edge` is a production whose right
     endpoint is the step's output; `chain` requires a path to it from another
