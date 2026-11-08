@@ -367,7 +367,9 @@ def expectedSteps : String :=
   -- 2026-11-08 (item 464, S3 slice (3) first PR): stepHolders 2112 → 2122, dispHolders 409 → 416 — the
   -- `TraceOf/FlowBridge` lemmas (`indicatorTok`, five indicator twins, two quoted twins, `goOut_indicator`)
   -- and the seven `ScannerShape.dispatchFlowIndicators_*` / `dispatchContent_*Quoted_trace` consumers.
-  "stepHolders=2122 dispHolders=416 dispTwoCorr=31 fns=75 fnsIx=26"
+  -- 2026-11-08 (item 464, review): stepHolders 2122 → 2124 — the key-context twins `FlowBridge.scanDoubleQuoted_key_trace` /
+  -- `scanSingleQuoted_key_trace` hold the quoted scanner step; the two `*_blockKey_to_key` relabels hold none.
+  "stepHolders=2124 dispHolders=416 dispTwoCorr=31 fns=75 fnsIx=26"
 
 /-- **The ladder, at each population.**  `edge` is a production whose right
     endpoint is the step's output; `chain` requires a path to it from another

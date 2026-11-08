@@ -134,6 +134,59 @@ lemma scanSingleQuoted_trace (sc : ScannerState) (sp : SurfPos)
   · injection hok with h_eq; subst h_eq
     exact ⟨sp', _, by simp only [ScannerState.emitAt, indicatorTok]; rw [h_collect, h_adv], hcorr', htr⟩
 
+
+/-! ### Key contexts
+
+`[110] nb-double-text(n, block-key | flow-key)` is `[111] nb-double-one-line`, so a quoted scalar is a
+KEY derivation only when the scanner's run stayed on its line (`s'.line = sc.line`); the body then
+transports between the two key contexts (`SNbDoubleText`'s two key arms are the same relation).
+The premise is PR 2's to discharge at the `:` arm — and NOT every scanner-accepted quoted flow key
+has it (`{"a⏎ b": c}` is accepted; P102 pins the set), which is a scanner-vs-grammar finding
+recorded in item 464. -/
+
+/-- `SCDoubleQuoted` relabels between the two key contexts (same one-line body). -/
+lemma SCDoubleQuoted_blockKey_to_key {s s' : SurfPos} (c : YamlContext)
+    (hc : c = .blockKey ∨ c = .flowKey) (h : SCDoubleQuoted 0 .blockKey s s') :
+    SCDoubleQuoted 0 c s s' := by
+  obtain ⟨_, _, _, h_open, h_text, h_close⟩ := h
+  exact SCDoubleQuoted.mk 0 c _ _ _ _ h_open
+    (by rcases hc with rfl | rfl <;> exact h_text) h_close
+
+/-- `SCSingleQuoted` relabels between the two key contexts (same one-line body). -/
+lemma SCSingleQuoted_blockKey_to_key {s s' : SurfPos} (c : YamlContext)
+    (hc : c = .blockKey ∨ c = .flowKey) (h : SCSingleQuoted 0 .blockKey s s') :
+    SCSingleQuoted 0 c s s' := by
+  obtain ⟨_, _, _, h_open, h_text, h_close⟩ := h
+  exact SCSingleQuoted.mk 0 c _ _ _ _ h_open
+    (by rcases hc with rfl | rfl <;> exact h_text) h_close
+
+/-- `"…"` as a KEY: with the run on one line, the same token over an `SCDoubleQuoted 0 c` span for
+either key context — `TFlowContent.doubleQ`, trace `[]`. -/
+lemma scanDoubleQuoted_key_trace (sc : ScannerState) (sp : SurfPos)
+    (hcorr : ScannerSurfCorr sc sp) (hpeek : sc.peek? = some '"')
+    (s' : ScannerState) (hok : scanDoubleQuoted sc = .ok s') (h_line : s'.line = sc.line)
+    (c : YamlContext) (hc : c = .blockKey ∨ c = .flowKey) :
+    ∃ sp' v, s'.tokens = sc.tokens.push (indicatorTok sc (.scalar v .doubleQuoted)) ∧
+      ScannerSurfCorr s' sp' ∧ TFlowContent 0 c sp sp' [] := by
+  obtain ⟨spK, hK, hcorrK⟩ := scanDoubleQuoted_to_blockKey_oneLine sc sp hcorr hpeek h_line hok
+  obtain ⟨sp', v, htok, hcorr', _⟩ := scanDoubleQuoted_trace sc sp hcorr hpeek s' hok
+  have hsp : sp' = spK := ScannerSurfCorr_unique hcorr' hcorrK
+  subst hsp
+  exact ⟨sp', v, htok, hcorr', TFlowContent.doubleQ _ _ _ _ (SCDoubleQuoted_blockKey_to_key c hc hK)⟩
+
+/-- `'…'` as a KEY: the single-quoted twin. -/
+lemma scanSingleQuoted_key_trace (sc : ScannerState) (sp : SurfPos)
+    (hcorr : ScannerSurfCorr sc sp) (hpeek : sc.peek? = some '\'')
+    (s' : ScannerState) (hok : scanSingleQuoted sc = .ok s') (h_line : s'.line = sc.line)
+    (c : YamlContext) (hc : c = .blockKey ∨ c = .flowKey) :
+    ∃ sp' v, s'.tokens = sc.tokens.push (indicatorTok sc (.scalar v .singleQuoted)) ∧
+      ScannerSurfCorr s' sp' ∧ TFlowContent 0 c sp sp' [] := by
+  obtain ⟨spK, hK, hcorrK⟩ := scanSingleQuoted_to_blockKey_oneLine sc sp hcorr hpeek h_line hok
+  obtain ⟨sp', v, htok, hcorr', _⟩ := scanSingleQuoted_trace sc sp hcorr hpeek s' hok
+  have hsp : sp' = spK := ScannerSurfCorr_unique hcorr' hcorrK
+  subst hsp
+  exact ⟨sp', v, htok, hcorr', TFlowContent.singleQ _ _ _ _ (SCSingleQuoted_blockKey_to_key c hc hK)⟩
+
 /-- Every token this module pushes is silent under `goOut`, from any pending state. -/
 lemma goOut_indicator (sc : ScannerState) (v : YamlToken)
     (hv : TokenEvents.tokenEvent v = none) (p : List String)

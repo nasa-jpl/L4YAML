@@ -13741,7 +13741,10 @@ def own : List String :=
    "k: \"v\"", "k: 'v'", "\"k\": v", "'k': v", "- \"a\"\n- 'b'", "[\"a\", 'b']", "{\"a\": 'b'}",
    "[\"a\", \"b\"]", "{'a': 'b', \"c\": \"d\"}", "\"a\": \"b\"", "? \"a\"\n: 'b'", "\"a\" # c",
    "\"a\"\n\"b\"", "--- \"a\"", "\"a\"\n---\n'b'", "\uFEFF\"a\"", "\uFEFF[a]", "&x \"a\"", "!!str 'a'",
-   "\"\\q\"", "\"abc", "'abc", "\"a\nb", "k: \"a\n\nb\"", "\"a\\\"b\"", "'a\"b'", "\"a'b\""]
+   "\"\\q\"", "\"abc", "'abc", "\"a\nb", "k: \"a\n\nb\"", "\"a\\\"b\"", "'a\"b'", "\"a'b\"",
+   -- quoted IMPLICIT KEYS spanning a line (review finding, slice (3) PR 1): the grammar's
+   -- implicit keys are one-line (`c-s-implicit-json-key(flow-key)`); what does the scanner say?
+   "{\"a\n b\": c}", "[\"a\n b\": c]", "{'a\n b': c}", "\"a\n b\": c", "{\"a b\": c}", "{'a': b, \"c\n d\": e}"]
 
 def allRows : List String := (P101.allRows ++ own).eraseDups
 
@@ -13791,6 +13794,8 @@ structure Tally where
   quotedRefused : List String := []
   quotedBad : List String := []
   dispBad : List String := []
+  keySites : Nat := 0
+  keyMultiLine : List (String × Nat) := []
 
 /-- The lemmas' token conclusion, exactly: the prior tokens are kept and one token is pushed at
 `currentPos` (`endPos` defaulting to it, as `emit` / `emitAt` write it). -/
@@ -13880,6 +13885,12 @@ def tally (rows : List String) : Tally := Id.run do
                  sp.length ≥ 2 && s'.peekBack? == some q && s'.input == st.input
               then pure ()
               else t := { t with quotedBad := s!"{site}: span {repr (String.ofList sp)}" :: t.quotedBad }
+              -- a quoted scalar in KEY position: the scanner's `key` token precedes it (flow / block
+              -- implicit keys) — does its run stay on one line (the lemma's `s'.line = sc.line`)?
+              let isKey := i > 0 && (ts[i-1]!).val == .key
+              if isKey then
+                t := { t with keySites := t.keySites + 1 }
+                if s'.line != st.line then t := { t with keyMultiLine := (s, tk.pos.offset) :: t.keyMultiLine }
               match scanNextToken_dispatchContent st q with
               | .ok s'' => if s''.tokens != s'.tokens then t := { t with dispBad := site :: t.dispBad }
               | .error _ => t := { t with dispBad := s!"{site}: dispatcher" :: t.dispBad }
@@ -13935,6 +13946,12 @@ def testFlowBridge (state : IO.Ref TestCollector) : IO Unit := do
     (["{a]", "[a}"].all (fun s => P102.refusedWith s (fun | .mismatchedFlowClose .. => true | _ => false))) ""
   checkM state "P102(viii) unterminated / badly escaped quoted scalars are refused"
     (["\"abc", "'abc", "\"a\nb", "\"\\q\""].all (fun s => P102.refusedWith s (fun _ => true))) ""
+  -- (x) quoted implicit keys: the key twins' one-line premise, and the scanner/grammar divergence
+  checkM state s!"P102(x) quoted scalars in key position: {t.keySites} sites, {t.keyMultiLine.length} whose run leaves the line — exactly the multi-line quoted FLOW keys the scanner accepts (the grammar's implicit keys are one-line): {repr t.keyMultiLine.reverse}"
+    (t.keySites ≥ 15 && t.keyMultiLine.length == 4 &&
+     t.keyMultiLine.reverse == [("{\"a\n b\": c}", 1), ("[\"a\n b\": c]", 1), ("{'a\n b': c}", 1), ("{'a': b, \"c\n d\": e}", 9)]) ""
+  checkM state "P102(x) the block form \"a\n b\": c is refused (invalidImplicitKey) — the scanner has the one-line rule for block implicit keys, not for flow"
+    (P102.refusedWith "\"a\n b\": c" (fun | .invalidImplicitKey .. => true | _ => false)) ""
   -- (ix) term-level instances
   checkM state "P102(ix) goOut [flowSequenceStart, flowEntry, flowSequenceEnd] [\"!e!\"] = ([], [\"!e!\"])"
     (goOut [tok .flowSequenceStart, tok .flowEntry, tok .flowSequenceEnd] ["!e!"] == ([], ["!e!"])) ""
