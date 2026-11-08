@@ -14105,6 +14105,13 @@ def testFlowWalk (state : IO.Ref TestCollector) : IO Unit := do
     (t.shapeBad.isEmpty && t.closeShape.foldl (· + ·.2) 0 == t.frames) s!"{repr (t.shapeBad.take 6)}"
   checkM state s!"P103(v) midNode+midKey {sh "/midNode" + sh "/midKey"}, betweenEntries {sh "/betweenEntries"}, betweenEmpty {sh "/betweenEmpty"}, betweenHeld {sh "/betweenHeld"}, midColon {sh "/midColon"}, midEmptyColon {sh "/midEmptyColon"}, midExplicitKey {sh "/midExplicitKey"}, midExplicitColon {sh "/midExplicitColon"}, midQuestion {sh "/midQuestion"}, midQuestionEmptyColon {sh "/midQuestionEmptyColon"}"
     (sh "/midNode" + sh "/midKey" ≥ 40 && sh "/betweenEntries" ≥ 40 && sh "/betweenEmpty" ≥ 5 && sh "/betweenHeld" ≥ 4 && sh "/midColon" ≥ 1) ""
+  -- the reading pinned exactly (review on item 465: a predicted zero that is never asserted is no pin)
+  checkM state "P103(v) exact: midNode 94 (1:76, 2:14, 3:4), midKey 5, betweenEntries 67, betweenEmpty 11, betweenHeld 4, midColon 1 ({a:}), midExplicitKey 1 ([? a]); midEmptyColon / midExplicitColon / midQuestion / midQuestionEmptyColon 0"
+    (sh "/midNode" == 94 && P103.at_ { t with closeAt := t.closeShape } "1:seq/midNode" == 76 && sh "/midKey" == 5
+      && sh "/betweenEntries" == 67 && sh "/betweenEmpty" == 11 && sh "/betweenHeld" == 4
+      && sh "/midColon" == 1 && P103.at_ { t with closeAt := t.closeShape } "1:map/midColon" == 1
+      && sh "/midExplicitKey" == 1 && P103.at_ { t with closeAt := t.closeShape } "1:seq/midExplicitKey" == 1
+      && sh "/midEmptyColon" == 0 && sh "/midExplicitColon" == 0 && sh "/midQuestion" == 0 && sh "/midQuestionEmptyColon" == 0) ""
 
 end P103Test
 
