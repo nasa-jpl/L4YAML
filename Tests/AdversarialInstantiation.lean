@@ -13497,7 +13497,11 @@ def own : List String :=
    "%YAML 1.2\n%YAML 1.2\n---\na", "---\n%TAG !e! tag:x:\n---\na",
    -- separation after `%TAG`: none / tab / two spaces / none before the prefix
    "%TAG!e! tag:x:\n---\n!e!a b", "%TAGX !e! tag:x:\n---\na", "%TAG\t!e! tag:x:\n---\na",
-   "%TAG  !e!  tag:x:\n---\na", "%TAG !e!tag:x:\n---\na", "%YAML 1.2 !e!\n---\na"]
+   "%TAG  !e!  tag:x:\n---\na", "%TAG !e!tag:x:\n---\na", "%YAML 1.2 !e!\n---\na",
+   -- handle shapes the lexer's `! word+ !` prefix read and the scanner's whole-run read could split on
+   "%TAG !e!x! tag:x:\n---\na", "%TAG !e!! tag:x:\n---\na", "%TAG !!e! tag:x:\n---\na",
+   "%TAG !e tag:x:\n---\na", "%TAG !-e! tag:x:\n---\n!-e!a b", "%TAG !e-1! tag:x:\n---\na",
+   "%TAG !e!\n---\na", "%TAG\n---\na", "%TAG !e! tag:x: #c\n---\na", "%TAG !e! tag:x:\r\n---\na"]
 
 def lineAt (s : String) (o : Nat) : List Char :=
   (P100.dropBytes s.toList o).takeWhile (fun c => c != '\n' && c != '\r')
