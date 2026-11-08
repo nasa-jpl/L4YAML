@@ -9,17 +9,17 @@ public import L4YAML.Proofs.Scanner.DocStartLiveInv
 
 @[expose] public section Blanket
 
-/-! # Every `.tag` the scanner emits has a shaped handle (capstone 7.7, stream S3, obligation (a))
+/-! # Every `.tag` the scanner emits has a shaped handle, and it emits no `.comment` (capstone 7.7, stream S3, obligation (a) and the `.comment` residue)
 
     `ParseCheckFrom.TagUsesShaped ts` — every `.tag h _` in `ts` has `h ∈ {"", "!", "!!"}` or
     `isNamedHandle h` — is the one scanner-shape premise of `parseStream_ok_checkFrom` that
     `ScannerShape` still took from outside.  This module discharges it for real scanner output.
 
-    The carrier is a per-token invariant, `TagInv s := ∀ t ∈ vals s, tagOk t`, with
-    `tagOk (.tag h _) := h == "" || isTagHandleShaped h` (the scanner's own directive-side handle
+    The carrier is a per-token invariant, `TagInv s := ∀ t ∈ vals s, emitOk t`, with
+    `emitOk (.tag h _) := h == "" || isTagHandleShaped h` (the scanner's own directive-side handle
     predicate, `Scanner/Document.lean`; `ScannerShape.tagOk_shaped` bridges it to the parser's
     `BuiltinTagHandle ∨ isNamedHandle`, resting on `isWordCharBool c → c.isAlphanum ∨ c = '-'`).
-    Each `scanNextToken` arm is shown to be a `TagExt s s' := ∀ t ∈ vals s', t ∈ vals s ∨ tagOk t`
+    Each `scanNextToken` arm is shown to be a `TagExt s s' := ∀ t ∈ vals s', t ∈ vals s ∨ emitOk t`
     — every token it writes (appended or, for `scanValuePrepare`'s retroactive slots, `set`) is
     either old or shaped — so `TagInv` is carried without any side invariant.  The only arm that
     builds a `.tag` is `scanTag`: `scanVerbatimTag` emits `""`, `scanSecondaryTag` `"!!"`, and
@@ -27,7 +27,10 @@ public import L4YAML.Proofs.Scanner.DocStartLiveInv
     `collectTagHandleLoop` collected (`collectTagHandleLoop_chars`), which is shaped
     (`shaped_named`; `w = ""` gives `"!!"`).
 
-    Rule 2 first: `Tests/AdversarialInstantiation.lean`, Priority 95. -/
+    The same carrier excludes `.comment` tokens (`emitOk (.comment _) = false`): no arm builds one,
+    so `DeadResidue`'s `.comment` disjunct (item 449) is closed by `ScannerShape.LoopDead_scanFiltered`.
+
+    Rule 2 first: `Tests/AdversarialInstantiation.lean`, Priority 95 (tags) and 96 (comments). -/
 
 namespace L4YAML.Proofs.TagShape
 
@@ -39,17 +42,19 @@ open L4YAML.Proofs.FlowAdjacency L4YAML.Proofs.CloseStaleExplicitKey
 
 /-! ## The predicate, the extension relation, the invariant -/
 
-/-- A token is tag-shaped: not a `.tag`, or a `.tag` whose handle is `""` (verbatim) or passes
-the scanner's `isTagHandleShaped` (`"!"`, `"!!"`, `"!word!"`). -/
-def tagOk : YamlToken → Bool
+/-- A token the scanner may emit, as far as tags and comments go: a `.tag` whose handle is `""`
+(verbatim) or passes the scanner's `isTagHandleShaped` (`"!"`, `"!!"`, `"!word!"`); never a
+`.comment` (comments go to `skipToContent`'s side channel, not `tokens`); anything else. -/
+def emitOk : YamlToken → Bool
   | .tag h _ => h == "" || isTagHandleShaped h
+  | .comment _ => false
   | _ => true
 
 /-- Every token of `s'` is a token of `s` or is tag-shaped. -/
-def TagExt (s s' : ScannerState) : Prop := ∀ t ∈ vals s', t ∈ vals s ∨ tagOk t = true
+def TagExt (s s' : ScannerState) : Prop := ∀ t ∈ vals s', t ∈ vals s ∨ emitOk t = true
 
 /-- Every token of `s` is tag-shaped. -/
-def TagInv (s : ScannerState) : Prop := ∀ t ∈ vals s, tagOk t = true
+def TagInv (s : ScannerState) : Prop := ∀ t ∈ vals s, emitOk t = true
 
 lemma TagInv.of {s s' : ScannerState} (hI : TagInv s) (hE : TagExt s s') : TagInv s' :=
   fun t ht => (hE t ht).elim (hI t) id
@@ -66,18 +71,18 @@ lemma TagExt.trans {a b c : ScannerState} (h1 : TagExt a b) (h2 : TagExt b c) : 
   fun t ht => (h2 t ht).elim (fun hb => h1 t hb) Or.inr
 
 lemma TagExt.append {s s' : ScannerState} (M : List YamlToken) (hv : vals s' = vals s ++ M)
-    (hM : ∀ t ∈ M, tagOk t = true) : TagExt s s' := by
+    (hM : ∀ t ∈ M, emitOk t = true) : TagExt s s' := by
   intro t ht; rw [hv] at ht
   rcases List.mem_append.1 ht with h | h
   · exact Or.inl h
   · exact Or.inr (hM t h)
 
 lemma TagExt.snoc {s s' : ScannerState} {u : YamlToken} (hv : vals s' = vals s ++ [u])
-    (hu : tagOk u = true) : TagExt s s' :=
+    (hu : emitOk u = true) : TagExt s s' :=
   TagExt.append [u] hv (fun t ht => by simp at ht; subst ht; exact hu)
 
 lemma TagExt.set {s s' : ScannerState} {i : Nat} {u : YamlToken} (hv : vals s' = (vals s).set i u)
-    (hu : tagOk u = true) : TagExt s s' := by
+    (hu : emitOk u = true) : TagExt s s' := by
   intro t ht; rw [hv] at ht
   rcases List.mem_or_eq_of_mem_set ht with h | rfl
   · exact Or.inl h
@@ -134,10 +139,10 @@ lemma collectTagHandleLoop_chars : ∀ (fuel : Nat) (s : ScannerState) (acc : St
 
 /-- `s'` is `s` plus exactly one tag-shaped token. -/
 def PushTag (s s' : ScannerState) : Prop :=
-  ∃ t, vals s' = vals s ++ [t] ∧ tagOk t = true
+  ∃ t, vals s' = vals s ++ [t] ∧ emitOk t = true
 
 lemma PushTag.emitAt (s s0 : ScannerState) (p : YamlPos) (t : YamlToken)
-    (h0 : s0.tokens = s.tokens) (ht : tagOk t = true) : PushTag s (s0.emitAt p t) :=
+    (h0 : s0.tokens = s.tokens) (ht : emitOk t = true) : PushTag s (s0.emitAt p t) :=
   ⟨t, by rw [vals_emitAt]; simp [vals, h0], ht⟩
 
 lemma PushTag.ofEq {s s1 s' : ScannerState} (h : PushTag s1 s') (h1 : s1.tokens = s.tokens) :
@@ -176,14 +181,14 @@ lemma scanVerbatimTag_pushTag (s : ScannerState) (pos : YamlPos) (s' : ScannerSt
     · have h := Except.ok.inj hok; subst h
       exact PushTag.emitAt _ _ _ _
         (by simp only [collectVerbatimTagLoop_preserves_tokens, advance_preserves_tokens])
-        (by simp [tagOk])
+        (by simp [emitOk])
 
 lemma scanSecondaryTag_pushTag (s : ScannerState) (pos : YamlPos) :
     PushTag s (scanSecondaryTag s pos) := by
   unfold scanSecondaryTag
   exact PushTag.emitAt _ _ _ _
     (by simp only [collectTagSuffixLoop_preserves_tokens, advance_preserves_tokens])
-    (by simp [tagOk, isTagHandleShaped])
+    (by simp [emitOk, isTagHandleShaped])
 
 lemma scanNamedTag_pushTag (s : ScannerState) (pos : YamlPos) (inputEnd : Nat) :
     PushTag s (scanNamedTag s pos inputEnd) := by
@@ -192,13 +197,13 @@ lemma scanNamedTag_pushTag (s : ScannerState) (pos : YamlPos) (inputEnd : Nat) :
   obtain ⟨L, hL, hall⟩ := collectTagHandleLoop_chars (inputEnd - s.offset) s ""
   split
   · refine PushTag.emitAt _ _ _ _ (by rw [collectTagSuffixLoop_preserves_tokens, h_handle]) ?_
-    simp only [tagOk, Bool.or_eq_true]
+    simp only [emitOk, Bool.or_eq_true]
     right
     apply shaped_named
     simp only [String.toList_empty, List.nil_append] at hL
     rw [hL]; exact hall
   · exact PushTag.emitAt _ _ _ _ (by rw [collectTagSuffixLoop_preserves_tokens, h_handle])
-      (by simp [tagOk, isTagHandleShaped])
+      (by simp [emitOk, isTagHandleShaped])
 
 lemma scanTag_pushTag (s s' : ScannerState) (hok : scanTag s = .ok s') : PushTag s s' := by
   unfold scanTag at hok; dsimp only [] at hok
@@ -336,7 +341,7 @@ lemma TagExt_saveSimpleKey (s : ScannerState) : TagExt s (saveSimpleKey s) := by
   split
   · exact TagExt.refl s
   · split
-    · exact TagExt.append [.placeholder, .placeholder] (by simp [vals, toks]) (by simp [tagOk])
+    · exact TagExt.append [.placeholder, .placeholder] (by simp [vals, toks]) (by simp [emitOk])
     · exact TagExt.refl s
 
 lemma TagExt_preprocess (s s1 : ScannerState) (c : Char)
@@ -548,7 +553,7 @@ lemma TagExt_scanNextToken (s s' : ScannerState) (h : scanNextToken s = .ok (som
         exact hE2.trans (hE3.trans (TagExt_dispatchContent _ c _ (by assumption)))
 
 lemma TagInv_scanLoop : ∀ (fuel : Nat) (s : ScannerState) (ts : Array (Positioned YamlToken)),
-    TagInv s → scanLoop s fuel = .ok ts → ∀ t ∈ toks ts, tagOk t = true := by
+    TagInv s → scanLoop s fuel = .ok ts → ∀ t ∈ toks ts, emitOk t = true := by
   intro fuel
   induction fuel with
   | zero => intro s ts _ h; simp [scanLoop] at h
@@ -577,8 +582,8 @@ lemma TagInv_init (input : String) : TagInv ((ScannerState.mk' input).emit .stre
   subst ht; rfl
 
 /-- Raw scanner output: every token is tag-shaped. -/
-lemma scan_tagOk (input : String) (ts : Array (Positioned YamlToken)) (h : scan input = .ok ts) :
-    ∀ t ∈ toks ts, tagOk t = true := by
+lemma scan_emitOk (input : String) (ts : Array (Positioned YamlToken)) (h : scan input = .ok ts) :
+    ∀ t ∈ toks ts, emitOk t = true := by
   unfold scan at h
   have hI0 := TagInv_init input
   dsimp only at h
@@ -587,8 +592,8 @@ lemma scan_tagOk (input : String) (ts : Array (Positioned YamlToken)) (h : scan 
   · exact TagInv_scanLoop _ _ ts hI0 h
 
 /-- Filtered scanner output: every token is tag-shaped. -/
-lemma scanFiltered_tagOk (input : String) (ts : Array (Positioned YamlToken))
-    (h : scanFiltered input = .ok ts) : ∀ t ∈ toks ts, tagOk t = true := by
+lemma scanFiltered_emitOk (input : String) (ts : Array (Positioned YamlToken))
+    (h : scanFiltered input = .ok ts) : ∀ t ∈ toks ts, emitOk t = true := by
   unfold scanFiltered at h
   split at h
   · rename_i raw hraw
@@ -596,7 +601,7 @@ lemma scanFiltered_tagOk (input : String) (ts : Array (Positioned YamlToken))
     intro t ht
     obtain ⟨p, hp, rfl⟩ := List.mem_map.1 ht
     have hp' : p ∈ raw := (Array.mem_filter.1 (Array.mem_toList_iff.1 hp)).1
-    exact scan_tagOk input raw hraw _ (List.mem_map.2 ⟨p, Array.mem_toList_iff.2 hp', rfl⟩)
+    exact scan_emitOk input raw hraw _ (List.mem_map.2 ⟨p, Array.mem_toList_iff.2 hp', rfl⟩)
   · contradiction
 
 end L4YAML.Proofs.TagShape

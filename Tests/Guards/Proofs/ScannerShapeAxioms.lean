@@ -225,6 +225,15 @@ open L4YAML.Proofs.Serialization.ScannerShape in
 #guard_msgs in
 #print axioms scanFiltered_TagUsesShaped
 
+
+open L4YAML.Proofs.Serialization.ScannerShape in
+/-- info: 'L4YAML.Proofs.Serialization.ScannerShape.scanFiltered_noComment' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
+#guard_msgs in
+#print axioms scanFiltered_noComment
+
 end Tests.Guards.ScannerShapeAxioms
 
 end Blanket

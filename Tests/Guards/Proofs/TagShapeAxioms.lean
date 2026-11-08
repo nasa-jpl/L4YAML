@@ -54,14 +54,14 @@ open L4YAML.Proofs.TagShape in
 #print axioms TagInv_init
 
 open L4YAML.Proofs.TagShape in
-/-- info: 'L4YAML.Proofs.TagShape.scan_tagOk' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/-- info: 'L4YAML.Proofs.TagShape.scan_emitOk' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
-#print axioms scan_tagOk
+#print axioms scan_emitOk
 
 open L4YAML.Proofs.TagShape in
-/-- info: 'L4YAML.Proofs.TagShape.scanFiltered_tagOk' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/-- info: 'L4YAML.Proofs.TagShape.scanFiltered_emitOk' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
-#print axioms scanFiltered_tagOk
+#print axioms scanFiltered_emitOk
 
 end Tests.Guards.TagShapeAxioms
 

@@ -11846,9 +11846,10 @@ def loopDeadB (ts : Array (Positioned YamlToken)) (k : Nat) : Bool :=
     tok ts k != some .documentEnd &&
     (k == 1 || tok ts (k - 1) == some .documentEnd || P91.afterDocOK (tok ts k))
 
-/-- `DeadResidue (tok ts k)`, computed: the `.afterDocument` shape or a comment. -/
+/-- `DeadResidue (tok ts k)`, computed: the `.afterDocument` shape (the `.comment` disjunct was
+closed by `scanFiltered_noComment`, Priority 96). -/
 def residueB (ts : Array (Positioned YamlToken)) (k : Nat) : Bool :=
-  P91.afterDocOK (tok ts k) || (match tok ts k with | some (.comment _) => true | _ => false)
+  P91.afterDocOK (tok ts k)
 
 /-- `LoopDead_scanFiltered`'s conclusion. -/
 def dischargeB (ts : Array (Positioned YamlToken)) (k : Nat) : Bool :=
@@ -11910,7 +11911,7 @@ def testLoopDeadDischarge (state : IO.Ref TestCollector) : IO Unit := do
             s!"tok={repr (L4YAML.Proofs.Serialization.ParseCheckFrom.tok ts k)} toks={repr L}"
   -- (c) non-tautology on hand-altered arrays (the `scanFiltered` premise is load-bearing):
   --     `.streamStart` at index 1 satisfies `LoopDead ts 1` and refutes the conclusion (dead, not in
-  --     `validNextToken .afterDocument`, not a `.comment`); `.key` at index 1 also satisfies
+  --     `validNextToken .afterDocument`); `.key` at index 1 also satisfies
   --     `LoopDead ts 1` but the conclusion is TRUE through `DeadResidue` — `.afterDocument` admits
   --     `.key`: that is (γ), the residue the item prices, pinned here as in P91's `a: b` row.
   match scanFiltered "- a" with
@@ -12035,6 +12036,7 @@ namespace P95
 /-- `tagOk`, computed: the token-level form of `TagUsesShaped`. -/
 def tagOkB : YamlToken → Bool
   | .tag h _ => h == "" || h == "!" || h == "!!" || L4YAML.Proofs.Serialization.TokenEvents.isNamedHandle h
+  | .comment _ => false
   | _ => true
 
 def tagInvB (s : ScannerState) : Bool := (L4YAML.Proofs.DirectiveRuns.vals s).all tagOkB
@@ -12155,6 +12157,80 @@ def testTagUsesShaped (state : IO.Ref TestCollector) : IO Unit := do
     checkM state "P95 control: the step is TagExt (nothing new is unshaped) …" (P95.tagExtB sBad s') ""
     checkM state "P95 control: … but TagInv still fails after it (the premise is load-bearing)" (!P95.tagInvB s') ""
   | _ => checkM state "P95 control: seeded state steps" false ""
+
+/-! ## Priority 96: S3 — the scanner emits no `.comment` token (`DeadResidue` shrinks to (γ))
+
+Statement under test: `scanFiltered input = .ok ts → tok ts k ≠ some (.comment text)`
+(`ScannerShape.scanFiltered_noComment`, from `TagShape.emitOk (.comment _) = false` carried over
+`scanLoop`).  Grid: comments at every position the syntax admits (after scalars, indicators,
+anchors, tags, directives, document markers, inside flow, after block-scalar headers, comment-only
+lines and documents, `#` that is NOT a comment — inside scalars and quoted strings), every P91–P95
+row, per-step `emitOk` on every reached state, a hand-built refuter, and a seeded-`.comment`
+control (carried, not repaired). -/
+
+namespace P96
+
+def rows : List String :=
+  [ "#c", "# c", "#", "#c\n#d", "a # c", "a #c", "- a # c", "- # c\n  a", "a: b # c", "a: # c\n  b",
+    "? a # c\n: b # d", "[a, # c\n b] # d", "{a: b, # c\n c: d}", "[ # c\n]", "\"a\" # c", "'a' # c",
+    "|\n a\n# c", "| # c\n a", "> # c\n a\n# d", "&x # c\na", "!t # c\na", "*x # c", "&x a # c\n*x # d",
+    "%YAML 1.2 # c\n---", "%TAG !e! tag:x # c\n--- !e!y a", "--- # c", "... # c", "--- # c\na\n... # d",
+    "# c\n---\n# d\na\n# e\n...\n# f", "a#b", "a #b#c", "\"a # b\"", "'a # b'", "a: \"#b\"", "- -#", "#\ta",
+    "\uFEFF# c\na", "a\n  # c\n  b", "a:\n  # c\n  b: c", "- a\n# c\n- b", "{a: b} # c", "[a] # c" ]
+
+def noCommentB (ts : Array (Positioned YamlToken)) : Bool :=
+  ts.all fun p => match p.val with | .comment _ => false | _ => true
+
+end P96
+
+def testNoComment (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 96: S3 — the scanner emits no `.comment` token (DeadResidue shrinks to the .afterDocument shape)"
+  let mut scanned := 0
+  let mut refused := 0
+  let mut tokens := 0
+  let mut states := 0
+  let mut steps := 0
+  let all := P96.rows ++ P95.rows ++ P94.rows ++ P91.rows
+  for input in all do
+    match L4YAML.Scanner.scanFiltered input with
+    | .ok ts =>
+      scanned := scanned + 1
+      tokens := tokens + ts.size
+      checkM state s!"P96 {repr input}: no `.comment` on scanner output" (P96.noCommentB ts)
+        s!"tokens={repr (ts.map (·.val))}"
+    | .error _ => refused := refused + 1
+    let mut prev : Option ScannerState := none
+    for s in P93.trajectory input do
+      states := states + 1
+      checkM state s!"P96 {repr input}: emitOk (no comment, shaped tags) on reached state {states}"
+        ((L4YAML.Proofs.DirectiveRuns.vals s).all P95.tagOkB) s!"vals={repr (L4YAML.Proofs.DirectiveRuns.vals s)}"
+      if let some s0 := prev then
+        steps := steps + 1
+        checkM state s!"P96 {repr input}: TagExt across step {steps}" (P95.tagExtB s0 s) ""
+      prev := some s
+  checkM state s!"P96 rows={all.length} (own {P96.rows.length}) scanned={scanned} refused={refused} tokens={tokens} states={states} steps={steps}"
+    (scanned > 0 && tokens > 0 && steps > 0) ""
+  -- non-tautology: a hand-built array holding a `.comment` fails the predicate and would satisfy
+  -- the pre-item-451 `DeadResidue`; `LoopDead` holds there (a comment is `deadTok`)
+  let bad := #[s5Tok .streamStart, s5Tok (.comment "c"), s5Tok .streamEnd]
+  checkM state "P96 pin: `[SS, comment, SE]` fails `noCommentB`" (!P96.noCommentB bad) ""
+  checkM state "P96 pin: `LoopDead` holds at 1 there (a comment is dead)" (P94.loopDeadB bad 1) ""
+  -- finding: `validNextToken .afterDocument (.comment _) = true` — the `.afterDocument` shape
+  -- already admitted a comment, so item 449's second disjunct was redundant and the shrink of
+  -- `DeadResidue` is syntactic; the lemma's content is `scanFiltered_noComment` itself (the stop
+  -- token is never a comment), which is what (γ)'s carrier may assume
+  checkM state "P96 finding: `afterDocOK (.comment)` is TRUE (the old disjunct was redundant)"
+    (P91.afterDocOK (some (.comment "c"))) ""
+  checkM state "P96 pin: so `LoopDead_scanFiltered`'s conclusion still holds on the hand-built array (through the shape, not the lemma)"
+    (P94.dischargeB bad 1) ""
+  -- control: a seeded `.comment` is carried through a step, not repaired
+  let sBad := ((ScannerState.mk' "a").emit .streamStart).emit (.comment "c")
+  match L4YAML.Scanner.scanNextToken sBad with
+  | .ok (some s') =>
+    checkM state "P96 control: the step is TagExt …" (P95.tagExtB sBad s') ""
+    checkM state "P96 control: … and the seeded comment is still there (premise load-bearing)"
+      (!(L4YAML.Proofs.DirectiveRuns.vals s').all P95.tagOkB) ""
+  | _ => checkM state "P96 control: seeded state steps" false ""
 
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
@@ -12279,6 +12355,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testLoopDeadDischarge state
   testSetLemmas state
   testTagUsesShaped state
+  testNoComment state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",
