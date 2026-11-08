@@ -12025,7 +12025,7 @@ per-token invariant `TagInv s := ∀ t ∈ vals s, tagOk t` carried over `scanNe
 `scanTag` (`scanNamedTag` emits `"!" ++ w ++ "!"` with `w` all `ns-word-char`, or `"!"`), so the
 load-bearing facts are (1) `isWordCharBool c → c.isAlphanum ∨ c = '-'` and (2) no other arm
 emits a `.tag`.  Grid: every handle shape at first/middle/last position, block and flow, `%TAG`
-directive handles (shaped and refused), the per-step `TagExt`/`TagInv` on every reached state,
+directive handles (shaped and refused), the empty / blank / comment-only inputs, the per-step `TagExt`/`TagInv` on every reached state,
 `scanLoop` direct at fuel 0/1/2, the word-char agreement on all ASCII, the scanner's
 `isTagHandleShaped` against the parser's `isNamedHandle` on every handle ≤ 5 over a six-char
 alphabet, and a withdrawn-`TagInv` control (a bad tag already in `vals` is carried, not repaired). -/
@@ -12047,7 +12047,7 @@ def handleOf : YamlToken → Option String
   | _ => none
 
 def rows : List String :=
-  [ "!t a", "! a", "!", "!!str a", "!!", "!e!x a", "!e! a", "!e-1!x a", "!1!x a", "!-!x a", "!--!x a",
+  [ "", " ", "\n", "#c", "!t a", "! a", "!", "!!str a", "!!", "!e!x a", "!e! a", "!e-1!x a", "!1!x a", "!-!x a", "!--!x a",
     "!abcdefghijklmnopqrstuvwxyz0123456789-!x a", "!e_1!x a", "!é!x a", "!a!b!c", "!a!!b", "!!!a",
     "!<tag:x> a", "!<tag:x>!y a", "!<> a", "!<tag:x a", "!a!\tb", "!a!", "! !", "!! !!",
     "[!e!x a, !!int 1, !<tag:u> b]", "{!t a: !t b}", "? !t a\n: !t b", "- !t a\n- !!str b",
