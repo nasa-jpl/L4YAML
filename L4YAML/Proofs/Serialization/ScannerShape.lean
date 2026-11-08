@@ -9,6 +9,7 @@ public import L4YAML.Proofs.Scanner.TagShape
 public import L4YAML.Proofs.Scanner.StructDepth
 public import L4YAML.Proofs.Serialization.TraceOf.LeafBridge
 public import L4YAML.Proofs.Serialization.TraceOf.DocBridge
+public import L4YAML.Proofs.Serialization.TraceOf.FlowBridge
 public import L4YAML.Proofs.Scanner.AliasTrailingContent
 import all L4YAML.Proofs.Serialization.TokenEvents
 
@@ -343,7 +344,7 @@ lemma dispatchContent_tag_trace (s : ScannerState) (sp : SurfPos)
           exact scanTag_trace s sp hcorr hpeek s_t h_fn
       · exact absurd (by decide : ('!' == '!') = true) (by assumption)
 
-/-! ## S3 slice (2): the structural dispatcher's `---` / `...` / `%` arms (item 462) -/
+/-! ## S3 slice (2): the structural dispatcher's `---` / `...` / `%` arms (item 463) -/
 
 section DocBridgeConsumers
 open L4YAML.Surface L4YAML.Proofs.CouplingBridge L4YAML.Proofs.Serialization.TraceOf
@@ -416,6 +417,189 @@ lemma dispatchStructural_directive_trace (s : ScannerState) (sp : SurfPos)
     exact scanDirective_trace s sp hcorr hpeek s_d hfn
 
 end DocBridgeConsumers
+
+/-! ## S3 slice (3), first PR: the flow-indicator dispatcher's `[` / `{` / `]` / `}` / `,` arms and the
+content dispatcher's `"` / `'` arms (item 464) -/
+
+section FlowBridgeConsumers
+open L4YAML.Surface L4YAML.Proofs.CouplingBridge L4YAML.Proofs.Serialization.TraceOf
+open L4YAML.Proofs.Serialization.TraceOf.FlowBridge
+
+/-- The `[` arm of `scanNextToken_dispatchFlowIndicators` is `scanFlowSequenceStart_trace`. -/
+lemma dispatchFlowIndicators_flowSeqStart_trace (s : ScannerState) (sp : SurfPos)
+    (hcorr : ScannerSurfCorr s sp) (hpeek : s.peek? = some '[') (s'' : ScannerState)
+    (h : scanNextToken_dispatchFlowIndicators s '[' = .ok (some s'')) :
+    ∃ sp', s''.tokens = s.tokens.push (indicatorTok s .flowSequenceStart) ∧
+      ScannerSurfCorr s'' sp' ∧ Lift (GLit '[') sp sp' [] := by
+  unfold scanNextToken_dispatchFlowIndicators at h
+  simp only [bind, Except.bind, pure, Except.pure] at h
+  generalize hfa : scanNextToken_checkFlowAdjacency s '[' = r at h
+  cases r with
+  | error e => simp at h
+  | ok u =>
+    simp only [beq_self_eq_true, ↓reduceIte, Except.ok.injEq, Option.some.injEq] at h
+    subst h
+    exact scanFlowSequenceStart_trace s sp hcorr hpeek
+
+/-- The `{` arm of `scanNextToken_dispatchFlowIndicators` is `scanFlowMappingStart_trace`. -/
+lemma dispatchFlowIndicators_flowMapStart_trace (s : ScannerState) (sp : SurfPos)
+    (hcorr : ScannerSurfCorr s sp) (hpeek : s.peek? = some '{') (s'' : ScannerState)
+    (h : scanNextToken_dispatchFlowIndicators s '{' = .ok (some s'')) :
+    ∃ sp', s''.tokens = s.tokens.push (indicatorTok s .flowMappingStart) ∧
+      ScannerSurfCorr s'' sp' ∧ Lift (GLit '{') sp sp' [] := by
+  unfold scanNextToken_dispatchFlowIndicators at h
+  simp only [bind, Except.bind, pure, Except.pure] at h
+  generalize hfa : scanNextToken_checkFlowAdjacency s '{' = r at h
+  cases r with
+  | error e => simp at h
+  | ok u =>
+    simp only [beq_self_eq_true, ↓reduceIte, Except.ok.injEq, Option.some.injEq,
+      show ('{' == '[') = false by decide, show ('{' == ']') = false by decide,
+      Bool.false_eq_true] at h
+    subst h
+    exact scanFlowMappingStart_trace s sp hcorr hpeek
+
+/-- The `]` arm of `scanNextToken_dispatchFlowIndicators` is `scanFlowSequenceEnd_trace`
+(inside a flow sequence; `validateFlowClose` accepted). -/
+lemma dispatchFlowIndicators_flowSeqEnd_trace (s : ScannerState) (sp : SurfPos)
+    (hcorr : ScannerSurfCorr s sp) (hpeek : s.peek? = some ']') (s'' : ScannerState)
+    (h : scanNextToken_dispatchFlowIndicators s ']' = .ok (some s'')) :
+    ∃ sp', s''.tokens = s.tokens.push (indicatorTok s .flowSequenceEnd) ∧
+      ScannerSurfCorr s'' sp' ∧ Lift (GLit ']') sp sp' [] := by
+  unfold scanNextToken_dispatchFlowIndicators at h
+  simp only [bind, Except.bind, pure, Except.pure] at h
+  generalize hfa : scanNextToken_checkFlowAdjacency s ']' = r at h
+  cases r with
+  | error e => simp at h
+  | ok u =>
+    simp only [beq_self_eq_true, ↓reduceIte, show (']' == '[') = false by decide,
+      Bool.false_eq_true] at h
+    split at h
+    · simp at h
+    · split at h
+      · simp at h
+      · generalize hvc : validateFlowClose (scanFlowSequenceEnd s) = vr at h
+        cases vr with
+        | error e => simp at h
+        | ok u' =>
+          simp only [Except.ok.injEq, Option.some.injEq] at h
+          subst h
+          exact scanFlowSequenceEnd_trace s sp hcorr hpeek
+
+/-- The `}` arm of `scanNextToken_dispatchFlowIndicators` is `scanFlowMappingEnd_trace`. -/
+lemma dispatchFlowIndicators_flowMapEnd_trace (s : ScannerState) (sp : SurfPos)
+    (hcorr : ScannerSurfCorr s sp) (hpeek : s.peek? = some '}') (s'' : ScannerState)
+    (h : scanNextToken_dispatchFlowIndicators s '}' = .ok (some s'')) :
+    ∃ sp', s''.tokens = s.tokens.push (indicatorTok s .flowMappingEnd) ∧
+      ScannerSurfCorr s'' sp' ∧ Lift (GLit '}') sp sp' [] := by
+  unfold scanNextToken_dispatchFlowIndicators at h
+  simp only [bind, Except.bind, pure, Except.pure] at h
+  generalize hfa : scanNextToken_checkFlowAdjacency s '}' = r at h
+  cases r with
+  | error e => simp at h
+  | ok u =>
+    simp only [beq_self_eq_true, ↓reduceIte, show ('}' == '[') = false by decide,
+      show ('}' == ']') = false by decide, show ('}' == '{') = false by decide,
+      Bool.false_eq_true] at h
+    split at h
+    · simp at h
+    · split at h
+      · simp at h
+      · generalize hvc : validateFlowClose (scanFlowMappingEnd s) = vr at h
+        cases vr with
+        | error e => simp at h
+        | ok u' =>
+          simp only [Except.ok.injEq, Option.some.injEq] at h
+          subst h
+          exact scanFlowMappingEnd_trace s sp hcorr hpeek
+
+/-- The `,` arm of `scanNextToken_dispatchFlowIndicators` is `scanFlowEntry_trace`. -/
+lemma dispatchFlowIndicators_flowEntry_trace (s : ScannerState) (sp : SurfPos)
+    (hcorr : ScannerSurfCorr s sp) (hpeek : s.peek? = some ',') (s'' : ScannerState)
+    (h : scanNextToken_dispatchFlowIndicators s ',' = .ok (some s'')) :
+    ∃ sp', s''.tokens = s.tokens.push (indicatorTok s .flowEntry) ∧
+      ScannerSurfCorr s'' sp' ∧ Lift (GLit ',') sp sp' [] := by
+  unfold scanNextToken_dispatchFlowIndicators at h
+  simp only [bind, Except.bind, pure, Except.pure] at h
+  generalize hfa : scanNextToken_checkFlowAdjacency s ',' = r at h
+  cases r with
+  | error e => simp at h
+  | ok u =>
+    simp only [beq_self_eq_true, ↓reduceIte, show (',' == '[') = false by decide,
+      show (',' == ']') = false by decide, show (',' == '{') = false by decide,
+      show (',' == '}') = false by decide, Bool.false_eq_true] at h
+    split at h
+    · simp at h
+    · generalize hfe : scanFlowEntry s = fr at h
+      cases fr with
+      | error e => simp at h
+      | ok s_e =>
+        simp only [Except.ok.injEq, Option.some.injEq] at h
+        subst h
+        exact scanFlowEntry_trace s sp hcorr hpeek s_e hfe
+
+/-- The `"` arm of `scanNextToken_dispatchContent` is `scanDoubleQuoted_trace` (the arm's
+`simpleKey.endLine` touch-up leaves the tokens alone). -/
+lemma dispatchContent_doubleQuoted_trace (s : ScannerState) (sp : SurfPos)
+    (hcorr : ScannerSurfCorr s sp) (hpeek : s.peek? = some '"') (s'' : ScannerState)
+    (h : scanNextToken_dispatchContent s '"' = .ok s'') :
+    ∃ sp' v, s''.tokens = s.tokens.push (indicatorTok s (.scalar v .doubleQuoted)) ∧
+      ScannerSurfCorr s'' sp' ∧ TFlowContent 0 .blockIn sp sp' [] := by
+  unfold scanNextToken_dispatchContent at h
+  simp only [bind, Except.bind, pure, Except.pure, Pure.pure,
+    show ('"' == '&') = false by decide, show ('"' == '*') = false by decide,
+    show ('"' == '!') = false by decide, show ('"' == '|') = false by decide,
+    show ('"' == '>') = false by decide, Bool.false_or, Bool.false_eq_true, ↓reduceIte,
+    beq_self_eq_true] at h
+  generalize hdq : scanDoubleQuoted s = dr at h
+  cases dr with
+  | error e => simp at h
+  | ok s_q =>
+    obtain ⟨sp', v, htok, hcorr', htr⟩ := scanDoubleQuoted_trace s sp hcorr hpeek s_q hdq
+    refine ⟨sp', v, ?_, ?_, htr⟩
+    · have : s''.tokens = s_q.tokens := by
+        simp only [Except.ok.injEq] at h; subst h; split <;> rfl
+      rw [this, htok]
+    · have : s'' = s_q ∨ s'' = { s_q with simpleKey := { s_q.simpleKey with endLine := s_q.line } } := by
+        simp only [Except.ok.injEq] at h; subst h; split
+        · exact Or.inr rfl
+        · exact Or.inl rfl
+      rcases this with rfl | rfl
+      · exact hcorr'
+      · exact ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix,
+          hcorr'.indent_cols_nonneg⟩
+
+/-- The `'` arm of `scanNextToken_dispatchContent` is `scanSingleQuoted_trace`. -/
+lemma dispatchContent_singleQuoted_trace (s : ScannerState) (sp : SurfPos)
+    (hcorr : ScannerSurfCorr s sp) (hpeek : s.peek? = some '\'') (s'' : ScannerState)
+    (h : scanNextToken_dispatchContent s '\'' = .ok s'') :
+    ∃ sp' v, s''.tokens = s.tokens.push (indicatorTok s (.scalar v .singleQuoted)) ∧
+      ScannerSurfCorr s'' sp' ∧ TFlowContent 0 .blockIn sp sp' [] := by
+  unfold scanNextToken_dispatchContent at h
+  simp only [bind, Except.bind, pure, Except.pure, Pure.pure,
+    show ('\'' == '&') = false by decide, show ('\'' == '*') = false by decide,
+    show ('\'' == '!') = false by decide, show ('\'' == '|') = false by decide,
+    show ('\'' == '>') = false by decide, show ('\'' == '"') = false by decide,
+    Bool.false_or, Bool.false_eq_true, ↓reduceIte, beq_self_eq_true] at h
+  generalize hsq : scanSingleQuoted s = dr at h
+  cases dr with
+  | error e => simp at h
+  | ok s_q =>
+    obtain ⟨sp', v, htok, hcorr', htr⟩ := scanSingleQuoted_trace s sp hcorr hpeek s_q hsq
+    refine ⟨sp', v, ?_, ?_, htr⟩
+    · have : s''.tokens = s_q.tokens := by
+        simp only [Except.ok.injEq] at h; subst h; split <;> rfl
+      rw [this, htok]
+    · have : s'' = s_q ∨ s'' = { s_q with simpleKey := { s_q.simpleKey with endLine := s_q.line } } := by
+        simp only [Except.ok.injEq] at h; subst h; split
+        · exact Or.inr rfl
+        · exact Or.inl rfl
+      rcases this with rfl | rfl
+      · exact hcorr'
+      · exact ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix,
+          hcorr'.indent_cols_nonneg⟩
+
+end FlowBridgeConsumers
 
 end L4YAML.Proofs.Serialization.ScannerShape
 
