@@ -13494,7 +13494,13 @@ def own : List String :=
    "a\n---\nb", "a\n---\n...\n---\nb", "- a\n---\n- b", "a: b\n...\n---\nc: d",
    "%TAG !bad tag:x:\n---\na", "%TAG !e! tag:x: junk\n---\na", "a\n%TAG !e! tag:x:\n---\nb",
    "%TAG !e! tag:x:\n...", "%TAG !e! tag:x:\na", "%", "%TAG", "%TAG !e!", "%TAG !e! tag:x:",
-   "%YAML 1.2\n%YAML 1.2\n---\na", "---\n%TAG !e! tag:x:\n---\na"]
+   "%YAML 1.2\n%YAML 1.2\n---\na", "---\n%TAG !e! tag:x:\n---\na",
+   -- separation after `%TAG`: none / tab / two spaces / none before the prefix
+   "%TAG!e! tag:x:\n---\n!e!a b", "%TAGX !e! tag:x:\n---\na", "%TAG\t!e! tag:x:\n---\na",
+   "%TAG  !e!  tag:x:\n---\na", "%TAG !e!tag:x:\n---\na", "%YAML 1.2 !e!\n---\na"]
+
+def lineAt (s : String) (o : Nat) : List Char :=
+  (P100.dropBytes s.toList o).takeWhile (fun c => c != '\n' && c != '\r')
 
 def allRows : List String := (P100.allRows ++ own).eraseDups
 
@@ -13518,8 +13524,21 @@ def namedHandles (l : List (Positioned YamlToken)) : List String :=
     | .tagDirective h _ => if isNamedHandle h then some h else none
     | _ => none
 
-def lineAt (s : String) (o : Nat) : List Char :=
-  (P100.dropBytes s.toList o).takeWhile (fun c => c != '\n' && c != '\r')
+/-- The lexer's named handles of a row: `declaredHandle` on every column-0 `%` line. -/
+def lexerHandles (s : String) : List String :=
+  (s.splitOn "\n").filterMap fun ln =>
+    match ln.toList with
+    | '%' :: _ => L4YAML.Proofs.Serialization.EventsOf.declaredHandle (ln.toList.takeWhile (· != '\r'))
+    | _ => none
+
+/-- Scanned rows where the lexer's `declaredHandle` and the scanner's named `%TAG` tokens disagree. -/
+def lexerDisagree (rows : List String) : List String := Id.run do
+  let mut out := []
+  for s in rows do
+    match scanFiltered s with
+    | .error _ => pure ()
+    | .ok ts => if lexerHandles s != namedHandles ts.toList then out := s :: out
+  return out.reverse
 
 structure Tally where
   rows : Nat := 0
@@ -13669,6 +13688,15 @@ def testDocBridge (state : IO.Ref TestCollector) : IO Unit := do
     (de.bad.isEmpty && de.ok == de.runs && de.refused == 0 && de.runs ≥ 15) s!"{repr (de.bad.take 6)} {repr (de.refusedWhy.take 4)}"
   checkM state s!"P101(viii) scanDirective direct on %TAG: {dd.runs} runs, {dd.ok} with the token / '%'-span / declaredHandle, {dd.refused} refused, {dd.bad.length} bad; allowDirectives=false refused on every one"
     (dd.bad.isEmpty && dd.ok == dd.runs && dd.refused == 0 && dd.runs ≥ 15) s!"{repr (dd.bad.take 6)} {repr (dd.refusedWhy.take 4)}"
+  -- (x) the TLDirective payload against the scanner on every directive LINE (not only on tagDirective tokens):
+  -- predicted REFUTED by the scratch probe — `%TAG!e! …` is a reserved directive to the scanner and to
+  -- `ScannedDirective` (no separation after `TAG`), while `declaredHandle` accepts zero separation.
+  let dis := P101.lexerDisagree P101.allRows
+  -- Two rows, pinned exactly: the BOM row is P99's known lexer debt (no BOM arm, so the `%` line is not
+  -- seen at column 0); `%TAG!e! …` is the slice-(2) refutation — `TLDirective`'s payload names a handle
+  -- the scanner (and `ScannedDirective.tag`'s separation premise) does not declare.
+  checkM state s!"P101(x) lexer declaredHandle vs scanner named %TAG per row: exactly 2 disagreeing scanned rows ({dis.length}): {repr dis}"
+    (dis == ["\uFEFF%TAG !e! tag:x:\n---\na", "%TAG!e! tag:x:\n---\n!e!a b"]) ""
   -- (ix) term-level instances of the algebra
   checkM state "P101(ix) goOut [documentStart] [\"!e!\"] = ([beginDocument, declareTag !e!], [])"
     (P101.goOut [tok .documentStart] ["!e!"] == ([.beginDocument, .declareTag "!e!"], [])) ""
