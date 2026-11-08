@@ -219,14 +219,6 @@ structure DInv (s : ScannerState) : Prop where
 def StrongDSlot (s : ScannerState) : Prop :=
   s.simpleKey.possible = true → DSlot (vals s) s.flowLevel s.currentIndent false s.simpleKey
 
-lemma StrongDSlot.weaken {s : ScannerState} (hS : StrongDSlot s) (al : Bool) :
-    s.simpleKey.possible = true → DSlot (vals s) s.flowLevel s.currentIndent al s.simpleKey := by
-  intro hp
-  rcases hS hp with h | ⟨h0, h | h⟩
-  · exact Or.inl h
-  · exact Or.inr ⟨h0, Or.inl h⟩
-  · cases h
-
 lemma PhAt_append (L M : List YamlToken) (i : Nat) (hlt : i + 1 < L.length) (h : PhAt L i) :
     PhAt (L ++ M) i := by
   obtain ⟨h0, h1⟩ := h
