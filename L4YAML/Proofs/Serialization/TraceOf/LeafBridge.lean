@@ -24,7 +24,7 @@ namespace L4YAML.Proofs.Serialization.TraceOf.LeafBridge
 @[expose] public section
 open L4YAML L4YAML.Scanner L4YAML.Surface L4YAML.CharPredicates
 open L4YAML.Proofs.Serialization.SerializationWellFormed
-open L4YAML.Proofs.Serialization.TokenEvents (tokenEvent)
+open L4YAML.Proofs.Serialization.TokenEvents (tokenEvent tokenEvent_anchor tokenEvent_alias tokenEvent_tag)
 open L4YAML.Proofs.Serialization.SourceEvents (isAnchorCharBool)
 open L4YAML.Proofs.Serialization.TraceOf
 open L4YAML.Proofs.StructureProduction L4YAML.Proofs.ScalarProduction L4YAML.Proofs.CouplingBridge
@@ -193,8 +193,13 @@ lemma handleOf_secondary (cs : List Char) : EventsOf.handleOf ('!' :: '!' :: cs)
   simp [EventsOf.handleOf, SourceEvents.namedTagUseAt, SourceEvents.namedTagUseTail, SourceEvents.spanWhile,
     show isWordCharBool '!' = false by decide]
 
-lemma handleOf_named (w cs : List Char) (hw : w.all isWordCharBool = true) (hne : w ≠ []) :
+lemma handleOf_named (w cs : List Char) (hw : w.all isWordCharBool = true) :
     EventsOf.handleOf ('!' :: (w ++ '!' :: cs)) = "!" ++ String.ofList w ++ "!" := by
+  cases hw0 : w with
+  | nil => simpa using handleOf_secondary cs
+  | cons a as =>
+  rw [← hw0]
+  have hne : w ≠ [] := by rw [hw0]; exact List.cons_ne_nil _ _
   have hsplit := spanWhile_prefix isWordCharBool w ('!' :: cs) hw
     (fun c hc => by simp at hc; subst hc; decide)
   have htail : SourceEvents.namedTagUseTail (w ++ '!' :: cs) =
@@ -236,6 +241,28 @@ lemma handleOf_primary (w cs : List Char) (hw : w.all isWordCharBool = true)
     simp only [List.all_cons, Bool.and_eq_true] at hw
     simp only [List.cons_append]
     split <;> simp_all
+
+/-- `tagEvents` on a `!`-led span whose second character is not `<`. -/
+lemma tagEvents_not_verbatim (L : List Char) (h : ∀ c, L.head? = some c → c ≠ '<') :
+    tagEvents ('!' :: L) = [.useTag (EventsOf.handleOf ('!' :: L))] := by
+  unfold tagEvents
+  cases L with
+  | nil => rfl
+  | cons c cs =>
+    have hc := h c rfl
+    simp [hc]
+
+/-- Correspondence survives `emitAt` followed by clearing `simpleKeyAllowed`. -/
+lemma corr_emit_ska {sc : ScannerState} {sp : SurfPos} (pos : YamlPos) (tok : YamlToken)
+    (h : ScannerSurfCorr sc sp) :
+    ScannerSurfCorr { sc.emitAt pos tok with simpleKeyAllowed := false } sp :=
+  ⟨h.chars_from, h.col_eq, h.end_eq, h.input_prefix, h.indent_cols_nonneg⟩
+
+lemma head_of_append_eq {L R M : List Char} (h : L = R ++ M) (c : Char) (hc : R.head? = some c) :
+    L.head? = some c := by
+  subst h; cases R with
+  | nil => cases hc
+  | cons r rs => simpa using hc
 
 /-- The tag loops emit nothing. -/
 lemma collectTagHandleLoop_tokens (fuel : Nat) : ∀ (sc : ScannerState) (acc : String),
@@ -394,6 +421,178 @@ lemma collectTagHandleLoop_span (fuel : Nat) : ∀ (sc : ScannerState) (sp : Sur
     · rename_i hpeek
       have hnil : sp.chars = [] := peek_none_chars_nil hcorr hpeek
       exact ⟨sp, [], hcorr, by simp, rfl, Or.inr ⟨rfl, by simp, fun c hc => by rw [hnil] at hc; cases hc⟩⟩
+
+/-- A string with a non-empty character list is not `isEmpty`. -/
+lemma isEmpty_false_of_toList {s : String} (h : s.toList ≠ []) : s.isEmpty = false := by
+  cases hs : s.isEmpty with
+  | false => rfl
+  | true =>
+    exfalso; apply h
+    have : s = "" := String.isEmpty_iff.mp hs
+    rw [this]; rfl
+
+/-! ### The tag leaf twin -/
+
+/-- A scanned tag is the annotated tag leaf on its span, with the trace `tokenEvent` gives the token:
+verbatim tags trace to `[]` (their handle is empty), the others to `[.useTag handle]`. -/
+lemma scanTag_trace (sc : ScannerState) (sp : SurfPos) (hcorr : ScannerSurfCorr sc sp)
+    (hpeek : sc.peek? = some '!') (s' : ScannerState) (hok : scanTag sc = .ok s') :
+    ∃ sp' handle suffix,
+      s'.tokens = sc.tokens.push (Positioned.mk sc.currentPos (.tag handle suffix) sc.currentPos) ∧
+      ScannerSurfCorr s' sp' ∧
+      TCNsTagProperty sp sp' ((tokenEvent (.tag handle suffix)).toList) := by
+  -- the surface derivation, from the producers
+  obtain ⟨spS, hS, hcorrS⟩ : ∃ sp', SCNsTagProperty sp sp' ∧ ScannerSurfCorr s' sp' := by
+    by_cases hb : sc.advance.peek? = some '!'
+    · exact scanTag_secondary_prod sc sp hcorr hpeek hb s' hok
+    · exact scanTag_nonSecondary_prod sc sp hcorr hpeek hb s' hok
+  obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek
+  subst hsp_eq
+  have hmore := peek_some_has_more hpeek
+  have hcorr_adv : ScannerSurfCorr sc.advance ⟨rest, sc.col + 1⟩ :=
+    advance_non_newline_corr sc '!' rest hcorr hmore (by decide) (by decide)
+  have htok_adv : sc.advance.tokens = sc.tokens := (keeps_advance sc).1
+  unfold scanTag at hok; dsimp only [] at hok
+  split at hok
+  · -- `!<uri>`
+    rename_i hpeek_lt
+    obtain ⟨rest2, hrest_eq⟩ := peek_some_sp hcorr_adv hpeek_lt
+    have hchars_eq := congrArg SurfPos.chars hrest_eq
+    dsimp only [] at hchars_eq; subst hchars_eq
+    have hmore2 := peek_some_has_more hpeek_lt
+    have hcorr_lt : ScannerSurfCorr sc.advance.advance ⟨rest2, sc.advance.col + 1⟩ :=
+      advance_non_newline_corr sc.advance '<' rest2
+        ⟨hcorr_adv.chars_from, rfl, hcorr_adv.end_eq, hcorr_adv.input_prefix, hcorr_adv.indent_cols_nonneg⟩
+        hmore2 (by decide) (by decide)
+    simp only [bind, Except.bind] at hok
+    generalize h_verb : scanVerbatimTag sc.advance sc.currentPos = verb_result at hok
+    cases verb_result with
+    | error e => simp at hok
+    | ok s_verb =>
+      change Except.ok { s_verb with simpleKeyAllowed := false } = Except.ok s' at hok
+      have hok_eq := Except.ok.inj hok; subst hok_eq
+      unfold scanVerbatimTag at h_verb; dsimp only [] at h_verb
+      split at h_verb
+      · exact absurd h_verb (by simp)
+      · split at h_verb
+        · exact absurd h_verb (by simp)
+        · have h_sv := Except.ok.inj h_verb
+          subst h_sv
+          obtain ⟨sp', L, hcorr', hL⟩ :=
+            collectVerbatimTagLoop_span (sc.currentPos.offset + sc.advance.inputEnd - sc.advance.advance.offset) sc.advance.advance ⟨rest2, sc.advance.col + 1⟩ "" hcorr_lt
+          have hcorr_s' := corr_emit_ska sc.currentPos
+            (.tag "" (collectVerbatimTagLoop sc.advance.advance "" (sc.currentPos.offset + sc.advance.inputEnd - sc.advance.advance.offset)).1) hcorr'
+          have hsp : spS = sp' := ScannerSurfCorr_unique hcorrS hcorr_s'
+          subst hsp
+          refine ⟨spS, "", (collectVerbatimTagLoop sc.advance.advance "" (sc.currentPos.offset + sc.advance.inputEnd - sc.advance.advance.offset)).1, ?_, hcorr_s', hS, ?_⟩
+          · simp only [ScannerState.emitAt, collectVerbatimTagLoop_tokens, (keeps_advance sc.advance).1, htok_adv]
+          · have hL' : rest2 = L ++ spS.chars := hL
+            rw [span_of_eq _ _ ('!' :: '<' :: L) (by simp [hL']), tagEvents_verbatim]
+            simp [tokenEvent_tag]
+  · -- `!!suffix`
+    rename_i hpeek_bang
+    have hok_eq := Except.ok.inj hok; subst hok_eq
+    obtain ⟨rest2, hrest_eq⟩ := peek_some_sp hcorr_adv hpeek_bang
+    have hchars_eq := congrArg SurfPos.chars hrest_eq
+    dsimp only [] at hchars_eq; subst hchars_eq
+    have hmore2 := peek_some_has_more hpeek_bang
+    have hcorr_b2 : ScannerSurfCorr sc.advance.advance ⟨rest2, sc.advance.col + 1⟩ :=
+      advance_non_newline_corr sc.advance '!' rest2
+        ⟨hcorr_adv.chars_from, rfl, hcorr_adv.end_eq, hcorr_adv.input_prefix, hcorr_adv.indent_cols_nonneg⟩
+        hmore2 (by decide) (by decide)
+    unfold scanSecondaryTag; dsimp only []
+    obtain ⟨sp', L, hcorr', hL⟩ :=
+      collectTagSuffixLoop_span (sc.currentPos.offset + sc.advance.inputEnd - sc.advance.advance.offset) sc.advance.advance ⟨rest2, sc.advance.col + 1⟩ "" hcorr_b2
+    have hcorr_s' := corr_emit_ska sc.currentPos
+      (.tag "!!" (collectTagSuffixLoop sc.advance.advance "" (sc.currentPos.offset + sc.advance.inputEnd - sc.advance.advance.offset)).1) hcorr'
+    have hsp : spS = sp' := by
+      apply ScannerSurfCorr_unique hcorrS
+      unfold scanSecondaryTag at hcorr_s' ⊢; exact hcorr_s'
+    subst hsp
+    refine ⟨spS, "!!", (collectTagSuffixLoop sc.advance.advance "" (sc.currentPos.offset + sc.advance.inputEnd - sc.advance.advance.offset)).1, ?_, hcorr_s', hS, ?_⟩
+    · simp only [ScannerState.emitAt, collectTagSuffixLoop_tokens, (keeps_advance sc.advance).1, htok_adv]
+    · have hL' : rest2 = L ++ spS.chars := hL
+      rw [span_of_eq _ _ ('!' :: '!' :: L) (by simp [hL']),
+        tagEvents_not_verbatim ('!' :: L) (fun c hc => by simp at hc; subst hc; decide), handleOf_secondary]
+      simp [tokenEvent_tag, isEmpty_false_of_toList (s := "!!") (by decide)]
+  · -- `!handle!suffix` / `!suffix` / `!`
+    rename_i h_not_lt h_not_bang
+    have hok_eq := Except.ok.inj hok; subst hok_eq
+    have hfuel : sc.advance.inputEnd - sc.advance.offset ≤ sc.inputEnd - sc.advance.offset := by
+      rw [advance_inputEnd sc]; exact Nat.le_refl _
+    obtain ⟨sp1, w, hcorr1, hw, hall, hshape⟩ :=
+      collectTagHandleLoop_span (sc.inputEnd - sc.advance.offset) sc.advance ⟨rest, sc.col + 1⟩ "" hcorr_adv hfuel
+    have hw' : (collectTagHandleLoop sc.advance "" (sc.inputEnd - sc.advance.offset)).1 = String.ofList w := by
+      apply String.ext; simpa using hw
+    have htok1 := collectTagHandleLoop_tokens (sc.inputEnd - sc.advance.offset) sc.advance ""
+    unfold scanNamedTag at hcorrS ⊢; dsimp only [] at hcorrS ⊢
+    generalize hH : collectTagHandleLoop sc.advance "" (sc.inputEnd - sc.advance.offset) = H
+      at hcorr1 hw' htok1 hshape hcorrS ⊢
+    obtain ⟨chars, foundBang, s1⟩ := H
+    dsimp only [] at hcorr1 hw' htok1 hshape hcorrS ⊢
+    subst hw'
+    rcases hshape with ⟨hb, hL1⟩ | ⟨hb, hL1, hstop⟩
+    · -- named handle `!w!`
+      subst hb
+      try simp only [ite_true] at hcorrS ⊢
+      obtain ⟨sp2, L2, hcorr2, hL2⟩ := collectTagSuffixLoop_span (sc.inputEnd - s1.offset) s1 sp1 "" hcorr1
+      have hcorr_s' := corr_emit_ska sc.currentPos
+        (.tag ("!" ++ String.ofList w ++ "!") (collectTagSuffixLoop s1 "" (sc.inputEnd - s1.offset)).1) hcorr2
+      have hsp : spS = sp2 := ScannerSurfCorr_unique hcorrS hcorr_s'
+      subst hsp
+      refine ⟨spS, "!" ++ String.ofList w ++ "!", (collectTagSuffixLoop s1 "" (sc.inputEnd - s1.offset)).1,
+        ?_, hcorr_s', hS, ?_⟩
+      · simp only [ScannerState.emitAt, collectTagSuffixLoop_tokens, htok1, htok_adv]
+      · have hL1' : rest = (w ++ ['!']) ++ sp1.chars := hL1
+        have hhead : ∀ c, (w ++ '!' :: L2).head? = some c → c ≠ '<' := by
+          intro c hc
+          cases w with
+          | nil => simp at hc; subst hc; decide
+          | cons a as =>
+            simp at hc
+            have ha : isWordCharBool a = true := by
+              have h := hall; simp only [List.all_cons, Bool.and_eq_true] at h; exact h.1
+            intro h; rw [h] at hc; rw [hc] at ha; exact absurd ha (by decide)
+        rw [span_of_eq _ _ ('!' :: (w ++ '!' :: L2)) (by simp [hL1', hL2]),
+          tagEvents_not_verbatim _ hhead, handleOf_named w L2 hall]
+        simp [tokenEvent_tag, isEmpty_false_of_toList (s := "!" ++ String.ofList w ++ "!") (by simp)]
+    · -- primary handle `!`
+      subst hb
+      try simp only [Bool.false_eq_true, ite_false] at hcorrS ⊢
+      obtain ⟨sp2, L2, hcorr2, hL2⟩ :=
+        collectTagSuffixLoop_span (sc.inputEnd - s1.offset) s1 sp1 (String.ofList w) hcorr1
+      have hcorr_s' := corr_emit_ska sc.currentPos
+        (.tag "!" (collectTagSuffixLoop s1 (String.ofList w) (sc.inputEnd - s1.offset)).1) hcorr2
+      have hsp : spS = sp2 := ScannerSurfCorr_unique hcorrS hcorr_s'
+      subst hsp
+      refine ⟨spS, "!", (collectTagSuffixLoop s1 (String.ofList w) (sc.inputEnd - s1.offset)).1,
+        ?_, hcorr_s', hS, ?_⟩
+      · simp only [ScannerState.emitAt, collectTagSuffixLoop_tokens, htok1, htok_adv]
+      · have hL1' : rest = w ++ sp1.chars := hL1
+        have hstop2 : ∀ c, L2.head? = some c → isWordCharBool c = false ∧ c ≠ '!' :=
+          fun c hc => hstop c (head_of_append_eq hL2 c hc)
+        have hhead : ∀ c, (w ++ L2).head? = some c → c ≠ '<' := by
+          intro c hc
+          cases w with
+          | nil =>
+            simp at hc
+            have h1 : sp1.chars.head? = some c := head_of_append_eq hL2 c hc
+            have h2 : rest.head? = some c := by rw [hL1']; simpa using h1
+            cases hr : rest with
+            | nil => rw [hr] at h2; cases h2
+            | cons d ds =>
+              rw [hr] at h2; simp at h2; subst h2
+              rw [hr] at hcorr_adv
+              have hpk := corr_peek_head hcorr_adv
+              intro h; subst h; exact h_not_lt hpk
+          | cons a as =>
+            simp at hc
+            have ha : isWordCharBool a = true := by
+              have h := hall; simp only [List.all_cons, Bool.and_eq_true] at h; exact h.1
+            intro h; rw [h] at hc; rw [hc] at ha; exact absurd ha (by decide)
+        rw [span_of_eq _ _ ('!' :: (w ++ L2)) (by simp [hL1', hL2]),
+          tagEvents_not_verbatim _ hhead, handleOf_primary w L2 hall hstop2]
+        simp [tokenEvent_tag, isEmpty_false_of_toList (s := "!") (by decide)]
 
 end
 
