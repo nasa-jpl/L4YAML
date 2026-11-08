@@ -688,10 +688,12 @@ def expectedSites : List String :=
   ["accum_content_on_pendingMapValue_indented #1 ctor:pendingProps.h_closeFE idx=n + 1 mono=1(h_mono:sc) monoOpt=0 base=1(h_base:sc) baseOpt=0 prep=1(h_preprocess:sc→s_prep,c) dispB=0 dispC=1(h_dispatch:c) hc=0 chr=0 corr=3(hcorr_prep:s_prep,hcorr_result:s',h_corr:sc) noflow=1(h_flow_disp) save=1(h_sk_s) fl=0 top=0 larm=0 floor=1(h_floor_old:sc@n + 1) nic=2(h_nic_mv:sc,h_nic_s:s') armed=0 col0=1(h_col0_old:0<sp_scan.col) ids=0 cover=4(h_closeF99@2:Floor(n,map(…) :: ks),h_frames99@2:Floor(n,ks),h_closeFV108@2:Floor(n + 1,ks),h_framesV108@2:Floor(n + 1,ks)) coverFn=1(h_cov_step) ⊢ inputs=missing(floorSrc) lo=[relay=h_closeF99:Floor(n,map(…) :: ks);relay=h_frames99:Floor(n,ks);relay=h_closeFV108:Floor(n + 1,ks);relay=h_framesV108:Floor(n + 1,ks)]",
    "content_dispatch_routed #1 ctor:pendingProps.h_closeFE idx=0 mono=0 monoOpt=0 base=0 baseOpt=0 prep=0 dispB=0 dispC=1(h_dispatch:c) hc=1(hprops:'&'|'!') chr=1(h:c='&') corr=3(hcorr_prep:s_prep,hcorr_result:s',hc:s') noflow=1(h_flow_disp) save=0 fl=0 top=0 larm=0 floor=0 nic=3(h_nic_prep:s_prep,h_nic_ad:s_prep*,h_nic_s:s') armed=0 col0=0 ids=0 cover=0 coverFn=1(h_cov_lift) ⊢ inputs=missing(mono,base,prep,floorSrc) lo=[] idx0",
    "content_dispatch_routed #2 ctor:pendingProps.h_closeFE idx=0 mono=0 monoOpt=0 base=0 baseOpt=0 prep=0 dispB=0 dispC=1(h_dispatch:c) hc=1(hprops:'&'|'!') chr=1(h:c='!') corr=3(hcorr_prep:s_prep,hcorr_result:s',hc:s') noflow=1(h_flow_disp) save=0 fl=0 top=0 larm=0 floor=0 nic=3(h_nic_prep:s_prep,h_nic_ad:s_prep*,h_nic_s:s') armed=0 col0=0 ids=0 cover=0 coverFn=1(h_cov_lift) ⊢ inputs=missing(mono,base,prep,floorSrc) lo=[] idx0"]
+-- 2026-11-07 (item 448, (α) stage A): `pendingMapValue.h_closeF`'s bound reads `ks≤n` — the park face admits the
+-- park's own level (the `-` park's mapping at its own column); the floor and `eq` columns are unchanged.
 def expectedShapes : List String :=
   ["pendingBlock.h_closeF bound(ks<n) Floor(n,ks) eq(—)",
    "pendingBlockContent.h_closeF bound(ks<n) Floor(n,ks) eq(—)",
-   "pendingMapValue.h_closeF bound(ks<n) Floor(n,map(…) :: ks) eq(—)",
+   "pendingMapValue.h_closeF bound(ks≤n) Floor(n,map(…) :: ks) eq(—)",
    "pendingProps.h_closeFE bound(ks<ne) Floor(ne,ks) eq(n=ne + 1)"]
 def expectedBounds : List String :=
   ["accum_content_on_pendingMapValue_indented #1 idx=n + 1 ctor=s' where=inline bounds=[] ⊢ no-bound",
@@ -832,7 +834,9 @@ def expectedLine : String :=
 -- Item 372 (2026-10-27): exit (a)'s sequence-top face (`SeqTopKey`) reads at the dedent key's punt.
 -- Item 374: rows=200 → 202, nodes=119962 → 120158 — `resumectx_of_landing` gains `h_base`, read at the props park's relay.
   -- 2026-10-29 (item 394): the term grew with `FlowBaseRoutes.valueF`'s supply and relays (nodes 122297 → 122509); no punt-cover row moved.
-  "sites=3 pb=0 pmv=0 props=3 idx0=2 mono=1 monoOpt=0 base=1 baseOpt=0 prep=1 dispB=0 dispC=3 hc=2 chr=2 dash=0 corr=3 noflow=3 save=1 fl=0 top=0 larm=0 floor=1 nic=3 armed=0 col0=1 ids=0 coverSites=1 coverBinders=4 coverFnSites=3 full=0 fullB=0 missMono=2 missBase=2 missPrep=2 missFloorSrc=3 own=0 empty=0 relay=1 relayEntries=4 bounds=0 below=0 belowSyn=0 belowArm=0 at=0 atSyn=0 atArm=0 undecided=0 bOwn=0 bOld=0 landedBelow=0 inlineBelow=0 payable=0 lack=2 lackCallers=16 lackSupplied=0 lackSuppliedB=2 lackLow=2 lackPayable=0 vacuous=2 bottomBelow=0 paidRows=16 bottomPaidBelow=5 bottomPaidRelay=9 named=8 rows=206 nodes=124494"
+  -- 2026-11-07 (item 448, (α) stage A): nodes 124494 → 124500 — the `≤` park faces' relays and `closeThenBlock`'s
+  -- `ResumeFrames.strict` read; no punt-cover row moved.
+  "sites=3 pb=0 pmv=0 props=3 idx0=2 mono=1 monoOpt=0 base=1 baseOpt=0 prep=1 dispB=0 dispC=3 hc=2 chr=2 dash=0 corr=3 noflow=3 save=1 fl=0 top=0 larm=0 floor=1 nic=3 armed=0 col0=1 ids=0 coverSites=1 coverBinders=4 coverFnSites=3 full=0 fullB=0 missMono=2 missBase=2 missPrep=2 missFloorSrc=3 own=0 empty=0 relay=1 relayEntries=4 bounds=0 below=0 belowSyn=0 belowArm=0 at=0 atSyn=0 atArm=0 undecided=0 bOwn=0 bOld=0 landedBelow=0 inlineBelow=0 payable=0 lack=2 lackCallers=16 lackSupplied=0 lackSuppliedB=2 lackLow=2 lackPayable=0 vacuous=2 bottomBelow=0 paidRows=16 bottomPaidBelow=5 bottomPaidRelay=9 named=8 rows=206 nodes=124500"
 
 /-! ## §3 The reading -/
 

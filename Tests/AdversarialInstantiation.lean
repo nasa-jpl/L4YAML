@@ -5619,6 +5619,103 @@ def testDirectiveAfterContent (state : IO.Ref TestCollector) : IO Unit := do
     | .error e, _, none =>
       checkM state s!"directiveAfterContent/{label}" false s!"REFUSED ({e}) but acceptance was expected"
 
+
+/-! ## Priority 70 — the (α) root-frame bound (Row 19, step (2) stage A): a park's frames may
+name the park's OWN level, read before the restatement
+
+Stage A restates the `:` park's frame faces (`pendingMapValue.h_closeF`, `deeperLandingResume` /
+`closeThenBlock`'s `h_valF`) from `∀ fr ∈ ks, fr.width < n` to `≤ n`.  What the rows read:
+(i) the bound shape itself on boundary lists — `[]`, the root frame `[map 0]`, the `-` park's
+pair `[seq 0, map 0]` (the enclosing mapping at the sequence's own column), nested lists — `<`
+refuses the own-level frame and `≤` admits it; (ii) the scanner's stack at the sibling-after-
+sequence landings (`a:⏎- b⏎c: 1`), with fuel 0/1/2 — REFUTED as predicted: the compact `-` at the
+mapping's column pushes NO level (item 389: the mapping at `nv = k` is the stack top), so the
+scanner never holds a `seq n` over a `map n`; the own-level frame is the PARK's (`map n` at the
+`-` park's column), not a scanner level, which is why the `≤` lands on the park faces and
+`ResumeFrames.level`'s own `<` stands; (iii) the parser's reading
+of those inputs: one document, the root mapping with both keys (the sibling after the compact
+sequence resumes the mapping), the `-`-first and column-1 twins refused.
+Predictions (scored in the item): P1 every sibling-after-sequence row is one document with two
+root keys; P2 the deepest stack of `a:⏎- b⏎c: 1` is `[map 0, map 0, seq 0]` (REFUTED:
+`[map 0, map 0]`, no push; fuel 2 already reaches it, not `[map 0]`); P3 `- a⏎b: 1` and `a:⏎- b⏎ c: 1` are refused; P4 fuel 0 projects `[]`. -/
+/-! Rule 2 on `ResumeFrames.strict` itself, under a `ResumeFrames` premise (elaboration-time rows; the
+exe's rows below can only instantiate the bound on raw lists).  A nested level reads the strict order
+off the frame below; the own-level pair `[map 0, map 0]` has NO `ResumeFrames` witness — the equal-width
+frame of the `-` park lives on the park's face, never in a level, which is why stage A widens the faces
+and not `ResumeFrames.level`. -/
+open L4YAML.Surface L4YAML.Proofs.IndentStackCover L4YAML.Proofs.StreamAccum in
+example {P : SurfPos → Prop} {sp : SurfPos}
+    (h : ResumeFrames P [FrameLevel.map 2, FrameLevel.map 0] sp) : (FrameLevel.map 0).width < 2 :=
+  h.strict _ (List.Mem.head _)
+
+open L4YAML.Surface L4YAML.Proofs.IndentStackCover L4YAML.Proofs.StreamAccum in
+example {P : SurfPos → Prop} {sp : SurfPos} : ¬ ResumeFrames P [FrameLevel.map 0, FrameLevel.map 0] sp :=
+  fun h => absurd (h.strict _ (List.Mem.head _)) (Nat.lt_irrefl _)
+
+open L4YAML.Proofs.IndentStackCover in
+def testRootFrameBound (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 70: the (α) root-frame bound — `<` refuses the park's own level, `≤` admits it (stage A)"
+  -- (i) the bound shape on boundary lists: (label, list, park level, `<` holds, `≤` holds)
+  let lists : List (String × List FrameLevel × Nat × Bool × Bool) :=
+    [ ("[] at 0", [], 0, true, true),
+      ("[] at 2", [], 2, true, true),
+      ("[map 0] at 0 (the root frame at the root park)", [FrameLevel.map 0], 0, false, true),
+      ("[map 0] at 2 (an enclosing frame, strictly narrower)", [FrameLevel.map 0], 2, true, true),
+      ("[seq 0, map 0] at 0 (the `-` park's pair, one width)", [FrameLevel.seq 0, FrameLevel.map 0], 0, false, true),
+      ("[map 2, map 0] at 2 (nested, own level on top)", [FrameLevel.map 2, FrameLevel.map 0], 2, false, true),
+      ("[map 2, map 0] at 4 (nested, strictly below)", [FrameLevel.map 2, FrameLevel.map 0], 4, true, true),
+      ("[map 4, map 2] at 2 (a wider frame: neither bound)", [FrameLevel.map 4, FrameLevel.map 2], 2, false, false) ]
+  for (label, ks, n, eLt, eLe) in lists do
+    let gotLt := ks.all (fun fr => decide (fr.width < n))
+    let gotLe := ks.all (fun fr => decide (fr.width ≤ n))
+    checkM state s!"rootFrameBound/{label}: `<` {eLt}, `≤` {eLe}" (gotLt == eLt && gotLe == eLe)
+      s!"got `<` {gotLt}, `≤` {gotLe}"
+  -- the `≤` bound is the `<` bound plus the own-level frames, on every list above
+  for (label, ks, n, _, _) in lists do
+    let viaLt := ks.all (fun fr => decide (fr.width < n || fr.width == n))
+    checkM state s!"rootFrameBound/{label}: `≤` = `<` ∨ own level" (viaLt == ks.all (fun fr => decide (fr.width ≤ n))) ""
+  -- (ii) the scanner's stack at the sibling-after-sequence landings (P2), with fuel 0/1/2
+  checkFrames state "a:⏎- b⏎c: 1 (compact sequence at the mapping's column: no level pushed)" "a:\n- b\nc: 1\n"
+    [FrameLevel.map 0, FrameLevel.map 0]
+  checkFrames state "a:⏎-⏎c: 1 (empty entry, then the sibling: no level pushed)" "a:\n-\nc: 1\n"
+    [FrameLevel.map 0, FrameLevel.map 0]
+  checkFrames state "a:⏎- b⏎- c⏎d: 1 (two entries: no level pushed)" "a:\n- b\n- c\nd: 1\n"
+    [FrameLevel.map 0, FrameLevel.map 0]
+  checkFrames state "a: 1⏎b: 2 (no sequence: mapping levels only)" "a: 1\nb: 2\n"
+    [FrameLevel.map 0, FrameLevel.map 0]
+  checkFrames state "a:⏎  b: 1⏎c: 2 (nested mapping: widths strictly nest)" "a:\n  b: 1\nc: 2\n"
+    [FrameLevel.map 0, FrameLevel.map 0, FrameLevel.map 2]
+  checkFrames state "a:⏎  - b⏎c: 1 (indented sequence: the seq level is wider)" "a:\n  - b\nc: 1\n"
+    [FrameLevel.map 0, FrameLevel.map 0, FrameLevel.seq 2]
+  for (fuel, expected) in [(0, ([] : List FrameLevel)), (1, [FrameLevel.map 0]), (2, [FrameLevel.map 0, FrameLevel.map 0])] do
+    let got := deepestFrames "a:\n- b\nc: 1\n" fuel
+    checkM state s!"rootFrameBound/fuel {fuel}: deepest stack [{frameLabel expected}]" (got == expected)
+      s!"got [{frameLabel got}]"
+  -- (iii) the parser: (label, input, documents and root-mapping arity, or refused)
+  let rootArity (docs : Array YamlDocument) : Option Nat :=
+    docs[0]?.bind (fun d => match d.value with | YamlValue.mapping _ arr _ _ => some arr.size | _ => none)
+  let rows : List (String × String × Option (Nat × Option Nat)) :=
+    [ ("a:⏎- b⏎c: 1", "a:\n- b\nc: 1", some (1, some 2)),
+      ("a:⏎-⏎c: 1", "a:\n-\nc: 1", some (1, some 2)),
+      ("a:⏎- b⏎- c⏎d: 1", "a:\n- b\n- c\nd: 1", some (1, some 2)),
+      ("a: 1⏎b: 2", "a: 1\nb: 2", some (1, some 2)),
+      ("a:⏎  b: 1⏎c: 2", "a:\n  b: 1\nc: 2", some (1, some 2)),
+      ("a: [1]⏎b: 2 (flow value, then the sibling)", "a: [1]\nb: 2", some (1, some 2)),
+      ("? a⏎: b⏎c: d (explicit entry, then the sibling)", "? a\n: b\nc: d", some (1, some 2)),
+      ("a:⏎- b:⏎  - c⏎  d: 1⏎e: 2 (nested seq-over-map, two siblings)", "a:\n- b:\n  - c\n  d: 1\ne: 2", some (1, some 2)),
+      ("---⏎a:⏎- b⏎c: 1 (explicit document)", "---\na:\n- b\nc: 1", some (1, some 2)),
+      ("a:⏎- b⏎...⏎c: 1 (`...` between: two documents)", "a:\n- b\n...\nc: 1", some (2, some 1)),
+      ("a:⏎- b⏎---⏎c: 1 (`---` between: two documents)", "a:\n- b\n---\nc: 1", some (2, some 1)),
+      ("a:⏎- b (no sibling: one key)", "a:\n- b", some (1, some 1)),
+      ("a (singleton scalar: no mapping)", "a", some (1, none)),
+      ("(empty)", "", some (0, none)),
+      ("- a⏎b: 1 (`-` first: refused)", "- a\nb: 1", none),
+      ("a:⏎- b⏎ c: 1 (sibling at column 1: refused)", "a:\n- b\n c: 1", none) ]
+  for (label, src, expected) in rows do
+    let got : Option (Nat × Option Nat) := match L4YAML.TokenParser.parseYaml src with
+      | .ok docs => some (docs.size, rootArity docs)
+      | .error _ => none
+    checkM state s!"rootFrameBound/parser {label}" (got == expected) s!"got {repr got}, expected {repr expected}"
 /-- Priority 34 (`[173]` tail confined to EOF): the executable side of
 `collectLineContentLoop_fst_nonempty` and of `BlockStopOk.badChar`'s non-empty run
 (`lineRunPlus_toBodyTail`).  An `nb-char` first and fuel ≥ 1 give non-empty content; the
@@ -11717,6 +11814,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testTraceOfBlockLedger state
   testExplicitOnlyStream state
   testDirectiveAfterContent state
+  testRootFrameBound state
   testRootSiblingLedger state
   testSiblingDashFrames state
   testValueLineResume state
