@@ -12278,25 +12278,45 @@ def c3B (s : ScannerState) : Bool :=
   (s.indents[0]?.map (·.column) == some (-1)) &&
     (List.range s.indents.size).all (fun i => i == 0 || (s.indents[i]?.map (fun e => decide (0 ≤ e.column)) == some true))
 
-/-- The slot's tail is depth-neutral, or (block context) the slot is stale-but-harmless exactly as
-`SlotOK`'s alternative: it will be re-saved (`simpleKeyAllowed`) or its `:` pushes a fresh mapping
-(`currentIndent < pos.col`).  Prediction P4 (plain neutrality) was REFUTED on `- a`: the key saved
-at `-` sits before the `blockSequenceStart` that `pushSequenceIndent` emits. -/
+/-- Prediction P4 (plain slot-tail neutrality) was REFUTED on `- a`: the key saved at `-` sits
+before the `blockSequenceStart` that `pushSequenceIndent` emits.  Kept as the refuter's record. -/
 def slotNeutralB (s : ScannerState) : Bool :=
   depth ((L4YAML.Proofs.DirectiveRuns.vals s).take (s.simpleKey.tokenIndex + 1)) ==
     depth (L4YAML.Proofs.DirectiveRuns.vals s)
 
+/-- `DInv.slot` as proven (`DSlot`): the prefix through the slot's first placeholder is at positive
+depth, or (block context) the key is stale-but-harmless — `SlotOK`'s alternative. -/
 def c4B (s : ScannerState) : Bool :=
-  !s.simpleKey.possible || slotNeutralB s ||
+  !s.simpleKey.possible ||
+    0 < depth ((L4YAML.Proofs.DirectiveRuns.vals s).take (s.simpleKey.tokenIndex + 1)) ||
     (s.flowLevel == 0 && (s.currentIndent < (s.simpleKey.pos.col : Int) || s.simpleKeyAllowed))
 
+/-- `DInv.stack` as proven. -/
 def c5B (s : ScannerState) : Bool :=
   (List.range s.simpleKeyStack.size).all fun j =>
     match s.simpleKeyStack[j]? with
     | some k => !k.possible ||
-        depth ((L4YAML.Proofs.DirectiveRuns.vals s).take (k.tokenIndex + 1)) + ((s.flowLevel : Int) - j) ==
-          depth (L4YAML.Proofs.DirectiveRuns.vals s)
+        0 < depth ((L4YAML.Proofs.DirectiveRuns.vals s).take (k.tokenIndex + 1)) ||
+        (j == 0 && s.currentIndent < (k.pos.col : Int))
     | none => true
+
+def phAtB (L : List YamlToken) (i : Nat) : Bool :=
+  L[i]? == some .placeholder && L[i + 1]? == some .placeholder
+
+/-- `DInv.ph` / `DInv.stackPh`: every saved slot still holds its two placeholders. -/
+def c6B (s : ScannerState) : Bool :=
+  let v := L4YAML.Proofs.DirectiveRuns.vals s
+  (!s.simpleKey.possible || phAtB v s.simpleKey.tokenIndex) &&
+    s.simpleKeyStack.all (fun k => !k.possible || phAtB v k.tokenIndex)
+
+/-- `DInv.ordCur` / `DInv.ordStk`: saved slots are two apart and below the current one. -/
+def c7B (s : ScannerState) : Bool :=
+  let st := s.simpleKeyStack
+  (!s.simpleKey.possible || st.all (fun k => !k.possible || k.tokenIndex + 2 ≤ s.simpleKey.tokenIndex)) &&
+    (List.range st.size).all fun j => (List.range st.size).all fun j' =>
+      match st[j]?, st[j']? with
+      | some k, some k' => !(j < j') || !k.possible || !k'.possible || k.tokenIndex + 2 ≤ k'.tokenIndex
+      | _, _ => true
 
 end P97
 
@@ -12327,10 +12347,14 @@ def testGammaBal (state : IO.Ref TestCollector) : IO Unit := do
         (P97.c1B s) s!"depth={P97.depth v} indents={s.indents.size} fl={s.flowLevel} vals={repr v}"
       checkM state s!"P97 {repr input}: c3 indent stack sentinel/columns on reached state {states}" (P97.c3B s)
         s!"indents={repr (s.indents.map (·.column))}"
-      checkM state s!"P97 {repr input}: c4 slot tail is depth-neutral on reached state {states}" (P97.c4B s)
+      checkM state s!"P97 {repr input}: c4 DSlot (slot prefix deep ∨ SlotOK alternative) on reached state {states}" (P97.c4B s)
         s!"idx={s.simpleKey.tokenIndex} vals={repr v}"
-      checkM state s!"P97 {repr input}: c5 stacked slots on reached state {states}" (P97.c5B s)
+      checkM state s!"P97 {repr input}: c5 stacked slots (prefix deep ∨ j = 0 ∧ ci < col) on reached state {states}" (P97.c5B s)
         s!"stack={repr (s.simpleKeyStack.map (fun k => (k.possible, k.tokenIndex)))} fl={s.flowLevel} vals={repr v}"
+      checkM state s!"P97 {repr input}: c6 saved slots hold two placeholders on reached state {states}" (P97.c6B s)
+        s!"vals={repr v}"
+      checkM state s!"P97 {repr input}: c7 slot ordering (two apart, stack below current) on reached state {states}" (P97.c7B s)
+        s!"idx={s.simpleKey.tokenIndex} stack={repr (s.simpleKeyStack.map (fun k => (k.possible, k.tokenIndex)))}"
       checkM state s!"P97 {repr input}: Bal on reached raw state {states}" (P97.balB v) s!"vals={repr v}"
       if s.simpleKey.possible then
         slots := slots + 1

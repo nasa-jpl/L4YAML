@@ -2,6 +2,8 @@ module
 
 public import L4YAML.Proofs.Scanner.DocStartLiveInv
 
+@[expose] public section Blanket
+
 /-!
 # Structural depth of scanner output — (γ1), capstone 7.7 `parse_iff_grammar`
 
@@ -1357,8 +1359,8 @@ lemma depth_filter (p : YamlToken → Bool) (hp : ∀ t, p t = false → depthSt
   intro L t ih
   rw [List.filter_append, depth_append, depth_append, depth_singleton]
   cases hpt : p t with
-  | true => simp [List.filter_cons, hpt, ih]
-  | false => simp [List.filter_cons, hpt, ih, hp t hpt]
+  | true => simp [hpt, ih]
+  | false => simp [hpt, ih, hp t hpt]
 
 lemma Bal_filter (p : YamlToken → Bool)
     (hp : ∀ t, p t = false → depthStep t = 0 ∧ structDead t = false) :
@@ -1388,3 +1390,5 @@ lemma scanFiltered_bal (input : String) (ts : Array (Positioned YamlToken))
   · contradiction
 
 end L4YAML.Proofs.StructDepth
+
+end Blanket

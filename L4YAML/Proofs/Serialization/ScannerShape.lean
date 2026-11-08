@@ -6,6 +6,7 @@ public import L4YAML.Proofs.Scanner.DocStartLive
 public import L4YAML.Proofs.Scanner.FlowSync
 public import L4YAML.Proofs.Scanner.DocStartLiveInv
 public import L4YAML.Proofs.Scanner.TagShape
+public import L4YAML.Proofs.Scanner.StructDepth
 import all L4YAML.Proofs.Serialization.TokenEvents
 
 @[expose] public section Blanket
@@ -234,6 +235,15 @@ lemma scanFiltered_noComment (input : String) (ts : Toks) (hs : scanFiltered inp
   rw [tok_eq_toks] at h
   have := TagShape.scanFiltered_emitOk input ts hs _ (List.mem_of_getElem? h)
   simp [TagShape.emitOk] at this
+
+/-- (γ1) on the parser's view of the token array: a structural dead token at index `k` of
+    `scanFiltered` output sits at positive `StructDepth.depth`.  (γ2) consumes this against the
+    `DeadResidue` stop token, whose position `parseDocument` leaves at depth 0. -/
+lemma scanFiltered_bal_tok (input : String) (ts : Toks) (hs : scanFiltered input = .ok ts)
+    (k : Nat) (t : YamlToken) (hk : ParseCheckFrom.tok ts k = some t)
+    (hd : StructDepth.structDead t = true) : 0 < StructDepth.depth ((toks ts).take k) := by
+  rw [tok_eq_toks] at hk
+  exact StructDepth.scanFiltered_bal input ts hs k t hk hd
 
 /-- (β2): on scanner output the loop's no-progress exit cannot sit at index 1 or right after a
 `...` — the token there is live (`scanFiltered_liveF`), and a dead token at `k` would need a
