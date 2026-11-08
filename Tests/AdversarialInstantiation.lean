@@ -13207,6 +13207,133 @@ def charMismatches : Nat := Id.run do
 
 def kindCount (t : Tally) (k : String) : Nat := (t.byKind.find? (·.1 == k)).map (·.2) |>.getD 0
 
+
+/-! ### (vi)–(viii) The headline conclusions on positioned scanner states, directly
+
+`scanAnchorOrAlias` / `scanTag` / `scanNextToken_dispatchContent` run from a state positioned
+at the leaf's marker (the input advanced byte by byte to the real token's offset): the pushed
+token array, the landing state (`input`/`inputEnd` kept, `col` moved by the lexeme's length,
+`tokens` of the loops untouched) and the trace of the lexeme the scanner itself consumed —
+the executable face of `ScannerSurfCorr s' sp'` and `TCNs*` in the twins.  The loop helpers at
+fuel 0 / 1 / 2 / full with empty and non-empty accumulators. -/
+
+/-- Advance a fresh state to byte offset `k` (bounded by the input's size). -/
+def stateAt (input : String) (k : Nat) : ScannerState := Id.run do
+  let mut st := ScannerState.mk' input
+  for _ in [0:input.utf8ByteSize] do
+    if st.offset < k then st := st.advance
+  return st
+
+/-- The leaf tokens of every scanned row, with the row and the next token's offset. -/
+def leafSites (rows : List String) : List (String × Positioned YamlToken) := Id.run do
+  let mut out := []
+  for s in rows do
+    match scanFiltered s with
+    | .error _ => pure ()
+    | .ok ts =>
+      for tk in ts do
+        if isLeaf tk.val then out := (s, tk) :: out
+  return out.reverse
+
+structure Direct where
+  runs : Nat := 0
+  ok : Nat := 0
+  refused : Nat := 0
+  refusedWhy : List String := []
+  bad : List String := []
+
+/-- The executable face of a twin's conclusion for a run `st → s'` that emitted `tk`. -/
+def landingOk (s : String) (st s' : ScannerState) (tok : YamlToken) : Bool :=
+  let sp := spanAt s st.offset s'.offset
+  s'.tokens == st.tokens.push { pos := st.currentPos, val := tok } &&
+  s'.input == st.input && s'.inputEnd == st.inputEnd && st.offset ≤ s'.offset &&
+  s'.col == st.col + sp.length &&
+  leafEvents tok sp == (tokenEvent tok).toList
+
+def directRuns (rows : List String) : Direct × Direct × Direct := Id.run do
+  let mut leaf : Direct := {}
+  let mut tag : Direct := {}
+  let mut disp : Direct := {}
+  for (s, tk) in leafSites rows do
+    let st := stateAt s tk.pos.offset
+    -- the scanner's own leaf functions, no guards
+    match tk.val with
+    | .anchor _ | .alias _ =>
+      leaf := { leaf with runs := leaf.runs + 1 }
+      match scanAnchorOrAlias st (match tk.val with | .anchor _ => true | _ => false) with
+      | .error e => leaf := { leaf with refused := leaf.refused + 1, bad := s!"{repr s}@{st.offset}: refused {repr e}" :: leaf.bad }
+      | .ok s' =>
+        let want := match tk.val with
+          | .anchor _ => YamlToken.anchor ((s'.tokens.back?.map (·.val)).getD .placeholder |> fun t => match t with | .anchor n => n | _ => "")
+          | _ => YamlToken.alias ((s'.tokens.back?.map (·.val)).getD .placeholder |> fun t => match t with | .alias n => n | _ => "")
+        if (s'.tokens.back?.map (·.val)) == some tk.val && landingOk s st s' want then leaf := { leaf with ok := leaf.ok + 1 }
+        else leaf := { leaf with bad := s!"{repr s}@{st.offset}: {repr tk.val} → {repr (s'.tokens.back?.map (·.val))} col {st.col}→{s'.col} off {st.offset}→{s'.offset}" :: leaf.bad }
+    | .tag _ _ =>
+      tag := { tag with runs := tag.runs + 1 }
+      match scanTag st with
+      | .error e => tag := { tag with refused := tag.refused + 1, bad := s!"{repr s}@{st.offset}: refused {repr e}" :: tag.bad }
+      | .ok s' =>
+        if (s'.tokens.back?.map (·.val)) == some tk.val && landingOk s st s' tk.val then tag := { tag with ok := tag.ok + 1 }
+        else tag := { tag with bad := s!"{repr s}@{st.offset}: {repr tk.val} → {repr (s'.tokens.back?.map (·.val))} col {st.col}→{s'.col} off {st.offset}→{s'.offset}" :: tag.bad }
+    | _ => pure ()
+    -- the content dispatcher's arm (guards live: an alias needs its anchor defined)
+    let c := match tk.val with | .anchor _ => '&' | .alias _ => '*' | _ => '!'
+    let stD := match tk.val with | .alias n => { st with definedAnchors := #[n] } | _ => st
+    disp := { disp with runs := disp.runs + 1 }
+    match scanNextToken_dispatchContent stD c with
+    | .error e => disp := { disp with refused := disp.refused + 1, refusedWhy := s!"{repr s}@{st.offset}: {repr e}" :: disp.refusedWhy }
+    | .ok s'' =>
+      if (s''.tokens.back?.map (·.val)) == some tk.val && landingOk s stD s'' tk.val then disp := { disp with ok := disp.ok + 1 }
+      else disp := { disp with bad := s!"{repr s}@{st.offset}: dispatch {repr tk.val} → {repr (s''.tokens.back?.map (·.val))} col {stD.col}→{s''.col}" :: disp.bad }
+  return (leaf, tag, disp)
+
+structure Loops where
+  runs : Nat := 0
+  ok : Nat := 0
+  bad : List String := []
+
+def loopsOk (st s1 : ScannerState) : Bool :=
+  s1.input == st.input && s1.inputEnd == st.inputEnd && s1.tokens == st.tokens && st.offset ≤ s1.offset
+
+/-- The four loops at fuel 0 / 1 / 2 / full, accumulators `""` and `"pre"`, from the position after the marker. -/
+def loopRuns (rows : List String) : Loops := Id.run do
+  let mut L : Loops := {}
+  let fuels (st : ScannerState) : List Nat := [0, 1, 2, st.inputEnd - st.offset]
+  for (s, tk) in leafSites rows do
+    let st := (stateAt s tk.pos.offset).advance
+    for acc in ["", "pre"] do
+      for f in fuels st do
+        -- anchor-name loop: the name is acc ++ the consumed span, all isAnchorCharBool
+        let (name, s1) := collectAnchorNameLoop st acc f
+        let sp := spanAt s st.offset s1.offset
+        L := { L with runs := L.runs + 1 }
+        if loopsOk st s1 && name.toList == acc.toList ++ sp && sp.all L4YAML.Proofs.Serialization.SourceEvents.isAnchorCharBool
+            && s1.col == st.col + sp.length then L := { L with ok := L.ok + 1 }
+        else L := { L with bad := s!"anchor-loop {repr s}@{st.offset} acc={repr acc} fuel={f}: name={repr name} span={repr (String.ofList sp)}" :: L.bad }
+        -- tag-handle loop: span = word chars (++ '!' with the bang); no bang at full fuel ⇒ stop char not word, not '!'
+        let (w, bang, s2) := collectTagHandleLoop st acc f
+        let sp2 := spanAt s st.offset s2.offset
+        let body := w.toList.drop acc.length
+        let stop := (dropBytes s.toList s2.offset).head?
+        let stopOk := bang || f < st.inputEnd - st.offset || (match stop with | none => true | some c => !isWordCharBool c && c != '!')
+        L := { L with runs := L.runs + 1 }
+        if loopsOk st s2 && w.toList.take acc.length == acc.toList && sp2 == body ++ (if bang then ['!'] else []) && body.all isWordCharBool && stopOk
+            && s2.col == st.col + sp2.length then L := { L with ok := L.ok + 1 }
+        else L := { L with bad := s!"handle-loop {repr s}@{st.offset} acc={repr acc} fuel={f}: w={repr w} bang={bang} span={repr (String.ofList sp2)}" :: L.bad }
+        -- tag-suffix loop: suffix = acc ++ the consumed span
+        let (suf, s3) := collectTagSuffixLoop st acc f
+        let sp3 := spanAt s st.offset s3.offset
+        L := { L with runs := L.runs + 1 }
+        if loopsOk st s3 && suf.toList == acc.toList ++ sp3 && s3.col == st.col + sp3.length then L := { L with ok := L.ok + 1 }
+        else L := { L with bad := s!"suffix-loop {repr s}@{st.offset} acc={repr acc} fuel={f}: suf={repr suf} span={repr (String.ofList sp3)}" :: L.bad }
+        -- verbatim loop: span = uri chars (++ '>' with the close)
+        let (uri, close, s4) := collectVerbatimTagLoop st acc f
+        let sp4 := spanAt s st.offset s4.offset
+        L := { L with runs := L.runs + 1 }
+        if loopsOk st s4 && sp4 == uri.toList.drop acc.length ++ (if close then ['>'] else []) && s4.col == st.col + sp4.length then L := { L with ok := L.ok + 1 }
+        else L := { L with bad := s!"verbatim-loop {repr s}@{st.offset} acc={repr acc} fuel={f}: uri={repr uri} close={close} span={repr (String.ofList sp4)}" :: L.bad }
+  return L
+
 /-! ### Smallest term-level instances: `&x`, `*x`, `!` with the token's trace -/
 
 private lemma ns_x : isNsAnchorChar 'x' := by unfold isNsAnchorChar isNsChar; decide
@@ -13249,6 +13376,20 @@ def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
   -- (v) the smallest term-level instances are the lemmas above; their scanner side:
   checkM state "P100(v) `&x` → [defineAnchor x]" ((P99.both "&x").1 == some [.defineAnchor "x"]) ""
   checkM state "P100(v) `*x` → scanner refuses an undefined alias (the trace side holds: traceOf_alias_x)" ((P99.both "*x").1 == none) ""
+  -- (vi) the twins' full conclusions on positioned states: token array, landing state, trace of the consumed lexeme
+  let (leaf, tag, disp) := P100.directRuns P100.allRows
+  checkM state s!"P100(vi) scanAnchorOrAlias direct: {leaf.runs} runs, {leaf.ok} with the twin's token/landing/trace, {leaf.refused} refused"
+    (leaf.ok == leaf.runs && leaf.refused == 0) s!"{repr (leaf.bad.take 6)}"
+  checkM state s!"P100(vi) scanTag direct: {tag.runs} runs, {tag.ok} with the twin's token/landing/trace, {tag.refused} refused"
+    (tag.ok == tag.runs && tag.refused == 0) s!"{repr (tag.bad.take 6)}"
+  -- (vii) the content dispatcher's arms (the consumers `ScannerShape.dispatchContent_*_trace`): every accepted run satisfies
+  checkM state s!"P100(vii) dispatchContent direct: {disp.runs} runs, {disp.ok} accepted with the conclusion, {disp.refused} refused by the arm's guards, {disp.bad.length} bad"
+    (disp.bad.isEmpty && disp.ok + disp.refused == disp.runs && disp.ok ≥ 150) s!"{repr (disp.bad.take 6)}"
+  checkM state s!"P100(vii) the {disp.refused} guard refusals: {repr disp.refusedWhy.reverse}" true ""
+  -- (viii) the loop helpers at fuel 0 / 1 / 2 / full, accumulators "" and "pre"
+  let L := P100.loopRuns P100.allRows
+  checkM state s!"P100(viii) loop helpers: {L.runs} runs (4 loops × 4 fuels × 2 accumulators per leaf), {L.ok} with the span/landing clauses"
+    (L.ok == L.runs) s!"{repr (L.bad.take 8)}"
 
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
