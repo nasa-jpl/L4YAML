@@ -5717,6 +5717,98 @@ def testRootFrameBound (state : IO.Ref TestCollector) : IO Unit := do
       | .ok docs => some (docs.size, rootArity docs)
       | .error _ => none
     checkM state s!"rootFrameBound/parser {label}" (got == expected) s!"got {repr got}, expected {repr expected}"
+/-! ## Priority 71 — Row 19 step (2) stage B, READ before the pay: the (α) root-frame supply's two
+facts.  Stage B supplies `[FrameLevel.map 0]` at the root births (the `Or.inl ⟨[], …⟩` fallbacks of
+the opener lines) and spends an append on `SCompactMapTail` — the root mapping's tail after the
+first entry, continued by the siblings the route resumes.  Rows: (i) the scanner's stack at the
+root births (fuel 0/1/2 on the three-key mapping): the root frame is the stack's bottom at every
+root `:` / `?` / flow-key park, so the supply names a frame the scanner holds; (ii) the append on
+the constructor's own instances (nil/nil, cons/nil, nil/cons, two-each) at `n = 0 / 2`, stated
+here first — the library copy lands with the pay; (iii) the parser and the two document walks on
+the root births and on `TraceOfBlockAmbiguity`'s two inputs (`a⏎&x`, `a: |⏎   x⏎  &x b: *x`), the
+readings the rewrite of that file must keep.
+Predictions (scored in the item): P5 every append row elaborates; P6 `a⏎&x` is ONE document,
+scalar `a &x` (explicit-only walk 1, broad 2), and `a: |⏎   x⏎  &x b: *x` is REFUSED by the parser
+(walks 1 / 2); P8 the deepest stacks are `[map 0, map 0]` at every root mapping birth, `[map 0]`
+for `a⏎&x`, `[map 0, seq 0]` for the root `-` park. -/
+open L4YAML.Surface in
+/-- The append stage B spends, in the shape the pay will state (`lemma`, structural on the tail). -/
+private lemma compactMapTail_append_read {n : Nat} : ∀ {s s₁ s₂ : SurfPos},
+    SCompactMapTail n s s₁ → SCompactMapTail n s₁ s₂ → SCompactMapTail n s s₂
+  | _, _, _, .nil _ _, h₂ => h₂
+  | _, _, _, .cons _ s sa sb _ hi he ht, h₂ => .cons _ s sa sb _ hi he (compactMapTail_append_read ht h₂)
+
+open L4YAML.Surface in
+example {s : SurfPos} : SCompactMapTail 0 s s := compactMapTail_append_read (.nil 0 s) (.nil 0 s)
+open L4YAML.Surface in
+example {s s₁ s₂ s' : SurfPos} (hi : SIndent 0 s s₁) (he : SBlockMapEntry 0 s₁ s₂)
+    (ht : SCompactMapTail 0 s₂ s') : SCompactMapTail 0 s s' :=
+  compactMapTail_append_read (.cons 0 s s₁ s₂ s₂ hi he (.nil 0 s₂)) ht
+open L4YAML.Surface in
+example {s s₁ s₂ s' : SurfPos} (hi : SIndent 2 s s₁) (he : SBlockMapEntry 2 s₁ s₂)
+    (ht : SCompactMapTail 2 s₂ s') : SCompactMapTail 2 s s' :=
+  compactMapTail_append_read (.nil 2 s) (.cons 2 s s₁ s₂ s' hi he ht)
+open L4YAML.Surface in
+example {s s₁ s₂ s₃ s₄ s₅ s₆ : SurfPos} (hi₁ : SIndent 2 s s₁) (he₁ : SBlockMapEntry 2 s₁ s₂)
+    (hi₂ : SIndent 2 s₂ s₃) (he₂ : SBlockMapEntry 2 s₃ s₄) (hi₃ : SIndent 2 s₄ s₅)
+    (he₃ : SBlockMapEntry 2 s₅ s₆) : SCompactMapTail 2 s s₆ :=
+  compactMapTail_append_read (.cons 2 s s₁ s₂ s₂ hi₁ he₁ (.nil 2 s₂))
+    (.cons 2 s₂ s₃ s₄ s₆ hi₂ he₂ (.cons 2 s₄ s₅ s₆ s₆ hi₃ he₃ (.nil 2 s₆)))
+
+open ExplicitOnlyMirror L4YAML.Proofs.IndentStackCover in
+def testRootFrameSupplyRead (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 71: the (α) root-frame supply, stage B read — the root births hold the root frame; the compact-map tail appends; [211]'s two block/document inputs under the explicit-only reading"
+  -- (i) the scanner's stack at the root births (P8), fuel 0/1/2 on the three-key mapping
+  checkFrames state "a: 1⏎b: 2 (root `:` park, one sibling)" "a: 1\nb: 2\n" [FrameLevel.map 0, FrameLevel.map 0]
+  checkFrames state "a: 1⏎b: 2⏎c: 3 (two siblings: the tail appends, no new level)" "a: 1\nb: 2\nc: 3\n"
+    [FrameLevel.map 0, FrameLevel.map 0]
+  checkFrames state "[a]: 1⏎b: 2 (flow key at the root)" "[a]: 1\nb: 2\n" [FrameLevel.map 0, FrameLevel.map 0]
+  checkFrames state "? a⏎: 1⏎b: 2 (explicit entry at the root)" "? a\n: 1\nb: 2\n" [FrameLevel.map 0, FrameLevel.map 0]
+  checkFrames state "a: 1⏎---⏎b: 2 (explicit document between)" "a: 1\n---\nb: 2\n" [FrameLevel.map 0, FrameLevel.map 0]
+  checkFrames state "a⏎&x (no mapping: the sentinel alone)" "a\n&x\n" [FrameLevel.map 0]
+  checkFrames state "- a⏎- b (root `-` park)" "- a\n- b\n" [FrameLevel.map 0, FrameLevel.seq 0]
+  for (fuel, expected) in [(0, ([] : List FrameLevel)), (1, [FrameLevel.map 0]), (2, [FrameLevel.map 0, FrameLevel.map 0])] do
+    let got := deepestFrames "a: 1\nb: 2\nc: 3\n" fuel
+    checkM state s!"rootFrameSupply/fuel {fuel}: deepest stack [{frameLabel expected}]" (got == expected)
+      s!"got [{frameLabel got}]"
+  -- (ii) the parser: (label, input, accepted as (documents, leading scalar, first document's root arity), or refused)
+  -- the leading scalar content, through a sequence's or a mapping's first key (Priority 69's reader)
+  let rec leadContent : Nat → YamlValue → String
+    | _, YamlValue.scalar s => s.content
+    | fuel + 1, YamlValue.sequence _ arr _ _ => (arr[0]?.map (leadContent fuel)).getD "<empty sequence>"
+    | fuel + 1, YamlValue.mapping _ arr _ _ => (arr[0]?.map (fun p => leadContent fuel p.1)).getD "<empty mapping>"
+    | _, _ => "<other>"
+  let rootArity (d : YamlDocument) : Nat := match d.value with
+    | YamlValue.mapping _ arr _ _ => arr.size
+    | YamlValue.sequence _ arr _ _ => arr.size
+    | _ => 0
+  let rows : List (String × String × Option (Nat × String × Nat)) :=
+    [ ("a⏎&x (Refutation 1's input: one bare document, the plain scalar folds)", "a\n&x", some (1, "a &x", 0)),
+      ("a: |⏎   x⏎  &x b: *x (Refutation 2's input: the indent-2 line after a mapping at 0 is no sibling)",
+        "a: |\n   x\n  &x b: *x", none),
+      ("a: 1⏎b: 2⏎c: 3 (three siblings)", "a: 1\nb: 2\nc: 3", some (1, "a", 3)),
+      ("[a]: 1⏎b: 2 (flow key, then the sibling)", "[a]: 1\nb: 2", some (1, "a", 2)),
+      ("? a⏎: 1⏎b: 2 (explicit entry, then the sibling)", "? a\n: 1\nb: 2", some (1, "a", 2)),
+      ("a: 1⏎---⏎b: 2 (two documents, one key each)", "a: 1\n---\nb: 2", some (2, "a", 1)),
+      ("a⏎&x⏎...⏎b (`...` then a bare document: two documents)", "a\n&x\n...\nb", some (2, "a &x", 0)),
+      ("a⏎---⏎&x b (explicit document carries the anchor)", "a\n---\n&x b", some (2, "a", 0)) ]
+  for (label, src, expected) in rows do
+    let got : Option (Nat × String × Nat) := match L4YAML.TokenParser.parseYaml src with
+      | .ok docs => some (docs.size, (docs[0]?.map (fun d => leadContent 4 d.value)).getD "<no document>",
+          (docs[0]?.map rootArity).getD 0)
+      | .error _ => none
+    checkM state s!"rootFrameSupply/parser {label}" (got == expected) s!"got {repr got}, expected {repr expected}"
+  -- (iii) the two document walks (Priority 68's mirror) on the two `TraceOfBlockAmbiguity` inputs.
+  -- P6 REFUTED on the second: the broad walk reads 1, not 2 — the mirror counts document starts at
+  -- COLUMN 0 only, and Refutation 2's second bare document (`  &x b: *x`) starts at column 2; the
+  -- broad grammar admits it at the `TBlockNode` level, below what a line walk can see.  Kept as read.
+  for (label, src, eExpl, eBroad) in [("a⏎&x", "a\n&x", 1, 2),
+      ("a: |⏎   x⏎  &x b: *x (REFUTED: the walk cannot see an indent-2 bare document)", "a: |\n   x\n  &x b: *x", 1, 1)] do
+    let gotE := explicitOnlyDocs src
+    let gotB := broadDocs src
+    checkM state s!"rootFrameSupply/walk {label}: explicit-only {eExpl}, broad {eBroad}" (gotE == eExpl && gotB == eBroad)
+      s!"got {gotE} / {gotB}"
+
 /-- Priority 34 (`[173]` tail confined to EOF): the executable side of
 `collectLineContentLoop_fst_nonempty` and of `BlockStopOk.badChar`'s non-empty run
 (`lineRunPlus_toBodyTail`).  An `nb-char` first and fuel ≥ 1 give non-empty content; the
@@ -12591,6 +12683,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testExplicitOnlyStream state
   testDirectiveAfterContent state
   testRootFrameBound state
+  testRootFrameSupplyRead state
   testRootSiblingLedger state
   testSiblingDashFrames state
   testValueLineResume state
