@@ -185,7 +185,7 @@ lemma shaped_cases (hd : String) (h : isTagHandleShaped hd = true) :
       have hne : rest ≠ [] := by intro h0; subst h0; simp at hlen
       have hsplit := List.dropLast_concat_getLast hne
       have hlast' : rest.getLast hne = '!' := by
-        have := List.getLast?_eq_getLast (l := rest) hne
+        have := List.getLast?_eq_some_getLast (l := rest) hne
         rw [this] at hlast; exact Option.some.inj hlast
       refine ⟨rest.dropLast, ?_, hall, ?_⟩
       · intro h0
@@ -202,7 +202,7 @@ lemma isNamedHandle_of_named (hd : String) (w : List Char) (hw : w ≠ [])
   cases w with
   | nil => exact absurd rfl hw
   | cons c cs =>
-    simp only [List.length_append, List.length_cons, List.length_singleton, beq_self_eq_true,
+    simp only [List.length_append, List.length_cons, beq_self_eq_true,
       Bool.and_true, Bool.and_eq_true, decide_eq_true_eq]
     refine ⟨by omega, ?_⟩
     rw [List.all_eq_true]
@@ -554,10 +554,10 @@ lemma scanTagDirective_trace
       (collectTagHandleDirectiveLoop s_after_ws "" (sc.inputEnd - s_after_ws.offset)).1 = true := by
     cases hsh : isTagHandleShaped
         (collectTagHandleDirectiveLoop s_after_ws "" (sc.inputEnd - s_after_ws.offset)).1 with
-    | true => simpa using hsh
+    | true => simp
     | false =>
       exfalso
-      rw [if_pos (by simp [hsh])] at hok
+      simp only [hsh, Bool.not_false, ↓reduceIte] at hok
       simp [throw, throwThe, MonadExceptOf.throw] at hok
   simp only [hshaped, Bool.not_true, Bool.false_eq_true, ↓reduceIte] at hok
   split at hok
