@@ -13965,6 +13965,104 @@ def testFlowBridge (state : IO.Ref TestCollector) : IO Unit := do
 
 end P102Test
 
+/-! ## Priority 103 — S3 slice (3) PR 2, PRICE: the flow frame census, before any re-walk is written
+
+Item 464's NEXT.  The re-walk's carrier is a `TraceOf` twin of `StreamAccum.FlowOpenStack` (4 ctors)
+over `SeqFrame` (9) / `MapFrame` (10) frames indexed by `FrameTail` (`sep` / `colon` / `question` /
+`value`).  Before stating it: what frame shapes does scanner output actually show?  An executable walk
+over the tokens — open pushes a frame at tail `sep`; `,` → `sep`; `.key` → `question`; `.value` →
+`colon`; content or a nested open → `value`; close pops — censuses the (depth, tail) pairs at every
+`,` / close / `.value`, and reads each closed frame's trace under the production `goOut`. -/
+namespace P103
+open L4YAML.Proofs.Serialization.TokenEvents (goOut tokenEvent)
+open L4YAML.Proofs.Serialization.SerializationWellFormed (Event)
+
+structure Frame where
+  isSeq : Bool
+  tail : String := "sep"
+  entries : Nat := 0
+  toks : List (Positioned YamlToken) := []
+
+structure Tally where
+  rows : Nat := 0
+  scanned : Nat := 0
+  frames : Nat := 0
+  nested : Nat := 0
+  maxDepth : Nat := 0
+  closeAt : List (String × Nat) := []      -- (depth-tail, count)
+  questionCloses : List String := []
+  valueBad : List String := []
+  traceBad : List String := []
+  baseOpens : Nat := 0
+  baseCloses : Nat := 0
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    t := { t with rows := t.rows + 1 }
+    match scanFiltered s with
+    | .error _ => pure ()
+    | .ok ts =>
+      t := { t with scanned := t.scanned + 1 }
+      let mut st : List Frame := []
+      for tk in ts do
+        let depth := st.length
+        -- record the token into every open frame (innermost owns it)
+        st := st.map (fun f => { f with toks := tk :: f.toks })
+        match tk.val with
+        | .flowSequenceStart | .flowMappingStart =>
+          if depth == 0 then t := { t with baseOpens := t.baseOpens + 1 }
+          st := (match st with | f :: r => { f with tail := "value" } :: r | [] => [])
+          st := { isSeq := tk.val == .flowSequenceStart, toks := [tk] } :: st
+          t := { t with maxDepth := max t.maxDepth (depth + 1) }
+        | .flowSequenceEnd | .flowMappingEnd =>
+          match st with
+          | f :: rest =>
+            t := { t with frames := t.frames + 1, closeAt := P100.bump t.closeAt s!"{depth}:{f.tail}" }
+            if depth ≥ 2 then t := { t with nested := t.nested + 1 }
+            if depth == 1 then t := { t with baseCloses := t.baseCloses + 1 }
+            if f.tail == "question" then t := { t with questionCloses := s!"{repr s}@{tk.pos.offset}" :: t.questionCloses }
+            let r := goOut f.toks.reverse ["!p!"]
+            let onlyLeaf := r.1.all (fun e => match e with
+              | .defineAnchor _ | .useAlias _ | .useTag _ => true | _ => false)
+            if r.2 != ["!p!"] || !onlyLeaf then t := { t with traceBad := s!"{repr s}@{tk.pos.offset}" :: t.traceBad }
+            st := (match rest with | g :: r' => { g with tail := "value" } :: r' | [] => [])
+          | [] => pure ()
+        | .flowEntry =>
+          st := (match st with | f :: r => { f with tail := "sep", entries := f.entries + 1 } :: r | [] => [])
+        | .key =>
+          st := (match st with | f :: r => { f with tail := "question" } :: r | [] => [])
+        | .value =>
+          match st with
+          | f :: r =>
+            if f.tail != "value" && f.tail != "question" then t := { t with valueBad := s!"{repr s}@{tk.pos.offset}: {f.tail}" :: t.valueBad }
+            st := { f with tail := "colon" } :: r
+          | [] => pure ()
+        | .scalar .. | .alias _ | .anchor _ | .tag .. =>
+          st := (match st with | f :: r => { f with tail := "value" } :: r | [] => [])
+        | _ => pure ()
+  return t
+
+def at_ (t : Tally) (k : String) : Nat := (t.closeAt.find? (·.1 == k)).map (·.2) |>.getD 0
+
+end P103
+
+section P103Test
+
+def testFlowWalk (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 103: S3 slice (3) PR 2, PRICE — the flow frame census, before the re-walk"
+  let t := P103.tally P102.allRows
+  checkM state s!"P103(i) {t.rows} rows, {t.scanned} scanned: {t.frames} frames closed, {t.nested} nested, max depth {t.maxDepth}, base opens {t.baseOpens} = base closes {t.baseCloses}"
+    (t.frames ≥ 150 && t.nested ≥ 30 && t.maxDepth == 4 && t.baseOpens == t.baseCloses) ""
+  checkM state s!"P103(ii) closes by (depth:tail): {repr t.closeAt}; closes at tail `question`: {t.questionCloses.length}"
+    (t.questionCloses.isEmpty && t.closeAt.all (fun p => !(p.1.endsWith ":question"))) s!"{repr (t.questionCloses.take 4)}"
+  checkM state s!"P103(iii) every flow `.value` follows a key-shaped tail (value / question): {t.valueBad.length} bad"
+    t.valueBad.isEmpty s!"{repr (t.valueBad.take 6)}"
+  checkM state s!"P103(iv) every closed frame's token run under the production goOut keeps pending and emits only anchor / alias / tag events: {t.traceBad.length} bad"
+    t.traceBad.isEmpty s!"{repr (t.traceBad.take 6)}"
+
+end P103Test
+
 def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 100: S3 slice (1) — leaf span ↔ token payload (anchor / alias / tag), before proof"
   let t := P100.tally P100.allRows
@@ -14145,6 +14243,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testLeafBridge state
   testDocBridge state
   testFlowBridge state
+  testFlowWalk state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",
