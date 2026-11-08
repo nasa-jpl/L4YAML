@@ -6,6 +6,7 @@ import Tests.Guards.Proofs.AliasNodeRoute
 import Tests.Guards.Proofs.Col0LandingDead
 import Tests.Guards.Proofs.ContentParkNoNode
 import Tests.Guards.Proofs.DocStartLiveAxioms
+import Tests.Guards.Proofs.DocStartLiveInvAxioms
 import Tests.Guards.Proofs.FlowSyncAxioms
 import Tests.Guards.Proofs.MarkedSlotsEnclosing
 import Tests.Guards.Proofs.MarkedColsDomain

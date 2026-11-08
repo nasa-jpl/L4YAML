@@ -11744,6 +11744,278 @@ def testFlowSyncPrereqs (state : IO.Ref TestCollector) : IO Unit := do
   checkM state s!"P93 withdrawn FlowSync premise: stepped={desyncStepped} conclusion fails on {desyncBroken}"
     (desyncStepped > 0 && desyncBroken > 0) ""
 
+/-! **Priority 94 — S3 (β2b), the `LiveInv` carrier of the `Shape` loop invariant, instantiated
+    BEFORE the proofs (Rule 2).**  Seven clauses on every state `scanNextToken` reaches from `mk'`:
+    head (`vals[0] = SS`), `Shape (vals s)`, deep (`1 < indents.size ∨ 0 ≤ currentIndent ⇒` the
+    last real token is not a boundary), flow (`0 < flowLevel ⇒` same), fresh (boundary ⇒
+    `currentIndent = −1 ∧ flowLevel = 0`), slot (`simpleKey.possible ⇒` the token before the slot
+    is not a boundary, or `flowLevel = 0 ∧ (currentIndent < key.col ∨ (simpleKeyAllowed ∧` the indent top is
+    the sequence entry at the key's column`))`), stack
+    (`∀ j`, a possible stacked key's predecessor is not a boundary, or `j = 0 ∧ currentIndent <
+    key.col`), tail / stackTail (no boundary token from a possible key's slot onwards — what makes the
+    inserted `.key`'s `.value` live).  Predictions: P1 — all nine hold on every reached state of every row; P2 — the slot
+    clause's `simpleKeyAllowed` alternative is LOAD-BEARING: with it withdrawn the clause fails on
+    `- a` right after `scanBlockEntry` (the key saved at `-` sits after `SS`, `pushSequenceIndent`
+    raised the indent and kept it); P3 — the stack clause's `j = 0` alternative is load-bearing:
+    `[a]: b` pushes a key that sits right after `SS`. -/
+namespace P94
+open L4YAML.Proofs.DirectiveRuns (vals)
+
+def bndAt (L : List YamlToken) (idx : Nat) : Bool := L4YAML.Proofs.DocStartLive.Bnd (L4YAML.Proofs.DocStartLive.lastReal (L.take idx))
+
+/-- v3 of the slot arm: the stale key a `-` leaves behind is recognisable — `simpleKeyAllowed`
+    is still up AND the indent top is the sequence entry at the key's column (which is exactly
+    what `scanValueValidate` refuses with `trailingContent`). -/
+def seqTopAt (s : ScannerState) (k : SimpleKeyState) : Bool :=
+  match s.indents.back? with
+  | some top => top.isSequence && top.column == (k.pos.col : Int)
+  | none => false
+
+def slotOK (s : ScannerState) (allowedArm : Bool) : Bool :=
+  !s.simpleKey.possible ||
+    !bndAt (vals s) s.simpleKey.tokenIndex ||
+    (s.flowLevel == 0 && (s.currentIndent < (s.simpleKey.pos.col : Int) ||
+      (allowedArm && s.simpleKeyAllowed && seqTopAt s s.simpleKey)))
+
+def tailOK (L : List YamlToken) (idx : Nat) : Bool :=
+  (L.drop idx).all fun t => !L4YAML.Proofs.DocStartLive.Bnd (some t)
+
+def stackTailOK (s : ScannerState) : Bool :=
+  s.simpleKeyStack.all fun k => !k.possible || tailOK (vals s) k.tokenIndex
+
+def stackOK (s : ScannerState) (zeroArm : Bool) : Bool :=
+  (List.range s.simpleKeyStack.size).all fun j =>
+    match s.simpleKeyStack[j]? with
+    | some k => !k.possible || !bndAt (vals s) k.tokenIndex ||
+        (zeroArm && j == 0 && s.currentIndent < (k.pos.col : Int))
+    | none => true
+
+def clauses (s : ScannerState) : List (String × Bool) :=
+  let L := vals s
+  let b := L4YAML.Proofs.DocStartLive.Bnd (L4YAML.Proofs.DocStartLive.lastReal L)
+  [ ("head", L[0]? == some .streamStart),
+    ("shape", P92.shapeB L),
+    ("deep", !(1 < s.indents.size || 0 ≤ s.currentIndent) || !b),
+    ("flow", !(0 < s.flowLevel) || !b),
+    ("fresh", !b || (s.currentIndent == -1 && s.flowLevel == 0)),
+    ("slot", slotOK s true),
+    ("stack", stackOK s true),
+    ("tail", !s.simpleKey.possible || tailOK L s.simpleKey.tokenIndex),
+    ("stackTail", stackTailOK s) ]
+
+def rows : List String :=
+  P91.rows ++ P92.extraRows ++ P93.rows ++
+  [ "- a", "- :b", "- - a", "-\n- a", "- a: b", "- [a]: b", "[a]: b", "{a: b}: c", "? a\n: b",
+    "? - a\n: b", "a:\n  - b\n  c: d", "a:\n- b", "- a\n  b: c", "[a, b]: c\nd: e", "&x a: b",
+    "!t a: b", "\"a\": b", "'a': b", "a: b\n...\n- c", "...\n- a", "---\n- a", "--- - a",
+    "--- a: b", "...\na: b", "[\n  a: b\n]", "{a: [b: c]}", "[a]\n: b", "a\n: b" ]
+end P94
+
+def testLiveInvCarrier (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 94: S3 (β2b) — the LiveInv carrier on every reached scanner state"
+  let mut states := 0
+  let mut slotNoAllowed := 0
+  let mut stackNoZero := 0
+  let mut seqTopStale := 0
+  let mut keyStates := 0
+  let mut stackStates := 0
+  for input in P94.rows do
+    let mut k := 0
+    for s in P93.trajectory input do
+      states := states + 1
+      for (nm, ok) in P94.clauses s do
+        checkM state s!"P94 {repr input} state {k}: {nm}" ok
+          s!"vals={repr (L4YAML.Proofs.DirectiveRuns.vals s)} ci={s.currentIndent} fl={s.flowLevel} ind={s.indents.size} key={s.simpleKey.possible}/{s.simpleKey.tokenIndex}/{s.simpleKey.pos.col} allowed={s.simpleKeyAllowed}"
+      if s.simpleKey.possible then keyStates := keyStates + 1
+      if s.simpleKeyStack.any (·.possible) then stackStates := stackStates + 1
+      if !P94.slotOK s false then slotNoAllowed := slotNoAllowed + 1
+      if !P94.stackOK s false then stackNoZero := stackNoZero + 1
+      if s.simpleKey.possible && P94.bndAt (L4YAML.Proofs.DirectiveRuns.vals s) s.simpleKey.tokenIndex
+          && !(s.currentIndent < (s.simpleKey.pos.col : Int)) then seqTopStale := seqTopStale + 1
+      k := k + 1
+  checkM state s!"P94 states={states} rows={P94.rows.length} key-possible states={keyStates} stacked-key states={stackStates}; withdrawn `simpleKeyAllowed` arm fails on {slotNoAllowed}; withdrawn `j = 0` arm fails on {stackNoZero}; stale-after-`-` keys (boundary before the slot, indent not below the key) = {seqTopStale}"
+    (states > 0 && keyStates > 0 && stackStates > 0 && slotNoAllowed > 0 && stackNoZero > 0 && seqTopStale > 0) ""
+
+namespace P94
+open L4YAML.Proofs.Serialization.ParseCheckFrom (tok)
+
+/-- `LoopDead ts k`, computed. -/
+def loopDeadB (ts : Array (Positioned YamlToken)) (k : Nat) : Bool :=
+  (P92.deadTok (tok ts k) || (tok ts k == some .blockEntry && decide (0 < k) &&
+      tok ts (k - 1) == some .blockEntry)) &&
+    tok ts k != some .documentEnd &&
+    (k == 1 || tok ts (k - 1) == some .documentEnd || P91.afterDocOK (tok ts k))
+
+/-- `DeadResidue (tok ts k)`, computed: the `.afterDocument` shape or a comment. -/
+def residueB (ts : Array (Positioned YamlToken)) (k : Nat) : Bool :=
+  P91.afterDocOK (tok ts k) || (match tok ts k with | some (.comment _) => true | _ => false)
+
+/-- `LoopDead_scanFiltered`'s conclusion. -/
+def dischargeB (ts : Array (Positioned YamlToken)) (k : Nat) : Bool :=
+  k == ts.size || tok ts k == some .streamEnd || residueB ts k
+
+def alphabet : List YamlToken :=
+  [.streamStart, .documentEnd, .documentStart, .key, .value, .blockEnd, .flowEntry,
+   .flowSequenceEnd, .scalar "a" .plain, .blockEntry, .blockMappingStart, .streamEnd]
+
+def listsUpTo : Nat → List (List YamlToken)
+  | 0 => [[]]
+  | n + 1 => let r := listsUpTo n; r ++ (r.filter (·.length == n)).flatMap fun l => alphabet.map (l ++ [·])
+
+/-- `liveF_dead_contra`'s position premise: `k = 1 ∨ L[k-1] = .documentEnd`. -/
+def posB (L : List YamlToken) (k : Nat) : Bool := k == 1 || L[k - 1]? == some .documentEnd
+end P94
+
+def testLoopDeadDischarge (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 94 (vi): S3 (β2b) — scanFiltered_liveF, liveF_dead_contra, LoopDead_scanFiltered"
+  -- (a) list level: with `LiveF` and `.streamStart` first, no dead token at 1 / after `...`
+  let mut held := 0
+  let mut failedPremise := 0
+  let mut deadUnderFailed := 0
+  for L in P94.listsUpTo 4 do
+    if L[0]? != some .streamStart then continue
+    let live := P92.liveFB L
+    for k in List.range L.length do
+      if k == 0 || !P94.posB L k then continue
+      match L[k]? with
+      | some t =>
+        if live then
+          held := held + 1
+          checkM state s!"P94 (vi) liveF_dead_contra {repr L} k={k}" (L4YAML.Proofs.DocStartLive.liveTok t) ""
+        else
+          failedPremise := failedPremise + 1
+          if !L4YAML.Proofs.DocStartLive.liveTok t then deadUnderFailed := deadUnderFailed + 1
+      | none => pure ()
+  checkM state s!"P94 (vi) liveF_dead_contra: premise-held rows={held}, failed-premise rows={failedPremise}, dead under failed premise={deadUnderFailed} (load-bearing)"
+    (held > 0 && deadUnderFailed > 0) ""
+  -- (b) scanner outputs: `LiveF` + head, and the discharge at every `LoopDead` position
+  let mut scanned := 0
+  let mut loopDeadPos := 0
+  let mut atOne := 0
+  let mut afterDE := 0
+  for input in P94.rows do
+    match scanFiltered input with
+    | .error _ => pure ()
+    | .ok ts =>
+      scanned := scanned + 1
+      let L := L4YAML.Proofs.DirectiveRuns.toks ts
+      checkM state s!"P94 (vi) scanFiltered_liveF {repr input}: LiveF" (P92.liveFB L) s!"toks={repr L}"
+      checkM state s!"P94 (vi) scanFiltered_liveF {repr input}: head" (L[0]? == some .streamStart) ""
+      for k in List.range (ts.size + 1) do
+        if P94.loopDeadB ts k then
+          loopDeadPos := loopDeadPos + 1
+          if k == 1 then atOne := atOne + 1
+          if L4YAML.Proofs.Serialization.ParseCheckFrom.tok ts (k - 1) == some YamlToken.documentEnd then afterDE := afterDE + 1
+          checkM state s!"P94 (vi) LoopDead_scanFiltered {repr input} k={k}" (P94.dischargeB ts k)
+            s!"tok={repr (L4YAML.Proofs.Serialization.ParseCheckFrom.tok ts k)} toks={repr L}"
+  -- (c) non-tautology on hand-altered arrays (the `scanFiltered` premise is load-bearing):
+  --     `.streamStart` at index 1 satisfies `LoopDead ts 1` and refutes the conclusion (dead, not in
+  --     `validNextToken .afterDocument`, not a `.comment`); `.key` at index 1 also satisfies
+  --     `LoopDead ts 1` but the conclusion is TRUE through `DeadResidue` — `.afterDocument` admits
+  --     `.key`: that is (γ), the residue the item prices, pinned here as in P91's `a: b` row.
+  match scanFiltered "- a" with
+  | .ok ts0 =>
+    let tsS := ts0.modify 1 fun p => { p with val := .streamStart }
+    checkM state "P94 (vi) pin: LoopDead holds at 1 on [SS, SS, …]" (P94.loopDeadB tsS 1) ""
+    checkM state "P94 (vi) pin: the discharge fails there (premise load-bearing)" (!P94.dischargeB tsS 1) ""
+    let tsK := ts0.modify 1 fun p => { p with val := .key }
+    checkM state "P94 (vi) pin: LoopDead holds at 1 on [SS, key, …]" (P94.loopDeadB tsK 1) ""
+    checkM state "P94 (vi) pin: `.key` at 1 is TRUE under the (γ) residue" (P94.dischargeB tsK 1) ""
+  | .error _ => checkM state "P94 (vi) pin: `- a` scans" false ""
+  checkM state s!"P94 (vi) scanned={scanned} LoopDead positions={loopDeadPos} (k=1: {atOne}, after `...`: {afterDE})"
+    (scanned > 0 && loopDeadPos > 0) ""
+
+namespace P94
+/-- `TailOK_set`'s conclusion on the written list, premise `Bnd (some t) = false`. -/
+def tailSetB (L : List YamlToken) (idx j : Nat) (t : YamlToken) : Bool := tailOK (L.set j t) idx
+/-- `Bnd_lastReal_set_false`'s conclusion. -/
+def lastSetB (L : List YamlToken) (j : Nat) (t : YamlToken) : Bool :=
+  !L4YAML.Proofs.DocStartLive.Bnd (L4YAML.Proofs.DocStartLive.lastReal (L.set j t))
+/-- `Shape_set`'s side premise `hj`: a dead write lands after a non-boundary real token. -/
+def hjB (L : List YamlToken) (j : Nat) (t : YamlToken) : Bool :=
+  L4YAML.Proofs.DocStartLive.liveTok t ||
+    !L4YAML.Proofs.DocStartLive.Bnd (L4YAML.Proofs.DocStartLive.lastReal (L.take j))
+end P94
+
+/-- Priority 94 (vii): the three token-rewrite lemmas `scanValue`'s retroactive insertion consumes,
+    on every list of length ≤ 3 over the 12-token alphabet, every position `j ≤ length` (the
+    out-of-range `j = length` row is the identity control) and every written token `t` — premises
+    computed, conclusions checked where they hold (a violation is its own named row; the tally
+    asserts there are none), failed-premise rows tallied apart with the count
+    of rows where the conclusion also fails (the premise is load-bearing), and the withdrawn-`hj`
+    control for `Shape_set`. -/
+def testSetLemmas (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 94 (vii): S3 (β2b) — TailOK_set, Bnd_lastReal_set_false, Shape_set"
+  let mut tailHeld := 0
+  let mut tailViol := 0
+  let mut lastViol := 0
+  let mut shapeViol := 0
+  let mut tailFailed := 0
+  let mut tailFailedBroken := 0
+  let mut lastHeld := 0
+  let mut lastFailed := 0
+  let mut lastFailedBroken := 0
+  let mut shapeHeld := 0
+  let mut shapeFailed := 0
+  let mut shapeFailedBroken := 0
+  let mut hjWithdrawnBroken := 0
+  for L in P94.listsUpTo 3 do
+    let shL := P92.shapeB L
+    let lastL := !L4YAML.Proofs.DocStartLive.Bnd (L4YAML.Proofs.DocStartLive.lastReal L)
+    for j in List.range (L.length + 1) do
+      for t in P94.alphabet do
+        let tb := !L4YAML.Proofs.DocStartLive.Bnd (some t)
+        let np := L4YAML.Proofs.DirectiveRuns.nonPh t
+        let W := L.set j t
+        -- TailOK_set: ∀ idx ≤ length
+        for idx in List.range (L.length + 1) do
+          if tb && P94.tailOK L idx then
+            tailHeld := tailHeld + 1
+            if !P94.tailSetB L idx j t then
+              tailViol := tailViol + 1
+              checkM state s!"P94 (vii) TailOK_set {repr L} idx={idx} j={j} t={repr t}" false ""
+          else
+            tailFailed := tailFailed + 1
+            if !P94.tailSetB L idx j t then tailFailedBroken := tailFailedBroken + 1
+        -- Bnd_lastReal_set_false
+        if np && tb && lastL then
+          lastHeld := lastHeld + 1
+          if !P94.lastSetB L j t then
+            lastViol := lastViol + 1
+            checkM state s!"P94 (vii) Bnd_lastReal_set_false {repr L} j={j} t={repr t}" false ""
+        else
+          lastFailed := lastFailed + 1
+          if !P94.lastSetB L j t then lastFailedBroken := lastFailedBroken + 1
+        -- Shape_set, and the withdrawn-`hj` control
+        if np && tb && shL then
+          if P94.hjB L j t then
+            shapeHeld := shapeHeld + 1
+            if !P92.shapeB W then
+              shapeViol := shapeViol + 1
+              checkM state s!"P94 (vii) Shape_set {repr L} j={j} t={repr t}" false ""
+          else
+            shapeFailed := shapeFailed + 1
+            if !P92.shapeB W then
+              shapeFailedBroken := shapeFailedBroken + 1
+              hjWithdrawnBroken := hjWithdrawnBroken + 1
+        else
+          shapeFailed := shapeFailed + 1
+          if !P92.shapeB W then shapeFailedBroken := shapeFailedBroken + 1
+  checkM state s!"P94 (vii) TailOK_set: premise-held rows={tailHeld} (violations {tailViol}), failed-premise rows={tailFailed}, conclusion false under failed premise={tailFailedBroken} (load-bearing)"
+    (tailHeld > 0 && tailViol == 0 && tailFailedBroken > 0) ""
+  checkM state s!"P94 (vii) Bnd_lastReal_set_false: premise-held rows={lastHeld} (violations {lastViol}), failed-premise rows={lastFailed}, conclusion false under failed premise={lastFailedBroken} (load-bearing)"
+    (lastHeld > 0 && lastViol == 0 && lastFailedBroken > 0) ""
+  checkM state s!"P94 (vii) Shape_set: premise-held rows={shapeHeld} (violations {shapeViol}), failed-premise rows={shapeFailed}, conclusion false under failed premise={shapeFailedBroken} (load-bearing)"
+    (shapeHeld > 0 && shapeViol == 0 && shapeFailedBroken > 0) ""
+  checkM state s!"P94 (vii) Shape_set: withdrawn-`hj` control — `Shape L`, non-boundary dead `t` written after a boundary, `Shape` lost on {hjWithdrawnBroken} rows"
+    (hjWithdrawnBroken > 0) ""
+  -- pins: `[SS, a]` with `.key` written at 1 keeps `Shape` only through `hj`'s failure, i.e. it is lost
+  let L : List YamlToken := [.streamStart, .scalar "a" .plain]
+  checkM state "P94 (vii) pin: `Shape [SS, a]`" (P92.shapeB L) ""
+  checkM state "P94 (vii) pin: writing `.key` at 1 of `[SS, a]` fails `hj` (last real before 1 is `SS`)" (!P94.hjB L 1 .key) ""
+  checkM state "P94 (vii) pin: and `Shape` is lost there (the `hj` premise is load-bearing)" (!P92.shapeB (L.set 1 .key)) ""
+  checkM state "P94 (vii) pin: writing `.key` at 2 of `[SS, a, b]` keeps `Shape`" (P92.shapeB ([.streamStart, .scalar "a" .plain, .scalar "b" .plain].set 2 .key)) ""
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -11863,6 +12135,9 @@ def collectTests : IO VerifiedSuiteResult := do
   testStuckAtDocStart state
   testDocStartLive state
   testFlowSyncPrereqs state
+  testLiveInvCarrier state
+  testLoopDeadDischarge state
+  testSetLemmas state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",
