@@ -13965,6 +13965,167 @@ def testFlowBridge (state : IO.Ref TestCollector) : IO Unit := do
 
 end P102Test
 
+/-! ## Priority 103 — S3 slice (3) PR 2, PRICE: the flow frame census, before any re-walk is written
+
+Item 464's NEXT.  The re-walk's carrier is a `TraceOf` twin of `StreamAccum.FlowOpenStack` (4 ctors)
+over `SeqFrame` (9) / `MapFrame` (10) frames indexed by `FrameTail` (`sep` / `colon` / `question` /
+`value`).  Before stating it: what frame shapes does scanner output actually show?  An executable walk
+over the tokens — open pushes a frame at tail `sep`; `,` → `sep`; `.key` → `question`; `.value` →
+`colon`; content or a nested open → `value`; close pops — censuses the (depth, tail) pairs at every
+`,` / close / `.value`, and reads each closed frame's trace under the production `goOut`. -/
+namespace P103
+open L4YAML.Proofs.Serialization.TokenEvents (goOut tokenEvent)
+open L4YAML.Proofs.Serialization.SerializationWellFormed (Event)
+
+structure Frame where
+  isSeq : Bool
+  tail : String := "sep"
+  entries : Nat := 0
+  toks : List (Positioned YamlToken) := []
+  shape : String := "betweenEmpty"   -- the SeqFrame / MapFrame constructor the walk is in
+  propPending : Bool := false        -- an anchor / tag property awaits its content (one node, two tokens)
+
+structure Tally where
+  rows : Nat := 0
+  scanned : Nat := 0
+  frames : Nat := 0
+  nested : Nat := 0
+  maxDepth : Nat := 0
+  closeAt : List (String × Nat) := []      -- (depth-tail, count)
+  questionCloses : List String := []
+  valueBad : List String := []
+  traceBad : List String := []
+  baseOpens : Nat := 0
+  baseCloses : Nat := 0
+  closeShape : List (String × Nat) := []   -- (depth:kind/shape, count)
+  shapeBad : List String := []
+
+/-- `SeqFrame` / `MapFrame` constructor transitions, read off the token kinds (`.key` from an explicit
+    `?` vs. the simple-key insertion is told apart by the source char under the token). -/
+def step (isSeq : Bool) (shape : String) (ev : String) : Option String :=
+  let node := if isSeq then "midNode" else "midKey"
+  match ev, shape with
+  | "node", "betweenEmpty" | "node", "betweenHeld" => some node
+  | "node", "midQuestion" => some "midExplicitKey"
+  | "node", "midColon" | "node", "midExplicitColon" | "node", "midEmptyColon" | "node", "midQuestionEmptyColon" => some "betweenEntries"
+  | "question", "betweenEmpty" | "question", "betweenHeld" => some "midQuestion"
+  | "colon", "midNode" | "colon", "midKey" => some "midColon"
+  | "colon", "midExplicitKey" => some "midExplicitColon"
+  | "colon", "betweenEmpty" | "colon", "betweenHeld" => some "midEmptyColon"
+  | "colon", "midQuestion" => some "midQuestionEmptyColon"
+  | "comma", "betweenEmpty" => none
+  | "comma", _ => some "betweenHeld"
+  | _, _ => none
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    t := { t with rows := t.rows + 1 }
+    match scanFiltered s with
+    | .error _ => pure ()
+    | .ok ts =>
+      t := { t with scanned := t.scanned + 1 }
+      let mut st : List Frame := []
+      for tk in ts do
+        let depth := st.length
+        -- record the token into every open frame (innermost owns it)
+        st := st.map (fun f => { f with toks := tk :: f.toks })
+        let isProp : Bool := match tk.val with | .anchor _ | .tag .. => true | _ => false
+        let ev : String := match tk.val with
+          | .flowSequenceStart | .flowMappingStart | .scalar .. | .alias _ | .anchor _ | .tag .. => "node"
+          | .flowEntry => "comma"
+          | .key => if s.get ⟨tk.pos.offset⟩ == '?' then "question" else "key"
+          | .value => "colon"
+          | _ => ""
+        if ev != "" && ev != "key" then
+          match st with
+          | f :: r =>
+            if ev == "node" && f.propPending then
+              st := { f with propPending := isProp } :: r     -- the property's own content: same node
+            else
+              match P103.step f.isSeq f.shape ev with
+              | some sh => st := { f with shape := sh, propPending := isProp } :: r
+              | none => t := { t with shapeBad := s!"{repr s}@{tk.pos.offset}: {f.shape} + {ev}" :: t.shapeBad }
+          | [] => pure ()
+        match tk.val with
+        | .flowSequenceStart | .flowMappingStart =>
+          if depth == 0 then t := { t with baseOpens := t.baseOpens + 1 }
+          st := (match st with | f :: r => { f with tail := "value" } :: r | [] => [])
+          st := { isSeq := tk.val == .flowSequenceStart, toks := [tk] } :: st
+          t := { t with maxDepth := max t.maxDepth (depth + 1) }
+        | .flowSequenceEnd | .flowMappingEnd =>
+          match st with
+          | f :: rest =>
+            t := { t with frames := t.frames + 1, closeAt := P100.bump t.closeAt s!"{depth}:{f.tail}",
+                          closeShape := P100.bump t.closeShape s!"{depth}:{if f.isSeq then "seq" else "map"}/{f.shape}" }
+            if depth ≥ 2 then t := { t with nested := t.nested + 1 }
+            if depth == 1 then t := { t with baseCloses := t.baseCloses + 1 }
+            if f.tail == "question" then t := { t with questionCloses := s!"{repr s}@{tk.pos.offset}" :: t.questionCloses }
+            let r := goOut f.toks.reverse ["!p!"]
+            let onlyLeaf := r.1.all (fun e => match e with
+              | .defineAnchor _ | .useAlias _ | .useTag _ => true | _ => false)
+            if r.2 != ["!p!"] || !onlyLeaf then t := { t with traceBad := s!"{repr s}@{tk.pos.offset}" :: t.traceBad }
+            st := (match rest with | g :: r' => { g with tail := "value" } :: r' | [] => [])
+          | [] => pure ()
+        | .flowEntry =>
+          st := (match st with | f :: r => { f with tail := "sep", entries := f.entries + 1 } :: r | [] => [])
+        | .key =>
+          st := (match st with | f :: r => { f with tail := "question" } :: r | [] => [])
+        | .value =>
+          match st with
+          | f :: r =>
+            if f.tail != "value" && f.tail != "question" then t := { t with valueBad := s!"{repr s}@{tk.pos.offset}: {f.tail}" :: t.valueBad }
+            st := { f with tail := "colon" } :: r
+          | [] => pure ()
+        | .scalar .. | .alias _ | .anchor _ | .tag .. =>
+          st := (match st with | f :: r => { f with tail := "value" } :: r | [] => [])
+        | _ => pure ()
+  return t
+
+def at_ (t : Tally) (k : String) : Nat := (t.closeAt.find? (·.1 == k)).map (·.2) |>.getD 0
+
+end P103
+
+section P103Test
+
+def testFlowWalk (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 103: S3 slice (3) PR 2, PRICE — the flow frame census, before the re-walk"
+  let t := P103.tally P102.allRows
+  checkM state s!"P103(i) {t.rows} rows, {t.scanned} scanned: {t.frames} frames closed, {t.nested} nested, max depth {t.maxDepth}, base opens {t.baseOpens} = base closes {t.baseCloses}"
+    (t.frames ≥ 150 && t.nested ≥ 30 && t.maxDepth == 4 && t.baseOpens == t.baseCloses) ""
+  checkM state s!"P103(ii) closes by (depth:tail): {repr t.closeAt}; closes at tail `question`: {t.questionCloses.length}"
+    (t.questionCloses.isEmpty && t.closeAt.all (fun p => !(p.1.endsWith ":question"))) s!"{repr (t.questionCloses.take 4)}"
+  checkM state s!"P103(iii) every flow `.value` follows a key-shaped tail (value / question): {t.valueBad.length} bad"
+    t.valueBad.isEmpty s!"{repr (t.valueBad.take 6)}"
+  checkM state s!"P103(iv) every closed frame's token run under the production goOut keeps pending and emits only anchor / alias / tag events: {t.traceBad.length} bad"
+    t.traceBad.isEmpty s!"{repr (t.traceBad.take 6)}"
+  -- (v) the census by FRAME SHAPE (review on item 465: `[a]` closes `midNode`, `{a:}` closes `midColon`; the tail hides it)
+  let sh (k : String) : Nat := (t.closeShape.filter (·.1.endsWith k)).foldl (· + ·.2) 0
+  checkM state s!"P103(v) closes by (depth:kind/shape): {repr t.closeShape}; bad transitions {t.shapeBad.length}"
+    (t.shapeBad.isEmpty && t.closeShape.foldl (· + ·.2) 0 == t.frames) s!"{repr (t.shapeBad.take 6)}"
+  checkM state s!"P103(v) midNode+midKey {sh "/midNode" + sh "/midKey"}, betweenEntries {sh "/betweenEntries"}, betweenEmpty {sh "/betweenEmpty"}, betweenHeld {sh "/betweenHeld"}, midColon {sh "/midColon"}, midEmptyColon {sh "/midEmptyColon"}, midExplicitKey {sh "/midExplicitKey"}, midExplicitColon {sh "/midExplicitColon"}, midQuestion {sh "/midQuestion"}, midQuestionEmptyColon {sh "/midQuestionEmptyColon"}"
+    (sh "/midNode" + sh "/midKey" ≥ 40 && sh "/betweenEntries" ≥ 40 && sh "/betweenEmpty" ≥ 5 && sh "/betweenHeld" ≥ 4 && sh "/midColon" ≥ 1) ""
+  -- the reading pinned exactly (review on item 465: a predicted zero that is never asserted is no pin)
+  checkM state "P103(v) exact: midNode 94 (1:76, 2:14, 3:4), midKey 5, betweenEntries 67, betweenEmpty 11, betweenHeld 4, midColon 1 ({a:}), midExplicitKey 1 ([? a]); midEmptyColon / midExplicitColon / midQuestion / midQuestionEmptyColon 0"
+    (sh "/midNode" == 94 && P103.at_ { t with closeAt := t.closeShape } "1:seq/midNode" == 76 && sh "/midKey" == 5
+      && sh "/betweenEntries" == 67 && sh "/betweenEmpty" == 11 && sh "/betweenHeld" == 4
+      && sh "/midColon" == 1 && P103.at_ { t with closeAt := t.closeShape } "1:map/midColon" == 1
+      && sh "/midExplicitKey" == 1 && P103.at_ { t with closeAt := t.closeShape } "1:seq/midExplicitKey" == 1
+      && sh "/midEmptyColon" == 0 && sh "/midExplicitColon" == 0 && sh "/midQuestion" == 0 && sh "/midQuestionEmptyColon" == 0) ""
+  -- the whole (depth : kind/shape) table, as a set (review: the label's depth split must be checked, not just quoted)
+  let table : List (String × Nat) :=
+    [("1:seq/midNode", 76), ("2:seq/midNode", 14), ("3:seq/midNode", 4), ("1:map/midKey", 5),
+     ("1:seq/betweenEntries", 11), ("1:map/betweenEntries", 44), ("2:seq/betweenEntries", 1), ("2:map/betweenEntries", 8),
+     ("3:map/betweenEntries", 2), ("4:map/betweenEntries", 1),
+     ("1:seq/betweenEmpty", 3), ("1:map/betweenEmpty", 2), ("2:seq/betweenEmpty", 2), ("2:map/betweenEmpty", 1),
+     ("3:seq/betweenEmpty", 1), ("4:seq/betweenEmpty", 1), ("4:map/betweenEmpty", 1),
+     ("1:seq/betweenHeld", 2), ("1:map/betweenHeld", 2), ("1:map/midColon", 1), ("1:seq/midExplicitKey", 1)]
+  checkM state s!"P103(v) the (depth:kind/shape) table is exactly the {table.length} pinned entries"
+    (t.closeShape.length == table.length && table.all (fun e => t.closeShape.contains e))
+    s!"got {repr t.closeShape}"
+
+end P103Test
+
 def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 100: S3 slice (1) — leaf span ↔ token payload (anchor / alias / tag), before proof"
   let t := P100.tally P100.allRows
@@ -14145,6 +14306,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testLeafBridge state
   testDocBridge state
   testFlowBridge state
+  testFlowWalk state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",
