@@ -26,6 +26,8 @@ in directive order; `...` is `endDocument`; a directive emits nothing and leaves
 
 namespace L4YAML.Proofs.Serialization.TraceOf.DocBridge
 
+public section
+
 open L4YAML L4YAML.Scanner L4YAML.Surface
 open L4YAML.Proofs.Serialization.SerializationWellFormed
 open L4YAML.Proofs.Serialization.TokenEvents
@@ -765,5 +767,7 @@ lemma scanDirective_trace (sc : ScannerState) (sp : SurfPos)
         · simp only [skipToEndOfLine_preserves_tokens, hws_toks, List.append_nil]
         · intro p; rw [goOut_nil, hnone]; rfl
         · intro sp'' _; rw [hnone, hnone]
+
+end
 
 end L4YAML.Proofs.Serialization.TraceOf.DocBridge

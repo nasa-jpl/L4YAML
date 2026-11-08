@@ -8,6 +8,7 @@ public import L4YAML.Proofs.Scanner.DocStartLiveInv
 public import L4YAML.Proofs.Scanner.TagShape
 public import L4YAML.Proofs.Scanner.StructDepth
 public import L4YAML.Proofs.Serialization.TraceOf.LeafBridge
+public import L4YAML.Proofs.Serialization.TraceOf.DocBridge
 public import L4YAML.Proofs.Scanner.AliasTrailingContent
 import all L4YAML.Proofs.Serialization.TokenEvents
 
@@ -341,6 +342,80 @@ lemma dispatchContent_tag_trace (s : ScannerState) (sp : SurfPos)
           simp only [Except.ok.injEq] at h; subst h
           exact scanTag_trace s sp hcorr hpeek s_t h_fn
       · exact absurd (by decide : ('!' == '!') = true) (by assumption)
+
+/-! ## S3 slice (2): the structural dispatcher's `---` / `...` / `%` arms (item 462) -/
+
+section DocBridgeConsumers
+open L4YAML.Surface L4YAML.Proofs.CouplingBridge L4YAML.Proofs.Serialization.TraceOf
+open L4YAML.Proofs.Serialization.TraceOf.DocBridge L4YAML.Proofs.StructureProduction
+open L4YAML.CharPredicates
+
+/-- The `---` arm of `scanNextToken_dispatchStructural` is `scanDocumentStart_trace`. -/
+lemma dispatchStructural_documentStart_trace (s : ScannerState) (sp : SurfPos) (c : Char)
+    (hcorr : ScannerSurfCorr s sp) (hflow : s.inFlow = false)
+    (rest : List Char) (hchars : sp.chars = '-' :: '-' :: '-' :: rest) (hcol : sp.col = 0)
+    (hds : atDocumentStart s = true) (s'' : ScannerState)
+    (h : scanNextToken_dispatchStructural s c = .ok (some s'')) :
+    ∃ (sp' : SurfPos) (ends : List (Positioned YamlToken)) (ds : Positioned YamlToken),
+      SCDirectivesEnd sp sp' ∧ ScannerSurfCorr s'' sp' ∧
+      s''.tokens.toList = s.tokens.toList ++ ends ++ [ds] ∧
+      (∀ t ∈ ends, t.val = .blockEnd) ∧ ds.val = .documentStart ∧
+      ∀ p, goOut (ends ++ [ds]) p = (.beginDocument :: p.reverse.map .declareTag, []) := by
+  have hscol : s.col = 0 := by rw [← hcorr.col_eq]; exact hcol
+  unfold scanNextToken_dispatchStructural at h
+  simp only [hflow, hscol, hds, Bool.false_and, Bool.and_false, beq_self_eq_true,
+    Bool.and_true, Bool.false_eq_true, ↓reduceIte, pure, Except.pure, Except.ok.injEq,
+    Option.some.injEq] at h
+  subst h
+  exact scanDocumentStart_trace s sp hcorr rest hchars hcol
+
+/-- The `...` arm of `scanNextToken_dispatchStructural` is `scanDocumentEnd_trace`. -/
+lemma dispatchStructural_documentEnd_trace (s : ScannerState) (sp : SurfPos) (c : Char)
+    (hcorr : ScannerSurfCorr s sp) (hflow : s.inFlow = false)
+    (rest : List Char) (hchars : sp.chars = '.' :: '.' :: '.' :: rest) (hcol : sp.col = 0)
+    (hnds : atDocumentStart s = false) (hde : atDocumentEnd s = true) (s'' : ScannerState)
+    (h : scanNextToken_dispatchStructural s c = .ok (some s'')) :
+    ∃ (sp' : SurfPos) (ends : List (Positioned YamlToken)) (de : Positioned YamlToken),
+      SCDocumentEnd sp sp' ∧ ScannerSurfCorr s'' sp' ∧
+      s''.tokens.toList = s.tokens.toList ++ ends ++ [de] ∧
+      (∀ t ∈ ends, t.val = .blockEnd) ∧ de.val = .documentEnd ∧
+      ∀ p, goOut (ends ++ [de]) p = ([.endDocument], p) := by
+  have hscol : s.col = 0 := by rw [← hcorr.col_eq]; exact hcol
+  unfold scanNextToken_dispatchStructural at h
+  simp only [hflow, hscol, hnds, hde, Bool.false_and, Bool.and_false, beq_self_eq_true,
+    Bool.and_true, Bool.false_eq_true, ↓reduceIte, bind, Except.bind, pure, Except.pure] at h
+  generalize hfn : scanDocumentEnd s = result at h
+  cases result with
+  | error e => simp at h
+  | ok s_e =>
+    simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+    exact scanDocumentEnd_trace s sp hcorr rest hchars hcol s_e hfn
+
+/-- The `%` arm of `scanNextToken_dispatchStructural` is `scanDirective_trace`. -/
+lemma dispatchStructural_directive_trace (s : ScannerState) (sp : SurfPos)
+    (hcorr : ScannerSurfCorr s sp) (hflow : s.inFlow = false) (hcol : sp.col = 0)
+    (hpeek : s.peek? = some '%')
+    (hnds : atDocumentStart s = false) (hnde : atDocumentEnd s = false) (s'' : ScannerState)
+    (h : scanNextToken_dispatchStructural s '%' = .ok (some s'')) :
+    ∃ sp', ScannedDirective sp sp' ∧ ScannerSurfCorr s'' sp' ∧
+      (sp'.chars = [] ∨ ∃ ch rest', sp'.chars = ch :: rest' ∧ isLineBreakBool ch = true) ∧
+      ∃ new : List (Positioned YamlToken),
+        s''.tokens.toList = s.tokens.toList ++ new ∧
+        (∀ p, goOut new p = ([], (EventsOf.declaredHandle (span sp sp')).toList ++ p)) ∧
+        (∀ sp'' : SurfPos, sp''.chars.length ≤ sp'.chars.length →
+          EventsOf.declaredHandle (span sp sp'') = EventsOf.declaredHandle (span sp sp')) := by
+  have hscol : s.col = 0 := by rw [← hcorr.col_eq]; exact hcol
+  unfold scanNextToken_dispatchStructural at h
+  simp only [hflow, hscol, hnds, hnde, Bool.false_and, Bool.and_false, beq_self_eq_true,
+    Bool.and_true, Bool.false_eq_true, ↓reduceIte, bind, Except.bind, pure, Except.pure] at h
+  generalize hfn : scanDirective s = result at h
+  cases result with
+  | error e => simp at h
+  | ok s_d =>
+    simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+    exact scanDirective_trace s sp hcorr hpeek s_d hfn
+
+end DocBridgeConsumers
 
 end L4YAML.Proofs.Serialization.ScannerShape
 
