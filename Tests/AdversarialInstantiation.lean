@@ -10694,6 +10694,92 @@ def testPackAltUnmarkedRefused (state : IO.Ref TestCollector) : IO Unit := do
   check state s!"P92 (ω-pay-refused) unmarked ⇒ refused at every BLOCK pause (item 455): {blockUnmarked} of {blockPauses} pauses unmarked, 0 of them with a live register; flow pauses {flowPauses} / unmarked {flowUnmarked} / live {flowUnmarkedLive.length} measured, not spent"
     (blockPauses > 131 && blockUnmarkedLive.isEmpty)
 
+def testPackChainCarrier (state : IO.Ref TestCollector) : IO Unit := do
+  -- P94 (item 460, (ω-carrier-read)): the chain fields `h_kslot` / `h_kslotUp` already range over
+  -- EVERY mark (`MarkedColsIn`); what the pack producers must supply at the `?` dispatch that
+  -- parks an entry is the pack for the whole chain.  Measured, not spent — and only the SURFACE
+  -- half: a parse says the `:` is a valid continuation, not WHICH frame (`ResumeFrames` at
+  -- `[FrameLevel.map nv]`) it resumes; that witness is the crossings' theorem.  (i) the non-strict
+  -- guard's lemma — at every block pause every mark is ≤ the pause's own column; (ii) the park
+  -- step — a block `?` at column `c` makes the marks `(before.filter (· < c)) ++ [c]`; (iii) the
+  -- carrier — after the `?` entry's node completes (its lines indented past the `?`, plus a
+  -- same-column `- ` when the `?` line is bare), a `:` at EVERY open mark's column parses, the
+  -- depth-2/3 chains and the sequence-as-key shapes included; (iv) a flow `?` adds no mark.
+  let inputs : List String :=
+    [ "? a\n: b", "?\n- a\n: b", "?\n  - a\n: b", "k:\n  ?\n  - a\n  : b", "- ?\n  - a\n  : b",
+      "?\n  ?\n    - a\n  : b\n: c", "?\n  ?\n    ?\n      - a\n    : b\n  : c\n: d",
+      "?\n  - ?\n      - a\n    : b\n: c", "- ?\n    - a\n  : b", "?\n  k:\n    - a\n: b",
+      "? a\n? b\n: c", "k:\n  ? a\n  : b", "- ? a\n  : b", "? a: 1\n: b", "- a\n- ? b\n  : c",
+      "? [a, b]\n: c", "? {a: b}\n: c", "?\n  - [a, ? b : c]\n: d", "?\n  ?\n    [? a : b]\n  : c\n: d",
+      "?\n  ?\n    - a\n  ? b\n: w", "? a\n- b", "k:\n  ? a\n  - b", "?\n  ?\n  - a\n  : b\n: c",
+      "?\n  - ?\n    - a\n    : b\n: c", "? |\n  k\n: v", "?\n  ? a\n  : b\n  ? c\n  : d\n: e",
+      "- ?\n    ?\n      ?\n        - a\n      : b\n    : c\n  : d",
+      "k:\n  ?\n    ?\n      ?\n        a\n      : b\n    : c\n  : d", "?\n  - {? a : b, c: d}\n: e" ]
+  let mut markedPauses := 0
+  let mut boundViol : List String := []
+  let mut qPauses := 0
+  let mut qDeep := 0
+  let mut parkExc : List String := []
+  let mut contChecks := 0
+  let mut rejects : List String := []
+  let mut flowQ := 0
+  let mut flowExc : List String := []
+  for input in inputs do
+    let chars := input.toList
+    let lines := (input.splitOn "\n").toArray
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:80] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        let marks := L4YAML.Proofs.RegisterWitness.markedCols sP
+        let isQ := c == '?' && (chars[sP.offset + 1]?.map (fun ch => ch == ' ' || ch == '\n')).getD true
+        if c != '#' && sP.flowLevel == 0 && !marks.isEmpty then
+          markedPauses := markedPauses + 1
+          for nv in marks do
+            if nv > sP.col then
+              boundViol := boundViol ++ [s!"{repr input}@{sP.line}:{sP.col} nv={nv}"]
+        let after := match L4YAML.Scanner.scanNextToken s with
+          | .ok (some sN) => some (L4YAML.Proofs.RegisterWitness.markedCols sN)
+          | _ => none
+        if isQ && sP.flowLevel == 0 then
+          qPauses := qPauses + 1
+          if marks.length ≥ 2 then qDeep := qDeep + 1
+          let expected := marks.filter (· < sP.col) ++ [sP.col]
+          if after != some expected then
+            parkExc := parkExc ++ [s!"{repr input}@{sP.line}:{sP.col} before={marks} after={after}"]
+          let qLine := lines[sP.line]?.getD ""
+          let bare := (qLine.toList.drop (sP.col + 1)).all (· == ' ')
+          let indentOf (l : String) : Nat := (l.toList.takeWhile (· == ' ')).length
+          let mut last := sP.line
+          for i in [sP.line + 1 : lines.size] do
+            let l := lines[i]!
+            let blank := l.toList.all (· == ' ')
+            let inNode := blank || indentOf l > sP.col ||
+              (bare && indentOf l == sP.col && (l.toList.drop sP.col).take 2 == ['-', ' '])
+            if i == last + 1 && inNode then last := i
+          let pre := "\n".intercalate ((lines.toList.take (last + 1)))
+          for nv in (after.getD expected) do
+            contChecks := contChecks + 1
+            let cont := pre ++ "\n" ++ String.ofList (List.replicate nv ' ') ++ ": v\n"
+            match L4YAML.TokenParser.parseYaml cont with
+            | .ok _ => pure ()
+            | .error _ => rejects := rejects ++ [s!"{repr input}@{sP.line}:{sP.col} nv={nv}"]
+        if isQ && sP.flowLevel > 0 then
+          flowQ := flowQ + 1
+          if after != some marks then
+            flowExc := flowExc ++ [s!"{repr input}@{sP.line}:{sP.col} before={marks} after={after}"]
+        match after with
+        | some _ =>
+          match L4YAML.Scanner.scanNextToken s with
+          | .ok (some sN) => s := sN
+          | _ => break
+        | none => break
+      | _ => break
+  IO.println s!"P94 marked block pauses={markedPauses} bound-violations={boundViol} `?` pauses={qPauses} deep={qDeep} park-exceptions={parkExc} continuation checks={contChecks} rejects={rejects} flow `?`={flowQ} flow-exceptions={flowExc}"
+  check state s!"P94 (ω-carrier-read) the chain carrier at the `?` dispatch (item 460): {markedPauses} marked block pauses, a mark right of the pause column at {boundViol.length}; {qPauses} block `?` pauses ({qDeep} at chain depth ≥ 2), the park step off by {parkExc.length}; the node-completed `:` continuation (the carrier's surface, not its frame witness) parses at every open mark except {rejects}; {flowQ} flow `?` pauses add a mark at {flowExc.length}"
+    (markedPauses ≥ 60 && boundViol.isEmpty && qPauses ≥ 25 && qDeep ≥ 3 && parkExc.isEmpty &&
+      contChecks ≥ 40 && rejects.isEmpty && flowQ ≥ 3 && flowExc.isEmpty)
+
 def testSeqTopRefusedArm (state : IO.Ref TestCollector) : IO Unit := do
   -- P89 (item 438, (χ-seqtop-refused)): the negative arm `ExplicitValueRefused s ∨ SeqTopKey s`
   -- proposed for `content_dispatch_routed`'s `h_resF` premise must NOT be a tautology over the
@@ -12971,6 +13057,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testNoMapLineArm state
   testThreeArmsFields state
   testSeqTopRefusedArm state
+  testPackChainCarrier state
   testPackAltMarks state
   testPackAltNegative state
   testPackAltUnmarkedRefused state
