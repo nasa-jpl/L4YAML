@@ -10697,7 +10697,9 @@ def testPackAltUnmarkedRefused (state : IO.Ref TestCollector) : IO Unit := do
 def testPackChainCarrier (state : IO.Ref TestCollector) : IO Unit := do
   -- P94 (item 460, (ω-carrier-read)): the chain fields `h_kslot` / `h_kslotUp` already range over
   -- EVERY mark (`MarkedColsIn`); what the pack producers must supply at the `?` dispatch that
-  -- parks an entry is the pack for the whole chain.  Measured, not spent: (i) the non-strict
+  -- parks an entry is the pack for the whole chain.  Measured, not spent — and only the SURFACE
+  -- half: a parse says the `:` is a valid continuation, not WHICH frame (`ResumeFrames` at
+  -- `[FrameLevel.map nv]`) it resumes; that witness is the crossings' theorem.  (i) the non-strict
   -- guard's lemma — at every block pause every mark is ≤ the pause's own column; (ii) the park
   -- step — a block `?` at column `c` makes the marks `(before.filter (· < c)) ++ [c]`; (iii) the
   -- carrier — after the `?` entry's node completes (its lines indented past the `?`, plus a
@@ -10774,7 +10776,7 @@ def testPackChainCarrier (state : IO.Ref TestCollector) : IO Unit := do
         | none => break
       | _ => break
   IO.println s!"P94 marked block pauses={markedPauses} bound-violations={boundViol} `?` pauses={qPauses} deep={qDeep} park-exceptions={parkExc} continuation checks={contChecks} rejects={rejects} flow `?`={flowQ} flow-exceptions={flowExc}"
-  check state s!"P94 (ω-carrier-read) the chain carrier at the `?` dispatch (item 460): {markedPauses} marked block pauses, a mark right of the pause column at {boundViol.length}; {qPauses} block `?` pauses ({qDeep} at chain depth ≥ 2), the park step off by {parkExc.length}; the node-completed `:` continuation parses at every open mark except {rejects}; {flowQ} flow `?` pauses add a mark at {flowExc.length}"
+  check state s!"P94 (ω-carrier-read) the chain carrier at the `?` dispatch (item 460): {markedPauses} marked block pauses, a mark right of the pause column at {boundViol.length}; {qPauses} block `?` pauses ({qDeep} at chain depth ≥ 2), the park step off by {parkExc.length}; the node-completed `:` continuation (the carrier's surface, not its frame witness) parses at every open mark except {rejects}; {flowQ} flow `?` pauses add a mark at {flowExc.length}"
     (markedPauses ≥ 60 && boundViol.isEmpty && qPauses ≥ 25 && qDeep ≥ 3 && parkExc.isEmpty &&
       contChecks ≥ 40 && rejects.isEmpty && flowQ ≥ 3 && flowExc.isEmpty)
 
