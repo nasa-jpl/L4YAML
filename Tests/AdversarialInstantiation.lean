@@ -12016,6 +12016,146 @@ def testSetLemmas (state : IO.Ref TestCollector) : IO Unit := do
   checkM state "P94 (vii) pin: and `Shape` is lost there (the `hj` premise is load-bearing)" (!P92.shapeB (L.set 1 .key)) ""
   checkM state "P94 (vii) pin: writing `.key` at 2 of `[SS, a, b]` keeps `Shape`" (P92.shapeB ([.streamStart, .scalar "a" .plain, .scalar "b" .plain].set 2 .key)) ""
 
+/-! ## Priority 95: S3 (a) — every `.tag` the scanner emits has a shaped handle (`TagUsesShaped`)
+
+Statement under test (before the proof, Rule 2): `scanFiltered input = .ok ts → TagUsesShaped ts`,
+i.e. every `.tag h _` in `ts` has `h ∈ {"", "!", "!!"}` or `isNamedHandle h`.  The proof route is a
+per-token invariant `TagInv s := ∀ t ∈ vals s, tagOk t` carried over `scanNextToken` through
+`TagExt s s' := ∀ t ∈ vals s', t ∈ vals s ∨ tagOk t`; the only arm that builds a `.tag` is
+`scanTag` (`scanNamedTag` emits `"!" ++ w ++ "!"` with `w` all `ns-word-char`, or `"!"`), so the
+load-bearing facts are (1) `isWordCharBool c → c.isAlphanum ∨ c = '-'` and (2) no other arm
+emits a `.tag`.  Grid: every handle shape at first/middle/last position, block and flow, `%TAG`
+directive handles (shaped and refused), the empty / blank / comment-only inputs, the per-step `TagExt`/`TagInv` on every reached state,
+`scanLoop` direct at fuel 0/1/2, the word-char agreement on all ASCII, the scanner's
+`isTagHandleShaped` against the parser's `isNamedHandle` on every handle ≤ 5 over a six-char
+alphabet, and a withdrawn-`TagInv` control (a bad tag already in `vals` is carried, not repaired). -/
+
+namespace P95
+
+/-- `tagOk`, computed: the token-level form of `TagUsesShaped`. -/
+def tagOkB : YamlToken → Bool
+  | .tag h _ => h == "" || h == "!" || h == "!!" || L4YAML.Proofs.Serialization.TokenEvents.isNamedHandle h
+  | _ => true
+
+def tagInvB (s : ScannerState) : Bool := (L4YAML.Proofs.DirectiveRuns.vals s).all tagOkB
+
+def tagExtB (s s' : ScannerState) : Bool :=
+  (L4YAML.Proofs.DirectiveRuns.vals s').all fun t => (L4YAML.Proofs.DirectiveRuns.vals s).contains t || tagOkB t
+
+def handleOf : YamlToken → Option String
+  | .tag h _ => some h
+  | _ => none
+
+def rows : List String :=
+  [ "", " ", "\n", "#c", "!t a", "! a", "!", "!!str a", "!!", "!e!x a", "!e! a", "!e-1!x a", "!1!x a", "!-!x a", "!--!x a",
+    "!abcdefghijklmnopqrstuvwxyz0123456789-!x a", "!e_1!x a", "!é!x a", "!a!b!c", "!a!!b", "!!!a",
+    "!<tag:x> a", "!<tag:x>!y a", "!<> a", "!<tag:x a", "!a!\tb", "!a!", "! !", "!! !!",
+    "[!e!x a, !!int 1, !<tag:u> b]", "{!t a: !t b}", "? !t a\n: !t b", "- !t a\n- !!str b",
+    "!t\n- a", "--- !t\na", "!t a: b", "a: !t b", "&x !t a", "!t &x a", "*x !t", "!t *x",
+    "!t \"a\"", "!t 'a'", "!t |\n a", "!t >\n a", "!!binary |\n AAAA", "[!a!]", "!a!]", "!a!}",
+    "[!a!,b]", "\uFEFF!t a", "--- !!map\na: b", "...\n!t a", "%YAML 1.2\n--- !t a", "#c\n!t a",
+    "%TAG !e! tag:x\n--- !e!y a", "%TAG ! tag:x\n--- !y a", "%TAG !! tag:x\n--- !!y a",
+    "%TAG !e! tag:x\n---\n!e!y a\n...\n%TAG !f! tag:y\n--- !f!z b", "!e!y a\n...\n%TAG !e! tag:x\n--- !e!z b",
+    "%TAG !e tag:x\n--- a", "%TAG e! tag:x\n--- a", "%TAG !e_1! tag:x\n--- a", "%TAG !é! tag:x\n--- a",
+    "%TAG !! tag:x\n%TAG !! tag:y\n--- a", "%TAG !e! tag:x\n--- !e!y a\n--- !e!z b",
+    "a: [b, !t c]\nd: !!str e", "- - !t a\n  - !!int 1\n- !e!x b" ]
+
+/-- The scanner's directive-side handle predicate. -/
+def shapedScanner (h : String) : Bool := L4YAML.Scanner.isTagHandleShaped h
+
+/-- The parser-side predicate (`BuiltinTagHandle ∨ isNamedHandle`), restricted to `h ≠ ""`. -/
+def shapedParser (h : String) : Bool :=
+  h == "!" || h == "!!" || L4YAML.Proofs.Serialization.TokenEvents.isNamedHandle h
+
+def handleAlphabet : List Char := ['!', 'a', '1', '-', '_', ' ']
+
+def handlesUpTo : Nat → List String
+  | 0 => [""]
+  | n + 1 => let r := handlesUpTo n; r ++ (r.filter (·.length == n)).flatMap fun h => handleAlphabet.map (h.push ·)
+
+end P95
+
+def testTagUsesShaped (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 95: S3 (a) — every scanner-emitted `.tag` has a shaped handle (TagUsesShaped)"
+  let mut scanned := 0
+  let mut refused := 0
+  let mut refusedHandle := 0
+  let mut tags := 0
+  let mut verbatim := 0
+  let mut primary := 0
+  let mut secondary := 0
+  let mut named := 0
+  let mut steps := 0
+  let mut states := 0
+  for input in P95.rows do
+    match L4YAML.Scanner.scanFiltered input with
+    | .ok ts =>
+      scanned := scanned + 1
+      checkM state s!"P95 {repr input}: TagUsesShaped on scanner output" (s5TagUsesShaped ts)
+        s!"tokens={repr (ts.map (·.val))}"
+      for p in ts do
+        match P95.handleOf p.val with
+        | some h =>
+          tags := tags + 1
+          if h == "" then verbatim := verbatim + 1
+          else if h == "!" then primary := primary + 1
+          else if h == "!!" then secondary := secondary + 1
+          else named := named + 1
+        | none => pure ()
+    | .error e =>
+      refused := refused + 1
+      match e with
+      | .invalidTagHandle .. => refusedHandle := refusedHandle + 1
+      | _ => pure ()
+    -- per step: TagInv on every reached state, TagExt across every step
+    let traj := P93.trajectory input
+    let mut prev : Option ScannerState := none
+    for s in traj do
+      states := states + 1
+      checkM state s!"P95 {repr input}: TagInv on reached state {states}" (P95.tagInvB s)
+        s!"vals={repr (L4YAML.Proofs.DirectiveRuns.vals s)}"
+      match prev with
+      | some s0 =>
+        steps := steps + 1
+        checkM state s!"P95 {repr input}: TagExt across step {steps}" (P95.tagExtB s0 s) ""
+      | none => pure ()
+      prev := some s
+    -- scanLoop direct from the start state at fuel 0 / 1 / 2 / enough
+    let s0 := (ScannerState.mk' input).emit .streamStart
+    checkM state s!"P95 {repr input}: scanLoop fuel 0 fails" (match L4YAML.Scanner.scanLoop s0 0 with | .ok _ => false | .error _ => true) ""
+    for fuel in [1, 2, 64] do
+      match L4YAML.Scanner.scanLoop s0 fuel with
+      | .ok ts => checkM state s!"P95 {repr input}: scanLoop fuel {fuel} output TagUsesShaped" (s5TagUsesShaped ts) ""
+      | .error _ => pure ()
+  checkM state s!"P95 rows={P95.rows.length} scanned={scanned} refused={refused} (invalidTagHandle {refusedHandle}); tags={tags}: verbatim {verbatim}, primary {primary}, secondary {secondary}, named {named}; states={states} steps={steps}"
+    (scanned > 0 && refused > 0 && refusedHandle > 0 && verbatim > 0 && primary > 0 && secondary > 0 && named > 0 && steps > 0) ""
+  -- (1) the word-char agreement the proof rests on, on every ASCII char and a few beyond
+  let chars : List Char := (List.range 128).map Char.ofNat ++ ['é', 'É', '\u00A0', '–', '\uFEFF', '字']
+  let disagree := chars.filter fun c => L4YAML.CharPredicates.isWordCharBool c != (c.isAlphanum || c == '-')
+  checkM state s!"P95 isWordCharBool c = (c.isAlphanum || c = '-') on {chars.length} chars" disagree.isEmpty s!"disagree={repr disagree}"
+  -- scanner's `isTagHandleShaped` vs parser's `BuiltinTagHandle ∨ isNamedHandle` on every handle ≤ 5
+  let hs := P95.handlesUpTo 5
+  let mism := hs.filter fun h => h != "" && P95.shapedScanner h != P95.shapedParser h
+  let shapedCount := (hs.filter P95.shapedParser).length
+  checkM state s!"P95 isTagHandleShaped = (builtin ∨ isNamedHandle) on {hs.length} handles ({shapedCount} shaped)"
+    (mism.isEmpty && shapedCount > 3) s!"mismatch={repr mism}"
+  checkM state "P95 pin: \"\" is builtin (verbatim) but not `isTagHandleShaped`"
+    (!P95.shapedScanner "" && P95.tagOkB (.tag "" "tag:x")) ""
+  -- non-tautology: hand-built bad tags fail the predicate
+  checkM state "P95 pin: `.tag \"!bad\" \"\"` is NOT shaped" (!P95.tagOkB (.tag "!bad" "")) ""
+  checkM state "P95 pin: `.tag \"!a_b!\" \"\"` is NOT shaped (`_` is not a word char)" (!P95.tagOkB (.tag "!a_b!" "")) ""
+  checkM state "P95 pin: `.tag \"!a-b!\" \"x\"` IS shaped" (P95.tagOkB (.tag "!a-b!" "x")) ""
+  checkM state "P95 pin: `s5TagUsesShaped` refutes an array holding `.tag \"!bad\" \"\"`"
+    (!s5TagUsesShaped #[s5Tok .streamStart, s5Tok (.tag "!bad" ""), s5Tok .streamEnd]) ""
+  -- withdrawn `TagInv` control: a bad tag already in `vals` is carried through a step, not repaired
+  let sBad := ((ScannerState.mk' "a").emit .streamStart).emit (.tag "!bad" "")
+  checkM state "P95 control: TagInv fails on the seeded state" (!P95.tagInvB sBad) ""
+  match L4YAML.Scanner.scanNextToken sBad with
+  | .ok (some s') =>
+    checkM state "P95 control: the step is TagExt (nothing new is unshaped) …" (P95.tagExtB sBad s') ""
+    checkM state "P95 control: … but TagInv still fails after it (the premise is load-bearing)" (!P95.tagInvB s') ""
+  | _ => checkM state "P95 control: seeded state steps" false ""
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -12138,6 +12278,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testLiveInvCarrier state
   testLoopDeadDischarge state
   testSetLemmas state
+  testTagUsesShaped state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",

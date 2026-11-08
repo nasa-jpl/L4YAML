@@ -11,6 +11,7 @@ import Tests.Guards.Proofs.FlowSyncAxioms
 import Tests.Guards.Proofs.MarkedSlotsEnclosing
 import Tests.Guards.Proofs.MarkedColsDomain
 import Tests.Guards.Proofs.ScannerShapeAxioms
+import Tests.Guards.Proofs.TagShapeAxioms
 import Tests.Guards.Proofs.TokenGrammarProbes
 import Tests.Guards.Proofs.FlowGluedColonExhibit
 import Tests.Guards.Proofs.BlockCollectionWidthFloor

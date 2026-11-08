@@ -211,6 +211,20 @@ open L4YAML.Proofs.Serialization.ParseCheckFrom in
 #guard_msgs in
 #print axioms parseStream_ok_checkFrom
 
+
+open L4YAML.Proofs.Serialization.ScannerShape in
+/-- info: 'L4YAML.Proofs.Serialization.ScannerShape.tagOk_shaped' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms tagOk_shaped
+
+open L4YAML.Proofs.Serialization.ScannerShape in
+/-- info: 'L4YAML.Proofs.Serialization.ScannerShape.scanFiltered_TagUsesShaped' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
+#guard_msgs in
+#print axioms scanFiltered_TagUsesShaped
+
 end Tests.Guards.ScannerShapeAxioms
 
 end Blanket

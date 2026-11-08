@@ -353,7 +353,7 @@ def expectedSteps : String :=
 -- `scan_inv`, `DirInv_scanLoop_streamEnd`, `scan_streamEnd_unique` (DirectiveRuns) and
 -- `scanFiltered_toks_streamEnd_unique`, `scanFiltered_streamEnd_index`,
 -- `scanFiltered_parseStream_ok_checkFrom_full` (ScannerShape) hold the scan entry equations.
-  "stepHolders=2060 dispHolders=395 dispTwoCorr=31 fns=75 fnsIx=26"
+  "stepHolders=2083 dispHolders=399 dispTwoCorr=31 fns=75 fnsIx=26"
 
 /-- **The ladder, at each population.**  `edge` is a production whose right
     endpoint is the step's output; `chain` requires a path to it from another
@@ -438,9 +438,10 @@ def expectedChainSpec : List Name :=
 -- 2026-11-07 (item 447): per-function decls `scanNextToken_preprocess` 253 → 255 (`preprocess_preserves_flowLevel`,
 --   `FlowSync_preprocess`), `scanNextToken_dispatchContent` 165 → 166 (`FlowSync_dispatchContent`) — `Proofs/Scanner/FlowSync.lean` (S3 (β2a)).
 -- 2026-11-07 (item 449): per-function decls `scanNextToken_dispatchContent` 166 → 168 (`dispatchContent_live`, `LiveInv_dispatchContent`), `scanNextToken_preprocess` 255 → 257 (`LiveInv_preprocess`, `StrongSlot_preprocess`) — S3 (β2b).
+-- 2026-11-08 (item 450): per-function decls `scanNextToken_dispatchContent` 168 → 169 (`TagExt_dispatchContent`), `scanNextToken_preprocess` 257 → 258 (`TagExt_preprocess`) — S3 (a).
 def expectedPerFn : List String :=
-  ["scanNextToken_dispatchContent decls=168 chain=1",
-   "scanNextToken_preprocess decls=257 chain=3"]
+  ["scanNextToken_dispatchContent decls=169 chain=1",
+   "scanNextToken_preprocess decls=258 chain=3"]
 
 /-- **The one worked precedent is outside the work.**  It is not in item 238's
     transitive set and not on either repair thread, so β.5 neither pays for it
@@ -456,6 +457,7 @@ def expectedOne : String := "inT=false onThread=false onProdThread=false"
 -- ε `s-separate-in-line` (now col-0 only); its separators are the scanner's own white runs.
 -- 2026-11-07 (item 447): `stepHolders` 2018 → 2030, `dispHolders` 385 → 390, `fns` 74 → 75 — `Proofs/Scanner/FlowSync.lean`
 -- 2026-11-07 (item 449): `stepHolders` 2030 → 2060, `dispHolders` 390 → 395 — `Proofs/Scanner/DocStartLiveInv.lean` (S3 (β2b)): the `LiveInv` step lemmas read the dispatchers and `scanNextToken`.
+-- 2026-11-08 (item 450): `stepHolders` 2060 → 2083, `dispHolders` 395 → 399 — `Proofs/Scanner/TagShape.lean` (S3 (a)): the `TagExt` step lemmas read the dispatchers and `scanNextToken`.
 --   (S3 (β2a)): `FlowSync_scanNextToken` / `_scanLoopFull` / `scanNextToken_indents_of_inFlow` and their per-dispatcher arms
 def expectedWeak : String := "startOfLine=false drop=false"
 
