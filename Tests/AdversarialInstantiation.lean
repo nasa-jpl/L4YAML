@@ -11925,6 +11925,97 @@ def testLoopDeadDischarge (state : IO.Ref TestCollector) : IO Unit := do
   checkM state s!"P94 (vi) scanned={scanned} LoopDead positions={loopDeadPos} (k=1: {atOne}, after `...`: {afterDE})"
     (scanned > 0 && loopDeadPos > 0) ""
 
+namespace P94
+/-- `TailOK_set`'s conclusion on the written list, premise `Bnd (some t) = false`. -/
+def tailSetB (L : List YamlToken) (idx j : Nat) (t : YamlToken) : Bool := tailOK (L.set j t) idx
+/-- `Bnd_lastReal_set_false`'s conclusion. -/
+def lastSetB (L : List YamlToken) (j : Nat) (t : YamlToken) : Bool :=
+  !L4YAML.Proofs.DocStartLive.Bnd (L4YAML.Proofs.DocStartLive.lastReal (L.set j t))
+/-- `Shape_set`'s side premise `hj`: a dead write lands after a non-boundary real token. -/
+def hjB (L : List YamlToken) (j : Nat) (t : YamlToken) : Bool :=
+  L4YAML.Proofs.DocStartLive.liveTok t ||
+    !L4YAML.Proofs.DocStartLive.Bnd (L4YAML.Proofs.DocStartLive.lastReal (L.take j))
+end P94
+
+/-- Priority 94 (vii): the three token-rewrite lemmas `scanValue`'s retroactive insertion consumes,
+    on every list of length ≤ 3 over the 12-token alphabet, every position `j ≤ length` (the
+    out-of-range `j = length` row is the identity control) and every written token `t` — premises
+    computed, conclusions checked where they hold (a violation is its own named row; the tally
+    asserts there are none), failed-premise rows tallied apart with the count
+    of rows where the conclusion also fails (the premise is load-bearing), and the withdrawn-`hj`
+    control for `Shape_set`. -/
+def testSetLemmas (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 94 (vii): S3 (β2b) — TailOK_set, Bnd_lastReal_set_false, Shape_set"
+  let mut tailHeld := 0
+  let mut tailViol := 0
+  let mut lastViol := 0
+  let mut shapeViol := 0
+  let mut tailFailed := 0
+  let mut tailFailedBroken := 0
+  let mut lastHeld := 0
+  let mut lastFailed := 0
+  let mut lastFailedBroken := 0
+  let mut shapeHeld := 0
+  let mut shapeFailed := 0
+  let mut shapeFailedBroken := 0
+  let mut hjWithdrawnBroken := 0
+  for L in P94.listsUpTo 3 do
+    let shL := P92.shapeB L
+    let lastL := !L4YAML.Proofs.DocStartLive.Bnd (L4YAML.Proofs.DocStartLive.lastReal L)
+    for j in List.range (L.length + 1) do
+      for t in P94.alphabet do
+        let tb := !L4YAML.Proofs.DocStartLive.Bnd (some t)
+        let np := L4YAML.Proofs.DirectiveRuns.nonPh t
+        let W := L.set j t
+        -- TailOK_set: ∀ idx ≤ length
+        for idx in List.range (L.length + 1) do
+          if tb && P94.tailOK L idx then
+            tailHeld := tailHeld + 1
+            if !P94.tailSetB L idx j t then
+              tailViol := tailViol + 1
+              checkM state s!"P94 (vii) TailOK_set {repr L} idx={idx} j={j} t={repr t}" false ""
+          else
+            tailFailed := tailFailed + 1
+            if !P94.tailSetB L idx j t then tailFailedBroken := tailFailedBroken + 1
+        -- Bnd_lastReal_set_false
+        if np && tb && lastL then
+          lastHeld := lastHeld + 1
+          if !P94.lastSetB L j t then
+            lastViol := lastViol + 1
+            checkM state s!"P94 (vii) Bnd_lastReal_set_false {repr L} j={j} t={repr t}" false ""
+        else
+          lastFailed := lastFailed + 1
+          if !P94.lastSetB L j t then lastFailedBroken := lastFailedBroken + 1
+        -- Shape_set, and the withdrawn-`hj` control
+        if np && tb && shL then
+          if P94.hjB L j t then
+            shapeHeld := shapeHeld + 1
+            if !P92.shapeB W then
+              shapeViol := shapeViol + 1
+              checkM state s!"P94 (vii) Shape_set {repr L} j={j} t={repr t}" false ""
+          else
+            shapeFailed := shapeFailed + 1
+            if !P92.shapeB W then
+              shapeFailedBroken := shapeFailedBroken + 1
+              hjWithdrawnBroken := hjWithdrawnBroken + 1
+        else
+          shapeFailed := shapeFailed + 1
+          if !P92.shapeB W then shapeFailedBroken := shapeFailedBroken + 1
+  checkM state s!"P94 (vii) TailOK_set: premise-held rows={tailHeld} (violations {tailViol}), failed-premise rows={tailFailed}, conclusion false under failed premise={tailFailedBroken} (load-bearing)"
+    (tailHeld > 0 && tailViol == 0 && tailFailedBroken > 0) ""
+  checkM state s!"P94 (vii) Bnd_lastReal_set_false: premise-held rows={lastHeld} (violations {lastViol}), failed-premise rows={lastFailed}, conclusion false under failed premise={lastFailedBroken} (load-bearing)"
+    (lastHeld > 0 && lastViol == 0 && lastFailedBroken > 0) ""
+  checkM state s!"P94 (vii) Shape_set: premise-held rows={shapeHeld} (violations {shapeViol}), failed-premise rows={shapeFailed}, conclusion false under failed premise={shapeFailedBroken} (load-bearing)"
+    (shapeHeld > 0 && shapeViol == 0 && shapeFailedBroken > 0) ""
+  checkM state s!"P94 (vii) Shape_set: withdrawn-`hj` control — `Shape L`, non-boundary dead `t` written after a boundary, `Shape` lost on {hjWithdrawnBroken} rows"
+    (hjWithdrawnBroken > 0) ""
+  -- pins: `[SS, a]` with `.key` written at 1 keeps `Shape` only through `hj`'s failure, i.e. it is lost
+  let L : List YamlToken := [.streamStart, .scalar "a" .plain]
+  checkM state "P94 (vii) pin: `Shape [SS, a]`" (P92.shapeB L) ""
+  checkM state "P94 (vii) pin: writing `.key` at 1 of `[SS, a]` fails `hj` (last real before 1 is `SS`)" (!P94.hjB L 1 .key) ""
+  checkM state "P94 (vii) pin: and `Shape` is lost there (the `hj` premise is load-bearing)" (!P92.shapeB (L.set 1 .key)) ""
+  checkM state "P94 (vii) pin: writing `.key` at 2 of `[SS, a, b]` keeps `Shape`" (P92.shapeB ([.streamStart, .scalar "a" .plain, .scalar "b" .plain].set 2 .key)) ""
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -12046,6 +12137,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testFlowSyncPrereqs state
   testLiveInvCarrier state
   testLoopDeadDischarge state
+  testSetLemmas state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",
