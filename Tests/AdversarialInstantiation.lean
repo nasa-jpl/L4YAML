@@ -13709,6 +13709,242 @@ def testDocBridge (state : IO.Ref TestCollector) : IO Unit := do
 
 end P101Test
 
+/-! ## Priority 102 — S3 slice (3), first PR: flow indicators and quoted scalars as `TraceOf` leaves, before proof
+
+Item 463's NEXT.  The statements: the `[` / `{` / `]` / `}` / `,` arms of
+`scanNextToken_dispatchStructural` push exactly their indicator token over a one-character
+span (`GLit`, trace `[]` — the token is silent under `goOut`), and `scanDoubleQuoted` /
+`scanSingleQuoted` (the `"` / `'` arms of `scanNextToken_dispatchContent`) push one quoted
+scalar token over the quoted lexeme (`SCDoubleQuoted` / `SCSingleQuoted` → `TFlowContent … []`).
+Every token kind named here is trace-inert, so the whole first PR adds `[]` to a trace; the grid
+checks the token / span / landing shape the lemmas will state and the guards the arms refuse on. -/
+namespace P102
+open L4YAML.Proofs.Serialization.TokenEvents (go goOut tokenEvent tok)
+open L4YAML.Proofs.Serialization.SerializationWellFormed (Event)
+
+def own : List String :=
+  [-- nesting 0–3, empty / singleton, trailing commas, `,` after each kind
+   "[]", "{}", "[a]", "{a: b}", "[a, b]", "{a: b, c: d}", "[a,]", "{a: b,}", "[,]", "[a,,b]",
+   "[[]]", "[[[]]]", "[[[[]]]]", "{a: {b: {c: {}}}}", "[{}]", "{a: []}", "[[a], {b: c}]",
+   "[a, [b, c], {d: e}, *x, &y z, !t w, \"q\", 'r', , ]", "[&a x, *a]", "[!!str a, !e!t b]",
+   "{a, b: c, ? d : e, \"f\": 'g'}", "[a, b]: c", "? [a]\n: {b: c}", "- [a]\n- {b: c}",
+   "{[a]: b}", "[{a: b}: c]", "[a\n, b\n]", "[\n  a,\n  b\n]", "{\n  a: b,\n  c: d\n}",
+   "[a #c\n, b]", "[a, b] # tail", "---\n[a]\n...", "%TAG !e! tag:x:\n---\n[!e!a, b]",
+   "[a, b, c, d]", "{a: 1, b: 2, c: 3}", "[[a, b], [c, d]]", "[a, b, c, d, e, f]",
+   "{a: [b, c], d: {e: f, g: h}}", "[\"a\", \"b\", \"c\", 'd', 'e']", "[a, {b: c, d: e}, [f, g]]",
+   "{? a : b, ? c : d}", "[*x, *y, *z]", "[&a 1, &b 2, &c 3]", "[a,b,c]", "{a: b,c: d}",
+   -- closers / separators outside or against the wrong opener (refused)
+   "]", "}", ",", "a]", "a}", "a,", "{a]", "[a}", "[a", "{a: b", "[a]]", "{a: b}}",
+   -- quoted scalars: empty, escapes, folds, doubled quote, keys, flow / block context, BOM
+   "\"\"", "''", "\"a\"", "'a'", "\"a b\"", "'a b'", "\"\\n\\t\\\\\\\"\"", "\"\\u0041\\x41\\U00000041\"",
+   "'it''s'", "'''", "\"a\n  b\"", "'a\n b'", "\"a\\\n  b\"", "\"a\n\n  b\"", "\"a   \n   b\"",
+   "k: \"v\"", "k: 'v'", "\"k\": v", "'k': v", "- \"a\"\n- 'b'", "[\"a\", 'b']", "{\"a\": 'b'}",
+   "[\"a\", \"b\"]", "{'a': 'b', \"c\": \"d\"}", "\"a\": \"b\"", "? \"a\"\n: 'b'", "\"a\" # c",
+   "\"a\"\n\"b\"", "--- \"a\"", "\"a\"\n---\n'b'", "\uFEFF\"a\"", "\uFEFF[a]", "&x \"a\"", "!!str 'a'",
+   "\"\\q\"", "\"abc", "'abc", "\"a\nb", "k: \"a\n\nb\"", "\"a\\\"b\"", "'a\"b'", "\"a'b\""]
+
+def allRows : List String := (P101.allRows ++ own).eraseDups
+
+/-- The token kinds this slice's first PR speaks of. -/
+def flowKind : YamlToken → Option String
+  | .flowSequenceStart => some "["
+  | .flowMappingStart => some "{"
+  | .flowSequenceEnd => some "]"
+  | .flowMappingEnd => some "}"
+  | .flowEntry => some ","
+  | .scalar _ .doubleQuoted => some "dq"
+  | .scalar _ .singleQuoted => some "sq"
+  | _ => none
+
+/-- The flow stack the scanner holds before token `i` (`[` pushes `true`, `{` pushes `false`). -/
+def flowCtxBefore (ts : Array (Positioned YamlToken)) (i : Nat) : Array Bool := Id.run do
+  let mut st : Array Bool := #[]
+  for tk in ts.toList.take i do
+    match tk.val with
+    | .flowSequenceStart => st := st.push true
+    | .flowMappingStart => st := st.push false
+    | .flowSequenceEnd | .flowMappingEnd => st := st.pop
+    | _ => pure ()
+  return st
+
+def withFlow (st : ScannerState) (ctx : Array Bool) : ScannerState :=
+  { st with flowLevel := ctx.size, flowStack := ctx }
+
+structure Tally where
+  rows : Nat := 0
+  scanned : Nat := 0
+  refused : Nat := 0
+  byKind : List (String × Nat) := []
+  silentBad : List String := []
+  openRuns : Nat := 0
+  openBad : List String := []
+  closeRuns : Nat := 0
+  closeRefused : List String := []
+  closeBad : List String := []
+  guardBad : List String := []
+  entryRuns : Nat := 0
+  entryRefused : List String := []
+  entryBad : List String := []
+  quotedRuns : Nat := 0
+  quotedRefused : List String := []
+  quotedBad : List String := []
+  dispBad : List String := []
+
+def pushedOne (st s' : ScannerState) (v : YamlToken) : Bool :=
+  s'.tokens.size == st.tokens.size + 1 &&
+  (match s'.tokens.back? with
+   | some t => t.pos == st.currentPos && t.val == v
+   | none => false)
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    t := { t with rows := t.rows + 1 }
+    match scanFiltered s with
+    | .error _ => t := { t with refused := t.refused + 1 }
+    | .ok ts =>
+      t := { t with scanned := t.scanned + 1 }
+      for i in [0:ts.size] do
+        let tk := ts[i]!
+        match flowKind tk.val with
+        | none => pure ()
+        | some k =>
+          t := { t with byKind := P100.bump t.byKind k }
+          -- (A) silent under the production fold, from every pending state
+          if tokenEvent tk.val != none ||
+             P101.startPendings.any (fun p => goOut [tk] p != ([], p)) then
+            t := { t with silentBad := s!"{repr s}@{tk.pos.offset}" :: t.silentBad }
+          -- (B) the arm run directly on a fresh state at the offset with the row's flow context
+          let st := withFlow (P100.stateAt s tk.pos.offset) (flowCtxBefore ts i)
+          let site := s!"{repr s}@{tk.pos.offset}"
+          match tk.val with
+          | .flowSequenceStart | .flowMappingStart =>
+            t := { t with openRuns := t.openRuns + 1 }
+            let isSeq := tk.val == .flowSequenceStart
+            let s' := if isSeq then scanFlowSequenceStart st else scanFlowMappingStart st
+            let sp := P100.spanAt s st.offset s'.offset
+            if pushedOne st s' tk.val && sp == [if isSeq then '[' else '{'] && s'.col == st.col + 1 &&
+               s'.flowLevel == st.flowLevel + 1 && s'.flowStack.back? == some isSeq &&
+               s'.input == st.input && s'.inputEnd == st.inputEnd
+            then pure ()
+            else t := { t with openBad := site :: t.openBad }
+            match scanNextToken_dispatchFlowIndicators st (if isSeq then '[' else '{') with
+            | .ok (some s'') => if s''.tokens != s'.tokens then t := { t with dispBad := site :: t.dispBad }
+            | _ => t := { t with dispBad := s!"{site}: dispatcher" :: t.dispBad }
+          | .flowSequenceEnd | .flowMappingEnd =>
+            t := { t with closeRuns := t.closeRuns + 1 }
+            let isSeq := tk.val == .flowSequenceEnd
+            let c := if isSeq then ']' else '}'
+            match scanNextToken_dispatchFlowIndicators st c with
+            | .ok (some s') =>
+              let sp := P100.spanAt s st.offset s'.offset
+              if pushedOne st s' tk.val && sp == [c] && s'.col == st.col + 1 &&
+                 s'.flowLevel + 1 == st.flowLevel && s'.flowStack.size + 1 == st.flowStack.size &&
+                 s'.input == st.input
+              then pure ()
+              else t := { t with closeBad := site :: t.closeBad }
+            | .ok none => t := { t with closeBad := s!"{site}: none" :: t.closeBad }
+            | .error e => t := { t with closeRefused := s!"{site}: {repr e}" :: t.closeRefused }
+            -- the two guards
+            match scanNextToken_dispatchFlowIndicators (withFlow st #[]) c with
+            | .error (.flowEndOutsideFlow ..) => pure ()
+            | _ => t := { t with guardBad := s!"{site}: level 0 not refused" :: t.guardBad }
+            let flipped := st.flowStack.pop.push (!isSeq)
+            match scanNextToken_dispatchFlowIndicators (withFlow st flipped) c with
+            | .error (.mismatchedFlowClose ..) => pure ()
+            | _ => t := { t with guardBad := s!"{site}: mismatch not refused" :: t.guardBad }
+          | .flowEntry =>
+            t := { t with entryRuns := t.entryRuns + 1 }
+            match scanNextToken_dispatchFlowIndicators st ',' with
+            | .ok (some s') =>
+              let sp := P100.spanAt s st.offset s'.offset
+              if pushedOne st s' .flowEntry && sp == [','] && s'.col == st.col + 1 &&
+                 s'.flowLevel == st.flowLevel && s'.input == st.input
+              then pure ()
+              else t := { t with entryBad := site :: t.entryBad }
+            | .ok none => t := { t with entryBad := s!"{site}: none" :: t.entryBad }
+            | .error e => t := { t with entryRefused := s!"{site}: {repr e}" :: t.entryRefused }
+            match scanNextToken_dispatchFlowIndicators (withFlow st #[]) ',' with
+            | .error (.flowEndOutsideFlow ..) => pure ()
+            | _ => t := { t with guardBad := s!"{site}: ',' at level 0 not refused" :: t.guardBad }
+          | .scalar _ style =>
+            t := { t with quotedRuns := t.quotedRuns + 1 }
+            let dq := style == .doubleQuoted
+            let q := if dq then '"' else '\''
+            match (if dq then scanDoubleQuoted st else scanSingleQuoted st) with
+            | .error e => t := { t with quotedRefused := s!"{site}: {repr e}" :: t.quotedRefused }
+            | .ok s' =>
+              let sp := P100.spanAt s st.offset s'.offset
+              if pushedOne st s' tk.val && sp.head? == some q && sp.getLast? == some q &&
+                 sp.length ≥ 2 && s'.peekBack? == some q && s'.input == st.input
+              then pure ()
+              else t := { t with quotedBad := s!"{site}: span {repr (String.ofList sp)}" :: t.quotedBad }
+              match scanNextToken_dispatchContent st q with
+              | .ok s'' => if s''.tokens != s'.tokens then t := { t with dispBad := site :: t.dispBad }
+              | .error _ => t := { t with dispBad := s!"{site}: dispatcher" :: t.dispBad }
+          | _ => pure ()
+  return t
+
+def kindCount (t : Tally) (k : String) : Nat := (t.byKind.find? (·.1 == k)).map (·.2) |>.getD 0
+
+def refusedWith (s : String) (p : ScanError → Bool) : Bool :=
+  match scanFiltered s with
+  | .error e => p e
+  | .ok _ => false
+
+end P102
+
+section P102Test
+open L4YAML.Proofs.Serialization.TokenEvents (go goOut tokenEvent tok)
+open L4YAML.Proofs.Serialization.SerializationWellFormed (Event)
+
+def testFlowBridge (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 102: S3 slice (3) first PR — flow indicators and quoted scalars as TraceOf leaves, before proof"
+  let t := P102.tally P102.allRows
+  let n := P102.kindCount t
+  checkM state s!"P102(i) {t.rows} rows, {t.scanned} scanned, {t.refused} refused; [ {n "["} \{ {n "{"} ] {n "]"} } {n "}"} , {n ","} dq {n "dq"} sq {n "sq"}"
+    (t.rows ≥ 600 && n "[" ≥ 60 && n "{" ≥ 40 && n "," ≥ 80 && n "dq" + n "sq" ≥ 60) ""
+  checkM state s!"P102(ii) every flow indicator / quoted scalar token is silent (tokenEvent = none, goOut [tk] p = ([], p) from pending [] / [!a!] / [!b!, !a!]): {t.silentBad.length} bad"
+    t.silentBad.isEmpty s!"{repr (t.silentBad.take 6)}"
+  checkM state s!"P102(iii) '[' / '\{' direct: {t.openRuns} runs, token at currentPos / one-char span / col+1 / flowLevel+1 / top pushed: {t.openBad.length} bad"
+    (t.openBad.isEmpty && t.openRuns ≥ 100) s!"{repr (t.openBad.take 6)}"
+  checkM state s!"P102(iv) ']' / '}' via dispatchFlowIndicators with the row's flow context: {t.closeRuns} runs, {t.closeRefused.length} refused, {t.closeBad.length} bad; level-0 / mismatched-top guards: {t.guardBad.length} not refused"
+    (t.closeBad.isEmpty && t.closeRefused.isEmpty && t.guardBad.isEmpty && t.closeRuns ≥ 100)
+    s!"{repr (t.closeBad.take 4)} {repr (t.closeRefused.take 4)} {repr (t.guardBad.take 4)}"
+  checkM state s!"P102(v) ',' via dispatchFlowIndicators: {t.entryRuns} runs, {t.entryRefused.length} refused, {t.entryBad.length} bad"
+    (t.entryBad.isEmpty && t.entryRefused.isEmpty && t.entryRuns ≥ 80) s!"{repr (t.entryBad.take 4)} {repr (t.entryRefused.take 4)}"
+  checkM state s!"P102(vi) scanDoubleQuoted / scanSingleQuoted direct: {t.quotedRuns} runs, {t.quotedRefused.length} refused, {t.quotedBad.length} bad (token at currentPos, span quote-to-quote, peekBack = the quote)"
+    (t.quotedBad.isEmpty && t.quotedRefused.isEmpty && t.quotedRuns ≥ 60) s!"{repr (t.quotedBad.take 4)} {repr (t.quotedRefused.take 4)}"
+  checkM state s!"P102(vii) the dispatcher arms ('[' '\{' via dispatchFlowIndicators, quotes via dispatchContent) push the same tokens as the arm functions: {t.dispBad.length} bad"
+    t.dispBad.isEmpty s!"{repr (t.dispBad.take 6)}"
+  -- (viii) hand refuters
+  checkM state "P102(viii) a bare ] / } / , at the top level is flowEndOutsideFlow"
+    (["]", "}", ","].all (fun s => P102.refusedWith s (fun | .flowEndOutsideFlow .. => true | _ => false))) ""
+  -- refuted prediction, pinned: a second closer after a closed collection is caught by the first
+  -- close's validateFlowClose (trailingContent), never reaching the level-0 arm
+  checkM state "P102(viii) [a]] / {a: b}} are trailingContent (the first close's validateFlowClose), not flowEndOutsideFlow"
+    (["[a]]", "{a: b}}"].all (fun s => P102.refusedWith s (fun | .trailingContent .. => true | _ => false))) ""
+  -- refuted prediction, pinned: in block context `]` `}` `,` are plain-scalar content (ns-plain-safe(block))
+  checkM state "P102(viii) a] / a} / a, scan as ONE plain scalar (the indicator is plain content in block context)"
+    (["a]", "a}", "a,"].all (fun s =>
+      match scanFiltered s with
+      | .ok ts => (ts.toList.filterMap (fun tk => match tk.val with | .scalar v .plain => some v | _ => none)) == [s]
+      | .error _ => false)) ""
+  checkM state "P102(viii) {a] / [a} are mismatchedFlowClose"
+    (["{a]", "[a}"].all (fun s => P102.refusedWith s (fun | .mismatchedFlowClose .. => true | _ => false))) ""
+  checkM state "P102(viii) unterminated / badly escaped quoted scalars are refused"
+    (["\"abc", "'abc", "\"a\nb", "\"\\q\""].all (fun s => P102.refusedWith s (fun _ => true))) ""
+  -- (ix) term-level instances
+  checkM state "P102(ix) goOut [flowSequenceStart, flowEntry, flowSequenceEnd] [\"!e!\"] = ([], [\"!e!\"])"
+    (goOut [tok .flowSequenceStart, tok .flowEntry, tok .flowSequenceEnd] ["!e!"] == ([], ["!e!"])) ""
+  checkM state "P102(ix) tokenEvent (scalar \"a\" doubleQuoted) = none, (scalar \"a\" singleQuoted) = none"
+    (tokenEvent (.scalar "a" .doubleQuoted) == none && tokenEvent (.scalar "a" .singleQuoted) == none) ""
+  checkM state "P102(ix) go [flowMappingStart, scalar dq, flowMappingEnd, documentStart] [\"!a!\"] = [beginDocument, declareTag !a!]"
+    (go [tok .flowMappingStart, tok (.scalar "a" .doubleQuoted), tok .flowMappingEnd, tok .documentStart] ["!a!"] ==
+      [.beginDocument, .declareTag "!a!"]) ""
+
+end P102Test
+
 def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 100: S3 slice (1) — leaf span ↔ token payload (anchor / alias / tag), before proof"
   let t := P100.tally P100.allRows
@@ -13888,6 +14124,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testTraceBridge state
   testLeafBridge state
   testDocBridge state
+  testFlowBridge state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",
