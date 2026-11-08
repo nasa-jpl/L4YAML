@@ -1332,7 +1332,8 @@ one `parseNodeContent` treats as an empty node, or a `-` right after a `-`
 `StuckAt ts k` alone says nothing about the loop: it holds at index 0 of every
 scanner output (`.streamStart`), at every `.key`/`.value`/`---`/`...` index and at
 a `-` after a `-` inside a sequence (S3 (d) refutation, adversarial Priority 90);
-`StopShape` is what ties the loop's no-progress exit to `k`. -/
+Since (γ2α) the loop refuses its no-progress exit, so `StuckAt` / `DeadAt` describe a
+position no successful `parseStream` run stops at; kept as the per-node stuck analysis. -/
 def StuckAt (ts : Toks) (k : Nat) : Prop :=
   emptyFollowerTok (tok ts k) = true ∨
     (tok ts k = some .blockEntry ∧ 0 < k ∧ tok ts (k - 1) = some .blockEntry)
@@ -1377,58 +1378,6 @@ lemma deadTok_of_emptyFollower (o : Option YamlToken) (he : emptyFollowerTok o =
       | exact absurd rfl (hl _)
       | exact absurd rfl (ht _ _)
       | exact absurd rfl hs
-
-/-- Where `parseStreamLoop`'s no-progress exit can sit, relative to the loop's entry
-position `p` and stream state `st`: in the first iteration (`k = p`, and `st` admitted
-the token), right after a consumed `...`, or in the `.afterDocument` state — which
-admits only document markers, directives and the structural tokens `key`/`value`/
-`blockEnd`/`flowEntry`/flow-ends (`validNextToken`). S3 (d), the strongest true form:
-the scanner can discharge the first two (index 1 and the token after every `...`
-are node openers); the third is the bracket-depth residue (γ). -/
-def StopShape (ts : Toks) (st : StreamState) (p k : Nat) : Prop :=
-  (k = p ∧ ∃ t, tok ts k = some t ∧ st.validNextToken t = true) ∨
-    tok ts (k - 1) = some .documentEnd ∨
-    (∃ t, tok ts k = some t ∧ StreamState.validNextToken .afterDocument t = true)
-
-/-- The no-progress exit at `parseStream`'s top level (entry position 1, state
-`.initial`, whose `validNextToken` admits everything). -/
-def LoopDead (ts : Toks) (k : Nat) : Prop :=
-  DeadAt ts k ∧ tok ts k ≠ some .documentEnd ∧ (k = 1 ∨ tok ts (k - 1) = some .documentEnd ∨
-    ∃ t, tok ts k = some t ∧ StreamState.validNextToken .afterDocument t = true)
-
-lemma LoopDead_of_initial (ts : Toks) (k : Nat) (hs : DeadAt ts k)
-    (hne : tok ts k ≠ some .documentEnd) (h : StopShape ts .initial 1 k) : LoopDead ts k := by
-  refine ⟨hs, hne, ?_⟩
-  rcases h with ⟨rfl, -⟩ | h | h
-  · exact Or.inl rfl
-  · exact Or.inr (Or.inl h)
-  · exact Or.inr (Or.inr h)
-
-/-- A stop shape relative to the position after a consumed `...` at `q` is one relative to any
-entry `p` (the stop is then right after that `...`). -/
-lemma StopShape_after_documentEnd (ts : Toks) (st st' : StreamState) (p q k : Nat)
-    (hp : tok ts q = some .documentEnd) (h : StopShape ts st' (q + 1) k) :
-    StopShape ts st p k := by
-  rcases h with ⟨rfl, -⟩ | h | h
-  · exact Or.inr (Or.inl (by simpa using hp))
-  · exact Or.inr (Or.inl h)
-  · exact Or.inr (Or.inr h)
-
-/-- A stop shape in the `.afterDocument` state is one relative to any entry. -/
-lemma StopShape_afterDocument (ts : Toks) (st : StreamState) (p q k : Nat)
-    (h : StopShape ts .afterDocument q k) : StopShape ts st p k := by
-  rcases h with ⟨-, h⟩ | h | h
-  · exact Or.inr (Or.inr h)
-  · exact Or.inr (Or.inl h)
-  · exact Or.inr (Or.inr h)
-
-lemma stop_mono {ts : Toks} {k : Nat} {A B : Prop} (hAB : A → B)
-    (h : k = ts.size ∨ tok ts k = some .streamEnd ∨ (DeadAt ts k ∧ A)) :
-    k = ts.size ∨ tok ts k = some .streamEnd ∨ (DeadAt ts k ∧ B) := by
-  rcases h with h | h | ⟨h1, h2⟩
-  · exact Or.inl h
-  · exact Or.inr (Or.inl h)
-  · exact Or.inr (Or.inr ⟨h1, hAB h2⟩)
 
 lemma peek_eq_of_cf {ps ps' : ParseState} (h : CF ps ps') (hpos : ps'.pos = ps.pos) :
     ps'.peek? = ps.peek? := by
@@ -2102,8 +2051,9 @@ lemma parseDocument_cf (ps : ParseState) (doc : YamlDocument) (ps' : ParseState)
           exact hr₂
 
 /-- The stream loop: from any position with a clean declaration set, the
-checker runs successfully up to where the loop stops (`streamEnd`, end of
-input, or a `StuckAt` position of the `StopShape` the loop can actually reach — S3 (d)).
+checker runs successfully up to where the loop stops — `streamEnd` or the end of
+input.  The loop's no-progress exit is an error (`trailingContent`) since (γ2α), so a
+successful run has no third stop shape (S3 (d)'s `StopShape` / `LoopDead` are retired).
 Capstone 7.7 via S5. -/
 lemma parseStreamLoop_cf (fuel : Nat) : ∀ (ps : ParseState) (docs : Array YamlDocument)
     (st : StreamState) (docs' : Array YamlDocument),
@@ -2111,9 +2061,7 @@ lemma parseStreamLoop_cf (fuel : Nat) : ∀ (ps : ParseState) (docs : Array Yaml
     ps.pos ≤ ps.tokens.size → ps.tokens.size < fuel + ps.pos →
     ps.declaredAnchors = #[] → DirectivesClosed ps.tokens → TagUsesShaped ps.tokens →
     ∀ s : CS, ∃ k s', ps.pos ≤ k ∧ k ≤ ps.tokens.size ∧
-      (k = ps.tokens.size ∨ tok ps.tokens k = some .streamEnd ∨
-        (DeadAt ps.tokens k ∧ tok ps.tokens k ≠ some .documentEnd ∧
-          StopShape ps.tokens st ps.pos k)) ∧
+      (k = ps.tokens.size ∨ tok ps.tokens k = some .streamEnd) ∧
       runToks (seg ps.tokens ps.pos k) s = some s' := by
   induction fuel with
   | zero => intro ps _ _ _ _ hsz hf; omega
@@ -2122,7 +2070,7 @@ lemma parseStreamLoop_cf (fuel : Nat) : ∀ (ps : ParseState) (docs : Array Yaml
     unfold parseStreamLoop at h
     split at h
     · rename_i hpk
-      exact ⟨ps.pos, s, Nat.le_refl _, hsz, Or.inr (Or.inl (by rw [← peek_eq_tok]; exact hpk)),
+      exact ⟨ps.pos, s, Nat.le_refl _, hsz, Or.inr (by rw [← peek_eq_tok]; exact hpk),
         by simp [runToks]⟩
     · rename_i hpk
       have h0 : ps.tokens[ps.pos]? = none := by
@@ -2141,7 +2089,7 @@ lemma parseStreamLoop_cf (fuel : Nat) : ∀ (ps : ParseState) (docs : Array Yaml
         hdecl hD hT (s.1.reset, s.2)
       simp only [ParseState.advance] at hk1 hk2 hk3 hr
       have hpkT : tok ps.tokens ps.pos = some .documentEnd := by rw [← peek_eq_tok]; exact hpk
-      refine ⟨k, s', by omega, hk2, stop_mono (And.imp_right (StopShape_after_documentEnd _ _ _ _ _ _ hpkT)) hk3, ?_⟩
+      refine ⟨k, s', by omega, hk2, hk3, ?_⟩
       obtain ⟨p, hp, hv⟩ := peek_some hpk
       rw [seg_append _ (Nat.le_succ _) hk1, runToks_append, seg_one _ hp]
       simpa [runToks, hv, stepTok] using hr
@@ -2155,20 +2103,13 @@ lemma parseStreamLoop_cf (fuel : Nat) : ∀ (ps : ParseState) (docs : Array Yaml
         rcases pr with e | ⟨doc, ps_d⟩
         · simp at h
         · try dsimp only at h
-          obtain ⟨t_d, p1, p2, stuck_d, r_d⟩ := parseDocument_cf ps doc ps_d hpd hsz hD hT hdecl
+          obtain ⟨t_d, p1, p2, -, r_d⟩ := parseDocument_cf ps doc ps_d hpd hsz hD hT hdecl
           generalize htc : ParseState.tryConsume _ YamlToken.documentEnd = tc at h
           obtain ⟨b, ps_t⟩ := tc
           try dsimp only at h
           rcases tryConsume_eq _ _ _ _ htc with ⟨rfl, rfl, -⟩ | ⟨rfl, hpkR, rfl⟩
           · split at h
-            · rename_i heqpos
-              simp only [beq_iff_eq] at heqpos
-              obtain ⟨tk, hpk2, hvt⟩ := hvalid
-              have hne : tok ps.tokens ps.pos ≠ some .documentEnd := by
-                rw [← peek_eq_tok, hpk]; intro heq; simp only [Option.some.injEq] at heq
-                subst heq; simp_all
-              exact ⟨ps.pos, s, Nat.le_refl _, hsz, Or.inr (Or.inr ⟨stuck_d heqpos, hne,
-                Or.inl ⟨rfl, tk, by rw [← peek_eq_tok]; exact hpk2, hvt⟩⟩), by simp [runToks]⟩
+            · simp at h  -- no progress → `trailingContent`, contradiction
             · rename_i hnepos
               have hlt : ps.pos < ps_d.pos := by
                 simp only [beq_iff_eq] at hnepos
@@ -2178,7 +2119,7 @@ lemma parseStreamLoop_cf (fuel : Nat) : ∀ (ps : ParseState) (docs : Array Yaml
               obtain ⟨k, s', hk1, hk2, hk3, hr⟩ := ih _ _ _ docs' h (by simpa [t_d] using p2)
                 (by simp only [t_d]; omega) rfl (by simpa [t_d] using hD) (by simpa [t_d] using hT) s₁
               simp only [t_d] at hk1 hk2 hk3 hr
-              refine ⟨k, s', by omega, hk2, stop_mono (And.imp_right (StopShape_afterDocument _ _ _ _ _)) hk3, ?_⟩
+              refine ⟨k, s', by omega, hk2, hk3, ?_⟩
               rw [seg_append _ p1 hk1, runToks_append, hr₁]
               exact hr
           · have hlt := pos_lt_of_peek hpkR
@@ -2196,39 +2137,25 @@ lemma parseStreamLoop_cf (fuel : Nat) : ∀ (ps : ParseState) (docs : Array Yaml
                 (by simpa [ParseState.advance, t_d] using hD)
                 (by simpa [ParseState.advance, t_d] using hT) (s₁.1.reset, s₁.2)
               simp only [ParseState.advance, t_d] at hk1 hk2 hk3 hr
-              have hpkT : tok ps.tokens ps_d.pos = some .documentEnd := by
-                rw [← t_d, ← peek_eq_tok]; exact hpkR
-              refine ⟨k, s', by omega, hk2,
-                stop_mono (And.imp_right (StopShape_after_documentEnd _ _ _ _ _ _ hpkT)) hk3, ?_⟩
+              refine ⟨k, s', by omega, hk2, hk3, ?_⟩
               rw [seg_append _ p1 (Nat.le_trans (Nat.le_succ _) hk1), runToks_append, hr₁,
                 seg_append _ (Nat.le_succ _) hk1]
               show runToks (seg ps.tokens ps_d.pos (ps_d.pos + 1) ++ seg ps.tokens (ps_d.pos + 1) k) s₁ = some s'
               rw [runToks_append, seg_one _ hq]
               simpa [runToks, hv, stepTok] using hr
 
-lemma stop_mono' {ts : Toks} {k : Nat}
-    (h : k = ts.size ∨ tok ts k = some .streamEnd ∨
-      (DeadAt ts k ∧ tok ts k ≠ some .documentEnd ∧ StopShape ts .initial (0 + 1) k)) :
-    k = ts.size ∨ tok ts k = some .streamEnd ∨ LoopDead ts k := by
-  rcases h with h | h | ⟨h1, hne, h2⟩
-  · exact Or.inl h
-  · exact Or.inr (Or.inl h)
-  · exact Or.inr (Or.inr (LoopDead_of_initial ts k h1 hne h2))
-
 /-- **S5(→), parser side.** A successful `parseStream` run is well-formed up to
 the position `k` where the loop stopped: `checkFrom {} (tokenEvents (ts.extract 0 k))`.
-`k` is the end of input, a `streamEnd`, or a `LoopDead` position (the loop's
-no-progress exit: `StuckAt`, and the stop is at index 1, after a `...`, or in the
-`.afterDocument` state — S3 (d)). Under scanner-shaped tokens (`TagUsesShaped`,
+`k` is the end of input or a `streamEnd` — the loop's no-progress exit is an error since
+(γ2α), so there is no third shape. Under scanner-shaped tokens (`TagUsesShaped`,
 `DirectivesClosed`), the parser's anchor/tag guards compose to the checker.
 S3 (c) carries the verdict across the final `.streamEnd`
-(`scanFiltered_parseStream_ok_checkFrom_full`); S3 (d)'s scanner side discharges
-the first two `LoopDead` shapes, the `.afterDocument` one is the residue (γ).
+(`scanFiltered_parseStream_ok_checkFrom_full`).
 Capstone 7.7 `parse_iff_grammar` via S5 (EVENTSOF-CONCEPT §9). -/
 lemma parseStream_ok_checkFrom (ts : Toks) (docs : Array YamlDocument)
     (hT : TagUsesShaped ts) (hD : DirectivesClosed ts)
     (h : parseStream ts = .ok docs) :
-    ∃ k, k ≤ ts.size ∧ (k = ts.size ∨ tok ts k = some .streamEnd ∨ LoopDead ts k) ∧
+    ∃ k, k ≤ ts.size ∧ (k = ts.size ∨ tok ts k = some .streamEnd) ∧
       checkFrom {} (tokenEvents (ts.extract 0 k)) = true := by
   unfold parseStream at h
   simp only [bind, Except.bind] at h
@@ -2251,7 +2178,7 @@ lemma parseStream_ok_checkFrom (ts : Toks) (docs : Array YamlDocument)
           (by simp only [ParseState.advance]; omega) (by simp only [ParseState.advance]; omega)
           rfl hD hT ({}, [])
         simp only [ParseState.advance, Nat.succ_eq_add_one] at hk1 hk2 hk3 hr
-        refine ⟨k, hk2, stop_mono' hk3, ?_⟩
+        refine ⟨k, hk2, hk3, ?_⟩
         obtain ⟨p, hp, hv⟩ := peek_some hpk
         simp only at hp hv
         have hall : runToks (seg ts 0 k) ({}, []) = some s' := by
@@ -2273,7 +2200,7 @@ lemma parse_ok_checkFrom (input : String) (docs : Array YamlDocument)
     (h : parseYaml input = .ok docs) :
     ∃ tokens, Scanner.scanFiltered input = .ok tokens ∧ (∃ raw, parseStream tokens = .ok raw) ∧
       (TagUsesShaped tokens → DirectivesClosed tokens →
-        ∃ k, k ≤ tokens.size ∧ (k = tokens.size ∨ tok tokens k = some .streamEnd ∨ LoopDead tokens k) ∧
+        ∃ k, k ≤ tokens.size ∧ (k = tokens.size ∨ tok tokens k = some .streamEnd) ∧
           checkFrom {} (tokenEvents (tokens.extract 0 k)) = true) := by
   unfold parseYaml parseYamlRaw at h
   split at h

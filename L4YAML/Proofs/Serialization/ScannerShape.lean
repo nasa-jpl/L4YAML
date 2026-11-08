@@ -32,11 +32,12 @@ scanner output.
   (`.streamEnd` is the only such token, so that `k` is `ts.size - 1`) plus
   `tokenEvents_dropLast_streamEnd` (`.streamEnd` adds no event); together,
   `scanFiltered_parseStream_ok_checkFrom_full` carries S5's verdict to all of `ts`.
-* (β2b) `LoopDead`'s index-1 / after-`...` shapes excluded — `LoopDead_scanFiltered`, from
-  `DocStartLiveInv.scanFiltered_liveF` (the `LiveInv` carrier over `scanLoop`): a dead token
-  there would need a non-boundary token before it.  What `scanFiltered_parseStream_ok_checkFrom_full`
-  still carries is `DeadResidue` — the `.afterDocument` shape (γ); the `.comment` disjunct is
-  closed by `scanFiltered_noComment` (`TagShape.emitOk`).
+* Scanner-shape facts on the parser's view of the array, from the `scanLoop` carriers:
+  `liveF_dead_contra` (β2b, `DocStartLiveInv.scanFiltered_liveF`), `scanFiltered_noComment`
+  (`TagShape.emitOk`), `scanFiltered_bal_tok` (γ1, `StructDepth.scanFiltered_bal`).  They were
+  the discharge of `parseStreamLoop`'s no-progress exit (`LoopDead` / `DeadResidue`, items
+  446–452); since (γ2α) that exit is an error, `scanFiltered_parseStream_ok_checkFrom_full`
+  concludes `checkFrom {} (tokenEvents ts) = true` outright, and these facts stand alone.
 -/
 
 namespace L4YAML.Proofs.Serialization.ScannerShape
@@ -106,7 +107,7 @@ lemma scanFiltered_parseStream_ok_checkFrom (input : String) (ts : Toks)
     (docs : Array YamlDocument) (hs : scanFiltered input = .ok ts)
     (h : parseStream ts = .ok docs) :
     ∃ k, k ≤ ts.size ∧
-      (k = ts.size ∨ ParseCheckFrom.tok ts k = some .streamEnd ∨ LoopDead ts k) ∧
+      (k = ts.size ∨ ParseCheckFrom.tok ts k = some .streamEnd) ∧
       checkFrom {} (tokenEvents (ts.extract 0 k)) = true :=
   parseStream_ok_checkFrom ts docs (scanFiltered_TagUsesShaped input ts hs)
     (scanFiltered_DirectivesClosed input ts hs) h
@@ -224,10 +225,6 @@ lemma liveF_dead_contra (F : List YamlToken) (hL : DocStartLive.LiveF F) (hhd : 
     simp only [Option.some.injEq] at hu; subst hu; simp [DocStartLive.Bnd] at hBu
   · rw [h] at hu; simp only [Option.some.injEq] at hu; subst hu; simp [DocStartLive.Bnd] at hBu
 
-/-- The residue of `LoopDead` after (β2) and the `.comment` lemma: the `.afterDocument` shape (γ). -/
-def DeadResidue (o : Option YamlToken) : Prop :=
-  ∃ t, o = some t ∧ StreamState.validNextToken .afterDocument t = true
-
 /-- The scanner emits no `.comment` token (`TagShape.emitOk`, carried over `scanLoop`). -/
 lemma scanFiltered_noComment (input : String) (ts : Toks) (hs : scanFiltered input = .ok ts)
     (k : Nat) (text : String) : ParseCheckFrom.tok ts k ≠ some (.comment text) := by
@@ -237,94 +234,29 @@ lemma scanFiltered_noComment (input : String) (ts : Toks) (hs : scanFiltered inp
   simp [TagShape.emitOk] at this
 
 /-- (γ1) on the parser's view of the token array: a structural dead token at index `k` of
-    `scanFiltered` output sits at positive `StructDepth.depth`.  (γ2) consumes this against the
-    `DeadResidue` stop token, whose position `parseDocument` leaves at depth 0. -/
+    `scanFiltered` output sits at positive `StructDepth.depth`. -/
 lemma scanFiltered_bal_tok (input : String) (ts : Toks) (hs : scanFiltered input = .ok ts)
     (k : Nat) (t : YamlToken) (hk : ParseCheckFrom.tok ts k = some t)
     (hd : StructDepth.structDead t = true) : 0 < StructDepth.depth ((toks ts).take k) := by
   rw [tok_eq_toks] at hk
   exact StructDepth.scanFiltered_bal input ts hs k t hk hd
 
-/-- (β2): on scanner output the loop's no-progress exit cannot sit at index 1 or right after a
-`...` — the token there is live (`scanFiltered_liveF`), and a dead token at `k` would need a
-non-boundary token at `k - 1`. What remains of `LoopDead` is `DeadResidue`, or the loop stopped
-at `.streamEnd` / the end of the array. -/
-lemma LoopDead_scanFiltered (input : String) (ts : Toks) (hs : scanFiltered input = .ok ts)
-    (k : Nat) (hk : k ≤ ts.size) (hd : LoopDead ts k) :
-    k = ts.size ∨ ParseCheckFrom.tok ts k = some .streamEnd ∨
-      DeadResidue (ParseCheckFrom.tok ts k) := by
-  obtain ⟨hL, hhd⟩ := DocStartLiveInv.scanFiltered_liveF input ts hs
-  obtain ⟨hdead, hne, hpos⟩ := hd
-  have hlen : (toks ts).length = ts.size := by simp [toks]
-  rcases hpos with hk1 | hde | ⟨t, ht, hγ⟩
-  all_goals try (right; right; unfold DeadResidue; exact ⟨t, ht, hγ⟩)
-  all_goals
-    have hpos' : k = 1 ∨ (toks ts)[k - 1]? = some .documentEnd := by
-      first
-        | exact Or.inl hk1
-        | exact Or.inr (by rw [← tok_eq_toks]; exact hde)
-    rcases hdead with hdt | ⟨hbe, hk0, hbe'⟩
-    · cases htk : ParseCheckFrom.tok ts k with
-      | none =>
-        left
-        rw [tok_eq_toks] at htk
-        have := List.getElem?_eq_none_iff.1 htk
-        omega
-      | some t =>
-        rw [htk] at hdt hne
-        have htk' : (toks ts)[k]? = some t := by rw [← tok_eq_toks]; exact htk
-        cases t <;> simp [deadTok] at hdt
-        all_goals first
-          | exact absurd rfl hne
-          | exact Or.inr (Or.inl rfl)
-          | exact absurd htk (scanFiltered_noComment input ts hs k _)
-          | exact (liveF_dead_contra _ hL hhd k _ htk' (by decide) hpos').elim
-          | (exfalso
-             have hmem := List.mem_of_getElem? htk'
-             unfold scanFiltered at hs
-             split at hs
-             · simp only [Except.ok.injEq] at hs; subst hs
-               rw [toks_filter] at hmem
-               have := (List.mem_filter.1 hmem).2
-               simp [nonPh] at this
-             · contradiction)
-    · exfalso
-      rw [tok_eq_toks] at hbe'
-      rcases hpos' with rfl | h
-      · simp only [Nat.sub_self] at hbe'; rw [hhd] at hbe'; cases hbe'
-      · rw [h] at hbe'; cases hbe'
-
 /-- S5's token-level result on scanner output, carried to the full token array. `parseStreamLoop`
     stops before consuming `.streamEnd`, so S5's witness `k` may be `ts.size - 1`, not `ts.size`;
     since `.streamEnd` is the last token and the only one (`scanFiltered_streamEnd_index`) and adds
     no event (`go_append_streamEnd`), the checker's verdict on that prefix is its verdict on all of
-    `ts`. The `LoopDead` disjunct is the loop's no-progress exit tied to where it can sit (S3 (d):
-    `StuckAt` alone is refuted at every `.value` index); its first two shapes (index 1, right after
-    `...`) are excluded by the scanner (β2, `LoopDead_scanFiltered`), leaving the `.afterDocument`
-    one — the bracket-depth residue (γ). -/
+    `ts`.  The loop's no-progress exit is an error since (γ2α), so there is no residue: the
+    `LoopDead` / `DeadResidue` alternative of items 446–452 is gone. -/
 lemma scanFiltered_parseStream_ok_checkFrom_full (input : String) (ts : Toks)
     (docs : Array YamlDocument) (hs : scanFiltered input = .ok ts)
     (h : parseStream ts = .ok docs) :
-    checkFrom {} (tokenEvents ts) = true ∨
-      ∃ k, k ≤ ts.size ∧ LoopDead ts k ∧ DeadResidue (ParseCheckFrom.tok ts k) ∧
-        checkFrom {} (tokenEvents (ts.extract 0 k)) = true := by
+    checkFrom {} (tokenEvents ts) = true := by
   obtain ⟨k, hk, hc, hchk⟩ := scanFiltered_parseStream_ok_checkFrom input ts docs hs h
-  have hc' : k = ts.size ∨ ParseCheckFrom.tok ts k = some .streamEnd ∨
-      (LoopDead ts k ∧ DeadResidue (ParseCheckFrom.tok ts k)) := by
-    rcases hc with h1 | h2 | hst
-    · exact Or.inl h1
-    · exact Or.inr (Or.inl h2)
-    · rcases LoopDead_scanFiltered input ts hs k hk hst with h1 | h2 | hγ
-      · exact Or.inl h1
-      · exact Or.inr (Or.inl h2)
-      · exact Or.inr (Or.inr ⟨hst, hγ⟩)
-  rcases hc' with rfl | hse | ⟨hst, hγ⟩
-  · left; simpa using hchk
-  · left
-    obtain ⟨L, hL, _⟩ := scanFiltered_toks_streamEnd_unique input ts hs
+  rcases hc with rfl | hse
+  · simpa using hchk
+  · obtain ⟨L, hL, _⟩ := scanFiltered_toks_streamEnd_unique input ts hs
     rw [scanFiltered_streamEnd_index input ts hs k hse, tokenEvents_dropLast_streamEnd ts L hL] at hchk
     exact hchk
-  · right; exact ⟨k, hk, hst, hγ, hchk⟩
 
 end L4YAML.Proofs.Serialization.ScannerShape
 

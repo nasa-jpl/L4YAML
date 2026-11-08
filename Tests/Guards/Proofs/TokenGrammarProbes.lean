@@ -120,7 +120,9 @@ def mk (l : List YamlToken) : Toks :=
   .tag "!!" "str", .scalar "v" .plain, .streamEnd]) = (true, true, true)
 -- Parser over-acceptances (outside the grammar, accepted by `parseStream`).
 #guard verdict (mk [.streamStart, .scalar "a" .plain]) = (true, false, true)
-#guard verdict (mk [.streamStart, .blockEnd]) = (true, false, true)
+-- `[SS, blockEnd]` was an over-acceptance until (γ2α): the loop's no-progress exit is now
+-- `trailingContent`, so the parser agrees with the grammar here.
+#guard verdict (mk [.streamStart, .blockEnd]) = (false, false, true)
 #guard verdict (mk [.streamStart, .streamEnd, .scalar "a" .plain]) = (true, false, true)
 #guard verdict (mk [.streamStart, .blockSequenceStart, .blockEntry, .scalar "a" .plain,
   .streamEnd]) = (true, false, true)

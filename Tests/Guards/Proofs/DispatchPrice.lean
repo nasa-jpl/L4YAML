@@ -355,7 +355,9 @@ def expectedSteps : String :=
 -- `scan_inv`, `DirInv_scanLoop_streamEnd`, `scan_streamEnd_unique` (DirectiveRuns) and
 -- `scanFiltered_toks_streamEnd_unique`, `scanFiltered_streamEnd_index`,
 -- `scanFiltered_parseStream_ok_checkFrom_full` (ScannerShape) hold the scan entry equations.
-  "stepHolders=2101 dispHolders=403 dispTwoCorr=31 fns=75 fnsIx=26"
+-- 2026-11-08 ((γ2α)): stepHolders 2101 → 2100 — `ScannerShape.LoopDead_scanFiltered` (a scan-entry
+-- holder) deleted with the loop's no-progress exit.
+  "stepHolders=2100 dispHolders=403 dispTwoCorr=31 fns=75 fnsIx=26"
 
 /-- **The ladder, at each population.**  `edge` is a production whose right
     endpoint is the step's output; `chain` requires a path to it from another

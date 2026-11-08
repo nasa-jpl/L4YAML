@@ -676,7 +676,9 @@ def parseStreamLoop {input : String} (ps : ParseStateIx input) (docs : Array Yam
                                nodePositions := #[], currentPath := #[] }
           let (consumed, ps) := ps.tryConsume .documentEnd
           let streamState := if consumed then .afterDocumentEnd else .afterDocument
-          if ps.pos == savedPos then .ok docs
+          if ps.pos == savedPos then
+            let pos := ps.peekPos?.getD { offset := 0, line := 0, col := 0 }
+            .error (.trailingContent pos.line pos.col)
           else parseStreamLoop ps docs streamState fuel
 
 /-- Parse a complete YAML stream (multiple documents) from an indexed

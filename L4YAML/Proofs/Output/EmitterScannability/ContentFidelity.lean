@@ -947,8 +947,7 @@ lemma parseStreamLoop_preserves_head
             rw [getElem!_pos (docs.push doc_new) 0 h_ne', getElem!_pos docs 0 h_ne]
             exact Array.getElem_push_lt h_ne
           split at h_ok
-          · -- stuck → result = docs.push doc_new
-            simp only [Except.ok.injEq] at h_ok; subst h_ok; exact ⟨h_ne', h_push_head⟩
+          · simp at h_ok  -- no progress → error, contradiction
           · -- recurse: head still preserved through the deeper call
             obtain ⟨h_rs, h_rh⟩ := ih _ _ _ h_ne' h_ok
             exact ⟨h_rs, h_rh.trans h_push_head⟩
@@ -991,9 +990,7 @@ lemma parseStreamLoop_first_doc_from_entry
             have h_one : 0 < (#[].push doc_new : Array YamlDocument).size := by
               rw [Array.size_push]; simp
             split at h_ok
-            · -- stuck → result = #[].push doc_new
-              simp only [Except.ok.injEq] at h_ok; subst h_ok
-              rw [getElem!_pos _ 0 h_one]; simp
+            · simp at h_ok  -- no progress → error, contradiction
             · -- recurse: head preserved
               obtain ⟨_, h_rh⟩ :=
                 parseStreamLoop_preserves_head _ _ _ fuel _ h_one h_ok

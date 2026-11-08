@@ -3114,7 +3114,7 @@ lemma parseStreamLoop_docs_from_parseDocument
             · exact ⟨ps, ps', h_eq, h_pd⟩
           -- Stuck check: if stuck, result = docs.push doc_new
           split at h_ok
-          · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_acc'
+          · simp at h_ok  -- no progress → error, contradiction
           · -- Recurse
             exact ih _ _ _ h_next_tok h_acc' h_ok
 

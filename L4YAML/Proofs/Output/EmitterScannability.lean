@@ -313,7 +313,7 @@ lemma parseStream_three_tokens_scalar (content : String)
     (.scalar content .doubleQuoted) h_peek1 (by intro h; cases h) (by intro h; cases h)
     { value := .scalar { content, style := .doubleQuoted, tag := none, anchor := none },
       directives := #[], anchors := ps1.advance.anchors, nodePositions := ps1.advance.nodePositions }
-    ps1.advance h_doc_val h_peek2
+    ps1.advance h_doc_val rfl h_peek2
   -- Provide the witness
   exact ⟨_, h_loop, rfl, by simp [getElem!_pos]⟩
 
@@ -612,7 +612,7 @@ lemma parseStream_emitSequence (style : CollectionStyle) (items : Array YamlValu
       { value := .sequence .flow items_res,
         directives := #[], anchors := ps_loop.advance.anchors,
         nodePositions := ps_loop.advance.nodePositions }
-      ps_loop.advance h_parseDoc h_peek_end
+      ps_loop.advance h_parseDoc (show ps_loop.advance.tokens = ps1.tokens from h_loop_tok.trans h_ps_mid_tok) h_peek_end
     exact ⟨_, h_loop_doc, rfl⟩
 
 /-- Combined scanner characterization and parser acceptance for flow mappings.
@@ -834,7 +834,7 @@ lemma parseStream_emitMapping (style : CollectionStyle) (pairs : Array (YamlValu
       { value := .mapping .flow pairs_res,
         directives := #[], anchors := ps_loop.advance.anchors,
         nodePositions := ps_loop.advance.nodePositions }
-      ps_loop.advance h_parseDoc h_peek_end
+      ps_loop.advance h_parseDoc (show ps_loop.advance.tokens = ps1.tokens from h_loop_tok.trans h_ps_mid_tok) h_peek_end
     exact ⟨_, h_loop_doc, rfl⟩
 
 /-- **Parse acceptance** (Step 2): The parser accepts the token sequence
