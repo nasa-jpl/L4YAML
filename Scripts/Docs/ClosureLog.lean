@@ -37,7 +37,9 @@ def declaredGaps : List (Nat × String) :=
   [(18, "surrogate-hex-escapes-decoded-to-nul"),
    -- 442: the slot two concurrent lanes both took on 2026-11-06 — Row 19's entry became 443 and
    -- Row 12's (the (ω-negative) item) became 444; nothing was written as 442.
-   (442, "item-445-2026-11-06")]
+   (442, "item-445-2026-11-06"),
+   -- 457: Row 12's ω-births read (#265), open when Row 19's item 458 was cut; the gap closes at its merge.
+   (457, "item-458-2026-11-08")]
 
 /-- One `### Item N[a] (DATE)` heading. -/
 structure Entry where
