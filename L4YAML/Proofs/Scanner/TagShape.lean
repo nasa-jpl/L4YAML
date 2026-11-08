@@ -483,16 +483,10 @@ lemma TagExt_scanValuePrepare (s : ScannerState) : TagExt s (scanValuePrepare s)
           · exact Or.inl h
           · exact Or.inr rfl
         · exact Or.inr rfl
-      · intro t ht
-        simp only [vals, DirectiveRuns.toks_setIfInBounds] at ht
-        rcases List.mem_or_eq_of_mem_set ht with h | rfl
-        · exact Or.inl h
-        · exact Or.inr rfl
-    · intro t ht
-      simp only [vals, DirectiveRuns.toks_setIfInBounds] at ht
-      rcases List.mem_or_eq_of_mem_set ht with h | rfl
-      · exact Or.inl h
-      · exact Or.inr rfl
+      · exact TagExt.set (i := s.simpleKey.tokenIndex + 1) (u := YamlToken.key)
+          (by simp only [vals, DirectiveRuns.toks_setIfInBounds]) rfl
+    · exact TagExt.set (i := s.simpleKey.tokenIndex + 1) (u := YamlToken.key)
+          (by simp only [vals, DirectiveRuns.toks_setIfInBounds]) rfl
   · split
     · exact TagExt.refl s
     · split
