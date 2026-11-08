@@ -13767,8 +13767,10 @@ def flowCtxBefore (ts : Array (Positioned YamlToken)) (i : Nat) : Array Bool := 
     | _ => pure ()
   return st
 
-def withFlow (st : ScannerState) (ctx : Array Bool) : ScannerState :=
-  { st with flowLevel := ctx.size, flowStack := ctx }
+/-- The fresh state at a token, carrying the scanner's flow context AND its prior tokens (so a lemma
+that lost or rewrote the prefix would be refuted, and the adjacency guard sees the real predecessor). -/
+def withFlow (st : ScannerState) (ctx : Array Bool) (prior : Array (Positioned YamlToken)) : ScannerState :=
+  { st with flowLevel := ctx.size, flowStack := ctx, tokens := prior }
 
 structure Tally where
   rows : Nat := 0
@@ -13790,11 +13792,10 @@ structure Tally where
   quotedBad : List String := []
   dispBad : List String := []
 
+/-- The lemmas' token conclusion, exactly: the prior tokens are kept and one token is pushed at
+`currentPos` (`endPos` defaulting to it, as `emit` / `emitAt` write it). -/
 def pushedOne (st s' : ScannerState) (v : YamlToken) : Bool :=
-  s'.tokens.size == st.tokens.size + 1 &&
-  (match s'.tokens.back? with
-   | some t => t.pos == st.currentPos && t.val == v
-   | none => false)
+  s'.tokens == st.tokens.push { pos := st.currentPos, val := v }
 
 def tally (rows : List String) : Tally := Id.run do
   let mut t : Tally := {}
@@ -13815,7 +13816,7 @@ def tally (rows : List String) : Tally := Id.run do
              P101.startPendings.any (fun p => goOut [tk] p != ([], p)) then
             t := { t with silentBad := s!"{repr s}@{tk.pos.offset}" :: t.silentBad }
           -- (B) the arm run directly on a fresh state at the offset with the row's flow context
-          let st := withFlow (P100.stateAt s tk.pos.offset) (flowCtxBefore ts i)
+          let st := withFlow (P100.stateAt s tk.pos.offset) (flowCtxBefore ts i) (ts.extract 0 i)
           let site := s!"{repr s}@{tk.pos.offset}"
           match tk.val with
           | .flowSequenceStart | .flowMappingStart =>
@@ -13846,11 +13847,11 @@ def tally (rows : List String) : Tally := Id.run do
             | .ok none => t := { t with closeBad := s!"{site}: none" :: t.closeBad }
             | .error e => t := { t with closeRefused := s!"{site}: {repr e}" :: t.closeRefused }
             -- the two guards
-            match scanNextToken_dispatchFlowIndicators (withFlow st #[]) c with
+            match scanNextToken_dispatchFlowIndicators (withFlow st #[] st.tokens) c with
             | .error (.flowEndOutsideFlow ..) => pure ()
             | _ => t := { t with guardBad := s!"{site}: level 0 not refused" :: t.guardBad }
             let flipped := st.flowStack.pop.push (!isSeq)
-            match scanNextToken_dispatchFlowIndicators (withFlow st flipped) c with
+            match scanNextToken_dispatchFlowIndicators (withFlow st flipped st.tokens) c with
             | .error (.mismatchedFlowClose ..) => pure ()
             | _ => t := { t with guardBad := s!"{site}: mismatch not refused" :: t.guardBad }
           | .flowEntry =>
@@ -13864,7 +13865,7 @@ def tally (rows : List String) : Tally := Id.run do
               else t := { t with entryBad := site :: t.entryBad }
             | .ok none => t := { t with entryBad := s!"{site}: none" :: t.entryBad }
             | .error e => t := { t with entryRefused := s!"{site}: {repr e}" :: t.entryRefused }
-            match scanNextToken_dispatchFlowIndicators (withFlow st #[]) ',' with
+            match scanNextToken_dispatchFlowIndicators (withFlow st #[] st.tokens) ',' with
             | .error (.flowEndOutsideFlow ..) => pure ()
             | _ => t := { t with guardBad := s!"{site}: ',' at level 0 not refused" :: t.guardBad }
           | .scalar _ style =>
@@ -13906,7 +13907,7 @@ def testFlowBridge (state : IO.Ref TestCollector) : IO Unit := do
     (t.rows ≥ 600 && n "[" ≥ 60 && n "{" ≥ 40 && n "," ≥ 80 && n "dq" + n "sq" ≥ 60) ""
   checkM state s!"P102(ii) every flow indicator / quoted scalar token is silent (tokenEvent = none, goOut [tk] p = ([], p) from pending [] / [!a!] / [!b!, !a!]): {t.silentBad.length} bad"
     t.silentBad.isEmpty s!"{repr (t.silentBad.take 6)}"
-  checkM state s!"P102(iii) '[' / '\{' direct: {t.openRuns} runs, token at currentPos / one-char span / col+1 / flowLevel+1 / top pushed: {t.openBad.length} bad"
+  checkM state s!"P102(iii) '[' / '\{' direct (prior tokens seeded): {t.openRuns} runs, tokens = prefix.push the token at currentPos / one-char span / col+1 / flowLevel+1 / top pushed: {t.openBad.length} bad"
     (t.openBad.isEmpty && t.openRuns ≥ 100) s!"{repr (t.openBad.take 6)}"
   checkM state s!"P102(iv) ']' / '}' via dispatchFlowIndicators with the row's flow context: {t.closeRuns} runs, {t.closeRefused.length} refused, {t.closeBad.length} bad; level-0 / mismatched-top guards: {t.guardBad.length} not refused"
     (t.closeBad.isEmpty && t.closeRefused.isEmpty && t.guardBad.isEmpty && t.closeRuns ≥ 100)
