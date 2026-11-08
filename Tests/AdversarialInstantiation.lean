@@ -13477,7 +13477,7 @@ with `goOut` the state-passing twin of `TokenEvents.go` (events emitted, pending
 `SCDirectivesEnd` / `SCDocumentEnd` / `ScannedDirective` with the token they push and the
 `TLDirective` payload `declaredHandle (span) = named handle`. -/
 namespace P101
-open L4YAML.Proofs.Serialization.TokenEvents (go tokenEvents tokenEvent isNamedHandle tok)
+open L4YAML.Proofs.Serialization.TokenEvents (go goOut tokenEvents tokenEvent isNamedHandle tok)
 open L4YAML.Proofs.Serialization.SerializationWellFormed (Event)
 
 def own : List String :=
@@ -13508,20 +13508,8 @@ def lineAt (s : String) (o : Nat) : List Char :=
 
 def allRows : List String := (P100.allRows ++ own).eraseDups
 
-/-- `go`'s state-passing twin: the events emitted and the pending handles left. -/
-def goOut : List (Positioned YamlToken) → List String → List Event × List String
-  | [], p => ([], p)
-  | t :: ts, p =>
-    match t.val with
-    | .tagDirective h _ => goOut ts (if isNamedHandle h then h :: p else p)
-    | .documentStart =>
-      let r := goOut ts []
-      (.beginDocument :: (p.reverse.map .declareTag ++ r.1), r.2)
-    | v =>
-      let r := goOut ts p
-      match tokenEvent v with
-      | some e => (e :: r.1, r.2)
-      | none => r
+/-- Pending-handle states every split starts from: none, one, two (most recent first). -/
+def startPendings : List (List String) := [[], ["!a!"], ["!b!", "!a!"]]
 
 def namedHandles (l : List (Positioned YamlToken)) : List String :=
   l.filterMap fun t => match t.val with
@@ -13570,15 +13558,20 @@ def tally (rows : List String) : Tally := Id.run do
       t := { t with scanned := t.scanned + 1 }
       let l := ts.toList
       let evs := tokenEvents ts
-      -- (A) the append law at every split, and the whole-stream reading
-      for k in [0:l.length + 1] do
-        let r := goOut (l.take k) []
-        t := { t with splits := t.splits + 1 }
-        if evs != r.1 ++ go (l.drop k) r.2 then
-          t := { t with splitBad := s!"{repr s} k={k}" :: t.splitBad }
+      -- (A) the append law at every split from empty AND nonempty pending handles (the production
+      -- `TokenEvents.goOut`, not a copy), and the whole-stream reading
+      for p in startPendings do
+        let full := go l p
+        for k in [0:l.length + 1] do
+          let r := goOut (l.take k) p
+          t := { t with splits := t.splits + 1 }
+          if full != r.1 ++ go (l.drop k) r.2 then
+            t := { t with splitBad := s!"{repr s} p={repr p} k={k}" :: t.splitBad }
+        let whole := goOut l p
+        if full != whole.1 ++ whole.2.reverse.map .declareTag then
+          t := { t with splitBad := s!"{repr s} p={repr p} whole" :: t.splitBad }
+      if evs != go l [] then t := { t with splitBad := s!"{repr s} tokenEvents" :: t.splitBad }
       let whole := goOut l []
-      if evs != whole.1 ++ whole.2.reverse.map .declareTag then
-        t := { t with splitBad := s!"{repr s} whole" :: t.splitBad }
       if !whole.2.isEmpty then t := { t with pendingAtEnd := t.pendingAtEnd + 1 }
       -- (B) every documentStart flushes the named handles since the previous one, in order
       let mut i := 0
@@ -13677,8 +13670,8 @@ def testDocBridge (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 101: S3 slice (2) — document markers and the tokenEvents algebra, before proof"
   let t := P101.tally P101.allRows
   checkM state s!"P101(i) {t.rows} rows, {t.scanned} scanned, {t.refused} refused" (t.scanned ≥ 400 && t.refused ≥ 8) ""
-  checkM state s!"P101(ii) go (l₁ ++ l₂) p = (goOut l₁ p).1 ++ go l₂ (goOut l₁ p).2 at every split: {t.splits} splits, {t.splitBad.length} bad; whole-stream flush of the pending handles holds; {t.pendingAtEnd} rows end with pending handles"
-    (t.splitBad.isEmpty && t.splits ≥ 2000) s!"{repr (t.splitBad.take 6)}"
+  checkM state s!"P101(ii) go (l₁ ++ l₂) p = (goOut l₁ p).1 ++ go l₂ (goOut l₁ p).2 at every split from pending [] / [!a!] / [!b!, !a!]: {t.splits} splits, {t.splitBad.length} bad; whole-stream flush of the pending handles holds; {t.pendingAtEnd} rows end with pending handles"
+    (t.splitBad.isEmpty && t.splits ≥ 6000) s!"{repr (t.splitBad.take 6)}"
   checkM state s!"P101(iii) every documentStart ({t.starts}) flushes exactly the named handles since the previous one, in order, after beginDocument: {t.startBad.length} bad"
     (t.startBad.isEmpty && t.starts ≥ 60) s!"{repr (t.startBad.take 6)}"
   checkM state s!"P101(iv) documentStart tokens {t.starts} = beginDocument events {t.beginEv}; documentEnd tokens {t.ends} = endDocument events {t.endEv}"
@@ -13708,9 +13701,9 @@ def testDocBridge (state : IO.Ref TestCollector) : IO Unit := do
      P101.namedHandles ((scanFiltered "%TAG!e! tag:x:\n---\n!e!a b").toOption.getD #[]).toList == []) ""
   -- (ix) term-level instances of the algebra
   checkM state "P101(ix) goOut [documentStart] [\"!e!\"] = ([beginDocument, declareTag !e!], [])"
-    (P101.goOut [tok .documentStart] ["!e!"] == ([.beginDocument, .declareTag "!e!"], [])) ""
+    (L4YAML.Proofs.Serialization.TokenEvents.goOut [tok .documentStart] ["!e!"] == ([.beginDocument, .declareTag "!e!"], [])) ""
   checkM state "P101(ix) goOut [%TAG !e!, %TAG !, %YAML-shaped reserved] [] leaves pending [!e!]"
-    ((P101.goOut [tok (.tagDirective "!e!" "x"), tok (.tagDirective "!" "y"), tok (.tagDirective "!!" "z")] []) == ([], ["!e!"])) ""
+    ((L4YAML.Proofs.Serialization.TokenEvents.goOut [tok (.tagDirective "!e!" "x"), tok (.tagDirective "!" "y"), tok (.tagDirective "!!" "z")] []) == ([], ["!e!"])) ""
   checkM state "P101(ix) go [documentEnd] p = [endDocument] ++ flush p"
     (go [tok .documentEnd] ["!a!"] == [.endDocument, .declareTag "!a!"]) ""
 

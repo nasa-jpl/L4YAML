@@ -52081,7 +52081,8 @@ What the refutations teach: the owner's framing is sharper than the audit's — 
 
 | Prediction | Predicted | Read | Verdict |
 |---|---|---|---|
-| P1 `go_append` at every split | 0 bad | 3436 splits, 0 bad | HELD |
+| P1 `go_append` at every split | 0 bad | 10308 splits (every split of every stream, from pending `[]` / `[!a!]` / `[!b!, !a!]`, over the production `TokenEvents.goOut`), 0 bad | HELD |
+| P1' (review): P1 over the production `TokenEvents.goOut` (the grid had run a local copy — a review finding), every split started from pending `[]` / `[!a!]` / `[!b!, !a!]`, against `go l p` itself | 3 × 3436 = 10308 splits, 0 bad | 10308 splits, 0 bad; `tokenEvents ts = go l []` on every row | HELD |
 | P2 `tokenEvents = goOut ++ flush`, no pending at end | 0 pending | 0 bad, 0 pending | HELD |
 | P3 `---` flushes the named handles, in order, after `beginDocument` | all | 101 / 101 | HELD |
 | P4 marker tokens = marker events | all | 101 = 101 starts, 93 = 93 ends | HELD |
