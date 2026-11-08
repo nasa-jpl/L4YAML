@@ -15,7 +15,11 @@ public import L4YAML.Proofs.Scanner.ColFloor
 
     `DocStartLive` states the scanner target at the list level (`Shape` on the
     raw token list).  This module carries `Shape (vals s)` over `scanNextToken`
-    and `scanLoop` with the seven-clause carrier `LiveInv`:
+    and `scanLoop` with the nine-clause carrier `LiveInv` (`scanLoop` consumes
+    the state and returns the token array, so `LiveInv_scanLoop` concludes
+    `Shape (toks ts) ∧ (toks ts)[0]? = some .streamStart` — the contract
+    `scan_shape` / `scanFiltered_liveF` consume — while `LiveInv_scanNextToken`
+    is the per-step `LiveInv s → LiveInv s'`):
 
     * `head`  — `vals[0] = .streamStart`;
     * `shape` — `Shape (vals s)`;
@@ -28,7 +32,10 @@ public import L4YAML.Proofs.Scanner.ColFloor
       (`currentIndent < key.col`) or where the key is still to be overwritten
       (`simpleKeyAllowed`; after preprocessing this arm is gone: `StrongSlot`);
     * `stack` — a stacked possible key sits after a non-boundary, or is the
-      outermost (`j = 0`) with `currentIndent < key.col`.
+      outermost (`j = 0`) with `currentIndent < key.col`;
+    * `tail` / `stackTail` — no boundary token sits at or after a possible
+      key's `tokenIndex` (`TailOK`), so `scanValue`'s retroactive `.key` /
+      `.blockMappingStart` insertion stays shape-safe.
 
     Priority 94 (Tests/AdversarialInstantiation.lean) instantiates every clause on
     971 reached states before these proofs; the `simpleKeyAllowed` arm of `slot`
