@@ -357,7 +357,11 @@ def expectedSteps : String :=
 -- `scanFiltered_parseStream_ok_checkFrom_full` (ScannerShape) hold the scan entry equations.
 -- 2026-11-08 ((γ2α)): stepHolders 2101 → 2100 — `ScannerShape.LoopDead_scanFiltered` (a scan-entry
 -- holder) deleted with the loop's no-progress exit.
-  "stepHolders=2100 dispHolders=403 dispTwoCorr=31 fns=75 fnsIx=26"
+  -- 2026-11-08 (item 459, S3 slice (1)): stepHolders 2100 → 2102 — `LeafBridge.scanAnchorOrAlias_trace` and
+  -- `LeafBridge.scanTag_trace` hold a `scanAnchorOrAlias … = .ok s'` / `scanTag sc = .ok s'` step; dispatch rows unchanged.
+  -- 2026-11-08 (item 459, review): stepHolders 2102 → 2105, dispHolders 403 → 406 — the twins' consumers
+  -- `ScannerShape.dispatchContent_{anchor,alias,tag}_trace` hold a `scanNextToken_dispatchContent s c = .ok s''` step.
+  "stepHolders=2105 dispHolders=406 dispTwoCorr=31 fns=75 fnsIx=26"
 
 /-- **The ladder, at each population.**  `edge` is a production whose right
     endpoint is the step's output; `chain` requires a path to it from another
@@ -446,7 +450,8 @@ def expectedChainSpec : List Name :=
 -- 2026-11-08 ((γ1)): dispatchContent 169 → 170, preprocess 258 → 259 — `StructDepth.DInv_dispatchContent`
 -- / `DInv_preprocess` hold the step equations.
 def expectedPerFn : List String :=
-  ["scanNextToken_dispatchContent decls=170 chain=1",
+  -- 2026-11-08 (item 459, review): dispatchContent decls 170 → 173 — the three `ScannerShape.dispatchContent_*_trace` consumers.
+  ["scanNextToken_dispatchContent decls=173 chain=1",
    "scanNextToken_preprocess decls=259 chain=3"]
 
 /-- **The one worked precedent is outside the work.**  It is not in item 238's

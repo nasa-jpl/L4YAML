@@ -560,7 +560,8 @@ def expectedLadder : List String :=
   -- Item 409 (2026-10-30): `MarkedColsIn.step_value` holds the `:` dispatch and its preprocess (+1, +1).
   [
    "scanNextToken_dispatchBlockIndicators holders=141 edge=1 chain=0",
-   "scanNextToken_dispatchContent holders=170 edge=3 chain=1",
+   -- 2026-11-08 (item 459, review): dispatchContent holders 170 → 173 — `ScannerShape.dispatchContent_{anchor,alias,tag}_trace`.
+   "scanNextToken_dispatchContent holders=173 edge=3 chain=1",
    "scanNextToken_preprocess holders=259 edge=17 chain=3"]
 
 /-- **What §1's proofs spend.**  `drop=false` is the non-circularity check

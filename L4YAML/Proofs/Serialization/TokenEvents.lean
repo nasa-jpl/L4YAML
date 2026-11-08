@@ -31,7 +31,7 @@ open L4YAML.Proofs.Serialization.SerializationWellFormed
 
 /-- The event a single token contributes, if any; directives and document
 starts are handled by `tokenEvents` because their order is not local. -/
-def tokenEvent : YamlToken → Option Event
+@[expose] def tokenEvent : YamlToken → Option Event
   | .anchor name => some (.defineAnchor name)
   | .alias name => some (.useAlias name)
   | .tag handle _ => if handle.isEmpty then none else some (.useTag handle)
@@ -54,6 +54,17 @@ def isNamedHandle (h : String) : Bool :=
 #guard isNamedHandle "!!" = false
 #guard isNamedHandle "!h" = false
 #guard isNamedHandle "!a b!" = false
+
+/-! The leaf bridge (`TraceOf/LeafBridge.lean`) reads `tokenEvent` through these equations. -/
+
+@[simp] lemma tokenEvent_anchor (name : String) :
+    tokenEvent (.anchor name) = some (.defineAnchor name) := rfl
+
+@[simp] lemma tokenEvent_alias (name : String) :
+    tokenEvent (.alias name) = some (.useAlias name) := rfl
+
+@[simp] lemma tokenEvent_tag (handle suffix : String) :
+    tokenEvent (.tag handle suffix) = if handle.isEmpty then none else some (.useTag handle) := rfl
 
 /-- Fold over the stream with the named `%TAG` handles pending until the next
 `documentStart`; handles still pending at the end are emitted there.  `!` and
