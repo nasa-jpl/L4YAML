@@ -336,6 +336,8 @@ def expectedAlphabet : String := "prodTyped=169 prodSurf=96 prodSpec=58"
 -- preprocess only pops the indent stack; the cover's transport to the flow opener).
 -- 2026-10-29 (item 396): flowOpen_floor_at_prep deleted — one scanNextToken_preprocess holder fewer.
 -- 2026-10-30 (item 407, flow carrier `pendingKeys` conjunct): stepHolders 1942 → 1943 — `PendingKeysStable.preprocess_pendingKeys_of_inFlow` holds a preprocess step.
+-- 2026-11-08 ((γ1)): stepHolders 2084 → 2101, dispHolders 399 → 403 — `Proofs.Scanner.StructDepth`'s
+-- `DInv_dispatch*` / arm lemmas read the dispatchers.
 def expectedSteps : String :=
 -- 2026-10-24 (B3 [66] col-0 threading): stepHolders 1819 → 1874, dispHolders 332 → 348, dispTwoCorr 29 → 31 —
 -- the gate/JSON-key/reservation lemmas hold the preprocess and dispatch step equations (1878/351 on the
@@ -353,7 +355,7 @@ def expectedSteps : String :=
 -- `scan_inv`, `DirInv_scanLoop_streamEnd`, `scan_streamEnd_unique` (DirectiveRuns) and
 -- `scanFiltered_toks_streamEnd_unique`, `scanFiltered_streamEnd_index`,
 -- `scanFiltered_parseStream_ok_checkFrom_full` (ScannerShape) hold the scan entry equations.
-  "stepHolders=2084 dispHolders=399 dispTwoCorr=31 fns=75 fnsIx=26"
+  "stepHolders=2101 dispHolders=403 dispTwoCorr=31 fns=75 fnsIx=26"
 
 /-- **The ladder, at each population.**  `edge` is a production whose right
     endpoint is the step's output; `chain` requires a path to it from another
@@ -439,9 +441,11 @@ def expectedChainSpec : List Name :=
 --   `FlowSync_preprocess`), `scanNextToken_dispatchContent` 165 → 166 (`FlowSync_dispatchContent`) — `Proofs/Scanner/FlowSync.lean` (S3 (β2a)).
 -- 2026-11-07 (item 449): per-function decls `scanNextToken_dispatchContent` 166 → 168 (`dispatchContent_live`, `LiveInv_dispatchContent`), `scanNextToken_preprocess` 255 → 257 (`LiveInv_preprocess`, `StrongSlot_preprocess`) — S3 (β2b).
 -- 2026-11-08 (item 450): per-function decls `scanNextToken_dispatchContent` 168 → 169 (`TagExt_dispatchContent`), `scanNextToken_preprocess` 257 → 258 (`TagExt_preprocess`) — S3 (a).
+-- 2026-11-08 ((γ1)): dispatchContent 169 → 170, preprocess 258 → 259 — `StructDepth.DInv_dispatchContent`
+-- / `DInv_preprocess` hold the step equations.
 def expectedPerFn : List String :=
-  ["scanNextToken_dispatchContent decls=169 chain=1",
-   "scanNextToken_preprocess decls=258 chain=3"]
+  ["scanNextToken_dispatchContent decls=170 chain=1",
+   "scanNextToken_preprocess decls=259 chain=3"]
 
 /-- **The one worked precedent is outside the work.**  It is not in item 238's
     transitive set and not on either repair thread, so β.5 neither pays for it
