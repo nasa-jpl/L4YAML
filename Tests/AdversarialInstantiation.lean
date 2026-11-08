@@ -5755,10 +5755,89 @@ example {s s₁ s₂ s₃ s₄ s₅ s₆ : SurfPos} (hi₁ : SIndent 2 s s₁) (
   compactMapTail_append_read (.cons 2 s s₁ s₂ s₂ hi₁ he₁ (.nil 2 s₂))
     (.cons 2 s₂ s₃ s₄ s₆ hi₂ he₂ (.cons 2 s₄ s₅ s₆ s₆ hi₃ he₃ (.nil 2 s₆)))
 
+/-! The append on CONCRETE tails (review of the read item): `[186]`'s `?⏎` entry at indent 0,
+built from its characters as `entryQ` is, generalised over the rest of the input — so the tails
+below are real derivations over `?⏎?⏎?⏎`, and the appended tail can end nowhere but at the
+position the characters force (`⟨[], 0⟩`).  `SIndent 0` is `SIndent.zero`, the only indentation a
+column-0 entry has; a `SCompactMapTail 1` over this input has no `cons` at all (`SIndent 1` needs a
+space the input lacks), which is why the rows are at `n = 0`. -/
+open L4YAML.Surface in
+private lemma entryQ_at (rest : List Char) : SBlockMapEntry 0 ⟨'?' :: '\n' :: rest, 0⟩ ⟨rest, 0⟩ :=
+  SBlockMapEntry.explicitEmpty 0 _ ⟨'\n' :: rest, 1⟩ _ (GLit.mk ('\n' :: rest) 0)
+    (SBlockIndented.empty 0 .blockOut _ _ (sslBreak1 rest))
+
+open L4YAML.Surface in
+/-- `?⏎?⏎?⏎` from its first character: one entry, then the tail of two. -/
+private lemma tailQ3_1_2 : SCompactMapTail 0 ⟨['?', '\n', '?', '\n', '?', '\n'], 0⟩ ⟨[], 0⟩ :=
+  compactMapTail_append_read
+    (.cons 0 _ _ ⟨['?', '\n', '?', '\n'], 0⟩ _ (SIndent.zero _) (entryQ_at ['?', '\n', '?', '\n']) (.nil 0 _))
+    (.cons 0 _ _ ⟨['?', '\n'], 0⟩ _ (SIndent.zero _) (entryQ_at ['?', '\n'])
+      (.cons 0 _ _ ⟨[], 0⟩ _ (SIndent.zero _) (entryQ_at []) (.nil 0 _)))
+
+open L4YAML.Surface in
+/-- The same input split two-then-one, and nil-then-three: the same end position. -/
+private lemma tailQ3_2_1 : SCompactMapTail 0 ⟨['?', '\n', '?', '\n', '?', '\n'], 0⟩ ⟨[], 0⟩ :=
+  compactMapTail_append_read
+    (.cons 0 _ _ ⟨['?', '\n', '?', '\n'], 0⟩ _ (SIndent.zero _) (entryQ_at ['?', '\n', '?', '\n'])
+      (.cons 0 _ _ ⟨['?', '\n'], 0⟩ _ (SIndent.zero _) (entryQ_at ['?', '\n']) (.nil 0 _)))
+    (.cons 0 _ _ ⟨[], 0⟩ _ (SIndent.zero _) (entryQ_at []) (.nil 0 _))
+
+open L4YAML.Surface in
+example : SCompactMapTail 0 ⟨['?', '\n', '?', '\n', '?', '\n'], 0⟩ ⟨[], 0⟩ :=
+  compactMapTail_append_read (.nil 0 _) tailQ3_1_2
+
+open L4YAML.Surface in
+/-- A concrete tail cannot be appended past the input: the only tail from `⟨[], 0⟩` is `nil`, so the
+    appended tail from `?⏎?⏎?⏎` ends at `⟨[], 0⟩` and the two readings above agree there. -/
+example : SCompactMapTail 0 ⟨['?', '\n', '?', '\n', '?', '\n'], 0⟩ ⟨[], 0⟩ :=
+  compactMapTail_append_read tailQ3_2_1 (.nil 0 ⟨[], 0⟩)
+
+open L4YAML.Proofs.IndentStackCover in
+/-- The frame stack of the LAST scanner state on `line` (0-based) while scanning `input` — the
+    stack at a named park, not the deepest stack of the scan; `[]` if the scan never stands there. -/
+def framesAtLine (input : String) (line : Nat) (fuel : Nat := 64) : List FrameLevel := Id.run do
+  let mut s := ScannerState.mk' input
+  let mut found : List FrameLevel := []
+  for _ in [:fuel] do
+    match scanNextToken s with
+    | .error _ => return found
+    | .ok none => return found
+    | .ok (some s') =>
+      s := s'
+      if s.currentPos.line == line then found := s.indents.toList.map FrameLevel.ofEntry
+      else if s.currentPos.line > line then return found
+  return found
+
 open ExplicitOnlyMirror L4YAML.Proofs.IndentStackCover in
 def testRootFrameSupplyRead (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 71: the (α) root-frame supply, stage B read — the root births hold the root frame; the compact-map tail appends; [211]'s two block/document inputs under the explicit-only reading"
   -- (i) the scanner's stack at the root births (P8), fuel 0/1/2 on the three-key mapping
+  -- the stack AT the named state (review of the read item): the last scanner state on a given line,
+  -- not the deepest stack of the whole scan — (label, input, line, expected); the birth line of the
+  -- root park (line 0) and the sibling's line are read separately.  Predictions: the root mapping's
+  -- level stands from the first `:` on, so line 0 already shows `[map 0, map 0]`; `---` resets to
+  -- the sentinel `[map 0]` and the next mapping pushes again; `a⏎&x` never pushes.
+  let atLine : List (String × String × Nat × List FrameLevel) :=
+    [ ("a: 1⏎b: 2 — the park's birth line", "a: 1\nb: 2\n", 0, [FrameLevel.map 0, FrameLevel.map 0]),
+      ("a: 1⏎b: 2 — the sibling's line", "a: 1\nb: 2\n", 1, [FrameLevel.map 0, FrameLevel.map 0]),
+      ("a: 1⏎b: 2⏎c: 3 — the third line", "a: 1\nb: 2\nc: 3\n", 2, [FrameLevel.map 0, FrameLevel.map 0]),
+      ("[a]: 1⏎b: 2 — the flow key's line", "[a]: 1\nb: 2\n", 0, [FrameLevel.map 0, FrameLevel.map 0]),
+      ("[a]: 1⏎b: 2 — the sibling's line", "[a]: 1\nb: 2\n", 1, [FrameLevel.map 0, FrameLevel.map 0]),
+      ("? a⏎: 1⏎b: 2 — the `?` line", "? a\n: 1\nb: 2\n", 0, [FrameLevel.map 0, FrameLevel.map 0]),
+      ("? a⏎: 1⏎b: 2 — the sibling's line", "? a\n: 1\nb: 2\n", 2, [FrameLevel.map 0, FrameLevel.map 0]),
+      ("a: 1⏎---⏎b: 2 — the first document's line", "a: 1\n---\nb: 2\n", 0, [FrameLevel.map 0, FrameLevel.map 0]),
+      ("a: 1⏎---⏎b: 2 — the `---` line (reset to the sentinel)", "a: 1\n---\nb: 2\n", 1, [FrameLevel.map 0]),
+      ("a: 1⏎---⏎b: 2 — the second document's line", "a: 1\n---\nb: 2\n", 2, [FrameLevel.map 0, FrameLevel.map 0]),
+      -- REFUTED as predicted `[map 0]`: the plain scalar `a` folds across the break in ONE scanner
+      -- step, so no state ever stands on line 0 — the reader returns `[]`; kept as read.
+      ("a⏎&x — line 0 (REFUTED: the scalar step crosses the break, no state on the line)", "a\n&x\n", 0, []),
+      ("a⏎&x — line 1", "a\n&x\n", 1, [FrameLevel.map 0]),
+      ("- a⏎- b — the `-` park's line", "- a\n- b\n", 0, [FrameLevel.map 0, FrameLevel.seq 0]),
+      ("- a⏎- b — the second entry's line", "- a\n- b\n", 1, [FrameLevel.map 0, FrameLevel.seq 0]) ]
+  for (label, input, line, expected) in atLine do
+    let got := framesAtLine input line
+    checkM state s!"rootFrameSupply/at-line {label}: stack [{frameLabel expected}]" (got == expected)
+      s!"got [{frameLabel got}]"
   checkFrames state "a: 1⏎b: 2 (root `:` park, one sibling)" "a: 1\nb: 2\n" [FrameLevel.map 0, FrameLevel.map 0]
   checkFrames state "a: 1⏎b: 2⏎c: 3 (two siblings: the tail appends, no new level)" "a: 1\nb: 2\nc: 3\n"
     [FrameLevel.map 0, FrameLevel.map 0]
