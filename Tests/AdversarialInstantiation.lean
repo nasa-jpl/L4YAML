@@ -14112,6 +14112,17 @@ def testFlowWalk (state : IO.Ref TestCollector) : IO Unit := do
       && sh "/midColon" == 1 && P103.at_ { t with closeAt := t.closeShape } "1:map/midColon" == 1
       && sh "/midExplicitKey" == 1 && P103.at_ { t with closeAt := t.closeShape } "1:seq/midExplicitKey" == 1
       && sh "/midEmptyColon" == 0 && sh "/midExplicitColon" == 0 && sh "/midQuestion" == 0 && sh "/midQuestionEmptyColon" == 0) ""
+  -- the whole (depth : kind/shape) table, as a set (review: the label's depth split must be checked, not just quoted)
+  let table : List (String × Nat) :=
+    [("1:seq/midNode", 76), ("2:seq/midNode", 14), ("3:seq/midNode", 4), ("1:map/midKey", 5),
+     ("1:seq/betweenEntries", 11), ("1:map/betweenEntries", 44), ("2:seq/betweenEntries", 1), ("2:map/betweenEntries", 8),
+     ("3:map/betweenEntries", 2), ("4:map/betweenEntries", 1),
+     ("1:seq/betweenEmpty", 3), ("1:map/betweenEmpty", 2), ("2:seq/betweenEmpty", 2), ("2:map/betweenEmpty", 1),
+     ("3:seq/betweenEmpty", 1), ("4:seq/betweenEmpty", 1), ("4:map/betweenEmpty", 1),
+     ("1:seq/betweenHeld", 2), ("1:map/betweenHeld", 2), ("1:map/midColon", 1), ("1:seq/midExplicitKey", 1)]
+  checkM state s!"P103(v) the (depth:kind/shape) table is exactly the {table.length} pinned entries"
+    (t.closeShape.length == table.length && table.all (fun e => t.closeShape.contains e))
+    s!"got {repr t.closeShape}"
 
 end P103Test
 
