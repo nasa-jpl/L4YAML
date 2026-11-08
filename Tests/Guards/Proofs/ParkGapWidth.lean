@@ -561,7 +561,8 @@ def expectedLadder : List String :=
   [
    "scanNextToken_dispatchBlockIndicators holders=141 edge=1 chain=0",
    -- 2026-11-08 (item 459, review): dispatchContent holders 170 → 173 — `ScannerShape.dispatchContent_{anchor,alias,tag}_trace`.
-   "scanNextToken_dispatchContent holders=173 edge=3 chain=1",
+   -- 2026-11-08 (item 464, S3 slice (3) first PR): dispatchContent holders 173 → 175 — `ScannerShape.dispatchContent_{doubleQuoted,singleQuoted}_trace`.
+   "scanNextToken_dispatchContent holders=175 edge=3 chain=1",
    "scanNextToken_preprocess holders=259 edge=17 chain=3"]
 
 /-- **What §1's proofs spend.**  `drop=false` is the non-circularity check

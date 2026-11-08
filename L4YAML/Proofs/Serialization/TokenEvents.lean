@@ -98,7 +98,7 @@ def tok (v : YamlToken) : Positioned YamlToken := ⟨default, v, default⟩
 #guard tokenEvents #[tok (.tagDirective "!" "p"), tok (.tagDirective "!!" "q"), tok .documentStart] = [.beginDocument]
 #guard tokenEvents #[tok (.tagDirective "!h" "p"), tok .documentStart] = [.beginDocument]
 
-/-! ## The algebra of `go` (S3 slice (2), item 462)
+/-! ## The algebra of `go` (S3 slice (2), item 463)
 
 `go` is a fold with one piece of state, the named `%TAG` handles pending until the next
 `---`.  `goOut` is the same fold returning that state instead of flushing it, so a token

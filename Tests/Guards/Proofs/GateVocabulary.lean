@@ -113,8 +113,10 @@ namespace L4YAML.Tests.Guards.GateVocabulary
 -- 2026-11-08 (item 454): mentions 499 → 501 — item 454's Gates paragraph names the gates it ran (S3 proper, READ).
 -- 2026-11-08 (item 459, review): mentions 501 → 503 — item 459's gate paragraph names `DispatchPrice` and `ParkGapWidth` rows.
 -- 2026-11-08 (item 463, S3 slice (2)): mentions 503 → 506 — item 463's gate paragraph names the guard rows it moved.
+-- 2026-11-08 (item 464, S3 slice (3) first PR): mentions 506 → 515 — item 464's gate paragraph names the seven guard files it re-pinned.
+-- 2026-11-08 (item 464, review): mentions 515 → 516 — the corrected key-context finding names `check-…` once more.
 def expectedGateVocab : String :=
-  "names=114 mentions=506 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
+  "names=114 mentions=516 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
 
 end L4YAML.Tests.Guards.GateVocabulary
 

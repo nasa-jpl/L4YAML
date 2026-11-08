@@ -274,7 +274,10 @@ def expectedCensus : String :=
   -- corrHyp 598 → 606 on 2026-11-08: S3 slice (2), `TraceOf/DocBridge` (the three marker/directive
   -- twins and their helpers read the lexeme through a `ScannerSurfCorr` hypothesis) and the three
   -- `ScannerShape.dispatchStructural_*_trace` consumers.
-  "corrHyp=606 streamConcl=88 both=41 free=0 pairConcl=1 held=3 pairAny=8"
+  -- 2026-11-08 (item 464, S3 slice (3) first PR): corrHyp 606 → 620 — the seven `TraceOf/FlowBridge` lemmas
+  -- and their seven `ScannerShape` consumers each take a `ScannerSurfCorr` hypothesis.
+  -- 2026-11-08 (item 464, review): corrHyp 620 → 622 — the two key-context twins `scanDoubleQuoted_key_trace` / `scanSingleQuoted_key_trace`.
+  "corrHyp=622 streamConcl=88 both=41 free=0 pairConcl=1 held=3 pairAny=8"
 
 /-- The one conclusion that pairs them, and it is the stream's origin. -/
 def expectedSeedConcl : List Name :=
