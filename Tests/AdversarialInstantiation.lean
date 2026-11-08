@@ -17,6 +17,8 @@ public import L4YAML.Proofs.Scanner.FlowAdjacency
 public import L4YAML.Proofs.Output.AlignProofs
 public import L4YAML.Proofs.Scanner.FlowAdjacencyIx
 public import L4YAML.Proofs.Serialization.TraceOf.Leaves
+public import L4YAML.Proofs.Serialization.TraceOf.Document
+public import L4YAML.Proofs.Serialization.RefLex
 public import L4YAML.Proofs.Serialization.SerializationWellFormed
 public import L4YAML.Proofs.Serialization.TokenEvents
 public import L4YAML.Proofs.Serialization.ParseCheckFrom
@@ -12519,6 +12521,232 @@ def testGammaDepth (state : IO.Ref TestCollector) : IO Unit := do
   | .ok (_, ps') => checkM state "P98(v) fuel 4 on [bSS, bE, a, bEnd]: balanced" (P98.depthSeg arr 1 ps'.pos == 0) s!"p'={ps'.pos}"
   | .error _ => checkM state "P98(v) fuel 4 on [bSS, bE, a, bEnd] succeeds" false ""
 
+/-! ## Priority 99: S3 proper — the surface bridge `scanFiltered input = .ok ts → TraceOf input (tokenEvents ts)`
+(EVENTSOF §10 option 1), READ before any proof.  `TraceOf` is a `Prop` with no decision procedure, so the
+executable mirror is the one the S2 census already uses: the scanner's trace `tokenEvents ∘ scanFiltered`
+against the reference lexer's `eventsOf` (`refLex`, the executable twin of `Skeleton`).  The grid runs every
+probe row of Priorities 91–97 plus boundary rows of its own (properties against flow/block indicators,
+quoted/comment/block-scalar opacity, document markers, directives), tallies agreement per slice
+(leaf / flow / block / documents), reads which token kinds the trace depends on (the consumer census of
+items 446–452's scanner-shape facts), and reads the (β) `TokenGrammar` route's reach on the same rows.
+Smallest term-level instances of the bridge itself: the empty stream (`traceOf_empty`, library), `---`,
+`...`. -/
+namespace P99
+open L4YAML.Proofs.Serialization.EventsOf (refLex eventsOfSegs)
+open L4YAML.Proofs.Serialization.TokenEvents (tokenEvents)
+open L4YAML.Proofs.Serialization.SerializationWellFormed (Event checkFrom)
+open L4YAML.Proofs.TokenGrammar (checkTokenGrammar)
+open L4YAML.Proofs.Serialization.TraceOf
+open L4YAML.Surface
+
+/-- Boundary rows of this priority: event lexemes against every neighbour the slices meet. -/
+def own : List String :=
+  [ -- leaf: a property or alias alone, and as a node's whole content
+    "&x", "&x a", "*x", "!t a", "!!str a", "!<tag:x> a", "!e!a", "!t &x a", "&x !t a", "&x\n&y a",
+    "&x *x", "!t *x", "&x a &y b",
+    -- opacity: quoted scalars, comments, block scalars hold no event
+    "a: \"&x\"", "a: '*x'", "'...'", "\"---\"", "# &x", "a # &x", "a: b # *x", "&x a # c",
+    "a: |\n  &x\n", "a: >\n  *x\n  !t\n", "--- |\n &x", "&x |\n a", "? |\n  *x\n: b",
+    -- flow: properties and aliases at every flow position
+    "[&x a, *x]", "{&x a: *x}", "[a, &x b]", "[&x a]", "{a: &x b}", "&x [a]", "&x {a: b}",
+    "[a # c\n, &x b]", "[*x]", "[&x a: *x]", "{&x a}", "[!t a, !!str b]", "[&x [*x]]", "{a: [&x b, *x]}",
+    "[&x a,\n *x]", "[ &x a ]", "{ &x a : *x }",
+    -- block: properties on keys, values, entries, explicit keys
+    "- &x a\n- *x", "a: &x b\nc: *x", "? &x a\n: *x", "&x\n- a", "&x a: b", "&x a:\n  b", "- !t\n  &x a",
+    "key: !t &x\n  - a", "a:\n  &x b: *x", "- &x\n  - a", "&x a\n&y b", "a: &x\nb: *x",
+    -- document markers and directives: the `beginDocument`/`declareTag`/`endDocument` order
+    "---", "...", "--- a", "a\n...", "---\n...\n---", "--- a\n...\n...", "...\n...", "\uFEFF--- a", "---a",
+    "--- \n a", "a\n---\nb", "- ---", "a: ---", "--- &x a\n--- *x", "&x a\n...\n--- *x", "&x a\n--- *x",
+    "%YAML 1.2\n--- a", "%TAG !e! tag:x\n--- !e!a", "%TAG !e! tag:x\n---\n!e!a",
+    "%TAG !e! tag:x\n%TAG !f! tag:y\n--- !f!a", "%TAG !e! tag:x\n--- a\n--- !e!b",
+    "%TAG !e! tag:x\n--- a\n...\n%TAG !f! tag:y\n--- !f!b", "%TAG ! !x\n--- !a", "%TAG !! tag:y\n--- !!str a",
+    "%TAG !e! tag:x\n---\n...", "%TAG !e! tag:x", "--- !e!a\n%TAG !e! tag:x\n--- b",
+    "[---]", "{...}", "a\n--- &x b\n--- *x", "---\n&x a\n---\n*x" ]
+
+def allRows : List String :=
+  (P91.rows ++ P93.rows ++ P94.rows ++ P95.rows ++ P96.rows ++ P97.rows ++ own).eraseDups
+
+/-- (scanner trace, skeleton trace), each `none` where the reading refuses. -/
+def both (s : String) : Option (List Event) × Option (List Event) :=
+  ((scanFiltered s).toOption.map tokenEvents, (refLex s).map eventsOfSegs)
+
+/-- The slice a row belongs to, by the outermost construct the SCANNER's tokens show (review of the
+first cut: text-based labels counted `'...'`, `"---"`, `[---]` as documents).  A refused row has no
+tokens and is labelled `refused`; the per-slice reading is over scanned rows only. -/
+def sliceOf (s : String) : String :=
+  match scanFiltered s with
+  | .error _ => "refused"
+  | .ok ts =>
+    let ks := ts.toList.map (·.val)
+    let isDoc : YamlToken → Bool
+      | .documentStart | .documentEnd | .tagDirective .. | .versionDirective .. => true
+      | _ => false
+    let isFlow : YamlToken → Bool
+      | .flowSequenceStart | .flowMappingStart => true
+      | _ => false
+    let isBlock : YamlToken → Bool
+      | .blockSequenceStart | .blockMappingStart | .blockEntry | .key | .value | .blockEnd => true
+      | _ => false
+    if ks.any isDoc then "document"
+    else if ks.any isFlow then "flow"
+    else if ks.any isBlock then "block"
+    else "leaf"
+
+def slices : List String := ["leaf", "flow", "block", "document"]
+
+/-- The token kinds `tokenEvents` reads (`TokenEvents.go`): everything else is trace-inert. -/
+def traceKind : YamlToken → Bool
+  | .anchor _ | .alias _ | .tag _ _ | .tagDirective _ _ | .documentStart | .documentEnd => true
+  | _ => false
+
+def hasEvents (s : String) : Bool :=
+  match (both s).1 with
+  | some (_ :: _) => true
+  | _ => false
+
+structure Tally where
+  rows : Nat := 0
+  scanned : Nat := 0
+  lexed : Nat := 0
+  bothOk : Nat := 0
+  agree : Nat := 0
+  disagree : List (String × List Event × List Event) := []
+  scanOnly : List String := []
+  lexOnly : Nat := 0
+  eventRows : Nat := 0
+  inert : Nat := 0          -- scanned rows whose trace is unchanged after dropping every non-trace kind
+  tgOk : Nat := 0           -- scanned rows `checkTokenGrammar` accepts
+  parseOk : Nat := 0        -- scanned rows `parseStream` accepts
+  tgNotParse : List String := []
+  parseNotTg : List String := []
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    t := { t with rows := t.rows + 1 }
+    let (a, b) := both s
+    if a.isSome then t := { t with scanned := t.scanned + 1 }
+    if b.isSome then t := { t with lexed := t.lexed + 1 }
+    match a, b with
+    | some ea, some eb =>
+      t := { t with bothOk := t.bothOk + 1 }
+      if ea == eb then t := { t with agree := t.agree + 1 }
+      else t := { t with disagree := (s, ea, eb) :: t.disagree }
+    | some _, none => t := { t with scanOnly := s :: t.scanOnly }
+    | none, some _ => t := { t with lexOnly := t.lexOnly + 1 }
+    | none, none => pure ()
+    match scanFiltered s with
+    | .ok ts =>
+      if hasEvents s then t := { t with eventRows := t.eventRows + 1 }
+      if tokenEvents (ts.filter fun p => traceKind p.val) == tokenEvents ts then
+        t := { t with inert := t.inert + 1 }
+      let tg := checkTokenGrammar ts
+      let pk := (parseStream ts).toOption.isSome
+      if tg then t := { t with tgOk := t.tgOk + 1 }
+      if pk then t := { t with parseOk := t.parseOk + 1 }
+      if tg && !pk then t := { t with tgNotParse := s :: t.tgNotParse }
+      if pk && !tg then t := { t with parseNotTg := s :: t.parseNotTg }
+    | .error _ => pure ()
+  return t
+
+/-- The two divergence shapes `RefLexCensus` pins: the private lexer folds a line-start `&x` into a
+plain scalar the scanner ends, and reads an explicit `|2` indentation indicator the scanner honours. -/
+def knownDivergence (s : String) : Bool :=
+  s == "a: foo\n  &x\nb: *x" || s == "a: |2\n   *x\n  *y\n"
+
+/-- First run (P2 REFUTED): `refLex` has no BOM arm — `\uFEFF--- a` is one `opaque` segment to it, while
+the scanner drops the BOM and emits `documentStart` and `[202] l-document-prefix` has a `bom` constructor,
+so the bridge's two sides agree and the lexer is the odd one out (census debt, not proof debt). -/
+def bomRow (s : String) : Bool := s.toList.head? == some '\uFEFF'
+
+/-- First run (P2 REFUTED): `&x a⏎&y b` — the scanner folds the second line into the plain scalar
+`a &y b` (one anchor); the lexer reads `&y` at line start as a second anchor.  The grammar admits both
+(`TraceOfBlockAmbiguity` pair 1), the scanner's reading is the parser's, and the bridge — an existence
+statement — holds with the scanner's trace.  This is the block slice's plain-continuation boundary. -/
+def plainContinuation (s : String) : Bool := s == "&x a\n&y b"
+
+/-- The disagreeing rows of the first run, pinned as a SET so a fifth disagreement (or a vanished one)
+fails here rather than drifting under the per-kind classification (review of the first cut). -/
+def disagreeRows : List String :=
+  ["\uFEFF--- a", "&x a\n&y b", "\uFEFF!t a", "\uFEFF...\n: a"]
+
+/-- `parseStream`'s refusal is the state half (`undeclaredTagHandle`), never a shape `TokenGrammar` misses. -/
+def stateRefusal (s : String) : Bool :=
+  match scanFiltered s with
+  | .ok ts => match parseStream ts with
+    | .error (.undeclaredTagHandle ..) => true
+    | _ => false
+  | .error _ => false
+
+/-! ### Smallest term-level instances of the bridge: `---` and `...` -/
+
+private lemma eofComments (col : Nat) : SSLComments ⟨[], col⟩ ⟨[], col⟩ :=
+  .withComment _ _ _ (.noSep _ _ (.eof col)) (.nil _)
+
+/-- `---` alone: one explicit document with an empty node — trace `[beginDocument]`. -/
+lemma traceOf_docStart : TLYamlStream ⟨['-', '-', '-'], 0⟩ ⟨[], 3⟩ [.beginDocument] :=
+  .single _ _ _ _ [.beginDocument] [] (.nil _)
+    (.some _ _ _ (.explicit _ _ _ (.withContent _ ⟨[], 3⟩ _ [] (.mk [])
+      (.right _ _ _ (.mk _ ⟨[], 3⟩ _ [] [] ⟨.mk _, rfl⟩ ⟨eofComments 3, rfl⟩)))))
+    (.nil _)
+
+/-- `...` alone: no document, one suffix — trace `[endDocument]`. -/
+lemma traceOf_docEnd : TLYamlStream ⟨['.', '.', '.'], 0⟩ ⟨[], 3⟩ [.endDocument] :=
+  .single _ _ _ _ [] [.endDocument] (.nil _) (.none _)
+    (.cons _ ⟨[], 3⟩ _ [.endDocument] [] (.mk _ ⟨[], 3⟩ _ (.mk []) (eofComments 3)) (.nil _))
+
+end P99
+
+def testTraceBridge (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 99: S3 proper — scanFiltered input = .ok ts → TraceOf input (tokenEvents ts), READ"
+  let rows := P99.allRows
+  let t := P99.tally rows
+  let evStr (l : List L4YAML.Proofs.Serialization.SerializationWellFormed.Event) : String := String.intercalate "," (l.map fun e => s!"{repr e}")
+  -- (i) the executable mirror: the scanner's trace against the reference lexer's, every probe row
+  checkM state s!"P99(i) {t.rows} rows, {t.scanned} scanned, {t.lexed} lexed, {t.bothOk} both: scanner and skeleton traces agree on {t.agree}"
+    (t.agree + t.disagree.length == t.bothOk) ""
+  for (s, ea, eb) in t.disagree do
+    checkM state s!"P99(i) disagreement is a BOM row (lexer debt), the plain-continuation shape, or a pinned RefLexCensus shape: {repr s}"
+      (P99.bomRow s || P99.plainContinuation s || P99.knownDivergence s)
+      s!"scanner={evStr ea} skeleton={evStr eb}"
+  let dis := t.disagree.map (·.1)
+  checkM state s!"P99(i) disagreements: {(dis.filter P99.bomRow).length} BOM rows (lexer debt), {(dis.filter P99.plainContinuation).length} plain-continuation, {(dis.filter P99.knownDivergence).length} RefLexCensus — exactly the pinned set of {P99.disagreeRows.length}"
+    (dis.length == P99.disagreeRows.length && P99.disagreeRows.all (dis.contains ·) && t.agree + dis.length == t.bothOk)
+    s!"got {repr dis}"
+  checkM state s!"P99(i) no row the scanner accepts is refused by the lexer ({t.scanOnly.length} scanner-only; {t.lexOnly} lexer-only)"
+    t.scanOnly.isEmpty s!"{repr t.scanOnly}"
+  -- (ii) per slice (scanned rows, labelled by their tokens)
+  let mut sliced := 0
+  for sl in P99.slices do
+    let rs := rows.filter (P99.sliceOf · == sl)
+    let ts := P99.tally rs
+    sliced := sliced + ts.rows
+    checkM state s!"P99(ii) slice {sl}: {ts.rows} scanned rows, {ts.eventRows} event-bearing, {ts.agree} agree, {ts.disagree.length} disagree"
+      (ts.scanned == ts.rows && ts.agree + ts.disagree.length == ts.bothOk) ""
+  checkM state s!"P99(ii) the four slices partition the {t.scanned} scanned rows" (sliced == t.scanned) s!"{sliced}"
+  -- (iii) consumer census, executable half: the trace reads six token kinds; every other kind
+  -- (`.key`/`.value`/`.blockEnd`/flow ends/`.flowEntry`, `.comment`, `.streamStart`/`.streamEnd`, …) is inert
+  checkM state s!"P99(iii) trace inert under every non-trace token kind on {t.inert} of {t.scanned} scanned rows"
+    (t.inert == t.scanned) ""
+  -- (iv) the (β) route's reach: `checkTokenGrammar` against `parseStream` on scanner output
+  -- P5 REFUTED in kind: `TokenGrammar` is the shape half, so it accepts the rows `parseStream` refuses for
+  -- STATE (`undeclaredTagHandle`); no scanner output is parser-accepted and grammar-refused
+  checkM state s!"P99(iv) TokenGrammar accepts {t.tgOk} of {t.scanned} scanned rows; parseStream accepts {t.parseOk}; TG∧¬parse {t.tgNotParse.length} (all undeclaredTagHandle), parse∧¬TG {t.parseNotTg.length}"
+    (t.tgNotParse.all P99.stateRefusal && t.parseNotTg.isEmpty) s!"TG-only={repr t.tgNotParse} parse-only={repr t.parseNotTg}"
+  -- (v) the smallest instances, trace side (lemmas above) against the scanner side
+  checkM state "P99(v) `---`: scanner trace = [beginDocument] (= traceOf_docStart)"
+    ((P99.both "---").1 == some [.beginDocument]) s!"{repr (P99.both "---").1}"
+  checkM state "P99(v) `...`: scanner trace = [endDocument] (= traceOf_docEnd)"
+    ((P99.both "...").1 == some [.endDocument]) s!"{repr (P99.both "...").1}"
+  checkM state "P99(v) empty: scanner trace = [] (= traceOf_empty)"
+    ((P99.both "").1 == some []) ""
+  -- (vi) the order the document slice must reproduce: beginDocument before the declareTags of its directives
+  checkM state "P99(vi) `%TAG !e! tag:x⏎--- !e!a`: [beginDocument, declareTag !e!, useTag !e!]"
+    ((P99.both "%TAG !e! tag:x\n--- !e!a").1 == some [.beginDocument, .declareTag "!e!", .useTag "!e!"])
+    s!"{repr (P99.both "%TAG !e! tag:x\n--- !e!a").1}"
+  checkM state "P99(vi) `%TAG !e! tag:x` without `---` is refused by the scanner (DirectivesClosed, S3 (b))"
+    ((P99.both "%TAG !e! tag:x").1 == none) ""
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -12646,6 +12874,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testNoComment state
   testGammaBal state
   testGammaDepth state
+  testTraceBridge state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",
