@@ -14189,7 +14189,7 @@ def tally (rows : List String) : Tally := Id.run do
         let ev : String := match tk.val with
           | .flowSequenceStart | .flowMappingStart | .scalar .. | .alias _ | .anchor _ | .tag .. => "node"
           | .flowEntry => "comma"
-          | .key => if s.get ⟨tk.pos.offset⟩ == '?' then "question" else "key"
+          | .key => if String.Pos.Raw.get s ⟨tk.pos.offset⟩ == '?' then "question" else "key"
           | .value => "colon"
           | _ => ""
         -- the frame step checks, BEFORE the shape moves
@@ -14306,8 +14306,9 @@ example {sp sp_qe sp_s sp' : SurfPos} (hq : GLit '?' sp sp_qe) (hs : SSeparate n
     TSeqFrame n c (.colon false) sp sp' [] :=
   .midQuestionEmptyColon sp sp sp_qe sp_s sp' [] (.init sp) hq hs hcol
 -- `{a` (midKey), `{a:` (midColon), `{? ` (midQuestion), `{? :`
-example {sp sp' : SurfPos} {ev : List Event} (h : TFlowNode n c sp sp' ev) :
-    TMapFrame n c (.value true) sp sp' ([] ++ ev) → True := fun _ => trivial
+example {sp sp' : SurfPos} {ev : List Event} (h : TFlowNode n c sp sp' ev) (hj : TCFlowJsonNode n c sp sp' ev) :
+    TMapFrame n c (.value true) sp sp' ([] ++ ev) :=
+  .midKey true sp sp sp' [] ev (.init sp) h (fun _ => hj)
 example {sp sp' : SurfPos} {ev : List Event} (h : TFlowNode n c sp sp' ev) :
     TMapFrame n c (.value false) sp sp' ([] ++ ev) :=
   .midKey false sp sp sp' [] ev (.init sp) h (fun h => nomatch h)
