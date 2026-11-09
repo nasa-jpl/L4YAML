@@ -14140,6 +14140,7 @@ frames over abstract leaf premises, build-checked below. -/
 namespace P104
 open L4YAML.Proofs.Serialization.TokenEvents (goOut tokenEvents)
 open L4YAML.Proofs.Serialization.SerializationWellFormed (Event)
+open L4YAML.Proofs.Serialization.EventsOf (refLex eventsOfSegs)
 
 structure Frame where
   isSeq : Bool
@@ -14148,6 +14149,7 @@ structure Frame where
   entry : List (Positioned YamlToken) := []   -- reversed, the open entry since the last own `,`
   pref : List Event := []                     -- trace of the committed entries
   propPending : Bool := false
+  openOff : Nat := 0                          -- byte offset of the opener
 
 structure Tally where
   rows : Nat := 0
@@ -14161,6 +14163,16 @@ structure Tally where
   closeArm : List (String × Nat) := []   -- kind/shape at `]` / `}`
   holdArm : List (String × Nat) := []    -- kind/shape at an own `,` with tl ≠ sep
   refusedOwn : List String := []
+  -- (vi)–(viii): the lemmas' own premises / conclusions on the scanned spans (review on the
+  -- first cut: (i)–(iv) compare `goOut` with `goOut`, a mirror, not the statements)
+  closeTwinBad : List String := []   -- closeWithSep's conclusion: the closed span, standalone, scans to the frame trace
+  closeRefBad : List String := []    -- … and the skeleton lexer (`refLex`, the grammar's executable twin) reads it the same
+  holdTwinBad : List String := []    -- holdComma's conclusion: the held span + closer scans to the frame trace
+  holdRefBad : List String := []     -- … and `refLex` agrees
+  commaAtSep : List String := []     -- holdComma's premise `tl ≠ .sep`: own `,` reached on a `.sep` tail
+  leadFreeBad : List String := []    -- closeLead's premise: a lead-free closer on a tail that is not `closeFree`
+  holdSteps : Nat := 0
+  aliasOut : List String := []       -- the scanner twin's `undefinedAlias` on a span whose anchor sits outside it (not grammar)
 
 /-- Rows aimed at the shapes P103's census never closed or held: explicit `?`, empty keys, `[a:]`,
     bare `{a}`, each closed and each followed by `,`. -/
@@ -14173,6 +14185,22 @@ def own : List String :=
 def allRows : List String := (P102.allRows ++ own).eraseDups
 def pendings : List (List String) := [[], ["!a!"], ["!b!", "!a!"]]
 def isSep (sh : String) : Bool := sh == "betweenEmpty" || sh == "betweenHeld"
+/-- The `FrameTail` a shape sits at (`TSeqFrame` / `TMapFrame`'s tail index). -/
+def tailOf (sh : String) : String :=
+  if isSep sh then "sep"
+  else if sh == "midNode" || sh == "midKey" || sh == "midExplicitKey" then "value"
+  else if sh == "midQuestion" then "question" else "colon"
+def isWs (ch : Char) : Bool := ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r'
+/-- The lemma conclusion's executable twin on a span: standalone, the scanner accepts it with
+    `tokenEvents` = `ev`, and `refLex` reads `ev` too.  Returns (scanner twin ok, refLex twin ok). -/
+def twin (sub : String) (ev : List Event) : Bool × Bool :=
+  (((scanFiltered sub).toOption.map tokenEvents) == some ev, ((refLex sub).map eventsOfSegs) == some ev)
+/-- The scanner refused the span for an alias whose anchor sits outside it — a semantic check
+    (`undefinedAlias`), not a grammar reading; the span's grammar twin is `refLex` alone there. -/
+def aliasOutside (sub : String) : Bool :=
+  match scanFiltered sub with
+  | .error (.undefinedAlias ..) => true
+  | _ => false
 
 def tally (rows : List String) : Tally := Id.run do
   let mut t : Tally := {}
@@ -14210,7 +14238,13 @@ def tally (rows : List String) : Tally := Id.run do
           | f :: r =>
             t := stepCheck f "comma"
             if !isSep f.shape then
-              t := { t with holdArm := P100.bump t.holdArm s!"{if f.isSeq then "seq" else "map"}/{f.shape}" }
+              t := { t with holdArm := P100.bump t.holdArm s!"{if f.isSeq then "seq" else "map"}/{f.shape}", holdSteps := t.holdSteps + 1 }
+              let sub := (String.Pos.Raw.extract s ⟨f.openOff⟩ ⟨tk.pos.offset + 1⟩) ++ (if f.isSeq then "]" else "}")
+              let (a, b) := twin sub (goOut f.toks.reverse []).1
+              if !a then t := { t with holdTwinBad := s!"{repr s}@{tk.pos.offset} {sub}" :: t.holdTwinBad }
+              if !b then t := { t with holdRefBad := s!"{repr s}@{tk.pos.offset} {sub}" :: t.holdRefBad }
+            else
+              t := { t with commaAtSep := s!"{repr s}@{tk.pos.offset} {f.shape}" :: t.commaAtSep }
             st := { f with entry := [], pref := f.pref ++ (goOut f.entry.reverse []).1 } :: r
           | [] => pure ()
         | .flowSequenceEnd | .flowMappingEnd =>
@@ -14221,6 +14255,14 @@ def tally (rows : List String) : Tally := Id.run do
                           closeArm := P100.bump t.closeArm s!"{if f.isSeq then "seq" else "map"}/{f.shape}" }
             if tokenEvents f.toks.reverse.toArray != (goOut f.toks.reverse []).1 then
               t := { t with spanBad := s!"{repr s}@{tk.pos.offset}" :: t.spanBad }
+            let sub := String.Pos.Raw.extract s ⟨f.openOff⟩ ⟨tk.pos.offset + 1⟩
+            let (a, b) := twin sub (goOut f.toks.reverse []).1
+            if !a then
+              if aliasOutside sub then t := { t with aliasOut := s!"{repr s}@{tk.pos.offset} {sub}" :: t.aliasOut }
+              else t := { t with closeTwinBad := s!"{repr s}@{tk.pos.offset} {sub}" :: t.closeTwinBad }
+            if !b then t := { t with closeRefBad := s!"{repr s}@{tk.pos.offset} {sub}" :: t.closeRefBad }
+            if tk.pos.offset > 0 && !isWs (String.Pos.Raw.get s ⟨tk.pos.offset - 1⟩) && tailOf f.shape == "question" then
+              t := { t with leadFreeBad := s!"{repr s}@{tk.pos.offset} {f.shape}" :: t.leadFreeBad }
             st := rest
           | [] => pure ()
         | _ => pure ()
@@ -14239,7 +14281,7 @@ def tally (rows : List String) : Tally := Id.run do
           st := (match st with | f :: r => { f with shape := "betweenHeld" } :: r | [] => [])
         match tk.val with
         | .flowSequenceStart | .flowMappingStart =>
-          st := { isSeq := tk.val == .flowSequenceStart, toks := [tk], entry := [tk] } :: st
+          st := { isSeq := tk.val == .flowSequenceStart, toks := [tk], entry := [tk], openOff := tk.pos.offset } :: st
         | _ => pure ()
   return t
 def arms (l : List (String × Nat)) : Nat := l.length
@@ -14263,6 +14305,13 @@ def testFlowAlgebra (state : IO.Ref TestCollector) : IO Unit := do
   checkM state s!"P104(iv') own rows refused by the scanner: exactly the alias-key row {t.refusedOwn}"
     (t.refusedOwn == ["{!t a: &y b, *y: c}"]) ""
   checkM state s!"P104(iv'') shape walk: bad transitions {t.shapeBad.length}" t.shapeBad.isEmpty s!"{t.shapeBad.take 5}"
+  -- (vi)–(viii) the statements themselves on the scanned spans (review on the first cut)
+  checkM state s!"P104(vi) closeWithSep's conclusion on every closed span, standalone: scanner twin bad {t.closeTwinBad.length}, refLex twin bad {t.closeRefBad.length} over {t.closes} closes; anchor outside the span (scanner `undefinedAlias`, refLex read): {t.aliasOut.length}"
+    (t.closeTwinBad.isEmpty && t.closeRefBad.isEmpty && t.aliasOut.length == 3) s!"{t.closeTwinBad} | {t.closeRefBad} | {t.aliasOut}"
+  checkM state s!"P104(vii) holdComma's conclusion on every held span + closer: scanner twin bad {t.holdTwinBad.length}, refLex twin bad {t.holdRefBad.length} over {t.holdSteps} holds; `,` on a `.sep` tail: {t.commaAtSep.length}"
+    (t.holdTwinBad.isEmpty && t.holdRefBad.isEmpty && t.commaAtSep.isEmpty) s!"{t.holdTwinBad} | {t.holdRefBad} | {t.commaAtSep}"
+  checkM state s!"P104(viii) closeLead's premise: lead-free closers on a non-closeFree (`question`) tail: {t.leadFreeBad.length}"
+    t.leadFreeBad.isEmpty s!"{t.leadFreeBad.take 4}"
 end P104Test
 
 section P104Examples
