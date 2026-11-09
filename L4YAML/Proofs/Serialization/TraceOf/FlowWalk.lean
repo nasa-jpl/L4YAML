@@ -220,6 +220,15 @@ inductive TFlowOpenStack (n : Nat) :
       (st : TMapFrame n .flowIn tl sp_es sp_cur ev) :
       TFlowOpenStack n (d + 1) (ks.push false) tl sp_before sp_cur (ev_par ++ ev)
 
+/-- The `FlowStackB` sibling: no flow open (`nil`, depth 0, any tail, trace `[]`) or an open
+    stack.  `nil` is what the re-walk starts from and returns to after a base close. -/
+inductive TFlowStackB (n : Nat) :
+    Nat → Array Bool → FrameTail → SurfPos → SurfPos → List Event → Prop where
+  | nil (sp : SurfPos) (tl : FrameTail) : TFlowStackB n 0 #[] tl sp sp []
+  | «open» (d : Nat) (ks : Array Bool) (tl : FrameTail) (sp_block sp_cur : SurfPos) (ev : List Event)
+      (h : TFlowOpenStack n d ks tl sp_block sp_cur ev) :
+      TFlowStackB n d ks tl sp_block sp_cur ev
+
 /-- The `FlowStackK` sibling: the scanner-coupled S stack as it stands, and a `TraceOf` stack
     over the same frame indices with trace `ev`.  The S frame and the T frame sit side by side
     (no `TFlow* → SFlow*` erasure is spent); 2c couples `ev` to `goOut` of the token segment
@@ -227,7 +236,7 @@ inductive TFlowOpenStack (n : Nat) :
 def TFlowStackK (sp_start : SurfPos) (sc : L4YAML.Scanner.ScannerState) (fl : Nat) (ks : Array Bool)
     (tl : FrameTail) (sp_block sp_flow : SurfPos) (ev : List Event) : Prop :=
   FlowStackK sp_start sc fl ks tl sp_block sp_flow ∧
-    ∃ n, TFlowOpenStack n fl ks tl sp_block sp_flow ev
+    ∃ n, TFlowStackB n fl ks tl sp_block sp_flow ev
 
 /-! ## §4 The entries algebra (T twins of `NodeProduction` §4 / `PreprocessProduction`) -/
 
