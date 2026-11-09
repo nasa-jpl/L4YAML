@@ -1313,26 +1313,29 @@ lemma TFlowOpenStack.closeNestedMap {n d : Nat} {ks : Array Bool} {tl_par tl : F
     (fun _ => .content _ _ _ _ _ (.flowMap _ _ _ _ _ h_map))
 
 /-- The base `]`: the depth-1 frame closes into the finished `[158]` content handed out to the
-    stream (Row 12's depth-0 hand-off), trace and all; the stack is `nil` again (trace `[]`). -/
+    stream (Row 12's depth-0 hand-off), trace and all; the stack is `nil` again (trace `[]`) at
+    the S landing's indices — `accum_step_flow` lands `FlowStackB.nil sp_block` with the tail
+    `.value true` the closer reads, so the T side lands `nil sp_block (.value true)`, not at the
+    closer (review, round 1). -/
 lemma TSeqFrame.closeBase {n : Nat} {tl : FrameTail}
-    {sp_br sp_open sp_es sp_cur sp_prep sp_tok : SurfPos} {ev : List Event}
+    {sp_block sp_br sp_open sp_es sp_cur sp_prep sp_tok : SurfPos} {ev : List Event}
     (h_open : GLit '[' sp_br sp_open) (h_sep : GOpt (SSeparate n .flowOut) sp_open sp_es)
     (st : TSeqFrame n (inFlowCtx .flowOut) tl sp_es sp_cur ev)
     (h_lead₂ : SSeparateLines n sp_cur sp_prep ∨ (sp_prep = sp_cur ∧ tl.closeFree = true))
     (h_close : GLit ']' sp_prep sp_tok) :
-    TFlowContent n .flowOut sp_br sp_tok ev ∧ TFlowStackB n 0 #[] tl sp_tok sp_tok [] :=
+    TFlowContent n .flowOut sp_br sp_tok ev ∧ TFlowStackB n 0 #[] (.value true) sp_block sp_block [] :=
   ⟨.flowSeq _ _ _ _ _ (st.closeLead h_open h_sep (h_lead₂.imp (fun h => ⟨h, h⟩) id) h_close),
-    .nil sp_tok tl⟩
+    .nil sp_block (.value true)⟩
 
 lemma TMapFrame.closeBase {n : Nat} {tl : FrameTail}
-    {sp_br sp_open sp_es sp_cur sp_prep sp_tok : SurfPos} {ev : List Event}
+    {sp_block sp_br sp_open sp_es sp_cur sp_prep sp_tok : SurfPos} {ev : List Event}
     (h_open : GLit '{' sp_br sp_open) (h_sep : GOpt (SSeparate n .flowOut) sp_open sp_es)
     (st : TMapFrame n (inFlowCtx .flowOut) tl sp_es sp_cur ev)
     (h_lead₂ : SSeparateLines n sp_cur sp_prep ∨ (sp_prep = sp_cur ∧ tl.closeFree = true))
     (h_close : GLit '}' sp_prep sp_tok) :
-    TFlowContent n .flowOut sp_br sp_tok ev ∧ TFlowStackB n 0 #[] tl sp_tok sp_tok [] :=
+    TFlowContent n .flowOut sp_br sp_tok ev ∧ TFlowStackB n 0 #[] (.value true) sp_block sp_block [] :=
   ⟨.flowMap _ _ _ _ _ (st.closeLead h_open h_sep (h_lead₂.imp (fun h => ⟨h, h⟩) id) h_close),
-    .nil sp_tok tl⟩
+    .nil sp_block (.value true)⟩
 
 end
 
