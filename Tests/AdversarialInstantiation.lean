@@ -14680,6 +14680,7 @@ open L4YAML.Proofs.Serialization.SerializationWellFormed (Event)
 
 structure Frame where
   isSeq : Bool
+  openOff : Nat := 0                          -- the opener's offset (the span's cut point)
   toks : List (Positioned YamlToken) := []    -- reversed, opener inclusive
   propPending : Bool := false
 
@@ -14688,6 +14689,10 @@ structure Tally where
   scanned : Nat := 0
   steps : Nat := 0
   arm : List (String × Nat) := []        -- indicator arm
+  twinSteps : Nat := 0                   -- (v) conclusion twins read (one per indicator step)
+  twinBad : List String := []            -- (v) `scanFiltered` of the cut-and-closed span ≠ the stack lemma's trace
+  refBad : List String := []             -- (v) `refLex` refuses the span
+  aliasOut : List String := []           -- (v) alias whose anchor sits outside the cut (semantic, not grammar)
   heldArm : List (String × Nat) := []    -- indicator arriving on a held run, by arm
   depth : List (String × Nat) := []      -- depth before the indicator (0 = base open)
   silentBad : List String := []
@@ -14720,8 +14725,27 @@ def tally (rows : List String) : Tally := Id.run do
         | some a =>
           t := { t with steps := t.steps + 1, arm := P100.bump t.arm a,
                         depth := P100.bump t.depth s!"{st.length}" }
+          -- (v) the §7 lemma's conclusion, executably (review, round 1): the frame the step lands on,
+          -- cut from its opener through the indicator and closed standalone, reads the lemma's trace
+          -- under `scanFiltered` and `refLex` — `comma`: the top frame at `.sep` (`holdCommaLead`);
+          -- `nestOpen/*`: the parent with the child opened and closed empty (`seqNest`/`mapNest`, the
+          -- parent's trace kept); `close/*` nested: the parent after `receiveNode` of the closed child;
+          -- `close/*` base: the whole span (`closeBase`'s `TFlowContent`); `baseOpen/*`: the opened frame
+          -- closed empty (`openSeqBase`/`openMapBase`, trace `[]`).
+          let twinOn : Nat → List (Positioned YamlToken) → String → Tally → Tally :=
+            fun openOff toks closers t' => Id.run do
+              let sub := P105.rstrip (String.Pos.Raw.extract s ⟨openOff⟩ ⟨tk.pos.offset + 1⟩) ++ closers
+              let ev := (goOut toks.reverse []).1
+              let (ok, okRef) := P104.twin sub ev
+              let mut t'' := { t' with twinSteps := t'.twinSteps + 1 }
+              if !ok then
+                if P104.aliasOutside sub then t'' := { t'' with aliasOut := s!"{repr s}@{tk.pos.offset} {a}" :: t''.aliasOut }
+                else t'' := { t'' with twinBad := s!"{repr s}@{tk.pos.offset} {a} {repr sub}" :: t''.twinBad }
+              if !okRef then t'' := { t'' with refBad := s!"{repr s}@{tk.pos.offset} {a} {repr sub}" :: t''.refBad }
+              return t''
+          let closerOf : Frame → String := fun f => if f.isSeq then "]" else "}"
           match st with
-          | f :: _ =>
+          | f :: r =>
             if f.propPending then t := { t with heldArm := P100.bump t.heldArm a }
             -- (a) silent on the frame that receives the indicator (the parent of a nested open)
             for pnd in pendings do
@@ -14729,13 +14753,22 @@ def tally (rows : List String) : Tally := Id.run do
               let after := goOut (tk :: f.toks).reverse pnd
               if before != after then
                 t := { t with silentBad := s!"{repr s}@{tk.pos.offset} {a} p={pnd}" :: t.silentBad }
-          | [] => pure ()
+            match tk.val with
+            | .flowSequenceStart => t := twinOn f.openOff (tk :: f.toks) ("]" ++ closerOf f) t
+            | .flowMappingStart => t := twinOn f.openOff (tk :: f.toks) ("}" ++ closerOf f) t
+            | .flowEntry => t := twinOn f.openOff (tk :: f.toks) (closerOf f) t
+            | _ =>
+              match r with
+              | p :: _ => t := twinOn p.openOff (tk :: p.toks) (closerOf p) t   -- `p.toks` already holds the child's
+              | [] => t := twinOn f.openOff (tk :: f.toks) "" t
+          | [] =>
+            t := twinOn tk.pos.offset [tk] (if tk.val == .flowSequenceStart then "]" else "}") t
         | none => pure ()
         -- the walk
         st := st.map (fun f => { f with toks := tk :: f.toks })
         match tk.val with
         | .flowSequenceStart | .flowMappingStart =>
-          st := { isSeq := tk.val == .flowSequenceStart, toks := [tk] } :: st
+          st := { isSeq := tk.val == .flowSequenceStart, openOff := tk.pos.offset, toks := [tk] } :: st
         | .flowSequenceEnd | .flowMappingEnd =>
           st := (match st with | _ :: r => r.map (fun f => { f with propPending := false }) | [] => [])
           -- the parent received the closed node: its held run (if any) decorated it
@@ -14771,6 +14804,16 @@ def testFlowStep (state : IO.Ref TestCollector) : IO Unit := do
   -- mapping has two properties-only nodes and no `:` (P104 (iv')'s `*y:` gotcha again); pinned exactly
   checkM state s!"P106(iv) own rows refused by the scanner: exactly the anchor-colon row {t.refusedOwn}"
     (t.refusedOwn == ["{&a: &b}"]) ""
+  -- (v) the §7 lemmas' conclusions on the scanned spans (review, round 1; P5 recorded first).  P5 REFUTED
+  -- on the alias count (3 → 2): P105's third alias-outside cut (`[&x [*x]]`) was a receive step INSIDE the
+  -- child; at the indicator steps the parent's cut carries its own anchor.  Pinned exactly: the two rows
+  -- whose anchor sits before the base opener.  (The instrument's first run read 3 bad — its nested-close
+  -- twin appended the child's tokens to a parent that already held them; fixed, recorded in item 468.)
+  checkM state s!"P106(v) the stack lemma's conclusion twin at every indicator step: {t.twinSteps} read, {t.twinBad.length} bad under scanFiltered, {t.refBad.length} under refLex, alias-outside cuts {t.aliasOut.length}"
+    (t.twinSteps == t.steps && t.twinBad.isEmpty && t.refBad.isEmpty &&
+      t.aliasOut.mergeSort (fun a b => a ≤ b) ==
+        [s!"{repr "&x [*x]"}@6 close/seq", s!"{repr "&x {a: *x}"}@9 close/map"])
+    s!"{t.twinBad.take 5} | {t.refBad.take 5} | {t.aliasOut}"
 end P106Test
 
 section P106Examples
@@ -14817,12 +14860,12 @@ example {sp_br sp_o sp_a sp_c sp_b sp_o2 sp_e : SurfPos} {ev : List Event} (ho :
 -- `[a]` / `{}` — the base close hands the content out, the stack is `nil`
 example {sp_br sp_o sp_a sp_c : SurfPos} {ev : List Event} (ho : GLit '[' sp_br sp_o)
     (ha : TFlowNode n .flowIn sp_o sp_a ev) (hc : GLit ']' sp_a sp_c) :
-    TFlowContent n .flowOut sp_br sp_c ([] ++ ev) ∧ TFlowStackB n 0 #[] (.value false) sp_c sp_c [] :=
-  TSeqFrame.closeBase ho (.none sp_o) (.midNode false sp_o sp_o sp_a [] ev (.init sp_o) ha (fun h => nomatch h))
+    TFlowContent n .flowOut sp_br sp_c ([] ++ ev) ∧ TFlowStackB n 0 #[] (.value true) sp_br sp_br [] :=
+  TSeqFrame.closeBase (sp_block := sp_br) ho (.none sp_o) (.midNode false sp_o sp_o sp_a [] ev (.init sp_o) ha (fun h => nomatch h))
     (.inr ⟨rfl, rfl⟩) hc
 example {sp_br sp_o sp_c : SurfPos} (ho : GLit '{' sp_br sp_o) (hc : GLit '}' sp_o sp_c) :
-    TFlowContent n .flowOut sp_br sp_c [] ∧ TFlowStackB n 0 #[] .sep sp_c sp_c [] :=
-  TMapFrame.closeBase ho (.none sp_o) (.betweenEmpty sp_o) (.inr ⟨rfl, rfl⟩) hc
+    TFlowContent n .flowOut sp_br sp_c [] ∧ TFlowStackB n 0 #[] (.value true) sp_br sp_br [] :=
+  TMapFrame.closeBase (sp_block := sp_br) ho (.none sp_o) (.betweenEmpty sp_o) (.inr ⟨rfl, rfl⟩) hc
 end P106Examples
 
 def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
