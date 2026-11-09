@@ -14035,7 +14035,7 @@ def tally (rows : List String) : Tally := Id.run do
         let ev : String := match tk.val with
           | .flowSequenceStart | .flowMappingStart | .scalar .. | .alias _ | .anchor _ | .tag .. => "node"
           | .flowEntry => "comma"
-          | .key => if s.get ⟨tk.pos.offset⟩ == '?' then "question" else "key"
+          | .key => if String.Pos.Raw.get s ⟨tk.pos.offset⟩ == '?' then "question" else "key"
           | .value => "colon"
           | _ => ""
         if ev != "" && ev != "key" then
