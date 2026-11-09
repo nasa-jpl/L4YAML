@@ -10,6 +10,7 @@ public import L4YAML.Proofs.Scanner.StructDepth
 public import L4YAML.Proofs.Serialization.TraceOf.LeafBridge
 public import L4YAML.Proofs.Serialization.TraceOf.DocBridge
 public import L4YAML.Proofs.Serialization.TraceOf.FlowBridge
+public import L4YAML.Proofs.Serialization.TraceOf.FlowWalk
 public import L4YAML.Proofs.Scanner.AliasTrailingContent
 import all L4YAML.Proofs.Serialization.TokenEvents
 

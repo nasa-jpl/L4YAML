@@ -218,6 +218,10 @@ def step (s : Lx) : List Char → Option (Lx × List Char)
     else if c = ',' then some ({ s.push c with nodeStart := true }, cs)
     else if (c = '-' ∨ c = '?' ∨ c = ':') ∧ isSpaceBreakOrEnd cs then
       some ({ s.push c with nodeStart := true }, cs)
+    -- in flow, `:` before `,` `]` `}` is the value indicator of an empty value ([148]'s `e-node`
+    -- arm; `plain` above already ends a plain there) — item 466: `{a:}`, `[a:, b]`, `[:]` were refused
+    else if c = ':' ∧ s.flow > 0 ∧ cs.head?.any isFlowIndicatorBool then
+      some ({ s.push c with nodeStart := true }, cs)
     else if c = '\n' ∨ c = '\r' then some ({ s.push c with nodeStart := true }, cs)
     else if c = ' ' ∨ c = '\t' then some (s.push c, cs)
     -- plain scalars
