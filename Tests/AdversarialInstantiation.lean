@@ -14868,6 +14868,127 @@ example {sp_br sp_o sp_c : SurfPos} (ho : GLit '{' sp_br sp_o) (hc : GLit '}' sp
   TMapFrame.closeBase (sp_block := sp_br) ho (.none sp_o) (.betweenEmpty sp_o) (.inr ⟨rfl, rfl⟩) hc
 end P106Examples
 
+/-! Priority 107 (item 469, PR 2b-ii α2): `FlowArm` — `accum_step_flow`'s arm witness — read off the
+    scanner's OWN step before it is stated.  The arm is the projection `(sc.flowLevel, sc.flowStack.back?, c)`
+    (Rule 8: no ghost choice); every field a constructor claims about the post-state — `s'.flowLevel`,
+    `s'.flowStack`, `tailOf s'.tokens` — and every tail premise it takes from the pre-state is decided
+    here at each indicator step over the P106 rows, stepping `scanNextToken` as `scanLoop` does. -/
+namespace P107
+
+structure Tally where
+  rows : Nat := 0
+  scanned : Nat := 0
+  steps : Nat := 0
+  arm : List (String × Nat) := []
+  sizeBad : List String := []      -- `sc.flowStack.size ≠ sc.flowLevel` at an indicator
+  kindBad : List String := []      -- a closer whose kind ≠ the top of `sc.flowStack`
+  postBad : List String := []      -- `s'.flowLevel` / `s'.flowStack` / `tailOf s'.tokens` ≠ the arm's claim
+  preBad : List String := []       -- `,` on a `.sep` tail / nested open on a `.value` tail
+  multiBad : List String := []     -- a step that emitted more than one real token with an indicator
+  heldArm : List (String × Nat) := []  -- a property run held at the indicator (`InteriorGap.props`), by arm
+  refusedOwn : List String := []
+
+/-- The arm as a projection of the pre-state and the indicator; `none` = not an indicator. -/
+def armOf (sc : ScannerState) : YamlToken → Option String
+  | .flowSequenceStart => some (if sc.flowLevel == 0 then "baseOpen/seq" else "nestOpen/seq")
+  | .flowMappingStart => some (if sc.flowLevel == 0 then "baseOpen/map" else "nestOpen/map")
+  | .flowEntry => some "comma"
+  | .flowSequenceEnd => some (if sc.flowLevel == 1 then "closeBase/seq" else "closeNested/seq")
+  | .flowMappingEnd => some (if sc.flowLevel == 1 then "closeBase/map" else "closeNested/map")
+  | _ => none
+
+/-- The `(pre, post)` states of every `scanNextToken` step, as `scan` runs them; `none` if refused. -/
+def stepsOf (s : String) : Option (List (ScannerState × ScannerState)) := Id.run do
+  let s0 := (ScannerState.mk' s).emit .streamStart
+  let s0 := match s0.peek? with
+    | some '\uFEFF' => s0.consumeBOM
+    | _ => s0
+  let mut sc := s0
+  let mut acc : List (ScannerState × ScannerState) := []
+  for _ in [0:(s.utf8ByteSize + 1) * 4] do
+    match scanNextToken sc with
+    | .error _ => return none
+    | .ok none => return some acc.reverse
+    | .ok (some s') => acc := (sc, s') :: acc; sc := s'
+  return none
+
+open L4YAML.Proofs.StreamAccum in
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    t := { t with rows := t.rows + 1 }
+    -- the acceptance oracle is `scanFiltered` (P1 REFUTED on the first run: `stepsOf` alone accepted the
+    -- 11 rows `scanLoop` refuses at end of input — an unclosed flow — so it read 558/593, not 547/587)
+    match scanFiltered s, stepsOf s with
+    | .error _, _ | _, none => if P106.own.contains s then t := { t with refusedOwn := s :: t.refusedOwn }
+    | .ok _, some sts =>
+      t := { t with scanned := t.scanned + 1 }
+      for (sc, s') in sts do
+        let fresh := (s'.tokens.toList.drop sc.tokens.size).filter (fun p => p.val != .placeholder)
+        let inds := fresh.filterMap fun p => (armOf sc p.val).map (·, p)
+        match inds with
+        | [] => pure ()
+        | (a, p) :: rest =>
+          let at_ := s!"{repr s}@{p.pos.offset} {a}"
+          if !rest.isEmpty || fresh.length != 1 then t := { t with multiBad := at_ :: t.multiBad }
+          t := { t with steps := t.steps + 1, arm := P100.bump t.arm a }
+          if sc.flowStack.size != sc.flowLevel then t := { t with sizeBad := at_ :: t.sizeBad }
+          let tl := tailOf sc.tokens
+          let tl' := tailOf s'.tokens
+          -- the tail the arm reads is the POST-gap tail `tl₂` of `accum_step_flow`'s `h_tuple`: a held
+          -- property run is folded into the frame as an empty node first (`receivePropsEmpty`), so
+          -- `[&a, b]`'s `,` sees `.value false`, not the opener's `.sep` (P3 REFUTED on the first run: 7 =
+          -- exactly P106 (ii)'s held-run commas; the nested-open premise stays on `tl`, as `inject` has it)
+          let held := !(trailingPropertyRun sc.tokens).isEmpty
+          let tl₂ := if held then FrameTail.value false else tl
+          if held then t := { t with heldArm := P100.bump t.heldArm a }
+          let isSeq := p.val == .flowSequenceStart || p.val == .flowSequenceEnd
+          let isOpen := p.val == .flowSequenceStart || p.val == .flowMappingStart
+          let isClose := p.val == .flowSequenceEnd || p.val == .flowMappingEnd
+          if isClose && sc.flowStack.back? != some isSeq then t := { t with kindBad := at_ :: t.kindBad }
+          let postOk :=
+            if isOpen then s'.flowLevel == sc.flowLevel + 1 && s'.flowStack == sc.flowStack.push isSeq && tl' == .sep
+            else if isClose then s'.flowLevel + 1 == sc.flowLevel && s'.flowStack == sc.flowStack.pop && tl' == .value true
+            else s'.flowLevel == sc.flowLevel && s'.flowStack == sc.flowStack && tl' == .sep
+          if !postOk then
+            t := { t with postBad := s!"{at_} tl'={repr tl'} fl {sc.flowLevel}→{s'.flowLevel}" :: t.postBad }
+          let preOk :=
+            if p.val == .flowEntry then tl₂ != .sep
+            else if isOpen && sc.flowLevel > 0 then (match tl with | .value _ => false | _ => true)
+            else true
+          if !preOk then t := { t with preBad := s!"{at_} tl={repr tl}" :: t.preBad }
+  return t
+
+end P107
+
+section P107Test
+def testFlowArm (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 107: S3 slice (3) PR 2b-ii(α2) — FlowArm, accum_step_flow's arm witness, before statement"
+  let t := P107.tally P106.allRows
+  -- P1: the arms off the projection are P106's token-based arms, closes split base/nested as the opens
+  checkM state s!"P107(i) {t.rows} rows, {t.scanned} scanned, {t.steps} indicator steps off the projection; arms {t.arm}; multi {t.multiBad.length}"
+    (t.rows == 701 && t.scanned == 547 && t.steps == 587 && t.multiBad.isEmpty &&
+      t.arm.mergeSort (fun a b => a.1 ≤ b.1) ==
+        [("baseOpen/map", 78), ("baseOpen/seq", 122), ("closeBase/map", 78), ("closeBase/seq", 122),
+         ("closeNested/map", 14), ("closeNested/seq", 26), ("comma", 107), ("nestOpen/map", 14), ("nestOpen/seq", 26)])
+    s!"{t.arm} | {t.multiBad.take 5}"
+  -- P4: the projection is coherent
+  checkM state s!"P107(ii) flowStack.size = flowLevel {t.sizeBad.length} bad, closer kind = top of flowStack {t.kindBad.length} bad"
+    (t.sizeBad.isEmpty && t.kindBad.isEmpty) s!"{t.sizeBad.take 5} | {t.kindBad.take 5}"
+  -- P2: the post-state fields FlowArm's constructors claim
+  checkM state s!"P107(iii) FlowArm's post-state fields (flowLevel, flowStack, tailOf s'.tokens) at every step: {t.postBad.length} bad"
+    t.postBad.isEmpty s!"{t.postBad.take 8}"
+  -- P3: the tail premises FlowArm's constructors take
+  checkM state s!"P107(iv) FlowArm's tail premises (`,` never on .sep, nested open never on .value): {t.preBad.length} bad"
+    t.preBad.isEmpty s!"{t.preBad.take 8}"
+  -- P5
+  checkM state s!"P107(v) own rows refused by the scanner: {t.refusedOwn}" (t.refusedOwn == ["{&a: &b}"]) ""
+  -- P6: the props-gap domain by projection arm = P106 (ii)'s 16, its closes all at depth 1
+  checkM state s!"P107(vi) a property run held at the indicator, by arm: {t.heldArm}"
+    (t.heldArm.mergeSort (fun a b => a.1 ≤ b.1) ==
+      [("closeBase/map", 2), ("closeBase/seq", 5), ("comma", 7), ("nestOpen/seq", 2)]) s!"{t.heldArm}"
+end P107Test
+
 def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 100: S3 slice (1) — leaf span ↔ token payload (anchor / alias / tag), before proof"
   let t := P100.tally P100.allRows
@@ -15052,6 +15173,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testFlowAlgebra state
   testFlowReceive state
   testFlowStep state
+  testFlowArm state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",
