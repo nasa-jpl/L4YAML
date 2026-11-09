@@ -208,7 +208,6 @@ inductive TFlowOpenStack (n : Nat) :
   | seqNest (d : Nat) (ks : Array Bool) (tl_par tl : FrameTail)
       (sp_before sp_par sp_open sp_es sp_cur : SurfPos) (ev_par ev : List Event)
       (parent : TFlowOpenStack n d ks tl_par sp_before sp_par ev_par)
-      (h_par : tl_par = .colon true ∨ tl_par = .value true)
       (h_open : GLit '[' sp_par sp_open)
       (h_sep : GOpt (SSeparate n .flowIn) sp_open sp_es)
       (st : TSeqFrame n .flowIn tl sp_es sp_cur ev) :
@@ -216,7 +215,6 @@ inductive TFlowOpenStack (n : Nat) :
   | mapNest (d : Nat) (ks : Array Bool) (tl_par tl : FrameTail)
       (sp_before sp_par sp_open sp_es sp_cur : SurfPos) (ev_par ev : List Event)
       (parent : TFlowOpenStack n d ks tl_par sp_before sp_par ev_par)
-      (h_par : tl_par = .colon true ∨ tl_par = .value true)
       (h_open : GLit '{' sp_par sp_open)
       (h_sep : GOpt (SSeparate n .flowIn) sp_open sp_es)
       (st : TMapFrame n .flowIn tl sp_es sp_cur ev) :
