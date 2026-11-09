@@ -14509,10 +14509,14 @@ def tally (rows : List String) : Tally := Id.run do
               if !(tk.val == .flowSequenceStart || tk.val == .flowMappingStart) then t := twinOn f endOff a t
             | none => pure ()
           | [] => pure ()
-        -- `,` / close with a held run: the run decorated an EMPTY node (`receivePropsEmpty`)
+        -- `,` / close with a held run: the run decorated an EMPTY node (`receivePropsEmpty`); its
+        -- conclusion's twin is the span through the run (this token's start), closed (review, round 1)
         if ev == "comma" || tk.val == .flowSequenceEnd || tk.val == .flowMappingEnd then
           match st with
-          | f :: _ => if f.propPending then t := { t with arm := P100.bump t.arm "receivePropsEmpty" }
+          | f :: _ =>
+            if f.propPending then
+              t := { t with arm := P100.bump t.arm "receivePropsEmpty" }
+              t := twinOn f tk.pos.offset "receivePropsEmpty" t
           | [] => pure ()
         -- the shape walk (P103's), on the frame that now holds the token
         if ev != "" && ev != "key" && ev != "comma" then
@@ -14552,7 +14556,7 @@ def testFlowReceive (state : IO.Ref TestCollector) : IO Unit := do
   let t := P105.tally P105.allRows
   -- P1 HELD (10/10 arms); pinned exactly — the arm table is the roster PR 2b-ii/iii re-walk
   checkM state s!"P105(i) {t.rows} rows, {t.scanned} scanned, {t.steps} receive steps; arms {t.arm}"
-    (t.rows == 693 && t.scanned == 540 && t.steps == 556 &&
+    (t.rows == 693 && t.scanned == 540 && t.steps == 562 &&
       t.arm.mergeSort (fun a b => a.1 ≤ b.1) ==
         [("receiveColonPropsQuestion", 2), ("receiveColonPropsSep", 4), ("receiveColonQuestion", 4),
          ("receiveColonSep", 8), ("receiveNode", 365), ("receiveNodeColon", 101), ("receivePropsContent", 38),

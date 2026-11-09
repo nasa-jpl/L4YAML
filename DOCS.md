@@ -52215,9 +52215,11 @@ Lemmas (22, all `lemma`): §4 `TFlowSeqEntries_extendSep` / `_addTrailingComma` 
 |---|---|---|---|
 | P1 | all 10 receive arms reached ≥ 1 | 10/10: `receiveNode` 365, `receiveNodeColon` 101, `receivePropsContent` 38, `receiveQuestion` 27, `receiveColonSep` 8, `receivePropsNodeColon` 7, `receivePropsEmpty` 6, `receiveColonPropsSep` 4, `receiveColonQuestion` 4, `receiveColonPropsQuestion` 2 | HELD (pinned exactly) |
 | P2 | premise violations 0 on all four tallies | 0 / 0 / 0 / 0 | HELD |
-| P3 | conclusion twins 0 bad over ≥ 300 steps; `aliasOutside` exactly 4 | 0 / 0 over 556 steps; `aliasOutside` **3** | twins HELD; alias count **REFUTED** — `[&x [*x]]`'s outer cut `[&x [*x]` carries its anchor, so only the three cuts that start after their anchor are scanner-refused (`&x {a: *x}`, `&x [*x]`, the inner `[*x`); pinned at 3 |
+| P3 | conclusion twins 0 bad over ≥ 300 steps; `aliasOutside` exactly 4 | 0 / 0 over 556 steps (562 after the round-1 fix below); `aliasOutside` **3** | twins HELD; alias count **REFUTED** — `[&x [*x]]`'s outer cut `[&x [*x]` carries its anchor, so only the three cuts that start after their anchor are scanner-refused (`&x {a: *x}`, `&x [*x]`, the inner `[*x`); pinned at 3 |
 | P4 | 693 rows, no own row refused | 693 rows, 540 scanned, refused own 0 | HELD |
 | P5 | `receivePropsEmpty` ≥ 3, `receivePropsContent` ≥ 4, `receiveColonPropsSep` ≥ 3, `receiveColonPropsQuestion` = 2, `receivePropsNodeColon` ≥ 1 | 6 / 38 / 4 / 2 / 7 | HELD |
+
+**Review, round 1 (prediction before the run).**  Finding: `receivePropsEmpty` was COUNTED at the `,` / closer that decides a held run empty, but its conclusion had no twin read — the six counted cases never met the scanner.  Fix: the receive twin at that step is the span through the run (the deciding token's start), closed.  P6: those 6 steps read 0 / 0 bad under `scanFiltered` and `refLex`, steps 556 → 562, nothing else moves.  P6 HELD: 6 / 6 read, 0 / 0 bad, steps 562, the arm table and every other reading unmoved; adversarial 62134/62134 (the check count is unchanged — the twin feeds P105 (iii)).
 
 P105 (v): fourteen hand-built receive chains over abstract leaf premises (`[a`, `{a: b`, `{"a":b` glued at `.colon true`, `[? a : b`, `[:`, `{? :`, `[&a`, `[&a b`, `[&a : b`, `{? &a : b`, `[&x b : c`, `[[a` on a nest, the two depth-0 opens), one per twin, elaborated by the build.
 
