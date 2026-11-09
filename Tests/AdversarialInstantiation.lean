@@ -14773,6 +14773,58 @@ def testFlowStep (state : IO.Ref TestCollector) : IO Unit := do
     (t.refusedOwn == ["{&a: &b}"]) ""
 end P106Test
 
+section P106Examples
+open L4YAML.Surface L4YAML.Proofs.Serialization.TraceOf L4YAML.Proofs.Serialization.TraceOf.FlowWalk
+open L4YAML.Proofs.Serialization.SerializationWellFormed (Event)
+open L4YAML.Proofs.StreamAccum (FrameTail)
+variable {n : Nat}
+/-! P106 (v): the §7 indicator steps, hand-built over abstract premises, one per lemma. -/
+-- `[a,` — comma on a `.value` tail, glued
+example {sp_br sp_o sp_a sp_c : SurfPos} {ev : List Event} (ho : GLit '[' sp_br sp_o)
+    (ha : TFlowNode n .flowIn sp_o sp_a ev) (hc : GLit ',' sp_a sp_c) :
+    TFlowOpenStack n 1 #[true] .sep sp_br sp_c ([] ++ ev) :=
+  ((TFlowOpenStack.seqBase sp_br sp_br sp_o sp_o sp_o .sep [] ho (.none sp_o) (.betweenEmpty sp_o)).receiveNode
+    (kj := false) (fun _ h => nomatch h) (.inr ⟨rfl, rfl⟩) ha (fun h => nomatch h)).comma
+    (fun h => nomatch h) (.inr ⟨rfl, rfl⟩) hc
+-- `{a: [` — a nested open after the `:`'s separation; `[[` glued (`.sep` is leadFree)
+example {sp_br sp_o sp_a sp_c sp_b sp_o2 : SurfPos} {ev : List Event} (ho : GLit '{' sp_br sp_o)
+    (ha : TFlowNode n .flowIn sp_o sp_a ev) (hc : GLit ':' sp_a sp_c) (hs : SSeparateLines n sp_c sp_b)
+    (h2 : GLit '[' sp_b sp_o2) :
+    TFlowOpenStack n 2 (#[false].push true) .sep sp_br sp_o2 (([] ++ ev) ++ []) :=
+  ((TFlowOpenStack.mapBase sp_br sp_br sp_o sp_o sp_o .sep [] ho (.none sp_o) (.betweenEmpty sp_o)).receiveNodeColon
+    (kj := false) (.inl rfl) (.inr ⟨rfl, rfl⟩) ha (fun h => nomatch h) (.inr rfl) hc).openNestSeq
+    (fun _ h => nomatch h) (.inl hs) h2
+example {sp_br sp_o1 sp_o2 : SurfPos} (h1 : GLit '[' sp_br sp_o1) (h2 : GLit '{' sp_o1 sp_o2) :
+    TFlowOpenStack n 2 (#[true].push false) .sep sp_br sp_o2 ([] ++ []) :=
+  (TFlowOpenStack.seqBase sp_br sp_br sp_o1 sp_o1 sp_o1 .sep [] h1 (.none sp_o1) (.betweenEmpty sp_o1)).openNestMap
+    (fun _ h => nomatch h) (.inr ⟨rfl, rfl⟩) h2
+-- `[[a]` — the nested close lands on the parent as `.value true`; `{a: {}}`'s inner close likewise
+example {sp_br sp_o1 sp_o2 sp_a sp_c : SurfPos} {ev : List Event} (h1 : GLit '[' sp_br sp_o1) (h2 : GLit '[' sp_o1 sp_o2)
+    (ha : TFlowNode n .flowIn sp_o2 sp_a ev) (hc : GLit ']' sp_a sp_c) :
+    TFlowOpenStack n 1 #[true] (.value true) sp_br sp_c ([] ++ ([] ++ ev)) :=
+  TFlowOpenStack.closeNestedSeq
+    (TFlowOpenStack.seqBase sp_br sp_br sp_o1 sp_o1 sp_o1 .sep [] h1 (.none sp_o1) (.betweenEmpty sp_o1))
+    (fun _ h => nomatch h) (.inr ⟨rfl, rfl⟩) h2 (.none sp_o2)
+    (.midNode false sp_o2 sp_o2 sp_a [] ev (.init sp_o2) ha (fun h => nomatch h)) (.inr ⟨rfl, rfl⟩) hc
+example {sp_br sp_o sp_a sp_c sp_b sp_o2 sp_e : SurfPos} {ev : List Event} (ho : GLit '{' sp_br sp_o)
+    (ha : TFlowNode n .flowIn sp_o sp_a ev) (hc : GLit ':' sp_a sp_c) (hs : SSeparateLines n sp_c sp_b)
+    (h2 : GLit '{' sp_b sp_o2) (he : GLit '}' sp_o2 sp_e) :
+    TFlowOpenStack n 1 #[false] (.value true) sp_br sp_e (([] ++ ev) ++ []) :=
+  TFlowOpenStack.closeNestedMap
+    ((TFlowOpenStack.mapBase sp_br sp_br sp_o sp_o sp_o .sep [] ho (.none sp_o) (.betweenEmpty sp_o)).receiveNodeColon
+      (kj := false) (.inl rfl) (.inr ⟨rfl, rfl⟩) ha (fun h => nomatch h) (.inr rfl) hc)
+    (fun _ h => nomatch h) (.inl hs) h2 (.none sp_o2) (.betweenEmpty sp_o2) (.inr ⟨rfl, rfl⟩) he
+-- `[a]` / `{}` — the base close hands the content out, the stack is `nil`
+example {sp_br sp_o sp_a sp_c : SurfPos} {ev : List Event} (ho : GLit '[' sp_br sp_o)
+    (ha : TFlowNode n .flowIn sp_o sp_a ev) (hc : GLit ']' sp_a sp_c) :
+    TFlowContent n .flowOut sp_br sp_c ([] ++ ev) ∧ TFlowStackB n 0 #[] (.value false) sp_c sp_c [] :=
+  TSeqFrame.closeBase ho (.none sp_o) (.midNode false sp_o sp_o sp_a [] ev (.init sp_o) ha (fun h => nomatch h))
+    (.inr ⟨rfl, rfl⟩) hc
+example {sp_br sp_o sp_c : SurfPos} (ho : GLit '{' sp_br sp_o) (hc : GLit '}' sp_o sp_c) :
+    TFlowContent n .flowOut sp_br sp_c [] ∧ TFlowStackB n 0 #[] .sep sp_c sp_c [] :=
+  TMapFrame.closeBase ho (.none sp_o) (.betweenEmpty sp_o) (.inr ⟨rfl, rfl⟩) hc
+end P106Examples
+
 def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 100: S3 slice (1) — leaf span ↔ token payload (anchor / alias / tag), before proof"
   let t := P100.tally P100.allRows
