@@ -14390,6 +14390,276 @@ example {sp_br sp_o1 sp_k sp_c sp_o2 : SurfPos} {ev : List Event} (h1 : GLit '{'
     h2 (.none sp_o2) (.betweenEmpty sp_o2)
 end P104Examples
 
+/-! ### Priority 105 — S3 slice (3) PR 2b-i: the stack-level receive twins (item 467), before proof
+
+    The S side moves an open frame on a node / `?` / `:` through ten `FlowOpenStack.receive*`
+    lemmas; the T twins (`TFlowOpenStack.receive*`, `TraceOf/FlowWalk` §6) must grow the frame's
+    trace by exactly the node's events.  Rule 2 here: at every such step of every frame over the
+    P104 rows (plus rows for the property-run shapes), BEFORE the shape moves, (a) the lemma each
+    step would spend, by (tail, token, props held, node had props); (b) its PREMISES — a node never
+    lands on a `.value` tail (`h_tail`), `?` only on `.sep`, `:` only on `.sep` / `.question` /
+    a mid `.value`, a glued token only after a `leadFree` tail (`h_lead`); (c) its CONCLUSION's
+    executable twin — the span from the opener through the token, closed, standalone, scans
+    (`tokenEvents`) and lexes (`refLex`) to the frame's trace so far.  A nested open is a node of
+    the PARENT; its twin is read when the nested frame closes. -/
+namespace P105
+open L4YAML.Proofs.Serialization.TokenEvents (goOut tokenEvents)
+open L4YAML.Proofs.Serialization.SerializationWellFormed (Event)
+open L4YAML.Proofs.Serialization.EventsOf (refLex eventsOfSegs)
+
+structure Frame where
+  isSeq : Bool
+  shape : String := "betweenEmpty"
+  toks : List (Positioned YamlToken) := []    -- reversed, opener inclusive
+  propPending : Bool := false                 -- a `[96]` run is held, no content yet
+  nodeProps : Bool := false                   -- the node that made this tail carried properties
+  kj : Bool := false                          -- the tail's JSON bit
+  openOff : Nat := 0
+
+structure Tally where
+  rows : Nat := 0
+  scanned : Nat := 0
+  steps : Nat := 0                            -- receive steps (twin read)
+  arm : List (String × Nat) := []             -- the S lemma each step spends
+  nodeAtValue : List String := []             -- `receiveNode.h_tail`: a node on a `.value` tail
+  questionOff : List String := []             -- `receiveQuestion.h_tail`: `?` off `.sep`
+  colonBad : List String := []                -- `:` on `.colon` / `betweenEntries`
+  glueBad : List String := []                 -- a glued token after a non-`leadFree` tail
+  twinBad : List String := []                 -- scanner twin of the conclusion
+  refBad : List String := []                  -- refLex twin of the conclusion
+  aliasOut : List String := []                -- scanner `undefinedAlias`: anchor outside the cut
+  refusedOwn : List String := []
+
+/-- Rows for the property-run shapes the receive lemmas name (`[&a]`, `[&a b]`, `[&a : b]`,
+    `[? &a : b]`, `[a, &x b : c]`, …) and the glued JSON forms. -/
+def own : List String :=
+  ["[&a]", "[&a, b]", "{&a: v}", "[&a b]", "[&a [b]]", "[&a : b]", "[a, &x : b]", "{&a : b}",
+   "[&a !t : b]", "[? &a : b]", "{? &a : b}", "[a, &x b : c]", "[!t a]", "[&a !t b]", "[? a : b]",
+   "{? a : b}", "[\"a\":b]", "{\"a\":b}", "[&a b, c]", "{&a b: c}"]
+def allRows : List String := (P104.allRows ++ own).eraseDups
+def tailOf (sh : String) : String := P104.tailOf sh
+def leadFree (f : Frame) : Bool :=
+  match tailOf f.shape with
+  | "sep" | "value" => true
+  | "colon" => f.kj
+  | _ => false
+def isWs (ch : Char) : Bool := ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r'
+def rstrip (x : String) : String := String.ofList (x.toList.reverse.dropWhile isWs).reverse
+/-- The receive lemma a step spends, or `none` for a property token (the run is held, no step). -/
+def armOf (f : Frame) (ev : String) (isProp : Bool) : Option String :=
+  let tl := tailOf f.shape
+  match ev with
+  | "node" => if isProp then none else some (if f.propPending then "receivePropsContent" else "receiveNode")
+  | "question" => some "receiveQuestion"
+  | "colon" =>
+    some (if tl == "sep" then (if f.propPending then "receiveColonPropsSep" else "receiveColonSep")
+      else if tl == "question" then (if f.propPending then "receiveColonPropsQuestion" else "receiveColonQuestion")
+      else if f.nodeProps then "receivePropsNodeColon" else "receiveNodeColon")
+  | _ => none
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    t := { t with rows := t.rows + 1 }
+    match scanFiltered s with
+    | .error _ => if own.contains s then t := { t with refusedOwn := s :: t.refusedOwn }
+    | .ok ts =>
+      t := { t with scanned := t.scanned + 1 }
+      let mut st : List Frame := []
+      for i in [0:ts.size] do
+        let tk := ts[i]!
+        st := st.map (fun f => { f with toks := tk :: f.toks })
+        let endOff := if i + 1 < ts.size then ts[i + 1]!.pos.offset else s.utf8ByteSize
+        let isProp : Bool := match tk.val with | .anchor _ | .tag .. => true | _ => false
+        let isJson : Bool := match tk.val with
+          | .scalar _ .doubleQuoted | .scalar _ .singleQuoted | .flowSequenceStart | .flowMappingStart => true
+          | _ => false
+        let ev : String := match tk.val with
+          | .flowSequenceStart | .flowMappingStart | .scalar .. | .alias _ | .anchor _ | .tag .. => "node"
+          | .flowEntry => "comma"
+          | .key => if String.Pos.Raw.get s ⟨tk.pos.offset⟩ == '?' then "question" else "key"
+          | .value => "colon"
+          | _ => ""
+        let glued := tk.pos.offset > 0 && !isWs (String.Pos.Raw.get s ⟨tk.pos.offset - 1⟩)
+        -- the conclusion's twin on a frame: its span through `endOff`, closed on a fresh line
+        let twinOn : Frame → Nat → String → Tally → Tally := fun f e site t' => Id.run do
+          let sub := rstrip (String.Pos.Raw.extract s ⟨f.openOff⟩ ⟨e⟩) ++ "\n" ++ (if f.isSeq then "]" else "}")
+          let ev := (goOut f.toks.reverse []).1
+          let (a, b) := P104.twin sub ev
+          let mut t'' := { t' with steps := t'.steps + 1 }
+          if !a then
+            if P104.aliasOutside sub then t'' := { t'' with aliasOut := s!"{repr s}@{tk.pos.offset} {site}" :: t''.aliasOut }
+            else t'' := { t'' with twinBad := s!"{repr s}@{tk.pos.offset} {site} {repr sub}" :: t''.twinBad }
+          if !b then t'' := { t'' with refBad := s!"{repr s}@{tk.pos.offset} {site} {repr sub}" :: t''.refBad }
+          return t''
+        -- (a)/(b)/(c) on the frame that receives the token, BEFORE the shape moves
+        if ev == "node" || ev == "question" || ev == "colon" then
+          match st with
+          | f :: _ =>
+            let tl := tailOf f.shape
+            let here := s!"{repr s}@{tk.pos.offset} {f.shape}+{ev}"
+            if ev == "node" && tl == "value" then t := { t with nodeAtValue := here :: t.nodeAtValue }
+            if ev == "question" && tl != "sep" then t := { t with questionOff := here :: t.questionOff }
+            if ev == "colon" && (tl == "colon" || f.shape == "betweenEntries") then t := { t with colonBad := here :: t.colonBad }
+            if glued && ev != "colon" && !leadFree f then t := { t with glueBad := here :: t.glueBad }
+            match armOf f ev isProp with
+            | some a =>
+              t := { t with arm := P100.bump t.arm a }
+              -- a nested open's twin is read at its close (below); every other step's here
+              if !(tk.val == .flowSequenceStart || tk.val == .flowMappingStart) then t := twinOn f endOff a t
+            | none => pure ()
+          | [] => pure ()
+        -- `,` / close with a held run: the run decorated an EMPTY node (`receivePropsEmpty`)
+        if ev == "comma" || tk.val == .flowSequenceEnd || tk.val == .flowMappingEnd then
+          match st with
+          | f :: _ => if f.propPending then t := { t with arm := P100.bump t.arm "receivePropsEmpty" }
+          | [] => pure ()
+        -- the shape walk (P103's), on the frame that now holds the token
+        if ev != "" && ev != "key" && ev != "comma" then
+          match st with
+          | f :: r =>
+            if ev == "node" && isProp then
+              st := { f with propPending := true } :: r
+            else
+              match P103.step f.isSeq f.shape ev with
+              | some sh =>
+                let kjNode := ev == "node" && isJson
+                st := { f with shape := sh, propPending := false,
+                               nodeProps := if ev == "node" then f.propPending else f.nodeProps,
+                               kj := if ev == "node" then kjNode else f.kj } :: r
+              | none => pure ()
+          | [] => pure ()
+        else if ev == "comma" then
+          st := (match st with | f :: r => { f with shape := "betweenHeld", propPending := false } :: r | [] => [])
+        match tk.val with
+        | .flowSequenceStart | .flowMappingStart =>
+          st := { isSeq := tk.val == .flowSequenceStart, toks := [tk], openOff := tk.pos.offset } :: st
+        | .flowSequenceEnd | .flowMappingEnd =>
+          match st with
+          | _ :: (p :: r) =>
+            -- the parent received the nested node: read its twin now, through the closer
+            t := twinOn p (tk.pos.offset + 1) "receiveNode(nested)" t
+            st := { p with shape := p.shape, propPending := false } :: r
+          | _ :: [] => st := []
+          | [] => pure ()
+        | _ => pure ()
+  return t
+end P105
+
+section P105Test
+def testFlowReceive (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 105: S3 slice (3) PR 2b-i — the receive twins (TFlowOpenStack.receive*), before proof"
+  let t := P105.tally P105.allRows
+  -- P1 HELD (10/10 arms); pinned exactly — the arm table is the roster PR 2b-ii/iii re-walk
+  checkM state s!"P105(i) {t.rows} rows, {t.scanned} scanned, {t.steps} receive steps; arms {t.arm}"
+    (t.rows == 693 && t.scanned == 540 && t.steps == 556 &&
+      t.arm.mergeSort (fun a b => a.1 ≤ b.1) ==
+        [("receiveColonPropsQuestion", 2), ("receiveColonPropsSep", 4), ("receiveColonQuestion", 4),
+         ("receiveColonSep", 8), ("receiveNode", 365), ("receiveNodeColon", 101), ("receivePropsContent", 38),
+         ("receivePropsEmpty", 6), ("receivePropsNodeColon", 7), ("receiveQuestion", 27)]) s!"{t.arm}"
+  checkM state s!"P105(ii) premises: node on a `.value` tail {t.nodeAtValue.length}, `?` off `.sep` {t.questionOff.length}, `:` on `.colon`/betweenEntries {t.colonBad.length}, glued after a non-leadFree tail {t.glueBad.length}"
+    (t.nodeAtValue.isEmpty && t.questionOff.isEmpty && t.colonBad.isEmpty && t.glueBad.isEmpty)
+    s!"{t.nodeAtValue.take 4} | {t.questionOff.take 4} | {t.colonBad.take 4} | {t.glueBad.take 4}"
+  checkM state s!"P105(iii) conclusions: scanner twin bad {t.twinBad.length}, refLex twin bad {t.refBad.length}; anchor outside the cut {t.aliasOut.length}"
+    -- P3's alias count REFUTED (4 predicted, 3 read): `[&x [*x]]`'s outer cut `[&x [*x]` CARRIES its
+    -- anchor, so only the three cuts that start after their anchor are scanner-refused
+    (t.twinBad.isEmpty && t.refBad.isEmpty && t.aliasOut.length == 3) s!"{t.twinBad.take 6} | {t.refBad.take 6} | {t.aliasOut}"
+  checkM state s!"P105(iv) own rows refused: {t.refusedOwn}" t.refusedOwn.isEmpty ""
+end P105Test
+
+section P105Examples
+open L4YAML.Surface L4YAML.Proofs.Serialization.TraceOf L4YAML.Proofs.Serialization.TraceOf.FlowWalk
+open L4YAML.Proofs.Serialization.SerializationWellFormed (Event)
+open L4YAML.Proofs.StreamAccum (FrameTail)
+variable {n : Nat}
+/-! Hand-built receive chains over abstract leaf premises, one per receive twin (elaborated by
+    the build): the trace index of each conclusion is the frame's trace so far. -/
+-- depth-0 open: `[` / `{`
+example {sp_br sp_o : SurfPos} (ho : GLit '[' sp_br sp_o) : TFlowStackB n 1 #[true] .sep sp_br sp_o [] :=
+  TFlowStackB.openSeqBase ho (.none sp_o)
+example {sp_br sp_o : SurfPos} (ho : GLit '{' sp_br sp_o) : TFlowStackB n 1 #[false] .sep sp_br sp_o [] :=
+  TFlowStackB.openMapBase ho (.none sp_o)
+-- `[a`: the node glued to `[` (`.sep` is leadFree) — receiveNode
+example {sp_br sp_o sp_a : SurfPos} {ev : List Event} (ho : GLit '[' sp_br sp_o)
+    (ha : TFlowNode n .flowIn sp_o sp_a ev) :
+    TFlowOpenStack n 1 #[true] (.value false) sp_br sp_a ([] ++ ev) :=
+  (TFlowOpenStack.seqBase sp_br sp_br sp_o sp_o sp_o .sep [] ho (.none sp_o) (.betweenEmpty sp_o)).receiveNode
+    (fun _ h => nomatch h) (.inr ⟨rfl, rfl⟩) ha (fun h => nomatch h)
+-- `{a: b` — receiveNodeColon then receiveNode after a separation
+example {sp_br sp_o sp_a sp_c sp_s sp_b : SurfPos} {ev_a ev_b : List Event} (ho : GLit '{' sp_br sp_o)
+    (ha : TFlowNode n .flowIn sp_o sp_a ev_a) (hc : GLit ':' sp_a sp_c) (hs : SSeparateLines n sp_c sp_s)
+    (hb : TFlowNode n .flowIn sp_s sp_b ev_b) :
+    TFlowOpenStack n 1 #[false] (.value false) sp_br sp_b (([] ++ ev_a) ++ ev_b) :=
+  ((TFlowOpenStack.mapBase sp_br sp_br sp_o sp_o sp_o .sep [] ho (.none sp_o) (.betweenEmpty sp_o)).receiveNodeColon
+      (kj := false) (.inl rfl) (.inr ⟨rfl, rfl⟩) ha (fun h => nomatch h) (.inr rfl) hc).receiveNode
+    (fun _ h => nomatch h) (.inl hs) hb (fun h => nomatch h)
+-- `{"a":b` — a JSON key, the value glued to the `:` ([149]; `.colon true` is leadFree)
+example {sp_br sp_o sp_a sp_c sp_b : SurfPos} {ev_a ev_b : List Event} (ho : GLit '{' sp_br sp_o)
+    (ha : TFlowNode n .flowIn sp_o sp_a ev_a) (hj : TCFlowJsonNode n .flowIn sp_o sp_a ev_a) (hc : GLit ':' sp_a sp_c)
+    (hb : TFlowNode n .flowIn sp_c sp_b ev_b) :
+    TFlowOpenStack n 1 #[false] (.value false) sp_br sp_b (([] ++ ev_a) ++ ev_b) :=
+  ((TFlowOpenStack.mapBase sp_br sp_br sp_o sp_o sp_o .sep [] ho (.none sp_o) (.betweenEmpty sp_o)).receiveNodeColon
+      (kj := true) (.inl rfl) (.inr ⟨rfl, rfl⟩) ha (fun _ => hj) (.inr rfl) hc).receiveNode
+    (fun _ h => nomatch h) (.inr ⟨rfl, rfl⟩) hb (fun h => nomatch h)
+-- `[? a : b` — receiveQuestion, receiveNodeColon on `.question`, receiveNode
+example {sp_br sp_o sp_q sp_s1 sp_a sp_c sp_s2 sp_b : SurfPos} {ev_a ev_b : List Event} (ho : GLit '[' sp_br sp_o)
+    (hq : GLit '?' sp_o sp_q) (hs1 : SSeparateLines n sp_q sp_s1) (ha : TFlowNode n .flowIn sp_s1 sp_a ev_a)
+    (hc : GLit ':' sp_a sp_c) (hs2 : SSeparateLines n sp_c sp_s2) (hb : TFlowNode n .flowIn sp_s2 sp_b ev_b) :
+    TFlowOpenStack n 1 #[true] (.value false) sp_br sp_b (([] ++ ev_a) ++ ev_b) :=
+  (((TFlowOpenStack.seqBase sp_br sp_br sp_o sp_o sp_o .sep [] ho (.none sp_o) (.betweenEmpty sp_o)).receiveQuestion
+      rfl (.inr ⟨rfl, rfl⟩) hq).receiveNodeColon (kj := false) (.inr rfl) (.inl hs1) ha (fun h => nomatch h)
+      (.inr rfl) hc).receiveNode (fun _ h => nomatch h) (.inl hs2) hb (fun h => nomatch h)
+-- `[:` and `[? :` — receiveColonSep / receiveColonQuestion, trace kept
+example {sp_br sp_o sp_c : SurfPos} (ho : GLit '[' sp_br sp_o) (hc : GLit ':' sp_o sp_c) :
+    TFlowOpenStack n 1 #[true] (.colon false) sp_br sp_c [] :=
+  (TFlowOpenStack.seqBase sp_br sp_br sp_o sp_o sp_o .sep [] ho (.none sp_o) (.betweenEmpty sp_o)).receiveColonSep
+    rfl (.inr ⟨rfl, rfl⟩) hc
+example {sp_br sp_o sp_q sp_s sp_c : SurfPos} (ho : GLit '{' sp_br sp_o) (hq : GLit '?' sp_o sp_q)
+    (hs : SSeparateLines n sp_q sp_s) (hc : GLit ':' sp_s sp_c) :
+    TFlowOpenStack n 1 #[false] (.colon false) sp_br sp_c [] :=
+  ((TFlowOpenStack.mapBase sp_br sp_br sp_o sp_o sp_o .sep [] ho (.none sp_o) (.betweenEmpty sp_o)).receiveQuestion
+    rfl (.inr ⟨rfl, rfl⟩) hq).receiveColonQuestion rfl (.inl hs) hc
+-- `[&a` then `]`-decided empty content — receivePropsEmpty; `[&a b` — receivePropsContent
+example {sp_br sp_o sp_p : SurfPos} {ev_p : List Event} (ho : GLit '[' sp_br sp_o)
+    (hp : TCNsProperties n .flowIn sp_o sp_p ev_p) :
+    TFlowOpenStack n 1 #[true] (.value false) sp_br sp_p ([] ++ ev_p) :=
+  (TFlowOpenStack.seqBase sp_br sp_br sp_o sp_o sp_o .sep [] ho (.none sp_o) (.betweenEmpty sp_o)).receivePropsEmpty
+    (fun _ h => nomatch h) (.inr ⟨rfl, rfl⟩) hp
+example {sp_br sp_o sp_p sp_s sp_b : SurfPos} {ev_p ev_b : List Event} (ho : GLit '[' sp_br sp_o)
+    (hp : TCNsProperties n .flowIn sp_o sp_p ev_p) (hs : SSeparateLines n sp_p sp_s)
+    (hb : TFlowContent n .flowIn sp_s sp_b ev_b) :
+    TFlowOpenStack n 1 #[true] (.value false) sp_br sp_b ([] ++ (ev_p ++ ev_b)) :=
+  (TFlowOpenStack.seqBase sp_br sp_br sp_o sp_o sp_o .sep [] ho (.none sp_o) (.betweenEmpty sp_o)).receivePropsContent
+    (kj := false) (fun _ h => nomatch h) (.inr ⟨rfl, rfl⟩) hp hs hb (fun h => nomatch h)
+-- `[&a : b` — receiveColonPropsSep; `{? &a : b` — receiveColonPropsQuestion
+example {sp_br sp_o sp_p sp_g sp_c sp_s sp_b : SurfPos} {ev_p ev_b : List Event} (ho : GLit '[' sp_br sp_o)
+    (hp : TCNsProperties n .flowIn sp_o sp_p ev_p) (hg : SSeparateLines n sp_p sp_g) (hc : GLit ':' sp_g sp_c)
+    (hs : SSeparateLines n sp_c sp_s) (hb : TFlowNode n .flowIn sp_s sp_b ev_b) :
+    TFlowOpenStack n 1 #[true] (.value false) sp_br sp_b (([] ++ ev_p) ++ ev_b) :=
+  ((TFlowOpenStack.seqBase sp_br sp_br sp_o sp_o sp_o .sep [] ho (.none sp_o) (.betweenEmpty sp_o)).receiveColonPropsSep
+      rfl (.inr ⟨rfl, rfl⟩) hp (.some _ _ hg) hc).receiveNode (fun _ h => nomatch h) (.inl hs) hb (fun h => nomatch h)
+example {sp_br sp_o sp_q sp_s sp_p sp_g sp_c : SurfPos} {ev_p : List Event} (ho : GLit '{' sp_br sp_o)
+    (hq : GLit '?' sp_o sp_q) (hs : SSeparateLines n sp_q sp_s) (hp : TCNsProperties n .flowIn sp_s sp_p ev_p)
+    (hg : SSeparateLines n sp_p sp_g) (hc : GLit ':' sp_g sp_c) :
+    TFlowOpenStack n 1 #[false] (.colon false) sp_br sp_c ([] ++ ev_p) :=
+  ((TFlowOpenStack.mapBase sp_br sp_br sp_o sp_o sp_o .sep [] ho (.none sp_o) (.betweenEmpty sp_o)).receiveQuestion
+    rfl (.inr ⟨rfl, rfl⟩) hq).receiveColonPropsQuestion rfl (.inl hs) hp (.some _ _ hg) hc
+-- `[&x b : c` — receivePropsNodeColon (the run decorates the key)
+example {sp_br sp_o sp_p sp_s sp_b sp_c : SurfPos} {ev_p ev_b : List Event} (ho : GLit '[' sp_br sp_o)
+    (hp : TCNsProperties n .flowIn sp_o sp_p ev_p) (hs : SSeparateLines n sp_p sp_s)
+    (hb : TFlowContent n .flowIn sp_s sp_b ev_b) (hc : GLit ':' sp_b sp_c) :
+    TFlowOpenStack n 1 #[true] (.colon false) sp_br sp_c ([] ++ (ev_p ++ ev_b)) :=
+  (TFlowOpenStack.seqBase sp_br sp_br sp_o sp_o sp_o .sep [] ho (.none sp_o) (.betweenEmpty sp_o)).receivePropsNodeColon
+    (kj := false) (.inl rfl) (.inr ⟨rfl, rfl⟩) hp hs hb (fun h => nomatch h) (.inr rfl) hc
+-- `[[a` — a nest receives; the parent's trace prefix rides
+example {sp_br sp_o1 sp_o2 sp_a : SurfPos} {ev : List Event} (h1 : GLit '[' sp_br sp_o1) (h2 : GLit '[' sp_o1 sp_o2)
+    (ha : TFlowNode n .flowIn sp_o2 sp_a ev) :
+    TFlowOpenStack n 2 (#[true].push true) (.value false) sp_br sp_a (([] ++ []) ++ ev) :=
+  (TFlowOpenStack.seqNest 1 #[true] .sep .sep sp_br sp_o1 sp_o2 sp_o2 sp_o2 [] []
+    (.seqBase sp_br sp_br sp_o1 sp_o1 sp_o1 .sep [] h1 (.none sp_o1) (.betweenEmpty sp_o1))
+    h2 (.none sp_o2) (.betweenEmpty sp_o2)).receiveNode (fun _ h => nomatch h) (.inr ⟨rfl, rfl⟩) ha (fun h => nomatch h)
+end P105Examples
+
 def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 100: S3 slice (1) — leaf span ↔ token payload (anchor / alias / tag), before proof"
   let t := P100.tally P100.allRows
@@ -14572,6 +14842,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testFlowBridge state
   testFlowWalk state
   testFlowAlgebra state
+  testFlowReceive state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",
