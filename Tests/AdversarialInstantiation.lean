@@ -14378,16 +14378,17 @@ example {sp_before sp_br sp_open : SurfPos} (ho : GLit '[' sp_br sp_open) :
   .seqBase sp_before sp_br sp_open sp_open sp_open .sep [] ho (.none sp_open) (.betweenEmpty sp_open)
 example {sp_br sp_o1 sp_o2 : SurfPos} (h1 : GLit '[' sp_br sp_o1) (h2 : GLit '[' sp_o1 sp_o2) :
     TFlowOpenStack n 2 (#[true].push true) .sep sp_br sp_o2 ([] ++ []) :=
-  .seqNest 1 #[true] .sep .sep sp_br sp_o1 sp_o2 sp_o2 sp_o2 [] []
+  .seqNest 1 #[true] .sep .sep sp_br sp_o1 sp_o1 sp_o2 sp_o2 sp_o2 [] []
     (.seqBase sp_br sp_br sp_o1 sp_o1 sp_o1 .sep [] h1 (.none sp_o1) (.betweenEmpty sp_o1))
-    h2 (.none sp_o2) (.betweenEmpty sp_o2)
-example {sp_br sp_o1 sp_k sp_c sp_o2 : SurfPos} {ev : List Event} (h1 : GLit '{' sp_br sp_o1)
-    (hk : TFlowNode n (inFlowCtx .flowOut) sp_o1 sp_k ev) (hc : GLit ':' sp_k sp_c) (h2 : GLit '[' sp_c sp_o2) :
+    (fun _ h => nomatch h) (.inr ⟨rfl, rfl⟩) h2 (.none sp_o2) (.betweenEmpty sp_o2)
+example {sp_br sp_o1 sp_k sp_c sp_b sp_o2 : SurfPos} {ev : List Event} (h1 : GLit '{' sp_br sp_o1)
+    (hk : TFlowNode n (inFlowCtx .flowOut) sp_o1 sp_k ev) (hc : GLit ':' sp_k sp_c) (hs : SSeparateLines n sp_c sp_b)
+    (h2 : GLit '[' sp_b sp_o2) :
     TFlowOpenStack n 2 (#[false].push true) .sep sp_br sp_o2 (([] ++ ev) ++ []) :=
-  .seqNest 1 #[false] (.colon false) .sep sp_br sp_c sp_o2 sp_o2 sp_o2 ([] ++ ev) []
+  .seqNest 1 #[false] (.colon false) .sep sp_br sp_c sp_b sp_o2 sp_o2 sp_o2 ([] ++ ev) []
     (.mapBase sp_br sp_br sp_o1 sp_o1 sp_c (.colon false) ([] ++ ev) h1 (.none sp_o1)
       (.midColon false sp_o1 sp_o1 sp_k sp_k sp_c [] ev (.init sp_o1) hk (fun h => nomatch h) (.none sp_k) hc))
-    h2 (.none sp_o2) (.betweenEmpty sp_o2)
+    (fun _ h => nomatch h) (.inl hs) h2 (.none sp_o2) (.betweenEmpty sp_o2)
 end P104Examples
 
 /-! ### Priority 105 — S3 slice (3) PR 2b-i: the stack-level receive twins (item 467), before proof
@@ -14659,10 +14660,170 @@ example {sp_br sp_o sp_p sp_s sp_b sp_c : SurfPos} {ev_p ev_b : List Event} (ho 
 example {sp_br sp_o1 sp_o2 sp_a : SurfPos} {ev : List Event} (h1 : GLit '[' sp_br sp_o1) (h2 : GLit '[' sp_o1 sp_o2)
     (ha : TFlowNode n .flowIn sp_o2 sp_a ev) :
     TFlowOpenStack n 2 (#[true].push true) (.value false) sp_br sp_a (([] ++ []) ++ ev) :=
-  (TFlowOpenStack.seqNest 1 #[true] .sep .sep sp_br sp_o1 sp_o2 sp_o2 sp_o2 [] []
+  (TFlowOpenStack.seqNest 1 #[true] .sep .sep sp_br sp_o1 sp_o1 sp_o2 sp_o2 sp_o2 [] []
     (.seqBase sp_br sp_br sp_o1 sp_o1 sp_o1 .sep [] h1 (.none sp_o1) (.betweenEmpty sp_o1))
-    h2 (.none sp_o2) (.betweenEmpty sp_o2)).receiveNode (fun _ h => nomatch h) (.inr ⟨rfl, rfl⟩) ha (fun h => nomatch h)
+    (fun _ h => nomatch h) (.inr ⟨rfl, rfl⟩) h2 (.none sp_o2) (.betweenEmpty sp_o2)).receiveNode (fun _ h => nomatch h) (.inr ⟨rfl, rfl⟩) ha (fun h => nomatch h)
 end P105Examples
+
+/-! ### Priority 106 — S3 slice (3) PR 2b-ii(α): `accum_step_flow_trace`'s indicator arms (item 468), before proof
+
+    The flow-indicator dispatcher (`accum_step_flow`) emits one silent token per step; the T
+    stack must ride unchanged (`ev' = ev`) through `[` `{` (base / nested open), `,` and `]` `}`.
+    Its depth-≥1 case re-reads the frame through `InteriorGap`, whose PROPS arm folds a held
+    property run into the frame at the indicator — the domain the (β) carrier must cover.  Rule 2
+    here: at every indicator over the P105 rows (plus held-run indicator rows), (a) the trace is
+    silent, by arm; (b) a run is held at the indicator, by arm (InteriorGap.props' reach);
+    (c) the depth distribution. -/
+namespace P106
+open L4YAML.Proofs.Serialization.TokenEvents (goOut)
+open L4YAML.Proofs.Serialization.SerializationWellFormed (Event)
+
+structure Frame where
+  isSeq : Bool
+  toks : List (Positioned YamlToken) := []    -- reversed, opener inclusive
+  propPending : Bool := false
+
+structure Tally where
+  rows : Nat := 0
+  scanned : Nat := 0
+  steps : Nat := 0
+  arm : List (String × Nat) := []        -- indicator arm
+  heldArm : List (String × Nat) := []    -- indicator arriving on a held run, by arm
+  depth : List (String × Nat) := []      -- depth before the indicator (0 = base open)
+  silentBad : List String := []
+  refusedOwn : List String := []
+
+def own : List String :=
+  ["{&a}", "{&a, b: c}", "[!t]", "[&a !t, b]", "[[&a]]", "{a: &b}", "[&a, &b]", "{&a: &b}"]
+def allRows : List String := (P105.allRows ++ own).eraseDups
+def pendings : List (List String) := [[], ["!a!"], ["!b!", "!a!"]]
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    t := { t with rows := t.rows + 1 }
+    match scanFiltered s with
+    | .error _ => if own.contains s then t := { t with refusedOwn := s :: t.refusedOwn }
+    | .ok ts =>
+      t := { t with scanned := t.scanned + 1 }
+      let mut st : List Frame := []
+      for tk in ts do
+        let isProp : Bool := match tk.val with | .anchor _ | .tag .. => true | _ => false
+        let arm? : Option String := match tk.val with
+          | .flowSequenceStart => some (if st.isEmpty then "baseOpen/seq" else "nestOpen/seq")
+          | .flowMappingStart => some (if st.isEmpty then "baseOpen/map" else "nestOpen/map")
+          | .flowEntry => some "comma"
+          | .flowSequenceEnd => some "close/seq"
+          | .flowMappingEnd => some "close/map"
+          | _ => none
+        match arm? with
+        | some a =>
+          t := { t with steps := t.steps + 1, arm := P100.bump t.arm a,
+                        depth := P100.bump t.depth s!"{st.length}" }
+          match st with
+          | f :: _ =>
+            if f.propPending then t := { t with heldArm := P100.bump t.heldArm a }
+            -- (a) silent on the frame that receives the indicator (the parent of a nested open)
+            for pnd in pendings do
+              let before := goOut f.toks.reverse pnd
+              let after := goOut (tk :: f.toks).reverse pnd
+              if before != after then
+                t := { t with silentBad := s!"{repr s}@{tk.pos.offset} {a} p={pnd}" :: t.silentBad }
+          | [] => pure ()
+        | none => pure ()
+        -- the walk
+        st := st.map (fun f => { f with toks := tk :: f.toks })
+        match tk.val with
+        | .flowSequenceStart | .flowMappingStart =>
+          st := { isSeq := tk.val == .flowSequenceStart, toks := [tk] } :: st
+        | .flowSequenceEnd | .flowMappingEnd =>
+          st := (match st with | _ :: r => r.map (fun f => { f with propPending := false }) | [] => [])
+          -- the parent received the closed node: its held run (if any) decorated it
+        | .flowEntry | .value | .key =>
+          st := (match st with | f :: r => { f with propPending := false } :: r | [] => [])
+        | .scalar .. | .alias _ =>
+          st := (match st with | f :: r => { f with propPending := false } :: r | [] => [])
+        | .anchor _ | .tag .. =>
+          st := (match st with | f :: r => { f with propPending := true } :: r | [] => [])
+        | _ => pure ()
+        let _ := isProp
+  return t
+end P106
+
+section P106Test
+def testFlowStep (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 106: S3 slice (3) PR 2b-ii(α) — accum_step_flow_trace's indicator arms, before proof"
+  let t := P106.tally P106.allRows
+  checkM state s!"P106(i) {t.rows} rows, {t.scanned} scanned, {t.steps} indicator steps; arms {t.arm}; silent bad {t.silentBad.length}"
+    (t.silentBad.isEmpty && t.rows == 701 && t.scanned == 547 && t.steps == 587 &&
+      t.arm.mergeSort (fun a b => a.1 ≤ b.1) ==
+        [("baseOpen/map", 78), ("baseOpen/seq", 122), ("close/map", 92), ("close/seq", 148), ("comma", 107),
+         ("nestOpen/map", 14), ("nestOpen/seq", 26)]) s!"{t.silentBad.take 5} | {t.arm}"
+  -- P2 REFUTED on the ceilings (comma 1–3 → 7, close 1–3 → 7): the P105 rows already carry more held
+  -- runs than the own list names; pinned exactly — this is the (β) carrier's domain at this dispatcher
+  checkM state s!"P106(ii) a run held at the indicator (InteriorGap.props' reach), by arm: {t.heldArm}"
+    (t.heldArm.mergeSort (fun a b => a.1 ≤ b.1) ==
+      [("close/map", 2), ("close/seq", 5), ("comma", 7), ("nestOpen/seq", 2)]) s!"{t.heldArm}"
+  -- P3 REFUTED on the floor (depth 1 = 327/587 = 56 % < 60 %: the 200 depth-0 base opens were under-counted)
+  checkM state s!"P106(iii) depth before the indicator: {t.depth}"
+    (t.depth.mergeSort (fun a b => a.1 ≤ b.1) == [("0", 200), ("1", 327), ("2", 46), ("3", 11), ("4", 3)]) s!"{t.depth}"
+  -- P4 REFUTED on one row: `{&a: &b}` — `:` is an anchor character, so `&a:` is the anchor `a:` and the
+  -- mapping has two properties-only nodes and no `:` (P104 (iv')'s `*y:` gotcha again); pinned exactly
+  checkM state s!"P106(iv) own rows refused by the scanner: exactly the anchor-colon row {t.refusedOwn}"
+    (t.refusedOwn == ["{&a: &b}"]) ""
+end P106Test
+
+section P106Examples
+open L4YAML.Surface L4YAML.Proofs.Serialization.TraceOf L4YAML.Proofs.Serialization.TraceOf.FlowWalk
+open L4YAML.Proofs.Serialization.SerializationWellFormed (Event)
+open L4YAML.Proofs.StreamAccum (FrameTail)
+variable {n : Nat}
+/-! P106 (v): the §7 indicator steps, hand-built over abstract premises, one per lemma. -/
+-- `[a,` — comma on a `.value` tail, glued
+example {sp_br sp_o sp_a sp_c : SurfPos} {ev : List Event} (ho : GLit '[' sp_br sp_o)
+    (ha : TFlowNode n .flowIn sp_o sp_a ev) (hc : GLit ',' sp_a sp_c) :
+    TFlowOpenStack n 1 #[true] .sep sp_br sp_c ([] ++ ev) :=
+  ((TFlowOpenStack.seqBase sp_br sp_br sp_o sp_o sp_o .sep [] ho (.none sp_o) (.betweenEmpty sp_o)).receiveNode
+    (kj := false) (fun _ h => nomatch h) (.inr ⟨rfl, rfl⟩) ha (fun h => nomatch h)).comma
+    (fun h => nomatch h) (.inr ⟨rfl, rfl⟩) hc
+-- `{a: [` — a nested open after the `:`'s separation; `[[` glued (`.sep` is leadFree)
+example {sp_br sp_o sp_a sp_c sp_b sp_o2 : SurfPos} {ev : List Event} (ho : GLit '{' sp_br sp_o)
+    (ha : TFlowNode n .flowIn sp_o sp_a ev) (hc : GLit ':' sp_a sp_c) (hs : SSeparateLines n sp_c sp_b)
+    (h2 : GLit '[' sp_b sp_o2) :
+    TFlowOpenStack n 2 (#[false].push true) .sep sp_br sp_o2 (([] ++ ev) ++ []) :=
+  ((TFlowOpenStack.mapBase sp_br sp_br sp_o sp_o sp_o .sep [] ho (.none sp_o) (.betweenEmpty sp_o)).receiveNodeColon
+    (kj := false) (.inl rfl) (.inr ⟨rfl, rfl⟩) ha (fun h => nomatch h) (.inr rfl) hc).openNestSeq
+    (fun _ h => nomatch h) (.inl hs) h2
+example {sp_br sp_o1 sp_o2 : SurfPos} (h1 : GLit '[' sp_br sp_o1) (h2 : GLit '{' sp_o1 sp_o2) :
+    TFlowOpenStack n 2 (#[true].push false) .sep sp_br sp_o2 ([] ++ []) :=
+  (TFlowOpenStack.seqBase sp_br sp_br sp_o1 sp_o1 sp_o1 .sep [] h1 (.none sp_o1) (.betweenEmpty sp_o1)).openNestMap
+    (fun _ h => nomatch h) (.inr ⟨rfl, rfl⟩) h2
+-- `[[a]` — the nested close lands on the parent as `.value true`; `{a: {}}`'s inner close likewise
+example {sp_br sp_o1 sp_o2 sp_a sp_c : SurfPos} {ev : List Event} (h1 : GLit '[' sp_br sp_o1) (h2 : GLit '[' sp_o1 sp_o2)
+    (ha : TFlowNode n .flowIn sp_o2 sp_a ev) (hc : GLit ']' sp_a sp_c) :
+    TFlowOpenStack n 1 #[true] (.value true) sp_br sp_c ([] ++ ([] ++ ev)) :=
+  TFlowOpenStack.closeNestedSeq
+    (TFlowOpenStack.seqBase sp_br sp_br sp_o1 sp_o1 sp_o1 .sep [] h1 (.none sp_o1) (.betweenEmpty sp_o1))
+    (fun _ h => nomatch h) (.inr ⟨rfl, rfl⟩) h2 (.none sp_o2)
+    (.midNode false sp_o2 sp_o2 sp_a [] ev (.init sp_o2) ha (fun h => nomatch h)) (.inr ⟨rfl, rfl⟩) hc
+example {sp_br sp_o sp_a sp_c sp_b sp_o2 sp_e : SurfPos} {ev : List Event} (ho : GLit '{' sp_br sp_o)
+    (ha : TFlowNode n .flowIn sp_o sp_a ev) (hc : GLit ':' sp_a sp_c) (hs : SSeparateLines n sp_c sp_b)
+    (h2 : GLit '{' sp_b sp_o2) (he : GLit '}' sp_o2 sp_e) :
+    TFlowOpenStack n 1 #[false] (.value true) sp_br sp_e (([] ++ ev) ++ []) :=
+  TFlowOpenStack.closeNestedMap
+    ((TFlowOpenStack.mapBase sp_br sp_br sp_o sp_o sp_o .sep [] ho (.none sp_o) (.betweenEmpty sp_o)).receiveNodeColon
+      (kj := false) (.inl rfl) (.inr ⟨rfl, rfl⟩) ha (fun h => nomatch h) (.inr rfl) hc)
+    (fun _ h => nomatch h) (.inl hs) h2 (.none sp_o2) (.betweenEmpty sp_o2) (.inr ⟨rfl, rfl⟩) he
+-- `[a]` / `{}` — the base close hands the content out, the stack is `nil`
+example {sp_br sp_o sp_a sp_c : SurfPos} {ev : List Event} (ho : GLit '[' sp_br sp_o)
+    (ha : TFlowNode n .flowIn sp_o sp_a ev) (hc : GLit ']' sp_a sp_c) :
+    TFlowContent n .flowOut sp_br sp_c ([] ++ ev) ∧ TFlowStackB n 0 #[] (.value false) sp_c sp_c [] :=
+  TSeqFrame.closeBase ho (.none sp_o) (.midNode false sp_o sp_o sp_a [] ev (.init sp_o) ha (fun h => nomatch h))
+    (.inr ⟨rfl, rfl⟩) hc
+example {sp_br sp_o sp_c : SurfPos} (ho : GLit '{' sp_br sp_o) (hc : GLit '}' sp_o sp_c) :
+    TFlowContent n .flowOut sp_br sp_c [] ∧ TFlowStackB n 0 #[] .sep sp_c sp_c [] :=
+  TMapFrame.closeBase ho (.none sp_o) (.betweenEmpty sp_o) (.inr ⟨rfl, rfl⟩) hc
+end P106Examples
 
 def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 100: S3 slice (1) — leaf span ↔ token payload (anchor / alias / tag), before proof"
@@ -14847,6 +15008,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testFlowWalk state
   testFlowAlgebra state
   testFlowReceive state
+  testFlowStep state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",

@@ -206,16 +206,20 @@ inductive TFlowOpenStack (n : Nat) :
       (st : TMapFrame n (inFlowCtx .flowOut) tl sp_es sp_cur ev) :
       TFlowOpenStack n 1 #[false] tl sp_before sp_cur ev
   | seqNest (d : Nat) (ks : Array Bool) (tl_par tl : FrameTail)
-      (sp_before sp_par sp_open sp_es sp_cur : SurfPos) (ev_par ev : List Event)
+      (sp_before sp_par sp_br sp_open sp_es sp_cur : SurfPos) (ev_par ev : List Event)
       (parent : TFlowOpenStack n d ks tl_par sp_before sp_par ev_par)
-      (h_open : GLit '[' sp_par sp_open)
+      (h_tail : ∀ kj, tl_par ≠ .value kj)
+      (h_lead : SSeparateLines n sp_par sp_br ∨ (sp_br = sp_par ∧ tl_par.leadFree))
+      (h_open : GLit '[' sp_br sp_open)
       (h_sep : GOpt (SSeparate n .flowIn) sp_open sp_es)
       (st : TSeqFrame n .flowIn tl sp_es sp_cur ev) :
       TFlowOpenStack n (d + 1) (ks.push true) tl sp_before sp_cur (ev_par ++ ev)
   | mapNest (d : Nat) (ks : Array Bool) (tl_par tl : FrameTail)
-      (sp_before sp_par sp_open sp_es sp_cur : SurfPos) (ev_par ev : List Event)
+      (sp_before sp_par sp_br sp_open sp_es sp_cur : SurfPos) (ev_par ev : List Event)
       (parent : TFlowOpenStack n d ks tl_par sp_before sp_par ev_par)
-      (h_open : GLit '{' sp_par sp_open)
+      (h_tail : ∀ kj, tl_par ≠ .value kj)
+      (h_lead : SSeparateLines n sp_par sp_br ∨ (sp_br = sp_par ∧ tl_par.leadFree))
+      (h_open : GLit '{' sp_br sp_open)
       (h_sep : GOpt (SSeparate n .flowIn) sp_open sp_es)
       (st : TMapFrame n .flowIn tl sp_es sp_cur ev) :
       TFlowOpenStack n (d + 1) (ks.push false) tl sp_before sp_cur (ev_par ++ ev)
@@ -1052,14 +1056,14 @@ lemma TFlowOpenStack.liftTop {n D : Nat} {ks : Array Bool} {tl tl' : FrameTail}
   | mapBase sp_before sp_br sp_open sp_es sp_cur tl ev h_open h_sep st =>
     obtain ⟨sp_es', h_sep', st'⟩ := fm h_sep st
     exact .mapBase _ _ _ _ _ _ _ h_open h_sep' st'
-  | seqNest d ks tl_par tl sp_before sp_par sp_open sp_es sp_cur ev_par ev parent h_open h_sep st =>
+  | seqNest d ks tl_par tl sp_before sp_par sp_br sp_open sp_es sp_cur ev_par ev parent h_tail h_lead h_open h_sep st =>
     obtain ⟨sp_es', h_sep', st'⟩ := fs h_sep st
     exact TFlowOpenStack.retrace (List.append_assoc _ _ _).symm
-      (.seqNest _ _ _ _ _ _ _ _ _ _ _ parent h_open h_sep' st')
-  | mapNest d ks tl_par tl sp_before sp_par sp_open sp_es sp_cur ev_par ev parent h_open h_sep st =>
+      (.seqNest _ _ _ _ _ _ _ _ _ _ _ _ parent h_tail h_lead h_open h_sep' st')
+  | mapNest d ks tl_par tl sp_before sp_par sp_br sp_open sp_es sp_cur ev_par ev parent h_tail h_lead h_open h_sep st =>
     obtain ⟨sp_es', h_sep', st'⟩ := fm h_sep st
     exact TFlowOpenStack.retrace (List.append_assoc _ _ _).symm
-      (.mapNest _ _ _ _ _ _ _ _ _ _ _ parent h_open h_sep' st')
+      (.mapNest _ _ _ _ _ _ _ _ _ _ _ _ parent h_tail h_lead h_open h_sep' st')
 
 /-- `FlowOpenStack.receiveNode`: a completed `.flowIn` node into the top frame, which is not
     `.value`-tailed (`h_tail` = the scanner's adjacency guard); the tail becomes `.value kj`
@@ -1232,6 +1236,103 @@ lemma TFlowStackB.openMapBase {n : Nat} {sp_before sp_br sp_open sp_es : SurfPos
     (h_open : GLit '{' sp_br sp_open) (h_sep : GOpt (SSeparate n .flowOut) sp_open sp_es) :
     TFlowStackB n 1 #[false] .sep sp_before sp_es [] :=
   .open _ _ _ _ _ _ (.mapBase _ _ _ _ _ _ _ h_open h_sep (.betweenEmpty sp_es))
+
+
+/-! ## §7 The indicator steps on the stack (PR 2b-ii α1): `[` `{` push, `,` hold, `]` `}` close
+
+    What `accum_step_flow`'s five arms do to the T stack, keyed on the S witnesses the dispatcher
+    already holds (the lead `h_lead₂` after the frame re-read, the indicator's `GLit`): a nested
+    open pushes `betweenEmpty` over the parent with the lead before the bracket; `,` holds the top
+    frame; a nested close lands the child as the parent's `.flowIn` node (`receiveNode` with the
+    lead the push recorded); a base close hands the finished `[158] ns-flow-content` out, trace
+    and all, and the stack is `nil` again.  Indicators are silent: every step keeps the trace. -/
+
+/-- `,` into the top frame (`holdCommaLead` on the stack), trace kept. -/
+lemma TFlowOpenStack.comma {n D : Nat} {ks : Array Bool} {tl : FrameTail}
+    {sp_block sp_flow sp_prep sp_tok : SurfPos} {ev : List Event}
+    (h : TFlowOpenStack n D ks tl sp_block sp_flow ev) (h_tail : tl ≠ .sep)
+    (h_lead : SSeparateLines n sp_flow sp_prep ∨ (sp_prep = sp_flow ∧ tl.closeFree = true))
+    (hcomma : GLit ',' sp_prep sp_tok) :
+    TFlowOpenStack n D ks .sep sp_block sp_tok ev :=
+  TFlowOpenStack.retrace (List.append_nil _) (h.liftTop (delta := [])
+    (fun h_sep st => by
+      exact ⟨_, h_sep, TSeqFrame.retrace (List.append_nil _).symm (st.holdCommaLead h_tail h_lead hcomma)⟩)
+    (fun h_sep st => by
+      exact ⟨_, h_sep, TMapFrame.retrace (List.append_nil _).symm (st.holdCommaLead h_tail h_lead hcomma)⟩))
+
+/-- A nested `[` over a receptive parent: `betweenEmpty` pushed, the lead before the bracket kept
+    in the nest for the close to spend; trace `ev_par ++ []`. -/
+lemma TFlowOpenStack.openNestSeq {n d : Nat} {ks : Array Bool} {tl_par : FrameTail}
+    {sp_block sp_par sp_br sp_open : SurfPos} {ev_par : List Event}
+    (parent : TFlowOpenStack n d ks tl_par sp_block sp_par ev_par)
+    (h_tail : ∀ kj, tl_par ≠ .value kj)
+    (h_lead : SSeparateLines n sp_par sp_br ∨ (sp_br = sp_par ∧ tl_par.leadFree))
+    (h_open : GLit '[' sp_br sp_open) :
+    TFlowOpenStack n (d + 1) (ks.push true) .sep sp_block sp_open (ev_par ++ []) :=
+  .seqNest _ _ _ _ _ _ _ _ _ _ _ _ parent h_tail h_lead h_open (.none sp_open) (.betweenEmpty sp_open)
+
+lemma TFlowOpenStack.openNestMap {n d : Nat} {ks : Array Bool} {tl_par : FrameTail}
+    {sp_block sp_par sp_br sp_open : SurfPos} {ev_par : List Event}
+    (parent : TFlowOpenStack n d ks tl_par sp_block sp_par ev_par)
+    (h_tail : ∀ kj, tl_par ≠ .value kj)
+    (h_lead : SSeparateLines n sp_par sp_br ∨ (sp_br = sp_par ∧ tl_par.leadFree))
+    (h_open : GLit '{' sp_br sp_open) :
+    TFlowOpenStack n (d + 1) (ks.push false) .sep sp_block sp_open (ev_par ++ []) :=
+  .mapNest _ _ _ _ _ _ _ _ _ _ _ _ parent h_tail h_lead h_open (.none sp_open) (.betweenEmpty sp_open)
+
+/-- A nested `]`: the child closes (`closeLead`) and lands as the parent's JSON-like node, with
+    the lead the push recorded; the parent's tail becomes `.value true`, trace `ev_par ++ ev`. -/
+lemma TFlowOpenStack.closeNestedSeq {n d : Nat} {ks : Array Bool} {tl_par tl : FrameTail}
+    {sp_block sp_par sp_br sp_open sp_es sp_cur sp_prep sp_tok : SurfPos} {ev_par ev : List Event}
+    (parent : TFlowOpenStack n d ks tl_par sp_block sp_par ev_par)
+    (h_tail : ∀ kj, tl_par ≠ .value kj)
+    (h_lead : SSeparateLines n sp_par sp_br ∨ (sp_br = sp_par ∧ tl_par.leadFree))
+    (h_open : GLit '[' sp_br sp_open) (h_sep : GOpt (SSeparate n .flowIn) sp_open sp_es)
+    (st : TSeqFrame n .flowIn tl sp_es sp_cur ev)
+    (h_lead₂ : SSeparateLines n sp_cur sp_prep ∨ (sp_prep = sp_cur ∧ tl.closeFree = true))
+    (h_close : GLit ']' sp_prep sp_tok) :
+    TFlowOpenStack n d ks (.value true) sp_block sp_tok (ev_par ++ ev) :=
+  have h_seq : TFlowSequence n .flowIn sp_br sp_tok ev :=
+    TSeqFrame.closeLead (c_out := .flowIn) h_open h_sep st (h_lead₂.imp (fun h => ⟨h, h⟩) id) h_close
+  parent.receiveNode h_tail h_lead (.content _ _ _ _ _ (.flowSeq _ _ _ _ _ h_seq))
+    (fun _ => .content _ _ _ _ _ (.flowSeq _ _ _ _ _ h_seq))
+
+lemma TFlowOpenStack.closeNestedMap {n d : Nat} {ks : Array Bool} {tl_par tl : FrameTail}
+    {sp_block sp_par sp_br sp_open sp_es sp_cur sp_prep sp_tok : SurfPos} {ev_par ev : List Event}
+    (parent : TFlowOpenStack n d ks tl_par sp_block sp_par ev_par)
+    (h_tail : ∀ kj, tl_par ≠ .value kj)
+    (h_lead : SSeparateLines n sp_par sp_br ∨ (sp_br = sp_par ∧ tl_par.leadFree))
+    (h_open : GLit '{' sp_br sp_open) (h_sep : GOpt (SSeparate n .flowIn) sp_open sp_es)
+    (st : TMapFrame n .flowIn tl sp_es sp_cur ev)
+    (h_lead₂ : SSeparateLines n sp_cur sp_prep ∨ (sp_prep = sp_cur ∧ tl.closeFree = true))
+    (h_close : GLit '}' sp_prep sp_tok) :
+    TFlowOpenStack n d ks (.value true) sp_block sp_tok (ev_par ++ ev) :=
+  have h_map : TFlowMapping n .flowIn sp_br sp_tok ev :=
+    TMapFrame.closeLead (c_out := .flowIn) h_open h_sep st (h_lead₂.imp (fun h => ⟨h, h⟩) id) h_close
+  parent.receiveNode h_tail h_lead (.content _ _ _ _ _ (.flowMap _ _ _ _ _ h_map))
+    (fun _ => .content _ _ _ _ _ (.flowMap _ _ _ _ _ h_map))
+
+/-- The base `]`: the depth-1 frame closes into the finished `[158]` content handed out to the
+    stream (Row 12's depth-0 hand-off), trace and all; the stack is `nil` again (trace `[]`). -/
+lemma TSeqFrame.closeBase {n : Nat} {tl : FrameTail}
+    {sp_br sp_open sp_es sp_cur sp_prep sp_tok : SurfPos} {ev : List Event}
+    (h_open : GLit '[' sp_br sp_open) (h_sep : GOpt (SSeparate n .flowOut) sp_open sp_es)
+    (st : TSeqFrame n (inFlowCtx .flowOut) tl sp_es sp_cur ev)
+    (h_lead₂ : SSeparateLines n sp_cur sp_prep ∨ (sp_prep = sp_cur ∧ tl.closeFree = true))
+    (h_close : GLit ']' sp_prep sp_tok) :
+    TFlowContent n .flowOut sp_br sp_tok ev ∧ TFlowStackB n 0 #[] tl sp_tok sp_tok [] :=
+  ⟨.flowSeq _ _ _ _ _ (st.closeLead h_open h_sep (h_lead₂.imp (fun h => ⟨h, h⟩) id) h_close),
+    .nil sp_tok tl⟩
+
+lemma TMapFrame.closeBase {n : Nat} {tl : FrameTail}
+    {sp_br sp_open sp_es sp_cur sp_prep sp_tok : SurfPos} {ev : List Event}
+    (h_open : GLit '{' sp_br sp_open) (h_sep : GOpt (SSeparate n .flowOut) sp_open sp_es)
+    (st : TMapFrame n (inFlowCtx .flowOut) tl sp_es sp_cur ev)
+    (h_lead₂ : SSeparateLines n sp_cur sp_prep ∨ (sp_prep = sp_cur ∧ tl.closeFree = true))
+    (h_close : GLit '}' sp_prep sp_tok) :
+    TFlowContent n .flowOut sp_br sp_tok ev ∧ TFlowStackB n 0 #[] tl sp_tok sp_tok [] :=
+  ⟨.flowMap _ _ _ _ _ (st.closeLead h_open h_sep (h_lead₂.imp (fun h => ⟨h, h⟩) id) h_close),
+    .nil sp_tok tl⟩
 
 end
 
