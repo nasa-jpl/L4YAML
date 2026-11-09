@@ -187,23 +187,24 @@ inductive TMapFrame (n : Nat) (c : YamlContext) :
 /-! ## §3 The open-frame stack and the `FlowStackK` sibling
 
 `TFlowOpenStack n fl ks tl sp_before sp_cur ev`: `fl` open frames (`ks` their kinds,
-`true` = sequence, as in `FlowOpenStack`), the innermost's tail `tl`, the outermost frame's
-`[` / `{` at `sp_before`, the innermost's end at `sp_cur`, and `ev` the trace of everything
-scanned since `sp_before`: the parents' traces (each parent is mid-entry at `.colon` / `.value`,
-its trace `ev_p` so far) followed by the innermost frame's.  `FlowOpenStack`'s scanner-side
+`true` = sequence, as in `FlowOpenStack`), the innermost's tail `tl`, the outer boundary
+`sp_before` (decoupled from the outermost `[` / `{` at `sp_br`, as in `FlowOpenStack.seqBase`:
+the gap is the enclosing context's), the innermost's end at `sp_cur`, and `ev` the trace of the
+open frames: each parent's trace so far (at whatever tail it held when the child opened —
+`.sep` for `[[`, `.colon false` for `{a: [`) followed by the innermost frame's.  `FlowOpenStack`'s scanner-side
 payloads (`resume`, `promise`, `inject`) are not mirrored: 2c couples them. -/
 inductive TFlowOpenStack (n : Nat) :
     Nat → Array Bool → FrameTail → SurfPos → SurfPos → List Event → Prop where
-  | seqBase (sp_br sp_open sp_es sp_cur : SurfPos) (tl : FrameTail) (ev : List Event)
+  | seqBase (sp_before sp_br sp_open sp_es sp_cur : SurfPos) (tl : FrameTail) (ev : List Event)
       (h_open : GLit '[' sp_br sp_open)
       (h_sep : GOpt (SSeparate n .flowOut) sp_open sp_es)
       (st : TSeqFrame n (inFlowCtx .flowOut) tl sp_es sp_cur ev) :
-      TFlowOpenStack n 1 #[true] tl sp_br sp_cur ev
-  | mapBase (sp_br sp_open sp_es sp_cur : SurfPos) (tl : FrameTail) (ev : List Event)
+      TFlowOpenStack n 1 #[true] tl sp_before sp_cur ev
+  | mapBase (sp_before sp_br sp_open sp_es sp_cur : SurfPos) (tl : FrameTail) (ev : List Event)
       (h_open : GLit '{' sp_br sp_open)
       (h_sep : GOpt (SSeparate n .flowOut) sp_open sp_es)
       (st : TMapFrame n (inFlowCtx .flowOut) tl sp_es sp_cur ev) :
-      TFlowOpenStack n 1 #[false] tl sp_br sp_cur ev
+      TFlowOpenStack n 1 #[false] tl sp_before sp_cur ev
   | seqNest (d : Nat) (ks : Array Bool) (tl_par tl : FrameTail)
       (sp_before sp_par sp_open sp_es sp_cur : SurfPos) (ev_par ev : List Event)
       (parent : TFlowOpenStack n d ks tl_par sp_before sp_par ev_par)
