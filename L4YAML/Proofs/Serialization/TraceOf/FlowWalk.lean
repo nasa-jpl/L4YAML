@@ -206,16 +206,20 @@ inductive TFlowOpenStack (n : Nat) :
       (st : TMapFrame n (inFlowCtx .flowOut) tl sp_es sp_cur ev) :
       TFlowOpenStack n 1 #[false] tl sp_before sp_cur ev
   | seqNest (d : Nat) (ks : Array Bool) (tl_par tl : FrameTail)
-      (sp_before sp_par sp_open sp_es sp_cur : SurfPos) (ev_par ev : List Event)
+      (sp_before sp_par sp_br sp_open sp_es sp_cur : SurfPos) (ev_par ev : List Event)
       (parent : TFlowOpenStack n d ks tl_par sp_before sp_par ev_par)
-      (h_open : GLit '[' sp_par sp_open)
+      (h_tail : ∀ kj, tl_par ≠ .value kj)
+      (h_lead : SSeparateLines n sp_par sp_br ∨ (sp_br = sp_par ∧ tl_par.leadFree))
+      (h_open : GLit '[' sp_br sp_open)
       (h_sep : GOpt (SSeparate n .flowIn) sp_open sp_es)
       (st : TSeqFrame n .flowIn tl sp_es sp_cur ev) :
       TFlowOpenStack n (d + 1) (ks.push true) tl sp_before sp_cur (ev_par ++ ev)
   | mapNest (d : Nat) (ks : Array Bool) (tl_par tl : FrameTail)
-      (sp_before sp_par sp_open sp_es sp_cur : SurfPos) (ev_par ev : List Event)
+      (sp_before sp_par sp_br sp_open sp_es sp_cur : SurfPos) (ev_par ev : List Event)
       (parent : TFlowOpenStack n d ks tl_par sp_before sp_par ev_par)
-      (h_open : GLit '{' sp_par sp_open)
+      (h_tail : ∀ kj, tl_par ≠ .value kj)
+      (h_lead : SSeparateLines n sp_par sp_br ∨ (sp_br = sp_par ∧ tl_par.leadFree))
+      (h_open : GLit '{' sp_br sp_open)
       (h_sep : GOpt (SSeparate n .flowIn) sp_open sp_es)
       (st : TMapFrame n .flowIn tl sp_es sp_cur ev) :
       TFlowOpenStack n (d + 1) (ks.push false) tl sp_before sp_cur (ev_par ++ ev)
@@ -1052,14 +1056,14 @@ lemma TFlowOpenStack.liftTop {n D : Nat} {ks : Array Bool} {tl tl' : FrameTail}
   | mapBase sp_before sp_br sp_open sp_es sp_cur tl ev h_open h_sep st =>
     obtain ⟨sp_es', h_sep', st'⟩ := fm h_sep st
     exact .mapBase _ _ _ _ _ _ _ h_open h_sep' st'
-  | seqNest d ks tl_par tl sp_before sp_par sp_open sp_es sp_cur ev_par ev parent h_open h_sep st =>
+  | seqNest d ks tl_par tl sp_before sp_par sp_br sp_open sp_es sp_cur ev_par ev parent h_tail h_lead h_open h_sep st =>
     obtain ⟨sp_es', h_sep', st'⟩ := fs h_sep st
     exact TFlowOpenStack.retrace (List.append_assoc _ _ _).symm
-      (.seqNest _ _ _ _ _ _ _ _ _ _ _ parent h_open h_sep' st')
-  | mapNest d ks tl_par tl sp_before sp_par sp_open sp_es sp_cur ev_par ev parent h_open h_sep st =>
+      (.seqNest _ _ _ _ _ _ _ _ _ _ _ _ parent h_tail h_lead h_open h_sep' st')
+  | mapNest d ks tl_par tl sp_before sp_par sp_br sp_open sp_es sp_cur ev_par ev parent h_tail h_lead h_open h_sep st =>
     obtain ⟨sp_es', h_sep', st'⟩ := fm h_sep st
     exact TFlowOpenStack.retrace (List.append_assoc _ _ _).symm
-      (.mapNest _ _ _ _ _ _ _ _ _ _ _ parent h_open h_sep' st')
+      (.mapNest _ _ _ _ _ _ _ _ _ _ _ _ parent h_tail h_lead h_open h_sep' st')
 
 /-- `FlowOpenStack.receiveNode`: a completed `.flowIn` node into the top frame, which is not
     `.value`-tailed (`h_tail` = the scanner's adjacency guard); the tail becomes `.value kj`
