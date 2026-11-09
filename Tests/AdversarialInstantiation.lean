@@ -14268,6 +14268,7 @@ end P104Test
 section P104Examples
 open L4YAML.Surface L4YAML.Proofs.Serialization.TraceOf L4YAML.Proofs.Serialization.TraceOf.FlowWalk
 open L4YAML.Proofs.Serialization.SerializationWellFormed (Event)
+open L4YAML.Proofs.StreamAccum (FrameTail)
 variable {n : Nat} {c : YamlContext}
 -- `[]`
 example (sp : SurfPos) : TSeqFrame n c .sep sp sp [] := .betweenEmpty sp
@@ -14320,6 +14321,24 @@ example {sp sp' : SurfPos} (hq : GLit '?' sp sp') : TMapFrame n c .question sp s
 example {sp sp_qe sp_s sp' : SurfPos} (hq : GLit '?' sp sp_qe) (hs : SSeparate n c sp_qe sp_s) (hcol : GLit ':' sp_s sp') :
     TMapFrame n c (.colon false) sp sp' [] :=
   .midQuestionEmptyColon sp sp sp_qe sp_s sp' [] (.init sp) hq hs hcol
+-- stack shapes: depth 0 (`nil`); a base opener after a gap (`sp_before ≠ sp_br`);
+-- `[[` (parent at `.sep`) and `{a: [` (parent at `.colon false`)
+example (sp : SurfPos) (tl : FrameTail) : TFlowStackB n 0 #[] tl sp sp [] := .nil sp tl
+example {sp_before sp_br sp_open : SurfPos} (ho : GLit '[' sp_br sp_open) :
+    TFlowOpenStack n 1 #[true] .sep sp_before sp_open [] :=
+  .seqBase sp_before sp_br sp_open sp_open sp_open .sep [] ho (.none sp_open) (.betweenEmpty sp_open)
+example {sp_br sp_o1 sp_o2 : SurfPos} (h1 : GLit '[' sp_br sp_o1) (h2 : GLit '[' sp_o1 sp_o2) :
+    TFlowOpenStack n 2 (#[true].push true) .sep sp_br sp_o2 ([] ++ []) :=
+  .seqNest 1 #[true] .sep .sep sp_br sp_o1 sp_o2 sp_o2 sp_o2 [] []
+    (.seqBase sp_br sp_br sp_o1 sp_o1 sp_o1 .sep [] h1 (.none sp_o1) (.betweenEmpty sp_o1))
+    h2 (.none sp_o2) (.betweenEmpty sp_o2)
+example {sp_br sp_o1 sp_k sp_c sp_o2 : SurfPos} {ev : List Event} (h1 : GLit '{' sp_br sp_o1)
+    (hk : TFlowNode n (inFlowCtx .flowOut) sp_o1 sp_k ev) (hc : GLit ':' sp_k sp_c) (h2 : GLit '[' sp_c sp_o2) :
+    TFlowOpenStack n 2 (#[false].push true) .sep sp_br sp_o2 (([] ++ ev) ++ []) :=
+  .seqNest 1 #[false] (.colon false) .sep sp_br sp_c sp_o2 sp_o2 sp_o2 ([] ++ ev) []
+    (.mapBase sp_br sp_br sp_o1 sp_o1 sp_c (.colon false) ([] ++ ev) h1 (.none sp_o1)
+      (.midColon false sp_o1 sp_o1 sp_k sp_k sp_c [] ev (.init sp_o1) hk (fun h => nomatch h) (.none sp_k) hc))
+    h2 (.none sp_o2) (.betweenEmpty sp_o2)
 end P104Examples
 
 def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
