@@ -10,6 +10,7 @@ public import L4YAML.Proofs.Parser.ParserGrammableBase
 public import L4YAML.Proofs.Parser.TokenGrammar
 public import L4YAML.Proofs.Serialization.TokenEvents
 public import L4YAML.Proofs.Production.StreamAccum
+public import L4YAML.Proofs.Serialization.TraceOf.FlowWalk
 public import L4YAML.Proofs.Scanner.RegisterWitness
 public import L4YAML.Proofs.Serialization.ScannerShape
 public import L4YAML.Proofs.Scanner.DocStartLive
@@ -14126,6 +14127,200 @@ def testFlowWalk (state : IO.Ref TestCollector) : IO Unit := do
 
 end P103Test
 
+/-! ### Priority 104 (item 466, S3 slice (3) PR 2a): the frame algebra before proof.
+`TraceOf/FlowWalk.lean`'s `TSeqFrame` / `TMapFrame` carry the frame's trace and claim the two
+frame steps preserve it: `holdComma` (`,` on a non-`sep` tail) commits the open entry to the prefix,
+`closeWithSep` lands every shape on `TFlowSequence` / `TFlowMapping` with the frame's trace.  The
+executable mirror: the P103 shape walk, with per-frame token segments — `pref` (the committed
+entries) and `entry` (since the last own `,`) — checked at every own `,` and every close for
+(i) additivity `goOut frame p = pref ++ goOut entry p`, pending threaded, (ii) independence of the
+pending list, (iii) the whole span's `tokenEvents` equal to the frame's trace, (iv) which of the
+20 close arms / 16 `,` arms the rows reach, with rows added until every arm is; (v) hand-built
+frames over abstract leaf premises, build-checked below. -/
+namespace P104
+open L4YAML.Proofs.Serialization.TokenEvents (goOut tokenEvents)
+open L4YAML.Proofs.Serialization.SerializationWellFormed (Event)
+
+structure Frame where
+  isSeq : Bool
+  shape : String := "betweenEmpty"
+  toks : List (Positioned YamlToken) := []    -- reversed, opener inclusive
+  entry : List (Positioned YamlToken) := []   -- reversed, the open entry since the last own `,`
+  pref : List Event := []                     -- trace of the committed entries
+  propPending : Bool := false
+
+structure Tally where
+  rows : Nat := 0
+  scanned : Nat := 0
+  steps : Nat := 0          -- own `,` + closes checked
+  closes : Nat := 0
+  addBad : List String := []
+  indepBad : List String := []
+  spanBad : List String := []
+  shapeBad : List String := []
+  closeArm : List (String × Nat) := []   -- kind/shape at `]` / `}`
+  holdArm : List (String × Nat) := []    -- kind/shape at an own `,` with tl ≠ sep
+  refusedOwn : List String := []
+
+/-- Rows aimed at the shapes P103's census never closed or held: explicit `?`, empty keys, `[a:]`,
+    bare `{a}`, each closed and each followed by `,`. -/
+def own : List String :=
+  ["[? a:]", "[:]", "[? ]", "[? :]", "{:}", "{? }", "{? :}", "{? a}", "{? a:}", "[a:]", "{a}",
+   "[? a: b]", "{? a: b}", "[? a:, b]", "[:, a]", "[? , a]", "[? :, a]", "{:, a: b}", "{? , a: b}",
+   "{? :, a: b}", "{? a, b: c}", "{? a:, b: c}", "[a:, b]", "{a, b}", "{a:, b}", "[? a, b]",
+   "[a, b]", "{a: b, c: d}", "[[a], b]", "{a: {b: c}, d: e}", "[? a: b, c: d]", "{? a: b, c: d}",
+   "[&x a, *x]", "{!t a: &y b, *y: c}", "[\"a\": b]", "{\"a\": b, 'c': d}"]
+def allRows : List String := (P102.allRows ++ own).eraseDups
+def pendings : List (List String) := [[], ["!a!"], ["!b!", "!a!"]]
+def isSep (sh : String) : Bool := sh == "betweenEmpty" || sh == "betweenHeld"
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    t := { t with rows := t.rows + 1 }
+    match scanFiltered s with
+    | .error _ => if own.contains s then t := { t with refusedOwn := s :: t.refusedOwn }
+    | .ok ts =>
+      t := { t with scanned := t.scanned + 1 }
+      let mut st : List Frame := []
+      for tk in ts do
+        st := st.map (fun f => { f with toks := tk :: f.toks, entry := tk :: f.entry })
+        let isProp : Bool := match tk.val with | .anchor _ | .tag .. => true | _ => false
+        let ev : String := match tk.val with
+          | .flowSequenceStart | .flowMappingStart | .scalar .. | .alias _ | .anchor _ | .tag .. => "node"
+          | .flowEntry => "comma"
+          | .key => if s.get ⟨tk.pos.offset⟩ == '?' then "question" else "key"
+          | .value => "colon"
+          | _ => ""
+        -- the frame step checks, BEFORE the shape moves
+        let stepCheck : Frame → String → Tally := fun f site => Id.run do
+          let mut t' := { t with steps := t.steps + 1 }
+          let base := (goOut f.toks.reverse []).1
+          for p in pendings do
+            let r := goOut f.toks.reverse p
+            let e := goOut f.entry.reverse p
+            if r.1 != f.pref ++ e.1 || r.2 != p then
+              t' := { t' with addBad := s!"{repr s}@{tk.pos.offset} {site} p={p}" :: t'.addBad }
+            if r.1 != base then
+              t' := { t' with indepBad := s!"{repr s}@{tk.pos.offset} {site} p={p}" :: t'.indepBad }
+          return t'
+        match tk.val with
+        | .flowEntry =>
+          match st with
+          | f :: r =>
+            t := stepCheck f "comma"
+            if !isSep f.shape then
+              t := { t with holdArm := P100.bump t.holdArm s!"{if f.isSeq then "seq" else "map"}/{f.shape}" }
+            st := { f with entry := [], pref := f.pref ++ (goOut f.entry.reverse []).1 } :: r
+          | [] => pure ()
+        | .flowSequenceEnd | .flowMappingEnd =>
+          match st with
+          | f :: rest =>
+            t := stepCheck f "close"
+            t := { t with closes := t.closes + 1,
+                          closeArm := P100.bump t.closeArm s!"{if f.isSeq then "seq" else "map"}/{f.shape}" }
+            if tokenEvents f.toks.reverse.toArray != (goOut f.toks.reverse []).1 then
+              t := { t with spanBad := s!"{repr s}@{tk.pos.offset}" :: t.spanBad }
+            st := rest
+          | [] => pure ()
+        | _ => pure ()
+        -- the shape walk (P103's), on the frame that now holds the token
+        if ev != "" && ev != "key" && ev != "comma" then
+          match st with
+          | f :: r =>
+            if ev == "node" && f.propPending then
+              st := { f with propPending := isProp } :: r
+            else
+              match P103.step f.isSeq f.shape ev with
+              | some sh => st := { f with shape := sh, propPending := isProp } :: r
+              | none => t := { t with shapeBad := s!"{repr s}@{tk.pos.offset}: {f.shape} + {ev}" :: t.shapeBad }
+          | [] => pure ()
+        else if ev == "comma" then
+          st := (match st with | f :: r => { f with shape := "betweenHeld" } :: r | [] => [])
+        match tk.val with
+        | .flowSequenceStart | .flowMappingStart =>
+          st := { isSeq := tk.val == .flowSequenceStart, toks := [tk], entry := [tk] } :: st
+        | _ => pure ()
+  return t
+def arms (l : List (String × Nat)) : Nat := l.length
+end P104
+
+section P104Test
+open L4YAML.Proofs.Serialization.SerializationWellFormed (Event)
+
+def testFlowAlgebra (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 104: S3 slice (3) PR 2a — the frame algebra (TSeqFrame / TMapFrame trace steps), before proof"
+  let t := P104.tally P104.allRows
+  checkM state s!"P104(i) {t.rows} rows, {t.scanned} scanned, {t.steps} frame steps, {t.closes} closes; additivity bad {t.addBad.length}"
+    (t.rows ≥ 670 && t.steps ≥ 264 && t.closes ≥ 183 && t.addBad.isEmpty) s!"{t.addBad.take 5}"
+  checkM state s!"P104(ii) trace independent of the pending list: bad {t.indepBad.length}" t.indepBad.isEmpty s!"{t.indepBad.take 5}"
+  checkM state s!"P104(iii) whole-span tokenEvents = frame trace: bad {t.spanBad.length}" t.spanBad.isEmpty s!"{t.spanBad.take 5}"
+  checkM state s!"P104(iv) close arms reached {P104.arms t.closeArm}/20, hold arms {P104.arms t.holdArm}/16: {t.closeArm} | {t.holdArm}"
+    (P104.arms t.closeArm == 20 && P104.arms t.holdArm == 16) ""
+  -- P5 REFUTED on one row: `*y: c` — the alias arm reads `y:` as the anchor name (YAML's own
+  -- gotcha: `:` is an anchor character), so the mapping has no `:` and the scanner refuses it.
+  -- Pinned exactly; the arm census above is 20/20 and 16/16 without it.
+  checkM state s!"P104(iv') own rows refused by the scanner: exactly the alias-key row {t.refusedOwn}"
+    (t.refusedOwn == ["{!t a: &y b, *y: c}"]) ""
+  checkM state s!"P104(iv'') shape walk: bad transitions {t.shapeBad.length}" t.shapeBad.isEmpty s!"{t.shapeBad.take 5}"
+end P104Test
+
+section P104Examples
+open L4YAML.Surface L4YAML.Proofs.Serialization.TraceOf L4YAML.Proofs.Serialization.TraceOf.FlowWalk
+open L4YAML.Proofs.Serialization.SerializationWellFormed (Event)
+variable {n : Nat} {c : YamlContext}
+-- `[]`
+example (sp : SurfPos) : TSeqFrame n c .sep sp sp [] := .betweenEmpty sp
+-- `[a` (midNode), `[a]` is its close
+example {sp sp' : SurfPos} {ev : List Event} (h : TFlowNode n c sp sp' ev) :
+    TSeqFrame n c (.value false) sp sp' ([] ++ ev) :=
+  .midNode false sp sp sp' [] ev (.init sp) h (fun h => nomatch h)
+-- `[a,`
+example {sp sp_e sp_c : SurfPos} {ev : List Event} (h : TFlowNode n c sp sp_e ev) (hc : GLit ',' sp_e sp_c) :
+    TSeqFrame n c .sep sp sp_c ev :=
+  .betweenHeld sp sp_e sp_c sp_c ev (.single n c sp sp_e sp_e ev (.node n c sp sp_e ev h) (.none sp_e))
+    (.single (.node n c sp sp_e ev h) (.none sp_e)) hc (.none sp_c)
+-- `[a, b`
+example {sp s₁ s₂ s₃ sp' : SurfPos} {ev1 ev2 : List Event} (h1 : TFlowNode n c sp s₁ ev1) (hc : GLit ',' s₁ s₂)
+    (hs : SSeparate n c s₂ s₃) (h2 : TFlowNode n c s₃ sp' ev2) :
+    TSeqFrame n c (.value false) sp sp' (ev1 ++ ev2) :=
+  .betweenEntries false sp sp' (ev1 ++ ev2)
+    (.consMore n c sp s₁ s₁ s₂ s₃ sp' ev1 ev2 (.node n c sp s₁ ev1 h1) (.none s₁) hc (.some _ _ hs)
+      (.single n c s₃ sp' sp' ev2 (.node n c s₃ sp' ev2 h2) (.none sp')))
+    (.consMore (.node n c sp s₁ ev1 h1) (.none s₁) hc (.some _ _ hs)
+      (.single n c s₃ sp' sp' ev2 (.node n c s₃ sp' ev2 h2) (.none sp'))
+      (.single (.node n c s₃ sp' ev2 h2) (.none sp')))
+-- `[a:`
+example {sp sp_k sp' : SurfPos} {ev : List Event} (h : TFlowNode n c sp sp_k ev) (hcol : GLit ':' sp_k sp') :
+    TSeqFrame n c (.colon false) sp sp' ([] ++ ev) :=
+  .midColon false sp sp sp_k sp_k sp' [] ev (.init sp) h (fun h => nomatch h) (.none sp_k) hcol
+-- `[? a`
+example {sp sp_qe sp_k0 sp' : SurfPos} {ev : List Event} (hq : GLit '?' sp sp_qe) (hs : SSeparate n c sp_qe sp_k0)
+    (h : TFlowNode n c sp_k0 sp' ev) : TSeqFrame n c (.value false) sp sp' ([] ++ ev) :=
+  .midExplicitKey false sp sp sp_qe sp_k0 sp' [] ev (.init sp) hq hs h (fun h => nomatch h)
+-- `[:`
+example {sp sp' : SurfPos} (hcol : GLit ':' sp sp') : TSeqFrame n c (.colon false) sp sp' [] :=
+  .midEmptyColon sp sp sp' [] (.init sp) hcol
+-- `[? :`
+example {sp sp_qe sp_s sp' : SurfPos} (hq : GLit '?' sp sp_qe) (hs : SSeparate n c sp_qe sp_s) (hcol : GLit ':' sp_s sp') :
+    TSeqFrame n c (.colon false) sp sp' [] :=
+  .midQuestionEmptyColon sp sp sp_qe sp_s sp' [] (.init sp) hq hs hcol
+-- `{a` (midKey), `{a:` (midColon), `{? ` (midQuestion), `{? :`
+example {sp sp' : SurfPos} {ev : List Event} (h : TFlowNode n c sp sp' ev) :
+    TMapFrame n c (.value true) sp sp' ([] ++ ev) → True := fun _ => trivial
+example {sp sp' : SurfPos} {ev : List Event} (h : TFlowNode n c sp sp' ev) :
+    TMapFrame n c (.value false) sp sp' ([] ++ ev) :=
+  .midKey false sp sp sp' [] ev (.init sp) h (fun h => nomatch h)
+example {sp sp_k sp' : SurfPos} {ev : List Event} (h : TFlowNode n c sp sp_k ev) (hcol : GLit ':' sp_k sp') :
+    TMapFrame n c (.colon false) sp sp' ([] ++ ev) :=
+  .midColon false sp sp sp_k sp_k sp' [] ev (.init sp) h (fun h => nomatch h) (.none sp_k) hcol
+example {sp sp' : SurfPos} (hq : GLit '?' sp sp') : TMapFrame n c .question sp sp' [] :=
+  .midQuestion sp sp sp' [] (.init sp) hq
+example {sp sp_qe sp_s sp' : SurfPos} (hq : GLit '?' sp sp_qe) (hs : SSeparate n c sp_qe sp_s) (hcol : GLit ':' sp_s sp') :
+    TMapFrame n c (.colon false) sp sp' [] :=
+  .midQuestionEmptyColon sp sp sp_qe sp_s sp' [] (.init sp) hq hs hcol
+end P104Examples
+
 def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 100: S3 slice (1) — leaf span ↔ token payload (anchor / alias / tag), before proof"
   let t := P100.tally P100.allRows
@@ -14307,6 +14502,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testDocBridge state
   testFlowBridge state
   testFlowWalk state
+  testFlowAlgebra state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",
