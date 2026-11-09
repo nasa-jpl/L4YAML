@@ -14983,10 +14983,13 @@ def testFlowArm (state : IO.Ref TestCollector) : IO Unit := do
     t.preBad.isEmpty s!"{t.preBad.take 8}"
   -- P5
   checkM state s!"P107(v) own rows refused by the scanner: {t.refusedOwn}" (t.refusedOwn == ["{&a: &b}"]) ""
-  -- P6: the props-gap domain by projection arm = P106 (ii)'s 16, its closes all at depth 1
+  -- P6 REFUTED twice: (a) six depth-0 opens carry a held run (`&a [b]`) — `accum_flow_open_depth0`'s
+  -- `resume`/`propsContent` domain, which P106 (ii) (reading `InteriorGap.props` at depth ≥ 1) never
+  -- counted; (b) P106's 5 held `close/seq` split 4 base + 1 nested.  The depth-≥1 rows still sum to 16.
   checkM state s!"P107(vi) a property run held at the indicator, by arm: {t.heldArm}"
     (t.heldArm.mergeSort (fun a b => a.1 ≤ b.1) ==
-      [("closeBase/map", 2), ("closeBase/seq", 5), ("comma", 7), ("nestOpen/seq", 2)]) s!"{t.heldArm}"
+      [("baseOpen/map", 3), ("baseOpen/seq", 3), ("closeBase/map", 2), ("closeBase/seq", 4), ("closeNested/seq", 1),
+       ("comma", 7), ("nestOpen/seq", 2)]) s!"{t.heldArm}"
 end P107Test
 
 def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
