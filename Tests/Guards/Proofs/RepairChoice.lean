@@ -231,7 +231,7 @@ def holdsScanStream (n : Name) : MetaM (Nat × Nat × Bool) := do
 -- and the step lemmas behind them now close parks through `PendingNode.close_with_sslFrom`
 -- (the `SSLCommentsFrom` twin), so they leave the supplier's reverse closure.
 def expectedThread : String :=
-  "thread=15 prodThread=21 shared=12 capstones=2 rings=8"
+  "thread=14 prodThread=20 shared=11 capstones=2 rings=8"
 
 /-- The first ring: the five library consumers item 238 named, and item 239's
     own exhibit, which rides the arm on purpose and goes with it. -/
@@ -245,13 +245,13 @@ def expectedRing1 : List Name :=
     all, and none of the seven carries a stream to its scan position. -/
 -- 2026-10-24 (B3 [66] col-0 threading): total 20 → 15 with the thread; the four park-carrying
 -- step lemmas that left it (see `expectedThread`) take `withPark` 7 → 3.
-def expectedDiscriminator : String := "withPark=3 covered=0 total=15"
+def expectedDiscriminator : String := "withPark=3 covered=0 total=14"
 
 /-- **The thread adds nothing to β.5's bill.**  Every declaration the weak
     repair's statement change travels through is already one of the
     twenty-six item 238 counted, so the choice of repair moves items between
     *restated* and *reproved* without moving the total. -/
-def expectedInT : String := "threadInT=15 outsideT=0"  -- 2026-10-24 (B3): thread 20 → 15, see above
+def expectedInT : String := "threadInT=14 outsideT=0"  -- 2026-10-24 (B3): thread 20 → 15, see above
 
 /-- The walk's reading of the park's users — the upper bracket on what the
     `retire` repair breaks. -/

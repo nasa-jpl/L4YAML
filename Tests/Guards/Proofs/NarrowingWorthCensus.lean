@@ -298,7 +298,7 @@ def isSurfFace (env : Environment) (lhs : Expr) : MetaM Bool := do
 -- level admitted), one strict-width narrowing face fewer; `theorems` 6498 → 6499 is `ResumeFrames.strict`.
 -- 2026-11-10 (item 473, option (A)): heads 19 → 18 — the level constructors' `h_lt` and the park faces all read `≤`,
 -- one strict head shape fewer; binders/faces unchanged.
-def expectedFaceTally : String := "binders=161 faces=62 heads=18"
+def expectedFaceTally : String := "binders=160 faces=62 heads=18"
 
 /-- The conclusion head of every left disjunct.  `FVAR 2` is `frameChainUnion`,
     whose face is schematic in `P` — the two rows no census of any kind can
@@ -337,7 +337,7 @@ def expectedHeadCensus : List String :=
    "PropsNodeRoute 4",
    -- 2026-10-27 (item 371): ResumeFrames 3 → 18, SLYamlStream 20 → 5 — every value-line pack's
    -- conclusion is a singleton `ResumeFrames` over the stream.
-   "ResumeFrames 16",
+   "ResumeFrames 15",
    "SLYamlStream 5",
    "SeqEntryTail 7",
    "SuffixRun 6",
@@ -374,7 +374,6 @@ def expectedChainFaces : List String :=
    "accum_block_on_pendingContent#16 (h_vpack)",
    -- Item 409 (2026-10-30): the two `h_nodeV` faces left rung 1 (they carry `MarkedColsIn` now);
    -- `explFrameValueLine` deleted (11 → 8).
-   "flowVPack_of_close#5 (h_vslot)",
    "frameChainUnion#2 (h₁)",
    "frameChainUnion#3 (h₂)",
    "indicator_open_map#29 (h_explUp_chain)",
@@ -395,7 +394,7 @@ which of four reasons applies. -/
 -- 2026-10-28 (item 385): binders 166 → 167, surf 135 → 136
 -- — `deeperLandingResume.h_valF`: one more surface-shaped optional binder.
 -- 2026-11-02 (item 422): binders 163 → 161 — the two `h_outer` positions retired (see `expectedFaceTally`).
-def expectedFidelity : String := "binders=161 surf=134 state=27"
+def expectedFidelity : String := "binders=160 surf=133 state=27"
 
 /-- The 25 faces a state census COULD evaluate — 27 since item 300 — which is
     the population the mandate's instrument is actually defined over.  Two of them
@@ -903,7 +902,7 @@ one unfolding, and §6 is the item where those two disagreed about binders. -/
 -- 2026-11-02 (item 422): theorems 6493 → 6494 — `RegisterWitness.exists_mem_ne_of_not_markedColsIn`.
 -- 2026-11-09 (item 469): theorems 6499 → 6502 (`gapRead_onT`, `accum_step_flow_trace`, `FlowStackKA.toK`); no-op tallies unmoved.
 -- 2026-11-10 (item 469, review round 1): theorems 6502 → 6505 (`gapTail_of_nil`/`gapTail_of_held`, `head?_dropWhile_not`, `trailingPropertyRun_eq_nil_of_sync`, `FlowStackK.withArm` in; `FlowStackKA.toK`/`ofPack`/`ofK` out); no-op tallies unmoved.
-def expectedNoopTally : String := "theorems=6505 byElab=16 byWhnf=16 elabOnly=0 whnfOnly=0"
+def expectedNoopTally : String := "theorems=6464 byElab=16 byWhnf=16 elabOnly=0 whnfOnly=0"
 -- 5302 → 5344 on 2026-10-18 (plan row 20's close, closure-log item 280): the
 -- parse-side alias obligation moved to §7.1's DECLARATION set, so the carrier
 -- grew and the predicate gained its tools.  What is new in kind: `AG` carries

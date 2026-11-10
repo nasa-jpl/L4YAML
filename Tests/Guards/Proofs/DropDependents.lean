@@ -361,7 +361,7 @@ def expectedWideCensus : String :=
 -- `SSLCommentsFrom` twin of `close_with_ssl`, rides the drop through `dropClose` in its
 -- `pendingFlow` arm only (the arm β.5 retires with the constructor).  D unchanged.
 def expectedCensus : String :=
-  "D=4 S=0 R=0 T=28 capstonesInT=2 rawElim=11"
+  "D=4 S=0 R=0 T=27 capstonesInT=2 rawElim=11"
 
 /-- The first ring: two in the library, two in the instruments that exhibit the
     defect.  `stream_anything` is item 236's free-maker and item 235 restates it;
@@ -415,7 +415,6 @@ def expectedTrans : List Name :=
    `L4YAML.Proofs.StreamAccum.preprocessing_eof_extends_stream,
    `L4YAML.Proofs.StreamAccum.scanLoop_grammar_prod,
    `L4YAML.Proofs.StreamAccum.scanNextToken_accum_step,
-   `L4YAML.Proofs.StreamAccum.scanNextToken_accum_step_witness,
    `L4YAML.Proofs.StreamAccum.scanNextToken_none_stream,
    `L4YAML.Proofs.StreamAccum.scan_content_gives_stream_v2,
    `L4YAML.Surface.parse_strict,

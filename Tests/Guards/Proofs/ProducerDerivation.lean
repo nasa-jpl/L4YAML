@@ -277,7 +277,7 @@ def expectedCensus : String :=
   -- 2026-11-08 (item 464, S3 slice (3) first PR): corrHyp 606 → 620 — the seven `TraceOf/FlowBridge` lemmas
   -- and their seven `ScannerShape` consumers each take a `ScannerSurfCorr` hypothesis.
   -- 2026-11-08 (item 464, review): corrHyp 620 → 622 — the two key-context twins `scanDoubleQuoted_key_trace` / `scanSingleQuoted_key_trace`.
-  "corrHyp=622 streamConcl=88 both=41 free=0 pairConcl=1 held=3 pairAny=8"
+  "corrHyp=612 streamConcl=87 both=40 free=0 pairConcl=1 held=3 pairAny=8"
 
 /-- The one conclusion that pairs them, and it is the stream's origin. -/
 def expectedSeedConcl : List Name :=
@@ -300,7 +300,7 @@ def expectedHeldOnThreads : String := "onProdThread=0 onThread=0"
     two `:` consumers, which apply the inline wrapper and carry three
     correspondences each.) -/
 def expectedProdThread : String :=
-  "prodThread=21 rings=8 withCorr=16 covered=0"
+  "prodThread=20 rings=8 withCorr=15 covered=0"
 
 /-- The first ring — the four definitions `--end producer` breaks, which is
     the same four this walk reads.
@@ -321,7 +321,7 @@ def expectedProdRing1 : List Name :=
 -- 2026-10-24 (B3 [66] col-0 threading): union 29 → 24 — the supplier's thread lost `eof_pending` and
 -- `accum_structural_pending` (they close through `PendingNode.close_with_sslFrom` now, see RepairChoice); the
 -- producer's own rows are unchanged.
-def expectedProdInT : String := "prodInT=12 prodOutsideT=9 union=24 unionOutsideT=9"
+def expectedProdInT : String := "prodInT=11 prodOutsideT=9 union=23 unionOutsideT=9"
 
 /-- **The ~~seven~~ nine, named.**  Three wrappers that partition the escape's
     own applications, four `accum_block_on_*` arms, and (DOCS item 287) the two

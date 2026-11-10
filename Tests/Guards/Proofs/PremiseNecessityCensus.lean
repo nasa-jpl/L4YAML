@@ -394,7 +394,7 @@ def expectedModuleTallyP : String :=
 -- 2026-11-10 (item 473, option (A)): constants 1766 → 1767 / decls +1 (`ResumeFrames.bound`), FIELD 203 → 201, READ / RELAY /
 -- eta as counted — the positional `ResumeWidths` is read by projections, not `↔` fields.
   -- 2026-10-29 (item 394): `FlowBaseRoutes.valueF` (+3 constants: the field, its projection, the structure's new arity), five more premise reads at the births and closes.
-  "constants=1767 decls=1398 eta=509 FIELD=201 READ=1490 RELAY=2761 RETURN=175 UNUSED=27"
+  "constants=1725 decls=1359 eta=506 FIELD=201 READ=1465 RELAY=2675 RETURN=171 UNUSED=26"
 
 -- Item 287: `accum_block_on_closeThenBlock`'s `h_vslot`, a READ one, left the
 -- `_ ∨ True` population — its sibling's move, under this peel.  Item 288: and
@@ -412,7 +412,7 @@ def expectedOptTallyP : String :=
   -- 2026-10-24 (item 350): total 163 → 159, ETA 33 → 31, READ 87 → 85 — the `h_expl`/`h_explUp` `inr`
   -- arms pay an empty chain and no longer read their alternative.
   -- 2026-10-28 (item 380, PR #146 review): READ 89 → 91, RELAY 40 → 38 — the two optional contexts eliminated by `Or.elim`.
-  "total=161 ETA=31 FIELD=4 READ=91 RELAY=33 RETURN=2"
+  "total=160 ETA=31 FIELD=4 READ=90 RELAY=33 RETURN=2"
 
 run_cmd do
   let env ← getEnv
@@ -721,7 +721,6 @@ def expectedDead : List String :=
    "L4YAML.Proofs.StreamAccum.entryPropsKeyPack_of_dispatch#31 (h_alt) [promised step]",
    -- Item 409 (2026-10-30): `entryPropsKeyPack_of_dispatch.h_dispatch` is read now (the `MarkedColsIn` transport).
    "L4YAML.Proofs.StreamAccum.flowKeyPack_of_close#11 (_) [conclusion binder]",
-   "L4YAML.Proofs.StreamAccum.gate_of_peek#3 (_) [family uniformity]",
    "L4YAML.Proofs.StreamAccum.park_gate_of_peek#2 (_) [family uniformity]",
    "L4YAML.Proofs.StructureCoupling.scanTagDirective_corr#2 (_hcorr) [family uniformity]"]
 
@@ -777,7 +776,7 @@ def deadReason : String → String
 -- wrappers; `entryPropsKeyPack_of_dispatch`'s `h_dispatch` moved from #30 to #31 behind the new binder.
 -- 2026-10-23 (item 349): `dead` 32 → 31, `RELAY` 5 → 4 — `content_dispatch_routed#29 (h_alt)` is read at the `k = 0` payment.
 -- 2026-10-24 (B3 [66] col-0 threading): dead 33 → 32 — `content_dispatch_routed#29 (h_alt)` is read on the item-354 base.
-def expectedDeadTally : String := "dead=31 RELAY=3 UNUSED=28 RELAY=3"  -- 2026-10-24 (B3): see `expectedDead`
+def expectedDeadTally : String := "dead=30 RELAY=3 UNUSED=27 RELAY=3"  -- 2026-10-24 (B3): see `expectedDead`
 
 run_cmd do
   let env ← getEnv
@@ -892,7 +891,7 @@ lemma opt_premise_is_no_premise {A P : Prop} : (A ∨ True → P) ↔ P :=
 -- place of `h_park`/`h_kslotUp` reads; two opener `h_ref` relays; `exists_mem_ne_of_not_markedColsIn` added.
 def expectedOptPopulation : String :=
   -- 2026-10-24 (item 350): total 163 → 159, optTy 156 → 153, ctorFields 33 → 31 — as above.
-  "total=161 optTy=154 ctorFields=31"
+  "total=160 optTy=154 ctorFields=31"
 
 run_cmd do
   let env ← getEnv
