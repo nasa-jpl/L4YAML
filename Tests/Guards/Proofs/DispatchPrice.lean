@@ -371,7 +371,7 @@ def expectedSteps : String :=
   -- and the seven `ScannerShape.dispatchFlowIndicators_*` / `dispatchContent_*Quoted_trace` consumers.
   -- 2026-11-08 (item 464, review): stepHolders 2122 → 2124 — the key-context twins `FlowBridge.scanDoubleQuoted_key_trace` /
   -- `scanSingleQuoted_key_trace` hold the quoted scanner step; the two `*_blockKey_to_key` relabels hold none.
-  "stepHolders=2124 dispHolders=416 dispTwoCorr=31 fns=75 fnsIx=26"
+  "stepHolders=2107 dispHolders=410 dispTwoCorr=31 fns=75 fnsIx=26"
 
 /-- **The ladder, at each population.**  `edge` is a production whose right
     endpoint is the step's output; `chain` requires a path to it from another
@@ -462,8 +462,8 @@ def expectedChainSpec : List Name :=
 def expectedPerFn : List String :=
   -- 2026-11-08 (item 459, review): dispatchContent decls 170 → 173 — the three `ScannerShape.dispatchContent_*_trace` consumers.
   -- 2026-11-08 (item 464, S3 slice (3) first PR): dispatchContent decls 173 → 175 — `ScannerShape.dispatchContent_{doubleQuoted,singleQuoted}_trace`.
-  ["scanNextToken_dispatchContent decls=175 chain=1",
-   "scanNextToken_preprocess decls=259 chain=3"]
+  ["scanNextToken_dispatchContent decls=173 chain=1",
+   "scanNextToken_preprocess decls=250 chain=3"]
 
 /-- **The one worked precedent is outside the work.**  It is not in item 238's
     transitive set and not on either repair thread, so β.5 neither pays for it

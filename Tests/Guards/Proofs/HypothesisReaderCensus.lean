@@ -640,8 +640,8 @@ def expectedModuleTally : String :=
   -- `dispatchBlock_colon_notQuestion` and `explFrameValueLine`'s split alternative.
   -- 2026-10-26 (item 366): RELAY 2836 → 2838 — `h_sound` passed whole into the two new `Sound sc` binders.
   -- 2026-10-27 (item 371): constants/decls +1, READ +1 — `ResumeFrames.one` (its `h_tail` is read once).
-  "constants=1767 decls=1398 eta=509 FIELD=175 READ=1423 RELAY=2973 RETURN=56 \
-UNUSED=27"
+  "constants=1725 decls=1359 eta=506 FIELD=175 READ=1398 RELAY=2885 RETURN=54 \
+UNUSED=26"
 -- 2026-10-25 (#112 review): the `FlowStackK` `MarkedColsIn` carrier reverted (Rule 8: a projection of the closed state is decided at the close by `Classical.em`); the two transport helpers and `h_pk'` go (constants 1683 → 1681, decls 1322 → 1320, READ 1325 → 1323, RELAY 2838 → 2830); `Mono sc` stays on `accum_step_flow`.
 -- 2026-10-25 (item 363): the flow OPEN lane read off the block state (`h_refused`, one `Classical.em`; five `match` blocks deleted): the five deleted `match` auxiliaries: constants 1681 → 1676, decls 1320 → 1315, READ 1323 → 1306.
 
@@ -663,7 +663,6 @@ def expectedUnused : List String :=
     "block_dispatch_deferred_stamp_offcol#12 (_h_indent)",
     "block_dispatch_deferred_stamp_offcol#13 (_h_ne)",
     "flowKeyPack_of_close#11 (_)",
-    "gate_of_peek#3 (_)",
     "ofGateClose#2 (_h)",
     "ofPark#2 (_h)",
     "ofRefused#1 (_h)",
@@ -755,7 +754,7 @@ inherit their parents' binders filtered out so the denominator is declarations. 
 -- — `deeperLandingResume.h_valF` is one more optional context, READ (destructured) inside the helper.
 -- 2026-11-02 (item 422): the OPTIONAL-CONTEXT census moved — the five `h_outer` writes read `s_prep` (one `Classical.em` over `MarkedColsIn s_prep [k]`)
 -- in place of `h_park`/`h_kslotUp`; two opener `h_ref` relays; `exists_mem_ne_of_not_markedColsIn` added (RegisterWitness).
-def expectedOptTally : String := "total=161 ETA=31 READ=91 RELAY=39"
+def expectedOptTally : String := "total=160 ETA=31 READ=90 RELAY=39"
 
 /-- The six item 212 enumerated, by verdict — seven since item 300.  Six are
     read in `content_dispatch_routed`'s own term (`h_markerline`, the marker

@@ -262,7 +262,7 @@ spans={String.intercalate "," (s.spans.map (·.getString!)).toList}"
     the arm or one of the two restatements, which is ten. -/
 -- 2026-10-24 (B3 [66] col-0 threading): T 28 → 29, sites 11 → 12 (one more park-gap carrier reads
 -- `sp_gram`); pop 10 → 9 (two sites now share a shape).
-def expectedPop : String := "D=4 T=29 pop=9 sites=12"
+def expectedPop : String := "D=4 T=28 pop=9 sites=12"
 
 /-- **The answer, in one line.**  Four independent readings of "connected", all
     zero, beside the correspondence census that explains why the fourth is. -/

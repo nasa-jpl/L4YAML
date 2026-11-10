@@ -154,7 +154,7 @@ def expectedClosure : Nat := 287  -- +1 on 2026-11-08: `Proofs.Serialization.Tra
 /-- The park's populations beside the arm's, from one pass. -/
 -- 2026-10-24 (B3 [66] col-0 threading): see the dated note on `expectedDirect` below.
 def expectedBill : String :=
-  "Dp=11 Sp=0 Tp=36 T=28 shared=21 extra=15 capstonesInTp=2"
+  "Dp=11 Sp=0 Tp=35 T=27 shared=20 extra=15 capstonesInTp=2"
 
 /-- Names the park in a PROOF TERM — builders and case splits together, which
     no syntactic reading separates (item 240).  **Seven of the nine break and

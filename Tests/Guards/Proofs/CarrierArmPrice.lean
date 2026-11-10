@@ -291,7 +291,7 @@ def expectedAbsorbReaders : List String :=
 def expectedLine : String :=
   "prods=171 ctors=320 same=27 direct=301 anchoredOnly=16 broken=3 surfArms=184 \
 surfDirect=183 candidate=direct candidateNil=direct readers=3 libReaders=2 \
-guardReaders=1 mentions=41 producers=21 absorbReaders=5 absorbPlainReaders=0"
+guardReaders=1 mentions=40 producers=21 absorbReaders=5 absorbPlainReaders=0"
 
 /-- Non-circularity, items 242–245's check: the closing lemma spends item 244's
     span (`glit`), lands in the candidate arm (`arm`), and routes through no

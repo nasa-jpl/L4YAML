@@ -388,7 +388,7 @@ example (s : String) : ([] : List Char) <:+ s.toList := List.nil_suffix
 /-- The census line, pinned. -/
 -- 2026-10-24 (B3 [66] col-0 threading): total 27 → 28, free 4 → 5 — `PendingNode.close_with_sslFrom`
 -- joins the transitive set (see `DropDependents.lean`); its conclusion is the same shape as `close_with_ssl`.
-def expectedTally : String := "bound=9 empty=10 free=5 negation=3 other=1 total=28"
+def expectedTally : String := "bound=9 empty=10 free=5 negation=3 total=27"
 
 /-- The arm the model omits. -/
 def drop : Name := `L4YAML.Surface.SLYamlStream.scannerDrop

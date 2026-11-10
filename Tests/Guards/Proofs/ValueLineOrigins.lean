@@ -629,7 +629,6 @@ def expectedPositions : List String :=
    "param:colon_open_map_props.h_kslotD arm=l path=∨L∃∧R→→→→→→→→→→ lvl=∃ns(MarkedColsIn)∀nv∈ns premises=[SBlockMapEntry(k),SCompactMapTail(k),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=before",
    "param:flowKeyPack_of_close.h_key arm=l path=∨L∃∃∧R∧R∧R∧L∨L→→→→→→→→→→ lvl=∃k∃sp_key(?)(?)(kc=k)(And)∀nv∈markedCols(…) premises=[SBlockMapEntry(k),SCompactMapTail(k),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=before",
    "param:flowKeyRoute_of_open.h_compact_pair arm=l path=∨L→→→→→→→→ lvl=∀nv∈markedCols(…) premises=[SBlockIndented(nc),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
-   "param:flowVPack_of_close.h_vslot arm=l/stamp path=∨L∃→→→→→→→→→→ lvl=∃ns∀nv∈ns premises=[SFlowContent(n),SSLComments,SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
    "param:indicator_open_map.h_explUp_chain arm=l path=∨L∃→→→→→→→→ lvl=∃ns∀nv∈ns premises=[SBlockMapEntry(k),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
    "param:indicator_open_map.h_explUp_chainD arm=l path=∨L∃∧R→→→→→→→→ lvl=∃ns(MarkedColsIn)∀nv∈ns premises=[SBlockMapEntry(k),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
    "param:question_open_map.h_explUp_chain arm=l path=∨L∃→→→→→→→→ lvl=∃ns∀nv∈ns premises=[SBlockMapEntry(k),SIndent(nv),GLit(':'),SBlockIndented(nv)] ⊢ ResumeFrames tail=no",
@@ -1001,7 +1000,6 @@ def expectedPerPos : List String := [
   "param:accum_block_on_pendingBlock.h_kslotUp writers=1 punt=0 stamp=0 built=1 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=1 origins=[O66] ⊢ 0/1 held",
   "param:accum_block_on_pendingBlockContent.h_kslotUp writers=1 punt=0 stamp=0 built=1 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=1 origins=[O66] ⊢ 0/1 held",
   "param:accum_content_on_pendingBlock_indented.h_kslotUp_old writers=1 punt=0 stamp=0 built=1 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=1 origins=[O66] ⊢ 0/1 held",
-  "param:flowVPack_of_close.h_vslot writers=0 punt=0 stamp=0 built=0 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=0 origins=[] ⊢ punt-only",
   -- Item 418: h_kslotUp stamp 2 → 1 / built 5 → 6, h_explUp_chainD punt 2 → 1 / built 1 → 2, slotChainMap.up and
   -- entryChainMap.up one writer more — the held-chain pays, all built off origin O66 (h_vslot / h_kslot).
   "ctor:pendingBlock.h_kslotUp writers=7 punt=0 stamp=1 built=6 unborn=0 dead=0 allHeld=0 someHeld=0 noneHeld=6 origins=[O66] ⊢ 0/1 held",
@@ -1235,7 +1233,7 @@ def expectedLine : String :=
   -- relays across the `≤` park faces and `closeThenBlock`'s `ResumeFrames.strict` read; no origin row moved.
 -- 2026-11-10 (item 473, option (A)): term-size tallies only (lapps 908 → 905, alts 5575 → 5576, liteNodes 673520 → 673507):
 -- the `≤` faces drop `Nat.le_of_lt` wrappers and the positional `ResumeWidths` reshapes `resumeAt`; positions/rows unchanged.
-  "positions=53 packaged=7 packConsts=[ImplicitKeyPack,PropsKeyPack] rows=197 ctorRows=104 paramRows=93 packagedRows=29 punt=4 stamp=42 built=151 origins=67 originRows=32 route=12 frames=29 tail=14 other=0 concl=8 invariant=4 heldOrigins=14 allHeld=2 someHeld=37 noneHeld=98 unbornRows=0 relayedPunt=0 relayedStamp=10 relayedAbsurd=4 relayedFact=0 deadRows=0 unbornPos=0 rounds=4 follows=406 lets=724 lapps=905 alts=5576 nodes=14457 liteNodes=673507"
+  "positions=52 packaged=7 packConsts=[ImplicitKeyPack,PropsKeyPack] rows=197 ctorRows=104 paramRows=93 packagedRows=29 punt=4 stamp=42 built=151 origins=67 originRows=32 route=12 frames=29 tail=14 other=0 concl=8 invariant=4 heldOrigins=14 allHeld=2 someHeld=37 noneHeld=98 unbornRows=0 relayedPunt=0 relayedStamp=10 relayedAbsurd=4 relayedFact=0 deadRows=0 unbornPos=0 rounds=4 follows=406 lets=724 lapps=905 alts=5576 nodes=14457 liteNodes=673507"
 
 /-! ## §4 The reading -/
 
@@ -1435,7 +1433,7 @@ run_cmd Lean.Elab.Command.liftTermElabM do
   -- Item 409 (2026-10-30): 42 → 41 — `explFrameValueLine.h_kslot` is gone with the lemma.
   -- 2026-10-31 (item 412): 41 → 43 — the entry-shaped `pendingMapValue.h_expl` (ctor) and its consumer param position, as ValueLinePacks pins.
   -- 2026-10-31 (item 413): 43 → 44 — `compact_open_map.h_chainUp`, the opener's relay parameter (ValueLinePacks params 31 → 32).
-  unless (cs.positions.filter (!·.packaged)).size == 46 do throwError "item 261's positions moved under this pass: {(cs.positions.filter (!·.packaged)).size}"
+  unless (cs.positions.filter (!·.packaged)).size == 45 do throwError "item 261's positions moved under this pass: {(cs.positions.filter (!·.packaged)).size}"
   unless origins.size > 0 do throwError "no origin resolved"
   unless pinned do return
   let check (name : String) (gotL : Array String) (exp : List String) : MetaM Unit := do
