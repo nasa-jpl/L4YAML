@@ -168,7 +168,7 @@ the pop below is stated over any `P`, so instantiating it at
 `ExplValueLine sp_start nv` its value-line twin — the two `match`es in the
 lemma's dedent branch are this example twice. -/
 
--- 2026-11-10 (item 471, option (A)): the level constructors' bound and the park faces read `≤` (the root frame
+-- 2026-11-10 (item 473, option (A)): the level constructors' bound and the park faces read `≤` (the root frame
 -- stands under a column-0 opener's own level), `ResumeWidths` names the survivors positionally and `ResumeWidths.lt`
 -- is `ResumeWidths.le`; the rows below restate the faces they mirror — a shape move, no obligation changed.
 example {P : SurfPos → Prop} {sp_scan sp_mid sp_prep : SurfPos}

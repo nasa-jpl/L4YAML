@@ -62,7 +62,7 @@ datum: its landed arm has the walk's re-arm and its no-break arm IS the park at
 column 0, where the datum's other disjunct is refuted by arithmetic. -/
 
 -- Item 311: the flow frame's alternative is the gate's (`PackAltG g`); these probes name an ungated frame.
--- 2026-11-10 (item 471, option (A)): the level constructors' bound and the park faces read `≤` (the root frame
+-- 2026-11-10 (item 473, option (A)): the level constructors' bound and the park faces read `≤` (the root frame
 -- stands under a column-0 opener's own level), `ResumeWidths` names the survivors positionally and `ResumeWidths.lt`
 -- is `ResumeWidths.le`; the rows below restate the faces they mirror — a shape move, no obligation changed.
 example {sc s_prep : ScannerState} {c : Char} {sp_start sp_scan sp_prep : SurfPos}

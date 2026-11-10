@@ -629,9 +629,9 @@ adds.**   `constants` counts the module's non-internal constants, generated ones
 -- 2026-11-10 (item 469, review round 1): constants 1764 → 1766, decls 1395 → 1397 (`gapTail`, its two lemmas,
 -- `head?_dropWhile_not`, `trailingPropertyRun_eq_nil_of_sync`, `FlowStackK.withArm` in; `FlowStackKBody`/`KA`/`toK`/`ofPack`/`ofK` out);
 -- READ 1424 → 1421, RELAY 2968 → 2972, eta 506 → 508 — the arm's `∀ m` leads are relayed at the sites.
--- 2026-11-10 (item 471, option (A)): constants 1766 → 1770 / decls +4 (`ResumeWidths.nil_of_singleton`, `eq_tail_of_head`,
--- `eq_nil_of_pair`, `ResumeFrames.bound` for `strict`), READ +6 / RELAY +2 / FIELD −2 (the positional `ResumeWidths` is read
--- by its projections, the `↔` fields are gone), eta +1.
+-- 2026-11-10 (item 473, option (A)): constants 1766 → 1767 / decls +1 (`ResumeFrames.bound` for `strict`; the exactness readers live on
+-- the test side), FIELD 177 → 175 / READ +2 / RELAY +1 / eta +1 (the positional `ResumeWidths` is read by its
+-- projections, the `↔` fields are gone).
 def expectedModuleTally : String :=
   -- 2026-10-26 (item 365): RELAY 2830 → 2836 — `h_sound` ×3, `h_fl0` ×2 and `h_alt` ×1 passed whole from
   -- `accum_step_content`/`accum_content_pending`/the `_indented` pair to the content lane's payers.
@@ -640,7 +640,7 @@ def expectedModuleTally : String :=
   -- `dispatchBlock_colon_notQuestion` and `explFrameValueLine`'s split alternative.
   -- 2026-10-26 (item 366): RELAY 2836 → 2838 — `h_sound` passed whole into the two new `Sound sc` binders.
   -- 2026-10-27 (item 371): constants/decls +1, READ +1 — `ResumeFrames.one` (its `h_tail` is read once).
-  "constants=1770 decls=1401 eta=509 FIELD=175 READ=1427 RELAY=2974 RETURN=56 \
+  "constants=1767 decls=1398 eta=509 FIELD=175 READ=1423 RELAY=2973 RETURN=56 \
 UNUSED=27"
 -- 2026-10-25 (#112 review): the `FlowStackK` `MarkedColsIn` carrier reverted (Rule 8: a projection of the closed state is decided at the close by `Classical.em`); the two transport helpers and `h_pk'` go (constants 1683 → 1681, decls 1322 → 1320, READ 1325 → 1323, RELAY 2838 → 2830); `Mono sc` stays on `accum_step_flow`.
 -- 2026-10-25 (item 363): the flow OPEN lane read off the block state (`h_refused`, one `Classical.em`; five `match` blocks deleted): the five deleted `match` auxiliaries: constants 1681 → 1676, decls 1320 → 1315, READ 1323 → 1306.

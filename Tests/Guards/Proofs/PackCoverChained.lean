@@ -159,7 +159,7 @@ example {lo k : Nat} {ks : List FrameLevel}
     (preprocess_cover h_pre2 (dispatchContent_cover h_key (preprocess_cover h_pre h)))
 
 /-- The pack's field, at the type the producers pay and the consumers read. -/
--- 2026-11-10 (item 471, option (A)): the level constructors' bound and the park faces read `≤` (the root frame
+-- 2026-11-10 (item 473, option (A)): the level constructors' bound and the park faces read `≤` (the root frame
 -- stands under a column-0 opener's own level), `ResumeWidths` names the survivors positionally and `ResumeWidths.lt`
 -- is `ResumeWidths.le`; the rows below restate the faces they mirror — a shape move, no obligation changed.
 example {sc : ScannerState} {sp_start sp_scan : SurfPos}

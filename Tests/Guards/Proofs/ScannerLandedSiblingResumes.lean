@@ -225,7 +225,7 @@ example {sc s_prep : ScannerState} {c : Char}
 -- landing's line start, `[63]`'s spaces, a fresh at-position save, and a stack
 -- whose widths include the landing's.  `resumectx_of_landing` assembles this
 -- and nothing else.
--- 2026-11-10 (item 471, option (A)): the level constructors' bound and the park faces read `≤` (the root frame
+-- 2026-11-10 (item 473, option (A)): the level constructors' bound and the park faces read `≤` (the root frame
 -- stands under a column-0 opener's own level), `ResumeWidths` names the survivors positionally and `ResumeWidths.lt`
 -- is `ResumeWidths.le`; the rows below restate the faces they mirror — a shape move, no obligation changed.
 example {sp_start sp_land sp_prep : SurfPos} {k : Nat} {ks : List FrameLevel}

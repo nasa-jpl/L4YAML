@@ -690,7 +690,7 @@ def expectedSites : List String :=
    "content_dispatch_routed #2 ctor:pendingProps.h_closeFE idx=0 mono=0 monoOpt=0 base=0 baseOpt=0 prep=0 dispB=0 dispC=1(h_dispatch:c) hc=1(hprops:'&'|'!') chr=1(h:c='!') corr=3(hcorr_prep:s_prep,hcorr_result:s',hc:s') noflow=1(h_flow_disp) save=0 fl=0 top=0 larm=0 floor=0 nic=3(h_nic_prep:s_prep,h_nic_ad:s_prep*,h_nic_s:s') armed=0 col0=0 ids=0 cover=0 coverFn=1(h_cov_lift) ⊢ inputs=missing(mono,base,prep,floorSrc) lo=[] idx0"]
 -- 2026-11-07 (item 448, (α) stage A): `pendingMapValue.h_closeF`'s bound reads `ks≤n` — the park face admits the
 -- park's own level (the `-` park's mapping at its own column); the floor and `eq` columns are unchanged.
--- 2026-11-10 (item 471, option (A)): the three remaining strict faces (`pendingBlock`/`pendingBlockContent`
+-- 2026-11-10 (item 473, option (A)): the three remaining strict faces (`pendingBlock`/`pendingBlockContent`
 -- `h_closeF`, `pendingProps.h_closeFE`) read `≤` like `pendingMapValue`'s since stage A — shape pins only.
 def expectedShapes : List String :=
   ["pendingBlock.h_closeF bound(ks≤n) Floor(n,ks) eq(—)",

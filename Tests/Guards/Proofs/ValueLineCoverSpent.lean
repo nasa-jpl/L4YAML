@@ -159,7 +159,7 @@ example {sc s_prep s' : ScannerState} {c : Char} {sp_scan : SurfPos}
 /-- The field it lands in — the pack's value-line resume twin, cover included.
     Beside it, the stream twin item 148 gave one: two lists, two covers, and
     neither readable as the other. -/
--- 2026-11-10 (item 471, option (A)): the level constructors' bound and the park faces read `≤` (the root frame
+-- 2026-11-10 (item 473, option (A)): the level constructors' bound and the park faces read `≤` (the root frame
 -- stands under a column-0 opener's own level), `ResumeWidths` names the survivors positionally and `ResumeWidths.lt`
 -- is `ResumeWidths.le`; the rows below restate the faces they mirror — a shape move, no obligation changed.
 example {sc : ScannerState} {sp_start sp_scan : SurfPos}

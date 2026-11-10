@@ -647,7 +647,7 @@ def doorOf (lem : Name) (parks : List Name) : MetaM (Array String) := do
 -- the second arm is a pay, not a punt (the openers' `h_outer` body, (γ′)).
 -- 2026-11-07 (item 448, (α) stage A): `closeThenBlock`'s `h_valF` lost its `wb` tag — the face's width bound is
 -- `∀ fr ∈ ks, fr.width ≤ nv` now (the park's own level admitted), which the walker does not read as a `<` bound.
--- 2026-11-10 (item 471, option (A)): `pendingBlock`'s `h_closeF_old`/`h_closeFV_old` faces read `≤`, and the walker
+-- 2026-11-10 (item 473, option (A)): `pendingBlock`'s `h_closeF_old`/`h_closeFV_old` faces read `≤`, and the walker
 -- reads `wb` only off `LT.lt` — the four `pendingBlock` rows lose `wb` as `closeThenBlock`'s did in stage A (item 448).
 def expectedSpends : List String :=
   [

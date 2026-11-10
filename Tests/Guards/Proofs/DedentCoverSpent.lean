@@ -212,7 +212,7 @@ example {sc s_prep s' : ScannerState} {c : Char} {sp_scan : SurfPos}
 
 /-- And the field it lands in: the pack the dedent branch returns carries the
     cover over the widths the landing resumed on. -/
--- 2026-11-10 (item 471, option (A)): the level constructors' bound and the park faces read `≤` (the root frame
+-- 2026-11-10 (item 473, option (A)): the level constructors' bound and the park faces read `≤` (the root frame
 -- stands under a column-0 opener's own level), `ResumeWidths` names the survivors positionally and `ResumeWidths.lt`
 -- is `ResumeWidths.le`; the rows below restate the faces they mirror — a shape move, no obligation changed.
 example {sc : ScannerState} {sp_start sp_scan : SurfPos}

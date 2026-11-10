@@ -135,7 +135,7 @@ example {s : ScannerState} {lo n w : Nat} {ks ks' : List FrameLevel}
 
 /-- Run at a stack, so the payment is a value and not only a type: a landing at
     width 2 off a stack popped to it, with the frames `[4, 2]` the park carried.
-    The floor comes out at 1 and the list at `[2]`.  (2026-11-10, item 471: the
+    The floor comes out at 1 and the list at `[2]`.  (2026-11-10, item 473: the
     stack is written in its own order — the wider level above — because the
     positional `ResumeWidths` names what a landing at 2 leaves of it, `[]`, and
     has no reading for the ill-ordered `[2, 4]`.) -/
@@ -200,7 +200,7 @@ example {s_prep s' : ScannerState} {c : Char} {lo : Nat} {ks : List FrameLevel}
     that the paying disjunct is reachable from exactly the data a paying park
     has: the landing's line start, `[63]`'s spaces, a fresh at-position save, a
     stack whose widths include the landing's — and now the cover over them. -/
--- 2026-11-10 (item 471, option (A)): the level constructors' bound and the park faces read `≤` (the root frame
+-- 2026-11-10 (item 473, option (A)): the level constructors' bound and the park faces read `≤` (the root frame
 -- stands under a column-0 opener's own level), `ResumeWidths` names the survivors positionally and `ResumeWidths.lt`
 -- is `ResumeWidths.le`; the rows below restate the faces they mirror — a shape move, no obligation changed.
 example {sp_start sp_land sp_prep : SurfPos} {k lo : Nat} {ks : List FrameLevel}

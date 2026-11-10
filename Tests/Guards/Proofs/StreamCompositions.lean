@@ -654,7 +654,7 @@ def expectedSites : List String :=
 -- 2026-10-24 (B3 [66] col-0 threading): the compositions behind the five sites dropped above go with them.
 -- Item 371: the value-line compositions end in the one-level `ResumeFrames` (the restated pack);
 -- `question_open_map` builds `h_expl`/`h_closeFV`/`h_framesV` from the bound tail route `h_route51F`.
--- 2026-11-10 (item 471, option (A)): `ResumeFrames.level`'s bound reads `≤`, so every composition through it
+-- 2026-11-10 (item 473, option (A)): `ResumeFrames.level`'s bound reads `≤`, so every composition through it
 -- ends `level[var:∀→le,S]` (was `lt`); same sites, same shapes.
 def expectedSiteComps : List String :=
   [ "question_open_map:pendingMapValue.h_close ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil]",

@@ -865,7 +865,7 @@ lemma ResumeFrames.close {P : SurfPos → Prop} :
     the scanner side cannot use: a cover over the incoming widths has to be
     re-listed over the surviving ones, and for that the missing direction is
     COMPLETENESS, that a level below `j` survived at all.  Under option (A)
-    (item 471) the frames are no longer strictly decreasing — the root frame
+    (item 473) the frames are no longer strictly decreasing — the root frame
     stands under a level of its own width — so the survivors are named
     POSITIONALLY: the stack is the levels above the landing (all at or above
     `j`), the landing level itself, then the survivors (all at or below `j`).
@@ -898,41 +898,6 @@ lemma ResumeWidths.keep {ks ks' : List FrameLevel} {j : Nat} (h : ResumeWidths k
     · exact absurd hlt (by rw [he]; exact Nat.lt_irrefl _)
     · exact h'
 
-/-- The positional reading's exactness (item 471): one level resumed at its own
-    width leaves nothing. -/
-lemma ResumeWidths.nil_of_singleton {e : FrameLevel} {ks' : List FrameLevel} {j : Nat}
-    (h : ResumeWidths [e] ks' j) : ks' = [] := by
-  obtain ⟨_, pre, e', heq, _, _⟩ := h
-  cases pre with
-  | nil => exact (List.cons.inj heq).2.symm
-  | cons p pre' =>
-      exact absurd (List.cons.inj heq).2.symm
-        (List.append_ne_nil_of_right_ne_nil _ (List.cons_ne_nil _ _))
-
-/-- …a landing at the TOP level, over strictly narrower frames, keeps exactly them… -/
-lemma ResumeWidths.eq_tail_of_head {e : FrameLevel} {ks ks' : List FrameLevel} {j : Nat}
-    (h : ResumeWidths (e :: ks) ks' j) (hks : ∀ fr ∈ ks, fr.width < j) : ks' = ks := by
-  obtain ⟨_, pre, e', heq, he', _⟩ := h
-  cases pre with
-  | nil => exact (List.cons.inj heq).2.symm
-  | cons p pre' =>
-      have h2 := (List.cons.inj heq).2
-      have hmem : e' ∈ ks := by rw [h2]; exact List.mem_append_right _ (List.mem_cons_self ..)
-      exact absurd (hks e' hmem) (by rw [he']; exact Nat.lt_irrefl _)
-
-/-- …and a landing at the SECOND of two levels, under a strictly wider one, keeps nothing. -/
-lemma ResumeWidths.eq_nil_of_pair {p e : FrameLevel} {ks' : List FrameLevel} {j : Nat}
-    (h : ResumeWidths [p, e] ks' j) (hp : j < p.width) : ks' = [] := by
-  obtain ⟨_, pre, e', heq, he', _⟩ := h
-  rcases pre with _ | ⟨q, _ | ⟨r, pre'⟩⟩
-  · have h1 := (List.cons.inj heq).1
-    subst h1
-    exact absurd hp (by rw [he']; exact Nat.lt_irrefl _)
-  · exact (List.cons.inj (List.cons.inj heq).2).2.symm
-  · exact absurd (List.cons.inj (List.cons.inj heq).2).2.symm
-      (List.append_ne_nil_of_right_ne_nil _ (List.cons_ne_nil _ _))
-
-
 /-- One level, read DOWN (item 389): after the node, the mapping at `k` goes on with
     its compact tail and the frames beneath resume. -/
 lemma ResumeFrames.level_inv {P : SurfPos → Prop} {k : Nat} {ks : List FrameLevel} {sp : SurfPos}
@@ -942,7 +907,7 @@ lemma ResumeFrames.level_inv {P : SurfPos → Prop} {k : Nat} {ks : List FrameLe
   | level _ _ _ _ h_cont => exact h_cont
 
 /-- Read DOWN the other way: the levels beneath a mapping level stand at or
-    below it — the list's own bound (option (A), item 471: `≤`, so the root frame
+    below it — the list's own bound (option (A), item 473: `≤`, so the root frame
     `map 0` may stand under a column-0 opener's own `map 0` level; stage A's
     `strict` read `<` here). -/
 lemma ResumeFrames.bound {P : SurfPos → Prop} {k : Nat} {ks : List FrameLevel} {sp : SurfPos}

@@ -97,7 +97,7 @@ coordinates; the twins are the same lesson at the ENTRIES level.  Projection,
 so any consumer can read them — nothing about the state decides whether the
 fields are THERE, only whether a producer could pay them. -/
 
--- 2026-11-10 (item 471, option (A)): the level constructors' bound and the park faces read `≤` (the root frame
+-- 2026-11-10 (item 473, option (A)): the level constructors' bound and the park faces read `≤` (the root frame
 -- stands under a column-0 opener's own level), `ResumeWidths` names the survivors positionally and `ResumeWidths.lt`
 -- is `ResumeWidths.le`; the rows below restate the faces they mirror — a shape move, no obligation changed.
 example {sc : ScannerState} {sp_start sp_p sp_scan : SurfPos}
