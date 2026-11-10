@@ -30,65 +30,57 @@ re-pin to whatever revision it runs on (§7).
 
 ## 0. Summary
 
-The capstone this experiment serves:
+### 0.1 The target: `SerializationWellFormed input`
 
-- Blueprint row 7.7, `parse_iff_grammar` (§3.3), whose right-hand side is a
-  conjunction `ExactSurfaceLanguage input ∧ SerializationWellFormed input`.
-- A **conjunct** is one of the two sides of that `∧`.  The experiment is about
-  the second one, the *serialization conjunct*: every input the executable
-  parser accepts has a well-formed serialization trace — its anchors are
-  defined before its aliases use them, its tag handles are declared before
-  they are used, each document starts afresh.
-- In the tree that conjunct is spelled `TraceWellFormed input` (§2.4).
+The capstone this experiment serves is Blueprint row 7.7, `parse_iff_grammar`
+(§3.3), as stated in `Blueprint/ledgers/parse_iff_grammar/2026-10-29.md`:
 
-How the project plans to discharge the serialization conjunct:
+```lean
+theorem parse_iff_grammar (input : String) :
+    (∃ docs, parseYaml input = .ok docs)
+      ↔ ExactSurfaceLanguage input ∧ SerializationWellFormed input
+```
 
-1. `scan_trace` (the "S3 bridge"): the scanner's own token stream, read as a
-   trace, is *one* trace the grammar assigns to the input.
-2. `traceOf_unique` (the "lift"): it is the *only* such trace, so checking the
-   scanner's trace checks every trace.
+Its right-hand side has two parts:
 
-Where each step stands today:
+- `ExactSurfaceLanguage input` — the input has a *shape* YAML 1.2.2 admits:
+  some derivation of the surface grammar produces it.
+- `SerializationWellFormed input` — *every* reading the grammar gives the
+  input is well-formed as a serialization: each anchor is defined before an
+  alias uses it, each tag handle is declared before it is used, each document
+  starts with a fresh environment.
 
-- Step 2 is **refuted** on the block/document fragment of the current grammar
-  by a checked counterexample (`traceOf_unique_refuted`).
-- Step 1 is **proven** slice by slice (leaves, document markers, flow) and
-  **gated** at the whole-stream level until the grammar constructor
-  `scannerDrop` is retired (Row 12).
+**The experiment is about `SerializationWellFormed input` only.**  Three facts
+about that name:
 
-What the experiment does:
+- In the ledger statement it is applied to a `String`.  No declaration of that
+  type exists in the tree.
+- The tree's `SerializationWellFormed : List Event → Prop` (§2.2) is the
+  *event-level* relation.  The string-level property the ledger statement
+  intends is spelled `TraceWellFormed input` (§2.4):
+  `∀ ev, TraceOf input ev → SerializationWellFormed ev`.
+- Throughout this document **the target** means `TraceWellFormed input`, read
+  as the ledger's `SerializationWellFormed input`.
 
-- freezes exactly this obligation and its consumer;
-- fixes a legitimate input domain;
-- runs one minimum countermodel and one positive control;
-- places the outcome in exactly one of four boxes — refuted obligation, local
-  proof with an open global step, inadequate representation, unresolved proof
-  engineering — and in no other.
+Why `ExactSurfaceLanguage input` is left out:
 
----
+- It is a different frontier with its own campaign.  `ExactSurfaceLanguage` is
+  not declared either; it is `InYamlLanguage` after Row 12 retires
+  `scannerDrop`, Row 19 narrows `implicitContinue`, and the seven-item 5a(ii)
+  worklist narrows the directive productions.  Its forward direction is already
+  a Lean-checked theorem on the current, over-approximated grammar
+  (`parse_strict_proof`, capstones 7.1–7.6) and is re-proven each time the
+  grammar narrows (ledger row F1).
+- It is not what §6 of the paper names.  The paper's obligation is
+  scanner-to-`TraceOf`, and `TraceOf` feeds only the `SerializationWellFormed`
+  side of 7.7 (the chain in §3.3).
+- The adequacy question of §0.2 only arises on the `SerializationWellFormed`
+  side.  `ExactSurfaceLanguage` is an *existence* statement (some derivation
+  produces the input), so one derivation is all the evidence it needs.
+  `TraceWellFormed` is *universal* (every derivation's trace is well-formed),
+  and the scanner only ever supplies one.  That `∃ → ∀` gap is the subject.
 
-## 1. Why this experiment and not another
-
-The paper's thesis: a green proof artefact can fail to *establish* an external
-requirement in three distinct ways.
-
-- **Refutation** — the claim is false as stated.
-- **Inadequacy** — the observations the proof relies on do not determine the
-  requirement.
-- **Engineering** — the proof is simply unfinished.
-
-Audits that conflate these produce either overclaims ("verified, therefore
-conformant") or overcorrections ("the approach is unsound").  L4YAML is a good
-subject because all three are visibly present at one boundary, documented in
-the tree itself:
-
-| Mode | Where it is already visible in the tree |
-|---|---|
-| Refuted as stated | `Tests/Guards/Proofs/TraceOfBlockAmbiguity.lean` proves `traceOf_unique_refuted`: the input `a⏎&x` has two traces, `[]` and `[defineAnchor "x"]`. |
-| Representation / over-approximation | `L4YAML/Surface/Document.lean`: the constructor `SLYamlStream.scannerDrop` makes `InYamlLanguage s` true for every string (the source comment says so), so `parse_strict_proof` is vacuous until Row 12 retires it. |
-| Unfinished engineering | `DOCS.md` items 454–468: the S3 bridge is priced, its leaf, document-marker and flow slices are paid, the whole-stream statement is gated. |
-
-### 1.1 The question, with an example
+### 0.2 The question, with an example
 
 The experiment asks a sharper question than "is the proof done":
 
@@ -101,8 +93,8 @@ Spelled out for this boundary:
   token stream `ts`, read as a trace `tokenEvents ts`, and the verdict
   `checkFrom {} (tokenEvents ts)` on it.  Nothing else about the input reaches
   the capstone through this chain.
-- The **requirement** is `TraceWellFormed input`: *every* trace the grammar
-  assigns to the input is well-formed.
+- The **requirement** is the target, `TraceWellFormed input`: *every* trace the
+  grammar assigns to the input is well-formed.
 - The evidence **determines** the requirement if two inputs with the same
   evidence always get the same requirement verdict.  If one pair of inputs has
   identical evidence but opposite verdicts, the evidence is *inadequate*: no
@@ -123,8 +115,84 @@ information.  The positive control (§5) is a fragment where the opposite is
 proven: on flow collections the grammar assigns one trace, so the scanner's
 evidence does determine the requirement there.
 
+### 0.3 The plan on the tree, in two steps
+
+The project plans to discharge the target in **two steps**:
+
+1. `scan_trace` (the "S3 bridge"; **the obligation** this experiment freezes):
+   `scanFiltered input = .ok ts → TraceOf input (tokenEvents ts)`.  The
+   scanner's own token stream, read as a trace, is *one* trace the grammar
+   assigns to the input.
+2. `traceOf_unique` (the "lift"):
+   `TraceOf input ev₁ → TraceOf input ev₂ → ev₁ = ev₂`.  It is the *only* such
+   trace, so checking the scanner's trace checks every trace.
+
+Where each step stands today:
+
+1. `scan_trace` is **proven** slice by slice (leaves, document markers, flow;
+   §3.1) and **gated** at the whole-stream level until the grammar constructor
+   `scannerDrop` is retired (Row 12).
+2. `traceOf_unique` is **proven** on flow collections and **refuted** on the
+   block/document fragment of the current grammar by a checked counterexample
+   (`traceOf_unique_refuted`; §3.2).
+
+### 0.4 What the experiment does
+
+- Freezes **the obligation** — `scan_trace`, step 1 of §0.3 — and **its
+  consumer** — the target `TraceWellFormed input` of capstone 7.7, which
+  `scan_trace` reaches only through step 2 (the chain is written out in §3.3).
+- Fixes a legitimate input domain \(D\) (§3.5).
+- Runs one minimum **countermodel** (§4).  *Countermodel to what:* to the
+  adequacy of the evidence (§0.2) — an input inside \(D\) on which the
+  scanner's trace passes `checkFrom` yet the target `TraceWellFormed` is
+  false.  It is not a countermodel to `scan_trace` itself, which is expected
+  to hold on it.
+- Runs one **positive control** (§5).  *Control of what:* of the same property,
+  `TraceWellFormed`, on an input where it is known to hold by an independent
+  argument (flow collections, where `traceOf_unique` is a lemma), run through
+  the same pipeline.  It shows that a negative result on the countermodel comes
+  from the input and not from the harness.
+- Places the outcome in exactly one of four boxes (§7), and in no other:
+  - **refuted obligation** — `scan_trace` is false on \(D\);
+  - **local proof with an open global step** — `scan_trace` holds on \(D\),
+    the lift to `TraceWellFormed` does not;
+  - **inadequate representation** — the evidence `scan_trace` delivers cannot
+    determine the target on \(D\), whatever else is proven;
+  - **unresolved proof engineering** — nothing refuted, nothing inadequate,
+    the proof is not finished.
+
 ---
 
+## 1. Why this experiment and not another
+
+The paper's thesis: a green proof artefact can fail to *establish* an external
+requirement for three distinct reasons.  This document calls them the three
+**failure modes**:
+
+- **Refutation** — the claim is false as stated.
+- **Inadequacy** — the observations the proof relies on do not determine the
+  requirement (§0.2).
+- **Engineering** — the proof is simply unfinished.
+
+An audit that does not tell the three failure modes apart ends in one of two
+wrong results:
+
+- an **overclaim** — "the build is green, therefore the parser is conformant" —
+  which treats engineering progress as establishing the requirement;
+- an **overcorrection** — "the statement is false, therefore the approach is
+  unsound" — which treats one failed bounded search as a verdict on the
+  method.
+
+L4YAML is a good subject because all three failure modes are visibly present
+at one boundary, documented in the tree itself:
+
+| Failure mode | Where it is already visible in the tree |
+|---|---|
+| Refutation | `Tests/Guards/Proofs/TraceOfBlockAmbiguity.lean` proves `traceOf_unique_refuted`: the input `a⏎&x` has two traces, `[]` and `[defineAnchor "x"]`. |
+| Inadequacy (representation / over-approximation) | `L4YAML/Surface/Document.lean`: the constructor `SLYamlStream.scannerDrop` makes `InYamlLanguage s` true for every string (the source comment says so), so `parse_strict_proof` is vacuous until Row 12 retires it. |
+| Engineering | `DOCS.md` items 454–468: the S3 bridge is priced, its leaf, document-marker and flow slices are paid, the whole-stream statement is gated. |
+
+---
 ## 2. Vocabulary
 
 Four layers are in play, and the same English word ("trace", "well-formed",
@@ -188,7 +256,7 @@ Properties **about** the functions of §2.3, stated using the relations of §2.2
 |---|---|---|
 | **`scan_trace`** (the S3 bridge) | `scanFiltered input = .ok ts → TraceOf input (tokenEvents ts)`.  The scanner's trace is a trace of the input.  Stated and priced in item 454; proven by slice (§3.1). | `DOCS.md` item 454; `TraceOf/{LeafBridge,DocBridge,FlowBridge}.lean` |
 | **`traceOf_unique`** (the lift) | `TraceOf input ev₁ → TraceOf input ev₂ → ev₁ = ev₂`.  Proven on flow; refuted on block/document (§3.2). | `TraceOf/UniqueFlow.lean`; `Tests/Guards/Proofs/TraceOfBlockAmbiguity.lean` |
-| **`TraceWellFormed input`** | `∀ ev, TraceOf input ev → SerializationWellFormed ev`.  *Universal* over all traces.  The capstone's serialization conjunct. | `TraceOf/Document.lean` |
+| **`TraceWellFormed input`** | `∀ ev, TraceOf input ev → SerializationWellFormed ev`.  *Universal* over all traces.  The target (§0.1): the string-level reading of the capstone's `SerializationWellFormed input`. | `TraceOf/Document.lean` |
 | **`serializationWellFormed_iff_check`** | `SerializationWellFormed ev ↔ checkFrom {} ev = true` — ties the relation (§2.2) to the executable (§2.3). | `SerializationWellFormed.lean` |
 | **`scanFiltered_parseStream_ok_checkFrom_full`** (S5→) | `scanFiltered input = .ok ts → parseStream ts = .ok docs → checkFrom {} (tokenEvents ts) = true`. | `L4YAML/Proofs/Serialization/ScannerShape.lean` |
 | **`parse_strict_proof`** | `parseYaml input = .ok docs → InYamlLanguage input`.  Today's end of the chain; vacuous while `scannerDrop` stands. | `L4YAML/Proofs/Production/DocumentProduction.lean` |
@@ -205,7 +273,7 @@ Properties **about** the functions of §2.3, stated using the relations of §2.2
 | **requirement** | What Nicolas actually wants to be true of the parser, stated without reference to how the proof is organised: *every input `parseYaml` accepts has only well-formed serialization traces, as YAML 1.2.2 reads it.* |
 | **authority** | Who decides when the spec and a formalisation disagree.  For L4YAML the owner adjudicates against YAML 1.2.2 (the paper's "owner-adjudicated interpretation"). |
 | **observation / evidence** | The data the proof consumes to decide the requirement.  Here: the scanner's token array `ts` and its reading `tokenEvents ts`. |
-| **adequacy** | The observation *determines* the requirement on the admissible domain: two inputs with the same observation never differ on the requirement (§1.1).  Inadequacy is witnessed by one pair that agree on the observation and disagree on the requirement. |
+| **adequacy** | The observation *determines* the requirement on the admissible domain: two inputs with the same observation never differ on the requirement (§0.2).  Inadequacy is witnessed by one pair that agree on the observation and disagree on the requirement. |
 | **witness** | A concrete input (or pair) whose behaviour is checked by execution or by a kernel-checked derivation, not asserted. |
 | **evidence boundary** | The edge of what a given artefact establishes.  `scan_trace` establishes *existence* of a well-formed trace; the boundary is the `∃ → ∀` step, which no scanner fact can cross on its own. |
 | **representation** | How the requirement is encoded (§2.2): the annotated grammar `TLYamlStream` and the `Event` type.  A representation is *inadequate* when the encoding itself loses or adds information relative to the requirement — not merely when a proof is missing. |
@@ -270,7 +338,7 @@ Current state (from `DOCS.md` items 454, 459–468 and the `TraceOf/` modules):
 
 ### 3.2 The lift the consumer needs
 
-`scan_trace` yields one trace.  The capstone's conjunct is over all traces:
+`scan_trace` yields one trace.  The target (§0.1) is over all traces:
 
 ```lean
 def TraceWellFormed (input : String) : Prop :=
@@ -299,7 +367,7 @@ theorem parse_iff_grammar (input : String) :
       ↔ ExactSurfaceLanguage input ∧ SerializationWellFormed input
 ```
 
-Its forward direction's serialization conjunct is discharged by the chain
+Its forward direction's `SerializationWellFormed input` part is discharged by the chain
 (item 454, "Rule 1 — the chain"):
 
 ```text
