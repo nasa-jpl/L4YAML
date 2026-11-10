@@ -390,9 +390,10 @@ def expectedEndsLit : List String :=
 -- `PStep` (2 arms) and `Follow` (a def); neither ends at a literal the park reads.
 -- 2026-10-26 (item 367, `[82]`): `SLDirective` 1 → 3 arms and the four scanner-cut relations in StructureProduction (`DigitRun`, `DirectiveStop`, `DirectiveTail`, `ScannedDirective`): prods 165 → 169, ctors 308 → 313; the `GLit` depth below the stream 4 → 3 (`SLDirective.yaml`'s `GLit '.'`).
 -- 2026-11-09 (item 469): prods 169 → 172, ctors 313 → 318, endsLit 39 → 42 — `GapRead` (2 arms), `FlowArm` (5 arms, three ending in an indicator literal) and `FlowStackKA`; the park's own reading unmoved.
+-- 2026-11-10 (item 469, review round 1): prods 172 → 171 (`FlowStackKBody`/`FlowStackKA` out, `gapTail` in), ctors 318 → 320 (`GapRead`/`FlowArm` re-shaped: `tl₂` out, `h_held` and the `∀ m` leads in); endsLit 42 unmoved.
 def expectedLine : String :=
   "pop=10 sites=13 spend=6 nospend=7 len1=6 ends=GStar(SSWhite)+SIndent \
-depth=3 prods=172 ctors=318 \
+depth=3 prods=171 ctors=320 \
 endsLit=42 minus=1 question=2 colon=21 chainEnds=0 blockArms=1 seqArms=10 \
 mapArms=10 streamArms=4 streamHonest=3"
 

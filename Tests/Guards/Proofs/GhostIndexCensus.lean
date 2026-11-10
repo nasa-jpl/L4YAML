@@ -270,7 +270,11 @@ it may only shrink. -/
 -- 2026-10-29 (item 389): the mapping-top conjunct inside `pendingBlock.h_closeF` / `pendingBlockContent.h_closeF` / `pendingProps.h_closeFE` adds its own `∨ True` (or 102 → 105) and NO binder: it resumes the park's own `ks` (PR #161 review dropped the first draft's `∃ ks'`; ghost stays 72).
 -- 2026-10-30 (item 405, Rule 8 fix): the `?`-park chain fields `pendingBlock.h_kslot`/`pendingBlockContent.h_kslot` are RE-INDEXED by the projection `RegisterWitness.markedCols sc` (`∀ nv ∈ markedCols sc, …`, no `∃ ns`): the two ghost rows the head-form chain had added leave the roster (ghost 75 → 73, back to item 404's reading); `h_explUp` keeps its one new `∨ PackAlt sc` disjunct (or 106 → 107).
 -- 2026-11-09 (item 469, PR 2b-ii α2): `accum_step_flow` concludes `FlowStackKA` — four new carriers: `GapRead` (h_tuple's gap resolution), `FlowArm` (the arm witness; its 4 ghost rows are the post-gap tail `tl₂ : FrameTail`, h_tuple's own binder, the same kind as `FlowOpenStack`'s FrameTail rows — the projection `gapTail sc` is priced for (β)), `FlowStackKBody` / `FlowStackKA` (FlowStackK's pack verbatim, so its km/g/ks/tl rows twice more).  carriers 60 → 64, snapshot 9 → 11, ghost 72 → 84, or 109 → 117.
-def expectedSummary : String := "carriers=64 snapshot=11 ghost=84 or=117"
+-- 2026-11-10 (item 469, review round 1): the roster is back at its baseline — `FlowArm`'s post-gap tail is the
+-- projection `gapTail sc` and `GapRead` is indexed by the state (ghost 84 → 72, no `FrameTail` binder on either);
+-- `FlowStackKBody`/`FlowStackKA` deleted (carriers 64 → 62, snapshot 11 → 9); the leads read at every floor add a
+-- `∨ ¬ m ≤ minContentIndentOf sc` disjunct row per arm (or 117 → 121: FlowArm 4 → 8, GapRead 2 → 4, KBody −2).
+def expectedSummary : String := "carriers=62 snapshot=9 ghost=72 or=121"
 
 -- 2026-10-24 (B3 [66] col-0 threading): carriers 61 → 62 — `SSLCommentsFrom` (the separator-less comment product).
 -- 2026-10-25 (#99 landed): the `FlowLead`/`leadFree`/`closeFree` tally rows go with the deleted carrier and
@@ -290,7 +294,7 @@ def expectedTally : List String :=
    "DanglingPred: surface=0 state=0 prop=0 scalar=6 snapshot=0 ghost=0 or=0",
    "ExplValueLine: surface=5 state=0 prop=3 scalar=1 snapshot=0 ghost=0 or=0",
    "ExplicitValueRefused: surface=0 state=1 prop=0 scalar=0 snapshot=0 ghost=0 or=0",
-   "FlowArm: surface=21 state=2 prop=42 scalar=7 snapshot=0 ghost=4 or=4",
+   "FlowArm: surface=21 state=2 prop=42 scalar=10 snapshot=0 ghost=0 or=8",
    "FlowBaseAnchor: surface=0 state=5 prop=0 scalar=4 snapshot=2 ghost=0 or=0",
    "FlowBaseRoutes: surface=23 state=1 prop=29 scalar=9 snapshot=1 ghost=4 or=7",
    "FlowOpenHeld: surface=0 state=0 prop=0 scalar=3 snapshot=0 ghost=2 or=0",
@@ -298,9 +302,7 @@ def expectedTally : List String :=
    "FlowStack: surface=2 state=0 prop=0 scalar=0 snapshot=0 ghost=0 or=0",
    "FlowStackB: surface=6 state=1 prop=1 scalar=4 snapshot=1 ghost=7 or=0",
    "FlowStackK: surface=5 state=2 prop=6 scalar=5 snapshot=1 ghost=3 or=2",
-   "FlowStackKA: surface=6 state=3 prop=0 scalar=4 snapshot=1 ghost=3 or=0",
-   "FlowStackKBody: surface=5 state=2 prop=6 scalar=5 snapshot=1 ghost=3 or=2",
-   "GapRead: surface=4 state=0 prop=5 scalar=4 snapshot=0 ghost=2 or=2",
+   "GapRead: surface=4 state=1 prop=7 scalar=5 snapshot=0 ghost=0 or=4",
    "GateOf: surface=0 state=1 prop=0 scalar=1 snapshot=2 ghost=0 or=0",
    "ImplicitKeyHead: surface=2 state=0 prop=2 scalar=0 snapshot=0 ghost=0 or=0",
    "ImplicitKeyPack: surface=16 state=1 prop=16 scalar=9 snapshot=0 ghost=4 or=7",
@@ -355,11 +357,7 @@ def expectedTally : List String :=
 -- 2026-10-29 (item 394, option B): the roster is unchanged in content (82 rows); FlowBaseRoutes'
 -- constructor indices shift by one for the new state parameter `s0` (mk[5] → mk[6], …).
 def expectedGhost : List String :=
-  ["FlowArm.openNest[8].tl₂ tl₂ : FrameTail",
-   "FlowArm.comma[7].tl₂ tl₂ : FrameTail",
-   "FlowArm.closeNested[8].tl₂ tl₂ : FrameTail",
-   "FlowArm.closeBase[8].tl₂ tl₂ : FrameTail",
-   "FlowBaseAnchor.type[0].a a : Option ScannerState",
+  ["FlowBaseAnchor.type[0].a a : Option ScannerState",
    "FlowBaseAnchor.body x : Option ScannerState",
    "FlowBaseRoutes.type[4].g g : Option ScannerState",
    "FlowBaseRoutes.mk[6].valueF ks : List IndentStackCover.FrameLevel",
@@ -392,16 +390,6 @@ def expectedGhost : List String :=
    "FlowStackK.type[4].tl tl : FrameTail",
    "FlowStackK.body km : Array Bool",
    "FlowStackK.body g : Option ScannerState",
-   "FlowStackKA.type[8].ks ks : Array Bool",
-   "FlowStackKA.type[9].tl tl : FrameTail",
-   "FlowStackKA.body km : Array Bool",
-   "FlowStackKA.body g : Option ScannerState",
-   "FlowStackKBody.type[3].km km : Array Bool",
-   "FlowStackKBody.type[4].g g : Option ScannerState",
-   "FlowStackKBody.type[8].ks ks : Array Bool",
-   "FlowStackKBody.type[9].tl tl : FrameTail",
-   "GapRead.type[1].tl tl : FrameTail",
-   "GapRead.type[4].a a : FrameTail",
    "GateOf.type[0].a a : Option ScannerState",
    "GateOf.body x : Option ScannerState",
    "ImplicitKeyPack.body ns : List Nat",
@@ -462,10 +450,14 @@ def expectedGhost : List String :=
 def expectedDisjuncts : List String :=
   ["CommentStop.body ∨ c = '\\n' ∨ c = '\\x0d'",
    "CommentStop.body ∨ c = '\\x0d'",
-   "FlowArm.openNest[16].h_lead ∨ sp_br = sp_flow₂ ∧ tl₂.leadFree = true",
-   "FlowArm.comma[15].h_lead ∨ sp_prep = sp_flow₂ ∧ tl₂.closeFree = true",
-   "FlowArm.closeNested[16].h_lead ∨ sp_prep = sp_flow₂ ∧ tl₂.closeFree = true",
-   "FlowArm.closeBase[16].h_lead ∨ sp_prep = sp_flow₂ ∧ tl₂.closeFree = true",
+   "FlowArm.openNest[14].h_lead ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
+   "FlowArm.openNest[14].h_lead ∨ sp_br = sp_flow₂ ∧ (gapTail sc).leadFree = true",
+   "FlowArm.comma[13].h_lead ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
+   "FlowArm.comma[13].h_lead ∨ sp_prep = sp_flow₂ ∧ (gapTail sc).closeFree = true",
+   "FlowArm.closeNested[14].h_lead ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
+   "FlowArm.closeNested[14].h_lead ∨ sp_prep = sp_flow₂ ∧ (gapTail sc).closeFree = true",
+   "FlowArm.closeBase[14].h_lead ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
+   "FlowArm.closeBase[14].h_lead ∨ sp_prep = sp_flow₂ ∧ (gapTail sc).closeFree = true",
    "FlowBaseRoutes.mk[6].valueF ∨ True",
    "FlowBaseRoutes.mk[8].key ∨ True",
    "FlowBaseRoutes.mk[8].key ∨ True",
@@ -477,10 +469,10 @@ def expectedDisjuncts : List String :=
    "FlowOpenStack.mapNest[15].promise ∨ sp_prep = sp_ne",
    "FlowStackK.body ∨ ∀ (sp_prep sp_tok : SurfPos), SSeparateLines n sp_flow sp_prep ∨ sp_prep = sp_flow → GLit ':' sp_prep sp_tok → FlowStackB sp_start n kc g s0 fl ks km (FrameTail.colon kj) sp_block sp_tok",
    "FlowStackK.body ∨ sp_prep = sp_flow",
-   "FlowStackKBody.body ∨ ∀ (sp_prep sp_tok : SurfPos), SSeparateLines n sp_flow sp_prep ∨ sp_prep = sp_flow → GLit ':' sp_prep sp_tok → FlowStackB sp_start n kc g s0 fl ks km (FrameTail.colon kj) sp_block sp_tok",
-   "FlowStackKBody.body ∨ sp_prep = sp_flow",
-   "GapRead.props[8].h_lead ∨ sp_p = sp_flow ∧ tl.leadFree = true",
-   "GapRead.props[10].h_some ∨ ht = true",
+   "GapRead.props[7].h_lead ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
+   "GapRead.props[7].h_lead ∨ sp_p = sp_flow ∧ (tailOf sc.tokens).leadFree = true",
+   "GapRead.props[8].h_run ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
+   "GapRead.props[9].h_some ∨ ht = true",
    "ImplicitKeyPack.body ∨ SeqTopKey sc",
    "ImplicitKeyPack.body ∨ PackAlt sc",
    "ImplicitKeyPack.body ∨ True",

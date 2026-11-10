@@ -28,9 +28,11 @@ namespace Tests.Guards.CapstonePathAudit
 open Lean Elab Command
 open Scripts.Path.CapstonePath
 
+-- 2026-11-10 (item 469, review round 1): `FlowStackKBody`/`FlowStackKA` out, `gapTail` + `FlowStackK.withArm` in — the StreamAccum
+-- reached count moves 1132/1274 → 1133/1276; every other count unmoved.
 -- 2026-11-09 (item 469): `FlowArm`/`GapRead`/`FlowStackKA` and `accum_step_flow_trace` — StreamAccum constants reached 1118/1254 → 1132/1274; every other count unmoved.
 def expectedSummary : String :=
-  "positions=269 on=7 off=192 unresolved=70 on-drop=3 on-via=0 on-relay=4 on-conclusion=0 off-honest=94 off-unread=53 off-conclusion=25 off-unreached=0 on-drop-nested=0 on-via-nested=0 on-relay-nested=0 off-honest-nested=20 nested-unresolved=70 on-by-alt: True=0 PackAlt=7 PackAltG=0 off-by-alt: True=135 PackAlt=50 PackAltG=7 pack-declines: on=8 off=43 consumed=scan_content_gives_stream_v2 streamAccum-reached=1132/1274 unrooted-arms=86 arms=245 relays=141 drop-set=8/8"
+  "positions=269 on=7 off=192 unresolved=70 on-drop=3 on-via=0 on-relay=4 on-conclusion=0 off-honest=94 off-unread=53 off-conclusion=25 off-unreached=0 on-drop-nested=0 on-via-nested=0 on-relay-nested=0 off-honest-nested=20 nested-unresolved=70 on-by-alt: True=0 PackAlt=7 PackAltG=0 off-by-alt: True=135 PackAlt=50 PackAltG=7 pack-declines: on=8 off=43 consumed=scan_content_gives_stream_v2 streamAccum-reached=1133/1276 unrooted-arms=86 arms=245 relays=141 drop-set=8/8"
 
 def expectedOn : List String :=
   [ "L4YAML.Proofs.StreamAccum.PendingNode.pendingContent[9].h_vpack top ∨ PackAlt on-relay DECLINE=4",

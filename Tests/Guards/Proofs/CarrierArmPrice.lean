@@ -227,6 +227,7 @@ def expectedBroken : List String :=
     flow stack's base arms, whose outer boundary "is free — any gap lives
     inside `resume`". -/
 -- 2026-11-09 (item 469): `FlowArm.openNest` / `comma` / `closeNested` join the anchored class — the arm lands at the indicator's end (`sp_open` / `sp_tok`), tied to the lead by `GLit` but not by a directed chain from the stack's own `sp_block`, exactly as `FlowOpenStack`'s four arms.
+-- 2026-11-10 (item 469, review round 1): `GapRead.white` joins the anchored class — re-indexed by the state, its white arm lands at its own `sp_flow` (the gap `GStar SSWhite sp_flow sp_scan` reaches the cursor but the frame does not move), as `InteriorGap.props` sits here already.
 def expectedAnchoredOnly : List String :=
   ["L4YAML.Proofs.StreamAccum.FlowArm.closeNested",
    "L4YAML.Proofs.StreamAccum.FlowArm.comma",
@@ -235,6 +236,7 @@ def expectedAnchoredOnly : List String :=
    "L4YAML.Proofs.StreamAccum.FlowOpenStack.mapNest",
    "L4YAML.Proofs.StreamAccum.FlowOpenStack.seqBase",
    "L4YAML.Proofs.StreamAccum.FlowOpenStack.seqNest",
+   "L4YAML.Proofs.StreamAccum.GapRead.white",
    "L4YAML.Proofs.StreamAccum.InteriorGap.props",
    "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock",
    "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlockContent",
@@ -285,8 +287,9 @@ def expectedAbsorbReaders : List String :=
 -- relations `PStep` (2 arms, both direct) and `Follow`; nothing in Surface, no anchor.
 -- 2026-10-26 (item 367, `[82]`): `SLDirective` 1 → 3 arms (surfArms 182 → 184, surfDirect 181 → 183) and the four scanner-cut relations in StructureProduction: prods 165 → 169, ctors 308 → 313, direct 294 → 299; the carrier readers are unchanged.
 -- 2026-11-09 (item 469): prods 169 → 172, ctors 313 → 318 (`GapRead`, `FlowArm`, `FlowStackKA`); same 25 → 26 and direct 299 → 300 (`GapRead.white` keeps its position, `GapRead.props` lands at `sp_scan`); anchoredOnly 12 → 15 and broken 2 → 3 — `FlowArm`'s arms, as the two pins above record.
+-- 2026-11-10 (item 469, review round 1): prods 172 → 171 (`FlowStackKBody`/`FlowStackKA` out, `gapTail` in), ctors 318 → 320 (`GapRead`/`FlowArm` re-shaped), same 26 → 27 and direct 300 → 301 (`GapRead` is indexed by the state: its white arm keeps its own `sp_flow`, counted once more), anchoredOnly 15 → 16 (`GapRead.white`).
 def expectedLine : String :=
-  "prods=172 ctors=318 same=26 direct=300 anchoredOnly=15 broken=3 surfArms=184 \
+  "prods=171 ctors=320 same=27 direct=301 anchoredOnly=16 broken=3 surfArms=184 \
 surfDirect=183 candidate=direct candidateNil=direct readers=3 libReaders=2 \
 guardReaders=1 mentions=41 producers=21 absorbReaders=5 absorbPlainReaders=0"
 

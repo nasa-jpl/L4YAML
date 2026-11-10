@@ -240,7 +240,8 @@ def readDecl (prods : Std.HashSet Name) (n : Name) : MetaM R := do
 -- (one plain-scalar step) and `Follow` (the flow follow-set on two end positions); not Surface, not `@[yaml_spec]`.
 -- 2026-10-26 (item 367, `[82]`): `DigitRun`, `DirectiveStop`, `DirectiveTail`, `ScannedDirective` (StructureProduction) are typed over surface positions: prodTyped 165 → 169.
 -- 2026-11-09 (item 469): three typed productions added by the arm witness (`GapRead`, `FlowArm`, `FlowStackKA`); surf/spec unmoved.
-def expectedAlphabet : String := "prodTyped=172 prodSurf=96 prodSpec=58"
+-- 2026-11-10 (item 469, review round 1): prodTyped 172 → 171 — `FlowStackKBody`/`FlowStackKA` deleted, `gapTail` added.
+def expectedAlphabet : String := "prodTyped=171 prodSurf=96 prodSpec=58"
 -- 133 → 137 on 2026-10-23: the four narrowed relations of `Proofs.Production.Acceptance.Quoted`
 -- (`DQCharOk`, `SQCharOk`, `SCDoubleQuotedOk`, `SCSingleQuotedOk`); not under `Surface`, no rule tag.
 
