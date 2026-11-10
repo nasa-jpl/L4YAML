@@ -349,6 +349,36 @@ class TestCompatRoundTrip:
         result = safe_load(yaml_str)
         assert result == data
 
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "O'Reilly",
+            "a''b",
+            "x' # comment",
+            "'",
+            "@user",
+            "`code`",
+            "%YAML 1.2",
+            "...",
+            "\ufefffoo",
+            "\ufeff",
+            "a\x01b",
+            "a\x85b",
+            "a\u2028b",
+            "a\u2029b",
+            "a🚀b",
+        ],
+    )
+    def test_scalar_lexical_fidelity(self, value: str) -> None:
+        self._roundtrip({"value": value})
+
+    @pytest.mark.parametrize("value", ["...", "\ufefffoo", "\ufeff", "@user"])
+    def test_root_scalar_lexical_fidelity(self, value: str) -> None:
+        self._roundtrip(value)
+
+    def test_bom_prefixed_mapping_key_stays_distinct(self) -> None:
+        self._roundtrip({"\ufeffa": "correct", "a": "wrong"})
+
     def test_string(self) -> None:
         self._roundtrip("hello")
 
