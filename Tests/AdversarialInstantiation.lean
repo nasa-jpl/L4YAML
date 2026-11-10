@@ -15130,6 +15130,72 @@ example : (([0, 0, 1, 0] : List Nat).dropWhile (· == 0)).head? = some 1 := rfl
 example : (([2] : List Nat).dropWhile (· == 0)).head? = some 2 := rfl
 end P107Test
 
+/-! Priority 108 (item 472, S3 slice (3) (β)): `PropsRun.toT` — the held property run's trace is its
+    span's events.  `PropsRun` is a surface predicate, so the lift's witness is `anchorEvents` /
+    `tagEvents` of each half in the run's textual order; read here at every scanner step whose pre-state
+    holds a run (`trailingPropertyRun`), the run's text cut from its first token to the next token. -/
+namespace P108
+
+structure Tally where
+  runs : Nat := 0
+  shape : List (String × Nat) := []   -- anchor / tag / anchor,tag / tag,anchor
+  scanBad : List String := []         -- the standalone run's `scanFiltered` trace does not start with the lift's events
+  refBad : List String := []          -- … nor `refLex`'s
+  rest : List (String × Nat) := []    -- what follows the run's events in the standalone trace (a reading)
+
+open L4YAML.Proofs.StreamAccum L4YAML.Proofs.Serialization.TokenEvents L4YAML.Proofs.Serialization.TraceOf L4YAML.Proofs.Serialization.EventsOf L4YAML.Proofs.Serialization.EventsOf in
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    match scanFiltered s, P107.stepsOf s with
+    | .ok _, some sts =>
+      for (sc, s') in sts do
+        let run := trailingPropertyRun sc.tokens
+        let fresh := (s'.tokens.toList.drop sc.tokens.size).filter (fun q => q.val != .placeholder)
+        match run.isEmpty, fresh with
+        | false, p :: _ =>
+          let real := sc.tokens.toList.filter (fun q => q.val != .placeholder)
+          let halves := real.drop (real.length - run.length)
+          match halves with
+          | [] => pure ()
+          | h0 :: _ =>
+            let ends := (halves.drop 1).map (·.pos.offset) ++ [p.pos.offset]
+            let evT := (halves.zip ends).flatMap fun (h, e) =>
+              let txt := (P105.rstrip (String.Pos.Raw.extract s ⟨h.pos.offset⟩ ⟨e⟩)).toList
+              match h.val with
+              | .anchor _ => anchorEvents txt
+              | _ => tagEvents txt
+            let shape := ",".intercalate (halves.map fun h => match h.val with | .anchor _ => "anchor" | _ => "tag")
+            let runText := P105.rstrip (String.Pos.Raw.extract s ⟨h0.pos.offset⟩ ⟨p.pos.offset⟩)
+            let at_ := s!"{repr s}@{h0.pos.offset} {repr runText}"
+            t := { t with runs := t.runs + 1, shape := P100.bump t.shape shape }
+            match (scanFiltered runText).toOption.map tokenEvents with
+            | some ev =>
+              if ev.take evT.length == evT then t := { t with rest := P100.bump t.rest s!"{repr (ev.drop evT.length)}" }
+              else t := { t with scanBad := at_ :: t.scanBad }
+            | none => t := { t with scanBad := at_ :: t.scanBad }
+            match (refLex runText).map eventsOfSegs with
+            | some ev => if ev.take evT.length != evT then t := { t with refBad := at_ :: t.refBad }
+            | none => t := { t with refBad := at_ :: t.refBad }
+        | _, _ => pure ()
+    | _, _ => pure ()
+  return t
+
+end P108
+
+section P108Test
+def testPropsRunT (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 108: S3 slice (3) (β) — PropsRun.toT, the held run's trace is its span's events"
+  let t := P108.tally P106.allRows
+  -- P1: the runs and their shapes (both separated orders present)
+  checkM state s!"P108(i) held property runs at every scanner step: {t.runs}, shapes {t.shape}"
+    (t.runs == 178 && t.shape.mergeSort (fun a b => a.1 ≤ b.1) ==
+      [("anchor", 78), ("anchor,tag", 8), ("tag", 85), ("tag,anchor", 7)]) s!"{t.runs} {t.shape}"
+  -- P2: the lift's events head the standalone run's trace under both twins
+  checkM state s!"P108(ii) the lift's events (anchorEvents/tagEvents of each half in order) head the standalone run's trace: {t.scanBad.length} bad under scanFiltered, {t.refBad.length} under refLex; remainders {t.rest}"
+    (t.scanBad.isEmpty && t.refBad.isEmpty && t.rest == [("[]", 178)]) s!"{t.scanBad.take 5} | {t.refBad.take 5} | {t.rest}"
+end P108Test
+
 def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 100: S3 slice (1) — leaf span ↔ token payload (anchor / alias / tag), before proof"
   let t := P100.tally P100.allRows
@@ -15315,6 +15381,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testFlowReceive state
   testFlowStep state
   testFlowArm state
+  testPropsRunT state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",
