@@ -5656,6 +5656,29 @@ open L4YAML.Surface L4YAML.Proofs.IndentStackCover L4YAML.Proofs.StreamAccum in
 example {P : SurfPos → Prop} {sp : SurfPos} : ¬ ResumeFrames P [FrameLevel.map 0, FrameLevel.map 0] sp :=
   fun h => absurd (h.strict _ (List.Mem.head _)) (Nat.lt_irrefl _)
 
+/-! Rule 2 for option (A) (item 470, read before the pay): the column-0 openers are born with the
+scanner's stack `[map 0, map 0]` (Priority 71's `atLine` rows: `a: 1`, `[a]: 1`, `? a` all read it on
+line 0), so a root birth `[map 0]` must stand BELOW the opener's own level `map 0`.  Under the levels'
+strict order that is `0 < 0`: no `ResumeFrames.level 0 [map 0]` / `KeyFrames.mapLevel 0 [map 0]` can
+ever be built — the class is STARVED by the constructor, not by a missing premise.  Under `≤` the same
+bound holds by `decide`.  This is the fact that moves the bound off the level constructors (item 392's
+P1), which stage A (item 448) had kept strict. -/
+example : ¬ (∀ fr ∈ [L4YAML.Proofs.IndentStackCover.FrameLevel.map 0], fr.width < 0) :=
+  fun h => absurd (h _ (List.Mem.head _)) (Nat.lt_irrefl _)
+
+example : ∀ fr ∈ [L4YAML.Proofs.IndentStackCover.FrameLevel.map 0], fr.width ≤ 0 :=
+  fun _ h => by cases h with
+    | head => exact Nat.le_refl _
+    | tail _ h => exact absurd h (List.not_mem_nil)
+
+example : ∀ fr ∈ [L4YAML.Proofs.IndentStackCover.FrameLevel.map 0,
+    L4YAML.Proofs.IndentStackCover.FrameLevel.map 0], fr.width ≤ 0 :=
+  fun _ h => by cases h with
+    | head => exact Nat.le_refl _
+    | tail _ h => cases h with
+      | head => exact Nat.le_refl _
+      | tail _ h => exact absurd h (List.not_mem_nil)
+
 open L4YAML.Proofs.IndentStackCover in
 def testRootFrameBound (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 70: the (α) root-frame bound — `<` refuses the park's own level, `≤` admits it (stage A)"
