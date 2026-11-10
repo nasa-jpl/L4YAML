@@ -1544,7 +1544,7 @@ wrapper count moved: this is item 173's arm, not a `_stamp_*` site. -/
     runs); and `resumeAt` pops the levels the dedent ended, handing back exactly
     the opener's resume arm — widths bounded by the landing, continuation from
     the landing's own mapping tail. -/
--- 2026-11-10 (item 471, option (A)): the level constructors' bound and the park faces read `≤` (the root frame
+-- 2026-11-10 (item 473, option (A)): the level constructors' bound and the park faces read `≤` (the root frame
 -- stands under a column-0 opener's own level), `ResumeWidths` names the survivors positionally and `ResumeWidths.lt`
 -- is `ResumeWidths.le`; the rows below restate the faces they mirror — a shape move, no obligation changed.
 example {n k : Nat} {sp_start sp_scan sp_mid : SurfPos} {ks : List FrameLevel}
@@ -1613,13 +1613,15 @@ example {n k nv : Nat} {sp_start sp_scan sp_mid : SurfPos} {ks : List FrameLevel
     let ⟨ks', hw, cont⟩ :=
       (_closeV sp_mid _h_ssl sp_mid (SCompactSeqTail.nil n sp_mid)).resumeAt _hmem
     ⟨ks', hw.le, cont⟩
+  -- 2026-11-10 (item 473): the probe asks the widened bound (`≤ k`, `hw.le`) so that the only
+  -- thing that can fail is the bottom mismatch (a value-line stack handed to the stream arm).
   fail_if_success
-    have : ∃ ks' : List FrameLevel, (∀ fr ∈ ks', fr.width < k) ∧
+    have : ∃ ks' : List FrameLevel, (∀ fr ∈ ks', fr.width ≤ k) ∧
         ∀ sp_end : SurfPos, SCompactMapTail k sp_mid sp_end →
           ResumeFrames (SLYamlStream sp_start) ks' sp_end :=
       let ⟨ks', hw, cont⟩ :=
         (_closeV sp_mid _h_ssl sp_mid (SCompactSeqTail.nil n sp_mid)).resumeAt _hmem
-      ⟨ks', hw.lt, cont⟩
+      ⟨ks', hw.le, cont⟩
   trivial
 
 /-! **The paid family, at the runtime.**  One open mapping level below the
