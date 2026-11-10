@@ -14868,6 +14868,268 @@ example {sp_br sp_o sp_c : SurfPos} (ho : GLit '{' sp_br sp_o) (hc : GLit '}' sp
   TMapFrame.closeBase (sp_block := sp_br) ho (.none sp_o) (.betweenEmpty sp_o) (.inr ⟨rfl, rfl⟩) hc
 end P106Examples
 
+/-! Priority 107 (item 469, PR 2b-ii α2): `FlowArm` — `accum_step_flow`'s arm witness — read off the
+    scanner's OWN step before it is stated.  The arm is the projection `(sc.flowLevel, sc.flowStack.back?, c)`
+    (Rule 8: no ghost choice); every field a constructor claims about the post-state — `s'.flowLevel`,
+    `s'.flowStack`, `tailOf s'.tokens` — and every tail premise it takes from the pre-state is decided
+    here at each indicator step over the P106 rows, stepping `scanNextToken` as `scanLoop` does. -/
+namespace P107
+
+structure Tally where
+  rows : Nat := 0
+  scanned : Nat := 0
+  steps : Nat := 0
+  arm : List (String × Nat) := []
+  sizeBad : List String := []      -- `sc.flowStack.size ≠ sc.flowLevel` at an indicator
+  kindBad : List String := []      -- a closer whose kind ≠ the top of `sc.flowStack`
+  postBad : List String := []      -- `s'.flowLevel` / `s'.flowStack` / `tailOf s'.tokens` ≠ the arm's claim
+  preBad : List String := []       -- `,` on a `.sep` tail / nested open on a `.value` tail
+  multiBad : List String := []     -- a step that emitted more than one real token with an indicator
+  heldArm : List (String × Nat) := []  -- a property run held at the indicator (`InteriorGap.props`), by arm
+  refusedOwn : List String := []
+  twinSteps : Nat := 0                 -- (vii) `accum_step_flow_trace`'s conclusion twins read, one per step
+  twinBad : List String := []          -- (vii) `scanFiltered` of the cut-and-closed span ≠ `ev ++ ev_g`
+  refBad : List String := []           -- (vii) `refLex` refuses the span
+  aliasOut : List String := []         -- (vii) alias whose anchor sits outside the cut (semantic, not grammar)
+  heldTwin : Nat := 0                  -- (vii) depth-≥1 steps whose `GapRead` oracle holds a run
+  evgBad : List String := []           -- (vii) a held run whose own events `ev_g` are empty
+
+/-- The arm as a projection of the pre-state and the indicator; `none` = not an indicator. -/
+def armOf (sc : ScannerState) : YamlToken → Option String
+  | .flowSequenceStart => some (if sc.flowLevel == 0 then "baseOpen/seq" else "nestOpen/seq")
+  | .flowMappingStart => some (if sc.flowLevel == 0 then "baseOpen/map" else "nestOpen/map")
+  | .flowEntry => some "comma"
+  | .flowSequenceEnd => some (if sc.flowLevel == 1 then "closeBase/seq" else "closeNested/seq")
+  | .flowMappingEnd => some (if sc.flowLevel == 1 then "closeBase/map" else "closeNested/map")
+  | _ => none
+
+/-- The `(pre, post)` states of every `scanNextToken` step, as `scan` runs them; `none` if refused. -/
+def stepsOf (s : String) : Option (List (ScannerState × ScannerState)) := Id.run do
+  let s0 := (ScannerState.mk' s).emit .streamStart
+  let s0 := match s0.peek? with
+    | some '\uFEFF' => s0.consumeBOM
+    | _ => s0
+  let mut sc := s0
+  let mut acc : List (ScannerState × ScannerState) := []
+  for _ in [0:(s.utf8ByteSize + 1) * 4] do
+    match scanNextToken sc with
+    | .error _ => return none
+    | .ok none => return some acc.reverse
+    | .ok (some s') => acc := (sc, s') :: acc; sc := s'
+  return none
+
+open L4YAML.Proofs.StreamAccum L4YAML.Proofs.Serialization.TokenEvents in
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    t := { t with rows := t.rows + 1 }
+    -- the acceptance oracle is `scanFiltered` (P1 REFUTED on the first run: `stepsOf` alone accepted the
+    -- 11 rows `scanLoop` refuses at end of input — an unclosed flow — so it read 558/593, not 547/587)
+    match scanFiltered s, stepsOf s with
+    | .error _, _ | _, none => if P106.own.contains s then t := { t with refusedOwn := s :: t.refusedOwn }
+    | .ok _, some sts =>
+      t := { t with scanned := t.scanned + 1 }
+      -- (vii) the open frames as (opener's index into `tokens`, opener's byte offset)
+      let mut fr : List (Nat × Nat) := []
+      for (sc, s') in sts do
+        let fresh := (s'.tokens.toList.drop sc.tokens.size).filter (fun p => p.val != .placeholder)
+        let inds := fresh.filterMap fun p => (armOf sc p.val).map (·, p)
+        match inds with
+        | [] => pure ()
+        | (a, p) :: rest =>
+          let at_ := s!"{repr s}@{p.pos.offset} {a}"
+          if !rest.isEmpty || fresh.length != 1 then t := { t with multiBad := at_ :: t.multiBad }
+          t := { t with steps := t.steps + 1, arm := P100.bump t.arm a }
+          if sc.flowStack.size != sc.flowLevel then t := { t with sizeBad := at_ :: t.sizeBad }
+          let tl := tailOf sc.tokens
+          let tl' := tailOf s'.tokens
+          -- the tail the arm reads is the POST-gap tail `tl₂` of `accum_step_flow`'s `h_tuple`: a held
+          -- property run is folded into the frame as an empty node first (`receivePropsEmpty`), so
+          -- `[&a, b]`'s `,` sees `.value false`, not the opener's `.sep` (P3 REFUTED on the first run: 7 =
+          -- exactly P106 (ii)'s held-run commas; the nested-open premise stays on `tl`, as `inject` has it)
+          let held := !(trailingPropertyRun sc.tokens).isEmpty
+          let tl₂ := if held then FrameTail.value false else tl
+          if held then t := { t with heldArm := P100.bump t.heldArm a }
+          let isSeq := p.val == .flowSequenceStart || p.val == .flowSequenceEnd
+          let isOpen := p.val == .flowSequenceStart || p.val == .flowMappingStart
+          let isClose := p.val == .flowSequenceEnd || p.val == .flowMappingEnd
+          if isClose && sc.flowStack.back? != some isSeq then t := { t with kindBad := at_ :: t.kindBad }
+          let postOk :=
+            if isOpen then s'.flowLevel == sc.flowLevel + 1 && s'.flowStack == sc.flowStack.push isSeq && tl' == .sep
+            else if isClose then s'.flowLevel + 1 == sc.flowLevel && s'.flowStack == sc.flowStack.pop && tl' == .value true
+            else s'.flowLevel == sc.flowLevel && s'.flowStack == sc.flowStack && tl' == .sep
+          if !postOk then
+            t := { t with postBad := s!"{at_} tl'={repr tl'} fl {sc.flowLevel}→{s'.flowLevel}" :: t.postBad }
+          let preOk :=
+            if p.val == .flowEntry then tl₂ != .sep
+            else if isOpen && sc.flowLevel > 0 then (match tl with | .value _ => false | _ => true)
+            else true
+          if !preOk then t := { t with preBad := s!"{at_} tl={repr tl}" :: t.preBad }
+          -- (vii) `accum_step_flow_trace`'s conclusion, executably (review, round 1): the frame the step
+          -- lands on, cut from its opener through the indicator and closed standalone, reads
+          -- `ev ++ ev_g` under `scanFiltered` and `refLex` — `ev` the frame's trace BEFORE the held run
+          -- (the T stack `hT`), `ev_g` the run's own events (`TCNsProperties`, `hβ`), the indicator
+          -- silent (§7); `trailingPropertyRun sc.tokens` is the `GapRead` oracle (`gapTail`).  Frames as
+          -- P106 (v): `comma`/`nestOpen` on the top frame, nested close on the parent (its tokens hold
+          -- the child's), base close the whole span, base open the opened frame closed empty.
+          let realIdx := sc.tokens.size +
+            ((s'.tokens.toList.drop sc.tokens.size).findIdx (fun q => q.val != .placeholder))
+          let run := trailingPropertyRun sc.tokens
+          let twinOn : Nat → Nat → String → Tally → Tally := fun openIdx openOff closers t' => Id.run do
+            let frToks := (sc.tokens.toList.drop openIdx).filter (fun q => q.val != .placeholder)
+            let preRun := frToks.take (frToks.length - run.length)
+            let runToks := frToks.drop (frToks.length - run.length)
+            let ev := (goOut preRun []).1 ++ (goOut runToks []).1 ++ (goOut [p] []).1
+            let sub := P105.rstrip (String.Pos.Raw.extract s ⟨openOff⟩ ⟨p.pos.offset + 1⟩) ++ closers
+            let (ok, okRef) := P104.twin sub ev
+            let mut t'' := { t' with twinSteps := t'.twinSteps + 1 }
+            if !ok then
+              if P104.aliasOutside sub then t'' := { t'' with aliasOut := at_ :: t''.aliasOut }
+              else t'' := { t'' with twinBad := s!"{at_} {repr sub} ev={repr ev}" :: t''.twinBad }
+            if !okRef then t'' := { t'' with refBad := s!"{at_} {repr sub}" :: t''.refBad }
+            if sc.flowLevel > 0 && !runToks.isEmpty then
+              t'' := { t'' with heldTwin := t''.heldTwin + 1 }
+              if (goOut runToks []).1.isEmpty then t'' := { t'' with evgBad := at_ :: t''.evgBad }
+            return t''
+          let closerOf : Bool → String := fun b => if b then "]" else "}"
+          match fr with
+          | (ti, to) :: rest =>
+            let top := sc.flowStack.back?.getD true
+            if isOpen then t := twinOn ti to (closerOf isSeq ++ closerOf top) t
+            else if p.val == .flowEntry then t := twinOn ti to (closerOf top) t
+            else match rest with
+              | (pi, po) :: _ => t := twinOn pi po (closerOf (sc.flowStack.pop.back?.getD true)) t
+              | [] => t := twinOn ti to "" t
+          | [] => t := twinOn realIdx p.pos.offset (closerOf isSeq) t
+          if isOpen then fr := (realIdx, p.pos.offset) :: fr
+          else if isClose then fr := fr.drop 1
+  return t
+
+/-- (ix) `trailingPropertyRun_eq_nil_of_sync`, executably, over every scanner state the P106 rows pass
+    through (`stepsOf`'s pre-states and the final state); `sync` = `frameTokenVal? = lastRealTokenVal?`. -/
+structure SyncTally where
+  states : Nat := 0
+  synced : Nat := 0
+  run : List (String × Nat) := []      -- trailing property run length 0 / 1 / 2
+  bad : List String := []              -- synced but the run is non-empty: the lemma's refutation
+  converse : List String := []         -- run empty but not synced: a reading, not a claim
+
+open L4YAML.Proofs.StreamAccum in
+def syncTally (rows : List String) : SyncTally := Id.run do
+  let mut t : SyncTally := {}
+  for s in rows do
+    match scanFiltered s, stepsOf s with
+    | .ok _, some sts =>
+      let states := sts.map (·.1) ++ ((sts.getLast?.map (fun q => [q.2])).getD [])
+      for sc in states do
+        let run := trailingPropertyRun sc.tokens
+        let sync := frameTokenVal? sc.tokens == lastRealTokenVal? sc.tokens
+        t := { t with states := t.states + 1, run := P100.bump t.run s!"{run.length}" }
+        if sync then t := { t with synced := t.synced + 1 }
+        if sync && !run.isEmpty then t := { t with bad := s!"{repr s}@{sc.tokens.size}" :: t.bad }
+        if !sync && run.isEmpty then t := { t with converse := s!"{repr s}@{sc.tokens.size}" :: t.converse }
+    | _, _ => pure ()
+  return t
+
+/-- (x) `head?_dropWhile_not` on its boundaries: every list of length ≤ 4 over `{0, 1, 2}` × four
+    predicates (`== 0`, `< 2`, constant true, constant false); `(rows, bad, headless)`, headless = the
+    rows whose `dropWhile` consumed everything (= every element satisfies the predicate). -/
+def dropWhileGrid : Nat × Nat × Nat := Id.run do
+  let lists : List (List Nat) := Id.run do
+    let mut acc : List (List Nat) := [[]]
+    let mut layer : List (List Nat) := [[]]
+    for _ in [0:4] do
+      layer := layer.flatMap fun l => [0, 1, 2].map fun x => l ++ [x]
+      acc := acc ++ layer
+    return acc
+  let preds : List (Nat → Bool) := [(· == 0), (· < 2), fun _ => true, fun _ => false]
+  let mut rows := 0
+  let mut bad := 0
+  let mut headless := 0
+  for p in preds do
+    for l in lists do
+      rows := rows + 1
+      match (l.dropWhile p).head? with
+      | some x => if p x then bad := bad + 1
+      | none =>
+        headless := headless + 1
+        if !(l.all p) then bad := bad + 1
+  return (rows, bad, headless)
+
+end P107
+
+section P107Test
+def testFlowArm (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 107: S3 slice (3) PR 2b-ii(α2) — FlowArm, accum_step_flow's arm witness, before statement"
+  let t := P107.tally P106.allRows
+  -- P1: the arms off the projection are P106's token-based arms, closes split base/nested as the opens
+  checkM state s!"P107(i) {t.rows} rows, {t.scanned} scanned, {t.steps} indicator steps off the projection; arms {t.arm}; multi {t.multiBad.length}"
+    (t.rows == 701 && t.scanned == 547 && t.steps == 587 && t.multiBad.isEmpty &&
+      t.arm.mergeSort (fun a b => a.1 ≤ b.1) ==
+        [("baseOpen/map", 78), ("baseOpen/seq", 122), ("closeBase/map", 78), ("closeBase/seq", 122),
+         ("closeNested/map", 14), ("closeNested/seq", 26), ("comma", 107), ("nestOpen/map", 14), ("nestOpen/seq", 26)])
+    s!"{t.arm} | {t.multiBad.take 5}"
+  -- P4: the projection is coherent
+  checkM state s!"P107(ii) flowStack.size = flowLevel {t.sizeBad.length} bad, closer kind = top of flowStack {t.kindBad.length} bad"
+    (t.sizeBad.isEmpty && t.kindBad.isEmpty) s!"{t.sizeBad.take 5} | {t.kindBad.take 5}"
+  -- P2: the post-state fields FlowArm's constructors claim
+  checkM state s!"P107(iii) FlowArm's post-state fields (flowLevel, flowStack, tailOf s'.tokens) at every step: {t.postBad.length} bad"
+    t.postBad.isEmpty s!"{t.postBad.take 8}"
+  -- P3: the tail premises FlowArm's constructors take
+  checkM state s!"P107(iv) FlowArm's tail premises (`,` never on .sep, nested open never on .value): {t.preBad.length} bad"
+    t.preBad.isEmpty s!"{t.preBad.take 8}"
+  -- P5
+  checkM state s!"P107(v) own rows refused by the scanner: {t.refusedOwn}" (t.refusedOwn == ["{&a: &b}"]) ""
+  -- P6 REFUTED twice: (a) six depth-0 opens carry a held run (`&a [b]`) — `accum_flow_open_depth0`'s
+  -- `resume`/`propsContent` domain, which P106 (ii) (reading `InteriorGap.props` at depth ≥ 1) never
+  -- counted; (b) P106's 5 held `close/seq` split 4 base + 1 nested.  The depth-≥1 rows still sum to 16.
+  checkM state s!"P107(vi) a property run held at the indicator, by arm: {t.heldArm}"
+    (t.heldArm.mergeSort (fun a b => a.1 ≤ b.1) ==
+      [("baseOpen/map", 3), ("baseOpen/seq", 3), ("closeBase/map", 2), ("closeBase/seq", 4), ("closeNested/seq", 1),
+       ("comma", 7), ("nestOpen/seq", 2)]) s!"{t.heldArm}"
+  -- (vii) review, round 1 — `accum_step_flow_trace`'s conclusion twin.  P8/P9 recorded in item 469 first.
+  checkM state s!"P107(vii) accum_step_flow_trace's conclusion twin (ev ++ ev_g on the cut-and-closed span) at every step: {t.twinSteps} read, {t.twinBad.length} bad under scanFiltered, {t.refBad.length} refused by refLex, {t.aliasOut.length} alias-outside cuts"
+    (t.twinSteps == 587 && t.twinBad.isEmpty && t.refBad.isEmpty && t.aliasOut.length == 2)
+    s!"{t.twinBad.take 6} | {t.refBad.take 4} | {t.aliasOut}"
+  checkM state s!"P107(viii) held runs at depth ≥ 1 (GapRead's oracle): {t.heldTwin}, with empty ev_g: {t.evgBad.length}"
+    (t.heldTwin == 16 && t.evgBad.isEmpty) s!"{t.evgBad.take 6}"
+  -- (ix)/(x) review, round 2 — the helper lemmas on their boundaries (P11/P12 recorded in item 469 first)
+  let st := P107.syncTally P106.allRows
+  checkM state s!"P107(ix) trailingPropertyRun_eq_nil_of_sync over every scanner state: {st.states} states, {st.synced} synced, run lengths {st.run}; synced-with-run {st.bad.length} bad, run-empty-unsynced {st.converse.length}"
+    (st.states == 2833 && st.synced == 2631 && st.bad.isEmpty && st.converse.isEmpty &&
+      st.run.mergeSort (fun a b => a.1 ≤ b.1) == [("0", 2631), ("1", 187), ("2", 15)])
+    s!"{st.states} {st.synced} {st.run} | {st.bad.take 5} | {st.converse.take 5}"
+  let (rows, bad, headless) := P107.dropWhileGrid
+  checkM state s!"P107(x) head?_dropWhile_not on {rows} (list, predicate) rows (length ≤ 4 over 3 symbols × 4 predicates): {bad} bad, {headless} headless (= every element satisfies)"
+    (rows == 484 && bad == 0 && headless == 158) ""
+
+/-! P107 (ix)/(x), hand-built: the projection lemmas over abstract premises; `FlowStackK.withArm` fed
+    from the pack side (a `FlowStackK` witness destructured — the drift check read the other way). -/
+open L4YAML.Proofs.StreamAccum in
+example {sc : ScannerState} (h : trailingPropertyRun sc.tokens = []) : gapTail sc = tailOf sc.tokens :=
+  gapTail_of_nil h
+open L4YAML.Proofs.StreamAccum in
+example {sc : ScannerState} (h : trailingPropertyRun sc.tokens ≠ []) : gapTail sc = .value false :=
+  gapTail_of_held h
+open L4YAML.Proofs.StreamAccum in
+example {sc : ScannerState} (h : frameTokenVal? sc.tokens = lastRealTokenVal? sc.tokens) :
+    gapTail sc = tailOf sc.tokens :=
+  gapTail_of_nil (trailingPropertyRun_eq_nil_of_sync h)
+open L4YAML.Proofs.StreamAccum in
+example {sp_start : L4YAML.Surface.SurfPos} {sc s' : ScannerState} {c : Char}
+    {sp_block sp_flow sp_scan sp_block' sp_flow' : L4YAML.Surface.SurfPos} {fl : Nat} {ks : Array Bool} {tl : FrameTail}
+    (hK : FlowStackK sp_start s' fl ks tl sp_block' sp_flow')
+    (arm : FlowArm sc s' c sp_block sp_flow sp_scan sp_block' sp_flow') :
+    FlowStackK sp_start s' fl ks tl sp_block' sp_flow' ∧
+      FlowArm sc s' c sp_block sp_flow sp_scan sp_block' sp_flow' := by
+  obtain ⟨n, kc, km, g, s0, hb⟩ := hK
+  exact FlowStackK.withArm n kc km g s0 arm hb
+-- `head?_dropWhile_not`'s three shapes: nothing, the first non-satisfying element, a one-element list
+example : (([] : List Nat).dropWhile (· == 0)).head? = none := rfl
+example : (([0, 0, 1, 0] : List Nat).dropWhile (· == 0)).head? = some 1 := rfl
+example : (([2] : List Nat).dropWhile (· == 0)).head? = some 2 := rfl
+end P107Test
+
 def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 100: S3 slice (1) — leaf span ↔ token payload (anchor / alias / tag), before proof"
   let t := P100.tally P100.allRows
@@ -15052,6 +15314,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testFlowAlgebra state
   testFlowReceive state
   testFlowStep state
+  testFlowArm state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",

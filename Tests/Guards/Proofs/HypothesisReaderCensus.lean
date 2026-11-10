@@ -626,6 +626,9 @@ adds.**   `constants` counts the module's non-internal constants, generated ones
 -- in place of `h_park`/`h_kslotUp`; two opener `h_ref` relays; `exists_mem_ne_of_not_markedColsIn` added (RegisterWitness).
 -- 2026-11-07 (item 448, (α) stage A): constants 1742 → 1744, READ +3, RETURN +1 — `ResumeFrames.strict` (the strict order
 -- read off a mapping level, for the sinks a `≤` park face no longer feeds) and its `match` auxiliary.
+-- 2026-11-10 (item 469, review round 1): constants 1764 → 1766, decls 1395 → 1397 (`gapTail`, its two lemmas,
+-- `head?_dropWhile_not`, `trailingPropertyRun_eq_nil_of_sync`, `FlowStackK.withArm` in; `FlowStackKBody`/`KA`/`toK`/`ofPack`/`ofK` out);
+-- READ 1424 → 1421, RELAY 2968 → 2972, eta 506 → 508 — the arm's `∀ m` leads are relayed at the sites.
 def expectedModuleTally : String :=
   -- 2026-10-26 (item 365): RELAY 2830 → 2836 — `h_sound` ×3, `h_fl0` ×2 and `h_alt` ×1 passed whole from
   -- `accum_step_content`/`accum_content_pending`/the `_indented` pair to the content lane's payers.
@@ -634,7 +637,7 @@ def expectedModuleTally : String :=
   -- `dispatchBlock_colon_notQuestion` and `explFrameValueLine`'s split alternative.
   -- 2026-10-26 (item 366): RELAY 2836 → 2838 — `h_sound` passed whole into the two new `Sound sc` binders.
   -- 2026-10-27 (item 371): constants/decls +1, READ +1 — `ResumeFrames.one` (its `h_tail` is read once).
-  "constants=1744 decls=1379 eta=450 FIELD=175 READ=1414 RELAY=2957 RETURN=56 \
+  "constants=1766 decls=1397 eta=508 FIELD=177 READ=1421 RELAY=2972 RETURN=56 \
 UNUSED=27"
 -- 2026-10-25 (#112 review): the `FlowStackK` `MarkedColsIn` carrier reverted (Rule 8: a projection of the closed state is decided at the close by `Classical.em`); the two transport helpers and `h_pk'` go (constants 1683 → 1681, decls 1322 → 1320, READ 1325 → 1323, RELAY 2838 → 2830); `Mono sc` stays on `accum_step_flow`.
 -- 2026-10-25 (item 363): the flow OPEN lane read off the block state (`h_refused`, one `Classical.em`; five `match` blocks deleted): the five deleted `match` auxiliaries: constants 1681 → 1676, decls 1320 → 1315, READ 1323 → 1306.

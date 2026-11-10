@@ -1337,6 +1337,167 @@ lemma TMapFrame.closeBase {n : Nat} {tl : FrameTail}
   ⟨.flowMap _ _ _ _ _ (st.closeLead h_open h_sep (h_lead₂.imp (fun h => ⟨h, h⟩) id) h_close),
     .nil sp_block (.value true)⟩
 
+
+/-! ## §8 The step on the T stack: `accum_step_flow_trace` = `FlowArm` → §6/§7 (item 469)
+
+`accum_step_flow` now returns, inside its `FlowStackKA` pack, the arm it took and the surface
+witnesses it spent (`FlowArm`, Rule 8: the arm is the projection `(flowLevel, flowStack.back?, c)`,
+the fields are positions, obligations and projections).  The T twin reads the arm instead of
+re-walking the 1071-line dispatcher: every §7 step keeps the trace, the interior gap adds the held
+run's events (`gapRead_onT`, through (β)'s premise), the base close hands the finished `[158]`
+content out with its trace, and the depth-0 open lands the fresh frame with trace `[]`. -/
+
+section StepTrace
+open L4YAML.Proofs.StreamAccum (FlowArm GapRead PropsRun tailOf gapTail gapTail_of_nil gapTail_of_held)
+open L4YAML.Proofs.PreprocessIndentStable (minContentIndentOf)
+
+/-- The interior gap on the T stack: a white gap leaves it; a held property run is folded in as
+    an empty node (`receivePropsEmpty`), the trace growing by the run's events — the run's T twin
+    is (β)'s carrier, a premise here (`hβ`).  The gap's lead and run are read at every floor, so the
+    stack's own `n` needs `n ≤ minContentIndentOf sc` (`FlowStackK`'s floor) to instantiate them. -/
+lemma gapRead_onT {n d : Nat} {ks : Array Bool} {sc : L4YAML.Scanner.ScannerState}
+    {sp_block sp_flow sp_scan sp_flow₂ : SurfPos} {ev : List Event}
+    (hT : TFlowOpenStack n d ks (tailOf sc.tokens) sp_block sp_flow ev)
+    (gap : GapRead sc sp_flow sp_scan sp_flow₂)
+    (hn : n ≤ minContentIndentOf sc)
+    (hβ : ∀ {ha ht : Bool} {sp_p : SurfPos}, PropsRun n (inFlowCtx .flowOut) ha ht sp_p sp_scan →
+      ∃ ev_p, TCNsProperties n .flowIn sp_p sp_scan ev_p) :
+    ∃ ev_g, TFlowOpenStack n d ks (gapTail sc) sp_block sp_flow₂ (ev ++ ev_g) := by
+  cases gap with
+  | white _ h_nil =>
+    rw [gapTail_of_nil h_nil]
+    exact ⟨[], by simpa using hT⟩
+  | props ha ht sp_p h_tail h_lead h_run _ h_held =>
+    rw [gapTail_of_held h_held]
+    obtain ⟨ev_p, hp⟩ := hβ ((h_run n).resolve_right (fun h => h hn))
+    exact ⟨ev_p, hT.receivePropsEmpty h_tail ((h_lead n).resolve_right (fun h => h hn)) hp⟩
+
+/-- **`accum_step_flow_trace`** — one flow-indicator step on the T stack, off the arm
+    `accum_step_flow` reports.  Conclusion: the T stack at the post-state's indices with the trace
+    grown by the gap's run (`ev ++ ev_g`), or the base close's hand-off (`[158]` content with that
+    trace, the stack `nil`), or the depth-0 open's fresh frame (trace `[]`; its landing position is
+    `accum_flow_open_depth0`'s existential `sp_flow'`, so it is stated at the T side's `sp_open`), or
+    the one arm §7 has no twin for yet — a nested open AFTER a held run (`[&a [b]]`: the run wraps
+    the child, `inject`'s `propsContent`, not an empty node), returned with the run's witnesses for
+    (β).  `FlowArm` is a `Prop`, so that arm cannot be excluded by a premise on `arm` (§7: which
+    constructor fired is unobservable) — it is a disjunct of the conclusion instead.  The arm's
+    obligations are read at every floor; `hn` is the stack's floor (`FlowStackK`'s `n ≤ minContentIndentOf`). -/
+lemma accum_step_flow_trace {n : Nat} {sc s' : L4YAML.Scanner.ScannerState} {c : Char}
+    {sp_block sp_flow sp_scan sp_block' sp_flow' : SurfPos} {ev : List Event}
+    (arm : FlowArm sc s' c sp_block sp_flow sp_scan sp_block' sp_flow')
+    (hT : TFlowStackB n sc.flowLevel sc.flowStack (tailOf sc.tokens) sp_block sp_flow ev)
+    (hn : n ≤ minContentIndentOf sc)
+    (hβ : ∀ {ha ht : Bool} {sp_p : SurfPos}, PropsRun n (inFlowCtx .flowOut) ha ht sp_p sp_scan →
+      ∃ ev_p, TCNsProperties n .flowIn sp_p sp_scan ev_p) :
+    ∃ ev_g,
+      TFlowStackB n s'.flowLevel s'.flowStack (tailOf s'.tokens) sp_block' sp_flow' (ev ++ ev_g) ∨
+      (s'.flowLevel = 0 ∧ sp_flow' = sp_block' ∧
+        ∃ sp_br sp_tok, TFlowContent n .flowOut sp_br sp_tok (ev ++ ev_g) ∧
+          TFlowStackB n 0 #[] (tailOf s'.tokens) sp_block' sp_flow' []) ∨
+      (sc.flowLevel = 0 ∧ ev = [] ∧ ev_g = [] ∧
+        ∃ sp_open, TFlowStackB n s'.flowLevel s'.flowStack (tailOf s'.tokens) sp_block' sp_open []) ∨
+      (1 ≤ sc.flowLevel ∧ (c = '[' ∨ c = '{') ∧ ev_g = [] ∧
+        ∃ ha ht sp_p, PropsRun n (inFlowCtx .flowOut) ha ht sp_p sp_scan ∧ (ha = true ∨ ht = true)) := by
+  generalize hks : sc.flowStack = ks at hT
+  cases arm with
+  | openBase b sp_br sp_open sp_block'' sp_flow'' h_depth h_c h_open h_fl h_ks h_tl =>
+    rw [h_depth] at hT
+    cases hT with
+    | «open» _ _ _ _ _ _ h => cases h
+    | nil =>
+      refine ⟨[], Or.inr (Or.inr (Or.inl ⟨h_depth, rfl, rfl, sp_open, ?_⟩))⟩
+      rw [h_fl, h_ks, h_tl]
+      cases b
+      · have h_open' : GLit '{' sp_br sp_open := by subst h_c; simpa using h_open
+        exact TFlowStackB.openMapBase h_open' (GOpt.none sp_open)
+      · have h_open' : GLit '[' sp_br sp_open := by subst h_c; simpa using h_open
+        exact TFlowStackB.openSeqBase h_open' (GOpt.none sp_open)
+  | openNest b sp_flow₂ sp_br sp_open gap h_depth h_c h_tail h_lead h_open h_fl h_ks h_tl =>
+    obtain ⟨d, hd⟩ : ∃ d, sc.flowLevel = d + 1 := ⟨sc.flowLevel - 1, by omega⟩
+    rw [hd] at hT
+    cases hT with
+    | «open» _ _ _ _ _ _ hTO =>
+    have h_lead' := (h_lead n).resolve_right (fun h => h hn)
+    cases gap with
+    | props ha ht sp_p _ _ h_run h_some _ =>
+      exact ⟨[], Or.inr (Or.inr (Or.inr ⟨h_depth, by subst h_c; cases b <;> simp, rfl, ha, ht, sp_p,
+        (h_run n).resolve_right (fun h => h hn), h_some⟩))⟩
+    | white _ h_nil =>
+      rw [gapTail_of_nil h_nil] at h_lead'
+      refine ⟨[], Or.inl ?_⟩
+      rw [h_fl, h_ks, h_tl, hd, hks]
+      cases b
+      · have h_open' : GLit '{' sp_br sp_flow' := by subst h_c; simpa using h_open
+        exact .open _ _ _ _ _ _ (hTO.openNestMap h_tail h_lead' h_open')
+      · have h_open' : GLit '[' sp_br sp_flow' := by subst h_c; simpa using h_open
+        exact .open _ _ _ _ _ _ (hTO.openNestSeq h_tail h_lead' h_open')
+  | comma sp_flow₂ sp_prep sp_tok gap h_depth h_c h_tail h_lead h_lit h_fl h_ks h_tl =>
+    obtain ⟨d, hd⟩ : ∃ d, sc.flowLevel = d + 1 := ⟨sc.flowLevel - 1, by omega⟩
+    rw [hd] at hT
+    cases hT with
+    | «open» _ _ _ _ _ _ hTO =>
+    have h_lead' := (h_lead n).resolve_right (fun h => h hn)
+    obtain ⟨ev_g, hTO₂⟩ := gapRead_onT hTO gap hn hβ
+    refine ⟨ev_g, Or.inl ?_⟩
+    rw [h_fl, h_ks, h_tl, hd, hks]
+    exact .open _ _ _ _ _ _ (hTO₂.comma h_tail h_lead' h_lit)
+  | closeNested b sp_flow₂ sp_prep sp_tok gap h_depth h_c h_top h_lead h_lit h_fl h_ks h_tl =>
+    obtain ⟨d, hd⟩ : ∃ d, sc.flowLevel = d + 1 + 1 := ⟨sc.flowLevel - 2, by omega⟩
+    rw [hd] at hT
+    cases hT with
+    | «open» _ _ _ _ _ _ hTO =>
+    have h_lead' := (h_lead n).resolve_right (fun h => h hn)
+    obtain ⟨ev_g, hTO₂⟩ := gapRead_onT hTO gap hn hβ
+    refine ⟨ev_g, Or.inl ?_⟩
+    have h_fl' : s'.flowLevel = d + 1 := by omega
+    rw [h_fl', h_ks, h_tl, hks]
+    rw [hks] at h_top
+    generalize hE : ev ++ ev_g = evT at hTO₂ ⊢
+    generalize hgt : gapTail sc = tl₂ at hTO₂ h_lead'
+    cases hTO₂ with
+    | seqNest _ ks₀ _ _ _ _ _ _ _ _ _ _ parent h_tail_p h_lead_p h_open h_sep st =>
+      rw [Array.back?_push] at h_top
+      cases b
+      · simp at h_top
+      · have h_lit' : GLit ']' sp_prep sp_flow' := by subst h_c; simpa using h_lit
+        rw [Array.pop_push]
+        exact .open _ _ _ _ _ _
+          (TFlowOpenStack.closeNestedSeq parent h_tail_p h_lead_p h_open h_sep st h_lead' h_lit')
+    | mapNest _ ks₀ _ _ _ _ _ _ _ _ _ _ parent h_tail_p h_lead_p h_open h_sep st =>
+      rw [Array.back?_push] at h_top
+      cases b
+      · have h_lit' : GLit '}' sp_prep sp_flow' := by subst h_c; simpa using h_lit
+        rw [Array.pop_push]
+        exact .open _ _ _ _ _ _
+          (TFlowOpenStack.closeNestedMap parent h_tail_p h_lead_p h_open h_sep st h_lead' h_lit')
+      · simp at h_top
+  | closeBase b sp_flow₂ sp_prep sp_tok gap h_depth h_c h_top h_lead h_lit h_fl h_ks h_tl =>
+    rw [h_depth] at hT
+    cases hT with
+    | «open» _ _ _ _ _ _ hTO =>
+    have h_lead' := (h_lead n).resolve_right (fun h => h hn)
+    obtain ⟨ev_g, hTO₂⟩ := gapRead_onT hTO gap hn hβ
+    refine ⟨ev_g, Or.inr (Or.inl ⟨h_fl, rfl, ?_⟩)⟩
+    rw [h_tl]
+    rw [hks] at h_top
+    generalize hE : ev ++ ev_g = evT at hTO₂ ⊢
+    generalize hgt : gapTail sc = tl₂ at hTO₂ h_lead'
+    cases hTO₂ with
+    | seqBase _ sp_br _ _ _ _ _ h_open h_sep st =>
+      cases b
+      · exact absurd h_top (by decide)
+      · have h_lit' : GLit ']' sp_prep sp_tok := by subst h_c; simpa using h_lit
+        exact ⟨sp_br, sp_tok, TSeqFrame.closeBase h_open h_sep st h_lead' h_lit'⟩
+    | mapBase _ sp_br _ _ _ _ _ h_open h_sep st =>
+      cases b
+      · have h_lit' : GLit '}' sp_prep sp_tok := by subst h_c; simpa using h_lit
+        exact ⟨sp_br, sp_tok, TMapFrame.closeBase h_open h_sep st h_lead' h_lit'⟩
+      · exact absurd h_top (by decide)
+    | seqNest _ _ _ _ _ _ _ _ _ _ _ _ parent _ _ _ _ _ => cases parent
+    | mapNest _ _ _ _ _ _ _ _ _ _ _ _ parent _ _ _ _ _ => cases parent
+
+end StepTrace
+
 end
 
 end L4YAML.Proofs.Serialization.TraceOf.FlowWalk
