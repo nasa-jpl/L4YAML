@@ -15646,8 +15646,9 @@ def testPlainContinuationRead (state : IO.Ref TestCollector) : IO Unit := do
     (foldOf "&x a\n&y b" == some ["&x", "a &y b"] && foldOf "&x a\n &y b" == some ["&x", "a &y b"] &&
       foldOf "a\n&x" == some ["a &x"]) ""
   checkM state
-    s!"P110(iv) refLex on the plain-only rows: disagree {t.lexDisagree.length} (folded rows among them: {(t.lexDisagree.filter t.foldRows.contains).length}), folded rows the lexer matches {t.lexAgreeFolded}"
-    (t.lexAgreeFolded.isEmpty && t.lexDisagree.all t.foldRows.contains)
+    s!"P110(iv) refLex on the plain-only rows: disagree {t.lexDisagree.length} (pinned 12 = the folded rows, pinned 12), folded rows the lexer matches {t.lexAgreeFolded}"
+    (t.lexDisagree.length == 12 && t.foldRows.length == 12 && t.lexAgreeFolded.isEmpty &&
+      t.lexDisagree.all t.foldRows.contains)
     s!"{t.lexSample}"
 
 end P110Test
