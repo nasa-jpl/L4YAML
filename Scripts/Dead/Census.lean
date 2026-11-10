@@ -63,15 +63,27 @@ def kindOf : ConstantInfo → Kind
   | .thmInfo _ => .thm | .defnInfo _ => .defn | .inductInfo _ => .ind
   | .ctorInfo _ => .ctor | .opaqueInfo _ => .opaque | _ => .other
 
-/-- Compiler-generated and elaborator-generated constants are not declarations a person wrote. -/
+/-- Compiler- and elaborator-generated constants are not declarations a person wrote.  Private
+    declarations ARE (`_private.<module>.0.<name>` is read through `privateToUserName`), and so
+    are authored names that merely start with `_` (`_inline_scalar_preserves_prefix`): only the
+    generated `_`-prefixes are filtered, by name. -/
+def generatedUnderscore : List String :=
+  ["_proof", "_eq", "_sunfold", "_unsafe", "_cstage", "_closed", "_lam", "_elam", "_rarg", "_boxed",
+   "_redArg", "_spec", "_sizeOf", "_override", "_impl", "_regBuiltin", "_hyg", "_uniq", "_aux", "_private",
+   "_root_", "_example", "_simp", "_mutual", "_nested", "_ind", "_at", "_fun", "_match", "_bind", "_let",
+   "_sparseCasesOn", "_flat", "_f", "_unary", "_auto"]
+
+def generatedComponent : List String :=
+  ["sizeOf_spec", "injEq", "inj", "below", "ibelow", "brecOn", "binductionOn", "casesOn", "recOn",
+   "noConfusionType", "noConfusion", "toCtorIdx", "ofNat", "ctorIdx", "ctorElim", "congr_simp"]
+
 def isAux (env : Environment) (n : Name) : Bool :=
-  n.isInternalDetail || isAuxRecursor env n || isNoConfusion env n || isRecCore env n
+  isAuxRecursor env n || isNoConfusion env n || isRecCore env n
   || (Lean.Meta.Match.Extension.getMatcherInfo? env n).isSome
-  || n.components.any fun c => match c with
-      | .str _ s => s.startsWith "proof_" || s.startsWith "match_" || s.startsWith "eq_" || s.startsWith "_"
-        || s == "sizeOf_spec" || s == "injEq" || s == "inj" || s == "below" || s == "ibelow" || s == "brecOn"
-        || s == "binductionOn" || s == "casesOn" || s == "recOn" || s == "noConfusionType" || s == "noConfusion"
-        || s == "toCtorIdx" || s == "ofNat" || s == "ctorIdx" || s == "ctorElim" || s == "congr_simp"
+  || (privateToUserName n).components.any fun c => match c with
+      | .str _ s => s.startsWith "proof_" || s.startsWith "match_" || s.startsWith "eq_"
+        || generatedComponent.contains s || generatedUnderscore.any (fun g => s.startsWith g)
+      | .num _ _ => true
       | _ => false
 
 def modOf (env : Environment) (n : Name) : Option Name :=
@@ -173,12 +185,17 @@ def Report.render (r : Report) (modules : Nat := 25) : String := Id.run do
   out := out ++ section_ "(C) API by convention by module" r.apiModules
   return out
 
-/-- What a pinned roster and the fresh one disagree on. -/
-def rosterDiff (pinned fresh : String) : List String × List String :=
-  let p := (pinned.splitOn "\n").filter (· ≠ "")
-  let f := (fresh.splitOn "\n").filter (· ≠ "")
-  let ps : Std.HashSet String := Std.HashSet.ofList p
-  let fs : Std.HashSet String := Std.HashSet.ofList f
-  (f.filter (!ps.contains ·), p.filter (!fs.contains ·))
+/-- What a pinned roster and the fresh one disagree on, by NAME (the kind column is informational:
+    a `lemma` restated as a `def` is the same declaration): `(entered, left, kindChanged)`. -/
+def rosterDiff (pinned fresh : String) : List String × List String × List String :=
+  let nameOf (l : String) : String := ((l.splitOn " ").head?).getD l
+  let rows (t : String) : List String := (t.splitOn "\n").filter (· ≠ "")
+  let p := rows pinned
+  let f := rows fresh
+  let pm : Std.HashMap String String := p.foldl (fun h l => h.insert (nameOf l) l) {}
+  let fm : Std.HashMap String String := f.foldl (fun h l => h.insert (nameOf l) l) {}
+  (f.filter (fun l => !pm.contains (nameOf l)) |>.map nameOf,
+   p.filter (fun l => !fm.contains (nameOf l)) |>.map nameOf,
+   f.filter (fun l => match pm.get? (nameOf l) with | some o => o != l | none => false) |>.map nameOf)
 
 end Scripts.Dead.Census

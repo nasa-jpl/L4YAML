@@ -84,7 +84,7 @@ unsafe def run (args : List String) : IO UInt32 := do
     let some pinned := pinString? guard "expectedDeadCensus" | return ← die s!"{guardFile}: expectedDeadCensus not found"
     let rosterText ← IO.FS.readFile (root / rosterFile)
     let some body := rosterBody? rosterText | return ← die s!"{rosterFile}: roster body not found"
-    let (entered, left) := rosterDiff body rep.rosterText
+    let (entered, left, kindChanged) := rosterDiff body rep.rosterText
     let mut bad := false
     if pinned != rep.summary then
       bad := true
@@ -97,6 +97,10 @@ unsafe def run (args : List String) : IO UInt32 := do
       IO.eprintln s!"DEAD-CENSUS: {left.length} declaration(s) left the roster (deleted or reached) — re-pin with --write:"
       for e in left.take 40 do IO.eprintln s!"  - {e}"
       bad := true
+    if !kindChanged.isEmpty then
+      bad := true
+      IO.eprintln s!"DEAD-CENSUS: {kindChanged.length} roster declaration(s) changed kind (the name stays; re-pin with --write):"
+      for e in kindChanged.take 40 do IO.eprintln s!"  ~ {e}"
     if bad then return 1
     IO.println s!"DEAD-CENSUS agrees with {guardFile} and {rosterFile}"
   return 0
