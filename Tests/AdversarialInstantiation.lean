@@ -15005,6 +15005,57 @@ def tally (rows : List String) : Tally := Id.run do
           else if isClose then fr := fr.drop 1
   return t
 
+/-- (ix) `trailingPropertyRun_eq_nil_of_sync`, executably, over every scanner state the P106 rows pass
+    through (`stepsOf`'s pre-states and the final state); `sync` = `frameTokenVal? = lastRealTokenVal?`. -/
+structure SyncTally where
+  states : Nat := 0
+  synced : Nat := 0
+  run : List (String × Nat) := []      -- trailing property run length 0 / 1 / 2
+  bad : List String := []              -- synced but the run is non-empty: the lemma's refutation
+  converse : List String := []         -- run empty but not synced: a reading, not a claim
+
+open L4YAML.Proofs.StreamAccum in
+def syncTally (rows : List String) : SyncTally := Id.run do
+  let mut t : SyncTally := {}
+  for s in rows do
+    match scanFiltered s, stepsOf s with
+    | .ok _, some sts =>
+      let states := sts.map (·.1) ++ ((sts.getLast?.map (fun q => [q.2])).getD [])
+      for sc in states do
+        let run := trailingPropertyRun sc.tokens
+        let sync := frameTokenVal? sc.tokens == lastRealTokenVal? sc.tokens
+        t := { t with states := t.states + 1, run := P100.bump t.run s!"{run.length}" }
+        if sync then t := { t with synced := t.synced + 1 }
+        if sync && !run.isEmpty then t := { t with bad := s!"{repr s}@{sc.tokens.size}" :: t.bad }
+        if !sync && run.isEmpty then t := { t with converse := s!"{repr s}@{sc.tokens.size}" :: t.converse }
+    | _, _ => pure ()
+  return t
+
+/-- (x) `head?_dropWhile_not` on its boundaries: every list of length ≤ 4 over `{0, 1, 2}` × four
+    predicates (`== 0`, `< 2`, constant true, constant false); `(rows, bad, headless)`, headless = the
+    rows whose `dropWhile` consumed everything (= every element satisfies the predicate). -/
+def dropWhileGrid : Nat × Nat × Nat := Id.run do
+  let lists : List (List Nat) := Id.run do
+    let mut acc : List (List Nat) := [[]]
+    let mut layer : List (List Nat) := [[]]
+    for _ in [0:4] do
+      layer := layer.flatMap fun l => [0, 1, 2].map fun x => l ++ [x]
+      acc := acc ++ layer
+    return acc
+  let preds : List (Nat → Bool) := [(· == 0), (· < 2), fun _ => true, fun _ => false]
+  let mut rows := 0
+  let mut bad := 0
+  let mut headless := 0
+  for p in preds do
+    for l in lists do
+      rows := rows + 1
+      match (l.dropWhile p).head? with
+      | some x => if p x then bad := bad + 1
+      | none =>
+        headless := headless + 1
+        if !(l.all p) then bad := bad + 1
+  return (rows, bad, headless)
+
 end P107
 
 section P107Test
@@ -15042,6 +15093,41 @@ def testFlowArm (state : IO.Ref TestCollector) : IO Unit := do
     s!"{t.twinBad.take 6} | {t.refBad.take 4} | {t.aliasOut}"
   checkM state s!"P107(viii) held runs at depth ≥ 1 (GapRead's oracle): {t.heldTwin}, with empty ev_g: {t.evgBad.length}"
     (t.heldTwin == 16 && t.evgBad.isEmpty) s!"{t.evgBad.take 6}"
+  -- (ix)/(x) review, round 2 — the helper lemmas on their boundaries (P11/P12 recorded in item 469 first)
+  let st := P107.syncTally P106.allRows
+  checkM state s!"P107(ix) trailingPropertyRun_eq_nil_of_sync over every scanner state: {st.states} states, {st.synced} synced, run lengths {st.run}; synced-with-run {st.bad.length} bad, run-empty-unsynced {st.converse.length}"
+    (st.states == 2833 && st.synced == 2631 && st.bad.isEmpty && st.converse.isEmpty &&
+      st.run.mergeSort (fun a b => a.1 ≤ b.1) == [("0", 2631), ("1", 187), ("2", 15)])
+    s!"{st.states} {st.synced} {st.run} | {st.bad.take 5} | {st.converse.take 5}"
+  let (rows, bad, headless) := P107.dropWhileGrid
+  checkM state s!"P107(x) head?_dropWhile_not on {rows} (list, predicate) rows (length ≤ 4 over 3 symbols × 4 predicates): {bad} bad, {headless} headless (= every element satisfies)"
+    (rows == 484 && bad == 0 && headless == 158) ""
+
+/-! P107 (ix)/(x), hand-built: the projection lemmas over abstract premises; `FlowStackK.withArm` fed
+    from the pack side (a `FlowStackK` witness destructured — the drift check read the other way). -/
+open L4YAML.Proofs.StreamAccum in
+example {sc : ScannerState} (h : trailingPropertyRun sc.tokens = []) : gapTail sc = tailOf sc.tokens :=
+  gapTail_of_nil h
+open L4YAML.Proofs.StreamAccum in
+example {sc : ScannerState} (h : trailingPropertyRun sc.tokens ≠ []) : gapTail sc = .value false :=
+  gapTail_of_held h
+open L4YAML.Proofs.StreamAccum in
+example {sc : ScannerState} (h : frameTokenVal? sc.tokens = lastRealTokenVal? sc.tokens) :
+    gapTail sc = tailOf sc.tokens :=
+  gapTail_of_nil (trailingPropertyRun_eq_nil_of_sync h)
+open L4YAML.Proofs.StreamAccum in
+example {sp_start : L4YAML.Surface.SurfPos} {sc s' : ScannerState} {c : Char}
+    {sp_block sp_flow sp_scan sp_block' sp_flow' : L4YAML.Surface.SurfPos} {fl : Nat} {ks : Array Bool} {tl : FrameTail}
+    (hK : FlowStackK sp_start s' fl ks tl sp_block' sp_flow')
+    (arm : FlowArm sc s' c sp_block sp_flow sp_scan sp_block' sp_flow') :
+    FlowStackK sp_start s' fl ks tl sp_block' sp_flow' ∧
+      FlowArm sc s' c sp_block sp_flow sp_scan sp_block' sp_flow' := by
+  obtain ⟨n, kc, km, g, s0, hb⟩ := hK
+  exact FlowStackK.withArm n kc km g s0 arm hb
+-- `head?_dropWhile_not`'s three shapes: nothing, the first non-satisfying element, a one-element list
+example : (([] : List Nat).dropWhile (· == 0)).head? = none := rfl
+example : (([0, 0, 1, 0] : List Nat).dropWhile (· == 0)).head? = some 1 := rfl
+example : (([2] : List Nat).dropWhile (· == 0)).head? = some 2 := rfl
 end P107Test
 
 def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
