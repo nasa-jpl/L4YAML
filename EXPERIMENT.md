@@ -358,14 +358,29 @@ traceOf_unique :  TraceOf input ev₁ → TraceOf input ev₂ → ev₁ = ev₂
 
 ### 3.3 The exact consumer
 
-Capstone 7.7 (`Blueprint/04-capstones.md`), as stated in
-`Blueprint/ledgers/parse_iff_grammar/2026-10-29.md`:
+Capstone 7.7, as stated in `Blueprint/ledgers/parse_iff_grammar/2026-10-29.md`
+and in `DOCS.md`'s "Grammar completeness" row:
 
 ```lean
 theorem parse_iff_grammar (input : String) :
     (∃ docs, parseYaml input = .ok docs)
       ↔ ExactSurfaceLanguage input ∧ SerializationWellFormed input
 ```
+
+**The two sources of truth disagree on this statement.**  The row for 7.7 in
+`Blueprint/04-capstones.md` still reads *"`parse_iff_grammar` converse —
+grammar completeness: `InYamlLanguage input → ∃ docs, parseYaml input = .ok
+docs`"*, the pre-2026-09-28 statement.  `DOCS.md` records that statement as
+**REFUTED** (`parseYaml` enforces anchor/alias and tag-handle conditions the
+surface language cannot express; and `inYamlLanguage_everything` in
+`Tests/Guards/Proofs/SuffixGapAudit.lean` makes its hypothesis true of every
+string) and restates the target as the biconditional above.  Rule 5 of
+`Blueprint/06-discipline.md` says the blueprint wins over the plan when they
+disagree — but here the blueprint's text is the one a guard in the tree
+refutes, so the reconciliation is an owner ruling (open question 10), not a
+choice this document can make.  Until the row is corrected, this document
+takes the ledger statement as the consumer and flags that it is quoting the
+plan, not the blueprint.
 
 Its forward direction's `SerializationWellFormed input` part is discharged by the chain
 (item 454, "Rule 1 — the chain"):
@@ -402,7 +417,8 @@ theorem**, and the experiment must say so rather than point at
 |---|---|
 | Observation \(T(x)\) | `tokenEvents ts` where `scanFiltered x = .ok ts` — exactly what S5(→) hands to `checkFrom`.  (Variant: the full token array `ts`; it carries more, e.g. scalar text, but S5 does not use the extra.) |
 | Requirement \(R(x)\) | `TraceWellFormed x`, adjudicated against YAML 1.2.2 where the grammar and the spec disagree. |
-| Adequacy predicate | \(\forall x, y \in D.\; T(x) = T(y) \Rightarrow (R(x) \Leftrightarrow R(y))\).  Equivalently: `checkFrom {} (tokenEvents ts) = true` decides `TraceWellFormed x` on \(D\). |
+| Adequacy predicate | \(\forall x, y \in D.\; T(x) = T(y) \Rightarrow (R(x) \Leftrightarrow R(y))\): the observation determines the requirement — *some* function of \(T(x)\) decides \(R(x)\). |
+| Pointwise agreement (what the chain in §3.3 actually needs) | \(\forall x \in D.\; \texttt{checkFrom \{\} } T(x) = \texttt{true} \Leftrightarrow R(x)\): the *particular* function `checkFrom` decides \(R\).  Agreement **implies** adequacy; adequacy does **not** imply agreement.  So a failed adequacy test refutes agreement at no proof cost, while a passed adequacy test leaves agreement as the proof obligation — its `⇐` direction is S5(→), its `⇒` direction is `scan_trace` + `serializationWellFormed_iff_check` + the lift (§0.3). |
 | Independent oracle for \(R\) | *Not* the scanner and *not* the parser: a term-level derivation `TLYamlStream … ev` built by hand and checked by the Lean kernel (as `TraceOfBlockAmbiguity.lean` already does), plus `checkFrom {} ev` on that `ev`.  The grammar mentions neither executable, so this is independent of the implementation under audit. |
 
 ### 3.5 Admissible domain \(D\) — options
@@ -414,7 +430,12 @@ ordered by how much they let the experiment say:
 |---|---|---|
 | **D-flow** | Scanner-accepted inputs whose root node is a flow collection with flow-only content (Priority 99's flow rows). | Uniqueness is proven here; adequacy should hold.  Useful as the *positive control's* domain, too narrow as the audit domain. |
 | **D-current** (default) | All scanner-accepted inputs, read against the grammar **as it stands** (with `implicitContinue` wide). | Measures the frontier the paper's §6 describes.  A countermodel here is a fact about the current tree, not about YAML. |
-| **D-spec** | Scanner-accepted inputs that are also single, well-formed documents under YAML 1.2.2 as adjudicated by the owner. | Measures what remains *after* Row 19 is assumed.  The §5 countermodel is **not** admissible here (it is a legal single document whose second reading the spec does not allow). |
+| **D-spec** | Scanner-accepted inputs that are also single, well-formed documents under YAML 1.2.2 as adjudicated by the owner; \(R\) is read against the **spec-adjudicated** grammar (one reading per input). | Measures what remains *after* Row 19 is assumed.  The §4 countermodel `a⏎*x` **is admissible** here — it is scanner-accepted and a legal single document — but it is **not a witness**: the spec gives it one reading, \(R\) is true, and the pair (`a`, `a⏎*x`) agrees on \(R\). |
+
+Two choices are being made per row, and they are independent: **which inputs
+are in \(D\)** (membership), and **which grammar fixes the verdict \(R\)**
+(D-current: `TLYamlStream` as written; D-spec: YAML 1.2.2 as adjudicated).
+`a⏎*x` is a member of both D-current and D-spec; only the verdict differs.
 
 **Default: D-current, with D-spec recorded alongside** for each witness, so
 the same run answers both "is the tree's current encoding adequate" and "would
@@ -474,11 +495,16 @@ Companions that bound the finding (all **checked** at `e3efcc26`):
 grammar's `implicitContinue` is wider than `[211]`.  So:
 
 - On **D-current** it is admissible and, if the derivation goes through, it
-  refutes `TraceWellFormed "a\n*x"` as stated.  This is a refutation of the
-  *formalised requirement*, not of the requirement in §2.5 — the English
-  sentence is true of this input.
-- On **D-spec** it is not a countermodel at all: the spec gives it one reading
-  and \(R\) is true.
+  makes `TraceWellFormed "a\n*x"` false as stated while `TraceWellFormed "a"`
+  is true on the same observation `[]`: an adequacy witness (§0.2).  This
+  falsifies the *formalised requirement*, not the requirement in §2.5 — the
+  English sentence is true of this input — and it does **not** refute the
+  obligation `scan_trace`, whose scanner trace `[]` remains derivable.  In the
+  §7 boxes this is **box 3 (inadequate representation)**, not box 1 (refuted
+  obligation), which is reserved for `scan_trace` itself failing.
+- On **D-spec** it is admissible — scanner-accepted, legal single document —
+  but it is not a witness: the spec gives it one reading, \(R\) is true, and the
+  pair (`a`, `a⏎*x`) no longer disagrees on \(R\).
 
 That gap is itself the finding the paper is after: the current encoding of the
 requirement (`TraceWellFormed` over `TLYamlStream` as written) says *false*
@@ -531,8 +557,8 @@ Priority 33) **before** the derivations are attempted, and scored afterwards.
 ```mermaid
 flowchart TD
   A["Derivation TraceOf 'a⏎*x' [useAlias x] built?"]
-  A -- "yes" --> B["D-current: TraceWellFormed refuted at 'a⏎*x'\nD-spec: not admissible → encoding inadequate until Row 19"]
-  A -- "no, grammar forbids it" --> C["Prediction REFUTED; implicitContinue narrower than read.\nRe-read Row 19's scope; countermodel search continues or closes"]
+  A -- "yes" --> B["Box 3, inadequate representation.\nD-current: evidence [] does not determine TraceWellFormed ('a' vs 'a⏎*x')\nD-spec: formalised R false, adjudicated R true → encoding wider than [211] until Row 19"]
+  A -- "no, grammar forbids it" --> C["Prediction REFUTED; implicitContinue narrower than read.\nRe-read Row 19's scope; countermodel search continues or closes.\n(Box 1 only if TraceOf 'a⏎*x' [] ALSO fails to derive)"]
   A -- "no, within budget" --> D["Unresolved proof engineering: outcome deferred, no verdict"]
   B --> E["Positive control C1 holds?"]
   C --> E
@@ -542,9 +568,9 @@ flowchart TD
 
 | Box (paper's four) | Concrete form here | Does **not** establish |
 |---|---|---|
-| **Refuted obligation** | `TraceWellFormed "a\n*x"` false on the current grammar (D-current). | that the scanner or parser is wrong (both read it as the spec does); that `scan_trace` is false (it is an existence statement and `[]` is a trace); anything about D-spec. |
+| **Refuted obligation** | `scan_trace` false on \(D\): an input the scanner accepts whose token trace `tokenEvents ts` has **no** `TLYamlStream` derivation.  **Not expected from `a⏎*x`**: its scanner trace `[]` is expected to be derivable (`TraceOf "a\n*x" []`, mirror of `traceOf_plain`).  This box is reached only if that derivation fails *because the grammar forbids it*. | anything about `TraceWellFormed` (a missing scanner trace says nothing about the other traces); that the scanner is wrong (the grammar may be the narrower one). |
 | **Proven local bridge, open global step** | Flow fragment: `scan_trace`'s flow slice plus `tFlowSequence_unique` give `TraceWellFormed` on D-flow; the block/document step and the whole-stream producer remain gated. | that the global step is *provable*; only that it is separable from the local one. |
-| **Inadequate representation** | `TLYamlStream`'s `[211]` encodes a wider language than \(L_N\), so the observation `tokenEvents ts` cannot determine `TraceWellFormed` on D-current although it determines the English requirement. | that `Event`/`checkFrom` lose information (they do not here); that the approach of trace-annotated grammars is unsound. |
+| **Inadequate representation** | **This is where `a⏎*x` lands if its second derivation is built.**  On D-current: `TraceWellFormed "a\n*x"` is false while `TraceWellFormed "a"` is true and both have observation `[]` — the evidence does not determine the target (§0.2).  On D-spec: the formalised \(R\) says *false* about an input the spec-adjudicated \(R\) says *true* about — `TLYamlStream`'s `[211]` encodes a wider language than \(L_N\).  `scan_trace` is untouched by either reading. | that the scanner or parser is wrong (both read `a⏎*x` as the spec does); that `scan_trace` is false; that `Event`/`checkFrom` lose information (they do not here); that the approach of trace-annotated grammars is unsound. |
 | **Unresolved proof engineering** | Derivations not completed within the budget. | anything.  The paper's rule: no conclusion about the whole approach follows from a failed bounded search. |
 
 Explicitly **not** concluded by any outcome of this experiment:
@@ -589,10 +615,13 @@ Each with a proposed default in bold; the default stands if not contested.
 5. **Is `a⏎*x` the right minimum?**  Alternatives: `a⏎!e!x` (undeclared tag
    handle; needs a `%TAG` interaction) or a two-document variant.  **`a⏎*x`**,
    smallest and closest to the already-pinned `a⏎&x`.
-6. **Placement of the §4 finding.**  Box 1 (refuted as formalised) or box 3
-   (inadequate representation)?  The paper's taxonomy puts it in box 3 because
-   the formalised \(R\) and the English \(R\) disagree on an admissible input.
-   **Box 3 on D-spec, box 1 on D-current; report both.**
+6. **Placement of the §4 finding.**  Box 1 (refuted obligation) or box 3
+   (inadequate representation)?  **Box 3 on both domains** — on D-current as
+   inadequacy of the *evidence* (`a` and `a⏎*x` share observation `[]` and
+   differ on \(R\)), on D-spec as inadequacy of the *representation* (the
+   formalised \(R\) and the adjudicated \(R\) disagree).  Box 1 is reserved
+   for `scan_trace` itself being false, which `a⏎*x` is not expected to show;
+   one claim per box (§7).
 7. **Budget.**  One week / ~150 lines per derivation.  **Accept unless Heath
    wants a smaller first slice (e.g. the countermodel only).**
 8. **Reporting.**  Does the auditor want a replay bundle (Actions run with the
@@ -604,6 +633,14 @@ Each with a proposed default in bold; the default stands if not contested.
    Should the paper adopt the split, or should L4YAML stop using two grammars
    once Row 12 lands and the distinction collapses?  **Adopt \(L_T\) in both
    until Row 12 lands, then retire it.**
+10. **Capstone 7.7's text.**  `Blueprint/04-capstones.md` row 7.7 still states
+    the refuted `InYamlLanguage` converse; `DOCS.md` and the ledger state the
+    biconditional with `ExactSurfaceLanguage ∧ SerializationWellFormed` (§3.3).
+    Which is the consumer this experiment is audited against, and should the
+    row be corrected first (Rule 5 names the blueprint as the winner, but the
+    guard `inYamlLanguage_everything` refutes the blueprint's text)?
+    **Audit against the ledger statement; correct row 7.7 in a separate
+    docs PR before the experiment's result is recorded.**
 
 ---
 
