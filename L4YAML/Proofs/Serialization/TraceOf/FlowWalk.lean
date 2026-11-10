@@ -1344,24 +1344,40 @@ lemma TMapFrame.closeBase {n : Nat} {tl : FrameTail}
 witnesses it spent (`FlowArm`, Rule 8: the arm is the projection `(flowLevel, flowStack.back?, c)`,
 the fields are positions, obligations and projections).  The T twin reads the arm instead of
 re-walking the 1071-line dispatcher: every §7 step keeps the trace, the interior gap adds the held
-run's events (`gapRead_onT`, through (β)'s premise), the base close hands the finished `[158]`
+run's events (`gapRead_onT`, via `PropsRun.toT`), the base close hands the finished `[158]`
 content out with its trace, and the depth-0 open lands the fresh frame with trace `[]`. -/
 
 section StepTrace
 open L4YAML.Proofs.StreamAccum (FlowArm GapRead PropsRun tailOf gapTail gapTail_of_nil gapTail_of_held)
 open L4YAML.Proofs.PreprocessIndentStable (minContentIndentOf)
 
+/-- (β) The held run's T twin is a LIFT, not a scanner carrier: `PropsRun` is a surface predicate
+    (an anchor, a tag, or the two separated, between positions), so its trace is determined by its
+    span — `anchorEvents` / `tagEvents` of each half in the run's order, `TCNsProperties` constructor
+    for constructor.  Item 469 priced this as "a carrier produced where the run is opened"; no scanner
+    fact is needed. -/
+lemma PropsRun.toT {n : Nat} {ha ht : Bool} {s s' : SurfPos}
+    (h : PropsRun n (inFlowCtx .flowOut) ha ht s s') :
+    ∃ ev, TCNsProperties n .flowIn s s' ev := by
+  cases h with
+  | anchor s s' h => exact ⟨_, .anchorFirst s s' s' _ [] ⟨h, rfl⟩ (.none s')⟩
+  | tag s s' h => exact ⟨_, .tagFirst s s' s' _ [] ⟨h, rfl⟩ (.none s')⟩
+  | anchorThenTag s s₁ s₂ s' ha hsep ht =>
+    exact ⟨_, .anchorFirst s s₁ s' _ _ ⟨ha, rfl⟩
+      (.some s₁ s' _ (.mk s₁ s₂ s' [] _ ⟨hsep, rfl⟩ ⟨ht, rfl⟩))⟩
+  | tagThenAnchor s s₁ s₂ s' ht hsep ha =>
+    exact ⟨_, .tagFirst s s₁ s' _ _ ⟨ht, rfl⟩
+      (.some s₁ s' _ (.mk s₁ s₂ s' [] _ ⟨hsep, rfl⟩ ⟨ha, rfl⟩))⟩
+
 /-- The interior gap on the T stack: a white gap leaves it; a held property run is folded in as
-    an empty node (`receivePropsEmpty`), the trace growing by the run's events — the run's T twin
-    is (β)'s carrier, a premise here (`hβ`).  The gap's lead and run are read at every floor, so the
+    an empty node (`receivePropsEmpty`), the trace growing by the run's events (`PropsRun.toT`).
+    The gap's lead and run are read at every floor, so the
     stack's own `n` needs `n ≤ minContentIndentOf sc` (`FlowStackK`'s floor) to instantiate them. -/
 lemma gapRead_onT {n d : Nat} {ks : Array Bool} {sc : L4YAML.Scanner.ScannerState}
     {sp_block sp_flow sp_scan sp_flow₂ : SurfPos} {ev : List Event}
     (hT : TFlowOpenStack n d ks (tailOf sc.tokens) sp_block sp_flow ev)
     (gap : GapRead sc sp_flow sp_scan sp_flow₂)
-    (hn : n ≤ minContentIndentOf sc)
-    (hβ : ∀ {ha ht : Bool} {sp_p : SurfPos}, PropsRun n (inFlowCtx .flowOut) ha ht sp_p sp_scan →
-      ∃ ev_p, TCNsProperties n .flowIn sp_p sp_scan ev_p) :
+    (hn : n ≤ minContentIndentOf sc) :
     ∃ ev_g, TFlowOpenStack n d ks (gapTail sc) sp_block sp_flow₂ (ev ++ ev_g) := by
   cases gap with
   | white _ h_nil =>
@@ -1369,7 +1385,7 @@ lemma gapRead_onT {n d : Nat} {ks : Array Bool} {sc : L4YAML.Scanner.ScannerStat
     exact ⟨[], by simpa using hT⟩
   | props ha ht sp_p h_tail h_lead h_run _ h_held =>
     rw [gapTail_of_held h_held]
-    obtain ⟨ev_p, hp⟩ := hβ ((h_run n).resolve_right (fun h => h hn))
+    obtain ⟨ev_p, hp⟩ := PropsRun.toT ((h_run n).resolve_right (fun h => h hn))
     exact ⟨ev_p, hT.receivePropsEmpty h_tail ((h_lead n).resolve_right (fun h => h hn)) hp⟩
 
 /-- **`accum_step_flow_trace`** — one flow-indicator step on the T stack, off the arm
@@ -1378,17 +1394,15 @@ lemma gapRead_onT {n d : Nat} {ks : Array Bool} {sc : L4YAML.Scanner.ScannerStat
     trace, the stack `nil`), or the depth-0 open's fresh frame (trace `[]`; its landing position is
     `accum_flow_open_depth0`'s existential `sp_flow'`, so it is stated at the T side's `sp_open`), or
     the one arm §7 has no twin for yet — a nested open AFTER a held run (`[&a [b]]`: the run wraps
-    the child, `inject`'s `propsContent`, not an empty node), returned with the run's witnesses for
-    (β).  `FlowArm` is a `Prop`, so that arm cannot be excluded by a premise on `arm` (§7: which
+    the child, `inject`'s `propsContent`, not an empty node), returned with the run's T twin
+    (`TCNsProperties`, via `PropsRun.toT`) for that §7 extension.  `FlowArm` is a `Prop`, so that arm cannot be excluded by a premise on `arm` (§7: which
     constructor fired is unobservable) — it is a disjunct of the conclusion instead.  The arm's
     obligations are read at every floor; `hn` is the stack's floor (`FlowStackK`'s `n ≤ minContentIndentOf`). -/
 lemma accum_step_flow_trace {n : Nat} {sc s' : L4YAML.Scanner.ScannerState} {c : Char}
     {sp_block sp_flow sp_scan sp_block' sp_flow' : SurfPos} {ev : List Event}
     (arm : FlowArm sc s' c sp_block sp_flow sp_scan sp_block' sp_flow')
     (hT : TFlowStackB n sc.flowLevel sc.flowStack (tailOf sc.tokens) sp_block sp_flow ev)
-    (hn : n ≤ minContentIndentOf sc)
-    (hβ : ∀ {ha ht : Bool} {sp_p : SurfPos}, PropsRun n (inFlowCtx .flowOut) ha ht sp_p sp_scan →
-      ∃ ev_p, TCNsProperties n .flowIn sp_p sp_scan ev_p) :
+    (hn : n ≤ minContentIndentOf sc) :
     ∃ ev_g,
       TFlowStackB n s'.flowLevel s'.flowStack (tailOf s'.tokens) sp_block' sp_flow' (ev ++ ev_g) ∨
       (s'.flowLevel = 0 ∧ sp_flow' = sp_block' ∧
@@ -1397,7 +1411,7 @@ lemma accum_step_flow_trace {n : Nat} {sc s' : L4YAML.Scanner.ScannerState} {c :
       (sc.flowLevel = 0 ∧ ev = [] ∧ ev_g = [] ∧
         ∃ sp_open, TFlowStackB n s'.flowLevel s'.flowStack (tailOf s'.tokens) sp_block' sp_open []) ∨
       (1 ≤ sc.flowLevel ∧ (c = '[' ∨ c = '{') ∧ ev_g = [] ∧
-        ∃ ha ht sp_p, PropsRun n (inFlowCtx .flowOut) ha ht sp_p sp_scan ∧ (ha = true ∨ ht = true)) := by
+        ∃ sp_p ev_p, TCNsProperties n .flowIn sp_p sp_scan ev_p) := by
   generalize hks : sc.flowStack = ks at hT
   cases arm with
   | openBase b sp_br sp_open sp_block'' sp_flow'' h_depth h_c h_open h_fl h_ks h_tl =>
@@ -1419,9 +1433,9 @@ lemma accum_step_flow_trace {n : Nat} {sc s' : L4YAML.Scanner.ScannerState} {c :
     | «open» _ _ _ _ _ _ hTO =>
     have h_lead' := (h_lead n).resolve_right (fun h => h hn)
     cases gap with
-    | props ha ht sp_p _ _ h_run h_some _ =>
-      exact ⟨[], Or.inr (Or.inr (Or.inr ⟨h_depth, by subst h_c; cases b <;> simp, rfl, ha, ht, sp_p,
-        (h_run n).resolve_right (fun h => h hn), h_some⟩))⟩
+    | props ha ht sp_p _ _ h_run _ _ =>
+      obtain ⟨ev_p, hp⟩ := PropsRun.toT ((h_run n).resolve_right (fun h => h hn))
+      exact ⟨[], Or.inr (Or.inr (Or.inr ⟨h_depth, by subst h_c; cases b <;> simp, rfl, sp_p, ev_p, hp⟩))⟩
     | white _ h_nil =>
       rw [gapTail_of_nil h_nil] at h_lead'
       refine ⟨[], Or.inl ?_⟩
@@ -1437,7 +1451,7 @@ lemma accum_step_flow_trace {n : Nat} {sc s' : L4YAML.Scanner.ScannerState} {c :
     cases hT with
     | «open» _ _ _ _ _ _ hTO =>
     have h_lead' := (h_lead n).resolve_right (fun h => h hn)
-    obtain ⟨ev_g, hTO₂⟩ := gapRead_onT hTO gap hn hβ
+    obtain ⟨ev_g, hTO₂⟩ := gapRead_onT hTO gap hn
     refine ⟨ev_g, Or.inl ?_⟩
     rw [h_fl, h_ks, h_tl, hd, hks]
     exact .open _ _ _ _ _ _ (hTO₂.comma h_tail h_lead' h_lit)
@@ -1447,7 +1461,7 @@ lemma accum_step_flow_trace {n : Nat} {sc s' : L4YAML.Scanner.ScannerState} {c :
     cases hT with
     | «open» _ _ _ _ _ _ hTO =>
     have h_lead' := (h_lead n).resolve_right (fun h => h hn)
-    obtain ⟨ev_g, hTO₂⟩ := gapRead_onT hTO gap hn hβ
+    obtain ⟨ev_g, hTO₂⟩ := gapRead_onT hTO gap hn
     refine ⟨ev_g, Or.inl ?_⟩
     have h_fl' : s'.flowLevel = d + 1 := by omega
     rw [h_fl', h_ks, h_tl, hks]
@@ -1476,7 +1490,7 @@ lemma accum_step_flow_trace {n : Nat} {sc s' : L4YAML.Scanner.ScannerState} {c :
     cases hT with
     | «open» _ _ _ _ _ _ hTO =>
     have h_lead' := (h_lead n).resolve_right (fun h => h hn)
-    obtain ⟨ev_g, hTO₂⟩ := gapRead_onT hTO gap hn hβ
+    obtain ⟨ev_g, hTO₂⟩ := gapRead_onT hTO gap hn
     refine ⟨ev_g, Or.inr (Or.inl ⟨h_fl, rfl, ?_⟩)⟩
     rw [h_tl]
     rw [hks] at h_top
