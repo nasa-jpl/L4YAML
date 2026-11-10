@@ -15527,6 +15527,131 @@ def testHeldNestOpen (state : IO.Ref TestCollector) : IO Unit := do
     s!"{t.decompBad.take 4} | {t.twinBad.take 4} | {t.refBad.take 4} | {t.childBad.take 4} | {t.aliasOut.take 4}"
 end P109Test
 
+/-! ### Priority 110 — slice (4), the block/plain continuation READ (item 475): the depth-0 plain-scalar step's
+twin `TFlowContent.plain` carries `[]`, so the step must be SILENT (`tokenEvents` unchanged) and its span the
+scanner's fold — `&x a⏎&y b` is ONE anchor and the plain `a &y b` (`TraceOfBlockAmbiguity.readPlain` is the T
+side of the same fold on `a⏎&x`).  The census reads every depth-0 plain step over P109's rows plus the
+continuation shapes: the fold (crossing a break), the held run before it (a `pendingProps` park), the column-0
+park, and `refLex` as the one-line executable twin (its `plain` stops at the break, so it is NOT a twin of
+`SNsPlainMultiLine` — the disagreeing rows are pinned as exactly the folded ones). -/
+namespace P110
+
+structure Tally where
+  rows : Nat := 0
+  scanned : Nat := 0
+  refusedOwn : List String := []
+  refusedBase : List String := []        -- a P109 (baseline) row refused or unstepped: pinned, as P109 (i)
+  plains : Nat := 0                      -- depth-0 steps that push one `.scalar _ .plain`
+  folded : Nat := 0                      -- the scalar's text crosses a line break (`s-ns-plain-next-line` taken)
+  held : Nat := 0                        -- a property run pending at the pre-state
+  col0 : Nat := 0                        -- the pre-state at column 0
+  evBad : List String := []              -- tokenEvents post ≠ tokenEvents pre: the step is not silent
+  foldRows : List String := []           -- rows holding a folded depth-0 plain
+  lexDisagree : List String := []        -- plain-only rows whose depth-0 plain contents ≠ refLex's opaque bodies
+  lexAgreeFolded : List String := []     -- folded plain-only rows the lexer nonetheless matches (P6's refuter)
+  pushes : List (Nat × Nat) := []        -- histogram: tokens pushed by a depth-0 step that pushes a plain scalar
+  lexSample : List (String × List String × Option (List String)) := []  -- the first disagreeing rows, both readings
+  pushKinds : List (List String) := []   -- the distinct shapes of a multi-token plain step (the two simple-key placeholders, a dedent's blockEnd)
+  pushRepr : List String := []           -- one row and its pushed tokens per shape, verbatim
+
+def own : List String :=
+  ["&x a\n&y b", "&x a\n &y b", "a\n&x", "&x a\nb: c", "a\n b\n c", "k:\n- a", "k:\n  - a", "- a\n  b",
+   "a: b\n c", "a:\n  b\n  c", "- a\n- b\n  c", "? a\n b\n: c", "k: a\n\n b", "k: a # c\n b", "- &x a\n  b",
+   "&x\na", "k:\n  &x\n  a", "a\n---\nb"]
+def allRows : List String := (P109.allRows ++ own).eraseDups
+
+/-- A row whose every scalar is a depth-0 plain: no flow, quotes, block scalar, comment or directive. -/
+def plainOnly (s : String) : Bool :=
+  !(s.toList.any fun c => c == '[' || c == '{' || c == '"' || c == '\'' || c == '|' || c == '>' || c == '#' || c == '%')
+
+def bump (h : List (Nat × Nat)) (k : Nat) : List (Nat × Nat) :=
+  if h.any (·.1 == k) then h.map fun (a, n) => if a == k then (a, n + 1) else (a, n) else h ++ [(k, 1)]
+
+def trimEnd (cs : List Char) : List Char := (cs.reverse.dropWhile (fun c => c == ' ' || c == '\t' || c == '\n' || c == '\r')).reverse
+
+open L4YAML.Proofs.StreamAccum L4YAML.Proofs.Serialization.TokenEvents L4YAML.Proofs.Serialization.EventsOf in
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    t := { t with rows := t.rows + 1 }
+    match scanFiltered s, P107.stepsOf s with
+    | .error _, _ | _, none =>
+      if own.contains s then t := { t with refusedOwn := s :: t.refusedOwn }
+      else t := { t with refusedBase := s :: t.refusedBase }
+    | .ok _, some sts =>
+      t := { t with scanned := t.scanned + 1 }
+      let mut contents : List String := []
+      let mut rowFolded := false
+      for (pre, post) in sts do
+        let delta := post.tokens.size - pre.tokens.size
+        let pushed := (post.tokens.toList.drop pre.tokens.size)
+        let plainTk := pushed.find? fun tk => match tk.val with | .scalar _ .plain => true | _ => false
+        if pre.flowLevel == 0 then
+          match plainTk with
+          | some tk =>
+            match tk.val with
+            | .scalar str _ =>
+              t := { t with plains := t.plains + 1, pushes := bump t.pushes delta }
+              let kinds := pushed.map fun tk => match tk.val with
+                | .scalar _ .plain => "plain" | .scalar _ _ => "scalar" | .key => "key" | .value => "value"
+                | .blockMappingStart => "bMapStart" | .blockSequenceStart => "bSeqStart" | .blockEnd => "bEnd"
+                | .blockEntry => "bEntry" | .anchor _ => "anchor" | .tag _ _ => "tag" | .placeholder => "placeholder"
+                | _ => "other"
+              if delta > 1 && !t.pushKinds.contains kinds then
+                t := { t with pushKinds := t.pushKinds ++ [kinds], pushRepr := t.pushRepr ++ [s!"{repr s}: {repr (pushed.map (·.val))}"] }
+              contents := contents ++ [str]
+              let txt := trimEnd ((s.toList.drop tk.pos.offset).take (post.offset - tk.pos.offset))
+              if txt.contains '\n' then
+                t := { t with folded := t.folded + 1 }; rowFolded := true
+              if !(trailingPropertyRun pre.tokens).isEmpty then t := { t with held := t.held + 1 }
+              if pre.col == 0 then t := { t with col0 := t.col0 + 1 }
+              if tokenEvents post.tokens != tokenEvents pre.tokens then t := { t with evBad := s :: t.evBad }
+            | _ => pure ()
+          | none => pure ()
+      if rowFolded then t := { t with foldRows := s :: t.foldRows }
+      if plainOnly s && !P99.bomRow s then
+        let lex := (refLex s).map fun segs => segs.filterMap fun
+          | .opaque cs => some (String.ofList (trimEnd cs))
+          | _ => none
+        if lex != some contents then
+          t := { t with lexDisagree := s :: t.lexDisagree }
+          if t.lexSample.length < 6 && !rowFolded then t := { t with lexSample := t.lexSample ++ [(s, contents, lex)] }
+        else if rowFolded then t := { t with lexAgreeFolded := s :: t.lexAgreeFolded }
+  return t
+
+/-- The fold read off the tokens: the anchors and the plain contents of a row, depth 0. -/
+def foldOf (s : String) : Option (List String) :=
+  (scanFiltered s).toOption.map fun ts => ts.toList.filterMap fun tk => match tk.val with
+    | .anchor n => some s!"&{n}"
+    | .scalar str .plain => some str
+    | _ => none
+
+end P110
+
+namespace P110Test
+open P110
+
+def testPlainContinuationRead (state : IO.Ref TestCollector) : IO Unit := do
+  let t := tally allRows
+  checkM state
+    s!"P110(i) {t.rows} rows, {t.scanned} scanned; own rows refused: {t.refusedOwn}; baseline rows refused or unstepped: {t.refusedBase.length}"
+    (t.rows == 729 && t.scanned == 572 && t.refusedOwn == ["k: a # c\n b", "&x a\nb: c"] && t.refusedBase.length == 155)
+    s!"{t.rows} {t.scanned} {t.refusedOwn} {t.refusedBase.length}"
+  checkM state
+    s!"P110(ii) depth-0 plain steps {t.plains}: folded {t.folded} (rows {t.foldRows.length}), under a held run {t.held}, at column 0 {t.col0}; tokens pushed per step {t.pushes} as {t.pushKinds}; non-silent steps {t.evBad.length}"
+    (t.plains == 402 && t.folded == 12 && t.held == 86 && t.col0 == 80 && t.pushes == [(3, 320), (1, 77), (4, 5)] && t.evBad.isEmpty)
+    s!"{t.plains} {t.folded} {t.held} {t.col0} {t.pushes} {t.pushKinds} {t.pushRepr} {t.evBad.take 3}"
+  checkM state
+    s!"P110(iii) the fold: `&x a⏎&y b` = {foldOf "&x a\n&y b"}, indented = {foldOf "&x a\n &y b"}, `a⏎&x` = {foldOf "a\n&x"}"
+    (foldOf "&x a\n&y b" == some ["&x", "a &y b"] && foldOf "&x a\n &y b" == some ["&x", "a &y b"] &&
+      foldOf "a\n&x" == some ["a &x"]) ""
+  checkM state
+    s!"P110(iv) refLex on the plain-only rows: disagree {t.lexDisagree.length} (folded rows among them: {(t.lexDisagree.filter t.foldRows.contains).length}), folded rows the lexer matches {t.lexAgreeFolded}"
+    (t.lexAgreeFolded.isEmpty && t.lexDisagree.all t.foldRows.contains)
+    s!"{t.lexSample}"
+
+end P110Test
+
 def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 100: S3 slice (1) — leaf span ↔ token payload (anchor / alias / tag), before proof"
   let t := P100.tally P100.allRows
@@ -15715,6 +15840,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testFlowArm state
   testPropsRunT state
   testHeldNestOpen state
+  P110Test.testPlainContinuationRead state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",
