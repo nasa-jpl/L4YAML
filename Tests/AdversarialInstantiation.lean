@@ -15382,6 +15382,151 @@ def testPropsRunT (state : IO.Ref TestCollector) : IO Unit := do
     (t.scanBad.isEmpty && t.refBad.isEmpty && t.rest == [("[]", 178)]) s!"{t.scanBad.take 5} | {t.refBad.take 5} | {t.rest}"
 end P108Test
 
+/-! Priority 109 (item 474, S3 slice (3), item 472's NEXT): the held nested open `[&a [b]]` — the
+    `TFlowOpenStack.seqNestProps` / `mapNestProps` twins, before statement.  At every nested open
+    (depth ≥ 1) whose pre-state holds a property run, the run's lead to the bracket is read (the
+    constructor needs `SSeparate n .flowIn sp_end sp_br`, so `&a[` glued must be refused —
+    `FlowArm.openNest`'s stated lead does not say so), and at the close of such a child the parent's
+    trace is read as the constructor states it, `ev_par ++ (ev_p ++ ev)`: the parent's events before
+    the run, the lift's events of the run (P108), the child's standalone trace — under `goOut` of the
+    parent's tokens and under `scanFiltered` / `refLex` of the parent's span cut and closed at the
+    child's closer. -/
+namespace P109
+
+structure Tally where
+  rows : Nat := 0
+  scanned : Nat := 0
+  refusedOwn : List String := []
+  refusedBase : List String := []        -- a P106 (baseline) row the scanner refuses or P107 cannot step (P106 carries refused rows by design): pinned
+  heldOpen : List (String × Nat) := []   -- held nested opens by kind (seq / map)
+  shape : List (String × Nat) := []      -- the held run's shape at those opens
+  leadEmpty : List String := []          -- the run glued to the bracket: the constructor's refuter
+  leadMulti : Nat := 0                   -- leads spanning a line break
+  closes : Nat := 0                      -- closes of a held-run child
+  decompBad : List String := []          -- goOut (parent tokens through the closer) ≠ pre ++ lift ++ child
+  twinBad : List String := []            -- scanFiltered of the parent's cut-and-closed span ≠ that
+  refBad : List String := []             -- refLex of that span ≠ that
+  childBad : List String := []           -- the child standalone: scanFiltered / refLex refuse or disagree
+  aliasOut : List String := []           -- alias whose anchor sits outside the cut (semantic, not grammar)
+  childAlias : List String := []         -- the child standalone refused for an alias whose anchor is the held run's
+
+def own : List String :=
+  ["{a: &x {b: c}}", "[&a {b: c}]", "[!t [a]]", "[&a !t [b]]", "[!t &a {}]", "[&a\n [b]]", "[&a[b]]",
+   "{&a [b]: c}", "[&a {}]", "[[&a [b]]]", "{a: !t [b, c], d: e}", "[&a [b], &c {d: e}]"]
+def allRows : List String := (P106.allRows ++ own).eraseDups
+
+/-- An open frame: the opener's index into `tokens` and byte offset, its kind, and — when the open
+    held a run — the run's halves as `(offset, isAnchor)` with the run's textual end (the pre-state's
+    cursor, P108). -/
+structure Frame where
+  idx : Nat
+  off : Nat
+  isSeq : Bool
+  run : List (Nat × Bool)
+  runEnd : Nat
+
+open L4YAML.Proofs.StreamAccum L4YAML.Proofs.Serialization.TokenEvents L4YAML.Proofs.Serialization.TraceOf L4YAML.Proofs.Serialization.EventsOf in
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    t := { t with rows := t.rows + 1 }
+    match scanFiltered s, P107.stepsOf s with
+    | .error _, _ | _, none =>
+      if own.contains s then t := { t with refusedOwn := s :: t.refusedOwn }
+      else t := { t with refusedBase := s :: t.refusedBase }
+    | .ok _, some sts =>
+      t := { t with scanned := t.scanned + 1 }
+      let mut fr : List Frame := []
+      for (sc, s') in sts do
+        let fresh := (s'.tokens.toList.drop sc.tokens.size).filter (fun p => p.val != .placeholder)
+        match fresh.filterMap (fun p => (P107.armOf sc p.val).map (·, p)) with
+        | [] => pure ()
+        | (_, p) :: _ =>
+          let realIdx := sc.tokens.size +
+            ((s'.tokens.toList.drop sc.tokens.size).findIdx (fun q => q.val != .placeholder))
+          let isSeq := p.val == .flowSequenceStart || p.val == .flowSequenceEnd
+          let isOpen := p.val == .flowSequenceStart || p.val == .flowMappingStart
+          let isClose := p.val == .flowSequenceEnd || p.val == .flowMappingEnd
+          let run := trailingPropertyRun sc.tokens
+          let at_ := s!"{repr s}@{p.pos.offset}"
+          if isOpen then
+            let held := sc.flowLevel > 0 && !run.isEmpty
+            if held then
+              let shape := ",".intercalate (run.map fun h => match h with | .anchor _ => "anchor" | _ => "tag")
+              t := { t with heldOpen := P100.bump t.heldOpen (if isSeq then "seq" else "map"),
+                             shape := P100.bump t.shape shape }
+              let lead := String.Pos.Raw.extract s ⟨sc.offset⟩ ⟨p.pos.offset⟩
+              if lead.isEmpty then t := { t with leadEmpty := at_ :: t.leadEmpty }
+              if lead.contains '\n' then t := { t with leadMulti := t.leadMulti + 1 }
+            let real := sc.tokens.toList.filter (fun q => q.val != .placeholder)
+            let halves := if held then (real.drop (real.length - run.length)).map
+              (fun h => (h.pos.offset, match h.val with | .anchor _ => true | _ => false)) else []
+            fr := { idx := realIdx, off := p.pos.offset, isSeq, run := halves, runEnd := sc.offset } :: fr
+          else if isClose then
+            match fr with
+            | child :: parent :: _ =>
+              if !child.run.isEmpty then
+                t := { t with closes := t.closes + 1 }
+                -- `ev_p`: the lift's events of the run's halves (P108's reading)
+                let ends := (child.run.drop 1).map (·.1) ++ [child.runEnd]
+                let evP := (child.run.zip ends).flatMap fun ((o, isAnchor), e) =>
+                  let txt := (P105.rstrip (String.Pos.Raw.extract s ⟨o⟩ ⟨e⟩)).toList
+                  if isAnchor then anchorEvents txt else tagEvents txt
+                -- `ev`: the child's trace, `goOut` of its tokens (bracket through closer), read against the
+                -- child cut standalone under `refLex` and `scanFiltered` (the latter refuses an alias whose
+                -- anchor sits outside the child, `[&x [*x]]` — semantic, counted apart)
+                let childTxt := String.Pos.Raw.extract s ⟨child.off⟩ ⟨p.pos.offset + 1⟩
+                let childToks := ((sc.tokens.toList.drop child.idx).filter (fun q => q.val != .placeholder)) ++ [p]
+                let evC := (goOut childToks []).1
+                if ((refLex childTxt).map eventsOfSegs) != some evC then
+                  t := { t with childBad := s!"{at_} ref {repr childTxt}" :: t.childBad }
+                match scanFiltered childTxt with
+                | .ok ts => if tokenEvents ts != evC then t := { t with childBad := s!"{at_} scan {repr childTxt}" :: t.childBad }
+                | .error (.undefinedAlias ..) => t := { t with childAlias := at_ :: t.childAlias }
+                | .error _ => t := { t with childBad := s!"{at_} refused {repr childTxt}" :: t.childBad }
+                -- `ev_par`: the parent's real tokens before the run
+                let before := ((sc.tokens.toList.take child.idx).drop parent.idx).filter (fun q => q.val != .placeholder)
+                let pre := before.take (before.length - child.run.length)
+                let composite := (goOut pre []).1 ++ (evP ++ evC)
+                let parToks := ((sc.tokens.toList.drop parent.idx).filter (fun q => q.val != .placeholder)) ++ [p]
+                if (goOut parToks []).1 != composite then
+                  t := { t with decompBad := s!"{at_} got={repr (goOut parToks []).1} want={repr composite}" :: t.decompBad }
+                let sub := P105.rstrip (String.Pos.Raw.extract s ⟨parent.off⟩ ⟨p.pos.offset + 1⟩) ++
+                  (if parent.isSeq then "]" else "}")
+                let (ok, okRef) := P104.twin sub composite
+                if !ok then
+                  if P104.aliasOutside sub then t := { t with aliasOut := at_ :: t.aliasOut }
+                  else t := { t with twinBad := s!"{at_} {repr sub} want={repr composite}" :: t.twinBad }
+                if !okRef then t := { t with refBad := s!"{at_} {repr sub}" :: t.refBad }
+            | _ => pure ()
+            fr := fr.drop 1
+  return t
+
+end P109
+
+section P109Test
+def testHeldNestOpen (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 109: S3 slice (3), item 472's NEXT — the held nested open (seqNestProps / mapNestProps), before statement"
+  let t := P109.tally P109.allRows
+  -- P1: the own rows; `&a[` glued is what `propertyFollowerOk` refuses (the S proof's `eps_refuted_of_next`)
+  checkM state s!"P109(i) {t.rows} rows, {t.scanned} scanned (pinned: a baseline row vanishing is a failure); own rows refused by the scanner: {t.refusedOwn}; baseline rows refused or unstepped: {t.refusedBase.length}"
+    (t.rows == 713 && t.scanned == 558 && t.refusedOwn == ["[&a[b]]"] && t.refusedBase.length == 154)
+    s!"{t.rows} {t.scanned} {t.refusedOwn} {t.refusedBase.take 5}"
+  -- P2: both nest kinds hold a run, all four run shapes present
+  checkM state s!"P109(ii) held nested opens by kind {t.heldOpen}, run shapes {t.shape}"
+    (t.heldOpen.mergeSort (fun a b => a.1 ≤ b.1) == [("map", 5), ("seq", 9)] &&
+      t.shape.mergeSort (fun a b => a.1 ≤ b.1) == [("anchor", 10), ("anchor,tag", 1), ("tag", 2), ("tag,anchor", 1)])
+    s!"{t.heldOpen} | {t.shape}"
+  -- P3: the run is never glued to the bracket (the constructor's `SSeparate n .flowIn sp_end sp_br` premise)
+  checkM state s!"P109(iii) the run's lead to the bracket: glued {t.leadEmpty.length}, spanning a line break {t.leadMulti}"
+    (t.leadEmpty.isEmpty && t.leadMulti == 1) s!"{t.leadEmpty.take 5}"
+  -- P4: the constructor's trace at the child's close, `ev_par ++ (ev_p ++ ev)`, under all three readings
+  checkM state s!"P109(iv) closes of a held-run child: {t.closes}; ev_par ++ (ev_p ++ ev) under goOut {t.decompBad.length} bad, scanFiltered {t.twinBad.length} bad, refLex {t.refBad.length} bad; child standalone {t.childBad.length} bad; alias-outside {t.aliasOut.length}, child alias-outside {t.childAlias}"
+    (t.closes == 14 && t.decompBad.isEmpty && t.twinBad.isEmpty && t.refBad.isEmpty && t.childBad.isEmpty && t.aliasOut.isEmpty &&
+      t.childAlias == ["\"[&x [*x]]\"@7"])
+    s!"{t.decompBad.take 4} | {t.twinBad.take 4} | {t.refBad.take 4} | {t.childBad.take 4} | {t.aliasOut.take 4}"
+end P109Test
+
 def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 100: S3 slice (1) — leaf span ↔ token payload (anchor / alias / tag), before proof"
   let t := P100.tally P100.allRows
@@ -15569,6 +15714,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testFlowStep state
   testFlowArm state
   testPropsRunT state
+  testHeldNestOpen state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",

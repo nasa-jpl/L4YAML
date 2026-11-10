@@ -223,6 +223,32 @@ inductive TFlowOpenStack (n : Nat) :
       (h_sep : GOpt (SSeparate n .flowIn) sp_open sp_es)
       (st : TMapFrame n .flowIn tl sp_es sp_cur ev) :
       TFlowOpenStack n (d + 1) (ks.push false) tl sp_before sp_cur (ev_par ++ ev)
+  /-- A nest opened under a held property run (`[&a [b]]`, item 474): the parent, the lead to the
+      run, the run's `TCNsProperties` twin and its separation to the bracket (`&a[` glued is what
+      the scanner refuses), then the child as `seqNest`; at the close the run decorates the child
+      (`receivePropsContent`), so the trace is `ev_par ++ (ev_p ++ ev)`. -/
+  | seqNestProps (d : Nat) (ks : Array Bool) (tl_par tl : FrameTail)
+      (sp_before sp_par sp_p sp_end sp_br sp_open sp_es sp_cur : SurfPos) (ev_par ev_p ev : List Event)
+      (parent : TFlowOpenStack n d ks tl_par sp_before sp_par ev_par)
+      (h_tail : ∀ kj, tl_par ≠ .value kj)
+      (h_lead : SSeparateLines n sp_par sp_p ∨ (sp_p = sp_par ∧ tl_par.leadFree))
+      (h_props : TCNsProperties n .flowIn sp_p sp_end ev_p)
+      (h_psep : SSeparate n .flowIn sp_end sp_br)
+      (h_open : GLit '[' sp_br sp_open)
+      (h_sep : GOpt (SSeparate n .flowIn) sp_open sp_es)
+      (st : TSeqFrame n .flowIn tl sp_es sp_cur ev) :
+      TFlowOpenStack n (d + 1) (ks.push true) tl sp_before sp_cur (ev_par ++ (ev_p ++ ev))
+  | mapNestProps (d : Nat) (ks : Array Bool) (tl_par tl : FrameTail)
+      (sp_before sp_par sp_p sp_end sp_br sp_open sp_es sp_cur : SurfPos) (ev_par ev_p ev : List Event)
+      (parent : TFlowOpenStack n d ks tl_par sp_before sp_par ev_par)
+      (h_tail : ∀ kj, tl_par ≠ .value kj)
+      (h_lead : SSeparateLines n sp_par sp_p ∨ (sp_p = sp_par ∧ tl_par.leadFree))
+      (h_props : TCNsProperties n .flowIn sp_p sp_end ev_p)
+      (h_psep : SSeparate n .flowIn sp_end sp_br)
+      (h_open : GLit '{' sp_br sp_open)
+      (h_sep : GOpt (SSeparate n .flowIn) sp_open sp_es)
+      (st : TMapFrame n .flowIn tl sp_es sp_cur ev) :
+      TFlowOpenStack n (d + 1) (ks.push false) tl sp_before sp_cur (ev_par ++ (ev_p ++ ev))
 
 /-- The `FlowStackB` sibling: no flow open (`nil`, depth 0, any tail, trace `[]`) or an open
     stack.  `nil` is what the re-walk starts from and returns to after a base close. -/
@@ -1064,6 +1090,20 @@ lemma TFlowOpenStack.liftTop {n D : Nat} {ks : Array Bool} {tl tl' : FrameTail}
     obtain ⟨sp_es', h_sep', st'⟩ := fm h_sep st
     exact TFlowOpenStack.retrace (List.append_assoc _ _ _).symm
       (.mapNest _ _ _ _ _ _ _ _ _ _ _ _ parent h_tail h_lead h_open h_sep' st')
+  | seqNestProps d ks tl_par tl sp_before sp_par sp_p sp_end sp_br sp_open sp_es sp_cur ev_par ev_p ev
+      parent h_tail h_lead h_props h_psep h_open h_sep st =>
+    obtain ⟨sp_es', h_sep', st'⟩ := fs h_sep st
+    exact TFlowOpenStack.retrace
+      (show ev_par ++ (ev_p ++ (ev ++ delta)) = (ev_par ++ (ev_p ++ ev)) ++ delta by
+        simp only [List.append_assoc])
+      (.seqNestProps _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ parent h_tail h_lead h_props h_psep h_open h_sep' st')
+  | mapNestProps d ks tl_par tl sp_before sp_par sp_p sp_end sp_br sp_open sp_es sp_cur ev_par ev_p ev
+      parent h_tail h_lead h_props h_psep h_open h_sep st =>
+    obtain ⟨sp_es', h_sep', st'⟩ := fm h_sep st
+    exact TFlowOpenStack.retrace
+      (show ev_par ++ (ev_p ++ (ev ++ delta)) = (ev_par ++ (ev_p ++ ev)) ++ delta by
+        simp only [List.append_assoc])
+      (.mapNestProps _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ parent h_tail h_lead h_props h_psep h_open h_sep' st')
 
 /-- `FlowOpenStack.receiveNode`: a completed `.flowIn` node into the top frame, which is not
     `.value`-tailed (`h_tail` = the scanner's adjacency guard); the tail becomes `.value kj`
@@ -1280,6 +1320,32 @@ lemma TFlowOpenStack.openNestMap {n d : Nat} {ks : Array Bool} {tl_par : FrameTa
     TFlowOpenStack n (d + 1) (ks.push false) .sep sp_block sp_open (ev_par ++ []) :=
   .mapNest _ _ _ _ _ _ _ _ _ _ _ _ parent h_tail h_lead h_open (.none sp_open) (.betweenEmpty sp_open)
 
+/-- `inject` under a held run (`[&a [b]]`, item 474): the run's twin `h_props` and its separation
+    to the bracket are recorded with the push; the child opens empty, trace `ev_par ++ (ev_p ++ [])`. -/
+lemma TFlowOpenStack.openNestSeqProps {n d : Nat} {ks : Array Bool} {tl_par : FrameTail}
+    {sp_block sp_par sp_p sp_end sp_br sp_open : SurfPos} {ev_par ev_p : List Event}
+    (parent : TFlowOpenStack n d ks tl_par sp_block sp_par ev_par)
+    (h_tail : ∀ kj, tl_par ≠ .value kj)
+    (h_lead : SSeparateLines n sp_par sp_p ∨ (sp_p = sp_par ∧ tl_par.leadFree))
+    (h_props : TCNsProperties n .flowIn sp_p sp_end ev_p)
+    (h_psep : SSeparate n .flowIn sp_end sp_br)
+    (h_open : GLit '[' sp_br sp_open) :
+    TFlowOpenStack n (d + 1) (ks.push true) .sep sp_block sp_open (ev_par ++ (ev_p ++ [])) :=
+  .seqNestProps _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ parent h_tail h_lead h_props h_psep h_open
+    (.none sp_open) (.betweenEmpty sp_open)
+
+lemma TFlowOpenStack.openNestMapProps {n d : Nat} {ks : Array Bool} {tl_par : FrameTail}
+    {sp_block sp_par sp_p sp_end sp_br sp_open : SurfPos} {ev_par ev_p : List Event}
+    (parent : TFlowOpenStack n d ks tl_par sp_block sp_par ev_par)
+    (h_tail : ∀ kj, tl_par ≠ .value kj)
+    (h_lead : SSeparateLines n sp_par sp_p ∨ (sp_p = sp_par ∧ tl_par.leadFree))
+    (h_props : TCNsProperties n .flowIn sp_p sp_end ev_p)
+    (h_psep : SSeparate n .flowIn sp_end sp_br)
+    (h_open : GLit '{' sp_br sp_open) :
+    TFlowOpenStack n (d + 1) (ks.push false) .sep sp_block sp_open (ev_par ++ (ev_p ++ [])) :=
+  .mapNestProps _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ parent h_tail h_lead h_props h_psep h_open
+    (.none sp_open) (.betweenEmpty sp_open)
+
 /-- A nested `]`: the child closes (`closeLead`) and lands as the parent's JSON-like node, with
     the lead the push recorded; the parent's tail becomes `.value true`, trace `ev_par ++ ev`. -/
 lemma TFlowOpenStack.closeNestedSeq {n d : Nat} {ks : Array Bool} {tl_par tl : FrameTail}
@@ -1311,6 +1377,44 @@ lemma TFlowOpenStack.closeNestedMap {n d : Nat} {ks : Array Bool} {tl_par tl : F
     TMapFrame.closeLead (c_out := .flowIn) h_open h_sep st (h_lead₂.imp (fun h => ⟨h, h⟩) id) h_close
   parent.receiveNode h_tail h_lead (.content _ _ _ _ _ (.flowMap _ _ _ _ _ h_map))
     (fun _ => .content _ _ _ _ _ (.flowMap _ _ _ _ _ h_map))
+
+/-- A nested `]` under a held run (item 474): the child closes and lands as the parent's node
+    DECORATED by the run (`receivePropsContent`, `propsContent`), trace `ev_par ++ (ev_p ++ ev)`. -/
+lemma TFlowOpenStack.closeNestedSeqProps {n d : Nat} {ks : Array Bool} {tl_par tl : FrameTail}
+    {sp_block sp_par sp_p sp_end sp_br sp_open sp_es sp_cur sp_prep sp_tok : SurfPos}
+    {ev_par ev_p ev : List Event}
+    (parent : TFlowOpenStack n d ks tl_par sp_block sp_par ev_par)
+    (h_tail : ∀ kj, tl_par ≠ .value kj)
+    (h_lead : SSeparateLines n sp_par sp_p ∨ (sp_p = sp_par ∧ tl_par.leadFree))
+    (h_props : TCNsProperties n .flowIn sp_p sp_end ev_p)
+    (h_psep : SSeparate n .flowIn sp_end sp_br)
+    (h_open : GLit '[' sp_br sp_open) (h_sep : GOpt (SSeparate n .flowIn) sp_open sp_es)
+    (st : TSeqFrame n .flowIn tl sp_es sp_cur ev)
+    (h_lead₂ : SSeparateLines n sp_cur sp_prep ∨ (sp_prep = sp_cur ∧ tl.closeFree = true))
+    (h_close : GLit ']' sp_prep sp_tok) :
+    TFlowOpenStack n d ks (.value true) sp_block sp_tok (ev_par ++ (ev_p ++ ev)) :=
+  have h_seq : TFlowSequence n .flowIn sp_br sp_tok ev :=
+    TSeqFrame.closeLead (c_out := .flowIn) h_open h_sep st (h_lead₂.imp (fun h => ⟨h, h⟩) id) h_close
+  parent.receivePropsContent h_tail h_lead h_props h_psep (.flowSeq _ _ _ _ _ h_seq)
+    (fun _ => .flowSeq _ _ _ _ _ h_seq)
+
+lemma TFlowOpenStack.closeNestedMapProps {n d : Nat} {ks : Array Bool} {tl_par tl : FrameTail}
+    {sp_block sp_par sp_p sp_end sp_br sp_open sp_es sp_cur sp_prep sp_tok : SurfPos}
+    {ev_par ev_p ev : List Event}
+    (parent : TFlowOpenStack n d ks tl_par sp_block sp_par ev_par)
+    (h_tail : ∀ kj, tl_par ≠ .value kj)
+    (h_lead : SSeparateLines n sp_par sp_p ∨ (sp_p = sp_par ∧ tl_par.leadFree))
+    (h_props : TCNsProperties n .flowIn sp_p sp_end ev_p)
+    (h_psep : SSeparate n .flowIn sp_end sp_br)
+    (h_open : GLit '{' sp_br sp_open) (h_sep : GOpt (SSeparate n .flowIn) sp_open sp_es)
+    (st : TMapFrame n .flowIn tl sp_es sp_cur ev)
+    (h_lead₂ : SSeparateLines n sp_cur sp_prep ∨ (sp_prep = sp_cur ∧ tl.closeFree = true))
+    (h_close : GLit '}' sp_prep sp_tok) :
+    TFlowOpenStack n d ks (.value true) sp_block sp_tok (ev_par ++ (ev_p ++ ev)) :=
+  have h_map : TFlowMapping n .flowIn sp_br sp_tok ev :=
+    TMapFrame.closeLead (c_out := .flowIn) h_open h_sep st (h_lead₂.imp (fun h => ⟨h, h⟩) id) h_close
+  parent.receivePropsContent h_tail h_lead h_props h_psep (.flowMap _ _ _ _ _ h_map)
+    (fun _ => .flowMap _ _ _ _ _ h_map)
 
 /-- The base `]`: the depth-1 frame closes into the finished `[158]` content handed out to the
     stream (Row 12's depth-0 hand-off), trace and all; the stack is `nil` again (trace `[]`) at
@@ -1395,7 +1499,11 @@ lemma gapRead_onT {n d : Nat} {ks : Array Bool} {sc : L4YAML.Scanner.ScannerStat
     `accum_flow_open_depth0`'s existential `sp_flow'`, so it is stated at the T side's `sp_open`), or
     the one arm §7 has no twin for yet — a nested open AFTER a held run (`[&a [b]]`: the run wraps
     the child, `inject`'s `propsContent`, not an empty node), returned with the run's T twin
-    (`TCNsProperties`, via `PropsRun.toT`) for that §7 extension.  `FlowArm` is a `Prop`, so that arm cannot be excluded by a premise on `arm` (§7: which
+    (`TCNsProperties`, via `PropsRun.toT`), the bracket's `GLit`, and the pushed T stack through
+    `openNestSeqProps`/`openNestMapProps` UNDER the run's strict separation from the bracket — the
+    fact `accum_step_flow`'s proof holds (`h_sep0`) and `FlowArm.openNest.h_lead` does not state
+    (its ε disjunct reads `(gapTail sc).leadFree`, true after a run); carrying it is the
+    `StreamAccum` price item 474 records, after which this disjunct folds into the first.  `FlowArm` is a `Prop`, so that arm cannot be excluded by a premise on `arm` (§7: which
     constructor fired is unobservable) — it is a disjunct of the conclusion instead.  The arm's
     obligations are read at every floor; `hn` is the stack's floor (`FlowStackK`'s `n ≤ minContentIndentOf`). -/
 lemma accum_step_flow_trace {n : Nat} {sc s' : L4YAML.Scanner.ScannerState} {c : Char}
@@ -1411,7 +1519,11 @@ lemma accum_step_flow_trace {n : Nat} {sc s' : L4YAML.Scanner.ScannerState} {c :
       (sc.flowLevel = 0 ∧ ev = [] ∧ ev_g = [] ∧
         ∃ sp_open, TFlowStackB n s'.flowLevel s'.flowStack (tailOf s'.tokens) sp_block' sp_open []) ∨
       (1 ≤ sc.flowLevel ∧ (c = '[' ∨ c = '{') ∧ ev_g = [] ∧
-        ∃ sp_p ev_p, TCNsProperties n .flowIn sp_p sp_scan ev_p) := by
+        ∃ sp_p ev_p, TCNsProperties n .flowIn sp_p sp_scan ev_p ∧
+          ∃ sp_br, GLit c sp_br sp_flow' ∧
+            (SSeparate n .flowIn sp_scan sp_br →
+              TFlowStackB n s'.flowLevel s'.flowStack (tailOf s'.tokens) sp_block' sp_flow'
+                (ev ++ ev_p))) := by
   generalize hks : sc.flowStack = ks at hT
   cases arm with
   | openBase b sp_br sp_open sp_block'' sp_flow'' h_depth h_c h_open h_fl h_ks h_tl =>
@@ -1431,12 +1543,22 @@ lemma accum_step_flow_trace {n : Nat} {sc s' : L4YAML.Scanner.ScannerState} {c :
     rw [hd] at hT
     cases hT with
     | «open» _ _ _ _ _ _ hTO =>
-    have h_lead' := (h_lead n).resolve_right (fun h => h hn)
     cases gap with
-    | props ha ht sp_p _ _ h_run _ _ =>
+    | props ha ht sp_p h_tail₀ h_lead₀ h_run _ _ =>
       obtain ⟨ev_p, hp⟩ := PropsRun.toT ((h_run n).resolve_right (fun h => h hn))
-      exact ⟨[], Or.inr (Or.inr (Or.inr ⟨h_depth, by subst h_c; cases b <;> simp, rfl, sp_p, ev_p, hp⟩))⟩
+      have h_lead₀' := (h_lead₀ n).resolve_right (fun h => h hn)
+      refine ⟨[], Or.inr (Or.inr (Or.inr ⟨h_depth, by subst h_c; cases b <;> simp, rfl, sp_p, ev_p, hp,
+        sp_br, h_open, fun h_psep => ?_⟩))⟩
+      rw [h_fl, h_ks, h_tl, hd, hks]
+      cases b
+      · have h_open' : GLit '{' sp_br sp_flow' := by subst h_c; simpa using h_open
+        exact .open _ _ _ _ _ _ (TFlowOpenStack.retrace (by simp)
+          (hTO.openNestMapProps h_tail₀ h_lead₀' hp h_psep h_open'))
+      · have h_open' : GLit '[' sp_br sp_flow' := by subst h_c; simpa using h_open
+        exact .open _ _ _ _ _ _ (TFlowOpenStack.retrace (by simp)
+          (hTO.openNestSeqProps h_tail₀ h_lead₀' hp h_psep h_open'))
     | white _ h_nil =>
+      have h_lead' := (h_lead n).resolve_right (fun h => h hn)
       rw [gapTail_of_nil h_nil] at h_lead'
       refine ⟨[], Or.inl ?_⟩
       rw [h_fl, h_ks, h_tl, hd, hks]
@@ -1485,6 +1607,24 @@ lemma accum_step_flow_trace {n : Nat} {sc s' : L4YAML.Scanner.ScannerState} {c :
         exact .open _ _ _ _ _ _
           (TFlowOpenStack.closeNestedMap parent h_tail_p h_lead_p h_open h_sep st h_lead' h_lit')
       · simp at h_top
+    | seqNestProps _ ks₀ _ _ _ _ _ _ _ _ _ _ _ _ _ parent h_tail_p h_lead_p h_props h_psep h_open h_sep st =>
+      rw [Array.back?_push] at h_top
+      cases b
+      · simp at h_top
+      · have h_lit' : GLit ']' sp_prep sp_flow' := by subst h_c; simpa using h_lit
+        rw [Array.pop_push]
+        exact .open _ _ _ _ _ _
+          (TFlowOpenStack.closeNestedSeqProps parent h_tail_p h_lead_p h_props h_psep h_open h_sep st
+            h_lead' h_lit')
+    | mapNestProps _ ks₀ _ _ _ _ _ _ _ _ _ _ _ _ _ parent h_tail_p h_lead_p h_props h_psep h_open h_sep st =>
+      rw [Array.back?_push] at h_top
+      cases b
+      · have h_lit' : GLit '}' sp_prep sp_flow' := by subst h_c; simpa using h_lit
+        rw [Array.pop_push]
+        exact .open _ _ _ _ _ _
+          (TFlowOpenStack.closeNestedMapProps parent h_tail_p h_lead_p h_props h_psep h_open h_sep st
+            h_lead' h_lit')
+      · simp at h_top
   | closeBase b sp_flow₂ sp_prep sp_tok gap h_depth h_c h_top h_lead h_lit h_fl h_ks h_tl =>
     rw [h_depth] at hT
     cases hT with
@@ -1509,6 +1649,8 @@ lemma accum_step_flow_trace {n : Nat} {sc s' : L4YAML.Scanner.ScannerState} {c :
       · exact absurd h_top (by decide)
     | seqNest _ _ _ _ _ _ _ _ _ _ _ _ parent _ _ _ _ _ => cases parent
     | mapNest _ _ _ _ _ _ _ _ _ _ _ _ parent _ _ _ _ _ => cases parent
+    | seqNestProps _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ parent _ _ _ _ _ _ _ => cases parent
+    | mapNestProps _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ parent _ _ _ _ _ _ _ => cases parent
 
 end StepTrace
 
