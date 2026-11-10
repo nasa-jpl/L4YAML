@@ -141,8 +141,11 @@ Each implicit `:` beneath the frame pushes its own entry's level onto the
 value-line stack, exactly as it pushes onto the stream stack — the entry, then
 the level's remaining tail, then whatever the pack carried. -/
 
+-- 2026-11-10 (item 471, option (A)): the level constructors' bound and the park faces read `≤` (the root frame
+-- stands under a column-0 opener's own level), `ResumeWidths` names the survivors positionally and `ResumeWidths.lt`
+-- is `ResumeWidths.le`; the rows below restate the faces they mirror — a shape move, no obligation changed.
 example {sp_start sp_key : SurfPos} {k nv : Nat} {ks : List FrameLevel}
-    (h_lt : ∀ fr ∈ ks, fr.width < k)
+    (h_lt : ∀ fr ∈ ks, fr.width ≤ k)
     (routeFV : ∀ sp_v : SurfPos, SBlockMapEntry k sp_key sp_v →
       ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →
       ResumeFrames (ExplValueLine sp_start nv) ks sp_e)

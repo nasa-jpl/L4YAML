@@ -115,12 +115,7 @@ example {P : SurfPos → Prop} {k : Nat} {sp : SurfPos}
       (∀ sp_end, SCompactMapTail k sp sp_end → ResumeFrames P ks' sp_end) :=
   match (ResumeFrames.one h).resumeAt (List.mem_singleton.mpr rfl) with
   | ⟨ks', h_w, cont⟩ =>
-      ⟨ks', List.eq_nil_iff_forall_not_mem.mpr (fun fr hfr =>
-          match (h_w fr).mp hfr with
-          | ⟨hmem, hlt⟩ => by
-              rw [List.mem_singleton.mp hmem] at hlt
-              exact Nat.lt_irrefl k hlt),
-        cont⟩
+      ⟨ks', h_w.nil_of_singleton, cont⟩
 
 /-- One compact entry after the value (`? a⏎:⏎b: 1`'s `b: 1`), then the bottom:
     the sibling's tail is exactly what the route was asked to pay. -/

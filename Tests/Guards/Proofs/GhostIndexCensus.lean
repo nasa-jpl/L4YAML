@@ -274,7 +274,10 @@ it may only shrink. -/
 -- projection `gapTail sc` and `GapRead` is indexed by the state (ghost 84 → 72, no `FrameTail` binder on either);
 -- `FlowStackKBody`/`FlowStackKA` deleted (carriers 64 → 62, snapshot 11 → 9); the leads read at every floor add a
 -- `∨ ¬ m ≤ minContentIndentOf sc` disjunct row per arm (or 117 → 121: FlowArm 4 → 8, GapRead 2 → 4, KBody −2).
-def expectedSummary : String := "carriers=62 snapshot=9 ghost=72 or=121"
+-- 2026-11-10 (item 471, option (A)): ghost 72 → 73 — the positional `ResumeWidths` names the levels above
+-- the landing (`pre`), a list of frames beside `ks`/`ks'` which the census already lists; no scanner-state
+-- index is introduced.
+def expectedSummary : String := "carriers=62 snapshot=9 ghost=73 or=121"
 
 -- 2026-10-24 (B3 [66] col-0 threading): carriers 61 → 62 — `SSLCommentsFrom` (the separator-less comment product).
 -- 2026-10-25 (#99 landed): the `FlowLead`/`leadFree`/`closeFree` tally rows go with the deleted carrier and
@@ -335,7 +338,9 @@ def expectedTally : List String :=
    "RestoreLayout: surface=0 state=1 prop=0 scalar=4 snapshot=0 ghost=0 or=0",
    "ResumeFrames: surface=4 state=0 prop=5 scalar=3 snapshot=0 ghost=2 or=0",
    "ResumeKeyCtx: surface=7 state=1 prop=6 scalar=9 snapshot=0 ghost=3 or=6",
-   "ResumeWidths: surface=0 state=0 prop=0 scalar=2 snapshot=0 ghost=2 or=0",
+   -- 2026-11-10 (item 471, option (A)): `ResumeWidths` is positional — two Prop conjuncts (the bound,
+   -- the split), the landing level `e` and its width as scalars, `pre` beside `ks`/`ks'` as a third ghost list.
+   "ResumeWidths: surface=0 state=0 prop=2 scalar=4 snapshot=0 ghost=3 or=0",
    "ResvOk: surface=0 state=1 prop=2 scalar=5 snapshot=0 ghost=0 or=0",
    "ResvOkLe: surface=0 state=1 prop=2 scalar=5 snapshot=0 ghost=0 or=0",
    "SeqEntryTail: surface=3 state=0 prop=1 scalar=1 snapshot=0 ghost=0 or=0",
@@ -437,6 +442,8 @@ def expectedGhost : List String :=
    "ResumeKeyCtx.body ksq : List IndentStackCover.FrameLevel",
    "ResumeWidths.type[0].ks ks : List IndentStackCover.FrameLevel",
    "ResumeWidths.type[1].ks' ks' : List IndentStackCover.FrameLevel",
+   -- 2026-11-10 (item 471): the positional form's levels above the landing
+   "ResumeWidths.body pre : List IndentStackCover.FrameLevel",
    "SeqFrame.type[2].a a : FrameTail"]
 
 /-- Every `∨` inside a carrier's statements, keyed by field (Devin Review on

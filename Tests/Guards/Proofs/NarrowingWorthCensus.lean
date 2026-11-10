@@ -296,7 +296,9 @@ def isSurfFace (env : Environment) (lhs : Expr) : MetaM Bool := do
 -- two parameters leave the optional population); see `expectedWorthLedger`.
 -- 2026-11-07 (item 448, (α) stage A): faces 63 → 62 — `closeThenBlock`'s `h_valF` width bound reads `≤ nv` (the park's own
 -- level admitted), one strict-width narrowing face fewer; `theorems` 6498 → 6499 is `ResumeFrames.strict`.
-def expectedFaceTally : String := "binders=161 faces=62 heads=19"
+-- 2026-11-10 (item 471, option (A)): heads 19 → 18 — the level constructors' `h_lt` and the park faces all read `≤`,
+-- one strict head shape fewer; binders/faces unchanged.
+def expectedFaceTally : String := "binders=161 faces=62 heads=18"
 
 /-- The conclusion head of every left disjunct.  `FVAR 2` is `frameChainUnion`,
     whose face is schematic in `P` — the two rows no census of any kind can
@@ -339,8 +341,9 @@ def expectedHeadCensus : List String :=
    "SLYamlStream 5",
    "SeqEntryTail 7",
    "SuffixRun 6",
-   "le 15",
-   "lt 26"]
+   -- 2026-11-10 (item 471, option (A)): `lt 26` + `le 15` → `le 41`: no strict width head remains — the level
+   -- constructors, the park faces and the in-proof ascriptions all read `≤`.
+   "le 41"]
 
 /-! ## §3  The rung-1 census: which faces are vacuous on their own
 
@@ -900,7 +903,9 @@ one unfolding, and §6 is the item where those two disagreed about binders. -/
 -- 2026-11-02 (item 422): theorems 6493 → 6494 — `RegisterWitness.exists_mem_ne_of_not_markedColsIn`.
 -- 2026-11-09 (item 469): theorems 6499 → 6502 (`gapRead_onT`, `accum_step_flow_trace`, `FlowStackKA.toK`); no-op tallies unmoved.
 -- 2026-11-10 (item 469, review round 1): theorems 6502 → 6505 (`gapTail_of_nil`/`gapTail_of_held`, `head?_dropWhile_not`, `trailingPropertyRun_eq_nil_of_sync`, `FlowStackK.withArm` in; `FlowStackKA.toK`/`ofPack`/`ofK` out); no-op tallies unmoved.
-def expectedNoopTally : String := "theorems=6505 byElab=16 byWhnf=16 elabOnly=0 whnfOnly=0"
+-- 2026-11-10 (item 471, option (A)): theorems 6505 → 6508 — `ResumeWidths.nil_of_singleton` / `eq_tail_of_head` /
+-- `eq_nil_of_pair`; no no-op conclusion among them.
+def expectedNoopTally : String := "theorems=6508 byElab=16 byWhnf=16 elabOnly=0 whnfOnly=0"
 -- 5302 → 5344 on 2026-10-18 (plan row 20's close, closure-log item 280): the
 -- parse-side alias obligation moved to §7.1's DECLARATION set, so the carrier
 -- grew and the predicate gained its tools.  What is new in kind: `AG` carries

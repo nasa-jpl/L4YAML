@@ -134,10 +134,13 @@ example {s : ScannerState} {lo n w : Nat} {ks ks' : List FrameLevel}
    dedent_cover_of_floor h_mono h_top h_value h_cv hmem h_w'⟩
 
 /-- Run at a stack, so the payment is a value and not only a type: a landing at
-    width 2 off a stack popped to it, with the frames `[2, 4]` the park carried.
-    The floor comes out at 1 and the list at `[2]`. -/
+    width 2 off a stack popped to it, with the frames `[4, 2]` the park carried.
+    The floor comes out at 1 and the list at `[2]`.  (2026-11-10, item 471: the
+    stack is written in its own order — the wider level above — because the
+    positional `ResumeWidths` names what a landing at 2 leaves of it, `[]`, and
+    has no reading for the ill-ordered `[2, 4]`.) -/
 example : ∃ lo : Nat, Floor lo 2 [FrameLevel.map 2] ∧ Covered lo [FrameLevel.map 2] inKey := by
-  refine dedent_cover_of_floor (s := inKey) (lo := 1) (n := 5) (ks := [FrameLevel.map 2, FrameLevel.map 4]) ?_ ?_ ?_ ?_
+  refine dedent_cover_of_floor (s := inKey) (lo := 1) (n := 5) (ks := [FrameLevel.map 4, FrameLevel.map 2]) ?_ ?_ ?_ ?_
     (by simp) ?_
   · -- `Mono` on a stack whose columns increase: three entries, two steps.
     intro i hi
@@ -160,10 +163,8 @@ example : ∃ lo : Nat, Floor lo 2 [FrameLevel.map 2] ∧ Covered lo [FrameLevel
     · exact absurd hlo (by decide)
     · exact absurd hlo (by decide)
     · simp
-  · intro k'
-    constructor
-    · intro h; exact absurd h (List.not_mem_nil)
-    · rintro ⟨h1, h2⟩; simp at h1; rcases h1 with rfl | rfl <;> (dsimp only at h2; omega)
+  · exact ⟨fun _ h => absurd h (List.not_mem_nil), [FrameLevel.map 4], FrameLevel.map 2, rfl, rfl,
+      fun fr h => by simp at h; subst h; decide⟩
 
 /-- **The escapes are about REACHING the floor, not about the hop.**
     `dedent_cover_of_landing` is this lemma behind `landing_floor_of_arm`, and a
@@ -199,6 +200,9 @@ example {s_prep s' : ScannerState} {c : Char} {lo : Nat} {ks : List FrameLevel}
     that the paying disjunct is reachable from exactly the data a paying park
     has: the landing's line start, `[63]`'s spaces, a fresh at-position save, a
     stack whose widths include the landing's — and now the cover over them. -/
+-- 2026-11-10 (item 471, option (A)): the level constructors' bound and the park faces read `≤` (the root frame
+-- stands under a column-0 opener's own level), `ResumeWidths` names the survivors positionally and `ResumeWidths.lt`
+-- is `ResumeWidths.le`; the rows below restate the faces they mirror — a shape move, no obligation changed.
 example {sp_start sp_land sp_prep : SurfPos} {k lo : Nat} {ks : List FrameLevel}
     {s_prep : ScannerState}
     (hcol0 : sp_land.col = 0) (h_ind : SIndent k sp_land sp_prep)
@@ -212,7 +216,7 @@ example {sp_start sp_land sp_prep : SurfPos} {k lo : Nat} {ks : List FrameLevel}
   match h_fr.resumeAt hmem with
   | ⟨ks', h_w, cont⟩ =>
       -- Item 374: the framed lane is the context's first disjunct.
-      Or.inl (Or.inl ⟨⟨k, ks', sp_land, hcol0, h_ind, h_w.lt,
+      Or.inl (Or.inl ⟨⟨k, ks', sp_land, hcol0, h_ind, h_w.le,
         Or.inl (dedent_cover_of_floor h_mono h_top h_fl h_cv hmem h_w),
         cont, Or.inr h_alt,
         -- Item 168: the sequence face is the third lane and punts here.
