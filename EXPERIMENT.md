@@ -424,7 +424,7 @@ theorem**, and the experiment must say so rather than point at
 | Observation \(T(x)\) | `tokenEvents ts` where `scanFiltered x = .ok ts` — exactly what S5(→) hands to `checkFrom`.  (Variant: the full token array `ts`; it carries more, e.g. scalar text, but S5 does not use the extra.) |
 | Requirement \(R(x)\) | `TraceWellFormed x`, adjudicated against YAML 1.2.2 where the grammar and the spec disagree. |
 | Adequacy predicate | \(\forall x, y \in D.\; T(x) = T(y) \Rightarrow (R(x) \Leftrightarrow R(y))\): the observation determines the requirement — *some* function of \(T(x)\) decides \(R(x)\). |
-| Pointwise agreement (what the chain in §3.3 actually needs) | \(\forall x \in D.\; \texttt{checkFrom \{\} } T(x) = \texttt{true} \Leftrightarrow R(x)\): the *particular* function `checkFrom` decides \(R\).  Agreement **implies** adequacy; adequacy does **not** imply agreement.  So a failed adequacy test refutes agreement at no proof cost, while a passed adequacy test leaves agreement as the proof obligation — its `⇐` direction is S5(→), its `⇒` direction is `scan_trace` + `serializationWellFormed_iff_check` + the lift (§0.3). |
+| Pointwise agreement (what the chain in §3.3 actually needs) | \(\forall x \in D.\; \texttt{checkFrom \{\} } T(x) = \texttt{true} \Leftrightarrow R(x)\): the *particular* function `checkFrom` decides \(R\).  Agreement **implies** adequacy; adequacy does **not** imply agreement.  So a failed adequacy test refutes agreement at no proof cost, while a passed adequacy test leaves agreement as the proof obligation — its `⇐` direction (\(R(x)\) ⇒ `checkFrom` true) is `scan_trace` + `serializationWellFormed_iff_check` — the scanner's trace is one of the traces \(R\) quantifies over, and the checker agrees with the event-level predicate on it; its `⇒` direction (`checkFrom` true ⇒ \(R(x)\)) is the same two plus the lift `traceOf_unique` (§0.3), since a verdict on one trace only reaches every trace if there is only one.  S5(→) is on neither side: it connects *parse success* to `checkFrom` true, i.e. it is how the chain in §3.3 arrives at agreement's left-hand side. |
 | Independent oracle for \(R\) | *Not* the scanner and *not* the parser: a term-level derivation `TLYamlStream … ev` built by hand and checked by the Lean kernel (as `TraceOfBlockAmbiguity.lean` already does), plus `checkFrom {} ev` on that `ev`.  The grammar mentions neither executable, so this is independent of the implementation under audit. |
 
 ### 3.5 Admissible domain \(D\) — options
@@ -648,8 +648,9 @@ Each with a proposed default in bold; the default stands if not contested.
     `fix-a-grammar-completeness` tip that contains #284 before the
     experiment's result is recorded, re-running the "checked" cells of §4–§5
     at the new SHA?  **Yes — the consumer the result is audited against
-    should be the blueprint's own row, and the re-run is cheap (`lake exe
-    tryparse` plus the three `#eval`s of §4.2).**
+    should be the blueprint's own row, and the re-run is cheap: the replay
+    appendix — one `#eval` loop over the nine inputs of §4–§5, `lake exe
+    tryparse` on `a⏎*x`, and the block-ledger rows — at the new SHA.**
 
 ---
 
@@ -678,15 +679,16 @@ def show1 (s : String) : IO Unit := do
   | Except.error e => IO.println s!"{repr s} SCAN-REJECT {repr e}"
 
 #eval do
-  for s in ["a", "a\n*x", "a\n&x", "&x a\n*x", "[&x a, *x]",
+  for s in ["a", "a\n*x", "a\n&x", "a\n...\n&x", "&x a\n*x", "[&x a, *x]",
             "--- a\n--- *x", "a: b\n*x", "- a\n*x"] do
     show1 s
 ```
 
-Expected (abbreviated): `"a"` and `"a\n*x"` and `"a\n&x"` → `trace=[]
-checkFrom=true`; `"&x a\n*x"` → `[defineAnchor "x"]`; `"[&x a, *x]"` →
-`[defineAnchor "x", useAlias "x"]`; the last three → `SCAN-REJECT
-undefinedAlias`.
+Expected (abbreviated; re-run at `e3efcc26`): `"a"` and `"a\n*x"` and
+`"a\n&x"` → `trace=[] checkFrom=true`; `"a\n...\n&x"` (C2) →
+`[endDocument, defineAnchor "x"] checkFrom=true`; `"&x a\n*x"` →
+`[defineAnchor "x"]`; `"[&x a, *x]"` (C1) → `[defineAnchor "x", useAlias "x"]`;
+the last three (C3 among them) → `SCAN-REJECT undefinedAlias`.
 
 ```bash
 printf 'a\n*x' > /tmp/a_alias.yaml && lake exe tryparse /tmp/a_alias.yaml; echo $?   # 0
