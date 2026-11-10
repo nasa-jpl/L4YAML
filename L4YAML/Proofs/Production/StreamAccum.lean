@@ -1045,7 +1045,8 @@ inductive ImplicitKeyHead : SurfPos → SurfPos → Prop where
     explicit value of a `?` frame, `[197]`'s `s-indent(n) ':'` — fires only when the
     dispatch state's register is live (`explicitKeyLine ≠ none`), and preprocessing
     ends or carries the register (`ekl_disp_none_of_park_none`), so a dead register at the
-    park refutes the landing (`ExplicitValueRefused.not_of_classA`).  The register is
+    park refutes the landing (`ExplicitValueRefused`; its `not_of_classA` lemma, consumed by
+    no proof, was deleted at item 478).  The register is
     the whole predicate: the sentinel indent `-1` a document marker's unwind leaves
     behind refutes nothing the register does not, because a marker ends the register
     (`scanDocumentStart`, `scanDocumentEnd`, item 317 — item 308's probe 726 had read a
@@ -2086,7 +2087,8 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       -- (`pendingBlock.h_kslotUp`); a flow collection standing in the entry's
       -- node slot re-parks HERE when it closes, so the chain has to survive
       -- the crossing — `FlowBaseRoutes.vslot` carries it across the
-      -- collection and `flowVPack_of_close` hands it on.
+      -- collection and the close arm hands it on (inline since item 478 deleted the
+      -- unconsumed `flowVPack_of_close`).
       (h_vpack : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,
         ∀ sp_mid sp_i sp_c : SurfPos,
           SSLComments sp_gram sp_mid → SIndent nv sp_mid sp_i →
@@ -3959,9 +3961,11 @@ lemma absorb_stacks (sp_start sp_gram sp_block sp_flow : SurfPos)
 
 /-! ## §0c Helpers for §1a (EOF Stream Extension)
 
-    Two helpers needed to discharge the `nil + noPending + col=0` case of §1a:
-    1. `preprocess_none_ssl_comments_col0`: unfolds `scanNextToken_preprocess`,
-       shows only `!hasMore` path fires, delegates to `skipToContent_eof_ssl_comments_col0`
+    Helpers for the `nil + noPending + col=0` case of §1a:
+    1. `preprocess_none_ssl_comments`: `scanNextToken_preprocess` returned `none`, so the
+       `!hasMore` path fired and the rest of the input is `SSLComments` (off
+       `PreprocessProduction.skipToContent_eof_ssl_comments_col0`); its col-0 wrapper
+       `preprocess_none_ssl_comments_col0` was consumed by no proof and was deleted at item 478
     2. `ssl_comments_extend_stream`: converts `SSLComments` → `GStar SLComment`
        → `SLDocumentPrefix` → extends `SLYamlStream` via `implicitContinue`
 
@@ -6689,7 +6693,8 @@ structure FlowBaseRoutes (sp_start : SurfPos) (n : Nat) (sp_br : SurfPos)
   -- lane already carries that chain on the park (`pendingBlock.h_kslotUp`,
   -- item 191).  This is where it crosses the collection: the open conses its
   -- own frame onto the ancestors it was handed, and the close hands the whole
-  -- list to the park it re-parks as (`flowVPack_of_close`).
+  -- list to the park it re-parks as (the close arms, inline; the `flowVPack_of_close`
+  -- restatement was unconsumed and deleted at item 478).
   vslot : (∃ ns : List Nat, ∀ nv ∈ ns, ∀ sp_end, SFlowContent n .flowOut sp_br sp_end →
     ∀ sp_mid sp_i sp_c, SSLComments sp_end sp_mid → SIndent nv sp_mid sp_i →
       GLit ':' sp_i sp_c → ∀ sp_v, SBlockIndented nv .blockOut sp_c sp_v →
@@ -26467,8 +26472,8 @@ lemma block_dispatch_deferred
       names beside `accum_block_on_noPending`.~~  **Item 192 paid the flow-open
       relay**, which is where the chain had to cross a CONSTRUCT boundary rather
       than a landing: the open hands what the park holds across the brackets on
-      `FlowBaseRoutes.vslot`, the close hands it on through `flowVPack_of_close`
-      to `pendingContent.h_vpack`, and all three carried one index, so
+      `FlowBaseRoutes.vslot`, the close hands it on (then through `flowVPack_of_close`,
+      an unconsumed restatement deleted at item 478) to `pendingContent.h_vpack`, and all three carried one index, so
       `?⏎  ? - [1]⏎: w` — the block family's `?⏎  ? -⏎: w` with a collection in
       the node's place — exited here while its twin was paid at item 190.  The
       finding is a FIFTH kind after 188/189/190/191: the payment RETIRED a
@@ -36347,9 +36352,9 @@ lemma accum_content_on_noPending
     single deferral point:
 
     * a value that FOLDS, or a step that LANDED on a fresh line — the two
-      halves of one break.  `dispatchContent_evidence_oneLine` and
-      `preprocess_some_separate_inline_or_landing` hold only across a
-      break-free span, because that is exactly where the index fails to occur.
+      halves of one break.  `dispatchContent_evidence_oneLine` (and, until item 478
+      deleted it as unconsumed, `preprocess_some_separate_inline_or_landing`) holds only
+      across a break-free span, because that is exactly where the index fails to occur.
     * a block scalar whose entry sits DEEPER than the body's own content-indent
       floor — see below; this is not a fact about block scalars, it is the one
       inequality the accumulation invariant cannot yet state.
@@ -42283,7 +42288,7 @@ lemma scan_content_gives_stream_v2
 
     **Dispatch _corr helpers (all PROVEN):**
     - `dispatchStructural_corr` (§1b): structural dispatch → ScannerSurfCorr
-    - `dispatchFlowIndicators_corr` (§1c): flow dispatch → ScannerSurfCorr
+    - (`dispatchFlowIndicators_corr` (§1c) was consumed by no proof — deleted at item 478)
     - `dispatchBlockIndicators_corr` (§1d): block dispatch → ScannerSurfCorr
     - `dispatchContent_corr` (§1e): content dispatch → ScannerSurfCorr
     - `corr_of_allowDirectives_update`: allowDirectives flag preservation
