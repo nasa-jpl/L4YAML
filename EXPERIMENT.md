@@ -20,7 +20,7 @@ is the brief this document answers:
 > search.  Nicolas can accept, change, or decline the audit domain, adequacy
 > predicate and resource budget.
 
-**Tree this draft is pinned to:** branch `experiment/metagraph`, a copy of
+**Tree this draft is pinned to:** branch `experiment/metagraph-problem`, a copy of
 `fix-a-grammar-completeness` at `e3efcc26` (merge of #277), toolchain
 `leanprover/lean4:v4.35.0` (`lean-toolchain`).  Every file path below is
 relative to the repository root at that revision.  The experiment itself must
@@ -385,7 +385,7 @@ tree's input-level predicate (§0.1), not as the ledger's shape-only
 `SerializationWellFormed input` — closing the biconditional above, and keeps
 the `InYamlLanguage` form in the row marked REFUTED.  Once it lands
 the three sources agree and the consumer below is the blueprint's own
-statement; the pinned `experiment/metagraph` tree picks it up when it is
+statement; the pinned `experiment/metagraph-problem` tree picks it up when it is
 fast-forwarded (open question 10).
 
 Its forward direction's `SerializationWellFormed input` part is discharged by the chain
@@ -644,7 +644,7 @@ Each with a proposed default in bold; the default stands if not contested.
     converse; PR #284 corrects the row to the `ExactSurfaceLanguage ∧
     TraceWellFormed` statement (`DOCS.md` and the ledger's
     `SerializationWellFormed input`, spelled with the tree's predicate; §0.1,
-    §3.3).  Should `experiment/metagraph` be fast-forwarded to the
+    §3.3).  Should `experiment/metagraph-problem` be fast-forwarded to the
     `fix-a-grammar-completeness` tip that contains #284 before the
     experiment's result is recorded, re-running the "checked" cells of §4–§5
     at the new SHA?  **Yes — the consumer the result is audited against
