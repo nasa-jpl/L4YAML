@@ -14887,6 +14887,12 @@ structure Tally where
   multiBad : List String := []     -- a step that emitted more than one real token with an indicator
   heldArm : List (String × Nat) := []  -- a property run held at the indicator (`InteriorGap.props`), by arm
   refusedOwn : List String := []
+  twinSteps : Nat := 0                 -- (vii) `accum_step_flow_trace`'s conclusion twins read, one per step
+  twinBad : List String := []          -- (vii) `scanFiltered` of the cut-and-closed span ≠ `ev ++ ev_g`
+  refBad : List String := []           -- (vii) `refLex` refuses the span
+  aliasOut : List String := []         -- (vii) alias whose anchor sits outside the cut (semantic, not grammar)
+  heldTwin : Nat := 0                  -- (vii) depth-≥1 steps whose `GapRead` oracle holds a run
+  evgBad : List String := []           -- (vii) a held run whose own events `ev_g` are empty
 
 /-- The arm as a projection of the pre-state and the indicator; `none` = not an indicator. -/
 def armOf (sc : ScannerState) : YamlToken → Option String
@@ -14912,7 +14918,7 @@ def stepsOf (s : String) : Option (List (ScannerState × ScannerState)) := Id.ru
     | .ok (some s') => acc := (sc, s') :: acc; sc := s'
   return none
 
-open L4YAML.Proofs.StreamAccum in
+open L4YAML.Proofs.StreamAccum L4YAML.Proofs.Serialization.TokenEvents in
 def tally (rows : List String) : Tally := Id.run do
   let mut t : Tally := {}
   for s in rows do
@@ -14923,6 +14929,8 @@ def tally (rows : List String) : Tally := Id.run do
     | .error _, _ | _, none => if P106.own.contains s then t := { t with refusedOwn := s :: t.refusedOwn }
     | .ok _, some sts =>
       t := { t with scanned := t.scanned + 1 }
+      -- (vii) the open frames as (opener's index into `tokens`, opener's byte offset)
+      let mut fr : List (Nat × Nat) := []
       for (sc, s') in sts do
         let fresh := (s'.tokens.toList.drop sc.tokens.size).filter (fun p => p.val != .placeholder)
         let inds := fresh.filterMap fun p => (armOf sc p.val).map (·, p)
@@ -14957,6 +14965,44 @@ def tally (rows : List String) : Tally := Id.run do
             else if isOpen && sc.flowLevel > 0 then (match tl with | .value _ => false | _ => true)
             else true
           if !preOk then t := { t with preBad := s!"{at_} tl={repr tl}" :: t.preBad }
+          -- (vii) `accum_step_flow_trace`'s conclusion, executably (review, round 1): the frame the step
+          -- lands on, cut from its opener through the indicator and closed standalone, reads
+          -- `ev ++ ev_g` under `scanFiltered` and `refLex` — `ev` the frame's trace BEFORE the held run
+          -- (the T stack `hT`), `ev_g` the run's own events (`TCNsProperties`, `hβ`), the indicator
+          -- silent (§7); `trailingPropertyRun sc.tokens` is the `GapRead` oracle (`gapTail`).  Frames as
+          -- P106 (v): `comma`/`nestOpen` on the top frame, nested close on the parent (its tokens hold
+          -- the child's), base close the whole span, base open the opened frame closed empty.
+          let realIdx := sc.tokens.size +
+            ((s'.tokens.toList.drop sc.tokens.size).findIdx (fun q => q.val != .placeholder))
+          let run := trailingPropertyRun sc.tokens
+          let twinOn : Nat → Nat → String → Tally → Tally := fun openIdx openOff closers t' => Id.run do
+            let frToks := (sc.tokens.toList.drop openIdx).filter (fun q => q.val != .placeholder)
+            let preRun := frToks.take (frToks.length - run.length)
+            let runToks := frToks.drop (frToks.length - run.length)
+            let ev := (goOut preRun []).1 ++ (goOut runToks []).1 ++ (goOut [p] []).1
+            let sub := P105.rstrip (String.Pos.Raw.extract s ⟨openOff⟩ ⟨p.pos.offset + 1⟩) ++ closers
+            let (ok, okRef) := P104.twin sub ev
+            let mut t'' := { t' with twinSteps := t'.twinSteps + 1 }
+            if !ok then
+              if P104.aliasOutside sub then t'' := { t'' with aliasOut := at_ :: t''.aliasOut }
+              else t'' := { t'' with twinBad := s!"{at_} {repr sub} ev={repr ev}" :: t''.twinBad }
+            if !okRef then t'' := { t'' with refBad := s!"{at_} {repr sub}" :: t''.refBad }
+            if sc.flowLevel > 0 && !runToks.isEmpty then
+              t'' := { t'' with heldTwin := t''.heldTwin + 1 }
+              if (goOut runToks []).1.isEmpty then t'' := { t'' with evgBad := at_ :: t''.evgBad }
+            return t''
+          let closerOf : Bool → String := fun b => if b then "]" else "}"
+          match fr with
+          | (ti, to) :: rest =>
+            let top := sc.flowStack.back?.getD true
+            if isOpen then t := twinOn ti to (closerOf isSeq ++ closerOf top) t
+            else if p.val == .flowEntry then t := twinOn ti to (closerOf top) t
+            else match rest with
+              | (pi, po) :: _ => t := twinOn pi po (closerOf (sc.flowStack.pop.back?.getD true)) t
+              | [] => t := twinOn ti to "" t
+          | [] => t := twinOn realIdx p.pos.offset (closerOf isSeq) t
+          if isOpen then fr := (realIdx, p.pos.offset) :: fr
+          else if isClose then fr := fr.drop 1
   return t
 
 end P107
@@ -14990,6 +15036,12 @@ def testFlowArm (state : IO.Ref TestCollector) : IO Unit := do
     (t.heldArm.mergeSort (fun a b => a.1 ≤ b.1) ==
       [("baseOpen/map", 3), ("baseOpen/seq", 3), ("closeBase/map", 2), ("closeBase/seq", 4), ("closeNested/seq", 1),
        ("comma", 7), ("nestOpen/seq", 2)]) s!"{t.heldArm}"
+  -- (vii) review, round 1 — `accum_step_flow_trace`'s conclusion twin.  P8/P9 recorded in item 469 first.
+  checkM state s!"P107(vii) accum_step_flow_trace's conclusion twin (ev ++ ev_g on the cut-and-closed span) at every step: {t.twinSteps} read, {t.twinBad.length} bad under scanFiltered, {t.refBad.length} refused by refLex, {t.aliasOut.length} alias-outside cuts"
+    (t.twinSteps == 587 && t.twinBad.isEmpty && t.refBad.isEmpty && t.aliasOut.length == 2)
+    s!"{t.twinBad.take 6} | {t.refBad.take 4} | {t.aliasOut}"
+  checkM state s!"P107(viii) held runs at depth ≥ 1 (GapRead's oracle): {t.heldTwin}, with empty ev_g: {t.evgBad.length}"
+    (t.heldTwin == 16 && t.evgBad.isEmpty) s!"{t.evgBad.take 6}"
 end P107Test
 
 def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
