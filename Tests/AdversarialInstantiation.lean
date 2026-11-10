@@ -15397,6 +15397,7 @@ structure Tally where
   rows : Nat := 0
   scanned : Nat := 0
   refusedOwn : List String := []
+  refusedBase : List String := []        -- a P106 (baseline) row the scanner refuses or P107 cannot step (P106 carries refused rows by design): pinned
   heldOpen : List (String × Nat) := []   -- held nested opens by kind (seq / map)
   shape : List (String × Nat) := []      -- the held run's shape at those opens
   leadEmpty : List String := []          -- the run glued to the bracket: the constructor's refuter
@@ -15430,7 +15431,9 @@ def tally (rows : List String) : Tally := Id.run do
   for s in rows do
     t := { t with rows := t.rows + 1 }
     match scanFiltered s, P107.stepsOf s with
-    | .error _, _ | _, none => if own.contains s then t := { t with refusedOwn := s :: t.refusedOwn }
+    | .error _, _ | _, none =>
+      if own.contains s then t := { t with refusedOwn := s :: t.refusedOwn }
+      else t := { t with refusedBase := s :: t.refusedBase }
     | .ok _, some sts =>
       t := { t with scanned := t.scanned + 1 }
       let mut fr : List Frame := []
@@ -15506,8 +15509,9 @@ def testHeldNestOpen (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 109: S3 slice (3), item 472's NEXT — the held nested open (seqNestProps / mapNestProps), before statement"
   let t := P109.tally P109.allRows
   -- P1: the own rows; `&a[` glued is what `propertyFollowerOk` refuses (the S proof's `eps_refuted_of_next`)
-  checkM state s!"P109(i) {t.rows} rows, {t.scanned} scanned; own rows refused by the scanner: {t.refusedOwn}"
-    (t.rows == 713 && t.refusedOwn == ["[&a[b]]"]) s!"{t.rows} {t.refusedOwn}"
+  checkM state s!"P109(i) {t.rows} rows, {t.scanned} scanned (pinned: a baseline row vanishing is a failure); own rows refused by the scanner: {t.refusedOwn}; baseline rows refused or unstepped: {t.refusedBase.length}"
+    (t.rows == 713 && t.scanned == 558 && t.refusedOwn == ["[&a[b]]"] && t.refusedBase.length == 154)
+    s!"{t.rows} {t.scanned} {t.refusedOwn} {t.refusedBase.take 5}"
   -- P2: both nest kinds hold a run, all four run shapes present
   checkM state s!"P109(ii) held nested opens by kind {t.heldOpen}, run shapes {t.shape}"
     (t.heldOpen.mergeSort (fun a b => a.1 ≤ b.1) == [("map", 5), ("seq", 9)] &&
