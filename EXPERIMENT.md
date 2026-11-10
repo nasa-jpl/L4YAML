@@ -379,9 +379,11 @@ string) and state the biconditional above.  Rule 5 of
 `Blueprint/06-discipline.md` makes the blueprint the winner when plan and
 blueprint disagree, so the fix is to the blueprint, not to this document:
 PR #284 (`docs/capstone-7-7-row`, against `fix-a-grammar-completeness`)
-restates row 7.7 as `ExactSurfaceLanguage input ∧ SerializationWellFormed
-input → ∃ docs, parseYaml input = .ok docs`, closing the biconditional above,
-and keeps the `InYamlLanguage` form in the row marked REFUTED.  Once it lands
+restates row 7.7 as `ExactSurfaceLanguage input ∧ TraceWellFormed input →
+∃ docs, parseYaml input = .ok docs` — the second conjunct spelled as the
+tree's input-level predicate (§0.1), not as the ledger's shape-only
+`SerializationWellFormed input` — closing the biconditional above, and keeps
+the `InYamlLanguage` form in the row marked REFUTED.  Once it lands
 the three sources agree and the consumer below is the blueprint's own
 statement; the pinned `experiment/metagraph` tree picks it up when it is
 fast-forwarded (open question 10).
@@ -640,8 +642,9 @@ Each with a proposed default in bold; the default stands if not contested.
 10. **Capstone 7.7's text, and the pinned tree.**  At `e3efcc26`,
     `Blueprint/04-capstones.md` row 7.7 states the refuted `InYamlLanguage`
     converse; PR #284 corrects the row to the `ExactSurfaceLanguage ∧
-    SerializationWellFormed` statement that `DOCS.md` and the ledger carry
-    (§3.3).  Should `experiment/metagraph` be fast-forwarded to the
+    TraceWellFormed` statement (`DOCS.md` and the ledger's
+    `SerializationWellFormed input`, spelled with the tree's predicate; §0.1,
+    §3.3).  Should `experiment/metagraph` be fast-forwarded to the
     `fix-a-grammar-completeness` tip that contains #284 before the
     experiment's result is recorded, re-running the "checked" cells of §4–§5
     at the new SHA?  **Yes — the consumer the result is audited against
