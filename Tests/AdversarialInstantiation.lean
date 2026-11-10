@@ -15133,7 +15133,8 @@ end P107Test
 /-! Priority 108 (item 472, S3 slice (3) (β)): `PropsRun.toT` — the held property run's trace is its
     span's events.  `PropsRun` is a surface predicate, so the lift's witness is `anchorEvents` /
     `tagEvents` of each half in the run's textual order; read here at every scanner step whose pre-state
-    holds a run (`trailingPropertyRun`), the run's text cut from its first token to the next token. -/
+    holds a run (`trailingPropertyRun`), the run's text cut from its first token to the pre-state's cursor
+    (`sc.offset`; the run is consumed, so every such step is read whether or not it emits a token). -/
 namespace P108
 
 structure Tally where
