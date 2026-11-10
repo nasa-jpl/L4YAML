@@ -71,7 +71,7 @@ def generatedUnderscore : List String :=
   ["_proof", "_eq", "_sunfold", "_unsafe", "_cstage", "_closed", "_lam", "_elam", "_rarg", "_boxed",
    "_redArg", "_spec", "_sizeOf", "_override", "_impl", "_regBuiltin", "_hyg", "_uniq", "_aux", "_private",
    "_root_", "_example", "_simp", "_mutual", "_nested", "_ind", "_at", "_fun", "_match", "_bind", "_let",
-   "_sparseCasesOn", "_flat", "_f", "_unary", "_auto"]
+   "_sparseCasesOn", "_flat", "_f", "_unary", "_auto", "_native"]
 
 def generatedComponent : List String :=
   ["sizeOf_spec", "injEq", "inj", "below", "ibelow", "brecOn", "binductionOn", "casesOn", "recOn",
@@ -79,6 +79,7 @@ def generatedComponent : List String :=
 
 def isAux (env : Environment) (n : Name) : Bool :=
   isAuxRecursor env n || isNoConfusion env n || isRecCore env n
+  || (match env.find? n with | some (.axiomInfo _) => true | _ => false)  -- `native_decide`'s per-site `…_native.native_decide.ax_*` leaves; no authored axiom exists (check-hygiene)
   || (Lean.Meta.Match.Extension.getMatcherInfo? env n).isSome
   || (privateToUserName n).components.any fun c => match c with
       | .str _ s => s.startsWith "proof_" || s.startsWith "match_" || s.startsWith "eq_"
