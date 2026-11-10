@@ -816,12 +816,14 @@ def expectedDoor : List String :=
 -- 2026-11-02 (item 422): decisions 141 → 139 — `accum_block_on_pendingBlock` beside #4's two rows (`Or.elim opt` punt +
 -- `dite` over the cover) became one paid `Or.elim` over `MarkedColsIn s_prep [k]` (see `expectedDecisions`).
 -- 2026-11-07 (item 448, (α) stage A): `apps` 53 → 54 — the `nv = k` arm's `SBlockNode.emptyNode` application (`ResumeFrames.strict`'s read).
+-- 2026-11-14 (item 492, option (A) pay item 2): apps=54 → 55 — the births' routes hop through
+-- `ResumeFrames.one_of_route`; no decision on a `:` face moved.
 def expectedLine : String :=
   -- 2026-10-26 (item 366): decisions 114 → 115 — the `Classical.em (MarkedColsIn sc [k])` decision at
   -- `accum_block_on_closeThenBlock`'s explicit `:` face; no frame row moved.
 -- Item 371 (kslot=4 → 0, kslotUp=4 → 0): the value-line packs end in the one-level
 -- `ResumeFrames`; `question_open_map`'s `h_expl`/`h_closeFV`/`h_framesV` come from the bound tail route `h_route51F`.
-  "asked=6 both=4 lemmas=1 walked=4 feedFunnel=1 feedExplicit=1 feedDeferred=2 feedTuple=0 entry=4 entrySBI=4 kslot=0 kslotUp=0 closeF=4 closeFV=4 seqF=4 top=4 floor=0 cover=4 cover2=4 floorB=4 aboveKN=0 aboveKMem=1 aboveKNv=0 aboveKEx=1 hands=1 besideKN=1 besideKMem=1 besideKNv=0 puntKN=1 puntKMem=0 besideNone=0 decisions=139 decOnK=26 decKN=13 decKMem=12 decKNv=1 apps=54 funnelArgs=1 doorDropped=4/1 closeSites=5 params=5"
+  "asked=6 both=4 lemmas=1 walked=4 feedFunnel=1 feedExplicit=1 feedDeferred=2 feedTuple=0 entry=4 entrySBI=4 kslot=0 kslotUp=0 closeF=4 closeFV=4 seqF=4 top=4 floor=0 cover=4 cover2=4 floorB=4 aboveKN=0 aboveKMem=1 aboveKNv=0 aboveKEx=1 hands=1 besideKN=1 besideKMem=1 besideKNv=0 puntKN=1 puntKMem=0 besideNone=0 decisions=139 decOnK=26 decKN=13 decKMem=12 decKNv=1 apps=55 funnelArgs=1 doorDropped=4/1 closeSites=5 params=5"
 
 /-! ## §5 The reading -/
 
