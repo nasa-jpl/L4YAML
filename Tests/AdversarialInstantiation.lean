@@ -5293,10 +5293,17 @@ def testDirectiveLoops (state : IO.Ref TestCollector) : IO Unit := do
 block/document fragment — the PARSER's side of each row.  The grammar side lives in
 `Tests/Guards/Proofs/TraceOfBlockAmbiguity.lean`: `a⏎&x` has the traces `[]` and
 `[defineAnchor x]` (`implicitContinue`, row 19) and `a: |⏎   x⏎  &x b: *x` has `[]` and
-`[defineAnchor x, useAlias x]` (`[173]`'s `SIndentLe` tail).  Each row pins what
-`parseYaml` does with the informative input: `some k` = accepted with `k` documents,
-`none` = refused.  The two refuted rows show the parser taking ONE reading (grammar
-laxity) and NEITHER (scanner/grammar disagreement) respectively. -/
+`[defineAnchor x, useAlias x]` (`[173]`'s `SIndentLe` tail); `a⏎*x` (Refutation 3,
+EXPERIMENT.md §4.2) has `[]` and `[useAlias x]` — the second trace is ill-formed, so the row
+refutes `TraceWellFormed`, not only `traceOf_unique`.  Each row pins what `parseYaml` does with
+the informative input: `some k` = accepted with `k` documents, `none` = refused.  The two
+refuted rows show the parser taking ONE reading (grammar laxity) and NEITHER (scanner/grammar
+disagreement) respectively; R3 is the parser taking the well-formed one of two readings.
+
+Grammar side, predicted before `readAlias` was built (Rule 2): the scanner's trace for
+`a⏎*x` is `[]` and `checkFrom {} [] = true`; the predicted second trace `[useAlias x]` has
+`checkFrom {} [useAlias x] = false`; `a` has the scanner trace `[]` (its `TraceWellFormed`
+is NOT pinned here — it is unproven, EXPERIMENT.md open question 11). -/
 def testTraceOfBlockLedger (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 33: traceOf_unique block/document Rule-2 ledger, parser side (EVENTSOF §10)"
   let rows : List (String × String × Option Nat) :=
@@ -5304,6 +5311,8 @@ def testTraceOfBlockLedger (state : IO.Ref TestCollector) : IO Unit := do
       ("R2 a: |⏎   x⏎  &x b: *x (REFUTED: [] vs [defineAnchor x, useAlias x]; parser: neither)",
         "a: |\n   x\n  &x b: *x", none),
       ("R2 cousin a: |⏎   x⏎  y: z (no event; parser refuses the dedent too)", "a: |\n   x\n  y: z", none),
+      ("R3 a⏎*x (REFUTED TraceWellFormed: [] vs [useAlias x]; parser: one doc, plain `a *x`)", "a\n*x", some 1),
+      ("R3 control &x a⏎*x (second reading [defineAnchor x, useAlias x] is well-formed; parser: one doc)", "&x a\n*x", some 1),
       ("a⏎...⏎&x (unique: the `...` route, two docs)", "a\n...\n&x", some 2),
       ("a: &x b", "a: &x b", some 1),
       ("&x a: b", "&x a: b", some 1),
@@ -5336,6 +5345,23 @@ def testTraceOfBlockLedger (state : IO.Ref TestCollector) : IO Unit := do
       | .error _ => none
     checkM state s!"traceOf/block ledger {label}" (got == expected)
       s!"parseYaml: {repr got} (docs), expected {repr expected}"
+  -- R3's grammar side: the scanner's trace and `checkFrom` on both predicted traces
+  let r3 : List (String × String × List L4YAML.Proofs.Serialization.SerializationWellFormed.Event × Bool) :=
+    [ ("a (scanner trace [], well-formed)", "a", [], true),
+      ("a⏎*x (scanner trace [], well-formed)", "a\n*x", [], true),
+      ("&x a⏎*x (scanner trace [defineAnchor x], well-formed)", "&x a\n*x", [.defineAnchor "x"], true) ]
+  for (label, src, trace, wf) in r3 do
+    let got := match L4YAML.Scanner.scanFiltered src with
+      | .ok ts => some (L4YAML.Proofs.Serialization.TokenEvents.tokenEvents ts)
+      | .error _ => none
+    checkM state s!"traceOf/block ledger R3 scanner {label}" (got == some trace)
+      s!"tokenEvents: {repr got}, expected {repr (some trace)}"
+    checkM state s!"traceOf/block ledger R3 checkFrom {label}"
+      (L4YAML.Proofs.Serialization.SerializationWellFormed.checkFrom ({} : L4YAML.Proofs.Serialization.SerializationWellFormed.Env) trace == wf)
+      s!"checkFrom \{} {repr trace} expected {wf}"
+  checkM state "traceOf/block ledger R3 predicted second trace [useAlias x] is ill-formed"
+    (L4YAML.Proofs.Serialization.SerializationWellFormed.checkFrom ({} : L4YAML.Proofs.Serialization.SerializationWellFormed.Env) [.useAlias "x"] == false)
+    "checkFrom {} [useAlias x] expected false"
 
 /-! ## Priority 68 — `[211]` explicit-only `implicitContinue`: the narrowed stream's document
 count, read against the parser on C4's block/document grid (28 inputs), `a⏎&x`, and a
