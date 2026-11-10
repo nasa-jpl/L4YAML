@@ -23,6 +23,7 @@
  *      ffi/l4yaml_shim.c -o ffi/l4yaml_shim.o
  */
 
+#include "l4yaml.h"
 #include <lean/lean.h>
 #include <string.h>
 
@@ -253,8 +254,14 @@ uint8_t l4yaml_value_scalar_style(void *v) {
 }
 
 const char *l4yaml_value_string(void *v) {
+    size_t ignored_len;
+    return l4yaml_value_string_bytes(v, &ignored_len);
+}
+
+const char *l4yaml_value_string_bytes(void *v, size_t *len) {
     lean_inc((lean_object *)v);
     lean_object *s = l4yaml_value_as_string((lean_object *)v);
+    *len = lean_string_size(s) - 1; /* Lean includes terminal C NUL */
     return capture_string(s);
 }
 
@@ -284,8 +291,12 @@ void *l4yaml_value_map_val(void *v, uint32_t i) {
 }
 
 void *l4yaml_value_lookup(void *v, const char *key) {
+    return l4yaml_value_lookup_bytes(v, key, strlen(key));
+}
+
+void *l4yaml_value_lookup_bytes(void *v, const char *key, size_t key_len) {
     lean_inc((lean_object *)v);
-    lean_object *lean_key = lean_mk_string(key);
+    lean_object *lean_key = lean_mk_string_from_bytes(key, key_len);
     lean_object *opt = l4yaml_value_lookup_raw((lean_object *)v, lean_key);
     /* Option.none = tag 0, Option.some = tag 1 */
     if (lean_obj_tag(opt) == 0) {

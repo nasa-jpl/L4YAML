@@ -1,6 +1,8 @@
 """Tests for parsing YAML via l4yaml."""
 from __future__ import annotations
 
+import ctypes
+
 import pytest
 
 try:
@@ -97,6 +99,56 @@ class TestLoadMapping:
         v = l4yaml.load("k: v")
         with pytest.raises(KeyError):
             v["nonexistent"]
+
+    @pytest.mark.parametrize("key", ["\x00a", "a\x00b", "a\x00"])
+    def test_escaped_nul_keys_preserve_identity(self, key: str) -> None:
+        # YAML's quoted \0 escape represents a character inside the key,
+        # not a C terminator.  Include the truncated prefix as a decoy.
+        prefix = key.split("\x00", 1)[0]
+        escaped_key = key.replace("\x00", r"\0")
+        yaml = f'"{prefix}": wrong\n"{escaped_key}": correct'
+        v = l4yaml.load(yaml)
+        assert v.keys() == [prefix, key]
+        assert [k for k, _ in v.items()] == [prefix, key]
+        assert set(v.as_dict()) == {prefix, key}
+        assert v[key].as_str() == "correct"
+        assert v[prefix].as_str() == "wrong"
+        assert key in v
+        assert dict(v)[key].as_str() == "correct"
+
+    def test_escaped_nul_scalar_preserves_suffix(self) -> None:
+        assert l4yaml.load(r'"before\0after"').as_str() == "before\x00after"
+
+    def test_escaped_nul_unicode_key_roundtrip(self) -> None:
+        v = l4yaml.load('"é": wrong\n"é\\0💫": correct')
+        assert v["é\x00💫"].as_str() == "correct"
+        assert v.keys() == ["é", "é\x00💫"]
+
+    def test_length_aware_c_abi(self) -> None:
+        """Exercise both new C entry points, not only Python's wrappers."""
+        v = l4yaml.load('"a": wrong\n"a\\0b": correct')
+        lib = v._lib
+        data = b"a\x00b"
+        handle = lib.l4yaml_value_lookup_bytes(v._handle, data, len(data))
+        assert handle
+        try:
+            length = ctypes.c_size_t()
+            ptr = lib.l4yaml_value_string_bytes(handle, ctypes.byref(length))
+            assert ctypes.string_at(ptr, length.value) == b"correct"
+        finally:
+            lib.l4yaml_free(handle)
+
+        scalar = l4yaml.load(r'"before\0after"')
+        length = ctypes.c_size_t()
+        ptr = lib.l4yaml_value_string_bytes(
+            scalar._handle, ctypes.byref(length)
+        )
+        assert ctypes.string_at(ptr, length.value) == b"before\x00after"
+
+        # Existing C ABI calls retain their legacy NUL-terminated behavior.
+        old_handle = lib.l4yaml_value_lookup(v._handle, b"a")
+        assert old_handle
+        lib.l4yaml_free(old_handle)
 
 
 @needs_lib
