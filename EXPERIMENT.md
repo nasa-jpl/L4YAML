@@ -367,20 +367,24 @@ theorem parse_iff_grammar (input : String) :
       ↔ ExactSurfaceLanguage input ∧ SerializationWellFormed input
 ```
 
-**The two sources of truth disagree on this statement.**  The row for 7.7 in
-`Blueprint/04-capstones.md` still reads *"`parse_iff_grammar` converse —
-grammar completeness: `InYamlLanguage input → ∃ docs, parseYaml input = .ok
-docs`"*, the pre-2026-09-28 statement.  `DOCS.md` records that statement as
-**REFUTED** (`parseYaml` enforces anchor/alias and tag-handle conditions the
-surface language cannot express; and `inYamlLanguage_everything` in
+**The authoritative row is being corrected to this statement.**  At the
+pinned tree the row for 7.7 in `Blueprint/04-capstones.md` still reads
+*"`parse_iff_grammar` converse — grammar completeness: `InYamlLanguage input →
+∃ docs, parseYaml input = .ok docs`"*, the pre-2026-09-28 statement, while
+`DOCS.md` and the ledger record that statement as **REFUTED** (`parseYaml`
+enforces anchor/alias and tag-handle conditions the surface language cannot
+express; and `inYamlLanguage_everything` in
 `Tests/Guards/Proofs/SuffixGapAudit.lean` makes its hypothesis true of every
-string) and restates the target as the biconditional above.  Rule 5 of
-`Blueprint/06-discipline.md` says the blueprint wins over the plan when they
-disagree — but here the blueprint's text is the one a guard in the tree
-refutes, so the reconciliation is an owner ruling (open question 10), not a
-choice this document can make.  Until the row is corrected, this document
-takes the ledger statement as the consumer and flags that it is quoting the
-plan, not the blueprint.
+string) and state the biconditional above.  Rule 5 of
+`Blueprint/06-discipline.md` makes the blueprint the winner when plan and
+blueprint disagree, so the fix is to the blueprint, not to this document:
+PR #284 (`docs/capstone-7-7-row`, against `fix-a-grammar-completeness`)
+restates row 7.7 as `ExactSurfaceLanguage input ∧ SerializationWellFormed
+input → ∃ docs, parseYaml input = .ok docs`, closing the biconditional above,
+and keeps the `InYamlLanguage` form in the row marked REFUTED.  Once it lands
+the three sources agree and the consumer below is the blueprint's own
+statement; the pinned `experiment/metagraph` tree picks it up when it is
+fast-forwarded (open question 10).
 
 Its forward direction's `SerializationWellFormed input` part is discharged by the chain
 (item 454, "Rule 1 — the chain"):
@@ -633,14 +637,16 @@ Each with a proposed default in bold; the default stands if not contested.
    Should the paper adopt the split, or should L4YAML stop using two grammars
    once Row 12 lands and the distinction collapses?  **Adopt \(L_T\) in both
    until Row 12 lands, then retire it.**
-10. **Capstone 7.7's text.**  `Blueprint/04-capstones.md` row 7.7 still states
-    the refuted `InYamlLanguage` converse; `DOCS.md` and the ledger state the
-    biconditional with `ExactSurfaceLanguage ∧ SerializationWellFormed` (§3.3).
-    Which is the consumer this experiment is audited against, and should the
-    row be corrected first (Rule 5 names the blueprint as the winner, but the
-    guard `inYamlLanguage_everything` refutes the blueprint's text)?
-    **Audit against the ledger statement; correct row 7.7 in a separate
-    docs PR before the experiment's result is recorded.**
+10. **Capstone 7.7's text, and the pinned tree.**  At `e3efcc26`,
+    `Blueprint/04-capstones.md` row 7.7 states the refuted `InYamlLanguage`
+    converse; PR #284 corrects the row to the `ExactSurfaceLanguage ∧
+    SerializationWellFormed` statement that `DOCS.md` and the ledger carry
+    (§3.3).  Should `experiment/metagraph` be fast-forwarded to the
+    `fix-a-grammar-completeness` tip that contains #284 before the
+    experiment's result is recorded, re-running the "checked" cells of §4–§5
+    at the new SHA?  **Yes — the consumer the result is audited against
+    should be the blueprint's own row, and the re-run is cheap (`lake exe
+    tryparse` plus the three `#eval`s of §4.2).**
 
 ---
 
