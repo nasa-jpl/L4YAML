@@ -21,12 +21,13 @@ is the brief this document answers:
 > predicate and resource budget.
 
 **Tree this draft is pinned to:** branch `experiment/metagraph-problem`, a copy of
-`fix-a-grammar-completeness` at `e3efcc26` (merge of #277), toolchain
+`fix-a-grammar-completeness` at `c625c95e` (merge of #281; fast-forwarded from
+`e3efcc26`, the merge of #277, on the owner's decision under open question 10), toolchain
 `leanprover/lean4:v4.35.0` (`lean-toolchain`).  Every file path below is
 relative to the repository root at that revision.  The experiment itself must
 re-pin to whatever revision it runs on (§7).  The one Lean addition this
 draft carries is Refutation 3 of `Tests/Guards/Proofs/TraceOfBlockAmbiguity.lean`
-(the `a⏎*x` derivations of §4.2), built against `e3efcc26` on the draft's own
+(the `a⏎*x` derivations of §4.2), built against `c625c95e` on the draft's own
 branch; the pinned tree is otherwise untouched.
 
 ---
@@ -109,7 +110,7 @@ The concrete pair this experiment proposes to test (§4):
 | Input | Evidence: `tokenEvents ts` | `checkFrom` on it | Requirement: `TraceWellFormed` under the current grammar |
 |---|---|---|---|
 | `a` | `[]` | true | **asserted, not yet proven** — that `[]` is the only trace of `a` (hence every trace well-formed) is `TraceWellFormed "a"`, which has no proof on the tree; open question 11 |
-| `a⏎*x` | `[]` (the scanner folds it into the plain scalar `a *x`) | true | **checked false** — the grammar also admits a bare second document `*x`, whose trace `[useAlias "x"]` names an undefined anchor (`traceWellFormed_refuted`, Refutation 3 of `Tests/Guards/Proofs/TraceOfBlockAmbiguity.lean`, kernel-checked at `e3efcc26`) |
+| `a⏎*x` | `[]` (the scanner folds it into the plain scalar `a *x`) | true | **checked false** — the grammar also admits a bare second document `*x`, whose trace `[useAlias "x"]` names an undefined anchor (`traceWellFormed_refuted`, Refutation 3 of `Tests/Guards/Proofs/TraceOfBlockAmbiguity.lean`, kernel-checked at `c625c95e`) |
 
 Same evidence, opposite verdicts.  The right-hand cell is kernel-checked
 (§4.2); the left-hand cell — `TraceWellFormed "a"` — is the half of the pair
@@ -389,10 +390,9 @@ restates row 7.7 as `ExactSurfaceLanguage input ∧ TraceWellFormed input →
 ∃ docs, parseYaml input = .ok docs` — the second conjunct spelled as the
 tree's input-level predicate (§0.1), not as the ledger's shape-only
 `SerializationWellFormed input` — closing the biconditional above, and keeps
-the `InYamlLanguage` form in the row marked REFUTED.  Once it lands
-the three sources agree and the consumer below is the blueprint's own
-statement; the pinned `experiment/metagraph-problem` tree picks it up when it is
-fast-forwarded (open question 10).
+the `InYamlLanguage` form in the row marked REFUTED.  #284 is merged and
+the pinned tree (`c625c95e`) contains it: the three sources agree and the
+consumer below is the blueprint's own statement (open question 10, decided).
 
 Its forward direction's `SerializationWellFormed input` part is discharged by the chain
 (item 454, "Rule 1 — the chain"):
@@ -479,10 +479,10 @@ What is executed on this tree versus what remains to be derived:
 
 | Fact | Status | Evidence |
 |---|---|---|
-| `scanFiltered "a\n*x" = .ok ts`, `ts` = `[streamStart, scalar "a *x" plain, streamEnd]` | **checked** | `#eval` against `L4YAML.Scanner.scanFiltered` at `e3efcc26` |
+| `scanFiltered "a\n*x" = .ok ts`, `ts` = `[streamStart, scalar "a *x" plain, streamEnd]` | **checked** | `#eval` against `L4YAML.Scanner.scanFiltered` at `c625c95e` |
 | `tokenEvents ts = []`, `checkFrom {} [] = true` | **checked** | same |
 | `parseYaml "a\n*x"` accepts, one document | **checked** | `lake exe tryparse` exit 0 |
-| `TraceOf "a\n*x" []` | **checked** | `readPlainStar` / `traceOf_plainStar`, Refutation 3 of `Tests/Guards/Proofs/TraceOfBlockAmbiguity.lean`: term-level derivation at `e3efcc26`, axioms `propext, Classical.choice, Quot.sound` |
+| `TraceOf "a\n*x" []` | **checked** | `readPlainStar` / `traceOf_plainStar`, Refutation 3 of `Tests/Guards/Proofs/TraceOfBlockAmbiguity.lean`: term-level derivation at `c625c95e`, axioms `propext, Classical.choice, Quot.sound` |
 | `TraceOf "a\n*x" [useAlias "x"]` | **checked** | `readAlias` / `traceOf_alias`, same file: the mirror of `readAnchor` with `TBlockNode.alias` (`SCNsAliasNode`) in place of the anchor property — the derivation the experiment set out to build or fail to build; it builds |
 | hence `¬ TraceWellFormed "a\n*x"` while `checkFrom {} (tokenEvents ts) = true` | **checked** | `traceWellFormed_refuted` (the row above + `serializationWellFormed_iff_check` + `decide` on `checkFrom {} [useAlias "x"]`) and `scannerTrace_wf` (`SerializationWellFormed []`) |
 | `TraceWellFormed "a"` — the other half of the pair (§0.2) | **OPEN**, asserted only | needs an inversion over `TLYamlStream` for a one-character input showing every trace of `a` is alias-free; nothing on the block/document layer provides it — the same obstacle that keeps `traceOf_unique` refuted there; open question 11 |
@@ -496,7 +496,7 @@ proven independently; without that proof the finding is the weaker
 well-formed".  It is the *minimum* such pair in the sense that it uses one
 plain character, one break and one two-character alias, and nothing else.
 
-Companions that bound the finding (all **checked** at `e3efcc26`):
+Companions that bound the finding (all **checked** at `c625c95e`):
 
 | Input | Scanner | Why it matters |
 |---|---|---|
@@ -574,8 +574,8 @@ Priority 33) **before** the derivations are attempted, and scored afterwards.
 
 ```mermaid
 flowchart TD
-  A["Derivation TraceOf 'a⏎*x' [useAlias x] built?\n(at e3efcc26: YES — readAlias)"]
-  A -- "yes" --> B["Box 3, inadequate representation.\nD-current: evidence [] does not determine TraceWellFormed ('a' vs 'a⏎*x')\nD-spec: formalised R false, adjudicated R true → encoding wider than [211] until Row 19"]
+  A["Derivation TraceOf 'a⏎*x' [useAlias x] built?\n(at c625c95e: YES — readAlias)"]
+  A -- "yes" --> B["Box 3, inadequate representation.\nD-current: TraceWellFormed 'a⏎*x' refuted (checked); the two-input witness ('a' vs 'a⏎*x', same evidence []) is CONDITIONAL on TraceWellFormed 'a' (Q11, open)\nD-spec: formalised R false, adjudicated R true → encoding wider than [211] until Row 19"]
   A -- "no, grammar forbids it" --> C["Prediction REFUTED; implicitContinue narrower than read.\nRe-read Row 19's scope; countermodel search continues or closes.\n(Box 1 only if TraceOf 'a⏎*x' [] ALSO fails to derive)"]
   A -- "no, within budget" --> D["Unresolved proof engineering: outcome deferred, no verdict"]
   B --> E["Positive control C1 holds?"]
@@ -588,7 +588,7 @@ flowchart TD
 |---|---|---|
 | **Refuted obligation** | `scan_trace` false on \(D\): an input the scanner accepts whose token trace `tokenEvents ts` has **no** `TLYamlStream` derivation.  **Not reached by `a⏎*x`**: its scanner trace `[]` is derived (`traceOf_plainStar`).  This box is reached only by an input whose scanner trace the grammar forbids. | anything about `TraceWellFormed` (a missing scanner trace says nothing about the other traces); that the scanner is wrong (the grammar may be the narrower one). |
 | **Proven local bridge, open global step** | Flow fragment: `scan_trace`'s flow slice plus `tFlowSequence_unique` give `TraceWellFormed` on D-flow; the block/document step and the whole-stream producer remain gated. | that the global step is *provable*; only that it is separable from the local one. |
-| **Inadequate representation** | **This is where `a⏎*x` lands: its second derivation is built (`readAlias`, `traceWellFormed_refuted`).**  On D-current: `TraceWellFormed "a\n*x"` is false while `TraceWellFormed "a"` is asserted true (open question 11) and both have observation `[]` — the evidence does not determine the target (§0.2).  On D-spec: the formalised \(R\) says *false* about an input the spec-adjudicated \(R\) says *true* about — `TLYamlStream`'s `[211]` encodes a wider language than \(L_N\).  `scan_trace` is untouched by either reading. | that the scanner or parser is wrong (both read `a⏎*x` as the spec does); that `scan_trace` is false; that `Event`/`checkFrom` lose information (they do not here); that the approach of trace-annotated grammars is unsound. |
+| **Inadequate representation** | **This is where `a⏎*x` lands: its second derivation is built (`readAlias`, `traceWellFormed_refuted`).**  On D-current, **checked**: `TraceWellFormed "a\n*x"` is false (`traceWellFormed_refuted`) on an input whose scanner trace `[]` is well-formed (`scannerTrace_wf`) — the requirement is refuted on a scanner-accepted input.  **Conditional** on open question 11: the two-input adequacy witness (`a` vs `a⏎*x`, both observation `[]`, opposite verdicts — the evidence does not determine the target, §0.2) needs `TraceWellFormed "a"`, which is asserted and unproven; until it is proven the D-current verdict is the one-input refutation, not the pair.  On D-spec: the formalised \(R\) says *false* about an input the spec-adjudicated \(R\) says *true* about — `TLYamlStream`'s `[211]` encodes a wider language than \(L_N\).  `scan_trace` is untouched by either reading. | that the scanner or parser is wrong (both read `a⏎*x` as the spec does); that `scan_trace` is false; that `Event`/`checkFrom` lose information (they do not here); that the approach of trace-annotated grammars is unsound. |
 | **Unresolved proof engineering** | Derivations not completed within the budget. | anything.  The paper's rule: no conclusion about the whole approach follows from a failed bounded search. |
 
 Explicitly **not** concluded by any outcome of this experiment:
@@ -652,25 +652,25 @@ Each with a proposed default in bold; the default stands if not contested.
    once Row 12 lands and the distinction collapses?  **Adopt \(L_T\) in both
    until Row 12 lands, then retire it.**
 10. **Capstone 7.7's text, and the pinned tree.**  At `e3efcc26`,
-    `Blueprint/04-capstones.md` row 7.7 states the refuted `InYamlLanguage`
+    `Blueprint/04-capstones.md` row 7.7 stated the refuted `InYamlLanguage`
     converse; #284 (merged) corrects the row to the `ExactSurfaceLanguage ∧
     TraceWellFormed` statement (`DOCS.md` and the ledger's
     `SerializationWellFormed input`, spelled with the tree's predicate; §0.1,
-    §3.3).  Should `experiment/metagraph-problem` be fast-forwarded to the
-    `fix-a-grammar-completeness` tip that contains #284, the draft re-pinned
-    to that SHA, and the evidence replayed there?  **Yes.**  What the
-    fast-forward changes is known: between `e3efcc26` and the tip the only
-    files touched under `L4YAML/Proofs/Serialization`, the scanner,
+    §3.3).  **Decided (owner): `experiment/metagraph-problem` fast-forwarded
+    to the `fix-a-grammar-completeness` tip `c625c95e`, this draft re-pinned
+    to it, the evidence replayed there.**  What the fast-forward changed was
+    read before replaying: between `e3efcc26` and `c625c95e` the only files
+    touched under `L4YAML/Proofs/Serialization`, the scanner,
     `Tests/Guards/Proofs/TraceOf*`/`TokenEvents*` and the blueprint are
     `L4YAML/Proofs/Serialization/TraceOf/FlowWalk.lean` (+175, S3 flow-slice
     lemmas, #281) and `Blueprint/04-capstones.md` (#284) — nothing the §4–§5
     cells read (`scanFiltered`, `tokenEvents`, `checkFrom`, `TLYamlStream`'s
     `[211]` constructors, `parseYaml`).  Prediction: every "checked" cell
-    replays unchanged.  The replay is the appendix — the `#eval` loop over
-    the nine inputs, `lake exe tryparse` on `a⏎*x`, the block-ledger rows,
-    and `lake build Tests.Guards.Proofs.TraceOfBlockAmbiguity` for
-    Refutation 3 — at the new SHA; the pin on line 23 and every `e3efcc26`
-    in §4–§5 move with it.  Owner's call; not done in this draft.
+    replays unchanged.  Scored: HELD — the appendix replay (the `#eval` loop
+    over the nine inputs, `lake exe tryparse` on `a⏎*x`, the Priority 33
+    block-ledger rows, `lake build Tests.Guards.Proofs.TraceOfBlockAmbiguity`
+    with the axiom census of Refutation 3) reproduces every cell at
+    `c625c95e`.
 11. **The other half of the pair: `TraceWellFormed "a"`.**  §0.2 asserts
     that `[]` is the only trace of `a`; nothing proves it, and the
     information-adequacy claim (same observation, opposite verdicts) needs
@@ -695,16 +695,16 @@ Each with a proposed default in bold; the default stands if not contested.
 All at the pinned revision; outputs quoted in §4–5 were produced this way.
 
 ```bash
-git checkout e3efcc26
+git checkout c625c95e
 lake build L4YAML.Proofs.Serialization.TokenEvents \
            L4YAML.Proofs.Serialization.SerializationWellFormed
 ```
 
-The §4.2 derivations (Refutation 3) are on this draft's branch, not at
-`e3efcc26` itself:
+The §4.2 derivations (Refutation 3) and the Priority 33 rows R3 are on this
+draft's branch, not at `c625c95e` itself:
 
 ```bash
-git checkout docs/experiment-md          # e3efcc26 + this draft
+git checkout docs/experiment-md          # c625c95e + this draft
 lake build Tests.Guards.Proofs.TraceOfBlockAmbiguity   # exit 0
 # axiom census of the four new lemmas (append to a copy of the file; the
 # guard's declarations are module-private):
@@ -733,7 +733,7 @@ def show1 (s : String) : IO Unit := do
     show1 s
 ```
 
-Expected (abbreviated; re-run at `e3efcc26`): `"a"` and `"a\n*x"` and
+Expected (abbreviated; replayed at `c625c95e`, unchanged from `e3efcc26`): `"a"` and `"a\n*x"` and
 `"a\n&x"` → `trace=[] checkFrom=true`; `"a\n...\n&x"` (C2) →
 `[endDocument, defineAnchor "x"] checkFrom=true`; `"&x a\n*x"` →
 `[defineAnchor "x"]`; `"[&x a, *x]"` (C1) → `[defineAnchor "x", useAlias "x"]`;
@@ -741,5 +741,5 @@ the last three (C3 among them) → `SCAN-REJECT undefinedAlias`.
 
 ```bash
 printf 'a\n*x' > /tmp/a_alias.yaml && lake exe tryparse /tmp/a_alias.yaml; echo $?   # 0
-lake exe adversarialinstantiation | grep -A12 "traceOf_unique block/document"         # block ledger rows
+lake exe adversarialinstantiation | grep -A12 "traceOf_unique block/document"         # block ledger rows, incl. R3
 ```
