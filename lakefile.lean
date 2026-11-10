@@ -399,6 +399,10 @@ lean_exe «scripts-capstone-path» where
   root := `Scripts.Main.CapstonePath
   supportInterpreter := true
 
+lean_exe «scripts-dead-census» where
+  root := `Scripts.Main.DeadCensus
+  supportInterpreter := true
+
 @[default_target]
 lean_exe «scripts-docs-nav» where
   root := `Scripts.Main.DocsNav
@@ -641,6 +645,15 @@ script «check-gate-vocab» (args) do
 script «capstone-path» (args) do
   runGateExe (← getWorkspace).root.dir "scripts-capstone-path" #[] args
     #["L4YAML.Proofs.Production.DocumentProduction"]
+
+/-- `lake run dead-census [-- --check | --write]`: the dead-declaration census (items 476 / 477) —
+    every user-named library declaration no `@[capstone]` / `@[export]` / Rule 2 root reaches, in
+    four classes; pins: `Tests/Guards/Proofs/DeadDeclarationCensus.lean` (summary) and
+    `DeadDeclarationRoster.lean` (class (B) as a set).  Loads the built environment of the library
+    and the three Rule 2 modules, so those are built first. -/
+script «dead-census» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-dead-census" #[] args
+    #["L4YAML", "Tests.Guards", "Tests.AdversarialInstantiation", "Tests.Reflections"]
 
 /-- `lake run check-pack-births`: the pack producers' `PackAlt` writes (item 431, the pack lane's
     recorded residue) against `expectedPackBirths`; reads `StreamAccum.olean`'s declaration ranges,
