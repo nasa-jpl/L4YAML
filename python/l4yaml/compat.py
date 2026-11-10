@@ -492,20 +492,40 @@ def _quote_scalar(s: str) -> str:
     """Quote a string if it could be misinterpreted as a non-string."""
     if not s:
         return "''"
+    # YAML single-quoted strings represent an apostrophe by doubling it.
+    single_quoted = "'" + s.replace("'", "''") + "'"
+    # A literal BOM at the start of a YAML stream is consumed as an
+    # encoding marker, and unescaped controls/separators can alter the
+    # scalar or make the stream invalid.  JSON's double-quote escapes
+    # cover C0; explicitly escape the remaining Unicode troublemakers.
+    escaped_codepoints = {0xFEFF, 0x2028, 0x2029}
+    if any(ord(c) < 0x20 or 0x7F <= ord(c) <= 0x9F
+           or ord(c) in escaped_codepoints for c in s):
+        quoted = json.dumps(s, ensure_ascii=False)
+        return "".join(
+            f"\\u{ord(c):04X}"
+            if 0x7F <= ord(c) <= 0x9F or ord(c) in escaped_codepoints
+            else c
+            for c in quoted
+        )
+    # These are reserved indicators at the start of a plain scalar;
+    # the document-end marker is special when it is the whole stream.
+    if s.startswith(("@", "`", "%")) or s in {"...", "---"}:
+        return single_quoted
     # Values that need quoting
     if s in _NULL_VALS or s in _BOOL_TRUE or s in _BOOL_FALSE:
-        return f"'{s}'"
+        return single_quoted
     if s in _POS_INF or s in _NEG_INF or s in _NAN_VALS:
-        return f"'{s}'"
+        return single_quoted
     # Strings that look like numbers
     try:
         int(s, 0)
-        return f"'{s}'"
+        return single_quoted
     except (ValueError, TypeError):
         pass
     try:
         float(s)
-        return f"'{s}'"
+        return single_quoted
     except (ValueError, TypeError):
         pass
     # Strings with special YAML characters
@@ -516,9 +536,9 @@ def _quote_scalar(s: str) -> str:
             escaped = escaped.replace("\n", "\\n").replace("\r", "\\r")
             escaped = escaped.replace("\t", "\\t")
             return f'"{escaped}"'
-        return f"'{s}'"
+        return single_quoted
     if s.startswith(("-", "?", " ")) or s.endswith(" "):
-        return f"'{s}'"
+        return single_quoted
     return s
 
 
