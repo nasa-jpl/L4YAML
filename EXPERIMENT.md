@@ -20,7 +20,7 @@ is the brief this document answers:
 > search.  Nicolas can accept, change, or decline the audit domain, adequacy
 > predicate and resource budget.
 
-**Tree this draft is pinned to:** branch `experiment/metagraph`, cut from
+**Tree this draft is pinned to:** branch `experiment/metagraph`, a copy of
 `fix-a-grammar-completeness` at `e3efcc26` (merge of #277), toolchain
 `leanprover/lean4:v4.35.0` (`lean-toolchain`).  Every file path below is
 relative to the repository root at that revision.  The experiment itself must
@@ -28,39 +28,59 @@ re-pin to whatever revision it runs on (§7).
 
 ---
 
-## 0. One-paragraph summary
+## 0. Summary
 
-L4YAML's grammar-completeness capstone (Blueprint row 7.7, `parse_iff_grammar`)
-needs, in its forward direction, that every input the executable parser
-accepts has a *well-formed serialization trace*: the anchors it defines, the
-aliases it uses and the tag handles it declares and uses occur in a legal
-order.  The project plans to discharge that conjunct in two steps: (1) the
-scanner's own token stream, read as a trace, is *one* admissible trace of the
-input under the surface grammar (`scan_trace`, the "S3 bridge"); (2) it is the
-*only* one (`traceOf_unique`), so that checking the scanner's trace checks all
-of them.  Step (2) is already refuted on the block/document fragment of the
-current grammar by a checked counterexample, and step (1) is known to be
-unprovable at the whole-stream level until a grammar constructor
-(`scannerDrop`) is retired.  The experiment proposed here freezes exactly this
-obligation, names its consumer, fixes a legitimate input domain, and runs one
-minimum countermodel and one positive control, so that the outcome lands in
-one of four distinct boxes — refuted obligation, local proof with an open
-global step, inadequate representation, or unresolved proof engineering — and
-in no other.
+The capstone this experiment serves:
+
+- Blueprint row 7.7, `parse_iff_grammar` (§3.3), whose right-hand side is a
+  conjunction `ExactSurfaceLanguage input ∧ SerializationWellFormed input`.
+- A **conjunct** is one of the two sides of that `∧`.  The experiment is about
+  the second one, the *serialization conjunct*: every input the executable
+  parser accepts has a well-formed serialization trace — its anchors are
+  defined before its aliases use them, its tag handles are declared before
+  they are used, each document starts afresh.
+- In the tree that conjunct is spelled `TraceWellFormed input` (§2.4).
+
+How the project plans to discharge the serialization conjunct:
+
+1. `scan_trace` (the "S3 bridge"): the scanner's own token stream, read as a
+   trace, is *one* trace the grammar assigns to the input.
+2. `traceOf_unique` (the "lift"): it is the *only* such trace, so checking the
+   scanner's trace checks every trace.
+
+Where each step stands today:
+
+- Step 2 is **refuted** on the block/document fragment of the current grammar
+  by a checked counterexample (`traceOf_unique_refuted`).
+- Step 1 is **proven** slice by slice (leaves, document markers, flow) and
+  **gated** at the whole-stream level until the grammar constructor
+  `scannerDrop` is retired (Row 12).
+
+What the experiment does:
+
+- freezes exactly this obligation and its consumer;
+- fixes a legitimate input domain;
+- runs one minimum countermodel and one positive control;
+- places the outcome in exactly one of four boxes — refuted obligation, local
+  proof with an open global step, inadequate representation, unresolved proof
+  engineering — and in no other.
 
 ---
 
 ## 1. Why this experiment and not another
 
-The paper's thesis is that a green proof artefact can fail to *establish* an
-external requirement in three distinct ways: the claim can be false as stated
-(refutation), the observations the proof relies on can fail to determine the
-requirement (inadequacy), or the proof can simply be unfinished (engineering).
-Audits that conflate these produce either overclaims ("verified, therefore
-conformant") or overcorrections ("the approach is unsound").
+The paper's thesis: a green proof artefact can fail to *establish* an external
+requirement in three distinct ways.
 
-L4YAML is a good subject because the three failure modes are all visibly
-present at one boundary, documented in the tree itself:
+- **Refutation** — the claim is false as stated.
+- **Inadequacy** — the observations the proof relies on do not determine the
+  requirement.
+- **Engineering** — the proof is simply unfinished.
+
+Audits that conflate these produce either overclaims ("verified, therefore
+conformant") or overcorrections ("the approach is unsound").  L4YAML is a good
+subject because all three are visibly present at one boundary, documented in
+the tree itself:
 
 | Mode | Where it is already visible in the tree |
 |---|---|
@@ -68,75 +88,142 @@ present at one boundary, documented in the tree itself:
 | Representation / over-approximation | `L4YAML/Surface/Document.lean`: the constructor `SLYamlStream.scannerDrop` makes `InYamlLanguage s` true for every string (the source comment says so), so `parse_strict_proof` is vacuous until Row 12 retires it. |
 | Unfinished engineering | `DOCS.md` items 454–468: the S3 bridge is priced, its leaf, document-marker and flow slices are paid, the whole-stream statement is gated. |
 
-The experiment asks a sharper question than "is the proof done": *at this one
-boundary, does the evidence the proof will consume determine the requirement
-the capstone will state?*
+### 1.1 The question, with an example
+
+The experiment asks a sharper question than "is the proof done":
+
+> At this one boundary, does the **evidence** the proof consumes **determine**
+> the **requirement** the capstone states?
+
+Spelled out for this boundary:
+
+- The **evidence** is what the proof chain actually looks at: the scanner's
+  token stream `ts`, read as a trace `tokenEvents ts`, and the verdict
+  `checkFrom {} (tokenEvents ts)` on it.  Nothing else about the input reaches
+  the capstone through this chain.
+- The **requirement** is `TraceWellFormed input`: *every* trace the grammar
+  assigns to the input is well-formed.
+- The evidence **determines** the requirement if two inputs with the same
+  evidence always get the same requirement verdict.  If one pair of inputs has
+  identical evidence but opposite verdicts, the evidence is *inadequate*: no
+  proof that only consumes that evidence can conclude the requirement, however
+  many lemmas are green.
+
+The concrete pair this experiment proposes to test (§4):
+
+| Input | Evidence: `tokenEvents ts` | `checkFrom` on it | Requirement: `TraceWellFormed` under the current grammar |
+|---|---|---|---|
+| `a` | `[]` | true | true — the only trace is `[]` |
+| `a⏎*x` | `[]` (the scanner folds it into the plain scalar `a *x`) | true | **predicted false** — the grammar also admits a bare second document `*x`, whose trace `[useAlias "x"]` names an undefined anchor |
+
+Same evidence, opposite verdicts.  If the prediction holds, the chain in §3.3
+cannot reach `TraceWellFormed` from `checkFrom` on the current grammar, not
+because a lemma is missing but because the evidence does not carry the
+information.  The positive control (§5) is a fragment where the opposite is
+proven: on flow collections the grammar assigns one trace, so the scanner's
+evidence does determine the requirement there.
 
 ---
 
 ## 2. Vocabulary
 
-Two audiences read this document: a Lean/YAML maintainer and a reader coming
-from the paper.  The paper's words are used with the meanings below; where a
-word has a YAML or L4YAML meaning, that meaning is pinned to a declaration.
+Four layers are in play, and the same English word ("trace", "well-formed",
+"language") means something different at each.  The categories below keep them
+apart; each entry is pinned to the spec section or the Lean declaration it
+names.
 
-### 2.1 L4YAML and YAML terms
+### 2.1 The YAML 1.2.2 language and its specification
 
-| Term | Meaning here | Pinned to |
+Terms that exist independently of L4YAML.
+
+| Term | Meaning | Where in the spec |
 |---|---|---|
-| **scanner** | The executable lexer: `String → Except ScanError (Array (Positioned YamlToken))`.  It is the first stage of the parser and the one the obligation is about. | `L4YAML.Scanner.scanFiltered`, `L4YAML/Scanner/Scanner.lean` |
-| **parser** | The executable pipeline `scanFiltered` then `parseStream`, exposed as `parseYaml : String → Except … (Array YamlDocument)`. | `L4YAML.TokenParser.parseYaml`; the factorisation is `L4YAML/Proofs/Serialization/ExecutableBoundary.lean` |
-| **surface grammar** | YAML 1.2.2's productions `[1]`–`[211]`, transcribed as inductive relations on positions in the input (`SurfPos` = remaining characters + column).  `SLYamlStream` is production `[211] l-yaml-stream`. | `L4YAML/Surface/*.lean`, `InYamlLanguage` in `L4YAML/Surface/Document.lean` |
-| **`scannerDrop`** | A fourth constructor of `SLYamlStream`, not in the spec, that lets a derivation skip arbitrary input.  It is the reason `InYamlLanguage` currently holds for every string.  Retiring it is **Row 12** of the Blueprint. | `L4YAML/Surface/Document.lean` |
-| **`implicitContinue`** | The `[211]` constructor that lets a *bare* (marker-less) document follow another.  The spec allows this only after an explicit `---`/`...`; the grammar's current version is wider and is the source of the trace ambiguity.  Narrowing it is **Row 19**. | `L4YAML/Surface/Document.lean`; `DOCS.md` Row 19 |
-| **event / trace** | The serialization-relevant actions of a document in order: `beginDocument`, `endDocument`, `defineAnchor n`, `useAlias n`, `declareTag h`, `useTag h`.  A *trace* is a `List Event`.  Scalars, mappings and sequences leave no event. | `Event`, `L4YAML/Proofs/Serialization/SerializationWellFormed.lean` |
-| **annotated grammar** | `SLYamlStream` and the productions beneath it, each carrying the trace its span emits (`TLYamlStream s s' ev`).  It has the three spec constructors of `[211]` and **not** `scannerDrop`. | `L4YAML/Proofs/Serialization/TraceOf/Document.lean`, `Leaves.lean`, `Node.lean` |
-| **`TraceOf input ev`** | "`ev` is a trace of `input` under the annotated grammar": `∃ col, TLYamlStream ⟨input.toList, 0⟩ ⟨[], col⟩ ev`.  An *existence* statement: an input may have several traces. | `TraceOf/Document.lean` |
-| **`SerializationWellFormed ev`** | Every alias names an anchor defined earlier in the same document; every tag handle used was declared in that document's directives; documents reset the environment.  Decided by the executable `checkFrom {} ev` (`serializationWellFormed_iff_check`). | `SerializationWellFormed.lean` |
-| **`TraceWellFormed input`** | `∀ ev, TraceOf input ev → SerializationWellFormed ev`.  A *universal* statement over all traces.  This is the capstone's serialization conjunct. | `TraceOf/Document.lean` |
-| **`tokenEvents ts`** | The scanner's token array read as a trace (anchor token ↦ `defineAnchor`, alias ↦ `useAlias`, `%TAG` ↦ `declareTag` flushed at `---`, …). | `L4YAML/Proofs/Serialization/TokenEvents.lean` |
-| **`refLex`** | A reference lexer written independently of the scanner, used as an executable census oracle in Priority 99.  Not a proof artefact. | `L4YAML/Proofs/Serialization/RefLex.lean`, `EventsOf.lean` |
-| **plain scalar** | An unquoted scalar such as `a` or `hello world`.  A plain scalar may *continue onto the next line*: under YAML 1.2.2 `a⏎b` is the single scalar `a b`.  This folding is what makes `a⏎&x` ambiguous for a grammar that also admits a bare second document. | `L4YAML/Surface/Scalars.lean` (`SNsPlainMultiLine`) |
-| **anchor / alias** | `&x` names the following node; `*x` refers to a node named earlier.  YAML requires the anchor to precede the alias. | YAML 1.2.2 §6.9.2, §7.1 |
-| **SOH** | U+0001 Start of Heading, a C0 control character outside YAML's `c-printable` set `[1]`.  In the paper it is the raw character used to show that the *current* `InYamlLanguage` admits a string the scanner refuses (`scanFiltered "\u0001"` = `ScanError.unexpectedChar`).  It plays no role in the trace experiment except as the canonical `scannerDrop` witness. | `Tests/Guards/Proofs/SuffixGapAudit.lean` |
-| **capstone** | One of the numbered end-to-end theorems in `Blueprint/04-capstones.md`.  Only capstones are declared with `theorem`; everything else is `lemma` (`AGENTS.md`). | `Blueprint/04-capstones.md`, row 7.7 |
-| **Rule 2 / Priority *N*** | The project's discipline that every statement is first *instantiated adversarially* — executed on a grid of concrete inputs with predictions written down beforehand — before any proof is attempted.  Grids are numbered `Priority N` in `Tests/AdversarialInstantiation.lean`. | `Blueprint/06-discipline.md`; `lake exe adversarialinstantiation` |
-| **closure log, item *N*** | `DOCS.md`'s append-only record; one item per landed PR.  Item 454 is where the obligation below was stated and priced. | `DOCS.md` |
+| **production `[n]`** | The spec's grammar is numbered `[1]`–`[211]`; `[211] l-yaml-stream` is the whole input. | YAML 1.2.2 ch. 5–9 |
+| **plain scalar** | An unquoted scalar such as `a` or `hello world`.  A plain scalar may *continue onto the next line*: `a⏎b` is the single scalar `a b`.  `*` and `&` are ordinary characters in a continuation line. | §7.3.3 (`ns-plain-multi-line`) |
+| **anchor / alias** | `&x` names the following node; `*x` refers to a node named earlier.  An alias must be preceded by its anchor. | §6.9.2, §7.1 |
+| **tag handle / `%TAG` directive** | `!e!` is a handle; `%TAG !e! tag:example.com,2000:` declares it for the following document; `!e!foo` uses it. | §6.8.2 |
+| **document markers** | `---` starts, `...` ends a document.  A *bare* document has neither.  Without a marker, a second document may not follow a first. | §9.1 |
+| **serialization tree / well-formedness** | The spec's intermediate representation in which anchors, aliases and tags are explicit; its constraints (alias after anchor, handle declared) are what "well-formed trace" encodes. | §3.2.2 |
+| **`c-printable`, SOH** | `[1] c-printable` is the set of characters allowed in a YAML stream.  SOH (U+0001, Start of Heading) is outside it; the paper uses a raw SOH as the string that the current `InYamlLanguage` admits and the scanner refuses. | §5.1 |
+| \(L_N\) | *The normative language*: the set of streams YAML 1.2.2 accepts, as the owner adjudicates ambiguous passages.  Not a Lean object. | — |
 
-### 2.2 The paper's terms, as used in this experiment
+### 2.2 L4YAML's encoding of the language
+
+The spec, transcribed into Lean as *relations* (inductive predicates).  These
+say what the language **is**; they do not compute anything.
+
+| Term | Meaning | Pinned to |
+|---|---|---|
+| **surface grammar** | Productions `[1]`–`[211]` as inductive relations on positions (`SurfPos` = remaining characters + column).  `SLYamlStream` is `[211]`. | `L4YAML/Surface/*.lean` |
+| **`InYamlLanguage s`** | `∃ s', SLYamlStream ⟨s.toList, 0⟩ s' ∧ s'.chars = []` — the surface grammar consumes all of `s`. | `L4YAML/Surface/Document.lean` |
+| **`scannerDrop`** | A fourth constructor of `SLYamlStream`, not in the spec, that lets a derivation skip arbitrary input.  Reason `InYamlLanguage` holds for every string today.  Retiring it is **Row 12**. | `L4YAML/Surface/Document.lean` |
+| **`implicitContinue`** | The `[211]` constructor letting a bare document follow another.  Wider than the spec (§9.1 allows this only after `---`/`...`).  Source of the trace ambiguity.  Narrowing it is **Row 19**. | `L4YAML/Surface/Document.lean`; `DOCS.md` Row 19 |
+| **`@[yaml_spec]`** | Attribute linking each Lean definition to the production number it transcribes — the tree's only machine-readable tie to \(L_N\). | `L4YAML/Spec/YamlSpec.lean` |
+| **`Event`, trace** | The serialization-relevant actions in order: `beginDocument`, `endDocument`, `defineAnchor n`, `useAlias n`, `declareTag h`, `useTag h`.  A *trace* is a `List Event`.  Scalars and collections leave no event. | `L4YAML/Proofs/Serialization/SerializationWellFormed.lean` |
+| **annotated grammar, `TLYamlStream s s' ev`** | The surface grammar with each span carrying the trace it emits.  Has the three spec constructors of `[211]` and **not** `scannerDrop`. | `L4YAML/Proofs/Serialization/TraceOf/{Document,Leaves,Node}.lean` |
+| **`TraceOf input ev`** | `∃ col, TLYamlStream ⟨input.toList, 0⟩ ⟨[], col⟩ ev` — "`ev` is a trace of `input`".  An *existence* statement: an input may have several traces. | `TraceOf/Document.lean` |
+| **`SerializationWellFormed ev`** | The spec's serialization constraints as a predicate on traces: every alias names an anchor defined earlier in the same document, every tag handle used was declared, documents reset the environment. | `SerializationWellFormed.lean` |
+| \(L_G\) | *The internal grammar's language*: `{ s \| InYamlLanguage s }`.  Currently all strings (`inYamlLanguage_everything`, `Tests/Guards/Proofs/SuffixGapAudit.lean`). | — |
+| \(L_T\) | *(not in the paper — added here)* `{ s \| ∃ ev, TraceOf s ev }`: the `scannerDrop`-free annotated grammar's language.  What the trace obligation is stated against; what Row 12 would make `InYamlLanguage` equal to.  Still wider than \(L_N\) through `implicitContinue`. | — |
+
+### 2.3 L4YAML's implementation of the spec
+
+Executable functions — what actually runs.
+
+| Term | Meaning | Pinned to |
+|---|---|---|
+| **scanner, `scanFiltered`** | `String → Except ScanError (Array (Positioned YamlToken))`.  The lexer; first stage of the parser; the function the obligation is about. | `L4YAML.Scanner.scanFiltered`, `L4YAML/Scanner/Scanner.lean` |
+| **token** | `YamlToken`: `scalar text style`, `anchor n`, `alias n`, `tag …`, `documentStart`, `flowSequenceStart`, …  The scanner's output unit. | `L4YAML/Token/Token.lean` |
+| **parser, `parseStream`, `parseYaml`** | `parseStream : Array (Positioned YamlToken) → Except … (Array YamlDocument)`; `parseYaml` = `scanFiltered` then `parseStream`. | `L4YAML.TokenParser.parseYaml`; factorisation in `L4YAML/Proofs/Serialization/ExecutableBoundary.lean` |
+| **`tokenEvents ts`** | The scanner's token array read as a trace: `anchor n ↦ defineAnchor n`, `alias n ↦ useAlias n`, `%TAG` ↦ `declareTag` flushed at `---`, … | `L4YAML/Proofs/Serialization/TokenEvents.lean` |
+| **`checkFrom env ev`** | Executable decision procedure for `SerializationWellFormed` (a `Bool`). | `SerializationWellFormed.lean` |
+| **`refLex`** | A reference lexer written independently of the scanner; executable census oracle in Priority 99.  Not a proof artefact. | `L4YAML/Proofs/Serialization/RefLex.lean`, `EventsOf.lean` |
+| \(L_P\) | *Executable acceptance*: `{ s \| ∃ docs, parseYaml s = .ok docs }`. | — |
+
+### 2.4 L4YAML's formalization of the spec
+
+Properties **about** the functions of §2.3, stated using the relations of §2.2.
+
+| Term | Meaning | Pinned to |
+|---|---|---|
+| **`scan_trace`** (the S3 bridge) | `scanFiltered input = .ok ts → TraceOf input (tokenEvents ts)`.  The scanner's trace is a trace of the input.  Stated and priced in item 454; proven by slice (§3.1). | `DOCS.md` item 454; `TraceOf/{LeafBridge,DocBridge,FlowBridge}.lean` |
+| **`traceOf_unique`** (the lift) | `TraceOf input ev₁ → TraceOf input ev₂ → ev₁ = ev₂`.  Proven on flow; refuted on block/document (§3.2). | `TraceOf/UniqueFlow.lean`; `Tests/Guards/Proofs/TraceOfBlockAmbiguity.lean` |
+| **`TraceWellFormed input`** | `∀ ev, TraceOf input ev → SerializationWellFormed ev`.  *Universal* over all traces.  The capstone's serialization conjunct. | `TraceOf/Document.lean` |
+| **`serializationWellFormed_iff_check`** | `SerializationWellFormed ev ↔ checkFrom {} ev = true` — ties the relation (§2.2) to the executable (§2.3). | `SerializationWellFormed.lean` |
+| **`scanFiltered_parseStream_ok_checkFrom_full`** (S5→) | `scanFiltered input = .ok ts → parseStream ts = .ok docs → checkFrom {} (tokenEvents ts) = true`. | `L4YAML/Proofs/Serialization/ScannerShape.lean` |
+| **`parse_strict_proof`** | `parseYaml input = .ok docs → InYamlLanguage input`.  Today's end of the chain; vacuous while `scannerDrop` stands. | `L4YAML/Proofs/Production/DocumentProduction.lean` |
+| **capstone** | One of the numbered end-to-end theorems in `Blueprint/04-capstones.md`.  Only capstones are declared `theorem`; everything else is `lemma`. | `Blueprint/04-capstones.md`, `AGENTS.md` |
+| **`parse_iff_grammar`** (capstone 7.7) | `(∃ docs, parseYaml input = .ok docs) ↔ ExactSurfaceLanguage input ∧ SerializationWellFormed input`.  Stated in the ledger; not yet declared. | `Blueprint/ledgers/parse_iff_grammar/2026-10-29.md` |
+| **Rule 2 / Priority *N*** | Every statement is first *instantiated adversarially* — executed on a grid of concrete inputs with predictions written down beforehand — before any proof is attempted.  Grids are numbered `Priority N`. | `Blueprint/06-discipline.md`; `Tests/AdversarialInstantiation.lean` |
+| **closure log, item *N*** | `DOCS.md`'s append-only record; one item per landed PR.  Item 454 is where `scan_trace` was stated and priced. | `DOCS.md` |
+
+### 2.5 The paper's terms, as used in this experiment
 
 | Term | Meaning in this experiment |
 |---|---|
-| **claim** | A proposition about L4YAML's artefacts, in Lean, with every definition fixed at a pinned revision.  The claim here is `scan_trace` (§4.1), and through it the capstone's conjunct `TraceWellFormed`. |
+| **claim** | A proposition about L4YAML's artefacts, in Lean, with every definition fixed at a pinned revision.  Here `scan_trace` (§3.1), and through it `TraceWellFormed`. |
 | **requirement** | What Nicolas actually wants to be true of the parser, stated without reference to how the proof is organised: *every input `parseYaml` accepts has only well-formed serialization traces, as YAML 1.2.2 reads it.* |
 | **authority** | Who decides when the spec and a formalisation disagree.  For L4YAML the owner adjudicates against YAML 1.2.2 (the paper's "owner-adjudicated interpretation"). |
-| **observation** | The data the proof consumes to decide the requirement.  Here: the scanner's token array `ts` and its reading `tokenEvents ts`. |
-| **adequacy** | The observation *determines* the requirement on the admissible domain: two inputs with the same observation never differ on the requirement.  Inadequacy is witnessed by one pair of inputs that agree on the observation and disagree on the requirement. |
+| **observation / evidence** | The data the proof consumes to decide the requirement.  Here: the scanner's token array `ts` and its reading `tokenEvents ts`. |
+| **adequacy** | The observation *determines* the requirement on the admissible domain: two inputs with the same observation never differ on the requirement (§1.1).  Inadequacy is witnessed by one pair that agree on the observation and disagree on the requirement. |
 | **witness** | A concrete input (or pair) whose behaviour is checked by execution or by a kernel-checked derivation, not asserted. |
 | **evidence boundary** | The edge of what a given artefact establishes.  `scan_trace` establishes *existence* of a well-formed trace; the boundary is the `∃ → ∀` step, which no scanner fact can cross on its own. |
-| **representation** | How the requirement is encoded: here, the annotated grammar `TLYamlStream` and the `Event` type.  A representation is *inadequate* when the encoding itself loses information the requirement needs (not merely when a proof is missing). |
+| **representation** | How the requirement is encoded (§2.2): the annotated grammar `TLYamlStream` and the `Event` type.  A representation is *inadequate* when the encoding itself loses or adds information relative to the requirement — not merely when a proof is missing. |
 | **admissibility** | Whether an input belongs to the domain the claim is about.  An input outside the domain refutes nothing, however badly it behaves. |
 | **validity** | The period and conditions under which a recorded outcome stands: a source revision, a toolchain, and the absence of withdrawn evidence.  Any change re-opens the outcome (§7). |
 | **positive control** | An input on which the claim is known to hold by an independent argument, run through the same pipeline, to show that a negative outcome elsewhere is not a tooling artefact. |
 
-### 2.3 The three languages, pinned
+### 2.6 The three languages, side by side
 
-The paper distinguishes three languages and asks that the distinction be made
-at the start.  In L4YAML terms:
-
-| Symbol | Paper's gloss | Concrete L4YAML object |
-|---|---|---|
-| \(L_N\) | the normative language | YAML 1.2.2 as the owner adjudicates it.  **Not a Lean object.**  Its traces in the tree are the `@[yaml_spec]` attribute linking each surface production to its spec number (`L4YAML/Spec/YamlSpec.lean`) and the `yaml-test-suite` fixtures. |
-| \(L_G\) | the internal grammar | `{ s \| InYamlLanguage s }`, i.e. `SLYamlStream` **with** `scannerDrop`.  Currently equal to *all strings* (`inYamlLanguage_everything`, `Tests/Guards/Proofs/SuffixGapAudit.lean`). |
-| \(L_T\) | *(not in the paper — added here)* the annotated grammar | `{ s \| ∃ ev, TraceOf s ev }`, i.e. `TLYamlStream`, the three spec constructors **without** `scannerDrop`.  This is the grammar the trace obligation is stated against, and the one Row 12 would make `InYamlLanguage` equal to.  Still wider than \(L_N\) because of `implicitContinue` (Row 19). |
-| \(L_P\) | executable acceptance | `{ s \| ∃ docs, parseYaml s = .ok docs }`. |
+The paper distinguishes \(L_N\), \(L_G\), \(L_P\) and asks that the distinction
+be made at the start.  With the layers above (and the added \(L_T\)):
 
 ```mermaid
 flowchart LR
-  LP["L_P — parseYaml accepts"]
-  LT["L_T — TLYamlStream (no scannerDrop)"]
-  LG["L_G — InYamlLanguage (with scannerDrop) = all strings"]
-  LN["L_N — YAML 1.2.2, owner-adjudicated"]
+  LP["L_P — parseYaml accepts (§2.3)"]
+  LT["L_T — TLYamlStream, no scannerDrop (§2.2)"]
+  LG["L_G — InYamlLanguage, with scannerDrop = all strings (§2.2)"]
+  LN["L_N — YAML 1.2.2, owner-adjudicated (§2.1)"]
   LP -- "parse_strict_proof (vacuous today)" --> LG
   LT -- "by construction" --> LG
   LP -. "capstone 7.7 target: L_P = L_T ∧ well-formed" .- LT
@@ -145,9 +232,9 @@ flowchart LR
 
 A theorem `L_P = L_T` (what row 7.7 aims at) is an internal-consistency
 result.  A YAML-conformance claim additionally needs `L_T = L_N`, which is a
-separate audit of the surface transcription and is **out of scope here**.  The
-experiment uses \(L_N\) only as the *authority* for whether a countermodel is
-admissible (§5.3).
+separate audit of the surface transcription (§2.2 against §2.1) and is **out of
+scope here**.  The experiment uses \(L_N\) only as the *authority* for whether a
+countermodel is admissible (§4.3).
 
 ---
 
@@ -237,7 +324,7 @@ theorem**, and the experiment must say so rather than point at
 > *Is this about a theorem, a lemma, or a requirement?*  All three, at
 > different layers: `scan_trace` and `traceOf_unique` are lemmas (project
 > convention); `parse_iff_grammar` is the theorem that consumes them; the
-> requirement is the English sentence in §2.2 that the theorem is meant to
+> requirement is the English sentence in §2.5 that the theorem is meant to
 > encode.  The experiment tests whether the lemmas' evidence can reach the
 > theorem, and whether the theorem's encoding reaches the requirement.
 
@@ -320,7 +407,7 @@ grammar's `implicitContinue` is wider than `[211]`.  So:
 
 - On **D-current** it is admissible and, if the derivation goes through, it
   refutes `TraceWellFormed "a\n*x"` as stated.  This is a refutation of the
-  *formalised requirement*, not of the requirement in §2.2 — the English
+  *formalised requirement*, not of the requirement in §2.5 — the English
   sentence is true of this input.
 - On **D-spec** it is not a countermodel at all: the spec gives it one reading
   and \(R\) is true.
