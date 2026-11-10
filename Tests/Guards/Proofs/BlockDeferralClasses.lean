@@ -1544,18 +1544,21 @@ wrapper count moved: this is item 173's arm, not a `_stamp_*` site. -/
     runs); and `resumeAt` pops the levels the dedent ended, handing back exactly
     the opener's resume arm — widths bounded by the landing, continuation from
     the landing's own mapping tail. -/
+-- 2026-11-10 (item 473, option (A)): the level constructors' bound and the park faces read `≤` (the root frame
+-- stands under a column-0 opener's own level), `ResumeWidths` names the survivors positionally and `ResumeWidths.lt`
+-- is `ResumeWidths.le`; the rows below restate the faces they mirror — a shape move, no obligation changed.
 example {n k : Nat} {sp_start sp_scan sp_mid : SurfPos} {ks : List FrameLevel}
     (h_ssl : SSLComments sp_scan sp_mid)
     (closeF : ∀ sp_m : SurfPos, SSLComments sp_scan sp_m →
       ∀ sp_e : SurfPos, SCompactSeqTail n sp_m sp_e →
       ResumeFrames (SLYamlStream sp_start) ks sp_e)
     (hmem : FrameLevel.map k ∈ ks) :
-    ∃ ks' : List FrameLevel, (∀ fr ∈ ks', fr.width < k) ∧
+    ∃ ks' : List FrameLevel, (∀ fr ∈ ks', fr.width ≤ k) ∧
       ∀ sp_end : SurfPos, SCompactMapTail k sp_mid sp_end →
         ResumeFrames (SLYamlStream sp_start) ks' sp_end :=
   let ⟨ks', hw, cont⟩ :=
     (closeF sp_mid h_ssl sp_mid (SCompactSeqTail.nil n sp_mid)).resumeAt hmem
-  ⟨ks', hw.lt, cont⟩
+  ⟨ks', hw.le, cont⟩
 
 /-- **ONE stack, TWO landings** — `k:⏎  j:⏎    - a⏎? b` pops two levels and
     `k:⏎  j:⏎    - a⏎  ? b` pops one, off the same park and the same field.  A
@@ -1567,15 +1570,15 @@ example {n : Nat} {sp_start sp_scan sp_mid : SurfPos}
     (closeF : ∀ sp_m : SurfPos, SSLComments sp_scan sp_m →
       ∀ sp_e : SurfPos, SCompactSeqTail n sp_m sp_e →
       ResumeFrames (SLYamlStream sp_start) [FrameLevel.map 2, FrameLevel.map 0] sp_e) :
-    (∃ ks' : List FrameLevel, (∀ fr ∈ ks', fr.width < 2) ∧
+    (∃ ks' : List FrameLevel, (∀ fr ∈ ks', fr.width ≤ 2) ∧
         ∀ sp_end : SurfPos, SCompactMapTail 2 sp_mid sp_end →
           ResumeFrames (SLYamlStream sp_start) ks' sp_end) ∧
-    (∃ ks' : List FrameLevel, (∀ fr ∈ ks', fr.width < 0) ∧
+    (∃ ks' : List FrameLevel, (∀ fr ∈ ks', fr.width ≤ 0) ∧
         ∀ sp_end : SurfPos, SCompactMapTail 0 sp_mid sp_end →
           ResumeFrames (SLYamlStream sp_start) ks' sp_end) :=
   let stack := closeF sp_mid h_ssl sp_mid (SCompactSeqTail.nil n sp_mid)
-  ⟨let ⟨ks', hw, cont⟩ := stack.resumeAt (by simp); ⟨ks', hw.lt, cont⟩,
-   let ⟨ks', hw, cont⟩ := stack.resumeAt (by simp); ⟨ks', hw.lt, cont⟩⟩
+  ⟨let ⟨ks', hw, cont⟩ := stack.resumeAt (by simp); ⟨ks', hw.le, cont⟩,
+   let ⟨ks', hw, cont⟩ := stack.resumeAt (by simp); ⟨ks', hw.le, cont⟩⟩
 
 /-- …and the residue is the BOTTOM.  Both controls are positive: `resumeAt`
     pops a value-line-bottomed stack exactly as it pops a stream-bottomed one,
@@ -1597,26 +1600,28 @@ example {n k nv : Nat} {sp_start sp_scan sp_mid : SurfPos} {ks : List FrameLevel
     (_hmem : FrameLevel.map k ∈ ks) :
     True := by
   -- control A: the stream-bottomed stack fills the arm
-  have _okS : ∃ ks' : List FrameLevel, (∀ fr ∈ ks', fr.width < k) ∧
+  have _okS : ∃ ks' : List FrameLevel, (∀ fr ∈ ks', fr.width ≤ k) ∧
       ∀ sp_end : SurfPos, SCompactMapTail k sp_mid sp_end →
         ResumeFrames (SLYamlStream sp_start) ks' sp_end :=
     let ⟨ks', hw, cont⟩ :=
       (_closeS sp_mid _h_ssl sp_mid (SCompactSeqTail.nil n sp_mid)).resumeAt _hmem
-    ⟨ks', hw.lt, cont⟩
+    ⟨ks', hw.le, cont⟩
   -- control B: the value-line-bottomed stack pops just as well, at its own bottom
-  have _okV : ∃ ks' : List FrameLevel, (∀ fr ∈ ks', fr.width < k) ∧
+  have _okV : ∃ ks' : List FrameLevel, (∀ fr ∈ ks', fr.width ≤ k) ∧
       ∀ sp_end : SurfPos, SCompactMapTail k sp_mid sp_end →
         ResumeFrames (ExplValueLine sp_start nv) ks' sp_end :=
     let ⟨ks', hw, cont⟩ :=
       (_closeV sp_mid _h_ssl sp_mid (SCompactSeqTail.nil n sp_mid)).resumeAt _hmem
-    ⟨ks', hw.lt, cont⟩
+    ⟨ks', hw.le, cont⟩
+  -- 2026-11-10 (item 473): the probe asks the widened bound (`≤ k`, `hw.le`) so that the only
+  -- thing that can fail is the bottom mismatch (a value-line stack handed to the stream arm).
   fail_if_success
-    have : ∃ ks' : List FrameLevel, (∀ fr ∈ ks', fr.width < k) ∧
+    have : ∃ ks' : List FrameLevel, (∀ fr ∈ ks', fr.width ≤ k) ∧
         ∀ sp_end : SurfPos, SCompactMapTail k sp_mid sp_end →
           ResumeFrames (SLYamlStream sp_start) ks' sp_end :=
       let ⟨ks', hw, cont⟩ :=
         (_closeV sp_mid _h_ssl sp_mid (SCompactSeqTail.nil n sp_mid)).resumeAt _hmem
-      ⟨ks', hw.lt, cont⟩
+      ⟨ks', hw.le, cont⟩
   trivial
 
 /-! **The paid family, at the runtime.**  One open mapping level below the
@@ -2145,11 +2150,11 @@ example {k nv : Nat} {sp_start sp_scan sp_land : SurfPos} {ks : List FrameLevel}
     (framesV : ∀ sp_mid : SurfPos, SSLComments sp_scan sp_mid →
       ResumeFrames (ExplValueLine sp_start nv) ks sp_mid)
     (h_ssl : SSLComments sp_scan sp_land) (hmem : FrameLevel.map k ∈ ks) :
-    ∃ ks' : List FrameLevel, (∀ fr ∈ ks', fr.width < k) ∧
+    ∃ ks' : List FrameLevel, (∀ fr ∈ ks', fr.width ≤ k) ∧
       ∀ sp_end : SurfPos, SCompactMapTail k sp_land sp_end →
         ResumeFrames (ExplValueLine sp_start nv) ks' sp_end :=
   let ⟨ks', hw, cont⟩ := (framesV sp_land h_ssl).resumeAt hmem
-  ⟨ks', hw.lt, cont⟩
+  ⟨ks', hw.le, cont⟩
 
 /-- **…and the spend**: the landed entry conses onto the resumed level, the
     levels below close, and what is reached is the frame's unpaid value line —
@@ -2326,12 +2331,12 @@ example {sp_start sp_scan sp_land : SurfPos} {n k nv : Nat} {ks : List FrameLeve
       ∀ sp_end : SurfPos, SCompactSeqTail n sp_mid sp_end →
       ResumeFrames (ExplValueLine sp_start nv) ks sp_end)
     (h_ssl : SSLComments sp_scan sp_land) (hmem : FrameLevel.map k ∈ ks) :
-    ∃ ks' : List FrameLevel, (∀ fr ∈ ks', fr.width < k) ∧
+    ∃ ks' : List FrameLevel, (∀ fr ∈ ks', fr.width ≤ k) ∧
       ∀ sp_end : SurfPos, SCompactMapTail k sp_land sp_end →
         ResumeFrames (ExplValueLine sp_start nv) ks' sp_end := by
   obtain ⟨ks', h_w, cont⟩ :=
     (closeFV sp_land h_ssl sp_land (SCompactSeqTail.nil n sp_land)).resumeAt hmem
-  exact ⟨ks', h_w.lt, cont⟩
+  exact ⟨ks', h_w.le, cont⟩
 
 /-! **§17.2 — the spend**, which is item 197's route read at this bottom.  The
 opener's entry lands in the level, and what is still owed underneath is the
@@ -2631,11 +2636,11 @@ exactly the shape `indicator_open_map`'s `h_resV_land` asks for. -/
 
 example {sp_start sp_mid : SurfPos} {nv k : Nat}
     (fV : ResumeFrames (ExplValueLine sp_start nv) [FrameLevel.map k] sp_mid) :
-    ∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width < k) ∧
+    ∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
       ∀ sp_end : SurfPos, SCompactMapTail k sp_mid sp_end →
         ResumeFrames (ExplValueLine sp_start nv) ks sp_end :=
   match fV.resumeAt (List.mem_singleton.mpr rfl) with
-  | ⟨ks', h_w, cont⟩ => ⟨nv, ks', h_w.lt, cont⟩
+  | ⟨ks', h_w, cont⟩ => ⟨nv, ks', h_w.le, cont⟩
 
 /-! …and the refutation: an empty stack hands back the frame's value line AT
 the landing, and the consumer needs that line past the level's REMAINING TAIL.
@@ -2784,12 +2789,12 @@ example {sp_start sp_mid sp_key : SurfPos} {nv w : Nat} {ks : List FrameLevel}
     (hmem : FrameLevel.map w ∈ ks)
     (h_ind : SIndent w sp_mid sp_key)
     (fV : ResumeFrames (ExplValueLine sp_start nv) ks sp_mid) :
-    ∃ (nv : Nat) (ks' : List FrameLevel), (∀ fr ∈ ks', fr.width < w) ∧
+    ∃ (nv : Nat) (ks' : List FrameLevel), (∀ fr ∈ ks', fr.width ≤ w) ∧
       ∀ sp_v : SurfPos, SBlockMapEntry w sp_key sp_v →
       ∀ sp_e : SurfPos, SCompactMapTail w sp_v sp_e →
       ResumeFrames (ExplValueLine sp_start nv) ks' sp_e :=
   match fV.resumeAt hmem with
-  | ⟨ks', h_w, cont⟩ => ⟨nv, ks', h_w.lt, resumeMapRouteF h_ind cont⟩
+  | ⟨ks', h_w, cont⟩ => ⟨nv, ks', h_w.le, resumeMapRouteF h_ind cont⟩
 
 /-! **§20.3 — and the PAIR is the resume's own bottom**, which is the second
 conjunct for free: `ResumeFrames.close` runs every level down with its empty

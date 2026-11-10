@@ -2299,6 +2299,43 @@ opposite kind would not type-check. -/
 section ResumeConclusions
 open L4YAML.Surface L4YAML.Proofs.IndentStackCover L4YAML.Proofs.StreamAccum
 
+-- 2026-11-10 (item 473): the positional `ResumeWidths` exactness the rows below spend lives here, not in
+-- the library, as private test-side lemmas outside the library's namespace (nothing downstream can spend them) — `Floor.pop_to` / `Covered.pop_to` read only `.sub` / `.keep` (Rule 1: no library lemma
+-- without a capstone path).
+/-- The positional reading's exactness (item 473; test-side readers, no capstone spends them): one level resumed at its own
+    width leaves nothing. -/
+private lemma resumeWidths_nil_of_singleton {e : FrameLevel} {ks' : List FrameLevel} {j : Nat}
+    (h : ResumeWidths [e] ks' j) : ks' = [] := by
+  obtain ⟨_, pre, e', heq, _, _⟩ := h
+  cases pre with
+  | nil => exact (List.cons.inj heq).2.symm
+  | cons p pre' =>
+      exact absurd (List.cons.inj heq).2.symm
+        (List.append_ne_nil_of_right_ne_nil _ (List.cons_ne_nil _ _))
+
+/-- …a landing at the TOP level, over strictly narrower frames, keeps exactly them… -/
+private lemma resumeWidths_eq_tail_of_head {e : FrameLevel} {ks ks' : List FrameLevel} {j : Nat}
+    (h : ResumeWidths (e :: ks) ks' j) (hks : ∀ fr ∈ ks, fr.width < j) : ks' = ks := by
+  obtain ⟨_, pre, e', heq, he', _⟩ := h
+  cases pre with
+  | nil => exact (List.cons.inj heq).2.symm
+  | cons p pre' =>
+      have h2 := (List.cons.inj heq).2
+      have hmem : e' ∈ ks := by rw [h2]; exact List.mem_append_right _ (List.mem_cons_self ..)
+      exact absurd (hks e' hmem) (by rw [he']; exact Nat.lt_irrefl _)
+
+/-- …and a landing at the SECOND of two levels, under a strictly wider one, keeps nothing. -/
+private lemma resumeWidths_eq_nil_of_pair {p e : FrameLevel} {ks' : List FrameLevel} {j : Nat}
+    (h : ResumeWidths [p, e] ks' j) (hp : j < p.width) : ks' = [] := by
+  obtain ⟨_, pre, e', heq, he', _⟩ := h
+  rcases pre with _ | ⟨q, _ | ⟨r, pre'⟩⟩
+  · have h1 := (List.cons.inj heq).1
+    subst h1
+    exact absurd hp (by rw [he']; exact Nat.lt_irrefl _)
+  · exact (List.cons.inj (List.cons.inj heq).2).2.symm
+  · exact absurd (List.cons.inj (List.cons.inj heq).2).2.symm
+      (List.append_ne_nil_of_right_ne_nil _ (List.cons_ne_nil _ _))
+
 /-- `[map 2]`: the trivial continuation closes at the bottom. -/
 lemma kfMap2 (sp : SurfPos) : KeyFrames (fun _ => True) [FrameLevel.map 2] sp :=
   .mapLevel 2 [] sp (fun _ h => absurd h List.not_mem_nil) (fun _ _ => .bottom _ trivial)
@@ -2328,8 +2365,7 @@ example : ¬ (FrameLevel.seq 0 ∈ ([] : List FrameLevel)) := by decide
 example (sp : SurfPos) : True := by
   obtain ⟨ks', hw, cont⟩ := (kfMap2 sp).resumeAtMap (j := 2) (by decide)
   have h_none : ∀ fr, fr ∉ ks' := fun fr h => by
-    have ⟨hm, hlt⟩ := (hw fr).mp h
-    simp only [List.mem_singleton] at hm; subst hm; exact absurd hlt (by decide)
+    rw [(resumeWidths_nil_of_singleton hw)] at h; exact absurd h (List.not_mem_nil)
   exact (cont sp (SCompactMapTail.nil 2 sp)).close
 
 -- One mapping level is NOT resumable as a sequence (the opposite kind is refused by the gate).
@@ -2339,8 +2375,7 @@ example : ¬ (FrameLevel.seq 2 ∈ [FrameLevel.map 2]) := by decide
 example (sp : SurfPos) : True := by
   obtain ⟨ks', hw, cont⟩ := (kfSeq2 sp).resumeAtSeq (j := 2) (by decide)
   have h_none : ∀ fr, fr ∉ ks' := fun fr h => by
-    have ⟨hm, hlt⟩ := (hw fr).mp h
-    simp only [List.mem_singleton] at hm; subst hm; exact absurd hlt (by decide)
+    rw [(resumeWidths_nil_of_singleton hw)] at h; exact absurd h (List.not_mem_nil)
   exact (cont sp (SCompactSeqTail.nil 2 sp)).close
 example : ¬ (FrameLevel.map 2 ∈ [FrameLevel.seq 2]) := by decide
 
@@ -2348,33 +2383,36 @@ example : ¬ (FrameLevel.map 2 ∈ [FrameLevel.seq 2]) := by decide
 -- and the survivor is itself resumable as a mapping afterwards.
 example (sp : SurfPos) : True := by
   obtain ⟨ks', hw, cont⟩ := (kfSeq2Map0 sp).resumeAtSeq (j := 2) (by decide)
-  have h_keep : FrameLevel.map 0 ∈ ks' := (hw _).mpr ⟨by decide, by decide⟩
-  have h_drop : FrameLevel.seq 2 ∉ ks' := fun h => absurd ((hw _).mp h).2 (by decide)
+  have h_keep : FrameLevel.map 0 ∈ ks' := hw.keep _ (by decide) (by decide)
+  have hks : ks' = [FrameLevel.map 0] :=
+    (resumeWidths_eq_tail_of_head hw) (fun fr h => by simp only [List.mem_singleton] at h; subst h; decide)
+  have h_drop : FrameLevel.seq 2 ∉ ks' := by rw [hks]; decide
   have next := cont sp (SCompactSeqTail.nil 2 sp)
   obtain ⟨ks'', hw', cont'⟩ := next.resumeAtMap (j := 0) h_keep
-  have h_none : ∀ fr, fr ∉ ks'' := fun fr h => absurd ((hw' fr).mp h).2 (by omega)
+  have h_none : ∀ fr, fr ∉ ks'' := fun fr h => by
+    rw [hks] at hw'; rw [(resumeWidths_nil_of_singleton hw')] at h; exact absurd h (List.not_mem_nil)
   exact (cont' sp (SCompactMapTail.nil 0 sp)).close
 
 -- Mixed, resumed at the inner mapping level directly: nothing survives (the
 -- sequence level above it is not below width 0) and the tail is the MAP tail.
 example (sp : SurfPos) : True := by
   obtain ⟨ks', hw, cont⟩ := (kfSeq2Map0 sp).resumeAtMap (j := 0) (by decide)
-  have h_none : ∀ fr, fr ∉ ks' := fun fr h => absurd ((hw fr).mp h).2 (by omega)
+  have h_none : ∀ fr, fr ∉ ks' := fun fr h => by
+    rw [(resumeWidths_eq_nil_of_pair hw) (by decide)] at h; exact absurd h (List.not_mem_nil)
   exact (cont sp (SCompactMapTail.nil 0 sp)).close
 
 -- Two mapping levels: resuming at the outer keeps the inner; at the inner keeps nothing.
 example (sp : SurfPos) : True := by
   obtain ⟨ks', hw, cont⟩ := (kfMap4Map1 sp).resumeAtMap (j := 4) (by decide)
-  have h_keep : FrameLevel.map 1 ∈ ks' := (hw _).mpr ⟨by decide, by decide⟩
-  have h_drop : FrameLevel.map 4 ∉ ks' := fun h => absurd ((hw _).mp h).2 (by decide)
+  have h_keep : FrameLevel.map 1 ∈ ks' := hw.keep _ (by decide) (by decide)
+  have h_drop : FrameLevel.map 4 ∉ ks' := by
+    rw [(resumeWidths_eq_tail_of_head hw) (fun fr h => by simp only [List.mem_singleton] at h; subst h; decide)]
+    decide
   exact (cont sp (SCompactMapTail.nil 4 sp)).close
 example (sp : SurfPos) : True := by
   obtain ⟨ks', hw, cont⟩ := (kfMap4Map1 sp).resumeAtMap (j := 1) (by decide)
   have h_none : ∀ fr, fr ∉ ks' := fun fr h => by
-    have ⟨hm, hlt⟩ := (hw fr).mp h
-    rcases List.mem_cons.mp hm with h | h
-    · subst h; exact absurd hlt (by decide)
-    · have h := List.mem_singleton.mp h; subst h; exact absurd hlt (by decide)
+    rw [(resumeWidths_eq_nil_of_pair hw) (by decide)] at h; exact absurd h (List.not_mem_nil)
   exact (cont sp (SCompactMapTail.nil 1 sp)).close
 
 end ResumeConclusions
@@ -5642,19 +5680,31 @@ sequence resumes the mapping), the `-`-first and column-1 twins refused.
 Predictions (scored in the item): P1 every sibling-after-sequence row is one document with two
 root keys; P2 the deepest stack of `a:⏎- b⏎c: 1` is `[map 0, map 0, seq 0]` (REFUTED:
 `[map 0, map 0]`, no push; fuel 2 already reaches it, not `[map 0]`); P3 `- a⏎b: 1` and `a:⏎- b⏎ c: 1` are refused; P4 fuel 0 projects `[]`. -/
-/-! Rule 2 on `ResumeFrames.strict` itself, under a `ResumeFrames` premise (elaboration-time rows; the
-exe's rows below can only instantiate the bound on raw lists).  A nested level reads the strict order
-off the frame below; the own-level pair `[map 0, map 0]` has NO `ResumeFrames` witness — the equal-width
-frame of the `-` park lives on the park's face, never in a level, which is why stage A widens the faces
-and not `ResumeFrames.level`. -/
+/-! Rule 2 on `ResumeFrames.bound` (stage A's `ResumeFrames.strict`, restated by option (A), item 473)
+under a `ResumeFrames` premise (elaboration-time rows; the exe's rows below can only instantiate the
+bound on raw lists).  A nested level reads the bound off the frame below; the own-level pair
+`[map 0, map 0]` — the scanner's stack at every column-0 opener — NOW has a `ResumeFrames` witness: the
+levels admit the root frame at their own width, which is what the root births of stage B need. -/
 open L4YAML.Surface L4YAML.Proofs.IndentStackCover L4YAML.Proofs.StreamAccum in
 example {P : SurfPos → Prop} {sp : SurfPos}
-    (h : ResumeFrames P [FrameLevel.map 2, FrameLevel.map 0] sp) : (FrameLevel.map 0).width < 2 :=
-  h.strict _ (List.Mem.head _)
+    (h : ResumeFrames P [FrameLevel.map 2, FrameLevel.map 0] sp) : (FrameLevel.map 0).width ≤ 2 :=
+  h.bound _ (List.Mem.head _)
 
 open L4YAML.Surface L4YAML.Proofs.IndentStackCover L4YAML.Proofs.StreamAccum in
-example {P : SurfPos → Prop} {sp : SurfPos} : ¬ ResumeFrames P [FrameLevel.map 0, FrameLevel.map 0] sp :=
-  fun h => absurd (h.strict _ (List.Mem.head _)) (Nat.lt_irrefl _)
+example {P : SurfPos → Prop} {sp : SurfPos}
+    (h : ResumeFrames P [FrameLevel.map 0, FrameLevel.map 0] sp) : (FrameLevel.map 0).width ≤ 0 :=
+  h.bound _ (List.Mem.head _)
+
+-- the own-level pair IS inhabited now (stage A's `¬ ResumeFrames P [map 0, map 0] sp` row inverted by
+-- option (A)): the root frame `map 0` stands under the opener's own `map 0` level
+open L4YAML.Surface L4YAML.Proofs.IndentStackCover L4YAML.Proofs.StreamAccum in
+example {sp : SurfPos} : ResumeFrames (fun _ => True) [FrameLevel.map 0, FrameLevel.map 0] sp :=
+  .level 0 [FrameLevel.map 0] sp
+    (fun _ h => by cases h with
+      | head => exact Nat.le_refl _
+      | tail _ h => exact absurd h (List.not_mem_nil))
+    (fun sp_end _ => .level 0 [] sp_end (fun _ h => absurd h (List.not_mem_nil))
+      (fun sp_e _ => .bottom sp_e trivial))
 
 /-! Rule 2 for option (A) (item 470, read before the pay): the column-0 openers are born with the
 scanner's stack `[map 0, map 0]` (Priority 71's `atLine` rows: `a: 1`, `[a]: 1`, `? a` all read it on
@@ -11086,7 +11136,7 @@ def testPackMappingLaneTail (state : IO.Ref TestCollector) : IO Unit := do
         | none => break
       | _ => break
   IO.println s!"P96 content-park dedent `?` pauses={pauses} refused-pauses={refusedPauses} k-is-mark={sibMark} k-implicit={sibImplicit} step-exceptions={stepExc} ancestor checks={ancChecks} ancestor-rejects={ancRejects} closed checks={closedChecks} closed-accepts={closedAccepts} input-rejects={inputRejects}"
-  check state s!"P96 (ω-pay-births) step (c) the mapping lane's still-open tail at the content park's dedent `?` (item 471): {pauses} pauses (k a mark {sibMark} / implicit {sibImplicit}) + {refusedPauses} refused by the scanner (a `?` at a sequence's column); step exact at all {pauses}; ancestors' `:` parses {ancChecks - ancRejects.length}/{ancChecks}; closed marks' `:` rejected {closedChecks - closedAccepts.length}/{closedChecks}; input rejects {inputRejects.length} (the 3 sequence-column `?` + the between-marks `?`)"
+  check state s!"P96 (ω-pay-births) step (c) the mapping lane's still-open tail at the content park's dedent `?` (item 473): {pauses} pauses (k a mark {sibMark} / implicit {sibImplicit}) + {refusedPauses} refused by the scanner (a `?` at a sequence's column); step exact at all {pauses}; ancestors' `:` parses {ancChecks - ancRejects.length}/{ancChecks}; closed marks' `:` rejected {closedChecks - closedAccepts.length}/{closedChecks}; input rejects {inputRejects.length} (the 3 sequence-column `?` + the between-marks `?`)"
     (pauses == 16 && sibMark == 14 && sibImplicit == 2 && refusedPauses == 3 && stepExc.isEmpty &&
       ancChecks == 12 && ancRejects.isEmpty && closedChecks == 7 && closedAccepts.isEmpty &&
       inputRejects.length == 4)

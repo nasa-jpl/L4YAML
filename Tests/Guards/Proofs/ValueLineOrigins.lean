@@ -1233,7 +1233,9 @@ def expectedLine : String :=
   -- 2026-10-28 (item 386): lets 652 → 657, alts 5277 → 5280, nodes 13696 → 13706, liteNodes 634748 → 635676 — the `-` opener's `h_lvl_old` and its `omega` spend at the no-pop arm; no origin row moved.
   -- 2026-11-07 (item 448, (α) stage A): lets 710 → 716, lapps 890 → 895, liteNodes 680950 → 681093 — the `omega`/`Nat.lt_of_lt_of_le`
   -- relays across the `≤` park faces and `closeThenBlock`'s `ResumeFrames.strict` read; no origin row moved.
-  "positions=53 packaged=7 packConsts=[ImplicitKeyPack,PropsKeyPack] rows=197 ctorRows=104 paramRows=93 packagedRows=29 punt=4 stamp=42 built=151 origins=67 originRows=32 route=12 frames=29 tail=14 other=0 concl=8 invariant=4 heldOrigins=14 allHeld=2 someHeld=37 noneHeld=98 unbornRows=0 relayedPunt=0 relayedStamp=10 relayedAbsurd=4 relayedFact=0 deadRows=0 unbornPos=0 rounds=4 follows=406 lets=724 lapps=908 alts=5575 nodes=14457 liteNodes=673520"
+-- 2026-11-10 (item 473, option (A)): term-size tallies only (lapps 908 → 905, alts 5575 → 5576, liteNodes 673520 → 673507):
+-- the `≤` faces drop `Nat.le_of_lt` wrappers and the positional `ResumeWidths` reshapes `resumeAt`; positions/rows unchanged.
+  "positions=53 packaged=7 packConsts=[ImplicitKeyPack,PropsKeyPack] rows=197 ctorRows=104 paramRows=93 packagedRows=29 punt=4 stamp=42 built=151 origins=67 originRows=32 route=12 frames=29 tail=14 other=0 concl=8 invariant=4 heldOrigins=14 allHeld=2 someHeld=37 noneHeld=98 unbornRows=0 relayedPunt=0 relayedStamp=10 relayedAbsurd=4 relayedFact=0 deadRows=0 unbornPos=0 rounds=4 follows=406 lets=724 lapps=905 alts=5576 nodes=14457 liteNodes=673507"
 
 /-! ## §4 The reading -/
 

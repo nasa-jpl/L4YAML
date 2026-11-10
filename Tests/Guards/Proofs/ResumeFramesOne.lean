@@ -106,6 +106,19 @@ example {k : Nat} {sp sp_i sp_v : SurfPos}
 
 /-! ## §3 The spend -/
 
+/-- The positional reading's exactness (item 473; a test-side reader): one level resumed at its own
+    width leaves nothing. -/
+private lemma resumeWidths_nil_of_singleton {e : FrameLevel} {ks' : List FrameLevel} {j : Nat}
+    (h : ResumeWidths [e] ks' j) : ks' = [] := by
+  obtain ⟨_, pre, e', heq, _, _⟩ := h
+  cases pre with
+  | nil => exact (List.cons.inj heq).2.symm
+  | cons p pre' =>
+      exact absurd (List.cons.inj heq).2.symm
+        (List.append_ne_nil_of_right_ne_nil _ (List.cons_ne_nil _ _))
+
+
+
 /-- `resumeAt` at the level's own width: the popped stack is EMPTY — `ks'`
     has no member, because every survivor would have to be `map k` with
     width below `k`. -/
@@ -115,12 +128,7 @@ example {P : SurfPos → Prop} {k : Nat} {sp : SurfPos}
       (∀ sp_end, SCompactMapTail k sp sp_end → ResumeFrames P ks' sp_end) :=
   match (ResumeFrames.one h).resumeAt (List.mem_singleton.mpr rfl) with
   | ⟨ks', h_w, cont⟩ =>
-      ⟨ks', List.eq_nil_iff_forall_not_mem.mpr (fun fr hfr =>
-          match (h_w fr).mp hfr with
-          | ⟨hmem, hlt⟩ => by
-              rw [List.mem_singleton.mp hmem] at hlt
-              exact Nat.lt_irrefl k hlt),
-        cont⟩
+      ⟨ks', resumeWidths_nil_of_singleton h_w, cont⟩
 
 /-- One compact entry after the value (`? a⏎:⏎b: 1`'s `b: 1`), then the bottom:
     the sibling's tail is exactly what the route was asked to pay. -/
