@@ -2300,11 +2300,11 @@ section ResumeConclusions
 open L4YAML.Surface L4YAML.Proofs.IndentStackCover L4YAML.Proofs.StreamAccum
 
 -- 2026-11-10 (item 473): the positional `ResumeWidths` exactness the rows below spend lives here, not in
--- the library — `Floor.pop_to` / `Covered.pop_to` read only `.sub` / `.keep` (Rule 1: no library lemma
+-- the library, as private test-side lemmas outside the library's namespace (nothing downstream can spend them) — `Floor.pop_to` / `Covered.pop_to` read only `.sub` / `.keep` (Rule 1: no library lemma
 -- without a capstone path).
 /-- The positional reading's exactness (item 473; test-side readers, no capstone spends them): one level resumed at its own
     width leaves nothing. -/
-lemma _root_.L4YAML.Proofs.StreamAccum.ResumeWidths.nil_of_singleton {e : FrameLevel} {ks' : List FrameLevel} {j : Nat}
+private lemma resumeWidths_nil_of_singleton {e : FrameLevel} {ks' : List FrameLevel} {j : Nat}
     (h : ResumeWidths [e] ks' j) : ks' = [] := by
   obtain ⟨_, pre, e', heq, _, _⟩ := h
   cases pre with
@@ -2314,7 +2314,7 @@ lemma _root_.L4YAML.Proofs.StreamAccum.ResumeWidths.nil_of_singleton {e : FrameL
         (List.append_ne_nil_of_right_ne_nil _ (List.cons_ne_nil _ _))
 
 /-- …a landing at the TOP level, over strictly narrower frames, keeps exactly them… -/
-lemma _root_.L4YAML.Proofs.StreamAccum.ResumeWidths.eq_tail_of_head {e : FrameLevel} {ks ks' : List FrameLevel} {j : Nat}
+private lemma resumeWidths_eq_tail_of_head {e : FrameLevel} {ks ks' : List FrameLevel} {j : Nat}
     (h : ResumeWidths (e :: ks) ks' j) (hks : ∀ fr ∈ ks, fr.width < j) : ks' = ks := by
   obtain ⟨_, pre, e', heq, he', _⟩ := h
   cases pre with
@@ -2325,7 +2325,7 @@ lemma _root_.L4YAML.Proofs.StreamAccum.ResumeWidths.eq_tail_of_head {e : FrameLe
       exact absurd (hks e' hmem) (by rw [he']; exact Nat.lt_irrefl _)
 
 /-- …and a landing at the SECOND of two levels, under a strictly wider one, keeps nothing. -/
-lemma _root_.L4YAML.Proofs.StreamAccum.ResumeWidths.eq_nil_of_pair {p e : FrameLevel} {ks' : List FrameLevel} {j : Nat}
+private lemma resumeWidths_eq_nil_of_pair {p e : FrameLevel} {ks' : List FrameLevel} {j : Nat}
     (h : ResumeWidths [p, e] ks' j) (hp : j < p.width) : ks' = [] := by
   obtain ⟨_, pre, e', heq, he', _⟩ := h
   rcases pre with _ | ⟨q, _ | ⟨r, pre'⟩⟩
@@ -2365,7 +2365,7 @@ example : ¬ (FrameLevel.seq 0 ∈ ([] : List FrameLevel)) := by decide
 example (sp : SurfPos) : True := by
   obtain ⟨ks', hw, cont⟩ := (kfMap2 sp).resumeAtMap (j := 2) (by decide)
   have h_none : ∀ fr, fr ∉ ks' := fun fr h => by
-    rw [hw.nil_of_singleton] at h; exact absurd h (List.not_mem_nil)
+    rw [(resumeWidths_nil_of_singleton hw)] at h; exact absurd h (List.not_mem_nil)
   exact (cont sp (SCompactMapTail.nil 2 sp)).close
 
 -- One mapping level is NOT resumable as a sequence (the opposite kind is refused by the gate).
@@ -2375,7 +2375,7 @@ example : ¬ (FrameLevel.seq 2 ∈ [FrameLevel.map 2]) := by decide
 example (sp : SurfPos) : True := by
   obtain ⟨ks', hw, cont⟩ := (kfSeq2 sp).resumeAtSeq (j := 2) (by decide)
   have h_none : ∀ fr, fr ∉ ks' := fun fr h => by
-    rw [hw.nil_of_singleton] at h; exact absurd h (List.not_mem_nil)
+    rw [(resumeWidths_nil_of_singleton hw)] at h; exact absurd h (List.not_mem_nil)
   exact (cont sp (SCompactSeqTail.nil 2 sp)).close
 example : ¬ (FrameLevel.map 2 ∈ [FrameLevel.seq 2]) := by decide
 
@@ -2385,12 +2385,12 @@ example (sp : SurfPos) : True := by
   obtain ⟨ks', hw, cont⟩ := (kfSeq2Map0 sp).resumeAtSeq (j := 2) (by decide)
   have h_keep : FrameLevel.map 0 ∈ ks' := hw.keep _ (by decide) (by decide)
   have hks : ks' = [FrameLevel.map 0] :=
-    hw.eq_tail_of_head (fun fr h => by simp only [List.mem_singleton] at h; subst h; decide)
+    (resumeWidths_eq_tail_of_head hw) (fun fr h => by simp only [List.mem_singleton] at h; subst h; decide)
   have h_drop : FrameLevel.seq 2 ∉ ks' := by rw [hks]; decide
   have next := cont sp (SCompactSeqTail.nil 2 sp)
   obtain ⟨ks'', hw', cont'⟩ := next.resumeAtMap (j := 0) h_keep
   have h_none : ∀ fr, fr ∉ ks'' := fun fr h => by
-    rw [hks] at hw'; rw [hw'.nil_of_singleton] at h; exact absurd h (List.not_mem_nil)
+    rw [hks] at hw'; rw [(resumeWidths_nil_of_singleton hw')] at h; exact absurd h (List.not_mem_nil)
   exact (cont' sp (SCompactMapTail.nil 0 sp)).close
 
 -- Mixed, resumed at the inner mapping level directly: nothing survives (the
@@ -2398,7 +2398,7 @@ example (sp : SurfPos) : True := by
 example (sp : SurfPos) : True := by
   obtain ⟨ks', hw, cont⟩ := (kfSeq2Map0 sp).resumeAtMap (j := 0) (by decide)
   have h_none : ∀ fr, fr ∉ ks' := fun fr h => by
-    rw [hw.eq_nil_of_pair (by decide)] at h; exact absurd h (List.not_mem_nil)
+    rw [(resumeWidths_eq_nil_of_pair hw) (by decide)] at h; exact absurd h (List.not_mem_nil)
   exact (cont sp (SCompactMapTail.nil 0 sp)).close
 
 -- Two mapping levels: resuming at the outer keeps the inner; at the inner keeps nothing.
@@ -2406,13 +2406,13 @@ example (sp : SurfPos) : True := by
   obtain ⟨ks', hw, cont⟩ := (kfMap4Map1 sp).resumeAtMap (j := 4) (by decide)
   have h_keep : FrameLevel.map 1 ∈ ks' := hw.keep _ (by decide) (by decide)
   have h_drop : FrameLevel.map 4 ∉ ks' := by
-    rw [hw.eq_tail_of_head (fun fr h => by simp only [List.mem_singleton] at h; subst h; decide)]
+    rw [(resumeWidths_eq_tail_of_head hw) (fun fr h => by simp only [List.mem_singleton] at h; subst h; decide)]
     decide
   exact (cont sp (SCompactMapTail.nil 4 sp)).close
 example (sp : SurfPos) : True := by
   obtain ⟨ks', hw, cont⟩ := (kfMap4Map1 sp).resumeAtMap (j := 1) (by decide)
   have h_none : ∀ fr, fr ∉ ks' := fun fr h => by
-    rw [hw.eq_nil_of_pair (by decide)] at h; exact absurd h (List.not_mem_nil)
+    rw [(resumeWidths_eq_nil_of_pair hw) (by decide)] at h; exact absurd h (List.not_mem_nil)
   exact (cont sp (SCompactMapTail.nil 1 sp)).close
 
 end ResumeConclusions
