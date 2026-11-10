@@ -1499,7 +1499,11 @@ lemma gapRead_onT {n d : Nat} {ks : Array Bool} {sc : L4YAML.Scanner.ScannerStat
     `accum_flow_open_depth0`'s existential `sp_flow'`, so it is stated at the T side's `sp_open`), or
     the one arm §7 has no twin for yet — a nested open AFTER a held run (`[&a [b]]`: the run wraps
     the child, `inject`'s `propsContent`, not an empty node), returned with the run's T twin
-    (`TCNsProperties`, via `PropsRun.toT`) for that §7 extension.  `FlowArm` is a `Prop`, so that arm cannot be excluded by a premise on `arm` (§7: which
+    (`TCNsProperties`, via `PropsRun.toT`), the bracket's `GLit`, and the pushed T stack through
+    `openNestSeqProps`/`openNestMapProps` UNDER the run's strict separation from the bracket — the
+    fact `accum_step_flow`'s proof holds (`h_sep0`) and `FlowArm.openNest.h_lead` does not state
+    (its ε disjunct reads `(gapTail sc).leadFree`, true after a run); carrying it is the
+    `StreamAccum` price item 474 records, after which this disjunct folds into the first.  `FlowArm` is a `Prop`, so that arm cannot be excluded by a premise on `arm` (§7: which
     constructor fired is unobservable) — it is a disjunct of the conclusion instead.  The arm's
     obligations are read at every floor; `hn` is the stack's floor (`FlowStackK`'s `n ≤ minContentIndentOf`). -/
 lemma accum_step_flow_trace {n : Nat} {sc s' : L4YAML.Scanner.ScannerState} {c : Char}
@@ -1515,7 +1519,11 @@ lemma accum_step_flow_trace {n : Nat} {sc s' : L4YAML.Scanner.ScannerState} {c :
       (sc.flowLevel = 0 ∧ ev = [] ∧ ev_g = [] ∧
         ∃ sp_open, TFlowStackB n s'.flowLevel s'.flowStack (tailOf s'.tokens) sp_block' sp_open []) ∨
       (1 ≤ sc.flowLevel ∧ (c = '[' ∨ c = '{') ∧ ev_g = [] ∧
-        ∃ sp_p ev_p, TCNsProperties n .flowIn sp_p sp_scan ev_p) := by
+        ∃ sp_p ev_p, TCNsProperties n .flowIn sp_p sp_scan ev_p ∧
+          ∃ sp_br, GLit c sp_br sp_flow' ∧
+            (SSeparate n .flowIn sp_scan sp_br →
+              TFlowStackB n s'.flowLevel s'.flowStack (tailOf s'.tokens) sp_block' sp_flow'
+                (ev ++ ev_p))) := by
   generalize hks : sc.flowStack = ks at hT
   cases arm with
   | openBase b sp_br sp_open sp_block'' sp_flow'' h_depth h_c h_open h_fl h_ks h_tl =>
@@ -1535,12 +1543,22 @@ lemma accum_step_flow_trace {n : Nat} {sc s' : L4YAML.Scanner.ScannerState} {c :
     rw [hd] at hT
     cases hT with
     | «open» _ _ _ _ _ _ hTO =>
-    have h_lead' := (h_lead n).resolve_right (fun h => h hn)
     cases gap with
-    | props ha ht sp_p _ _ h_run _ _ =>
+    | props ha ht sp_p h_tail₀ h_lead₀ h_run _ _ =>
       obtain ⟨ev_p, hp⟩ := PropsRun.toT ((h_run n).resolve_right (fun h => h hn))
-      exact ⟨[], Or.inr (Or.inr (Or.inr ⟨h_depth, by subst h_c; cases b <;> simp, rfl, sp_p, ev_p, hp⟩))⟩
+      have h_lead₀' := (h_lead₀ n).resolve_right (fun h => h hn)
+      refine ⟨[], Or.inr (Or.inr (Or.inr ⟨h_depth, by subst h_c; cases b <;> simp, rfl, sp_p, ev_p, hp,
+        sp_br, h_open, fun h_psep => ?_⟩))⟩
+      rw [h_fl, h_ks, h_tl, hd, hks]
+      cases b
+      · have h_open' : GLit '{' sp_br sp_flow' := by subst h_c; simpa using h_open
+        exact .open _ _ _ _ _ _ (TFlowOpenStack.retrace (by simp)
+          (hTO.openNestMapProps h_tail₀ h_lead₀' hp h_psep h_open'))
+      · have h_open' : GLit '[' sp_br sp_flow' := by subst h_c; simpa using h_open
+        exact .open _ _ _ _ _ _ (TFlowOpenStack.retrace (by simp)
+          (hTO.openNestSeqProps h_tail₀ h_lead₀' hp h_psep h_open'))
     | white _ h_nil =>
+      have h_lead' := (h_lead n).resolve_right (fun h => h hn)
       rw [gapTail_of_nil h_nil] at h_lead'
       refine ⟨[], Or.inl ?_⟩
       rw [h_fl, h_ks, h_tl, hd, hks]
