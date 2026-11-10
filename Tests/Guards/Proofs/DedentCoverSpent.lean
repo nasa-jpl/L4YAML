@@ -57,14 +57,15 @@ the question the surface never had to ask and the scanner cannot do without. -/
 
 /-- The widths, named. -/
 example (ks ks' : List FrameLevel) (j : Nat) :
-    ResumeWidths ks ks' j ↔ ∀ fr, fr ∈ ks' ↔ (fr ∈ ks ∧ fr.width < j) := Iff.rfl
+    ResumeWidths ks ks' j ↔
+      ((∀ fr ∈ ks', fr.width ≤ j) ∧
+        ∃ (pre : List FrameLevel) (e : FrameLevel), ks = pre ++ e :: ks' ∧ e.width = j ∧
+          ∀ fr ∈ pre, j ≤ fr.width) := Iff.rfl
 
 /-- A landing at 2 on a three-level stack keeps exactly the level at 0. -/
-example : ResumeWidths [FrameLevel.map 4, FrameLevel.map 2, FrameLevel.map 0] [FrameLevel.map 0] 2 := by
-  intro k'
-  constructor
-  · intro h; simp at h; subst h; exact ⟨by simp, by decide⟩
-  · rintro ⟨h, hlt⟩; simp at h; rcases h with rfl | rfl | rfl <;> simp_all
+example : ResumeWidths [FrameLevel.map 4, FrameLevel.map 2, FrameLevel.map 0] [FrameLevel.map 0] 2 :=
+  ⟨fun fr h => by simp at h; subst h; decide,
+   [FrameLevel.map 4], FrameLevel.map 2, rfl, rfl, fun fr h => by simp at h; subst h; decide⟩
 
 /-- **The bound alone cannot say that**: `∀ fr ∈ ks', fr.width < j` is satisfied by
     the EMPTY list, so a caller holding it knows nothing about which frames
@@ -80,10 +81,8 @@ example : ([] : List FrameLevel).Sublist [FrameLevel.map 4, FrameLevel.map 2, Fr
 
 /-- The named form refuses both: level 0 is below the landing, so it is
     still a frame and the empty list is not what the landing leaves. -/
-example : ¬ ResumeWidths [FrameLevel.map 4, FrameLevel.map 2, FrameLevel.map 0] [] 2 := by
-  intro h
-  have := (h (FrameLevel.map 0)).mpr ⟨by simp, by decide⟩
-  simp at this
+example : ¬ ResumeWidths [FrameLevel.map 4, FrameLevel.map 2, FrameLevel.map 0] [] 2 := fun h =>
+  absurd (h.keep (FrameLevel.map 0) (by simp) (by decide)) (List.not_mem_nil)
 
 /-- The two projections the payment spends: what survived was a frame
     already… -/
@@ -213,10 +212,13 @@ example {sc s_prep s' : ScannerState} {c : Char} {sp_scan : SurfPos}
 
 /-- And the field it lands in: the pack the dedent branch returns carries the
     cover over the widths the landing resumed on. -/
+-- 2026-11-10 (item 473, option (A)): the level constructors' bound and the park faces read `≤` (the root frame
+-- stands under a column-0 opener's own level), `ResumeWidths` names the survivors positionally and `ResumeWidths.lt`
+-- is `ResumeWidths.le`; the rows below restate the faces they mirror — a shape move, no obligation changed.
 example {sc : ScannerState} {sp_start sp_scan : SurfPos}
     (h : ImplicitKeyPack sc sp_start sp_scan) :
     ∃ (k : Nat) (sp_key : SurfPos),
-      ((∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width < k) ∧
+      ((∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width ≤ k) ∧
         ((∃ lo : Nat, Floor lo k (FrameLevel.map k :: ks) ∧ Covered lo (FrameLevel.map k :: ks) sc) ∨ True) ∧
         ∀ sp_v : SurfPos, SBlockMapEntry k sp_key sp_v →
         ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →

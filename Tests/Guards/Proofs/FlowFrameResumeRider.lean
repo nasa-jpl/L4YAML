@@ -99,15 +99,18 @@ private def refuses (input : String) : Bool :=
 -- §2 The rider at its types: the frame's key carries the twins and the close
 -- hands them through into the pack — the two slots items 99/108 had left as
 -- `Or.inr trivial` in `flowKeyPack_of_close` are the frame's own now.
+-- 2026-11-10 (item 473, option (A)): the level constructors' bound and the park faces read `≤` (the root frame
+-- stands under a column-0 opener's own level), `ResumeWidths` names the survivors positionally and `ResumeWidths.lt`
+-- is `ResumeWidths.le`; the rows below restate the faces they mirror — a shape move, no obligation changed.
 example {sc : ScannerState} {kc : Nat} {sp_start sp_br sp_tok sp_key : SurfPos}
     (route : ∀ sp_v, SBlockMapEntry kc sp_key sp_v → SLYamlStream sp_start sp_v)
     (head : ∀ sp_end, SFlowContent 0 .flowOut sp_br sp_end →
       ImplicitKeyHead sp_key sp_end ∨ True)
-    (tw99 : ∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width < kc) ∧
+    (tw99 : ∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width ≤ kc) ∧
       ∀ sp_v : SurfPos, SBlockMapEntry kc sp_key sp_v →
       ∀ sp_e : SurfPos, SCompactMapTail kc sp_v sp_e →
       ResumeFrames (SLYamlStream sp_start) ks sp_e)
-    (tw108 : ∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width < kc) ∧
+    (tw108 : ∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ kc) ∧
       ∀ sp_v : SurfPos, SBlockMapEntry kc sp_key sp_v →
       ∀ sp_e : SurfPos, SCompactMapTail kc sp_v sp_e →
       KeyFrames (ExplValueLine sp_start nv) ks sp_e)
@@ -132,11 +135,11 @@ example {s0 : ScannerState} {sp_start sp_br sp_key : SurfPos} {kc : Nat}
     (route : ∀ sp_v, SBlockMapEntry kc sp_key sp_v → SLYamlStream sp_start sp_v)
     (head : ∀ sp_end, SFlowContent 0 .flowOut sp_br sp_end →
       ImplicitKeyHead sp_key sp_end ∨ True)
-    (tw99 : ∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width < kc) ∧
+    (tw99 : ∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width ≤ kc) ∧
       ∀ sp_v : SurfPos, SBlockMapEntry kc sp_key sp_v →
       ∀ sp_e : SurfPos, SCompactMapTail kc sp_v sp_e →
       ResumeFrames (SLYamlStream sp_start) ks sp_e)
-    (tw108 : ∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width < kc) ∧
+    (tw108 : ∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ kc) ∧
       ∀ sp_v : SurfPos, SBlockMapEntry kc sp_key sp_v →
       ∀ sp_e : SurfPos, SCompactMapTail kc sp_v sp_e →
       KeyFrames (ExplValueLine sp_start nv) ks sp_e) :

@@ -168,6 +168,9 @@ the pop below is stated over any `P`, so instantiating it at
 `ExplValueLine sp_start nv` its value-line twin — the two `match`es in the
 lemma's dedent branch are this example twice. -/
 
+-- 2026-11-10 (item 473, option (A)): the level constructors' bound and the park faces read `≤` (the root frame
+-- stands under a column-0 opener's own level), `ResumeWidths` names the survivors positionally and `ResumeWidths.lt`
+-- is `ResumeWidths.le`; the rows below restate the faces they mirror — a shape move, no obligation changed.
 example {P : SurfPos → Prop} {sp_scan sp_mid sp_prep : SurfPos}
     {w : Nat} {ks : List FrameLevel}
     (hmem : FrameLevel.map w ∈ ks)
@@ -176,7 +179,7 @@ example {P : SurfPos → Prop} {sp_scan sp_mid sp_prep : SurfPos}
     (dframes : ∀ sp_m : SurfPos, SSLComments sp_scan sp_m →
       ResumeFrames P ks sp_m) :
     (∀ sp_v, SBlockMapEntry w sp_prep sp_v → P sp_v) ∧
-    ∃ ks' : List FrameLevel, (∀ fr ∈ ks', fr.width < w) ∧
+    ∃ ks' : List FrameLevel, (∀ fr ∈ ks', fr.width ≤ w) ∧
       ∀ sp_v : SurfPos, SBlockMapEntry w sp_prep sp_v →
       ∀ sp_e : SurfPos, SCompactMapTail w sp_v sp_e →
       ResumeFrames P ks' sp_e := by
@@ -184,7 +187,7 @@ example {P : SurfPos → Prop} {sp_scan sp_mid sp_prep : SurfPos}
   exact ⟨fun sp_v h_entry =>
     (cont' sp_v (SCompactMapTail.cons w sp_mid sp_prep sp_v sp_v
       h_ind h_entry (SCompactMapTail.nil w sp_v))).close,
-    ks', h_w'.lt, fun sp_v h_entry sp_e h_tail =>
+    ks', h_w'.le, fun sp_v h_entry sp_e h_tail =>
       cont' sp_e (SCompactMapTail.cons w sp_mid sp_prep sp_v sp_e
         h_ind h_entry h_tail)⟩
 

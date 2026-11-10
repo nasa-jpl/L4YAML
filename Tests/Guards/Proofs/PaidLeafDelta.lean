@@ -226,7 +226,8 @@ def expectedTrees255 : List String :=
    "R4 content: positions=19 rows=55 paid=6 punt=12 cover-punt=6 open=2 origins=6 Δ(paid=+0 punt=-1 cover-punt=+2 open=+0 positions=+2)",
    "R4 entry: positions=19 rows=55 paid=6 punt=12 cover-punt=6 open=2 origins=6 Δ(paid=+0 punt=-1 cover-punt=+2 open=+0 positions=+2)"]
 def expectedPayments : List String :=
-  ["R4 relay accum_content_on_pendingMapValue_indented #1 ctor:pendingProps.h_closeFE idx=n + 1 src=h_frames99@2:Floor(n,ks) tgt=bound(ks<ne) Floor(ne,ks) eq(n=ne + 1) := match[paid{cover=step(relay(param:accum_content_on_pendingMapValue_indented.h_frames99))}|punt]"]
+-- 2026-11-10 (item 473, option (A)): the payment's target face `pendingProps.h_closeFE` reads `bound(ks≤ne)`.
+  ["R4 relay accum_content_on_pendingMapValue_indented #1 ctor:pendingProps.h_closeFE idx=n + 1 src=h_frames99@2:Floor(n,ks) tgt=bound(ks≤ne) Floor(ne,ks) eq(n=ne + 1) := match[paid{cover=step(relay(param:accum_content_on_pendingMapValue_indented.h_frames99))}|punt]"]
 -- 2026-10-25 (item 358): 30 → 33 — the cover conjunct on the `h_closeFV_old` twins and the two `h_closeFV_old`
 -- relays into `closeThenBlock.h_mapFV` read as `Floor lo n ks` literals.
 -- 2026-10-29 (item 394, option B): pendingMapValue.h_closeF's cover restated `∃ lo, Floor lo n ks` — the

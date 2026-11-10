@@ -966,7 +966,8 @@ def expectedTally : String :=
   -- 2026-10-26 (item 369): edges 664 → 665, DECLINE 256 → 255, FIELD 55 → 56, SPLIT 160 → 161 —
   -- `pendingBlock.h_closeF` threaded into `accum_block_on_pendingBlock` (one FIELD edge) and the
   -- `:`/`?` landing's `h_res_land` there read off those frames instead of `Or.inr trivial`.
-  "edges=650 skipped=42 [DECLINE=242, FIELD=58, LOCAL=27, PAY=54, RELAY=63, SPLIT=175, VIA=31]"
+  "edges=650 skipped=43 [DECLINE=242, FIELD=58, LOCAL=27, PAY=54, RELAY=63, \
+SPLIT=175, VIA=31]"
 
 /-- **The row item 211 read off the compiler's error text and got wrong.**  All
     eight of these print `h_keyctx` when the premise is narrowed; six of them

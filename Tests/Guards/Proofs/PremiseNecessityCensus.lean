@@ -391,8 +391,10 @@ def expectedModuleTallyP : String :=
   -- (`RelaySupplyCensus.isTwoArm`): the thirteen premises handed to a `Classical.em … |>.elim` are read at the site.
   -- 2026-10-28 (item 386): constants/decls +2 (`IndentFloor.int_le_of_succ`, the level relays), READ +5, RELAY +2
   -- (the helpers' new premises `h_floor`/`h_nk`, the openers' `h_lvl_old`/`h_floor_mv`); UNUSED unchanged.
+-- 2026-11-10 (item 473, option (A)): constants 1766 → 1767 / decls +1 (`ResumeFrames.bound`), FIELD 203 → 201, READ / RELAY /
+-- eta as counted — the positional `ResumeWidths` is read by projections, not `↔` fields.
   -- 2026-10-29 (item 394): `FlowBaseRoutes.valueF` (+3 constants: the field, its projection, the structure's new arity), five more premise reads at the births and closes.
-  "constants=1766 decls=1397 eta=508 FIELD=203 READ=1488 RELAY=2760 RETURN=175 UNUSED=27"
+  "constants=1767 decls=1398 eta=509 FIELD=201 READ=1490 RELAY=2761 RETURN=175 UNUSED=27"
 
 -- Item 287: `accum_block_on_closeThenBlock`'s `h_vslot`, a READ one, left the
 -- `_ ∨ True` population — its sibling's move, under this peel.  Item 288: and

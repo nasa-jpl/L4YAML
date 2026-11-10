@@ -296,7 +296,9 @@ def isSurfFace (env : Environment) (lhs : Expr) : MetaM Bool := do
 -- two parameters leave the optional population); see `expectedWorthLedger`.
 -- 2026-11-07 (item 448, (α) stage A): faces 63 → 62 — `closeThenBlock`'s `h_valF` width bound reads `≤ nv` (the park's own
 -- level admitted), one strict-width narrowing face fewer; `theorems` 6498 → 6499 is `ResumeFrames.strict`.
-def expectedFaceTally : String := "binders=161 faces=62 heads=19"
+-- 2026-11-10 (item 473, option (A)): heads 19 → 18 — the level constructors' `h_lt` and the park faces all read `≤`,
+-- one strict head shape fewer; binders/faces unchanged.
+def expectedFaceTally : String := "binders=161 faces=62 heads=18"
 
 /-- The conclusion head of every left disjunct.  `FVAR 2` is `frameChainUnion`,
     whose face is schematic in `P` — the two rows no census of any kind can
@@ -339,8 +341,9 @@ def expectedHeadCensus : List String :=
    "SLYamlStream 5",
    "SeqEntryTail 7",
    "SuffixRun 6",
-   "le 15",
-   "lt 26"]
+   -- 2026-11-10 (item 473, option (A)): `lt 26` + `le 15` → `le 41`: no strict width head remains — the level
+   -- constructors, the park faces and the in-proof ascriptions all read `≤`.
+   "le 41"]
 
 /-! ## §3  The rung-1 census: which faces are vacuous on their own
 

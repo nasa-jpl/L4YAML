@@ -97,14 +97,17 @@ coordinates; the twins are the same lesson at the ENTRIES level.  Projection,
 so any consumer can read them — nothing about the state decides whether the
 fields are THERE, only whether a producer could pay them. -/
 
+-- 2026-11-10 (item 473, option (A)): the level constructors' bound and the park faces read `≤` (the root frame
+-- stands under a column-0 opener's own level), `ResumeWidths` names the survivors positionally and `ResumeWidths.lt`
+-- is `ResumeWidths.le`; the rows below restate the faces they mirror — a shape move, no obligation changed.
 example {sc : ScannerState} {sp_start sp_p sp_scan : SurfPos}
     (h : PropsKeyPack sc sp_start sp_p sp_scan) :
     ∃ k : Nat,
-      ((∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width < k) ∧
+      ((∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width ≤ k) ∧
         ∀ sp_v : SurfPos, SBlockMapEntry k sp_p sp_v →
         ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →
         ResumeFrames (SLYamlStream sp_start) ks sp_e) ∨ True) ∧
-      ((∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width < k) ∧
+      ((∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
         ∀ sp_v : SurfPos, SBlockMapEntry k sp_p sp_v →
         ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →
         KeyFrames (ExplValueLine sp_start nv) ks sp_e) ∨ PackAlt sc) := by
@@ -158,7 +161,7 @@ conses onto the resumed level and this entry's own level goes on top.  The
 content at all. -/
 
 example {sp_start sp_p sp_prep sp_scan' : SurfPos} {k : Nat} {ks : List FrameLevel}
-    (h_lt : ∀ fr ∈ ks, fr.width < k)
+    (h_lt : ∀ fr ∈ ks, fr.width ≤ k)
     (routeF : ∀ sp_v : SurfPos, SBlockMapEntry k sp_p sp_v →
       ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →
       ResumeFrames (SLYamlStream sp_start) ks sp_e)

@@ -151,8 +151,11 @@ example {sp_start sp_scan : SurfPos} {n : Nat}
 -- `accum_content_on_pendingMapValue_indented`'s dispatch sites: the awaited
 -- node is this entry's value, behind it the entry's `[187]` level at `n` stays
 -- tail-open, and below that stands whatever the park already carries.
+-- 2026-11-10 (item 473, option (A)): the level constructors' bound and the park faces read `≤` (the root frame
+-- stands under a column-0 opener's own level), `ResumeWidths` names the survivors positionally and `ResumeWidths.lt`
+-- is `ResumeWidths.le`; the rows below restate the faces they mirror — a shape move, no obligation changed.
 example {sp_start sp_scan : SurfPos} {n ke : Nat} {ks : List FrameLevel}
-    (h_lt : ∀ fr ∈ ks, fr.width < n)
+    (h_lt : ∀ fr ∈ ks, fr.width ≤ n)
     (seqF : ∀ sp_mid, SBlockNode n .blockIn sp_scan sp_mid →
       ∀ sp_e, SCompactMapTail n sp_mid sp_e →
       ResumeFrames (SeqEntryTail sp_start ke) ks sp_e) :

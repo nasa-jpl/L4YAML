@@ -279,7 +279,7 @@ def expectedBinders : List String :=
 -- arm-payment reader skips (RelaySupply's tally skipped 41 → 42 the same way).
 -- 2026-11-02 (item 422): edges 106 → 108, RELAY 29 → 31 — the openers' `h_ref` relay the `h_outer` ARMED arm whole (`fun h => Or.inr h`).
 def expectedTally : String :=
-  "edges=108 skipped=42 DECLINE=21 FIELD=7 PAY=17 RELAY=31 VIA=32"
+  "edges=108 skipped=43 DECLINE=21 FIELD=7 PAY=17 RELAY=31 VIA=32"
 
 run_cmd do
   let env ← getEnv
