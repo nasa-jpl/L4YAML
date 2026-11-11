@@ -18,7 +18,8 @@ public import L4YAML.CapstoneAttr
 
 Every user-named library declaration (`L4YAML.*` modules) that no root reaches, where a root
 is a `@[capstone]`-tagged declaration (`L4YAML.capstoneDecls`, the set `L4YAML/Capstones.lean`
-pins), an `@[export]` FFI entry, or a declaration of the Rule 2 / instrument modules
+pins), a declaration a row of `Blueprint/04-capstones.md`'s table names (`scripts/blueprint-capstones.txt`,
+item 480 — the Blueprint's own definition of dead), an `@[export]` FFI entry, or a declaration of the Rule 2 / instrument modules
 (`Tests.Guards`, `Tests.AdversarialInstantiation`, `Tests.Reflections`), and reach is the
 transitive closure through types and values (`Scripts.Path.CapstonePath.reach`).
 
@@ -28,8 +29,8 @@ The unreached declarations split into four classes — the roster is class (B) a
 |---|---|---|
 | (A) campaign in progress | module under `campaignNamespaces` — a Blueprint capstone row with no declaration yet (7.7's S3 / S5 chain) | count + modules |
 | (C) API by convention | module not under `L4YAML.Proofs` — the user-facing library no capstone states anything about; not decidable mechanically, so bucketed, never called dead | count + modules |
-| (D) Rule 2 / instrument-only | reached from the test modules but from no capstone or export | count |
-| (B) scaffolding behind no capstone | the rest — the roster, pinned as a SET of fully-qualified names (`Tests/Guards/Proofs/DeadDeclarationRoster.lean`), shrink-only | names |
+| (D) Rule 2 / instrument-only | reached from the test modules but from no capstone, Blueprint row or export | count |
+| (B) scaffolding behind no capstone or Blueprint row | the rest — the roster, pinned as a SET of fully-qualified names (`Tests/Guards/Proofs/DeadDeclarationRoster.lean`), shrink-only | names |
 
 "Unreached" is not "unreferenced": a dead lemma applied only by other dead lemmas is in the
 roster.  The `referrers` column counts, per (B) declaration, the dead declarations that mention
@@ -123,15 +124,30 @@ structure Report where
   campaignModules : Array (Name × Nat)
   apiModules : Array (Name × Nat)
 
-/-- A `Blueprint/04` table row's name (`scripts/blueprint-capstones.txt`, `<row> <name>` per line) resolved
-    against the environment by its LAST component under `L4YAML.`; a leading or trailing `*` is a
-    wildcard on that component.  Every match is a root (row 3.4's three twins all are). -/
-def resolveBlueprintRow (env : Environment) (nm : String) : List Name := Id.run do
-  let short := ((nm.splitOn ".").getLast?).getD nm
+/-- One `Blueprint/04` table row (`scripts/blueprint-capstones.txt`, `<row> | <modules> | <names>`):
+    the Module column's names and every declaration the Theorem column names. -/
+structure BlueprintRow where
+  row : String
+  modules : List String
+  names : List String
+  deriving Inhabited
+
+/-- A row's name resolved against the environment: theorem/def/opaque constants under `L4YAML.`,
+    not `isAux`, whose LAST component is the name (a leading or trailing `*` is a wildcard on it),
+    restricted to the row's modules by module-name suffix (`StructureProduction` names
+    `L4YAML.Proofs.Production.StructureProduction`); a dotted name (`ParserNodeProofs.foo'`) is
+    matched as a suffix of the fully-qualified name instead, wherever it lives.  Every match is a
+    root (row 3.4's twins all are). -/
+def resolveBlueprintRow (env : Environment) (mods : List String) (nm : String) : List Name := Id.run do
+  let dotted := (nm.splitOn ".").length > 1
   let hits (s : String) : Bool :=
-    if short.startsWith "*" then s.endsWith (short.drop 1)
-    else if short.endsWith "*" then s.startsWith (short.take (short.length - 1))
-    else s == short
+    if nm.startsWith "*" then s.endsWith (nm.drop 1)
+    else if nm.endsWith "*" then s.startsWith (nm.take (nm.length - 1))
+    else s == nm
+  let inModule (n : Name) : Bool :=
+    mods.isEmpty || (match modOf env n with
+      | some m => mods.any (fun md => m.toString == md || m.toString.endsWith ("." ++ md))
+      | none => false)
   let mut out : List Name := []
   for (n, ci) in env.constants.toList do
     unless (`L4YAML).isPrefixOf n do continue
@@ -139,14 +155,29 @@ def resolveBlueprintRow (env : Environment) (nm : String) : List Name := Id.run 
     match ci with
     | .thmInfo _ | .defnInfo _ | .opaqueInfo _ => pure ()
     | _ => continue
-    match (privateToUserName n).components.getLast? with
-    | some (.str _ s) => if hits s then out := n :: out
-    | _ => pure ()
+    let u := privateToUserName n
+    if dotted then
+      if u.toString.endsWith ("." ++ nm) then out := n :: out
+    else
+      match u.components.getLast? with
+      | some (.str _ s) => if hits s && inModule n then out := n :: out
+      | _ => pure ()
   return out
+
+/-- Parse `scripts/blueprint-capstones.txt`: comment and blank lines dropped, `<row> | <modules> | <names>`. -/
+def parseBlueprintRows (text : String) : List BlueprintRow :=
+  (text.splitOn "\n").filterMap fun (l : String) =>
+    let l : String := l.trimAscii.toString
+    if l.isEmpty || l.startsWith "#" then none else
+    match l.splitOn "|" with
+    | [r, ms, ns] =>
+      let words (x : String) : List String := (x.splitOn " ").filter (· ≠ "")
+      some { row := r.trimAscii.toString, modules := words ms, names := words ns }
+    | _ => none
 
 /-- The whole census off a loaded environment.  `blueprintRows`: the names column of
     `scripts/blueprint-capstones.txt` (item 480) — the Blueprint's own root set, beside the tag. -/
-def classify (env : Environment) (blueprintRows : List String := []) : Report := Id.run do
+def classify (env : Environment) (blueprintRows : List BlueprintRow := []) : Report := Id.run do
   let mut lib : Array Decl := #[]
   let mut exps : List Name := []
   let mut tests : List Name := []
@@ -159,8 +190,8 @@ def classify (env : Environment) (blueprintRows : List String := []) : Report :=
       else if testRootPrefixes.any (·.isPrefixOf m) then tests := n :: tests
     | none => pure ()
   let caps := (L4YAML.capstoneDecls env).toList
-  let resolved := blueprintRows.map fun r => resolveBlueprintRow env r
-  let bps := resolved.foldl (· ++ ·) []
+  let resolved := blueprintRows.map fun r => (r.names.map fun nm => resolveBlueprintRow env r.modules nm).foldl (· ++ ·) []
+  let bps := (resolved.foldl (· ++ ·) []).eraseDups
   let unresolved := (resolved.filter (·.isEmpty)).length
   let reached := Scripts.Path.CapstonePath.reach env (caps ++ exps ++ bps)
   let testReached := Scripts.Path.CapstonePath.reach env tests
