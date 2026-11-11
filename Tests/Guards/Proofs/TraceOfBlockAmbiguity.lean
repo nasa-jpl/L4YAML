@@ -266,4 +266,90 @@ lemma traceOf_literalB :
 
 end LiteralTail
 
+/-! ## Refutation 3 (OPEN — row 19 `implicitContinue`): `a⏎*x` refutes `TraceWellFormed`
+
+Refutation 1's two readings are both well-formed (`[]`, `[defineAnchor "x"]`), so it refutes
+`traceOf_unique` only.  Replacing the anchor by an alias gives a second reading whose trace
+`[useAlias "x"]` names an anchor nothing defined: `TraceWellFormed "a\n*x"` is FALSE while the
+scanner's own trace (reading A, `[]`) is well-formed.  This is the EXPERIMENT.md §4.2 witness
+(the "inadequate representation" box): the observation `tokenEvents ts = []` does not determine
+the requirement. -/
+section AliasContinue
+
+private lemma nsc_star : isNsChar '*' := by unfold isNsChar; decide
+
+abbrev w0 : SurfPos := ⟨['a', '\n', '*', 'x'], 0⟩
+abbrev w1 : SurfPos := ⟨['\n', '*', 'x'], 1⟩
+abbrev w2 : SurfPos := ⟨['*', 'x'], 0⟩
+abbrev w3 : SurfPos := ⟨['x'], 1⟩
+abbrev w4 : SurfPos := ⟨[], 2⟩
+
+/-- Reading A (the scanner's and the parser's): one bare document, plain scalar `a *x`. -/
+lemma readPlainStar : TLYamlStream w0 w4 [] :=
+  .single w0 w0 w4 w4 [] [] (.nil _)
+    (.some _ _ _ (.bare _ _ _ (.mk _ _ _
+      (.flowInBlock 0 .blockIn w0 w0 w4 w4 []
+        (.inline 0 _ _ (.startOfLine _))
+        (.content 0 .flowOut w0 w4 [] (.plain 0 .flowOut w0 w4
+          (SNsPlainMultiLine.mk 0 .flowOut w0 w1 w4
+            (SNsPlainOneLine.mk .flowOut w0 w1 w1
+              (SNsPlainFirst.nonIndicator .flowOut 'a' _ 0 nsc_a notInd_a) (.nil _))
+            (.cons w1 w4 w4
+              (SSNsPlainNextLine.mk 0 .flowOut w1 w1 w2 w2 w2 w3 w4
+                (.nil _) (SBBreak.lf _ 1) (.nil _)
+                (SFlowLinePrefix.mk 0 w2 w2 w2 (.zero _) (.none _))
+                (SNsPlainChar.safe .flowOut '*' _ 0 nsc_star (by decide) (by decide))
+                (.cons w3 w4 w4
+                  (SNbNsPlainInLineEntry.mk .flowOut w3 w3 w4 (.nil _)
+                    (SNsPlainChar.safe .flowOut 'x' _ 1 nsc_x (by decide) (by decide)))
+                  (.nil _)))
+              (.nil _)))))
+        (eofComments 2)))))
+    (.nil _)
+
+/-- Reading B: bare document `a`, then `implicitContinue` with a second BARE document `*x`
+(the mirror of `readAnchor` with `TBlockNode.alias` in place of the anchor property). -/
+lemma readAlias : TLYamlStream w0 w4 [Event.useAlias "x"] :=
+  .implicitContinue w0 w2 w2 w4 w4 [] [Event.useAlias "x"] []
+    (.single w0 w0 w2 w2 [] [] (.nil _)
+      (.some _ _ _ (.bare _ _ _ (.mk _ _ _
+        (.flowInBlock 0 .blockIn w0 w0 w1 w2 []
+          (.inline 0 _ _ (.startOfLine _))
+          (.content 0 .flowOut w0 w1 [] (.plain 0 .flowOut w0 w1
+            (SNsPlainMultiLine.mk 0 .flowOut w0 w1 w1
+              (SNsPlainOneLine.mk .flowOut w0 w1 w1
+                (SNsPlainFirst.nonIndicator .flowOut 'a' _ 0 nsc_a notInd_a) (.nil _))
+              (.nil _))))
+          (.withComment w1 w2 w2 (.noSep _ _ (.break _ _ (SBBreak.lf _ 1))) (.nil _))))))
+      (.nil _))
+    (.nil _)
+    (.some _ _ _ (.bare _ _ _ (.mk _ _ _
+      (.flowInBlock 0 .blockIn w2 w2 w4 w4 [Event.useAlias "x"]
+        (.inline 0 _ _ (.startOfLine _))
+        (.alias 0 .flowOut w2 w4 _
+          (And.intro
+            (SCNsAliasNode.mk _ 0 w4
+              (GPlus.mk _ _ _ (GChar.mk 'x' _ 1 ns_x) (.nil _))
+              (fun _ hg => by cases hg))
+            (by decide)))
+        (eofComments 2)))))
+    (.nil _)
+
+lemma traceOf_plainStar : TraceOf "a\n*x" [] := ⟨2, readPlainStar⟩
+lemma traceOf_alias : TraceOf "a\n*x" [Event.useAlias "x"] := ⟨2, readAlias⟩
+
+lemma not_wf_alias : ¬ SerializationWellFormed [Event.useAlias "x"] := by
+  rw [serializationWellFormed_iff_check]; decide
+
+/-- `TraceWellFormed "a\n*x"` is FALSE: reading B is a grammar trace and it is ill-formed. -/
+lemma traceWellFormed_refuted : ¬ TraceWellFormed "a\n*x" :=
+  fun h => not_wf_alias (h _ traceOf_alias)
+
+/-- The scanner's trace for the same input (reading A) IS well-formed: `checkFrom` on the
+observation answers `true` where the requirement is false. -/
+lemma scannerTrace_wf : SerializationWellFormed ([] : List Event) := by
+  rw [serializationWellFormed_iff_check]; decide
+
+end AliasContinue
+
 end L4YAML.Tests.Guards.TraceOfBlockAmbiguity
