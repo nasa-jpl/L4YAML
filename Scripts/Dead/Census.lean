@@ -108,6 +108,8 @@ structure Report where
   defs : Nat
   capstoneRoots : Nat
   exportRoots : Nat
+  blueprintRoots : Nat        -- declarations the Blueprint/04 table rows resolve to (item 480)
+  blueprintUnresolved : Nat   -- table rows resolving to no declaration (stale rows, wildcards matching nothing, 7.7)
   testRoots : Nat
   unreached : Nat
   unreachedThms : Nat
@@ -121,8 +123,30 @@ structure Report where
   campaignModules : Array (Name × Nat)
   apiModules : Array (Name × Nat)
 
-/-- The whole census off a loaded environment. -/
-def classify (env : Environment) : Report := Id.run do
+/-- A `Blueprint/04` table row's name (`scripts/blueprint-capstones.txt`, `<row> <name>` per line) resolved
+    against the environment by its LAST component under `L4YAML.`; a leading or trailing `*` is a
+    wildcard on that component.  Every match is a root (row 3.4's three twins all are). -/
+def resolveBlueprintRow (env : Environment) (nm : String) : List Name := Id.run do
+  let short := ((nm.splitOn ".").getLast?).getD nm
+  let hits (s : String) : Bool :=
+    if short.startsWith "*" then s.endsWith (short.drop 1)
+    else if short.endsWith "*" then s.startsWith (short.take (short.length - 1))
+    else s == short
+  let mut out : List Name := []
+  for (n, ci) in env.constants.toList do
+    unless (`L4YAML).isPrefixOf n do continue
+    if isAux env n then continue
+    match ci with
+    | .thmInfo _ | .defnInfo _ | .opaqueInfo _ => pure ()
+    | _ => continue
+    match (privateToUserName n).components.getLast? with
+    | some (.str _ s) => if hits s then out := n :: out
+    | _ => pure ()
+  return out
+
+/-- The whole census off a loaded environment.  `blueprintRows`: the names column of
+    `scripts/blueprint-capstones.txt` (item 480) — the Blueprint's own root set, beside the tag. -/
+def classify (env : Environment) (blueprintRows : List String := []) : Report := Id.run do
   let mut lib : Array Decl := #[]
   let mut exps : List Name := []
   let mut tests : List Name := []
@@ -135,7 +159,10 @@ def classify (env : Environment) : Report := Id.run do
       else if testRootPrefixes.any (·.isPrefixOf m) then tests := n :: tests
     | none => pure ()
   let caps := (L4YAML.capstoneDecls env).toList
-  let reached := Scripts.Path.CapstonePath.reach env (caps ++ exps)
+  let resolved := blueprintRows.map fun r => resolveBlueprintRow env r
+  let bps := resolved.foldl (· ++ ·) []
+  let unresolved := (resolved.filter (·.isEmpty)).length
+  let reached := Scripts.Path.CapstonePath.reach env (caps ++ exps ++ bps)
   let testReached := Scripts.Path.CapstonePath.reach env tests
   let dead := lib.filter fun d => !reached.contains d.name
   let deadSet : Std.HashSet Name := dead.foldl (fun s d => s.insert d.name) {}
@@ -159,6 +186,7 @@ def classify (env : Environment) : Report := Id.run do
   return {
     population := lib.size, thms := count lib .thm, defs := count lib .defn
     capstoneRoots := caps.length, exportRoots := exps.length, testRoots := tests.length
+    blueprintRoots := bps.length, blueprintUnresolved := unresolved
     unreached := dead.size, unreachedThms := count dead .thm
     campaign := (dead.filter fun d => classOf d == .campaign).size
     api := (dead.filter fun d => classOf d == .api).size
@@ -171,7 +199,7 @@ def classify (env : Environment) : Report := Id.run do
 
 /-- The one-line pin (`expectedDeadCensus` in `Tests/Guards/Proofs/DeadDeclarationCensus.lean`). -/
 def Report.summary (r : Report) : String :=
-  s!"population={r.population} thm={r.thms} def={r.defs} roots=capstone:{r.capstoneRoots}+export:{r.exportRoots} unreached={r.unreached} thm={r.unreachedThms} A-campaign={r.campaign} C-api={r.api} D-test-only={r.testOnly} B-roster={r.roster.size} thm={r.rosterThms} cluster-roots={r.rosterClusterRoots}"
+  s!"population={r.population} thm={r.thms} def={r.defs} roots=capstone:{r.capstoneRoots}+export:{r.exportRoots}+blueprint:{r.blueprintRoots}(unresolved={r.blueprintUnresolved}) unreached={r.unreached} thm={r.unreachedThms} A-campaign={r.campaign} C-api={r.api} D-test-only={r.testOnly} B-roster={r.roster.size} thm={r.rosterThms} cluster-roots={r.rosterClusterRoots}"
 
 /-- The roster as the SET pin: fully-qualified names, sorted, one per line. -/
 def Report.rosterText (r : Report) : String :=

@@ -71,7 +71,11 @@ unsafe def run (args : List String) : IO UInt32 := do
   if msgs.hasErrors then
     for m in msgs.toList do IO.eprint (← m.toString)
     return ← die "the environment did not load (build L4YAML, Tests.Guards, Tests.AdversarialInstantiation, Tests.Reflections first)"
-  let rep := classify env
+  let bpText ← IO.FS.readFile (root / "scripts" / "blueprint-capstones.txt")
+  let bpRows : List String := (bpText.splitOn "\n").filterMap fun (l : String) =>
+    let l : String := l.trimAscii.toString
+    if l.isEmpty || l.startsWith "#" then none else (l.splitOn " ").getLast?
+  let rep := classify env bpRows
   IO.print (rep.render)
   if write then
     let guard ← IO.FS.readFile (root / guardFile)

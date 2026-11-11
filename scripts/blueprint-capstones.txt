@@ -1,0 +1,93 @@
+# Blueprint/04-capstones.md, the TABLE: every named row, one per line — `<row> <name>`.
+# Roots of `lake run dead-census` beside the @[capstone] tag (DOCS item 480): the Blueprint's
+# first paragraph defines dead by THIS table, not by the 26-row headline set `scripts/capstones.txt`
+# pins for Rule 7.  Names resolve by their last component under `L4YAML.`; a leading or trailing
+# `*` is a wildcard on that component.  A row resolving to no declaration is counted as
+# `blueprintUnresolved` in the summary pin (stale rows are the owner's to amend; 7.7 is the campaign).
+#
+# Regenerate the list from the table; do not add a row here that the Blueprint does not have.
+
+
+# Group 1
+1.1 parseYaml_pipeline
+1.2 parseYamlRaw_pipeline
+1.3 parseYamlRaw_ok_decompose
+1.4 parseYaml_of_parseYamlRaw_ok
+1.5 parseYaml_ok_iff
+1.6 parseYamlRaw_scan_error
+
+# Group 2
+2.1 scan_full_consumption
+2.2 scan_produces_valid_tokens
+2.3 advance_offset_lt
+2.4 scanLoop_success_emits_streamEnd
+2.5 scanNextToken_preserves_bound
+2.6 advance_preserves_wellFormed
+2.7 saveSimpleKey_*
+2.8 scanNextToken
+2.9 scanDirective
+
+# Group 3
+3.1 parseStream_respects_grammar_unconditional
+3.2 parseStream_sound
+3.3 yamlValue_has_witness
+3.4 parseNode_anchors_grow
+3.5 parseNode_aliases_declared
+3.6 parseDocument_aliases_resolve
+3.7 parseStream_output_aliases_resolve
+3.8 parseStream_output_anchors_wellformed
+3.9 parseStream_output_grammable
+3.10 parseYaml_produces_valid_nodes
+3.11 parseStream_respects_grammar
+3.12 grammar_value_roundtrip
+3.13 parseStream_complete
+3.14 soundness_completeness_compose
+
+# Group 4
+4.1 parse_sound_shallow
+4.2 parse_complete
+4.3 parse_deterministic
+4.4 parseYaml_implies_valid_token_stream
+
+# Group 5
+5.1 validYaml_construct
+5.2 toYamlValue_correct
+5.3 nodeToValue_total
+5.4 nodeToValue_deterministic
+5.5 scalar_content_preserved
+5.6 isNull_*
+5.7 resolveImplicit_complete
+
+# Group 6
+6.1 universal_roundtrip
+6.2 contentEq_refl
+6.3 contentEq_symm
+6.4 contentEq_trans
+6.5 emit_content_invariant
+6.6 escapeTag_roundtrip
+6.7 resolve_eq_of_resolveEq
+6.8 resolve_eq_of_contentEq_noTags
+6.9 emit_roundtrip_content_eq
+6.10 universal_roundtrip
+6.11 dumpTyped_*
+6.12 resolve_toYaml_*
+6.13 emit_parse_succeeds
+6.14 emit_parseYaml_succeeds
+6.15 canonical_roundtrip_conditional
+6.16 format_whitespace_only
+
+# Group 7
+7.1 parse_strict_proof
+7.2 scan_content_gives_stream_v2
+7.3 scanLoop_grammar_prod
+7.4 *_prod
+7.5 parseYaml_implies_valid_token_stream
+7.6 scan_strict_proof
+7.7 parse_iff_grammar
+
+# Group 8
+8.1 SIndent_*
+8.2 scanFlowSequenceStart_corr
+8.3 scanDirective_corr
+8.4 scanBlockScalar_corr
+8.5 skipSpacesLoop_corr
