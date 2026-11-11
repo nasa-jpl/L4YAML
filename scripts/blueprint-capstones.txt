@@ -1,0 +1,95 @@
+# Blueprint/04-capstones.md, the TABLE, one line per named row: `<row> | <modules> | <names>`.
+# Roots of `lake run dead-census` beside the @[capstone] tag (DOCS item 480): the Blueprint's
+# first paragraph defines dead by THIS table, not by the 26-row headline set `scripts/capstones.txt`
+# pins for Rule 7.  <modules> = the row's Module column (the module name's last component(s));
+# <names> = every declaration the row's Theorem column names, space-separated; a leading or
+# trailing `*` is a wildcard on the last name component.  A name resolves only to declarations
+# in the row's modules (by module-name suffix); a row resolving to nothing counts as
+# `blueprintUnresolved` in the summary pin (stale rows are the owner's to amend; 7.7 is the campaign).
+#
+# Regenerated from the table's three columns; do not add here what the Blueprint does not have.
+
+
+# Group 1
+1.1 | Composition | parseYaml_pipeline
+1.2 | Composition | parseYamlRaw_pipeline
+1.3 | Composition | parseYamlRaw_ok_decompose
+1.4 | Composition | parseYaml_of_parseYamlRaw_ok
+1.5 | Completeness | parseYaml_ok_iff
+1.6 | Composition | parseYamlRaw_scan_error parseYamlRaw_parse_error
+
+# Group 2
+2.1 | ScanStrictCoupling | scan_full_consumption
+2.2 | ScannerCorrectness | scan_produces_valid_tokens
+2.3 | ScannerProgress | advance_offset_lt
+2.4 | ScannerCorrectness | scanLoop_success_emits_streamEnd
+2.5 | ScannerBound | scanNextToken_preserves_bound
+2.6 | ScannerLoopInvariant | advance_preserves_wellFormed
+2.7 | ScannerSimpleKey | saveSimpleKey_* scanKey scanValue
+2.8 | ScannerDispatch | scanNextToken with_needIndentCheck_preserves_wellFormed
+2.9 | ScannerDocument | scanDirective scanDocumentStart scanDocumentEnd with_docStart_flags_preserves_wellFormed
+
+# Group 3
+3.1 | EndToEndCorrectness | parseStream_respects_grammar_unconditional
+3.2 | ParserSoundness | parseStream_sound
+3.3 | ParserSoundness | yamlValue_has_witness
+3.4 | ParserAnchorProofs ParserNodeProofs | parseNode_anchors_grow
+3.5 | ParserAnchorProofs | parseNode_aliases_declared ParserNodeProofs.parseNode_aliases_declared' parseNode_aliases_resolve
+3.6 | ParserAnchorProofs | parseDocument_aliases_resolve
+3.7 | ParserAnchorProofs | parseStream_output_aliases_resolve
+3.8 | ParserWfaProofs | parseStream_output_anchors_wellformed
+3.9 | ParserGrammable | parseStream_output_grammable
+3.10 | ParserGrammable | parseYaml_produces_valid_nodes
+3.11 | ParserCorrectness | parseStream_respects_grammar
+3.12 | ParserCompleteness | grammar_value_roundtrip
+3.13 | ParserCompleteness | parseStream_complete
+3.14 | ParserCompleteness | soundness_completeness_compose
+
+# Group 4
+4.1 | EndToEndCorrectness | parse_sound_shallow
+4.2 | EndToEndCorrectness | parse_complete
+4.3 | EndToEndCorrectness | parse_deterministic
+4.4 | EndToEndCorrectness | parseYaml_implies_valid_token_stream
+
+# Group 5
+5.1 | Soundness | validYaml_construct
+5.2 | Soundness | toYamlValue_correct
+5.3 | Soundness | nodeToValue_total
+5.4 | Soundness | nodeToValue_deterministic
+5.5 | Soundness | scalar_content_preserved
+5.6 | SchemaResolution | isNull_* isBool_* isInt_* isFloat_*
+5.7 | SchemaResolution | resolveImplicit_complete
+
+# Group 6
+6.1 | EmitterScannability | universal_roundtrip
+6.2 | RoundTrip | contentEq_refl
+6.3 | RoundTrip | contentEq_symm
+6.4 | RoundTrip | contentEq_trans
+6.5 | ScannerEmitBridge | emit_content_invariant
+6.6 | RoundTrip | escapeTag_roundtrip
+6.7 | RoundTripComposition | resolve_eq_of_resolveEq
+6.8 | RoundTripComposition | resolve_eq_of_contentEq_noTags
+6.9 | EmitterScannability | emit_roundtrip_content_eq
+6.10 | EmitterScannability | universal_roundtrip
+6.11 | SchemaDump DumpRoundTrip | dumpTyped_* contentRoundTrips_*
+6.12 | SchemaComposition | resolve_toYaml_* fromYaml_toYaml_*
+6.13 | EmitterScannability | emit_parse_succeeds
+6.14 | EmitterScannability | emit_parseYaml_succeeds
+6.15 | ScannerEmitBridge | canonical_roundtrip_conditional
+6.16 | AlignProofs | format_whitespace_only
+
+# Group 7
+7.1 | DocumentProduction | parse_strict_proof
+7.2 | StreamAccum | scan_content_gives_stream_v2
+7.3 | StreamAccum | scanLoop_grammar_prod
+7.4 | StructureProduction DocumentProduction ScalarProduction NodeProduction | *_prod
+7.5 | EndToEndCorrectness | parseYaml_implies_valid_token_stream
+7.6 | DocumentProduction | scan_strict_proof
+7.7 | | parse_iff_grammar
+
+# Group 8
+8.1 | SurfaceCoupling | SIndent_* GChar_* SIndent_zero
+8.2 | StructureCoupling | scanFlowSequenceStart_corr scanFlowSequenceEnd_corr scanFlowMappingStart_corr scanFlowMappingEnd_corr
+8.3 | StructureCoupling | scanDirective_corr scanAnchorOrAlias_corr scanTag_corr
+8.4 | ScalarCoupling | scanBlockScalar_corr collectDoubleQuotedLoop_corr collectPlainScalarLoop_corr
+8.5 | ScannerCoupling | skipSpacesLoop_corr consumeNewline

@@ -10,8 +10,9 @@ public import Scripts.Pack.Residue
 /-!
 # `lake run dead-census [-- -C ROOT] [--check | --write]` — the dead-declaration census
 
-DOCS items 476 / 477.  Loads the built environment of `L4YAML`, `Tests.Guards`,
-`Tests.AdversarialInstantiation` and `Tests.Reflections`, runs `Scripts.Dead.Census.classify`
+DOCS items 476 / 477 / 480.  Loads the built environment of `L4YAML`, `Tests.Guards`,
+`Tests.AdversarialInstantiation` and `Tests.Reflections`, reads `scripts/blueprint-capstones.txt`
+(the Blueprint/04 table rows, roots beside the `@[capstone]` tag), runs `Scripts.Dead.Census.classify`
 and prints the summary and the three per-module tables.  `--check` compares the summary with
 `expectedDeadCensus` (`Tests/Guards/Proofs/DeadDeclarationCensus.lean`) and the (B) roster with
 `Tests/Guards/Proofs/DeadDeclarationRoster.lean`'s set, and exits 1 when either moved — a name
@@ -71,7 +72,9 @@ unsafe def run (args : List String) : IO UInt32 := do
   if msgs.hasErrors then
     for m in msgs.toList do IO.eprint (← m.toString)
     return ← die "the environment did not load (build L4YAML, Tests.Guards, Tests.AdversarialInstantiation, Tests.Reflections first)"
-  let rep := classify env
+  let bpText ← IO.FS.readFile (root / "scripts" / "blueprint-capstones.txt")
+  let bpRows := parseBlueprintRows bpText
+  let rep := classify env bpRows
   IO.print (rep.render)
   if write then
     let guard ← IO.FS.readFile (root / guardFile)
