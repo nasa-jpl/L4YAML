@@ -39,7 +39,7 @@ parse_complete : ValidYamlProp input docs → parseYaml input = .ok docs
 - Enables `native_decide` on propositional equality of parse results
 
 ### §2  Parse Bridge
-- `parseYaml_ok_iff` — structural decomposition into raw parse + compose
+- `parseYamlIx_ok_iff` — structural decomposition into raw parse + compose
 
 ### §3  Concrete Completeness
 - Propositional equality theorems for specific inputs via `native_decide`

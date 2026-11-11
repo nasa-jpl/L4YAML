@@ -260,7 +260,7 @@ fibration canary that cites the pipeline lemmas directly):
                                     │
                    ┌────────────────┼────────────────┐
                    ▼                ▼                ▼
-       parseYaml_pipeline    parseStream_sound    parseYaml_ok_iff
+       parseYaml_pipeline    parseStream_sound    parseYamlIx_ok_iff
                    │                │
                    │        ┌───────┴───┐
                    ▼        ▼           ▼
