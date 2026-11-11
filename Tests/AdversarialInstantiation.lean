@@ -15653,6 +15653,115 @@ def testPlainContinuationRead (state : IO.Ref TestCollector) : IO Unit := do
 
 end P110Test
 
+/-! ## Priority 111 — the content step's arm, read off the scanner (item 482's grid for `ContentArm`)
+
+`accum_step_content` concludes `PendingNode` with no arm exposed (item 475).  `ContentArm`'s
+constructor is to be the projection `(s'.tokens.back?.map (·.val), trailingPropertyRun sc.tokens)`
+(Rule 8: a projection of the scanner state, no ghost index).  Before stating it: over every row P110
+reads, classify each content step by the LAST token it pushed — plain / single-quoted / double-quoted /
+literal / folded scalar, anchor, tag, alias — at depth 0 and inside a flow, under a held property run
+or not; pin that the content token IS the pushed back (the projection is total on content steps), the
+event each arm leaves on `tokenEvents` (scalars silent, `&x` = `[.defineAnchor]`, `*x` = `[.useAlias]`,
+a named-handle tag `[.useTag]`, an empty-handle tag silent), and that no alias follows a held run
+(`lastTokenIsNodeProperty` refuses it). -/
+namespace P111
+open L4YAML.Proofs.Serialization.SerializationWellFormed (Event)
+open L4YAML.Proofs.Serialization.TokenEvents (tokenEvents)
+
+structure Tally where
+  rows : Nat := 0
+  scanned : Nat := 0
+  steps : Nat := 0                       -- every scanner step over the scanned rows
+  content : Nat := 0                     -- steps whose pushed back is a content token
+  arms0 : List (String × Nat) := []      -- arm histogram at depth 0
+  armsIn : List (String × Nat) := []     -- arm histogram at depth ≥ 1
+  heldNext : List (String × Nat) := []   -- arm histogram of the steps that follow a held property run
+  notBack : List String := []            -- a content token pushed but not as the back (projection fails)
+  evBad : List String := []              -- tokenEvents delta ≠ the arm's event
+  shapes : List (String × List String) := []  -- distinct pushed-kind shapes per arm
+  emptyHandleTags : Nat := 0
+  heldAlias : List String := []          -- rows where an alias follows a held run: the row, the pre back token, the pushed kinds
+
+def kindOf : L4YAML.YamlToken → String
+  | .scalar _ .plain => "plain" | .scalar _ .singleQuoted => "sq" | .scalar _ .doubleQuoted => "dq"
+  | .scalar _ .literal => "lit" | .scalar _ .folded => "fold"
+  | .anchor _ => "anchor" | .tag _ _ => "tag" | .alias _ => "alias"
+  | .key => "key" | .value => "value" | .placeholder => "placeholder"
+  | .blockMappingStart => "bMapStart" | .blockSequenceStart => "bSeqStart" | .blockEnd => "bEnd"
+  | .blockEntry => "bEntry" | _ => "other"
+
+def contentArms : List String := ["plain", "sq", "dq", "lit", "fold", "anchor", "tag", "alias"]
+
+def bumpS (h : List (String × Nat)) (k : String) : List (String × Nat) :=
+  if h.any (·.1 == k) then h.map fun (a, n) => if a == k then (a, n + 1) else (a, n) else h ++ [(k, 1)]
+
+def expectedEvent : L4YAML.YamlToken → List Event
+  | .anchor n => [.defineAnchor n]
+  | .alias n => [.useAlias n]
+  | .tag h _ => if h.isEmpty then [] else [.useTag h]
+  | _ => []
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    t := { t with rows := t.rows + 1 }
+    match scanFiltered s, P107.stepsOf s with
+    | .error _, _ | _, none => pure ()
+    | .ok _, some sts =>
+      t := { t with scanned := t.scanned + 1 }
+      for (pre, post) in sts do
+        t := { t with steps := t.steps + 1 }
+        let pushed := post.tokens.toList.drop pre.tokens.size
+        let kinds := pushed.map fun tk => kindOf tk.val
+        match pushed.getLast? with
+        | none => pure ()
+        | some back =>
+          let arm := kindOf back.val
+          if contentArms.contains arm then
+            t := { t with content := t.content + 1 }
+            if pre.flowLevel == 0 then t := { t with arms0 := bumpS t.arms0 arm }
+            else t := { t with armsIn := bumpS t.armsIn arm }
+            if !(trailingPropertyRun pre.tokens).isEmpty then t := { t with heldNext := bumpS t.heldNext arm }
+            if !(trailingPropertyRun pre.tokens).isEmpty && arm == "alias" then
+              t := { t with heldAlias := s!"{repr s}: pre back {(pre.tokens.back?.map fun tk => kindOf tk.val)} run {(trailingPropertyRun pre.tokens).map kindOf} pushed {kinds} depth {pre.flowLevel}" :: t.heldAlias }
+            let shape := (arm, kinds)
+            if !t.shapes.contains shape then t := { t with shapes := t.shapes ++ [shape] }
+            let ev := tokenEvents post.tokens
+            let ev0 := tokenEvents pre.tokens
+            if ev != ev0 ++ expectedEvent back.val then t := { t with evBad := s :: t.evBad }
+            match back.val with
+            | .tag h _ => if h.isEmpty then t := { t with emptyHandleTags := t.emptyHandleTags + 1 }
+            | _ => pure ()
+          else if kinds.any contentArms.contains then
+            t := { t with notBack := s!"{repr s}: {kinds}" :: t.notBack }
+  return t
+
+end P111
+
+namespace P111Test
+open P111
+
+def testContentArmRead (state : IO.Ref TestCollector) : IO Unit := do
+  let t := tally P110.allRows
+  let get (h : List (String × Nat)) (k : String) : Nat := (h.lookup k).getD 0
+  checkM state
+    s!"P111(i) {t.rows} rows, {t.scanned} scanned, {t.steps} steps, {t.content} content steps; depth 0 {t.arms0}; in flow {t.armsIn}"
+    (t.rows == 729 && t.scanned == 572 && get t.arms0 "plain" == 402)
+    s!"{t.rows} {t.scanned} {t.steps} {t.content} {t.arms0} {t.armsIn}"
+  checkM state
+    s!"P111(ii) the projection is total: content token pushed but not the back = {t.notBack.length}; shapes per arm = {t.shapes}"
+    t.notBack.isEmpty s!"{t.notBack.take 4}"
+  checkM state
+    s!"P111(iii) events by arm: evBad = {t.evBad.length}; empty-handle tags = {t.emptyHandleTags}"
+    t.evBad.isEmpty s!"{t.evBad.take 4}"
+  checkM state
+    s!"P111(iv) after a held property run: {t.heldNext}; alias after a held run (REFUTED the §6.9 [104] expectation — the scanner's guard is line-local in block context): {t.heldAlias}"
+    (get t.heldNext "alias" == 1 && t.heldAlias.length == 1 &&
+      t.heldAlias.any (·.startsWith "\"&a\\n*a\""))
+    s!"{t.heldNext} {t.heldAlias}"
+
+end P111Test
+
 def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 100: S3 slice (1) — leaf span ↔ token payload (anchor / alias / tag), before proof"
   let t := P100.tally P100.allRows
@@ -15842,6 +15951,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testPropsRunT state
   testHeldNestOpen state
   P110Test.testPlainContinuationRead state
+  P111Test.testContentArmRead state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",
