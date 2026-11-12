@@ -498,7 +498,7 @@ def _quote_scalar(s: str) -> str:
     # encoding marker, and unescaped controls/separators can alter the
     # scalar or make the stream invalid.  JSON's double-quote escapes
     # cover C0; explicitly escape the remaining Unicode troublemakers.
-    escaped_codepoints = {0xFEFF, 0x2028, 0x2029}
+    escaped_codepoints = {0xFEFF, 0x2028, 0x2029, 0xFFFE, 0xFFFF}
     if any(ord(c) < 0x20 or 0x7F <= ord(c) <= 0x9F
            or ord(c) in escaped_codepoints for c in s):
         quoted = json.dumps(s, ensure_ascii=False)
@@ -509,8 +509,8 @@ def _quote_scalar(s: str) -> str:
             for c in quoted
         )
     # These are reserved indicators at the start of a plain scalar;
-    # the document-end marker is special when it is the whole stream.
-    if s.startswith(("@", "`", "%")) or s in {"...", "---"}:
+    # a document-end marker prefix must not be emitted as a plain scalar.
+    if s.startswith(("@", "`", "%", "...")):
         return single_quoted
     # Values that need quoting
     if s in _NULL_VALS or s in _BOOL_TRUE or s in _BOOL_FALSE:
