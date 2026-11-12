@@ -451,12 +451,17 @@ l4yaml_value_t l4yaml_result_value(l4yaml_result_t r);
 /* Value inspection */
 uint8_t l4yaml_value_kind(l4yaml_value_t v);
 const char *l4yaml_value_string(l4yaml_value_t v);
+/* Length-aware scalar content; len may be NULL when not needed. */
+const char *l4yaml_value_string_bytes(l4yaml_value_t v, size_t *len);
 uint32_t l4yaml_value_seq_length(l4yaml_value_t v);
 l4yaml_value_t l4yaml_value_seq_get(l4yaml_value_t v, uint32_t i);
 uint32_t l4yaml_value_map_length(l4yaml_value_t v);
 l4yaml_value_t l4yaml_value_map_key(l4yaml_value_t v, uint32_t i);
 l4yaml_value_t l4yaml_value_map_val(l4yaml_value_t v, uint32_t i);
 l4yaml_value_t l4yaml_value_lookup(l4yaml_value_t v, const char *key);
+/* Exact key_len bytes of valid UTF-8, including embedded NUL. Caller frees. */
+l4yaml_value_t l4yaml_value_lookup_bytes(l4yaml_value_t v,
+                                      const char *key, size_t key_len);
 const char *l4yaml_value_tag(l4yaml_value_t v);
 const char *l4yaml_value_anchor(l4yaml_value_t v);
 
@@ -475,6 +480,14 @@ void l4yaml_free(void *handle);
 ```
 
 ### `ffi/l4yaml_shim.c`
+
+`l4yaml_value_string_bytes(v, &len)` exposes the full scalar UTF-8 byte
+length, excluding the terminal C NUL; `len` may be `NULL`. Its pointer follows
+the same string-lifetime rules as `l4yaml_value_string`, and non-scalars
+return an empty string with length zero. `l4yaml_value_lookup_bytes` takes
+exactly `key_len` bytes of valid UTF-8, including any embedded NUL, and returns
+an owned handle (caller frees) or `NULL` when absent or not a mapping.
+The legacy NUL-terminated entry points remain available.
 
 Thin C wrapper that:
 1. Calls `lean_initialize_runtime_module()` and `lean_init_task_manager()` from `l4yaml_initialize()`.

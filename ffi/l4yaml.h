@@ -179,8 +179,9 @@ const char *l4yaml_value_string(l4yaml_value_t v);
 
 /*
  * Length-aware scalar content, including embedded NUL bytes.  Writes the
- * UTF-8 byte length (excluding the terminal C NUL) to *len.  The returned
- * pointer has the same lifetime as l4yaml_value_string; copy before the
+ * UTF-8 byte length (excluding the terminal C NUL) to *len if len is not
+ * NULL.  Pass NULL when the length is not needed.  The returned pointer
+ * has the same lifetime as l4yaml_value_string; copy before the
  * next string-returning call.  Returns "" and length 0 for non-scalars.
  */
 const char *l4yaml_value_string_bytes(l4yaml_value_t v, size_t *len);
@@ -223,6 +224,7 @@ l4yaml_value_t l4yaml_value_lookup(l4yaml_value_t v,
 
 /*
  * Look up a mapping key by its exact UTF-8 bytes (including embedded NUL).
+ * The key_len bytes at key must be valid UTF-8.
  * Returns an owned value handle, or NULL if absent / not a mapping.
  */
 l4yaml_value_t l4yaml_value_lookup_bytes(l4yaml_value_t v,

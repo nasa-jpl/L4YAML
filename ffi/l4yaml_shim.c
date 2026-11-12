@@ -261,7 +261,8 @@ const char *l4yaml_value_string(void *v) {
 const char *l4yaml_value_string_bytes(void *v, size_t *len) {
     lean_inc((lean_object *)v);
     lean_object *s = l4yaml_value_as_string((lean_object *)v);
-    *len = lean_string_size(s) - 1; /* Lean includes terminal C NUL */
+    if (len)
+        *len = lean_string_size(s) - 1; /* Lean includes terminal C NUL */
     return capture_string(s);
 }
 

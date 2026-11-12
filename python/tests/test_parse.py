@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import ctypes
+import subprocess
+import sys
 
 import pytest
 
@@ -146,9 +148,33 @@ class TestLoadMapping:
         assert ctypes.string_at(ptr, length.value) == b"before\x00after"
 
         # Existing C ABI calls retain their legacy NUL-terminated behavior.
-        old_handle = lib.l4yaml_value_lookup(v._handle, b"a")
+        assert lib.l4yaml_value_string(scalar._handle) == b"before"
+        old_handle = lib.l4yaml_value_lookup(v._handle, b"a\x00b")
         assert old_handle
-        lib.l4yaml_free(old_handle)
+        try:
+            assert lib.l4yaml_value_string(old_handle) == b"wrong"
+        finally:
+            lib.l4yaml_free(old_handle)
+
+    def test_length_aware_c_abi_null_length(self) -> None:
+        # A subprocess turns a native crash into a test failure instead of
+        # terminating the entire suite. NULL means the caller needs no length.
+        result = subprocess.run(
+            [sys.executable, "-c", r'''
+import ctypes
+import l4yaml
+
+scalar = l4yaml.load(r'"before\0after"')
+ptr = scalar._lib.l4yaml_value_string_bytes(scalar._handle, None)
+assert ctypes.string_at(ptr, 12) == b"before\x00after"
+mapping = l4yaml.load("a: b")
+ptr = mapping._lib.l4yaml_value_string_bytes(mapping._handle, None)
+assert ctypes.string_at(ptr) == b""
+'''],
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0, result.stderr
 
 
 @needs_lib
