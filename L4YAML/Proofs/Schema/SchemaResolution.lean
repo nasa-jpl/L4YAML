@@ -4,6 +4,7 @@ public import L4YAML.Schema.Schema
 
 public meta import L4YAML.Schema.Schema
 public import L4YAML.Spec.Types
+public import L4YAML.Spec.CoreSchema
 
 @[expose] public section Blanket
 
@@ -20,8 +21,8 @@ Formal verification of Core Schema (YAML 1.2.2 §10.3) resolution properties.
 ## Proof Inventory
 
 ### §1 — `isNull` / `isBool` / `isInt` / `isFloat` specifications
-Concrete correctness theorems linking each resolution function to its
-specification in the YAML 1.2.2 standard.
+Concrete correctness theorems for selected YAML 1.2.2 spellings. These do not
+by themselves establish equivalence with the complete Core Schema table.
 
 ### §2 — `resolveImplicit` completeness and determinism
 Every string resolves to exactly one `YamlType`.
@@ -39,6 +40,82 @@ namespace L4YAML.Proofs.SchemaResolution
 
 open L4YAML.Schema
 open L4YAML
+
+/-! ## The external Core Schema correspondence obligation
+
+`Spec.CoreSchema.tag` transcribes the ordered §10.3.2 regex table independently
+of the implementation's numeric value converters. `scalarTag?` deliberately
+forgets the value: conformance of numerical *values* is a different requirement.
+
+The universally quantified proposition is stated here, not asserted as a proved
+theorem. In particular, the `Option`-returning numeric converters must be shown
+to succeed for **every** spelling allowed by the table before this can be
+promoted from an obligation to a universal guarantee. Individual instances are
+tested in `Tests/Guards/Proofs/SchemaResolution.lean`.
+-/
+
+/-- The tag of a constructed scalar, absent for collections. -/
+def scalarTag? : YamlType → Option Spec.CoreSchema.Tag
+  | .null => some .null
+  | .bool _ => some .bool
+  | .int _ => some .int
+  | .float _ => some .float
+  | .str _ => some .str
+  | .seq _ | .map _ => none
+
+/-- The per-input assurance obligation for a plain, implicitly tagged scalar. -/
+def coreTagCorrespondence (s : String) : Prop :=
+  scalarTag? (resolveImplicit s) = some (Spec.CoreSchema.tag s)
+
+/-- Universal Core Schema tag correspondence — **not yet proved**. -/
+def coreTagCorrespondenceAll : Prop :=
+  ∀ s : String, coreTagCorrespondence s
+
+lemma coreNullRecognizer_matches_spec (s : String) :
+    isNull s = Spec.CoreSchema.nullSpelling s := by
+  simp [isNull, Spec.CoreSchema.nullSpelling, Bool.or_comm, Bool.or_left_comm]
+
+lemma coreBoolRecognizer_matches_spec (s : String) :
+    (isBool s).isSome = Spec.CoreSchema.boolSpelling s := by
+  unfold isBool
+  split <;> simp_all [Spec.CoreSchema.boolSpelling]
+
+/-- Compositional bridge: for the external §10.3.2 table, null/boolean
+    classification and rejection of nonmatching numeric spellings are already
+    unconditional. The **only** remaining hypotheses are that valid integer and
+    float spellings actually produce numeric values, rather than `none`.
+    Their unconditional validity has not been proved here. -/
+lemma coreTagCorrespondence_at_of_recognizers (s : String)
+    (hint : Spec.CoreSchema.integerSpelling s = true → (isInt s).isSome = true)
+    (hfloat : Spec.CoreSchema.floatSpelling s = true → (isFloat s).isSome = true) :
+    coreTagCorrespondence s := by
+  have hnull := coreNullRecognizer_matches_spec s
+  have hbool := coreBoolRecognizer_matches_spec s
+  have hi : (isInt s).isSome = Spec.CoreSchema.integerSpelling s := by
+    cases h : Spec.CoreSchema.integerSpelling s with
+    | false => simp [isInt, h]
+    | true => exact hint h
+  have hf : (isFloat s).isSome = Spec.CoreSchema.floatSpelling s := by
+    cases h : Spec.CoreSchema.floatSpelling s with
+    | false => simp [isFloat, h]
+    | true => exact hfloat h
+  cases hn : Spec.CoreSchema.nullSpelling s <;>
+    cases hb : isBool s <;>
+    cases hi' : isInt s <;>
+    cases hf' : isFloat s <;>
+    simp_all [coreTagCorrespondence, scalarTag?, resolveImplicit,
+      Spec.CoreSchema.tag, Option.isSome]
+
+/-- Universal Core Schema tag correspondence follows from universal success
+    of the two numeric converters on spec-valid spellings. Both hypotheses
+    remain open obligations; this theorem does not assume they hold. -/
+@[capstone]
+theorem coreTagCorrespondenceAll_of_recognizers
+    (hint : ∀ s : String, Spec.CoreSchema.integerSpelling s = true → (isInt s).isSome = true)
+    (hfloat : ∀ s : String, Spec.CoreSchema.floatSpelling s = true → (isFloat s).isSome = true) :
+    coreTagCorrespondenceAll := by
+  intro s
+  exact coreTagCorrespondence_at_of_recognizers s (hint s) (hfloat s)
 
 /-! ## §1 — Resolution Function Specifications -/
 

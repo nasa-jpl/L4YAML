@@ -21,7 +21,7 @@ neither can be edited without the other.
 namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 
 def expectedDeadCensus : String :=
-  "population=14215 thm=10204 def=2678 roots=capstone:26+export:37+blueprint:222(unresolved=5) unreached=6514 thm=4600 A-campaign=1298 C-api=1405 D-test-only=275 B-roster=3536 thm=3173 cluster-roots=1460"
+  "population=14252 thm=10209 def=2704 roots=capstone:27+export:37+blueprint:222(unresolved=5) unreached=6523 thm=4601 A-campaign=1298 C-api=1414 D-test-only=275 B-roster=3536 thm=3173 cluster-roots=1460"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do

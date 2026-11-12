@@ -400,7 +400,10 @@ Top-level guarantees on `parseYaml`. These are the public promises.
 
 ## Group 5 — Value semantics (soundness at the runtime-value level)
 
-The AST-to-value conversion faithfully implements the Core Schema.
+The AST-to-value proofs establish internal conversion properties and selected
+Core Schema examples. Correspondence with the **external** YAML 1.2.2 §10.3.2
+tag table is a separate, currently unproved obligation; so is correctness of
+numeric valuation and of C/Python consumer representations.
 
 | # | Theorem | Module | Status |
 | - | ------- | ------ | ------ |
@@ -409,8 +412,9 @@ The AST-to-value conversion faithfully implements the Core Schema.
 | 5.3 | `nodeToValue_total` | `Soundness` | ✅ |
 | 5.4 | `nodeToValue_deterministic` | `Soundness` | ✅ |
 | 5.5 | `scalar_content_preserved` | `Soundness` | ✅ |
-| 5.6 | `isNull_*`, `isBool_*`, `isInt_*`, `isFloat_*` correctness (§10.3) | [`SchemaResolution`](../L4YAML/Proofs/Schema/SchemaResolution.lean) | ✅ |
+| 5.6 | `isNull_*`, `isBool_*`, `isInt_*`, `isFloat_*` selected examples (§10.3) | [`SchemaResolution`](../L4YAML/Proofs/Schema/SchemaResolution.lean) | ✅ (bounded) |
 | 5.7 | `resolveImplicit_complete` | `SchemaResolution` | ✅ |
+| 5.8 | `coreTagCorrespondenceAll_of_recognizers`: external §10.3.2 tag bridge | [`CoreSchema`](../L4YAML/Spec/CoreSchema.lean), `SchemaResolution` | ✅ conditional; universal claim 🚧 |
 
 **Depends on**: Group 3 (parser correctness).
 
@@ -422,14 +426,13 @@ The AST-to-value conversion faithfully implements the Core Schema.
 - **5.1 `validYaml_construct`** *(headline)* — *Significance:* every
   successful parse produces a `ValidYaml` runtime value, so FFI
   consumers (C/Python/Rust) receive a value that satisfies the
-  library's invariants. *Risk if absent:* downstream code could
-  consume an "invalid" value → undefined behavior across the language
-  bindings.
+  library's internal invariants. It makes no claim about C/Python
+  representation fidelity. *Risk if absent:* downstream code could
+  consume a value that violates those internal invariants.
 - **5.2 `toYamlValue_correct`** — *Significance:* the AST→value
-  conversion is faithful — the value the application sees equals the
-  document that was parsed. *Risk if absent:* silent data corruption
-  at the schema boundary, where the bytes parse fine but the delivered
-  value is wrong.
+  conversion matches its formal input model; it does not establish that
+  the model matches the external schema or an FFI consumer. *Risk if
+  absent:* silent changes between parsed document and internal value.
 - **5.3 `nodeToValue_total`** — *Significance:* the conversion is
   total — it never crashes on an accepted node. *Risk if absent:*
   panics on some inputs that the parser happily accepted.
@@ -440,15 +443,24 @@ The AST-to-value conversion faithfully implements the Core Schema.
 - **5.5 `scalar_content_preserved`** — *Significance:* scalar text is
   carried through conversion unaltered. *Risk if absent:* scalar
   mutation — content quietly changed between parse and use.
-- **5.6 §10.3 implicit-type correctness** — *Significance:* `null →
-  bool → int → float → str` resolution follows the spec's precedence
-  exactly. *Risk if absent:* type confusion — the infamous YAML
-  footguns (`yes`/`no` as booleans, the "Norway problem", `1.0` vs
-  `"1.0"`) resolving against the spec rather than as ad-hoc surprises.
+- **5.6 selected §10.3 cases** — *Significance:* selected `null → bool
+  → int → float → str` cases have checked results. They do not prove
+  matching or completeness for every spelling in the external table.
+  *Risk if absent:* untested strings may silently acquire incorrect tags.
 - **5.7 `resolveImplicit_complete`** — *Significance:* the implicit
-  resolver is complete over the Core Schema tag set — every scalar
-  gets a resolution. *Risk if absent:* unresolved scalars falling
-  through into an undefined state.
+  resolver always returns one of its five scalar constructors, including
+  the string fallback. This is result totality, **not** completeness of
+  recognition under the external Core Schema. *Risk if absent:* a
+  scalar could fall through into an undefined state.
+- **5.8 external tag correspondence (conditional)** — The independent
+  [`Spec.CoreSchema.tag`](../L4YAML/Spec/CoreSchema.lean) transcribes the
+  ordered table; `coreTagCorrespondenceAll` states the unproved universal
+  claim about `resolveImplicit`. The checked conditional capstone proves
+  that *if* every regex-accepted integer and float spelling yields a
+  numeric value, the resolver returns the required tag. Null/boolean
+  correspondence and rejection of nonmatching number spellings are already
+  discharged in that proof. Individual witnesses also pass, but the two
+  universal numeric-conversion obligations remain open.
 
 ---
 
