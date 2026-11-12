@@ -16049,12 +16049,23 @@ leaf's event FROM EVERY pending-handle state, the pending state unchanged — it
 equation holds only when nothing is pending); the tail AFTER the step — kept by the property arms
 (`tailOf_push_prop`), `.value kj` for the value arms with `kj` true only for a quoted scalar
 (`tailOf_dispatchContent_value`); block scalars never inside a flow.  This priority shadows each of
-those readings on P113's corpus. -/
+those readings on P113's corpus.
+
+The twins' GRAMMAR conclusions are `Prop`s (§7: which disjunct a proof takes is unobservable), so
+each is shadowed by its decidable projection: the landing's tail and `kj` (ii) — the `.value kj` the
+T stack receives; the first-char lift (iii) — the arm's head character against the kind of the token
+the scanner pushed (`SFlowNode_head_lift` says the S node IS a plain / double- / single-quoted scalar
+by that character; a `plain` head pushing anything but a plain token would refute it); the S node the
+lift reads was shadowed field by field by Priority 112 (`ContentArm`'s span, white tail, `#` guard,
+`NextIsSep`, the flow-in floors) and the receive's premises by Priority 113 (the pre-tail never
+`.value`, the interior's gap class, the held run).  (iv) pins that the `_in` twin's scanner-side
+hypotheses hold at every in-flow content step and `_out`'s at every other, so neither is vacuous on
+the corpus. -/
 
 namespace P114
 
 open P111 (kindOf contentArms bumpS)
-open P112 (armOf)
+open P112 (armOf kindMatches)
 open P113 (tailClass)
 open L4YAML.Proofs.StreamAccum (tailOf FrameTail)
 open L4YAML.Proofs.Serialization.TokenEvents (tokenEvents goOut tokenEvent)
@@ -16072,6 +16083,14 @@ structure Tally where
   /-- steps where `tokenEvents post = tokenEvents pre ++ ev` (the plain equation). -/
   tokenEventsEq : Nat := 0
   blockInFlow : Nat := 0
+  /-- (iii) the first-char lift: the pushed token's kind against the head character's class, by arm. -/
+  liftOk : List (String × Nat) := []
+  liftMismatch : List String := []
+  /-- (iv) `_in`'s scanner-side hypotheses hold at every in-flow step (non-vacuity): `inFlow`,
+      `currentIndent < col`, pre-tail not `.value`, `col ≠ 0`; `_out`'s `flowLevel = 0` elsewhere. -/
+  inHyps : Nat := 0
+  inHypsFail : List String := []
+  outDepth0 : Nat := 0
   deriving Repr
 
 def tally (rows : List String) : Tally := Id.run do
@@ -16113,6 +16132,14 @@ def tally (rows : List String) : Tally := Id.run do
             if tokenEvents post.tokens == tokenEvents sc.tokens ++ ev then
               t := { t with tokenEventsEq := t.tokenEventsEq + 1 }
             if arm == "blockScalar" && sc.flowLevel ≥ 1 then t := { t with blockInFlow := t.blockInFlow + 1 }
+            if kindMatches arm kind then t := { t with liftOk := bumpS t.liftOk (arm ++ "→" ++ kind) }
+            else t := { t with liftMismatch := t.liftMismatch ++ [s!"{s}@{arm}/{kind}"] }
+            if sc.flowLevel ≥ 1 then
+              let ok := sc.inFlow && decide (sc.currentIndent < (sc.col : Int)) &&
+                (match tlBefore with | .value _ => false | _ => true) && sc.col != 0
+              if ok then t := { t with inHyps := t.inHyps + 1 }
+              else t := { t with inHypsFail := t.inHypsFail ++ [s!"{s}@{arm}"] }
+            else t := { t with outDepth0 := t.outDepth0 + 1 }
           | _ => pure ()
     | _, _ => pure ()
   return t
@@ -16135,6 +16162,16 @@ def testContentTwinShadow (state : IO.Ref TestCollector) : IO Unit := do
       t.tailAfter == [("plain/value", 429), ("anchor/kept", 116), ("tag/kept", 121), ("plainIn/value", 392),
                       ("alias/value", 24), ("dq/value", 48), ("sq/value", 33), ("blockScalar/value", 21)])
     s!"{t.tailAfter} {t.kjMismatch}"
+  checkM state
+    s!"P114(iii) the first-char lift, arm → pushed kind: {t.liftOk}; mismatches {t.liftMismatch}"
+    (t.liftMismatch.isEmpty &&
+      t.liftOk == [("plain→plain", 429), ("anchor→anchor", 116), ("tag→tag", 121), ("plainIn→plain", 392),
+                   ("alias→alias", 24), ("dq→dq", 48), ("sq→sq", 33), ("blockScalar→lit", 16), ("blockScalar→fold", 5)])
+    s!"{t.liftOk} {t.liftMismatch}"
+  checkM state
+    s!"P114(iv) `_in`'s scanner-side hypotheses at every in-flow step: {t.inHyps} (failing: {t.inHypsFail}); `_out`'s depth-0 steps: {t.outDepth0}"
+    (t.inHypsFail.isEmpty && t.inHyps == 525 && t.outDepth0 == 659 && t.inHyps + t.outDepth0 == t.content)
+    s!"{t.inHyps} {t.inHypsFail} {t.outDepth0}"
 
 end P114Test
 
