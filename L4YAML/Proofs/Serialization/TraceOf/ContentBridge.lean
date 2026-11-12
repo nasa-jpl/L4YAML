@@ -525,19 +525,33 @@ inductive ContentLead (sc : ScannerState) (tl : FrameTail) (sp_flow sp_prep : Su
       (h_run : ∀ m, m ≤ L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf sc →
         L4YAML.Proofs.StreamAccum.PropsRun m (inFlowCtx .flowOut) ha ht sp_p sp_e)
       (h_sep : ∀ m, m ≤ L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf sc →
-        SSeparate m (inFlowCtx .flowOut) sp_e sp_prep) :
+        SSeparate m (inFlowCtx .flowOut) sp_e sp_prep)
+      (h_last : ∃ t, L4YAML.Scanner.lastRealTokenVal? sc.tokens = some t ∧
+        t.isNodeProperty = true) :
       ContentLead sc tl sp_flow sp_prep
+
+/-- The frame tail rides the preprocess inside a flow: `tailOf` reads `frameTokenVal?` and
+    `jsonKeyBefore`, both preserved (and the `allowDirectives` update keeps the tokens). -/
+lemma tailOf_preprocess_eq {sc s_prep s_ad : ScannerState} {c : Char}
+    (h_flow : 0 < sc.flowLevel)
+    (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
+    (h_ad_tokens : s_ad.tokens = s_prep.tokens) :
+    tailOf s_ad.tokens = tailOf sc.tokens := by
+  unfold L4YAML.Proofs.StreamAccum.tailOf
+  rw [h_ad_tokens,
+    L4YAML.Proofs.StreamAccum.preprocess_preserves_frameTokenVal_inFlow sc s_prep c h_flow h_preprocess,
+    L4YAML.Proofs.StreamAccum.preprocess_preserves_jsonKeyBefore_inFlow sc s_prep c h_flow h_preprocess]
 
 /-- The replay: `accum_step_content_core`'s derivation of the receive's premises, from the
     wrapper's hypotheses.  `s_ad` is the dispatch state (`s_prep` with `allowDirectives` cleared);
-    the three `h_ad_*` equalities are `split <;> rfl` at the caller. -/
+    the two `h_ad_*` equalities are `split <;> rfl` at the caller. -/
 lemma contentLead_of_interior {sc s_prep s_ad s' : ScannerState} {c : Char} {d : Nat}
     {sp_flow sp_scan sp_prep : SurfPos}
     (hd : sc.flowLevel = d + 1)
     (h_corr : ScannerSurfCorr sc sp_scan) (hcorr_prep : ScannerSurfCorr s_prep sp_prep)
     (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
     (h_str_none : scanNextToken_dispatchStructural s_prep c = .ok none)
-    (h_ad_tokens : s_ad.tokens = s_prep.tokens) (h_ad_peek : s_ad.peek? = s_prep.peek?)
+    (h_ad_tokens : s_ad.tokens = s_prep.tokens)
     (h_ad_fl : s_ad.flowLevel = s_prep.flowLevel)
     (h_flow_none : scanNextToken_dispatchFlowIndicators s_ad c = .ok none)
     (h_blk_none : scanNextToken_dispatchBlockIndicators s_ad c = .ok none)
@@ -567,11 +581,7 @@ lemma contentLead_of_interior {sc s_prep s_ad s' : ScannerState} {c : Char} {d :
   cases h_gap with
   | white h_ws h_sync h_colon h_col0 h_gate h_free h_q =>
     have h_tail : ∀ kj, tailOf sc.tokens ≠ .value kj := by
-      have h_tl_eq : tailOf s_ad.tokens = tailOf sc.tokens := by
-        unfold L4YAML.Proofs.StreamAccum.tailOf
-        rw [h_ad_tokens,
-          L4YAML.Proofs.StreamAccum.preprocess_preserves_frameTokenVal_inFlow sc s_prep c (by omega) h_preprocess,
-          L4YAML.Proofs.StreamAccum.preprocess_preserves_jsonKeyBefore_inFlow sc s_prep c (by omega) h_preprocess]
+      have h_tl_eq := tailOf_preprocess_eq (by omega) h_preprocess h_ad_tokens
       rw [← h_tl_eq]
       have h_ad_sync : L4YAML.Proofs.StreamAccum.frameTokenVal? s_ad.tokens =
           L4YAML.Scanner.lastRealTokenVal? s_ad.tokens := by
@@ -595,6 +605,9 @@ lemma contentLead_of_interior {sc s_prep s_ad s' : ScannerState} {c : Char} {d :
     have h_lead_at := h_lead_from (GStar.nil _) (fun _ => h_gate)
     refine .props ha ht sp_p sp_scan h_tail (fun m hm => (h_lead m).resolve_right (fun h => h hm))
       (fun m hm => (h_run m).resolve_right (fun h => h hm)) (fun m hm => ?_)
+      (by rcases ((h_run 0).resolve_right (fun h => h (Nat.zero_le _))).some_half with h | h
+          · exact L4YAML.Proofs.StreamAccum.lastReal_isProperty_of_run (h_anchor h)
+          · exact L4YAML.Proofs.StreamAccum.lastReal_isProperty_of_run (h_tag h))
     rcases (h_lead_at m).resolve_right (fun h => h hm) with h | ⟨h1, -⟩
     · exact h
     · exact absurd (L4YAML.Proofs.StreamAccum.NextIsSep.not_content h_next (h_peek h1) h_glue) id
@@ -605,6 +618,18 @@ lemma contentLead_of_interior {sc s_prep s_ad s' : ScannerState} {c : Char} {d :
 At depth ≥ 1, from `accum_step_content`'s inputs and the T stack at the pre-state: the value arms
 land the T stack at `s'` through `_in` / `_in_props`, the property arms keep it (tail and trace
 unchanged), the lead replayed by `contentLead_of_interior`.  Depth 0 is `_out`'s business. -/
+
+/-- A property arm (`&` / `!`) keeps the frame tail: the pushed token is a node property. -/
+lemma content_prop_tail_kept {s_ad s' : ScannerState} {c : Char} {sp_prep : SurfPos}
+    (hcorr : ScannerSurfCorr s_ad sp_prep) (hpeek : s_ad.peek? = some c)
+    (h_dispatch : scanNextToken_dispatchContent s_ad c = .ok s')
+    (hc : c = '&' ∨ c = '!') :
+    tailOf s'.tokens = tailOf s_ad.tokens := by
+  rcases hc with hc | hc <;> subst hc
+  · obtain ⟨-, name, htok, -, -⟩ := dispatchContent_anchor_trace s_ad sp_prep hcorr hpeek s' h_dispatch
+    rw [htok]; exact (tailOf_push_prop (by simp) (by simp [YamlToken.isNodeProperty])).1
+  · obtain ⟨-, handle, suffix, htok, -, -⟩ := dispatchContent_tag_trace s_ad sp_prep hcorr hpeek s' h_dispatch
+    rw [htok]; exact (tailOf_push_prop (by simp) (by simp [YamlToken.isNodeProperty])).1
 
 /-- The content step's T twin at the stack level: the S inputs of `accum_step_content` (restricted
     to what the receive reads) and the T stack at `sc` give the T stack at `s'`. -/
@@ -647,7 +672,96 @@ lemma accum_step_content_traceK {n d : Nat} {sc s_prep s' : ScannerState} {c : C
           TFlowStackB n s'.flowLevel s'.flowStack (tailOf s'.tokens) sp_block sp_ne (ev ++ ev_n)) ∨
        (tailOf s'.tokens = tailOf sc.tokens ∧ (c = '&' ∨ c = '!') ∧
           TFlowStackB n s'.flowLevel s'.flowStack (tailOf s'.tokens) sp_block sp_flow ev)) := by
-  sorry
+  -- The dispatch state and its projections.
+  generalize h_ad_def : (if s_prep.allowDirectives then
+      { s_prep with allowDirectives := false, documentEverStarted := true }
+    else s_prep) = s_ad at h_flow_none h_blk_none h_dispatch h_not_doc ⊢
+  have h_ad_tokens : s_ad.tokens = s_prep.tokens := by rw [← h_ad_def]; split <;> rfl
+  have h_ad_peek : s_ad.peek? = s_prep.peek? := by rw [← h_ad_def]; split <;> rfl
+  have h_ad_fl : s_ad.flowLevel = s_prep.flowLevel := by rw [← h_ad_def]; split <;> rfl
+  have h_ad_fs : s_ad.flowStack = s_prep.flowStack := by rw [← h_ad_def]; split <;> rfl
+  have h_ad_ind : s_ad.indents = s_prep.indents := by rw [← h_ad_def]; split <;> rfl
+  have h_ad_col : s_ad.col = s_prep.col := by rw [← h_ad_def]; split <;> rfl
+  have h_sc_inflow : sc.inFlow = true := L4YAML.Proofs.StreamAccum.inFlow_of_flowLevel_eq hd
+  have h_prep_fl : s_prep.flowLevel = sc.flowLevel :=
+    L4YAML.Proofs.FlowSync.preprocess_preserves_flowLevel sc s_prep c h_preprocess
+  have h_prep_fs : s_prep.flowStack = sc.flowStack :=
+    L4YAML.Proofs.ScannerFlowStack.preprocess_preserves_flowStack sc s_prep c h_preprocess
+  have h_prep_ind : s_prep.indents = sc.indents :=
+    L4YAML.Proofs.FlowIndentStable.preprocess_indents_of_inFlow h_sc_inflow h_preprocess
+  have h_prep_inflow : s_prep.inFlow = true := by
+    unfold ScannerState.inFlow; rw [h_prep_fl, hd]; simp
+  have h_ad_inflow : s_ad.inFlow = true := by
+    unfold ScannerState.inFlow; rw [h_ad_fl, h_prep_fl, hd]; simp
+  have hpeek : s_ad.peek? = some c :=
+    h_ad_peek.trans (L4YAML.Proofs.StreamAccum.preprocess_some_peek h_preprocess)
+  obtain ⟨sp_prep, hcorr_prep⟩ :=
+    L4YAML.Proofs.ScanStrictCoupling.scanNextToken_preprocess_corr sc sp_scan h_corr s_prep c h_preprocess
+  have hcorr_ad : ScannerSurfCorr s_ad sp_prep := by
+    rw [← h_ad_def]; exact L4YAML.Proofs.StreamAccum.corr_of_allowDirectives_update hcorr_prep
+  have hcol : s_ad.currentIndent < (s_ad.col : Int) := by
+    rw [h_ad_col, L4YAML.Proofs.PreprocessIndentStable.currentIndent_of_indents_eq h_ad_ind]
+    exact L4YAML.Proofs.FlowIndentStable.structural_none_col_gt_of_inFlow h_prep_inflow h_str_none
+  have hn' : (n : Int) ≤ max 0 (s_ad.currentIndent + 1) := by
+    rw [L4YAML.Proofs.PreprocessIndentStable.currentIndent_of_indents_eq (h_ad_ind.trans h_prep_ind)]
+    unfold L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf at hn
+    omega
+  have h_tl_eq : tailOf s_ad.tokens = tailOf sc.tokens :=
+    tailOf_preprocess_eq (by omega) h_preprocess h_ad_tokens
+  -- The post-state's flow indices are the pre-state's.
+  have h_fl' : s'.flowLevel = sc.flowLevel :=
+    (L4YAML.Proofs.ScannerCorrectness.dispatchContent_preserves_flowLevel s_ad c s' h_dispatch).trans
+      (h_ad_fl.trans h_prep_fl)
+  have h_fs' : s'.flowStack = sc.flowStack :=
+    (L4YAML.Proofs.ScannerFlowStack.dispatchContent_preserves_flowStack s_ad c s' h_dispatch).trans
+      (h_ad_fs.trans h_prep_fs)
+  obtain ⟨sp_a, arm⟩ :=
+    L4YAML.Proofs.StreamAccum.contentArm_of_dispatch s_ad sp_prep c hcorr_ad hpeek h_not_doc (fun _ => hcol) h_dispatch
+  have h_lead := contentLead_of_interior hd h_corr hcorr_prep h_preprocess h_str_none h_ad_tokens
+    h_ad_fl h_flow_none h_blk_none h_dispatch h_gap h_real
+  -- The T stack at depth ≥ 1 is open.
+  rw [hd] at hT
+  rcases hT with _ | ⟨_, _, _, _, _, _, h_fos⟩
+  rw [h_fl', h_fs', hd]
+  have h_fos' := h_fos
+  rw [← h_tl_eq] at h_fos'
+  by_cases hprop : c = '&' ∨ c = '!'
+  · -- Property arms keep the tail and the trace.
+    have h_kept := content_prop_tail_kept hcorr_ad hpeek h_dispatch hprop
+    refine ⟨[], sp_prep, sp_a, hcorr_ad, arm, Or.inr ⟨h_kept.trans h_tl_eq, hprop, ?_⟩⟩
+    rw [h_kept]; exact .«open» _ _ _ _ _ _ h_fos'
+  · have hamp : c ≠ '&' := fun h => hprop (Or.inl h)
+    have hbang : c ≠ '!' := fun h => hprop (Or.inr h)
+    cases h_lead with
+    | white h_tail h_lead =>
+      obtain ⟨ev_n, -, h | ⟨-, h⟩⟩ := accum_step_content_trace_in arm hcorr_ad hpeek h_ad_inflow h_not_doc
+        h_dispatch hcol hn' h_fos' (by rw [h_tl_eq]; exact h_tail)
+        (by rw [h_tl_eq]; exact h_lead n hn)
+      · obtain ⟨kj, sp_ne, h_tl', h_ws, h_open⟩ := h
+        exact ⟨ev_n, sp_prep, sp_a, hcorr_ad, arm, Or.inl ⟨kj, sp_ne, h_tl', h_ws, by
+          rw [h_tl']; exact .«open» _ _ _ _ _ _ h_open⟩⟩
+      · rcases h with ⟨hc, -⟩ | ⟨hc, -⟩
+        · exact absurd hc hamp
+        · exact absurd hc hbang
+    | props ha ht sp_p sp_e h_tail h_lead_p h_run h_sep h_last_sc =>
+      have hstar : c ≠ '*' := by
+        intro hc; subst hc
+        have h_false := L4YAML.Proofs.StreamAccum.lastTokenIsNodeProperty_false_of_dispatch h_dispatch
+        obtain ⟨t, h_last, h_prop⟩ := h_last_sc
+        have h_ad_last : L4YAML.Scanner.lastRealTokenVal? s_ad.tokens =
+            L4YAML.Scanner.lastRealTokenVal? sc.tokens := by
+          rw [h_ad_tokens]
+          exact L4YAML.Proofs.StreamAccum.preprocess_preserves_lastRealTokenVal_inFlow sc s_prep _
+            (by omega) h_real h_preprocess
+        unfold lastTokenIsNodeProperty at h_false
+        rw [h_ad_inflow, h_ad_last, h_last] at h_false
+        simp [h_prop] at h_false
+      obtain ⟨ev_p, h_props⟩ := L4YAML.Proofs.Serialization.TraceOf.FlowWalk.PropsRun.toT (h_run n hn)
+      obtain ⟨kj, sp_ne, -, h_tl', h_ws, h_open⟩ := accum_step_content_trace_in_props arm hcorr_ad hpeek
+        h_ad_inflow h_not_doc h_dispatch hcol hn' h_fos' (by rw [h_tl_eq]; exact h_tail)
+        (by rw [h_tl_eq]; exact h_lead_p n hn) h_props (h_sep n hn) ⟨hamp, hbang, hstar⟩
+      exact ⟨ev_p ++ [], sp_prep, sp_a, hcorr_ad, arm, Or.inl ⟨kj, sp_ne, h_tl', h_ws, by
+        rw [h_tl']; exact .«open» _ _ _ _ _ _ h_open⟩⟩
 
 end
 
