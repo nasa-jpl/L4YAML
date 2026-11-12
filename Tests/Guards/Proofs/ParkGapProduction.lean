@@ -393,9 +393,11 @@ def expectedEndsLit : List String :=
 -- 2026-11-10 (item 469, review round 1): prods 172 → 171 (`FlowStackKBody`/`FlowStackKA` out, `gapTail` in), ctors 318 → 320 (`GapRead`/`FlowArm` re-shaped: `tl₂` out, `h_held` and the `∀ m` leads in); endsLit 42 unmoved.
 -- 2026-11-11 (item 484, ContentArm): prods 171 → 172, ctors 320 → 328 — `StreamAccum.ContentArm`, eight constructors
 -- off the dispatcher's `c` split; the park's own rows (ends, arms, spend) unmoved.
+-- 2026-11-12 (item 487, the K caller): prods 172 → 173, ctors 328 → 330 — `ContentLead` (ContentBridge §5), two
+-- constructors (`.white` / `.props`); the park rows unchanged.
 def expectedLine : String :=
   "pop=10 sites=13 spend=6 nospend=7 len1=6 ends=GStar(SSWhite)+SIndent \
-depth=3 prods=172 ctors=328 \
+depth=3 prods=173 ctors=330 \
 endsLit=42 minus=1 question=2 colon=21 chainEnds=0 blockArms=1 seqArms=10 \
 mapArms=10 streamArms=4 streamHonest=3"
 
