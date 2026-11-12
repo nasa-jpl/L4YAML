@@ -20,8 +20,10 @@ neither can be edited without the other.
 
 namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 
+-- 2026-11-12 (item 486, S3 slice (4) PR 1): population 14,226 → 14,236 (+9 lemmas, +1 def: `TraceOf/ContentBridge`), all ten in
+-- (A) `Proofs.Serialization` (1,298 → 1,308) — no capstone chain reaches the twins until their caller lands; roster 3,536 unmoved.
 def expectedDeadCensus : String :=
-  "population=14226 thm=10206 def=2678 roots=capstone:26+export:37+blueprint:222(unresolved=5) unreached=6514 thm=4600 A-campaign=1298 C-api=1405 D-test-only=275 B-roster=3536 thm=3173 cluster-roots=1460"
+  "population=14236 thm=10215 def=2679 roots=capstone:26+export:37+blueprint:222(unresolved=5) unreached=6524 thm=4609 A-campaign=1308 C-api=1405 D-test-only=275 B-roster=3536 thm=3173 cluster-roots=1460"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do
