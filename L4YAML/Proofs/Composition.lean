@@ -39,7 +39,7 @@ is about the **Scanner → TokenParser** pipeline.
 
 2. **Compose Layer** (§2): `parseYaml` applies `YamlDocument.compose`
    to each document from `parseYamlRaw`, resolving aliases and stripping
-   anchors.  The key theorem `parseYaml_ok_iff` (in `Completeness.lean`)
+   anchors.  The key theorem `parseYamlIx_ok_iff` (in `Completeness.lean`)
    is re-exported here for convenience.
 -/
 
@@ -111,7 +111,7 @@ lemma parseYamlRaw_parse_error (input : String) (e : ScanError)
 
 `parseYaml` extends `parseYamlRaw` by applying `YamlDocument.compose`
 to each raw document, resolving aliases and stripping anchor annotations.
-The primary decomposition theorem `parseYaml_ok_iff` is in `Completeness.lean`;
+The primary decomposition theorem `parseYamlIx_ok_iff` is in `Completeness.lean`;
 here we provide additional convenience forms.
 -/
 
