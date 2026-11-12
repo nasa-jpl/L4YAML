@@ -241,7 +241,9 @@ def readDecl (prods : Std.HashSet Name) (n : Name) : MetaM R := do
 -- 2026-10-26 (item 367, `[82]`): `DigitRun`, `DirectiveStop`, `DirectiveTail`, `ScannedDirective` (StructureProduction) are typed over surface positions: prodTyped 165 → 169.
 -- 2026-11-09 (item 469): three typed productions added by the arm witness (`GapRead`, `FlowArm`, `FlowStackKA`); surf/spec unmoved.
 -- 2026-11-10 (item 469, review round 1): prodTyped 172 → 171 — `FlowStackKBody`/`FlowStackKA` deleted, `gapTail` added.
-def expectedAlphabet : String := "prodTyped=171 prodSurf=96 prodSpec=58"
+-- 2026-11-11 (item 484): prodTyped 171 → 172 — `StreamAccum.ContentArm`, the content step's arm (eight
+-- constructors off the dispatcher's `c` split); surf/spec unchanged, its fields are the existing surface relations.
+def expectedAlphabet : String := "prodTyped=172 prodSurf=96 prodSpec=58"
 -- 133 → 137 on 2026-10-23: the four narrowed relations of `Proofs.Production.Acceptance.Quoted`
 -- (`DQCharOk`, `SQCharOk`, `SCDoubleQuotedOk`, `SCSingleQuotedOk`); not under `Surface`, no rule tag.
 
@@ -340,6 +342,8 @@ def expectedAlphabet : String := "prodTyped=171 prodSurf=96 prodSpec=58"
 -- 2026-10-30 (item 407, flow carrier `pendingKeys` conjunct): stepHolders 1942 → 1943 — `PendingKeysStable.preprocess_pendingKeys_of_inFlow` holds a preprocess step.
 -- 2026-11-08 ((γ1)): stepHolders 2084 → 2101, dispHolders 399 → 403 — `Proofs.Scanner.StructDepth`'s
 -- `DInv_dispatch*` / arm lemmas read the dispatchers.
+-- 2026-11-11 (item 484): stepHolders 2107 → 2109, dispHolders 410 → 412 — `contentArm_of_dispatch` and the
+-- `accum_step_content` wrapper each hold the `scanNextToken_dispatchContent` step equation.
 def expectedSteps : String :=
 -- 2026-10-24 (B3 [66] col-0 threading): stepHolders 1819 → 1874, dispHolders 332 → 348, dispTwoCorr 29 → 31 —
 -- the gate/JSON-key/reservation lemmas hold the preprocess and dispatch step equations (1878/351 on the
@@ -371,7 +375,7 @@ def expectedSteps : String :=
   -- and the seven `ScannerShape.dispatchFlowIndicators_*` / `dispatchContent_*Quoted_trace` consumers.
   -- 2026-11-08 (item 464, review): stepHolders 2122 → 2124 — the key-context twins `FlowBridge.scanDoubleQuoted_key_trace` /
   -- `scanSingleQuoted_key_trace` hold the quoted scanner step; the two `*_blockKey_to_key` relabels hold none.
-  "stepHolders=2107 dispHolders=410 dispTwoCorr=31 fns=75 fnsIx=26"
+  "stepHolders=2109 dispHolders=412 dispTwoCorr=31 fns=75 fnsIx=26"
 
 /-- **The ladder, at each population.**  `edge` is a production whose right
     endpoint is the step's output; `chain` requires a path to it from another
@@ -462,8 +466,10 @@ def expectedChainSpec : List Name :=
 def expectedPerFn : List String :=
   -- 2026-11-08 (item 459, review): dispatchContent decls 170 → 173 — the three `ScannerShape.dispatchContent_*_trace` consumers.
   -- 2026-11-08 (item 464, S3 slice (3) first PR): dispatchContent decls 173 → 175 — `ScannerShape.dispatchContent_{doubleQuoted,singleQuoted}_trace`.
-  ["scanNextToken_dispatchContent decls=173 chain=1",
-   "scanNextToken_preprocess decls=250 chain=3"]
+  -- 2026-11-11 (item 484, ContentArm): dispatchContent decls 173 → 175 (`contentArm_of_dispatch`, the `accum_step_content`
+  -- wrapper), preprocess 250 → 251 (the wrapper holds the preprocess equation too).
+  ["scanNextToken_dispatchContent decls=175 chain=1",
+   "scanNextToken_preprocess decls=251 chain=3"]
 
 /-- **The one worked precedent is outside the work.**  It is not in item 238's
     transitive set and not on either repair thread, so β.5 neither pays for it

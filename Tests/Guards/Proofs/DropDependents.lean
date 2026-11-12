@@ -360,8 +360,10 @@ def expectedWideCensus : String :=
 -- 2026-10-24 (B3 [66] col-0 threading): T 27 → 28 — `PendingNode.close_with_sslFrom`, the
 -- `SSLCommentsFrom` twin of `close_with_ssl`, rides the drop through `dropClose` in its
 -- `pendingFlow` arm only (the arm β.5 retires with the constructor).  D unchanged.
+-- 2026-11-11 (item 484, ContentArm): T 27 → 28 — `accum_step_content_core` (the renamed body;
+-- `accum_step_content` is now core ∧ `ContentArm`) is one more declaration the arm's drop reaches.  D unchanged.
 def expectedCensus : String :=
-  "D=4 S=0 R=0 T=27 capstonesInT=2 rawElim=11"
+  "D=4 S=0 R=0 T=28 capstonesInT=2 rawElim=11"
 
 /-- The first ring: two in the library, two in the instruments that exhibit the
     defect.  `stream_anything` is item 236's free-maker and item 235 restates it;
@@ -407,6 +409,7 @@ def expectedTrans : List Name :=
    `L4YAML.Proofs.StreamAccum.accum_flow_open_depth0,
    `L4YAML.Proofs.StreamAccum.accum_step_block,
    `L4YAML.Proofs.StreamAccum.accum_step_content,
+   `L4YAML.Proofs.StreamAccum.accum_step_content_core,
    `L4YAML.Proofs.StreamAccum.accum_step_flow,
    `L4YAML.Proofs.StreamAccum.accum_step_structural,
    `L4YAML.Proofs.StreamAccum.accum_structural_pending,

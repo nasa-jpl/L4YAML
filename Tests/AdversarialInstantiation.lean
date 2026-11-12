@@ -15769,6 +15769,161 @@ def testContentArmRead (state : IO.Ref TestCollector) : IO Unit := do
 
 end P111Test
 
+/-! ## Priority 112 — `ContentArm`'s fields, shadowed on the span each content step consumes (item 484)
+
+Item 484 pays `ContentArm` off the dispatcher's `c` split; its fields are surface relations on the span
+`[sp_prep, sp_a)` the content dispatch consumes, a `NextIsSep` / `peekBack?` projection of `s'`, and
+(flow-in plain) `SFlowNode n .flowIn` at every floor `n ≤ max 0 (sc.currentIndent + 1)`.  Rule 2 for the
+statement's shape, not its roster (P111): over every P110 row, at every content step, re-derive the arm
+from `scanNextToken_preprocess`'s `c` (the pay's actual constructor index) and check each arm's fields
+against the executable shadow of its relations on the consumed text — `GPlus (GChar isNsAnchorChar)` +
+`GNot` for `&`/`*`, the closing quote as `s'.peekBack?`, `NextIsSep` after a property, `GStar SSWhite` and
+the `#` guard after a depth-0 plain, and for a flow-in plain the continuation lines' indent against the
+quantified floor's bound `(max 0 (sc.currentIndent + 1)).toNat` ([134] `s-flow-line-prefix(n)` is
+`s-indent(n)` first).  Also that the step reaches the content dispatch (`dispatchBlockIndicators` = `none`)
+and that `c`'s arm names the pushed token's kind (P111 (iii) restated at the pay's index). -/
+namespace P112
+open P111 (kindOf contentArms bumpS)
+
+def nsAnchorCharBool (ch : Char) : Bool :=
+  !isLineBreakBool ch && !isWhiteSpaceBool ch && isPrintableBool ch && ch != '\uFEFF' && !isFlowIndicatorBool ch
+
+def nextIsSepBool (s : ScannerState) : Bool :=
+  match s.peek? with
+  | none => true
+  | some ch => isBlankBool ch || ch == ',' || ch == ']' || ch == '}'
+
+def commentOkBool (s : ScannerState) : Bool :=
+  s.col == 0 || s.peekBack?.isNone ||
+    (match s.peekBack? with | some ch => isWhiteSpaceBool ch || isLineBreakBool ch || ch == '\uFEFF' | none => false)
+
+/-- The arm `contentArm_of_dispatch` takes, off `c` and the depth. -/
+def armOf (sc : ScannerState) (c : Char) : String :=
+  if c == '&' then "anchor" else if c == '*' then "alias" else if c == '!' then "tag"
+  else if c == '|' || c == '>' then "blockScalar" else if c == '"' then "dq" else if c == '\'' then "sq"
+  else if sc.flowLevel == 0 then "plain" else "plainIn"
+
+def kindMatches (arm : String) (kind : String) : Bool :=
+  match arm with
+  | "plain" | "plainIn" => kind == "plain"
+  | "blockScalar" => kind == "lit" || kind == "fold"
+  | a => a == kind
+
+/-- Trailing `s-white` (space / tab) of the consumed text — `GStar SSWhite sp_gram sp'`. -/
+def whiteTail (txt : String) : Nat := (txt.toList.reverse.takeWhile isWhiteSpaceBool).length
+
+def leadingSpaces (l : String) : Nat := (l.toList.takeWhile (· == ' ')).length
+
+structure Tally where
+  content : Nat := 0
+  arms : List (String × Nat) := []          -- arm histogram off `c`
+  notContentDispatch : List String := []     -- the block-indicator dispatch did not return `none`
+  armKind : List String := []                -- `c`'s arm ≠ the pushed token's kind
+  bad : List String := []                    -- a field's shadow refuted: row, arm, text
+  plainInMulti : Nat := 0                    -- flow-in plains with a continuation line (the floor check is non-vacuous)
+  plainInBoundMax : Nat := 0                 -- the largest floor bound `(max 0 (currentIndent + 1)).toNat` met
+  plain0Multi : Nat := 0
+  hashGuarded : Nat := 0                     -- depth-0 plains with no white tail and a next char (the `#` guard's live case)
+
+/-- P110's rows hold no flow-in plain with a continuation line (the floor check would be vacuous on
+    them), so the grid adds multi-line flow plains at several floors: top level, under a block mapping at
+    indent 0 / 2 / 4, under a sequence entry, nested flows, tabs and empty lines in the fold, the
+    under-indented continuation the scanner refuses (`checkFlowValueIndent`) and a multi-line implicit key it refuses. -/
+def own : List String :=
+  ["[a\n b]", "[a\n  b, c\n d]", "{a: b\n c}", "{k: a\n  b}", "[a\n\n b]", "[a\n \n  b c\n  d]",
+   "k: [a\n b]", "k: [a\n  b,\n  c]", "k: {x: a\n  b}", "k:\n  [a\n   b]", "k:\n  v: [a\n   b\n    c]",
+   "k:\n  v: [a\n  b]", "k:\n  v:\n    [a\n     b]", "k:\n  v:\n    [a\n    b]",
+   "- [a\n  b]", "- - [a\n    b]", "- k: [a\n   b]", "[[a\n  b], {c: d\n  e}]", "[a\n\tb]", "- {a: b\n   c: d\n   e}",
+   "k: [a b\n c d\n e]", "k:\n  - [a\n    b\n    c]"]
+
+def allRows : List String := (P110.allRows ++ own).eraseDups
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    match scanFiltered s, P107.stepsOf s with
+    | .error _, _ | _, none => pure ()
+    | .ok _, some sts =>
+      for (pre, post) in sts do
+        let pushed := post.tokens.toList.drop pre.tokens.size
+        match pushed.getLast? with
+        | none => pure ()
+        | some back =>
+          let kind := kindOf back.val
+          if !contentArms.contains kind then continue
+          t := { t with content := t.content + 1 }
+          match scanNextToken_preprocess pre with
+          | .ok (some (sc, c)) =>
+            let arm := armOf sc c
+            t := { t with arms := bumpS t.arms arm }
+            match scanNextToken_dispatchBlockIndicators sc c with
+            | .ok none => pure ()
+            | _ => t := { t with notContentDispatch := s!"{repr s}: {arm}" :: t.notContentDispatch }
+            if !kindMatches arm kind then t := { t with armKind := s!"{repr s}: c={repr c} arm {arm} kind {kind}" :: t.armKind }
+            let txt := String.Pos.Raw.extract pre.input ⟨sc.offset⟩ ⟨post.offset⟩
+            let chars := txt.toList
+            let refute (why : String) : Tally := { t with bad := s!"{repr s}: {arm} {repr txt} — {why}" :: t.bad }
+            match arm with
+            | "anchor" | "alias" =>
+              let name := chars.drop 1
+              if !(chars.head? == some c) then t := refute "head"
+              else if name.isEmpty || !name.all nsAnchorCharBool then t := refute "GPlus isNsAnchorChar"
+              else if post.peek?.any nsAnchorCharBool then t := refute "GNot isNsAnchorChar"
+              else if arm == "anchor" && !nextIsSepBool post then t := refute "NextIsSep"
+            | "tag" =>
+              if !(chars.head? == some '!') then t := refute "head"
+              else if chars.any isBlankBool then t := refute "blank inside the tag"
+              else if !nextIsSepBool post then t := refute "NextIsSep"
+            | "dq" | "sq" =>
+              if !(chars.head? == some c && chars.getLast? == some c && chars.length ≥ 2) then t := refute "quotes"
+              else if post.peekBack? != some c then t := refute "peekBack?"
+            | "blockScalar" =>
+              if !(chars.head? == some c) then t := refute "header"
+              else if sc.flowLevel != 0 then t := refute "depth"
+            | "plain" | "plainIn" =>
+              let tail := whiteTail txt
+              let body := chars.take (chars.length - tail)
+              let lines := (String.ofList body).splitOn "\n"
+              let conts := (lines.drop 1).filter (fun l => !l.trimAscii.isEmpty)
+              if body.isEmpty || body.head?.any isBlankBool then t := refute "SNsPlainFirst"
+              else if arm == "plain" then
+                if !conts.isEmpty then t := { t with plain0Multi := t.plain0Multi + 1 }
+                if tail == 0 && post.peek?.isSome then t := { t with hashGuarded := t.hashGuarded + 1 }
+                if tail == 0 && post.peek? == some '#' then t := refute "the # guard"
+              else
+                let d := (max 0 (sc.currentIndent + 1)).toNat
+                if !conts.isEmpty then
+                  t := { t with plainInMulti := t.plainInMulti + 1, plainInBoundMax := max t.plainInBoundMax d }
+                if conts.any (fun l => leadingSpaces l < d) then t := refute s!"SFlowLinePrefix at the floor bound {d}"
+                else if tail == 0 && post.col != 0 && post.peek? == some '#' && commentOkBool post then t := refute "the comment guard"
+            | _ => pure ()
+          | _ => t := { t with notContentDispatch := s!"{repr s}: preprocess" :: t.notContentDispatch }
+  return t
+
+end P112
+
+namespace P112Test
+open P112
+
+def testContentArmShadow (state : IO.Ref TestCollector) : IO Unit := do
+  let t := tally P112.allRows
+  checkM state
+    s!"P112(i) {t.content} content steps; arms off c = {t.arms}; not the content dispatch = {t.notContentDispatch.length}; c's arm ≠ pushed kind = {t.armKind.length}"
+    (t.content == 1126 && t.notContentDispatch.isEmpty && t.armKind.isEmpty &&
+      t.arms == [("plain", 415), ("anchor", 103), ("tag", 117), ("plainIn", 372), ("alias", 21), ("dq", 48), ("sq", 33), ("blockScalar", 17)])
+    s!"{t.arms} {t.notContentDispatch.take 3} {t.armKind.take 3}"
+  let refused := own.filter fun r => match scanFiltered r with | .error _ => true | .ok _ => false
+  checkM state
+    s!"P112(i') own rows: {own.length}, refused by the scanner (an under-indented continuation; a multi-line implicit key): {refused.length} {refused.map repr}"
+    (own.length == 22 && refused == ["k:\n  v: [a\n  b]", "- {a: b\n   c: d\n   e}"])
+    s!"{refused.map repr}"
+  checkM state
+    s!"P112(ii) field shadows refuted = {t.bad.length}; flow-in plains with a continuation line = {t.plainInMulti} (floor bound max {t.plainInBoundMax}); depth-0 multi-line plains = {t.plain0Multi}; # guard live = {t.hashGuarded}"
+    (t.bad.isEmpty && t.plainInMulti == 22 && t.plainInBoundMax == 3 && t.plain0Multi == 12 && t.hashGuarded == 182)
+    s!"{t.bad.take 5} {t.plainInMulti} {t.plainInBoundMax} {t.plain0Multi} {t.hashGuarded}"
+
+end P112Test
+
 def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 100: S3 slice (1) — leaf span ↔ token payload (anchor / alias / tag), before proof"
   let t := P100.tally P100.allRows
@@ -15959,6 +16114,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testHeldNestOpen state
   P110Test.testPlainContinuationRead state
   P111Test.testContentArmRead state
+  P112Test.testContentArmShadow state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",

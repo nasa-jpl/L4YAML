@@ -542,6 +542,9 @@ corrBlock=0 corrScan=1 via="]
 -- `directivesPresent` preservation family and the `DirInv` loop invariant hold those steps (block indicators unmoved).
 -- 2026-11-08 ((γ1)): holders 140 → 141 (block), 169 → 170 (content), 258 → 259 (preprocess) —
 -- `Proofs/Scanner/StructDepth.lean`: the `DInv` step lemmas read the dispatchers.
+-- 2026-11-11 (item 484, ContentArm): dispatchBlockIndicators holders 139 → 140, dispatchContent 173 → 175, preprocess
+-- 250 → 251 — `contentArm_of_dispatch` and the `accum_step_content` wrapper hold the step equations their premises
+-- restate (the wrapper the whole preprocess → blockIndicators → content chain); edges and chains unmoved.
 def expectedLadder : List String :=
 -- 2026-10-24 (item 350): holders=112 → 113 — `dispatchBlock_colon_notQuestion` reads the `:`
 -- dispatch equation to hand every `:` producer `NotQuestionPark`.
@@ -559,11 +562,11 @@ def expectedLadder : List String :=
   -- Item 387 (2026-10-29): `seqTop_refuted_at_indicator_le` holds the `:`/`?` dispatch (+1 holder).
   -- Item 409 (2026-10-30): `MarkedColsIn.step_value` holds the `:` dispatch and its preprocess (+1, +1).
   [
-   "scanNextToken_dispatchBlockIndicators holders=139 edge=1 chain=0",
+   "scanNextToken_dispatchBlockIndicators holders=140 edge=1 chain=0",
    -- 2026-11-08 (item 459, review): dispatchContent holders 170 → 173 — `ScannerShape.dispatchContent_{anchor,alias,tag}_trace`.
    -- 2026-11-08 (item 464, S3 slice (3) first PR): dispatchContent holders 173 → 175 — `ScannerShape.dispatchContent_{doubleQuoted,singleQuoted}_trace`.
-   "scanNextToken_dispatchContent holders=173 edge=3 chain=1",
-   "scanNextToken_preprocess holders=250 edge=17 chain=3"]
+   "scanNextToken_dispatchContent holders=175 edge=3 chain=1",
+   "scanNextToken_preprocess holders=251 edge=17 chain=3"]
 
 /-- **What §1's proofs spend.**  `drop=false` is the non-circularity check
     items 242 and 243 also carry: a measurement of what the escape costs may
