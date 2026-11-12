@@ -262,11 +262,14 @@ inductive TFlowStackB (n : Nat) :
 /-- The `FlowStackK` sibling: the scanner-coupled S stack as it stands, and a `TraceOf` stack
     over the same frame indices with trace `ev`.  The S frame and the T frame sit side by side
     (no `TFlow* → SFlow*` erasure is spent); 2c couples `ev` to `goOut` of the token segment
-    since `sp_block` over `scanLoop`. -/
+    since `sp_block` over `scanLoop`.  The T floor `n` carries the bound the S half states for
+    its own floor (`n ≤ minContentIndentOf sc`): every step twin (`accum_step_flow_trace`,
+    `accum_step_content_traceK`) reads it as `hn` (item 488). -/
 def TFlowStackK (sp_start : SurfPos) (sc : L4YAML.Scanner.ScannerState) (fl : Nat) (ks : Array Bool)
     (tl : FrameTail) (sp_block sp_flow : SurfPos) (ev : List Event) : Prop :=
   FlowStackK sp_start sc fl ks tl sp_block sp_flow ∧
-    ∃ n, TFlowStackB n fl ks tl sp_block sp_flow ev
+    ∃ n, n ≤ L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf sc ∧
+      TFlowStackB n fl ks tl sp_block sp_flow ev
 
 /-! ## §4 The entries algebra (T twins of `NodeProduction` §4 / `PreprocessProduction`) -/
 
