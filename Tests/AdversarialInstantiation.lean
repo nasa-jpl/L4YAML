@@ -16182,8 +16182,9 @@ and the T stack at the pre-state; it concludes the arm and, by arm, the T stack 
 tail `.value`, trace `ev ++ ev_n`; property arms: tail and trace kept).  Its lead is replayed by
 `contentLead_of_interior`, whose constructor is decided by the held run at the pre-state.  What a
 decidable check can shadow (§7): (i) the hypotheses hold at every in-flow content step (the
-structural / flow / block dispatchers return `none` at the preprocessed state, the floor bound at
-`n = 0`); (ii) `flowLevel` and `flowStack` ride the step (the T stack's indices at `s'` are the
+structural / flow / block dispatchers return `none` at the preprocessed state, the floor bound `hn` read
+at the floor's top `n = minContentIndentOf pre` and transported to the dispatch state — (iv) pins the floors,
+so positive floors are read, not only the vacuous `n = 0`); (ii) `flowLevel` and `flowStack` ride the step (the T stack's indices at `s'` are the
 pre-state's); (iii) the lead's constructor by arm — `.props` iff the trailing property run at the
 pre-state is non-empty — with the alias arm never under a run (the scanner's in-flow node-property
 guard, P113 (i)) and `&` under a run only when the run holds no anchor yet (9e).  The S node, the
@@ -16200,6 +16201,8 @@ structure Tally where
   leadByArm : List (String × Nat) := []
   aliasUnderRun : List String := []
   anchorExtendBad : List String := []
+  floors : List (String × Nat) := []
+  floorFail : List String := []
   deriving Repr
 
 def tally (rows : List String) : Tally := Id.run do
@@ -16223,8 +16226,14 @@ def tally (rows : List String) : Tally := Id.run do
             let strNone := match scanNextToken_dispatchStructural sp c with | .ok none => true | _ => false
             let flowNone := match scanNextToken_dispatchFlowIndicators sad c with | .ok none => true | _ => false
             let blkNone := match scanNextToken_dispatchBlockIndicators sad c with | .ok none => true | _ => false
-            let floor0 := decide (0 ≤ L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf pre)
-            if strNone && flowNone && blkNone && floor0 then t := { t with hypsOk := t.hypsOk + 1 }
+            -- `hn` at the floor's TOP, `n := minContentIndentOf pre`, transported to the dispatch state: the
+            -- caller's `hn'` is `(n : Int) ≤ max 0 (s_ad.currentIndent + 1)` — vacuous at `n = 0`, read at the top.
+            let floor := L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf pre
+            let floorTop := decide ((floor : Int) ≤ max 0 (sad.currentIndent + 1)) &&
+              floor == L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf sad
+            t := { t with floors := bumpS t.floors s!"floor={floor}" }
+            if !floorTop then t := { t with floorFail := t.floorFail ++ [s!"{s}@{arm}"] }
+            if strNone && flowNone && blkNone && floorTop then t := { t with hypsOk := t.hypsOk + 1 }
             else t := { t with hypsFail := t.hypsFail ++ [s!"{s}@{arm}"] }
             if post.flowLevel == pre.flowLevel && post.flowStack == pre.flowStack then
               t := { t with stackRides := t.stackRides + 1 }
@@ -16260,6 +16269,10 @@ def testContentCallerShadow (state : IO.Ref TestCollector) : IO Unit := do
       t.leadByArm == [("white/plainIn", 346), ("white/anchor", 59), ("props/plainIn", 46), ("white/alias", 15),
                       ("white/tag", 21), ("white/sq", 12), ("white/dq", 18), ("props/anchor", 3), ("props/tag", 5)])
     s!"{t.leadByArm} {t.aliasUnderRun} {t.anchorExtendBad}"
+  checkM state
+    s!"P115(iv) the floor at every in-flow step, `hn` read at its top and transported to the dispatch state: {t.floors}; failing {t.floorFail}"
+    (t.floorFail.isEmpty && t.floors == [("floor=0", 476), ("floor=1", 35), ("floor=3", 14)])
+    s!"{t.floors} {t.floorFail}"
 
 end P115Test
 
