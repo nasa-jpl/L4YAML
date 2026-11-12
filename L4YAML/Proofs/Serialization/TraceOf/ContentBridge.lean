@@ -314,6 +314,86 @@ lemma accum_step_content_trace_in {n D : Nat} {ks : Array Bool}
   · exact hT.receiveNode h_tail h_lead (.content _ _ _ _ _ (.singleQ _ _ _ _ hq))
       (fun _ => .content _ _ _ _ _ (.singleQ _ _ _ _ hq))
 
+/-- The `.props` interior: a property run is held (`TCNsProperties`, item 472's lift of
+    `PropsRun`), the content follows a separator, and the scalar arms land on the T flow stack
+    through `receivePropsContent` with the run's events before the scalar's.  The alias arm is
+    excluded by hypothesis: the dispatcher refuses `*` after a property inside a flow
+    (`lastTokenIsNodeProperty`'s in-flow half; P113's two refused rows), and the property arms
+    extend the run (the `_in` twin's second disjunct, run-free). -/
+lemma accum_step_content_trace_in_props {n D : Nat} {ks : Array Bool}
+    {s_ad s' : ScannerState} {c : Char} {sp_block sp_flow sp_p sp_e sp_prep sp_a : SurfPos}
+    {ev ev_p : List Event}
+    (arm : ContentArm s_ad s' c sp_prep sp_a)
+    (hcorr : ScannerSurfCorr s_ad sp_prep) (hpeek : s_ad.peek? = some c)
+    (h_inflow : s_ad.inFlow = true)
+    (h_not_doc : s_ad.col = 0 → atDocumentBoundary s_ad = false)
+    (h_dispatch : scanNextToken_dispatchContent s_ad c = .ok s')
+    (hcol : s_ad.currentIndent < (s_ad.col : Int))
+    (hn : (n : Int) ≤ max 0 (s_ad.currentIndent + 1))
+    (hT : TFlowOpenStack n D ks (tailOf s_ad.tokens) sp_block sp_flow ev)
+    (h_tail : ∀ kj, tailOf s_ad.tokens ≠ .value kj)
+    (h_lead : SSeparateLines n sp_flow sp_p ∨
+      (sp_p = sp_flow ∧ (tailOf s_ad.tokens).leadFree))
+    (h_props : TCNsProperties n .flowIn sp_p sp_e ev_p)
+    (h_sep : SSeparate n .flowIn sp_e sp_prep)
+    (h_val : c ≠ '&' ∧ c ≠ '!' ∧ c ≠ '*') :
+    ∃ kj sp_ne, PushesTrace s_ad.tokens s'.tokens [] ∧
+      tailOf s'.tokens = .value kj ∧ GStar SSWhite sp_ne sp_a ∧
+      TFlowOpenStack n D ks (.value kj) sp_block sp_ne (ev ++ (ev_p ++ [])) := by
+  obtain ⟨hamp, hbang, hstar⟩ := h_val
+  obtain ⟨rest, hsp_prep⟩ := peek_some_sp hcorr hpeek
+  obtain ⟨hpipe, hgt⟩ :=
+    Proofs.BlockScalarFlowGuard.dispatchContent_not_blockScalar_of_inFlow h_inflow h_dispatch
+  obtain ⟨⟨kj, h_tl', hkj⟩, -, -⟩ :=
+    tailOf_dispatchContent_value h_dispatch hamp hbang hpipe hgt
+  obtain ⟨sp_gram, sp', h_node, h_ws, hcorr', -, -⟩ :=
+    dispatchContent_evidence_flowIn_at n s_ad sp_prep c hcorr hpeek h_inflow h_not_doc h_dispatch hcol hn
+  have hsp : sp' = sp_a := by
+    cases arm with
+    | plain _ _ _ _ _ _ _ hcorr_a => exact ScannerSurfCorr_unique hcorr' hcorr_a
+    | plainIn _ _ _ hcorr_a _ => exact ScannerSurfCorr_unique hcorr' hcorr_a
+    | doubleQuoted _ _ _ _ hcorr_a => exact ScannerSurfCorr_unique hcorr' hcorr_a
+    | singleQuoted _ _ _ _ hcorr_a => exact ScannerSurfCorr_unique hcorr' hcorr_a
+    | blockScalar _ h_c =>
+      rcases h_c with h | h
+      · exact absurd h hpipe
+      · exact absurd h hgt
+    | anchor _ h_c => exact absurd h_c hamp
+    | tag _ h_c => exact absurd h_c hbang
+    | alias _ h_c => exact absurd h_c hstar
+  subst hsp
+  have hglue := L4YAML.Proofs.StreamAccum.content_not_glue h_dispatch
+  simp only [isFlowIndicatorBool, Bool.or_eq_false_iff, decide_eq_false_iff_not,
+    List.mem_cons, List.mem_nil_iff, or_false, not_or] at hglue
+  have hlb : c ≠ '[' := hglue.2.2.1
+  have hlc : c ≠ '{' := hglue.2.2.2.2.1
+  have hsilent : PushesTrace s_ad.tokens s'.tokens [] := by
+    by_cases hdq : c = '"'
+    · subst hdq
+      obtain ⟨_, v, htok, -, -⟩ :=
+        dispatchContent_doubleQuoted_trace s_ad sp_prep hcorr hpeek s' h_dispatch
+      rw [htok]; exact pushesTrace_push_scalar _ _ rfl
+    by_cases hsq : c = '\''
+    · subst hsq
+      obtain ⟨_, v, htok, -, -⟩ :=
+        dispatchContent_singleQuoted_trace s_ad sp_prep hcorr hpeek s' h_dispatch
+      rw [htok]; exact pushesTrace_push_scalar _ _ rfl
+    obtain ⟨str, htok⟩ := dispatchContent_plain_tokens h_dispatch hamp hstar hbang hpipe hgt hdq hsq
+    rw [htok]; exact pushesTrace_push_scalar _ _ rfl
+  subst hsp_prep
+  refine ⟨kj, sp_gram, hsilent, h_tl', h_ws, ?_⟩
+  rcases SFlowNode_head_lift h_node ⟨hamp, hstar, hbang, hlb, hlc⟩ with
+    ⟨hdq, hsq, hplain⟩ | ⟨hdq, hq⟩ | ⟨hsq, hq⟩
+  · refine hT.receivePropsContent h_tail h_lead h_props h_sep (.plain _ _ _ _ hplain) ?_
+    intro hk
+    rcases hkj hk with h | h
+    · exact absurd h hdq
+    · exact absurd h hsq
+  · exact hT.receivePropsContent h_tail h_lead h_props h_sep (.doubleQ _ _ _ _ hq)
+      (fun _ => .doubleQ _ _ _ _ hq)
+  · exact hT.receivePropsContent h_tail h_lead h_props h_sep (.singleQ _ _ _ _ hq)
+      (fun _ => .singleQ _ _ _ _ hq)
+
 /-! ## §4 The twin at depth 0 -/
 
 /-- The block-scalar arm of the content dispatcher pushes one scalar. -/

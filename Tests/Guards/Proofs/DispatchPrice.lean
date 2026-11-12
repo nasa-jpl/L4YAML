@@ -375,7 +375,9 @@ def expectedSteps : String :=
   -- and the seven `ScannerShape.dispatchFlowIndicators_*` / `dispatchContent_*Quoted_trace` consumers.
   -- 2026-11-08 (item 464, review): stepHolders 2122 → 2124 — the key-context twins `FlowBridge.scanDoubleQuoted_key_trace` /
   -- `scanSingleQuoted_key_trace` hold the quoted scanner step; the two `*_blockKey_to_key` relabels hold none.
-  "stepHolders=2109 dispHolders=412 dispTwoCorr=31 fns=75 fnsIx=26"
+-- 2026-11-12 (item 486, S3 slice (4) PR 1): stepHolders 2109 → 2114, dispHolders 412 → 417 — `TraceOf/ContentBridge`:
+-- the three twins take `h_dispatch : scanNextToken_dispatchContent s_ad c = .ok s'`, the two `dispatchContent_*_tokens` helpers `hok`.
+  "stepHolders=2114 dispHolders=417 dispTwoCorr=31 fns=75 fnsIx=26"
 
 /-- **The ladder, at each population.**  `edge` is a production whose right
     endpoint is the step's output; `chain` requires a path to it from another
@@ -468,7 +470,9 @@ def expectedPerFn : List String :=
   -- 2026-11-08 (item 464, S3 slice (3) first PR): dispatchContent decls 173 → 175 — `ScannerShape.dispatchContent_{doubleQuoted,singleQuoted}_trace`.
   -- 2026-11-11 (item 484, ContentArm): dispatchContent decls 173 → 175 (`contentArm_of_dispatch`, the `accum_step_content`
   -- wrapper), preprocess 250 → 251 (the wrapper holds the preprocess equation too).
-  ["scanNextToken_dispatchContent decls=175 chain=1",
+  -- 2026-11-12 (item 486, S3 slice (4) PR 1): dispatchContent decls 175 → 180 — `TraceOf/ContentBridge`'s three twins and
+  -- its two `dispatchContent_{plain,blockScalar}_tokens` helpers.
+  ["scanNextToken_dispatchContent decls=180 chain=1",
    "scanNextToken_preprocess decls=251 chain=3"]
 
 /-- **The one worked precedent is outside the work.**  It is not in item 238's
