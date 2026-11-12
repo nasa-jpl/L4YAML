@@ -504,6 +504,101 @@ lemma accum_step_content_trace_out {s_ad s' : ScannerState} {c : Char} {sp_prep 
     simpa [tokenEvent] using
       pushesTrace_push s_ad.tokens ⟨s_ad.currentPos, .alias name, s_ad.currentPos⟩ (by simp) (by simp)
 
+/-! ## §5 The receive's premises, replayed from the core's inputs (item 487)
+
+`accum_step_content_core` derives `h_tail` / `h_lead` (and, under a held run, the run and its
+separator) inside its proof from `h_interior` at `(sc, sp_scan)`, the preprocess and the structural
+`none`; the twins above take them at `(s_ad, sp_prep)`.  This lemma is that derivation, stated once,
+from the wrapper's hypotheses (the public lemmas the core uses; no `StreamAccum` edit). -/
+
+/-- The flow receive's premises at the dispatch state, from the interior at the pre-state. -/
+inductive ContentLead (sc : ScannerState) (tl : FrameTail) (sp_flow sp_prep : SurfPos) : Prop where
+  | white
+      (h_tail : ∀ kj, tl ≠ .value kj)
+      (h_lead : ∀ m, m ≤ L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf sc →
+        SSeparateLines m sp_flow sp_prep ∨ (sp_prep = sp_flow ∧ tl.leadFree)) :
+      ContentLead sc tl sp_flow sp_prep
+  | props (ha ht : Bool) (sp_p sp_e : SurfPos)
+      (h_tail : ∀ kj, tl ≠ .value kj)
+      (h_lead : ∀ m, m ≤ L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf sc →
+        SSeparateLines m sp_flow sp_p ∨ (sp_p = sp_flow ∧ tl.leadFree))
+      (h_run : ∀ m, m ≤ L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf sc →
+        L4YAML.Proofs.StreamAccum.PropsRun m (inFlowCtx .flowOut) ha ht sp_p sp_e)
+      (h_sep : ∀ m, m ≤ L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf sc →
+        SSeparate m (inFlowCtx .flowOut) sp_e sp_prep) :
+      ContentLead sc tl sp_flow sp_prep
+
+/-- The replay: `accum_step_content_core`'s derivation of the receive's premises, from the
+    wrapper's hypotheses.  `s_ad` is the dispatch state (`s_prep` with `allowDirectives` cleared);
+    the three `h_ad_*` equalities are `split <;> rfl` at the caller. -/
+lemma contentLead_of_interior {sc s_prep s_ad s' : ScannerState} {c : Char} {d : Nat}
+    {sp_flow sp_scan sp_prep : SurfPos}
+    (hd : sc.flowLevel = d + 1)
+    (h_corr : ScannerSurfCorr sc sp_scan) (hcorr_prep : ScannerSurfCorr s_prep sp_prep)
+    (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
+    (h_str_none : scanNextToken_dispatchStructural s_prep c = .ok none)
+    (h_ad_tokens : s_ad.tokens = s_prep.tokens) (h_ad_peek : s_ad.peek? = s_prep.peek?)
+    (h_ad_fl : s_ad.flowLevel = s_prep.flowLevel)
+    (h_flow_none : scanNextToken_dispatchFlowIndicators s_ad c = .ok none)
+    (h_blk_none : scanNextToken_dispatchBlockIndicators s_ad c = .ok none)
+    (h_dispatch : scanNextToken_dispatchContent s_ad c = .ok s')
+    (h_gap : L4YAML.Proofs.StreamAccum.InteriorGap sc (tailOf sc.tokens) sp_flow sp_scan)
+    (h_real : L4YAML.Proofs.FlowAdjacency.LastTokenReal sc.tokens) :
+    ContentLead sc (tailOf sc.tokens) sp_flow sp_prep := by
+  open L4YAML.Proofs.StreamAccum in
+  have h_sc_inflow : sc.inFlow = true := inFlow_of_flowLevel_eq hd
+  have h_prep_fl : s_prep.flowLevel = sc.flowLevel :=
+    L4YAML.Proofs.FlowSync.preprocess_preserves_flowLevel sc s_prep c h_preprocess
+  have h_ad_inflow : s_ad.inFlow = true := by
+    unfold ScannerState.inFlow; rw [h_ad_fl, h_prep_fl, hd]; simp
+  have hpeek_prep : s_prep.peek? = some c := L4YAML.Proofs.StreamAccum.preprocess_some_peek h_preprocess
+  have h_lead_from : ∀ {sp_g : SurfPos}, GStar SSWhite sp_g sp_scan →
+      (sp_g = sp_scan → sc.col ≠ 0 → ¬ (L4YAML.Proofs.ScannerCoupling.CommentOk sc ∧ sc.peek? = some '#')) →
+      ∀ m : Nat, (SSeparateLines m sp_g sp_prep ∨ (sp_prep = sp_scan ∧ sp_g = sp_scan)) ∨
+        ¬ (m ≤ L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf sc) :=
+    fun h_trail h_gate m =>
+      L4YAML.Proofs.StreamAccum.SSeparateLines_at_interior m h_sc_inflow
+        (L4YAML.Proofs.StreamAccum.InteriorGap.col_pos h_gap)
+        (L4YAML.Proofs.StreamAccum.content_ne_comment h_dispatch) h_corr h_trail h_gate hcorr_prep
+        h_preprocess h_str_none
+  have h_peek : sp_prep = sp_scan → sc.peek? = some c := fun heq =>
+    L4YAML.Proofs.StreamAccum.peek_of_corr_pair h_corr hcorr_prep heq hpeek_prep
+  have h_glue := L4YAML.Proofs.StreamAccum.content_not_glue h_dispatch
+  cases h_gap with
+  | white h_ws h_sync h_colon h_col0 h_gate h_free h_q =>
+    have h_tail : ∀ kj, tailOf sc.tokens ≠ .value kj := by
+      have h_tl_eq : tailOf s_ad.tokens = tailOf sc.tokens := by
+        unfold L4YAML.Proofs.StreamAccum.tailOf
+        rw [h_ad_tokens,
+          L4YAML.Proofs.StreamAccum.preprocess_preserves_frameTokenVal_inFlow sc s_prep c (by omega) h_preprocess,
+          L4YAML.Proofs.StreamAccum.preprocess_preserves_jsonKeyBefore_inFlow sc s_prep c (by omega) h_preprocess]
+      rw [← h_tl_eq]
+      have h_ad_sync : L4YAML.Proofs.StreamAccum.frameTokenVal? s_ad.tokens =
+          L4YAML.Scanner.lastRealTokenVal? s_ad.tokens := by
+        rw [h_ad_tokens]
+        exact L4YAML.Proofs.StreamAccum.preprocess_preserves_sync_inFlow (by omega) h_real h_preprocess h_sync
+      obtain ⟨-, hne_rb, -, hne_rc, hne_comma⟩ :=
+        L4YAML.Proofs.StreamAccum.not_flow_indicator_of_dispatch_none h_flow_none
+      have h_adj : scanNextToken_checkFlowAdjacency s_ad c = .ok () := by
+        have h' := h_flow_none
+        unfold scanNextToken_dispatchFlowIndicators at h'
+        exact L4YAML.Proofs.FlowAdjacency.flowAdj_ok_of_dispatch_ok h'
+      exact L4YAML.Proofs.StreamAccum.tailOf_ne_value h_ad_sync
+        (L4YAML.Proofs.FlowAdjacency.notCompletes_of_checkFlowAdjacency_ok_nodeStart h_adj h_ad_inflow
+          ⟨hne_comma, hne_rb, hne_rc⟩
+          (L4YAML.Proofs.StreamAccum.not_valueCandidate_of_dispatch_none h_blk_none))
+    refine .white h_tail (fun m hm => ?_)
+    have h_at := (h_lead_from h_ws h_gate m).resolve_right (fun h => h hm)
+    exact L4YAML.Proofs.StreamAccum.lead_of_white_gap h_free h_peek
+      (L4YAML.Proofs.StreamAccum.not_glue_weaken h_glue) h_at
+  | props ha ht sp_p h_tail h_lead h_run h_anchor h_tag h_colon h_gate h_next h_q h_some =>
+    have h_lead_at := h_lead_from (GStar.nil _) (fun _ => h_gate)
+    refine .props ha ht sp_p sp_scan h_tail (fun m hm => (h_lead m).resolve_right (fun h => h hm))
+      (fun m hm => (h_run m).resolve_right (fun h => h hm)) (fun m hm => ?_)
+    rcases (h_lead_at m).resolve_right (fun h => h hm) with h | ⟨h1, -⟩
+    · exact h
+    · exact absurd (L4YAML.Proofs.StreamAccum.NextIsSep.not_content h_next (h_peek h1) h_glue) id
+
 end
 
 end L4YAML.Proofs.Serialization.TraceOf.ContentBridge
