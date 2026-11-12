@@ -599,6 +599,56 @@ lemma contentLead_of_interior {sc s_prep s_ad s' : ScannerState} {c : Char} {d :
     · exact h
     · exact absurd (L4YAML.Proofs.StreamAccum.NextIsSep.not_content h_next (h_peek h1) h_glue) id
 
+
+/-! ## §6 The K caller — the content step on the T flow stack (item 487)
+
+At depth ≥ 1, from `accum_step_content`'s inputs and the T stack at the pre-state: the value arms
+land the T stack at `s'` through `_in` / `_in_props`, the property arms keep it (tail and trace
+unchanged), the lead replayed by `contentLead_of_interior`.  Depth 0 is `_out`'s business. -/
+
+/-- The content step's T twin at the stack level: the S inputs of `accum_step_content` (restricted
+    to what the receive reads) and the T stack at `sc` give the T stack at `s'`. -/
+lemma accum_step_content_traceK {n d : Nat} {sc s_prep s' : ScannerState} {c : Char}
+    {sp_block sp_flow sp_scan : SurfPos} {ev : List Event}
+    (hd : sc.flowLevel = d + 1)
+    (h_corr : ScannerSurfCorr sc sp_scan)
+    (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
+    (h_str_none : scanNextToken_dispatchStructural s_prep c = .ok none)
+    (h_flow_none : scanNextToken_dispatchFlowIndicators
+        (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) c = .ok none)
+    (h_blk_none : scanNextToken_dispatchBlockIndicators
+        (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) c = .ok none)
+    (h_dispatch : scanNextToken_dispatchContent
+        (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) c = .ok s')
+    (h_not_doc : (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep).col = 0 →
+      atDocumentBoundary (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) = false)
+    (h_gap : L4YAML.Proofs.StreamAccum.InteriorGap sc (tailOf sc.tokens) sp_flow sp_scan)
+    (h_real : L4YAML.Proofs.FlowAdjacency.LastTokenReal sc.tokens)
+    (hT : TFlowStackB n sc.flowLevel sc.flowStack (tailOf sc.tokens) sp_block sp_flow ev)
+    (hn : n ≤ L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf sc) :
+    ∃ ev_n sp_prep sp_a,
+      ScannerSurfCorr (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) sp_prep ∧
+      ContentArm (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) s' c sp_prep sp_a ∧
+      ((∃ kj sp_ne, tailOf s'.tokens = .value kj ∧ GStar SSWhite sp_ne sp_a ∧
+          TFlowStackB n s'.flowLevel s'.flowStack (tailOf s'.tokens) sp_block sp_ne (ev ++ ev_n)) ∨
+       (tailOf s'.tokens = tailOf sc.tokens ∧ (c = '&' ∨ c = '!') ∧
+          TFlowStackB n s'.flowLevel s'.flowStack (tailOf s'.tokens) sp_block sp_flow ev)) := by
+  sorry
+
 end
 
 end L4YAML.Proofs.Serialization.TraceOf.ContentBridge
