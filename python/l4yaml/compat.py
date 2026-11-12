@@ -122,13 +122,12 @@ def _resolve_scalar(v: YamlValue, s: str) -> Any:
 
     Core Schema resolution applies to PLAIN scalars only
     (YAML 1.2 §10.3.2): a quoted or block scalar is always a string,
-    so ``"42"`` stays ``"42"`` while ``42`` becomes ``int``.  The style
-    is fetched only when the content would resolve to a non-string.
+    so ``"42"`` stays ``"42"`` while ``42`` becomes ``int``. Check
+    style before conversion to avoid numeric-limit errors on strings.
     """
-    coerced: Any = _coerce_scalar(s)
-    if coerced is s:
+    if v._style_id != _PLAIN:
         return s
-    return coerced if v._style_id == _PLAIN else s
+    return _coerce_scalar(s)
 
 
 # ── Recursive conversion ─────────────────────────────────────────────
