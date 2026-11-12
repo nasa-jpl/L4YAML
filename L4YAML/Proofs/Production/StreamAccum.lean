@@ -41710,8 +41710,9 @@ lemma accum_step_content_core (sc : ScannerState)
                    h_gate_c (fun _ _ _ _ => ⟨rfl, fun _ => rfl⟩) nofun, h_real', h_ad'⟩⟩
 
 
-/-- `accum_step_content_core` with the step's `ContentArm` alongside (item 484), built arm-first so the
-    core's body tuple is kept verbatim (the `FlowStackK.withArm` pattern).  The arm is read at the state
+/-- `accum_step_content_core` with the step's `ContentArm` alongside (item 484), the arm the last conjunct inside
+    the existential, as `FlowArm` sits in `accum_step_flow` (the `FlowStackK.withArm` pattern: the core's
+    body tuple is kept verbatim and re-packed once).  The arm is read at the state
     the dispatch reads (after `allowDirectives` is cleared), at the preprocess's end position. -/
 lemma accum_step_content (sc : ScannerState)
     (sp_start sp_gram sp_block sp_flow sp_scan : SurfPos)
@@ -41778,7 +41779,7 @@ lemma accum_step_content (sc : ScannerState)
       atDocumentBoundary (if s_prep.allowDirectives then
           { s_prep with allowDirectives := false, documentEverStarted := true }
         else s_prep) = false) :
-    (∃ sp_gram' sp_block' sp_flow' sp_scan',
+    ∃ sp_gram' sp_block' sp_flow' sp_scan',
       SLYamlStream sp_start sp_gram' ∧
       BlockStack sp_gram' sp_block' ∧
       FlowStackK sp_start s' s'.flowLevel s'.flowStack (tailOf s'.tokens) sp_block' sp_flow' ∧
@@ -41786,14 +41787,14 @@ lemma accum_step_content (sc : ScannerState)
       ScannerSurfCorr s' sp_scan' ∧
       (s'.flowLevel ≥ 1 →
         InteriorGap s' (tailOf s'.tokens) sp_flow' sp_scan' ∧
-          LastTokenReal s'.tokens ∧ s'.allowDirectives = false)) ∧
-    ∃ sp_prep sp_a, ScannerSurfCorr (if s_prep.allowDirectives then
+          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) ∧
+        ∃ sp_prep sp_a, ScannerSurfCorr (if s_prep.allowDirectives then
           { s_prep with allowDirectives := false, documentEverStarted := true }
         else s_prep) sp_prep ∧
-      ContentArm (if s_prep.allowDirectives then
+          ContentArm (if s_prep.allowDirectives then
           { s_prep with allowDirectives := false, documentEverStarted := true }
         else s_prep) s' c sp_prep sp_a := by
-  refine ⟨accum_step_content_core (h_sound := h_sound) sc sp_start sp_gram sp_block sp_flow sp_scan s_prep s' c h_stream h_stack h_flowK h_pending h_corr h_interior h_preprocess h_dn h_fv h_flow_none h_blk_none h_adj h_bare h_base h_mono h_dispatch h_str_none h_not_doc, ?_⟩
+  obtain ⟨g, b, f, sn, q1, q2, q3, q4, q5, q6⟩ := accum_step_content_core (h_sound := h_sound) sc sp_start sp_gram sp_block sp_flow sp_scan s_prep s' c h_stream h_stack h_flowK h_pending h_corr h_interior h_preprocess h_dn h_fv h_flow_none h_blk_none h_adj h_bare h_base h_mono h_dispatch h_str_none h_not_doc
   obtain ⟨sp_prep, hcorr_prep⟩ :=
     scanNextToken_preprocess_corr sc sp_scan h_corr s_prep c h_preprocess
   have hcorr_ad := corr_of_allowDirectives_update hcorr_prep
@@ -41827,7 +41828,7 @@ lemma accum_step_content (sc : ScannerState)
         else s_prep).indents = s_prep.indents := by split <;> rfl
     rw [hc, currentIndent_of_indents_eq hi]; exact h
   obtain ⟨sp_a, harm⟩ := contentArm_of_dispatch _ sp_prep c hcorr_ad hpeek h_not_doc hcol h_dispatch
-  exact ⟨sp_prep, sp_a, hcorr_ad, harm⟩
+  exact ⟨g, b, f, sn, q1, q2, q3, q4, q5, q6, sp_prep, sp_a, hcorr_ad, harm⟩
 
 /-! ### §1f Composition: Per-Dispatch → Full accum_step
 
@@ -41991,7 +41992,7 @@ lemma scanNextToken_accum_step (sc : ScannerState)
                             rw [this]
                             exact dispatchStructural_none_not_doc_boundary h_str_eq hcol
                           · exact dispatchStructural_none_not_doc_boundary h_str_eq
-                        obtain ⟨⟨g', bl', fl', sn', q1, q2, q3, q4, q5, q6⟩, _⟩ :=
+                        obtain ⟨g', bl', fl', sn', q1, q2, q3, q4, q5, q6, _⟩ :=
                           accum_step_content (h_sound := h_sound) sc sp_start sp_gram sp_block sp_flow sp_scan s_pre s_cnt c_pre
                             h_stream h_stack h_flow h_pending h_corr h_interior h_pre h_dn
                             h_fv h_flow_none h_blk_none h_adj h_bare h_base h_mono h_cnt

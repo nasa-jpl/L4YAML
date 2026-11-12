@@ -153,8 +153,10 @@ def expectedClosure : Nat := 287  -- +1 on 2026-11-08: `Proofs.Serialization.Tra
 
 /-- The park's populations beside the arm's, from one pass. -/
 -- 2026-10-24 (B3 [66] col-0 threading): see the dated note on `expectedDirect` below.
+-- 2026-11-11 (item 484): Tp 35 → 36, T 27 → 28, shared 20 → 21 — `accum_step_content_core` (the renamed body)
+-- joins both drops; gate holders dn/mid 22 → 23, fv/mid 16 → 17 — the `accum_step_content` wrapper holds `h_dn`/`h_fv`.
 def expectedBill : String :=
-  "Dp=11 Sp=0 Tp=35 T=27 shared=20 extra=15 capstonesInTp=2"
+  "Dp=11 Sp=0 Tp=36 T=28 shared=21 extra=15 capstonesInTp=2"
 
 /-- Names the park in a PROOF TERM — builders and case splits together, which
     no syntactic reading separates (item 240).  **Seven of the nine break and
@@ -359,7 +361,7 @@ def accumNs : Name := `L4YAML.Proofs.StreamAccum
     item's 49 new declarations excluded the census reads 21 again, so no other
     holder moved. -/
 def expectedGateHolders : String :=
-  "dn/mid=22 dn/eof=5 fv/mid=16 fv/eof=4 | \
+  "dn/mid=23 dn/eof=5 fv/mid=17 fv/eof=4 | \
 elsewhere dn/mid=9 dn/eof=14 fv/mid=11 fv/eof=15"
 
 set_option maxHeartbeats 4000000 in

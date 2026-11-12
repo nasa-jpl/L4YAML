@@ -115,8 +115,10 @@ namespace L4YAML.Tests.Guards.GateVocabulary
 -- 2026-11-08 (item 463, S3 slice (2)): mentions 503 → 506 — item 463's gate paragraph names the guard rows it moved.
 -- 2026-11-08 (item 464, S3 slice (3) first PR): mentions 506 → 515 — item 464's gate paragraph names the seven guard files it re-pinned.
 -- 2026-11-08 (item 464, review): mentions 515 → 516 — the corrected key-context finding names `check-…` once more.
+-- 2026-11-11 (item 484, ContentArm): mentions 516 → 517 — the `ContentArm` docstring names the content dispatch
+-- step it is read off (not spelled here: it would move `self`); no name added or retired.
 def expectedGateVocab : String :=
-  "names=114 mentions=516 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
+  "names=114 mentions=517 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
 
 end L4YAML.Tests.Guards.GateVocabulary
 
