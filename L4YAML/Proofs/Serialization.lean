@@ -22,6 +22,7 @@ import L4YAML.Proofs.Serialization.ParseCheckFrom
 import L4YAML.Proofs.Serialization.ScannerShape
 import L4YAML.Proofs.Serialization.TraceOf.Document
 import L4YAML.Proofs.Serialization.TraceOf.UniqueFlow
+import L4YAML.Proofs.Serialization.TraceOf.ContentBridge
 import L4YAML.Proofs.Serialization.TraceOf.LeafBridge
 
 @[expose] public section Blanket
