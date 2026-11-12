@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from pathlib import Path
 from typing import Any, Iterator, NoReturn
 
@@ -56,6 +57,16 @@ _POS_INF: frozenset[str] = frozenset({".inf", ".Inf", ".INF", "+.inf", "+.Inf", 
 _NEG_INF: frozenset[str] = frozenset({"-.inf", "-.Inf", "-.INF"})
 _NAN_VALS: frozenset[str] = frozenset({".nan", ".NaN", ".NAN"})
 
+# Exactly the YAML 1.2.2 §10.3.2 Core Schema numeric spelling classes.
+# Do not use Python's int/float as lexers: they accept underscores, signed
+# hexadecimal/octal numbers, and other forms YAML resolves as strings.
+_CORE_DECIMAL_INT = re.compile(r"[-+]?[0-9]+\Z")
+_CORE_OCTAL_INT = re.compile(r"0o[0-7]+\Z")
+_CORE_HEX_INT = re.compile(r"0x[0-9a-fA-F]+\Z")
+_CORE_FLOAT = re.compile(
+    r"[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?\Z"
+)
+
 
 def _coerce_scalar(s: str) -> Any:
     """Convert a YAML scalar string to the appropriate Python type.
@@ -71,12 +82,18 @@ def _coerce_scalar(s: str) -> Any:
     if s in _BOOL_FALSE:
         return False
 
-    # Integer: decimal, 0o octal, 0x hex
-    if s and s[0] in "+-0123456789":
+    # Apply the YAML spelling grammar *before* conversion. In particular, 012
+    # is a decimal integer (12), not a Python base-0 literal or a float.
+    if _CORE_DECIMAL_INT.fullmatch(s):
         try:
-            return int(s, 0)
-        except (ValueError, TypeError):
-            pass
+            return int(s, 10)
+        except ValueError as exc:  # e.g. Python's large-int digit limit
+            from l4yaml.exceptions import LimitError
+            raise LimitError("Core decimal integer cannot be represented") from exc
+    if _CORE_OCTAL_INT.fullmatch(s):
+        return int(s[2:], 8)
+    if _CORE_HEX_INT.fullmatch(s):
+        return int(s[2:], 16)
 
     # Float: inf, nan, and decimal floats
     if s in _POS_INF:
@@ -85,11 +102,12 @@ def _coerce_scalar(s: str) -> Any:
         return -math.inf
     if s in _NAN_VALS:
         return math.nan
-    if s and s[0] in "+-.0123456789":
+    if _CORE_FLOAT.fullmatch(s):
         try:
             return float(s)
-        except (ValueError, TypeError):
-            pass
+        except ValueError as exc:
+            from l4yaml.exceptions import LimitError
+            raise LimitError("Core float cannot be represented") from exc
 
     return s
 
