@@ -16276,6 +16276,67 @@ def testContentCallerShadow (state : IO.Ref TestCollector) : IO Unit := do
 
 end P115Test
 
+/-! ## Priority 116 — the plain landing is floor-independent (item 488, review round 2)
+
+`ContentArm.plainIn` lands at a per-floor `sp_gram` (`∀ n, … → ∃ sp_gram`); `TFlowStackK`'s `∀`-floor T
+half needs ONE landing.  The uniformity lemma (`SFlowNode_plain_end_eq_of_white`: two plain ends from one
+start with white runs to one `sp'` coincide, because a plain's last character is not white) has this
+decidable shadow: at every in-flow plain content step the pushed token ends exactly at the last
+non-white character before the scan position — the trailing run between the token's end and the
+post-state's offset is all white, and the character before the token's end is not. -/
+namespace P116
+open P111 P112 P113 P114
+
+structure Tally where
+  plainIn : Nat := 0
+  ok : Nat := 0
+  bad : List String := []
+  deriving Repr
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    match scanFiltered s, P107.stepsOf s with
+    | .ok _, some sts =>
+      for (pre, post) in sts do
+        let pushed := post.tokens.toList.drop pre.tokens.size
+        match pushed.getLast? with
+        | none => pure ()
+        | some back =>
+          if kindOf back.val != "plain" || pre.flowLevel == 0 then continue
+          t := { t with plainIn := t.plainIn + 1 }
+          -- The node end: scan back over the trailing white from the scan position; the plain's
+          -- text ends with the source's last node character (folding touches inner breaks only).
+          -- (`back.endPos` is not populated for plain tokens — it equals `pos`; read, not fixed here.)
+          -- Byte offsets, as the scanner counts them (a leading BOM is three bytes).
+          let bytes := s.toUTF8
+          let charAt (i : Nat) : Option Char :=
+            match bytes[i]? with | some b => if b < 128 then some (Char.ofNat b.toNat) else none | none => none
+          let mut e := post.offset
+          while e > 0 && (match charAt (e - 1) with | some ch => isWhiteSpaceBool ch | none => false) do
+            e := e - 1
+          let lastSrc := charAt (e - 1)
+          let lastTxt := match back.val with | .scalar text _ => text.toList.getLast? | _ => none
+          if e > back.pos.offset && lastSrc.isSome && lastSrc == lastTxt then
+            t := { t with ok := t.ok + 1 }
+          else t := { t with bad := t.bad ++ [s!"{s}@{e}/{post.offset}"] }
+    | _, _ => pure ()
+  return t
+
+end P116
+
+namespace P116Test
+open P116
+
+def testPlainLandingUniform (state : IO.Ref TestCollector) : IO Unit := do
+  let t := tally P113.allRows
+  checkM state
+    s!"P116 the in-flow plain landing: token end = last non-white before the scan position at {t.ok} of {t.plainIn} steps (failing: {t.bad})"
+    (t.bad.isEmpty && t.plainIn == 392 && t.ok == t.plainIn)
+    s!"{t.plainIn} {t.ok} {t.bad}"
+
+end P116Test
+
 def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 100: S3 slice (1) — leaf span ↔ token payload (anchor / alias / tag), before proof"
   let t := P100.tally P100.allRows
@@ -16470,6 +16531,7 @@ def collectTests : IO VerifiedSuiteResult := do
   P113Test.testContentTwinRead state
   P114Test.testContentTwinShadow state
   P115Test.testContentCallerShadow state
+  P116Test.testPlainLandingUniform state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",
