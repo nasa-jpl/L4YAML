@@ -114,7 +114,18 @@ def _coerce_scalar(s: str) -> Any:
 
 def _scalar_to_python(v: YamlValue) -> Any:
     """Convert one scalar node to Python (kind checked by ``as_str``)."""
-    return _resolve_scalar(v, v.as_str())
+    return _resolve_scalar_preserving_style(v, v.as_str())
+
+
+def _resolve_scalar_preserving_style(v: YamlValue, s: str) -> Any:
+    """Avoid implicit numeric conversion for quoted or block strings.
+
+    Explicit tags still pass through to the resolver, so a separate
+    explicit-tag implementation can take precedence over style.
+    """
+    if v._style_id != _PLAIN and v.tag is None:
+        return s
+    return _resolve_scalar(v, s)
 
 
 def _resolve_scalar(v: YamlValue, s: str) -> Any:
@@ -122,12 +133,13 @@ def _resolve_scalar(v: YamlValue, s: str) -> Any:
 
     Core Schema resolution applies to PLAIN scalars only
     (YAML 1.2 §10.3.2): a quoted or block scalar is always a string,
-    so ``"42"`` stays ``"42"`` while ``42`` becomes ``int``. Check
-    style before conversion to avoid numeric-limit errors on strings.
+    so ``"42"`` stays ``"42"`` while ``42`` becomes ``int``.  The style
+    is fetched only when the content would resolve to a non-string.
     """
-    if v._style_id != _PLAIN:
+    coerced: Any = _coerce_scalar(s)
+    if coerced is s:
         return s
-    return _coerce_scalar(s)
+    return coerced if v._style_id == _PLAIN else s
 
 
 # ── Recursive conversion ─────────────────────────────────────────────
@@ -145,7 +157,7 @@ def to_python(v: YamlValue) -> Any:
     """
     kind: int = v._kind_id
     if kind == _SCALAR:
-        return _resolve_scalar(v, v._str_unchecked())
+        return _resolve_scalar_preserving_style(v, v._str_unchecked())
     if kind == _SEQUENCE:
         return [to_python(item) for item in v._seq_unchecked()]
     if kind == _MAPPING:
