@@ -56,6 +56,15 @@ class TestCoreNumericResolver(unittest.TestCase):
 
 @unittest.skipUnless(os.environ.get("L4YAML_LIB"), "native C library not configured")
 class TestCoreNumericNative(unittest.TestCase):
+    def test_quoted_overlimit_decimal_is_string(self) -> None:
+        limit = getattr(sys, "get_int_max_str_digits", lambda: 0)()
+        if not 0 < limit <= 10_000:
+            self.skipTest("No bounded Python decimal integer digit limit")
+        spelling = "1" * (limit + 1)
+        actual = safe_load('"' + spelling + '"')
+        self.assertIs(type(actual), str)
+        self.assertEqual(actual, spelling)
+
     def test_numeric_types_through_real_parser(self) -> None:
         cases = (("012", 12, int), ("007", 7, int),
                  ("1_000", "1_000", str), ("0x_F", "0x_F", str))
