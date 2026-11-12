@@ -15971,14 +15971,15 @@ structure Tally where
   held0 : List (String × Nat) := []         -- arm histogram under a held run, depth 0
   gap0 : List (String × Nat) := []
   blockPrev : List (String × Nat) := []     -- what precedes a block-scalar header: the pre-state's back token kind
-  refusedOwn : List String := []
+  refusedOwn : List (String × String) := []  -- (row, the `ScanError` that refused it): WHICH check refused, not only that one did
 
 def tally (rows : List String) : Tally := Id.run do
   let mut t : Tally := {}
   for s in rows do
     t := { t with rows := t.rows + 1 }
     match scanFiltered s, P107.stepsOf s with
-    | .error _, _ | _, none => if own.contains s then t := { t with refusedOwn := t.refusedOwn ++ [s] }
+    | .error e, _ => if own.contains s then t := { t with refusedOwn := t.refusedOwn ++ [(s, (repr e).pretty)] }
+    | .ok _, none => if own.contains s then t := { t with refusedOwn := t.refusedOwn ++ [(s, "stepsOf none")] }
     | .ok _, some sts =>
       t := { t with scanned := t.scanned + 1 }
       for (pre, post) in sts do
@@ -16018,10 +16019,12 @@ open P113
 def testContentTwinRead (state : IO.Ref TestCollector) : IO Unit := do
   let t := tally P113.allRows
   checkM state
-    s!"P113(i) {t.rows} rows, {t.scanned} scanned, {t.content} content steps, {t.inFlow} in flow; own rows refused (the in-flow alias guard ×2, adjacency ×1): {t.refusedOwn.map repr}"
+    s!"P113(i) {t.rows} rows, {t.scanned} scanned, {t.content} content steps, {t.inFlow} in flow; own rows refused, each by the check named (the node-property guard's in-flow half ×2, the adjacency check ×1): {t.refusedOwn}"
     (t.rows == 778 && t.scanned == 616 && t.content == 1184 && t.inFlow == 525 &&
-      t.refusedOwn == ["[&b x, &a *b]", "[&b x, &a\n*b]", "[\"a\" b]"])
-    s!"{t.rows} {t.scanned} {t.content} {t.inFlow} {t.refusedOwn.map repr}"
+      t.refusedOwn == [("[&b x, &a *b]", "L4YAML.ScanError.invalidNodeProperties '*' 0 10"),
+                       ("[&b x, &a\n*b]", "L4YAML.ScanError.invalidNodeProperties '*' 1 0"),
+                       ("[\"a\" b]", "L4YAML.ScanError.invalidFlowEntry 0 5")])
+    s!"{t.rows} {t.scanned} {t.content} {t.inFlow} {t.refusedOwn}"
   checkM state
     s!"P113(ii) depth ≥ 1: pre-tail {t.tailIn}; gap {t.gapIn}; under a held run {t.heldIn}; alias after a run in flow = {t.aliasAfterRunIn.length}"
     (t.tailIn == [("colon", 118), ("question", 19), ("sep", 388)] &&
