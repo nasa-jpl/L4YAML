@@ -15746,17 +15746,24 @@ def testContentArmRead (state : IO.Ref TestCollector) : IO Unit := do
   let get (h : List (String × Nat)) (k : String) : Nat := (h.lookup k).getD 0
   checkM state
     s!"P111(i) {t.rows} rows, {t.scanned} scanned, {t.steps} steps, {t.content} content steps; depth 0 {t.arms0}; in flow {t.armsIn}"
-    (t.rows == 729 && t.scanned == 572 && get t.arms0 "plain" == 402)
+    (t.rows == 729 && t.scanned == 572 && t.steps == 2426 && t.content == 1086 &&
+      t.arms0 == [("plain", 402), ("anchor", 50), ("tag", 93), ("dq", 30), ("sq", 21), ("lit", 13), ("fold", 4), ("alias", 9)] &&
+      t.armsIn == [("plain", 345), ("anchor", 53), ("alias", 12), ("tag", 24), ("sq", 12), ("dq", 18)])
     s!"{t.rows} {t.scanned} {t.steps} {t.content} {t.arms0} {t.armsIn}"
   checkM state
     s!"P111(ii) the projection is total: content token pushed but not the back = {t.notBack.length}; shapes per arm = {t.shapes}"
-    t.notBack.isEmpty s!"{t.notBack.take 4}"
+    (t.notBack.isEmpty && t.shapes.length == 16 &&
+      contentArms.all (fun a => (t.shapes.filter (·.1 == a)).length == (if a == "plain" then 3 else if a == "alias" then 1 else 2)) &&
+      contentArms.all (fun a => (a == "alias" || t.shapes.contains (a, [a])) && t.shapes.contains (a, ["placeholder", "placeholder", a])) &&
+      t.shapes.contains ("plain", ["bEnd", "placeholder", "placeholder", "plain"]))
+    s!"{t.notBack.take 4} {t.shapes}"
   checkM state
     s!"P111(iii) events by arm: evBad = {t.evBad.length}; empty-handle tags = {t.emptyHandleTags}"
-    t.evBad.isEmpty s!"{t.evBad.take 4}"
+    (t.evBad.isEmpty && t.emptyHandleTags == 5) s!"{t.evBad.take 4} {t.emptyHandleTags}"
   checkM state
     s!"P111(iv) after a held property run: {t.heldNext}; alias after a held run (REFUTED the §6.9 [104] expectation — the scanner's guard is line-local in block context): {t.heldAlias}"
-    (get t.heldNext "alias" == 1 && t.heldAlias.length == 1 &&
+    (t.heldNext == [("plain", 122), ("tag", 9), ("anchor", 8), ("dq", 2), ("sq", 2), ("lit", 3), ("fold", 1), ("alias", 1)] &&
+      t.heldAlias.length == 1 &&
       t.heldAlias.any (·.startsWith "\"&a\\n*a\""))
     s!"{t.heldNext} {t.heldAlias}"
 
