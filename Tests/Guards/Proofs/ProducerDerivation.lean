@@ -281,7 +281,9 @@ def expectedCensus : String :=
   -- 2026-11-08 (item 464, review): corrHyp 620 → 622 — the two key-context twins `scanDoubleQuoted_key_trace` / `scanSingleQuoted_key_trace`.
 -- 2026-11-12 (item 486, S3 slice (4) PR 1): corrHyp 614 → 617 — `TraceOf/ContentBridge`'s three twins
 -- (`accum_step_content_trace_in` / `_in_props` / `_out`) take `ScannerSurfCorr s_ad sp_prep` as a hypothesis.
-  "corrHyp=617 streamConcl=88 both=41 free=0 pairConcl=1 held=3 pairAny=8"
+-- 2026-11-12 (item 487, the K caller): corrHyp 617 → 620 — `contentLead_of_interior`, `content_prop_tail_kept`,
+-- `accum_step_content_traceK` each read the surface through a `ScannerSurfCorr` hypothesis; other rows unchanged.
+  "corrHyp=620 streamConcl=88 both=41 free=0 pairConcl=1 held=3 pairAny=8"
 
 /-- The one conclusion that pairs them, and it is the stream's origin. -/
 def expectedSeedConcl : List Name :=

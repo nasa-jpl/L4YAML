@@ -16175,6 +16175,107 @@ def testContentTwinShadow (state : IO.Ref TestCollector) : IO Unit := do
 
 end P114Test
 
+/-! ## Priority 115 — the content step's K caller, its grid (item 487)
+
+`accum_step_content_traceK` (ContentBridge §6) takes the wrapper's inputs at an in-flow content step
+and the T stack at the pre-state; it concludes the arm and, by arm, the T stack at `s'` (value arms:
+tail `.value`, trace `ev ++ ev_n`; property arms: tail and trace kept).  Its lead is replayed by
+`contentLead_of_interior`, whose constructor is decided by the held run at the pre-state.  What a
+decidable check can shadow (§7): (i) the hypotheses hold at every in-flow content step (the
+structural / flow / block dispatchers return `none` at the preprocessed state, the floor bound `hn` read
+at the floor's top `n = minContentIndentOf pre` and transported to the dispatch state — (iv) pins the floors,
+so positive floors are read, not only the vacuous `n = 0`); (ii) `flowLevel` and `flowStack` ride the step (the T stack's indices at `s'` are the
+pre-state's); (iii) the lead's constructor by arm — `.props` iff the trailing property run at the
+pre-state is non-empty — with the alias arm never under a run (the scanner's in-flow node-property
+guard, P113 (i)) and `&` under a run only when the run holds no anchor yet (9e).  The S node, the
+receive's premises and the landing are P112 / P113 / P114's. -/
+namespace P115
+open P111 P112 P113 P114
+
+structure Tally where
+  inSteps : Nat := 0
+  hypsOk : Nat := 0
+  hypsFail : List String := []
+  stackRides : Nat := 0
+  stackMoved : List String := []
+  leadByArm : List (String × Nat) := []
+  aliasUnderRun : List String := []
+  anchorExtendBad : List String := []
+  floors : List (String × Nat) := []
+  floorFail : List String := []
+  deriving Repr
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    match scanFiltered s, P107.stepsOf s with
+    | .ok _, some sts =>
+      for (pre, post) in sts do
+        let pushed := post.tokens.toList.drop pre.tokens.size
+        match pushed.getLast? with
+        | none => pure ()
+        | some back =>
+          if !contentArms.contains (kindOf back.val) then continue
+          if pre.flowLevel == 0 then continue
+          t := { t with inSteps := t.inSteps + 1 }
+          match scanNextToken_preprocess pre with
+          | .ok (some (sp, c)) =>
+            let sad := if sp.allowDirectives then
+              { sp with allowDirectives := false, documentEverStarted := true } else sp
+            let arm := armOf sad c
+            let strNone := match scanNextToken_dispatchStructural sp c with | .ok none => true | _ => false
+            let flowNone := match scanNextToken_dispatchFlowIndicators sad c with | .ok none => true | _ => false
+            let blkNone := match scanNextToken_dispatchBlockIndicators sad c with | .ok none => true | _ => false
+            -- `hn` at the floor's TOP, `n := minContentIndentOf pre`, transported to the dispatch state: the
+            -- caller's `hn'` is `(n : Int) ≤ max 0 (s_ad.currentIndent + 1)` — vacuous at `n = 0`, read at the top.
+            let floor := L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf pre
+            let floorTop := decide ((floor : Int) ≤ max 0 (sad.currentIndent + 1)) &&
+              floor == L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf sad
+            t := { t with floors := bumpS t.floors s!"floor={floor}" }
+            if !floorTop then t := { t with floorFail := t.floorFail ++ [s!"{s}@{arm}"] }
+            if strNone && flowNone && blkNone && floorTop then t := { t with hypsOk := t.hypsOk + 1 }
+            else t := { t with hypsFail := t.hypsFail ++ [s!"{s}@{arm}"] }
+            if post.flowLevel == pre.flowLevel && post.flowStack == pre.flowStack then
+              t := { t with stackRides := t.stackRides + 1 }
+            else t := { t with stackMoved := t.stackMoved ++ [s!"{s}@{arm}"] }
+            let run := L4YAML.Scanner.trailingPropertyRun pre.tokens
+            let lead := if run.isEmpty then "white" else "props"
+            t := { t with leadByArm := bumpS t.leadByArm (lead ++ "/" ++ arm) }
+            if !run.isEmpty && c == '*' then t := { t with aliasUnderRun := t.aliasUnderRun ++ [s] }
+            if !run.isEmpty && c == '&' && run.any YamlToken.isAnchorProperty then
+              t := { t with anchorExtendBad := t.anchorExtendBad ++ [s] }
+          | _ => t := { t with hypsFail := t.hypsFail ++ [s!"{s}@preprocess"] }
+    | _, _ => pure ()
+  return t
+
+end P115
+
+namespace P115Test
+open P115
+
+def testContentCallerShadow (state : IO.Ref TestCollector) : IO Unit := do
+  let t := tally P113.allRows
+  checkM state
+    s!"P115(i) the K caller's hypotheses at every in-flow content step: {t.hypsOk} of {t.inSteps} (failing: {t.hypsFail})"
+    (t.hypsFail.isEmpty && t.inSteps == 525 && t.hypsOk == t.inSteps)
+    s!"{t.inSteps} {t.hypsOk} {t.hypsFail}"
+  checkM state
+    s!"P115(ii) flowLevel/flowStack ride the content step: {t.stackRides} (moved: {t.stackMoved})"
+    (t.stackMoved.isEmpty && t.stackRides == t.inSteps)
+    s!"{t.stackRides} {t.stackMoved}"
+  checkM state
+    s!"P115(iii) the lead's constructor by arm: {t.leadByArm}; alias under a run {t.aliasUnderRun}; `&` extending a run that holds an anchor {t.anchorExtendBad}"
+    (t.aliasUnderRun.isEmpty && t.anchorExtendBad.isEmpty &&
+      t.leadByArm == [("white/plainIn", 346), ("white/anchor", 59), ("props/plainIn", 46), ("white/alias", 15),
+                      ("white/tag", 21), ("white/sq", 12), ("white/dq", 18), ("props/anchor", 3), ("props/tag", 5)])
+    s!"{t.leadByArm} {t.aliasUnderRun} {t.anchorExtendBad}"
+  checkM state
+    s!"P115(iv) the floor at every in-flow step, `hn` read at its top and transported to the dispatch state: {t.floors}; failing {t.floorFail}"
+    (t.floorFail.isEmpty && t.floors == [("floor=0", 476), ("floor=1", 35), ("floor=3", 14)])
+    s!"{t.floors} {t.floorFail}"
+
+end P115Test
+
 def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 100: S3 slice (1) — leaf span ↔ token payload (anchor / alias / tag), before proof"
   let t := P100.tally P100.allRows
@@ -16368,6 +16469,7 @@ def collectTests : IO VerifiedSuiteResult := do
   P112Test.testContentArmShadow state
   P113Test.testContentTwinRead state
   P114Test.testContentTwinShadow state
+  P115Test.testContentCallerShadow state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",

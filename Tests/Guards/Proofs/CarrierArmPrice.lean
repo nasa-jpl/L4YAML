@@ -231,8 +231,13 @@ def expectedBroken : List String :=
 -- 2026-11-11 (item 484): `ContentArm.blockScalar` joins the anchored class — its landing is the disjunction
 -- `SCLLiteral 0 sp sp' ∨ SCLFolded 0 sp sp'` that `scanBlockScalar_prod` concludes for the dispatcher's one `|`/`>` call,
 -- which the directed-chain walk does not read through; a literal/folded split is priced as that producer's split.
+-- 2026-11-12 (item 487): `ContentLead.white` / `.props` join the anchored class — the receive's premises at `sp_prep`,
+-- quantified over every floor `m ≤ minContentIndentOf sc` (`SSeparateLines m` / `PropsRun m` / `SSeparate m`), not one
+-- directed chain; they are what the core derives inside its proof, replayed (ContentBridge §5).
 def expectedAnchoredOnly : List String :=
-  ["L4YAML.Proofs.StreamAccum.ContentArm.blockScalar",
+  ["L4YAML.Proofs.Serialization.TraceOf.ContentBridge.ContentLead.props",
+   "L4YAML.Proofs.Serialization.TraceOf.ContentBridge.ContentLead.white",
+   "L4YAML.Proofs.StreamAccum.ContentArm.blockScalar",
    "L4YAML.Proofs.StreamAccum.FlowArm.closeNested",
    "L4YAML.Proofs.StreamAccum.FlowArm.comma",
    "L4YAML.Proofs.StreamAccum.FlowArm.openNest",
@@ -297,7 +302,8 @@ def expectedAbsorbReaders : List String :=
 -- 2026-11-11 (item 484, ContentArm): prods=171 → 172, ctors=320 → 328, direct=301 → 308, anchoredOnly=16 → 17, mentions=40 → 41 — `ContentArm` (eight
 -- constructors; `blockScalar` anchored, see above) and `accum_step_content_core` beside its wrapper.
 def expectedLine : String :=
-  "prods=172 ctors=328 same=27 direct=308 anchoredOnly=17 broken=3 surfArms=184 \
+  -- 2026-11-12 (item 487): prods 172 → 173, ctors 328 → 330, anchoredOnly 17 → 19 — `ContentLead` (two anchored arms).
+  "prods=173 ctors=330 same=27 direct=308 anchoredOnly=19 broken=3 surfArms=184 \
 surfDirect=183 candidate=direct candidateNil=direct readers=3 libReaders=2 \
 guardReaders=1 mentions=41 producers=21 absorbReaders=5 absorbPlainReaders=0"
 
