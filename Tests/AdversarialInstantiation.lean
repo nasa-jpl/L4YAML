@@ -15924,6 +15924,123 @@ def testContentArmShadow (state : IO.Ref TestCollector) : IO Unit := do
 
 end P112Test
 
+/-! ## Priority 113 — the content step's T twin, read off the scanner (item 485's grid for `accum_step_content_trace`)
+
+Slice (4) PR 1 reads `ContentArm` into the T twins: at depth 0 the leaf (`TFlowNode 0 .flowOut` / the
+property run / `TCNsAliasNode`; block scalars into `TBlockNode.blockLiteral`/`blockFolded`, which open with
+`SSeparate` BEFORE the header), at depth ≥ 1 the flow stack's `receiveNode` / `receivePropsContent`, whose
+premises are the pre-tail (`∀ kj, tailOf sc.tokens ≠ .value kj` — the adjacency guard) and the lead from the
+frame's position to `sp_prep` (`SSeparateLines` or ε with `leadFree`, or a held run then `SSeparate`).  Before
+stating: over P112's rows plus rows for content after a held run in flow, at every content step read the
+pre-tail class, the held run, the gap the preprocess skipped (empty / blanks / a line break / a comment),
+whether the step is at a line start (depth 0: the block twin's `SSeparate` is a line prefix there), and
+alias-after-a-run inside a flow (the guard's in-flow half refuses it — P111 (iv)'s block-context finding
+does not recur); every alias row defines its anchor first, since the scanner refuses an undefined alias
+(`undefinedAlias`) before any guard is reached. -/
+namespace P113
+open P111 (kindOf contentArms bumpS)
+open P112 (armOf)
+open L4YAML.Proofs.StreamAccum (tailOf FrameTail)
+
+def own : List String :=
+  ["[&a b]", "[!!str b]", "[&a !!str b]", "{&a k: v}", "{k: &a v}", "[&a\n b]", "[&a # c\n b]", "[&a, b]", "[&a]",
+   "[&b x, &a *b]", "[&b x, &a\n*b]", "[&b x, *b]", "{&b k: v, *b : w}", "[&b x, a *b]", "[a, &b c, *b]", "[\"a\" b]", "[a \"b\"]", "[a\n b]", "[a,\n b]",
+   "k: &a\n  v", "k: !!str\n  v", "- &a\n  v", "&a\nv", "!!str\nv", "k: |\n  a", "- >\n  a", "--- |\n  a", "k: &a |\n  a",
+   "[a]: b", "? a\n: b", "k:\n  - a\n  - b", "k: a # c", "[a # c\n]"]
+
+def allRows : List String := (P112.allRows ++ own).eraseDups
+
+def tailClass : FrameTail → String
+  | .sep => "sep" | .colon _ => "colon" | .question => "question" | .value _ => "value"
+
+def gapClass (txt : String) : String :=
+  if txt.isEmpty then "ε" else if txt.any (· == '#') then "comment"
+  else if txt.any isLineBreakBool then "lines" else "blanks"
+
+structure Tally where
+  rows : Nat := 0
+  scanned : Nat := 0
+  content : Nat := 0
+  inFlow : Nat := 0
+  tailIn : List (String × Nat) := []        -- pre-tail class at depth ≥ 1
+  heldIn : List (String × Nat) := []        -- arm histogram under a held run, depth ≥ 1
+  gapIn : List (String × Nat) := []         -- gap class, depth ≥ 1
+  aliasAfterRunIn : List String := []       -- an alias after a held run inside a flow (expected refused)
+  lineStart0 : Nat := 0                     -- depth-0 content steps at a line start (`sc.col = 0`)
+  midLine0 : Nat := 0
+  held0 : List (String × Nat) := []         -- arm histogram under a held run, depth 0
+  gap0 : List (String × Nat) := []
+  blockPrev : List (String × Nat) := []     -- what precedes a block-scalar header: the pre-state's back token kind
+  refusedOwn : List (String × String) := []  -- (row, the `ScanError` that refused it): WHICH check refused, not only that one did
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    t := { t with rows := t.rows + 1 }
+    match scanFiltered s, P107.stepsOf s with
+    | .error e, _ => if own.contains s then t := { t with refusedOwn := t.refusedOwn ++ [(s, (repr e).pretty)] }
+    | .ok _, none => if own.contains s then t := { t with refusedOwn := t.refusedOwn ++ [(s, "stepsOf none")] }
+    | .ok _, some sts =>
+      t := { t with scanned := t.scanned + 1 }
+      for (pre, post) in sts do
+        let pushed := post.tokens.toList.drop pre.tokens.size
+        match pushed.getLast? with
+        | none => pure ()
+        | some back =>
+          let kind := kindOf back.val
+          if !contentArms.contains kind then continue
+          t := { t with content := t.content + 1 }
+          match scanNextToken_preprocess pre with
+          | .ok (some (sc, c)) =>
+            let arm := armOf sc c
+            let gap := gapClass (String.Pos.Raw.extract pre.input ⟨pre.offset⟩ ⟨sc.offset⟩)
+            let held := !(trailingPropertyRun sc.tokens).isEmpty
+            if sc.flowLevel ≥ 1 then
+              t := { t with inFlow := t.inFlow + 1, tailIn := bumpS t.tailIn (tailClass (tailOf sc.tokens)),
+                            gapIn := bumpS t.gapIn gap }
+              if held then t := { t with heldIn := bumpS t.heldIn arm }
+              if held && arm == "alias" then t := { t with aliasAfterRunIn := s :: t.aliasAfterRunIn }
+            else
+              t := { t with gap0 := bumpS t.gap0 gap }
+              if sc.col == 0 then t := { t with lineStart0 := t.lineStart0 + 1 } else t := { t with midLine0 := t.midLine0 + 1 }
+              if held then t := { t with held0 := bumpS t.held0 arm }
+              if arm == "blockScalar" then
+                let prevKind := match lastRealTokenVal? sc.tokens with
+                  | some tk => kindOf tk | none => "none"
+                t := { t with blockPrev := bumpS t.blockPrev prevKind }
+          | _ => pure ()
+  return t
+
+end P113
+
+namespace P113Test
+open P113
+
+def testContentTwinRead (state : IO.Ref TestCollector) : IO Unit := do
+  let t := tally P113.allRows
+  checkM state
+    s!"P113(i) {t.rows} rows, {t.scanned} scanned, {t.content} content steps, {t.inFlow} in flow; own rows refused, each by the check named (the node-property guard's in-flow half ×2, the adjacency check ×1): {t.refusedOwn}"
+    (t.rows == 778 && t.scanned == 616 && t.content == 1184 && t.inFlow == 525 &&
+      t.refusedOwn == [("[&b x, &a *b]", "L4YAML.ScanError.invalidNodeProperties '*' 0 10"),
+                       ("[&b x, &a\n*b]", "L4YAML.ScanError.invalidNodeProperties '*' 1 0"),
+                       ("[\"a\" b]", "L4YAML.ScanError.invalidFlowEntry 0 5")])
+    s!"{t.rows} {t.scanned} {t.content} {t.inFlow} {t.refusedOwn}"
+  checkM state
+    s!"P113(ii) depth ≥ 1: pre-tail {t.tailIn}; gap {t.gapIn}; under a held run {t.heldIn}; alias after a run in flow = {t.aliasAfterRunIn.length}"
+    (t.tailIn == [("colon", 118), ("question", 19), ("sep", 388)] &&
+      t.gapIn == [("blanks", 276), ("ε", 236), ("lines", 10), ("comment", 3)] &&
+      t.heldIn == [("plainIn", 46), ("anchor", 3), ("tag", 5)] && t.aliasAfterRunIn.isEmpty)
+    s!"{t.tailIn} {t.gapIn} {t.heldIn} {t.aliasAfterRunIn}"
+  checkM state
+    s!"P113(iii) depth 0: line start {t.lineStart0} / mid-line {t.midLine0}; gap {t.gap0}; under a held run {t.held0}; before a block-scalar header {t.blockPrev}"
+    (t.lineStart0 == 292 && t.midLine0 == 367 && t.lineStart0 + t.midLine0 + t.inFlow == t.content &&
+      t.gap0 == [("ε", 210), ("blanks", 336), ("lines", 101), ("comment", 12)] &&
+      t.held0 == [("plain", 91), ("tag", 5), ("anchor", 5), ("dq", 2), ("sq", 2), ("blockScalar", 5), ("alias", 1)] &&
+      t.blockPrev == [("other", 9), ("tag", 3), ("value", 4), ("bEntry", 2), ("anchor", 2), ("key", 1)])
+    s!"{t.lineStart0} {t.midLine0} {t.gap0} {t.held0} {t.blockPrev}"
+
+end P113Test
+
 def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 100: S3 slice (1) — leaf span ↔ token payload (anchor / alias / tag), before proof"
   let t := P100.tally P100.allRows
@@ -16115,6 +16232,7 @@ def collectTests : IO VerifiedSuiteResult := do
   P110Test.testPlainContinuationRead state
   P111Test.testContentArmRead state
   P112Test.testContentArmShadow state
+  P113Test.testContentTwinRead state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",
