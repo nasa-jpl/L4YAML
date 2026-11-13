@@ -279,7 +279,7 @@ pins below are what makes that checkable rather than asserted. -/
     in one.
     259 on 2026-10-23 (after `Serialization.EventsOf` and `RefLex`), when `Proofs.Production.Acceptance.Quoted` joined the
     library — the one-line quoted-scalar scanner converses. -/
-def expectedClosure : Nat := 287  -- +1 on 2026-11-12: `Spec.CoreSchema`; +1 on 2026-11-08: `Proofs.Serialization.TraceOf.FlowWalk` (S3 slice (3) PR 2a, item 466); 285 was +1 on 2026-11-08: `Proofs.Serialization.TraceOf.DocBridge` (S3 slice (2)); 283 was +1 on 2026-11-08: `Proofs.Serialization.TraceOf.LeafBridge` (S3 slice (1)); 282 was +1 on 2026-11-08: `Proofs.Scanner.StructDepth` ((γ1)); 281 was +1 on 2026-11-08: `Proofs.Scanner.TagShape` (S3 (a)); 280 was +1 on 2026-11-07: `Proofs.Scanner.DocStartLiveInv` (S3 (β2b)); 279 was +1 on 2026-11-07: `Proofs.Scanner.FlowSync` (S3 (β2a)); 278 was +1 `Proofs.Scanner.DocStartLive` (S3 (β1)); 277 was +3 on 2026-11-05: `Proofs.Scanner.ScannerDirectivesPresent`, `Proofs.Scanner.DirectiveRuns`,
+def expectedClosure : Nat := 289  -- +1 on 2026-11-13: `Proofs.Schema.CoreRecognizerBridge`; prior pin 2026-11-13: `Spec.CoreSchema`; 287 was +1 on 2026-11-12: `Proofs.Serialization.TraceOf.ContentBridge` (S3 slice (4) PR 1, item 486); 286 was +1 on 2026-11-08: `Proofs.Serialization.TraceOf.FlowWalk` (S3 slice (3) PR 2a, item 466); 285 was +1 on 2026-11-08: `Proofs.Serialization.TraceOf.DocBridge` (S3 slice (2)); 283 was +1 on 2026-11-08: `Proofs.Serialization.TraceOf.LeafBridge` (S3 slice (1)); 282 was +1 on 2026-11-08: `Proofs.Scanner.StructDepth` ((γ1)); 281 was +1 on 2026-11-08: `Proofs.Scanner.TagShape` (S3 (a)); 280 was +1 on 2026-11-07: `Proofs.Scanner.DocStartLiveInv` (S3 (β2b)); 279 was +1 on 2026-11-07: `Proofs.Scanner.FlowSync` (S3 (β2a)); 278 was +1 `Proofs.Scanner.DocStartLive` (S3 (β1)); 277 was +3 on 2026-11-05: `Proofs.Scanner.ScannerDirectivesPresent`, `Proofs.Scanner.DirectiveRuns`,
   -- +1 on 2026-11-08: `Proofs.Serialization.TraceOf.FlowBridge` (S3 slice (3) first PR, item 464)
   -- `Proofs.Serialization.ScannerShape` (S3 (b)); 274 was +1 `Proofs.Serialization.ParseCheckFrom` (S5 slice 1)
 
@@ -360,8 +360,10 @@ def expectedWideCensus : String :=
 -- 2026-10-24 (B3 [66] col-0 threading): T 27 → 28 — `PendingNode.close_with_sslFrom`, the
 -- `SSLCommentsFrom` twin of `close_with_ssl`, rides the drop through `dropClose` in its
 -- `pendingFlow` arm only (the arm β.5 retires with the constructor).  D unchanged.
+-- 2026-11-11 (item 484, ContentArm): T 27 → 28 — `accum_step_content_core` (the renamed body;
+-- `accum_step_content` is now core ∧ `ContentArm`) is one more declaration the arm's drop reaches.  D unchanged.
 def expectedCensus : String :=
-  "D=4 S=0 R=0 T=27 capstonesInT=2 rawElim=11"
+  "D=4 S=0 R=0 T=28 capstonesInT=2 rawElim=11"
 
 /-- The first ring: two in the library, two in the instruments that exhibit the
     defect.  `stream_anything` is item 236's free-maker and item 235 restates it;
@@ -407,6 +409,7 @@ def expectedTrans : List Name :=
    `L4YAML.Proofs.StreamAccum.accum_flow_open_depth0,
    `L4YAML.Proofs.StreamAccum.accum_step_block,
    `L4YAML.Proofs.StreamAccum.accum_step_content,
+   `L4YAML.Proofs.StreamAccum.accum_step_content_core,
    `L4YAML.Proofs.StreamAccum.accum_step_flow,
    `L4YAML.Proofs.StreamAccum.accum_step_structural,
    `L4YAML.Proofs.StreamAccum.accum_structural_pending,

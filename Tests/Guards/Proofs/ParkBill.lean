@@ -147,14 +147,16 @@ capstonesInTp={b.capstonesInTrans.size}"
     one.
     260 on 2026-10-23 (after `Serialization.EventsOf` and `RefLex`), when `Proofs.Production.Acceptance.Quoted` joined the
     library — the one-line quoted-scalar scanner converses. -/
-def expectedClosure : Nat := 288  -- +1 on 2026-11-12: `Spec.CoreSchema`; +1 on 2026-11-08: `Proofs.Serialization.TraceOf.FlowWalk` (S3 slice (3) PR 2a, item 466); 286 was +1 on 2026-11-08: `Proofs.Serialization.TraceOf.DocBridge` (S3 slice (2)); 284 was +1 on 2026-11-08: `Proofs.Serialization.TraceOf.LeafBridge` (S3 slice (1)); 283 was +1 on 2026-11-08: `Proofs.Scanner.StructDepth` ((γ1)); 282 was +1 on 2026-11-08: `Proofs.Scanner.TagShape` (S3 (a)); 281 was +1 on 2026-11-07: `Proofs.Scanner.DocStartLiveInv` (S3 (β2b)); 280 was +1 on 2026-11-07: `Proofs.Scanner.FlowSync` (S3 (β2a)); 279 was +1 `Proofs.Scanner.DocStartLive` (S3 (β1)); 278 was +3 on 2026-11-05: `Proofs.Scanner.ScannerDirectivesPresent`, `Proofs.Scanner.DirectiveRuns`,
+def expectedClosure : Nat := 290  -- +1 on 2026-11-13: `Proofs.Schema.CoreRecognizerBridge`; prior pin 2026-11-13: `Spec.CoreSchema`; 288 was +1 on 2026-11-12: `Proofs.Serialization.TraceOf.ContentBridge` (S3 slice (4) PR 1, item 486); 287 was +1 on 2026-11-08: `Proofs.Serialization.TraceOf.FlowWalk` (S3 slice (3) PR 2a, item 466); 286 was +1 on 2026-11-08: `Proofs.Serialization.TraceOf.DocBridge` (S3 slice (2)); 284 was +1 on 2026-11-08: `Proofs.Serialization.TraceOf.LeafBridge` (S3 slice (1)); 283 was +1 on 2026-11-08: `Proofs.Scanner.StructDepth` ((γ1)); 282 was +1 on 2026-11-08: `Proofs.Scanner.TagShape` (S3 (a)); 281 was +1 on 2026-11-07: `Proofs.Scanner.DocStartLiveInv` (S3 (β2b)); 280 was +1 on 2026-11-07: `Proofs.Scanner.FlowSync` (S3 (β2a)); 279 was +1 `Proofs.Scanner.DocStartLive` (S3 (β1)); 278 was +3 on 2026-11-05: `Proofs.Scanner.ScannerDirectivesPresent`, `Proofs.Scanner.DirectiveRuns`,
   -- +1 on 2026-11-08: `Proofs.Serialization.TraceOf.FlowBridge` (S3 slice (3) first PR, item 464)
   -- `Proofs.Serialization.ScannerShape` (S3 (b)); 275 was +1 `Proofs.Serialization.ParseCheckFrom` (S5 slice 1)
 
 /-- The park's populations beside the arm's, from one pass. -/
 -- 2026-10-24 (B3 [66] col-0 threading): see the dated note on `expectedDirect` below.
+-- 2026-11-11 (item 484): Tp 35 → 36, T 27 → 28, shared 20 → 21 — `accum_step_content_core` (the renamed body)
+-- joins both drops; gate holders dn/mid 22 → 23, fv/mid 16 → 17 — the `accum_step_content` wrapper holds `h_dn`/`h_fv`.
 def expectedBill : String :=
-  "Dp=11 Sp=0 Tp=35 T=27 shared=20 extra=15 capstonesInTp=2"
+  "Dp=11 Sp=0 Tp=36 T=28 shared=21 extra=15 capstonesInTp=2"
 
 /-- Names the park in a PROOF TERM — builders and case splits together, which
     no syntactic reading separates (item 240).  **Seven of the nine break and
@@ -359,7 +361,7 @@ def accumNs : Name := `L4YAML.Proofs.StreamAccum
     item's 49 new declarations excluded the census reads 21 again, so no other
     holder moved. -/
 def expectedGateHolders : String :=
-  "dn/mid=22 dn/eof=5 fv/mid=16 fv/eof=4 | \
+  "dn/mid=23 dn/eof=5 fv/mid=17 fv/eof=4 | \
 elsewhere dn/mid=9 dn/eof=14 fv/mid=11 fv/eof=15"
 
 set_option maxHeartbeats 4000000 in

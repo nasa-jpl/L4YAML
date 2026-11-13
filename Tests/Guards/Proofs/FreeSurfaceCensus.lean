@@ -85,10 +85,11 @@ def expectedUnread : List Name :=
   [`L4YAML.Output.Events, `L4YAML.Output.EventsIx,
    `L4YAML.Output.Json, `L4YAML.Output.JsonIx]
 
+-- 2026-11-12 (item 486, S3 slice (4) PR 1): 280 → 281, `Proofs.Serialization.TraceOf.ContentBridge`.
 -- 2026-11-08 (item 466, S3 slice (3) PR 2a): 279 → 280, `Proofs.Serialization.TraceOf.FlowWalk`.
 -- 2026-11-08 (item 464, S3 slice (3) first PR): 278 → 279, `Proofs.Serialization.TraceOf.FlowBridge`.
--- 2026-11-12: the independent `Spec.CoreSchema` module adds one import-closure module.
-def expectedClosure : String := "modulesSeen=281"
+-- 2026-11-13: the independent `Spec.CoreSchema` module adds one import-closure module.
+def expectedClosure : String := "modulesSeen=283"
 -- 268 → 271 on 2026-11-05: `Proofs.Scanner.ScannerDirectivesPresent`, `Proofs.Scanner.DirectiveRuns`,
 -- `Proofs.Serialization.ScannerShape` (S3 obligation (b), `scanFiltered_DirectivesClosed`).
 -- 265 → 266 on 2026-10-28: `Proofs.Serialization.ParseCheckFrom` (S5 slice 1, `parse_ok_checkFrom`)
@@ -109,7 +110,7 @@ def expectedClosure : String := "modulesSeen=281"
 -- 2026-10-27 (item 371): headStream 37 → 35, nestedConcl 55 → 57 — `explFrameValueLine` and
 -- `accum_flow_open_depth0`'s value-line conclusions now head `ResumeFrames`, not `SLYamlStream`.
 def expectedCensus : String :=
-  "theorems=106 headYaml=5 headStream=35 nestedConcl=58 hypOnly=8 free=17 \
+  "theorems=107 headYaml=5 headStream=35 nestedConcl=59 hypOnly=8 free=17 \
 survivesBeta5=2 yamlInHypothesis=0"
 
 /-- Every free theorem, with the route that closes it.  A count alone would not

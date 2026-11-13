@@ -414,7 +414,7 @@ numeric valuation and of C/Python consumer representations.
 | 5.5 | `scalar_content_preserved` | `Soundness` | ✅ |
 | 5.6 | `isNull_*`, `isBool_*`, `isInt_*`, `isFloat_*` selected examples (§10.3) | [`SchemaResolution`](../L4YAML/Proofs/Schema/SchemaResolution.lean) | ✅ (bounded) |
 | 5.7 | `resolveImplicit_complete` | `SchemaResolution` | ✅ |
-| 5.8 | `coreTagCorrespondenceAll_of_recognizers`: external §10.3.2 tag bridge | [`CoreSchema`](../L4YAML/Spec/CoreSchema.lean), `SchemaResolution` | ✅ conditional; universal claim 🚧 |
+| 5.8 | `coreTagCorrespondenceAll`: universal external §10.3.2 tag bridge | [`CoreSchema`](../L4YAML/Spec/CoreSchema.lean), [`CoreRecognizerBridge`](../L4YAML/Proofs/Schema/CoreRecognizerBridge.lean), `SchemaResolution` | ✅ universal tag correspondence (not numeric value fidelity) |
 
 **Depends on**: Group 3 (parser correctness).
 
@@ -452,15 +452,16 @@ numeric valuation and of C/Python consumer representations.
   the string fallback. This is result totality, **not** completeness of
   recognition under the external Core Schema. *Risk if absent:* a
   scalar could fall through into an undefined state.
-- **5.8 external tag correspondence (conditional)** — The independent
+- **5.8 external tag correspondence (unconditional)** — The independent
   [`Spec.CoreSchema.tag`](../L4YAML/Spec/CoreSchema.lean) transcribes the
-  ordered table; `coreTagCorrespondenceAll` states the unproved universal
-  claim about `resolveImplicit`. The checked conditional capstone proves
-  that *if* every regex-accepted integer and float spelling yields a
-  numeric value, the resolver returns the required tag. Null/boolean
-  correspondence and rejection of nonmatching number spellings are already
-  discharged in that proof. Individual witnesses also pass, but the two
-  universal numeric-conversion obligations remain open.
+  ordered table. `CoreRecognizerBridge` proves (by structural list induction
+  and finite exceptional forms) that all Core-admitted integer and float
+  spellings yield a numeric converter result. The registered, unconditional
+  `coreTagCorrespondenceAll` then proves the implementation returns the
+  required first-matching tag for **every** string. This does **not** claim
+  correctly rounded numeric values, accurate error policies for explicit
+  tags, or faithful C/Python/Rust representation. Those remain independent
+  obligations.
 
 ---
 

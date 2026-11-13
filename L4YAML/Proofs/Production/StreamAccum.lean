@@ -7182,6 +7182,38 @@ lemma FlowStackK.withArm {sp_start : SurfPos} {sc s' : ScannerState} {c : Char} 
       FlowArm sc s' c sp_block sp_flow sp_scan sp_block' sp_flow' :=
   ⟨⟨n, kc, km, g, s0, h⟩, arm⟩
 
+/-- The arm `accum_step_content` took, read off the dispatched character `c` (the scanner's own
+    `scanNextToken_dispatchContent` split) — a one-step CONCLUSION for the T coupling (slice (4)),
+    never an index of the invariant.  Rule 8: every field is a surface position, a surface relation on
+    surface positions (the flow-in plain at every floor `n` the stack's index can take, bounded by the
+    projection `sc.currentIndent`), or a projection of `sc`/`s'`.  The `alias` arm carries NO field about
+    a held property run: `&a⏎*a` scans (items 482/483); the parser refuses it, and the T twin reads that. -/
+inductive ContentArm (sc s' : ScannerState) (c : Char) (sp : SurfPos) : SurfPos → Prop where
+  | plain (sp_gram sp' : SurfPos) (h_c : c ≠ '&' ∧ c ≠ '*' ∧ c ≠ '!' ∧ c ≠ '|' ∧ c ≠ '>' ∧ c ≠ '"' ∧ c ≠ '\'')
+      (h_depth : sc.flowLevel = 0)
+      (h_node : SFlowNode 0 .flowOut sp sp_gram) (h_ws : GStar SSWhite sp_gram sp')
+      (h_hash : sp_gram = sp' → s'.peek? ≠ some '#') (h_corr : ScannerSurfCorr s' sp') :
+      ContentArm sc s' c sp sp'
+  | plainIn (sp' : SurfPos) (h_c : c ≠ '&' ∧ c ≠ '*' ∧ c ≠ '!' ∧ c ≠ '|' ∧ c ≠ '>' ∧ c ≠ '"' ∧ c ≠ '\'')
+      (h_depth : 1 ≤ sc.flowLevel) (h_corr : ScannerSurfCorr s' sp')
+      (h_node : ∀ n : Nat, (n : Int) ≤ max 0 (sc.currentIndent + 1) →
+        ∃ sp_gram, SFlowNode n .flowIn sp sp_gram ∧ GStar SSWhite sp_gram sp' ∧
+          (sp_gram = sp' → s'.col ≠ 0 → ¬ (CommentOk s' ∧ s'.peek? = some '#'))) :
+      ContentArm sc s' c sp sp'
+  | doubleQuoted (sp' : SurfPos) (h_c : c = '"') (h_q : SCDoubleQuoted 0 .blockIn sp sp')
+      (h_back : s'.peekBack? = some '"') (h_corr : ScannerSurfCorr s' sp') : ContentArm sc s' c sp sp'
+  | singleQuoted (sp' : SurfPos) (h_c : c = '\'') (h_q : SCSingleQuoted 0 .blockIn sp sp')
+      (h_back : s'.peekBack? = some '\'') (h_corr : ScannerSurfCorr s' sp') : ContentArm sc s' c sp sp'
+  | blockScalar (sp' : SurfPos) (h_c : c = '|' ∨ c = '>')
+      (h_bs : SCLLiteral 0 sp sp' ∨ SCLFolded 0 sp sp') (h_corr : ScannerSurfCorr s' sp') :
+      ContentArm sc s' c sp sp'
+  | anchor (sp' : SurfPos) (h_c : c = '&') (h_prop : SCNsAnchorProperty sp sp') (h_next : NextIsSep s')
+      (h_corr : ScannerSurfCorr s' sp') : ContentArm sc s' c sp sp'
+  | tag (sp' : SurfPos) (h_c : c = '!') (h_prop : SCNsTagProperty sp sp') (h_next : NextIsSep s')
+      (h_corr : ScannerSurfCorr s' sp') : ContentArm sc s' c sp sp'
+  | alias (sp' : SurfPos) (h_c : c = '*') (h_node : SCNsAliasNode sp sp')
+      (h_corr : ScannerSurfCorr s' sp') : ContentArm sc s' c sp sp'
+
 /-- **The flow stack's floor, transported** (item 67).  A step that leaves the
     indent stack alone carries the reading index's floor forward unchanged —
     and inside a flow every step does, which is what `FlowIndentStable` says
@@ -37655,6 +37687,56 @@ lemma accum_content_on_pendingBlock_indented
       -- Item 174: no held run stands behind a `-` park.
       (Or.inr trivial)
 
+/-- `ContentArm` off the dispatch alone (item 484): the dispatcher's own `c` split, each arm from its
+    `_prod` lemma; the flow-in plain reads `dispatchContent_evidence_flowIn_at` at every floor, the
+    post-position identified through `ScannerSurfCorr_unique`. -/
+lemma contentArm_of_dispatch (sc : ScannerState) (sp : SurfPos) {s' : ScannerState} (c : Char)
+    (hcorr : ScannerSurfCorr sc sp) (hpeek : sc.peek? = some c)
+    (h_not_doc : sc.col = 0 → atDocumentBoundary sc = false)
+    (hcol : 1 ≤ sc.flowLevel → sc.currentIndent < (sc.col : Int))
+    (hok : scanNextToken_dispatchContent sc c = .ok s') :
+    ∃ sp', ContentArm sc s' c sp sp' := by
+  by_cases hamp : c = '&'
+  · subst hamp
+    obtain ⟨sp', hp, _, hc'⟩ := dispatchContent_anchorProp_prod sc sp hcorr hpeek hok
+    exact ⟨sp', .anchor sp' rfl hp (dispatchContent_anchor_next hok) hc'⟩
+  by_cases hstar : c = '*'
+  · subst hstar
+    obtain ⟨sp', hp, _, hc'⟩ := dispatchContent_aliasNode_prod sc sp hcorr hpeek hok
+    exact ⟨sp', .alias sp' rfl hp hc'⟩
+  by_cases hbang : c = '!'
+  · subst hbang
+    obtain ⟨sp', hp, _, hc'⟩ := dispatchContent_tagProp_prod sc sp hcorr hpeek hok
+    exact ⟨sp', .tag sp' rfl hp (dispatchContent_tag_next hok) hc'⟩
+  by_cases hbs : c = '|' ∨ c = '>'
+  · obtain ⟨sp', hb, hc', _⟩ := dispatchContent_blockScalar_prod sc sp hcorr hpeek hbs hok
+    exact ⟨sp', .blockScalar sp' hbs hb hc'⟩
+  by_cases hdq : c = '"'
+  · subst hdq
+    obtain ⟨sp', hq, hb, hc'⟩ := dispatchContent_doubleQuoted_prod sc sp hcorr hpeek hok
+    exact ⟨sp', .doubleQuoted sp' rfl hq hb hc'⟩
+  by_cases hsq : c = '\''
+  · subst hsq
+    obtain ⟨sp', hq, hb, hc'⟩ := dispatchContent_singleQuoted_prod sc sp hcorr hpeek hok
+    exact ⟨sp', .singleQuoted sp' rfl hq hb hc'⟩
+  have hnc : c ≠ '&' ∧ c ≠ '*' ∧ c ≠ '!' ∧ c ≠ '|' ∧ c ≠ '>' ∧ c ≠ '"' ∧ c ≠ '\'' :=
+    ⟨hamp, hstar, hbang, fun h => hbs (Or.inl h), fun h => hbs (Or.inr h), hdq, hsq⟩
+  rcases Nat.eq_zero_or_pos sc.flowLevel with h0 | hpos
+  · obtain ⟨sp_g, sp', hn, hws, hh, hc'⟩ :=
+      dispatchContent_plainScalar_prod sc sp hcorr hpeek hamp hstar hbang hnc.2.2.2.1 hnc.2.2.2.2.1 hdq hsq h_not_doc hok
+    exact ⟨sp', .plain sp_g sp' hnc h0 hn hws hh hc'⟩
+  · have hin : sc.inFlow = true := by
+      unfold ScannerState.inFlow; simp; omega
+    have hc := hcol hpos
+    obtain ⟨sp_g0, sp', _, _, hc', _, _⟩ :=
+      dispatchContent_evidence_flowIn_at 0 sc sp c hcorr hpeek hin h_not_doc hok hc (Int.le_max_left _ _)
+    refine ⟨sp', .plainIn sp' hnc hpos hc' fun n hn => ?_⟩
+    obtain ⟨sp_g, sp_n, h1, h2, hcn, h3, _⟩ :=
+      dispatchContent_evidence_flowIn_at n sc sp c hcorr hpeek hin h_not_doc hok hc hn
+    have heq := ScannerSurfCorr_unique hcn hc'
+    subst heq
+    exact ⟨sp_g, h1, h2, h3⟩
+
 /-- The mapping twin of `accum_content_on_pendingBlock_indented` (item 23):
     the value of an INDENTED `[189]` empty-key entry or `[186]` explicit key —
     `  : v`, `  ? a`, `    : "x"`.  Same one question, same answer; the only
@@ -40671,7 +40753,7 @@ lemma content_value_layout {sc s_prep s_ad s' : ScannerState} {c : Char}
   rw [hk_ti, hp]
   exact h_slot
 
-lemma accum_step_content (sc : ScannerState)
+lemma accum_step_content_core (sc : ScannerState)
     (sp_start sp_gram sp_block sp_flow sp_scan : SurfPos)
     (s_prep s' : ScannerState) (c : Char)
     (h_stream : SLYamlStream sp_start sp_gram)
@@ -41627,6 +41709,127 @@ lemma accum_step_content (sc : ScannerState)
                      h_dispatch hcorr_res)
                    h_gate_c (fun _ _ _ _ => ⟨rfl, fun _ => rfl⟩) nofun, h_real', h_ad'⟩⟩
 
+
+/-- `accum_step_content_core` with the step's `ContentArm` alongside (item 484), the arm the last conjunct inside
+    the existential, as `FlowArm` sits in `accum_step_flow` (the `FlowStackK.withArm` pattern: the core's
+    body tuple is kept verbatim and re-packed once).  The arm is read at the state
+    the dispatch reads (after `allowDirectives` is cleared), at the preprocess's end position. -/
+lemma accum_step_content (sc : ScannerState)
+    (sp_start sp_gram sp_block sp_flow sp_scan : SurfPos)
+    (s_prep s' : ScannerState) (c : Char)
+    (h_stream : SLYamlStream sp_start sp_gram)
+    (h_stack : BlockStack sp_gram sp_block)
+    (h_flowK : FlowStackK sp_start sc sc.flowLevel sc.flowStack (tailOf sc.tokens) sp_block sp_flow)
+    (h_pending : sc.flowLevel = 0 → PendingNode sc false sp_start sp_flow sp_scan)
+    (h_corr : ScannerSurfCorr sc sp_scan)
+    (h_interior : sc.flowLevel ≥ 1 →
+      InteriorGap sc (tailOf sc.tokens) sp_flow sp_scan ∧
+        LastTokenReal sc.tokens ∧ sc.allowDirectives = false)
+    (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
+    (h_sound : PendingKeySound.Sound sc)
+    -- **Item 157: §9.2's DANGLING refusal, threaded from `scanNextToken`.**  It
+    -- runs BEFORE every dispatch, so its success reaches all four of them
+    -- unchanged; what the landing turns it into is the park's own face.
+    (h_dn : scanNextToken_checkDanglingNode sc s_prep = .ok ())
+    -- Item 275: §8.1's check, carried beside §9.2's.
+    (h_fv : scanNextToken_checkFlowValueIndent sc s_prep = .ok ())
+    -- Content dispatch is `scanNextToken`'s LAST arm: it runs only after both
+    -- indicator dispatches fell through.  Those two fall-throughs are what pin
+    -- `c` off `,`/`]`/`}` and off the value-indicator `:`, which is what item
+    -- 9d's adjacency inversion needs at a content character (§1c''b'').
+    (h_flow_none : scanNextToken_dispatchFlowIndicators
+        (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) c = .ok none)
+    (h_blk_none : scanNextToken_dispatchBlockIndicators
+        (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) c = .ok none)
+    -- Item 47: the adjacent-value check sits between the block and content
+    -- dispatches, so a content step carries its success — which is what the
+    -- two content parks' `:`-residue arms refute.
+    (h_adj : scanNextToken_checkAdjacentValue
+        (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) c = .ok ())
+    -- **Item 139: and §9.2's landing refusal, beside it.**  It runs one check
+    -- earlier — before the `allowDirectives` update — so it reads `s_prep`
+    -- itself, and it is what the two content parks' FALLBACK route refutes.
+    (h_bare : scanNextToken_checkBareDocument s_prep = .ok ())
+    -- Item 146: the stack's BASE, carried by the accumulation from `mk'`
+    -- down.  §9.2's landing refusal spends it to read the dedent exemption
+    -- off the landing's column instead of splitting on it.
+    (h_base : IndentStackBase.SentinelBase sc)
+    -- **Item 149: and its SHAPE**, carried the same way and from the same
+    -- seed.  A dedent landing's pack reads the scanner stack it pops to,
+    -- and reading a bound on the TOP as a bound on every entry is what
+    -- monotonicity buys (`IndentStackCover.Covered.pop_to`).
+    (h_mono : IndentStackMono.Mono sc)
+    (h_dispatch : scanNextToken_dispatchContent
+        (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) c = .ok s')
+    -- Item 67: the structural dispatch's FALL-THROUGH, which inside a flow is
+    -- the statement that the token cleared the enclosing block's indent — the
+    -- other half of what a multi-line reading at the stack's index needs.
+    (h_str_none : scanNextToken_dispatchStructural s_prep c = .ok none)
+    (h_not_doc : (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep).col = 0 →
+      atDocumentBoundary (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) = false) :
+    ∃ sp_gram' sp_block' sp_flow' sp_scan',
+      SLYamlStream sp_start sp_gram' ∧
+      BlockStack sp_gram' sp_block' ∧
+      FlowStackK sp_start s' s'.flowLevel s'.flowStack (tailOf s'.tokens) sp_block' sp_flow' ∧
+      (s'.flowLevel = 0 → PendingNode s' false sp_start sp_flow' sp_scan') ∧
+      ScannerSurfCorr s' sp_scan' ∧
+      (s'.flowLevel ≥ 1 →
+        InteriorGap s' (tailOf s'.tokens) sp_flow' sp_scan' ∧
+          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) ∧
+        ∃ sp_prep sp_a, ScannerSurfCorr (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) sp_prep ∧
+          ContentArm (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) s' c sp_prep sp_a := by
+  obtain ⟨g, b, f, sn, q1, q2, q3, q4, q5, q6⟩ := accum_step_content_core (h_sound := h_sound) sc sp_start sp_gram sp_block sp_flow sp_scan s_prep s' c h_stream h_stack h_flowK h_pending h_corr h_interior h_preprocess h_dn h_fv h_flow_none h_blk_none h_adj h_bare h_base h_mono h_dispatch h_str_none h_not_doc
+  obtain ⟨sp_prep, hcorr_prep⟩ :=
+    scanNextToken_preprocess_corr sc sp_scan h_corr s_prep c h_preprocess
+  have hcorr_ad := corr_of_allowDirectives_update hcorr_prep
+  have hpeek : (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep).peek? = some c :=
+    (by split <;> rfl : (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep).peek? = s_prep.peek?).trans (preprocess_some_peek h_preprocess)
+  have hcol : 1 ≤ (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep).flowLevel → (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep).currentIndent < ((if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep).col : Int) := by
+    intro hfl
+    have hfl' : 1 ≤ s_prep.flowLevel := by
+      have : (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep).flowLevel = s_prep.flowLevel := by split <;> rfl
+      rw [this] at hfl; exact hfl
+    have h_prep_flow : s_prep.inFlow = true := by
+      unfold ScannerState.inFlow; simp; omega
+    have h := FlowIndentStable.structural_none_col_gt_of_inFlow h_prep_flow h_str_none
+    have hc : (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep).col = s_prep.col := by split <;> rfl
+    have hi : (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep).indents = s_prep.indents := by split <;> rfl
+    rw [hc, currentIndent_of_indents_eq hi]; exact h
+  obtain ⟨sp_a, harm⟩ := contentArm_of_dispatch _ sp_prep c hcorr_ad hpeek h_not_doc hcol h_dispatch
+  exact ⟨g, b, f, sn, q1, q2, q3, q4, q5, q6, sp_prep, sp_a, hcorr_ad, harm⟩
+
 /-! ### §1f Composition: Per-Dispatch → Full accum_step
 
     Unfold `scanNextToken`, split on preprocessing and dispatch results,
@@ -41789,7 +41992,7 @@ lemma scanNextToken_accum_step (sc : ScannerState)
                             rw [this]
                             exact dispatchStructural_none_not_doc_boundary h_str_eq hcol
                           · exact dispatchStructural_none_not_doc_boundary h_str_eq
-                        obtain ⟨g', bl', fl', sn', q1, q2, q3, q4, q5, q6⟩ :=
+                        obtain ⟨g', bl', fl', sn', q1, q2, q3, q4, q5, q6, _⟩ :=
                           accum_step_content (h_sound := h_sound) sc sp_start sp_gram sp_block sp_flow sp_scan s_pre s_cnt c_pre
                             h_stream h_stack h_flow h_pending h_corr h_interior h_pre h_dn
                             h_fv h_flow_none h_blk_none h_adj h_bare h_base h_mono h_cnt

@@ -20,8 +20,14 @@ neither can be edited without the other.
 
 namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 
+-- 2026-11-12 (item 486, S3 slice (4) PR 1): population 14,226 → 14,236 (+9 lemmas, +1 def: `TraceOf/ContentBridge`), all ten in
+-- (A) `Proofs.Serialization` (1,298 → 1,308) — no capstone chain reaches the twins until their caller lands; roster 3,536 unmoved.
+-- 2026-11-12 (item 487, the K caller): population 14236 → 14243 (+7: `ContentLead` and its two constructors,
+-- `tailOf_preprocess_eq`, `contentLead_of_interior`, `content_prop_tail_kept`, `accum_step_content_traceK`), thm +4,
+-- unreached +7 and (A) 1308 → 1315 — the K caller has no capstone-path reader yet (the 2c fold is item 488's);
+-- the (B) roster 3,536 unmoved, (C)/(D) unmoved.
 def expectedDeadCensus : String :=
-  "population=14252 thm=10209 def=2704 roots=capstone:27+export:37+blueprint:222(unresolved=5) unreached=6523 thm=4601 A-campaign=1298 C-api=1414 D-test-only=275 B-roster=3536 thm=3173 cluster-roots=1460"
+  "population=14322 thm=10266 def=2705 roots=capstone:27+export:37+blueprint:223(unresolved=5) unreached=6540 thm=4614 A-campaign=1315 C-api=1414 D-test-only=275 B-roster=3536 thm=3173 cluster-roots=1460"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do

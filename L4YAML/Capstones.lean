@@ -49,7 +49,7 @@ so that any drift **fails the build**:
 | 2 scanner | `scan_full_consumption` |
 | 3 parser | `parseStream_respects_grammar_unconditional`, `soundness_completeness_compose` ×2, `grammar_value_roundtrip` ×2 (indexed twins) |
 | 4 end-to-end | `parse_sound_shallow`, `parse_sound_deep`, `parse_complete`, `parse_deterministic` |
-| 5 values | `validYaml_construct`, `toYamlValue_correct`, conditional `coreTagCorrespondenceAll_of_recognizers` |
+| 5 values | `validYaml_construct`, `toYamlValue_correct`, unconditional `coreTagCorrespondenceAll` |
 | 6 round-trip | `universal_roundtrip`, `emit_roundtrip_content_eq`, `canonical_roundtrip_conditional`, `escapeTag_roundtrip`, `format_whitespace_only` (whitespace-only reformat) |
 | 7 strictness | `parse_strict_proof`, `scan_strict_proof` |
 | 8 coupling | `SIndent_zero/succ/col/chars/all_spaces`, `GChar_col` |
@@ -59,7 +59,6 @@ so that any drift **fails the build**:
 info: L4YAML.Proofs.SurfaceCoupling.SIndent_zero
 L4YAML.Proofs.EndToEndCorrectness.parse_sound_deep
 L4YAML.Proofs.ParserCompleteness.grammar_value_roundtrip
-L4YAML.Proofs.SchemaResolution.coreTagCorrespondenceAll_of_recognizers
 L4YAML.Proofs.ScanStrictCoupling.scan_full_consumption
 L4YAML.Proofs.DocumentProduction.parse_strict_proof
 L4YAML.Proofs.EndToEndCorrectness.parse_complete
@@ -72,6 +71,7 @@ L4YAML.Proofs.EndToEndCorrectness.parse_sound_shallow
 L4YAML.Proofs.Composition.parseYaml_pipeline
 L4YAML.Align.format_whitespace_only
 L4YAML.Proofs.SurfaceCoupling.SIndent_chars
+L4YAML.Proofs.SchemaResolution.coreTagCorrespondenceAll
 L4YAML.Proofs.RoundTrip.escapeTag_roundtrip
 L4YAML.Proofs.SurfaceCoupling.SIndent_succ
 L4YAML.Proofs.EndToEndCorrectness.parse_deterministic
@@ -91,7 +91,6 @@ L4YAML.Proofs.Soundness.validYaml_construct
 info: L4YAML.Proofs.SurfaceCoupling.SIndent_zero: pure
 L4YAML.Proofs.EndToEndCorrectness.parse_sound_deep: native
 L4YAML.Proofs.ParserCompleteness.grammar_value_roundtrip: pure
-L4YAML.Proofs.SchemaResolution.coreTagCorrespondenceAll_of_recognizers: pure
 L4YAML.Proofs.ScanStrictCoupling.scan_full_consumption: pure
 L4YAML.Proofs.DocumentProduction.parse_strict_proof: native
 L4YAML.Proofs.EndToEndCorrectness.parse_complete: pure
@@ -104,6 +103,7 @@ L4YAML.Proofs.EndToEndCorrectness.parse_sound_shallow: pure
 L4YAML.Proofs.Composition.parseYaml_pipeline: pure
 L4YAML.Align.format_whitespace_only: pure
 L4YAML.Proofs.SurfaceCoupling.SIndent_chars: pure
+L4YAML.Proofs.SchemaResolution.coreTagCorrespondenceAll: pure
 L4YAML.Proofs.RoundTrip.escapeTag_roundtrip: native
 L4YAML.Proofs.SurfaceCoupling.SIndent_succ: pure
 L4YAML.Proofs.EndToEndCorrectness.parse_deterministic: pure

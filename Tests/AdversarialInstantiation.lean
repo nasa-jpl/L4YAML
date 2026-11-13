@@ -20,6 +20,7 @@ public import L4YAML.Proofs.Scanner.FlowAdjacencyIx
 public import L4YAML.Proofs.Serialization.TraceOf.Leaves
 public import L4YAML.Proofs.Serialization.TraceOf.Document
 public import L4YAML.Proofs.Serialization.RefLex
+public import L4YAML.Proofs.Schema.SchemaResolution
 public import L4YAML.Proofs.Serialization.SerializationWellFormed
 public import L4YAML.Proofs.Serialization.TokenEvents
 public import L4YAML.Proofs.Serialization.ParseCheckFrom
@@ -15769,6 +15770,540 @@ def testContentArmRead (state : IO.Ref TestCollector) : IO Unit := do
 
 end P111Test
 
+/-! ## Priority 112 — `ContentArm`'s fields, shadowed on the span each content step consumes (item 484)
+
+Item 484 pays `ContentArm` off the dispatcher's `c` split; its fields are surface relations on the span
+`[sp_prep, sp_a)` the content dispatch consumes, a `NextIsSep` / `peekBack?` projection of `s'`, and
+(flow-in plain) `SFlowNode n .flowIn` at every floor `n ≤ max 0 (sc.currentIndent + 1)`.  Rule 2 for the
+statement's shape, not its roster (P111): over every P110 row, at every content step, re-derive the arm
+from `scanNextToken_preprocess`'s `c` (the pay's actual constructor index) and check each arm's fields
+against the executable shadow of its relations on the consumed text — `GPlus (GChar isNsAnchorChar)` +
+`GNot` for `&`/`*`, the closing quote as `s'.peekBack?`, `NextIsSep` after a property, `GStar SSWhite` and
+the `#` guard after a depth-0 plain, and for a flow-in plain the continuation lines' indent against the
+quantified floor's bound `(max 0 (sc.currentIndent + 1)).toNat` ([134] `s-flow-line-prefix(n)` is
+`s-indent(n)` first).  Also that the step reaches the content dispatch (`dispatchBlockIndicators` = `none`)
+and that `c`'s arm names the pushed token's kind (P111 (iii) restated at the pay's index). -/
+namespace P112
+open P111 (kindOf contentArms bumpS)
+
+def nsAnchorCharBool (ch : Char) : Bool :=
+  !isLineBreakBool ch && !isWhiteSpaceBool ch && isPrintableBool ch && ch != '\uFEFF' && !isFlowIndicatorBool ch
+
+def nextIsSepBool (s : ScannerState) : Bool :=
+  match s.peek? with
+  | none => true
+  | some ch => isBlankBool ch || ch == ',' || ch == ']' || ch == '}'
+
+def commentOkBool (s : ScannerState) : Bool :=
+  s.col == 0 || s.peekBack?.isNone ||
+    (match s.peekBack? with | some ch => isWhiteSpaceBool ch || isLineBreakBool ch || ch == '\uFEFF' | none => false)
+
+/-- The arm `contentArm_of_dispatch` takes, off `c` and the depth. -/
+def armOf (sc : ScannerState) (c : Char) : String :=
+  if c == '&' then "anchor" else if c == '*' then "alias" else if c == '!' then "tag"
+  else if c == '|' || c == '>' then "blockScalar" else if c == '"' then "dq" else if c == '\'' then "sq"
+  else if sc.flowLevel == 0 then "plain" else "plainIn"
+
+def kindMatches (arm : String) (kind : String) : Bool :=
+  match arm with
+  | "plain" | "plainIn" => kind == "plain"
+  | "blockScalar" => kind == "lit" || kind == "fold"
+  | a => a == kind
+
+/-- Trailing `s-white` (space / tab) of the consumed text — `GStar SSWhite sp_gram sp'`. -/
+def whiteTail (txt : String) : Nat := (txt.toList.reverse.takeWhile isWhiteSpaceBool).length
+
+def leadingSpaces (l : String) : Nat := (l.toList.takeWhile (· == ' ')).length
+
+structure Tally where
+  content : Nat := 0
+  arms : List (String × Nat) := []          -- arm histogram off `c`
+  notContentDispatch : List String := []     -- the block-indicator dispatch did not return `none`
+  armKind : List String := []                -- `c`'s arm ≠ the pushed token's kind
+  bad : List String := []                    -- a field's shadow refuted: row, arm, text
+  plainInMulti : Nat := 0                    -- flow-in plains with a continuation line (the floor check is non-vacuous)
+  plainInBoundMax : Nat := 0                 -- the largest floor bound `(max 0 (currentIndent + 1)).toNat` met
+  plain0Multi : Nat := 0
+  hashGuarded : Nat := 0                     -- depth-0 plains with no white tail and a next char (the `#` guard's live case)
+
+/-- P110's rows hold no flow-in plain with a continuation line (the floor check would be vacuous on
+    them), so the grid adds multi-line flow plains at several floors: top level, under a block mapping at
+    indent 0 / 2 / 4, under a sequence entry, nested flows, tabs and empty lines in the fold, the
+    under-indented continuation the scanner refuses (`checkFlowValueIndent`) and a multi-line implicit key it refuses. -/
+def own : List String :=
+  ["[a\n b]", "[a\n  b, c\n d]", "{a: b\n c}", "{k: a\n  b}", "[a\n\n b]", "[a\n \n  b c\n  d]",
+   "k: [a\n b]", "k: [a\n  b,\n  c]", "k: {x: a\n  b}", "k:\n  [a\n   b]", "k:\n  v: [a\n   b\n    c]",
+   "k:\n  v: [a\n  b]", "k:\n  v:\n    [a\n     b]", "k:\n  v:\n    [a\n    b]",
+   "- [a\n  b]", "- - [a\n    b]", "- k: [a\n   b]", "[[a\n  b], {c: d\n  e}]", "[a\n\tb]", "- {a: b\n   c: d\n   e}",
+   "k: [a b\n c d\n e]", "k:\n  - [a\n    b\n    c]"]
+
+def allRows : List String := (P110.allRows ++ own).eraseDups
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    match scanFiltered s, P107.stepsOf s with
+    | .error _, _ | _, none => pure ()
+    | .ok _, some sts =>
+      for (pre, post) in sts do
+        let pushed := post.tokens.toList.drop pre.tokens.size
+        match pushed.getLast? with
+        | none => pure ()
+        | some back =>
+          let kind := kindOf back.val
+          if !contentArms.contains kind then continue
+          t := { t with content := t.content + 1 }
+          match scanNextToken_preprocess pre with
+          | .ok (some (sc, c)) =>
+            let arm := armOf sc c
+            t := { t with arms := bumpS t.arms arm }
+            match scanNextToken_dispatchBlockIndicators sc c with
+            | .ok none => pure ()
+            | _ => t := { t with notContentDispatch := s!"{repr s}: {arm}" :: t.notContentDispatch }
+            if !kindMatches arm kind then t := { t with armKind := s!"{repr s}: c={repr c} arm {arm} kind {kind}" :: t.armKind }
+            let txt := String.Pos.Raw.extract pre.input ⟨sc.offset⟩ ⟨post.offset⟩
+            let chars := txt.toList
+            let refute (why : String) : Tally := { t with bad := s!"{repr s}: {arm} {repr txt} — {why}" :: t.bad }
+            match arm with
+            | "anchor" | "alias" =>
+              let name := chars.drop 1
+              if !(chars.head? == some c) then t := refute "head"
+              else if name.isEmpty || !name.all nsAnchorCharBool then t := refute "GPlus isNsAnchorChar"
+              else if post.peek?.any nsAnchorCharBool then t := refute "GNot isNsAnchorChar"
+              else if arm == "anchor" && !nextIsSepBool post then t := refute "NextIsSep"
+            | "tag" =>
+              if !(chars.head? == some '!') then t := refute "head"
+              else if chars.any isBlankBool then t := refute "blank inside the tag"
+              else if !nextIsSepBool post then t := refute "NextIsSep"
+            | "dq" | "sq" =>
+              if !(chars.head? == some c && chars.getLast? == some c && chars.length ≥ 2) then t := refute "quotes"
+              else if post.peekBack? != some c then t := refute "peekBack?"
+            | "blockScalar" =>
+              if !(chars.head? == some c) then t := refute "header"
+              else if sc.flowLevel != 0 then t := refute "depth"
+            | "plain" | "plainIn" =>
+              let tail := whiteTail txt
+              let body := chars.take (chars.length - tail)
+              let lines := (String.ofList body).splitOn "\n"
+              let conts := (lines.drop 1).filter (fun l => !l.trimAscii.isEmpty)
+              if body.isEmpty || body.head?.any isBlankBool then t := refute "SNsPlainFirst"
+              else if arm == "plain" then
+                if !conts.isEmpty then t := { t with plain0Multi := t.plain0Multi + 1 }
+                if tail == 0 && post.peek?.isSome then t := { t with hashGuarded := t.hashGuarded + 1 }
+                if tail == 0 && post.peek? == some '#' then t := refute "the # guard"
+              else
+                let d := (max 0 (sc.currentIndent + 1)).toNat
+                if !conts.isEmpty then
+                  t := { t with plainInMulti := t.plainInMulti + 1, plainInBoundMax := max t.plainInBoundMax d }
+                if conts.any (fun l => leadingSpaces l < d) then t := refute s!"SFlowLinePrefix at the floor bound {d}"
+                else if tail == 0 && post.col != 0 && post.peek? == some '#' && commentOkBool post then t := refute "the comment guard"
+            | _ => pure ()
+          | _ => t := { t with notContentDispatch := s!"{repr s}: preprocess" :: t.notContentDispatch }
+  return t
+
+end P112
+
+namespace P112Test
+open P112
+
+def testContentArmShadow (state : IO.Ref TestCollector) : IO Unit := do
+  let t := tally P112.allRows
+  checkM state
+    s!"P112(i) {t.content} content steps; arms off c = {t.arms}; not the content dispatch = {t.notContentDispatch.length}; c's arm ≠ pushed kind = {t.armKind.length}"
+    (t.content == 1126 && t.notContentDispatch.isEmpty && t.armKind.isEmpty &&
+      t.arms == [("plain", 415), ("anchor", 103), ("tag", 117), ("plainIn", 372), ("alias", 21), ("dq", 48), ("sq", 33), ("blockScalar", 17)])
+    s!"{t.arms} {t.notContentDispatch.take 3} {t.armKind.take 3}"
+  let refused := own.filter fun r => match scanFiltered r with | .error _ => true | .ok _ => false
+  checkM state
+    s!"P112(i') own rows: {own.length}, refused by the scanner (an under-indented continuation; a multi-line implicit key): {refused.length} {refused.map repr}"
+    (own.length == 22 && refused == ["k:\n  v: [a\n  b]", "- {a: b\n   c: d\n   e}"])
+    s!"{refused.map repr}"
+  checkM state
+    s!"P112(ii) field shadows refuted = {t.bad.length}; flow-in plains with a continuation line = {t.plainInMulti} (floor bound max {t.plainInBoundMax}); depth-0 multi-line plains = {t.plain0Multi}; # guard live = {t.hashGuarded}"
+    (t.bad.isEmpty && t.plainInMulti == 22 && t.plainInBoundMax == 3 && t.plain0Multi == 12 && t.hashGuarded == 182)
+    s!"{t.bad.take 5} {t.plainInMulti} {t.plainInBoundMax} {t.plain0Multi} {t.hashGuarded}"
+
+end P112Test
+
+/-! ## Priority 113 — the content step's T twin, read off the scanner (item 485's grid for `accum_step_content_trace`)
+
+Slice (4) PR 1 reads `ContentArm` into the T twins: at depth 0 the leaf (`TFlowNode 0 .flowOut` / the
+property run / `TCNsAliasNode`; block scalars into `TBlockNode.blockLiteral`/`blockFolded`, which open with
+`SSeparate` BEFORE the header), at depth ≥ 1 the flow stack's `receiveNode` / `receivePropsContent`, whose
+premises are the pre-tail (`∀ kj, tailOf sc.tokens ≠ .value kj` — the adjacency guard) and the lead from the
+frame's position to `sp_prep` (`SSeparateLines` or ε with `leadFree`, or a held run then `SSeparate`).  Before
+stating: over P112's rows plus rows for content after a held run in flow, at every content step read the
+pre-tail class, the held run, the gap the preprocess skipped (empty / blanks / a line break / a comment),
+whether the step is at a line start (depth 0: the block twin's `SSeparate` is a line prefix there), and
+alias-after-a-run inside a flow (the guard's in-flow half refuses it — P111 (iv)'s block-context finding
+does not recur); every alias row defines its anchor first, since the scanner refuses an undefined alias
+(`undefinedAlias`) before any guard is reached. -/
+namespace P113
+open P111 (kindOf contentArms bumpS)
+open P112 (armOf)
+open L4YAML.Proofs.StreamAccum (tailOf FrameTail)
+
+def own : List String :=
+  ["[&a b]", "[!!str b]", "[&a !!str b]", "{&a k: v}", "{k: &a v}", "[&a\n b]", "[&a # c\n b]", "[&a, b]", "[&a]",
+   "[&b x, &a *b]", "[&b x, &a\n*b]", "[&b x, *b]", "{&b k: v, *b : w}", "[&b x, a *b]", "[a, &b c, *b]", "[\"a\" b]", "[a \"b\"]", "[a\n b]", "[a,\n b]",
+   "k: &a\n  v", "k: !!str\n  v", "- &a\n  v", "&a\nv", "!!str\nv", "k: |\n  a", "- >\n  a", "--- |\n  a", "k: &a |\n  a",
+   "[a]: b", "? a\n: b", "k:\n  - a\n  - b", "k: a # c", "[a # c\n]"]
+
+def allRows : List String := (P112.allRows ++ own).eraseDups
+
+def tailClass : FrameTail → String
+  | .sep => "sep" | .colon _ => "colon" | .question => "question" | .value _ => "value"
+
+def gapClass (txt : String) : String :=
+  if txt.isEmpty then "ε" else if txt.any (· == '#') then "comment"
+  else if txt.any isLineBreakBool then "lines" else "blanks"
+
+structure Tally where
+  rows : Nat := 0
+  scanned : Nat := 0
+  content : Nat := 0
+  inFlow : Nat := 0
+  tailIn : List (String × Nat) := []        -- pre-tail class at depth ≥ 1
+  heldIn : List (String × Nat) := []        -- arm histogram under a held run, depth ≥ 1
+  gapIn : List (String × Nat) := []         -- gap class, depth ≥ 1
+  aliasAfterRunIn : List String := []       -- an alias after a held run inside a flow (expected refused)
+  lineStart0 : Nat := 0                     -- depth-0 content steps at a line start (`sc.col = 0`)
+  midLine0 : Nat := 0
+  held0 : List (String × Nat) := []         -- arm histogram under a held run, depth 0
+  gap0 : List (String × Nat) := []
+  blockPrev : List (String × Nat) := []     -- what precedes a block-scalar header: the pre-state's back token kind
+  refusedOwn : List (String × String) := []  -- (row, the `ScanError` that refused it): WHICH check refused, not only that one did
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    t := { t with rows := t.rows + 1 }
+    match scanFiltered s, P107.stepsOf s with
+    | .error e, _ => if own.contains s then t := { t with refusedOwn := t.refusedOwn ++ [(s, (repr e).pretty)] }
+    | .ok _, none => if own.contains s then t := { t with refusedOwn := t.refusedOwn ++ [(s, "stepsOf none")] }
+    | .ok _, some sts =>
+      t := { t with scanned := t.scanned + 1 }
+      for (pre, post) in sts do
+        let pushed := post.tokens.toList.drop pre.tokens.size
+        match pushed.getLast? with
+        | none => pure ()
+        | some back =>
+          let kind := kindOf back.val
+          if !contentArms.contains kind then continue
+          t := { t with content := t.content + 1 }
+          match scanNextToken_preprocess pre with
+          | .ok (some (sc, c)) =>
+            let arm := armOf sc c
+            let gap := gapClass (String.Pos.Raw.extract pre.input ⟨pre.offset⟩ ⟨sc.offset⟩)
+            let held := !(trailingPropertyRun sc.tokens).isEmpty
+            if sc.flowLevel ≥ 1 then
+              t := { t with inFlow := t.inFlow + 1, tailIn := bumpS t.tailIn (tailClass (tailOf sc.tokens)),
+                            gapIn := bumpS t.gapIn gap }
+              if held then t := { t with heldIn := bumpS t.heldIn arm }
+              if held && arm == "alias" then t := { t with aliasAfterRunIn := s :: t.aliasAfterRunIn }
+            else
+              t := { t with gap0 := bumpS t.gap0 gap }
+              if sc.col == 0 then t := { t with lineStart0 := t.lineStart0 + 1 } else t := { t with midLine0 := t.midLine0 + 1 }
+              if held then t := { t with held0 := bumpS t.held0 arm }
+              if arm == "blockScalar" then
+                let prevKind := match lastRealTokenVal? sc.tokens with
+                  | some tk => kindOf tk | none => "none"
+                t := { t with blockPrev := bumpS t.blockPrev prevKind }
+          | _ => pure ()
+  return t
+
+end P113
+
+namespace P113Test
+open P113
+
+def testContentTwinRead (state : IO.Ref TestCollector) : IO Unit := do
+  let t := tally P113.allRows
+  checkM state
+    s!"P113(i) {t.rows} rows, {t.scanned} scanned, {t.content} content steps, {t.inFlow} in flow; own rows refused, each by the check named (the node-property guard's in-flow half ×2, the adjacency check ×1): {t.refusedOwn}"
+    (t.rows == 778 && t.scanned == 616 && t.content == 1184 && t.inFlow == 525 &&
+      t.refusedOwn == [("[&b x, &a *b]", "L4YAML.ScanError.invalidNodeProperties '*' 0 10"),
+                       ("[&b x, &a\n*b]", "L4YAML.ScanError.invalidNodeProperties '*' 1 0"),
+                       ("[\"a\" b]", "L4YAML.ScanError.invalidFlowEntry 0 5")])
+    s!"{t.rows} {t.scanned} {t.content} {t.inFlow} {t.refusedOwn}"
+  checkM state
+    s!"P113(ii) depth ≥ 1: pre-tail {t.tailIn}; gap {t.gapIn}; under a held run {t.heldIn}; alias after a run in flow = {t.aliasAfterRunIn.length}"
+    (t.tailIn == [("colon", 118), ("question", 19), ("sep", 388)] &&
+      t.gapIn == [("blanks", 276), ("ε", 236), ("lines", 10), ("comment", 3)] &&
+      t.heldIn == [("plainIn", 46), ("anchor", 3), ("tag", 5)] && t.aliasAfterRunIn.isEmpty)
+    s!"{t.tailIn} {t.gapIn} {t.heldIn} {t.aliasAfterRunIn}"
+  checkM state
+    s!"P113(iii) depth 0: line start {t.lineStart0} / mid-line {t.midLine0}; gap {t.gap0}; under a held run {t.held0}; before a block-scalar header {t.blockPrev}"
+    (t.lineStart0 == 292 && t.midLine0 == 367 && t.lineStart0 + t.midLine0 + t.inFlow == t.content &&
+      t.gap0 == [("ε", 210), ("blanks", 336), ("lines", 101), ("comment", 12)] &&
+      t.held0 == [("plain", 91), ("tag", 5), ("anchor", 5), ("dq", 2), ("sq", 2), ("blockScalar", 5), ("alias", 1)] &&
+      t.blockPrev == [("other", 9), ("tag", 3), ("value", 4), ("bEntry", 2), ("anchor", 2), ("key", 1)])
+    s!"{t.lineStart0} {t.midLine0} {t.gap0} {t.held0} {t.blockPrev}"
+
+end P113Test
+
+/-! ## Priority 114 — the content step's T twins, their conclusions shadowed (item 486's grid)
+
+`accum_step_content_trace_in` / `_out` (`TraceOf/ContentBridge.lean`) conclude, at every content
+step: ONE token pushed whose trace is read in `goOut` form (`PushesTrace`: the events grow by the
+leaf's event FROM EVERY pending-handle state, the pending state unchanged — item 485's `tokenEvents`
+equation holds only when nothing is pending); the tail AFTER the step — kept by the property arms
+(`tailOf_push_prop`), `.value kj` for the value arms with `kj` true only for a quoted scalar
+(`tailOf_dispatchContent_value`); block scalars never inside a flow.  This priority shadows each of
+those readings on P113's corpus.
+
+The twins' GRAMMAR conclusions are `Prop`s (§7: which disjunct a proof takes is unobservable), so
+each is shadowed by its decidable projection: the landing's tail and `kj` (ii) — the `.value kj` the
+T stack receives; the first-char lift (iii) — the arm's head character against the kind of the token
+the scanner pushed (`SFlowNode_head_lift` says the S node IS a plain / double- / single-quoted scalar
+by that character; a `plain` head pushing anything but a plain token would refute it); the S node the
+lift reads was shadowed field by field by Priority 112 (`ContentArm`'s span, white tail, `#` guard,
+`NextIsSep`, the flow-in floors) and the receive's premises by Priority 113 (the pre-tail never
+`.value`, the interior's gap class, the held run).  (iv) pins that the `_in` twin's scanner-side
+hypotheses hold at every in-flow content step and `_out`'s at every other, so neither is vacuous on
+the corpus. -/
+
+namespace P114
+
+open P111 (kindOf contentArms bumpS)
+open P112 (armOf kindMatches)
+open P113 (tailClass)
+open L4YAML.Proofs.StreamAccum (tailOf FrameTail)
+open L4YAML.Proofs.Serialization.TokenEvents (tokenEvents goOut tokenEvent)
+
+structure Tally where
+  content : Nat := 0
+  pushedOne : Nat := 0
+  /-- (arm, tail class after the step) — `kept` when it equals the tail before. -/
+  tailAfter : List (String × Nat) := []
+  /-- value arms whose `kj` disagrees with "the arm is a quoted scalar". -/
+  kjMismatch : List String := []
+  /-- `goOut` form holds from pending `[]` and from pending `["!e!"]`. -/
+  goOutEmpty : Nat := 0
+  goOutPending : Nat := 0
+  /-- steps where `tokenEvents post = tokenEvents pre ++ ev` (the plain equation). -/
+  tokenEventsEq : Nat := 0
+  blockInFlow : Nat := 0
+  /-- (iii) the first-char lift: the pushed token's kind against the head character's class, by arm. -/
+  liftOk : List (String × Nat) := []
+  liftMismatch : List String := []
+  /-- (iv) `_in`'s scanner-side hypotheses hold at every in-flow step (non-vacuity): `inFlow`,
+      `currentIndent < col`, pre-tail not `.value`, `col ≠ 0`; `_out`'s `flowLevel = 0` elsewhere. -/
+  inHyps : Nat := 0
+  inHypsFail : List String := []
+  outDepth0 : Nat := 0
+  deriving Repr
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    match scanFiltered s, P107.stepsOf s with
+    | .ok _, some sts =>
+      for (pre, post) in sts do
+        let pushed := post.tokens.toList.drop pre.tokens.size
+        match pushed.getLast? with
+        | none => pure ()
+        | some back =>
+          let kind := kindOf back.val
+          if !contentArms.contains kind then continue
+          t := { t with content := t.content + 1 }
+          match scanNextToken_preprocess pre with
+          | .ok (some (sc, c)) =>
+            let arm := armOf sc c
+            let pushedAd := post.tokens.toList.drop sc.tokens.size
+            if pushedAd.length == 1 then t := { t with pushedOne := t.pushedOne + 1 }
+            let ev : List L4YAML.Proofs.Serialization.SerializationWellFormed.Event :=
+              match tokenEvent back.val with | some e => [e] | none => []
+            let tlBefore := tailOf sc.tokens
+            let tlAfter := tailOf post.tokens
+            let cls := if arm == "anchor" || arm == "tag" then
+                (if tlAfter == tlBefore then "kept" else "moved:" ++ tailClass tlAfter)
+              else tailClass tlAfter
+            t := { t with tailAfter := bumpS t.tailAfter (arm ++ "/" ++ cls) }
+            match tlAfter with
+            | .value kj =>
+              if !(arm == "anchor" || arm == "tag") && kj != (arm == "dq" || arm == "sq") then
+                t := { t with kjMismatch := t.kjMismatch ++ [s!"{s}@{arm}"] }
+            | _ => pure ()
+            let okFrom (p : List String) : Bool :=
+              let g := goOut sc.tokens.toList p
+              goOut post.tokens.toList p == (g.1 ++ ev, g.2)
+            if okFrom [] then t := { t with goOutEmpty := t.goOutEmpty + 1 }
+            if okFrom ["!e!"] then t := { t with goOutPending := t.goOutPending + 1 }
+            if tokenEvents post.tokens == tokenEvents sc.tokens ++ ev then
+              t := { t with tokenEventsEq := t.tokenEventsEq + 1 }
+            if arm == "blockScalar" && sc.flowLevel ≥ 1 then t := { t with blockInFlow := t.blockInFlow + 1 }
+            if kindMatches arm kind then t := { t with liftOk := bumpS t.liftOk (arm ++ "→" ++ kind) }
+            else t := { t with liftMismatch := t.liftMismatch ++ [s!"{s}@{arm}/{kind}"] }
+            if sc.flowLevel ≥ 1 then
+              let ok := sc.inFlow && decide (sc.currentIndent < (sc.col : Int)) &&
+                (match tlBefore with | .value _ => false | _ => true) && sc.col != 0
+              if ok then t := { t with inHyps := t.inHyps + 1 }
+              else t := { t with inHypsFail := t.inHypsFail ++ [s!"{s}@{arm}"] }
+            else t := { t with outDepth0 := t.outDepth0 + 1 }
+          | _ => pure ()
+    | _, _ => pure ()
+  return t
+
+end P114
+
+namespace P114Test
+open P114
+
+def testContentTwinShadow (state : IO.Ref TestCollector) : IO Unit := do
+  let t := tally P113.allRows
+  checkM state
+    s!"P114(i) {t.content} content steps: one token pushed at {t.pushedOne}; goOut form from [] at {t.goOutEmpty}, from a pending handle at {t.goOutPending}; the tokenEvents equation at {t.tokenEventsEq}; block scalars in flow {t.blockInFlow}"
+    (t.content == 1184 && t.pushedOne == t.content && t.goOutEmpty == t.content &&
+      t.goOutPending == t.content && t.tokenEventsEq == t.content && t.blockInFlow == 0)
+    s!"{t.content} {t.pushedOne} {t.goOutEmpty} {t.goOutPending} {t.tokenEventsEq} {t.blockInFlow}"
+  checkM state
+    s!"P114(ii) tail after the step, by arm: {t.tailAfter}; kj ≠ quoted: {t.kjMismatch}"
+    (t.kjMismatch.isEmpty &&
+      t.tailAfter == [("plain/value", 429), ("anchor/kept", 116), ("tag/kept", 121), ("plainIn/value", 392),
+                      ("alias/value", 24), ("dq/value", 48), ("sq/value", 33), ("blockScalar/value", 21)])
+    s!"{t.tailAfter} {t.kjMismatch}"
+  checkM state
+    s!"P114(iii) the first-char lift, arm → pushed kind: {t.liftOk}; mismatches {t.liftMismatch}"
+    (t.liftMismatch.isEmpty &&
+      t.liftOk == [("plain→plain", 429), ("anchor→anchor", 116), ("tag→tag", 121), ("plainIn→plain", 392),
+                   ("alias→alias", 24), ("dq→dq", 48), ("sq→sq", 33), ("blockScalar→lit", 16), ("blockScalar→fold", 5)])
+    s!"{t.liftOk} {t.liftMismatch}"
+  checkM state
+    s!"P114(iv) `_in`'s scanner-side hypotheses at every in-flow step: {t.inHyps} (failing: {t.inHypsFail}); `_out`'s depth-0 steps: {t.outDepth0}"
+    (t.inHypsFail.isEmpty && t.inHyps == 525 && t.outDepth0 == 659 && t.inHyps + t.outDepth0 == t.content)
+    s!"{t.inHyps} {t.inHypsFail} {t.outDepth0}"
+
+end P114Test
+
+/-! ## Priority 115 — the content step's K caller, its grid (item 487)
+
+`accum_step_content_traceK` (ContentBridge §6) takes the wrapper's inputs at an in-flow content step
+and the T stack at the pre-state; it concludes the arm and, by arm, the T stack at `s'` (value arms:
+tail `.value`, trace `ev ++ ev_n`; property arms: tail and trace kept).  Its lead is replayed by
+`contentLead_of_interior`, whose constructor is decided by the held run at the pre-state.  What a
+decidable check can shadow (§7): (i) the hypotheses hold at every in-flow content step (the
+structural / flow / block dispatchers return `none` at the preprocessed state, the floor bound `hn` read
+at the floor's top `n = minContentIndentOf pre` and transported to the dispatch state — (iv) pins the floors,
+so positive floors are read, not only the vacuous `n = 0`); (ii) `flowLevel` and `flowStack` ride the step (the T stack's indices at `s'` are the
+pre-state's); (iii) the lead's constructor by arm — `.props` iff the trailing property run at the
+pre-state is non-empty — with the alias arm never under a run (the scanner's in-flow node-property
+guard, P113 (i)) and `&` under a run only when the run holds no anchor yet (9e).  The S node, the
+receive's premises and the landing are P112 / P113 / P114's. -/
+namespace P115
+open P111 P112 P113 P114
+
+structure Tally where
+  inSteps : Nat := 0
+  hypsOk : Nat := 0
+  hypsFail : List String := []
+  stackRides : Nat := 0
+  stackMoved : List String := []
+  leadByArm : List (String × Nat) := []
+  aliasUnderRun : List String := []
+  anchorExtendBad : List String := []
+  floors : List (String × Nat) := []
+  floorFail : List String := []
+  deriving Repr
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    match scanFiltered s, P107.stepsOf s with
+    | .ok _, some sts =>
+      for (pre, post) in sts do
+        let pushed := post.tokens.toList.drop pre.tokens.size
+        match pushed.getLast? with
+        | none => pure ()
+        | some back =>
+          if !contentArms.contains (kindOf back.val) then continue
+          if pre.flowLevel == 0 then continue
+          t := { t with inSteps := t.inSteps + 1 }
+          match scanNextToken_preprocess pre with
+          | .ok (some (sp, c)) =>
+            let sad := if sp.allowDirectives then
+              { sp with allowDirectives := false, documentEverStarted := true } else sp
+            let arm := armOf sad c
+            let strNone := match scanNextToken_dispatchStructural sp c with | .ok none => true | _ => false
+            let flowNone := match scanNextToken_dispatchFlowIndicators sad c with | .ok none => true | _ => false
+            let blkNone := match scanNextToken_dispatchBlockIndicators sad c with | .ok none => true | _ => false
+            -- `hn` at the floor's TOP, `n := minContentIndentOf pre`, transported to the dispatch state: the
+            -- caller's `hn'` is `(n : Int) ≤ max 0 (s_ad.currentIndent + 1)` — vacuous at `n = 0`, read at the top.
+            let floor := L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf pre
+            let floorTop := decide ((floor : Int) ≤ max 0 (sad.currentIndent + 1)) &&
+              floor == L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf sad
+            t := { t with floors := bumpS t.floors s!"floor={floor}" }
+            if !floorTop then t := { t with floorFail := t.floorFail ++ [s!"{s}@{arm}"] }
+            if strNone && flowNone && blkNone && floorTop then t := { t with hypsOk := t.hypsOk + 1 }
+            else t := { t with hypsFail := t.hypsFail ++ [s!"{s}@{arm}"] }
+            if post.flowLevel == pre.flowLevel && post.flowStack == pre.flowStack then
+              t := { t with stackRides := t.stackRides + 1 }
+            else t := { t with stackMoved := t.stackMoved ++ [s!"{s}@{arm}"] }
+            let run := L4YAML.Scanner.trailingPropertyRun pre.tokens
+            let lead := if run.isEmpty then "white" else "props"
+            t := { t with leadByArm := bumpS t.leadByArm (lead ++ "/" ++ arm) }
+            if !run.isEmpty && c == '*' then t := { t with aliasUnderRun := t.aliasUnderRun ++ [s] }
+            if !run.isEmpty && c == '&' && run.any YamlToken.isAnchorProperty then
+              t := { t with anchorExtendBad := t.anchorExtendBad ++ [s] }
+          | _ => t := { t with hypsFail := t.hypsFail ++ [s!"{s}@preprocess"] }
+    | _, _ => pure ()
+  return t
+
+end P115
+
+namespace P115Test
+open P115
+
+def testContentCallerShadow (state : IO.Ref TestCollector) : IO Unit := do
+  let t := tally P113.allRows
+  checkM state
+    s!"P115(i) the K caller's hypotheses at every in-flow content step: {t.hypsOk} of {t.inSteps} (failing: {t.hypsFail})"
+    (t.hypsFail.isEmpty && t.inSteps == 525 && t.hypsOk == t.inSteps)
+    s!"{t.inSteps} {t.hypsOk} {t.hypsFail}"
+  checkM state
+    s!"P115(ii) flowLevel/flowStack ride the content step: {t.stackRides} (moved: {t.stackMoved})"
+    (t.stackMoved.isEmpty && t.stackRides == t.inSteps)
+    s!"{t.stackRides} {t.stackMoved}"
+  checkM state
+    s!"P115(iii) the lead's constructor by arm: {t.leadByArm}; alias under a run {t.aliasUnderRun}; `&` extending a run that holds an anchor {t.anchorExtendBad}"
+    (t.aliasUnderRun.isEmpty && t.anchorExtendBad.isEmpty &&
+      t.leadByArm == [("white/plainIn", 346), ("white/anchor", 59), ("props/plainIn", 46), ("white/alias", 15),
+                      ("white/tag", 21), ("white/sq", 12), ("white/dq", 18), ("props/anchor", 3), ("props/tag", 5)])
+    s!"{t.leadByArm} {t.aliasUnderRun} {t.anchorExtendBad}"
+  checkM state
+    s!"P115(iv) the floor at every in-flow step, `hn` read at its top and transported to the dispatch state: {t.floors}; failing {t.floorFail}"
+    (t.floorFail.isEmpty && t.floors == [("floor=0", 476), ("floor=1", 35), ("floor=3", 14)])
+    s!"{t.floors} {t.floorFail}"
+
+end P115Test
+
+/-! Rule 2, Priority 116 — adversarial Core §10.3.2 tag instances.
+    These test input shape classes omitted by the short-word guard;
+    the all-string proof lives in capstone 5.8. -/
+namespace P116Test
+
+def examples : List String :=
+  ["", "~", "true", "TRUE", "false", "yes", "0", "1", "00", "-1", "+1",
+   "0o7", "0o70", "0o", "0O7", "0xF", "0xFF", "0xAf", "0x", "0Xf",
+   "+0x2", "-0o7", "1_000", "1.5_0", "1.", ".5", ".0", "1.0",
+   "+.5", "-.5", "1e2", "1E2", "1e+2", "1E-2", "1.e+2", "0e",
+   "0e+", "0e309", ".inf", ".Inf", ".INF", "+.inf", "-.INF",
+   ".nan", ".NaN", ".NAN", "+.nan", "abc", "e1", "1eE2",
+   String.ofList (List.replicate 256 '9'),
+   "1e" ++ String.ofList (List.replicate 256 '0')]
+
+def testCoreTagCorrespondence (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 116: Core Schema universal tag bridge adversarial instances"
+  for s in examples do
+    let actual := L4YAML.Proofs.SchemaResolution.scalarTag? (L4YAML.Schema.resolveImplicit s)
+    let expected := some (L4YAML.Spec.CoreSchema.tag s)
+    checkM state s!"P116 Core tag {repr (String.ofList (s.toList.take 32))}" (actual == expected)
+      s!"actual={repr actual}; expected={repr expected}"
+  checkM state "P116 class roster size" (examples.length == 52)
+    s!"{examples.length}"
+
+end P116Test
+
 def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 100: S3 slice (1) — leaf span ↔ token payload (anchor / alias / tag), before proof"
   let t := P100.tally P100.allRows
@@ -15959,6 +16494,11 @@ def collectTests : IO VerifiedSuiteResult := do
   testHeldNestOpen state
   P110Test.testPlainContinuationRead state
   P111Test.testContentArmRead state
+  P112Test.testContentArmShadow state
+  P113Test.testContentTwinRead state
+  P114Test.testContentTwinShadow state
+  P115Test.testContentCallerShadow state
+  P116Test.testCoreTagCorrespondence state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",

@@ -5,6 +5,7 @@ public import L4YAML.Schema.Schema
 public meta import L4YAML.Schema.Schema
 public import L4YAML.Spec.Types
 public import L4YAML.Spec.CoreSchema
+public import L4YAML.Proofs.Schema.CoreRecognizerBridge
 
 @[expose] public section Blanket
 
@@ -47,11 +48,9 @@ open L4YAML
 of the implementation's numeric value converters. `scalarTag?` deliberately
 forgets the value: conformance of numerical *values* is a different requirement.
 
-The universally quantified proposition is stated here, not asserted as a proved
-theorem. In particular, the `Option`-returning numeric converters must be shown
-to succeed for **every** spelling allowed by the table before this can be
-promoted from an obligation to a universal guarantee. Individual instances are
-tested in `Tests/Guards/Proofs/SchemaResolution.lean`.
+The proof separates recognition, converter success, and output tagging.
+`CoreRecognizerBridge` proves universal success of integer and float parsing
+on every allowed spelling, while numeric **value** fidelity remains separate.
 -/
 
 /-- The tag of a constructed scalar, absent for collections. -/
@@ -67,10 +66,6 @@ def scalarTag? : YamlType → Option Spec.CoreSchema.Tag
 def coreTagCorrespondence (s : String) : Prop :=
   scalarTag? (resolveImplicit s) = some (Spec.CoreSchema.tag s)
 
-/-- Universal Core Schema tag correspondence — **not yet proved**. -/
-def coreTagCorrespondenceAll : Prop :=
-  ∀ s : String, coreTagCorrespondence s
-
 lemma coreNullRecognizer_matches_spec (s : String) :
     isNull s = Spec.CoreSchema.nullSpelling s := by
   simp [isNull, Spec.CoreSchema.nullSpelling, Bool.or_comm, Bool.or_left_comm]
@@ -80,11 +75,8 @@ lemma coreBoolRecognizer_matches_spec (s : String) :
   unfold isBool
   split <;> simp_all [Spec.CoreSchema.boolSpelling]
 
-/-- Compositional bridge: for the external §10.3.2 table, null/boolean
-    classification and rejection of nonmatching numeric spellings are already
-    unconditional. The **only** remaining hypotheses are that valid integer and
-    float spellings actually produce numeric values, rather than `none`.
-    Their unconditional validity has not been proved here. -/
+/-- Compositional bridge for the external §10.3.2 table; numeric converter
+    success is supplied by `CoreRecognizerBridge` in the capstone below. -/
 lemma coreTagCorrespondence_at_of_recognizers (s : String)
     (hint : Spec.CoreSchema.integerSpelling s = true → (isInt s).isSome = true)
     (hfloat : Spec.CoreSchema.floatSpelling s = true → (isFloat s).isSome = true) :
@@ -106,16 +98,23 @@ lemma coreTagCorrespondence_at_of_recognizers (s : String)
     simp_all [coreTagCorrespondence, scalarTag?, resolveImplicit,
       Spec.CoreSchema.tag, Option.isSome]
 
-/-- Universal Core Schema tag correspondence follows from universal success
-    of the two numeric converters on spec-valid spellings. Both hypotheses
-    remain open obligations; this theorem does not assume they hold. -/
-@[capstone]
-theorem coreTagCorrespondenceAll_of_recognizers
+/-- Intermediate lemma: universal tag correspondence reduces to the two
+    successful-conversion premises. -/
+lemma coreTagCorrespondenceAll_of_recognizers
     (hint : ∀ s : String, Spec.CoreSchema.integerSpelling s = true → (isInt s).isSome = true)
     (hfloat : ∀ s : String, Spec.CoreSchema.floatSpelling s = true → (isFloat s).isSome = true) :
-    coreTagCorrespondenceAll := by
+    ∀ s : String, coreTagCorrespondence s := by
   intro s
   exact coreTagCorrespondence_at_of_recognizers s (hint s) (hfloat s)
+
+/-- For every implicitly tagged plain scalar, `resolveImplicit` chooses the
+    first matching YAML 1.2.2 Core Schema §10.3.2 tag. This does not claim
+    correctly rounded numeric values or fidelity at an FFI boundary. -/
+@[capstone]
+theorem coreTagCorrespondenceAll : ∀ s : String, coreTagCorrespondence s := by
+  exact coreTagCorrespondenceAll_of_recognizers
+    CoreRecognizerBridge.int_some_of_integerSpelling
+    CoreRecognizerBridge.float_some_of_floatSpelling
 
 /-! ## §1 — Resolution Function Specifications -/
 

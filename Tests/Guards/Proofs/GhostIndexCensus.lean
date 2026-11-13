@@ -277,7 +277,9 @@ it may only shrink. -/
 -- 2026-11-10 (item 473, option (A)): ghost 72 → 73 — the positional `ResumeWidths` names the levels above
 -- the landing (`pre`), a list of frames beside `ks`/`ks'` which the census already lists; no scanner-state
 -- index is introduced.
-def expectedSummary : String := "carriers=62 snapshot=9 ghost=73 or=121"
+-- 2026-11-11 (item 484): `ContentArm` joins the roster — one carrier (62 → 63), surface=12 state=2 prop=36
+-- scalar=2, ghost=0; two disjuncts (`blockScalar`'s `c = '|' ∨ c = '>'` and `SCLLiteral ∨ SCLFolded`), or 121 → 123.
+def expectedSummary : String := "carriers=63 snapshot=9 ghost=73 or=123"
 
 -- 2026-10-24 (B3 [66] col-0 threading): carriers 61 → 62 — `SSLCommentsFrom` (the separator-less comment product).
 -- 2026-10-25 (#99 landed): the `FlowLead`/`leadFree`/`closeFree` tally rows go with the deleted carrier and
@@ -293,6 +295,7 @@ def expectedTally : List String :=
    "BlockStack: surface=2 state=0 prop=0 scalar=0 snapshot=0 ghost=0 or=0",
    "CommentStop: surface=0 state=0 prop=0 scalar=1 snapshot=0 ghost=0 or=2",
    "CompletedTail: surface=0 state=1 prop=0 scalar=1 snapshot=0 ghost=0 or=0",
+   "ContentArm: surface=12 state=2 prop=36 scalar=2 snapshot=0 ghost=0 or=2",
    "ContentRouteGate: surface=0 state=1 prop=0 scalar=1 snapshot=0 ghost=0 or=0",
    "DanglingPred: surface=0 state=0 prop=0 scalar=6 snapshot=0 ghost=0 or=0",
    "ExplValueLine: surface=5 state=0 prop=3 scalar=1 snapshot=0 ghost=0 or=0",
@@ -457,6 +460,8 @@ def expectedGhost : List String :=
 def expectedDisjuncts : List String :=
   ["CommentStop.body ∨ c = '\\n' ∨ c = '\\x0d'",
    "CommentStop.body ∨ c = '\\x0d'",
+   "ContentArm.blockScalar[5].h_c ∨ c = '>'",
+   "ContentArm.blockScalar[6].h_bs ∨ SCLFolded 0 sp sp'",
    "FlowArm.openNest[14].h_lead ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
    "FlowArm.openNest[14].h_lead ∨ sp_br = sp_flow₂ ∧ (gapTail sc).leadFree = true",
    "FlowArm.comma[13].h_lead ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",

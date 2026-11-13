@@ -43,8 +43,13 @@ open L4YAML
 #guard Spec.CoreSchema.tag "1.e+2" == .float
 
 -- These directly instantiate the stated *spec-to-implementation* obligation,
--- rather than independently checking two lists of examples. The unbounded
--- universal proposition remains an explicit proof residual.
+-- rather than independently checking two lists of examples. The universal
+-- requirement is now proved; these instances guard practical regressions.
+-- Rule 2: a proof term for the unconditional, all-string requirement must
+-- exist; concrete guards alone cannot inhabit it.
+example : ∀ s : String, L4YAML.Proofs.SchemaResolution.coreTagCorrespondence s :=
+  L4YAML.Proofs.SchemaResolution.coreTagCorrespondenceAll
+
 #guard L4YAML.Proofs.SchemaResolution.scalarTag? (resolveImplicit "1_000") ==
   some (Spec.CoreSchema.tag "1_000")
 #guard L4YAML.Proofs.SchemaResolution.scalarTag? (resolveImplicit "0x") ==
@@ -144,6 +149,18 @@ example : L4YAML.Proofs.SchemaResolution.coreTagCorrespondence "1." := by
 #guard resolveScalar "" (some "tag:yaml.org,2002:str") == .str ""
 #guard resolveScalar "42" (some "tag:yaml.org,2002:int") == .int 42
 #guard resolveScalar "hello" (some "tag:yaml.org,2002:null") == .null
+
+-- Explicit Core tags are a distinct policy surface from the *implicit*
+-- tag-correspondence capstone.  Record the present total Lean fallback as
+-- regression evidence, not as a claim that malformed explicit values must
+-- remain strings (or null) in every YAML consumer.  The Python error/string
+-- policy is still to be adjudicated with PR #299.
+#guard resolveScalar "1_000" (some "tag:yaml.org,2002:int") == .str "1_000"
+#guard resolveScalar "0X1F" (some "tag:yaml.org,2002:int") == .str "0X1F"
+#guard resolveScalar "-0o7" (some "tag:yaml.org,2002:int") == .str "-0o7"
+#guard resolveScalar "1_000" (some "tag:yaml.org,2002:float") == .str "1_000"
+#guard resolveScalar "yes" (some "tag:yaml.org,2002:bool") == .str "yes"
+#guard resolveScalar "foo" (some "tag:yaml.org,2002:null") == .null
 
 -- Resolve on YamlValue (isXxx Boolean checks)
 #guard (resolve (.scalar { content := "hello", style := .plain })).isStr
