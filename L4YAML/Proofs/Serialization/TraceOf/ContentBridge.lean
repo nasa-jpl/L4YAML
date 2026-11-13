@@ -766,3 +766,241 @@ lemma accum_step_content_traceK {n d : Nat} {sc s_prep s' : ScannerState} {c : C
 end
 
 end L4YAML.Proofs.Serialization.TraceOf.ContentBridge
+
+/-! ## §7 The plain landing is floor-independent (item 488, review round 2)
+
+`ContentArm.plainIn`'s landing is per floor (`∀ n, … → ∃ sp_gram`); `TFlowStackK`'s `∀`-floor T half
+needs one.  Two plain ends from one start with white runs to one `sp'` coincide: a plain's last
+character is not white, so neither end can sit inside the other's trailing run.  P116 is the shadow. -/
+
+namespace L4YAML.Proofs.Serialization.TraceOf.ContentBridge
+
+open L4YAML L4YAML.Surface L4YAML.CharPredicates
+
+/-- "The last character consumed between `s` and `e` is not white." -/
+def LastNonWhite (s e : SurfPos) : Prop :=
+  ∃ pre ch, s.chars = pre ++ ch :: e.chars ∧ isWhiteSpaceBool ch = false
+
+lemma SSWhite_chars {s e : SurfPos} (h : SSWhite s e) :
+    ∃ ch, s.chars = ch :: e.chars ∧ isWhiteSpaceBool ch = true ∧ e.col = s.col + 1 := by
+  cases h with
+  | space => exact ⟨' ', rfl, by decide, rfl⟩
+  | tab => exact ⟨'\t', rfl, by decide, rfl⟩
+
+lemma GStar_SSWhite_chars' {s e : SurfPos} (h : GStar SSWhite s e) :
+    ∃ ws : List Char, s.chars = ws ++ e.chars ∧ (∀ c ∈ ws, isWhiteSpaceBool c = true) ∧
+      e.col = s.col + ws.length := by
+  induction h with
+  | nil => exact ⟨[], rfl, by simp, by simp⟩
+  | cons s₁ s₂ s₃ h₁ _ ih =>
+    obtain ⟨ch, hch, hw, hcol⟩ := SSWhite_chars h₁
+    obtain ⟨ws, hws, hall, hcol'⟩ := ih
+    refine ⟨ch :: ws, by rw [hch, hws]; rfl, ?_, by simp [hcol', hcol]; omega⟩
+    intro c hc
+    rcases List.mem_cons.mp hc with rfl | hc
+    · exact hw
+    · exact hall c hc
+
+lemma lastNonWhite_pre {s s₁ e : SurfPos} (hpre : s₁.chars <:+ s.chars)
+    (h : LastNonWhite s₁ e) : LastNonWhite s e := by
+  obtain ⟨p, hp⟩ := hpre
+  obtain ⟨pre, ch, hpre, hnw⟩ := h
+  exact ⟨p ++ pre, ch, by rw [← hp, hpre, List.append_assoc], hnw⟩
+
+lemma GStar_SSWhite_suffix {s e : SurfPos} (h : GStar SSWhite s e) : e.chars <:+ s.chars := by
+  obtain ⟨ws, hws, _, _⟩ := GStar_SSWhite_chars' h
+  exact ⟨ws, hws.symm⟩
+
+lemma lastNonWhite_white_pre {s s₁ e : SurfPos} (hw : GStar SSWhite s s₁) (h : LastNonWhite s₁ e) :
+    LastNonWhite s e :=
+  lastNonWhite_pre (GStar_SSWhite_suffix hw) h
+
+lemma lastNonWhite_suffix {s e : SurfPos} (h : LastNonWhite s e) : e.chars <:+ s.chars := by
+  obtain ⟨pre, ch, hpre, _⟩ := h
+  exact ⟨pre ++ [ch], by rw [hpre, List.append_assoc]; rfl⟩
+
+lemma isNsPlainSafe_not_white {c : YamlContext} {ch : Char} (h : isNsPlainSafe c ch) :
+    isWhiteSpaceBool ch = false := by
+  have hns : isNsChar ch := by
+    cases c <;> simp only [isNsPlainSafe] at h <;> first | exact h | exact h.1
+  cases hw : isWhiteSpaceBool ch
+  · rfl
+  · exact absurd hns (L4YAML.Proofs.Serialization.TraceOf.DocBridge.not_isNsChar_of_white ch hw)
+
+lemma SNsPlainChar_last {c : YamlContext} {s e : SurfPos} (h : SNsPlainChar c s e) :
+    LastNonWhite s e := by
+  cases h with
+  | safe => rename_i ch rest col hSafe _ _; exact ⟨[], ch, rfl, isNsPlainSafe_not_white hSafe⟩
+  | colonSafe => exact ⟨[], ':', rfl, by decide⟩
+
+lemma SNsPlainFirst_last {c : YamlContext} {s e : SurfPos} (h : SNsPlainFirst c s e) :
+    LastNonWhite s e := by
+  cases h with
+  | nonIndicator => rename_i ch rest col hSafe _; exact ⟨[], ch, rfl, isNsPlainSafe_not_white hSafe⟩
+  | dashSafe => exact ⟨[], '-', rfl, by decide⟩
+  | colonSafe => exact ⟨[], ':', rfl, by decide⟩
+  | questionSafe => exact ⟨[], '?', rfl, by decide⟩
+
+lemma SNbNsPlainInLineEntry_last {c : YamlContext} {s e : SurfPos}
+    (h : SNbNsPlainInLineEntry c s e) : LastNonWhite s e := by
+  cases h with
+  | mk => rename_i s₁ hw hch; exact lastNonWhite_white_pre hw (SNsPlainChar_last hch)
+  | hash => rename_i hl; cases hl; exact ⟨[], '#', rfl, by decide⟩
+
+/-- A run of entries: empty, or its last entry's last character is not white. -/
+lemma GStar_entries_last {c : YamlContext} {s e : SurfPos}
+    (h : GStar (SNbNsPlainInLineEntry c) s e) : s = e ∨ LastNonWhite s e := by
+  induction h with
+  | nil => exact Or.inl rfl
+  | cons s₁ s₂ s₃ h₁ _ ih =>
+    right
+    rcases ih with rfl | hl
+    · exact SNbNsPlainInLineEntry_last h₁
+    · exact lastNonWhite_pre (lastNonWhite_suffix (SNbNsPlainInLineEntry_last h₁)) hl
+
+lemma SNsPlainOneLine_last {c : YamlContext} {s e : SurfPos} (h : SNsPlainOneLine c s e) :
+    LastNonWhite s e := by
+  cases h
+  rename_i s₁ hf hes
+  rcases GStar_entries_last hes with rfl | hl
+  · exact SNsPlainFirst_last hf
+  · exact lastNonWhite_pre (lastNonWhite_suffix (SNsPlainFirst_last hf)) hl
+
+/-! The line-folding prefix of a continuation line only consumes characters. -/
+
+lemma SIndent_suffix {n : Nat} {s e : SurfPos} (h : SIndent n s e) : e.chars <:+ s.chars := by
+  induction h with
+  | zero => exact List.suffix_refl _
+  | succ n rest col s' _ ih => exact ih.trans (List.suffix_cons ' ' rest)
+
+lemma SSeparateInLine_suffix {s e : SurfPos} (h : SSeparateInLine s e) : e.chars <:+ s.chars := by
+  cases h with
+  | whites =>
+    rename_i hp
+    cases hp
+    rename_i mid h₁ hs
+    exact (GStar_SSWhite_suffix hs).trans (GStar_SSWhite_suffix (GStar.cons _ _ _ h₁ (GStar.nil _)))
+  | startOfLine => exact List.suffix_refl _
+
+lemma GOpt_suffix {P : SurfPos → SurfPos → Prop} (hP : ∀ {a b}, P a b → b.chars <:+ a.chars)
+    {s e : SurfPos} (h : GOpt P s e) : e.chars <:+ s.chars := by
+  cases h with
+  | none => exact List.suffix_refl _
+  | some => rename_i hp; exact hP hp
+
+lemma SFlowLinePrefix_suffix {n : Nat} {s e : SurfPos} (h : SFlowLinePrefix n s e) :
+    e.chars <:+ s.chars := by
+  cases h
+  rename_i s₁ hi ho
+  exact (GOpt_suffix SSeparateInLine_suffix ho).trans (SIndent_suffix hi)
+
+lemma SLEmpty_flowIn_suffix {n : Nat} {s e : SurfPos} (h : SLEmpty n .flowIn s e) :
+    e.chars <:+ s.chars := by
+  cases h with
+  | block => rename_i hc _ _; rcases hc with hc | hc <;> cases hc
+  | flow =>
+    rename_i s₁ _ ho hb
+    exact (L4YAML.Proofs.SurfaceSpan.sbBreak_suffix hb).trans (GOpt_suffix SFlowLinePrefix_suffix ho)
+  | flowLt =>
+    rename_i s₁ _ hlt hb
+    obtain ⟨m, _, hi⟩ := hlt
+    exact (L4YAML.Proofs.SurfaceSpan.sbBreak_suffix hb).trans (SIndent_suffix hi)
+
+lemma GStar_SLEmpty_flowIn_suffix {n : Nat} {s e : SurfPos} (h : GStar (SLEmpty n .flowIn) s e) :
+    e.chars <:+ s.chars := by
+  induction h with
+  | nil => exact List.suffix_refl _
+  | cons s₁ s₂ s₃ h₁ _ ih => exact ih.trans (SLEmpty_flowIn_suffix h₁)
+
+lemma SSNsPlainNextLine_last {n : Nat} {c : YamlContext} {s e : SurfPos}
+    (h : SSNsPlainNextLine n c s e) : LastNonWhite s e := by
+  cases h
+  rename_i s_ws s₁ s₂ s₃ s₄ hws hbr hemp hpref hch hes
+  have hpre : s₃.chars <:+ s.chars :=
+    (((SFlowLinePrefix_suffix hpref).trans (GStar_SLEmpty_flowIn_suffix hemp)).trans
+      (L4YAML.Proofs.SurfaceSpan.sbBreak_suffix hbr)).trans (GStar_SSWhite_suffix hws)
+  rcases GStar_entries_last hes with rfl | hl
+  · exact lastNonWhite_pre hpre (SNsPlainChar_last hch)
+  · exact lastNonWhite_pre hpre (lastNonWhite_pre (lastNonWhite_suffix (SNsPlainChar_last hch)) hl)
+
+lemma SNsPlainMultiLine_last {n : Nat} {c : YamlContext} {s e : SurfPos}
+    (h : SNsPlainMultiLine n c s e) : LastNonWhite s e := by
+  cases h
+  rename_i s₁ hone hnext
+  suffices H : ∀ {a b : SurfPos}, GStar (SSNsPlainNextLine n c) a b → LastNonWhite s a →
+      LastNonWhite s b from H hnext (SNsPlainOneLine_last hone)
+  intro a b hab hsa
+  induction hab with
+  | nil => exact hsa
+  | cons a₁ a₂ a₃ h₁ _ ih =>
+    exact ih (lastNonWhite_pre (lastNonWhite_suffix hsa) (SSNsPlainNextLine_last h₁))
+
+/-- A plain scalar's last character is not white (flow contexts). -/
+lemma SNsPlain_last_not_white {n : Nat} {c : YamlContext} {s e : SurfPos}
+    (hc : c = .flowIn ∨ c = .flowOut) (h : SNsPlain n c s e) : LastNonWhite s e := by
+  rcases hc with rfl | rfl <;> exact SNsPlainMultiLine_last h
+
+
+/-- The maximal white suffix, read off the reversed list: a white run followed by a non-white
+    character is exactly what `takeWhile` keeps. -/
+lemma takeWhile_white_run (ws : List Char) (hw : ∀ c ∈ ws, isWhiteSpaceBool c = true)
+    (ch : Char) (hc : isWhiteSpaceBool ch = false) (rest : List Char) :
+    (ws ++ ch :: rest).takeWhile isWhiteSpaceBool = ws := by
+  induction ws with
+  | nil => simp [hc]
+  | cons x t ih =>
+    have hx := hw x (by simp)
+    simp [hx, ih (fun c hc => hw c (by simp [hc]))]
+
+/-- Two plain ends from one start with white runs to one `sp'` coincide: neither can sit inside the
+    other's trailing white, because a plain's last character is not white. -/
+lemma lastNonWhite_white_eq {s a b sp' : SurfPos}
+    (ha : LastNonWhite s a) (hb : LastNonWhite s b)
+    (wa : GStar SSWhite a sp') (wb : GStar SSWhite b sp') : a = b := by
+  obtain ⟨pa, cha, hpa, hna⟩ := ha
+  obtain ⟨pb, chb, hpb, hnb⟩ := hb
+  obtain ⟨wsa, hwsa, halla, hcola⟩ := GStar_SSWhite_chars' wa
+  obtain ⟨wsb, hwsb, hallb, hcolb⟩ := GStar_SSWhite_chars' wb
+  have key : pa ++ cha :: wsa = pb ++ chb :: wsb := by
+    have h1 : s.chars = (pa ++ cha :: wsa) ++ sp'.chars := by rw [hpa, hwsa]; simp
+    have h2 : s.chars = (pb ++ chb :: wsb) ++ sp'.chars := by rw [hpb, hwsb]; simp
+    exact List.append_cancel_right (h1.symm.trans h2)
+  have hrev := congrArg (fun l : List Char => l.reverse.takeWhile isWhiteSpaceBool) key
+  simp only [List.reverse_append, List.reverse_cons, List.append_assoc, List.singleton_append] at hrev
+  rw [takeWhile_white_run wsa.reverse (fun c hc => halla c (List.mem_reverse.mp hc)) cha hna,
+    takeWhile_white_run wsb.reverse (fun c hc => hallb c (List.mem_reverse.mp hc)) chb hnb] at hrev
+  have hws : wsa = wsb := List.reverse_inj.mp hrev
+  subst hws
+  have hchars : a.chars = b.chars := hwsa.trans hwsb.symm
+  have hcol : a.col = b.col := by omega
+  cases a; cases b
+  simp only at hchars hcol
+  rw [hchars, hcol]
+
+/-- `ContentArm.plainIn`'s per-floor landings are one landing: from the arm's `h_node` at every
+    floor, one `sp_gram` serving every floor (the witness at floor 0, transported by
+    `lastNonWhite_white_eq`).  The uniformity `TFlowStackK`'s `∀`-floor T half needs (item 488). -/
+lemma plainIn_landing_uniform {sc s' : L4YAML.Scanner.ScannerState} {ch : Char} {rest : List Char}
+    {col : Nat} {sp' : SurfPos}
+    (hc : ch ≠ '&' ∧ ch ≠ '*' ∧ ch ≠ '!' ∧ ch ≠ '[' ∧ ch ≠ '{' ∧ ch ≠ '"' ∧ ch ≠ '\'')
+    (h_node : ∀ n : Nat, (n : Int) ≤ max 0 (sc.currentIndent + 1) →
+      ∃ sp_gram, SFlowNode n .flowIn ⟨ch :: rest, col⟩ sp_gram ∧ GStar SSWhite sp_gram sp' ∧
+        (sp_gram = sp' → s'.col ≠ 0 → ¬ (L4YAML.Proofs.ScannerCoupling.CommentOk s' ∧ s'.peek? = some '#'))) :
+    ∃ sp_gram, ∀ n : Nat, (n : Int) ≤ max 0 (sc.currentIndent + 1) →
+      SFlowNode n .flowIn ⟨ch :: rest, col⟩ sp_gram ∧ GStar SSWhite sp_gram sp' ∧
+        (sp_gram = sp' → s'.col ≠ 0 → ¬ (L4YAML.Proofs.ScannerCoupling.CommentOk s' ∧ s'.peek? = some '#')) := by
+  obtain ⟨g0, hn0, hw0, hg0⟩ := h_node 0 (by omega)
+  refine ⟨g0, fun n hn => ?_⟩
+  obtain ⟨gn, hnn, hwn, hgn⟩ := h_node n hn
+  have hplain : ∀ {m : Nat} {g : SurfPos}, SFlowNode m .flowIn ⟨ch :: rest, col⟩ g → LastNonWhite ⟨ch :: rest, col⟩ g := by
+    intro m g hg
+    rcases SFlowNode_head_lift hg ⟨hc.1, hc.2.1, hc.2.2.1, hc.2.2.2.1, hc.2.2.2.2.1⟩ with
+      ⟨_, _, hp⟩ | ⟨hq, _⟩ | ⟨hq, _⟩
+    · exact SNsPlain_last_not_white (Or.inl rfl) hp
+    · exact absurd hq hc.2.2.2.2.2.1
+    · exact absurd hq hc.2.2.2.2.2.2
+  have heq : gn = g0 := lastNonWhite_white_eq (hplain hnn) (hplain hn0) hwn hw0
+  subst heq
+  exact ⟨hnn, hwn, hgn⟩
+
+end L4YAML.Proofs.Serialization.TraceOf.ContentBridge
