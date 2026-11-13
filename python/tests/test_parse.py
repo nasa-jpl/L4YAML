@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import ctypes
+import os
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -173,6 +175,13 @@ assert ctypes.string_at(ptr) == b""
 '''],
             capture_output=True,
             text=True,
+            env={
+                **os.environ,
+                "PYTHONPATH": os.pathsep.join(
+                    [str(Path(l4yaml.__file__).resolve().parents[1])]
+                    + [p for p in [os.environ.get("PYTHONPATH")] if p]
+                ),
+            },
         )
         assert result.returncode == 0, result.stderr
 
