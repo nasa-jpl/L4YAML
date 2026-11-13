@@ -83,10 +83,12 @@ inductive TLYamlStream : TRel where
       TOpt TLAnyDocument s₃ s₄ e₂ →
       TStar TLDocumentSuffix s₄ s' e₃ →
       TLYamlStream s s' (e₀ ++ e₁ ++ e₂ ++ e₃)
+  /-- After an unterminated document, [211] permits only a marked explicit document;
+      prefixes may contain comments/BOM but cannot start another bare document. -/
   | implicitContinue (s s₁ s₂ s₃ s' : SurfPos) (e₀ e₁ e₂ : List Event) :
       TLYamlStream s s₁ e₀ →
       GStar SLDocumentPrefix s₁ s₂ →
-      TOpt TLAnyDocument s₂ s₃ e₁ →
+      TOpt TLExplicitDocument s₂ s₃ e₁ →
       TStar TLDocumentSuffix s₃ s' e₂ →
       TLYamlStream s s' (e₀ ++ e₁ ++ e₂)
 
