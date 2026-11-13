@@ -20,6 +20,7 @@ public import L4YAML.Proofs.Scanner.FlowAdjacencyIx
 public import L4YAML.Proofs.Serialization.TraceOf.Leaves
 public import L4YAML.Proofs.Serialization.TraceOf.Document
 public import L4YAML.Proofs.Serialization.RefLex
+public import L4YAML.Proofs.Schema.SchemaResolution
 public import L4YAML.Proofs.Serialization.SerializationWellFormed
 public import L4YAML.Proofs.Serialization.TokenEvents
 public import L4YAML.Proofs.Serialization.ParseCheckFrom
@@ -16347,8 +16348,33 @@ def testPlainLandingUniform (state : IO.Ref TestCollector) : IO Unit := do
     s!"P116 the in-flow plain landing: the token's text is the source span from its start to the last non-white before the scan position (white/breaks dropped) at {t.ok} of {t.plainIn} steps, verbatim at {t.verbatim} (failing: {t.bad})"
     (t.bad.isEmpty && t.plainIn == 392 && t.ok == t.plainIn && t.verbatim == 370)
     s!"{t.plainIn} {t.ok} {t.verbatim} {t.bad}"
-
 end P116Test
+
+/-! Independent Core §10.3.2 adversarial tag instances (PR #302).
+    These test input shape classes omitted by the short-word guard;
+    the all-string proof lives in capstone 5.8. -/
+namespace CoreSchemaTagTest
+
+def examples : List String :=
+  ["", "~", "true", "TRUE", "false", "yes", "0", "1", "00", "-1", "+1",
+   "0o7", "0o70", "0o", "0O7", "0xF", "0xFF", "0xAf", "0x", "0Xf",
+   "+0x2", "-0o7", "1_000", "1.5_0", "1.", ".5", ".0", "1.0",
+   "+.5", "-.5", "1e2", "1E2", "1e+2", "1E-2", "1.e+2", "0e",
+   "0e+", "0e309", ".inf", ".Inf", ".INF", "+.inf", "-.INF",
+   ".nan", ".NaN", ".NAN", "+.nan", "abc", "e1", "1eE2",
+   String.ofList (List.replicate 256 '9'),
+   "1e" ++ String.ofList (List.replicate 256 '0')]
+
+def testCoreTagCorrespondence (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Core Schema: universal tag bridge adversarial instances"
+  for s in examples do
+    let actual := L4YAML.Proofs.SchemaResolution.scalarTag? (L4YAML.Schema.resolveImplicit s)
+    let expected := some (L4YAML.Spec.CoreSchema.tag s)
+    checkM state s!"Core tag {repr (String.ofList (s.toList.take 32))}" (actual == expected)
+      s!"actual={repr actual}; expected={repr expected}"
+  checkM state "Core tag class roster size" (examples.length == 52)
+    s!"{examples.length}"
+end CoreSchemaTagTest
 
 def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 100: S3 slice (1) — leaf span ↔ token payload (anchor / alias / tag), before proof"
@@ -16545,6 +16571,7 @@ def collectTests : IO VerifiedSuiteResult := do
   P114Test.testContentTwinShadow state
   P115Test.testContentCallerShadow state
   P116Test.testPlainLandingUniform state
+  CoreSchemaTagTest.testCoreTagCorrespondence state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",

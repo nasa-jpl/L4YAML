@@ -202,23 +202,23 @@ lemma fromYaml_toYaml_str_safe (s : String) :
 
 /-! ## §6: Int/Nat Round-Trip
 
-Int and Nat require `isInt (toString n) = some n` as a precondition
-since the `isInt` parser is not kernel-reducible. Concrete instances
+Int and Nat require `isIntL (toString n).toList = some n` as a precondition
+since the explicit integer decoder is not kernel-reducible. Concrete instances
 are proved by discharging the precondition via `native_decide`.  (The
 `!!int` tag the instances carry means null/bool are never consulted.) -/
 
-/-- Generic Int round-trip with `isInt` precondition. -/
+/-- Generic Int round-trip with the explicit integer decoder precondition. -/
 lemma resolve_toYaml_int (n : Int)
-    (h3 : isInt (toString n) = some n) :
+    (h3 : isIntL (toString n).toList = some n) :
     resolve (toYaml n) = .int n := by
   show resolveScalar (toString n) (some (normalizeTag "!!int")) = .int n
   rw [normalizeTag_int]
-  have h3' : isInt n.repr = some n := h3
+  have h3' : isIntL n.repr.toList = some n := h3
   simp [resolveScalar, h3']
 
 /-- Generic Int `fromYaml? ∘ toYaml` round-trip. -/
 lemma fromYaml_toYaml_int (n : Int)
-    (h3 : isInt (toString n) = some n) :
+    (h3 : isIntL (toString n).toList = some n) :
     (fromYaml? (toYaml n) : Except SchemaError Int) = .ok n := by
   have h_resolve := resolve_toYaml_int n h3
   show fromYamlType? (resolve (toYaml n)) = .ok n
@@ -226,12 +226,11 @@ lemma fromYaml_toYaml_int (n : Int)
 
 /-- Generic Nat `resolve ∘ toYaml`. -/
 lemma resolve_toYaml_nat (n : Nat)
-    (h3 : isInt (toString n) = some (Int.ofNat n)) :
+    (h3 : isIntL (Nat.toDigits 10 n) = some (Int.ofNat n)) :
     resolve (toYaml n) = .int (Int.ofNat n) := by
   show resolveScalar (toString n) (some (normalizeTag "!!int")) = .int (Int.ofNat n)
   rw [normalizeTag_int]
-  have h3' : isInt (Nat.repr n) = some (Int.ofNat n) := h3
-  simp [resolveScalar, h3']
+  simp [resolveScalar, h3]
 
 /-- Concrete: `resolve (toYaml 42) = .int 42`. -/
 lemma resolve_toYaml_nat_42 : resolve (toYaml (42 : Nat)) = .int 42 :=

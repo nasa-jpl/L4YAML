@@ -274,7 +274,11 @@ lemma parseMantissaL?_num {l : List Char} {f : Float} (h : parseMantissaL? l = s
                 rcases List.mem_cons.mp hp with rfl | hp'
                 · exact toIntL?_num hi c hcp
                 · rcases List.mem_cons.mp hp' with rfl | hp''
-                  · exact toNatL?_num hf c hcp
+                  · cases p with
+                    | nil => exact absurd hcp (List.not_mem_nil)
+                    | cons hd tl =>
+                      simp only [List.isEmpty_cons, Bool.false_eq_true, ↓reduceIte] at hf
+                      exact toNatL?_num hf c hcp
                   · exact absurd hp'' (List.not_mem_nil)
             · exact absurd h (by simp)
           · exact absurd h (by simp)
@@ -374,7 +378,7 @@ lemma isInt_eq_none_of_hasFlowIndicator {s : String} (h : hasFlowIndicator s.toL
     isInt s = none := by
   unfold isInt
   cases hi : isIntL s.toList with
-  | none => rfl
+  | none => simp
   | some n =>
     have := not_hasFlowIndicator_of_num (isIntL_num hi)
     rw [this] at h
@@ -385,12 +389,14 @@ lemma isFloat_eq_none_of_hasFlowIndicator {s : String} (h : hasFlowIndicator s.t
   have lits := hasFlowIndicator_float_literals
   unfold isFloat
   split
+  · rfl
+  split
   all_goals first
     | simp_all
     | skip
   unfold parseFloat?
   cases hf : parseFloatL? s.toList with
-  | none => rfl
+  | none => simp_all
   | some f =>
     have := not_hasFlowIndicator_of_num (parseFloatL?_num hf)
     rw [this] at h
