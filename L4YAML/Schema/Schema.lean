@@ -265,6 +265,16 @@ def isFloat (s : String) : Option FloatValue :=
     | ".nan" | ".NaN" | ".NAN" => some .nan
     | _ => parseFloat? s |>.map FloatValue.finite
 
+/-- Decode an explicitly tagged float without the implicit Core spelling gate.
+    This retains the pre-Core-gate conversion behavior; explicit-tag validity
+    and failure reporting remain a separate schema policy decision. -/
+def parseExplicitFloat (s : String) : Option FloatValue :=
+  match s with
+  | ".inf" | ".Inf" | ".INF" | "+.inf" | "+.Inf" | "+.INF" => some (.inf true)
+  | "-.inf" | "-.Inf" | "-.INF" => some (.inf false)
+  | ".nan" | ".NaN" | ".NAN" => some .nan
+  | _ => parseFloat? s |>.map FloatValue.finite
+
 /-- Resolve plain scalar with implicit typing (Core Schema precedence).
 
     **Resolution order** (YAML 1.2.2 §10.3.2):
@@ -291,11 +301,11 @@ def resolveScalar (content : String) (tag? : Option String) : YamlType :=
       | some b => .bool b
       | none => .str content
   | some "tag:yaml.org,2002:int" =>
-      match isInt content with
+      match isIntL content.toList with
       | some i => .int i
       | none => .str content
   | some "tag:yaml.org,2002:float" =>
-      match isFloat content with
+      match parseExplicitFloat content with
       | some f => .float f
       | none => .str content
   | some "tag:yaml.org,2002:str" => .str content

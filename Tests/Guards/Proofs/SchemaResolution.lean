@@ -150,15 +150,19 @@ example : L4YAML.Proofs.SchemaResolution.coreTagCorrespondence "1." := by
 #guard resolveScalar "42" (some "tag:yaml.org,2002:int") == .int 42
 #guard resolveScalar "hello" (some "tag:yaml.org,2002:null") == .null
 
--- Explicit Core tags are a distinct policy surface from the *implicit*
--- tag-correspondence capstone.  Record the present total Lean fallback as
--- regression evidence, not as a claim that malformed explicit values must
--- remain strings (or null) in every YAML consumer.  The Python error/string
--- policy is still to be adjudicated with PR #299.
-#guard resolveScalar "1_000" (some "tag:yaml.org,2002:int") == .str "1_000"
-#guard resolveScalar "0X1F" (some "tag:yaml.org,2002:int") == .str "0X1F"
-#guard resolveScalar "-0o7" (some "tag:yaml.org,2002:int") == .str "-0o7"
-#guard resolveScalar "1_000" (some "tag:yaml.org,2002:float") == .str "1_000"
+-- Explicit constructors are not restricted by the implicit Core lexical
+-- spelling gate.  These witnesses deliberately fail on the #302 source.
+#guard resolveScalar "1_000" (some "tag:yaml.org,2002:int") == .int 1000
+#guard resolveScalar "0X1F" (some "tag:yaml.org,2002:int") == .int 31
+#guard resolveScalar "-0o7" (some "tag:yaml.org,2002:int") == .int (-7)
+#guard resolveScalar "1_000" (some "tag:yaml.org,2002:float") == .float (.finite 1000.0)
+
+-- A malformed explicit numeric value still falls back to string in the
+-- current total API.  This is an observed policy, not a YAML requirement;
+-- Python error/string handling remains for the maintainer to settle on #299.
+#guard resolveScalar "foo" (some "tag:yaml.org,2002:int") == .str "foo"
+#guard resolveScalar "foo" (some "tag:yaml.org,2002:float") == .str "foo"
+#guard resolveScalar ".inf" (some "tag:yaml.org,2002:float") == .float (.inf true)
 #guard resolveScalar "yes" (some "tag:yaml.org,2002:bool") == .str "yes"
 #guard resolveScalar "foo" (some "tag:yaml.org,2002:null") == .null
 
