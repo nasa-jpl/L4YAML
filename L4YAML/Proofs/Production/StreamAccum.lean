@@ -40826,7 +40826,18 @@ lemma accum_step_content_core (sc : ScannerState)
       ScannerSurfCorr s' sp_scan' ∧
       (s'.flowLevel ≥ 1 →
         InteriorGap s' (tailOf s'.tokens) sp_flow' sp_scan' ∧
-          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) := by
+          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) ∧
+      -- Item 489: the landing agreement — at depth ≥ 1 the base keeps its start and a value
+      -- arm's landing is a flow-node end from the dispatch position, white up to the scan position.
+      (0 < sc.flowLevel → sp_block' = sp_block ∧ ((c = '&' ∨ c = '!') → sp_flow' = sp_flow) ∧
+        ∀ kj, tailOf s'.tokens = .value kj →
+          ∃ sp_prep, ∃ m : Nat, ScannerSurfCorr (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) sp_prep ∧
+            (m : Int) ≤ max 0 ((if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep).currentIndent + 1) ∧
+            SFlowNode m .flowIn sp_prep sp_flow' ∧ GStar SSWhite sp_flow' sp_scan') := by
   -- B.4β: the flow stack is indexed by the scanner's `flowLevel`.
   obtain ⟨nn, kc, km, gt, s0, h_flow, h_ksz, h_ind0, h_pk0, h_floorK, h_kprom⟩ := h_flowK
   rcases Nat.eq_zero_or_pos sc.flowLevel with h0 | hpos
@@ -40859,7 +40870,7 @@ lemma accum_step_content_core (sc : ScannerState)
         (absorb_stacksB sp_start sp_gram sp_block sp_flow h_stream h_stack h_flow)
         (h_pending h0) h_corr h_preprocess h_adj h_bare h_dn h_fv h_base h_mono h_not_doc h_dispatch
     exact ⟨g', bl', fl', sn', q1, q2, ⟨0, 0, #[], none, _, q3.retail, rfl, fun h => absurd h (by omega), fun h => absurd h (by omega), Nat.zero_le _, fun h => absurd h (by omega)⟩, fun _ => q4, q5,
-           fun h => absurd h (by omega)⟩
+           fun h => absurd h (by omega), fun h => absurd h (by omega)⟩
   · -- ═══ DEPTH ≥ 1: the four value-completing arms CLOSE; `&`/`!` do not. ═══
     -- The route is `FlowOpenStack.receiveNode`, and four scanner gaps had to be
     -- closed from under it before its hypotheses were available at all:
@@ -41150,7 +41161,7 @@ lemma accum_step_content_core (sc : ScannerState)
                 h_dispatch))
                 (park_gate_of_peekBack hpb hflag)
                 (dispatchContent_anchor_next h_dispatch)
-            (fun _ => by rw [hname]; exact (jsonKeyOfLast_push_real (by simp) (by simp)).trans rfl) (Or.inl rfl), h_real', h_ad'⟩⟩
+            (fun _ => by rw [hname]; exact (jsonKeyOfLast_push_real (by simp) (by simp)).trans rfl) (Or.inl rfl), h_real', h_ad'⟩, fun _ => ⟨rfl, fun _ => rfl, fun kj h => absurd (h_tl' ▸ h) (h_tail kj)⟩⟩
       · by_cases hbang : c = '!'
         · -- ═══ `!`: the tag half, same hold (`[a, !t`) ═══
           subst hbang
@@ -41241,7 +41252,7 @@ lemma accum_step_content_core (sc : ScannerState)
                   (park_gate_of_peekBack hpb hflag)
                   (dispatchContent_tag_next h_dispatch)
             (fun _ => by rw [hname]; exact (jsonKeyOfLast_push_real (by simp) (by simp)).trans rfl) (Or.inr rfl),
-              h_real', h_ad'⟩⟩
+              h_real', h_ad'⟩, fun _ => ⟨rfl, fun _ => rfl, fun kj h => absurd (h_tl' ▸ h) (h_tail kj)⟩⟩
         · -- The four value-completing arms: a double- or single-quoted scalar, an
           -- alias, or a plain scalar.  Each is a whole `[161] ns-flow-node`, the
           -- frame is receptive, so the node folds straight in and the frame tail
@@ -41324,7 +41335,7 @@ lemma accum_step_content_core (sc : ScannerState)
             fun _ => ⟨.white (tl := .value kj) h_ws h_sync' (fun _ h => nomatch h)
                    (dispatchContent_flowIn_col_pos hcorr_ad hpeek h_ad_inflow h_not_doc
                      h_dispatch hcorr_res)
-                   h_gate_c (fun _ _ _ _ => ⟨rfl, fun _ => rfl⟩) nofun, h_real', h_ad'⟩⟩
+                   h_gate_c (fun _ _ _ _ => ⟨rfl, fun _ => rfl⟩) nofun, h_real', h_ad'⟩, fun _ => ⟨rfl, fun h => (h.elim hamp hbang).elim, fun _ _ => ⟨sp_prep, nn, hcorr_ad, (by unfold minContentIndentOf at h_floor_ad; omega), h_node', h_ws⟩⟩⟩
     | props ha ht sp_p h_tail h_lead_p h_run h_anchor h_tag h_colon_sc h_gate_p h_next =>
       have h_lead_at := h_lead_from (GStar.nil _) (fun _ => h_gate_p)
       -- B3: a second property glued to the run is refuted by `propertyFollowerOk`.
@@ -41481,7 +41492,7 @@ lemma accum_step_content_core (sc : ScannerState)
                 (park_gate_of_peekBack hpb hflag)
                 (dispatchContent_anchor_next h_dispatch)
             (fun _ => by rw [hname]; exact (jsonKeyOfLast_push_real (by simp) (by simp)).trans rfl) (Or.inl rfl),
-            h_real', h_ad'⟩⟩
+            h_real', h_ad'⟩, fun _ => ⟨rfl, fun _ => rfl, fun kj h => absurd (h_tl' ▸ h) (h_tail kj)⟩⟩
       · by_cases hbang : c = '!'
         · -- ═══ `!` after a run: the mirror ═══
           subst hbang
@@ -41605,7 +41616,7 @@ lemma accum_step_content_core (sc : ScannerState)
                   (park_gate_of_peekBack hpb hflag)
                   (dispatchContent_tag_next h_dispatch)
             (fun _ => by rw [hname]; exact (jsonKeyOfLast_push_real (by simp) (by simp)).trans rfl) (Or.inl rfl),
-              h_real', h_ad'⟩⟩
+              h_real', h_ad'⟩, fun _ => ⟨rfl, fun _ => rfl, fun kj h => absurd (h_tl' ▸ h) (h_tail kj)⟩⟩
         · by_cases hstar : c = '*'
           · -- ═══ `*` after a run: REFUTED (item 9e) ═══
             -- `[104] c-ns-alias-node` is an alternative to the properties-bearing
@@ -41707,7 +41718,7 @@ lemma accum_step_content_core (sc : ScannerState)
               fun _ => ⟨.white (tl := .value kj) h_ws h_sync' (fun _ h => nomatch h)
                    (dispatchContent_flowIn_col_pos hcorr_ad hpeek h_ad_inflow h_not_doc
                      h_dispatch hcorr_res)
-                   h_gate_c (fun _ _ _ _ => ⟨rfl, fun _ => rfl⟩) nofun, h_real', h_ad'⟩⟩
+                   h_gate_c (fun _ _ _ _ => ⟨rfl, fun _ => rfl⟩) nofun, h_real', h_ad'⟩, fun _ => ⟨rfl, fun h => (h.elim hamp hbang).elim, fun _ _ => ⟨sp_prep, nn, hcorr_ad, (by unfold minContentIndentOf at h_floor_ad; omega), .content _ _ _ _ h_content', h_ws⟩⟩⟩
 
 
 /-- `accum_step_content_core` with the step's `ContentArm` alongside (item 484), the arm the last conjunct inside
@@ -41793,8 +41804,15 @@ lemma accum_step_content (sc : ScannerState)
         else s_prep) sp_prep ∧
           ContentArm (if s_prep.allowDirectives then
           { s_prep with allowDirectives := false, documentEverStarted := true }
-        else s_prep) s' c sp_prep sp_a := by
-  obtain ⟨g, b, f, sn, q1, q2, q3, q4, q5, q6⟩ := accum_step_content_core (h_sound := h_sound) sc sp_start sp_gram sp_block sp_flow sp_scan s_prep s' c h_stream h_stack h_flowK h_pending h_corr h_interior h_preprocess h_dn h_fv h_flow_none h_blk_none h_adj h_bare h_base h_mono h_dispatch h_str_none h_not_doc
+        else s_prep) s' c sp_prep sp_a ∧
+          -- Item 489: the landing agreement, at the wrapper's own `sp_prep`.
+          (0 < sc.flowLevel → sp_block' = sp_block ∧ ((c = '&' ∨ c = '!') → sp_flow' = sp_flow) ∧
+            ∀ kj, tailOf s'.tokens = .value kj →
+              ∃ m : Nat, (m : Int) ≤ max 0 ((if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep).currentIndent + 1) ∧
+                SFlowNode m .flowIn sp_prep sp_flow' ∧ GStar SSWhite sp_flow' sp_scan') := by
+  obtain ⟨g, b, f, sn, q1, q2, q3, q4, q5, q6, q7⟩ := accum_step_content_core (h_sound := h_sound) sc sp_start sp_gram sp_block sp_flow sp_scan s_prep s' c h_stream h_stack h_flowK h_pending h_corr h_interior h_preprocess h_dn h_fv h_flow_none h_blk_none h_adj h_bare h_base h_mono h_dispatch h_str_none h_not_doc
   obtain ⟨sp_prep, hcorr_prep⟩ :=
     scanNextToken_preprocess_corr sc sp_scan h_corr s_prep c h_preprocess
   have hcorr_ad := corr_of_allowDirectives_update hcorr_prep
@@ -41828,7 +41846,11 @@ lemma accum_step_content (sc : ScannerState)
         else s_prep).indents = s_prep.indents := by split <;> rfl
     rw [hc, currentIndent_of_indents_eq hi]; exact h
   obtain ⟨sp_a, harm⟩ := contentArm_of_dispatch _ sp_prep c hcorr_ad hpeek h_not_doc hcol h_dispatch
-  exact ⟨g, b, f, sn, q1, q2, q3, q4, q5, q6, sp_prep, sp_a, hcorr_ad, harm⟩
+  refine ⟨g, b, f, sn, q1, q2, q3, q4, q5, q6, sp_prep, sp_a, hcorr_ad, harm,
+    fun hpos => ⟨(q7 hpos).1, (q7 hpos).2.1, fun kj hkj => ?_⟩⟩
+  obtain ⟨sp_prep', m, hcorr', hm, hnode, hws⟩ := (q7 hpos).2.2 kj hkj
+  rw [ScannerSurfCorr_unique hcorr_ad hcorr']
+  exact ⟨m, hm, hnode, hws⟩
 
 /-! ### §1f Composition: Per-Dispatch → Full accum_step
 
