@@ -245,7 +245,10 @@ def readDecl (prods : Std.HashSet Name) (n : Name) : MetaM R := do
 -- constructors off the dispatcher's `c` split); surf/spec unchanged, its fields are the existing surface relations.
 -- 2026-11-12 (item 487, the K caller): prodTyped 172 → 173 — `ContentLead` (ContentBridge §5), an inductive
 -- over surface positions and the frame tail; its constructors are not productions (item 484's reading).
-def expectedAlphabet : String := "prodTyped=173 prodSurf=96 prodSpec=58"
+-- 2026-11-13 (item 489, the landing agreement): prodTyped 173 → 174 — `LastNonWhite` (ContentBridge §7, item 488's
+-- `SurfPos → SurfPos → Prop` def) enters the alphabet now that §7–§9 sit in a `public section`; item 488 shipped
+-- them module-private, so no census read them (a correction to item 488's "no pin moved").
+def expectedAlphabet : String := "prodTyped=174 prodSurf=96 prodSpec=58"
 -- 133 → 137 on 2026-10-23: the four narrowed relations of `Proofs.Production.Acceptance.Quoted`
 -- (`DQCharOk`, `SQCharOk`, `SCDoubleQuotedOk`, `SCSingleQuotedOk`); not under `Surface`, no rule tag.
 
@@ -382,7 +385,7 @@ def expectedSteps : String :=
 -- 2026-11-12 (item 487, the K caller): stepHolders 2114 → 2118 (`tailOf_preprocess_eq`, `contentLead_of_interior`,
 -- `content_prop_tail_kept`, `accum_step_content_traceK`), dispHolders 417 → 420 (the last three read `h_dispatch`),
 -- dispTwoCorr 31 → 32 (`contentLead_of_interior` reads the surface at `sc` and at `s_prep`).
-  "stepHolders=2118 dispHolders=420 dispTwoCorr=32 fns=75 fnsIx=26"
+  "stepHolders=2119 dispHolders=421 dispTwoCorr=32 fns=75 fnsIx=26"  -- 2026-11-13 (item 489): +1/+1, `accum_step_content_pairB` holds `h_dispatch`
 
 /-- **The ladder, at each population.**  `edge` is a production whose right
     endpoint is the step's output; `chain` requires a path to it from another
@@ -475,6 +478,8 @@ def expectedChainSpec : List Name :=
 -- 2026-11-12 (item 487, the K caller): dispatchContent decls 180 → 183 — `contentLead_of_interior`,
 -- `content_prop_tail_kept`, `accum_step_content_traceK` (ContentBridge §5–§6); preprocess decls 251 → 254 —
 -- `tailOf_preprocess_eq`, `contentLead_of_interior`, `accum_step_content_traceK` read `h_preprocess`.
+-- 2026-11-13 (item 489): dispatchContent 183 → 184, preprocess 254 → 255 — `accum_step_content_pairB` holds
+-- `h_dispatch` / `h_preprocess`.
 def expectedPerFn : List String :=
   -- 2026-11-08 (item 459, review): dispatchContent decls 170 → 173 — the three `ScannerShape.dispatchContent_*_trace` consumers.
   -- 2026-11-08 (item 464, S3 slice (3) first PR): dispatchContent decls 173 → 175 — `ScannerShape.dispatchContent_{doubleQuoted,singleQuoted}_trace`.
@@ -482,8 +487,8 @@ def expectedPerFn : List String :=
   -- wrapper), preprocess 250 → 251 (the wrapper holds the preprocess equation too).
   -- 2026-11-12 (item 486, S3 slice (4) PR 1): dispatchContent decls 175 → 180 — `TraceOf/ContentBridge`'s three twins and
   -- its two `dispatchContent_{plain,blockScalar}_tokens` helpers.
-  ["scanNextToken_dispatchContent decls=183 chain=1",
-   "scanNextToken_preprocess decls=254 chain=3"]
+  ["scanNextToken_dispatchContent decls=184 chain=1",
+   "scanNextToken_preprocess decls=255 chain=3"]
 
 /-- **The one worked precedent is outside the work.**  It is not in item 238's
     transitive set and not on either repair thread, so β.5 neither pays for it

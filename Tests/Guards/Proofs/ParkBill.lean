@@ -155,8 +155,11 @@ def expectedClosure : Nat := 288  -- +1 on 2026-11-12: `Proofs.Serialization.Tra
 -- 2026-10-24 (B3 [66] col-0 threading): see the dated note on `expectedDirect` below.
 -- 2026-11-11 (item 484): Tp 35 → 36, T 27 → 28, shared 20 → 21 — `accum_step_content_core` (the renamed body)
 -- joins both drops; gate holders dn/mid 22 → 23, fv/mid 16 → 17 — the `accum_step_content` wrapper holds `h_dn`/`h_fv`.
+-- 2026-11-13 (item 489): Tp 36 → 37, T 28 → 29, shared 21 → 22 — `accum_step_content_pairB` (ContentBridge §9)
+-- destructures the wrapper, so it joins both drops; gate holders ELSEWHERE dn/mid 9 → 10, fv/mid 11 → 12 — it
+-- holds the wrapper's `h_dn`/`h_fv` outside `accumNs`.
 def expectedBill : String :=
-  "Dp=11 Sp=0 Tp=36 T=28 shared=21 extra=15 capstonesInTp=2"
+  "Dp=11 Sp=0 Tp=37 T=29 shared=22 extra=15 capstonesInTp=2"
 
 /-- Names the park in a PROOF TERM — builders and case splits together, which
     no syntactic reading separates (item 240).  **Seven of the nine break and
@@ -362,7 +365,7 @@ def accumNs : Name := `L4YAML.Proofs.StreamAccum
     holder moved. -/
 def expectedGateHolders : String :=
   "dn/mid=23 dn/eof=5 fv/mid=17 fv/eof=4 | \
-elsewhere dn/mid=9 dn/eof=14 fv/mid=11 fv/eof=15"
+elsewhere dn/mid=10 dn/eof=14 fv/mid=12 fv/eof=15"
 
 set_option maxHeartbeats 4000000 in
 run_cmd Lean.Elab.Command.liftCoreM do

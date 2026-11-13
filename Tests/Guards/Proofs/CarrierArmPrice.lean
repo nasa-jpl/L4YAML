@@ -303,9 +303,11 @@ def expectedAbsorbReaders : List String :=
 -- constructors; `blockScalar` anchored, see above) and `accum_step_content_core` beside its wrapper.
 def expectedLine : String :=
   -- 2026-11-12 (item 487): prods 172 → 173, ctors 328 → 330, anchoredOnly 17 → 19 — `ContentLead` (two anchored arms).
-  "prods=173 ctors=330 same=27 direct=308 anchoredOnly=19 broken=3 surfArms=184 \
+  -- 2026-11-13 (item 489, the landing agreement): prods 173 → 174 (`LastNonWhite`, ContentBridge §7, read now that
+  -- §7–§9 are exported), mentions 41 → 42 (`accum_step_content_pairB` names the arm); arm classes unchanged.
+  "prods=174 ctors=330 same=27 direct=308 anchoredOnly=19 broken=3 surfArms=184 \
 surfDirect=183 candidate=direct candidateNil=direct readers=3 libReaders=2 \
-guardReaders=1 mentions=41 producers=21 absorbReaders=5 absorbPlainReaders=0"
+guardReaders=1 mentions=42 producers=21 absorbReaders=5 absorbPlainReaders=0"
 
 /-- Non-circularity, items 242–245's check: the closing lemma spends item 244's
     span (`glit`), lands in the candidate arm (`arm`), and routes through no
