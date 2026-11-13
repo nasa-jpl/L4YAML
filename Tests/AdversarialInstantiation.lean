@@ -16290,6 +16290,7 @@ open P111 P112 P113 P114
 structure Tally where
   plainIn : Nat := 0
   ok : Nat := 0
+  verbatim : Nat := 0
   bad : List String := []
   deriving Repr
 
@@ -16315,11 +16316,23 @@ def tally (rows : List String) : Tally := Id.run do
           let mut e := post.offset
           while e > 0 && (match charAt (e - 1) with | some ch => isWhiteSpaceBool ch | none => false) do
             e := e - 1
-          let lastSrc := charAt (e - 1)
-          let lastTxt := match back.val with | .scalar text _ => text.toList.getLast? | _ => none
-          if e > back.pos.offset && lastSrc.isSome && lastSrc == lastTxt then
-            t := { t with ok := t.ok + 1 }
-          else t := { t with bad := t.bad ++ [s!"{s}@{e}/{post.offset}"] }
+          -- The WHOLE span, not its last character (review round 3: a truncated token ending in the
+          -- same character must refute).  Folding touches only white and breaks, so the span and the
+          -- token text agree character for character once white/breaks are dropped; a single-line
+          -- span agrees verbatim, counted apart.
+          let span : List Char := (List.range (e - back.pos.offset)).filterMap
+            (fun i => charAt (back.pos.offset + i))
+          let strip (l : List Char) : List Char :=
+            l.filter (fun ch => !(isWhiteSpaceBool ch || ch == '\n' || ch == '\r'))
+          let text : Option String := match back.val with | .scalar text _ => some text | _ => none
+          match text with
+          | some text =>
+            let spanOk := e > back.pos.offset && (e - back.pos.offset) == span.length
+            if spanOk && strip span == strip text.toList then
+              t := { t with ok := t.ok + 1 }
+              if span == text.toList then t := { t with verbatim := t.verbatim + 1 }
+            else t := { t with bad := t.bad ++ [s!"{s}@{back.pos.offset}..{e}/{post.offset}: {String.mk span} vs {text}"] }
+          | none => t := { t with bad := t.bad ++ [s!"{s}: no scalar text"] }
     | _, _ => pure ()
   return t
 
@@ -16331,9 +16344,9 @@ open P116
 def testPlainLandingUniform (state : IO.Ref TestCollector) : IO Unit := do
   let t := tally P113.allRows
   checkM state
-    s!"P116 the in-flow plain landing: token end = last non-white before the scan position at {t.ok} of {t.plainIn} steps (failing: {t.bad})"
-    (t.bad.isEmpty && t.plainIn == 392 && t.ok == t.plainIn)
-    s!"{t.plainIn} {t.ok} {t.bad}"
+    s!"P116 the in-flow plain landing: the token's text is the source span from its start to the last non-white before the scan position (white/breaks dropped) at {t.ok} of {t.plainIn} steps, verbatim at {t.verbatim} (failing: {t.bad})"
+    (t.bad.isEmpty && t.plainIn == 392 && t.ok == t.plainIn && t.verbatim == 370)
+    s!"{t.plainIn} {t.ok} {t.verbatim} {t.bad}"
 
 end P116Test
 
