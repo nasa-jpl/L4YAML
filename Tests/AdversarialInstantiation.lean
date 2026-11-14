@@ -16583,10 +16583,14 @@ The depth-≥1 `?` / `:` steps are `accum_step_block`'s (the key/value indicator
 `FlowStackK` carries), on `.sep` and on `.question`, each under a white lead or a
 held run (`receiveColonSep` / `receiveColonQuestion` / `…Props…`).  Their T twins
 (FlowWalk §6) exist for five; the `.value kj → .colon kj` twin does not — the T
-frames store the key node (`midNode` / `midKey`), so it is a frame step, not a
-closure.  Shadows, at every in-flow `?` / `:` step: (i) the step's hypotheses
-(preprocess, structural and flow dispatchers decline, the block dispatcher
-fires), (ii) the pre-tail by indicator and lead, (iii) the post-tail (`?` →
+frames store the key node (`midNode` / `midKey`, and `midExplicitKey` after a
+`? key` — both `.value kj` tails, two constructor cases per frame), so it is a
+frame step, not a closure.  Shadows, at every in-flow `?` / `:` step: (i) the
+step's hypotheses (preprocess, structural and flow dispatchers decline, the block
+dispatcher fires to the WHOLE post-state — every `ScannerState` field, not the
+tokens alone), (ii) the pre-tail by indicator and lead, the `.value`-tail `:`
+split into implicit (`midNode` / `midKey`) and explicit (`midExplicitKey`, a `?`
+before the key node) keys, (iii) the post-tail (`?` →
 `.question`, `:` → `.colon _`), (iv) `flowLevel` / `flowStack` and the floor
 ceiling ride the step, (v) the `goOut` trace is a prefix extension, suffix by lead. -/
 namespace P119
@@ -16594,10 +16598,53 @@ open L4YAML L4YAML.Scanner P107 P111 P113
 open L4YAML.Proofs.StreamAccum (tailOf FrameTail)
 open L4YAML.Proofs.Serialization.TokenEvents
 
+/-- Every field of `ScannerState` (no `BEq` instance is derived for it). -/
+def stateEq (a b : ScannerState) : Bool :=
+  a.input == b.input && a.inputEnd == b.inputEnd && a.offset == b.offset && a.line == b.line &&
+  a.col == b.col && a.indents == b.indents && a.pendingKeys == b.pendingKeys &&
+  a.flowLevel == b.flowLevel && a.tokens == b.tokens && a.simpleKey == b.simpleKey &&
+  a.simpleKeyStack == b.simpleKeyStack && a.simpleKeyAllowed == b.simpleKeyAllowed &&
+  a.needIndentCheck == b.needIndentCheck && a.allowDirectives == b.allowDirectives &&
+  a.seenYamlDirective == b.seenYamlDirective && a.directivesPresent == b.directivesPresent &&
+  a.documentEverStarted == b.documentEverStarted && a.flowStack == b.flowStack &&
+  a.explicitKeyLine == b.explicitKeyLine && a.implicitValueLine == b.implicitValueLine &&
+  a.docStartLine == b.docStartLine && a.explicitKeyCol == b.explicitKeyCol &&
+  a.explicitKeyStack == b.explicitKeyStack && a.comments == b.comments &&
+  a.definedAnchors == b.definedAnchors
+
+/-- Whether the completed key node at the end of `toks` follows a `?`: walk back over
+the node (a nested collection at bracket depth, its properties) to the token before it. -/
+def explicitKeyBefore (toks : List L4YAML.YamlToken) : Bool := Id.run do
+  let mut depth : Nat := 0
+  let mut rest := toks.reverse
+  -- the node's last token
+  match rest with
+  | [] => return false
+  | tk :: tl =>
+    rest := tl
+    match tk with
+    | .flowSequenceEnd | .flowMappingEnd => depth := 1
+    | _ => pure ()
+  while depth > 0 do
+    match rest with
+    | [] => return false
+    | tk :: tl =>
+      rest := tl
+      match tk with
+      | .flowSequenceEnd | .flowMappingEnd => depth := depth + 1
+      | .flowSequenceStart | .flowMappingStart => depth := depth - 1
+      | _ => pure ()
+  -- skip the node's properties
+  while (match rest with | tk :: _ => tk.isNodeProperty | [] => false) do
+    rest := rest.drop 1
+  return match rest with | .key :: _ => true | _ => false
+
 structure Tally where
   inSteps : Nat := 0
   byChar : List (String × Nat) := []
   tailBy : List (String × Nat) := []
+  stateOk : Nat := 0
+  stateBad : List String := []
   hypsOk : Nat := 0
   hypsFail : List String := []
   postTailOk : Nat := 0
@@ -16626,7 +16673,10 @@ def tally (rows : List String) : Tally := Id.run do
           t := { t with inSteps := t.inSteps + 1, byChar := bumpS t.byChar k }
           let run := L4YAML.Scanner.trailingPropertyRun pre.tokens
           let lead := if run.isEmpty then "white" else "props"
-          t := { t with tailBy := bumpS t.tailBy s!"{k}/{tailClass (tailOf pre.tokens)}/{lead}" }
+          let tailName := match tailOf pre.tokens with
+            | .value _ => if explicitKeyBefore (pre.tokens.toList.map (fun (tk : L4YAML.Positioned L4YAML.YamlToken) => tk.val)) then "value-explicit" else "value"
+            | tl => tailClass tl
+          t := { t with tailBy := bumpS t.tailBy s!"{k}/{tailName}/{lead}" }
           -- (i) the hypotheses
           match scanNextToken_preprocess pre with
           | .ok (some (sp, c)) =>
@@ -16636,6 +16686,10 @@ def tally (rows : List String) : Tally := Id.run do
             let flowNone := match scanNextToken_dispatchFlowIndicators sad c with | .ok none => true | _ => false
             let blkSome := match scanNextToken_dispatchBlockIndicators sad c with
               | .ok (some s') => s'.tokens == post.tokens | _ => false
+            let whole := match scanNextToken_dispatchBlockIndicators sad c with
+              | .ok (some s') => stateEq s' post | _ => false
+            if whole then t := { t with stateOk := t.stateOk + 1 }
+            else t := { t with stateBad := t.stateBad ++ [s!"{s}@{k}"] }
             let charOk := (k == "key" && c == '?') || (k == "value" && c == ':')
             if strNone && flowNone && blkSome && charOk then t := { t with hypsOk := t.hypsOk + 1 }
             else t := { t with hypsFail := t.hypsFail ++ [s!"{s}@{k}"] }
@@ -16670,15 +16724,17 @@ open P119
 def testKeyArmShadow (state : IO.Ref TestCollector) : IO Unit := do
   let t := tally (P113.allRows ++ P118.extraRows)
   checkM state
-    s!"P119 the ?/: flow arms: {t.inSteps} in-flow steps {t.byChar}; pre-tails {t.tailBy}; hypotheses {t.hypsOk}/{t.inSteps} (failing: {t.hypsFail}); post-tail {t.postTailOk}/{t.inSteps} (bad: {t.postTailBad}); indices+floor ride {t.rides}/{t.inSteps} (bad: {t.rideBad}); trace prefix {t.prefixOk}/{t.inSteps} (bad: {t.prefixBad}) suffixes {t.suffixByLead}; floors {t.floors}"
+    s!"P119 the ?/: flow arms: {t.inSteps} in-flow steps {t.byChar}; pre-tails {t.tailBy}; hypotheses {t.hypsOk}/{t.inSteps} (failing: {t.hypsFail}); whole post-state {t.stateOk}/{t.inSteps} (bad: {t.stateBad}); post-tail {t.postTailOk}/{t.inSteps} (bad: {t.postTailBad}); indices+floor ride {t.rides}/{t.inSteps} (bad: {t.rideBad}); trace prefix {t.prefixOk}/{t.inSteps} (bad: {t.prefixBad}) suffixes {t.suffixByLead}; floors {t.floors}"
     (t.inSteps == 171 && t.byChar == [("value", 144), ("key", 27)] &&
-      t.tailBy == [("value/sep/white", 8), ("key/sep/white", 27), ("value/value/white", 126),
-        ("value/question/white", 4), ("value/sep/props", 4), ("value/question/props", 2)] &&
-      t.hypsOk == 171 && t.hypsFail.isEmpty && t.postTailOk == 171 && t.postTailBad.isEmpty &&
+      t.tailBy == [("value/sep/white", 8), ("key/sep/white", 27), ("value/value/white", 113),
+        ("value/value-explicit/white", 13), ("value/question/white", 4), ("value/sep/props", 4),
+        ("value/question/props", 2)] &&
+      t.stateOk == 171 &&
+      t.hypsOk == 171 && t.hypsFail.isEmpty && t.stateBad.isEmpty && t.postTailOk == 171 && t.postTailBad.isEmpty &&
       t.rides == 171 && t.rideBad.isEmpty && t.prefixOk == 171 && t.prefixBad.isEmpty &&
       t.suffixByLead == [("white/+0", 165), ("props/+0", 6)] &&
       t.floors == [("floor=0", 161), ("floor=1", 8), ("floor=3", 2)])
-    s!"{t.inSteps} {t.byChar} {t.tailBy} {t.hypsFail} {t.postTailBad} {t.rideBad} {t.prefixBad} {t.suffixByLead} {t.floors}"
+    s!"{t.inSteps} {t.byChar} {t.tailBy} {t.hypsFail} {t.postTailBad} {t.rideBad} {t.prefixBad} {t.suffixByLead} {t.floors} {t.stateOk} {t.stateBad}"
 
 end P119Test
 
