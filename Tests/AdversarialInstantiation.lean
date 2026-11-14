@@ -16422,6 +16422,112 @@ def testValueLandingNodeEnd (state : IO.Ref TestCollector) : IO Unit := do
 
 end P117Test
 
+/-! ## Priority 118 (item 490): the `∀`-floor fold's decidable shadow
+
+`accum_step_content_pairK` folds `accum_step_content_pairB` over every floor
+`m ≤ minContentIndentOf s'` and needs (i) the floor ceiling to ride the step
+(`minContentIndentOf s' = minContentIndentOf sc`), (ii) one event list at every
+floor: at a `.white` lead the pushed tokens' `goOut` trace (`PushesTrace`), at a
+`.props` lead the held run's `TCNsProperties` events, whose spans are determined
+by whiteness — every property token is a maximal non-white run of the source
+and the second property of a run is preceded by white/break (the separator).
+Shadows: (i) at every in-flow content step; (ii) the trace prefix at every step
+with the suffix length by lead; (iii) the held tokens' spans at `.props` steps. -/
+namespace P118
+
+open L4YAML L4YAML.Scanner P111 P112 P113 P114
+open L4YAML.Proofs.Serialization.TokenEvents
+
+structure Tally where
+  inSteps : Nat := 0
+  floorRides : Nat := 0
+  floorMoved : List String := []
+  prefixOk : Nat := 0
+  prefixBad : List String := []
+  suffixByLead : List (String × Nat) := []
+  heldTokens : Nat := 0
+  heldOk : Nat := 0
+  heldBad : List String := []
+  deriving Repr
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    match scanFiltered s, P107.stepsOf s with
+    | .ok _, some sts =>
+      for (pre, post) in sts do
+        let pushed := post.tokens.toList.drop pre.tokens.size
+        match pushed.getLast? with
+        | none => pure ()
+        | some back =>
+          if !contentArms.contains (kindOf back.val) then continue
+          if pre.flowLevel == 0 then continue
+          t := { t with inSteps := t.inSteps + 1 }
+          -- (i) the floor ceiling rides the step
+          if L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf post ==
+              L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf pre then
+            t := { t with floorRides := t.floorRides + 1 }
+          else t := { t with floorMoved := t.floorMoved ++ [s] }
+          -- (ii) the trace is a prefix extension (`PushesTrace` at `p := []`)
+          let evPre := (goOut pre.tokens.toList []).1
+          let evPost := (goOut post.tokens.toList []).1
+          let run := L4YAML.Scanner.trailingPropertyRun pre.tokens
+          let lead := if run.isEmpty then "white" else "props"
+          if evPost.take evPre.length == evPre then
+            t := { t with prefixOk := t.prefixOk + 1,
+                          suffixByLead := bumpS t.suffixByLead s!"{lead}/+{evPost.length - evPre.length}" }
+          else t := { t with prefixBad := t.prefixBad ++ [s] }
+          -- (iii) the held run's tokens are maximal non-white runs; the second is preceded by white
+          if !run.isEmpty then
+            let bytes := s.toUTF8
+            let charAt (i : Nat) : Option Char :=
+              match bytes[i]? with | some b => if b < 128 then some (Char.ofNat b.toNat) else none | none => none
+            let isW (ch : Char) : Bool := isWhiteSpaceBool ch || ch == '\n' || ch == '\r'
+            let reals := pre.tokens.toList.filter (fun tk => tk.val.isNodeProperty)
+            let held := reals.drop (reals.length - run.length)
+            let mut idx := 0
+            for tk in held do
+              t := { t with heldTokens := t.heldTokens + 1 }
+              let st := tk.pos.offset
+              let mut e := st
+              while (match charAt e with | some ch => !(isW ch) && ch != ',' && ch != ']' && ch != '}' | none => false) do
+                e := e + 1
+              -- the separator: white, breaks and `#` comment lines (`s-l-comments`)
+              let mut e2 := e
+              let mut fuel := 64
+              while fuel > 0 && (match charAt e2 with | some ch => isW ch || ch == '#' | none => false) do
+                fuel := fuel - 1
+                if charAt e2 == some '#' then
+                  while (match charAt e2 with | some ch => ch != '\n' | none => false) do
+                    e2 := e2 + 1
+                else e2 := e2 + 1
+              let nextOk := idx + 1 < held.length || e2 == back.pos.offset ||
+                (match charAt e2 with | some ch => ch == ',' || ch == ']' || ch == '}' | none => false)
+              let maximal := e > st && (idx == 0 || (match charAt (st - 1) with | some ch => isW ch | none => false))
+              let nextStart := if idx + 1 < held.length then (held[idx + 1]!).pos.offset else back.pos.offset
+              let spanOk := e2 == nextStart || nextOk
+              if maximal && spanOk then t := { t with heldOk := t.heldOk + 1 }
+              else t := { t with heldBad := t.heldBad ++ [s!"{s}@{st}..{e}/{e2}→{nextStart}"] }
+              idx := idx + 1
+    | _, _ => pure ()
+  return t
+
+end P118
+
+namespace P118Test
+open P118
+
+def testFloorFoldShadow (state : IO.Ref TestCollector) : IO Unit := do
+  let t := tally P113.allRows
+  checkM state
+    s!"P118 the ∀-floor fold: floor rides {t.floorRides}/{t.inSteps} (moved: {t.floorMoved}); trace prefix {t.prefixOk}/{t.inSteps} (bad: {t.prefixBad}) suffixes {t.suffixByLead}; held tokens {t.heldOk}/{t.heldTokens} (bad: {t.heldBad})"
+    (t.inSteps == 525 && t.floorRides == 525 && t.prefixOk == 525 && t.heldBad.isEmpty &&
+      t.heldOk == 58 && t.heldTokens == 58 &&
+      t.suffixByLead == [("white/+0", 377), ("white/+1", 94), ("props/+0", 46), ("props/+1", 8)])
+    s!"{t.inSteps} {t.floorRides} {t.prefixOk} {t.suffixByLead} {t.heldOk}/{t.heldTokens} {t.heldBad}"
+
+end P118Test
+
 def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 100: S3 slice (1) — leaf span ↔ token payload (anchor / alias / tag), before proof"
   let t := P100.tally P100.allRows
@@ -16618,6 +16724,7 @@ def collectTests : IO VerifiedSuiteResult := do
   P115Test.testContentCallerShadow state
   P116Test.testPlainLandingUniform state
   P117Test.testValueLandingNodeEnd state
+  P118Test.testFloorFoldShadow state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",
