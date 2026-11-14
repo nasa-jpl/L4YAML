@@ -167,6 +167,18 @@ def _load_lib() -> ctypes.CDLL:
     lib.l4yaml_value_string.argtypes = [c_void_p]
     lib.l4yaml_value_string.restype = c_char_p
 
+    try:
+        lib.l4yaml_value_string_bytes.argtypes = [c_void_p, POINTER(c_size_t)]
+        # c_char_p would copy only up to the first embedded NUL.
+        lib.l4yaml_value_string_bytes.restype = c_void_p
+        lib.l4yaml_value_lookup_bytes.argtypes = [c_void_p, c_char_p, c_size_t]
+        lib.l4yaml_value_lookup_bytes.restype = c_void_p
+    except AttributeError as exc:
+        raise OSError(
+            "libl4yaml.so predates the length-aware string/key API; "
+            "rebuild the C library to use this Python package"
+        ) from exc
+
     lib.l4yaml_value_seq_length.argtypes = [c_void_p]
     lib.l4yaml_value_seq_length.restype = c_uint32
 

@@ -140,7 +140,7 @@ jobs:
             specexamples schemadump derivingconsumer scannertests scannerspecexamples \
             adversarialtests mutationtests propertytests productioncoverage \
             limittests \
-            flowregressioncheck errorstagediag scalarstagediag \
+            flowregressioncheck errorstagediag scalarstagediag aligntest \
             2>&1 | tee "$RUNNER_TEMP/lake-build.log"
           if JOBS=$(grep -oE '\([0-9]+ jobs\)' "$RUNNER_TEMP/lake-build.log" | tail -1 | grep -oE '[0-9]+'); then
             echo "BUILD_JOBS_TOTAL=$JOBS" >> "$GITHUB_ENV"

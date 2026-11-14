@@ -109,10 +109,13 @@ class YamlValue:
 
     def _str_unchecked(self) -> str:
         """Scalar content for a handle the caller already knows is a scalar."""
-        raw: bytes | None = self._lib.l4yaml_value_string(self._handle)
-        if raw is None:
+        byte_len = ctypes.c_size_t()
+        ptr: int = self._lib.l4yaml_value_string_bytes(
+            self._handle, ctypes.byref(byte_len)
+        )
+        if not ptr:
             return ""
-        return raw.decode("utf-8")
+        return ctypes.string_at(ptr, byte_len.value).decode("utf-8")
 
     # ── Sequence ─────────────────────────────────────────────────────
 
@@ -238,7 +241,9 @@ class YamlValue:
                     f"string key lookup requires a mapping, got {self.kind}"
                 )
             key_bytes: bytes = key.encode("utf-8")
-            h = self._lib.l4yaml_value_lookup(self._handle, key_bytes)
+            h = self._lib.l4yaml_value_lookup_bytes(
+                self._handle, key_bytes, len(key_bytes)
+            )
             if not h:
                 raise KeyError(key)
             return YamlValue(handle=h, lib=self._lib)
@@ -249,7 +254,9 @@ class YamlValue:
         if self._kind_id != _MAPPING:
             return False
         key_bytes: bytes = key.encode("utf-8")
-        h: int = self._lib.l4yaml_value_lookup(self._handle, key_bytes)
+        h: int = self._lib.l4yaml_value_lookup_bytes(
+            self._handle, key_bytes, len(key_bytes)
+        )
         if h:
             self._lib.l4yaml_free(h)
             return True
