@@ -16639,6 +16639,37 @@ def explicitKeyBefore (toks : List L4YAML.YamlToken) : Bool := Id.run do
     rest := rest.drop 1
   return match rest with | .key :: _ => true | _ => false
 
+/-- The token before the completed node at the end of `toks` (after its properties and, for a
+nested collection, its brackets): `.value` means the node is a PAIR'S VALUE (`betweenEntries`). -/
+def pairValueBefore (toks : List L4YAML.YamlToken) : Bool := Id.run do
+  let mut depth : Nat := 0
+  let mut rest := toks.reverse
+  match rest with
+  | [] => return false
+  | tk :: tl =>
+    rest := tl
+    match tk with
+    | .flowSequenceEnd | .flowMappingEnd => depth := 1
+    | _ => pure ()
+  while depth > 0 do
+    match rest with
+    | [] => return false
+    | tk :: tl =>
+      rest := tl
+      match tk with
+      | .flowSequenceEnd | .flowMappingEnd => depth := depth + 1
+      | .flowSequenceStart | .flowMappingStart => depth := depth - 1
+      | _ => pure ()
+  while (match rest with | tk :: _ => tk.isNodeProperty | [] => false) do
+    rest := rest.drop 1
+  return match rest with | .value :: _ => true | _ => false
+
+/-- `:` after a completed pair — the `betweenEntries` tail — has no scanner step: refused. -/
+def refusedRows : List String := ["[a: b: c]", "{a: b: c}", "[a: [b]: c]", "[? a : b : c]"]
+
+def refusedOk : Nat := (refusedRows.filter fun s =>
+  match scanFiltered s with | .error (.invalidFlowEntry _ _) => true | _ => false).length
+
 structure Tally where
   inSteps : Nat := 0
   byChar : List (String × Nat) := []
@@ -16674,7 +16705,10 @@ def tally (rows : List String) : Tally := Id.run do
           let run := L4YAML.Scanner.trailingPropertyRun pre.tokens
           let lead := if run.isEmpty then "white" else "props"
           let tailName := match tailOf pre.tokens with
-            | .value _ => if explicitKeyBefore (pre.tokens.toList.map (fun (tk : L4YAML.Positioned L4YAML.YamlToken) => tk.val)) then "value-explicit" else "value"
+            | .value _ =>
+              let toks := pre.tokens.toList.map (fun (tk : L4YAML.Positioned L4YAML.YamlToken) => tk.val)
+              if pairValueBefore toks then "value-pair"
+              else if explicitKeyBefore toks then "value-explicit" else "value"
             | tl => tailClass tl
           t := { t with tailBy := bumpS t.tailBy s!"{k}/{tailName}/{lead}" }
           -- (i) the hypotheses
@@ -16724,12 +16758,12 @@ open P119
 def testKeyArmShadow (state : IO.Ref TestCollector) : IO Unit := do
   let t := tally (P113.allRows ++ P118.extraRows)
   checkM state
-    s!"P119 the ?/: flow arms: {t.inSteps} in-flow steps {t.byChar}; pre-tails {t.tailBy}; hypotheses {t.hypsOk}/{t.inSteps} (failing: {t.hypsFail}); whole post-state {t.stateOk}/{t.inSteps} (bad: {t.stateBad}); post-tail {t.postTailOk}/{t.inSteps} (bad: {t.postTailBad}); indices+floor ride {t.rides}/{t.inSteps} (bad: {t.rideBad}); trace prefix {t.prefixOk}/{t.inSteps} (bad: {t.prefixBad}) suffixes {t.suffixByLead}; floors {t.floors}"
+    s!"P119 the ?/: flow arms: {t.inSteps} in-flow steps {t.byChar}; pre-tails {t.tailBy}; hypotheses {t.hypsOk}/{t.inSteps} (failing: {t.hypsFail}); whole post-state {t.stateOk}/{t.inSteps} (bad: {t.stateBad}); post-tail {t.postTailOk}/{t.inSteps} (bad: {t.postTailBad}); indices+floor ride {t.rides}/{t.inSteps} (bad: {t.rideBad}); trace prefix {t.prefixOk}/{t.inSteps} (bad: {t.prefixBad}) suffixes {t.suffixByLead}; floors {t.floors}; ':' after a completed pair refused {refusedOk}/{refusedRows.length}"
     (t.inSteps == 171 && t.byChar == [("value", 144), ("key", 27)] &&
       t.tailBy == [("value/sep/white", 8), ("key/sep/white", 27), ("value/value/white", 113),
         ("value/value-explicit/white", 13), ("value/question/white", 4), ("value/sep/props", 4),
         ("value/question/props", 2)] &&
-      t.stateOk == 171 &&
+      t.stateOk == 171 && refusedOk == 4 &&
       t.hypsOk == 171 && t.hypsFail.isEmpty && t.stateBad.isEmpty && t.postTailOk == 171 && t.postTailBad.isEmpty &&
       t.rides == 171 && t.rideBad.isEmpty && t.prefixOk == 171 && t.prefixBad.isEmpty &&
       t.suffixByLead == [("white/+0", 165), ("props/+0", 6)] &&
