@@ -1248,6 +1248,320 @@ lemma accum_step_content_pairB {n d : Nat} {ev : List Event} (sc : ScannerState)
   · rw [hprop hc']
     exact ⟨[], by simpa using hTB⟩
 
+
+/-! ## §10 The `∀`-floor fold's two uniformities (item 490)
+
+`TFlowStackK` holds ONE event list at every floor the S half admits; after a
+content step the per-floor traces must agree. White lead: the pushed tokens'
+`goOut` trace is unique (`PushesTrace` read at `p := []`). Held run: the
+`TCNsProperties` witness at the top floor transfers DOWN to every floor with its
+events — a flow-line prefix at `n` is one at `m ≤ n` (the surplus indent spaces
+are separate-in-line white). -/
+
+lemma PushesTrace_unique {ts ts' : Array (Positioned YamlToken)} {e e' : List Event}
+    (h : PushesTrace ts ts' e) (h' : PushesTrace ts ts' e') : e = e' := by
+  have h1 := h []
+  have h2 := h' []
+  rw [h1] at h2
+  exact List.append_cancel_left (congrArg Prod.fst h2)
+
+lemma SIndent_split {n : Nat} {s t : SurfPos} (h : SIndent n s t) :
+    ∀ m, m ≤ n → ∃ u, SIndent m s u ∧ SIndent (n - m) u t := by
+  induction h with
+  | zero s =>
+    intro m hmn
+    have : m = 0 := by omega
+    subst this
+    exact ⟨s, .zero s, .zero s⟩
+  | succ k rest col s' h ih =>
+    intro m hmn
+    cases m with
+    | zero => exact ⟨_, .zero _, by simpa using SIndent.succ k rest col s' h⟩
+    | succ m =>
+      obtain ⟨u, h₁, h₂⟩ := ih m (by omega)
+      exact ⟨u, .succ m rest col u h₁, by simpa [Nat.succ_sub_succ] using h₂⟩
+
+lemma SIndent_to_GStar_SSWhite' {k : Nat} {u t : SurfPos} (h : SIndent k u t) :
+    GStar SSWhite u t := by
+  induction h with
+  | zero s => exact .nil s
+  | succ k rest col s' _ ih => exact .cons _ _ _ (.space rest col) ih
+
+lemma SIndent_succ_GPlus_white {k : Nat} {u t : SurfPos} (h : SIndent (k + 1) u t) :
+    GPlus SSWhite u t := by
+  cases h with
+  | succ _ rest col s' h' => exact .mk _ _ _ (.space rest col) (SIndent_to_GStar_SSWhite' h')
+
+lemma GStar_SSWhite_append {a b c : SurfPos} (h₁ : GStar SSWhite a b) (h₂ : GStar SSWhite b c) :
+    GStar SSWhite a c := by
+  induction h₁ with
+  | nil _ => exact h₂
+  | cons _ _ _ h _ ih => exact .cons _ _ _ h (ih h₂)
+
+lemma SFlowLinePrefix_mono {m n : Nat} {s s' : SurfPos} (hmn : m ≤ n)
+    (h : SFlowLinePrefix n s s') : SFlowLinePrefix m s s' := by
+  cases h
+  rename_i t hind hopt
+  obtain ⟨u, hu, hrest⟩ := SIndent_split hind m hmn
+  rcases Nat.eq_zero_or_pos (n - m) with hz | hpos
+  · rw [hz] at hrest
+    cases hrest
+    exact .mk m s _ s' hu hopt
+  · obtain ⟨k, hk⟩ : ∃ k, n - m = k + 1 := ⟨n - m - 1, by omega⟩
+    rw [hk] at hrest
+    have hplus := SIndent_succ_GPlus_white hrest
+    cases hplus
+    rename_i v hw hws
+    refine .mk m s u s' hu (.some u s' (.whites u s' (.mk _ v _ hw ?_)))
+    cases hopt with
+    | none => exact hws
+    | some =>
+      rename_i hil
+      exact GStar_SSWhite_append hws
+        (L4YAML.Proofs.PreprocessProduction.SSeparateInLine_to_GStar_SSWhite hil)
+
+lemma SSeparateLines_mono {m n : Nat} {s s' : SurfPos} (hmn : m ≤ n)
+    (h : SSeparateLines n s s') : SSeparateLines m s s' := by
+  cases h with
+  | commented =>
+    rename_i s₁ hc hp
+    exact .commented m s s₁ s' hc (SFlowLinePrefix_mono hmn hp)
+  | inline =>
+    rename_i hil
+    exact .inline m s s' hil
+
+lemma SSeparate_flowIn_mono {m n : Nat} {s s' : SurfPos} (hmn : m ≤ n)
+    (h : SSeparate n .flowIn s s') : SSeparate m .flowIn s s' :=
+  SSeparateLines_mono hmn h
+
+lemma TCNsProperties_floor_mono {m n : Nat} {s s' : SurfPos} {ev : List Event} (hmn : m ≤ n)
+    (h : TCNsProperties n .flowIn s s' ev) : TCNsProperties m .flowIn s s' ev := by
+  cases h with
+  | tagFirst =>
+    rename_i s₁ e₁ e₂ h₁ h₂
+    refine .tagFirst s s₁ s' e₁ e₂ h₁ ?_
+    cases h₂ with
+    | none => exact .none _
+    | some =>
+      rename_i hseq
+      cases hseq
+      rename_i t e₁' e₂' hl hp
+      obtain ⟨hsep, he⟩ := hl
+      exact .some _ _ _ (.mk _ t _ _ _ ⟨SSeparate_flowIn_mono hmn hsep, he⟩ hp)
+  | anchorFirst =>
+    rename_i s₁ e₁ e₂ h₁ h₂
+    refine .anchorFirst s s₁ s' e₁ e₂ h₁ ?_
+    cases h₂ with
+    | none => exact .none _
+    | some =>
+      rename_i hseq
+      cases hseq
+      rename_i t e₁' e₂' hl hp
+      obtain ⟨hsep, he⟩ := hl
+      exact .some _ _ _ (.mk _ t _ _ _ ⟨SSeparate_flowIn_mono hmn hsep, he⟩ hp)
+
+
+/-! ## §11 The `∀`-floor fold: the content step on `TFlowStackK` (item 490)
+
+`accum_step_content_pairB` closes the pair-level content step at ONE floor; `TFlowStackK` holds its
+T half at EVERY floor the S half admits, with one `sp_flow` and one event list.  The fold runs the
+wrapper once, picks the event suffix once — at a `.white` lead the pushed tokens' `goOut` trace
+(`PushesTrace_unique`), at a `.props` lead the held run's events read at the top floor and carried
+down (`TCNsProperties_floor_mono`) — and lands every floor at the wrapper's `sp_flow'` through
+`flowNode_landing_eq`.  The floor ceiling rides the step: a content step inside a flow leaves the
+indent stack alone, so `minContentIndentOf s' = minContentIndentOf sc`. -/
+
+lemma accum_step_content_pairK {d : Nat} {ev : List Event} (sc : ScannerState)
+    (sp_start sp_gram sp_block sp_flow sp_scan : SurfPos)
+    (s_prep s' : ScannerState) (c : Char)
+    (h_stream : SLYamlStream sp_start sp_gram)
+    (h_stack : BlockStack sp_gram sp_block)
+    (h_flowK : TFlowStackK sp_start sc sc.flowLevel sc.flowStack (tailOf sc.tokens) sp_block sp_flow ev)
+    (h_pending : sc.flowLevel = 0 → PendingNode sc false sp_start sp_flow sp_scan)
+    (h_corr : ScannerSurfCorr sc sp_scan)
+    (h_interior : sc.flowLevel ≥ 1 →
+      InteriorGap sc (tailOf sc.tokens) sp_flow sp_scan ∧
+        LastTokenReal sc.tokens ∧ sc.allowDirectives = false)
+    (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
+    (h_sound : PendingKeySound.Sound sc)
+    (h_dn : scanNextToken_checkDanglingNode sc s_prep = .ok ())
+    (h_fv : scanNextToken_checkFlowValueIndent sc s_prep = .ok ())
+    (h_flow_none : scanNextToken_dispatchFlowIndicators
+        (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) c = .ok none)
+    (h_blk_none : scanNextToken_dispatchBlockIndicators
+        (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) c = .ok none)
+    (h_adj : scanNextToken_checkAdjacentValue
+        (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) c = .ok ())
+    (h_bare : scanNextToken_checkBareDocument s_prep = .ok ())
+    (h_base : IndentStackBase.SentinelBase sc)
+    (h_mono : IndentStackMono.Mono sc)
+    (h_dispatch : scanNextToken_dispatchContent
+        (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) c = .ok s')
+    (h_str_none : scanNextToken_dispatchStructural s_prep c = .ok none)
+    (h_not_doc : (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep).col = 0 →
+      atDocumentBoundary (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) = false)
+    (hd : sc.flowLevel = d + 1) :
+    ∃ sp_gram' sp_block' sp_flow' sp_scan' ev_n,
+      SLYamlStream sp_start sp_gram' ∧
+      BlockStack sp_gram' sp_block' ∧
+      (s'.flowLevel = 0 → PendingNode s' false sp_start sp_flow' sp_scan') ∧
+      ScannerSurfCorr s' sp_scan' ∧
+      (s'.flowLevel ≥ 1 →
+        InteriorGap s' (tailOf s'.tokens) sp_flow' sp_scan' ∧
+          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) ∧
+      sp_block' = sp_block ∧
+      TFlowStackK sp_start s' s'.flowLevel s'.flowStack (tailOf s'.tokens) sp_block sp_flow' (ev ++ ev_n) := by
+  obtain ⟨h_flowS, hTall⟩ := h_flowK
+  obtain ⟨g, b, f, sn, q1, q2, q3, q4, q5, q6, sp_prep, sp_a, hcorr_ad, arm, q7⟩ :=
+    accum_step_content (h_sound := h_sound) sc sp_start sp_gram sp_block sp_flow sp_scan s_prep s' c
+      h_stream h_stack h_flowS h_pending h_corr h_interior h_preprocess h_dn h_fv h_flow_none
+      h_blk_none h_adj h_bare h_base h_mono h_dispatch h_str_none h_not_doc
+  obtain ⟨hblk, hkeep, hval⟩ := q7 (by omega)
+  obtain ⟨h_gap, h_real, -⟩ := h_interior (by omega)
+  obtain ⟨sp_prep0, hcorr_prep⟩ :=
+    L4YAML.Proofs.ScanStrictCoupling.scanNextToken_preprocess_corr sc sp_scan h_corr s_prep c h_preprocess
+  have h_lead := contentLead_of_interior hd h_corr hcorr_prep
+    h_preprocess h_str_none (by split <;> rfl) (by split <;> rfl) h_flow_none h_blk_none h_dispatch h_gap h_real
+  have hcorr_ad0 : ScannerSurfCorr (if s_prep.allowDirectives then
+      { s_prep with allowDirectives := false, documentEverStarted := true }
+    else s_prep) sp_prep0 := L4YAML.Proofs.StreamAccum.corr_of_allowDirectives_update hcorr_prep
+  generalize h_ad_def : (if s_prep.allowDirectives then
+      { s_prep with allowDirectives := false, documentEverStarted := true }
+    else s_prep) = s_ad at h_flow_none h_blk_none h_dispatch h_not_doc hcorr_ad hcorr_ad0 arm q3 q4 q5 q6 ⊢
+  have hsp0 : sp_prep = sp_prep0 := ScannerSurfCorr_unique hcorr_ad hcorr_ad0
+  subst hsp0
+  have h_ad_tokens : s_ad.tokens = s_prep.tokens := by rw [← h_ad_def]; split <;> rfl
+  have h_ad_peek : s_ad.peek? = s_prep.peek? := by rw [← h_ad_def]; split <;> rfl
+  have h_ad_fl : s_ad.flowLevel = s_prep.flowLevel := by rw [← h_ad_def]; split <;> rfl
+  have h_ad_ind : s_ad.indents = s_prep.indents := by rw [← h_ad_def]; split <;> rfl
+  have h_ad_col : s_ad.col = s_prep.col := by rw [← h_ad_def]; split <;> rfl
+  have h_sc_inflow : sc.inFlow = true := L4YAML.Proofs.StreamAccum.inFlow_of_flowLevel_eq hd
+  have h_prep_fl : s_prep.flowLevel = sc.flowLevel :=
+    L4YAML.Proofs.FlowSync.preprocess_preserves_flowLevel sc s_prep c h_preprocess
+  have h_prep_fs : s_prep.flowStack = sc.flowStack :=
+    L4YAML.Proofs.ScannerFlowStack.preprocess_preserves_flowStack sc s_prep c h_preprocess
+  have h_prep_ind : s_prep.indents = sc.indents :=
+    L4YAML.Proofs.FlowIndentStable.preprocess_indents_of_inFlow h_sc_inflow h_preprocess
+  have h_prep_inflow : s_prep.inFlow = true := by
+    unfold ScannerState.inFlow; rw [h_prep_fl, hd]; simp
+  have h_ad_inflow : s_ad.inFlow = true := by
+    unfold ScannerState.inFlow; rw [h_ad_fl, h_prep_fl, hd]; simp
+  have hpeek : s_ad.peek? = some c :=
+    h_ad_peek.trans (L4YAML.Proofs.StreamAccum.preprocess_some_peek h_preprocess)
+  have hcol : s_ad.currentIndent < (s_ad.col : Int) := by
+    rw [h_ad_col, L4YAML.Proofs.PreprocessIndentStable.currentIndent_of_indents_eq h_ad_ind]
+    exact L4YAML.Proofs.FlowIndentStable.structural_none_col_gt_of_inFlow h_prep_inflow h_str_none
+  have hn' : ∀ m, m ≤ minContentIndentOf sc → (m : Int) ≤ max 0 (s_ad.currentIndent + 1) := by
+    intro m hm
+    rw [L4YAML.Proofs.PreprocessIndentStable.currentIndent_of_indents_eq (h_ad_ind.trans h_prep_ind)]
+    unfold L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf at hm
+    omega
+  have h_tl_eq : tailOf s_ad.tokens = tailOf sc.tokens :=
+    tailOf_preprocess_eq (by omega) h_preprocess h_ad_tokens
+  have h_fl' : s'.flowLevel = sc.flowLevel :=
+    (L4YAML.Proofs.ScannerCorrectness.dispatchContent_preserves_flowLevel s_ad c s' h_dispatch).trans
+      (h_ad_fl.trans h_prep_fl)
+  have h_fs' : s'.flowStack = sc.flowStack :=
+    (L4YAML.Proofs.ScannerFlowStack.dispatchContent_preserves_flowStack s_ad c s' h_dispatch).trans
+      ((by rw [← h_ad_def]; split <;> rfl : s_ad.flowStack = s_prep.flowStack).trans h_prep_fs)
+  -- The floor ceiling rides the step.
+  have hmin : minContentIndentOf s' = minContentIndentOf sc :=
+    L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf_congr
+      ((L4YAML.Proofs.FlowIndentStable.dispatchContent_preserves_indents h_ad_inflow h_dispatch).trans
+        (h_ad_ind.trans h_prep_ind))
+  -- The T open stack at every floor.
+  have h_fos : ∀ m, m ≤ minContentIndentOf sc →
+      TFlowOpenStack m (d + 1) sc.flowStack (tailOf s_ad.tokens) sp_block sp_flow ev := by
+    intro m hm
+    have hTm := hTall m hm
+    rw [hd] at hTm
+    rcases hTm with _ | ⟨_, _, _, _, _, _, h⟩
+    rw [h_tl_eq]; exact h
+  have hglue := content_not_glue h_dispatch
+  simp only [isFlowIndicatorBool, Bool.or_eq_false_iff, decide_eq_false_iff_not,
+    List.mem_cons, List.mem_nil_iff, or_false, not_or] at hglue
+  -- One landing at every floor, from one T open stack at `sp_ne` landing at the wrapper's `f`.
+  have land : ∀ m kj sp_ne ev_n, tailOf s'.tokens = .value kj → (c ≠ '&' ∧ c ≠ '!') →
+      GStar SSWhite sp_ne sp_a → SFlowNode m .flowIn sp_prep sp_ne →
+      TFlowOpenStack m (d + 1) sc.flowStack (.value kj) sp_block sp_ne (ev ++ ev_n) →
+      TFlowStackB m s'.flowLevel s'.flowStack (tailOf s'.tokens) sp_block f (ev ++ ev_n) := by
+    intro m kj sp_ne ev_n htl ⟨hamp, hbang⟩ hws hnd h_open
+    obtain ⟨m', -, hnS, hwS⟩ := hval kj htl
+    -- The landing's start is the content character.
+    obtain ⟨rest, hsp⟩ := peek_some_sp hcorr_ad hpeek
+    subst hsp
+    have ha : sp_a = sn := ScannerSurfCorr_unique (ContentArm_corr arm) q5
+    subst ha
+    have heq := flowNode_landing_eq ⟨hamp, hbang, hglue.2.2.1, hglue.2.2.2.2.1⟩ hnd hnS hws hwS
+    subst heq
+    rw [h_fl', h_fs', hd, htl]
+    exact .«open» _ _ _ _ _ _ h_open
+  have key : ∃ ev_n, ∀ m, m ≤ minContentIndentOf sc →
+      TFlowStackB m s'.flowLevel s'.flowStack (tailOf s'.tokens) sp_block f (ev ++ ev_n) := by
+    by_cases hprop : c = '&' ∨ c = '!'
+    · -- Property arms: tail, trace and `sp_flow` kept at every floor.
+      refine ⟨[], ?_⟩
+      intro m hm
+      have h_kept := content_prop_tail_kept hcorr_ad hpeek h_dispatch hprop
+      rw [hkeep hprop, h_fl', h_fs', hd, h_kept, List.append_nil]
+      exact .«open» _ _ _ _ _ _ (h_fos m hm)
+    · have hamp : c ≠ '&' := fun h => hprop (Or.inl h)
+      have hbang : c ≠ '!' := fun h => hprop (Or.inr h)
+      cases h_lead with
+      | white h_tail h_lead =>
+        -- The event suffix read at the top floor; every floor's suffix is the same `goOut` trace.
+        obtain ⟨ev_N, hpushN, -⟩ := accum_step_content_trace_in arm hcorr_ad hpeek h_ad_inflow h_not_doc
+          h_dispatch hcol (hn' _ (Nat.le_refl _)) (h_fos _ (Nat.le_refl _)) (by rw [h_tl_eq]; exact h_tail)
+          (by rw [h_tl_eq]; exact h_lead _ (Nat.le_refl _))
+        refine ⟨ev_N, ?_⟩
+        intro m hm
+        obtain ⟨ev_m, hpush_m, h | ⟨-, h⟩⟩ := accum_step_content_trace_in arm hcorr_ad hpeek h_ad_inflow
+          h_not_doc h_dispatch hcol (hn' m hm) (h_fos m hm) (by rw [h_tl_eq]; exact h_tail)
+          (by rw [h_tl_eq]; exact h_lead m hm)
+        · obtain ⟨kj, sp_ne, h_tl', h_ws, h_nd, h_open⟩ := h
+          rw [PushesTrace_unique hpush_m hpushN] at h_open
+          exact land m kj sp_ne ev_N h_tl' ⟨hamp, hbang⟩ h_ws h_nd h_open
+        · rcases h with ⟨hc, -⟩ | ⟨hc, -⟩
+          · exact absurd hc hamp
+          · exact absurd hc hbang
+      | props ha ht sp_p sp_e h_tail h_lead_p h_run h_sep h_last_sc =>
+        have hstar : c ≠ '*' := by
+          intro hc; subst hc
+          have h_false := L4YAML.Proofs.StreamAccum.lastTokenIsNodeProperty_false_of_dispatch h_dispatch
+          obtain ⟨t, h_last, h_prop⟩ := h_last_sc
+          have h_ad_last : L4YAML.Scanner.lastRealTokenVal? s_ad.tokens =
+              L4YAML.Scanner.lastRealTokenVal? sc.tokens := by
+            rw [h_ad_tokens]
+            exact L4YAML.Proofs.StreamAccum.preprocess_preserves_lastRealTokenVal_inFlow sc s_prep _
+              (by omega) h_real h_preprocess
+          unfold lastTokenIsNodeProperty at h_false
+          rw [h_ad_inflow, h_ad_last, h_last] at h_false
+          simp [h_prop] at h_false
+        -- The held run's events, read at the top floor and carried down.
+        obtain ⟨ev_p, h_props⟩ :=
+          L4YAML.Proofs.Serialization.TraceOf.FlowWalk.PropsRun.toT (h_run _ (Nat.le_refl _))
+        refine ⟨ev_p ++ [], ?_⟩
+        intro m hm
+        obtain ⟨kj, sp_ne, -, h_tl', h_ws, h_nd, h_open⟩ := accum_step_content_trace_in_props arm hcorr_ad hpeek
+          h_ad_inflow h_not_doc h_dispatch hcol (hn' m hm) (h_fos m hm) (by rw [h_tl_eq]; exact h_tail)
+          (by rw [h_tl_eq]; exact h_lead_p m hm) (TCNsProperties_floor_mono hm h_props) (h_sep m hm)
+          ⟨hamp, hbang, hstar⟩
+        exact land m kj sp_ne (ev_p ++ []) h_tl' ⟨hamp, hbang⟩ h_ws h_nd h_open
+  obtain ⟨ev_n, hk⟩ := key
+  rw [hblk] at q3
+  exact ⟨g, b, f, sn, ev_n, q1, q2, q4, q5, q6, hblk, q3, fun m hm => hk m (by rwa [hmin] at hm)⟩
 end
 
 end L4YAML.Proofs.Serialization.TraceOf.ContentBridge

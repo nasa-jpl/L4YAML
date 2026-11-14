@@ -364,8 +364,10 @@ def expectedWideCensus : String :=
 -- `accum_step_content` is now core ∧ `ContentArm`) is one more declaration the arm's drop reaches.  D unchanged.
 -- 2026-11-13 (item 489, the landing agreement): T 28 → 29 — `accum_step_content_pairB`
 -- (ContentBridge §9) destructures `accum_step_content`, so the arm's drop reaches it.  D unchanged.
+-- 2026-11-14 (item 490, the ∀-floor fold): T 29 → 30 — `accum_step_content_pairK`
+-- (ContentBridge §11) destructures `accum_step_content` too.  D unchanged.
 def expectedCensus : String :=
-  "D=4 S=0 R=0 T=29 capstonesInT=2 rawElim=11"
+  "D=4 S=0 R=0 T=30 capstonesInT=2 rawElim=11"
 
 /-- The first ring: two in the library, two in the instruments that exhibit the
     defect.  `stream_anything` is item 236's free-maker and item 235 restates it;
@@ -406,6 +408,7 @@ def expectedTrans : List Name :=
    `L4YAML.Proofs.DocumentProduction.scan_strict_proof,
    -- 2026-11-13 (item 489): the per-floor pair step destructures `accum_step_content`.
    `L4YAML.Proofs.Serialization.TraceOf.ContentBridge.accum_step_content_pairB,
+   `L4YAML.Proofs.Serialization.TraceOf.ContentBridge.accum_step_content_pairK,
    `L4YAML.Proofs.StreamAccum.PendingNode.close_with_ssl,
    `L4YAML.Proofs.StreamAccum.PendingNode.close_with_sslFrom,
    `L4YAML.Proofs.StreamAccum.accum_block_pending,
