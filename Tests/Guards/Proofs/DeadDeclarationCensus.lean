@@ -27,7 +27,7 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- unreached +7 and (A) 1308 → 1315 — the K caller has no capstone-path reader yet (the 2c fold is item 488's);
 -- the (B) roster 3,536 unmoved, (C)/(D) unmoved.
 def expectedDeadCensus : String :=
-  "population=14279 thm=10254 def=2680 roots=capstone:26+export:37+blueprint:222(unresolved=5) unreached=6567 thm=4648 A-campaign=1351 C-api=1405 D-test-only=275 B-roster=3536 thm=3173 cluster-roots=1460"
+  "population=14289 thm=10264 def=2680 roots=capstone:26+export:37+blueprint:222(unresolved=5) unreached=6577 thm=4658 A-campaign=1361 C-api=1405 D-test-only=275 B-roster=3536 thm=3173 cluster-roots=1460"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do

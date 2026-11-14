@@ -234,8 +234,10 @@ def holdsScanStream (n : Name) : MetaM (Nat × Nat × Bool) := do
 -- `accum_step_content_core` (the renamed body) joins both closures beside its `accum_step_content` wrapper.
 -- 2026-11-13 (item 489, the landing agreement): thread 15 → 16, prodThread 21 → 22, shared 12 → 13 —
 -- `accum_step_content_pairB` (ContentBridge §9) destructures the wrapper, so it joins both closures.
+-- 2026-11-14 (item 490, the ∀-floor fold): thread 16 → 17, prodThread 22 → 23, shared 13 → 14 —
+-- `accum_step_content_pairK` (ContentBridge §11) destructures the wrapper as `pairB` does; no new ring.
 def expectedThread : String :=
-  "thread=16 prodThread=22 shared=13 capstones=2 rings=8"
+  "thread=17 prodThread=23 shared=14 capstones=2 rings=8"
 
 /-- The first ring: the five library consumers item 238 named, and item 239's
     own exhibit, which rides the arm on purpose and goes with it. -/
@@ -251,13 +253,14 @@ def expectedRing1 : List Name :=
 -- step lemmas that left it (see `expectedThread`) take `withPark` 7 → 3.
 -- 2026-11-11 (item 484): total 14 → 15 with the thread; `accum_step_content_core` carries no park.
 -- 2026-11-13 (item 489): total 15 → 16 with the thread; `accum_step_content_pairB` carries no park.
-def expectedDiscriminator : String := "withPark=3 covered=0 total=16"
+-- 2026-11-14 (item 490): total 16 → 17 with the thread; `accum_step_content_pairK` carries no park.
+def expectedDiscriminator : String := "withPark=3 covered=0 total=17"
 
 /-- **The thread adds nothing to β.5's bill.**  Every declaration the weak
     repair's statement change travels through is already one of the
     twenty-six item 238 counted, so the choice of repair moves items between
     *restated* and *reproved* without moving the total. -/
-def expectedInT : String := "threadInT=16 outsideT=0"  -- 2026-10-24 (B3): thread 20 → 15, see above; 2026-11-13 (item 489): 15 → 16 with the thread (`accum_step_content_pairB` is in T)
+def expectedInT : String := "threadInT=17 outsideT=0"  -- 2026-10-24 (B3): thread 20 → 15, see above; 2026-11-13 (item 489): 15 → 16 with the thread (`accum_step_content_pairB` is in T); 2026-11-14 (item 490): 16 → 17 (`accum_step_content_pairK` is in T)
 
 /-- The walk's reading of the park's users — the upper bracket on what the
     `retire` repair breaks. -/

@@ -385,7 +385,7 @@ def expectedSteps : String :=
 -- 2026-11-12 (item 487, the K caller): stepHolders 2114 → 2118 (`tailOf_preprocess_eq`, `contentLead_of_interior`,
 -- `content_prop_tail_kept`, `accum_step_content_traceK`), dispHolders 417 → 420 (the last three read `h_dispatch`),
 -- dispTwoCorr 31 → 32 (`contentLead_of_interior` reads the surface at `sc` and at `s_prep`).
-  "stepHolders=2119 dispHolders=421 dispTwoCorr=32 fns=75 fnsIx=26"  -- 2026-11-13 (item 489): +1/+1, `accum_step_content_pairB` holds `h_dispatch`
+  "stepHolders=2120 dispHolders=422 dispTwoCorr=32 fns=75 fnsIx=26"  -- 2026-11-13 (item 489): +1/+1, `accum_step_content_pairB` holds `h_dispatch`; 2026-11-14 (item 490): +1/+1, `accum_step_content_pairK` holds it too
 
 /-- **The ladder, at each population.**  `edge` is a production whose right
     endpoint is the step's output; `chain` requires a path to it from another
@@ -480,6 +480,8 @@ def expectedChainSpec : List Name :=
 -- `tailOf_preprocess_eq`, `contentLead_of_interior`, `accum_step_content_traceK` read `h_preprocess`.
 -- 2026-11-13 (item 489): dispatchContent 183 → 184, preprocess 254 → 255 — `accum_step_content_pairB` holds
 -- `h_dispatch` / `h_preprocess`.
+-- 2026-11-14 (item 490): dispatchContent 184 → 185, preprocess 255 → 256 — `accum_step_content_pairK` holds
+-- `h_dispatch` / `h_preprocess`.
 def expectedPerFn : List String :=
   -- 2026-11-08 (item 459, review): dispatchContent decls 170 → 173 — the three `ScannerShape.dispatchContent_*_trace` consumers.
   -- 2026-11-08 (item 464, S3 slice (3) first PR): dispatchContent decls 173 → 175 — `ScannerShape.dispatchContent_{doubleQuoted,singleQuoted}_trace`.
@@ -487,8 +489,8 @@ def expectedPerFn : List String :=
   -- wrapper), preprocess 250 → 251 (the wrapper holds the preprocess equation too).
   -- 2026-11-12 (item 486, S3 slice (4) PR 1): dispatchContent decls 175 → 180 — `TraceOf/ContentBridge`'s three twins and
   -- its two `dispatchContent_{plain,blockScalar}_tokens` helpers.
-  ["scanNextToken_dispatchContent decls=184 chain=1",
-   "scanNextToken_preprocess decls=255 chain=3"]
+  ["scanNextToken_dispatchContent decls=185 chain=1",
+   "scanNextToken_preprocess decls=256 chain=3"]
 
 /-- **The one worked precedent is outside the work.**  It is not in item 238's
     transitive set and not on either repair thread, so β.5 neither pays for it

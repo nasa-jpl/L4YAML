@@ -285,7 +285,9 @@ def expectedCensus : String :=
 -- `accum_step_content_traceK` each read the surface through a `ScannerSurfCorr` hypothesis; other rows unchanged.
 -- 2026-11-13 (item 489, the landing agreement): corrHyp 620 → 621, streamConcl 88 → 89, both 41 → 42 —
 -- `accum_step_content_pairB` (ContentBridge §9) holds the wrapper's `h_corr` and re-packs its `SLYamlStream` conclusion.
-  "corrHyp=621 streamConcl=89 both=42 free=0 pairConcl=1 held=3 pairAny=8"
+-- 2026-11-14 (item 490, the ∀-floor fold): corrHyp 621 → 622, streamConcl 89 → 90, both 42 → 43 —
+-- `accum_step_content_pairK` (ContentBridge §11) holds the wrapper's `h_corr` and re-packs its `SLYamlStream` conclusion.
+  "corrHyp=622 streamConcl=90 both=43 free=0 pairConcl=1 held=3 pairAny=8"
 
 /-- The one conclusion that pairs them, and it is the stream's origin. -/
 def expectedSeedConcl : List Name :=
@@ -310,7 +312,7 @@ def expectedHeldOnThreads : String := "onProdThread=0 onThread=0"
 -- 2026-11-11 (item 484, ContentArm): prodThread 20 → 21, rings 8 → 9, withCorr 15 → 16 — `accum_step_content_core`
 -- (the renamed body) sits one ring below its `accum_step_content` wrapper and carries the same correspondences.
 def expectedProdThread : String :=
-  "prodThread=22 rings=9 withCorr=17 covered=0"  -- 2026-11-13 (item 489): +1 with the thread, `accum_step_content_pairB` holds `h_corr`
+  "prodThread=23 rings=9 withCorr=18 covered=0"  -- 2026-11-13 (item 489): +1 with the thread, `accum_step_content_pairB` holds `h_corr`; 2026-11-14 (item 490): +1, `accum_step_content_pairK` holds `h_corr`
 
 /-- The first ring — the four definitions `--end producer` breaks, which is
     the same four this walk reads.
@@ -332,7 +334,7 @@ def expectedProdRing1 : List Name :=
 -- `accum_structural_pending` (they close through `PendingNode.close_with_sslFrom` now, see RepairChoice); the
 -- producer's own rows are unchanged.
 -- 2026-11-11 (item 484): `accum_step_content_core` joins both the producer's thread and T (prodInT=11 prodOutsideT=9 union=23 unionOutsideT=9 → prodInT=12 prodOutsideT=9 union=24 unionOutsideT=9).
-def expectedProdInT : String := "prodInT=13 prodOutsideT=9 union=25 unionOutsideT=9"  -- 2026-11-13 (item 489): +1 in T with the thread
+def expectedProdInT : String := "prodInT=14 prodOutsideT=9 union=26 unionOutsideT=9"  -- 2026-11-13 (item 489): +1 in T with the thread; 2026-11-14 (item 490): +1 (`accum_step_content_pairK`)
 
 /-- **The ~~seven~~ nine, named.**  Three wrappers that partition the escape's
     own applications, four `accum_block_on_*` arms, and (DOCS item 287) the two
