@@ -11598,6 +11598,71 @@ def testPackSurvivorsChain (state : IO.Ref TestCollector) : IO Unit := do
     (pauses == 98 && overK.isEmpty && survChecks == 71 && survRejects.isEmpty && dashPauses == 31 &&
       dashExc.isEmpty && lowPauses ≥ 40 && noSurv ≥ 30)
 
+def testProducersPremiseChain (state : IO.Ref TestCollector) : IO Unit := do
+  -- P119 (item 499, (ω-pay-births) (d) item (2)): the producers' premise `h_chainUp` at
+  -- `content_dispatch_routed` — at a CONTENT dispatch pause (a non-indicator character in block
+  -- context) on a marked state, every mark `nv` of the dispatch state has its `: v` at column `nv`
+  -- after the landing's whole node accepted; the hand-offs are classed by where the landing sits
+  -- against the mark (nested `nv + 1 ≤ k`, at the mark `k = nv`, below it `k < nv`).
+  let inputs : List String :=
+    [ "? a\n: b", "?\n  a\n: b", "?\n  - a\n: b", "k:\n  ?\n    a\n  : b", "- ?\n    a\n  : b",
+      "?\n  ?\n    a\n  : b\n: c", "?\n  ?\n    ?\n      a\n    : b\n  : c\n: d",
+      "?\n  k: v\n: b", "?\n  k:\n    a\n: b", "? a\n? b\n: c", "k:\n  ? a\n  : b", "- ? a\n  : b",
+      "? a: 1\n: b", "- a\n- ? b\n  : c", "? |\n  k\n: v", "? \"a\"\n: v", "? 'a'\n: v", "? [a, b]\n: v",
+      "? {a: 1}\n: v", "? &x a\n: *x", "? !t a\n: v", "?\n  a\n  b\n: c", "?\n  ? a\n  : b\n  ? c\n  : d\n: e",
+      "?\n  a\n? b\n: c", "? a\n:\n  ? b\n  : c", "k:\n  ?\n    ?\n      a\n    : b\n  : c",
+      "- ?\n    ?\n      a\n    : b\n  : c", "?\n  - a\n  - b\n: c", "?\n  k:\n    - a\n: b",
+      "? a\n: b\n? c\n: d", "?\n  a: 1\n  b: 2\n: c", "?\n  ?\n    a\n  ? b\n: c", "- ? a\n- b",
+      "? # c\n  a\n: b", "?\n  # c\n  a\n: b", "? a # c\n: b" ]
+  let mut pauses := 0
+  let mut checks := 0
+  let mut rejects : List String := []
+  let mut nested := 0
+  let mut atMark := 0
+  let mut below := 0
+  for input in inputs do
+    let chars := input.toList
+    let lines := (input.splitOn "\n").toArray
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:80] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        let marks := L4YAML.Proofs.RegisterWitness.markedCols sP
+        let isInd := (c == ':' || c == '?' || c == '-') &&
+          (chars[sP.offset + 1]?.map (fun ch => ch == ' ' || ch == '\n')).getD true
+        let isContent := !isInd && c != '#' && c != '%' && c != '\n' && c != ' ' &&
+          !(c == '-' && chars[sP.offset + 1]? == some '-' && chars[sP.offset + 2]? == some '-')
+        if isContent && sP.flowLevel == 0 && !marks.isEmpty then
+          pauses := pauses + 1
+          let k := sP.col
+          let indentOf (l : String) : Nat := (l.toList.takeWhile (· == ' ')).length
+          let mut last := sP.line
+          for i in [sP.line + 1 : lines.size] do
+            let l := lines[i]!
+            let blank := l.toList.all (· == ' ')
+            if i == last + 1 && (blank || indentOf l > k) then last := i
+          let pre := "\n".intercalate (lines.toList.take (last + 1))
+          for nv in marks do
+            checks := checks + 1
+            if nv + 1 ≤ k then nested := nested + 1
+            else if nv == k then atMark := atMark + 1
+            else below := below + 1
+            let cont := pre ++ "\n" ++ String.ofList (List.replicate nv ' ') ++ ": v\n"
+            match L4YAML.TokenParser.parseYaml cont with
+            | .ok _ => pure ()
+            | .error _ => rejects := rejects ++ [s!"{repr input}@{sP.line}:{k} c={c} nv={nv}"]
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) => s := sN
+        | _ => break
+      | _ => break
+  IO.println s!"P119 marked content pauses={pauses} checks={checks} nested={nested} atMark={atMark} below={below} rejects={rejects}"
+  check state s!"P119 (ω-pay-births) (d) item (2) the producers' premise at the content landings (item 499): {pauses} marked content pauses, {checks} marks' `: v` after the whole node, rejects {rejects}, nested {nested} / at the mark {atMark} / below {below}"
+    -- pinned to the first run: P2 predicted ≥ 60 pauses (59 measured — REFUTED by one) and 0 rejects
+    -- (HELD); P3 predicted nested ≥ 50 % / at the mark 0 / below ≥ 5 — every one of the 69 marks is
+    -- NESTED (`nv + 1 ≤ k`): a content character at or left of a `?` mark closes that mark in the
+    -- unwind, so the premise at a content landing has only the nested crossing to pay.
+    (pauses == 59 && checks == 69 && nested == 69 && atMark == 0 && below == 0 && rejects.isEmpty)
+
 def testSeqTopRefusedArm (state : IO.Ref TestCollector) : IO Unit := do
   -- P89 (item 438, (χ-seqtop-refused)): the negative arm `ExplicitValueRefused s ∨ SeqTopKey s`
   -- proposed for `content_dispatch_routed`'s `h_resF` premise must NOT be a tautology over the
@@ -17369,6 +17434,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testPackSameLevelChain state
 
   testPackSurvivorsChain state
+  testProducersPremiseChain state
   testPackMappingLaneTail state
   testPackDedentSlotGuard state
   testPackAltMarks state
