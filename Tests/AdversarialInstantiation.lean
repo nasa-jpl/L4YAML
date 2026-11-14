@@ -11374,7 +11374,7 @@ def testPackSameLevelChain (state : IO.Ref TestCollector) : IO Unit := do
 
 
 def testPackSurvivorsChain (state : IO.Ref TestCollector) : IO Unit := do
-  -- P99 (item 497, (ω-pay-births) (d) item (1)): the landing lemma `markedCols_le_of_top` and the
+  -- P99 (item 498, (ω-pay-births) (d) item (1)): the landing lemma `markedCols_le_of_top` and the
   -- chain domain on the POST-state, read at every block `:`/`?`/`-` pause on a marked state
   -- (P95's and P97's grids): (i) every mark of the post-step state is ≤ the landing column k;
   -- (ii) for every surviving mark nv < k, a `: v` at nv after the landing's whole entry is
@@ -11398,6 +11398,8 @@ def testPackSurvivorsChain (state : IO.Ref TestCollector) : IO Unit := do
   let mut survRejects : List String := []
   let mut dashPauses := 0
   let mut dashExc : List String := []
+  let mut lowPauses := 0
+  let mut noSurv := 0
   for input in inputs do
     let chars := input.toList
     let lines := (input.splitOn "\n").toArray
@@ -11422,6 +11424,10 @@ def testPackSurvivorsChain (state : IO.Ref TestCollector) : IO Unit := do
               dashPauses := dashPauses + 1
               if after != before.filter (· ≤ k) then
                 dashExc := dashExc ++ [s!"{repr input}@{sP.line}:{k} before={before} after={after}"]
+            -- the seven `else`s' domain: a `:`/`?` at or above the park's mark, or a `-` below it
+            if (c != '-' && k ≤ before.foldl max 0) || (c == '-' && k < before.foldl max 0) then
+              lowPauses := lowPauses + 1
+              if after.all (· ≥ k) then noSurv := noSurv + 1
             let indentOf (l : String) : Nat := (l.toList.takeWhile (· == ' ')).length
             let mut last := sP.line
             for i in [sP.line + 1 : lines.size] do
@@ -11444,11 +11450,11 @@ def testPackSurvivorsChain (state : IO.Ref TestCollector) : IO Unit := do
         | .ok (some sN) => s := sN
         | _ => break
       | _ => break
-  IO.println s!"P99 marked block pauses={pauses} post-step mark > k at={overK} | survivor checks={survChecks} rejects={survRejects} | `-` pauses={dashPauses} after ≠ before.filter (≤ k) at={dashExc}"
-  check state s!"P99 (ω-pay-births) (d) item (1) the landing lemma and the survivors' chain (item 497): {pauses} marked block `:`/`?`/`-` pauses, a post-step mark right of the landing at {overK.length}; the survivors' `: v` after the whole entry accepted at all {survChecks} but {survRejects.length}; at the {dashPauses} `-` pauses the post-step marks are the pre-state marks ≤ k except at {dashExc.length}"
+  IO.println s!"P99 else-domain pauses={lowPauses} no-survivor={noSurv} | marked block pauses={pauses} post-step mark > k at={overK} | survivor checks={survChecks} rejects={survRejects} | `-` pauses={dashPauses} after ≠ before.filter (≤ k) at={dashExc}"
+  check state s!"P99 (ω-pay-births) (d) item (1) the landing lemma and the survivors' chain (item 498): {pauses} marked block `:`/`?`/`-` pauses, a post-step mark right of the landing at {overK.length}; the survivors' `: v` after the whole entry accepted at all {survChecks} but {survRejects.length}; at the {dashPauses} `-` pauses the post-step marks are the pre-state marks ≤ k except at {dashExc.length}"
     -- pinned to the measured counts after the first run (P1 predicted ≥ 100 pauses; 98 measured).
     (pauses == 98 && overK.isEmpty && survChecks == 71 && survRejects.isEmpty && dashPauses == 31 &&
-      dashExc.isEmpty)
+      dashExc.isEmpty && lowPauses ≥ 40 && noSurv ≥ 30)
 
 def testSeqTopRefusedArm (state : IO.Ref TestCollector) : IO Unit := do
   -- P89 (item 438, (χ-seqtop-refused)): the negative arm `ExplicitValueRefused s ∨ SeqTopKey s`
