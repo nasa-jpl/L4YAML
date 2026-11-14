@@ -171,9 +171,20 @@ uint8_t l4yaml_value_kind(l4yaml_value_t v);
 
 /*
  * Scalar content as a C string.  Returns "" for non-scalar values.
+ * Legacy NUL-terminated view: use l4yaml_value_string_bytes for
+ * strings that may contain embedded NUL characters.
  * See "String lifetime" note at the top of this header.
  */
 const char *l4yaml_value_string(l4yaml_value_t v);
+
+/*
+ * Length-aware scalar content, including embedded NUL bytes.  Writes the
+ * UTF-8 byte length (excluding the terminal C NUL) to *len if len is not
+ * NULL.  Pass NULL when the length is not needed.  The returned pointer
+ * has the same lifetime as l4yaml_value_string; copy before the
+ * next string-returning call.  Returns "" and length 0 for non-scalars.
+ */
+const char *l4yaml_value_string_bytes(l4yaml_value_t v, size_t *len);
 
 /*
  * Scalar presentation style: L4YAML_STYLE_PLAIN (0),
@@ -203,12 +214,21 @@ l4yaml_value_t l4yaml_value_map_key(l4yaml_value_t v, uint32_t i);
 l4yaml_value_t l4yaml_value_map_val(l4yaml_value_t v, uint32_t i);
 
 /*
- * Look up a mapping key by string content.
+ * Look up a mapping key by NUL-terminated string content (legacy API).
+ * Use l4yaml_value_lookup_bytes for keys that may contain embedded NUL.
  * Returns the associated YamlValue, or NULL if not found / not a mapping.
  * Caller must free a non-NULL result.
  */
 l4yaml_value_t l4yaml_value_lookup(l4yaml_value_t v,
                                          const char *key);
+
+/*
+ * Look up a mapping key by its exact UTF-8 bytes (including embedded NUL).
+ * The key_len bytes at key must be valid UTF-8.
+ * Returns an owned value handle, or NULL if absent / not a mapping.
+ */
+l4yaml_value_t l4yaml_value_lookup_bytes(l4yaml_value_t v,
+                                        const char *key, size_t key_len);
 
 /*
  * YAML tag string (e.g. "!!int", "!custom").
