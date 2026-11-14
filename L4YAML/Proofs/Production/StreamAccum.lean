@@ -28344,6 +28344,15 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
                        · exact kvU nvX hmem')⟩
                  | Or.inl _, Or.inr h_alt => Or.inr h_alt
                  | Or.inr h_alt, _ => Or.inr h_alt
+               else if hnil : RegisterWitness.markedCols s' = [] then
+                 -- Item 498: no mark survives the landing — the chain's domain on `s'` is empty and the
+                 -- `else` pays with the empty list; a surviving ancestor's chain is item (2)'s premise.
+                 Or.inl ⟨[], (RegisterWitness.MarkedColsIn.of_markedCols_nil hnil).mono (fun _ h => absurd h List.not_mem_nil),
+                   fun _ => RegisterWitness.MarkedColsIn.of_markedCols_nil hnil, fun _ h => absurd h List.not_mem_nil⟩
+               else if hallq : c = '?' ∧ ∀ m ∈ RegisterWitness.markedCols s', m = k then
+                 Or.inl ⟨[], fun i l c' hi hc => List.mem_singleton.mpr
+                     (hallq.2 _ (RegisterWitness.markedCols_mem.mpr ⟨i, l, c', hi, hc, rfl⟩)),
+                   fun hne => absurd hallq.1 hne, fun _ h => absurd h List.not_mem_nil⟩
                else Or.inr trivial
            | _ => Or.inr trivial) h_mcstep h_mcstep_ne
       by_cases hc_colon : c = ':'
@@ -30359,6 +30368,15 @@ lemma accum_block_on_pendingBlock
                 Or.inl ⟨RegisterWitness.markedCols sc, (by have h1 := (RegisterWitness.AtCol.of_corr hcorr_prep).1; have h2 := SIndent_col h_ind; have h := h_mcstep _ (RegisterWitness.MarkedColsIn.self sc); rw [Int.toNat_natCast] at h; rwa [show ((s_prep.col : Nat) : Nat) = k by omega] at h), (fun hne => h_mcstep_ne hne _ (RegisterWitness.MarkedColsIn.self sc)),
                   entryChainMap hnk h_ssl h_ind kslot⟩
             | Or.inr h_alt, Or.inr _ => Or.inr h_alt
+          else if hnil : RegisterWitness.markedCols s' = [] then
+            -- Item 498: no mark survives the landing — the chain's domain on `s'` is empty and the
+            -- `else` pays with the empty list; a surviving ancestor's chain is item (2)'s premise.
+            Or.inl ⟨[], (RegisterWitness.MarkedColsIn.of_markedCols_nil hnil).mono (fun _ h => absurd h List.not_mem_nil),
+              fun _ => RegisterWitness.MarkedColsIn.of_markedCols_nil hnil, fun _ h => absurd h List.not_mem_nil⟩
+          else if hallq : c = '?' ∧ ∀ m ∈ RegisterWitness.markedCols s', m = k then
+            Or.inl ⟨[], fun i l c' hi hc => List.mem_singleton.mpr
+                (hallq.2 _ (RegisterWitness.markedCols_mem.mpr ⟨i, l, c', hi, hc, rfl⟩)),
+              fun hne => absurd hallq.1 hne, fun _ h => absurd h List.not_mem_nil⟩
           else Or.inr trivial) h_mcstep h_mcstep_ne
       -- Item 92: the frame's VALUE line fires on the `:` at its own column —
       -- the awaited entry closes empty into the compact KEY (`? -⏎: - w`);
