@@ -5911,7 +5911,7 @@ example {P : SurfPos → Prop} {sp_key sp_v sp_e sp_i sp_v2 : SurfPos}
     ∃ ks' : List FrameLevel, ks' = [] ∧ P sp_v2 :=
   match (birthOne route sp_v he sp_e t).resumeAt (List.mem_singleton.mpr rfl) with
   | ⟨ks', hw, cont⟩ =>
-      ⟨ks', hw.nil_of_singleton,
+      ⟨ks', resumeWidths_nil_of_singleton hw,
         (cont sp_v2 (SCompactMapTail.cons 0 sp_e sp_i sp_v2 sp_v2 hi he2 (SCompactMapTail.nil 0 sp_v2))).close⟩
 
 -- …and the bottom IS the route's: with the empty second tail the composed frame closes to the
