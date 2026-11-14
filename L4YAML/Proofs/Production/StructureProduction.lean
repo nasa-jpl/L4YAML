@@ -1204,7 +1204,7 @@ lemma isNsChar_iff_bool (c : Char) :
       (!isWhiteSpaceBool c && !isLineBreakBool c && isPrintableBool c && c != '﻿') = true := by
   simp only [isNsChar, ← isWhiteSpace_iff, ← isLineBreak_iff, ← isPrintable_iff]
   cases h1 : isWhiteSpaceBool c <;> cases h2 : isLineBreakBool c <;>
-    cases h3 : isPrintableBool c <;> simp [h1, h2, h3, bne_iff_ne]
+    cases h3 : isPrintableBool c <;> simp [bne_iff_ne]
 
 lemma isNsDecDigit_of_isDigit {c : Char} (h : c.isDigit = true) : isNsDecDigit c := by
   simp only [Char.isDigit, Bool.and_eq_true, decide_eq_true_eq] at h

@@ -442,7 +442,7 @@ lemma unwindPop_fields (s : ScannerState) :
     s'.indents = s.indents.pop ∧ s'.pendingKeys = s.pendingKeys.pop ∧
     s'.flowLevel = s.flowLevel ∧ s'.explicitKeyLine = s.explicitKeyLine ∧
     s'.explicitKeyCol = s.explicitKeyCol ∧ s'.explicitKeyStack = s.explicitKeyStack := by
-  simp [ScannerState.emit, ScannerState.emitAt]
+  simp [ScannerState.emit]
 
 lemma SlotsOk.pop {s s' : ScannerState} (h : SlotsOk s)
     (hind : s'.indents = s.indents.pop) (hpk : s'.pendingKeys = s.pendingKeys.pop) :
@@ -456,7 +456,7 @@ lemma SlotsOk.pop {s s' : ScannerState} (h : SlotsOk s)
     rw [indentColumns_getElem?, hind, Array.getElem?_pop]
     rw [indentColumns_getElem?] at hc
     have hsz := h.1
-    rw [if_pos (by omega)]; exact hc
+    rw [ite_eq_left (by omega)]; exact hc
   · cases hi
 
 lemma unwindIndentsLoop_slots (s : ScannerState) (col : Int) (fuel : Nat) (h : SlotsOk s) :
@@ -524,7 +524,7 @@ lemma unwindIndentsLoop_innermost (s : ScannerState) (col : Int) (fuel : Nat)
       rw [h2, Array.getElem?_pop] at hi
       split at hi
       · have := hmarked i l hi
-        rw [indentColumns_getElem?, h1, Array.getElem?_pop, if_pos (by omega)]
+        rw [indentColumns_getElem?, h1, Array.getElem?_pop, ite_eq_left (by omega)]
         rw [indentColumns_getElem?] at this; exact this
       · cases hi
     · rfl
@@ -539,7 +539,7 @@ lemma scanKey_pendingKeys {s s' : ScannerState} (h_noflow : s.inFlow = false)
   repeat (any_goals (split at hok))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at hok; subst hok)
-  all_goals simp [h_noflow, advance_preserves_pendingKeys, emit_pendingKeys,
+  all_goals simp [advance_preserves_pendingKeys,
     L4YAML.Proofs.EmitterScannability.advance_preserves_indents, ScannerState.emit]
 
 lemma inFlow_false_iff (s : ScannerState) : s.inFlow = false ↔ s.flowLevel = 0 := by
@@ -725,7 +725,7 @@ lemma scanValue_sound {s s' : ScannerState} (hok : scanValue s = .ok s') (h : So
     simp [ScannerState.indentColumns, hadv_ind]
   have hadv_fl : (((scanValuePrepare (scanValueClearKey s)).emit .value).advance).flowLevel
       = s.flowLevel := by
-    rw [L4YAML.Proofs.ScannerLoopInvariant.advance_flowLevel]; simp [ScannerState.emit, ScannerState.emitAt, hp3, hck3]
+    rw [L4YAML.Proofs.ScannerLoopInvariant.advance_flowLevel]; simp [ScannerState.emit, hp3, hck3]
   have hadv_st : (((scanValuePrepare (scanValueClearKey s)).emit .value).advance).explicitKeyStack
       = s.explicitKeyStack := by
     rw [L4YAML.Proofs.ScannerEkStack.advance_preserves_explicitKeyStack,
@@ -814,7 +814,7 @@ lemma scanBlockEntry_pendingKeys {s s' : ScannerState} (hnf : s.inFlow = false)
     (hok : scanBlockEntry s = .ok s') :
     s'.pendingKeys = (pushSequenceIndent s (s.col : Int)).pendingKeys := by
   unfold scanBlockEntry at hok
-  simp only [bind, Except.bind, hnf, Bool.not_false, if_true] at hok
+  simp only [bind, Except.bind, hnf, Bool.not_false, ite_true] at hok
   repeat (any_goals (split at hok))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at hok; subst hok)
@@ -843,8 +843,7 @@ lemma scanFlowSequenceStart_sound (s : ScannerState) (h : Sound s) :
   have hpk := scanFlowSequenceStart_preserves_pendingKeys s
   have hind : (scanFlowSequenceStart s).indents = s.indents := by
     unfold scanFlowSequenceStart
-    simp only [L4YAML.Proofs.EmitterScannability.advance_preserves_indents, ScannerState.emit,
-      ScannerState.emitAt]
+    simp only [L4YAML.Proofs.EmitterScannability.advance_preserves_indents, ScannerState.emit]
   have hst := L4YAML.Proofs.ScannerCorrectness.scanFlowSequenceStart_ek_pushed s
   have hfl := L4YAML.Proofs.ScannerContracts.scanFlowSequenceStart_flowLevel s
   have hcols : (scanFlowSequenceStart s).indentColumns = s.indentColumns := by
@@ -859,8 +858,8 @@ lemma scanFlowSequenceStart_sound (s : ScannerState) (h : Sound s) :
   · intro _
     rw [hst, hinn, Array.getElem?_push]
     rcases Nat.eq_zero_or_pos s.flowLevel with h0 | hpos
-    · rw [if_pos (by omega), h.reg h0]
-    · rw [if_neg (by omega)]; exact h.base hpos
+    · rw [ite_eq_left (by omega), h.reg h0]
+    · rw [ite_eq_right (by omega)]; exact h.base hpos
   · show (scanFlowSequenceStart s).explicitKeyStack.size = (scanFlowSequenceStart s).flowLevel
     rw [hst, hfl, Array.size_push, hsz]
 
@@ -869,8 +868,7 @@ lemma scanFlowMappingStart_sound (s : ScannerState) (h : Sound s) :
   have hpk := scanFlowMappingStart_preserves_pendingKeys s
   have hind : (scanFlowMappingStart s).indents = s.indents := by
     unfold scanFlowMappingStart
-    simp only [L4YAML.Proofs.EmitterScannability.advance_preserves_indents, ScannerState.emit,
-      ScannerState.emitAt]
+    simp only [L4YAML.Proofs.EmitterScannability.advance_preserves_indents, ScannerState.emit]
   have hst := L4YAML.Proofs.ScannerCorrectness.scanFlowMappingStart_ek_pushed s
   have hfl := L4YAML.Proofs.ScannerContracts.scanFlowMappingStart_flowLevel s
   have hcols : (scanFlowMappingStart s).indentColumns = s.indentColumns := by
@@ -885,8 +883,8 @@ lemma scanFlowMappingStart_sound (s : ScannerState) (h : Sound s) :
   · intro _
     rw [hst, hinn, Array.getElem?_push]
     rcases Nat.eq_zero_or_pos s.flowLevel with h0 | hpos
-    · rw [if_pos (by omega), h.reg h0]
-    · rw [if_neg (by omega)]; exact h.base hpos
+    · rw [ite_eq_left (by omega), h.reg h0]
+    · rw [ite_eq_right (by omega)]; exact h.base hpos
   · show (scanFlowMappingStart s).explicitKeyStack.size = (scanFlowMappingStart s).flowLevel
     rw [hst, hfl, Array.size_push, hsz]
 
@@ -918,7 +916,7 @@ lemma scanFlowSequenceEnd_sound (s : ScannerState) (h : Sound s) (hpos : 0 < s.f
     rw [hreg, hinn, Array.back?, h1, hb]; rfl
   · intro hpos'
     rw [hfl] at hpos'
-    rw [hst, hinn, Array.getElem?_pop, if_pos (by omega)]; exact hb
+    rw [hst, hinn, Array.getElem?_pop, ite_eq_left (by omega)]; exact hb
   · show (scanFlowSequenceEnd s).explicitKeyStack.size = (scanFlowSequenceEnd s).flowLevel
     rw [hst, hfl, Array.size_pop, hsz]
 
@@ -947,7 +945,7 @@ lemma scanFlowMappingEnd_sound (s : ScannerState) (h : Sound s) (hpos : 0 < s.fl
     rw [hreg, hinn, Array.back?, h1, hb]; rfl
   · intro hpos'
     rw [hfl] at hpos'
-    rw [hst, hinn, Array.getElem?_pop, if_pos (by omega)]; exact hb
+    rw [hst, hinn, Array.getElem?_pop, ite_eq_left (by omega)]; exact hb
   · show (scanFlowMappingEnd s).explicitKeyStack.size = (scanFlowMappingEnd s).flowLevel
     rw [hst, hfl, Array.size_pop, hsz]
 
@@ -1028,11 +1026,10 @@ lemma scanDocumentStart_sound (s : ScannerState) (h : Sound s) (hfl : s.flowLeve
     (L4YAML.Proofs.ScannerEkStack.scanDocumentStart_preserves_explicitKeyStack s)
   · unfold scanDocumentStart; simp [advanceN_preserves_pendingKeys, emit_pendingKeys]
   · unfold scanDocumentStart
-    simp [L4YAML.Proofs.IndentStackBase.advanceN_preserves_indents,
-      L4YAML.Proofs.ScannerContracts.emit_indents]
+    simp [L4YAML.Proofs.IndentStackBase.advanceN_preserves_indents]
   · unfold scanDocumentStart
     simp [L4YAML.Proofs.ScannerCorrectness.advanceN_preserves_flowLevel, ScannerState.emit,
-      ScannerState.emitAt, L4YAML.Proofs.ScannerCorrectness.unwindIndents_preserves_flowLevel]
+      L4YAML.Proofs.ScannerCorrectness.unwindIndents_preserves_flowLevel]
 
 lemma scanDocumentEnd_sound {s s' : ScannerState} (hok : scanDocumentEnd s = .ok s') (h : Sound s)
     (hfl : s.flowLevel = 0) (hm : Mono s) (hbase : SentinelBase s) : Sound s' := by
@@ -1044,13 +1041,11 @@ lemma scanDocumentEnd_sound {s s' : ScannerState} (hok : scanDocumentEnd s = .ok
   all_goals
     refine Sound.of_doc_reset h hfl hm hbase ?_ ?_ ?_ rfl rfl ?_
   all_goals (try simp [advanceN_preserves_pendingKeys, emit_pendingKeys])
-  all_goals (try simp [L4YAML.Proofs.IndentStackBase.advanceN_preserves_indents,
-      L4YAML.Proofs.ScannerContracts.emit_indents])
+  all_goals (try simp [L4YAML.Proofs.IndentStackBase.advanceN_preserves_indents])
   all_goals (try simp [L4YAML.Proofs.ScannerCorrectness.advanceN_preserves_flowLevel,
-      ScannerState.emit, ScannerState.emitAt,
+      ScannerState.emit,
       L4YAML.Proofs.ScannerCorrectness.unwindIndents_preserves_flowLevel])
   all_goals simp [L4YAML.Proofs.ScannerEkStack.advanceN_preserves_explicitKeyStack,
-      L4YAML.Proofs.ScannerEkStack.emit_preserves_explicitKeyStack,
       L4YAML.Proofs.ScannerEkStack.unwindIndents_preserves_explicitKeyStack]
 
 /-! ## §4  The preprocess and the dispatchers -/
@@ -1196,7 +1191,7 @@ lemma hook_after_unwind {s0 : ScannerState} (h : Sound s0) (hm : Mono s0) (hnf :
           rw [← innermost_eq_go, ← innermostPendingKey_eq, ← hreg0, hnone]
         rw [← hreg0] at hsnd
         simp only at hsnd
-        have : (0 : Int) ≤ (s0.col : Int) := Int.ofNat_nonneg _
+        have : (0 : Int) ≤ (s0.col : Int) := Int.natCast_nonneg _
         omega
       · rw [ht_ekc, ht_col] at hcol
         exact Int.le_trans hle hcol

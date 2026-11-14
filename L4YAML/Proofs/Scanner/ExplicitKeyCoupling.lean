@@ -2012,7 +2012,7 @@ lemma scanValue_ok_of_ekl_none {s s' : ScannerState}
         · show (if s.inFlow = true then _
               else if _ then (_, (scanValueClearKey s).explicitKeyLine, _)
               else PendingKeys.close _ _ _).2.1 = none
-          rw [if_neg (by rw [h_noflow]; exact Bool.false_ne_true), h_ek_kc]
+          rw [ite_eq_right (by rw [h_noflow]; exact Bool.false_ne_true), h_ek_kc]
           simp [scanValueKeySurvives, h_noflow, h_ek_kc]
 
 /-- **Live `?`, the `:` OFF the frame's column: the `:` STAMPS.**  The third
@@ -2179,10 +2179,10 @@ lemma scanValue_ekl_none_of_col_le {s s' : ScannerState}
             else if _ then (_, (scanValueClearKey s).explicitKeyLine, _)
             else PendingKeys.close _ _ (scanValueClearKey s).explicitKeyCol).2.1 = none ∨ _
         by_cases hf : s.inFlow = true
-        · rw [if_pos hf]; exact Or.inl rfl
-        · rw [if_neg hf]
+        · rw [ite_eq_left hf]; exact Or.inl rfl
+        · rw [ite_eq_right hf]
           by_cases hsv : scanValueKeySurvives s (scanValueClearKey s) = true
-          · rw [if_pos hsv]
+          · rw [ite_eq_left hsv]
             left
             unfold scanValueKeySurvives at hsv
             simp only [Bool.and_eq_true, Bool.or_eq_true, Bool.not_eq_true', decide_eq_true_eq] at hsv
@@ -2197,7 +2197,7 @@ lemma scanValue_ekl_none_of_col_le {s s' : ScannerState}
                   exact absurd hgt (Int.not_lt.mpr (h_kcol h_poss_kc))
                 · rw [h_false] at h_poss_kc; cases h_poss_kc
               · exact absurd hgt (Int.not_lt.mpr h_col)
-          · rw [if_neg hsv, h_kc]
+          · rw [ite_eq_right hsv, h_kc]
             exact Or.inr ⟨_, _, rfl, rfl⟩
 
 /-- **When the field survives the `:`, it survived from a live pre-state with
@@ -2232,17 +2232,17 @@ lemma scanValue_ekl_some_source {s s' : ScannerState}
               else -1)
             else PendingKeys.close _ _ (scanValueClearKey s).explicitKeyCol).2.1).isSome = true → _
         by_cases hf : s.inFlow = true
-        · rw [if_pos hf]; intro hh; simp at hh
-        · rw [if_neg hf]
+        · rw [ite_eq_left hf]; intro hh; simp at hh
+        · rw [ite_eq_right hf]
           by_cases hsv : scanValueKeySurvives s (scanValueClearKey s) = true
-          · rw [if_pos hsv]
+          · rw [ite_eq_left hsv]
             intro hh
             left
             refine ⟨h_l, ?_, by rw [← h_l]; exact hh⟩
             show (if (scanValueClearKey s).explicitKeyLine.isSome = true
                 then (scanValueClearKey s).explicitKeyCol else -1) = s.explicitKeyCol
-            rw [if_pos hh]; exact h_c
-          · rw [if_neg hsv, h_c]
+            rw [ite_eq_left hh]; exact h_c
+          · rw [ite_eq_right hsv, h_c]
             intro _
             exact Or.inr ⟨_, _, rfl, rfl⟩
 

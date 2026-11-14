@@ -563,7 +563,7 @@ lemma scanNextToken_flow_value (s : ScannerState)
     -- Item 48's epilogue: with `explicitKeyLine = none` and `inFlow = true`
     -- every survival arm is dead, so the new fields reduce to the literals.
     simp only [h_ad_ek, h_ad_inFlow, Option.isSome_none, Bool.false_and,
-               Bool.not_true, Bool.true_or, ite_false, ite_true, Bool.false_eq_true]
+               Bool.true_or, ite_false, ite_true, Bool.false_eq_true]
     rfl
   -- scanValueTabCheck is .ok () since !s_adv.inFlow = false
   -- s_adv.inFlow = s_prep.inFlow = s_ad.inFlow = true (through emit and advance)

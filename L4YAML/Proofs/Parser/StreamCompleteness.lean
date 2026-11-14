@@ -134,7 +134,7 @@ lemma stateOk_at {ts : Toks} (h : PerTokenOk ts) {p : Nat} (hp : p < ts.size) :
 lemma alias_ok {ts : Toks} (h : PerTokenOk ts) {p : Nat} {n : String}
     (ht : tok ts p = some (.alias n)) : n ∈ (envAt ts p).anchors := by
   obtain ⟨rest, hw⟩ := stateOk_at h (tok_some_lt ht)
-  have he : perTokenEvents ts p = [.useAlias n] := by simp [perTokenEvents, prevDirAt, ht]
+  have he : perTokenEvents ts p = [.useAlias n] := by simp [perTokenEvents, ht]
   rw [he] at hw
   exact hw.1
 
@@ -143,7 +143,7 @@ lemma tag_ok {ts : Toks} (h : PerTokenOk ts) {p : Nat} {hd s : String}
   by_cases h0 : hd = ""
   · exact Or.inl (Or.inl h0)
   obtain ⟨rest, hw⟩ := stateOk_at h (tok_some_lt ht)
-  have he : perTokenEvents ts p = [.useTag hd] := by simp [perTokenEvents, prevDirAt, ht, h0]
+  have he : perTokenEvents ts p = [.useTag hd] := by simp [perTokenEvents, ht, h0]
   rw [he] at hw
   exact hw.1
 
@@ -203,7 +203,7 @@ lemma peekPos_getD {ts : Toks} {ps : ParseState} (h : ps.tokens = ts) :
   rw [h]
   by_cases hi : ps.pos < ts.size
   · simp [hi, get_pos hi]
-  · simp [hi, posAt, Array.getElem?_eq_none (Nat.not_lt.1 hi)]
+  · simp [hi, posAt]
 
 lemma Inv.peek {ts ps i} (h : Inv ts ps i) : ps.peek? = tok ts i := by
   rw [peek_tok h.tokens, h.pos]
@@ -227,7 +227,7 @@ lemma Inv.same {ts ps i} (h : Inv ts ps i) {ps' : ParseState} (ht : ps'.tokens =
 
 lemma envAt_succ_anchor {ts : Toks} {p : Nat} {n : String} (h : tok ts p = some (.anchor n)) :
     envAt ts (p + 1) = { envAt ts p with anchors := n :: (envAt ts p).anchors } := by
-  rw [envAt_succ]; simp [perTokenEvents, prevDirAt, h, envAfter, stepEnv]
+  rw [envAt_succ]; simp [perTokenEvents, h, envAfter, stepEnv]
 
 lemma Inv.declare {ts ps i} (h : Inv ts ps i) {ps' : ParseState} {j : Nat} (n : String)
     (ht : ps'.tokens = ts) (hp : ps'.pos = j) (hb : j ≤ ts.size)
@@ -725,7 +725,7 @@ lemma tryConsume_hit {ts ps i} (hinv : Inv ts ps i) {t : YamlToken} (h : tok ts 
     (hrefl : (t == t) = true) : ps.tryConsume t = (true, ps.advance) := by
   unfold ParseState.tryConsume
   rw [hinv.peek, h]
-  simp [hrefl]
+  simp only [hrefl, ↓reduceIte]
 
 lemma tryConsume_value_miss {ts ps i} (hinv : Inv ts ps i) (h : tok ts i ≠ some .value) :
     ps.tryConsume .value = (false, ps) := by
@@ -809,9 +809,8 @@ lemma valueProps_loop_ok {ts ps m kc} (hinv : Inv ts ps (m + 1)) (hvp : ValuePro
          cases ho2 : ts[m + 2]!.val
          all_goals first
            | (have hpr2 : isProp (tok ts (m + 2)) = true := by rw [← getBang_val h2, ho2]; rfl
-              simp only [cond _ (hvp.2 hpr hpr2), Bool.false_eq_true, ↓reduceIte, pure,
-                Except.pure, bind, Except.bind])
-           | simp only [pure, Except.pure, bind, Except.bind])
+              simp only [cond _ (hvp.2 hpr hpr2), Bool.false_eq_true, ↓reduceIte])
+           | simp only)
       | simp only [pure, Except.pure, bind, Except.bind]
 
 set_option maxHeartbeats 2000000 in
@@ -839,7 +838,7 @@ lemma tg_parse {ts : Toks} (hS : PerTokenOk ts) {s : Sym} {i j : Nat} (h : TG ts
       (DeclaredIndex.contains_iff _ _).2 (hinv.anchors _ (alias_ok hS ha))
     have hinv' := hinv.step ha rfl
     unfold parseNode
-    simp only [hpk, hdecl, Bool.not_true, Bool.false_eq_true, ↓reduceIte, bind, Except.bind,
+    simp only [hpk, hdecl, Bool.not_true, Bool.false_eq_true, ↓reduceIte,
       pure, Except.pure]
     split
     · exact ⟨_, _, rfl, hinv'.same rfl rfl rfl rfl⟩
@@ -904,7 +903,7 @@ lemma tg_parse {ts : Toks} (hS : PerTokenOk ts) {s : Sym} {i j : Nat} (h : TG ts
     rw [hinv.peek, hb]
     simp only [Bool.false_eq_true, ↓reduceIte]
     unfold parseImplicitBlockSequence
-    simp only [bind, Except.bind, pure, Except.pure]
+    simp only [bind, Except.bind]
     obtain ⟨_, items', ps', hloop, hinv'⟩ := ih ps f #[] hinv (by simp [fuelReq] at hf ⊢; omega)
     rw [hloop]
     exact ⟨_, _, rfl, hinv'⟩
@@ -936,7 +935,7 @@ lemma tg_parse {ts : Toks} (hS : PerTokenOk ts) {s : Sym} {i j : Nat} (h : TG ts
     have hle := tg_le hent
     obtain ⟨f, rfl⟩ : ∃ f, fuel = f + 1 := ⟨fuel - 1, by simp [fuelReq] at hf; omega⟩
     unfold parseBlockSequence
-    simp only [bind, Except.bind, pure, Except.pure]
+    simp only [bind, Except.bind]
     obtain ⟨⟨items', ps', hloop, hinv'⟩, _⟩ :=
       ih ps.advance f #[] (hinv.step hs rfl) (by simp [fuelReq] at hf ⊢; omega)
     rw [hloop]
@@ -970,7 +969,7 @@ lemma tg_parse {ts : Toks} (hS : PerTokenOk ts) {s : Sym} {i j : Nat} (h : TG ts
     constructor
     · unfold parseBlockSequenceLoop
       rw [hinv.peek, hb]
-      simp only [bind, Except.bind, pure, Except.pure]
+      simp only [bind, Except.bind]
       rw [hinv.peek_advance]
       split
       all_goals first
@@ -985,7 +984,7 @@ lemma tg_parse {ts : Toks} (hS : PerTokenOk ts) {s : Sym} {i j : Nat} (h : TG ts
              (hinv2.same rfl rfl rfl rfl) (by simp [fuelReq] at hf ⊢; omega)).1)
     · unfold parseImplicitBlockSequenceLoop
       rw [hinv.peek, hb]
-      simp only [bind, Except.bind, pure, Except.pure]
+      simp only [bind, Except.bind]
       rw [hinv.peek_advance]
       split
       all_goals first
@@ -1003,7 +1002,7 @@ lemma tg_parse {ts : Toks} (hS : PerTokenOk ts) {s : Sym} {i j : Nat} (h : TG ts
     have hle := tg_le hent
     obtain ⟨f, rfl⟩ : ∃ f, fuel = f + 1 := ⟨fuel - 1, by simp [fuelReq] at hf; omega⟩
     unfold parseBlockMapping
-    simp only [bind, Except.bind, pure, Except.pure]
+    simp only [bind, Except.bind]
     obtain ⟨pairs', ps', hloop, hinv'⟩ :=
       ih ps.advance f #[] (hinv.step hs rfl) (by simp [fuelReq] at hf ⊢; omega)
     rw [hloop]
@@ -1029,7 +1028,7 @@ lemma tg_parse {ts : Toks} (hS : PerTokenOk ts) {s : Sym} {i j : Nat} (h : TG ts
     obtain ⟨f, rfl⟩ : ∃ f, fuel = f + 1 := ⟨fuel - 1, by simp [fuelReq] at hf; omega⟩
     unfold parseBlockMappingLoop
     rw [hinv.peek, hk]
-    simp only [bind, Except.bind, pure, Except.pure]
+    simp only [bind, Except.bind]
     obtain ⟨k, v, ps2, hent, hinv2⟩ := ihk ps f pairs.size hinv (by simp [fuelReq] at hf ⊢; omega)
     rw [hent]
     exact ihr ps2 f _ hinv2 (by simp [fuelReq] at hf ⊢; omega)
@@ -1042,9 +1041,9 @@ lemma tg_parse {ts : Toks} (hS : PerTokenOk ts) {s : Sym} {i j : Nat} (h : TG ts
     have hinv1 := hinv.step hv rfl
     unfold parseBlockMappingLoop
     rw [hinv.peek, hv]
-    simp only [bind, Except.bind, pure, Except.pure]
+    simp only [bind, Except.bind]
     unfold handleBlockMappingValueEntry
-    simp only [bind, Except.bind, pure, Except.pure]
+    simp only [bind, Except.bind]
     have hpk : ({ ps.advance with currentPath := ps.advance.currentPath.push (.key s!"{pairs.size}") }
         : ParseState).peek? = tok ts (i0 + 1) := by
       rw [show ({ ps.advance with currentPath := ps.advance.currentPath.push (.key s!"{pairs.size}") }
@@ -1073,7 +1072,7 @@ lemma tg_parse {ts : Toks} (hS : PerTokenOk ts) {s : Sym} {i j : Nat} (h : TG ts
     have hle2 := tg_le hv
     have hinv1 := hinv.step hk rfl
     unfold handleBlockMappingKeyEntry
-    simp only [bind, Except.bind, pure, Except.pure]
+    simp only [bind, Except.bind]
     rw [peekPos_getD hinv.tokens, hinv.pos, hinv.peek_advance]
     rcases ho : tok ts (i0 + 1) with _ | t <;> (try cases t)
     all_goals first
@@ -1127,7 +1126,7 @@ lemma tg_parse {ts : Toks} (hS : PerTokenOk ts) {s : Sym} {i j : Nat} (h : TG ts
     have hinv2 := hinv1.step hv rfl
     unfold parseBlockMappingEntryValue
     rw [tryConsume_value_miss hinv (by simp [hk])]
-    simp only [bind, Except.bind, pure, Except.pure, Bool.false_eq_true, ↓reduceIte]
+    simp only [Bool.false_eq_true, ↓reduceIte]
     rw [hinv.peek, peekNext_tok hinv.tokens, hinv.pos, hk, hv]
     simp only []
     rw [tryConsume_hit hinv hk rfl, tryConsume_hit hinv1 hv rfl]
@@ -1143,7 +1142,7 @@ lemma tg_parse {ts : Toks} (hS : PerTokenOk ts) {s : Sym} {i j : Nat} (h : TG ts
     intro ps fuel hinv _
     unfold parseBlockMappingEntryValue
     rw [tryConsume_value_miss hinv hnv]
-    simp only [bind, Except.bind, pure, Except.pure, Bool.false_eq_true, ↓reduceIte]
+    simp only [Bool.false_eq_true, ↓reduceIte]
     rw [hinv.peek, peekNext_tok hinv.tokens, hinv.pos]
     split
     · exact absurd ⟨‹_›, ‹_›⟩ hnkv
@@ -1153,7 +1152,7 @@ lemma tg_parse {ts : Toks} (hS : PerTokenOk ts) {s : Sym} {i j : Nat} (h : TG ts
     have hle := tg_le hit
     obtain ⟨f, rfl⟩ : ∃ f, fuel = f + 1 := ⟨fuel - 1, by simp [fuelReq] at hf; omega⟩
     unfold parseFlowSequence
-    simp only [bind, Except.bind, pure, Except.pure]
+    simp only [bind, Except.bind]
     obtain ⟨items', ps', hloop, hinv'⟩ := ih ps.advance f #[] (hinv.step hs rfl)
       (by simp [fuelReq] at hf ⊢; omega) (by simp)
     rw [hloop]
@@ -1185,7 +1184,7 @@ lemma tg_parse {ts : Toks} (hS : PerTokenOk ts) {s : Sym} {i j : Nat} (h : TG ts
     have hle := tg_le hit
     obtain ⟨f, rfl⟩ : ∃ f, fuel = f + 1 := ⟨fuel - 1, by simp [fuelReq] at hf; omega⟩
     unfold parseFlowMapping
-    simp only [bind, Except.bind, pure, Except.pure]
+    simp only [bind, Except.bind]
     obtain ⟨pairs', ps', hloop, hinv'⟩ := ih ps.advance f #[] (hinv.step hs rfl)
       (by simp [fuelReq] at hf ⊢; omega) (by simp)
     rw [hloop]
@@ -1217,7 +1216,7 @@ lemma tg_parse {ts : Toks} (hS : PerTokenOk ts) {s : Sym} {i j : Nat} (h : TG ts
     intro ps fuel path kc hinv hf
     have hle := tg_le hn
     unfold parseFlowMappingValue
-    simp only [bind, Except.bind, pure, Except.pure]
+    simp only [bind, Except.bind]
     have hinv0 : Inv ts ({ ps with currentPath := path.push (.key kc) } : ParseState) r0 :=
       hinv.same rfl rfl rfl rfl
     -- after the optional `?`, we sit at r0'
@@ -1245,7 +1244,7 @@ lemma tg_parse {ts : Toks} (hS : PerTokenOk ts) {s : Sym} {i j : Nat} (h : TG ts
     rename_i r0 r0'
     intro ps fuel path kc hinv _
     unfold parseFlowMappingValue
-    simp only [bind, Except.bind, pure, Except.pure]
+    simp only [bind, Except.bind]
     have hinv0 : Inv ts ({ ps with currentPath := path.push (.key kc) } : ParseState) r0 :=
       hinv.same rfl rfl rfl rfl
     have step1 : ∃ (b : Bool) (ps1 : ParseState), ({ ps with currentPath := path.push (.key kc) }
@@ -1273,7 +1272,7 @@ lemma tg_parse {ts : Toks} (hS : PerTokenOk ts) {s : Sym} {i j : Nat} (h : TG ts
       have hsz : ¬ items.size > 0 := by have := hfirst.1 rfl; omega
       simp only [hsz, ↓reduceIte, bind, Except.bind, pure, Except.pure]
       rw [hinv.peek, hk]
-      simp only [bind, Except.bind, pure, Except.pure]
+      simp only
       obtain ⟨v, ps2, hsp, hinv2⟩ := ihsp
         { ps with currentPath := (ps.currentPath.push (.index items.size)) } f
         (hinv.same rfl rfl rfl rfl) (by simp [fuelReq] at hf ⊢; omega)
@@ -1287,7 +1286,7 @@ lemma tg_parse {ts : Toks} (hS : PerTokenOk ts) {s : Sym} {i j : Nat} (h : TG ts
         · omega
       simp only [hsz, ↓reduceIte, hfe, bind, Except.bind, pure, Except.pure]
       rw [hinv.peek_advance, hk]
-      simp only [bind, Except.bind, pure, Except.pure]
+      simp only
       obtain ⟨v, ps2, hsp, hinv2⟩ := ihsp
         { ps.advance with currentPath := (ps.advance.currentPath.push (.index items.size)) } f
         ((hinv.step hfe rfl).same rfl rfl rfl rfl) (by simp [fuelReq] at hf ⊢; omega)
@@ -1309,7 +1308,7 @@ lemma tg_parse {ts : Toks} (hS : PerTokenOk ts) {s : Sym} {i j : Nat} (h : TG ts
       have hsz : ¬ items.size > 0 := by have := hfirst.1 rfl; omega
       simp only [hsz, ↓reduceIte, bind, Except.bind, pure, Except.pure]
       rw [hinv.peek]
-      simp only [bind, Except.bind, pure, Except.pure]
+      simp only
       rcases ho : tok ts q0 with _ | t <;> (try cases t)
       all_goals first
         | exact absurd ho hnk
@@ -1327,7 +1326,7 @@ lemma tg_parse {ts : Toks} (hS : PerTokenOk ts) {s : Sym} {i j : Nat} (h : TG ts
         · omega
       simp only [hsz, ↓reduceIte, hfe, bind, Except.bind, pure, Except.pure]
       rw [hinv.peek_advance]
-      simp only [bind, Except.bind, pure, Except.pure]
+      simp only
       rcases ho : tok ts (i0 + 1) with _ | t <;> (try cases t)
       all_goals first
         | exact absurd ho hnk
@@ -1352,7 +1351,7 @@ lemma tg_parse {ts : Toks} (hS : PerTokenOk ts) {s : Sym} {i j : Nat} (h : TG ts
     all_goals first
       | (have hr := node_empty_of hn (by rw [ho]; rfl)
          subst hr
-         simp only [bind, Except.bind, pure, Except.pure]
+         simp only [bind, Except.bind]
          have hinv2' : Inv ts ({ ps.advance with currentPath := ps.advance.currentPath.push (.key (keyPathSegment emptyNode)) }
            : ParseState) _ := hinv1.same rfl rfl rfl rfl
          rw [tryConsume_hit hinv2' hv rfl]
@@ -1371,7 +1370,7 @@ lemma tg_parse {ts : Toks} (hS : PerTokenOk ts) {s : Sym} {i j : Nat} (h : TG ts
          subst hr
          exact absurd (ho.symm.trans hv) nofun)
       | (obtain ⟨key, ps2, hnode, hinv2⟩ := ihn ps.advance f hinv1 (by simp [fuelReq] at hf ⊢; omega)
-         simp only [bind, Except.bind, pure, Except.pure, hnode]
+         simp only [bind, Except.bind, hnode]
          have hinv2' : Inv ts ({ ps2 with currentPath := ps2.currentPath.push (.key (keyPathSegment key)) }
            : ParseState) _ := hinv2.same rfl rfl rfl rfl
          rw [tryConsume_hit hinv2' hv rfl]
@@ -1399,13 +1398,13 @@ lemma tg_parse {ts : Toks} (hS : PerTokenOk ts) {s : Sym} {i j : Nat} (h : TG ts
     all_goals first
       | (have hr := node_empty_of hn (by rw [ho]; rfl)
          subst hr
-         simp only [bind, Except.bind, pure, Except.pure]
+         simp only [bind, Except.bind]
          have hinv2' : Inv ts ({ ps.advance with currentPath := ps.advance.currentPath.push (.key (keyPathSegment emptyNode)) }
            : ParseState) _ := hinv1.same rfl rfl rfl rfl
          rw [tryConsume_value_miss hinv2' hnv]
          exact ⟨_, _, rfl, hinv2'.same rfl rfl rfl rfl⟩)
       | (obtain ⟨key, ps2, hnode, hinv2⟩ := ihn ps.advance f hinv1 (by simp [fuelReq] at hf ⊢; omega)
-         simp only [bind, Except.bind, pure, Except.pure, hnode]
+         simp only [bind, Except.bind, hnode]
          have hinv2' : Inv ts ({ ps2 with currentPath := ps2.currentPath.push (.key (keyPathSegment key)) }
            : ParseState) _ := hinv2.same rfl rfl rfl rfl
          rw [tryConsume_value_miss hinv2' hnv]
@@ -1426,7 +1425,7 @@ lemma tg_parse {ts : Toks} (hS : PerTokenOk ts) {s : Sym} {i j : Nat} (h : TG ts
       have hsz : ¬ pairs.size > 0 := by have := hfirst.1 rfl; omega
       simp only [hsz, ↓reduceIte, bind, Except.bind, pure, Except.pure]
       rw [hinv.peek, hk]
-      simp only [bind, Except.bind, pure, Except.pure]
+      simp only
       unfold parseExplicitKey
       rw [(hinv.step hk rfl).peek]
       rcases ho : tok ts (q0 + 1) with _ | t <;> (try cases t)
@@ -1451,7 +1450,7 @@ lemma tg_parse {ts : Toks} (hS : PerTokenOk ts) {s : Sym} {i j : Nat} (h : TG ts
         · omega
       simp only [hsz, ↓reduceIte, hfe, bind, Except.bind, pure, Except.pure]
       rw [hinv.peek_advance, hk]
-      simp only [bind, Except.bind, pure, Except.pure]
+      simp only
       unfold parseExplicitKey
       rw [((hinv.step hfe rfl).step hk rfl).peek]
       rcases ho : tok ts ((i0 + 1) + 1) with _ | t <;> (try cases t)
@@ -1485,7 +1484,7 @@ lemma tg_parse {ts : Toks} (hS : PerTokenOk ts) {s : Sym} {i j : Nat} (h : TG ts
       have hsz : ¬ pairs.size > 0 := by have := hfirst.1 rfl; omega
       simp only [hsz, ↓reduceIte, bind, Except.bind, pure, Except.pure]
       rw [hinv.peek]
-      simp only [bind, Except.bind, pure, Except.pure]
+      simp only
       rcases ho : tok ts q0 with _ | t <;> (try cases t)
       all_goals first
         | exact absurd ho hnend
@@ -1503,7 +1502,7 @@ lemma tg_parse {ts : Toks} (hS : PerTokenOk ts) {s : Sym} {i j : Nat} (h : TG ts
         · omega
       simp only [hsz, ↓reduceIte, hfe, bind, Except.bind, pure, Except.pure]
       rw [hinv.peek_advance]
-      simp only [bind, Except.bind, pure, Except.pure]
+      simp only
       rcases ho : tok ts (i0 + 1) with _ | t <;> (try cases t)
       all_goals first
         | exact absurd ho hnend
@@ -1563,11 +1562,11 @@ lemma envAt_succ_begin_keep {ts : Toks} {i : Nat} {t : YamlToken} (hi : 0 < i)
   obtain ⟨k, rfl⟩ : ∃ k, i = k + 1 := ⟨i - 1, by omega⟩
   simp only [Nat.add_sub_cancel] at hpd
   rcases hb with rfl | hd
-  · simp [hpd, envAfter, stepEnv, decl]
+  · simp [hpd, envAfter, decl]
   · cases t with
     | tagDirective h _ =>
-      by_cases hb : BuiltinTagHandle h <;> simp [hpd, hb, envAfter, stepEnv, decl]
-    | _ => simp [isDirective] at hd <;> simp [hpd, envAfter, stepEnv, decl]
+      by_cases hb : BuiltinTagHandle h <;> simp [hpd, envAfter, decl]
+    | _ => simp [isDirective] at hd <;> simp [hpd, envAfter, decl]
 
 lemma dirEnvOk_of_decl {ts : Toks} {lo i : Nat} {t : YamlToken} {env : Env}
     (hlo : lo ≤ i) (ho : tok ts i = some t) (henv : envAt ts (i + 1) = envAfter env (decl t))
@@ -1803,7 +1802,7 @@ lemma prepare_ok {ts : Toks} {ps : ParseState} {i d e : Nat} (hd : TG ts .direct
   have hde : e ≤ d + 1 := by rcases hds with ⟨_, rfl, _⟩ | ⟨_, rfl, _⟩ <;> omega
   unfold prepareDocumentState
   rw [hdirs]
-  simp only [bind, Except.bind, pure, Except.pure]
+  simp only [bind, Except.bind]
   generalize hT : Array.filterMap _ dirs = T
   have htags : ∀ h, h ∈ (envAt ts e).tagHandles → T.any (·.1 == h) = true := by
     intro h hm
@@ -1879,7 +1878,7 @@ lemma parseDocument_ok {ts : Toks} {ps : ParseState} {i m : Nat} (hS : PerTokenO
         | directives_cons _ hr => have := tg_le hr; omega)
     obtain ⟨dirs, ps1, hprep, hinv1⟩ := prepare_ok hd hds htk hp hb henv
     unfold parseDocument
-    simp only [hprep, bind, Except.bind, pure, Except.pure]
+    simp only [hprep, bind, Except.bind]
     rw [hinv1.peek]
     rcases ho : tok ts e with _ | t <;> (try cases t)
     all_goals first
@@ -2486,7 +2485,7 @@ public lemma parseStream_accepts (ts : Array (Positioned YamlToken))
   have h_state := perTokenOk_of_tokenStateOk h_shape h_state
   obtain ⟨h0, j, hstream, hj⟩ := h_shape
   unfold parseStream
-  simp only [bind, Except.bind, pure, Except.pure]
+  simp only [bind, Except.bind]
   unfold ParseState.expect
   rw [peek_tok (ts := ts) rfl]
   simp only []

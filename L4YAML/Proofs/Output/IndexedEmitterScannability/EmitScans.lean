@@ -735,7 +735,7 @@ lemma scanNextToken_flow_valueIx (s : ScannerStateIx input)
     -- Item 48's epilogue: with `explicitKeyLine = none` and `inFlow = true`
     -- every survival arm is dead, so the new fields reduce to the literals.
     simp only [h_ad_ek_none, h_ad_flow, Option.isSome_none, Bool.false_and,
-               Bool.not_true, Bool.true_or, ite_true, ite_false, Bool.false_eq_true]
+               Bool.true_or, ite_true, ite_false, Bool.false_eq_true]
   -- Step 7: block dispatch produces the result; compose the pipeline.
   have h_block : scanNextTokenIx_dispatchBlockIndicators s_ad ':' =
       .ok (some { (((scanValuePrepareIx s_ad).emit YamlToken.value).advance) with
