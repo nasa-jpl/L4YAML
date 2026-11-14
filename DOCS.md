@@ -16814,6 +16814,7 @@ Still not the membership split, for item 150's reason: what that punt wants is a
 payload on `KeyPackPunt`, which is a change to the constructor and to every
 consumer of it.
 
+
 ### Item 153 (2026-09-13)
 
 **The property park carries the cover at both faces, and the props landing
@@ -16904,6 +16905,7 @@ since the sentence is a ledger of what the field list has cost.
 
 Still not the membership split, for item 150's reason: what that punt wants is a
 payload on `KeyPackPunt`, a change to the constructor and to every consumer.
+
 
 ### Item 154 (2026-09-13)
 
@@ -17005,6 +17007,7 @@ FRAMES either, so the cover they lacked would have been spendable nowhere.)
 Still not the membership split, for item 150's reason: what that punt wants is a
 payload on `KeyPackPunt`, a change to the constructor and to every consumer.
 
+
 ### Item 155 (2026-09-13)
 
 **The sequence lane gets frames, and then a cover.**  Items 152 and 153 left one
@@ -17105,6 +17108,7 @@ and the `seq-spaces` shape that never reaches the premise, and the nine punting
 
 Still not the membership split, for item 150's reason: what that punt wants is a
 payload on `KeyPackPunt`, a change to the constructor and to every consumer.
+
 
 ### Item 156 (2026-09-13)
 
@@ -17240,6 +17244,7 @@ And the flip's own residue is unchanged and now split by KIND:
 `_or_refused` sites, whose `h_op = true` half this item's lemma refutes once the
 face exists) and row 19's 1c at `content_dispatch_after_close` (a route, not a
 refutation); `rootMapRoute` serves `flowKeyRoute_of_root`'s no-break arm.
+
 
 ### Item 157 (2026-09-13)
 
@@ -17388,6 +17393,7 @@ rather than a refutation and so needs the CONSUMER narrowed, not a guard.
 > unconditional route on the second, and this is not one item.  See
 > [Item 158](#item-158-2026-09-13).
 
+
 ### Item 158 (2026-09-13)
 
 **The property lane's reading, derived — and the half of it that scans clean.**
@@ -17508,6 +17514,7 @@ completed tail — and then `content_dispatch_after_close`'s route, which item 1
 established is a route rather than a refutation and so needs the CONSUMER
 narrowed, not a guard.
 
+
 ### Item 159 (2026-09-13)
 
 **§9.2's dangling run, read through a flow collection — and the trigger that
@@ -17618,6 +17625,7 @@ branch, which serves `pendingBlock`/`pendingMapValue` parks that have no
 completed tail — and then `content_dispatch_after_close`'s route, which item 156
 established is a route rather than a refutation and so needs the CONSUMER
 narrowed, not a guard.
+
 
 ### Item 160 (2026-09-13)
 
@@ -17748,6 +17756,7 @@ said, not a guard.  All of it is witnessed in
 > landing's column, and the rest of it is legal.  Items 161–165 repeated the
 > sentence from here.  See [Item 166](#item-166-2026-09-14).
 
+
 ### Item 161 (2026-09-13)
 
 **The bracket balance, read FORWARD — and the gate priced to its ten sites.**
@@ -17852,6 +17861,7 @@ refused by the scanner (`a: 1⏎- x` is `invalidBareDocument 1,0`, `k:⏎␣␣a
 routes through the key cascade — a CONSUMER to narrow, as item 156 said, not a
 guard.
 
+
 ### Item 162 (2026-09-13)
 
 **The park a flow frame was opened over, anchored across its interior — and the
@@ -17955,6 +17965,7 @@ landing's own half, `bareNodeRoute_or_refused`'s `h_op = true` branch, whose
 routes through the key cascade — a CONSUMER to narrow, as item 156 said, not a
 guard.
 
+
 ### Item 163 (2026-09-13)
 
 **The tower, indexed by the gate its base frame's route is stated against —
@@ -18038,6 +18049,7 @@ the block landing's own half, `bareNodeRoute_or_refused`'s `h_op = true`
 branch, whose `-` family the scanner already refuses and whose `:`/`?` family
 is LEGAL and routes through the key cascade — a CONSUMER to narrow, as item
 156 said, not a guard.
+
 
 ### Item 164 (2026-09-14)
 
@@ -18143,6 +18155,7 @@ same 19 pre-existing name mismatches at 100% coverage.  `#print axioms` over all
 and no `sorryAx`; the `native_decide` axioms under the block dispatchers are
 pre-existing and the diff adds none.  The `[210]` flip is **FIVE** errors and
 the consumer census **TWO**, both unchanged.
+
 
 ### Item 165 (2026-09-14)
 
@@ -18269,6 +18282,7 @@ three items have now passed it by.~~  With that branch narrowed, row 1c's
 > landings.  It IS a consumer to narrow — and what it wants is the open
 > collection's own continuation.  See [Item 166](#item-166-2026-09-14).
 
+
 ### Item 166 (2026-09-14)
 
 **The block landing's surviving branch — and the family seven forecasts did not
@@ -18379,6 +18393,7 @@ block landing only at parks that record no completed node, and row 1c's
 `implicitContinue` constructor has one route family left in front of it rather
 than two.
 
+
 ### Item 167 (2026-09-14)
 
 **The sequence lane's dedent — and the half of item 166's residue the corpus
@@ -18460,6 +18475,7 @@ same field across the compact-mapping cascade — `ImplicitKeyPack`,
 `pendingMapValue`, `pendingContent` — which is the item behind this one.  With
 that, `bareNodeRoute` is reached from the block landing only at parks that
 record no completed node and at collections no park names.
+
 
 ### Item 168 (2026-09-14)
 
@@ -18576,6 +18592,7 @@ the corpus does not contain.
 > forecast's `resumeAt` was wrong in the detail — all eight two-level landings
 > come back at the collection's own width, so the framed lane's one consumer
 > CLOSES the list whole and no membership is ever tested.
+
 
 ### Item 169 (2026-09-15)
 
@@ -18697,6 +18714,7 @@ payments the gate funds — is the next item's measurement.
 > not scanner-refused as the note guessed — `TokenParser.validNextToken`'s
 > own §9.2 reading, the same one that always refused `a: 1⏎&p [b]`.
 
+
 ### Item 170 (2026-09-15)
 
 **Item 165's `[96]` length gate, narrowed to the line — and the §9.2 relay it
@@ -18813,6 +18831,7 @@ window, the births pay it from constructions that predate the item, and the
 runtime is the measured gate alone.  The ledger's next work is R3's standing
 families and R4.
 
+
 ### Item 171 (2026-09-15)
 
 **The flip's remainder, mapped — and two of its arms are runtime findings,
@@ -18913,6 +18932,7 @@ with the same counts.  No new declarations, so no axiom deltas.
 runtime fix — §8.1's at-or-left refusal for a landing flow open deferred to
 the close, with the resume twin as its proof half — and behind it the lanes
 in the order above.
+
 
 ### Item 172 (2026-09-15)
 
@@ -19027,6 +19047,7 @@ honest ones; Finding A's runtime floor paired with 1d's re-indexing; the
 crossed-window arms' scanner-side reading or their carried face; then the
 `[210]` flip.
 
+
 ### Item 173 (2026-09-15)
 
 **The sibling resume swap at the `:`/`?` openers, and the no-break
@@ -19109,6 +19130,7 @@ three `bareNodeRoute` holders: `content_dispatch_after_close` and
 `bareNodeRoute_or_refused_content` resume at the level the close kept open
 (`k:⏎a: 1`'s family), the crossed arms wait on their scanner-side reading —
 then the flow lane's hardening, Finding A's floor with 1d, and the flip.
+
 
 ### Item 174 (2026-09-15)
 
@@ -19413,6 +19435,7 @@ marker-lane twins at `flowKeyRoute_of_open`, the `n = 0` entry bound, the
 `pendingMapValue` arm's `m = 0` nesting) are enclosing-boundary or 1d-paired
 residues, not flip-accounting blockers.
 
+
 ### Item 177 (2026-09-15)
 
 **Finding A's runtime floor — the value at its own level's column REFUSES, and
@@ -19652,6 +19675,7 @@ shrank their offered family to unreachability, so the root family is their
 whole remaining domain; then the `[210]` flip.  **DONE by item 179** (the
 re-indexing; the crossed-window arms and the flip stand).
 
+
 ### Item 179 (2026-09-16)
 
 **1d's re-indexing — `SBlockNode` reads `n_lean = n_spec + 1` at the three
@@ -19766,6 +19790,7 @@ reading or their carried face (their whole domain is the root family,
 `&a⏎!t &b x`)~~ — **DONE by item 180** (the scanner-side reading; the arms'
 retirement is the follow-up); the `k: &x⏎a`-family runtime floor (a flip
 prerequisite now); then the `[210]` flip.
+
 
 ### Item 180 (2026-09-16)
 
@@ -23324,6 +23349,7 @@ is measured at the proxy's fidelity, and the only way to know that fidelity is
 to build the sharper instrument and diff them.**  Here the diff was 28 accepted
 hits against zero, and the 28 were all the proxy's.
 
+
 ### Item 205 (2026-09-18)
 
 **THE ERROR LIST IS A CENSUS OF ONE RING.**  Item 204's NEXT was "PAY THE
@@ -23505,6 +23531,7 @@ built and then not run on the last ring; what stood in for it was a reading,
 and the reading was an inference from the ring's SHAPE rather than a
 measurement of its cost.
 
+
 ### Item 206 (2026-09-19)
 
 **A RING THAT RE-ENTERS THE ESCAPE IS NOT A RING THE ESCAPE CANNOT PAY.**
@@ -23657,6 +23684,7 @@ instrument for exactly this and then answered the last ring from the ring's
 shape; a shape tells you where the price falls and never how much it is.  Here
 it was ten vacuities and one lemma that had been waiting since item 154 for its
 arm to name a character.
+
 
 ### Item 207 (2026-09-19)
 
@@ -23818,6 +23846,7 @@ Item 206 learned that a shape tells you where a price falls and never how much;
 this item is the same lesson read backwards — a reason recorded for a punt is a
 measurement nobody spent.
 
+
 ### Item 208 (2026-09-19)
 
 **AN ERROR IS NOT A PRODUCER, AND THE INSTRUMENT THAT COUNTS ERRORS WAS
@@ -23948,6 +23977,7 @@ counting a proof's prose.**  Item 207 learned that a reason recorded for a punt
 is a measurement nobody spent; this item is the matching hazard on the other
 side — a number an instrument DID produce is not thereby a measurement, and the
 only way to find out is to make it print what it counted.
+
 
 ### Item 209 (2026-09-19)
 
@@ -24093,6 +24123,7 @@ of the lesson — it named both gaps in its refutation, and the second one (a
 datum proved upstream and discarded by its reader) sat unspent for five items
 because nothing indexed it.  **A gap named in a comment is a measurement
 nobody has scheduled.**
+
 
 ### Item 210 (2026-09-19)
 
@@ -24246,6 +24277,7 @@ ring this item was scheduled to pay and printed the census while doing it, and
 the ledger went on listing it as open for two more items — because a NEXT list
 is copied forward by hand and a number is only discharged when someone matches
 it to the measurement that answered it.
+
 
 ### Item 211 (2026-09-19)
 
@@ -24418,6 +24450,7 @@ control, and the cheapest way to find one is to ask what a passing run would
 have had to look like.**  Its companion, from the lane: a census restricted on a
 claim it is itself able to test cannot correct its author, and will keep
 reporting the surface it was told the surface is.
+
 
 ### Item 212 (2026-09-19)
 
@@ -24593,6 +24626,7 @@ from the conclusion census: **an instrument that records the evidence against
 its own docstring has not thereby corrected it** — `un=1,1` sat in the pin for
 nine items, in the column built to catch exactly that, and every reader took
 the prose instead.
+
 
 ### Item 213 (2026-09-19)
 
@@ -24772,6 +24806,7 @@ different way could see either.  Its companion, from the four-line probe:
 **a narrowing's error count is a LOWER bound**, because the first refused
 argument in an application masks its siblings — so an error count is evidence
 that a supply EXISTS and never evidence of how many do.
+
 
 ### Item 214 (2026-09-19)
 
@@ -24954,6 +24989,7 @@ survived two items and was backwards from the first.  Its companion, from N2 and
 N3 together: **a pipe transmits and a decider absorbs** — which is what makes a
 narrowing able to tell them apart, and what made the 43 answerable at all.
 
+
 ### Item 215 (2026-09-19)
 
 **The mandate** is item 214's NEXT entry 1, verbatim: *"Give `walk` the same
@@ -25128,6 +25164,7 @@ work at `[5, 87]` and was right; the shape it named in the same sentence has
 zero occurrences.  Its companion, from the 2×2 above: **a latent defect is
 priced by the item that EXERCISES it, not by the item that has it** — item 212's
 depth bug moved zero edges for three items and thirteen rows in this one.
+
 
 ### Item 216 (2026-09-19)
 
@@ -27750,6 +27787,7 @@ the walk** — 69 arms was a true statement about the mutual block and 48% of th
 arms the instrument needed, because the walk that produced it stopped where the
 block stopped.
 
+
 ### Item 230 (2026-09-21)
 
 **THE PARTITION — the fourth residue gets a consumer, and one leaf's
@@ -28695,6 +28733,7 @@ it had to be built at all: a law with one exception and a law with none are
 indistinguishable to every reading of the source, and differ completely for
 the proof that rests on them.
 
+
 ### Item 235 (2026-09-21)
 
 **THE SHARE — the two walks are one pass, and the pair the mandate named was
@@ -29087,6 +29126,7 @@ which is the first instrument here that reads a constructor's premises as a
 GRAPH rather than as a population.  Its corollary is that a census of what is
 missing and a census of what is broken are different readings of the same
 artifact, and only the second one names an obligation.
+
 
 ### Item 237 (2026-09-22)
 
@@ -29834,6 +29874,7 @@ Unchanged: R3's seven productions, whose price is the case split; item 183's
 flip order, whose two REFUTABLE halves are `h_ref`'s readers; the parked Ix
 Step-1 composition on the Ix track's own clock.  Instrument debt, still **ten**
 rows, none paid and none added.
+
 
 ### Item 241 (2026-09-22)
 
@@ -48986,6 +49027,7 @@ The three closure pins did NOT move (P3 HELD: no new module) and `DispatchPrice 
 
 **NEXT — item 350: K8 (`h_expl`/`h_explUp`'s alternative, decision (a) separate "not a `?` park" predicate / (b) documented residue, pending), then K8b, K4, K2 (`RegWitness`), K1, K7/props, flow; and before the flip, repair `pack_flip_census.py` on the tag-suffix rewrite and re-pin `PACK-RESIDUE` (63/20 as the tree stands) so `decline` is read from the instrument again.  `PackAlt := ExplicitValueRefused` only when `decline` is 0.**
 
+
 ### Item 350 (2026-10-24)
 
 **K8 landed as decision (a): `h_expl`/`h_explUp`'s alternative is the scanner fact `NotQuestionPark sc` (the last real token is not a `?`), the `:`/compact producers pay it from the dispatch, and the consumer cascade is PRICED and paid to the empty chain — the eleven producer sites PAID, nine consumer arms paid vacuously (`ns := []`, K2's domain), two consumer arms RESIDUE (K8c).**  No `PackAlt` flip; `PackAlt` stays `True`.  `lake build` 1319 jobs exit 0, 166 warning lines (none in this item's hunks), `suiterunner` 869 passed, 0 failed, 151 skipped (1020), Adversarial Instantiation 4956/4956 (4776 + the 180 Priority 23 rows), fifteen census files re-pinned with the cause beside each pin.
@@ -49342,6 +49384,7 @@ Rule 2, the domain read off the scanner (`MarkedColsDomain`, 8 rows): `?⏎  b: 
 
 **NEXT — item 364: K1-fresh (item 358's cover on `pendingBlockContent.h_closeFV`), then the 13 park-chain compositions (K8c-b, the two STARVED `closeThenBlock` applications of item 360, the 11 content producers' `h_alt := trivial`) — for each, name the Rule-8 class of any fact a consumer needs before a carrier is born; a fact about the consumer's own state is decided at the consumer.  `PackAlt := ExplicitValueRefused` only when `decline` is 0.**
 
+
 ### Item 364 (2026-10-26)
 
 **K1-fresh PAID: item 358's cover conjunct `((∃ lo, IndentStackCover.Floor lo n ks ∧ IndentStackCover.Covered lo ks sc) ∨ True)` now rides the two CONSTRUCTOR value-line fields `pendingBlock.h_closeFV` and `pendingBlockContent.h_closeFV` (it rode only the lemma twins `h_closeFV_old`/`closeThenBlock.h_mapFV` and the key-line `h_closeF` before), so the park's cover reaches `accum_block_on_pendingBlock`'s K1 arm whole and `landing_frame_of_cover` fires at the first key of a level whose enclosing landing was covered.  Five producers TRANSPORT a real cover across their step (the `-` step by `scanBlockEntry_cover ∘ preprocess_cover`, the content step by `h_cov_step`), the compact `? - a` arm of `accum_block_on_closeThenBlock` pays a literal one (`lo = nv + 1`, `ks = []`, `covered_nil_of_top_le h_mono h_top_slot` — `h_closeF`'s own term), three `.imp` relays pass it through instead of inserting `Or.inr trivial`; eight rows decline, named (the two consed `FrameLevel.seq n :: ks` sites — the K1-seq obligation the mapping cover does not establish — the four coverless source twins on the props lane, `noPending`'s field declined whole).  `PACK-RESIDUE` 74 / `decline` 70 / `leaf` 46 / `uncond` 24 and `PACK-FLIP` 93/91/56/35 unchanged — the cover slot's `∨ True` is not a `PackAlt` face (P2 held).  Full battery green on the tree (Gates below).**
@@ -49407,6 +49450,7 @@ Rule 2, the domain read off the scanner (`MarkedColsDomain`, 8 rows): `?⏎  b: 
 
 
 **Rule 2 — Priority 34 (`walkContentRegister`, `Tests/AdversarialInstantiation.lean`).**  The content-lane twin of Priority 30: at every content dispatch taken from block context (`sc.flowLevel = 0`, a token that is no block/flow indicator, comment or document marker) the probe reads the marked columns of the park state `sc` the eleven sites are typed over; none ⇒ `explicitKeyLine = none` must hold (`bad`, the payer's conclusion; 0 over 24 inputs), some ⇒ the withdrawn premise, the register expected live (`markedLive = marked` on every row: load-bearing).  24 inputs, 45 unmarked steps (paid), 12 marked steps (the `nested-?` decline).  The run refuted my first pinning of eight `?` rows, and the refutation is the item's content: I had pinned every step inside `? a⏎: b` as marked (0 unmarked / 2 marked); the scanner reads the `?` KEY's content marked and the explicit `:`'s VALUE unmarked (1 / 1) — the `:` closes the entry and the register is dead again (item 359's K7 fact, now seen from the content side).  So the value lane under an outermost `?` is PAID by these sites, and the decline is narrower than "anything under a `?`": it is the key content of an open `?` entry (and anything nested inside it, `? - a⏎  - b⏎: c` 1 / 2), the park-chain composition proper.  Suite 6793 → 6889/6889.
+
 
 ### Item 367 (2026-10-26)
 
@@ -50397,6 +50441,7 @@ Six `PackAlt` positions have no supply row at all (`ImplicitKeyPack.body`, `Prop
 
 **NEXT —** item 406 = the PACK chain: `flip_kslot_domain.py` re-run on the merged tree first, then `colon_open_map_props[29].h_kslotD` paid from the projection this item carries — the first strict `decline` fall, 84 → 83; `OrTrueAudit` 267 / 511 → 267 / ≤ 510; `RESIDUE-CLASSES` ns 34 → 33 (ks 22, pack 1, scalar 3, none 4) — the first retirement by PAY.  Then (ii) → (iv) above as items 407–409, each priced by its own flip before pay.  `[211]` 413 ± 2.
 
+
 ### Item 406 (2026-10-30)
 
 **The PACK chain PRICED and STOPPED at a STARVED relay — `flip_kslot_domain.py` re-run on the merged tree (round 1: 7 declarations / 21 sites; round 2: 7 / 23), both rounds blocked above `colon_open_map_props[29].h_kslotD`; no pay, no library change.**  The mandate's first strict `decline` fall (84 → 83) did NOT happen: the pack faces the two `:` births read (`ImplicitKeyPack` / `PropsKeyPack`) are fed, one relay up, by the flow-close key pack, whose chain is fabricated at the flow OPEN — the item-405 statement problem one level higher.  Owner's ruling needed (options below); default if quiet: (A), carrier first.
@@ -50863,6 +50908,7 @@ Probe price: 14 sites, 0 declarations broken by the 7 pays (the library was gree
 
 
 **NEXT —** item 423: the `∨ True` roster after this pay is 269 positions / 486 writes, and item 419's class table has moved under it — the six opener `h_ref.elim … (fun _ => Or.inr trivial)` PackAlt writes are no longer re-declines of `h_outer`'s `∨ True` but ARMED complements (the arm now hands them `∃ x ∈ markedCols s_prep, x ≠ k`), so 419's HELD class grows 6 → 12 of 20 and its (β) STOP condition (< 10 held) no longer fires.  Re-class the 20 armed complements on this tree (docs-only reading, P1–P4 first) and, if ≥ 10 hold a chain or a mark, price item 414's (β) body `PackAlt sc := ExplicitValueRefused sc ∨ ArmedChain sc` as a `scripts-flip` spec — with lane (d) (`PackAltG` bodied and `PackAlt.ofGateClose` restated with the close relation `g ↦ s'`) named as its price, since (β) is a statement change over 163 transports; STOP priced with options if the eight flow sites stay STARVED.  Owner's word needed before (β) is PAID: item 415's ruling "(α)" chose the refusal-only body over (β).
+
 
 ### Item 423 (2026-11-03)
 
@@ -51579,6 +51625,7 @@ What the refutations teach: the owner's framing is sharper than the audit's — 
 
 **NEXT —** item 446, the owner's word needed; the library must be free first.  The negative is found and it is not a restatement trick: `PackAlt sc := ExplicitValueRefused sc` makes the three `on-drop` arms REFUTE the deferral where the producer proves the refusal, and the remaining 73 writers (71 `Or.inr trivial`, 2 anonymous constructors) are the pack obligations by class.  **(ω-pay-refused)** pay the body as priced: (1) `ofRefused h := h`, the two guard-else sites; (2) the fresh-document / unmarked writers → the vacuous LEFT arm via `markedCols = []` (item 410's `refused_of_markedCols_eq_nil` read backwards, a `RegisterWitness` lemma, Rule 2 first); (3) the live writers by class — frame 6, mid-line 2, `content_dispatch_routed`'s `step_dispatch` relay (23 births behind one site), flow 9 — STOP-priced as births with each class's missing fact named; (4) the five transports re-proved by their `ExplicitValueRefused.step_*` twins (statements unchanged); `capstone-path` re-pinned (ON 7 → the births' positions), `OrTrueAudit` PackAlt 67 re-read; ≈ 3 days — recommended.  **(ω-births)** the pack itself at the frame / mid-line producers first (item 427's pay tree re-read on the ON set), the negative after.  **(ω-close)** record the 7 with this price as the named on-path residue, move to item 440's own gaps.  Recommended: (ω-pay-refused), step (2)'s lemma under Rule 2 first, the births STOP-priced, the pay when the library is free.
 
+
 ### Item 446 (2026-11-07)
 
 **S3 (β1) `parse_iff_grammar` — the loop's no-progress exit sits on a DEAD token, never `.documentEnd` (`ParseCheckFrom.DeadAt` / `LoopDead`, S5's side), and the scanner-side target is stated and bridged at the list level (`L4YAML/Proofs/Scanner/DocStartLive.lean`: `Shape` → `LiveF` through the placeholder filter); the `scanLoop` invariant that carries it is PRICED as β2, not paid.**  No scanner edit, no StreamAccum edit; `lemma` throughout, standard axioms only (several list-level lemmas need only `propext` + `Quot.sound`).
@@ -52180,6 +52227,7 @@ P105 (v): fourteen hand-built receive chains over abstract leaf premises (`[a`, 
 
 **NEXT — S3 slice (3), PR 2b-ii: `accum_step_flow_trace` — the `[` `{` `,` `]` `}` dispatcher at depth 1 onto `TFlowStackK` (`StreamAccum.accum_step_flow`'s statement with `TFlowStackK … ev` in place of `FlowStackK` on both sides, `ev = (goOut segment pending).1` as item 466's NEXT states it), its `FlowStackK` conclusion sites re-walked onto `TFlowStackB.openSeqBase` / `openMapBase`, `TSeqFrame.closeLead` / `TMapFrame.closeLead`, `holdCommaLead`, and this item's `receiveNode` / `receiveNodeColon` for the nested-open inject; Rule 2 first (Priority 106: the per-token trace `goOut` after each flow indicator = the stack's trace, over the P105 rows), standard axioms only, no `StreamAccum` edit; then 2b-iii (the content / `?` / `:` dispatchers' flow arms through slice (1)'s and (3)-PR-1's leaf twins onto the ten receive twins) and 2c as priced.  Spec question for a read item (unchanged): whether to encode `[154]`'s one-line rule for flow-pair keys.  Items 446–452's consumer-less facts still await the owner's "delete/keep".  R12's and Row 19's NEXTs stand.**
 
+
 ### Item 468 (2026-11-09)
 
 **S3 slice (3), PR 2b-ii (α1) — PAID: the indicator steps on the T stack, and a 2a gap closed.  `TraceOf/FlowWalk` §7: `TFlowOpenStack.comma` / `openNestSeq` / `openNestMap` / `closeNestedSeq` / `closeNestedMap` and `TSeqFrame.closeBase` / `TMapFrame.closeBase` — what `accum_step_flow`'s five arms do to the T stack, keyed on the S witnesses the dispatcher holds; `TFlowOpenStack.seqNest` / `mapNest` now carry the lead before the child bracket.  Priority 106 first.  `accum_step_flow_trace` itself (α2) priced, not proved.  No scanner step, no `StreamAccum` edit.**
@@ -52295,6 +52343,8 @@ P106 (v): seven hand-built chains, one per §7 lemma (`[a,`, `{a: [`, `[{`, `[[a
 **Gates.**  No `L4YAML/` source changed (both flips restored, hash `952b6133ba70d687` both sides, rebuilt green).  `Tests/AdversarialInstantiation.lean`: `testPackMappingLaneTail` (P96) added and registered; adversarial 62140 / 62140.  `Scripts/Docs/ClosureLog.lean`: unchanged (469 / 470 were declared while #278 / #282 were open and dropped at their merges).  Two flip specs checked in: both were PRICED on `e3efcc26` (the base when the item was cut) and re-anchored on `ccb16f6e` after #278 (item 469) merged — the producers' anchors moved +159 lines, `--dry` 9 / 9 and 1 / 1 on this base; #278's additions are flow-side (`gapTail` / `GapRead` / `FlowArm`), none at the pack producers or the content park, so the price stands.  full `lake build` exit 0, 1560 jobs / 220 warnings, no pin moved; `check-theorem-keyword` / `check-import-closure` / `check-reflection-index` / `check-closure-log` (11..471, 2 gaps declared: 18, 442) / `check-serialization-proofs` / `check-gate-vocab` / `check-pack-births` (9+5 / 9+5 / 23+0, pin agrees) / `check-scripts-lean` (py=0); hygiene 11812 theorems / 0 sorries / 0 custom axioms; `run-all-tests` exit 0; suiterunner 869 / 0 / 151; eventscore 347/358; adversarial 62150 / 62150 (P96 in); `capstone-path` ON 7 / 269 (on-drop 3, on-relay 4; unresolved 70) unchanged — no library change, so nothing moved.
 
 **NEXT —** item 472: the pay in the priced order the moment Row 19's round-2 PR merges and `StreamAccum` is free: (a) the `nv ≤ k` `RegisterWitness` lemma at the 3 non-strict `-` sites (P94(i) its Rule 2); (b′) `sameLevelChainMap` (`k ≤ n`) at the 4 strict `:`/`?` sites (P95 its Rule 2); (c) `h_mapTail` landed from `item471_mapping_lane_field.json` — fed at the 14 constructions, used at the 2 punts (P96 its Rule 2); (d) `item471_producers_premise.json` landed — the 11 writes, the 54 hand-offs from the parks' fields through the three crossings, the 13 destructurings; `expectedPackBirths` 9+5 / 9+5 / 23+0 → the forecast is 9+5−4 / 9+5−5 / 23−2 at the producers, and `capstone-path`'s ON 7 → 0 only when all four land.  Until then: nothing to read — the lane is spec-complete; wait.
+
+
 
 ### Item 472 (2026-11-10)
 
@@ -52790,27 +52840,32 @@ P1 — P118's hypotheses hold at all 525 in-flow content steps (P115's count).  
 
 **NEXT —** slice (4) PR 7 at the next free item number (494 or later — 492 is Row 19's births PR, 493 R12's (a) lemma; verify the open PRs before cutting and declare the gap), the pay of price (1): `KeyArm` in `StreamAccum` and `accum_step_block`'s conclusion carrying it at depth ≥ 1 (six constructors, the six sites; `FlowStackK.withArm`'s shape), with `keyArm_of_dispatch` reading the constructor off the dispatcher's split; Priority 119 is the grid (the arm by step as pinned); pins for a new typed production as item 484 recorded.  Then (2) the T step + fold (`receiveColonValue`, `accum_step_key_trace`, `accum_step_key_pairK`) and (3) `accum_step_flow_pairK`; then 2c (`scan_trace` over `scanLoop`).  (b) enters at the block re-walk's depth-0 node assembly, not before.  Item 481's NEXT (the census deletions, (C) split) stands behind the capstone lane.
 
-### Item 498 (2026-11-14)
+### Item 493 (2026-11-14)
 
-**(ω-pay-births) (d) item (1) PAID — the landing lemma `markedCols_le_of_top` LANDED, `h_explUp_chainD`'s chain domain moved to the post-state `s'` at the three openers (9 relays paid), two of the seven `k ≤ n` `else`s paid at their no-survivor arms, six dead mark-step premises deleted; Rule 2 (P99) HELD.**  Items 492–497 are open PRs on this base (491 = S3's #311 and 493 = #312 landed first and were dropped at the rebase; Row 19's #313 / #316 / #318, Row 12's #312 / #315 / #317) and are declared as gaps in `Scripts/Docs/ClosureLog.lean` until they land.
+**(ω-pay-births) step (a) ATTEMPTED and REFUTED before the proof: the three non-strict guards `nv ≤ k` of `accum_block_on_closeThenBlock` (`h_slotV` L28072, `h_kslot` L28167, `h_kslotUp` L28195) are not a scanner fact but SLOT SURVIVAL — Rule 2 (P97) with the guards' own variables reaches their `else Or.inr trivial` on the capstone path at 12 block `-` pauses (10 parsing inputs, `- ?⏎- b`); the forecast lemma holds of the marks AFTER the step (0 violations) and cannot discharge the guard; the 3 move from "refutable" to (d)'s class with "closed by this step" as their honest alternative; test exe built, no library change.**  Items 491 (S3's open #311) and 492 (Row 19's births PR, in flight) are declared gaps until they land.
 
-**The mandate** is item 496's (#317) NEXT: "(1) the two landing lemmas in `RegisterWitness` / `StreamAccum` (`∀ m ∈ markedCols s', m ≤ k` at the `-` landing, P97(v); at the `:`/`?` opener, P95(ii)) and the domain restatement (a) — 9 sites, all step-premise relays, the seven `k ≤ n` `else`s rewritten to the survivors' chain where the ancestors' lines come from the park fields' hand-offs (STOP-price if a survivor's line is not in scope: that is the (d)-proper premise and it moves to (2)) … Rule 2 before (1): P99 — at every ON position, `markedCols s' ⊆ {m | m ≤ k}` and, for each survivor `nv < k` at an own / dedent landing, the ancestor's `: v` after the landing's whole entry parses."  Two departures, both read off the tree before the pay: (i) the two landing lemmas are ONE statement — a mark is an indent column, `IndentStackMono.Mono s'` bounds every column by `s'.currentIndent`, and the opener / `-` arms both hold `s'.currentIndent ≤ k` — so one lemma serves both landings and takes no `scanNextToken_preprocess` hypothesis; (ii) the seven `else`s split by what they feed: two feed the DOMAINED `h_explUp_chainD` (`∃ ns, MarkedColsIn s' … ∧ chain`) and can pay with the empty domain where no mark survives, five feed the UNDOMAINED `h_explUp_chain` (`∃ ns, chain`, no `MarkedColsIn`) and have nothing to pay with but a survivor's chain — item 495's reading: at `k ≤ n` the ancestors' chain across the landing is not derivable from the park fields (`slotChainMap` / `entryChainMap` need `nv + 1 ≤ k`), so it is (2)'s premise, and these five stay `Or.inr trivial` by the mandate's own STOP clause.
+**The mandate** (item 490's NEXT): "item 491, slice (4) PR 6: the depth-≥1 re-walk's `?`/`:` arms (item 465's 2b-iii remainder) on `TFlowStackK` — `accum_step_flow`'s indicator arms through `accum_step_flow_trace` (items 469/474) at every floor the same way: one S tuple, the T twin per floor, the floor ceiling riding the step (the indicator arms do not touch the indents; read `dispatchFlowIndicators_preserves_indents` first).  Then the 2c fold `scan_trace` composes `accum_step_content_pairK` with the flow step over `scanLoop`.  (b) enters at the block re-walk's depth-0 node assembly, not before.  Item 481's NEXT (the census deletions, (C) split) stands behind the capstone lane."  That is S3's lane (item 491 = #311).  This item answers Row 12's standing mandate — item 471's NEXT, "(a) the `nv ≤ k` lemma for the 3 non-strict `-` sites … the moment StreamAccum frees" — now that the library is released to this lane for (a) → (b′) → (c) → (d), one PR each.
 
-**Predictions first** (`Tests/AdversarialInstantiation.lean`, `testPackSurvivorsChain`, written before the probe ran).  P1: at every block `:`/`?`/`-` pause on a marked state (P95's and P97's grids), every mark of the POST-step state is `≤ k`, 0 exceptions over ≥ 100 pauses.  P2: at every own / dedent `:`/`?` pause and every dedent `-` pause, every surviving mark `nv < k` has its `: v` after the landing's whole entry accepted — ≥ 40 checks, 0 rejects.  P3: at the `-` pauses the post-step marks are exactly the pre-state marks `≤ k`.  P4: pins — `NarrowingWorthCensus` theorems +2 (two lemmas); `DispatchPrice` / `ParkGapWidth` / `GateVocabulary` +1 each if the lemmas take a preprocess hypothesis.  P5 (before the second cut, which classes the `else`s): among the `k ≤ n` `:`/`?` pauses and the dedent `-` pauses, those with NO post-step mark `< k` number ≥ 30 (P95(iv) read 32 of 46).
+**The read before the probe.**  All three guards sit in the `-` arm of `accum_block_on_closeThenBlock` and compare `nv` — the OPEN slot of `h_vslot`'s left disjunct, a fact about the PARK state `sc` (`sc.currentIndent ≤ nv`, `sp_scan.col = nv + 1`, `MarkedColsIn sc (nv :: nsU)`) — with `k`, the `-`'s column (`s_prep.col`).  `scanNextToken_preprocess` UNWINDS inside the same step (`Scanner.lean` L579–581 → `unwindIndentsLoop`, `Indent.lean` L52–54: `emit .blockEnd`, `indents.pop`, `pendingKeys.pop` in lockstep), so `sc`'s marks and `s_prep`'s differ exactly by the indents right of `k`.  Items 457 / 460 (P93, P94(i)) measured `markedCols sP` with `sP` the PREPROCESSED state — the marks that survived the unwind — and read "0 marks right of the `-`" as "the guard is a scanner fact".  The guard's `nv` is a mark of the state BEFORE the unwind; the forecast lemma `∀ nv ∈ markedCols s_prep, nv ≤ s_prep.col` is true and discharges `hnk` only when `nv ∈ markedCols s_prep`, i.e. only when the slot survived — which IS `nv ≤ k`.  So the question is empirical: does a block `-` ever land left of an open slot's mark with the park's left disjunct in force?  The `?`'s own dedent (`- ?⏎- b`, a sequence whose first entry is a mapping with one empty explicit key) says yes on paper.
 
-**Predictions, scored.**
+**Predictions first** (recorded before P97 ran): P1 — the PRE-preprocess marks hold a mark right of the `-` at ≥ 2 block `-` pauses (the dedent-`-` shapes `- ?⏎- b`, `- ? a⏎- b`: mark 2, `k = 0`), so the guards' `else` is REACHED.  P2 — the POST-preprocess marks hold a mark right of the `-` at 0 pauses (P94(i) re-read on this tree).  P3 — every P1 input parses whole: the `else` is ON the capstone path, not a refused surface.  P4 — at every P1 pause the offending mark is absent from the post-preprocess marks: the guard IS slot survival.  P5 — no library edit lands; the (a) forecast "3 refutable by one RegisterWitness lemma" is refuted — 0 of the 3.  Second cut (pins written before the run, after P3's count fell): P6 — the offending mark is absent from the marks AFTER the `-` step too at 12 / 12 (the `-` adds no mark; the unwind popped it).
 
-| | predicted | measured | verdict |
+**The reading** (`testPackDedentSlotGuard`, P97, 25 inputs; a block `-` pause is `scanNextToken_preprocess` yielding `-` followed by a space or a break at `flowLevel = 0`): 47 block `-` pauses, 27 with a pre-preprocess mark.  (i) A pre-preprocess mark right of the `-` at **12 pauses in 12 inputs** — `- ?⏎- b`, `- ? a⏎- b`, `? ?⏎- b`, `- ?⏎  - a⏎- b`, `k:⏎  ? a⏎- b`, `- - ?⏎  - b` (mark 4, `k = 2`), `- - ? a⏎  - b`, `- ? a⏎  ? b⏎- c`, `- ? - a⏎- b`, `k:⏎  - ? a⏎  - b`, `- ?⏎    ?⏎      - a⏎    : b⏎- c`, `- - ? a⏎- b` — every one a `-` dedenting ACROSS an open `?` slot: the guard's `else Or.inr trivial` at all three sites is the arm these take.  (ii) A post-preprocess mark right of the `-` at **0** pauses: P94(i) stands as a fact about SURVIVING marks.  (iii) **10 of the 12** inputs parse whole; the two rejected (`? ?⏎- b`, `k:⏎  ? a⏎- b`) are refused for their OUTER shape (a root sequence entry after a root mapping, or after a non-bare `?` line), not for the dedent — the `else` is on the path for the other ten.  (iv) **0** of the 12 marks survive the unwind, and (v) **0** survive the step: the guard is slot survival exactly, and what the `else` owes is a fact of `s'` — "the slot at `nv` is CLOSED by this step" (`nv ∉ markedCols s'`) — not a fact of `sc`, where the slot is still open.  Rule 2 refutes the pay as forecast and names the strongest true statement: at the three sites, `nv ≤ k ∨ nv ∉ markedCols s'`; the left disjunct is the existing `Or.inl`, the right is what `PackAlt sc := True` stands in for.
+
+**Predictions, scored.**  P1 HELD (12 ≥ 2).  P2 HELD (0).  P3 REFUTED on its count — 10 / 12, not 12 / 12: two of the dedent shapes are also refused for an outer-shape reason; the lesson is that "reaches the `else`" and "parses" are independent, and the on-path count is the parsing ten.  P4 HELD (0 survivors).  P5 HELD (0 refutations; no library edit).  P6 HELD (0 survivors after the step).
+
+| | predicted | measured | |
 |---|---|---|---|
-| P1 count / content | ≥ 100 pauses / 0 marks `> k` | 98 / 0 | count REFUTED (two of P97's inputs pause once, not twice — a dedent `-` closes the slot in the same step), content HELD |
-| P2 | ≥ 40 / 0 rejects | 71 / 0 | HELD |
-| P3 | exact at every `-` pause | 31 / 31 | HELD |
-| P4 | +2 theorems; 3 pins +1 | +1 theorem; those pins unmoved | REFUTED both ways: one lemma, and it needs no preprocess hypothesis (`Mono` + the top bound suffice) |
-| P5 | ≥ 30 no-survivor pauses | 41 of 56 `else`-domain pauses | HELD |
+| P1 pre-preprocess mark right of the `-` (pauses / inputs) | ≥ 2 / ≥ 2 | 12 / 12 | HELD |
+| P2 post-preprocess mark right of the `-` | 0 | 0 | HELD |
+| P3 P1 inputs parsing whole | 12 / 12 | 10 / 12 | REFUTED (outer-shape rejects) |
+| P4 P1 marks surviving the unwind | 0 | 0 | HELD |
+| P5 sites refuted by the lemma | 0 of 3 | 0 of 3 | HELD |
+| P6 P1 marks surviving the step | 0 | 0 | HELD |
 
-**The reading — the lemma.**  `StreamAccum.markedCols_le_of_top (hm : IndentStackMono.Mono s) (htop : s.currentIndent ≤ (k : Int)) : ∀ m ∈ RegisterWitness.markedCols s, m ≤ k` — `markedCols_mem` gives the mark as `indentColumns[i]?`, `indentColumns_getElem?` the entry, `Mono.le_currentIndent` the bound, `Int.toNat_le` closes; axioms `[propext, Classical.choice, Quot.sound]`.  Applied with `s := s'` it is the "closed by this step" fact items 493 / 495 named: nothing right of the landing survives, so a chain domain on `s'` is a domain over the survivors.
+**What the refutation re-prices.**  Item 460's class (a) — "3 non-strict guards, one RegisterWitness lemma, 1 day" — is withdrawn: the three are not refutable arms but genuine births of ONE class, the dedent that closes the slot, and their honest alternative is a post-state projection.  Two facts for the pay that remains: (1) the lemma IS true and IS owed — `∀ m ∈ markedCols s', m ≤ k` at a block `-` landing (P97(ii)/(v); proof: the unwind pops every indent right of `k` with its `pendingKeys` entry, `Mono` keeps the rest ≤ `currentIndent ≤ k` by `dash_landing_floor`, and the `-` step adds no mark) — it is the clause by which the popped `nv` DROPS OUT of `h_kslot` / `h_kslotUp`'s `MarkedColsIn s'`-relayed domain, i.e. item 462's "dedent-closed marks by refutation"; it does not pay the surviving ancestors' chain across a dedent `-`, which is a sibling crossing of (c)'s kind (the enclosing sequence's lane), nor `h_slotV`'s existential at all.  (2) The alternative the three `else`s owe is the same one item 462 read at the strict sites (`? a⏎: b`: consumed; `? a⏎? b`: closed; and now `- ?⏎- b`: dedented) — "the slot's mark is not in `markedCols s'`" — a content for `PackAlt` that must take the POST-state, which is a restatement of the pack alternative across its writers (item 442's one-anchor shape, 81 / 23 at its last price), hence (d)'s class, not a lemma.  The price stands at 21 sites = 0 refutable + 21 owed: 7 "closed by this step" (3 here + item 462's 4) and 14 chain / lane / premise (2 + 12) as item 471 left them.
 
-**The reading — the domain.**  `h_explUp_chainD` at the three openers now ranges over the POST-state: `colon_open_map` `∃ ns, MarkedColsIn s' ns ∧ chain` (a `:` adds no mark); `question_open_map` `∃ ns, MarkedColsIn s' (k :: ns) ∧ chain` (the `?`'s own mark at `k` is in the domain and out of the chain — its chain is the new park's own line, which the consumers already exclude); `indicator_open_map` the conjunction `MarkedColsIn s' (k :: ns) ∧ (c ≠ '?' → MarkedColsIn s' ns) ∧ chain`, projected to each twin by `.imp` at its two relays.  The 9 producer relays (`closeThenBlock` 3, `pendingBlockContent` 2, `pendingBlock` 4) step their pre-state domains across with the producers' own `h_mcstep` / `h_mcstep_ne` (one needed the list named: `h_mcstep (markedCols sc ++ nsU) (MarkedColsIn.self sc).union_left`).  With the domain on `s'`, the openers' mark-step premises had no reader left: `colon_open_map.h_mstep`, `question_open_map.h_mcstep`, `indicator_open_map.h_mcstep` / `h_mcstep_ne` and `accum_block_on_noPending.h_mcstep` / `h_mcstep_ne` (fed only the indicator call) are DELETED with their eight call arguments — the `UNUSED` lane read 26 → 28 → 26 across the rounds, which is how they were found.  The producers keep theirs (the relays spend them).
+**Gates.**  Full `lake build` green on the #310 base plus this test (1564 jobs, 177 warnings — the base's); `check-theorem-keyword`, `check-import-closure`, `check-reflection-index`, `check-closure-log` (11..493 ascending, dates non-decreasing, 4 gaps: 18, 442, 491, 492), `check-serialization-proofs`, `check-gate-vocab`, `check-pack-births` (9+5 / 9+5 / 23+0 unchanged — no producer touched), `check-scripts-lean`, `run-all-tests`, `suiterunner` 869 / 0 / 151, `eventscore`; `lake exe adversarialinstantiation` 62182 / 62182 (+1 claim, P97).  No pin moved: no library module changed, no census count moved; capstone-path ON 7 / 269 unchanged.  Axiom census: no declaration touched.
 
 **NEXT —** (ω-pay-births) resumes with the plan corrected: (b′) `sameLevelChainMap` as item 462 priced it, with its "by refutation" clause now NAMED and owed as the lemma above (`∀ m ∈ markedCols s', m ≤ k` at a `-` landing; its `:`/`?` twin at the opener arm) — one PR; then (c) `h_mapTail` (item 471's spec); then (d), whose spec grows one clause: `PackAlt`'s content for the 7 "closed by this step" `else`s is `nv ∉ markedCols s'` (post-state), to be flip-priced on the item 442 anchor before the pay — STOP-price if the restatement starves.  No further read item on (a): its question is closed.
 
@@ -52874,9 +52929,33 @@ P1 — P118's hypotheses hold at all 525 in-flow content steps (P115's count).  
 
 **NEXT —** (ω-pay-births) (d) the PAY, in this order, each a build-changing item off the merged base (rebased over #313 / #316 as they land; #313 shifts the openers by +18 lines, no anchor text touched): (1) the two landing lemmas in `RegisterWitness` / `StreamAccum` (`∀ m ∈ markedCols s', m ≤ k` at the `-` landing, P97(v); at the `:`/`?` opener, P95(ii)) and the domain restatement (a) — 9 sites, all step-premise relays, the seven `k ≤ n` `else`s rewritten to the survivors' chain where the ancestors' lines come from the park fields' hand-offs (STOP-price if a survivor's line is not in scope: that is the (d)-proper premise and it moves to (2)); (2) item 471's premise `h_chainUp` at `content_dispatch_routed` + the 11 producer writes + 54 hand-offs + 13 destructurings, with `h_mapTail` as the dedent-sibling clause; (3) item 494's 13 with the `[map k]` frame and the two `⟨[], …⟩` births from the enclosing level.  Rule 2 before (1): P99 — at every ON position, `markedCols s' ⊆ {m | m ≤ k}` and, for each survivor `nv < k` at an own / dedent landing, the ancestor's `: v` after the landing's whole entry parses (P95(iii)'s 41 / 41 generalized to the `-` landings).
 
-**The reading — the seven `else`s.**  Two are domained (`closeThenBlock`'s and `pendingBlock`'s `h_explUp_chainD` twins) and now split three ways: `markedCols s' = []` pays `⟨[], …⟩` (both domains by `MarkedColsIn.of_markedCols_nil`); `c = '?' ∧ ∀ m ∈ markedCols s', m = k` pays `⟨[], …⟩` (the only survivor is the `?`'s own mark, `MarkedColsIn s' [k]` from `markedCols_mem`); otherwise — a mark `< k` survives — `Or.inr trivial` stands, its honest content the survivor's chain across the landing, (2)'s premise.  The other five (`closeThenBlock` 3, `pendingBlock` 2) feed the undomained `h_explUp_chain` and are left as the mandate's STOP clause says; P99's second cut puts 41 of the 56 `else`-domain pauses in the no-survivor class, 15 in the survivor class.  Capstone-path ON stays 7 — the instrument counts positions and each paid position keeps its survivor arm — and `OrTrueAudit`'s inrTrivial count is unchanged for the same reason; the pay shows in `RelaySupplyCensus` (PAY leaves 188 → 192) and `CloseSplitFrames` (the two `else` leaves read `punt → —`: the instrument reads one level and the split hides the survivor arm's punt, which `check-pack-births` still counts).  No new `∨ True` / `Or.inr trivial`; `PackAlt` unchanged.
+### Item 498 (2026-11-14)
 
-**Gates.**  Full build 1,564 jobs green (172 warnings), eighteen rounds (one pin surfaces per module per round).  Pins, each with its cause in the file: `IndexCensus` stream/other occ=2 25 → 24 + occ=3 ×1 (the indicator's three-conjunct premise); `RelaySupplyCensus` piped 73 → 75 (the two `.imp` adapters), SPLIT leaves 410 → 414 / PAY 188 → 192 and SITE-DECIDED 7 → 8 rows (`pendingBlock`'s two `LE.le` dites no longer identical: the paid one reads `DECLINE|DECLINE|PAY×5`); `RouteShapes` routeCarry 63 → 65 / routeFwd 54 → 52; `CloseSplitFrames` spends #3 and decisions ×2 (`punt → —`); `ConclusionRouteCensus` landed 73 → 75; `OrTrueAudit` spent 102 → 103 / relayed 15 → 14 (`indicator_open_map[32].h_explUp_chainD` relayed → spent); `HypothesisReaderCensus` constants 1739 → 1742 / decls 1372 → 1375 / READ 1407 → 1413 / RELAY 2918 → 2913, CORE-TERMINAL shortlist + `indicator_open_map#32`, UNUSED 26 unchanged after the deletions; `PremiseNecessityCensus` the peeled twin of the same + its item-225 shortlist 9 → 10 rows; `ValueLinePacks` params (`lvl=∃ns(MarkedColsIn)(?)`), writers ×4, perPos ×3, summary (relay 37 → 35, step 9 → 11, chain 54 → 53, alt 6 → 7); `ValueLineOrigins` positions ×1, rows ×4 (`relay → step`, `paid:chain → alt`, `none=[stamp,absurd,punt]`), summary; `CapstonePathAudit` streamAccum-reached 1144/1251 → 1144/1252 (ON 7, unchanged); `NarrowingWorthCensus` faces 62 → 63 / theorems 6466 → 6467; `CloseStackCover` / `PuntCoverInputs` / `PaidLeafDelta` node counts.  Gates green: theorem-keyword, import-closure, reflection-index, closure-log (11..498, gaps 18, 442, 492, 494–497), serialization-proofs, gate-vocab, pack-births (9+5 / 9+5 / 23+0 agrees), scripts-lean, hygiene; run-all-tests green; suiterunner 869 / 0 / 151; eventscore 347 / 358; adversarial 62,182 / 62,182 (P99 pinned 98 / 0 / 71 / 0 / 31 / 0 and 56 / 41).  Axiom census of every touched declaration (`markedCols_le_of_top`, the three openers, the four on-drop producers, `accum_block_pending`) and of `scan_content_gives_stream_v2`: the standard three plus per-call-site `native_decide` axioms only.
+**(ω-pay-births) (d) item (1) PAID — the landing lemma `markedCols_le_of_top` LANDED, `h_explUp_chainD`'s chain domain moved to the post-state `s'` at the three openers (9 relays paid), two of the seven `k ≤ n` `else`s paid at their no-survivor arms, six dead mark-step premises deleted; Rule 2 (P99) HELD.**  Items 492–497 were open PRs when this item was cut (491 = S3's #311, 493 = #312, 495 = #315 and 496 = #317 landed first and were dropped at the rebases; Row 19's #313 / #316 / #318, Row 12's #312 / #315 / #317) and are declared as gaps in `Scripts/Docs/ClosureLog.lean` until they land.
+
+**The mandate** is item 496's (#317) NEXT: "(1) the two landing lemmas in `RegisterWitness` / `StreamAccum` (`∀ m ∈ markedCols s', m ≤ k` at the `-` landing, P97(v); at the `:`/`?` opener, P95(ii)) and the domain restatement (a) — 9 sites, all step-premise relays, the seven `k ≤ n` `else`s rewritten to the survivors' chain where the ancestors' lines come from the park fields' hand-offs (STOP-price if a survivor's line is not in scope: that is the (d)-proper premise and it moves to (2)) … Rule 2 before (1): P99 — at every ON position, `markedCols s' ⊆ {m | m ≤ k}` and, for each survivor `nv < k` at an own / dedent landing, the ancestor's `: v` after the landing's whole entry parses."  Two departures, both read off the tree before the pay: (i) the two landing lemmas are ONE statement — a mark is an indent column, `IndentStackMono.Mono s'` bounds every column by `s'.currentIndent`, and the opener / `-` arms both hold `s'.currentIndent ≤ k` — so one lemma serves both landings and takes no `scanNextToken_preprocess` hypothesis; (ii) the seven `else`s split by what they feed: two feed the DOMAINED `h_explUp_chainD` (`∃ ns, MarkedColsIn s' … ∧ chain`) and can pay with the empty domain where no mark survives, five feed the UNDOMAINED `h_explUp_chain` (`∃ ns, chain`, no `MarkedColsIn`) and have nothing to pay with but a survivor's chain — item 495's reading: at `k ≤ n` the ancestors' chain across the landing is not derivable from the park fields (`slotChainMap` / `entryChainMap` need `nv + 1 ≤ k`), so it is (2)'s premise, and these five stay `Or.inr trivial` by the mandate's own STOP clause.
+
+**Predictions first** (`Tests/AdversarialInstantiation.lean`, `testPackSurvivorsChain`, written before the probe ran).  P1: at every block `:`/`?`/`-` pause on a marked state (P95's and P97's grids), every mark of the POST-step state is `≤ k`, 0 exceptions over ≥ 100 pauses.  P2: at every own / dedent `:`/`?` pause and every dedent `-` pause, every surviving mark `nv < k` has its `: v` after the landing's whole entry accepted — ≥ 40 checks, 0 rejects.  P3: at the `-` pauses the post-step marks are exactly the pre-state marks `≤ k`.  P4: pins — `NarrowingWorthCensus` theorems +2 (two lemmas); `DispatchPrice` / `ParkGapWidth` / `GateVocabulary` +1 each if the lemmas take a preprocess hypothesis.  P5 (before the second cut, which classes the `else`s): among the `k ≤ n` `:`/`?` pauses and the dedent `-` pauses, those with NO post-step mark `< k` number ≥ 30 (P95(iv) read 32 of 46).
+
+**Predictions, scored.**
+
+| | predicted | measured | verdict |
+|---|---|---|---|
+| P1 count / content | ≥ 100 pauses / 0 marks `> k` | 98 / 0 | count REFUTED (two of P97's inputs pause once, not twice — a dedent `-` closes the slot in the same step), content HELD |
+| P2 | ≥ 40 / 0 rejects | 71 / 0 | HELD |
+| P3 | exact at every `-` pause | 31 / 31 | HELD |
+| P4 | +2 theorems; 3 pins +1 | +1 theorem; those pins unmoved | REFUTED both ways: one lemma, and it needs no preprocess hypothesis (`Mono` + the top bound suffice) |
+| P5 | ≥ 30 no-survivor pauses | 41 of 56 `else`-domain pauses | HELD |
+
+**The reading — the lemma.**  `StreamAccum.markedCols_le_of_top (hm : IndentStackMono.Mono s) (htop : s.currentIndent ≤ (k : Int)) : ∀ m ∈ RegisterWitness.markedCols s, m ≤ k` — `markedCols_mem` gives the mark as `indentColumns[i]?`, `indentColumns_getElem?` the entry, `Mono.le_currentIndent` the bound, `Int.toNat_le` closes; axioms `[propext, Classical.choice, Quot.sound]`.  Applied with `s := s'` it is the "closed by this step" fact items 493 / 495 named: nothing right of the landing survives, so a chain domain on `s'` is a domain over the survivors; its consumers are the two paid `?` arms below (the `k ≤ m` guard + the lemma give `m = k`), on the capstone's path (`CapstonePathAudit` streamAccum-reached 1144 → 1145).
+
+**The reading — the domain.**  `h_explUp_chainD` at the three openers now ranges over the POST-state: `colon_open_map` `∃ ns, MarkedColsIn s' ns ∧ chain` (a `:` adds no mark); `question_open_map` `∃ ns, MarkedColsIn s' (k :: ns) ∧ chain` (the `?`'s own mark at `k` is in the domain and out of the chain — its chain is the new park's own line, which the consumers already exclude); `indicator_open_map` the conjunction `MarkedColsIn s' (k :: ns) ∧ (c ≠ '?' → MarkedColsIn s' ns) ∧ chain`, projected to each twin by `.imp` at its two relays.  The 9 producer relays (`closeThenBlock` 3, `pendingBlockContent` 2, `pendingBlock` 4) step their pre-state domains across with the producers' own `h_mcstep` / `h_mcstep_ne` (one needed the list named: `h_mcstep (markedCols sc ++ nsU) (MarkedColsIn.self sc).union_left`).  With the domain on `s'`, the openers' mark-step premises had no reader left: `colon_open_map.h_mstep`, `question_open_map.h_mcstep`, `indicator_open_map.h_mcstep` / `h_mcstep_ne` and `accum_block_on_noPending.h_mcstep` / `h_mcstep_ne` (fed only the indicator call) are DELETED with their eight call arguments — the `UNUSED` lane read 26 → 28 → 26 across the rounds, which is how they were found.  The producers keep theirs (the relays spend them).
+
+**The reading — the seven `else`s.**  Two are domained (`closeThenBlock`'s and `pendingBlock`'s `h_explUp_chainD` twins) and now split three ways: `markedCols s' = []` pays `⟨[], …⟩` (both domains by `MarkedColsIn.of_markedCols_nil`); `c = '?' ∧ ∀ m ∈ markedCols s', k ≤ m` — no mark survives BELOW the landing — pays `⟨[], …⟩`: `markedCols_le_of_top` (with `Mono s'` from `preprocess_mono` / `dispatchBlockIndicators_mono` and the top from `indicator_top_kv_at_col`) bounds every mark by `k` from above, so the only survivor is the `?`'s own mark and `MarkedColsIn s' [k]` follows from `markedCols_mem`; the guard is P99's no-survivor class read off the state; otherwise — a mark `< k` survives — `Or.inr trivial` stands, its honest content the survivor's chain across the landing, (2)'s premise.  The other five (`closeThenBlock` 3, `pendingBlock` 2) feed the undomained `h_explUp_chain` and are left as the mandate's STOP clause says; P99's second cut puts 41 of the 56 `else`-domain pauses in the no-survivor class, 15 in the survivor class.  Capstone-path ON stays 7 — the instrument counts positions and each paid position keeps its survivor arm — and `OrTrueAudit`'s inrTrivial count is unchanged for the same reason; the pay shows in `RelaySupplyCensus` (PAY leaves 188 → 192) and `CloseSplitFrames` (the two `else` leaves read `punt → —`: the instrument reads one level and the split hides the survivor arm's punt, which `check-pack-births` still counts).  No new `∨ True` / `Or.inr trivial`; `PackAlt` unchanged.
+
+**Gates.**  Full build 1,564 jobs green (172 warnings), eighteen rounds (one pin surfaces per module per round).  Pins, each with its cause in the file: `IndexCensus` stream/other occ=2 25 → 24 + occ=3 ×1 (the indicator's three-conjunct premise); `RelaySupplyCensus` piped 73 → 75 (the two `.imp` adapters), SPLIT leaves 410 → 414 / PAY 188 → 192 and SITE-DECIDED 7 → 8 rows (`pendingBlock`'s two `LE.le` dites no longer identical: the paid one reads `DECLINE|DECLINE|PAY×5`); `RouteShapes` routeCarry 63 → 65 / routeFwd 54 → 52; `CloseSplitFrames` spends #3 and decisions ×2 (`punt → —`); `ConclusionRouteCensus` landed 73 → 75; `OrTrueAudit` spent 102 → 103 / relayed 15 → 14 (`indicator_open_map[32].h_explUp_chainD` relayed → spent); `HypothesisReaderCensus` constants 1739 → 1742 / decls 1372 → 1375 / READ 1407 → 1413 / RELAY 2918 → 2913, CORE-TERMINAL shortlist + `indicator_open_map#32`, UNUSED 26 unchanged after the deletions; `PremiseNecessityCensus` the peeled twin of the same + its item-225 shortlist 9 → 10 rows; `ValueLinePacks` params (`lvl=∃ns(MarkedColsIn)(?)`), writers ×4, perPos ×3, summary (relay 37 → 35, step 9 → 11, chain 54 → 53, alt 6 → 7); `ValueLineOrigins` positions ×1, rows ×4 (`relay → step`, `paid:chain → alt`, `none=[stamp,absurd,punt]`), summary; `CapstonePathAudit` streamAccum-reached 1144/1251 → 1145/1252 (the lemma, reached; ON 7, unchanged); `ArmSpendCensus` edges 108 → 109 / RELAY 31 → 32 and the projection census `closeThenBlock` 5 → 6 (the `?` arm's `h_top'` relays `hcv`); `NarrowingWorthCensus` faces 62 → 63 / theorems 6466 → 6467; `CloseStackCover` / `PuntCoverInputs` / `PaidLeafDelta` node counts.  Gates green: theorem-keyword, import-closure, reflection-index, closure-log (11..498, gaps 18, 442, 492, 494, 497), serialization-proofs, gate-vocab, pack-births (9+5 / 9+5 / 23+0 agrees), scripts-lean, hygiene; run-all-tests green; suiterunner 869 / 0 / 151; eventscore 347 / 358; adversarial 62,182 / 62,182 (P99 pinned 98 / 0 / 71 / 0 / 31 / 0 and 56 / 41).  Axiom census of every touched declaration (`markedCols_le_of_top`, the three openers, the four on-drop producers, `accum_block_pending`) and of `scan_content_gives_stream_v2`: the standard three plus per-call-site `native_decide` axioms only.
+
+**Review round 1 (PR #319).**  Finding: "Unused landing lemma without capstone consumption — `markedCols_le_of_top` has no proof callers and feeds no capstone (Rule 1)."  True of the first cut: the two paid arms tested `∀ m, m = k` directly and the lemma was a documented fact with no reader.  Fixed at the source rather than argued: the arms' guard is now the weaker, state-shaped `∀ m ∈ markedCols s', k ≤ m` (no survivor below the landing) and the lemma supplies `m ≤ k`, so it is consumed on the capstone's path at both arms.
 
 **Price.**  Item 496's 9 (the post-state domain) are PAID; of the 21 owed arms the two domained `else`s now pay their no-survivor arms and keep a survivor arm each, the five undomained `else`s and the 12 relays stand — all one class now, the enclosing chain's pack as (2)'s premise.  ON positions 7 / 269; births unchanged.
 

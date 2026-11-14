@@ -28334,9 +28334,21 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
                  -- `else` pays with the empty list; a surviving ancestor's chain is item (2)'s premise.
                  Or.inl ⟨[], (RegisterWitness.MarkedColsIn.of_markedCols_nil hnil).mono (fun _ h => absurd h List.not_mem_nil),
                    fun _ => RegisterWitness.MarkedColsIn.of_markedCols_nil hnil, fun _ h => absurd h List.not_mem_nil⟩
-               else if hallq : c = '?' ∧ ∀ m ∈ RegisterWitness.markedCols s', m = k then
+               else if hallq : c = '?' ∧ ∀ m ∈ RegisterWitness.markedCols s', k ≤ m then
+                 -- Item 498: no mark survives BELOW the landing; the landing lemma bounds every mark of `s'`
+                 -- by `k` from above, so the only survivor is the `?`'s own mark and the chain's domain is empty.
+                 have h_mono' : IndentStackMono.Mono s' :=
+                   IndentStackMono.dispatchBlockIndicators_mono h_dispatch
+                     ((IndentStackMono.preprocess_mono h_preprocess h_mono).of_indents_eq (by split <;> rfl))
+                     ((IndentStackBase.preprocess_base h_preprocess h_base).of_indents_eq (by split <;> rfl))
+                 have h_top' : s'.currentIndent ≤ (k : Int) :=
+                   indicator_top_kv_at_col hcv (by have := SIndent_col h_ind; rw [hcol_mid] at this; omega) hcorr_prep
+                     (landing_or_park_save h_noflow h_larm (h_park.imp_left And.left) h_preprocess) (noflow_disp_of_noflow h_noflow)
+                     (dash_landing_floor h_noflow h_larm h_nic0 h_base h_preprocess) h_dispatch
+                 have h_eq : ∀ m ∈ RegisterWitness.markedCols s', m = k := fun m hm =>
+                   Nat.le_antisymm (markedCols_le_of_top h_mono' h_top' m hm) (hallq.2 m hm)
                  Or.inl ⟨[], fun i l c' hi hc => List.mem_singleton.mpr
-                     (hallq.2 _ (RegisterWitness.markedCols_mem.mpr ⟨i, l, c', hi, hc, rfl⟩)),
+                     (h_eq _ (RegisterWitness.markedCols_mem.mpr ⟨i, l, c', hi, hc, rfl⟩)),
                    fun hne => absurd hallq.1 hne, fun _ h => absurd h List.not_mem_nil⟩
                else Or.inr trivial
            | _ => Or.inr trivial)
@@ -30358,9 +30370,21 @@ lemma accum_block_on_pendingBlock
             -- `else` pays with the empty list; a surviving ancestor's chain is item (2)'s premise.
             Or.inl ⟨[], (RegisterWitness.MarkedColsIn.of_markedCols_nil hnil).mono (fun _ h => absurd h List.not_mem_nil),
               fun _ => RegisterWitness.MarkedColsIn.of_markedCols_nil hnil, fun _ h => absurd h List.not_mem_nil⟩
-          else if hallq : c = '?' ∧ ∀ m ∈ RegisterWitness.markedCols s', m = k then
+          else if hallq : c = '?' ∧ ∀ m ∈ RegisterWitness.markedCols s', k ≤ m then
+            -- Item 498: no mark survives BELOW the landing; the landing lemma bounds every mark of `s'`
+            -- by `k` from above, so the only survivor is the `?`'s own mark and the chain's domain is empty.
+            have h_mono' : IndentStackMono.Mono s' :=
+              IndentStackMono.dispatchBlockIndicators_mono h_dispatch
+                ((IndentStackMono.preprocess_mono h_preprocess h_mono).of_indents_eq (by split <;> rfl))
+                ((IndentStackBase.preprocess_base h_preprocess h_base).of_indents_eq (by split <;> rfl))
+            have h_top' : s'.currentIndent ≤ (k : Int) :=
+              indicator_top_kv_at_col hcv (by have := SIndent_col h_ind; rw [hcol_mid] at this; omega) hcorr_prep
+                (preprocess_saved_key_col h_sk h_noflow h_preprocess).2 (noflow_disp_of_noflow h_noflow)
+                (landing_floor_of_arm h_noflow h_larm (by omega) h_base h_preprocess) h_dispatch
+            have h_eq : ∀ m ∈ RegisterWitness.markedCols s', m = k := fun m hm =>
+              Nat.le_antisymm (markedCols_le_of_top h_mono' h_top' m hm) (hallq.2 m hm)
             Or.inl ⟨[], fun i l c' hi hc => List.mem_singleton.mpr
-                (hallq.2 _ (RegisterWitness.markedCols_mem.mpr ⟨i, l, c', hi, hc, rfl⟩)),
+                (h_eq _ (RegisterWitness.markedCols_mem.mpr ⟨i, l, c', hi, hc, rfl⟩)),
               fun hne => absurd hallq.1 hne, fun _ h => absurd h List.not_mem_nil⟩
           else Or.inr trivial)
       -- Item 92: the frame's VALUE line fires on the `:` at its own column —
