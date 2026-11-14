@@ -7145,7 +7145,8 @@ inductive FlowArm (sc s' : ScannerState) (c : Char) (sp_block sp_flow sp_scan : 
       (gap : GapRead sc sp_flow sp_scan sp_flow₂)
       (h_depth : 1 ≤ sc.flowLevel) (h_c : c = if b then '[' else '{')
       (h_tail : ∀ kj, tailOf sc.tokens ≠ .value kj)
-      (h_lead : ∀ m, (SSeparateLines m sp_flow₂ sp_br ∨ (sp_br = sp_flow₂ ∧ (gapTail sc).leadFree = true)) ∨
+      (h_lead : ∀ m, (SSeparateLines m sp_flow₂ sp_br ∨
+          (sp_br = sp_flow₂ ∧ (gapTail sc).leadFree = true ∧ trailingPropertyRun sc.tokens = [])) ∨
         ¬ (m ≤ minContentIndentOf sc))
       (h_open : GLit c sp_br sp_open)
       (h_fl : s'.flowLevel = sc.flowLevel + 1) (h_ks : s'.flowStack = sc.flowStack.push b)
@@ -20069,7 +20070,8 @@ lemma accum_step_flow (sc : ScannerState)
           (∀ m, (SSeparateLines m sp_flow₂ sp_prep ∨ (sp_prep = sp_flow₂ ∧ tl₂.closeFree)) ∨
             ¬ (m ≤ minContentIndentOf sc)) ∧
           ((c = '[' ∨ c = '{') → ∀ m,
-            (SSeparateLines m sp_flow₂ sp_prep ∨ (sp_prep = sp_flow₂ ∧ tl₂.leadFree)) ∨
+            (SSeparateLines m sp_flow₂ sp_prep ∨
+              (sp_prep = sp_flow₂ ∧ tl₂.leadFree ∧ trailingPropertyRun sc.tokens = [])) ∨
             ¬ (m ≤ minContentIndentOf sc))) := by
       cases h_gap with
       | white h_ws h_sync h_colon_sc _ h_gate_w h_free_w =>
@@ -20097,13 +20099,16 @@ lemma accum_step_flow (sc : ScannerState)
               ¬ (m ≤ minContentIndentOf sc) :=
             fun m => (h_lead_at m).imp (fun h => h.imp id (fun h => ⟨h.1.trans h.2.symm, (h_fr h).1⟩)) id
           have h_lead_of_m : (c = '[' ∨ c = '{') → ∀ m,
-              (SSeparateLines m sp_flow sp_prep ∨ (sp_prep = sp_flow ∧ tl.leadFree)) ∨
+              (SSeparateLines m sp_flow sp_prep ∨
+                (sp_prep = sp_flow ∧ tl.leadFree ∧ trailingPropertyRun sc.tokens = [])) ∨
               ¬ (m ≤ minContentIndentOf sc) :=
             fun hc m => (h_lead_at m).imp (fun h => h.imp id (fun h => ⟨h.1.trans h.2.symm,
-              (h_fr h).2 (by rcases hc with rfl | rfl <;> decide)⟩)) id
+              (h_fr h).2 (by rcases hc with rfl | rfl <;> decide),
+              trailingPropertyRun_eq_nil_of_sync h_sync⟩)) id
           have h_lead_of : (c = '[' ∨ c = '{') →
               SSeparateLines nn sp_flow sp_prep ∨ (sp_prep = sp_flow ∧ tl.leadFree) :=
-            fun hc => (h_lead_of_m hc nn).resolve_right (fun hn => hn h_floorK)
+            fun hc => ((h_lead_of_m hc nn).resolve_right (fun hn => hn h_floorK)).imp id
+              (fun h => ⟨h.1, h.2.1⟩)
           have h_nil : trailingPropertyRun sc.tokens = [] := trailingPropertyRun_eq_nil_of_sync h_sync
           exact ⟨tl, sp_flow, h_fos, h_lead,
             (fun hc h_tail kj sp_ne h_c hj =>
