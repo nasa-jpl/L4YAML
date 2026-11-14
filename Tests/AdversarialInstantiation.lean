@@ -16432,11 +16432,29 @@ floor: at a `.white` lead the pushed tokens' `goOut` trace (`PushesTrace`), at a
 by whiteness — every property token is a maximal non-white run of the source
 and the second property of a run is preceded by white/break (the separator).
 Shadows: (i) at every in-flow content step; (ii) the trace prefix at every step
-with the suffix length by lead; (iii) the held tokens' spans at `.props` steps. -/
+with the suffix length by lead; (iii) the held tokens' spans at `.props` steps —
+each a maximal non-white run whose separator ends exactly at the next held token
+(or at the pushed token); (iv) the payload/span agreement: the token's own event
+(`tokenEvent`) equals the event the grammar reads off the span (`anchorEvents` /
+`tagEvents`) — the T events of `TCNsProperties` are span-determined, so this is
+the decidable face of "one event list at every floor"; (v) the floors varied:
+at every `m ≤ minContentIndentOf pre` the separator is an `SSeparate m .flowIn`
+— in-line white at any floor, or (multi-line) a flow-line prefix whose last line
+carries at least `m` leading spaces (`TCNsProperties_floor_mono`'s shadow). -/
 namespace P118
 
 open L4YAML L4YAML.Scanner P111 P112 P113 P114
 open L4YAML.Proofs.Serialization.TokenEvents
+
+/-- Held runs at POSITIVE floors with multi-line separators — P113's corpus holds
+one `.props` step above floor 0 and two multi-line separators, both at floor 0,
+so (v) would be read at `m = 0` alone.  Flow collections under a block key or
+entry raise the ceiling (`currentIndent + 1`); the continuation lines carry the
+indent the flow-line prefix needs at every floor below it. -/
+def extraRows : List String :=
+  ["a:\n  [&x\n    b]",
+   "a:\n  {&x\n   !!str b: c}",
+   "- [!!str\n   &y\n   v]"]
 
 structure Tally where
   inSteps : Nat := 0
@@ -16448,6 +16466,12 @@ structure Tally where
   heldTokens : Nat := 0
   heldOk : Nat := 0
   heldBad : List String := []
+  payloadOk : Nat := 0
+  payloadBad : List String := []
+  sepMulti : Nat := 0
+  sepFloorOk : Nat := 0
+  sepFloorBad : List String := []
+  propsFloors : List (String × Nat) := []
   deriving Repr
 
 def tally (rows : List String) : Tally := Id.run do
@@ -16485,6 +16509,8 @@ def tally (rows : List String) : Tally := Id.run do
             let isW (ch : Char) : Bool := isWhiteSpaceBool ch || ch == '\n' || ch == '\r'
             let reals := pre.tokens.toList.filter (fun tk => tk.val.isNodeProperty)
             let held := reals.drop (reals.length - run.length)
+            let ceiling := L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf pre
+            t := { t with propsFloors := bumpS t.propsFloors s!"floor={ceiling}" }
             let mut idx := 0
             for tk in held do
               t := { t with heldTokens := t.heldTokens + 1 }
@@ -16501,13 +16527,33 @@ def tally (rows : List String) : Tally := Id.run do
                   while (match charAt e2 with | some ch => ch != '\n' | none => false) do
                     e2 := e2 + 1
                 else e2 := e2 + 1
-              let nextOk := idx + 1 < held.length || e2 == back.pos.offset ||
-                (match charAt e2 with | some ch => ch == ',' || ch == ']' || ch == '}' | none => false)
               let maximal := e > st && (idx == 0 || (match charAt (st - 1) with | some ch => isW ch | none => false))
+              -- the separator ends exactly where the next held token (or the pushed token) starts
               let nextStart := if idx + 1 < held.length then (held[idx + 1]!).pos.offset else back.pos.offset
-              let spanOk := e2 == nextStart || nextOk
+              let spanOk := e2 == nextStart
               if maximal && spanOk then t := { t with heldOk := t.heldOk + 1 }
               else t := { t with heldBad := t.heldBad ++ [s!"{s}@{st}..{e}/{e2}→{nextStart}"] }
+              -- (iv) the token's event is the span's event
+              let spanChars := (List.range (e - st)).filterMap fun k => charAt (st + k)
+              let spanEv := match tk.val with
+                | .anchor _ => L4YAML.Proofs.Serialization.TraceOf.anchorEvents spanChars
+                | .tag _ _ => L4YAML.Proofs.Serialization.TraceOf.tagEvents spanChars
+                | _ => []
+              if spanEv == (tokenEvent tk.val).toList then t := { t with payloadOk := t.payloadOk + 1 }
+              else t := { t with payloadBad := t.payloadBad ++ [s!"{s}@{st}:{repr spanEv}≠{repr (tokenEvent tk.val)}"] }
+              -- (v) the separator at every floor `m ≤ ceiling`: in-line, or its last line indented ≥ m
+              let mut lastBreak : Option Nat := none
+              for k in List.range (e2 - e) do
+                if charAt (e + k) == some '\n' then lastBreak := some (e + k)
+              match lastBreak with
+              | none => t := { t with sepFloorOk := t.sepFloorOk + 1 }
+              | some b =>
+                let mut lead := 0
+                while charAt (b + 1 + lead) == some ' ' do lead := lead + 1
+                let okAll := (List.range (ceiling + 1)).all fun m => m ≤ lead
+                t := { t with sepMulti := t.sepMulti + 1 }
+                if okAll then t := { t with sepFloorOk := t.sepFloorOk + 1 }
+                else t := { t with sepFloorBad := t.sepFloorBad ++ [s!"{s}@{e}..{e2} lead={lead} ceiling={ceiling}"] }
               idx := idx + 1
     | _, _ => pure ()
   return t
@@ -16518,13 +16564,15 @@ namespace P118Test
 open P118
 
 def testFloorFoldShadow (state : IO.Ref TestCollector) : IO Unit := do
-  let t := tally P113.allRows
+  let t := tally (P113.allRows ++ extraRows)
   checkM state
-    s!"P118 the ∀-floor fold: floor rides {t.floorRides}/{t.inSteps} (moved: {t.floorMoved}); trace prefix {t.prefixOk}/{t.inSteps} (bad: {t.prefixBad}) suffixes {t.suffixByLead}; held tokens {t.heldOk}/{t.heldTokens} (bad: {t.heldBad})"
-    (t.inSteps == 525 && t.floorRides == 525 && t.prefixOk == 525 && t.heldBad.isEmpty &&
-      t.heldOk == 58 && t.heldTokens == 58 &&
-      t.suffixByLead == [("white/+0", 377), ("white/+1", 94), ("props/+0", 46), ("props/+1", 8)])
-    s!"{t.inSteps} {t.floorRides} {t.prefixOk} {t.suffixByLead} {t.heldOk}/{t.heldTokens} {t.heldBad}"
+    s!"P118 the ∀-floor fold: floor rides {t.floorRides}/{t.inSteps} (moved: {t.floorMoved}); trace prefix {t.prefixOk}/{t.inSteps} (bad: {t.prefixBad}) suffixes {t.suffixByLead}; held tokens {t.heldOk}/{t.heldTokens} (bad: {t.heldBad}); payload {t.payloadOk}/{t.heldTokens} (bad: {t.payloadBad}); separators at every floor {t.sepFloorOk}/{t.heldTokens} (multi-line {t.sepMulti}, bad: {t.sepFloorBad}); props-step floors {t.propsFloors}"
+    (t.inSteps == 534 && t.floorRides == 534 && t.prefixOk == 534 && t.heldBad.isEmpty &&
+      t.heldOk == 65 && t.heldTokens == 65 &&
+      t.suffixByLead == [("white/+0", 378), ("white/+1", 97), ("props/+0", 49), ("props/+1", 10)] &&
+      t.payloadOk == 65 && t.payloadBad.isEmpty && t.sepFloorOk == 65 && t.sepFloorBad.isEmpty &&
+      t.sepMulti == 8 && t.propsFloors == [("floor=0", 53), ("floor=1", 6)])
+    s!"{t.inSteps} {t.floorRides} {t.prefixOk} {t.suffixByLead} {t.heldOk}/{t.heldTokens} {t.heldBad} payload {t.payloadOk} {t.payloadBad} sep floors {t.sepFloorOk} multi {t.sepMulti} {t.sepFloorBad} floors {t.propsFloors}"
 
 end P118Test
 
