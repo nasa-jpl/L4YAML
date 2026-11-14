@@ -120,8 +120,9 @@ namespace L4YAML.Tests.Guards.GateVocabulary
 -- 2026-11-12 (item 484, review round 1): names 114 → 115, mentions 517 → 519 — Priority 112's docstring names the
 -- flow-value indent check the scanner refuses an under-indented continuation with, and the preprocess / block-indicator
 -- dispatch steps it re-derives the arm from (not spelled here: it would move `self`).
+-- 2026-11-14 (item 491): mentions 519 → 520 — P119's docstring and item 491 name the key/value dispatcher and its checks.
 def expectedGateVocab : String :=
-  "names=115 mentions=519 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
+  "names=115 mentions=520 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
 
 end L4YAML.Tests.Guards.GateVocabulary
 
