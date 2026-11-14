@@ -194,6 +194,7 @@ lemma accum_step_content_trace_in {n D : Nat} {ks : Array Bool}
       (sp_prep = sp_flow ∧ (tailOf s_ad.tokens).leadFree)) :
     ∃ ev_n, PushesTrace s_ad.tokens s'.tokens ev_n ∧
       ((∃ kj sp_ne, tailOf s'.tokens = .value kj ∧ GStar SSWhite sp_ne sp_a ∧
+          SFlowNode n .flowIn sp_prep sp_ne ∧
           TFlowOpenStack n D ks (.value kj) sp_block sp_ne (ev ++ ev_n)) ∨
        (tailOf s'.tokens = tailOf s_ad.tokens ∧
          ((c = '&' ∧ TCNsAnchorProperty sp_prep sp_a ev_n) ∨
@@ -261,7 +262,7 @@ lemma accum_step_content_trace_in {n D : Nat} {ks : Array Bool}
       | false => rfl
       | true => rcases hkj rfl with h | h <;> exact absurd h (by decide)
     subst hkj0
-    refine ⟨[.useAlias name], ?_, Or.inl ⟨false, sp', h_tl', .nil _, ?_⟩⟩
+    refine ⟨[.useAlias name], ?_, Or.inl ⟨false, sp', h_tl', .nil _, .alias _ _ _ _ hT_alias.1, ?_⟩⟩
     · rw [htok]
       simpa [tokenEvent] using pushesTrace_push s_ad.tokens ⟨s_ad.currentPos, .alias name, s_ad.currentPos⟩ (by simp) (by simp)
     · exact hT.receiveNode h_tail h_lead (.alias _ _ _ _ _ hT_alias) (fun h => nomatch h)
@@ -301,7 +302,7 @@ lemma accum_step_content_trace_in {n D : Nat} {ks : Array Bool}
     obtain ⟨str, htok⟩ := dispatchContent_plain_tokens h_dispatch hamp hstar hbang hpipe hgt hdq hsq
     rw [htok]; exact pushesTrace_push_scalar _ _ rfl
   subst hsp_prep
-  refine ⟨[], hsilent, Or.inl ⟨kj, sp_gram, h_tl', h_ws, ?_⟩⟩
+  refine ⟨[], hsilent, Or.inl ⟨kj, sp_gram, h_tl', h_ws, h_node, ?_⟩⟩
   rcases SFlowNode_head_lift h_node ⟨hamp, hstar, hbang, hlb, hlc⟩ with
     ⟨hdq, hsq, hplain⟩ | ⟨hdq, hq⟩ | ⟨hsq, hq⟩
   · refine hT.receiveNode h_tail h_lead (.content _ _ _ _ _ (.plain _ _ _ _ hplain)) ?_
@@ -338,7 +339,7 @@ lemma accum_step_content_trace_in_props {n D : Nat} {ks : Array Bool}
     (h_sep : SSeparate n .flowIn sp_e sp_prep)
     (h_val : c ≠ '&' ∧ c ≠ '!' ∧ c ≠ '*') :
     ∃ kj sp_ne, PushesTrace s_ad.tokens s'.tokens [] ∧
-      tailOf s'.tokens = .value kj ∧ GStar SSWhite sp_ne sp_a ∧
+      tailOf s'.tokens = .value kj ∧ GStar SSWhite sp_ne sp_a ∧ SFlowNode n .flowIn sp_prep sp_ne ∧
       TFlowOpenStack n D ks (.value kj) sp_block sp_ne (ev ++ (ev_p ++ [])) := by
   obtain ⟨hamp, hbang, hstar⟩ := h_val
   obtain ⟨rest, hsp_prep⟩ := peek_some_sp hcorr hpeek
@@ -381,7 +382,7 @@ lemma accum_step_content_trace_in_props {n D : Nat} {ks : Array Bool}
     obtain ⟨str, htok⟩ := dispatchContent_plain_tokens h_dispatch hamp hstar hbang hpipe hgt hdq hsq
     rw [htok]; exact pushesTrace_push_scalar _ _ rfl
   subst hsp_prep
-  refine ⟨kj, sp_gram, hsilent, h_tl', h_ws, ?_⟩
+  refine ⟨kj, sp_gram, hsilent, h_tl', h_ws, h_node, ?_⟩
   rcases SFlowNode_head_lift h_node ⟨hamp, hstar, hbang, hlb, hlc⟩ with
     ⟨hdq, hsq, hplain⟩ | ⟨hdq, hq⟩ | ⟨hsq, hq⟩
   · refine hT.receivePropsContent h_tail h_lead h_props h_sep (.plain _ _ _ _ hplain) ?_
@@ -668,7 +669,8 @@ lemma accum_step_content_traceK {n d : Nat} {sc s_prep s' : ScannerState} {c : C
       ContentArm (if s_prep.allowDirectives then
           { s_prep with allowDirectives := false, documentEverStarted := true }
         else s_prep) s' c sp_prep sp_a ∧
-      ((∃ kj sp_ne, tailOf s'.tokens = .value kj ∧ GStar SSWhite sp_ne sp_a ∧
+      ((∃ kj sp_ne, tailOf s'.tokens = .value kj ∧ (c ≠ '&' ∧ c ≠ '!') ∧ GStar SSWhite sp_ne sp_a ∧
+          SFlowNode n .flowIn sp_prep sp_ne ∧
           TFlowStackB n s'.flowLevel s'.flowStack (tailOf s'.tokens) sp_block sp_ne (ev ++ ev_n)) ∨
        (tailOf s'.tokens = tailOf sc.tokens ∧ (c = '&' ∨ c = '!') ∧
           TFlowStackB n s'.flowLevel s'.flowStack (tailOf s'.tokens) sp_block sp_flow ev)) := by
@@ -737,8 +739,8 @@ lemma accum_step_content_traceK {n d : Nat} {sc s_prep s' : ScannerState} {c : C
       obtain ⟨ev_n, -, h | ⟨-, h⟩⟩ := accum_step_content_trace_in arm hcorr_ad hpeek h_ad_inflow h_not_doc
         h_dispatch hcol hn' h_fos' (by rw [h_tl_eq]; exact h_tail)
         (by rw [h_tl_eq]; exact h_lead n hn)
-      · obtain ⟨kj, sp_ne, h_tl', h_ws, h_open⟩ := h
-        exact ⟨ev_n, sp_prep, sp_a, hcorr_ad, arm, Or.inl ⟨kj, sp_ne, h_tl', h_ws, by
+      · obtain ⟨kj, sp_ne, h_tl', h_ws, h_nd, h_open⟩ := h
+        exact ⟨ev_n, sp_prep, sp_a, hcorr_ad, arm, Or.inl ⟨kj, sp_ne, h_tl', ⟨hamp, hbang⟩, h_ws, h_nd, by
           rw [h_tl']; exact .«open» _ _ _ _ _ _ h_open⟩⟩
       · rcases h with ⟨hc, -⟩ | ⟨hc, -⟩
         · exact absurd hc hamp
@@ -757,10 +759,10 @@ lemma accum_step_content_traceK {n d : Nat} {sc s_prep s' : ScannerState} {c : C
         rw [h_ad_inflow, h_ad_last, h_last] at h_false
         simp [h_prop] at h_false
       obtain ⟨ev_p, h_props⟩ := L4YAML.Proofs.Serialization.TraceOf.FlowWalk.PropsRun.toT (h_run n hn)
-      obtain ⟨kj, sp_ne, -, h_tl', h_ws, h_open⟩ := accum_step_content_trace_in_props arm hcorr_ad hpeek
+      obtain ⟨kj, sp_ne, -, h_tl', h_ws, h_nd, h_open⟩ := accum_step_content_trace_in_props arm hcorr_ad hpeek
         h_ad_inflow h_not_doc h_dispatch hcol hn' h_fos' (by rw [h_tl_eq]; exact h_tail)
         (by rw [h_tl_eq]; exact h_lead_p n hn) h_props (h_sep n hn) ⟨hamp, hbang, hstar⟩
-      exact ⟨ev_p ++ [], sp_prep, sp_a, hcorr_ad, arm, Or.inl ⟨kj, sp_ne, h_tl', h_ws, by
+      exact ⟨ev_p ++ [], sp_prep, sp_a, hcorr_ad, arm, Or.inl ⟨kj, sp_ne, h_tl', ⟨hamp, hbang⟩, h_ws, h_nd, by
         rw [h_tl']; exact .«open» _ _ _ _ _ _ h_open⟩⟩
 
 end
@@ -776,6 +778,8 @@ character is not white, so neither end can sit inside the other's trailing run. 
 namespace L4YAML.Proofs.Serialization.TraceOf.ContentBridge
 
 open L4YAML L4YAML.Surface L4YAML.CharPredicates
+
+public section
 
 /-- "The last character consumed between `s` and `e` is not white." -/
 def LastNonWhite (s e : SurfPos) : Prop :=
@@ -1002,5 +1006,248 @@ lemma plainIn_landing_uniform {sc s' : L4YAML.Scanner.ScannerState} {ch : Char} 
   have heq : gn = g0 := lastNonWhite_white_eq (hplain hnn) (hplain hn0) hwn hw0
   subst heq
   exact ⟨hnn, hwn, hgn⟩
+
+/-! ## §8 The landing agreement (item 489)
+
+After a value arm the wrapper's S landing (the core's `sp_ne`) and the T landing (the arm's
+`sp_gram`) are both flow-node ends from `sp_prep` with white runs to the one scan position.  Every
+value node — plain, quoted, alias — ends in a non-white character (the quote, the last anchor
+character, the plain's last `ns-char`), so `lastNonWhite_white_eq` identifies them.  P117 is the
+shadow. -/
+
+lemma GLit_last {ch : Char} {s e : SurfPos} (h : GLit ch s e) (hw : isWhiteSpaceBool ch = false) :
+    LastNonWhite s e := by
+  cases h; exact ⟨[], ch, rfl, hw⟩
+
+lemma GChar_last {p : Char → Prop} (hp : ∀ ch, p ch → isWhiteSpaceBool ch = false)
+    {s e : SurfPos} (h : GChar p s e) : LastNonWhite s e := by
+  cases h; rename_i ch rest col hch; exact ⟨[], ch, rfl, hp ch hch⟩
+
+lemma GPlus_GChar_last {p : Char → Prop} (hp : ∀ ch, p ch → isWhiteSpaceBool ch = false)
+    {s e : SurfPos} (h : GPlus (GChar p) s e) : LastNonWhite s e := by
+  match h with
+  | .mk _ _ _ h₁ hs =>
+    suffices H : ∀ {a b : SurfPos}, GStar (GChar p) a b → LastNonWhite s a → LastNonWhite s b from
+      H hs (GChar_last hp h₁)
+    intro a b hab hsa
+    induction hab with
+    | nil => exact hsa
+    | cons a₁ a₂ a₃ h₁ _ ih =>
+      exact ih (lastNonWhite_pre (lastNonWhite_suffix hsa) (GChar_last hp h₁))
+
+lemma isNsAnchorChar_not_white {ch : Char} (h : isNsAnchorChar ch) : isWhiteSpaceBool ch = false := by
+  cases hw : isWhiteSpaceBool ch
+  · rfl
+  · exact absurd h.1 (L4YAML.Proofs.Serialization.TraceOf.DocBridge.not_isNsChar_of_white ch hw)
+
+lemma SCNsAliasNode_last {s e : SurfPos} (h : SCNsAliasNode s e) : LastNonWhite s e := by
+  match h with
+  | .mk rest _ _ hp _ =>
+    exact lastNonWhite_pre (List.suffix_cons '*' rest)
+      (GPlus_GChar_last (fun _ h => isNsAnchorChar_not_white h) hp)
+
+lemma SCDoubleQuoted_last {n : Nat} {c : YamlContext} {s e : SurfPos} (h : SCDoubleQuoted n c s e) :
+    LastNonWhite s e := by
+  match h with
+  | .mk _ _ _ _ _ _ hq1 ht hq2 =>
+    exact lastNonWhite_pre
+      ((L4YAML.Proofs.SurfaceSpan.snbDoubleText_suffix ht).trans (L4YAML.Proofs.SurfaceSpan.glit_suffix hq1))
+      (GLit_last hq2 (by decide))
+
+lemma SCSingleQuoted_last {n : Nat} {c : YamlContext} {s e : SurfPos} (h : SCSingleQuoted n c s e) :
+    LastNonWhite s e := by
+  match h with
+  | .mk _ _ _ _ _ _ hq1 ht hq2 =>
+    exact lastNonWhite_pre
+      ((L4YAML.Proofs.SurfaceSpan.snbSingleText_suffix ht).trans (L4YAML.Proofs.SurfaceSpan.glit_suffix hq1))
+      (GLit_last hq2 (by decide))
+
+/-- A value node (not a property run, not a bracketed collection) ends in a non-white character. -/
+lemma SFlowNode_value_last {n : Nat} {ch : Char} {rest : List Char} {col : Nat} {m : SurfPos}
+    (h : SFlowNode n .flowIn ⟨ch :: rest, col⟩ m)
+    (hc : ch ≠ '&' ∧ ch ≠ '!' ∧ ch ≠ '[' ∧ ch ≠ '{') : LastNonWhite ⟨ch :: rest, col⟩ m := by
+  obtain ⟨h_amp, h_bang, h_lb, h_lc⟩ := hc
+  by_cases hstar : ch = '*'
+  · subst hstar
+    cases h with
+    | alias _ _ _ _ ha => exact SCNsAliasNode_last ha
+    | content _ _ _ _ hcont =>
+      cases hcont with
+      | plain _ _ _ _ hp => exact SNsPlain_last_not_white (Or.inl rfl) hp
+      | flowSeq _ _ _ _ hs =>
+        exfalso
+        cases hs <;> (rename_i hl; try (rename_i _ _ _ _ _); cases ‹GLit '[' _ _›)
+      | flowMap _ _ _ _ hm =>
+        exfalso
+        cases hm <;> (cases ‹GLit '{' _ _›)
+      | singleQ _ _ _ _ hq => exact SCSingleQuoted_last hq
+      | doubleQ _ _ _ _ hq => exact SCDoubleQuoted_last hq
+    | propsContent _ _ _ _ _ _ hp _ _ =>
+      exfalso
+      cases hp with
+      | tagFirst =>
+        rename_i ht _
+        obtain ⟨r, k, hk⟩ := tag_head ht
+        simp at hk
+      | anchorFirst =>
+        rename_i ha _
+        obtain ⟨r, k, hk⟩ := anchor_head ha
+        simp at hk
+    | propsEmpty _ _ _ _ hp =>
+      exfalso
+      cases hp with
+      | tagFirst =>
+        rename_i ht _
+        obtain ⟨r, k, hk⟩ := tag_head ht
+        simp at hk
+      | anchorFirst =>
+        rename_i ha _
+        obtain ⟨r, k, hk⟩ := anchor_head ha
+        simp at hk
+  · rcases SFlowNode_head_lift h ⟨h_amp, hstar, h_bang, h_lb, h_lc⟩ with
+      ⟨_, _, hp⟩ | ⟨_, hq⟩ | ⟨_, hq⟩
+    · exact SNsPlain_last_not_white (Or.inl rfl) hp
+    · exact SCDoubleQuoted_last hq
+    · exact SCSingleQuoted_last hq
+
+/-- The landing agreement: two value-node ends from one start (at any two floors) with white runs
+    to one scan position coincide. -/
+lemma flowNode_landing_eq {n m : Nat} {ch : Char} {rest : List Char} {col : Nat} {a b sp' : SurfPos}
+    (hc : ch ≠ '&' ∧ ch ≠ '!' ∧ ch ≠ '[' ∧ ch ≠ '{')
+    (ha : SFlowNode n .flowIn ⟨ch :: rest, col⟩ a) (hb : SFlowNode m .flowIn ⟨ch :: rest, col⟩ b)
+    (wa : GStar SSWhite a sp') (wb : GStar SSWhite b sp') : a = b :=
+  lastNonWhite_white_eq (SFlowNode_value_last ha hc) (SFlowNode_value_last hb hc) wa wb
+
+/-! ## §9 The content step on the pair, one floor (item 489)
+
+`accum_step_content` at depth ≥ 1 with the T stack at floor `n ≤ minContentIndentOf sc`: the T stack
+lands at the WRAPPER's `sp_flow'` and `sp_block'` — the landing agreement (§8) identifies the T
+landing (`accum_step_content_traceK`'s `sp_ne`) with the S landing the core now concludes.  The
+`∀`-floor fold into `TFlowStackK` (one `ev_n` at every floor) is the next item. -/
+
+open L4YAML.Scanner
+open L4YAML.Proofs.Serialization.TraceOf
+open L4YAML.Proofs.Serialization.TraceOf.FlowWalk
+open L4YAML.Proofs.ScalarProduction L4YAML.Proofs.CouplingBridge
+open L4YAML.Proofs.StreamAccum L4YAML.Proofs.FlowAdjacency L4YAML.Proofs.PreprocessIndentStable
+open L4YAML.Proofs.ScannerCoupling L4YAML.Proofs.Serialization.SerializationWellFormed
+
+lemma ContentArm_corr {sc s' : ScannerState} {c : Char} {sp sp' : SurfPos}
+    (h : ContentArm sc s' c sp sp') : ScannerSurfCorr s' sp' := by
+  cases h <;> assumption
+
+lemma accum_step_content_pairB {n d : Nat} {ev : List Event} (sc : ScannerState)
+    (sp_start sp_gram sp_block sp_flow sp_scan : SurfPos)
+    (s_prep s' : ScannerState) (c : Char)
+    (h_stream : SLYamlStream sp_start sp_gram)
+    (h_stack : BlockStack sp_gram sp_block)
+    (h_flowK : FlowStackK sp_start sc sc.flowLevel sc.flowStack (tailOf sc.tokens) sp_block sp_flow)
+    (h_pending : sc.flowLevel = 0 → PendingNode sc false sp_start sp_flow sp_scan)
+    (h_corr : ScannerSurfCorr sc sp_scan)
+    (h_interior : sc.flowLevel ≥ 1 →
+      InteriorGap sc (tailOf sc.tokens) sp_flow sp_scan ∧
+        LastTokenReal sc.tokens ∧ sc.allowDirectives = false)
+    (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
+    (h_sound : PendingKeySound.Sound sc)
+    -- **Item 157: §9.2's DANGLING refusal, threaded from `scanNextToken`.**  It
+    -- runs BEFORE every dispatch, so its success reaches all four of them
+    -- unchanged; what the landing turns it into is the park's own face.
+    (h_dn : scanNextToken_checkDanglingNode sc s_prep = .ok ())
+    -- Item 275: §8.1's check, carried beside §9.2's.
+    (h_fv : scanNextToken_checkFlowValueIndent sc s_prep = .ok ())
+    -- Content dispatch is `scanNextToken`'s LAST arm: it runs only after both
+    -- indicator dispatches fell through.  Those two fall-throughs are what pin
+    -- `c` off `,`/`]`/`}` and off the value-indicator `:`, which is what item
+    -- 9d's adjacency inversion needs at a content character (§1c''b'').
+    (h_flow_none : scanNextToken_dispatchFlowIndicators
+        (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) c = .ok none)
+    (h_blk_none : scanNextToken_dispatchBlockIndicators
+        (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) c = .ok none)
+    -- Item 47: the adjacent-value check sits between the block and content
+    -- dispatches, so a content step carries its success — which is what the
+    -- two content parks' `:`-residue arms refute.
+    (h_adj : scanNextToken_checkAdjacentValue
+        (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) c = .ok ())
+    -- **Item 139: and §9.2's landing refusal, beside it.**  It runs one check
+    -- earlier — before the `allowDirectives` update — so it reads `s_prep`
+    -- itself, and it is what the two content parks' FALLBACK route refutes.
+    (h_bare : scanNextToken_checkBareDocument s_prep = .ok ())
+    -- Item 146: the stack's BASE, carried by the accumulation from `mk'`
+    -- down.  §9.2's landing refusal spends it to read the dedent exemption
+    -- off the landing's column instead of splitting on it.
+    (h_base : IndentStackBase.SentinelBase sc)
+    -- **Item 149: and its SHAPE**, carried the same way and from the same
+    -- seed.  A dedent landing's pack reads the scanner stack it pops to,
+    -- and reading a bound on the TOP as a bound on every entry is what
+    -- monotonicity buys (`IndentStackCover.Covered.pop_to`).
+    (h_mono : IndentStackMono.Mono sc)
+    (h_dispatch : scanNextToken_dispatchContent
+        (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) c = .ok s')
+    -- Item 67: the structural dispatch's FALL-THROUGH, which inside a flow is
+    -- the statement that the token cleared the enclosing block's indent — the
+    -- other half of what a multi-line reading at the stack's index needs.
+    (h_str_none : scanNextToken_dispatchStructural s_prep c = .ok none)
+    (h_not_doc : (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep).col = 0 →
+      atDocumentBoundary (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) = false)
+    (hd : sc.flowLevel = d + 1)
+    (hT : TFlowStackB n sc.flowLevel sc.flowStack (tailOf sc.tokens) sp_block sp_flow ev)
+    (hn : n ≤ minContentIndentOf sc) :
+    ∃ sp_gram' sp_block' sp_flow' sp_scan',
+      SLYamlStream sp_start sp_gram' ∧
+      BlockStack sp_gram' sp_block' ∧
+      FlowStackK sp_start s' s'.flowLevel s'.flowStack (tailOf s'.tokens) sp_block' sp_flow' ∧
+      (s'.flowLevel = 0 → PendingNode s' false sp_start sp_flow' sp_scan') ∧
+      ScannerSurfCorr s' sp_scan' ∧
+      (s'.flowLevel ≥ 1 →
+        InteriorGap s' (tailOf s'.tokens) sp_flow' sp_scan' ∧
+          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) ∧
+      sp_block' = sp_block ∧
+      ∃ ev_n, TFlowStackB n s'.flowLevel s'.flowStack (tailOf s'.tokens) sp_block sp_flow' (ev ++ ev_n) := by
+  obtain ⟨g, b, f, sn, q1, q2, q3, q4, q5, q6, sp_prepW, sp_aW, hcW, armW, q7⟩ :=
+    accum_step_content (h_sound := h_sound) sc sp_start sp_gram sp_block sp_flow sp_scan s_prep s' c
+      h_stream h_stack h_flowK h_pending h_corr h_interior h_preprocess h_dn h_fv h_flow_none
+      h_blk_none h_adj h_bare h_base h_mono h_dispatch h_str_none h_not_doc
+  obtain ⟨hblk, hprop, hval⟩ := q7 (by omega)
+  obtain ⟨h_gap, h_real, -⟩ := h_interior (by omega)
+  obtain ⟨ev_n, sp_prep, sp_a, hc, arm, hdisj⟩ :=
+    accum_step_content_traceK hd h_corr h_preprocess h_str_none h_flow_none h_blk_none h_dispatch
+      h_not_doc h_gap h_real hT hn
+  have hsp : sp_prepW = sp_prep := ScannerSurfCorr_unique hcW hc
+  subst hsp
+  have ha : sp_a = sn := ScannerSurfCorr_unique (ContentArm_corr arm) q5
+  subst ha
+  refine ⟨g, b, f, sp_a, q1, q2, q3, q4, q5, q6, hblk, ?_⟩
+  rcases hdisj with ⟨kj, sp_ne, htl, ⟨hamp, hbang⟩, hws, hnd, hTB⟩ | ⟨-, hc', hTB⟩
+  · obtain ⟨m, -, hnS, hwS⟩ := hval kj htl
+    have hpeek : (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep).peek? = some c :=
+      (by split <;> rfl : (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep).peek? = s_prep.peek?).trans (preprocess_some_peek h_preprocess)
+    obtain ⟨rest, hsp⟩ := peek_some_sp hc hpeek
+    subst hsp
+    have hglue := content_not_glue h_dispatch
+    simp only [isFlowIndicatorBool, Bool.or_eq_false_iff, decide_eq_false_iff_not,
+      List.mem_cons, List.mem_nil_iff, or_false, not_or] at hglue
+    have heq := flowNode_landing_eq ⟨hamp, hbang, hglue.2.2.1, hglue.2.2.2.2.1⟩ hnd hnS hws hwS
+    subst heq
+    exact ⟨ev_n, hTB⟩
+  · rw [hprop hc']
+    exact ⟨[], by simpa using hTB⟩
+
+end
 
 end L4YAML.Proofs.Serialization.TraceOf.ContentBridge

@@ -395,9 +395,11 @@ def expectedEndsLit : List String :=
 -- off the dispatcher's `c` split; the park's own rows (ends, arms, spend) unmoved.
 -- 2026-11-12 (item 487, the K caller): prods 172 → 173, ctors 328 → 330 — `ContentLead` (ContentBridge §5), two
 -- constructors (`.white` / `.props`); the park rows unchanged.
+-- 2026-11-13 (item 489, the landing agreement): prods 173 → 174, ctors unchanged — `LastNonWhite` (ContentBridge §7,
+-- a `SurfPos → SurfPos → Prop` def, item 488) is read now that §7–§9 sit in a `public section`.
 def expectedLine : String :=
   "pop=10 sites=13 spend=6 nospend=7 len1=6 ends=GStar(SSWhite)+SIndent \
-depth=3 prods=173 ctors=330 \
+depth=3 prods=174 ctors=330 \
 endsLit=42 minus=1 question=2 colon=21 chainEnds=0 blockArms=1 seqArms=10 \
 mapArms=10 streamArms=4 streamHonest=3"
 

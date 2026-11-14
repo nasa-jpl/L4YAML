@@ -391,7 +391,10 @@ example (s : String) : ([] : List Char) <:+ s.toList := List.nil_suffix
 -- 2026-11-11 (item 484, ContentArm): total 27 → 28, bound 9 → 10 — `accum_step_content_core` (the renamed body)
 -- joins the transitive set beside `accum_step_content`, whose conclusion keeps the same bound `SLYamlStream` shape
 -- with `ContentArm` as its last conjunct.
-def expectedTally : String := "bound=10 empty=10 free=5 negation=3 total=28"
+-- 2026-11-13 (item 489, the landing agreement): total 28 → 29, bound 10 → 11 — `accum_step_content_pairB`
+-- (ContentBridge §9) joins the transitive set; it re-packs the wrapper's tuple, so its conclusion keeps the
+-- bound `SLYamlStream` shape.
+def expectedTally : String := "bound=11 empty=10 free=5 negation=3 total=29"
 
 /-- The arm the model omits. -/
 def drop : Name := `L4YAML.Surface.SLYamlStream.scannerDrop

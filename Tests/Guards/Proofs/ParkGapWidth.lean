@@ -563,15 +563,18 @@ def expectedLadder : List String :=
   -- Item 409 (2026-10-30): `MarkedColsIn.step_value` holds the `:` dispatch and its preprocess (+1, +1).
   [
    -- 2026-11-12 (item 487, S3 slice (4) PR 2): dispatchBlockIndicators holders 140 → 142 — `contentLead_of_interior`, `accum_step_content_traceK` read `h_blk_none`.
-   "scanNextToken_dispatchBlockIndicators holders=142 edge=1 chain=0",
+   -- 2026-11-13 (item 489, the landing agreement): 142 → 143 — `accum_step_content_pairB` holds `h_blk_none`.
+   "scanNextToken_dispatchBlockIndicators holders=143 edge=1 chain=0",
    -- 2026-11-08 (item 459, review): dispatchContent holders 170 → 173 — `ScannerShape.dispatchContent_{anchor,alias,tag}_trace`.
    -- 2026-11-08 (item 464, S3 slice (3) first PR): dispatchContent holders 173 → 175 — `ScannerShape.dispatchContent_{doubleQuoted,singleQuoted}_trace`.
    -- 2026-11-12 (item 486, S3 slice (4) PR 1): dispatchContent holders 175 → 180 — `TraceOf/ContentBridge`'s three twins
    -- (`h_dispatch`) and its two `dispatchContent_{plain,blockScalar}_tokens` helpers.
    -- 2026-11-12 (item 487, S3 slice (4) PR 2): dispatchContent holders 180 → 183 — `contentLead_of_interior`, `content_prop_tail_kept`, `accum_step_content_traceK`.
-   "scanNextToken_dispatchContent holders=183 edge=3 chain=1",
+   -- 2026-11-13 (item 489): 183 → 184 — `accum_step_content_pairB` holds `h_dispatch`.
+   "scanNextToken_dispatchContent holders=184 edge=3 chain=1",
    -- 2026-11-12 (item 487, S3 slice (4) PR 2): preprocess holders 251 → 254 — `tailOf_preprocess_eq`, `contentLead_of_interior`, `accum_step_content_traceK`.
-   "scanNextToken_preprocess holders=254 edge=17 chain=3"]
+   -- 2026-11-13 (item 489): 254 → 255 — `accum_step_content_pairB` holds `h_preprocess`.
+   "scanNextToken_preprocess holders=255 edge=17 chain=3"]
 
 /-- **What §1's proofs spend.**  `drop=false` is the non-circularity check
     items 242 and 243 also carry: a measurement of what the escape costs may

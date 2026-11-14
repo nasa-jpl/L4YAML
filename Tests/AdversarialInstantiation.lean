@@ -16331,7 +16331,7 @@ def tally (rows : List String) : Tally := Id.run do
             if spanOk && strip span == strip text.toList then
               t := { t with ok := t.ok + 1 }
               if span == text.toList then t := { t with verbatim := t.verbatim + 1 }
-            else t := { t with bad := t.bad ++ [s!"{s}@{back.pos.offset}..{e}/{post.offset}: {String.mk span} vs {text}"] }
+            else t := { t with bad := t.bad ++ [s!"{s}@{back.pos.offset}..{e}/{post.offset}: {String.ofList span} vs {text}"] }
           | none => t := { t with bad := t.bad ++ [s!"{s}: no scalar text"] }
     | _, _ => pure ()
   return t
@@ -16349,6 +16349,78 @@ def testPlainLandingUniform (state : IO.Ref TestCollector) : IO Unit := do
     s!"{t.plainIn} {t.ok} {t.verbatim} {t.bad}"
 
 end P116Test
+
+/-! ## Priority 117 — the landing agreement's shadow (capstone 7.7, item 489)
+
+The pair-level content step identifies the S landing (the core's hidden `sp_ne`) with the T
+landing (the arm's `sp_gram`) because both are node ends from `sp_prep` with white runs to the
+one scan position, and a flow node's last character is not white (`SFlowNode_last_not_white`).
+The decidable shadow, at EVERY in-flow value step (plain / `"` / `'` / `*`): the span from the
+pushed token's start to the last non-white before the post-state's offset is the node — plain:
+the token's text (white/breaks dropped, P116's check); quoted: bracketed by the quote char;
+alias: `*` followed by the alias name. Property arms (`&`/`!`) keep the tail and are not value
+steps. -/
+namespace P117
+
+open L4YAML L4YAML.Scanner P111 P112 P113 P114
+
+structure Tally where
+  value : Nat := 0
+  byKind : List (String × Nat) := []
+  ok : Nat := 0
+  bad : List String := []
+  deriving Repr
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    match scanFiltered s, P107.stepsOf s with
+    | .ok _, some sts =>
+      for (pre, post) in sts do
+        let pushed := post.tokens.toList.drop pre.tokens.size
+        match pushed.getLast? with
+        | none => pure ()
+        | some back =>
+          let k := kindOf back.val
+          if !(k == "plain" || k == "dq" || k == "sq" || k == "alias") || pre.flowLevel == 0 then
+            continue
+          t := { t with value := t.value + 1, byKind := bumpS t.byKind k }
+          let bytes := s.toUTF8
+          let charAt (i : Nat) : Option Char :=
+            match bytes[i]? with | some b => if b < 128 then some (Char.ofNat b.toNat) else none | none => none
+          let mut e := post.offset
+          while e > 0 && (match charAt (e - 1) with | some ch => isWhiteSpaceBool ch | none => false) do
+            e := e - 1
+          let span : List Char := (List.range (e - back.pos.offset)).filterMap
+            (fun i => charAt (back.pos.offset + i))
+          let strip (l : List Char) : List Char :=
+            l.filter (fun ch => !(isWhiteSpaceBool ch || ch == '\n' || ch == '\r'))
+          let spanOk := e > back.pos.offset && (e - back.pos.offset) == span.length
+          let nodeOk : Bool :=
+            match back.val with
+            | .scalar text .plain => strip span == strip text.toList
+            | .scalar _ .doubleQuoted => span.head? == some '"' && span.getLast? == some '"' && span.length ≥ 2
+            | .scalar _ .singleQuoted => span.head? == some '\'' && span.getLast? == some '\'' && span.length ≥ 2
+            | .alias name => span == '*' :: name.toList
+            | _ => false
+          if spanOk && nodeOk then t := { t with ok := t.ok + 1 }
+          else t := { t with bad := t.bad ++ [s!"{s}@{back.pos.offset}..{e}/{post.offset}: {String.ofList span} ({k})"] }
+    | _, _ => pure ()
+  return t
+
+end P117
+
+namespace P117Test
+open P117
+
+def testValueLandingNodeEnd (state : IO.Ref TestCollector) : IO Unit := do
+  let t := tally P113.allRows
+  checkM state
+    s!"P117 the in-flow value landing is a node end from the token's start: {t.ok} of {t.value} steps ({t.byKind}) (failing: {t.bad})"
+    (t.bad.isEmpty && t.ok == t.value && t.value > 392 && P100.kindOf t.byKind "plain" == 392)
+    s!"{t.value} {t.ok} {t.byKind} {t.bad}"
+
+end P117Test
 
 def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 100: S3 slice (1) — leaf span ↔ token payload (anchor / alias / tag), before proof"
@@ -16545,6 +16617,7 @@ def collectTests : IO VerifiedSuiteResult := do
   P114Test.testContentTwinShadow state
   P115Test.testContentCallerShadow state
   P116Test.testPlainLandingUniform state
+  P117Test.testValueLandingNodeEnd state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",

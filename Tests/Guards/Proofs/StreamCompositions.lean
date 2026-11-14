@@ -786,7 +786,9 @@ def expectedShapeComps : List String :=
 def expectedLine : String :=
 -- Item 371 (comps=12 → 14, byCtor=9 → 11, obtainedSites=4 → 8, prev=17 → 14, new=4 → 7, prevStyle=17 → 14, newVsStyle=4 → 7, segHops=9 → 10, hops=11 → 12): the value-line compositions end in
 -- the one-level `ResumeFrames`; `question_open_map`'s `h_expl`/`h_closeFV`/`h_framesV` are obtained from the bound tail route.
-  "sites=20 genuine=20 pairs=20 viaSites=0 segments=40 genuineSegs=39 facts=1 stacked=0 comps=14 byCtor=11 byFull=39 shapes=14 shapeComps=20 shapeCompsNoDrop=18 obtainedSites=8 approxSites=0 prev=14 new=7 missing=1 prevStyle=14 prevStyleOff=0 newVsStyle=7 styleOnly=1 segHops=10 segAbsorb=3 single=0 dropClose=1 directive=1 hops=12 hopMax=3 approx=37 dead=6 opaque=0 unmarked=157 reach=38"
+  -- 2026-11-13 (item 489, the landing agreement): dead 6 → 7 — `accum_step_content_pairB` (ContentBridge §9)
+  -- composes `accum_step_content` and is reached by no root until the ∀-floor fold (item 490) reads it.
+  "sites=20 genuine=20 pairs=20 viaSites=0 segments=40 genuineSegs=39 facts=1 stacked=0 comps=14 byCtor=11 byFull=39 shapes=14 shapeComps=20 shapeCompsNoDrop=18 obtainedSites=8 approxSites=0 prev=14 new=7 missing=1 prevStyle=14 prevStyleOff=0 newVsStyle=7 styleOnly=1 segHops=10 segAbsorb=3 single=0 dropClose=1 directive=1 hops=12 hopMax=3 approx=37 dead=7 opaque=0 unmarked=157 reach=38"
 
 /-! ## §5 The reading -/
 
