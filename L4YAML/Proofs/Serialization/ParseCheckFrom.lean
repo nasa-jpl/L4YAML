@@ -843,7 +843,7 @@ lemma handleBlockMappingKeyEntry_cf (h_ih : ParseNodeCF n)
     (h_ok : handleBlockMappingKeyEntry ps fuel pairIdx = .ok (key, val, ps')) :
     CF ps ps' := by
   unfold handleBlockMappingKeyEntry at h_ok
-  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  simp only [bind, Except.bind] at h_ok
   have h_adv : CF ps ps.advance := CF.advance_neutral h_peek rfl
   split at h_ok
   all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
@@ -864,7 +864,7 @@ lemma handleBlockMappingValueEntry_cf (h_ih : ParseNodeCF n)
     (h_ok : handleBlockMappingValueEntry ps fuel pairIdx = .ok (val, ps')) :
     CF ps ps' := by
   unfold handleBlockMappingValueEntry at h_ok
-  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  simp only [bind, Except.bind] at h_ok
   have h_adv : CF ps ps.advance := CF.advance_neutral h_peek rfl
   split at h_ok
   all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
@@ -968,7 +968,7 @@ lemma parseFlowMappingValue_cf (h_ih : ParseNodeCF n)
     (h_ok : parseFlowMappingValue ps fuel savedPath keyContent = .ok (val, ps')) :
     CF ps ps' := by
   unfold parseFlowMappingValue at h_ok
-  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  simp only [bind, Except.bind] at h_ok
   have h_pre : CF ps (({ ps with currentPath := savedPath.push (.key keyContent) }.tryConsume .key).2.tryConsume .value).2 :=
     CF.trans (CF.withField _ _) (CF.trans (CF.tryConsume rfl) (CF.tryConsume rfl))
   all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
@@ -1411,11 +1411,11 @@ lemma parseNodeProperties_progress (ps : ParseState) (props : NodeProperties) (p
           | (simp at h; done)
           | (simp only [Except.ok.injEq, Prod.mk.injEq] at h
              obtain ⟨-, rfl⟩ := h
-             simp [declareAnchorOpt_pos, ParseState.advance]
+             simp [ParseState.advance]
              try omega
              done)
       | some t2 =>
-        cases t2 <;> simp only [hpk2, Option.isSome_some, Option.isSome_none, Bool.false_eq_true,
+        cases t2 <;> simp only [hpk2, Option.isSome_some,
           ↓reduceIte] at h
         case tag h2 s2 =>
           by_cases hc : (h2 != "" && h2 != "!" && h2 != "!!") = true
@@ -1426,7 +1426,7 @@ lemma parseNodeProperties_progress (ps : ParseState) (props : NodeProperties) (p
           | (simp at h; done)
           | (simp only [Except.ok.injEq, Prod.mk.injEq] at h
              obtain ⟨-, rfl⟩ := h
-             simp [declareAnchorOpt_pos, ParseState.advance]
+             simp [ParseState.advance]
              try omega
              done)
           · simp only [hc, ↓reduceIte, Bool.false_eq_true] at h
@@ -1434,14 +1434,14 @@ lemma parseNodeProperties_progress (ps : ParseState) (props : NodeProperties) (p
           | (simp at h; done)
           | (simp only [Except.ok.injEq, Prod.mk.injEq] at h
              obtain ⟨-, rfl⟩ := h
-             simp [declareAnchorOpt_pos, ParseState.advance]
+             simp [ParseState.advance]
              try omega
              done)
         all_goals first
           | (simp at h; done)
           | (simp only [Except.ok.injEq, Prod.mk.injEq] at h
              obtain ⟨-, rfl⟩ := h
-             simp [declareAnchorOpt_pos, ParseState.advance]
+             simp [ParseState.advance]
              try omega
              done)
   · rw [hpk] at h
@@ -1456,11 +1456,11 @@ lemma parseNodeProperties_progress (ps : ParseState) (props : NodeProperties) (p
           | (simp at h; done)
           | (simp only [Except.ok.injEq, Prod.mk.injEq] at h
              obtain ⟨-, rfl⟩ := h
-             simp [declareAnchorOpt_pos, ParseState.advance]
+             simp [ParseState.advance]
              try omega
              done)
       | some t2 =>
-        cases t2 <;> simp only [hpk2, Option.isSome_some, Option.isSome_none, Bool.false_eq_true,
+        cases t2 <;> simp only [hpk2, Option.isSome_none, Bool.false_eq_true,
           ↓reduceIte] at h
         case tag h2 s2 =>
           by_cases hc : (h2 != "" && h2 != "!" && h2 != "!!") = true
@@ -1471,7 +1471,7 @@ lemma parseNodeProperties_progress (ps : ParseState) (props : NodeProperties) (p
           | (simp at h; done)
           | (simp only [Except.ok.injEq, Prod.mk.injEq] at h
              obtain ⟨-, rfl⟩ := h
-             simp [declareAnchorOpt_pos, ParseState.advance]
+             simp [ParseState.advance]
              try omega
              done)
           · simp only [hc, ↓reduceIte, Bool.false_eq_true] at h
@@ -1479,14 +1479,14 @@ lemma parseNodeProperties_progress (ps : ParseState) (props : NodeProperties) (p
           | (simp at h; done)
           | (simp only [Except.ok.injEq, Prod.mk.injEq] at h
              obtain ⟨-, rfl⟩ := h
-             simp [declareAnchorOpt_pos, ParseState.advance]
+             simp [ParseState.advance]
              try omega
              done)
         all_goals first
           | (simp at h; done)
           | (simp only [Except.ok.injEq, Prod.mk.injEq] at h
              obtain ⟨-, rfl⟩ := h
-             simp [declareAnchorOpt_pos, ParseState.advance]
+             simp [ParseState.advance]
              try omega
              done)
     · simp only [hc, ↓reduceIte, Bool.false_eq_true] at h
@@ -1497,11 +1497,11 @@ lemma parseNodeProperties_progress (ps : ParseState) (props : NodeProperties) (p
           | (simp at h; done)
           | (simp only [Except.ok.injEq, Prod.mk.injEq] at h
              obtain ⟨-, rfl⟩ := h
-             simp [declareAnchorOpt_pos, ParseState.advance]
+             simp [ParseState.advance]
              try omega
              done)
       | some t2 =>
-        cases t2 <;> simp only [hpk2, Option.isSome_some, Option.isSome_none, Bool.false_eq_true,
+        cases t2 <;> simp only [hpk2, Option.isSome_none, Bool.false_eq_true,
           ↓reduceIte] at h
         case tag h2 s2 =>
           by_cases hc : (h2 != "" && h2 != "!" && h2 != "!!") = true
@@ -1512,7 +1512,7 @@ lemma parseNodeProperties_progress (ps : ParseState) (props : NodeProperties) (p
           | (simp at h; done)
           | (simp only [Except.ok.injEq, Prod.mk.injEq] at h
              obtain ⟨-, rfl⟩ := h
-             simp [declareAnchorOpt_pos, ParseState.advance]
+             simp [ParseState.advance]
              try omega
              done)
           · simp only [hc, ↓reduceIte, Bool.false_eq_true] at h
@@ -1520,14 +1520,14 @@ lemma parseNodeProperties_progress (ps : ParseState) (props : NodeProperties) (p
           | (simp at h; done)
           | (simp only [Except.ok.injEq, Prod.mk.injEq] at h
              obtain ⟨-, rfl⟩ := h
-             simp [declareAnchorOpt_pos, ParseState.advance]
+             simp [ParseState.advance]
              try omega
              done)
         all_goals first
           | (simp at h; done)
           | (simp only [Except.ok.injEq, Prod.mk.injEq] at h
              obtain ⟨-, rfl⟩ := h
-             simp [declareAnchorOpt_pos, ParseState.advance]
+             simp [ParseState.advance]
              try omega
              done)
 
@@ -1709,7 +1709,7 @@ lemma dirLoop (l : List Nat) (ps : ParseState) (dirs : Array Directive)
         Directive.tag hd pre ∈ dirs ∨ (isNamedHandle hd = true → hd ∈ pending')) := by
   induction l generalizing ps dirs with
   | nil =>
-    simp only [List.forIn_nil, Id.run, pure, Prod.mk.injEq] at h
+    simp only [List.forIn_nil, pure] at h
     obtain ⟨rfl, rfl⟩ := h
     refine ⟨rfl, Nat.le_refl _, by simp, rfl, rfl, Or.inr (by simp), Or.inl ⟨rfl, rfl, Or.inl rfl⟩,
       fun env pending => ⟨pending, by simp [runToks], fun _ h => h, fun _ _ h => Or.inl h⟩⟩
@@ -1777,7 +1777,7 @@ lemma dirLoop (l : List Nat) (ps : ParseState) (dirs : Array Directive)
             · exact Or.inr hm
     cases hpk : ps.peek? with
     | none =>
-      simp only [dirBody, hpk, pure, bind, Id.run, Prod.mk.injEq] at h
+      simp only [dirBody, hpk, pure, bind] at h
       obtain ⟨rfl, rfl⟩ := h
       refine ⟨rfl, Nat.le_refl _, by simp, rfl, rfl, Or.inl (by rw [← peek_eq_tok, hpk]; rfl),
         Or.inl ⟨rfl, rfl, Or.inr (by rw [← peek_eq_tok, hpk]; rfl)⟩,
@@ -1785,21 +1785,21 @@ lemma dirLoop (l : List Nat) (ps : ParseState) (dirs : Array Directive)
     | some t =>
       cases t
       case versionDirective major minor =>
-        simp only [dirBody, hpk, pure, bind, Id.run] at h
+        simp only [dirBody, hpk, pure, bind] at h
         exact hstep _ hpk (Or.inl ⟨major, minor, rfl⟩) _ (fun hd pre hm => by
           simp only [Array.mem_push] at hm
           rcases hm with hm | hm
           · exact Or.inl hm
           · cases hm) h
       case tagDirective hd pre =>
-        simp only [dirBody, hpk, pure, bind, Id.run] at h
+        simp only [dirBody, hpk, pure, bind] at h
         exact hstep _ hpk (Or.inr ⟨hd, pre, rfl⟩) _ (fun hd' pre' hm => by
           simp only [Array.mem_push] at hm
           rcases hm with hm | hm
           · exact Or.inl hm
           · cases hm; exact Or.inr rfl) h
       all_goals
-        simp only [dirBody, hpk, pure, bind, Id.run, Prod.mk.injEq] at h
+        simp only [dirBody, hpk, pure, bind] at h
         obtain ⟨rfl, rfl⟩ := h
         refine ⟨rfl, Nat.le_refl _, by simp, rfl, rfl, Or.inl (by rw [← peek_eq_tok, hpk]; rfl),
           Or.inl ⟨rfl, rfl, Or.inr (by rw [← peek_eq_tok, hpk]; rfl)⟩,
@@ -1897,7 +1897,7 @@ lemma prepareDocumentState_cf (ps : ParseState) (dirs : Array Directive) (ps' : 
       isDirectiveTok (tok ps.tokens ps.pos) = false ∧ tok ps.tokens ps.pos ≠ some .documentStart) ∧
     ∀ s : CS, ∃ s', runToks (seg ps.tokens ps.pos ps'.pos) s = some s' ∧ Rel ps' s' := by
   unfold prepareDocumentState at h
-  simp only [bind, Except.bind, pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   generalize hpd : parseDirectives ps = pr at h
   obtain ⟨dirs₀, ps_d⟩ := pr
   obtain ⟨t_d, p1, p2, d_d, nd, lst, r⟩ := parseDirectives_cf ps dirs₀ ps_d hpd hsz
@@ -1972,7 +1972,7 @@ lemma prepareDocumentState_cf (ps : ParseState) (dirs : Array Directive) (ps' : 
       intro dirs' ps'' heq h1 h2
       obtain ⟨rfl, rfl⟩ := Prod.mk.inj heq
       subst h2
-      simp only [ParseState.advance, Nat.succ_eq_add_one]
+      simp only [ParseState.advance]
       refine ⟨t_d, by omega, by omega, by simpa using d_d.trans hdecl, fun hpos => by omega, fun s => ?_⟩
       obtain ⟨pending', hr, hdirs⟩ := r s.1 s.2
       obtain ⟨q, hq, hv⟩ := peek_some hpkT
@@ -1999,7 +1999,7 @@ lemma parseDocument_cf (ps : ParseState) (doc : YamlDocument) (ps' : ParseState)
     (ps'.pos = ps.pos → DeadAt ps.tokens ps.pos) ∧
     ∀ s : CS, ∃ s', runToks (seg ps.tokens ps.pos ps'.pos) s = some s' := by
   unfold parseDocument at h
-  simp only [bind, Except.bind, pure, Except.pure] at h
+  simp only [bind, Except.bind] at h
   split at h
   · simp at h
   · rename_i pr hpre
@@ -2177,7 +2177,7 @@ lemma parseStream_ok_checkFrom (ts : Toks) (docs : Array YamlDocument)
         obtain ⟨k, s', hk1, hk2, hk3, hr⟩ := parseStreamLoop_cf ts.size _ #[] .initial docs h
           (by simp only [ParseState.advance]; omega) (by simp only [ParseState.advance]; omega)
           rfl hD hT ({}, [])
-        simp only [ParseState.advance, Nat.succ_eq_add_one] at hk1 hk2 hk3 hr
+        simp only [ParseState.advance] at hk1 hk2 hk3 hr
         refine ⟨k, hk2, hk3, ?_⟩
         obtain ⟨p, hp, hv⟩ := peek_some hpk
         simp only at hp hv

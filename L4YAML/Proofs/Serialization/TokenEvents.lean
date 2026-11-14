@@ -131,8 +131,8 @@ lemma go_eq_goOut (l : List (Positioned YamlToken)) (p : List String) :
   | cons t ts ih =>
     obtain ⟨_, v, _⟩ := t
     cases v <;> simp [go, goOut, tokenEvent, ih]
-    all_goals (try (split <;> simp [ih]))
-    all_goals (try (rename_i handle _; by_cases h : handle = "" <;> simp [h, ih]))
+    all_goals (try (split <;> simp))
+    all_goals (try (rename_i handle _; by_cases h : handle = "" <;> simp [h]))
 
 lemma goOut_append (l₁ l₂ : List (Positioned YamlToken)) (p : List String) :
     goOut (l₁ ++ l₂) p =
@@ -142,7 +142,7 @@ lemma goOut_append (l₁ l₂ : List (Positioned YamlToken)) (p : List String) :
   | cons t ts ih =>
     obtain ⟨_, v, _⟩ := t
     cases v <;> simp [goOut, tokenEvent, ih]
-    all_goals (try (split <;> simp [ih]))
+    all_goals (try (split <;> simp))
     all_goals (try (rename_i handle _; by_cases h : handle = "" <;> simp [h, ih]))
 
 /-- The split law: the events of `l₁ ++ l₂` are those of `l₁`, then those of `l₂` from

@@ -161,7 +161,7 @@ lemma document_reset_forgets_anchor (env : Env) (name : String) (rest : List Eve
       (.defineAnchor name :: .endDocument :: .beginDocument :: .useAlias name :: rest) →
       False := by
   intro h
-  simpa [WellFormedFrom, AliasAllowed, Env.reset] using h
+  simp [WellFormedFrom, AliasAllowed, Env.reset] at h
 
 lemma document_reset_forgets_custom_tag (env : Env) (handle : String)
     (h_builtin : ¬ BuiltinTagHandle handle) (rest : List Event) :
@@ -169,7 +169,7 @@ lemma document_reset_forgets_custom_tag (env : Env) (handle : String)
       (.declareTag handle :: .endDocument :: .beginDocument :: .useTag handle :: rest) →
       False := by
   intro h
-  simpa [WellFormedFrom, TagHandleAllowed, Env.reset, h_builtin] using h
+  simp [WellFormedFrom, TagHandleAllowed, Env.reset, h_builtin] at h
 
 
 /-! ## Extensional semantic state
@@ -352,7 +352,7 @@ lemma parser_declared_handle_exact
   · rw [Array.any_eq_true]
     rintro ⟨i, hi, hname⟩
     apply List.mem_map.mpr
-    exact ⟨ps.tagHandles[i], by simpa using Array.getElem_mem hi,
+    exact ⟨ps.tagHandles[i], by simp,
       by simpa only [beq_iff_eq] using hname⟩
   · intro h
     rw [Array.any_eq_true]
