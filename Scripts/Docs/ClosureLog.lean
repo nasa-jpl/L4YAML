@@ -7,10 +7,10 @@ module
 
 `DOCS.md`'s "Row 12 — β.5 closure log" is a flat run of `### Item N (DATE)`
 entries that readers and later entries navigate by number.  This module is
-the item parser both the gate (`scripts-check-closure-log`, formerly
-`scripts/check_closure_log.py`) and the navigator (`scripts-docs-nav`,
-formerly `scripts/docs_nav.py`; `Scripts/Docs/Nav.lean`) read the log through, and the gate's six checks as pure functions over the parsed
-entries (each a hard failure):
+the item parser both the gate (`scripts-check-closure-log`) and the navigator
+(`scripts-docs-nav`; `Scripts/Docs/Nav.lean`) read the log through, and the
+gate's six checks as pure functions over the parsed entries (each a hard
+failure):
 
 1. headings parse — every `### Item N …` heading carries a number and a
    trailing `(YYYY-MM-DD)` date;
@@ -23,11 +23,6 @@ entries (each a hard failure):
    inside the log's range;
 6. no leftover merge-conflict markers — no line of `DOCS.md` starts with
    `<<<<<<<`, `|||||||` or `>>>>>>>` (`isConflictMarker`).
-
-The messages of checks 1–5 are the Python gate's, byte for byte, so the two
-readings diff empty on the same `DOCS.md`.  Check 6 has no Python
-counterpart: it was added after the port, so on a `DOCS.md` with a leftover
-marker the two gates differ by that error.
 -/
 
 namespace Scripts.Docs.ClosureLog
