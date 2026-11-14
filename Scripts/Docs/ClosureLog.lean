@@ -125,12 +125,22 @@ structure Parsed where
   entries : Array Entry := #[]
   errors : Array String := #[]
 
-/-- Check 1 over every line; `entries` in file order. -/
+/-- A leftover merge-conflict marker: `<<<<<<<`, `|||||||` (diff3 base) or `>>>>>>>`, alone or
+followed by a space.  (`=======` is not matched: it is also a setext heading underline, and a
+conflict always carries one of the other three.) -/
+def isConflictMarker (line : String) : Bool :=
+  ["<<<<<<<", "|||||||", ">>>>>>>"].any fun m =>
+    line == m || line.startsWith (m ++ " ")
+
+/-- Check 1 over every line, plus leftover conflict markers; `entries` in file order. -/
 def parseLog (lines : Array String) : Parsed := Id.run do
   let mut p : Parsed := {}
   let mut lineno := 0
   for ln in lines do
     lineno := lineno + 1
+    if isConflictMarker ln then
+      let msg := s!"DOCS.md:{lineno}: leftover merge-conflict marker — resolve the conflict and delete the line"
+      p := { p with errors := p.errors.push msg }
     match parseHeading ln with
     | none => pure ()
     | some (number, letter, rest) =>
@@ -217,5 +227,10 @@ private def tiny (body : String) : UInt32 × Array String :=
 #guard (tiny "### Item 20 (2026-01-01)\n### Item 21 no date\n### Item 22 (2026-01-01)\n").2[0]! ==
   "DOCS.md:4: item 21 — heading has no trailing (YYYY-MM-DD) date"
 #guard (gate "nothing here\n").1 == 2
+-- leftover conflict markers
+#guard isConflictMarker "||||||| parent of caf1ab3a (docs)" && isConflictMarker "<<<<<<< HEAD" &&
+  isConflictMarker ">>>>>>>" && !isConflictMarker "=======" && !isConflictMarker "|| a | b ||"
+#guard (tiny "### Item 17 (2026-01-01)\n||||||| parent of x\n### Item 19 (2026-01-02)\n").2[0]! ==
+  "DOCS.md:4: leftover merge-conflict marker — resolve the conflict and delete the line"
 
 end Scripts.Docs.ClosureLog
