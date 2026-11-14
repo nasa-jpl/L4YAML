@@ -16576,6 +16576,112 @@ def testFloorFoldShadow (state : IO.Ref TestCollector) : IO Unit := do
 
 end P118Test
 
+/-! ## Priority 119 (item 491): the `?` / `:` flow arms' decidable shadow
+The depth-≥1 `?` / `:` steps are `accum_step_block`'s (the key/value indicators are
+`scanNextToken_dispatchBlockIndicators`'), concluding `FlowStackK` at six sites:
+`?` on a `.sep` tail (`receiveQuestion`); `:` on a `.value kj` tail (the closure
+`FlowStackK` carries), on `.sep` and on `.question`, each under a white lead or a
+held run (`receiveColonSep` / `receiveColonQuestion` / `…Props…`).  Their T twins
+(FlowWalk §6) exist for five; the `.value kj → .colon kj` twin does not — the T
+frames store the key node (`midNode` / `midKey`), so it is a frame step, not a
+closure.  Shadows, at every in-flow `?` / `:` step: (i) the step's hypotheses
+(preprocess, structural and flow dispatchers decline, the block dispatcher
+fires), (ii) the pre-tail by indicator and lead, (iii) the post-tail (`?` →
+`.question`, `:` → `.colon _`), (iv) `flowLevel` / `flowStack` and the floor
+ceiling ride the step, (v) the `goOut` trace is a prefix extension, suffix by lead. -/
+namespace P119
+open L4YAML L4YAML.Scanner P107 P111 P113
+open L4YAML.Proofs.StreamAccum (tailOf FrameTail)
+open L4YAML.Proofs.Serialization.TokenEvents
+
+structure Tally where
+  inSteps : Nat := 0
+  byChar : List (String × Nat) := []
+  tailBy : List (String × Nat) := []
+  hypsOk : Nat := 0
+  hypsFail : List String := []
+  postTailOk : Nat := 0
+  postTailBad : List String := []
+  rides : Nat := 0
+  rideBad : List String := []
+  prefixOk : Nat := 0
+  prefixBad : List String := []
+  suffixByLead : List (String × Nat) := []
+  floors : List (String × Nat) := []
+  deriving Repr
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    match scanFiltered s, P107.stepsOf s with
+    | .ok _, some sts =>
+      for (pre, post) in sts do
+        let pushed := post.tokens.toList.drop pre.tokens.size
+        match pushed.getLast? with
+        | none => pure ()
+        | some back =>
+          let k := kindOf back.val
+          if k != "key" && k != "value" then continue
+          if pre.flowLevel == 0 then continue
+          t := { t with inSteps := t.inSteps + 1, byChar := bumpS t.byChar k }
+          let run := L4YAML.Scanner.trailingPropertyRun pre.tokens
+          let lead := if run.isEmpty then "white" else "props"
+          t := { t with tailBy := bumpS t.tailBy s!"{k}/{tailClass (tailOf pre.tokens)}/{lead}" }
+          -- (i) the hypotheses
+          match scanNextToken_preprocess pre with
+          | .ok (some (sp, c)) =>
+            let sad := if sp.allowDirectives then
+              { sp with allowDirectives := false, documentEverStarted := true } else sp
+            let strNone := match scanNextToken_dispatchStructural sp c with | .ok none => true | _ => false
+            let flowNone := match scanNextToken_dispatchFlowIndicators sad c with | .ok none => true | _ => false
+            let blkSome := match scanNextToken_dispatchBlockIndicators sad c with
+              | .ok (some s') => s'.tokens == post.tokens | _ => false
+            let charOk := (k == "key" && c == '?') || (k == "value" && c == ':')
+            if strNone && flowNone && blkSome && charOk then t := { t with hypsOk := t.hypsOk + 1 }
+            else t := { t with hypsFail := t.hypsFail ++ [s!"{s}@{k}"] }
+          | _ => t := { t with hypsFail := t.hypsFail ++ [s!"{s}@preprocess"] }
+          -- (iii) the post-tail
+          let postOk := match k, tailOf post.tokens with
+            | "key", .question => true | "value", .colon _ => true | _, _ => false
+          if postOk then t := { t with postTailOk := t.postTailOk + 1 }
+          else t := { t with postTailBad := t.postTailBad ++ [s!"{s}@{k}:{repr (tailOf post.tokens)}"] }
+          -- (iv) the indices and the floor ceiling ride
+          let floor := L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf pre
+          t := { t with floors := bumpS t.floors s!"floor={floor}" }
+          if post.flowLevel == pre.flowLevel && post.flowStack == pre.flowStack &&
+              L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf post == floor then
+            t := { t with rides := t.rides + 1 }
+          else t := { t with rideBad := t.rideBad ++ [s!"{s}@{k}"] }
+          -- (v) the trace
+          let evPre := (goOut pre.tokens.toList []).1
+          let evPost := (goOut post.tokens.toList []).1
+          if evPost.take evPre.length == evPre then
+            t := { t with prefixOk := t.prefixOk + 1,
+                          suffixByLead := bumpS t.suffixByLead s!"{lead}/+{evPost.length - evPre.length}" }
+          else t := { t with prefixBad := t.prefixBad ++ [s] }
+    | _, _ => pure ()
+  return t
+
+end P119
+
+namespace P119Test
+open P119
+
+def testKeyArmShadow (state : IO.Ref TestCollector) : IO Unit := do
+  let t := tally (P113.allRows ++ P118.extraRows)
+  checkM state
+    s!"P119 the ?/: flow arms: {t.inSteps} in-flow steps {t.byChar}; pre-tails {t.tailBy}; hypotheses {t.hypsOk}/{t.inSteps} (failing: {t.hypsFail}); post-tail {t.postTailOk}/{t.inSteps} (bad: {t.postTailBad}); indices+floor ride {t.rides}/{t.inSteps} (bad: {t.rideBad}); trace prefix {t.prefixOk}/{t.inSteps} (bad: {t.prefixBad}) suffixes {t.suffixByLead}; floors {t.floors}"
+    (t.inSteps == 171 && t.byChar == [("value", 144), ("key", 27)] &&
+      t.tailBy == [("value/sep/white", 8), ("key/sep/white", 27), ("value/value/white", 126),
+        ("value/question/white", 4), ("value/sep/props", 4), ("value/question/props", 2)] &&
+      t.hypsOk == 171 && t.hypsFail.isEmpty && t.postTailOk == 171 && t.postTailBad.isEmpty &&
+      t.rides == 171 && t.rideBad.isEmpty && t.prefixOk == 171 && t.prefixBad.isEmpty &&
+      t.suffixByLead == [("white/+0", 165), ("props/+0", 6)] &&
+      t.floors == [("floor=0", 161), ("floor=1", 8), ("floor=3", 2)])
+    s!"{t.inSteps} {t.byChar} {t.tailBy} {t.hypsFail} {t.postTailBad} {t.rideBad} {t.prefixBad} {t.suffixByLead} {t.floors}"
+
+end P119Test
+
 def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 100: S3 slice (1) — leaf span ↔ token payload (anchor / alias / tag), before proof"
   let t := P100.tally P100.allRows
@@ -16773,6 +16879,7 @@ def collectTests : IO VerifiedSuiteResult := do
   P116Test.testPlainLandingUniform state
   P117Test.testValueLandingNodeEnd state
   P118Test.testFloorFoldShadow state
+  P119Test.testKeyArmShadow state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",
