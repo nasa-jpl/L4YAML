@@ -1505,7 +1505,7 @@ lemma gapRead_onT {n d : Nat} {ks : Array Bool} {sc : L4YAML.Scanner.ScannerStat
     `accum_flow_open_depth0`'s existential `sp_flow'`, so it is stated at the T side's `sp_open`).
     A nested open AFTER a held run (`[&a [b]]`: the run wraps the child, `inject`'s `propsContent`)
     is in the first disjunct, `ev_g` the run's events: `FlowArm.openNest.h_lead`'s ε disjunct
-    carries `trailingPropertyRun sc.tokens = []` (item 496), so under the held run (`≠ []`) the
+    carries `trailingPropertyRun sc.tokens = []` (item 497), so under the held run (`≠ []`) the
     lead is the strict separation `openNestSeqProps`/`openNestMapProps` ask.  The arm's
     obligations are read at every floor; `hn` is the stack's floor (`FlowStackK`'s `n ≤ minContentIndentOf`). -/
 lemma accum_step_flow_trace {n : Nat} {sc s' : L4YAML.Scanner.ScannerState} {c : Char}
