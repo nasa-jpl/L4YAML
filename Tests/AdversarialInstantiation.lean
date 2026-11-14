@@ -11372,6 +11372,84 @@ def testPackSameLevelChain (state : IO.Ref TestCollector) : IO Unit := do
     (dedentPauses == 5 && dedentAccepted.isEmpty && ownPauses == 41 && ownRejected.isEmpty &&
       rejectsPair && acceptsTwin && acceptsEmptyValue)
 
+
+def testPackSurvivorsChain (state : IO.Ref TestCollector) : IO Unit := do
+  -- P99 (item 497, (ω-pay-births) (d) item (1)): the landing lemma `markedCols_le_of_top` and the
+  -- chain domain on the POST-state, read at every block `:`/`?`/`-` pause on a marked state
+  -- (P95's and P97's grids): (i) every mark of the post-step state is ≤ the landing column k;
+  -- (ii) for every surviving mark nv < k, a `: v` at nv after the landing's whole entry is
+  -- accepted — the survivors' chain the rewritten `else`s owe is a parsing continuation at
+  -- every one; (iii) at a `-` pause the post-step marks are exactly the pre-state marks ≤ k.
+  let inputs : List String :=
+    [ "? a\n: b", "?\n- a\n: b", "?\n  - a\n: b", "k:\n  ?\n  - a\n  : b", "- ?\n  - a\n  : b",
+      "?\n  ?\n    - a\n  : b\n: c", "?\n  ?\n    ?\n      - a\n    : b\n  : c\n: d",
+      "?\n  - ?\n      - a\n    : b\n: c", "- ?\n    - a\n  : b", "?\n  k:\n    - a\n: b",
+      "? a\n? b\n: c", "k:\n  ? a\n  : b", "- ? a\n  : b", "? a: 1\n: b", "- a\n- ? b\n  : c",
+      "?\n  ?\n    - a\n  ? b\n: w", "?\n  ?\n  - a\n  : b\n: c", "? |\n  k\n: v",
+      "?\n  ? a\n  : b\n  ? c\n  : d\n: e", "- ?\n    ?\n      ?\n        - a\n      : b\n    : c\n  : d",
+      "k:\n  ?\n    ?\n      ?\n        a\n      : b\n    : c\n  : d", "?\n  ? a\n: b",
+      "?\n  ?\n    ? a\n: b", "?\n  ? a\n  ? b\n: c", "?\n  ?\n    - a\n: b", "? a\n:\n  ? b\n  : c",
+      "- ?\n- b", "- ? a\n- b", "- ?\n  - a\n- b", "- - ?\n  - b", "- - ? a\n  - b",
+      "- ? a\n  ? b\n- c", "- ? - a\n- b", "k:\n  - ? a\n  - b", "- ?\n    ?\n      - a\n    : b\n- c",
+      "- - ? a\n- b", "?\n  - a\n  - b\n: c", "?\n  ?\n    - a\n    - b\n  : c\n: d" ]
+  let mut pauses := 0
+  let mut overK : List String := []
+  let mut survChecks := 0
+  let mut survRejects : List String := []
+  let mut dashPauses := 0
+  let mut dashExc : List String := []
+  for input in inputs do
+    let chars := input.toList
+    let lines := (input.splitOn "\n").toArray
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:80] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        let before := L4YAML.Proofs.RegisterWitness.markedCols s
+        let isInd := (c == ':' || c == '?' || c == '-') &&
+          (chars[sP.offset + 1]?.map (fun ch => ch == ' ' || ch == '\n')).getD true
+        let after? := match L4YAML.Scanner.scanNextToken s with
+          | .ok (some sN) => some (L4YAML.Proofs.RegisterWitness.markedCols sN)
+          | _ => none
+        if isInd && sP.flowLevel == 0 && !before.isEmpty then
+          match after? with
+          | some after =>
+            pauses := pauses + 1
+            let k := sP.col
+            if after.any (· > k) then
+              overK := overK ++ [s!"{repr input}@{sP.line}:{k} c={c} after={after}"]
+            if c == '-' then
+              dashPauses := dashPauses + 1
+              if after != before.filter (· ≤ k) then
+                dashExc := dashExc ++ [s!"{repr input}@{sP.line}:{k} before={before} after={after}"]
+            let indentOf (l : String) : Nat := (l.toList.takeWhile (· == ' ')).length
+            let mut last := sP.line
+            for i in [sP.line + 1 : lines.size] do
+              let l := lines[i]!
+              let blank := l.toList.all (· == ' ')
+              let valueLine := c == '?' && indentOf l == k &&
+                (l.toList.drop k).head? == some ':' &&
+                ((l.toList.drop (k + 1)).head?.map (· == ' ')).getD true
+              if i == last + 1 && (blank || indentOf l > k || valueLine) then last := i
+            let pre := "\n".intercalate (lines.toList.take (last + 1))
+            for nv in after do
+              if nv < k then
+                survChecks := survChecks + 1
+                let cont := pre ++ "\n" ++ String.ofList (List.replicate nv ' ') ++ ": v\n"
+                match L4YAML.TokenParser.parseYaml cont with
+                | .ok _ => pure ()
+                | .error _ => survRejects := survRejects ++ [s!"{repr input}@{sP.line}:{k} c={c} nv={nv}"]
+          | none => pure ()
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) => s := sN
+        | _ => break
+      | _ => break
+  IO.println s!"P99 marked block pauses={pauses} post-step mark > k at={overK} | survivor checks={survChecks} rejects={survRejects} | `-` pauses={dashPauses} after ≠ before.filter (≤ k) at={dashExc}"
+  check state s!"P99 (ω-pay-births) (d) item (1) the landing lemma and the survivors' chain (item 497): {pauses} marked block `:`/`?`/`-` pauses, a post-step mark right of the landing at {overK.length}; the survivors' `: v` after the whole entry accepted at all {survChecks} but {survRejects.length}; at the {dashPauses} `-` pauses the post-step marks are the pre-state marks ≤ k except at {dashExc.length}"
+    -- pinned to the measured counts after the first run (P1 predicted ≥ 100 pauses; 98 measured).
+    (pauses == 98 && overK.isEmpty && survChecks == 71 && survRejects.isEmpty && dashPauses == 31 &&
+      dashExc.isEmpty)
+
 def testSeqTopRefusedArm (state : IO.Ref TestCollector) : IO Unit := do
   -- P89 (item 438, (χ-seqtop-refused)): the negative arm `ExplicitValueRefused s ∨ SeqTopKey s`
   -- proposed for `content_dispatch_routed`'s `h_resF` premise must NOT be a tautology over the
@@ -17121,6 +17199,8 @@ def collectTests : IO VerifiedSuiteResult := do
   testPackChainCarrier state
   testPackStrictGuardLane state
   testPackSameLevelChain state
+
+  testPackSurvivorsChain state
   testPackMappingLaneTail state
   testPackDedentSlotGuard state
   testPackAltMarks state
