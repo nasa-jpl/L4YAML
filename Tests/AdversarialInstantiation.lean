@@ -16576,6 +16576,218 @@ def testFloorFoldShadow (state : IO.Ref TestCollector) : IO Unit := do
 
 end P118Test
 
+/-! ## Priority 119 (item 491): the `?` / `:` flow arms' decidable shadow
+The depth-≥1 `?` / `:` steps are `accum_step_block`'s (the key/value indicators are
+`scanNextToken_dispatchBlockIndicators`'), concluding `FlowStackK` at six sites:
+`?` on a `.sep` tail (`receiveQuestion`); `:` on a `.value kj` tail (the closure
+`FlowStackK` carries), on `.sep` and on `.question`, each under a white lead or a
+held run (`receiveColonSep` / `receiveColonQuestion` / `…Props…`).  Their T twins
+(FlowWalk §6) exist for five; the `.value kj → .colon kj` twin does not — the T
+frames store the key node (`midNode` / `midKey`, and `midExplicitKey` after a
+`? key` — both `.value kj` tails, two constructor cases per frame), so it is a
+frame step, not a closure.  Shadows, at every in-flow `?` / `:` step: (i) the
+step's hypotheses (preprocess, structural and flow dispatchers decline, the block
+dispatcher fires to the WHOLE post-state — every `ScannerState` field, not the
+tokens alone), (ii) the pre-tail by indicator and lead, the `.value`-tail `:`
+split into implicit (`midNode` / `midKey`) and explicit (`midExplicitKey`, a `?`
+before the key node) keys, (iii) the post-tail (`?` →
+`.question`, `:` → `.colon _`), (iv) `flowLevel` / `flowStack` and the floor
+ceiling ride the step, (v) the `goOut` trace is a prefix extension, suffix by lead. -/
+namespace P119
+open L4YAML L4YAML.Scanner P107 P111 P113
+open L4YAML.Proofs.StreamAccum (tailOf FrameTail)
+open L4YAML.Proofs.Serialization.TokenEvents
+
+/-- Every field of `ScannerState` (no `BEq` instance is derived for it). -/
+def stateEq (a b : ScannerState) : Bool :=
+  a.input == b.input && a.inputEnd == b.inputEnd && a.offset == b.offset && a.line == b.line &&
+  a.col == b.col && a.indents == b.indents && a.pendingKeys == b.pendingKeys &&
+  a.flowLevel == b.flowLevel && a.tokens == b.tokens && a.simpleKey == b.simpleKey &&
+  a.simpleKeyStack == b.simpleKeyStack && a.simpleKeyAllowed == b.simpleKeyAllowed &&
+  a.needIndentCheck == b.needIndentCheck && a.allowDirectives == b.allowDirectives &&
+  a.seenYamlDirective == b.seenYamlDirective && a.directivesPresent == b.directivesPresent &&
+  a.documentEverStarted == b.documentEverStarted && a.flowStack == b.flowStack &&
+  a.explicitKeyLine == b.explicitKeyLine && a.implicitValueLine == b.implicitValueLine &&
+  a.docStartLine == b.docStartLine && a.explicitKeyCol == b.explicitKeyCol &&
+  a.explicitKeyStack == b.explicitKeyStack && a.comments == b.comments &&
+  a.definedAnchors == b.definedAnchors
+
+def isPlaceholder : L4YAML.YamlToken → Bool
+  | .placeholder => true | _ => false
+
+def isCommaOrClose : L4YAML.YamlToken → Bool
+  | .flowEntry | .flowSequenceEnd | .flowMappingEnd => true | _ => false
+
+/-- Whether the completed key node at the end of `toks` follows a `?`: walk back over
+the node (a nested collection at bracket depth, its properties) to the token before it. -/
+def explicitKeyBefore (toks : List L4YAML.YamlToken) : Bool := Id.run do
+  let mut depth : Nat := 0
+  let mut rest := (toks.reverse).dropWhile isPlaceholder
+  -- the node's last token
+  match rest with
+  | [] => return false
+  | tk :: tl =>
+    rest := tl
+    match tk with
+    | .flowSequenceEnd | .flowMappingEnd => depth := 1
+    | _ => pure ()
+  while depth > 0 do
+    match rest with
+    | [] => return false
+    | tk :: tl =>
+      rest := tl
+      match tk with
+      | .flowSequenceEnd | .flowMappingEnd => depth := depth + 1
+      | .flowSequenceStart | .flowMappingStart => depth := depth - 1
+      | _ => pure ()
+  -- skip the node's properties and `saveSimpleKey`'s reserved `.placeholder` slots
+  while (match rest with | tk :: _ => tk.isNodeProperty || isPlaceholder tk | [] => false) do
+    rest := rest.drop 1
+  return match rest with | .key :: _ => true | _ => false
+
+/-- The token before the completed node at the end of `toks` (after its properties and, for a
+nested collection, its brackets): `.value` means the node is a PAIR'S VALUE (`betweenEntries`). -/
+def pairValueBefore (toks : List L4YAML.YamlToken) : Bool := Id.run do
+  let mut depth : Nat := 0
+  let mut rest := (toks.reverse).dropWhile isPlaceholder
+  match rest with
+  | [] => return false
+  | tk :: tl =>
+    rest := tl
+    match tk with
+    | .flowSequenceEnd | .flowMappingEnd => depth := 1
+    | _ => pure ()
+  while depth > 0 do
+    match rest with
+    | [] => return false
+    | tk :: tl =>
+      rest := tl
+      match tk with
+      | .flowSequenceEnd | .flowMappingEnd => depth := depth + 1
+      | .flowSequenceStart | .flowMappingStart => depth := depth - 1
+      | _ => pure ()
+  while (match rest with | tk :: _ => tk.isNodeProperty || isPlaceholder tk | [] => false) do
+    rest := rest.drop 1
+  return match rest with | .value :: _ => true | _ => false
+
+/-- `:` after a completed pair — the `betweenEntries` tail — has no scanner step: refused. -/
+def refusedRows : List String := ["[a: b: c]", "{a: b: c}", "[a: [b]: c]", "[? a : b : c]"]
+
+def refusedOk : Nat := (refusedRows.filter fun s =>
+  match scanFiltered s with | .error (.invalidFlowEntry _ _) => true | _ => false).length
+
+structure Tally where
+  inSteps : Nat := 0
+  byChar : List (String × Nat) := []
+  tailBy : List (String × Nat) := []
+  stateOk : Nat := 0
+  stateBad : List String := []
+  pairSteps : Nat := 0
+  pairDetected : Nat := 0
+  hypsOk : Nat := 0
+  hypsFail : List String := []
+  postTailOk : Nat := 0
+  postTailBad : List String := []
+  rides : Nat := 0
+  rideBad : List String := []
+  prefixOk : Nat := 0
+  prefixBad : List String := []
+  suffixByLead : List (String × Nat) := []
+  floors : List (String × Nat) := []
+  deriving Repr
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    match scanFiltered s, P107.stepsOf s with
+    | .ok _, some sts =>
+      for (pre, post) in sts do
+        let pushed := post.tokens.toList.drop pre.tokens.size
+        match pushed.getLast? with
+        | none => pure ()
+        | some back =>
+          let k := kindOf back.val
+          if pre.flowLevel ≥ 1 && isCommaOrClose back.val then
+            -- the detector's non-vacuity: a `,` / close after a pair's value must see the pair
+            match tailOf pre.tokens with
+            | .value _ =>
+              let toks := pre.tokens.toList.map (fun (tk : L4YAML.Positioned L4YAML.YamlToken) => tk.val)
+              t := { t with pairSteps := t.pairSteps + 1 }
+              if pairValueBefore toks then t := { t with pairDetected := t.pairDetected + 1 }
+            | _ => pure ()
+          if k != "key" && k != "value" then continue
+          if pre.flowLevel == 0 then continue
+          t := { t with inSteps := t.inSteps + 1, byChar := bumpS t.byChar k }
+          let run := L4YAML.Scanner.trailingPropertyRun pre.tokens
+          let lead := if run.isEmpty then "white" else "props"
+          let tailName := match tailOf pre.tokens with
+            | .value _ =>
+              let toks := pre.tokens.toList.map (fun (tk : L4YAML.Positioned L4YAML.YamlToken) => tk.val)
+              if pairValueBefore toks then "value-pair"
+              else if explicitKeyBefore toks then "value-explicit" else "value"
+            | tl => tailClass tl
+          t := { t with tailBy := bumpS t.tailBy s!"{k}/{tailName}/{lead}" }
+          -- (i) the hypotheses
+          match scanNextToken_preprocess pre with
+          | .ok (some (sp, c)) =>
+            let sad := if sp.allowDirectives then
+              { sp with allowDirectives := false, documentEverStarted := true } else sp
+            let strNone := match scanNextToken_dispatchStructural sp c with | .ok none => true | _ => false
+            let flowNone := match scanNextToken_dispatchFlowIndicators sad c with | .ok none => true | _ => false
+            let blkSome := match scanNextToken_dispatchBlockIndicators sad c with
+              | .ok (some s') => s'.tokens == post.tokens | _ => false
+            let whole := match scanNextToken_dispatchBlockIndicators sad c with
+              | .ok (some s') => stateEq s' post | _ => false
+            if whole then t := { t with stateOk := t.stateOk + 1 }
+            else t := { t with stateBad := t.stateBad ++ [s!"{s}@{k}"] }
+            let charOk := (k == "key" && c == '?') || (k == "value" && c == ':')
+            if strNone && flowNone && blkSome && charOk then t := { t with hypsOk := t.hypsOk + 1 }
+            else t := { t with hypsFail := t.hypsFail ++ [s!"{s}@{k}"] }
+          | _ => t := { t with hypsFail := t.hypsFail ++ [s!"{s}@preprocess"] }
+          -- (iii) the post-tail
+          let postOk := match k, tailOf post.tokens with
+            | "key", .question => true | "value", .colon _ => true | _, _ => false
+          if postOk then t := { t with postTailOk := t.postTailOk + 1 }
+          else t := { t with postTailBad := t.postTailBad ++ [s!"{s}@{k}:{repr (tailOf post.tokens)}"] }
+          -- (iv) the indices and the floor ceiling ride
+          let floor := L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf pre
+          t := { t with floors := bumpS t.floors s!"floor={floor}" }
+          if post.flowLevel == pre.flowLevel && post.flowStack == pre.flowStack &&
+              L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf post == floor then
+            t := { t with rides := t.rides + 1 }
+          else t := { t with rideBad := t.rideBad ++ [s!"{s}@{k}"] }
+          -- (v) the trace
+          let evPre := (goOut pre.tokens.toList []).1
+          let evPost := (goOut post.tokens.toList []).1
+          if evPost.take evPre.length == evPre then
+            t := { t with prefixOk := t.prefixOk + 1,
+                          suffixByLead := bumpS t.suffixByLead s!"{lead}/+{evPost.length - evPre.length}" }
+          else t := { t with prefixBad := t.prefixBad ++ [s] }
+    | _, _ => pure ()
+  return t
+
+end P119
+
+namespace P119Test
+open P119
+
+def testKeyArmShadow (state : IO.Ref TestCollector) : IO Unit := do
+  let t := tally (P113.allRows ++ P118.extraRows)
+  checkM state
+    s!"P119 the ?/: flow arms: {t.inSteps} in-flow steps {t.byChar}; pre-tails {t.tailBy}; hypotheses {t.hypsOk}/{t.inSteps} (failing: {t.hypsFail}); whole post-state {t.stateOk}/{t.inSteps} (bad: {t.stateBad}); post-tail {t.postTailOk}/{t.inSteps} (bad: {t.postTailBad}); indices+floor ride {t.rides}/{t.inSteps} (bad: {t.rideBad}); trace prefix {t.prefixOk}/{t.inSteps} (bad: {t.prefixBad}) suffixes {t.suffixByLead}; floors {t.floors}; ':' after a completed pair refused {refusedOk}/{refusedRows.length}; completed pairs seen by the detector at `,`/close steps {t.pairDetected} of {t.pairSteps} `.value`-tail steps"
+    (t.inSteps == 171 && t.byChar == [("value", 144), ("key", 27)] &&
+      t.tailBy == [("value/sep/white", 8), ("key/sep/white", 27), ("value/value/white", 113),
+        ("value/value-explicit/white", 13), ("value/question/white", 4), ("value/sep/props", 4),
+        ("value/question/props", 2)] &&
+      t.stateOk == 171 && refusedOk == 4 && t.pairDetected == 127 && t.pairSteps == 370 &&
+      t.hypsOk == 171 && t.hypsFail.isEmpty && t.stateBad.isEmpty && t.postTailOk == 171 && t.postTailBad.isEmpty &&
+      t.rides == 171 && t.rideBad.isEmpty && t.prefixOk == 171 && t.prefixBad.isEmpty &&
+      t.suffixByLead == [("white/+0", 165), ("props/+0", 6)] &&
+      t.floors == [("floor=0", 161), ("floor=1", 8), ("floor=3", 2)])
+    s!"{t.inSteps} {t.byChar} {t.tailBy} {t.hypsFail} {t.postTailBad} {t.rideBad} {t.prefixBad} {t.suffixByLead} {t.floors} {t.stateOk} {t.stateBad} {t.pairDetected}/{t.pairSteps}"
+
+end P119Test
+
 def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 100: S3 slice (1) — leaf span ↔ token payload (anchor / alias / tag), before proof"
   let t := P100.tally P100.allRows
@@ -16773,6 +16985,7 @@ def collectTests : IO VerifiedSuiteResult := do
   P116Test.testPlainLandingUniform state
   P117Test.testValueLandingNodeEnd state
   P118Test.testFloorFoldShadow state
+  P119Test.testKeyArmShadow state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",
