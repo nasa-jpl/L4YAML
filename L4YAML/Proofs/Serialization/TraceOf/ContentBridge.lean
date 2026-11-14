@@ -1248,6 +1248,118 @@ lemma accum_step_content_pairB {n d : Nat} {ev : List Event} (sc : ScannerState)
   · rw [hprop hc']
     exact ⟨[], by simpa using hTB⟩
 
+
+/-! ## §10 The `∀`-floor fold's two uniformities (item 490)
+
+`TFlowStackK` holds ONE event list at every floor the S half admits; after a
+content step the per-floor traces must agree. White lead: the pushed tokens'
+`goOut` trace is unique (`PushesTrace` read at `p := []`). Held run: the
+`TCNsProperties` witness at the top floor transfers DOWN to every floor with its
+events — a flow-line prefix at `n` is one at `m ≤ n` (the surplus indent spaces
+are separate-in-line white). -/
+
+lemma PushesTrace_unique {ts ts' : Array (Positioned YamlToken)} {e e' : List Event}
+    (h : PushesTrace ts ts' e) (h' : PushesTrace ts ts' e') : e = e' := by
+  have h1 := h []
+  have h2 := h' []
+  rw [h1] at h2
+  exact List.append_cancel_left (congrArg Prod.fst h2)
+
+lemma SIndent_split {n : Nat} {s t : SurfPos} (h : SIndent n s t) :
+    ∀ m, m ≤ n → ∃ u, SIndent m s u ∧ SIndent (n - m) u t := by
+  induction h with
+  | zero s =>
+    intro m hmn
+    have : m = 0 := by omega
+    subst this
+    exact ⟨s, .zero s, .zero s⟩
+  | succ k rest col s' h ih =>
+    intro m hmn
+    cases m with
+    | zero => exact ⟨_, .zero _, by simpa using SIndent.succ k rest col s' h⟩
+    | succ m =>
+      obtain ⟨u, h₁, h₂⟩ := ih m (by omega)
+      exact ⟨u, .succ m rest col u h₁, by simpa [Nat.succ_sub_succ] using h₂⟩
+
+lemma SIndent_to_GStar_SSWhite' {k : Nat} {u t : SurfPos} (h : SIndent k u t) :
+    GStar SSWhite u t := by
+  induction h with
+  | zero s => exact .nil s
+  | succ k rest col s' _ ih => exact .cons _ _ _ (.space rest col) ih
+
+lemma SIndent_succ_GPlus_white {k : Nat} {u t : SurfPos} (h : SIndent (k + 1) u t) :
+    GPlus SSWhite u t := by
+  cases h with
+  | succ _ rest col s' h' => exact .mk _ _ _ (.space rest col) (SIndent_to_GStar_SSWhite' h')
+
+lemma GStar_SSWhite_append {a b c : SurfPos} (h₁ : GStar SSWhite a b) (h₂ : GStar SSWhite b c) :
+    GStar SSWhite a c := by
+  induction h₁ with
+  | nil _ => exact h₂
+  | cons _ _ _ h _ ih => exact .cons _ _ _ h (ih h₂)
+
+lemma SFlowLinePrefix_mono {m n : Nat} {s s' : SurfPos} (hmn : m ≤ n)
+    (h : SFlowLinePrefix n s s') : SFlowLinePrefix m s s' := by
+  cases h
+  rename_i t hind hopt
+  obtain ⟨u, hu, hrest⟩ := SIndent_split hind m hmn
+  rcases Nat.eq_zero_or_pos (n - m) with hz | hpos
+  · rw [hz] at hrest
+    cases hrest
+    exact .mk m s _ s' hu hopt
+  · obtain ⟨k, hk⟩ : ∃ k, n - m = k + 1 := ⟨n - m - 1, by omega⟩
+    rw [hk] at hrest
+    have hplus := SIndent_succ_GPlus_white hrest
+    cases hplus
+    rename_i v hw hws
+    refine .mk m s u s' hu (.some u s' (.whites u s' (.mk _ v _ hw ?_)))
+    cases hopt with
+    | none => exact hws
+    | some =>
+      rename_i hil
+      exact GStar_SSWhite_append hws
+        (L4YAML.Proofs.PreprocessProduction.SSeparateInLine_to_GStar_SSWhite hil)
+
+lemma SSeparateLines_mono {m n : Nat} {s s' : SurfPos} (hmn : m ≤ n)
+    (h : SSeparateLines n s s') : SSeparateLines m s s' := by
+  cases h with
+  | commented =>
+    rename_i s₁ hc hp
+    exact .commented m s s₁ s' hc (SFlowLinePrefix_mono hmn hp)
+  | inline =>
+    rename_i hil
+    exact .inline m s s' hil
+
+lemma SSeparate_flowIn_mono {m n : Nat} {s s' : SurfPos} (hmn : m ≤ n)
+    (h : SSeparate n .flowIn s s') : SSeparate m .flowIn s s' :=
+  SSeparateLines_mono hmn h
+
+lemma TCNsProperties_floor_mono {m n : Nat} {s s' : SurfPos} {ev : List Event} (hmn : m ≤ n)
+    (h : TCNsProperties n .flowIn s s' ev) : TCNsProperties m .flowIn s s' ev := by
+  cases h with
+  | tagFirst =>
+    rename_i s₁ e₁ e₂ h₁ h₂
+    refine .tagFirst s s₁ s' e₁ e₂ h₁ ?_
+    cases h₂ with
+    | none => exact .none _
+    | some =>
+      rename_i hseq
+      cases hseq
+      rename_i t e₁' e₂' hl hp
+      obtain ⟨hsep, he⟩ := hl
+      exact .some _ _ _ (.mk _ t _ _ _ ⟨SSeparate_flowIn_mono hmn hsep, he⟩ hp)
+  | anchorFirst =>
+    rename_i s₁ e₁ e₂ h₁ h₂
+    refine .anchorFirst s s₁ s' e₁ e₂ h₁ ?_
+    cases h₂ with
+    | none => exact .none _
+    | some =>
+      rename_i hseq
+      cases hseq
+      rename_i t e₁' e₂' hl hp
+      obtain ⟨hsep, he⟩ := hl
+      exact .some _ _ _ (.mk _ t _ _ _ ⟨SSeparate_flowIn_mono hmn hsep, he⟩ hp)
+
 end
 
 end L4YAML.Proofs.Serialization.TraceOf.ContentBridge
