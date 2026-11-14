@@ -11168,6 +11168,8 @@ def testPackDedentSlotGuard (state : IO.Ref TestCollector) : IO Unit := do
   let mut survExc : List String := []
   let mut inputRejects : List String := []
   let mut stepSurv : List String := []
+  let mut stepOk := 0
+  let mut stepRejects : List String := []
   for input in inputs do
     let chars := input.toList
     let mut s := L4YAML.Scanner.ScannerState.mk' input
@@ -11180,9 +11182,9 @@ def testPackDedentSlotGuard (state : IO.Ref TestCollector) : IO Unit := do
           dashPauses := dashPauses + 1
           let pre := L4YAML.Proofs.RegisterWitness.markedCols s
           let post := L4YAML.Proofs.RegisterWitness.markedCols sP
-          let afterStep := match L4YAML.Scanner.scanNextToken s with
-            | .ok (some sN) => L4YAML.Proofs.RegisterWitness.markedCols sN
-            | _ => []
+          let afterStep? := match L4YAML.Scanner.scanNextToken s with
+            | .ok (some sN) => some (L4YAML.Proofs.RegisterWitness.markedCols sN)
+            | _ => none
           if !pre.isEmpty then markedDash := markedDash + 1
           for nv in pre do
             if nv > sP.col then
@@ -11190,8 +11192,13 @@ def testPackDedentSlotGuard (state : IO.Ref TestCollector) : IO Unit := do
               preViol := preViol ++ [s!"{repr input}@{sP.line}:{sP.col} nv={nv}"]
               if post.contains nv then
                 survExc := survExc ++ [s!"{repr input}@{sP.line}:{sP.col} nv={nv} post={post}"]
-              if afterStep.contains nv then
-                stepSurv := stepSurv ++ [s!"{repr input}@{sP.line}:{sP.col} nv={nv} after={afterStep}"]
+              match afterStep? with
+              | some afterStep =>
+                stepOk := stepOk + 1
+                if afterStep.contains nv then
+                  stepSurv := stepSurv ++ [s!"{repr input}@{sP.line}:{sP.col} nv={nv} after={afterStep}"]
+              | none =>
+                stepRejects := stepRejects ++ [s!"{repr input}"]
           for nv in post do
             if nv > sP.col then
               postViol := postViol ++ [s!"{repr input}@{sP.line}:{sP.col} nv={nv}"]
@@ -11204,14 +11211,16 @@ def testPackDedentSlotGuard (state : IO.Ref TestCollector) : IO Unit := do
       match L4YAML.TokenParser.parseYaml input with
       | .ok _ => pure ()
       | .error _ => inputRejects := inputRejects ++ [s!"{repr input}"]
-  IO.println s!"P97 block `-` pauses={dashPauses} marked (pre)={markedDash} pre-unwind mark right of k={preViol} inputs={preViolInputs} post-unwind right of k={postViol} survivors among them={survExc} after the step={stepSurv} rejected inputs={inputRejects}"
+  IO.println s!"P97 block `-` pauses={dashPauses} marked (pre)={markedDash} pre-unwind mark right of k={preViol} inputs={preViolInputs} post-unwind right of k={postViol} survivors among them={survExc} after the step={stepSurv} (stepped={stepOk}, step rejected={stepRejects}) rejected inputs={inputRejects}"
   -- Pins: 12 pauses / 12 inputs with a pre-preprocess mark right of the `-`, 0 post-preprocess,
   -- 0 surviving the unwind or the step; 2 of the 12 inputs are rejected for their OUTER shape
   -- (`? ?⏎- b`, `k:⏎  ? a⏎- b`: a root sequence entry after a root mapping / a non-bare `?`
   -- line), the other 10 parse — the `else` is reached on the capstone path.
-  check state s!"P97 (ω-pay-births) step (a) the non-strict guard's own variables (item 493): {dashPauses} block `-` pauses, {markedDash} with a pre-preprocess mark; a pre-preprocess mark right of the `-` at {preViol.length} pauses in {preViolInputs.length} inputs (the guard's `else` reached), a post-preprocess mark right of it at {postViol.length} (P94(i)); of the former {survExc.length} survive the unwind and {stepSurv.length} the step, {inputRejects.length} inputs rejected (outer shape)"
+  check state s!"P97 (ω-pay-births) step (a) the non-strict guard's own variables (item 493): {dashPauses} block `-` pauses, {markedDash} with a pre-preprocess mark; a pre-preprocess mark right of the `-` at {preViol.length} pauses in {preViolInputs.length} inputs (the guard's `else` reached), a post-preprocess mark right of it at {postViol.length} (P94(i)); of the former {survExc.length} survive the unwind and {stepSurv.length} the step ({stepOk} stepped, {stepRejects.length} step-rejected), {inputRejects.length} inputs rejected (outer shape)"
     (dashPauses ≥ 30 && markedDash ≥ 10 && preViol.length == 12 && preViolInputs.length == 12 &&
-      postViol.isEmpty && survExc.isEmpty && stepSurv.isEmpty && inputRejects.length == 2)
+      postViol.isEmpty && survExc.isEmpty && stepSurv.isEmpty && inputRejects.length == 2 &&
+      stepOk + stepRejects.length == preViol.length &&
+      stepRejects.all (fun i => inputRejects.contains i))
 
 def testSeqTopRefusedArm (state : IO.Ref TestCollector) : IO Unit := do
   -- P89 (item 438, (χ-seqtop-refused)): the negative arm `ExplicitValueRefused s ∨ SeqTopKey s`
