@@ -1,0 +1,50 @@
+{
+ "item": 496,
+ "tag": "PRICE-496-POST-STATE-DOMAIN",
+ "rev": "8e06fe35",
+ "target": "L4YAML",
+ "msgWidth": 110,
+ "rounds": 6,
+ "report": "bodies",
+ "log": "scratch/price496_a.log",
+ "files": [
+  {
+   "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+   "patches": [
+    {
+     "name": "L24301.colon_open_map.h_explUp_chainD",
+     "line": 24301,
+     "old": [
+      "    (h_explUp_chainD : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,"
+     ],
+     "new": [
+      "    (h_explUp_chainD : (∃ ns : List Nat, RegisterWitness.MarkedColsIn s' ns ∧ ∀ nv ∈ ns,"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L24612.question_open_map.h_explUp_chainD",
+     "line": 24612,
+     "old": [
+      "    (h_explUp_chainD : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,"
+     ],
+     "new": [
+      "    (h_explUp_chainD : (∃ ns : List Nat, RegisterWitness.MarkedColsIn s' ns ∧ ∀ nv ∈ ns,"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L25541.indicator_open_map.h_explUp_chainD",
+     "line": 25541,
+     "old": [
+      "    (h_explUp_chainD : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,"
+     ],
+     "new": [
+      "    (h_explUp_chainD : (∃ ns : List Nat, RegisterWitness.MarkedColsIn s' ns ∧ ∀ nv ∈ ns,"
+     ],
+     "count": 1
+    }
+   ]
+  }
+ ]
+}
