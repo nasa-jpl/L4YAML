@@ -1059,7 +1059,8 @@ def expectedProducers : List String :=
 -- 2026-11-02 (item 422): piped 78 → 73, `Or.elim⇒SPLIT` 5 → 0 — the five `h_park.elim`/`h_kslotUp.elim` pipes at the `h_outer` writes
 -- are `Classical.em (MarkedColsIn s_prep [k])` decisions now (see `expectedTally`).
 def expectedPipeLanding : String :=
-  "piped=73 producers=10 [Eq.rec⇒VIA=8, Or.imp⇒FIELD=36, Or.imp⇒LOCAL=5, Or.imp⇒RELAY=13, Or.imp⇒SPLIT=4, Or.imp⇒VIA=2, dite⇒SPLIT=5]"
+  "piped=75 producers=10 [Eq.rec⇒VIA=8, Or.imp⇒FIELD=36, Or.imp⇒LOCAL=5, \
+Or.imp⇒RELAY=15, Or.imp⇒SPLIT=4, Or.imp⇒VIA=2, dite⇒SPLIT=5]"
 
 /-- What the SPLITs decide (DOCS item 216), and the row that matters is
     `elsewhere=0`: **not one leaf of any case split in this module is decided
@@ -1137,7 +1138,17 @@ def expectedPipeLanding : String :=
 -- 2026-11-02 (item 422): survived 180 → 175, leaves 426 → 410 (DECLINE 222 → 211, PAY 193 → 188), `DECLINE|DECLINE|PAY` 12 → 8,
 -- `DECLINE|DECLINE|DECLINE|PAY` 2 → 1 — the five retired `h_outer` splits and their declined leaves (see `expectedTally`).
 def expectedSplitLanding : String :=
-  "survived=175 collapsed=15 leaves=410 elsewhere=11 [DECLINE=211, PAY=188, VIA=11] [DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|PAY|PAY|PAY|VIA|VIA|VIA=1, DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|PAY|VIA|VIA=1, DECLINE|DECLINE|DECLINE|DECLINE|PAY=2, DECLINE|DECLINE|DECLINE|DECLINE|PAY|PAY|PAY|PAY|PAY=1, DECLINE|DECLINE|DECLINE|PAY=1, DECLINE|DECLINE|DECLINE|PAY|PAY|PAY=1, DECLINE|DECLINE|DECLINE|PAY|VIA=3, DECLINE|DECLINE|PAY=8, DECLINE|DECLINE|PAY|PAY|PAY=2, DECLINE|PAY=152, DECLINE|PAY|PAY=1, PAY|VIA=1, PAY|VIA|VIA=1]"
+  "survived=175 collapsed=15 leaves=414 elsewhere=11 [DECLINE=211, PAY=192, \
+VIA=11] \
+[DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|PAY|PAY|PAY|VIA|VIA|VIA=1, \
+DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|PAY|VIA|VIA=1, \
+DECLINE|DECLINE|DECLINE|DECLINE|PAY=1, \
+DECLINE|DECLINE|DECLINE|DECLINE|PAY|PAY|PAY=1, \
+DECLINE|DECLINE|DECLINE|DECLINE|PAY|PAY|PAY|PAY|PAY=1, \
+DECLINE|DECLINE|DECLINE|PAY=1, DECLINE|DECLINE|DECLINE|PAY|PAY|PAY=1, \
+DECLINE|DECLINE|DECLINE|PAY|VIA=3, DECLINE|DECLINE|PAY=8, \
+DECLINE|DECLINE|PAY|PAY|PAY=1, DECLINE|DECLINE|PAY|PAY|PAY|PAY|PAY=1, \
+DECLINE|PAY=152, DECLINE|PAY|PAY=1, PAY|VIA=1, PAY|VIA|VIA=1]"
 
 /-- **Which BRANCH is taken (DOCS item 217).**  Item 216 resolved what a split
     WRITES — both answers, one per arm.  What it could not say was which arm the
@@ -1242,7 +1253,7 @@ def expectedSplitLanding : String :=
 -- 2026-11-02 (item 422): splits 180 → 175, leaves 426 → 410, relayRooted 169 → 166, siteDecided 11 → 9, optionalRoot 111 → 108,
 -- DECLINE-closed 109 → 98, PAY-free 193 → 188 — the five `h_outer` splits retired (see `expectedTally`).
 def expectedSplitBranch : String :=
-  "splits=175 leaves=410 relayRooted=166 siteDecided=9 optionalRoot=108 plainRoot=58 agree=115/115 disagree=0 [DECLINE-closed=98, DECLINE-free=113, PAY-free=188, VIA L4YAML.Proofs.StreamAccum.deeperLandingResume-=2, VIA L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root-=1, VIA absurd-=8]"
+  "splits=175 leaves=414 relayRooted=166 siteDecided=9 optionalRoot=108 plainRoot=58 agree=115/115 disagree=0 [DECLINE-closed=98, DECLINE-free=113, PAY-free=192, VIA L4YAML.Proofs.StreamAccum.deeperLandingResume-=2, VIA L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root-=1, VIA absurd-=8]"
 
 /-- **The ten splits the site decides for itself**, which is the whole residue
     of the branch question after `expectedSplitBranch`.  Four are a `dite` on a
@@ -1263,10 +1274,11 @@ def expectedSplitBranch : String :=
 def expectedSiteDecided : List String :=
   ["1 accum_block_on_closeThenBlock :: dite on VIA Eq ⇒ DECLINE|PAY",
    "1 accum_block_on_pendingBlock :: dite on VIA Eq ⇒ DECLINE|PAY",
+   "1 accum_block_on_pendingBlock :: dite on VIA LE.le ⇒ DECLINE|DECLINE|PAY|PAY|PAY",
+   "1 accum_block_on_pendingBlock :: dite on VIA LE.le ⇒ DECLINE|DECLINE|PAY|PAY|PAY|PAY|PAY",
    "1 accum_block_on_pendingBlockContent :: dite on VIA Eq ⇒ DECLINE|PAY",
    "1 accum_content_pending :: Or.casesOn on VIA Nat.eq_zero_or_pos ⇒ DECLINE|DECLINE|DECLINE|PAY",
    "1 accum_flow_open_depth0 :: accum_flow_open_depth0.match_1_22 on SPLIT Or.casesOn on VIA preprocess_some_savedKey_shape ⇒ PAY|VIA",
-   "2 accum_block_on_pendingBlock :: dite on VIA LE.le ⇒ DECLINE|DECLINE|PAY|PAY|PAY",
    "2 accum_block_pending :: Or.casesOn on VIA Nat.eq_zero_or_pos ⇒ DECLINE|PAY"]
 
 /-- **The premises the branch is taken on**, by binder NAME, for the 99 splits

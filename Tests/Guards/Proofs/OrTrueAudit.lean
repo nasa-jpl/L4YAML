@@ -251,7 +251,7 @@ def posLine (p : Pos) : String := s!"{p.decl}{p.site} {p.kind} ∨ {p.alt}"
 -- projection `markedCols`: four fabricated births DECLINE (`Or.inr trivial` writers into `PackAltG`/`PackAlt`
 -- positions), none paid; positions unchanged.
 def expectedSummary : String :=
-  "positions=269 top=166 nested=103 True=193 PackAlt=67 PackAltG=9 modules=2 supply: paid=28 relayed=116 declined-only=0 never-supplied=0 unresolved=9 conclusions=11 consumers: spent=102 relayed=15 unused=0 unreadable=36 writers=39 inrTrivial=485"
+  "positions=269 top=166 nested=103 True=193 PackAlt=67 PackAltG=9 modules=2 supply: paid=28 relayed=116 declined-only=0 never-supplied=0 unresolved=9 conclusions=11 consumers: spent=103 relayed=14 unused=0 unreadable=36 writers=39 inrTrivial=485"
 
 def expectedPositions : List String :=
   [ "L4YAML.Proofs.PreprocessIndentStable.IndentFloor.transport[3].h_floor top ∨ True",
@@ -863,7 +863,7 @@ def expectedConsumers : List String :=
     "L4YAML.Proofs.StreamAccum.indicator_open_map[28].h_pr_land relayed [cased=0 passed=2]",
     "L4YAML.Proofs.StreamAccum.indicator_open_map[29].h_explUp_chain relayed [cased=0 passed=1]",
     "L4YAML.Proofs.StreamAccum.indicator_open_map[30].h_resV_land relayed [cased=0 passed=2]",
-    "L4YAML.Proofs.StreamAccum.indicator_open_map[32].h_explUp_chainD relayed [cased=0 passed=2]",
+    "L4YAML.Proofs.StreamAccum.indicator_open_map[32].h_explUp_chainD spent [cased=2 passed=0]",
     "L4YAML.Proofs.StreamAccum.markerctx_of_landing[11].h_mk spent [cased=1 passed=4]",
     "L4YAML.Proofs.StreamAccum.question_open_map[18].h_sfx_land spent [cased=2 passed=0]",
     "L4YAML.Proofs.StreamAccum.question_open_map[19].h_nodoc_land spent [cased=2 passed=0]",
