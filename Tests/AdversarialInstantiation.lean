@@ -16612,11 +16612,17 @@ def stateEq (a b : ScannerState) : Bool :=
   a.explicitKeyStack == b.explicitKeyStack && a.comments == b.comments &&
   a.definedAnchors == b.definedAnchors
 
+def isPlaceholder : L4YAML.YamlToken → Bool
+  | .placeholder => true | _ => false
+
+def isCommaOrClose : L4YAML.YamlToken → Bool
+  | .flowEntry | .flowSequenceEnd | .flowMappingEnd => true | _ => false
+
 /-- Whether the completed key node at the end of `toks` follows a `?`: walk back over
 the node (a nested collection at bracket depth, its properties) to the token before it. -/
 def explicitKeyBefore (toks : List L4YAML.YamlToken) : Bool := Id.run do
   let mut depth : Nat := 0
-  let mut rest := toks.reverse
+  let mut rest := (toks.reverse).dropWhile isPlaceholder
   -- the node's last token
   match rest with
   | [] => return false
@@ -16634,8 +16640,8 @@ def explicitKeyBefore (toks : List L4YAML.YamlToken) : Bool := Id.run do
       | .flowSequenceEnd | .flowMappingEnd => depth := depth + 1
       | .flowSequenceStart | .flowMappingStart => depth := depth - 1
       | _ => pure ()
-  -- skip the node's properties
-  while (match rest with | tk :: _ => tk.isNodeProperty | [] => false) do
+  -- skip the node's properties and `saveSimpleKey`'s reserved `.placeholder` slots
+  while (match rest with | tk :: _ => tk.isNodeProperty || isPlaceholder tk | [] => false) do
     rest := rest.drop 1
   return match rest with | .key :: _ => true | _ => false
 
@@ -16643,7 +16649,7 @@ def explicitKeyBefore (toks : List L4YAML.YamlToken) : Bool := Id.run do
 nested collection, its brackets): `.value` means the node is a PAIR'S VALUE (`betweenEntries`). -/
 def pairValueBefore (toks : List L4YAML.YamlToken) : Bool := Id.run do
   let mut depth : Nat := 0
-  let mut rest := toks.reverse
+  let mut rest := (toks.reverse).dropWhile isPlaceholder
   match rest with
   | [] => return false
   | tk :: tl =>
@@ -16660,7 +16666,7 @@ def pairValueBefore (toks : List L4YAML.YamlToken) : Bool := Id.run do
       | .flowSequenceEnd | .flowMappingEnd => depth := depth + 1
       | .flowSequenceStart | .flowMappingStart => depth := depth - 1
       | _ => pure ()
-  while (match rest with | tk :: _ => tk.isNodeProperty | [] => false) do
+  while (match rest with | tk :: _ => tk.isNodeProperty || isPlaceholder tk | [] => false) do
     rest := rest.drop 1
   return match rest with | .value :: _ => true | _ => false
 
@@ -16676,6 +16682,8 @@ structure Tally where
   tailBy : List (String × Nat) := []
   stateOk : Nat := 0
   stateBad : List String := []
+  pairSteps : Nat := 0
+  pairDetected : Nat := 0
   hypsOk : Nat := 0
   hypsFail : List String := []
   postTailOk : Nat := 0
@@ -16699,6 +16707,14 @@ def tally (rows : List String) : Tally := Id.run do
         | none => pure ()
         | some back =>
           let k := kindOf back.val
+          if pre.flowLevel ≥ 1 && isCommaOrClose back.val then
+            -- the detector's non-vacuity: a `,` / close after a pair's value must see the pair
+            match tailOf pre.tokens with
+            | .value _ =>
+              let toks := pre.tokens.toList.map (fun (tk : L4YAML.Positioned L4YAML.YamlToken) => tk.val)
+              t := { t with pairSteps := t.pairSteps + 1 }
+              if pairValueBefore toks then t := { t with pairDetected := t.pairDetected + 1 }
+            | _ => pure ()
           if k != "key" && k != "value" then continue
           if pre.flowLevel == 0 then continue
           t := { t with inSteps := t.inSteps + 1, byChar := bumpS t.byChar k }
@@ -16758,17 +16774,17 @@ open P119
 def testKeyArmShadow (state : IO.Ref TestCollector) : IO Unit := do
   let t := tally (P113.allRows ++ P118.extraRows)
   checkM state
-    s!"P119 the ?/: flow arms: {t.inSteps} in-flow steps {t.byChar}; pre-tails {t.tailBy}; hypotheses {t.hypsOk}/{t.inSteps} (failing: {t.hypsFail}); whole post-state {t.stateOk}/{t.inSteps} (bad: {t.stateBad}); post-tail {t.postTailOk}/{t.inSteps} (bad: {t.postTailBad}); indices+floor ride {t.rides}/{t.inSteps} (bad: {t.rideBad}); trace prefix {t.prefixOk}/{t.inSteps} (bad: {t.prefixBad}) suffixes {t.suffixByLead}; floors {t.floors}; ':' after a completed pair refused {refusedOk}/{refusedRows.length}"
+    s!"P119 the ?/: flow arms: {t.inSteps} in-flow steps {t.byChar}; pre-tails {t.tailBy}; hypotheses {t.hypsOk}/{t.inSteps} (failing: {t.hypsFail}); whole post-state {t.stateOk}/{t.inSteps} (bad: {t.stateBad}); post-tail {t.postTailOk}/{t.inSteps} (bad: {t.postTailBad}); indices+floor ride {t.rides}/{t.inSteps} (bad: {t.rideBad}); trace prefix {t.prefixOk}/{t.inSteps} (bad: {t.prefixBad}) suffixes {t.suffixByLead}; floors {t.floors}; ':' after a completed pair refused {refusedOk}/{refusedRows.length}; completed pairs seen by the detector at `,`/close steps {t.pairDetected} of {t.pairSteps} `.value`-tail steps"
     (t.inSteps == 171 && t.byChar == [("value", 144), ("key", 27)] &&
       t.tailBy == [("value/sep/white", 8), ("key/sep/white", 27), ("value/value/white", 113),
         ("value/value-explicit/white", 13), ("value/question/white", 4), ("value/sep/props", 4),
         ("value/question/props", 2)] &&
-      t.stateOk == 171 && refusedOk == 4 &&
+      t.stateOk == 171 && refusedOk == 4 && t.pairDetected == 127 && t.pairSteps == 370 &&
       t.hypsOk == 171 && t.hypsFail.isEmpty && t.stateBad.isEmpty && t.postTailOk == 171 && t.postTailBad.isEmpty &&
       t.rides == 171 && t.rideBad.isEmpty && t.prefixOk == 171 && t.prefixBad.isEmpty &&
       t.suffixByLead == [("white/+0", 165), ("props/+0", 6)] &&
       t.floors == [("floor=0", 161), ("floor=1", 8), ("floor=3", 2)])
-    s!"{t.inSteps} {t.byChar} {t.tailBy} {t.hypsFail} {t.postTailBad} {t.rideBad} {t.prefixBad} {t.suffixByLead} {t.floors} {t.stateOk} {t.stateBad}"
+    s!"{t.inSteps} {t.byChar} {t.tailBy} {t.hypsFail} {t.postTailBad} {t.rideBad} {t.prefixBad} {t.suffixByLead} {t.floors} {t.stateOk} {t.stateBad} {t.pairDetected}/{t.pairSteps}"
 
 end P119Test
 
