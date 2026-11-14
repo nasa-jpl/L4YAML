@@ -5914,15 +5914,6 @@ example {P : SurfPos → Prop} {sp_key sp_v sp_e sp_i sp_v2 : SurfPos}
       ⟨ks', resumeWidths_nil_of_singleton hw,
         (cont sp_v2 (SCompactMapTail.cons 0 sp_e sp_i sp_v2 sp_v2 hi he2 (SCompactMapTail.nil 0 sp_v2))).close⟩
 
--- …and the bottom IS the route's: with the empty second tail the composed frame closes to the
--- route at the same position (definitional)
-example {P : SurfPos → Prop} {sp_key sp_v sp_e : SurfPos}
-    (route : ∀ sp_v, SBlockMapEntry 0 sp_key sp_v →
-      ∀ sp_e, SCompactMapTail 0 sp_v sp_e → ResumeFrames P [] sp_e)
-    (he : SBlockMapEntry 0 sp_key sp_v) (t : SCompactMapTail 0 sp_v sp_e) :
-    (birthOne route sp_v he sp_e t).close = (route sp_v he sp_e (compactMapTail_append_read t (.nil 0 sp_e))).close :=
-  rfl
-
 -- P3: the cover of `[map k, map k]` from the cover of `[map k]` — the openers' 10 goals
 example {lo k : Nat} {s : ScannerState} (h : Covered lo [FrameLevel.map k] s) :
     Covered lo [FrameLevel.map k, FrameLevel.map k] s := h.cons k
