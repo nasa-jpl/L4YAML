@@ -180,7 +180,7 @@ lemma named_tag_use_source_exact
   have hbang : isWordCharBool '!' = false := by decide
   simp only [namedTagUseAt, namedTagUseTail]
   rw [spanWhile_append_stop isWordCharBool handleChars '!' suffix hchars hbang]
-  simp [hne]
+  simp
 
 lemma named_tag_declaration_source_exact
     (handleChars tail : List Char)
@@ -195,7 +195,7 @@ lemma named_tag_declaration_source_exact
     some (.declareTag ("!" ++ String.ofList handleChars ++ "!"), tail)
   unfold namedTagDeclarationTail
   rw [spanWhile_append_stop isWordCharBool handleChars '!' tail hchars hbang]
-  simp [hne]
+  simp
 
 
 /-! ## Bridge to the formal surface productions
@@ -256,7 +256,7 @@ lemma anchor_char_bool_true_iff (c : Char) :
     isAnchorCharBool c = true ↔ isNsAnchorChar c := by
   constructor
   · intro h
-    simp only [isAnchorCharBool, Bool.and_eq_true, Bool.not_eq_true] at h
+    simp only [isAnchorCharBool, Bool.and_eq_true] at h
     rcases h with ⟨⟨⟨⟨hbreak, hwhite⟩, hprint⟩, hbom⟩, hflow⟩
     have hnbreak : ¬ isLineBreakProp c := by
       intro hp
