@@ -544,10 +544,10 @@ lemma scanKey_adds_one_token (s : ScannerState) (s' : ScannerState)
     · split at h
       · contradiction
       · injection h with h_eq; subst h_eq
-        simp only [advance_preserves_tokens, emit_tokens_size, markPendingKey_tokens]
+        simp only [advance_preserves_tokens, emit_tokens_size]
         have := pushMappingIndent_tokens_monotonic s s.col; omega
     · injection h with h_eq; subst h_eq
-      simp only [advance_preserves_tokens, emit_tokens_size, markPendingKey_tokens]
+      simp only [advance_preserves_tokens, emit_tokens_size]
       have := pushMappingIndent_tokens_monotonic s s.col; omega
   · -- inFlow → no pushMappingIndent
     split at h
