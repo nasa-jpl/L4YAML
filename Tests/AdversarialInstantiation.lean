@@ -6058,6 +6058,59 @@ def testRootFrameSupplyRead (state : IO.Ref TestCollector) : IO Unit := do
     checkM state s!"rootFrameSupply/walk {label}: explicit-only {eExpl}, broad {eBroad}" (gotE == eExpl && gotB == eBroad)
       s!"got {gotE} / {gotB}"
 
+open L4YAML.Proofs.IndentStackCover in
+/-- Priority 120 — Row 19 step (3), READ before the pay (item 494): the openers' `h_res_land`
+    declines (`scripts/flips/item494_res_land_price.json`, 13 sites / 4 producers) placed on the
+    scanner.  Each class's witness: the stack at the landing's own line (`framesAtLine`) and the
+    parser's verdict.  A class whose landing line shows `map k` has the frame on the scanner side —
+    the decline is payable from the `[map k]` frame once the park's `ks` carries it; a class whose
+    witness the parser refuses is payable by a refusal; neither is STARVED. -/
+def testResLandDeclinesRead (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 120: Row 19 step (3) read — the openers' h_res_land declines on the scanner (noPending, the no-pop sibling, the sequence-top `:`, the popped dedents, the `-` sibling under h_docRoute)"
+  -- (label, input, line, predicted stack at that line)
+  let atLine : List (String × String × Nat × List FrameLevel) :=
+    [ ("C1 noPending — a: 1, the first key's line", "a: 1\n", 0, [FrameLevel.map 0, FrameLevel.map 0]),
+      ("C3 no-pop — a:⏎- b⏎c: 1, the zero-indented `-` line", "a:\n- b\nc: 1\n", 1, [FrameLevel.map 0, FrameLevel.map 0]),
+      ("C3 no-pop — a:⏎- b⏎c: 1, the sibling's line", "a:\n- b\nc: 1\n", 2, [FrameLevel.map 0, FrameLevel.map 0]),
+      ("C9 sequence-top `:` — ? - a⏎: b, the `?` line", "? - a\n: b\n", 0, [FrameLevel.map 0, FrameLevel.map 0, FrameLevel.seq 2]),
+      ("C9 sequence-top `:` — ? - a⏎: b, the `:` line", "? - a\n: b\n", 1, [FrameLevel.map 0, FrameLevel.map 0]),
+      ("C4 popped sequence top — a:⏎  - b⏎c: 1, the `-` line", "a:\n  - b\nc: 1\n", 1, [FrameLevel.map 0, FrameLevel.map 0, FrameLevel.seq 2]),
+      ("C4 popped sequence top — a:⏎  - b⏎c: 1, the sibling's line", "a:\n  - b\nc: 1\n", 2, [FrameLevel.map 0, FrameLevel.map 0]),
+      ("C5 popped mapping dedent — a:⏎  b: 1⏎c: 2, the nested key's line", "a:\n  b: 1\nc: 2\n", 1, [FrameLevel.map 0, FrameLevel.map 0, FrameLevel.map 2]),
+      ("C5 popped mapping dedent — a:⏎  b: 1⏎c: 2, the sibling's line", "a:\n  b: 1\nc: 2\n", 2, [FrameLevel.map 0, FrameLevel.map 0]),
+      ("h_docRoute — a:⏎- x⏎- y, the second `-` line", "a:\n- x\n- y\n", 2, [FrameLevel.map 0, FrameLevel.map 0]),
+      ("h_docRoute — - - a⏎- b, the inner `-` line", "- - a\n- b\n", 0, [FrameLevel.map 0, FrameLevel.seq 0, FrameLevel.seq 2]),
+      ("h_docRoute — - - a⏎- b, the next entry's line", "- - a\n- b\n", 1, [FrameLevel.map 0, FrameLevel.seq 0]) ]
+  for (label, input, line, expected) in atLine do
+    let got := framesAtLine input line
+    checkM state s!"resLandDeclines/at-line {label}: stack [{frameLabel expected}]" (got == expected)
+      s!"got [{frameLabel got}]"
+  let rec leadContent : Nat → YamlValue → String
+    | _, YamlValue.scalar s => s.content
+    | fuel + 1, YamlValue.sequence _ arr _ _ => (arr[0]?.map (leadContent fuel)).getD "<empty sequence>"
+    | fuel + 1, YamlValue.mapping _ arr _ _ => (arr[0]?.map (fun p => leadContent fuel p.1)).getD "<empty mapping>"
+    | _, _ => "<other>"
+  let rootArity (d : YamlDocument) : Nat := match d.value with
+    | YamlValue.mapping _ arr _ _ => arr.size
+    | YamlValue.sequence _ arr _ _ => arr.size
+    | _ => 0
+  -- (label, input, accepted as (documents, leading scalar, root arity), or refused)
+  let rows : List (String × String × Option (Nat × String × Nat)) :=
+    [ ("C1 a: 1", "a: 1", some (1, "a", 1)),
+      ("C3 a:⏎- b⏎c: 1 (the no-pop sibling)", "a:\n- b\nc: 1", some (1, "a", 2)),
+      ("C9 ? - a⏎: b (the sequence-top `:`)", "? - a\n: b", some (1, "a", 1)),
+      ("C4 a:⏎  - b⏎c: 1", "a:\n  - b\nc: 1", some (1, "a", 2)),
+      ("C5 a:⏎  b: 1⏎c: 2", "a:\n  b: 1\nc: 2", some (1, "a", 2)),
+      ("h_docRoute a:⏎- x⏎- y", "a:\n- x\n- y", some (1, "a", 1)),
+      ("h_docRoute - - a⏎- b", "- - a\n- b", some (1, "a", 2)),
+      ("- a⏎b: 1 (a key after a root sequence: refused)", "- a\nb: 1", none) ]
+  for (label, src, expected) in rows do
+    let got : Option (Nat × String × Nat) := match L4YAML.TokenParser.parseYaml src with
+      | .ok docs => some (docs.size, (docs[0]?.map (fun d => leadContent 4 d.value)).getD "<no document>",
+          (docs[0]?.map rootArity).getD 0)
+      | .error _ => none
+    checkM state s!"resLandDeclines/parser {label}" (got == expected) s!"got {repr got}, expected {repr expected}"
+
 /-- Priority 34 (`[173]` tail confined to EOF): the executable side of
 `collectLineContentLoop_fst_nonempty` and of `BlockStopOk.badChar`'s non-empty run
 (`lineRunPlus_toBodyTail`).  An `nb-char` first and fuel ≥ 1 give non-empty content; the
@@ -17319,6 +17372,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testDirectiveAfterContent state
   testRootFrameBound state
   testRootFrameSupplyRead state
+  testResLandDeclinesRead state
   testRootSiblingLedger state
   testSiblingDashFrames state
   testValueLineResume state
