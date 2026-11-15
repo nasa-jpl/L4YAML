@@ -17336,10 +17336,15 @@ The depth-≥1 `?` / `:` steps are `accum_step_block`'s (the key/value indicator
 `?` on a `.sep` tail (`receiveQuestion`); `:` on a `.value kj` tail (the closure
 `FlowStackK` carries), on `.sep` and on `.question`, each under a white lead or a
 held run (`receiveColonSep` / `receiveColonQuestion` / `…Props…`).  Their T twins
-(FlowWalk §6) exist for five; the `.value kj → .colon kj` twin does not — the T
-frames store the key node (`midNode` / `midKey`, and `midExplicitKey` after a
-`? key` — both `.value kj` tails, two constructor cases per frame), so it is a
-frame step, not a closure.  Shadows, at every in-flow `?` / `:` step: (i) the
+(FlowWalk §6) exist for five; the `.value kj → .colon kj` step is NOT a frame
+step on either side (item 503 corrected item 491's reading): the S side pays it by
+the closure `FlowStackK.h_kprom` carries (`KeyAfterValueLayout sc ∨ ∀ …, lead →
+GLit ':' → FlowStackB … (.colon kj)`), stored by the step that created the tail;
+the T side has the closure's producers (`receiveNodeColon` /
+`receivePropsNodeColon`) but no holder — `TFlowStackB` is indexed by `tl` alone,
+so `betweenEntries`, `midNode` / `midKey` and `midExplicitKey` (all `.value kj`
+tails) are indistinguishable at the `:` — hence `TFlowStackK` must carry the T
+closure at every floor (price (2a)–(2c)).  Shadows, at every in-flow `?` / `:` step: (i) the
 step's hypotheses (preprocess, structural and flow dispatchers decline, the block
 dispatcher fires to the WHOLE post-state — every `ScannerState` field, not the
 tokens alone), (ii) the pre-tail by indicator and lead, the `.value`-tail `:`
