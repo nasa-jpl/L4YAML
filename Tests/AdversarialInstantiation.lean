@@ -11681,6 +11681,90 @@ def testProducersPremiseChain (state : IO.Ref TestCollector) : IO Unit := do
     -- same-indent plain continuations; still 0 rejects, every hand-off still NESTED.
     (pauses == 57 && checks == 67 && nested == 67 && atMark == 0 && below == 0 && rejects.isEmpty)
 
+def testFlowKeyChain (state : IO.Ref TestCollector) : IO Unit := do
+  -- P122 (item 501, (ω-pay-births) (d) item (2b)): the four flow-side writers of the park fields'
+  -- `∨ PackAlt` (`accum_flow_open_depth0`'s two `h_kslot_old` relays, `accum_step_flow`'s two
+  -- `h_vpack` writes at the flow closes) — at a FLOW OPEN pause (`[` / `{` in block context) on a
+  -- marked state, every mark `nv` of the dispatch state has its `: v` at column `nv` after the whole
+  -- flow node accepted; the landings are classed against the mark as in P99 / the content probe
+  -- (nested `nv + 1 ≤ k`, at the mark, below).  The field's chain for a flow key is the same
+  -- node-shaped statement the block landings carry; a reject here would refute (2b)'s flow class.
+  let inputs : List String :=
+    [ "? [a, b]\n: v", "? {a: 1}\n: v", "?\n  [a]\n: v", "?\n  {a: b}\n: v", "? [a,\n  b]\n: v",
+      "? {a: 1,\n   b: 2}\n: v", "k:\n  ? [a]\n  : v", "- ? {a: b}\n  : v", "?\n  ?\n    [a]\n  : b\n: c",
+      "? [a]\n? [b]\n: c", "? []\n: v", "? {}\n: v", "? [ ]\n: v", "? [a] # c\n: v", "? [[a]]\n: v",
+      "? {a: [b]}\n: v", "?\n  - [a]\n: v", "? [a]\n: [b]", "? [a]: 1\n: v", "?\n  k: [a]\n: v",
+      "?\n  k:\n    [a]\n: v", "? [a, {b: c}]\n: v", "- ?\n    [a]\n  : v", "? \"a\"\n: [v]",
+      "?\n  [a]\n  [b]\n: v", "? [\n  a\n]\n: v", "? {\n  a: 1\n}\n: v", "k:\n  ?\n    [a]\n  : v" ]
+  let mut pauses := 0
+  let mut checks := 0
+  let mut rejects : List String := []
+  let mut nested := 0
+  let mut atMark := 0
+  let mut below := 0
+  let mut refused := 0
+  for input in inputs do
+    let lines := (input.splitOn "\n").toArray
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:80] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        let marks := L4YAML.Proofs.RegisterWitness.markedCols sP
+        if (c == '[' || c == '{') && sP.flowLevel == 0 && !marks.isEmpty then
+          pauses := pauses + 1
+          let k := sP.col
+          let indentOf (l : String) : Nat := (l.toList.takeWhile (· == ' ')).length
+          -- the flow node's extent: from the opener, the lines until its bracket depth returns to 0
+          -- (the first run cut `? [a,⏎  b]` at the opener's line: the continuation sits AT `k`, not
+          -- deeper, so a column test is the wrong extent for a flow node), then the trailing blank /
+          -- deeper lines as for a block node
+          let mut depth := 0
+          let mut last := sP.line
+          let mut closed := false
+          for i in [sP.line : lines.size] do
+            if closed then
+              let l := lines[i]!
+              if i == last + 1 && (l.toList.all (· == ' ') || indentOf l > k) then last := i
+            else
+              let l := lines[i]!
+              let from_ := if i == sP.line then sP.col else 0
+              for ch in (l.toList.drop from_) do
+                if ch == '[' || ch == '{' then depth := depth + 1
+                else if ch == ']' || ch == '}' then depth := depth - 1
+              last := i
+              if depth == 0 then closed := true
+          let pre := "\n".intercalate (lines.toList.take (last + 1))
+          -- an input the runtime refuses on its own (the under-indented `]` / `}` of `? [⏎  a⏎]`, two
+          -- flow nodes as one key) births no park: counted, not a chain reject
+          let refusedWhole := match L4YAML.TokenParser.parseYaml input with
+            | .ok _ => false
+            | .error _ => true
+          if refusedWhole then
+            refused := refused + 1
+          else
+          for nv in marks do
+            checks := checks + 1
+            if nv + 1 ≤ k then nested := nested + 1
+            else if nv == k then atMark := atMark + 1
+            else below := below + 1
+            let cont := pre ++ "\n" ++ String.ofList (List.replicate nv ' ') ++ ": v\n"
+            match L4YAML.TokenParser.parseYaml cont with
+            | .ok _ => pure ()
+            | .error _ => rejects := rejects ++ [s!"{repr input}@{sP.line}:{k} c={c} nv={nv}"]
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) => s := sN
+        | _ => break
+      | _ => break
+  IO.println s!"P122 marked flow-open pauses={pauses} refused inputs={refused} checks={checks} nested={nested} atMark={atMark} below={below} rejects={rejects}"
+  check state s!"P122 (ω-pay-births) (d) item (2b) the flow-side writers' chain at the flow key landings (item 501): {pauses} marked flow-open pauses ({refused} at inputs the runtime refuses whole), {checks} marks checked, {nested} nested / {atMark} at the mark / {below} below, {rejects.length} rejects"
+    -- predictions (written before the run): P2 ≥ 10 pauses, 100 % parse (0 rejects), 0 at-mark / 0 below.
+    -- First run (29 / 30 / 30 / 0 / 0, 4 "rejects"): one was the harness's extent (fixed above), three were
+    -- inputs the runtime refuses whole — `? [⏎  a⏎]` / `? {⏎  a: 1⏎}` (the closer under-indented against
+    -- the `?`) and two flow nodes as one key — now counted as `refused`, not as chain rejects.
+    -- Pinned to the second run: 29 pauses (4 refused whole), 26 marks, all nested, 0 rejects — P2 HELD.
+    (pauses == 29 && refused == 4 && checks == 26 && nested == 26 && rejects.isEmpty && atMark == 0 && below == 0)
+
+
 def testSeqTopRefusedArm (state : IO.Ref TestCollector) : IO Unit := do
   -- P89 (item 438, (χ-seqtop-refused)): the negative arm `ExplicitValueRefused s ∨ SeqTopKey s`
   -- proposed for `content_dispatch_routed`'s `h_resF` premise must NOT be a tautology over the
@@ -17453,6 +17537,7 @@ def collectTests : IO VerifiedSuiteResult := do
 
   testPackSurvivorsChain state
   testProducersPremiseChain state
+  testFlowKeyChain state
   testPackMappingLaneTail state
   testPackDedentSlotGuard state
   testPackAltMarks state
