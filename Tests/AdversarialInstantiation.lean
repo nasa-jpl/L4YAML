@@ -18009,6 +18009,9 @@ structure Tally where
   noOpen : List String := []
   colonKavlOk : Nat := 0
   colonKavlBad : List String := []
+  -- item 516: the bit's other face — a `.sep` / `.question` parent leaves NO completed-pair layout
+  nonColonKavlOk : Nat := 0
+  nonColonKavlBad : List String := []
   colonNext : Nat := 0
   colonNextBy : List (String × Nat) := []
   leadBy : List (String × Nat) := []
@@ -18053,6 +18056,9 @@ def tally (rows : List String) : Tally := Id.run do
           if parentClass == "colon" then
             if P119.kavlShadow post then t := { t with colonKavlOk := t.colonKavlOk + 1 }
             else t := { t with colonKavlBad := t.colonKavlBad ++ [s] }
+          else if parentClass == "sep" || parentClass == "question" then
+            if P119.kavlShadow post then t := { t with nonColonKavlBad := t.nonColonKavlBad ++ [s] }
+            else t := { t with nonColonKavlOk := t.nonColonKavlOk + 1 }
           -- (iv) does the next step push a `:` inside the same (parent) flow?
           if i + 1 < arr.size then
             let (pre₂, post₂) := arr[i + 1]!
@@ -18077,15 +18083,16 @@ open P128
 def testCloseNestedColonShadow (state : IO.Ref TestCollector) : IO Unit := do
   let t := tally (P113.allRows ++ P118.extraRows ++ P128.extraRows)
   checkM state
-    s!"P128 the nested close's T closure: {t.closes} in-flow nested closes (post-tail not `.value`: {t.postTailBad}); the parent's pre-tail {t.parentBy} (no matching open: {t.noOpen}); KeyAfterValueLayout after a `.colon` parent {t.colonKavlOk} (bad: {t.colonKavlBad}); a `:` follows {t.colonNext}, by parent {t.colonNextBy}, by kind {t.nextKindBy}; the lead to that `:` {t.leadBy}; kinds {t.kindBy}"
+    s!"P128 the nested close's T closure: {t.closes} in-flow nested closes (post-tail not `.value`: {t.postTailBad}); the parent's pre-tail {t.parentBy} (no matching open: {t.noOpen}); KeyAfterValueLayout after a `.colon` parent {t.colonKavlOk} (bad: {t.colonKavlBad}), after a `.sep` / `.question` parent never {t.nonColonKavlOk} (bad: {t.nonColonKavlBad}); a `:` follows {t.colonNext}, by parent {t.colonNextBy}, by kind {t.nextKindBy}; the lead to that `:` {t.leadBy}; kinds {t.kindBy}"
     (t.closes == 59 && t.postTailBad.isEmpty &&
       t.parentBy == [("sep", 43), ("colon", 14), ("question", 2)] && t.noOpen.isEmpty &&
       t.colonKavlOk == 14 && t.colonKavlBad.isEmpty &&
+      t.nonColonKavlOk == 45 && t.nonColonKavlBad.isEmpty &&
       t.colonNext == 7 && t.colonNextBy == [("sep", 5), ("question", 2)] &&
       t.nextKindBy == [("seq", 2), ("map", 2), ("seq/props", 2), ("map/props", 1)] &&
       t.leadBy == [("ε", 7)] &&
       t.kindBy == [("seq", 27), ("map", 16), ("seq/props", 10), ("map/props", 6)])
-    s!"{t.closes} bad {t.postTailBad} parent {t.parentBy} noOpen {t.noOpen} kavl {t.colonKavlOk} {t.colonKavlBad} next {t.colonNext} {t.colonNextBy} {t.nextKindBy} lead {t.leadBy} kinds {t.kindBy}"
+    s!"{t.closes} bad {t.postTailBad} parent {t.parentBy} noOpen {t.noOpen} kavl {t.colonKavlOk} {t.colonKavlBad} nonColon {t.nonColonKavlOk} {t.nonColonKavlBad} next {t.colonNext} {t.colonNextBy} {t.nextKindBy} lead {t.leadBy} kinds {t.kindBy}"
 
 end P128Test
 
