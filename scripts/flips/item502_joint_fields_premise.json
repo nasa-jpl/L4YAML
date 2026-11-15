@@ -1,0 +1,153 @@
+{
+ "item": 499,
+ "tag": "PRICE-499-JOINT-FIELDS-PREMISE",
+ "rev": "468a94ee",
+ "target": "L4YAML",
+ "log": "scratch/price499_joint.log",
+ "msgWidth": 110,
+ "rounds": 6,
+ "report": "bodies",
+ "files": [
+  {
+   "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+   "patches": [
+    {
+     "name": "L2097.pendingContent.h_vpack",
+     "line": 2097,
+     "old": [
+      "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+     ],
+     "new": [
+      "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L2726.pendingBlockContent.h_kslot",
+     "line": 2726,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L2948.pendingBlock.h_kslot",
+     "line": 2948,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L1167.ImplicitKeyPack.chain",
+     "line": 1167,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc) ∧"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w)) ∧"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L1817.PropsKeyPack.chain",
+     "line": 1817,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc) ∧"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w)) ∧"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L34326.entryKeyPack.h_nodeV",
+     "line": 34326,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L34346.h_cp_chain",
+     "line": 34346,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)) ∨ True)"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))) ∨ True)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L34367.h_cp_chain",
+     "line": 34367,
+     "old": [
+      "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)))"
+     ],
+     "new": [
+      "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L35037.entryPropsKeyPack.h_nodeV",
+     "line": 35037,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L35050.h_cp_chain",
+     "line": 35050,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)) ∨ True)"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))) ∨ True)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L35138.h_cp_chain",
+     "line": 35138,
+     "old": [
+      "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)))"
+     ],
+     "new": [
+      "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L35623.content_dispatch_routed.h_chainUp",
+     "line": 35623,
+     "old": [
+      "    (h_alt : PackAlt s_prep)"
+     ],
+     "new": [
+      "    (h_alt : PackAlt s_prep)",
+      "    (h_chainUp : ∃ ns : List Nat, RegisterWitness.MarkedColsIn s_prep ns ∧ ∀ nv ∈ ns,",
+      "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_prep sp_i → GLit ':' sp_i sp_c →",
+      "      ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →",
+      "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w)"
+     ],
+     "count": 1
+    }
+   ]
+  }
+ ]
+}
