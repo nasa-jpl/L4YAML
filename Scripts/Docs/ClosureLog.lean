@@ -40,7 +40,7 @@ def declaredGaps : List (Nat × String) :=
    -- 492 = Row 19's #313, 494 = Row 19's #316, 497 = Row 19's #318: in flight when item 498 was cut
    -- (491 = S3's #311, 493 = #312, 495 = #315 and 496 = #317 landed first and were dropped at the
    -- rebases); dropped as they land.
-   (494, "item-498-2026-11-14"), (497, "item-498-2026-11-14")]
+   (497, "item-498-2026-11-14")]
 
 /-- One `### Item N[a] (DATE)` heading. -/
 structure Entry where

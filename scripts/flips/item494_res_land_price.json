@@ -1,0 +1,30 @@
+{
+  "item": 494,
+  "tag": "RES-LAND-494",
+  "rev": "HEAD",
+  "target": "L4YAML",
+  "log": "scratch/494-res-land-build.log",
+  "msgWidth": 100,
+  "rounds": 1,
+  "files": [
+    {
+      "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+      "patches": [
+        {
+          "name": "RES_LAND_NO_DECLINE",
+          "old": [
+            "    (h_res_land : (∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width ≤ k) ∧",
+            "      ∀ sp_end : SurfPos, SCompactMapTail k sp_land sp_end →",
+            "        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ True)"
+          ],
+          "new": [
+            "    (h_res_land : (∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width ≤ k) ∧",
+            "      ∀ sp_end : SurfPos, SCompactMapTail k sp_land sp_end →",
+            "        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ False)"
+          ],
+          "count": 3
+        }
+      ]
+    }
+  ]
+}
