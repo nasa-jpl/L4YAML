@@ -17451,6 +17451,7 @@ structure Tally where
   pairDetected : Nat := 0
   kavlPair : Nat := 0
   kavlColon : Nat := 0
+  producerBy : List (String × Nat) := []
   hypsOk : Nat := 0
   hypsFail : List String := []
   postTailOk : Nat := 0
@@ -17498,7 +17499,21 @@ def tally (rows : List String) : Tally := Id.run do
           -- `KeyArm.colonValue`'s projection: `¬ KeyAfterValueLayout` at every `.value`-tail `:` step
           if k == "value" then
             match tailOf pre.tokens with
-            | .value _ => if kavlShadow pre then t := { t with kavlColon := t.kavlColon + 1 }
+            | .value _ =>
+              if kavlShadow pre then t := { t with kavlColon := t.kavlColon + 1 }
+              -- item 502: WHICH step produced the `.value` tail the `:` lands on — a content node
+              -- (`receiveNodeColon` is its T closure), a nested close (`[[a]: b]`, no T twin yet),
+              -- or a property-decorated node (`receivePropsNodeColon`).
+              let toks := (pre.tokens.toList.map (fun (tk : L4YAML.Positioned L4YAML.YamlToken) => tk.val)).reverse.dropWhile isPlaceholder
+              let producer := match toks with
+                | .flowSequenceEnd :: _ | .flowMappingEnd :: _ => "close"
+                | _ :: rest =>
+                  let rest := rest.dropWhile isPlaceholder
+                  match rest with
+                  | tk :: _ => if tk.isNodeProperty then "props" else "node"
+                  | [] => "node"
+                | [] => "none"
+              t := { t with producerBy := bumpS t.producerBy producer }
             | _ => pure ()
           t := { t with tailBy := bumpS t.tailBy s!"{k}/{tailName}/{lead}" }
           -- (i) the hypotheses
@@ -17548,12 +17563,13 @@ open P119
 def testKeyArmShadow (state : IO.Ref TestCollector) : IO Unit := do
   let t := tally (P113.allRows ++ P118.extraRows)
   checkM state
-    s!"P119 the ?/: flow arms: {t.inSteps} in-flow steps {t.byChar}; pre-tails {t.tailBy}; hypotheses {t.hypsOk}/{t.inSteps} (failing: {t.hypsFail}); whole post-state {t.stateOk}/{t.inSteps} (bad: {t.stateBad}); post-tail {t.postTailOk}/{t.inSteps} (bad: {t.postTailBad}); indices+floor ride {t.rides}/{t.inSteps} (bad: {t.rideBad}); trace prefix {t.prefixOk}/{t.inSteps} (bad: {t.prefixBad}) suffixes {t.suffixByLead}; floors {t.floors}; ':' after a completed pair refused {refusedOk}/{refusedRows.length}; completed pairs seen by the detector at `,`/close steps {t.pairDetected} of {t.pairSteps} `.value`-tail steps; KeyAfterValueLayout at those {t.kavlPair}, at the `.value`-tail `:` steps {t.kavlColon}"
+    s!"P119 the ?/: flow arms: {t.inSteps} in-flow steps {t.byChar}; pre-tails {t.tailBy}; hypotheses {t.hypsOk}/{t.inSteps} (failing: {t.hypsFail}); whole post-state {t.stateOk}/{t.inSteps} (bad: {t.stateBad}); post-tail {t.postTailOk}/{t.inSteps} (bad: {t.postTailBad}); indices+floor ride {t.rides}/{t.inSteps} (bad: {t.rideBad}); trace prefix {t.prefixOk}/{t.inSteps} (bad: {t.prefixBad}) suffixes {t.suffixByLead}; floors {t.floors}; ':' after a completed pair refused {refusedOk}/{refusedRows.length}; completed pairs seen by the detector at `,`/close steps {t.pairDetected} of {t.pairSteps} `.value`-tail steps; KeyAfterValueLayout at those {t.kavlPair}, at the `.value`-tail `:` steps {t.kavlColon}; the `.value` tail's producer at those `:` steps {t.producerBy}"
     (t.inSteps == 171 && t.byChar == [("value", 144), ("key", 27)] &&
       t.tailBy == [("value/sep/white", 8), ("key/sep/white", 27), ("value/value/white", 113),
         ("value/value-explicit/white", 13), ("value/question/white", 4), ("value/sep/props", 4),
         ("value/question/props", 2)] &&
       t.stateOk == 171 && refusedOk == 4 && t.pairDetected == 127 && t.pairSteps == 370 && t.kavlColon == 0 && t.kavlPair == 127 &&
+      t.producerBy == [("node", 113), ("close", 3), ("props", 10)] &&
       t.hypsOk == 171 && t.hypsFail.isEmpty && t.stateBad.isEmpty && t.postTailOk == 171 && t.postTailBad.isEmpty &&
       t.rides == 171 && t.rideBad.isEmpty && t.prefixOk == 171 && t.prefixBad.isEmpty &&
       t.suffixByLead == [("white/+0", 165), ("props/+0", 6)] &&
