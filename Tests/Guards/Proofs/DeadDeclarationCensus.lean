@@ -38,7 +38,9 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 --- the nested close's `:` twin is read by no root until price (3)'s fold (`accum_step_flow_pairK`) consumes it; the (B)
 --- roster 3,534, (C)/(D) and cluster-roots unmoved.
 def expectedDeadCensus : String :=
-  "population=14220 thm=10197 def=2673 roots=capstone:26+export:37+blueprint:222(unresolved=5) unreached=6494 thm=4584 A-campaign=1278 C-api=1405 D-test-only=277 B-roster=3534 thm=3173 cluster-roots=1461"
+  -- 2026-11-15 (item 517): +3 class (A) — `kmBit` / `kmBit_iff` (FlowWalk §8) and `content_km_transport_any`
+  -- (ContentBridge), reached only by `accum_step_flow_trace` / `accum_step_content_pairK` until the fold; roster unmoved.
+  "population=14223 thm=10199 def=2674 roots=capstone:26+export:37+blueprint:222(unresolved=5) unreached=6497 thm=4586 A-campaign=1281 C-api=1405 D-test-only=277 B-roster=3534 thm=3173 cluster-roots=1461"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do
