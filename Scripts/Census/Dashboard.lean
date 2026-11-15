@@ -166,6 +166,8 @@ inductive Goal where
   | const (n : Nat)
   /-- to another field of the same pin (`covered → closure`) -/
   | field (name : String)
+  /-- a non-numeric reading that must hold (`drop=false`, the non-circularity checks) -/
+  | flag (value : String)
   deriving Repr, BEq, Inhabited
 
 /-- What the guard enforces about the reading's movement. -/
@@ -197,6 +199,8 @@ structure Target where
   moves : String
   /-- the item or guard whose text states the direction -/
   basis : String
+  /-- a sub-count of another row's field (`on-drop` of `on`): shown, not added to the totals -/
+  component : Bool := false
   deriving Repr, Inhabited
 
 /-- The directed fields.  A row leaves when its census is deleted; a row joins when a guard pins a
@@ -369,7 +373,124 @@ def roster : List Target := [
   { census := "ColumnAdvanceCensus", pin := "expectedSplit", field := "violations", goal := .const 1, move := .hold,
     serves := "the column law is false and ONE arm refutes it (`SLDocumentPrefix.bom`)", moves := "a second violation is a finding, not a count to chase", basis := "item 234" },
   { census := "SuffixGapAudit", pin := "expectedSplit", field := "refuted", goal := .const 1, move := .hold,
-    serves := "`[211] l-yaml-stream` has no suffix lemma because the statement is false", moves := "β.5 (see `broken`)", basis := "item 235 / 236" }
+    serves := "`[211] l-yaml-stream` has no suffix lemma because the statement is false", moves := "β.5 (see `broken`)", basis := "item 235 / 236" },
+  -- Item 518: the readings whose guard states a direction, moved onto the roster.
+  -- CapstonePathAudit by class (components of `on` / `off`).
+  { census := "CapstonePathAudit", pin := "expectedSummary", field := "unresolved", goal := .zero, move := .shrinkOnly,
+    serves := "positions the capstone-path classifier cannot class ON or OFF", moves := "read each (a nested position the walker does not follow) and teach the classifier the shape, or restate the site", basis := "item 439 (`unresolved` is the classifier's own refusal)" },
+  { census := "CapstonePathAudit", pin := "expectedSummary", field := "on-drop", goal := .zero, move := .shrinkOnly, component := true,
+    serves := "ON positions at the on-drop producers' `else` arms", moves := "R12 (d): the dedent `else` arms pay from `markedCols_le_of_top` and the `[map k]` resume fact", basis := "items 439 / 493 / 498" },
+  { census := "CapstonePathAudit", pin := "expectedSummary", field := "on-relay", goal := .zero, move := .shrinkOnly, component := true,
+    serves := "ON positions relayed into the three park fields", moves := "mechanical once the fields are plain (the (2b) fixpoint's 120 relays)", basis := "items 439 / 501" },
+  { census := "CapstonePathAudit", pin := "expectedSummary", field := "on-via", goal := .zero, move := .hold, component := true,
+    serves := "ON positions supplied through a `VIA` lemma", moves := "none today; one appearing needs the owner's word", basis := "item 439" },
+  { census := "CapstonePathAudit", pin := "expectedSummary", field := "on-conclusion", goal := .zero, move := .hold, component := true,
+    serves := "ON conclusions `Or.inr trivial` proves", moves := "none today", basis := "item 439" },
+  { census := "CapstonePathAudit", pin := "expectedSummary", field := "off-unread", goal := .zero, move := .shrinkOnly, component := true,
+    serves := "OFF positions whose alternative no consumer reads", moves := "delete the alternative where it stands (nothing spends it)", basis := "item 439" },
+  { census := "CapstonePathAudit", pin := "expectedSummary", field := "off-conclusion", goal := .zero, move := .shrinkOnly, component := true,
+    serves := "OFF conclusions", moves := "narrow to the residue (`lake run restate -- narrow-conclusion` prices the relay damage first)", basis := "items 228 / 439" },
+  { census := "CapstonePathAudit", pin := "expectedSummary", field := "off-honest", goal := .zero, move := .shrinkOnly, component := true,
+    serves := "OFF positions with an honest decline today", moves := "each paid by its own item after ON closes", basis := "item 439" },
+  -- OrTrueAudit by alternative and by depth (components of `positions`), and its own holds.
+  { census := "OrTrueAudit", pin := "expectedSummary", field := "True", goal := .zero, move := .shrinkOnly, component := true,
+    serves := "positions whose alternative is the literal `True`", moves := "as `positions`", basis := "item 395" },
+  { census := "OrTrueAudit", pin := "expectedSummary", field := "top", goal := .zero, move := .shrinkOnly, component := true,
+    serves := "top-level `∨` positions", moves := "as `positions`", basis := "item 395" },
+  { census := "OrTrueAudit", pin := "expectedSummary", field := "nested", goal := .zero, move := .shrinkOnly, component := true,
+    serves := "nested `∨` positions (inside `∀` / `∃` / `∧`)", moves := "as `positions`", basis := "item 395" },
+  { census := "OrTrueAudit", pin := "expectedSummary", field := "unreadable", goal := .zero, move := .shrinkOnly,
+    serves := "consumers the audit cannot read (instrument blindness)", moves := "teach the walker the shape (Rule 9 instrument item) — the owner's call whether this is owed", basis := "item 395 (`consumers: … unreadable=`)" },
+  { census := "OrTrueAudit", pin := "expectedSummary", field := "declined-only", goal := .zero, move := .hold,
+    serves := "a position every supplier declines", moves := "the guard keeps it at 0", basis := "item 395" },
+  { census := "OrTrueAudit", pin := "expectedSummary", field := "never-supplied", goal := .zero, move := .hold,
+    serves := "a position no caller supplies", moves := "the guard keeps it at 0 (item 396 deleted the last)", basis := "items 395 / 396" },
+  { census := "OrTrueAudit", pin := "expectedSummary", field := "unused", goal := .zero, move := .hold,
+    serves := "a consumer that takes the alternative and never reads it", moves := "the guard keeps it at 0", basis := "item 395" },
+  -- The pack flip (the residue's twin, taken by flipping `PackAlt` to `False`).
+  { census := "BlockDeferralClasses", pin := "expectedPackFlip", field := "decline", goal := .zero, move := .shrinkOnly,
+    serves := "the pack flip: sites that decline the pack", moves := "as `expectedPackResidue.decline` — \"this line is what each lane drives down\"", basis := "items 312 / 340" },
+  { census := "BlockDeferralClasses", pin := "expectedPackFlip", field := "uncond", goal := .zero, move := .shrinkOnly,
+    serves := "the pack flip: roots to make unconditional", moves := "as `expectedPackResidue.uncond`", basis := "items 312 / 340" },
+  { census := "BlockDeferralClasses", pin := "expectedPackFlip", field := "relay", goal := .zero, move := .hold,
+    serves := "the pack flip: relays of a `PackAlt` the `False` flip still sees", moves := "the flip keeps it at 0", basis := "items 312 / 340" },
+  { census := "BlockDeferralClasses", pin := "expectedPackResidue", field := "relayState", goal := .zero, move := .shrinkOnly,
+    serves := "the residue's transports", moves := "as `expectedPackFlip.relayState`", basis := "item 357" },
+  { census := "BlockDeferralClasses", pin := "expectedInlineArms", field := "apps", goal := .zero, move := .shrinkOnly,
+    serves := "step 12.3: the inline escape's remaining applications (two `noKeyContext` arms and the dead one)", moves := "empty the escape's domain: each input that reaches it takes a named arm", basis := "items 286 / 297" },
+  { census := "BlockDeferralClasses", pin := "expectedInlineCensus", field := "nokey", goal := .zero, move := .hold,
+    serves := "accepted inputs the inline class keys nothing for", moves := "the census keeps it at 0", basis := "item 286" },
+  -- The openers' optional contexts.
+  { census := "OpenerFallbackReach", pin := "expectedSummary", field := "open", goal := .zero, move := .shrinkOnly,
+    serves := "the five openers' `_ ∨ True` optional contexts (`h_res_land`, `h_sfx_land`, `h_nodoc_land`, `h_mk_land`, `h_pr_land`, …)", moves := "Row 19's step (3) explicit-only narrowing (item 494's 13 sites) and R12's (2b) fixpoint; each context made plain at its producers", basis := "items 375 / 494" },
+  -- Conclusions.
+  { census := "ConclusionObligationCensus", pin := "expectedLedgerTally", field := "res", goal := .zero, move := .shrinkOnly,
+    serves := "`Or.inr trivial` written in the ledger lemmas' conclusions", moves := "narrow each conclusion to its residue (item 228: price the relay damage first; `res` 123 → 58 was the lane's own direction)", basis := "items 227 / 228" },
+  { census := "ConclusionObligationCensus", pin := "expectedResidueProbe", field := "byTrivial", goal := .zero, move := .hold,
+    serves := "a narrowed residue that `trivial` still proves", moves := "the probe keeps it at 0", basis := "item 228 §2b" },
+  { census := "NarrowingWorthCensus", pin := "expectedNoopTally", field := "byElab", goal := .zero, move := .shrinkOnly,
+    serves := "theorems whose conclusion is a no-op (provable without its hypotheses, §8)", moves := "restate or delete each (16 stand; none added since item 227)", basis := "item 227 (`expectedNoopTally`)" },
+  { census := "NarrowingWorthCensus", pin := "expectedHiddenTally", field := "hiddenOnly", goal := .zero, move := .shrinkOnly,
+    serves := "optional binders hidden behind a definition the syntactic selector misses", moves := "unfold the definition at the selector (instrument) or restate the binder", basis := "item 227 §6" },
+  { census := "NarrowingWorthCensus", pin := "expectedWorthTally", field := "chainSplits", goal := .zero, move := .hold,
+    serves := "arms a narrowing would collapse on a premise still unconditionally inhabited (a narrowing that buys nothing)", moves := "the census keeps it at 0", basis := "item 227 §5" },
+  -- β.5's bill, the remaining counts.
+  { census := "DropDependents", pin := "expectedCensus", field := "capstonesInT", goal := .zero, move := .shrinkOnly,
+    serves := "capstones whose proofs run through `scannerDrop`", moves := "β.5: the two capstones reproved without the arm", basis := "item 238" },
+  { census := "DropDependents", pin := "expectedCensus", field := "S", goal := .zero, move := .hold,
+    serves := "statements that NAME the arm", moves := "the census keeps it at 0 (a name appearing would make the deletion a restatement)", basis := "item 238" },
+  { census := "DropDependents", pin := "expectedWideCensus", field := "T", goal := .zero, move := .shrinkOnly,
+    serves := "the whole-tree twin of `T` (`lake run drop-sweep`)", moves := "as `expectedCensus.T`", basis := "item 238" },
+  { census := "ParkBill", pin := "expectedBill", field := "Tp", goal := .zero, move := .shrinkOnly,
+    serves := "β.5's park bill: proofs running through `PendingNode.pendingFlow`", moves := "retire the park with the arm; each reproved", basis := "item 240 / `ParkBill`" },
+  { census := "ParkBill", pin := "expectedBill", field := "Dp", goal := .zero, move := .shrinkOnly,
+    serves := "direct constructions of the park", moves := "as `Tp`", basis := "item 240" },
+  { census := "ParkBill", pin := "expectedBill", field := "capstonesInTp", goal := .zero, move := .shrinkOnly,
+    serves := "capstones riding the park", moves := "as `Tp`", basis := "item 240" },
+  { census := "ParkBill", pin := "expectedBill", field := "Sp", goal := .zero, move := .hold,
+    serves := "statements that name the park (the twin of `S=0`)", moves := "the census keeps it at 0", basis := "item 240" },
+  { census := "ParkBill", pin := "expectedFixpoint", field := "carried", goal := .zero, move := .shrinkOnly,
+    serves := "sorries the retire flip carries through its waves", moves := "as `sorried`", basis := "`ParkBill.expectedFixpoint`" },
+  { census := "ParkBill", pin := "expectedFixpoint", field := "refused", goal := .zero, move := .hold,
+    serves := "patches the flip refused", moves := "the flip keeps it at 0", basis := "`ParkBill.expectedFixpoint`" },
+  -- Supply leaves.
+  { census := "RelaySupplyCensus", pin := "expectedSplitLanding", field := "DECLINE", goal := .zero, move := .shrinkOnly,
+    serves := "split leaves that decline", moves := "as `expectedTally.DECLINE`, read at the leaves of each split", basis := "item 216" },
+  { census := "RelaySupplyCensus", pin := "expectedSplitBranch", field := "DECLINE-closed", goal := .zero, move := .shrinkOnly,
+    serves := "declines closed with `trivial`", moves := "pay or hand the hypothesis back (`DECLINE-free`), then pay", basis := "item 314" },
+  { census := "RelaySupplyCensus", pin := "expectedSplitBranch", field := "DECLINE-free", goal := .zero, move := .shrinkOnly,
+    serves := "declines that hand their hypothesis back (relays of a `PackAlt`)", moves := "falls with the `PackAlt` positions", basis := "item 314" },
+  { census := "RelaySupplyCensus", pin := "expectedSplitBranch", field := "disagree", goal := .zero, move := .hold,
+    serves := "the two split readings disagree", moves := "the census keeps it at 0", basis := "item 216" },
+  { census := "RelaySupplyCensus", pin := "expectedDeclineReach", field := "dead", goal := .zero, move := .hold,
+    serves := "decline pairs no live split reaches", moves := "the census keeps it at 0", basis := "item 217" },
+  -- Holds the guards' text names as the number kept at zero / the check kept true.
+  { census := "SurfaceSpanCensus", pin := "expectedRefuters", field := "elsewhere", goal := .zero, move := .hold,
+    serves := "`BreakBetween` mentions outside the two residue modules", moves := "\"the number this section exists to keep at zero\"", basis := "item 229 §4" },
+  { census := "SurfaceSpanCensus", pin := "expectedLeafSplit", field := "blocked", goal := .zero, move := .hold,
+    serves := "dead leaf sites with no route", moves := "the census keeps it at 0", basis := "item 229 §5" },
+  { census := "SurfaceSpanCensus", pin := "expectedMotiveExport", field := "trueOnly", goal := .zero, move := .hold,
+    serves := "recursor motives exporting only `True`", moves := "the census keeps it at 0", basis := "items 231 / 232" },
+  { census := "ColumnAdvanceCensus", pin := "expectedCoverage", field := "blind", goal := .zero, move := .hold,
+    serves := "arms the column census could not relate (a census reporting no violation must see its population)", moves := "the census keeps it at 0", basis := "item 234" },
+  { census := "ColumnAdvanceCensus", pin := "expectedConsumeAllUsers", field := "value", goal := .zero, move := .hold,
+    serves := "applications of `GConsumeAll` outside its generated machinery (the arm that could break the column law)", moves := "the guard keeps it at 0", basis := "item 234 §4" },
+  { census := "ColumnWalkPrice", pin := "expectedSupply", field := "documentLayerMissing", goal := .const 1, move := .hold,
+    serves := "`[211]`'s missing document-layer suffix lemma (the statement is false)", moves := "β.5 (see `SuffixGapAudit.refuted`)", basis := "items 235 / 236" },
+  { census := "ProducerDerivation", pin := "expectedCensus", field := "free", goal := .zero, move := .hold,
+    serves := "correspondence hypotheses that are free", moves := "the census keeps it at 0", basis := "item 241" },
+  { census := "StreamCompositions", pin := "expectedLine", field := "viaSites", goal := .zero, move := .hold,
+    serves := "build points reached only through a `VIA`", moves := "the census keeps it at 0", basis := "item 249" },
+  { census := "CarrierArmPrice", pin := "expectedSpend", field := "drop", goal := .flag "false", move := .hold,
+    serves := "non-circularity: the closing lemma routes through no escape", moves := "the check keeps it `false`", basis := "items 242–245" },
+  { census := "ParkGapCensus", pin := "expectedSpend", field := "drop", goal := .flag "false", move := .hold,
+    serves := "non-circularity of the connected-drop closure", moves := "the check keeps it `false`", basis := "item 243" },
+  { census := "ParkGapWidth", pin := "expectedSpend", field := "drop", goal := .flag "false", move := .hold,
+    serves := "non-circularity of the width proofs", moves := "the check keeps it `false`", basis := "item 244" },
+  { census := "ParkGapProduction", pin := "expectedSpend", field := "drop", goal := .flag "false", move := .hold,
+    serves := "non-circularity of the literal's production", moves := "the check keeps it `false`", basis := "item 245" },
+  { census := "DispatchPrice", pin := "expectedWeak", field := "drop", goal := .flag "false", move := .hold,
+    serves := "the weak repair's statement routes through no escape", moves := "the check keeps it `false`", basis := "item 242" }
 ]
 
 /-! ## Readings -/
@@ -395,6 +516,8 @@ def resolve (pins : Array Pin) (t : Target) : Except String (Nat × Nat) := do
     | throw s!"{t.census}.{t.pin}: no such pin"
   let fs := pinFields p.literal
   let some (_, v) := fs.find? (·.1 == t.field) | throw s!"{t.census}.{t.pin}: no field `{t.field}`"
+  if let .flag want := t.goal then
+    return (if v == want then 0 else 1, 0)
   let some now := count? v | throw s!"{t.census}.{t.pin}.{t.field}: `{v}` is not a count"
   let goal ← match t.goal with
     | .zero => pure 0
@@ -403,6 +526,7 @@ def resolve (pins : Array Pin) (t : Target) : Except String (Nat × Nat) := do
       let some (_, gv) := fs.find? (·.1 == g) | throw s!"{t.census}.{t.pin}: no bound field `{g}`"
       let some n := count? gv | throw s!"{t.census}.{t.pin}.{g}: `{gv}` is not a count"
       pure n
+    | .flag _ => pure 0
   return (now, goal)
 
 def distance (now goal : Nat) : Nat := if now ≥ goal then now - goal else goal - now
@@ -421,6 +545,7 @@ def Row.goalText (r : Row) : String :=
   | .zero => "0"
   | .const n => s!"{n}"
   | .field g => s!"{r.goal} (= `{g}`)"
+  | .flag v => s!"`{v}`"
 
 def Row.status (r : Row) : String :=
   if r.left == 0 then (if r.target.move == .hold then "HOLD" else "DONE") else "OPEN"
@@ -444,15 +569,18 @@ def renderRows (rows : Array Row) : Array String := Id.run do
   let mut out := #["| census | field | now | goal | left | move | status | serves | what moves it | basis |",
                    "|---|---|---:|---:|---:|---|---|---|---|---|"]
   for r in rows do
-    out := out.push s!"| `{r.target.census}` | `{r.target.field}` | {r.now} | {r.goalText} | {r.left} | {r.target.move.render} | {r.status} | {cell r.target.serves} | {cell r.target.moves} | {cell r.target.basis} |"
+    let field := if r.target.component then s!"`{r.target.field}` ⊂" else s!"`{r.target.field}`"
+    out := out.push s!"| `{r.target.census}` | {field} | {r.now} | {r.goalText} | {r.left} | {r.target.move.render} | {r.status} | {cell r.target.serves} | {cell r.target.moves} | {cell r.target.basis} |"
   return out
 
 /-- The census-level distance: open rows and the sum of what is left (holds excluded). -/
 def totals (rows : Array Row) : String :=
+  let comps := rows.filter (·.target.component)
+  let rows := rows.filter (!·.target.component)
   let work := rows.filter (·.target.move != .hold)
   let open_ := work.filter (·.left != 0)
   let left := open_.foldl (fun acc r => acc + r.left) 0
-  s!"directed={rows.size} work={work.size} open={open_.size} done={work.size - open_.size} holds={rows.size - work.size} left={left}"
+  s!"directed={rows.size} work={work.size} open={open_.size} done={work.size - open_.size} holds={rows.size - work.size} left={left} components={comps.size} (shown, not summed)"
 
 /-- Every field of every pin not named by the roster, one line per pin; a `Nat` pin reads `value=N`. -/
 def renderReadings (pins : Array Pin) : Array String := Id.run do
