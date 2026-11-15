@@ -12032,10 +12032,11 @@ def testRootLandingMarks (state : IO.Ref TestCollector) : IO Unit := do
   IO.println s!"P126 root-landing rootPauses={rootPauses} ownQ={ownQ.length} closedBefore={closedBefore} wholeOk={wholeOk}/{inputs.length} survivors={survivors}"
   IO.println s!"P126 ownQ={ownQ}"
   check state s!"P126 (ω-pay-births) (d) the root closing lemma's Rule 2 (item 508): {rootPauses} root landings, {ownQ.length} own-`?` marks, {closedBefore} landings closing a mark, {survivors.length} other survivors, {wholeOk} / {inputs.length} inputs accepted whole"
-    -- pinned (item 508): 0 survivors at every non-`?` root landing — the column-0 landing closes
-    -- every mark in PREPROCESS (pre=[] even at the `?` landings); the 38 non-empty post-states are
-    -- the `?` landings' own `[0]`; 3 inputs the runtime refuses whole (trailing root content, §9.2).
-    (rootPauses > 0)
+    -- pinned (item 508): 0 survivors at every non-`?` root landing the scanner steps through —
+    -- incl. a column-0 `-` / `:` over an open column-0 `?`; the 50 non-empty post-states are the
+    -- `?` landings' own `[0]` (pre=[] there too: preprocess closes the marks); 9 inputs the
+    -- runtime refuses whole (trailing root content / bare document content, §9.2).
+    (rootPauses == 120 && ownQ.length == 50 && closedBefore == 24 && survivors.isEmpty && wholeOk == 42)
 
 def testSeqTopRefusedArm (state : IO.Ref TestCollector) : IO Unit := do
   -- P89 (item 438, (χ-seqtop-refused)): the negative arm `ExplicitValueRefused s ∨ SeqTopKey s`
