@@ -34717,7 +34717,7 @@ lemma entryKeyPack_of_dispatch
                         -- carry on below it.  Only the strictly-deeper
                         -- landing pays (`n < w`): at `w = n` the levels
                         -- include `w` itself and the sibling belongs there.
-                        if hlt : n < w then
+                        have hlt : n < w := Nat.lt_of_succ_le hnw
                           match h_nodeF with
                           | Or.inl ⟨ks, h_le, h_cov, nodeF⟩ => Or.inl ⟨ks,
                               fun k' hk' => Nat.le_of_lt (Nat.lt_of_le_of_lt (h_le k' hk') hlt),
@@ -34733,14 +34733,13 @@ lemma entryKeyPack_of_dispatch
                               fun sp_v h_entry sp_e h_tail =>
                                 nodeF sp_e (nestedBlockMap hnw h_land.1
                                   (SBlockMapEntries_of_compactTail h_ind' h_entry h_tail))⟩
-                          | Or.inr _ => Or.inr trivial
-                        else Or.inr trivial,
+                          | Or.inr _ => Or.inr trivial,
                         -- Item 108: the value-line-bottomed stack chains the
                         -- same way and for the same reason — the entry and
                         -- tail close the nested mapping, and what stands below
                         -- it is the `?` frame's own unpaid value line rather
                         -- than the finished stream.
-                        if hlt : n < w then
+                        have hlt : n < w := Nat.lt_of_succ_le hnw
                           match h_nodeFV with
                           | Or.inl ⟨nv, ks, h_le, h_covV, nodeFV⟩ => Or.inl ⟨nv, ks,
                               fun k' hk' => Nat.le_of_lt (Nat.lt_of_le_of_lt (h_le k' hk') hlt),
@@ -34755,8 +34754,7 @@ lemma entryKeyPack_of_dispatch
                               fun sp_v h_entry sp_e h_tail =>
                                 nodeFV sp_e (nestedBlockMap hnw h_land.1
                                   (SBlockMapEntries_of_compactTail h_ind' h_entry h_tail))⟩
-                          | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h)
-                        else Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt),
+                          | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h),
                         -- **Item 169: the sequence face, on the branch item 168
                         -- could not reach.**  Same composition as the two lanes
                         -- above — the landed entry and its tail close the
@@ -34768,15 +34766,14 @@ lemma entryKeyPack_of_dispatch
                         -- value that is itself a mapping); item 168 reached
                         -- neither.  `n < w` for item 99's reason: at `w = n`
                         -- the caller's own level IS this one.
-                        if hlt : n < w then
+                        have hlt : n < w := Nat.lt_of_succ_le hnw
                           match h_nodeSF with
                           | Or.inl ⟨ke, ks, h_le, nodeSF⟩ => Or.inl ⟨ke, ks,
                               fun k' hk' => Nat.le_of_lt (Nat.lt_of_le_of_lt (h_le k' hk') hlt),
                               fun sp_v h_entry sp_e h_tail =>
                                 nodeSF sp_e (nestedBlockMap hnw h_land.1
                                   (SBlockMapEntries_of_compactTail h_ind' h_entry h_tail))⟩
-                          | Or.inr _ => Or.inr trivial
-                        else Or.inr trivial⟩
+                          | Or.inr _ => Or.inr trivial⟩
         · -- Item 99: the DEDENT composed.  The landing under-ran the awaited
           -- node's index, so the entry it opens is a SIBLING at an enclosing
           -- mapping level: the pending's frames close the awaited entry
@@ -35355,7 +35352,7 @@ lemma entryPropsKeyPack_of_dispatch
                       -- sibling belongs to the level itself
                       -- (`?⏎  &p a: b⏎  c: d⏎: - w` reads `c` as `a`'s
                       -- sibling with the `?`'s value line still owed).
-                      if hlt : n < w then
+                      have hlt : n < w := Nat.lt_of_succ_le hnw
                         match h_nodeF with
                         | Or.inl ⟨ks, h_le, h_cov, nodeF⟩ => Or.inl ⟨ks,
                             fun k' hk' => Nat.le_of_lt (Nat.lt_of_le_of_lt (h_le k' hk') hlt),
@@ -35367,9 +35364,8 @@ lemma entryPropsKeyPack_of_dispatch
                             fun sp_v h_entry sp_e h_tail =>
                               nodeF sp_e (nestedBlockMap hnw h_land.1
                                 (SBlockMapEntries_of_compactTail h_ind' h_entry h_tail))⟩
-                        | Or.inr _ => Or.inr trivial
-                      else Or.inr trivial,
-                      if hlt : n < w then
+                        | Or.inr _ => Or.inr trivial,
+                      have hlt : n < w := Nat.lt_of_succ_le hnw
                         match h_nodeFV with
                         | Or.inl ⟨nv, ks, h_le, h_covV, nodeFV⟩ => Or.inl ⟨nv, ks,
                             fun k' hk' => Nat.le_of_lt (Nat.lt_of_le_of_lt (h_le k' hk') hlt),
@@ -35384,8 +35380,7 @@ lemma entryPropsKeyPack_of_dispatch
                             fun sp_v h_entry sp_e h_tail =>
                               nodeFV sp_e (nestedBlockMap hnw h_land.1
                                 (SBlockMapEntries_of_compactTail h_ind' h_entry h_tail))⟩
-                        | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h)
-                      else Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt)⟩,
+                        | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h)⟩,
                       h_props, h_sk_line,
                       by rw [h_sk, allowDirectives_update_simpleKey]; exact h_shape.1⟩
       · -- Item 115: the DEDENT composes — item 99's move, at the run.  The

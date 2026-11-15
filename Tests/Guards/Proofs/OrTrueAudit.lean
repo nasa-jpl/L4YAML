@@ -250,8 +250,11 @@ def posLine (p : Pos) : String := s!"{p.decl}{p.site} {p.kind} ∨ {p.alt}"
 -- 2026-10-30 (item 408): inrTrivial=511 → inrTrivial=513 — the flow key faces restated on the
 -- projection `markedCols`: four fabricated births DECLINE (`Or.inr trivial` writers into `PackAltG`/`PackAlt`
 -- positions), none paid; positions unchanged.
+-- 2026-11-14 (item 500): inrTrivial=485 → 483 — the entry producers' dead `if hlt : n < w` splits on the nested
+-- branch deleted (`hnw : n + 1 ≤ w` decides them); two of the three deleted `else Or.inr trivial` arms were audit
+-- writers (entryKeyPack ×14 → 13, entryPropsKeyPack ×7 → 6); positions unchanged.
 def expectedSummary : String :=
-  "positions=269 top=166 nested=103 True=193 PackAlt=67 PackAltG=9 modules=2 supply: paid=28 relayed=116 declined-only=0 never-supplied=0 unresolved=9 conclusions=11 consumers: spent=103 relayed=14 unused=0 unreadable=36 writers=39 inrTrivial=485"
+  "positions=269 top=166 nested=103 True=193 PackAlt=67 PackAltG=9 modules=2 supply: paid=28 relayed=116 declined-only=0 never-supplied=0 unresolved=9 conclusions=11 consumers: spent=103 relayed=14 unused=0 unreadable=36 writers=39 inrTrivial=483"
 
 def expectedPositions : List String :=
   [ "L4YAML.Proofs.PreprocessIndentStable.IndentFloor.transport[3].h_floor top ∨ True",
@@ -914,8 +917,8 @@ def expectedWriters : List String :=
     "L4YAML.Proofs.StreamAccum.content_dispatch_routed ×24 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.dedent_cover_of_landing ×3 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.deeperLandingResume ×2 (StreamAccum)",
-    "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch ×14 (StreamAccum)",
-    "L4YAML.Proofs.StreamAccum.entryPropsKeyPack_of_dispatch ×7 (StreamAccum)",
+    "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch ×13 (StreamAccum)",
+    "L4YAML.Proofs.StreamAccum.entryPropsKeyPack_of_dispatch ×6 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.flowKeyPack_of_close ×3 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_open ×8 (StreamAccum)",
     "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root ×9 (StreamAccum)",

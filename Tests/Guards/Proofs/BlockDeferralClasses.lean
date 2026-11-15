@@ -4635,9 +4635,11 @@ def expectedPackResidue : String :=
 `PackAlt` writes, counted off the source by `lake run pack-census -- births` (no flip): `h_alt` births
 (`… h_dispatch h_alt)`) `+` relays of a frames premise's `PackAlt` arm.  Items 427–430 read the births
 to the bottom (refused / guard-else / frame / fresh-document / mid-line classes in DOCS 431); a move
-here is a producer paid or born, and is an item's to record. -/
+here is a producer paid or born, and is an item's to record.  Item 500 (2026-11-14): 9+5 → 8+5 at both
+entry producers — the nested branch's dead `if hlt : n < w` split (its `else` birth unreachable under
+`hnw : n + 1 ≤ w`) deleted; the dedent / root / compact births stand, named by class in DOCS 500. -/
 def expectedPackBirths : String :=
-  "entryKeyPack_of_dispatch=9+5 entryPropsKeyPack_of_dispatch=9+5 content_dispatch_routed=23+0"
+  "entryKeyPack_of_dispatch=8+5 entryPropsKeyPack_of_dispatch=8+5 content_dispatch_routed=23+0"
 
 /-! **The 32 roots (29 since item 307), by what the register does there** — a READING of each site
 (the compiler prices it when the construction is attempted, §1):
