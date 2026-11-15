@@ -12047,6 +12047,70 @@ def testRootLandingMarks (state : IO.Ref TestCollector) : IO Unit := do
     (rootPauses == 120 && ownQ.length == 50 && ownQOther.isEmpty && closedBefore == 24 &&
       survivors.isEmpty && wholeOk == 42)
 
+/-- Item 510 — the `pendingFlow` chain-field CARRIER's Rule 2: at every block-context flow open
+    (`[` / `{` at `flowLevel = 0`) read `RegisterWitness.markedCols` off the open state and again
+    off the first state back at `flowLevel = 0` (the close); the marks must agree (flow steps touch
+    no register slot), and every mark's `: v` / `: - w` after the WHOLE flow node must parse — the
+    fact a chain field on the flow park would carry.  Diffs and rejects listed by input. -/
+def testFlowCloseMarks (state : IO.Ref TestCollector) : IO Unit := do
+  let inputs : List String :=
+    [ "? [a]\n: b", "? {a: 1}\n: b", "?\n  [a, b]\n: c", "?\n  k: [a]\n  j: {b: 1}\n: v", "? [a,\n  b]\n: c",
+      "?\n  ?\n    [x]\n  : y\n: z", "? [a]: 1\n: b", "- ? [a]\n  : b", "k:\n  ? {a}\n  : v", "? [ ]\n: b",
+      "? [[a], {b: c}]\n: d", "?\n  - [a]\n  - {b}\n: v", "? a\n: [b]\n? c\n: {d: e}", "[a]\n? b\n: c",
+      "k: [a, b]\nj: {c: d}", "? [a]\n:\n  [b]", "?\n  k: [a]\n: v", "? {a: [b, {c: d}]}\n: e",
+      "? [a] # c\n: b", "? [a]\n\n: b", "--- \n? [a]\n: b", "? !t [a]\n: b", "? &x [a]\n: *x",
+      "?\n  [a]\n  : b\n: c", "? [? a : b]\n: c", "? {? a : b}\n: c" ]
+  let mut opens := 0
+  let mut marked := 0
+  let mut diffs : List String := []
+  let mut rejV : List String := []
+  let mut rejSeq : List String := []
+  let mut wholeOk := 0
+  for input in inputs do
+    if (L4YAML.TokenParser.parseYaml input).isOk then wholeOk := wholeOk + 1
+    let lines := (input.splitOn "\n").toArray
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:80] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) =>
+          if sP.flowLevel == 0 && (c == '[' || c == '{') then
+            opens := opens + 1
+            let openMarks := L4YAML.Proofs.RegisterWitness.markedCols sP
+            if !openMarks.isEmpty then marked := marked + 1
+            -- walk to the close: the first state back at flowLevel 0
+            let mut sc := sN
+            let mut closed := false
+            for _ in [:200] do
+              if sc.flowLevel == 0 then closed := true; break
+              match L4YAML.Scanner.scanNextToken sc with
+              | .ok (some s2) => sc := s2
+              | _ => break
+            if closed then
+              let closeMarks := L4YAML.Proofs.RegisterWitness.markedCols sc
+              if closeMarks != openMarks then
+                diffs := diffs ++ [s!"{repr input}@{sP.line}:{sP.col} open={openMarks} close={closeMarks}"]
+              -- the whole flow node = the input up to and including the closing `]` / `}` itself
+              -- (review on #332: cutting at the close's LINE kept `: 1` of `? [a]: 1⏎: b` and
+              -- probed a completed mapping, not the flow close)
+              let pre := String.fromUTF8! (input.toUTF8.extract 0 sc.offset)
+              for m in closeMarks do
+                let pad := String.mk (List.replicate m ' ')
+                if !(L4YAML.TokenParser.parseYaml (pre ++ "\n" ++ pad ++ ": v\n")).isOk then
+                  rejV := rejV ++ [s!"{repr input}@{sP.line} m={m}"]
+                if !(L4YAML.TokenParser.parseYaml (pre ++ "\n" ++ pad ++ ": - w\n")).isOk then
+                  rejSeq := rejSeq ++ [s!"{repr input}@{sP.line} m={m}"]
+          s := sN
+        | _ => break
+      | _ => break
+  IO.println s!"P127 flow-close opens={opens} marked={marked} diffs={diffs} rejV={rejV} rejSeq={rejSeq} wholeOk={wholeOk}/{inputs.length}"
+  check state s!"P127 the `pendingFlow` chain-field carrier's Rule 2 (item 510): {opens} block-context flow opens, {marked} under a mark, {diffs.length} open/close mark diffs, {rejV.length} `: v` rejects, {rejSeq.length} `: - w` rejects, {wholeOk} / {inputs.length} inputs accepted whole"
+    -- pinned (item 510): the register is untouched through a flow node (0 open/close diffs at 31 opens,
+    -- 25 of them under a `?` mark) and every mark's `: v` / `: - w` after the whole flow node parses;
+    -- 2 inputs the runtime refuses whole (§9.2 bare document content after a root `?` entry).
+    (opens == 31 && marked == 25 && diffs.isEmpty && rejV.isEmpty && rejSeq.isEmpty && wholeOk == 24)
+
 def testSeqTopRefusedArm (state : IO.Ref TestCollector) : IO Unit := do
   -- P89 (item 438, (χ-seqtop-refused)): the negative arm `ExplicitValueRefused s ∨ SeqTopKey s`
   -- proposed for `content_dispatch_routed`'s `h_resF` premise must NOT be a tautology over the
@@ -17844,6 +17908,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testDedentSurvivorChain state
   testEveryMarkValueLine state
   testRootLandingMarks state
+  testFlowCloseMarks state
   testPackMappingLaneTail state
   testPackDedentSlotGuard state
   testPackAltMarks state
