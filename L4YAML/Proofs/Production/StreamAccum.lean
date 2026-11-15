@@ -784,6 +784,13 @@ lemma ResumeFrames.one {P : SurfPos → Prop} {k : Nat} {sp : SurfPos}
   ResumeFrames.level k [] sp (fun _ h => absurd h (List.not_mem_nil))
     (fun sp_end h => ResumeFrames.bottom sp_end (h_tail sp_end h))
 
+/-- Pay item 2 of option (A) (item 492): the compact tail of a mapping composes — the
+    entries after a birth's own route are the same level's siblings. -/
+lemma compactMapTail_append {n : Nat} : ∀ {s s₁ s₂ : SurfPos},
+    SCompactMapTail n s s₁ → SCompactMapTail n s₁ s₂ → SCompactMapTail n s s₂
+  | _, _, _, .nil _ _, h₂ => h₂
+  | _, _, _, .cons _ s sa sb _ hi he ht, h₂ => .cons _ s sa sb _ hi he (compactMapTail_append ht h₂)
+
 /-- Close every level with its empty tail, reaching whatever the bottom owes —
     the fused stream the pendings' existing closures end in, or the explicit
     frame's value line. -/
@@ -794,6 +801,17 @@ lemma ResumeFrames.close {P : SurfPos → Prop} :
   | _ :: _, sp, h => by
       cases h with
       | level k _ _ _ h_cont => exact (h_cont sp (SCompactMapTail.nil k sp)).close
+
+/-- …so a frameless route (`ResumeFrames P []`, the fused bottom) is the one own-level frame
+    (item 492): the frame continues through any further compact tail by appending it to the
+    route's own, and closes where the route did.  This is what the root births supply. -/
+lemma ResumeFrames.one_of_route {P : SurfPos → Prop} {k : Nat} {sp_key : SurfPos}
+    (route : ∀ sp_v, SBlockMapEntry k sp_key sp_v →
+      ∀ sp_e, SCompactMapTail k sp_v sp_e → ResumeFrames P [] sp_e) :
+    ∀ sp_v, SBlockMapEntry k sp_key sp_v →
+      ∀ sp_e, SCompactMapTail k sp_v sp_e → ResumeFrames P [FrameLevel.map k] sp_e :=
+  fun sp_v he _sp_e t =>
+    ResumeFrames.one fun sp_end t2 => (route sp_v he sp_end (compactMapTail_append t t2)).close
 
 /-- **What a landing at `j` leaves of the frames** (item 149): exactly the
     levels `j` stands above.  `resumeAt` used to report only the BOUND — every
@@ -12462,8 +12480,8 @@ lemma flowKeyRoute_of_open {n nc m : Nat} {g : Option ScannerState} {cc : YamlCo
           -- keeps taking siblings (`k:⏎  [1]: b⏎  c: 2`) and the enclosing
           -- entry's node closes once, at the end.  Nothing stands below it —
           -- the node was what the park awaited — so the stack is empty.
-          Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
-            valueMapRouteF hnw h_node h_landS h_ind'⟩,
+          Or.inl ⟨[FrameLevel.map w], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
+            ResumeFrames.one_of_route (valueMapRouteF hnw h_node h_landS h_ind')⟩,
           Or.inr trivial⟩
         rw [landing_or_park_save h_noflow h_land.2.2.2 h_park h_preprocess,
           ← hcorr_prep.col_eq]
@@ -12494,8 +12512,8 @@ lemma flowKeyRoute_of_open {n nc m : Nat} {g : Option ScannerState} {cc : YamlCo
             -- **Item 202: the compact arm's, the same twin one route over.**
             -- `compactMapRoute` was filling `SCompactMap.mk`'s tail slot with
             -- `nil`; the continuation goes in that slot (`- [1]: b⏎  c: 2`).
-            Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
-              compactMapRouteF h_cp.1 h_ind'⟩,
+            Or.inl ⟨[FrameLevel.map (nc + 1 + w)], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
+              ResumeFrames.one_of_route (compactMapRouteF h_cp.1 h_ind')⟩,
             ?_⟩
           · cases h_compact_pair with
             | inr _ => exact Or.inr trivial
@@ -12734,16 +12752,16 @@ lemma flowKeyRoute_of_root {m : Nat} {g : Option ScannerState} {sp_start sp_scan
          | Or.inl ⟨ks', h_lt, cont⟩, _, _ =>
              Or.inl ⟨ks', h_lt, resumeMapRouteF h_ind' cont⟩
          | Or.inr _, Or.inl sfx, _ =>
-             Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
-               suffixMapRouteF h_land.2.1 (sfx sp_mid h_landS) h_ind'⟩
+             Or.inl ⟨[FrameLevel.map w], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
+               ResumeFrames.one_of_route (suffixMapRouteF h_land.2.1 (sfx sp_mid h_landS) h_ind')⟩
          | Or.inr _, Or.inr _, Or.inl nd =>
-             Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
-               nodocMapRouteF h_land.2.1 (nd sp_mid h_landS) h_ind'⟩
+             Or.inl ⟨[FrameLevel.map w], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
+               ResumeFrames.one_of_route (nodocMapRouteF h_land.2.1 (nd sp_mid h_landS) h_ind')⟩
          | Or.inr _, Or.inr _, Or.inr _ =>
-             Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
-               rootMapRouteF_or_refused h_ref_land h_land.2.1
+             Or.inl ⟨[FrameLevel.map w], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
+               ResumeFrames.one_of_route (rootMapRouteF_or_refused h_ref_land h_land.2.1
                  (h_close (dangling_none_of_check h_dn h_ska_land)
-                   (underIndented_none_of_check h_fv h_ska_land) sp_mid h_landS) h_ind'⟩),
+                   (underIndented_none_of_check h_fv h_ska_land) sp_mid h_landS) h_ind')⟩),
         -- **Item 201: and the VALUE-LINE twin of the line above**, off the
         -- park's own `h_framesV`/`h_closeFV` rather than off `h_mapF` — which
         -- is why item 197 could name this conjunct and not pay it: the input
@@ -12779,9 +12797,9 @@ lemma flowKeyRoute_of_root {m : Nat} {g : Option ScannerState} {sp_start sp_scan
           -- collection keys is the stream's FIRST document, and the park
           -- made after its value offers the next landing the level's own
           -- resume (`[1]: a⏎[2]: b`, `[1]: a⏎b: 2⏎c: 3`).
-          Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
-            nodocMapRouteF h_col0.1
-              (h_col0.2 sp_scan (sslComments_refl_of_col0 h_col0.1)) h_ind'⟩,
+          Or.inl ⟨[FrameLevel.map w], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
+            ResumeFrames.one_of_route (nodocMapRouteF h_col0.1
+              (h_col0.2 sp_scan (sslComments_refl_of_col0 h_col0.1)) h_ind')⟩,
           Or.inr trivial⟩
         rw [(preprocess_saved_key_col h_sk h_noflow h_preprocess).2, ← hcorr_prep.col_eq]
         have := SIndent_col' h_ind'
@@ -24382,25 +24400,25 @@ lemma colon_open_map {sc : ScannerState} (sp_start sp_land sp_ind : SurfPos) (k 
     | Or.inl ⟨ks, h_lt, cont⟩, _, _, _, _ =>
         ⟨ks, h_lt, Or.inr trivial, resumeMapRouteF h_ind cont⟩
     | Or.inr _, Or.inl sfxrun, _, _, _ =>
-        ⟨[], fun _ h => absurd h (List.not_mem_nil),
-          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h⟩) id,
-          suffixMapRouteF hcol_land sfxrun h_ind⟩
+        ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
+          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h.cons k⟩) id,
+          ResumeFrames.one_of_route (suffixMapRouteF hcol_land sfxrun h_ind)⟩
     | Or.inr _, Or.inr _, Or.inl nodoc, _, _ =>
-        ⟨[], fun _ h => absurd h (List.not_mem_nil),
-          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h⟩) id,
-          nodocMapRouteF hcol_land nodoc h_ind⟩
+        ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
+          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h.cons k⟩) id,
+          ResumeFrames.one_of_route (nodocMapRouteF hcol_land nodoc h_ind)⟩
     | Or.inr _, Or.inr _, Or.inr _, Or.inl mk, _ =>
-        ⟨[], fun _ h => absurd h (List.not_mem_nil),
-          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h⟩) id,
-          markerMapRouteF mk h_ind⟩
+        ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
+          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h.cons k⟩) id,
+          ResumeFrames.one_of_route (markerMapRouteF mk h_ind)⟩
     | Or.inr _, Or.inr _, Or.inr _, Or.inr _, Or.inl pn =>
-        ⟨[], fun _ h => absurd h (List.not_mem_nil),
-          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h⟩) id,
-          propsMapRouteF pn h_ind⟩
+        ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
+          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h.cons k⟩) id,
+          ResumeFrames.one_of_route (propsMapRouteF pn h_ind)⟩
     | Or.inr _, Or.inr _, Or.inr _, Or.inr _, Or.inr _ =>
-        ⟨[], fun _ h => absurd h (List.not_mem_nil),
-          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h⟩) id,
-          rootMapRouteF_or_refused h_ref_land hcol_land h_stream_land h_ind⟩
+        ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
+          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h.cons k⟩) id,
+          ResumeFrames.one_of_route (rootMapRouteF_or_refused h_ref_land hcol_land h_stream_land h_ind)⟩
   exact ⟨sp_land, sp_land, sp_land, sp_scan', h_stream_land,
          BlockStack.nil sp_land, FlowStackB.nil sp_land .sep,
          PendingNode.pendingMapValue (h_next := fun _ => dispatchBlock_colon_next h_noflow_disp hpeek_disp h_dispatch) (h_offer := dispatchBlock_colon_offerPred h_dispatch) sp_start sp_land sp_scan' k
@@ -24689,25 +24707,25 @@ lemma question_open_map {sc : ScannerState} (sp_start sp_land sp_ind : SurfPos) 
     | Or.inl ⟨ks, h_lt, cont⟩, _, _, _, _ =>
         ⟨ks, h_lt, Or.inr trivial, resumeMapRouteF h_ind cont⟩
     | Or.inr _, Or.inl sfxrun, _, _, _ =>
-        ⟨[], fun _ h => absurd h (List.not_mem_nil),
-          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h⟩) id,
-          suffixMapRouteF hcol_land sfxrun h_ind⟩
+        ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
+          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h.cons k⟩) id,
+          ResumeFrames.one_of_route (suffixMapRouteF hcol_land sfxrun h_ind)⟩
     | Or.inr _, Or.inr _, Or.inl nodoc, _, _ =>
-        ⟨[], fun _ h => absurd h (List.not_mem_nil),
-          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h⟩) id,
-          nodocMapRouteF hcol_land nodoc h_ind⟩
+        ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
+          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h.cons k⟩) id,
+          ResumeFrames.one_of_route (nodocMapRouteF hcol_land nodoc h_ind)⟩
     | Or.inr _, Or.inr _, Or.inr _, Or.inl mk, _ =>
-        ⟨[], fun _ h => absurd h (List.not_mem_nil),
-          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h⟩) id,
-          markerMapRouteF mk h_ind⟩
+        ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
+          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h.cons k⟩) id,
+          ResumeFrames.one_of_route (markerMapRouteF mk h_ind)⟩
     | Or.inr _, Or.inr _, Or.inr _, Or.inr _, Or.inl pn =>
-        ⟨[], fun _ h => absurd h (List.not_mem_nil),
-          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h⟩) id,
-          propsMapRouteF pn h_ind⟩
+        ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
+          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h.cons k⟩) id,
+          ResumeFrames.one_of_route (propsMapRouteF pn h_ind)⟩
     | Or.inr _, Or.inr _, Or.inr _, Or.inr _, Or.inr _ =>
-        ⟨[], fun _ h => absurd h (List.not_mem_nil),
-          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h⟩) id,
-          rootMapRouteF_or_refused h_ref_land hcol_land h_stream_land h_ind⟩
+        ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
+          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h.cons k⟩) id,
+          ResumeFrames.one_of_route (rootMapRouteF_or_refused h_ref_land hcol_land h_stream_land h_ind)⟩
   -- Item 371: the `?` route with its TAIL — the restated value-line pack's own element.
   have h_route51F : ∀ sp_k, SBlockMapEntry k sp_ind sp_k →
       ∀ sp_e, SCompactMapTail k sp_k sp_e → SLYamlStream sp_start sp_e :=
@@ -34846,9 +34864,9 @@ lemma entryKeyPack_of_dispatch
                       h_land.2.1 h_stream_mid h_ind))
               exact Or.inl ⟨w, sp_prep, sp_gram2, h_route372, h_ol, h_tws2, h_kcol,
                 Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt),
-                Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil), Or.inr trivial,
-                  rootMapRouteF_or_refused (sc := sc) (s_prep := s_prep) (c := c) (Or.inr trivial)
-                    h_land.2.1 h_stream_mid h_ind⟩,
+                Or.inl ⟨[FrameLevel.map w], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _, Or.inr trivial,
+                  ResumeFrames.one_of_route (rootMapRouteF_or_refused (sc := sc) (s_prep := s_prep) (c := c) (Or.inr trivial)
+                    h_land.2.1 h_stream_mid h_ind)⟩,
                 Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt), Or.inr trivial⟩
           · -- **Item 296: a caller WITHOUT frames keys a fresh document at the
             -- landing.**  The pop spends the frames on one thing, the awaited
@@ -34878,9 +34896,9 @@ lemma entryKeyPack_of_dispatch
               Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt),
               -- The fresh document's root level is the key's own, so the park
               -- made after its value resumes it (`ks = []`, nothing below).
-              Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil), Or.inr trivial,
-                rootMapRouteF_or_refused (sc := sc) (s_prep := s_prep) (c := c) (Or.inr trivial)
-                  h_land.2.1 h_stream_mid h_ind⟩,
+              Or.inl ⟨[FrameLevel.map w], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _, Or.inr trivial,
+                ResumeFrames.one_of_route (rootMapRouteF_or_refused (sc := sc) (s_prep := s_prep) (c := c) (Or.inr trivial)
+                  h_land.2.1 h_stream_mid h_ind)⟩,
               Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt), Or.inr trivial⟩
       | inr h_mid =>
         -- On the line: `[195]`, closing the enclosing entry.  ═══ Item 125:
@@ -35377,9 +35395,9 @@ lemma entryPropsKeyPack_of_dispatch
             exact Or.inl ⟨⟨w, rootMapRoute_or_refused (sc := sc) (s_prep := s_prep) (c := c)
                   (Or.inr trivial) h_land.2.1 h_stream_mid h_ind', h_kcol,
                 Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt),
-                Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil), Or.inr trivial,
-                  rootMapRouteF_or_refused (sc := sc) (s_prep := s_prep) (c := c) (Or.inr trivial)
-                    h_land.2.1 h_stream_mid h_ind'⟩,
+                Or.inl ⟨[FrameLevel.map w], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _, Or.inr trivial,
+                  ResumeFrames.one_of_route (rootMapRouteF_or_refused (sc := sc) (s_prep := s_prep) (c := c) (Or.inr trivial)
+                    h_land.2.1 h_stream_mid h_ind')⟩,
                 Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt)⟩,
               h_props, h_sk_line,
               by rw [h_sk, allowDirectives_update_simpleKey]; exact h_shape.1⟩
@@ -35402,9 +35420,9 @@ lemma entryPropsKeyPack_of_dispatch
           exact Or.inl ⟨⟨w, rootMapRoute_or_refused (sc := sc) (s_prep := s_prep) (c := c)
                 (Or.inr trivial) h_land.2.1 h_stream_mid h_ind', h_kcol,
               Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt),
-              Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil), Or.inr trivial,
-                rootMapRouteF_or_refused (sc := sc) (s_prep := s_prep) (c := c) (Or.inr trivial)
-                  h_land.2.1 h_stream_mid h_ind'⟩,
+              Or.inl ⟨[FrameLevel.map w], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _, Or.inr trivial,
+                ResumeFrames.one_of_route (rootMapRouteF_or_refused (sc := sc) (s_prep := s_prep) (c := c) (Or.inr trivial)
+                  h_land.2.1 h_stream_mid h_ind')⟩,
               Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt)⟩,
             h_props, h_sk_line,
             by rw [h_sk, allowDirectives_update_simpleKey]; exact h_shape.1⟩
@@ -35754,12 +35772,12 @@ lemma content_dispatch_routed
           obtain ⟨⟨k, sp_land, hcol0, h_sfx_land, h_ind⟩, h_sk_poss, h_sk_pos⟩ := hsfx
           exact h_buildP k sp_land hcol0 h_ind h_sk_poss h_sk_pos
             (suffixMapRoute hcol0 h_sfx_land h_ind)
-            (Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
+            (Or.inl ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
               -- Item 148: no park stands over a fresh document's root, so there is
               -- no carried stack to inherit — the chain is seeded at the `:`/`?`
               -- producers, which is where `Mono` rides.
               Or.inr trivial,
-              suffixMapRouteF hcol0 h_sfx_land h_ind⟩)
+              ResumeFrames.one_of_route (suffixMapRouteF hcol0 h_sfx_land h_ind)⟩)
             (Or.inr (PackAlt.step_dispatch h_dispatch h_alt))
         | inr _ =>
           cases h_nodocctx with
@@ -35771,10 +35789,10 @@ lemma content_dispatch_routed
             obtain ⟨⟨k, sp_land, hcol0, h_nodoc_land, h_ind⟩, h_sk_poss, h_sk_pos⟩ := hnd
             exact h_buildP k sp_land hcol0 h_ind h_sk_poss h_sk_pos
               (nodocMapRoute hcol0 h_nodoc_land h_ind)
-              (Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
+              (Or.inl ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
                 -- Item 148: no park to inherit from, as at the suffix arm above.
                 Or.inr trivial,
-                nodocMapRouteF hcol0 h_nodoc_land h_ind⟩)
+                ResumeFrames.one_of_route (nodocMapRouteF hcol0 h_nodoc_land h_ind)⟩)
               (Or.inr (PackAlt.step_dispatch h_dispatch h_alt))
           | inr _ =>
             cases h_markerctx with
@@ -35786,10 +35804,10 @@ lemma content_dispatch_routed
               obtain ⟨⟨k, sp_land, _hcol0, h_mk_land, h_ind⟩, h_sk_poss, h_sk_pos⟩ := hmk
               exact h_buildP k sp_land _hcol0 h_ind h_sk_poss h_sk_pos
                 (markerMapRoute h_mk_land h_ind)
-                (Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
+                (Or.inl ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
                   -- Item 148: no park to inherit from, as at the suffix arm above.
                   Or.inr trivial,
-                  markerMapRouteF h_mk_land h_ind⟩)
+                  ResumeFrames.one_of_route (markerMapRouteF h_mk_land h_ind)⟩)
                 (Or.inr (PackAlt.step_dispatch h_dispatch h_alt))
             | inr _ =>
             cases h_keyctx with
@@ -35820,10 +35838,10 @@ lemma content_dispatch_routed
               -- `h_routeE`/`h_routeF` pair.
               exact h_buildP k sp_land hcol0 h_ind h_sk_poss h_sk_pos
                 (rootMapRoute_or_refused h_ref hcol0 h_stream_land h_ind)
-                (Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
+                (Or.inl ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
                   -- Item 148: no park to inherit from, as at the suffix arm above.
                   Or.inr trivial,
-                  rootMapRouteF_or_refused h_ref hcol0 h_stream_land h_ind⟩)
+                  ResumeFrames.one_of_route (rootMapRouteF_or_refused h_ref hcol0 h_stream_land h_ind)⟩)
                 (Or.inr (PackAlt.step_dispatch h_dispatch h_alt))
     cases hprops with
     | inl h =>
@@ -36039,10 +36057,10 @@ lemma content_dispatch_routed
           obtain ⟨⟨k, sp_land, hcol0, h_sfx_land, h_ind⟩, _h_sk_poss, h_sk_pos⟩ := hsfx
           exact h_build k sp_land hcol0 h_ind h_sk_pos
             (Or.inl (suffixMapRoute hcol0 h_sfx_land h_ind))
-            (Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
+            (Or.inl ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
               -- Item 148: no park to inherit from, as at the suffix arm above.
               Or.inr trivial,
-              suffixMapRouteF hcol0 h_sfx_land h_ind⟩)
+              ResumeFrames.one_of_route (suffixMapRouteF hcol0 h_sfx_land h_ind)⟩)
             (Or.inr (PackAlt.step_dispatch h_dispatch h_alt))
             -- Item 168: no sequence entry encloses this context's document.
             (Or.inr trivial)
@@ -36057,10 +36075,10 @@ lemma content_dispatch_routed
             obtain ⟨⟨k, sp_land, hcol0, h_nodoc_land, h_ind⟩, _h_sk_poss, h_sk_pos⟩ := hnd
             exact h_build k sp_land hcol0 h_ind h_sk_pos
               (Or.inl (nodocMapRoute hcol0 h_nodoc_land h_ind))
-              (Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
+              (Or.inl ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
                 -- Item 148: no park to inherit from, as at the suffix arm above.
                 Or.inr trivial,
-                nodocMapRouteF hcol0 h_nodoc_land h_ind⟩)
+                ResumeFrames.one_of_route (nodocMapRouteF hcol0 h_nodoc_land h_ind)⟩)
               (Or.inr (PackAlt.step_dispatch h_dispatch h_alt))
               -- Item 168: no sequence entry encloses this context's document.
               (Or.inr trivial)
@@ -36072,10 +36090,10 @@ lemma content_dispatch_routed
               obtain ⟨⟨k, sp_land, _hcol0, h_mk_land, h_ind⟩, _h_sk_poss, h_sk_pos⟩ := hmk
               exact h_build k sp_land _hcol0 h_ind h_sk_pos
                 (Or.inl (markerMapRoute h_mk_land h_ind))
-                (Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
+                (Or.inl ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
                   -- Item 148: no park to inherit from, as at the suffix arm above.
                   Or.inr trivial,
-                  markerMapRouteF h_mk_land h_ind⟩)
+                  ResumeFrames.one_of_route (markerMapRouteF h_mk_land h_ind)⟩)
                 (Or.inr (PackAlt.step_dispatch h_dispatch h_alt))
                 -- Item 168: no sequence entry encloses this context's document.
                 (Or.inr trivial)
@@ -36090,10 +36108,10 @@ lemma content_dispatch_routed
               obtain ⟨⟨k, sp_land, hcol0, h_pr_land, h_ind⟩, _h_sk_poss, h_sk_pos⟩ := hpr
               exact h_build k sp_land hcol0 h_ind h_sk_pos
                 (Or.inl (propsMapRoute (PropsRideRoute.toNodeRoute h_pr_land) h_ind))
-                (Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
+                (Or.inl ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
                   -- Item 148: no park to inherit from, as at the suffix arm above.
                   Or.inr trivial,
-                  propsMapRouteF (PropsRideRoute.toNodeRoute h_pr_land) h_ind⟩)
+                  ResumeFrames.one_of_route (propsMapRouteF (PropsRideRoute.toNodeRoute h_pr_land) h_ind)⟩)
                 (Or.inr (PackAlt.step_dispatch h_dispatch h_alt))
                 -- Item 168: no sequence entry encloses this context's document.
                 (Or.inr trivial)
@@ -36128,10 +36146,10 @@ lemma content_dispatch_routed
               -- Item 144: the same guard on the CONTENT cascade's root arm.
               exact h_build k sp_land hcol0 h_ind h_sk_pos
                 (Or.inl (rootMapRoute_or_refused h_ref hcol0 h_stream_land h_ind))
-                (Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
+                (Or.inl ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
                   -- Item 148: no park to inherit from, as at the suffix arm above.
                   Or.inr trivial,
-                  rootMapRouteF_or_refused h_ref hcol0 h_stream_land h_ind⟩)
+                  ResumeFrames.one_of_route (rootMapRouteF_or_refused h_ref hcol0 h_stream_land h_ind)⟩)
                 -- Item 108: no explicit frame stands over the root, so the
                 -- value-line-bottomed stack has nothing to bottom at.
                 (Or.inr (PackAlt.step_dispatch h_dispatch h_alt))

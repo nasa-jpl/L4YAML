@@ -375,6 +375,7 @@ declarations' own binders and not by a rescoring of an existing one.
 -- 2026-11-07 (item 448, (α) stage A): constants 1742 → 1744, READ +3, RETURN +1 — `ResumeFrames.strict` and its `match` auxiliary.
 -- 2026-11-09 (item 469): `GapRead`/`FlowArm`/`FlowStackKBody`/`FlowStackKA` and `accum_step_flow_trace` — 20 constants, 16 decls; FIELD/READ/RELAY move with the arm fields.
 -- 2026-11-10 (item 469, review round 1): constants 1764 → 1766, decls 1395 → 1397, eta 506 → 508, READ 1491 → 1488, RELAY 2756 → 2760 — `FlowStackKBody`/`KA`/`toK`/`ofPack`/`ofK` out, `gapTail` (+2 lemmas), `head?_dropWhile_not`, `trailingPropertyRun_eq_nil_of_sync`, `FlowStackK.withArm` in; the arm's `∀ m` leads relayed at the sites (as HypothesisReaderCensus).
+-- 2026-11-14 (item 492's rebase onto item 498): the births' two lemmas over item 498's tree (as `HypothesisReaderCensus`).
 def expectedModuleTallyP : String :=
   -- 2026-10-24 (item 350): constants 1424 → 1430, decls 1132 → 1137, READ 1207 → 1209, RELAY 2233 → 2237,
   -- RETURN 139 → 140 — `NotQuestionPark` and its three lemmas; `explFrameValueLine`'s split alternative.
@@ -394,7 +395,7 @@ def expectedModuleTallyP : String :=
 -- 2026-11-10 (item 473, option (A)): constants 1766 → 1767 / decls +1 (`ResumeFrames.bound`), FIELD 203 → 201, READ / RELAY /
 -- eta as counted — the positional `ResumeWidths` is read by projections, not `↔` fields.
   -- 2026-10-29 (item 394): `FlowBaseRoutes.valueF` (+3 constants: the field, its projection, the structure's new arity), five more premise reads at the births and closes.
-  "constants=1742 decls=1375 eta=547 FIELD=201 READ=1477 RELAY=2706 RETURN=171 UNUSED=26"
+  "constants=1746 decls=1378 eta=547 FIELD=201 READ=1481 RELAY=2709 RETURN=173 UNUSED=26"
 
 -- Item 287: `accum_block_on_closeThenBlock`'s `h_vslot`, a READ one, left the
 -- `_ ∨ True` population — its sibling's move, under this peel.  Item 288: and

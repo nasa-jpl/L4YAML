@@ -5868,9 +5868,84 @@ open L4YAML.Surface in
 example : SCompactMapTail 0 ⟨['?', '\n', '?', '\n', '?', '\n'], 0⟩ ⟨[], 0⟩ :=
   compactMapTail_append_read tailQ3_2_1 (.nil 0 ⟨[], 0⟩)
 
+/-! Rule 2 for pay item 2 (item 492, before the statement): the pay's SHAPE at a `[]` birth.  Every
+F route today ends `ResumeFrames P [] sp_e`; the pay keeps the route and wraps it — the one frame is
+`ResumeFrames.one` over the APPENDED tail, and the bottom is the route's own `close`.  Predictions:
+the composition elaborates at width 0 and at width 2 (P1); `resumeAt` at the frame's own width leaves
+`[]` and continues through one more compact entry to the route's bottom (P2); the cover of the new
+list costs `Covered.cons` / `Floor.cons` and nothing else (P3); a route at the WRONG width does not
+compose (P4, `fail_if_success`). -/
+section BirthOneRead
+open L4YAML.Surface L4YAML.Proofs.IndentStackCover L4YAML.Proofs.StreamAccum
+
+/-- The pay at a birth, stated once on the test side (the library form is `ResumeFrames.one`
+    applied to the appended tail; `compactMapTail_append_read` is the `SCompactMapTail.append` of the pay). -/
+private def birthOne {P : SurfPos → Prop} {k : Nat} {sp_key : SurfPos}
+    (route : ∀ sp_v, SBlockMapEntry k sp_key sp_v →
+      ∀ sp_e, SCompactMapTail k sp_v sp_e → ResumeFrames P [] sp_e) :
+    ∀ sp_v, SBlockMapEntry k sp_key sp_v →
+      ∀ sp_e, SCompactMapTail k sp_v sp_e → ResumeFrames P [FrameLevel.map k] sp_e :=
+  fun sp_v he sp_e t =>
+    ResumeFrames.one fun sp_end t2 => (route sp_v he sp_end (compactMapTail_append_read t t2)).close
+
+-- P1: width 0 and width 2
+example {P : SurfPos → Prop} {sp_key sp_v sp_e : SurfPos}
+    (route : ∀ sp_v, SBlockMapEntry 0 sp_key sp_v →
+      ∀ sp_e, SCompactMapTail 0 sp_v sp_e → ResumeFrames P [] sp_e)
+    (he : SBlockMapEntry 0 sp_key sp_v) (t : SCompactMapTail 0 sp_v sp_e) :
+    ResumeFrames P [FrameLevel.map 0] sp_e := birthOne route sp_v he sp_e t
+
+example {P : SurfPos → Prop} {sp_key sp_v sp_e : SurfPos}
+    (route : ∀ sp_v, SBlockMapEntry 2 sp_key sp_v →
+      ∀ sp_e, SCompactMapTail 2 sp_v sp_e → ResumeFrames P [] sp_e)
+    (he : SBlockMapEntry 2 sp_key sp_v) (t : SCompactMapTail 2 sp_v sp_e) :
+    ResumeFrames P [FrameLevel.map 2] sp_e := birthOne route sp_v he sp_e t
+
+-- P2: the frame's own width pops to `[]`, and the continuation reaches the route's bottom through
+-- one more compact entry (`a: 1⏎b: 2`'s `b: 2` after the birth at `a`)
+example {P : SurfPos → Prop} {sp_key sp_v sp_e sp_i sp_v2 : SurfPos}
+    (route : ∀ sp_v, SBlockMapEntry 0 sp_key sp_v →
+      ∀ sp_e, SCompactMapTail 0 sp_v sp_e → ResumeFrames P [] sp_e)
+    (he : SBlockMapEntry 0 sp_key sp_v) (t : SCompactMapTail 0 sp_v sp_e)
+    (hi : SIndent 0 sp_e sp_i) (he2 : SBlockMapEntry 0 sp_i sp_v2) :
+    ∃ ks' : List FrameLevel, ks' = [] ∧ P sp_v2 :=
+  match (birthOne route sp_v he sp_e t).resumeAt (List.mem_singleton.mpr rfl) with
+  | ⟨ks', hw, cont⟩ =>
+      ⟨ks', resumeWidths_nil_of_singleton hw,
+        (cont sp_v2 (SCompactMapTail.cons 0 sp_e sp_i sp_v2 sp_v2 hi he2 (SCompactMapTail.nil 0 sp_v2))).close⟩
+
+-- P3: the cover of `[map k, map k]` from the cover of `[map k]` — the openers' 10 goals
+example {lo k : Nat} {s : ScannerState} (h : Covered lo [FrameLevel.map k] s) :
+    Covered lo [FrameLevel.map k, FrameLevel.map k] s := h.cons k
+example {lo k : Nat} (h : Floor lo k [FrameLevel.map k]) :
+    Floor lo k [FrameLevel.map k, FrameLevel.map k] := h.cons h.1
+example {lo k : Nat} {s : ScannerState} (h : Covered lo [FrameLevel.map k, FrameLevel.map k] s) :
+    Covered lo [FrameLevel.map k] s := h.dedup_head
+-- the `h_cov_in.imp` shape at the openers: `Floor k k [map k] ∧ Covered k [map k] s` lifts to the pair list
+example {k : Nat} {s : ScannerState} (h : Covered k [FrameLevel.map k] s) :
+    ∃ lo, Floor lo k [FrameLevel.map k, FrameLevel.map k] ∧ Covered lo [FrameLevel.map k, FrameLevel.map k] s :=
+  ⟨k, ⟨Nat.le_refl k, fun _ hm => by
+      rcases List.mem_cons.mp hm with rfl | hm'
+      · exact Nat.le_refl k
+      · rcases List.mem_cons.mp hm' with rfl | hm''
+        · exact Nat.le_refl k
+        · exact absurd hm'' List.not_mem_nil⟩, h.cons k⟩
+
+-- P4: a route at the wrong width does not compose into the frame at `k`
+example {P : SurfPos → Prop} {sp_key sp_v sp_e : SurfPos}
+    (route : ∀ sp_v, SBlockMapEntry 1 sp_key sp_v →
+      ∀ sp_e, SCompactMapTail 1 sp_v sp_e → ResumeFrames P [] sp_e)
+    (he : SBlockMapEntry 1 sp_key sp_v) (t : SCompactMapTail 1 sp_v sp_e) : True := by
+  fail_if_success
+    have : ResumeFrames P [FrameLevel.map 0] sp_e := birthOne route sp_v he sp_e t
+  trivial
+
+end BirthOneRead
+
 open L4YAML.Proofs.IndentStackCover in
 /-- The frame stack of the LAST scanner state on `line` (0-based) while scanning `input` — the
     stack at a named park, not the deepest stack of the scan; `[]` if the scan never stands there. -/
+
 def framesAtLine (input : String) (line : Nat) (fuel : Nat := 64) : List FrameLevel := Id.run do
   let mut s := ScannerState.mk' input
   let mut found : List FrameLevel := []
@@ -5914,7 +5989,21 @@ def testRootFrameSupplyRead (state : IO.Ref TestCollector) : IO Unit := do
       -- level at that column; no `seq n` stands over a `map n` (prediction: `[map 0, map 0, map 2]`
       -- and `[map 0, seq 0, map 2]`)
       ("a:⏎  [b]: 1⏎  c: 2 — the flow key's line", "a:\n  [b]: 1\n  c: 2\n", 1, [FrameLevel.map 0, FrameLevel.map 0, FrameLevel.map 2]),
-      ("- [a]: 1⏎  b: 2 — the flow key's line under `-`", "- [a]: 1\n  b: 2\n", 0, [FrameLevel.map 0, FrameLevel.seq 0, FrameLevel.map 2]) ]
+      ("- [a]: 1⏎  b: 2 — the flow key's line under `-`", "- [a]: 1\n  b: 2\n", 0, [FrameLevel.map 0, FrameLevel.seq 0, FrameLevel.map 2]),
+      -- item 492 (pay item 2): the fresh-document roots `content_dispatch_routed` births into — after
+      -- `---`, a directive, a document-end marker, a comment, under properties (prediction: the key's
+      -- line shows the root level `[map 0, map 0]` in every arm, as the plain `a: 1` does)
+      ("---⏎a: 1 — the key's line after `---`", "---\na: 1\n", 1, [FrameLevel.map 0, FrameLevel.map 0]),
+      ("%YAML 1.2⏎---⏎a: 1 — the key's line after a directive", "%YAML 1.2\n---\na: 1\n", 2, [FrameLevel.map 0, FrameLevel.map 0]),
+      ("a: 1⏎...⏎b: 2 — the key's line after `...`", "a: 1\n...\nb: 2\n", 2, [FrameLevel.map 0, FrameLevel.map 0]),
+      ("# c⏎a: 1 — the key's line after a comment", "# c\na: 1\n", 1, [FrameLevel.map 0, FrameLevel.map 0]),
+      ("&p a: 1 — a propertied root key", "&p a: 1\n", 0, [FrameLevel.map 0, FrameLevel.map 0]),
+      ("!t a: 1 — a tagged root key", "!t a: 1\n", 0, [FrameLevel.map 0, FrameLevel.map 0]),
+      -- REFUTED as predicted `[map 0, map 0]`: the scanner REFUSES `--- a: 1` (`contentOnDocumentStartLine`
+      -- — a key on the `---` line is no simple-key position, `--- a` alone is a bare scalar document),
+      -- so no mapping level is ever pushed and the reader stops at the sentinel; kept as read.  The
+      -- marker arm's birth is at the NEXT line (`---⏎a: 1`, the row above), which held.
+      ("--- a: 1 — the key on the `---` line itself (REFUTED: refused, no level pushed)", "--- a: 1\n", 0, [FrameLevel.map 0]) ]
   for (label, input, line, expected) in atLine do
     let got := framesAtLine input line
     checkM state s!"rootFrameSupply/at-line {label}: stack [{frameLabel expected}]" (got == expected)
@@ -15843,7 +15932,7 @@ def testHeldNestOpen (state : IO.Ref TestCollector) : IO Unit := do
     s!"{t.decompBad.take 4} | {t.twinBad.take 4} | {t.refBad.take 4} | {t.childBad.take 4} | {t.aliasOut.take 4}"
 end P109Test
 
-/-! ### Priority 110 — slice (4), the block/plain continuation READ (item 475): the depth-0 plain-scalar step's
+/-! ### Priority 110 — slice (4), the block/plain continuation READ (item 492): the depth-0 plain-scalar step's
 twin `TFlowContent.plain` carries `[]`, so the step must be SILENT (`tokenEvents` unchanged) and its span the
 scanner's fold — `&x a⏎&y b` is ONE anchor and the plain `a &y b` (`TraceOfBlockAmbiguity.readPlain` is the T
 side of the same fold on `a⏎&x`).  The census reads every depth-0 plain step over P109's rows plus the
@@ -15971,7 +16060,7 @@ end P110Test
 
 /-! ## Priority 111 — the content step's arm, read off the scanner (item 482's grid for `ContentArm`)
 
-`accum_step_content` concludes `PendingNode` with no arm exposed (item 475).  `ContentArm`'s
+`accum_step_content` concludes `PendingNode` with no arm exposed (item 492).  `ContentArm`'s
 constructor is to be the projection `(s'.tokens.back?.map (·.val), trailingPropertyRun sc.tokens)`
 (Rule 8: a projection of the scanner state, no ghost index).  Before stating it: over every row P110
 reads, classify each content step by the LAST token it pushed — plain / single-quoted / double-quoted /
