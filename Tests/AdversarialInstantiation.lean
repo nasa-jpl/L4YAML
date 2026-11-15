@@ -17963,6 +17963,132 @@ def testTClosureProducerShadow (state : IO.Ref TestCollector) : IO Unit := do
 
 end P126Test
 
+/-! ## Priority 128 (item 513; 127 is item 510's label): the T closure's producer at the NESTED CLOSE, read off the scanner
+`[[a]: b]`: a nested `]` / `}` lands the parent's tail on `.value true` (`FlowArm.closeNested.h_tl`),
+so the restated `TFlowStackK` (item 509) owes the `.value`-tail closure there too.  The S side
+pays it at the open: `FlowOpenStack.seqNest` / `mapNest` STORE `promise` (`b = false → … → .colon`)
+and `inject`, the key-map bit `b` set by the pre-tail of the OPEN (`.sep` / `.question` → false,
+`.colon` → true; `.value` refuted), and the close site cases on the bit (`close_layout_of_bit` →
+`KeyAfterValueLayout`, or the promise).  The T nest frames store the PARENT frame instead
+(`seqNest … parent h_tail_p h_lead_p`), so the T promise is `parent.receiveNodeColon` with the
+closed nest as the node — `closeNestedColon`, this item — and it runs only when the parent's tail is
+`.sep` / `.question`.  Shadows, at every in-flow nested close: (i) the post-tail (`.value` always);
+(ii) the parent's pre-tail = the tail before the matching open, classed (`.value` never: the open's
+own guard); (iii) at a `.colon` parent, `KeyAfterValueLayout post` (`P119.kavlShadow`); (iv) which
+closes a `:` follows, by parent class (`.colon` absent: `[a: [x]: b]` is refused one step later);
+(v) the lead to that `:`; (vi) the nest's kind (seq / map) and whether a held run decorated it
+(the `…Props` twins). -/
+namespace P128
+
+open L4YAML L4YAML.Scanner P107 P111 P113
+open L4YAML.Proofs.StreamAccum (tailOf FrameTail)
+
+/-- Index of the open bracket matching a close at the END of `toks` (the close itself is not in
+    `toks`): walk back over balanced nests. -/
+def matchingOpen (toks : Array (L4YAML.Positioned L4YAML.YamlToken)) : Option Nat := Id.run do
+  let mut depth : Nat := 0
+  let mut i := toks.size
+  while i > 0 do
+    i := i - 1
+    match toks[i]!.val with
+    | .flowSequenceEnd | .flowMappingEnd => depth := depth + 1
+    | .flowSequenceStart | .flowMappingStart =>
+      if depth == 0 then return some i else depth := depth - 1
+    | _ => pure ()
+  return none
+
+/-- Rows of this item's own: the corpus nests under `?` nowhere and decorates no nest that a `:`
+    follows — the `.question` parent and the `…Props` twins would otherwise be exercised by no row;
+    one row per twin a `:` follows (seq / seq+props / map / map+props), read by `nextKindBy`. -/
+def extraRows : List String := ["[? [a]: b]", "[&x [a]: b]", "{? {a}: b}", "{&x {a}: b}"]
+
+structure Tally where
+  closes : Nat := 0
+  postTailBad : List String := []
+  parentBy : List (String × Nat) := []
+  noOpen : List String := []
+  colonKavlOk : Nat := 0
+  colonKavlBad : List String := []
+  colonNext : Nat := 0
+  colonNextBy : List (String × Nat) := []
+  leadBy : List (String × Nat) := []
+  kindBy : List (String × Nat) := []
+  nextKindBy : List (String × Nat) := []
+  deriving Repr
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    match scanFiltered s, P107.stepsOf s with
+    | .ok _, some sts =>
+      let arr := sts.toArray
+      for i in [0:arr.size] do
+        let (pre, post) := arr[i]!
+        let pushed := post.tokens.toList.drop pre.tokens.size
+        match pushed.getLast? with
+        | none => pure ()
+        | some back =>
+          let kind := match back.val with
+            | .flowSequenceEnd => "seq" | .flowMappingEnd => "map" | _ => ""
+          if kind.isEmpty then continue
+          if pre.flowLevel < 2 then continue
+          t := { t with closes := t.closes + 1 }
+          -- (i) the post-tail
+          match tailOf post.tokens with
+          | .value _ => pure ()
+          | _ => t := { t with postTailBad := t.postTailBad ++ [s] }
+          -- (ii) the parent's pre-tail, before the matching open; (vi) the nest's kind + a held run
+          let (parentClass, kindFull) ← match matchingOpen pre.tokens with
+            | some j =>
+              let before := pre.tokens.extract 0 j
+              let decorated := match (before.toList.map (·.val)).reverse.dropWhile P119.isPlaceholder with
+                | tk :: _ => tk.isNodeProperty
+                | [] => false
+              pure (tailClass (tailOf before), if decorated then s!"{kind}/props" else kind)
+            | none =>
+              t := { t with noOpen := t.noOpen ++ [s] }
+              pure ("none", kind)
+          t := { t with parentBy := bumpS t.parentBy parentClass, kindBy := bumpS t.kindBy kindFull }
+          -- (iii) the completed pair's layout in the closed state
+          if parentClass == "colon" then
+            if P119.kavlShadow post then t := { t with colonKavlOk := t.colonKavlOk + 1 }
+            else t := { t with colonKavlBad := t.colonKavlBad ++ [s] }
+          -- (iv) does the next step push a `:` inside the same (parent) flow?
+          if i + 1 < arr.size then
+            let (pre₂, post₂) := arr[i + 1]!
+            let pushed₂ := post₂.tokens.toList.drop pre₂.tokens.size
+            match pushed₂.getLast? with
+            | some back₂ =>
+              if kindOf back₂.val == "value" && pre₂.flowLevel == post.flowLevel then
+                t := { t with colonNext := t.colonNext + 1, colonNextBy := bumpS t.colonNextBy parentClass,
+                               nextKindBy := bumpS t.nextKindBy kindFull }
+                -- (v) the lead from the close to the `:`
+                let txt := String.ofList ((s.toList.drop post.offset).take (back₂.pos.offset - post.offset))
+                t := { t with leadBy := bumpS t.leadBy (gapClass txt) }
+            | none => pure ()
+    | _, _ => pure ()
+  return t
+
+end P128
+
+namespace P128Test
+open P128
+
+def testCloseNestedColonShadow (state : IO.Ref TestCollector) : IO Unit := do
+  let t := tally (P113.allRows ++ P118.extraRows ++ P128.extraRows)
+  checkM state
+    s!"P128 the nested close's T closure: {t.closes} in-flow nested closes (post-tail not `.value`: {t.postTailBad}); the parent's pre-tail {t.parentBy} (no matching open: {t.noOpen}); KeyAfterValueLayout after a `.colon` parent {t.colonKavlOk} (bad: {t.colonKavlBad}); a `:` follows {t.colonNext}, by parent {t.colonNextBy}, by kind {t.nextKindBy}; the lead to that `:` {t.leadBy}; kinds {t.kindBy}"
+    (t.closes == 59 && t.postTailBad.isEmpty &&
+      t.parentBy == [("sep", 43), ("colon", 14), ("question", 2)] && t.noOpen.isEmpty &&
+      t.colonKavlOk == 14 && t.colonKavlBad.isEmpty &&
+      t.colonNext == 7 && t.colonNextBy == [("sep", 5), ("question", 2)] &&
+      t.nextKindBy == [("seq", 2), ("map", 2), ("seq/props", 2), ("map/props", 1)] &&
+      t.leadBy == [("ε", 7)] &&
+      t.kindBy == [("seq", 27), ("map", 16), ("seq/props", 10), ("map/props", 6)])
+    s!"{t.closes} bad {t.postTailBad} parent {t.parentBy} noOpen {t.noOpen} kavl {t.colonKavlOk} {t.colonKavlBad} next {t.colonNext} {t.colonNextBy} {t.nextKindBy} lead {t.leadBy} kinds {t.kindBy}"
+
+end P128Test
+
 def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 100: S3 slice (1) — leaf span ↔ token payload (anchor / alias / tag), before proof"
   let t := P100.tally P100.allRows
@@ -18174,6 +18300,7 @@ def collectTests : IO VerifiedSuiteResult := do
   P118Test.testFloorFoldShadow state
   P119Test.testKeyArmShadow state
   P126Test.testTClosureProducerShadow state
+  P128Test.testCloseNestedColonShadow state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",
