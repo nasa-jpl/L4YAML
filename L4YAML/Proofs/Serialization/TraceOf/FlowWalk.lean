@@ -1430,6 +1430,92 @@ lemma TFlowOpenStack.closeNestedMapProps {n d : Nat} {ks : Array Bool} {tl_par t
   parent.receivePropsContent h_tail h_lead h_props h_psep (.flowMap _ _ _ _ _ h_map)
     (fun _ => .flowMap _ _ _ _ _ h_map)
 
+/-! ### §6d The nested close followed by `:` (item 513) — `[[a]: b]`
+
+A closed nest is the parent's node, so the T promise `FlowOpenStack.seqNest.promise` stores is
+`receiveNodeColon` with the nest as the key: the parent's tail becomes `.colon true`, the trace
+`ev_par ++ ev` (the `:` adds none).  Stated for a `.sep` / `.question` parent — the only parents
+the S promise runs on (`b = false`); at a `.colon` parent the close completes a pair and the
+scanner's layout refutes the next `:` (`close_layout_of_bit` → `KeyAfterValueLayout`). -/
+
+lemma TFlowOpenStack.closeNestedSeqColon {n d : Nat} {ks : Array Bool} {tl_par tl : FrameTail}
+    {sp_block sp_par sp_br sp_open sp_es sp_cur sp_prep sp_tok sp_prep₂ sp_tok₂ : SurfPos}
+    {ev_par ev : List Event}
+    (parent : TFlowOpenStack n d ks tl_par sp_block sp_par ev_par)
+    (h_tail : tl_par = .sep ∨ tl_par = .question)
+    (h_lead : SSeparateLines n sp_par sp_br ∨ (sp_br = sp_par ∧ tl_par.leadFree))
+    (h_open : GLit '[' sp_br sp_open) (h_sep : GOpt (SSeparate n .flowIn) sp_open sp_es)
+    (st : TSeqFrame n .flowIn tl sp_es sp_cur ev)
+    (h_lead₂ : SSeparateLines n sp_cur sp_prep ∨ (sp_prep = sp_cur ∧ tl.closeFree = true))
+    (h_close : GLit ']' sp_prep sp_tok)
+    (h_lead₃ : SSeparateLines n sp_tok sp_prep₂ ∨ sp_prep₂ = sp_tok)
+    (hcolon : GLit ':' sp_prep₂ sp_tok₂) :
+    TFlowOpenStack n d ks (.colon true) sp_block sp_tok₂ (ev_par ++ ev) :=
+  have h_seq : TFlowSequence n .flowIn sp_br sp_tok ev :=
+    TSeqFrame.closeLead (c_out := .flowIn) h_open h_sep st (h_lead₂.imp (fun h => ⟨h, h⟩) id) h_close
+  parent.receiveNodeColon h_tail h_lead (.content _ _ _ _ _ (.flowSeq _ _ _ _ _ h_seq))
+    (fun _ => .content _ _ _ _ _ (.flowSeq _ _ _ _ _ h_seq)) h_lead₃ hcolon
+
+lemma TFlowOpenStack.closeNestedMapColon {n d : Nat} {ks : Array Bool} {tl_par tl : FrameTail}
+    {sp_block sp_par sp_br sp_open sp_es sp_cur sp_prep sp_tok sp_prep₂ sp_tok₂ : SurfPos}
+    {ev_par ev : List Event}
+    (parent : TFlowOpenStack n d ks tl_par sp_block sp_par ev_par)
+    (h_tail : tl_par = .sep ∨ tl_par = .question)
+    (h_lead : SSeparateLines n sp_par sp_br ∨ (sp_br = sp_par ∧ tl_par.leadFree))
+    (h_open : GLit '{' sp_br sp_open) (h_sep : GOpt (SSeparate n .flowIn) sp_open sp_es)
+    (st : TMapFrame n .flowIn tl sp_es sp_cur ev)
+    (h_lead₂ : SSeparateLines n sp_cur sp_prep ∨ (sp_prep = sp_cur ∧ tl.closeFree = true))
+    (h_close : GLit '}' sp_prep sp_tok)
+    (h_lead₃ : SSeparateLines n sp_tok sp_prep₂ ∨ sp_prep₂ = sp_tok)
+    (hcolon : GLit ':' sp_prep₂ sp_tok₂) :
+    TFlowOpenStack n d ks (.colon true) sp_block sp_tok₂ (ev_par ++ ev) :=
+  have h_map : TFlowMapping n .flowIn sp_br sp_tok ev :=
+    TMapFrame.closeLead (c_out := .flowIn) h_open h_sep st (h_lead₂.imp (fun h => ⟨h, h⟩) id) h_close
+  parent.receiveNodeColon h_tail h_lead (.content _ _ _ _ _ (.flowMap _ _ _ _ _ h_map))
+    (fun _ => .content _ _ _ _ _ (.flowMap _ _ _ _ _ h_map)) h_lead₃ hcolon
+
+/-- Under a held run (`[&x [a]: b]`): the run decorates the KEY (`receivePropsNodeColon`),
+    trace `ev_par ++ (ev_p ++ ev)`. -/
+lemma TFlowOpenStack.closeNestedSeqPropsColon {n d : Nat} {ks : Array Bool} {tl_par tl : FrameTail}
+    {sp_block sp_par sp_p sp_end sp_br sp_open sp_es sp_cur sp_prep sp_tok sp_prep₂ sp_tok₂ : SurfPos}
+    {ev_par ev_p ev : List Event}
+    (parent : TFlowOpenStack n d ks tl_par sp_block sp_par ev_par)
+    (h_tail : tl_par = .sep ∨ tl_par = .question)
+    (h_lead : SSeparateLines n sp_par sp_p ∨ (sp_p = sp_par ∧ tl_par.leadFree))
+    (h_props : TCNsProperties n .flowIn sp_p sp_end ev_p)
+    (h_psep : SSeparate n .flowIn sp_end sp_br)
+    (h_open : GLit '[' sp_br sp_open) (h_sep : GOpt (SSeparate n .flowIn) sp_open sp_es)
+    (st : TSeqFrame n .flowIn tl sp_es sp_cur ev)
+    (h_lead₂ : SSeparateLines n sp_cur sp_prep ∨ (sp_prep = sp_cur ∧ tl.closeFree = true))
+    (h_close : GLit ']' sp_prep sp_tok)
+    (h_lead₃ : SSeparateLines n sp_tok sp_prep₂ ∨ sp_prep₂ = sp_tok)
+    (hcolon : GLit ':' sp_prep₂ sp_tok₂) :
+    TFlowOpenStack n d ks (.colon true) sp_block sp_tok₂ (ev_par ++ (ev_p ++ ev)) :=
+  have h_seq : TFlowSequence n .flowIn sp_br sp_tok ev :=
+    TSeqFrame.closeLead (c_out := .flowIn) h_open h_sep st (h_lead₂.imp (fun h => ⟨h, h⟩) id) h_close
+  parent.receivePropsNodeColon h_tail h_lead h_props h_psep (.flowSeq _ _ _ _ _ h_seq)
+    (fun _ => .propsContent _ _ _ _ _ _ _ _ h_props h_psep (.flowSeq _ _ _ _ _ h_seq)) h_lead₃ hcolon
+
+lemma TFlowOpenStack.closeNestedMapPropsColon {n d : Nat} {ks : Array Bool} {tl_par tl : FrameTail}
+    {sp_block sp_par sp_p sp_end sp_br sp_open sp_es sp_cur sp_prep sp_tok sp_prep₂ sp_tok₂ : SurfPos}
+    {ev_par ev_p ev : List Event}
+    (parent : TFlowOpenStack n d ks tl_par sp_block sp_par ev_par)
+    (h_tail : tl_par = .sep ∨ tl_par = .question)
+    (h_lead : SSeparateLines n sp_par sp_p ∨ (sp_p = sp_par ∧ tl_par.leadFree))
+    (h_props : TCNsProperties n .flowIn sp_p sp_end ev_p)
+    (h_psep : SSeparate n .flowIn sp_end sp_br)
+    (h_open : GLit '{' sp_br sp_open) (h_sep : GOpt (SSeparate n .flowIn) sp_open sp_es)
+    (st : TMapFrame n .flowIn tl sp_es sp_cur ev)
+    (h_lead₂ : SSeparateLines n sp_cur sp_prep ∨ (sp_prep = sp_cur ∧ tl.closeFree = true))
+    (h_close : GLit '}' sp_prep sp_tok)
+    (h_lead₃ : SSeparateLines n sp_tok sp_prep₂ ∨ sp_prep₂ = sp_tok)
+    (hcolon : GLit ':' sp_prep₂ sp_tok₂) :
+    TFlowOpenStack n d ks (.colon true) sp_block sp_tok₂ (ev_par ++ (ev_p ++ ev)) :=
+  have h_map : TFlowMapping n .flowIn sp_br sp_tok ev :=
+    TMapFrame.closeLead (c_out := .flowIn) h_open h_sep st (h_lead₂.imp (fun h => ⟨h, h⟩) id) h_close
+  parent.receivePropsNodeColon h_tail h_lead h_props h_psep (.flowMap _ _ _ _ _ h_map)
+    (fun _ => .propsContent _ _ _ _ _ _ _ _ h_props h_psep (.flowMap _ _ _ _ _ h_map)) h_lead₃ hcolon
+
 /-- The base `]`: the depth-1 frame closes into the finished `[158]` content handed out to the
     stream (Row 12's depth-0 hand-off), trace and all; the stack is `nil` again (trace `[]`) at
     the S landing's indices — `accum_step_flow` lands `FlowStackB.nil sp_block` with the tail

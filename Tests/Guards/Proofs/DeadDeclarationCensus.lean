@@ -33,8 +33,12 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- population 14,302 → 14,215, unreached 6,577 → 6,490, (A) 1,361 → 1,274; the roster 3,534 and (D) 277 are the
 -- base's (item 505's `StreamAccum.seqEntryTail_cons` entered the roster unpinned on the base; the owner's call),
 -- cluster-roots 1,460 → 1,461 (one roster name's cluster root recomputed after the module deletion).
+-- 2026-11-15 (item 513, closeNestedColon, rebased over item 512's +1 reached): population 14,216 → 14,220 (+4: FlowWalk §6d's `closeNestedSeqColon` /
+--- `closeNestedMapColon` / `closeNestedSeqPropsColon` / `closeNestedMapPropsColon`), unreached +4 and (A) 1,274 → 1,278 —
+--- the nested close's `:` twin is read by no root until price (3)'s fold (`accum_step_flow_pairK`) consumes it; the (B)
+--- roster 3,534, (C)/(D) and cluster-roots unmoved.
 def expectedDeadCensus : String :=
-  "population=14216 thm=10193 def=2673 roots=capstone:26+export:37+blueprint:222(unresolved=5) unreached=6490 thm=4580 A-campaign=1274 C-api=1405 D-test-only=277 B-roster=3534 thm=3173 cluster-roots=1461"
+  "population=14220 thm=10197 def=2673 roots=capstone:26+export:37+blueprint:222(unresolved=5) unreached=6494 thm=4584 A-campaign=1278 C-api=1405 D-test-only=277 B-roster=3534 thm=3173 cluster-roots=1461"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do
