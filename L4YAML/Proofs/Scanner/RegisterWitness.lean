@@ -841,6 +841,30 @@ lemma refused_of_markedCols_eq_nil {s : ScannerState} (hs : Sound s) (hfl : s.fl
     (h : markedCols s = []) : s.explicitKeyLine = none :=
   refused_of_markedCols_nil hs hfl (MarkedColsIn.of_markedCols_nil h)
 
+/-- The converse of `refused_of_markedCols_nil`: outside flow a dead register
+    (`explicitKeyLine = none`) means NO slot is marked — `RegOk` reads the register off the
+    innermost pending key, and a marked slot would make that key `some`. -/
+lemma noMarks_of_explicitKeyLine_none {s : ScannerState} (hs : Sound s) (hfl : s.flowLevel = 0)
+    (h : s.explicitKeyLine = none) :
+    ∀ (i l : Nat), (s.pendingKeys[i]? : Option (Option Nat)) ≠ some (some l) := by
+  intro i l hil
+  have hr := hs.reg hfl
+  have hfst := congrArg Prod.fst hr
+  simp only at hfst
+  rw [h, PendingKeySound.innermostPendingKey_eq, PendingKeySound.innermost_eq_go] at hfst
+  have hi : i < s.pendingKeys.size := by
+    rcases Nat.lt_or_ge i s.pendingKeys.size with hlt | hge
+    · exact hlt
+    · rw [Array.getElem?_eq_none hge] at hil
+      cases hil
+  exact PendingKeySound.go_fst_some_of_marked _ _ _ i l hi hil hfst.symm
+
+/-- **The root closing fact** (item 508): a dead register outside flow leaves the marked
+    columns empty — the `MarkedColsIn s []` form the chain fields' empty-domain `Or.inl` takes. -/
+lemma MarkedColsIn.of_explicitKeyLine_none {s : ScannerState} (hs : Sound s)
+    (hfl : s.flowLevel = 0) (h : s.explicitKeyLine = none) : MarkedColsIn s [] :=
+  fun i l _ hil _ => absurd hil (noMarks_of_explicitKeyLine_none hs hfl h i l)
+
 lemma scanBlockEntry_markedCols {s s' : ScannerState} {ns : List Nat}
     (hnf : s.inFlow = false) (hok : scanBlockEntry s = .ok s')
     (h : MarkedColsIn s ns) (hs : SlotsOk s) : MarkedColsIn s' ns :=

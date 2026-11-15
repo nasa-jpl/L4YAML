@@ -11985,6 +11985,68 @@ def testEveryMarkValueLine (state : IO.Ref TestCollector) : IO Unit := do
     (pauses == 231 && checks == 257 && multi == 24 && atMark == 43 &&
       rejV.isEmpty && rejSeq.isEmpty && wholeOk == 37)
 
+/-- Item 508 — (ω-pay-births) (d) the ROOT closing lemma's Rule 2: at every block pause at
+    column 0 (a root landing), after the step the scanner's register holds no mark unless the
+    landing is itself a `?` (its own mark, `question_open_map`'s writer).  Reads
+    `RegisterWitness.markedCols` off the post-state `sN`; lists every other survivor by input,
+    line and char.  P123's corpus plus root-shaped inputs (unclosed `?` at column 0 followed by
+    a column-0 key, documents, comments, blank lines). -/
+def testRootLandingMarks (state : IO.Ref TestCollector) : IO Unit := do
+  let inputs : List String :=
+    [ "? a\nc: 1", "? a\n? b\n: c\nd: 1", "?\n  a\nb: 1", "? a\n: b\nc: 1", "?\n  k: 1\nz: 2",
+      "? a\n:\n? b\n: c", "a: 1\n? b\n: c\nd: 2", "? [a]\nb: 1", "? {a: 1}\nb: 1", "? |\n  x\nb: 1",
+      "? !t a\nb: 1", "? &x a\nb: *x", "?\n  - a\nb: 1", "? a\n# c\nb: 1", "? a\n\nb: 1",
+      "---\n? a\nb: 1", "? a\n...\n? b\nc: 1", "? a\n---\nb: 1", "?\n  ?\n    a\n  : b\nc: 1",
+      "- ? a\n- b", "- ? a\n  : b\nc: 1", "? a\n: b\n- c", "k:\n  ? a\nz: 1", "? a\n? b\nc: 1",
+      "?\n  ?\n    a\n  : b\n: c", "?\n  k:\n    a\n  j: 2\n: b", "?\n  - a\n  - b\n: c",
+      "k:\n  ?\n    a:\n      b\n    c: d\n  : v", "- ?\n    x:\n      y\n    z: w\n  : v",
+      "?\n  ?\n    ?\n      a\n    : b\n  : c\n: d", "?\n  ? a\n  : b\n  ? c\n  : d\n: e",
+      "? a\n: b\n?\n  k: 1\n  j: 2\n: c", "a:\n- b\nc: 1", "? - a\n: b", "? - a\n  - b\n: c",
+      "k: v\n? a\n: b", "[a]\n? b\n: c", "? a: 1\n: b", "a: 1\nb: 2\nc: 3", "? a\n: b\n? c\n: d\ne: f",
+      "?\n  a\n- b", "? a\n- b", "? a\n:\n- b", "?\n  - a\n- b", "? a\n? b\n- c", "?\n  a\n:\n  b\n- c",
+      "? a\n: b\n:\n  c", "?\n  a\n:", "? a\n:- b", "?\n  a\n: - b\nc: 1", "? a\nb: 1\n: c" ]
+  let mut rootPauses := 0
+  let mut ownQ : List String := []
+  let mut ownQOther : List String := []
+  let mut survivors : List String := []
+  let mut closedBefore := 0
+  let mut wholeOk := 0
+  for input in inputs do
+    if (L4YAML.TokenParser.parseYaml input).isOk then wholeOk := wholeOk + 1
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:80] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) =>
+          if sP.flowLevel == 0 && c != '#' && sP.col == 0 then
+            rootPauses := rootPauses + 1
+            let before := L4YAML.Proofs.RegisterWitness.markedCols sP
+            let after := L4YAML.Proofs.RegisterWitness.markedCols sN
+            if !before.isEmpty && after.isEmpty then closedBefore := closedBefore + 1
+            if !after.isEmpty then
+              let tag := s!"{repr input}@{sP.line}:{repr c} pre={before} post={after}"
+              if c == '?' then
+                -- the `?` landing's post-state is exactly its OWN mark (`[k]`, here `[0]`) over an
+                -- empty pre-state: preprocess closed every older mark (review on #330: the shape
+                -- itself is asserted, not just that the post-state is non-empty)
+                if before.isEmpty && after == [sP.col] then ownQ := ownQ ++ [tag]
+                else ownQOther := ownQOther ++ [tag]
+              else survivors := survivors ++ [tag]
+          s := sN
+        | _ => break
+      | _ => break
+  IO.println s!"P126 root-landing rootPauses={rootPauses} ownQ={ownQ.length} ownQOther={ownQOther} closedBefore={closedBefore} wholeOk={wholeOk}/{inputs.length} survivors={survivors}"
+  IO.println s!"P126 ownQ={ownQ}"
+  check state s!"P126 (ω-pay-births) (d) the root closing lemma's Rule 2 (item 508): {rootPauses} root landings, {ownQ.length} own-`?` marks (pre=[] post=[0]), {ownQOther.length} `?` landings with another shape, {closedBefore} landings closing a mark, {survivors.length} other survivors, {wholeOk} / {inputs.length} inputs accepted whole"
+    -- pinned (item 508): 0 survivors at every non-`?` root landing the scanner steps through —
+    -- incl. a column-0 `-` / `:` over an open column-0 `?`; the 50 non-empty post-states are the
+    -- `?` landings' own `[0]` over pre=[] (preprocess closes the marks) — the shape is asserted
+    -- per landing (`ownQOther` empty); 9 inputs the runtime refuses whole (trailing root content /
+    -- bare document content, §9.2).
+    (rootPauses == 120 && ownQ.length == 50 && ownQOther.isEmpty && closedBefore == 24 &&
+      survivors.isEmpty && wholeOk == 42)
+
 def testSeqTopRefusedArm (state : IO.Ref TestCollector) : IO Unit := do
   -- P89 (item 438, (χ-seqtop-refused)): the negative arm `ExplicitValueRefused s ∨ SeqTopKey s`
   -- proposed for `content_dispatch_routed`'s `h_resF` premise must NOT be a tautology over the
@@ -17781,6 +17843,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testFlowKeyChain state
   testDedentSurvivorChain state
   testEveryMarkValueLine state
+  testRootLandingMarks state
   testPackMappingLaneTail state
   testPackDedentSlotGuard state
   testPackAltMarks state
