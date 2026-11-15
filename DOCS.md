@@ -53113,7 +53113,7 @@ Relays 6, frameless chain 3, sequence top 3, honest 1 = 13.  The "frameless chai
 | P3 | 19 = item 499's roster | HELD. |
 | P4 | nested pay / root lemma / dedent → (3) / flow iff field | HELD in three parts, REFUTED in the fourth: the flow park has no chain field at all — the question was not whether it carries the same shape but whether it carries one. |
 
-**Gates.**  No library change: `lake build` 1,564 jobs / 7 warnings unchanged; adversarial 62,186 / 62,186 (P122 in); closure-log 11..501 with gaps 494 / 497 / 499 / 500 (Row 19's #316 / #318; Row 12's #320 / #323); test exe built and run: adversarial 62193 / 62193; gate-vocab / pack-births as the base pins them; no pin moved.
+**Gates.**  No library change: `lake build` 1,564 jobs / 7 warnings unchanged; adversarial 62,186 / 62,186 (P122 in); closure-log 11..501 with gaps 499 / 500 (Row 12's #320 / #323; Row 19's 494 / 497 landed and were dropped at the rebase); test exe built and run: adversarial 62213 / 62213; gate-vocab / pack-births as the base pins them; no pin moved.
 
 **NEXT —** the order that unblocks (2b): (3) first — item 494's `h_res_land` clause at the 13 declines with the `[map k]` frame item 492 supplies and the two `closeThenBlock` births, which also feeds the eight DEDENT `else` arms read here; then the root closing lemma (`markedCols s' = []` when the landing column is 0 and every mark is ≤ it: item 498's `markedCols_le_of_top` plus "a content character at or left of a mark closes it"), Rule 2 = P121's 0 at-mark / 0 below; then the `pendingFlow` chain field, priced on item 499's joint spec plus the new field; then the (2b) fixpoint pay as one item.  Devin Bot's word on (3)'s owner (Row 12 per item 496) before the first.
 
