@@ -298,7 +298,7 @@ def isSurfFace (env : Environment) (lhs : Expr) : MetaM Bool := do
 -- level admitted), one strict-width narrowing face fewer; `theorems` 6498 → 6499 is `ResumeFrames.strict`.
 -- 2026-11-10 (item 473, option (A)): heads 19 → 18 — the level constructors' `h_lt` and the park faces all read `≤`,
 -- one strict head shape fewer; binders/faces unchanged.
-def expectedFaceTally : String := "binders=160 faces=63 heads=18"
+def expectedFaceTally : String := "binders=160 faces=65 heads=18"
 
 /-- The conclusion head of every left disjunct.  `FVAR 2` is `frameChainUnion`,
     whose face is schematic in `P` — the two rows no census of any kind can
@@ -543,8 +543,8 @@ def chainKeySet : Std.HashSet String :=
 -- 2026-10-28 (item 380, PR #146 review): splits 105 → 108 — `h_kslotUp`'s `Or.elim` decisions (see the ledger); pairs/sup unchanged.
 -- 2026-11-02 (item 422): the two re-counted `h_kslotUp` rows (see `expectedWorthLedger`).
 def expectedWorthTally : String :=
-  "pairs=37 splits=108 sup=100 chainPairs=0 chainSplits=0 innerPairs=13 \
-innerSplits=57"
+  "pairs=37 splits=109 sup=100 chainPairs=0 chainSplits=0 innerPairs=13 \
+innerSplits=56"
 
 /-- The ledger, worth-first.  `chain` is §3's verdict — a narrowing here lands
     on another unconditional inhabitant; `inner` means the face carries a
@@ -578,13 +578,11 @@ innerSplits=57"
 -- 2026-11-02 (item 422): the `h_outer` rows and the `h_kslotUp` split counts at the five writes moved — K7 is decided at
 -- `s_prep` by one `Classical.em`, not read off `h_park`/`h_kslotUp`'s cover ((γ′)).
 def expectedWorthLedger : List String :=
-  [
-   -- 2026-10-26 (item 365): binder index #30 → #32 (`h_sound`/`h_fl0` inserted after `h_dead`); worth unchanged.
-   "splits=11 sup=1 inner h_closeFV_old :: accum_content_on_pendingBlock_indented#33",
+  ["splits=11 sup=1 inner h_closeFV_old :: accum_content_on_pendingBlock_indented#33",
    "splits=11 sup=1 inner h_closeF_old :: accum_content_on_pendingBlock_indented#14",
    "splits=8 sup=1 - h_kslot_old :: accum_content_on_pendingBlock_indented#13",
    "splits=7 sup=1 inner h_closeF99 :: accum_content_on_pendingMapValue_indented#18",
-   "splits=7 sup=1 inner h_closeFV_old :: accum_block_on_pendingBlock#31",
+   "splits=6 sup=1 inner h_closeFV_old :: accum_block_on_pendingBlock#31",
    "splits=5 sup=1 - h_seqF168 :: accum_content_on_pendingMapValue_indented#38",
    "splits=4 sup=1 - h_kslotUp :: accum_block_on_pendingBlock#30",
    "splits=4 sup=1 inner h_closeFV108 :: accum_content_on_pendingMapValue_indented#20",
@@ -593,6 +591,7 @@ def expectedWorthLedger : List String :=
    "splits=3 sup=1 - h_kslot :: accum_block_on_pendingBlock#13",
    "splits=3 sup=1 - h_kslot :: accum_content_on_pendingMapValue_indented#17",
    "splits=3 sup=1 - h_kslotUp_old :: accum_content_on_pendingBlock_indented#32",
+   "splits=3 sup=1 - h_resV_land :: question_open_map#27",
    "splits=3 sup=1 - h_seqF_old :: accum_content_on_pendingBlock_indented#15",
    "splits=3 sup=1 - h_vslot :: accum_content_on_pendingMapValue_indented#16",
    "splits=2 sup=1 - h_resV_land :: colon_open_map#26",
@@ -615,7 +614,6 @@ def expectedWorthLedger : List String :=
    "splits=1 sup=1 - h_kslotD :: colon_open_map_props#29",
    "splits=1 sup=1 - h_kslotUp :: accum_block_on_pendingBlockContent#35",
    "splits=1 sup=1 - h_mapFV108 :: accum_block_on_pendingContent#35",
-   "splits=1 sup=1 - h_resV_land :: question_open_map#27",
    "splits=1 sup=1 - h_routeS :: colon_open_map_implicit#27"]
 
 /-- **What the mandate's instrument could have answered.**  Of the 36 pairs a
@@ -633,7 +631,7 @@ def expectedWorthLedger : List String :=
 -- 2026-10-26 (item 370): splits 104 → 105 — the sibling `-` arm's split of `h_closeF_old`.
 -- 2026-10-28 (item 380, PR #146 review): splits 105 → 108, same cause; reach unchanged.
 -- 2026-11-02 (item 422): the five `h_outer` splits retired (see `expectedWorthLedger`).
-def expectedBranchReach : String := "branchPairs=37 stateReachable=1 splits=108 stateSplits=3"
+def expectedBranchReach : String := "branchPairs=37 stateReachable=1 splits=109 stateSplits=3"
 
 open Meta in
 run_cmd do
@@ -904,9 +902,7 @@ one unfolding, and §6 is the item where those two disagreed about binders. -/
 -- 2026-11-10 (item 469, review round 1): theorems 6502 → 6505 (`gapTail_of_nil`/`gapTail_of_held`, `head?_dropWhile_not`, `trailingPropertyRun_eq_nil_of_sync`, `FlowStackK.withArm` in; `FlowStackKA.toK`/`ofPack`/`ofK` out); no-op tallies unmoved.
 -- 2026-11-11 (item 484): theorems 6464 → 6466 — `contentArm_of_dispatch` and the `accum_step_content` wrapper; the no-op tally itself unchanged.
 -- 2026-11-14 (item 492's rebase onto item 498): no-op theorems 6467 → 6469, the births' two lemmas.
--- 2026-11-14 (item 508): theorems 6469 → 6471 — `RegisterWitness.noMarks_of_explicitKeyLine_none` and
--- `MarkedColsIn.of_explicitKeyLine_none`; the by-elab / by-whnf no-op counts stand.
-def expectedNoopTally : String := "theorems=6472 byElab=16 byWhnf=16 elabOnly=0 whnfOnly=0"
+def expectedNoopTally : String := "theorems=6473 byElab=16 byWhnf=16 elabOnly=0 whnfOnly=0"
 -- 5302 → 5344 on 2026-10-18 (plan row 20's close, closure-log item 280): the
 -- parse-side alias obligation moved to §7.1's DECLARATION set, so the carrier
 -- grew and the predicate gained its tools.  What is new in kind: `AG` carries

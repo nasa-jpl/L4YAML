@@ -408,38 +408,29 @@ namespace L4YAML.Tests.Guards.ConclusionRouteCensus
 -- pair no longer PAYs.
 def expectedRows : List String :=
   ["back_col#0 :: FIELD of premise#3",
-   "back_col#1 :: FIELD of premise#3",
-   "close_col_of_base#0 :: FIELD of VIA KmSound.back_col",
-   "close_col_of_base#1 :: FIELD of VIA KmSound.back_col",
-   "dedent_cover_of_landing#0 :: DECLINE | DECLINE | DECLINE | PAY",
-   -- item 385: the deeper landing's node route, paid from the park's own field.
-   -- item 386: the second PAY is the sibling at `k = nv` (empty value, `resumeAt`);
-   -- the `SPLIT Or.elim` is `Classical.em (no-pop ∧ 0 < sp_scan.col)` — absurd on the
-   -- left, the popped/col-0 dedent's decline on the right.
-   "deeperLandingResume#0 :: DECLINE | PAY | PAY | SPLIT Or.elim",
-   -- 2026-10-29 (item 387): `deeperLandingResumeSeq` leaves the census — restated on `n < k` with a plain
-   -- conclusion (no `Or`); its former DECLINE (`k = n`) is split at `accum_block_on_pendingBlock` (`OpenerFallbackReach`).
-   "flowKeyHead#0 :: VIA L4YAML.Proofs.FlowKeyLift.flowNode_toBlockKey",
-   "flowKeyRoute_of_open#0 :: DECLINE | DECLINE | DECLINE | DECLINE | PAY | PAY",
-   "flowKeyRoute_of_open#1 :: UNREACHABLE under →/∀",
-   "flowKeyRoute_of_open#2 :: DECLINE | DECLINE | PARENT-DECLINED | PARENT-DECLINED | \
-PARENT-DECLINED | PARENT-DECLINED | PAY",
-   "flowKeyRoute_of_open#3 :: PARENT-DECLINED | PARENT-DECLINED | PARENT-DECLINED | \
-PARENT-DECLINED | PAY | PAY",
-   "flowKeyRoute_of_open#4 :: DECLINE | DECLINE | DECLINE | PARENT-DECLINED | PARENT-DECLINED | \
-PARENT-DECLINED | PARENT-DECLINED | PAY",
-   "flowKeyRoute_of_root#0 :: DECLINE | DECLINE | PAY | PAY",
-   "flowKeyRoute_of_root#1 :: UNREACHABLE under →/∀",
-   "flowKeyRoute_of_root#2 :: DECLINE | DECLINE | DECLINE | PARENT-DECLINED | PARENT-DECLINED",
-   "flowKeyRoute_of_root#3 :: PARENT-DECLINED | PARENT-DECLINED | PAY | PAY | PAY | PAY | PAY",
-   "flowKeyRoute_of_root#4 :: DECLINE | DECLINE | PARENT-DECLINED | PARENT-DECLINED | PAY",
-   "flowOpen_marker#0 :: DECLINE | DECLINE | PAY",
-   "flowOpen_stamp#0 :: DECLINE | DECLINE | PAY",
-   "keyctx_of_preprocess#0 :: DECLINE | DECLINE | DECLINE | PAY | PAY",
-   "markerctx_of_landing#0 :: DECLINE | DECLINE | DECLINE | PAY",
-   "nodocctx_of_preprocess#0 :: DECLINE | DECLINE | DECLINE | PAY | PAY",
-   "scanValue_ok_park_facts#0 :: DECLINE | PAY | VACUOUS | VACUOUS | VACUOUS",
-   "suffixctx_of_landing#0 :: DECLINE | DECLINE | DECLINE | PAY"]
+  "back_col#1 :: FIELD of premise#3",
+  "close_col_of_base#0 :: FIELD of VIA KmSound.back_col",
+  "close_col_of_base#1 :: FIELD of VIA KmSound.back_col",
+  "dedent_cover_of_landing#0 :: DECLINE | DECLINE | DECLINE | PAY",
+  "deeperLandingResume#0 :: DECLINE | PAY | PAY | SPLIT Or.elim",
+  "flowKeyHead#0 :: VIA L4YAML.Proofs.FlowKeyLift.flowNode_toBlockKey",
+  "flowKeyRoute_of_open#0 :: DECLINE | DECLINE | DECLINE | DECLINE | PAY | PAY",
+  "flowKeyRoute_of_open#1 :: UNREACHABLE under →/∀",
+  "flowKeyRoute_of_open#2 :: DECLINE | DECLINE | PARENT-DECLINED | PARENT-DECLINED | PARENT-DECLINED | PARENT-DECLINED | PAY",
+  "flowKeyRoute_of_open#3 :: PARENT-DECLINED | PARENT-DECLINED | PARENT-DECLINED | PARENT-DECLINED | PAY | PAY",
+  "flowKeyRoute_of_open#4 :: DECLINE | DECLINE | DECLINE | PARENT-DECLINED | PARENT-DECLINED | PARENT-DECLINED | PARENT-DECLINED | PAY",
+  "flowKeyRoute_of_root#0 :: DECLINE | DECLINE | PAY | PAY",
+  "flowKeyRoute_of_root#1 :: UNREACHABLE under →/∀",
+  "flowKeyRoute_of_root#2 :: DECLINE | DECLINE | DECLINE | PARENT-DECLINED | PARENT-DECLINED",
+  "flowKeyRoute_of_root#3 :: PARENT-DECLINED | PARENT-DECLINED | PAY | PAY | PAY | PAY | PAY",
+  "flowKeyRoute_of_root#4 :: DECLINE | DECLINE | PARENT-DECLINED | PARENT-DECLINED | PAY",
+  "flowOpen_marker#0 :: DECLINE | DECLINE | PAY",
+  "flowOpen_stamp#0 :: DECLINE | DECLINE | PAY",
+  "keyctx_of_preprocess#0 :: DECLINE | DECLINE | DECLINE | PAY | PAY",
+  "markerctx_of_landing#0 :: DECLINE | DECLINE | DECLINE | PAY",
+  "nodocctx_of_preprocess#0 :: DECLINE | DECLINE | DECLINE | PAY | PAY",
+  "scanValue_ok_park_facts#0 :: DECLINE | PAY | VACUOUS | VACUOUS | VACUOUS",
+  "suffixctx_of_landing#0 :: DECLINE | DECLINE | DECLINE | PAY"]
 
 /-- The tally, with the census's own refusals beside it.  `skipped` counts
     constants whose value has fewer leading lambdas than their type has binders.
@@ -513,7 +504,7 @@ def expectedPipeSplit : String :=
   -- two-arm split now: its 17 `VIA` edges leave the producer surface (the distinct producer `Or.elim` with them); the
   -- five whose arms disagree land as splits, the twelve whose arms agree are collapsed edges and are counted nowhere here.
   -- 2026-10-29 (item 394): `FlowBaseRoutes.valueF` is a new producer relayed VIA at both flow closes (producers 32/10 → 34/11, landed 69 → 71, landed-producers 0 → 2).
-  "pipes=0/0 producers=31/10 landed=76 landed-producers=10 total=107"
+  "pipes=0/0 producers=31/10 landed=103 landed-producers=10 total=134"
 
 end L4YAML.Tests.Guards.ConclusionRouteCensus
 

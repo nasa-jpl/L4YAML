@@ -295,7 +295,7 @@ partial def scanTerm (e : Expr) (seen : Std.HashSet Expr) (r i : Nat) :
 -- 2026-10-28 (item 385): rows 15 → 17, res 56 → 59
 -- — the two item-385 helpers conclude `(∃ ks, …) ∨ True`: two rows, three `Or.inr trivial` residues (the dedent at each, the frameless park at the mapping one).
 -- 2026-10-29 (item 396): rows 17 → 16, res 58 → 57 — flowOpen_floor_at_prep (a ∨ True conclusion) deleted.
-def expectedLedgerTally : String := "rows=16 res=58"
+def expectedLedgerTally : String := "rows=16 res=59"
 
 /-- The rows, machine-produced, sorted by `res` then `prem` descending.  Three
     rows are all-zero — the proof never reaches the right arm by any route —
@@ -328,8 +328,9 @@ def expectedLedgerTally : String := "rows=16 res=58"
 -- helpers' own dedent/frameless declines; no existing row moved.
 -- 2026-10-29 ledger (item 396): flowOpen_floor_at_prep's row removed (deleted lemma).
 def expectedLedger : List String :=
-  ["res=11 imp=100 prem=6 proj=0 flowKeyRoute_of_root",
-   "res=11 imp=74 prem=3 proj=0 resumectx_of_landing",
+  [
+   "res=12 imp=82 prem=3 proj=0 resumectx_of_landing",
+   "res=11 imp=100 prem=6 proj=0 flowKeyRoute_of_root",
    "res=10 imp=83 prem=2 proj=0 flowKeyRoute_of_open",
    "res=4 imp=7 prem=1 proj=0 markerctx_of_landing",
    "res=4 imp=7 prem=1 proj=0 suffixctx_of_landing",
@@ -343,7 +344,8 @@ def expectedLedger : List String :=
    "res=0 imp=0 prem=0 proj=0 flowKeyHead",
    "res=0 imp=0 prem=0 proj=1 FlowBaseRoutes.key",
    "res=0 imp=0 prem=0 proj=1 FlowBaseRoutes.valueF",
-   "res=0 imp=0 prem=0 proj=1 FlowBaseRoutes.vslot"]
+   "res=0 imp=0 prem=0 proj=1 FlowBaseRoutes.vslot"
+  ]
 
 /-! ## §4 What stopped the other five, and what it cost
 

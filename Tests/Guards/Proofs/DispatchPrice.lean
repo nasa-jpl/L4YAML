@@ -386,7 +386,7 @@ def expectedSteps : String :=
 -- 2026-11-12 (item 487, the K caller): stepHolders 2114 → 2118 (`tailOf_preprocess_eq`, `contentLead_of_interior`,
 -- `content_prop_tail_kept`, `accum_step_content_traceK`), dispHolders 417 → 420 (the last three read `h_dispatch`),
 -- dispTwoCorr 31 → 32 (`contentLead_of_interior` reads the surface at `sc` and at `s_prep`).
-  "stepHolders=2101 dispHolders=418 dispTwoCorr=32 fns=75 fnsIx=26" -- 2026-11-14: `Proofs.Scanner.StructDepth` deleted (owner's ruling on items 446–452): its (γ1) `DInv` readers leave, stepHolders 2120 → 2103, dispHolders 422 → 418; `ScannerShape.scanFiltered_noComment` (item 451's holder) deleted with it: 2103 → 2102; `DocStartLiveInv.scanFiltered_liveF` too: 2102 → 2101  -- 2026-11-13 (item 489): +1/+1, `accum_step_content_pairB` holds `h_dispatch`; 2026-11-14 (item 490): +1/+1, `accum_step_content_pairK` holds it too
+  "stepHolders=2102 dispHolders=419 dispTwoCorr=32 fns=75 fnsIx=26"  -- 2026-11-15 (item 512): +1/+1, `marks_step_content` holds `h_preprocess` / `h_dispatch`; 2026-11-14: `Proofs.Scanner.StructDepth` deleted (owner's ruling on items 446–452): its (γ1) `DInv` readers leave, stepHolders 2120 → 2103, dispHolders 422 → 418; `ScannerShape.scanFiltered_noComment` (item 451's holder) deleted with it: 2103 → 2102; `DocStartLiveInv.scanFiltered_liveF` too: 2102 → 2101  -- 2026-11-13 (item 489): +1/+1, `accum_step_content_pairB` holds `h_dispatch`; 2026-11-14 (item 490): +1/+1, `accum_step_content_pairK` holds it too
 
 /-- **The ladder, at each population.**  `edge` is a production whose right
     endpoint is the step's output; `chain` requires a path to it from another
@@ -490,9 +490,9 @@ def expectedPerFn : List String :=
   -- wrapper), preprocess 250 → 251 (the wrapper holds the preprocess equation too).
   -- 2026-11-12 (item 486, S3 slice (4) PR 1): dispatchContent decls 175 → 180 — `TraceOf/ContentBridge`'s three twins and
   -- its two `dispatchContent_{plain,blockScalar}_tokens` helpers.
-  -- 2026-11-14: `StructDepth.DInv_dispatchContent` / `DInv_preprocess` left with the module (owner's ruling, items 446–452)
-  ["scanNextToken_dispatchContent decls=184 chain=1",
-   "scanNextToken_preprocess decls=255 chain=3"]
+  -- 2026-11-14: `StructDepth.DInv_dispatchContent` / `DInv_preprocess` left with the module (owner's ruling, items 446–452); 2026-11-15 (item 512): +1 / +1, `marks_step_content`
+  ["scanNextToken_dispatchContent decls=185 chain=1",
+   "scanNextToken_preprocess decls=256 chain=3"]
 
 /-- **The one worked precedent is outside the work.**  It is not in item 238's
     transitive set and not on either repair thread, so β.5 neither pays for it

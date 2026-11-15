@@ -4637,14 +4637,15 @@ def expectedPackResidue : String :=
 to the bottom (refused / guard-else / frame / fresh-document / mid-line classes in DOCS 431); a move
 here is a producer paid or born, and is an item's to record.  Item 500 (2026-11-14): 9+5 → 8+5 at both
 entry producers — the nested branch's dead `if hlt : n < w` split (its `else` birth unreachable under
-`hnw : n + 1 ≤ w`) deleted; the dedent / root / compact births stand, named by class in DOCS 500. -/
--- Item 508 (2026-11-14): `content_dispatch_routed` 23 → 25 — not two new births: its two root writes used to hide
--- their `h_alt` relay inside a `dif` (`… (if hk : k = 0 then PackAlt.ofRefused … else h_alt))`, which the text rule
--- `… h_dispatch h_alt)` does not match); the root case now pays with the empty domain (`h_dead.2`) and the `k ≠ 0`
--- relay reads `PackAlt.step_dispatch h_dispatch h_alt)` in the open.  The entry producers' 8+5 stand (their root
--- arms keep the relay in the `w ≠ 0` branch).
+`hnw : n + 1 ≤ w`) deleted; the dedent / root / compact births stand, named by class in DOCS 500.
+Item 512 (2026-11-15): 8+5 → 7+2 at both entry producers, a READING move, not a producer paid or
+born — the value-line lane's every-mark `h_nodeFV` / `h_dframesV` turned three `match … | Or.inr h_alt
+=> Or.inr (PackAlt.step_blockEntry …)` relays into `.elim … (fun h_alt => Or.inr (…))` lambdas the
+`+` pattern does not read, and the `h_dframesV` write that declined both ways (`| ⟨_, _, _⟩ => Or.inr
+(PackAlt.step_content …)` beside its `else`) collapsed to the one decline it took; the same PackAlt
+obligations sit at the same sites (DOCS 512 lists them as the next flip). -/
 def expectedPackBirths : String :=
-  "entryKeyPack_of_dispatch=8+5 entryPropsKeyPack_of_dispatch=8+5 content_dispatch_routed=25+0"
+  "entryKeyPack_of_dispatch=7+2 entryPropsKeyPack_of_dispatch=7+2 content_dispatch_routed=25+0"
 
 /-! **The 32 roots (29 since item 307), by what the register does there** — a READING of each site
 (the compiler prices it when the construction is attempted, §1):

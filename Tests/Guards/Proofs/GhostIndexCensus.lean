@@ -339,7 +339,7 @@ def expectedTally : List String :=
    "ParkCore: surface=0 state=2 prop=5 scalar=6 snapshot=0 ghost=1 or=0",
    "ParkFloor: surface=0 state=2 prop=4 scalar=4 snapshot=0 ghost=0 or=0",
    "ParkSlot: surface=0 state=2 prop=3 scalar=7 snapshot=0 ghost=0 or=1",
-   "PendingNode: surface=141 state=1 prop=291 scalar=66 snapshot=0 ghost=24 or=66",
+   "PendingNode: surface=141 state=1 prop=297 scalar=66 snapshot=0 ghost=24 or=66",
    "PropsKeyPack: surface=13 state=1 prop=13 scalar=7 snapshot=0 ghost=3 or=5",
    "PropsNodeRoute: surface=6 state=0 prop=1 scalar=0 snapshot=0 ghost=0 or=0",
    "PropsRideRoute: surface=7 state=0 prop=1 scalar=0 snapshot=0 ghost=0 or=0",
