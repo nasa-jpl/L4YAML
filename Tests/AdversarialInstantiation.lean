@@ -18163,6 +18163,58 @@ def tally (rows : List String) : Tally := Id.run do
     | _, _ => pure ()
   return t
 
+/-- The content step's mask transport (`content_km_transport_any`, review round 1): across every
+    in-flow content step the fields `KmSound` reads ride unchanged — the key stack, the two stamps —
+    the token prefix is kept, and the pending key is KEPT, CLEARED or FRESHLY SAVED at or above the
+    old token end (`KmSound.transport`'s `h_pend`, the three disjuncts); nothing falls outside. -/
+structure ContentTally where
+  steps : Nat := 0
+  stackBad : List String := []
+  stampBad : List String := []
+  prefixBad : List String := []
+  pendBy : List (String × Nat) := []
+  pendOutside : List String := []
+  deriving Repr
+
+def contentTally (rows : List String) : ContentTally := Id.run do
+  let mut t : ContentTally := {}
+  for s in rows do
+    match scanFiltered s, P107.stepsOf s with
+    | .ok _, some sts =>
+      for (pre, post) in sts do
+        let pushed := post.tokens.toList.drop pre.tokens.size
+        match pushed.getLast? with
+        | none => pure ()
+        | some back =>
+          if !contentArms.contains (kindOf back.val) then continue
+          if pre.flowLevel == 0 then continue
+          t := { t with steps := t.steps + 1 }
+          if post.simpleKeyStack.size != pre.simpleKeyStack.size ||
+              (List.range pre.simpleKeyStack.size).any (fun i =>
+                match pre.simpleKeyStack[i]?, post.simpleKeyStack[i]? with
+                | some a, some b => !(a.possible == b.possible && a.tokenIndex == b.tokenIndex &&
+                    a.pos.offset == b.pos.offset && a.pos.line == b.pos.line && a.pos.col == b.pos.col)
+                | _, _ => true) then
+            t := { t with stackBad := t.stackBad ++ [s] }
+          if post.implicitValueLine != pre.implicitValueLine || post.docStartLine != pre.docStartLine then
+            t := { t with stampBad := t.stampBad ++ [s] }
+          if post.tokens.size < pre.tokens.size ||
+              (List.range pre.tokens.size).any (fun i =>
+                match pre.tokens[i]?, post.tokens[i]? with
+                | some a, some b => !(kindOf a.val == kindOf b.val && a.pos.offset == b.pos.offset)
+                | _, _ => true) then
+            t := { t with prefixBad := t.prefixBad ++ [s] }
+          let pend :=
+            if post.simpleKey.possible == pre.simpleKey.possible &&
+                post.simpleKey.tokenIndex == pre.simpleKey.tokenIndex then "kept"
+            else if !post.simpleKey.possible then "cleared"
+            else if pre.tokens.size ≤ post.simpleKey.tokenIndex then "fresh"
+            else "outside"
+          t := { t with pendBy := bumpS t.pendBy pend }
+          if pend == "outside" then t := { t with pendOutside := t.pendOutside ++ [s] }
+    | _, _ => pure ()
+  return t
+
 end P129
 
 namespace P129Test
@@ -18178,6 +18230,12 @@ def testOpenMaskShadow (state : IO.Ref TestCollector) : IO Unit := do
       t.nonColonFaceOk == 45 && t.nonColonFaceBad.isEmpty &&
       t.kindBy == [("seq", 27), ("map", 16), ("seq/props", 10), ("map/props", 6)])
     s!"{t.opens} parent {t.parentBy} colon {t.colonFaceOk} {t.colonFaceBad} nonColon {t.nonColonFaceOk} {t.nonColonFaceBad} kinds {t.kindBy}"
+  let c := contentTally (P113.allRows ++ P118.extraRows ++ P128.extraRows)
+  checkM state
+    s!"P129 the content step's mask transport (content_km_transport_any): {c.steps} in-flow content steps; key stack unchanged (bad: {c.stackBad}); stamps unchanged (bad: {c.stampBad}); token prefix kept (bad: {c.prefixBad}); the pending key {c.pendBy} (outside h_pend: {c.pendOutside})"
+    (c.steps == 544 && c.stackBad.isEmpty && c.stampBad.isEmpty && c.prefixBad.isEmpty &&
+      c.pendBy == [("fresh", 466), ("kept", 78)] && c.pendOutside.isEmpty)
+    s!"{c.steps} stack {c.stackBad} stamps {c.stampBad} prefix {c.prefixBad} pend {c.pendBy} outside {c.pendOutside}"
 
 end P129Test
 
