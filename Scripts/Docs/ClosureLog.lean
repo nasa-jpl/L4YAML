@@ -37,18 +37,10 @@ def declaredGaps : List (Nat × String) :=
    -- 442: the slot two concurrent lanes both took on 2026-11-06 — Row 19's entry became 443 and
    -- Row 12's (the (ω-negative) item) became 444; nothing was written as 442.
    (442, "item-445-2026-11-06"),
-<<<<<<< HEAD
    -- 505 / 506: Row 12's #327 (item 505) and the scanner-facts deletion #328 (item 506) were open
-   -- when item 507 was cut.
-   (505, "item-507-2026-11-14"),
-   (506, "item-507-2026-11-14")]
-||||||| parent of 1a0d16ab (docs(row 12): item 508 — (ω-pay-births) (d) the root closing lemma PAID: MarkedColsIn.of_explicitKeyLine_none carried on h_dead, the 8 + 2 root births pay the chain field with the empty domain at w = 0; Rule 2 (P126) HELD 120 / 50 / 24 / 0 / 42; pack-births 23 → 25 re-pinned with cause; gaps 503 / 505 / 506 / 507)
-   ]
-=======
-   ]
-||||||| parent of 71a88180 (docs(row 12): item 508 — (ω-pay-births) (d) the root closing lemma PAID: MarkedColsIn.of_explicitKeyLine_none carried on h_dead, the 8 + 2 root births pay the chain field with the empty domain at w = 0; Rule 2 (P126) HELD 120 / 50 / 24 / 0 / 42; pack-births 23 → 25 re-pinned with cause; gaps 503 / 505 / 506 / 507)
-   -- 503: S3's slice (4) PR 8 (#325), open when item 504 was cut.
-   (503, "item-504-2026-11-14"),
+   -- when item 508 was cut.
+   (505, "item-508-2026-11-14"),
+   (506, "item-508-2026-11-14")]
    -- 505 / 506 / 507: Row 12's #327 (item 505), the scanner-facts deletion #328 (item 506) and Row 12's #329
    -- (item 507) were open when item 508 was cut.
    (505, "item-508-2026-11-14"),
