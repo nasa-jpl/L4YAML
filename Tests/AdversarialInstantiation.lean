@@ -11630,17 +11630,32 @@ def testProducersPremiseChain (state : IO.Ref TestCollector) : IO Unit := do
         let marks := L4YAML.Proofs.RegisterWitness.markedCols sP
         let isInd := (c == ':' || c == '?' || c == '-') &&
           (chars[sP.offset + 1]?.map (fun ch => ch == ' ' || ch == '\n')).getD true
-        let isContent := !isInd && c != '#' && c != '%' && c != '\n' && c != ' ' &&
+        -- `[` / `{` (and `]` / `}` / `,`) dispatch through the flow indicators, not the content
+        -- arm, so they are not content landings (review round 1 of item 499).
+        let isFlowInd := c == '[' || c == '{' || c == ']' || c == '}' || c == ','
+        let isContent := !isInd && !isFlowInd && c != '#' && c != '%' && c != '\n' && c != ' ' &&
           !(c == '-' && chars[sP.offset + 1]? == some '-' && chars[sP.offset + 2]? == some '-')
         if isContent && sP.flowLevel == 0 && !marks.isEmpty then
           pauses := pauses + 1
           let k := sP.col
           let indentOf (l : String) : Nat := (l.toList.takeWhile (· == ' ')).length
+          -- The landing's whole node: its continuation lines are the blank ones, those indented
+          -- deeper than the landing's own line (block-scalar bodies, nested children), and those at
+          -- the line's indentation that do not open a sibling entry (`?`/`:`/`-` + space, `#`) —
+          -- same-indent plain continuations (review round 1: `? |⏎  k` and `?⏎  a⏎  b`).
+          let ind0 := indentOf lines[sP.line]!
+          let opensEntry (l : String) : Bool :=
+            let r := l.toList.dropWhile (· == ' ')
+            match r with
+            | [] => false
+            | c0 :: rest => c0 == '#' ||
+                ((c0 == '?' || c0 == ':' || c0 == '-') && (rest.head?.map (· == ' ')).getD true)
           let mut last := sP.line
           for i in [sP.line + 1 : lines.size] do
             let l := lines[i]!
             let blank := l.toList.all (· == ' ')
-            if i == last + 1 && (blank || indentOf l > k) then last := i
+            if i == last + 1 && (blank || indentOf l > ind0 ||
+                (indentOf l == ind0 && !opensEntry l)) then last := i
           let pre := "\n".intercalate (lines.toList.take (last + 1))
           for nv in marks do
             checks := checks + 1
@@ -11661,7 +11676,10 @@ def testProducersPremiseChain (state : IO.Ref TestCollector) : IO Unit := do
     -- (HELD); P3 predicted nested ≥ 50 % / at the mark 0 / below ≥ 5 — every one of the 69 marks is
     -- NESTED (`nv + 1 ≤ k`): a content character at or left of a `?` mark closes that mark in the
     -- unwind, so the premise at a content landing has only the nested crossing to pay.
-    (pauses == 59 && checks == 69 && nested == 69 && atMark == 0 && below == 0 && rejects.isEmpty)
+    -- Review round 1: `[` / `{` are flow-indicator landings, not content (2 pauses, 2 marks fewer —
+    -- `? [a, b]` and `? {a: 1}`), and the whole-node probe now takes block-scalar bodies and
+    -- same-indent plain continuations; still 0 rejects, every hand-off still NESTED.
+    (pauses == 57 && checks == 67 && nested == 67 && atMark == 0 && below == 0 && rejects.isEmpty)
 
 def testSeqTopRefusedArm (state : IO.Ref TestCollector) : IO Unit := do
   -- P89 (item 438, (χ-seqtop-refused)): the negative arm `ExplicitValueRefused s ∨ SeqTopKey s`
