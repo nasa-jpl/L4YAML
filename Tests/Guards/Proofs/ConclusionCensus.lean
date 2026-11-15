@@ -290,7 +290,7 @@ def expected : List String :=
    -- item 387: `deeperLandingResumeSeq` leaves the census — it takes `n < k` and
    -- concludes the route itself (no `∨ True`); its former `inr` (`k = n`) is the
    -- caller's split on `atSequenceIndent` (sequence top refuted, mapping sibling declined).
-   "deeperLandingResume inl=2,inr=2 | un=0,0",
+   "deeperLandingResume inl=2,inr=2 | un=0,0",  -- item 512 (review): `h_valF` indexes the AWAITED level, kept existential
    "flowKeyHead inl=0,inr=0 | un=0,0",
    "flowKeyRoute_of_open inl=2,inr=4 inl=0,inr=0 inl=1,inr=2 inl=2,inr=0 inl=1,inr=3 | un=3,3",
    "flowKeyRoute_of_root inl=2,inr=2 inl=0,inr=0 inl=0,inr=3 inl=5,inr=0 inl=1,inr=2 | un=3,5",

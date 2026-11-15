@@ -496,53 +496,41 @@ def expectedSites : List String :=
    "accum_flow_open_depth0→flowKeyRoute_of_root.h_close → flowKeyRoute_of_root.h_close: spends=2 (node 2) handoffs=0 carries=0 NEITHER reach=1 reachJudged=0 reachBoth=false",
   -- Item 415: the h_vslot site row re-read — the two paid closeThenBlock arms (relay + ancestor-list copy) change its spends/handoffs/reach.
   -- Item 418: re-read again — h_vslot is spent twice more (the h_kslotUp arm and the domained h_explUp_chainD argument) and handed off once more.
-  "accum_block_pending→accum_block_on_closeThenBlock.h_vslot → accum_block_on_closeThenBlock.h_vslot: spends=14 (node 14) handoffs=5 carries=1 NEITHER reach=3 reachJudged=7 reachBoth=false"]
+  "accum_block_pending→accum_block_on_closeThenBlock.h_vslot → accum_block_on_closeThenBlock.h_vslot: spends=14 (node 14) handoffs=5 carries=0 NEITHER reach=3 reachJudged=6 reachBoth=false"]
 -- 2026-10-24 (B3 [66] col-0 threading): follows StreamCompositions — the content/block parks close from `sp_gram` (run + gate).
 -- 2026-10-24 (B3 [66] col-0 threading): re-read on the item-355 base.
 -- 2026-10-30 (item 405): the two `closeThenBlock` births destructure `hkv` beside `hkvUp` and apply the slot route per chain member (`rcases List.mem_cons`): the node spends are read once per branch (the slot's own head and the ancestors'), with the chain index `cur:nv` only.
 def expectedSpends : List String :=
-  -- Item 305: two spends more at `closeThenBlock` — the slot's inner pack through `slotLandedSeq`
-  -- for the first entry's stack (`h_slotV`, the landed arm) and through the compact fill for the
-  -- compact entry's (`h_closeFV` at the compact arm), both under `KeyFrames.bottom`.
-  [
-   -- Item 364: the declined K1-seq cover slot at the consed `seq n :: ks` site reads as a carry
-   "accum_block_on_closeThenBlock carry→And.intro @— arg=— width=none index=direct[slot:k,tail:k] cmp=no","accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.compactSeq(prem:SIndent,SCompactSeq.mk(prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail)) width=ind[ind:h_iv] index=direct[cur:nv] cmp=yes[≡nv]",
+  ["accum_block_on_closeThenBlock spend:comments @sp_mid arg=prem:SSLComments width=ws[ws:hws,col:hcol_mid] index=packed[cur:h_vslot,slot:h_vslot,cur:h_valF,slot:h_valF,slot:h_valFV] cmp=no",
+   "accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.node(SBlockNode.blockSeq(GOpt.none,prem:SSLComments,lemma:SBlockSeqEntries_of_compactTail(prem:SIndent,prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail))) width=none index=direct[cur:nv,slot:nv] cmp=no",
+   "accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.node(SBlockNode.blockSeq(GOpt.none,prem:SSLComments,lemma:SBlockSeqEntries_of_compactTail(prem:SIndent,prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail))) width=none index=direct[cur:nv] cmp=no",
+   "accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.node(SBlockNode.blockSeq(GOpt.none,prem:SSLComments,lemma:SBlockSeqEntries_of_compactTail(prem:SIndent,prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail))) width=none index=direct[cur:nv] cmp=no",
+   "accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.node(SBlockNode.blockSeq(GOpt.none,prem:SSLComments,lemma:SBlockSeqEntries_of_compactTail(prem:SIndent,prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail))) width=none index=direct[cur:nv,slot:nv] cmp=no",
+   "accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.node(SBlockNode.blockSeq(GOpt.none,prem:SSLComments,lemma:SBlockSeqEntries_of_compactTail(prem:SIndent,prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail))) width=none index=direct[cur:nv,slot:nv] cmp=no",
+   "accum_block_on_closeThenBlock handoff→slotChainMap.up @sp_mid arg=— width=ind[ws:hws,col:hcol_mid,ind:h_ind] index=direct[cur:nv,slot:nv] cmp=yes[hnk:nv + 1 ≤ k]",
+   "accum_block_on_closeThenBlock handoff→slotChainMap.up @sp_mid arg=— width=ind[ws:hws,col:hcol_mid,ind:h_ind] index=direct[cur:nv,slot:nv] cmp=yes[hnk:nv + 1 ≤ k]",
+   "accum_block_on_closeThenBlock handoff→slotChainMap.up @sp_mid arg=— width=ind[ws:hws,col:hcol_mid,ind:h_ind] index=direct[cur:nv,slot:nv] cmp=yes[hnk:nv + 1 ≤ k]",
+   "accum_block_on_closeThenBlock handoff→slotChainMap.up @sp_mid arg=— width=ind[ws:hws,col:hcol_mid,ind:h_ind] index=direct[cur:nv,slot:nv] cmp=yes[hnk:nv + 1 ≤ k]",
+   "accum_block_on_closeThenBlock spend:node @sp_final arg=SBlockIndented.compactSeq(prem:SIndent,SCompactSeq.mk(prem:GLit,prem:GNot,prem:SBlockIndented,SCompactSeqTail.nil)) width=none index=direct[cur:nv,slot:nv] cmp=no",
+   "accum_block_on_closeThenBlock spend:node @sp_end arg=SBlockIndented.compactSeq(prem:SIndent,SCompactSeq.mk(prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail)) width=none index=direct[cur:nv,slot:nv] cmp=no",
+   "accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.compactSeq(prem:SIndent,SCompactSeq.mk(prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail)) width=ind[ind:h_iv] index=direct[cur:nv] cmp=yes[≡nv]",
+   "accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.compactSeq(prem:SIndent,SCompactSeq.mk(prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail)) width=ind[ind:h_iv] index=direct[cur:nv] cmp=no",
+   "accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.compactSeq(prem:SIndent,SCompactSeq.mk(prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail)) width=none index=direct[cur:nv,slot:nv] cmp=no",
+   "accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.compactSeq(prem:SIndent,SCompactSeq.mk(prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail)) width=ind[ind:h_iv] index=direct[cur:nv] cmp=yes[≡nv]",
+   "accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.compactSeq(prem:SIndent,SCompactSeq.mk(prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail)) width=ind[ind:h_iv] index=direct[cur:nv] cmp=no",
    "accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.compactSeq(prem:SIndent,SCompactSeq.mk(prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail)) width=none index=direct[cur:nv] cmp=no",
-    -- Item 415: the compact fill's ancestor list PAID at the `∃ ns` face too (the `hkvUp` arm copies the
-    -- `∀` face's two compactSeq spends: own route, ancestors' routes).
-   "accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.compactSeq(prem:SIndent,SCompactSeq.mk(prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail)) width=none index=direct[cur:nv] cmp=no",
-   "accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.compactSeq(prem:SIndent,SCompactSeq.mk(prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail)) width=none index=direct[cur:nv] cmp=no",
+   "accum_block_on_closeThenBlock spend:node @sp arg=prem:SBlockIndented width=none index=direct[cur:nv,slot:nv] cmp=no",
+   "accum_block_on_closeThenBlock handoff→relay.hP @— arg=— width=none index=direct[cur:nv] cmp=no",
    "accum_block_on_pendingBlock handoff→accum_block_on_closeThenBlock.h_close_pending @sp_mid arg=— width=ind[ws:hws,col:hcol_mid,ind:h_ind] index=direct[slot:n,tail:n,col:n,cur:n] cmp=yes[hkn:¬k = n,_hge:n ≥ k]",
    "accum_block_on_pendingBlock spend:comments @sp_mid arg=prem:SSLComments width=ind[ws:hws,col:hcol_mid,ind:h_ind] index=direct[slot:n,tail:n,col:n,cur:n] cmp=no",
    "accum_block_on_pendingBlock spend:comments @sp_mid arg=prem:SSLComments width=ind[ws:hws,col:hcol_mid,ind:h_ind] index=direct[slot:n,tail:n,col:n,cur:n] cmp=no",
    "accum_block_on_pendingBlock spend:comments @sp_mid arg=prem:SSLComments width=ind[ws:hws,col:hcol_mid,ind:h_ind] index=direct[slot:n,tail:n,col:n,cur:n] cmp=no",
+   "accum_block_on_pendingBlock spend:comments @sp_mid arg=prem:SSLComments width=ind[ws:hws,col:hcol_mid,ind:h_ind] index=direct[slot:n,tail:n,col:n,cur:n] cmp=no",
    "keyctx_of_preprocess spend:comments @sp_mid arg=lemma:left(prem:And) width=ind[ws:h_ws,ind:h_ind,ind:h_ind'] index=none cmp=no",
-   "slotChainMap spend:node @sp_v arg=SBlockIndented.node(SBlockNode.blockMap(GOpt.none,prem:SSLComments,SBlockMapEntries.single(prem:SIndent,prem:SBlockMapEntry))) width=none index=direct[cur:nv] cmp=no",
-   "accum_block_on_closeThenBlock spend:comments @sp_mid arg=prem:SSLComments width=ws[ws:hws,col:hcol_mid] index=packed[cur:h_vslot,slot:h_vslot,cur:h_valF,slot:h_valF,slot:h_valFV] cmp=no",
-   "accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.node(SBlockNode.blockSeq(GOpt.none,prem:SSLComments,lemma:SBlockSeqEntries_of_compactTail(prem:SIndent,prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail))) width=none index=direct[cur:nv,slot:nv] cmp=no",
-   "accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.node(SBlockNode.blockSeq(GOpt.none,prem:SSLComments,lemma:SBlockSeqEntries_of_compactTail(prem:SIndent,prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail))) width=none index=direct[cur:nv,slot:nv] cmp=no",
-   "accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.node(SBlockNode.blockSeq(GOpt.none,prem:SSLComments,lemma:SBlockSeqEntries_of_compactTail(prem:SIndent,prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail))) width=none index=direct[cur:nv,slot:nv] cmp=no",
-    -- Item 418: the `h_kslotUp` arm PAID off the held pair — the own line and the ancestor list each
-    -- spend the landed `-`'s entries once more through `slotLandedSeq`.
-   "accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.node(SBlockNode.blockSeq(GOpt.none,prem:SSLComments,lemma:SBlockSeqEntries_of_compactTail(prem:SIndent,prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail))) width=none index=direct[cur:nv,slot:nv] cmp=no",
-   "accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.node(SBlockNode.blockSeq(GOpt.none,prem:SSLComments,lemma:SBlockSeqEntries_of_compactTail(prem:SIndent,prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail))) width=none index=direct[cur:nv,slot:nv] cmp=no",
-   "accum_block_on_closeThenBlock handoff→slotChainMap.up @sp_mid arg=— width=ind[ws:hws,col:hcol_mid,ind:h_ind] index=direct[cur:nv,slot:nv] cmp=yes[hnk:nv + 1 ≤ k]",
-   "accum_block_on_closeThenBlock handoff→slotChainMap.up @sp_mid arg=— width=ind[ws:hws,col:hcol_mid,ind:h_ind] index=direct[cur:nv,slot:nv] cmp=yes[hnk:nv + 1 ≤ k]",
-   "accum_block_on_closeThenBlock handoff→slotChainMap.up @sp_mid arg=— width=ind[ws:hws,col:hcol_mid,ind:h_ind] index=direct[cur:nv,slot:nv] cmp=yes[hnk:nv + 1 ≤ k]",
-    -- Item 418: the domained `h_explUp_chainD` argument hands the held list to `slotChainMap` once more.
-   "accum_block_on_closeThenBlock handoff→slotChainMap.up @sp_mid arg=— width=ind[ws:hws,col:hcol_mid,ind:h_ind] index=direct[cur:nv,slot:nv] cmp=yes[hnk:nv + 1 ≤ k]",
-   "accum_block_on_closeThenBlock spend:node @sp_final arg=SBlockIndented.compactSeq(prem:SIndent,SCompactSeq.mk(prem:GLit,prem:GNot,prem:SBlockIndented,SCompactSeqTail.nil)) width=none index=direct[cur:nv,slot:nv] cmp=no",
-   "accum_block_on_closeThenBlock spend:node @sp_end arg=SBlockIndented.compactSeq(prem:SIndent,SCompactSeq.mk(prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail)) width=none index=direct[cur:nv,slot:nv] cmp=no",
-   "accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.compactSeq(prem:SIndent,SCompactSeq.mk(prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail)) width=none index=direct[cur:nv,slot:nv] cmp=no",
-   "accum_block_on_closeThenBlock spend:node @sp arg=prem:SBlockIndented width=none index=direct[cur:nv,slot:nv] cmp=no",
    "keyctx_of_preprocess spend:node @sp arg=lemma:white_prepend_SSLComments(prem:GStar,SSLComments.startOfLine(GStar.nil)) width=ind[ws~:h_ws,ind~:h_ind,ind~:h_ind',col:hc0] index=none cmp=no",
    "flowKeyRoute_of_root spend:node @sp_mid arg=lemma:SSLCommentsFrom_at_park(prem:ScannerSurfCorr,prem:GStar,prem:∀→Not,lemma:left(prem:And),lemma:left(lemma:right(lemma:right(prem:And)))) width=ind[ws:h_ws,ind:h_ind,ind:h_ind'] index=none cmp=no",
    "flowKeyRoute_of_root spend:node @sp_mid arg=lemma:SSLCommentsFrom_at_park(prem:ScannerSurfCorr,prem:GStar,prem:∀→Not,lemma:left(prem:And),lemma:left(lemma:right(lemma:right(prem:And)))) width=ind[ws:h_ws,ind:h_ind,ind:h_ind'] index=none cmp=no",
-   "accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.node(SBlockNode.blockSeq(GOpt.none,prem:SSLComments,lemma:SBlockSeqEntries_of_compactTail(prem:SIndent,prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail))) width=none index=direct[cur:nv] cmp=no",
-   "accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.compactSeq(prem:SIndent,SCompactSeq.mk(prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail)) width=ind[ind:h_iv] index=direct[cur:nv] cmp=no",
-   -- Item 413: the slot's `hkv` / `hkvUp` handed to `compact_open_map.h_chainUp` through `MarkedColsIn.relay`
-   -- (the own route heads the chain), and the `pendingBlock` arm's `h_kslotUp` read at the `nil` tail.
-   "accum_block_on_closeThenBlock handoff→relay.hP @— arg=— width=none index=direct[cur:nv] cmp=no",
+   "slotChainMap spend:node @sp_v arg=SBlockIndented.node(SBlockNode.blockMap(GOpt.none,prem:SSLComments,SBlockMapEntries.single(prem:SIndent,prem:SBlockMapEntry))) width=none index=direct[cur:nv] cmp=no",
    "relay untyped @— arg=— width=none index=none cmp=no"]
 -- 2026-10-24 (B3 [66] col-0 threading): follows StreamCompositions — the content/block parks close from `sp_gram` (run + gate).
 def expectedEdges : List String :=
@@ -562,20 +550,15 @@ def expectedEdges : List String :=
 def expectedEmpties : List String :=
   ["close_with_ssl SBlockIndented.empty n=n @sp_mid width=none cmp=no",
    "close_with_ssl SBlockNode.emptyNode n=n + 1 @sp_mid width=none cmp=no",
-   "accum_block_on_pendingBlock SBlockIndented.empty n=n @sp_mid width=ind[ws:hws,col:hcol_mid,ind:h_ind] cmp=no",
-   "accum_block_on_pendingBlock SBlockIndented.empty n=n @sp_m width=none cmp=no",
-   "accum_block_on_pendingBlock SBlockIndented.empty n=n @sp_m width=none cmp=no",
-   "accum_block_on_pendingBlock SBlockIndented.empty n=n @sp_m width=none cmp=no",
-   "accum_block_on_pendingBlock SBlockIndented.empty n=n @sp_mid width=ind[ws:hws,col:hcol_mid,ind:h_ind] cmp=no",
-   -- 2026-10-26 (item 369): the same empty close read once more — the `:`/`?` landing pays `h_res_land`
-   -- off `pendingBlock.h_closeF` with the awaited entry closed EMPTY (24 → 25).
+   "accum_block_on_closeThenBlock SBlockNode.emptyNode n=nv + 1 @sp_mid width=ind[ws:hws,col:hcol_mid,ind:h_ind] cmp=yes[hnv:¬nv < k,hnk:nv ≤ k]",
    "accum_block_on_pendingBlock SBlockIndented.empty n=n @sp_mid width=ind[ws:hws,col:hcol_mid,ind:h_ind] cmp=no",
    "accum_block_on_pendingBlock SBlockIndented.empty n=n @sp_m width=ind[ind:h_iv] cmp=no",
+   "accum_block_on_pendingBlock SBlockIndented.empty n=n @sp_m width=none cmp=no",
+   "accum_block_on_pendingBlock SBlockIndented.empty n=n @sp_m width=none cmp=no",
+   "accum_block_on_pendingBlock SBlockIndented.empty n=n @sp_mid width=ind[ws:hws,col:hcol_mid,ind:h_ind] cmp=no",
    "accum_block_on_pendingBlock SBlockIndented.empty n=n @sp_mid width=ind[ws:hws,col:hcol_mid,ind:h_ind] cmp=yes[h_nk:n ≤ k,hnk:¬n < k]",
-   -- 2026-11-07 (item 448): 28 → 29 — stage A of the (α) root-frame supply reads `h_valF`'s park face as
-   -- `≤ nv`; `closeThenBlock`'s `nv = k` arm (item 388) now reads the mapping's own frames' strict order
-   -- off the empty-value close (`ResumeFrames.strict`) instead of off the face.
-   "accum_block_on_closeThenBlock SBlockNode.emptyNode n=nv + 1 @sp_mid width=ind[ws:hws,col:hcol_mid,ind:h_ind] cmp=yes[hnv:¬nv < k,hnk:nv ≤ k]",
+   "accum_block_on_pendingBlock SBlockIndented.empty n=n @sp_mid width=ind[ws:hws,col:hcol_mid,ind:h_ind] cmp=no",
+   "accum_block_on_pendingBlock SBlockIndented.empty n=n @sp_m width=ind[ind:h_iv] cmp=no",
    "accum_block_pending SBlockNode.emptyNode n=nmv + 1 @sp_m width=ind[ind:h_ind] cmp=no",
    "accum_block_pending SBlockIndented.empty n=nmv @sp_m width=ind[ind:h_ind] cmp=yes[≡nmv]",
    "accum_block_pending SBlockNode.emptyNode n=nmv + 1 @sp_m width=ind[ind:h_ind] cmp=no",
@@ -586,15 +569,15 @@ def expectedEmpties : List String :=
    "accum_content_on_pendingBlock_indented SBlockIndented.empty n=n @sp_m width=none cmp=no",
    "accum_content_on_pendingBlock_indented SBlockIndented.empty n=n @sp_m width=none cmp=no",
    "accum_content_on_pendingBlock_indented SBlockIndented.empty n=n @sp_m width=none cmp=no",
-   "accum_content_on_pendingBlock_indented SBlockIndented.empty n=n @sp_m width=none cmp=no",
    "accum_content_on_pendingBlock_indented SBlockIndented.empty n=n @sp_mid width=ind[col:h_col0m,ind:h_ind] cmp=yes[_hj:j < n + 1]",
    "accum_content_on_pendingBlock_indented SBlockIndented.empty n=n @sp_m width=none cmp=no",
+   "accum_content_on_pendingBlock_indented SBlockIndented.empty n=n @sp_m width=none cmp=no",
    "accum_content_on_pendingMapValue_indented SBlockNode.emptyNode n=n + 1 @sp_mid width=ind[col:h_col0m,ind:h_ind] cmp=yes[_hj:j < n + 1]",
-   "question_open_map SBlockIndented.empty n=k @sp_m width=none cmp=no",
-   "question_open_map SBlockIndented.empty n=k @sp_m width=ind[ind:h_iv] cmp=yes[≡k]",
-   -- Item 371: the restated value-line pack (`⇒ Resume(map(_)::[])▹Stream`, `ResumeFrames.one`'s level)
    "colon_open_map_explicit SBlockIndented.empty n=nv @sp_m width=none cmp=no",
-   "compact_open_map SBlockIndented.empty n=n + 1 + m @sp_v width=none cmp=no"]
+   "compact_open_map SBlockIndented.empty n=n + 1 + m @sp_v width=none cmp=no",
+   "question_open_map SBlockIndented.empty n=k @sp_m width=none cmp=no",
+   "question_open_map SBlockIndented.empty n=nv @sp_m width=ind[ind:h_iv] cmp=yes[≡nv,hk':nv = k]",
+   "question_open_map SBlockIndented.empty n=k @sp_m width=none cmp=no"]
 /-- Item 257 spends the compact fill's slot closure once more: the fill's
     `pendingBlock.h_closeF` is paid with a literal cover whose bottom is
     `hvs` applied to the compact sequence — a NODE spend of
@@ -618,7 +601,7 @@ def expectedEmpties : List String :=
 def expectedLine : String :=
 -- Item 371 (empties=25 → 27, emptyLemmas=6 → 8): the value-line packs end in the one-level
 -- `ResumeFrames`; `question_open_map`'s `h_expl`/`h_closeFV`/`h_framesV` come from the bound tail route `h_route51F`.
-  "closeSites=5 closePairs=6 closePairsD=8 viaClose=3 params=5 spends=24 spendsC=6 spendsE=0 spendsN=18 handoffs=6 carries=1 untyped=1 edges=3 paramsWalked=7 widthInd=5 widthWs=1 widthNone=0 idxDirect=4 idxPacked=1 idxNone=1 cmp=0 cmpSame=0 both=4 bothCmp=0 handInd=5 handDirect=6 handCmp=5 sitesBoth=1 sitesWidth=2 sitesNeither=2 sitesBothAll=0 empties=29 emptyLemmas=9 emptyInd=14 emptyCmp=6 emptySame=2 emptyClose=2 sites=20 pairs=20 pairs21=20 pairs18=18 nonANoDrop=8 reach=38"
+  "closeSites=5 closePairs=6 closePairsD=8 viaClose=3 params=5 spends=24 spendsC=6 spendsE=0 spendsN=18 handoffs=6 carries=0 untyped=1 edges=3 paramsWalked=7 widthInd=5 widthWs=1 widthNone=0 idxDirect=4 idxPacked=1 idxNone=1 cmp=0 cmpSame=0 both=4 bothCmp=0 handInd=5 handDirect=6 handCmp=5 sitesBoth=1 sitesWidth=2 sitesNeither=2 sitesBothAll=0 empties=30 emptyLemmas=9 emptyInd=14 emptyCmp=6 emptySame=2 emptyClose=2 sites=20 pairs=20 pairs21=20 pairs18=18 nonANoDrop=8 reach=38"
 
 /-! ## §5 The reading -/
 
