@@ -463,7 +463,8 @@ def expectedDisjuncts : List String :=
    "ContentArm.blockScalar[5].h_c ∨ c = '>'",
    "ContentArm.blockScalar[6].h_bs ∨ SCLFolded 0 sp sp'",
    "FlowArm.openNest[14].h_lead ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
-   "FlowArm.openNest[14].h_lead ∨ sp_br = sp_flow₂ ∧ (gapTail sc).leadFree = true",
+   -- 2026-11-14 (item 497): the ε lead also carries `trailingPropertyRun sc.tokens = []` (the strict-lead carry).
+   "FlowArm.openNest[14].h_lead ∨ sp_br = sp_flow₂ ∧ (gapTail sc).leadFree = true ∧ trailingPropertyRun sc.tokens = []",
    "FlowArm.comma[13].h_lead ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
    "FlowArm.comma[13].h_lead ∨ sp_prep = sp_flow₂ ∧ (gapTail sc).closeFree = true",
    "FlowArm.closeNested[14].h_lead ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",

@@ -1214,6 +1214,7 @@ def expectedUnborn : List String := []
 -- the flow pack sites build arm-first through `FlowStackKA.ofPack`/`ofK`; the body is now the one `FlowStackKBody` abbrev, so the
 -- walk reads fewer alternatives and lite nodes while the (sharing-insensitive) node count grows by the wrappers.
 -- 2026-11-14 (item 492's rebase onto item 498): term sizes only (the births' routes on item 498's tree).
+-- 2026-11-14 (item 497's rebase onto item 492): term sizes only — the strict-lead conjunct over the births.
 def expectedLine : String :=
   -- 2026-10-25 (item 359): punt 12 → 11, stamp 39 → 40 — the `noPending` value-park face pays `PackAlt.ofRefused (h_noek …)`;
   -- lapps 806 → 807, liteNodes 607398 → 607407 — that one application and its term.
@@ -1234,7 +1235,7 @@ def expectedLine : String :=
   -- relays across the `≤` park faces and `closeThenBlock`'s `ResumeFrames.strict` read; no origin row moved.
 -- 2026-11-10 (item 473, option (A)): term-size tallies only (lapps 908 → 905, alts 5575 → 5576, liteNodes 673520 → 673507):
 -- the `≤` faces drop `Nat.le_of_lt` wrappers and the positional `ResumeWidths` reshapes `resumeAt`; positions/rows unchanged.
-  "positions=52 packaged=7 packConsts=[ImplicitKeyPack,PropsKeyPack] rows=197 ctorRows=104 paramRows=93 packagedRows=29 punt=4 stamp=42 built=151 origins=67 originRows=32 route=12 frames=29 tail=14 other=0 concl=8 invariant=4 heldOrigins=14 allHeld=2 someHeld=37 noneHeld=98 unbornRows=0 relayedPunt=0 relayedStamp=10 relayedAbsurd=4 relayedFact=0 deadRows=0 unbornPos=0 rounds=4 follows=410 lets=740 lapps=910 alts=5596 nodes=14489 liteNodes=679608"
+  "positions=52 packaged=7 packConsts=[ImplicitKeyPack,PropsKeyPack] rows=197 ctorRows=104 paramRows=93 packagedRows=29 punt=4 stamp=42 built=151 origins=67 originRows=32 route=12 frames=29 tail=14 other=0 concl=8 invariant=4 heldOrigins=14 allHeld=2 someHeld=37 noneHeld=98 unbornRows=0 relayedPunt=0 relayedStamp=10 relayedAbsurd=4 relayedFact=0 deadRows=0 unbornPos=0 rounds=4 follows=410 lets=740 lapps=910 alts=5596 nodes=14489 liteNodes=680193"
 
 /-! ## §4 The reading -/
 
