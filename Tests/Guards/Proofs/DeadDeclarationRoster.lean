@@ -1765,6 +1765,7 @@ L4YAML.Proofs.TokenGrammar.TG.flowMapEntries_explicit ctor
 L4YAML.Proofs.Indexed.EmitterScannability.ScanChain.ScanChainIx.step ctor
 L4YAML.Proofs.BlockScalarContracts.satisfiesG1 def
 L4YAML.Proofs.Indexed.ScannerCorrectness.scanAnchorOrAliasIx_new_token_start thm
+L4YAML.Proofs.StreamAccum.seqEntryTail_cons thm
 L4YAML.Proofs.Indexed.NodeProofs.ParseNodeAG def
 L4YAML.Proofs.ScalarCoupling.skipTrailingSpaces_corr thm
 L4YAML.Proofs.Indexed.EmitterScannability.RoundTrip.resolveAliasesOrdered_fst_scalarIx thm

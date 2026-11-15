@@ -18,7 +18,8 @@ public import L4YAML.Proofs.Scanner.ColFloor
     and `scanLoop` with the nine-clause carrier `LiveInv` (`scanLoop` consumes
     the state and returns the token array, so `LiveInv_scanLoop` concludes
     `Shape (toks ts) ∧ (toks ts)[0]? = some .streamStart` — the contract
-    `scan_shape` / `scanFiltered_liveF` consume — while `LiveInv_scanNextToken`
+    `scan_shape` consumes (`scanFiltered_liveF`, its filtered-list corollary, was deleted as
+    reached by no slice — item 506) — while `LiveInv_scanNextToken`
     is the per-step `LiveInv s → LiveInv s'`):
 
     * `head`  — `vals[0] = .streamStart`;
@@ -1745,24 +1746,6 @@ lemma scan_shape (input : String) (ts : Array (Positioned YamlToken)) (h : scan 
       (LiveInv_consumeBOM _ hI0) h
   · exact LiveInv_scanLoop _ _ ts hA0 hD0 hB0 hF0 hI0 h
 
-/-- Filtered scanner output: every dead token after index 0 follows a non-boundary token, and the
-    list starts with `.streamStart`. -/
-lemma scanFiltered_liveF (input : String) (ts : Array (Positioned YamlToken))
-    (h : scanFiltered input = .ok ts) :
-    LiveF (toks ts) ∧ (toks ts)[0]? = some .streamStart := by
-  unfold scanFiltered at h
-  split at h
-  · rename_i ts0 h0
-    simp only [Except.ok.injEq] at h; subst h
-    rw [toks_filter]
-    obtain ⟨hsh, hhd⟩ := scan_shape input ts0 h0
-    refine ⟨LiveF_of_Shape _ hsh, ?_⟩
-    cases hL : toks ts0 with
-    | nil => rw [hL] at hhd; simp at hhd
-    | cons a L' =>
-      rw [hL] at hhd; simp at hhd; subst hhd
-      simp [nonPh]
-  · contradiction
 
 end L4YAML.Proofs.DocStartLiveInv
 
