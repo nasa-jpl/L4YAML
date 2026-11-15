@@ -11894,7 +11894,7 @@ def testDedentSurvivorChain (state : IO.Ref TestCollector) : IO Unit := do
       atMarkOther.isEmpty && wholeOk == 37 &&
       seqDashes == 30 && seqInner == 27 && seqOwn == 8 && seqRejects.isEmpty)
 
-/-- **P125 — (ω-pay-births) (d) item (3b): the EVERY-MARK value-line carrier, Rule 2** (item 506).
+/-- **P125 — (ω-pay-births) (d) item (3b): the EVERY-MARK value-line carrier, Rule 2** (item 507).
     `pendingContent.h_framesV` / `pendingMapValue.h_framesV` name ONE `nv` (the park's own `?`);
     (3b) restates them over every `nv ∈ markedCols sc`.  The carrier claims, for every open
     `?` mark `m` of the scanner, that after the WHOLE node at the pause its `: v` line at `m`
@@ -11978,8 +11978,8 @@ def testEveryMarkValueLine (state : IO.Ref TestCollector) : IO Unit := do
         | _ => break
       | _ => break
   IO.println s!"P125 every-mark pauses={pauses} checks={checks} multi={multi} atMark={atMark} rejV={rejV} rejSeq={rejSeq} wholeOk={wholeOk}/{inputs.length}"
-  check state s!"P125 (ω-pay-births) (d) item (3b) the every-mark value-line carrier (item 506): {pauses} marked pauses, {checks} marks checked ({multi} pauses with more than one mark, {atMark} at the landing's column), {rejV.length} `: v` rejects, {rejSeq.length} `: - w` rejects, {wholeOk} / {inputs.length} inputs accepted whole"
-    -- pinned (item 506): both value shapes parse at EVERY mark — item 504's `: - w` starvation
+  check state s!"P125 (ω-pay-births) (d) item (3b) the every-mark value-line carrier (item 507): {pauses} marked pauses, {checks} marks checked ({multi} pauses with more than one mark, {atMark} at the landing's column), {rejV.length} `: v` rejects, {rejSeq.length} `: - w` rejects, {wholeOk} / {inputs.length} inputs accepted whole"
+    -- pinned (item 507): both value shapes parse at EVERY mark — item 504's `: - w` starvation
     -- is proof-side (the own-`?` chain), not the runtime's.  The first run's 4 `: - w` rejects
     -- were the probe's: its node extent ran past the mark's own `: v` line (two values).
     (pauses == 231 && checks == 257 && multi == 24 && atMark == 43 &&
