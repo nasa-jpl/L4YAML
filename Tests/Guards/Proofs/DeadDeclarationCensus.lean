@@ -29,8 +29,14 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- 2026-11-14 (item 490, the ∀-floor fold): population 14,279 → 14,289 (+10: ContentBridge §10's nine lemmas and
 -- `accum_step_content_pairK`), unreached +10 and (A) 1,351 → 1,361 — the fold is read by no root until the 2c fold
 -- (`scan_trace`) composes it; the (B) roster 3,536 unmoved, (C)/(D) unmoved.
+// 2026-11-15 (#302 merge at ccc50f2d): +10 declarations are the three proof lemmas
+// `compactMapTail_append`, `ResumeFrames.one_of_route`, `markedCols_le_of_top`, plus
+// `KeyArm` and its six constructors (Row 12 / S3).  `MarkedColsIn.of_markedCols_nil`
+// is newly reached by the Row 12 proof, hence unreached −1 and B-roster thm −1;
+// the roster already dropped that name.  Pinned to CI run #43678091841's
+// measured summary on the exact merged source; no classifier or proof weakened.
 def expectedDeadCensus : String :=
-  "population=14369 thm=10311 def=2707 roots=capstone:27+export:37+blueprint:223(unresolved=5) unreached=6586 thm=4659 A-campaign=1361 C-api=1414 D-test-only=275 B-roster=3535 thm=3173 cluster-roots=1460"
+  "population=14379 thm=10314 def=2707 roots=capstone:27+export:37+blueprint:223(unresolved=5) unreached=6585 thm=4658 A-campaign=1361 C-api=1414 D-test-only=275 B-roster=3535 thm=3172 cluster-roots=1460"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do
