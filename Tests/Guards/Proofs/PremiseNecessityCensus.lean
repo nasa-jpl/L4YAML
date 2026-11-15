@@ -398,7 +398,7 @@ def expectedModuleTallyP : String :=
 -- eta as counted — the positional `ResumeWidths` is read by projections, not `↔` fields.
   -- 2026-10-29 (item 394): `FlowBaseRoutes.valueF` (+3 constants: the field, its projection, the structure's new arity), five more premise reads at the births and closes.
   -- 2026-11-14 (item 499): KeyArm in StreamAccum — constants +10, decls +9, eta +60, READ +6, RELAY +8 (composed over item 498's base).
-  "constants=1756 decls=1387 eta=607 FIELD=201 READ=1489 RELAY=2717 RETURN=173 UNUSED=26"
+  "constants=1760 decls=1390 eta=607 FIELD=201 READ=1494 RELAY=2719 RETURN=174 UNUSED=26"
 
 -- Item 287: `accum_block_on_closeThenBlock`'s `h_vslot`, a READ one, left the
 -- `_ ∨ True` population — its sibling's move, under this peel.  Item 288: and

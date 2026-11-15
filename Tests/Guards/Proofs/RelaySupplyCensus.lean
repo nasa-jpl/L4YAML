@@ -966,7 +966,7 @@ def expectedTally : String :=
   -- 2026-10-26 (item 369): edges 664 → 665, DECLINE 256 → 255, FIELD 55 → 56, SPLIT 160 → 161 —
   -- `pendingBlock.h_closeF` threaded into `accum_block_on_pendingBlock` (one FIELD edge) and the
   -- `:`/`?` landing's `h_res_land` there read off those frames instead of `Or.inr trivial`.
-  "edges=650 skipped=40 [DECLINE=242, FIELD=58, LOCAL=27, PAY=54, RELAY=63, \
+  "edges=650 skipped=40 [DECLINE=241, FIELD=58, LOCAL=27, PAY=55, RELAY=63, \
 SPLIT=175, VIA=31]"
 
 /-- **The row item 211 read off the compiler's error text and got wrong.**  All
@@ -1059,8 +1059,8 @@ def expectedProducers : List String :=
 -- 2026-11-02 (item 422): piped 78 → 73, `Or.elim⇒SPLIT` 5 → 0 — the five `h_park.elim`/`h_kslotUp.elim` pipes at the `h_outer` writes
 -- are `Classical.em (MarkedColsIn s_prep [k])` decisions now (see `expectedTally`).
 def expectedPipeLanding : String :=
-  "piped=75 producers=10 [Eq.rec⇒VIA=8, Or.imp⇒FIELD=36, Or.imp⇒LOCAL=5, \
-Or.imp⇒RELAY=15, Or.imp⇒SPLIT=4, Or.imp⇒VIA=2, dite⇒SPLIT=5]"
+  "piped=76 producers=10 [Eq.rec⇒VIA=8, Or.imp⇒FIELD=36, Or.imp⇒LOCAL=5, \
+Or.imp⇒PAY=1, Or.imp⇒RELAY=15, Or.imp⇒SPLIT=4, Or.imp⇒VIA=2, dite⇒SPLIT=5]"
 
 /-- What the SPLITs decide (DOCS item 216), and the row that matters is
     `elsewhere=0`: **not one leaf of any case split in this module is decided
@@ -1138,7 +1138,7 @@ Or.imp⇒RELAY=15, Or.imp⇒SPLIT=4, Or.imp⇒VIA=2, dite⇒SPLIT=5]"
 -- 2026-11-02 (item 422): survived 180 → 175, leaves 426 → 410 (DECLINE 222 → 211, PAY 193 → 188), `DECLINE|DECLINE|PAY` 12 → 8,
 -- `DECLINE|DECLINE|DECLINE|PAY` 2 → 1 — the five retired `h_outer` splits and their declined leaves (see `expectedTally`).
 def expectedSplitLanding : String :=
-  "survived=175 collapsed=15 leaves=414 elsewhere=11 [DECLINE=211, PAY=192, \
+  "survived=175 collapsed=16 leaves=414 elsewhere=11 [DECLINE=211, PAY=192, \
 VIA=11] \
 [DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|PAY|PAY|PAY|VIA|VIA|VIA=1, \
 DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|PAY|VIA|VIA=1, \
@@ -1504,7 +1504,7 @@ def expectedDeclineWriters : List String :=
    "12 accum_block_on_noPending",
    "12 accum_content_on_pendingBlock_indented",
    "15 accum_content_on_pendingMapValue_indented",
-   "19 accum_block_on_closeThenBlock",
+   "18 accum_block_on_closeThenBlock",
    "2 colon_fires_implicit_key",
    "2 colon_fires_props_key",
    "2 question_open_map",
@@ -1547,12 +1547,6 @@ compact_open_map → PendingNode.pendingMapValue#19 (h_closeFV) = DECLINE via Or
 compact_open_map → PendingNode.pendingMapValue#20 (h_framesV) = DECLINE via Or.elim; \
 accum_flow_open_depth0 → flowKeyRoute_of_root#26 (h_mapFV) = DECLINE via Or.elim; \
 accum_flow_open_depth0 → flowKeyRoute_of_root#26 (h_mapFV) = DECLINE via Or.elim; \
-\
-\
-\
-\
-\
-\
 colon_open_map_explicit → PendingNode.pendingMapValue#16 (h_kslot) = DECLINE via Or.elim; \
 colon_open_map_explicit → PendingNode.pendingMapValue#19 (h_closeFV) = DECLINE via Or.elim; \
 colon_open_map_explicit → PendingNode.pendingMapValue#20 (h_framesV) = DECLINE via Or.elim; \
@@ -1562,8 +1556,8 @@ accum_step_flow → PendingNode.pendingContent#9 (h_vpack) = DECLINE via Or.elim
 accum_step_flow → PendingNode.pendingContent#12 (h_framesV) = DECLINE via Or.elim; \
 accum_step_flow → PendingNode.pendingContent#9 (h_vpack) = DECLINE via Or.elim; \
 accum_step_flow → PendingNode.pendingContent#12 (h_framesV) = DECLINE via Or.elim; \
-\
-accum_block_on_closeThenBlock → PendingNode.pendingBlock#11 (h_closeF) = PAY via Or.casesOn→Exists.casesOn→Exists.casesOn→And.casesOn→And.casesOn→And.casesOn→And.casesOn→dite"
+accum_block_on_closeThenBlock → PendingNode.pendingBlock#11 (h_closeF) = PAY via Or.casesOn→Exists.casesOn→Exists.casesOn→And.casesOn→And.casesOn→And.casesOn→And.casesOn→dite; \
+accum_block_on_closeThenBlock → PendingNode.pendingBlock#13 (h_seqF) = PAY via Or.casesOn→Exists.casesOn→Exists.casesOn→And.casesOn→And.casesOn→And.casesOn→And.casesOn→dite"
 
 /-- **Read off the TYPE, not off a list.**  Item 211's falsification script
     enumerated five optional contexts of `content_dispatch_routed` by hand;

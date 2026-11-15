@@ -12175,6 +12175,72 @@ def testSeqTopRefusedArm (state : IO.Ref TestCollector) : IO Unit := do
         "\"k: v\\n? a\\n: b\"@1:2",
         "\"k: v\\n? a\\n: b\"@2:0"])
 
+def testSeqOuterFrames (state : IO.Ref TestCollector) : IO Unit := do
+  -- P124 (item 505, (ω-pay-births) (d) item (3a)): `pendingBlock.h_seqF` /
+  -- `pendingBlockContent.h_seqF` restated with the sequence's OUTER frames — after the
+  -- `[183]` at `ke` closes, the maps it stands inside resume (`ResumeFrames (SLYamlStream …) ks`),
+  -- where `SeqEntryTail` bottomed in the bare stream.  The statement's surface: at a block `-`
+  -- landing inside a mapping, the mapping's next sibling after the whole sequence parses.
+  let inputs : List String :=
+    [ "a:\n- b\n- c", "a:\n  - b\n  - c", "a:\n  b:\n  - c\n  - d", "- - a\n  - b",
+      "? - a\n  - b\n: c", "a:\n- - b\n  - c", "a:\n- b: 1\n- c", "k:\n  - a\n  -\n    - b\n  - c",
+      "a:\n- |\n  t\n- c", "a:\n- [x]\n- c", "a:\n- 'q'\n- c", "a:\n- !!str b\n- c",
+      "a:\n- &x b\n- *x", "a: # c\n- b\n- c" ]
+  let mut dashes := 0
+  let mut inner := 0
+  let mut own := 0
+  let mut checks := 0
+  let mut wholeOk := 0
+  let mut rejects : List String := []
+  for input in inputs do
+    if (L4YAML.TokenParser.parseYaml input).isOk then wholeOk := wholeOk + 1
+    let lines := input.splitOn "\n"
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:80] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        if c == '-' && sP.flowLevel == 0 then
+          dashes := dashes + 1
+          let k : Int := sP.col
+          -- the stack's base entry sits at column -1 and is no mapping level: a root sequence has
+          -- no outer map.  `≤ k`, not `< k`: an indentless sequence (`a:⏎- b⏎- c`) sits at its
+          -- mapping's own column, and that mapping is the outer frame the sibling lands on.
+          let outer := sP.indents.toList.filter fun e => !e.isSequence && 0 ≤ e.column && e.column ≤ k
+          match outer.foldl (fun acc e => match acc with
+              | none => some e.column
+              | some m => some (max m e.column)) none with
+          | some m =>
+            inner := inner + 1
+            if m == k then own := own + 1
+            checks := checks + 1
+            -- the sibling goes right AFTER the whole sequence (P123's cut): before the first later
+            -- line that dedents to `m` or below and is not one of the sequence's own `-` lines at `k`
+            let pad := String.mk (List.replicate m.toNat ' ')
+            let indentOf (l : String) : Int := (l.toList.takeWhile (· == ' ')).length
+            let continues (l : String) : Bool :=
+              l.toList.all (· == ' ') || indentOf l > m ||
+                (indentOf l == k && (l.toList.dropWhile (· == ' ')).head? == some '-')
+            let after := lines.drop (sP.line + 1)
+            let inside := after.takeWhile continues
+            let rest := after.drop inside.length
+            let cont := String.intercalate "\n"
+              (lines.take (sP.line + 1) ++ inside ++ [pad ++ "zz: 1"] ++ rest)
+            match L4YAML.TokenParser.parseYaml cont with
+            | .ok _ => pure ()
+            | .error _ => rejects := rejects ++ [s!"{repr input}@{sP.line}:{sP.col} m={m}"]
+          | none => pure ()
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) => s := sN
+        | _ => break
+      | _ => break
+  IO.println s!"P124 seq-outer-frames dashes={dashes} inner={inner} own={own} checks={checks} rejects={rejects} wholeOk={wholeOk}/{inputs.length}"
+  check state s!"P124 (ω-pay-births) (d) item (3a) the sequence's outer frames (item 505): {dashes} block `-` pauses, {inner} inside a mapping ({own} at the mapping's own column), {rejects.length} sibling rejects after the sequence, {wholeOk} / {inputs.length} inputs accepted whole"
+    -- Pinned to the first run; P7 predicted ≥ 20 / ≥ 12 / 0 rejects / 14 whole (32 / 12 / 0 / 14
+    -- HELD).  Review on #327: the first form took `e.column < k` and appended the sibling at the
+    -- END of the input, so the indentless dashes (`a:⏎- b⏎- c`, `outer = []`) were never checked;
+    -- `≤ k` + P123's after-the-sequence cut now check them (`own`) — re-pinned to that run.
+    (dashes == 32 && inner == 29 && own == 19 && rejects.isEmpty && wholeOk == 14)
+
 def testFlowCarrier (state : IO.Ref TestCollector) : IO Unit := do
   let nestedQ : List String := ["?\n  ? -\n: w\n", "? - ? - a\n  : b\n: c\n", "?\n  ?\n    -\n    - b\n  ? c\n: w\n", "? ? - a\n  : b\n: c\n", "- ? - a\n  : b\n"]
   let singleQ : List String := ["? - a\n: b\n", "?\n  - a\n  - b\n: w\n", "k:\n  ? - a\n  : b\n", "? -\n: w\n"]
@@ -17999,6 +18065,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testFlowArm state
   testPropsRunT state
   testHeldNestOpen state
+  testSeqOuterFrames state
   P110Test.testPlainContinuationRead state
   P111Test.testContentArmRead state
   P112Test.testContentArmShadow state

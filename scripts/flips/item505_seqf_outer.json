@@ -1,0 +1,52 @@
+{
+  "item": 505,
+  "tag": "SEQF-OUTER-505",
+  "rev": "1872770f",
+  "target": "L4YAML",
+  "log": "scratch/505-seqf-outer-build.log",
+  "msgWidth": 100,
+  "rounds": 5,
+  "files": [
+    {
+      "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+      "patches": [
+        {
+          "name": "PBC_H_SEQF_OUTER",
+          "count": 1,
+          "old": [
+            "      (h_seqF : (∃ ke : Nat, ∀ sp_mid : SurfPos,",
+            "        SSLComments sp_gram sp_mid →",
+            "        ∀ sp_end : SurfPos, SCompactSeqTail n sp_mid sp_end →",
+            "        SeqEntryTail sp_start ke sp_end) ∨ True)"
+          ],
+          "new": [
+            "      (h_seqF : (∃ (ke : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ ke) ∧",
+            "        ∀ sp_mid : SurfPos,",
+            "        SSLComments sp_gram sp_mid →",
+            "        ∀ sp_end : SurfPos, SCompactSeqTail n sp_mid sp_end →",
+            "        ∀ sp_fin : SurfPos, SCompactSeqTail ke sp_end sp_fin →",
+            "        ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)"
+          ]
+        },
+        {
+          "name": "PB_H_SEQF_OUTER",
+          "count": 1,
+          "old": [
+            "      (h_seqF : (∃ ke : Nat, ∀ sp_mid : SurfPos,",
+            "        SBlockIndented n .blockIn sp_scan sp_mid →",
+            "        ∀ sp_end : SurfPos, SCompactSeqTail n sp_mid sp_end →",
+            "        SeqEntryTail sp_start ke sp_end) ∨ True)"
+          ],
+          "new": [
+            "      (h_seqF : (∃ (ke : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ ke) ∧",
+            "        ∀ sp_mid : SurfPos,",
+            "        SBlockIndented n .blockIn sp_scan sp_mid →",
+            "        ∀ sp_end : SurfPos, SCompactSeqTail n sp_mid sp_end →",
+            "        ∀ sp_fin : SurfPos, SCompactSeqTail ke sp_end sp_fin →",
+            "        ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)"
+          ]
+        }
+      ]
+    }
+  ]
+}
