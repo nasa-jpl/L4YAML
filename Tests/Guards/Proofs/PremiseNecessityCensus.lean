@@ -394,7 +394,7 @@ def expectedModuleTallyP : String :=
 -- 2026-11-10 (item 473, option (A)): constants 1766 → 1767 / decls +1 (`ResumeFrames.bound`), FIELD 203 → 201, READ / RELAY /
 -- eta as counted — the positional `ResumeWidths` is read by projections, not `↔` fields.
   -- 2026-10-29 (item 394): `FlowBaseRoutes.valueF` (+3 constants: the field, its projection, the structure's new arity), five more premise reads at the births and closes.
-  "constants=1739 decls=1372 eta=547 FIELD=201 READ=1474 RELAY=2708 RETURN=171 UNUSED=26"
+  "constants=1742 decls=1375 eta=547 FIELD=201 READ=1477 RELAY=2706 RETURN=171 UNUSED=26"
 
 -- Item 287: `accum_block_on_closeThenBlock`'s `h_vslot`, a READ one, left the
 -- `_ ∨ True` population — its sibling's move, under this peel.  Item 288: and
@@ -516,8 +516,9 @@ def expectedNineResolved : List String :=
     "accum_block_on_pendingContent#33 (h_seqF168) => RETURN@L4YAML.Proofs.StreamAccum.accum_block_on_pendingContent#33",
     "accum_content_on_pendingMapValue_indented#14 (h_ncol_old) => FIELD@L4YAML.Proofs.StreamAccum.PendingNode.pendingProps#19",
     "colon_open_map#24 (h_cov_in) => FIELD@And.intro#2",
-    "flowKeyRoute_of_root#24 (h_tail143) => RETURN@L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root#24",  -- item 311: `{g}` precedes it
+    "flowKeyRoute_of_root#24 (h_tail143) => RETURN@L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root#24",
     "indicator_open_map#26 (h_ref_land) => ELIM@L4YAML.Proofs.StreamAccum.rootMapRouteF_or_refused#7>L4YAML.Proofs.StreamAccum.rootMapRouteF_or_refused.match_1_1#4, ELIM@L4YAML.Proofs.StreamAccum.rootMapRoute_or_refused#7>L4YAML.Proofs.StreamAccum.rootMapRoute_or_refused.match_1_1#4",
+    "indicator_open_map#32 (h_explUp_chainD) => ELIM@L4YAML.Proofs.StreamAccum.colon_open_map#28>L4YAML.Proofs.StreamAccum.colon_open_map.match_1_5#6, ELIM@L4YAML.Proofs.StreamAccum.question_open_map#29>L4YAML.Proofs.StreamAccum.question_open_map.match_1_8#6, ELIM@L4YAML.Proofs.StreamAccum.question_open_map.match_1_10#7>Or.casesOn#3",
     "question_open_map#23 (h_cov_in) => FIELD@And.intro#2",
     "question_open_map#24 (h_cov_nil) => FIELD@And.intro#2" ]
 
@@ -532,7 +533,7 @@ run_cmd do
   let nine : List (Name × Nat) :=
     [ (``accum_block_on_pendingBlock, 29), (``accum_block_on_pendingBlockContent, 34),
       (``accum_block_on_pendingContent, 33), (``accum_content_on_pendingMapValue_indented, 14),
-      (``colon_open_map, 24), (``flowKeyRoute_of_root, 24), (``indicator_open_map, 26),
+      (``colon_open_map, 24), (``flowKeyRoute_of_root, 24), (``indicator_open_map, 26), (``indicator_open_map, 32),
       (``question_open_map, 23), (``question_open_map, 24) ]
   if nine.length != expectedCoreTerminal.length then
     throwError "item 225's shortlist is no longer nine rows"

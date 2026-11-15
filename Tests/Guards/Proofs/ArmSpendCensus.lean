@@ -279,7 +279,7 @@ def expectedBinders : List String :=
 -- arm-payment reader skips (RelaySupply's tally skipped 41 → 42 the same way).
 -- 2026-11-02 (item 422): edges 106 → 108, RELAY 29 → 31 — the openers' `h_ref` relay the `h_outer` ARMED arm whole (`fun h => Or.inr h`).
 def expectedTally : String :=
-  "edges=108 skipped=40 DECLINE=21 FIELD=7 PAY=17 RELAY=31 VIA=32"
+  "edges=109 skipped=40 DECLINE=21 FIELD=7 PAY=17 RELAY=32 VIA=32"
 
 run_cmd do
   let env ← getEnv
@@ -312,7 +312,7 @@ run_cmd do
 -- 2026-11-02 (item 422): closeThenBlock 4 → 5, pendingBlockContent 8 → 9 — one more `MarkedColsIn s_prep [k]` projection read at
 -- each (the `h_outer` decision moved from the park's cover to the prepared register).
 def expectedProjections : List String :=
-  [ "5 accum_block_on_closeThenBlock", "9 accum_block_on_pendingBlockContent" ]
+  [ "6 accum_block_on_closeThenBlock", "9 accum_block_on_pendingBlockContent" ]
 
 run_cmd do
   let (es, _) ← armEdges ``L4YAML.Proofs.StreamAccum.landing_or_park_ska

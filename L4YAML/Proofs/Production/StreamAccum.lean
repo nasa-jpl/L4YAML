@@ -22306,6 +22306,27 @@ lemma ekl_disp_none_of_park_none {sc s_prep : ScannerState} {c : Char}
     · rfl
   exact h_norm.trans (ExplicitKeyCoupling.preprocess_explicitKeyLine_none sc s_prep c h h0)
 
+/-- **Every mark is at or left of the stack top** (item 497).  A mark is an indent column
+    (`markedCols_mem`), and on a monotone stack every entry sits at or left of
+    `currentIndent` (`Mono.le_currentIndent`); so where the top is at or left of the landing
+    column `k`, so is every mark.  This is the landing lemma items 493 / 495 owed, stated on
+    the POST-step state: a mark the unwind popped is no longer there to be bounded, which is
+    why it is a fact about `s'` and never about the park state `sc` (P97: 12 pre-unwind marks
+    right of the `-`, 0 after). -/
+lemma markedCols_le_of_top {s : ScannerState} {k : Nat} (hm : IndentStackMono.Mono s)
+    (htop : s.currentIndent ≤ (k : Int)) : ∀ m ∈ RegisterWitness.markedCols s, m ≤ k := by
+  intro m hmem
+  obtain ⟨i, l, c, _, hc, rfl⟩ := RegisterWitness.markedCols_mem.mp hmem
+  rw [L4YAML.Proofs.PendingKeySound.indentColumns_getElem?] at hc
+  obtain ⟨e, he, hec⟩ : ∃ e ∈ s.indents, e.column = c := by
+    cases h : s.indents[i]? with
+    | none => rw [h] at hc; simp at hc
+    | some e =>
+      rw [h] at hc; simp only [Option.map_some, Option.some.injEq] at hc
+      exact ⟨e, Array.mem_of_getElem? h, hc⟩
+  have hle := hm.le_currentIndent e he
+  exact Int.toNat_le.mpr (by omega)
+
 /-- Item 354: the marked-column domain is carried through the content step (the preprocess
     only unwinds/closes/saves, the dispatch moves neither `pendingKeys` nor `indents`). -/
 lemma MarkedColsIn.step_content {sc s_prep s' : ScannerState} {c : Char} {ns : List Nat}
@@ -24298,13 +24319,11 @@ lemma colon_open_map {sc : ScannerState} (sp_start sp_land sp_ind : SurfPos) (k 
     -- **Item 417: the `?` chain ONE FRAME UP over the entry this `:` builds** (item 412's
     -- `h_explUp_chainD`, relayed by the caller) and the `:`'s own mark step — a `:` adds no
     -- mark (`h_mcstep_ne`).  The new park's `h_kslot` is this chain read at the `[189]` entry.
-    (h_explUp_chainD : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,
+    (h_explUp_chainD : (∃ ns : List Nat, RegisterWitness.MarkedColsIn s' ns ∧ ∀ nv ∈ ns,
       ∀ sp_v : SurfPos, SBlockMapEntry k sp_ind sp_v →
       ∀ sp_i sp_c : SurfPos, SIndent nv sp_v sp_i → GLit ':' sp_i sp_c →
       ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →
       ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc)
-    (h_mstep : ∀ ns : List Nat, RegisterWitness.MarkedColsIn sc ns →
-      RegisterWitness.MarkedColsIn s' ns)
     (h_top_in : s'.currentIndent ≤ (k : Int)) :
     ∃ sp_gram' sp_block' sp_flow' sp_scan',
       SLYamlStream sp_start sp_gram' ∧
@@ -24414,7 +24433,7 @@ lemma colon_open_map {sc : ScannerState} (sp_start sp_land sp_ind : SurfPos) (k 
            -- chain over EVERY marked column at the `[189]` entry this `:` builds from the node.
            (match h_explUp_chainD with
             | Or.inl ⟨ns, hdom, chain⟩ =>
-                Or.inl ⟨ns, h_mstep ns hdom,
+                Or.inl ⟨ns, hdom,
                   fun nv hmem sp_m h_node =>
                     chain nv hmem sp_m
                       (SBlockMapEntry.emptyKeyNode k sp_ind sp_scan' sp_m h_lit
@@ -24609,13 +24628,11 @@ lemma question_open_map {sc : ScannerState} (sp_start sp_land sp_ind : SurfPos) 
     -- `?` is the one opener whose `[186]` KEY slot a compact `-`/`?`/`:` can
     -- fill, which is what the top is carried for.
     (h_top_in : s'.currentIndent ≤ (k : Int))
-    (h_explUp_chainD : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,
+    (h_explUp_chainD : (∃ ns : List Nat, RegisterWitness.MarkedColsIn s' (k :: ns) ∧ ∀ nv ∈ ns,
       ∀ sp_v : SurfPos, SBlockMapEntry k sp_ind sp_v →
       ∀ sp_i sp_c : SurfPos, SIndent nv sp_v sp_i → GLit ':' sp_i sp_c →
       ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →
-      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc)
-    (h_mcstep : ∀ ns : List Nat, RegisterWitness.MarkedColsIn sc ns →
-      RegisterWitness.MarkedColsIn s' ((s_prep.col : Int).toNat :: ns)) :
+      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc) :
     ∃ sp_gram' sp_block' sp_flow' sp_scan',
       SLYamlStream sp_start sp_gram' ∧
       BlockStack sp_gram' sp_block' ∧
@@ -24740,7 +24757,7 @@ lemma question_open_map {sc : ScannerState} (sp_start sp_land sp_ind : SurfPos) 
              | Or.inl ⟨nsU, hdomU, up⟩ => Or.inl (fun nv hnv hne sp_v h_entry sp_i sp_c h_iv h_clit sp_w h_sbi => by
                  obtain ⟨i, l, c, hi, hc, rfl⟩ := RegisterWitness.markedCols_mem.mp hnv
                  have hmem : c.toNat ∈ k :: nsU := by
-                   have h := h_mcstep nsU hdomU; rw [hk] at h; exact h i l c hi hc
+                   exact hdomU i l c hi hc
                  rcases List.mem_cons.1 hmem with h | h
                  · exact absurd h hne
                  · exact up _ h sp_v h_entry sp_i sp_c h_iv h_clit sp_w h_sbi)
@@ -24777,7 +24794,7 @@ lemma question_open_map {sc : ScannerState} (sp_start sp_land sp_ind : SurfPos) 
            -- reaches this park by a route the composition above cannot take.
            (match h_explUp_chainD with
             | Or.inl ⟨nsU, hdomU, up⟩ => Or.inl ⟨k :: nsU,
-                (by have h := h_mcstep nsU hdomU; rwa [hk] at h), fun nv hmem =>
+                hdomU, fun nv hmem =>
                 fun sp_m h_node sp_i sp_c h_iv h_clit sp_v h_sbi => by
                   rcases List.mem_cons.1 hmem with rfl | hmem'
                   · exact ResumeFrames.one (h_route51F sp_v (SBlockMapEntry.explicit _ sp_ind sp_scan' sp_m sp_i sp_c sp_v
@@ -24864,7 +24881,7 @@ lemma question_open_map {sc : ScannerState} (sp_start sp_land sp_ind : SurfPos) 
            (match h_explUp_chainD, h_resV_land with
             | Or.inl ⟨nsD, hdomD, upD⟩, Or.inl ⟨nv, _, _, contV⟩ =>
                 Or.inl ⟨sp_ind, nv :: nsD, h_lit,
-                  RegisterWitness.MarkedColsIn.mono (by have h := h_mcstep nsD hdomD; rwa [hk] at h)
+                  RegisterWitness.MarkedColsIn.mono hdomD
                     (fun x hx => (List.mem_cons.mp hx).elim (fun h => List.mem_cons.mpr (Or.inl h))
                       (fun h => List.mem_cons.mpr (Or.inr (List.mem_cons.mpr (Or.inr h))))),
                   by
@@ -24873,7 +24890,7 @@ lemma question_open_map {sc : ScannerState} (sp_start sp_land sp_ind : SurfPos) 
                     · exact resumeFrameRouteK h_ind contV
                     · exact upD x hx'⟩
             | Or.inl ⟨nsD, hdomD, upD⟩, Or.inr _ =>
-                Or.inl ⟨sp_ind, nsD, h_lit, (by have h := h_mcstep nsD hdomD; rwa [hk] at h), upD⟩
+                Or.inl ⟨sp_ind, nsD, h_lit, hdomD, upD⟩
             | Or.inr _, _ => Or.inr (Or.inr trivial)),
          hcorr_result⟩
 
@@ -25538,17 +25555,12 @@ lemma indicator_open_map {sc : ScannerState}
     -- `h_park_top`).  So the floor stops being a bundle's passenger and
     -- becomes the premise `question_open_map`'s top is built from.
     (h_top_prep : s_prep.currentIndent ≤ (s_prep.col : Int))
-    (h_explUp_chainD : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,
+    (h_explUp_chainD : (∃ ns : List Nat, RegisterWitness.MarkedColsIn s' (k :: ns) ∧
+      (c ≠ '?' → RegisterWitness.MarkedColsIn s' ns) ∧ ∀ nv ∈ ns,
       ∀ sp_v : SurfPos, SBlockMapEntry k sp_ind sp_v →
       ∀ sp_i sp_c : SurfPos, SIndent nv sp_v sp_i → GLit ':' sp_i sp_c →
       ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →
-      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc)
-    (h_mcstep : ∀ ns : List Nat, RegisterWitness.MarkedColsIn sc ns →
-      RegisterWitness.MarkedColsIn s' ((s_prep.col : Int).toNat :: ns))
-    -- Item 417: the `:` twin of the step — a non-`?` indicator adds no mark — relayed to
-    -- `colon_open_map` for its `h_kslot`.
-    (h_mcstep_ne : c ≠ '?' → ∀ ns : List Nat, RegisterWitness.MarkedColsIn sc ns →
-      RegisterWitness.MarkedColsIn s' ns) :
+      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc) :
     ∃ sp_gram' sp_block' sp_flow' sp_scan',
       SLYamlStream sp_start sp_gram' ∧
       BlockStack sp_gram' sp_block' ∧
@@ -25584,8 +25596,8 @@ lemma indicator_open_map {sc : ScannerState}
       h_pr_land h_resV_land
       -- Item 322: the alternative's transport, from this lemma's own step facts (`c = ':'` here).
       (PackAlt.step_value h_preprocess h_dispatch (noflow_of_noflow_disp h_noflow_disp))
-      -- Item 417: the chain one frame up and the `:`'s mark step, relayed for `h_kslot`.
-      h_explUp_chainD (h_mcstep_ne (by decide))
+      -- Item 417 / 498: the chain one frame up, its domain on the post-state (no mark step needed).
+      (h_explUp_chainD.imp (fun ⟨ns, _, hne, ch⟩ => ⟨ns, hne (by decide), ch⟩) id)
       (indicator_top_kv_at_col (Or.inl rfl) hcol_ind hcorr_prep h_save h_noflow_disp h_top_prep h_dispatch)
   | inr h =>
     subst h
@@ -25605,7 +25617,7 @@ lemma indicator_open_map {sc : ScannerState}
       -- that reached it bounds the stack it leaves.
       (indicator_top_kv_at_col (Or.inr rfl) hcol_ind hcorr_prep h_save
         h_noflow_disp h_top_prep h_dispatch)
-      h_explUp_chainD h_mcstep
+      (h_explUp_chainD.imp (fun ⟨ns, hkd, _, ch⟩ => ⟨ns, hkd, ch⟩) id)
 
 /-- The head IS `[188]`, arm for arm: the plain head is `[193]`'s YAML key
     directly (`SNsPlain 0 .blockKey` IS `SNsPlainOneLine .blockKey`), a flow
@@ -26875,12 +26887,7 @@ lemma accum_block_on_noPending
     -- width is at or right of, and the one no other producer can name (item
     -- 254).  The caller has carried it since item 147.
     (h_mono : IndentStackMono.Mono sc)
-    (h_gate : sc.inFlow = false → sp_block.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#'))
-    (h_mcstep : ∀ ns : List Nat, RegisterWitness.MarkedColsIn sc ns →
-      RegisterWitness.MarkedColsIn s' ((s_prep.col : Int).toNat :: ns))
-    -- Item 417: the `:` twin of the step, relayed through `indicator_open_map` to `colon_open_map`.
-    (h_mcstep_ne : c ≠ '?' → ∀ ns : List Nat, RegisterWitness.MarkedColsIn sc ns →
-      RegisterWitness.MarkedColsIn s' ns) :
+    (h_gate : sc.inFlow = false → sp_block.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#')) :
     ∃ sp_gram' sp_block' sp_flow' sp_scan',
       SLYamlStream sp_start sp_gram' ∧
       BlockStack sp_gram' sp_block' ∧
@@ -27081,7 +27088,7 @@ lemma accum_block_on_noPending
           -- indicator over.
           (dash_dispatch_floor h_base
             (by have := h_ntop h_scflow; omega) h_preprocess)
-            (Or.inr (PackAlt.ofRefused (h_noek (noflow_park_of_noflow h_preprocess h_noflow)))) h_mcstep h_mcstep_ne
+            (Or.inr (PackAlt.ofRefused (h_noek (noflow_park_of_noflow h_preprocess h_noflow))))
       -- ═══ Item 186: the `:`'s stamp source is DECIDED here, not split on.
       -- A virgin block-context park is the stream's seed (item 116 counted the
       -- constructor's producers and the other seven are flow-interior), so its
@@ -28315,15 +28322,36 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
                if hnk : nv + 1 ≤ k then
                  match hkv, hkvUp with
                  | Or.inl kv, Or.inl ⟨nsU, hdomU, kvU⟩ =>
-                     Or.inl ⟨nv :: nsU, hdomU, slotChainMap hnk h_ssl h_ind (by
+                     Or.inl ⟨nv :: nsU, (by have h1 := (RegisterWitness.AtCol.of_corr hcorr_prep).1; have h2 := SIndent_col h_ind; have h := h_mcstep _ hdomU; rw [Int.toNat_natCast] at h; rwa [show ((s_prep.col : Nat) : Nat) = k by omega] at h), (fun hne => h_mcstep_ne hne _ hdomU), slotChainMap hnk h_ssl h_ind (by
                        rintro nvX hmem
                        rcases List.mem_cons.mp hmem with rfl | hmem'
                        · exact kv
                        · exact kvU nvX hmem')⟩
                  | Or.inl _, Or.inr h_alt => Or.inr h_alt
                  | Or.inr h_alt, _ => Or.inr h_alt
+               else if hnil : RegisterWitness.markedCols s' = [] then
+                 -- Item 498: no mark survives the landing — the chain's domain on `s'` is empty and the
+                 -- `else` pays with the empty list; a surviving ancestor's chain is item (2)'s premise.
+                 Or.inl ⟨[], (RegisterWitness.MarkedColsIn.of_markedCols_nil hnil).mono (fun _ h => absurd h List.not_mem_nil),
+                   fun _ => RegisterWitness.MarkedColsIn.of_markedCols_nil hnil, fun _ h => absurd h List.not_mem_nil⟩
+               else if hallq : c = '?' ∧ ∀ m ∈ RegisterWitness.markedCols s', k ≤ m then
+                 -- Item 498: no mark survives BELOW the landing; the landing lemma bounds every mark of `s'`
+                 -- by `k` from above, so the only survivor is the `?`'s own mark and the chain's domain is empty.
+                 have h_mono' : IndentStackMono.Mono s' :=
+                   IndentStackMono.dispatchBlockIndicators_mono h_dispatch
+                     ((IndentStackMono.preprocess_mono h_preprocess h_mono).of_indents_eq (by split <;> rfl))
+                     ((IndentStackBase.preprocess_base h_preprocess h_base).of_indents_eq (by split <;> rfl))
+                 have h_top' : s'.currentIndent ≤ (k : Int) :=
+                   indicator_top_kv_at_col hcv (by have := SIndent_col h_ind; rw [hcol_mid] at this; omega) hcorr_prep
+                     (landing_or_park_save h_noflow h_larm (h_park.imp_left And.left) h_preprocess) (noflow_disp_of_noflow h_noflow)
+                     (dash_landing_floor h_noflow h_larm h_nic0 h_base h_preprocess) h_dispatch
+                 have h_eq : ∀ m ∈ RegisterWitness.markedCols s', m = k := fun m hm =>
+                   Nat.le_antisymm (markedCols_le_of_top h_mono' h_top' m hm) (hallq.2 m hm)
+                 Or.inl ⟨[], fun i l c' hi hc => List.mem_singleton.mpr
+                     (h_eq _ (RegisterWitness.markedCols_mem.mpr ⟨i, l, c', hi, hc, rfl⟩)),
+                   fun hne => absurd hallq.1 hne, fun _ h => absurd h List.not_mem_nil⟩
                else Or.inr trivial
-           | _ => Or.inr trivial) h_mcstep h_mcstep_ne
+           | _ => Or.inr trivial)
       by_cases hc_colon : c = ':'
       · subst hc_colon
         -- Item 51: an explicit-value pack fires on the `:` at its OWN column —
@@ -29577,7 +29605,7 @@ lemma accum_block_on_pendingBlockContent {sp_gram : SurfPos}
             -- Item 209: the dispatch's floor, required now — item 208's `h_nic0`
             -- closes the column-0 half the `h_cov` bundle used to punt on.
             (dash_landing_floor h_noflow h_larm h_nic0 h_base h_preprocess)
-            (Or.inr trivial) h_mcstep h_mcstep_ne
+            (Or.inr trivial)
         -- Item 92: the frame's VALUE line fires on the `:` at its own column
         -- (`[190]`'s `s-indent(nv)` is exact) — the parked content closes as
         -- the compact KEY with a nil tail (`? - a⏎: - w`); any other shape
@@ -30327,17 +30355,38 @@ lemma accum_block_on_pendingBlock
           (if hnk : n + 1 ≤ k then
             match h_kslot, h_kslotUp with
             | Or.inl kslot, Or.inl ⟨nsU, hdomU, kslotU⟩ =>
-                Or.inl ⟨RegisterWitness.markedCols sc ++ nsU, (RegisterWitness.MarkedColsIn.self sc).union_left,
+                Or.inl ⟨RegisterWitness.markedCols sc ++ nsU, (by have h1 := (RegisterWitness.AtCol.of_corr hcorr_prep).1; have h2 := SIndent_col h_ind; have h := h_mcstep (RegisterWitness.markedCols sc ++ nsU) ((RegisterWitness.MarkedColsIn.self sc).union_left); rw [Int.toNat_natCast] at h; rwa [show ((s_prep.col : Nat) : Nat) = k by omega] at h), (fun hne => h_mcstep_ne hne (RegisterWitness.markedCols sc ++ nsU) ((RegisterWitness.MarkedColsIn.self sc).union_left)),
                   entryChainMap hnk h_ssl h_ind (fun x hx => (List.mem_append.mp hx).elim (kslot x) (kslotU x))⟩
             | Or.inr _, Or.inl ⟨nsU, hdomU, kslotU⟩ =>
-                Or.inl ⟨nsU, hdomU, entryChainMap hnk h_ssl h_ind kslotU⟩
+                Or.inl ⟨nsU, (by have h1 := (RegisterWitness.AtCol.of_corr hcorr_prep).1; have h2 := SIndent_col h_ind; have h := h_mcstep _ hdomU; rw [Int.toNat_natCast] at h; rwa [show ((s_prep.col : Nat) : Nat) = k by omega] at h), (fun hne => h_mcstep_ne hne _ hdomU), entryChainMap hnk h_ssl h_ind kslotU⟩
             -- Item 418: the park's own domained line alone covers (`markedCols sc` is its
             -- own cover); both declined, the own line's alternative is carried.
             | Or.inl kslot, Or.inr _ =>
-                Or.inl ⟨RegisterWitness.markedCols sc, RegisterWitness.MarkedColsIn.self sc,
+                Or.inl ⟨RegisterWitness.markedCols sc, (by have h1 := (RegisterWitness.AtCol.of_corr hcorr_prep).1; have h2 := SIndent_col h_ind; have h := h_mcstep _ (RegisterWitness.MarkedColsIn.self sc); rw [Int.toNat_natCast] at h; rwa [show ((s_prep.col : Nat) : Nat) = k by omega] at h), (fun hne => h_mcstep_ne hne _ (RegisterWitness.MarkedColsIn.self sc)),
                   entryChainMap hnk h_ssl h_ind kslot⟩
             | Or.inr h_alt, Or.inr _ => Or.inr h_alt
-          else Or.inr trivial) h_mcstep h_mcstep_ne
+          else if hnil : RegisterWitness.markedCols s' = [] then
+            -- Item 498: no mark survives the landing — the chain's domain on `s'` is empty and the
+            -- `else` pays with the empty list; a surviving ancestor's chain is item (2)'s premise.
+            Or.inl ⟨[], (RegisterWitness.MarkedColsIn.of_markedCols_nil hnil).mono (fun _ h => absurd h List.not_mem_nil),
+              fun _ => RegisterWitness.MarkedColsIn.of_markedCols_nil hnil, fun _ h => absurd h List.not_mem_nil⟩
+          else if hallq : c = '?' ∧ ∀ m ∈ RegisterWitness.markedCols s', k ≤ m then
+            -- Item 498: no mark survives BELOW the landing; the landing lemma bounds every mark of `s'`
+            -- by `k` from above, so the only survivor is the `?`'s own mark and the chain's domain is empty.
+            have h_mono' : IndentStackMono.Mono s' :=
+              IndentStackMono.dispatchBlockIndicators_mono h_dispatch
+                ((IndentStackMono.preprocess_mono h_preprocess h_mono).of_indents_eq (by split <;> rfl))
+                ((IndentStackBase.preprocess_base h_preprocess h_base).of_indents_eq (by split <;> rfl))
+            have h_top' : s'.currentIndent ≤ (k : Int) :=
+              indicator_top_kv_at_col hcv (by have := SIndent_col h_ind; rw [hcol_mid] at this; omega) hcorr_prep
+                (preprocess_saved_key_col h_sk h_noflow h_preprocess).2 (noflow_disp_of_noflow h_noflow)
+                (landing_floor_of_arm h_noflow h_larm (by omega) h_base h_preprocess) h_dispatch
+            have h_eq : ∀ m ∈ RegisterWitness.markedCols s', m = k := fun m hm =>
+              Nat.le_antisymm (markedCols_le_of_top h_mono' h_top' m hm) (hallq.2 m hm)
+            Or.inl ⟨[], fun i l c' hi hc => List.mem_singleton.mpr
+                (h_eq _ (RegisterWitness.markedCols_mem.mpr ⟨i, l, c', hi, hc, rfl⟩)),
+              fun hne => absurd hallq.1 hne, fun _ h => absurd h List.not_mem_nil⟩
+          else Or.inr trivial)
       -- Item 92: the frame's VALUE line fires on the `:` at its own column —
       -- the awaited entry closes empty into the compact KEY (`? -⏎: - w`);
       -- any other shape falls back to the generic close-and-reopen.
@@ -30798,7 +30847,7 @@ lemma accum_block_pending (sc : ScannerState)
       h_ntop208 h_base
       -- Item 256: and its shape, which with the empty stack pays the root's
       -- resume frames at floor 0.
-      h_mono (fun hnf hcol => absurd (h_col.resolve_right (by simp [hnf])) hcol) h_mcstep h_mcstep_ne
+      h_mono (fun hnf hcol => absurd (h_col.resolve_right (by simp [hnf])) hcol)
   | pendingDocEnd _ _ _ h_line h_marker h_arm77 h_nic0E _ h_noekE h_nextE =>
     -- Item 36: `[204] l-document-suffix` ends the marker with `s-l-comments`,
     -- so a `-`/`?`/`:` on the marker's own line is a state the scanner refuses
