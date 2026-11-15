@@ -1,7 +1,7 @@
 {
   "item": 501,
   "tag": "PRICE-501-FIELDS-BIRTHS-FIXPOINT",
-  "rev": "468a94ee",
+  "rev": "912defe4",
   "target": "L4YAML",
   "log": "scratch/price501_joint.log",
   "msgWidth": 110,
@@ -12,8 +12,8 @@
       "file": "L4YAML/Proofs/Production/StreamAccum.lean",
       "patches": [
         {
-          "name": "L2097.pendingContent.h_vpack",
-          "line": 2097,
+          "name": "L2115.pendingContent.h_vpack",
+          "line": 2115,
           "old": [
             "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
           ],
@@ -23,8 +23,8 @@
           "count": 1
         },
         {
-          "name": "L2726.pendingBlockContent.h_kslot",
-          "line": 2726,
+          "name": "L2744.pendingBlockContent.h_kslot",
+          "line": 2744,
           "old": [
             "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
           ],
@@ -34,8 +34,8 @@
           "count": 1
         },
         {
-          "name": "L2948.pendingBlock.h_kslot",
-          "line": 2948,
+          "name": "L2966.pendingBlock.h_kslot",
+          "line": 2966,
           "old": [
             "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
           ],
@@ -45,8 +45,8 @@
           "count": 1
         },
         {
-          "name": "L1167.ImplicitKeyPack.chain",
-          "line": 1167,
+          "name": "L1185.ImplicitKeyPack.chain",
+          "line": 1185,
           "old": [
             "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc) ∧"
           ],
@@ -56,8 +56,8 @@
           "count": 1
         },
         {
-          "name": "L1817.PropsKeyPack.chain",
-          "line": 1817,
+          "name": "L1835.PropsKeyPack.chain",
+          "line": 1835,
           "old": [
             "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc) ∧"
           ],
@@ -67,8 +67,8 @@
           "count": 1
         },
         {
-          "name": "L34326.entryKeyPack.h_nodeV",
-          "line": 34326,
+          "name": "L34435.entryKeyPack.h_nodeV",
+          "line": 34435,
           "old": [
             "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
           ],
@@ -78,8 +78,8 @@
           "count": 1
         },
         {
-          "name": "L34346.h_cp_chain",
-          "line": 34346,
+          "name": "L34455.h_cp_chain",
+          "line": 34455,
           "old": [
             "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)) ∨ True)"
           ],
@@ -89,8 +89,8 @@
           "count": 1
         },
         {
-          "name": "L34367.h_cp_chain",
-          "line": 34367,
+          "name": "L34476.h_cp_chain",
+          "line": 34476,
           "old": [
             "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)))"
           ],
@@ -100,8 +100,8 @@
           "count": 1
         },
         {
-          "name": "L35037.entryPropsKeyPack.h_nodeV",
-          "line": 35037,
+          "name": "L35143.entryPropsKeyPack.h_nodeV",
+          "line": 35143,
           "old": [
             "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
           ],
@@ -111,8 +111,8 @@
           "count": 1
         },
         {
-          "name": "L35050.h_cp_chain",
-          "line": 35050,
+          "name": "L35156.h_cp_chain",
+          "line": 35156,
           "old": [
             "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)) ∨ True)"
           ],
@@ -122,8 +122,8 @@
           "count": 1
         },
         {
-          "name": "L35138.h_cp_chain",
-          "line": 35138,
+          "name": "L35244.h_cp_chain",
+          "line": 35244,
           "old": [
             "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)))"
           ],
@@ -133,8 +133,8 @@
           "count": 1
         },
         {
-          "name": "L35623.content_dispatch_routed.h_chainUp",
-          "line": 35623,
+          "name": "L35727.content_dispatch_routed.h_chainUp",
+          "line": 35727,
           "old": [
             "    (h_alt : PackAlt s_prep)"
           ],
