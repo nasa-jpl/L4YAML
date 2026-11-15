@@ -41,7 +41,6 @@ def declaredGaps : List (Nat × String) :=
    -- when item 508 was cut.
    (505, "item-508-2026-11-14"),
    (506, "item-508-2026-11-14")]
->>>>>>> 1a0d16ab (docs(row 12): item 508 — (ω-pay-births) (d) the root closing lemma PAID: MarkedColsIn.of_explicitKeyLine_none carried on h_dead, the 8 + 2 root births pay the chain field with the empty domain at w = 0; Rule 2 (P126) HELD 120 / 50 / 24 / 0 / 42; pack-births 23 → 25 re-pinned with cause; gaps 503 / 505 / 506 / 507)
 
 /-- One `### Item N[a] (DATE)` heading. -/
 structure Entry where
