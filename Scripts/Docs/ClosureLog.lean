@@ -37,8 +37,7 @@ def declaredGaps : List (Nat × String) :=
    -- 442: the slot two concurrent lanes both took on 2026-11-06 — Row 19's entry became 443 and
    -- Row 12's (the (ω-negative) item) became 444; nothing was written as 442.
    (442, "item-445-2026-11-06"),
-   -- 503: S3's slice (4) PR 8 (#325), open when item 504 was cut.
-   (503, "item-504-2026-11-14")]
+   ]
 
 /-- One `### Item N[a] (DATE)` heading. -/
 structure Entry where
