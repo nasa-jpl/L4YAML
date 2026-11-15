@@ -454,7 +454,7 @@ def roster : List Target := [
   { census := "ParkBill", pin := "expectedFixpoint", field := "refused", goal := .zero, move := .hold,
     serves := "patches the flip refused", moves := "the flip keeps it at 0", basis := "`ParkBill.expectedFixpoint`" },
   -- Supply leaves.
-  { census := "RelaySupplyCensus", pin := "expectedSplitLanding", field := "DECLINE", goal := .zero, move := .shrinkOnly,, component := true,
+  { census := "RelaySupplyCensus", pin := "expectedSplitLanding", field := "DECLINE", goal := .zero, move := .shrinkOnly, component := true,
     serves := "split leaves that decline", moves := "as `expectedTally.DECLINE`, read at the leaves of each split", basis := "item 216" },
   { census := "RelaySupplyCensus", pin := "expectedSplitBranch", field := "DECLINE-closed", goal := .zero, move := .shrinkOnly, component := true,
     serves := "declines closed with `trivial`", moves := "pay or hand the hypothesis back (`DECLINE-free`), then pay", basis := "item 314" },
@@ -511,13 +511,13 @@ def readPins (census text : String) : Array Pin :=
 
 /-- `(now, goal)` of a target against its pin's fields; `none` when the pin or the field is missing
     or not a count (the `--check` failure). -/
-def resolve (pins : Array Pin) (t : Target) : Except String (Nat × Nat) := do
+def resolve (pins : Array Pin) (t : Target) : Except String (String × Nat × Nat) := do
   let some p := pins.find? (fun p => p.census == t.census && p.name == t.pin)
     | throw s!"{t.census}.{t.pin}: no such pin"
   let fs := pinFields p.literal
   let some (_, v) := fs.find? (·.1 == t.field) | throw s!"{t.census}.{t.pin}: no field `{t.field}`"
   if let .flag want := t.goal then
-    return (if v == want then 0 else 1, 0)
+    return (v, if v == want then 0 else 1, 0)
   let some now := count? v | throw s!"{t.census}.{t.pin}.{t.field}: `{v}` is not a count"
   let goal ← match t.goal with
     | .zero => pure 0
@@ -527,13 +527,15 @@ def resolve (pins : Array Pin) (t : Target) : Except String (Nat × Nat) := do
       let some n := count? gv | throw s!"{t.census}.{t.pin}.{g}: `{gv}` is not a count"
       pure n
     | .flag _ => pure 0
-  return (now, goal)
+  return (v, now, goal)
 
 def distance (now goal : Nat) : Nat := if now ≥ goal then now - goal else goal - now
 
 /-- One resolved row. -/
 structure Row where
   target : Target
+  /-- the reading as the pin spells it (`false`, `7+2`, `10/24`) -/
+  nowText : String
   now : Nat
   goal : Nat
   deriving Repr, Inhabited
@@ -556,7 +558,7 @@ def resolveAll (pins : Array Pin) : Array Row × Array String := Id.run do
   let mut errs := #[]
   for t in roster do
     match resolve pins t with
-    | .ok (now, goal) => rows := rows.push { target := t, now, goal }
+    | .ok (nowText, now, goal) => rows := rows.push { target := t, nowText, now, goal }
     | .error e => errs := errs.push e
   return (rows, errs)
 
@@ -570,7 +572,7 @@ def renderRows (rows : Array Row) : Array String := Id.run do
                    "|---|---|---:|---:|---:|---|---|---|---|---|"]
   for r in rows do
     let field := if r.target.component then s!"`{r.target.field}` ⊂" else s!"`{r.target.field}`"
-    out := out.push s!"| `{r.target.census}` | {field} | {r.now} | {r.goalText} | {r.left} | {r.target.move.render} | {r.status} | {cell r.target.serves} | {cell r.target.moves} | {cell r.target.basis} |"
+    out := out.push s!"| `{r.target.census}` | {field} | {r.nowText} | {r.goalText} | {r.left} | {r.target.move.render} | {r.status} | {cell r.target.serves} | {cell r.target.moves} | {cell r.target.basis} |"
   return out
 
 /-- The census-level distance: open rows and the sum of what is left (holds excluded). -/
