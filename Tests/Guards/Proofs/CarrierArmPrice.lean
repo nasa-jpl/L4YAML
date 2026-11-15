@@ -234,6 +234,8 @@ def expectedBroken : List String :=
 -- 2026-11-12 (item 487): `ContentLead.white` / `.props` join the anchored class — the receive's premises at `sp_prep`,
 -- quantified over every floor `m ≤ minContentIndentOf sc` (`SSeparateLines m` / `PropsRun m` / `SSeparate m`), not one
 -- directed chain; they are what the core derives inside its proof, replayed (ContentBridge §5).
+-- 2026-11-14 (item 499): + KeyArm's six constructors — anchored-only like FlowArm's (surface positions and
+-- floor-read obligations, no carried stack).
 def expectedAnchoredOnly : List String :=
   ["L4YAML.Proofs.Serialization.TraceOf.ContentBridge.ContentLead.props",
    "L4YAML.Proofs.Serialization.TraceOf.ContentBridge.ContentLead.white",
@@ -247,6 +249,12 @@ def expectedAnchoredOnly : List String :=
    "L4YAML.Proofs.StreamAccum.FlowOpenStack.seqNest",
    "L4YAML.Proofs.StreamAccum.GapRead.white",
    "L4YAML.Proofs.StreamAccum.InteriorGap.props",
+   "L4YAML.Proofs.StreamAccum.KeyArm.colonPropsQuestion",
+   "L4YAML.Proofs.StreamAccum.KeyArm.colonPropsSep",
+   "L4YAML.Proofs.StreamAccum.KeyArm.colonQuestion",
+   "L4YAML.Proofs.StreamAccum.KeyArm.colonSep",
+   "L4YAML.Proofs.StreamAccum.KeyArm.colonValue",
+   "L4YAML.Proofs.StreamAccum.KeyArm.question",
    "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock",
    "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlockContent",
    "L4YAML.Proofs.StreamAccum.PendingNode.pendingContent",
@@ -305,9 +313,11 @@ def expectedLine : String :=
   -- 2026-11-12 (item 487): prods 172 → 173, ctors 328 → 330, anchoredOnly 17 → 19 — `ContentLead` (two anchored arms).
   -- 2026-11-13 (item 489, the landing agreement): prods 173 → 174 (`LastNonWhite`, ContentBridge §7, read now that
   -- §7–§9 are exported), mentions 41 → 42 (`accum_step_content_pairB` names the arm); arm classes unchanged.
+  -- 2026-11-14 (item 499, KeyArm): prods 174 → 175, ctors 330 → 336, anchoredOnly 19 → 25 — `KeyArm`'s six constructors,
+  -- all anchored (surface positions and floor-read obligations); mentions 43 unmoved (no lemma names the arm yet).
   -- 2026-11-14 (item 490, the ∀-floor fold): mentions 42 → 43 (`accum_step_content_pairK` reads the arm in its
   -- proof); prods and arm classes unchanged — §10's nine lemmas add no production.
-  "prods=174 ctors=330 same=27 direct=308 anchoredOnly=19 broken=3 surfArms=184 \
+  "prods=175 ctors=336 same=27 direct=308 anchoredOnly=25 broken=3 surfArms=184 \
 surfDirect=183 candidate=direct candidateNil=direct readers=3 libReaders=2 \
 guardReaders=1 mentions=43 producers=21 absorbReaders=5 absorbPlainReaders=0"
 

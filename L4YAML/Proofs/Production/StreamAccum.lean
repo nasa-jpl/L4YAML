@@ -7178,6 +7178,65 @@ inductive FlowArm (sc s' : ScannerState) (c : Char) (sp_block sp_flow sp_scan : 
       (h_fl : s'.flowLevel = 0) (h_ks : s'.flowStack = #[]) (h_tl : tailOf s'.tokens = .value true) :
       FlowArm sc s' c sp_block sp_flow sp_scan sp_block sp_block
 
+/-- The arm `accum_step_block` took INSIDE a flow collection (`1 ≤ sc.flowLevel`): the `?` / `:`
+    indicators are `scanNextToken_dispatchBlockIndicators`' (item 491).  Rule 8: the constructor is the
+    projection `(c, tailOf sc.tokens, trailingPropertyRun sc.tokens)`; every field is a surface position,
+    an obligation over surface positions read at every floor `m` (`InteriorGap`'s own shape), or a
+    projection of `sc` / `s'`.  `colonValue` carries the scanner's refusal of `:` after a completed pair
+    (`saveSimpleKey`'s guard: the token before the saved key slot is not `.value`) as the projection the
+    T twin refutes `betweenEntries` with.  A one-step CONCLUSION for the T coupling, never an index. -/
+inductive KeyArm (sc s' : ScannerState) (c : Char) (sp_block sp_flow sp_scan : SurfPos) :
+    SurfPos → SurfPos → Prop where
+  | question (sp_prep sp_tok : SurfPos)
+      (h_c : c = '?') (h_tail : tailOf sc.tokens = .sep) (h_run : trailingPropertyRun sc.tokens = [])
+      (h_lead : ∀ m, (SSeparateLines m sp_flow sp_prep ∨ sp_prep = sp_flow) ∨ ¬ (m ≤ minContentIndentOf sc))
+      (h_lit : GLit '?' sp_prep sp_tok)
+      (h_fl : s'.flowLevel = sc.flowLevel) (h_ks : s'.flowStack = sc.flowStack)
+      (h_tl : tailOf s'.tokens = .question) :
+      KeyArm sc s' c sp_block sp_flow sp_scan sp_block sp_tok
+  | colonValue (kj : Bool) (sp_prep sp_tok : SurfPos)
+      (h_c : c = ':') (h_tail : tailOf sc.tokens = .value kj) (h_run : trailingPropertyRun sc.tokens = [])
+      (h_lead : ∀ m, (SSeparateLines m sp_flow sp_prep ∨ sp_prep = sp_flow) ∨ ¬ (m ≤ minContentIndentOf sc))
+      (h_lit : GLit ':' sp_prep sp_tok)
+      (h_layout : ¬ KeyAfterValueLayout sc)
+      (h_fl : s'.flowLevel = sc.flowLevel) (h_ks : s'.flowStack = sc.flowStack)
+      (h_tl : tailOf s'.tokens = .colon kj) :
+      KeyArm sc s' c sp_block sp_flow sp_scan sp_block sp_tok
+  | colonSep (sp_prep sp_tok : SurfPos)
+      (h_c : c = ':') (h_tail : tailOf sc.tokens = .sep) (h_run : trailingPropertyRun sc.tokens = [])
+      (h_lead : ∀ m, (SSeparateLines m sp_flow sp_prep ∨ sp_prep = sp_flow) ∨ ¬ (m ≤ minContentIndentOf sc))
+      (h_lit : GLit ':' sp_prep sp_tok)
+      (h_fl : s'.flowLevel = sc.flowLevel) (h_ks : s'.flowStack = sc.flowStack)
+      (h_tl : tailOf s'.tokens = .colon false) :
+      KeyArm sc s' c sp_block sp_flow sp_scan sp_block sp_tok
+  | colonQuestion (sp_prep sp_tok : SurfPos)
+      (h_c : c = ':') (h_tail : tailOf sc.tokens = .question) (h_run : trailingPropertyRun sc.tokens = [])
+      (h_lead : ∀ m, (SSeparateLines m sp_flow sp_prep ∨ sp_prep = sp_flow) ∨ ¬ (m ≤ minContentIndentOf sc))
+      (h_lit : GLit ':' sp_prep sp_tok)
+      (h_fl : s'.flowLevel = sc.flowLevel) (h_ks : s'.flowStack = sc.flowStack)
+      (h_tl : tailOf s'.tokens = .colon false) :
+      KeyArm sc s' c sp_block sp_flow sp_scan sp_block sp_tok
+  | colonPropsSep (ha ht : Bool) (sp_p sp_prep sp_tok : SurfPos)
+      (h_c : c = ':') (h_tail : tailOf sc.tokens = .sep) (h_held : trailingPropertyRun sc.tokens ≠ [])
+      (h_lead : ∀ m, (SSeparateLines m sp_flow sp_p ∨ (sp_p = sp_flow ∧ (tailOf sc.tokens).leadFree)) ∨
+        ¬ (m ≤ minContentIndentOf sc))
+      (h_run : ∀ m, PropsRun m (inFlowCtx .flowOut) ha ht sp_p sp_scan ∨ ¬ (m ≤ minContentIndentOf sc))
+      (h_sep : ∀ m, (SSeparateLines m sp_scan sp_prep ∨ sp_prep = sp_scan) ∨ ¬ (m ≤ minContentIndentOf sc))
+      (h_lit : GLit ':' sp_prep sp_tok)
+      (h_fl : s'.flowLevel = sc.flowLevel) (h_ks : s'.flowStack = sc.flowStack)
+      (h_tl : tailOf s'.tokens = .colon false) :
+      KeyArm sc s' c sp_block sp_flow sp_scan sp_block sp_tok
+  | colonPropsQuestion (ha ht : Bool) (sp_p sp_prep sp_tok : SurfPos)
+      (h_c : c = ':') (h_tail : tailOf sc.tokens = .question) (h_held : trailingPropertyRun sc.tokens ≠ [])
+      (h_lead : ∀ m, (SSeparateLines m sp_flow sp_p ∨ (sp_p = sp_flow ∧ (tailOf sc.tokens).leadFree)) ∨
+        ¬ (m ≤ minContentIndentOf sc))
+      (h_run : ∀ m, PropsRun m (inFlowCtx .flowOut) ha ht sp_p sp_scan ∨ ¬ (m ≤ minContentIndentOf sc))
+      (h_sep : ∀ m, (SSeparateLines m sp_scan sp_prep ∨ sp_prep = sp_scan) ∨ ¬ (m ≤ minContentIndentOf sc))
+      (h_lit : GLit ':' sp_prep sp_tok)
+      (h_fl : s'.flowLevel = sc.flowLevel) (h_ks : s'.flowStack = sc.flowStack)
+      (h_tl : tailOf s'.tokens = .colon false) :
+      KeyArm sc s' c sp_block sp_flow sp_scan sp_block sp_tok
+
 /-- `FlowStackK` for the post-state with the step's `FlowArm` alongside, built arm-first so a producer's
     existing body tuple is kept verbatim.  `h` spells `FlowStackK`'s pack body: this lemma's elaboration
     is the drift check (it breaks if the pack changes), and it is a lemma, not a carrier. -/
@@ -31317,7 +31376,8 @@ lemma accum_step_block (sc : ScannerState)
       ScannerSurfCorr s' sp_scan' ∧
       (s'.flowLevel ≥ 1 →
         InteriorGap s' (tailOf s'.tokens) sp_flow' sp_scan' ∧
-          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) := by
+          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) ∧
+      (1 ≤ sc.flowLevel → KeyArm sc s' c sp_block sp_flow sp_scan sp_block' sp_flow') := by
   -- B.4β: the flow stack is indexed by the scanner's `flowLevel`.
   obtain ⟨nn, kc, km, gt, s0, h_flow, h_ksz, h_ind0, h_pk0, h_floorK, h_kprom⟩ := h_flowK
   rcases Nat.eq_zero_or_pos sc.flowLevel with h0 | hpos
@@ -31346,7 +31406,7 @@ lemma accum_step_block (sc : ScannerState)
         h_kbc h_scf (h_pending h0) h_corr h_noflow h_preprocess h_dispatch h_bare h_dn h_fv h_base
         h_mono h_sound h_cf h_lkt
     exact ⟨g', bl', fl', sn', q1, q2, ⟨0, 0, #[], none, _, q3.retail, rfl, fun h => absurd h (by omega), fun h => absurd h (by omega), Nat.zero_le _, fun h => absurd h (by omega)⟩, fun _ => q4, q5,
-           fun h => absurd h (by omega)⟩
+           fun h => absurd h (by omega), fun h => absurd h (by omega)⟩
   · -- ═══ DEPTH ≥ 1: three arms — one free, one BUILT here, one NOT. ═══
     --
     -- The preamble is `accum_step_flow`'s, minus the `checkFlowAdjacency` peel
@@ -31502,13 +31562,13 @@ lemma accum_step_block (sc : ScannerState)
           -- does neither, because a property opens no entry, so item 9g's guard
           -- has already rejected `[&a ? b]`. That is why this arm does not want
           -- `accum_step_flow`'s shared five-arm gap resolution.
-          have h_frame : tl = .sep ∧ ∀ m : Nat,
+          have h_frame : tl = .sep ∧ trailingPropertyRun sc.tokens = [] ∧ ∀ m : Nat,
               (SSeparateLines m sp_flow sp_prep ∨ sp_prep = sp_flow) ∨
                 ¬ (m ≤ minContentIndentOf sc) := by
             cases h_gap with
             | white h_ws h_sync _ _ h_gate_w _ =>
               have h_lead_at := h_lead_from h_ws h_gate_w
-              refine ⟨?_, fun m => (h_lead_at m).imp
+              refine ⟨?_, trailingPropertyRun_eq_nil_of_sync h_sync, fun m => (h_lead_at m).imp
                 (fun h => h.imp id (fun h2 => h2.1.trans h2.2.symm)) id⟩
               have h_ad_sync : frameTokenVal? s_ad.tokens = lastRealTokenVal? s_ad.tokens := by
                 rw [← h_ad_def, allowDirectives_update_tokens]
@@ -31529,7 +31589,7 @@ lemma accum_step_block (sc : ScannerState)
               cases hlast'
               rw [opensFlowEntry_false_of_isNodeProperty hprop] at hopen
               exact absurd hopen (by simp)
-          obtain ⟨htl_sep, h_lead⟩ := h_frame
+          obtain ⟨htl_sep, h_nil, h_lead⟩ := h_frame
           subst hc
           obtain ⟨sp_tok, h_q_lit, hcorr_tok⟩ :=
             scanKey_prod s_ad sp_prep hcorr_ad
@@ -31575,7 +31635,9 @@ lemma accum_step_block (sc : ScannerState)
             nofun, hcorr_tok,
             fun _ => ⟨.white (GStar.nil _) (sync_scanKey h_ad_inflow hk) nofun (by have := glit_col h_q_lit; omega) (fun _ => park_gate_of_peekBack (scanKey_peekBack hcorr_ad (hpeek_ad.trans (preprocess_some_peek h_preprocess)) hk) (by decide)) (fun _ ch hpk hnb => absurd (scanKey_follower_blank h_ad_inflow hfoll (hpeek_ad.trans (preprocess_some_peek h_preprocess)) hk ch hpk) (by intro h; simp [h] at hnb)) (fun _ => jsonKeyOfLast_scanKey_pred hpos h_ad_inflow h_real_sc h_preprocess h_ad_def hpred hk),
               (tailOf_scanKey h_ad_inflow hk).2,
-              (scanKey_inFlow_allowDirectives h_ad_inflow hk).trans h_ad_false⟩⟩
+              (scanKey_inFlow_allowDirectives h_ad_inflow hk).trans h_ad_false⟩,
+            fun _ => KeyArm.question sp_prep sp_tok rfl (htl.trans htl_sep) h_nil h_lead h_q_lit
+              (h_fl'.trans hd.symm) (h_ks'.trans hks.symm) (tailOf_scanKey h_ad_inflow hk).1⟩
       · split at h_dispatch
         · -- ═══ `:` — the flow-map/flow-pair value transition. NOT scanner-clean. ═══
           split at h_dispatch
@@ -31782,9 +31844,19 @@ lemma accum_step_block (sc : ScannerState)
                     exact jsonKeyOfLast_of_tail_value h_real_sc h_sync_w (htl.trans h_tl_case)
                   | props _ _ _ h_tail_p => exact absurd h_tl_case (h_tail_p _)
                 rw [h_kj] at h_bundle ⊢
+                have h_gapw : trailingPropertyRun sc.tokens = [] ∧ ∀ m,
+                    (SSeparateLines m sp_flow sp_prep ∨ sp_prep = sp_flow) ∨ ¬ (m ≤ minContentIndentOf sc) := by
+                  cases h_gap with
+                  | white h_ws h_sync_w _ _ h_gate_w _ =>
+                    exact ⟨trailingPropertyRun_eq_nil_of_sync h_sync_w,
+                      fun m => (h_lead_from h_ws h_gate_w m).imp (fun h => h.imp id (fun h => h.1.trans h.2.symm)) id⟩
+                  | props _ _ _ h_tail_p _ _ _ _ _ => exact absurd h_tl_case (h_tail_p _)
+                have h_layout_v : ¬ KeyAfterValueLayout sc := fun h_l =>
+                  no_colon_dispatch_of_layout (by omega) h_l h_preprocess h_ad_sk_eq h_ad_tk_eq h_ad_off_eq h_ad_fl_eq hsv
                 exact ⟨sp_gram, sp_block, sp_tok, sp_tok, h_stream, h_stack,
                   ⟨nn, kc, km, gt, s0, h_cl, h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.scanValue_indents_of_inFlow h_ad_inflow hsv).trans (h_ind_ad.trans h_ind_park)), (fun _ => (L4YAML.Proofs.PendingKeysStable.scanValue_pendingKeys_of_inFlow h_ad_inflow hsv).trans (h_pk_ad.trans h_pk_park)), h_floorK', fun _ => ⟨h_km_v, h_panch_v, fun _ hv => absurd hv (by simp), h_resv_v⟩⟩,
-                  nofun, hcorr_tok, h_bundle⟩
+                  nofun, hcorr_tok, h_bundle,
+                  fun _ => KeyArm.colonValue kj sp_prep sp_tok rfl (htl.trans h_tl_case) h_gapw.1 h_gapw.2 h_colon_lit h_layout_v (h_fl_v.trans hd.symm) (h_ks_v.trans hks.symm) (h_tails.1.trans (congrArg _ h_kj))⟩
             | colon kj =>
               -- the `.colon` cells are scan-refuted, white and props alike
               cases h_gap with
@@ -31819,8 +31891,9 @@ lemma accum_step_block (sc : ScannerState)
                 exact ⟨sp_gram, sp_block, sp_tok, sp_tok, h_stream, h_stack,
                   ⟨nn, kc, km, gt, s0, h_stk, h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.scanValue_indents_of_inFlow h_ad_inflow hsv).trans (h_ind_ad.trans h_ind_park)), (fun _ => (L4YAML.Proofs.PendingKeysStable.scanValue_pendingKeys_of_inFlow h_ad_inflow hsv).trans (h_pk_ad.trans h_pk_park)), h_floorK',
                    fun _ => ⟨h_km_v, h_panch_v, fun _ hv => absurd hv (by simp), h_resv_v⟩⟩,
-                  nofun, hcorr_tok, h_bundle⟩
-              | props ha ht sp_p h_tail_p h_lead_p h_run_p _ _ h_colon_p h_gate_p =>
+                  nofun, hcorr_tok, h_bundle,
+                  fun _ => KeyArm.colonSep sp_prep sp_tok rfl (htl.trans h_tl_case) (trailingPropertyRun_eq_nil_of_sync h_sync_w) (fun m => (h_lead_at m).imp (fun h => h.imp id (fun h => h.1.trans h.2.symm)) id) h_colon_lit (h_fl_v.trans hd.symm) (h_ks_v.trans hks.symm) (h_tails.1.trans (congrArg _ h_kj))⟩
+              | props ha ht sp_p h_tail_p h_lead_p h_run_p h_anchor_p h_tag_p h_colon_p h_gate_p =>
                 have h_lead_at := h_lead_from (GStar.nil _) (fun _ => h_gate_p)
                 have h_stk : FlowStackB sp_start nn kc gt s0 (d + 1) ks km (.colon false) sp_block sp_tok := by
                   -- Item 86: the gap's slots read at the stack's index, and
@@ -31834,10 +31907,16 @@ lemma accum_step_block (sc : ScannerState)
                         · exact absurd h_floorK h_nofloor
                       · exact absurd h_floorK h_nofloor
                     · exact absurd h_floorK h_nofloor
+                have h_held : trailingPropertyRun sc.tokens ≠ [] := by
+                  intro hnil
+                  rcases ((h_run_p 0).resolve_right (fun h => h (Nat.zero_le _))).some_half with h | h
+                  · have := h_anchor_p h; rw [hnil] at this; simp at this
+                  · have := h_tag_p h; rw [hnil] at this; simp at this
                 exact ⟨sp_gram, sp_block, sp_tok, sp_tok, h_stream, h_stack,
                   ⟨nn, kc, km, gt, s0, h_stk, h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.scanValue_indents_of_inFlow h_ad_inflow hsv).trans (h_ind_ad.trans h_ind_park)), (fun _ => (L4YAML.Proofs.PendingKeysStable.scanValue_pendingKeys_of_inFlow h_ad_inflow hsv).trans (h_pk_ad.trans h_pk_park)), h_floorK',
                    fun _ => ⟨h_km_v, h_panch_v, fun _ hv => absurd hv (by simp), h_resv_v⟩⟩,
-                  nofun, hcorr_tok, h_bundle⟩
+                  nofun, hcorr_tok, h_bundle,
+                  fun _ => KeyArm.colonPropsSep ha ht sp_p sp_prep sp_tok rfl (htl.trans h_tl_case) h_held (by rw [htl]; exact h_lead_p) h_run_p (fun m => (h_lead_at m).imp (fun h => h.imp id And.left) id) h_colon_lit (h_fl_v.trans hd.symm) (h_ks_v.trans hks.symm) (h_tails.1.trans (congrArg _ h_kj))⟩
             | question =>
               have h_kj : jsonKeyBefore s_v.tokens = false := by
                 rw [h_kj_read]
@@ -31862,8 +31941,9 @@ lemma accum_step_block (sc : ScannerState)
                 exact ⟨sp_gram, sp_block, sp_tok, sp_tok, h_stream, h_stack,
                   ⟨nn, kc, km, gt, s0, h_stk, h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.scanValue_indents_of_inFlow h_ad_inflow hsv).trans (h_ind_ad.trans h_ind_park)), (fun _ => (L4YAML.Proofs.PendingKeysStable.scanValue_pendingKeys_of_inFlow h_ad_inflow hsv).trans (h_pk_ad.trans h_pk_park)), h_floorK',
                    fun _ => ⟨h_km_v, h_panch_v, fun _ hv => absurd hv (by simp), h_resv_v⟩⟩,
-                  nofun, hcorr_tok, h_bundle⟩
-              | props ha ht sp_p h_tail_p h_lead_p h_run_p _ _ h_colon_p h_gate_p =>
+                  nofun, hcorr_tok, h_bundle,
+                  fun _ => KeyArm.colonQuestion sp_prep sp_tok rfl (htl.trans h_tl_case) (trailingPropertyRun_eq_nil_of_sync h_sync_w) (fun m => (h_lead_at m).imp (fun h => h.imp id (fun h => h.1.trans h.2.symm)) id) h_colon_lit (h_fl_v.trans hd.symm) (h_ks_v.trans hks.symm) (h_tails.1.trans (congrArg _ h_kj))⟩
+              | props ha ht sp_p h_tail_p h_lead_p h_run_p h_anchor_p h_tag_p h_colon_p h_gate_p =>
                 have h_lead_at := h_lead_from (GStar.nil _) (fun _ => h_gate_p)
                 have h_stk : FlowStackB sp_start nn kc gt s0 (d + 1) ks km (.colon false) sp_block sp_tok := by
                   -- Item 86: the gap's slots read at the stack's index, and
@@ -31877,10 +31957,16 @@ lemma accum_step_block (sc : ScannerState)
                         · exact absurd h_floorK h_nofloor
                       · exact absurd h_floorK h_nofloor
                     · exact absurd h_floorK h_nofloor
+                have h_held : trailingPropertyRun sc.tokens ≠ [] := by
+                  intro hnil
+                  rcases ((h_run_p 0).resolve_right (fun h => h (Nat.zero_le _))).some_half with h | h
+                  · have := h_anchor_p h; rw [hnil] at this; simp at this
+                  · have := h_tag_p h; rw [hnil] at this; simp at this
                 exact ⟨sp_gram, sp_block, sp_tok, sp_tok, h_stream, h_stack,
                   ⟨nn, kc, km, gt, s0, h_stk, h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.scanValue_indents_of_inFlow h_ad_inflow hsv).trans (h_ind_ad.trans h_ind_park)), (fun _ => (L4YAML.Proofs.PendingKeysStable.scanValue_pendingKeys_of_inFlow h_ad_inflow hsv).trans (h_pk_ad.trans h_pk_park)), h_floorK',
                    fun _ => ⟨h_km_v, h_panch_v, fun _ hv => absurd hv (by simp), h_resv_v⟩⟩,
-                  nofun, hcorr_tok, h_bundle⟩
+                  nofun, hcorr_tok, h_bundle,
+                  fun _ => KeyArm.colonPropsQuestion ha ht sp_p sp_prep sp_tok rfl (htl.trans h_tl_case) h_held (by rw [htl]; exact h_lead_p) h_run_p (fun m => (h_lead_at m).imp (fun h => h.imp id And.left) id) h_colon_lit (h_fl_v.trans hd.symm) (h_ks_v.trans hks.symm) (h_tails.1.trans (congrArg _ h_kj))⟩
         · -- fallthrough: dispatch returns `.ok none`, not `.ok (some s')`.
           simp at h_dispatch
 
@@ -42050,7 +42136,7 @@ lemma scanNextToken_accum_step (sc : ScannerState)
                 · split at h_ok
                   · rename_i s_blk h_blk
                     have h := Except.ok.inj h_ok; injection h with h; subst h
-                    obtain ⟨g', bl', fl', sn', q1, q2, q3, q4, q5, q6⟩ :=
+                    obtain ⟨g', bl', fl', sn', q1, q2, q3, q4, q5, q6, _⟩ :=
                       accum_step_block sc sp_start sp_gram sp_block sp_flow sp_scan s_pre s_blk c_pre
                         h_stream h_kbc h_scf h_stack h_flow h_pending h_corr h_interior h_pre
                         h_dn h_fv h_str_eq h_blk h_bare h_base h_mono h_sound h_cf h_lkt

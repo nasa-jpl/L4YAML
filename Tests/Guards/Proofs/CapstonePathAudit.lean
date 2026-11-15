@@ -34,8 +34,9 @@ open Scripts.Path.CapstonePath
 --   StreamAccum population 1276 → 1237; reached 1133 unmoved (nothing deleted was on the path).
 -- 2026-11-09 (item 469): `FlowArm`/`GapRead`/`FlowStackKA` and `accum_step_flow_trace` — StreamAccum constants reached 1118/1254 → 1132/1274; every other count unmoved.
 -- 2026-11-14 (item 492's rebase onto item 498): the births' two lemmas on item 498's tree.
+-- 2026-11-14 (item 499): streamAccum-reached 1147/1254 → 1154/1264 — KeyArm (1 + 6 constructors + rec/casesOn…) in StreamAccum, 7 reached from accum_step_block's conclusion.
 def expectedSummary : String :=
-  "positions=269 on=7 off=192 unresolved=70 on-drop=3 on-via=0 on-relay=4 on-conclusion=0 off-honest=94 off-unread=53 off-conclusion=25 off-unreached=0 on-drop-nested=0 on-via-nested=0 on-relay-nested=0 off-honest-nested=20 nested-unresolved=70 on-by-alt: True=0 PackAlt=7 PackAltG=0 off-by-alt: True=135 PackAlt=50 PackAltG=7 pack-declines: on=8 off=43 consumed=scan_content_gives_stream_v2 streamAccum-reached=1147/1254 unrooted-arms=86 arms=245 relays=141 drop-set=8/8"
+  "positions=269 on=7 off=192 unresolved=70 on-drop=3 on-via=0 on-relay=4 on-conclusion=0 off-honest=94 off-unread=53 off-conclusion=25 off-unreached=0 on-drop-nested=0 on-via-nested=0 on-relay-nested=0 off-honest-nested=20 nested-unresolved=70 on-by-alt: True=0 PackAlt=7 PackAltG=0 off-by-alt: True=135 PackAlt=50 PackAltG=7 pack-declines: on=8 off=43 consumed=scan_content_gives_stream_v2 streamAccum-reached=1154/1264 unrooted-arms=86 arms=245 relays=141 drop-set=8/8"
 
 def expectedOn : List String :=
   [ "L4YAML.Proofs.StreamAccum.PendingNode.pendingContent[9].h_vpack top ∨ PackAlt on-relay DECLINE=4",

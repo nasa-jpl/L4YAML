@@ -308,6 +308,7 @@ chain=SLAnyDocument > SLDirectiveDocument > SLDirective > GLit",
 -- 2026-10-23: `Proofs.Production.Acceptance.Quoted` adds the two quote-delimited
 -- `SC*QuotedOk.mk` relations (narrowed `[109]`/`[120]`).
 -- 2026-11-09 (item 469): `FlowArm`'s indicator constructors end in a literal — `comma` on ','; `openNest` / `closeNested` on the dispatched `c` (the kind is the projection `c = if b then … else …`).
+-- 2026-11-14 (item 499): + KeyArm's six constructors, each ending in its indicator literal.
 def expectedEndsLit : List String :=
   ["L4YAML.Proofs.Acceptance.SCDoubleQuotedMultiOk.mk '\\\"'",
    "L4YAML.Proofs.Acceptance.SCDoubleQuotedOk.mk '\\\"'",
@@ -322,6 +323,12 @@ def expectedEndsLit : List String :=
    "L4YAML.Proofs.StreamAccum.FlowArm.closeNested c",
    "L4YAML.Proofs.StreamAccum.FlowArm.comma ','",
    "L4YAML.Proofs.StreamAccum.FlowArm.openNest c",
+   "L4YAML.Proofs.StreamAccum.KeyArm.colonPropsQuestion ':'",
+   "L4YAML.Proofs.StreamAccum.KeyArm.colonPropsSep ':'",
+   "L4YAML.Proofs.StreamAccum.KeyArm.colonQuestion ':'",
+   "L4YAML.Proofs.StreamAccum.KeyArm.colonSep ':'",
+   "L4YAML.Proofs.StreamAccum.KeyArm.colonValue ':'",
+   "L4YAML.Proofs.StreamAccum.KeyArm.question '?'",
    "L4YAML.Proofs.StreamAccum.MapFrame.midColon ':'",
    "L4YAML.Proofs.StreamAccum.MapFrame.midEmptyColon ':'",
    "L4YAML.Proofs.StreamAccum.MapFrame.midExplicitColon ':'",
@@ -397,10 +404,12 @@ def expectedEndsLit : List String :=
 -- constructors (`.white` / `.props`); the park rows unchanged.
 -- 2026-11-13 (item 489, the landing agreement): prods 173 → 174, ctors unchanged — `LastNonWhite` (ContentBridge §7,
 -- a `SurfPos → SurfPos → Prop` def, item 488) is read now that §7–§9 sit in a `public section`.
+-- 2026-11-14 (item 499, KeyArm): prods 174 → 175, ctors 330 → 336, endsLit 42 → 48, question 2 → 3, colon 21 → 26 —
+-- `StreamAccum.KeyArm`, six constructors each ending in its indicator literal (`?` once, `:` five times); the park rows unchanged.
 def expectedLine : String :=
   "pop=10 sites=13 spend=6 nospend=7 len1=6 ends=GStar(SSWhite)+SIndent \
-depth=3 prods=174 ctors=330 \
-endsLit=42 minus=1 question=2 colon=21 chainEnds=0 blockArms=1 seqArms=10 \
+depth=3 prods=175 ctors=336 \
+endsLit=48 minus=1 question=3 colon=26 chainEnds=0 blockArms=1 seqArms=10 \
 mapArms=10 streamArms=4 streamHonest=3"
 
 /-- The non-circularity check items 242, 243 and 244 also carry: a measurement
