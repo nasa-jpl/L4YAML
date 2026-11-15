@@ -1,0 +1,60 @@
+{
+  "item": 504,
+  "tag": "DEDENT-FACES-504",
+  "rev": "1872770f",
+  "target": "L4YAML",
+  "log": "scratch/504-dedent-faces-build.log",
+  "msgWidth": 100,
+  "rounds": 3,
+  "files": [
+    {
+      "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+      "patches": [
+        {
+          "name": "DFRAMES_ENTRY",
+          "line": 34505,
+          "count": 1,
+          "old": [
+            "      ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True)"
+          ],
+          "new": [
+            "      ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ False)"
+          ]
+        },
+        {
+          "name": "DFRAMESV_ENTRY",
+          "line": 34524,
+          "count": 1,
+          "old": [
+            "      KeyFrames (ExplValueLine sp_start nv) ks sp_m) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "      KeyFrames (ExplValueLine sp_start nv) ks sp_m) ∨ False)"
+          ]
+        },
+        {
+          "name": "DFRAMES_PROPS",
+          "line": 35181,
+          "count": 1,
+          "old": [
+            "      ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True)"
+          ],
+          "new": [
+            "      ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ False)"
+          ]
+        },
+        {
+          "name": "DFRAMESV_PROPS",
+          "line": 35194,
+          "count": 1,
+          "old": [
+            "      KeyFrames (ExplValueLine sp_start nv) ks sp_m) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "      KeyFrames (ExplValueLine sp_start nv) ks sp_m) ∨ False)"
+          ]
+        }
+      ]
+    }
+  ]
+}

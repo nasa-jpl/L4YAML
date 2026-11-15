@@ -11765,6 +11765,135 @@ def testFlowKeyChain (state : IO.Ref TestCollector) : IO Unit := do
     (pauses == 29 && refused == 4 && checks == 26 && nested == 26 && rejects.isEmpty && atMark == 0 && below == 0)
 
 
+def testDedentSurvivorChain (state : IO.Ref TestCollector) : IO Unit := do
+  -- P123 (item 504, (ω-pay-births) (d) item (3)): the DEDENT `else` arms of the park fields'
+  -- chain (`closeThenBlock`, `pendingBlock`: a landing at column `k` after which a mark `m < k`
+  -- survives — an ancestor `?` whose `: v` is still owed) and the entry producers' `resumeAtMap`
+  -- arms.  Item 494's `[map k]` resume fact pays them only if (i) every survivor `m < k` has its
+  -- `: v` at column `m` after the landing's whole node accepted, and (ii) every such `m` is a
+  -- mapping level of the dispatch state's indent stack (`sc.indents`, the stack `IndentStackCover.Covered` reads), i.e. a `map m`
+  -- frame `KeyFrames.resumeAtMap` can resume on.  A survivor AT the landing (`m = k`) is item
+  -- 498's `?`-only class; at any other landing it would be a third class.
+  let inputs : List String :=
+    [ "?\n  ?\n    a\n  : b\n: c", "?\n  k:\n    a\n  j: 2\n: b", "?\n  - a\n  - b\n: c",
+      "?\n  a:\n    b:\n      c\n  d: 1\n: v", "?\n  - a:\n      b\n  - c\n: v", "?\n  k: |\n    x\n  j: y\n: v",
+      "k:\n  ?\n    a:\n      b\n    c: d\n  : v", "- ?\n    x:\n      y\n    z: w\n  : v",
+      "?\n  ?\n    ?\n      a\n    : b\n  : c\n: d", "?\n  ? a\n  : b\n  ? c\n  : d\n: e",
+      "?\n  - - a\n    - b\n  - c\n: v", "?\n  k:\n  - a\n  - b\n: v", "?\n  k:\n    - a\n  j: b\n: v",
+      "?\n  k: [a,\n    b]\n  j: 1\n: v", "?\n  k: {a: 1}\n  j: 2\n: v", "?\n  k: \"a\n    b\"\n  j: 1\n: v",
+      "?\n  k: !t a\n  j: &x b\n: *x", "?\n  # c\n  k: 1\n  j: 2\n: v", "?\n  k: 1 # c\n  j: 2\n: v",
+      "?\n  k:\n    a:\n      b\n  j: 1\n: v", "?\n  - a\n  -\n    b\n  - c\n: v", "?\n  ? x\n  : y\n: v",
+      "?\n  ?\n    k:\n      a\n    j: 1\n  : b\n: c", "?\n  - ? a\n    : b\n  - c\n: v",
+      "?\n  k: >\n    x\n    y\n  j: 1\n: v", "?\n  k: 'a'\n  j: 'b'\n: v", "? a\n: b\n?\n  k: 1\n  j: 2\n: c",
+      "?\n  a\n  b\n: c", "?\n  k:\n    ? a\n    : b\n  j: 1\n: v", "- ?\n    - a\n    - b\n  : v",
+      -- the two `closeThenBlock` sequence births: a compact sequence at the mapping's own column
+      -- (`a:⏎- b`) or under a `?` (`? - a`), followed by the level's next entry
+      "a:\n- b\nc: 1", "a:\n- b\n- c\nd: 1", "? - a\n: b", "? - a\n  - b\n: c", "k:\n  a:\n  - b\n  c: 1",
+      "- a:\n  - b\n  c: 1", "?\n  a:\n  - b\n  c: 1\n: v" ]
+  let mut pauses := 0
+  let mut checks := 0
+  let mut unframed : List String := []
+  let mut rejects : List String := []
+  -- P4's compact-sequence check (review round 1): at every block `-` inside a mapping, the
+  -- mapping's entry is on the dispatch stack (`map m`, read off `sP.indents`) and its sibling
+  -- `zz: 1` at `m` after the WHOLE sequence parses — the two `closeThenBlock` births' frame.
+  let mut seqDashes := 0
+  let mut seqInner := 0
+  let mut seqRejects : List String := []
+  let mut seqOwn := 0
+  let mut atMarkQ := 0
+  let mut atMarkOther : List String := []
+  let mut wholeOk := 0
+  for input in inputs do
+    let chars := input.toList
+    let lines := (input.splitOn "\n").toArray
+    if (L4YAML.TokenParser.parseYaml input).isOk then wholeOk := wholeOk + 1
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:80] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        let isInd := (c == ':' || c == '?' || c == '-') &&
+          (chars[sP.offset + 1]?.map (fun ch => ch == ' ' || ch == '\n')).getD true
+        let isFlowInd := c == '[' || c == '{' || c == ']' || c == '}' || c == ','
+        if c == '-' && sP.flowLevel == 0 then
+          seqDashes := seqDashes + 1
+          let kd : Int := sP.col
+          let outer := sP.indents.toList.filter fun e => !e.isSequence && 0 ≤ e.column && e.column ≤ kd
+          match outer.foldl (fun acc e => match acc with
+              | none => some e.column
+              | some m => some (max m e.column)) none with
+          | some m =>
+            seqInner := seqInner + 1
+            if m == kd then seqOwn := seqOwn + 1
+            -- the sibling goes right AFTER the whole sequence: before the first later line that
+            -- dedents to `m` or below and is not one of the sequence's own `-` lines at `kd`
+            let pad := String.mk (List.replicate m.toNat ' ')
+            let lines := input.splitOn "\n"
+            let indentOf (l : String) : Int := (l.toList.takeWhile (· == ' ')).length
+            let continues (l : String) : Bool :=
+              l.toList.all (· == ' ') || indentOf l > m ||
+                (indentOf l == kd && (l.toList.dropWhile (· == ' ')).head? == some '-')
+            let after := lines.drop (sP.line + 1)
+            let inside := after.takeWhile continues
+            let rest := after.drop inside.length
+            let probe := String.intercalate "\n"
+              (lines.take (sP.line + 1) ++ inside ++ [pad ++ "zz: 1"] ++ rest)
+            match L4YAML.TokenParser.parseYaml probe with
+            | .ok _ => pure ()
+            | .error _ => seqRejects := seqRejects ++ [s!"{repr probe}@{sP.line}:{sP.col} m={m}"]
+          | none => pure ()
+        let isContent := !isInd && !isFlowInd && c != '#' && c != '%' && c != '\n' && c != ' ' &&
+          !(c == '-' && chars[sP.offset + 1]? == some '-' && chars[sP.offset + 2]? == some '-')
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) =>
+          if (isInd || isContent) && sP.flowLevel == 0 then
+            let k := sP.col
+            let survivors := L4YAML.Proofs.RegisterWitness.markedCols sN
+            let belowK := survivors.filter (· < k)
+            for m in survivors do
+              if m == k then
+                if c == '?' then atMarkQ := atMarkQ + 1
+                else atMarkOther := atMarkOther ++ [s!"{repr input}@{sP.line}:{k} c={c}"]
+            if !belowK.isEmpty then
+              pauses := pauses + 1
+              let indentOf (l : String) : Nat := (l.toList.takeWhile (· == ' ')).length
+              let ind0 := indentOf lines[sP.line]!
+              let opensEntry (l : String) : Bool :=
+                let r := l.toList.dropWhile (· == ' ')
+                match r with
+                | [] => false
+                | c0 :: rest => c0 == '#' ||
+                    ((c0 == '?' || c0 == ':' || c0 == '-') && (rest.head?.map (· == ' ')).getD true)
+              let mut last := sP.line
+              for i in [sP.line + 1 : lines.size] do
+                let l := lines[i]!
+                let blank := l.toList.all (· == ' ')
+                if i == last + 1 && (blank || indentOf l > ind0 ||
+                    (indentOf l == ind0 && !opensEntry l)) then last := i
+              let pre := "\n".intercalate (lines.toList.take (last + 1))
+              let frames := sP.indents.toList.map L4YAML.Proofs.IndentStackCover.FrameLevel.ofEntry
+              for m in belowK do
+                checks := checks + 1
+                if !(frames.contains (L4YAML.Proofs.IndentStackCover.FrameLevel.map m)) then
+                  unframed := unframed ++ [s!"{repr input}@{sP.line}:{k} m={m} frames={repr frames}"]
+                let cont := pre ++ "\n" ++ String.ofList (List.replicate m ' ') ++ ": v\n"
+                match L4YAML.TokenParser.parseYaml cont with
+                | .ok _ => pure ()
+                | .error _ => rejects := rejects ++ [s!"{repr input}@{sP.line}:{k} c={c} m={m}"]
+          s := sN
+        | _ => break
+      | _ => break
+  IO.println s!"P123 dedent-survivor pauses={pauses} checks={checks} unframed={unframed} rejects={rejects} atMarkQ={atMarkQ} atMarkOther={atMarkOther} wholeOk={wholeOk}/{inputs.length} seqDashes={seqDashes} seqInner={seqInner} seqOwn={seqOwn} seqRejects={seqRejects}"
+  check state s!"P123 (ω-pay-births) (d) item (3) the dedent survivors' chain (item 504): {pauses} dedent pauses with a survivor below the landing, {checks} survivors checked, {unframed.length} not a map frame, {rejects.length} `: v` rejects, {atMarkQ} at-mark survivors on `?` landings, {atMarkOther.length} on other landings, {wholeOk} / {inputs.length} inputs accepted whole, {seqDashes} block `-` pauses of which {seqInner} inside a mapping ({seqOwn} at the mapping's own column) with {seqRejects.length} sibling rejects after the sequence"
+    -- pinned to the first run: P1 predicted ≥ 15 dedent pauses with a survivor below the landing
+    -- and 0 `: v` rejects (197 / 214 / 0 — HELD); P2 predicted every survivor a `map m` level of
+    -- the dispatch state's stack (0 unframed — HELD); P3 predicted at-mark survivors only on `?`
+    -- landings (43 / 0 — HELD).  Run 0 read the frames off `framesAtLine`, which is `[]` on a
+    -- line no token ends on (`?⏎  a⏎  b`'s plain scalar) — a probe artefact, not a hole.
+    (pauses == 197 && checks == 214 && unframed.isEmpty && rejects.isEmpty && atMarkQ == 43 &&
+      atMarkOther.isEmpty && wholeOk == 37 &&
+      seqDashes == 30 && seqInner == 27 && seqOwn == 8 && seqRejects.isEmpty)
+
 def testSeqTopRefusedArm (state : IO.Ref TestCollector) : IO Unit := do
   -- P89 (item 438, (χ-seqtop-refused)): the negative arm `ExplicitValueRefused s ∨ SeqTopKey s`
   -- proposed for `content_dispatch_routed`'s `h_resF` premise must NOT be a tautology over the
@@ -17538,6 +17667,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testPackSurvivorsChain state
   testProducersPremiseChain state
   testFlowKeyChain state
+  testDedentSurvivorChain state
   testPackMappingLaneTail state
   testPackDedentSlotGuard state
   testPackAltMarks state
