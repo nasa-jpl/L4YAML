@@ -1,0 +1,11 @@
+1	build	594 jobs
+1	serialization-gate	45 observed profiles
+2	lean-suites	Verified: 4521/4521
+2	c-build	ok
+2	rust-build	ok
+2	python-ffi	78 passed
+2	python-package	128 passed
+2	cross-language	5/5 presets identical
+3	reports	ok
+3	collect-stats	ok
+3	hygiene-gates	env clean: 9145 theorems
