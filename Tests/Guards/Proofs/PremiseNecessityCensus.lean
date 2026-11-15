@@ -375,6 +375,7 @@ declarations' own binders and not by a rescoring of an existing one.
 -- 2026-11-07 (item 448, (α) stage A): constants 1742 → 1744, READ +3, RETURN +1 — `ResumeFrames.strict` and its `match` auxiliary.
 -- 2026-11-09 (item 469): `GapRead`/`FlowArm`/`FlowStackKBody`/`FlowStackKA` and `accum_step_flow_trace` — 20 constants, 16 decls; FIELD/READ/RELAY move with the arm fields.
 -- 2026-11-10 (item 469, review round 1): constants 1764 → 1766, decls 1395 → 1397, eta 506 → 508, READ 1491 → 1488, RELAY 2756 → 2760 — `FlowStackKBody`/`KA`/`toK`/`ofPack`/`ofK` out, `gapTail` (+2 lemmas), `head?_dropWhile_not`, `trailingPropertyRun_eq_nil_of_sync`, `FlowStackK.withArm` in; the arm's `∀ m` leads relayed at the sites (as HypothesisReaderCensus).
+-- 2026-11-14 (item 492's rebase onto item 498): the births' two lemmas over item 498's tree (as `HypothesisReaderCensus`).
 def expectedModuleTallyP : String :=
   -- 2026-10-24 (item 350): constants 1424 → 1430, decls 1132 → 1137, READ 1207 → 1209, RELAY 2233 → 2237,
   -- RETURN 139 → 140 — `NotQuestionPark` and its three lemmas; `explFrameValueLine`'s split alternative.
@@ -394,7 +395,8 @@ def expectedModuleTallyP : String :=
 -- 2026-11-10 (item 473, option (A)): constants 1766 → 1767 / decls +1 (`ResumeFrames.bound`), FIELD 203 → 201, READ / RELAY /
 -- eta as counted — the positional `ResumeWidths` is read by projections, not `↔` fields.
   -- 2026-10-29 (item 394): `FlowBaseRoutes.valueF` (+3 constants: the field, its projection, the structure's new arity), five more premise reads at the births and closes.
-  "constants=1739 decls=1372 eta=547 FIELD=201 READ=1474 RELAY=2708 RETURN=171 UNUSED=26"
+  -- 2026-11-14 (item 499): KeyArm in StreamAccum — constants +10, decls +9, eta +60, READ +6, RELAY +8 (composed over item 498's base).
+  "constants=1756 decls=1387 eta=607 FIELD=201 READ=1487 RELAY=2717 RETURN=173 UNUSED=26"
 
 -- Item 287: `accum_block_on_closeThenBlock`'s `h_vslot`, a READ one, left the
 -- `_ ∨ True` population — its sibling's move, under this peel.  Item 288: and
@@ -516,8 +518,9 @@ def expectedNineResolved : List String :=
     "accum_block_on_pendingContent#33 (h_seqF168) => RETURN@L4YAML.Proofs.StreamAccum.accum_block_on_pendingContent#33",
     "accum_content_on_pendingMapValue_indented#14 (h_ncol_old) => FIELD@L4YAML.Proofs.StreamAccum.PendingNode.pendingProps#19",
     "colon_open_map#24 (h_cov_in) => FIELD@And.intro#2",
-    "flowKeyRoute_of_root#24 (h_tail143) => RETURN@L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root#24",  -- item 311: `{g}` precedes it
+    "flowKeyRoute_of_root#24 (h_tail143) => RETURN@L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root#24",
     "indicator_open_map#26 (h_ref_land) => ELIM@L4YAML.Proofs.StreamAccum.rootMapRouteF_or_refused#7>L4YAML.Proofs.StreamAccum.rootMapRouteF_or_refused.match_1_1#4, ELIM@L4YAML.Proofs.StreamAccum.rootMapRoute_or_refused#7>L4YAML.Proofs.StreamAccum.rootMapRoute_or_refused.match_1_1#4",
+    "indicator_open_map#32 (h_explUp_chainD) => ELIM@L4YAML.Proofs.StreamAccum.colon_open_map#28>L4YAML.Proofs.StreamAccum.colon_open_map.match_1_5#6, ELIM@L4YAML.Proofs.StreamAccum.question_open_map#29>L4YAML.Proofs.StreamAccum.question_open_map.match_1_8#6, ELIM@L4YAML.Proofs.StreamAccum.question_open_map.match_1_10#7>Or.casesOn#3",
     "question_open_map#23 (h_cov_in) => FIELD@And.intro#2",
     "question_open_map#24 (h_cov_nil) => FIELD@And.intro#2" ]
 
@@ -532,7 +535,7 @@ run_cmd do
   let nine : List (Name × Nat) :=
     [ (``accum_block_on_pendingBlock, 29), (``accum_block_on_pendingBlockContent, 34),
       (``accum_block_on_pendingContent, 33), (``accum_content_on_pendingMapValue_indented, 14),
-      (``colon_open_map, 24), (``flowKeyRoute_of_root, 24), (``indicator_open_map, 26),
+      (``colon_open_map, 24), (``flowKeyRoute_of_root, 24), (``indicator_open_map, 26), (``indicator_open_map, 32),
       (``question_open_map, 23), (``question_open_map, 24) ]
   if nine.length != expectedCoreTerminal.length then
     throwError "item 225's shortlist is no longer nine rows"

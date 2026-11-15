@@ -1,0 +1,167 @@
+{
+ "item": 496,
+ "tag": "PRICE-496-D-COMPOSITE",
+ "rev": "8e06fe35",
+ "target": "L4YAML",
+ "msgWidth": 110,
+ "rounds": 6,
+ "report": "bodies",
+ "log": "scratch/price496_d.log",
+ "files": [
+  {
+   "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+   "patches": [
+    {
+     "name": "L1226.ImplicitKeyPack.chain",
+     "line": 1167,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc) ∧"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w)) ∧"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L1906.PropsKeyPack.chain",
+     "line": 1817,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc) ∧"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w)) ∧"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L34640.entryKeyPack.h_nodeV",
+     "line": 34277,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L34660.h_cp_chain",
+     "line": 34297,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)) ∨ True)"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))) ∨ True)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L34681.h_cp_chain",
+     "line": 34318,
+     "old": [
+      "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)))"
+     ],
+     "new": [
+      "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L35351.entryPropsKeyPack.h_nodeV",
+     "line": 34988,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L35364.h_cp_chain",
+     "line": 35001,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)) ∨ True)"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))) ∨ True)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L35452.h_cp_chain",
+     "line": 35089,
+     "old": [
+      "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)))"
+     ],
+     "new": [
+      "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L35937.content_dispatch_routed.h_chainUp",
+     "line": 35574,
+     "old": [
+      "    (h_alt : PackAlt s_prep)"
+     ],
+     "new": [
+      "    (h_alt : PackAlt s_prep)",
+      "    (h_chainUp : ∃ ns : List Nat, RegisterWitness.MarkedColsIn s_prep ns ∧ ∀ nv ∈ ns,",
+      "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_prep sp_i → GLit ':' sp_i sp_c →",
+      "      ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →",
+      "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L24301.colon_open_map.h_explUp_chainD",
+     "line": 24301,
+     "old": [
+      "    (h_explUp_chainD : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,"
+     ],
+     "new": [
+      "    (h_explUp_chainD : (∃ ns : List Nat, RegisterWitness.MarkedColsIn s' ns ∧ ∀ nv ∈ ns,"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L24612.question_open_map.h_explUp_chainD",
+     "line": 24612,
+     "old": [
+      "    (h_explUp_chainD : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,"
+     ],
+     "new": [
+      "    (h_explUp_chainD : (∃ ns : List Nat, RegisterWitness.MarkedColsIn s' ns ∧ ∀ nv ∈ ns,"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L25541.indicator_open_map.h_explUp_chainD",
+     "line": 25541,
+     "old": [
+      "    (h_explUp_chainD : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,"
+     ],
+     "new": [
+      "    (h_explUp_chainD : (∃ ns : List Nat, RegisterWitness.MarkedColsIn s' ns ∧ ∀ nv ∈ ns,"
+     ],
+     "count": 1
+    },
+    {
+     "name": "RES_LAND_NO_DECLINE",
+     "old": [
+      "    (h_res_land : (∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width ≤ k) ∧",
+      "      ∀ sp_end : SurfPos, SCompactMapTail k sp_land sp_end →",
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ True)"
+     ],
+     "new": [
+      "    (h_res_land : (∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width ≤ k) ∧",
+      "      ∀ sp_end : SurfPos, SCompactMapTail k sp_land sp_end →",
+      "        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ False)"
+     ],
+     "count": 3
+    }
+   ]
+  }
+ ]
+}

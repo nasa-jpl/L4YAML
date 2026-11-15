@@ -248,7 +248,8 @@ def readDecl (prods : Std.HashSet Name) (n : Name) : MetaM R := do
 -- 2026-11-13 (item 489, the landing agreement): prodTyped 173 → 174 — `LastNonWhite` (ContentBridge §7, item 488's
 -- `SurfPos → SurfPos → Prop` def) enters the alphabet now that §7–§9 sit in a `public section`; item 488 shipped
 -- them module-private, so no census read them (a correction to item 488's "no pin moved").
-def expectedAlphabet : String := "prodTyped=174 prodSurf=96 prodSpec=58"
+-- 2026-11-14 (item 499): prodTyped 174 → 175 — KeyArm, the ?/: flow arms' typed production (StreamAccum).
+def expectedAlphabet : String := "prodTyped=175 prodSurf=96 prodSpec=58"
 -- 133 → 137 on 2026-10-23: the four narrowed relations of `Proofs.Production.Acceptance.Quoted`
 -- (`DQCharOk`, `SQCharOk`, `SCDoubleQuotedOk`, `SCSingleQuotedOk`); not under `Surface`, no rule tag.
 

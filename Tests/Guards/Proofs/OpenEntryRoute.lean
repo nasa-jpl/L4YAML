@@ -435,51 +435,51 @@ def expectedExhibits : List String :=
    "slotMapRoute_closedFirst ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ⊢ SBlockIndented.empty(prem:SSLComments) paths=1 CLOSED-FIRST",
    "slotMapRouteC ⟶ (fact) ⊢ SBlockIndented.node(SBlockNode.blockMap(GOpt.none,prem:SSLComments,SBlockMapEntries.single(prem:SIndent,prem:SBlockMapEntry))) paths=1"]
 -- 2026-10-29 (item 388): the mapping park's `h_close` / `h_closeF` rows read `SBlockNode(_+1,blockOut)` (the grammar's `[187]` context).
+-- 2026-11-14 (item 492, option (A) pay item 2): the births' routes hop through `ResumeFrames.one_of_route`
+-- (`compactMapTail_append` beneath) before the F route — same 13 pairs, one hop more.
 def expectedAPlain : List String :=
-  [ "question_open_map:pendingMapValue.h_close [SBlockNode(_+1,blockOut) ⇒ Stream] T1 hops=rootMapRoute,rootMapRoute_or_refused",
-    "question_open_map:pendingMapValue.h_ivl [[col(_)=_+1] SBlockIndented(_,blockOut) ⇒ Stream] T1 hops=rootMapRoute,rootMapRoute_or_refused",
-    "question_open_map:pendingMapValue.h_vslot [[col(_)=_+1] SBlockIndented(_,blockOut) ⇒ Stream] T1 hops=rootMapRoute,rootMapRoute_or_refused",
-    "question_open_map:pendingMapValue.h_closeF [SBlockNode(_+1,blockOut) ⇒ Resume(map(_)::_)▹Stream] T2 hops=rootMapRouteF,rootMapRouteF_or_refused",
-    "question_open_map:pendingMapValue.h_frames [SSLComments ⇒ Resume(_)▹Stream] T2 hops=rootMapRouteF,rootMapRouteF_or_refused",
-    "colon_open_map:pendingMapValue.h_close [SBlockNode(_+1,blockOut) ⇒ Stream] T1 hops=rootMapRoute,rootMapRoute_or_refused",
-    "colon_open_map:pendingMapValue.h_closeF [SBlockNode(_+1,blockOut) ⇒ Resume(map(_)::_)▹Stream] T2 hops=rootMapRouteF,rootMapRouteF_or_refused",
-    "colon_open_map:pendingMapValue.h_frames [SSLComments ⇒ Resume(_)▹Stream] T2 hops=rootMapRouteF,rootMapRouteF_or_refused",
-    "content_dispatch_after_close→content_dispatch_routed.h_route [SBlockNode(0,blockIn) ⇒ Stream] N hops=bareNodeRoute",
-   -- Item 371: the restated value-line pack (`⇒ Resume(map(_)::[])▹Stream`, `ResumeFrames.one`'s level)
-   "question_open_map:pendingMapValue.h_expl [SBlockMapEntry(_) > SCompactMapTail(_) ⇒ Stream | SBlockMapEntry(_) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream] T2 hops=rootMapRouteF,rootMapRouteF_or_refused",
-   "question_open_map:pendingMapValue.h_kslot [SBlockNode(_+1,blockIn) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream] T2 hops=rootMapRouteF,rootMapRouteF_or_refused,one",
-   "question_open_map:pendingMapValue.h_closeFV [SBlockNode(_+1,blockIn) ⇒ Key(_)▹ExplValueLine(_)] T2 hops=rootMapRouteF,rootMapRouteF_or_refused,one",
-   "question_open_map:pendingMapValue.h_framesV [SSLComments ⇒ Key(_)▹ExplValueLine(_)] T2 hops=rootMapRouteF,rootMapRouteF_or_refused,one"]
+  ["question_open_map:pendingMapValue.h_close [SBlockNode(_+1,blockOut) ⇒ Stream] T1 hops=rootMapRoute,rootMapRoute_or_refused",
+   "question_open_map:pendingMapValue.h_ivl [[col(_)=_+1] SBlockIndented(_,blockOut) ⇒ Stream] T1 hops=rootMapRoute,rootMapRoute_or_refused",
+   "question_open_map:pendingMapValue.h_expl [SBlockMapEntry(_) > SCompactMapTail(_) ⇒ Stream | SBlockMapEntry(_) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream] T2 hops=rootMapRouteF,rootMapRouteF_or_refused,one,one_of_route",
+   "question_open_map:pendingMapValue.h_vslot [[col(_)=_+1] SBlockIndented(_,blockOut) ⇒ Stream] T1 hops=rootMapRoute,rootMapRoute_or_refused",
+   "question_open_map:pendingMapValue.h_kslot [SBlockNode(_+1,blockIn) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream] T2 hops=rootMapRouteF,rootMapRouteF_or_refused,one,one_of_route",
+   "question_open_map:pendingMapValue.h_closeF [SBlockNode(_+1,blockOut) ⇒ Resume(map(_)::_)▹Stream] T2 hops=rootMapRouteF,rootMapRouteF_or_refused,one,one_of_route",
+   "question_open_map:pendingMapValue.h_frames [SSLComments ⇒ Resume(_)▹Stream] T2 hops=rootMapRouteF,rootMapRouteF_or_refused,one,one_of_route",
+   "question_open_map:pendingMapValue.h_closeFV [SBlockNode(_+1,blockIn) ⇒ Key(_)▹ExplValueLine(_)] T2 hops=rootMapRouteF,rootMapRouteF_or_refused,one,one_of_route",
+   "question_open_map:pendingMapValue.h_framesV [SSLComments ⇒ Key(_)▹ExplValueLine(_)] T2 hops=rootMapRouteF,rootMapRouteF_or_refused,one,one_of_route",
+   "colon_open_map:pendingMapValue.h_close [SBlockNode(_+1,blockOut) ⇒ Stream] T1 hops=rootMapRoute,rootMapRoute_or_refused",
+   "colon_open_map:pendingMapValue.h_closeF [SBlockNode(_+1,blockOut) ⇒ Resume(map(_)::_)▹Stream] T2 hops=rootMapRouteF,rootMapRouteF_or_refused,one,one_of_route",
+   "colon_open_map:pendingMapValue.h_frames [SSLComments ⇒ Resume(_)▹Stream] T2 hops=rootMapRouteF,rootMapRouteF_or_refused,one,one_of_route",
+   "content_dispatch_after_close→content_dispatch_routed.h_route [SBlockNode(0,blockIn) ⇒ Stream] N hops=bareNodeRoute"]
 -- 2026-10-29 (item 388): the two mapping-park pairs (T1/T2) open on `SBlockNode(_+1,blockOut)`.
 -- 2026-11-10 (item 473, option (A)): `ResumeFrames.level`'s bound reads `≤` — the pairs end `level[var:∀→le,S]`.
+-- 2026-11-14 (item 492, option (A) pay item 2): `expectedAPairs` re-read — the births' routes hop through `ResumeFrames.one_of_route`.
 def expectedAPairs : List String :=
-  [ "SBlockNode(0,blockIn) ⇒ Stream ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ⟵ N",
-    "SBlockNode(_+1,blockOut) ⇒ Resume(map(_)::_)▹Stream ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[var:∀→le,S] ⟵ T2",
-    "SBlockNode(_+1,blockOut) ⇒ Stream ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ⟵ T1",
-    "SSLComments ⇒ Resume(_)▹Stream ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[var:∀→le,S] ⟵ T2",
-    "[col(_)=_+1] SBlockIndented(_,blockOut) ⇒ Stream ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ⟵ T1",
-   -- Item 371: the restated value-line pack (`⇒ Resume(map(_)::[])▹Stream`, `ResumeFrames.one`'s level)
-   "SBlockMapEntry(_) > SCompactMapTail(_) ⇒ Stream ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ⟵ T2",
-   "SBlockNode(_+1,blockIn) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ⟵ T2",
-   "SBlockNode(_+1,blockIn) ⇒ Key(_)▹ExplValueLine(_) ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ▹ KeyFrames.bottom[S] ⟵ T2",
-   "SSLComments ⇒ Key(_)▹ExplValueLine(_) ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ▹ KeyFrames.bottom[S] ⟵ T2",
-   "SBlockMapEntry(_) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ⟵ T2"]
+  ["SBlockMapEntry(_) > SCompactMapTail(_) ⇒ Stream ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ⟵ T2",
+   "SBlockMapEntry(_) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ⟵ T2",
+   "SBlockNode(0,blockIn) ⇒ Stream ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ⟵ N",
+   "SBlockNode(_+1,blockIn) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ⟵ T2",
+   "SBlockNode(_+1,blockIn) ⇒ Key(_)▹ExplValueLine(_) ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ▹ KeyFrames.bottom[S] ⟵ T2",
+   "SBlockNode(_+1,blockOut) ⇒ Resume(map(_)::_)▹Stream ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ▹ ResumeFrames.level[var:∀→le,S] ⟵ T2",
+   "SBlockNode(_+1,blockOut) ⇒ Stream ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ⟵ T1",
+   "SSLComments ⇒ Key(_)▹ExplValueLine(_) ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ▹ KeyFrames.bottom[S] ⟵ T2",
+   "SSLComments ⇒ Resume(_)▹Stream ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ▹ ResumeFrames.level[var:∀→le,S] ⟵ T2",
+   "[col(_)=_+1] SBlockIndented(_,blockOut) ⇒ Stream ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ⟵ T1"]
+-- 2026-11-14 (item 492, option (A) pay item 2): `expectedAvail` re-read — the births' routes hop through `ResumeFrames.one_of_route`.
 def expectedAvail : List String :=
-  [ "accum_block_on_closeThenBlock: behind=[h_vslot:blockOut] ahead=[h_vpack:blockOut]",
-    -- 2026-10-26 (item 369): `h_closeF_old:blockIn` joins the binders behind the landing — `pendingBlock.h_closeF`
-    -- threaded so the `:`/`?` landing pays `indicator_open_map`'s `h_res_land` off the park's frames.
-    "accum_block_on_pendingBlock: behind=[h_close_entry_old:blockIn, h_kslot:blockIn/blockOut, h_seqF_old:blockIn, h_kslotUp:blockIn/blockOut, h_closeFV_old:blockIn, h_closeF_old:blockIn] ahead=[]",
-    "accum_block_on_pendingBlockContent: behind=[] ahead=[h_kslot:blockOut, h_kslotUp:blockOut]",
-    "accum_block_on_pendingContent: behind=[] ahead=[h_vpack:blockOut]",
-    "accum_content_on_pendingBlock_indented: behind=[h_close_old:blockIn, h_close_entry_old:blockIn, h_kslot_old:blockIn/blockOut, h_closeF_old:blockIn, h_seqF_old:blockIn, h_kslotUp_old:blockIn/blockOut, h_closeFV_old:blockIn] ahead=[]",
-    "accum_content_on_pendingMapValue_indented: behind=[h_vslot:blockOut, h_ivl_mv:blockOut] ahead=[h_expl:blockOut, h_kslot:blockOut]",
-    "colon_open_map_explicit: behind=[] ahead=[hvp:blockOut]",
-    "compact_open_map: behind=[h_close_old:var, h_chainUp:var/blockOut] ahead=[]",
-    "colon_open_map_implicit: behind=[] ahead=[h_kslotD:blockOut]",
-    "colon_open_map_props: behind=[] ahead=[h_kslotD:blockOut]",
-    "indicator_open_map: behind=[] ahead=[h_explUp_chain:blockOut, h_explUp_chainD:blockOut]",
-    "question_open_map: behind=[] ahead=[h_explUp_chain:blockOut, h_explUp_chainD:blockOut]",
-    "colon_open_map: behind=[] ahead=[h_explUp_chainD:blockOut]"]
+  ["accum_block_on_closeThenBlock: behind=[h_vslot:blockOut] ahead=[h_vpack:blockOut]",
+   "accum_block_on_pendingBlock: behind=[h_close_entry_old:blockIn, h_kslot:blockIn/blockOut, h_seqF_old:blockIn, h_kslotUp:blockIn/blockOut, h_closeFV_old:blockIn, h_closeF_old:blockIn] ahead=[]",
+   "accum_block_on_pendingBlockContent: behind=[] ahead=[h_kslot:blockOut, h_kslotUp:blockOut]",
+   "accum_block_on_pendingContent: behind=[] ahead=[h_vpack:blockOut]",
+   "accum_content_on_pendingBlock_indented: behind=[h_close_old:blockIn, h_close_entry_old:blockIn, h_kslot_old:blockIn/blockOut, h_closeF_old:blockIn, h_seqF_old:blockIn, h_kslotUp_old:blockIn/blockOut, h_closeFV_old:blockIn] ahead=[]",
+   "accum_content_on_pendingMapValue_indented: behind=[h_vslot:blockOut, h_ivl_mv:blockOut] ahead=[h_expl:blockOut, h_kslot:blockOut]",
+   "colon_open_map: behind=[] ahead=[h_explUp_chainD:blockOut]",
+   "colon_open_map_explicit: behind=[] ahead=[hvp:blockOut]",
+   "colon_open_map_implicit: behind=[] ahead=[h_kslotD:blockOut]",
+   "colon_open_map_props: behind=[] ahead=[h_kslotD:blockOut]",
+   "compact_open_map: behind=[h_close_old:var, h_chainUp:var/blockOut] ahead=[]",
+   "indicator_open_map: behind=[] ahead=[h_explUp_chain:blockOut, h_explUp_chainD:blockOut]",
+   "question_open_map: behind=[] ahead=[h_explUp_chain:blockOut, h_explUp_chainD:blockOut]"]
 def expectedFunnel : List String :=
   ["accum_block_on_closeThenBlock → indicator_open_map: h_explUp_chain paid:slotChainMap",
    "accum_block_on_noPending → indicator_open_map: h_explUp_chain punted",

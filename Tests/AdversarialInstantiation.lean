@@ -5869,9 +5869,84 @@ open L4YAML.Surface in
 example : SCompactMapTail 0 ⟨['?', '\n', '?', '\n', '?', '\n'], 0⟩ ⟨[], 0⟩ :=
   compactMapTail_append_read tailQ3_2_1 (.nil 0 ⟨[], 0⟩)
 
+/-! Rule 2 for pay item 2 (item 492, before the statement): the pay's SHAPE at a `[]` birth.  Every
+F route today ends `ResumeFrames P [] sp_e`; the pay keeps the route and wraps it — the one frame is
+`ResumeFrames.one` over the APPENDED tail, and the bottom is the route's own `close`.  Predictions:
+the composition elaborates at width 0 and at width 2 (P1); `resumeAt` at the frame's own width leaves
+`[]` and continues through one more compact entry to the route's bottom (P2); the cover of the new
+list costs `Covered.cons` / `Floor.cons` and nothing else (P3); a route at the WRONG width does not
+compose (P4, `fail_if_success`). -/
+section BirthOneRead
+open L4YAML.Surface L4YAML.Proofs.IndentStackCover L4YAML.Proofs.StreamAccum
+
+/-- The pay at a birth, stated once on the test side (the library form is `ResumeFrames.one`
+    applied to the appended tail; `compactMapTail_append_read` is the `SCompactMapTail.append` of the pay). -/
+private def birthOne {P : SurfPos → Prop} {k : Nat} {sp_key : SurfPos}
+    (route : ∀ sp_v, SBlockMapEntry k sp_key sp_v →
+      ∀ sp_e, SCompactMapTail k sp_v sp_e → ResumeFrames P [] sp_e) :
+    ∀ sp_v, SBlockMapEntry k sp_key sp_v →
+      ∀ sp_e, SCompactMapTail k sp_v sp_e → ResumeFrames P [FrameLevel.map k] sp_e :=
+  fun sp_v he sp_e t =>
+    ResumeFrames.one fun sp_end t2 => (route sp_v he sp_end (compactMapTail_append_read t t2)).close
+
+-- P1: width 0 and width 2
+example {P : SurfPos → Prop} {sp_key sp_v sp_e : SurfPos}
+    (route : ∀ sp_v, SBlockMapEntry 0 sp_key sp_v →
+      ∀ sp_e, SCompactMapTail 0 sp_v sp_e → ResumeFrames P [] sp_e)
+    (he : SBlockMapEntry 0 sp_key sp_v) (t : SCompactMapTail 0 sp_v sp_e) :
+    ResumeFrames P [FrameLevel.map 0] sp_e := birthOne route sp_v he sp_e t
+
+example {P : SurfPos → Prop} {sp_key sp_v sp_e : SurfPos}
+    (route : ∀ sp_v, SBlockMapEntry 2 sp_key sp_v →
+      ∀ sp_e, SCompactMapTail 2 sp_v sp_e → ResumeFrames P [] sp_e)
+    (he : SBlockMapEntry 2 sp_key sp_v) (t : SCompactMapTail 2 sp_v sp_e) :
+    ResumeFrames P [FrameLevel.map 2] sp_e := birthOne route sp_v he sp_e t
+
+-- P2: the frame's own width pops to `[]`, and the continuation reaches the route's bottom through
+-- one more compact entry (`a: 1⏎b: 2`'s `b: 2` after the birth at `a`)
+example {P : SurfPos → Prop} {sp_key sp_v sp_e sp_i sp_v2 : SurfPos}
+    (route : ∀ sp_v, SBlockMapEntry 0 sp_key sp_v →
+      ∀ sp_e, SCompactMapTail 0 sp_v sp_e → ResumeFrames P [] sp_e)
+    (he : SBlockMapEntry 0 sp_key sp_v) (t : SCompactMapTail 0 sp_v sp_e)
+    (hi : SIndent 0 sp_e sp_i) (he2 : SBlockMapEntry 0 sp_i sp_v2) :
+    ∃ ks' : List FrameLevel, ks' = [] ∧ P sp_v2 :=
+  match (birthOne route sp_v he sp_e t).resumeAt (List.mem_singleton.mpr rfl) with
+  | ⟨ks', hw, cont⟩ =>
+      ⟨ks', resumeWidths_nil_of_singleton hw,
+        (cont sp_v2 (SCompactMapTail.cons 0 sp_e sp_i sp_v2 sp_v2 hi he2 (SCompactMapTail.nil 0 sp_v2))).close⟩
+
+-- P3: the cover of `[map k, map k]` from the cover of `[map k]` — the openers' 10 goals
+example {lo k : Nat} {s : ScannerState} (h : Covered lo [FrameLevel.map k] s) :
+    Covered lo [FrameLevel.map k, FrameLevel.map k] s := h.cons k
+example {lo k : Nat} (h : Floor lo k [FrameLevel.map k]) :
+    Floor lo k [FrameLevel.map k, FrameLevel.map k] := h.cons h.1
+example {lo k : Nat} {s : ScannerState} (h : Covered lo [FrameLevel.map k, FrameLevel.map k] s) :
+    Covered lo [FrameLevel.map k] s := h.dedup_head
+-- the `h_cov_in.imp` shape at the openers: `Floor k k [map k] ∧ Covered k [map k] s` lifts to the pair list
+example {k : Nat} {s : ScannerState} (h : Covered k [FrameLevel.map k] s) :
+    ∃ lo, Floor lo k [FrameLevel.map k, FrameLevel.map k] ∧ Covered lo [FrameLevel.map k, FrameLevel.map k] s :=
+  ⟨k, ⟨Nat.le_refl k, fun _ hm => by
+      rcases List.mem_cons.mp hm with rfl | hm'
+      · exact Nat.le_refl k
+      · rcases List.mem_cons.mp hm' with rfl | hm''
+        · exact Nat.le_refl k
+        · exact absurd hm'' List.not_mem_nil⟩, h.cons k⟩
+
+-- P4: a route at the wrong width does not compose into the frame at `k`
+example {P : SurfPos → Prop} {sp_key sp_v sp_e : SurfPos}
+    (route : ∀ sp_v, SBlockMapEntry 1 sp_key sp_v →
+      ∀ sp_e, SCompactMapTail 1 sp_v sp_e → ResumeFrames P [] sp_e)
+    (he : SBlockMapEntry 1 sp_key sp_v) (t : SCompactMapTail 1 sp_v sp_e) : True := by
+  fail_if_success
+    have : ResumeFrames P [FrameLevel.map 0] sp_e := birthOne route sp_v he sp_e t
+  trivial
+
+end BirthOneRead
+
 open L4YAML.Proofs.IndentStackCover in
 /-- The frame stack of the LAST scanner state on `line` (0-based) while scanning `input` — the
     stack at a named park, not the deepest stack of the scan; `[]` if the scan never stands there. -/
+
 def framesAtLine (input : String) (line : Nat) (fuel : Nat := 64) : List FrameLevel := Id.run do
   let mut s := ScannerState.mk' input
   let mut found : List FrameLevel := []
@@ -5915,7 +5990,21 @@ def testRootFrameSupplyRead (state : IO.Ref TestCollector) : IO Unit := do
       -- level at that column; no `seq n` stands over a `map n` (prediction: `[map 0, map 0, map 2]`
       -- and `[map 0, seq 0, map 2]`)
       ("a:⏎  [b]: 1⏎  c: 2 — the flow key's line", "a:\n  [b]: 1\n  c: 2\n", 1, [FrameLevel.map 0, FrameLevel.map 0, FrameLevel.map 2]),
-      ("- [a]: 1⏎  b: 2 — the flow key's line under `-`", "- [a]: 1\n  b: 2\n", 0, [FrameLevel.map 0, FrameLevel.seq 0, FrameLevel.map 2]) ]
+      ("- [a]: 1⏎  b: 2 — the flow key's line under `-`", "- [a]: 1\n  b: 2\n", 0, [FrameLevel.map 0, FrameLevel.seq 0, FrameLevel.map 2]),
+      -- item 492 (pay item 2): the fresh-document roots `content_dispatch_routed` births into — after
+      -- `---`, a directive, a document-end marker, a comment, under properties (prediction: the key's
+      -- line shows the root level `[map 0, map 0]` in every arm, as the plain `a: 1` does)
+      ("---⏎a: 1 — the key's line after `---`", "---\na: 1\n", 1, [FrameLevel.map 0, FrameLevel.map 0]),
+      ("%YAML 1.2⏎---⏎a: 1 — the key's line after a directive", "%YAML 1.2\n---\na: 1\n", 2, [FrameLevel.map 0, FrameLevel.map 0]),
+      ("a: 1⏎...⏎b: 2 — the key's line after `...`", "a: 1\n...\nb: 2\n", 2, [FrameLevel.map 0, FrameLevel.map 0]),
+      ("# c⏎a: 1 — the key's line after a comment", "# c\na: 1\n", 1, [FrameLevel.map 0, FrameLevel.map 0]),
+      ("&p a: 1 — a propertied root key", "&p a: 1\n", 0, [FrameLevel.map 0, FrameLevel.map 0]),
+      ("!t a: 1 — a tagged root key", "!t a: 1\n", 0, [FrameLevel.map 0, FrameLevel.map 0]),
+      -- REFUTED as predicted `[map 0, map 0]`: the scanner REFUSES `--- a: 1` (`contentOnDocumentStartLine`
+      -- — a key on the `---` line is no simple-key position, `--- a` alone is a bare scalar document),
+      -- so no mapping level is ever pushed and the reader stops at the sentinel; kept as read.  The
+      -- marker arm's birth is at the NEXT line (`---⏎a: 1`, the row above), which held.
+      ("--- a: 1 — the key on the `---` line itself (REFUTED: refused, no level pushed)", "--- a: 1\n", 0, [FrameLevel.map 0]) ]
   for (label, input, line, expected) in atLine do
     let got := framesAtLine input line
     checkM state s!"rootFrameSupply/at-line {label}: stack [{frameLabel expected}]" (got == expected)
@@ -5969,6 +6058,59 @@ def testRootFrameSupplyRead (state : IO.Ref TestCollector) : IO Unit := do
     let gotB := broadDocs src
     checkM state s!"rootFrameSupply/walk {label}: explicit-only {eExpl}, broad {eBroad}" (gotE == eExpl && gotB == eBroad)
       s!"got {gotE} / {gotB}"
+
+open L4YAML.Proofs.IndentStackCover in
+/-- Priority 120 — Row 19 step (3), READ before the pay (item 494): the openers' `h_res_land`
+    declines (`scripts/flips/item494_res_land_price.json`, 13 sites / 4 producers) placed on the
+    scanner.  Each class's witness: the stack at the landing's own line (`framesAtLine`) and the
+    parser's verdict.  A class whose landing line shows `map k` has the frame on the scanner side —
+    the decline is payable from the `[map k]` frame once the park's `ks` carries it; a class whose
+    witness the parser refuses is payable by a refusal; neither is STARVED. -/
+def testResLandDeclinesRead (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 120: Row 19 step (3) read — the openers' h_res_land declines on the scanner (noPending, the no-pop sibling, the sequence-top `:`, the popped dedents, the `-` sibling under h_docRoute)"
+  -- (label, input, line, predicted stack at that line)
+  let atLine : List (String × String × Nat × List FrameLevel) :=
+    [ ("C1 noPending — a: 1, the first key's line", "a: 1\n", 0, [FrameLevel.map 0, FrameLevel.map 0]),
+      ("C3 no-pop — a:⏎- b⏎c: 1, the zero-indented `-` line", "a:\n- b\nc: 1\n", 1, [FrameLevel.map 0, FrameLevel.map 0]),
+      ("C3 no-pop — a:⏎- b⏎c: 1, the sibling's line", "a:\n- b\nc: 1\n", 2, [FrameLevel.map 0, FrameLevel.map 0]),
+      ("C9 sequence-top `:` — ? - a⏎: b, the `?` line", "? - a\n: b\n", 0, [FrameLevel.map 0, FrameLevel.map 0, FrameLevel.seq 2]),
+      ("C9 sequence-top `:` — ? - a⏎: b, the `:` line", "? - a\n: b\n", 1, [FrameLevel.map 0, FrameLevel.map 0]),
+      ("C4 popped sequence top — a:⏎  - b⏎c: 1, the `-` line", "a:\n  - b\nc: 1\n", 1, [FrameLevel.map 0, FrameLevel.map 0, FrameLevel.seq 2]),
+      ("C4 popped sequence top — a:⏎  - b⏎c: 1, the sibling's line", "a:\n  - b\nc: 1\n", 2, [FrameLevel.map 0, FrameLevel.map 0]),
+      ("C5 popped mapping dedent — a:⏎  b: 1⏎c: 2, the nested key's line", "a:\n  b: 1\nc: 2\n", 1, [FrameLevel.map 0, FrameLevel.map 0, FrameLevel.map 2]),
+      ("C5 popped mapping dedent — a:⏎  b: 1⏎c: 2, the sibling's line", "a:\n  b: 1\nc: 2\n", 2, [FrameLevel.map 0, FrameLevel.map 0]),
+      ("h_docRoute — a:⏎- x⏎- y, the second `-` line", "a:\n- x\n- y\n", 2, [FrameLevel.map 0, FrameLevel.map 0]),
+      ("h_docRoute — - - a⏎- b, the inner `-` line", "- - a\n- b\n", 0, [FrameLevel.map 0, FrameLevel.seq 0, FrameLevel.seq 2]),
+      ("h_docRoute — - - a⏎- b, the next entry's line", "- - a\n- b\n", 1, [FrameLevel.map 0, FrameLevel.seq 0]) ]
+  for (label, input, line, expected) in atLine do
+    let got := framesAtLine input line
+    checkM state s!"resLandDeclines/at-line {label}: stack [{frameLabel expected}]" (got == expected)
+      s!"got [{frameLabel got}]"
+  let rec leadContent : Nat → YamlValue → String
+    | _, YamlValue.scalar s => s.content
+    | fuel + 1, YamlValue.sequence _ arr _ _ => (arr[0]?.map (leadContent fuel)).getD "<empty sequence>"
+    | fuel + 1, YamlValue.mapping _ arr _ _ => (arr[0]?.map (fun p => leadContent fuel p.1)).getD "<empty mapping>"
+    | _, _ => "<other>"
+  let rootArity (d : YamlDocument) : Nat := match d.value with
+    | YamlValue.mapping _ arr _ _ => arr.size
+    | YamlValue.sequence _ arr _ _ => arr.size
+    | _ => 0
+  -- (label, input, accepted as (documents, leading scalar, root arity), or refused)
+  let rows : List (String × String × Option (Nat × String × Nat)) :=
+    [ ("C1 a: 1", "a: 1", some (1, "a", 1)),
+      ("C3 a:⏎- b⏎c: 1 (the no-pop sibling)", "a:\n- b\nc: 1", some (1, "a", 2)),
+      ("C9 ? - a⏎: b (the sequence-top `:`)", "? - a\n: b", some (1, "a", 1)),
+      ("C4 a:⏎  - b⏎c: 1", "a:\n  - b\nc: 1", some (1, "a", 2)),
+      ("C5 a:⏎  b: 1⏎c: 2", "a:\n  b: 1\nc: 2", some (1, "a", 2)),
+      ("h_docRoute a:⏎- x⏎- y", "a:\n- x\n- y", some (1, "a", 1)),
+      ("h_docRoute - - a⏎- b", "- - a\n- b", some (1, "a", 2)),
+      ("- a⏎b: 1 (a key after a root sequence: refused)", "- a\nb: 1", none) ]
+  for (label, src, expected) in rows do
+    let got : Option (Nat × String × Nat) := match L4YAML.TokenParser.parseYaml src with
+      | .ok docs => some (docs.size, (docs[0]?.map (fun d => leadContent 4 d.value)).getD "<no document>",
+          (docs[0]?.map rootArity).getD 0)
+      | .error _ => none
+    checkM state s!"resLandDeclines/parser {label}" (got == expected) s!"got {repr got}, expected {repr expected}"
 
 /-- Priority 34 (`[173]` tail confined to EOF): the executable side of
 `collectLineContentLoop_fst_nonempty` and of `BlockStopOk.badChar`'s non-empty run
@@ -11141,6 +11283,489 @@ def testPackMappingLaneTail (state : IO.Ref TestCollector) : IO Unit := do
     (pauses == 16 && sibMark == 14 && sibImplicit == 2 && refusedPauses == 3 && stepExc.isEmpty &&
       ancChecks == 12 && ancRejects.isEmpty && closedChecks == 7 && closedAccepts.isEmpty &&
       inputRejects.length == 4)
+def testPackDedentSlotGuard (state : IO.Ref TestCollector) : IO Unit := do
+  -- P97 (item 493, (ω-pay-births) step (a)): the three non-strict guards `nv ≤ k` of
+  -- `accum_block_on_closeThenBlock` (`h_slotV` / `h_kslot` / `h_kslotUp`) compare the OPEN slot's
+  -- mark `nv` of the PARK state `sc` — read BEFORE `scanNextToken_preprocess`, whose
+  -- `unwindIndents` pops every indent right of the landing — with the `-`'s column `k`.  P93 /
+  -- P94 measured the marks of the preprocessed state, i.e. the marks that SURVIVED the unwind;
+  -- the guard's `nv` is a mark of the state before it.  Measured here with the guard's own
+  -- variables: (i) at a block `-` pause, a mark of the pre-preprocess state right of `k` — the
+  -- dedent-`-` across an open `?` (`- ?⏎- b`); (ii) the same with the post-preprocess marks
+  -- (P94(i) re-read); (iii) every input with a (i) failure parses whole — the guard's `else` is
+  -- ON the path, not a refused surface; (iv) every (i) mark is absent from the post-preprocess
+  -- marks — the guard IS slot survival, its `else` IS the slot the dedent closed; (v) nor from
+  -- the marks AFTER the `-` step: the alternative the `else` owes is a fact of `s'`, not of `sc`.
+  let inputs : List String :=
+    [ "- ?\n- b", "- ? a\n- b", "? ?\n- b", "- ?\n  - a\n- b", "k:\n  ? a\n- b", "- - ?\n  - b",
+      "? a\n- b", "?\n- a", "?\n- a\n: b", "- ?\n  - a\n  : b", "- ? a\n  : b", "- a\n- ? b\n  : c",
+      "?\n  ?\n    - a\n  : b\n: c", "?\n  - ?\n      - a\n    : b\n: c", "- ?\n    - a\n  : b",
+      "k:\n  ?\n  - a\n  : b", "- - ? a\n  - b", "- ? a\n  ? b\n- c", "? - a\n- b", "- ? - a\n- b",
+      "k:\n  - ? a\n  - b", "?\n  ?\n  - a\n  : b\n: c", "- ?\n    ?\n      - a\n    : b\n- c",
+      "- ? a\n  : b\n- c", "- - ? a\n- b" ]
+  let mut dashPauses := 0
+  let mut markedDash := 0
+  let mut preViol : List String := []
+  let mut preViolInputs : List String := []
+  let mut postViol : List String := []
+  let mut survExc : List String := []
+  let mut inputRejects : List String := []
+  let mut stepSurv : List String := []
+  let mut stepOk := 0
+  let mut stepRejects : List String := []
+  for input in inputs do
+    let chars := input.toList
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    let mut hit := false
+    for _ in [:80] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        let isDash := c == '-' && (chars[sP.offset + 1]?.map (fun ch => ch == ' ' || ch == '\n')).getD true
+        if isDash && sP.flowLevel == 0 then
+          dashPauses := dashPauses + 1
+          let pre := L4YAML.Proofs.RegisterWitness.markedCols s
+          let post := L4YAML.Proofs.RegisterWitness.markedCols sP
+          let afterStep? := match L4YAML.Scanner.scanNextToken s with
+            | .ok (some sN) => some (L4YAML.Proofs.RegisterWitness.markedCols sN)
+            | _ => none
+          if !pre.isEmpty then markedDash := markedDash + 1
+          for nv in pre do
+            if nv > sP.col then
+              hit := true
+              preViol := preViol ++ [s!"{repr input}@{sP.line}:{sP.col} nv={nv}"]
+              if post.contains nv then
+                survExc := survExc ++ [s!"{repr input}@{sP.line}:{sP.col} nv={nv} post={post}"]
+              match afterStep? with
+              | some afterStep =>
+                stepOk := stepOk + 1
+                if afterStep.contains nv then
+                  stepSurv := stepSurv ++ [s!"{repr input}@{sP.line}:{sP.col} nv={nv} after={afterStep}"]
+              | none =>
+                stepRejects := stepRejects ++ [s!"{repr input}"]
+          for nv in post do
+            if nv > sP.col then
+              postViol := postViol ++ [s!"{repr input}@{sP.line}:{sP.col} nv={nv}"]
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) => s := sN
+        | _ => break
+      | _ => break
+    if hit then
+      preViolInputs := preViolInputs ++ [s!"{repr input}"]
+      match L4YAML.TokenParser.parseYaml input with
+      | .ok _ => pure ()
+      | .error _ => inputRejects := inputRejects ++ [s!"{repr input}"]
+  IO.println s!"P97 block `-` pauses={dashPauses} marked (pre)={markedDash} pre-unwind mark right of k={preViol} inputs={preViolInputs} post-unwind right of k={postViol} survivors among them={survExc} after the step={stepSurv} (stepped={stepOk}, step rejected={stepRejects}) rejected inputs={inputRejects}"
+  -- Pins: 12 pauses / 12 inputs with a pre-preprocess mark right of the `-`, 0 post-preprocess,
+  -- 0 surviving the unwind or the step; 2 of the 12 inputs are rejected for their OUTER shape
+  -- (`? ?⏎- b`, `k:⏎  ? a⏎- b`: a root sequence entry after a root mapping / a non-bare `?`
+  -- line), the other 10 parse — the `else` is reached on the capstone path.
+  check state s!"P97 (ω-pay-births) step (a) the non-strict guard's own variables (item 493): {dashPauses} block `-` pauses, {markedDash} with a pre-preprocess mark; a pre-preprocess mark right of the `-` at {preViol.length} pauses in {preViolInputs.length} inputs (the guard's `else` reached), a post-preprocess mark right of it at {postViol.length} (P94(i)); of the former {survExc.length} survive the unwind and {stepSurv.length} the step ({stepOk} stepped, {stepRejects.length} step-rejected), {inputRejects.length} inputs rejected (outer shape)"
+    (dashPauses ≥ 30 && markedDash ≥ 10 && preViol.length == 12 && preViolInputs.length == 12 &&
+      postViol.isEmpty && survExc.isEmpty && stepSurv.isEmpty && inputRejects.length == 2 &&
+      stepOk + stepRejects.length == preViol.length &&
+      stepRejects.all (fun i => inputRejects.contains i))
+
+
+namespace P98Chain
+
+open L4YAML.Surface
+
+/-- `s-l-comments` across a line feed at any column (local twin of `sslBreak1`). -/
+lemma sslBreak (rest : List Char) (col : Nat) : SSLComments ⟨'\n' :: rest, col⟩ ⟨rest, 0⟩ :=
+  SSLComments.withComment _ _ _ (SSBComment.noSep _ _ (SBComment.break _ _ (SBBreak.lf rest col)))
+    (GStar.nil _)
+
+/-- The suffix of `?⏎  ? a⏎: []⏎  :⏎` from the dedent `:` at column 0 — the landing `k = 0`
+    on a park whose own mark is `nv = 2` (the inner `?`), which the landing CLOSES; the new
+    entry's value `[]` is non-empty, so the `:` at column 2 on the next line is not its value. -/
+def tail : List Char := [':', ' ', '[', ']', '\n', ' ', ' ', ':', '\n']
+
+/-- The new entry at `k = 0`: `:` + the flow-in-block node ` []` + the break (`emptyKeyNode`),
+    ending at the start of the next line. -/
+lemma entryAt0 : SBlockMapEntry 0 ⟨tail, 0⟩ ⟨[' ', ' ', ':', '\n'], 0⟩ :=
+  SBlockMapEntry.emptyKeyNode 0 _ ⟨[' ', '[', ']', '\n', ' ', ' ', ':', '\n'], 1⟩ _ (GLit.mk _ 0)
+    (SBlockNode.flowInBlock 1 .blockOut _ ⟨['[', ']', '\n', ' ', ' ', ':', '\n'], 2⟩
+      ⟨['\n', ' ', ' ', ':', '\n'], 4⟩ _
+      (SSeparateLines.inline 1 _ _ (SSeparateInLine.whites _ _
+        (GPlus.mk _ _ _ (SSWhite.space _ 1) (GStar.nil _))))
+      (SFlowNode.content 1 .flowOut _ _ (SFlowContent.flowSeq 1 .flowOut _ _
+        (SFlowSequence.empty 1 .flowOut _ ⟨[']', '\n', ' ', ' ', ':', '\n'], 3⟩ _ _
+          (GLit.mk _ 2) (GOpt.none _) (GLit.mk _ 3))))
+      (sslBreak _ 4))
+
+/-- `s-indent(2)` on the next line. -/
+lemma indent2 : SIndent 2 ⟨[' ', ' ', ':', '\n'], 0⟩ ⟨[':', '\n'], 2⟩ :=
+  SIndent.succ 1 _ 0 _ (SIndent.succ 0 _ 1 _ (SIndent.zero _))
+
+/-- The `:` at the closed mark's column. -/
+lemma colon2 : GLit ':' ⟨[':', '\n'], 2⟩ ⟨['\n'], 3⟩ := GLit.mk _ 2
+
+/-- Its (empty) value. -/
+lemma value2 : SBlockIndented 2 .blockOut ⟨['\n'], 3⟩ ⟨[], 0⟩ :=
+  SBlockIndented.empty 2 .blockOut _ _ (sslBreak [] 3)
+
+/-- **The owed clause's antecedent is INHABITED** (item 495, P98-3).  The chain premise
+    `h_explUp_chainD` asks, for every mark `nv` of `sc` — the closed `nv = 2` included —
+    `∀ sp_v, SBlockMapEntry k sp_ind sp_v → ∀ sp_i sp_c, SIndent nv sp_v sp_i → GLit ':' sp_i sp_c →
+    ∀ sp_w, SBlockIndented nv .blockOut sp_c sp_w → ResumeFrames (SLYamlStream sp_start) [map nv] sp_w`.
+    Item 462 read the `k < nv` case as "owed by refutation: the antecedent is uninhabited".  The
+    surface relations are LOCAL (a `SurfPos` is the remaining characters and a column), so the
+    antecedent holds of these characters — built here from them.  What remains is the
+    conclusion: a stream derivation of `?⏎  ? a⏎: []⏎  :⏎`, which the runtime rejects
+    (`testPackSameLevelChain` pins it).  The clause is an obligation, not a vacuity. -/
+lemma antecedent : ∃ sp_v sp_i sp_c sp_w : SurfPos,
+    SBlockMapEntry 0 ⟨tail, 0⟩ sp_v ∧ SIndent 2 sp_v sp_i ∧ GLit ':' sp_i sp_c ∧
+    SBlockIndented 2 .blockOut sp_c sp_w :=
+  ⟨_, _, _, _, entryAt0, indent2, colon2, value2⟩
+
+/-- The EMPTY-valued twin `:⏎  :⏎` (P98's first cut, REFUTED as a refuting shape): the
+    antecedent is inhabited the same way (`emptyKeyEmpty`), but the runtime ACCEPTS
+    `?⏎  ? a⏎:⏎  :` — the deeper `:` line is the empty entry's VALUE (a nested mapping), so
+    the clause's conclusion is true there.  Kept as the record of why the refuting shape
+    needs a non-empty value at `k`. -/
+lemma antecedentEmpty : ∃ sp_v sp_i sp_c sp_w : SurfPos,
+    SBlockMapEntry 0 ⟨[':', '\n', ' ', ' ', ':', '\n'], 0⟩ sp_v ∧ SIndent 2 sp_v sp_i ∧
+    GLit ':' sp_i sp_c ∧ SBlockIndented 2 .blockOut sp_c sp_w :=
+  ⟨_, _, _, _,
+    SBlockMapEntry.emptyKeyEmpty 0 _ ⟨['\n', ' ', ' ', ':', '\n'], 1⟩ _ (GLit.mk _ 0) (sslBreak _ 1),
+    indent2, colon2, value2⟩
+
+end P98Chain
+
+def testPackSameLevelChain (state : IO.Ref TestCollector) : IO Unit := do
+  -- P98 (item 495, (ω-pay-births) step (b′)): item 462 priced the four strict guards
+  -- (`accum_block_on_closeThenBlock` / `accum_block_on_pendingBlock`, the `:`/`?` opener arm at
+  -- `k ≤ n`) as ONE grammar crossing `sameLevelChainMap` with three clauses over the marks `nv`
+  -- of `sc`: `nv < k` (ancestors), `nv = k` (the park's own mark across its `:` / a sibling `?`),
+  -- `k < nv ≤ n` (marks the dedent closed — "owed by refutation: the antecedent is
+  -- uninhabited").  Measured here at the scanner's own `:`/`?` pauses, before any lemma:
+  -- (i) at every DEDENT pause (`k < n`) a `: v` at the park's own mark `n` after the landing's
+  -- whole entry — the owed clause's surface — is REJECTED by the runtime: the clause's
+  -- conclusion is a stream derivation of a rejected input, while its antecedent is inhabited
+  -- (`P98Chain.antecedent`, from the characters); (ii) at every OWN pause (`k = n`) the same
+  -- `: v` at `n` is ACCEPTED — the next entry of the same mapping; (iii) the concrete pair
+  -- `?⏎  ? a⏎: []⏎  :` (rejected) / `?⏎  ? a⏎: []⏎:` (accepted); the empty-valued
+  -- `?⏎  ? a⏎:⏎  :` is accepted (the deeper `:` is the entry's value).  Measured, not spent.
+  let inputs : List String :=
+    [ "? a\n: b", "?\n- a\n: b", "?\n  - a\n: b", "k:\n  ?\n  - a\n  : b", "- ?\n  - a\n  : b",
+      "?\n  ?\n    - a\n  : b\n: c", "?\n  ?\n    ?\n      - a\n    : b\n  : c\n: d",
+      "?\n  - ?\n      - a\n    : b\n: c", "- ?\n    - a\n  : b", "?\n  k:\n    - a\n: b",
+      "? a\n? b\n: c", "k:\n  ? a\n  : b", "- ? a\n  : b", "? a: 1\n: b", "- a\n- ? b\n  : c",
+      "? [a, b]\n: c", "? {a: b}\n: c", "?\n  - [a, ? b : c]\n: d", "?\n  ?\n    [? a : b]\n  : c\n: d",
+      "?\n  ?\n    - a\n  ? b\n: w", "?\n  ?\n  - a\n  : b\n: c", "? |\n  k\n: v",
+      "?\n  ? a\n  : b\n  ? c\n  : d\n: e", "- ?\n    ?\n      ?\n        - a\n      : b\n    : c\n  : d",
+      "k:\n  ?\n    ?\n      ?\n        a\n      : b\n    : c\n  : d", "?\n  ? a\n: b",
+      "?\n  ?\n    ? a\n: b", "?\n  ? a\n  ? b\n: c", "?\n  ?\n    - a\n: b", "? a\n:\n  ? b\n  : c" ]
+  let mut dedentPauses := 0
+  let mut ownPauses := 0
+  let mut dedentAccepted : List String := []
+  let mut ownRejected : List String := []
+  for input in inputs do
+    let chars := input.toList
+    let lines := (input.splitOn "\n").toArray
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:80] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        let before := L4YAML.Proofs.RegisterWitness.markedCols s
+        let isInd := (c == ':' || c == '?') &&
+          (chars[sP.offset + 1]?.map (fun ch => ch == ' ' || ch == '\n')).getD true
+        if isInd && sP.flowLevel == 0 && !before.isEmpty then
+          let n := before.foldl max 0
+          let k := sP.col
+          if k ≤ n then
+            let indentOf (l : String) : Nat := (l.toList.takeWhile (· == ' ')).length
+            let mut last := sP.line
+            for i in [sP.line + 1 : lines.size] do
+              let l := lines[i]!
+              let blank := l.toList.all (· == ' ')
+              let valueLine := c == '?' && indentOf l == k &&
+                (l.toList.drop k).head? == some ':' &&
+                ((l.toList.drop (k + 1)).head?.map (· == ' ')).getD true
+              if i == last + 1 && (blank || indentOf l > k || valueLine) then last := i
+            let pre := "\n".intercalate (lines.toList.take (last + 1))
+            let cont := pre ++ "\n" ++ String.ofList (List.replicate n ' ') ++ ": v\n"
+            let accepted := match L4YAML.TokenParser.parseYaml cont with
+              | .ok _ => true
+              | .error _ => false
+            if k < n then
+              dedentPauses := dedentPauses + 1
+              if accepted then
+                dedentAccepted := dedentAccepted ++ [s!"{repr input}@{sP.line}:{k} n={n}"]
+            else
+              ownPauses := ownPauses + 1
+              if !accepted then
+                ownRejected := ownRejected ++ [s!"{repr input}@{sP.line}:{k} n={n}"]
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) => s := sN
+        | _ => break
+      | _ => break
+  let rejectsPair := match L4YAML.TokenParser.parseYaml "?\n  ? a\n: []\n  :\n" with
+    | .ok _ => false
+    | .error _ => true
+  let acceptsTwin := match L4YAML.TokenParser.parseYaml "?\n  ? a\n: []\n:\n" with
+    | .ok _ => true
+    | .error _ => false
+  -- P98's first cut: with an EMPTY value at `k` the deeper `:` is that entry's value — accepted.
+  let acceptsEmptyValue := match L4YAML.TokenParser.parseYaml "?\n  ? a\n:\n  :\n" with
+    | .ok _ => true
+    | .error _ => false
+  IO.println s!"P98 dedent pauses (k < n)={dedentPauses} own-mark `: v` accepted at={dedentAccepted} | own pauses (k = n)={ownPauses} own-mark `: v` rejected at={ownRejected} | `?⏎  ? a⏎: []⏎  :` rejected={rejectsPair} twin `?⏎  ? a⏎: []⏎:` accepted={acceptsTwin} empty-valued `?⏎  ? a⏎:⏎  :` accepted={acceptsEmptyValue}"
+  check state s!"P98 (ω-pay-births) (b′) the strict guards' owed clause at `k ≤ n` (item 495): at the {dedentPauses} dedent pauses a `: v` at the closed mark is rejected by the runtime at all but {dedentAccepted.length} (the clause's conclusion is a stream derivation of a rejected input; its antecedent is inhabited, `P98Chain.antecedent`); at the {ownPauses} own pauses the same `: v` is the mapping's next entry, rejected at {ownRejected.length}; `?⏎  ? a⏎: []⏎  :` rejected = {rejectsPair}, `?⏎  ? a⏎: []⏎:` accepted = {acceptsTwin}, the empty-valued `?⏎  ? a⏎:⏎  :` accepted = {acceptsEmptyValue}"
+    (dedentPauses == 5 && dedentAccepted.isEmpty && ownPauses == 41 && ownRejected.isEmpty &&
+      rejectsPair && acceptsTwin && acceptsEmptyValue)
+
+
+def testPackSurvivorsChain (state : IO.Ref TestCollector) : IO Unit := do
+  -- P99 (item 498, (ω-pay-births) (d) item (1)): the landing lemma `markedCols_le_of_top` and the
+  -- chain domain on the POST-state, read at every block `:`/`?`/`-` pause on a marked state
+  -- (P95's and P97's grids): (i) every mark of the post-step state is ≤ the landing column k;
+  -- (ii) for every surviving mark nv < k, a `: v` at nv after the landing's whole entry is
+  -- accepted — the survivors' chain the rewritten `else`s owe is a parsing continuation at
+  -- every one; (iii) at a `-` pause the post-step marks are exactly the pre-state marks ≤ k.
+  let inputs : List String :=
+    [ "? a\n: b", "?\n- a\n: b", "?\n  - a\n: b", "k:\n  ?\n  - a\n  : b", "- ?\n  - a\n  : b",
+      "?\n  ?\n    - a\n  : b\n: c", "?\n  ?\n    ?\n      - a\n    : b\n  : c\n: d",
+      "?\n  - ?\n      - a\n    : b\n: c", "- ?\n    - a\n  : b", "?\n  k:\n    - a\n: b",
+      "? a\n? b\n: c", "k:\n  ? a\n  : b", "- ? a\n  : b", "? a: 1\n: b", "- a\n- ? b\n  : c",
+      "?\n  ?\n    - a\n  ? b\n: w", "?\n  ?\n  - a\n  : b\n: c", "? |\n  k\n: v",
+      "?\n  ? a\n  : b\n  ? c\n  : d\n: e", "- ?\n    ?\n      ?\n        - a\n      : b\n    : c\n  : d",
+      "k:\n  ?\n    ?\n      ?\n        a\n      : b\n    : c\n  : d", "?\n  ? a\n: b",
+      "?\n  ?\n    ? a\n: b", "?\n  ? a\n  ? b\n: c", "?\n  ?\n    - a\n: b", "? a\n:\n  ? b\n  : c",
+      "- ?\n- b", "- ? a\n- b", "- ?\n  - a\n- b", "- - ?\n  - b", "- - ? a\n  - b",
+      "- ? a\n  ? b\n- c", "- ? - a\n- b", "k:\n  - ? a\n  - b", "- ?\n    ?\n      - a\n    : b\n- c",
+      "- - ? a\n- b", "?\n  - a\n  - b\n: c", "?\n  ?\n    - a\n    - b\n  : c\n: d" ]
+  let mut pauses := 0
+  let mut overK : List String := []
+  let mut survChecks := 0
+  let mut survRejects : List String := []
+  let mut dashPauses := 0
+  let mut dashExc : List String := []
+  let mut lowPauses := 0
+  let mut noSurv := 0
+  for input in inputs do
+    let chars := input.toList
+    let lines := (input.splitOn "\n").toArray
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:80] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        let before := L4YAML.Proofs.RegisterWitness.markedCols s
+        let isInd := (c == ':' || c == '?' || c == '-') &&
+          (chars[sP.offset + 1]?.map (fun ch => ch == ' ' || ch == '\n')).getD true
+        let after? := match L4YAML.Scanner.scanNextToken s with
+          | .ok (some sN) => some (L4YAML.Proofs.RegisterWitness.markedCols sN)
+          | _ => none
+        if isInd && sP.flowLevel == 0 && !before.isEmpty then
+          match after? with
+          | some after =>
+            pauses := pauses + 1
+            let k := sP.col
+            if after.any (· > k) then
+              overK := overK ++ [s!"{repr input}@{sP.line}:{k} c={c} after={after}"]
+            if c == '-' then
+              dashPauses := dashPauses + 1
+              if after != before.filter (· ≤ k) then
+                dashExc := dashExc ++ [s!"{repr input}@{sP.line}:{k} before={before} after={after}"]
+            -- the seven `else`s' domain: a `:`/`?` at or above the park's mark, or a `-` below it
+            if (c != '-' && k ≤ before.foldl max 0) || (c == '-' && k < before.foldl max 0) then
+              lowPauses := lowPauses + 1
+              if after.all (· ≥ k) then noSurv := noSurv + 1
+            let indentOf (l : String) : Nat := (l.toList.takeWhile (· == ' ')).length
+            let mut last := sP.line
+            for i in [sP.line + 1 : lines.size] do
+              let l := lines[i]!
+              let blank := l.toList.all (· == ' ')
+              let valueLine := c == '?' && indentOf l == k &&
+                (l.toList.drop k).head? == some ':' &&
+                ((l.toList.drop (k + 1)).head?.map (· == ' ')).getD true
+              if i == last + 1 && (blank || indentOf l > k || valueLine) then last := i
+            let pre := "\n".intercalate (lines.toList.take (last + 1))
+            for nv in after do
+              if nv < k then
+                survChecks := survChecks + 1
+                let cont := pre ++ "\n" ++ String.ofList (List.replicate nv ' ') ++ ": v\n"
+                match L4YAML.TokenParser.parseYaml cont with
+                | .ok _ => pure ()
+                | .error _ => survRejects := survRejects ++ [s!"{repr input}@{sP.line}:{k} c={c} nv={nv}"]
+          | none => pure ()
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) => s := sN
+        | _ => break
+      | _ => break
+  IO.println s!"P99 else-domain pauses={lowPauses} no-survivor={noSurv} | marked block pauses={pauses} post-step mark > k at={overK} | survivor checks={survChecks} rejects={survRejects} | `-` pauses={dashPauses} after ≠ before.filter (≤ k) at={dashExc}"
+  check state s!"P99 (ω-pay-births) (d) item (1) the landing lemma and the survivors' chain (item 498): {pauses} marked block `:`/`?`/`-` pauses, a post-step mark right of the landing at {overK.length}; the survivors' `: v` after the whole entry accepted at all {survChecks} but {survRejects.length}; at the {dashPauses} `-` pauses the post-step marks are the pre-state marks ≤ k except at {dashExc.length}"
+    -- pinned to the measured counts after the first run (P1 predicted ≥ 100 pauses; 98 measured).
+    (pauses == 98 && overK.isEmpty && survChecks == 71 && survRejects.isEmpty && dashPauses == 31 &&
+      dashExc.isEmpty && lowPauses ≥ 40 && noSurv ≥ 30)
+
+def testProducersPremiseChain (state : IO.Ref TestCollector) : IO Unit := do
+  -- P121 (item 502, (ω-pay-births) (d) item (2)): the producers' premise `h_chainUp` at
+  -- `content_dispatch_routed` — at a CONTENT dispatch pause (a non-indicator character in block
+  -- context) on a marked state, every mark `nv` of the dispatch state has its `: v` at column `nv`
+  -- after the landing's whole node accepted; the hand-offs are classed by where the landing sits
+  -- against the mark (nested `nv + 1 ≤ k`, at the mark `k = nv`, below it `k < nv`).
+  let inputs : List String :=
+    [ "? a\n: b", "?\n  a\n: b", "?\n  - a\n: b", "k:\n  ?\n    a\n  : b", "- ?\n    a\n  : b",
+      "?\n  ?\n    a\n  : b\n: c", "?\n  ?\n    ?\n      a\n    : b\n  : c\n: d",
+      "?\n  k: v\n: b", "?\n  k:\n    a\n: b", "? a\n? b\n: c", "k:\n  ? a\n  : b", "- ? a\n  : b",
+      "? a: 1\n: b", "- a\n- ? b\n  : c", "? |\n  k\n: v", "? \"a\"\n: v", "? 'a'\n: v", "? [a, b]\n: v",
+      "? {a: 1}\n: v", "? &x a\n: *x", "? !t a\n: v", "?\n  a\n  b\n: c", "?\n  ? a\n  : b\n  ? c\n  : d\n: e",
+      "?\n  a\n? b\n: c", "? a\n:\n  ? b\n  : c", "k:\n  ?\n    ?\n      a\n    : b\n  : c",
+      "- ?\n    ?\n      a\n    : b\n  : c", "?\n  - a\n  - b\n: c", "?\n  k:\n    - a\n: b",
+      "? a\n: b\n? c\n: d", "?\n  a: 1\n  b: 2\n: c", "?\n  ?\n    a\n  ? b\n: c", "- ? a\n- b",
+      "? # c\n  a\n: b", "?\n  # c\n  a\n: b", "? a # c\n: b" ]
+  let mut pauses := 0
+  let mut checks := 0
+  let mut rejects : List String := []
+  let mut nested := 0
+  let mut atMark := 0
+  let mut below := 0
+  for input in inputs do
+    let chars := input.toList
+    let lines := (input.splitOn "\n").toArray
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:80] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        let marks := L4YAML.Proofs.RegisterWitness.markedCols sP
+        let isInd := (c == ':' || c == '?' || c == '-') &&
+          (chars[sP.offset + 1]?.map (fun ch => ch == ' ' || ch == '\n')).getD true
+        -- `[` / `{` (and `]` / `}` / `,`) dispatch through the flow indicators, not the content
+        -- arm, so they are not content landings (review round 1 of item 502).
+        let isFlowInd := c == '[' || c == '{' || c == ']' || c == '}' || c == ','
+        let isContent := !isInd && !isFlowInd && c != '#' && c != '%' && c != '\n' && c != ' ' &&
+          !(c == '-' && chars[sP.offset + 1]? == some '-' && chars[sP.offset + 2]? == some '-')
+        if isContent && sP.flowLevel == 0 && !marks.isEmpty then
+          pauses := pauses + 1
+          let k := sP.col
+          let indentOf (l : String) : Nat := (l.toList.takeWhile (· == ' ')).length
+          -- The landing's whole node: its continuation lines are the blank ones, those indented
+          -- deeper than the landing's own line (block-scalar bodies, nested children), and those at
+          -- the line's indentation that do not open a sibling entry (`?`/`:`/`-` + space, `#`) —
+          -- same-indent plain continuations (review round 1: `? |⏎  k` and `?⏎  a⏎  b`).
+          let ind0 := indentOf lines[sP.line]!
+          let opensEntry (l : String) : Bool :=
+            let r := l.toList.dropWhile (· == ' ')
+            match r with
+            | [] => false
+            | c0 :: rest => c0 == '#' ||
+                ((c0 == '?' || c0 == ':' || c0 == '-') && (rest.head?.map (· == ' ')).getD true)
+          let mut last := sP.line
+          for i in [sP.line + 1 : lines.size] do
+            let l := lines[i]!
+            let blank := l.toList.all (· == ' ')
+            if i == last + 1 && (blank || indentOf l > ind0 ||
+                (indentOf l == ind0 && !opensEntry l)) then last := i
+          let pre := "\n".intercalate (lines.toList.take (last + 1))
+          for nv in marks do
+            checks := checks + 1
+            if nv + 1 ≤ k then nested := nested + 1
+            else if nv == k then atMark := atMark + 1
+            else below := below + 1
+            let cont := pre ++ "\n" ++ String.ofList (List.replicate nv ' ') ++ ": v\n"
+            match L4YAML.TokenParser.parseYaml cont with
+            | .ok _ => pure ()
+            | .error _ => rejects := rejects ++ [s!"{repr input}@{sP.line}:{k} c={c} nv={nv}"]
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) => s := sN
+        | _ => break
+      | _ => break
+  IO.println s!"P121 marked content pauses={pauses} checks={checks} nested={nested} atMark={atMark} below={below} rejects={rejects}"
+  check state s!"P121 (ω-pay-births) (d) item (2) the producers' premise at the content landings (item 502): {pauses} marked content pauses, {checks} marks' `: v` after the whole node, rejects {rejects}, nested {nested} / at the mark {atMark} / below {below}"
+    -- pinned to the first run: P2 predicted ≥ 60 pauses (59 measured — REFUTED by one) and 0 rejects
+    -- (HELD); P3 predicted nested ≥ 50 % / at the mark 0 / below ≥ 5 — every one of the 69 marks is
+    -- NESTED (`nv + 1 ≤ k`): a content character at or left of a `?` mark closes that mark in the
+    -- unwind, so the premise at a content landing has only the nested crossing to pay.
+    -- Review round 1: `[` / `{` are flow-indicator landings, not content (2 pauses, 2 marks fewer —
+    -- `? [a, b]` and `? {a: 1}`), and the whole-node probe now takes block-scalar bodies and
+    -- same-indent plain continuations; still 0 rejects, every hand-off still NESTED.
+    (pauses == 57 && checks == 67 && nested == 67 && atMark == 0 && below == 0 && rejects.isEmpty)
+
+def testFlowKeyChain (state : IO.Ref TestCollector) : IO Unit := do
+  -- P122 (item 501, (ω-pay-births) (d) item (2b)): the four flow-side writers of the park fields'
+  -- `∨ PackAlt` (`accum_flow_open_depth0`'s two `h_kslot_old` relays, `accum_step_flow`'s two
+  -- `h_vpack` writes at the flow closes) — at a FLOW OPEN pause (`[` / `{` in block context) on a
+  -- marked state, every mark `nv` of the dispatch state has its `: v` at column `nv` after the whole
+  -- flow node accepted; the landings are classed against the mark as in P99 / the content probe
+  -- (nested `nv + 1 ≤ k`, at the mark, below).  The field's chain for a flow key is the same
+  -- node-shaped statement the block landings carry; a reject here would refute (2b)'s flow class.
+  let inputs : List String :=
+    [ "? [a, b]\n: v", "? {a: 1}\n: v", "?\n  [a]\n: v", "?\n  {a: b}\n: v", "? [a,\n  b]\n: v",
+      "? {a: 1,\n   b: 2}\n: v", "k:\n  ? [a]\n  : v", "- ? {a: b}\n  : v", "?\n  ?\n    [a]\n  : b\n: c",
+      "? [a]\n? [b]\n: c", "? []\n: v", "? {}\n: v", "? [ ]\n: v", "? [a] # c\n: v", "? [[a]]\n: v",
+      "? {a: [b]}\n: v", "?\n  - [a]\n: v", "? [a]\n: [b]", "? [a]: 1\n: v", "?\n  k: [a]\n: v",
+      "?\n  k:\n    [a]\n: v", "? [a, {b: c}]\n: v", "- ?\n    [a]\n  : v", "? \"a\"\n: [v]",
+      "?\n  [a]\n  [b]\n: v", "? [\n  a\n]\n: v", "? {\n  a: 1\n}\n: v", "k:\n  ?\n    [a]\n  : v" ]
+  let mut pauses := 0
+  let mut checks := 0
+  let mut rejects : List String := []
+  let mut nested := 0
+  let mut atMark := 0
+  let mut below := 0
+  let mut refused := 0
+  for input in inputs do
+    let lines := (input.splitOn "\n").toArray
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:80] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        let marks := L4YAML.Proofs.RegisterWitness.markedCols sP
+        if (c == '[' || c == '{') && sP.flowLevel == 0 && !marks.isEmpty then
+          pauses := pauses + 1
+          let k := sP.col
+          let indentOf (l : String) : Nat := (l.toList.takeWhile (· == ' ')).length
+          -- the flow node's extent: from the opener, the lines until its bracket depth returns to 0
+          -- (the first run cut `? [a,⏎  b]` at the opener's line: the continuation sits AT `k`, not
+          -- deeper, so a column test is the wrong extent for a flow node), then the trailing blank /
+          -- deeper lines as for a block node
+          let mut depth := 0
+          let mut last := sP.line
+          let mut closed := false
+          for i in [sP.line : lines.size] do
+            if closed then
+              let l := lines[i]!
+              if i == last + 1 && (l.toList.all (· == ' ') || indentOf l > k) then last := i
+            else
+              let l := lines[i]!
+              let from_ := if i == sP.line then sP.col else 0
+              for ch in (l.toList.drop from_) do
+                if ch == '[' || ch == '{' then depth := depth + 1
+                else if ch == ']' || ch == '}' then depth := depth - 1
+              last := i
+              if depth == 0 then closed := true
+          let pre := "\n".intercalate (lines.toList.take (last + 1))
+          -- an input the runtime refuses on its own (the under-indented `]` / `}` of `? [⏎  a⏎]`, two
+          -- flow nodes as one key) births no park: counted, not a chain reject
+          let refusedWhole := match L4YAML.TokenParser.parseYaml input with
+            | .ok _ => false
+            | .error _ => true
+          if refusedWhole then
+            refused := refused + 1
+          else
+          for nv in marks do
+            checks := checks + 1
+            if nv + 1 ≤ k then nested := nested + 1
+            else if nv == k then atMark := atMark + 1
+            else below := below + 1
+            let cont := pre ++ "\n" ++ String.ofList (List.replicate nv ' ') ++ ": v\n"
+            match L4YAML.TokenParser.parseYaml cont with
+            | .ok _ => pure ()
+            | .error _ => rejects := rejects ++ [s!"{repr input}@{sP.line}:{k} c={c} nv={nv}"]
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) => s := sN
+        | _ => break
+      | _ => break
+  IO.println s!"P122 marked flow-open pauses={pauses} refused inputs={refused} checks={checks} nested={nested} atMark={atMark} below={below} rejects={rejects}"
+  check state s!"P122 (ω-pay-births) (d) item (2b) the flow-side writers' chain at the flow key landings (item 501): {pauses} marked flow-open pauses ({refused} at inputs the runtime refuses whole), {checks} marks checked, {nested} nested / {atMark} at the mark / {below} below, {rejects.length} rejects"
+    -- predictions (written before the run): P2 ≥ 10 pauses, 100 % parse (0 rejects), 0 at-mark / 0 below.
+    -- First run (29 / 30 / 30 / 0 / 0, 4 "rejects"): one was the harness's extent (fixed above), three were
+    -- inputs the runtime refuses whole — `? [⏎  a⏎]` / `? {⏎  a: 1⏎}` (the closer under-indented against
+    -- the `?`) and two flow nodes as one key — now counted as `refused`, not as chain rejects.
+    -- Pinned to the second run: 29 pauses (4 refused whole), 26 marks, all nested, 0 rejects — P2 HELD.
+    (pauses == 29 && refused == 4 && checks == 26 && nested == 26 && rejects.isEmpty && atMark == 0 && below == 0)
+
+
 def testSeqTopRefusedArm (state : IO.Ref TestCollector) : IO Unit := do
   -- P89 (item 438, (χ-seqtop-refused)): the negative arm `ExplicitValueRefused s ∨ SeqTopKey s`
   -- proposed for `content_dispatch_routed`'s `h_resF` premise must NOT be a tautology over the
@@ -15528,7 +16153,7 @@ def testHeldNestOpen (state : IO.Ref TestCollector) : IO Unit := do
     s!"{t.decompBad.take 4} | {t.twinBad.take 4} | {t.refBad.take 4} | {t.childBad.take 4} | {t.aliasOut.take 4}"
 end P109Test
 
-/-! ### Priority 110 — slice (4), the block/plain continuation READ (item 475): the depth-0 plain-scalar step's
+/-! ### Priority 110 — slice (4), the block/plain continuation READ (item 492): the depth-0 plain-scalar step's
 twin `TFlowContent.plain` carries `[]`, so the step must be SILENT (`tokenEvents` unchanged) and its span the
 scanner's fold — `&x a⏎&y b` is ONE anchor and the plain `a &y b` (`TraceOfBlockAmbiguity.readPlain` is the T
 side of the same fold on `a⏎&x`).  The census reads every depth-0 plain step over P109's rows plus the
@@ -15656,7 +16281,7 @@ end P110Test
 
 /-! ## Priority 111 — the content step's arm, read off the scanner (item 482's grid for `ContentArm`)
 
-`accum_step_content` concludes `PendingNode` with no arm exposed (item 475).  `ContentArm`'s
+`accum_step_content` concludes `PendingNode` with no arm exposed (item 492).  `ContentArm`'s
 constructor is to be the projection `(s'.tokens.back?.map (·.val), trailingPropertyRun sc.tokens)`
 (Rule 8: a projection of the scanner state, no ghost index).  Before stating it: over every row P110
 reads, classify each content step by the LAST token it pushed — plain / single-quoted / double-quoted /
@@ -16601,6 +17226,238 @@ def testFloorFoldShadow (state : IO.Ref TestCollector) : IO Unit := do
 
 end P118Test
 
+/-! ## Priority 119 (item 491): the `?` / `:` flow arms' decidable shadow
+The depth-≥1 `?` / `:` steps are `accum_step_block`'s (the key/value indicators are
+`scanNextToken_dispatchBlockIndicators`'), concluding `FlowStackK` at six sites:
+`?` on a `.sep` tail (`receiveQuestion`); `:` on a `.value kj` tail (the closure
+`FlowStackK` carries), on `.sep` and on `.question`, each under a white lead or a
+held run (`receiveColonSep` / `receiveColonQuestion` / `…Props…`).  Their T twins
+(FlowWalk §6) exist for five; the `.value kj → .colon kj` twin does not — the T
+frames store the key node (`midNode` / `midKey`, and `midExplicitKey` after a
+`? key` — both `.value kj` tails, two constructor cases per frame), so it is a
+frame step, not a closure.  Shadows, at every in-flow `?` / `:` step: (i) the
+step's hypotheses (preprocess, structural and flow dispatchers decline, the block
+dispatcher fires to the WHOLE post-state — every `ScannerState` field, not the
+tokens alone), (ii) the pre-tail by indicator and lead, the `.value`-tail `:`
+split into implicit (`midNode` / `midKey`) and explicit (`midExplicitKey`, a `?`
+before the key node) keys, (iii) the post-tail (`?` →
+`.question`, `:` → `.colon _`), (iv) `flowLevel` / `flowStack` and the floor
+ceiling ride the step, (v) the `goOut` trace is a prefix extension, suffix by lead. -/
+namespace P119
+open L4YAML L4YAML.Scanner P107 P111 P113
+open L4YAML.Proofs.StreamAccum (tailOf FrameTail)
+open L4YAML.Proofs.Serialization.TokenEvents
+
+/-- Every field of `ScannerState` (no `BEq` instance is derived for it). -/
+def stateEq (a b : ScannerState) : Bool :=
+  a.input == b.input && a.inputEnd == b.inputEnd && a.offset == b.offset && a.line == b.line &&
+  a.col == b.col && a.indents == b.indents && a.pendingKeys == b.pendingKeys &&
+  a.flowLevel == b.flowLevel && a.tokens == b.tokens && a.simpleKey == b.simpleKey &&
+  a.simpleKeyStack == b.simpleKeyStack && a.simpleKeyAllowed == b.simpleKeyAllowed &&
+  a.needIndentCheck == b.needIndentCheck && a.allowDirectives == b.allowDirectives &&
+  a.seenYamlDirective == b.seenYamlDirective && a.directivesPresent == b.directivesPresent &&
+  a.documentEverStarted == b.documentEverStarted && a.flowStack == b.flowStack &&
+  a.explicitKeyLine == b.explicitKeyLine && a.implicitValueLine == b.implicitValueLine &&
+  a.docStartLine == b.docStartLine && a.explicitKeyCol == b.explicitKeyCol &&
+  a.explicitKeyStack == b.explicitKeyStack && a.comments == b.comments &&
+  a.definedAnchors == b.definedAnchors
+
+def isPlaceholder : L4YAML.YamlToken → Bool
+  | .placeholder => true | _ => false
+
+/-- The decidable face of `KeyAfterValueLayout` (EntryBoundaryLayout): the pending simple key sits
+    directly after a `.value` token, strictly behind the cursor, fresh saves disabled — the layout a
+    completed flow entry leaves behind, and `KeyArm.colonValue`'s projection in negation. -/
+def kavlShadow (s : L4YAML.Scanner.ScannerState) : Bool :=
+  s.simpleKey.possible && decide (0 < s.simpleKey.tokenIndex) &&
+  (match s.tokens[s.simpleKey.tokenIndex - 1]? with
+    | some tok => (match tok.val with | .value => true | _ => false)
+    | none => false) &&
+  decide (s.simpleKey.pos.offset < s.offset) && !s.simpleKeyAllowed &&
+  decide (s.simpleKey.tokenIndex + 1 < s.tokens.size)
+
+def isCommaOrClose : L4YAML.YamlToken → Bool
+  | .flowEntry | .flowSequenceEnd | .flowMappingEnd => true | _ => false
+
+/-- Whether the completed key node at the end of `toks` follows a `?`: walk back over
+the node (a nested collection at bracket depth, its properties) to the token before it. -/
+def explicitKeyBefore (toks : List L4YAML.YamlToken) : Bool := Id.run do
+  let mut depth : Nat := 0
+  let mut rest := (toks.reverse).dropWhile isPlaceholder
+  -- the node's last token
+  match rest with
+  | [] => return false
+  | tk :: tl =>
+    rest := tl
+    match tk with
+    | .flowSequenceEnd | .flowMappingEnd => depth := 1
+    | _ => pure ()
+  while depth > 0 do
+    match rest with
+    | [] => return false
+    | tk :: tl =>
+      rest := tl
+      match tk with
+      | .flowSequenceEnd | .flowMappingEnd => depth := depth + 1
+      | .flowSequenceStart | .flowMappingStart => depth := depth - 1
+      | _ => pure ()
+  -- skip the node's properties and `saveSimpleKey`'s reserved `.placeholder` slots
+  while (match rest with | tk :: _ => tk.isNodeProperty || isPlaceholder tk | [] => false) do
+    rest := rest.drop 1
+  return match rest with | .key :: _ => true | _ => false
+
+/-- The token before the completed node at the end of `toks` (after its properties and, for a
+nested collection, its brackets): `.value` means the node is a PAIR'S VALUE (`betweenEntries`). -/
+def pairValueBefore (toks : List L4YAML.YamlToken) : Bool := Id.run do
+  let mut depth : Nat := 0
+  let mut rest := (toks.reverse).dropWhile isPlaceholder
+  match rest with
+  | [] => return false
+  | tk :: tl =>
+    rest := tl
+    match tk with
+    | .flowSequenceEnd | .flowMappingEnd => depth := 1
+    | _ => pure ()
+  while depth > 0 do
+    match rest with
+    | [] => return false
+    | tk :: tl =>
+      rest := tl
+      match tk with
+      | .flowSequenceEnd | .flowMappingEnd => depth := depth + 1
+      | .flowSequenceStart | .flowMappingStart => depth := depth - 1
+      | _ => pure ()
+  while (match rest with | tk :: _ => tk.isNodeProperty || isPlaceholder tk | [] => false) do
+    rest := rest.drop 1
+  return match rest with | .value :: _ => true | _ => false
+
+/-- `:` after a completed pair — the `betweenEntries` tail — has no scanner step: refused. -/
+def refusedRows : List String := ["[a: b: c]", "{a: b: c}", "[a: [b]: c]", "[? a : b : c]"]
+
+def refusedOk : Nat := (refusedRows.filter fun s =>
+  match scanFiltered s with | .error (.invalidFlowEntry _ _) => true | _ => false).length
+
+structure Tally where
+  inSteps : Nat := 0
+  byChar : List (String × Nat) := []
+  tailBy : List (String × Nat) := []
+  stateOk : Nat := 0
+  stateBad : List String := []
+  pairSteps : Nat := 0
+  pairDetected : Nat := 0
+  kavlPair : Nat := 0
+  kavlColon : Nat := 0
+  hypsOk : Nat := 0
+  hypsFail : List String := []
+  postTailOk : Nat := 0
+  postTailBad : List String := []
+  rides : Nat := 0
+  rideBad : List String := []
+  prefixOk : Nat := 0
+  prefixBad : List String := []
+  suffixByLead : List (String × Nat) := []
+  floors : List (String × Nat) := []
+  deriving Repr
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    match scanFiltered s, P107.stepsOf s with
+    | .ok _, some sts =>
+      for (pre, post) in sts do
+        let pushed := post.tokens.toList.drop pre.tokens.size
+        match pushed.getLast? with
+        | none => pure ()
+        | some back =>
+          let k := kindOf back.val
+          if pre.flowLevel ≥ 1 && isCommaOrClose back.val then
+            -- the detector's non-vacuity: a `,` / close after a pair's value must see the pair
+            match tailOf pre.tokens with
+            | .value _ =>
+              let toks := pre.tokens.toList.map (fun (tk : L4YAML.Positioned L4YAML.YamlToken) => tk.val)
+              t := { t with pairSteps := t.pairSteps + 1 }
+              if pairValueBefore toks then
+                t := { t with pairDetected := t.pairDetected + 1 }
+                if kavlShadow pre then t := { t with kavlPair := t.kavlPair + 1 }
+            | _ => pure ()
+          if k != "key" && k != "value" then continue
+          if pre.flowLevel == 0 then continue
+          t := { t with inSteps := t.inSteps + 1, byChar := bumpS t.byChar k }
+          let run := L4YAML.Scanner.trailingPropertyRun pre.tokens
+          let lead := if run.isEmpty then "white" else "props"
+          let tailName := match tailOf pre.tokens with
+            | .value _ =>
+              let toks := pre.tokens.toList.map (fun (tk : L4YAML.Positioned L4YAML.YamlToken) => tk.val)
+              if pairValueBefore toks then "value-pair"
+              else if explicitKeyBefore toks then "value-explicit" else "value"
+            | tl => tailClass tl
+          -- `KeyArm.colonValue`'s projection: `¬ KeyAfterValueLayout` at every `.value`-tail `:` step
+          if k == "value" then
+            match tailOf pre.tokens with
+            | .value _ => if kavlShadow pre then t := { t with kavlColon := t.kavlColon + 1 }
+            | _ => pure ()
+          t := { t with tailBy := bumpS t.tailBy s!"{k}/{tailName}/{lead}" }
+          -- (i) the hypotheses
+          match scanNextToken_preprocess pre with
+          | .ok (some (sp, c)) =>
+            let sad := if sp.allowDirectives then
+              { sp with allowDirectives := false, documentEverStarted := true } else sp
+            let strNone := match scanNextToken_dispatchStructural sp c with | .ok none => true | _ => false
+            let flowNone := match scanNextToken_dispatchFlowIndicators sad c with | .ok none => true | _ => false
+            let blkSome := match scanNextToken_dispatchBlockIndicators sad c with
+              | .ok (some s') => s'.tokens == post.tokens | _ => false
+            let whole := match scanNextToken_dispatchBlockIndicators sad c with
+              | .ok (some s') => stateEq s' post | _ => false
+            if whole then t := { t with stateOk := t.stateOk + 1 }
+            else t := { t with stateBad := t.stateBad ++ [s!"{s}@{k}"] }
+            let charOk := (k == "key" && c == '?') || (k == "value" && c == ':')
+            if strNone && flowNone && blkSome && charOk then t := { t with hypsOk := t.hypsOk + 1 }
+            else t := { t with hypsFail := t.hypsFail ++ [s!"{s}@{k}"] }
+          | _ => t := { t with hypsFail := t.hypsFail ++ [s!"{s}@preprocess"] }
+          -- (iii) the post-tail
+          let postOk := match k, tailOf post.tokens with
+            | "key", .question => true | "value", .colon _ => true | _, _ => false
+          if postOk then t := { t with postTailOk := t.postTailOk + 1 }
+          else t := { t with postTailBad := t.postTailBad ++ [s!"{s}@{k}:{repr (tailOf post.tokens)}"] }
+          -- (iv) the indices and the floor ceiling ride
+          let floor := L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf pre
+          t := { t with floors := bumpS t.floors s!"floor={floor}" }
+          if post.flowLevel == pre.flowLevel && post.flowStack == pre.flowStack &&
+              L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf post == floor then
+            t := { t with rides := t.rides + 1 }
+          else t := { t with rideBad := t.rideBad ++ [s!"{s}@{k}"] }
+          -- (v) the trace
+          let evPre := (goOut pre.tokens.toList []).1
+          let evPost := (goOut post.tokens.toList []).1
+          if evPost.take evPre.length == evPre then
+            t := { t with prefixOk := t.prefixOk + 1,
+                          suffixByLead := bumpS t.suffixByLead s!"{lead}/+{evPost.length - evPre.length}" }
+          else t := { t with prefixBad := t.prefixBad ++ [s] }
+    | _, _ => pure ()
+  return t
+
+end P119
+
+namespace P119Test
+open P119
+
+def testKeyArmShadow (state : IO.Ref TestCollector) : IO Unit := do
+  let t := tally (P113.allRows ++ P118.extraRows)
+  checkM state
+    s!"P119 the ?/: flow arms: {t.inSteps} in-flow steps {t.byChar}; pre-tails {t.tailBy}; hypotheses {t.hypsOk}/{t.inSteps} (failing: {t.hypsFail}); whole post-state {t.stateOk}/{t.inSteps} (bad: {t.stateBad}); post-tail {t.postTailOk}/{t.inSteps} (bad: {t.postTailBad}); indices+floor ride {t.rides}/{t.inSteps} (bad: {t.rideBad}); trace prefix {t.prefixOk}/{t.inSteps} (bad: {t.prefixBad}) suffixes {t.suffixByLead}; floors {t.floors}; ':' after a completed pair refused {refusedOk}/{refusedRows.length}; completed pairs seen by the detector at `,`/close steps {t.pairDetected} of {t.pairSteps} `.value`-tail steps; KeyAfterValueLayout at those {t.kavlPair}, at the `.value`-tail `:` steps {t.kavlColon}"
+    (t.inSteps == 171 && t.byChar == [("value", 144), ("key", 27)] &&
+      t.tailBy == [("value/sep/white", 8), ("key/sep/white", 27), ("value/value/white", 113),
+        ("value/value-explicit/white", 13), ("value/question/white", 4), ("value/sep/props", 4),
+        ("value/question/props", 2)] &&
+      t.stateOk == 171 && refusedOk == 4 && t.pairDetected == 127 && t.pairSteps == 370 && t.kavlColon == 0 && t.kavlPair == 127 &&
+      t.hypsOk == 171 && t.hypsFail.isEmpty && t.stateBad.isEmpty && t.postTailOk == 171 && t.postTailBad.isEmpty &&
+      t.rides == 171 && t.rideBad.isEmpty && t.prefixOk == 171 && t.prefixBad.isEmpty &&
+      t.suffixByLead == [("white/+0", 165), ("props/+0", 6)] &&
+      t.floors == [("floor=0", 161), ("floor=1", 8), ("floor=3", 2)])
+    s!"{t.inSteps} {t.byChar} {t.tailBy} {t.hypsFail} {t.postTailBad} {t.rideBad} {t.prefixBad} {t.suffixByLead} {t.floors} {t.stateOk} {t.stateBad} {t.pairDetected}/{t.pairSteps}"
+
+end P119Test
+
 def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 100: S3 slice (1) — leaf span ↔ token payload (anchor / alias / tag), before proof"
   let t := P100.tally P100.allRows
@@ -16701,7 +17558,13 @@ def collectTests : IO VerifiedSuiteResult := do
   testSeqTopRefusedArm state
   testPackChainCarrier state
   testPackStrictGuardLane state
+  testPackSameLevelChain state
+
+  testPackSurvivorsChain state
+  testProducersPremiseChain state
+  testFlowKeyChain state
   testPackMappingLaneTail state
+  testPackDedentSlotGuard state
   testPackAltMarks state
   testPackAltNegative state
   testPackAltUnmarkedRefused state
@@ -16723,6 +17586,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testDirectiveAfterContent state
   testRootFrameBound state
   testRootFrameSupplyRead state
+  testResLandDeclinesRead state
   testRootSiblingLedger state
   testSiblingDashFrames state
   testValueLineResume state
@@ -16799,6 +17663,7 @@ def collectTests : IO VerifiedSuiteResult := do
   CoreSchemaTagTest.testCoreTagCorrespondence state
   P117Test.testValueLandingNodeEnd state
   P118Test.testFloorFoldShadow state
+  P119Test.testKeyArmShadow state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",

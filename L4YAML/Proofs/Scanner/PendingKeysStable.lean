@@ -173,11 +173,11 @@ lemma advance_pendingKeys (s : ScannerState) :
 
 lemma scanFlowSequenceStart_preserves_pendingKeys (s : ScannerState) :
     (scanFlowSequenceStart s).pendingKeys = s.pendingKeys := by
-  unfold scanFlowSequenceStart; simp only [advance_preserves_pendingKeys, ScannerState.emit, ScannerState.emitAt]
+  unfold scanFlowSequenceStart; simp only [advance_preserves_pendingKeys, ScannerState.emit]
 
 lemma scanFlowMappingStart_preserves_pendingKeys (s : ScannerState) :
     (scanFlowMappingStart s).pendingKeys = s.pendingKeys := by
-  unfold scanFlowMappingStart; simp only [advance_preserves_pendingKeys, ScannerState.emit, ScannerState.emitAt]
+  unfold scanFlowMappingStart; simp only [advance_preserves_pendingKeys, ScannerState.emit]
 
 lemma scanValueClearKey_pendingKeys (s : ScannerState) :
     (scanValueClearKey s).pendingKeys = s.pendingKeys := by
@@ -209,7 +209,7 @@ lemma scanValue_pendingKeys_of_inFlow {s s' : ScannerState}
   repeat' split at hok
   all_goals first
     | contradiction
-    | (simp only [Except.ok.injEq] at hok; subst hok; simp only [h_flow, Bool.true_or, ite_true]; exact key)
+    | (simp only [Except.ok.injEq] at hok; subst hok; simp only; exact key)
 
 /-- `scanKey`'s `[187]` push and its mark are both `!inFlow`-guarded. -/
 lemma scanKey_pendingKeys_of_inFlow {s s' : ScannerState}
@@ -220,7 +220,7 @@ lemma scanKey_pendingKeys_of_inFlow {s s' : ScannerState}
   repeat (any_goals (split at hok))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at hok; subst hok)
-  all_goals simp [advance_preserves_pendingKeys, emit_pendingKeys, h_flow]
+  all_goals simp [advance_preserves_pendingKeys, emit_pendingKeys]
 
 
 lemma skipWhitespaceLoop_preserves_pendingKeys (s : ScannerState) (fuel : Nat) :

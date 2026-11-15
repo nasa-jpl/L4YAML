@@ -2674,7 +2674,6 @@ L4YAML.Proofs.CommentProperties.stripPositions_value_eq thm
 L4YAML.Proofs.DumpRoundTrip.isPlainSafe_mixed thm
 L4YAML.Proofs.Indexed.ScannerPlainScalarValid.overwriteAtCursor_flowLevel thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.pushSequenceIndentIx_preserves_ScanInvIx thm
-L4YAML.Proofs.RegisterWitness.MarkedColsIn.of_markedCols_nil thm
 L4YAML.Proofs.DocumentProduction.empty_to_stream thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.FlowMonoChainIx_preserves_raw_prefix thm
 L4YAML.Proofs.RoundTripComposition.roundtrip_empty_block_map thm

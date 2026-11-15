@@ -140,7 +140,8 @@ jobs:
             specexamples schemadump derivingconsumer scannertests scannerspecexamples \
             adversarialtests mutationtests propertytests productioncoverage \
             limittests \
-            flowregressioncheck errorstagediag scalarstagediag aligntest \
+            flowregressioncheck errorstagediag scalarstagediag \
+            l4yaml-fmt aligntest \
             2>&1 | tee "$RUNNER_TEMP/lake-build.log"
           if JOBS=$(grep -oE '\([0-9]+ jobs\)' "$RUNNER_TEMP/lake-build.log" | tail -1 | grep -oE '[0-9]+'); then
             echo "BUILD_JOBS_TOTAL=$JOBS" >> "$GITHUB_ENV"
@@ -579,6 +580,7 @@ jobs:
       # -------------------------------------------------------
       - name: Upload documentation as artifact
         # Never let the convenience artifact block the gh-pages publish below.
+        if: github.server_url == 'https://github.com'
         continue-on-error: true
         uses: actions/upload-artifact@v4
         with:

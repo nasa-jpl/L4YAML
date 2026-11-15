@@ -279,7 +279,9 @@ it may only shrink. -/
 -- index is introduced.
 -- 2026-11-11 (item 484): `ContentArm` joins the roster — one carrier (62 → 63), surface=12 state=2 prop=36
 -- scalar=2, ghost=0; two disjuncts (`blockScalar`'s `c = '|' ∨ c = '>'` and `SCLLiteral ∨ SCLFolded`), or 121 → 123.
-def expectedSummary : String := "carriers=63 snapshot=9 ghost=73 or=123"
+-- 2026-11-14 (item 499): KeyArm — the ?/: flow arms' carrier on accum_step_block's conclusion: carriers 63 → 64;
+-- or 123 → 141 (its six constructors read the lead/run/separator at every floor: 10 `∨ ¬ (m ≤ …)` + 8 inner `∨`).
+def expectedSummary : String := "carriers=64 snapshot=9 ghost=73 or=141"
 
 -- 2026-10-24 (B3 [66] col-0 threading): carriers 61 → 62 — `SSLCommentsFrom` (the separator-less comment product).
 -- 2026-10-25 (#99 landed): the `FlowLead`/`leadFree`/`closeFree` tally rows go with the deleted carrier and
@@ -314,6 +316,7 @@ def expectedTally : List String :=
    "ImplicitKeyPack: surface=16 state=1 prop=16 scalar=9 snapshot=0 ghost=4 or=7",
    "InlineResidue: surface=2 state=0 prop=0 scalar=1 snapshot=0 ghost=0 or=0",
    "InteriorGap: surface=3 state=1 prop=30 scalar=11 snapshot=0 ghost=1 or=4",
+   "KeyArm: surface=19 state=2 prop=53 scalar=16 snapshot=0 ghost=0 or=18",
    "KeyFloor: surface=0 state=0 prop=1 scalar=7 snapshot=0 ghost=0 or=0",
    "KeyFrames: surface=4 state=0 prop=5 scalar=3 snapshot=0 ghost=2 or=0",
    "KeyPackPunt: surface=0 state=1 prop=9 scalar=0 snapshot=0 ghost=0 or=0",
@@ -457,13 +460,15 @@ def expectedGhost : List String :=
 -- 2026-10-29 (item 394): `FlowBaseRoutes.valueF` — the flow value's frames twin, `∃ ks` relaying `pendingMapValue.h_closeF`'s list (Rule 8: a RELAY of an existing frames list, the one binder the field needs) with its own `∨ True` (ghost 72 → 73, or 105 → 106).
 -- 2026-10-29 (item 394, option B): 106 rows unchanged in count; FlowBaseRoutes' indices shift for
 -- `s0` and FlowStackK's colon-route disjunct now names `s0` in the FlowStackB it promises.
+-- 2026-11-14 (item 499): + KeyArm's 18 floor-read disjuncts (lead / run / separator at every floor `m`).
 def expectedDisjuncts : List String :=
   ["CommentStop.body ∨ c = '\\n' ∨ c = '\\x0d'",
    "CommentStop.body ∨ c = '\\x0d'",
    "ContentArm.blockScalar[5].h_c ∨ c = '>'",
    "ContentArm.blockScalar[6].h_bs ∨ SCLFolded 0 sp sp'",
    "FlowArm.openNest[14].h_lead ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
-   "FlowArm.openNest[14].h_lead ∨ sp_br = sp_flow₂ ∧ (gapTail sc).leadFree = true",
+   -- 2026-11-14 (item 497): the ε lead also carries `trailingPropertyRun sc.tokens = []` (the strict-lead carry).
+   "FlowArm.openNest[14].h_lead ∨ sp_br = sp_flow₂ ∧ (gapTail sc).leadFree = true ∧ trailingPropertyRun sc.tokens = []",
    "FlowArm.comma[13].h_lead ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
    "FlowArm.comma[13].h_lead ∨ sp_prep = sp_flow₂ ∧ (gapTail sc).closeFree = true",
    "FlowArm.closeNested[14].h_lead ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
@@ -496,6 +501,24 @@ def expectedDisjuncts : List String :=
    "InteriorGap.props[8].h_lead ∨ sp_p = sp_flow ∧ tl.leadFree = true",
    "InteriorGap.props[9].h_run ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
    "InteriorGap.props[16].h_some ∨ ht = true",
+   "KeyArm.question[11].h_lead ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
+   "KeyArm.question[11].h_lead ∨ sp_prep = sp_flow",
+   "KeyArm.colonValue[12].h_lead ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
+   "KeyArm.colonValue[12].h_lead ∨ sp_prep = sp_flow",
+   "KeyArm.colonSep[11].h_lead ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
+   "KeyArm.colonSep[11].h_lead ∨ sp_prep = sp_flow",
+   "KeyArm.colonQuestion[11].h_lead ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
+   "KeyArm.colonQuestion[11].h_lead ∨ sp_prep = sp_flow",
+   "KeyArm.colonPropsSep[14].h_lead ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
+   "KeyArm.colonPropsSep[14].h_lead ∨ sp_p = sp_flow ∧ (tailOf sc.tokens).leadFree = true",
+   "KeyArm.colonPropsSep[15].h_run ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
+   "KeyArm.colonPropsSep[16].h_sep ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
+   "KeyArm.colonPropsSep[16].h_sep ∨ sp_prep = sp_scan",
+   "KeyArm.colonPropsQuestion[14].h_lead ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
+   "KeyArm.colonPropsQuestion[14].h_lead ∨ sp_p = sp_flow ∧ (tailOf sc.tokens).leadFree = true",
+   "KeyArm.colonPropsQuestion[15].h_run ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
+   "KeyArm.colonPropsQuestion[16].h_sep ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
+   "KeyArm.colonPropsQuestion[16].h_sep ∨ sp_prep = sp_scan",
    "KmSound.body ∨ True",
    "KmSound.body ∨ True",
    "OpenSeqEntry.body ∨ sameIndentSequenceOpen s.tokens ↑s.col = true",

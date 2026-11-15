@@ -233,6 +233,8 @@ def expectedPayments : List String :=
 -- 2026-10-29 (item 394, option B): pendingMapValue.h_closeF's cover restated `∃ lo, Floor lo n ks` — the
 -- floor literals now read the park's own level as the index (34 → 39 rows: the relays that used to
 -- bind the ghost `m` now name `n`); valueF's cover adds its literal at the mapping arm.
+-- 2026-11-14 (item 492's rebase onto item 498): item 498's opener floor prepends the own level (`map k :: ks`) to the births' `[map k]`, reading
+-- `[map k, map k]` at the openers — the scanner's `[map 0, map 0]` at the root (Priority 71).
 def expectedFloorLits : List String :=
   ["accum_block_on_closeThenBlock lo=lo idx=k ks=map(…) :: ksv var ×1",
    "accum_block_on_closeThenBlock lo=nv + 1 idx=nv + 1 + m ks=[] lit ×2",
@@ -252,7 +254,7 @@ def expectedFloorLits : List String :=
          "accum_content_pending lo=lo idx=ne ks=ks var ×3",
    "colon_fires_implicit_key lo=lo idx=k ks=map(…) :: ks var ×2",
    "colon_fires_props_key lo=lo idx=k ks=map(…) :: ks var ×2",
-   "colon_open_map lo=k idx=k ks=map(…) :: [] own ×5",
+   "colon_open_map lo=k idx=k ks=map(…) :: map(…) :: [] own ×5",
    "colon_open_map_implicit lo=lo idx=k + 1 ks=map(…) :: ks var ×2",
    "colon_open_map_implicit lo=lo idx=k ks=map(…) :: ks var ×2",
    "colon_open_map_props lo=lo idx=k + 1 ks=map(…) :: ks var ×2",
@@ -264,7 +266,7 @@ def expectedFloorLits : List String :=
    "entryKeyPack_of_dispatch lo=lo idx=w ks=map(…) :: ks var ×2",
    "entryPropsKeyPack_of_dispatch lo=lo idx=w ks=map(…) :: ks var ×2",
    "question_open_map lo=k + 1 idx=k + 1 ks=[] own ×2",
-   "question_open_map lo=k idx=k ks=map(…) :: [] own ×5",
+   "question_open_map lo=k idx=k ks=map(…) :: map(…) :: [] own ×5",
    "accum_block_on_pendingBlock lo=lo idx=n ks=ks var ×1",
    "accum_block_on_pendingBlockContent lo=lo idx=n ks=ks var ×1",
    "accum_block_pending lo=lo idx=nmv + 1 ks=ks var ×2",
@@ -279,6 +281,7 @@ def expectedFloorLits : List String :=
   ]
 -- 2026-10-29 (item 394, option B): Floor.mono_index gains two uses — the mapping arm lifts the park's
 -- cover to the flow level (n_old + 1) for valueF, and the closed-content birth lifts n → n + 1.
+-- 2026-11-14 (item 492's rebase onto item 498): the openers' 10 covers lift by `Covered.cons` (the births), 4 → 14 in 4 declarations.
 def expectedTransports : List String :=
   ["Floor.mono_index: 11 in 7 [accum_block_on_closeThenBlock=1, accum_content_on_pendingMapValue_indented=1, accum_flow_open_depth0=1, colon_open_map_implicit=2, colon_open_map_props=2, entryKeyPack_of_dispatch=2, entryPropsKeyPack_of_dispatch=2]",
    "Floor.cons: 4 in 2 [entryKeyPack_of_dispatch=2, entryPropsKeyPack_of_dispatch=2]",
@@ -287,7 +290,7 @@ def expectedTransports : List String :=
    "Covered.pop_to: 1 in 1 [dedent_cover_of_floor=1]",
    "Covered.raise_floor: 0 in 0 []",
    "Covered.dedup_head: 2 in 2 [colon_open_map_implicit=1, colon_open_map_props=1]",
-   "Covered.cons: 4 in 2 [entryKeyPack_of_dispatch=2, entryPropsKeyPack_of_dispatch=2]"]
+   "Covered.cons: 14 in 4 [colon_open_map=5, entryKeyPack_of_dispatch=2, entryPropsKeyPack_of_dispatch=2, question_open_map=5]"]
 -- 2026-10-18 (item 284): `rows` 169 → 167 and `nodes` 96125 → 97863 are
 -- `CloseStackCover`'s, read through the same rows.  `floorNodes` 24488 → 24476
 -- is two moves that nearly cancel, separated by restoring the old `pendingFlow`
@@ -387,6 +390,7 @@ def expectedTransports : List String :=
 -- 2026-11-06 (item 437): nodes 124448 → 124494, floorNodes 31538 → 31552 — the landing lemmas relay `h_base` and the dash parks' `h_seqTop` (a floor-shaped fact).
 -- 2026-11-10 (item 469, review round 1): nodes=124519 → 124539, floorNodes=31582 → 31588 — as CloseStackCover/PuntCoverInputs (same walk): `FlowStackK.withArm` around the same body tuples, the arm's `∀ m` leads and `gapTail` rewrites at the sites.
 -- 2026-11-09 (item 469): nodes 124500 → 124519, floorNodes 31574 → 31582 — the `FlowStackKA` arm-first pack sites (`ofPack`/`ofK` around the unchanged body tuples); no leaf paid or punted.
+-- 2026-11-14 (item 492's rebase onto item 498): coveredCons 4 → 14 (the openers' covers), floorNodes 31583 → 31603.
 def expectedLine : String :=
 -- 2026-10-25 (#112 review): the `FlowStackK` `MarkedColsIn` carrier reverted (Rule 8: a projection of the closed state is decided at the close by `Classical.em`); nodes 117690 → 117529, floorNodes 28226 → 28222 (walked-term totals).
 -- 2026-10-25 (item 363): the flow OPEN lane read off the block state (`h_refused`, one `Classical.em`); the three `match h_kslot_* with` blocks go — nodes 117529 → 117431 (walked-term total; floorNodes read from the build).
@@ -404,7 +408,8 @@ def expectedLine : String :=
   -- 2026-10-28 (item 386): nodes 120403 → 121047, floorNodes 30466 → 30646 — the level conjunct/binder and the helpers' sibling/absurd terms; no leaf delta row moved.
   -- 2026-11-07 (item 448, (α) stage A): nodes 124494 → 124500 — the `≤` park faces' relays and `closeThenBlock`'s
   -- `ResumeFrames.strict` read off the empty-value close; no leaf delta row moved.
-  "rows=206 payments=1 literal=0 relay=1 scenarios=2 baseContent=17/6/13/4/2 allContent=19/6/12/6/2 baseEntry=17/6/13/4/2 allEntry=19/6/12/6/2 turnedPaidContent=0 turnedPaidEntry=0 originsBaseContent=6 originsAllContent=6 originsBaseEntry=6 originsAllEntry=6 puntContent=-1 puntEntry=-1 coverPuntContent=+2 coverPuntEntry=+2 mergedBase=true mergedAll=true floorLits=101 own=12 lit=6 var=83 ownLemmas=2 scanned=36 monoIndex=11 monoIndexLemmas=7 floorCons=4 floorConsLemmas=2 floorPopTo=1 floorPopToLemmas=1 leOfMem=0 coveredPopTo=1 coveredPopToLemmas=1 raiseFloor=0 dedupHead=2 dedupHeadLemmas=2 coveredCons=4 rootMonoCaller=1 rootMonoSite=1 rootNtop=1 nodes=124539 floorNodes=31588"
+  -- 2026-11-14 (item 500): floorNodes 31603 → 31499 — the producers' three dead `if hlt : n < w` splits on the nested branch deleted; no leaf delta row moved.
+  "rows=206 payments=1 literal=0 relay=1 scenarios=2 baseContent=17/6/13/4/2 allContent=19/6/12/6/2 baseEntry=17/6/13/4/2 allEntry=19/6/12/6/2 turnedPaidContent=0 turnedPaidEntry=0 originsBaseContent=6 originsAllContent=6 originsBaseEntry=6 originsAllEntry=6 puntContent=-1 puntEntry=-1 coverPuntContent=+2 coverPuntEntry=+2 mergedBase=true mergedAll=true floorLits=101 own=12 lit=6 var=83 ownLemmas=2 scanned=36 monoIndex=11 monoIndexLemmas=7 floorCons=4 floorConsLemmas=2 floorPopTo=1 floorPopToLemmas=1 leOfMem=0 coveredPopTo=1 coveredPopToLemmas=1 raiseFloor=0 dedupHead=2 dedupHeadLemmas=2 coveredCons=14 rootMonoCaller=1 rootMonoSite=1 rootNtop=1 nodes=124521 floorNodes=31499"
 
 /-! ## §4 The reading -/
 

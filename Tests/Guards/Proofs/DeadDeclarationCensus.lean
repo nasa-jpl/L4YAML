@@ -30,7 +30,7 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- `accum_step_content_pairK`), unreached +10 and (A) 1,351 → 1,361 — the fold is read by no root until the 2c fold
 -- (`scan_trace`) composes it; the (B) roster 3,536 unmoved, (C)/(D) unmoved.
 def expectedDeadCensus : String :=
-  "population=14369 thm=10311 def=2707 roots=capstone:27+export:37+blueprint:223(unresolved=5) unreached=6586 thm=4659 A-campaign=1361 C-api=1414 D-test-only=275 B-roster=3536 thm=3173 cluster-roots=1460"
+  "population=14369 thm=10311 def=2707 roots=capstone:27+export:37+blueprint:223(unresolved=5) unreached=6586 thm=4659 A-campaign=1361 C-api=1414 D-test-only=275 B-roster=3535 thm=3173 cluster-roots=1460"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do

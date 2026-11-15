@@ -1901,7 +1901,7 @@ private lemma consumeNewline_col_zero {s : ScannerState} {c : Char}
   have hlt : s.offset < s.inputEnd := L4YAML.Proofs.ScalarProduction.peek_some_has_more hpk
   have hget : String.Pos.Raw.get s.input ⟨s.offset⟩ = c := by
     unfold ScannerState.peek? at hpk
-    rw [if_pos hlt] at hpk
+    rw [ite_eq_left hlt] at hpk
     exact Option.some.inj hpk
   unfold consumeNewline
   rw [hpk]

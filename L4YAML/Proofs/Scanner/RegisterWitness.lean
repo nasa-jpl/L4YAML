@@ -258,8 +258,8 @@ lemma pushMappingIndent_getElem?_of_lt (s : ScannerState) (col : Int) (i : Nat)
   split
   · simp only [ScannerState.indentColumns, ScannerState.emit]
     constructor
-    · rw [Array.getElem?_push, if_neg (by omega)]
-    · rw [Array.map_push, Array.getElem?_push, if_neg (by simpa using Nat.ne_of_lt hi)]
+    · rw [Array.getElem?_push, ite_eq_right (by omega)]
+    · rw [Array.map_push, Array.getElem?_push, ite_eq_right (by simpa using Nat.ne_of_lt hi)]
   · exact ⟨rfl, rfl⟩
 
 /-- **The seed.**  A `?` scanned outside flow marks the level at its own column, and
@@ -417,7 +417,7 @@ lemma SlotsWitness.push {input : String} {s s' : ScannerState} {sp_start : SurfP
       rcases hx : s.indents[i]? with _ | e
       · simp [hx] at hc
       · exact (Array.getElem?_eq_some_iff.1 hx).1
-    rw [indentColumns_getElem?, hind, Array.getElem?_push, if_neg (by omega)]
+    rw [indentColumns_getElem?, hind, Array.getElem?_push, ite_eq_right (by rw [← hsz]; assumption)]
     exact hc
 
 /-- Popping the top level keeps every remaining slot's witness. -/
@@ -431,7 +431,7 @@ lemma SlotsWitness.pop {input : String} {s s' : ScannerState} {sp_start : SurfPo
   split at hi
   · obtain ⟨c, sp_q, hc, hq⟩ := h i l hi
     refine ⟨c, sp_q, ?_, hq⟩
-    rw [indentColumns_getElem?, hind, Array.getElem?_pop, if_pos (by omega)]
+    rw [indentColumns_getElem?, hind, Array.getElem?_pop, ite_eq_left (by omega)]
     rw [indentColumns_getElem?] at hc; exact hc
   · cases hi
 
@@ -615,7 +615,7 @@ lemma MarkedColsIn.push {s s' : ScannerState} {ns : List Nat}
   split at hi
   · simp at hi
   · have hlt : i < s.pendingKeys.size := (Array.getElem?_eq_some_iff.1 hi).1
-    rw [indentColumns_getElem?, hind, Array.getElem?_push, if_neg (by omega)] at hc
+    rw [indentColumns_getElem?, hind, Array.getElem?_push, ite_eq_right (by omega)] at hc
     exact h i l c hi (by rw [indentColumns_getElem?]; exact hc)
 
 lemma MarkedColsIn.closeAt_eq {s s' : ScannerState} {ns : List Nat}
@@ -911,8 +911,7 @@ lemma scanDocumentStart_witness {input : String} {s : ScannerState} {sp_start : 
   refine h.of_doc_reset hs ?_ ?_
   · unfold scanDocumentStart; simp [advanceN_preserves_pendingKeys, emit_pendingKeys]
   · unfold scanDocumentStart
-    simp [L4YAML.Proofs.IndentStackBase.advanceN_preserves_indents,
-      L4YAML.Proofs.ScannerContracts.emit_indents]
+    simp [L4YAML.Proofs.IndentStackBase.advanceN_preserves_indents]
 
 lemma scanDocumentEnd_witness {input : String} {s s' : ScannerState} {sp_start : SurfPos}
     (hok : scanDocumentEnd s = .ok s') (h : SlotsWitness input s sp_start) (hs : SlotsOk s) :
@@ -924,8 +923,7 @@ lemma scanDocumentEnd_witness {input : String} {s s' : ScannerState} {sp_start :
   all_goals (simp only [Except.ok.injEq] at hok; subst hok)
   all_goals refine h.of_doc_reset hs ?_ ?_
   all_goals (try simp [advanceN_preserves_pendingKeys, emit_pendingKeys])
-  all_goals (try simp [L4YAML.Proofs.IndentStackBase.advanceN_preserves_indents,
-      L4YAML.Proofs.ScannerContracts.emit_indents])
+  all_goals (try simp [L4YAML.Proofs.IndentStackBase.advanceN_preserves_indents])
 
 /-- The four flow brackets and the flow entry never touch a slot. -/
 lemma scanFlowSequenceStart_witness {input : String} {s : ScannerState} {sp_start : SurfPos}

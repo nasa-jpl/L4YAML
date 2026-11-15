@@ -1998,16 +1998,16 @@ lemma scanValueValidate_ok_of_flow_allTokensOnLine (s : ScannerState)
                Bool.true_and, bne_self_eq_false, ite_false, reduceCtorEq]
     -- Check 4: possible && inFlow && tokenIndex > 0 && slot below is `.value`
     by_cases h_ti : s.simpleKey.tokenIndex > 0
-    · simp only [h_glued, show (decide (s.simpleKey.tokenIndex > 0)) = true from decide_eq_true h_ti]
+    · simp only [show (decide (s.simpleKey.tokenIndex > 0)) = true from decide_eq_true h_ti]
       -- Case analysis on `s.tokens[tokenIndex - 1]?`
       cases h_tok : s.tokens[s.simpleKey.tokenIndex - 1]? with
       | none => rfl -- no token at that index: check passes trivially
       | some tok =>
         have h_ne : tok.val ≠ .value := h_entry h_ti tok h_tok
-        simp only [h_glued, show (tok.val == YamlToken.value) = false from
+        simp only [show (tok.val == YamlToken.value) = false from
                      beq_eq_false_iff_ne.mpr h_ne]
         rfl
-    · simp only [h_glued, show (decide (s.simpleKey.tokenIndex > 0)) = false from
+    · simp only [show (decide (s.simpleKey.tokenIndex > 0)) = false from
                    decide_eq_false (by omega)]; rfl
 
 -- saveSimpleKey only adds placeholder tokens, so filtering them out is invariant.

@@ -398,15 +398,15 @@ lemma scanValueValidateIx_ok_of_flow_allTokensOnLine (s : ScannerStateIx input)
     simp only [h_glued, h_flow, h_el, h_ek, Bool.not_true, Bool.and_false, Bool.false_and,
                Bool.true_and, bne_self_eq_false, ↓reduceIte, reduceCtorEq]
     by_cases h_ti : s.simpleKey.tokenIndex > 0
-    · simp only [h_glued, show (decide (s.simpleKey.tokenIndex > 0)) = true from decide_eq_true h_ti]
+    · simp only [show (decide (s.simpleKey.tokenIndex > 0)) = true from decide_eq_true h_ti]
       cases h_tok : s.tokens.tokens[s.simpleKey.tokenIndex - 1]? with
       | none => rfl
       | some tok =>
         have h_ne : tok.token ≠ .value := h_entry h_ti tok h_tok
-        simp only [h_glued, show (tok.token == YamlToken.value) = false from
+        simp only [show (tok.token == YamlToken.value) = false from
                      beq_eq_false_iff_ne.mpr h_ne, ↓reduceIte]
         rfl
-    · simp only [h_glued, show (decide (s.simpleKey.tokenIndex > 0)) = false from
+    · simp only [show (decide (s.simpleKey.tokenIndex > 0)) = false from
                    decide_eq_false (by omega)]
       rfl
 
