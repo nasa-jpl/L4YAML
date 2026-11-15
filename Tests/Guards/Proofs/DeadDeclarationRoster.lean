@@ -713,7 +713,6 @@ L4YAML.Proofs.DirectiveRuns.DirInv_scanLoop_streamEnd thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.SimpleKeyAboveIx_mono thm
 L4YAML.Proofs.FlowIndexLift.SFlowNode_at thm
 L4YAML.Proofs.Acceptance.DQCharOk.escape ctor
-L4YAML.Proofs.IndentStackCover.instReprFrameLevel def
 L4YAML.Proofs.Indexed.ScannerCorrectness.scanBlockEntryIx_preserves_AllKeysValidIx thm
 L4YAML.Proofs.FoldNewlines.cForbidden_dot_tab thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.dispatchBlockIndicators_none_close_bracket thm
@@ -1876,7 +1875,6 @@ L4YAML.Proofs.FlowSync.FlowSync_dispatchBlock thm
 L4YAML.Proofs.ScannerProofs.flowSeqStart_not_isVirtual thm
 L4YAML.Proofs.EmitterScannability.seqRoot_seqPathAllSeq thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanNextTokenIx_dispatchBlockIndicators_maintains_SKAFIx thm
-L4YAML.Proofs.IndentStackCover.instReprFrameLevel.repr def
 L4YAML.Proofs.EmitterScannability.flowBodyContentDeepMap_advance thm
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.dirs_facts thm
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.EnvReset def
