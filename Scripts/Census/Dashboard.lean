@@ -132,6 +132,16 @@ def fields (s : String) : Array (String × String) := Id.run do
        ("roots", "capstone:26+blueprint:222(unresolved=5"), ("unresolved", "5"), ("thm", "1")]
 #guard fields "paid=10 owed=14 hok=PPP ride=0/3 a=7+2" == #[("paid", "10"), ("owed", "14"), ("hok", "PPP"), ("ride", "0/3"), ("a", "7+2")]
 
+/-- A pin's fields: its `key=value` pairs, or — for a pin whose whole literal is one count (the
+    `Nat` pins: `expectedClosure`, `expectedConsumeAllUsers`) — the single field `value`. -/
+def pinFields (lit : String) : Array (String × String) :=
+  let fs := fields lit
+  if fs.isEmpty && !lit.isEmpty && lit.all Char.isDigit then #[("value", lit)] else fs
+
+#guard pinFields "287" == #[("value", "287")]
+#guard pinFields "a=1" == #[("a", "1")]
+#guard pinFields "PPP" == #[]
+
 /-- A field's value as a count: digits; `a+b` sums (the births' `7+2`); `a/b` reads `a`. -/
 def count? (v : String) : Option Nat :=
   let v := (v.splitOn "/").headD v
@@ -383,7 +393,7 @@ def readPins (census text : String) : Array Pin :=
 def resolve (pins : Array Pin) (t : Target) : Except String (Nat × Nat) := do
   let some p := pins.find? (fun p => p.census == t.census && p.name == t.pin)
     | throw s!"{t.census}.{t.pin}: no such pin"
-  let fs := fields p.literal
+  let fs := pinFields p.literal
   let some (_, v) := fs.find? (·.1 == t.field) | throw s!"{t.census}.{t.pin}: no field `{t.field}`"
   let some now := count? v | throw s!"{t.census}.{t.pin}.{t.field}: `{v}` is not a count"
   let goal ← match t.goal with
@@ -444,11 +454,11 @@ def totals (rows : Array Row) : String :=
   let left := open_.foldl (fun acc r => acc + r.left) 0
   s!"directed={rows.size} work={work.size} open={open_.size} done={work.size - open_.size} holds={rows.size - work.size} left={left}"
 
-/-- Every field of every pin not named by the roster, one line per pin. -/
+/-- Every field of every pin not named by the roster, one line per pin; a `Nat` pin reads `value=N`. -/
 def renderReadings (pins : Array Pin) : Array String := Id.run do
   let mut out := #[]
   for p in pins do
-    let fs := fields p.literal
+    let fs := pinFields p.literal
     let fs := fs.filter fun (k, v) => (count? v).isSome &&
       !(roster.any fun t => t.census == p.census && t.pin == p.name && t.field == k)
     if fs.isEmpty then continue
