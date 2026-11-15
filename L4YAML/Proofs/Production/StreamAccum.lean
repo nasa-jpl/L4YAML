@@ -2797,10 +2797,12 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       -- re-open (`- - a⏎- b`).  Paid by the entry-content relay off a
       -- `pendingBlock` that carries one; punted where the park's enclosing
       -- levels are fused.
-      (h_seqF : (∃ ke : Nat, ∀ sp_mid : SurfPos,
+      (h_seqF : (∃ (ke : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ ke) ∧
+        ∀ sp_mid : SurfPos,
         SSLComments sp_gram sp_mid →
         ∀ sp_end : SurfPos, SCompactSeqTail n sp_mid sp_end →
-        SeqEntryTail sp_start ke sp_end) ∨ True)
+        ∀ sp_fin : SurfPos, SCompactSeqTail ke sp_end sp_fin →
+        ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)
       -- **Item 190 — `h_kslot`'s twin ONE FRAME UP** (LAST, so the patterns
       -- naming the older fields still bind them), `pendingBlock.h_kslotUp`
       -- read across this park's own content: the entry's node has arrived, so
@@ -3004,10 +3006,12 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       -- the NESTED `-` (`- - a`), where the outer park's own `h_close_entry`
       -- is the enclosing tail verbatim; punted by every landed producer, whose
       -- `[183]` stands under no entry.
-      (h_seqF : (∃ ke : Nat, ∀ sp_mid : SurfPos,
+      (h_seqF : (∃ (ke : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ ke) ∧
+        ∀ sp_mid : SurfPos,
         SBlockIndented n .blockIn sp_scan sp_mid →
         ∀ sp_end : SurfPos, SCompactSeqTail n sp_mid sp_end →
-        SeqEntryTail sp_start ke sp_end) ∨ True)
+        ∀ sp_fin : SurfPos, SCompactSeqTail ke sp_end sp_fin →
+        ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)
       -- ═══ **Item 190 — `h_kslot`'s twin ONE FRAME UP** (LAST, so the patterns
       -- naming the older fields still bind them).  `h_kslot` is the value line
       -- of the frame this entry's collection FILLS; this is the line of the
@@ -17572,6 +17576,14 @@ lemma blockEntry_landing_openSeq {sc s_prep s' : ScannerState} {c : Char}
     exact Or.inr (dispatchBlockEntry_sameIndentSeq h_dispatch
       (by split <;> exact h_noflow) (nodeSlotAwaited_false_of_landing h_tail h_pre) h_map)
 
+/-- Two compact sequence tails at the same width are one (item 505). -/
+lemma SCompactSeqTail_append {k : Nat} :
+    ∀ {s s' s'' : SurfPos}, SCompactSeqTail k s s' → SCompactSeqTail k s' s'' →
+      SCompactSeqTail k s s''
+  | _, _, _, .nil _ _, h₂ => h₂
+  | _, _, _, .cons _ s s₁ s₂ s₃ _ h_ind h_dash h_gnot h_node h_tail, h₂ =>
+      .cons _ s s₁ s₂ s₃ _ h_ind h_dash h_gnot h_node (SCompactSeqTail_append h_tail h₂)
+
 /-- **What item 166's branch was missing, spent** (item 167) — the landed `-`
     read as the open collection's NEXT ENTRY rather than as a new document's
     first one.
@@ -27469,8 +27481,10 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
     -- SEQUENCE-lane callers pay (`accum_block_on_pendingBlock`'s dedent and
     -- `accum_block_on_pendingBlockContent`'s `k ≠ n`, both from their park's
     -- own `h_seqF`); every other caller punts.
-    (h_seqF : (∃ ke : Nat, ∀ sp_mid : SurfPos, SSLComments sp_gram sp_mid →
-      SeqEntryTail sp_start ke sp_mid) ∨ True)
+    (h_seqF : (∃ (ke : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ ke) ∧
+      ∀ sp_mid : SurfPos, SSLComments sp_gram sp_mid →
+      ∀ sp_fin : SurfPos, SCompactSeqTail ke sp_mid sp_fin →
+      ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)
     -- **Item 173 (LAST, so the existing argument order stands): the closed
     -- park's still-open MAPPING levels.**  The `:`/`?` arm reads them at the
     -- landing's width and hands the opener the RESUME face where the width
@@ -28054,19 +28068,32 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
     -- reading is `h_seqRoute`'s: the entries are a fresh bare document's node
     -- and `[211]`'s continuation appends it.  Both closures below are built
     -- from THIS, so the two readings are chosen once. ═══
-    have h_entryTail : ∀ sp_final, SBlockIndented k .blockIn sp_scan' sp_final →
-        ∀ sp_end, SCompactSeqTail k sp_final sp_end → SLYamlStream sp_start sp_end := by
+    -- Item 505: the entry tail with the sequence's OUTER frames — the maps the
+    -- `[183]` at `k` stands inside, relayed by `h_seqF` when its `ke` is this
+    -- landing's width; `h_doc`'s root route keeps `[]`.
+    obtain ⟨ks_e, h_wks_e, h_entryTailF⟩ : ∃ ks_e : List FrameLevel, (∀ fr ∈ ks_e, fr.width ≤ k) ∧
+        ∀ sp_final, SBlockIndented k .blockIn sp_scan' sp_final →
+        ∀ sp_end, SCompactSeqTail k sp_final sp_end →
+        ResumeFrames (SLYamlStream sp_start) ks_e sp_end := by
       have h_doc : ∀ sp_final, SBlockIndented k .blockIn sp_scan' sp_final →
           ∀ sp_end, SCompactSeqTail k sp_final sp_end → SLYamlStream sp_start sp_end :=
         fun _ h_indented sp_end h_tail =>
           h_seqRoute sp_end
             (SBlockSeqEntries_of_compactTail h_ind h_dash h_gnot h_indented h_tail)
-      rcases h_seqF with ⟨ke, seqF⟩ | _
+      rcases h_seqF with ⟨ke, ks, h_wks, seqF⟩ | _
       · by_cases hke : ke = k
         · subst hke
-          exact seqEntryTail_cons (seqF sp_mid h_ssl) h_ind h_dash h_gnot
-        · exact h_doc
-      · exact h_doc
+          exact ⟨ks, h_wks, fun sp_final h_indented sp_end h_tail =>
+            seqF sp_mid h_ssl sp_end
+              (SCompactSeqTail.cons ke sp_mid _ sp_scan' sp_final sp_end
+                h_ind h_dash h_gnot h_indented h_tail)⟩
+        · exact ⟨[], fun _ h => absurd h List.not_mem_nil, fun sp_final h_indented sp_end h_tail =>
+            ResumeFrames.bottom sp_end (h_doc sp_final h_indented sp_end h_tail)⟩
+      · exact ⟨[], fun _ h => absurd h List.not_mem_nil, fun sp_final h_indented sp_end h_tail =>
+          ResumeFrames.bottom sp_end (h_doc sp_final h_indented sp_end h_tail)⟩
+    have h_entryTail : ∀ sp_final, SBlockIndented k .blockIn sp_scan' sp_final →
+        ∀ sp_end, SCompactSeqTail k sp_final sp_end → SLYamlStream sp_start sp_end :=
+      fun sp_final h_indented sp_end h_tail => (h_entryTailF sp_final h_indented sp_end h_tail).close
     -- The `-` opens a SEQUENCE level, and the frames record mapping levels
     -- only — so the cover crosses this step untouched, and the lift is the
     -- stack equation and nothing else.
@@ -28078,11 +28105,6 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
           (dispatchBlockIndicators_dash_scan h_dispatch).2
           ((IndentStackCover.preprocess_cover h_preprocess hc).of_indents_eq
             (by split <;> rfl))
-    have h_seqBottom : ∀ sp_final : SurfPos, SBlockIndented k .blockIn sp_scan' sp_final →
-        ∀ sp_end : SurfPos, SCompactSeqTail k sp_final sp_end →
-        ResumeFrames (SLYamlStream sp_start) [] sp_end :=
-      fun sp_final h_indented sp_end h_tail =>
-        ResumeFrames.bottom sp_end (h_entryTail sp_final h_indented sp_end h_tail)
     have h_seqFrames : (∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width ≤ k) ∧
         ((∃ lo : Nat, IndentStackCover.Floor lo k ks ∧
           IndentStackCover.Covered lo ks s') ∨ True) ∧
@@ -28133,10 +28155,8 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
                 (closeF sp_end (valueLandedSeq hnk h_ssl
                   (SBlockSeqEntries_of_compactTail h_ind h_dash h_gnot h_indented h_tail))).level_inv
                   sp_fin (by obtain rfl : nv = k := (by omega); exact h_mt))⟩
-          · exact Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
-              Or.inr trivial, h_seqBottom, Or.inr trivial⟩
-      · exact Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
-          Or.inr trivial, h_seqBottom, Or.inr h_tr⟩
+          · exact Or.inl ⟨ks_e, h_wks_e, Or.inr trivial, h_entryTailF, Or.inr trivial⟩
+      · exact Or.inl ⟨ks_e, h_wks_e, Or.inr trivial, h_entryTailF, Or.inr h_tr⟩
     -- ═══ **Item 198: the same step at the VALUE-LINE bottom.**  `h_valFV` is
     -- `h_valF`'s twin and `nestedBlockSeq` is indifferent to what the stack
     -- stands on, so the term is the branch above verbatim with two things
@@ -28272,7 +28292,12 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
              -- where there was one** — built above, because the bottomed
              -- reading is the fallback rather than the answer.
              h_seqFrames
-             (nodir_of_block_dispatch h_dispatch) (Or.inr trivial)
+             (nodir_of_block_dispatch h_dispatch)
+             -- Item 505: the new park's own `[183]` tail, with the frames the
+             -- `-` landing read — the sequence at `k` goes on and then its maps.
+             (h_seqFrames.imp (fun ⟨ks, hw, _, f3, _⟩ => ⟨k, ks, hw,
+               fun sp_mid h_bi sp_end h_tail sp_fin h_tail2 =>
+                 f3 sp_mid h_bi sp_fin (SCompactSeqTail_append h_tail h_tail2)⟩) id)
              -- ═══ **Item 190: the frame ABOVE the slot, across the same
              -- crossing.**  `slotLandedSeq` fills the `?`'s key with the
              -- collection this `-` opens; item 188 then read the frame's OWN
@@ -29147,11 +29172,14 @@ lemma accum_block_on_pendingContent
   -- collection's own width says — the frames are read at their bottom and no
   -- width is ever compared.  That is why this lane carries no cover: the only
   -- consumer of the list closes it whole.
-  have h_seqLanding : (∃ ke : Nat, ∀ sp_mid : SurfPos, SSLComments sp_gram sp_mid →
-      SeqEntryTail sp_start ke sp_mid) ∨ True :=
+  have h_seqLanding : (∃ (ke : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ ke) ∧
+      ∀ sp_mid : SurfPos, SSLComments sp_gram sp_mid →
+      ∀ sp_fin : SurfPos, SCompactSeqTail ke sp_mid sp_fin →
+      ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True :=
     h_seqF168.imp (fun ⟨ke, kk, _ks, _h_ltq, seqF⟩ =>
-      ⟨ke, fun sp_mid h_ssl =>
-        (seqF sp_mid h_ssl sp_mid (SCompactMapTail.nil kk sp_mid)).close⟩) id
+      ⟨ke, [], fun _ h => absurd h List.not_mem_nil, fun sp_mid h_ssl sp_fin h_t =>
+        ResumeFrames.bottom sp_fin
+          ((seqF sp_mid h_ssl sp_mid (SCompactMapTail.nil kk sp_mid)).close sp_fin h_t)⟩) id
   by_cases hc : c = ':'
   · subst hc
     exact colon_fires_implicit_key sc sp_start sp_block sp_scan s_prep s' sp_prep sp_scan'
@@ -29280,10 +29308,12 @@ lemma accum_block_on_pendingBlockContent {sp_gram : SurfPos}
     (h_tail139 : CompletedTail sc)
     -- **Item 167 (LAST): the park's ENCLOSING collection**
     -- (`pendingBlockContent.h_seqF`), spent at the `k ≠ n` arm below.
-    (h_seqF_old : (∃ ke : Nat, ∀ sp_mid : SurfPos,
+    (h_seqF_old : (∃ (ke : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ ke) ∧
+      ∀ sp_mid : SurfPos,
       SSLComments sp_gram sp_mid →
       ∀ sp_end : SurfPos, SCompactSeqTail n sp_mid sp_end →
-      SeqEntryTail sp_start ke sp_end) ∨ True)
+      ∀ sp_fin : SurfPos, SCompactSeqTail ke sp_end sp_fin →
+      ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)
     -- **Item 190 (LAST): the park's SECOND frame** (`pendingBlockContent.h_kslotUp`),
     -- `h_kslot`'s twin at the outer `?`'s column.  The `_stamp_offcol` branch
     -- below tries the park's own frame at `k` first and this one after, so a
@@ -29524,7 +29554,7 @@ lemma accum_block_on_pendingBlockContent {sp_gram : SurfPos}
           -- park's entry already has its node, so its own `[183]` at `n` is
           -- complete and closes with a `nil` tail; what the landing lands in is
           -- the collection outside it (`- - a⏎- b`).
-          (h_seqF_old.imp (fun ⟨ke, seqF⟩ => ⟨ke, fun sp_m h_ssl_m =>
+          (h_seqF_old.imp (fun ⟨ke, ks, hw, seqF⟩ => ⟨ke, ks, hw, fun sp_m h_ssl_m =>
             seqF sp_m h_ssl_m sp_m (SCompactSeqTail.nil n sp_m)⟩) id)
           -- Item 173: the landing here is a `-`, which the resume face's
           -- `:`/`?` arm never reads — this park's mapping lane has no carrier.
@@ -29865,10 +29895,12 @@ lemma accum_block_on_pendingBlock
     -- The DEDENT arm below is where it is spent: `nestedBlockSeq`'s `m` cannot
     -- go negative, so the landing is not this entry's node — it is the next
     -- entry of the collection this entry itself belongs to.
-    (h_seqF_old : (∃ ke : Nat, ∀ sp_mid : SurfPos,
+    (h_seqF_old : (∃ (ke : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ ke) ∧
+      ∀ sp_mid : SurfPos,
       SBlockIndented n .blockIn sp_scan sp_mid →
       ∀ sp_end : SurfPos, SCompactSeqTail n sp_mid sp_end →
-      SeqEntryTail sp_start ke sp_end) ∨ True)
+      ∀ sp_fin : SurfPos, SCompactSeqTail ke sp_end sp_fin →
+      ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)
     -- **Item 190 (LAST): the park's SECOND frame** (`pendingBlock.h_kslotUp`),
     -- `h_kslot`'s twin at the outer `?`'s column — tried at `k` after the
     -- park's own, so a park inside a single frame behaves exactly as before.
@@ -30152,12 +30184,13 @@ lemma accum_block_on_pendingBlock
                  -- open around it.  `h_close_inner` above is this same term
                  -- with the tail already closed at `nil`, which is the fold
                  -- that reads `- - a⏎- b`'s landing as a second bare document.
-                 (Or.inl ⟨n, fun sp_final h_indented sp_end h_tail =>
-                   h_close_entry_old sp_end
+                 (Or.inl ⟨n, [], fun _ h => absurd h List.not_mem_nil,
+                   fun sp_final h_indented sp_end h_tail sp_fin h_tail2 =>
+                   ResumeFrames.bottom sp_fin (h_close_entry_old sp_end
                      (SBlockIndented.node n .blockIn sp_scan sp_end
                        (nestedBlockSeq hlt h_ssl
                          (SBlockSeqEntries_of_compactTail h_ind h_dash2 h_gnot2
-                           h_indented h_tail)))⟩)
+                           h_indented h_tail))) sp_fin h_tail2)⟩)
                  -- Item 190: and the second frame, folded at the same nil.
                  (match h_kslotUp with
                   | Or.inl ⟨ns, hdom, kslot⟩ => Or.inl ⟨ns, h_mcstep_ne (by decide) _ hdom,
@@ -30232,7 +30265,7 @@ lemma accum_block_on_pendingBlock
           -- collection this park stands INSIDE is still open underneath it — so
           -- a `-` back at that width is its next entry (`-⏎  -⏎- b`), which is
           -- the frame the note above says the pending does not carry.
-          (h_seqF_old.imp (fun ⟨ke, seqF⟩ => ⟨ke, fun sp_m h_ssl_m =>
+          (h_seqF_old.imp (fun ⟨ke, ks, hw, seqF⟩ => ⟨ke, ks, hw, fun sp_m h_ssl_m =>
             seqF sp_m (SBlockIndented.empty n .blockIn sp_scan sp_m h_ssl_m)
               sp_m (SCompactSeqTail.nil n sp_m)⟩) id)
           -- Item 173: a `-` landing again — the mapping resume has no reader
@@ -37014,10 +37047,12 @@ lemma accum_content_on_pendingBlock_indented
     -- as `h_close_entry_old` rides — the content becomes the entry's node and
     -- the field's own tail is untouched — which is why the three parks below
     -- pay it with their own node term and nothing else.
-    (h_seqF_old : (∃ ke : Nat, ∀ sp_mid : SurfPos,
+    (h_seqF_old : (∃ (ke : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ ke) ∧
+      ∀ sp_mid : SurfPos,
       SBlockIndented n .blockIn sp_scan sp_mid →
       ∀ sp_end : SurfPos, SCompactSeqTail n sp_mid sp_end →
-      SeqEntryTail sp_start ke sp_end) ∨ True)
+      ∀ sp_fin : SurfPos, SCompactSeqTail ke sp_end sp_fin →
+      ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)
     -- Item 179: the floor at the SHIFTED index, `pendingBlock`'s own field.
     (h_floor_old : IndentFloor sc (n + 1))
     (h_top_old : sc.currentIndent ≤ (n : Int))
@@ -37260,7 +37295,7 @@ lemma accum_content_on_pendingBlock_indented
              -- node — and the park keeps BOTH its own `[183]` at `n` and the
              -- one it stands inside.
              (match h_seqF_old with
-              | Or.inl ⟨ke, seqF⟩ => Or.inl ⟨ke,
+              | Or.inl ⟨ke, ks, hw, seqF⟩ => Or.inl ⟨ke, ks, hw,
                   fun sp_final h_ssl =>
                     seqF sp_final
                       (SBlockIndented.node n .blockIn sp_scan sp_final
@@ -37540,7 +37575,7 @@ lemma accum_content_on_pendingBlock_indented
              -- node — and the park keeps BOTH its own `[183]` at `n` and the
              -- one it stands inside.
              (match h_seqF_old with
-              | Or.inl ⟨ke, seqF⟩ => Or.inl ⟨ke,
+              | Or.inl ⟨ke, ks, hw, seqF⟩ => Or.inl ⟨ke, ks, hw,
                   fun sp_final h_ssl =>
                     seqF sp_final
                       (SBlockIndented.node n .blockIn sp_scan sp_final
@@ -37722,7 +37757,7 @@ lemma accum_content_on_pendingBlock_indented
              -- node — and the park keeps BOTH its own `[183]` at `n` and the
              -- one it stands inside.
              (match h_seqF_old with
-              | Or.inl ⟨ke, seqF⟩ => Or.inl ⟨ke,
+              | Or.inl ⟨ke, ks, hw, seqF⟩ => Or.inl ⟨ke, ks, hw,
                   fun sp_final h_ssl =>
                     seqF sp_final
                       (SBlockIndented.node n .blockIn sp_scan sp_final

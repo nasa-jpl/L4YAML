@@ -339,11 +339,11 @@ def expectedHeadCensus : List String :=
    -- conclusion is a singleton `ResumeFrames` over the stream.
    "ResumeFrames 15",
    "SLYamlStream 5",
-   "SeqEntryTail 7",
+   "SeqEntryTail 1",
    "SuffixRun 6",
    -- 2026-11-10 (item 473, option (A)): `lt 26` + `le 15` → `le 41`: no strict width head remains — the level
    -- constructors, the park faces and the in-proof ascriptions all read `≤`.
-   "le 41"]
+   "le 47"]
 
 /-! ## §3  The rung-1 census: which faces are vacuous on their own
 
@@ -906,7 +906,7 @@ one unfolding, and §6 is the item where those two disagreed about binders. -/
 -- 2026-11-14 (item 492's rebase onto item 498): no-op theorems 6467 → 6469, the births' two lemmas.
 -- 2026-11-14 (item 508): theorems 6469 → 6471 — `RegisterWitness.noMarks_of_explicitKeyLine_none` and
 -- `MarkedColsIn.of_explicitKeyLine_none`; the by-elab / by-whnf no-op counts stand.
-def expectedNoopTally : String := "theorems=6471 byElab=16 byWhnf=16 elabOnly=0 whnfOnly=0"
+def expectedNoopTally : String := "theorems=6472 byElab=16 byWhnf=16 elabOnly=0 whnfOnly=0"
 -- 5302 → 5344 on 2026-10-18 (plan row 20's close, closure-log item 280): the
 -- parse-side alias obligation moved to §7.1's DECLARATION set, so the carrier
 -- grew and the predicate gained its tools.  What is new in kind: `AG` carries

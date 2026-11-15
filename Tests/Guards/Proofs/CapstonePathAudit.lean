@@ -36,7 +36,7 @@ open Scripts.Path.CapstonePath
 -- 2026-11-14 (item 492's rebase onto item 498): the births' two lemmas on item 498's tree.
 -- 2026-11-14 (item 499): streamAccum-reached 1147/1254 → 1154/1264 — KeyArm (1 + 6 constructors + rec/casesOn…) in StreamAccum, 7 reached from accum_step_block's conclusion.
 def expectedSummary : String :=
-  "positions=269 on=7 off=192 unresolved=70 on-drop=3 on-via=0 on-relay=4 on-conclusion=0 off-honest=94 off-unread=53 off-conclusion=25 off-unreached=0 on-drop-nested=0 on-via-nested=0 on-relay-nested=0 off-honest-nested=20 nested-unresolved=70 on-by-alt: True=0 PackAlt=7 PackAltG=0 off-by-alt: True=135 PackAlt=50 PackAltG=7 pack-declines: on=8 off=43 consumed=scan_content_gives_stream_v2 streamAccum-reached=1154/1264 unrooted-arms=86 arms=245 relays=141 drop-set=8/8"
+  "positions=269 on=7 off=192 unresolved=70 on-drop=3 on-via=0 on-relay=4 on-conclusion=0 off-honest=94 off-unread=53 off-conclusion=25 off-unreached=0 on-drop-nested=0 on-via-nested=0 on-relay-nested=0 off-honest-nested=20 nested-unresolved=70 on-by-alt: True=0 PackAlt=7 PackAltG=0 off-by-alt: True=135 PackAlt=50 PackAltG=7 pack-declines: on=8 off=43 consumed=scan_content_gives_stream_v2 streamAccum-reached=1154/1265 unrooted-arms=86 arms=245 relays=141 drop-set=8/8"
 
 def expectedOn : List String :=
   [ "L4YAML.Proofs.StreamAccum.PendingNode.pendingContent[9].h_vpack top ∨ PackAlt on-relay DECLINE=4",
@@ -51,7 +51,7 @@ def expectedOn : List String :=
 -- Item 508 (2026-11-14): `entryKeyPack_of_dispatch` took the `h_dead` premise after `h_preprocess`, so its
 -- `h_nodeS` / `h_nodeSF` OFF rows read [31] / [32] (were [30] / [31]) — an index shift; 262 unchanged.
 def expectedOff : List String :=
-  [ "L4YAML.Proofs.PreprocessIndentStable.IndentFloor.transport[3].h_floor top ∨ True off-unread",
+    ["L4YAML.Proofs.PreprocessIndentStable.IndentFloor.transport[3].h_floor top ∨ True off-unread",
     "L4YAML.Proofs.PreprocessIndentStable.IndentFloor.transport[ret] top ∨ True off-conclusion",
     "L4YAML.Proofs.StreamAccum.FlowBaseRoutes.mk[6].valueF nested ∨ True nested-unresolved",
     "L4YAML.Proofs.StreamAccum.FlowBaseRoutes.mk[8].key top ∨ True off-unread DECLINE=1",
@@ -99,7 +99,7 @@ def expectedOff : List String :=
     "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[11].h_closeF top ∨ True off-unread",
     "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[11].h_closeF nested ∨ True nested-unresolved",
     "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[11].h_closeF nested ∨ True nested-unresolved",
-    "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[13].h_seqF top ∨ True off-unread DECLINE=6",
+    "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[13].h_seqF top ∨ True off-unread DECLINE=5",
     "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[14].h_kslotUp top ∨ PackAlt off-honest DECLINE=1",
     "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[15].h_closeFV top ∨ PackAlt off-unread DECLINE=1",
     "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[15].h_closeFV nested ∨ True nested-unresolved DECLINE=1",

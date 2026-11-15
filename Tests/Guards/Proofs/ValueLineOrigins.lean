@@ -1238,7 +1238,7 @@ def expectedLine : String :=
   -- relays across the `≤` park faces and `closeThenBlock`'s `ResumeFrames.strict` read; no origin row moved.
 -- 2026-11-10 (item 473, option (A)): term-size tallies only (lapps 908 → 905, alts 5575 → 5576, liteNodes 673520 → 673507):
 -- the `≤` faces drop `Nat.le_of_lt` wrappers and the positional `ResumeWidths` reshapes `resumeAt`; positions/rows unchanged.
-  "positions=52 packaged=7 packConsts=[ImplicitKeyPack,PropsKeyPack] rows=197 ctorRows=104 paramRows=93 packagedRows=29 punt=4 stamp=42 built=151 origins=67 originRows=32 route=12 frames=29 tail=14 other=0 concl=8 invariant=4 heldOrigins=14 allHeld=2 someHeld=37 noneHeld=98 unbornRows=0 relayedPunt=0 relayedStamp=10 relayedAbsurd=4 relayedFact=0 deadRows=0 unbornPos=0 rounds=4 follows=410 lets=740 lapps=910 alts=5608 nodes=14495 liteNodes=681347"
+  "positions=52 packaged=7 packConsts=[ImplicitKeyPack,PropsKeyPack] rows=197 ctorRows=104 paramRows=93 packagedRows=29 punt=4 stamp=42 built=151 origins=67 originRows=32 route=12 frames=29 tail=14 other=0 concl=8 invariant=4 heldOrigins=14 allHeld=2 someHeld=37 noneHeld=98 unbornRows=0 relayedPunt=0 relayedStamp=10 relayedAbsurd=4 relayedFact=0 deadRows=0 unbornPos=0 rounds=4 follows=410 lets=739 lapps=913 alts=5613 nodes=14518 liteNodes=683029"
 
 /-! ## §4 The reading -/
 

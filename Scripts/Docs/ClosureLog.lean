@@ -37,8 +37,7 @@ def declaredGaps : List (Nat × String) :=
    -- 442: the slot two concurrent lanes both took on 2026-11-06 — Row 19's entry became 443 and
    -- Row 12's (the (ω-negative) item) became 444; nothing was written as 442.
    (442, "item-445-2026-11-06"),
-   -- 505 / 506 / 509: Row 12's #327 (505), the scanner-facts deletion #328 (506) and S3's #331 (509) were open when item 510 was cut.
-   (505, "item-510-2026-11-15"),
+   -- 506 / 509: the scanner-facts deletion #328 (506) and S3's #331 (509) were open when items 507–510 were cut.
    (506, "item-510-2026-11-15"),
    (509, "item-510-2026-11-15")]
 
