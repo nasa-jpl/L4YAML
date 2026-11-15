@@ -1,0 +1,108 @@
+{
+  "item": 515,
+  "tag": "SINGLE-MARK-515",
+  "rev": "HEAD",
+  "target": "L4YAML",
+  "log": "scratch/515-single-mark-build.log",
+  "msgWidth": 100,
+  "rounds": 4,
+  "files": [
+    {
+      "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+      "patches": [
+        {
+          "name": "SMC_1226_ImplicitKeyPack_resFV",
+          "old": [
+            "    ((∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧",
+            "      -- Item 150: the value-line face's own cover, the item-148 field's twin.",
+            "      -- The stack is the same one the stream face reads — what differs is",
+            "      -- where the frames BOTTOM, and a dedent inside an explicit key pops this",
+            "      -- list.",
+            "      ((∃ lo : Nat, IndentStackCover.Floor lo k (FrameLevel.map k :: ks) ∧",
+            "        IndentStackCover.Covered lo (FrameLevel.map k :: ks) sc) ∨ True) ∧",
+            "      ∀ sp_v : SurfPos, SBlockMapEntry k sp_key sp_v →",
+            "      ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →",
+            "      KeyFrames (ExplValueLine sp_start nv) ks sp_e) ∨ PackAlt sc) ∧"
+          ],
+          "new": [
+            "    ((∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧",
+            "      -- Item 150: the value-line face's own cover, the item-148 field's twin.",
+            "      -- The stack is the same one the stream face reads — what differs is",
+            "      -- where the frames BOTTOM, and a dedent inside an explicit key pops this",
+            "      -- list.",
+            "      ((∃ lo : Nat, IndentStackCover.Floor lo k (FrameLevel.map k :: ks) ∧",
+            "        IndentStackCover.Covered lo (FrameLevel.map k :: ks) sc) ∨ True) ∧",
+            "      ∀ sp_v : SurfPos, SBlockMapEntry k sp_key sp_v →",
+            "      ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →",
+            "      KeyFrames (ExplValueLine sp_start nv) ks sp_e) ∨ PackAlt sc) ∧"
+          ],
+          "count": 1
+        },
+        {
+          "name": "SMC_1846_PropsKeyPack_resFV",
+          "old": [
+            "    ((∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧",
+            "      -- Item 150: the value-line face's cover, as at `ImplicitKeyPack`.",
+            "      ((∃ lo : Nat, IndentStackCover.Floor lo k (FrameLevel.map k :: ks) ∧",
+            "        IndentStackCover.Covered lo (FrameLevel.map k :: ks) sc) ∨ True) ∧",
+            "      ∀ sp_v : SurfPos, SBlockMapEntry k sp_p sp_v →",
+            "      ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →",
+            "      KeyFrames (ExplValueLine sp_start nv) ks sp_e) ∨ PackAlt sc)) ∧"
+          ],
+          "new": [
+            "    ((∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧",
+            "      -- Item 150: the value-line face's cover, as at `ImplicitKeyPack`.",
+            "      ((∃ lo : Nat, IndentStackCover.Floor lo k (FrameLevel.map k :: ks) ∧",
+            "        IndentStackCover.Covered lo (FrameLevel.map k :: ks) sc) ∨ True) ∧",
+            "      ∀ sp_v : SurfPos, SBlockMapEntry k sp_p sp_v →",
+            "      ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →",
+            "      KeyFrames (ExplValueLine sp_start nv) ks sp_e) ∨ PackAlt sc)) ∧"
+          ],
+          "count": 1
+        },
+        {
+          "name": "SMC_2476_pendingProps_closeFEV",
+          "old": [
+            "      (h_closeFEV : (∃ (ne nv : Nat) (ks : List FrameLevel), n = ne + 1 ∧ (∀ fr ∈ ks, fr.width ≤ ne) ∧",
+            "        ∀ sp_m : SurfPos, SBlockNode n .blockIn sp_node sp_m →",
+            "        ∀ sp_end : SurfPos, SCompactSeqTail ne sp_m sp_end →",
+            "        KeyFrames (ExplValueLine sp_start nv) ks sp_end) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "      (h_closeFEV : (∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ne : Nat) (ks : List FrameLevel), n = ne + 1 ∧ (∀ fr ∈ ks, fr.width ≤ ne) ∧",
+            "        ∀ sp_m : SurfPos, SBlockNode n .blockIn sp_node sp_m →",
+            "        ∀ sp_end : SurfPos, SCompactSeqTail ne sp_m sp_end →",
+            "        KeyFrames (ExplValueLine sp_start nv) ks sp_end) ∨ PackAlt sc)"
+          ],
+          "count": 1
+        },
+        {
+          "name": "SMC_27438_vslot_hkvUp",
+          "old": [
+            "      ((∃ nsU : List Nat, RegisterWitness.MarkedColsIn sc (nv :: nsU) ∧ ∀ nvU ∈ nsU,"
+          ],
+          "new": [
+            "      ((∀ nvU ∈ RegisterWitness.markedCols sc,"
+          ],
+          "count": 1
+        },
+        {
+          "name": "SMC_40433_closeFEV_k",
+          "old": [
+            "              have h_closeFEV_k : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧",
+            "                  ∀ sp_m : SurfPos, SBlockNode (k + 1) .blockIn sp_node sp_m →",
+            "                  ∀ sp_end : SurfPos, SCompactSeqTail k sp_m sp_end →",
+            "                  KeyFrames (ExplValueLine sp_start nv) ks sp_end) ∨ PackAlt sc := by"
+          ],
+          "new": [
+            "              have h_closeFEV_k : (∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧",
+            "                  ∀ sp_m : SurfPos, SBlockNode (k + 1) .blockIn sp_node sp_m →",
+            "                  ∀ sp_end : SurfPos, SCompactSeqTail k sp_m sp_end →",
+            "                  KeyFrames (ExplValueLine sp_start nv) ks sp_end) ∨ PackAlt sc := by"
+          ],
+          "count": 1
+        }
+      ]
+    }
+  ]
+}
