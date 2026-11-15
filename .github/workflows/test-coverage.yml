@@ -580,7 +580,7 @@ jobs:
       - name: Upload documentation as artifact
         # Never let the convenience artifact block the gh-pages publish below.
         continue-on-error: true
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: l4yaml-docs
           # The matrix's per-test detail pages are named with yaml-test-suite
