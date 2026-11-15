@@ -272,7 +272,15 @@ def TFlowStackK (sp_start : SurfPos) (sc : L4YAML.Scanner.ScannerState) (fl : Na
     (tl : FrameTail) (sp_block sp_flow : SurfPos) (ev : List Event) : Prop :=
   FlowStackK sp_start sc fl ks tl sp_block sp_flow ∧
     ∀ n, n ≤ L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf sc →
-      TFlowStackB n fl ks tl sp_block sp_flow ev
+      TFlowStackB n fl ks tl sp_block sp_flow ev ∧
+      -- Item 509: the T twin of `FlowStackK`'s `.value kj` closure (item 85) — the `:` that
+      -- turns a key candidate into a pair is paid by the step that created the tail (a
+      -- completed pair stores the scanner's layout instead, refuted at the next `:`), because
+      -- `TFlowStackB` indexed by `tl` alone cannot tell `betweenEntries` from `midNode` there.
+      (0 < fl → ∀ kj, tl = .value kj →
+        L4YAML.Proofs.EntryBoundaryLayout.KeyAfterValueLayout sc ∨
+        ∀ sp_prep sp_tok, (SSeparateLines n sp_flow sp_prep ∨ sp_prep = sp_flow) →
+          GLit ':' sp_prep sp_tok → TFlowStackB n fl ks (.colon kj) sp_block sp_tok ev)
 
 /-! ## §4 The entries algebra (T twins of `NodeProduction` §4 / `PreprocessProduction`) -/
 

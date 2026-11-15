@@ -17866,6 +17866,103 @@ def testKeyArmShadow (state : IO.Ref TestCollector) : IO Unit := do
 
 end P119Test
 
+/-! ## Priority 126 (item 509; P120–P125 are Row 19's lane): the T closure's producer at the content step, read off the scanner
+`TFlowStackK`'s T half gains, at every floor, the `.value kj`-tail closure the S half carries in
+`FlowStackK.h_kprom` (item 85): `KeyAfterValueLayout sc ∨ ∀ sp_prep sp_tok, lead → GLit ':' →
+TFlowStackB … (.colon kj)`.  `accum_step_content_pairK` produces it the way the S content step
+does (StreamAccum's `.value` site cases the PRE-tail): a `.colon` pre-tail means the node
+COMPLETED a pair, and `content_value_layout` gives the left disjunct; a `.sep` / `.question`
+pre-tail means the node is a key candidate, and `receiveNodeColon` / `receivePropsNodeColon`
+give the right.  Shadows, at every in-flow content step whose post-tail is `.value kj`:
+(i) the pre-tail class — `.value` never (the adjacency guard), so the two cases are exhaustive;
+(ii) at a `.colon` pre-tail, `KeyAfterValueLayout post` (its decidable face, `P119.kavlShadow`);
+(iii) which of these steps a `:` follows (the closure's consumer, `KeyArm.colonValue`'s twin),
+by pre-tail — the `.colon` pre-tail must be absent there (the scanner refuses `[a: b: c]`);
+(iv) the closure's lead at those `:` steps, node end → `:`, classed (ε / blanks / lines) and,
+where it crosses a break, indented at least the floor ceiling (`SSeparateLines m` at every
+`m ≤ minContentIndentOf`). -/
+namespace P126
+
+open L4YAML L4YAML.Scanner P107 P111 P113
+open L4YAML.Proofs.StreamAccum (tailOf FrameTail)
+
+structure Tally where
+  valueSteps : Nat := 0
+  preTail : List (String × Nat) := []
+  colonKavlOk : Nat := 0
+  colonKavlBad : List String := []
+  colonNext : Nat := 0
+  colonNextBy : List (String × Nat) := []
+  leadBy : List (String × Nat) := []
+  leadFloorOk : Nat := 0
+  leadFloorBad : List String := []
+  deriving Repr
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    match scanFiltered s, P107.stepsOf s with
+    | .ok _, some sts =>
+      let arr := sts.toArray
+      for i in [0:arr.size] do
+        let (pre, post) := arr[i]!
+        let pushed := post.tokens.toList.drop pre.tokens.size
+        match pushed.getLast? with
+        | none => pure ()
+        | some back =>
+          if !contentArms.contains (kindOf back.val) then continue
+          if pre.flowLevel == 0 then continue
+          match tailOf post.tokens with
+          | .value _ => pure ()
+          | _ => continue
+          t := { t with valueSteps := t.valueSteps + 1 }
+          let preClass := tailClass (tailOf pre.tokens)
+          t := { t with preTail := bumpS t.preTail preClass }
+          -- (ii) a completed pair's layout
+          if preClass == "colon" then
+            if P119.kavlShadow post then t := { t with colonKavlOk := t.colonKavlOk + 1 }
+            else t := { t with colonKavlBad := t.colonKavlBad ++ [s] }
+          -- (iii) does the next step push a `:` inside the same flow?
+          if i + 1 < arr.size then
+            let (pre₂, post₂) := arr[i + 1]!
+            let pushed₂ := post₂.tokens.toList.drop pre₂.tokens.size
+            match pushed₂.getLast? with
+            | some back₂ =>
+              if kindOf back₂.val == "value" && pre₂.flowLevel == pre.flowLevel then
+                t := { t with colonNext := t.colonNext + 1, colonNextBy := bumpS t.colonNextBy preClass }
+                -- (iv) the lead from the node's end to the `:`
+                let txt := String.ofList ((s.toList.drop post.offset).take (back₂.pos.offset - post.offset))
+                let cls := gapClass txt
+                t := { t with leadBy := bumpS t.leadBy cls }
+                if cls == "lines" then
+                  let lastLine := (txt.splitOn "\n").getLast!
+                  let lead := (lastLine.toList.takeWhile (· == ' ')).length
+                  let ceiling := L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf post
+                  if ceiling ≤ lead then t := { t with leadFloorOk := t.leadFloorOk + 1 }
+                  else t := { t with leadFloorBad := t.leadFloorBad ++ [s!"{s} lead={lead} ceiling={ceiling}"] }
+                else t := { t with leadFloorOk := t.leadFloorOk + 1 }
+            | none => pure ()
+    | _, _ => pure ()
+  return t
+
+end P126
+
+namespace P126Test
+open P126
+
+def testTClosureProducerShadow (state : IO.Ref TestCollector) : IO Unit := do
+  let t := tally (P113.allRows ++ P118.extraRows)
+  checkM state
+    s!"P126 the T closure's producer: {t.valueSteps} in-flow content steps land a `.value` tail; pre-tails {t.preTail}; KeyAfterValueLayout after a `.colon` pre-tail {t.colonKavlOk} (bad: {t.colonKavlBad}); a `:` follows {t.colonNext} of them, by pre-tail {t.colonNextBy}; the lead to that `:` {t.leadBy}, at every floor {t.leadFloorOk}/{t.colonNext} (bad: {t.leadFloorBad})"
+    (t.valueSteps == 441 && t.preTail == [("colon", 113), ("question", 17), ("sep", 311)] &&
+      t.colonKavlOk == 113 && t.colonKavlBad.isEmpty &&
+      t.colonNext == 123 && t.colonNextBy == [("sep", 110), ("question", 13)] &&
+      t.leadBy == [("ε", 122), ("blanks", 1)] &&
+      t.leadFloorOk == 123 && t.leadFloorBad.isEmpty)
+    s!"{t.valueSteps} {t.preTail} kavl {t.colonKavlOk} {t.colonKavlBad} next {t.colonNext} {t.colonNextBy} lead {t.leadBy} floors {t.leadFloorOk} {t.leadFloorBad}"
+
+end P126Test
+
 def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 100: S3 slice (1) — leaf span ↔ token payload (anchor / alias / tag), before proof"
   let t := P100.tally P100.allRows
@@ -18076,6 +18173,7 @@ def collectTests : IO VerifiedSuiteResult := do
   P117Test.testValueLandingNodeEnd state
   P118Test.testFloorFoldShadow state
   P119Test.testKeyArmShadow state
+  P126Test.testTClosureProducerShadow state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",
