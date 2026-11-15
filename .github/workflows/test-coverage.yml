@@ -141,6 +141,7 @@ jobs:
             adversarialtests mutationtests propertytests productioncoverage \
             limittests \
             flowregressioncheck errorstagediag scalarstagediag \
+            l4yaml-fmt aligntest \
             2>&1 | tee "$RUNNER_TEMP/lake-build.log"
           if JOBS=$(grep -oE '\([0-9]+ jobs\)' "$RUNNER_TEMP/lake-build.log" | tail -1 | grep -oE '[0-9]+'); then
             echo "BUILD_JOBS_TOTAL=$JOBS" >> "$GITHUB_ENV"
