@@ -34,7 +34,7 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- base's (item 505's `StreamAccum.seqEntryTail_cons` entered the roster unpinned on the base; the owner's call),
 -- cluster-roots 1,460 → 1,461 (one roster name's cluster root recomputed after the module deletion).
 def expectedDeadCensus : String :=
-  "population=14215 thm=10192 def=2673 roots=capstone:26+export:37+blueprint:222(unresolved=5) unreached=6490 thm=4580 A-campaign=1274 C-api=1405 D-test-only=277 B-roster=3534 thm=3173 cluster-roots=1461"
+  "population=14216 thm=10193 def=2673 roots=capstone:26+export:37+blueprint:222(unresolved=5) unreached=6490 thm=4580 A-campaign=1274 C-api=1405 D-test-only=277 B-roster=3534 thm=3173 cluster-roots=1461"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do

@@ -4645,7 +4645,7 @@ born — the value-line lane's every-mark `h_nodeFV` / `h_dframesV` turned three
 (PackAlt.step_content …)` beside its `else`) collapsed to the one decline it took; the same PackAlt
 obligations sit at the same sites (DOCS 512 lists them as the next flip). -/
 def expectedPackBirths : String :=
-  "entryKeyPack_of_dispatch=7+2 entryPropsKeyPack_of_dispatch=7+2 content_dispatch_routed=23+0"
+  "entryKeyPack_of_dispatch=7+2 entryPropsKeyPack_of_dispatch=7+2 content_dispatch_routed=25+0"
 
 /-! **The 32 roots (29 since item 307), by what the register does there** — a READING of each site
 (the compiler prices it when the construction is attempted, §1):
