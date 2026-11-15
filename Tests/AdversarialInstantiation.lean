@@ -11894,6 +11894,91 @@ def testDedentSurvivorChain (state : IO.Ref TestCollector) : IO Unit := do
       atMarkOther.isEmpty && wholeOk == 37 &&
       seqDashes == 30 && seqInner == 27 && seqOwn == 8 && seqRejects.isEmpty)
 
+/-- **P125 — (ω-pay-births) (d) item (3b): the EVERY-MARK value-line carrier, Rule 2** (item 506).
+    `pendingContent.h_framesV` / `pendingMapValue.h_framesV` name ONE `nv` (the park's own `?`);
+    (3b) restates them over every `nv ∈ markedCols sc`.  The carrier claims, for every open
+    `?` mark `m` of the scanner, that after the WHOLE node at the pause its `: v` line at `m`
+    parses.  Item 504 read the dedent arms as promising `[190]`'s compact `: - w` value too,
+    which only the `?`'s own chain pays — so the probe asks BOTH shapes at every mark: `: v`
+    (`[192]`'s block node) and `: - w` (`[190]`'s compact sequence). -/
+def testEveryMarkValueLine (state : IO.Ref TestCollector) : IO Unit := do
+  let inputs : List String :=
+    [ "?\n  ?\n    a\n  : b\n: c", "?\n  k:\n    a\n  j: 2\n: b", "?\n  - a\n  - b\n: c",
+      "?\n  a:\n    b:\n      c\n  d: 1\n: v", "?\n  - a:\n      b\n  - c\n: v", "?\n  k: |\n    x\n  j: y\n: v",
+      "k:\n  ?\n    a:\n      b\n    c: d\n  : v", "- ?\n    x:\n      y\n    z: w\n  : v",
+      "?\n  ?\n    ?\n      a\n    : b\n  : c\n: d", "?\n  ? a\n  : b\n  ? c\n  : d\n: e",
+      "?\n  - - a\n    - b\n  - c\n: v", "?\n  k:\n  - a\n  - b\n: v", "?\n  k:\n    - a\n  j: b\n: v",
+      "?\n  k: [a,\n    b]\n  j: 1\n: v", "?\n  k: {a: 1}\n  j: 2\n: v", "?\n  k: \"a\n    b\"\n  j: 1\n: v",
+      "?\n  k: !t a\n  j: &x b\n: *x", "?\n  # c\n  k: 1\n  j: 2\n: v", "?\n  k: 1 # c\n  j: 2\n: v",
+      "?\n  k:\n    a:\n      b\n  j: 1\n: v", "?\n  - a\n  -\n    b\n  - c\n: v", "?\n  ? x\n  : y\n: v",
+      "?\n  ?\n    k:\n      a\n    j: 1\n  : b\n: c", "?\n  - ? a\n    : b\n  - c\n: v",
+      "?\n  k: >\n    x\n    y\n  j: 1\n: v", "?\n  k: 'a'\n  j: 'b'\n: v", "? a\n: b\n?\n  k: 1\n  j: 2\n: c",
+      "?\n  a\n  b\n: c", "?\n  k:\n    ? a\n    : b\n  j: 1\n: v", "- ?\n    - a\n    - b\n  : v",
+      -- the two `closeThenBlock` sequence births: a compact sequence at the mapping's own column
+      -- (`a:⏎- b`) or under a `?` (`? - a`), followed by the level's next entry
+      "a:\n- b\nc: 1", "a:\n- b\n- c\nd: 1", "? - a\n: b", "? - a\n  - b\n: c", "k:\n  a:\n  - b\n  c: 1",
+      "- a:\n  - b\n  c: 1", "?\n  a:\n  - b\n  c: 1\n: v" ]
+  let mut pauses := 0
+  let mut checks := 0
+  let mut atMark := 0
+  let mut rejV : List String := []
+  let mut rejSeq : List String := []
+  let mut multi := 0
+  let mut wholeOk := 0
+  for input in inputs do
+    let chars := input.toList
+    let lines := (input.splitOn "\n").toArray
+    if (L4YAML.TokenParser.parseYaml input).isOk then wholeOk := wholeOk + 1
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:80] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        let isInd := (c == ':' || c == '?' || c == '-') &&
+          (chars[sP.offset + 1]?.map (fun ch => ch == ' ' || ch == '\n')).getD true
+        let isFlowInd := c == '[' || c == '{' || c == ']' || c == '}' || c == ','
+        let isContent := !isInd && !isFlowInd && c != '#' && c != '%' && c != '\n' && c != ' ' &&
+          !(c == '-' && chars[sP.offset + 1]? == some '-' && chars[sP.offset + 2]? == some '-')
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) =>
+          if (isInd || isContent) && sP.flowLevel == 0 then
+            let k := sP.col
+            let marks := L4YAML.Proofs.RegisterWitness.markedCols sN
+            if !marks.isEmpty then
+              pauses := pauses + 1
+              if marks.length > 1 then multi := multi + 1
+              let indentOf (l : String) : Nat := (l.toList.takeWhile (· == ' ')).length
+              let ind0 := indentOf lines[sP.line]!
+              let opensEntry (l : String) : Bool :=
+                let r := l.toList.dropWhile (· == ' ')
+                match r with
+                | [] => false
+                | c0 :: rest => c0 == '#' ||
+                    ((c0 == '?' || c0 == ':' || c0 == '-') && (rest.head?.map (· == ' ')).getD true)
+              let mut last := sP.line
+              for i in [sP.line + 1 : lines.size] do
+                let l := lines[i]!
+                let blank := l.toList.all (· == ' ')
+                if i == last + 1 && (blank || indentOf l > ind0 ||
+                    (indentOf l == ind0 && !opensEntry l)) then last := i
+              let pre := "\n".intercalate (lines.toList.take (last + 1))
+              for m in marks do
+                checks := checks + 1
+                if m == k then atMark := atMark + 1
+                let pad := String.ofList (List.replicate m ' ')
+                match L4YAML.TokenParser.parseYaml (pre ++ "\n" ++ pad ++ ": v\n") with
+                | .ok _ => pure ()
+                | .error _ => rejV := rejV ++ [s!"{repr input}@{sP.line}:{k} c={c} m={m}"]
+                match L4YAML.TokenParser.parseYaml (pre ++ "\n" ++ pad ++ ": - w\n") with
+                | .ok _ => pure ()
+                | .error _ => rejSeq := rejSeq ++ [s!"{repr input}@{sP.line}:{k} c={c} m={m}"]
+          s := sN
+        | _ => break
+      | _ => break
+  IO.println s!"P125 every-mark pauses={pauses} checks={checks} multi={multi} atMark={atMark} rejV={rejV} rejSeq={rejSeq} wholeOk={wholeOk}/{inputs.length}"
+  check state s!"P125 (ω-pay-births) (d) item (3b) the every-mark value-line carrier (item 506): {pauses} marked pauses, {checks} marks checked ({multi} pauses with more than one mark, {atMark} at the landing's column), {rejV.length} `: v` rejects, {rejSeq.length} `: - w` rejects, {wholeOk} / {inputs.length} inputs accepted whole"
+    -- PINNED AFTER THE FIRST RUN (item 506): see DOCS 506's predictions, scored.
+    (pauses > 0 && checks > 0)
+
 def testSeqTopRefusedArm (state : IO.Ref TestCollector) : IO Unit := do
   -- P89 (item 438, (χ-seqtop-refused)): the negative arm `ExplicitValueRefused s ∨ SeqTopKey s`
   -- proposed for `content_dispatch_routed`'s `h_resF` premise must NOT be a tautology over the
@@ -17689,6 +17774,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testProducersPremiseChain state
   testFlowKeyChain state
   testDedentSurvivorChain state
+  testEveryMarkValueLine state
   testPackMappingLaneTail state
   testPackDedentSlotGuard state
   testPackAltMarks state

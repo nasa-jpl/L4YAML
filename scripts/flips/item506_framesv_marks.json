@@ -1,0 +1,56 @@
+{
+ "item": 506,
+ "tag": "FRAMESV-MARKS-506",
+ "rev": "HEAD",
+ "target": "L4YAML",
+ "log": "scratch/506-framesv-marks-build.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "files": [
+  {
+   "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+   "patches": [
+    {
+     "name": "PENDING_CONTENT_FRAMESV_EVERY_MARK",
+     "old": [
+      "      (h_framesV : (∃ (nv : Nat) (ks : List FrameLevel),",
+      "        ((∃ lo n : Nat, IndentStackCover.Floor lo n ks ∧",
+      "          IndentStackCover.Covered lo ks sc) ∨ True) ∧",
+      "        ∀ sp_mid : SurfPos, SSLComments sp_gram sp_mid →",
+      "        KeyFrames (ExplValueLine sp_start nv) ks sp_mid) ∨ PackAlt sc)"
+     ],
+     "new": [
+      "      (h_framesV : (∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel),",
+      "        ((∃ lo n : Nat, IndentStackCover.Floor lo n ks ∧",
+      "          IndentStackCover.Covered lo ks sc) ∨ True) ∧",
+      "        ∀ sp_mid : SurfPos, SSLComments sp_gram sp_mid →",
+      "        KeyFrames (ExplValueLine sp_start nv) ks sp_mid) ∨ PackAlt sc)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "PENDING_MAPVALUE_FRAMESV_EVERY_MARK",
+     "old": [
+      "      (h_framesV : (∃ (nv : Nat) (ks : List FrameLevel),",
+      "        -- Item 150: and the dedent face's own, which is the one the landing",
+      "        -- spends — same list, same floor one column above the `?`.",
+      "        ((∃ lo : Nat, IndentStackCover.Floor lo (n + 1) ks ∧",
+      "          IndentStackCover.Covered lo ks sc) ∨ True) ∧",
+      "        ∀ sp_mid : SurfPos, SSLComments sp_scan sp_mid →",
+      "        KeyFrames (ExplValueLine sp_start nv) ks sp_mid) ∨ PackAlt sc)"
+     ],
+     "new": [
+      "      (h_framesV : (∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel),",
+      "        -- Item 150: and the dedent face's own, which is the one the landing",
+      "        -- spends — same list, same floor one column above the `?`.",
+      "        ((∃ lo : Nat, IndentStackCover.Floor lo (n + 1) ks ∧",
+      "          IndentStackCover.Covered lo ks sc) ∨ True) ∧",
+      "        ∀ sp_mid : SurfPos, SSLComments sp_scan sp_mid →",
+      "        KeyFrames (ExplValueLine sp_start nv) ks sp_mid) ∨ PackAlt sc)"
+     ],
+     "count": 1
+    }
+   ]
+  }
+ ]
+}
