@@ -904,7 +904,9 @@ one unfolding, and §6 is the item where those two disagreed about binders. -/
 -- 2026-11-10 (item 469, review round 1): theorems 6502 → 6505 (`gapTail_of_nil`/`gapTail_of_held`, `head?_dropWhile_not`, `trailingPropertyRun_eq_nil_of_sync`, `FlowStackK.withArm` in; `FlowStackKA.toK`/`ofPack`/`ofK` out); no-op tallies unmoved.
 -- 2026-11-11 (item 484): theorems 6464 → 6466 — `contentArm_of_dispatch` and the `accum_step_content` wrapper; the no-op tally itself unchanged.
 -- 2026-11-14 (item 492's rebase onto item 498): no-op theorems 6467 → 6469, the births' two lemmas.
-def expectedNoopTally : String := "theorems=6469 byElab=16 byWhnf=16 elabOnly=0 whnfOnly=0"
+-- 2026-11-14 (item 508): theorems 6469 → 6471 — `RegisterWitness.noMarks_of_explicitKeyLine_none` and
+-- `MarkedColsIn.of_explicitKeyLine_none`; the by-elab / by-whnf no-op counts stand.
+def expectedNoopTally : String := "theorems=6471 byElab=16 byWhnf=16 elabOnly=0 whnfOnly=0"
 -- 5302 → 5344 on 2026-10-18 (plan row 20's close, closure-log item 280): the
 -- parse-side alias obligation moved to §7.1's DECLARATION set, so the carrier
 -- grew and the predicate gained its tools.  What is new in kind: `AG` carries

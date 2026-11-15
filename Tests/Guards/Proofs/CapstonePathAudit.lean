@@ -48,6 +48,8 @@ def expectedOn : List String :=
     "L4YAML.Proofs.StreamAccum.accum_block_on_pendingContent[16].h_vpack top ∨ PackAlt on-relay"
   ]
 
+-- Item 508 (2026-11-14): `entryKeyPack_of_dispatch` took the `h_dead` premise after `h_preprocess`, so its
+-- `h_nodeS` / `h_nodeSF` OFF rows read [31] / [32] (were [30] / [31]) — an index shift; 262 unchanged.
 def expectedOff : List String :=
   [ "L4YAML.Proofs.PreprocessIndentStable.IndentFloor.transport[3].h_floor top ∨ True off-unread",
     "L4YAML.Proofs.PreprocessIndentStable.IndentFloor.transport[ret] top ∨ True off-conclusion",
@@ -226,8 +228,8 @@ def expectedOff : List String :=
     "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch[17].h_dframesV top ∨ PackAlt off-honest",
     "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch[17].h_dframesV nested ∨ True nested-unresolved",
     "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch[18].h_cov top ∨ True off-honest DECLINE=2",
-    "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch[30].h_nodeS top ∨ True off-honest DECLINE=2",
-    "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch[31].h_nodeSF top ∨ True off-honest",
+    "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch[31].h_nodeS top ∨ True off-honest DECLINE=2",
+    "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch[32].h_nodeSF top ∨ True off-honest",
     "L4YAML.Proofs.StreamAccum.entryPropsKeyPack_of_dispatch[11].h_nodeV top ∨ PackAlt off-honest",
     "L4YAML.Proofs.StreamAccum.entryPropsKeyPack_of_dispatch[12].h_compact top ∨ True off-honest",
     "L4YAML.Proofs.StreamAccum.entryPropsKeyPack_of_dispatch[12].h_compact nested ∨ PackAlt nested-unresolved",

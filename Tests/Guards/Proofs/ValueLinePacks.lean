@@ -1143,6 +1143,8 @@ def expectedPerPos : List String := [
 -- 2026-11-06 (item 437): nodes 14343 → 14383 — the value-line lemmas relay `h_base : SentinelBase` to the marker parks' `h_ntop`.
 -- 2026-11-10 (item 469, review round 1): nodes=14402 → 14422 — the flow-side pack sites the value-line walk reaches: `FlowStackK.withArm` around the same body tuples, the arm's `∀ m` leads and `gapTail` rewrites at the sites.
 -- 2026-11-09 (item 469): nodes 14383 → 14402 — the flow-side pack sites the value-line walk reaches wrap their unchanged body tuples in `FlowStackKA.ofPack`/`ofK`.
+-- 2026-11-14 (item 508): nodes 14454 → 14460 — the value-line twin's root arms split on `hw : w = 0`
+-- (`PackAlt.ofRefused (h_dead …).1` at the root); no pack row moved.
 def expectedLine : String :=
 -- 2026-10-25 (#112 review): the `FlowStackK` `MarkedColsIn` carrier reverted (Rule 8: a projection of the closed state is decided at the close by `Classical.em`); nodes 13689 → 13658 (walked-term total; rows unchanged).
 -- 2026-10-25 (item 363): the flow OPEN lane read off the block state (`h_refused`, one `Classical.em`; five `match` blocks deleted): nodes 13658 → 13660 (walked-term total).
@@ -1154,7 +1156,7 @@ def expectedLine : String :=
 -- Item 372 (2026-10-27): `ImplicitKeyPack`'s route conjunct is an Or (`∨ SeqTopKey sc`); the pack walker reads the stream route on its left side.
 -- Item 374: nodes=13663 → 13665 — the resume context's face disjunct and `resumectx_of_landing`'s `h_base`.
   -- 2026-10-28 (item 386): nodes 13665 → 13675 — the `-` opener's `h_lvl_old` beside the value-line packs it walks; no pack/row moved.
-  "packs=12 framesOn=7 params=33 paramLemmas=20 apps=51 rows=168 ctorRows=80 paramRows=88 punt=21 stamp=24 empty=0 relay=35 step=11 via=4 chain=53 route=2 frames=3 tail=2 other=6 alt=7 held=8 levelVar=47 none=22 spendTail=9 lemmas=21 helpers=[frameChainUnion,frameChainUnionD] touched=147 nodes=14454"
+  "packs=12 framesOn=7 params=33 paramLemmas=20 apps=51 rows=168 ctorRows=80 paramRows=88 punt=21 stamp=24 empty=0 relay=35 step=11 via=4 chain=53 route=2 frames=3 tail=2 other=6 alt=7 held=8 levelVar=47 none=22 spendTail=9 lemmas=21 helpers=[frameChainUnion,frameChainUnionD] touched=147 nodes=14460"
 
 /-! ## §4 The reading -/
 
