@@ -11599,7 +11599,7 @@ def testPackSurvivorsChain (state : IO.Ref TestCollector) : IO Unit := do
       dashExc.isEmpty && lowPauses ≥ 40 && noSurv ≥ 30)
 
 def testProducersPremiseChain (state : IO.Ref TestCollector) : IO Unit := do
-  -- P119 (item 499, (ω-pay-births) (d) item (2)): the producers' premise `h_chainUp` at
+  -- P121 (item 499, (ω-pay-births) (d) item (2)): the producers' premise `h_chainUp` at
   -- `content_dispatch_routed` — at a CONTENT dispatch pause (a non-indicator character in block
   -- context) on a marked state, every mark `nv` of the dispatch state has its `: v` at column `nv`
   -- after the landing's whole node accepted; the hand-offs are classed by where the landing sits
@@ -11655,8 +11655,8 @@ def testProducersPremiseChain (state : IO.Ref TestCollector) : IO Unit := do
         | .ok (some sN) => s := sN
         | _ => break
       | _ => break
-  IO.println s!"P119 marked content pauses={pauses} checks={checks} nested={nested} atMark={atMark} below={below} rejects={rejects}"
-  check state s!"P119 (ω-pay-births) (d) item (2) the producers' premise at the content landings (item 499): {pauses} marked content pauses, {checks} marks' `: v` after the whole node, rejects {rejects}, nested {nested} / at the mark {atMark} / below {below}"
+  IO.println s!"P121 marked content pauses={pauses} checks={checks} nested={nested} atMark={atMark} below={below} rejects={rejects}"
+  check state s!"P121 (ω-pay-births) (d) item (2) the producers' premise at the content landings (item 499): {pauses} marked content pauses, {checks} marks' `: v` after the whole node, rejects {rejects}, nested {nested} / at the mark {atMark} / below {below}"
     -- pinned to the first run: P2 predicted ≥ 60 pauses (59 measured — REFUTED by one) and 0 rejects
     -- (HELD); P3 predicted nested ≥ 50 % / at the mark 0 / below ≥ 5 — every one of the 69 marks is
     -- NESTED (`nv + 1 ≤ k`): a content character at or left of a `?` mark closes that mark in the
