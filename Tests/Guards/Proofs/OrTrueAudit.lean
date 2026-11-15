@@ -254,7 +254,7 @@ def posLine (p : Pos) : String := s!"{p.decl}{p.site} {p.kind} ∨ {p.alt}"
 -- branch deleted (`hnw : n + 1 ≤ w` decides them); two of the three deleted `else Or.inr trivial` arms were audit
 -- writers (entryKeyPack ×14 → 13, entryPropsKeyPack ×7 → 6); positions unchanged.
 def expectedSummary : String :=
-  "positions=269 top=166 nested=103 True=193 PackAlt=67 PackAltG=9 modules=2 supply: paid=26 relayed=119 declined-only=0 never-supplied=0 unresolved=8 conclusions=11 consumers: spent=104 relayed=13 unused=0 unreadable=36 writers=41 inrTrivial=498"
+  "positions=269 top=166 nested=103 True=193 PackAlt=67 PackAltG=9 modules=2 supply: paid=26 relayed=119 declined-only=0 never-supplied=0 unresolved=8 conclusions=11 consumers: spent=104 relayed=13 unused=0 unreadable=36 writers=41 inrTrivial=497"
 
 -- Item 508 (2026-11-14): `entryKeyPack_of_dispatch` took the `h_dead` premise after `h_preprocess`,
 -- so its `h_nodeS` / `h_nodeSF` positions read [31] / [32] (were [30] / [31]) — an index shift, not a
@@ -555,7 +555,7 @@ def expectedSupply : List String :=
   "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlockContent[18].h_closeFV relayed [SPLIT=6]",
   "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[10].h_kslot relayed [DECLINE=1 SPLIT=6]",
   "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[11].h_closeF paid [PAY=5 SPLIT=2]",
-  "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[13].h_seqF paid [DECLINE=6 PAY=1]",
+  "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[13].h_seqF paid [DECLINE=5 PAY=2]",
   "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[14].h_kslotUp relayed [DECLINE=1 SPLIT=6]",
   "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[15].h_closeFV relayed [DECLINE=1 SPLIT=6]",
   "L4YAML.Proofs.StreamAccum.PendingNode.pendingMapValue[15].h_ncol paid [DECLINE=2 PAY=4]",
@@ -640,8 +640,8 @@ def expectedSupply : List String :=
   "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch[16].h_nodeFV relayed [RELAY=2 SPLIT=2]",
   "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch[17].h_dframesV relayed [RELAY=2 SPLIT=2]",
   "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch[18].h_cov paid [DECLINE=2 PAY=2]",
-  "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch[30].h_nodeS paid [DECLINE=2 PAY=2]",
-  "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch[31].h_nodeSF paid [PAY=2 SPLIT=2]",
+  "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch[31].h_nodeS paid [DECLINE=2 PAY=2]",
+  "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch[32].h_nodeSF paid [PAY=2 SPLIT=2]",
   "L4YAML.Proofs.StreamAccum.entryPropsKeyPack_of_dispatch[11].h_nodeV relayed [RELAY=1 SPLIT=1]",
   "L4YAML.Proofs.StreamAccum.entryPropsKeyPack_of_dispatch[12].h_compact paid [PAY=1 SPLIT=1]",
   "L4YAML.Proofs.StreamAccum.entryPropsKeyPack_of_dispatch[13].h_nodeF relayed [SPLIT=2]",
@@ -839,8 +839,8 @@ def expectedConsumers : List String :=
    "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch[16].h_nodeFV spent [cased=1 passed=0]",
    "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch[17].h_dframesV spent [cased=1 passed=0]",
    "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch[18].h_cov spent [cased=1 passed=2]",
-   "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch[30].h_nodeS spent [cased=1 passed=0]",
-   "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch[31].h_nodeSF spent [cased=1 passed=0]",
+   "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch[31].h_nodeS spent [cased=1 passed=0]",
+   "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch[32].h_nodeSF spent [cased=1 passed=0]",
    "L4YAML.Proofs.StreamAccum.entryPropsKeyPack_of_dispatch[11].h_nodeV spent [cased=1 passed=0]",
    "L4YAML.Proofs.StreamAccum.entryPropsKeyPack_of_dispatch[12].h_compact spent [cased=1 passed=0]",
    "L4YAML.Proofs.StreamAccum.entryPropsKeyPack_of_dispatch[13].h_nodeF spent [cased=1 passed=0]",
@@ -896,7 +896,7 @@ def expectedConsumers : List String :=
 def expectedWriters : List String :=
   ["L4YAML.Proofs.PreprocessIndentStable.IndentFloor.transport ×1 (PreprocessIndentStable)",
   "L4YAML.Proofs.StreamAccum.FlowBaseRoutes.ofValue ×3 (StreamAccum)",
-  "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock ×28 (StreamAccum)",
+  "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock ×27 (StreamAccum)",
   "L4YAML.Proofs.StreamAccum.accum_block_on_noPending ×7 (StreamAccum)",
   "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlock ×26 (StreamAccum)",
   "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlockContent ×23 (StreamAccum)",
