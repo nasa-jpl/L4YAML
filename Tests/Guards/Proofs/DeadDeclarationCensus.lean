@@ -29,8 +29,12 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- 2026-11-14 (item 490, the ∀-floor fold): population 14,279 → 14,289 (+10: ContentBridge §10's nine lemmas and
 -- `accum_step_content_pairK`), unreached +10 and (A) 1,351 → 1,361 — the fold is read by no root until the 2c fold
 -- (`scan_trace`) composes it; the (B) roster 3,536 unmoved, (C)/(D) unmoved.
+-- 2026-11-15 (item 506 rebased over items 505/508/510): the deletion's −87 (class (A)) recomposed over the base —
+-- population 14,302 → 14,215, unreached 6,577 → 6,490, (A) 1,361 → 1,274; the roster 3,534 and (D) 277 are the
+-- base's (item 505's `StreamAccum.seqEntryTail_cons` entered the roster unpinned on the base; the owner's call),
+-- cluster-roots 1,460 → 1,461 (one roster name's cluster root recomputed after the module deletion).
 def expectedDeadCensus : String :=
-  "population=14301 thm=10269 def=2680 roots=capstone:26+export:37+blueprint:222(unresolved=5) unreached=6576 thm=4657 A-campaign=1361 C-api=1405 D-test-only=277 B-roster=3533 thm=3172 cluster-roots=1459"
+  "population=14215 thm=10192 def=2673 roots=capstone:26+export:37+blueprint:222(unresolved=5) unreached=6490 thm=4580 A-campaign=1274 C-api=1405 D-test-only=277 B-roster=3534 thm=3173 cluster-roots=1461"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do

@@ -13486,7 +13486,7 @@ def loopDeadB (ts : Array (Positioned YamlToken)) (k : Nat) : Bool :=
     (k == 1 || tok ts (k - 1) == some .documentEnd || P91.afterDocOK (tok ts k))
 
 /-- `DeadResidue (tok ts k)`, computed: the `.afterDocument` shape (the `.comment` disjunct was
-closed by `scanFiltered_noComment`, Priority 96). -/
+closed by `scanFiltered_noComment` (deleted, item 506), Priority 96). -/
 def residueB (ts : Array (Positioned YamlToken)) (k : Nat) : Bool :=
   P91.afterDocOK (tok ts k)
 
@@ -13502,12 +13502,12 @@ def listsUpTo : Nat → List (List YamlToken)
   | 0 => [[]]
   | n + 1 => let r := listsUpTo n; r ++ (r.filter (·.length == n)).flatMap fun l => alphabet.map (l ++ [·])
 
-/-- `liveF_dead_contra`'s position premise: `k = 1 ∨ L[k-1] = .documentEnd`. -/
+/-- `liveF_dead_contra (deleted, item 506)`'s position premise: `k = 1 ∨ L[k-1] = .documentEnd`. -/
 def posB (L : List YamlToken) (k : Nat) : Bool := k == 1 || L[k - 1]? == some .documentEnd
 end P94
 
 def testLoopDeadDischarge (state : IO.Ref TestCollector) : IO Unit := do
-  setCategory state "Priority 94 (vi): S3 (β2b) — scanFiltered_liveF, liveF_dead_contra, LoopDead_scanFiltered"
+  setCategory state "Priority 94 (vi): S3 (β2b) — LiveF of scanFiltered output (scanFiltered_liveF deleted), liveF_dead_contra (deleted, item 506), LoopDead_scanFiltered"
   -- (a) list level: with `LiveF` and `.streamStart` first, no dead token at 1 / after `...`
   let mut held := 0
   let mut failedPremise := 0
@@ -13521,12 +13521,12 @@ def testLoopDeadDischarge (state : IO.Ref TestCollector) : IO Unit := do
       | some t =>
         if live then
           held := held + 1
-          checkM state s!"P94 (vi) liveF_dead_contra {repr L} k={k}" (L4YAML.Proofs.DocStartLive.liveTok t) ""
+          checkM state s!"P94 (vi) liveF_dead_contra (deleted, item 506) {repr L} k={k}" (L4YAML.Proofs.DocStartLive.liveTok t) ""
         else
           failedPremise := failedPremise + 1
           if !L4YAML.Proofs.DocStartLive.liveTok t then deadUnderFailed := deadUnderFailed + 1
       | none => pure ()
-  checkM state s!"P94 (vi) liveF_dead_contra: premise-held rows={held}, failed-premise rows={failedPremise}, dead under failed premise={deadUnderFailed} (load-bearing)"
+  checkM state s!"P94 (vi) liveF_dead_contra (deleted, item 506): premise-held rows={held}, failed-premise rows={failedPremise}, dead under failed premise={deadUnderFailed} (load-bearing)"
     (held > 0 && deadUnderFailed > 0) ""
   -- (b) scanner outputs: `LiveF` + head, and the discharge at every `LoopDead` position
   let mut scanned := 0
@@ -13539,8 +13539,8 @@ def testLoopDeadDischarge (state : IO.Ref TestCollector) : IO Unit := do
     | .ok ts =>
       scanned := scanned + 1
       let L := L4YAML.Proofs.DirectiveRuns.toks ts
-      checkM state s!"P94 (vi) scanFiltered_liveF {repr input}: LiveF" (P92.liveFB L) s!"toks={repr L}"
-      checkM state s!"P94 (vi) scanFiltered_liveF {repr input}: head" (L[0]? == some .streamStart) ""
+      checkM state s!"P94 (vi) LiveF of scanFiltered output (scanFiltered_liveF deleted) {repr input}: LiveF" (P92.liveFB L) s!"toks={repr L}"
+      checkM state s!"P94 (vi) LiveF of scanFiltered output (scanFiltered_liveF deleted) {repr input}: head" (L[0]? == some .streamStart) ""
       for k in List.range (ts.size + 1) do
         if P94.loopDeadB ts k then
           loopDeadPos := loopDeadPos + 1
@@ -13856,7 +13856,7 @@ def testNoComment (state : IO.Ref TestCollector) : IO Unit := do
   checkM state "P96 pin: `LoopDead` holds at 1 there (a comment is dead)" (P94.loopDeadB bad 1) ""
   -- finding: `validNextToken .afterDocument (.comment _) = true` — the `.afterDocument` shape
   -- already admitted a comment, so item 449's second disjunct was redundant and the shrink of
-  -- `DeadResidue` is syntactic; the lemma's content is `scanFiltered_noComment` itself (the stop
+  -- `DeadResidue` is syntactic; the lemma's content is `scanFiltered_noComment` (deleted, item 506) itself (the stop
   -- token is never a comment), which is what (γ)'s carrier may assume
   checkM state "P96 finding: `afterDocOK (.comment)` is TRUE (the old disjunct was redundant)"
     (P91.afterDocOK (some (.comment "c"))) ""
