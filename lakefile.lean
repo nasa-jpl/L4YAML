@@ -407,6 +407,11 @@ lean_exe «scripts-dead-census» where
 lean_exe «scripts-docs-nav» where
   root := `Scripts.Main.DocsNav
 
+-- Item 514: the census dashboard — every directed pin's reading, goal, distance and what moves it.
+@[default_target]
+lean_exe «scripts-census-dashboard» where
+  root := `Scripts.Main.CensusDashboard
+
 @[default_target]
 lean_exe «scripts-pack-census» where
   root := `Scripts.Main.PackCensus
@@ -527,6 +532,13 @@ headers through `LEAN_PATH`, which this script sets from the workspace. -/
 -- remaining, steps, grep REGEX, section PREFIX) without paging it.
 script «docs-nav» (args) do
   runGateExe (← getWorkspace).root.dir "scripts-docs-nav" #[] args
+
+/-- `lake run census-dashboard [-- --check | --md FILE]`: every directed census (a pinned count driven
+    to zero or up to a bound) with its current reading off the `Tests/Guards/Proofs` pin literals, its
+    goal, the distance left and what moves it; then the pinned readings with no target (item 514).
+    Reads source text only — no build of the library needed. -/
+script «census-dashboard» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-census-dashboard" #[] args
 
 -- `lake run pack-census -- flip|residue|classes [options]`: the PACK flip census (edits
 -- StreamAccum.lean in place, restores it; never beside another lake build) and the residue's classes.

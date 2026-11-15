@@ -12,7 +12,7 @@ the history cites; it does not duplicate them.  Task-shaped recipes live in
 | What is this project, how do I build/test it, what is next at the project level | [`README.md`](README.md) (its **Next steps**) | restate its metrics elsewhere |
 | Which theorems are capstones and their status / axiom profile | [`Blueprint/04-capstones.md`](Blueprint/04-capstones.md) — machine-parsed | add a theorem without a row here |
 | The rules of proof work | [`Blueprint/06-discipline.md`](Blueprint/06-discipline.md) (Rules 1–9) | invent a parallel rule set |
-| What the active campaign is doing *right now* | `DOCS.md` → Row 12 closure log: `lake run docs-nav -- next` and `-- remaining` | read DOCS.md top to bottom (45k lines) |
+| What the active campaign is doing *right now* | `DOCS.md` → Row 12 closure log: `lake run docs-nav -- next` and `-- remaining`; how far each census is from its goal: `lake run census-dashboard` | read DOCS.md top to bottom (45k lines) |
 | Which YAML productions are covered | [`L4YAML/YAML_PRODUCTIONS.md`](L4YAML/YAML_PRODUCTIONS.md) — machine-checked by `Tests/ProductionCoverage.lean` | edit by hand without the check |
 | Vocabulary of the pipeline | [`Blueprint/01-terminology.md`](Blueprint/01-terminology.md); campaign vocabulary in §6 below | |
 | Lessons from closed proof episodes | [`Blueprint/08-init4.md`](Blueprint/08-init4.md) (digest of `Tests/Reflections/*`) | |
@@ -113,6 +113,7 @@ lake run check-closure-log           # DOCS.md items ascend, dated, gaps declare
 lake run check-serialization-proofs  # serialization hygiene: kernel axiom profiles, sorry control, exact headline sets
 lake run check-gate-vocab            # gate names in prose resolve (pin: Tests/Guards/Proofs/GateVocabulary.lean)
 lake run check-pack-births           # the pack producers' PackAlt writes (pin: expectedPackBirths; needs the library built)
+lake run census-dashboard            # every directed census: reading off the Tests/Guards pins, goal, distance left, what moves it (-- --check in CI; -- --md FILE)
 lake run check-scripts-lean          # Rule 9: every scripts/*.py and inline python3 site is on scripts/scripts-ledger.txt; the ledger only shrinks
 lake run check-hygiene -- docs/reports/stats.json   # zero sorries / custom axioms in the compiled environment, off collect-stats' stats.json
 lake run run-all-tests               # every test exe; collects failures (portable: Lake `script`, no bash)
