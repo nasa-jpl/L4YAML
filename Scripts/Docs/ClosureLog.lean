@@ -7,10 +7,10 @@ module
 
 `DOCS.md`'s "Row 12 — β.5 closure log" is a flat run of `### Item N (DATE)`
 entries that readers and later entries navigate by number.  This module is
-the item parser both the gate (`scripts-check-closure-log`, formerly
-`scripts/check_closure_log.py`) and the navigator (`scripts-docs-nav`,
-formerly `scripts/docs_nav.py`; `Scripts/Docs/Nav.lean`) read the log through, and the gate's five checks as pure functions over the parsed
-entries (each a hard failure):
+the item parser both the gate (`scripts-check-closure-log`) and the navigator
+(`scripts-docs-nav`; `Scripts/Docs/Nav.lean`) read the log through, and the
+gate's six checks as pure functions over the parsed entries (each a hard
+failure):
 
 1. headings parse — every `### Item N …` heading carries a number and a
    trailing `(YYYY-MM-DD)` date;
@@ -20,10 +20,9 @@ entries (each a hard failure):
 4. gaps are declared — a missing number is in `declaredGaps` with an anchor
    that resolves to a real heading of `DOCS.md`;
 5. the declaration does not rot — every declared gap is still absent and
-   inside the log's range.
-
-The messages are the Python gate's, byte for byte, so the two readings diff
-empty on the same `DOCS.md`.
+   inside the log's range;
+6. no leftover merge-conflict markers — no line of `DOCS.md` starts with
+   `<<<<<<<`, `|||||||` or `>>>>>>>` (`isConflictMarker`).
 -/
 
 namespace Scripts.Docs.ClosureLog
@@ -38,10 +37,10 @@ def declaredGaps : List (Nat × String) :=
    -- 442: the slot two concurrent lanes both took on 2026-11-06 — Row 19's entry became 443 and
    -- Row 12's (the (ω-negative) item) became 444; nothing was written as 442.
    (442, "item-445-2026-11-06"),
-   -- 492 = Row 19's #313, 494 = Row 19's #316, 495 = Row 12's #315: all in flight when item 496
-   -- was cut off the #310 base (491 = S3's #311 and 493 = Row 12's #312 landed first and were
-   -- dropped at the rebase); dropped as they land.
-   (492, "item-496-2026-11-14"), (494, "item-496-2026-11-14"), (495, "item-496-2026-11-14")]
+   -- 492 = Row 19's #313, 494 = Row 19's #316: both in flight when item 495 was cut off the #310 base
+   -- (491 = S3's #311, 493 = Row 12's #312 and 496 = Row 12's #317 landed first and were dropped at the
+   -- rebases); dropped as they land.
+   (492, "item-495-2026-11-14"), (494, "item-495-2026-11-14")]
 
 /-- One `### Item N[a] (DATE)` heading. -/
 structure Entry where
@@ -124,12 +123,22 @@ structure Parsed where
   entries : Array Entry := #[]
   errors : Array String := #[]
 
-/-- Check 1 over every line; `entries` in file order. -/
+/-- A leftover merge-conflict marker: `<<<<<<<`, `|||||||` (diff3 base) or `>>>>>>>`, alone or
+followed by a space.  (`=======` is not matched: it is also a setext heading underline, and a
+conflict always carries one of the other three.) -/
+def isConflictMarker (line : String) : Bool :=
+  ["<<<<<<<", "|||||||", ">>>>>>>"].any fun m =>
+    line == m || line.startsWith (m ++ " ")
+
+/-- Check 1 over every line, plus leftover conflict markers; `entries` in file order. -/
 def parseLog (lines : Array String) : Parsed := Id.run do
   let mut p : Parsed := {}
   let mut lineno := 0
   for ln in lines do
     lineno := lineno + 1
+    if isConflictMarker ln then
+      let msg := s!"DOCS.md:{lineno}: leftover merge-conflict marker — resolve the conflict and delete the line"
+      p := { p with errors := p.errors.push msg }
     match parseHeading ln with
     | none => pure ()
     | some (number, letter, rest) =>
@@ -216,5 +225,10 @@ private def tiny (body : String) : UInt32 × Array String :=
 #guard (tiny "### Item 20 (2026-01-01)\n### Item 21 no date\n### Item 22 (2026-01-01)\n").2[0]! ==
   "DOCS.md:4: item 21 — heading has no trailing (YYYY-MM-DD) date"
 #guard (gate "nothing here\n").1 == 2
+-- leftover conflict markers
+#guard isConflictMarker "||||||| parent of caf1ab3a (docs)" && isConflictMarker "<<<<<<< HEAD" &&
+  isConflictMarker ">>>>>>>" && !isConflictMarker "=======" && !isConflictMarker "|| a | b ||"
+#guard (tiny "### Item 17 (2026-01-01)\n||||||| parent of x\n### Item 19 (2026-01-02)\n").2[0]! ==
+  "DOCS.md:4: leftover merge-conflict marker — resolve the conflict and delete the line"
 
 end Scripts.Docs.ClosureLog

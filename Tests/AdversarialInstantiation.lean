@@ -11222,6 +11222,156 @@ def testPackDedentSlotGuard (state : IO.Ref TestCollector) : IO Unit := do
       stepOk + stepRejects.length == preViol.length &&
       stepRejects.all (fun i => inputRejects.contains i))
 
+
+namespace P98Chain
+
+open L4YAML.Surface
+
+/-- `s-l-comments` across a line feed at any column (local twin of `sslBreak1`). -/
+lemma sslBreak (rest : List Char) (col : Nat) : SSLComments ⟨'\n' :: rest, col⟩ ⟨rest, 0⟩ :=
+  SSLComments.withComment _ _ _ (SSBComment.noSep _ _ (SBComment.break _ _ (SBBreak.lf rest col)))
+    (GStar.nil _)
+
+/-- The suffix of `?⏎  ? a⏎: []⏎  :⏎` from the dedent `:` at column 0 — the landing `k = 0`
+    on a park whose own mark is `nv = 2` (the inner `?`), which the landing CLOSES; the new
+    entry's value `[]` is non-empty, so the `:` at column 2 on the next line is not its value. -/
+def tail : List Char := [':', ' ', '[', ']', '\n', ' ', ' ', ':', '\n']
+
+/-- The new entry at `k = 0`: `:` + the flow-in-block node ` []` + the break (`emptyKeyNode`),
+    ending at the start of the next line. -/
+lemma entryAt0 : SBlockMapEntry 0 ⟨tail, 0⟩ ⟨[' ', ' ', ':', '\n'], 0⟩ :=
+  SBlockMapEntry.emptyKeyNode 0 _ ⟨[' ', '[', ']', '\n', ' ', ' ', ':', '\n'], 1⟩ _ (GLit.mk _ 0)
+    (SBlockNode.flowInBlock 1 .blockOut _ ⟨['[', ']', '\n', ' ', ' ', ':', '\n'], 2⟩
+      ⟨['\n', ' ', ' ', ':', '\n'], 4⟩ _
+      (SSeparateLines.inline 1 _ _ (SSeparateInLine.whites _ _
+        (GPlus.mk _ _ _ (SSWhite.space _ 1) (GStar.nil _))))
+      (SFlowNode.content 1 .flowOut _ _ (SFlowContent.flowSeq 1 .flowOut _ _
+        (SFlowSequence.empty 1 .flowOut _ ⟨[']', '\n', ' ', ' ', ':', '\n'], 3⟩ _ _
+          (GLit.mk _ 2) (GOpt.none _) (GLit.mk _ 3))))
+      (sslBreak _ 4))
+
+/-- `s-indent(2)` on the next line. -/
+lemma indent2 : SIndent 2 ⟨[' ', ' ', ':', '\n'], 0⟩ ⟨[':', '\n'], 2⟩ :=
+  SIndent.succ 1 _ 0 _ (SIndent.succ 0 _ 1 _ (SIndent.zero _))
+
+/-- The `:` at the closed mark's column. -/
+lemma colon2 : GLit ':' ⟨[':', '\n'], 2⟩ ⟨['\n'], 3⟩ := GLit.mk _ 2
+
+/-- Its (empty) value. -/
+lemma value2 : SBlockIndented 2 .blockOut ⟨['\n'], 3⟩ ⟨[], 0⟩ :=
+  SBlockIndented.empty 2 .blockOut _ _ (sslBreak [] 3)
+
+/-- **The owed clause's antecedent is INHABITED** (item 495, P98-3).  The chain premise
+    `h_explUp_chainD` asks, for every mark `nv` of `sc` — the closed `nv = 2` included —
+    `∀ sp_v, SBlockMapEntry k sp_ind sp_v → ∀ sp_i sp_c, SIndent nv sp_v sp_i → GLit ':' sp_i sp_c →
+    ∀ sp_w, SBlockIndented nv .blockOut sp_c sp_w → ResumeFrames (SLYamlStream sp_start) [map nv] sp_w`.
+    Item 462 read the `k < nv` case as "owed by refutation: the antecedent is uninhabited".  The
+    surface relations are LOCAL (a `SurfPos` is the remaining characters and a column), so the
+    antecedent holds of these characters — built here from them.  What remains is the
+    conclusion: a stream derivation of `?⏎  ? a⏎: []⏎  :⏎`, which the runtime rejects
+    (`testPackSameLevelChain` pins it).  The clause is an obligation, not a vacuity. -/
+lemma antecedent : ∃ sp_v sp_i sp_c sp_w : SurfPos,
+    SBlockMapEntry 0 ⟨tail, 0⟩ sp_v ∧ SIndent 2 sp_v sp_i ∧ GLit ':' sp_i sp_c ∧
+    SBlockIndented 2 .blockOut sp_c sp_w :=
+  ⟨_, _, _, _, entryAt0, indent2, colon2, value2⟩
+
+/-- The EMPTY-valued twin `:⏎  :⏎` (P98's first cut, REFUTED as a refuting shape): the
+    antecedent is inhabited the same way (`emptyKeyEmpty`), but the runtime ACCEPTS
+    `?⏎  ? a⏎:⏎  :` — the deeper `:` line is the empty entry's VALUE (a nested mapping), so
+    the clause's conclusion is true there.  Kept as the record of why the refuting shape
+    needs a non-empty value at `k`. -/
+lemma antecedentEmpty : ∃ sp_v sp_i sp_c sp_w : SurfPos,
+    SBlockMapEntry 0 ⟨[':', '\n', ' ', ' ', ':', '\n'], 0⟩ sp_v ∧ SIndent 2 sp_v sp_i ∧
+    GLit ':' sp_i sp_c ∧ SBlockIndented 2 .blockOut sp_c sp_w :=
+  ⟨_, _, _, _,
+    SBlockMapEntry.emptyKeyEmpty 0 _ ⟨['\n', ' ', ' ', ':', '\n'], 1⟩ _ (GLit.mk _ 0) (sslBreak _ 1),
+    indent2, colon2, value2⟩
+
+end P98Chain
+
+def testPackSameLevelChain (state : IO.Ref TestCollector) : IO Unit := do
+  -- P98 (item 495, (ω-pay-births) step (b′)): item 462 priced the four strict guards
+  -- (`accum_block_on_closeThenBlock` / `accum_block_on_pendingBlock`, the `:`/`?` opener arm at
+  -- `k ≤ n`) as ONE grammar crossing `sameLevelChainMap` with three clauses over the marks `nv`
+  -- of `sc`: `nv < k` (ancestors), `nv = k` (the park's own mark across its `:` / a sibling `?`),
+  -- `k < nv ≤ n` (marks the dedent closed — "owed by refutation: the antecedent is
+  -- uninhabited").  Measured here at the scanner's own `:`/`?` pauses, before any lemma:
+  -- (i) at every DEDENT pause (`k < n`) a `: v` at the park's own mark `n` after the landing's
+  -- whole entry — the owed clause's surface — is REJECTED by the runtime: the clause's
+  -- conclusion is a stream derivation of a rejected input, while its antecedent is inhabited
+  -- (`P98Chain.antecedent`, from the characters); (ii) at every OWN pause (`k = n`) the same
+  -- `: v` at `n` is ACCEPTED — the next entry of the same mapping; (iii) the concrete pair
+  -- `?⏎  ? a⏎: []⏎  :` (rejected) / `?⏎  ? a⏎: []⏎:` (accepted); the empty-valued
+  -- `?⏎  ? a⏎:⏎  :` is accepted (the deeper `:` is the entry's value).  Measured, not spent.
+  let inputs : List String :=
+    [ "? a\n: b", "?\n- a\n: b", "?\n  - a\n: b", "k:\n  ?\n  - a\n  : b", "- ?\n  - a\n  : b",
+      "?\n  ?\n    - a\n  : b\n: c", "?\n  ?\n    ?\n      - a\n    : b\n  : c\n: d",
+      "?\n  - ?\n      - a\n    : b\n: c", "- ?\n    - a\n  : b", "?\n  k:\n    - a\n: b",
+      "? a\n? b\n: c", "k:\n  ? a\n  : b", "- ? a\n  : b", "? a: 1\n: b", "- a\n- ? b\n  : c",
+      "? [a, b]\n: c", "? {a: b}\n: c", "?\n  - [a, ? b : c]\n: d", "?\n  ?\n    [? a : b]\n  : c\n: d",
+      "?\n  ?\n    - a\n  ? b\n: w", "?\n  ?\n  - a\n  : b\n: c", "? |\n  k\n: v",
+      "?\n  ? a\n  : b\n  ? c\n  : d\n: e", "- ?\n    ?\n      ?\n        - a\n      : b\n    : c\n  : d",
+      "k:\n  ?\n    ?\n      ?\n        a\n      : b\n    : c\n  : d", "?\n  ? a\n: b",
+      "?\n  ?\n    ? a\n: b", "?\n  ? a\n  ? b\n: c", "?\n  ?\n    - a\n: b", "? a\n:\n  ? b\n  : c" ]
+  let mut dedentPauses := 0
+  let mut ownPauses := 0
+  let mut dedentAccepted : List String := []
+  let mut ownRejected : List String := []
+  for input in inputs do
+    let chars := input.toList
+    let lines := (input.splitOn "\n").toArray
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:80] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        let before := L4YAML.Proofs.RegisterWitness.markedCols s
+        let isInd := (c == ':' || c == '?') &&
+          (chars[sP.offset + 1]?.map (fun ch => ch == ' ' || ch == '\n')).getD true
+        if isInd && sP.flowLevel == 0 && !before.isEmpty then
+          let n := before.foldl max 0
+          let k := sP.col
+          if k ≤ n then
+            let indentOf (l : String) : Nat := (l.toList.takeWhile (· == ' ')).length
+            let mut last := sP.line
+            for i in [sP.line + 1 : lines.size] do
+              let l := lines[i]!
+              let blank := l.toList.all (· == ' ')
+              let valueLine := c == '?' && indentOf l == k &&
+                (l.toList.drop k).head? == some ':' &&
+                ((l.toList.drop (k + 1)).head?.map (· == ' ')).getD true
+              if i == last + 1 && (blank || indentOf l > k || valueLine) then last := i
+            let pre := "\n".intercalate (lines.toList.take (last + 1))
+            let cont := pre ++ "\n" ++ String.ofList (List.replicate n ' ') ++ ": v\n"
+            let accepted := match L4YAML.TokenParser.parseYaml cont with
+              | .ok _ => true
+              | .error _ => false
+            if k < n then
+              dedentPauses := dedentPauses + 1
+              if accepted then
+                dedentAccepted := dedentAccepted ++ [s!"{repr input}@{sP.line}:{k} n={n}"]
+            else
+              ownPauses := ownPauses + 1
+              if !accepted then
+                ownRejected := ownRejected ++ [s!"{repr input}@{sP.line}:{k} n={n}"]
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) => s := sN
+        | _ => break
+      | _ => break
+  let rejectsPair := match L4YAML.TokenParser.parseYaml "?\n  ? a\n: []\n  :\n" with
+    | .ok _ => false
+    | .error _ => true
+  let acceptsTwin := match L4YAML.TokenParser.parseYaml "?\n  ? a\n: []\n:\n" with
+    | .ok _ => true
+    | .error _ => false
+  -- P98's first cut: with an EMPTY value at `k` the deeper `:` is that entry's value — accepted.
+  let acceptsEmptyValue := match L4YAML.TokenParser.parseYaml "?\n  ? a\n:\n  :\n" with
+    | .ok _ => true
+    | .error _ => false
+  IO.println s!"P98 dedent pauses (k < n)={dedentPauses} own-mark `: v` accepted at={dedentAccepted} | own pauses (k = n)={ownPauses} own-mark `: v` rejected at={ownRejected} | `?⏎  ? a⏎: []⏎  :` rejected={rejectsPair} twin `?⏎  ? a⏎: []⏎:` accepted={acceptsTwin} empty-valued `?⏎  ? a⏎:⏎  :` accepted={acceptsEmptyValue}"
+  check state s!"P98 (ω-pay-births) (b′) the strict guards' owed clause at `k ≤ n` (item 495): at the {dedentPauses} dedent pauses a `: v` at the closed mark is rejected by the runtime at all but {dedentAccepted.length} (the clause's conclusion is a stream derivation of a rejected input; its antecedent is inhabited, `P98Chain.antecedent`); at the {ownPauses} own pauses the same `: v` is the mapping's next entry, rejected at {ownRejected.length}; `?⏎  ? a⏎: []⏎  :` rejected = {rejectsPair}, `?⏎  ? a⏎: []⏎:` accepted = {acceptsTwin}, the empty-valued `?⏎  ? a⏎:⏎  :` accepted = {acceptsEmptyValue}"
+    (dedentPauses == 5 && dedentAccepted.isEmpty && ownPauses == 41 && ownRejected.isEmpty &&
+      rejectsPair && acceptsTwin && acceptsEmptyValue)
+
 def testSeqTopRefusedArm (state : IO.Ref TestCollector) : IO Unit := do
   -- P89 (item 438, (χ-seqtop-refused)): the negative arm `ExplicitValueRefused s ∨ SeqTopKey s`
   -- proposed for `content_dispatch_routed`'s `h_resF` premise must NOT be a tautology over the
@@ -16970,6 +17120,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testSeqTopRefusedArm state
   testPackChainCarrier state
   testPackStrictGuardLane state
+  testPackSameLevelChain state
   testPackMappingLaneTail state
   testPackDedentSlotGuard state
   testPackAltMarks state
