@@ -11954,30 +11954,36 @@ def testEveryMarkValueLine (state : IO.Ref TestCollector) : IO Unit := do
                 | [] => false
                 | c0 :: rest => c0 == '#' ||
                     ((c0 == '?' || c0 == ':' || c0 == '-') && (rest.head?.map (· == ' ')).getD true)
-              let mut last := sP.line
-              for i in [sP.line + 1 : lines.size] do
-                let l := lines[i]!
-                let blank := l.toList.all (· == ' ')
-                if i == last + 1 && (blank || indentOf l > ind0 ||
-                    (indentOf l == ind0 && !opensEntry l)) then last := i
-              let pre := "\n".intercalate (lines.toList.take (last + 1))
               for m in marks do
                 checks := checks + 1
+                -- the WHOLE node at the pause, cut at the mark's own value line: a line at
+                -- indent ≤ `m` that opens an entry (`:`, `?`, `-`) closes the key `m` marks
+                let mut last := sP.line
+                for i in [sP.line + 1 : lines.size] do
+                  let l := lines[i]!
+                  let blank := l.toList.all (· == ' ')
+                  let closesMark := indentOf l ≤ m && opensEntry l
+                  if i == last + 1 && (blank || (indentOf l > ind0 && !closesMark) ||
+                      (indentOf l == ind0 && !opensEntry l)) then last := i
+                let pre := "\n".intercalate (lines.toList.take (last + 1))
                 if m == k then atMark := atMark + 1
                 let pad := String.ofList (List.replicate m ' ')
                 match L4YAML.TokenParser.parseYaml (pre ++ "\n" ++ pad ++ ": v\n") with
                 | .ok _ => pure ()
-                | .error _ => rejV := rejV ++ [s!"{repr input}@{sP.line}:{k} c={c} m={m}"]
+                | .error _ => rejV := rejV ++ [s!"{repr (pre ++ "\n" ++ pad ++ ": v")}@{sP.line}:{k} m={m}"]
                 match L4YAML.TokenParser.parseYaml (pre ++ "\n" ++ pad ++ ": - w\n") with
                 | .ok _ => pure ()
-                | .error _ => rejSeq := rejSeq ++ [s!"{repr input}@{sP.line}:{k} c={c} m={m}"]
+                | .error _ => rejSeq := rejSeq ++ [s!"{repr (pre ++ "\n" ++ pad ++ ": - w")}@{sP.line}:{k} m={m}"]
           s := sN
         | _ => break
       | _ => break
   IO.println s!"P125 every-mark pauses={pauses} checks={checks} multi={multi} atMark={atMark} rejV={rejV} rejSeq={rejSeq} wholeOk={wholeOk}/{inputs.length}"
   check state s!"P125 (ω-pay-births) (d) item (3b) the every-mark value-line carrier (item 506): {pauses} marked pauses, {checks} marks checked ({multi} pauses with more than one mark, {atMark} at the landing's column), {rejV.length} `: v` rejects, {rejSeq.length} `: - w` rejects, {wholeOk} / {inputs.length} inputs accepted whole"
-    -- PINNED AFTER THE FIRST RUN (item 506): see DOCS 506's predictions, scored.
-    (pauses > 0 && checks > 0)
+    -- pinned (item 506): both value shapes parse at EVERY mark — item 504's `: - w` starvation
+    -- is proof-side (the own-`?` chain), not the runtime's.  The first run's 4 `: - w` rejects
+    -- were the probe's: its node extent ran past the mark's own `: v` line (two values).
+    (pauses == 231 && checks == 257 && multi == 24 && atMark == 43 &&
+      rejV.isEmpty && rejSeq.isEmpty && wholeOk == 37)
 
 def testSeqTopRefusedArm (state : IO.Ref TestCollector) : IO Unit := do
   -- P89 (item 438, (χ-seqtop-refused)): the negative arm `ExplicitValueRefused s ∨ SeqTopKey s`
