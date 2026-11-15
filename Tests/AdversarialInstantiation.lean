@@ -11599,7 +11599,7 @@ def testPackSurvivorsChain (state : IO.Ref TestCollector) : IO Unit := do
       dashExc.isEmpty && lowPauses ≥ 40 && noSurv ≥ 30)
 
 def testProducersPremiseChain (state : IO.Ref TestCollector) : IO Unit := do
-  -- P121 (item 499, (ω-pay-births) (d) item (2)): the producers' premise `h_chainUp` at
+  -- P121 (item 502, (ω-pay-births) (d) item (2)): the producers' premise `h_chainUp` at
   -- `content_dispatch_routed` — at a CONTENT dispatch pause (a non-indicator character in block
   -- context) on a marked state, every mark `nv` of the dispatch state has its `: v` at column `nv`
   -- after the landing's whole node accepted; the hand-offs are classed by where the landing sits
@@ -11631,7 +11631,7 @@ def testProducersPremiseChain (state : IO.Ref TestCollector) : IO Unit := do
         let isInd := (c == ':' || c == '?' || c == '-') &&
           (chars[sP.offset + 1]?.map (fun ch => ch == ' ' || ch == '\n')).getD true
         -- `[` / `{` (and `]` / `}` / `,`) dispatch through the flow indicators, not the content
-        -- arm, so they are not content landings (review round 1 of item 499).
+        -- arm, so they are not content landings (review round 1 of item 502).
         let isFlowInd := c == '[' || c == '{' || c == ']' || c == '}' || c == ','
         let isContent := !isInd && !isFlowInd && c != '#' && c != '%' && c != '\n' && c != ' ' &&
           !(c == '-' && chars[sP.offset + 1]? == some '-' && chars[sP.offset + 2]? == some '-')
@@ -11671,7 +11671,7 @@ def testProducersPremiseChain (state : IO.Ref TestCollector) : IO Unit := do
         | _ => break
       | _ => break
   IO.println s!"P121 marked content pauses={pauses} checks={checks} nested={nested} atMark={atMark} below={below} rejects={rejects}"
-  check state s!"P121 (ω-pay-births) (d) item (2) the producers' premise at the content landings (item 499): {pauses} marked content pauses, {checks} marks' `: v` after the whole node, rejects {rejects}, nested {nested} / at the mark {atMark} / below {below}"
+  check state s!"P121 (ω-pay-births) (d) item (2) the producers' premise at the content landings (item 502): {pauses} marked content pauses, {checks} marks' `: v` after the whole node, rejects {rejects}, nested {nested} / at the mark {atMark} / below {below}"
     -- pinned to the first run: P2 predicted ≥ 60 pauses (59 measured — REFUTED by one) and 0 rejects
     -- (HELD); P3 predicted nested ≥ 50 % / at the mark 0 / below ≥ 5 — every one of the 69 marks is
     -- NESTED (`nv + 1 ≤ k`): a content character at or left of a `?` mark closes that mark in the
