@@ -575,11 +575,13 @@ def expectedLadder : List String :=
    -- 2026-11-12 (item 487, S3 slice (4) PR 2): dispatchContent holders 180 → 183 — `contentLead_of_interior`, `content_prop_tail_kept`, `accum_step_content_traceK`.
    -- 2026-11-13 (item 489): 183 → 184 — `accum_step_content_pairB` holds `h_dispatch`.
    -- 2026-11-14 (item 490): 184 → 185 — `accum_step_content_pairK` holds `h_dispatch`.
-   "scanNextToken_dispatchContent holders=185 edge=3 chain=1",
+   -- 2026-11-15 (item 517): dispatchContent 185 → 186, preprocess 256 → 257 — `content_km_transport_any`
+   -- (`TraceOf/ContentBridge`) holds `hok` / `h_pre`: the T mask's content-step transport, route (μ).
+   "scanNextToken_dispatchContent holders=186 edge=3 chain=1",
    -- 2026-11-12 (item 487, S3 slice (4) PR 2): preprocess holders 251 → 254 — `tailOf_preprocess_eq`, `contentLead_of_interior`, `accum_step_content_traceK`.
    -- 2026-11-13 (item 489): 254 → 255 — `accum_step_content_pairB` holds `h_preprocess`.
    -- 2026-11-14 (item 490): 255 → 256 — `accum_step_content_pairK` holds `h_preprocess`.
-   "scanNextToken_preprocess holders=256 edge=17 chain=3"]
+   "scanNextToken_preprocess holders=257 edge=17 chain=3"]
 
 /-- **What §1's proofs spend.**  `drop=false` is the non-circularity check
     items 242 and 243 also carry: a measurement of what the escape costs may
