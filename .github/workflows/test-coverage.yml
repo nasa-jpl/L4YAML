@@ -10,6 +10,10 @@ on:
     branches: [ main, master, fix-a-grammar-completeness ]
   workflow_dispatch:
 
+# Default for any job that does not declare its own scopes.
+permissions:
+  contents: read
+
 jobs:
   docs-and-tests:
     runs-on: self-hosted
