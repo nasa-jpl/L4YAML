@@ -145,6 +145,14 @@ lemma markedCols_congr {s s' : ScannerState}
 lemma MarkedColsIn.self (sc : ScannerState) : MarkedColsIn sc (markedCols sc) :=
   fun i l c hi hc => markedCols_mem.mpr ⟨i, l, c, hi, hc, rfl⟩
 
+/-- A cover holds every marked column: `x ∈ markedCols sc` lands in any `ns` with
+    `MarkedColsIn sc ns` (item 519 — the every-mark writers read a chain's cover at
+    the mark the field quantifies over). -/
+lemma MarkedColsIn.mem {sc : ScannerState} {ns : List Nat} (h : MarkedColsIn sc ns) {x : Nat}
+    (hx : x ∈ markedCols sc) : x ∈ ns := by
+  obtain ⟨i, l, c, hi, hc, rfl⟩ := markedCols_mem.mp hx
+  exact h i l c hi hc
+
 /-- The empty projection is the empty cover: a state with `markedCols sc = []` holds no mark
     (item 410 — the markless face's refusal reads it). -/
 lemma MarkedColsIn.of_markedCols_nil {sc : ScannerState} (h : markedCols sc = []) :

@@ -966,7 +966,8 @@ def expectedTally : String :=
   -- 2026-10-26 (item 369): edges 664 → 665, DECLINE 256 → 255, FIELD 55 → 56, SPLIT 160 → 161 —
   -- `pendingBlock.h_closeF` threaded into `accum_block_on_pendingBlock` (one FIELD edge) and the
   -- `:`/`?` landing's `h_res_land` there read off those frames instead of `Or.inr trivial`.
-  "edges=650 skipped=41 [DECLINE=241, FIELD=61, LOCAL=26, PAY=53, RELAY=64, SPLIT=174, VIA=31]"
+  "edges=644 skipped=41 [DECLINE=237, FIELD=61, LOCAL=26, PAY=53, RELAY=64, \
+SPLIT=175, VIA=28]"
 
 /-- **The row item 211 read off the compiler's error text and got wrong.**  All
     eight of these print `h_keyctx` when the premise is narrowed; six of them
@@ -1012,13 +1013,14 @@ def expectedSeed : List String :=
 def expectedProducers : List String :=
   ["2 VIA FlowBaseRoutes.key",
    "2 VIA FlowBaseRoutes.valueF",
+   -- Item 519: the depth-0 open's three `frameChainUnion` ladders are gone (`vslot` every-mark) — 5 → 2.
+   "2 VIA frameChainUnion",
    "2 VIA markerctx_of_landing",
    "2 VIA nodocctx_of_preprocess",
    "2 VIA suffixctx_of_landing",
    "3 VIA flowKeyRoute_of_open",
    "3 VIA flowKeyRoute_of_root",
    "3 VIA frameChainUnionD",
-   "5 VIA frameChainUnion",
    "7 VIA keyctx_of_preprocess"]
 
 /-- **Where the 43 pipes land (DOCS item 214).**  Item 213 measured that 43 of
@@ -1135,8 +1137,21 @@ def expectedPipeLanding : String :=
 -- 2026-10-30 (item 405): the `?`-park chain PAID through its ladder — three `h_kslotE_k` content relays and the `h_resKslot`/`hkvUp`-starved `closeThenBlock` births DECLINE (ruling (a)); SPLIT 167 → 164, DECLINE 255 → 258 (edges 657 unchanged).  Rule 8 fix (same item): the chain re-indexed by the projection `markedCols sc`; the two head consumers (`flowKeyRoute_of_open`'s compact pair, the props park's entry-level pack) split on `markedCols sc` and DECLINE at the markless projection — leaves 381 → 383, DECLINE 194 → 196 (DECLINE|PAY 144 → 142, DECLINE|DECLINE|PAY 6 → 8).
 -- 2026-11-02 (item 422): survived 180 → 175, leaves 426 → 410 (DECLINE 222 → 211, PAY 193 → 188), `DECLINE|DECLINE|PAY` 12 → 8,
 -- `DECLINE|DECLINE|DECLINE|PAY` 2 → 1 — the five retired `h_outer` splits and their declined leaves (see `expectedTally`).
+-- Item 519: survived 174 → 175, collapsed 16 → 12, leaves 420 → 422 (DECLINE 218 → 219, PAY 191 → 192) — the
+-- four flow-close `Classical.em` splits on the closed state's marks are gone (`vslot` every-mark pays
+-- `h_vpack` / `h_framesV` outright) and the open's three `frameChainUnion` ladders with them.
 def expectedSplitLanding : String :=
-  "survived=174 collapsed=16 leaves=420 elsewhere=11 [DECLINE=218, PAY=191, VIA=11] [DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|PAY|PAY|PAY|VIA|VIA|VIA=1, DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|PAY|VIA|VIA=1, DECLINE|DECLINE|DECLINE|DECLINE|PAY=1, DECLINE|DECLINE|DECLINE|DECLINE|PAY|PAY|PAY=1, DECLINE|DECLINE|DECLINE|DECLINE|PAY|PAY|PAY|PAY|PAY=1, DECLINE|DECLINE|DECLINE|PAY=1, DECLINE|DECLINE|DECLINE|PAY|PAY|PAY=1, DECLINE|DECLINE|DECLINE|PAY|VIA=3, DECLINE|DECLINE|PAY=16, DECLINE|DECLINE|PAY|PAY|PAY=1, DECLINE|DECLINE|PAY|PAY|PAY|PAY|PAY=1, DECLINE|PAY=143, DECLINE|PAY|PAY=1, PAY|VIA=1, PAY|VIA|VIA=1]"
+  "survived=175 collapsed=12 leaves=426 elsewhere=11 [DECLINE=220, PAY=195, \
+VIA=11] \
+[DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|PAY|PAY|PAY|VIA|VIA|VIA=1, \
+DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|PAY|VIA|VIA=1, \
+DECLINE|DECLINE|DECLINE|DECLINE|PAY=1, \
+DECLINE|DECLINE|DECLINE|DECLINE|PAY|PAY|PAY=1, \
+DECLINE|DECLINE|DECLINE|DECLINE|PAY|PAY|PAY|PAY|PAY=1, \
+DECLINE|DECLINE|DECLINE|PAY=1, DECLINE|DECLINE|DECLINE|PAY|PAY|PAY=1, \
+DECLINE|DECLINE|DECLINE|PAY|VIA=3, DECLINE|DECLINE|PAY=16, \
+DECLINE|DECLINE|PAY|PAY|PAY=2, DECLINE|DECLINE|PAY|PAY|PAY|PAY|PAY=1, \
+DECLINE|PAY=142, DECLINE|PAY|PAY=2, PAY|VIA=1, PAY|VIA|VIA=1]"
 
 /-- **Which BRANCH is taken (DOCS item 217).**  Item 216 resolved what a split
     WRITES — both answers, one per arm.  What it could not say was which arm the
@@ -1240,8 +1255,12 @@ def expectedSplitLanding : String :=
 -- 2026-10-30 (item 405): the `?`-park chain PAID through its ladder — three `h_kslotE_k` content relays and the `h_resKslot`/`hkvUp`-starved `closeThenBlock` births DECLINE (ruling (a)); SPLIT 167 → 164, DECLINE 255 → 258 (edges 657 unchanged).
 -- 2026-11-02 (item 422): splits 180 → 175, leaves 426 → 410, relayRooted 169 → 166, siteDecided 11 → 9, optionalRoot 111 → 108,
 -- DECLINE-closed 109 → 98, PAY-free 193 → 188 — the five `h_outer` splits retired (see `expectedTally`).
+-- Item 519 (review round): the `pendingBlock` / `pendingMapValue` `vslot` writers keep the ancestors' covers (and `h_expl`) as fallback funders read in order — SPLIT BRANCH leaves 422 → 426 (PAY-free 192 → 195, DECLINE-closed 102 → 103); SPLIT landing likewise (leaves 422 → 426, DECLINE 219 → 220, PAY 192 → 195).
 def expectedSplitBranch : String :=
-  "splits=174 leaves=420 relayRooted=164 siteDecided=10 optionalRoot=109 plainRoot=55 agree=116/116 disagree=0 [DECLINE-?=1, DECLINE-closed=105, DECLINE-free=112, PAY-free=191, VIA L4YAML.Proofs.StreamAccum.deeperLandingResume-=2, VIA L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root-=1, VIA absurd-=8]"
+-- Item 519: splits 174 → 175, leaves 420 → 422, relayRooted 164 → 161, siteDecided 10 → 14, plainRoot 55 → 52,
+-- DECLINE-closed 105 → 102, DECLINE-free 112 → 116, PAY-free 191 → 192 — the four flow-close `Classical.em`
+-- splits are gone and the open's three ladders with them (`vslot` every-mark).
+  "splits=175 leaves=426 relayRooted=161 siteDecided=14 optionalRoot=109 plainRoot=52 agree=116/116 disagree=0 [DECLINE-?=1, DECLINE-closed=103, DECLINE-free=116, PAY-free=195, VIA L4YAML.Proofs.StreamAccum.deeperLandingResume-=2, VIA L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root-=1, VIA absurd-=8]"
 
 /-- **The ten splits the site decides for itself**, which is the whole residue
     of the branch question after `expectedSplitBranch`.  Four are a `dite` on a
@@ -1268,7 +1287,10 @@ def expectedSiteDecided : List String :=
    "1 accum_content_pending :: Or.casesOn on VIA Nat.eq_zero_or_pos ⇒ DECLINE|DECLINE|DECLINE|PAY",
    "1 accum_flow_open_depth0 :: Or.elim on LOCAL h_mapFV201:opt ⇒ DECLINE|DECLINE|PAY",
    "1 accum_flow_open_depth0 :: accum_flow_open_depth0.match_1_24 on SPLIT Or.casesOn on VIA preprocess_some_savedKey_shape ⇒ PAY|VIA",
-   "2 accum_block_pending :: Or.casesOn on VIA Nat.eq_zero_or_pos ⇒ DECLINE|PAY"]
+   "2 accum_block_pending :: Or.casesOn on VIA Nat.eq_zero_or_pos ⇒ DECLINE|PAY",
+   -- Item 519: the four flow-close `match resume.vslot` sites — the frame's every-mark field decides the close's
+   -- `h_vpack` / `h_framesV` (PAY on `Or.inl`, the frame's own `PackAltG` decline on `Or.inr`).
+   "4 accum_step_flow :: accum_step_flow.match_1_28 on VIA FlowBaseRoutes.vslot ⇒ DECLINE|PAY"]
 
 /-- **The premises the branch is taken on**, by binder NAME, for the 99 splits
     whose discriminant roots at an optional premise of the enclosing lemma.
@@ -1376,7 +1398,8 @@ def expectedDeclineReach : String :=
 -- Item 372 (2026-10-27): two more edges — `ImplicitKeyPack`'s route conjunct is now an Or (the `SeqTopKey` face), split at the producer's exit (a) and resolved at `colon_fires_implicit_key`.
 -- 2026-10-28 (item 380, PR #146 review): liveSplits 101 → 104 — `Or.elim` read as a two-arm split: three of the
 -- five disagreeing `Classical.em … |>.elim` decisions stand on a live (reachable) decline path; nothing else moved.
-  "pairs=37 orphan=4 direct=7 closureDecline=33 dead=0 maxDepth=2 liveSplits=103 deadSplits=0 accounted=650/650 nodes=159 fieldEdges=61 fieldResolved=61 withCycle=10 declineWriters=19 parkHop=22"
+-- Item 519: accounted 650 → 644 with the tally's edges (the open's three ladders gone); nothing else moved.
+  "pairs=37 orphan=4 direct=7 closureDecline=33 dead=0 maxDepth=2 liveSplits=103 deadSplits=0 accounted=644/644 nodes=159 fieldEdges=61 fieldResolved=61 withCycle=10 declineWriters=19 parkHop=22"
 
 /-- **Every branch premise, with what its own callers supply and where that
     bottoms out.**  `⇐` names the FIRST hop — for a park field, the field
@@ -1529,7 +1552,8 @@ def expectedDeclineWriters : List String :=
 -- 2026-10-30 (item 408): `accum_flow_open_depth0 → flowKeyRoute_of_open#13 (h_compact_pair)` joins the collapsed
 -- edges: the `pendingMapValue` arm's fabricated singleton pair `[n_old]` is DECLINED under the projection face.
 def expectedCollapsedEdge : String :=
-  "compact_open_map → PendingNode.pendingMapValue#16 (h_kslot) = DECLINE via Or.elim; compact_open_map → PendingNode.pendingMapValue#19 (h_closeFV) = DECLINE via Or.elim; compact_open_map → PendingNode.pendingMapValue#20 (h_framesV) = DECLINE via Or.elim; accum_flow_open_depth0 → flowKeyRoute_of_root#26 (h_mapFV) = DECLINE via Or.elim; accum_flow_open_depth0 → flowKeyRoute_of_root#26 (h_mapFV) = DECLINE via Or.elim; colon_open_map_explicit → PendingNode.pendingMapValue#16 (h_kslot) = DECLINE via Or.elim; colon_open_map_explicit → PendingNode.pendingMapValue#19 (h_closeFV) = DECLINE via Or.elim; colon_open_map_explicit → PendingNode.pendingMapValue#20 (h_framesV) = DECLINE via Or.elim; accum_block_pending → frameChainUnion#2 (h₁) = PAY via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_block_pending.match_1_23; accum_block_pending → frameChainUnion#3 (h₂) = PAY via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_block_pending.match_1_25; accum_step_flow → PendingNode.pendingContent#9 (h_vpack) = DECLINE via Or.elim; accum_step_flow → PendingNode.pendingContent#12 (h_framesV) = DECLINE via Or.elim; accum_step_flow → PendingNode.pendingContent#9 (h_vpack) = DECLINE via Or.elim; accum_step_flow → PendingNode.pendingContent#12 (h_framesV) = DECLINE via Or.elim; accum_block_on_closeThenBlock → PendingNode.pendingBlock#11 (h_closeF) = PAY via Or.casesOn→Exists.casesOn→Exists.casesOn→And.casesOn→And.casesOn→And.casesOn→And.casesOn→dite; accum_block_on_closeThenBlock → PendingNode.pendingBlock#13 (h_seqF) = PAY via Or.casesOn→Exists.casesOn→Exists.casesOn→And.casesOn→And.casesOn→And.casesOn→And.casesOn→dite"
+-- Item 519: the four flow-close `Or.elim` declines on `pendingContent.h_vpack` / `h_framesV` are gone — PAID from `vslot`.
+  "compact_open_map → PendingNode.pendingMapValue#16 (h_kslot) = DECLINE via Or.elim; compact_open_map → PendingNode.pendingMapValue#19 (h_closeFV) = DECLINE via Or.elim; compact_open_map → PendingNode.pendingMapValue#20 (h_framesV) = DECLINE via Or.elim; accum_flow_open_depth0 → flowKeyRoute_of_root#26 (h_mapFV) = DECLINE via Or.elim; accum_flow_open_depth0 → flowKeyRoute_of_root#26 (h_mapFV) = DECLINE via Or.elim; colon_open_map_explicit → PendingNode.pendingMapValue#16 (h_kslot) = DECLINE via Or.elim; colon_open_map_explicit → PendingNode.pendingMapValue#19 (h_closeFV) = DECLINE via Or.elim; colon_open_map_explicit → PendingNode.pendingMapValue#20 (h_framesV) = DECLINE via Or.elim; accum_block_pending → frameChainUnion#2 (h₁) = PAY via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_block_pending.match_1_23; accum_block_pending → frameChainUnion#3 (h₂) = PAY via _private.L4YAML.Proofs.Production.StreamAccum.0.L4YAML.Proofs.StreamAccum.accum_block_pending.match_1_25; accum_block_on_closeThenBlock → PendingNode.pendingBlock#11 (h_closeF) = PAY via Or.casesOn→Exists.casesOn→Exists.casesOn→And.casesOn→And.casesOn→And.casesOn→And.casesOn→dite; accum_block_on_closeThenBlock → PendingNode.pendingBlock#13 (h_seqF) = PAY via Or.casesOn→Exists.casesOn→Exists.casesOn→And.casesOn→And.casesOn→And.casesOn→And.casesOn→dite"
 
 /-- **Read off the TYPE, not off a list.**  Item 211's falsification script
     enumerated five optional contexts of `content_dispatch_routed` by hand;

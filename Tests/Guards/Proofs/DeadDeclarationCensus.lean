@@ -37,10 +37,11 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 --- `closeNestedMapColon` / `closeNestedSeqPropsColon` / `closeNestedMapPropsColon`), unreached +4 and (A) 1,274 → 1,278 —
 --- the nested close's `:` twin is read by no root until price (3)'s fold (`accum_step_flow_pairK`) consumes it; the (B)
 --- roster 3,534, (C)/(D) and cluster-roots unmoved.
+-- 2026-11-15 (item 517): +3 class (A) — `kmBit` / `kmBit_iff` (FlowWalk §8) and `content_km_transport_any`
+-- (ContentBridge), reached only by `accum_step_flow_trace` / `accum_step_content_pairK` until the fold; roster unmoved.
+-- 2026-11-15 (item 519): population +1 = `RegisterWitness.MarkedColsIn.mem`; `FlowBaseRoutes.vslot` LEFT the roster (3,534 → 3,533) — the projection is read at the four flow closes now; unreached −1.
 def expectedDeadCensus : String :=
-  -- 2026-11-15 (item 517): +3 class (A) — `kmBit` / `kmBit_iff` (FlowWalk §8) and `content_km_transport_any`
-  -- (ContentBridge), reached only by `accum_step_flow_trace` / `accum_step_content_pairK` until the fold; roster unmoved.
-  "population=14223 thm=10199 def=2674 roots=capstone:26+export:37+blueprint:222(unresolved=5) unreached=6497 thm=4586 A-campaign=1281 C-api=1405 D-test-only=277 B-roster=3534 thm=3173 cluster-roots=1461"
+  "population=14224 thm=10200 def=2674 roots=capstone:26+export:37+blueprint:222(unresolved=5) unreached=6496 thm=4585 A-campaign=1281 C-api=1405 D-test-only=277 B-roster=3533 thm=3172 cluster-roots=1460"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do

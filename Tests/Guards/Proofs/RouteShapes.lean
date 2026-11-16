@@ -744,7 +744,8 @@ def expectedClosures : List String :=
    "mk.key[LEE4L] opt: [kc=_] _: SBlockMapEntry(_) > SCompactMapTail(_) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream",
    "mk.key[LEE5LE2] opt: [kc=_] _: SBlockMapEntry(_) > SCompactMapTail(_) ⇒ Resume(_)▹Stream",
    "mk.key[LEE6LEE2] opt: [kc=_] _: SBlockMapEntry(_) > SCompactMapTail(_) ⇒ Key(_)▹ExplValueLine(_)",
-   "mk.vslot[LE] opt: sp_br: SFlowContent(n,flowOut) > SSLComments > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream"]
+-- Item 519: `vslot`'s `E` (the free list) is gone — the field quantifies over `markedCols s0`.
+   "mk.vslot[L] opt: sp_br: SFlowContent(n,flowOut) > SSLComments > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream"]
 -- 2026-10-21 (item 313): the props park's four spines (`h_kslot`, `h_routeE`, `h_kslotE`, `h_closeFEV`) read `carry` where
 -- they read `fwd` at the two content-step sites — the field is handed on through `.imp id (PackAlt.step_content …)` now,
 -- a carried step rather than a verbatim forward; `fwd` 2 → 0, `carry` +2 on each.
