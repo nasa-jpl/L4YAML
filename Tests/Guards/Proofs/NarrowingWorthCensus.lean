@@ -298,7 +298,7 @@ def isSurfFace (env : Environment) (lhs : Expr) : MetaM Bool := do
 -- level admitted), one strict-width narrowing face fewer; `theorems` 6498 → 6499 is `ResumeFrames.strict`.
 -- 2026-11-10 (item 473, option (A)): heads 19 → 18 — the level constructors' `h_lt` and the park faces all read `≤`,
 -- one strict head shape fewer; binders/faces unchanged.
-def expectedFaceTally : String := "binders=160 faces=65 heads=18"
+def expectedFaceTally : String := "binders=160 faces=64 heads=18"
 
 /-- The conclusion head of every left disjunct.  `FVAR 2` is `frameChainUnion`,
     whose face is schematic in `P` — the two rows no census of any kind can

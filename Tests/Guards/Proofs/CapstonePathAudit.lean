@@ -39,7 +39,7 @@ def expectedSummary : String :=
 -- Item 519: off-honest 92 → 91, off-unread 55 → 56, on 8 → 6, off 43 → 41, unrooted-arms 89 → 93, arms 238 → 237 —
 -- the four flow-close `Classical.em` splits are gone (PAID from `vslot`), the open's three ladders with them; shrink-only.
 -- Item 519 (review round): arms 237 → 239 (the two fallback `match`es at the `vslot` writers), off-honest 91 → 92 / off-unread 56 → 55 (`pendingBlock.h_kslotUp` read again at the open).
-  "positions=269 on=7 off=189 unresolved=73 on-drop=3 on-via=0 on-relay=4 on-conclusion=0 off-honest=92 off-unread=55 off-conclusion=25 off-unreached=0 on-drop-nested=0 on-via-nested=0 on-relay-nested=0 off-honest-nested=17 nested-unresolved=73 on-by-alt: True=0 PackAlt=7 PackAltG=0 off-by-alt: True=132 PackAlt=50 PackAltG=7 pack-declines: on=6 off=41 consumed=scan_content_gives_stream_v2 streamAccum-reached=1156/1266 unrooted-arms=93 arms=239 relays=145 drop-set=8/8"
+  "positions=269 on=7 off=189 unresolved=73 on-drop=3 on-via=0 on-relay=4 on-conclusion=0 off-honest=92 off-unread=55 off-conclusion=25 off-unreached=0 on-drop-nested=0 on-via-nested=0 on-relay-nested=0 off-honest-nested=17 nested-unresolved=73 on-by-alt: True=0 PackAlt=7 PackAltG=0 off-by-alt: True=132 PackAlt=50 PackAltG=7 pack-declines: on=6 off=41 consumed=scan_content_gives_stream_v2 streamAccum-reached=1156/1266 unrooted-arms=94 arms=239 relays=145 drop-set=8/8"
 
 def expectedOn : List String :=
   -- Item 519: the four flow-close splits are PAID from `vslot` (shrink: `pendingContent.h_vpack` on-relay DECLINE 4 → 2).
