@@ -1,0 +1,9 @@
+# Files that decide what CI executes; changes need a code-owner review
+# once the branch ruleset requires one.
+/.github/         @NicolasRouquette
+/scripts/         @NicolasRouquette
+/Scripts/         @NicolasRouquette
+/lakefile.lean    @NicolasRouquette
+/lake-manifest.json @NicolasRouquette
+/lean-toolchain   @NicolasRouquette
+/.gitmodules      @NicolasRouquette
