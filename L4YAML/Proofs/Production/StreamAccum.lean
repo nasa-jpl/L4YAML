@@ -6717,7 +6717,7 @@ structure FlowBaseRoutes (sp_start : SurfPos) (n : Nat) (sp_br : SurfPos)
   -- own frame onto the ancestors it was handed, and the close hands the whole
   -- list to the park it re-parks as (the close arms, inline; the `flowVPack_of_close`
   -- restatement was unconsumed and deleted at item 478).
-  vslot : (∃ ns : List Nat, ∀ nv ∈ ns, ∀ sp_end, SFlowContent n .flowOut sp_br sp_end →
+  vslot : (∀ nv ∈ RegisterWitness.markedCols s0, ∀ sp_end, SFlowContent n .flowOut sp_br sp_end →
     ∀ sp_mid sp_i sp_c, SSLComments sp_end sp_mid → SIndent nv sp_mid sp_i →
       GLit ':' sp_i sp_c → ∀ sp_v, SBlockIndented nv .blockOut sp_c sp_v →
       ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAltG g
@@ -14483,12 +14483,12 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                -- closes it (`? &p [1]⏎: - w`); the twin item 91 installed
                -- fires on the same node the value route above builds.
                (match h_kslot_p with
-                | Or.inl ⟨ns, _, kslot⟩ => Or.inl ⟨ns, fun nv hmem =>
-                    (fun sp_end h_content sp_m sp_i sp_c h_ssl h_iv h_lit sp_v h_sbi =>
-                      kslot nv hmem sp_m (flowInBlock_blockNode h_sep_run
+                | Or.inl ⟨ns, hdom, kslot⟩ => Or.inl
+                    (fun nv hmem sp_end h_content sp_m sp_i sp_c h_ssl h_iv h_lit sp_v h_sbi =>
+                      kslot nv (((RegisterWitness.preprocess_markedCols h_preprocess hdom).transport h_pk' h_ind').mem hmem) sp_m (flowInBlock_blockNode h_sep_run
                         (SFlowNode.propsContent n .flowOut sp_p sp_scan sp_prep sp_end
                           h_run.toProperties h_sep h_content) h_ssl)
-                        sp_i sp_c h_iv h_lit sp_v h_sbi)⟩
+                        sp_i sp_c h_iv h_lit sp_v h_sbi)
                 | Or.inr _ => Or.inr trivial)⟩),
              PendingNode.noPending sp_start sp_open (Or.inr (inFlow_of_flowLevel_eq h_fl1))
                (Or.inr (inFlow_of_flowLevel_eq h_fl1))
@@ -14609,38 +14609,33 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                -- `?`'s compact-SEQUENCE key, and the landed `:` closes it
                -- (`? - [1]⏎: - w`); the wrap is the value closure's own.
                --
-               -- ═══ **Item 192: …and the park's WHOLE CHAIN with it.**  The
-               -- park holds one value line for the frame its collection FILLS
-               -- (`h_kslot`, above) and one for each frame it stands INSIDE
-               -- (`h_kslotUp`, items 190–191), and a flow collection in the
-               -- entry's node slot is where the chain used to stop: this arm
-               -- read `h_kslot` alone, so `?⏎  ? - [1]⏎: w` — accepted, landing
-               -- one frame up — left through `_stamp_offcol` where its block
-               -- twin `?⏎  ? -⏎: w` was paid at item 190.  The wrap is the same
-               -- term for every ancestor, so one `frameChainUnion` carries the
-               -- ladder: `?⏎  ?⏎    ? - [1]⏎: w` lands two up, and each rung
-               -- deeper is accepted with no largest member. ═══
-               (frameChainUnion
-                 (match h_kslot_old with
-                  | Or.inl kslot => Or.inl ⟨RegisterWitness.markedCols sc,
+               -- ═══ **Item 192: …and the park's WHOLE CHAIN with it** — the ancestors'
+               -- `h_kslotUp` ladder rode beside `h_kslot` in a `frameChainUnion` (`?⏎  ?⏎    ? - [1]⏎: w`
+               -- lands two up).  Item 519: the field ranges over every mark, so the park's
+               -- every-mark `h_kslot` covers the ladder and the union is gone. ═══
+               -- Item 519: `vslot` ranges over every mark of the open state; the park's
+               -- every-mark `h_kslot` pays it, and where that is declined the ancestors'
+               -- cover `h_kslotUp` (Devin Review on item 519: item 192's union, kept).
+               (match h_kslot_old with
+                | Or.inl kslot => Or.inl
+                    (fun nv hmem sp_end h_content sp_m sp_i sp_c h_ssl h_iv h_lit sp_v h_sbi =>
+                      kslot nv (((RegisterWitness.preprocess_markedCols h_preprocess (RegisterWitness.MarkedColsIn.self sc)).transport h_pk' h_ind').mem hmem) sp_m
+                        (SBlockIndented.node n_old .blockIn sp_scan sp_m
+                          (SBlockNode.flowInBlock (n_old + 1) .blockIn sp_scan sp_prep sp_end sp_m
+                            h_sep (SFlowNode.content _ _ _ _ h_content) h_ssl))
+                        sp_m (SCompactSeqTail.nil n_old sp_m)
+                        sp_i sp_c h_iv h_lit sp_v h_sbi)
+                | Or.inr _ =>
+                  match h_kslotUp_old with
+                  | Or.inl ⟨nsU, hdomU, upU⟩ => Or.inl
                       (fun nv hmem sp_end h_content sp_m sp_i sp_c h_ssl h_iv h_lit sp_v h_sbi =>
-                        kslot nv hmem sp_m
+                        upU nv (((RegisterWitness.preprocess_markedCols h_preprocess hdomU).transport h_pk' h_ind').mem hmem) sp_m
                           (SBlockIndented.node n_old .blockIn sp_scan sp_m
                             (SBlockNode.flowInBlock (n_old + 1) .blockIn sp_scan sp_prep sp_end sp_m
                               h_sep (SFlowNode.content _ _ _ _ h_content) h_ssl))
                           sp_m (SCompactSeqTail.nil n_old sp_m)
-                          sp_i sp_c h_iv h_lit sp_v h_sbi)⟩
-                  | Or.inr _ => Or.inr trivial)
-                 (match h_kslotUp_old with
-                  | Or.inl ⟨nsU, _, upU⟩ => Or.inl ⟨nsU, fun nvU hmem =>
-                      fun sp_end h_content sp_m sp_i sp_c h_ssl h_iv h_lit sp_v h_sbi =>
-                        upU nvU hmem sp_m
-                          (SBlockIndented.node n_old .blockIn sp_scan sp_m
-                            (SBlockNode.flowInBlock (n_old + 1) .blockIn sp_scan sp_prep sp_end sp_m
-                              h_sep (SFlowNode.content _ _ _ _ h_content) h_ssl))
-                          sp_m (SCompactSeqTail.nil n_old sp_m)
-                          sp_i sp_c h_iv h_lit sp_v h_sbi⟩
-                  | Or.inr _ => Or.inr trivial))⟩),
+                          sp_i sp_c h_iv h_lit sp_v h_sbi)
+                  | Or.inr _ => Or.inr trivial)⟩),
              PendingNode.noPending sp_start sp_open (Or.inr (inFlow_of_flowLevel_eq h_fl1))
                (Or.inr (inFlow_of_flowLevel_eq h_fl1))
                (nodoc_of_flowLevel_succ h_fl1) (noek_of_flowLevel_succ h_fl1)
@@ -14727,53 +14722,55 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                -- inner entry's VALUE, and the landed `:` closes the OUTER
                -- entry (`? a: [1]⏎: - w`).
                --
-               -- ═══ **Item 192: all THREE funders ride, where two shadowed.**
-               -- This park can hold its own `?` frame (`h_expl`, at `n_old`),
-               -- the frame that one stands inside (`h_kslot`, item 93) and the
-               -- whole chain above it (`h_explUp`, items 190–191) — and the
-               -- match below answered with the first it found, which is item
-               -- 189's shadowing in the flow lane.  `?⏎  ? [1]⏎: w` is accepted
-               -- and lands on the OUTER frame, so the preference chose wrong
-               -- there; the chain carries every one of them and the landing
-               -- decides by column. ═══
-               (frameChainUnion
-                 (frameChainUnion
-                   (match h_expl with
-                    | Or.inl ⟨sp_q, h_qlit, route, _⟩ => Or.inl ⟨[n_old], frameChainOne (a := n_old)
-                        (fun sp_end h_content sp_m sp_i sp_c h_ssl h_ind h_lit sp_v h_sbi =>
-                          ResumeFrames.one (route sp_v (SBlockMapEntry.explicit n_old sp_q sp_scan sp_m sp_i sp_c sp_v
-                            h_qlit
-                            (SBlockIndented.node n_old .blockOut sp_scan sp_m
-                              (SBlockNode_blockIn_to_blockOut
-                                (SBlockNode.flowInBlock (n_old + 1) .blockIn sp_scan sp_prep sp_end sp_m
-                                  h_sep (SFlowNode.content _ _ _ _ h_content) h_ssl)))
-                            h_ind h_lit h_sbi)))⟩
-                    | Or.inr _ => Or.inr trivial)
-                   -- Item 196: the mapping-lane field is a CHAIN now, so the
-                   -- crossing carries the whole of it instead of its head.
-                   (match h_kslot_mv with
-                    | Or.inl ⟨ns, _, kslot⟩ => Or.inl ⟨ns, fun nv hmem =>
-                        (fun sp_end h_content sp_m sp_i sp_c h_ssl h_ind h_lit sp_v h_sbi =>
-                          kslot nv hmem sp_m
-                            (SBlockNode.flowInBlock (n_old + 1) .blockIn sp_scan sp_prep sp_end sp_m
-                              h_sep (SFlowNode.content _ _ _ _ h_content) h_ssl)
-                            sp_i sp_c h_ind h_lit sp_v h_sbi)⟩
-                    | Or.inr _ => Or.inr trivial))
-                 -- Items 190–191: the ancestors, reached by closing THIS `?`'s
-                 -- entry empty around the key the collection just filled —
-                 -- `[188]`'s `explicitEmpty`, the `e-node` value the inner
-                 -- frame never got — with the outer `:` line following.
-                 (match h_explUp_mv with
-                  | Or.inl ⟨sp_q, nsU, h_qlit, _, up⟩ => Or.inl ⟨nsU, fun nvU hmem =>
-                      fun sp_end h_content sp_m sp_i sp_c h_ssl h_ind h_lit sp_v h_sbi =>
-                        up nvU hmem sp_m
-                          (SBlockMapEntry.explicitEmpty n_old sp_q sp_scan sp_m h_qlit
-                            (SBlockIndented.node n_old .blockOut sp_scan sp_m
-                              (SBlockNode_blockIn_to_blockOut
-                                (SBlockNode.flowInBlock (n_old + 1) .blockIn sp_scan sp_prep sp_end sp_m
-                                  h_sep (SFlowNode.content _ _ _ _ h_content) h_ssl))))
-                          sp_i sp_c h_ind h_lit sp_v h_sbi⟩
-                  | Or.inr _ => Or.inr trivial))⟩),
+               -- ═══ **Item 192: all THREE funders ride, where two shadowed** — the `?`'s own
+               -- frame (`h_expl`), the frame it stands inside (`h_kslot`) and the ladder above
+               -- (`h_explUp`) were unioned so `?⏎  ? [1]⏎: w` lands on the OUTER frame.  Item 519:
+               -- each funder is an every-mark route now (a COVER or item 512's field), read in order —
+               -- Devin Review on item 519: `h_kslot_mv` is written by `question_open_map` off the
+               -- ANCESTORS' chain, so a root `? [1]⏎: w` (virgin park, chain declined) has it
+               -- declined while `h_expl` holds the own mark's route and item 512's every-mark
+               -- route for the older marks; each funder pays EVERY mark or declines whole. ═══
+               (match h_kslot_mv with
+                | Or.inl ⟨ns, hdom, kslot⟩ => Or.inl
+                    (fun nv hmem sp_end h_content sp_m sp_i sp_c h_ssl h_ind h_lit sp_v h_sbi =>
+                      kslot nv (((RegisterWitness.preprocess_markedCols h_preprocess hdom).transport h_pk' h_ind').mem hmem) sp_m
+                        (SBlockNode.flowInBlock (n_old + 1) .blockIn sp_scan sp_prep sp_end sp_m
+                          h_sep (SFlowNode.content _ _ _ _ h_content) h_ssl)
+                        sp_i sp_c h_ind h_lit sp_v h_sbi)
+                | Or.inr _ =>
+                  (match h_expl with
+                   | Or.inl ⟨sp_q, h_qlit, route, rest⟩ =>
+                     (match rest, h_explUp_mv with
+                      | Or.inl rest, _ => Or.inl
+                          (fun nv hmem sp_end h_content sp_m sp_i sp_c h_ssl h_ind h_lit sp_v h_sbi => by
+                            have hnode := SBlockNode_blockIn_to_blockOut
+                              (SBlockNode.flowInBlock (n_old + 1) .blockIn sp_scan sp_prep sp_end sp_m
+                                h_sep (SFlowNode.content _ _ _ _ h_content) h_ssl)
+                            by_cases hEq : nv = n_old
+                            · subst hEq
+                              exact ResumeFrames.one (route sp_v (SBlockMapEntry.explicit _ sp_q sp_scan sp_m sp_i sp_c sp_v
+                                h_qlit (SBlockIndented.node _ .blockOut sp_scan sp_m hnode) h_ind h_lit h_sbi))
+                            · exact rest nv (((RegisterWitness.preprocess_markedCols h_preprocess (RegisterWitness.MarkedColsIn.self _)).transport h_pk' h_ind').mem hmem)
+                                hEq sp_m (SBlockMapEntry.explicitEmpty n_old sp_q sp_scan sp_m h_qlit
+                                  (SBlockIndented.node n_old .blockOut sp_scan sp_m hnode))
+                                sp_i sp_c h_ind h_lit sp_v h_sbi)
+                      | Or.inr _, Or.inl ⟨sp_q', nsU, h_qlit', hdomU, up⟩ => Or.inl
+                          (fun nv hmem sp_end h_content sp_m sp_i sp_c h_ssl h_ind h_lit sp_v h_sbi => by
+                            have hnode := SBlockNode_blockIn_to_blockOut
+                              (SBlockNode.flowInBlock (n_old + 1) .blockIn sp_scan sp_prep sp_end sp_m
+                                h_sep (SFlowNode.content _ _ _ _ h_content) h_ssl)
+                            have hmemU : nv ∈ n_old :: nsU :=
+                              ((RegisterWitness.preprocess_markedCols h_preprocess hdomU).transport h_pk' h_ind').mem hmem
+                            by_cases hEq : nv = n_old
+                            · subst hEq
+                              exact ResumeFrames.one (route sp_v (SBlockMapEntry.explicit _ sp_q sp_scan sp_m sp_i sp_c sp_v
+                                h_qlit (SBlockIndented.node _ .blockOut sp_scan sp_m hnode) h_ind h_lit h_sbi))
+                            · exact up nv ((List.mem_cons.1 hmemU).resolve_left hEq) sp_m
+                                (SBlockMapEntry.explicitEmpty n_old sp_q' sp_scan sp_m h_qlit'
+                                  (SBlockIndented.node n_old .blockOut sp_scan sp_m hnode))
+                                sp_i sp_c h_ind h_lit sp_v h_sbi)
+                      | Or.inr _, Or.inr _ => Or.inr trivial)
+                   | Or.inr _ => Or.inr trivial))⟩),
              PendingNode.noPending sp_start sp_open (Or.inr (inFlow_of_flowLevel_eq h_fl1))
                (Or.inr (inFlow_of_flowLevel_eq h_fl1))
                (nodoc_of_flowLevel_succ h_fl1) (noek_of_flowLevel_succ h_fl1)
@@ -20397,7 +20394,8 @@ lemma accum_step_flow (sc : ScannerState)
                       -- Item 362: `h_vpack` PAID when the closed state has no marked slot — a
                       -- projection of the state the face is about, decided here (Rule 8: no
                       -- carrier), so the flow close restores a dead register.
-                      ((Classical.em (RegisterWitness.MarkedColsIn (scanFlowSequenceEnd s_ad) [])).elim (fun h => Or.inr (PackAlt.ofRefused (RegisterWitness.refused_of_markedCols_nil (PendingKeySound.scanFlowSequenceEnd_sound s_ad (PendingKeySound.Sound.of_eq (PendingKeySound.preprocess_sound h_preprocess h_sound h_mono) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl))) h_ad_pos) (by first | exact h_fl' | (rw [h_fl']; rfl) | (rw [h_fl']; omega)) h))) (fun _ => Or.inr trivial))
+                      -- Item 519: `h_vpack` PAID at EVERY mark from the frame's `vslot` — the open wrote it over `markedCols s0`, the close reads it at the closed state through `markedCols_congr`; the markless case is no longer a split.
+                      (match resume.vslot with | Or.inl vs => Or.inl ⟨RegisterWitness.markedCols (scanFlowSequenceEnd s_ad), RegisterWitness.MarkedColsIn.self _, fun nv hmem sp_mid sp_i sp_c h_ssl h_iv h_lit sp_v h_sbi => vs nv ((RegisterWitness.markedCols_congr ((L4YAML.Proofs.PendingKeysStable.scanFlowSequenceEnd_preserves_pendingKeys s_ad).trans (h_pk_ad.trans h_pk_park)) ((L4YAML.Proofs.EmitterScannability.scanFlowSequenceEnd_preserves_indents s_ad).trans (h_ind_ad.trans h_ind_park))) ▸ hmem) sp_tok (SFlowContent.flowSeq _ _ _ _ h_seq) sp_mid sp_i sp_c h_ssl h_iv h_lit sp_v h_sbi⟩ | Or.inr h => Or.inr (PackAlt.ofGateClose h))
                       (Or.inr (by have := glit_col h_close_lit; omega))
                       -- Item 200: `h_framesS`/`h_framesV`.  The value-line half is
                       -- PAYABLE here — `h_vpack` above is `h_framesV` at `ks = []`
@@ -20407,7 +20405,8 @@ lemma accum_step_flow (sc : ScannerState)
                       -- stack-shaped source for either bottom.  Item 362: `h_framesV`
                       -- PAID as `h_vpack` above.
                       ((resume.valueF sp_tok (SFlowContent.flowSeq _ _ _ _ h_seq)).imp (fun ⟨ks, ⟨lo, hfl, hcov⟩, f⟩ => ⟨ks, Or.inl ⟨lo, _, hfl, IndentStackCover.Covered.of_indents_eq hcov ((L4YAML.Proofs.EmitterScannability.scanFlowSequenceEnd_preserves_indents s_ad).trans (h_ind_ad.trans h_ind_park))⟩, f⟩) id)
-                      ((Classical.em (RegisterWitness.MarkedColsIn (scanFlowSequenceEnd s_ad) [])).elim (fun h => Or.inr (PackAlt.ofRefused (RegisterWitness.refused_of_markedCols_nil (PendingKeySound.scanFlowSequenceEnd_sound s_ad (PendingKeySound.Sound.of_eq (PendingKeySound.preprocess_sound h_preprocess h_sound h_mono) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl))) h_ad_pos) (by first | exact h_fl' | (rw [h_fl']; rfl) | (rw [h_fl']; omega)) h))) (fun _ => Or.inr trivial))
+                      -- Item 519: `h_framesV` at `ks = []` from the frame's every-mark `vslot`; the cover at `[]` is the field's existing True alternative.
+                      (match resume.vslot with | Or.inl vs => Or.inl (fun nv hmem => ⟨[], Or.inr trivial, fun sp_mid h_ssl => KeyFrames.bottom sp_mid (fun sp_i sp_c h_iv h_lit sp_v h_sbi => vs nv ((RegisterWitness.markedCols_congr ((L4YAML.Proofs.PendingKeysStable.scanFlowSequenceEnd_preserves_pendingKeys s_ad).trans (h_pk_ad.trans h_pk_park)) ((L4YAML.Proofs.EmitterScannability.scanFlowSequenceEnd_preserves_indents s_ad).trans (h_ind_ad.trans h_ind_park))) ▸ hmem) sp_tok (SFlowContent.flowSeq _ _ _ _ h_seq) sp_mid sp_i sp_c h_ssl h_iv h_lit sp_v h_sbi)⟩) | Or.inr h => Or.inr (PackAlt.ofGateClose h))
                     ((ScannerAllowDirectives.scanFlowSequenceEnd_preserves_allowDirectives _).trans h_ad_false)
                     (staleNodeTail_scanFlowSequenceEnd s_ad).toCompletedTail
                     -- **Item 207: and the park's own indent check, from the OTHER side.**  The
@@ -20636,13 +20635,15 @@ lemma accum_step_flow (sc : ScannerState)
                           (SFlowContent.flowMap _ _ _ _ h_map))
                       (fun _ => staleNodeTail_scanFlowMappingEnd _)
                       -- Item 362: `h_vpack` PAID from the closed state, as at the sequence close.
-                        ((Classical.em (RegisterWitness.MarkedColsIn (scanFlowMappingEnd s_ad) [])).elim (fun h => Or.inr (PackAlt.ofRefused (RegisterWitness.refused_of_markedCols_nil (PendingKeySound.scanFlowMappingEnd_sound s_ad (PendingKeySound.Sound.of_eq (PendingKeySound.preprocess_sound h_preprocess h_sound h_mono) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl))) h_ad_pos) (by first | exact h_fl' | (rw [h_fl']; rfl) | (rw [h_fl']; omega)) h))) (fun _ => Or.inr trivial))
+                        -- Item 519: `h_vpack` PAID at EVERY mark from the frame's `vslot` (the mapping twin).
+                        (match resume.vslot with | Or.inl vs => Or.inl ⟨RegisterWitness.markedCols (scanFlowMappingEnd s_ad), RegisterWitness.MarkedColsIn.self _, fun nv hmem sp_mid sp_i sp_c h_ssl h_iv h_lit sp_v h_sbi => vs nv ((RegisterWitness.markedCols_congr ((L4YAML.Proofs.PendingKeysStable.scanFlowMappingEnd_preserves_pendingKeys s_ad).trans (h_pk_ad.trans h_pk_park)) ((L4YAML.Proofs.EmitterScannability.scanFlowMappingEnd_preserves_indents s_ad).trans (h_ind_ad.trans h_ind_park))) ▸ hmem) sp_tok (SFlowContent.flowMap _ _ _ _ h_map) sp_mid sp_i sp_c h_ssl h_iv h_lit sp_v h_sbi⟩ | Or.inr h => Or.inr (PackAlt.ofGateClose h))
                       (Or.inr (by have := glit_col h_close_lit; omega))
                       -- Item 200: as at the sequence close above — payable at
                       -- `ks = []` off `h_vpack`, and a restatement if paid.  Item 362:
                       -- `h_framesV` PAID from the closed state.
                       ((resume.valueF sp_tok (SFlowContent.flowMap _ _ _ _ h_map)).imp (fun ⟨ks, ⟨lo, hfl, hcov⟩, f⟩ => ⟨ks, Or.inl ⟨lo, _, hfl, IndentStackCover.Covered.of_indents_eq hcov ((L4YAML.Proofs.EmitterScannability.scanFlowMappingEnd_preserves_indents s_ad).trans (h_ind_ad.trans h_ind_park))⟩, f⟩) id)
-                      ((Classical.em (RegisterWitness.MarkedColsIn (scanFlowMappingEnd s_ad) [])).elim (fun h => Or.inr (PackAlt.ofRefused (RegisterWitness.refused_of_markedCols_nil (PendingKeySound.scanFlowMappingEnd_sound s_ad (PendingKeySound.Sound.of_eq (PendingKeySound.preprocess_sound h_preprocess h_sound h_mono) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl))) h_ad_pos) (by first | exact h_fl' | (rw [h_fl']; rfl) | (rw [h_fl']; omega)) h))) (fun _ => Or.inr trivial))
+                      -- Item 519: `h_framesV` at `ks = []` from the frame's every-mark `vslot` (the mapping twin).
+                      (match resume.vslot with | Or.inl vs => Or.inl (fun nv hmem => ⟨[], Or.inr trivial, fun sp_mid h_ssl => KeyFrames.bottom sp_mid (fun sp_i sp_c h_iv h_lit sp_v h_sbi => vs nv ((RegisterWitness.markedCols_congr ((L4YAML.Proofs.PendingKeysStable.scanFlowMappingEnd_preserves_pendingKeys s_ad).trans (h_pk_ad.trans h_pk_park)) ((L4YAML.Proofs.EmitterScannability.scanFlowMappingEnd_preserves_indents s_ad).trans (h_ind_ad.trans h_ind_park))) ▸ hmem) sp_tok (SFlowContent.flowMap _ _ _ _ h_map) sp_mid sp_i sp_c h_ssl h_iv h_lit sp_v h_sbi)⟩) | Or.inr h => Or.inr (PackAlt.ofGateClose h))
                         ((ScannerAllowDirectives.scanFlowMappingEnd_preserves_allowDirectives _).trans h_ad_false)
                         (staleNodeTail_scanFlowMappingEnd s_ad).toCompletedTail
                         -- **Item 207: and the park's own indent check, from the OTHER side.**  The

@@ -1,0 +1,32 @@
+{
+  "item": 516,
+  "tag": "FLOWK-MARKS-519",
+  "rev": "466448d7",
+  "target": "L4YAML",
+  "log": "scratch/519-flowk-marks-build.log",
+  "msgWidth": 110,
+  "rounds": 1,
+  "report": "bodies",
+  "files": [
+    {
+      "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+      "patches": [
+        {
+          "name": "L7040.FlowStackK.marks-conjunct",
+          "line": 7044,
+          "old": [
+            "    ks.size = fl ∧"
+          ],
+          "new": [
+            "    ks.size = fl ∧",
+            "    (0 < fl → ∀ m ∈ RegisterWitness.markedCols s0, ∀ sp_mid sp_i sp_c : SurfPos,",
+            "      SSLComments sp_flow sp_mid → SIndent m sp_mid sp_i → GLit ':' sp_i sp_c →",
+            "      ∀ sp_v : SurfPos, SBlockIndented m .blockOut sp_c sp_v →",
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map m] sp_v) ∧"
+          ],
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

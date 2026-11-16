@@ -1,0 +1,28 @@
+{
+  "item": 516,
+  "tag": "VSLOT-MARKS-519",
+  "rev": "466448d7",
+  "target": "L4YAML",
+  "log": "scratch/519-vslot-marks-build.log",
+  "msgWidth": 110,
+  "rounds": 3,
+  "report": "bodies",
+  "files": [
+    {
+      "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+      "patches": [
+        {
+          "name": "L6720.FlowBaseRoutes.vslot.every-mark",
+          "line": 6720,
+          "old": [
+            "  vslot : (∃ ns : List Nat, ∀ nv ∈ ns, ∀ sp_end, SFlowContent n .flowOut sp_br sp_end →"
+          ],
+          "new": [
+            "  vslot : (∀ nv ∈ RegisterWitness.markedCols s0, ∀ sp_end, SFlowContent n .flowOut sp_br sp_end →"
+          ],
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

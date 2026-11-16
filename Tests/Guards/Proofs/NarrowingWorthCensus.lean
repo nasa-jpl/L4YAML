@@ -369,7 +369,8 @@ those heads and `expectedChainFaces` not naming a single one of them. -/
 def expectedChainFaces : List String :=
   -- Item 357: the marked-column domain reaches the `:`/`?` producers (`h_kslotD`, `h_explUp_chainD`) and the
   -- block-step `h_kslotUp` twins; the rung-1 faces read off the build.
-  ["FlowBaseRoutes.mk#9 (vslot)",
+-- Item 519: `FlowBaseRoutes.mk#9 (vslot)` left the rung-1 chain faces — its free `∃ ns` is gone (`∀ nv ∈ markedCols s0`).
+  [
    "accum_block_on_closeThenBlock#10 (h_vpack)",
    "accum_block_on_pendingContent#16 (h_vpack)",
    -- Item 409 (2026-10-30): the two `h_nodeV` faces left rung 1 (they carry `MarkedColsIn` now);
@@ -902,7 +903,7 @@ one unfolding, and §6 is the item where those two disagreed about binders. -/
 -- 2026-11-10 (item 469, review round 1): theorems 6502 → 6505 (`gapTail_of_nil`/`gapTail_of_held`, `head?_dropWhile_not`, `trailingPropertyRun_eq_nil_of_sync`, `FlowStackK.withArm` in; `FlowStackKA.toK`/`ofPack`/`ofK` out); no-op tallies unmoved.
 -- 2026-11-11 (item 484): theorems 6464 → 6466 — `contentArm_of_dispatch` and the `accum_step_content` wrapper; the no-op tally itself unchanged.
 -- 2026-11-14 (item 492's rebase onto item 498): no-op theorems 6467 → 6469, the births' two lemmas.
-def expectedNoopTally : String := "theorems=6473 byElab=16 byWhnf=16 elabOnly=0 whnfOnly=0"
+def expectedNoopTally : String := "theorems=6474 byElab=16 byWhnf=16 elabOnly=0 whnfOnly=0"
 -- 5302 → 5344 on 2026-10-18 (plan row 20's close, closure-log item 280): the
 -- parse-side alias obligation moved to §7.1's DECLARATION set, so the carrier
 -- grew and the predicate gained its tools.  What is new in kind: `AG` carries
